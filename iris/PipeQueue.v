@@ -63,13 +63,13 @@ Section PipeQueue.
     own γ (◯E (s : leibnizO pipe_st)).
 
   Global Instance pipe_qauth_timeless γ s : Timeless (pipe_qauth γ s).
-  Proof. rewrite /pipe_qauth. apply _. Qed.
+  Proof using . rewrite /pipe_qauth. apply _. Qed.
   Global Instance pipe_qfrag_timeless γ s : Timeless (pipe_qfrag γ s).
-  Proof. rewrite /pipe_qfrag. apply _. Qed.
+  Proof using . rewrite /pipe_qfrag. apply _. Qed.
 
   (* minted by [PipeInv.new_pipe] at the birth state, beside the two ends *)
   Lemma pipe_queue_alloc : ⊢ |==> ∃ γ : gname, pipe_qauth γ pst0 ∗ pipe_qfrag γ pst0.
-  Proof.
+  Proof using .
     iMod (own_alloc (●E (pst0 : leibnizO pipe_st) ⋅ ◯E (pst0 : leibnizO pipe_st)))
       as (γ) "[Ha Hf]"; [apply excl_auth_valid |].
     iModIntro. iExists γ. iFrame "Ha Hf".
@@ -78,19 +78,19 @@ Section PipeQueue.
   (* the fragment IS the state *)
   Lemma pipe_queue_agree γ s s' :
     pipe_qauth γ s -∗ pipe_qfrag γ s' -∗ ⌜s' = s⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Hf". iDestruct (own_valid_2 with "Ha Hf") as %Hv.
     iPureIntro. symmetry. exact (excl_auth_agree_L _ _ Hv).
   Qed.
 
   Lemma pipe_qfrag_excl γ s s' : pipe_qfrag γ s -∗ pipe_qfrag γ s' -∗ False.
-  Proof.
+  Proof using .
     iIntros "H1 H2". iDestruct (own_valid_2 with "H1 H2") as %Hv.
     exfalso. exact (proj1 (excl_auth_frag_op_valid _ _) Hv).
   Qed.
 
   Lemma pipe_qauth_excl γ s s' : pipe_qauth γ s -∗ pipe_qauth γ s' -∗ False.
-  Proof.
+  Proof using .
     iIntros "H1 H2". iDestruct (own_valid_2 with "H1 H2") as %Hv.
     exfalso. exact (proj1 (excl_auth_auth_op_valid _ _) Hv).
   Qed.
@@ -98,7 +98,7 @@ Section PipeQueue.
   (* THE ONE STEP, and it needs both halves *)
   Lemma pipe_queue_update γ s s' (s'' : pipe_st) :
     pipe_qauth γ s -∗ pipe_qfrag γ s' ==∗ pipe_qauth γ s'' ∗ pipe_qfrag γ s''.
-  Proof.
+  Proof using .
     iIntros "Ha Hf". rewrite /pipe_qauth /pipe_qfrag -own_op.
     iApply (own_update_2 with "Ha Hf"). apply excl_auth_update.
   Qed.
@@ -111,9 +111,9 @@ Section PipeQueue.
   Definition pipe_taint_cred : iProp Σ := (□ riscv_kill_cred)%I.
 
   Global Instance pipe_taint_cred_persistent : Persistent pipe_taint_cred.
-  Proof. rewrite /pipe_taint_cred. apply _. Qed.
+  Proof using . rewrite /pipe_taint_cred. apply _. Qed.
   Global Instance pipe_taint_cred_timeless : Timeless pipe_taint_cred.
-  Proof. rewrite /pipe_taint_cred. apply _. Qed.
+  Proof using . rewrite /pipe_taint_cred. apply _. Qed.
 
   (* ================================================================== *)
   (*  2.  THE LINKS: one fupd per step, supplied by the fragment's holder  *)
@@ -154,7 +154,7 @@ Section PipeQueue.
      invariant of its own. *)
   Lemma pipe_olink_of_frag γ (Φ : pipe_st -> iProp Σ) (s0 : pipe_st) :
     pipe_qfrag γ s0 -∗ (pipe_qfrag γ s0 ={⊤}=∗ Φ s0) -∗ pipe_olink γ Φ.
-  Proof.
+  Proof using .
     iIntros "Hf Hk" (s) "Ha".
     iDestruct (pipe_queue_agree with "Ha Hf") as %<-.
     iMod ("Hk" with "Hf") as "HΦ". iModIntro. iFrame "Ha HΦ".
@@ -164,7 +164,7 @@ Section PipeQueue.
     pipe_qfrag γ s0 -∗
     (pipe_qfrag γ (pst_write b s0) ={⊤}=∗ Φ) -∗
     pipe_wlink γ b Φ.
-  Proof.
+  Proof using .
     iIntros "Hf Hk" (s) "Ha".
     iDestruct (pipe_queue_agree with "Ha Hf") as %<-.
     iMod (pipe_queue_update _ _ _ (pst_write b s0) with "Ha Hf") as "[Ha Hf]".
@@ -175,7 +175,7 @@ Section PipeQueue.
     pipe_qfrag γ s0 -∗
     (∀ b : bv 8, ⌜pst_next s0 = Some b⌝ -∗ pipe_qfrag γ (pst_read s0) ={⊤}=∗ Φ b) -∗
     pipe_rlink γ Φ.
-  Proof.
+  Proof using .
     iIntros "Hf Hk" (s b) "%Hb Ha".
     iDestruct (pipe_queue_agree with "Ha Hf") as %<-.
     iMod (pipe_queue_update _ _ _ (pst_read s0) with "Ha Hf") as "[Ha Hf]".
@@ -186,7 +186,7 @@ Section PipeQueue.
     pipe_qfrag γ s0 -∗
     (pipe_qfrag γ (pst_close w s0) ={⊤}=∗ Φ) -∗
     pipe_clink γ w Φ.
-  Proof.
+  Proof using .
     iIntros "Hf Hk" (s) "Ha".
     iDestruct (pipe_queue_agree with "Ha Hf") as %<-.
     iMod (pipe_queue_update _ _ _ (pst_close w s0) with "Ha Hf") as "[Ha Hf]".
@@ -195,28 +195,28 @@ Section PipeQueue.
 
   Lemma pipe_olink_mono γ (Φ Φ' : pipe_st -> iProp Σ) :
     (∀ s, Φ s -∗ Φ' s) -∗ pipe_olink γ Φ -∗ pipe_olink γ Φ'.
-  Proof.
+  Proof using .
     iIntros "Hw Hl" (s) "Ha". iMod ("Hl" with "Ha") as "[$ HΦ]".
     iModIntro. by iApply "Hw".
   Qed.
 
   Lemma pipe_wlink_mono γ b (Φ Φ' : iProp Σ) :
     (Φ -∗ Φ') -∗ pipe_wlink γ b Φ -∗ pipe_wlink γ b Φ'.
-  Proof.
+  Proof using .
     iIntros "Hw Hl" (s) "Ha". iMod ("Hl" with "Ha") as "[$ HΦ]".
     iModIntro. by iApply "Hw".
   Qed.
 
   Lemma pipe_rlink_mono γ (Φ Φ' : bv 8 -> iProp Σ) :
     (∀ b : bv 8, Φ b -∗ Φ' b) -∗ pipe_rlink γ Φ -∗ pipe_rlink γ Φ'.
-  Proof.
+  Proof using .
     iIntros "Hw Hl" (s b) "%Hb Ha". iMod ("Hl" with "[%] Ha") as "[$ HΦ]"; [exact Hb |].
     iModIntro. by iApply "Hw".
   Qed.
 
   Lemma pipe_clink_mono γ w (Φ Φ' : iProp Σ) :
     (Φ -∗ Φ') -∗ pipe_clink γ w Φ -∗ pipe_clink γ w Φ'.
-  Proof.
+  Proof using .
     iIntros "Hw Hl" (s) "Ha". iMod ("Hl" with "Ha") as "[$ HΦ]".
     iModIntro. by iApply "Hw".
   Qed.
@@ -249,10 +249,10 @@ Section PipeQueue.
     end.
 
   Lemma pipe_wchain_0 γ M ua Q Qe j : pipe_wchain γ M ua Q Qe j 0 ⊣⊢ Q j.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma pipe_wchain_cursor γ M ua Q Qe j cnt : pipe_wchain γ M ua Q Qe j cnt -∗ Q j.
-  Proof. destruct cnt; [by iIntros "$" | by iIntros "[$ _]"]. Qed.
+  Proof using . destruct cnt; [by iIntros "$" | by iIntros "[$ _]"]. Qed.
 
   (* THE READ CHAIN is over the DEQUEUED bytes: the cursor is [Q acc]
      ("what I know having taken [acc] out of the pipe"), node [acc]'s link
@@ -274,10 +274,10 @@ Section PipeQueue.
     end.
 
   Lemma pipe_rchain_0 γ Q Qe acc : pipe_rchain γ Q Qe acc 0 ⊣⊢ Q acc.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma pipe_rchain_cursor γ Q Qe acc cnt : pipe_rchain γ Q Qe acc cnt -∗ Q acc.
-  Proof. destruct cnt; [by iIntros "$" | by iIntros "[$ _]"]. Qed.
+  Proof using . destruct cnt; [by iIntros "$" | by iIntros "[$ _]"]. Qed.
 
   (* ================================================================== *)
   (*  4.  PAYMENTS AND POSTS                                              *)
@@ -300,11 +300,11 @@ Section PipeQueue.
     (pipe_clink γ w Φ ∨ pipe_taint_cred)%I.
 
   Lemma pipe_wpay_taint γ M ua Q Qe n : pipe_taint_cred -∗ pipe_wpay γ M ua Q Qe n.
-  Proof. iIntros "#H". rewrite /pipe_wpay. by iRight. Qed.
+  Proof using . iIntros "#H". rewrite /pipe_wpay. by iRight. Qed.
   Lemma pipe_rpay_taint γ Q Qe n : pipe_taint_cred -∗ pipe_rpay γ Q Qe n.
-  Proof. iIntros "#H". rewrite /pipe_rpay. by iRight. Qed.
+  Proof using . iIntros "#H". rewrite /pipe_rpay. by iRight. Qed.
   Lemma pipe_cpay_taint γ w Φ : pipe_taint_cred -∗ pipe_cpay γ w Φ.
-  Proof. iIntros "#H". rewrite /pipe_cpay. by iRight. Qed.
+  Proof using . iIntros "#H". rewrite /pipe_cpay. by iRight. Qed.
 
   (* A CLOSE'S POST.  The link FIRES exactly at the LAST fileclose of the
      end (the one that reaches pipeclose and clears the flag word), and the
@@ -319,13 +319,13 @@ Section PipeQueue.
      ∨ (⌜last = false⌝ ∗ pipe_cpay γ w Φ))%I.
 
   Lemma pipe_cpost_fired γ w Φ last : Φ -∗ pipe_cpost γ w Φ last.
-  Proof. iIntros "H". rewrite /pipe_cpost. by iLeft. Qed.
+  Proof using . iIntros "H". rewrite /pipe_cpost. by iLeft. Qed.
   Lemma pipe_cpost_taint γ w Φ last :
     pipe_taint_cred -∗ pipe_cpay γ w Φ -∗ pipe_cpost γ w Φ last.
-  Proof. iIntros "#Ht Hp". rewrite /pipe_cpost. iRight. iLeft. iFrame "Ht Hp". Qed.
+  Proof using . iIntros "#Ht Hp". rewrite /pipe_cpost. iRight. iLeft. iFrame "Ht Hp". Qed.
   Lemma pipe_cpost_unfired γ w Φ :
     pipe_cpay γ w Φ -∗ pipe_cpost γ w Φ false.
-  Proof. iIntros "Hp". rewrite /pipe_cpost. iRight. iRight. by iFrame "Hp". Qed.
+  Proof using . iIntros "Hp". rewrite /pipe_cpost. iRight. iRight. by iFrame "Hp". Qed.
 
   (* A WRITE'S POST.  FIRED, at the stop cursor [k] (the bytes pushed) with
      the answer: [k] itself -- the whole request, or copyin's reason for
@@ -363,7 +363,7 @@ Section PipeQueue.
   Lemma pipe_wpost_neg P γ M ua Q Qe Rk r :
     r = (mword_of_int (-1) : mword 64) ->
     pipe_wpay γ M ua Q Qe 0 -∗ pipe_wpost P γ M ua Q Qe Rk 0 r.
-  Proof.
+  Proof using .
     intros ->. iIntros "[Hch | #Ht]".
     - iLeft. iExists 0%nat. iSplitR; [by iPureIntro |].
       iLeft. iSplitR; [iPureIntro; by right |].
@@ -384,7 +384,7 @@ Section PipeQueue.
         ∨ (⌜r = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜(k < n)%nat⌝ ∗
            ∃ s : pipe_st, ⌜ps_ro s = false⌝ ∗ Qe k s)))
     ∨ (pipe_taint_cred ∗ pipe_wpay γ M ua Q Qe n).
-  Proof.
+  Proof using .
     iIntros "[H | H]"; [| iRight; iExact "H"].
     iDestruct "H" as (k) "(%Hk & [(%Hr & %Hs & Hch) | [(%Hr & %Hs & Hk & Hch) | Hobs]])";
       iLeft; iExists k; (iSplitR; [by iPureIntro |]).
@@ -444,7 +444,7 @@ Section PipeQueue.
   Lemma pipe_rpost_neg P γ addr Q Qe Rk (bs : nat -> bv 8) r :
     r = (mword_of_int (-1) : mword 64) ->
     pipe_rpay γ Q Qe 0 -∗ pipe_rpost P γ addr Q Qe Rk 0 0 bs r.
-  Proof.
+  Proof using .
     intros ->. iIntros "[Hch | #Ht]".
     - iLeft. iExists []. iSplitR; [by iPureIntro |].
       iSplitR; [iPureIntro; intros j Hj; lia |].
@@ -463,7 +463,7 @@ Section PipeQueue.
        ⌜forall j : nat, (j < d)%nat -> bs j = acc !!! j⌝ ∗
        pipe_rstop P addr Qe Rk n acc d r)
     ∨ (pipe_taint_cred ∗ pipe_rpay γ Q Qe n).
-  Proof.
+  Proof using .
     iIntros "[H | H]"; [| iRight; iExact "H"].
     iDestruct "H" as (acc) "(%H1 & %H2 & [(%H3 & Hobs) | (%H3 & Hno & _)])";
       iLeft; iExists acc; (iSplitR; [by iPureIntro |]); (iSplitR; [by iPureIntro |]);
@@ -496,7 +496,7 @@ Section PipeQueue.
   Lemma pipe_rpost_img_of P γ addr Q Qe Rk n d bs r (M : gmap Z (bv 8)) :
     pipe_rpost P γ addr Q Qe Rk n d bs r -∗
     pipe_rpost_img P γ Q Qe Rk n r (umem_wr M addr d bs) addr.
-  Proof.
+  Proof using .
     iIntros "[H | H]"; [iLeft | iRight; iExact "H"].
     iDestruct "H" as (acc) "(%Hle & %Hbs & Hst)".
     iExists acc, d. iFrame "Hst". iPureIntro. split; [exact Hle |].
@@ -508,7 +508,7 @@ Section PipeQueue.
   Lemma pipe_rpost_img_neg P γ Q Qe Rk r (M' : gmap Z (bv 8)) (addr : mword 64) :
     r = (mword_of_int (-1) : mword 64) ->
     pipe_rpay γ Q Qe 0 -∗ pipe_rpost_img P γ Q Qe Rk 0 r M' addr.
-  Proof.
+  Proof using .
     intros ->. iIntros "[Hch | #Ht]".
     - iLeft. iExists [], 0%nat. iSplitR; [by iPureIntro |].
       iSplitR; [iPureIntro; intros _ j Hj; lia |].
@@ -533,7 +533,7 @@ Section PipeQueue.
          ∃ s : pipe_st, ⌜pst_empty s /\ (d = 0%nat -> ps_wo s = false)⌝ ∗ Qe acc s)
         ∨ (⌜length acc = d⌝ ∗ pipe_rstop_noobs P addr Rk n d r ∗ Q acc)))
     ∨ (pipe_taint_cred ∗ pipe_rpay γ Q Qe n).
-  Proof.
+  Proof using .
     iIntros "[H | H]"; [| iRight; iExact "H"].
     iDestruct "H" as (acc d) "(%H1 & %H2 & [Hobs | (%H3 & Hno & Hch)])"; iLeft; iExists acc, d;
       (iSplitR; [by iPureIntro |]); (iSplitR; [by iPureIntro |]).

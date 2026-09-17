@@ -296,7 +296,7 @@ Section BootBss.
        g.(gmem) !! pa_of_z x = Some (boot_byte x)) ->
     ram_lo <= A -> A + 4096 < ram_hi -> A mod 8 = 0 ->
     boot_cran g A (A + 4096) ⊢ hart_stack_raw (pa_of_z A).
-  Proof.
+  Proof using .
     intros Hmem Hlo Hhi Hal.
     rewrite /hart_stack_raw off_of_z.
     assert (Hu : uint (pa_of_z (A + 4096)) = A + 4096)
@@ -353,7 +353,7 @@ Section BootBss.
        g.(gmem) !! pa_of_z x = Some (boot_byte x)) ->
     text_end <= A -> img_end <= A -> A + 128 <= ram_hi -> A mod 8 = 0 ->
     kmap_static_claims -∗ boot_cran g A (A + 128) -∗ cpu_slot_raw (pa_of_z A).
-  Proof.
+  Proof using .
     intros Hmem Hlo Hbss Hhi Hal. iIntros "#Hcl H".
     iDestruct (bss_cut g A A (A + 8) (A + 128)
                  ltac:(lia) ltac:(lia) ltac:(lia) with "H") as "[H0 H]".
@@ -478,7 +478,7 @@ Section BootBssChain.
       (pa_of_z (KernelSyms.stack0 + 4096 * Z.of_nat (fin_to_nat h))) -∗
     cpu_slot_raw (pa_of_z (cpu_slot (fin_to_nat h))) -∗
     boot_hart_bss h.
-  Proof.
+  Proof using .
     iIntros "Hst (Hp & Hctx & Hnoff & Hint)".
     iEval (rewrite /hart_stack_raw off_of_z sp_of_slice) in "Hst".
     rewrite /boot_hart_bss a_cpu_ctx_cid a_cpu_noff_cid a_cpu_int_cid
@@ -546,7 +546,7 @@ Section BootBssChain.
          ⌜prun phystop_val s1entry_val ps⌝ ∗
          ⌜(K_kvmmake + 64 + 3 < length ps)%nat⌝ ∗
          ([∗ list] p ∈ ps, page_own p)).
-  Proof.
+  Proof using .
     intro Hbf. pose proof (boot_mem_of_facts g Hbf) as Hmem.
     iIntros "#Hcl Hfd Hir Hirf Hfda Hbss (Hsa & Hcu & Hchi & Hlm & Hrdtok & Hclean) Hu0 Hu1 H".
     (* THE FLAG CELLS ARE GONE.  This chain used to open with two 4-byte cuts
@@ -1437,7 +1437,7 @@ Section BootAlloc.
       crash_inv ∗ gen_cert ∗
       (* A6.131: the era's image is the boot state's memory, as a pure fact *)
       ⌜era_img riscv_eraGS = g.(gimg)⌝.
-  Proof.
+  Proof using .
     (* a pure repackaging: the goal's rows are this file's wrapper names for
        [power_boot_res]'s own.  Row by row rather than one conversion: two
        wrappers ([reg_pointsto]'s notation, the strans/sie/spp/spie splits)
@@ -1516,7 +1516,7 @@ Section BootAlloc.
       (boot_reg_res_at c (g.(gregs) c) ∗ hart_strans c ∗ hart_sie c ∗
        hart_spp c ∗ hart_spie c ∗ hart_locks c ∗ hart_resv c ∗
        boot_hart_bss c).
-  Proof.
+  Proof using .
     (* THREE [iApply]s OF THE WAND FORM, NOT [rewrite !big_sepL_sep].
        [big_sepL_sep] is a [⊣⊢], so rewriting with it is SETOID rewriting, and
        its cost scales with the size of the CONCRETE predicates it has to build
@@ -1558,7 +1558,7 @@ Section BootAlloc.
         (register_lookup sig_seip (g.(gregs) h)) ∗
       reg_pointsto_at h sig_meip (DfracOwn 1)
         (register_lookup sig_meip (g.(gregs) h)).
-  Proof.
+  Proof using .
     intro Hbf.
     rewrite /hart_strans /hart_sie /hart_spp /hart_spie /hart_locks
             /hart_resv /boot_hart_bss.
@@ -1842,7 +1842,7 @@ Section BootAlloc.
         (FsCrash.hdr_wset
            (FsCrash.fs_blocks (v_disk (g.(gdev).(dvirtio))))
            (FsImg.sb_logstart sb)).
-  Proof.
+  Proof using FGP bioslotGpreS0 fdslotGpreS0 irefslotGpreS0 pavGpreS0 wchGpreS0.
     intros Hbf Hsnap.
     (* THE ERA'S CONFIGURATION IS THE SNAPSHOT'S OWN SUPERBLOCK, so [sb] is
        not a free parameter: substituting it is what makes the mint's ties

@@ -534,7 +534,7 @@ Section ProofKwait.
       (b : bool) (pv : mword 64) (K : forall (CID : CpuId), iProp Σ) :
     (b = false \/ pv = zero_reg -> (CID1 : CPU) = (CID0 : CPU)) ->
     wp_next (CID0 := CID0) b pv K -∗ wp_next (CID0 := CID1) b pv K.
-  Proof.
+  Proof using .
     intros Hch. iIntros "H" (CID Hs). iApply ("H" $! CID). iPureIntro.
     intro Hb. rewrite (Hs Hb). exact (Hch Hb).
   Qed.
@@ -586,13 +586,13 @@ Section ProofKwait.
        children_inv ps gz mz oz)%I.
 
   Lemma kw_pay_res `{XI : CurCtx} (ps : list (mword 64)) : kw_pay ps -∗ wait_res.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as (gz mz oz) "(Hps & Hch & Ho & Hci)".
     iExists ps, gz, mz, oz. iFrame "Hps Hch Ho Hci".
   Qed.
 
   Lemma kw_res_pay `{XI : CurCtx} : wait_res -∗ ∃ ps : list (mword 64), kw_pay ps.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as (ps gz mz oz) "(Hps & Hch & Ho & Hci)".
     iExists ps, gz, mz, oz. iFrame "Hps Hch Ho Hci".
   Qed.
@@ -672,7 +672,7 @@ Section ProofKwait.
   Lemma kw_slots_zombie `{GEN : GenId} `{CIDz : CpuId} `{XI : CurCtx} (gs : list gname) (pa : mword 64) :
     proc_slots gs pa ZOMBIE -∗
     proc_dormant pa ZOMBIE ∗ hart_at_any pa ∗ pslot_used_at pa.
-  Proof.
+  Proof using .
     rewrite /proc_slots /proc_slots_at inv_dormant_ZOMBIE not_running_ZOMBIE is_running_ZOMBIE
             is_unused_ZOMBIE.
     rewrite (_ : needs_ctx ZOMBIE = false); [| vm_compute; reflexivity].
@@ -708,7 +708,7 @@ Section ProofKwait.
         pc_is (ret_pc (mm !!! Regidx Rra)) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros sp0 spr HK Hsp Hs3 Hcs.
     iIntros "Hcg Hown #Htext Hpc Hframe0 Hcont".
     iDestruct "Hframe0" as "(Hc72 & Hc64 & Hc56 & Hc48 & Hc40 & Hc32 & Hc24 & Hc16 & Hc08 & Hc00)".
@@ -968,7 +968,7 @@ Section ProofKwait.
         pc_is (ret_pc (mm !!! Regidx Rra)) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros sp0 spr HK Hsp Hcs Hbelow.
     iIntros "Hcg Hown Hpay #Htext Hpc #Hlk Htok Hres Hframe Hcont".
     (* +0xec auipc a0,0x10 *)
@@ -1128,7 +1128,7 @@ Section ProofKwait.
         pc_is (ret_pc (mm !!! Regidx Rra)) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros sp0 spr HK Hsp Hs1 Hcs Hbelow.
     assert (Hwl_lt_proc : (lock_rank "wait_lock" < lock_rank "proc")%nat)
       by (vm_compute; lia).
@@ -1421,7 +1421,7 @@ Section ProofKwait.
         ch_frag γrow pme cs' -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros sp0 spr HK Hk Hsp Hs1 Hs3 Hcs Hbelow Hchild Hpmenz.
     assert (Hwl_lt_proc : (lock_rank "wait_lock" < lock_rank "proc")%nat)
       by (vm_compute; lia).
@@ -1883,7 +1883,7 @@ Section ProofKwait.
         ch_frag γrow pme cs' -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros sp0 spr HK Hk Hsp Hs1 Hs2 Hs7 Hcs Hchild Hpmenz Hbelow.
     iIntros "Hcg Hown Hpay1 Hpay0 #Htext Hpc #Henv #Hplk #Hlkk Htokk Hstate Hpsg Hchan Hpub
              Hdorm Hpark #Hmk #Hlk Htok Hcols Hmyrow Hpriv Hframe Hcont".
@@ -2341,7 +2341,7 @@ Section ProofKwait.
      0 ([ProcGeom.proc_addr_nonzero]) and the caller has the index. *)
   Lemma kw_pme_nz (jj : nat) (pme : mword 64) :
     (jj < NPROC)%nat -> pme = proc_addr jj -> pme <> (zero_reg : mword 64).
-  Proof. intros Hjj Hpme. rewrite Hpme. exact (proc_addr_nonzero jj Hjj). Qed.
+  Proof using . intros Hjj Hpme. rewrite Hpme. exact (proc_addr_nonzero jj Hjj). Qed.
 
   Local Lemma kw_scan `{GEN : GenId} `{CID0 : CpuId} `{XI : CurCtx}
       (γs : list gname) (γa γp γf γw : gname)
@@ -2396,7 +2396,7 @@ Section ProofKwait.
       locked γw CID0 -∗ kw_pay ps -∗ ch_frag γrow pme cs -∗
       proc_priv γf pme pid U -∗ kw_frame sp0 mm -∗
       WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros sp0 HK Hlen Hpmenz Hbelow.
     assert (Hwl_lt_proc : (lock_rank "wait_lock" < lock_rank "proc")%nat)
       by (vm_compute; lia).
@@ -2885,7 +2885,7 @@ Section ProofKwait.
     locked γw CIDt -∗ kw_pay px -∗ ch_frag γrow pme cs -∗
     proc_priv γf pme pid U -∗ kw_frame sp0 mm -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros sp0 spr HK Hsp Hcs Hbelow.
     iIntros "#Htext #Hlk #Hwhy Hqfn Hcg Hown Hpay Hpc Htok Hcols Hmyrow Hpriv Hframe".
     iApply (kw_exit_wait γw mm Mt pme K eb lks HK Hsp Hcs Hbelow
@@ -2958,7 +2958,7 @@ Section ProofKwait.
     locked γw CIDt -∗ kw_pay px -∗ ch_frag γrow pme cs -∗
     proc_priv γf pme pid U -∗ kw_frame sp0 mm -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros sp0 HK Heb Hjj Hgl Hpme Hanch Hregs Ha4 Hnokids Hbelow.
     subst pme.
     assert (Hwl_lt_proc : (lock_rank "wait_lock" < lock_rank "proc")%nat)
@@ -3418,7 +3418,7 @@ Section ProofKwait.
     locked γw CIDy -∗ wait_res -∗ ch_frag γrow pme cs -∗
     proc_priv γf pme pid U -∗ kw_frame sp0 mm -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros sp0 HK Heb Hjj Hgl Hlen Hpme Hanch Hregs Hbelow.
     iIntros "#Htext #Hpinv #Henv #Hplk #Hlk IH Hqfn Hcg Hown Hpay Hpc
              Htok Hres Hmyrow Hpriv Hframe".
@@ -3560,7 +3560,7 @@ Section ProofKwaitMain.
       (m : regfile) (av : nat) (eb : bool) (b : bool)
       (pid : mword 32) (U : ustate) (lks : gset string) (cs : gset gname) :
     wp_kwait_sconf_body γa γp γf γw γs j γl m av eb b pid U lks cs.
-  Proof.
+  Proof using .
     cbv beta delta [wp_kwait_sconf_body].
     (* [Hbelow] is SpecKwait.v's own new LAST Coq premise -- see
        claude-notes/completed/lock-set.md; kwait's whole cone (the nested

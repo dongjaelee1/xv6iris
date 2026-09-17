@@ -104,7 +104,7 @@ Section ProofFilealloc.
   Local Lemma sie_b_agree (m : regfile) (n K0 : nat) (eb b : bool) (p : mword 64) (lks : gset string) :
     sie_cap_gpr KT1 m K0 b p -∗ cpu_own n eb p b lks -∗
     ⌜ b = match n with O => eb | S _ => false end ⌝.
-  Proof.
+  Proof using .
     iIntros "Hcg Hcnt". destruct b.
     - iDestruct "Hcnt" as "%Hb". destruct Hb as (-> & -> & _). done.
     - destruct n as [|n']; [ | done ].
@@ -185,7 +185,7 @@ Section ProofFilealloc.
       (γl γf : gname) (m : regfile)
       (n : nat) (eb : bool) (p : mword 64) (K : nat) (b : bool) (lks : gset string)
     : wp_filealloc_sconf_body γl γf m n eb p K b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_filealloc_sconf_body].
     intros pcE ret_tgt HK HnZ Hbelow.
     pose proof (locks_below_not_elem _ _ Hbelow) as Hfresh.

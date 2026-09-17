@@ -70,7 +70,7 @@ Section ExecAmoGS4walkPt.
             set_reg (MState s'.(sregs) (write_bytes s'.(mem) pa 4 storeval) s'.(mdev))
                     (R_bitvector_64 (gpr_of_Z (uint rd)))
                     (regval_into_reg (sign_extend' 64 (autocast (T := mword) (w : mword (8 * 4)) : mword (4 * 8))))).
-  Proof.
+  Proof using HA HR HW Halign Hamo Hbytes Hc Hcp' Hdev Hhr Hhw Hmatch Hmprv' Hord Hpalign Hrange Hrd Hread Hsig Htea Htr Hwrite.
     change (execute (AMO (AMOSWAP, true, false, Regidx rs2, Regidx rs1, 4, Regidx rd)))
       with (execute_AMO AMOSWAP true false (Regidx rs2) (Regidx rs1) 4 (Regidx rd)).
     unfold execute_AMO. cbn zeta.

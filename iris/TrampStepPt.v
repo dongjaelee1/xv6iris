@@ -112,12 +112,12 @@ Section SRsP.
   Local Notation RSP := (s_rs_p p pc npc ms bmi cy ti ip mst0 pcfg paddr mc micfg misa0 mseccfg0 senv0 pmar0 elp0 satp0 mie0 mdv0 menv0 tlbv).
 
   Lemma s_rs_p_priv : register_lookup cur_privilege RSP = p.
-  Proof. apply register_lookup_set. Qed.
+  Proof using . apply register_lookup_set. Qed.
 
   Lemma s_rs_p_peel (r : register) :
     register_beq r cur_privilege = false ->
     register_lookup r RSP = register_lookup r (s_rs pc npc ms bmi cy ti ip mst0 pcfg paddr mc micfg misa0 mseccfg0 senv0 pmar0 elp0 satp0 mie0 mdv0 menv0 tlbv).
-  Proof.
+  Proof using .
     (* [exact], NOT [rewrite]: [s_rs]'s body IS a 25-deep [register_set]
        tower, so an ssreflect rewrite with [irrelevant_register_set]'s
        pattern searches inside it and detonates the record-update conversion
@@ -131,53 +131,53 @@ Section SRsP.
   Local Ltac lkp := rewrite s_rs_p_peel; [ | vm_compute; reflexivity ].
 
   Lemma s_rs_p_PC : register_lookup (R_bitvector_64 PC) RSP = pc.
-  Proof. lkp. apply s_rs_PC. Qed.
+  Proof using . lkp. apply s_rs_PC. Qed.
   Lemma s_rs_p_nPC : register_lookup (R_bitvector_64 nextPC) RSP = npc.
-  Proof. lkp. apply s_rs_nPC. Qed.
+  Proof using . lkp. apply s_rs_nPC. Qed.
   Lemma s_rs_p_ms : register_lookup (R_bitvector_64 minstret) RSP = ms.
-  Proof. lkp. apply s_rs_ms. Qed.
+  Proof using . lkp. apply s_rs_ms. Qed.
   Lemma s_rs_p_mi : register_lookup (R_bool minstret_increment) RSP = bmi.
-  Proof. lkp. apply s_rs_mi. Qed.
+  Proof using . lkp. apply s_rs_mi. Qed.
   Lemma s_rs_p_cy : register_lookup (R_bitvector_64 mcycle) RSP = cy.
-  Proof. lkp. apply s_rs_cy. Qed.
+  Proof using . lkp. apply s_rs_cy. Qed.
   Lemma s_rs_p_ti : register_lookup (R_bitvector_64 mtime) RSP = ti.
-  Proof. lkp. apply s_rs_ti. Qed.
+  Proof using . lkp. apply s_rs_ti. Qed.
   Lemma s_rs_p_ip : register_lookup (R_bitvector_64 mip) RSP = ip.
-  Proof. lkp. apply s_rs_ip. Qed.
+  Proof using . lkp. apply s_rs_ip. Qed.
   Lemma s_rs_p_tlb : register_lookup tlb RSP = tlbv.
-  Proof. lkp. apply s_rs_tlb. Qed.
+  Proof using . lkp. apply s_rs_tlb. Qed.
   Lemma s_rs_p_mst : register_lookup mstatus RSP = mst0.
-  Proof. lkp. apply s_rs_mst. Qed.
+  Proof using . lkp. apply s_rs_mst. Qed.
   Lemma s_rs_p_hart : register_lookup hart_state RSP = (HART_ACTIVE tt).
-  Proof. lkp. apply s_rs_hart. Qed.
+  Proof using . lkp. apply s_rs_hart. Qed.
   Lemma s_rs_p_pcfg : register_lookup pmpcfg_n RSP = pcfg.
-  Proof. lkp. apply s_rs_pcfg. Qed.
+  Proof using . lkp. apply s_rs_pcfg. Qed.
   Lemma s_rs_p_paddr : register_lookup pmpaddr_n RSP = paddr.
-  Proof. lkp. apply s_rs_paddr. Qed.
+  Proof using . lkp. apply s_rs_paddr. Qed.
   Lemma s_rs_p_mc : register_lookup (R_bitvector_32 mcountinhibit) RSP = mc.
-  Proof. lkp. apply s_rs_mc. Qed.
+  Proof using . lkp. apply s_rs_mc. Qed.
   Lemma s_rs_p_micfg : register_lookup (R_bitvector_64 minstretcfg) RSP = micfg.
-  Proof. lkp. apply s_rs_micfg. Qed.
+  Proof using . lkp. apply s_rs_micfg. Qed.
   Lemma s_rs_p_misa : register_lookup misa RSP = misa0.
-  Proof. lkp. apply s_rs_misa. Qed.
+  Proof using . lkp. apply s_rs_misa. Qed.
   Lemma s_rs_p_sec : register_lookup mseccfg RSP = mseccfg0.
-  Proof. lkp. apply s_rs_sec. Qed.
+  Proof using . lkp. apply s_rs_sec. Qed.
   Lemma s_rs_p_pma : register_lookup pma_regions RSP = pmar0.
-  Proof. lkp. apply s_rs_pma. Qed.
+  Proof using . lkp. apply s_rs_pma. Qed.
   Lemma s_rs_p_htif : register_lookup htif_tohost_base RSP = None.
-  Proof. lkp. apply s_rs_htif. Qed.
+  Proof using . lkp. apply s_rs_htif. Qed.
   Lemma s_rs_p_elp : register_lookup elp RSP = elp0.
-  Proof. lkp. apply s_rs_elp. Qed.
+  Proof using . lkp. apply s_rs_elp. Qed.
   Lemma s_rs_p_senv : register_lookup senvcfg RSP = senv0.
-  Proof. lkp. apply s_rs_senv. Qed.
+  Proof using . lkp. apply s_rs_senv. Qed.
   Lemma s_rs_p_satp : register_lookup satp RSP = satp0.
-  Proof. lkp. apply s_rs_satp. Qed.
+  Proof using . lkp. apply s_rs_satp. Qed.
   Lemma s_rs_p_mie : register_lookup mie RSP = mie0.
-  Proof. lkp. apply s_rs_mie. Qed.
+  Proof using . lkp. apply s_rs_mie. Qed.
   Lemma s_rs_p_mdl : register_lookup mideleg RSP = mdv0.
-  Proof. lkp. apply s_rs_mdl. Qed.
+  Proof using . lkp. apply s_rs_mdl. Qed.
   Lemma s_rs_p_menv : register_lookup menvcfg RSP = menv0.
-  Proof. lkp. apply s_rs_menv. Qed.
+  Proof using . lkp. apply s_rs_menv. Qed.
 
 End SRsP.
 
@@ -290,7 +290,7 @@ Section SRsPFrames.
      menvcfg ↦ᵣ{ dq } menv0) -∗
     hreg_frame (s_rs_p p pc npc ms bmi cy ti ip mst0 pcfg paddr mc micfg misa0 mseccfg0 senv0 pmar0 elp0 satp0 mie0 mdv0 menv0 tlbv) s_Drw ∗
     hreg_frame_ro (s_Df_mix dq) (s_rs_p p pc npc ms bmi cy ti ip mst0 pcfg paddr mc micfg misa0 mseccfg0 senv0 pmar0 elp0 satp0 mie0 mdv0 menv0 tlbv) s_Dro.
-  Proof.
+  Proof using .
     iIntros "(HPC & HnPC & Hms & Hmi & Hcy & Hti & Hip & Htlbc & Hpriv & Hmst
               & Hhs & Hpcfg & Hpaddr & Hmc & Hmicfg & Hmisa & Hsec & Hpma
               & Hhtif & Help & Hsenv & Hsatp & Hmie & Hmdl & Hmenv)".
@@ -324,7 +324,7 @@ Section SRsPFrames.
     mideleg ↦ᵣ{ dq } mdv1 ∗ menvcfg ↦ᵣ{ dq } menvcfg1 ∗
     satp ↦ᵣ satp1 ∗ pmpcfg_n ↦ᵣ pcfg1 ∗ pmpaddr_n ↦ᵣ paddr1 ∗
     tlb ↦ᵣ tv ∗ pc_is npc.
-  Proof.
+  Proof using .
     iIntros "Hresv Hrw Hro".
     rewrite s_rw_split s_ro_split_mix.
     rewrite s_rs_p_PC s_rs_p_nPC s_rs_p_ms s_rs_p_mi s_rs_p_cy s_rs_p_ti
@@ -463,7 +463,7 @@ Section TrampFetchPt.
     Local Lemma tramp_decode_ok (tv : type_of_register tlb) :
       misa0 = MISA_C -> menv0 = MENVCFG_S ->
       decode_ok (s_Drw ∪ s_Dro) (srs tv).
-    Proof.
+    Proof using .
       intros Hmisa Hmenv. rewrite /decode_ok. split_and!.
       - exact s_in_priv.
       - exact s_in_misa.
@@ -486,7 +486,7 @@ Section TrampFetchPt.
                       ∃ rs2 : regstate, ⌜Q rs2⌝ ∗
                       hreg_frame rs2 s_Drw ∗ hreg_frame_ro Df rs2 s_Dro ∗ Rr rs2))
       -∗ swp (run_hart_active 0) (spt_run_post Df Q Rr Qi).
-    Proof.
+    Proof using .
       iIntros "H". iApply (swp_mono with "[] H").
       iIntros (st) "[Hi | (-> & Hr)]".
       - by iLeft.
@@ -506,7 +506,7 @@ Section TrampFetchPt.
          (fun e => ⌜e = RETIRE_SUCCESS⌝ ∗
                    ∃ rs2 : regstate, ⌜Q rs2⌝ ∗
                    hreg_frame rs2 s_Drw ∗ hreg_frame_ro Df rs2 s_Dro ∗ Rr rs2)).
-    Proof.
+    Proof using .
       iIntros "Hex" (rsf) "%HQ (HW & HRes & Hany) Hrw Hro".
       destruct HQ as (tv & ->). rewrite s_rs_tlb.
       iApply ("Hex" $! tv with "HW HRes Hany Hrw Hro").
@@ -565,7 +565,7 @@ Section TrampFetchPt.
         mseccfg0 senv0 pmar0 elp0 satp0 mie0 mdv0 menv0 Res is_rvc i Q Rr
         (own_context XI ∗ W)%I -∗
       swp (run_hart_active 0) (spt_run_post Df Q Rr Qi).
-    Proof.
+    Proof using .
       intros Hmisa Hmenv Help Hpallow HA Hord HX Hcov
              Hcanon Hvpn Hident Hcanon2 Hvpn2 Hident2 Hva2 Hpa4va4.
       pose proof (eq_sym Hpa4va4) as Hpv.
@@ -1019,7 +1019,7 @@ Section TrampFetchPt.
          pc_is npc -∗ Rl npc ms1 mdv1 -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HSIE HMPRV HSXL Hmm HPBMTE Hmenvval Hpmp
            Hcanon Hvpn Hident Hcanon2 Hvpn2 Hident2 Hva2 Hpa4va4.
     pose proof Hpmp as (HA & Hord & HX & HW & HR & Hcov).
@@ -1186,7 +1186,7 @@ Section TrampFetchPt.
     gen_cert -∗
     tramp_tr_obl Df pc ms bmi cy ti ip mst0 pcfg paddr mc micfg misa0 mseccfg0
       senv0 pmar0 elp0 satp0 mie0 mdv0 menv0 (sr_swp_res_at R satp0).
-  Proof.
+  Proof using .
     intros Hmisa Hmenv HSXL HMPRV HDb HDlc HDm HDs Hsok Hpmp Hpma.
     iIntros "#Hwit #Hclaim #Hcert". rewrite /tramp_tr_obl. iModIntro.
     iIntros (va pax tv rr) "%Hcanon %Hvpn %Hident Hfrag Htok HRes Hrw Hro".
@@ -1339,7 +1339,7 @@ Section TrampFetchPt.
     hw_config -∗
     tramp_fetch_tr (s_Df_mix dq) (sr_swp_res_at R satp0) pc mst0 satp0 mie0
       mdv0 menv0 pcfg paddr.
-  Proof.
+  Proof using .
     intros Hmenv HSXL HMPRV Hsatpok Hpmpok.
     iIntros "#Hwit #Hclaim #Hhw".
     iDestruct (hw_config_cert with "Hhw") as "#Hcert".
@@ -1385,7 +1385,7 @@ Section TrampFetchPt.
     hw_config -∗
     tramp_fetch_tr (s_Df_mix dq) (kpt_res_at root_ppn satp0) pc mst0 satp0
       mie0 mdv0 menv0 pcfg paddr.
-  Proof.
+  Proof using .
     intros Hmenv HSXL HMPRV Hsatpok Hpmpok.
     iIntros "#Hclaim #Hhw".
     iApply (tramp_fetch_tr_of_regime (kpt_share_regime root_ppn) dq pc mst0
@@ -1486,7 +1486,7 @@ Section TrampFetchPt.
          pc_is npc -∗ Rl npc ms1 mdv1 -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HSIE HMPRV HSXL Hmm HPBMTE Hmenvval
            Hcanon Hvpn Hident Hcanon2 Hvpn2 Hident2 Hva2 Hpa4va4.
     iIntros "#Hclaim #Hhw #Hminv Hhs Hpriv Hmstatus Hmiec Hmdlc Hmenvc Hinv Htok Hpc

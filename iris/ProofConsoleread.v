@@ -229,7 +229,7 @@ Section CrBodies.
 
   Lemma cr_frame_back `{XI : CurCtx} (sp0 : mword 64) (m0 : regfile) :
     cr_saved sp0 m0 -∗ cr_rest sp0 -∗ stack_own (KTR := KT1) sp0 12.
-  Proof.
+  Proof using .
     iIntros "(H1 & H2 & H3 & H4 & H5 & H6 & H8 & H9) (H7 & H10 & H11 & H12)".
     rewrite (stack_own_slots (KTR := KT1)). cbn [seq].
     iSplitL "H1"; [by iExists _|]. iSplitL "H2"; [by iExists _|].
@@ -281,7 +281,7 @@ Section CrBodies.
       ⌜cons_ok rr ww ee⌝ ∗ ⌜cons_row rr ee bs ts⌝ ∗
       a_cons_r ↦₄ rr ∗ a_cons_w ↦₄ ww ∗ a_cons_e ↦₄ ee ∗
       cons_data bs ∗ cons_tags ts ∗ cr_ghost cn rr ww ee bs ts.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /cons_res.
     iDestruct "H" as (rr ww ee bs ts cur nrd st pd hh L0 gp)
       "(Hrc & Hwc & Hec & %Hlb & %Hlt & %Hok & %Hrow & %Hst & %Hpd & %Hch &
@@ -302,7 +302,7 @@ Section CrBodies.
     a_cons_r ↦₄ rr -∗ a_cons_w ↦₄ ww -∗ a_cons_e ↦₄ ee -∗
     cons_data bs -∗ cons_tags ts -∗ cr_ghost cn rr ww ee bs ts -∗
     cons_res cn.
-  Proof.
+  Proof using .
     intros Hlb Hlt Hok Hrow.
     iIntros "Hrc Hwc Hec Hdat Hts Hgh". rewrite /cr_ghost.
     iDestruct "Hgh" as (cur nrd st pd hh L0 gp)
@@ -328,7 +328,7 @@ Section CrBodies.
       ⌜st `prefix_of` R⌝ ∗ ⌜cons_chain R⌝ ∗ ⌜cons_log_ok L0 R gp⌝ ∗
       cons_stored_auth cn st ∗ cons_logm cn L0 ∗
       (cons_stored_auth cn st -∗ cons_logm cn L0 -∗ cons_res cn).
-  Proof.
+  Proof using .
     iIntros "H". rewrite /cons_res.
     iDestruct "H" as (rr ww ee bs ts cur nrd st pd hh L0 gp)
       "(Hrc & Hwc & Hec & %Hlb & %Hlt & %Hok & %Hrow & %Hst & %Hpd & %Hch &
@@ -349,7 +349,7 @@ Section CrBodies.
   Lemma cr_pfx_le (l1 l2 : list (list mobs * bv 8)) :
     (l1 `prefix_of` l2 \/ l2 `prefix_of` l1) ->
     (length l1 <= length l2)%nat -> l1 `prefix_of` l2.
-  Proof.
+  Proof using .
     intros [H | H] Hle; [exact H |].
     assert (Heq : l2 = l1) by (apply prefix_length_eq; [exact H | lia]).
     rewrite Heq. reflexivity.
@@ -365,15 +365,15 @@ Section CrBodies.
 
   Global Instance cr_price_persistent `{XI : CurCtx} cn Wd ord :
     Persistent (cr_price cn Wd ord).
-  Proof. rewrite /cr_price. destruct ord; apply _. Qed.
+  Proof using . rewrite /cr_price. destruct ord; apply _. Qed.
 
   Lemma cr_price_none `{XI : CurCtx} (cn : cons_names) (Wd : iProp Σ) :
     cr_price cn Wd None -∗ cons_dirty_cred Wd.
-  Proof. rewrite /cr_price. by iIntros "$". Qed.
+  Proof using . rewrite /cr_price. by iIntros "$". Qed.
 
   Lemma cr_price_some `{XI : CurCtx} (cn : cons_names) (Wd : iProp Σ)
       (n0 : nat) : ⊢ cr_price cn Wd (Some n0).
-  Proof. rewrite /cr_price. iPureIntro. exact I. Qed.
+  Proof using . rewrite /cr_price. iPureIntro. exact I. Qed.
 
   (* WHAT THE RUN HAS EARNED, carried by every block of the body.
      AT [Some n0] -- a caller that handed in the reader token -- the LEFT
@@ -408,7 +408,7 @@ Section CrBodies.
 
   Lemma cr_dlc_dl `{XI : CurCtx} (cn : cons_names) (n : nat) :
     cr_dlc cn n -∗ cons_dl cn n.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as (dv) "(Hdv & #Hlb & %Hl)".
     rewrite /cons_dl. iExists dv. iFrame "Hdv Hlb". iLeft. by iPureIntro.
   Qed.
@@ -458,7 +458,7 @@ Section CrBodies.
       (ord : option nat) (fault : nat -> Prop) (d : nat) (bs : nat -> bv 8)
       (hs : list (list mobs)) :
     cr_racc cn Wd ord d bs hs -∗ cr_rout cn Wd ord fault d d bs hs.
-  Proof.
+  Proof using .
     rewrite /cr_racc /cr_rout. destruct ord as [n0 |]; [| by iIntros "$"].
     iIntros "[Hcl | Hdt]"; [| iRight; iExact "Hdt"].
     iDestruct "Hcl" as (sl) "(Hrd & Hdl & Hpay & #Hsl & %Hwin & %Hch)".
@@ -507,7 +507,7 @@ Section CrBodies.
     cr_price cn Wd ord -∗ cons_res cn -∗
     cr_rout cn Wd ord fault d dc bs hs
     ={⊤}=∗ cons_res cn ∗ ▷ cr_out cn Wd ord fault d dc bs hs.
-  Proof.
+  Proof using .
     iIntros "#Hlk #Huinv #Hpr Hres H".
     iPoseProof (is_conslock_cred with "Hlk") as "#Hcinv".
     rewrite /cr_rout /cr_out.
@@ -614,7 +614,7 @@ Section CrBodies.
     ={⊤}=∗
       cr_ghost cn (add_vec rr (mword_of_int 1 : mword 32)) ww ee bs ts ∗
       cr_racc cn Wd ord (S d) src' (hs ++ [h])%list.
-  Proof.
+  Proof using .
     intros Hge Hts Hends Hlo Hhi.
     iIntros "#Hlk #Hpr Hgh Hacc".
     iPoseProof (is_conslock_cred with "Hlk") as "#Hcinv".
@@ -716,7 +716,7 @@ Section CrBodies.
     cr_ghost cn rr ww ee bs ts -∗ cons_pay cn Wd ord -∗
     cons_read_pay (S gen_id) Rin -∗
     cr_ghost cn rr ww ee bs ts ∗ cr_racc cn Wd ord 0%nat g [].
-  Proof.
+  Proof using .
     iIntros "Hgh Hpay Hrp". rewrite /cr_ghost.
     iDestruct "Hgh" as (cur nrd st pd hh L0 gp)
       "(%Hst & %Hpd & %Hch & %Hbl & Ha & Hcu & Hhi & Hlm & %Hlog & Hmk)".
@@ -802,7 +802,7 @@ Section CrBodies.
     ={⊤}=∗
       cr_ghost cn (add_vec rr (mword_of_int 1 : mword 32)) ww ee bs ts ∗
       cr_rout cn Wd ord fault d (S d) src hs.
-  Proof.
+  Proof using .
     intros Hge Hts Hends Hwhy.
     iIntros "#Hlk #Hpr #Htag Hgh Hacc".
     iPoseProof (is_conslock_cred with "Hlk") as "#Hcinv".
@@ -922,7 +922,7 @@ Section CrBodies.
   Lemma cr_addi1_imm `{XI : CurCtx} :
     sign_extend' 64 (sign_extend' 12 (mword_of_int 1 : mword 6))
     = (mword_of_int 1 : mword 64).
-  Proof. apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . apply bv_eq; vm_compute; reflexivity. Qed.
 
   (* ...AND ON A NON-NEGATIVE RETURN THE RUN IS EXACTLY AS LONG AS THE
      ANSWER.  The copy is one byte per round and a failing one-byte
@@ -993,7 +993,7 @@ Section CrBodies.
     cr_price cn Wd ord -∗ cons_res cn -∗
     cr_winR cn Wd ord fault Ment Mo dst n r hs
     ={⊤}=∗ cons_res cn ∗ ▷ cr_winO cn Wd ord fault Ment Mo dst n r hs.
-  Proof.
+  Proof using .
     iIntros "#Hlk #Huinv #Hpr Hres H". rewrite /cr_winR /cr_winO.
     iDestruct "H" as (d dc bs) "(%H1 & %H2 & %Hb1 & %Hb4 & %H3 & %H4 & Hr)".
     iMod (cr_out_of_rout cn Wd γc ord fault d dc bs hs
@@ -1011,7 +1011,7 @@ Section CrBodies.
     cons_tagged bs hs (Z.to_nat (n - nc)) ->
     cr_racc cn Wd ord (Z.to_nat (n - nc)) bs hs -∗
     cr_runR cn Wd ord Ment Mo dst cur n nc hs.
-  Proof.
+  Proof using .
     intros H1 H2 H3. rewrite /cr_runR. iIntros "H". iExists bs. iFrame "H".
     iPureIntro. split_and!; [exact H1 | exact H2 | exact H3].
   Qed.
@@ -1028,7 +1028,7 @@ Section CrBodies.
     cons_tagged bs hs d ->
     cr_rout cn Wd ord fault d dc bs hs -∗
     cr_winR cn Wd ord fault Ment Mo dst n r hs.
-  Proof.
+  Proof using .
     intros H1 H2 Hb1 Hb4 H3 H4. rewrite /cr_winR. iIntros "H".
     iExists d, dc, bs.
     iFrame "H". iPureIntro.
@@ -1045,7 +1045,7 @@ Section CrBodies.
       (bs g : nat -> bv 8) :
     umem_wr (umem_wr M dst d bs) (add_vec_int dst (Z.of_nat d)) k g
     = umem_wr M dst (d + k)%nat (cr_glue d bs g).
-  Proof.
+  Proof using .
     rewrite <- (umem_wr_app M dst d k (cr_glue d bs g)).
     rewrite (umem_wr_ext M dst d bs (cr_glue d bs g)
                ltac:(intros i Hi; rewrite /cr_glue;
@@ -1064,7 +1064,7 @@ Section CrBodies.
     (dwr <= 1)%nat ->
     cons_tagged bs hs d -> obs_ends_in Uart0 h b -> g 0%nat = cons_xlate b ->
     cons_tagged (cr_glue d bs g) (hs ++ cr_tail dwr h)%list (d + dwr)%nat.
-  Proof.
+  Proof using .
     intros Hdw [Hlen Htie] Hends Hg.
     destruct dwr as [| [| k]]; [| | exfalso; lia].
     - rewrite Nat.add_0_r. cbn [cr_tail]. rewrite app_nil_r.
@@ -1093,7 +1093,7 @@ Section CrBodies.
   Lemma cr_ne32 (x y : mword 32) :
     neq_vec (sign_extend' 64 x : mword 64) (sign_extend' 64 y : mword 64) = true ->
     x <> y.
-  Proof.
+  Proof using .
     intros Hn Heq. subst y. unfold neq_vec in Hn.
     rewrite eq_vec_refl in Hn. discriminate.
   Qed.
@@ -1101,7 +1101,7 @@ Section CrBodies.
   Lemma cr_eqf32 (x y : mword 32) :
     eq_vec (sign_extend' 64 x : mword 64) (sign_extend' 64 y : mword 64) = false ->
     x <> y.
-  Proof. intros Hn Heq. subst y. rewrite eq_vec_refl in Hn. discriminate. Qed.
+  Proof using . intros Hn Heq. subst y. rewrite eq_vec_refl in Hn. discriminate. Qed.
 
   (* the function's own exit, as a [wp_next] at the entry hart *)
   (* [fault] IS A PARAMETER HERE, not a reading of [U]: the block hands the
@@ -1171,7 +1171,7 @@ Section CrBodies.
     cr_saved sp0 m0 -∗ cr_rest sp0 -∗
     cr_ret (CID0 := CID0) cn Wd ord fault jp m0 av eb pid U Ment n lks -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pj Hm0sp HMsp HMa0 HMcs Hr Hav Heb Hcr.
     iIntros "#Ht Hcg Hcnt Hpc Hpriv #Htags Hwin Hshotq
              (K1 & K2 & K3 & K4 & K5 & K6 & K8 & K9) Hrest Hcont".
@@ -1527,7 +1527,7 @@ Section CrBodies.
     cr_ret (CID0 := CID0) cn Wd ord fault jp m0 av true pid U Ment n lks -∗
     cr_ret (CID0 := CID0) cn Wd ord fault jp m0 av true pid
       (upd_usM (us_upt U P') Mo) Ment n lks.
-  Proof.
+  Proof using .
     intro Hx. iIntros "H" (CIDx Hsx mf r P'' Mo' hs)
       "%Hcs %Hex %Hr Hshotq Hwin %Ha0 #Htags Hcg Hcnt Hpc Hpriv".
     iSpecialize ("H" $! CIDx with "[%]"); [exact Hsx|].
@@ -1550,7 +1550,7 @@ Section CrBodies.
     cr_ret (CID0 := CID) cn Wd ord (cr_fault U (m0 !!! Regidx Ra1))
       jp m0 av true pid U (us_M U) n lks -∗
     cr_epi_prop (CID0 := CID) cn Wd ord jp sp0 m0 av pid U n lks.
-  Proof.
+  Proof using .
     intros Hm0sp Hav.
     iIntros "#Ht Hsaved Hcont".
     rewrite /cr_epi_prop.
@@ -1647,7 +1647,7 @@ Section ProofConsoleread.
     cr_price cn Wd ord -∗
     cr_epi_prop Rin (CID0 := CID) cn Wd ord jp sp0 m0 av pid U n lks -∗
     cr_retx_prop (CID0 := CID) cn Wd ord γc jp sp0 m0 av pid U n lks.
-  Proof.
+  Proof using .
     intros Hn31 Hav Hbelow.
     pose proof (locks_below_not_elem _ _ Hbelow) as Hfresh.
     iIntros "#Ht #Hlk #Huinv #Hpr EPI".
@@ -1910,13 +1910,13 @@ Section ProofConsoleread.
     add_vec (pa_stk sp0 12%nat)
       (zero_extend' 64 (concat_vec (mword_of_int 5 : mword 6) ('b"000")))
     = pa_stk sp0 7%nat.
-  Proof. apply cr_slot_bridge; pcw. Qed.
+  Proof using XI. apply cr_slot_bridge; pcw. Qed.
 
   (* [cbuf] is the single byte at [s0-81], i.e. byte 7 of slot 11 *)
   Lemma cr_cbufa (sp0 : mword 64) :
     add_vec sp0 (sign_extend' 64 (mword_of_int 4015 : mword 12))
     = pa_add (pa_stk sp0 11%nat) 7%nat.
-  Proof.
+  Proof using .
     unfold pa_add, pa_stk, add_vec_int. rewrite add_vec_assoc.
     apply f_equal. apply bv_eq; vm_compute; reflexivity.
   Qed.
@@ -1928,7 +1928,7 @@ Section ProofConsoleread.
     add_vec (add_vec a_cons (mword_of_int (Z.of_nat i) : mword 64))
             (sign_extend' 64 (mword_of_int 24 : mword 12))
     = pa_add a_cons (cons_buf_off + i).
-  Proof. intro Hi. rewrite <- (cons_byte_addr i Hi). reflexivity. Qed.
+  Proof using . intro Hi. rewrite <- (cons_byte_addr i Hi). reflexivity. Qed.
 
   Lemma cr_mk_have (cn : cons_names) (Wd : iProp Σ) (ord : option nat)
       (γa γc γf : gname) (jp : nat) (sp0 : mword 64) (m0 : regfile)
@@ -1942,7 +1942,7 @@ Section ProofConsoleread.
     kalloc_env γa None -∗
     cr_head_prop (CID0 := CID) cn Wd ord γa γc γf jp sp0 m0 av pid U n fl lks -∗
     cr_have_prop (CID0 := CID) cn Wd ord γa γc γf jp sp0 m0 av pid U n fl lks.
-  Proof.
+  Proof using fdslotG0.
     intros Hn31 Hav Hbelow. iIntros "#Ht #Hlk #Hpr #Henv HEAD".
     rewrite /cr_have_prop.
     iIntros (CIDv Hsv M nc cur P' Mo rr ww ee bs ts hs)
@@ -2995,7 +2995,7 @@ Section ProofConsoleread.
     procs_inv γs -∗
     □ cr_have_prop (CID0 := CID) cn Wd ord γa γc γf jp sp0 m0 av pid U n fl lks -∗
     cr_wait_prop (CID0 := CID) cn Wd ord γc jp sp0 m0 av pid U n fl lks.
-  Proof.
+  Proof using .
     intros Hjp Hjl Hn31 Hav Hbelow.
     pose proof (locks_below_not_elem _ _ Hbelow) as Hfresh.
     iIntros "#Ht #Hlk #Huinv #Hpr #Henv #Hpinv #HAVE".
@@ -3583,7 +3583,7 @@ Section ProofConsoleread.
     kalloc_env γa None -∗
     procs_inv γs -∗
     cr_head_prop (CID0 := CID) cn Wd ord γa γc γf jp sp0 m0 av pid U n fl lks.
-  Proof.
+  Proof using .
     intros Hjp Hjl Hn31 Hav Hbelow.
     induction fl as [| fl IHfl].
     { iIntros "#Ht #Hlk #Huinv #Hpr #Henv #Hpinv". rewrite /cr_head_prop.
@@ -3806,7 +3806,7 @@ Section ProofConsoleread.
       (ord : option nat)
     : wp_consoleread_sconf_body γa γf γs j γlp γc cn Wd m av eb pid U n b lks
         ord Rin.
-  Proof.
+  Proof using .
     cbv beta delta [wp_consoleread_sconf_body].
     intros pcE pj dst ret_tgt Hj Hjl Hlen Ha0v Ha2v Hnrng Hav Heb Hbelow. subst eb.
     iIntros "Hcg Hcnt #Ht Hpc #Hlk Hpayc Hrp #Huinv Hpriv #Henv #Hpinv Hcont".

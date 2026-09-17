@@ -1311,11 +1311,11 @@ Section InodeRegion.
 
   Global Instance dinode_at_timeless γi inum dn :
     Timeless (dinode_at γi inum dn).
-  Proof. rewrite /dinode_at. apply _. Qed.
+  Proof using . rewrite /dinode_at. apply _. Qed.
 
   Lemma dinode_at_excl γi inum dn1 dn2 :
     dinode_at γi inum dn1 -∗ dinode_at γi inum dn2 -∗ False.
-  Proof.
+  Proof using .
     rewrite /dinode_at. iIntros "H1 H2".
     iDestruct (ghost_map_elem_valid_2 with "H1 H2") as %[Hv _].
     exfalso. exact (exclusive_l (DfracOwn 1) (DfracOwn 1) Hv).
@@ -1332,7 +1332,7 @@ Section InodeRegion.
   Lemma dinode_at_ne γi (i1 i2 : bv 32) (dn1 dn2 : dinode) :
     dinode_at γi i1 dn1 -∗ dinode_at γi i2 dn2 -∗
       ⌜bv_unsigned i1 <> bv_unsigned i2⌝.
-  Proof.
+  Proof using .
     rewrite /dinode_at. iIntros "H1 H2".
     destruct (decide (bv_unsigned i1 = bv_unsigned i2)) as [Heq | Hne].
     - rewrite Heq.
@@ -1364,10 +1364,10 @@ Section InodeRegion.
     (∃ d : dinode, imark_key z ↪[γi] d)%I.
 
   Global Instance imark_timeless γi z : Timeless (imark γi z).
-  Proof. rewrite /imark. apply _. Qed.
+  Proof using . rewrite /imark. apply _. Qed.
 
   Lemma imark_excl γi z : imark γi z -∗ imark γi z -∗ False.
-  Proof.
+  Proof using .
     rewrite /imark. iIntros "(%d1 & H1) (%d2 & H2)".
     iDestruct (ghost_map_elem_valid_2 with "H1 H2") as %[Hv _].
     exfalso. exact (exclusive_l (DfracOwn 1) (DfracOwn 1) Hv).
@@ -1387,12 +1387,12 @@ Section InodeRegion.
   Lemma ireg_out_alloc_inv γi inum dn :
     bv_unsigned (di_type dn) <> 0 ->
     ireg_out γi inum dn -∗ dinode_at γi inum dn.
-  Proof. intros H. rewrite /ireg_out decide_False; [by iIntros "$" | exact H]. Qed.
+  Proof using . intros H. rewrite /ireg_out decide_False; [by iIntros "$" | exact H]. Qed.
 
   Lemma ireg_out_free_inv γi inum dn :
     bv_unsigned (di_type dn) = 0 ->
     ireg_out γi inum dn -∗ imark γi (bv_unsigned inum).
-  Proof. intros H. rewrite /ireg_out decide_True; [by iIntros "$" | exact H]. Qed.
+  Proof using . intros H. rewrite /ireg_out decide_True; [by iIntros "$" | exact H]. Qed.
 
   (* ------------------------------------------------------------------ *)
   (*  The invariant                                                      *)
@@ -1430,7 +1430,7 @@ Section InodeRegion.
 
   Lemma ireg_in_shape (c : ctyUR) (d : dinode) :
     ireg_in c d -> bv_unsigned (di_type d) <> 0 -> fresh_shape d.
-  Proof.
+  Proof using .
     intros [H0 | [Hf _]] Hnz; [exfalso; exact (Hnz H0) | exact Hf].
   Qed.
 
@@ -1439,7 +1439,7 @@ Section InodeRegion.
      step from "the region holds the record" to "the record is type 0". *)
   Lemma ireg_in_quiesce (c : ctyUR) (d : dinode) :
     c = None -> ireg_in c d -> bv_unsigned (di_type d) = 0.
-  Proof.
+  Proof using .
     intros -> [H0 | [_ Hc]]; [exact H0 | exfalso; exact (Hc eq_refl)].
   Qed.
 
@@ -1545,13 +1545,13 @@ Section InodeRegion.
      WRITER needs and the two above do not mention. *)
   Lemma ireg_link_ok_short (d : dinode) :
     ireg_link_ok d -> bv_unsigned (di_nlink d) <= 32767.
-  Proof. intros (_ & H4 & _). exact H4. Qed.
+  Proof using . intros (_ & H4 & _). exact H4. Qed.
 
   (* (L5) read off the same way -- what a fill needs of the record it is
      about to park ([FsStateEra.inode_rec_local]'s first component). *)
   Lemma ireg_link_ok_ty (d : dinode) :
     ireg_link_ok d -> ireg_ty_ok d.
-  Proof. intros (_ & _ & H5). exact H5. Qed.
+  Proof using . intros (_ & _ & H5). exact H5. Qed.
 
   (* ...and how every WRITER re-establishes it: a flush either clears the
      type or leaves it alone ([di_type_stable], the premise
@@ -1561,7 +1561,7 @@ Section InodeRegion.
      premise. *)
   Lemma ireg_ty_ok_stable (dn' dn : dinode) :
     di_type_stable dn' dn -> ireg_link_ok dn -> ireg_ty_ok dn'.
-  Proof.
+  Proof using .
     intros [H0 | Heq] Hlok; [by left |].
     rewrite /ireg_ty_ok Heq. exact (ireg_link_ok_ty dn Hlok).
   Qed.
@@ -1598,7 +1598,7 @@ Section InodeRegion.
      stating the receipt over [z] is what keeps [ireg_slot]'s arity fixed. *)
   Lemma iblk_of_IBLOCK (inum : bv 32) :
     iblk_of (bv_unsigned inum) = IBLOCK inum icfg_ist.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* THE ⌜v = 0⌝ DISJUNCT IS THE BOOT CORNER, not slack: the mkfs image is
      full of FREE inodes (type 0, nlink 0) for which no witness exists or
@@ -1626,21 +1626,21 @@ Section InodeRegion.
     mono_nat_lb_own (icfg_iep z) e0.
 
   Global Instance izrcpt_timeless z d v : Timeless (izrcpt z d v).
-  Proof. rewrite /izrcpt. apply _. Qed.
+  Proof using . rewrite /izrcpt. apply _. Qed.
 
   Global Instance ireg_ep_timeless z d : Timeless (ireg_ep z d).
-  Proof. rewrite /ireg_ep /izrcpt. apply _. Qed.
+  Proof using . rewrite /ireg_ep /izrcpt. apply _. Qed.
 
   Global Instance nlz_obs_persistent z e0 : Persistent (nlz_obs z e0).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Global Instance nlz_obs_timeless z e0 : Timeless (nlz_obs z e0).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* BOOT: a counter at zero carries every record, free inodes included *)
   Lemma ireg_ep_intro (z : Z) (d : dinode) :
     mono_nat_auth_own (icfg_iep z) 1 0 ==∗ ireg_ep z d.
-  Proof.
+  Proof using .
     iIntros "Ha". iMod (log_epoch_lb_0 icfg_log) as "#Hlb".
     iModIntro. iExists 0%nat. iFrame "Ha Hlb".
     rewrite /izrcpt. iIntros (_). iLeft. done.
@@ -1657,7 +1657,7 @@ Section InodeRegion.
   Lemma ireg_ep_mono (z : Z) (d d' : dinode) :
     (bv_unsigned (di_nlink d') = 0 -> bv_unsigned (di_nlink d) = 0) ->
     ireg_ep z d -∗ ireg_ep z d'.
-  Proof.
+  Proof using .
     intros Hnl. iIntros "[%v (Ha & #Hlb & Hrc)]". iExists v. iFrame "Ha Hlb".
     rewrite /izrcpt. iIntros (Hz). iApply "Hrc". iPureIntro. exact (Hnl Hz).
   Qed.
@@ -1671,7 +1671,7 @@ Section InodeRegion.
     γ = icfg_log ->
     bv_unsigned (di_nlink d) <> 0 ->
     ireg_ep z d -∗ log_epoch_lb γ e0 ==∗ ireg_ep z d ∗ nlz_obs z e0.
-  Proof.
+  Proof using .
     iIntros (Hγ Hnz) "[%v (Ha & #Hlb & _)] #Hlb0". subst γ.
     assert (Hmx : (v <= Nat.max v e0)%nat) by lia.
     iMod (mono_nat_own_update (Nat.max v e0) Hmx with "Ha") as "[Ha #Hub]".
@@ -1696,7 +1696,7 @@ Section InodeRegion.
     ireg_ep z d -∗ nlz_obs z e0 -∗
     ireg_ep z d ∗
     ∃ e : nat, ⌜(e0 <= e)%nat⌝ ∗ logged_at γ e (iblk_of z).
-  Proof.
+  Proof using .
     iIntros (Hγ Hz He0) "[%v (Ha & #Hlb & #Hrc)] #Hob". subst γ.
     iDestruct (mono_nat_lb_own_valid with "Ha Hob") as %[_ Hle].
     iDestruct ("Hrc" $! Hz) as "[%Hv0 | (%e & #Hlg & %Hve)]".
@@ -1716,7 +1716,7 @@ Section InodeRegion.
     ireg_ep z d -∗
     ∃ v : nat, log_epoch_lb icfg_log v ∗
       (∀ d' : dinode, izrcpt z d' v -∗ ireg_ep z d').
-  Proof.
+  Proof using .
     iIntros "[%v (Ha & #Hlb & _)]". iExists v. iFrame "Hlb".
     iIntros (d') "Hrc". iExists v. iFrame "Ha Hlb". iExact "Hrc".
   Qed.
@@ -1761,12 +1761,12 @@ Section InodeRegion.
     (∃ b : bool, frzm_h z b ∗ ⌜ireg_frzm_ok b f⌝)%I.
 
   Global Instance ireg_frzc_timeless z f : Timeless (ireg_frzc z f).
-  Proof. rewrite /ireg_frzc. apply _. Qed.
+  Proof using . rewrite /ireg_frzc. apply _. Qed.
 
   Lemma ireg_frzc_intro (z : Z) (f : frzUR) (b : bool) :
     ireg_frzm_ok b f ->
     frzm_h z b -∗ ireg_frzc z f.
-  Proof.
+  Proof using .
     intros Hok. iIntros "Hb". rewrite /ireg_frzc.
     iExists b. iFrame "Hb". iPureIntro. exact Hok.
   Qed.
@@ -1778,7 +1778,7 @@ Section InodeRegion.
   Lemma ireg_frzc_off_acc (z : Z) (f : frzUR) :
     frz_preb f = false ->
     ireg_frzc z f -∗ frzm_h z false.
-  Proof.
+  Proof using .
     intros Hne. iIntros "Hm".
     iDestruct "Hm" as (b) "[Hb %Hok]".
     destruct b; [| iExact "Hb"].
@@ -1788,7 +1788,7 @@ Section InodeRegion.
   Lemma ireg_frzc_off_intro (z : Z) (f : frzUR) :
     frz_preb f = false ->
     frzm_h z false -∗ ireg_frzc z f.
-  Proof.
+  Proof using .
     intros Hne. iIntros "Hb".
     iApply (ireg_frzc_intro _ _ false (ireg_frzm_ok_false f Hne) with "Hb").
   Qed.
@@ -1837,7 +1837,7 @@ Section InodeRegion.
     tx_pin icfg_log rg.2.1 rg.2.2.
 
   Global Instance ireg_fpin_timeless rg : Timeless (ireg_fpin rg).
-  Proof. rewrite /ireg_fpin. apply _. Qed.
+  Proof using . rewrite /ireg_fpin. apply _. Qed.
 
   Definition ireg_fsh (f : frzUR) : iProp Σ :=
     match f with
@@ -1848,14 +1848,14 @@ Section InodeRegion.
     end%I.
 
   Global Instance ireg_fsh_timeless f : Timeless (ireg_fsh f).
-  Proof. rewrite /ireg_fsh. destruct f as [[[| rg | rg] |] |]; apply _. Qed.
+  Proof using . rewrite /ireg_fsh. destruct f as [[[| rg | rg] |] |]; apply _. Qed.
 
   Lemma ireg_fsh_off : ⊢ ireg_fsh (Some (Excl FrzOff)).
-  Proof. rewrite /ireg_fsh. done. Qed.
+  Proof using . rewrite /ireg_fsh. done. Qed.
 
   Lemma ireg_fsh_pre (rg : frzidx) :
     ireg_regime rg.1 -∗ ireg_fpin rg -∗ ireg_fsh (Some (Excl (FrzPre rg))).
-  Proof. iIntros "H1 H2". iFrame. Qed.
+  Proof using . iIntros "H1 H2". iFrame. Qed.
 
 
   (* RULING G's RETURN LEG, as one line: with the column pinned at [FrzPost rg]
@@ -1863,7 +1863,7 @@ Section InodeRegion.
      and, since C-6, the share it lent with it. *)
   Lemma ireg_fsh_post_acc (rg : frzidx) :
     ireg_fsh (Some (Excl (FrzPost rg))) -∗ ireg_regime rg.1 ∗ ireg_fpin rg.
-  Proof. iIntros "[$ $]". Qed.
+  Proof using . iIntros "[$ $]". Qed.
 
   (* THE REFUTATION THE COMMIT READS (durable-disk C-6).  Both window phases
      park a positive share of an open transaction's element, so at a commit --
@@ -1875,7 +1875,7 @@ Section InodeRegion.
     ireg_frz_ok f n d ->
     ghost_map_auth (ln_tx icfg_log) 1 (∅ : gmap nat unit) -∗
     ireg_fsh f -∗ ⌜f = Some (Excl FrzOff)⌝.
-  Proof.
+  Proof using .
     intros Hfrz. iIntros "Ha Hp".
     destruct f as [[[| rg | rg] |] |]; [by iPureIntro | | | |].
     - iDestruct "Hp" as "[_ Hp]". rewrite /ireg_fpin.
@@ -1895,7 +1895,7 @@ Section InodeRegion.
      [IgetLic.iname_not_frozen]'s (e)/BufL row. *)
   Lemma ireg_fsh_boot_off (f : frzUR) :
     ireg_fsh f -∗ ireg_boot -∗ ⌜f = Some (Excl FrzOff)⌝.
-  Proof.
+  Proof using .
     rewrite /ireg_fsh. destruct f as [[[| rg | rg] |] |].
     - iIntros "_ _". iPureIntro. reflexivity.
     - iIntros "[H _] Hb". iExFalso. iApply (ireg_regime_boot_excl with "H Hb").
@@ -1911,7 +1911,7 @@ Section InodeRegion.
   Lemma ireg_fsh_step (ph ph' : frz) :
     (ph' = FrzOff \/ frz_reg ph' = frz_reg ph) ->
     ireg_fsh (Some (Excl ph)) -∗ ireg_fsh (Some (Excl ph')).
-  Proof.
+  Proof using .
     intros [-> | Hr]; [iIntros "_"; iApply ireg_fsh_off |].
     destruct ph' as [| rg' | rg']; [iIntros "_"; iApply ireg_fsh_off | |];
       (destruct ph as [| rg | rg]; cbn in Hr; [discriminate Hr | |];
@@ -1972,14 +1972,14 @@ Section InodeRegion.
 
   Global Instance ireg_rcol_timeless z c r f n d :
     Timeless (ireg_rcol z c r f n d).
-  Proof. rewrite /ireg_rcol. apply _. Qed.
+  Proof using . rewrite /ireg_rcol. apply _. Qed.
 
   Lemma ireg_rcol_intro (z : Z) (c : ctyUR) (r : nat) (f : frzUR)
       (n rc : nat) (d : dinode) :
     ireg_ref_ok r rc n c d ->
     link_auth z c r f rc -∗
     ireg_rcol z c r f n d.
-  Proof.
+  Proof using .
     intros Href. iIntros "Hla". rewrite /ireg_rcol. iExists rc.
     iFrame "Hla". iPureIntro. exact Href.
   Qed.
@@ -1991,7 +1991,7 @@ Section InodeRegion.
     di_type d' = di_type d ->
     ireg_rcol z c r f n d -∗
     ireg_rcol z c r f n d'.
-  Proof.
+  Proof using .
     intros Hty. rewrite /ireg_rcol. iIntros "(%rc & Hla & %Href)".
     iExists rc. iFrame "Hla". iPureIntro.
     exact (ireg_ref_ok_stable r rc n c d d' Hty Href).
@@ -2006,7 +2006,7 @@ Section InodeRegion.
       (n : nat) (d : dinode) (ph : frz) :
     ireg_rcol z c r f n d -∗ ifreeze ph z -∗
     ⌜f = Some (Excl ph)⌝.
-  Proof.
+  Proof using .
     rewrite /ireg_rcol. iIntros "(%rc & Hla & _) Hfz".
     iApply (link_freeze_agree with "Hla Hfz").
   Qed.
@@ -2015,7 +2015,7 @@ Section InodeRegion.
       (n : nat) (d : dinode) (ty : bv 16) (t : nat) (qt : Qp) :
     ireg_rcol z c r f n d -∗ iclaim z ty t qt -∗
     ⌜c = Some (Excl ((ty, (t, qt)) : ctyval))⌝.
-  Proof.
+  Proof using .
     rewrite /ireg_rcol. iIntros "(%rc & Hla & _) Hb".
     iApply (link_claim_agree with "Hla Hb").
   Qed.
@@ -2037,7 +2037,7 @@ Section InodeRegion.
     ireg_rcol z c r f n d ==∗
     (∃ r' : nat, ireg_rcol z c r' f (S n) d)
     ∗ IcacheRef.runit bfl z.
-  Proof.
+  Proof using .
     intros Hnz Hc. rewrite /ireg_rcol. iIntros "(%rc & Hla & %Href)".
     iMod (IcacheRef.link_mint_runit bfl with "Hla") as "[Hla $]".
     iModIntro. iExists (IcacheRef.rup bfl r), (IcacheRef.rcup bfl rc).
@@ -2052,7 +2052,7 @@ Section InodeRegion.
       (f : frzUR) (n : nat) (d : dinode) :
     ireg_rcol z c r f (S n) d -∗ IcacheRef.runit bfl z ==∗
     ∃ r' : nat, ireg_rcol z c r' f n d.
-  Proof.
+  Proof using .
     rewrite /ireg_rcol. iIntros "(%rc & Hla & %Href) Hu".
     iDestruct (IcacheRef.link_runit_ge with "Hla Hu") as %Hge.
     destruct bfl; cbn in Hge.
@@ -2085,7 +2085,7 @@ Section InodeRegion.
       (f : frzUR) (n : nat) (d : dinode) :
     ireg_rcol z c r f n d -∗ IcacheRef.runit bfl z -∗
     ⌜bv_unsigned (di_type d) <> 0 /\ (bfl = false -> c = None)⌝.
-  Proof.
+  Proof using .
     rewrite /ireg_rcol. iIntros "(%rc & Hla & %Href) Hu".
     iDestruct (IcacheRef.link_runit_ge with "Hla Hu") as %Hge.
     iPureIntro. split.
@@ -2141,27 +2141,27 @@ Section InodeRegion.
     ireg_mult_at (ireg_nl d) (bv_unsigned (di_type d)).
 
   Lemma ireg_mult_at_zero ty : ireg_mult_at 0%nat ty = 0%nat.
-  Proof.
+  Proof using .
     rewrite /ireg_mult_at (bool_decide_eq_true_2 (0%nat = 0%nat) eq_refl)
       andb_false_r //.
   Qed.
 
   Lemma ireg_mult_at_ge n ty : (n <= ireg_mult_at n ty)%nat.
-  Proof. rewrite /ireg_mult_at. destruct (_ && _)%bool; lia. Qed.
+  Proof using . rewrite /ireg_mult_at. destruct (_ && _)%bool; lia. Qed.
 
   Lemma ireg_mult_at_le n ty : (ireg_mult_at n ty <= S n)%nat.
-  Proof. rewrite /ireg_mult_at. destruct (_ && _)%bool; lia. Qed.
+  Proof using . rewrite /ireg_mult_at. destruct (_ && _)%bool; lia. Qed.
 
 
   Lemma ireg_mult_zero d :
     bv_unsigned (di_nlink d) = 0 -> ireg_mult d = 0%nat.
-  Proof.
+  Proof using .
     intros Hz. rewrite /ireg_mult /ireg_nl Hz Z2Nat.inj_0.
     exact (ireg_mult_at_zero _).
   Qed.
 
   Lemma ireg_mult_nl d : (ireg_nl d <= ireg_mult d <= S (ireg_nl d))%nat.
-  Proof.
+  Proof using .
     split; [exact (ireg_mult_at_ge _ _) | exact (ireg_mult_at_le _ _)].
   Qed.
 
@@ -2176,13 +2176,13 @@ Section InodeRegion.
 
   Lemma ireg_dot_delta_not_dir (ty n : Z) :
     ty <> ireg_dir_ty -> ireg_dot_delta ty n = 1%nat.
-  Proof.
+  Proof using .
     intros H. rewrite /ireg_dot_delta (bool_decide_eq_false_2 _ H) //.
   Qed.
 
   Lemma ireg_dot_delta_live (ty n : Z) :
     n <> 0 -> ireg_dot_delta ty n = 1%nat.
-  Proof.
+  Proof using .
     intros H. rewrite /ireg_dot_delta (bool_decide_eq_false_2 (n = 0) H)
       andb_false_r //.
   Qed.
@@ -2193,7 +2193,7 @@ Section InodeRegion.
     ireg_mult d' = (ireg_mult d
                     + ireg_dot_delta (bv_unsigned (di_type d))
                                      (bv_unsigned (di_nlink d)))%nat.
-  Proof.
+  Proof using .
     intros Hnl Hty.
     pose proof (di_nlink_nonneg d) as Hnn.
     rewrite /ireg_mult /ireg_mult_at /ireg_nl /ireg_dot_delta Hty Hnl.
@@ -2206,7 +2206,7 @@ Section InodeRegion.
     ireg_mult d = (ireg_mult d'
                    + ireg_dot_delta (bv_unsigned (di_type d'))
                                     (bv_unsigned (di_nlink d')))%nat.
-  Proof.
+  Proof using .
     intros Hnl Hty.
     pose proof (di_nlink_nonneg d') as Hnn.
     rewrite /ireg_mult /ireg_mult_at /ireg_nl /ireg_dot_delta Hty Hnl.
@@ -2225,7 +2225,7 @@ Section InodeRegion.
     end.
 
   Lemma ireg_reg_ok_ex (ty : Z) : exists v, ireg_reg_ok ty v.
-  Proof.
+  Proof using .
     destruct (decide (ty = ireg_dir_ty)) as [H | H];
       [exists (TDir 0) | exists TFile]; exact H.
   Qed.
@@ -2248,7 +2248,7 @@ Section InodeRegion.
      then FsStateLink.link_tok (fs_gamma_L γfs) z v else emp)%I.
 
   Global Instance ireg_keep_timeless γfs z v : Timeless (ireg_keep γfs z v).
-  Proof. rewrite /ireg_keep. case_bool_decide; apply _. Qed.
+  Proof using . rewrite /ireg_keep. case_bool_decide; apply _. Qed.
 
   (* the count-and-type-indexed form, which is what BOOT hands over: the
      region's shape at a slot is a function of the record's [nlink] and
@@ -2273,14 +2273,14 @@ Section InodeRegion.
   Lemma ireg_lnk_of_at γfs z n ty d :
     n = ireg_nl d -> ty = bv_unsigned (di_type d) ->
     ireg_lnk_at γfs z n ty -∗ ireg_lnk γfs z d.
-  Proof. intros -> ->. iIntros "H"; iExact "H". Qed.
+  Proof using . intros -> ->. iIntros "H"; iExact "H". Qed.
 
   Global Instance ireg_lnk_at_timeless γfs z n ty :
     Timeless (ireg_lnk_at γfs z n ty).
-  Proof. rewrite /ireg_lnk_at. apply _. Qed.
+  Proof using . rewrite /ireg_lnk_at. apply _. Qed.
 
   Global Instance ireg_lnk_timeless γfs z d : Timeless (ireg_lnk γfs z d).
-  Proof. rewrite /ireg_lnk. apply _. Qed.
+  Proof using . rewrite /ireg_lnk. apply _. Qed.
 
   (* the multiplicity is a function of the two record fields, so a mover
      that moves neither moves nothing *)
@@ -2288,7 +2288,7 @@ Section InodeRegion.
     bv_unsigned (di_nlink d') = bv_unsigned (di_nlink d) ->
     bv_unsigned (di_type d') = bv_unsigned (di_type d) ->
     ireg_lnk γfs z d -∗ ireg_lnk γfs z d'.
-  Proof.
+  Proof using .
     intros Heq Hty. rewrite /ireg_lnk /ireg_nl Heq Hty.
     iIntros "H"; iExact "H".
   Qed.
@@ -2305,7 +2305,7 @@ Section InodeRegion.
     bv_unsigned (di_nlink d) = 0 ->
     bv_unsigned (di_nlink d') = 0 ->
     ireg_lnk γfs z d -∗ ireg_lnk γfs z d'.
-  Proof.
+  Proof using .
     intros Hz Hz'. rewrite /ireg_lnk /ireg_lnk_at /ireg_nl Hz Hz' Z2Nat.inj_0.
     rewrite !ireg_mult_at_zero.
     iIntros "(%v & _ & Ha & Hk)".
@@ -2330,7 +2330,7 @@ Section InodeRegion.
     ireg_lnk γfs z d'
     ∗ ∃ v, ⌜ireg_reg_ok (bv_unsigned (di_type d)) v⌝
            ∗ FsStateLink.link_toks (fs_gamma_L γfs) z (link_reps k v).
-  Proof.
+  Proof using .
     intros Hm Hty. rewrite /ireg_lnk /ireg_lnk_at.
     iIntros "(%v & %Hok & Ha & Hk)".
     iMod (FsStateLink.link_mint_reps _ z (ireg_mult d) k v with "Ha")
@@ -2354,7 +2354,7 @@ Section InodeRegion.
     ireg_lnk γfs z d ==∗
     ireg_lnk γfs z d'
     ∗ FsStateLink.link_toks (fs_gamma_L γfs) z (link_reps k v).
-  Proof.
+  Proof using .
     intros Hz Hm Hok'. rewrite /ireg_lnk /ireg_lnk_at.
     iIntros "(%v0 & %Hok & Ha & Hk)".
     rewrite -/(ireg_mult d) Hz.
@@ -2376,7 +2376,7 @@ Section InodeRegion.
     ireg_lnk γfs z d -∗
     FsStateLink.link_toks (fs_gamma_L γfs) z (link_reps k v) ==∗
     ireg_lnk γfs z d'.
-  Proof.
+  Proof using .
     intros Hm Hty. rewrite /ireg_lnk /ireg_lnk_at.
     iIntros "(%v0 & %Hok & Ha & Hk) Hts".
     rewrite -/(ireg_mult d) Hm.
@@ -2396,7 +2396,7 @@ Section InodeRegion.
   Lemma ireg_lnk_toks_le γfs z d Q :
     ireg_lnk γfs z d -∗ FsStateLink.link_toks (fs_gamma_L γfs) z Q -∗
     ⌜(size Q <= ireg_mult d)%nat⌝.
-  Proof.
+  Proof using .
     rewrite /ireg_lnk /ireg_lnk_at. iIntros "(%v & _ & Ha & _) Htk".
     iDestruct (FsStateLink.link_auth_toks_le with "Ha Htk") as %[Hle _].
     by iPureIntro.
@@ -2407,7 +2407,7 @@ Section InodeRegion.
   Lemma ireg_lnk_tok_nz γfs z d v :
     ireg_lnk γfs z d -∗ FsStateLink.link_tok (fs_gamma_L γfs) z v -∗
     ⌜bv_unsigned (di_nlink d) <> 0⌝.
-  Proof.
+  Proof using .
     iIntros "Hl Ht".
     iDestruct (ireg_lnk_toks_le γfs z d {[+ v +]} with "Hl Ht") as %Hle.
     iPureIntro. intros Hz.
@@ -2421,7 +2421,7 @@ Section InodeRegion.
   Lemma ireg_lnk_tok_ty γfs z d v :
     ireg_lnk γfs z d -∗ FsStateLink.link_tok (fs_gamma_L γfs) z v -∗
     ⌜ireg_reg_ok (bv_unsigned (di_type d)) v⌝.
-  Proof.
+  Proof using .
     rewrite /ireg_lnk /ireg_lnk_at. iIntros "(%v0 & %Hok & Ha & _) Ht".
     iDestruct (FsStateLink.link_auth_tok_agree with "Ha Ht") as %[-> _].
     by iPureIntro.
@@ -2435,7 +2435,7 @@ Section InodeRegion.
   Lemma ireg_lnk_toks_agree γfs z d v v' :
     ireg_lnk γfs z d -∗ FsStateLink.link_tok (fs_gamma_L γfs) z v -∗
     FsStateLink.link_tok (fs_gamma_L γfs) z v' -∗ ⌜v = v'⌝.
-  Proof.
+  Proof using .
     rewrite /ireg_lnk /ireg_lnk_at. iIntros "(%v0 & _ & Ha & _) Ht Ht'".
     iDestruct (FsStateLink.link_auth_tok_agree with "Ha Ht") as %[-> _].
     iDestruct (FsStateLink.link_auth_tok_agree with "Ha Ht'") as %[-> _].
@@ -2446,7 +2446,7 @@ Section InodeRegion.
      own law says the root's count is at least one. *)
   Lemma ireg_lnk_root_alive γfs d :
     ireg_lnk γfs ireg_root d -∗ ⌜1 <= bv_unsigned (di_nlink d)⌝.
-  Proof.
+  Proof using .
     rewrite /ireg_lnk /ireg_lnk_at /ireg_keep bool_decide_eq_true_2 //.
     iIntros "(%v & _ & Ha & Htk)".
     iDestruct (FsStateLink.link_auth_tok_agree with "Ha Htk") as %[_ Hle].
@@ -2466,7 +2466,7 @@ Section InodeRegion.
     ireg_lnk γfs z d -∗
     FsStateLink.link_toks (fs_gamma_L γfs) z (link_reps k v) -∗
     ⌜z = ireg_root -> Z.of_nat k <= bv_unsigned (di_nlink d)⌝.
-  Proof.
+  Proof using .
     rewrite /ireg_lnk /ireg_lnk_at /ireg_keep.
     case_bool_decide as Hz; last first.
     { iIntros "_ _". iPureIntro. intro Hc. exfalso. exact (Hz Hc). }
@@ -2527,7 +2527,7 @@ Section InodeRegion.
 
   Global Instance ireg_top_park_timeless γfs z d :
     Timeless (ireg_top_park γfs z d).
-  Proof. rewrite /ireg_top_park /top_frag. apply _. Qed.
+  Proof using . rewrite /ireg_top_park /top_frag. apply _. Qed.
 
   (* the park at a nonzero-type record: the node is free of the RECORD but
      not of the COUNT -- the claim box's fragment is the one the free record
@@ -2536,7 +2536,7 @@ Section InodeRegion.
     bv_unsigned (di_type d) <> 0 ->
     (bv_unsigned (di_nlink d) = 0 -> fn_nlink n = 0%nat) ->
     top_frag (fs_gamma_L γfs) z n -∗ ireg_top_park γfs z d.
-  Proof.
+  Proof using .
     intros Hnz Hcnt. iIntros "Hf". iExists n. iFrame "Hf".
     iPureIntro. split; [intros H0; exfalso; exact (Hnz H0) | exact Hcnt].
   Qed.
@@ -2545,7 +2545,7 @@ Section InodeRegion.
   Lemma ireg_top_park_free γfs z d :
     ireg_bare d ->
     top_frag (fs_gamma_L γfs) z (free_node d) -∗ ireg_top_park γfs z d.
-  Proof.
+  Proof using .
     intros Hb. iIntros "Hf". iExists (free_node d). iFrame "Hf".
     iPureIntro. split.
     - intros _. split; [exact Hb | reflexivity].
@@ -2565,7 +2565,7 @@ Section InodeRegion.
     bv_unsigned (di_type d) = 0 ->
     ireg_top_park γfs z d -∗
       ⌜ireg_bare d⌝ ∗ top_frag (fs_gamma_L γfs) z (free_node d).
-  Proof.
+  Proof using .
     intros H0. iIntros "(%n & %Hn & Hf)".
     destruct (proj1 Hn H0) as [Hb ->]. iFrame "Hf". iPureIntro. exact Hb.
   Qed.
@@ -2607,14 +2607,14 @@ Section InodeRegion.
     tx_pin_o icfg_log (cty_pin c).
 
   Global Instance ireg_cpin_timeless c : Timeless (ireg_cpin c).
-  Proof. rewrite /ireg_cpin. apply _. Qed.
+  Proof using . rewrite /ireg_cpin. apply _. Qed.
 
   Lemma ireg_cpin_none : ⊢ ireg_cpin None.
-  Proof. rewrite /ireg_cpin /cty_pin /tx_pin_o. done. Qed.
+  Proof using . rewrite /ireg_cpin /cty_pin /tx_pin_o. done. Qed.
 
   Lemma ireg_cpin_some (v : ctyval) :
     v.2.1 ↪[ln_tx icfg_log]{#(v.2.2)} tt -∗ ireg_cpin (Some (Excl v)).
-  Proof. rewrite /ireg_cpin /cty_pin /tx_pin_o /tx_pin. iIntros "H". iExact "H". Qed.
+  Proof using . rewrite /ireg_cpin /cty_pin /tx_pin_o /tx_pin. iIntros "H". iExact "H". Qed.
 
 
   (* THE REFUTATION THE COMMIT READS.  A standing claim holds a positive
@@ -2627,7 +2627,7 @@ Section InodeRegion.
     ireg_claim_ok c f d ->
     ghost_map_auth (ln_tx icfg_log) 1 (∅ : gmap nat unit) -∗
     ireg_cpin c -∗ ⌜c = None⌝.
-  Proof.
+  Proof using .
     intros Hclm. iIntros "Ha Hp". rewrite /ireg_cpin.
     iDestruct (tx_pin_o_no_ops with "Ha Hp") as %Hnone.
     iPureIntro. destruct c as [[v |] |]; [| | reflexivity].
@@ -2644,19 +2644,19 @@ Section InodeRegion.
     (ireg_fsh f ∗ ireg_cpin c)%I.
 
   Global Instance ireg_shp_timeless c f : Timeless (ireg_shp c f).
-  Proof. rewrite /ireg_shp. apply _. Qed.
+  Proof using . rewrite /ireg_shp. apply _. Qed.
 
   Lemma ireg_shp_intro (c : ctyUR) (f : frzUR) :
     ireg_fsh f -∗ ireg_cpin c -∗ ireg_shp c f.
-  Proof. iIntros "H1 H2". iFrame. Qed.
+  Proof using . iIntros "H1 H2". iFrame. Qed.
 
   Lemma ireg_shp_split (c : ctyUR) (f : frzUR) :
     ireg_shp c f -∗ ireg_fsh f ∗ ireg_cpin c.
-  Proof. iIntros "[$ $]". Qed.
+  Proof using . iIntros "[$ $]". Qed.
 
   (* the ride-through every mover that touches NEITHER column wants *)
   Lemma ireg_shp_none (f : frzUR) : ireg_fsh f -∗ ireg_shp None f.
-  Proof. iIntros "H". iApply (ireg_shp_intro None f with "H").
+  Proof using . iIntros "H". iApply (ireg_shp_intro None f with "H").
          iApply ireg_cpin_none. Qed.
 
   Definition ireg_slot (γfs : fs_names) (γi : gname) (z : Z) (d : dinode)
@@ -2720,7 +2720,7 @@ Section InodeRegion.
 
   Global Instance ireg_slot_timeless γfs γi z d :
     Timeless (ireg_slot γfs γi z d).
-  Proof. rewrite /ireg_slot. apply _. Qed.
+  Proof using . rewrite /ireg_slot. apply _. Qed.
 
   (* the ledger's authority at one slot, held apart from the arm.  Both the
      ordinary flush and the free re-park the arm unchanged in SHAPE and
@@ -2744,7 +2744,7 @@ Section InodeRegion.
         ∗ (∃ ge gr, reg_half z ge gr) ∗ region_pending z
         ∗ ireg_top_park γfs z d)) -∗
     ireg_slot γfs γi z d.
-  Proof.
+  Proof using .
     intros Hok Hclm Hfrz.
     iIntros "Hla Hep Hlnk Hdisj Hcnt Hfdisj Hfrcp Harm".
     rewrite /ireg_slot.
@@ -2795,7 +2795,7 @@ Section InodeRegion.
     rec_owned_at Γ inodestart (bv_unsigned inum) dn
     ⊣⊢ FsStateDefs.byte_range Γ (IBLOCK inum inodestart)
           (Z.of_nat (64 * islot inum)) (dinode_bytes dn).
-  Proof.
+  Proof using .
     pose proof (bv_unsigned_in_range _ inum) as [Hlo _].
     pose proof (Z.mod_pos_bound (bv_unsigned inum) 16 ltac:(lia)) as [Hm0 _].
     assert (Hblk : IBLOCK inum inodestart
@@ -2815,7 +2815,7 @@ Section InodeRegion.
 
   Global Instance ireg_recs_timeless γfs inodestart bi ds :
     Timeless (ireg_recs γfs inodestart bi ds).
-  Proof. rewrite /ireg_recs. apply _. Qed.
+  Proof using . rewrite /ireg_recs. apply _. Qed.
 
   (* THE GATHER, and the only place [diblk_bytes] meets the region's bytes.
      [diblk_wf] is what makes the sixteen runs add up to 1024 bytes. *)
@@ -2824,7 +2824,7 @@ Section InodeRegion.
     diblk_wf ds ->
     ireg_recs γfs inodestart bi ds
     ⊣⊢ fsblock (fs_bytes γfs) (inodestart + Z.of_nat bi) (diblk_bytes ds).
-  Proof.
+  Proof using .
     intros Hwf. rewrite /ireg_recs.
     rewrite -(rec_owned_at_diblk (fs_gamma_L γfs) inodestart (Z.of_nat bi)
                 ds Hwf).
@@ -2842,7 +2842,7 @@ Section InodeRegion.
     diblk_wf ds ->
     ireg_recs γfs inodestart bi ds -∗
     fsblock (fs_bytes γfs) (inodestart + Z.of_nat bi) (diblk_bytes ds).
-  Proof.
+  Proof using .
     intros Hwf. rewrite (ireg_recs_blk γfs inodestart bi ds Hwf).
     iIntros "H". iExact "H".
   Qed.
@@ -2852,7 +2852,7 @@ Section InodeRegion.
     diblk_wf ds ->
     fsblock (fs_bytes γfs) (inodestart + Z.of_nat bi) (diblk_bytes ds) -∗
     ireg_recs γfs inodestart bi ds.
-  Proof.
+  Proof using .
     intros Hwf. rewrite (ireg_recs_blk γfs inodestart bi ds Hwf).
     iIntros "H". iExact "H".
   Qed.
@@ -2870,7 +2870,7 @@ Section InodeRegion.
          rec_owned_at (fs_gamma_L γfs) inodestart
                       (16 * Z.of_nat bi + Z.of_nat i)%Z d' -∗
          ireg_recs γfs inodestart bi (<[i := d']> ds)).
-  Proof.
+  Proof using .
     intros Hi Hlen. rewrite /ireg_recs. iIntros "Hs".
     iDestruct (big_sepL_delete _ (seq 0 16) i i
                  ltac:(apply lookup_seq; split; [lia | exact Hi]) with "Hs")
@@ -2916,7 +2916,7 @@ Section InodeRegion.
        ghost_map_auth icfg_reg 1 mr)%I.
 
   Global Instance ireg_registry_timeless nib : Timeless (ireg_registry nib).
-  Proof. rewrite /ireg_registry. apply _. Qed.
+  Proof using . rewrite /ireg_registry. apply _. Qed.
 
   (* Boot assembles the registry from the EMPTY [icfg_reg] auth ([icfg_alloc]'s
      new hand-out): it bulk-inserts a fully-covering map and calls this to wrap
@@ -2927,7 +2927,7 @@ Section InodeRegion.
     (forall z : Z, (0 <= z < 16 * Z.of_nat nib)%Z -> is_Some (mr !! z)) ->
     ghost_map_auth icfg_reg 1 mr -∗
     ireg_registry nib.
-  Proof.
+  Proof using .
     iIntros (Hcov) "Ha". iExists mr. iSplitR; [done |]. iFrame.
   Qed.
 
@@ -3048,7 +3048,7 @@ Section InodeRegion.
     tx_pin icfg_log e.1.1 e.1.2.
 
   Global Instance ireg_parked_timeless e : Timeless (ireg_parked e).
-  Proof. rewrite /ireg_parked. apply _. Qed.
+  Proof using . rewrite /ireg_parked. apply _. Qed.
 
   (* "arm [k] belongs to transaction [t], parked [q] of [t]'s token, and has
      suspended the row of every inum in [S]" -- the receipt.  It is the
@@ -3058,7 +3058,7 @@ Section InodeRegion.
     k ↪[icfg_lk] (t, q, S).
 
   Global Instance ireg_armed_timeless k t q S : Timeless (ireg_armed k t q S).
-  Proof. rewrite /ireg_armed. apply _. Qed.
+  Proof using . rewrite /ireg_armed. apply _. Qed.
 
   (* THE ROW, as a pure statement about the two maps: an inum no armed
      transaction names is well-formed at the map's own value for it. *)
@@ -3089,23 +3089,23 @@ Section InodeRegion.
     inv ftopN (ftop_body γfs).
 
   Global Instance ftop_inv_persistent γfs : Persistent (ftop_inv γfs).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Global Instance ftop_body_timeless γfs : Timeless (ftop_body γfs).
-  Proof. rewrite /ftop_body. apply _. Qed.
+  Proof using . rewrite /ftop_body. apply _. Qed.
 
   (* the empty registry's row is just "every inode is well-formed", which is
      what the boot image gives *)
   Lemma ftop_clean_empty (I : gmap Z fs_node) :
     (forall i n, I !! i = Some n -> inode_local i n) ->
     ftop_clean I ∅.
-  Proof. intros Hl i n Hi _. exact (Hl i n Hi). Qed.
+  Proof using . intros Hl i n Hi _. exact (Hl i n Hi). Qed.
 
   Lemma ftop_alloc (E : coPset) (γfs : fs_names) (I : gmap Z fs_node) :
     (forall i n, I !! i = Some n -> inode_local i n) ->
     ghost_map_auth (fs_top γfs) (1/2) I -∗
     ghost_map_auth icfg_lk 1 (∅ : gmap nat ireg_arm_ent) ={E}=∗ ftop_inv γfs.
-  Proof.
+  Proof using .
     iIntros (Hloc) "Ha Hlk".
     iMod (inv_alloc ftopN E (ftop_body γfs) with "[Ha Hlk]") as "#Hi".
     { iNext. rewrite /ftop_body. iExists I, ∅. iFrame "Ha Hlk".
@@ -3123,7 +3123,7 @@ Section InodeRegion.
     ↑ftopN ⊆ E ->
     ftop_inv γfs -∗ t ↪[ln_tx icfg_log]{#q} tt ={E}=∗
       ∃ k : nat, ireg_armed k t q {[i]}.
-  Proof.
+  Proof using .
     iIntros (HE) "#Hi Ht".
     iMod (inv_acc E ftopN with "Hi") as "[Hbody Hclose]"; [exact HE |].
     iDestruct "Hbody" as ">Hb". iDestruct "Hb" as (I A) "(Hta & Hla & Hpark & %Hcl)".
@@ -3163,7 +3163,7 @@ Section InodeRegion.
     inode_local i n ->
     ftop_inv γfs -∗ ireg_armed k t q S -∗ top_frag (fs_gamma_L γfs) i n ={E}=∗
       ireg_armed k t q (S ∖ {[i]}) ∗ top_frag (fs_gamma_L γfs) i n.
-  Proof.
+  Proof using .
     iIntros (HE Hloc) "#Hi Hrec Hfr". rewrite /ireg_armed.
     iMod (inv_acc E ftopN with "Hi") as "[Hbody Hclose]"; [exact HE |].
     iDestruct "Hbody" as ">Hb". iDestruct "Hb" as (I A) "(Hta & Hla & Hpark & %Hcl)".
@@ -3200,7 +3200,7 @@ Section InodeRegion.
   Lemma ireg_release (E : coPset) (γfs : fs_names) (k t : nat) (q : Qp) :
     ↑ftopN ⊆ E ->
     ftop_inv γfs -∗ ireg_armed k t q ∅ ={E}=∗ t ↪[ln_tx icfg_log]{#q} tt.
-  Proof.
+  Proof using .
     iIntros (HE) "#Hi Hrec". rewrite /ireg_armed.
     iMod (inv_acc E ftopN with "Hi") as "[Hbody Hclose]"; [exact HE |].
     iDestruct "Hbody" as ">Hb". iDestruct "Hb" as (I A) "(Hta & Hla & Hpark & %Hcl)".
@@ -3239,7 +3239,7 @@ Section InodeRegion.
         ⌜forall i n, I !! i = Some n -> inode_local i n⌝ ∗
         ghost_map_auth (ln_tx icfg_log) 1 (∅ : gmap nat unit) ∗
         (ghost_map_auth (fs_top γfs) (1/2) I ={E ∖ ↑ftopN, E}=∗ True).
-  Proof.
+  Proof using .
     iIntros (HE) "#Hi Htxa".
     iMod (inv_acc E ftopN with "Hi") as "[Hbody Hclose]"; [exact HE |].
     iDestruct "Hbody" as ">Hb". iDestruct "Hb" as (I A) "(Hta & Hla & Hpark & %Hcl)".
@@ -3294,49 +3294,49 @@ Section InodeRegion.
 
   Global Instance ireg_reg_persistent γi γfs inodestart nib :
     Persistent (ireg_reg γi γfs inodestart nib).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Global Instance ireg_inv_persistent γi γfs inodestart nib :
     Persistent (ireg_inv γi γfs inodestart nib).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma ireg_inv_reg γi γfs inodestart nib :
     ireg_inv γi γfs inodestart nib -∗ ireg_reg γi γfs inodestart nib.
-  Proof.
+  Proof using .
     iIntros "($ & Hb & $ & $)". iApply (fs_bytes_any_row with "Hb").
   Qed.
 
   Lemma ireg_inv_of γi γfs inodestart nib :
     ireg_reg γi γfs inodestart nib -∗ exc_sealed (fs_exc γfs) -∗
     ireg_inv γi γfs inodestart nib.
-  Proof. iIntros "($ & Hb & $ & $) Hs". iFrame. Qed.
+  Proof using . iIntros "($ & Hb & $ & $) Hs". iFrame. Qed.
 
   Lemma ireg_inv_bytes γi γfs inodestart nib :
     ireg_inv γi γfs inodestart nib -∗ fs_bytes_any γfs.
-  Proof. iIntros "(_ & $ & _ & _)". Qed.
+  Proof using . iIntros "(_ & $ & _ & _)". Qed.
 
   Lemma ireg_inv_ftop γi γfs inodestart nib :
     ireg_inv γi γfs inodestart nib -∗ ftop_inv γfs.
-  Proof. iIntros "(_ & _ & $ & _)". Qed.
+  Proof using . iIntros "(_ & _ & $ & _)". Qed.
 
   (* the application's invariant, off either bundle *)
   Lemma ireg_reg_app γi γfs inodestart nib :
     ireg_reg γi γfs inodestart nib -∗ app_inv γfs.
-  Proof. iIntros "(_ & _ & _ & $)". Qed.
+  Proof using . iIntros "(_ & _ & _ & $)". Qed.
 
   Lemma ireg_inv_app γi γfs inodestart nib :
     ireg_inv γi γfs inodestart nib -∗ app_inv γfs.
-  Proof. iIntros "(_ & _ & _ & $)". Qed.
+  Proof using . iIntros "(_ & _ & _ & $)". Qed.
 
   (* the mask every mover asks for, split for the inner step: [appN] is
      still open once [ftopN] has been taken *)
   Lemma appN_sub_ftop (E : coPset) :
     ↑ftopN ∪ ↑appN ⊆ E -> ↑appN ⊆ E ∖ ↑ftopN.
-  Proof. intros HE. solve_ndisj. Qed.
+  Proof using . intros HE. solve_ndisj. Qed.
 
   Lemma ftopN_sub_app (E : coPset) :
     ↑ftopN ∪ ↑appN ⊆ E -> ↑ftopN ⊆ E.
-  Proof. intros HE. set_solver. Qed.
+  Proof using . intros HE. set_solver. Qed.
 
   (* THE RETAG, ALONE.  A walk that has already moved the region's record
      proxy (iupdate did it, at the region's own AU) and only owes the
@@ -3376,7 +3376,7 @@ Section InodeRegion.
        ▷ app_pred app_run (FsAbsDefs.abs_view I) -∗
        ▷ app_pred app_run (FsAbsDefs.abs_view (<[i := n']> I))) -∗
     top_frag (fs_gamma_L γfs) i n ={E}=∗ top_frag (fs_gamma_L γfs) i n'.
-  Proof.
+  Proof using .
     iIntros (HE Hloc) "#Hi #Hai Hstep Hf".
     iMod (inv_acc E ftopN with "Hi") as "[Hbody Hclose]"; [solve_ndisj |].
     iDestruct "Hbody" as ">Hb". iDestruct "Hb" as (I A) "(Ha & Hla & Hpark & %Hcl)".
@@ -3401,7 +3401,7 @@ Section InodeRegion.
     inode_local i n' ->
     ftop_inv γfs -∗ app_inv γfs -∗
     top_frag (fs_gamma_L γfs) i n ={E}=∗ top_frag (fs_gamma_L γfs) i n'.
-  Proof.
+  Proof using .
     iIntros (HE Habs Hloc) "#Hi #Hai Hf".
     iApply (ireg_top_retag_gen E γfs i n n' HE Hloc with "Hi Hai [] Hf").
     iIntros (I Hin) "Hp". rewrite (FsAbsDefs.abs_view_insert_same I i n n' Hin Habs). iExact "Hp".
@@ -3416,7 +3416,7 @@ Section InodeRegion.
        app_pred app_run (FsAbsDefs.abs_view I) -∗
        app_pred app_run (FsAbsDefs.abs_view (<[i := n']> I))) -∗
     top_frag (fs_gamma_L γfs) i n ={E}=∗ top_frag (fs_gamma_L γfs) i n'.
-  Proof.
+  Proof using .
     iIntros (HE Hloc) "#Hi #Hai Hstep Hf".
     iApply (ireg_top_retag_gen E γfs i n n' HE Hloc with "Hi Hai [Hstep] Hf").
     iIntros (I Hin) "Hp". iNext. iApply ("Hstep" $! I with "[//] Hp").
@@ -3436,7 +3436,7 @@ Section InodeRegion.
        ▷ app_pred app_run (FsAbsDefs.abs_view (<[i := n']> I))) -∗
     top_frag (fs_gamma_L γfs) i n ={E}=∗
       ireg_armed k t q S ∗ top_frag (fs_gamma_L γfs) i n'.
-  Proof.
+  Proof using .
     iIntros (HE Hin) "#Hi #Hai Hrec Hstep Hf". rewrite /ireg_armed.
     iMod (inv_acc E ftopN with "Hi") as "[Hbody Hclose]"; [solve_ndisj |].
     iDestruct "Hbody" as ">Hb". iDestruct "Hb" as (I A) "(Ha & Hla & Hpark & %Hcl)".
@@ -3464,7 +3464,7 @@ Section InodeRegion.
     ftop_inv γfs -∗ app_inv γfs -∗ ireg_armed k t q S -∗
     top_frag (fs_gamma_L γfs) i n ={E}=∗
       ireg_armed k t q S ∗ top_frag (fs_gamma_L γfs) i n'.
-  Proof.
+  Proof using .
     iIntros (HE Hin Habs) "#Hi #Hai Hrec Hf".
     iApply (ireg_top_retag_armed_gen E γfs k t q S i n n' HE Hin
               with "Hi Hai Hrec [] Hf").
@@ -3481,7 +3481,7 @@ Section InodeRegion.
        app_pred app_run (FsAbsDefs.abs_view (<[i := n']> I))) -∗
     top_frag (fs_gamma_L γfs) i n ={E}=∗
       ireg_armed k t q S ∗ top_frag (fs_gamma_L γfs) i n'.
-  Proof.
+  Proof using .
     iIntros (HE Hin) "#Hi #Hai Hrec Hstep Hf".
     iApply (ireg_top_retag_armed_gen E γfs k t q S i n n' HE Hin
               with "Hi Hai Hrec [Hstep] Hf").
@@ -3491,18 +3491,18 @@ Section InodeRegion.
   (* [logN], [iregN] and [ftopN] are pairwise distinct namespaces, so a
      reader that has one open may still open the others. *)
   Lemma logN_iregN_disj : (↑logN : coPset) ## ↑iregN.
-  Proof. solve_ndisj. Qed.
+  Proof using . solve_ndisj. Qed.
 
 
 
 
   Global Instance ireg_blk_timeless γi γfs inodestart m bi :
     Timeless (ireg_blk γi γfs inodestart m bi).
-  Proof. rewrite /ireg_blk. apply _. Qed.
+  Proof using . rewrite /ireg_blk. apply _. Qed.
 
   Global Instance ireg_body_timeless γi γfs inodestart nib :
     Timeless (ireg_body γi γfs inodestart nib).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* ------------------------------------------------------------------ *)
   (*  The block accessor (writer form)                                   *)
@@ -3515,7 +3515,7 @@ Section InodeRegion.
        m' !! (16 * Z.of_nat bi + Z.of_nat i)%Z
        = m !! (16 * Z.of_nat bi + Z.of_nat i)%Z) ->
     ireg_blk γi γfs inodestart m bi -∗ ireg_blk γi γfs inodestart m' bi.
-  Proof.
+  Proof using .
     intros Hag. rewrite /ireg_blk.
     iIntros "(%ds & %Hwf & %Hcp & Hfsb & Hsl)".
     iExists ds. iFrame "Hfsb Hsl". iSplitR; [done |].
@@ -3535,7 +3535,7 @@ Section InodeRegion.
             = m !! (16 * Z.of_nat j + Z.of_nat i)%Z⌝ -∗
          ireg_blk γi γfs inodestart m' bi -∗
          [∗ list] j ∈ seq 0 nib, ireg_blk γi γfs inodestart m' j).
-  Proof.
+  Proof using .
     intros Hbi. iIntros "Hs".
     iDestruct (big_sepL_delete _ (seq 0 nib) bi bi
                  ltac:(apply lookup_seq; split; [lia | exact Hbi]) with "Hs")
@@ -3566,7 +3566,7 @@ Section InodeRegion.
          [∗ list] j ∈ seq 0 16,
            ireg_slot γfs γi (16 * Z.of_nat bi + Z.of_nat j)%Z
                      ((<[i := d']> ds) !!! j)).
-  Proof.
+  Proof using .
     intros Hi Hlen. iIntros "Hs".
     iDestruct (big_sepL_delete _ (seq 0 16) i i
                  ltac:(apply lookup_seq; split; [lia | exact Hi]) with "Hs")
@@ -3609,7 +3609,7 @@ Section InodeRegion.
     ⌜exists ds : list dinode,
        diblk_wf ds /\ bsl = diblk_bytes ds /\ ds !!! islot inum = dn⌝ ∗
     dinode_at γi inum dn ∗ (b ↪[fs_cache γfs]{#(1/2)} bsl).
-  Proof.
+  Proof using .
     iIntros (HE HEl Hin Hb) "#Hinv Hdn Hhalf".
     iDestruct "Hinv" as "[#Hiinv [#Hrb [#Hftopi _]]]".
     iDestruct "Hrb" as "[Hrb0 #Hseal]".
@@ -3672,7 +3672,7 @@ Section InodeRegion.
     dinode_at γi inum dn -∗
     log_epoch_lb γ e0 ={E}=∗
     dinode_at γi inum dn ∗ nlz_obs (bv_unsigned inum) e0.
-  Proof.
+  Proof using .
     iIntros (HE Hin Hγ Hnz) "#Hinv Hdn #Hlb0". subst γ.
     pose proof (islot_lt inum) as Hsl.
     assert (Hkey : (16 * Z.of_nat (ireg_bi inum) + Z.of_nat (islot inum))%Z
@@ -3737,7 +3737,7 @@ Section InodeRegion.
     nlz_obs (bv_unsigned inum) e0 ={E}=∗
     dinode_at γi inum dn ∗
     ∃ e : nat, ⌜(e0 <= e)%nat⌝ ∗ logged_at γ e (IBLOCK inum icfg_ist).
-  Proof.
+  Proof using .
     iIntros (HE Hin Hγ Hz He0) "#Hinv Hdn #Hobs". subst γ.
     pose proof (islot_lt inum) as Hsl.
     assert (Hkey : (16 * Z.of_nat (ireg_bi inum) + Z.of_nat (islot inum))%Z
@@ -3804,7 +3804,7 @@ Section InodeRegion.
     ((inodestart + Z.of_nat bi) ↪[fs_cache γfs]{#(1/2)} bsl) ={E}=∗
     ⌜exists ds : list dinode, diblk_wf ds /\ bsl = diblk_bytes ds⌝ ∗
     ((inodestart + Z.of_nat bi) ↪[fs_cache γfs]{#(1/2)} bsl).
-  Proof.
+  Proof using .
     iIntros (HE HEl Hbi) "#Hinv Hhalf".
     iDestruct "Hinv" as "[#Hiinv [#Hrb [#Hftopi _]]]".
     iDestruct "Hrb" as "[Hrb0 #Hseal]".
@@ -3838,7 +3838,7 @@ Section InodeRegion.
      just run [ireg_read_blk] can name the record it is about to test.) *)
   Lemma ireg_blk_slot (ds : list dinode) (i : nat) :
     diblk_wf ds -> (i < 16)%nat -> dinode_wf (ds !!! i).
-  Proof.
+  Proof using .
     intros [Hlen Hall] Hi.
     assert (Hl : ds !! i = Some (ds !!! i))
       by (apply list_lookup_lookup_total_lt; lia).
@@ -3908,7 +3908,7 @@ Section InodeRegion.
        FsStateDefs.byte_range (fs_gamma_L γfs) (IBLOCK inum inodestart)
          (Z.of_nat (64 * islot inum)) (dinode_bytes dn')
        ={E ∖ ↑iregN, E}=∗ dinode_at γi inum dn').
-  Proof.
+  Proof using .
     iIntros (HE Hin Hdn' Hnz Hstab Hnl) "#Hinv Hdn".
     pose proof (islot_lt inum) as Hsl.
     assert (Hkey : (16 * Z.of_nat (ireg_bi inum) + Z.of_nat (islot inum))%Z
@@ -4108,7 +4108,7 @@ Section InodeRegion.
           ialloc's receipt.  It is spent at create's fill
           ([ireg_withdraw]). *)
        ={E ∖ ↑iregN, E}=∗ iclaim (bv_unsigned inum) (di_type dn') t qt).
-  Proof.
+  Proof using .
     iIntros (HE Hin Hwfc Ht0c Hfr Htyc) "#Hinv #Hopen Htx".
     pose proof (islot_lt inum) as Hsl.
     pose proof (fresh_shape_wf dn' Hfr) as Hdn'.
@@ -4410,7 +4410,7 @@ Section InodeRegion.
     ifreeze_pre rg (bv_unsigned inum) ∗ icnt_half (bv_unsigned inum) 1%nat ∗
     (* ...and the mirror's lock half, UP (ZZProbeFrz P6: one bupd) *)
     frzm_h (bv_unsigned inum) true.
-  Proof.
+  Proof using .
     iIntros (HE Hin Hnl0 Hty0) "#Hinv Hsh Hfpin Hdn Hoff Hhalf Hmir".
     pose proof (islot_lt inum) as Hsl.
     assert (Hkey : (16 * Z.of_nat (ireg_bi inum) + Z.of_nat (islot inum))%Z
@@ -4525,7 +4525,7 @@ Section InodeRegion.
     frzm_h (bv_unsigned inum) b ={E}=∗
       ⌜b = frz_ispre ph⌝ ∗
       ifreeze ph (bv_unsigned inum) ∗ frzm_h (bv_unsigned inum) b.
-  Proof.
+  Proof using .
     iIntros (HE Hin) "#Hinv Hfz Hmir".
     pose proof (islot_lt inum) as Hsl.
     assert (Hkey : (16 * Z.of_nat (ireg_bi inum) + Z.of_nat (islot inum))%Z
@@ -4583,7 +4583,7 @@ Section InodeRegion.
     icnt_half (bv_unsigned inum) n ={E}=∗
       (∃ d : dinode, ⌜ireg_frz_ok (Some (Excl ph)) n d⌝) ∗
       ifreeze ph (bv_unsigned inum) ∗ icnt_half (bv_unsigned inum) n.
-  Proof.
+  Proof using .
     iIntros (HE Hin) "#Hinv Hfz Hcnth".
     pose proof (islot_lt inum) as Hsl.
     assert (Hkey : (16 * Z.of_nat (ireg_bi inum) + Z.of_nat (islot inum))%Z
@@ -4715,7 +4715,7 @@ Section InodeRegion.
     IcacheRef.inode_claimed ty k q dev inum t qt ⊢
     IcacheRef.inode_ref k q dev inum ∗
     ireg_wd_lic (ClaimK ty t qt) g (bv_unsigned inum).
-  Proof.
+  Proof using .
     rewrite /IcacheRef.inode_claimed /ireg_wd_lic.
     iIntros "($ & H2 & H3)". iFrame.
   Qed.
@@ -4747,7 +4747,7 @@ Section InodeRegion.
      just been through the withdraw has both halves of its post. *)
   Lemma ilk_post_fill (o : ilkc) (d : dinode) :
     ilk_fills o -> ireg_wd_ty o d -> ilk_post o true d.
-  Proof.
+  Proof using .
     destruct o as [ty tt0 qq0 | | ty]; cbn.
     - intros _ H. split; [reflexivity | exact H].
     - intros _ _. exact I.
@@ -4810,7 +4810,7 @@ Section InodeRegion.
        [ireg_top_retag_same] and no application input. *)
     (∃ n : fs_node, ⌜fn_nlink n = 0%nat⌝
        ∗ top_frag (fs_gamma_L γfs) (bv_unsigned inum) n).
-  Proof.
+  Proof using .
     iIntros (HE HEl Hfills Hin Hb Hwf Hbsl Hnz) "#Hinv Hmk Hcl Hhalf".
     pose proof (islot_lt inum) as Hsl.
     assert (Hkey : (16 * Z.of_nat (ireg_bi inum) + Z.of_nat (islot inum))%Z
@@ -4972,7 +4972,7 @@ Section InodeRegion.
     dinode_at γi inum dn -∗
     iclaim (bv_unsigned inum) ty t qt ={E}=∗
     False.
-  Proof.
+  Proof using .
     iIntros (HE Hin) "#Hinv Hdn Hcl".
     pose proof (islot_lt inum) as Hsl.
     assert (Hkey : (16 * Z.of_nat (ireg_bi inum) + Z.of_nat (islot inum))%Z
@@ -5059,7 +5059,7 @@ Section InodeRegion.
     ireg_rcol z c r f n d ∗
     ireg_link_pin pin z d ∗
     ⌜f = Some (Excl FrzOff)⌝.
-  Proof.
+  Proof using .
     intros Hfrz. iIntros "Hla Hpin". rewrite /ireg_link_pin. destruct pin.
     - iDestruct (ireg_rcol_freeze_agree with "Hla Hpin") as %Hfzo.
       iFrame "Hla Hpin". iPureIntro. exact Hfzo.
@@ -5162,7 +5162,7 @@ Section InodeRegion.
                 (link_reps (ireg_dot_delta (bv_unsigned (di_type dn))
                               (bv_unsigned (di_nlink dn))) v)) ∗
        ireg_link_pin pin (bv_unsigned inum) dn).
-  Proof.
+  Proof using .
     iIntros (HE Hin Hdn' Hnz Hstab Hbump Hgrd Hup)
             "#Hinv Hdn Hpin".
     pose proof (islot_lt inum) as Hsl.
@@ -5400,7 +5400,7 @@ Section InodeRegion.
        FsStateDefs.byte_range (fs_gamma_L γfs) (IBLOCK inum inodestart)
          (Z.of_nat (64 * islot inum)) (dinode_bytes dn')
        ={E ∖ ↑iregN, E}=∗ dinode_at γi inum dn').
-  Proof.
+  Proof using .
     iIntros (HE Hin Hdn' Hnz Hstab Hnl) "#Hinv Hdn Htok".
     pose proof (islot_lt inum) as Hsl.
     assert (Hkey : (16 * Z.of_nat (ireg_bi inum) + Z.of_nat (islot inum))%Z

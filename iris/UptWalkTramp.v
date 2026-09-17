@@ -84,7 +84,7 @@ Section UptTramp.
     tramp_tr_obl Df pc ms bmi cy ti ip mst0 pcfg paddr mc micfg misa0
       mseccfg0 senv0 pmar0 elp0 satp0 mie0 mdv0 menv0
       (upt_res_pt uroot tfp um).
-  Proof.
+  Proof using .
     intros Hmisa Hmenv HSXL HMPRV Hsatpok Hpmpok Hpma.
     iIntros "#Hcert". rewrite /tramp_tr_obl. iModIntro.
     iIntros (va pax tv rr) "%Hcanon %Hvpn %Hident Hfrag Htok HRes Hrw Hro".
@@ -179,7 +179,7 @@ Section UptTramp.
     hw_config -∗
     tramp_fetch_tr (s_Df_mix dq) (upt_res_pt uroot tfp um) pc mst0 satp0 mie0
       mdv0 menv0 pcfg paddr.
-  Proof.
+  Proof using .
     intros Hmenv HSXL HMPRV Hsatpok Hpmpok.
     iIntros "#Hhw".
     iDestruct (hw_config_cert with "Hhw") as "#Hcert".
@@ -300,7 +300,7 @@ Section UptTramp.
          pc_is npc -∗ Rl npc ms1 mdv1 -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HSIE HMPRV HSXL Hmm HPBMTE Hmenvval
            Hcanon Hvpn Hident Hcanon2 Hvpn2 Hident2 Hva2 Hpa4va4.
     iIntros "#Hhw #Hminv Hhs Hpriv Hmstatus Hmiec Hmdlc Hmenvc Hinv Htok Hpc
@@ -421,7 +421,7 @@ Section UptTramp.
          pc_is npc -∗ Rl npc ms1 mdv1 -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HSIE HMPRV HSXL Hmm HPBMTE Hmenvval
            Hcanon Hvpn Hident Hcanon2 Hvpn2 Hident2 Hva2 Hpa4va4.
     iIntros "#Hhw #Hminv Hhs Hpriv Hmstatus Hmiec Hmdlc Hmenvc Hinv Htok Hpc

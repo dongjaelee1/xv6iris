@@ -46,21 +46,21 @@ Section OffGv.
     ghost_var (ghost_varG0 := offbox_offG) γo q z.
 
   Global Instance off_gv_timeless γo q z : Timeless (off_gv γo q z).
-  Proof. rewrite /off_gv. apply _. Qed.
+  Proof using . rewrite /off_gv. apply _. Qed.
 
   Lemma off_gv_alloc (z : Z) : ⊢ |==> ∃ γo : gname, off_gv γo 1 z.
-  Proof. rewrite /off_gv. iApply ghost_var_alloc. Qed.
+  Proof using . rewrite /off_gv. iApply ghost_var_alloc. Qed.
 
   Lemma off_gv_update (z' : Z) γo (z : Z) : off_gv γo 1 z ==∗ off_gv γo 1 z'.
-  Proof. rewrite /off_gv. iApply ghost_var_update. Qed.
+  Proof using . rewrite /off_gv. iApply ghost_var_update. Qed.
 
   Lemma off_gv_agree γo (q1 q2 : Qp) (z1 z2 : Z) :
     off_gv γo q1 z1 -∗ off_gv γo q2 z2 -∗ ⌜z1 = z2⌝.
-  Proof. rewrite /off_gv. iApply ghost_var_agree. Qed.
+  Proof using . rewrite /off_gv. iApply ghost_var_agree. Qed.
 
   Lemma off_gv_split γo (q1 q2 : Qp) (z : Z) :
     off_gv γo (q1 + q2) z ⊣⊢ off_gv γo q1 z ∗ off_gv γo q2 z.
-  Proof.
+  Proof using .
     rewrite /off_gv. iSplit.
     - iIntros "H". iDestruct (ghost_var_split with "H") as "[$ $]".
     - iIntros "[H1 H2]". iCombine "H1 H2" as "H". iExact "H".
@@ -69,13 +69,13 @@ Section OffGv.
   (* the whole, as its two halves -- what a publish splits *)
   Lemma off_gv_halves γo (z : Z) :
     off_gv γo 1 z ⊣⊢ off_gv γo (1/2) z ∗ off_gv γo (1/2) z.
-  Proof. rewrite -{1}Qp.half_half. apply off_gv_split. Qed.
+  Proof using . rewrite -{1}Qp.half_half. apply off_gv_split. Qed.
 
   (* THE ADVANCE: both halves at once, to any value *)
   Lemma off_gv_update_halves (z' : Z) γo (z1 z2 : Z) :
     off_gv γo (1/2) z1 -∗ off_gv γo (1/2) z2 ==∗
     off_gv γo (1/2) z' ∗ off_gv γo (1/2) z'.
-  Proof.
+  Proof using .
     rewrite /off_gv. iIntros "H1 H2".
     iMod (ghost_var_update_halves z' with "H1 H2") as "[$ $]". done.
   Qed.
@@ -100,7 +100,7 @@ Section OffUser.
   Definition off_user_inv (γo : gname) : iProp Σ :=
     inv foffN (∃ z : Z, off_gv γo (1/2) z).
   Global Instance off_user_inv_persistent γo : Persistent (off_user_inv γo).
-  Proof. rewrite /off_user_inv. apply _. Qed.
+  Proof using . rewrite /off_user_inv. apply _. Qed.
 
   (* the obligation the file layer takes: the process lets the kernel move
      its half from any value to any value.  At mask ⊤ because the checkin
@@ -109,11 +109,11 @@ Section OffUser.
   Definition off_permit (γo : gname) : iProp Σ :=
     □ (∀ z z' : Z, off_gv γo (1/2) z ={⊤}=∗ off_gv γo (1/2) z').
   Global Instance off_permit_persistent γo : Persistent (off_permit γo).
-  Proof. rewrite /off_permit. apply _. Qed.
+  Proof using . rewrite /off_permit. apply _. Qed.
 
   Lemma off_user_inv_alloc (E : coPset) γo (z : Z) :
     off_gv γo (1/2) z ={E}=∗ off_user_inv γo.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /off_user_inv.
     iApply (inv_alloc foffN E with "[H]"). iNext. iExists z. iExact "H".
   Qed.
@@ -123,7 +123,7 @@ Section OffUser.
   Lemma off_user_inv_move (E : coPset) γo (z z' : Z) :
     ↑foffN ⊆ E ->
     off_user_inv γo -∗ off_gv γo (1/2) z ={E}=∗ off_gv γo (1/2) z'.
-  Proof.
+  Proof using .
     intros HE. rewrite /off_user_inv. iIntros "#Hinv Hk".
     iInv "Hinv" as (zu) ">Hu" "Hclose".
     iMod (off_gv_update_halves z' with "Hk Hu") as "[Hk Hu]".
@@ -132,7 +132,7 @@ Section OffUser.
   Qed.
 
   Lemma off_user_inv_permit γo : off_user_inv γo -∗ off_permit γo.
-  Proof.
+  Proof using .
     rewrite /off_permit. iIntros "#Hinv !>" (z z') "Hk".
     iApply (off_user_inv_move ⊤ γo z z' with "Hinv Hk"). solve_ndisj.
   Qed.

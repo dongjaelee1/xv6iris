@@ -289,7 +289,7 @@ Section OpenDefs.
   (* satisfiability: the seal cannot be vacuously blocked on the caller *)
   Lemma aopen_commit_at_unit `{XI : CurCtx} Γ E :
     ⊢ aopen_commit_at Γ E (fun _ _ _ => True%I).
-  Proof.
+  Proof using .
     rewrite /aopen_commit_at. iIntros (I i a) "%Hi Ha".
     iModIntro. by iFrame "Ha".
   Qed.
@@ -303,7 +303,7 @@ Section OpenDefs.
     (∀ (av : aview) (i : Z) (a : anode),
        ⌜av !! jpin = Some b⌝ -∗ nview Γ q jpin b -∗ Φ av i a) -∗
     aopen_commit_at Γ E Φ.
-  Proof.
+  Proof using .
     iIntros "Hn HΦ". rewrite /aopen_commit_at.
     iIntros (I i a) "%Hi Ha".
     iDestruct (mkf_auth_nview with "Ha Hn") as %Hav.
@@ -340,7 +340,7 @@ Section OpenDefs.
      the SUPPLY ([AppInv.app_step_acc]) *)
   Lemma atrunc_commit_at_unit (γfs : fs_names) E :
     app_sup -∗ atrunc_commit_at (fs_gamma_L γfs) E (fun _ _ _ => True%I).
-  Proof.
+  Proof using .
     iIntros "#Hsup". rewrite /atrunc_commit_at. iIntros (I i bs0 nl) "%Hpre Ha".
     iDestruct (app_step_acc i I (delta_trunc i (abs_view I))
                  with "Hsup") as "Hstep".
@@ -355,7 +355,7 @@ Section OpenDefs.
     (∀ (av : aview) (i : Z) (bs : list (bv 8)),
        ⌜av !! jpin = Some b⌝ -∗ nview (fs_gamma_L γfs) q jpin b -∗ Φ av i bs) -∗
     atrunc_commit_at (fs_gamma_L γfs) E Φ.
-  Proof.
+  Proof using .
     iIntros "#Hsup Hn HΦ". rewrite /atrunc_commit_at.
     iIntros (I i bs0 nl) "%Hpre Ha".
     iDestruct (mkf_auth_nview with "Ha Hn") as %Hav.
@@ -407,12 +407,12 @@ Section OpenDefs.
       (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ)) :
     om_trunc vom = true ->
     open_trunc_piece Γ vom Ft ⊣⊢ pf_at (atrunc_commit_at Γ appE) Ft.
-  Proof. intros Hv. rewrite /open_trunc_piece Hv. reflexivity. Qed.
+  Proof using . intros Hv. rewrite /open_trunc_piece Hv. reflexivity. Qed.
 
   Lemma open_trunc_piece_false Γ (vom : mword 64)
       (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ)) :
     om_trunc vom = false -> open_trunc_piece Γ vom Ft ⊣⊢ emp.
-  Proof. intros Hv. rewrite /open_trunc_piece Hv. reflexivity. Qed.
+  Proof using . intros Hv. rewrite /open_trunc_piece Hv. reflexivity. Qed.
 
   (* ...and the free one: at [om_trunc vom = false] nothing is owed, so the
      piece is available out of thin air.  This is the whole content of the
@@ -421,7 +421,7 @@ Section OpenDefs.
   Lemma open_trunc_piece_none Γ (vom : mword 64)
       (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ)) :
     om_trunc vom = false -> ⊢ open_trunc_piece Γ vom Ft.
-  Proof. intros Hv. rewrite /open_trunc_piece Hv. done. Qed.
+  Proof using . intros Hv. rewrite /open_trunc_piece Hv. done. Qed.
 
   (* ------------------------------------------------------------------ *)
   (*  2c.  The walk package (full path; the era hops; quantified start)   *)
@@ -571,7 +571,7 @@ Section OpenDefs.
     arg_path_of M pv pl ->
     open_au_plain_at Γ γfs cw M pv vom P Pmiss Fo Ft -∗
     open_au_pre_plain Γ γfs cw pl vom P Pmiss Fo Ft.
-  Proof.
+  Proof using .
     iIntros (Hpl) "(Hw & Ho & Ht)". rewrite /open_au_pre_plain. iFrame "Ho Ht".
     iApply ("Hw" $! pl with "[%]"). exact Hpl.
   Qed.
@@ -607,7 +607,7 @@ Section OpenDefs.
     arg_path_of M pv pl ->
     open_au_create_at Γ γfs cw M pv vom P Pmiss Farm Fun Fok Fex Fo Ft -∗
     open_au_pre_create Γ γfs cw pl vom P Pmiss Farm Fun Fok Fex Fo Ft.
-  Proof.
+  Proof using .
     iIntros (Hpl) "(Hw & Hok & Hex & Ho & Ht & Hch)".
     rewrite /open_au_pre_create.
     iSplitL "Hw".
@@ -630,7 +630,7 @@ Section OpenDefs.
     pf_at (aopen_commit_at Γ appE) Fo -∗
     open_trunc_piece Γ vom Ft -∗
     open_au_plain_at Γ γfs cw M pv vom P Pmiss Fo Ft.
-  Proof.
+  Proof using .
     iIntros "Hw Ho Ht". rewrite /open_au_plain_at. iFrame "Ho Ht".
     iIntros (pl) "_". rewrite /ex_start /namei_walk_pre_era. iIntros (r Hr).
     iMod ("Hw" $! pl r with "[%]") as "[$ $]"; [exact Hr | done].
@@ -650,7 +650,7 @@ Section OpenDefs.
     open_trunc_piece Γ vom Ft -∗
     cre_child_unfired Γ (AFile []) Farm Fun -∗
     open_au_create_at Γ γfs cw M pv vom P Pmiss Farm Fun Fok Fex Fo Ft.
-  Proof.
+  Proof using .
     iIntros "Hw Hok Hex Ho Ht Hch". rewrite /open_au_create_at.
     iFrame "Hok Hex Ho Ht Hch".
     iIntros (pl) "_". rewrite /ep_start /npar_walk_pre_era. iIntros (r Hr).
@@ -666,7 +666,7 @@ Section OpenDefs.
     pf_at (aopen_commit_at Γ appE) Fo -∗
     open_trunc_piece Γ vom Ft -∗
     open_au_pre_plain Γ γfs cw pl vom P Pmiss Fo Ft.
-  Proof.
+  Proof using .
     iIntros "Hw Ho Ht". rewrite /open_au_pre_plain. iFrame "Ho Ht".
     rewrite /ex_start /namei_walk_pre_era. iIntros (r Hr).
     iMod ("Hw" $! pl r with "[%]") as "[$ $]"; [exact Hr | done].
@@ -687,7 +687,7 @@ Section OpenDefs.
     open_trunc_piece Γ vom Ft -∗
     cre_child_unfired Γ (AFile []) Farm Fun -∗
     open_au_pre_create Γ γfs cw pl vom P Pmiss Farm Fun Fok Fex Fo Ft.
-  Proof.
+  Proof using .
     iIntros "Hw Hok Hex Ho Ht Hch". rewrite /open_au_pre_create.
     iFrame "Hok Hex Ho Ht Hch".
     rewrite /ep_start /npar_walk_pre_era. iIntros (r Hr).
@@ -701,7 +701,7 @@ Section OpenDefs.
   (* the sharpened success post implies the landed bundle shape *)
   Lemma open_fd_frags_any `{XI : CurCtx} (γ : gname) (sts : list fdstate) :
     fd_frags γ sts ⊢ fd_frags_any γ.
-  Proof. rewrite /fd_frags_any. iIntros "H". by iExists sts. Qed.
+  Proof using . rewrite /fd_frags_any. iIntros "H". by iExists sts. Qed.
 
   (* THE SUCCESS ARMS' SHARED TAIL, [SpecSysOpen.sys_open_post]'s success
      arm with the bundle SHARPENED: the LEAST free descriptor now names
@@ -782,7 +782,7 @@ Section OpenDefs.
         ∗ ⌜open_fd_rcpt rb wb t sts r fdv'⌝
         ∗ proc_priv γf p pid (us_ofile UW fd (fnode k))
         ∗ fd_frags (pv_fdg (us_V UW)) fdv'.
-  Proof.
+  Proof using .
     rewrite /open_fd_ok /open_fd_rcpt.
     iIntros "H". iDestruct "H" as (fd l k) "((%Hr & %Hfl & %Hcl) & Hp & Hb)".
     iExists fd, l, k, (<[fd := FdOpen rb wb t]> sts).

@@ -29,6 +29,7 @@ Require Import WpUmodeBranch.
 Require Import UmodeArith UmodeAbi.
 Require Import UserHeap UkRun UkRunLeaf UkRunMem UkRunSys.
 Require Import UCodeInit.
+Require Import UInitArgv.  (* [init_argv] / [init_argv_map] *)
 Require Import CtxIdDefs.
 Require User.InitSyms User.InitInstrs.
 Require Import ChildTok.  (* [genF] -- the capacity the slot's fork arms name *)
@@ -199,7 +200,7 @@ Section UkInitMain.
 
   Global Instance kinit_diag_law_persistent stc Wp Wb :
     Persistent (kinit_diag_law stc Wp Wb).
-  Proof. rewrite /kinit_diag_law. apply _. Qed.
+  Proof using . rewrite /kinit_diag_law. apply _. Qed.
 
 
   (* --------------------------------------------------------------------- *)
@@ -235,7 +236,7 @@ Section UkInitMain.
     init_lend_cred T stc Wp Wb l np -∗
     urun N' hdf mdf0 (mword_of_int 0x84) (12 + (12 + (4 + n))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "Hpay #[Hwrl Hwcl] #[Hxlaw Hflaw] #Hcode #Hro Hstd Hcred Hrun".
     destruct init_syms_pins
       as (_ & _ & Hprintf & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hexit).
@@ -391,7 +392,7 @@ Section UkInitMain.
     init_lend_ref cn T stc Cr (ukn_fd N') l γ np -∗
     urun N' hde mde0 (mword_of_int 0xaa) (12 + (12 + (4 + n))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hpeq.
     iIntros "#[Hwrl Hwcl] #[Hxlaw Hflaw] #Hcode #Hro (Hstd & Hpos & Hlease & Hcred) Hrun".
     destruct init_syms_pins
@@ -635,7 +636,7 @@ Section UkInitMain.
     ucons_pay cn γ T (cc_rd Cr) (-1) -∗
     urun N' h m (mword_of_int 0x96) (12 + (12 + (4 + n))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hpeq.
     (* the walk's own class, off the record's payload: [ucons_pay] does not
        read the exit status ([UserConsole.ucons_pay_const]) *)
@@ -790,7 +791,7 @@ Section UkInitMain.
   Local Instance forkable_init_img :
     Forkable (fun gt gd _ =>
                 (init_code gt ∗ init_rodata gt ∗ init_argv gd)%I).
-  Proof.
+  Proof using .
     eapply Forkable_ext;
       [ | apply (forkable_sep
                    (fun gt _ _ => ([∗ map] a ↦ b ∈ InitInstrs.init_bytes,
@@ -923,7 +924,7 @@ Section UkInitMain.
           (ret_pc (m !!! Regidx ra_idx)) avail -∗
         WP (Loop : expr riscv_lang))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hkt.
     iIntros "#Hcode #Hro #Hargv Hsz HQ Hpos Hcred Hstd #Hrow Hcwd Hch Hrun [Hpar Hchi]".
     (* the list the head is at, and the arm's way back -- usable at EITHER
@@ -1115,7 +1116,7 @@ Section UkInitMain.
 
   Global Instance kinit_ban_law_persistent stc Wp Wb :
     Persistent (kinit_ban_law stc Wp Wb).
-  Proof. rewrite /kinit_ban_law. apply _. Qed.
+  Proof using . rewrite /kinit_ban_law. apply _. Qed.
 
 
   (* WHAT THE BANNER LEAVES BEHIND (lane IO-LEAF, step 3): the ledger and
@@ -1164,7 +1165,7 @@ Section UkInitMain.
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (12 + (12 + (4 + n))) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Ha0.
     iIntros "#[Hwrl Hwcl] #Hblaw #Hcode #Hstr Htk Hstd Hrun Hcont".
     assert (HokS : init_lit_ok LIT_START 18%nat = true)
@@ -1311,7 +1312,7 @@ Section UkInitMain.
           child_tok γsh pidsh (ucons_pay cn γ T (init_rd (cc_rd Cr) (cc_wbn Cr))) -∗
           urun N h m (mword_of_int 0x44) (12 + (12 + (4 + n))) -∗
           WP (Loop : expr riscv_lang))).
-  Proof.
+  Proof using Hpay Hpayfree Hpsok_free.
     intros Hkt.
     iIntros "#(Hwr & Hwl15 & Hwl17) #Hblaw #Hdlaw #Hcode #Hxs #Hro #Hargv".
     destruct init_syms_pins
@@ -1888,7 +1889,7 @@ Section UkInitMain.
        (lane IO-LEAF, M1): affine, so every other round is unaffected. *)
     urun N h m (mword_of_int 0x1e) (12 + (12 + (4 + n))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using Hpay Hpayfree Hpsok_free.
     intros Hne Hkt.
     iIntros "#(Hwr & Hwl15 & Hwl17) #Hblaw #Hdlaw #Hcode #Hxs #Hro #Hargv Hsz Hstd Hcwd Hch Htk Hrun".
     destruct init_syms_pins
@@ -2093,7 +2094,7 @@ Section UkInitMain.
        (lane IO-LEAF, M1): affine, so every other round is unaffected. *)
     urun N h m (mword_of_int 0x74) (12 + (12 + (4 + n))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using Hpay Hpayfree Hpsok_free.
     intros Hne Hkt.
     rewrite /uki_open2.
     iIntros "#(Hwr & Hwl15 & Hwl17) #Hblaw #Hdlaw #Hcode #Hxs #Hro #Hargv Hsz Hop2 Hin Hcwd Hch Htk Hrun".
@@ -2242,7 +2243,7 @@ Section UkInitMain.
        (lane IO-LEAF, M1): affine, so every other round is unaffected. *)
     urun N h m (mword_of_int 0x64) (12 + (12 + (4 + n))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using Hpay Hpayfree Hpsok_free.
     intros Hne Hkt.
     iIntros "#(Hwr & Hwl15 & Hwl17) #Hblaw #Hdlaw #Hcode #Hxs Hmkl #Hro #Hargv Hsz Hin Hcwd Hch Htk Hrun".
     destruct init_syms_pins
@@ -2427,7 +2428,7 @@ Section UkInitMain.
     urun N h m (mword_of_int InitSyms.main)
       (4 + (12 + (12 + (4 + n)))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using Hpay Hpayfree Hpsok_free.
     intros Hne Hkt.
     iIntros "#(Hwr & Hwl15 & Hwl17) #Hblaw #Hdlaw #Hcode #Hxs Hdance #Hro #Hargv Hsz Hstd Hcwd Hch Htk Hrun".
     iDestruct (uki_open1_of_dance N T Cns stc
@@ -2788,7 +2789,7 @@ Section UkInitMain.
     urun N h m (mword_of_int InitSyms.start)
       (2 + (4 + (12 + (12 + (4 + n))))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using Hpay Hpayfree Hpsok_free.
     intros Hne Hkt.
     iIntros "#(Hwr & Hwl15 & Hwl17) #Hblaw #Hdlaw #Hcode #Hxs Hcl #Hro #Hargv Hsz Hstd Hcwd Hch Htk Hrun".
     (* the payment travels to the restart head, where ROUND 0 spends it

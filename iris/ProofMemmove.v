@@ -168,7 +168,7 @@ Section ProofMemmove.
     ([∗ list] j ∈ seq k n, ctx_pointsto (KTR := kt1) x1 (pa_add a j) dq (f j)) -∗
     ctx_pointsto (KTR := kt2) x2 c (DfracOwn 1) v -∗
     ⌜forall j, (k <= j < k + n)%nat -> pa_add a j <> c⌝.
-  Proof.
+  Proof using .
     revert k. induction n as [|n IH]; intros k; simpl.
     - iIntros "_ _". iPureIntro. intros j Hj. lia.
     - iIntros "[Hh Ht] Hc".
@@ -187,7 +187,7 @@ Section ProofMemmove.
     (forall c : mword 5, is_cs_idx c = true -> c <> (mword_of_int 8 : mword 5) ->
        c <> csp_rs1 -> M !!! Regidx c = m !!! Regidx c) ->
     callee_saved m M.
-  Proof.
+  Proof using .
     intros Hsp Hs0 Hrest. unfold callee_saved. repeat split;
       first [ exact Hsp | exact Hs0
             | apply Hrest; (vm_compute; first [ reflexivity | discriminate ]) ].
@@ -231,7 +231,7 @@ Section ProofMemmove.
       ⌜ callee_saved m0 mf ⌝ -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros sp0 ra0 s00 Hn Hsp HMcs.
     set (ra_idx := (mword_of_int 1 : mword 5)).
     set (s0_idx := (mword_of_int 8 : mword 5)).
@@ -374,7 +374,7 @@ Section ProofMemmove.
       ⌜ callee_saved m mf ⌝ -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using KtierLe0 KtierLe1.
     intros Hlen64.
     set (a1_idx := (mword_of_int 11 : mword 5)).
     set (a3_idx := (mword_of_int 13 : mword 5)).
@@ -588,7 +588,7 @@ Section ProofMemmove.
       ⌜ callee_saved m0 mfin ⌝ -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using KtierLe0 KtierLe1.
     intros sp0 ra0 s00 p_dst p_src Hn Hlen0 Hlen32 HMa0 HMa1 HMa2 HMsp HMcs.
     set (a0_idx := (mword_of_int 10 : mword 5)).
     set (a2_idx := (mword_of_int 12 : mword 5)).
@@ -731,7 +731,7 @@ Section ProofMemmove.
       (m0 : regfile) (n : nat) (len : nat) (src_bytes dst_olds : nat -> bv 8)
       (dqs : dfrac) (b : bool) (pcur : mword 64)
     : wp_memmove_sconf_body kt kts ktw m0 n len src_bytes dst_olds dqs b pcur.
-  Proof.
+  Proof using .
     cbv beta delta [wp_memmove_sconf_body].
     intros a0_idx a1_idx a2_idx pcE ra0 p_dst p_src ret_tgt Hn Hlen32 Ha2.
     set (ra_idx := (mword_of_int 1 : mword 5)).

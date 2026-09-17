@@ -128,7 +128,7 @@ Section StatBuf.
 
   Global Instance stat_at_timeless `{XI : CurCtx} st dev ino ty nl sz :
     Timeless (stat_at st dev ino ty nl sz).
-  Proof.
+  Proof using .
     rewrite /stat_at.
     repeat apply bi.sep_timeless;
       first [ apply ctx_pointsto_timeless

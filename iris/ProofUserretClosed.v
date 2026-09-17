@@ -166,7 +166,7 @@ Section UserretClosed.
      (A6.91's ninth, persistent, member). *)
   Lemma urc_tlb_res_creds `{CID : CpuId} (r : mword 44) :
     KptShare.tlb_res_pt r -∗ KptShare.kpt_creds ∗ KptShare.tlb_res_pt r.
-  Proof.
+  Proof using .
     iIntros "H".
     iDestruct "H" as (s0 tv) "(Hsatp & %A & %B & %C & Htlb & Hsnap & Hpmp & #Hk & #Hcr)".
     iSplitR; [ iExact "Hcr" | ].
@@ -250,7 +250,7 @@ Section UserretClosed.
        FdSlots.fd_frags γfd sts' -∗ TsoCtx.own_context CtxIdDefs.cur_ctx -∗
        UV.usertrap_res_bare (CID := h) p ksp U sts' cs pid) -∗
     Rut_at h sz γfd cw gn cs pid lz p.
-  Proof.
+  Proof using .
     intros Hsz Hg Hc Hgn Hlz. iIntros "Hctx H". rewrite /Rut_at. iExists ksp, U.
     iSplitL "Hctx"; [ iExact "Hctx" |].
     iSplitL; [ iExact "H" |].
@@ -267,7 +267,7 @@ Section UserretClosed.
     ⊢ Rut_at h sz γfd cw gn cs pid lz p -∗
       TsoCtx.own_context CtxIdDefs.cur_ctx ∗
       (TsoCtx.own_context CtxIdDefs.cur_ctx -∗ Rut_at h sz γfd cw gn cs pid lz p).
-  Proof.
+  Proof using .
     iIntros "H".
     iDestruct "H" as (ksp U) "(Hctx & Hclose & %Hsz & %Hg & %Hc & %Hgn & %Hlz)".
     iFrame "Hctx". iIntros "Hctx". iExists ksp, U. iFrame "Hctx Hclose".
@@ -318,7 +318,7 @@ Section UserretClosed.
           ∗ FdSlots.fd_frags γfd (uvis_fd W)
           ∗ uexec_ret sc W) -∗
          WP (Loop : expr riscv_lang)).
-  Proof.
+  Proof using .
     intros Hj.
     iIntros "#Hkt #Hclaim #Hwire".
     (* THE LOOP MINTS NOTHING.  Every arm of the round is the process's

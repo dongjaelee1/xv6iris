@@ -231,7 +231,7 @@ Section ProofWakeup.
       kernel_text -∗ pc_is (mword_of_int (KernelSyms.wakeup + 0x38)) -∗
       wk_frame spF vra vs0 vs1 vs2 vs3 vs4 vs5 -∗
       WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hlen Hlvl Hav Hfresh.
     iIntros "#Hpinv Hqexit".
     (* BOUNDED loop: ordinary Coq induction on a [fuel] bounding the remaining
@@ -858,7 +858,7 @@ Section ProofWakeup.
       (m : regfile) (γs : list gname) (pme : mword 64)
       (lvl K : nat) (eb : bool) (b : bool) (lks : gset string)
     : wp_wakeup_sconf_body m γs pme lvl K eb b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_wakeup_sconf_body].
     intros sp0 spF rettgt HK Hdom Hlen Hlvl Hfresh.
     iIntros "Hcg Hown #Htext Hpc #Hpinv Hcont".

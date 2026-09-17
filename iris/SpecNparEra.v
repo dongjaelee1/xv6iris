@@ -161,7 +161,7 @@ Section NparEraDefs.
 
   Lemma inode_held_ty_at_ty (v : mword 64) (ty : bv 16) (z : Z) :
     inode_held_ty_at v ty z ⊢ inode_held_ty v ty.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as (k q inum g lo tl)
       "(%Hv & %Hk & %Hb & %Hp & %Hz & %Hle & #Hfl & Hr & Hs & Hu)".
     rewrite /inode_held_ty. iExists k, q, inum, g, lo, tl.
@@ -181,14 +181,14 @@ Section NparEraDefs.
 
   Lemma inode_held_ty_at_held (v : mword 64) (ty : bv 16) (z : Z) :
     inode_held_ty_at v ty z ⊢ inode_held v.
-  Proof.
+  Proof using .
     iIntros "H". iApply inode_held_ty_forget.
     by iApply inode_held_ty_at_ty.
   Qed.
 
   Lemma inode_held_ty_at_at (v : mword 64) (ty : bv 16) (z : Z) :
     inode_held_ty_at v ty z ⊢ inode_held_at v z.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as (k q inum g lo tl) "(%Hv & %Hk & %Hb & %Hp & %Hz & %Hle & #Hfl & Hr & _ & Hu)".
     rewrite /inode_held_at. iExists k, q, inum.
     iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].

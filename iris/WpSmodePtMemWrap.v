@@ -64,7 +64,7 @@ Section WpSmodePtMemWrap.
       pa ↦₈[kt']{ dqm } v -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros imm ea a8 pa Hrd HSIE HMPRV HSXL Hmm HMXR Hpmm HPBMTE Hmenvval0.
     unfold pa, a8, ea.
     rewrite <- sext9_12_64.
@@ -112,7 +112,7 @@ Section WpSmodePtMemWrap.
       pa ↦₈{ dqm } v -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros imm ea a8 pa Hrd HSIE HMPRV HSXL Hmm HMXR Hpmm HPBMTE Hmenvval0.
     unfold pa, a8, ea.
     rewrite <- sext9_12_64.
@@ -159,7 +159,7 @@ Section WpSmodePtMemWrap.
       pa ↦₈[kt'] (m !!! Regidx rs2) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros imm ea a8 pa HSIE HMPRV HSXL Hmm HMXR Hpmm HPBMTE Hmenvval0.
     unfold pa, a8, ea.
     rewrite <- sext9_12_64.
@@ -205,7 +205,7 @@ Section WpSmodePtMemWrap.
       pa ↦₈ (m !!! Regidx rs2) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros imm ea a8 pa HSIE HMPRV HSXL Hmm HMXR Hpmm HPBMTE Hmenvval0.
     unfold pa, a8, ea.
     rewrite <- sext9_12_64.

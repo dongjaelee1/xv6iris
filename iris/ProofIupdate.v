@@ -186,7 +186,7 @@ Section IupdateDefs.
      builders below and by nothing else *)
   Lemma iu_dinode_wf (dn : dinode) (bm : blkmap) :
     di_addrs dn = bm_cells bm -> length (bm_dir bm) = NDIRECT -> dinode_wf dn.
-  Proof.
+  Proof using .
     intros Hda Hdirlen.
     rewrite /dinode_wf Hda /bm_cells length_app Hdirlen. reflexivity.
   Qed.
@@ -211,7 +211,7 @@ Section IupdateDefs.
     bv_unsigned (di_type dn) <> 0 ->
     ireg_inv fsc_ireg fsc_fs icfg_ist icfg_nib -∗
     iu_region_step inum dn dn0 e0 (ireg_out fsc_ireg inum dn).
-  Proof.
+  Proof using bioslotG0.
     intros Hnib Hdnwf Hstab Hnlk Hnzty.
     iIntros "#Hireg" (ds) "%Hdswf Hdn".
     (* the ordinary flush owes no receipt ([InodeRegion.ireg_ep_mono]
@@ -270,7 +270,7 @@ Section IupdateDefs.
                  (ireg_dot_delta (bv_unsigned (di_type dn0))
                     (bv_unsigned (di_nlink dn0))) v)) ∗
        ireg_link_pin pin (bv_unsigned inum) dn0).
-  Proof.
+  Proof using bioslotG0.
     intros Hnib Hdnwf Hnz Hstab Hbump Hgrd Hup.
     iIntros "#Hireg Hpin" (ds) "%Hdswf Hdn".
     (* nlink RISES here, so the receipt is vacuous at the written record
@@ -320,7 +320,7 @@ Section IupdateDefs.
             (bv_unsigned (di_nlink dn))) uty) -∗
     iu_region_step inum dn dn0 e0
       (dinode_at fsc_ireg inum dn).
-  Proof.
+  Proof using .
     intros Hnib Hdnwf Hnz Hstab Hnl.
     iIntros "#Hireg Htok" (ds) "%Hdswf Hdn".
     rewrite /iu_region_au.
@@ -480,7 +480,7 @@ Section IupdateTail.
             (Sb ∪ {[IBLOCK inum icfg_ist]}) v Pout
  pidv dq dqd dqn dqs j m K eb b lks Upr -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hsp Hthr Hs2 Hkk Hdswf Hdnwf Hbno Hcov Hlog Hbelow.
     pose proof HK as HK'.
     (* iupdate's stores move exactly this inode's 64 bytes of the buffer *)
@@ -991,7 +991,7 @@ Section ProofIupdateMain.
           (∃ e : nat, logged_at icfg_log e (IBLOCK inum icfg_ist) ∗ ⌜(v <= e)%nat⌝) -∗
           WP (Loop : expr riscv_lang)) -∗
       WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pcE pj ret_tgt HK Hgeom Hst Hcov Hlog Hnib Hda Hdirlen Hj Hgl Ha0 Hbelow.
     pose proof HK as HK'. 
     destruct Hgeom as [Hcovok Hlogsub].
@@ -1998,7 +1998,7 @@ Qed.
     : wp_iupdate_gen_body γs j γl pd pav pu
  ip inum dn dn0 bm u Sb
                           pidv dq dqd dqn dqs m K eb b lks Upr.
-  Proof.
+  Proof using .
     cbv beta delta [wp_iupdate_gen_body].
     intros pcE pj ret_tgt HK Hgeom Hst Hcov Hlog Hnib Hstab Hnlk Hnzty Hda Hdirlen Hj Hgl Ha0 Hbelow.
     iIntros "Hcg Hcnt Htc Hclm #Htext #Hkd Hpc #Hpenv #Hbio #Hlctx Hidev Hinumc Hmeta Hmap
@@ -2058,7 +2058,7 @@ Qed.
     : wp_iupdate_credgen_body γs j γl pd pav pu
  ip inum dn dn0 bm u Sb cru e0 v
                               pidv dq dqd dqn dqs m K eb b lks Upr.
-  Proof.
+  Proof using .
     cbv beta delta [wp_iupdate_credgen_body].
     intros pcE pj ret_tgt HK Hgeom Hst Hcov Hlog Hnib Hstab Hnlk Hnzty Hda Hdirlen Hj Hgl Ha0 Hbelow.
     iIntros "Hcg Hcnt Htc Hclm #Htext #Hkd Hpc #Hpenv #Hbio #Hlctx Hidev Hinumc Hmeta Hmap
@@ -2101,7 +2101,7 @@ Qed.
     : wp_iupdate_cred_body γs j γl pd pav pu
  ip inum dn dn0 bm u Sb cru
                            pidv dq dqd dqn dqs m K eb b lks Upr.
-  Proof.
+  Proof using .
     cbv beta delta [wp_iupdate_cred_body].
     intros pcE pj ret_tgt HK Hcru Hgeom Hst Hcov Hlog Hnib Hstab Hnlk Hnzty Hda Hdirlen Hj Hgl Ha0 Heb Hbelow.
     subst eb.
@@ -2158,7 +2158,7 @@ Qed.
     : wp_iupdate_sconf_body γs j γl pd pav pu
  ip inum dn dn0 bm u
                             pidv dq dqd dqn dqs m K eb b lks Upr.
-  Proof.
+  Proof using .
     cbv beta delta [wp_iupdate_sconf_body].
     intros pcE pj ret_tgt HK Hgeom Hst Hcov Hlog Hnib Hstab Hnlk Hnzty Hda Hdirlen Hj Hgl Ha0 Hbelow.
     iIntros "Hcg Hcnt Htc Hclm #Htext #Hkd Hpc #Hpenv #Hbio #Hlctx Hidev Hinumc Hmeta Hmap
@@ -2211,7 +2211,7 @@ Qed.
     : wp_iupdate_link_body γs j γl pd pav pu
  ip inum dn dn0 bm u Sb cru
                            pin oty pidv dq dqd dqn dqs m K eb b lks Upr.
-  Proof.
+  Proof using .
     cbv beta delta [wp_iupdate_link_body].
     intros pcE pj ret_tgt HK Hcru Hgeom Hst Hcov Hlog Hnib Hstab Hnz
            Hup Hbump Hgrd
@@ -2282,7 +2282,7 @@ Qed.
     : wp_iupdate_unlink_body γs j γl pd pav pu
  ip inum dn dn0 bm u Sb cru
                              uty pidv dq dqd dqn dqs m K eb b lks Upr.
-  Proof.
+  Proof using .
     cbv beta delta [wp_iupdate_unlink_body].
     intros pcE pj ret_tgt HK Hcru Hgeom Hst Hcov Hlog Hnib Hstab Hnz Hnl
            Hda Hdirlen

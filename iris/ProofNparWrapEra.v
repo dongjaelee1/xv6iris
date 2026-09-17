@@ -121,7 +121,7 @@ Section ProofNparWrapEraMain.
  gf
  plen pfun nfun n Sb P Pmiss
                             pidv dq dqb dqs dqpv m K eb b lks Upr.
-  Proof.
+  Proof using .
     cbv beta delta [wp_npar_wrap_era_body].
     intros pcE pjv pv nb ret_tgt pl L
            HK Hroot Hnib0 Hlg Hsize Hbmap0 Hbmapcov

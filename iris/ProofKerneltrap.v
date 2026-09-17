@@ -89,7 +89,7 @@ Section ProofKerneltrap.
       (m : regfile) (av : nat) (p : mword 64)
       (ep sc tv : mword 64) (lks : gset string)
     : wp_kerneltrap_sconf_body γu γv γdk γtl γs pd pav pu m av p ep sc tv lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_kerneltrap_sconf_body].
     intros pcE ret_tgt Hlen Hav Hsc Hepal Hbelow.
     iIntros "Hcg Hmir Havail Hkptr Hcpu #Htext Hpc Hsepc Hscause Hstval #Hcaps Hclm Hcont".

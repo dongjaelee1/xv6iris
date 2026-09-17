@@ -295,7 +295,7 @@ Section SpecSysDup.
            sts !! fd1 = Some FdClosed⌝ ∗
           proc_priv γf p pid (us_ofile U fd1 fv) ∗
           fd_frags (pv_fdg (us_V U)) (<[fd1 := FdOpen rb wb t]> sts)))%I.
-  Proof.
+  Proof using .
     iIntros (Ha Hsrc) "H". rewrite /sys_dup_post.
     iDestruct "H" as "[[[%Hr %Hn] [Hp Hb]] |
                        [(%fd0' & %fv' & (%Hr & %Ha' & %Hfr) & Hp & Hb) |

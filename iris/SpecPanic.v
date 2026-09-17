@@ -135,7 +135,7 @@ Section PanicEnv.
 
   Global Instance panic_env_at_persistent γpr :
     Persistent (panic_env_at γpr).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* ---- THE GHOST NAMES ARE EXISTENTIAL, AND NOTHING IS LOST BY IT --------
      A call site threads ONE nameless persistent token; no spec below panic
@@ -196,17 +196,17 @@ Section PanicEnv.
     (∃ (γpr : gname), panic_env_at γpr)%I.
 
   Global Instance panic_env_persistent : Persistent panic_env.
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma panic_env_intro γpr :
     panic_env_at γpr -∗ panic_env.
-  Proof. iIntros "#H". iExists γpr. iExact "H". Qed.
+  Proof using . iIntros "#H". iExists γpr. iExact "H". Qed.
 
   (* the shape a site actually has in hand: the two credentials loose. *)
   Lemma panic_env_of γpr :
     is_lock γpr pk_pr_lock "pr"%string <{ emp : iProp Σ }> -∗
     prputc_env -∗ panic_env.
-  Proof.
+  Proof using .
     iIntros "#Hl #Hp". iExists γpr.
     rewrite /panic_env_at. by iFrame "Hl Hp".
   Qed.

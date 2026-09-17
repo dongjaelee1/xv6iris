@@ -69,7 +69,7 @@ Section UserMemTotal.
     tlb_ok_pt (mword_of_int 0) t' (register_lookup tlb s_x.(sregs)) ->
     u_mem_step pt t t' mm s_x.(mem) ->
     base_post pt t mm rsf va w.
-  Proof.
+  Proof using .
     intros Hdec Hhv Hlpad Hexec Hgm Hok Hnex Hag Htlb Hst.
     exists i, r, s_x, t'. split_and!;
       first [ exact Hdec | exact Hhv | exact Hlpad
@@ -96,7 +96,7 @@ Section UserMemTotal.
     tlb_ok_pt (mword_of_int 0) t' (register_lookup tlb s_x.(sregs)) ->
     u_mem_step pt t t' mm s_x.(mem) ->
     base_post pt t mm rsf va w.
-  Proof.
+  Proof using .
     intros Hdec Hhv Hlpad Hex1 Hg1 Hex2 Hg2 Hok Hnex Hag Htlb Hst.
     exists i, r, s_x, t'. split_and!;
       first [ exact Hdec | exact Hhv | exact Hlpad
@@ -122,7 +122,7 @@ Section UserMemTotal.
     tlb_ok_pt (mword_of_int 0) t' (register_lookup tlb s_x.(sregs)) ->
     u_mem_step pt t t' mm s_x.(mem) ->
     rvc_post pt t mm rsf va h.
-  Proof.
+  Proof using .
     intros Hdec Hhv Hzca Hex1 Hg1 Hex2 Hg2 Hok Hnex Hag Htlb Hst.
     exists i, r, s_x, t'. split_and!;
       first [ exact Hdec | exact Hhv | exact Hzca
@@ -139,21 +139,21 @@ Section UserMemTotal.
   (* ticked file, and [UserClassifyAsm]'s [u_fix_*] family closes them.     *)
   (* ------------------------------------------------------------------- *)
   Lemma u_ok_retire : u_result_ok RETIRE_SUCCESS.
-  Proof. unfold u_result_ok. by left. Qed.
+  Proof using . unfold u_result_ok. by left. Qed.
 
   Lemma u_ok_trap (e : ExceptionType) (xv pcx : mword 64) :
     user_exc e = true ->
     u_result_ok (rv64d_types.Trap (User, make_sync_exception e xv, pcx)).
-  Proof.
+  Proof using .
     intro Hue. unfold u_result_ok. right; left.
     exists e, xv, pcx. split; [reflexivity | exact Hue].
   Qed.
 
   Lemma u_nex_retire : match RETIRE_SUCCESS with ExecuteAs _ => False | _ => True end.
-  Proof. exact I. Qed.
+  Proof using . exact I. Qed.
 
   Lemma u_nex_trap (p : Privilege) (sx : sync_exception) (pcx : mword 64) :
     match rv64d_types.Trap (p, sx, pcx) with ExecuteAs _ => False | _ => True end.
-  Proof. exact I. Qed.
+  Proof using . exact I. Qed.
 
 End UserMemTotal.

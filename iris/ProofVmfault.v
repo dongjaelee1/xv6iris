@@ -181,7 +181,7 @@ Section ProofVmfault.
       (P : uptd) (M : gmap Z (bv 8)) (szv : mword 64) (K lvl : nat) (eb : bool)
       (p : mword 64) (b : bool) (lks : gset string)
     : wp_vmfault_sconf_mem_body γa mm P M szv K lvl eb p b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_vmfault_sconf_mem_body].
     intros pcE va va0 ret_tgt HK Htp Hroot Hsza1 Hszb Hlvl Hbelow.
     pose (sp0 := (mm !!! Regidx csp_rs1 : mword 64)).

@@ -149,7 +149,7 @@ Section ProofNameiMain.
     ⌜is_aligned_paddr (Physaddr (pa_stk sp0 4)) 8 = true
      /\ is_aligned_paddr (Physaddr (pa_stk sp0 3)) 8 = true⌝ ∗
     bytes_own (KTR := KT1) (DfracOwn 1) (pa_stk sp0 4) 16.
-  Proof.
+  Proof using .
     assert (E1 : pa_add (pa_stk sp0 4) 8 = pa_stk sp0 3)
       by (rewrite (pa_stk_next sp0 4 ltac:(lia)); reflexivity).
     iIntros "H1 H2".
@@ -165,7 +165,7 @@ Section ProofNameiMain.
     is_aligned_paddr (Physaddr (pa_stk sp0 3)) 8 = true ->
     bytes_own (KTR := KT1) (DfracOwn 1) (pa_stk sp0 4) 16 ⊢
     ∃ w1 w2 : bv 64, (pa_stk sp0 4) ↦₈[KT1] w1 ∗ (pa_stk sp0 3) ↦₈[KT1] w2.
-  Proof.
+  Proof using .
     intros Ha1 Ha2.
     assert (E1 : pa_add (pa_stk sp0 4) 8 = pa_stk sp0 3)
       by (rewrite (pa_stk_next sp0 4 ltac:(lia)); reflexivity).
@@ -179,18 +179,18 @@ Section ProofNameiMain.
   Lemma nam_bytes_name (a : mword 64) (N : nat) :
     bytes_own (KTR := KT1) (DfracOwn 1) a N ⊢
     ∃ f : nat -> bv 8, [∗ list] j ∈ seq 0 N, pa_add a j ↦ₘ[KT1] f j.
-  Proof. rewrite /bytes_own. exact (bb_any_named (KTR := KT1) a N). Qed.
+  Proof using . rewrite /bytes_own. exact (bb_any_named (KTR := KT1) a N). Qed.
 
   Lemma nam_name_bytes (a : mword 64) (N : nat) (f : nat -> bv 8) :
     ([∗ list] j ∈ seq 0 N, pa_add a j ↦ₘ[KT1] f j) ⊢ bytes_own (KTR := KT1) (DfracOwn 1) a N.
-  Proof. rewrite /bytes_own. exact (bb_named_any (KTR := KT1) a N f). Qed.
+  Proof using . rewrite /bytes_own. exact (bb_named_any (KTR := KT1) a N f). Qed.
 
   (* 16 = 14 + 2: namex writes at most fourteen; the two above ride through *)
   Lemma nam_buf_split (a : mword 64) (f : nat -> bv 8) :
     ([∗ list] j ∈ seq 0 16, pa_add a j ↦ₘ[KT1] f j) -∗
     ([∗ list] j ∈ seq 0 14, pa_add a j ↦ₘ[KT1] f j)
     ∗ ([∗ list] j ∈ seq 0 2, pa_add (pa_add a 14) j ↦ₘ[KT1] f (14 + j)%nat).
-  Proof.
+  Proof using .
     change 16%nat with (14 + 2)%nat.
     rewrite (bb_split a 14 2 f). iIntros "[$ $]".
   Qed.
@@ -199,7 +199,7 @@ Section ProofNameiMain.
     ([∗ list] j ∈ seq 0 14, pa_add a j ↦ₘ[KT1] nf j) -∗
     ([∗ list] j ∈ seq 0 2, pa_add (pa_add a 14) j ↦ₘ[KT1] f (14 + j)%nat) -∗
     bytes_own (KTR := KT1) (DfracOwn 1) a 16.
-  Proof.
+  Proof using .
     iIntros "H1 H2".
     iDestruct (nam_name_bytes a 14 nf with "H1") as "B1".
     iDestruct (nam_name_bytes (pa_add a 14) 2 (fun j => f (14 + j)%nat)
@@ -222,7 +222,7 @@ Section ProofNameiMain.
  gf
  plen pfun n Sb
                           pidv dq dqb dqs dqpv m K eb b lks Upr.
-  Proof.
+  Proof using .
     cbv beta delta [wp_namei_gen_body].
     intros pcE pjv pv ret_tgt pl L
            HK Hroot Hnib0 Hlg Hsize Hbmap0 Hbmapcov
@@ -624,7 +624,7 @@ Section ProofNameiMain.
  gf
  plen pfun n
                           pidv dq dqb dqs dqpv m K eb b lks Upr.
-  Proof.
+  Proof using .
     cbv beta delta [wp_namei_sconf_body].
     intros pcE pjv pv ret_tgt pl L
            HK Hroot Hnib0 Hlg Hsize Hbmap0 Hbmapcov

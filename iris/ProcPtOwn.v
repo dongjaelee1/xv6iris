@@ -3014,12 +3014,12 @@ Section ProcPt.
     ([∗ list] j ∈ seq o (a + b), phys_byte_any (pa_add p j)) ⊣⊢
     ([∗ list] j ∈ seq o a, phys_byte_any (pa_add p j)) ∗
     ([∗ list] j ∈ seq (o + a) b, phys_byte_any (pa_add p j)).
-  Proof. by rewrite seq_app big_sepL_app. Qed.
+  Proof using . by rewrite seq_app big_sepL_app. Qed.
 
   Lemma phys_bwin_rebase (p : mword 64) (o n : nat) :
     ([∗ list] j ∈ seq o n, phys_byte_any (pa_add p j)) ⊣⊢
     ([∗ list] j ∈ seq 0 n, phys_byte_any (pa_add (pa_add p o) j)).
-  Proof.
+  Proof using .
     rewrite -{1}(Nat.add_0_r o) -fmap_add_seq big_sepL_fmap.
     apply big_sepL_proper. intros k j _. by rewrite pa_add_add.
   Qed.
@@ -3028,7 +3028,7 @@ Section ProcPt.
     is_aligned_paddr (Physaddr a) 8 = true ->
     ([∗ list] j ∈ seq 0 8, phys_byte_any (pa_add a j)) ⊢
     ∃ w : mword 64, TsoCtx.ctx_phys_word_pointsto XI a (DfracOwn 1) w.
-  Proof.
+  Proof using .
     intro Hal. rewrite /phys_byte_any.
     change (seq 0 8) with [0;1;2;3;4;5;6;7]%nat.
     iIntros "(H0 & H1 & H2 & H3 & H4 & H5 & H6 & H7 & _)".
@@ -3056,7 +3056,7 @@ Section ProcPt.
   Lemma phys_word8_bwin (a : mword 64) (w : mword 64) :
     TsoCtx.ctx_phys_word_pointsto XI a (DfracOwn 1) w ⊢
     [∗ list] j ∈ seq 0 8, phys_byte_any (pa_add a j).
-  Proof.
+  Proof using .
     rewrite TsoCtx.ctx_phys_word_pointsto_bytes. apply big_sepL_mono.
     intros k j _. iIntros "H". by iExists (nth_byte w j).
   Qed.
@@ -3065,7 +3065,7 @@ Section ProcPt.
     page_valid p -> (o + 8 <= 4096)%nat -> (8 | Z.of_nat o) ->
     ([∗ list] j ∈ seq o 8, phys_byte_any (pa_add p j)) ⊢
     ∃ w : mword 64, TsoCtx.ctx_phys_word_pointsto XI (pa_add p o) (DfracOwn 1) w.
-  Proof.
+  Proof using .
     intros Hpv Ho Hdvd. rewrite phys_bwin_rebase.
     apply phys_bytes_word8. apply (page_off_aligned p o 8 Hpv ltac:(lia) ltac:(lia));
       [ exists 512; reflexivity | exact Hdvd ].
@@ -3074,14 +3074,14 @@ Section ProcPt.
   Lemma phys_page_field8_back (p : mword 64) (o : nat) (w : mword 64) :
     TsoCtx.ctx_phys_word_pointsto XI (pa_add p o) (DfracOwn 1) w ⊢
     [∗ list] j ∈ seq o 8, phys_byte_any (pa_add p j).
-  Proof. rewrite phys_bwin_rebase. apply phys_word8_bwin. Qed.
+  Proof using . rewrite phys_bwin_rebase. apply phys_word8_bwin. Qed.
 
   Lemma phys_page_words8 (p : mword 64) (n : nat) :
     page_valid p -> (8 * n <= 4096)%nat ->
     ([∗ list] j ∈ seq 0 (8 * n), phys_byte_any (pa_add p j)) ⊢
     ∃ ws : list (mword 64), ⌜length ws = n⌝ ∗
       ([∗ list] i ↦ w ∈ ws, TsoCtx.ctx_phys_word_pointsto XI (pa_add p (8 * i)%nat) (DfracOwn 1) w).
-  Proof.
+  Proof using .
     intro Hpv. induction n as [|n IH]; intro Hn.
     - iIntros "_". iExists []. by iSplit.
     - replace (8 * S n)%nat with (8 * n + 8)%nat by lia.
@@ -3100,7 +3100,7 @@ Section ProcPt.
   Lemma phys_page_words8_back (p : mword 64) (ws : list (mword 64)) :
     ([∗ list] i ↦ w ∈ ws, TsoCtx.ctx_phys_word_pointsto XI (pa_add p (8 * i)%nat) (DfracOwn 1) w) ⊢
     [∗ list] j ∈ seq 0 (8 * length ws), phys_byte_any (pa_add p j).
-  Proof.
+  Proof using .
     induction ws as [|w ws IH] using rev_ind; [ by iIntros "_" | ].
     replace (8 * length (ws ++ [w]))%nat with (8 * length ws + 8)%nat
       by (rewrite length_app; cbn [length]; lia).
@@ -3134,7 +3134,7 @@ Section ProcPt.
   (* ------------------------------------------------------------------ *)
   Lemma phys_bytes_udata (S : gset Arch.pa) :
     ([∗ set] a ∈ S, phys_byte_any a) ⊣⊢ udata_own S.
-  Proof.
+  Proof using .
     iSplit.
     - iIntros "H".
       iInduction S as [| a S' Hnin] "IH" using set_ind_L.
@@ -3161,7 +3161,7 @@ Section ProcPt.
      [page_pa_inj] gives the 4096 addresses NoDup) *)
   Lemma phys_page_own_set (ppn : mword 44) :
     phys_page_own ppn ⊣⊢ ([∗ set] a ∈ page_pas ppn, phys_byte_any a).
-  Proof.
+  Proof using .
     rewrite /phys_page_own /page_pas.
     rewrite big_sepS_list_to_set.
     - rewrite big_sepL_fmap. reflexivity.
@@ -3176,7 +3176,7 @@ Section ProcPt.
   Lemma phys_pages_own_set (T : gset (mword 44)) :
     ([∗ set] ppn ∈ T, phys_page_own ppn)
     ⊣⊢ ([∗ set] a ∈ pages_pas T, phys_byte_any a).
-  Proof.
+  Proof using .
     induction T as [| ppn T Hnin IH] using set_ind_L.
     - rewrite pages_pas_empty !big_sepS_empty. reflexivity.
     - rewrite pages_pas_insert.
@@ -3193,14 +3193,14 @@ Section ProcPt.
   (* ------------------------------------------------------------------ *)
   Lemma upt_pages_udata (um : gmap (mword 27) (mword 64)) :
     upt_pages_own um ⊣⊢ udata_own (um_pas um).
-  Proof.
+  Proof using .
     rewrite /upt_pages_own /um_pas.
     rewrite phys_pages_own_set. apply phys_bytes_udata.
   Qed.
 
   Lemma proc_pt_own_udata (P : uptd) :
     proc_pt_own P ⊣⊢ udata_own (ud_pas P).
-  Proof. rewrite /proc_pt_own /ud_pas upt_pages_udata. reflexivity. Qed.
+  Proof using . rewrite /proc_pt_own /ud_pas upt_pages_udata. reflexivity. Qed.
 
   (* ------------------------------------------------------------------ *)
   (* THE ADDRESS-SPACE BRIDGE.  The same bytes, re-keyed: the kernel's    *)
@@ -3214,7 +3214,7 @@ Section ProcPt.
   Lemma udata_own_umem (P : uptd) :
     upt_map_wf P.(ud_um) -> um_inj P.(ud_um) ->
     udata_own (ud_pas P) ⊣⊢ umem_any P.
-  Proof.
+  Proof using .
     intros Hwf Hinj.
     rewrite umem_any_set.
     rewrite (bigset_gather_reindex (uva_pa P) (uva_dom P) (u_data_pa P)
@@ -3233,7 +3233,7 @@ Section ProcPt.
   Lemma proc_pt_own_umem (P : uptd) :
     upt_map_wf P.(ud_um) -> um_inj P.(ud_um) ->
     proc_pt_own P ⊣⊢ umem_any P.
-  Proof.
+  Proof using .
     intros Hwf Hinj. rewrite proc_pt_own_udata. by apply udata_own_umem.
   Qed.
 
@@ -3262,7 +3262,7 @@ Section ProcPt.
   Lemma ctx_ident_phys (a : Arch.pa) (dq : dfrac) (b : bv 8) :
     kmap_static (svpn_of a) KP_rw ->
     kmap_static_claims -∗ a ↦ₘ{dq} b -∗ TsoCtx.ctx_phys_pointsto XI a dq b.
-  Proof.
+  Proof using .
     iIntros (Hs) "#Hcl H".
     iDestruct (TsoCtx.ctx_pointsto_canonical with "H") as %Hc.
     iDestruct (kmap_static_claims_at (svpn_of a) KP_rw Hs with "Hcl") as "#Hk0".
@@ -3273,7 +3273,7 @@ Section ProcPt.
   Lemma phys_ident_ctx (a : Arch.pa) (dq : dfrac) (b : bv 8) :
     kmap_static (svpn_of a) KP_rw -> (uint a < 274877906944)%Z ->
     kmap_static_claims -∗ TsoCtx.ctx_phys_pointsto XI a dq b -∗ a ↦ₘ{dq} b.
-  Proof.
+  Proof using .
     iIntros (Hs Hc) "#Hcl H".
     iDestruct (kmap_static_claims_at (svpn_of a) KP_rw Hs with "Hcl") as "#Hk0".
     iApply (TsoCtx.ctx_pointsto_of_phys XI (kpt_leaf_ppn (svpn_of a)) a dq b
@@ -3288,7 +3288,7 @@ Section ProcPt.
   Lemma page_filled_to_phys (ppn : mword 44) (c : bv 8) :
     page_valid (page_base ppn) ->
     kmap_static_claims -∗ page_filled (page_base ppn) c -∗ phys_page_own ppn.
-  Proof.
+  Proof using .
     intros Hv. iIntros "#Hb Hp".
     rewrite /page_filled /phys_page_own.
     iApply (big_sepL_impl with "Hp").
@@ -3303,7 +3303,7 @@ Section ProcPt.
   Lemma phys_to_page_own (ppn : mword 44) :
     page_valid (page_base ppn) ->
     kmap_static_claims -∗ phys_page_own ppn -∗ page_own (page_base ppn).
-  Proof.
+  Proof using .
     intros Hv. iIntros "#Hb Hp".
     rewrite /page_own /phys_page_own.
     iApply (big_sepL_impl with "Hp").
@@ -3326,7 +3326,7 @@ Section ProcPt.
   (* ------------------------------------------------------------------ *)
   Lemma phys_page_own_dup (ppn : mword 44) :
     phys_page_own ppn -∗ phys_page_own ppn -∗ False.
-  Proof.
+  Proof using .
     iIntros "H1 H2".
     rewrite /phys_page_own.
     rewrite (ppo_seq_cons 0 4095).
@@ -3344,7 +3344,7 @@ Section ProcPt.
      obligation. *)
   Lemma upt_pages_own_fresh (um : gmap (mword 27) (mword 64)) (ppn : mword 44) :
     phys_page_own ppn -∗ upt_pages_own um -∗ ⌜ppn ∉ um_ppns um⌝.
-  Proof.
+  Proof using .
     iIntros "Hp Hum".
     destruct (decide (ppn ∈ um_ppns um)) as [Hin | Hnin]; [| by iPureIntro].
     iEval (rewrite /upt_pages_own
@@ -3359,7 +3359,7 @@ Section ProcPt.
       (vpn : mword 27) (w : mword 64) :
     um !! vpn = None ->
     phys_page_own (pte_ppn w) -∗ upt_pages_own um -∗ upt_pages_own (<[vpn := w]> um).
-  Proof.
+  Proof using .
     intros Hn. iIntros "Hp Hum".
     iDestruct (upt_pages_own_fresh um (pte_ppn w) with "Hp Hum") as %Hnin.
     rewrite /upt_pages_own.
@@ -3375,7 +3375,7 @@ Section ProcPt.
       (vpn : mword 27) (w : mword 64) :
     um_inj um -> um !! vpn = Some w ->
     upt_pages_own um ⊢ phys_page_own (pte_ppn w) ∗ upt_pages_own (delete vpn um).
-  Proof.
+  Proof using .
     intros Hinj Hl.
     assert (Hin : pte_ppn w ∈ um_ppns um).
     { apply elem_of_um_ppns. exists vpn, w. split; [exact Hl | reflexivity]. }
@@ -3392,7 +3392,7 @@ Section ProcPt.
   Lemma page_filled_to_phys_vmfault (r : mword 64) (c : bv 8) :
     page_valid r ->
     kmap_static_claims -∗ page_filled r c -∗ phys_page_own (pte_ppn (vmfault_pte r)).
-  Proof.
+  Proof using .
     intros Hval.
     pose proof (page_base_of_valid r Hval) as Hpb.
     assert (Hv' : page_valid (page_base
@@ -3459,7 +3459,7 @@ Section ProcPt.
     (⌜proc_pt_wf P⌝ ∗
      pt_frame (upt_tree_spec P.(ud_root) P.(ud_tfp) P.(ud_um)) ∗
      proc_pt_own P).
-  Proof.
+  Proof using .
     rewrite /proc_pt_any /proc_pt. iSplit.
     - iIntros "H". iDestruct "H" as (M) "(%Hwf & Ht & Hm)".
       iSplitR; [iPureIntro; exact Hwf |]. iFrame "Ht".
@@ -3473,7 +3473,7 @@ Section ProcPt.
 
   Lemma proc_pt_forget (P : uptd) (M : gmap Z (bv 8)) :
     proc_pt P M -∗ proc_pt_any P.
-  Proof. iIntros "H". iExists M. iExact "H". Qed.
+  Proof using . iIntros "H". iExists M. iExact "H". Qed.
 
   (* ------------------------------------------------------------------ *)
   (* §5c THE MEMORY-INDEXED PROCESS PAGE TABLE.                          *)
@@ -3499,7 +3499,7 @@ Section ProcPt.
 
   Lemma proc_pt_ptm (P : uptd) (sz : Z) :
     proc_pt_any P ⊣⊢ ∃ M : gmap Z (bv 8), proc_ptm P sz M.
-  Proof.
+  Proof using .
     rewrite proc_pt_any_unfold /proc_ptm. iSplit.
     - iIntros "(%Hwf & Ht & Hp)".
       iEval (rewrite (proc_pt_own_umem P (proj1 Hwf) (proc_pt_wf_inj P Hwf)))
@@ -3521,7 +3521,7 @@ Section ProcPt.
   Lemma proc_ptm_acc_pt (P : uptd) (sz : Z) (M : gmap Z (bv 8)) :
     proc_ptm P sz M -∗ ∃ Mp : gmap Z (bv 8),
       proc_pt P Mp ∗ (proc_pt P Mp -∗ proc_ptm P sz M).
-  Proof.
+  Proof using .
     rewrite /proc_ptm /proc_pt /umem_lazy.
     iIntros "(%Hwf & Ht & H)".
     iDestruct "H" as (Mp) "(%Hsub & %Hdm & %Hz & Hm)".
@@ -3557,13 +3557,13 @@ Section ProcPt.
   (* ------------------------------------------------------------------ *)
   Lemma umem_own_dom (P : uptd) (M : gmap Z (bv 8)) :
     umem_own P M -∗ ⌜dom M = uva_dom P⌝.
-  Proof. rewrite /umem_own. iIntros "[%H _]". iPureIntro. exact H. Qed.
+  Proof using . rewrite /umem_own. iIntros "[%H _]". iPureIntro. exact H. Qed.
 
   (* [umem_lazy_intro]'s proof, with [Mp] FIXED to the caller's map
      instead of chosen. *)
   Lemma umem_lazy_of_own (P : uptd) (sz : Z) (M : gmap Z (bv 8)) :
     umem_own P M -∗ ∃ Mz : gmap Z (bv 8), ⌜M ⊆ Mz⌝ ∗ umem_lazy P sz Mz.
-  Proof.
+  Proof using .
     iIntros "Hm". iDestruct "Hm" as "[%Hdom Hm]".
     assert (Hmp : forall va, is_Some (M !! va) <-> uva_mapped P va).
     { intros va. rewrite <- elem_of_dom. rewrite Hdom. apply elem_of_uva_dom. }
@@ -3593,7 +3593,7 @@ Section ProcPt.
   Lemma umem_own_of_lazy (P : uptd) (sz : Z) (M Mz : gmap Z (bv 8)) :
     M ⊆ Mz -> dom M = uva_dom P ->
     umem_lazy P sz Mz -∗ umem_own P M.
-  Proof.
+  Proof using .
     intros Hsub Hdom. iIntros "H".
     iDestruct "H" as (Mp) "(%Hsub2 & _ & _ & [%Hdom2 Hm])".
     assert (HMp : Mp = M).
@@ -3613,7 +3613,7 @@ Section ProcPt.
   Lemma proc_ptm_of_pt (P : uptd) (sz : Z) (M : gmap Z (bv 8)) :
     proc_pt P M -∗
     ⌜dom M = uva_dom P⌝ ∗ ∃ Mz : gmap Z (bv 8), ⌜M ⊆ Mz⌝ ∗ proc_ptm P sz Mz.
-  Proof.
+  Proof using .
     rewrite /proc_pt /proc_ptm. iIntros "(%Hwf & Ht & Hm)".
     iDestruct (umem_own_dom with "Hm") as "%Hdom".
     iSplitR; [iPureIntro; exact Hdom |].
@@ -3625,7 +3625,7 @@ Section ProcPt.
   Lemma proc_pt_of_ptm (P : uptd) (sz : Z) (M Mz : gmap Z (bv 8)) :
     M ⊆ Mz -> dom M = uva_dom P ->
     proc_ptm P sz Mz -∗ proc_pt P M.
-  Proof.
+  Proof using .
     intros Hsub Hdom. rewrite /proc_pt /proc_ptm.
     iIntros "(%Hwf & Ht & Hm)".
     iSplitR; [iPureIntro; exact Hwf |]. iFrame "Ht".
@@ -3637,7 +3637,7 @@ Section ProcPt.
      image is always SOME mapped one. *)
   Lemma proc_pt_ptm_any (P : uptd) (sz : Z) (M : gmap Z (bv 8)) :
     proc_pt P M -∗ ∃ Mz : gmap Z (bv 8), proc_ptm P sz Mz.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct (proc_ptm_of_pt P sz M with "H") as "(_ & H)".
     iDestruct "H" as (Mz) "[_ H]". iExists Mz. iExact "H".
   Qed.
@@ -3651,7 +3651,7 @@ Section ProcPt.
     ([∗ list] j ∈ seq 0 n,
        TsoCtx.ctx_phys_pointsto XI (pa_add (page_base ppn) (off + j)%nat : Arch.pa)
          (DfracOwn 1) (f j)).
-  Proof.
+  Proof using .
     intros Hv Hn. iIntros "#Hb H".
     iApply (big_sepL_impl with "H").
     iIntros "!>" (k x Hx) "Hj".
@@ -3667,7 +3667,7 @@ Section ProcPt.
   Lemma umem_own_page_fresh (P : uptd) (M : gmap Z (bv 8)) (ppn : mword 44) :
     upt_map_wf P.(ud_um) -> um_inj P.(ud_um) ->
     umem_own P M -∗ phys_page_own ppn -∗ ⌜ppn ∉ um_ppns P.(ud_um)⌝.
-  Proof.
+  Proof using .
     intros Hwf Hinj. iIntros "Hm Hph".
     iAssert (umem_any P) with "[Hm]" as "Hany"; [iExists M; iExact "Hm" |].
     rewrite <- (proc_pt_own_umem P Hwf Hinj).
@@ -3683,7 +3683,7 @@ Section ProcPt.
     ([∗ list] j ∈ seq 0 4096,
        TsoCtx.ctx_phys_pointsto XI (pa_add (page_base ppn) j : Arch.pa) (DfracOwn 1) (bs j)) -∗
     ⌜ppn ∉ um_ppns P.(ud_um)⌝.
-  Proof.
+  Proof using .
     intros Hwf Hinj. iIntros "Hm Hp".
     iAssert (phys_page_own ppn) with "[Hp]" as "Hph".
     { rewrite /phys_page_own /phys_byte_any.
@@ -3699,7 +3699,7 @@ Section ProcPt.
       ⌜upt_ad_view P.(ud_tfp) P.(ud_um) m_ad⌝ ∗
       ⌜pt_base t = P.(ud_root)⌝ ∗ ⌜proc_pt_wf P⌝ ∗
       ptree_own 2 (DfracOwn 1) t ∗ umem_lazy P sz M.
-  Proof.
+  Proof using .
     iIntros "(%Hwf & Ht & Hm)".
     iDestruct "Ht" as (t) "(%Hspec & Ht)".
     destruct (upt_spec_rep0 P.(ud_root) P.(ud_tfp) P.(ud_um) t Hspec)
@@ -3717,7 +3717,7 @@ Section ProcPt.
     proc_pt_wf P -> upt_ad_view P.(ud_tfp) P.(ud_um) m_ad ->
     pt_rep0 t' m_ad -> pt_base t' = P.(ud_root) ->
     ptree_own 2 (DfracOwn 1) t' -∗ umem_lazy P sz M -∗ proc_ptm P sz M.
-  Proof.
+  Proof using .
     intros Hwf Hview Hrep Hbase. iIntros "Ht Hm".
     rewrite /proc_ptm. iSplitR; [iPureIntro; exact Hwf |].
     iSplitL "Ht"; [| iFrame "Hm"].
@@ -3731,7 +3731,7 @@ Section ProcPt.
   Lemma uva_dom_insert_perm (P : uptd) (perm : Z) (vpn : mword 27) (r : mword 64) :
     P.(ud_um) !! vpn = None ->
     uva_dom (uptd_insert_perm P perm vpn r) = uva_dom P ∪ upage_dom vpn.
-  Proof.
+  Proof using .
     intros Hn. apply set_eq. intros va.
     rewrite elem_of_union elem_of_uva_dom elem_of_uva_dom elem_of_upage_dom.
     unfold uva_mapped, uptd_insert, uptd_insert_perm. cbn [ud_um]. split.
@@ -3750,7 +3750,7 @@ Section ProcPt.
   Lemma uva_dom_insert (P : uptd) (vpn : mword 27) (r : mword 64) :
     P.(ud_um) !! vpn = None ->
     uva_dom (uptd_insert P vpn r) = uva_dom P ∪ upage_dom vpn.
-  Proof. exact (uva_dom_insert_perm P 22 vpn r). Qed.
+  Proof using . exact (uva_dom_insert_perm P 22 vpn r). Qed.
 
   (* ...and the same fact pointwise, which is the form the lazy view's
      domain condition is stated in *)
@@ -3759,7 +3759,7 @@ Section ProcPt.
     P.(ud_um) !! vpn = None ->
     uva_mapped (uptd_insert_perm P perm vpn r) va
     <-> (uva_mapped P va \/ va ∈ upage_dom vpn).
-  Proof.
+  Proof using .
     intros Hn.
     rewrite <- !elem_of_uva_dom. rewrite (uva_dom_insert_perm P perm vpn r Hn).
     apply elem_of_union.
@@ -3769,12 +3769,12 @@ Section ProcPt.
     P.(ud_um) !! vpn = None ->
     uva_mapped (uptd_insert P vpn r) va
     <-> (uva_mapped P va \/ va ∈ upage_dom vpn).
-  Proof. exact (uva_mapped_insert_perm P 22 vpn r va). Qed.
+  Proof using . exact (uva_mapped_insert_perm P 22 vpn r va). Qed.
 
   Lemma uva_dom_insert_disj (P : uptd) (vpn : mword 27) (r : mword 64) :
     P.(ud_um) !! vpn = None -> uva_dom P ## upage_dom vpn.
   (* [r] is vestigial -- the disjointness is about [P] and the vpn alone *)
-  Proof.
+  Proof using .
     intros Hn. apply elem_of_disjoint. intros va Hold Hnew.
     apply elem_of_uva_dom in Hold as (v0 & w0 & j0 & Hl & Hj0 & Heq0).
     apply elem_of_upage_dom in Hnew as (j & Hj & Heq).
@@ -3791,7 +3791,7 @@ Section ProcPt.
   Lemma upage_dom_range (vpn : mword 27) (va : Z) :
     va ∈ upage_dom vpn
     <-> (bv_unsigned vpn * 4096 <= va < bv_unsigned vpn * 4096 + 4096)%Z.
-  Proof.
+  Proof using .
     rewrite elem_of_upage_dom. split.
     - intros (j & Hj & ->). lia.
     - intros Hr. exists (Z.to_nat (va - bv_unsigned vpn * 4096)%Z).
@@ -3801,7 +3801,7 @@ Section ProcPt.
   Lemma uva_mapped_delete (P : uptd) (vpn : mword 27) (va : Z) :
     uva_mapped (uptd_delete P vpn) va
     <-> (uva_mapped P va /\ va ∉ upage_dom vpn).
-  Proof.
+  Proof using .
     unfold uva_mapped, uptd_delete. cbn [ud_um]. split.
     - intros (v0 & w0 & j & Hl & Hj & ->).
       apply lookup_delete_Some in Hl as (Hne & Hl).
@@ -3820,7 +3820,7 @@ Section ProcPt.
 
   Lemma uva_dom_delete (P : uptd) (vpn : mword 27) :
     uva_dom (uptd_delete P vpn) = uva_dom P ∖ upage_dom vpn.
-  Proof.
+  Proof using .
     apply set_eq. intros va.
     (* NOT [!elem_of_uva_dom]: there are exactly two occurrences, and the
        repeat's third, failing attempt re-runs setoid rewriting over the
@@ -3833,7 +3833,7 @@ Section ProcPt.
   Lemma uva_pa_delete (P : uptd) (vpn : mword 27) (va : Z) :
     upt_map_wf P.(ud_um) -> uva_mapped (uptd_delete P vpn) va ->
     uva_pa (uptd_delete P vpn) va = uva_pa P va.
-  Proof.
+  Proof using .
     intros Hwf Hm.
     unfold uva_mapped, uptd_delete in Hm. cbn [ud_um] in Hm.
     destruct Hm as (v0 & w0 & j & Hl & Hj & ->).
@@ -3847,7 +3847,7 @@ Section ProcPt.
       (r : mword 64) (va : Z) :
     upt_map_wf P.(ud_um) -> P.(ud_um) !! vpn = None ->
     uva_mapped P va -> uva_pa (uptd_insert_perm P perm vpn r) va = uva_pa P va.
-  Proof.
+  Proof using .
     intros Hwf Hn (v0 & w0 & j & Hl & Hj & ->).
     assert (Hne : vpn <> v0) by (intros ->; rewrite Hn in Hl; discriminate).
     unfold uva_pa, uptd_insert_perm. cbn [ud_um].
@@ -3858,7 +3858,7 @@ Section ProcPt.
   Lemma uva_pa_insert_old (P : uptd) (vpn : mword 27) (r : mword 64) (va : Z) :
     upt_map_wf P.(ud_um) -> P.(ud_um) !! vpn = None ->
     uva_mapped P va -> uva_pa (uptd_insert P vpn r) va = uva_pa P va.
-  Proof. exact (uva_pa_insert_old_perm P 22 vpn r va). Qed.
+  Proof using . exact (uva_pa_insert_old_perm P 22 vpn r va). Qed.
 
   (* THE MEMORY SIDE OF vmfault'S INSERT -- AND IT IS THE IDENTITY.
      The page vmfault maps is INSIDE the process's size and was therefore
@@ -3869,7 +3869,7 @@ Section ProcPt.
   Lemma umem_lazy_dom (P : uptd) (sz : Z) (M : gmap Z (bv 8)) :
     umem_lazy P sz M -∗
     ⌜forall va, is_Some (M !! va) <-> (uva_mapped P va \/ uva_live sz va)⌝.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as (Mp) "(_ & %H & _ & _)".
     iPureIntro. exact H.
   Qed.
@@ -3878,7 +3878,7 @@ Section ProcPt.
     proc_ptm P sz M -∗
     ⌜forall va : Z, ~ uva_mapped P va -> uva_live sz va ->
        M !! va = Some (bv_0 8)⌝.
-  Proof.
+  Proof using .
     iIntros "(_ & _ & Hm)". iDestruct "Hm" as (Mp) "(_ & _ & %H & _)".
     iPureIntro. exact H.
   Qed.
@@ -3887,11 +3887,11 @@ Section ProcPt.
     proc_ptm P sz M -∗
     ⌜forall va : Z, is_Some (M !! va)
        <-> (uva_mapped P va \/ uva_live sz va)⌝.
-  Proof. iIntros "(_ & _ & Hm)". iApply (umem_lazy_dom with "Hm"). Qed.
+  Proof using . iIntros "(_ & _ & Hm)". iApply (umem_lazy_dom with "Hm"). Qed.
 
   Lemma proc_ptm_pt (P : uptd) (sz : Z) (M : gmap Z (bv 8)) :
     proc_ptm P sz M -∗ proc_pt_any P.
-  Proof. iIntros "H". rewrite (proc_pt_ptm P sz). iExists M. iExact "H". Qed.
+  Proof using . iIntros "H". rewrite (proc_pt_ptm P sz). iExists M. iExact "H". Qed.
 
   (* ---- the WINDOW a copy loop borrows, and the tier it speaks -------- *)
 
@@ -3903,7 +3903,7 @@ Section ProcPt.
          (DfracOwn 1) (f j)) -∗
     ([∗ list] j ∈ seq 0 n,
        (pa_add (pa_add (page_base ppn) off) j : Arch.pa) ↦ₘ f j).
-  Proof.
+  Proof using .
     intros Hv Hn. iIntros "#Hb H".
     iApply (big_sepL_impl with "H").
     iIntros "!>" (k x Hx) "Hj".
@@ -3925,7 +3925,7 @@ Section ProcPt.
   Lemma umem_lazy_shrink (P : uptd) (sz szn : Z) (M : gmap Z (bv 8)) :
     (forall a : Z, uva_live szn a -> uva_live sz a) ->
     umem_lazy P sz M -∗ ∃ M1 : gmap Z (bv 8), ⌜M1 ⊆ M⌝ ∗ umem_lazy P szn M1.
-  Proof.
+  Proof using .
     intros Hmono. iIntros "H".
     iDestruct "H" as (Mp) "(%Hsub & %Hdm & %Hlz & Hm)".
     iDestruct "Hm" as "[%Hdom Hmp]".
@@ -3964,7 +3964,7 @@ Section ProcPt.
      fields -- everything it reads is a function of the user map *)
   Lemma umem_lazy_um_cong (P Q : uptd) (sz : Z) (M : gmap Z (bv 8)) :
     P.(ud_um) = Q.(ud_um) -> umem_lazy P sz M ⊣⊢ umem_lazy Q sz M.
-  Proof.
+  Proof using .
     intros Heq.
     assert (Hmp : forall va, uva_mapped P va <-> uva_mapped Q va)
       by (intros va; unfold uva_mapped; rewrite Heq; reflexivity).
@@ -4013,7 +4013,7 @@ Section ProcPt.
       page_own (page_base (pte_ppn w))
       ∗ umem_lazy (uptd_delete P vpn) szn
           (umem_del M (bv_unsigned vpn * 4096)%Z 4096).
-  Proof.
+  Proof using .
     intros Hwf Hl Hdead. iIntros "#Hb H".
     iDestruct "H" as (Mp) "(%Hsub & %Hdm & %Hlz & Hm)".
     iDestruct "Hm" as "[%Hdom Hmp]".
@@ -4128,7 +4128,7 @@ Section ProcPt.
       page_own (page_base (pte_ppn w))
       ∗ umem_lazy (uptd_delete P vpn) szn
           (umem_write M (bv_unsigned vpn * 4096)%Z 4096 (fun _ => bv_0 8)).
-  Proof.
+  Proof using .
     intros Hwf Hl Hlive. iIntros "#Hb H".
     iDestruct "H" as (Mp) "(%Hsub & %Hdm & %Hlz & Hm)".
     iDestruct "Hm" as "[%Hdom Hmp]".
@@ -4252,7 +4252,7 @@ Section ProcPt.
   Lemma umem_lazy_grow_sz (P : uptd) (sz sz' : Z) (M : gmap Z (bv 8)) :
     (sz <= sz')%Z ->
     umem_lazy P sz M -∗ umem_lazy P sz' (umem_grow M sz').
-  Proof.
+  Proof using .
     intros Hle. iIntros "H". iDestruct "H" as (Mp) "(%Hsub & %Hdm & %Hlz & Hm)".
     iExists Mp. iSplitR.
     { iPureIntro. etransitivity; [exact Hsub | apply map_union_subseteq_l]. }
@@ -4288,7 +4288,7 @@ Section ProcPt.
   Lemma proc_ptm_grow_sz (P : uptd) (sz sz' : Z) (M : gmap Z (bv 8)) :
     (sz <= sz')%Z ->
     proc_ptm P sz M -∗ proc_ptm P sz' (umem_grow M sz').
-  Proof.
+  Proof using .
     intros Hle. rewrite /proc_ptm. iIntros "(%Hwf & Ht & Hm)".
     iSplitR; [iPureIntro; exact Hwf |]. iFrame "Ht".
     iApply (umem_lazy_grow_sz P sz sz' M Hle with "Hm").
@@ -4306,7 +4306,7 @@ Section ProcPt.
     (forall a : Z, uva_live sz' a <-> (uva_live sz a \/ a ∈ upage_dom vpn)) ->
     umem_lazy P sz M -∗
     umem_lazy P sz' (M ∪ gset_to_gmap (bv_0 8) (upage_dom vpn)).
-  Proof.
+  Proof using .
     intros Hn Hlv. iIntros "H".
     iDestruct "H" as (Mp) "(%Hsub & %Hdm & %Hlz & Hm)".
     assert (Hnm : forall va, va ∈ upage_dom vpn -> ~ uva_mapped P va).
@@ -4359,7 +4359,7 @@ Section ProcPt.
             (bv_unsigned vpn * 4096 + Z.of_nat j)%Z : Arch.pa)
          (DfracOwn 1) (bs j)) -∗
     umem_lazy (uptd_insert_perm P perm vpn r) sz M.
-  Proof.
+  Proof using .
     intros Hwf Hn Hlive Hzero.
     iIntros "H Hpg".
     iDestruct "H" as (Mp) "(%Hsub & %Hdm & %Hlz & Hm)".
@@ -4441,7 +4441,7 @@ Section ProcPt.
          (DfracOwn 1) (bs j)) -∗
     umem_lazy (uptd_insert_perm P perm vpn r) sz
               (umem_write M (bv_unsigned vpn * 4096)%Z 4096 bs).
-  Proof.
+  Proof using .
     intros Hwf Hn Hlive.
     iIntros "H Hpg".
     iDestruct "H" as (Mp) "(%Hsub & %Hdm & %Hlz & Hm)".
@@ -4539,7 +4539,7 @@ Section ProcPt.
             (bv_unsigned vpn * 4096 + Z.of_nat j)%Z : Arch.pa)
          (DfracOwn 1) (bs j)) -∗
     umem_lazy (uptd_insert P vpn r) sz M.
-  Proof. exact (umem_lazy_fault_perm P 22 sz M vpn r bs). Qed.
+  Proof using . exact (umem_lazy_fault_perm P 22 sz M vpn r bs). Qed.
 
   (* ...and the whole step: the tree grows, the memory does NOT move. *)
   Lemma proc_ptm_fault (P : uptd) (sz : Z) (M : gmap Z (bv 8))
@@ -4557,7 +4557,7 @@ Section ProcPt.
     ([∗ list] j ∈ seq 0 4096, (pa_add r j : Arch.pa) ↦ₘ bs j) -∗
     umem_lazy P sz M -∗
     proc_ptm (uptd_insert P vpn r) sz M.
-  Proof.
+  Proof using .
     intros Hwf Hview Hnone Hlt Hrep Hbase Hval Hlive Hzero.
     pose proof Hwf as (Hmwf & Hawf & Hpwf & Hinj & Htfv).
     destruct (proj1 (proj1 Hview vpn) Hnone) as (Hnt & Hntf & Hunone).
@@ -4639,7 +4639,7 @@ Section ProcPt.
     umem_lazy P sz M -∗
     proc_ptm (uptd_insert_perm P perm vpn r) sz'
              (M ∪ gset_to_gmap (bv_0 8) (upage_dom vpn)).
-  Proof.
+  Proof using .
     intros Hperm Hwf Hview Hnone Hlt Hrep Hbase Hval Hlv Hzero.
     assert (Hlive : forall j, (j < 4096)%nat ->
               uva_live sz' (bv_unsigned vpn * 4096 + Z.of_nat j)%Z).
@@ -4726,7 +4726,7 @@ Section ProcPt.
     umem_lazy P sz M -∗
     proc_ptm (uptd_insert_perm P perm vpn r) sz
              (umem_write M (bv_unsigned vpn * 4096)%Z 4096 bs).
-  Proof.
+  Proof using .
     intros Hperm Hwf Hview Hnone Hlt Hrep Hbase Hval Hlive.
     pose proof Hwf as (Hmwf & Hawf & Hpwf & Hinj & Htfv).
     destruct (proj1 (proj1 Hview vpn) Hnone) as (Hnt & Hntf & Hunone).
@@ -4788,7 +4788,7 @@ Section ProcPt.
 
   Lemma proc_ptm_wf (P : uptd) (sz : Z) (M : gmap Z (bv 8)) :
     proc_ptm P sz M -∗ ⌜proc_pt_wf P⌝.
-  Proof. iIntros "(%Hwf & _ & _)". iPureIntro. exact Hwf. Qed.
+  Proof using . iIntros "(%Hwf & _ & _)". iPureIntro. exact Hwf. Qed.
 
   (* the vpn of a PAGE-ALIGNED va reads back as the va itself, scaled --
      the form the copy loops need, since walkaddr hands them [va0] and
@@ -4797,7 +4797,7 @@ Section ProcPt.
     (uint (and_vec cur (mword_of_int (-4096))) < 2 ^ 38)%Z ->
     (bv_unsigned (svpn_of (and_vec cur (mword_of_int (-4096)))) * 4096
      = uint (and_vec cur (mword_of_int (-4096))))%Z.
-  Proof.
+  Proof using .
     intros Hb.
     rewrite (svpn_of_unsigned_lo _ ltac:(change (2 ^ 38)%Z with 274877906944%Z in Hb;
                                          exact Hb)).
@@ -4821,7 +4821,7 @@ Section ProcPt.
     ⌜forall j, (j < 4096)%nat ->
        M !! (bv_unsigned vpn * 4096 + Z.of_nat j)%Z
        = Some (M !!! (bv_unsigned vpn * 4096 + Z.of_nat j)%Z)⌝.
-  Proof.
+  Proof using .
     intros Hl. iIntros "(_ & _ & Hm)".
     iDestruct "Hm" as (Mp) "(_ & %Hdm & _ & _)".
     iPureIntro. intros j Hj.
@@ -4848,7 +4848,7 @@ Section ProcPt.
          ([∗ list] j ∈ seq 0 n,
             (pa_add (pa_add (page_base (pte_ppn w)) off) j : Arch.pa) ↦ₘ bs j) -∗
          proc_ptm P sz (umem_write M (bv_unsigned vpn * 4096 + Z.of_nat off)%Z n bs)).
-  Proof.
+  Proof using .
     intros Hwf Hl Hn. iIntros "#Hb (%Hwf' & Ht & Hm)".
     pose proof (um_page_valid P vpn w Hwf Hl) as Hval.
     assert (Hmap : forall j, (j < n)%nat ->
@@ -4900,7 +4900,7 @@ Section ProcPt.
           (pa_add (page_base (pte_ppn w)) j : Arch.pa)
             ↦ₘ (M !!! (base + Z.of_nat j)%Z)) -∗
        proc_ptm P sz M).
-  Proof.
+  Proof using .
     intros Hwf Hl ->. iIntros "#Hb Hpt".
     iDestruct (proc_ptm_page_bytes P sz M vpn w Hl with "Hpt") as %Hbytes.
     assert (Hb0 : (bv_unsigned vpn * 4096 + Z.of_nat 0)%Z
@@ -4943,7 +4943,7 @@ Section ProcPt.
             (pa_add (page_base (pte_ppn w)) j : Arch.pa) ↦ₘ g j) -∗
          proc_ptm P sz
            (umem_write M (base + Z.of_nat off)%Z n (fun i => g (off + i)%nat))).
-  Proof.
+  Proof using .
     intros Hwf Hl -> Hn. iIntros "#Hb Hpt".
     iDestruct (proc_ptm_page_bytes P sz M vpn w Hl with "Hpt") as %Hbytes.
     assert (Hb0 : (bv_unsigned vpn * 4096 + Z.of_nat 0)%Z
@@ -4977,7 +4977,7 @@ Section ProcPt.
          ([∗ list] j ∈ seq 0 4096,
             (pa_add (page_base (pte_ppn w)) j : Arch.pa) ↦ₘ g j) -∗
          proc_ptm P sz (umem_write M base 4096 g)).
-  Proof.
+  Proof using .
     intros Hl ->. iIntros "#Hb Hpt".
     iDestruct (proc_ptm_wf with "Hpt") as %Hwf.
     assert (Hb0 : (bv_unsigned vpn * 4096 + Z.of_nat 0)%Z
@@ -4998,7 +4998,7 @@ Section ProcPt.
       (∀ g : nat -> bv 8,
          ([∗ list] j ∈ seq 0 4096, (pa_add r j : Arch.pa) ↦ₘ g j) -∗
          proc_ptm (uptd_insert P vpn r) sz (umem_write M base 4096 g)).
-  Proof.
+  Proof using .
     intros Hval Hbase.
     assert (Hl : (uptd_insert P vpn r).(ud_um) !! vpn = Some (vmfault_pte r))
       by (unfold uptd_insert; cbn [ud_um]; apply lookup_insert).
@@ -5030,7 +5030,7 @@ Section ProcPt.
 
   Lemma proc_pt_at_split (pa : mword 64) (P : uptd) (M : gmap Z (bv 8)) :
     proc_pt_at pa P M ⊣⊢ proc_pt_cells pa P ∗ proc_pt P M.
-  Proof.
+  Proof using .
     rewrite /proc_pt_at /proc_pt_cells. iSplit.
     - iIntros "(H1 & H2 & H3)". iFrame "H1 H2 H3".
     - iIntros "((H1 & H2) & H3)". iFrame "H1 H2 H3".
@@ -5049,7 +5049,7 @@ Section ProcPt.
 
   Lemma proc_ptm_at_split (pa : mword 64) (P : uptd) (sz : Z) (M : gmap Z (bv 8)) :
     proc_ptm_at pa P sz M ⊣⊢ proc_pt_cells pa P ∗ proc_ptm P sz M.
-  Proof.
+  Proof using .
     rewrite /proc_ptm_at /proc_pt_cells. iSplit.
     - iIntros "(H1 & H2 & H3)". iFrame "H1 H2 H3".
     - iIntros "((H1 & H2) & H3)". iFrame "H1 H2 H3".
@@ -5060,7 +5060,7 @@ Section ProcPt.
      be re-viewed at any size. *)
   Lemma proc_ptm_at_forget (pa : mword 64) (P : uptd) (sz : Z) (M : gmap Z (bv 8)) :
     proc_ptm_at pa P sz M -∗ ∃ M' : gmap Z (bv 8), proc_pt_at pa P M'.
-  Proof.
+  Proof using .
     rewrite proc_ptm_at_split. iIntros "[Hc H]".
     iDestruct (proc_ptm_pt with "H") as "H". rewrite /proc_pt_any.
     iDestruct "H" as (M') "H". iExists M'.
@@ -5071,7 +5071,7 @@ Section ProcPt.
   Lemma proc_ptm_at_of_pt_at (pa : mword 64) (P : uptd) (sz : Z) (M : gmap Z (bv 8)) :
     proc_pt_at pa P M -∗
     ⌜dom M = uva_dom P⌝ ∗ ∃ Mz : gmap Z (bv 8), ⌜M ⊆ Mz⌝ ∗ proc_ptm_at pa P sz Mz.
-  Proof.
+  Proof using .
     rewrite proc_pt_at_split. iIntros "[Hc H]".
     iDestruct (proc_ptm_of_pt P sz M with "H") as "[%Hdom H]".
     iSplitR; [iPureIntro; exact Hdom |].
@@ -5083,7 +5083,7 @@ Section ProcPt.
   Lemma proc_pt_at_of_ptm_at (pa : mword 64) (P : uptd) (sz : Z) (M Mz : gmap Z (bv 8)) :
     M ⊆ Mz -> dom M = uva_dom P ->
     proc_ptm_at pa P sz Mz -∗ proc_pt_at pa P M.
-  Proof.
+  Proof using .
     intros Hsub Hdom. rewrite proc_pt_at_split proc_ptm_at_split.
     iIntros "[$ H]". iApply (proc_pt_of_ptm P sz M Mz Hsub Hdom with "H").
   Qed.
@@ -5105,10 +5105,10 @@ Section ProcPt.
      end of BarePt's [otf] axis, say -- needs it as a plain projection. *)
   Lemma proc_pt_wf_get (P : uptd) (M : gmap Z (bv 8)) :
     proc_pt P M ⊢ ⌜proc_pt_wf P⌝.
-  Proof. rewrite /proc_pt. iIntros "(%Hwf & _)". iPureIntro. exact Hwf. Qed.
+  Proof using . rewrite /proc_pt. iIntros "(%Hwf & _)". iPureIntro. exact Hwf. Qed.
 
   Lemma proc_pt_any_wf_get (P : uptd) : proc_pt_any P ⊢ ⌜proc_pt_wf P⌝.
-  Proof.
+  Proof using .
     rewrite /proc_pt_any. iIntros "H". iDestruct "H" as (M) "H".
     by iApply proc_pt_wf_get.
   Qed.
@@ -5124,7 +5124,7 @@ Section ProcPt.
      ZOMBIE child, allocproc's failure tails) hold nothing but the block. *)
   Lemma proc_pt_root_valid (P : uptd) (M : gmap Z (bv 8)) :
     proc_pt P M ⊢ ⌜page_valid (page_base P.(ud_root))⌝.
-  Proof.
+  Proof using .
     rewrite /proc_pt /pt_frame.
     iIntros "(_ & Ht & _)". iDestruct "Ht" as (t) "[%Hspec Ht]".
     iDestruct (ptree_own_page_valid 2 (DfracOwn 1) t with "Ht") as %Hv.
@@ -5145,7 +5145,7 @@ Section ProcPt.
   (* an unmapped table has an EMPTY address space, so the named image at
      the construction end is literally [∅] *)
   Lemma uva_dom_empty (P : uptd) : P.(ud_um) = ∅ -> uva_dom P = ∅.
-  Proof.
+  Proof using .
     intros Hum. apply set_eq. intros va.
     rewrite elem_of_uva_dom elem_of_empty. split.
     - intros (vpn & w & j & Hl & _). rewrite Hum lookup_empty in Hl. discriminate.
@@ -5168,7 +5168,7 @@ Section ProcPt.
     upt_tree_spec root tfp ∅ t ->
     page_valid (page_base tfp) ->
     ptree_own 2 (DfracOwn 1) t -∗ proc_pt (upt_desc root tfp) ∅.
-  Proof.
+  Proof using .
     intros Hspec Hvtf. iIntros "Ht".
     rewrite /proc_pt /upt_desc.
     cbn [ud_root ud_tfp ud_um].
@@ -5190,7 +5190,7 @@ Section ProcPt.
     pt_rep0 t (ppt_map tfp) ->
     page_valid (page_base tfp) ->
     ptree_own 2 (DfracOwn 1) t -∗ proc_pt (upt_desc (pt_base t) tfp) ∅.
-  Proof.
+  Proof using .
     intros Hrep Hvtf.
     exact (proc_pt_intro_empty (pt_base t) tfp t (ppt_bridge t tfp Hrep) Hvtf).
   Qed.
@@ -5209,7 +5209,7 @@ Section ProcPt.
     proc_pt_any P ⊢ ∃ t m_ad, ⌜pt_rep0 t m_ad⌝ ∗ ⌜upt_ad_view P.(ud_tfp) P.(ud_um) m_ad⌝ ∗
       ⌜pt_base t = P.(ud_root)⌝ ∗ ⌜proc_pt_wf P⌝ ∗
       ptree_own 2 (DfracOwn 1) t ∗ proc_pt_own P.
-  Proof.
+  Proof using .
     iIntros "H". rewrite proc_pt_any_unfold /pt_frame.
     iDestruct "H" as "(%Hwf & Ht & Hown)".
     iDestruct "Ht" as (t) "(%Hspec & Ht)".
@@ -5227,7 +5227,7 @@ Section ProcPt.
     proc_pt_wf P -> upt_ad_view P.(ud_tfp) P.(ud_um) m_ad ->
     pt_rep0 t' m_ad -> pt_base t' = P.(ud_root) ->
     ptree_own 2 (DfracOwn 1) t' -∗ proc_pt_own P -∗ proc_pt_any P.
-  Proof.
+  Proof using .
     intros Hwf Hview Hrep Hbase. iIntros "Ht Hown".
     rewrite proc_pt_any_unfold.
     iSplitR; [iPureIntro; exact Hwf |].
@@ -5263,7 +5263,7 @@ Section ProcPt.
     kmap_static_claims -∗ ptree_own 2 (DfracOwn 1) t' -∗
     page_filled r c -∗ proc_pt_own P -∗
     proc_pt_any (uptd_insert_perm P perm vpn r).
-  Proof.
+  Proof using .
     intros Hperm (Hmwf & Hawf & Hpwf & Hinj & Htfv) Hview Hnone Hlt Hrep Hbase Hval.
     destruct (proj1 (proj1 Hview vpn) Hnone) as (Hnt & Hntf & Hunone).
     pose proof (upt_map_wf_insert_uvm P.(ud_um) perm vpn r Hperm Hmwf Hnt Hntf Hlt)
@@ -5314,7 +5314,7 @@ Section ProcPt.
     kmap_static_claims -∗ ptree_own 2 (DfracOwn 1) t' -∗
     page_filled r c -∗ proc_pt_own P -∗
     proc_pt_any (uptd_insert P vpn r).
-  Proof. exact (proc_pt_grow_uvm P 22 vpn r t' m_ad c uvm_perm_ok_22). Qed.
+  Proof using . exact (proc_pt_grow_uvm P 22 vpn r t' m_ad c uvm_perm_ok_22). Qed.
 
   (* ------------------------------------------------------------------ *)
   (* THE UNMAP STEP -- the inverse of [proc_pt_grow].  uvmunmap clears one *)
@@ -5329,7 +5329,7 @@ Section ProcPt.
     proc_pt_wf P -> P.(ud_um) !! vpn = Some w ->
     kmap_static_claims -∗ proc_pt_own P -∗
       page_own (page_base (pte_ppn w)) ∗ proc_pt_own (uptd_delete P vpn).
-  Proof.
+  Proof using .
     intros Hwf Hl.
     pose proof (um_page_valid P vpn w Hwf Hl) as Hval.
     destruct Hwf as (_ & _ & _ & Hinj & _).
@@ -5347,7 +5347,7 @@ Section ProcPt.
   Lemma proc_pt_own_skip (P : uptd) (vpn : mword 27) :
     P.(ud_um) !! vpn = None ->
     proc_pt_own P ⊢ proc_pt_own (uptd_delete P vpn).
-  Proof.
+  Proof using .
     intros Hl. rewrite /proc_pt_own /uptd_delete. cbn [ud_um].
     rewrite (delete_notin _ _ Hl). reflexivity.
   Qed.
@@ -5369,7 +5369,7 @@ Section ProcPt.
   Lemma uva_mapped_set_same (P : uptd) (vpn : mword 27) (w x : mword 64) (va : Z) :
     P.(ud_um) !! vpn = Some w ->
     uva_mapped (uptd_set P vpn x) va <-> uva_mapped P va.
-  Proof.
+  Proof using .
     intros Hl. unfold uva_mapped, uptd_set. cbn [ud_um]. split.
     - intros (v0 & w0 & j & Hl0 & Hj & Hva).
       apply lookup_insert_Some in Hl0 as [(Hv & _) | (Hne & Hl0)].
@@ -5386,7 +5386,7 @@ Section ProcPt.
 
   Lemma uva_dom_set_same (P : uptd) (vpn : mword 27) (w x : mword 64) :
     P.(ud_um) !! vpn = Some w -> uva_dom (uptd_set P vpn x) = uva_dom P.
-  Proof.
+  Proof using .
     intros Hl. apply set_eq. intros va. rewrite !elem_of_uva_dom.
     exact (uva_mapped_set_same P vpn w x va Hl).
   Qed.
@@ -5394,7 +5394,7 @@ Section ProcPt.
   Lemma uva_pa_set_same (P : uptd) (vpn : mword 27) (w x : mword 64) (va : Z) :
     P.(ud_um) !! vpn = Some w -> pte_ppn x = pte_ppn w ->
     uva_pa (uptd_set P vpn x) va = uva_pa P va.
-  Proof.
+  Proof using .
     intros Hl Hq. unfold uva_pa, uptd_set. cbn [ud_um].
     destruct (decide (svpn_of (mword_of_int va : mword 64) = vpn)) as [Heq | Hne].
     - rewrite Heq lookup_insert Hl. apply bv_eq.
@@ -5406,7 +5406,7 @@ Section ProcPt.
       (M : gmap Z (bv 8)) :
     P.(ud_um) !! vpn = Some w -> pte_ppn x = pte_ppn w ->
     umem_own P M ⊣⊢ umem_own (uptd_set P vpn x) M.
-  Proof.
+  Proof using .
     intros Hl Hq. rewrite /umem_own (uva_dom_set_same P vpn w x Hl).
     assert (Hbs : ([∗ map] va ↦ b ∈ M, TsoCtx.ctx_phys_pointsto XI (uva_pa P va : Arch.pa) (DfracOwn 1) b)
                   ⊣⊢ ([∗ map] va ↦ b ∈ M,
@@ -5420,7 +5420,7 @@ Section ProcPt.
       (vpn : mword 27) (w x : mword 64) :
     P.(ud_um) !! vpn = Some w -> pte_ppn x = pte_ppn w ->
     umem_lazy P sz M ⊣⊢ umem_lazy (uptd_set P vpn x) sz M.
-  Proof.
+  Proof using .
     intros Hl Hq.
     assert (Hmap : forall va, uva_mapped (uptd_set P vpn x) va <-> uva_mapped P va)
       by (intros va; exact (uva_mapped_set_same P vpn w x va Hl)).
@@ -5447,7 +5447,7 @@ Section ProcPt.
 
   Lemma proc_pt_wf_delete (P : uptd) (vpn : mword 27) :
     proc_pt_wf P -> proc_pt_wf (uptd_delete P vpn).
-  Proof.
+  Proof using .
     intros (Hm & Ha & Hp & Hi & Ht).
     unfold uptd_delete, proc_pt_wf. cbn [ud_root ud_tfp ud_um]. split_and!.
     - exact (upt_map_wf_delete _ _ Hm).
@@ -5468,7 +5468,7 @@ Section ProcPt.
     P.(ud_root) = Q.(ud_root) -> P.(ud_tfp) = Q.(ud_tfp) ->
     P.(ud_um) = Q.(ud_um) ->
     proc_ptm P sz M ⊣⊢ proc_ptm Q sz M.
-  Proof.
+  Proof using .
     intros Hr Ht Hu. rewrite /proc_ptm /proc_pt_wf.
     rewrite (umem_lazy_um_cong P Q sz M Hu).
     rewrite Hr Ht Hu. reflexivity.
@@ -5481,7 +5481,7 @@ Section ProcPt.
   Lemma proc_ptm_sz_cong (P : uptd) (sz sz' : Z) (M : gmap Z (bv 8)) :
     (forall a : Z, uva_live sz a <-> uva_live sz' a) ->
     proc_ptm P sz M ⊣⊢ proc_ptm P sz' M.
-  Proof.
+  Proof using .
     intros Hlv. rewrite /proc_ptm /umem_lazy.
     iSplit; iIntros "(%Hwf & Ht & Hm)";
       (iSplitR; [iPureIntro; exact Hwf |]); iFrame "Ht";
@@ -5501,7 +5501,7 @@ Section ProcPt.
     P.(ud_root) = Q.(ud_root) -> P.(ud_tfp) = Q.(ud_tfp) ->
     P.(ud_um) = Q.(ud_um) ->
     proc_pt P M ⊣⊢ proc_pt Q M.
-  Proof.
+  Proof using .
     intros Hr Ht Hu. rewrite /proc_pt /proc_pt_wf /umem_own /uva_dom /uva_pa.
     rewrite Hr Ht Hu. reflexivity.
   Qed.
@@ -5510,21 +5510,21 @@ Section ProcPt.
     P.(ud_root) = Q.(ud_root) -> P.(ud_tfp) = Q.(ud_tfp) ->
     P.(ud_um) = Q.(ud_um) ->
     proc_pt_any P ⊣⊢ proc_pt_any Q.
-  Proof.
+  Proof using .
     intros Hr Ht Hu. rewrite /proc_pt_any.
     setoid_rewrite (proc_pt_data_irrel P Q _ Hr Ht Hu). reflexivity.
   Qed.
 
   Lemma proc_pt_norm (P : uptd) (M : gmap Z (bv 8)) :
     proc_pt P M ⊣⊢ proc_pt (ud_norm P) M.
-  Proof. apply proc_pt_data_irrel; reflexivity. Qed.
+  Proof using . apply proc_pt_data_irrel; reflexivity. Qed.
 
   (* the same renormalisation at the LAZY view -- what a residue that holds
      [proc_priv]'s own memory conjunct needs before it hands the descriptor
      to the user tier (ProofForkret's park). *)
   Lemma proc_ptm_norm (P : uptd) (sz : Z) (M : gmap Z (bv 8)) :
     proc_ptm P sz M ⊣⊢ proc_ptm (ud_norm P) sz M.
-  Proof. apply proc_ptm_data_irrel; reflexivity. Qed.
+  Proof using . apply proc_ptm_data_irrel; reflexivity. Qed.
 
   (* ------------------------------------------------------------------ *)
   (* THE SATP-SWITCH DOVETAIL.  [proc_pt] (parked, kernel view) and       *)
@@ -5548,7 +5548,7 @@ Section ProcPt.
     proc_pt_any P ⊣⊢
     (⌜proc_pt_wf P⌝ ∗ pt_frame (upt_tree_spec P.(ud_root) P.(ud_tfp) P.(ud_um)))
       ∗ proc_pt_own P.
-  Proof.
+  Proof using .
     rewrite proc_pt_any_unfold. iSplit.
     - iIntros "(%Hwf & Htr & Hpg)". iFrame "Hpg". iSplitR; [done|]. iExact "Htr".
     - iIntros "[(%Hwf & Htr) Hpg]". iSplitR; [done|]. iFrame "Htr Hpg".
@@ -5563,7 +5563,7 @@ Section ProcPt.
     upt_map_wf P.(ud_um) -> um_inj P.(ud_um) ->
     user_pt_any P -∗
     utlb_inv_pt P.(ud_root) P.(ud_tfp) P.(ud_um) ∗ proc_pt_own P.
-  Proof.
+  Proof using .
     intros Hwf Hinj.
     rewrite user_pt_any_unfold (proc_pt_own_umem P Hwf Hinj).
     iIntros "(Htlb & Hdat & _ & _)". iFrame "Htlb Hdat".
@@ -5579,7 +5579,7 @@ Section ProcPt.
     utlb_inv_pt P.(ud_root) P.(ud_tfp) P.(ud_um) -∗
     proc_pt_own P -∗
     user_pt_any (ud_norm P).
-  Proof.
+  Proof using .
     intros (Hmwf & Hacc & _ & Hinj & _).
     rewrite user_pt_any_unfold.
     unfold ud_norm; cbn [ud_root ud_tfp ud_um ud_data].
@@ -5605,7 +5605,7 @@ Section ProcPt.
     utlb_inv_pt P.(ud_root) P.(ud_tfp) P.(ud_um) -∗
     umem_lazy P sz M -∗
     user_ptm_inv (ud_norm P) sz M.
-  Proof.
+  Proof using .
     intros (Hmwf & Hacc & _ & Hinj & _).
     rewrite /user_ptm_inv.
     unfold ud_norm; cbn [ud_root ud_tfp ud_um ud_data].
@@ -5637,7 +5637,7 @@ Section ProcPt.
   Lemma phys_to_page_named (ppn : mword 44) :
     page_valid (page_base ppn) ->
     kmap_static_claims -∗ phys_page_own ppn -∗ page_named (page_base ppn).
-  Proof.
+  Proof using .
     intros Hv. iIntros "#Hb Hp".
     rewrite /phys_page_own /page_named.
     iApply (big_sepL_impl with "Hp").
@@ -5652,7 +5652,7 @@ Section ProcPt.
   Lemma page_named_to_phys (ppn : mword 44) :
     page_valid (page_base ppn) ->
     kmap_static_claims -∗ page_named (page_base ppn) -∗ phys_page_own ppn.
-  Proof.
+  Proof using .
     intros Hv. iIntros "#Hb Hp".
     rewrite /phys_page_own /page_named.
     iApply (big_sepL_impl with "Hp").
@@ -5668,7 +5668,7 @@ Section ProcPt.
     kmap_static_claims -∗ proc_pt_any P -∗
       page_named (page_base (pte_ppn w)) ∗
       (page_named (page_base (pte_ppn w)) -∗ proc_pt_any P).
-  Proof.
+  Proof using .
     intros Hl.
     assert (Hin : pte_ppn w ∈ um_ppns P.(ud_um)).
     { apply elem_of_um_ppns. exists vpn, w. split; [exact Hl | reflexivity]. }
@@ -5696,7 +5696,7 @@ Section ProcPt.
     page_valid r ->
     kmap_static_claims -∗ proc_pt_any (uptd_insert P vpn r) -∗
       page_named r ∗ (page_named r -∗ proc_pt_any (uptd_insert P vpn r)).
-  Proof.
+  Proof using .
     intros Hval.
     assert (Hl : (uptd_insert P vpn r).(ud_um) !! vpn = Some (vmfault_pte r)).
     { unfold uptd_insert. cbn [ud_um]. apply lookup_insert. }

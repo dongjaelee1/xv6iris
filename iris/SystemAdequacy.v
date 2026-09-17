@@ -661,7 +661,7 @@ Section SystemBoot.
       ([∗ list] i ∈ enum uart_id, WP (UartLoopE gen_id i : expr riscv_lang) @ ⊤) ∗
       WP (DiskLoopE gen_id : expr riscv_lang) @ ⊤ ∗
       WP (PlicLoopE gen_id : expr riscv_lang) @ ⊤.
-  Proof.
+  Proof using bioslotGpreS0 fdslotGpreS0 fileGpreS0 irefslotGpreS0 pavGpreS0 ufdG0 wchGpreS0.
     intros Hbf Hpure Hcovin Hlogsub Hls2 Hcp Hperm.
     iIntros "#Hoinv Hres".
     (* ================================================================ *)

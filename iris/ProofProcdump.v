@@ -72,7 +72,7 @@ Section ProofProcdumpMain.
       (m : regfile) (K : nat) (eb : bool) (p : mword 64) (b : bool)
       (lks : gset string)
     : wp_procdump_sconf_body γpr γd γv m K eb p b lks.
-  Proof.
+  Proof using .
     cbv beta zeta delta [wp_procdump_sconf_body].
     intros HK Hlkbelow.
     iIntros "Hcg Hcnt #Htext #Hkdata Hpc #Hpenv Hview Hcont".

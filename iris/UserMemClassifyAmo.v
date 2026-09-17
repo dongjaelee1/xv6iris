@@ -1876,7 +1876,7 @@ Section ZicbopArm.
     hval (u_Drw ∪ u_Dro) u_Drw rsf (ext_decode w) (ZICBOP p) rsf ->
     u_exec_pins pt t rsf -> u_mem_wf pt t mm ->
     base_post pt t mm rsf va w.
-  Proof.
+  Proof using .
     intros Hcfg Hag Hdec Hhv Hpins Hwf.
     destruct p as [[cbop rs1] offset]. destruct rs1 as [rs1].
     (* the pins, moved across the nextPC tick *)

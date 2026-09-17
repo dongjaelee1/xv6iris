@@ -642,7 +642,7 @@ Section TrappedMachine.
       ⌜length (uvis_tf W) = TFWORDS⌝ ∗
       user_trap_frame_atm C pt Rut sz (uvis_M W) ms_v sc stv
         (tf_w (uvis_tf W) tf_epc_idx) (tf_resume_gpr0 (uvis_tf W)).
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma trapped_machine_intro (C : ucfg) (pt : uptd) (Rut : uptd -> iProp Σ)
       (sz : Z) (sc stv : mword 64) (W : uvis) (ms_v : mword 64) :
@@ -650,7 +650,7 @@ Section TrappedMachine.
     user_trap_frame_atm C pt Rut sz (uvis_M W) ms_v sc stv
       (tf_w (uvis_tf W) tf_epc_idx) (tf_resume_gpr0 (uvis_tf W)) -∗
     trapped_machine C pt Rut sz sc stv W.
-  Proof.
+  Proof using .
     iIntros (Hlen) "H". rewrite /trapped_machine. iExists ms_v.
     iSplitR; [ iPureIntro; exact Hlen | iExact "H" ].
   Qed.
@@ -666,7 +666,7 @@ Section TrappedMachine.
       ⌜uvis_cwd W = cw⌝ ∗ ⌜uvis_gen W = gn⌝ ∗ ⌜uvis_ch W = cs⌝ ∗
       ⌜uvis_pid W = pidv⌝ ∗ ⌜uvis_lazy W = lz⌝ ∗
       trapped_machine C pt Rut sz sc stv W.
-  Proof.
+  Proof using .
     rewrite /user_trap_frame.
     iIntros "H".
     iDestruct "H" as (ms_v sc_v stval_v sepc_v g)
@@ -826,7 +826,7 @@ Section UexecRet.
     tf !!! tf_arg_idx 0 = tf' !!! tf_arg_idx 0 ->
     gn = gn' ->
     upay_at gn sc tf f -∗ upay_at gn' sc tf' f.
-  Proof.
+  Proof using .
     intros Hn Ha ->. rewrite /upay_at Hn (exit_xs_arg0 tf tf' Ha). auto.
   Qed.
 
@@ -845,7 +845,7 @@ Section UexecRet.
   Lemma uexec_pay_dep_triv (sc : mword 64) (W : uvis) (f : sfam) :
     sexit_pay f = (fun _ => True)%I ->
     my_pay (uvis_gen W) (fun _ => True)%I -∗ uexec_pay_dep sc W f.
-  Proof.
+  Proof using .
     intros Hf. rewrite /uexec_pay_dep /upay_at Hf. iIntros "#H". iFrame "H".
     destruct (decide (sc = uecall_scause));
       [ destruct (decide (usys_num (uvis_tf W) = USYS_exit));
@@ -864,7 +864,7 @@ Section UexecRet.
       (f : sfam) :
     sexit_pay f = (fun _ => R)%I ->
     my_pay (uvis_gen W) (fun _ => R)%I -∗ R -∗ uexec_pay_dep sc W f.
-  Proof.
+  Proof using .
     intros Hf. iIntros "#Hmy HR". rewrite /uexec_pay_dep /upay_at Hf.
     iFrame "Hmy".
     destruct (decide (sc = uecall_scause));
@@ -885,7 +885,7 @@ Section UexecRet.
     ~ (sc = uecall_scause /\ usys_num (uvis_tf W) = USYS_exit) ->
     sexit_pay f = Q ->
     my_pay (uvis_gen W) Q -∗ uexec_pay_dep sc W f.
-  Proof.
+  Proof using .
     intros Hne Hf. iIntros "#Hmy". rewrite /uexec_pay_dep /upay_at Hf.
     iFrame "Hmy".
     destruct (decide (sc = uecall_scause)) as [He | _]; [ | done ].
@@ -904,7 +904,7 @@ Section UexecRet.
     sc <> uecall_scause ->
     sexit_pay f = Q ->
     my_pay (uvis_gen W) Q -∗ uexec_pay_dep sc W f.
-  Proof.
+  Proof using .
     intros Hne Hf. iIntros "#Hmy". rewrite /uexec_pay_dep /upay_at Hf. iFrame "Hmy".
     destruct (decide (sc = uecall_scause)); [ contradiction | done ].
   Qed.
@@ -920,7 +920,7 @@ Section UexecRet.
     sexit_pay f = Q ->
     my_pay gn Q -∗
     uexec_pay_dep uecall_scause (uvis_of_run m pc M pm sz fdv cw gn cs pidv lz) f.
-  Proof.
+  Proof using .
     intros Hn Hx Hf. iIntros "#Hmy". rewrite /uexec_pay_dep /upay_at Hf.
     cbn [uvis_gen uvis_tf uvis_of_run]. iFrame "Hmy".
     destruct (decide (uecall_scause = uecall_scause)) as [_ | Hc];
@@ -942,7 +942,7 @@ Section UexecRet.
     sexit_pay f = Q ->
     my_pay gn Q -∗ Q (exit_xs (tf_of m pc)) -∗
     uexec_pay_dep uecall_scause (uvis_of_run m pc M pm sz fdv cw gn cs pidv lz) f.
-  Proof.
+  Proof using .
     intros Hn Hf. iIntros "#Hmy HQ". rewrite /uexec_pay_dep /upay_at Hf.
     cbn [uvis_gen uvis_tf uvis_of_run]. iFrame "Hmy".
     destruct (decide (uecall_scause = uecall_scause)) as [_ | Hc];
@@ -1048,24 +1048,24 @@ Section UexecRet.
   Lemma uwait_ans_of_pid (r : mword 64) (cs cs' : gset gname)
       (pidv : mword 32) :
     uwait_ans_pid r cs cs' pidv -∗ uwait_ans r cs cs'.
-  Proof. iIntros "H". iExists pidv. iExact "H". Qed.
+  Proof using . iIntros "H". iExists pidv. iExact "H". Qed.
 
   Lemma uwait_ans_of (r : mword 64) (cs cs' : gset gname)
       (gn : gname) (b : bool) (pidv : mword 32) :
     uwait_ans_at r cs cs' gn b pidv -∗ uwait_ans r cs cs'.
-  Proof. iIntros "H". iExists pidv, gn, b. iExact "H". Qed.
+  Proof using . iIntros "H". iExists pidv, gn, b. iExact "H". Qed.
 
   (* the failing arm, at the word the [li -1] tails leave in a0 *)
   Lemma sext_neg1_64 :
     (sign_extend' 64 (mword_of_int (-1) : mword 32) : mword 64)
     = (mword_of_int (-1) : mword 64).
-  Proof. apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . apply bv_eq; vm_compute; reflexivity. Qed.
 
   Lemma uwait_ans_at_neg1 (cs : gset gname) (gn : gname) (b : bool)
       (pidv : mword 32) :
     (⌜b = false⌝ ∨ ⌜cs = (∅ : gset gname)⌝ ∨ ChildTok.kill_shot gn) -∗
     uwait_ans_at (mword_of_int (-1) : mword 64) cs cs gn b pidv.
-  Proof.
+  Proof using .
     iIntros "Hwhy". iExists (mword_of_int (-1) : mword 32), 0%Z.
     iSplitR; [iPureIntro; symmetry; exact sext_neg1_64 |].
     iApply (wait_ans_neg with "Hwhy").
@@ -1073,7 +1073,7 @@ Section UexecRet.
 
   Lemma uwait_ans_neg1 (cs : gset gname) :
     ⊢ uwait_ans (mword_of_int (-1) : mword 64) cs cs.
-  Proof.
+  Proof using .
     iExists (mword_of_int 0 : mword 32), inhabitant, false.
     iApply uwait_ans_at_neg1. by iLeft.
   Qed.
@@ -1081,7 +1081,7 @@ Section UexecRet.
   (* ...and the pure row, for the relays that only want the set's move *)
   Lemma uwait_ans_reaped (r : mword 64) (cs cs' : gset gname) :
     uwait_ans r cs cs' -∗ ⌜ch_reaped cs cs'⌝.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as (pidv gn b rv xs) "[_ Ha]".
     iApply (wait_ans_reaped with "Ha").
   Qed.
@@ -1103,7 +1103,7 @@ Section UexecRet.
       ⌜r = (sign_extend' 64 rv : mword 64) /\ cs' = cs ∖ {[γ']} /\
        γ' ∈ cs /\ (1 <= bv_unsigned rv <= PIDMAX)%Z⌝ ∗
       exit_tok γ' rv xs ∗ gen_uniq cs rv γ'.
-  Proof.
+  Proof using .
     intros Hne Hm1.
     iIntros "(%gn & %b & %rv & %xs & %Hr & [[%Hf _] | (%γ' & %Hrng & %Hoci & Hesc & Huniq)])".
     - exfalso. apply Hm1. rewrite Hr (proj1 Hf). exact sext_neg1_64.
@@ -1155,21 +1155,21 @@ Section UexecRet.
     r <> (mword_of_int (-1) : mword 64) ->
     uwait_wr addr M M' r xw ->
     M' = umem_wr M addr 4 (fun i => nth_byte xw i).
-  Proof.
+  Proof using .
     intros Hne Hm1 (d & _ & _ & Hfull & HM). rewrite <- (Hfull Hne Hm1). exact HM.
   Qed.
 
   Lemma uwait_wr_null (addr : mword 64) (M M' : gmap Z (bv 8))
       (r : mword 64) (xw : mword 32) :
     addr = (zero_reg : mword 64) -> uwait_wr addr M M' r xw -> M' = M.
-  Proof.
+  Proof using .
     intros Hz (d & _ & Hnull & _ & HM). rewrite HM (Hnull Hz). reflexivity.
   Qed.
 
   (* the quiet row, for the arms that moved nothing *)
   Lemma uwait_wr_refl (addr : mword 64) (M : gmap Z (bv 8)) (xw : mword 32) :
     uwait_wr addr M M (mword_of_int (-1) : mword 64) xw.
-  Proof.
+  Proof using .
     exists 0%nat. split; [lia |]. split; [reflexivity |].
     split; [intros _ Hne; exfalso; exact (Hne eq_refl) | reflexivity].
   Qed.
@@ -1194,7 +1194,7 @@ Section UexecRet.
       (gn : gname) (b : bool) (pidv : mword 32) :
     uwait_ans_at_m r M M' addr cs cs' gn b pidv -∗
     uwait_ans_at r cs cs' gn b pidv.
-  Proof.
+  Proof using .
     iIntros "(%rv & %xw & %Hr & _ & Ha)". iExists rv, (xstate_val xw).
     iSplitR; [ iPureIntro; exact Hr | iExact "Ha" ].
   Qed.
@@ -1202,7 +1202,7 @@ Section UexecRet.
   Lemma uwait_ans_pid_m_forget (r : mword 64) (M M' : gmap Z (bv 8))
       (addr : mword 64) (cs cs' : gset gname) (pidv : mword 32) :
     uwait_ans_pid_m r M M' addr cs cs' pidv -∗ uwait_ans_pid r cs cs' pidv.
-  Proof.
+  Proof using .
     iIntros "(%gn & %b & H)". iExists gn, b.
     iApply (uwait_ans_at_m_forget with "H").
   Qed.
@@ -1210,7 +1210,7 @@ Section UexecRet.
   Lemma uwait_ans_m_forget (r : mword 64) (M M' : gmap Z (bv 8))
       (addr : mword 64) (cs cs' : gset gname) (pidv : mword 32) :
     uwait_ans_pid_m r M M' addr cs cs' pidv -∗ uwait_ans r cs cs'.
-  Proof.
+  Proof using .
     iIntros "H". iApply uwait_ans_of_pid.
     iApply (uwait_ans_pid_m_forget with "H").
   Qed.
@@ -1220,7 +1220,7 @@ Section UexecRet.
       (cs : gset gname) (gn : gname) (b : bool) (pidv : mword 32) :
     (⌜b = false⌝ ∨ ⌜cs = (∅ : gset gname)⌝ ∨ ChildTok.kill_shot gn) -∗
     uwait_ans_at_m (mword_of_int (-1) : mword 64) M M addr cs cs gn b pidv.
-  Proof.
+  Proof using .
     iIntros "Hwhy". iExists (mword_of_int (-1) : mword 32), (mword_of_int 0 : mword 32).
     iSplitR; [iPureIntro; symmetry; exact sext_neg1_64 |].
     iSplitR; [iPureIntro; exact (uwait_wr_refl addr M _) |].
@@ -1405,7 +1405,7 @@ Section UexecRet.
        X (bump_at W (mword_of_int 0) (uvis_M W) (uvis_perm W) (uvis_sz W)
             fdv' cw' g' ∅ pidc (uvis_lazy W))) -∗
     uexec_fork_child_F X W Q Rc.
-  Proof.
+  Proof using .
     iIntros "#Hk HRc H". rewrite /uexec_fork_child_F.
     iSplitR; [ iExact "Hk" | ]. iFrame "HRc". iIntros (g' pidc) "%Hne Hp HRc".
     iApply ("H" $! (uvis_fd W) (uvis_cwd W) g' pidc with "[%] Hp [%] [%] HRc");
@@ -1424,7 +1424,7 @@ Section UexecRet.
        Rc -∗
        X (bump_at W (mword_of_int 0) (uvis_M W) (uvis_perm W) (uvis_sz W)
             fdv' cw' g' ∅ pidc (uvis_lazy W))).
-  Proof.
+  Proof using .
     rewrite /uexec_fork_child_F. iIntros "(#Hk & HRc & H)".
     iSplitR; [ iExact "Hk" | ]. iFrame "HRc".
     iIntros (fdv' cw' g' pidc) "%Hne Hp -> -> HRc".
@@ -1465,7 +1465,7 @@ Section UexecRet.
   Lemma uexec_live_ok_ne (n : Z) (tf : list (mword 64))
       (sts : list fdstate) (r : mword 64) (cs' : gset gname) :
     n <> USYS_read -> n <> USYS_wait -> uexec_live_ok n tf sts r cs'.
-  Proof.
+  Proof using .
     intros Hr Hw. split; [intro Hn; exfalso; exact (Hr Hn)
                          | intro Hn; exfalso; exact (Hw Hn)].
   Qed.
@@ -1477,7 +1477,7 @@ Section UexecRet.
     tf_w tf1 (tf_arg_idx 0) = tf_w tf2 (tf_arg_idx 0) ->
     tf_w tf1 (tf_arg_idx 2) = tf_w tf2 (tf_arg_idx 2) ->
     uexec_live_ok n tf1 sts r cs' -> uexec_live_ok n tf2 sts r cs'.
-  Proof.
+  Proof using .
     intros Ha0 Ha2 H. split.
     - intros Hn Hc rb Hlt Hfd.
       rewrite <- Ha2 in Hc.
@@ -1726,7 +1726,7 @@ Section UexecRet.
   Lemma ukill_cred_at_not (X : uvis -d> iPropO Σ) (gn : gname) (sc : mword 64)
       (W : uvis) (f : sfam) :
     ~ ukill_sc sc -> ⊢ ukill_cred_at X gn sc W f.
-  Proof.
+  Proof using .
     intros Hn. rewrite /ukill_cred_at.
     destruct (decide (ukill_sc sc)) as [Hk | _]; [ exfalso; exact (Hn Hk) | done ].
   Qed.
@@ -1736,7 +1736,7 @@ Section UexecRet.
   Lemma ukill_cred_at_of_cred (X : uvis -d> iPropO Σ) (gn : gname) (sc : mword 64)
       (W : uvis) (f : sfam) :
     □ riscv_kill_cred -∗ ukill_cred_at X gn sc W f.
-  Proof.
+  Proof using .
     rewrite /ukill_cred_at. iIntros "#H".
     destruct (decide (ukill_sc sc)) as [_ | _]; [ iLeft; iExact "H" | done ].
   Qed.
@@ -1747,14 +1747,14 @@ Section UexecRet.
       (W : uvis) (f : sfam) :
     ChildTok.kill_owed gn -∗ sbundle_at X USYS_exit f W -∗
     ukill_cred_at X gn sc W f.
-  Proof.
+  Proof using .
     rewrite /ukill_cred_at. iIntros "H Hb".
     destruct (decide (ukill_sc sc)) as [_ | _]; [ iRight; iFrame "H Hb" | done ].
   Qed.
 
   Lemma ukill_cred_at_ecall (X : uvis -d> iPropO Σ) (gn : gname) (W : uvis) (f : sfam) :
     ⊢ ukill_cred_at X gn uecall_scause W f.
-  Proof.
+  Proof using .
     rewrite /ukill_cred_at.
     destruct (decide (ukill_sc uecall_scause)) as [Hk | _];
       [ exfalso; exact (proj1 Hk eq_refl) | done ].
@@ -1780,18 +1780,18 @@ Section UexecRet.
   Lemma uexec_kill_arm_F_slot (X : uvis -d> iPropO Σ) (sc : mword 64)
       (W : uvis) (f : sfam) :
     uexec_kill_arm_F X sc W f -∗ X W.
-  Proof. rewrite /uexec_kill_arm_F. iIntros "H". iApply (bi.and_elim_r with "H"). Qed.
+  Proof using . rewrite /uexec_kill_arm_F. iIntros "H". iApply (bi.and_elim_r with "H"). Qed.
 
   Lemma uexec_kill_arm_F_cred (X : uvis -d> iPropO Σ) (sc : mword 64)
       (W : uvis) (f : sfam) :
     uexec_kill_arm_F X sc W f -∗ ukill_cred_at X (uvis_gen W) sc W f.
-  Proof. rewrite /uexec_kill_arm_F. iIntros "H". iApply (bi.and_elim_l with "H"). Qed.
+  Proof using . rewrite /uexec_kill_arm_F. iIntros "H". iApply (bi.and_elim_l with "H"). Qed.
 
   (* ...and built at a cause the kernel HANDLES, where the left is free *)
   Lemma uexec_kill_arm_F_not (X : uvis -d> iPropO Σ) (sc : mword 64)
       (W : uvis) (f : sfam) :
     ~ ukill_sc sc -> X W -∗ uexec_kill_arm_F X sc W f.
-  Proof.
+  Proof using .
     intro Hnk. rewrite /uexec_kill_arm_F. iIntros "H". iSplit;
       [ iApply (ukill_cred_at_not X (uvis_gen W) sc W f Hnk) | iExact "H" ].
   Qed.
@@ -1801,7 +1801,7 @@ Section UexecRet.
   Lemma uexec_kill_arm_F_of_cred (X : uvis -d> iPropO Σ) (sc : mword 64)
       (W : uvis) (f : sfam) :
     □ riscv_kill_cred -∗ X W -∗ uexec_kill_arm_F X sc W f.
-  Proof.
+  Proof using .
     rewrite /uexec_kill_arm_F. iIntros "#Hkc H". iSplit;
       [ iApply (ukill_cred_at_of_cred X (uvis_gen W) sc W f with "Hkc") | iExact "H" ].
   Qed.
@@ -2023,7 +2023,7 @@ Section UexecRet.
          WP (Loop : expr riscv_lang))%I.
 
   Local Instance uslot_F_contractive : Contractive uslot_F.
-  Proof.
+  Proof using .
     rewrite /uslot_F /uvb_F /ukont_F /ukb_F /uexec_ret_F /uexec_kill_arm_F
             /ukill_cred_at /uexec_fork_F
             /uexec_fork_parent_F /ufork_ans /uexec_ret_cont_F
@@ -2109,7 +2109,7 @@ Section UexecRet.
       (m : regfile) (pc : mword 64) :
     ukcq Q π M szv fdv cw g cs pidv m pc -∗
     ukc π M szv fdv cw g cs pidv false m pc.
-  Proof. iIntros "(_ & Hk)". iExact "Hk". Qed.
+  Proof using . iIntros "(_ & Hk)". iExact "Hk". Qed.
 
   Lemma uslot_unfold (W : uvis) :
     uslot W ⊣⊢
@@ -2130,7 +2130,7 @@ Section UexecRet.
          (uvis_M W)
          (tf_resume_gpr0 (uvis_tf W)) (tf_resume_pc (uvis_tf W)) -∗
        WP (Loop : expr riscv_lang)).
-  Proof. exact (fixpoint_unfold uslot_F W). Qed.
+  Proof using . exact (fixpoint_unfold uslot_F W). Qed.
 
   (* A SLOT ABSORBS A GHOST UPDATE, because it ends in a [WP].  This is what
      a syscall row that MOVES THE IMAGE needs: [uexec_ret]'s arm hands the
@@ -2139,7 +2139,7 @@ Section UexecRet.
      row is what says how far the image moved.  Entering the slot puts the
      goal back under a [WP], where it can. *)
   Lemma uslot_bupd (W : uvis) : (|==> uslot W) -∗ uslot W.
-  Proof.
+  Proof using .
     rewrite !(uslot_unfold W).
     iIntros "H" (h xi C pt Rfd Rut HRut) "%Hl %Hp %Hlz Hb".
     iMod "H".
@@ -2151,7 +2151,7 @@ Section UexecRet.
     ukc (uvis_perm W) (uvis_M W) (uvis_sz W) (uvis_fd W) (uvis_cwd W)
       (uvis_gen W) (uvis_ch W) (uvis_pid W) (uvis_lazy W)
       (tf_resume_gpr0 (uvis_tf W)) (tf_resume_pc (uvis_tf W)).
-  Proof. exact (uslot_unfold W). Qed.
+  Proof using . exact (uslot_unfold W). Qed.
 
   (* ...AND THE RE-KEY THE RUN KEY BUYS.  A slot captured at [Wk] is a slot
      at the record [U'] resumes with, keyed at [Wk]'s own descriptor view:
@@ -2176,7 +2176,7 @@ Section UexecRet.
     uvis_pid Wk = pidv ->
     (* the ascription pins [Σ] exactly as [UexecApply.uslot_key_cong]'s does *)
     (uslot Wk : iProp Σ) ⊣⊢ uslot (uvis_of U' sts gn cs pidv).
-  Proof.
+  Proof using .
     intros (Hg & Hp & HM & Hpi & Hsz & Hcw & Hlz) Hfd Hgn Hch Hpid.
     rewrite (uslot_ukc Wk) (uslot_ukc (uvis_of U' sts gn cs pidv)).
     unfold uvis_of.
@@ -2195,7 +2195,7 @@ Section UexecRet.
     is_aligned_vaddr (Virtaddr pc) 2 = true ->
     uslot (uvis_of_run m pc M π szv fdv cw gn cs pidv false)
     ⊣⊢ ukc π M szv fdv cw gn cs pidv false m pc.
-  Proof.
+  Proof using .
     intros Hx0 Hal. rewrite uslot_ukc.
     cbn [uvis_tf uvis_M uvis_perm uvis_fd uvis_cwd uvis_gen uvis_ch uvis_pid
          uvis_lazy uvis_of_run].
@@ -2217,7 +2217,7 @@ Section UexecRet.
              fdv' cw' gn' cs' pidv' lz')
     ⊣⊢ ukc π' M' szv' fdv' cw' gn' cs' pidv' lz'
           (<[Regidx (mword_of_int 10) := r]> m) (add_vec_int pc 4).
-  Proof.
+  Proof using .
     intros Hx0 Hal. rewrite uslot_ukc.
     rewrite (bump_run_gpr m pc M M' π π' szv szv' fdv fdv' cw cw' gn gn' cs cs'
                pidv pidv' lz lz' r Hx0)
@@ -2236,7 +2236,7 @@ Section UexecRet.
     uslot (bump (uvis_of_run m pc M π szv fdv cw gn cs pidv lz) r M' π' szv' fdv' cw' gn' cs' lz')
     ⊣⊢ ukc π' M' szv' fdv' cw' gn' cs' pidv lz'
           (<[Regidx (mword_of_int 10) := r]> m) (add_vec_int pc 4).
-  Proof.
+  Proof using .
     intros Hx0 Hal.
     exact (uslot_bump_at_run m pc M M' π π' szv szv' fdv fdv' cw cw' gn gn'
              cs cs' pidv pidv lz lz' r Hx0 Hal).
@@ -2248,7 +2248,7 @@ Section UexecRet.
       (g : gname) (cs : gset gname) (pidv : mword 32) (lz : bool) :
     ukont C pt Rfd Rut sz π fdv cw g cs pidv lz
     ⊣⊢ ▷ ukb C pt Rfd Rut sz π fdv cw g cs pidv lz.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* ...and the body's own rows, spelled out: what the trap loop reads the
      kernel obligation back at once it has stripped the guard's later *)
@@ -2264,7 +2264,7 @@ Section UexecRet.
        trapped_machine C pt Rut sz sc stv W' ∗ Rfd (uvis_fd W') ∗
        uexec_ret sc W' -∗
        WP (Loop : expr riscv_lang)).
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* the arms, read at the fixpoint *)
   Lemma uexec_ret_ecall (sc : mword 64) (W : uvis) :
@@ -2350,7 +2350,7 @@ Section UexecRet.
            ⌜usys_ch_ok n r (uvis_ch W) cs'⌝ -∗
            spost_at uslot n f W r M' fdv' cw' cs' -∗
            uslot (bump W r M' π' szv' fdv' cw' g' cs' lz'))))).
-  Proof.
+  Proof using .
     intros ->. rewrite /uexec_ret /uexec_ret_F.
     destruct (decide (uecall_scause = uecall_scause)); [ reflexivity | contradiction ].
   Qed.
@@ -2366,7 +2366,7 @@ Section UexecRet.
        uexec_fork_parent_F uslot W (sfork_pay f) (sfork_lend f)
      else if decide (n = USYS_wait) then uexec_wait_F uslot n f W
      else uexec_ret_cont_F uslot n f W).
-  Proof.
+  Proof using .
     intros ->. rewrite /uexec_arm /uexec_arm_F.
     destruct (decide (uecall_scause = uecall_scause)); [ reflexivity | contradiction ].
   Qed.
@@ -2379,7 +2379,7 @@ Section UexecRet.
     sc <> uecall_scause ->
     uexec_ret sc W ⊣⊢
     (∃ f : sfam, uexec_pay_dep sc W f ∗ uexec_kill_arm sc W f).
-  Proof.
+  Proof using .
     intros Hne. rewrite /uexec_ret /uexec_ret_F /uexec_kill_arm.
     destruct (decide (sc = uecall_scause)); [ contradiction | reflexivity ].
   Qed.
@@ -2387,7 +2387,7 @@ Section UexecRet.
   Lemma uexec_arm_transparent (sc : mword 64) (W : uvis) (f : sfam) :
     sc <> uecall_scause ->
     uexec_arm sc W f ⊣⊢ uexec_kill_arm sc W f.
-  Proof.
+  Proof using .
     intros Hne. rewrite /uexec_arm /uexec_arm_F /uexec_kill_arm.
     destruct (decide (sc = uecall_scause)); [ contradiction | reflexivity ].
   Qed.
@@ -2396,19 +2396,19 @@ Section UexecRet.
      that reads one *)
   Lemma uexec_kill_arm_not (sc : mword 64) (W : uvis) (f : sfam) :
     ~ ukill_sc sc -> uslot W -∗ uexec_kill_arm sc W f.
-  Proof. exact (uexec_kill_arm_F_not uslot sc W f). Qed.
+  Proof using . exact (uexec_kill_arm_F_not uslot sc W f). Qed.
 
   Lemma uexec_kill_arm_of_cred (sc : mword 64) (W : uvis) (f : sfam) :
     □ riscv_kill_cred -∗ uslot W -∗ uexec_kill_arm sc W f.
-  Proof. exact (uexec_kill_arm_F_of_cred uslot sc W f). Qed.
+  Proof using . exact (uexec_kill_arm_F_of_cred uslot sc W f). Qed.
 
   Lemma uexec_kill_arm_slot (sc : mword 64) (W : uvis) (f : sfam) :
     uexec_kill_arm sc W f -∗ uslot W.
-  Proof. exact (uexec_kill_arm_F_slot uslot sc W f). Qed.
+  Proof using . exact (uexec_kill_arm_F_slot uslot sc W f). Qed.
 
   Lemma uexec_kill_arm_cred (sc : mword 64) (W : uvis) (f : sfam) :
     uexec_kill_arm sc W f -∗ ukill_cred_at uslot (uvis_gen W) sc W f.
-  Proof. exact (uexec_kill_arm_F_cred uslot sc W f). Qed.
+  Proof using . exact (uexec_kill_arm_F_cred uslot sc W f). Qed.
 
   (* ------------------------------------------------------------------- *)
   (* THE SPLIT AND THE JOIN.  The loop splits the deposit off before the   *)
@@ -2425,7 +2425,7 @@ Section UexecRet.
   Lemma uexec_ret_F_split (X : uvis -d> iPropO Σ) (sc : mword 64) (W : uvis) :
     uexec_ret_F X sc W -∗
     ∃ f : sfam, uexec_dep_F X sc W f ∗ uexec_arm_F X sc W f.
-  Proof.
+  Proof using .
     rewrite /uexec_ret_F /uexec_dep_F /uexec_arm_F. cbv zeta.
     iIntros "H". iDestruct "H" as (f) "[Hpay H]". iExists f.
     destruct (decide (sc = uecall_scause)); [| iFrame "Hpay H"].
@@ -2454,7 +2454,7 @@ Section UexecRet.
   Lemma uexec_ret_F_join (X : uvis -d> iPropO Σ) (sc : mword 64) (W : uvis)
       (f : sfam) :
     uexec_dep_F X sc W f -∗ uexec_arm_F X sc W f -∗ uexec_ret_F X sc W.
-  Proof.
+  Proof using .
     rewrite /uexec_ret_F /uexec_dep_F /uexec_arm_F. cbv zeta.
     iIntros "[Hpay Hd] Ha". iExists f.
     destruct (decide (sc = uecall_scause)); [| iFrame "Hpay Ha"].
@@ -2475,11 +2475,11 @@ Section UexecRet.
 
   Lemma uexec_ret_split (sc : mword 64) (W : uvis) :
     uexec_ret sc W -∗ ∃ f : sfam, uexec_dep sc W f ∗ uexec_arm sc W f.
-  Proof. exact (uexec_ret_F_split uslot sc W). Qed.
+  Proof using . exact (uexec_ret_F_split uslot sc W). Qed.
 
   Lemma uexec_ret_join (sc : mword 64) (W : uvis) (f : sfam) :
     uexec_dep sc W f -∗ uexec_arm sc W f -∗ uexec_ret sc W.
-  Proof. exact (uexec_ret_F_join uslot sc W f). Qed.
+  Proof using . exact (uexec_ret_F_join uslot sc W f). Qed.
 
   (* ------------------------------------------------------------------- *)
   (* PAYING THE DEPOSIT OUT OF THE SUPPLY.                                *)
@@ -2527,7 +2527,7 @@ Section UexecRet.
                     □ (riscv_kill_cred -∗ R) -∗ X W') -∗
     □ (∀ W' : uvis, my_pay (uvis_gen W') (fun _ => True)%I -∗ X W') ==∗
     ∃ f : sfam, ⌜sexit_pay f = (fun _ => R)%I⌝ ∗ uexec_dep_F X sc W f.
-  Proof.
+  Proof using .
     rewrite /uexec_dep_F. cbv zeta.
     iIntros "#Hpay #HR #Hsup #Hkc #Hall #Halltriv".
     (* the carrier CASHED, once: [riscv_kill_cred] is Persistent
@@ -2642,7 +2642,7 @@ Section UexecRet.
     □ (∀ W' : uvis, my_pay (uvis_gen W') (fun _ => R)%I -∗
                     □ (riscv_kill_cred -∗ R) -∗ uslot W') -∗
     uexec_arm sc W f.
-  Proof.
+  Proof using .
     intros Hf. iIntros "#Hpay #HR #Hkc #H". rewrite /uexec_arm /uexec_arm_F.
     destruct (decide (sc = uecall_scause)) as [Hec | Hnec];
       [ | iApply (uexec_kill_arm_F_of_cred uslot sc W f with "Hkc");
@@ -2683,7 +2683,7 @@ Section UexecRet.
                     □ (riscv_kill_cred -∗ R) -∗ uslot W') -∗
     □ (∀ W' : uvis, my_pay (uvis_gen W') (fun _ => True)%I -∗ uslot W') ==∗
     uexec_ret sc W.
-  Proof.
+  Proof using .
     iIntros "#Hpay #HR #Hsup #Hkc #H #Htriv".
     iMod (uexec_dep_F_of_supply R uslot sc W
             with "Hpay HR Hsup Hkc H Htriv") as (f) "[%Hfp Hdep]".
@@ -2749,7 +2749,7 @@ Section UexecRetGen.
     □ ssupply -∗ □ riscv_kill_cred -∗ □ uexec_wp -∗
     ▷ □ (∀ W' : uvis, my_pay (uvis_gen W') (fun _ => True)%I -∗ uslot W') -∗
     my_pay (uvis_gen W) (fun _ => R)%I -∗ □ (riscv_kill_cred -∗ R) -∗ uslot W.
-  Proof.
+  Proof using .
     iIntros "#Hsup #Hkc #Hwp #Htriv".
     iLöb as "IH" forall (W).
     iIntros "#Hpay #HR".
@@ -2801,7 +2801,7 @@ Section UexecRetGen.
   Lemma uexec_wp_uslot_mint :
     □ ssupply -∗ □ riscv_kill_cred -∗ □ uexec_wp -∗
     □ (∀ W : uvis, my_pay (uvis_gen W) (fun _ => True)%I -∗ uslot W).
-  Proof.
+  Proof using .
     iIntros "#Hsup #Hkc #Hwp". iLöb as "IH".
     iModIntro. iIntros (W) "#Hpay".
     iApply (uslot_of_creds True%I W with "Hsup Hkc Hwp IH Hpay").
@@ -2816,7 +2816,7 @@ Section UexecRetGen.
   Lemma uexec_wp_uslot (R : iProp Σ) (W : uvis) :
     □ ssupply -∗ □ riscv_kill_cred -∗ □ uexec_wp -∗
     my_pay (uvis_gen W) (fun _ => R)%I -∗ □ (riscv_kill_cred -∗ R) -∗ uslot W.
-  Proof.
+  Proof using .
     iIntros "#Hsup #Hkc #Hwp #Hpay #HR".
     iDestruct (uexec_wp_uslot_mint with "Hsup Hkc Hwp") as "#Hmk".
     iApply (uslot_of_creds R W with "Hsup Hkc Hwp [] Hpay HR").
@@ -2827,7 +2827,7 @@ Section UexecRetGen.
   Lemma uexec_wp_uslot_triv (W : uvis) :
     □ ssupply -∗ □ riscv_kill_cred -∗ □ uexec_wp -∗
     my_pay (uvis_gen W) (fun _ => True)%I -∗ uslot W.
-  Proof.
+  Proof using .
     iIntros "#Hsup #Hkc #Hwp #Hpay".
     iApply (uexec_wp_uslot True%I W with "Hsup Hkc Hwp Hpay").
     iModIntro. iIntros "_". done.

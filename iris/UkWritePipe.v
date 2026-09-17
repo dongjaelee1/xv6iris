@@ -156,7 +156,7 @@ Section UkWritePipe.
        pipe_wpay (pn_queue γp) M (m !!! Regidx a1_idx) Q Qe nb) -∗
     udepwf_st N m pc 16 (write_pipe_fam Q Qe (ukn_pay N))
       (FdOpen rb true (FdPipe γp)).
-  Proof.
+  Proof using .
     intros Hcnt. iIntros "Hch".
     rewrite /udepwf_st. iSplitR; [ iPureIntro; reflexivity | ].
     iIntros (M pm sz fdv cw gn cs pidv) "%Hkey _ Hheap Hufd".
@@ -182,7 +182,7 @@ Section UkWritePipe.
     filewrite_extra gn Pt st n Mv ua Q Qe r -∗
     pipe_wpost Pt (pn_queue γp) Mv ua Q Qe (ChildTok.kill_shot gn)
       (Z.to_nat n) r.
-  Proof. intros ->. by iIntros "$". Qed.
+  Proof using . intros ->. by iIntros "$". Qed.
 
   (* =================================================================== *)
   (*  3.  THE MEMBER                                                      *)
@@ -237,7 +237,7 @@ Section UkWritePipe.
        urun N h' (<[Regidx a0_idx := r]> m) (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hfdv Hfdlt Hcnt Hal4.
     iIntros "#Hi Hrun Hufdh Hbuf Hch Hcont".
     iPoseProof (udepwf_st_write_pipe N m pc rb γp Q Qe nb Hcnt with "Hch")
@@ -312,7 +312,7 @@ Section UkWritePipe.
        urun N h' (<[Regidx a0_idx := r]> m) (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hfdv Hfdlt Hcnt Hal4.
     iIntros "#Hi Hrun Hufdh Hbuf Hch Hcont".
     iApply (wp_uk_ecall_write_pipe N h m pc avail fd false dq nb f γp Q Qe

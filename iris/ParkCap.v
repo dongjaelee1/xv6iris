@@ -408,7 +408,7 @@ Section ParkCap.
        park_cap URB X γs ∗ park_chan URB X γs)%I.
 
   Local Instance park_token_F_contractive γs : Contractive (park_token_F γs).
-  Proof.
+  Proof using .
     rewrite /park_token_F /park_cap /park_chan /park_pkg.
     solve_contractive.
   Qed.
@@ -417,10 +417,10 @@ Section ParkCap.
 
   Lemma park_token_unfold (γs : list gname) :
     park_token γs ⊣⊢ park_token_F γs (park_token γs).
-  Proof. apply (fixpoint_unfold (park_token_F γs)). Qed.
+  Proof using . apply (fixpoint_unfold (park_token_F γs)). Qed.
 
   Global Instance park_token_persistent γs : Persistent (park_token γs).
-  Proof.
+  Proof using .
     rewrite /Persistent park_token_unfold /park_token_F.
     iIntros "H". iDestruct "H" as (URB) "[#Hcap #Hchan]".
     iModIntro. iExists URB. iFrame "Hcap Hchan".
@@ -497,7 +497,7 @@ Section ParkCap.
        [park_child]. *)
     park_child (un_s N) (un_f N) (un_pj N) (un_ks N) rest (un_pid N) U false -∗
     |==> own_context cur_ctx ∗ proc_ctx (un_s N) (un_pj N).
-  Proof.
+  Proof using ufdG0.
     iIntros (Hwf Hrest) "Hrun #Htok #Htext #Hwire #Hkmap #Hmk Hstack #Henv Hown Hfrag Hch Hbundle Hrdtok Hchild".
     assert (Hkav : (K_usertrap <= KSTACK_AV)%nat) by (vm_compute; lia).
     iPoseProof "Htok" as "Htok'".
@@ -683,7 +683,7 @@ Section ParkCap.
     (forall N av, ut_park_intro_body URB (park_token (un_s N)) N av) ->
     park_cap URB (park_token γs) γs -∗
     park_token γs.
-  Proof.
+  Proof using .
     iIntros (Hchan) "#Hcap".
     iEval (rewrite park_token_unfold /park_token_F).
     iExists URB. iFrame "Hcap".

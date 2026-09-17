@@ -548,20 +548,20 @@ Section PwPieces.
     bytes_own (KTR := KT1) (DfracOwn 1) (pa_stk sp0 13%nat) 8 -∗
     (∃ v : bv 64, pa_stk sp0 14%nat ↦₈[KT1] v) -∗
     pw_chslot sp0.
-  Proof.
+  Proof using .
     intros Hal. rewrite /pw_chslot. iIntros "Hb Hv". iSplitR; [done|]. iFrame.
   Qed.
 
   Lemma pw_slot_eq (sp0 : mword 64) (k K : nat) :
     (7 + k)%nat = K -> pa_stk (pa_stk sp0 7%nat) k = pa_stk sp0 K.
-  Proof. intro H. rewrite pa_stk_assoc H. reflexivity. Qed.
+  Proof using . intro H. rewrite pa_stk_assoc H. reflexivity. Qed.
 
   Lemma pw_hi_split (sp0 : mword 64) :
     stack_own (KTR := KT1) (pa_stk sp0 7%nat) 7%nat ⊢
       (∃ w8 w9 w10 w11 w12 : bv 64,
          pa_stk sp0 8%nat ↦₈[KT1] w8 ∗ pa_stk sp0 9%nat ↦₈[KT1] w9 ∗ pa_stk sp0 10%nat ↦₈[KT1] w10 ∗
          pa_stk sp0 11%nat ↦₈[KT1] w11 ∗ pa_stk sp0 12%nat ↦₈[KT1] w12) ∗ pw_chslot sp0.
-  Proof.
+  Proof using .
     assert (E8  : pa_stk (pa_stk sp0 7%nat) 1%nat = pa_stk sp0 8%nat)  by (apply pw_slot_eq; reflexivity).
     assert (E9  : pa_stk (pa_stk sp0 7%nat) 2%nat = pa_stk sp0 9%nat)  by (apply pw_slot_eq; reflexivity).
     assert (E10 : pa_stk (pa_stk sp0 7%nat) 3%nat = pa_stk sp0 10%nat) by (apply pw_slot_eq; reflexivity).
@@ -588,7 +588,7 @@ Section PwPieces.
     pa_stk sp0 8%nat ↦₈[KT1] w8 -∗ pa_stk sp0 9%nat ↦₈[KT1] w9 -∗ pa_stk sp0 10%nat ↦₈[KT1] w10 -∗
     pa_stk sp0 11%nat ↦₈[KT1] w11 -∗ pa_stk sp0 12%nat ↦₈[KT1] w12 -∗
     pw_chslot sp0 -∗ stack_own (KTR := KT1) (pa_stk sp0 7%nat) 7%nat.
-  Proof.
+  Proof using .
     assert (E8  : pa_stk (pa_stk sp0 7%nat) 1%nat = pa_stk sp0 8%nat)  by (apply pw_slot_eq; reflexivity).
     assert (E9  : pa_stk (pa_stk sp0 7%nat) 2%nat = pa_stk sp0 9%nat)  by (apply pw_slot_eq; reflexivity).
     assert (E10 : pa_stk (pa_stk sp0 7%nat) 3%nat = pa_stk sp0 10%nat) by (apply pw_slot_eq; reflexivity).
@@ -620,7 +620,7 @@ Section PwPieces.
     pipe_endstate γp false ro -∗ pipe_endstate γp true wo -∗
     pipe_data pi bs -∗ pipe_slack pi -∗
     pipe_qres γp nr nw ro wo bs -∗ pipe_res γp pi.
-  Proof.
+  Proof using .
     intros Hc Hl. iIntros "Hnm Hnr Hnw Hro Hwo Hst0 Hst1 Hdat Hslack Hq".
     iExists nr, nw, ro, wo, vname, bs.
     iFrame "Hnm Hnr Hnw Hro Hwo Hst0 Hst1 Hdat Hslack Hq". done.
@@ -644,7 +644,7 @@ Section PwPieces.
     a_pnread pi ↦₄ nr -∗ a_pnwrite pi ↦₄ nw -∗
     a_popen pi false ↦₄ ro -∗
     pipe_data pi bs -∗ pipe_qres γp nr nw ro wo bs -∗ pipe_res γp pi.
-  Proof.
+  Proof using .
     intros Hc Hl. iIntros "(Hnm & Hwo & Hst0 & Hst1 & Hslack) Hnr Hnw Hro Hdat Hq".
     iApply (pw_res_intro γp pi nr nw ro wo vname bs Hc Hl
               with "Hnm Hnr Hnw Hro Hwo Hst0 Hst1 Hdat Hslack Hq").
@@ -656,7 +656,7 @@ Section PwPieces.
     pipe_data pi bs ⊢ (pa_add pi (pipe_data_off + idx)%nat ↦ₘ b) ∗
       (∀ b' : bv 8, pa_add pi (pipe_data_off + idx)%nat ↦ₘ b' -∗
                     pipe_data pi (<[idx := b']> bs)).
-  Proof.
+  Proof using .
     intro Hl. rewrite /pipe_data. iIntros "H".
     iDestruct (big_sepL_insert_acc
                  (fun (k : nat) (y : bv 8) => (pa_add pi (pipe_data_off + k)%nat ↦ₘ y)%I)
@@ -686,7 +686,7 @@ Section PwConts.
 
   Lemma pw_pay_0 (γp : pipe_names) M ua Q Qe n :
     pipe_wpay (pn_queue γp) M ua Q Qe n -∗ pw_pay γp M ua Q Qe 0 n.
-  Proof. rewrite /pipe_wpay /pw_pay Nat.sub_0_r. by iIntros "$". Qed.
+  Proof using . rewrite /pipe_wpay /pw_pay Nat.sub_0_r. by iIntros "$". Qed.
 
   (* pipewrite's own instance of the post *)
   Definition pw_post (γp : pipe_names) (U : ustate) (ua : mword 64)
@@ -699,18 +699,18 @@ Section PwConts.
      [iSpecialize]d at a state; these are their eliminations. *)
   Lemma pw_olink_apply (γ : gname) (Φ : pipe_st -> iProp Σ) (s : pipe_st) :
     pipe_olink γ Φ -∗ pipe_qauth γ s ={⊤}=∗ pipe_qauth γ s ∗ Φ s.
-  Proof. rewrite /pipe_olink. iIntros "H". iApply "H". Qed.
+  Proof using . rewrite /pipe_olink. iIntros "H". iApply "H". Qed.
 
   Lemma pw_wlink_apply (γ : gname) (b : bv 8) (Φ : iProp Σ) (s : pipe_st) :
     pipe_wlink γ b Φ -∗ pipe_qauth γ s ={⊤}=∗ pipe_qauth γ (pst_write b s) ∗ Φ.
-  Proof. rewrite /pipe_wlink. iIntros "H". iApply "H". Qed.
+  Proof using . rewrite /pipe_wlink. iIntros "H". iApply "H". Qed.
 
   (* NODE [k] OF THE CHAIN, at the count the cursor form carries.  The three
      components are an ADDITIVE conjunction: taking the observation SPENDS
      the node, which is exactly what the post's observing arm hands back. *)
   Lemma pw_chain_olink (γ : gname) M ua Q Qe (k nn : nat) :
     (k < nn)%nat -> pipe_wchain γ M ua Q Qe k (nn - k) -∗ pipe_olink γ (Qe k).
-  Proof.
+  Proof using .
     intro Hk. assert (E : (nn - k)%nat = S (nn - S k)%nat) by lia. rewrite E.
     by iIntros "[_ [$ _]]".
   Qed.
@@ -719,7 +719,7 @@ Section PwConts.
     (k < nn)%nat -> M !! uint (add_vec_int ua (Z.of_nat k)) = Some b ->
     pipe_wchain γ M ua Q Qe k (nn - k) -∗
     pipe_wlink γ b (pipe_wchain γ M ua Q Qe (S k) (nn - S k)).
-  Proof.
+  Proof using .
     intros Hk Hb. assert (E : (nn - k)%nat = S (nn - S k)%nat) by lia. rewrite E.
     iIntros "[_ [_ H]]". iApply ("H" $! b). iPureIntro. exact Hb.
   Qed.
@@ -737,7 +737,7 @@ Section PwConts.
     (k = Z.to_nat n
      \/ ~ uva_rmapped (pv_upt (us_V U)) (uint (add_vec_int ua (Z.of_nat k)))) ->
     pw_pay γp (us_M U) ua Q Qe k (Z.to_nat n) -∗ pw_post γp U ua Q Qe n r.
-  Proof.
+  Proof using .
     intros Hk Hr Hre. rewrite /pw_pay /pw_post /pipe_wpost.
     iIntros "[Hch | #Ht]".
     - iLeft. iExists k. iSplitR; [by iPureIntro |]. iLeft.
@@ -752,7 +752,7 @@ Section PwConts.
     ChildTok.kill_shot (pv_gen (us_V U)) -∗
     pw_pay γp (us_M U) ua Q Qe k (Z.to_nat n) -∗
     pw_post γp U ua Q Qe n (mword_of_int (-1) : mword 64).
-  Proof.
+  Proof using .
     intro Hk. rewrite /pw_pay /pw_post /pipe_wpost.
     iIntros "#Hks [Hch | #Ht]".
     - iLeft. iExists k. iSplitR; [iPureIntro; lia |]. iRight. iLeft.
@@ -774,7 +774,7 @@ Section PwConts.
     pipe_qres γp nr nw ro wo bs
     ={⊤}=∗ pipe_qres γp nr nw ro wo bs ∗
            pw_post γp U ua Q Qe n (mword_of_int (-1) : mword 64).
-  Proof.
+  Proof using .
     intros Hk Hro. rewrite /pw_pay /pw_post /pipe_wpost.
     iIntros "[Hch | #Ht] Hq".
     2:{ iModIntro. iFrame "Hq". iRight. iSplitR; [iExact "Ht" |].
@@ -815,7 +815,7 @@ Section PwConts.
     ={⊤}=∗ pipe_qres γp nr (add_vec nw (mword_of_int 1 : mword 32)) ro wo
              (<[Z.to_nat (bv_unsigned nw mod 512) := b]> bs)
            ∗ pw_pay γp M ua Q Qe (S k) nn.
-  Proof.
+  Proof using .
     intros Hk Hb Hlen Hne. rewrite /pw_pay. iIntros "[Hch | #Ht] Hq".
     2:{ iModIntro. iSplitR; [by iApply pipe_qres_taint |]. by iRight. }
     iDestruct "Hq" as "[Hc | #Ht]".
@@ -835,7 +835,7 @@ Section PwConts.
      grows, so "not readable then" implies "not readable at entry" *)
   Lemma pw_nrmapped_entry (szv : mword 64) (P Pc : uptd) (va : Z) :
     uptd_ext_sz szv P Pc -> ~ uva_rmapped Pc va -> ~ uva_rmapped P va.
-  Proof.
+  Proof using .
     intros Hext Hn Hc. apply Hn.
     destruct (uptd_ext_sz_ext szv P Pc Hext) as (_ & _ & Hsub).
     exact (uva_rmapped_mono P Pc va Hsub Hc).
@@ -844,7 +844,7 @@ Section PwConts.
   (* copyin's source is [i + addr]; the chain's node [k] is keyed on
      [addr + k] *)
   Lemma pw_addv_comm (x y : mword 64) : add_vec x y = add_vec y x.
-  Proof.
+  Proof using .
     apply bv_eq. rewrite !add_vec64_unsigned.
     apply (f_equal (bv_wrap 64)). apply Z.add_comm.
   Qed.
@@ -853,7 +853,7 @@ Section PwConts.
     (0 <= i)%Z ->
     add_vec_int (add_vec (mword_of_int i : mword 64) ua) (Z.of_nat 0%nat)
     = add_vec_int ua (Z.of_nat (Z.to_nat i)).
-  Proof.
+  Proof using .
     intro Hi. rewrite (Z2Nat.id i Hi). unfold add_vec_int.
     replace (Z.of_nat 0%nat) with 0%Z by reflexivity.
     rewrite kv_addv_zero. apply pw_addv_comm.
@@ -1033,7 +1033,7 @@ Section PwRestore.
         sie_cap_gpr KT1 M' K b pme -∗ pc_is p5 -∗ pw_frame5 m sp0 -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hsp E1 E2 E3 E4 E5.
     iIntros "Hcg Hpc Hi0 Hi1 Hi2 Hi3 Hi4 (F8 & F9 & F10 & F11 & F12) Hcont".
     assert (Hb8 : add_vec (pa_stk sp0 14%nat) (zero_extend' 64 (concat_vec (mword_of_int 6 : mword 6) ('b"000"))) = pa_stk sp0 8%nat)
@@ -1137,7 +1137,7 @@ Section PwGuard.
 
   Lemma pw_stack7_of (m : regfile) (sp0 : mword 64) :
     pw_frame5 m sp0 -∗ pw_chslot sp0 -∗ stack_own (KTR := KT1) (pa_stk sp0 7%nat) 7%nat.
-  Proof.
+  Proof using .
     iIntros "(F8 & F9 & F10 & F11 & F12) HCH".
     iApply (pw_hi_intro sp0 with "F8 F9 F10 F11 F12 HCH").
   Qed.
@@ -1167,7 +1167,7 @@ Section PwGuard.
     pw_exits CID0 γf γs j γl γp w q m av eb lks pid U n sp0 pi addr Q Qe -∗
     pw_loop CID0 γa γf γs j γl γp w q m av eb lks pid U n sp0 pi addr Q Qe -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn0 Hn31 Hi Hanch Hext Hregs.
     assert (H63 : (2 ^ 63 = 9223372036854775808)%Z) by (vm_compute; reflexivity).
     assert (H31 : (2 ^ 31 = 2147483648)%Z) by (vm_compute; reflexivity).
@@ -1307,7 +1307,7 @@ Section ProofPipewrite.
       (pid : mword 32) (U : ustate) (n : Z) (b : bool) (lks : gset string)
       (Q : nat -> iProp Σ) (Qe : nat -> pipe_st -> iProp Σ)
     : wp_pipewrite_sconf_body γa γf γs j γlp γl γp w q m av eb pid U n b lks Q Qe.
-  Proof.
+  Proof using .
     cbv beta delta [wp_pipewrite_sconf_body].
     intros pcE pj pi addr ret_tgt Hj Hjlp Hlen Ha2 Hnrange Hav Heb Hbelow. subst eb.
     (* every callee that wants "proc" (wakeup / killed / sleep_prepare /

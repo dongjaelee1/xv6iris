@@ -155,7 +155,7 @@ Section UConsOpen.
      not see through it and [iMod] fails against a bare [WP e] goal; this
      is [fupd_wp] with the definition peeled. *)
   Lemma fupd_wp_triv (e : expr riscv_lang) : (|={⊤}=> WP e) ⊢ WP e.
-  Proof. rewrite /wp_triv. iIntros "H". iApply fupd_wp. iExact "H". Qed.
+  Proof using . rewrite /wp_triv. iIntros "H". iApply fupd_wp. iExact "H". Qed.
 
   (* =================================================================== *)
   (*  S2.  THE DEPOSIT'S FAMILIES                                         *)
@@ -254,7 +254,7 @@ Section UConsOpen.
       (of_P f) (of_Pmiss f) (of_Farm f) (of_Fun f) (of_Fok f) (of_Fex f)
       (of_Fo f) (of_Ft f) -∗
     sbundle_at X 15 f W.
-  Proof.
+  Proof using .
     intros Hc HM H0 H1. iIntros "H".
     (* the REWRITE GOES FIRST, against the lemma's own variables: after the
        unfold both sides are whatever [simpl] made of the key's
@@ -276,7 +276,7 @@ Section UConsOpen.
     open_receipt (fs_gamma_L fsc_fs) fsc_fs cw M pv vom
       (of_P f) (of_Pmiss f) (of_Farm f) (of_Fun f) (of_Fok f) (of_Fex f)
       (of_Fo f) (of_Ft f) (uvis_fd W) r fdv'.
-  Proof.
+  Proof using .
     intros Hc HM H0 H1. iIntros "H".
     rewrite -Hc -HM -H0 -H1.
     rewrite /spost_at /= /xv6_spost /xk_a.
@@ -300,7 +300,7 @@ Section UConsOpen.
       (pm : gmap (mword 27) uperm) (sz : Z) :
     uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗
     utext_img (ukn_t N) Img -∗ ⌜uimg_sub Img M⌝.
-  Proof.
+  Proof using .
     iIntros "Hheap #Hro". iIntros (a b Hb).
     rewrite /utext_img.
     iDestruct (big_sepM_lookup _ _ a b Hb with "Hro") as "Hb".
@@ -343,7 +343,7 @@ Section UConsOpen.
     init_cons_abs_law T K -∗ app_inv γfs -∗
     ex_hop γfs (cons_P_dead T K FsImg.ROOTINO) (cons_Pmiss T K)
       0%nat fname_console.
-  Proof.
+  Proof using .
     intros HPT HTT HTK. iIntros "#Hcl #Hinv".
     pose proof cons_pin_misses_at as [_ Hmiss].
     rewrite /ex_hop /ax_hop /cons_P_dead /cons_Pmiss.
@@ -381,7 +381,7 @@ Section UConsOpen.
       (s : fname) :
     (k <> 0)%nat ->
     ⊢ ex_hop γfs (cons_P_dead T K FsImg.ROOTINO) (cons_Pmiss T K) k s.
-  Proof.
+  Proof using .
     intros Hk. rewrite /ex_hop /ax_hop /cons_P_dead /cons_Pmiss.
     iIntros (d ents dqv) "HP HF".
     iDestruct "HP" as "[[%Hpd _] | HT]";
@@ -395,7 +395,7 @@ Section UConsOpen.
     init_cons_abs_law T K -∗ app_inv γfs -∗ K -∗
     ex_start γfs FsImg.ROOTINO (cons_P_dead T K FsImg.ROOTINO)
       (cons_Pmiss T K) init_cons_pl.
-  Proof.
+  Proof using .
     intros HPT HTT HTK. iIntros "#Hcl #Hinv HK".
     rewrite /ex_start. iIntros (r Hr). iModIntro. iSplitL "HK".
     { rewrite /cons_P_dead. iLeft. iFrame "HK". iPureIntro.
@@ -422,7 +422,7 @@ Section UConsOpen.
     open_in (fs_gamma_L γfs) γfs FsImg.ROOTINO M pv vom
       (cons_P_dead T K FsImg.ROOTINO) (cons_Pmiss T K) Farm Fun Fok Fex
       (pfam_triv (fun (_ : aview) (_ : Z) (_ : anode) => True%I)) Ft.
-  Proof.
+  Proof using .
     intros HPT HTT HTK Hom Hpath. iIntros "#Hcl #Hinv HK".
     destruct (om_rdwr_plain vom Hom) as [Hcr Htr].
     rewrite /open_in Hcr /open_au_plain_at.
@@ -454,7 +454,7 @@ Section UConsOpen.
       (cons_P_dead T K FsImg.ROOTINO) (cons_Pmiss T K) Fo Ft sts r fdv' -∗
     |={⊤}=> ((⌜r = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜fdv' = sts⌝
               ∗ (K ∨ T)) ∨ T).
-  Proof.
+  Proof using .
     intros HPT Hpath. iIntros "Hrc". rewrite /open_receipt_plain.
     iDestruct "Hrc" as "[(%Hr & %Hfd & Hfail) | Hok]"; last first.
     { (* THE SUCCESS FOLD: the terminal cursor is at hop 1, and the
@@ -527,7 +527,7 @@ Section UConsOpen.
     init_cons_abs_law T K -∗ app_inv fsc_fs -∗ utext_img (ukn_t N) Img -∗ K -∗
     udepwf_at N m pc USYS_open (init_cons_absent_fam T K (ukn_pay N))
       FsImg.ROOTINO.
-  Proof.
+  Proof using .
     intros HPT HTT HTK Hpath Ha0 Ha1. iIntros "#Habs #Hinv #Hro HK".
     rewrite /udepwf_at. iSplitR; [ iPureIntro; reflexivity | ].
     iIntros (M pm sz fdv gn cs pidv) "#Hmpay Hheap Hufd".
@@ -574,7 +574,7 @@ Section UConsOpen.
     utext_img (ukn_t N) Img -∗
     udepwf_at N m pc USYS_open (init_cons_console_fam T i (ukn_pay N))
       FsImg.ROOTINO.
-  Proof.
+  Proof using .
     intros HPT HTT Hpath Ha0 Ha1. iIntros "#Hlaws #Hmade #Hinv #Hro".
     rewrite /udepwf_at. iSplitR; [ iPureIntro; reflexivity | ].
     iIntros (M pm sz fdv gn cs pidv) "#Hmpay Hheap Hufd".
@@ -616,7 +616,7 @@ Section UConsOpen.
       (r : mword 64) :
     r = (mword_of_int (-1) : mword 64) ->
     uk_open_fd_arm γfd l sts fdv' r -∗ ustd γfd l.
-  Proof.
+  Proof using .
     intros Hr. rewrite /uk_open_fd_arm. iIntros "[Hal | [_ $]]".
     iDestruct "Hal" as (fd rd wr t) "[%Hb _]".
     destruct Hb as (Hfd & Hlt & _). exfalso.
@@ -627,7 +627,7 @@ Section UConsOpen.
   Lemma init_cons_any_std (γfd : gname) (l sts fdv' : list fdstate)
       (r : mword 64) :
     uk_open_fd_arm γfd l sts fdv' r -∗ ustd_any γfd.
-  Proof.
+  Proof using .
     rewrite /uk_open_fd_arm. iIntros "[Hal | [_ Hstd]]"; [| by iExists l ].
     iDestruct "Hal" as (fd rd wr t) "[_ Hal]".
     iDestruct (ualloc_ledger with "Hal") as "Hstd". by iExists _.

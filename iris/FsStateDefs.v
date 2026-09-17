@@ -76,7 +76,7 @@ Section GammaDefs.
       (xs : list (bv 8)) :
     ([∗ map] a ↦ v ∈ (map_seqZ start xs : gmap Z (bv 8)), Phi a v)
     ⊣⊢ ([∗ list] k ↦ v ∈ xs, Phi (start + Z.of_nat k) v).
-  Proof.
+  Proof using .
     revert start. induction xs as [| x xs IH]; intros start.
     - simpl. rewrite big_sepM_empty //.
     - rewrite map_seqZ_cons big_sepM_insert; [| apply map_seqZ_cons_disjoint].
@@ -144,49 +144,49 @@ Section GammaDefs.
 
   Lemma byte_range_1 Γ b off bs :
     byte_range Γ b off bs = byte_range_q Γ (DfracOwn 1) b off bs.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma blk_owned_1 Γ b bs :
     blk_owned Γ b bs = blk_owned_q Γ (DfracOwn 1) b bs.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Global Instance byte_range_q_timeless `{!GTimeless Γ} dq b off bs :
     Timeless (byte_range_q Γ dq b off bs).
-  Proof.
+  Proof using .
     rewrite /byte_range_q. apply big_sepL_timeless.
     intros. apply gtimeless.
   Qed.
 
   Global Instance byte_range_timeless `{!GTimeless Γ} b off bs :
     Timeless (byte_range Γ b off bs).
-  Proof. rewrite /byte_range. apply _. Qed.
+  Proof using . rewrite /byte_range. apply _. Qed.
 
   Global Instance blk_owned_q_timeless `{!GTimeless Γ} dq b bs :
     Timeless (blk_owned_q Γ dq b bs).
-  Proof. rewrite /blk_owned_q. apply _. Qed.
+  Proof using . rewrite /blk_owned_q. apply _. Qed.
 
   Global Instance blk_owned_timeless `{!GTimeless Γ} b bs :
     Timeless (blk_owned Γ b bs).
-  Proof. rewrite /blk_owned. apply _. Qed.
+  Proof using . rewrite /blk_owned. apply _. Qed.
 
   Lemma blk_owned_q_length Γ dq b bs :
     blk_owned_q Γ dq b bs -∗ ⌜length bs = BSIZE⌝.
-  Proof. iIntros "[% _]". done. Qed.
+  Proof using . iIntros "[% _]". done. Qed.
 
   Lemma blk_owned_length Γ b bs : blk_owned Γ b bs -∗ ⌜length bs = BSIZE⌝.
-  Proof. iIntros "[% _]". done. Qed.
+  Proof using . iIntros "[% _]". done. Qed.
 
   Lemma byte_range_q_nil Γ dq b off : byte_range_q Γ dq b off [] ⊣⊢ emp.
-  Proof. rewrite /byte_range_q //. Qed.
+  Proof using . rewrite /byte_range_q //. Qed.
 
   Lemma byte_range_nil Γ b off : byte_range Γ b off [] ⊣⊢ emp.
-  Proof. rewrite /byte_range byte_range_q_nil //. Qed.
+  Proof using . rewrite /byte_range byte_range_q_nil //. Qed.
 
   Lemma byte_range_q_app Γ dq b off bs1 bs2 :
     byte_range_q Γ dq b off (bs1 ++ bs2)
     ⊣⊢ byte_range_q Γ dq b off bs1
         ∗ byte_range_q Γ dq b (off + Z.of_nat (length bs1)) bs2.
-  Proof.
+  Proof using .
     rewrite /byte_range_q big_sepL_app.
     apply bi.sep_proper; [done |].
     apply big_sepL_proper. intros k y _.
@@ -200,7 +200,7 @@ Section GammaDefs.
     byte_range Γ b off (bs1 ++ bs2)
     ⊣⊢ byte_range Γ b off bs1
         ∗ byte_range Γ b (off + Z.of_nat (length bs1)) bs2.
-  Proof. rewrite /byte_range byte_range_q_app //. Qed.
+  Proof using . rewrite /byte_range byte_range_q_app //. Qed.
 
   (* ---------------------------------------------------------------- *)
   (*  2a.  SPLITTING A RUN ALONG [⋅] -- how the quarter is handed out  *)
@@ -210,7 +210,7 @@ Section GammaDefs.
     byte_range_q Γ (DfracOwn (q1 + q2)) b off bs
     ⊣⊢ byte_range_q Γ (DfracOwn q1) b off bs
         ∗ byte_range_q Γ (DfracOwn q2) b off bs.
-  Proof.
+  Proof using .
     rewrite /byte_range_q -big_sepL_sep.
     apply big_sepL_proper. intros k v _. apply Hfr.
   Qed.
@@ -218,7 +218,7 @@ Section GammaDefs.
   Lemma blk_owned_q_split Γ (Hfr : phi_frac Γ) (q1 q2 : Qp) b bs :
     blk_owned_q Γ (DfracOwn (q1 + q2)) b bs
     ⊣⊢ blk_owned_q Γ (DfracOwn q1) b bs ∗ blk_owned_q Γ (DfracOwn q2) b bs.
-  Proof.
+  Proof using .
     rewrite /blk_owned_q (byte_range_q_split Γ Hfr).
     iSplit.
     - iIntros "[%Hl [H1 H2]]". iSplitL "H1"; by iFrame.
@@ -230,7 +230,7 @@ Section GammaDefs.
   Lemma blk_owned_split_34 Γ (Hfr : phi_frac Γ) b bs :
     blk_owned Γ b bs
     ⊣⊢ blk_owned_q Γ (DfracOwn (3/4)) b bs ∗ blk_owned_q Γ (DfracOwn (1/4)) b bs.
-  Proof.
+  Proof using .
     rewrite blk_owned_1 -(blk_owned_q_split Γ Hfr (3/4) (1/4)).
     rewrite Qp.three_quarter_quarter //.
   Qed.
@@ -266,11 +266,11 @@ Section GammaDefs.
 
   Lemma gamma_q_byte_range Γ dq b off bs :
     byte_range (gamma_q Γ dq) b off bs ⊣⊢ byte_range_q Γ dq b off bs.
-  Proof. rewrite /byte_range /byte_range_q /gamma_q //. Qed.
+  Proof using . rewrite /byte_range /byte_range_q /gamma_q //. Qed.
 
   Lemma gamma_q_blk_owned Γ dq b bs :
     blk_owned (gamma_q Γ dq) b bs ⊣⊢ blk_owned_q Γ dq b bs.
-  Proof. rewrite /blk_owned /blk_owned_q gamma_q_byte_range //. Qed.
+  Proof using . rewrite /blk_owned /blk_owned_q gamma_q_byte_range //. Qed.
 
   (* THE FULL-SHARE READING IS THE THING ITSELF, on the nose: [byte_range]
      hands [DfracOwn 1] down, and that is what the constant view then
@@ -278,15 +278,15 @@ Section GammaDefs.
      by a SWEEP ([DfracOwn 1] in the argument list) and not by re-proof. *)
   Lemma gamma_q_1_byte_range Γ b off bs :
     byte_range (gamma_q Γ (DfracOwn 1)) b off bs = byte_range Γ b off bs.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma gamma_q_1_blk_owned Γ b bs :
     blk_owned (gamma_q Γ (DfracOwn 1)) b bs = blk_owned Γ b bs.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Global Instance gamma_q_gtimeless Γ `{!GTimeless Γ} dq :
     GTimeless (gamma_q Γ dq).
-  Proof. intros dq' a v. rewrite /gamma_q /=. apply gtimeless. Qed.
+  Proof using . intros dq' a v. rewrite /gamma_q /=. apply gtimeless. Qed.
 
   (* ---------------------------------------------------------------- *)
   (*  2c.  SHEDDING A SHARE, AS A MAP BETWEEN VIEWS                     *)
@@ -320,7 +320,7 @@ Section GammaDefs.
   Lemma gamma_q_shed Γ (Hfr : phi_frac Γ) (q1 q2 : Qp) :
     view_shed (gamma_q Γ (DfracOwn (q1 + q2)))
               (gamma_q Γ (DfracOwn q1)) (gamma_q Γ (DfracOwn q2)).
-  Proof. intros a v. rewrite /gamma_q /=. rewrite (Hfr a v q1 q2) //. Qed.
+  Proof using . intros a v. rewrite /gamma_q /=. rewrite (Hfr a v q1 q2) //. Qed.
 
   (* ...and the one every fraction-1 owner runs: a WHOLE object shed into
      two constant-share views whose shares sum to one.  This is how the
@@ -329,27 +329,27 @@ Section GammaDefs.
   Lemma gamma_shed_full Γ (Hfr : phi_frac Γ) (q1 q2 : Qp) :
     (q1 + q2)%Qp = 1%Qp ->
     view_shed Γ (gamma_q Γ (DfracOwn q1)) (gamma_q Γ (DfracOwn q2)).
-  Proof.
+  Proof using .
     intros Hsum a v. rewrite /gamma_q /= -Hsum. rewrite (Hfr a v q1 q2) //.
   Qed.
 
   Lemma gamma_shed_34 Γ (Hfr : phi_frac Γ) :
     view_shed Γ (gamma_q Γ (DfracOwn (3/4))) (gamma_q Γ (DfracOwn (1/4))).
-  Proof.
+  Proof using .
     apply (gamma_shed_full Γ Hfr (3/4) (1/4)).
     exact Qp.three_quarter_quarter.
   Qed.
 
   Lemma byte_range_shed Γ Γ1 Γ2 (Hs : view_shed Γ Γ1 Γ2) b off bs :
     byte_range Γ b off bs ⊢ byte_range Γ1 b off bs ∗ byte_range Γ2 b off bs.
-  Proof.
+  Proof using .
     rewrite /byte_range /byte_range_q -big_sepL_sep.
     apply big_sepL_mono. intros k v _. apply (Hs _ v).
   Qed.
 
   Lemma blk_owned_shed Γ Γ1 Γ2 (Hs : view_shed Γ Γ1 Γ2) b bs :
     blk_owned Γ b bs ⊢ blk_owned Γ1 b bs ∗ blk_owned Γ2 b bs.
-  Proof.
+  Proof using .
     rewrite /blk_owned. iIntros "[%Hl H]".
     iDestruct (byte_range_shed Γ Γ1 Γ2 Hs with "H") as "[H1 H2]".
     iSplitL "H1"; by iFrame.
@@ -368,7 +368,7 @@ Section GammaDefs.
     (0 < length bs)%nat -> (0 < length bs')%nat ->
     byte_range_q Γ dq1 b off bs -∗ byte_range_q Γ dq2 b off bs' -∗
     ⌜✓ (dq1 ⋅ dq2)⌝.
-  Proof.
+  Proof using .
     intros Hl Hl'.
     iIntros "H H'".
     destruct (lookup_lt_is_Some_2 bs 0%nat Hl) as [v Hv].
@@ -384,7 +384,7 @@ Section GammaDefs.
     ~ ✓ (dq1 ⋅ dq2) ->
     (0 < length bs)%nat -> (0 < length bs')%nat ->
     byte_range_q Γ dq1 b off bs -∗ byte_range_q Γ dq2 b off bs' -∗ False.
-  Proof.
+  Proof using .
     intros Hnv Hl Hl'. iIntros "H H'".
     iDestruct (byte_range_q_valid Γ Hex dq1 dq2 b off bs bs' Hl Hl'
                  with "H H'") as %Hv.
@@ -394,24 +394,24 @@ Section GammaDefs.
   (* [DfracOwn 1] excludes ANY other share: the shape every fraction-1
      reading below goes through. *)
   Lemma dfrac_full_nvalid (dq : dfrac) : ~ ✓ (DfracOwn 1 ⋅ dq).
-  Proof. intros Hv. exact (exclusive_l (DfracOwn 1) dq Hv). Qed.
+  Proof using . intros Hv. exact (exclusive_l (DfracOwn 1) dq Hv). Qed.
 
   Lemma byte_range_excl Γ (Hex : phi_excl Γ) b off bs bs' :
     (0 < length bs)%nat -> (0 < length bs')%nat ->
     byte_range Γ b off bs -∗ byte_range Γ b off bs' -∗ False.
-  Proof.
+  Proof using .
     intros Hl Hl'. rewrite !byte_range_1.
     iApply (byte_range_q_excl Γ Hex (DfracOwn 1) (DfracOwn 1) b off bs bs'
               (dfrac_full_nvalid _) Hl Hl').
   Qed.
 
   Lemma BSIZE_pos_nat : (0 < BSIZE)%nat.
-  Proof. rewrite /BSIZE. lia. Qed.
+  Proof using . rewrite /BSIZE. lia. Qed.
 
   Lemma blk_owned_q_excl Γ (Hex : phi_excl Γ) dq1 dq2 b bs bs' :
     ~ ✓ (dq1 ⋅ dq2) ->
     blk_owned_q Γ dq1 b bs -∗ blk_owned_q Γ dq2 b bs' -∗ False.
-  Proof.
+  Proof using .
     intros Hnv.
     iIntros "[%Hl H] [%Hl' H']".
     iApply (byte_range_q_excl Γ Hex dq1 dq2 b 0 bs bs' Hnv with "H H'");
@@ -420,7 +420,7 @@ Section GammaDefs.
 
   Lemma blk_owned_excl Γ (Hex : phi_excl Γ) b bs bs' :
     blk_owned Γ b bs -∗ blk_owned Γ b bs' -∗ False.
-  Proof.
+  Proof using .
     rewrite !blk_owned_1.
     iApply (blk_owned_q_excl Γ Hex (DfracOwn 1) (DfracOwn 1) b bs bs'
               (dfrac_full_nvalid _)).
@@ -432,7 +432,7 @@ Section GammaDefs.
   Lemma blk_owned_q_ne Γ (Hex : phi_excl Γ) dq1 dq2 b b' bs bs' :
     ~ ✓ (dq1 ⋅ dq2) ->
     blk_owned_q Γ dq1 b bs -∗ blk_owned_q Γ dq2 b' bs' -∗ ⌜b <> b'⌝.
-  Proof.
+  Proof using .
     intros Hnv.
     iIntros "H H'". destruct (decide (b = b')) as [-> | Hne]; [| done].
     iDestruct (blk_owned_q_excl Γ Hex dq1 dq2 _ _ _ Hnv with "H H'") as "[]".
@@ -440,7 +440,7 @@ Section GammaDefs.
 
   Lemma blk_owned_ne Γ (Hex : phi_excl Γ) b b' bs bs' :
     blk_owned Γ b bs -∗ blk_owned Γ b' bs' -∗ ⌜b <> b'⌝.
-  Proof.
+  Proof using .
     rewrite !blk_owned_1.
     iApply (blk_owned_q_ne Γ Hex (DfracOwn 1) (DfracOwn 1) b b' bs bs'
               (dfrac_full_nvalid _)).
@@ -457,7 +457,7 @@ Section GammaDefs.
      between two read-locked inodes' escrow residues. *)
   Lemma blk_owned_ne_full Γ (Hex : phi_excl Γ) dq b b' bs bs' :
     blk_owned Γ b bs -∗ blk_owned_q Γ dq b' bs' -∗ ⌜b <> b'⌝.
-  Proof.
+  Proof using .
     rewrite blk_owned_1.
     iApply (blk_owned_q_ne Γ Hex (DfracOwn 1) dq b b' bs bs'
               (dfrac_full_nvalid _)).
@@ -466,7 +466,7 @@ Section GammaDefs.
   (* 3/4 + 3/4 > 1 -- the arithmetic that makes the reader's share a
      QUARTER and not a half (plan section 4) *)
   Lemma dfrac_34_nvalid : ~ ✓ (DfracOwn (3/4) ⋅ DfracOwn (3/4)).
-  Proof.
+  Proof using .
     rewrite dfrac_op_own. intros Hv%dfrac_valid_own.
     apply (Qp.lt_nge 1 (3/4 + 3/4)%Qp); [| exact Hv].
     apply Qp.lt_sum. exists (1/2)%Qp. compute_done.
@@ -475,7 +475,7 @@ Section GammaDefs.
   Lemma blk_owned_ne_34 Γ (Hex : phi_excl Γ) b b' bs bs' :
     blk_owned_q Γ (DfracOwn (3/4)) b bs -∗
     blk_owned_q Γ (DfracOwn (3/4)) b' bs' -∗ ⌜b <> b'⌝.
-  Proof.
+  Proof using .
     iApply (blk_owned_q_ne Γ Hex (DfracOwn (3/4)) (DfracOwn (3/4)) b b' bs bs'
               dfrac_34_nvalid).
   Qed.

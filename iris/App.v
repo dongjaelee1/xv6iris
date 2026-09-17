@@ -530,7 +530,7 @@ Section AppTriv.
   (* the birth step: no fixed part, so [()] and nothing about it *)
   Lemma app_triv_birth :
     ⊢ |==> ∃ c : app_fixed (app_triv Σ), app_cl (app_triv Σ) c.
-  Proof.
+  Proof using .
     iModIntro. cbn [app_triv app_fixed app_cl].
     iExists (). iPureIntro. exact Logic.I.
   Qed.
@@ -539,7 +539,7 @@ Section AppTriv.
      and the generic application hands its first process nothing *)
   Lemma app_triv_xfer (c : app_fixed (app_triv Σ)) (k : nat) :
     ⊢ app_xfer_boot_raw (app_pred (app_triv Σ) c) (app_boot (app_triv Σ) c k).
-  Proof.
+  Proof using .
     cbn [app_triv app_pred app_boot].
     apply app_xfer_boot_raw_triv. intros r av. reflexivity.
   Qed.
@@ -547,7 +547,7 @@ Section AppTriv.
   (* era 0: the claim at any view, at the one instance *)
   Lemma app_triv_init (c : app_fixed (app_triv Σ)) (av : aview) :
     ⊢ |==> ∃ r : app_names (app_triv Σ), app_pred (app_triv Σ) c r av.
-  Proof.
+  Proof using .
     iModIntro. cbn [app_triv app_names app_pred].
     iExists (). iPureIntro. exact Logic.I.
   Qed.
@@ -580,7 +580,7 @@ Section AppTriv.
       (* ...and the era's turn, likewise taken and not used *)
       app_turn (app_triv Σ) c (S gen_id) -∗
       |==> init_boot_bundle (bv_unsigned InodeInv.ROOTINO) fdt0.
-  Proof.
+  Proof using .
     intros Heq Hiface _. iIntros "_ _ _". iModIntro.
     (* the rewrite goes BEFORE the [intros]: [r'] is typed at
        [app_names file_app], so rewriting under it is a dependent rewrite *)
@@ -595,7 +595,7 @@ Section AppTriv.
 
   Lemma app_triv_R0 (c : app_fixed (app_triv Σ)) :
     app_cl (app_triv Σ) c ⊢ |==> app_R (app_triv Σ) c [].
-  Proof. iIntros "_". by iModIntro. Qed.
+  Proof using . iIntros "_". by iModIntro. Qed.
 
   (* ---- THE GENERIC APPLICATION'S LAWS, as the instance (redesign R4).
          Eleven one-liners where the closed corollary below used to spell
@@ -604,7 +604,7 @@ Section AppTriv.
             !irefslotGpreS Σ, !bioslotGpreS Σ, !wchGpreS Σ} `{!ufdG Σ}.
 
   Global Instance app_triv_laws : xv6_app_laws (app_triv Σ).
-  Proof.
+  Proof using ufdG0.
     split.
     - exact app_triv_birth.
     - intros c h. cbn [app_triv app_R]. apply _.

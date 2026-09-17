@@ -245,7 +245,7 @@ Section SmodeCorePt.
          σ'.(mem) !! pa_add (pa_of ppn b) j = Some (g (lo + j)%nat))
      /\ addr_is_ram (pa_of ppn b)
      /\ addr_is_ram (pa_add (pa_of ppn b) (len - 1))⌝.
-  Proof.
+  Proof using .
     intros Hlon Hlen Hbase Hoff Hcan.
     iIntros "Hmem #Hk #Hbytes".
     iAssert (⌜forall j : nat, (N.of_nat j < N.of_nat len)%N ->
@@ -318,7 +318,7 @@ Section SmodeCorePt.
      /\ addr_is_ram (pa_of ppn b)
      /\ addr_is_ram (pa_add (pa_of ppn b) (len - 1))
      /\ addr_is_ram (pa_of ppn b)⌝.
-  Proof.
+  Proof using .
     intros Hlon Hlen Hbase Hoff Hcan.
     iIntros "Hmem #Hk Hbytes".
     iAssert (⌜forall j : nat, (j < len)%nat ->
@@ -383,7 +383,7 @@ Section SmodeCorePt.
     ([∗ list] j ∈ l, (pa_add a j) ↦ₘ (f j)) -∗
     ⌜Forall (fun j => (uint (pa_add a j) < 274877906944)%Z /\
                       ktier_pin cur_ktier ppn (pa_add a j)) l⌝.
-  Proof.
+  Proof using .
     intros Hcan. induction l as [|x xs IH]; intro Hall.
     - iIntros "_ _". iPureIntro. constructor.
     - apply Forall_cons_1 in Hall as [Hx Hxs].
@@ -410,7 +410,7 @@ Section SmodeCorePt.
     ([∗ list] j ∈ l, (pa_add a j) ↦ₘ{dq} (f j)) -∗
     ([∗ list] j ∈ l, TsoCtx.ctx_phys_pointsto CtxIdDefs.cur_ctx
                        (pa_add (pa_of ppn a) j) dq (f j)).
-  Proof.
+  Proof using .
     intros Hcan. induction l as [|x xs IH]; intro Hall.
     - iIntros "_ _". done.
     - apply Forall_cons_1 in Hall as [Hx Hxs].
@@ -435,7 +435,7 @@ Section SmodeCorePt.
     ([∗ list] j ∈ l, TsoCtx.ctx_phys_pointsto CtxIdDefs.cur_ctx
                        (pa_add (pa_of ppn a) j) (DfracOwn 1) (f j)) -∗
     ([∗ list] j ∈ l, (pa_add a j) ↦ₘ (f j)).
-  Proof.
+  Proof using .
     intros Hcan. induction l as [|x xs IH]; intros Hall Hpins.
     - iIntros "_ _". done.
     - apply Forall_cons_1 in Hall as [Hx Hxs].
@@ -469,7 +469,7 @@ Section SmodeCorePt.
        TsoCtx.ctx_phys_pointsto CtxIdDefs.cur_ctx (pa_add a j) (DfracOwn 1)
          (nth_byte w j)) -∗
     TsoCtx.ctx_word4_pointsto (KTR := KTR2) CtxIdDefs.cur_ctx a (DfracOwn 1) w.
-  Proof.
+  Proof using .
     intros Halign Hcan Hid. iIntros "#Hk Hb".
     pose proof (bv_unsigned_in_range _ a) as [Hnn Hup].
     pose proof Hcan as Hcan'. rewrite uint_unsigned in Hcan'.
@@ -531,7 +531,7 @@ Section SmodeCorePt.
     ([∗ list] j ∈ l, TsoCtx.mem_free (pa_add a j) dq) -∗
     ⌜Forall (fun j => (uint (pa_add a j) < 274877906944)%Z /\
                       ktier_pin cur_ktier ppn (pa_add a j)) l⌝.
-  Proof.
+  Proof using .
     intros Hcan. induction l as [|x xs IH]; intro Hall.
     - iIntros "_ _". iPureIntro. constructor.
     - apply Forall_cons_1 in Hall as [Hx Hxs].
@@ -551,7 +551,7 @@ Section SmodeCorePt.
     kmap_at (svpn_of a) ppn KP_rw -∗
     ([∗ list] j ∈ l, TsoCtx.mem_free (pa_add a j) dq) -∗
     ([∗ list] j ∈ l, TsoCtx.phys_free (pa_add (pa_of ppn a) j) dq).
-  Proof.
+  Proof using .
     intros Hcan. induction l as [|x xs IH]; intro Hall.
     - iIntros "_ _". done.
     - apply Forall_cons_1 in Hall as [Hx Hxs].
@@ -591,7 +591,7 @@ Section SmodeCorePt.
          (log ++ [PWMsg (snap_of (pa_of ppn a) n vnew) (hart_agent cpu_id)])%list V) ∗
     TsoCtx.own_context CtxIdDefs.cur_ctx ∗
     ([∗ list] j ∈ seq 0 (N.to_nat n), (pa_add a j) ↦ₘ (nth_byte vnew j)).
-  Proof.
+  Proof using .
     intros Hn Hcan Hall. iIntros "#Hk Hm Htso Hrun Hb".
     iDestruct (win_pins a ppn (nth_byte vold) _ Hcan Hall with "Hk Hb") as %Hpins.
     iDestruct (win_to_phys a ppn (nth_byte vold) _ Hcan Hall with "Hk Hb") as "Hb".
@@ -661,7 +661,7 @@ Section SmodeCorePt.
          (log ++ [PWMsg (snap_of (pa_of ppn a) n vnew) (hart_agent cpu_id)])%list V) ∗
     TsoCtx.own_context CtxIdDefs.cur_ctx ∗
     ([∗ list] j ∈ seq 0 (N.to_nat n), (pa_add a j) ↦ₘ (nth_byte vnew j)).
-  Proof.
+  Proof using .
     intros Hn Hcan Hall. iIntros "#Hk Hm Htso Hrun Hb".
     iDestruct (win_pins_free a ppn _ Hcan Hall with "Hk Hb") as %Hpins.
     iDestruct (win_to_phys_free a ppn _ Hcan Hall with "Hk Hb") as "Hb".
@@ -723,7 +723,7 @@ Section SmodeCorePt.
       (vstep (hart_agent cpu_id) (V (hart_agent cpu_id))
          (log ++ [PWMsg (snap_of (pa_of ppn va) 8 vnew) (hart_agent cpu_id)])%list V) ∗
     TsoCtx.own_context CtxIdDefs.cur_ctx ∗ va ↦₈ vnew.
-  Proof.
+  Proof using .
     intros Hcan Hoff. iIntros "#Hk Hm Htso Hrun Hw".
     iDestruct (ctx_word_pointsto_aligned_p with "Hw") as %Hal.
     iDestruct (ctx_word_pointsto_bytes with "Hw") as "Hb".
@@ -756,7 +756,7 @@ Section SmodeCorePt.
       (vstep (hart_agent cpu_id) (V (hart_agent cpu_id))
          (log ++ [PWMsg (snap_of (pa_of ppn va) 4 vnew) (hart_agent cpu_id)])%list V) ∗
     TsoCtx.own_context CtxIdDefs.cur_ctx ∗ va ↦₄ vnew.
-  Proof.
+  Proof using .
     intros Hcan Hoff. iIntros "#Hk Hm Htso Hrun Hw".
     iDestruct (ctx_word4_pointsto_aligned_p with "Hw") as %Hal.
     iDestruct (ctx_word4_pointsto_bytes with "Hw") as "Hb".
@@ -816,7 +816,7 @@ Section SmodeCorePt.
        the existing destructuring pattern is a one-token change. *)
     TsoCtx.ledger_msg_at (length log)
       (PWMsg (snap_of (pa_of ppn va) 8 vnew) (hart_agent cpu_id)).
-  Proof.
+  Proof using .
     intros Hcan Hoff. iIntros "#Hk Hm Htso Hw".
     iDestruct (ctx_word_pointsto_bytes with "Hw") as "Hb".
     assert (Hall : Forall (fun j =>
@@ -912,7 +912,7 @@ Section SmodeCorePt.
     ⌜forall tv' : nat, (V (hart_agent cpu_id) <= tv')%nat ->
        TsoMemPa.tso_read_bytes img log (hart_agent cpu_id) tv'
          (pa_of ppn a) n v⌝.
-  Proof.
+  Proof using .
     intros Hcan Hall. iIntros "#Hk Hm Htso Hrun Hb".
     iDestruct (win_to_phys a ppn (nth_byte v) _ Hcan Hall with "Hk Hb") as "Hb".
     iDestruct (tso_interp_of_pin with "Htso") as %Hpin.
@@ -941,7 +941,7 @@ Section SmodeCorePt.
     ⌜forall tv' : nat, (V (hart_agent cpu_id) <= tv')%nat ->
        TsoMemPa.tso_read_bytes img log (hart_agent cpu_id) tv'
          (pa_of ppn va) 8 v⌝.
-  Proof.
+  Proof using .
     intros Hcan Hoff. iIntros "#Hk Hm Htso Hrun Hw".
     iDestruct (ctx_word_pointsto_bytes with "Hw") as "Hb".
     iApply (wordw_win_load_c 8 img σ log V va ppn v dq Hcan
@@ -1007,7 +1007,7 @@ Section SmodeCorePt.
       S σf.(mem) ∗
       mstate_interp σf ∗
       sr_inv R.
-  Proof.
+  Proof using .
     intros HE Lpc Lpriv Lmisa Lmenv Lhtif LSXL Lpma.
     iIntros "#Hpay Hsto #Hwit [Hreg [Hmem Hdev]] Hinv Hbytes".
     assert (HmisaC : eq_vec (_get_Misa_C (register_lookup misa σ.(sregs))) ('b"1") = true)
@@ -1332,7 +1332,7 @@ Section SmodeCorePt.
     = Some (Values.Ok
               {| Phys_Mem_Access_Info_splittable := CannotSplit;
                  Phys_Mem_Access_Info_granule_size_exp := 0 |}, rs).
-  Proof.
+  Proof using .
     intros HD Hpma Hpallow Hacc Hpa.
     unfold check_pma_with_pmp_priority. spt_cbn.
     spt_read. rewrite Hpma. spt_cbn.
@@ -1359,7 +1359,7 @@ Section SmodeCorePt.
     = Some (Values.Ok
               {| Phys_Mem_Access_Info_splittable := CannotSplit;
                  Phys_Mem_Access_Info_granule_size_exp := 0 |}, rs).
-  Proof.
+  Proof using .
     intros HD Hpma Hpallow Hacc Hpa.
     unfold check_pma_with_pmp_priority. spt_cbn.
     spt_read. rewrite Hpma. spt_cbn.
@@ -1414,7 +1414,7 @@ Section SmodeCorePt.
            (Physaddr pa) 4 false false false false)
       (fun r => ⌜r = Values.Ok (bytes, tt)⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HD HDcfg HDaddr HDhtif Hhtif Hpma Hpcfg Hpaddr
       HA Hord HX Hcov Hpallow Hram Hram3 Hpa.
     pose proof (ram_fetch_pmp pa (vec_access_dec paddr 0) 4 3
@@ -1523,7 +1523,7 @@ Section SmodeCorePt.
            (Physaddr pa) 4 false false false false)
       (fun r => ⌜r = Values.Ok (bytes, tt)⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HD HDcfg HDaddr HDhtif Hhtif Hpma Hpcfg Hpaddr
       HA Hord HX Hcov Hpallow Hram Hram3 Hpa.
     pose proof (ram_fetch_pmp pa (vec_access_dec paddr 0) 4 3
@@ -1633,7 +1633,7 @@ Section SmodeCorePt.
            (Physaddr pa) 2 false false false false)
       (fun r => ⌜r = Values.Ok (bytes, tt)⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HD HDcfg HDaddr HDhtif Hhtif Hpma Hpcfg Hpaddr
       HA Hord HX Hcov Hpallow Hram Hram1 Hpa.
     pose proof (ram_fetch_pmp pa (vec_access_dec paddr 0) 2 1
@@ -1742,7 +1742,7 @@ Section SmodeCorePt.
            (Physaddr pa) 2 false false false false)
       (fun r => ⌜r = Values.Ok (bytes, tt)⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HD HDcfg HDaddr HDhtif Hhtif Hpma Hpcfg Hpaddr
       HA Hord HX Hcov Hpallow Hram Hram1 Hpa.
     pose proof (ram_fetch_pmp pa (vec_access_dec paddr 0) 2 1
@@ -1839,7 +1839,7 @@ Section SmodeCorePt.
     ([∗ list] k ∈ seq 0 Nw, (pa_add pc k) ↦ₓ□ g k) -∗
     phys_pointsto (pa_add (pa_of ppn b) j) DfracDiscarded (g (lo + j)%nat)
     ∗ TsoCtx.pristine_byte (pa_add (pa_of ppn b) j).
-  Proof.
+  Proof using .
     intros Hlt Hbase Hoffj Hcan.
     iIntros "#Hk #Hbytes".
     iDestruct (big_sepL_lookup _ _ (lo + j)%nat (lo + j)%nat with "Hbytes")
@@ -1887,7 +1887,7 @@ Section SmodeCorePt.
        ⌜fobl_ifetch img log itv (pa_of ppn b) n w⌝ ∗
        ▷ (|={∅,⊤}=> mstate_interp σ ∗ hart_iview_auth cpu_id itv ∗
             tso_interp_of riscv_eraGS img σ.(mem) log V)).
-  Proof.
+  Proof using .
     intros Hlon Hlen Hbase Hoff Hcan Hg.
     assert (Hoffj : forall j : nat, (j < N.to_nat n)%nat ->
               (bv_unsigned (subrange_vec_dec b 11 0) + Z.of_nat j < 4096)%Z).
@@ -1998,7 +1998,7 @@ Section SmodeCorePt.
                  ∨ (⌜st = Step_Execute (resf, zero_extend' 32 w)⌝ ∗
                     ∃ rs2 : regstate, ⌜Q rs2⌝ ∗
                     hreg_frame rs2 Drw ∗ hreg_frame_ro Df rs2 Dro ∗ Rr rs2)).
-  Proof.
+  Proof using .
     intros Hplain Hdisj HDpriv HDpc HDnpc Hpriv Hpcf Hdec Hlpad.
     iIntros "#Hcert Hrw Hro HWd Hdisp Hfet Hex".
     unfold run_hart_active.
@@ -2104,7 +2104,7 @@ Section SmodeCorePt.
                  ∨ (⌜st = Step_Execute (RETIRE_SUCCESS, zero_extend' 32 w)⌝ ∗
                     ∃ rs2 : regstate, ⌜Q rs2⌝ ∗
                     hreg_frame rs2 Drw ∗ hreg_frame_ro Df rs2 Dro ∗ Rr rs2)).
-  Proof.
+  Proof using .
     exact (swp_run_hart_active_gen_exf_res Drw Dro Df rs Qf Q Rf Wd p pc w i nl Rr Qi
              RETIRE_SUCCESS eq_refl).
   Qed.
@@ -2177,7 +2177,7 @@ Section SmodeCorePt.
                  ∨ (⌜st = Step_Execute (resf, zero_extend' 32 h)⌝ ∗
                     ∃ rs2 : regstate, ⌜Q rs2⌝ ∗
                     hreg_frame rs2 Drw ∗ hreg_frame_ro Df rs2 Dro ∗ Rr rs2)).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv HDmisa HDpc HDnpc Hpriv Hpcf HmisaCf Hdec Hlpad.
     iIntros "#Hcert Hrw Hro HWd Hdisp Hfet Hexp Hex".
     unfold run_hart_active.
@@ -2309,7 +2309,7 @@ Section SmodeCorePt.
                  ∨ (⌜st = Step_Execute (RETIRE_SUCCESS, zero_extend' 32 h)⌝ ∗
                     ∃ rs2 : regstate, ⌜Q rs2⌝ ∗
                     hreg_frame rs2 Drw ∗ hreg_frame_ro Df rs2 Dro ∗ Rr rs2)).
-  Proof.
+  Proof using .
     exact (swp_run_hart_active_gen_rvc_exf_res Drw Dro Df rs Qf Q Rf Wd p pc h
              i other nl Rr Qi RETIRE_SUCCESS).
   Qed.
@@ -2350,7 +2350,7 @@ Section SmodeCorePt.
       (fun r => ⌜r = (if isRVC (subrange_vec_dec w 15 0)
                       then F_RVC (subrange_vec_dec w 15 0)
                       else F_Base w)⌝ ∗ P).
-  Proof.
+  Proof using .
     intros Hdisj HDpc Hpc Hb0 Hb1 Hal.
     iIntros "#Hcert Hrw Hro Hfb".
     rewrite /swp. iIntros (C) "%HC Hcont".
@@ -2428,7 +2428,7 @@ Section SmodeCorePt.
        swp (fetch_bytes pc pc 2)
          (fun r => ⌜r = @FetchBytes_Success 2 h⌝ ∗ P)) -∗
     swp (fetch tt) (fun r => ⌜r = F_RVC h⌝ ∗ P).
-  Proof.
+  Proof using .
     intros Hdisj HDpc HDmisa Hpc Hb0 Hb1 Hal4 HmisaC Hrvc.
     iIntros "#Hcert Hrw Hro Hfb".
     rewrite /swp. iIntros (C) "%HC Hcont".
@@ -2522,7 +2522,7 @@ Section SmodeCorePt.
          (fun r => ⌜r = @FetchBytes_Success 2 ihi⌝ ∗ P)) -∗
     swp (fetch tt)
       (fun r => ⌜r = F_Base (concat_vec ihi ilo)⌝ ∗ P).
-  Proof.
+  Proof using .
     intros Hdisj HDpc HDmisa Hpc Hb0 Hb1 Hal4 HmisaC Hnrvc Hpc1.
     iIntros "#Hcert Hrw Hro Hlo Hhi".
     rewrite /swp. iIntros (C) "%HC Hcont".
@@ -2635,7 +2635,7 @@ Section SmodeCorePt.
       (fun r => ⌜r = @FetchBytes_Success 4 w⌝ ∗
                 ∃ rsf : regstate, ⌜Qf rsf⌝ ∗ Rf rsf ∗
                 hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv Hpriv.
     iIntros "#Hcert Hrw Hro Htr Hcmr".
     rewrite /swp. iIntros (C) "%HC Hcont".
@@ -2684,7 +2684,7 @@ Section SmodeCorePt.
       (fun r => ⌜r = @FetchBytes_Success 4 w⌝ ∗
                 ∃ rsf : regstate, ⌜Qf rsf⌝ ∗ Rf rsf ∗
                 hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv Hpriv.
     iIntros "#Hcert Hrw Hro Htr Hcmr".
     rewrite /swp. iIntros (C) "%HC Hcont".
@@ -2733,7 +2733,7 @@ Section SmodeCorePt.
       (fun r => ⌜r = @FetchBytes_Success 2 h⌝ ∗
                 ∃ rsf : regstate, ⌜Qf rsf⌝ ∗ Rf rsf ∗
                 hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv Hpriv.
     iIntros "#Hcert Hrw Hro Htr Hcmr".
     rewrite /swp. iIntros (C) "%HC Hcont".
@@ -2782,7 +2782,7 @@ Section SmodeCorePt.
       (fun r => ⌜r = @FetchBytes_Success 2 h⌝ ∗
                 ∃ rsf : regstate, ⌜Qf rsf⌝ ∗ Rf rsf ∗
                 hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv Hpriv.
     iIntros "#Hcert Hrw Hro Htr Hcmr".
     rewrite /swp. iIntros (C) "%HC Hcont".
@@ -2843,7 +2843,7 @@ Section SmodeCorePt.
                       else F_Base w)⌝ ∗
                 ∃ rsf : regstate, ⌜Qf rsf⌝ ∗ Rf rsf ∗
                 hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDpc HDmst HDpriv Hpc Hpriv Hb0 Hb1 Hal.
     iIntros "#Hcert Hrw Hro Htr Hcmr".
     iApply (spt_fetch_P Drw Dro Df rs pc w _ Hdisj HDpc Hpc Hb0 Hb1 Hal
@@ -2885,7 +2885,7 @@ Section SmodeCorePt.
                       else F_Base w)⌝ ∗
                 ∃ rsf : regstate, ⌜Qf rsf⌝ ∗ Rf rsf ∗
                 hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDpc HDmst HDpriv Hpc Hpriv Hb0 Hb1 Hal.
     iIntros "#Hcert Hrw Hro Htr Hcmr".
     iApply (spt_fetch_P Drw Dro Df rs pc w _ Hdisj HDpc Hpc Hb0 Hb1 Hal
@@ -2929,7 +2929,7 @@ Section SmodeCorePt.
       (fun r => ⌜r = F_RVC h⌝ ∗
                 ∃ rsf : regstate, ⌜Qf rsf⌝ ∗ Rf rsf ∗
                 hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDpc HDmisa HDmst HDpriv Hpc Hpriv HmisaC Hb0 Hb1 Hal4 Hrvc.
     iIntros "#Hcert Hrw Hro Htr Hcmr".
     iApply (spt_fetch_rvc2_P Drw Dro Df rs pc h _ Hdisj HDpc HDmisa Hpc Hb0
@@ -2973,7 +2973,7 @@ Section SmodeCorePt.
       (fun r => ⌜r = F_RVC h⌝ ∗
                 ∃ rsf : regstate, ⌜Qf rsf⌝ ∗ Rf rsf ∗
                 hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDpc HDmisa HDmst HDpriv Hpc Hpriv HmisaC Hb0 Hb1 Hal4 Hrvc.
     iIntros "#Hcert Hrw Hro Htr Hcmr".
     iApply (spt_fetch_rvc2_P Drw Dro Df rs pc h _ Hdisj HDpc HDmisa Hpc Hb0
@@ -3032,7 +3032,7 @@ Section SmodeCorePt.
       (fun r => ⌜r = F_Base (concat_vec ihi ilo)⌝ ∗
                 ∃ rs2 : regstate, ⌜Qf2 rs2⌝ ∗ Rf2 rs2 ∗
                 hreg_frame rs2 Drw ∗ hreg_frame_ro Df rs2 Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDpc HDmisa HDmst HDpriv Hpc Hpc1 Hpriv1 Hpriv2 HmisaC
       Hb0 Hb1 Hal4 Hnrvc.
     iIntros "#Hcert Hrw Hro Htr1 Hcmr1 Htr2 Hcmr2".
@@ -3098,7 +3098,7 @@ Section SmodeCorePt.
       (fun r => ⌜r = F_Base (concat_vec ihi ilo)⌝ ∗
                 ∃ rs2 : regstate, ⌜Qf2 rs2⌝ ∗ Rf2 rs2 ∗
                 hreg_frame rs2 Drw ∗ hreg_frame_ro Df rs2 Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDpc HDmisa HDmst HDpriv Hpc Hpc1 Hpriv1 Hpriv2 HmisaC
       Hb0 Hb1 Hal4 Hnrvc.
     iIntros "#Hcert Hrw Hro Htr1 Hcmr1 Htr2 Hcmr2".
@@ -3130,7 +3130,7 @@ Section SmodeCorePt.
       (h : agent) (pa : Arch.pa) (n : N) :
     (forall j : nat, (N.of_nat j < n)%N -> is_Some (img !! pa_add pa j)) ->
     exists w : bv (8 * n), tso_read_bytes img log h (length log) pa n w.
-  Proof.
+  Proof using .
     intros Hcov.
     set (c := fun j : nat =>
       match tso_read img log h (length log) (pa_add pa j) with
@@ -3154,7 +3154,7 @@ Section SmodeCorePt.
     addr_is_ram pa -> addr_is_ram (pa_add pa (N.to_nat n - 1)) ->
     forall j : nat, (N.of_nat j < n)%N ->
       (ram_lo <= SailStdpp.Operators_mwords.uint (pa_add pa j) < ram_hi)%Z.
-  Proof.
+  Proof using .
     intros Hn H0 Hk j Hj.
     unfold addr_is_ram, ram_base, ram_size in H0, Hk. unfold ram_lo, ram_hi.
     rewrite uint_pa_add in Hk; [|lia].
@@ -3175,7 +3175,7 @@ Section SmodeCorePt.
          WP (HartE gen_id cpu_id (C (hread_resume (bv_unsigned w) m))
              : expr riscv_lang)) -∗
     WP (HartE gen_id cpu_id (C m) : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (HC Hproj Hdev Hif Hram) "#Hcert H".
     destruct (hread_req_at_inv _ _ _ Hproj) as (K & Hm & Hres).
     assert (Hg : C m = Interface.Next (Interface.MemRead n req)
@@ -3232,7 +3232,7 @@ Section SmodeCorePt.
     gen_cert -∗
     ▷ (∀ w : bv (8 * n), swp (hread_resume (bv_unsigned w) m) Φ) -∗
     swp m Φ.
-  Proof.
+  Proof using .
     iIntros (Hproj Hdev Hif Hram) "#Hcert H".
     rewrite /swp. iIntros (C) "%HC Hcont".
     iApply (wp_hart_ram_read_ifetch_any C n req m HC Hproj Hdev Hif Hram
@@ -3246,7 +3246,7 @@ Section SmodeCorePt.
     Defs.catch_early_return
       (Defs.bind (Defs.early_return (E := E) (R := R) (A := B) x) K)
     = Interface.Ret x.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma swp_checked_mem_read_ifetch4_U_any (Drw Dro : gset register)
       (Df : register -> dfrac) (rs : regstate)
@@ -3278,7 +3278,7 @@ Section SmodeCorePt.
            (Physaddr pa) 4 false false false false)
       (fun r => ∃ bytes : bv 32, ⌜r = Values.Ok (bytes, tt)⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HD HDcfg HDaddr HDhtif Hhtif Hpma Hpcfg Hpaddr
       HA Hord HX Hcov Hpallow Hram Hram3 Hpa.
     pose proof (ram_fetch_pmp pa (vec_access_dec paddr 0) 4 3
@@ -3375,7 +3375,7 @@ Section SmodeCorePt.
            (Physaddr pa) 2 false false false false)
       (fun r => ∃ bytes : bv 16, ⌜r = Values.Ok (bytes, tt)⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HD HDcfg HDaddr HDhtif Hhtif Hpma Hpcfg Hpaddr
       HA Hord HX Hcov Hpallow Hram Hram1 Hpa.
     pose proof (ram_fetch_pmp pa (vec_access_dec paddr 0) 2 1
@@ -3460,7 +3460,7 @@ Section SmodeCorePt.
     swp (mem_read (InstructionFetch tt) PBMT_PMA pa 4 false false false)
       (fun r => ∃ w : SailStdpp.Values.mword 32, ⌜r = Values.Ok w⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv Hpriv.
     iIntros "#Hcert Hrw Hro Hcmr".
     unfold mem_read.
@@ -3512,7 +3512,7 @@ Section SmodeCorePt.
     swp (mem_read (InstructionFetch tt) PBMT_PMA pa 2 false false false)
       (fun r => ∃ w : SailStdpp.Values.mword 16, ⌜r = Values.Ok w⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv Hpriv.
     iIntros "#Hcert Hrw Hro Hcmr".
     unfold mem_read.
@@ -3571,7 +3571,7 @@ Section SmodeCorePt.
       (fun r => ∃ w : mword 32, ⌜r = @FetchBytes_Success 4 w⌝ ∗
                 ∃ rsf : regstate, ⌜Qf rsf⌝ ∗ Rf rsf ∗
                 hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv Hpriv.
     iIntros "#Hcert Hrw Hro Htr Hcmr".
     rewrite /swp. iIntros (C) "%HC Hcont".
@@ -3620,7 +3620,7 @@ Section SmodeCorePt.
       (fun r => ∃ h : mword 16, ⌜r = @FetchBytes_Success 2 h⌝ ∗
                 ∃ rsf : regstate, ⌜Qf rsf⌝ ∗ Rf rsf ∗
                 hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv Hpriv.
     iIntros "#Hcert Hrw Hro Htr Hcmr".
     rewrite /swp. iIntros (C) "%HC Hcont".
@@ -3661,7 +3661,7 @@ Section SmodeCorePt.
       (fun r => ⌜r = @FetchBytes_Exception width e⌝ ∗
                 ∃ rsf : regstate, ⌜Qf rsf⌝ ∗ Rf rsf ∗
                 hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro).
-  Proof.
+  Proof using .
     iIntros "#Hcert Hrw Hro Htr".
     rewrite /swp. iIntros (C) "%HC Hcont".
     unfold fetch_bytes.
@@ -3697,7 +3697,7 @@ Section SmodeCorePt.
                 ⌜r = (if isRVC (subrange_vec_dec w 15 0)
                       then F_RVC (subrange_vec_dec w 15 0)
                       else F_Base w)⌝ ∗ P w).
-  Proof.
+  Proof using .
     intros Hdisj HDpc Hpc Hb0 Hb1 Hal.
     iIntros "#Hcert Hrw Hro Hfb".
     rewrite /swp. iIntros (C) "%HC Hcont".
@@ -3804,7 +3804,7 @@ Section SmodeCorePt.
               (fb : FetchBytes_Result 2) (rs2 : regstate),
             ⌜isRVC ilo = false⌝ ∗ ⌜r = fr_of_fb2 pc ilo fb⌝ ∗ Ψ ilo rs1 fb rs2 ∗
             hreg_frame rs2 Drw ∗ hreg_frame_ro Df rs2 Dro)).
-  Proof.
+  Proof using .
     intros Hdisj HDpc HDmisa Hpc Hb0 Hb1 Hal4 HmisaC Hpc1.
     iIntros "#Hcert Hrw Hro Hlo Hhi".
     rewrite /swp. iIntros (C) "%HC Hcont".
@@ -3913,7 +3913,7 @@ Section SmodeCorePt.
     ([∗ list] j ∈ seq 0 N, (pa_add pc j) ↦ₓ□ g j) -∗
     ⌜ addr_is_ram (pa_of ppn b)
       /\ addr_is_ram (pa_add (pa_of ppn b) (len - 1)) ⌝.
-  Proof.
+  Proof using .
     intros Hlon Hlen Hbase Hoff Hcan.
     iIntros "#Hk #Hbytes".
     iAssert (⌜addr_is_ram (pa_of ppn b)⌝)%I as %Hram0.
@@ -3954,7 +3954,7 @@ Section SmodeCorePt.
         (register_beq r (R_bitvector_64 mstatus)).
 
   Lemma spt_Db_in (r : register) : spt_Db r = true -> r ∈ s_Drw ∪ s_Dro.
-  Proof.
+  Proof using .
     unfold spt_Db. intros Hr.
     apply orb_true_elim in Hr as [Hr|Hr]; apply register_beq_eq in Hr; subst r;
       [exact s_in_misa | exact s_in_mst].
@@ -3964,7 +3964,7 @@ Section SmodeCorePt.
      section below is generic in it (see there). *)
   Lemma spt_Db_in_gen (D : gset register) (HD : s_frame_ok D) (r : register) :
     spt_Db r = true -> r ∈ D ∪ s_Dro.
-  Proof.
+  Proof using .
     unfold spt_Db. intros Hr.
     apply orb_true_elim in Hr as [Hr|Hr]; apply register_beq_eq in Hr; subst r;
       [exact (sf_in_misa D HD) | exact (sf_in_mst D HD)].
@@ -3973,7 +3973,7 @@ Section SmodeCorePt.
   Lemma spt_exec_cE_S (s : mstate) :
     register_lookup misa s.(sregs) = MISA_C ->
     exec (currentlyEnabled Ext_S) s = Some (true, s).
-  Proof.
+  Proof using .
     intro Hmisa.
     apply (decode_state_bridge D_misa _ dstateM).
     - intros r Hr. unfold D_misa in Hr. apply register_beq_eq in Hr. subst r.
@@ -3985,7 +3985,7 @@ Section SmodeCorePt.
   Lemma spt_goodb_cE_S (s : mstate) :
     register_lookup misa s.(sregs) = MISA_C ->
     goodb spt_Db (currentlyEnabled Ext_S) s = true.
-  Proof.
+  Proof using .
     intro Hmisa.
     apply (goodb_mono D_misa spt_Db).
     - intros r Hr. unfold D_misa in Hr. unfold spt_Db. by rewrite Hr.
@@ -4077,7 +4077,7 @@ Section SmodeCorePt.
     Local Lemma spt_decode_ok_D (tv : type_of_register tlb) :
       misa0 = MISA_C -> menv0 = MENVCFG_S ->
       decode_ok (SD ∪ s_Dro) (srs tv).
-    Proof.
+    Proof using HSD.
       intros Hmisa Hmenv. rewrite /decode_ok. split_and!.
       - exact (sf_in_priv SD HSD).
       - exact (sf_in_misa SD HSD).
@@ -4162,7 +4162,7 @@ Section SmodeCorePt.
                       ∃ rs2 : regstate, ⌜Q rs2⌝ ∗
                       hreg_frame rs2 SD ∗ hreg_frame_ro Df rs2 s_Dro ∗ Rr rs2))
       -∗ swp (run_hart_active 0) (spt_run_post_D Q Rr Qi).
-    Proof.
+    Proof using .
       iIntros "H". iApply (swp_mono with "[] H").
       iIntros (st) "[Hi | (-> & Hr)]".
       - by iLeft.
@@ -4182,7 +4182,7 @@ Section SmodeCorePt.
          (fun e => ⌜e = RETIRE_SUCCESS⌝ ∗
                    ∃ rs2 : regstate, ⌜Q rs2⌝ ∗
                    hreg_frame rs2 SD ∗ hreg_frame_ro Df rs2 s_Dro ∗ Rr rs2)).
-    Proof.
+    Proof using .
       iIntros "Hex" (rsf) "%HQ (HW & HRes & Hany) Hrw Hro".
       destruct HQ as (tv & ->). rewrite s_rs_tlb.
       iApply ("Hex" $! tv with "HW HRes Hany Hrw Hro").
@@ -4648,7 +4648,7 @@ Section SmodeCorePt.
     spt_ex_obl_D s_Drwb Df pc ms bmi cy ti ip mst0 pcfg paddr mc micfg misa0
       mseccfg0 senv0 pmar0 elp0 satp0 mie0 mdv0 menv0 Res is_rvc i Q Rr W -∗
     swp (run_hart_active 0) (spt_run_post_D s_Drwb Df Q Rr Qi).
-  Proof.
+  Proof using .
     intros Hmisa Hmenv Help Hpallow HA Hord HX Hcov.
     exact (spt_run_hart_active_instr_S_D s_Drwb s_frame_ok_Drwb
              Df pc ms bmi cy ti ip mst0 pcfg paddr mc micfg misa0
@@ -4754,7 +4754,7 @@ Section SmodeCorePt.
          hreg_frame_ro Df rs3 s_Dro -∗ Psi rs2 -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HQhart HQmi.
     iIntros "#Hcert Hfrag Hrw Hro Hbody Hcont".
     iApply (swp_exec_step_any_ex s_Drw s_Dro Df
@@ -4787,7 +4787,7 @@ Section SmodeCorePt.
   Lemma s_ro_ext_gen (Df : register -> dfrac) (rs rs' : regstate) :
     reg_agree_on (s_Drw ∪ s_Dro) rs rs' ->
     hreg_frame_ro Df rs s_Dro -∗ (hreg_frame_ro Df rs' s_Dro : iProp Σ).
-  Proof.
+  Proof using .
     intros Hag. rewrite (hreg_frame_ro_ext _ _ _ s_Dro (s_agree_ro _ _ Hag)).
     iIntros "H". iExact "H".
   Qed.
@@ -4798,7 +4798,7 @@ Section SmodeCorePt.
   Lemma s_rw_ext_D (D : gset register) (rs rs' : regstate) :
     reg_agree_on (D ∪ s_Dro) rs rs' ->
     hreg_frame rs D -∗ (hreg_frame rs' D : iProp Σ).
-  Proof.
+  Proof using .
     intros Hag.
     rewrite (hreg_frame_ext _ _ D
                (fun r Hr => Hag r (elem_of_union_l r D s_Dro Hr))).
@@ -4809,7 +4809,7 @@ Section SmodeCorePt.
       (rs rs' : regstate) :
     reg_agree_on (D ∪ s_Dro) rs rs' ->
     hreg_frame_ro Df rs s_Dro -∗ (hreg_frame_ro Df rs' s_Dro : iProp Σ).
-  Proof.
+  Proof using .
     intros Hag.
     rewrite (hreg_frame_ro_ext _ _ _ s_Dro
                (fun r Hr => Hag r (elem_of_union_r r D s_Dro Hr))).
@@ -4848,7 +4848,7 @@ Section SmodeCorePt.
       hreg_frame_ro (s_Df_mix dq)
         (s_rs pc pc ms bmi cy ti ip mstatus0 pcfg paddr mc micfg misa0
            mseccfg0 senv0 pmar0 elp0 satp0 mie_v mdv0 menvcfg0 tlbv) s_Dro.
-  Proof.
+  Proof using .
     iIntros "#Hhw Hhs Hpriv Hmst Hmie Hmdl Hmenv Hsatp Hpcfg Hpaddr Htlbc Hpc".
     iDestruct "Hpc" as "(HPC & HnPC & Hmr & Hcr & Hresv)". iFrame "Hresv".
     iDestruct "Hmr" as (ms bmi mc micfg) "(Hms & Hmi & #Hmc & #Hmicfg)".
@@ -4914,7 +4914,7 @@ Section SmodeCorePt.
      reg_pointsto senvcfg DfracDiscarded senv0 ∗
      satp ↦ᵣ satp0 ∗ mie ↦ᵣ{ dq } mie0 ∗ mideleg ↦ᵣ{ dq } mdv0 ∗
      menvcfg ↦ᵣ{ dq } menv0).
-  Proof.
+  Proof using .
     iIntros "Hrw Hro".
     rewrite s_rw_split s_ro_split_mix.
     rewrite s_rs_PC s_rs_nPC s_rs_ms s_rs_mi s_rs_cy s_rs_ti s_rs_ip
@@ -4957,7 +4957,7 @@ Section SmodeCorePt.
     hreg_frame_ro (s_Df_mix dq)
       (s_rs pc npc ms bmi cy ti ip mst0 pcfg paddr mc micfg misa0 mseccfg0
          senv0 pmar0 elp0 satp0 mie0 mdv0 menv0 tlbv) s_Dro.
-  Proof.
+  Proof using .
     iIntros "(HPC & HnPC & Hms & Hmi & Hcy & Hti & Hip & Htlbc & Hpriv & Hmst
               & Hhs & Hpcfg & Hpaddr & Hmc & Hmicfg & Hmisa & Hsec & Hpma
               & Hhtif & Help & Hsenv & Hsatp & Hmie & Hmdl & Hmenv)".
@@ -4982,7 +4982,7 @@ Section SmodeCorePt.
   Lemma s_agree_narrow_b (rs rs' : regstate) :
     reg_agree_on (s_Drw ∪ s_Dro) rs rs' ->
     reg_agree_on (s_Drwb ∪ s_Dro) rs rs'.
-  Proof.
+  Proof using .
     intros Hag r Hr. apply Hag.
     apply elem_of_union in Hr as [Hr | Hr].
     - apply elem_of_union_l. rewrite s_Drw_split. by apply elem_of_union_l.
@@ -5015,7 +5015,7 @@ Section SmodeCorePt.
       hreg_frame_ro (s_Df_mix dq)
         (s_rs pc pc ms bmi cy ti ip mstatus0 pcfg paddr mc micfg misa0
            mseccfg0 senv0 pmar0 elp0 satp0 mie_v mdv0 menvcfg0 tlbv) s_Dro.
-  Proof.
+  Proof using .
     iIntros "#Hhw Hhs Hpriv Hmst Hmie Hmdl Hmenv Hsatp Hpcfg Hpaddr Hpc".
     iDestruct "Hpc" as "(HPC & HnPC & Hmr & Hcr & Hresv)". iFrame "Hresv".
     iDestruct "Hmr" as (ms bmi mc micfg) "(Hms & Hmi & #Hmc & #Hmicfg)".
@@ -5068,7 +5068,7 @@ Section SmodeCorePt.
      reg_pointsto senvcfg DfracDiscarded senv0 ∗
      satp ↦ᵣ satp0 ∗ mie ↦ᵣ{ dq } mie0 ∗ mideleg ↦ᵣ{ dq } mdv0 ∗
      menvcfg ↦ᵣ{ dq } menv0).
-  Proof.
+  Proof using .
     iIntros "Hrw Hro".
     rewrite s_rw_split_b s_ro_split_mix.
     rewrite s_rs_PC s_rs_nPC s_rs_ms s_rs_mi s_rs_cy s_rs_ti s_rs_ip s_rs_priv s_rs_mst s_rs_hart s_rs_pcfg s_rs_paddr s_rs_mc
@@ -5110,7 +5110,7 @@ Section SmodeCorePt.
     hreg_frame_ro (s_Df_mix dq)
       (s_rs pc npc ms bmi cy ti ip mst0 pcfg paddr mc micfg misa0 mseccfg0
          senv0 pmar0 elp0 satp0 mie0 mdv0 menv0 tlbv) s_Dro.
-  Proof.
+  Proof using .
     iIntros "(HPC & HnPC & Hms & Hmi & Hcy & Hti & Hip & Hpriv & Hmst
               & Hhs & Hpcfg & Hpaddr & Hmc & Hmicfg & Hmisa & Hsec & Hpma
               & Hhtif & Help & Hsenv & Hsatp & Hmie & Hmdl & Hmenv)".
@@ -5139,7 +5139,7 @@ Section SmodeCorePt.
     mstatus ↦ᵣ{ dq } mstatus1 ∗ mie ↦ᵣ{ dq } mie1 ∗
     mideleg ↦ᵣ{ dq } mdv1 ∗ menvcfg ↦ᵣ{ dq } menvcfg1 ∗
     satp ↦ᵣ satp1 ∗ pmpcfg_n ↦ᵣ pcfg1 ∗ pmpaddr_n ↦ᵣ paddr1 ∗ pc_is npc.
-  Proof.
+  Proof using .
     iIntros "Hresv Hrw Hro".
     rewrite s_rw_split_b s_ro_split_mix.
     rewrite s_rs_PC s_rs_nPC s_rs_ms s_rs_mi s_rs_cy s_rs_ti s_rs_ip.
@@ -5206,7 +5206,7 @@ Section SmodeCorePt.
          hreg_frame_ro Df rs3 s_Dro -∗ Psi rs2 -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HQhart HQmi.
     iIntros "#Hcert Hfrag Hrw Hro Hbody Hcont".
     iApply (swp_exec_step_any_ex s_Drwb s_Dro Df
@@ -5248,7 +5248,7 @@ Section SmodeCorePt.
             mseccfg0 senv0 pmar0 elp0 satp0 mie0 mdv0 menv0 tlbv))
       (s_rs pc npc' ms bmi cy ti ip mst0 pcfg paddr mc micfg misa0
          mseccfg0 senv0 pmar0 elp0 satp0 mie0 mdv0 menv0 tlbv).
-  Proof.
+  Proof using .
     (* no generic [rewrite]: [s_rs]'s body IS a [register_set] tower, so an
        ssreflect rewrite with [register_lookup_set]'s pattern searches inside
        it and detonates the record-update conversion bomb ([mm_npc_agree]'s
@@ -5284,7 +5284,7 @@ Section SmodeCorePt.
     mideleg ↦ᵣ{ dq } mdv1 ∗ menvcfg ↦ᵣ{ dq } menvcfg1 ∗
     satp ↦ᵣ satp1 ∗ pmpcfg_n ↦ᵣ pcfg1 ∗ pmpaddr_n ↦ᵣ paddr1 ∗
     tlb ↦ᵣ tv ∗ pc_is npc.
-  Proof.
+  Proof using .
     iIntros "Hresv Hrw Hro".
     rewrite s_rw_split s_ro_split_mix.
     rewrite s_rs_PC s_rs_nPC s_rs_ms s_rs_mi s_rs_cy s_rs_ti s_rs_ip
@@ -5402,7 +5402,7 @@ Section SmodeCorePt.
     gen_cert -∗
     spt_tr_obl_D SD Df pc ms bmi cy ti ip mst0 pcfg paddr mc micfg misa0 mseccfg0
       senv0 pmar0 elp0 satp0 mie0 mdv0 menv0 (sr_swp_res_at R satp0).
-  Proof.
+  Proof using .
     intros Hmisa Hmenv HSXL HMPRV HDb HDlc HDm HDs Hsok Hpmp Hpma Hsidepre.
     iIntros "#Hcert". rewrite /spt_tr_obl. iModIntro.
     iIntros (va ppn tv rr) "%Hlt %Hpin #Hat Hfrag HRes Hrw Hro".
@@ -5570,7 +5570,7 @@ Section SmodeCorePt.
     gen_cert -∗
     spt_tr_obl Df pc ms bmi cy ti ip mst0 pcfg paddr mc micfg misa0 mseccfg0
       senv0 pmar0 elp0 satp0 mie0 mdv0 menv0 (sr_swp_res_at R satp0).
-  Proof.
+  Proof using .
     intros Hmisa Hmenv HSXL HMPRV HDb HDlc HDm HDs Hsok Hpmp Hpma.
     iApply (spt_tr_obl_of_regime_D s_Drw s_frame_ok_Drw R Df Db pc ms bmi
               cy ti ip mst0 pcfg paddr mc micfg misa0 mseccfg0 senv0 pmar0
@@ -5722,7 +5722,7 @@ Section SmodeCorePt.
          pc_is npc -∗ Rl npc ms1 mdv1 -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HSIE HMPRV HSXL Hmm HPBMTE Hmenvval Hpmp.
     pose proof Hpmp as (HA & Hord & HX & HW & HR & Hcov).
     iIntros "#Hhw #Hminv Hhs Hpriv Hmst Hmie Hmdl Hmenv Hsatp Hpcfg Hpaddr
@@ -5918,7 +5918,7 @@ Section SmodeCorePt.
          pc_is npc -∗ Rl npc -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hpmp.
     iIntros "Hsm Hsatp Hpcfg Hpaddr Htlbc HRes Hpc Hinstr Htr Hex Hcont".
     iDestruct (smode_config_unbundle with "Hsm")
@@ -6101,7 +6101,7 @@ Section SmodeCorePt.
          pc_is npc -∗ Rl npc ms1 mdv1 -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HSIE HMPRV HSXL Hmm HPBMTE Hmenvval.
     iIntros "#Hhw #Hminv Hhs Hpriv Hmstatus Hmiec Hmdlc Hmenvc Htlbres
              Hpc Hinstr Htr Hex Hcont".

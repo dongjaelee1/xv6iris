@@ -38,47 +38,47 @@ Section CodeTrapinithart.
   (* ---- trapinithart @ KernelSyms.trapinithart, 28 bytes ---- *)
 
   Lemma tii_00 : kernel_text -∗ instr (mword_of_int KernelSyms.trapinithart : mword 64) true (ITYPE (sign_extend' 12 (mword_of_int 48 : mword 6), Regidx (mword_of_int 2), Regidx (mword_of_int 2), ADDI)).
-  Proof. mk_rvc KernelSyms.trapinithart (mword_of_int 0x1141 : mword 16)
+  Proof using . mk_rvc KernelSyms.trapinithart (mword_of_int 0x1141 : mword 16)
     (mword_of_int KernelSyms.trapinithart : mword 64) (ITYPE (sign_extend' 12 (mword_of_int 48 : mword 6), Regidx (mword_of_int 2), Regidx (mword_of_int 2), ADDI)) kd_1141 exec_execute_C_ADDI. Qed.
 
   Lemma tii_02 : kernel_text -∗ instr (mword_of_int (KernelSyms.trapinithart + 0x2) : mword 64) true (STORE (zero_extend' 12 (concat_vec (mword_of_int 1 : mword 6) ('b"000")), Regidx (mword_of_int 1), sp, 8)).
-  Proof. mk_rvc (KernelSyms.trapinithart + 0x2) (mword_of_int 0xe406 : mword 16)
+  Proof using . mk_rvc (KernelSyms.trapinithart + 0x2) (mword_of_int 0xe406 : mword 16)
     (mword_of_int (KernelSyms.trapinithart + 0x2) : mword 64) (STORE (zero_extend' 12 (concat_vec (mword_of_int 1 : mword 6) ('b"000")), Regidx (mword_of_int 1), sp, 8)) kd_e406 exec_execute_C_SDSP. Qed.
 
   Lemma tii_04 : kernel_text -∗ instr (mword_of_int (KernelSyms.trapinithart + 0x4) : mword 64) true (STORE (zero_extend' 12 (concat_vec (mword_of_int 0 : mword 6) ('b"000")), Regidx (mword_of_int 8), sp, 8)).
-  Proof. mk_rvc (KernelSyms.trapinithart + 0x4) (mword_of_int 0xe022 : mword 16)
+  Proof using . mk_rvc (KernelSyms.trapinithart + 0x4) (mword_of_int 0xe022 : mword 16)
     (mword_of_int (KernelSyms.trapinithart + 0x4) : mword 64) (STORE (zero_extend' 12 (concat_vec (mword_of_int 0 : mword 6) ('b"000")), Regidx (mword_of_int 8), sp, 8)) kd_e022 exec_execute_C_SDSP. Qed.
 
   Lemma tii_06 : kernel_text -∗ instr (mword_of_int (KernelSyms.trapinithart + 0x6) : mword 64) true (ITYPE (caddi4spn_imm (mword_of_int 4 : mword 8), sp, creg2reg_idx (Cregidx (mword_of_int 0)), ADDI)).
-  Proof. mk_rvc (KernelSyms.trapinithart + 0x6) (mword_of_int 0x0800 : mword 16)
+  Proof using . mk_rvc (KernelSyms.trapinithart + 0x6) (mword_of_int 0x0800 : mword 16)
     (mword_of_int (KernelSyms.trapinithart + 0x6) : mword 64) (ITYPE (caddi4spn_imm (mword_of_int 4 : mword 8), sp, creg2reg_idx (Cregidx (mword_of_int 0)), ADDI)) kd_0800 exec_execute_C_ADDI4SPN. Qed.
 
   Lemma tii_08 : kernel_text -∗ instr (mword_of_int (KernelSyms.trapinithart + 0x8) : mword 64) false (UTYPE (mword_of_int 3 : mword 20, Regidx (mword_of_int 15), AUIPC)).
-  Proof. mk_base (KernelSyms.trapinithart + 0x8) (mword_of_int 0x00003797 : mword 32)
+  Proof using . mk_base (KernelSyms.trapinithart + 0x8) (mword_of_int 0x00003797 : mword 32)
     (mword_of_int (KernelSyms.trapinithart + 0x8) : mword 64) (UTYPE (mword_of_int 3 : mword 20, Regidx (mword_of_int 15), AUIPC)) kd_00003797. Qed.
 
   Lemma tii_0c : kernel_text -∗ instr (mword_of_int (KernelSyms.trapinithart + 0xc) : mword 64) false (ITYPE (mword_of_int 342 : mword 12, Regidx (mword_of_int 15), Regidx (mword_of_int 15), ADDI)).
-  Proof. mk_base (KernelSyms.trapinithart + 0xc) (mword_of_int 0x15678793 : mword 32)
+  Proof using . mk_base (KernelSyms.trapinithart + 0xc) (mword_of_int 0x15678793 : mword 32)
     (mword_of_int (KernelSyms.trapinithart + 0xc) : mword 64) (ITYPE (mword_of_int 342 : mword 12, Regidx (mword_of_int 15), Regidx (mword_of_int 15), ADDI)) kd_15678793. Qed.
 
   Lemma tii_10 : kernel_text -∗ instr (mword_of_int (KernelSyms.trapinithart + 0x10) : mword 64) false (CSRReg (mword_of_int 261 : mword 12, Regidx (mword_of_int 15), zreg, CSRRW)).
-  Proof. mk_base (KernelSyms.trapinithart + 0x10) (mword_of_int 0x10579073 : mword 32)
+  Proof using . mk_base (KernelSyms.trapinithart + 0x10) (mword_of_int 0x10579073 : mword 32)
     (mword_of_int (KernelSyms.trapinithart + 0x10) : mword 64) (CSRReg (mword_of_int 261 : mword 12, Regidx (mword_of_int 15), zreg, CSRRW)) kd_10579073. Qed.
 
   Lemma tii_14 : kernel_text -∗ instr (mword_of_int (KernelSyms.trapinithart + 0x14) : mword 64) true (LOAD (zero_extend' 12 (concat_vec (mword_of_int 1 : mword 6) ('b"000")), sp, Regidx (mword_of_int 1), false, 8)).
-  Proof. mk_rvc (KernelSyms.trapinithart + 0x14) (mword_of_int 0x60a2 : mword 16)
+  Proof using . mk_rvc (KernelSyms.trapinithart + 0x14) (mword_of_int 0x60a2 : mword 16)
     (mword_of_int (KernelSyms.trapinithart + 0x14) : mword 64) (LOAD (zero_extend' 12 (concat_vec (mword_of_int 1 : mword 6) ('b"000")), sp, Regidx (mword_of_int 1), false, 8)) kd_60a2 exec_execute_C_LDSP. Qed.
 
   Lemma tii_16 : kernel_text -∗ instr (mword_of_int (KernelSyms.trapinithart + 0x16) : mword 64) true (LOAD (zero_extend' 12 (concat_vec (mword_of_int 0 : mword 6) ('b"000")), sp, Regidx (mword_of_int 8), false, 8)).
-  Proof. mk_rvc (KernelSyms.trapinithart + 0x16) (mword_of_int 0x6402 : mword 16)
+  Proof using . mk_rvc (KernelSyms.trapinithart + 0x16) (mword_of_int 0x6402 : mword 16)
     (mword_of_int (KernelSyms.trapinithart + 0x16) : mword 64) (LOAD (zero_extend' 12 (concat_vec (mword_of_int 0 : mword 6) ('b"000")), sp, Regidx (mword_of_int 8), false, 8)) kd_6402 exec_execute_C_LDSP. Qed.
 
   Lemma tii_18 : kernel_text -∗ instr (mword_of_int (KernelSyms.trapinithart + 0x18) : mword 64) true (ITYPE (sign_extend' 12 (mword_of_int 16 : mword 6), Regidx (mword_of_int 2), Regidx (mword_of_int 2), ADDI)).
-  Proof. mk_rvc (KernelSyms.trapinithart + 0x18) (mword_of_int 0x0141 : mword 16)
+  Proof using . mk_rvc (KernelSyms.trapinithart + 0x18) (mword_of_int 0x0141 : mword 16)
     (mword_of_int (KernelSyms.trapinithart + 0x18) : mword 64) (ITYPE (sign_extend' 12 (mword_of_int 16 : mword 6), Regidx (mword_of_int 2), Regidx (mword_of_int 2), ADDI)) kd_0141 exec_execute_C_ADDI. Qed.
 
   Lemma tii_1a : kernel_text -∗ instr (mword_of_int (KernelSyms.trapinithart + 0x1a) : mword 64) true (JALR (zeros' 12, Regidx (mword_of_int 1), zreg)).
-  Proof. mk_rvc (KernelSyms.trapinithart + 0x1a) (mword_of_int 0x8082 : mword 16)
+  Proof using . mk_rvc (KernelSyms.trapinithart + 0x1a) (mword_of_int 0x8082 : mword 16)
     (mword_of_int (KernelSyms.trapinithart + 0x1a) : mword 64) (JALR (zeros' 12, Regidx (mword_of_int 1), zreg)) kd_8082 exec_execute_C_JR. Qed.
 
 End CodeTrapinithart.

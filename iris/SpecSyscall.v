@@ -506,7 +506,7 @@ Section SyscExec.
 
   Lemma sysc_fork_in_ne (f : sfam) (U : ustate) (sts : list fdstate) :
     sysc_num (us_V U) <> UsysMemOk.USYS_fork -> ⊢ sysc_fork_in f U sts.
-  Proof.
+  Proof using .
     intros Hne. rewrite /sysc_fork_in. iIntros "%Hc". exfalso. exact (Hne Hc).
   Qed.
 
@@ -534,7 +534,7 @@ Section SyscExec.
   Lemma sysc_fork_out_ne (f : sfam) (U : ustate) (r : mword 64)
       (cs cs' : gset gname) :
     sysc_num (us_V U) <> UsysMemOk.USYS_fork -> ⊢ sysc_fork_out f U r cs cs'.
-  Proof.
+  Proof using .
     intros Hne. rewrite /sysc_fork_out. iIntros "%Hc". exfalso. exact (Hne Hc).
   Qed.
 
@@ -571,7 +571,7 @@ Section SyscExec.
       (cs cs' : gset gname) (pidv : mword 32) :
     sysc_num (us_V U) <> UsysMemOk.USYS_wait ->
     ⊢ sysc_wait_out U M' r cs cs' pidv.
-  Proof.
+  Proof using .
     intros Hne. rewrite /sysc_wait_out. iIntros "%Hc". exfalso. exact (Hne Hc).
   Qed.
 
@@ -589,7 +589,7 @@ Section SyscExec.
       (bool_decide (pv_tf (us_V U) !!! tf_arg_idx 0 = (zero_reg : mword 64)))
       pidv -∗
     sysc_wait_out U M' r cs cs' pidv.
-  Proof.
+  Proof using .
     intros -> Hwr. rewrite /sysc_wait_out /uwait_ans_at_m. iIntros "H %Hn".
     iExists rv, xw. iSplitR; [done |].
     iSplitR; [iPureIntro; exact Hwr | iExact "H"].
@@ -604,7 +604,7 @@ Section SyscExec.
 
   Lemma sysc_ch_ok_refl (V : pprivate) (cs : gset gname) :
     sysc_ch_ok V cs cs.
-  Proof. intros _ _. reflexivity. Qed.
+  Proof using . intros _ _. reflexivity. Qed.
 
   (* ...AND GETPID'S ANSWER, the one row about a RETURN VALUE that no table
      of state moves can carry: [sys_getpid] returns [p->pid], sign-extended
@@ -618,7 +618,7 @@ Section SyscExec.
 
   Lemma sysc_ret_pid_ne (V : pprivate) (r : mword 64) (pid : mword 32) (k : Z) :
     sysc_num V = k -> k <> UsysMemOk.USYS_getpid -> sysc_ret_pid V r pid.
-  Proof.
+  Proof using .
     intros Hk Hne. unfold sysc_ret_pid.
     apply UsysMemOk.usys_ret_pid_ne. rewrite Hk. exact Hne.
   Qed.
@@ -626,7 +626,7 @@ Section SyscExec.
   (* ...and the direction getpid's own arm supplies it *)
   Lemma sysc_ret_pid_of (V : pprivate) (r : mword 64) (pid : mword 32) :
     r = (sign_extend' 64 pid : mword 64) -> sysc_ret_pid V r pid.
-  Proof. intros Hr. exact (UsysMemOk.usys_ret_pid_of _ r pid Hr). Qed.
+  Proof using . intros Hr. exact (UsysMemOk.usys_ret_pid_of _ r pid Hr). Qed.
 
   (* the numbers that owe nothing, as one premise an arm discharges from its
      own table index by [lia] *)
@@ -645,7 +645,7 @@ Section SyscExec.
       (cs' : gset gname) (k : Z) :
     sysc_num (us_V U) = k -> sysc_num_nofs k ->
     ⊢ sysc_sys_out U sts gn cs pid f r M' sts' cw' cs'.
-  Proof.
+  Proof using .
     intros Hk Hno. rewrite /sysc_sys_out. iIntros (n) "%Hg".
     assert (Hn : sysc_num_nofs n)
       by (rewrite <- (proj1 Hg); rewrite Hk; exact Hno).
@@ -665,7 +665,7 @@ Section SyscExec.
     sysc_num (us_V U) = 7 ->
     (⌜r = (mword_of_int (-1) : mword 64)⌝ -∗ sexec_refund f) -∗
     sysc_sys_out U sts gn cs pid f r M' sts' cw' cs'.
-  Proof.
+  Proof using .
     intros Hk. iIntros "H". rewrite /sysc_sys_out. iIntros (n) "%Hg".
     assert (Hn : n = UsysMemOk.USYS_exec)
       by (rewrite <- (proj1 Hg); rewrite Hk; reflexivity).
@@ -713,7 +713,7 @@ Section SyscExec.
   Lemma sysc_exec_out_ne (f : sfam) (U U' : ustate) (sts sts' : list fdstate)
       (gn : gname) (cs : gset gname) (pid : mword 32) :
     sysc_num (us_V U) <> 7 -> ⊢ sysc_exec_out f U U' sts sts' gn cs pid.
-  Proof.
+  Proof using .
     intro Hne. rewrite /sysc_exec_out.
     iIntros "%Hk". exfalso. exact (Hne Hk).
   Qed.

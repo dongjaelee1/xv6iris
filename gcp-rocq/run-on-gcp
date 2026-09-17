@@ -28,6 +28,10 @@ usage: run-on-gcp [options] <command> [args...]
 options:
   --proofs             build the Rocq proofs, safely (see below). Takes make
                        arguments: --proofs -k, --proofs SomeFile.vo
+  --check FILE...      fast STATEMENT check of iris/FILE.v (seconds, not minutes).
+                       Elaborates the file and skips its opaque proofs, so it
+                       catches a broken statement but NOT a broken proof.
+  --check-proof FILE.. check FILE.v's PROOFS against the built tree.
   --shell              open an interactive shell in the remote work tree
   --sync-only          push the tree and exit, running nothing
   --no-sync            skip the push (use the tree as it already is remotely)
@@ -61,12 +65,14 @@ EOF
 
 # ------------------------------------------------------------------ options
 declare -a PULL_PATHS=()
-DO_SYNC=1; SHELL_MODE=0; SYNC_ONLY=0; PULL_VO=0; PROOFS=0
+DO_SYNC=1; SHELL_MODE=0; SYNC_ONLY=0; PULL_VO=0; PROOFS=0; CHECK=""
 ACTION=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --proofs)      PROOFS=1; shift; break ;;
+    --check)       CHECK=vos; shift; break ;;
+    --check-proof) CHECK=vok; shift; break ;;
     --shell)       SHELL_MODE=1; shift ;;
     --sync-only)   SYNC_ONLY=1; shift ;;
     --no-sync)     DO_SYNC=0; shift ;;
@@ -448,6 +454,40 @@ REMOTE
   return $rc
 }
 
+# The edit-check loop.  [-vos] elaborates a file and SKIPS its opaque proofs; it
+# can only do that because every proof carries a [Proof using] saying what it
+# captures.  [-vok] is the other half: it checks the proofs.
+run_check() {
+  local mode="$1"; shift
+  (( $# )) || die "--check needs at least one file"
+  local -a bases=()
+  local f
+  for f in "$@"; do f="${f##*/}"; bases+=("${f%.v}"); done
+
+  local script
+  script=$(cat <<'REMOTE'
+set -uo pipefail
+tree="$1"; sub="$2"; mode="$3"; shift 3
+cd "$tree/$sub" || exit 1
+FLAGS="-q -R . xv6iris -R ../model-xv6iris Riscv -R ../kernel-rocq Kernel -R ../user-rocq User -w -notation-overridden"
+rc=0
+for b in "$@"; do
+  if [ "$mode" = vos ]; then
+    rm -f "$b.vos"
+    /usr/bin/time -f "  $b  %es" rocq compile -vos $FLAGS "./$b.v" || rc=$?
+  else
+    /usr/bin/time -f "  $b  %es" rocq compile -vok $FLAGS "./$b.v" || rc=$?
+  fi
+done
+exit $rc
+REMOTE
+)
+  say "${mode} check: ${bases[*]}"
+  ssh "${SSH_OPTS[@]}" "$SSH_USER@$IP" \
+    "bash -ls -- $(printf %q "$REMOTE_DIR") $(printf %q "$PROOF_MAIN_SUBTREE") \
+     $(printf %q "$mode") $(printf '%q ' "${bases[@]}")" <<<"$script"
+}
+
 if [[ "$ACTION" == check-dumps ]]; then
   check_dumps
   say "the VM's tracked dumps match this checkout"
@@ -455,7 +495,9 @@ if [[ "$ACTION" == check-dumps ]]; then
 fi
 
 RC=0
-if (( PROOFS )); then
+if [[ -n "$CHECK" ]]; then
+  run_check "$CHECK" "$@" || RC=$?
+elif (( PROOFS )); then
   run_proofs "$@" || RC=$?
 elif (( SHELL_MODE )) || [[ $# -gt 0 ]]; then
   run_remote "$@" || RC=$?

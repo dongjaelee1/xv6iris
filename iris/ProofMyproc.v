@@ -159,7 +159,7 @@ Section ProofMyproc.
   Lemma wp_myproc_sconf
       (m : regfile) (av n : nat) (eb : bool) (p : mword 64) (b : bool) (lks : gset string)
     : wp_myproc_sconf_body m av n eb p b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_myproc_sconf_body].
     intros pcE ret_tgt Hpos Hav.
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).

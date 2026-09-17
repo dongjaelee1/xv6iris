@@ -133,7 +133,7 @@ Section VdrwbFreeAt.
         free_bundles γd pd (fr_upd fr i true) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hav Hi8 Hfri Hlen Haddr Hp4 Hjt Hjal Hret Hlkbelow.
     iIntros "Hcg Hown #Htext Hpc #Hpinv #Hdp Hi0 Hi4 Hidx Hbun [Hslot Hfrag] Hcont".
     (* ---- lw a0, imm(s0) ---- *)
@@ -312,7 +312,7 @@ Section ProofVirtioDiskRwB.
     vdrw_scratch (KTR := KT1) sp0 -∗
     vdrw_p2_exit CID γk γs j γd pd pav pu K eb sp0 b wr sector m0 lks -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hj Hjl Hlen Hregs Hhi0 Hbelow.
     iIntros "Hcg Hown Htc Hclm #Htext Hpc #Hpinv
              #Hgeom #Hlk Htok HR Hscr Hexit".

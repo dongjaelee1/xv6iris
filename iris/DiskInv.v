@@ -218,7 +218,7 @@ Section DiskInv.
 
   Global Instance disk_geom_persistent γ pd pav pu :
     Persistent (disk_geom γ pd pav pu).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* the kdata facts, in the form the tier bridges below consume *)
   Lemma disk_geom_static (γ : disk_names) (pd pav pu : SailStdpp.Values.mword 64) :
@@ -226,7 +226,7 @@ Section DiskInv.
     ⌜(forall j, (j < 4096)%nat -> kmap_static (svpn_of (pa_add pd j)) KP_rw)
      /\ (forall j, (j < 4096)%nat -> kmap_static (svpn_of (pa_add pav j)) KP_rw)
      /\ (forall j, (j < 4096)%nat -> kmap_static (svpn_of (pa_add pu j)) KP_rw)⌝.
-  Proof.
+  Proof using .
     iIntros "(_ & _ & _ & _ & _ & %Hd & %Ha & %Hu)". iPureIntro.
     split_and!; intros j Hj; apply kdata_svpn_class;
       [ exact (Hd j Hj) | exact (Ha j Hj) | exact (Hu j Hj) ].
@@ -240,7 +240,7 @@ Section DiskInv.
         (uint (pa_add pav j : SailStdpp.Values.mword 64) < 274877906944)%Z)
      /\ (forall j, (j < 4096)%nat ->
         (uint (pa_add pu j : SailStdpp.Values.mword 64) < 274877906944)%Z)⌝.
-  Proof.
+  Proof using .
     iIntros "(_ & _ & _ & _ & _ & %Hd & %Ha & %Hu)". iPureIntro.
     assert (Hk : forall a : Arch.pa, addr_is_kdata a ->
               (uint (a : SailStdpp.Values.mword 64) < 274877906944)%Z).
@@ -298,7 +298,7 @@ Section DiskInv.
 
   Lemma free_slot_res_split (pd : Arch.pa) (i : nat) :
     free_slot_res pd i ⊣⊢ desc_entry_own pd i ∗ disk_slot_raw i.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* -- the linkage between a slot and its struct buf -------------------- *)
 
@@ -394,7 +394,7 @@ Section DiskInv.
   (* the rows survive the handler's watermark bump *)
   Lemma claim_cells_nr_mono (γ : disk_names) (nr nr' p : nat) (dc : dclaim) :
     (nr <= nr')%nat -> claim_cells γ nr p dc -∗ claim_cells γ nr' p dc.
-  Proof.
+  Proof using .
     iIntros (Hle) "(Hib & Hhc & [Hbd | (Hbd & %u & #Hord & %Hlt)])".
     - iFrame "Hib Hhc". iLeft. iExact "Hbd".
     - iFrame "Hib Hhc". iRight. iFrame "Hbd". iExists u. iFrame "Hord". iPureIntro. lia.
@@ -479,7 +479,7 @@ Section DiskInv.
 
   Lemma phys_pointsto_ram (a : Arch.pa) (dq : dfrac) (b : bv 8) :
     phys_pointsto a dq b ⊢ ⌜addr_is_ram a⌝.
-  Proof. rewrite /phys_pointsto. iIntros "[_ $]". Qed.
+  Proof using . rewrite /phys_pointsto. iIntros "[_ $]". Qed.
 
   (* ---- THE TWO DIRECTIONS ARE NO LONGER SYMMETRIC (the machine flip;
      tso-machine-flip.md §6 amendments A6.8/A6.9).  Before it, this file's
@@ -513,7 +513,7 @@ Section DiskInv.
     kmap_static_claims -∗
     ([∗ list] j ∈ seq 0 n, phys_ledger (pa_add p j) dq (f j)) -∗
     ([∗ list] j ∈ seq 0 n, mem_pointsto (pa_add p j) dq (f j)).
-  Proof.
+  Proof using .
     iIntros (Hstat Hcan) "#Hb Hbytes".
     iApply (big_sepL_impl with "Hbytes").
     iIntros "!>" (k x Hk) "H".
@@ -535,7 +535,7 @@ Section DiskInv.
     (j < n)%nat ->
     ([∗ list] k ∈ seq 0 n, (pa_add p k) ↦ₘ{dq} f k) -∗
     ⌜(uint (pa_add p j : SailStdpp.Values.mword 64) < 274877906944)%Z⌝.
-  Proof.
+  Proof using .
     iIntros (Hj) "Hbytes".
     iDestruct (big_sepL_lookup _ (seq 0 n) j j with "Hbytes") as "Hb".
     { rewrite lookup_seq_lt; [reflexivity | exact Hj]. }
@@ -561,7 +561,7 @@ Section DiskInv.
   Lemma word2_to_phys (a : Arch.pa) (w : bv 16) :
     (forall j, (j < 2)%nat -> kmap_static (svpn_of (pa_add a j)) KP_rw) ->
     kmap_static_claims -∗ a ↦₂ w -∗ phys_word2 a w.
-  Proof.
+  Proof using .
     (* M1 STAGE 2: [↦₂] is a CTX tower now, so the window LEAVES THE LEDGER
        here, through the [_forget] entry point. *)
     iIntros (Hs) "#Hb [_ Hbytes]". rewrite /phys_word2.
@@ -576,7 +576,7 @@ Section DiskInv.
        (uint (pa_add a j : SailStdpp.Values.mword 64) < 274877906944)%Z) ->
     kmap_static_claims -∗ phys_word2 a w -∗
     word2_pointsto a (DfracOwn 1) w.
-  Proof.
+  Proof using .
     iIntros (Hal Hs Hc) "#Hb Hbytes". rewrite /phys_word2.
     iDestruct (phys_win_to_mem a 2 (DfracOwn 1) (fun j => nth_byte w j) Hs Hc
                  with "Hb Hbytes") as "Hm".
@@ -586,7 +586,7 @@ Section DiskInv.
   Lemma word4_to_phys (a : Arch.pa) (w : bv 32) :
     (forall j, (j < 4)%nat -> kmap_static (svpn_of (pa_add a j)) KP_rw) ->
     kmap_static_claims -∗ a ↦₄ w -∗ phys_word4 a w.
-  Proof.
+  Proof using .
     (* M1 STAGE 2: [↦₄] is a CTX tower now, so the window LEAVES THE LEDGER
        here, through the [_forget] entry point -- which is what a DMA lease
        is (§6 amendment A6.9). *)
@@ -602,7 +602,7 @@ Section DiskInv.
        (uint (pa_add a j : SailStdpp.Values.mword 64) < 274877906944)%Z) ->
     kmap_static_claims -∗ phys_word4 a w -∗
     word4_pointsto a (DfracOwn 1) w.
-  Proof.
+  Proof using .
     iIntros (Hal Hs Hc) "#Hb Hbytes". rewrite /phys_word4.
     iDestruct (phys_win_to_mem a 4 (DfracOwn 1) (fun j => nth_byte w j) Hs Hc
                  with "Hb Hbytes") as "Hm".
@@ -617,7 +617,7 @@ Section DiskInv.
   Lemma word8_to_phys (a : Arch.pa) (w : bv 64) :
     (forall j, (j < 8)%nat -> kmap_static (svpn_of (pa_add a j)) KP_rw) ->
     kmap_static_claims -∗ a ↦₈ w -∗ phys_word8 a w.
-  Proof.
+  Proof using .
     iIntros (Hs) "#Hb [_ Hbytes]". rewrite /phys_word8.
     iApply (mem_win_to_phys a 8 (DfracOwn 1) (fun j => nth_byte w j) Hs
               with "Hb Hbytes").
@@ -650,7 +650,7 @@ Section DiskInv.
     (forall j, (j < 8)%nat ->
        (uint (pa_add a j : SailStdpp.Values.mword 64) < 274877906944)%Z) ->
     kmap_static_claims -∗ phys_word8 a w -∗ word_pointsto a (DfracOwn 1) w.
-  Proof.
+  Proof using .
     iIntros (Hal Hs Hc) "#Hb Hbytes". rewrite /phys_word8.
     iDestruct (phys_win_to_mem a 8 (DfracOwn 1) (fun j => nth_byte w j) Hs Hc
                  with "Hb Hbytes") as "Hm".
@@ -661,7 +661,7 @@ Section DiskInv.
   Lemma byte_to_phys (a : Arch.pa) (b : bv 8) :
     kmap_static (svpn_of a) KP_rw ->
     kmap_static_claims -∗ a ↦ₘ b -∗ phys_ledger a (DfracOwn 1) b.
-  Proof.
+  Proof using .
     iIntros (Hs) "#Hb H".
     iApply (ctx_ident_ledger a (DfracOwn 1) b Hs with "Hb H").
   Qed.
@@ -673,7 +673,7 @@ Section DiskInv.
     (uint (a : SailStdpp.Values.mword 64) < 274877906944)%Z ->
     kmap_static_claims -∗ phys_ledger a (DfracOwn 1) b -∗
     mem_pointsto a (DfracOwn 1) b.
-  Proof.
+  Proof using .
     iIntros (Hs Hc) "#Hb H".
     iDestruct (phys_ledger_forget with "H") as "H".
     iDestruct (phys_pointsto_ram with "H") as %Hram.
@@ -684,7 +684,7 @@ Section DiskInv.
      of its six regions and taken apart again. *)
   Lemma phys_map_union (m1 m2 : gmap Arch.pa (bv 8)) :
     m1 ##ₘ m2 -> phys_map (m1 ∪ m2) ⊣⊢ phys_map m1 ∗ phys_map m2.
-  Proof. intro Hd. rewrite /phys_map. apply big_sepM_union. exact Hd. Qed.
+  Proof using . intro Hd. rewrite /phys_map. apply big_sepM_union. exact Hd. Qed.
 
   (* ==================================================================== *)
   (* Surgery on the two eight-element bundles.                            *)
@@ -699,7 +699,7 @@ Section DiskInv.
     (j < 8)%nat ->
     ([∗ list] k ∈ seq 0 8, F k)
     ⊣⊢ F j ∗ ([∗ list] k ∈ seq 0 8, if bool_decide (k = j) then emp else F k).
-  Proof.
+  Proof using .
     intro Hj.
     assert (Hlk : seq 0 8 !! j = Some j).
     { rewrite lookup_seq_lt; [reflexivity | exact Hj]. }
@@ -735,17 +735,17 @@ Section DiskInv.
     ([∗ list] i ∈ seq 0 8,
        d_free_cell i ↦ₘ (if fr i then Z_to_bv 8 1 else byte_zero) ∗
        (if fr i then free_slot_res pd i ∗ i ↪[dn_head γ] HInactive else emp)).
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Definition fr_upd (fr : nat -> bool) (i : nat) (b : bool) : nat -> bool :=
     fun k => if Nat.eq_dec k i then b else fr k.
 
   Lemma fr_upd_eq (fr : nat -> bool) (i : nat) (b : bool) : fr_upd fr i b i = b.
-  Proof. unfold fr_upd. destruct (Nat.eq_dec i i); [reflexivity | congruence]. Qed.
+  Proof using . unfold fr_upd. destruct (Nat.eq_dec i i); [reflexivity | congruence]. Qed.
 
   Lemma fr_upd_ne (fr : nat -> bool) (i k : nat) (b : bool) :
     k <> i -> fr_upd fr i b k = fr k.
-  Proof. intro Hne. unfold fr_upd. destruct (Nat.eq_dec k i); [congruence|reflexivity]. Qed.
+  Proof using . intro Hne. unfold fr_upd. destruct (Nat.eq_dec k i); [congruence|reflexivity]. Qed.
 
   (* the residual bundle, with slot [i] cut out *)
   Definition free_bundles_but (γ : disk_names) (pd : Arch.pa) (fr : nat -> bool)
@@ -763,7 +763,7 @@ Section DiskInv.
     (d_free_cell i ↦ₘ (if fr i then Z_to_bv 8 1 else byte_zero) ∗
      (if fr i then free_slot_res pd i ∗ i ↪[dn_head γ] HInactive else emp)) ∗
     free_bundles_but γ pd fr i.
-  Proof.
+  Proof using .
     intro Hi. rewrite /free_bundles /free_bundles_but.
     apply (seq8_delete
              (fun k => d_free_cell k ↦ₘ (if fr k then Z_to_bv 8 1 else byte_zero) ∗
@@ -775,7 +775,7 @@ Section DiskInv.
   Lemma free_bundles_but_upd (γ : disk_names) (pd : Arch.pa) (fr : nat -> bool)
       (i : nat) (b : bool) :
     free_bundles_but γ pd fr i ⊣⊢ free_bundles_but γ pd (fr_upd fr i b) i.
-  Proof.
+  Proof using .
     rewrite /free_bundles_but. apply big_sepL_proper. intros k y Hk.
     apply lookup_seq in Hk as [-> _].
     case_bool_decide as Hd; [reflexivity|].
@@ -792,7 +792,7 @@ Section DiskGeomMorph.
   Global Instance disk_geom_morph (γ : disk_names)
       (pd pav pu : SailStdpp.Values.mword 64) :
     CtxMorph (λ ξ0 : CtxId, disk_geom (XI := ξ0) γ pd pav pu).
-  Proof.
+  Proof using .
     iIntros (ξ ξ') "Hd H". rewrite /disk_geom.
     iDestruct "H" as "(H1 & H2 & H3 & %Hal & Hcfg & %Hk1 & %Hk2 & %Hk3)".
     iMod (ctx_morph_word _ _ _ _ ξ ξ' with "Hd H1") as "[Hd H1]".
@@ -816,18 +816,18 @@ Section DiskResAt.
 
   Global Instance desc_entry_own_morph pd i :
     CtxMorph (λ ξ, desc_entry_own (XI := ξ) pd i).
-  Proof. rewrite /desc_entry_own. ctx_morph_solve. Qed.
+  Proof using . rewrite /desc_entry_own. ctx_morph_solve. Qed.
   Global Instance ops_own_morph i : CtxMorph (λ ξ, ops_own (XI := ξ) i).
-  Proof. rewrite /ops_own. ctx_morph_solve. Qed.
+  Proof using . rewrite /ops_own. ctx_morph_solve. Qed.
   Global Instance free_slot_res_morph pd i :
     CtxMorph (λ ξ, free_slot_res (XI := ξ) pd i).
-  Proof.
+  Proof using .
     rewrite /free_slot_res. ctx_morph_solve.
     all: first [ apply desc_entry_own_morph | apply ops_own_morph ].
   Qed.
   (* A6.126 §6: a bare view floor transports like [lk_floor]'s left arm *)
   Global Instance ctx_floor_morph (lo : nat) : CtxMorph (λ ξ, TsoCtx.ctx_floor ξ lo).
-  Proof.
+  Proof using .
     iIntros (ξ ξ') "Hd #Hfl".
     iDestruct (TsoCtx.ctx_floor_dom with "Hd Hfl") as "[Hd #Hfl']".
     iModIntro. iFrame "Hd Hfl'".
@@ -835,14 +835,14 @@ Section DiskResAt.
 
   Global Instance claim_cells_morph γ nr p dc :
     CtxMorph (λ ξ, claim_cells (XI := ξ) γ nr p dc).
-  Proof. rewrite /claim_cells. ctx_morph_solve. all: apply _. Qed.
+  Proof using . rewrite /claim_cells. ctx_morph_solve. all: apply _. Qed.
 
   Definition disk_res_at (γ : disk_names)
       (pd pav pu : SailStdpp.Values.mword 64) : CtxId → iProp Σ :=
     λ ξ, disk_res (XI := ξ) γ pd pav pu.
   Global Instance disk_res_at_morph γ pd pav pu :
     CtxMorph (disk_res_at γ pd pav pu).
-  Proof.
+  Proof using .
     rewrite /disk_res_at /disk_res. ctx_morph_solve.
     all: first [ apply free_slot_res_morph | apply claim_cells_morph
                | apply ring_hcells_morph

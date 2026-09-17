@@ -86,7 +86,7 @@ Section WpSconfFencePub.
     gen_cert -∗ pub_step P Q -∗ P -∗
     swp (Defs.bind0 (sail_barrier bk) (returnM RETIRE_SUCCESS))
       (fun e => ⌜e = RETIRE_SUCCESS⌝ ∗ Q).
-  Proof.
+  Proof using .
     iIntros (Hdrain) "#Hcert Hpub HP".
     iApply (swp_hart_barrier (X := ExecutionResult) bk
               (Defs.bind0 (sail_barrier bk) (returnM RETIRE_SUCCESS)) _ P Q
@@ -105,7 +105,7 @@ Section WpSconfFencePub.
                          rs, rd)))
       (fun e => ⌜e = RETIRE_SUCCESS⌝ ∗ Q ∗
                 cur_privilege ↦ᵣ Supervisor ∗ menvcfg ↦ᵣ menv).
-  Proof.
+  Proof using .
     iIntros "#Hcert Hpriv Hmenv Hpub HP".
     change (execute (FENCE (fm, mword_of_int 3 : mword 4,
                             mword_of_int 3 : mword 4, rs, rd)))
@@ -154,7 +154,7 @@ Section WpSconfFencePub.
        pc_is (add_vec_int pc 4) -∗ Q -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "Hcg Hpc Hinstr Hpub HP Hcont".
     iApply (wp_instr_s_sconf m n false false pc false
               (FENCE (fm, mword_of_int 3 : mword 4, mword_of_int 3 : mword 4,
@@ -205,7 +205,7 @@ Section WpSconfFencePub.
     gen_cert -∗ ghost_step P Q -∗ P -∗
     swp (Defs.bind0 (sail_barrier bk) (returnM RETIRE_SUCCESS))
       (fun e => ⌜e = RETIRE_SUCCESS⌝ ∗ Q).
-  Proof.
+  Proof using .
     iIntros "#Hcert Hpub HP".
     iApply (swp_hart_barrier_gs (X := ExecutionResult) bk
               (Defs.bind0 (sail_barrier bk) (returnM RETIRE_SUCCESS)) _ P Q
@@ -221,7 +221,7 @@ Section WpSconfFencePub.
                          rs, rd)))
       (fun e => ⌜e = RETIRE_SUCCESS⌝ ∗ Q ∗
                 cur_privilege ↦ᵣ Supervisor ∗ menvcfg ↦ᵣ menv).
-  Proof.
+  Proof using .
     iIntros "#Hcert Hpriv Hmenv Hpub HP".
     change (execute (FENCE (fm, mword_of_int 3 : mword 4,
                             mword_of_int 1 : mword 4, rs, rd)))
@@ -260,7 +260,7 @@ Section WpSconfFencePub.
        pc_is (add_vec_int pc 4) -∗ Q -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "Hcg Hpc Hinstr Hpub HP Hcont".
     iApply (wp_instr_s_sconf m n false false pc false
               (FENCE (fm, mword_of_int 3 : mword 4, mword_of_int 1 : mword 4,
@@ -308,7 +308,7 @@ Section WpSconfFencePub.
     gen_cert -∗ hart_rview_lb_at cpu_id K -∗
     swp (Defs.bind0 (sail_barrier bk) (returnM RETIRE_SUCCESS))
       (fun e => ⌜e = RETIRE_SUCCESS⌝ ∗ hart_view_lb K).
-  Proof.
+  Proof using .
     iIntros (Hacq) "#Hcert #HK".
     iApply (swp_hart_fence_acq (X := ExecutionResult) bk
               (Defs.bind0 (sail_barrier bk) (returnM RETIRE_SUCCESS)) _ K
@@ -329,11 +329,11 @@ Section WpSconfFencePub.
       eq_vec (subrange_vec_dec (effective_fence_set v fiom) 1 0) ('b"10") = true.
 
   Lemma fbits11_3 : fbits11 (mword_of_int 3 : mword 4).
-  Proof. intros fiom. destruct fiom; vm_compute; reflexivity. Qed.
+  Proof using . intros fiom. destruct fiom; vm_compute; reflexivity. Qed.
   Lemma fbits11_15 : fbits11 (mword_of_int 15 : mword 4).
-  Proof. intros fiom. destruct fiom; vm_compute; reflexivity. Qed.
+  Proof using . intros fiom. destruct fiom; vm_compute; reflexivity. Qed.
   Lemma fbits10_2 : fbits10 (mword_of_int 2 : mword 4).
-  Proof. intros fiom. destruct fiom; vm_compute; split; reflexivity. Qed.
+  Proof using . intros fiom. destruct fiom; vm_compute; split; reflexivity. Qed.
 
   (* `fence rw,rw` (arm 1 of the model's chain) *)
   Lemma swp_execute_FENCE_acq_rwrw_S (fm pred succ : mword 4) (rs rd : regidx)
@@ -344,7 +344,7 @@ Section WpSconfFencePub.
     swp (execute (FENCE (fm, pred, succ, rs, rd)))
       (fun e => ⌜e = RETIRE_SUCCESS⌝ ∗ hart_view_lb K ∗
                 cur_privilege ↦ᵣ Supervisor ∗ menvcfg ↦ᵣ menv).
-  Proof.
+  Proof using .
     iIntros (Hp Hs) "#Hcert Hpriv Hmenv #HK".
     change (execute (FENCE (fm, pred, succ, rs, rd)))
       with (execute_FENCE fm pred succ rs rd).
@@ -376,7 +376,7 @@ Section WpSconfFencePub.
     swp (execute (FENCE (fm, pred, succ, rs, rd)))
       (fun e => ⌜e = RETIRE_SUCCESS⌝ ∗ hart_view_lb K ∗
                 cur_privilege ↦ᵣ Supervisor ∗ menvcfg ↦ᵣ menv).
-  Proof.
+  Proof using .
     iIntros (Hp Hs) "#Hcert Hpriv Hmenv #HK".
     change (execute (FENCE (fm, pred, succ, rs, rd)))
       with (execute_FENCE fm pred succ rs rd).
@@ -413,7 +413,7 @@ Section WpSconfFencePub.
        pc_is (add_vec_int pc 4) -∗ hart_view_lb K -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hp Hs) "Hcg Hpc Hinstr #HK Hcont".
     iApply (wp_instr_s_sconf m n false false pc false
               (FENCE (fm, pred, succ, rs, rd))
@@ -451,7 +451,7 @@ Section WpSconfFencePub.
        pc_is (add_vec_int pc 4) -∗ hart_view_lb K -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hp Hs) "Hcg Hpc Hinstr #HK Hcont".
     iApply (wp_instr_s_sconf m n false false pc false
               (FENCE (fm, pred, succ, rs, rd))

@@ -41,15 +41,15 @@ Section LockAt.
     (lock_auth γ None ∗ lock_frag γ None)%I.
 
   Global Instance lock_free_tok_timeless γ : Timeless (lock_free_tok γ).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma lock_free_tok_exclusive γ : lock_free_tok γ -∗ lock_free_tok γ -∗ False.
-  Proof.
+  Proof using .
     iIntros "[_ H1] [_ H2]". iApply (lock_frag_exclusive with "H1 H2").
   Qed.
 
   Lemma lock_ghost_alloc : ⊢ |==> ∃ γ : gname, lock_free_tok γ.
-  Proof.
+  Proof using .
     iMod (own_alloc ((((●E (None : leibnizO lock_state)),
                        (●E (0%nat : leibnizO nat)))
                       ⋅ ((◯E (None : leibnizO lock_state)),
@@ -73,7 +73,7 @@ Section LockAt.
     lk ↦₄ (mword_of_int 0 : mword 32) -∗
     WpLock.lk_cpu_ready lk -∗
     R cur_ctx ={E}=∗ own_context cur_ctx ∗ is_lock γ lk s R.
-  Proof.
+  Proof using .
     iIntros "[Ha Hf] #Hnm Hrun Hword Hready HR".
     (* A6.105: the floor travels bundled with the cell; unbundle it here and
        hand it to [is_lock_intro], which is where the handle's floor lives. *)
@@ -110,7 +110,7 @@ Section LockAt.
     WpLock.lk_cpu_ready lk -∗
     TsoGhost.llb loglen_name tl -∗
     Rdep cur_ctx ={E}=∗ own_context cur_ctx ∗ is_lock γ lk s R.
-  Proof.
+  Proof using .
     iIntros (Hfold) "[Ha Hf] #Hnm Hrun Hword Hready #Hllb HR".
     (* A6.105: the floor travels bundled with the cell; unbundle it here and
        hand it to [is_lock_intro], which is where the handle's floor lives. *)

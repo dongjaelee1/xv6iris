@@ -1026,10 +1026,10 @@ Section EraRes.
   Context `{!riscvGS Σ, !xv6G Σ}.
 
   Local Lemma era_seq_cons (j n : nat) : seq j (S n) = j :: seq (S j) n.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Local Lemma era_seq_nil (j : nat) : seq j 0 = [].
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* A RANGE-INDEXED BIG-OP OVER A TOTAL READING IS THE SPARSE MAP'S.
      One induction, over an ABSTRACT map whose domain the range covers, so
@@ -1039,7 +1039,7 @@ Section EraRes.
     (forall k, is_Some (m !! k) -> (b <= k < b + n)%nat) ->
     ([∗ list] k ∈ seq b n, from_option (Φ k) emp (m !! k))
     ⊣⊢ ([∗ map] k ↦ v ∈ m, Φ k v).
-  Proof.
+  Proof using .
     revert b m. induction n as [| n IH]; intros b m Hdom.
     - assert (Hemp : m = ∅).
       { apply map_eq. intros k. rewrite lookup_empty.
@@ -1081,7 +1081,7 @@ Section EraRes.
     inode_blocks γfs (bm_of n) (fn_data n)
     ⊣⊢ ([∗ map] k ↦ bs ∈ fn_blk n,
           FsStateDefs.blk_owned (fs_gamma_L γfs) (fn_naddr n k) bs).
-  Proof.
+  Proof using .
     intros Hl.
     rewrite /inode_blocks.
     rewrite -(big_sepL_seq_map
@@ -1112,7 +1112,7 @@ Section EraRes.
 
   Lemma ind_res_era (γfs : fs_names) (n : fs_node) :
     ind_res γfs (bm_of n) ⊣⊢ ind_owned (fs_gamma_L γfs) n.
-  Proof.
+  Proof using .
     rewrite /ind_res /ind_blk /ind_owned bm_of_ind bm_of_ent.
     (* the two guards are the same proposition but reach the goal through
        two files' [Decision] instances, so they are peeled by [case_decide]
@@ -1141,7 +1141,7 @@ Section EraRes.
     inode_blocks_q γfs dq (bm_of n) (fn_data n)
     ⊣⊢ ([∗ map] k ↦ bs ∈ fn_blk n,
           FsStateDefs.blk_owned_q (fs_gamma_L γfs) dq (fn_naddr n k) bs).
-  Proof.
+  Proof using .
     intros Hl.
     rewrite /inode_blocks_q.
     rewrite -(big_sepL_seq_map
@@ -1172,7 +1172,7 @@ Section EraRes.
 
   Lemma ind_res_era_q (γfs : fs_names) (dq : dfrac) (n : fs_node) :
     ind_res_q γfs dq (bm_of n) ⊣⊢ ind_owned_q (fs_gamma_L γfs) dq n.
-  Proof.
+  Proof using .
     rewrite /ind_res_q /ind_blk_q /ind_owned_q bm_of_ind bm_of_ent.
     repeat case_decide; try (exfalso; congruence).
     - rewrite bi.True_emp //.
@@ -1221,15 +1221,15 @@ Section EraRes.
   Lemma inode_owned_era_1 γfs γi inum n :
     inode_owned_era γfs γi inum n
     = inode_owned_era_q γfs (DfracOwn 1) γi inum n.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Global Instance inode_owned_era_q_timeless γfs dq γi inum n :
     Timeless (inode_owned_era_q γfs dq γi inum n).
-  Proof. rewrite /inode_owned_era_q /top_frag_q. apply _. Qed.
+  Proof using . rewrite /inode_owned_era_q /top_frag_q. apply _. Qed.
 
   Global Instance inode_owned_era_timeless γfs γi inum n :
     Timeless (inode_owned_era γfs γi inum n).
-  Proof. rewrite /inode_owned_era /top_frag. apply _. Qed.
+  Proof using . rewrite /inode_owned_era /top_frag. apply _. Qed.
 
   (* ---- THE READER'S QUARTER, BOTH WAYS ------------------------------- *)
 
@@ -1238,7 +1238,7 @@ Section EraRes.
     inode_dat_q (fs_gamma_L γfs) (DfracOwn (q1 + q2)) n
     ⊣⊢ inode_dat_q (fs_gamma_L γfs) (DfracOwn q1) n
         ∗ inode_dat_q (fs_gamma_L γfs) (DfracOwn q2) n.
-  Proof. apply (inode_dat_q_split _ (fs_gamma_L_frac γfs)). Qed.
+  Proof using . apply (inode_dat_q_split _ (fs_gamma_L_frac γfs)). Qed.
 
   (* WHAT A READ-LOCKING [ilock] WITHDRAWS (durable-fs-plan.md section 3;
      durable-disk B''-join): the byte legs at a quarter BESIDE a quarter of
@@ -1256,17 +1256,17 @@ Section EraRes.
 
   Global Instance inode_rd_era_timeless γfs dq inum n :
     Timeless (inode_rd_era γfs dq inum n).
-  Proof. rewrite /inode_rd_era. apply _. Qed.
+  Proof using . rewrite /inode_rd_era. apply _. Qed.
 
   Lemma inode_rd_era_bytes γfs dq inum n :
     inode_rd_era γfs dq inum n -∗ inode_dat_q (fs_gamma_L γfs) dq n.
-  Proof. iIntros "[$ _]". Qed.
+  Proof using . iIntros "[$ _]". Qed.
 
   (* THE PIN, as the escrow's park meets it. *)
   Lemma inode_rd_era_agree γfs dq1 dq2 γi inum n1 n2 :
     inode_owned_era_q γfs dq1 γi inum n1 -∗
     inode_rd_era γfs dq2 inum n2 -∗ ⌜n1 = n2⌝.
-  Proof.
+  Proof using .
     iIntros "(_ & _ & Ht1 & _) [_ Ht2]".
     by iDestruct (top_frag_q_agree with "Ht1 Ht2") as %->.
   Qed.
@@ -1279,7 +1279,7 @@ Section EraRes.
     inode_owned_era_q γfs (DfracOwn (q1 + q2)) γi inum n
     ⊣⊢ inode_owned_era_q γfs (DfracOwn q1) γi inum n
         ∗ inode_rd_era γfs (DfracOwn q2) inum n.
-  Proof.
+  Proof using .
     rewrite /inode_owned_era_q /inode_rd_era dat_split top_frag_q_split.
     iSplit.
     - iIntros "(Hd & [Hb1 Hb2] & [Ht1 Ht2] & %Hl)". iFrame. done.
@@ -1290,7 +1290,7 @@ Section EraRes.
     inode_owned_era γfs γi inum n
     ⊣⊢ inode_owned_era_q γfs (DfracOwn (3/4)) γi inum n
         ∗ inode_rd_era γfs (DfracOwn (1/4)) inum n.
-  Proof.
+  Proof using .
     rewrite inode_owned_era_1.
     rewrite -(inode_owned_era_q_split γfs (3/4) (1/4)).
     rewrite Qp.three_quarter_quarter //.
@@ -1308,19 +1308,19 @@ Section EraRes.
     inode_owned_era γfs γi inum n -∗
     inode_owned_era_q γfs (DfracOwn (3/4)) γi inum n
     ∗ inode_rd_era γfs (DfracOwn (1/4)) inum n.
-  Proof. iIntros "H". by iApply inode_owned_era_shed. Qed.
+  Proof using . iIntros "H". by iApply inode_owned_era_shed. Qed.
 
   Lemma inode_owned_era_shed_of γfs γi inum n :
     inode_owned_era_q γfs (DfracOwn (3/4)) γi inum n -∗
     inode_rd_era γfs (DfracOwn (1/4)) inum n -∗
     inode_owned_era γfs γi inum n.
-  Proof.
+  Proof using .
     iIntros "H1 H2". iApply inode_owned_era_shed. iFrame.
   Qed.
 
   Lemma inode_owned_era_local γfs γi inum n :
     inode_owned_era γfs γi inum n -∗ ⌜inode_local (bv_unsigned inum) n⌝.
-  Proof. iIntros "(_ & _ & _ & $)". Qed.
+  Proof using . iIntros "(_ & _ & _ & $)". Qed.
 
   (* the proxy, lent and returned at the same value: what every accessor
      that only needs to READ the record does *)
@@ -1328,7 +1328,7 @@ Section EraRes.
     inode_owned_era γfs γi inum n -∗
       dinode_at γi inum (fn_rec n)
       ∗ (dinode_at γi inum (fn_rec n) -∗ inode_owned_era γfs γi inum n).
-  Proof.
+  Proof using .
     iIntros "(H & Hb & Ht & %Hl)". iFrame "H". iIntros "H".
     rewrite /inode_owned_era. iFrame. done.
   Qed.
@@ -1346,7 +1346,7 @@ Section EraRes.
     inode_blocks γfs (bm_of n) (fn_data n) -∗
     top_frag (fs_gamma_L γfs) (bv_unsigned inum) n -∗
     inode_owned_era γfs γi inum n.
-  Proof.
+  Proof using .
     intros Hl. iIntros "Hd Hi Hb Ht".
     rewrite /inode_owned_era /inode_dat.
     rewrite (inode_blocks_era γfs (bv_unsigned inum) n Hl) ind_res_era.
@@ -1360,7 +1360,7 @@ Section EraRes.
       ∗ ind_res γfs (bm_of n)
       ∗ inode_blocks γfs (bm_of n) (fn_data n)
       ∗ top_frag (fs_gamma_L γfs) (bv_unsigned inum) n.
-  Proof.
+  Proof using .
     rewrite /inode_owned_era /inode_dat.
     iIntros "(Hd & [Hb Hi] & Ht & %Hl)".
     rewrite (inode_blocks_era γfs (bv_unsigned inum) n Hl) ind_res_era.
@@ -1381,7 +1381,7 @@ Section EraRes.
     inode_blocks_q γfs dq (bm_of n) (fn_data n) -∗
     top_frag_q (fs_gamma_L γfs) dq (bv_unsigned inum) n -∗
     inode_owned_era_q γfs dq γi inum n.
-  Proof.
+  Proof using .
     intros Hl. iIntros "Hd Hi Hb Ht".
     rewrite /inode_owned_era_q /inode_dat_q.
     rewrite (inode_blocks_era_q γfs dq (bv_unsigned inum) n Hl) ind_res_era_q.
@@ -1395,7 +1395,7 @@ Section EraRes.
       ∗ ind_res_q γfs dq (bm_of n)
       ∗ inode_blocks_q γfs dq (bm_of n) (fn_data n)
       ∗ top_frag_q (fs_gamma_L γfs) dq (bv_unsigned inum) n.
-  Proof.
+  Proof using .
     rewrite /inode_owned_era_q /inode_dat_q.
     iIntros "(Hd & [Hb Hi] & Ht & %Hl)".
     rewrite (inode_blocks_era_q γfs dq (bv_unsigned inum) n Hl) ind_res_era_q.
@@ -1419,7 +1419,7 @@ Section EraRes.
     inode_local i n ->
     inode_dat_q (fs_gamma_L γfs) dq n -∗
       ind_res_q γfs dq (bm_of n) ∗ inode_blocks_q γfs dq (bm_of n) (fn_data n).
-  Proof.
+  Proof using .
     intros Hl. rewrite /inode_dat_q. iIntros "[Hb Hi]".
     rewrite (inode_blocks_era_q γfs dq i n Hl) ind_res_era_q. iFrame.
   Qed.
@@ -1429,7 +1429,7 @@ Section EraRes.
     ind_res_q γfs dq (bm_of n) -∗
     inode_blocks_q γfs dq (bm_of n) (fn_data n) -∗
     inode_dat_q (fs_gamma_L γfs) dq n.
-  Proof.
+  Proof using .
     intros Hl. iIntros "Hi Hb".
     rewrite /inode_dat_q.
     rewrite (inode_blocks_era_q γfs dq i n Hl) ind_res_era_q. iFrame.
@@ -1450,7 +1450,7 @@ Section EraRes.
     ⌜forall k j : nat, (k <= MAXFILE)%nat -> (j <= MAXFILE)%nat ->
         bv_unsigned (bm_slot (bm_of n) k) <> 0 ->
         bm_slot (bm_of n) k = bm_slot (bm_of n) j -> k = j⌝.
-  Proof.
+  Proof using .
     intros Hnv.
     rewrite /inode_owned_era_q /inode_dat_q.
     iIntros "(_ & [Hb Hi] & _ & %Hl)".
@@ -1501,7 +1501,7 @@ Section EraRes.
     ⌜forall k j : nat, (k <= MAXFILE)%nat -> (j <= MAXFILE)%nat ->
         bv_unsigned (bm_slot (bm_of n) k) <> 0 ->
         bm_slot (bm_of n) k = bm_slot (bm_of n) j -> k = j⌝.
-  Proof.
+  Proof using .
     rewrite inode_owned_era_1.
     iApply (inode_owned_era_q_slot_inj γfs (DfracOwn 1) γi inum n
               (dfrac_full_nvalid _)).
@@ -1515,14 +1515,14 @@ Section EraRes.
     ⌜forall k j : nat, (k <= MAXFILE)%nat -> (j <= MAXFILE)%nat ->
         bv_unsigned (bm_slot (bm_of n) k) <> 0 ->
         bm_slot (bm_of n) k = bm_slot (bm_of n) j -> k = j⌝.
-  Proof.
+  Proof using .
     iApply (inode_owned_era_q_slot_inj γfs (DfracOwn (3/4)) γi inum n
               dfrac_34_nvalid).
   Qed.
 
   Lemma inode_owned_era_q_local γfs dq γi inum n :
     inode_owned_era_q γfs dq γi inum n -∗ ⌜inode_local (bv_unsigned inum) n⌝.
-  Proof. iIntros "(_ & _ & _ & $)". Qed.
+  Proof using . iIntros "(_ & _ & _ & $)". Qed.
 
   (* ---- THE DATA-BLOCK ACCESSOR AT A SHARE (plan section 3, lane B') ----
 
@@ -1537,7 +1537,7 @@ Section EraRes.
       FsStateDefs.blk_owned_q (fs_gamma_L γfs) dq (fn_naddr n k) bs
       ∗ (FsStateDefs.blk_owned_q (fs_gamma_L γfs) dq (fn_naddr n k) bs -∗
            inode_owned_era_q γfs dq γi inum n).
-  Proof.
+  Proof using .
     intros Hbs. rewrite /inode_owned_era_q.
     iIntros "(Hd & Hdat & Ht & %Hl)".
     iDestruct (inode_dat_q_blk_acc _ dq n k bs Hbs with "Hdat")
@@ -1562,7 +1562,7 @@ Section EraRes.
     inode_owned_era γfs γi inum n ={E}=∗
       ⌜bv_unsigned (bm_slot (bm_of n) k) ∈ home⌝
       ∗ inode_owned_era γfs γi inum n.
-  Proof.
+  Proof using .
     iIntros (HE Hk Hnz) "#Hrow Hn". iDestruct "Hrow" as (Xv) "#Hinv".
     iDestruct (inode_owned_era_local with "Hn") as %Hl.
     iDestruct (inode_owned_era_to with "Hn") as "(Hd & Hi & Hb & Ht)".
@@ -1616,7 +1616,7 @@ Section EraRes.
           bv_unsigned (bm_slot (bm_of n) k) <> 0 ->
           bv_unsigned (bm_slot (bm_of n) k) ∈ home⌝
       ∗ inode_owned_era γfs γi inum n.
-  Proof.
+  Proof using .
     iIntros (HE) "#Hrow Hn". iDestruct "Hrow" as (Xv) "#Hinv".
     rewrite /inode_owned_era /inode_dat.
     iDestruct "Hn" as "(Hd & [Hb Hi] & Ht & %Hl)".
@@ -1659,7 +1659,7 @@ Section EraRes.
     inode_owned_era γfs γi inum n ={E}=∗
       ⌜inode_ok cov ls (fn_rec n) (bm_of n) (fn_data n)⌝
       ∗ inode_owned_era γfs γi inum n.
-  Proof.
+  Proof using .
     iIntros (HE Hty) "#Hinv Hn".
     iDestruct (inode_owned_era_local with "Hn") as %Hl.
     iDestruct (inode_owned_era_slot_inj with "Hn") as %Hinj.
@@ -1683,7 +1683,7 @@ Section EraRes.
         ∗ inode_dat (fs_gamma_L γfs) n
         ∗ top_frag (fs_gamma_L γfs) (bv_unsigned inum) n
         ∗ ⌜inode_local (bv_unsigned inum) n⌝.
-  Proof. done. Qed.
+  Proof using . done. Qed.
 
   (* THE ONE MOVER.  Every change to a checked-out inode -- the record
      write, one data block's bytes, an appended block, a truncation -- is
@@ -1711,7 +1711,7 @@ Section EraRes.
       ghost_map_auth γi 1 (<[bv_unsigned inum := fn_rec n']> R)
       ∗ ghost_map_auth (fs_top γfs) 1 (<[bv_unsigned inum := n']> I)
       ∗ inode_owned_era γfs γi inum n'.
-  Proof.
+  Proof using .
     intros Hl'. iIntros "HaR HaI Hd Ht Hb Hi".
     rewrite /dinode_at.
     iMod (ghost_map_update (fn_rec n') with "HaR Hd") as "[HaR Hd]".
@@ -1739,7 +1739,7 @@ Section EraRes.
       ghost_map_auth γi 1 (<[bv_unsigned inum := fn_rec n']> R)
       ∗ ghost_map_auth (fs_top γfs) 1 (<[bv_unsigned inum := n']> I)
       ∗ inode_owned_era γfs γi inum n'.
-  Proof.
+  Proof using .
     intros Hblk Hent Hind Hkept Hl'.
     iIntros "HaR HaI Hn".
     iEval (rewrite /inode_owned_era /inode_dat) in "Hn".
@@ -1773,7 +1773,7 @@ Section EraRes.
            [∗ map] j ↦ b ∈ fn_blk (fn_set_blk n k bs'),
              FsStateDefs.blk_owned (fs_gamma_L γfs)
                (fn_naddr (fn_set_blk n k bs') j) b).
-  Proof.
+  Proof using .
     intros Hk. iIntros "Hn".
     iEval (rewrite /inode_owned_era /inode_dat) in "Hn".
     iDestruct "Hn" as "(Hd & [Hb Hi] & Ht & %Hl)".
@@ -1804,7 +1804,7 @@ Section EraRes.
            FsStateDefs.blk_owned (fs_gamma_L γfs) (fn_naddr n k) bs)
       ∗ ind_owned (fs_gamma_L γfs) n
       ∗ inode_owned_era γfs γi inum n'.
-  Proof.
+  Proof using .
     intros Hblk Hind Hl'.
     iIntros "HaR HaI Hn".
     iEval (rewrite /inode_owned_era /inode_dat) in "Hn".
@@ -1829,7 +1829,7 @@ Section EraRes.
       (data data' : nat -> list (bv 8)) :
     (forall k : nat, (k < MAXFILE)%nat -> data k = data' k) ->
     inode_blocks γfs bm data ⊣⊢ inode_blocks γfs bm data'.
-  Proof.
+  Proof using .
     intros Hext. rewrite /inode_blocks.
     apply big_sepL_proper. intros j k Hj.
     apply lookup_seq in Hj as [Heq Hlt].
@@ -1845,7 +1845,7 @@ Section EraRes.
       ∗ ind_res γfs bm
       ∗ inode_blocks γfs bm data
       ∗ top_frag (fs_gamma_L γfs) (bv_unsigned inum) (era_node dn bm data).
-  Proof.
+  Proof using .
     intros Hs. iIntros "Hn".
     iDestruct (inode_owned_era_to with "Hn") as "(Hd & Hi & Hb & Ht)".
     rewrite (bm_of_era_node dn bm data Hs).
@@ -1860,7 +1860,7 @@ Section EraRes.
       (data data' : nat -> list (bv 8)) :
     (forall k : nat, (k < MAXFILE)%nat -> data k = data' k) ->
     inode_blocks_q γfs dq bm data ⊣⊢ inode_blocks_q γfs dq bm data'.
-  Proof.
+  Proof using .
     intros Hext. rewrite /inode_blocks_q.
     apply big_sepL_proper. intros j k Hj.
     apply lookup_seq in Hj as [Heq Hlt].
@@ -1885,7 +1885,7 @@ Section EraRes.
       ∗ inode_blocks_q γfs dq bm data
       ∗ top_frag_q (fs_gamma_L γfs) dq (bv_unsigned inum)
           (era_node dn bm data).
-  Proof.
+  Proof using .
     intros Hs Hl. iIntros "[Hb Ht]".
     iDestruct (inode_dat_era_to γfs dq (bv_unsigned inum)
                  (era_node dn bm data) Hl with "Hb") as "[Hi Hb]".
@@ -1904,7 +1904,7 @@ Section EraRes.
     inode_blocks_q γfs dq bm data -∗
     top_frag_q (fs_gamma_L γfs) dq (bv_unsigned inum) (era_node dn bm data) -∗
     inode_rd_era γfs dq inum (era_node dn bm data).
-  Proof.
+  Proof using .
     intros Hs Hl. iIntros "Hi Hb Ht".
     rewrite /inode_rd_era. iFrame "Ht".
     iApply (inode_dat_era_of γfs dq (bv_unsigned inum)
@@ -1926,7 +1926,7 @@ Section EraRes.
     inode_blocks γfs bm data -∗
     top_frag (fs_gamma_L γfs) (bv_unsigned inum) (era_node dn bm data) -∗
     inode_owned_era γfs γi inum (era_node dn bm data).
-  Proof.
+  Proof using .
     intros Hs Hl. iIntros "Hd Hi Hb Ht".
     iApply (inode_owned_era_of γfs γi inum (era_node dn bm data) Hl
               with "[Hd] [Hi] [Hb] Ht").
@@ -1951,7 +1951,7 @@ Section EraRes.
     inode_owned_era γfs γi inum (era_node dn bm data) ={E}=∗
       ⌜inode_ok cov ls dn bm data⌝
       ∗ inode_owned_era γfs γi inum (era_node dn bm data).
-  Proof.
+  Proof using .
     iIntros (HE Hs Hty) "#Hinv Hn".
     assert (Hty' : bv_unsigned (di_type (fn_rec (era_node dn bm data))) <> 0)
       by exact Hty.
@@ -1998,7 +1998,7 @@ Section EraRes.
       (data : nat -> list (bv 8)) :
     bv_unsigned (di_type dn) <> T_DIR_z ->
     fn_is_dir (era_node dn bm data) = false.
-  Proof.
+  Proof using .
     intros Hne. rewrite /fn_is_dir /fn_type era_node_rec.
     apply bool_decide_eq_false_2. exact Hne.
   Qed.
@@ -2006,14 +2006,14 @@ Section EraRes.
   Lemma era_nrec0 (dn : dinode) (bm : blkmap) (data : nat -> list (bv 8)) :
     dir_nrec (bv_unsigned (di_size dn)) = 0%nat ->
     fn_nrec (era_node dn bm data) = 0%nat.
-  Proof. intros H. rewrite /fn_nrec /fn_size era_node_rec H //. Qed.
+  Proof using . intros H. rewrite /fn_nrec /fn_size era_node_rec H //. Qed.
 
   Lemma ent_toks_era_not_dir (Γ : fs_view_names Σ) (i : Z)
       (dn : dinode) (bm : blkmap) (data : nat -> list (bv 8))
       (D : gset fname) :
     bv_unsigned (di_type dn) <> T_DIR_z ->
     ⊢ ent_toks Γ i (era_node dn bm data) D.
-  Proof.
+  Proof using .
     intros Hne. apply ent_toks_not_dir. exact (era_not_dir dn bm data Hne).
   Qed.
 
@@ -2021,7 +2021,7 @@ Section EraRes.
       (dn : dinode) (bm : blkmap) (data : nat -> list (bv 8)) :
     bv_unsigned (di_type dn) <> T_DIR_z ->
     ⊢ ent_toks_x Γ i (era_node dn bm data).
-  Proof.
+  Proof using .
     intros Hne. apply ent_toks_x_not_dir. exact (era_not_dir dn bm data Hne).
   Qed.
 
@@ -2030,7 +2030,7 @@ Section EraRes.
       (D : gset fname) :
     dir_nrec (bv_unsigned (di_size dn)) = 0%nat ->
     ⊢ ent_toks Γ i (era_node dn bm data) D.
-  Proof.
+  Proof using .
     intros H. apply ent_toks_nrec0. exact (era_nrec0 dn bm data H).
   Qed.
 
@@ -2044,7 +2044,7 @@ Section EraRes.
     (bv_unsigned (di_type dn) = T_DIR_z ->
        bv_unsigned (di_nlink dn) = 0 \/ bv_unsigned (di_nlink dn) = 1) ->
     ⊢ ent_toks_x Γ i (era_node dn bm data).
-  Proof.
+  Proof using .
     intros H Hnl. apply (ent_toks_x_nrec0 Γ i _ (era_nrec0 dn bm data H)).
     intros Hd.
     assert (Hty : bv_unsigned (di_type dn) = T_DIR_z).
@@ -2061,7 +2061,7 @@ Section EraRes.
       (D : gset fname) :
     bv_unsigned (di_size dn) = 0 ->
     ⊢ ent_toks Γ i (era_node dn bm data) D.
-  Proof.
+  Proof using .
     intros Hsz. apply ent_toks_nrec0.
     rewrite /fn_nrec /fn_size era_node_rec Hsz /dir_nrec //.
   Qed.
@@ -2097,7 +2097,7 @@ Section EraRes.
     dir_first data nrec s = None ->
     dir_view data' (dir_nrec (bv_unsigned (di_size dn')))
     = <[s := bv_unsigned inum]> (dir_view data nrec).
-  Proof.
+  Proof using .
     intros Hnrec Hk0 Hlen Hs Hnz Hsz Hrng Hnone.
     assert (Hsznn : 0 <= bv_unsigned (di_size dn))
       by exact (proj1 (bv_unsigned_in_range _ (di_size dn))).
@@ -2149,7 +2149,7 @@ Section EraRes.
     (forall q : nat, q <> k0 -> dir_win_agree data data' q) ->
     ((k0 < nrec)%nat -> ~ dir_live data k0) ->
     dir_view data' nrec' = dir_view data nrec.
-  Proof.
+  Proof using .
     intros Hle Hdead Hk0dead Hagr Hfree.
     assert (Hf : forall x : fname,
               dir_first data' nrec' x = dir_first data nrec x).
@@ -2202,7 +2202,7 @@ Section EraRes.
     ent_tok Γ i (fn_dd (era_node dn bm data))
       (fn_orphan (era_node dn bm data)) isd s (bv_unsigned inum) -∗
     ent_toks Γ i (era_node dn' bm' data') (if isd then {[s]} ∪ D else D).
-  Proof.
+  Proof using .
     intros Hnrec Hk0 Hlen Hs Hty Hty' Hnl Hsz Hrng Hnone Hh Hh' Hb Hb' HsD
            Hsdd.
     assert (Hents : dir_entries (era_node dn bm data) = dir_view data nrec).
@@ -2317,7 +2317,7 @@ Section EraRes.
     bv_unsigned (di_size dn') <= Z.of_nat MAXFILE * Z.of_nat BSIZE ->
     dir_entries (era_node dn' bm' data')
     = <[s := bv_unsigned inum]> (dir_entries (era_node dn bm data)).
-  Proof.
+  Proof using .
     intros Hnrec Hk0 Hlen Hs Hnz Hty Hty' Hsz Hrng Hnone Hh Hh' Hb Hb'.
     assert (Hty2 : bv_unsigned (di_type dn') = T_DIR_z)
       by (rewrite Hty'; exact Hty).
@@ -2371,7 +2371,7 @@ Section EraRes.
     link_tok Γ i vdot -∗
     link_tok Γ (bv_unsigned inum) vp -∗
     ent_toks Γ i (era_node dn' bm' data') D.
-  Proof.
+  Proof using .
     intros Hnrec Hk0 Hnz Hty Hty' Hnl Hsz Hrng Hnone Hh Hh' Hb Hb'
            HddD Hpne Hdot Ho Hvdot.
     assert (Hty2 : bv_unsigned (di_type dn') = T_DIR_z)
@@ -2453,7 +2453,7 @@ Section EraRes.
     bv_unsigned (di_size dn) <= Z.of_nat MAXFILE * Z.of_nat BSIZE ->
     bv_unsigned (di_size dn') <= Z.of_nat MAXFILE * Z.of_nat BSIZE ->
     dir_entries (era_node dn' bm' data') = dir_entries (era_node dn bm data).
-  Proof.
+  Proof using .
     intros Hnrec Hk0le Htot Hty Hsz Hrng Hh Hh' Hb Hb'. subst tot.
     assert (Hsznn : 0 <= bv_unsigned (di_size dn))
       by exact (proj1 (bv_unsigned_in_range _ (di_size dn))).
@@ -2490,7 +2490,7 @@ Section EraRes.
     bv_unsigned (di_size dn') <= Z.of_nat MAXFILE * Z.of_nat BSIZE ->
     ent_toks Γ i (era_node dn bm data) D -∗
     ent_toks Γ i (era_node dn' bm' data') D.
-  Proof.
+  Proof using .
     intros Hnrec Hk0le Htot Hty Hnl Hsz Hrng Hh Hh' Hb Hb'. subst tot.
     assert (Hsznn : 0 <= bv_unsigned (di_size dn))
       by exact (proj1 (bv_unsigned_in_range _ (di_size dn))).
@@ -2532,7 +2532,7 @@ Section EraRes.
     bv_unsigned (di_size dn) <= Z.of_nat MAXFILE * Z.of_nat BSIZE ->
     dir_dots_only dn data ->
     ⊢ ent_toks Γ i (era_node dn bm data) D.
-  Proof.
+  Proof using .
     intros Hz Hh Hb Hdots.
     rewrite /ent_toks (fn_orphan_era_z dn bm data Hz).
     rewrite (dir_entries_era_node dn bm data Hh Hb).
@@ -2560,7 +2560,7 @@ Section EraRes.
     bv_unsigned (di_size dn) <= Z.of_nat MAXFILE * Z.of_nat BSIZE ->
     dir_dots_only dn data ->
     ⊢ ent_toks_x Γ i (era_node dn bm data).
-  Proof.
+  Proof using .
     intros Hz Hh Hb Hdots. iExists ∅.
     iSplitR; [iPureIntro; exact (ent_dset_ok_empty _) |].
     iSplitR.
@@ -2584,7 +2584,7 @@ Section EraRes.
     bv_unsigned (di_size dn) <= Z.of_nat MAXFILE * Z.of_nat BSIZE ->
     dir_dots_only dn data ->
     FsStateInode.ent_dset_ok (era_node dn bm data) D -> D = ∅.
-  Proof.
+  Proof using .
     intros Hh Hb Hdots Hdok.
     destruct (decide (D = ∅)) as [Hz | Hne]; [exact Hz |].
     exfalso. apply set_choose_L in Hne as [s Hs].
@@ -2613,7 +2613,7 @@ Section EraRes.
     bv_unsigned (di_nlink dn) <> 0 -> bv_unsigned (di_nlink dn') <> 0 ->
     ent_toks Γ i (era_node dn bm data) D -∗
     ent_toks Γ i (era_node dn' bm data) D.
-  Proof.
+  Proof using .
     intros Hty Hsz Hnz Hnz'.
     assert (Hents : dir_entries (era_node dn' bm data)
                     = dir_entries (era_node dn bm data))
@@ -2663,7 +2663,7 @@ Section EraRes.
              ∗ ⌜ent_ty_ok i (fn_dd (era_node dn bm data))
                   (bool_decide (DOT ∈ D)) DOT ty⌝)
     ∗ ent_toks Γ i (era_node dn' bm data) D.
-  Proof.
+  Proof using .
     intros Hty Hsz Hnz Hz Htyd Hh Hb Hu Hnr Hlv Hnm Hin
            Hlv0 Hnm0 Hin0 Hne.
     assert (Hents : dir_entries (era_node dn' bm data)
@@ -2721,7 +2721,7 @@ Section EraRes.
            ∗ ⌜if bool_decide (dir_bname data k0 ∈ D)
               then ty = TDir i else ty = TFile⌝)
     ∗ ent_toks Γ i (era_node dn' bm' data') (D ∖ {[dir_bname data k0]}).
-  Proof.
+  Proof using .
     intros Hk0 Hlive Hne Hnd Hndd Hne2 Hu Hzer Hty Hnz Hnz' Hty' Hsz Hh Hh' Hb.
     assert (Hb' : bv_unsigned (di_size dn')
                   <= Z.of_nat MAXFILE * Z.of_nat BSIZE) by (rewrite Hsz; exact Hb).
@@ -2777,7 +2777,7 @@ Section EraRes.
     bv_unsigned (di_size dn) <= Z.of_nat MAXFILE * Z.of_nat BSIZE ->
     dir_entries (era_node dn' bm' data')
     = delete (dir_bname data k0) (dir_entries (era_node dn bm data)).
-  Proof.
+  Proof using .
     intros Hk0 Hlive Hu Hzer Hty Hty' Hsz Hh Hh' Hb.
     assert (Hb' : bv_unsigned (di_size dn')
                   <= Z.of_nat MAXFILE * Z.of_nat BSIZE)
@@ -2816,7 +2816,7 @@ Section EraRes.
     bv_unsigned (di_size dn') <= Z.of_nat MAXFILE * Z.of_nat BSIZE ->
     forall s', is_Some (dir_entries (era_node dn bm data) !! s') ->
                is_Some (dir_entries (era_node dn' bm' data') !! s').
-  Proof.
+  Proof using .
     intros Hnrec Hk0 Hatom Hlen Hs Hty Hty' Hsz Hrng Hnone Hh Hh' Hb Hb'.
     assert (Hty2 : bv_unsigned (di_type dn') = T_DIR_z)
       by (rewrite Hty'; exact Hty).
@@ -2931,7 +2931,7 @@ Section EraRes.
     ent_tok Γ i (fn_dd (era_node dn bm data))
       (fn_orphan (era_node dn bm data)) isd s (bv_unsigned inum) -∗
     ent_toks Γ i (era_node dn' bm' data') (if isd then {[s]} ∪ D else D).
-  Proof.
+  Proof using .
     intros Hnrec Hk0 Hatom Hlen Hs Hty Hty' Hnl Hsz Hrng Hnone Hh Hh' Hb Hb'
            HsD Hsdd.
     destruct Hatom as [-> | ->].
@@ -2981,7 +2981,7 @@ Section EraRes.
     fn_rec n' = fn_rec n ->
     dir_entries n' = dir_entries n ->
     ent_toks Γ i n D ⊣⊢ ent_toks Γ i n' D.
-  Proof.
+  Proof using .
     intros Hrec Hent.
     rewrite /ent_toks /fn_dd /fn_orphan /fn_nlink Hrec Hent //.
   Qed.
@@ -2997,7 +2997,7 @@ Section EraRes.
       (16 * dir_nrec (bv_unsigned (di_size dn))) ->
     ent_toks Γ i (era_node dn bm data) D
     ⊣⊢ ent_toks Γ i (era_node dn bm' data') D.
-  Proof.
+  Proof using .
     intros Hag.
     apply (ent_toks_cong Γ i (era_node dn bm data) (era_node dn bm' data') D);
       [reflexivity |].
@@ -3061,7 +3061,7 @@ Section EraRes.
                      FsStateInode.fn_dd (era_node dn bm data) = Some q
                      -> q = p⌝)
          -∗ ent_toks Γ i (era_node dn bm data) D).
-  Proof.
+  Proof using .
     intros Hnz Hlk.
     assert (Htl : FsStateInode.ent_tokenless i
                     (fn_orphan (era_node dn bm data)) DOT i = false).
@@ -3104,7 +3104,7 @@ Section EraRes.
                 ∗ ⌜if bool_decide (dir_bname data k ∈ D)
                    then ty = TDir i else ty = TFile⌝)
          -∗ ent_toks Γ i (era_node dn bm data) D).
-  Proof.
+  Proof using .
     intros Hnz Hty Hh Hb Hu Hnr Hlv Hnd Hndd Hne.
     assert (Hlk : dir_entries (era_node dn bm data) !! dir_bname data k
                   = Some (bv_unsigned (dir_inum data k))).
@@ -3142,7 +3142,7 @@ Section EraRes.
       ∃ ty, FsStateLink.link_tok Γ (bv_unsigned (dir_inum data k)) ty
             ∗ (FsStateLink.link_tok Γ (bv_unsigned (dir_inum data k)) ty
                -∗ ent_toks Γ self (era_node dn bm data) D).
-  Proof.
+  Proof using .
     intros Hty Hnl Hfirst Hne Hh Hsz.
     assert (Hlk : dir_entries (era_node dn bm data) !! dir_bname data k
                   = Some (bv_unsigned (dir_inum data k))).

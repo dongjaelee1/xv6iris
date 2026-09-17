@@ -110,13 +110,13 @@ Section PrputcEnv.
        uart_inv Uart1 γ1 ∗ is_txlock_at Uart1 γl1 γ1 ∗ uart_base_word Uart1)%I.
 
   Global Instance prputc_env_persistent : Persistent prputc_env.
-  Proof. rewrite /prputc_env. apply _. Qed.
+  Proof using . rewrite /prputc_env. apply _. Qed.
 
   (* the shape the boot chain actually has in hand: the three loose. *)
   Lemma prputc_env_of (γl1 : gname) (γ1 : uart_names) :
     uart_inv Uart1 γ1 -∗ is_txlock_at Uart1 γl1 γ1 -∗ uart_base_word Uart1 -∗
     prputc_env.
-  Proof.
+  Proof using .
     iIntros "#Hi #Ht #Hb". iExists γl1, γ1. by iFrame "Hi Ht Hb".
   Qed.
 

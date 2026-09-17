@@ -57,7 +57,7 @@ Section ProofKinit.
       (ps : list (mword 64)) (K ncnt : nat) (eb : bool) (pcur : mword 64)
       (vlock : bv 32) (vname vcpu : bv 64) (b : bool) (lks : gset string)
     : wp_kinit_sconf_body γl γk m ps K ncnt eb pcur vlock vname vcpu b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_kinit_sconf_body].
     intros pcE ret_tgt lk fl c_name c_cpu endaddr phystop s1entry
       HK Hncnt Hprun Hlkbelow.

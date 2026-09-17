@@ -1368,9 +1368,9 @@ Section AppTree.
     (∃ k : nat, k ↪[c]□ tt)%I.
 
   Global Instance tree_taint_persistent c : Persistent (tree_taint c).
-  Proof. rewrite /tree_taint. apply _. Qed.
+  Proof using . rewrite /tree_taint. apply _. Qed.
   Global Instance tree_taint_timeless c : Timeless (tree_taint c).
-  Proof. rewrite /tree_taint. apply _. Qed.
+  Proof using . rewrite /tree_taint. apply _. Qed.
 
   (* THE ERA'S LICENCE ([App.app_turn] at this record): an UNSPENT entry of
      the registry.  LINEAR -- it is a whole ghost-map element -- and one
@@ -1480,9 +1480,9 @@ Section AppTree.
       : iProp Σ := (tree_taint c ∨ tree_body r av)%I.
 
   Global Instance tree_body_timeless r av : Timeless (tree_body r av).
-  Proof. rewrite /tree_body. apply _. Qed.
+  Proof using . rewrite /tree_body. apply _. Qed.
   Global Instance tree_pred_timeless c r av : Timeless (tree_pred c r av).
-  Proof. rewrite /tree_pred. apply _. Qed.
+  Proof using . rewrite /tree_pred. apply _. Qed.
 
   (* the mint's shape: a map that is EXACT at every entry, so every slot is
      built in its exact arm out of the ticket halves the allocation gave *)
@@ -1537,9 +1537,9 @@ Section AppTree.
       : iProp Σ := (g ↪[tn_own r]□ (root, t) ∗ g ↪[tn_tk r]□ (root, t))%I.
 
   Global Instance tree_pin_persistent r g root t : Persistent (tree_pin r g root t).
-  Proof. rewrite /tree_pin. apply _. Qed.
+  Proof using . rewrite /tree_pin. apply _. Qed.
   Global Instance tree_pin_timeless r g root t : Timeless (tree_pin r g root t).
-  Proof. rewrite /tree_pin. apply _. Qed.
+  Proof using . rewrite /tree_pin. apply _. Qed.
 
   Lemma tree_freeze (r : tree_names) (g : gname) (root : Z) (t : ttree) :
     tree_own r g root t ==∗ tree_pin r g root t.
@@ -1666,7 +1666,7 @@ Section AppTree.
      is the credential the generic user-execution slot runs on. *)
   Lemma tree_sup_of_taint (c : tree_fixed) (r : tree_names) :
     tree_taint c -∗ app_sup_raw (tree_pred c) r.
-  Proof.
+  Proof using .
     iIntros "#Ht". rewrite /app_sup_raw. iIntros "!>" (av).
     rewrite /tree_pred. iLeft. iExact "Ht".
   Qed.
@@ -1723,7 +1723,7 @@ Section AppTree.
      allocated OUTSIDE the later (the allocation is an update) and the
      arms are read under ONE later. *)
   Lemma tree_xfer (c : tree_fixed) : ⊢ app_xfer_raw (tree_pred c).
-  Proof.
+  Proof using .
     rewrite /app_xfer_raw. iIntros "!>" (r av) "H".
     iMod (ghost_map_alloc_empty (K := gname) (V := Z * ttree)) as (γa) "Ha".
     iMod (ghost_map_alloc_empty (K := gname) (V := Z * ttree)) as (γb) "Hb".
@@ -1754,7 +1754,7 @@ Section AppTree.
     ⊢ app_xfer_boot_raw (tree_pred c)
         (fun r' : tree_names =>
            ∃ (g : gname) (t : ttree), tree_own r' g FsImg.ROOTINO t)%I.
-  Proof.
+  Proof using .
     rewrite /app_xfer_boot_raw. iIntros "!>" (r av) "H".
     (* THE VIEW IS AVAILABLE OUTSIDE THE LATER (echo's [cons_inum av]
        trick), so the clone's entry is allocated AT THE ERA'S OWN ROOT
@@ -1826,7 +1826,7 @@ Section AppTree.
            tree_own r g root t -∗ tree_pred c r v -∗
            tree_pred c r v ∗ tree_own r g root t ∗
            (⌜subtree v root = Some t⌝ ∨ tree_taint c)).
-  Proof.
+  Proof using .
     iIntros "!>" (v g root t) "Hg [#HT | Hb]".
     { iSplitR; [by iLeft |]. iFrame "Hg". iRight. iExact "HT". }
     iDestruct "Hg" as "[Hd Htk]".
@@ -1846,7 +1846,7 @@ Section AppTree.
     tree_pin r g root t -∗
     □ (∀ v : aview, tree_pred c r v -∗
          tree_pred c r v ∗ (⌜subtree v root = Some t⌝ ∨ tree_taint c)).
-  Proof.
+  Proof using .
     iIntros "#Hg !>" (v) "[#HT | Hb]".
     { iSplitR; [by iLeft |]. iRight. iExact "HT". }
     iDestruct "Hg" as "[#Hd #Hk]".
@@ -1873,7 +1873,7 @@ Section AppTree.
       /\ resolve_hops t d pl !!! 0%nat = d
       /\ resolve_hops t d pl !!! length (path_elems pl) = i
       /\ (exists k : nat, av !! i = Some (MkAnode (AFile bs) k)).
-  Proof.
+  Proof using .
     intros Hp Hd Hres av Ht.
     exact (subtree_resolves_pin_file t d i bs pl Hp Hres av root Ht
              (subtree_dom_reach av root t d Ht Hd)).
@@ -2455,7 +2455,7 @@ Section AppTree.
       ((∃ (g' : gname) (t' : ttree),
           tree_own r g' root' t' ∗ ⌜subtree av root' = Some t'⌝)
        ∨ tree_taint c).
-  Proof.
+  Proof using .
     intros Hr'. iIntros "Hg [#HT | Hb]".
     { iModIntro. iSplitR; [by iLeft |]. iRight. iExact "HT". }
     rewrite /tree_own /tree_deed /tree_tkt. iDestruct "Hg" as "[Hd Htk]".
@@ -2564,30 +2564,30 @@ Section AppTreeRecord.
   (* ---- the obligations of [App.xv6_app_adequacy] that are lemmas ---- *)
 
   Lemma app_tree_birth : ⊢ |==> ∃ c : app_fixed app_tree, app_cl app_tree c.
-  Proof. cbn [app_tree app_fixed app_cl]. iApply tree_birth. Qed.
+  Proof using . cbn [app_tree app_fixed app_cl]. iApply tree_birth. Qed.
 
   Lemma app_tree_Rt (c : app_fixed app_tree) (h : list mobs) :
     Timeless (app_R app_tree c h).
-  Proof. cbn [app_tree app_R]. apply _. Qed.
+  Proof using . cbn [app_tree app_R]. apply _. Qed.
 
   Lemma app_tree_tagp (c : app_fixed app_tree) (h : list mobs) :
     Persistent (app_tag app_tree c h).
-  Proof. cbn [app_tree app_tag]. apply _. Qed.
+  Proof using . cbn [app_tree app_tag]. apply _. Qed.
 
   Lemma app_tree_tagt (c : app_fixed app_tree) (h : list mobs) :
     Timeless (app_tag app_tree c h).
-  Proof. cbn [app_tree app_tag]. apply _. Qed.
+  Proof using . cbn [app_tree app_tag]. apply _. Qed.
 
   Lemma app_tree_killp (c : app_fixed app_tree) : Persistent (app_kill app_tree c).
-  Proof. cbn [app_tree app_kill]. apply _. Qed.
+  Proof using . cbn [app_tree app_kill]. apply _. Qed.
 
   Lemma app_tree_killt (c : app_fixed app_tree) : Timeless (app_kill app_tree c).
-  Proof. cbn [app_tree app_kill]. apply _. Qed.
+  Proof using . cbn [app_tree app_kill]. apply _. Qed.
 
   (* A KILL COSTS THIS APPLICATION NOTHING (design section 3) *)
   Lemma app_tree_kill (c : app_fixed app_tree) (r : app_names app_tree) :
     app_sup_raw (app_pred app_tree c) r ⊢ □ app_kill app_tree c.
-  Proof.
+  Proof using .
     rewrite /app_kill. cbn [app_tree app_ifc app_iface_triv ai_kill].
     iIntros "_ !>". done.
   Qed.
@@ -2601,7 +2601,7 @@ Section AppTreeRecord.
              (ev : ConsLog.cons_ev),
              app_cons app_tree c k h H ==∗
              app_cons app_tree c k h (ConsLog.cons_step H ev)).
-  Proof.
+  Proof using .
     rewrite /app_cons. cbn [app_tree app_ifc app_iface_triv ai_cons].
     rewrite /cons_res_triv. iIntros "_ !>" (k h H ev) "_". by iModIntro.
   Qed.
@@ -2627,7 +2627,7 @@ Section AppTreeRecord.
        else app_cons app_tree c (S (obs_boots h)) []
               (LogEntryDefs.MkCH [] [] [] None) ∗
             app_turn app_tree c (S (obs_boots h))).
-  Proof.
+  Proof using .
     intros _. rewrite /app_cons.
     cbn [app_tree app_R app_ifc app_iface_triv ai_cons app_turn].
     rewrite /tree_R. iIntros "H".
@@ -2639,7 +2639,7 @@ Section AppTreeRecord.
 
   Lemma app_tree_boot (c : app_fixed app_tree) (k : nat) :
     ⊢ app_xfer_boot_raw (app_pred app_tree c) (app_boot app_tree c k).
-  Proof.
+  Proof using .
     cbn [app_tree app_pred app_boot]. rewrite /tree_boot.
     iApply tree_xfer_boot_at.
   Qed.

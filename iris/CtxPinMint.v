@@ -60,7 +60,7 @@ Section CtxPinMint.
       (e : TsoMemPa.ts_elem) :
     tso_interp_at riscv_eraGS g -∗ a ↪[ts_name]{dq} e -∗
     ⌜(e.1 <= length g.(glog))%nat⌝.
-  Proof.
+  Proof using .
     iIntros "Hint He".
     iDestruct "Hint"
       as "(%TM & %LM & Hauth & %Hdom & %Htie & Hm & %HLM & Hlen & Hv & %Hmm)".
@@ -80,11 +80,11 @@ Section CtxPinMint.
   (* ------------------------------------------------------------------ *)
   Lemma foldr_max_ge (l : list nat) (x : nat) :
     x ∈ l -> (x <= foldr Nat.max 0%nat l)%nat.
-  Proof. induction 1; simpl; lia. Qed.
+  Proof using . induction 1; simpl; lia. Qed.
 
   Lemma own_pub_ge (h : agent) (log : list pwmsg) (i : nat) (msg : pwmsg) :
     log !! i = Some msg -> pm_tid msg = h -> (S i <= own_pub h log)%nat.
-  Proof.
+  Proof using .
     intros Hlk Htid. rewrite /own_pub. apply foldr_max_ge.
     apply elem_of_lookup_imap. exists i, msg. split; [|exact Hlk].
     rewrite bool_decide_eq_true_2; [reflexivity|exact Htid].
@@ -114,7 +114,7 @@ Section CtxPinMint.
     phys_pointsto a dq v -∗ a ↪[ts_name]{dq} ((t, TsoMemPa.ts_pay_none) : TsoMemPa.ts_elem) -∗
     (llb (ctx_bound_name xi) t ∨ dset_in (ctx_dirty_name xi) (t, a)) -∗
     ⌜(t <= g.(gtv) cpu_id)%nat⌝.
-  Proof.
+  Proof using .
     iIntros (Hdrain) "Hint Hrun Hpt Hts Hbit".
     rewrite own_context_unseal /own_context_def.
     iDestruct "Hrun"
@@ -154,7 +154,7 @@ Section CtxPinMint.
     gen_heap_interp (hG := riscv_memGS) g.(gmem) ∗
     tso_interp_at riscv_eraGS g ∗ own_context xi ∗
     ∃ t : nat, phys_ledger_pin a (DfracOwn 1) v t (g.(gtv) cpu_id) Sv.
-  Proof.
+  Proof using .
     iIntros (Hdrain Hv) "Hgh Hint Hrun Hb".
     rewrite ctx_phys_pointsto_unseal /ctx_phys_pointsto_def.
     iDestruct "Hb" as (t) "(Hpt & Hts & Hbit)".
@@ -182,7 +182,7 @@ Section CtxPinMint.
     tso_interp_at riscv_eraGS g ∗ own_context xi ∗
     ([∗ list] j ∈ seq 0 n, ∃ t : nat,
        phys_ledger_pin (pa_add a j) (DfracOwn 1) (f j) t (g.(gtv) cpu_id) (Sf j)).
-  Proof.
+  Proof using .
     intros Hdrain. induction n as [|n IH]; intros Hf.
     - iIntros "Hgh Hint Hrun Hl". iModIntro. iFrame "Hgh Hint Hrun".
       iExact "Hl".
@@ -213,7 +213,7 @@ Section CtxPinMint.
     gen_heap_interp (hG := riscv_memGS) g.(gmem) ∗
     tso_interp_at riscv_eraGS g ∗ own_context xi ∗
     phys_ledger_word_pin a (DfracOwn 1) w (g.(gtv) cpu_id) Sf.
-  Proof.
+  Proof using .
     iIntros (Hdrain HS) "Hgh Hint Hrun Hw".
     iDestruct (ctx_phys_word_pointsto_aligned_p with "Hw") as %Hal.
     iDestruct (ctx_phys_word_pointsto_bytes with "Hw") as "Hb".
@@ -262,7 +262,7 @@ Section CtxPinMint.
     gen_heap_interp (hG := riscv_memGS) g.(gmem) ∗
     tso_interp_at riscv_eraGS g ∗
     ∃ t : nat, phys_ledger_pin a (DfracOwn 1) v t (length g.(glog)) Sv.
-  Proof.
+  Proof using .
     iIntros (Hv) "Hgh Hint Hb".
     rewrite ctx_phys_pointsto_unseal /ctx_phys_pointsto_def.
     iDestruct "Hb" as (t) "(Hpt & Hts & Hbit)".
@@ -290,7 +290,7 @@ Section CtxPinMint.
     tso_interp_at riscv_eraGS g ∗ own_context xi ∗
     ([∗ list] j ∈ seq 0 n, ∃ t : nat,
        phys_ledger_pin (pa_add a j) (DfracOwn 1) (f j) t (length g.(glog)) (Sf j)).
-  Proof.
+  Proof using .
     induction n as [|n IH]; intros Hf.
     - iIntros "Hgh Hint Hrun Hl". iModIntro. iFrame "Hgh Hint Hrun".
       iExact "Hl".
@@ -313,7 +313,7 @@ Section CtxPinMint.
     gen_heap_interp (hG := riscv_memGS) g.(gmem) ∗
     tso_interp_at riscv_eraGS g ∗ own_context xi ∗
     phys_ledger_word_pin a (DfracOwn 1) w (length g.(glog)) Sf.
-  Proof.
+  Proof using .
     iIntros (HS) "Hgh Hint Hrun Hw".
     iDestruct (ctx_phys_word_pointsto_aligned_p with "Hw") as %Hal.
     iDestruct (ctx_phys_word_pointsto_bytes with "Hw") as "Hb".
@@ -334,7 +334,7 @@ Section CtxPinMint.
   Lemma hart_view_lb_now `{CID : CpuId} (g : gstate) :
     tso_interp_at riscv_eraGS g -∗
     tso_interp_at riscv_eraGS g ∗ hart_view_lb (g.(gtv) cpu_id).
-  Proof.
+  Proof using .
     rewrite hart_view_lb_unseal /hart_view_lb_def.
     iIntros "Hint".
     iDestruct "Hint"

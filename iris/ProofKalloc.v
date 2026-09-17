@@ -54,7 +54,7 @@ Section ProofKalloc.
       (m : regfile)
       (on : option nat) (n : nat) (eb : bool) (p : mword 64) (K : nat) (b : bool) (lks : gset string)
     : wp_kalloc_sconf_body kt γl γk fl m on n eb p K b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_kalloc_sconf_body].
     intros pcE ret_tgt HK Hfl Hnoffpos Hfresh.
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).

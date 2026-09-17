@@ -98,7 +98,7 @@ Section ProofKilled.
       (m : regfile) (av : nat) (n : nat) (eb : bool) (p : mword 64) (b : bool) (lks : gset string)
       (Rout : mword 32 -> iProp Σ)
     : wp_killed_sconf_body γs j γl m av n eb p b lks Rout.
-  Proof.
+  Proof using .
     cbv beta delta [wp_killed_sconf_body].
     intros pcE ret_tgt Ha0 Hj Hgl Hn Hav Hfresh.
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).

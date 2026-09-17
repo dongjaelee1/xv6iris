@@ -515,7 +515,7 @@ Section CreateSpec.
        inode_ref_short_genlo k (qi + s)%Qp qi icfg_dev inum g lo) -∗
     runit_any (bv_unsigned inum) -∗
     create_locked pidv k qi s g inum dn bm.
-  Proof.
+  Proof using .
     intros Hqs.
     iIntros "Hlk Hlkd Hdep Hoffr Hdev Hinum Hvalid Hload Hshot Hfrz Href Hru".
     rewrite /create_locked. iExists γil, γisl.
@@ -569,20 +569,20 @@ Section CreateSpec.
   Lemma cre_dots_leg_of (Γ : fs_view_names Σ) (tyz : Z)
       (Fdots : pfam Σ (aview -> Z -> Z -> bool -> iProp Σ)) :
     pf_at (adots_commit_at Γ appE) Fdots -∗ cre_dots_leg Γ tyz Fdots.
-  Proof. iIntros "H" (_). iExact "H". Qed.
+  Proof using . iIntros "H" (_). iExact "H". Qed.
 
   (* ...and create reads the piece back out where the branch is taken *)
   Lemma cre_dots_leg_at (Γ : fs_view_names Σ) (tyz : Z)
       (Fdots : pfam Σ (aview -> Z -> Z -> bool -> iProp Σ)) :
     tyz = T_DIR_z ->
     cre_dots_leg Γ tyz Fdots -∗ pf_at (adots_commit_at Γ appE) Fdots.
-  Proof. intros Hty. iIntros "H". iApply ("H" $! Hty). Qed.
+  Proof using . intros Hty. iIntros "H". iApply ("H" $! Hty). Qed.
 
   (* THE POINT: at any other type the leg is free *)
   Lemma cre_dots_leg_nodir (Γ : fs_view_names Σ) (tyz : Z)
       (Fdots : pfam Σ (aview -> Z -> Z -> bool -> iProp Σ)) :
     tyz <> T_DIR_z -> ⊢ cre_dots_leg Γ tyz Fdots.
-  Proof. intros Hne. iIntros (Hty). exfalso. exact (Hne Hty). Qed.
+  Proof using . intros Hne. iIntros (Hty). exfalso. exact (Hne Hty). Qed.
 
   (* the four commits, at the child's type-indexed content.
      [Pd] IS THE PARENT CURSOR (lane TL-3K, design/user-tree.md section
@@ -612,7 +612,7 @@ Section CreateSpec.
     app_sup -∗
     cre_commits (fs_gamma_L γfs) tyz ma mi Pd (pfam_triv (fun _ _ => True%I)) (pfam_triv (fun _ _ _ _ => True%I))
       (pfam_triv (fun _ _ => True%I)) (pfam_triv (fun _ _ _ _ => True%I)).
-  Proof.
+  Proof using .
     iIntros "#Hsup". rewrite /cre_commits.
     iSplitR.
     { iApply pf_at_triv.
@@ -761,7 +761,7 @@ Section CreateSpec.
   Lemma cre_made_of_ne_file (ty major minor : mword 16) (made : bool)
       (dn : dinode) :
     ty <> T_FILE -> cre_ok_pure ty major minor made dn -> made = true.
-  Proof.
+  Proof using .
     intros Hne Hp. destruct made; [reflexivity |].
     destruct Hp as [Hty _]. exfalso. exact (Hne Hty).
   Qed.
@@ -770,7 +770,7 @@ Section CreateSpec.
   Lemma cre_ok_pure_dev (major minor : mword 16) (made : bool) (dn : dinode) :
     cre_ok_pure T_DEVICE major minor made dn ->
     made = true /\ dn = create_made T_DEVICE major minor.
-  Proof.
+  Proof using .
     intros Hp.
     assert (Hm : made = true).
     { eapply cre_made_of_ne_file; [| exact Hp].
@@ -785,7 +785,7 @@ Section CreateSpec.
     cre_ok_pure T_FILE major minor made dn ->
     if made then dn = create_made T_FILE major minor
     else di_type dn = T_FILE \/ di_type dn = T_DEVICE.
-  Proof.
+  Proof using .
     intros Hp. destruct made.
     - destruct Hp as (_ & _ & _ & _ & Hrec). apply Hrec.
       intros Hc. by vm_compute in Hc.
@@ -803,13 +803,13 @@ Section CreateSpec.
      its consumers, is BELOW that file in the cone. *)
   Lemma cre_start_unit (γfs : fs_names) (cw : Z) (pl : list (bv 8)) :
     ⊢ ep_start γfs cw (fun _ _ => True%I) (fun _ _ => True%I) pl.
-  Proof. iApply ep_start_triv. Qed.
+  Proof using . iApply ep_start_triv. Qed.
 
   (* the exists observation at the trivial pair -- the shape the bundles
      take it in, so no caller assembles the conjunction by hand *)
   Lemma cre_dlookup_unit (Γ : fs_view_names Σ) :
     ⊢ pf_at (dlookup_commit_at Γ appE) (pfam_triv (fun _ _ _ _ => True%I)).
-  Proof.
+  Proof using .
     iApply pf_at_triv. iApply dlookup_commit_at_unit.
   Qed.
 
@@ -893,7 +893,7 @@ Section CreateSpec.
         pf_at (dlookup_commit_at Γ appE) Fex ∗
         Fok.(pf_recv) av d nm i ∗
         pf_at (aunarm_of_arm Γ appE Farm) Fun.
-  Proof.
+  Proof using .
     rewrite /cre_ok_arms. iIntros "H".
     iDestruct "H" as (d nm) "(%Hlast & HP & _ & Hacre & Hun & Hdl)".
     rewrite /cre_acre_fired.
@@ -932,7 +932,7 @@ Section CreateSpec.
                ∨ pf_at (dlookup_commit_at Γ appE) Fex)
             ∗ (cre_child_unfired Γ (ADev ma mi) Farm Fun
                ∨ ∃ i : Z, cre_child_pair Farm Fun i))).
-  Proof.
+  Proof using .
     rewrite /cre_fail_arms /cre_commits /cre_child_unfired /cre_child_pair.
     iIntros "[(Hd & Hdl & Harm & _ & Hun & Hac) | Hr]".
     - iLeft. iFrame "Hd Hdl". iSplitL "Hac"; [iExact "Hac" |].
@@ -979,7 +979,7 @@ Section CreateSpec.
             pf_at (acre_commit_at Γ appE (AFile [])
                      (P (length (npar_elems pl))) Farm) Fok ∗
             cre_child_unfired Γ (AFile []) Farm Fun)).
-  Proof.
+  Proof using .
     rewrite /cre_ok_arms /cre_commits /cre_child_unfired. iIntros "H".
     iDestruct "H" as (d nm) "(%Hlast & HP & Hrest)".
     iExists d, nm. iSplitR; [by iPureIntro |]. iFrame "HP".
@@ -1017,7 +1017,7 @@ Section CreateSpec.
         Fok.(pf_recv) av d nm i ∗
         pf_at (dlookup_commit_at Γ appE) Fex ∗
         pf_at (aunarm_of_arm Γ appE Farm) Fun.
-  Proof.
+  Proof using .
     rewrite /cre_ok_arms /cre_acre_fired. iIntros "H".
     iDestruct "H" as (d nm) "(%Hl & HP & _ & Hac & Hu & Hdl)".
     iDestruct "Hac" as (av ents nl) "(%Hpre & HΦ)".
@@ -1045,7 +1045,7 @@ Section CreateSpec.
         pf_at (acre_commit_at Γ appE (AFile [])
                  (P (length (npar_elems pl))) Farm) Fok ∗
         cre_child_unfired Γ (AFile []) Farm Fun.
-  Proof.
+  Proof using .
     rewrite /cre_ok_arms /cre_ex_fired /cre_commits /cre_child_unfired
             (cre_c0_file ma mi).
     iIntros "H".
@@ -1094,7 +1094,7 @@ Section CreateSpec.
                ∨ pf_at (dlookup_commit_at Γ appE) Fex)
             ∗ (cre_child_unfired Γ (AFile []) Farm Fun
                ∨ ∃ i : Z, cre_child_pair Farm Fun i))).
-  Proof.
+  Proof using .
     rewrite /cre_fail_arms /cre_commits /cre_child_unfired /cre_child_pair.
     iIntros "[(Hd & Hdl & Harm & _ & Hun & Hac) | Hr]".
     - iLeft. iFrame "Hd Hdl". iSplitL "Hac"; [iExact "Hac" |].

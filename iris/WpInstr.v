@@ -71,7 +71,7 @@ Section WpInstr.
     ▷ (mmode_config dq -∗ pmpcfg_n ↦ᵣ{ dq } pmpcfg0 -∗ pc_is npc -∗ Psi -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HmIE HMPRV HSXL HKF.
     iIntros "#Hhw Hfrag Hrw Hro Hbody Hcont".
     iDestruct (hw_config_cert with "Hhw") as "#Hcert".
@@ -124,7 +124,7 @@ Section WpInstr.
     ▷ (mmode_config dq -∗ pmpcfg_n ↦ᵣ{ dq } pmpcfg0 -∗ pc_is npc -∗ Psi -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HmIE HMPRV HSXL HKF.
     iIntros "#Hhw Hfrag Hrw Hro Hbody Hcont".
     iApply (mm_cycle_w pc npc pmpcfg0 Psi ms bmi cy ti ip mst0 mc micfg misa0
@@ -176,7 +176,7 @@ Section WpInstr.
        pc_is npc -∗ gpr_file mf -∗ R mf -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hpmp Hstat.
     iIntros "Hmm Hpmpc Hpc Hgpr Hinstr Hex Hcont".
     iDestruct (mm_frames_intro dq pc pmpcfg0 with "Hmm Hpmpc Hpc")
@@ -269,7 +269,7 @@ Section WpInstr.
        pc_is npc -∗ gpr_file mf -∗ R mf -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hpmp Hstat.
     iIntros "Hmm Hpmpc Hpc Hgpr Hinstr Hex Hcont".
     iApply (wp_instr_exw pc npc is_rvc i m pmpcfg0 R Hpmp Hstat
@@ -316,7 +316,7 @@ Section WpInstr.
        pc_is npc -∗ gpr_file m' -∗ R -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hpmp Hstat.
     iIntros "Hmm Hpmpc Hpc Hgpr Hinstr Hex Hcont".
     iApply (wp_instr_ex pc npc is_rvc i m pmpcfg0
@@ -364,7 +364,7 @@ Section WpInstr.
        pc_is npc -∗ gpr_file m' -∗ R -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hpmp Hstat.
     iIntros "Hmm Hpmpc Hpc Hgpr Hinstr Hex Hcont".
     iApply (wp_instr_exw pc npc is_rvc i m pmpcfg0

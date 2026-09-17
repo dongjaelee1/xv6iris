@@ -390,13 +390,13 @@ Section DlkBuf.
     ([∗ list] j ∈ seq 0 16, pa_add a j ↦ₘ f j)
     ⊣⊢ ([∗ list] j ∈ seq 0 2, pa_add a j ↦ₘ f j)
        ∗ ([∗ list] j ∈ seq 0 14, pa_add (pa_add a 2) j ↦ₘ f (2 + j)%nat).
-  Proof. exact (bb_split a 2 14 f). Qed.
+  Proof using . exact (bb_split a 2 14 f). Qed.
 
   Lemma dlk_half_acc (data : nat -> list (bv 8)) (i : nat) (a : Arch.pa) :
     is_aligned_paddr (Physaddr a) 2 = true ->
     ([∗ list] j ∈ seq 0 2, pa_add a j ↦ₘ file_byte data (16 * i + j)%nat)
     ⊣⊢ a ↦₂ dir_inum data i.
-  Proof.
+  Proof using .
     intro Hal.
     rewrite (bb_ext a 2 (fun j => file_byte data (16 * i + j)%nat)
                         (fun j => nth_byte (dir_inum data i) j)
@@ -413,7 +413,7 @@ Section DlkBuf.
   Lemma dlk_name_acc (data : nat -> list (bv 8)) (i : nat) (a : Arch.pa) :
     ([∗ list] j ∈ seq 0 14, pa_add a j ↦ₘ file_byte data (16 * i + (2 + j))%nat)
     ⊣⊢ ([∗ list] j ∈ seq 0 14, pa_add a j ↦ₘ dir_name data i j).
-  Proof.
+  Proof using .
     apply (bb_ext a 14 (fun j => file_byte data (16 * i + (2 + j))%nat)
                        (dir_name data i)
              (fun j _ => dlk_name_shift data i j)).
@@ -426,7 +426,7 @@ Section DlkBuf.
     ⌜is_aligned_paddr (Physaddr (pa_stk sp0 12)) 8 = true
      /\ is_aligned_paddr (Physaddr (pa_stk sp0 11)) 8 = true⌝ ∗
     bytes_own (DfracOwn 1) (pa_stk sp0 12) 16.
-  Proof.
+  Proof using .
     assert (E1 : pa_add (pa_stk sp0 12) 8 = pa_stk sp0 11)
       by (rewrite (pa_stk_next sp0 12 ltac:(lia)); reflexivity).
     iIntros "H1 H2".
@@ -442,7 +442,7 @@ Section DlkBuf.
     is_aligned_paddr (Physaddr (pa_stk sp0 11)) 8 = true ->
     bytes_own (DfracOwn 1) (pa_stk sp0 12) 16 ⊢
     ∃ w1 w2 : bv 64, (pa_stk sp0 12) ↦₈ w1 ∗ (pa_stk sp0 11) ↦₈ w2.
-  Proof.
+  Proof using .
     intros Ha1 Ha2.
     assert (E1 : pa_add (pa_stk sp0 12) 8 = pa_stk sp0 11)
       by (rewrite (pa_stk_next sp0 12 ltac:(lia)); reflexivity).
@@ -455,11 +455,11 @@ Section DlkBuf.
 
   Lemma dlk_name_bytes (a : Arch.pa) (f : nat -> bv 8) :
     ([∗ list] j ∈ seq 0 16, pa_add a j ↦ₘ f j) ⊢ bytes_own (DfracOwn 1) a 16.
-  Proof. rewrite /bytes_own. exact (bb_named_any a 16 f). Qed.
+  Proof using . rewrite /bytes_own. exact (bb_named_any a 16 f). Qed.
 
   Lemma dlk_bytes_name (a : Arch.pa) :
     bytes_own (DfracOwn 1) a 16 ⊢ ∃ f : nat -> bv 8, [∗ list] j ∈ seq 0 16, pa_add a j ↦ₘ f j.
-  Proof. rewrite /bytes_own. exact (bb_any_named a 16). Qed.
+  Proof using . rewrite /bytes_own. exact (bb_any_named a 16). Qed.
 
 End DlkBuf.
 

@@ -71,7 +71,7 @@ Section BioSlots.
   Definition bslots_auth : iProp Σ := own bioslot_name (● BSLOTS).
 
   Lemma bslots_op a b : bslots (a + b) ⊣⊢ bslots a ∗ bslots b.
-  Proof.
+  Proof using .
     rewrite /bslots.
     assert (Hop : (◯ (a + b)%nat : bioslotUR) = ◯ a ⋅ ◯ b)
       by (rewrite -auth_frag_op; reflexivity).
@@ -79,12 +79,12 @@ Section BioSlots.
   Qed.
 
   Lemma bslots_split a b : bslots (a + b) -∗ bslots a ∗ bslots b.
-  Proof. rewrite bslots_op. iIntros "$". Qed.
+  Proof using . rewrite bslots_op. iIntros "$". Qed.
   Lemma bslots_combine a b : bslots a -∗ bslots b -∗ bslots (a + b).
-  Proof. iIntros "Ha Hb". rewrite bslots_op. iFrame. Qed.
+  Proof using . iIntros "Ha Hb". rewrite bslots_op. iFrame. Qed.
 
   Lemma bslots_bound n : bslots_auth -∗ bslots n -∗ ⌜(n <= BSLOTS)%nat⌝.
-  Proof.
+  Proof using .
     rewrite /bslots_auth /bslots. iIntros "Ha Hf".
     iDestruct (own_valid_2 with "Ha Hf") as %[Hincl _]%auth_both_valid_discrete.
     iPureIntro. by apply nat_included in Hincl.
@@ -95,7 +95,7 @@ Section BioSlots.
   Lemma bslots_no_overflow (n : positive) :
     bslots_auth -∗ bslots (Pos.to_nat n) -∗
     ⌜(Z.pos n < 2 ^ 31)%Z /\ (Z.pos (Pos.succ n) < 2 ^ 31)%Z⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Hf".
     iDestruct (bslots_bound with "Ha Hf") as %Hle.
     iPureIntro.

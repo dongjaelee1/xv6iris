@@ -116,56 +116,56 @@ Section helpers.
      instances go through by conversion *)
   Lemma gincl_lookup_iff (m1 m2 : gmap (id * nat) ufrac) :
     m1 ≼ m2 ↔ ∀ i, m1 !! i ≼ m2 !! i.
-  Proof. exact (lookup_included (K := id * nat) (A := ufracR) m1 m2). Qed.
+  Proof using . exact (lookup_included (K := id * nat) (A := ufracR) m1 m2). Qed.
   Lemma gincl_option_iff (ma mb : option ufrac) :
     ma ≼ mb ↔ ma = None ∨ ∃ a b, ma = Some a ∧ mb = Some b ∧ (a ≡ b ∨ a ≼ b).
-  Proof. exact (option_included (A := ufracR) ma mb). Qed.
+  Proof using . exact (option_included (A := ufracR) ma mb). Qed.
   Lemma gincl_Some_iff (a b : ufrac) : Some a ≼ Some b ↔ a ≡ b ∨ a ≼ b.
-  Proof. exact (Some_included (A := ufracR) a b). Qed.
+  Proof using . exact (Some_included (A := ufracR) a b). Qed.
   Lemma gincl_singleton_l (m : gmap (id * nat) ufrac) (i : id * nat) (x : ufrac) :
     {[i := x]} ≼ m ↔ ∃ y, m !! i ≡ Some y ∧ Some x ≼ Some y.
-  Proof. exact (singleton_included_l (K := id * nat) (A := ufracR) m i x). Qed.
+  Proof using . exact (singleton_included_l (K := id * nat) (A := ufracR) m i x). Qed.
   Lemma gincl_dom (m1 m2 : gmap (id * nat) ufrac) : m1 ≼ m2 → dom m1 ⊆ dom m2.
-  Proof. exact (dom_included (K := id * nat) (A := ufracR) m1 m2). Qed.
+  Proof using . exact (dom_included (K := id * nat) (A := ufracR) m1 m2). Qed.
 
   (* ---- Qc arithmetic ---- *)
   Lemma Qc_plus_pos_not_le (x y : Qc) : (0 < y)%Qc -> ¬ (y + x <= x)%Qc.
-  Proof.
+  Proof using .
     intros Hy Hle. apply (Qcle_not_lt _ _ Hle). apply Qclt_minus_iff.
     rewrite -Qcplus_assoc Qcplus_opp_r Qcplus_0_r. exact Hy.
   Qed.
   Lemma Qc_plus_pos_not_le_r (x y : Qc) : (0 < y)%Qc -> ¬ (x + y <= x)%Qc.
-  Proof. intros Hy. rewrite Qcplus_comm. by apply Qc_plus_pos_not_le. Qed.
+  Proof using . intros Hy. rewrite Qcplus_comm. by apply Qc_plus_pos_not_le. Qed.
   Lemma Qc_plus_cancel_l (x y z : Qc) : (x + y)%Qc = (x + z)%Qc -> y = z.
-  Proof.
+  Proof using .
     intros Hxyz. apply (f_equal (fun w => (- x + w)%Qc)) in Hxyz.
     rewrite !Qcplus_assoc (Qcplus_comm (- x) x) Qcplus_opp_r !Qcplus_0_l in Hxyz. exact Hxyz.
   Qed.
   Lemma Qp_to_Qc_1 : Qp_to_Qc 1%Qp = 1%Qc.
-  Proof. apply Qc_is_canon. by vm_compute. Qed.
+  Proof using . apply Qc_is_canon. by vm_compute. Qed.
   Lemma nat_Qc_0 : nat_Qc 0 = 0%Qc.
-  Proof. apply Z2Qc_inj_0. Qed.
+  Proof using . apply Z2Qc_inj_0. Qed.
   Lemma nat_Qc_1 : nat_Qc 1 = 1%Qc.
-  Proof. apply Z2Qc_inj_1. Qed.
+  Proof using . apply Z2Qc_inj_1. Qed.
   Lemma nat_Qc_S (c : nat) : nat_Qc (S c) = (1 + nat_Qc c)%Qc.
-  Proof. rewrite /nat_Qc Nat2Z.inj_succ -Z.add_1_l Z2Qc_inj_add Z2Qc_inj_1. reflexivity. Qed.
+  Proof using . rewrite /nat_Qc Nat2Z.inj_succ -Z.add_1_l Z2Qc_inj_add Z2Qc_inj_1. reflexivity. Qed.
   Lemma nat_Qc_pos (n : nat) : (0 < n)%nat -> Qp_to_Qc (pos_to_Qp (Pos.of_nat n)) = nat_Qc n.
-  Proof.
+  Proof using .
     intros Hn. destruct n as [|n]; [lia|]. rewrite -Pos.of_nat_succ.
     unfold pos_to_Qp; simpl. unfold nat_Qc. rewrite Zpos_P_of_succ_nat Nat2Z.inj_succ. reflexivity.
   Qed.
   Lemma unit_mass_Qc (c : nat) : Qp_to_Qc (unit_mass c) = nat_Qc (Nat.max 1 c).
-  Proof. rewrite /unit_mass. apply nat_Qc_pos. lia. Qed.
+  Proof using . rewrite /unit_mass. apply nat_Qc_pos. lia. Qed.
 
   (* ---- qsum ---- *)
   Lemma qsum_step_comm (j1 j2 : id * nat) (z1 z2 : ufrac) (y : Qc) :
     qsum_step j1 z1 (qsum_step j2 z2 y) = qsum_step j2 z2 (qsum_step j1 z1 y).
-  Proof. unfold qsum_step. rewrite !Qcplus_assoc (Qcplus_comm (Qp_to_Qc z1)). reflexivity. Qed.
+  Proof using . unfold qsum_step. rewrite !Qcplus_assoc (Qcplus_comm (Qp_to_Qc z1)). reflexivity. Qed.
   Lemma qsum_empty : qsum ∅ = 0%Qc.
-  Proof. by rewrite /qsum map_fold_empty. Qed.
+  Proof using . by rewrite /qsum map_fold_empty. Qed.
   Lemma qsum_insert m (p : id * nat) (q : ufrac) :
     m !! p = None -> qsum (<[p := q]> m) = Qcplus (Qp_to_Qc q) (qsum m).
-  Proof.
+  Proof using .
     intros Hp. rewrite /qsum.
     rewrite (map_fold_insert_L qsum_step 0%Qc p q m
                (fun j1 j2 z1 z2 y _ _ _ => qsum_step_comm j1 j2 z1 z2 y) Hp).
@@ -173,33 +173,33 @@ Section helpers.
   Qed.
   Lemma qsum_delete m (p : id * nat) (q : ufrac) :
     m !! p = Some q -> qsum m = Qcplus (Qp_to_Qc q) (qsum (delete p m)).
-  Proof.
+  Proof using .
     intros Hp. rewrite /qsum.
     rewrite (map_fold_delete_L qsum_step 0%Qc p q m
                (fun j1 j2 z1 z2 y _ _ _ => qsum_step_comm j1 j2 z1 z2 y) Hp).
     reflexivity.
   Qed.
   Lemma qsum_nonneg m : (0 <= qsum m)%Qc.
-  Proof.
+  Proof using .
     induction m as [|p q m Hp IH] using map_ind.
     { rewrite qsum_empty. apply Qcle_refl. }
     rewrite (qsum_insert _ _ _ Hp). pose proof (Qp_prf q) as Hq.
     rewrite -(Qcplus_0_l 0). apply Qcplus_le_compat; [apply Qclt_le_weak; exact Hq | exact IH].
   Qed.
   Lemma qsum_pos m : m ≠ ∅ -> (0 < qsum m)%Qc.
-  Proof.
+  Proof using .
     induction m as [|p q m Hp IH] using map_ind; [done|].
     intros _. rewrite (qsum_insert _ _ _ Hp). pose proof (Qp_prf q) as Hq.
     eapply Qclt_le_trans; [exact Hq|].
     rewrite -{1}(Qcplus_0_r (Qp_to_Qc q)). apply Qcplus_le_compat; [apply Qcle_refl | apply qsum_nonneg].
   Qed.
   Lemma qsum_zero_empty m : qsum m = 0%Qc -> m = ∅.
-  Proof.
+  Proof using .
     intros Hz. destruct (decide (m = ∅)) as [|Hne]; [done|].
     pose proof (qsum_pos m Hne) as Hp. rewrite Hz in Hp. exfalso. exact (Qclt_not_eq _ _ Hp eq_refl).
   Qed.
   Lemma qsum_incl_le (m1 m2 : gmap (id * nat) ufrac) : m1 ≼ m2 -> (qsum m1 <= qsum m2)%Qc.
-  Proof.
+  Proof using .
     revert m2. induction m1 as [|p q m1 Hp IH] using map_ind; intros m2 Hincl.
     { rewrite qsum_empty. apply qsum_nonneg. }
     pose proof (proj1 (gincl_lookup_iff _ _) Hincl) as Hl.
@@ -219,14 +219,14 @@ Section helpers.
     apply Qcplus_le_compat; [exact Hqle | exact (IH _ Hrest)].
   Qed.
   Lemma qsum_singleton (p : id * nat) (q : ufrac) : qsum {[p := q]} = Qp_to_Qc q.
-  Proof.
+  Proof using .
     rewrite -(insert_empty p q) qsum_insert; [| apply lookup_empty].
     rewrite qsum_empty. apply Qcplus_0_r.
   Qed.
 
   Lemma qsum_singleton_op m (p : id * nat) (q : ufrac) :
     qsum ({[p := q]} ⋅ m) = (Qp_to_Qc q + qsum m)%Qc.
-  Proof.
+  Proof using .
     destruct (m !! p) as [q0|] eqn:Hp.
     - assert (Heq : {[p := q]} ⋅ m = <[p := (q ⋅ q0)]> (delete p m)).
       { apply map_eq. intros i. rewrite lookup_op. destruct (decide (i = p)) as [->|Hne].
@@ -238,7 +238,7 @@ Section helpers.
     - rewrite -insert_singleton_op; [| exact Hp]. by apply qsum_insert.
   Qed.
   Lemma qsum_op (m1 m2 : gmap (id * nat) ufrac) : qsum (m1 ⋅ m2) = (qsum m1 + qsum m2)%Qc.
-  Proof.
+  Proof using .
     induction m1 as [|p q m1 Hp IH] using map_ind.
     { rewrite left_id_L qsum_empty. by rewrite Qcplus_0_l. }
     rewrite (insert_singleton_op m1 p q Hp) -assoc_L qsum_singleton_op IH.
@@ -247,7 +247,7 @@ Section helpers.
   (* equal mass under inclusion: no key of the larger map is missing *)
   Lemma qsum_eq_dom (m1 m2 : gmap (id * nat) ufrac) :
     m1 ≼ m2 -> qsum m1 = qsum m2 -> dom m2 ⊆ dom m1.
-  Proof.
+  Proof using .
     intros Hincl Heq p Hp. destruct (decide (p ∈ dom m1)) as [|Hnot]; [done|]. exfalso.
     apply elem_of_dom in Hp as [q Hq]. apply not_elem_of_dom in Hnot.
     assert (Hincl' : m1 ≼ delete p m2).
@@ -258,24 +258,24 @@ Section helpers.
     rewrite Heq in Hincl'. exact (Qc_plus_pos_not_le _ _ (Qp_prf q) Hincl').
   Qed.
   Lemma singleton_ne_empty_map (p : id * nat) (q : ufrac) : ({[p := q]} : gmap (id * nat) ufrac) ≠ ∅.
-  Proof.
+  Proof using .
     intros Hc. apply (f_equal (lookup p)) in Hc. rewrite lookup_singleton lookup_empty in Hc. discriminate.
   Qed.
 
   (* ---- max_stamp ---- *)
   Lemma max_step_comm (j1 j2 : id * nat) (z1 z2 : ufrac) (y : nat) :
     max_step j1 z1 (max_step j2 z2 y) = max_step j2 z2 (max_step j1 z1 y).
-  Proof. unfold max_step. lia. Qed.
+  Proof using . unfold max_step. lia. Qed.
   Lemma max_stamp_insert m (p : id * nat) (q : ufrac) :
     m !! p = None -> max_stamp (<[p := q]> m) = Nat.max p.2 (max_stamp m).
-  Proof.
+  Proof using .
     intros Hp. rewrite /max_stamp.
     rewrite (map_fold_insert_L max_step 0%nat p q m
                (fun j1 j2 z1 z2 y _ _ _ => max_step_comm j1 j2 z1 z2 y) Hp).
     reflexivity.
   Qed.
   Lemma max_stamp_ge m (p : id * nat) : p ∈ dom m -> (p.2 <= max_stamp m)%nat.
-  Proof.
+  Proof using .
     induction m as [|p' q m Hp' IH] using map_ind.
     { intros Hp. rewrite dom_empty_L in Hp. by apply not_elem_of_empty in Hp. }
     intros Hp. rewrite (max_stamp_insert _ _ _ Hp'). rewrite dom_insert_L in Hp.
@@ -284,28 +284,28 @@ Section helpers.
     - pose proof (IH Hp). lia.
   Qed.
   Lemma max_stamp_singleton (p : id * nat) (q : ufrac) : max_stamp {[p := q]} = p.2.
-  Proof.
+  Proof using .
     rewrite -insert_empty (max_stamp_insert ∅ p q (lookup_empty _)).
     rewrite /max_stamp map_fold_empty. lia.
   Qed.
 
   (* ---- keyed ---- *)
   Lemma keyed_singleton (i : id) (t : nat) (q : ufrac) : keyed {[(i, t) := q]} i.
-  Proof.
+  Proof using .
     intros p Hp. rewrite dom_singleton_L in Hp. apply elem_of_singleton in Hp. by subst p.
   Qed.
   Lemma keyed_sub (m m' : gmap (id * nat) ufrac) (i : id) :
     dom m' ⊆ dom m -> keyed m i -> keyed m' i.
-  Proof. intros Hsub Hk p Hp. apply Hk. by apply Hsub. Qed.
+  Proof using . intros Hsub Hk p Hp. apply Hk. by apply Hsub. Qed.
   Lemma keyed_singleton_op m (i : id) (t : nat) (q : ufrac) :
     keyed m i -> keyed ({[(i, t) := q]} ⋅ m) i.
-  Proof.
+  Proof using .
     intros Hk p Hp. rewrite dom_op dom_singleton_L in Hp.
     apply elem_of_union in Hp as [Hp | Hp]; [apply elem_of_singleton in Hp; by subst p | by apply Hk].
   Qed.
   Lemma keyed_agree (m mh : gmap (id * nat) ufrac) (i i' : id) :
     mh ≠ ∅ -> dom mh ⊆ dom m -> keyed mh i -> keyed m i' -> i = i'.
-  Proof.
+  Proof using .
     intros Hne Hsub Hk Hk'. destruct (map_choose mh Hne) as (p & q & Hp).
     assert (Hpd : p ∈ dom mh) by (apply elem_of_dom; by exists q).
     rewrite -(Hk p Hpd). apply Hk'. by apply Hsub.
@@ -314,7 +314,7 @@ Section helpers.
   (* ---- the two local updates on the stamps auth ---- *)
   Lemma stamps_alloc_upd m (p : id * nat) (q : ufrac) :
     (● m : stampsR id) ~~> ● ({[p := q]} ⋅ m) ⋅ ◯ {[p := q]}.
-  Proof.
+  Proof using .
     apply auth_update_alloc. apply local_update_unital_discrete. intros z _ Hz.
     rewrite left_id in Hz. rewrite -Hz. split; [| done].
     intros i. match goal with |- ✓ ?x => destruct x as [q'|] end; exact I.
@@ -327,14 +327,14 @@ Section helpers.
     end.
   Lemma msub_key_lookup_ne m (p i : id * nat) (d : ufrac) :
     i ≠ p -> msub_key m p d !! i = m !! i.
-  Proof.
+  Proof using .
     intros Hne. rewrite /msub_key. destruct (m !! p) as [q|]; [|done].
     destruct (q - d)%Qp; [by rewrite lookup_insert_ne | by rewrite lookup_delete_ne].
   Qed.
   Lemma msub_key_upd m (p : id * nat) (d : ufrac) :
     {[p := d]} ≼ m ->
     (● m : stampsR id) ⋅ ◯ {[p := d]} ~~> ● (msub_key m p d).
-  Proof.
+  Proof using .
     intros Hincl. apply auth_update_dealloc.
     apply (gmap_local_update (K := id * nat) (A := ufracR) m {[p := d]} (msub_key m p d) ∅). intros i.
     destruct (decide (i = p)) as [->|Hne]; last first.
@@ -365,7 +365,7 @@ Section helpers.
   Qed.
   Lemma qsum_msub_key m (p : id * nat) (d : ufrac) :
     {[p := d]} ≼ m -> (Qp_to_Qc d + qsum (msub_key m p d))%Qc = qsum m.
-  Proof.
+  Proof using .
     intros Hincl. destruct (proj1 (gincl_singleton_l m p d) Hincl) as (y & Hy & Hle).
     apply leibniz_equiv in Hy. destruct (proj1 (gincl_Some_iff d y) Hle) as [Heq | Hlt].
     - apply leibniz_equiv in Heq. subst y.
@@ -377,7 +377,7 @@ Section helpers.
       rewrite (qsum_delete m p (d + r)%Qp Hy) Qp.to_Qc_inj_add. by rewrite Qcplus_assoc.
   Qed.
   Lemma dom_msub_key_sub m (p : id * nat) (d : ufrac) : dom (msub_key m p d) ⊆ dom m.
-  Proof.
+  Proof using .
     rewrite /msub_key. destruct (m !! p) as [q|] eqn:Hp; [|done].
     destruct (q - d)%Qp as [r|].
     - rewrite dom_insert_L. intros i Hi. apply elem_of_union in Hi as [Hi | Hi]; [|done].
@@ -386,7 +386,7 @@ Section helpers.
   Qed.
   Lemma dom_msub_key_cases m (p i : id * nat) (d : ufrac) :
     i ∈ dom m -> i ∈ dom (msub_key m p d) ∨ i = p.
-  Proof.
+  Proof using .
     intros Hi. destruct (decide (i = p)) as [->|Hne]; [by right|]. left.
     apply elem_of_dom in Hi as [x Hx]. apply (elem_of_dom_2 _ i x).
     by rewrite (msub_key_lookup_ne _ _ _ _ Hne).
@@ -396,22 +396,22 @@ Section helpers.
   Definition mscale (s : Qp) m : gmap (id * nat) ufrac := (fun q : ufrac => (q * s)%Qp) <$> m.
   Lemma mscale_lookup (s : Qp) m (p : id * nat) :
     mscale s m !! p = (fun q : ufrac => (q * s)%Qp) <$> (m !! p).
-  Proof. by rewrite /mscale lookup_fmap. Qed.
+  Proof using . by rewrite /mscale lookup_fmap. Qed.
   Lemma dom_mscale (s : Qp) m : dom (mscale s m) = dom m.
-  Proof. by rewrite /mscale dom_fmap_L. Qed.
+  Proof using . by rewrite /mscale dom_fmap_L. Qed.
   Lemma mscale_empty_iff (s : Qp) m : mscale s m = ∅ <-> m = ∅.
-  Proof. by rewrite /mscale fmap_empty_iff. Qed.
+  Proof using . by rewrite /mscale fmap_empty_iff. Qed.
   (* m = mscale s m ⋅ mscale s' m when s + s' = 1 *)
   Lemma mscale_split (s s' : Qp) m :
     (s + s')%Qp = 1%Qp -> m = mscale s m ⋅ mscale s' m.
-  Proof.
+  Proof using .
     intros Hss. apply map_eq. intros p. rewrite lookup_op !mscale_lookup.
     destruct (m !! p) as [q|]; simpl; [| done].
     change (Some (q * s)%Qp ⋅ Some (q * s')%Qp) with (Some ((q * s) + (q * s'))%Qp).
     f_equal. rewrite -Qp.mul_add_distr_l Hss Qp.mul_1_r. reflexivity.
   Qed.
   Lemma qsum_mscale (s : Qp) m : qsum (mscale s m) = (qsum m * Qp_to_Qc s)%Qc.
-  Proof.
+  Proof using .
     induction m as [|p q m Hp IH] using map_ind.
     { rewrite /mscale fmap_empty !qsum_empty. by rewrite Qcmult_0_l. }
     rewrite /mscale fmap_insert (qsum_insert _ _ _ Hp).
@@ -419,7 +419,7 @@ Section helpers.
     fold (mscale s m). rewrite IH Qp.to_Qc_inj_mul. by rewrite Qcmult_plus_distr_l.
   Qed.
   Lemma max_stamp_mscale (s : Qp) m : max_stamp (mscale s m) = max_stamp m.
-  Proof.
+  Proof using .
     induction m as [|p q m Hp IH] using map_ind.
     { by rewrite /mscale fmap_empty. }
     rewrite /mscale fmap_insert (max_stamp_insert _ _ _ Hp).
@@ -427,7 +427,7 @@ Section helpers.
   Qed.
   Lemma max_stamp_singleton_op m (p : id * nat) (q : ufrac) :
     max_stamp ({[p := q]} ⋅ m) = Nat.max p.2 (max_stamp m).
-  Proof.
+  Proof using .
     destruct (m !! p) as [q0|] eqn:Hp.
     - assert (Heq : {[p := q]} ⋅ m = <[p := (q ⋅ q0)]> (delete p m)).
       { apply map_eq. intros i. rewrite lookup_op. destruct (decide (i = p)) as [->|Hne].
@@ -442,7 +442,7 @@ Section helpers.
   Qed.
   Lemma max_stamp_op (m1 m2 : gmap (id * nat) ufrac) :
     max_stamp (m1 ⋅ m2) = Nat.max (max_stamp m1) (max_stamp m2).
-  Proof.
+  Proof using .
     induction m1 as [|p q m1 Hp IH] using map_ind.
     { rewrite left_id_L /max_stamp map_fold_empty. lia. }
     rewrite (insert_singleton_op m1 p q Hp) -assoc_L max_stamp_singleton_op IH.
@@ -450,12 +450,12 @@ Section helpers.
   Qed.
   Lemma keyed_op (m1 m2 : gmap (id * nat) ufrac) (i : id) :
     keyed m1 i -> keyed m2 i -> keyed (m1 ⋅ m2) i.
-  Proof.
+  Proof using .
     intros H1 H2 p Hp. rewrite dom_op in Hp.
     apply elem_of_union in Hp as [Hp | Hp]; [by apply H1 | by apply H2].
   Qed.
   Lemma op_ne_empty_l (m1 m2 : gmap (id * nat) ufrac) : m1 ≠ ∅ -> m1 ⋅ m2 ≠ ∅.
-  Proof.
+  Proof using .
     intros Hne Hc. apply Hne. apply map_eq. intros p.
     apply (f_equal (lookup p)) in Hc. rewrite lookup_op lookup_empty in Hc.
     rewrite lookup_empty. destruct (m1 !! p) as [q|] eqn:Hq; [| done].
@@ -526,7 +526,7 @@ Section box.
     (∃ x, P i x ξb ∗ P_rest x ξb)%I.
   Global Instance in_arm_of_morph (P : id → X → CtxId → iProp Σ)
       `{!∀ i x, CtxMorph (P i x)} (i : id) : CtxMorph (in_arm_of P i).
-  Proof. rewrite /in_arm_of. apply ctx_morph_exist. intros x. apply ctx_morph_sep; apply _. Qed.
+  Proof using H1. rewrite /in_arm_of. apply ctx_morph_exist. intros x. apply ctx_morph_sep; apply _. Qed.
 
   (* ---- the body (§2; the edit's register-selected arms) ------------- *)
   (* THE ARM, selected by (lr_hold s, sr_win r).  A PUBLIC definition: the
@@ -561,7 +561,7 @@ Section box.
     ([∗ list] k ∈ l, ∃ Td : nat, llb loglen_name Td ∗ P k Td) -∗
     ∃ tl : nat, llb loglen_name tl ∗
       [∗ list] k ∈ l, ∃ Td : nat, ⌜(Td <= tl)%nat⌝ ∗ llb loglen_name Td ∗ P k Td.
-  Proof.
+  Proof using .
     iInduction l as [|k l] "IH".
     { iIntros "_". iExists 0%nat. iSplitR; [iApply TsoGhost.llb_0|]. done. }
     iIntros "[Hk Hl]". iDestruct "Hk" as (Td) "[#Hllb HP]".
@@ -575,26 +575,26 @@ Section box.
 
   (* ---- instances and the ghost-level kit ------------------------------ *)
   Global Instance in_arm_morph i : CtxMorph (in_arm i).
-  Proof. rewrite /in_arm. apply ctx_morph_exist. intros x. apply ctx_morph_sep; apply _. Qed.
+  Proof using H0 H1. rewrite /in_arm. apply ctx_morph_exist. intros x. apply ctx_morph_sep; apply _. Qed.
   Global Instance in_arm_timeless i ξb : Timeless (in_arm i ξb).
-  Proof. rewrite /in_arm. apply _. Qed.
+  Proof using H2 H3. rewrite /in_arm. apply _. Qed.
   Global Instance hdr_out_timeless γ m : Timeless (hdr_out γ m).
-  Proof. rewrite /hdr_out /stamps_frag. apply _. Qed.
+  Proof using . rewrite /hdr_out /stamps_frag. apply _. Qed.
 
   Global Instance box_arm_timeless γ T ξb m c r s : Timeless (box_arm γ T ξb m c r s).
-  Proof.
+  Proof using H2 H3 H4 Timeless0.
     rewrite /box_arm. destruct (lr_hold s) as [[i mh]|]; [apply _|].
     destruct (sr_win r); apply _.
   Qed.
   Lemma stamps_frag_incl γ m m' :
     stamps_auth γ m -∗ stamps_frag γ m' -∗ ⌜m' ≼ m⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Hf". iDestruct (own_valid_2 with "Ha Hf") as %[Hincl _]%auth_both_valid_discrete.
     by iPureIntro.
   Qed.
   Lemma stamps_frag_incl_2 γ m m1 m2 :
     stamps_auth γ m -∗ stamps_frag γ m1 -∗ stamps_frag γ m2 -∗ ⌜m1 ⋅ m2 ≼ m⌝.
-  Proof.
+  Proof using .
     iIntros "Ha H1 H2". iDestruct (own_valid_3 with "Ha H1 H2") as %Hv.
     rewrite -assoc -auth_frag_op in Hv. apply auth_both_valid_discrete in Hv as [Hincl _].
     by iPureIntro.
@@ -605,7 +605,7 @@ Section box.
     stamps_auth γ m -∗ stamps_frag γ mD ==∗
     ∃ m', stamps_auth γ m' ∗ ⌜(qsum mD + qsum m')%Qc = qsum m⌝ ∗ ⌜dom m' ⊆ dom m⌝ ∗
           ⌜∀ p, p ∈ dom m → p ∉ dom mD → p ∈ dom m'⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Hf".
     iInduction mD as [|p d mD Hp] "IH" using map_ind forall (m).
     { iModIntro. iExists m. iFrame "Ha". iPureIntro. split_and!; [by rewrite qsum_empty Qcplus_0_l | done | done]. }
@@ -638,7 +638,7 @@ Section box.
   Local Lemma box_floor_view `{CID : CpuId} (ξ : CtxId) (K : nat) :
     own_context ξ -∗ ctx_floor ξ K -∗
     own_context ξ ∗ ∃ K' : nat, ⌜(K ≤ K')%nat⌝ ∗ hart_view_lb K'.
-  Proof.
+  Proof using .
     iIntros "Hrun #Hfl".
     iDestruct (own_context_floor_view with "Hrun Hfl") as "[Hrun (%K' & #HK & %HKK)]".
     iFrame "Hrun". iExists K'. iSplitR; [done|].
@@ -650,7 +650,7 @@ Section box.
   Lemma ctx_word4_excl_x (ξ1 ξ2 : CtxId) a (dq : dfrac) w1 w2 :
     ctx_word4_pointsto ξ1 a (DfracOwn 1) w1 -∗
     ctx_word4_pointsto ξ2 a dq w2 -∗ False.
-  Proof.
+  Proof using .
     iIntros "H1 H2".
     iDestruct (ctx_word4_pointsto_bytes with "H1") as "H1".
     iDestruct (ctx_word4_pointsto_bytes with "H2") as "H2".
@@ -663,7 +663,7 @@ Section box.
   Lemma reference_split γ (i : id) m (s s' : Qp) :
     (s + s')%Qp = 1%Qp ->
     reference γ i m -∗ reference γ i (mscale s m) ∗ reference γ i (mscale s' m).
-  Proof.
+  Proof using .
     iIntros (Hss) "(%Hne & %Hk & Hf & #Hllb)".
     iAssert (stamps_frag γ (mscale s m) ∗ stamps_frag γ (mscale s' m))%I with "[Hf]" as "[Hf1 Hf2]".
     { rewrite /stamps_frag -own_op -auth_frag_op -(mscale_split s s' m Hss). iExact "Hf". }
@@ -676,11 +676,11 @@ Section box.
       + intros p Hp. rewrite dom_mscale in Hp. by apply Hk.
   Qed.
   Lemma reference_llb γ (i : id) m : reference γ i m -∗ llb loglen_name (max_stamp m).
-  Proof. iIntros "(_ & _ & _ & #H)". iExact "H". Qed.
+  Proof using . iIntros "(_ & _ & _ & #H)". iExact "H". Qed.
 
   Lemma reference_join γ (i : id) (m1 m2 : gmap (id * nat) ufrac) :
     reference γ i m1 -∗ reference γ i m2 -∗ reference γ i (m1 ⋅ m2).
-  Proof.
+  Proof using .
     iIntros "(%Hne1 & %Hk1 & Hf1 & #Hl1) (%Hne2 & %Hk2 & Hf2 & #Hl2)".
     rewrite /reference /stamps_frag auth_frag_op own_op. iFrame "Hf1 Hf2".
     iSplitR; [iPureIntro; by apply op_ne_empty_l|].
@@ -739,7 +739,7 @@ Section box.
       ⌜(T0 ≤ Nat.max Kd Kt)%nat⌝ ∗
       slotd_half γ (SlotReg (sr_td r) true (sr_ident r) (Some (x0, T0))) ∗
       P_hdr' (sr_ident r) x0 ξ.
-  Proof.
+  Proof using H2 H3 Inhabited0.
     iIntros (HE Hw HmD HKd HKt Hhook) "#Hbox Hrun #Hfld #Hflt #HllbD Hrd0 Hcnt HfD HQc".
     rewrite /is_box. box_open "Hbox" "Hcl".
     iDestruct (ghost_var_agree with "Hrd Hrd0") as %->.
@@ -806,7 +806,7 @@ Section box.
     llb loglen_name (max_stamp mD) -∗ Qc ={E}=∗
     cnt_half γ c ∗ Q' ∗
     ∃ (x0 : X) (T0 : nat), slotd_half γ (SlotReg (sr_td r) true (sr_ident r) (Some (x0, T0))).
-  Proof.
+  Proof using H2 H3 Inhabited0.
     iIntros (HE Hw HmD Hhook) "#Hbox Hrd0 Hcnt HfD #HllbD HQc".
     rewrite /is_box. box_open "Hbox" "Hcl".
     iDestruct (ghost_var_agree with "Hrd Hrd0") as %->.
@@ -876,7 +876,7 @@ Section box.
       ⌜(T0 ≤ Nat.max Kd Kt)%nat⌝ ∗
       slotd_half γ (SlotReg (sr_td r) true (sr_ident r) (Some (x0, T0))) ∗
       P_hdr (sr_ident r) x0 ξ.
-  Proof.
+  Proof using H0 H2 H3 Inhabited0.
     intros HE Hw HmD HKd HKt.
     apply (box_withdraw_L1_hook N γ ξ r c mD Kd Kt P_hdr (Q1 c) E HE Hw HmD HKd HKt).
     intros x ξ'. iIntros "[HQ Hh]". iModIntro. iFrame.
@@ -917,7 +917,7 @@ Section box.
       cnt_half γ (Nat.max 1 c) ∗
       reference γ i' {[ (i', T') := unit_mass c ]} ∗
       llb loglen_name T'.
-  Proof.
+  Proof using H0 H3 H4 Inhabited0.
     iIntros (HE Hw Hx Hhook) "#Hbox Hrun Hrd0 Hcnt HQc Hhdr'".
     rewrite /is_box. box_open "Hbox" "Hcl".
     iDestruct (ghost_var_agree with "Hrd Hrd0") as %->.
@@ -991,7 +991,7 @@ Section box.
       cnt_half γ (Nat.max 1 c) ∗
       reference γ i' {[ (i', T') := unit_mass c ]} ∗
       llb loglen_name T'.
-  Proof.
+  Proof using H0 H3 H4 Inhabited0.
     intros HE Hw Hx Hent.
     iIntros "#Hbox Hrun Hrd0 Hcnt Hhdr".
     iApply (box_deposit_L1_hook N γ ξ r c i' x0 x1 T0 P_hdr emp (Q1 c) E HE Hw Hx
@@ -1016,7 +1016,7 @@ Section box.
       cnt_half γ (Nat.max 1 c) ∗
       reference γ i' {[ (i', T') := unit_mass c ]} ∗
       llb loglen_name T'.
-  Proof.
+  Proof using H0 H3 H4 Inhabited0.
     intros HE Hw Hx.
     apply (box_deposit_L1_shape N γ ξ r c i' x0 x0 T0 E HE Hw Hx).
     intros ξb. reflexivity.
@@ -1044,7 +1044,7 @@ Section box.
     slotd_half γ r ∗
     cnt_half γ (S c) ∗
     ∃ T : nat, reference γ (sr_ident r) {[ (sr_ident r, T) := 1%Qp ]}.
-  Proof.
+  Proof using Inhabited0.
     iIntros (HE Hw) "#Hbox Hrd0 Hcnt".
     rewrite /is_box. box_open "Hbox" "Hcl".
     iDestruct (ghost_var_agree with "Hrd Hrd0") as %->.
@@ -1099,7 +1099,7 @@ Section box.
     slotd_half γ (SlotReg (Nat.max (sr_td r) (max_stamp mD)) false (sr_ident r) (sr_x r)) ∗
     cnt_half γ c ∗
     llb loglen_name (Nat.max (sr_td r) (max_stamp mD)).
-  Proof.
+  Proof using Inhabited0.
     iIntros (HE Hw HmD) "#Hbox Hrd0 #Hllbtd Hcnt Href".
     iDestruct "Href" as "(%Hne & %Hkeyed & HfD & #HllbD)".
     rewrite /is_box. box_open "Hbox" "Hcl".
@@ -1156,7 +1156,7 @@ Section box.
     own_context ξ ∗
     (∃ x, P_hdr' i x ξ ∗ P_rest x ξ) ∗
     l2_hold γ i mh.
-  Proof.
+  Proof using H1 H2 H3 Inhabited0.
     iIntros (HE Hs0 HKt HKp Hhook) "#Hbox Hrun #Hflt #Hflp Href HQc Hrp0".
     iDestruct "Href" as "(%Hne & %Hkeyed & Hfh & #Hllbh)".
     rewrite /is_box. box_open "Hbox" "Hcl".
@@ -1251,7 +1251,7 @@ Section box.
     own_context ξ ∗
     (∃ x, P_hdr' i x ξ ∗ P_rest x ξ) ∗
     l2_hold γ i mh.
-  Proof. exact (box_checkout_hook N γ ξ i P_hdr' Qc mh s0 Kt Kp E). Qed.
+  Proof using H1 H2 H3 Inhabited0. exact (box_checkout_hook N γ ξ i P_hdr' Qc mh s0 Kt Kp E). Qed.
 
   (* (e): the instance -- the caller's Q passes straight into the arm.  The
      split wand of (e′) is a pure entailment, so the caller's own Q cannot
@@ -1272,7 +1272,7 @@ Section box.
     own_context ξ ∗
     (∃ x, P_hdr i x ξ ∗ P_rest x ξ) ∗
     l2_hold γ i mh.
-  Proof.
+  Proof using H0 H1 H2 H3 Inhabited0.
     intros HE Hs0 HKt HKp.
     apply (box_checkout_hook N γ ξ i P_hdr Q2 mh s0 Kt Kp E HE Hs0 HKt HKp).
     intros x ξ'. iIntros "[HQ Hh]". iModIntro. iFrame.
@@ -1303,7 +1303,7 @@ Section box.
       slotp_half γ (L2Reg T' None) ∗
       reference γ i {[ (i, T') := q ]} ∗
       llb loglen_name T'.
-  Proof.
+  Proof using H0 H1 Inhabited0 Timeless0.
     iIntros (HE Hhook) "#Hbox Hrun Hbun HQc Hhold".
     iDestruct "Hhold" as (tp) "[Hrp0 #Hllbh]".
     rewrite /is_box. box_open "Hbox" "Hcl".
@@ -1389,7 +1389,7 @@ Section box.
       slotp_half γ (L2Reg T' None) ∗
       reference γ i {[ (i, T') := q ]} ∗
       llb loglen_name T'.
-  Proof.
+  Proof using H0 H1 Inhabited0 Timeless0.
     intros HE Hjoin.
     apply (box_park_hook N γ ξ i P_hdr' Qc' Q' mh E HE).
     intros x ξ'. iIntros "H". iModIntro. by iApply Hjoin.
@@ -1409,7 +1409,7 @@ Section box.
       slotp_half γ (L2Reg T' None) ∗
       reference γ i {[ (i, T') := q ]} ∗
       llb loglen_name T'.
-  Proof.
+  Proof using H0 H1 Inhabited0 Timeless0.
     intros HE.
     iIntros "#Hbox Hrun Hbun Hhold".
     iApply (box_park_hook N γ ξ i P_hdr emp Q2 mh E HE with "Hbox Hrun Hbun [//] Hhold").
@@ -1444,7 +1444,7 @@ Section box.
     slotd_half γ (SlotReg (sr_td r) false (sr_ident r) None) ∗
     cnt_half γ 1 ∗
     ∃ m', ⌜qsum m' = nat_Qc 1⌝ ∗ l2_hold γ (sr_ident r) m'.
-  Proof.
+  Proof using H1 H3 H4 Inhabited0.
     iIntros (HE Hw Hx HTK Hs0 Hhook) "#Hbox Hrun #Hfl Hrd0 Hcnt HQc Hrp0".
     rewrite /is_box. box_open "Hbox" "Hcl".
     iDestruct (ghost_var_agree with "Hrd Hrd0") as %->.
@@ -1516,7 +1516,7 @@ Section box.
     slotd_half γ (SlotReg (sr_td r) false (sr_ident r) None) ∗
     cnt_half γ 1 ∗
     ∃ m', ⌜qsum m' = nat_Qc 1⌝ ∗ l2_hold γ (sr_ident r) m'.
-  Proof.
+  Proof using H1 H3 H4 Inhabited0.
     intros HE Hw Hx HTK Hs0.
     apply (box_l1_to_l2_hook N γ ξ r x0 T0 K s0 Q2 (Q1 1) E HE Hw Hx HTK Hs0).
     iIntros "[HQ2 HQ1]". iModIntro. iFrame.
@@ -1539,7 +1539,7 @@ Section box.
        caller (a shrink/grow's updated descriptor half rides out as R) *)
     (Q2 ={E ∖ ↑N}=∗ Q2 ∗ R) ={E}=∗
     l2_hold γ i mh ∗ R.
-  Proof.
+  Proof using Inhabited0 Timeless0.
     iIntros (HE) "#Hbox Hhold Hupd".
     iDestruct "Hhold" as (tp) "[Hrp0 #Hllbh]".
     rewrite /is_box. box_open "Hbox" "Hcl".
@@ -1573,7 +1573,7 @@ Section box.
     cnt_half γ c -∗
     (Q1 c ={E ∖ ↑N}=∗ Q1 c ∗ R) ={E}=∗
     slotd_half γ r ∗ cnt_half γ c ∗ R.
-  Proof.
+  Proof using H3 H4 Inhabited0.
     iIntros (HE Hw) "#Hbox Hrd0 Hcnt Hupd".
     rewrite /is_box. box_open "Hbox" "Hcl".
     iDestruct (ghost_var_agree with "Hrd Hrd0") as %->.
@@ -1606,7 +1606,7 @@ Section box.
       ⌜box_rows T m c r s⌝ ∗
       box_arm γ T ξb m c r s ∗
       (box_arm γ T ξb m c r s ={E ∖ ↑N, E}=∗ True).
-  Proof.
+  Proof using H2 H3 H4 Inhabited0 Timeless0.
     iIntros (HE) "#Hbox". rewrite /is_box.
     iMod (inv_acc E N with "Hbox") as "[Hbody Hcl]"; [exact HE|].
     iDestruct "Hbody" as (T ξb m c r s) "(>Hpk & >#Hllb & >Hst & >Hc & >Hrd & >Hrp & >%Hrows & >Harm)".
@@ -1637,7 +1637,7 @@ Section box.
       slotd_half γ (SlotReg T_boot false i0 None) ∗ llb loglen_name T_boot ∗
       cnt_half γ 0 ∗
       slotp_half γ (L2Reg 0 None).
-  Proof.
+  Proof using H0 H1.
     iIntros "Hrun Hbun".
     iMod ctx_stamped_alloc as (ξb) "Hpk".
     iMod (ctx_deposit (in_arm i0) ξ ξb 0 with "Hrun Hpk [Hbun]")
@@ -1685,7 +1685,7 @@ Section box.
       slotd_half γ (SlotReg T_boot false i0 None) ∗ llb loglen_name T_boot ∗
       cnt_half γ 0 ∗
       slotp_half γ (L2Reg 0 None).
-  Proof.
+  Proof using H0 H1.
     iIntros "Hst Hc Hd Hp Hrun Hbun".
     iMod ctx_stamped_alloc as (ξb) "Hpk".
     iMod (ctx_deposit (in_arm i0) ξ ξb 0 with "Hrun Hpk [Hbun]")
@@ -1756,18 +1756,18 @@ Section box.
     sr_win r = false → sr_x r = None →
     slotd_half γ r -∗ ctx_floor ξ (sr_td r) -∗ llb loglen_name (sr_td r) -∗
     l1_row γ r ξ.
-  Proof. iIntros (Hw Hx) "Hd #Hfl #Hllb". iFrame "Hd Hfl Hllb". by iPureIntro. Qed.
+  Proof using . iIntros (Hw Hx) "Hd #Hfl #Hllb". iFrame "Hd Hfl Hllb". by iPureIntro. Qed.
 
   (* the L2 payload row folds at releasesleep (the genin form mints the
      floor from the park's llb T') *)
   Lemma l2_row_fold γ (T' : nat) (ξ : CtxId) :
     slotp_half γ (L2Reg T' None) -∗ ctx_floor ξ T' -∗
     l2_row γ (L2Reg T' None) ξ.
-  Proof. iIntros "Hp #Hfl". iFrame "Hp Hfl". by iPureIntro. Qed.
+  Proof using . iIntros "Hp #Hfl". iFrame "Hp Hfl". by iPureIntro. Qed.
 
   (* the L2 row is a CtxMorph payload (the floor is the only ξ-row) *)
   Global Instance l2_row_morph γ (s : l2_reg id) : CtxMorph (l2_row γ s).
-  Proof.
+  Proof using .
     rewrite /l2_row. apply ctx_morph_sep; [apply ctx_morph_const|].
     apply ctx_morph_sep; [apply ctx_morph_const| apply _].
   Qed.

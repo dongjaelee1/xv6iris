@@ -245,7 +245,7 @@ Section FsinitDefs.
       bb_bytes (b_data (bpa k)) (length bs) (fun jj => bs !!! jj) ∗
       (bb_bytes (b_data (bpa k)) (length bs) (fun jj => bs !!! jj) -∗
        bio_held fsc_bio V k pidv dv bno bs bsl bsd d).
-  Proof.
+  Proof using .
     rewrite /bio_held.
     iIntros "(%A & %B & %C & H1 & H3 & H4 & Hbo & H5 & H6)".
     rewrite /buf_own.
@@ -267,7 +267,7 @@ Section FsinitDefs.
     (forall jj, (jj < 4)%nat -> f (o + jj)%nat = nth_byte w jj) ->
     ([∗ list] jj ∈ seq 0 4, pa_add (pa_add a o) jj ↦ₘ f (o + jj)%nat) -∗
     pa_add a o ↦₄ w.
-  Proof.
+  Proof using .
     intros Hal Hf. iIntros "H". rewrite /word4_pointsto.
     iSplitR; [done |].
     iApply (big_sepL_mono with "H"). intros i x Hj.
@@ -316,7 +316,7 @@ Section FsinitEpilogue.
  v_magic v_size v_nblocks v_nlog pidv dq j
              m K eb b lks Upr -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hsp Hthr.
     pose proof HK as HK'. 
     iIntros "Hcg Hcnt Hextc Hclmc #Htext Hpc Hframe Hppid Hmg Hsz Hnb Hni Hnl Hls Hist
@@ -553,7 +553,7 @@ Section FsinitMain.
                            v_logstart v_inodestart v_bmapstart bs_sb sb_old
                            bs_hdr Xv Mbrn L D vlock vname vcpu v_start v_dev v_nc v_n
                            pidv dq m K eb b lks Upr sbrec.
-  Proof.
+  Proof using .
     cbv beta delta [wp_fsinit_sconf_body].
     intros pcE pj ret_tgt HK Hgeom H1cov H1log Himg Hsbparse Hsbok
            Hcgeom Hbmq Hszq

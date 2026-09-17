@@ -272,7 +272,7 @@ Section ProofFdalloc.
         pc_is (ret_pc ra0) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hav Hsp0 Hra0 Hs00 Hs10 Hmtsp Hmta0 Hthr.
     iIntros "Hcg #Htext Hpc Hb1 Hb2 Hb3 Hb4 Hcont".
     (* ---- +0x28: c.ldsp ra,24(sp) ---- *)
@@ -426,7 +426,7 @@ Section ProofFdalloc.
       (m : regfile) (av : nat) (n : nat) (eb : bool) (p : mword 64)
       (pid : mword 32) (U : ustate) (b : bool) (lks : gset string)
     : wp_fdalloc_sconf_body γf k D m av n eb p pid U b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_fdalloc_sconf_body].
     intros pcE ret_tgt Ha0 Hk Hn Hav.
     

@@ -50,7 +50,7 @@ Section ProofEntry.
       (sp0 : mword 64) (n : nat) {dq : dfrac} :
     wp_entry_boot_body m v_stack0 mhartid_in mepc0 satp0 medeleg0 mideleg0
       mie0 menvcfg0 stimecmp0 mcounteren0 pmpcfg0 pmpaddr00 sp0 n dq.
-  Proof.
+  Proof using .
     cbv beta delta [wp_entry_boot_body].
     intros pcE pcMain Hsp0 Hn4 Hpmp Hmenv0 Hmie0 Hmdl0 Hbnd_ra Hbnd_s0.
     iIntros "Hmm Hpcf Hpaddr Hpc Hfile Hmh Hmepc Hsatp Hmede Hmdl Hmie Hmenv Hmcen

@@ -379,7 +379,7 @@ Section IgetMsg.
 
   Lemma ig_msg_str :
     (kernel_data : iProp Σ) -∗ (mword_of_int ig_msg_a : mword 64) ↦ₛ□ ig_msg.
-  Proof.
+  Proof using .
     iIntros "#Hd".
     iApply (kernel_data_string ig_msg_a ig_msg _ eq_refl
               ltac:(unfold text_end, ig_msg_a; lia)
@@ -415,7 +415,7 @@ Section ProofIget.
   Local Lemma sie_b_agree (m : regfile) (n K0 : nat) (eb b : bool) (p : mword 64) (lks : gset string) :
     sie_cap_gpr KT1 m K0 b p -∗ cpu_own n eb p b lks -∗
     ⌜ b = match n with O => eb | S _ => false end ⌝.
-  Proof.
+  Proof using .
     iIntros "Hcg Hcnt". destruct b.
     - iDestruct "Hcnt" as "%Hb". destruct Hb as (-> & -> & _). done.
     - destruct n as [|n']; [ | done ].
@@ -475,7 +475,7 @@ Section ProofIget.
       (K : nat) (b : bool) (lks : gset string)
     : wp_iget_sconf_body inum l
                          m n eb p K b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_iget_sconf_body].
     intros pcE ret_tgt HK HnZ Hnib Hpos Ha0 Ha1 Hfresh.
     

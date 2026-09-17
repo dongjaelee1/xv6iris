@@ -61,14 +61,14 @@ Section WpVirtio.
 
   Lemma dev_interp_agree_virtio d v :
     dev_interp d -∗ virtio_frag v -∗ ⌜dvirtio d = v⌝.
-  Proof.
+  Proof using .
     iIntros "(_ & _ & Hva) Hv".
     by iDestruct (virtio_agree with "Hva Hv") as %->.
   Qed.
 
   Lemma dev_interp_update_virtio d v v' :
     dev_interp d -∗ virtio_frag v ==∗ dev_interp (set_dvirtio d v') ∗ virtio_frag v'.
-  Proof.
+  Proof using .
     iIntros "(Hua & Hpa & Hva) Hv".
     iMod (virtio_update with "Hva Hv") as "[$ $]".
     rewrite /set_dvirtio /dev_interp /=. by iFrame "Hua Hpa".
@@ -93,15 +93,15 @@ Section WpVirtio.
 
   Global Instance phys_pointsto_timeless a dq b :
     Timeless (phys_pointsto a dq b).
-  Proof. rewrite /phys_pointsto. apply _. Qed.
+  Proof using . rewrite /phys_pointsto. apply _. Qed.
 
   Global Instance dma_own_timeless dma : Timeless (dma_own dma).
-  Proof. rewrite /dma_own. apply big_sepM_timeless. apply _. Qed.
+  Proof using . rewrite /dma_own. apply big_sepM_timeless. apply _. Qed.
 
   (* The lease agrees with the real memory: it is a sub-map of it. *)
   Lemma dma_agree (m dma : gmap Arch.pa (bv 8)) :
     gen_heap_interp m -∗ dma_own dma -∗ ⌜dma ⊆ m⌝.
-  Proof.
+  Proof using .
     revert m. induction dma as [|a b dma' Hnew IH] using map_ind; iIntros (m) "Hm Hd".
     { iPureIntro. apply map_empty_subseteq. }
     rewrite /dma_own big_sepM_insert; [|exact Hnew].
@@ -129,7 +129,7 @@ Section WpVirtio.
     ∃ old : gmap Arch.pa (bv 8), ⌜dom old = dom w⌝ ∗ ⌜old ⊆ dma⌝ ∗
       ([∗ map] a ↦ b ∈ old, phys_ledger a (DfracOwn 1) b) ∗
       (([∗ map] a ↦ b ∈ w, phys_ledger a (DfracOwn 1) b) -∗ dma_own (w ∪ dma)).
-  Proof.
+  Proof using .
     intros Hdom. iIntros "Hd".
     iExists (filter (fun p => p.1 ∈ dom w) dma).
     assert (Hsub : filter (fun p : Arch.pa * bv 8 => p.1 ∈ dom w) dma ⊆ dma)

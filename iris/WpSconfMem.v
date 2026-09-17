@@ -101,15 +101,15 @@ Section WpSconfMem.
   (* c.ld rd, imm(rs1) -- width-8 RVC load.                               *)
   (* ------------------------------------------------------------------- *)
   Local Lemma avi0_mulw (width : Z) (a : mword 64) : add_vec_int a (0 * width) = a.
-  Proof. change (0 * width)%Z with 0%Z. apply avi0. Qed.
+  Proof using . change (0 * width)%Z with 0%Z. apply avi0. Qed.
 
 
   Local Lemma write_bytes_1 (mm : _) (pa : Arch.pa) (v : bv 8) :
     write_bytes mm pa 1 v = <[pa := nth_byte v 0]> mm.
-  Proof. unfold write_bytes. change (N.to_nat 1) with 1%nat. cbn [seq foldr]. rewrite pa_add_0. reflexivity. Qed.
+  Proof using . unfold write_bytes. change (N.to_nat 1) with 1%nat. cbn [seq foldr]. rewrite pa_add_0. reflexivity. Qed.
 
   Local Lemma nth_byte0_id (v : bv 8) : nth_byte v 0 = v.
-  Proof.
+  Proof using .
     apply bv_eq. rewrite nth_byte_unsigned.
     change (Z.of_N (8 * N.of_nat 0)) with 0%Z. rewrite Z.shiftr_0_r.
     apply Z.mod_small.
@@ -175,7 +175,7 @@ Section WpSconfMem.
                     (hart_agent (@cpu_id CIDw))])%list V) ∗
     TsoCtx.own_context (CID := CIDw) CtxIdDefs.cur_ctx ∗
     wordw_pointsto width a (DfracOwn 1) vnew.
-  Proof.
+  Proof using .
     intros Hw0 Hcan Hoff. iIntros "#Hk Hm Htso Hrun Hw".
     rewrite /wordw_pointsto.
     iDestruct "Hw" as "(%Hal & Hb)".
@@ -227,7 +227,7 @@ Section WpSconfMem.
                     (hart_agent (@cpu_id CIDw))])%list V) ∗
     TsoCtx.own_context (CID := CIDw) CtxIdDefs.cur_ctx ∗
     wordw_pointsto width a (DfracOwn 1) vnew.
-  Proof.
+  Proof using .
     intros Hw0 Hcan Hoff. iIntros "#Hk Hm Htso Hrun Hw".
     rewrite /wordw_free /wordw_pointsto.
     iDestruct "Hw" as "(%Hal & Hb)".
@@ -275,7 +275,7 @@ Section WpSconfMem.
     ⌜forall tvr : nat, (V (hart_agent (@cpu_id CIDw)) <= tvr)%nat ->
        tso_read_bytes img log (hart_agent (@cpu_id CIDw)) tvr
          (pa_of ppn a) (Z.to_N width) v⌝.
-  Proof.
+  Proof using .
     intros Hw0 Hcan Hoff. iIntros "#Hk Hm Htso Hrun Hw".
     rewrite /wordw_pointsto. iDestruct "Hw" as "(%Hal & Hb)".
     assert (Hwn : N.to_nat (Z.to_N width) = Z.to_nat width)
@@ -489,7 +489,7 @@ Section WpSconfMem.
         Ψ v -∗
         WP (Loop : expr riscv_lang))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hw0 Hw8 Hvw Hwdvd Huintw Hread_plain Hext ea Hrd Hrdok HkptEm Hload.
     rdok_split Hrdok.
     iIntros "Hcg Hpc #Hinstr #Hclaim HAU Hcont".
@@ -812,7 +812,7 @@ Section WpSconfMem.
         Ψ v -∗
         WP (Loop : expr riscv_lang))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hw0 Hw8 Hvw Hwdvd Huintw Hread_plain Hext ea Hrd Hrdok HkptEm.
     exact (wp_load_s_sconf_au_dat (ktd := ktd) width c uns pc rd rs1 imm m n ext Ψ Em b
              (wordw_pointsto (KTR := ktd) width ea dqm)
@@ -927,7 +927,7 @@ Section WpSconfMem.
         ⌜P v⌝ -∗ T -∗
         WP (Loop : expr riscv_lang))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hw0 Hw8 Hvw Hwdvd Huintw Hread_plain Hext ea Hrd Hrdok HkptEm Hload.
     rdok_split Hrdok.
     iIntros "Hcg Hpc #Hinstr #Hclaim HAU Hcont".
@@ -1278,7 +1278,7 @@ Section WpSconfMem.
         (∃ V0 : nat, hart_rview_lb_at (@cpu_id CID) V0 ∗ ⌜Q v V0⌝) -∗ T -∗
         WP (Loop : expr riscv_lang))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hw0 Hw8 Hvw Hwdvd Huintw Hread_plain Hext ea Hrd Hrdok HkptEm Hload.
     rdok_split Hrdok.
     iIntros "Hcg Hpc #Hinstr #Hclaim HAU Hcont".
@@ -1645,7 +1645,7 @@ Section WpSconfMem.
         (∃ V0 : nat, hart_rview_lb_at (@cpu_id CID) V0 ∗ W v V0) -∗ T -∗
         WP (Loop : expr riscv_lang))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hw0 Hw8 Hvw Hwdvd Huintw Hread_plain Hext ea Hrd Hrdok HkptEm Hload.
     rdok_split Hrdok.
     iIntros "Hcg Hpc #Hinstr #Hclaim HAU Hcont".
@@ -1990,7 +1990,7 @@ Section WpSconfMem.
         (∃ V0 : nat, hart_rview_lb_at (@cpu_id CID) V0 ∗ Q v V0) -∗ T -∗
         WP (Loop : expr riscv_lang))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hw0 Hw8 Hvw Hwdvd Huintw Hread_plain Hext ea Hrd Hrdok HkptEm Hload.
     rdok_split Hrdok.
     iIntros "Hcg Hpc #Hinstr #Hclaim HAU Hcont".
@@ -2302,7 +2302,7 @@ Section WpSconfMem.
       wordw_pointsto (KTR := ktd) width pa dqm v -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hw0 Hw8 Hvw Hwdvd Huintw Hread_plain Hlv pa Hrd Hrdok.
     (* the class, consumed at [rs1]: the wiring check for an [iApply]-shaped
        wrapper, whose own instance failure would otherwise be SHELVED.  See the
@@ -2361,7 +2361,7 @@ Section WpSconfMem.
       wordw_pointsto (KTR := ktd) width pa dqm v -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     exact (wp_load_s_sconf_gen_u (ktd := ktd) width c false pc rd rs1 imm m n v lv b (dqm := dqm)).
   Qed.
 
@@ -2399,7 +2399,7 @@ Section WpSconfMem.
       wordw_pointsto (KTR := ktd) width pa dqm v -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     exact (wp_load_s_sconf_gen_u (ktd := ktd) width c true pc rd rs1 imm m n v lv b (dqm := dqm)).
   Qed.
 
@@ -2410,7 +2410,7 @@ Section WpSconfMem.
        s.(mem) !! (pa_add addr j) = Some (nth_byte w j)) ->
     run (read_ram rv64d_types.Read_plain (Physaddr addr) 1 false) s
       (w, default_meta) s.
-  Proof.
+  Proof using .
     intros Hdev Hbytes. unfold read_ram. cbn match.
     apply (proj2 (run_bind _ _ _ _ _)). eexists _, s.
     split; [apply run_returnM_fwd|]. cbn beta zeta.
@@ -2425,7 +2425,7 @@ Section WpSconfMem.
     (forall j : nat, (N.of_nat j < 1)%N ->
        s.(mem) !! (pa_add addr j) = Some (nth_byte w j)) ->
     exec (read_ram rv64d_types.Read_plain (Physaddr addr) 1 false) s = Some ((w, default_meta), s).
-  Proof.
+  Proof using .
     intros Hdev Hbytes.
     apply (run_to_exec _ _ _ _ (run_read_ram_plain_1 addr w s Hdev Hbytes)).
     unfold read_ram. cbn match. rewrite (exec_bind_Some _ _ _ _ _ (exec_returnM _ s)). cbn beta zeta.
@@ -2439,7 +2439,7 @@ Section WpSconfMem.
 
   Local Lemma data2_ext_1_unsigned (v : mword 8) :
     extend_value true v = zero_extend' 64 v.
-  Proof. unfold extend_value. reflexivity. Qed.
+  Proof using . unfold extend_value. reflexivity. Qed.
   (* lbu rd, imm(rs1) -- the width-1 UNSIGNED load, as an instance of
      [wp_load_s_sconf_ugen].  [dqm]-parametric: the byte may be owned outright
      (a stack buffer) or held at [DfracDiscarded] (a read-only image byte out
@@ -2462,7 +2462,7 @@ Section WpSconfMem.
       pa ↦ₘ[ktd]{ dqm } v -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pa Hrd Hrdok.
     (* the class, consumed at [rs1] -- the wiring check; see the family note. *)
     assert (Hpa_all : forall hh : CpuId,
@@ -2495,15 +2495,15 @@ Section WpSconfMem.
      per-width value written to rd. *)
   Lemma data2_ext_8 (v : mword 64) :
     extend_value false v = v.
-  Proof. unfold extend_value. apply sign_extend'_id. Qed.
+  Proof using . unfold extend_value. apply sign_extend'_id. Qed.
 
   Lemma data2_ext_4 (v : mword 32) :
     extend_value false v = sign_extend' 64 v.
-  Proof. unfold extend_value. reflexivity. Qed.
+  Proof using . unfold extend_value. reflexivity. Qed.
 
   Lemma data2_ext_4_unsigned (v : mword 32) :
     extend_value true v = zero_extend' 64 v.
-  Proof. unfold extend_value. reflexivity. Qed.
+  Proof using . unfold extend_value. reflexivity. Qed.
 
   (* lwu rd, imm(rs1) -- the width-4 UNSIGNED load (printk's %u and %x read
      their [uint32] argument with it).  One line off [wp_load_s_sconf_ugen],
@@ -2522,7 +2522,7 @@ Section WpSconfMem.
       pc_is (add_vec_int pc 4) -∗ pa ↦₄[ktd]{ dqm } v -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pa Hrd Hrdok.
     (* the class, consumed at [rs1] -- the wiring check; see the family note. *)
     assert (Hpa_all : forall hh : CpuId,
@@ -2549,7 +2549,7 @@ Section WpSconfMem.
       pc_is (add_vec_int pc 2) -∗ pa ↦₈[ktd]{ dqm } v -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pa Hrd Hrdok.
     (* the class, consumed at [rs1] -- the wiring check; see the family note. *)
     assert (Hpa_all : forall hh : CpuId,
@@ -2581,7 +2581,7 @@ Section WpSconfMem.
       pc_is (add_vec_int pc 4) -∗ pa ↦₈[ktd]{ dqm } v -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pa Hrd Hrdok.
     (* the class, consumed at [rs1] -- the wiring check; see the family note. *)
     assert (Hpa_all : forall hh : CpuId,
@@ -2613,7 +2613,7 @@ Section WpSconfMem.
       pc_is (add_vec_int pc 2) -∗ pa ↦₄[ktd]{ dqm } v -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pa Hrd Hrdok.
     (* the class, consumed at [rs1] -- the wiring check; see the family note. *)
     assert (Hpa_all : forall hh : CpuId,
@@ -2640,7 +2640,7 @@ Section WpSconfMem.
       pc_is (add_vec_int pc 4) -∗ pa ↦₄[ktd]{ dqm } v -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pa Hrd Hrdok.
     (* the class, consumed at [rs1] -- the wiring check; see the family note. *)
     assert (Hpa_all : forall hh : CpuId,
@@ -2762,7 +2762,7 @@ Section WpSconfMem.
       Ψ -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hw0 Hw8 Hvw Hwdvd Huintw Hwrite_plain Hsv HkptEm ea Hwrite.
     iIntros "Hcg Hpc #Hinstr #Hclaim HAU Hcont".
     iDestruct "Hclaim" as "[%Hpalign Hcl2]".
@@ -2996,7 +2996,7 @@ Section WpSconfMem.
       Ψ -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hw0 Hw8 Hvw Hwdvd Huintw Hwrite_plain Hsv HkptEm ea.
     iIntros "Hcg Hpc #Hinstr #Hclaim HAU Hcont".
     iApply (wp_store_s_sconf_au_dat (ktd := ktd) width c pc rs2 rs1 imm m n sv Ψ Em b
@@ -3039,7 +3039,7 @@ Section WpSconfMem.
       wordw_pointsto (KTR := ktd) width pa (DfracOwn 1) sv -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hw0 Hw8 Hvw Hwdvd Huintw Hwrite_plain Hsv pa.
     (* the class, consumed at [rs1] -- the wiring check; see the family note. *)
     assert (Hpa_all : forall hh : CpuId,
@@ -3094,7 +3094,7 @@ Section WpSconfMem.
       wordw_pointsto (KTR := ktd) width pa (DfracOwn 1) sv -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hw0 Hw8 Hvw Hwdvd Huintw Hwrite_plain Hsv pa.
     assert (Hpa_all : forall hh : CpuId,
               add_vec (rget (CID := hh) m rs1) (sign_extend' 64 imm) = pa)
@@ -3123,11 +3123,11 @@ Section WpSconfMem.
 
   Lemma store_ext_8 (r : mword 64) :
     (autocast (T := mword) (subrange_vec_dec r (8*8-1) 0) : mword (8*8)) = r.
-  Proof. apply (subrange_full_gen_cast 64 r ltac:(lia)). Qed.
+  Proof using . apply (subrange_full_gen_cast 64 r ltac:(lia)). Qed.
 
   Lemma autocast_subrange32_id (d : mword 32) :
     autocast (T := mword) (subrange_vec_dec d (8*(0+1)*4-1) (8*0*4)) = d.
-  Proof.
+  Proof using .
     change (8*(0+1)*4-1) with 31. change (8*0*4) with 0.
     unfold subrange_vec_dec. change (31 - 0 + 1) with 32. rewrite autocast_id.
     apply bv_eq. rewrite autocast_id.
@@ -3140,7 +3140,7 @@ Section WpSconfMem.
 
   Lemma store_ext_4 (r : mword 64) :
     (autocast (T := mword) (subrange_vec_dec r (4*8-1) 0) : mword (8*4)) = trunc32 r.
-  Proof. unfold trunc32. reflexivity. Qed.
+  Proof using . unfold trunc32. reflexivity. Qed.
 
   (* [SrcOk rs1] for the ADDRESS base and [SrcOk rs2] for the STORED VALUE:
      two independent instance arguments, resolved independently (no
@@ -3157,7 +3157,7 @@ Section WpSconfMem.
       pc_is (add_vec_int pc 2) -∗ pa ↦₈[ktd] storeval -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pa storeval.
     (* the class, consumed at [rs1] -- the wiring check; see the family note. *)
     assert (Hpa_all : forall hh : CpuId,
@@ -3196,7 +3196,7 @@ Section WpSconfMem.
       pc_is (add_vec_int pc 4) -∗ pa ↦₈[ktd] storeval -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pa storeval.
     (* the class, consumed at [rs1] -- the wiring check; see the family note. *)
     assert (Hpa_all : forall hh : CpuId,
@@ -3234,7 +3234,7 @@ Section WpSconfMem.
       pc_is (add_vec_int pc 2) -∗ pa ↦₄[ktd] storeval -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pa storeval.
     (* the class, consumed at [rs1] -- the wiring check; see the family note. *)
     assert (Hpa_all : forall hh : CpuId,
@@ -3267,7 +3267,7 @@ Section WpSconfMem.
       pc_is (add_vec_int pc 4) -∗ pa ↦₄[ktd] storeval -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pa storeval.
     (* the class, consumed at [rs1] -- the wiring check; see the family note. *)
     assert (Hpa_all : forall hh : CpuId,
@@ -3312,13 +3312,13 @@ Section WpSconfMem.
   (* byte is trunc8 of rs2, definitionally the model's storeval).        *)
   (* ------------------------------------------------------------------- *)
   Local Lemma avi0_mul1 (a : mword 64) : add_vec_int a (0 * 1) = a.
-  Proof. change (0 * 1)%Z with 0%Z. apply avi0. Qed.
+  Proof using . change (0 * 1)%Z with 0%Z. apply avi0. Qed.
 
   Local Lemma is_aligned_vaddr_1 (vaddr : virtaddr) : is_aligned_vaddr vaddr 1 = true.
-  Proof. destruct vaddr as [addr]. unfold is_aligned_vaddr. rewrite Z.rem_1_r. reflexivity. Qed.
+  Proof using . destruct vaddr as [addr]. unfold is_aligned_vaddr. rewrite Z.rem_1_r. reflexivity. Qed.
 
   Local Lemma is_aligned_paddr_1 (paddr : physaddr) : is_aligned_paddr paddr 1 = true.
-  Proof. destruct paddr as [addr]. unfold is_aligned_paddr. rewrite Z.rem_1_r. reflexivity. Qed.
+  Proof using . destruct paddr as [addr]. unfold is_aligned_paddr. rewrite Z.rem_1_r. reflexivity. Qed.
 
   Definition trunc8 (w : mword 64) : mword 8 :=
     autocast (T := mword) (subrange_vec_dec w (Z.sub (Z.mul 1 8) 1) 0).
@@ -3328,7 +3328,7 @@ Section WpSconfMem.
      64.  Every byte-copy loop needs this (memmove, copyinstr), so it lives
      next to [trunc8] rather than in each proof. *)
   Lemma trunc8_zext8 (b : mword 8) : trunc8 (zero_extend' 64 b) = b.
-  Proof.
+  Proof using .
     apply bv_eq. unfold trunc8. rewrite autocast_id.
     unfold subrange_vec_dec. rewrite autocast_id.
     unfold to_word_idx, to_word. rewrite MachineWord.MachineWord.cast_idx_refl.
@@ -3345,7 +3345,7 @@ Section WpSconfMem.
   (* ...and the byte it writes when its source register is x0: copyinstr's
      [sb zero,0(a5)], the store that plants the string terminator. *)
   Lemma trunc8_zero : trunc8 (zero_reg : mword 64) = (mword_of_int 0 : mword 8).
-  Proof. apply bv_eq. vm_compute. reflexivity. Qed.
+  Proof using . apply bv_eq. vm_compute. reflexivity. Qed.
 
   (* [SrcOk rs1] for the ADDRESS base and [SrcOk rs2] for the STORED VALUE:
      two independent instance arguments, resolved independently (no
@@ -3386,7 +3386,7 @@ Section WpSconfMem.
        return direction at TSO; at the ctx tower both directions are
        identities. *)
     wordw_pointsto 1 a dq w ⊣⊢ ctx_pointsto cur_ctx a dq w.
-  Proof.
+  Proof using .
     rewrite /wordw_pointsto. change (Z.to_nat 1) with 1%nat.
     rewrite big_sepL_singleton pa_add_0 nth_byte0_id.
     iSplit; [ iIntros "[_ $]"
@@ -3410,7 +3410,7 @@ Section WpSconfMem.
       ea ↦ₘ[ktd] storeval -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros ea storeval.
     (* the class, consumed at [rs1] -- the wiring check; see the family note. *)
     assert (Hpa_all : forall hh : CpuId,
@@ -3451,7 +3451,7 @@ Section WpSconfMem.
       ea ↦ₘ[ktd] storeval -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros ea storeval.
     assert (Hpa_all : forall hh : CpuId,
               add_vec (rget (CID := hh) m rs1) (sign_extend' 64 imm) = ea)
@@ -3493,7 +3493,7 @@ Section WpSconfMem.
       pa ↦₈[ktd]{ dqm } v -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros imm pa Hrd Hrdok.
     unfold pa.
     rewrite <- sext9_12_64.
@@ -3544,7 +3544,7 @@ Section WpSconfMem.
       pa ↦₈[ktd] storeval -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros imm pa storeval.
     (* WHAT THE CLASS WILL DO HERE, recorded as a proved fact rather than a
        comment: the value this leaf promises is hart-independent, so the
@@ -3610,7 +3610,7 @@ Section WpSconfMem.
       ea ↦₈[ktd] storeval -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros ea storeval.
     (* the class, consumed at [rs1] -- the wiring check; see the family note. *)
     assert (Hpa_all : forall hh : CpuId,
@@ -3708,7 +3708,7 @@ Section WpSconfMem.
          (TsoMemPa.TsWin a 8 j z cp
             (fun h => if decide (h = hart_agent (@cpu_id CIDw))
                       then Some (S (length log)) else own h) lo)).
-  Proof.
+  Proof using .
     intros Hz. iIntros "Hm Htso Hold".
     iDestruct (tso_interp_of_pin with "Htso") as %Hpin.
     iDestruct (tso_interp_of_bound with "Htso") as %Hbd.
@@ -3795,7 +3795,7 @@ Section WpSconfMem.
     ([∗ list] j ∈ seq 0 8,
        TsoCtx.phys_ledger_wpay (pa_add a j) (DfracOwn 1) (nth_byte vnew j)
          (S (length log)) (TsoMemPa.TsWin a 8 j z cp own' lo)).
-  Proof.
+  Proof using .
     intros Harm Hoth. iIntros "Hm Htso Hold".
     iDestruct (tso_interp_of_pin with "Htso") as %Hpin.
     iDestruct (tso_interp_of_bound with "Htso") as %Hbd.
@@ -3869,7 +3869,7 @@ Section WpSconfMem.
              (TsoMemPa.TsWin ea 8 j z cp own' lo)) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros ea Hz Hown.
     assert (Hpa_all : forall hh : CpuId,
               add_vec (rget (CID := hh) m rs1) (sign_extend' 64 imm) = ea)
@@ -3960,7 +3960,7 @@ Section WpSconfMem.
            (TsoMemPa.TsWin ea 8 j z8 cp (fun _ => Some lo) lo)) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros ea z8.
     (* the class, consumed at [rs1] -- the wiring check; see the family note. *)
     assert (Hpa_all : forall hh : CpuId,
@@ -4085,7 +4085,7 @@ Section WpSconfMem.
       ea ↦₄[ktd] storeval -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros ea storeval.
     (* the class, consumed at [rs1] -- the wiring check; see the family note. *)
     assert (Hpa_all : forall hh : CpuId,
@@ -4133,7 +4133,7 @@ Section WpSconfMem.
       wordw_pointsto (KTR := ktd) 4 ea (DfracOwn 1) storeval -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros ea storeval.
     iIntros "Hcg Hpc Hinstr Hbytes Hcont".
     iDestruct (sie_cap_gpr_split with "Hcg") as "(Hhs & Hsc & Hcap & Hfile)".

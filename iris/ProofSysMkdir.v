@@ -292,7 +292,7 @@ Section ProofSysMkdirFrame.
     (∃ w : mword 64, (pa_stk sp0 1) ↦₈[KT1] w) ∗
     (∃ w : mword 64, (pa_stk sp0 2) ↦₈[KT1] w) ∗
     bytes_own (KTR := KT1) (DfracOwn 1) (pa_stk sp0 18) 128.
-  Proof.
+  Proof using .
     iIntros "H". rewrite (stack_own_slots (KTR := KT1)). cbn [seq].
     iDestruct "H" as "(H1 & H2 & H3 & H4 & H5 & H6 & H7 & H8 & H9 & H10 &
                        H11 & H12 & H13 & H14 & H15 & H16 & H17 & H18 & _)".
@@ -319,7 +319,7 @@ Section ProofSysMkdirFrame.
     (pa_stk sp0 1) ↦₈[KT1] w1 -∗ (pa_stk sp0 2) ↦₈[KT1] w2 -∗
     bytes_own (KTR := KT1) (DfracOwn 1) (pa_stk sp0 18) 128 -∗
     stack_own (KTR := KT1) sp0 18.
-  Proof.
+  Proof using .
     intro Hal. iIntros "H1 H2 Hb".
     change 128%nat with (8 * 16)%nat.
     iDestruct (bytes_own_slotsn (KTR := KT1) sp0 18 16 ltac:(lia) Hal with "Hb") as "Hs".
@@ -345,11 +345,11 @@ Section ProofSysMkdirFrame.
   Lemma md_bytes_name `{XI : CurCtx} (a : mword 64) (N : nat) :
     bytes_own (KTR := KT1) (DfracOwn 1) a N ⊢
     ∃ f : nat -> bv 8, [∗ list] j ∈ seq 0 N, pa_add a j ↦ₘ[KT1] f j.
-  Proof. rewrite /bytes_own. exact (bb_any_named (KTR := KT1) a N). Qed.
+  Proof using . rewrite /bytes_own. exact (bb_any_named (KTR := KT1) a N). Qed.
 
   Lemma md_name_bytes `{XI : CurCtx} (a : mword 64) (N : nat) (f : nat -> bv 8) :
     ([∗ list] j ∈ seq 0 N, pa_add a j ↦ₘ[KT1] f j) ⊢ bytes_own (KTR := KT1) (DfracOwn 1) a N.
-  Proof. rewrite /bytes_own. exact (bb_named_any (KTR := KT1) a N f). Qed.
+  Proof using . rewrite /bytes_own. exact (bb_named_any (KTR := KT1) a N f). Qed.
 
   (* 128 = (k+1) + (127-k): create reads the NUL-terminated prefix, the rest
      rides through untouched *)
@@ -359,7 +359,7 @@ Section ProofSysMkdirFrame.
     ([∗ list] j ∈ seq 0 (S k), pa_add a j ↦ₘ[KT1] f j)
     ∗ ([∗ list] j ∈ seq 0 (127 - k)%nat,
          pa_add (pa_add a (S k)) j ↦ₘ[KT1] f (S k + j)%nat).
-  Proof.
+  Proof using .
     intro Hk.
     replace 128%nat with (S k + (127 - k))%nat by lia.
     rewrite (bb_split a (S k) (127 - k)%nat f). iIntros "[$ $]".
@@ -371,7 +371,7 @@ Section ProofSysMkdirFrame.
     ([∗ list] j ∈ seq 0 (127 - k)%nat,
        pa_add (pa_add a (S k)) j ↦ₘ[KT1] f (S k + j)%nat) -∗
     bytes_own (KTR := KT1) (DfracOwn 1) a 128.
-  Proof.
+  Proof using .
     intro Hk. iIntros "H1 H2".
     iDestruct (md_name_bytes a (S k) f with "H1") as "B1".
     iDestruct (md_name_bytes (pa_add a (S k)) (127 - k)%nat
@@ -434,7 +434,7 @@ Section ProofSysMkdirEpilogue.
         pc_is (ret_pc (m !!! Regidx Rra : mword 64)) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK18 Kpop Hsp0 HMsp HMthr Hal.
     iIntros "Hcg #Htext Hpc Hf1 Hf2 Hbuf Hcont".
     assert (Hc1 : add_vec (M !!! Regidx csp_rs1 : mword 64)
@@ -623,7 +623,7 @@ Section ProofSysMkdirM1Tail.
         proc_priv_bare (proc_addr jx) pidv Upr -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HKeo HK18 Kpop Hgeom Hj Hgl Hlkempty Hsp0 HMsp HMthr Hal.
     iIntros "Hcg Hown Htce Hcce #Htext #Hkd Hpc #Hpenv #Hbio #Hlog Hseam Hgen
               Hpid #Hprocs #Hdev #Hgeo #Hdlk Hop Hf1 Hf2 Hbuf Hcont".
@@ -749,7 +749,7 @@ Section ProofSysMkdirBody.
     (k < NINODE)%nat ->
     (ic_escrows fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst -∗ ic_escrow fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k
      : iProp Σ).
-  Proof.
+  Proof using .
     iIntros (Hk) "H".
     iApply (ic_escrows_lookup fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k Hk with "H").
   Qed.
@@ -776,7 +776,7 @@ Section ProofSysMkdirBody.
  ns dqb dqs dqbs dqn v
                             pid U m K eb b lks
                             P Pmiss Farm Fdots Fun Fok Fex.
-  Proof.
+  Proof using .
     cbv beta delta [wp_sys_mkdir_sconf_body].
     intros pcE pj ret_tgt HK HdevR Hnib0 Hgeom
            Hsize Hbm0 Hbmcov Hbmlog Hist0 Hcovb Hbmgeo Hiregb

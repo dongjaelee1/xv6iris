@@ -130,7 +130,7 @@ Section UservecAllPt.
      switch needs *)
   Lemma uv_utlb_map_wf (uroot tfp : mword 44) (um : gmap (mword 27) (mword 64)) :
     utlb_inv_pt uroot tfp um -∗ ⌜upt_map_wf um⌝.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as (usatp tlbvec t)
       "(_ & _ & _ & _ & _ & _ & _ & %Hwf & _ & _ & _)".
     iPureIntro. exact Hwf.
@@ -149,7 +149,7 @@ Section UservecAllPt.
        accepts it. *)
     wp_uservec_pt_body (fun h : CpuId => UT.usertrap_res_bare (CID := h))
       C pt Rut j vksp U sts gn cs pid fdep Wk M g ms_v sc_v stval_v sepc_v.
-  Proof.
+  Proof using .
     cbv beta zeta delta [wp_uservec_pt_body].
     (* [tf_pa] deliberately NOT unfolded here: its 35 trapframe cells ride in
        the Iris context for every one of this proof's ~600 steps, and every

@@ -209,7 +209,7 @@ Section Pt2OwnedWalk.
                   hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro ∗
                   ptree_own 2 (DfracOwn 1) t' ∗ own_context XI ∗
                   resv_any cpu_id).
-  Proof.
+  Proof using .
     intros Hdisjf HDr HDw Hacc Hmisa Hmenv Hhtif Hcp Hms HSXL HMPRV
            Hsatp Htlb Hpcfg Hpaddr Hpma Hsatpok Hpmpok Hall
            Hbase Hmaps Hslotok Hvar Hchk Hgchk Hcanon Hout.
@@ -522,7 +522,7 @@ Section Pt2OwnedWalk.
                   hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro ∗
                   ptree_own 2 (DfracOwn 1) t' ∗ own_context XI ∗
                   resv_any cpu_id).
-  Proof.
+  Proof using .
     intros Hdisjf HDr HDw Hacc Hmisa Hmenv Hhtif Hcp Hms HSXL HMPRV
            Hsatp Htlb Hpcfg Hpaddr Hpma Hsatpok Hpmpok Hall
            Hmaps Hslot Hvar Hchk Hgchk Hcanon Hout.
@@ -873,7 +873,7 @@ Section Pt2SharedWalk.
                   ⌜ kpt_slot_land t0 rs tlbvec (svpn_of va) rsf ⌝ ∗
                   hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro ∗
                   resv_any cpu_id).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv HDsatp HWtlb HDpma HDcfg HDaddr HDhtif
       HDb Hag HDlc Haglc Hcp Hsatp Htlb Hhtif Hpma Hpcfg Hpaddr Hmstag
       Hmisa Hmenv HPBMTE HADUE Heff Heffg Hss Hssg Htm Htmg Hppn Hasid
@@ -1226,7 +1226,7 @@ Section Pt2SharedWalk.
                   ⌜ kpt_slot_land t0 rs tlbvec (svpn_of va) rsf ⌝ ∗
                   hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro ∗
                   resv_any cpu_id).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv HDsatp HWtlb HDpma HDcfg HDaddr HDhtif
       HDb Hag HDlc Haglc Hcp Hsatp Htlb Hhtif Hpma Hpcfg Hpaddr Hmstag
       Hmisa Hmenv HPBMTE HADUE Heff Heffg Hss Hssg Htm Htmg Hppn Hasid
@@ -1413,7 +1413,7 @@ Section Pt2Window.
       satp ↦ᵣ satp0 ∗ tlb ↦ᵣ tlbv ∗
       pmpcfg_n ↦ᵣ pcfg ∗ pmpaddr_n ↦ᵣ paddr ∗
       pt2_res_kcur rc Sp tlbv.
-  Proof.
+  Proof using .
     iIntros "H".
     iDestruct (tlb_inv_pt2_kcur_open with "H") as (satp0 tlbvec tp tc0)
       "(Hsatp & %Hmode & %Hasid & %Hppn & Htlb & %Hok2 & %HSp & %Hpmaw &
@@ -1439,7 +1439,7 @@ Section Pt2Window.
     pmpcfg_n ↦ᵣ pcfg -∗ pmpaddr_n ↦ᵣ paddr -∗
     pt2_res_kcur rc Sp tlbv -∗
     tlb_inv_pt2_kcur rc Sp.
-  Proof.
+  Proof using .
     intros (Hmode & Hasid & Hppn & Hpmaw) (HA & Hord & HX & HW & HR & Hcov).
     iIntros "Hsatp Htlb Hpcfg Hpaddr Hres".
     iDestruct "Hres" as (tp tc0) "(%Hok2 & %HSp & Htp & #Hlb0 & #Hkinv)".
@@ -1466,7 +1466,7 @@ Section Pt2Window.
       satp ↦ᵣ satp0 ∗ tlb ↦ᵣ tlbv ∗
       pmpcfg_n ↦ᵣ pcfg ∗ pmpaddr_n ↦ᵣ paddr ∗
       pt2_res_kprev rc kroot Sc tlbv.
-  Proof.
+  Proof using .
     iIntros "H".
     iDestruct (tlb_inv_pt2_kprev_open with "H") as (satp0 tlbvec tp0 tc)
       "(Hsatp & %Hmode & %Hasid & %Hppn & Htlb & %Hok2 & %HSc & %Hpmaw &
@@ -1492,7 +1492,7 @@ Section Pt2Window.
     pmpcfg_n ↦ᵣ pcfg -∗ pmpaddr_n ↦ᵣ paddr -∗
     pt2_res_kprev rc kroot Sc tlbv -∗
     tlb_inv_pt2_kprev rc kroot Sc.
-  Proof.
+  Proof using .
     intros (Hmode & Hasid & Hppn & Hpmaw) (HA & Hord & HX & HW & HR & Hcov).
     iIntros "Hsatp Htlb Hpcfg Hpaddr Hres".
     iDestruct "Hres" as (tp0 tc) "(%Hok2 & %HSc & Htc & #Hlb0 & #Hkinv)".
@@ -1566,7 +1566,7 @@ Section Pt2Window.
                   hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro ∗
                   pt2_res_kcur rc Sp (register_lookup tlb rsf) ∗
                   own_context XI ∗ resv_any cpu_id).
-  Proof.
+  Proof using .
     intros Hdisjf HDr HDw Hacc Hmisa Hmenv Hhtif Hcp Hms HSXL HMPRV
            Hsatp Htlb Hpcfg Hpaddr Hpma Hsatpok Hpmpok Hall
            Hsel Hpres Hchk Hgchk Hcanon Hident.
@@ -1785,7 +1785,7 @@ Section Pt2Window.
                   hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro ∗
                   pt2_res_kprev rc kroot Sc (register_lookup tlb rsf) ∗
                   own_context XI ∗ resv_any cpu_id).
-  Proof.
+  Proof using .
     intros Hdisjf HDr HDw Hacc Hmisa Hmenv Hhtif Hcp Hms HSXL HMPRV
            Hsatp Htlb Hpcfg Hpaddr Hpma Hsatpok Hpmpok Hall
            Hbc Hsel Hpres Hchk Hgchk Hcanon Hident.
@@ -1969,7 +1969,7 @@ Section Pt2Tramp.
   Local Lemma rx_chk (a d : mword 1) (mxr do_sum : bool) :
     pte_check_ok (InstructionFetch tt) Supervisor mxr do_sum
       (pte_set_ad (mk_pte tramp_ppn (kperm_flags KP_rx)) a d).
-  Proof. exact (kperm_variant_check_fetch tramp_ppn a d mxr do_sum). Qed.
+  Proof using . exact (kperm_variant_check_fetch tramp_ppn a d mxr do_sum). Qed.
 
   Local Lemma rx_gchk (a d : mword 1) (mxr do_sum : bool)
       (Db : register -> bool) (s0 : mstate) :
@@ -1979,7 +1979,7 @@ Section Pt2Tramp.
                 (ext_bits_of_PTE
                    (pte_set_ad (mk_pte tramp_ppn (kperm_flags KP_rx)) a d)) tt)
            s0 = true.
-  Proof.
+  Proof using .
     exact (kperm_variant_goodb_check tramp_ppn KP_rx a d (InstructionFetch tt)
              mxr do_sum Db s0
              (s_acc_ssa_goodb (InstructionFetch tt) Db s0 (or_introl eq_refl))
@@ -1993,7 +1993,7 @@ Section Pt2Tramp.
     forall t, S t -> exists p2 p1 (a d : mword 1),
       ptree_maps t (svpn_of va) p2 p1
         (pte_set_ad (mk_pte tramp_ppn (kperm_flags KP_rx)) a d).
-  Proof.
+  Proof using .
     intros Hvpn (Hsel & _) t HS. rewrite Hvpn.
     destruct (Hsel t HS) as (p2 & p1 & a & d & Hm).
     exists p2, p1, a, d. rewrite kperm_rx_tramp_variant. exact Hm.
@@ -2004,7 +2004,7 @@ Section Pt2Tramp.
     forall t (a1 d1 : mword 1), S t ->
       S (ptree_set_leaf t (svpn_of va)
            (pte_set_ad (mk_pte tramp_ppn (kperm_flags KP_rx)) a1 d1)).
-  Proof.
+  Proof using .
     intros Hvpn (_ & Hpres) t a1 d1 HS.
     rewrite Hvpn kperm_rx_tramp_variant. exact (Hpres t a1 d1 HS).
   Qed.
@@ -2033,7 +2033,7 @@ Section Pt2Tramp.
     tramp_tr_obl Df pc ms bmi cy ti ip mst0 pcfg paddr mc micfg misa0
       mseccfg0 senv0 pmar0 elp0 satp0 mie0 mdv0 menv0
       (pt2_res_kcur rc Sp).
-  Proof.
+  Proof using .
     intros Hmisa Hmenv HSXL HMPRV Hsatpok Hpmpok Hpma HSp.
     iIntros "#Hat #Hcreds #Hcert". rewrite /tramp_tr_obl. iModIntro.
     iIntros (va pax tv rr) "%Hcanon %Hvpn %Hident Hfrag Htok HRes Hrw Hro".
@@ -2118,7 +2118,7 @@ Section Pt2Tramp.
     hw_config -∗
     tramp_fetch_tr (s_Df_mix dq) (pt2_res_kcur rc Sp) pc mst0 satp0 mie0
       mdv0 menv0 pcfg paddr.
-  Proof.
+  Proof using .
     intros Hmenv HSXL HMPRV Hsatpok Hpmpok HSp.
     iIntros "#Hat #Hcreds #Hhw".
     iDestruct (hw_config_cert with "Hhw") as "#Hcert".
@@ -2169,7 +2169,7 @@ Section Pt2Tramp.
     tramp_tr_obl Df pc ms bmi cy ti ip mst0 pcfg paddr mc micfg misa0
       mseccfg0 senv0 pmar0 elp0 satp0 mie0 mdv0 menv0
       (pt2_res_kprev rc kroot Sc).
-  Proof.
+  Proof using .
     intros Hmisa Hmenv HSXL HMPRV Hsatpok Hpmpok Hpma HSc Hbc.
     iIntros "#Hat #Hcert". rewrite /tramp_tr_obl. iModIntro.
     iIntros (va pax tv rr) "%Hcanon %Hvpn %Hident Hfrag Htok HRes Hrw Hro".
@@ -2255,7 +2255,7 @@ Section Pt2Tramp.
     hw_config -∗
     tramp_fetch_tr (s_Df_mix dq) (pt2_res_kprev rc kroot Sc) pc mst0 satp0 mie0
       mdv0 menv0 pcfg paddr.
-  Proof.
+  Proof using .
     intros Hmenv HSXL HMPRV Hsatpok Hpmpok HSc Hbc.
     iIntros "#Hat #Hhw".
     iDestruct (hw_config_cert with "Hhw") as "#Hcert".
@@ -2384,7 +2384,7 @@ Section Pt2Engine.
          pc_is npc -∗ Rl npc ms1 mdv1 -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HSIE HMPRV HSXL Hmm HPBMTE Hmenvval HSp
            Hcanon Hvpn Hident Hcanon2 Hvpn2 Hident2 Hva2 Hpa4va4.
     iIntros "#Hat #Hcreds #Hhw #Hminv Hhs Hpriv Hmstatus Hmiec Hmdlc Hmenvc Hinv
@@ -2499,7 +2499,7 @@ Section Pt2Engine.
          pc_is npc -∗ Rl npc ms1 mdv1 -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HSIE HMPRV HSXL Hmm HPBMTE Hmenvval HSc Hbc
            Hcanon Hvpn Hident Hcanon2 Hvpn2 Hident2 Hva2 Hpa4va4.
     iIntros "#Hat #Hhw #Hminv Hhs Hpriv Hmstatus Hmiec Hmdlc Hmenvc Hinv

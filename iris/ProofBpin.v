@@ -118,12 +118,12 @@ Section ProofBpin.
   Local Lemma incr32_pos (z : Z) :
     (0 <= z)%Z -> (z + 1 < 2 ^ 31)%Z ->
     incr32 (mword_of_int z : mword 32) = (mword_of_int (z + 1) : mword 32).
-  Proof. intros H0 H1. rewrite /incr32. by apply moi32_storeval_succ. Qed.
+  Proof using . intros H0 H1. rewrite /incr32. by apply moi32_storeval_succ. Qed.
 
   Lemma wp_bpin_sconf (bn : bio_names) (V : bio_view Σ) (k : nat)
       (m : regfile) (n : nat) (eb : bool) (p : mword 64) (K : nat) (b : bool) (lks : gset string)
     : wp_bpin_sconf_body bn V k m n eb p K b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_bpin_sconf_body].
     intros pcE ret_tgt HK Hnoffpos Hk Ha0 Hbelow.
     pose proof (locks_below_not_elem _ _ Hbelow) as Hfresh.

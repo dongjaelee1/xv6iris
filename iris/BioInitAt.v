@@ -79,7 +79,7 @@ Section BioInitAt.
         (bcnt_var (bn_regc bn k) 0 ∗ bcnt_var (bn_regc bn k) 0)))%I.
 
   Local Lemma bio_at_seq_cons (j n : nat) : seq j (S n) = j :: seq (S j) n.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* the four per-buffer gnames collected into ONE function, so the induction
      updates one binder rather than three ([BioInv]'s [tok_fun_alloc] /
@@ -91,7 +91,7 @@ Section BioInitAt.
           sl_free_pair (f k).1.1 ∗
           lock_tok_excl (f k).1.2 ∗
           lock_tok_excl (f k).2.
-  Proof.
+  Proof using .
     iInduction n as [|n IH] forall (j).
     { iModIntro. iExists (fun _ => inhabitant). cbn [seq]. done. }
     iMod sl_pair_ghost_alloc as (p) "Hp".
@@ -116,7 +116,7 @@ Section BioInitAt.
           ghost_var (fd k) 1
             (SlotReg 0 false (mword_of_int 0 : mword 32, mword_of_int 0 : mword 32) None : slot_reg bio_id bio_x) ∗
           (bcnt_var (fc k) 0 ∗ bcnt_var (fc k) 0).
-  Proof.
+  Proof using .
     iInduction n as [|n IH] forall (j).
     { iModIntro. iExists (fun _ => inhabitant), (fun _ => inhabitant),
         (fun _ => inhabitant), (fun _ => inhabitant). cbn [seq]. done. }
@@ -143,7 +143,7 @@ Section BioInitAt.
 
   Lemma bio_names_ghost_alloc :
     bslots_auth -∗ bslots BSLOTS_FS -∗ |==> ∃ bn : bio_names, bio_free_tok bn.
-  Proof.
+  Proof using .
     iIntros "Hsa Hsf".
     iMod lock_ghost_alloc as (γlk) "Hlk".
     iMod (own_alloc (● (∅ : gmap nat (option Qp * positive)) : bioUR)) as (γb) "Hauth".
@@ -212,7 +212,7 @@ Section BioInitAt.
     bcache_lru bhead (blist 0 NBUF) -∗
     ([∗ set] b ∈ bv_cov V, pool_blk V b) ={E}=∗
     own_context cur_ctx ∗ bio_ctx bn V ∗ bslots BSLOTS_FS.
-  Proof.
+  Proof using .
     iIntros (Hnc0) "Hrun (Hlkg & Hauth & Hsa & Hsf & Hbg & Hregs) Hlkw #Hnm Hcpu Hfresh Hbufs Hlru Hpool".
     assert (Hu0 : uint (mword_of_int 0 : mword 32) = 0)
       by (vm_compute; reflexivity).

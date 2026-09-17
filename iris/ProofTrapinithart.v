@@ -50,7 +50,7 @@ Section TrapinithartBody.
   Lemma wp_trapinithart_sconf_proof (mm : regfile) (K : nat)
       (tv0 : mword 64) (p : mword 64) :
     wp_trapinithart_sconf_body mm K tv0 p.
-  Proof.
+  Proof using .
     cbv beta delta [wp_trapinithart_sconf_body].
     intros pcE ret_tgt HK.
     iIntros "Hcg #Htext Hpc Hstv Hcont".

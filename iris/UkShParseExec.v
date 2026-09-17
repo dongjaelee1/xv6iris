@@ -205,7 +205,7 @@ Section UkShParseExec.
          urun N h' mc' (mword_of_int 0x662) (24 + nn) -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intro rest.
     induction rest as [| tk rest IH ];
       intros done cur h mc wq weq Hnosym Hs0 Hs64 Hps0 Hps8 Hpssz

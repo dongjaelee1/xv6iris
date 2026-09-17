@@ -76,7 +76,7 @@ Section InstrBytes.
     is_aligned_paddr (Physaddr (fetch_pa pc)) 2 = true /\
     neq_vec (access_vec_dec pc 0) ('b"0") = false /\
     neq_vec (access_vec_dec pc 1) ('b"0") = true.
-  Proof.
+  Proof using .
     intros H2 H4.
     pose proof (bv_unsigned_in_range _ pc) as [Hlo _].
     assert (Hr2 : Z.rem (bv_unsigned pc) 2 = 0).
@@ -131,7 +131,7 @@ Section InstrBytes.
      high halfword read of a 2-aligned 32-bit fetch. *)
   Lemma avi_assoc (a : mword 64) (x y : Z) :
     add_vec_int (add_vec_int a x) y = add_vec_int a (x + y).
-  Proof.
+  Proof using .
     unfold add_vec_int, add_vec, Operators_mwords.word_binop, Operators_mwords.with_word',
            SailStdpp.Values.with_word, mword_of_int,
            MachineWord.MachineWord.add, MachineWord.MachineWord.Z_to_word.
@@ -150,7 +150,7 @@ Section InstrBytes.
   Lemma align2_plus2 (pc : mword 64) :
     is_aligned_vaddr (Virtaddr pc) 2 = true ->
     is_aligned_paddr (Physaddr (fetch_pa (add_vec_int pc 2))) 2 = true.
-  Proof.
+  Proof using .
     intro H2. unfold is_aligned_vaddr in H2. apply Z.eqb_eq in H2.
     rewrite uint_unsigned in H2.
     pose proof (bv_unsigned_in_range _ pc) as [Hlo _].
@@ -176,7 +176,7 @@ Section InstrBytes.
   Lemma wrap8_shift_wrap16 (x s t : Z) :
     0 <= s -> 0 <= t -> t + 8 <= 16 ->
     bv_wrap 8 (bv_wrap 16 (x ≫ s) ≫ t) = bv_wrap 8 (x ≫ (s + t)).
-  Proof.
+  Proof using .
     intros Hs Ht Hlt. unfold bv_wrap, bv_modulus.
     change (Z.of_N 8) with 8. change (Z.of_N 16) with 16.
     apply Z.bits_inj'. intros k Hk.
@@ -197,7 +197,7 @@ Section InstrBytes.
   Lemma nth_byte_subrange_lo (w : mword 32) (j : nat) :
     (N.of_nat j < 2)%N ->
     nth_byte (subrange_vec_dec w 15 0 : mword 16) j = nth_byte w j.
-  Proof.
+  Proof using .
     intro Hj. apply bv_eq. unfold nth_byte, subrange_vec_dec.
     rewrite autocast_id.
     unfold to_word_idx, to_word. rewrite MachineWord.MachineWord.cast_idx_refl.
@@ -214,7 +214,7 @@ Section InstrBytes.
   Lemma nth_byte_subrange_hi (w : mword 32) (j : nat) :
     (N.of_nat j < 2)%N ->
     nth_byte (subrange_vec_dec w 31 16 : mword 16) j = nth_byte w (2 + j).
-  Proof.
+  Proof using .
     intro Hj. apply bv_eq. unfold nth_byte, subrange_vec_dec.
     rewrite autocast_id.
     unfold to_word_idx, to_word. rewrite MachineWord.MachineWord.cast_idx_refl.
@@ -231,7 +231,7 @@ Section InstrBytes.
      the [F_Base] reassembly fact of the 2-aligned (2+2-read) fetch. *)
   Lemma concat_subranges_id (w : mword 32) :
     concat_vec (subrange_vec_dec w 31 16) (subrange_vec_dec w 15 0) = w.
-  Proof.
+  Proof using .
     apply bv_eq. unfold concat_vec, subrange_vec_dec.
     rewrite !autocast_id.
     unfold to_word_idx, to_word. rewrite !MachineWord.MachineWord.cast_idx_refl.
@@ -301,7 +301,7 @@ Section InstrBytes.
     kmap_static_claims -∗
     instr_bytes pc r -∗
     ⌜ exec (fetch tt) σ = Some (r, σ) ⌝.
-  Proof.
+  Proof using .
     iIntros (Hpmp0 Hpma0 HmisaC Hstat) "[Hreg [Hmem Hdev]] Hpc Hpriv Hpmpc Hpma Hhtif Hmisa #Hbundle Hbytes".
     iDestruct (reg_valid    with "Hreg Hpc")   as %Lpc.
     iDestruct (reg_valid_dq with "Hreg Hpriv") as %Lpriv.
@@ -517,7 +517,7 @@ Section InstrBytes.
     misa ↦ᵣ{ dqm } misa0 -∗
     mstatus ↦ᵣ{ dqs } mstatus0 -∗
     ⌜ exec (dispatchInterrupt Machine) σ = Some (None, σ) ⌝.
-  Proof.
+  Proof using .
     iIntros (HmisaS HmIE) "[Hreg Hmem] Hmisa Hmstatus".
     iDestruct (reg_valid_dq with "Hreg Hmisa")    as %Lmisa.
     iDestruct (reg_valid_dq with "Hreg Hmstatus") as %Lmstatus.
@@ -551,7 +551,7 @@ Section InstrBytes.
     mstate_interp σ -∗
     r ↦ᵣ{ dq } v -∗
     ⌜ register_lookup r σ.(sregs) = v ⌝.
-  Proof.
+  Proof using .
     iIntros "[Hreg _] Hr". iApply (reg_valid_dq with "Hreg Hr").
   Qed.
 
@@ -754,14 +754,14 @@ Section InstrBytes.
      continuation.  Used by every memory / control-flow instruction WP. *)
   Global Instance reg_pointsto_fractional (r : register) (v : type_of_register r) :
     Fractional (fun q => reg_pointsto r (DfracOwn q) v).
-  Proof. rewrite /reg_pointsto. apply _. Qed.
+  Proof using . rewrite /reg_pointsto. apply _. Qed.
   Global Instance reg_pointsto_as_fractional (r : register) (q : Qp) (v : type_of_register r) :
     AsFractional (reg_pointsto r (DfracOwn q) v) (fun q => reg_pointsto r (DfracOwn q) v) q.
-  Proof. rewrite /reg_pointsto. split; [done | apply _]. Qed.
+  Proof using . rewrite /reg_pointsto. split; [done | apply _]. Qed.
 
   Lemma reg_pointsto_agree (r : register) (dq1 dq2 : dfrac) (v1 v2 : type_of_register r) :
     reg_pointsto r dq1 v1 -∗ reg_pointsto r dq2 v2 -∗ ⌜ v1 = v2 ⌝.
-  Proof.
+  Proof using .
     rewrite /reg_pointsto. iIntros "H1 H2".
     iDestruct (ghost_map_elem_agree with "H1 H2") as %Heq.
     iPureIntro. exact (Eqdep_dec.inj_pair2_eq_dec _ Decidable_eq_register _ r v1 v2 Heq).
@@ -784,7 +784,7 @@ Section InstrBytes.
       ⌜ eq_vec (_get_Mstatus_MPRV mstatus0) ('b"1") = false ⌝ ∗
       ⌜ _get_Mstatus_SXL mstatus0 = 'b"10" ⌝ ∗
       ⌜ mstatus_kernel_facts mstatus0 ⌝.
-  Proof. iIntros "H". iExact "H". Qed.
+  Proof using . iIntros "H". iExact "H". Qed.
 
   (* mmode_config_rebuild: reassemble [mmode_config] from raw cells, given the
      three mstatus invariant facts.  [dq]-generic (the cells may be fractional).
@@ -801,7 +801,7 @@ Section InstrBytes.
     cur_privilege ↦ᵣ{ dq } Machine -∗
     mstatus ↦ᵣ{ dq } mstatus0 -∗
     mmode_config dq.
-  Proof.
+  Proof using .
     iIntros (HmIE HMPRV HSXL HKF) "#Hhw Hhs Hpriv Hms".
     iFrame "Hhw Hhs Hpriv".
     iExists mstatus0. iFrame "Hms".
@@ -814,7 +814,7 @@ Section InstrBytes.
   Lemma mmode_config_split (q : Qp) :
     mmode_config (DfracOwn q) ⊢
       mmode_config (DfracOwn (q/2)) ∗ mmode_config (DfracOwn (q/2)).
-  Proof.
+  Proof using .
     iIntros "(#Hhw & Hhs & Hpriv & Hmst)".
     iDestruct "Hmst" as (ms0) "(Hms & %HmIE & %HMPRV & %HSXL & %HKF)".
     iDestruct "Hhs" as "[Hhs1 Hhs2]".
@@ -828,7 +828,7 @@ Section InstrBytes.
   Lemma mmode_config_combine (q : Qp) :
     mmode_config (DfracOwn (q/2)) -∗ mmode_config (DfracOwn (q/2)) -∗
     mmode_config (DfracOwn q).
-  Proof.
+  Proof using .
     iIntros "(#Hhw & Hhs1 & Hpriv1 & Hmst1) (_ & Hhs2 & Hpriv2 & Hmst2)".
     iDestruct "Hmst1" as (ms0) "(Hms1 & %HmIE & %HMPRV & %HSXL & %HKF)".
     iDestruct "Hmst2" as (ms0') "(Hms2 & _ & _ & _)".
@@ -872,7 +872,7 @@ Section InstrBytes.
       hreg_frame_ro (mm_Df dq)
         (mm_rs pc pc ms bmi cy ti ip mst0 pmpcfg0 mc micfg misa0
            mseccfg0 pmar0 elp0 senv0) mm_Dro.
-  Proof.
+  Proof using .
     iIntros "Hmm Hpmpc Hpc".
     iDestruct "Hmm" as "(#Hhw & Hhs & Hpriv & Hmst)".
     iDestruct "Hmst" as (mst0) "(Hmstatus & %HmIE & %HMPRV & %HSXL & %HKF)".
@@ -903,7 +903,7 @@ Section InstrBytes.
   Qed.
 
   Lemma hw_config_kmap : hw_config -∗ kmap_static_claims.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as (misa0 mseccfg0 pmar0 elp0)
       "(_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ &
         #Hk & _)".
@@ -926,7 +926,7 @@ Section InstrBytes.
                    mseccfg0 pmar0 elp0 senv0))
       (mm_rs pc pc ms (minstret_inc_flag mc micfg Machine) cy ti ip mst0 pcfg mc micfg
          misa0 mseccfg0 pmar0 elp0 senv0).
-  Proof.
+  Proof using .
     apply mm_rs_agree.
     all: try (rewrite wrap_pre_mi; by rewrite mm_rs_mc mm_rs_micfg).
     all: try (rewrite wrap_pre_other; [| vm_compute; reflexivity ]).
@@ -954,7 +954,7 @@ Section InstrBytes.
          (register_lookup (R_bitvector_64 mtime) rs)
          (register_lookup (R_bitvector_64 mip) rs)
          mst0 pcfg mc micfg misa0 mseccfg0 pmar0 elp0 senv0).
-  Proof.
+  Proof using .
     intros Hag. apply mm_rs_agree.
     all: try reflexivity.
     all: (etransitivity;
@@ -970,7 +970,7 @@ Section InstrBytes.
   Qed.
 
   Lemma hw_config_cert : hw_config -∗ gen_cert.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as (misa0 mseccfg0 pmar0 elp0)
       "(_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ &
         _ & #Hc & _)".
@@ -983,7 +983,7 @@ Section InstrBytes.
      a duplication. *)
   Lemma mmode_config_cert (dq : dfrac) :
     mmode_config dq -∗ gen_cert ∗ mmode_config dq.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as "(#Hhw & Hrest)".
     iSplitR "Hrest"; [by iApply hw_config_cert|]. by iFrame "Hhw Hrest".
   Qed.
@@ -1012,7 +1012,7 @@ Section InstrBytes.
       (mm_rs npc npc ms bmi cy ti ip mst0 pcfg mc micfg misa0
          mseccfg0 pmar0 elp0 senv0) mm_Dro -∗
     mmode_config dq ∗ pmpcfg_n ↦ᵣ{ dq } pcfg ∗ pc_is npc.
-  Proof.
+  Proof using .
     intros HmIE HMPRV HSXL HKF.
     iIntros "#Hhw Hresv Hrw Hro".
     rewrite mm_rw_split mm_ro_split.
@@ -1053,7 +1053,7 @@ Section InstrBytes.
        ⌜HartMFetch.fobl_ifetch img log itv pa n w⌝ ∗
        ▷ (|={∅,⊤}=> mstate_interp σ ∗ hart_iview_auth cpu_id itv ∗
             tso_interp_of riscv_eraGS img σ.(mem) log V)).
-  Proof.
+  Proof using .
     iIntros "#Htext" (σ img log tv itv V) "%Htv %Hitv Hσ Hiv Htso".
     rewrite /mstate_interp.
     iDestruct "Hσ" as "(Hri & Hmem & Hdev)".
@@ -1245,7 +1245,7 @@ Section WordHalves.
      the [seq 0 n] window of [P] shifted by [o]. *)
   Local Lemma big_sepL_seq_shift (P : nat -> iProp Σ) (o n : nat) :
     ([∗ list] j ∈ seq o n, P j) ⊣⊢ ([∗ list] j ∈ seq 0 n, P ((o + j)%nat)).
-  Proof.
+  Proof using .
     assert (Hf : seq o n = (Nat.add o) <$> seq 0 n).
     { rewrite fmap_add_seq. by rewrite Nat.add_0_r. }
     rewrite Hf big_sepL_fmap. reflexivity.
@@ -1253,7 +1253,7 @@ Section WordHalves.
 
   Lemma word_pointsto_split4 (a : Arch.pa) (dq : dfrac) (w : bv 64) :
     a ↦₈{dq} w ⊢ a ↦₄{dq} word_lo w ∗ (pa_add a 4) ↦₄{dq} word_hi w.
-  Proof.
+  Proof using .
     iIntros "[%Hal Hbs]".
     assert (Hs : seq 0 8 = (seq 0 4 ++ seq 4 4)%list) by reflexivity.
     rewrite Hs big_sepL_app.
@@ -1273,7 +1273,7 @@ Section WordHalves.
   Lemma word_pointsto_join4 (a : Arch.pa) (dq : dfrac) (lo hi : bv 32) :
     is_aligned_paddr (Physaddr a) 8 = true ->
     a ↦₄{dq} lo -∗ (pa_add a 4) ↦₄{dq} hi -∗ a ↦₈{dq} word_of_words lo hi.
-  Proof.
+  Proof using .
     iIntros (Hal) "[_ Hlo] [_ Hhi]".
     iSplit; [done|].
     assert (Hs : seq 0 8 = (seq 0 4 ++ seq 4 4)%list) by reflexivity.

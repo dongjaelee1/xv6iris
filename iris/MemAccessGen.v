@@ -621,7 +621,7 @@ Section CheckedMemReadSplit.
     (rdata_seq k, Nat.eqb k N, Z.of_nat (Nat.min k (N - 1))).
 
   Lemma rsplit_var0 : rsplit_var 0%nat = (zeros' (8 * n * bytes), false, 0%Z).
-  Proof.
+  Proof using HN.
     unfold rsplit_var. cbn [rdata_seq].
     replace (Nat.eqb 0 N) with false by (symmetry; apply Nat.eqb_neq; lia).
     replace (Nat.min 0 (N - 1)) with 0%nat by lia. reflexivity.
@@ -649,7 +649,7 @@ Section CheckedMemReadSplit.
              acc aq rl res) s = Some (inr rk, s) ->
     exec (checked_mem_read acc pbmt priv (Physaddr pa) width aq rl res meta) s
       = Some (Ok (autocast (T := mword) (rdata_seq N), default_meta), s).
-  Proof.
+  Proof using HN Hmmio Hpmp Hram.
     intros Hpac Hsplit Hrk.
     unfold checked_mem_read. rewrite exec_catch_early_return.
     rewrite (execR_liftR_seq _ _ _ _ _ Hpac). cbn beta. cbn match.
@@ -739,7 +739,7 @@ Section CheckedMemWriteSplit.
     (Nat.eqb k N, Z.of_nat (Nat.min k (N - 1)), ws_seq k).
 
   Lemma wsplit_var0 : wsplit_var 0%nat = (false, 0%Z, true).
-  Proof.
+  Proof using HN.
     unfold wsplit_var. cbn [ws_seq].
     replace (Nat.eqb 0 N) with false by (symmetry; apply Nat.eqb_neq; lia).
     replace (Nat.min 0 (N - 1)) with 0%nat by lia. reflexivity.
@@ -763,7 +763,7 @@ Section CheckedMemWriteSplit.
     exec (write_kind_of_flags aq rl con) (sw 0%nat) = Some (wk, sw 0%nat) ->
     exec (checked_mem_write (Physaddr pa) width dat acc pbmt priv meta aq rl con) (sw 0%nat)
       = Some (Ok (ws_seq N), sw N).
-  Proof.
+  Proof using HN Hmmio Hpmp Hwram.
     intros Hpac Hsplit Hwkf.
     unfold checked_mem_write. rewrite exec_catch_early_return.
     rewrite (execR_liftR_seq _ _ _ _ _ Hpac). cbn beta. cbn match.
@@ -840,7 +840,7 @@ Section MemWriteEaSplit.
     (Nat.eqb k N, Z.of_nat (Nat.min k (N - 1))).
 
   Lemma eavar0 : eavar 0%nat = (false, 0%Z).
-  Proof.
+  Proof using HN.
     unfold eavar.
     replace (Nat.eqb 0 N) with false by (symmetry; apply Nat.eqb_neq; lia).
     replace (Nat.min 0 (N - 1)) with 0%nat by lia. reflexivity.

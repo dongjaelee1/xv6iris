@@ -39,7 +39,7 @@ Section BioFs.
       (uint bno ↪[fs_cache γfs]{#(1/2)} bsl) ∗
       ((uint bno ↪[fs_cache γfs]{#(1/2)} bsl) -∗
        bio_held bn (fs_view γfs γd dev cov) kb pidv dv bno bs bsl bsd d).
-  Proof.
+  Proof using .
     rewrite /bio_held /bio_pay /fs_view /=.
     iIntros "(%A & %B & %C & H1 & H3 & H4 & H5 & H6 & Hpay)".
     destruct d.

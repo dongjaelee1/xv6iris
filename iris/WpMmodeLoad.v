@@ -170,7 +170,7 @@ Section LdFrames.
   Context `{CID : CpuId} `{XI : CurCtx}.
 
   Lemma hreg_frame_empty (rs : regstate) : ⊢ (hreg_frame rs ∅ : iProp Σ).
-  Proof. rewrite /hreg_frame big_sepS_empty. auto. Qed.
+  Proof using . rewrite /hreg_frame big_sepS_empty. auto. Qed.
 
   (* the frame the engine wants, spelled as the six cells the leaf holds *)
   Lemma ld_frames (dq : dfrac) (ms0 sec0 : mword 64)
@@ -183,7 +183,7 @@ Section LdFrames.
         reg_pointsto pma_regions DfracDiscarded pmar0 ∗
         reg_pointsto pmpcfg_n dq pcfg ∗
         reg_pointsto htif_tohost_base DfracDiscarded None).
-  Proof.
+  Proof using .
     rewrite /hreg_frame_ro /ld_Dro.
     repeat (rewrite big_sepS_union; last set_solver).
     rewrite !big_sepS_singleton.
@@ -205,7 +205,7 @@ Section LdFrames.
       : iProp Σ)
     ⊣⊢ (reg_pointsto pmpaddr_n dq paddr0 ∗
         hreg_frame_ro (ld_Df dq) (ld_rs ms0 sec0 pmar0 pcfg paddr0) ld_Dro).
-  Proof.
+  Proof using .
     rewrite /hreg_frame_ro /ldt_Dro.
     rewrite big_sepS_union; last (rewrite /ld_Dro; set_solver).
     rewrite big_sepS_singleton ld_rs_paddr.
@@ -220,7 +220,7 @@ Section LdFrames.
     gen_heap_interp (hG:=riscv_memGS) σ.(mem) -∗
     phys_word_pointsto pa dq w -∗
     ⌜read_bytes σ.(mem) pa 8 = Some w⌝.
-  Proof.
+  Proof using .
     iIntros "Hm [_ Hb]".
     iAssert (⌜forall j : nat, (N.of_nat j < 8)%N ->
               σ.(mem) !! pa_add pa j = Some (nth_byte w j)⌝)%I as %Hbytes.
@@ -308,7 +308,7 @@ Section WpLdGpr.
       phys_word_pointsto ea dq v -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros offset ea Hpmp Hstat Hrd.
     iIntros "Hmm Hpmpc Hpc Hfile Hinstr Hbw #Hpr Hcont".
     iDestruct (phys_word_pointsto_aligned_p with "Hbw") as %Halign.
@@ -402,7 +402,7 @@ Section MmodeLoadTor.
   Local Lemma ctx_phys_word_ram (xi : CtxId) (a : Arch.pa)
       (dq : dfrac) (w : bv 64) :
     ctx_phys_word_pointsto xi a dq w ⊢ ⌜addr_is_ram a⌝.
-  Proof.
+  Proof using .
     iIntros "H".
     iDestruct (ctx_phys_word_pointsto_forget with "H") as "H".
     by iApply phys_word_pointsto_ram.
@@ -444,7 +444,7 @@ Section MmodeLoadTor.
       own_context cur_ctx -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros offset ea Hpmp Hstat Htor Hrd.
     iIntros "Hmm Hpmpc Hpaddr Hpc Hfile Hinstr Hbytes Hrun Hcont".
     iDestruct (ctx_phys_word_pointsto_aligned_p with "Hbytes") as %Halign.
@@ -558,7 +558,7 @@ Section MmodeLoadTor.
       own_context cur_ctx -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros imm ea Hpmp Hstat Htor Hrd.
     iIntros "Hmm Hpmpc Hpaddr Hpc Hfile Hinstr Hbytes Hrun Hcont".
     iApply (wp_ld_gpr_tor pc true csp_rs1 rd imm m v

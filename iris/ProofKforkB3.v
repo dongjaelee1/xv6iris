@@ -357,7 +357,7 @@ Section KforkB3Proof.
       fd_frags (pv_fdg (us_V Up)) stsP -∗
       fd_frags (pv_fdg (us_V U0)) (kfk_at stsP fdt0 i) -∗
       WP (Loop : expr riscv_lang)).
-  Proof.
+  Proof using .
     intros HK Hn HV0 Hbelow.
     iIntros "#Htext #Hft".
     assert (HK14 : (14 <= (rsv + (K - 8)))%nat)

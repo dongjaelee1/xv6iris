@@ -104,24 +104,24 @@ Section BreadScan.
 
   Lemma bfun_upd_eq (f : nat -> mword 32) (k : nat) (v : mword 32) :
     bfun_upd f k v k = v.
-  Proof. rewrite /bfun_upd. case_decide as Hd; [reflexivity | congruence]. Qed.
+  Proof using . rewrite /bfun_upd. case_decide as Hd; [reflexivity | congruence]. Qed.
 
   Lemma bfun_upd_ne (f : nat -> mword 32) (k : nat) (v : mword 32) (j : nat) :
     j ≠ k -> bfun_upd f k v j = f j.
-  Proof. intro Hj. rewrite /bfun_upd. case_decide as Hd; [congruence | reflexivity]. Qed.
+  Proof using . intro Hj. rewrite /bfun_upd. case_decide as Hd; [congruence | reflexivity]. Qed.
 
   (* [uint] IS [bv_unsigned] (RiscvExtras.uint_unsigned's proof, at width 32
      -- restated here rather than pulling UserBits in for one equation), so a
      blockno compare on [uint] is a compare on the word. *)
   Lemma bd_uint32 (a : mword 32) : uint a = bv_unsigned a.
-  Proof.
+  Proof using .
     pose proof (bv_unsigned_in_range _ a) as Hr.
     unfold uint, get_word, MachineWord.MachineWord.word_to_N.
     rewrite Z2N.id; [ reflexivity | lia ].
   Qed.
 
   Lemma bd_uint32_inj (a b : mword 32) : uint a = uint b -> a = b.
-  Proof. rewrite !bd_uint32. intro H. by apply bv_eq. Qed.
+  Proof using . rewrite !bd_uint32. intro H. by apply bv_eq. Qed.
 
   (* ------------------------------------------------------------------ *)
   (*  THE MISS FACT, out of the forward scan's exit tie.                  *)
@@ -140,7 +140,7 @@ Section BreadScan.
     (forall i, (i < NBUF)%nat -> uint (bnos i) ∈ bv_cov V -> devs i = bv_dev V) ->
     (forall i, (i < NBUF)%nat -> ¬ (devs i = D /\ bnos i = B)) ->
     forall j, (j < NBUF)%nat -> uint (bnos j) ≠ uint B.
-  Proof.
+  Proof using .
     intros HD Hcov Hpin Htie j Hj Heq.
     apply (Htie j Hj). split; [| exact (bd_uint32_inj _ _ Heq)].
     rewrite (Hpin j Hj ltac:(rewrite Heq; exact Hcov)) HD. reflexivity.
@@ -156,7 +156,7 @@ Section BreadScan.
     forall k', (k' < NBUF)%nat ->
       uint (bfun_upd bnos k B k') ∈ bv_cov V ->
       bfun_upd devs k D k' = bv_dev V.
-  Proof.
+  Proof using .
     intros HD Hpin k' Hk' Hcov.
     destruct (decide (k' = k)) as [->|Hne].
     - rewrite bfun_upd_eq. exact HD.
@@ -185,7 +185,7 @@ Section BreadScan.
     forall k1 k2, (k1 < NBUF)%nat -> (k2 < NBUF)%nat ->
       uint (bfun_upd bnos k B k1) ∈ bv_cov V ->
       uint (bfun_upd bnos k B k1) = uint (bfun_upd bnos k B k2) -> k1 = k2.
-  Proof.
+  Proof using .
     intros Hk HcovB Hmiss Hinj k1 k2 Hk1 Hk2 Hcov Heq.
     destruct (decide (k1 = k)) as [->|Hn1]; destruct (decide (k2 = k)) as [->|Hn2].
     - reflexivity.
@@ -225,7 +225,7 @@ Section BreadScan.
   Lemma incr32_pos (z : Z) :
     (0 <= z)%Z -> (z + 1 < 2 ^ 31)%Z ->
     incr32 (mword_of_int z : mword 32) = (mword_of_int (z + 1) : mword 32).
-  Proof. intros H0 H1. rewrite /incr32. by apply moi32_storeval_succ. Qed.
+  Proof using . intros H0 H1. rewrite /incr32. by apply moi32_storeval_succ. Qed.
 
   (* v1 [bcache_scan_incr]/[bcache_scan_recycle] deleted (R2): their v2 twins
      over [bcache_scan2] are in [BreadScan2] below. *)
@@ -262,7 +262,7 @@ Section BreadScan.
       (v : bool) (d1 d2 bno : mword 32) (bs : list (bv 8)) :
     d2 = bv_dev V ->
     buf_pay bn V k v d1 bno bs -∗ buf_pay bn V k v d2 bno bs.
-  Proof.
+  Proof using .
     iIntros (Hd2) "H". rewrite /buf_pay.
     case_decide as Hc; [| iExact "H"].
     iDestruct "H" as "[%Hd1 H]". subst d1 d2.
@@ -285,20 +285,20 @@ Section BreadScan2.
   Context `{CID : CpuId} `{XI : CurCtx}.
 
   Local Lemma bd_pos1_lt : (Z.pos 1 < 2 ^ 31)%Z.
-  Proof. vm_compute. reflexivity. Qed.
+  Proof using . vm_compute. reflexivity. Qed.
 
   (* the slot tie's steps (A6.155): a fractioned refs++ halves the retained
      share; a chain refs++ leaves it alone; a fractioned refs-- returns it. *)
   Local Lemma bd_btie_incr (ot : option Qp) (qr : Qp) :
     btie ot qr -> btie (ot ⋅ Some (qr/2)%Qp) (qr/2)%Qp.
-  Proof.
+  Proof using .
     destruct ot as [q|]; intros Htie; cbn in Htie.
     - rewrite -Some_op frac_op. cbn. rewrite -Qp.add_assoc Qp.div_2. exact Htie.
     - rewrite left_id_L. cbn. rewrite Htie. apply Qp.div_2.
   Qed.
   Local Lemma bd_btie_incr_valid (ot : option Qp) (qr : Qp) :
     btie ot qr -> ✓ (ot ⋅ Some (qr/2)%Qp).
-  Proof.
+  Proof using .
     destruct ot as [q|]; intros Htie; cbn in Htie.
     - rewrite -Some_op frac_op. apply Some_valid, frac_valid.
       etrans; [| exact bd_half_le_one].
@@ -308,10 +308,10 @@ Section BreadScan2.
   Qed.
   Local Lemma bd_btie_incr0 (ot : option Qp) (qr : Qp) :
     btie ot qr -> btie (ot ⋅ None) qr.
-  Proof. intros Htie. by rewrite right_id_L. Qed.
+  Proof using . intros Htie. by rewrite right_id_L. Qed.
   Local Lemma bd_btie_decr (q : Qp) (orem : option Qp) (qr : Qp) :
     btie (Some q ⋅ orem) qr -> btie orem (qr + q)%Qp.
-  Proof.
+  Proof using .
     destruct orem as [r|]; intros Htie.
     - rewrite -Some_op frac_op in Htie. cbn in Htie. cbn.
       rewrite (Qp.add_comm qr q) Qp.add_assoc (Qp.add_comm r q). exact Htie.
@@ -329,7 +329,7 @@ Section BreadScan2.
 
   Local Lemma bd_llb_max (tl T : nat) :
     llb loglen_name tl -∗ llb loglen_name T -∗ llb loglen_name (Nat.max tl T).
-  Proof.
+  Proof using .
     iIntros "#H1 #H2". destruct (Nat.max_spec tl T) as [[_ ->] | [_ ->]]; [iExact "H2" | iExact "H1"].
   Qed.
 
@@ -348,7 +348,7 @@ Section BreadScan2.
     bcache_lru bhead (map bnode ord) -∗ bio_pool V bnos -∗
     ([∗ list] k0 ∈ seq 0 NBUF, bio_slot_res2 bn V (<[k := e]> M) k0 (devs k0) (bnos k0) tl cur_ctx) -∗
     bcache_res2 bn V cur_ctx.
-  Proof.
+  Proof using .
     iIntros (Hk Hdom Hord Hinj Hdevpin) "#Hfl #Hllbtl Hauth Hsauth Hlru Hpool Hslots".
     iApply (bcache_res2_fold bn V (<[k := e]> M) ord devs bnos tl).
     iFrame "Hfl Hllbtl". rewrite /bcache_scan2. iFrame "Hauth Hsauth".
@@ -367,7 +367,7 @@ Section BreadScan2.
     CtxBox.reference (X := bio_x) (bn_box bn k) (dev, bno) {[((dev, bno), t) := 1%Qp]} -∗
     CtxBox.reference (X := bio_x) (bn_box bn k) (dev, bno) {[((dev, bno), t) := 1%Qp]} ∗
     llb loglen_name t.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as "(%H1 & %H2 & Hf & #Hllb)".
     iSplitL "Hf".
     { iSplitR; [iPureIntro; exact H1|]. iSplitR; [iPureIntro; exact H2|]. iFrame "Hf Hllb". }
@@ -379,7 +379,7 @@ Section BreadScan2.
       (dev bno : mword 32) :
     sr_win r = false -> sr_x r = None -> sr_ident r = (dev, bno) -> (sr_td r <= tl)%nat ->
     reg_drop bn k r -∗ llb loglen_name (sr_td r) -∗ bslot_regs bn k tl dev bno.
-  Proof.
+  Proof using .
     iIntros (Hw Hx Hid Hb) "Hrd #Hllb". iExists r. iFrame "Hrd Hllb". iPureIntro. split_and!; done.
   Qed.
 
@@ -396,7 +396,7 @@ Section BreadScan2.
       brefcnt k ↦₄ cw ∗
       (brefcnt k ↦₄ (incr32 cw) ={E}=∗
          bcache_res2 bn V cur_ctx ∗ ∃ q : Qp, bref bn k q (devs k) (bnos k)).
-  Proof.
+  Proof using .
     iIntros (HE Hk) "#Hbox #Hfl #Hllbtl Hscan Hbslot".
     rewrite /bcache_scan2.
     iDestruct "Hscan" as
@@ -507,7 +507,7 @@ Section BreadScan2.
     ∃ cw : mword 32,
       brefcnt k ↦₄ cw ∗
       (brefcnt k ↦₄ (incr32 cw) ={E}=∗ bcache_res2 bn V cur_ctx ∗ bchain bn k (devs k) (bnos k)).
-  Proof.
+  Proof using .
     iIntros (HE Hk) "#Hbox #Hfl #Hllbtl Hscan Hbslot".
     rewrite /bcache_scan2.
     iDestruct "Hscan" as
@@ -619,7 +619,7 @@ Section BreadScan2.
      b_dev (bpa k) ↦₄ D -∗
      b_blockno (bpa k) ↦₄ B ={E}=∗
      TsoCtx.own_context cur_ctx ∗ bd_scan2_after bn V tl ∗ bchain bn k D B).
-  Proof.
+  Proof using .
     iIntros (HE Hk HMk HD HcovB Htie) "#Hbox Hrun #Hfl #Hllbtl Hscan Hbslot".
     rewrite /bcache_scan2.
     iDestruct "Hscan" as
@@ -722,7 +722,7 @@ Section BreadScan2.
       brefcnt k ↦₄ (mword_of_int (Z.pos cnt) : mword 32) ∗
       (brefcnt k ↦₄ (mword_of_int (Z.pos cnt - 1) : mword 32) ={E}=∗
          bd_scan2_after bn V tl ∗ bslot).
-  Proof.
+  Proof using .
     iIntros (HE Hk) "#Hbox #Hfl #Hllbtl Hscan Href".
     iDestruct "Href" as "(Hrtok & Hgh & Hrdev & Hrbno)".
     rewrite /bcache_scan2.
@@ -846,7 +846,7 @@ Section BreadScan2.
       brefcnt k ↦₄ (mword_of_int (Z.pos cnt) : mword 32) ∗
       (brefcnt k ↦₄ (mword_of_int (Z.pos cnt - 1) : mword 32) ={E}=∗
          bd_scan2_after bn V tl ∗ bslot).
-  Proof.
+  Proof using .
     iIntros (HE Hk) "#Hbox #Hfl #Hllbtl Hscan Hch".
     iDestruct "Hch" as "[Hrtok Hgh]".
     rewrite /bcache_scan2.

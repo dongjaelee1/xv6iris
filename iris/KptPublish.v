@@ -94,7 +94,7 @@ Section KptPublish.
     view_lb view_name loglen_name 0%nat B -∗
     phys_ledger_word_pin a (DfracOwn 1) w B (pte_slot_set w) -∗
     kpt_slot_pin a (DfracOwn 1) w B.
-  Proof.
+  Proof using .
     iIntros "#Hv [%Hal Hb]". rewrite /kpt_slot_pin.
     iSplitR; [by iPureIntro |].
     iApply (big_sepL_impl with "Hb").
@@ -113,7 +113,7 @@ Section KptPublish.
     gen_heap_interp (hG := riscv_memGS) g.(gmem) ∗
     tso_interp_at riscv_eraGS g ∗ own_context xi ∗
     ([∗ list] i ∈ l, pt_slot_own (KTier (g.(gtv) cpu_id)) (F i) (DfracOwn 1) (W i)).
-  Proof.
+  Proof using .
     intros Hdr. induction l as [|i l IH].
     - iIntros "#Hv0 Hgh Hint Hrun Hl". iModIntro. iFrame "Hgh Hint Hrun".
       iExact "Hl".
@@ -146,7 +146,7 @@ Section KptPublish.
     gen_heap_interp (hG := riscv_memGS) g.(gmem) ∗
     tso_interp_at riscv_eraGS g ∗ own_context xi ∗
     pt_page_own_at (KTier (g.(gtv) cpu_id)) (DfracOwn 1) t.
-  Proof.
+  Proof using .
     intros Hdr. iIntros "#Hv0 Hgh Hint Hrun [#Hcl Hs]".
     iMod (pt_slots_publish g xi (seqZ 0 512)
             (fun i => u_pte_addr (pt_base t) (mword_of_int i))
@@ -175,7 +175,7 @@ Section KptPublish.
     gen_heap_interp (hG := riscv_memGS) g.(gmem) ∗
     tso_interp_at riscv_eraGS g ∗ own_context xi ∗
     ([∗ list] i ∈ l, match K i with Some c => Q c | None => emp end).
-  Proof.
+  Proof using .
     intros Hstep. induction l as [|i l IH].
     - iIntros "Hgh Hint Hrun Hl". iModIntro. iFrame "Hgh Hint Hrun".
       iExact "Hl".
@@ -206,7 +206,7 @@ Section KptPublish.
     gen_heap_interp (hG := riscv_memGS) g.(gmem) ∗
     tso_interp_at riscv_eraGS g ∗ own_context xi ∗
     ([∗ list] i ∈ l, match K i with Some c => Q c | None => emp end).
-  Proof.
+  Proof using .
     iIntros "#Hstep". iInduction l as [|i l] "IHl".
     - iIntros "Hgh Hint Hrun Hl". iModIntro. iFrame "Hgh Hint Hrun".
       iExact "Hl".
@@ -233,7 +233,7 @@ Section KptPublish.
     gen_heap_interp (hG := riscv_memGS) g.(gmem) ∗
     tso_interp_at riscv_eraGS g ∗ own_context xi ∗
     ptree_own_at (KTier (g.(gtv) cpu_id)) lvl (DfracOwn 1) t.
-  Proof.
+  Proof using .
     intros Hdr. revert t. induction lvl as [|lvl IH]; intros t.
     - iIntros "#Hv0 Hgh Hint Hrun [Hp _]".
       iMod (pt_page_publish g xi t Hdr with "Hv0 Hgh Hint Hrun Hp")
@@ -279,7 +279,7 @@ Section KptPublish.
     tso_interp_at riscv_eraGS g ∗ own_context xi ∗
     ptree_own_at (KTier (g.(gtv) cpu_id)) lvl (DfracOwn 1) t ∗
     llb loglen_name (g.(gtv) cpu_id) ∗ hart_view_lb (g.(gtv) cpu_id).
-  Proof.
+  Proof using .
     intros Hdr H0. iIntros "Hgh Hint Hrun Ht".
     iDestruct (hart_view_lb_now g with "Hint") as "[Hint #Hvlb]".
     iAssert (view_lb view_name loglen_name 0%nat (g.(gtv) cpu_id))%I
@@ -340,7 +340,7 @@ Section KptPublish.
        phys_ledger_pin a (DfracOwn 1) v t Ba Sv ∗
        (⌜Ba = 0%nat⌝ ∨ CtxValues.cv_own 0%nat a Ba ∨
         view_lb view_name loglen_name 0%nat Ba)).
-  Proof.
+  Proof using .
     intros H0 Hv. iIntros "Hgh Hint Hrun Hb".
     rewrite ctx_phys_pointsto_unseal /ctx_phys_pointsto_def.
     iDestruct "Hb" as (t) "(Hpt & Hts & Hbit)".
@@ -428,7 +428,7 @@ Section KptPublish.
        phys_ledger_pin (pa_add a j) (DfracOwn 1) (f j) t Ba (Sf j) ∗
        (⌜Ba = 0%nat⌝ ∨ CtxValues.cv_own 0%nat (pa_add a j) Ba ∨
         view_lb view_name loglen_name 0%nat Ba)).
-  Proof.
+  Proof using .
     intros H0. induction n as [|n IH]; intros Hf.
     - iIntros "Hgh Hint Hrun Hl". iModIntro. iFrame "Hgh Hint Hrun".
       iExact "Hl".
@@ -451,7 +451,7 @@ Section KptPublish.
     gen_heap_interp (hG := riscv_memGS) g.(gmem) ∗
     tso_interp_at riscv_eraGS g ∗ own_context xi ∗
     kpt_slot_pin a (DfracOwn 1) w (length g.(glog)).
-  Proof.
+  Proof using .
     intros H0. iIntros "Hgh Hint Hrun Hw".
     iDestruct (ctx_phys_word_pointsto_aligned_p with "Hw") as %Hal.
     iDestruct (ctx_phys_word_pointsto_bytes with "Hw") as "Hb".
@@ -472,7 +472,7 @@ Section KptPublish.
     gen_heap_interp (hG := riscv_memGS) g.(gmem) ∗
     tso_interp_at riscv_eraGS g ∗ own_context xi ∗
     ([∗ list] i ∈ l, pt_slot_own (KTier (length g.(glog))) (F i) (DfracOwn 1) (W i)).
-  Proof.
+  Proof using .
     intros H0. induction l as [|i l IH].
     - iIntros "Hgh Hint Hrun Hl". iModIntro. iFrame "Hgh Hint Hrun".
       iExact "Hl".
@@ -496,7 +496,7 @@ Section KptPublish.
     gen_heap_interp (hG := riscv_memGS) g.(gmem) ∗
     tso_interp_at riscv_eraGS g ∗ own_context xi ∗
     pt_page_own_at (KTier (length g.(glog))) (DfracOwn 1) t.
-  Proof.
+  Proof using .
     intros H0. iIntros "Hgh Hint Hrun [#Hcl Hs]".
     iMod (pt_slots_publish_boot g xi (seqZ 0 512)
             (fun i => u_pte_addr (pt_base t) (mword_of_int i))
@@ -514,7 +514,7 @@ Section KptPublish.
     gen_heap_interp (hG := riscv_memGS) g.(gmem) ∗
     tso_interp_at riscv_eraGS g ∗ own_context xi ∗
     ptree_own_at (KTier (length g.(glog))) lvl (DfracOwn 1) t.
-  Proof.
+  Proof using .
     intros H0. revert t. induction lvl as [|lvl IH]; intros t.
     - iIntros "Hgh Hint Hrun [Hp _]".
       iMod (pt_page_publish_boot g xi t H0 with "Hgh Hint Hrun Hp")
@@ -540,7 +540,7 @@ Section KptPublish.
     tso_interp_at riscv_eraGS g ∗ own_context xi ∗
     ptree_own_at (KTier (length g.(glog))) lvl (DfracOwn 1) t ∗
     llb loglen_name (length g.(glog)).
-  Proof.
+  Proof using .
     intros H0. iIntros "Hgh Hint Hrun Ht".
     iDestruct (tso_interp_loglen_llb g with "Hint") as "[Hint #Hllb]".
     iMod (ptree_own_publish_boot g xi lvl t H0 with "Hgh Hint Hrun Ht")

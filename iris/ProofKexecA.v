@@ -191,7 +191,7 @@ Section KexecAUABody.
      register non-zero either way. *)
   Lemma inode_held_at_ne_zero (v : mword 64) (z : Z) :
     inode_held_at v z -∗ ⌜v <> (zero_reg : mword 64)⌝.
-  Proof.
+  Proof using .
     iIntros "H". iApply inode_held_ne_zero. by iApply inode_held_at_held.
   Qed.
 
@@ -307,7 +307,7 @@ Section KexecAUABody.
         wp_next (CID0 := CID) true (proc_addr jp) KEX -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hqf HK Hroot Hnib0 Hlg Hsz Hbm0 Hbmc Hbml Hins0 Hcovb
            Hiregb Hcstr Hplen Hjp Hgs Hsp Hra Hs0 Hs1 Hs2 Ha0 Ha1.
     iIntros "Hcg Hcnt Hextc Hclmc #Htext Hpc #Hfab #Hka Hbm Hins #Hbits Hpriv
@@ -825,7 +825,7 @@ Section KexecAUAMain.
                              Fo.(pf_recv) cw na alen afun sts cs pidv) Fs) -∗
     SpecKexec.exec_post_fail Fs (FsBytesGamma.fs_gamma_L γ) γ cw Qpay P Pmiss Fo
       pl na alen afun sts cs pidv.
-  Proof.
+  Proof using .
     iIntros "(Hd & Hoc & Hsl)". rewrite /SpecKexec.exec_post_fail.
     iRight. iLeft. iFrame "Hd Hoc Hsl".
   Qed.
@@ -838,16 +838,16 @@ Section KexecAUAMain.
 
   Lemma kxa_file_bytes_length (data : nat -> list (bv 8)) (n : nat) :
     length (FsTree.file_bytes data n) = n.
-  Proof. rewrite /FsTree.file_bytes length_fmap length_seq. reflexivity. Qed.
+  Proof using . rewrite /FsTree.file_bytes length_fmap length_seq. reflexivity. Qed.
 
   (* a one-byte [elf_le_at] IS the byte *)
   Lemma kxa_elf_le_at_1 (f : elf_bytes) (k : nat) :
     elf_le_at f k 1 = bv_unsigned (f !!! k).
-  Proof. unfold elf_le_at. simpl. rewrite Nat.add_0_r. lia. Qed.
+  Proof using . unfold elf_le_at. simpl. rewrite Nat.add_0_r. lia. Qed.
 
   Lemma kxa_byte_is_val (f : elf_bytes) (o v : Z) :
     elf_byte_is f o v = true -> bv_unsigned (f !!! Z.to_nat o) = v.
-  Proof.
+  Proof using .
     unfold elf_byte_is, elf_read_u8.
     destruct (elf_read f o 1) as [b |] eqn:E; [| discriminate].
     intros Hb. apply Z.eqb_eq in Hb. subst v.
@@ -858,7 +858,7 @@ Section KexecAUAMain.
   (* the four-byte magic word the kernel compares, off a well-formed file *)
   Lemma kxa_magic_le_at (f : elf_bytes) :
     elf_magic_ok f = true -> elf_le_at f 0 4 = 1179403647.
-  Proof.
+  Proof using .
     unfold elf_magic_ok. intros H.
     apply andb_prop in H as [H _]. apply andb_prop in H as [H _].
     apply andb_prop in H as [H H3]. apply andb_prop in H as [H H2].
@@ -871,7 +871,7 @@ Section KexecAUAMain.
 
   Lemma kxa_magic_bad_wf (f : elf_bytes) :
     elf_le_at f 0 4 <> 1179403647 -> elf_wf f = false.
-  Proof.
+  Proof using .
     intros Hne. unfold elf_wf.
     destruct (elf_parse_ehdr f) as [e |]; [| destruct (elf_phdrs f); reflexivity].
     destruct (elf_phdrs f) as [ps |]; [| reflexivity].
@@ -883,7 +883,7 @@ Section KexecAUAMain.
      ([ElfBridge.elf_parse_ehdr_fields]'s length conjunct) *)
   Lemma kxa_short_bad_wf (f : elf_bytes) :
     (length f < 64)%nat -> elf_wf f = false.
-  Proof.
+  Proof using .
     intros Hlen. unfold elf_wf.
     destruct (elf_parse_ehdr f) as [e |] eqn:E;
       [| destruct (elf_phdrs f); reflexivity].
@@ -949,7 +949,7 @@ Section KexecAUAMain.
     kxa_receipt Fs P Fo Qpay cw L zi na alen afun sts cs pidv dn bm data -∗
     SpecKexec.exec_post_fail Fs (FsBytesGamma.fs_gamma_L γ) γ cw Qpay P Pmiss Fo
       pl na alen afun sts cs pidv.
-  Proof.
+  Proof using XI.
     intros HL Hbad. iIntros "H". rewrite /kxa_receipt.
     iDestruct "H" as (av) "(%Hav & %Hrow & HΦ & HP & Hsl)".
     rewrite /SpecKexec.exec_post_fail. iRight. iRight.
@@ -971,7 +971,7 @@ Section KexecAUAMain.
     inode_ok fsc_cov fsc_logst dn bm data ->
     fn_file_bytes (FsStateEra.era_node dn bm data)
     = FsTree.file_bytes data (Z.to_nat (bv_unsigned (di_size dn))).
-  Proof.
+  Proof using .
     intros (_ & _ & _ & _ & Hsz & Hh & _).
     pose proof (proj1 (bv_unsigned_in_range _ (di_size dn))) as H0.
     assert (Hcap : (Z.to_nat (bv_unsigned (di_size dn)) <= MAXFILE * BSIZE)%nat).
@@ -992,7 +992,7 @@ Section KexecAUAMain.
     abs_row (FsStateEra.era_node dn bm data)
     = MkAnode (AFile (FsTree.file_bytes data (Z.to_nat (bv_unsigned (di_size dn)))))
               (fn_nlink (FsStateEra.era_node dn bm data)).
-  Proof.
+  Proof using XI.
     intros Hok Hty.
     rewrite (FsAbsOpenFire.opf_era_file_row dn bm data Hty).
     by rewrite (kxa_file_bytes_ok dn bm data Hok).
@@ -1152,7 +1152,7 @@ Section KexecAUAMain.
         wp_next (CID0 := CID) true (proc_addr jp) KEX -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hqf HK Hroot Hnib0 Hlg Hsz Hbm0 Hbmc Hbml Hins0 Hcovb
            Hiregb Hcstr Hplen Hjp Hgs Hsp Hra Hs0 Hs1 Hs2 Ha0 Ha1.
     iIntros "Hcg Hcnt Hextc Hclmc #Htext Hpc #Hfab Hwp Hoc Hsl #Hka Hbm Hins

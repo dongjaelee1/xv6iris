@@ -142,7 +142,7 @@ Section UkCatCat.
        urun N h' m' (ret_pc vra) (12 + n) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hsp Hal8 Hlo. iIntros "#Hcode Hwra Hws0 Hws1 Hw4 Hw5 Hw6 Hw7 Hw8 Hw9 Hw10 Hw11 Hw12 Hrun Hcont".
     assert (Hbsp : bv_unsigned (add_vec_int sp0 (- (8 * Z.of_nat 12)))
                    = bv_unsigned sp0 - 96).
@@ -316,7 +316,7 @@ Section UkCatCat.
 
   Lemma cv_inv_call (m0 m m' : regfile) (sp0 fdv : mword 64) :
     ucallee_saved m m' -> cv_inv m0 m sp0 fdv -> cv_inv m0 m' sp0 fdv.
-  Proof.
+  Proof using .
     intros Hcs (Hsp & Hs0 & Hs2 & Hs3 & Hs4 & Hs5 & Hfr).
     unfold cv_inv.
     rewrite (Hcs csp_rs1 ltac:(vm_compute; reflexivity)).
@@ -340,7 +340,7 @@ Section UkCatCat.
     cv_writable r = true ->
     (z = 2 \/ z = 3 \/ z = 4 \/ z = 8 \/ (18 <= z <= 21) \/ (22 <= z <= 27)) ->
     uint r <> z.
-  Proof.
+  Proof using .
     unfold cv_writable. intro H. apply negb_true_iff in H.
     rewrite !orb_false_iff in H.
     destruct H as [[[[[H1 H2] H3] H4] H5] H6].
@@ -357,7 +357,7 @@ Section UkCatCat.
     cv_writable r = true ->
     cv_inv m0 m sp0 fdv ->
     cv_inv m0 (<[Regidx r := regval_into_reg v]> m) sp0 fdv.
-  Proof.
+  Proof using .
     intros Hw (Hsp & Hs0 & Hs2 & Hs3 & Hs4 & Hs5 & Hfr).
     unfold cv_inv.
     rewrite (upd_ne m (Regidx r) (Regidx csp_rs1) (regval_into_reg v)
@@ -682,7 +682,7 @@ Section UkCatCat.
        urun N h' m' (ret_pc (m0 !!! Regidx ra_idx)) (8 + (10 + (12 + (4 + n)))) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hsp Hsp0 Hal8 Hlo Hfree.
     iIntros "#Hcode Hw1 Hw2 Hw3 Hw4 Hw5 Hw6 Hw7 Hw8 Hrun Hcont".
     assert (Hbsp : bv_unsigned (add_vec_int sp0 (- (8 * Z.of_nat 8)))
@@ -1378,7 +1378,7 @@ Section UkCatCat.
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (8 + (10 + (12 + (4 + n)))) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using Hpay.
     intros Ha0.
     iIntros "#Hdp #Hcode #Hro Hbuf Hrun Hcont".
     destruct cat_syms_pins

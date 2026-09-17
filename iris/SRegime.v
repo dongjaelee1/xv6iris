@@ -101,7 +101,7 @@ Section BareFront.
     exec (translationMode Supervisor) s = Some (Bare, s) ->
     exec (translateAddr (Virtaddr va) acc) s
     = Some (Ok (Physaddr va, PBMT_PMA, init_ext_ptw), s).
-  Proof.
+  Proof using .
     intros Heff Hss Hcp Htm.
     unfold translateAddr.
     rewrite exec_catch_early_return.
@@ -155,7 +155,7 @@ Section TransformFront.
     exec (get_pmlen acc Supervisor) s = Some (0, s) ->
     exec (translationMode Supervisor) s = Some (md, s) ->
     exec (transform_effective_address (Virtaddr ea) acc) s = Some (Virtaddr ea, s).
-  Proof.
+  Proof using .
     intros Hcp Heff Hpml Htm.
     unfold transform_effective_address.
     rewrite (exec_bind_Some _ _ _ _ _ (exec_read_reg mstatus s)).
@@ -800,7 +800,7 @@ Section SRegimeDef.
   (* ---- the PMP facts, off any invariant that carries [pmp_config] ---- *)
   Lemma pmp_config_grant_facts (r : mword 44) (σ : mstate) :
     reg_interp σ.(sregs) -∗ pmp_config r -∗ ⌜pmp_grant_facts σ⌝.
-  Proof.
+  Proof using .
     iIntros "Hri Hpmp".
     iDestruct "Hpmp" as (pmpcfg0 pmpaddr00)
       "(Hpc & Hpa & %HA & %Hord & %HX & %HW & %HR & %Hcov)".
@@ -883,7 +883,7 @@ Section SRegimeDef.
           ⌜ pmp_grant_facts σ' ⌝ ∗
           S σ'.(mem) ∗
           reg_interp σ'.(sregs) ∗ gen_heap_interp σ'.(mem) ∗ bare_inv.
-  Proof.
+  Proof using .
     intros acc va pa ppn pc σ E S Hacc Hallow Hcanon Hconcat Hmisa Hmenv Hhtif Hcp HSXL Heff Hss Hall Hadm HE.
     iIntros "#Hpay Hsto Hat Hri Hgh Hinv". iClear "Hpay".
     iDestruct "Hinv" as (satp0) "(Hsatp & %Hmode & Hpmp)".
@@ -918,7 +918,7 @@ Section SRegimeDef.
       exec (get_pmlen acc Supervisor) σ = Some (0, σ) ->
       ⊢ reg_interp σ.(sregs) -∗ bare_inv -∗
         ⌜ exec (transform_effective_address (Virtaddr ea) acc) σ = Some (Virtaddr ea, σ) ⌝.
-  Proof.
+  Proof using .
     intros acc ea σ Hacc Hcp HSXL Heff Hpml.
     iIntros "Hri Hinv".
     iDestruct "Hinv" as (satp0) "(Hsatp & %Hmode & Hpmp)".
@@ -933,7 +933,7 @@ Section SRegimeDef.
       _get_Mstatus_SXL (register_lookup mstatus σ.(sregs)) = 'b"10" ->
       ⊢ reg_interp σ.(sregs) -∗ bare_inv -∗
         ⌜ exists md, exec (translationMode Supervisor) σ = Some (md, σ) ⌝.
-  Proof.
+  Proof using .
     intros σ HSXL.
     iIntros "Hri Hinv".
     iDestruct "Hinv" as (satp0) "(Hsatp & %Hmode & Hpmp)".
@@ -992,7 +992,7 @@ Section SRegimeDef.
           ⌜ pmp_grant_facts σ' ⌝ ∗
           S σ'.(mem) ∗
           reg_interp σ'.(sregs) ∗ gen_heap_interp σ'.(mem) ∗ bare_inv.
-  Proof.
+  Proof using .
     intros acc va pa ppn pc σ E S Hacc Hallow Hcanon Hconcat Hmisa Hmenv Hhtif Hcp HSXL Heff Hss Hall HE.
     iIntros "_ _ H". iDestruct "H" as %[].
   Qed.
@@ -1060,7 +1060,7 @@ Section SRegimeDef.
                       ⌜ rsf = rs \/ exists tv, rsf = register_set tlb tv rs ⌝ ∗
                       hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro ∗
                       (True : iProp Σ) ∗ resv_any cpu_id).
-  Proof.
+  Proof using .
     intros acc Drw Dro Df rs dst Db va pa ppn kp rr Hdisj Hacc Hallow
       HDmst HDpriv HDsatp HDpma HDcfg HDaddr HDhtif HDb Hag HDlc Haglc
       Hcp Hhtif Hmstag Hmisa Hmenv HSXL Heff Heffg Hss Hssg Hcanon Hconcat
@@ -1112,7 +1112,7 @@ Section SRegimeDef.
     bare_satp_ok (register_lookup satp rs) ->
     eq_vec (_get_Mstatus_MPRV (register_lookup mstatus rs)) ('b"1") = false ->
     bare_swp_side acc va ppn kp Db Drw Dro rs dst.
-  Proof.
+  Proof using .
     intros Hacc Hmode HMPRV. rewrite /bare_swp_side. split_and!.
     - exact Hmode.
     - exact (effectivePrivilege_mprv0 acc _ Supervisor HMPRV).
@@ -1135,7 +1135,7 @@ Section SRegimeDef.
        consulted at all when [mode = Bare] *)
     (tlb : register) ∈ Drw ->
     bare_swp_side acc va ppn kp Db Drw Dro rs dst.
-  Proof.
+  Proof using .
     intros Hacc Hsatp _ _ HMPRV _ _ _ _ _.
     exact (bare_swp_side_intro acc va ppn kp Db Drw Dro rs dst Hacc Hsatp HMPRV).
   Qed.
@@ -1175,7 +1175,7 @@ Section SRegimeShared.
       exec (get_pmlen acc Supervisor) σ = Some (0, σ) ->
       ⊢ reg_interp σ.(sregs) -∗ tlb_res_pt root_ppn -∗
         ⌜ exec (transform_effective_address (Virtaddr ea) acc) σ = Some (Virtaddr ea, σ) ⌝.
-  Proof.
+  Proof using .
     intros acc ea σ Hacc Hcp HSXL Heff Hpml.
     iIntros "Hri Hres".
     iDestruct (tlb_res_pt_open with "Hres") as (satp0 tlbvec)
@@ -1233,7 +1233,7 @@ Section SRegimeShared.
           ⌜ pmp_grant_facts σ' ⌝ ∗
           S σ'.(mem) ∗
           reg_interp σ'.(sregs) ∗ gen_heap_interp σ'.(mem) ∗ tlb_res_pt root_ppn.
-  Proof.
+  Proof using .
     intros acc va pa ppn pc σ E S Hacc Hallow Hcanon Hconcat Hmisa Hmenv Hhtif Hcp HSXL Heff Hss Hall _ HE.
     iIntros "#Hpay Hsto Hat Hri Hgh Hres".
     iMod (tlb_res_pt_translateAddr_at acc root_ppn va pa ppn pc σ E S HE
@@ -1256,7 +1256,7 @@ Section SRegimeShared.
       _get_Mstatus_SXL (register_lookup mstatus σ.(sregs)) = 'b"10" ->
       ⊢ reg_interp σ.(sregs) -∗ tlb_res_pt root_ppn -∗
         ⌜ exists md, exec (translationMode Supervisor) σ = Some (md, σ) ⌝.
-  Proof.
+  Proof using .
     intros σ HSXL.
     iIntros "Hri Hres".
     iDestruct (tlb_res_pt_open with "Hres") as (satp0 tlbvec)
@@ -1316,7 +1316,7 @@ Section SRegimeShared.
           ⌜ pmp_grant_facts σ' ⌝ ∗
           S σ'.(mem) ∗
           reg_interp σ'.(sregs) ∗ gen_heap_interp σ'.(mem) ∗ tlb_res_pt root_ppn.
-  Proof.
+  Proof using .
     intros acc va pa ppn pc σ E S Hacc Hallow Hcanon Hconcat Hmisa Hmenv Hhtif Hcp HSXL Heff Hss Hall HE.
     iIntros "#Hpay Hsto _ Hat Hri Hgh Hres".
     iApply (res_absorb root_ppn acc va pa ppn pc σ E S Hacc Hallow Hcanon Hconcat Hmisa Hmenv Hhtif Hcp HSXL Heff Hss Hall I HE
@@ -1424,7 +1424,7 @@ Section SRegimeShared.
                       ⌜ rsf = rs \/ exists tv, rsf = register_set tlb tv rs ⌝ ∗
                       hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro ∗
                       kpt_swp_res root_ppn rsf ∗ resv_any cpu_id).
-  Proof.
+  Proof using .
     intros acc Drw Dro Df rs dst Db va pa ppn kp rr Hdisj Hacc Hallow
       HDmst HDpriv HDsatp HDpma HDcfg HDaddr HDhtif HDb Hag HDlc Haglc
       Hcp Hhtif Hmstag Hmisa Hmenv HSXL Heff Heffg Hss Hssg Hcanon Hconcat _
@@ -1477,7 +1477,7 @@ Section SRegimeShared.
   Lemma kpt_swp_res_agree (root_ppn : mword 44) (rs : regstate) :
     kpt_res_at root_ppn (register_lookup satp rs) (register_lookup tlb rs)
     ⊣⊢ kpt_swp_res root_ppn rs.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma kpt_swp_open (root_ppn : mword 44) :
     tlb_res_pt root_ppn -∗
@@ -1487,7 +1487,7 @@ Section SRegimeShared.
       satp ↦ᵣ satp0 ∗ tlb ↦ᵣ tlbv ∗
       pmpcfg_n ↦ᵣ pcfg ∗ pmpaddr_n ↦ᵣ paddr ∗
       kpt_res_at root_ppn satp0 tlbv.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as (satp0 tlbv)
       "(Hsatp & %Hmode & %Hasid & %Hppn & Htlb & Hsnap & Hpmp & #Hkpt & #Hcreds)".
     iDestruct "Hpmp" as (pcfg paddr)
@@ -1508,7 +1508,7 @@ Section SRegimeShared.
     ⊢ satp ↦ᵣ satp0 -∗ tlb ↦ᵣ tlbv -∗
       pmpcfg_n ↦ᵣ pcfg -∗ pmpaddr_n ↦ᵣ paddr -∗
       kpt_res_at root_ppn satp0 tlbv -∗ tlb_res_pt root_ppn.
-  Proof.
+  Proof using .
     intros (Hmode & Hasid & Hppn) (HA & Hord & HX & HW & HR & Hcov).
     iIntros "Hsatp Htlb Hpcfg Hpaddr (Hsnap & #Hkpt & #Hcreds)".
     rewrite /tlb_res_pt. iExists satp0, tlbv.
@@ -1535,7 +1535,7 @@ Section SRegimeShared.
        which never walks is not made to fund it *)
     (tlb : register) ∈ Drw ->
     kpt_swp_side root_ppn acc va ppn kp Db Drw Dro rs dst.
-  Proof.
+  Proof using .
     intros (Hmode & Hasid & Hppn) (HA & Hord & HX & HW & HR & Hcov) Hpma
       HDm HDs HSXL Hsatp HWtlb.
     rewrite /kpt_swp_side. split_and!.
@@ -1570,7 +1570,7 @@ Section SRegimeShared.
     register_lookup satp dst.(sregs) = register_lookup satp rs ->
     (tlb : register) ∈ Drw ->
     kpt_swp_side root_ppn acc va ppn kp Db Drw Dro rs dst.
-  Proof.
+  Proof using .
     intros _ Hsatp Hpmp Hpma _ HDm HDs HSXL Hag HWtlb.
     exact (kpt_swp_side_intro root_ppn acc va ppn kp Db Drw Dro rs dst
              Hsatp Hpmp Hpma HDm HDs HSXL Hag HWtlb).
@@ -1579,7 +1579,7 @@ Section SRegimeShared.
   Lemma kpt_swp_mode_ok (root_ppn : mword 44) (satp0 : mword 64) :
     kpt_satp_ok root_ppn satp0 ->
     satpMode_of_bits RV64 (_get_Satp64_Mode (Mk_Satp64 satp0)) = Some Sv39.
-  Proof. intros (Hmode & _ & _). rewrite Hmode. vm_compute. reflexivity. Qed.
+  Proof using . intros (Hmode & _ & _). rewrite Hmode. vm_compute. reflexivity. Qed.
 
   Lemma kpt_swp_translate_wit (root_ppn : mword 44) :
     forall (acc : MemoryAccessType mem_payload)
@@ -1630,7 +1630,7 @@ Section SRegimeShared.
                       ⌜ rsf = rs \/ exists tv, rsf = register_set tlb tv rs ⌝ ∗
                       hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro ∗
                       kpt_swp_res root_ppn rsf ∗ resv_any cpu_id).
-  Proof.
+  Proof using .
     intros acc Drw Dro Df rs dst Db va pa ppn kp rr Hdisj Hacc Hallow
       HDmst HDpriv HDsatp HDpma HDcfg HDaddr HDhtif HDb Hag HDlc Haglc
       Hcp Hhtif Hmstag Hmisa Hmenv HSXL Heff Heffg Hss Hssg Hcanon Hconcat
@@ -1669,7 +1669,7 @@ Section SRegimeShared.
          (∀ tv' : type_of_register tlb,
             satp ↦ᵣ satp0 -∗ pmpcfg_n ↦ᵣ pcfg -∗ pmpaddr_n ↦ᵣ paddr -∗
             kpt_res_at root_ppn satp0 tv' -∗ tlb_res_pt root_ppn)) ).
-  Proof.
+  Proof using .
     iIntros "H".
     iDestruct (kpt_swp_open root_ppn with "H") as (satp0 tlbv pcfg paddr)
       "(%Hsok & %Hpok & Hsatp & Htlb & Hpcfg & Hpaddr & Hres)".
@@ -1695,7 +1695,7 @@ Section SRegimeShared.
       (∀ tv' : type_of_register tlb,
          satp ↦ᵣ satp0 -∗ pmpcfg_n ↦ᵣ pcfg -∗ pmpaddr_n ↦ᵣ paddr -∗
          tlb ↦ᵣ tv' -∗ kpt_res_at root_ppn satp0 tv' -∗ tlb_res_pt root_ppn).
-  Proof.
+  Proof using .
     iIntros "_ H".
     iDestruct (kpt_swp_open root_ppn with "H") as (satp0 tlbv pcfg paddr)
       "(%Hsok & %Hpok & Hsatp & Htlb & Hpcfg & Hpaddr & Hres)".
@@ -1766,12 +1766,12 @@ Section SRegimeKtier.
     end.
 
   Global Instance sr_ktier_wit_persistent R kt : Persistent (sr_ktier_wit R kt).
-  Proof. destruct kt; [apply _ | exact (sr_kwit_pers R)]. Qed.
+  Proof using . destruct kt; [apply _ | exact (sr_kwit_pers R)]. Qed.
 
   (* the KT0 arm is free -- this is what makes every old leaf statement a
      literal corollary of its generic form (no premise appears). *)
   Lemma sr_ktier_wit_KT0 (R : s_regime) : ⊢ sr_ktier_wit R KT0.
-  Proof. done. Qed.
+  Proof using . done. Qed.
 
   (* ...and the SHARED-KPT regime's witness is free at BOTH tiers, because
      [kpt_share_regime]'s [sr_kwit] is [emp]: a hart that reaches those
@@ -1782,7 +1782,7 @@ Section SRegimeKtier.
      KSTACK words at KT1 and it drives them through exactly these rules. *)
   Lemma sr_ktier_wit_kpt_share (root_ppn : mword 44) (kt : ktier) :
     ⊢ sr_ktier_wit (kpt_share_regime root_ppn) kt.
-  Proof. destruct kt; done. Qed.
+  Proof using . destruct kt; done. Qed.
 
   (* THE ONE ABSORPTION A TIER-INDEXED LEAF CALLS.  Its premise list is
      [sr_absorb]'s with the [sr_adm va ppn] conjunct replaced by the
@@ -1842,7 +1842,7 @@ Section SRegimeKtier.
           ⌜ pmp_grant_facts σ' ⌝ ∗
           S σ'.(mem) ∗
           reg_interp σ'.(sregs) ∗ gen_heap_interp σ'.(mem) ∗ sr_inv R.
-  Proof.
+  Proof using .
     intros acc va pa ppn pc σ E S Hacc Hallow Hcanon Hconcat Hmisa Hmenv Hhtif Hcp
            HSXL Heff Hss Hall Hpin HE.
     destruct kt' as [|].

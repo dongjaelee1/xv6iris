@@ -306,7 +306,7 @@ Section PtFreeIris.
        TsoCtx.ctx_phys_word_pointsto XI (u_pte_addr b (mword_of_int i))
          (DfracOwn 1) w)
     ⊢ phys_page_own b.
-  Proof.
+  Proof using .
     iIntros "Hs".
     iEval (rewrite /seqZ) in "Hs".
     iEval (rewrite big_sepL_fmap) in "Hs".
@@ -341,7 +341,7 @@ Section PtFreeIris.
        TsoCtx.ctx_phys_word_pointsto XI (u_pte_addr b (mword_of_int i))
          (DfracOwn 1) w) -∗
       kfree_pre (page_base b).
-  Proof.
+  Proof using .
     intros Hv. iIntros "#Hb Hs".
     iDestruct (pt_slots_any_phys with "Hs") as "Hph".
     rewrite /kfree_pre. iSplitR; [done |].

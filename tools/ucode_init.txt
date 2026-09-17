@@ -1,7 +1,7 @@
 # ucode_init.txt -- the pc set of iris/UCodeInit.v, for tools/gen_ucode.py.
 #
-#   tools/gen_ucode.py --module Init --out iris/UCodeInit.v \
-#       --spec tools/ucode_init.txt
+# tools/ucode_manifest.json binds this spec to iris/UCodeInit.v; `make gen-ucode`
+# rewrites that file from it, and `make check-ucode` fails if it moved.
 #
 # init is the FIRST verified program that never terminates, and the first
 # whose theorem assumes nothing about what the kernel returns: every arm of
@@ -10,8 +10,8 @@
 # when fork, exec or wait fails).  So `func main` is the whole function, not
 # a traced subset.
 #
-# Unreachable branches INSIDE a listed function are kept, following
-# ucode_sh.txt: an unused [uinstr] fact costs only compile time, and pruning
+# Unreachable branches INSIDE a listed function are kept: an unused [uinstr]
+# fact costs only compile time, and pruning
 # per branch would have to be re-audited whenever the reachable set moves.
 # That matters most for vprintf, whose state == '%' arms init never enters
 # (none of its four format strings contains a '%') but which are generated

@@ -179,18 +179,18 @@ Section BmapKit.
     end.
 
   Global Instance bm_prk_persistent ak γu γd : Persistent (bm_prk ak γu γd).
-  Proof. destruct ak; apply _. Qed.
+  Proof using . destruct ak; apply _. Qed.
 
   Lemma bm_prk_elim (a : bm_alloc) (ak : option bm_alloc)
       (γu : uart_names) (γd : disk_names) :
     ak = Some a ->
     bm_prk ak γu γd -∗
       kernel_data ∗ printk_env (ba_pr a) γu γd.
-  Proof. intros ->. rewrite /bm_prk. iIntros "H". iExact "H". Qed.
+  Proof using . intros ->. rewrite /bm_prk. iIntros "H". iExact "H". Qed.
 
   Lemma bm_prk_none (γu : uart_names) (γd : disk_names) :
     ⊢ bm_prk None γu γd.
-  Proof. rewrite /bm_prk. done. Qed.
+  Proof using . rewrite /bm_prk. done. Qed.
 
   (* everything the ALLOCATING arms need and the no-alloc caller does not
      have.  bread's slot unit is NOT in here -- both callers supply it.
@@ -234,7 +234,7 @@ Section BmapKit.
       sb_size ↦₄{dqs} (mword_of_int sz : mword 32) ∗
       sb_bmapstart ↦₄{dqb} (mword_of_int bms : mword 32) ∗
       bitmap_inv γfs bms cov logstart sz.
-  Proof. intros ->. rewrite /bm_kit. iIntros "H". iExact "H". Qed.
+  Proof using . intros ->. rewrite /bm_kit. iIntros "H". iExact "H". Qed.
 
   Lemma bm_kit_intro (γ : log_names) (bms sz : Z) (dqb dqs : dfrac)
       (γpr : gname) (ak : option bm_alloc) (bn : bio_names)
@@ -247,7 +247,7 @@ Section BmapKit.
     sb_bmapstart ↦₄{dqb} (mword_of_int bms : mword 32) -∗
     bitmap_inv γfs bms cov logstart sz -∗
       bm_kit ak bn γfs cov logstart dev n Sb.
-  Proof.
+  Proof using .
     intros -> Hok. rewrite /bm_kit. iIntros "A B C D E F".
     iSplitR; [iPureIntro; exact Hok|].
     iSplitL "A"; [iExact "A"|]. iSplitL "B"; [iExact "B"|].
@@ -258,7 +258,7 @@ Section BmapKit.
   Lemma bm_kit_none (bn : bio_names) (γfs : fs_names) (cov : gset Z)
       (logstart : Z) (dev : mword 32) (n : nat) (Sb : gset Z) :
     ⊢ bm_kit None bn γfs cov logstart dev n Sb.
-  Proof. rewrite /bm_kit. done. Qed.
+  Proof using . rewrite /bm_kit. done. Qed.
 
   (* the bitmap block, as a SET, so that the ledger clauses can be stated
      without destructing [ak] -- [None] logs nothing and so contributes
@@ -276,41 +276,41 @@ Section BmapKit.
   (*  three variables, and applied by name at the call sites.               *)
   (* ===================================================================== *)
   Lemma bmset_sing_in (x : Z) (S : gset Z) : {[x]} ⊆ S -> x ∈ S.
-  Proof. set_solver. Qed.
+  Proof using . set_solver. Qed.
 
   Lemma bmset_sing_sub (x : Z) (S : gset Z) : x ∈ S -> {[x]} ⊆ S.
-  Proof. set_solver. Qed.
+  Proof using . set_solver. Qed.
 
   Lemma bmset_sub_l3 (A B C : gset Z) : A ⊆ A ∪ B ∪ C.
-  Proof. set_solver. Qed.
+  Proof using . set_solver. Qed.
 
   Lemma bmset_sub_l4 (A B C D : gset Z) : A ⊆ A ∪ B ∪ C ∪ D.
-  Proof. set_solver. Qed.
+  Proof using . set_solver. Qed.
 
   Lemma bmset_in_l3 (x : Z) (A B C : gset Z) : x ∈ A -> x ∈ A ∪ B ∪ C.
-  Proof. set_solver. Qed.
+  Proof using . set_solver. Qed.
 
   Lemma bmset_in_m3 (x : Z) (A C : gset Z) : x ∈ A ∪ {[x]} ∪ C.
-  Proof. set_solver. Qed.
+  Proof using . set_solver. Qed.
 
   Lemma bmset_in_r3 (x : Z) (A B : gset Z) : x ∈ A ∪ B ∪ {[x]}.
-  Proof. set_solver. Qed.
+  Proof using . set_solver. Qed.
 
   Lemma bmset_in_m4 (x : Z) (A C D : gset Z) : x ∈ A ∪ {[x]} ∪ C ∪ D.
-  Proof. set_solver. Qed.
+  Proof using . set_solver. Qed.
 
   Lemma bmset_in_c4 (x : Z) (A B D : gset Z) : x ∈ A ∪ B ∪ {[x]} ∪ D.
-  Proof. set_solver. Qed.
+  Proof using . set_solver. Qed.
 
   Lemma bmset_sing_sub_m3 (x : Z) (A C : gset Z) : {[x]} ⊆ A ∪ {[x]} ∪ C.
-  Proof. set_solver. Qed.
+  Proof using . set_solver. Qed.
 
   Lemma bmset_ceil3 (A : gset Z) (x y z : Z) :
     A ∪ {[x]} ∪ {[z]} ⊆ A ∪ {[x]} ∪ {[y]} ∪ {[z]}.
-  Proof. set_solver. Qed.
+  Proof using . set_solver. Qed.
 
   Lemma bmset_add_r (A D : gset Z) : A ⊆ A ∪ D.
-  Proof. set_solver. Qed.
+  Proof using . set_solver. Qed.
 
   (* the tail's ceiling: the caller logged at most the bitmap and the
      indirect block, and the tail adds the bitmap (again) and the data
@@ -318,7 +318,7 @@ Section BmapKit.
   Lemma bmset_tail_ceiling (Sb SbI : gset Z) (bms ind blk : Z) :
     SbI ⊆ Sb ∪ {[bms]} ∪ {[ind]} ->
     SbI ∪ {[bms]} ∪ {[blk]} ∪ {[ind]} ⊆ Sb ∪ {[bms]} ∪ {[ind]} ∪ {[blk]}.
-  Proof. set_solver. Qed.
+  Proof using . set_solver. Qed.
 
   (* THE LEDGER CLAUSE, once, so that the four interior lemmas carry it as
      one hypothesis and the six discharge sites prove one thing.  It is
@@ -359,14 +359,14 @@ Section BmapKit.
                   <= nI + c)%nat) :
     (n <= (if cri then S w else w) + c)%nat
     /\ ((if cri then S w else w) <= n)%nat.
-  Proof. destruct crb, cri; lia. Qed.
+  Proof using . destruct crb, cri; lia. Qed.
 
   (* NOTHING MOVED -- the whole ledger obligation of every arm that neither
      allocates nor logs, and (at [ak = None]) of the no-alloc instance *)
   Lemma bm_ledger_id (ak : option bm_alloc) (cr : bool) (bm : blkmap)
       (fbn : nat) (n : nat) (Sb : gset Z) :
     bm_ledger_ok ak cr bm bm fbn n n Sb Sb.
-  Proof.
+  Proof using .
     rewrite /bm_ledger_ok (bmap_alloced_none bm bm fbn eq_refl eq_refl).
     split; [cbn; lia|]. split; [lia|]. split; [set_solver|].
     split; [set_solver|]. split; [intros Hc; discriminate Hc|].
@@ -568,7 +568,7 @@ Section BmapDefs.
      pa_stk (m !!! Regidx csp_rs1 : mword 64) 6 ↦₈[KT1] (m !!! Regidx Rs4 : mword 64))%I.
 
   Lemma bm_frame_of4 (m : regfile) : bm_frame4 m -∗ bm_frame m.
-  Proof.
+  Proof using .
     rewrite /bm_frame4 /bm_frame.
     iIntros "(H1 & H2 & H3 & H4 & H5 & H6)".
     iSplitL "H1"; [iExact "H1"|]. iSplitL "H2"; [iExact "H2"|].
@@ -682,7 +682,7 @@ Section BmapEpilogue.
     bm_cont (CID0 := CID0) γfs bn ak cov logstart dev ip bm data fbn n cr Sb
             pidv dq dqd j m K eb b lks Upr -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hsp Hthr Hs1 Hwf' Hag Hkeep Hnoal Hrv Hdat Hled.
     
     iIntros "Hcg Hcnt Hextc Hextm #Htext Hpc Hframe Hppid Hidev Hmap Hblocks Hsl Hkit Hcont".
@@ -1031,7 +1031,7 @@ Section BmapRelease.
     bm_cont (CID0 := CID0) γfs bn ak cov logstart dev ip bm data fbn n cr Sb
             pidv dq dqd j m K eb b lks Upr -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hsp Hthr Hs1 Hs4 Hkk Hwf' Hag Hkeep Hnoal Hrv Hdat Hled Hbc.
     pose proof HK as HK'. 
     iIntros "Hcg Hcnt Hextc Hextm #Htext Hpc #Hbio #Hrow #Hprocs Hframe Hppid
@@ -1269,7 +1269,7 @@ Section BmapTail.
     bm_cont (CID0 := CID0) γfs bn ak cov logstart dev ip bm data fbn n cr Sb
             pidv dq dqd j m K eb b lks Upr -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hgeom HwfI Hfbn Hq Hagr Hindnz HakI Haknz Hn3i Hcrb Hcri Hled0 Hbud2
            HSbI Hba Hlw Hj Hgl Hsp Hthr Hs1 Hs2 Hs3 Hbc Hlog Hdq1.
     pose proof HK as HK'. 
@@ -2209,7 +2209,7 @@ Section ProofBmapMain.
       (Hdq1 : ak <> None -> dq = DfracOwn 1)
     : bm_gen_stmt γs j γl γu γd γk pd pav pu bn ak γfs
                   cov logstart dev ip bm data fbn n cr Sb pidv dq dqd m K eb b lks Upr.
-  Proof.
+  Proof using .
     cbv beta delta [bm_gen_stmt].
     intros pcE pj ret_tgt bnw HK Hn5i Hcr0 Haknz Hgeom Hfbn Hwf Hj Hgl Ha0 Ha1.
     pose proof HK as HK'. 
@@ -3603,7 +3603,7 @@ Section BmapSeal.
     : wp_bmap_sconf_body γs j γl γu γd γk pd pav pu bn γ γfs
                          cov logstart bmapstart size dev γpr ip bm data fbn n
                          pidv dq dqd dqb dqs m K eb b lks Upr.
-  Proof.
+  Proof using .
     cbv beta delta [wp_bmap_sconf_body].
     intros pcE pj ret_tgt bnw HK Hn5 Hgeom Hbgok Hfbn Hwf Hj Hgl Ha0 Ha1 Hbelow.
     iIntros "Hcg Hcnt Hextc Hextm #Htext Hpc #Hkdata #Hprkenv #Hpanenv #Hbio #Hrow #Hlctx
@@ -3692,7 +3692,7 @@ Section BmapSeal.
                        cov logstart bmapstart size dev γpr ip bm data fbn
                        n cr Sb
                        pidv dq dqd dqb dqs m K eb b lks Upr.
-  Proof.
+  Proof using .
     cbv beta delta [wp_bmap_gen_body].
     intros pcE pj ret_tgt bnw HK Hneed Hgeom Hbgok Hcrp Hfbn Hwf Hj Hgl
            Ha0 Ha1 Hbelow.
@@ -3783,7 +3783,7 @@ Section BmapNoallocSeal.
     : wp_bmap_noalloc_sconf_body γs j γl γu γd γk pd pav pu bn γfs
                                  cov logstart dev ip bm data fbn pidv dq dqd
                                  m K eb b lks Upr.
-  Proof.
+  Proof using .
     cbv beta delta [wp_bmap_noalloc_sconf_body].
     intros pcE pj ret_tgt bnw HK Hgeom Hfbn Hwf Hnz Hj Hgl Ha0 Ha1 Hbelow.
     iIntros "Hcg Hcnt Hextc Hextm #Htext #Hkd Hpc #Hpenv #Hbio #Hrow Hidev Hmap Hblocks Hppid

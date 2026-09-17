@@ -116,7 +116,7 @@ Section EscrowInode.
     inv (escAN z) (escA_body γfs ge gr gd z rg).
   Global Instance escA_inv_persistent γfs ge gr gd z rg :
     Persistent (escA_inv γfs ge gr gd z rg).
-  Proof. rewrite /escA_inv. apply _. Qed.
+  Proof using . rewrite /escA_inv. apply _. Qed.
 
   (* minted at iput+0x86 (before itable.lock release): fresh escrow, EMPTY,
      with its exclusive ticket.  The deposit that fills it happens later, at
@@ -135,7 +135,7 @@ Section EscrowInode.
     (∃ n : fs_node, ⌜fn_nlink n = 0%nat⌝ ∗ top_frag (fs_gamma_L γfs) z n)
       ={E}=∗ ∃ ge gr gd,
       escA_inv γfs ge gr gd z rg ∗ redeem_ticketA gr ∗ redeem_ticketA gd.
-  Proof.
+  Proof using .
     iIntros "Hfz Htop".
     iMod (mono_nat_own_alloc ST_EMPTY) as (ge) "[Hauth _]".
     iMod (own_alloc (Excl ())) as (gr) "Htick"; [done|].
@@ -170,7 +170,7 @@ Section EscrowInode.
       (∃ n : fs_node, ⌜fn_nlink n = 0%nat⌝ ∗ top_frag (fs_gamma_L γfs) z n) ∗
       (crp_elem z CrpDep -∗ ifreeze_off z
          ={E ∖ ↑escAN z, E}=∗ committedA ge).
-  Proof.
+  Proof using .
     iIntros (HE) "#Hinv Hdep".
     iInv "Hinv" as ">Hbody" "Hcl".
     iDestruct "Hbody"
@@ -190,7 +190,7 @@ Section EscrowInode.
     ↑escAN z ⊆ E →
     escA_inv γfs ge gr gd z rg -∗ redeem_ticketA gr -∗ committedA ge
       ={E}=∗ crp_elem z CrpDep ∗ ifreeze_off z.
-  Proof.
+  Proof using .
     iIntros (HE) "#Hinv Htick #Hcom".
     iInv "Hinv" as ">Hbody" "Hcl".
     iDestruct "Hbody"
@@ -223,7 +223,7 @@ Section EscrowInode.
        mask is the peel's own minus this one namespace. *)
     (P -∗ ifreeze_post rg z ={E ∖ ↑escAN z}=∗ False)
       ={E}=∗ P ∗ crp_elem z CrpDep ∗ ifreeze_off z.
-  Proof.
+  Proof using .
     iIntros (HE) "#Hinv Htick HP Href".
     iInv "Hinv" as ">Hbody" "Hcl".
     iDestruct "Hbody"

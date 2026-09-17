@@ -196,7 +196,7 @@ Section ProofFetchstr.
         pc_is (ret_pc ra0) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hav Hsp0 Hra0 Hs00 Hs10 Hs20 Hs30 Hmtsp Hmta0 Hthr.
     iIntros "Hcg #Htext Hpc Hb1 Hb2 Hb3 Hb4 Hb5 Hb6 Hcont".
     (* ---- +0x2e: c.ldsp ra,40(sp) ---- *)
@@ -413,7 +413,7 @@ Section ProofFetchstr.
       (m : regfile) (av : nat) (n : nat) (eb : bool) (p : mword 64)
       (pid : mword 32) (U : ustate) (maxn : nat) (buf_olds : nat -> bv 8) (b : bool) (lks : gset string)
     : wp_fetchstr_sconf_body ktb γa γf m av n eb p pid U maxn buf_olds b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_fetchstr_sconf_body].
     intros pcE addr buf ret_tgt Hn Hav Hmax Hmax31 Hlkbelow.
     

@@ -238,7 +238,7 @@ Section IlockParts.
          bb_bytes (i_addr ip 0) (4 * length l')%nat
                   (fun j => ind_bytes l' !!! j) -∗
          inode_addrs ip l').
-  Proof.
+  Proof using .
     iIntros "H".
     iDestruct (inode_addrs_aligned_all with "H") as %Hal.
     rewrite (inode_addrs_bytes_iff ip l Hal).
@@ -293,7 +293,7 @@ Section IlockMsg.
 
   Lemma il_msg_str :
     (kernel_data : iProp Σ) -∗ (mword_of_int il_msg_a : mword 64) ↦ₛ□ il_msg.
-  Proof.
+  Proof using .
     iIntros "#Hd".
     iApply (kernel_data_string il_msg_a il_msg _ eq_refl
               ltac:(unfold text_end, il_msg_a; lia)
@@ -377,7 +377,7 @@ Section IlockDefs.
     ic_dep_rd d = false ->
     ic_payload fsc_fs fsc_ireg fsc_cov fsc_logst k inum g v -∗
     il_payload d k inum g v.
-  Proof.
+  Proof using .
     intros Hrd.
     rewrite /ic_payload /il_payload /ic_payload_np /ic_dep_held Hrd.
     destruct v; iIntros "[H Hoff]".
@@ -479,7 +479,7 @@ Section IlockEpilogue.
     il_cont (CID0 := CID0) gisl s g lo d o k ip
  inum pidv dq dqs j m K eb b lks Upr -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hsp Hthr Hfr Hpost.
     pose proof HK as HK'. 
     iIntros "Hcg Hcnt Hextc Hextm #Htext Hpc Hframe Hppid Hsb
@@ -710,10 +710,10 @@ Section IlockLoad.
      [inode_sized_zero] and [DirView.dir_ok_size_zero] do the rest, at the
      call site.) *)
   Local Lemma il_bmcells_empty : bm_cells bm_empty = replicate 13 (bv_0 32).
-  Proof. rewrite /bm_cells /bm_empty /NDIRECT. cbn. reflexivity. Qed.
+  Proof using . rewrite /bm_cells /bm_empty /NDIRECT. cbn. reflexivity. Qed.
 
   Local Lemma il_ind_res_empty : ⊢ ind_res fsc_fs bm_empty.
-  Proof.
+  Proof using .
     rewrite /ind_res /ind_blk.
     destruct (decide (bv_unsigned (bm_ind bm_empty) = 0)) as [_|Hc];
       [done | exfalso; apply Hc; reflexivity].
@@ -721,7 +721,7 @@ Section IlockLoad.
 
   Local Lemma il_blocks_empty (data : nat -> list (bv 8)) :
     ⊢ inode_blocks fsc_fs bm_empty data.
-  Proof.
+  Proof using .
     rewrite /inode_blocks.
     iApply big_sepL_intro. iIntros "!>" (t x Hx).
     rewrite /blk_res bm_empty_get.
@@ -809,7 +809,7 @@ Section IlockLoad.
     il_cont (CID0 := CID0) gisl s g lo d o k ip
  inum pidv dq dqs j m K eb b lks Upr -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hfills Hrdf Hsp Hthr HMs1 Hip Hk Hgeom Hst Hcov Hinlt Hj Hgl Hbelow.
     pose proof HK as HK'. 
     destruct Hgeom as [Hcovok Hlogsub].
@@ -2250,7 +2250,7 @@ Section ProofIlockMain.
     : wp_ilock_dep_sconf_body gs j gl pd pav pu gil gisl
  k s g lo tl d o inum
                               pidv dq dqs m K eb b lks Upr.
-  Proof.
+  Proof using .
     cbv beta delta [wp_ilock_dep_sconf_body].
     intros pcE ip pj ret_tgt HK Hdshr Hrdo Hk Hgeom Hst Hcov Hinlt Hj Hgl Ha0
            Hbelow.
@@ -2875,7 +2875,7 @@ Section ProofIlockMain.
     : wp_ilock_tx_sconf_body gs j gl pd pav pu gil gisl
  k s g lo tl o inum
                              pidv dq dqs m K eb b lks Upr.
-  Proof.
+  Proof using .
     apply wp_ilock_tx_of_dep.
     intros d. apply wp_ilock_dep_sconf.
   Qed.

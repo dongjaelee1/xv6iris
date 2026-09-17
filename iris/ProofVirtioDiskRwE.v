@@ -221,7 +221,7 @@ Section VdrweLeaves.
       vdrwe_polled γd nr q dc w -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hea Hrd Hrdok.
     iIntros "Hcg Hpc Hinstr Hrow Hcont".
     rewrite /claim_cells.
@@ -403,7 +403,7 @@ Section ProofVirtioDiskRwE.
                  m0 kq lks -∗
     P4.vdrw_p4_exit CID γk γs j γd pd pav pu K eb sp0 b wr sector bs_buf
                     bs_disk m0 kq lks.
-  Proof.
+  Proof using .
     intros HK Hj Hjl Hbnz Hbelow.
     iIntros "#Htext #Hpinv #Hdinv #Hlk Hexit".
     rewrite /P4.vdrw_p4_exit.

@@ -235,7 +235,7 @@ Section BioInv.
      refutes the parked arm with the full valid cell in hand. *)
   Lemma word4_pointsto_excl (a : Arch.pa) (w1 w2 : bv 32) (dq : dfrac) :
     a ↦₄ w1 -∗ a ↦₄{dq} w2 -∗ False.
-  Proof.
+  Proof using .
     iIntros "H1 H2".
     (* M1 stage 2: [↦₄] is the ctx tower, so the laws gain a leading ξ *)
     iDestruct (ctx_word4_pointsto_bytes with "H1") as "H1".
@@ -306,9 +306,9 @@ Section BioInv.
     lock_tok_excl (bn_own bn k).
 
   Lemma bown_exclusive bn k : bown bn k -∗ bown bn k -∗ False.
-  Proof. apply lock_tok_excl_exclusive. Qed.
+  Proof using . apply lock_tok_excl_exclusive. Qed.
   Global Instance bown_timeless bn k : Timeless (bown bn k).
-  Proof. rewrite /bown. apply _. Qed.
+  Proof using . rewrite /bown. apply _. Qed.
 
   (* ------------------------------------------------------------------ *)
   (*  The uncached pool bundle and the payloads                           *)
@@ -372,19 +372,19 @@ Section BioInv.
 
   Global Instance bio_pay_timeless bn V k dev bno bsl bsd d :
     Timeless (bio_pay bn V k dev bno bsl bsd d).
-  Proof. rewrite /bio_pay. destruct d; tl_struct. Qed.
+  Proof using . rewrite /bio_pay. destruct d; tl_struct. Qed.
 
   Global Instance pool_blk_timeless V b : Timeless (pool_blk V b).
-  Proof. rewrite /pool_blk. tl_struct. Qed.
+  Proof using . rewrite /pool_blk. tl_struct. Qed.
 
   Global Instance buf_pay_timeless bn V k v dev bno bs :
     Timeless (buf_pay bn V k v dev bno bs).
-  Proof. rewrite /buf_pay. case_decide; [destruct v|]; tl_struct. Qed.
+  Proof using . rewrite /buf_pay. case_decide; [destruct v|]; tl_struct. Qed.
 
   Lemma btok_free_absurd bn (M : gmap nat (option Qp * positive)) k (o : option Qp) :
     M !! k = None ->
     own (bn_auth bn) (● M) -∗ btok bn k o -∗ False.
-  Proof.
+  Proof using .
     iIntros (HM) "Ha Htok". rewrite /btok.
     iDestruct (own_valid_2 with "Ha Htok")
       as %[Hincl _]%auth_both_valid_discrete.
@@ -395,7 +395,7 @@ Section BioInv.
   Lemma bref_tok_free_absurd bn (M : gmap nat (option Qp * positive)) k q :
     M !! k = None ->
     own (bn_auth bn) (● M) -∗ bref_tok bn k q -∗ False.
-  Proof. apply btok_free_absurd. Qed.
+  Proof using . apply btok_free_absurd. Qed.
 
   (* ---- the swaps (used inside an [iInv] open of [buf_escrow]) ---- *)
 
@@ -413,7 +413,7 @@ Section BioInv.
     (if decide (uint bno ∈ bv_cov V)
      then ⌜dev = bv_dev V⌝ ∗ pool_blk V (uint bno)
      else emp).
-  Proof.
+  Proof using .
     iIntros (HM) "Ha Hpay". rewrite /buf_pay.
     case_decide as Hc; last by iFrame.
     iDestruct "Hpay" as "[%Hdev Hpay]".
@@ -443,7 +443,7 @@ Section BioInv.
   Lemma btok_lookup bn M k (o : option Qp) :
     own (bn_auth bn) (● M) -∗ btok bn k o -∗
     ⌜∃ ot n, M !! k = Some (ot, n) /\ o ≼ ot /\ (n = 1%positive -> ot = o)⌝.
-  Proof.
+  Proof using .
     rewrite /btok. iIntros "Ha Hf".
     iDestruct (own_valid_2 with "Ha Hf") as %[Hincl _]%auth_both_valid_discrete.
     iPureIntro.
@@ -464,7 +464,7 @@ Section BioInv.
   Lemma bio_auth_entry_valid bn M k (ot : option Qp) (n : positive) :
     M !! k = Some (ot, n) ->
     own (bn_auth bn) (● M) -∗ ⌜✓ ot⌝.
-  Proof.
+  Proof using .
     iIntros (HM) "Ha". iDestruct (own_valid with "Ha") as %Hv.
     apply (proj1 (auth_auth_valid _)) in Hv.
     iPureIntro. specialize (Hv k). rewrite HM Some_valid in Hv.
@@ -476,7 +476,7 @@ Section BioInv.
     ✓ o ->
     own (bn_auth bn) (● M) ==∗
     own (bn_auth bn) (● (<[k := (o, 1%positive)]> M)) ∗ btok bn k o.
-  Proof.
+  Proof using .
     iIntros (HM Ho) "Ha". rewrite /btok.
     iMod (own_update _ _ _ (bio_first_upd M k o HM Ho) with "Ha") as "[$ $]".
     done.
@@ -487,7 +487,7 @@ Section BioInv.
     ✓ (ot ⋅ on) ->
     own (bn_auth bn) (● M) ==∗
     own (bn_auth bn) (● (<[k := (ot ⋅ on, Pos.succ n)]> M)) ∗ btok bn k on.
-  Proof.
+  Proof using .
     iIntros (HM Hv) "Ha". rewrite /btok.
     iMod (own_update _ _ _ (bio_incr_upd M k ot on n HM Hv) with "Ha") as "[$ $]".
     done.
@@ -498,7 +498,7 @@ Section BioInv.
     ot = o ⋅ orem ->
     own (bn_auth bn) (● M) -∗ btok bn k o ==∗
     own (bn_auth bn) (● (<[k := (orem, n)]> M)).
-  Proof.
+  Proof using .
     iIntros (HM Hsub) "Ha Hf". rewrite /btok.
     iMod (own_update_2 _ _ _ _ (bio_decr_upd M k o ot orem n HM Hsub)
            with "Ha Hf") as "$".
@@ -509,7 +509,7 @@ Section BioInv.
     M !! k = Some (o, 1%positive) ->
     own (bn_auth bn) (● M) -∗ btok bn k o ==∗
     own (bn_auth bn) (● (delete k M)).
-  Proof.
+  Proof using .
     iIntros (HM) "Ha Hf". rewrite /btok.
     iMod (own_update_2 _ _ _ _ (bio_last_upd M k o HM) with "Ha Hf") as "$".
     done.
@@ -537,13 +537,13 @@ Section BioInv.
      leaves take [eq_vec] (a [beqz]) and [neq_vec] (a [bnez]) respectively. *)
   Lemma brc_word_zero_eqv :
     eq_vec (sign_extend' 64 (mword_of_int 0 : mword 32)) (zero_reg : mword 64) = true.
-  Proof. apply eq_vec_true_iff. apply bv_eq. vm_compute. reflexivity. Qed.
+  Proof using . apply eq_vec_true_iff. apply bv_eq. vm_compute. reflexivity. Qed.
 
   Lemma brc_word_nonzero_eqv (pz : positive) :
     (Z.pos pz < 2 ^ 31)%Z ->
     eq_vec (sign_extend' 64 (mword_of_int (Z.pos pz) : mword 32)) (zero_reg : mword 64)
     = false.
-  Proof.
+  Proof using .
     intro Hn.
     (* [lia] cannot evaluate [2^k]; name the three literals first. *)
     assert (E31 : (2 ^ 31 = 2147483648)%Z) by (vm_compute; reflexivity).
@@ -572,13 +572,13 @@ Section BioInv.
 
   Lemma brc_word_zero_neqv :
     neq_vec (sign_extend' 64 (mword_of_int 0 : mword 32)) (zero_reg : mword 64) = false.
-  Proof. unfold neq_vec. by rewrite brc_word_zero_eqv. Qed.
+  Proof using . unfold neq_vec. by rewrite brc_word_zero_eqv. Qed.
 
   Lemma brc_word_nonzero_neqv (pz : positive) :
     (Z.pos pz < 2 ^ 31)%Z ->
     neq_vec (sign_extend' 64 (mword_of_int (Z.pos pz) : mword 32)) (zero_reg : mword 64)
     = true.
-  Proof. intro Hn. unfold neq_vec. by rewrite (brc_word_nonzero_eqv pz Hn). Qed.
+  Proof using . intro Hn. unfold neq_vec. by rewrite (brc_word_nonzero_eqv pz Hn). Qed.
 
   (* one buffer's bcache-side state: the refcnt cell, and whatever fraction
      of dev/blockno has not been handed to references -- all of the bcache
@@ -590,7 +590,7 @@ Section BioInv.
 
   Lemma bcache_cached_spec (bnos : nat -> mword 32) (b : Z) :
     b ∈ bcache_cached bnos <-> exists j, (j < NBUF)%nat /\ b = uint (bnos j).
-  Proof.
+  Proof using .
     rewrite /bcache_cached elem_of_list_to_set elem_of_list_fmap.
     split.
     - intros (j & -> & Hj). apply elem_of_seq in Hj. exists j.
@@ -624,7 +624,7 @@ Section BioInv.
     pool_blk V (uint B) ∗
     ((if decide (uint old ∈ bv_cov V) then pool_blk V (uint old) else emp) -∗
      bio_pool V bnos').
-  Proof.
+  Proof using .
     iIntros (Hk Hbk Hbk' Hother HcovB HmissB Holdu) "Hpool".
     rewrite /bio_pool.
     assert (HBin : uint B ∈ bv_cov V ∖ bcache_cached bnos).
@@ -767,7 +767,7 @@ Section BioInv.
     bio_held bn V k pidv dev bno bs bsl bsd d ⊣⊢
     bio_hold0 bn V k pidv dev bno bs bsd ∗
     bio_pay bn V k dev bno bsl bsd d.
-  Proof.
+  Proof using .
     rewrite /bio_held /bio_hold0.
     iSplit.
     - iIntros "(%A & %B & %C & H1 & H2 & H3 & H4 & H5 & H6)".
@@ -782,7 +782,7 @@ Section BioInv.
   (* ------------------------------------------------------------------ *)
 
   Local Lemma bio_seq_cons (j n : nat) : seq j (S n) = j :: seq (S j) n.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* GNAMES BEFORE THE RECORD.  [bio_names] cannot be built until all of the
      per-buffer gnames exist, and [bown bn k] -- the resource the sleeplocks
@@ -794,7 +794,7 @@ Section BioInv.
      These two lemmas are the collectors. *)
   Lemma tok_fun_alloc (n j : nat) :
     ⊢ |==> ∃ f : nat -> gname, [∗ list] k ∈ seq j n, lock_tok_excl (f k).
-  Proof.
+  Proof using .
     iInduction n as [|n IH] forall (j).
     { iModIntro. iExists (fun _ => inhabitant). cbn [seq]. done. }
     iMod lock_tok_excl_alloc as (γ) "Hg".
@@ -811,7 +811,7 @@ Section BioInv.
       (Q : nat -> A -> iProp Σ) (n j : nat) :
     ([∗ list] k ∈ seq j n, |={E}=> ∃ x : A, Q k x) ={E}=∗
     ∃ f : nat -> A, [∗ list] k ∈ seq j n, Q k (f k).
-  Proof.
+  Proof using .
     iInduction n as [|n IH] forall (j).
     { iIntros "_". iModIntro. iExists (fun _ => inhabitant). cbn [seq]. done. }
     rewrite bio_seq_cons. iIntros "[Hh Ht]".
@@ -876,7 +876,7 @@ Section BioBox.
        ctx_word4_pointsto ξ (b_dev (bpa k)) (DfracOwn (1/2)) dev ∗
        buf_own (XI := ξ) (bpa k) bno (mword_of_int 0 : mword 32) bs ∗
        buf_pay (XI := ξ) bn V k v dev bno bs)%I.
-  Proof.
+  Proof using .
     rewrite /buf_bundle /buf_hdr /buf_rest /buf_own. iSplit.
     - iIntros "(%v & %dev & %bno & %bs & (Hv & Hd & Hb & Hp) & (Hdk & %Hl & Hdata))".
       iExists v, dev, bno, bs. iFrame "Hv Hd Hp Hb Hdk Hdata". done.
@@ -886,20 +886,20 @@ Section BioBox.
   (* the invalid header does not mention the data *)
   Lemma buf_hdr_false_bs bn V k ξ dev bno bs bs' :
     buf_hdr bn V k ξ false dev bno bs -∗ buf_hdr bn V k ξ false dev bno bs'.
-  Proof.
+  Proof using .
     rewrite /buf_hdr. iIntros "(Hv & Hd & Hb & Hp)". iFrame "Hv Hd Hb".
     rewrite /buf_pay. case_decide; [iExact "Hp" | iExact "Hp"].
   Qed.
 
   Global Instance buf_hdr_timeless bn V k ξ v dev bno bs : Timeless (buf_hdr bn V k ξ v dev bno bs).
-  Proof.
+  Proof using .
     rewrite /buf_hdr. apply bi.sep_timeless; [apply _|]. apply bi.sep_timeless; [apply _|].
     apply bi.sep_timeless; apply _.
   Qed.
   Global Instance buf_rest_timeless k ξ bs : Timeless (buf_rest k ξ bs).
-  Proof. rewrite /buf_rest. apply bi.sep_timeless; [apply _|]. apply bi.sep_timeless; apply _. Qed.
+  Proof using . rewrite /buf_rest. apply bi.sep_timeless; [apply _|]. apply bi.sep_timeless; apply _. Qed.
   Global Instance buf_bundle_timeless bn V k ξ : Timeless (buf_bundle bn V k ξ).
-  Proof.
+  Proof using .
     rewrite /buf_bundle.
     apply bi.exist_timeless; intro v. apply bi.exist_timeless; intro dev.
     apply bi.exist_timeless; intro bno. apply bi.exist_timeless; intro bs.
@@ -908,7 +908,7 @@ Section BioBox.
 
   Local Instance buf_pay_morph' bn V k v dev bno bs :
     CtxMorph (fun ξ => buf_pay (XI := ξ) bn V k v dev bno bs).
-  Proof.
+  Proof using .
     rewrite /buf_pay.
     case_decide; [|apply ctx_morph_const].
     apply ctx_morph_sep; [apply ctx_morph_const|].
@@ -927,7 +927,7 @@ Section BioBox.
   Qed.
   Global Instance buf_hdr_morph bn V k v dev bno bs :
     CtxMorph (fun ξ => buf_hdr bn V k ξ v dev bno bs).
-  Proof.
+  Proof using .
     rewrite /buf_hdr.
     apply ctx_morph_sep; [apply ctx_morph_word4|].
     apply ctx_morph_sep; [apply ctx_morph_word4|].
@@ -935,14 +935,14 @@ Section BioBox.
     apply buf_pay_morph'.
   Qed.
   Global Instance buf_rest_morph k bs : CtxMorph (fun ξ => buf_rest k ξ bs).
-  Proof.
+  Proof using .
     rewrite /buf_rest.
     apply ctx_morph_sep; [apply ctx_morph_word4|].
     apply ctx_morph_sep; [apply ctx_morph_const|].
     apply ctx_morph_big_sepL. intros i x. apply ctx_morph_pointsto.
   Qed.
   Global Instance buf_bundle_morph bn V k : CtxMorph (buf_bundle bn V k).
-  Proof.
+  Proof using .
     rewrite /buf_bundle. apply ctx_morph_exist => v.
     apply ctx_morph_exist => dev. apply ctx_morph_exist => bno.
     apply ctx_morph_exist => bs.
@@ -962,30 +962,30 @@ Section BioBox.
   Definition brest (k : nat) (x : bio_x) (ξ : CtxId) : iProp Σ := buf_rest k ξ x.
 
   Global Instance bhdr_morph bn V k i x : CtxMorph (bhdr bn V k i x).
-  Proof. rewrite /bhdr. apply ctx_morph_exist => v. apply buf_hdr_morph. Qed.
+  Proof using . rewrite /bhdr. apply ctx_morph_exist => v. apply buf_hdr_morph. Qed.
   Global Instance brest_morph k x : CtxMorph (brest k x).
-  Proof. rewrite /brest. apply buf_rest_morph. Qed.
+  Proof using . rewrite /brest. apply buf_rest_morph. Qed.
   Global Instance bhdr_timeless bn V k i x ξ : Timeless (bhdr bn V k i x ξ).
-  Proof. rewrite /bhdr. apply bi.exist_timeless; intro v. apply _. Qed.
+  Proof using . rewrite /bhdr. apply bi.exist_timeless; intro v. apply _. Qed.
   Global Instance brest_timeless k x ξ : Timeless (brest k x ξ).
-  Proof. rewrite /brest. apply _. Qed.
+  Proof using . rewrite /brest. apply _. Qed.
 
   (* the client obligations: a FULL cell in each part (valid / disk) *)
   Lemma bhdr_excl bn V k : forall (i i' : bio_id) (x x' : bio_x) (ξ ξ' : CtxId),
     bhdr bn V k i x ξ -∗ bhdr bn V k i' x' ξ' -∗ False.
-  Proof.
+  Proof using .
     iIntros (i i' x x' ξ ξ') "H1 H2".
     iDestruct "H1" as (v1) "(Hv1 & _)". iDestruct "H2" as (v2) "(Hv2 & _)".
     iDestruct (ctx_word4_excl_x ξ ξ' (b_valid (bpa k)) (DfracOwn 1) with "Hv1 Hv2") as %[].
   Qed.
   Lemma brest_excl k : forall (x x' : bio_x) (ξ ξ' : CtxId),
     brest k x ξ -∗ brest k x' ξ' -∗ False.
-  Proof.
+  Proof using .
     iIntros (x x' ξ ξ') "(Hd1 & _) (Hd2 & _)".
     iDestruct (ctx_word4_excl_x ξ ξ' (b_disk (bpa k)) (DfracOwn 1) with "Hd1 Hd2") as %[].
   Qed.
   Lemma bown_excl bn k : bown bn k -∗ bown bn k -∗ False.
-  Proof. apply bown_exclusive. Qed.
+  Proof using . apply bown_exclusive. Qed.
 
   (* the bundle at an identity: CtxBox's in_arm shape, and its [buf_own]
      regrouping (F2) for the handle *)
@@ -1000,7 +1000,7 @@ Section BioBox.
        ctx_word4_pointsto ξ (b_dev (bpa k)) (DfracOwn (1/2)) dev ∗
        buf_own (XI := ξ) (bpa k) bno (mword_of_int 0 : mword 32) bs ∗
        buf_pay (XI := ξ) bn V k v dev bno bs)%I.
-  Proof.
+  Proof using .
     rewrite /buf_bundle_at /bhdr /brest /buf_hdr /buf_rest /buf_own. iSplit.
     - iIntros "(%bs & (%v & (Hv & Hd & Hb & Hp)) & (Hdk & %Hl & Hdata))".
       iExists v, bs. cbn [fst snd]. iFrame "Hv Hd Hp Hb Hdk Hdata". done.
@@ -1010,7 +1010,7 @@ Section BioBox.
       iFrame "Hdk Hdata". done.
   Qed.
   Global Instance buf_bundle_at_timeless bn V k ξ dev bno : Timeless (buf_bundle_at bn V k ξ dev bno).
-  Proof. rewrite /buf_bundle_at. apply bi.exist_timeless; intro x. apply _. Qed.
+  Proof using . rewrite /buf_bundle_at. apply bi.exist_timeless; intro x. apply _. Qed.
 
   (* ---- the registers, named per buffer ---- *)
   Definition reg_cnt (bn : bio_names) (k : nat) (c : nat) : iProp Σ :=
@@ -1030,7 +1030,7 @@ Section BioBox.
   Definition buf_box (bn : bio_names) (V : bio_view Σ) (k : nat) : iProp Σ :=
     is_box (bhdr bn V k) (brest k) (λ _ : nat, emp%I) emp%I (bioxN .@ k) (bn_box bn k).
   Global Instance buf_box_persistent bn V k : Persistent (buf_box bn V k).
-  Proof. rewrite /buf_box /is_box. apply _. Qed.
+  Proof using . rewrite /buf_box /is_box. apply _. Qed.
 
   (* ================================================================== *)
   (*  THE SIX LEMMAS at bcache (thin wrappers over CtxBox's; endgame      *)
@@ -1054,7 +1054,7 @@ Section BioBox.
       ⌜(T0 <= Kd)%nat⌝ ∗
       reg_drop bn k (SlotReg (sr_td r) true (sr_ident r) (Some (x0, T0))) ∗
       bhdr bn V k (sr_ident r) x0 ξ.
-  Proof.
+  Proof using .
     iIntros (HE Hw HKd) "#Hbox Hrun #Hfl Hrd Hc".
     assert (HEk : ↑(bioxN .@ k) ⊆ E) by (etrans; [apply nclose_subseteq | exact HE]).
     iMod (own_unit (authUR (gmapUR (bio_id * nat) ufracR)) (bx_stamps (bn_box bn k))) as "Hf0".
@@ -1087,7 +1087,7 @@ Section BioBox.
     TsoCtx.own_context ξ ∗
     ∃ T' : nat, reg_drop bn k (SlotReg T' false (dev, bno) None) ∗ reg_cnt bn k 1 ∗
                 bref_ghost bn k dev bno ∗ llb loglen_name T'.
-  Proof.
+  Proof using .
     iIntros (HE) "#Hbox Hrun Hrd Hc Hhdr".
     assert (HEk : ↑(bioxN .@ k) ⊆ E) by (etrans; [apply nclose_subseteq | exact HE]).
     iMod (CtxBox.box_deposit_L1 (bhdr bn V k) (brest k) (λ _ : nat, emp%I) emp%I
@@ -1110,7 +1110,7 @@ Section BioBox.
     reg_drop bn k r -∗
     reg_cnt bn k c ={E}=∗
     reg_drop bn k r ∗ reg_cnt bn k (S c) ∗ bref_ghost bn k dev bno.
-  Proof.
+  Proof using .
     iIntros (HE Hw Hid) "#Hbox Hrd Hc".
     assert (HEk : ↑(bioxN .@ k) ⊆ E) by (etrans; [apply nclose_subseteq | exact HE]).
     iMod (CtxBox.box_ref_incr (bhdr bn V k) (brest k) (λ _ : nat, emp%I) emp%I
@@ -1133,7 +1133,7 @@ Section BioBox.
     ∃ td' : nat, ⌜(sr_td r <= td')%nat⌝ ∗
       reg_drop bn k (SlotReg td' false (sr_ident r) (sr_x r)) ∗ reg_cnt bn k c ∗
       llb loglen_name td'.
-  Proof.
+  Proof using .
     iIntros (HE Hw) "#Hbox Hrd #Hllb Hc Href". iDestruct "Href" as (t) "Href".
     assert (HEk : ↑(bioxN .@ k) ⊆ E) by (etrans; [apply nclose_subseteq | exact HE]).
     assert (Hq1 : qsum ({[((dev, bno), t) := 1%Qp]} : gmap (bio_id * nat) ufrac) = nat_Qc 1).
@@ -1163,7 +1163,7 @@ Section BioBox.
     reg_park bn k s0 ={E}=∗
     TsoCtx.own_context ξ ∗ buf_bundle_at bn V k ξ dev bno ∗
     CtxBox.l2_hold (X := bio_x) (bn_box bn k) (dev, bno) {[((dev, bno), t) := 1%Qp]}.
-  Proof.
+  Proof using .
     iIntros (HE Hs0 HKt HKp) "#Hbox Hrun #Hflt #Hflp Href Hrp".
     assert (HEk : ↑(bioxN .@ k) ⊆ E) by (etrans; [apply nclose_subseteq | exact HE]).
     assert (Hmt : (max_stamp ({[((dev, bno), t) := 1%Qp]} : gmap (bio_id * nat) ufrac) <= Kt)%nat).
@@ -1187,7 +1187,7 @@ Section BioBox.
     CtxBox.l2_hold (X := bio_x) (bn_box bn k) (dev, bno) {[((dev, bno), t) := 1%Qp]} ={E}=∗
     TsoCtx.own_context ξ ∗
     ∃ T' : nat, reg_park bn k (L2Reg T' None) ∗ bref_ghost bn k dev bno ∗ llb loglen_name T'.
-  Proof.
+  Proof using .
     iIntros (HE) "#Hbox Hrun Hbun Hhold".
     assert (HEk : ↑(bioxN .@ k) ⊆ E) by (etrans; [apply nclose_subseteq | exact HE]).
     iMod (CtxBox.box_park (bhdr bn V k) (brest k) (λ _ : nat, emp%I) emp%I
@@ -1276,7 +1276,7 @@ Section BioBox.
   Lemma bcache_res2_fold bn V M ord devs bnos tl (ξ : CtxId) :
     bcache_scan2 bn V M ord devs bnos tl ξ ∗ TsoCtx.ctx_floor ξ tl ∗ llb loglen_name tl
     ⊢ bcache_res2 bn V ξ.
-  Proof. iIntros "(Hb & #Hfl & #Hllb)". iExists M, ord, devs, bnos, tl. iFrame "Hfl Hllb Hb". Qed.
+  Proof using . iIntros "(Hb & #Hfl & #Hllb)". iExists M, ord, devs, bnos, tl. iFrame "Hfl Hllb Hb". Qed.
 
   (* the hooked release's fold: the releaser presents [llb tl] (R2's
      [lock_hook_llb] mints the floor) *)
@@ -1284,7 +1284,7 @@ Section BioBox.
     forall ξ : CtxId,
       (llb loglen_name tl ∗ bcache_scan2 bn V M ord devs bnos tl ξ) ∗ TsoCtx.ctx_floor ξ tl
       ⊢ bcache_res2 bn V ξ.
-  Proof.
+  Proof using .
     intros ξ. iIntros "[[#Hl Hs] #Hf]". iApply bcache_res2_fold. iFrame "Hs Hf Hl".
   Qed.
 
@@ -1295,7 +1295,7 @@ Section BioBox.
   Lemma bcache_scan2_floor_mono bn V M ord devs bnos tl tl' (ξ : CtxId) :
     (tl <= tl')%nat ->
     bcache_scan2 bn V M ord devs bnos tl ξ -∗ bcache_scan2 bn V M ord devs bnos tl' ξ.
-  Proof.
+  Proof using .
     rewrite /bcache_scan2.
     iIntros (Hle) "(Hauth & Hsauth & %Hdom & %Hord & %Hinj & %Hdev & Hlru & Hpool & Hslots)".
     iFrame "Hauth Hsauth Hlru Hpool".
@@ -1311,7 +1311,7 @@ Section BioBox.
   Lemma bseg_morph (h : mword 64) :
     forall (l : list (mword 64)) (prev : mword 64),
       CtxMorph (fun ξ => bseg (XI := ξ) h prev l).
-  Proof.
+  Proof using .
     induction l as [|a l' IH]; intros prev; cbn [bseg].
     - apply ctx_morph_const.
     - apply ctx_morph_sep; [apply ctx_morph_word|].
@@ -1321,7 +1321,7 @@ Section BioBox.
 
   Global Instance bcache_lru_morph h l :
     CtxMorph (fun ξ => bcache_lru (XI := ξ) h l).
-  Proof.
+  Proof using .
     rewrite /bcache_lru.
     apply ctx_morph_sep; [apply ctx_morph_word|].
     apply ctx_morph_sep; [apply ctx_morph_word|].
@@ -1333,7 +1333,7 @@ Section BioBox.
 
   Global Instance bio_slot_res2_morph bn V M k dev bno tl :
     CtxMorph (bio_slot_res2 bn V M k dev bno tl).
-  Proof.
+  Proof using .
     rewrite /bio_slot_res2.
     apply ctx_morph_sep; [apply ctx_morph_const|].
     destruct (M !! k) as [[q n]|].
@@ -1351,7 +1351,7 @@ Section BioBox.
 
   Global Instance bcache_scan2_morph bn V M ord devs bnos tl :
     CtxMorph (bcache_scan2 bn V M ord devs bnos tl).
-  Proof.
+  Proof using .
     rewrite /bcache_scan2.
     apply ctx_morph_sep; [apply ctx_morph_const|].
     apply ctx_morph_sep; [apply ctx_morph_const|].
@@ -1365,7 +1365,7 @@ Section BioBox.
   Qed.
 
   Global Instance bcache_res2_morph bn V : CtxMorph (bcache_res2 bn V).
-  Proof.
+  Proof using .
     rewrite /bcache_res2.
     apply ctx_morph_exist => M. apply ctx_morph_exist => ord.
     apply ctx_morph_exist => devs. apply ctx_morph_exist => bnos.
@@ -1375,7 +1375,7 @@ Section BioBox.
   Qed.
   Global Instance bcache_scan2_llb_morph bn V M ord devs bnos tl :
     CtxMorph (fun ξ => llb loglen_name tl ∗ bcache_scan2 bn V M ord devs bnos tl ξ)%I.
-  Proof. apply ctx_morph_sep; [apply ctx_morph_const | apply bcache_scan2_morph]. Qed.
+  Proof using . apply ctx_morph_sep; [apply ctx_morph_const | apply bcache_scan2_morph]. Qed.
 
   (* ---- the sleeplock's client payload (endgame §3.2 / R1-pre): ξ-free,
      bound-indexed -- the checkout token plus the park register's payload
@@ -1391,7 +1391,7 @@ Section BioBox.
     fun _ => (bown bn k ∗ reg_park bn k (L2Reg T' None))%I.
   Lemma bslp_fold bn k T' :
     forall ξ : CtxId, bslp_dep bn k T' ξ ∗ TsoCtx.ctx_floor ξ T' ⊢ bslp bn k ξ.
-  Proof.
+  Proof using .
     intros ξ. iIntros "[(Ho & Hrp) #Hfl]". rewrite /bslp /bslp_raw /bown.
     iFrame "Ho". iExists (L2Reg T' None). rewrite /reg_park /slotp_half /bn_box /=.
     iFrame "Hrp". iSplitR; [done|]. iExact "Hfl".
@@ -1400,19 +1400,19 @@ Section BioBox.
   Lemma bslp_unfold bn k (ξ : CtxId) :
     bslp bn k ξ ⊢ bown bn k ∗ ∃ s : l2_reg bio_id, reg_park bn k s ∗ ⌜lr_hold s = None⌝ ∗
                                                   TsoCtx.ctx_floor ξ (lr_tp s).
-  Proof.
+  Proof using .
     iIntros "[Ho Hs]". rewrite /bown. iFrame "Ho". iDestruct "Hs" as (s) "(Hrp & %Hh & #Hfl)".
     iExists s. rewrite /reg_park /slotp_half /bn_box /=. iFrame "Hrp Hfl". done.
   Qed.
   Global Instance bslp_raw_morph γo γp : CtxMorph (bslp_raw γo γp).
-  Proof.
+  Proof using .
     rewrite /bslp_raw. apply ctx_morph_sep; [apply ctx_morph_const|].
     apply ctx_morph_exist => s.
     apply ctx_morph_sep; [apply ctx_morph_const|].
     apply ctx_morph_sep; [apply ctx_morph_const| apply _].
   Qed.
   Global Instance bslp_morph bn k : CtxMorph (bslp bn k).
-  Proof. rewrite /bslp. apply _. Qed.
+  Proof using . rewrite /bslp. apply _. Qed.
 
   Section BioSlots2.
   Context `{XI : CurCtx}.
@@ -1422,13 +1422,13 @@ Section BioBox.
     ∃ M ord devs bnos tl,
       TsoCtx.ctx_floor cur_ctx tl ∗ llb loglen_name tl ∗
       bcache_scan2 bn V M ord devs bnos tl cur_ctx.
-  Proof. rewrite /bcache_res2. iIntros "H". iExact "H". Qed.
+  Proof using . rewrite /bcache_res2. iIntros "H". iExact "H". Qed.
 
   (* a slot's row is a BOUND on its stamp: it survives a larger floor slot *)
   Lemma bio_slot_res2_floor_mono bn V M k dev bno tl tl' (ξ : CtxId) :
     (tl <= tl')%nat ->
     bio_slot_res2 bn V M k dev bno tl ξ -∗ bio_slot_res2 bn V M k dev bno tl' ξ.
-  Proof.
+  Proof using .
     iIntros (Hle) "[Hregs Hslot]". rewrite /bio_slot_res2. iFrame "Hslot".
     iDestruct "Hregs" as (r) "(Hrd & %Hw & %Hx & %Hid & #Hllb & %Hb)".
     iExists r. iFrame "Hrd Hllb". iPureIntro. split_and!; [done | done | done | lia].
@@ -1446,7 +1446,7 @@ Section BioBox.
        ⌜(tl <= tl')%nat⌝ -∗
        bio_slot_res2 bn V M' i (devs' i) (bnos' i) tl' cur_ctx -∗
        [∗ list] k ∈ seq 0 NBUF, bio_slot_res2 bn V M' k (devs' k) (bnos' k) tl' cur_ctx).
-  Proof.
+  Proof using .
     iIntros (Hi) "H".
     assert (Hlk : seq 0 NBUF !! i = Some i) by (apply lookup_seq; lia).
     rewrite (big_sepL_delete
@@ -1476,7 +1476,7 @@ Section BioBox.
       (b_dev (bpa k) ↦₄{DfracOwn q} dev -∗
        b_blockno (bpa k) ↦₄{DfracOwn q} bno -∗
        bio_slot_res2 bn V M k dev bno tl cur_ctx).
-  Proof.
+  Proof using .
     iIntros "[Hregs Hslot]". rewrite /bio_slot_res2.
     destruct (M !! k) as [[qt n]|] eqn:HMk.
     - iDestruct "Hslot" as "(%Hn & Hcell & Hsl & Hc & Hqr)".
@@ -1499,7 +1499,7 @@ Section BioBox.
        \/ (eq_vec (sign_extend' 64 cw) (zero_reg : mword 64) = false
            /\ is_Some (M !! k))⌝ ∗
       (brefcnt k ↦₄ cw -∗ bio_slot_res2 bn V M k dev bno tl cur_ctx).
-  Proof.
+  Proof using .
     iIntros "[Hregs Hslot]". rewrite /bio_slot_res2.
     destruct (M !! k) as [[qt n]|] eqn:HMk.
     - iDestruct "Hslot" as "(%Hn & Hcell & Hsl & Hc & Hqr)".
@@ -1530,7 +1530,7 @@ Section BioBox.
   Global Instance bio_ctx_persistent bn V : Persistent (bio_ctx bn V).
   (* structurally: one [apply _] over the [∗] and the 30-slot [big_sepL]
      backtracks through both lock abstractions' own instances *)
-  Proof.
+  Proof using .
     rewrite /bio_ctx.
     apply bi.sep_persistent; [apply _|].
     apply big_sepL_persistent; intros ? ? ?.
@@ -1545,7 +1545,7 @@ Section BioBox.
     bio_ctx bn V -∗
     WpLock.is_lock (bn_lk bn) bcache_addr "bcache"%string
       (fun ξ => bcache_res2 bn V ξ).
-  Proof. iIntros "[$ _]". Qed.
+  Proof using . iIntros "[$ _]". Qed.
 
   Lemma bio_ctx_buf bn V k :
     (k < NBUF)%nat ->
@@ -1553,7 +1553,7 @@ Section BioBox.
     is_sleeplock_genl (fst (bn_slk bn k)) (snd (bn_slk bn k))
       (buf_lock (bnode k)) "buffer"%string (bslp bn k) sl_untracked ∗
     buf_box bn V k.
-  Proof.
+  Proof using .
     iIntros (Hk) "[_ Hbufs]".
     assert (Hlk : seq 0 NBUF !! k = Some k) by (apply lookup_seq; lia).
     iDestruct (big_sepL_lookup with "Hbufs") as "[$ $]"; [exact Hlk].
@@ -1584,7 +1584,7 @@ Section BioBox.
     ∃ Td : nat,
       reg_drop bn k (SlotReg Td false (mword_of_int 0 : mword 32, mword_of_int 0 : mword 32) None) ∗
       llb loglen_name Td.
-  Proof.
+  Proof using .
     iIntros "Hrun Hst Hc Hrp Hrd Hv Hdev Hbno Hdk Hdata".
     iDestruct "Hdata" as (bs) "(%Hlen & Hdata & Hpay)".
     iAssert (buf_bundle_at bn V k cur_ctx (mword_of_int 0 : mword 32) (mword_of_int 0 : mword 32))
@@ -1621,7 +1621,7 @@ Section BioBox.
     bslots_auth -∗ bslots BSLOTS_FS ={E}=∗
     own_context cur_ctx ∗
     ∃ bn : bio_names, bio_ctx bn V ∗ bslots BSLOTS_FS.
-  Proof.
+  Proof using .
     iIntros (Hnc0) "Hrun Hlkw #Hnm Hcpu Hfresh Hbufs Hlru Hpool Hsa Hsf".
     assert (Hu0 : uint (mword_of_int 0 : mword 32) = 0)
       by (vm_compute; reflexivity).
@@ -1842,5 +1842,5 @@ Section BioCtxMorph.
      [BioInv.bslp_morph]; [buf_box] is a box handle and so ξ-free. *)
   Global Instance bio_ctx_morph (bn : bio_names) (V : bio_view Σ) :
     CtxMorph (λ ξ : CtxId, (bio_ctx (XI := ξ) bn V : iProp Σ)).
-  Proof. rewrite /bio_ctx. ctx_morph_solve. Qed.
+  Proof using . rewrite /bio_ctx. ctx_morph_solve. Qed.
 End BioCtxMorph.

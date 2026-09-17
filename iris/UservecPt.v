@@ -144,7 +144,7 @@ Section WpUsdPt.
         (m !!! Regidx rs2 : mword 64) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros va pa imm iva tfpa HSIE HMPRV HSXL Hmm HMXR Hpmm HPBMTE Hmenvval0 Ha0
       Hcanon Hvpn Hident Hcanon2 Hvpn2 Hident2 Hva2 Hpa4va4 Hpa2al Hpa2al2 Hpa4al
       Heva Hcanond Hvpnd Halignd Hmod8.
@@ -558,7 +558,7 @@ Section WpUCsrPt.
       gpr_file m -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros va pa HSIE HMPRV HSXL Hmm HPBMTE Hmenvval0
       Hcanon Hvpn Hident Hcanon2 Hvpn2 Hident2 Hva2 Hpa4va4 Hpa2al Hpa2al2 Hpa4al.
     assert (Hfresh : cw_fresh (R_bitvector_64 sscratch))
@@ -716,7 +716,7 @@ Section WpUCsrPt.
       gpr_file (<[Regidx rd := regval_into_reg sv]> m) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros va pa Hrd HSIE HMPRV HSXL Hmm HPBMTE Hmenvval0
       Hcanon Hvpn Hident Hcanon2 Hvpn2 Hident2 Hva2 Hpa4va4 Hpa2al Hpa2al2 Hpa4al.
     assert (Hfresh : cw_fresh (R_bitvector_64 sscratch))

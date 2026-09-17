@@ -195,7 +195,7 @@ Section UInitConsK.
   (* the rodata, at the shape the two [_img] leaves take it *)
   Lemma init_rodata_img (g : gname) :
     init_rodata g -∗ utext_img g UCodeInit.init_ro.
-  Proof. rewrite /init_rodata. iIntros "#H". iExact "H". Qed.
+  Proof using . rewrite /init_rodata. iIntros "#H". iExact "H". Qed.
 
   (* =================================================================== *)
   (*  S2.  THE DEPOSIT'S FAMILIES                                         *)
@@ -296,7 +296,7 @@ Section UInitConsK.
     mknod_au_at (fs_gamma_L fsc_fs) fsc_fs cw M pv ma mi
       (nf_P f) (nf_Pmiss f) (nf_Farm f) (nf_Fun f) (nf_Fok f) (nf_Fex f) -∗
     sbundle_at X 17 f W.
-  Proof.
+  Proof using .
     intros Hc HM H0 H1 H2. iIntros "H".
     rewrite -Hc -HM -H0 -H1 -H2.
     rewrite /sbundle_at /= /xv6_sbundle /xk_a.
@@ -314,7 +314,7 @@ Section UInitConsK.
     spost_at X 17 f W r M' fdv' cw' cs' -∗
     mknod_arms (fs_gamma_L fsc_fs) fsc_fs cw M pv ma mi
       (nf_P f) (nf_Pmiss f) (nf_Farm f) (nf_Fun f) (nf_Fok f) (nf_Fex f) r.
-  Proof.
+  Proof using .
     intros Hc HM H0 H1 H2. iIntros "H".
     rewrite -Hc -HM -H0 -H1 -H2.
     rewrite /spost_at /= /xv6_spost /xk_a.
@@ -329,7 +329,7 @@ Section UInitConsK.
       (pm : gmap (mword 27) uperm) (sz : Z) :
     uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗
     init_rodata (ukn_t N) -∗ ⌜uimg_sub UCodeInit.init_ro M⌝.
-  Proof.
+  Proof using .
     iIntros "Hheap #Hro".
     iApply (cons_ro_sub N UCodeInit.init_ro M pm sz with "Hheap [Hro]").
     iApply (init_rodata_img with "Hro").
@@ -348,7 +348,7 @@ Section UInitConsK.
     init_cons_abs_law T K -∗ app_inv fsc_fs -∗ init_rodata (ukn_t N) -∗ K -∗
     udepwf_at N m pc USYS_open (init_cons_absent_fam T K (ukn_pay N))
       FsImg.ROOTINO.
-  Proof.
+  Proof using .
     intros HPT HTT HTK Ha0 Ha1. iIntros "#Habs #Hinv #Hro HK".
     iApply (cons_sup_absent N T K UCodeInit.init_ro
               (mword_of_int 0x970) m pc HPT HTT HTK
@@ -370,7 +370,7 @@ Section UInitConsK.
     init_rodata (ukn_t N) -∗
     udepwf_at N m pc USYS_open (init_cons_console_fam T i (ukn_pay N))
       FsImg.ROOTINO.
-  Proof.
+  Proof using .
     intros HPT HTT Ha0 Ha1. iIntros "#Hlaws #Hmade #Hinv #Hro".
     iApply (cons_sup_console N Pv T K r i UCodeInit.init_ro
               (mword_of_int 0x970) m pc HPT HTT
@@ -396,7 +396,7 @@ Section UInitConsK.
     init_cons_laws_at Pv T K r -∗ app_inv fsc_fs -∗
     init_rodata (ukn_t N) -∗ K -∗
     udepwf_at N m pc 17 (init_cons_mknod_fam Pv T K r (ukn_pay N)) FsImg.ROOTINO.
-  Proof.
+  Proof using .
     intros HPT HTT HTK HTL Ha0 Ha1 Ha2.
     iIntros "#Hlaws #Hinv #Hro HK".
     rewrite /udepwf_at. iSplitR; [ iPureIntro; reflexivity | ].
@@ -437,7 +437,7 @@ Section UInitConsK.
     Persistent T -> Timeless T -> Timeless K ->
     init_cons_abs_law T K -∗ app_inv fsc_fs -∗
     □ UkInit.uki_open_absent_leaf (PS := uprogSG_free) N T K.
-  Proof.
+  Proof using .
     intros HPT HTT HTK. iIntros "#Hlaws #Hinv !>".
     iIntros (h m l avail) "#Hcode #Hro %Hargs Hrun Hcwd Hstd HK Hcont".
     destruct Hargs as [Ha0 Ha1].
@@ -555,7 +555,7 @@ Section UInitConsK.
     Persistent T -> Timeless T ->
     init_cons_laws_at Pv T K r -∗ cons_made r i -∗ app_inv fsc_fs -∗
     □ UkInit.uki_open_console_leaf (PS := uprogSG_free) N T init_cons_fd.
-  Proof.
+  Proof using .
     intros HPT HTT. iIntros "#Hlaws #Hmade #Hinv !>".
     iIntros (h m avail) "#Hcode #Hro %Hargs Hrun Hcwd Hstd Hcont".
     destruct Hargs as [Ha0 Ha1].
@@ -711,7 +711,7 @@ Section UInitConsK.
     □ (K ={⊤}=∗ UkInit.uki_mknod_out (PS := uprogSG_free) N T (init_cons_cred T r) init_cons_fd) -∗
     app_inv fsc_fs -∗
     □ UkInit.uki_mknod_leaf (PS := uprogSG_free) N T K (init_cons_cred T r) init_cons_fd.
-  Proof.
+  Proof using .
     intros HPT HTT HTK HTL. iIntros "#Hlaws #Hfl #Hinv !>".
     iIntros (h m avail) "#Hcode #Hro %Hargs Hrun Hcwd HK Hcont".
     destruct Hargs as (Ha0 & Ha1 & Ha2).
@@ -850,7 +850,7 @@ Section UInitConsK.
   Lemma init_cons_never_abs_law (γ : echo_fixed) (r : echo_names) :
     file_app = MkAppcfg echo_names (echo_pred γ) r ->
     ⊢ init_cons_abs_law (echo_taint γ) (cons_never r).
-  Proof.
+  Proof using .
     intros Heq. rewrite /init_cons_abs_law /init_cons_pin_law.
     rewrite Heq. cbn [app_pred app_run app_names].
     iIntros "!>" (v) "#Hn Hp".
@@ -869,7 +869,7 @@ Section UInitConsK.
     ⊢ □ (∀ av : aview, cons_key r -∗ ▷ app_pred app_run av
            ={⊤ ∖ ↑appN}=∗
            ▷ app_pred app_run av ∗ (cons_never r ∨ echo_taint γ)).
-  Proof.
+  Proof using .
     intros Heq. rewrite Heq. cbn [app_pred app_run app_names].
     iIntros "!>" (av) "HK >Hp".
     iMod (echo_cons_seal_step γ r av with "HK Hp") as "[Hp Hn]".
@@ -886,7 +886,7 @@ Section UInitConsK.
     □ (cons_key r ={⊤}=∗
          UkInit.uki_mknod_out (PS := uprogSG_free) N (echo_taint γ)
            (init_cons_cred (echo_taint γ) r) init_cons_fd).
-  Proof.
+  Proof using .
     intros Heq. iIntros "#Hinv !> HK".
     iDestruct (init_cons_never_abs_law γ r Heq) as "#Habs".
     iMod (app_claim_update ⊤ fsc_fs (cons_key r)
@@ -911,7 +911,7 @@ Section UInitConsK.
     □ (∀ N : uk_names Σ,
          UkInit.init_cons_leaves (PS := uprogSG_free) N (echo_taint γ) (cons_key r)
            (init_cons_cred (echo_taint γ) r) init_cons_fd).
-  Proof.
+  Proof using .
     intros Heq.
     assert (HTL : forall v : aview, Timeless (app_pred app_run v)).
     { rewrite Heq. cbn [app_pred app_run]. intro v. apply _. }
@@ -932,7 +932,7 @@ Section UInitConsK.
   (* the credential the FLAG arm hands the shell *)
   Lemma init_cons_cred_made_echo (γ : echo_fixed) (r : echo_names) (i0 : Z) :
     cons_made r i0 -∗ init_cons_cred (echo_taint γ) r.
-  Proof. iApply (init_cons_cred_of_made (echo_taint γ) r i0). Qed.
+  Proof using . iApply (init_cons_cred_of_made (echo_taint γ) r i0). Qed.
 
   (* ---- THE FLAG ARM'S PAIR (lane E2): the node is already there ---- *)
   Lemma init_cons_hit_echo (γ : echo_fixed) (r : echo_names) (i0 : Z) :
@@ -942,7 +942,7 @@ Section UInitConsK.
          □ UkInit.uki_open_console_leaf (PS := uprogSG_free) N (echo_taint γ) init_cons_fd
          ∗ □ UkInit.uki_mknod_hit_leaf (PS := uprogSG_free) N (echo_taint γ)
                (init_cons_cred (echo_taint γ) r) init_cons_fd).
-  Proof.
+  Proof using .
     intros Heq.
     assert (HTL : forall v : aview, Timeless (app_pred app_run v)).
     { rewrite Heq. cbn [app_pred app_run]. intro v. apply _. }

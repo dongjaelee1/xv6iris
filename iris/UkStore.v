@@ -287,7 +287,7 @@ Section UkStoreExecErr.
             (ustore_data k v) (Store Data) false false false) s
       = Some (Err er, sfin) ->
     exec (execute (STORE (imm, Regidx rs2, Regidx rs1, k))) s = Some (er, sfin).
-  Proof.
+  Proof using Hkw.
     intros Hcp Heff Hpml Htm Hbase Hv Hvwa.
     apply (exec_execute_STORE_u_err imm rs2 rs1 k er s sfin
              ltac:(change xlen_bytes with 8; apply Z.leb_le;
@@ -320,7 +320,7 @@ Section UkStoreExecErr.
     goodmb Du_r Du_w (vmem_write_addr (Virtaddr (add_vec base (sign_extend' 64 imm))) k
             (ustore_data k v) (Store Data) false false false) s mm = true ->
     goodmb Du_r Du_w (execute (STORE (imm, Regidx rs2, Regidx rs1, k))) s mm = true.
-  Proof.
+  Proof using Hkw.
     intros Hcp Heff Heffg Hpml Hpmlg Htm Htmg Hbase Hv Hvwa Hvwag.
     apply (goodmb_execute_STORE_u_err Du_r Du_w imm rs2 rs1 k er s sfin mm
              (fun H => Du_gpr_of_Z_r rs2 H)
@@ -380,7 +380,7 @@ Section UkStoreTrapWrap.
        TsoCtx.own_context XI -∗
        uv_bytes pt Mp t -∗ resv_any cpu_id -∗ Pe er ib) -∗
     swp (execute i) (run_exec_post Pe ib).
-  Proof.
+  Proof using .
     intros Hred Hg1 Hinj Htok Hg2 He Hnr.
     iIntros "#Hcert Hany Hrw Hro Hrun Hmm Hk".
     destruct o as [j | ].
@@ -492,7 +492,7 @@ Section UkStorePostFetch.
     swp (execute i)
       (run_exec_post (fun (r : ExecutionResult) (ib' : mword 32) =>
                         uv_step_post C R rsE (Step_Execute (r, ib'))) ib).
-  Proof.
+  Proof using .
     intros Hkw Hred Hexp Hva Hwval Hl Hchk Hcanon Hpg Hal HMb Hntx Hinj Hg1
       Hpins2 Lpc2 Lhs2 Lcp2 Hms2 Hgag2 Hx0 Lstvec2 Lmie2 Lmdl2 Lmedl2 Lmenv2
       Lmste2 Lsste2 Lsenv2 Lsatp2 Lpcfg2 Lpaddr2 Lmi2 Hagd2 Htok' Hpure.
@@ -865,7 +865,7 @@ Section UkStorePostFetch.
     swp (execute i)
       (run_exec_post (fun (r : ExecutionResult) (ib' : mword 32) =>
                         uv_step_post C R rsE (Step_Execute (r, ib'))) ib).
-  Proof.
+  Proof using .
     intros Hfx Hkw Hred Hexp Hva Hwval Hfault Hkcw Hpg Hinj Hg1
       Hpins2 Lpc2 Lhs2 Lcp2 Hms2 Hgag2 Hx0 Lstvec2 Lmie2 Lmdl2 Lmedl2 Lmenv2
       Lmste2 Lsste2 Lsenv2 Lsatp2 Lpcfg2 Lpaddr2 Lmi2 Hagd2 Htok' Hpure.
@@ -1199,7 +1199,7 @@ Section UkStoreObl.
          (fun (xv : mword 64) (e : ExceptionType) =>
             uv_step_post C R rs1 (Step_Fetch_Failure (Virtaddr xv, e)))
          (fun _ : ext_fetch_addr_error => False)).
-  Proof.
+  Proof using .
     intros Hfx Hpre Hpure Hdec Hkw Hred Hg1 Hexp Hva Hwval
       Hdisp Hkcf Hcanon Hpg Hal.
     pose proof Hpre as (Hinj & Htok & HpinsA & LhsA & LcpA & HmsokA & LpcA &
@@ -1374,7 +1374,7 @@ Section UkStoreObl.
          (fun (xv : mword 64) (e : ExceptionType) =>
             uv_step_post C R rs1 (Step_Fetch_Failure (Virtaddr xv, e)))
          (fun _ : ext_fetch_addr_error => False)).
-  Proof.
+  Proof using .
     intros Hfx Hpre Hpure Hdec Hkw Hred Hg1 Hexp Hva Hwval
       Hdisp Hkcf Hcanon Hpg Hal.
     pose proof Hpre as (Hinj & Htok & HpinsA & LhsA & LcpA & HmsokA & LpcA &
@@ -1550,7 +1550,7 @@ Section UkStore.
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ▷ ukcq Qp π (uM_store M (uint va) k wval) sz fdv cw gn cs pidv m (add_vec_int pc (if is_rvc then 2 else 4)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using HRut Hlf0 Hlo Hpm.
     intros Hkw Hui Hred Hg1 Hlpad Hexp Hva Hwval Hsok Hcanon Hpg Hal HMb.
     pose proof (Hui pt sz (loop_ok_wf C pt Hlo) Hpm) as Hui0.
     pose proof (ui_al2 _ _ _ _ _ Hui0) as Hal2.
@@ -1727,7 +1727,7 @@ Section UkStore.
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π (uM_store M (uint va) k wval) sz fdv cw gn cs pidv m (add_vec_int pc (if is_rvc then 2 else 4)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using HRut Hlf0 Hlo Hpm.
     intros Hkw Hui Hred Hg1 Hlpad Hexp Hva Hwval Hsok Hcanon Hpg Hal HMb.
     iIntros "Hb Hcont".
     iApply (wp_uk_store_later M m pc fdv cw gn cs pidv is_rvc i o imm rs1 rs2 k va wval
@@ -1808,7 +1808,7 @@ Section UkStore.
     sbundle_at uslot USYS_exit fx
       (uvis_of_run m pc M π sz fdv cw gn cs pidv false) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using HRut Hlf0 Hlo Hpm.
     intros Hfx Hkw Hui Hred Hg1 Hlpad Hexp Hva Hwval Hden Hcanon Hpg Hal.
     pose proof (Hui pt sz (loop_ok_wf C pt Hlo) Hpm) as Hui0.
     pose proof (ui_al2 _ _ _ _ _ Hui0) as Hal2.
@@ -1928,7 +1928,7 @@ Section UkStore.
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π (uM_store8 M (uint va) wval) sz fdv cw gn cs pidv m (add_vec_int pc 4) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hva Hwval Hsok Hcanon Hpg Hal HMb.
     iIntros "Hb Hcont".
     iApply (wp_uk_store M m pc fdv cw gn cs pidv false
@@ -1953,7 +1953,7 @@ Section UkStore.
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π (uM_store M (uint va) 4 wval) sz fdv cw gn cs pidv m (add_vec_int pc 4) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hva Hwval Hsok Hcanon Hpg Hal HMb.
     iIntros "Hb Hcont".
     iApply (wp_uk_store M m pc fdv cw gn cs pidv false
@@ -1976,7 +1976,7 @@ Section UkStore.
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π (uM_store M (uint va) 1 wval) sz fdv cw gn cs pidv m (add_vec_int pc 4) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hva Hwval Hsok Hcanon Hbb.
     iIntros "Hb Hcont".
     iApply (wp_uk_store M m pc fdv cw gn cs pidv false
@@ -2013,7 +2013,7 @@ Section UkStore.
     sbundle_at uslot USYS_exit fx
       (uvis_of_run m pc M π sz fdv cw gn cs pidv false) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using HRut Hlf0 Hlo Hpm.
     intros Hfx Hui Hva Hwval Hden Hcanon.
     iIntros "Hb Hmy Hpay Hrow".
     iApply (wp_uk_store_denied M m pc fdv cw gn cs pidv false
@@ -2039,7 +2039,7 @@ Section UkStore.
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π (uM_store8 M (uint tgt) wval) sz fdv cw gn cs pidv m (add_vec_int pc 2) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Htgt Hwval Hsok Hcanon Hpg Hal HMb.
     iIntros "Hb Hcont".
     iApply (wp_uk_store M m pc fdv cw gn cs pidv true (C_SDSP (uimm, Regidx rs2))
@@ -2072,7 +2072,7 @@ Section UkStore.
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π (uM_store8 M (uint va) wval) sz fdv cw gn cs pidv m (add_vec_int pc 2) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hcr1 Hcr2 Hva Hwval Hsok Hcanon Hpg Hal HMb.
     iIntros "Hb Hcont".
     iApply (wp_uk_store M m pc fdv cw gn cs pidv true (C_SD (uimm, Cregidx cr1, Cregidx cr2))
@@ -2109,7 +2109,7 @@ Section UkStore.
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π (uM_store M (uint va) 4 wval) sz fdv cw gn cs pidv m (add_vec_int pc 2) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hcr1 Hcr2 Hva Hwval Hsok Hcanon Hpg Hal HMb.
     iIntros "Hb Hcont".
     iApply (wp_uk_store M m pc fdv cw gn cs pidv true (C_SW (uimm, Cregidx cr1, Cregidx cr2))

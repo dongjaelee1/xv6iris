@@ -879,7 +879,7 @@ Section ProofSysUnlinkFrame.
     (∃ w : mword 64, (pa_stk sp0 27) ↦₈[KT1] w) ∗
     bytes_own (KTR := KT1) (DfracOwn 1) (pa_stk sp0 29) 16 ∗
     (∃ w : mword 64, (pa_stk sp0 30) ↦₈[KT1] w).
-  Proof.
+  Proof using .
     iIntros "H". rewrite (stack_own_slots (KTR := KT1)). cbn [seq].
     iDestruct "H" as "(H1 & H2 & H3 & H4 & H5 & H6 & H7 & H8 & H9 & H10 &
                        H11 & H12 & H13 & H14 & H15 & H16 & H17 & H18 & H19 &
@@ -932,7 +932,7 @@ Section ProofSysUnlinkFrame.
     bytes_own (KTR := KT1) (DfracOwn 1) (pa_stk sp0 29) 16 -∗
     (pa_stk sp0 30) ↦₈[KT1] w30 -∗
     stack_own (KTR := KT1) sp0 30.
-  Proof.
+  Proof using .
     intros (HalD & HalN & HalP & HalE).
     iIntros "H1 H2 H3 H4 H5 H6 HbD HbN HbP H27 HbE H30".
     (* the [8 * n] conversions go INSIDE the framing braces, never on the
@@ -981,11 +981,11 @@ Section ProofSysUnlinkFrame.
   Lemma su_bytes_name `{XI : CurCtx} (a : mword 64) (N : nat) :
     bytes_own (KTR := KT1) (DfracOwn 1) a N ⊢
     ∃ f : nat -> bv 8, [∗ list] j ∈ seq 0 N, pa_add a j ↦ₘ[KT1] f j.
-  Proof. rewrite /bytes_own. exact (bb_any_named (KTR := KT1) a N). Qed.
+  Proof using . rewrite /bytes_own. exact (bb_any_named (KTR := KT1) a N). Qed.
 
   Lemma su_name_bytes `{XI : CurCtx} (a : mword 64) (N : nat) (f : nat -> bv 8) :
     ([∗ list] j ∈ seq 0 N, pa_add a j ↦ₘ[KT1] f j) ⊢ bytes_own (KTR := KT1) (DfracOwn 1) a N.
-  Proof. rewrite /bytes_own. exact (bb_named_any (KTR := KT1) a N f). Qed.
+  Proof using . rewrite /bytes_own. exact (bb_named_any (KTR := KT1) a N f). Qed.
 
   (* 128 = (k+1) + (127-k): nameiparent reads the NUL-terminated prefix and
      the rest rides through untouched *)
@@ -995,7 +995,7 @@ Section ProofSysUnlinkFrame.
     ([∗ list] j ∈ seq 0 (S k), pa_add a j ↦ₘ[KT1] f j)
     ∗ ([∗ list] j ∈ seq 0 (127 - k)%nat,
          pa_add (pa_add a (S k)) j ↦ₘ[KT1] f (S k + j)%nat).
-  Proof.
+  Proof using .
     intro Hk.
     replace 128%nat with (S k + (127 - k))%nat by lia.
     rewrite (bb_split a (S k) (127 - k)%nat f). iIntros "[$ $]".
@@ -1007,7 +1007,7 @@ Section ProofSysUnlinkFrame.
     ([∗ list] j ∈ seq 0 (127 - k)%nat,
        pa_add (pa_add a (S k)) j ↦ₘ[KT1] f (S k + j)%nat) -∗
     bytes_own (KTR := KT1) (DfracOwn 1) a 128.
-  Proof.
+  Proof using .
     intro Hk. iIntros "H1 H2".
     iDestruct (su_name_bytes a (S k) f with "H1") as "B1".
     iDestruct (su_name_bytes (pa_add a (S k)) (127 - k)%nat
@@ -1023,7 +1023,7 @@ Section ProofSysUnlinkFrame.
     ([∗ list] j ∈ seq 0 16, pa_add a j ↦ₘ[KT1] f j) -∗
     ([∗ list] j ∈ seq 0 14, pa_add a j ↦ₘ[KT1] f j)
     ∗ ([∗ list] j ∈ seq 0 2, pa_add (pa_add a 14) j ↦ₘ[KT1] f (14 + j)%nat).
-  Proof.
+  Proof using .
     change 16%nat with (14 + 2)%nat.
     rewrite (bb_split a 14 2 f). iIntros "[$ $]".
   Qed.
@@ -1032,7 +1032,7 @@ Section ProofSysUnlinkFrame.
     ([∗ list] j ∈ seq 0 14, pa_add a j ↦ₘ[KT1] g j) -∗
     ([∗ list] j ∈ seq 0 2, pa_add (pa_add a 14) j ↦ₘ[KT1] f (14 + j)%nat) -∗
     bytes_own (KTR := KT1) (DfracOwn 1) a 16.
-  Proof.
+  Proof using .
     iIntros "H1 H2".
     iDestruct (su_name_bytes a 14 g with "H1") as "B1".
     iDestruct (su_name_bytes (pa_add a 14) 2
@@ -1047,7 +1047,7 @@ Section ProofSysUnlinkFrame.
   Lemma su_off_split `{XI : CurCtx} (sp0 : mword 64) (w : mword 64) :
     (pa_stk sp0 27) ↦₈[KT1] w ⊢
     (pa_stk sp0 27) ↦₄[KT1] word_lo w ∗ (pa_add (pa_stk sp0 27) 4) ↦₄[KT1] word_hi w.
-  Proof.
+  Proof using .
     (* ↦₄ has not flipped (M1 stage 2): the ctx word crosses to the raw
        4-byte tower through the shim *)
     iIntros "H". iDestruct (ctx_word_pointsto_split4 with "H") as "[Hlo Hhi]".
@@ -1058,7 +1058,7 @@ Section ProofSysUnlinkFrame.
     is_aligned_paddr (Physaddr (pa_stk sp0 27)) 8 = true ->
     (pa_stk sp0 27) ↦₄[KT1] lo -∗ (pa_add (pa_stk sp0 27) 4) ↦₄[KT1] hi -∗
     (pa_stk sp0 27) ↦₈[KT1] word_of_words lo hi.
-  Proof.
+  Proof using .
     intro Hal. iIntros "Hlo Hhi".
     iApply (ctx_word_pointsto_join4 _ _ _ _ _ Hal with "Hlo Hhi").
   Qed.
@@ -1130,7 +1130,7 @@ Section ProofSysUnlinkEpilogue.
         pc_is (ret_pc (m !!! Regidx Rra : mword 64)) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK30 Kpop Hsp0 HMsp HMthr HMs1 HMs2 HMs3 Hal.
     iIntros "Hcg #Htext Hpc Hf1 Hf2 Hf3 Hf4 Hf5 Hf6 HbD HbN HbP H27 HbE H30
               Hcont".

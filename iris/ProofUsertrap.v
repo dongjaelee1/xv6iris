@@ -149,7 +149,7 @@ Section UtEntry.
      whole for [proc_priv_tf_upd] right afterward. *)
   Local Lemma ut_entry_tfp_valid (γf : gname) (pa : mword 64) (pid : mword 32) (U : ustate) :
     proc_priv γf pa pid U -∗ ⌜page_valid (page_base (ud_tfp (pv_upt (us_V U))))⌝.
-  Proof.
+  Proof using .
     iIntros "[(_ & _ & _ & _ & Hpt & _) _]".
     rewrite /proc_ptm_at. iDestruct "Hpt" as "(_ & _ & Hptt)".
     iDestruct (proc_ptm_wf with "Hptt") as "%Hwf".
@@ -231,7 +231,7 @@ Section UtEntry.
                     (m !!! Regidx Rs1) (m !!! Regidx Rs2) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hentry Hav Hsp Htp Hmiev Hmask Hmenvv.
     destruct Hentry as (Htms & Hmsf & Hspie).
     destruct Htms as (Hsxl & Hmprv & Hmxr & Hspp & Hsie & Htvm & Htsr).
@@ -719,7 +719,7 @@ Section UtDispatch.
   Local Lemma ut_dup_hw (m : regfile) (avail : nat) (b : bool) (p : mword 64) :
     sie_cap_gpr KT1 m avail b p -∗
     hw_config ∗ minstret_inv ∗ sie_cap_gpr KT1 m avail b p.
-  Proof.
+  Proof using .
     iIntros "Hcg".
     iDestruct (sie_cap_gpr_split with "Hcg") as "(Hhs & Hsc & Hsie & Hgpr)".
     iEval (rewrite /sconf) in "Hsc".
@@ -744,7 +744,7 @@ Section UtDispatch.
     kpt_on cpu_id -∗
     ut_env SY.syscall_env N U sts cs pid -∗
     ut_hold SY.syscall_env N U false ∅ sts cs pid.
-  Proof.
+  Proof using .
     iIntros "#Hih Hcpu Hclm Hep Hsc Hst Hstv Hq Hsret Hkpt Henv".
     iAssert (ut_csrs_raw ep sc st)
       with "[Hep Hsc Hst Hstv Hq Hsret Hkpt]" as "Hraw".
@@ -815,7 +815,7 @@ Section UtDispatch.
       (fun CID' => usertrap_post (CID := CID') (ut_res (CID := CID') SY.syscall_env) pt ksp m0
                      mie_v menvcfg0 U0 sts gn cs pid ep sc fdep Wk) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using ufdG0.
     intros Hgnq Hpro Hwf Hav Hnx Htfpe Hksp Hm0sp Hmsp Hms1 Hma0 Hcs Hmiev Hmenvv.
     pose proof (ut_nx_bound false av nx Hav Hnx) as Hks.
     
@@ -1463,7 +1463,7 @@ Section UtSeal.
     wp_usertrap_body (fun h : CpuId => usertrap_res (CID := h))
       pt j m ms_v sc_v stval_v sepc_v ksp mie_v mdv0 menvcfg0 U sts gn cs pid
       fdep Wk.
-  Proof.
+  Proof using .
     cbv beta delta [wp_usertrap_body].
     intros pcE pj Hms Hj Hsp Htp Hmiev Hmask Hmenvv.
     iIntros "#Htext Hpc #Hhw #Hminv Hhs Hpriv Hms Hsc Hst Hep Hstv

@@ -213,7 +213,7 @@ Section sys_sync.
     (∃ e' : nat, ⌜(e <= e')%nat⌝ ∗ log_flushed_bank γ e')%I.
 
   Global Instance flushed_sync_persistent γ e : Persistent (flushed_sync γ e).
-  Proof. rewrite /flushed_sync. apply _. Qed.
+  Proof using . rewrite /flushed_sync. apply _. Qed.
 
   (* THE CASE SPLIT, DISCHARGED ONCE.  Both arms of sys_sync end at the same
      place -- holding the log lock, with the bank readable at the counter's
@@ -224,7 +224,7 @@ Section sys_sync.
      the bank, and nothing else. *)
   Lemma flushed_sync_of_bank (γ : log_names) (e E : nat) :
     (e <= E)%nat -> log_flushed_bank γ E -∗ flushed_sync γ e.
-  Proof.
+  Proof using .
     intros Hle. iIntros "H". rewrite /flushed_sync. iExists E.
     iSplitR; [by iPureIntro | iExact "H"].
   Qed.
@@ -238,7 +238,7 @@ Section sys_sync.
     flushed_sync γ e -∗
       ∃ (b : nat) (D : gmap Z (list (bv 8))),
         flushed b D ∗ ⌜snap_holds D⌝.
-  Proof.
+  Proof using .
     rewrite /flushed_sync /log_flushed_bank. iIntros "H".
     iDestruct "H" as (e' _) "H". iDestruct "H" as (b D) "(_ & Hf & %Hh)".
     iExists b, D. iSplitL; [iExact "Hf" | by iPureIntro].
@@ -247,7 +247,7 @@ Section sys_sync.
   (* the caller's witness is always obtainable, so the contract's premise
      costs nothing: a client with no operation history takes it at zero. *)
   Lemma sync_witness_0 (γ : log_names) : ⊢ |==> log_epoch_lb γ 0.
-  Proof. iApply log_epoch_lb_0. Qed.
+  Proof using . iApply log_epoch_lb_0. Qed.
 
   (* ------------------------------------------------------------------ *)
   (*  THE PRODUCER                                                      *)
@@ -277,7 +277,7 @@ Section sys_sync.
       (γfs : fs_names) (cov : gset Z) (logstart : Z) (e : nat) :
     log_epoch_lb γ e -∗ log_res γ bn γfs cov logstart -∗
       flushed_sync γ e ∗ log_res γ bn γfs cov logstart.
-  Proof.
+  Proof using .
     iIntros "#Hlb Hres".
     iDestruct (log_res_flushed γ bn γfs cov logstart e with "Hlb Hres")
       as "[Hb Hres]".
@@ -292,7 +292,7 @@ Section sys_sync.
     log_epoch_lb γ e -∗ log_res γ bn γfs cov logstart -∗
       (∃ (b : nat) (D : gmap Z (list (bv 8))),
          flushed b D ∗ ⌜snap_holds D⌝) ∗ log_res γ bn γfs cov logstart.
-  Proof.
+  Proof using .
     iIntros "#Hlb Hres".
     iDestruct (flushed_sync_of_res with "Hlb Hres") as "[Hs Hres]".
     iDestruct (flushed_sync_receipt with "Hs") as (b D) "[Hf %Hh]".

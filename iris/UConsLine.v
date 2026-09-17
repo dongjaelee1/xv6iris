@@ -48,7 +48,7 @@ From iris.program_logic Require Import language lifting.
 Require Import SailStdpp.ConcurrencyInterface SailStdpp.ConcurrencyInterfaceBuiltins SailStdpp.ConcurrencyInterfaceTypes SailStdpp.Operators_mwords.
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
-Require Import RiscvLang RiscvPtsto RiscvModelBytes.
+Require Import RiscvLang RiscvPtsto.
 Require Import UserHeap UkRun UkRunSys.
 (* the address-space vocabulary the swallowed byte's FAULT arm is refuted
    in ([ush_swallow_nofault]): the permission projection and the lazy
@@ -67,11 +67,8 @@ Require Import FdSlots UserFd.
 Require Import ConsoleInv.     (* [cons_window] / [cons_chain] / [CONSOLE] *)
 Require Import UserConsole.    (* [upos] / [ucons_stored_lb] / [ucons_pay] *)
 Require Import UkSh.           (* [sh_buf] / [sh_nbuf] *)
-Require Import UkShParse.      (* [ushp_no_symbols] / [ushp_tokens] *)
 Require Import UkShLoop.       (* [ush_line_lexable] -- the lowest file that
                                   sees both the LINE and the LEXER *)
-Require Import LineWords.       (* [wl_line] -- a line IS a list of WORDS *)
-Require Import EchoDisc.        (* [line_ok] / [disc_input] / [disc_seg] *)
 Require Import EchoOut.            (* [echoOutG]: the class [AppEcho]'s claims
                                       and its ledger are stated at (lane
                                       ECHO-OUT part 5).  It CARRIES
@@ -171,7 +168,7 @@ Section UConsLine.
      [UkSh.ush_std] is this one weakened. *)
   Lemma ush_std_cons_ledger (γfd : gname) (l : list fdstate) :
     ush_std_cons γfd l -∗ ustd γfd l.
-  Proof. iIntros "[$ _]". Qed.
+  Proof using . iIntros "[$ _]". Qed.
 
   (* =================================================================== *)
   (*  §2  SH'S READ LEAF, WITH THE RECEIPT KEPT                           *)
@@ -259,7 +256,7 @@ Section UConsLine.
       (~ UserPtTree.uva_wmapped P (uint (add_vec_int dst (Z.of_nat d))))
       sl d dc -∗
     ucons_swallow cn False sl d dc.
-  Proof.
+  Proof using .
     intros Hdk Hwf Hpm Hlf. iIntros "Hheap Hbs Hsw".
     iDestruct (uk_read_nofault (ukn_t N) (ukn_d N) (ukn_s N) M pmv sz
                  (DfracOwn 1) dst k d f P Hdk Hwf Hpm Hlf

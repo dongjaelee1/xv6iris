@@ -128,7 +128,7 @@ Section PageFields.
     ([∗ list] j ∈ seq o (a + b), byte_any (pa_add p j)) ⊣⊢
     ([∗ list] j ∈ seq o a, byte_any (pa_add p j)) ∗
     ([∗ list] j ∈ seq (o + a) b, byte_any (pa_add p j)).
-  Proof. by rewrite seq_app big_sepL_app. Qed.
+  Proof using . by rewrite seq_app big_sepL_app. Qed.
 
   (* A6.87: the named twins of the two structural equations, plus the
      one-way weakening a named window has into an anonymous one. *)
@@ -136,12 +136,12 @@ Section PageFields.
     ([∗ list] j ∈ seq o (a + b), (pa_add p j) ↦ₘ (f j)) ⊣⊢
     ([∗ list] j ∈ seq o a, (pa_add p j) ↦ₘ (f j)) ∗
     ([∗ list] j ∈ seq (o + a) b, (pa_add p j) ↦ₘ (f j)).
-  Proof. by rewrite seq_app big_sepL_app. Qed.
+  Proof using . by rewrite seq_app big_sepL_app. Qed.
 
   Lemma bwin_named_rebase (p : mword 64) (o n : nat) (f : nat -> bv 8) :
     ([∗ list] j ∈ seq o n, (pa_add p j) ↦ₘ (f j)) ⊣⊢
     ([∗ list] j ∈ seq 0 n, (pa_add (pa_add p o) j) ↦ₘ (f (o + j)%nat)).
-  Proof.
+  Proof using .
     rewrite -{1}(Nat.add_0_r o) -fmap_add_seq big_sepL_fmap.
     apply big_sepL_proper. intros k j _. by rewrite pa_add_add.
   Qed.
@@ -149,7 +149,7 @@ Section PageFields.
   Lemma bwin_named_any (p : mword 64) (o n : nat) (f : nat -> bv 8) :
     ([∗ list] j ∈ seq o n, (pa_add p j) ↦ₘ (f j)) ⊢
     ([∗ list] j ∈ seq o n, byte_any (pa_add p j)).
-  Proof.
+  Proof using .
     apply big_sepL_mono. intros k j _. rewrite /byte_any.
     iIntros "H". by iApply TsoCtx.ctx_pointsto_free.
   Qed.
@@ -157,7 +157,7 @@ Section PageFields.
   Lemma bwin_rebase (p : mword 64) (o n : nat) :
     ([∗ list] j ∈ seq o n, byte_any (pa_add p j)) ⊣⊢
     ([∗ list] j ∈ seq 0 n, byte_any (pa_add (pa_add p o) j)).
-  Proof.
+  Proof using .
     rewrite -{1}(Nat.add_0_r o) -fmap_add_seq big_sepL_fmap.
     apply big_sepL_proper. intros k j _. by rewrite pa_add_add.
   Qed.
@@ -178,7 +178,7 @@ Section PageFields.
   Lemma bwin_named_bytes_list (a : mword 64) (n : nat) (f : nat -> bv 8) :
     ([∗ list] j ∈ seq 0 n, (pa_add a j) ↦ₘ (f j)) ⊢
     ∃ bs : list (bv 8), ⌜length bs = n⌝ ∗ ([∗ list] j ↦ b ∈ bs, pa_add a j ↦ₘ b).
-  Proof.
+  Proof using .
     induction n as [|n IH].
     - iIntros "_". iExists []. iSplit; done.
     - rewrite seq_S big_sepL_app.
@@ -198,7 +198,7 @@ Section PageFields.
   Lemma bytes_named_word4 (a : mword 64) (f : nat -> bv 8) :
     is_aligned_paddr (Physaddr a) 4 = true ->
     ([∗ list] j ∈ seq 0 4, (pa_add a j) ↦ₘ (f j)) ⊢ ∃ w : mword 32, a ↦₄ w.
-  Proof.
+  Proof using .
     intro Hal.
     change (seq 0 4) with [0;1;2;3]%nat.
     iIntros "(H0 & H1 & H2 & H3 & _)".
@@ -218,7 +218,7 @@ Section PageFields.
   Lemma bytes_named_word8 (a : mword 64) (f : nat -> bv 8) :
     is_aligned_paddr (Physaddr a) 8 = true ->
     ([∗ list] j ∈ seq 0 8, (pa_add a j) ↦ₘ (f j)) ⊢ ∃ w : mword 64, a ↦₈ w.
-  Proof.
+  Proof using .
     intro Hal.
     change (seq 0 8) with [0;1;2;3;4;5;6;7]%nat.
     iIntros "(H0 & H1 & H2 & H3 & H4 & H5 & H6 & H7 & _)".
@@ -245,7 +245,7 @@ Section PageFields.
   Lemma page_field4_named (p : mword 64) (o : nat) (f : nat -> bv 8) :
     page_valid p -> (o + 4 <= 4096)%nat -> (4 | Z.of_nat o) ->
     ([∗ list] j ∈ seq o 4, (pa_add p j) ↦ₘ (f j)) ⊢ ∃ w : mword 32, pa_add p o ↦₄ w.
-  Proof.
+  Proof using .
     intros Hpv Ho Hdvd.
     rewrite -{1}(Nat.add_0_r o) -fmap_add_seq big_sepL_fmap.
     iIntros "H".
@@ -259,7 +259,7 @@ Section PageFields.
   Lemma page_field8_named (p : mword 64) (o : nat) (f : nat -> bv 8) :
     page_valid p -> (o + 8 <= 4096)%nat -> (8 | Z.of_nat o) ->
     ([∗ list] j ∈ seq o 8, (pa_add p j) ↦ₘ (f j)) ⊢ ∃ w : mword 64, pa_add p o ↦₈ w.
-  Proof.
+  Proof using .
     intros Hpv Ho Hdvd.
     rewrite -{1}(Nat.add_0_r o) -fmap_add_seq big_sepL_fmap.
     iIntros "H".
@@ -283,7 +283,7 @@ Section PageFields.
     ([∗ list] j ∈ seq 0 (8 * n), (pa_add p j) ↦ₘ (f j)) ⊢
     ∃ ws : list (mword 64), ⌜length ws = n⌝ ∗
       ([∗ list] i ↦ w ∈ ws, pa_add p (8 * i)%nat ↦₈ w).
-  Proof.
+  Proof using .
     intro Hpv. induction n as [|n IH]; intro Hn.
     - iIntros "_". iExists []. by iSplit.
     - replace (8 * S n)%nat with (8 * n + 8)%nat by lia.
@@ -307,7 +307,7 @@ Section PageFields.
      equivalences, so only the leaves need a backward twin. *)
   Lemma word4_bwin (a : mword 64) (w : mword 32) :
     a ↦₄ w ⊢ [∗ list] j ∈ seq 0 4, byte_any (pa_add a j).
-  Proof.
+  Proof using .
     (* M1 STAGE 2: no crossing -- a ctx word IS ctx bytes *)
     rewrite ctx_word4_pointsto_bytes. apply big_sepL_mono.
     intros k j _. iIntros "H". rewrite /byte_any.
@@ -316,7 +316,7 @@ Section PageFields.
 
   Lemma word8_bwin (a : mword 64) (w : mword 64) :
     a ↦₈ w ⊢ [∗ list] j ∈ seq 0 8, byte_any (pa_add a j).
-  Proof.
+  Proof using .
     rewrite ctx_word_pointsto_bytes. apply big_sepL_mono.
     intros k j _. iIntros "H". rewrite /byte_any.
     by iApply TsoCtx.ctx_pointsto_free.
@@ -324,11 +324,11 @@ Section PageFields.
 
   Lemma page_field4_back (p : mword 64) (o : nat) (w : mword 32) :
     pa_add p o ↦₄ w ⊢ [∗ list] j ∈ seq o 4, byte_any (pa_add p j).
-  Proof. rewrite bwin_rebase. apply word4_bwin. Qed.
+  Proof using . rewrite bwin_rebase. apply word4_bwin. Qed.
 
   Lemma page_field8_back (p : mword 64) (o : nat) (w : mword 64) :
     pa_add p o ↦₈ w ⊢ [∗ list] j ∈ seq o 8, byte_any (pa_add p j).
-  Proof. rewrite bwin_rebase. apply word8_bwin. Qed.
+  Proof using . rewrite bwin_rebase. apply word8_bwin. Qed.
 
   (* the converse of [page_words8]: a run of word cells forgets its contents
      and becomes a window again.  This is the direction an object being TORN
@@ -337,7 +337,7 @@ Section PageFields.
   Lemma page_words8_back (p : mword 64) (ws : list (mword 64)) :
     ([∗ list] i ↦ w ∈ ws, pa_add p (8 * i)%nat ↦₈ w) ⊢
     [∗ list] j ∈ seq 0 (8 * length ws), byte_any (pa_add p j).
-  Proof.
+  Proof using .
     induction ws as [|w ws IH] using rev_ind; [ by iIntros "_" | ].
     (* NO [/=] here: [simpl] would unfold the [8 * _] and the [bwin_split]
        instance below would then match nothing. *)
@@ -355,7 +355,7 @@ Section PageFields.
   Lemma bytes_list_bwin (a : mword 64) (bs : list (bv 8)) :
     ([∗ list] j ↦ b ∈ bs, pa_add a j ↦ₘ b) ⊢
     [∗ list] j ∈ seq 0 (length bs), byte_any (pa_add a j).
-  Proof.
+  Proof using .
     induction bs as [|b bs IH] using rev_ind; [ by iIntros "_" | ].
     rewrite length_app /= Nat.add_1_r seq_S big_sepL_app big_sepL_singleton.
     rewrite big_sepL_app big_sepL_singleton.

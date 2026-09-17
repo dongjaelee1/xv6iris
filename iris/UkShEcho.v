@@ -343,7 +343,7 @@ Section UkShEcho.
     ⌜ 0 < s0 + Z.of_nat (echo_off ws i) < 2 ^ 38 ⌝ ∗
     ustr gd DfracDiscarded (s0 + Z.of_nat (echo_off ws i)) (echo_alen ws i)
       (fun j : nat => g (echo_off ws i + j)%nat).
-  Proof.
+  Proof using .
     intros Hok Hi. iIntros "#Hc".
     iDestruct (ush_cmd_exec with "Hc") as "(_ & _ & #Hs)".
     iDestruct (big_sepL_lookup _ (UkShMain.ush_args s0 g (echo_toks ws)) i _
@@ -359,7 +359,7 @@ Section UkShEcho.
     ush_cmd gd t (echo_cmd ws s0 g) -∗
     uwordq gd DfracDiscarded (t + 8 + 8 * Z.of_nat i)
       (mword_of_int (s0 + Z.of_nat (echo_off ws i))).
-  Proof.
+  Proof using .
     intros Hok Hi. iIntros "#Hc".
     iDestruct (ush_cmd_exec with "Hc") as "(#Hv & _ & _)".
     iDestruct (uargv_acc gd (t + 8) (UkShMain.ush_args s0 g (echo_toks ws)) i _
@@ -373,7 +373,7 @@ Section UkShEcho.
     ush_cmd gd t (echo_cmd ws s0 g) -∗
     uwordq gd DfracDiscarded (t + 8 + 8 * Z.of_nat (length ws))
       (mword_of_int 0).
-  Proof.
+  Proof using .
     iIntros "#Hc".
     iDestruct (ush_cmd_exec with "Hc") as "(_ & #Hn & _)".
     rewrite /ush_ptr echo_cmd_args_length. iExact "Hn".
@@ -382,7 +382,7 @@ Section UkShEcho.
   Lemma echo_cmd_addr (ws : list (list (bv 8))) (gd : gname) (t s0 : Z)
       (g : nat -> bv 8) :
     ush_cmd gd t (echo_cmd ws s0 g) -∗ ⌜ 0 < t < 2 ^ 38 /\ t mod 8 = 0 ⌝.
-  Proof. iIntros "#Hc". iApply (ush_cmd_addr with "Hc"). Qed.
+  Proof using . iIntros "#Hc". iApply (ush_cmd_addr with "Hc"). Qed.
 
   (* argv[0], in the two shapes runcmd's EXEC arm reads it: the POINTER
      SLOT the [c.ld a0,8(s1)] at 0xce loads, and the STRING the diagnostic
@@ -395,7 +395,7 @@ Section UkShEcho.
     ush_ptr gd (t + 8) (s0 + Z.of_nat (echo_off ws 0%nat))
     ∗ ush_str gd (UArg (s0 + Z.of_nat (echo_off ws 0%nat)) (echo_alen ws 0%nat)
                     (fun j : nat => g (echo_off ws 0%nat + j)%nat)).
-  Proof.
+  Proof using .
     intro Hok. iIntros "#Hc". iSplit.
     - iDestruct (echo_cmd_word ws gd t s0 g 0%nat Hok
                    ltac:(exact (line_ok_pos ws Hok)) with "Hc") as "#Hw".
@@ -464,7 +464,7 @@ Section UkShEcho.
 
   Global Instance sh_exec_sup_echo_persistent ws Q Cr :
     Persistent (sh_exec_sup_echo ws Q Cr).
-  Proof. rewrite /sh_exec_sup_echo. apply _. Qed.
+  Proof using . rewrite /sh_exec_sup_echo. apply _. Qed.
 
   (* THE CWD-INDEXED EXEC STUB.  [UkShRun.wp_kshr_exec] takes the ∀-cwd
      deposit [UkRun.udepw]; a pinned supply cannot pay that (its bundle
@@ -547,7 +547,7 @@ Section UkShEcho.
         WP (Loop : expr riscv_lang).
 
   Lemma wp_kshr_exec_at_cwd_holds (R : iProp Σ) : wp_kshr_exec_at_cwd R.
-  Proof.
+  Proof using .
     intros N Hc h m c avail.
     iIntros "#Hcode Hrun Hcwd Hsbx Hcont".
     assert (Hexec : ShSyms.exec = 0xcbe)
@@ -603,7 +603,7 @@ Section UkShEcho.
   Lemma wp_kshr_exec_echo_holds (ws : list (list (bv 8)))
       (Q : Z -> iProp Σ) (Cr Cd : iProp Σ) :
     wp_kshr_exec_echo ws Q Cr Cd.
-  Proof.
+  Proof using .
     intros N Hcc h m t szv s0 g ld n Hok Hpeq Ha0 Hbytes Hfd1 Hfd2.
     (* THE BUNDLE-INTRO HANG (durable-notes, "iIntros #H on a bundle of
        wands"): [iIntros "#H"] on a bundle of [UkRun.udepw_law]s sends the
@@ -1001,7 +1001,7 @@ Section UkShEcho.
 
   Global Instance sh_exec_sup_echo_wq_persistent Wc :
     Persistent (sh_exec_sup_echo_wq Wc).
-  Proof. rewrite /sh_exec_sup_echo_wq. apply _. Qed.
+  Proof using . rewrite /sh_exec_sup_echo_wq. apply _. Qed.
 
   (* ...and the diagnostic's law at the same two ends (M4b(2)): from the
      block owed to the block written up to its prompt, at every boundary *)
@@ -1012,7 +1012,7 @@ Section UkShEcho.
 
   Global Instance ush_execfail_law_wq_persistent Wc :
     Persistent (ush_execfail_law_wq Wc).
-  Proof. rewrite /ush_execfail_law_wq. apply _. Qed.
+  Proof using . rewrite /ush_execfail_law_wq. apply _. Qed.
 
   Lemma ushf_child_law_holds (Wc : list (bv 8) -> nat -> iProp Σ) :
     ush_execfail_law_wq Wc -∗
@@ -1077,7 +1077,7 @@ Section UkShEcho.
       (l : list fdstate) :
     ush_pstate_at N gp T Wc Wb Pm l FsImg.ROOTINO -∗
     UkSh.ush_pstate N gp T Wc Wb Pm l.
-  Proof.
+  Proof using .
     rewrite /ush_pstate_at /UkSh.ush_pstate.
     iIntros "(Hstd & Hcwd & Hch & Hpid & Hpos)". iFrame "Hstd Hcwd Hch Hpid Hpos".
   Qed.

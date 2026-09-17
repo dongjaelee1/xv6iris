@@ -511,17 +511,17 @@ Section echo_links_line.
 
   (* ---- the taint inhabits every shape ---- *)
   Lemma ewc_blk_taint v I a i : T -∗ ewc_blk v I a i.
-  Proof. iIntros "HT". rewrite /ewc_blk. by iRight. Qed.
+  Proof using . iIntros "HT". rewrite /ewc_blk. by iRight. Qed.
   Lemma ewc_pro_taint v I : T -∗ ewc_pro v I.
-  Proof. iIntros "HT". rewrite /ewc_pro. by iRight. Qed.
+  Proof using . iIntros "HT". rewrite /ewc_pro. by iRight. Qed.
   Lemma ewc_sp_t_taint v I : T -∗ ewc_sp_t v I.
-  Proof. iIntros "HT". rewrite /ewc_sp_t. by iRight. Qed.
+  Proof using . iIntros "HT". rewrite /ewc_sp_t. by iRight. Qed.
   Lemma ewc_open_t_taint v I : T -∗ ewc_open_t v I.
-  Proof. iIntros "HT". rewrite /ewc_open_t. by iRight. Qed.
+  Proof using . iIntros "HT". rewrite /ewc_open_t. by iRight. Qed.
   Lemma ewc_line_taint v I : T -∗ ewc_line v I.
-  Proof. iIntros "HT". rewrite /ewc_line. iLeft. by iApply ewc_pro_taint. Qed.
+  Proof using . iIntros "HT". rewrite /ewc_line. iLeft. by iApply ewc_pro_taint. Qed.
   Lemma ewc_lpr_taint v I p : T -∗ ewc_lpr v I p.
-  Proof.
+  Proof using .
     iIntros "HT". rewrite /ewc_lpr. destruct p as [| [| [| p]]];
       [ by iApply ewc_line_taint | by iApply ewc_sp_t_taint
       | by iApply ewc_open_t_taint | by iApply ewc_blk_taint ].
@@ -529,14 +529,14 @@ Section echo_links_line.
 
   (* ---- the tight shapes imply [EchoLinks]'s loose ones ---- *)
   Lemma ewc_pro_owed v I : ewc_pro v I -∗ EchoLinks.ewc_owed T v I.
-  Proof.
+  Proof using Persistent0.
     rewrite /ewc_pro /EchoLinks.ewc_owed. iIntros "[Hl | #HT]"; last by iRight.
     iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
     iLeft. iExists ps, cs, P. iFrame "Htn Hps Hcs HE". iPureIntro. by left.
   Qed.
 
   Lemma ewc_blk_owed v I a : ewc_blk v I a 0%nat -∗ EchoLinks.ewc_owed T v I.
-  Proof.
+  Proof using Persistent0.
     rewrite /ewc_blk /EchoLinks.ewc_owed. iIntros "[Hl | #HT]"; last by iRight.
     iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
     cbn [blkcs]. rewrite Nat.add_0_r.
@@ -545,7 +545,7 @@ Section echo_links_line.
   Qed.
 
   Lemma ewc_sp_t_sp v I : ewc_sp_t v I -∗ EchoLinks.ewc_sp T v I.
-  Proof.
+  Proof using Persistent0.
     rewrite /ewc_sp_t /EchoLinks.ewc_sp. iIntros "[Hl | #HT]"; last by iRight.
     iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
     iLeft. iExists ps, cs, P. iFrame "Htn Hps Hcs HE". iPureIntro.
@@ -553,7 +553,7 @@ Section echo_links_line.
   Qed.
 
   Lemma ewc_open_t_open v I : ewc_open_t v I -∗ EchoLinks.ewc_open T v I.
-  Proof.
+  Proof using Persistent0.
     rewrite /ewc_open_t /EchoLinks.ewc_open. iIntros "[Hl | #HT]";
       last by iRight.
     iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
@@ -563,12 +563,12 @@ Section echo_links_line.
 
   (* ---- the block family at [i = 0] reads no alternative ---- *)
   Lemma ewc_blk_0 v I a a' : ewc_blk v I a 0%nat -∗ ewc_blk v I a' 0%nat.
-  Proof. rewrite /ewc_blk. cbn [blkcs]. iIntros "H". iExact "H". Qed.
+  Proof using . rewrite /ewc_blk. cbn [blkcs]. iIntros "H". iExact "H". Qed.
 
   (* ...and it is the [a = 2] arm of the widened boundary: the block-first
      '$' of a child that recorded no choice *)
   Lemma ewc_line_of_blk0 v I a : ewc_blk v I a 0%nat -∗ ewc_line v I.
-  Proof.
+  Proof using .
     iIntros "Hc". rewrite /ewc_line. iRight. iExists 2%nat.
     iSplitR; [iPureIntro; lia |].
     assert (H2 : (length (line_alts_of (last_ws I) !!! 2%nat) - 2)%nat = 0%nat)
@@ -577,13 +577,13 @@ Section echo_links_line.
   Qed.
 
   Lemma ewc_line_of_post v I a : (a < 3)%nat -> ewc_post v I a -∗ ewc_line v I.
-  Proof.
+  Proof using .
     intros Ha. iIntros "Hc". rewrite /ewc_line. iRight. iExists a.
     iSplitR; [by iPureIntro |]. iExact "Hc".
   Qed.
 
   Lemma ewc_line_of_pro v I : ewc_pro v I -∗ ewc_line v I.
-  Proof. iIntros "Hc". rewrite /ewc_line. by iLeft. Qed.
+  Proof using . iIntros "Hc". rewrite /ewc_line. by iLeft. Qed.
 
   (* =================================================================== *)
   (*  S4  ONE BYTE OF THE BLOCK, THROUGH THE ERA'S LINKS                  *)
@@ -599,7 +599,7 @@ Section echo_links_line.
     era_pin γ k v -∗ echo_links T γ -∗ ewc_blk v I a i -∗
     (ewc_blk v I a (S i) -∗ Φ) -∗
     out_link Uart0 k b Φ.
-  Proof.
+  Proof using Persistent0.
     intros Hb. iIntros "#Hpin #Hlk Hc HΦ".
     iDestruct (echo_links_w with "Hlk") as "#Hw".
     iDestruct (echo_links_blk with "Hlk") as "#Hblk".
@@ -645,14 +645,14 @@ Section echo_links_line.
   Lemma ewc_blk_done v I a :
     ewc_blk v I a (length (line_alts_of (last_ws I) !!! a) - 2)%nat -∗
     ewc_post v I a.
-  Proof. rewrite /ewc_post. iIntros "$". Qed.
+  Proof using . rewrite /ewc_post. iIntros "$". Qed.
 
   (* ...and one byte further it is the half-written prompt *)
   Lemma ewc_blk_sp v I a :
     (a < 3)%nat ->
     ewc_blk v I a (length (line_alts_of (last_ws I) !!! a) - 1)%nat -∗
     ewc_sp_t v I.
-  Proof.
+  Proof using Persistent0.
     intros Ha. rewrite /ewc_blk /ewc_sp_t. iIntros "[Hl | #HT]"; last by iRight.
     iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
     pose proof (line_alts_len_ge2 (last_ws I) a Ha) as Hlen.
@@ -774,7 +774,7 @@ Section echo_links_line.
     era_pin γ k v -∗ echo_links T γ -∗ ewc_lpr v I p -∗
     (ewc_lpr v I (S p) -∗ Φ) -∗
     out_link Uart0 k b Φ.
-  Proof.
+  Proof using Persistent0.
     intros Hb Hp. destruct p as [| [| p]]; [| | exfalso; lia].
     - assert (Hb0 : b = u_prompt !!! 0%nat).
       { rewrite wr_prompt_head in Hb. by injection Hb. }
@@ -798,7 +798,7 @@ Section echo_links_line.
     wl_nl ∉ l ->
     inp_lb v (I ++ l ++ [wl_nl]) -∗ ewc_open_t v I -∗
     ewc_blk v (I ++ l ++ [wl_nl]) a 0%nat.
-  Proof.
+  Proof using Persistent0.
     intros Hl. iIntros "#HE' Hc". rewrite /ewc_open_t /ewc_blk.
     iDestruct "Hc" as "[Hl | #HT]"; last by iRight.
     iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
@@ -815,7 +815,7 @@ Section echo_links_line.
     wl_nl ∉ l ->
     inp_lb v (I ++ l ++ [wl_nl]) -∗ ewc_lpr v I 2%nat -∗
     ewc_lpr v (I ++ l ++ [wl_nl]) 3%nat.
-  Proof.
+  Proof using Persistent0.
     intros Hl. iIntros "#HE' Hc". cbn [ewc_lpr].
     iApply (ewc_read_t v I 0%nat l Hl with "HE' Hc").
   Qed.
@@ -824,7 +824,7 @@ Section echo_links_line.
     wl_nl ∉ l ->
     era_pin γ k v -∗ inp_lb v (I ++ l ++ [wl_nl]) -∗
     ewc_lcred k I 2%nat -∗ ewc_lcred k (I ++ l ++ [wl_nl]) 3%nat.
-  Proof.
+  Proof using Persistent0.
     intros Hl. iIntros "#Hpin #HE' Hc". rewrite /ewc_lcred.
     iDestruct "Hc" as (v') "[#Hpin' Hc]".
     iDestruct (era_pin_agree with "Hpin Hpin'") as %<-.
@@ -837,11 +837,11 @@ Section echo_links_line.
      loop head with ([UkSh.ush_wc_blk_line]'s content). *)
   Lemma ewc_lpr_blk_line (v : era_pins) (I : list (bv 8)) :
     ewc_lpr v I 3%nat -∗ ewc_lpr v I 0%nat.
-  Proof. cbn [ewc_lpr]. iApply (ewc_line_of_blk0 v I 0%nat). Qed.
+  Proof using . cbn [ewc_lpr]. iApply (ewc_line_of_blk0 v I 0%nat). Qed.
 
   Lemma ewc_lcred_blk_line (k : nat) (I : list (bv 8)) :
     ewc_lcred k I 3%nat -∗ ewc_lcred k I 0%nat.
-  Proof.
+  Proof using .
     rewrite /ewc_lcred. iIntros "Hc". iDestruct "Hc" as (v) "[#Hpin Hc]".
     iExists v. iFrame "Hpin". iApply (ewc_lpr_blk_line with "Hc").
   Qed.
@@ -849,7 +849,7 @@ Section echo_links_line.
   (* ...the taint inhabits the pinned family too, at any pin *)
   Lemma ewc_lcred_taint (k : nat) (I : list (bv 8)) (p : nat) (v : era_pins) :
     era_pin γ k v -∗ T -∗ ewc_lcred k I p.
-  Proof.
+  Proof using Persistent0.
     iIntros "#Hpin #HT". rewrite /ewc_lcred. iExists v. iFrame "Hpin".
     iApply (ewc_lpr_taint with "HT").
   Qed.
@@ -858,7 +858,7 @@ Section echo_links_line.
      credential: what sh's forked child hands back through its exit *)
   Lemma ewc_lcred_of_post (k : nat) (I : list (bv 8)) (v : era_pins) :
     era_pin γ k v -∗ ewc_post v I 0%nat -∗ ewc_lcred k I 0%nat.
-  Proof.
+  Proof using .
     iIntros "#Hpin Hc". rewrite /ewc_lcred. iExists v. iFrame "Hpin".
     cbn [ewc_lpr]. iApply (ewc_line_of_post v I 0%nat ltac:(lia) with "Hc").
   Qed.
@@ -869,7 +869,7 @@ Section echo_links_line.
       (v : era_pins) :
     (a < 3)%nat ->
     era_pin γ k v -∗ ewc_post v I a -∗ ewc_lcred k I 0%nat.
-  Proof.
+  Proof using .
     intros Ha. iIntros "#Hpin Hc". rewrite /ewc_lcred. iExists v.
     iFrame "Hpin". cbn [ewc_lpr]. iApply (ewc_line_of_post v I a Ha with "Hc").
   Qed.
@@ -880,7 +880,7 @@ Section echo_links_line.
   Lemma ewc_lcred_blk_open (k : nat) (I : list (bv 8)) (a : nat) :
     ewc_lcred k I 3%nat -∗
     ∃ v : era_pins, era_pin γ k v ∗ ewc_blk v I a 0%nat.
-  Proof.
+  Proof using .
     rewrite /ewc_lcred. iIntros "Hc". iDestruct "Hc" as (v) "[#Hpin Hc]".
     iExists v. iFrame "Hpin". cbn [ewc_lpr].
     iApply (ewc_blk_0 v I 0%nat a with "Hc").
@@ -895,7 +895,7 @@ Section echo_links_line.
     era_pin γ k v -∗ echo_links T γ -∗ ewc_panic v I i -∗
     (ewc_panic v I (S i) -∗ Φ) -∗
     out_link Uart0 k b Φ.
-  Proof.
+  Proof using Persistent0.
     intros Hb. rewrite /ewc_panic. exact (echo_blk_step k v I 3%nat i b Φ Hb).
   Qed.
 
@@ -906,7 +906,7 @@ Section echo_links_line.
   Lemma ewc_panic_done (v : era_pins) (I : list (bv 8)) :
     ewc_panic v I (length (line_alts_of (last_ws I) !!! 3%nat)) -∗
     EchoLinks.ewc_ban T v I 0%nat.
-  Proof.
+  Proof using Persistent0.
     rewrite /ewc_panic /ewc_blk /EchoLinks.ewc_ban.
     iIntros "[Hl | #HT]"; last by iRight.
     iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
@@ -964,7 +964,7 @@ Section echo_links_line.
     ((turn v (P + length (wl_line (drop 1 ws)))%nat ∗ ps_lb v ps0
       ∗ cs_lb v (cs0 ++ [0%nat]) ∗ inp_lb v I0) ∨ T) -∗
     ewc_post v I0 0%nat.
-  Proof.
+  Proof using Persistent0.
     intros Hr Hn Hws HP Hpin Ht.
     assert (Hidx : (length (line_alts_of (last_ws I0) !!! 0%nat) - 2)%nat
                    = length (wl_line (drop 1 ws)))
@@ -985,7 +985,7 @@ Section echo_links_line.
     ewc_blk v I a 0%nat -∗
     (∃ ps cs P : _, ⌜wr_blk_t ps cs I P⌝ ∗ turn v P ∗ ps_lb v ps
         ∗ cs_lb v cs ∗ inp_lb v I) ∨ T.
-  Proof.
+  Proof using Persistent0.
     rewrite /ewc_blk. cbn [blkcs]. iIntros "[Hl | #HT]"; last by iRight.
     iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
     rewrite Nat.add_0_r. iLeft. iExists ps, cs, P. iFrame "Htn Hps Hcs HE".
@@ -1012,7 +1012,7 @@ Section echo_links_line.
   Lemma ewc_lcred_blk_panic (k : nat) (I : list (bv 8)) :
     ewc_lcred k I 3%nat -∗
     ∃ v : era_pins, era_pin γ k v ∗ ewc_panic v I 0%nat.
-  Proof.
+  Proof using .
     rewrite /ewc_lcred. iIntros "Hc". iDestruct "Hc" as (v) "[#Hpin Hc]".
     iExists v. iFrame "Hpin". cbn [ewc_lpr]. rewrite /ewc_panic.
     iApply (ewc_blk_0 v I 0%nat 3%nat with "Hc").

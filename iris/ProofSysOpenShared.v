@@ -119,7 +119,7 @@ Section ProofSysOpenShared.
   Lemma so_flat_open (k : nat) (inum : mword 32) (dn : dinode) (bm : blkmap) :
     ic_loaded fsc_fs fsc_ireg fsc_cov fsc_logst k inum dn bm -∗
     ∃ data : nat -> list (bv 8), so_flat k inum dn bm data.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct (ic_loaded_open with "H") as "H".
     rewrite /ic_loaded_flat_body. iDestruct "H" as (data) "H".
     iExists data. iExact "H".
@@ -131,7 +131,7 @@ Section ProofSysOpenShared.
       (data : nat -> list (bv 8)) :
     so_flat k inum dn bm data -∗
       ⌜inode_ok fsc_cov fsc_logst dn bm data⌝ ∗ so_flat k inum dn bm data.
-  Proof.
+  Proof using .
     rewrite /so_flat. iIntros "H". iDestruct "H" as "(%Hok & Hrest)".
     iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |]. iExact "Hrest".
   Qed.
@@ -140,7 +140,7 @@ Section ProofSysOpenShared.
       (data : nat -> list (bv 8)) :
     so_flat k inum dn bm data -∗
     ic_loaded fsc_fs fsc_ireg fsc_cov fsc_logst k inum dn bm.
-  Proof.
+  Proof using .
     iIntros "H". iApply ic_loaded_flat. rewrite /ic_loaded_flat_body.
     iExists data. iExact "H".
   Qed.
@@ -152,7 +152,7 @@ Section ProofSysOpenShared.
       (data : nat -> list (bv 8)) :
     so_flat k inum dn bm data -∗
     ⌜inode_ok fsc_cov fsc_logst dn bm data /\ inode_rec_local dn⌝.
-  Proof.
+  Proof using .
     rewrite /so_flat.
     iIntros "(%H1 & %H2 & _)". iPureIntro. by split.
   Qed.
@@ -165,7 +165,7 @@ Section ProofSysOpenShared.
     top_frag (fs_gamma_L fsc_fs) (bv_unsigned inum) (era_node dn bm data)
     ∗ (top_frag (fs_gamma_L fsc_fs) (bv_unsigned inum) (era_node dn bm data)
        -∗ so_flat k inum dn bm data).
-  Proof.
+  Proof using .
     rewrite /so_flat.
     iIntros "(%H1 & %H2 & %H3 & %H4 & %H5 & %H6 & Ha & Hb & Hc & Hd & He &
               Hf & Ht)".
@@ -185,7 +185,7 @@ Section ProofSysOpenShared.
     ic_loaded fsc_fs fsc_ireg fsc_cov fsc_logst k inum dn bm -∗
     inode_meta (ientry k) dn ∗
     (inode_meta (ientry k) dn -∗ ic_loaded fsc_fs fsc_ireg fsc_cov fsc_logst k inum dn bm).
-  Proof.
+  Proof using .
     iIntros "H".
     iDestruct (ic_loaded_open with "H") as (data)
       "(%Hok & %Hrl & %Hdok & %Hddix & %Hdoc & %Hduq & Hl & Hd & Hm & Ha & Hr &
@@ -203,7 +203,7 @@ Section ProofSysOpenShared.
     so_flat k inum dn bm data -∗
     inode_meta (ientry k) dn ∗
     (inode_meta (ientry k) dn -∗ so_flat k inum dn bm data).
-  Proof.
+  Proof using .
     rewrite /so_flat.
     iIntros "(%H1 & %H2 & %H3 & %H4 & %H5 & %H6 & Ha & Hb & Hc & Hd & He &
               Hf & Ht)".
@@ -217,7 +217,7 @@ Section ProofSysOpenShared.
   Lemma so_type_acc (ip : mword 64) (dn : dinode) :
     inode_meta ip dn -∗
     i_type ip ↦₂ di_type dn ∗ (i_type ip ↦₂ di_type dn -∗ inode_meta ip dn).
-  Proof.
+  Proof using .
     iIntros "(Hty & Hmaj & Hmin & Hnl & Hsz)". iFrame "Hty".
     iIntros "Hty". iFrame "Hty Hmaj Hmin Hnl Hsz".
   Qed.
@@ -225,7 +225,7 @@ Section ProofSysOpenShared.
   Lemma so_maj_acc (ip : mword 64) (dn : dinode) :
     inode_meta ip dn -∗
     i_major ip ↦₂ di_major dn ∗ (i_major ip ↦₂ di_major dn -∗ inode_meta ip dn).
-  Proof.
+  Proof using .
     iIntros "(Hty & Hmaj & Hmin & Hnl & Hsz)". iFrame "Hmaj".
     iIntros "Hmaj". iFrame "Hty Hmaj Hmin Hnl Hsz".
   Qed.
@@ -234,7 +234,7 @@ Section ProofSysOpenShared.
     (k < NINODE)%nat ->
     (ic_escrows fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst -∗ ic_escrow fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k
      : iProp Σ).
-  Proof.
+  Proof using .
     iIntros (Hk) "H".
     iApply (ic_escrows_lookup fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k Hk with "H").
   Qed.
@@ -246,7 +246,7 @@ Section ProofSysOpenShared.
        is_sleeplock_genl gil gisl (i_lock (ientry k)) "inode"%string
                         (ic_slp fsc_ic k) (slh_tok (icfg_isl k))
      : iProp Σ).
-  Proof.
+  Proof using .
     iIntros (Hk) "H". rewrite /ic_sleeplocks.
     assert (Hl : seq 0 NINODE !! k = Some k) by (rewrite lookup_seq; lia).
     iDestruct (big_sepL_lookup _ _ k k Hl with "H") as "$".
@@ -254,14 +254,14 @@ Section ProofSysOpenShared.
 
   Lemma so_bs3 :
     (bslots 3 : iProp Σ) ⊣⊢ bslot ∗ bslots 2.
-  Proof. rewrite /bslot. change 3%nat with (1 + 2)%nat. apply bslots_op. Qed.
+  Proof using . rewrite /bslot. change 3%nat with (1 + 2)%nat. apply bslots_op. Qed.
 
   Lemma so_upd_cwd_id (V : pprivate) : upd_cwd V (pv_cwd V) = V.
-  Proof. destruct V; reflexivity. Qed.
+  Proof using . destruct V; reflexivity. Qed.
 
   Lemma so_ip_split (a w : mword 64) :
     a ↦₈ w -∗ a ↦₈{DfracOwn (1/2)} w ∗ a ↦₈{DfracOwn (1/2)} w.
-  Proof.
+  Proof using .
     iIntros "H".
     iDestruct (bi.equiv_entails_1_1 _ _
                  (ctx_word_pointsto_frac_split _ a (1/2) (1/2) w) with "[H]")
@@ -271,7 +271,7 @@ Section ProofSysOpenShared.
 
   Lemma so_iref_take (n : nat) :
     (1 <= n)%nat -> iref_slots n -∗ iref_slot ∗ iref_slots (n - 1).
-  Proof.
+  Proof using .
     intros Hn. rewrite /iref_slot.
     replace n with (1 + (n - 1))%nat at 1 by lia.
     iIntros "H". iApply (iref_slots_split with "H").
@@ -378,7 +378,7 @@ Section ProofSysOpenShared.
     open_arms_plain (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) gf pj pidv
            Mim pvv vom
       P Pmiss Fo Ft sts U r.
-  Proof.
+  Proof using .
     intros Hpl Hr. iIntros "Hpriv Hfrag Hfds HP Hobs Htc".
     rewrite /open_arms_plain. iFrame "Hfds". iLeft.
     iSplitR; [by iPureIntro |]. iFrame "Hpriv Hfrag".
@@ -409,7 +409,7 @@ Section ProofSysOpenShared.
     open_arms_plain (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) gf pj pidv
            Mim pvv vom
       P Pmiss Fo Ft sts U r.
-  Proof.
+  Proof using .
     intros Hpl Hr. iIntros "Hpriv Hfrag Hfds Hdead Hoc Htc".
     rewrite /open_arms_plain. iFrame "Hfds". iLeft.
     iSplitR; [by iPureIntro |]. iFrame "Hpriv Hfrag".
@@ -435,7 +435,7 @@ Section ProofSysOpenShared.
     open_arms_plain (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) gf pj pidv
            Mim pvv vom
       P Pmiss Fo Ft sts U r.
-  Proof.
+  Proof using .
     intros Hr. iIntros "Hpriv Hfrag Hfds Hpre".
     rewrite /open_arms_plain. iFrame "Hfds". iLeft.
     iSplitR; [by iPureIntro |]. iFrame "Hpriv Hfrag".
@@ -468,7 +468,7 @@ Section ProofSysOpenShared.
        open_fd_ok gf pj pidv U (om_readable vom) (om_writable vom)
          (FdDevice ma) sts r -∗
        open_post_ok_plain (fs_gamma_L fsc_fs) gf pj pidv Mim pvv vom P Fo Ft sts U r).
-  Proof.
+  Proof using .
     intros Hpl Hma. iIntros "HP Hobs Htc".
     iDestruct "Hobs" as (av) "[%Hav HΦ]".
     iIntros (r) "Hfd". rewrite /open_post_ok_plain.
@@ -497,7 +497,7 @@ Section ProofSysOpenShared.
        open_fd_ok gf pj pidv U (om_readable vom) (om_writable vom)
          (FdInode i γo OffParked) sts r -∗
        open_post_ok_plain (fs_gamma_L fsc_fs) gf pj pidv Mim pvv vom P Fo Ft sts U r).
-  Proof.
+  Proof using .
     intros Hpl Hnt. iIntros "HP Hobs".
     iDestruct "Hobs" as (av) "[%Hav HΦ]".
     iIntros (r) "Hfd". rewrite /open_post_ok_plain.
@@ -526,7 +526,7 @@ Section ProofSysOpenShared.
        open_fd_ok gf pj pidv U (om_readable vom) (om_writable vom)
          (FdInode i γo OffParked) sts r -∗
        open_post_ok_plain (fs_gamma_L fsc_fs) gf pj pidv Mim pvv vom P Fo Ft sts U r).
-  Proof.
+  Proof using .
     intros Hpl Ht. iIntros "HP Hobs Htr".
     iDestruct "Hobs" as (av) "[%Hav HΦ]".
     iIntros (r) "Hfd". rewrite /open_post_ok_plain.
@@ -555,7 +555,7 @@ Section ProofSysOpenShared.
        open_fd_ok gf pj pidv U (om_readable vom) (om_writable vom)
          (FdInode i γo OffParked) sts r -∗
        open_post_ok_plain (fs_gamma_L fsc_fs) gf pj pidv Mim pvv vom P Fo Ft sts U r).
-  Proof.
+  Proof using .
     intros Hpl H0. iIntros "HP Hobs Htc".
     iDestruct "Hobs" as (av) "[%Hav HΦ]".
     iIntros (r) "Hfd". rewrite /open_post_ok_plain.
@@ -595,7 +595,7 @@ Section ProofSysOpenShared.
     (∀ r : mword 64,
        open_fd_ok gf pj pidv U (om_readable vom) (om_writable vom) t sts r -∗
        open_post_ok_plain (fs_gamma_L fsc_fs) gf pj pidv Mim pvv vom P Fo Ft sts U r).
-  Proof.
+  Proof using .
     intros Hpl Hnt Hdirk Hdev Hino Hen. rewrite /so_obs.
     destruct Hen as [Hd | [Hf | Hv]].
     - rewrite (opf_era_dir_row dn bm data Hd)

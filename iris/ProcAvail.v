@@ -163,9 +163,9 @@ Section ProcAvail.
     own pav_name (◯ ({[j]} : gset nat)).
 
   Global Instance pslot_used_persistent j : Persistent (pslot_used j).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance pslot_used_timeless j : Timeless (pslot_used j).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* the marker at a slot named by its ADDRESS, which is the form
      [SchedCtx.proc_slots] can state (it is keyed on [pa], not on [j]). *)
@@ -173,15 +173,15 @@ Section ProcAvail.
     (∃ j : nat, ⌜pa = proc_addr j /\ (j < NPROC)%nat⌝ ∗ pslot_used j)%I.
 
   Global Instance pslot_used_at_persistent pa : Persistent (pslot_used_at pa).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma pslot_used_at_intro (j : nat) :
     (j < NPROC)%nat -> pslot_used j -∗ pslot_used_at (proc_addr j).
-  Proof. iIntros (Hj) "H". iExists j. iFrame "H". done. Qed.
+  Proof using . iIntros (Hj) "H". iExists j. iFrame "H". done. Qed.
 
   Lemma pslot_used_at_elim (j : nat) :
     (j < NPROC)%nat -> pslot_used_at (proc_addr j) -∗ pslot_used j.
-  Proof.
+  Proof using .
     iIntros (Hj) "(%k & [%Hpa %Hk] & H)".
     by rewrite (proc_addr_inj j k Hj Hk Hpa).
   Qed.
@@ -205,7 +205,7 @@ Section ProcAvail.
   Definition npid_done : iProp Σ := (nextpid_shot ∗ init_reg)%I.
 
   Global Instance npid_done_persistent : Persistent npid_done.
-  Proof. rewrite /npid_done. apply _. Qed.
+  Proof using . rewrite /npid_done. apply _. Qed.
 
   (* THE LEDGER, INDEXED BY WHETHER THE BOOT TOKEN IS STILL IN IT.  The
      index is a BOOLEAN and not the counter's value: the value is read off
@@ -230,7 +230,7 @@ Section ProcAvail.
   Lemma procs_avail_at_tok (on : option nat) (t : bool) :
     procs_avail_at on t -∗
     pav_core on ∗ (if pav_boot on t then nextpid_pend else npid_done).
-  Proof. destruct on; iIntros "[$ $]". Qed.
+  Proof using . destruct on; iIntros "[$ $]". Qed.
 
   (* ...AND WHAT COMES BACK OUT OF A CALL THAT SPENT THE TOKEN.  allocproc
      SHOOTS the boot token at its store to <nextpid> -- that is what puts
@@ -246,7 +246,7 @@ Section ProcAvail.
 
   Lemma pav_of_spent (on : option nat) :
     init_reg -∗ pav_spent on -∗ procs_avail_at on false.
-  Proof.
+  Proof using .
     iIntros "#Hir [$ #Hshot]". rewrite /npid_done.
     destruct on; iFrame "Hshot Hir".
   Qed.
@@ -259,16 +259,16 @@ Section ProcAvail.
 
   Global Instance procs_avail_at_None_persistent t :
     Persistent (procs_avail_at None t).
-  Proof. rewrite /procs_avail_at /pav_core. apply _. Qed.
+  Proof using . rewrite /procs_avail_at /pav_core. apply _. Qed.
 
   Global Instance procs_avail_None_persistent : Persistent (procs_avail None).
-  Proof. rewrite /procs_avail. apply _. Qed.
+  Proof using . rewrite /procs_avail. apply _. Qed.
 
   (* at [None] the index says nothing, which is the corollary every
      uncounted caller takes *)
   Lemma procs_avail_None_at (t : bool) :
     procs_avail None ⊣⊢ procs_avail_at None t.
-  Proof.
+  Proof using .
     rewrite /procs_avail. iSplit.
     - iIntros "(%t0 & H)". iExact "H".
     - iIntros "H". iExists t. iExact "H".
@@ -277,7 +277,7 @@ Section ProcAvail.
   (* ...and the one-directional form a caller applies *)
   Lemma procs_avail_at_None (t : bool) :
     procs_avail None -∗ procs_avail_at None t.
-  Proof. iIntros "H". by iApply (procs_avail_None_at t). Qed.
+  Proof using . iIntros "H". by iApply (procs_avail_None_at t). Qed.
 
   (* boot -> steady state.  Irreversible: the authority goes into the
      invariant and the count is gone.  IT ALSO SHOOTS THE BOOT TOKEN and
@@ -286,7 +286,7 @@ Section ProcAvail.
      holds both at once. *)
   Lemma procs_avail_seal_at (E : coPset) (n : nat) (t : bool) :
     init_reg -∗ procs_avail_at (Some n) t ={E}=∗ procs_avail None.
-  Proof.
+  Proof using .
     iIntros "#Hir [Hc Ht]".
     iAssert (|==> nextpid_shot)%I with "[Ht]" as ">#Hshot".
     { destruct t.
@@ -303,7 +303,7 @@ Section ProcAvail.
 
   Lemma procs_avail_seal (E : coPset) (n : nat) :
     init_reg -∗ procs_avail (Some n) ={E}=∗ procs_avail None.
-  Proof.
+  Proof using .
     iIntros "#Hir (%t & H)". iApply (procs_avail_seal_at E n t with "Hir H").
   Qed.
 
@@ -311,7 +311,7 @@ Section ProcAvail.
      back, closed with the registration userinit has just discarded. *)
   Lemma procs_avail_seal_spent (E : coPset) (n : nat) :
     init_reg -∗ pav_spent (Some n) ={E}=∗ procs_avail None.
-  Proof.
+  Proof using .
     iIntros "#Hir H".
     iDestruct (pav_of_spent (Some n) with "Hir H") as "H".
     iApply (procs_avail_seal_at E n false with "Hir H").
@@ -320,13 +320,13 @@ Section ProcAvail.
   (* WEAKENING the count -- what a caller with a budget to spare threads on. *)
   Lemma procs_avail_le_at (n m : nat) (t : bool) :
     (m <= n)%nat -> procs_avail_at (Some n) t -∗ procs_avail_at (Some m) t.
-  Proof.
+  Proof using .
     iIntros (Hle) "[(%U & Ha & %Hn) $]". iExists U. iFrame "Ha". iPureIntro. lia.
   Qed.
 
   Lemma procs_avail_le (n m : nat) :
     (m <= n)%nat -> procs_avail (Some n) -∗ procs_avail (Some m).
-  Proof.
+  Proof using .
     iIntros (Hle) "(%t & H)". iExists t.
     iApply (procs_avail_le_at n m t Hle with "H").
   Qed.
@@ -346,7 +346,7 @@ Section ProcAvail.
     own pav_name (● U) -∗
     ([∗ list] j ∈ l, pslot_used j) -∗
     own pav_name (● U ⋅ ◯ (list_to_set l : gset nat)).
-  Proof.
+  Proof using .
     induction l as [|j l IH]; cbn [list_to_set].
     - iIntros "Ha _".
       assert (Hu : (◯ (∅ : gset nat) : pavUR) = ε) by reflexivity.
@@ -364,7 +364,7 @@ Section ProcAvail.
     own pav_name (● U) -∗
     ([∗ list] j ∈ seq 0 NPROC, pslot_used j) -∗
     ⌜pav_region ⊆ U⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Hall".
     iDestruct (pslot_used_gather U (seq 0 NPROC) with "Ha Hall") as "H".
     rewrite list_to_set_seq.
@@ -377,7 +377,7 @@ Section ProcAvail.
     procs_avail (Some (S n)) -∗
     ([∗ list] j ∈ seq 0 NPROC, pslot_used j) -∗
     False.
-  Proof.
+  Proof using .
     iIntros "(%t & (%U & Ha & %Hn) & _) Hall".
     iDestruct (pslot_used_all_auth U with "Ha Hall") as %Hsub.
     rewrite (pav_free_full U Hsub) in Hn. lia.
@@ -391,7 +391,7 @@ Section ProcAvail.
   Lemma procs_avail_zero_at (on : option nat) (t : bool) :
     ([∗ list] j ∈ seq 0 NPROC, pslot_used j) -∗
     procs_avail_at on t -∗ ⌜avail_zero on⌝ ∗ procs_avail_at on t.
-  Proof.
+  Proof using .
     iIntros "#Hall Hav". destruct on as [n|]; [| by iFrame].
     destruct n as [|k]; [ by iFrame |].
     iExFalso. iApply (procs_avail_full k with "[Hav] Hall").
@@ -401,7 +401,7 @@ Section ProcAvail.
   Lemma procs_avail_zero (on : option nat) :
     ([∗ list] j ∈ seq 0 NPROC, pslot_used j) -∗
     procs_avail on -∗ ⌜avail_zero on⌝ ∗ procs_avail on.
-  Proof.
+  Proof using .
     iIntros "#Hall (%t & Hav)".
     iDestruct (procs_avail_zero_at on t with "Hall Hav") as "[$ Hav]".
     iExists t. iExact "Hav".
@@ -412,7 +412,7 @@ Section ProcAvail.
      holds, the sealed one opens the invariant. ---- *)
   Lemma pslot_mint_some (n j : nat) :
     pav_core (Some n) ==∗ pav_core (avail_dec (Some n)) ∗ pslot_used j.
-  Proof.
+  Proof using .
     iIntros "(%U & Ha & %Hn)".
     iMod (own_update _ _ (● (U ∪ {[j]}) ⋅ ◯ ({[j]} ∪ U : gset nat)) with "Ha")
       as "[Ha Hf]".
@@ -429,7 +429,7 @@ Section ProcAvail.
   Lemma pslot_mint_none (E : coPset) (j : nat) :
     ↑pavN ⊆ E ->
     pav_core None ={E}=∗ pslot_used j.
-  Proof.
+  Proof using .
     iIntros (HE) "#Hinv".
     iInv "Hinv" as (U) ">Ha" "Hclose".
     iMod (own_update _ _ (● (U ∪ {[j]}) ⋅ ◯ ({[j]} ∪ U : gset nat)) with "Ha")
@@ -450,7 +450,7 @@ Section ProcAvail.
   Lemma pslot_mint_core (E : coPset) (on : option nat) (j : nat) :
     ↑pavN ⊆ E ->
     pav_core on ={E}=∗ pav_core (avail_dec on) ∗ pslot_used j.
-  Proof.
+  Proof using .
     iIntros (HE) "Hav". destruct on as [n|].
     - iMod (pslot_mint_some n j with "Hav") as "[$ $]". done.
     - iDestruct "Hav" as "#Hav".
@@ -461,7 +461,7 @@ Section ProcAvail.
   Lemma pav_spent_mint (E : coPset) (on : option nat) (j : nat) :
     ↑pavN ⊆ E ->
     pav_spent on ={E}=∗ pav_spent (avail_dec on) ∗ pslot_used j.
-  Proof.
+  Proof using .
     iIntros (HE) "[Hc #Hs]".
     iMod (pslot_mint_core E on j HE with "Hc") as "[$ $]".
     iModIntro. iExact "Hs".
@@ -470,7 +470,7 @@ Section ProcAvail.
   Lemma pslot_mint_at (E : coPset) (on : option nat) (t : bool) (j : nat) :
     ↑pavN ⊆ E ->
     procs_avail_at on t ={E}=∗ procs_avail_at (avail_dec on) t ∗ pslot_used j.
-  Proof.
+  Proof using .
     iIntros (HE) "[Hc Htok]".
     iMod (pslot_mint_core E on j HE with "Hc") as "[Hc $]".
     iModIntro. rewrite /procs_avail_at. iFrame "Hc".
@@ -480,7 +480,7 @@ Section ProcAvail.
   Lemma pslot_mint (E : coPset) (on : option nat) (j : nat) :
     ↑pavN ⊆ E ->
     procs_avail on ={E}=∗ procs_avail (avail_dec on) ∗ pslot_used j.
-  Proof.
+  Proof using .
     iIntros (HE) "(%t & Hav)".
     iMod (pslot_mint_at E on t j HE with "Hav") as "[H $]".
     iModIntro. iExists t. iExact "H".

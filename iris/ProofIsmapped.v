@@ -115,7 +115,7 @@ Section IsmappedEpi.
                mr !!! Regidx (mword_of_int 10 : mword 5) = mword_of_int 1) ⌝ -∗
         WP (Loop : expr riscv_lang)) -∗
       WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "%HcsM #Htext Hcg Hpc Hptree Hc1 Hc2 %Hpay' Hcont".
     assert (HspM : M !!! Regidx csp_rs1 = spr).
     { rewrite (callee_saved_lookup HcsM csp_rs1 ltac:(vm_compute; reflexivity)).
@@ -245,7 +245,7 @@ Section ProofIsmapped.
   Lemma wp_ismapped_sconf (mm : regfile) (t : ptree)
       (m : gmap (mword 27) (mword 64)) (K : nat) (dq : dfrac) (b : bool) (p : mword 64)
     : wp_ismapped_sconf_body mm t m K dq b p.
-  Proof.
+  Proof using .
     cbv beta delta [wp_ismapped_sconf_body].
     intros pcE va vpn ret_tgt HK Hroot Hvab Hrep.
     pose (sp0 := (mm !!! Regidx csp_rs1 : mword 64)).

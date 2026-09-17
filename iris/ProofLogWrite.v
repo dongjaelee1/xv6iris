@@ -349,7 +349,7 @@ Section LogWriteDefs.
     (b = false \/ p = zero_reg -> (CIDb : CPU) = (CIDa : CPU)) ->
     lw_cont (CID0 := CIDa) bn γ γfs γd cov dev k pidv bno bs bsd Fb Bud m K n eb p b lks -∗
     lw_cont (CID0 := CIDb) bn γ γfs γd cov dev k pidv bno bs bsd Fb Bud m K n eb p b lks.
-  Proof.
+  Proof using .
     intros Hs. rewrite /lw_cont /wp_next.
     iIntros "H" (CID2 Hs2). iApply "H". iPureIntro.
     intro Hb. specialize (Hs2 Hb). specialize (Hs Hb). congruence.
@@ -446,7 +446,7 @@ Section LogWriteDefs.
     (uint bno ↪[fs_cache γfs]{#(1/2)} bsl ∗
      uint bno ↪[fs_dirty γfs]{#(1/2)} d ∗
      (if d then ∃ q : Qp, bref bn k q dv bno else ⌜bsd = bsl⌝)).
-  Proof.
+  Proof using .
     rewrite /bio_pay /fs_view /=. destruct d.
     - rewrite /fs_mdirty. iIntros "[[$ $] $]".
     - rewrite /fs_mclean. iIntros "[[$ $] $]".
@@ -459,7 +459,7 @@ Section LogWriteDefs.
     uint bno ↪[fs_dirty γfs]{#(1/2)} true -∗
     (∃ q : Qp, bref bn k q dv bno) -∗
     bio_pay bn (fs_view γfs γd dev cov) k dv bno bs bsd true.
-  Proof.
+  Proof using .
     rewrite /bio_pay /fs_view /= /fs_mdirty.
     iIntros "H1 H2 H3". iFrame.
   Qed.
@@ -506,7 +506,7 @@ Section LogWriteBlocks.
     lw_res bn γ γfs γd cov dev k pidv bno bs bsd Fb Bud -∗
     lw_cont (CID0 := CID0) bn γ γfs γd cov dev k pidv bno bs bsd Fb Bud m K n eb p b lks -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hbeq (Hsp & Hs1v & Hthr) Hno.
     iIntros "Hcg #Htext Hpc #Hlctx Hcnt Hpay Htok HRres Hframe Hout Hcont".
     iDestruct "Hlctx" as "(#Hlock & #Hdevc & #Hstc & _)".
@@ -790,7 +790,7 @@ Section LogWriteBlocks.
     lw_closeP γ bn γfs γd cov logstart dev k pidv bno bs bsd Fb Bud nl -∗
     lw_cont (CID0 := CID0) bn γ γfs γd cov dev k pidv bno bs bsd Fb Bud m K n eb p b lks -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hnoff Hbeq Hk Hnl Ha0 Hregs Hno.
     pose proof Hregs as (Hsp & Hs1v & Hthr).
     (* BPIN'S OWN BOUND, DERIVED -- the composition [SpecAcquire.v]'s header
@@ -1037,7 +1037,7 @@ Section LogWriteBlocks.
         lw_closeR γ bn γfs γd cov logstart dev k pidv bno bs bsd Fb Bud nl)) -∗
     lw_cont (CID0 := CID0) bn γ γfs γd cov dev k pidv bno bs bsd Fb Bud m K n eb p b lks -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hnoff Hbeq Hk Hnl Hinl Ha0 Hregs Ha5v Ha2v Hno.
     pose proof Hregs as (Hsp & Hs1v & Hthr).
     iIntros "Hcg #Htext Hpc #Hbio #Hlctx Hcnt Hpay Htok Hframe Hslot Hbnoc Hcell Hncell Hcl Hcont".
@@ -1307,7 +1307,7 @@ Section LogWriteBlocks.
        lw_closeP γ bn γfs γd cov logstart dev k pidv bno bs bsd Fb Bud nl) -∗
     lw_cont (CID0 := CID0) bn γ γfs γd cov dev k pidv bno bs bsd Fb Bud m K n eb p b lks -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hnoff Hbeq Hk Hnl Ha0 Hregs Ha2v Hno.
     pose proof Hregs as (Hsp & Hs1v & Hthr).
     iIntros "Hcg #Htext Hpc #Hbio #Hlctx Hcnt Hpay Htok Hframe Hslot Hbnoc Hcell Hncell Hcl Hcont".
@@ -1534,7 +1534,7 @@ Section LogWriteBlocks.
      ∧ lw_closeB γ bn γfs γd cov logstart dev k pidv bno bs bsd Fb Bud nl W) -∗
     lw_cont (CID0 := CID0) bn γ γfs γd cov dev k pidv bno bs bsd Fb Bud m K n eb p b lks -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hnoff Hbeq Hk Hnl HnW Ha0 Hno.
     iInduction fuel as [|fuel] "IH";
       iIntros (i M Hi Hfuel Hprev Hregs Ha5v Ha4v Ha2v Ha1v);
@@ -1786,7 +1786,7 @@ Section ProofLogWrite.
     : wp_log_write_au_range_body bn γ γfs γd cov logstart dev k pidv bno
                                  bs bsl bsd d u off len sub_new
                                  cr Sb e0 vlb Efs Φfsb m n eb p K b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_log_write_au_range_body].
     intros pcE ret_tgt HK Hnoff Hk Ha0 Hcovbno Hnotlog HlogE
            Hwin Hlenpos Hshape Hno.
@@ -2860,7 +2860,7 @@ Section ProofLogWrite.
       (K : nat) (b : bool) (lks : gset string)
     : wp_log_write_au_body bn γ γfs γd cov logstart dev k pidv bno
                            bs bsl bsd d u cr Sb e0 vlb Efs Φfsb m n eb p K b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_log_write_au_body].
     intros pcE ret_tgt HK Hnoff Hk Ha0 Hcovbno Hnotlog HlogE Hno.
     iIntros "Hcg Hcnt #Htext Hpc #Hbio #Hlctx Hbslot #Hvlb #Hcredit Hop Hau Hheld Hcont".
@@ -2894,7 +2894,7 @@ Section ProofLogWrite.
       (K : nat) (b : bool) (lks : gset string)
     : wp_log_write_gene_body bn γ γfs γd cov logstart dev k pidv bno
                              bs bsl bsd d u cr Sb e0 m n eb p K b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_log_write_gene_body].
     intros pcE ret_tgt HK Hnoff Hk Ha0 Hcovbno Hnotlog Hno.
     iIntros "Hcg Hcnt #Htext Hpc #Hbio #Hlctx Hbslot #Hcred Hop Hfsb Hheld Hcont".
@@ -2940,7 +2940,7 @@ Section ProofLogWrite.
       (K : nat) (b : bool) (lks : gset string)
     : wp_log_write_gen_body bn γ γfs γd cov logstart dev k pidv bno
                             bs bsl bsd d u cr Sb m n eb p K b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_log_write_gen_body].
     intros pcE ret_tgt HK Hnoff Hk Ha0 Hcovbno Hnotlog Hcredit Hno.
     iIntros "Hcg Hcnt #Htext Hpc #Hbio #Hlctx Hbslot Hop Hfsb Hheld Hcont".
@@ -2984,7 +2984,7 @@ Section ProofLogWrite.
       (K : nat) (b : bool) (lks : gset string)
     : wp_log_write_sconf_body bn γ γfs γd cov logstart dev k pidv bno
                               bs bsl bsd d u m n eb p K b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_log_write_sconf_body].
     intros pcE ret_tgt HK Hnoff Hk Ha0 Hcovbno Hnotlog Hno.
     iIntros "Hcg Hcnt #Htext Hpc #Hbio #Hlctx Hbslot Hop Hfsb Hheld Hcont".

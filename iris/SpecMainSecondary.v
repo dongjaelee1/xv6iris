@@ -149,7 +149,7 @@ Section SpecMainSecondary.
 
   Global Instance main_deposit_persistent γd γv :
     Persistent (main_deposit γd γv).
-  Proof. rewrite /main_deposit. apply _. Qed.
+  Proof using . rewrite /main_deposit. apply _. Qed.
 
   (* ------------------------------------------------------------------- *)
   (* main(), entered on a SECONDARY hart.                                 *)
@@ -164,14 +164,14 @@ Section MainDepositMorph.
   Context `{GEN : GenId}.
 
   Global Instance is_txlock_morph γl γu : CtxMorph (λ ξ, is_txlock (XI := ξ) γl γu).
-  Proof. rewrite /is_txlock. ctx_morph_solve. Qed.
+  Proof using . rewrite /is_txlock. ctx_morph_solve. Qed.
   Global Instance is_conslock_morph cn (Wd : iProp Σ) γ :
     CtxMorph (λ ξ, is_conslock (XI := ξ) cn Wd γ).
-  Proof. rewrite /is_conslock. ctx_morph_solve. Qed.
+  Proof using . rewrite /is_conslock. ctx_morph_solve. Qed.
   Global Instance printk_env_morph γpr γd γv : CtxMorph (λ ξ, printk_env (XI := ξ) γpr γd γv).
-  Proof. rewrite /printk_env. ctx_morph_solve. Qed.
+  Proof using . rewrite /printk_env. ctx_morph_solve. Qed.
   Global Instance disk_geom_morph γ pd pav pu : CtxMorph (λ ξ, disk_geom (XI := ξ) γ pd pav pu).
-  Proof. rewrite /disk_geom. ctx_morph_solve. Qed.
+  Proof using . rewrite /disk_geom. ctx_morph_solve. Qed.
 
   (* A6.138: the deposit is POSITION-INDEXED -- it learns the flag store's
      log position, and records that the kernel table's publication bound is
@@ -184,9 +184,9 @@ Section MainDepositMorph.
               ∃ B : nat, KptGhost.kpt_bound B ∗ ⌜(B <= pos)%nat⌝)%I.
   Global Instance main_dep_persistent γd γv pos ξ :
     Persistent (main_dep γd γv pos ξ).
-  Proof. rewrite /main_dep. apply _. Qed.
+  Proof using . rewrite /main_dep. apply _. Qed.
   Global Instance main_dep_morph γd γv pos : CtxMorph (main_dep γd γv pos).
-  Proof. rewrite /main_dep /main_deposit. ctx_morph_solve. Qed.
+  Proof using . rewrite /main_dep /main_deposit. ctx_morph_solve. Qed.
 End MainDepositMorph.
 
 Section SpecMainSecondaryBody.

@@ -143,7 +143,7 @@ Section strans.
                            ((autocast (T := mword) (PPN_of_PTE q0)) : mword 44),
                          PBMT_PMA, tt)⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDtlb Htlb Hvec Hm HDb Hag Hchk Hpure Hupd Hpb.
     iIntros "#Hcert Hrw Hro".
     unfold translate.
@@ -167,7 +167,7 @@ Section strans.
     hfrun 3 D Drw rs (write_TLB idx ent)
     = Some (tt, register_set tlb
                   (vec_update_dec (register_lookup tlb rs) idx (Some ent)) rs).
-  Proof.
+  Proof using .
     intros HD HDw. unfold write_TLB.
     cbn beta iota zeta delta [Defs.bind Interface.iMon_bind Defs.read_reg
       Defs.write_reg Defs.returnm returnM].
@@ -182,7 +182,7 @@ Section strans.
     pte_pbmt0 q ->
     hfrun 1 D Drw rs (tlb_get_pbmt (u_walk_entry vpn p2 p1 q asid))
     = Some (PBMT_PMA, rs).
-  Proof.
+  Proof using .
     intros Hpb. unfold tlb_get_pbmt, u_walk_entry. cbn [TLB_Entry_pte]. cbn zeta.
     rewrite zero_extend64_id autocast_id.
     unfold pte_pbmt0 in Hpb. rewrite Hpb.
@@ -290,7 +290,7 @@ Section strans.
                      (vec_update_dec tlbvec (tlb_hash (__id 39) vpn)
                         (Some (u_walk_entry vpn q2 q1 m0' asid))) rs) Dro ∗
                 R ∗ resv_frag cpu_id None).
-  Proof.
+  Proof using .
     intros Hdisj HWtlb Htlb Hvec Hm HDb Hag HDlc Haglc Hchk Hpure Hupd0 Hpb
       Hvar H0i H0nl Hchk0 H0N H0ig Hchk0g Hupd Hmisa Hmenv HPBMTE HADUE
       HDpma HDcfg HDaddr HDhtif Hhtif Hpma Hpcfg Hpaddr HA Hord Hrange HR HW
@@ -377,7 +377,7 @@ Section strans.
     = Some (tt, register_set tlb
                   (vec_update_dec (register_lookup tlb rs) (tlb_hash (__id 39) vpn)
                      (Some (pt_fill_ent asid vpn pp pte ptea g))) rs).
-  Proof.
+  Proof using .
     intros HD HW. unfold add_to_TLB. cbn zeta.
     cbn beta iota zeta delta [Defs.bind Interface.iMon_bind Defs.read_reg
       Defs.write_reg Defs.returnm returnM].
@@ -522,7 +522,7 @@ Section strans.
                        (tlb_hash (__id 39) vpn)
                        (Some (u_walk_entry vpn pte2 pte1 m0' asid))) rs) Dro ∗
                 R ∗ resv_frag cpu_id None).
-  Proof.
+  Proof using .
     intros H2i H2nl H1i H1nl H0i H0nl Hchk0 H0N H1ig H2ig H0ig Hchk0g
       Hdisj HDtlb HWtlb Htlb Hvec Hslot HD Hag Hmisa Hmenv HPBMTE HADUE
       Hupd0 Hvar Hm0i Hm0nl Hchkm H0Nm Hm0ig Hchkmg Hupd
@@ -670,7 +670,7 @@ Section strans.
                     (vec_update_dec (register_lookup tlb rs)
                        (tlb_hash (__id 39) vpn)
                        (Some (u_walk_entry vpn pte2 pte1 pte0 asid))) rs) Dro).
-  Proof.
+  Proof using .
     intros H2i H2nl H1i H1nl H0i H0nl Hchk0 H0N H1ig H2ig H0ig Hchk0g
       Hdisj HDtlb HWtlb Htlb Hvec Hslot HD Hag Hmisa Hmenv HPBMTE Hnoupd.
     iIntros "#Hcert Hrw Hro Hrd2 Hrd1 Hrd0".
@@ -818,7 +818,7 @@ Section strans.
                                 (Some (u_walk_entry vpn q2 q1 q0f asid))) rs) ⌝ ∗
                 hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro ∗
                 resv_any cpu_id).
-  Proof.
+  Proof using .
     intros Hdisj HWtlb Htlb Hvec Hm HDb Hag HDlc Haglc Hchk Hpure Hpb HPq0
       HPvar HPupd H0i H0nl Hchk0 H0N H0ig Hchk0g Hmisa Hmenv HPBMTE HADUE
       HDpma HDcfg HDaddr HDhtif Hhtif Hpma Hpcfg Hpaddr HA Hord Hrange HR HW
@@ -1041,7 +1041,7 @@ Section strans.
                        (tlb_hash (__id 39) vpn)
                        (Some (u_walk_entry vpn pte2 pte1 q0f asid))) rs) Dro ∗
                 resv_any cpu_id).
-  Proof.
+  Proof using .
     intros H2i H2nl H1i H1nl H1ig H2ig H0i H0nl Hchk0 H0N H0ig Hchk0g
       HPvar HPupd Hdisj HDtlb HWtlb Htlb Hvec Hslot HDlc Haglc
       Hmisa Hmenv HPBMTE HADUE
@@ -1182,7 +1182,7 @@ Section strans.
     swp (fetch_bytes pc pc 4)
       (fun r => ⌜r = @FetchBytes_Success 4 w⌝ ∗
                 hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv Hpriv.
     iIntros "#Hcert Hrw Hro Htr Hcmr".
     rewrite /swp. iIntros (C) "%HC Hcont".
@@ -1239,7 +1239,7 @@ Section strans.
                       then F_RVC (subrange_vec_dec w 15 0)
                       else F_Base w)⌝ ∗
                 hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDpc HDmst HDpriv Hpc Hpriv Hb0 Hb1 Hal.
     iIntros "#Hcert Hrw Hro Htr Hcmr".
     iApply (swp_fetch Drw Dro Df rs rsf pc w Hdisj HDpc Hpc Hb0 Hb1 Hal
@@ -1276,7 +1276,7 @@ Section strans.
     swp (fetch_bytes fs gs 2)
       (fun r => ⌜r = @FetchBytes_Success 2 h⌝ ∗
                 hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv Hpriv.
     iIntros "#Hcert Hrw Hro Htr Hcmr".
     rewrite /swp. iIntros (C) "%HC Hcont".
@@ -1328,7 +1328,7 @@ Section strans.
     swp (fetch tt)
       (fun r => ⌜r = F_RVC h⌝ ∗
                 hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDpc HDmisa HDmst HDpriv Hpc Hpriv HmisaC Hb0 Hb1 Hal4 Hrvc.
     iIntros "#Hcert Hrw Hro Htr Hcmr".
     iApply (swp_fetch_rvc2 Drw Dro Df rs rsf pc h Hdisj HDpc HDmisa Hpc Hb0
@@ -1388,7 +1388,7 @@ Section strans.
     swp (fetch tt)
       (fun r => ⌜r = F_Base (concat_vec ihi ilo)⌝ ∗
                 hreg_frame rsf2 Drw ∗ hreg_frame_ro Df rsf2 Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDpc HDmisa HDmst HDpriv Hpc Hpc1 Hpriv1 Hpriv2 HmisaC
       Hb0 Hb1 Hal4 Hnrvc.
     iIntros "#Hcert Hrw Hro Htr1 Hcmr1 Htr2 Hcmr2".

@@ -176,7 +176,7 @@ Section PinnedObs.
 
   Lemma pobs_miss_taint_Pmiss (T : iProp Σ) :
     ⊢ pobs_miss_taint T (pobs_Pmiss T).
-  Proof. rewrite /pobs_miss_taint /pobs_Pmiss. iIntros "!>" (k d) "H". iExact "H". Qed.
+  Proof using . rewrite /pobs_miss_taint /pobs_Pmiss. iIntros "!>" (k d) "H". iExact "H". Qed.
 
   (* ...and A FREE MISS: the arm says nothing, so anybody can pay it.
      This is what a pin whose content is "the entry is NOT there" hands the
@@ -186,11 +186,11 @@ Section PinnedObs.
     (□ (∀ (k : nat) (d : Z), Pmiss k d))%I.
 
   Lemma pobs_miss_free_triv : ⊢ pobs_miss_free (fun _ _ => True%I).
-  Proof. rewrite /pobs_miss_free. iIntros "!>" (k d). done. Qed.
+  Proof using . rewrite /pobs_miss_free. iIntros "!>" (k d). done. Qed.
 
   Lemma pobs_miss_taint_of_free (T : iProp Σ) (Pmiss : nat -> Z -> iProp Σ) :
     pobs_miss_free Pmiss -∗ pobs_miss_taint T Pmiss.
-  Proof.
+  Proof using .
     rewrite /pobs_miss_free /pobs_miss_taint. iIntros "#H !>" (k d) "_".
     iApply "H".
   Qed.
@@ -211,12 +211,12 @@ Section PinnedObs.
 
   Global Instance pobs_P_persistent (T : iProp Σ) (hops : list Z) k d :
     Persistent T -> Persistent (pobs_P T hops k d).
-  Proof. intros. rewrite /pobs_P. apply _. Qed.
+  Proof using . intros. rewrite /pobs_P. apply _. Qed.
 
   Global Instance pobs_recv_persistent (Pin : aview -> Prop) (T : iProp Σ)
       v i a :
     Persistent T -> Persistent (pobs_recv Pin T v i a).
-  Proof. intros. rewrite /pobs_recv. apply _. Qed.
+  Proof using . intros. rewrite /pobs_recv. apply _. Qed.
 
   (* ------------------------------------------------------------------ *)
   (*  3.  READING THE LENT ENTRY MAP AGAINST THE INVARIANT'S AUTHORITY    *)
@@ -233,7 +233,7 @@ Section PinnedObs.
     ghost_map_auth (fs_top γfs) q I -∗
     elend (fs_gamma_L γfs) d dq ents -∗
     ⌜aents (abs_view I) d = Some ents⌝.
-  Proof.
+  Proof using .
     iIntros "Hh HF".
     iDestruct (astate_q_intro (fs_gamma_L γfs) q I with "Hh") as "Hst".
     iApply (elend_aents (fs_gamma_L γfs) (abs_view I) d dq ents with "[Hst] HF").
@@ -249,7 +249,7 @@ Section PinnedObs.
     ghost_map_auth (fs_top γfs) q I -∗
     elend (fs_gamma_L γfs) d dq ents -∗
     ⌜astep (abs_view I) d s = ents !! s⌝.
-  Proof.
+  Proof using .
     iIntros "Hh HF".
     iDestruct (pobs_elend_aents γfs q I d dq ents with "Hh HF") as %Hae.
     iPureIntro. rewrite /astep Hae. reflexivity.
@@ -274,7 +274,7 @@ Section PinnedObs.
                       app_pred app_run v ∗ (⌜Pin v⌝ ∨ T)) -∗
     app_inv γfs -∗
     pf_at (aopen_commit_at (fs_gamma_L γfs) appE) (pobs_Fo Pin T).
-  Proof.
+  Proof using .
     iIntros "#Hcl #Hinv". rewrite /pobs_Fo. iApply pf_at_triv.
     rewrite /aopen_commit_at /pobs_recv. iIntros (I i a) "%Hrow Hka".
     iMod (inv_acc appE appN with "Hinv") as "[Hbody Hclose]"; [ set_solver | ].
@@ -314,7 +314,7 @@ Section PinnedObs.
                       app_pred app_run v ∗ (⌜Pin v⌝ ∨ T)) -∗
     app_inv γfs -∗
     ex_hop γfs (pobs_P T hops) Pmiss k s.
-  Proof.
+  Proof using .
     intros (_ & _ & Hpin) Hk. iIntros "#Hmt #Hcl #Hinv".
     rewrite /ex_hop /ax_hop /pobs_P.
     iIntros (d ents dqv) "HP HF".
@@ -368,7 +368,7 @@ Section PinnedObs.
                       app_pred app_run v ∗ (⌜Pin v⌝ ∨ T)) -∗
     app_inv γfs -∗
     ex_start γfs cw (pobs_P T hops) Pmiss pl.
-  Proof.
+  Proof using .
     intros Hres. iIntros "#Hmt #Hcl #Hinv".
     pose proof Hres as Hres'. destruct Hres' as (Hstart & _ & _).
     rewrite /ex_start. iIntros (r Hr). iModIntro. iSplitR.
@@ -401,7 +401,7 @@ Section PinnedObs.
     pobs_P T hops (length (path_elems pl)) i -∗
     pobs_recv Pin T v i b -∗
     ⌜i = ino /\ b = a⌝ ∨ T.
-  Proof.
+  Proof using .
     intros (_ & Hfin & Hpin).
     rewrite /pobs_P /pobs_recv.
     iIntros "HP [%Hrow Hc]".
@@ -446,7 +446,7 @@ Section PinnedObs.
       ∗ □ (∀ (v : aview) (i : Z) (b : anode),
              pobs_P T hops (length (path_elems pl)) i -∗
              pobs_recv Pin T v i b -∗ ⌜i = ino /\ b = a⌝ ∨ T).
-  Proof.
+  Proof using .
     intros Hres. iIntros "#Hmt #Hcl #Hinv".
     iSplitL.
     { iApply (pobs_walk γfs Pin T Pmiss cw pl hops ino a Hres with "Hmt Hcl Hinv"). }
@@ -481,13 +481,13 @@ Section PinnedObs.
 
   Global Instance pobs_P_dead_persistent (T : iProp Σ) d0 k d :
     Persistent T -> Persistent (pobs_P_dead T d0 k d).
-  Proof. intros. rewrite /pobs_P_dead. apply _. Qed.
+  Proof using . intros. rewrite /pobs_P_dead. apply _. Qed.
 
   (* THE TERMINAL READING, and the whole point of the shape: at any hop but
      the first the cursor IS the taint. *)
   Lemma pobs_dead_term (T : iProp Σ) (d0 : Z) (n : nat) (d : Z) :
     (n <> 0)%nat -> pobs_P_dead T d0 n d -∗ T.
-  Proof.
+  Proof using .
     intros Hn. rewrite /pobs_P_dead.
     iIntros "[%Hp | HT]"; [ destruct Hp as [Hk _]; destruct (Hn Hk) | iExact "HT" ].
   Qed.
@@ -507,7 +507,7 @@ Section PinnedObs.
     app_inv γfs -∗
     K -∗
     ex_hop γfs (pobs_P_dead T d0) Pmiss 0%nat s.
-  Proof.
+  Proof using .
     intros (_ & Hmiss) Hs. iIntros "#Hcl #Hfree #Hinv HK".
     rewrite /ex_hop /ax_hop /pobs_P_dead /pobs_miss_free.
     iIntros (d ents dqv) "HP HF".
@@ -542,7 +542,7 @@ Section PinnedObs.
       (Pmiss : nat -> Z -> iProp Σ) (d0 : Z) (k : nat) (s : fname) :
     (k <> 0)%nat ->
     pobs_miss_free Pmiss -∗ ex_hop γfs (pobs_P_dead T d0) Pmiss k s.
-  Proof.
+  Proof using .
     intros Hk. iIntros "#Hfree".
     rewrite /ex_hop /ax_hop /pobs_P_dead /pobs_miss_free.
     iIntros (d ents dqv) "HP HF".
@@ -564,7 +564,7 @@ Section PinnedObs.
     app_inv γfs -∗
     K -∗
     ex_start γfs cw (pobs_P_dead T d0) Pmiss pl.
-  Proof.
+  Proof using .
     intros Hres. pose proof Hres as [Hstart _].
     iIntros "#Hcl #Hfree #Hinv HK".
     rewrite /ex_start. iIntros (r Hr). iModIntro. iSplitR "HK".
@@ -593,7 +593,7 @@ Section PinnedObs.
   Lemma pobs_aopen_triv (γfs : fs_names) :
     ⊢ pf_at (aopen_commit_at (fs_gamma_L γfs) appE)
         (pfam_triv (fun (_ : aview) (_ : Z) (_ : anode) => True%I)).
-  Proof.
+  Proof using .
     iApply pf_at_triv. rewrite /aopen_commit_at.
     iIntros (I i a) "%Hrow Hka". iModIntro. by iFrame "Hka".
   Qed.
@@ -685,7 +685,7 @@ Section PinnedObsAbs.
                       app_pred app_run v ∗ (⌜Pin v⌝ ∨ T)) -∗
     app_inv γfs -∗
     ex_hop γfs (pobs_P T hops) Pmiss k s.
-  Proof.
+  Proof using .
     intros (_ & _ & Hpin) Hk. iIntros "#Hmt #Hcl #Hinv".
     rewrite /ex_hop /ax_hop /pobs_P.
     iIntros (d ents dqv) "HP HF".
@@ -724,7 +724,7 @@ Section PinnedObsAbs.
                       app_pred app_run v ∗ (⌜Pin v⌝ ∨ T)) -∗
     app_inv γfs -∗
     ex_start γfs cw (pobs_P T hops) Pmiss pl.
-  Proof.
+  Proof using .
     intros Hres. iIntros "#Hmt #Hcl #Hinv".
     pose proof Hres as Hres'. destruct Hres' as (Hstart & _ & _).
     rewrite /ex_start. iIntros (r Hr). iModIntro. iSplitR.
@@ -748,7 +748,7 @@ Section PinnedObsAbs.
     pobs_P T hops (length (path_elems pl)) i -∗
     pobs_recv Pin T v i b -∗
     ⌜i = ino /\ an_node b = nd⌝ ∨ T.
-  Proof.
+  Proof using .
     intros ((_ & Hfin & _) & Hpin).
     rewrite /pobs_P /pobs_recv.
     iIntros "HP [%Hrow Hc]".
@@ -779,7 +779,7 @@ Section PinnedObsAbs.
       ∗ □ (∀ (v : aview) (i : Z) (b : anode),
              pobs_P T hops (length (path_elems pl)) i -∗
              pobs_recv Pin T v i b -∗ ⌜i = ino /\ an_node b = nd⌝ ∨ T).
-  Proof.
+  Proof using .
     intros Hres. iIntros "#Hmt #Hcl #Hinv".
     iSplitL.
     { iApply (pobs_walk_w γfs Pin T Pmiss cw pl hops ino

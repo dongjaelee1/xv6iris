@@ -24,15 +24,15 @@ Section PtTreeMorph.
 
   Global Instance pt_slot_own_morph a dq w :
     CtxMorph (λ ξ, pt_slot_own (UTier ξ) a dq w).
-  Proof. rewrite /pt_slot_own; cbn. ctx_morph_solve. Qed.
+  Proof using . rewrite /pt_slot_own; cbn. ctx_morph_solve. Qed.
 
   Global Instance pt_page_own_at_morph dq t :
     CtxMorph (λ ξ, pt_page_own_at (UTier ξ) dq t).
-  Proof. rewrite /pt_page_own_at. ctx_morph_solve. Qed.
+  Proof using . rewrite /pt_page_own_at. ctx_morph_solve. Qed.
 
   Lemma ptree_own_at_morph_l (lvl : nat) :
     ∀ dq t, CtxMorph (λ ξ, ptree_own_at (UTier ξ) lvl dq t).
-  Proof.
+  Proof using .
     induction lvl as [|lvl IH]; intros dq t; cbn [ptree_own_at].
     - ctx_morph_solve.
     - apply ctx_morph_sep; [apply _ |].
@@ -44,12 +44,12 @@ Section PtTreeMorph.
 
   Global Instance pt_kids_own_at_morph lvl dq t :
     CtxMorph (λ ξ, pt_kids_own_at (UTier ξ) lvl dq t).
-  Proof.
+  Proof using .
     rewrite /pt_kids_own_at. apply ctx_morph_big_sepL; intros i x; cbv beta.
     destruct (pt_kids t (mword_of_int x)) as [c |]; [apply _ | apply ctx_morph_const].
   Qed.
 
   Global Instance pt_frame_at_morph (S : ptree -> Prop) :
     CtxMorph (λ ξ, pt_frame_at (UTier ξ) S).
-  Proof. rewrite /pt_frame_at. ctx_morph_solve. Qed.
+  Proof using . rewrite /pt_frame_at. ctx_morph_solve. Qed.
 End PtTreeMorph.

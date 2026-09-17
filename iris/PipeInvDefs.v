@@ -507,25 +507,25 @@ Section PipeInv.
     pipe_ref γp w 1%Qp.
 
   Global Instance pipe_ref_timeless γp w q : Timeless (pipe_ref γp w q).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance pipe_end_full_timeless γp w : Timeless (pipe_end_full γp w).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Global Instance pipe_ref_fractional γp w :
     Fractional (fun q => pipe_ref γp w q).
-  Proof. intros q1 q2. by rewrite /pipe_ref -own_op frac_op. Qed.
+  Proof using . intros q1 q2. by rewrite /pipe_ref -own_op frac_op. Qed.
 
   Lemma pipe_ref_split γp w q1 q2 :
     pipe_ref γp w (q1 + q2) ⊣⊢ pipe_ref γp w q1 ∗ pipe_ref γp w q2.
-  Proof. by rewrite /pipe_ref -own_op frac_op. Qed.
+  Proof using . by rewrite /pipe_ref -own_op frac_op. Qed.
 
   Lemma pipe_ref_valid γp w q : pipe_ref γp w q -∗ ⌜(q ≤ 1)%Qp⌝.
-  Proof. iIntros "H". by iDestruct (own_valid with "H") as %?%frac_valid. Qed.
+  Proof using . iIntros "H". by iDestruct (own_valid with "H") as %?%frac_valid. Qed.
 
   (* the whole point of the [q = 1] state: nobody else holds any of this end. *)
   Lemma pipe_end_full_excl γp w q :
     pipe_end_full γp w -∗ pipe_ref γp w q -∗ False.
-  Proof.
+  Proof using .
     iIntros "H1 H2".
     iDestruct (own_valid_2 with "H1 H2") as %Hv.
     rewrite frac_op in Hv. apply frac_valid in Hv.
@@ -534,7 +534,7 @@ Section PipeInv.
 
   Lemma pipe_ref_full_excl γp w q :
     pipe_ref γp w 1 -∗ pipe_ref γp w q -∗ False.
-  Proof. apply pipe_end_full_excl. Qed.
+  Proof using . apply pipe_end_full_excl. Qed.
 
   (* ---- the per-end coupling between the flag and the ghost ----
 
@@ -555,21 +555,21 @@ Section PipeInv.
     own (pn_mark γp w) DfracDiscarded.
 
   Global Instance pipe_openmark_timeless γp w : Timeless (pipe_openmark γp w).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance pipe_shut_persistent γp w : Persistent (pipe_shut γp w).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance pipe_shut_timeless γp w : Timeless (pipe_shut γp w).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma pipe_shut_openmark γp w :
     pipe_shut γp w -∗ pipe_openmark γp w -∗ False.
-  Proof.
+  Proof using .
     iIntros "H1 H2".
     by iDestruct (own_valid_2 with "H1 H2") as %?.
   Qed.
 
   Lemma pipe_openmark_shut γp w : pipe_openmark γp w ==∗ pipe_shut γp w.
-  Proof. iIntros "H". iApply (own_update with "H"). apply dfrac_discard_update. Qed.
+  Proof using . iIntros "H". iApply (own_update with "H"). apply dfrac_discard_update. Qed.
 
   Definition pipe_endstate (γp : pipe_names) (w : bool) (v : mword 32) : iProp Σ :=
     (⌜pflag_open v⌝ ∗ pipe_openmark γp w          (* the end is still open *)
@@ -577,17 +577,17 @@ Section PipeInv.
                                             (* closed: the reference came home *)
 
   Global Instance pipe_endstate_timeless γp w v : Timeless (pipe_endstate γp w v).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma pipe_endstate_open_intro γp w v :
     pflag_open v -> pipe_openmark γp w -∗ pipe_endstate γp w v.
-  Proof. iIntros (H) "Hm". iLeft. by iFrame "Hm". Qed.
+  Proof using . iIntros (H) "Hm". iLeft. by iFrame "Hm". Qed.
 
   (* holding ANY share of an end proves its flag is nonzero.  The conclusion is
      pure, so [iDestruct ... as %H] keeps both inputs. *)
   Lemma pipe_endstate_holder γp w v q :
     pipe_endstate γp w v -∗ pipe_ref γp w q -∗ ⌜pflag_open v⌝.
-  Proof.
+  Proof using .
     iIntros "Hst Hq".
     iDestruct "Hst" as "[[%Hop _]|(-> & Hfull & _)]"; [done|].
     iExFalso. iApply (pipe_end_full_excl with "Hfull Hq").
@@ -598,7 +598,7 @@ Section PipeInv.
   Lemma pipe_endstate_shut γp w v :
     pipe_endstate γp w v -∗ pipe_ref γp w 1 ==∗
     pipe_endstate γp w (mword_of_int 0 : mword 32) ∗ pipe_shut γp w.
-  Proof.
+  Proof using .
     iIntros "Hst Hfull".
     iDestruct "Hst" as "[[_ Hmark]|(_ & Hhome & _)]".
     2:{ iExFalso. iApply (pipe_end_full_excl with "Hhome Hfull"). }
@@ -612,7 +612,7 @@ Section PipeInv.
   Lemma pipe_endstate_shut_elim γp w v :
     pipe_shut γp w -∗ pipe_endstate γp w v -∗
     ⌜v = (mword_of_int 0 : mword 32)⌝ ∗ pipe_end_full γp w.
-  Proof.
+  Proof using .
     iIntros "Hs [[_ Hm]|($ & $ & _)]".
     iExFalso. iApply (pipe_shut_openmark with "Hs Hm").
   Qed.
@@ -623,7 +623,7 @@ Section PipeInv.
   Lemma pipe_endstate_closed γp w v :
     ~ pflag_open v ->
     pipe_endstate γp w v -∗ pipe_endstate γp w v ∗ pipe_shut γp w.
-  Proof.
+  Proof using .
     intro Hclosed.
     iIntros "[[%Hop _]|(-> & Hfull & #Hs)]"; [ done | ].
     iSplitL "Hfull"; [| iExact "Hs" ].
@@ -634,7 +634,7 @@ Section PipeInv.
   Lemma pipe_shut_both γp w :
     pipe_shut γp w -∗ pipe_shut γp (negb w) -∗
     pipe_shut γp false ∗ pipe_shut γp true.
-  Proof. destruct w; iIntros "H1 H2"; iFrame. Qed.
+  Proof using . destruct w; iIntros "H1 H2"; iFrame. Qed.
 
   (* ---- the page bytes ---- *)
 
@@ -693,12 +693,12 @@ Section PipeInv.
      ∨ pipe_taint_cred)%I.
 
   Global Instance pipe_qres_timeless γp nr nw ro wo bs : Timeless (pipe_qres γp nr nw ro wo bs).
-  Proof. rewrite /pipe_qres. apply _. Qed.
+  Proof using . rewrite /pipe_qres. apply _. Qed.
 
   (* the disconnect, at the taint's price *)
   Lemma pipe_qres_taint γp nr nw ro wo bs :
     pipe_taint_cred -∗ pipe_qres γp nr nw ro wo bs.
-  Proof. iIntros "#H". rewrite /pipe_qres. by iRight. Qed.
+  Proof using . iIntros "#H". rewrite /pipe_qres. by iRight. Qed.
 
   (* ...AND IT IS THE LAST CONJUNCT of the payload, so every older intro
      pattern binds its last name to [pipe_slack ∗ pipe_qres] and every older
@@ -721,9 +721,9 @@ Section PipeInv.
     pipe_res_at γp pi cur_ctx.
 
   Global Instance pipe_data_at_morph pi bs : CtxMorph (λ ξ, pipe_data_at ξ pi bs).
-  Proof. rewrite /pipe_data_at. ctx_morph_solve. Qed.
+  Proof using . rewrite /pipe_data_at. ctx_morph_solve. Qed.
   Global Instance pipe_res_at_morph γp pi : CtxMorph (pipe_res_at γp pi).
-  Proof. rewrite /pipe_res_at. ctx_morph_solve. Qed.
+  Proof using . rewrite /pipe_res_at. ctx_morph_solve. Qed.
 
   (* every byte of the page except the lock's two WORDS, which release hands
      back separately: what [pipe_res] is once its ghosts are spent, and what
@@ -755,11 +755,11 @@ Section PipeInv.
     (lock_frag γl None ∗ pipe_end_full γp false ∗ pipe_end_full γp true)%I.
 
   Global Instance pipe_dead_timeless γl γp : Timeless (pipe_dead γl γp).
-  Proof. rewrite /pipe_dead /pipe_end_full /pipe_ref /lock_frag. apply _. Qed.
+  Proof using . rewrite /pipe_dead /pipe_end_full /pipe_ref /lock_frag. apply _. Qed.
 
   Lemma pipe_ref_dead γl γp w q :
     pipe_ref γp w q -∗ pipe_dead γl γp -∗ False.
-  Proof.
+  Proof using .
     iIntros "Hq (_ & H0 & H1)". destruct w.
     - iApply (pipe_end_full_excl with "H1 Hq").
     - iApply (pipe_end_full_excl with "H0 Hq").
@@ -767,20 +767,20 @@ Section PipeInv.
 
   Lemma lock_frag_dead γl γp st :
     lock_frag γl st -∗ pipe_dead γl γp -∗ False.
-  Proof. iIntros "Hf (Hf' & _ & _)". iApply (lock_frag_exclusive with "Hf Hf'"). Qed.
+  Proof using . iIntros "Hf (Hf' & _ & _)". iApply (lock_frag_exclusive with "Hf Hf'"). Qed.
 
   (* [locked] is not DEFINITIONALLY [lock_frag]: it carries the acquire
      position's floor and the lock's parked context beside the state
      fragment, so the token is unpacked here rather than applied through.
      The arity did not move; what moved is the definitional unfolding. *)
   Lemma locked_dead γl γp i : ⊢ locked γl i -∗ pipe_dead γl γp -∗ False.
-  Proof.
+  Proof using .
     iIntros "Hl Hd". iEval (rewrite locked_split) in "Hl".
     iDestruct "Hl" as "[(%B & Hf & _) _]".
     iApply (lock_frag_dead with "[Hf] Hd"). by iExists B.
   Qed.
   Lemma locked_pre_dead γl γp i : ⊢ locked_pre γl i -∗ pipe_dead γl γp -∗ False.
-  Proof.
+  Proof using .
     iIntros "(%B & Hf & _) Hd".
     iApply (lock_frag_dead with "[Hf] Hd"). by iExists B.
   Qed.
@@ -796,7 +796,7 @@ Section PipeInv.
     pipe_shut γp false -∗ pipe_shut γp true -∗
     lock_frag γl None -∗ pipe_res γp pi -∗
     pipe_dead γl γp ∗ pipe_bytes pi.
-  Proof.
+  Proof using .
     iIntros "#Hs0 #Hs1 Hfrag Hres".
     (* the queue's authority is dropped on the floor: no step is possible
        on a dead pipe, and every snapshot of it stays true *)
@@ -829,7 +829,7 @@ Section PipeInv.
        WpLock.lk_floor cur_ctx lo)%I.
 
   Global Instance is_pipe_persistent γl γp pi : Persistent (is_pipe γl γp pi).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* PERFORMANCE: seal it, for the same reason [WpLock.is_lock] is sealed --
      without this, every [iIntros "#Hpipe"] re-derives persistence by unfolding
@@ -839,7 +839,7 @@ Section PipeInv.
   Global Typeclasses Opaque is_pipe.
 
   Lemma is_pipe_valid γl γp pi : is_pipe γl γp pi -∗ ⌜page_valid pi⌝.
-  Proof. rewrite /is_pipe. by iIntros "[$ _]". Qed.
+  Proof using . rewrite /is_pipe. by iIntros "[$ _]". Qed.
   (* A6.105: the lock's FLOOR rides inside [is_pipe], exactly as it rides
      inside [is_lock] -- [is_pipe]'s arity is unchanged and no client of the
      pipe ever names [lo]. *)
@@ -848,14 +848,14 @@ Section PipeInv.
     ∃ lo : nat,
       inv lockN (lock_inv γl pi "pipe" (pipe_res_at γp pi) lo ∨ pipe_dead γl γp) ∗
       WpLock.lk_floor cur_ctx lo.
-  Proof. rewrite /is_pipe. by iIntros "[_ $]". Qed.
+  Proof using . rewrite /is_pipe. by iIntros "[_ $]". Qed.
 
   (* what acquire / holding / release take.  The credential is left to the
      caller: a reference for acquire, the holder token for release. *)
   Lemma is_pipe_openable γl γp pi :
     is_pipe γl γp pi -∗
     lock_openable γl pi "pipe" (pipe_res_at γp pi) (pipe_dead γl γp).
-  Proof.
+  Proof using .
     iIntros "H". iDestruct (is_pipe_inv with "H") as (lo) "[Hi Hf]".
     iApply (lock_openable_of_dead with "Hi Hf").
   Qed.
@@ -897,7 +897,7 @@ Section PipeMorph.
   Global Instance is_pipe_morph (γl : gname) (γp : pipe_names)
       (pi : mword 64) :
     CtxMorph (λ ξ : CtxId, is_pipe (XI := ξ) γl γp pi).
-  Proof.
+  Proof using .
     iIntros (ξ ξ') "Hd H". rewrite /is_pipe.
     iDestruct "H" as "(%Hv & %lo & #Hi & Hf)".
     iMod (WpLock.lk_floor_morph lo ξ ξ' with "Hd Hf") as "[Hd #Hf']".

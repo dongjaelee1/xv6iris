@@ -307,7 +307,7 @@ Section WpCsrrMhartidGpr.
       mhartid ↦ᵣ mhartid_in -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hpmp Hstat Hrd) "Hmm Hpmpc Hpc Hfmap Hmh Hinstr Hcont".
     assert (Hfresh : cw_fresh (R_bitvector_64 mhartid))
       by (rewrite /cw_fresh; split_and!; vm_compute; reflexivity).
@@ -431,7 +431,7 @@ Section WpCsrrGprA.
       mstatus ↦ᵣ{dqm} mstatus_in -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hpmp Hstat Hrd) "Hmm Hpmpc Hpc Hfmap Hcsr Hinstr Hcont".
     assert (Hfresh : cw_fresh (R_bitvector_64 mstatus))
       by (rewrite /cw_fresh; split_and!; vm_compute; reflexivity).
@@ -529,7 +529,7 @@ Section WpCsrrGprA.
       mcounteren ↦ᵣ mcen_in -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hpmp Hstat Hrd) "Hmm Hpmpc Hpc Hfmap Hcsr Hinstr Hcont".
     assert (Hfresh : cw_fresh (R_bitvector_32 mcounteren))
       by (rewrite /cw_fresh; split_and!; vm_compute; reflexivity).

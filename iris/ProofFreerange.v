@@ -77,10 +77,10 @@ Section ProofFreerange.
 
   Lemma avail_inc_n_comm (on : option nat) (k : nat) :
     avail_inc_n (avail_inc on) k = avail_inc (avail_inc_n on k).
-  Proof. induction k as [|k IH]; simpl; [reflexivity | rewrite IH; reflexivity]. Qed.
+  Proof using . induction k as [|k IH]; simpl; [reflexivity | rewrite IH; reflexivity]. Qed.
 
   Lemma avail_inc_n_Some0 (k : nat) : avail_inc_n (Some 0%nat) k = Some k.
-  Proof. induction k as [|k IH]; simpl; [reflexivity | rewrite IH; reflexivity]. Qed.
+  Proof using . induction k as [|k IH]; simpl; [reflexivity | rewrite IH; reflexivity]. Qed.
 
   (* [prun pa_end s1 ps]: [ps] is exactly the list of full pages to free when the
      loop register [s1] currently holds [p + PGSIZE].  The list terminates the
@@ -89,7 +89,7 @@ Section ProofFreerange.
 
   (* [>=u] is the negation of [<u]: ties the bgeu back-edge to the bltu entry. *)
   Lemma zge_negb_zlt (a b : mword 64) : zopz0zKzJ_u a b = negb (zopz0zI_u a b).
-  Proof.
+  Proof using .
     unfold zopz0zKzJ_u, zopz0zI_u.
     rewrite Z.geb_leb. rewrite Z.ltb_antisym. rewrite negb_involutive. reflexivity.
   Qed.
@@ -133,7 +133,7 @@ Section ProofFreerange.
       kalloc_avail γk onf -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros sp0 spr ret_tgt HK6 Hretm HMesp HMecs Hfresh.
     assert (Hspr6 : spr = pa_stk sp0 6).
     { unfold spr, pa_stk, add_vec_int. f_equal; try (apply bv_eq; vm_compute; reflexivity). }
@@ -262,7 +262,7 @@ Section ProofFreerange.
       (m : regfile)
       (ps : list (mword 64)) (K ncnt : nat) (eb : bool) (pcur : mword 64) (b : bool) (lks : gset string)
     : wp_freerange_sconf_body γl γk lk fl m ps K ncnt eb pcur b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_freerange_sconf_body].
     intros pcE pa_start pa_end ret_tgt s1entry
       HK Hncnt Hlk Hfl Hprun Hfresh.

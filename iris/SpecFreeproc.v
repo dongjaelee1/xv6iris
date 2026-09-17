@@ -156,7 +156,7 @@ Section SpecFreeproc.
      [else] branch -- the two zeroed cells.  Hoisted, because both bridges
      need it before any [iFrame] can see through the [if]. *)
   Lemma fp_unused_not_zombie : bool_decide (UNUSED = ZOMBIE) = false.
-  Proof. apply bool_decide_eq_false_2. vm_compute. discriminate. Qed.
+  Proof using . apply bool_decide_eq_false_2. vm_compute. discriminate. Qed.
 
   (* THE CHILDREN ROW COMES OUT BESIDE THE BLOCK and goes back with it.  It
      is not inside [fp_rest], because [fp_rest] is the STATE-INDEPENDENT
@@ -177,7 +177,7 @@ Section SpecFreeproc.
         ⌜bv_unsigned pid = 0⌝ ∗ slot_gen pa (DfracOwn 1) (pv_gen V) ∗
         p_xstate pa ↦₄{DfracOwn (1/2)} xsv ∗
         fp_pt pa (pv_sz V) None ∗ fp_tf pa None.
-  Proof.
+  Proof using .
     rewrite /proc_dormant fp_unused_not_zombie.
     iIntros "(%V & %pid & %Hpure & Hpid & Hf & Hof & Hu & Hsp & Hir & Hbs & Hkst & Hch & Hgh & Hxs & Hctx & Hpg & Htf)".
     iDestruct "Hxs" as (xsv) "[Hxc _]".
@@ -206,7 +206,7 @@ Section SpecFreeproc.
     p_xstate pa ↦₄{DfracOwn (1/2)} xsv -∗
     fp_pt pa szv None -∗ fp_tf pa None -∗
     proc_dormant pa UNUSED.
-  Proof.
+  Proof using .
     intros Hpid0 Hlz.
     iIntros "(%Hpure & Hpid & Hf & Hof & Hu & Hsp & Hir & Hbs & Hkst & Hctx) Hch Hsg Hxc Hpg Htf".
     rewrite /fp_pt /fp_tf /proc_dormant fp_unused_not_zombie.
@@ -237,7 +237,7 @@ Section SpecFreeproc.
      What a ZOMBIE has and freeproc wants therefore match exactly, and the
      bridge is a repackaging with no side condition. *)
   Lemma fp_zombie_is_zombie : bool_decide (ZOMBIE = ZOMBIE) = true.
-  Proof. by apply bool_decide_eq_true_2. Qed.
+  Proof using . by apply bool_decide_eq_true_2. Qed.
 
   (* THE ROW COMES OUT AT [∅], exactly as it does from the UNUSED bridge: a
      zombie's children went to <init> before it parked ([SpecKexit] moves
@@ -263,7 +263,7 @@ Section SpecFreeproc.
         exit_tok (pv_gen V) pid (xstate_val xsv) ∗
         fp_pt pa (pv_sz V) (Some (pv_upt V)) ∗
         fp_tf pa (Some (ud_tfp (pv_upt V), pv_tf V)).
-  Proof.
+  Proof using .
     rewrite /proc_dormant fp_zombie_is_zombie.
     iIntros "(%V & %pid & %Hpure & Hpid & Hf & Hof & Hu & Hsp & Hir & Hbs & Hkst & Hch & Hgh & Hxs & Hctx & %Hbel & Hpt & Htfp)".
     iDestruct "Hxs" as (xsv) "[Hxc Hesc]".

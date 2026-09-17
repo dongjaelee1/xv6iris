@@ -393,7 +393,7 @@ Section InitlogDefs.
     ([∗ list] j ↦ x ∈ bs, pa_add a j ↦ₘ x) -∗
     a ↦₄ il_hdrw bs ∗
     (a ↦₄ il_hdrw bs -∗ ([∗ list] j ↦ x ∈ bs, pa_add a j ↦ₘ x)).
-  Proof.
+  Proof using .
     intros Hlen Hal.
     assert (Ha0 : pa_add a 0%nat = a) by apply RiscvExtras.pa_add_0.
     assert (Hmk : bb_mk (fun j => bs !!! j) 0%nat = il_hdrw bs).
@@ -427,7 +427,7 @@ Section InitlogDefs.
     (o + 4 <= length bs)%nat ->
     take 4 (drop o bs)
     = [bs !!! o; bs !!! (o + 1)%nat; bs !!! (o + 2)%nat; bs !!! (o + 3)%nat].
-  Proof.
+  Proof using .
     intros Hle. apply list_eq. intros i.
     destruct (decide (i < 4)%nat) as [Hi | Hi].
     - rewrite lookup_take; [| lia]. rewrite lookup_drop.
@@ -445,7 +445,7 @@ Section InitlogDefs.
   Lemma il_word_mk (bs : list (bv 8)) (k : nat) :
     (4 * k + 4 <= length bs)%nat ->
     bb_mk (fun j => bs !!! j) (4 * k)%nat = il_wordw bs k.
-  Proof.
+  Proof using .
     intros Hle. rewrite /bb_mk /il_wordw /le_word.
     f_equal. f_equal.
     rewrite (il_take4 bs (4 * k)%nat Hle). reflexivity.
@@ -458,7 +458,7 @@ Section InitlogDefs.
     pa_add a (4 * k)%nat ↦₄ il_wordw bs k ∗
     (pa_add a (4 * k)%nat ↦₄ il_wordw bs k -∗
        ([∗ list] j ↦ x ∈ bs, pa_add a j ↦ₘ x)).
-  Proof.
+  Proof using .
     intros Hlen Hal.
     rewrite (bb_bytes_of_list a bs).
     iIntros "Hw".
@@ -481,7 +481,7 @@ Section InitlogDefs.
     ([∗ list] i ↦ x ∈ l, ∃ bs : list (bv 8), Φ i x bs) -∗
     ∃ ys : list (list (bv 8)), ⌜length ys = length l⌝ ∗
       ([∗ list] i ↦ x ∈ l, Φ i x (ys !!! i)).
-  Proof.
+  Proof using .
     iIntros "H".
     iInduction l as [|x l] "IH" forall (Φ).
     - iExists []. iSplitR; [done|]. done.
@@ -499,7 +499,7 @@ Section InitlogDefs.
       (Φ : nat -> iProp Σ) :
     length l1 = length l2 ->
     ([∗ list] i ↦ _ ∈ l1, Φ i) ⊢ ([∗ list] i ↦ _ ∈ l2, Φ i).
-  Proof.
+  Proof using .
     revert l2 Φ. induction l1 as [|x l1 IH]; intros l2 Φ Hlen.
     - destruct l2; [done | cbn in Hlen; lia].
     - destruct l2 as [|y l2]; [cbn in Hlen; lia|].
@@ -512,7 +512,7 @@ Section InitlogDefs.
   (* over [seq 0 n] the element IS the index *)
   Lemma il_seq_body (n : nat) (Φ : nat -> iProp Σ) :
     ([∗ list] _ ↦ x ∈ seq 0 n, Φ x) ⊣⊢ ([∗ list] k ↦ _ ∈ seq 0 n, Φ k).
-  Proof.
+  Proof using .
     apply big_sepL_proper. intros k x Hk.
     apply lookup_seq in Hk as [-> _]. done.
   Qed.
@@ -522,7 +522,7 @@ Section InitlogDefs.
   Lemma il_fsb_lookup (γfs : fs_names) (L : gmap Z (list (bv 8)))
       (b : Z) (bs : list (bv 8)) :
     ghost_map_auth (fs_cache γfs) 1 L -∗ fs_chalf γfs b bs -∗ ⌜L !! b = Some bs⌝.
-  Proof.
+  Proof using .
     rewrite /fs_chalf. iIntros "Ha Hb".
     iApply (ghost_map_lookup with "Ha Hb").
   Qed.
@@ -534,7 +534,7 @@ Section InitlogDefs.
     ghost_map_auth (fs_cache γfs) 1 L -∗
     ([∗ list] k ∈ l, fs_chalf γfs (f k) (ys k)) -∗
     ⌜forall k : nat, k ∈ l -> L !! f k = Some (ys k)⌝.
-  Proof.
+  Proof using .
     induction l as [|x l IH].
     - iIntros "Ha Hs". iPureIntro. intros k Hk.
       exfalso. exact (not_elem_of_nil k Hk).
@@ -552,7 +552,7 @@ Section InitlogDefs.
     ([∗ list] i ↦ w ∈ il_W bs nh, lh_block i ↦₄ w) -∗
     ([∗ list] i ∈ seq nh (LOGBLOCKS - nh), ∃ wj : SailStdpp.Values.mword 32, lh_block i ↦₄ wj) -∗
     ([∗ list] i ∈ seq 0 LOGBLOCKS, ∃ wj : SailStdpp.Values.mword 32, lh_block i ↦₄ wj).
-  Proof.
+  Proof using .
     intros Hnh. iIntros "Hw Hj".
     assert (Hsp : seq 0 LOGBLOCKS = seq 0 nh ++ seq nh (LOGBLOCKS - nh)).
     { replace LOGBLOCKS with (nh + (LOGBLOCKS - nh))%nat at 1 by lia.
@@ -572,7 +572,7 @@ Section InitlogDefs.
      of bracketed spec-pattern goals *)
   Lemma il_bigL_nil {A : Type} (Psi : nat -> A -> iProp Σ) :
     ⊢ ([∗ list] i ↦ x ∈ ([] : list A), Psi i x).
-  Proof. first [ done | rewrite big_sepL_nil; done ]. Qed.
+  Proof using . first [ done | rewrite big_sepL_nil; done ]. Qed.
 
   (* the client's own [fs_chalf] half against the handle's machinery half
      pins the bytes bread returned -- for either payload polarity *)
@@ -582,7 +582,7 @@ Section InitlogDefs.
     uint bno = z ->
     fs_chalf γfs z bs -∗
     bio_pay bn (fs_view γfs γd dev cov) k dv bno bsl bsd d -∗ ⌜bsl = bs⌝.
-  Proof.
+  Proof using .
     intros <-. rewrite /bio_pay /fs_view /=. destruct d.
     - iIntros "Hc [Hm _]". iApply (fs_chalf_mdirty_agree with "Hc Hm").
     - iIntros "Hc [Hm _]". iApply (fs_chalf_mclean_agree with "Hc Hm").
@@ -605,7 +605,7 @@ Section InitlogBlocks.
   Lemma il_sext32 (z : Z) : (0 <= z < 2^31)%Z ->
     (sign_extend' 64 (mword_of_int z : SailStdpp.Values.mword 32) : SailStdpp.Values.mword 64)
     = mword_of_int z.
-  Proof.
+  Proof using .
     intro Hz. apply bv_eq.
     rewrite (sext64_moi32_unsigned z Hz) moi64_unsigned.
     symmetry. apply bvw64_small. lia.
@@ -614,7 +614,7 @@ Section InitlogBlocks.
   Lemma il_sint_moi (z : Z) :
     (- 2 ^ 63 <= z < 2 ^ 63)%Z ->
     sint (mword_of_int z : SailStdpp.Values.mword 64) = z.
-  Proof.
+  Proof using .
     intro Hz.
     assert (Hhm : bv_half_modulus 64 = (2 ^ 63)%Z) by reflexivity.
     change (sint ?x) with (bv_swrap 64 (bv_unsigned x)).
@@ -626,7 +626,7 @@ Section InitlogBlocks.
     (0 <= b < 2 ^ 31)%Z ->
     zopz0zKzJ_s (zero_reg : SailStdpp.Values.mword 64)
                 (mword_of_int b : SailStdpp.Values.mword 64) = Z.geb 0 b.
-  Proof.
+  Proof using .
     intro Hb. unfold zopz0zKzJ_s.
     assert (Hz : sint (zero_reg : SailStdpp.Values.mword 64) = 0)
       by (vm_compute; reflexivity).
@@ -634,16 +634,16 @@ Section InitlogBlocks.
   Qed.
 
   Lemma il_geb_pos (n : nat) : (0 < n)%nat -> Z.geb 0 (Z.of_nat n) = false.
-  Proof. intro H. rewrite Z.geb_leb. apply Z.leb_gt. lia. Qed.
+  Proof using . intro H. rewrite Z.geb_leb. apply Z.leb_gt. lia. Qed.
 
   Lemma il_n_small (n : nat) : (n <= LOGBLOCKS)%nat -> (0 <= Z.of_nat n < 2^31)%Z.
-  Proof. rewrite /LOGBLOCKS. lia. Qed.
+  Proof using . rewrite /LOGBLOCKS. lia. Qed.
 
   (* the loaded [n] word, at its numeral once the decode bound pins it *)
   Lemma il_hdrw_moi (bs : list (bv 8)) (nh : nat) :
     hdr_n bs = Z.of_nat nh -> (nh <= LOGBLOCKS)%nat ->
     il_hdrw bs = (mword_of_int (Z.of_nat nh) : SailStdpp.Values.mword 32).
-  Proof.
+  Proof using .
     intros Hn Hb. rewrite /il_hdrw Hn. apply bv_eq.
     rewrite Z_to_bv_unsigned.
     rewrite bv_wrap_small; [reflexivity|].
@@ -658,7 +658,7 @@ Section InitlogBlocks.
                     (subrange_vec_dec (mword_of_int 2 : SailStdpp.Values.mword 6)
                        (Z.sub log2_xlen 1) 0)
     = (mword_of_int (z * 4) : SailStdpp.Values.mword 64).
-  Proof.
+  Proof using .
     intros Hz0 Hz. apply bv_eq.
     unfold shift_bits_left, shiftl, with_word, get_word,
            MachineWord.MachineWord.logical_shift_left.
@@ -679,7 +679,7 @@ Section InitlogBlocks.
   Lemma il_W_lookup (bs : list (bv 8)) (nh t : nat) :
     (t < nh)%nat ->
     il_W bs nh !! t = Some (il_wordw bs (S t)).
-  Proof.
+  Proof using .
     intros Ht. rewrite /il_W list_lookup_fmap.
     rewrite lookup_seq_lt; [| exact Ht]. reflexivity.
   Qed.
@@ -721,7 +721,7 @@ Section InitlogBlocks.
         ([∗ list] i ∈ seq nh (LOGBLOCKS - nh), ∃ wj : SailStdpp.Values.mword 32, lh_block i ↦₄ wj) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hkk Hnh Hlen.
     induction fuel as [|fuel IH]; intros CID0 t M Ht Hfuel Ha5 Ha4 Ha2 Ha0.
     { exfalso. lia. }
@@ -943,7 +943,7 @@ Section InitlogBlocks.
         ([∗ list] i ∈ seq nh (LOGBLOCKS - nh), ∃ wj : SailStdpp.Values.mword 32, lh_block i ↦₄ wj) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hkk Hnh Hdec Hlen Ha2 Ha0.
     assert (Hhn : hdr_n bs_hdr = Z.of_nat nh)
       by (rewrite Hdec; symmetry; apply hdr_dec_n).
@@ -1161,7 +1161,7 @@ Section ProofInitlog.
                             cov logstart dev sb bs_hdr Xv M L D
                             vlock vname vcpu v_start v_dev v_nc v_n
                             pidv dq dqs m K eb b lks Upr bs_sb sbrec.
-  Proof.
+  Proof using .
     cbv beta delta [wp_initlog_sconf_body].
     intros pcE pj ret_tgt c_name c_cpu HK Hgeom Hj Hgl Hbnd Hndup Hin
            Hma0 Hma1 HDf HLmir Hbelow Hsbok Hsbparse Hxvslot.

@@ -179,7 +179,7 @@ Section SuMsgStr.
 
   Lemma su_nlink_str :
     (kernel_data : iProp Σ) -∗ (mword_of_int su_nlink_a : mword 64) ↦ₛ□ su_nlink_s.
-  Proof.
+  Proof using .
     iIntros "#Hd".
     iApply (kernel_data_string su_nlink_a su_nlink_s _ eq_refl
               ltac:(unfold text_end, su_nlink_a; lia)
@@ -188,7 +188,7 @@ Section SuMsgStr.
 
   Lemma su_readi_str :
     (kernel_data : iProp Σ) -∗ (mword_of_int su_readi_a : mword 64) ↦ₛ□ su_readi_s.
-  Proof.
+  Proof using .
     iIntros "#Hd".
     iApply (kernel_data_string su_readi_a su_readi_s _ eq_refl
               ltac:(unfold text_end, su_readi_a; lia)
@@ -197,7 +197,7 @@ Section SuMsgStr.
 
   Lemma su_writei_str :
     (kernel_data : iProp Σ) -∗ (mword_of_int su_writei_a : mword 64) ↦ₛ□ su_writei_s.
-  Proof.
+  Proof using .
     iIntros "#Hd".
     iApply (kernel_data_string su_writei_a su_writei_s _ eq_refl
               ltac:(unfold text_end, su_writei_a; lia)
@@ -221,7 +221,7 @@ Section ProofSysUnlinkTails.
   (* the three-slot pool, split for a single callee's need and rejoined *)
   Lemma su_bs3 :
     (bslots 3 : iProp Σ) ⊣⊢ bslot ∗ bslots 2.
-  Proof. rewrite /bslot. change 3%nat with (1 + 2)%nat. apply bslots_op. Qed.
+  Proof using . rewrite /bslot. change 3%nat with (1 + 2)%nat. apply bslots_op. Qed.
 
   (* ================================================================== *)
   (*  ARM A: +0x170 c.li a0,-1 ; +0x172 c.j +0x168                       *)
@@ -264,7 +264,7 @@ Section ProofSysUnlinkTails.
         pc_is (ret_pc (m !!! Regidx Rra : mword 64)) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK30 Kpop Hsp0 HMsp HMthr HMs1 HMs2 HMs3 Hal.
     iIntros "Hcg #Htext Hpc Hf1 Hf2 Hf3 Hf4 Hf5 Hf6 HbD HbN HbP H27 HbE H30
               Hcont".
@@ -344,7 +344,7 @@ Section ProofSysUnlinkTails.
     kernel_text -∗ kernel_data -∗ panic_env -∗
     pc_is (mword_of_int (SU + 0xec)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HKp Hn31 Hbelow.
     iIntros "Hcg Hown #Htext #Hkd #Hpenv Hpc".
     iApply (wp_auipc_s_sconf (CID := CID0) (mword_of_int (SU + 0xec)) Ra0
@@ -408,7 +408,7 @@ Section ProofSysUnlinkTails.
     kernel_text -∗ kernel_data -∗ panic_env -∗
     pc_is (mword_of_int (SU + 0x12e)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HKp Hn31 Hbelow.
     iIntros "Hcg Hown #Htext #Hkd #Hpenv Hpc".
     iApply (wp_auipc_s_sconf (CID := CID0) (mword_of_int (SU + 0x12e)) Ra0
@@ -472,7 +472,7 @@ Section ProofSysUnlinkTails.
     kernel_text -∗ kernel_data -∗ panic_env -∗
     pc_is (mword_of_int (SU + 0x13a)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HKp Hn31 Hbelow.
     iIntros "Hcg Hown #Htext #Hkd #Hpenv Hpc".
     iApply (wp_auipc_s_sconf (CID := CID0) (mword_of_int (SU + 0x13a)) Ra0
@@ -591,7 +591,7 @@ Section ProofSysUnlinkTails.
         proc_priv_bare (proc_addr jx) pidv Upr -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HKeo HK30 Kpop Hgeom Hj Hgl Hlkempty Hsp0 HMsp HMthr HMs2 HMs3 Hal.
     iIntros "Hcg Hown Htce Hcce #Htext #Hkd Hpc #Hpenv #Hbio #Hlog Hseam Hgen
               Hpid #Hprocs #Hdev #Hgeo #Hdlk Hop Hf1 Hf2 Hf3 Hf4 Hf5 Hf6
@@ -865,7 +865,7 @@ Section ProofSysUnlinkTails.
         iref_slot -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HKup HKeo HK30 Kpop Hkk Hgeom Hsize Hbm0 Hbmcov Hbmlog Hist0 Hiblk
            Hiblog Hinb Hcovb Hiu Hj Hgl Hlkempty Hsp0 HMsp HMthr HMs1 HMs2
            HMs3 Hal.
@@ -1202,7 +1202,7 @@ Section ProofSysUnlinkTails.
         iref_slot -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HKup HKeo HK30 Kpop Hkk Hgeom Hsize Hbm0 Hbmcov Hbmlog Hist0 Hiblk
            Hiblog Hinb Hcovb Hiu Hj Hgl Hlkempty Hsp0 HMsp HMthr HMs1 HMs3 Hal.
     iIntros "Hcg Hown Htce Hcce #Htext #Hkd Hpc #Hpenv #Hbio #Hlog Hseam Hgen
@@ -1412,7 +1412,7 @@ Section ProofSysUnlinkTails.
         iref_slots 2 -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HKup HKeo HK30 Kpop Hkk Hki Hgeom Hsize Hbm0 Hbmcov Hbmlog Hist0
            Hiblk Hiblog Hinb Hiblki Hiblogi Hinbi Hcovb Hiu Hj Hgl Hlkempty
            Hsp0 HMsp HMthr HMs1 HMs2 Hal.

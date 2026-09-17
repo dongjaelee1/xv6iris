@@ -238,7 +238,7 @@ Section ProofUvmfree.
       (uroot : mword 44) (um : gmap (mword 27) (mword 64))
       (K : nat) (eb : bool) (p : mword 64) (ilvl : nat) (b : bool) (lks : gset string)
     : wp_uvmfree_sconf_body γa mm uroot um K eb p ilvl b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_uvmfree_sconf_body].
     intros pcE sz vpn0 n ret_tgt HK Hilvl Hroot Hbnd Hdom Hlkbelow.
     pose (sp0 := (mm !!! Regidx csp_rs1 : mword 64)).

@@ -267,7 +267,7 @@ Section FirstTok.
      ⌜fs_geom_ok⌝)%I.
 
   Global Instance first_boot_persist_persistent : Persistent first_boot_persist.
-  Proof. rewrite /first_boot_persist. apply _. Qed.
+  Proof using . rewrite /first_boot_persist. apply _. Qed.
 
   (* sealed for [FsReady.fs_ready]'s own measured reason: leaving a
      sixteen-conjunct persistent bundle transparent lets instance resolution
@@ -351,7 +351,7 @@ Section FirstTok.
   Definition fsabs_env : iProp Σ := app_inv fsc_fs.
 
   Global Instance fsabs_env_persistent : Persistent fsabs_env.
-  Proof. rewrite /fsabs_env. apply _. Qed.
+  Proof using . rewrite /fsabs_env. apply _. Qed.
 
   (* ================================================================== *)
   (*  3.  THE EXCLUSIVE HALF -- [SpecFsinit]'s premise pile               *)
@@ -468,7 +468,7 @@ Section FirstTok.
            law from *)
         FsCrash.fs_crash_seam_at app_guest fsc_cov fsc_logst ∗
         app_xfer.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /first_fsinit.
     iDestruct "H" as (dk sb Rspent Pb vlock v_start v_dev v_nc v_n vname vcpu
                       sb_old)
@@ -563,7 +563,7 @@ Section FirstTok.
      child's block without the parent losing anything. *)
   Lemma first_tok_done :
     first_addr ↦₄□ (mword_of_int 0 : mword 32) -∗ fs_ready -∗ fsabs_env -∗ first_tok.
-  Proof. iIntros "H #F #A". iRight. iFrame "H F A". Qed.
+  Proof using . iIntros "H #F #A". iRight. iFrame "H F A". Qed.
 
   (* ...AND THAT ARM AS A NAME OF ITS OWN.  [first_tok] now rides inside
      [ProcInv.proc_priv], and the parent's copy is NOT duplicable -- its boot
@@ -583,13 +583,13 @@ Section FirstTok.
     (first_addr ↦₄□ (mword_of_int 0 : mword 32) ∗ fs_ready ∗ fsabs_env)%I.
 
   Lemma first_done_fsabs : first_done -∗ fsabs_env.
-  Proof. iIntros "(_ & _ & $)". Qed.
+  Proof using . iIntros "(_ & _ & $)". Qed.
 
   Global Instance first_done_persistent : Persistent first_done.
-  Proof. rewrite /first_done. apply _. Qed.
+  Proof using . rewrite /first_done. apply _. Qed.
 
   Lemma first_tok_of_done : first_done -∗ first_tok.
-  Proof. iIntros "(H & F & A)". iRight. iFrame "H F A". Qed.
+  Proof using . iIntros "(H & F & A)". iRight. iFrame "H F A". Qed.
 
   (* THE DESTRUCTOR, so that forkret's walk never has to unfold the seal.
      [first_tok] is [Typeclasses Opaque] for a correctness reason (see the
@@ -602,7 +602,7 @@ Section FirstTok.
       (first_addr ↦₄ (mword_of_int 1 : mword 32)
          ∗ first_boot_persist ∗ kalloc_avail fsc_kpages None ∗ first_fsinit)
       ∨ first_done.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /first_tok /first_boot. iDestruct "H" as "[H | H]".
     - iLeft. iExact "H".
     - iRight. iExact "H".
@@ -616,7 +616,7 @@ Section FirstTok.
      multi-row abstractions, so a four-name [iFrame] pays a conversion per
      (name x conjunct) against them (claude-notes/optimization.md, "framing:
      name the context side, construct the goal side"). *)
-  Proof.
+  Proof using .
     iIntros "H #P #K F". rewrite /first_tok /first_boot. iLeft.
     iSplitL "H"; [iExact "H"|].
     iSplitR; [iExact "P"|].
@@ -630,7 +630,7 @@ Section FirstTok.
     first_addr ↦₄ (mword_of_int 1 : mword 32) -∗
     first_boot_persist -∗ kalloc_avail fsc_kpages None -∗ first_fsinit -∗
     first_boot.
-  Proof.
+  Proof using .
     iIntros "H #P #K F". rewrite /first_boot.
     iSplitL "H"; [iExact "H"|].
     iSplitR; [iExact "P"|].
@@ -642,10 +642,10 @@ Section FirstTok.
     first_boot -∗
     first_addr ↦₄ (mword_of_int 1 : mword 32)
       ∗ first_boot_persist ∗ kalloc_avail fsc_kpages None ∗ first_fsinit.
-  Proof. rewrite /first_boot. iIntros "$". Qed.
+  Proof using . rewrite /first_boot. iIntros "$". Qed.
 
   Lemma first_tok_of_boot : first_boot -∗ first_tok.
-  Proof. iIntros "H". rewrite /first_tok. iLeft. iExact "H". Qed.
+  Proof using . iIntros "H". rewrite /first_tok. iLeft. iExact "H". Qed.
 
 
   (* THE SEAL SITE'S WHOLE fs ASSEMBLY, one wand: the sixteen persistent
@@ -656,7 +656,7 @@ Section FirstTok.
     first_boot_persist -∗ kalloc_avail fsc_kpages None -∗
     log_ctx icfg_log fsc_bio fsc_fs fsc_cov fsc_logst icfg_dev -∗
     fs_sb_cells -∗ fs_ready_pre.
-  Proof.
+  Proof using .
     iIntros "HP HK HL #HC". rewrite /fs_ready_pre /first_boot_persist.
     iDestruct "HP" as "(H1 & H2 & H3 & H5 & H7 & H8 & H9 & H10 & H11 &
                         H12 & H13 & H14 & H15 & H16 & H17 & %H18)".
@@ -719,7 +719,7 @@ Section FirstTok.
   Lemma first_tok_boot_excl :
     first_addr ↦₄ (mword_of_int 1 : mword 32) -∗
     first_addr ↦₄□ (mword_of_int 0 : mword 32) -∗ False.
-  Proof.
+  Proof using .
     iIntros "H1 H2".
     iDestruct (ctx_word4_pointsto_agree with "H1 H2") as %Hv.
     exfalso. revert Hv. vm_compute. discriminate.
@@ -729,7 +729,7 @@ Section FirstTok.
      of [first_done], and the two cells are the same address at
      incompatible values. *)
   Lemma first_boot_done_excl : first_boot -∗ first_done -∗ False.
-  Proof.
+  Proof using .
     rewrite /first_boot /first_done.
     iIntros "(H1 & _ & _ & _) (H0 & _ & _)".
     iApply (first_tok_boot_excl with "H1 H0").
@@ -757,7 +757,7 @@ Section FirstTok.
     FsBoot.fs_cov_in cov ndisk ->
     (forall b : Z, 1 <= b < FsImg.fs_data_start sb -> b ∈ cov) ->
     FsCrash.fs_extent cov (FsImg.sb_logstart sb) ndisk.
-  Proof.
+  Proof using .
     intros Hwf Hnibeq Hcovin Hcovmeta.
     pose proof (FsImg.fsimg_wf_sb _ _ Hwf) as Hsb.
     pose proof (FsImg.sbo_logstart sb Hsb) as Hls.
@@ -812,7 +812,7 @@ Section FirstTok.
     fsc_bmapstart = FsImg.sb_bmapstart sb ->
     fsc_size = FsImg.sb_size sb -> fsc_ninodes = FsImg.sb_ninodes sb ->
     fs_geom_ok.
-  Proof.
+  Proof using .
     intros Hsbeq Hnibeq Hb Hcovin Hlogsub
            Hdevq Hnibq Histq Hcovq Hlogq Hbmq Hszq Hninq.
     subst sb.
@@ -891,7 +891,7 @@ Section FirstTok.
     fsc_ninodes = FsImg.sb_ninodes sb ->
     Z.of_nat icfg_nib = FsImg.sb_ninodes sb / 16 + 1 ->
     col_geom sb icfg_ist icfg_nib (fs_home_set fsc_cov fsc_logst).
-  Proof.
+  Proof using .
     intros G Hsb Histq Hszq Hninq Hnibw.
     pose proof (FsImg.sbo_bmapstart sb Hsb) as Hbms.
     pose proof (fgo_nin_hi G) as Hnhi.
@@ -958,7 +958,7 @@ Section FirstTok.
     fs_geom_ok ->
     Z.of_nat icfg_nib = FsImg.sb_ninodes sb / 16 + 1 ->
     first_fsinit_pures dk sb Pb.
-  Proof.
+  Proof using .
     intros Hsbeq Hb Hhwf Hlogsub Hagr Hslot
            Histq Hcovq Hlogq Hbmq Hszq Hninq Hgok Hnibw.
     pose proof Hsbeq as Hsbeq'. subst sb.

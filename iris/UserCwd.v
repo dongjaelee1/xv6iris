@@ -48,9 +48,9 @@ Section UserCwd.
     ghost_var γc (1/2) c.
 
   Global Instance ucwd_auth_timeless γc c : Timeless (ucwd_auth γc c).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance ucwd_timeless γc c : Timeless (ucwd γc c).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* the fragment READS the engine's half: this is the lemma the whole
      resource exists for, and it is why the authority sits INSIDE [urun]
@@ -58,14 +58,14 @@ Section UserCwd.
      a program learns it only by agreement. *)
   Lemma ucwd_agree (γc : gname) (c c' : Z) :
     ucwd_auth γc c -∗ ucwd γc c' -∗ ⌜ c = c' ⌝.
-  Proof.
+  Proof using .
     iIntros "H1 H2". iDestruct (ghost_var_agree with "H1 H2") as %->. done.
   Qed.
 
   (* ...and BOTH halves move it, which is what chdir will spend. *)
   Lemma ucwd_update (γc : gname) (c c' c'' : Z) :
     ucwd_auth γc c -∗ ucwd γc c' ==∗ ucwd_auth γc c'' ∗ ucwd γc c''.
-  Proof.
+  Proof using .
     iIntros "H1 H2".
     iDestruct (ghost_var_agree with "H1 H2") as %->.
     iMod (ghost_var_update_2 c'' with "H1 H2") as "[$ $]"; [ | done ].
@@ -77,7 +77,7 @@ Section UserCwd.
      program. *)
   Lemma ucwd_alloc (c : Z) :
     ⊢ |==> ∃ γc : gname, ucwd_auth γc c ∗ ucwd γc c.
-  Proof.
+  Proof using .
     iMod (ghost_var_alloc c) as (γc) "Hc".
     iEval (rewrite -Qp.half_half) in "Hc".
     iDestruct (ghost_var_split with "Hc") as "[HA HF]".
@@ -93,9 +93,9 @@ Section UserCwd.
     (∃ c : Z, ucwd γc c)%I.
 
   Global Instance ucwd_any_timeless γc : Timeless (ucwd_any γc).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma ucwd_any_of (γc : gname) (c : Z) : ucwd γc c -∗ ucwd_any γc.
-  Proof. iIntros "H". iExists c. iExact "H". Qed.
+  Proof using . iIntros "H". iExists c. iExact "H". Qed.
 
 End UserCwd.

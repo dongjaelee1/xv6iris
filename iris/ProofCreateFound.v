@@ -311,7 +311,7 @@ Section ProofCreateFound.
                    (ret_pc (m !!! Regidx Rra : mword 64)) CIDc
                    P Pmiss Farm Fdots Fun Fok Fex) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hroot Hnib0 Hlg Hsize Hbms0 Hbmsc Hbmsl
            Hist0 Hcovb Hbmgeo Hiregb Hcstr Hplen31 Hni1 Hni2 Hni3 Htynz Htyk
            Hu Hns Hj Hgs Ha1 Ha2 Ha3 Heb.

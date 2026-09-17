@@ -55,7 +55,7 @@ Section WpInitlockWrapper.
       (F : Z) (uname ulk : mword 20) (iname ilk : mword 12) (j : mword 21)
       (lk name : mword 64) (s : string) (vlock : bv 32) (vname vcpu : bv 64) (b : bool) (p : mword 64)
     : wp_initlock_wrapper_sconf_body kt m K F uname ulk iname ilk j lk name s vlock vname vcpu b p.
-  Proof.
+  Proof using .
     cbv beta delta [wp_initlock_wrapper_sconf_body].
     intros ret_tgt c_name c_cpu HK Halign Hnamerel Hlkrel Hjrel.
     (* [sp0] is proof-local shorthand, not spec vocabulary. *)

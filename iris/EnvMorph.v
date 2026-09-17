@@ -68,7 +68,7 @@ Section EnvHandles.
      only the handle moves. *)
   Global Instance is_tickslock_morph (γl : gname) :
     CtxMorph (λ ξ : CtxId, (is_tickslock (XI := ξ) γl : iProp Σ)).
-  Proof. rewrite /is_tickslock. ctx_morph_solve. Qed.
+  Proof using . rewrite /is_tickslock. ctx_morph_solve. Qed.
 End EnvHandles.
 
 (* ===================================================================== *)
@@ -106,21 +106,21 @@ Section EnvPark.
       (pd pav pu : SailStdpp.Values.mword 64) :
     CtxMorph (λ ξ : CtxId,
       (devintr_caps_any (XI := ξ) γu γv γdk γtl γs pd pav pu : iProp Σ)).
-  Proof. rewrite /devintr_caps_any. ctx_morph_solve. Qed.
+  Proof using . rewrite /devintr_caps_any. ctx_morph_solve. Qed.
 
   (* the syscall park's extras: the nextpid lock's handle under its gname
      existential, the sealed slot ledger (an invariant, ξ-free), the ticks
      lock and the console. *)
   Global Instance sysc_park_extra_morph (γtk : gname) :
     CtxMorph (λ ξ : CtxId, (sysc_park_extra (XI := ξ) γtk : iProp Σ)).
-  Proof. rewrite /sysc_park_extra. ctx_morph_solve. Qed.
+  Proof using . rewrite /sysc_park_extra. ctx_morph_solve. Qed.
 
   (* the whole park world: [devintr_caps_any]'s six rows spelled out, the
      console, [sysc_park_extra]'s other two, the PLIC wire invariant, the
      trampoline claim (a [kmap_at], ξ-free) and the [initproc] cell. *)
   Global Instance park_world_morph (γs : list gname) :
     CtxMorph (λ ξ : CtxId, (park_world (XI := ξ) γs : iProp Σ)).
-  Proof. rewrite /park_world. ctx_morph_solve. Qed.
+  Proof using . rewrite /park_world. ctx_morph_solve. Qed.
 End EnvPark.
 
 (* ===================================================================== *)

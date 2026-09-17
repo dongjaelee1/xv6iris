@@ -67,7 +67,7 @@ Section ProofInitsleeplock.
       (vlocked vlk vpid : mword 32) (vlkname vcpu vname : mword 64)
       (av : nat) (b : bool) (p : mword 64)
     : wp_initsleeplock_sconf_body m s vlocked vlk vpid vlkname vcpu vname av b p.
-  Proof.
+  Proof using .
     cbv beta delta [wp_initsleeplock_sconf_body].
     intros pcE slk name ret_tgt Hav.
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).

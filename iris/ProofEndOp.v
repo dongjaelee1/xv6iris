@@ -589,7 +589,7 @@ Section EoData.
   Lemma eo_seq_index (P : nat -> bv 8 -> iProp Σ) (bs : list (bv 8)) :
     ([∗ list] j ↦ x ∈ bs, P j x) ⊣⊢
     ([∗ list] j ∈ seq 0 (length bs), P j (bs !!! j)).
-  Proof.
+  Proof using .
     revert P. induction bs as [|x bs IH]; intro P.
     - by rewrite !big_sepL_nil.
     - cbn [length].
@@ -604,7 +604,7 @@ Section EoData.
     length bs = len ->
     ([∗ list] j ↦ x ∈ bs, pa_add q j ↦ₘ x) ⊢
     ([∗ list] j ∈ seq 0 len, (pa_add q j) ↦ₘ (bs !!! j)).
-  Proof.
+  Proof using .
     intros <-. rewrite (eo_seq_index (fun i x => (pa_add q i ↦ₘ x)%I) bs).
     iIntros "$".
   Qed.
@@ -613,7 +613,7 @@ Section EoData.
     length bs = len ->
     ([∗ list] j ∈ seq 0 len, (pa_add q j) ↦ₘ (bs !!! j)) ⊢
     ([∗ list] j ↦ x ∈ bs, pa_add q j ↦ₘ x).
-  Proof.
+  Proof using .
     intros <-. rewrite (eo_seq_index (fun i x => (pa_add q i ↦ₘ x)%I) bs).
     iIntros "$".
   Qed.
@@ -748,7 +748,7 @@ Section EndOpDefs.
     (true = false \/ proc_addr j = zero_reg -> (CIDb : CPU) = (CIDa : CPU)) ->
     eo_cont (CID0 := CIDa)  j pidv dq m K eb b lks Upr -∗
     eo_cont (CID0 := CIDb)  j pidv dq m K eb b lks Upr.
-  Proof.
+  Proof using .
     intros Hs. rewrite /eo_cont /wp_next.
     iIntros "H" (CID2 Hs2). iApply "H". iPureIntro.
     intro Hb. specialize (Hs2 Hb). specialize (Hs Hb). congruence.
@@ -777,7 +777,7 @@ Section EndOpDefs.
      (∃ v : mword 64, pa_stk (m !!! Regidx csp_rs1 : mword 64) 8 ↦₈[KT1] v))%I.
 
   Lemma eo_frameS_J (m : regfile) : eo_frameS m -∗ eo_frameJ m.
-  Proof.
+  Proof using .
     rewrite /eo_frameS /eo_frameJ. iIntros "(H5 & H6 & H7 & H8)".
     iSplitL "H5"; [iExists _; iExact "H5"|].
     iSplitL "H6"; [iExists _; iExact "H6"|].
@@ -791,7 +791,7 @@ Section EndOpDefs.
      [rewrite] cross between them. *)
   Lemma eo_logged_dv (L : gmap Z (list (bv 8))) (cov : gset Z) (ls : Z) :
     lm_logged L cov ls = fs_restrict (dv_of_D L) (fs_home_set cov ls).
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* ==================================================================== *)
   (*  THE FILE SYSTEM'S LAW, READ AT THE COMMIT (lane CE, plan section 3)  *)
@@ -805,7 +805,7 @@ Section EndOpDefs.
   Lemma eo_cache_body_sub (γfs : fs_names) (L C : gmap Z (list (bv 8))) :
     ghost_map_auth (fs_cache γfs) 1 L -∗
     ([∗ map] b ↦ bs ∈ C, b ↪[fs_cache γfs]{#(1/2)} bs) -∗ ⌜C ⊆ L⌝.
-  Proof.
+  Proof using .
     iIntros "Ha HC". rewrite map_subseteq_spec. iIntros (k v Hk).
     iDestruct (ghost_map_lookup with "Ha [HC]") as %->; [| done].
     rewrite big_sepM_lookup; done.
@@ -817,7 +817,7 @@ Section EndOpDefs.
   Lemma eo_restrict_of_sub (C L : gmap Z (list (bv 8))) (home : gset Z) :
     dom C = home -> C ⊆ L ->
     fs_restrict (dv_of_D C) home = fs_restrict (dv_of_D L) home.
-  Proof.
+  Proof using .
     intros Hdom Hsub. apply fs_restrict_ext. intros b Hb.
     assert (Hin : is_Some (C !! b))
       by (apply elem_of_dom; rewrite Hdom; exact Hb).
@@ -849,7 +849,7 @@ Section EndOpDefs.
          snap_law_out G L (fs_home_set cov logstart)) ∗
       ghost_map_auth (fs_cache γfs) 1 L ∗
       ghost_map_auth (ln_tx γ) 1 T.
-  Proof.
+  Proof using .
     intros Hsz Hom. iIntros "#Hctx HcL Ht".
     iPoseProof (log_ctx_bytes with "Hctx") as "#Hbrow".
     iPoseProof (log_ctx_seal with "Hctx") as "#Hbseal".
@@ -878,7 +878,7 @@ Section EndOpDefs.
   (* the header block is never a home block *)
   Lemma eo_hdr_not_home (cov : gset Z) (ls : Z) :
     log_hdr_bno ls ∉ fs_home_set cov ls.
-  Proof.
+  Proof using .
     intros Hin. exact (FsCrash.home_set_ne_hdr cov ls _ Hin eq_refl).
   Qed.
 
@@ -929,7 +929,7 @@ Section EndOpDefs.
       ⌜log_mirror_tie_body M0 L cov logstart (list_to_set (map uint W))⌝ ∗
       log_mirror_half M0 ∗
       eo_open bn γfs cov logstart n W L D (fun _ => []) 0.
-  Proof.
+  Proof using .
     rewrite /log_state /eo_open.
     iIntros "H". iDestruct "H" as (W L D M)
       "(%Hlen & %HLB & %Hnd & %Hwok & Hncell & HW & Hjunk & HauthL & HauthD & Hcov & Hhdr & Hlogr & Hpool & Hmirh & %Hmhdr & %Hmtie)".
@@ -971,7 +971,7 @@ Section EndOpDefs.
     log_mirror_half M -∗
     eo_open bn γfs cov logstart 0 [] L D Lw 0 -∗
     log_state bn γfs cov logstart 0 ∅ pend.
-  Proof.
+  Proof using .
     intros Hmhdr Hmtie.
     rewrite /log_state /eo_open.
     iIntros "Hmirh (Hncell & HW & Hjunk & HauthL & HauthD & Hcov & Hhdr & _ & Hlogr & Hpool)".
@@ -1012,7 +1012,7 @@ Section EndOpDefs.
          snap_law_out G L (fs_home_set cov logstart)) ∗
       eo_open bn γfs cov logstart n W L Db Lw t ∗
       ghost_map_auth (ln_tx γ) 1 T.
-  Proof.
+  Proof using .
     intros Hsz Hom. iIntros "#Hctx Hopen Ht".
     rewrite /eo_open.
     iDestruct "Hopen" as
@@ -1032,7 +1032,7 @@ Section EndOpDefs.
     (uint bno ↪[fs_cache γfs]{#(1/2)} bsl ∗
      uint bno ↪[fs_dirty γfs]{#(1/2)} d ∗
      (if d then ∃ q : Qp, bref bn k q dv bno else True)).
-  Proof.
+  Proof using .
     rewrite /bio_pay /fs_view /=. destruct d.
     - rewrite /fs_mdirty. iIntros "[[$ $] $]".
     - rewrite /fs_mclean. iIntros "[[$ $] _]"; try done.
@@ -1045,7 +1045,7 @@ Section EndOpDefs.
     (uint bno ↪[fs_dirty γfs]{#(1/2)} d) -∗
     (if d then ∃ q : Qp, bref bn k q dv bno else True) -∗
     bio_pay bn (fs_view γfs γd dev cov) k dv bno bs bs d.
-  Proof.
+  Proof using .
     rewrite /bio_pay /fs_view /=. destruct d.
     - rewrite /fs_mdirty. iIntros "H1 H2 H3". iFrame.
     - rewrite /fs_mclean. iIntros "H1 H2 _". iFrame; try done.
@@ -1061,7 +1061,7 @@ Section EndOpDefs.
     ghost_map_auth (fs_cache γfs) 1 L -∗
     bio_pay bn (fs_view γfs γd dev cov) k dv bno bsl bsd d -∗
     ⌜L !! uint bno = Some bsl⌝.
-  Proof.
+  Proof using .
     rewrite /bio_pay /fs_view /=. destruct d.
     - rewrite /fs_mdirty. iIntros "Ha [[Hm _] _]".
       iDestruct (ghost_map_lookup with "Ha Hm") as %Hlk. done.
@@ -1078,7 +1078,7 @@ Section EndOpDefs.
     -∗ ([∗ list] i ↦ w ∈ W, (uint w) ↪[fs_dirty γfs]{#(1/2)} true) ∗
        ([∗ set] b ∈ cov ∖ list_to_set (map uint W),
           b ↪[fs_dirty γfs]{#(1/2)} false).
-  Proof.
+  Proof using .
     intros Hnd0 Hsub.
     assert (Hnd : base.NoDup (map uint W)) by (apply NoDup_ListNoDup; exact Hnd0).
     assert (Hss : (list_to_set (map uint W) : gset Z) ⊆ cov).
@@ -1109,7 +1109,7 @@ Section EndOpDefs.
        b ↪[fs_dirty γfs]{#(1/2)} false) -∗
     ([∗ set] b ∈ cov, b ↪[fs_dirty γfs]{#(1/2)}
         (bool_decide (b ∈ map uint (@nil (mword 32))))).
-  Proof.
+  Proof using .
     intros Hnd0 Hsub.
     assert (Hnd : base.NoDup (map uint W)) by (apply NoDup_ListNoDup; exact Hnd0).
     assert (Hss : (list_to_set (map uint W) : gset Z) ⊆ cov).
@@ -1151,7 +1151,7 @@ Section EndOpDefs.
           M !!! Regidx c = (m !!! Regidx c : mword 64)).
 
   Lemma eo_regsE_regs (m M : regfile) : eo_regsE m M -> eo_regs m M.
-  Proof.
+  Proof using .
     intros [A B]. split; [exact A|]. intros c H1 H2 H3 H4 H5 _ _ _.
     exact (B c H1 H2 H3 H4 H5).
   Qed.
@@ -1190,7 +1190,7 @@ Section EndOpBlocks.
     eo_frameJ m -∗
     eo_cont (CID0 := CID0)  j pidv dq m K eb b lks Upr -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using bioslotG0.
     intros HK Hregs.
     pose proof Hregs as (Hsp & Hthr).
     iIntros "Hcg Hcnt Hextc Hextm #Htext Hpc Hppid Hframe Hjunk Hcont".
@@ -1459,7 +1459,7 @@ Section EndOpBlocks.
     fs_bank -∗
     eo_cont (CID0 := CID0)  j pidv dq m K eb eb lks Upr -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hregs Hbelow.
     pose proof (locks_below_not_elem _ _ Hbelow) as Hfresh.
     pose proof Hregs as (Hsp & Hthr).
@@ -1946,7 +1946,7 @@ Section EndOpBlocks.
   Lemma eo_seq_join (P : nat -> iProp Σ) (a c : nat) :
     ([∗ list] i ∈ seq 0 a, P i) -∗ ([∗ list] i ∈ seq a c, P i) -∗
     ([∗ list] i ∈ seq 0 (a + c), P i).
-  Proof. rewrite seq_app big_sepL_app. iIntros "$ $". Qed.
+  Proof using . rewrite seq_app big_sepL_app. iIntros "$ $". Qed.
 
   Lemma eo_entries_in (γfs : fs_names) (logstart : Z) (W : list (mword 32))
       (Lw : nat -> list (bv 8)) (n : nat) :
@@ -1955,7 +1955,7 @@ Section EndOpBlocks.
     ([∗ list] i ↦ w ∈ W, (uint w) ↪[fs_dirty γfs]{#(1/2)} true) -∗
     ([∗ list] i ↦ w ∈ W, fs_chalf γfs (log_slot_bno logstart i) (Lw i) ∗
                          (uint w) ↪[fs_dirty γfs]{#(1/2)} true).
-  Proof.
+  Proof using .
     intros ->. iIntros "Ha Hb". rewrite big_sepL_sep.
     iSplitL "Ha"; [| iExact "Hb"].
     iEval (rewrite (eo_seq_of_list W
@@ -1970,7 +1970,7 @@ Section EndOpBlocks.
                          (uint w) ↪[fs_dirty γfs]{#(1/2)} false) -∗
     ([∗ list] i ∈ seq 0 n, ∃ bs, fs_chalf γfs (log_slot_bno logstart i) bs) ∗
     ([∗ list] i ↦ w ∈ W, (uint w) ↪[fs_dirty γfs]{#(1/2)} false).
-  Proof.
+  Proof using .
     intros ->. rewrite big_sepL_sep. iIntros "[Ha $]".
     iEval (rewrite (eo_seq_of_list W
              (fun i => ∃ bs, fs_chalf γfs (log_slot_bno logstart i) bs)%I)).
@@ -1981,7 +1981,7 @@ Section EndOpBlocks.
     n = length W ->
     ([∗ list] i ↦ w ∈ W, lh_block i ↦₄ w) -∗
     ([∗ list] i ∈ seq 0 n, ∃ junk : mword 32, lh_block i ↦₄ junk).
-  Proof.
+  Proof using .
     intros ->. iIntros "H".
     iEval (rewrite (eo_seq_of_list W (fun i => ∃ junk : mword 32, lh_block i ↦₄ junk)%I)).
     iApply (big_sepL_mono with "H"). intros i w Hw. iIntros "H". iExists _. iExact "H".
@@ -2069,7 +2069,7 @@ Section EndOpBlocks.
     snap_law_out G L (fs_home_set cov logstart) -∗
     eo_cont (CID0 := CID0)  j pidv dq m K eb eb lks Upr -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hgeom Hj Hgl Hshape Hnd Hwok HLw HMchdr HMcslot Hrow Hregs
            Hbelow.
     destruct Hshape as [HnW Hn30].
@@ -2844,7 +2844,7 @@ Section EndOpBlocks.
     snap_law_out G L (fs_home_set cov logstart) -∗
     eo_cont (CID0 := CID0)  j pidv dq m K eb eb lks Upr -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hgeom Hj Hgl Hshape Hnd Hwok Hbelow.
     destruct Hshape as [HnW Hn30].
     destruct Hgeom as [Hcovok Hlogsub].
@@ -4132,7 +4132,7 @@ Section EndOpBlocks.
     eo_frameJ m -∗
     eo_cont (CID0 := CID0)  j pidv dq m K eb eb lks Upr -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hregs Hbelow.
     pose proof (locks_below_not_elem _ _ Hbelow) as Hfresh.
     pose proof Hregs as (Hsp & Hthr).
@@ -4351,7 +4351,7 @@ Section ProofEndOp.
       (b : bool) (lks : gset string) (Upr : ustate)
     : wp_end_op_sconf_body γs j γl γu γd γk pd pav pu bn γ γfs
                            cov logstart dev u pidv dq m K eb b lks Upr.
-  Proof.
+  Proof using .
     cbv beta zeta delta [wp_end_op_sconf_body].
     intros HK Hgeom Hj Hgl Hbelow.
     pose proof (locks_below_not_elem _ _ Hbelow) as Hfresh.

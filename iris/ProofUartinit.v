@@ -75,7 +75,7 @@ Section ProofUartinit.
       (m : regfile) (K : nat) (l0 l1 : list (bv 8)) (d0 d1 : bool)
       (k0 k1 : nat) (hl0 hl1 : option (list mobs)) (p : mword 64)
     : wp_uartinit_sconf_body γ0 γ1 m K l0 l1 d0 d1 k0 k1 hl0 hl1 p.
-  Proof.
+  Proof using .
     cbv beta delta [wp_uartinit_sconf_body].
     intros pcE ret_tgt HK.
     set (sp0 := m !!! Regidx csp_rs1).

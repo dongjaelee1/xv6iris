@@ -131,7 +131,7 @@ Section ProofNamexRoot.
       (b : bool) (lks : gset string) (Vpr : pprivate)
     : wp_namex_root_body dqp
                          m n K eb p b lks Vpr.
-  Proof.
+  Proof using .
     cbv beta delta [wp_namex_root_body].
     intros pcE pv ret_tgt HK Hn Hroot Hnib0 Ha1 Hbelow.
     destruct (nxr_kb K HK) as (Kig & K12 & Kpop).

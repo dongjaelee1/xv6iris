@@ -158,14 +158,14 @@ Section SlotGen.
     own wsg_name (sg_one pa dq g : sgenUR).
 
   Global Instance slot_gen_timeless pa dq g : Timeless (slot_gen pa dq g).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* ANY two fractions agree.  This is the whole point: the ZOMBIE block in
      the reaper's hands and the entry in <wait_lock>'s payload are halves of
      one element, so they name the SAME incarnation. *)
   Lemma slot_gen_agree pa dq dq' g g' :
     slot_gen pa dq g -∗ slot_gen pa dq' g' -∗ ⌜g = g'⌝.
-  Proof.
+  Proof using .
     iIntros "H1 H2".
     iDestruct (own_valid_2 with "H1 H2") as %Hv.
     rewrite /sg_one singleton_op singleton_valid dfrac_agree_op_valid_L in Hv.
@@ -178,7 +178,7 @@ Section SlotGen.
      as a resource fact and not a pure one. *)
   Lemma slot_gen_whole_excl pa dq g g' :
     slot_gen pa (DfracOwn 1) g -∗ slot_gen pa dq g' -∗ False.
-  Proof.
+  Proof using .
     iIntros "H1 H2".
     iDestruct (own_valid_2 with "H1 H2") as %Hv.
     rewrite /sg_one singleton_op singleton_valid in Hv.
@@ -201,7 +201,7 @@ Section SlotGen.
   Lemma slot_gen_quarters pa g :
     slot_gen pa (DfracOwn 1) g ⊣⊢
     slot_gen pa (DfracOwn (3/4)) g ∗ slot_gen pa (DfracOwn (1/4)) g.
-  Proof.
+  Proof using .
     rewrite /slot_gen -own_op sg_one_op dfrac_op_own Qp.three_quarter_quarter.
     reflexivity.
   Qed.
@@ -209,7 +209,7 @@ Section SlotGen.
   (* ...and the refutation that split exists for. *)
   Lemma slot_gen_tq_excl pa g g' :
     slot_gen pa (DfracOwn (3/4)) g -∗ slot_gen pa (DfracOwn (3/4)) g' -∗ False.
-  Proof.
+  Proof using .
     iIntros "H1 H2".
     iDestruct (own_valid_2 with "H1 H2") as %Hv.
     rewrite /sg_one singleton_op singleton_valid dfrac_agree_op_valid_L in Hv.
@@ -225,7 +225,7 @@ Section SlotGen.
      minting.  Nothing else may: every other holder has a fraction. *)
   Lemma slot_gen_update pa g g' :
     slot_gen pa (DfracOwn 1) g ==∗ slot_gen pa (DfracOwn 1) g'.
-  Proof.
+  Proof using .
     rewrite /slot_gen. iApply own_update.
     rewrite /sg_one. apply singleton_update, cmra_update_exclusive.
     apply sg_el_valid, dfrac_valid_own_1.
@@ -244,7 +244,7 @@ Section SlotGen.
      needs the converse. *)
   Lemma slot_gen_persist pa dq g :
     slot_gen pa dq g ==∗ slot_gen pa DfracDiscarded g.
-  Proof.
+  Proof using .
     rewrite /slot_gen. iApply own_update.
     rewrite /sg_one. apply singleton_update. apply dfrac_agree_persist.
   Qed.
@@ -264,7 +264,7 @@ Section SlotGen.
     ghost_map_auth wpr_name 1 R.
 
   Global Instance pid_reg_timeless pid dq g : Timeless (pid_reg pid dq g).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* ...and the same one-way discard, for <init>'s registration (lane
      TRAP-ROWS-3/4, T4(b)): userinit keeps the block's eighth and discards
@@ -273,9 +273,9 @@ Section SlotGen.
      refuted against it. *)
   Lemma pid_reg_persist pid dq g :
     pid_reg pid dq g ==∗ pid_reg pid DfracDiscarded g.
-  Proof. rewrite /pid_reg. iApply ghost_map_elem_persist. Qed.
+  Proof using . rewrite /pid_reg. iApply ghost_map_elem_persist. Qed.
   Global Instance pid_reg_auth_timeless R : Timeless (pid_reg_auth R).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* PID UNIQUENESS AMONG LIVE PROCESSES, and it is agreement rather than an
      invariant: two halves at one pid are two readings of ONE registration,
@@ -284,7 +284,7 @@ Section SlotGen.
   Lemma pid_reg_agree pid pid' dq dq' g g' :
     bv_unsigned pid = bv_unsigned pid' ->
     pid_reg pid dq g -∗ pid_reg pid' dq' g' -∗ ⌜g = g'⌝.
-  Proof.
+  Proof using .
     intro Hv. rewrite /pid_reg Hv.
     iIntros "H1 H2". by iDestruct (ghost_map_elem_agree with "H1 H2") as %->.
   Qed.
@@ -294,7 +294,7 @@ Section SlotGen.
   Lemma pid_reg_quarters pid g :
     pid_reg pid (DfracOwn 1) g ⊣⊢
     pid_reg pid (DfracOwn (3/4)) g ∗ pid_reg pid (DfracOwn (1/4)) g.
-  Proof.
+  Proof using .
     rewrite /pid_reg. iSplit.
     - iIntros "H".
       iEval (rewrite -{1}Qp.three_quarter_quarter) in "H".
@@ -317,7 +317,7 @@ Section SlotGen.
   Lemma pid_reg_eighths pid g :
     pid_reg pid (DfracOwn (1/4)) g ⊣⊢
     pid_reg pid (DfracOwn qeighth) g ∗ pid_reg pid (DfracOwn qeighth) g.
-  Proof.
+  Proof using .
     rewrite /pid_reg. iSplit.
     - iIntros "H".
       iEval (rewrite -{1}(Qp.div_2 (1/4)%Qp)) in "H".
@@ -339,12 +339,12 @@ Section SlotGen.
     (pid_reg pid (DfracOwn (3/4)) g ∗ pid_reg pid (DfracOwn qeighth) g)%I.
 
   Global Instance pid_reg_rest_timeless pid g : Timeless (pid_reg_rest pid g).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma pid_reg_rest_whole pid g :
     pid_reg pid (DfracOwn 1) g ⊣⊢
     pid_reg_rest pid g ∗ pid_reg pid (DfracOwn qeighth) g.
-  Proof.
+  Proof using .
     rewrite /pid_reg_rest pid_reg_quarters pid_reg_eighths.
     iSplit.
     - iIntros "[H3 [H1 H2]]". iFrame "H3 H1 H2".
@@ -353,7 +353,7 @@ Section SlotGen.
 
   Lemma pid_reg_lookup R pid dq g :
     pid_reg_auth R -∗ pid_reg pid dq g -∗ ⌜R !! bv_unsigned pid = Some g⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Hf". by iDestruct (ghost_map_lookup with "Ha Hf") as %Hm.
   Qed.
 
@@ -364,7 +364,7 @@ Section SlotGen.
     R !! bv_unsigned pid = None ->
     pid_reg_auth R ==∗
     pid_reg_auth (<[bv_unsigned pid := g]> R) ∗ pid_reg pid (DfracOwn 1) g.
-  Proof.
+  Proof using .
     intro Hfree. rewrite /pid_reg_auth /pid_reg.
     iApply (ghost_map_insert (bv_unsigned pid) g Hfree).
   Qed.
@@ -374,7 +374,7 @@ Section SlotGen.
   Lemma pid_reg_delete R pid g :
     pid_reg_auth R -∗ pid_reg pid (DfracOwn 1) g ==∗
     pid_reg_auth (delete (bv_unsigned pid) R).
-  Proof.
+  Proof using .
     rewrite /pid_reg_auth /pid_reg. iIntros "Ha Hf".
     by iMod (ghost_map_delete with "Ha Hf") as "$".
   Qed.
@@ -433,11 +433,11 @@ Section SlotGen.
 
   Lemma gen_halves_at_rng pa pid g :
     gen_halves_at pa pid g -∗ ⌜(1 <= bv_unsigned pid <= PIDMAX)%Z⌝.
-  Proof. iIntros "(%Hr & _ & _)". done. Qed.
+  Proof using . iIntros "(%Hr & _ & _)". done. Qed.
 
   Lemma gen_halves_at_nz pa pid g :
     gen_halves_at pa pid g -∗ ⌜bv_unsigned pid <> 0⌝.
-  Proof. iIntros "(%Hr & _ & _)". iPureIntro. lia. Qed.
+  Proof using . iIntros "(%Hr & _ & _)". iPureIntro. lia. Qed.
 
   (* THE REGISTRATION EIGHTH, LENT.  It is the one resource in the tree
      that answers -- the CURRENT generation of this pid is [g] -- and that
@@ -448,7 +448,7 @@ Section SlotGen.
     gen_halves_at pa pid g -∗
     pid_reg pid (DfracOwn qeighth) g ∗
     (pid_reg pid (DfracOwn qeighth) g -∗ gen_halves_at pa pid g).
-  Proof.
+  Proof using .
     rewrite /gen_halves_at. iIntros "(%Hnz & Hsg & Hpr)".
     iSplitL "Hpr"; [ iExact "Hpr" | ]. iIntros "Hpr".
     iSplitR; [ iPureIntro; exact Hnz | ]. iFrame "Hsg Hpr".
@@ -458,7 +458,7 @@ Section SlotGen.
     (1 <= bv_unsigned pid <= PIDMAX)%Z ->
     slot_gen pa (DfracOwn (1/4)) g -∗ pid_reg pid (DfracOwn qeighth) g -∗
     gen_halves_at pa pid g.
-  Proof.
+  Proof using .
     intro Hnz. iIntros "Hsg Hpr". rewrite /gen_halves_at.
     iSplitR; [ iPureIntro; exact Hnz | ]. iFrame "Hsg Hpr".
   Qed.
@@ -506,15 +506,15 @@ Section SlotGen.
                   : ipidUR).
 
   Global Instance init_pid_is_persistent p : Persistent (init_pid_is p).
-  Proof. rewrite /init_pid_is. apply _. Qed.
+  Proof using . rewrite /init_pid_is. apply _. Qed.
 
   Global Instance init_pid_is_timeless p : Timeless (init_pid_is p).
-  Proof. rewrite /init_pid_is. apply _. Qed.
+  Proof using . rewrite /init_pid_is. apply _. Qed.
 
   (* THE AGREEMENT, which is what the refutation at a forked child spends *)
   Lemma init_pid_is_agree (p p' : mword 32) :
     init_pid_is p -∗ init_pid_is p' -∗ ⌜p = p'⌝.
-  Proof.
+  Proof using .
     iIntros "H1 H2".
     iDestruct (own_valid_2 with "H1 H2") as %Hv.
     rewrite -Some_op Some_valid dfrac_agree_op_valid_L in Hv.
@@ -524,7 +524,7 @@ Section SlotGen.
   (* ...and the form a child spends it in: its own pid is not <init>'s *)
   Lemma init_pid_is_ne (p p' : mword 32) :
     p <> p' -> init_pid_is p -∗ init_pid_is p' -∗ False.
-  Proof.
+  Proof using .
     intro Hne. iIntros "H1 H2".
     iDestruct (init_pid_is_agree with "H1 H2") as %Heq.
     exfalso. exact (Hne Heq).
@@ -532,7 +532,7 @@ Section SlotGen.
 
   Local Lemma to_dfrac_agree_one_valid (a : leibnizO (mword 32)) :
     ✓ (to_dfrac_agree (DfracOwn 1) a).
-  Proof.
+  Proof using .
     rewrite /to_dfrac_agree pair_valid.
     split; [ apply dfrac_valid_own_1 | ].
     apply (cmra_valid_op_l _ (to_agree a)). by apply to_agree_op_valid.
@@ -541,7 +541,7 @@ Section SlotGen.
   (* userinit's two moves: write the pid <init> actually got, then seal *)
   Lemma init_pid_set (p p' : mword 32) :
     init_pid_tok p ==∗ init_pid_tok p'.
-  Proof.
+  Proof using .
     rewrite /init_pid_tok. iApply own_update.
     apply option_update, cmra_update_exclusive.
     apply to_dfrac_agree_one_valid.
@@ -549,7 +549,7 @@ Section SlotGen.
 
   Lemma init_pid_seal (p : mword 32) :
     init_pid_tok p ==∗ init_pid_is p.
-  Proof.
+  Proof using .
     rewrite /init_pid_tok /init_pid_is. iApply own_update.
     apply option_update.
     apply dfrac_agree_persist.
@@ -558,7 +558,7 @@ Section SlotGen.
   (* the token is EXCLUSIVE, which is what keeps the seal a one-shot *)
   Lemma init_pid_tok_excl (p p' : mword 32) :
     init_pid_tok p -∗ init_pid_tok p' -∗ False.
-  Proof.
+  Proof using .
     iIntros "H1 H2".
     iDestruct (own_valid_2 with "H1 H2") as %Hv.
     rewrite -Some_op Some_valid dfrac_agree_op_valid_L in Hv.
@@ -609,16 +609,16 @@ Section SlotGen.
                    : ipidUR).
 
   Global Instance nextpid_shot_persistent : Persistent nextpid_shot.
-  Proof. rewrite /nextpid_shot. apply _. Qed.
+  Proof using . rewrite /nextpid_shot. apply _. Qed.
   Global Instance nextpid_shot_timeless : Timeless nextpid_shot.
-  Proof. rewrite /nextpid_shot. apply _. Qed.
+  Proof using . rewrite /nextpid_shot. apply _. Qed.
   Global Instance nextpid_pend_timeless : Timeless nextpid_pend.
-  Proof. rewrite /nextpid_pend. apply _. Qed.
+  Proof using . rewrite /nextpid_pend. apply _. Qed.
 
   (* THE EXCLUSION, which is what the counted caller reads the counter's
      value with: a pending token and a shot cannot both exist. *)
   Lemma nextpid_pend_shot : nextpid_pend -∗ nextpid_shot -∗ False.
-  Proof.
+  Proof using .
     iIntros "H1 H2".
     iDestruct (own_valid_2 with "H1 H2") as %Hv.
     rewrite -Some_op Some_valid dfrac_agree_op_valid_L in Hv.
@@ -629,7 +629,7 @@ Section SlotGen.
 
   (* ...and the one-way step allocproc takes at its store to <nextpid> *)
   Lemma nextpid_shoot : nextpid_pend ==∗ nextpid_shot.
-  Proof.
+  Proof using .
     rewrite /nextpid_pend /nextpid_shot. iApply own_update.
     apply option_update. apply dfrac_agree_persist.
   Qed.
@@ -649,15 +649,15 @@ Section SlotGen.
     (∃ g : gname, pid_reg (mword_of_int 1 : mword 32) DfracDiscarded g)%I.
 
   Global Instance init_reg_persistent : Persistent init_reg.
-  Proof. rewrite /init_reg /pid_reg. apply _. Qed.
+  Proof using . rewrite /init_reg /pid_reg. apply _. Qed.
   Global Instance init_reg_timeless : Timeless init_reg.
-  Proof. rewrite /init_reg /pid_reg. apply _. Qed.
+  Proof using . rewrite /init_reg /pid_reg. apply _. Qed.
 
   (* THE REFUTATION ITSELF, at allocproc's insert. *)
   Lemma init_reg_ne (R : gmap Z gname) (pidc : mword 32) :
     R !! bv_unsigned pidc = None ->
     pid_reg_auth R -∗ init_reg -∗ ⌜bv_unsigned pidc <> 1⌝.
-  Proof.
+  Proof using .
     intro Hfree. iIntros "Ha (%g & #Hreg)".
     iDestruct (pid_reg_lookup with "Ha Hreg") as %Hl.
     iPureIntro. intro He.
@@ -693,11 +693,11 @@ Section SlotGenTok.
   (* what a holder of the bundle reads off it *)
   Lemma gen_halves_priv_nz pa pid g :
     gen_halves_priv pa pid g -∗ ⌜bv_unsigned pid <> 0⌝.
-  Proof. iIntros "[H _]". iApply (gen_halves_at_nz with "H"). Qed.
+  Proof using . iIntros "[H _]". iApply (gen_halves_at_nz with "H"). Qed.
 
   Lemma gen_halves_priv_rng pa pid g :
     gen_halves_priv pa pid g -∗ ⌜(1 <= bv_unsigned pid <= PIDMAX)%Z⌝.
-  Proof. iIntros "[H _]". iApply (gen_halves_at_rng with "H"). Qed.
+  Proof using . iIntros "[H _]". iApply (gen_halves_at_rng with "H"). Qed.
 
   (* ...and how the two sites that BUILD one discharge it: both hold
      allocproc's [1 <= bv_unsigned pid <= PIDMAX]
@@ -707,7 +707,7 @@ Section SlotGenTok.
     (1 <= bv_unsigned pid <= PIDMAX)%Z ->
     slot_gen pa (DfracOwn (1/4)) g -∗ pid_reg pid (DfracOwn qeighth) g -∗
     ChildTok.taken_at g -∗ gen_halves_priv pa pid g.
-  Proof.
+  Proof using .
     intro Hnz. iIntros "Hsg Hpr Ht". rewrite /gen_halves_priv.
     iSplitR "Ht"; [ iApply (gen_halves_at_intro pa pid g Hnz with "Hsg Hpr")
                   | iExact "Ht" ].
@@ -724,7 +724,7 @@ Section SlotGenTok.
     gen_halves_at pa pid g -∗
     slot_gen pa (DfracOwn (1/4)) g ∗
     (slot_gen pa (DfracOwn (1/4)) g -∗ gen_halves_at pa pid g).
-  Proof.
+  Proof using .
     rewrite /gen_halves_at. iIntros "(%Hr & Hsg & Hpr)".
     iSplitL "Hsg"; [ iExact "Hsg" | ]. iIntros "Hsg".
     iSplitR; [ iPureIntro; exact Hr | ]. iFrame "Hsg Hpr".
@@ -734,7 +734,7 @@ Section SlotGenTok.
     gen_halves_priv pa pid g -∗
     pid_reg pid (DfracOwn qeighth) g ∗
     (pid_reg pid (DfracOwn qeighth) g -∗ gen_halves_priv pa pid g).
-  Proof.
+  Proof using .
     rewrite /gen_halves_priv. iIntros "[Hat Ht]".
     iDestruct (gen_halves_at_reg with "Hat") as "[Hpr Hback]".
     iSplitL "Hpr"; [ iExact "Hpr" | ]. iIntros "Hpr".
@@ -745,7 +745,7 @@ Section SlotGenTok.
     gen_halves_priv pa pid g -∗
     slot_gen pa (DfracOwn (1/4)) g ∗
     (slot_gen pa (DfracOwn (1/4)) g -∗ gen_halves_priv pa pid g).
-  Proof.
+  Proof using .
     rewrite /gen_halves_priv. iIntros "[Hat Ht]".
     iDestruct (gen_halves_at_sg with "Hat") as "[Hsg Hback]".
     iSplitL "Hsg"; [ iExact "Hsg" | ]. iIntros "Hsg".
@@ -754,7 +754,7 @@ Section SlotGenTok.
 
   Lemma gen_halves_priv_split pa pid g :
     gen_halves_priv pa pid g -∗ gen_halves_at pa pid g ∗ ChildTok.taken_at g.
-  Proof. iIntros "H". iExact "H". Qed.
+  Proof using . iIntros "H". iExact "H". Qed.
 
 End SlotGenTok.
 
@@ -850,7 +850,7 @@ Section SlotGenBoot.
     (j + n <= NPROC)%nat ->
     own γ (sg_boot_map g0 j n : sgenUR) ⊢
     [∗ list] i ∈ seq j n, own γ (sg_one (proc_addr i) (DfracOwn 1) g0 : sgenUR).
-  Proof.
+  Proof using .
     revert j. induction n as [|n IH]; intros j Hjn.
     - iIntros "_". done.
     - iIntros "H". cbn [sg_boot_map].
@@ -867,7 +867,7 @@ Section SlotGenBoot.
     ⊢ |==> ∃ γ : gname,
         [∗ list] i ∈ seq 0 NPROC,
           own γ (sg_one (proc_addr i) (DfracOwn 1) g0 : sgenUR).
-  Proof.
+  Proof using .
     iMod (own_alloc (sg_boot_map g0 0 NPROC : sgenUR)) as (γ) "H";
       [ apply sg_boot_map_valid |].
     iModIntro. iExists γ.

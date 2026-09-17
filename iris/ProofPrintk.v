@@ -155,7 +155,7 @@ Section ProofPrintk.
   (* the whole frame, as the pop wants it *)
   Lemma pk_frame_stack_own (sp0 ra0 s00 s20 : mword 64) :
     pk_frame sp0 ra0 s00 s20 ⊢ stack_own (KTR := kt) sp0 24.
-  Proof.
+  Proof using .
     rewrite /pk_frame /pk_slots (stack_own_slots (KTR := kt)).
     iIntros "(H9 & H10 & H12 & Hr)".
     cbn [seq]. cbn [big_opL].
@@ -216,7 +216,7 @@ Section ProofPrintk.
          ∃ w : mword 64, (pa_stk sp0 k) ↦₈[kt] w) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros sp0 spd HK.
     iIntros "Hcg #Htext Hpc Hcont".
     assert (Hpush : spd = pa_stk sp0 24).
@@ -499,7 +499,7 @@ Section ProofPrintk.
       pk_saved sp0 v9 v19 v20 v21 v22 v23 v24 v26 v27 -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros spd Hsp.
     iIntros "Hcg Hinstrs Hpc Hsv Hcont".
     rewrite /pk_restore_instrs.
@@ -724,7 +724,7 @@ Section ProofPrintk.
       R -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros sp0 spd HK HAV Houtb Hh Hsp Hagree.
     subst h.
     iIntros "Hcg #Htext Hpc Hfr #Hlk [Hlkd Hpay] Hcnt HR Hcont".
@@ -913,7 +913,7 @@ Section ProofPrintk.
     (pa_stk sp0 9) ↦₈[kt] ra0 -∗ (pa_stk sp0 10) ↦₈[kt] s00 -∗ (pa_stk sp0 12) ↦₈[kt] s20 -∗
     pk_saved sp0 v9 v19 v20 v21 v22 v23 v24 v26 v27 -∗ pk_slots_rest sp0 -∗
     pk_frame sp0 ra0 s00 s20.
-  Proof.
+  Proof using .
     rewrite /pk_frame /pk_slots /pk_saved /pk_slots_rest.
     iIntros "H9 H10 H12 (S9 & S19 & S20 & S21 & S22 & S23 & S24 & S26 & S27) Hr".
     cbn [big_opL].
@@ -932,7 +932,7 @@ Section ProofPrintk.
 
   (* the nine [instr] facts, at the two addresses the block sits at *)
   Lemma pk_restore_at_242 : kernel_text -∗ pk_restore_instrs 0x242.
-  Proof.
+  Proof using .
     iIntros "#Ht". rewrite /pk_restore_instrs /pk_ld.
     iSplitR; [iApply (pki_242 with "Ht") | ].
     iSplitR; [iApply (pki_244 with "Ht") | ].
@@ -946,7 +946,7 @@ Section ProofPrintk.
   Qed.
 
   Lemma pk_restore_at_2fe : kernel_text -∗ pk_restore_instrs 0x2fe.
-  Proof.
+  Proof using .
     iIntros "#Ht". rewrite /pk_restore_instrs /pk_ld.
     iSplitR; [iApply (pki_2fe with "Ht") | ].
     iSplitR; [iApply (pki_300 with "Ht") | ].
@@ -999,7 +999,7 @@ Section ProofPrintk.
       R -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros sp0 spd HK HAV Houtb Hh Hsp Hs9 Hnext.
     iIntros "Hcg #Htext Hinstrs Hpc H9 H10 H12 Hsv Hrest #Hlk Hheld Hcnt HR Hcont".
     iApply (wp_printk_restore mc AV B sp0 (m !!! Regidx (mword_of_int 9 : mword 5)) (m !!! Regidx (mword_of_int 19 : mword 5)) (m !!! Regidx (mword_of_int 20 : mword 5)) (m !!! Regidx (mword_of_int 21 : mword 5)) (m !!! Regidx (mword_of_int 22 : mword 5)) (m !!! Regidx (mword_of_int 23 : mword 5)) (m !!! Regidx (mword_of_int 24 : mword 5)) (m !!! Regidx (mword_of_int 26 : mword 5)) (m !!! Regidx (mword_of_int 27 : mword 5)) false pcur Hsp
@@ -1079,7 +1079,7 @@ Section ProofPrintk.
       R -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros sp0 spd HK HAV Houtb Hh Hsp Hs9.
     iIntros "Hcg #Htext Hpc H9 H10 H12 Hsv Hrest #Hlk Hheld Hcnt HR Hcont".
     iApply (wp_printk_restore mc AV 0x2fe sp0 (m !!! Regidx (mword_of_int 9 : mword 5)) (m !!! Regidx (mword_of_int 19 : mword 5)) (m !!! Regidx (mword_of_int 20 : mword 5)) (m !!! Regidx (mword_of_int 21 : mword 5)) (m !!! Regidx (mword_of_int 22 : mword 5)) (m !!! Regidx (mword_of_int 23 : mword 5)) (m !!! Regidx (mword_of_int 24 : mword 5)) (m !!! Regidx (mword_of_int 26 : mword 5)) (m !!! Regidx (mword_of_int 27 : mword 5)) false pcur Hsp
@@ -1158,7 +1158,7 @@ Section ProofPrintk.
      inequality, which [lia] cannot see under the bitvector zify hook. *)
   Lemma zext8_zero (b : mword 8) :
     eq_vec (zero_extend' 64 b) (zero_reg : mword 64) = true -> b = (mword_of_int 0 : mword 8).
-  Proof.
+  Proof using .
     intro H. apply eq_vec_true_iff in H.
     apply (f_equal bv_unsigned) in H.
     unfold zero_extend', Operators_mwords.zero_extend, Operators_mwords.extz_vec,
@@ -1174,7 +1174,7 @@ Section ProofPrintk.
     a ↦ₛ{dq} f ⊢
     (pa_add a j) ↦ₘ{dq} (pk_fbyte f j) ∗
     ((pa_add a j) ↦ₘ{dq} (pk_fbyte f j) -∗ a ↦ₛ{dq} f).
-  Proof.
+  Proof using .
     intro Hj. rewrite /ctx_string_pointsto.
     iIntros "H".
     iDestruct (big_sepL_lookup_acc _ _ j (pk_fbyte f j) with "H") as "[Hb Hcl]".
@@ -1272,7 +1272,7 @@ Section ProofPrintk.
       R -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros sp0 spd s0v fmt HKE HAV Houtb Hh Hnn Hsp Hs0 Hs2 Hkept.
     iIntros "Hcg #Htext Hpc #Hlk Hheld Hcnt Hfmt H9 H10 H12 Hva Hrest HR Kend Kloop".
     iDestruct "Hrest" as "(T8 & T11 & T13 & T14 & T15 & T16 & T17 & T18 & T19 & T20 & T21 & T22 & T23 & T24 & _)".
@@ -1711,7 +1711,7 @@ Section ProofPrintk.
       fmt ↦ₛ{ dqf } f -∗ Rest -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hlen Hp31 Hs1 Hs2.
     iIntros "Hcg #Htext Hpc Hfmt HR Kend Kgo".
     (* +0x78 c.addiw s1,s1,1 *)
@@ -1859,7 +1859,7 @@ Section ProofPrintk.
       Rest -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using wp_prputc.
     intros HK Hn31 Hne Hbelow.
     assert (HK6 : (20 <= K)%nat) by lia.
     iIntros "Hcg #Htext Hpc Hcnt #Hpre HR Hcont".
@@ -1932,7 +1932,7 @@ Section ProofPrintk.
     pk_va sp0 m ⊢
     (pa_stk sp0 (7 - k)) ↦₈[kt] (pk_vararg m k) ∗
     ((pa_stk sp0 (7 - k)) ↦₈[kt] (pk_vararg m k) -∗ pk_va sp0 m).
-  Proof.
+  Proof using .
     intro Hk. rewrite /pk_va /pk_vararg.
     iIntros "(V7 & V6 & V5 & V4 & V3 & V2 & V1)".
     destruct k as [|[|[|[|[|[|[|k]]]]]]]; cbn [Nat.sub];
@@ -1973,7 +1973,7 @@ Section ProofPrintk.
     (k < 7)%nat ->
     pk_ap (add_vec sp0 (sign_extend' 64 (mword_of_int (-64) : mword 12))) k
     = pa_stk sp0 (7 - k).
-  Proof.
+  Proof using .
     intro Hk. unfold pk_ap, pa_stk, add_vec_int.
     rewrite pa_stk_off2. f_equal.
     apply bv_eq. rewrite !moi64_mod.
@@ -2015,7 +2015,7 @@ Section ProofPrintk.
       (pa_stk sp0 23) ↦₈[kt] (pk_ap s0v (S k)) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hs0 Hs0v.
     iIntros "Hcg Hinstrs Hpc Hap Hcont".
     rewrite /pk_vaarg_instrs. iDestruct "Hinstrs" as "(I0 & I4 & I8)".
@@ -2084,7 +2084,7 @@ Section ProofPrintk.
      the [%d]/[%u]/[%x] arms read the low half of a vararg slot with a 4-byte
      load and must hand the slot back whole. *)
   Lemma word_of_words_id (w : bv 64) : word_of_words (word_lo w) (word_hi w) = w.
-  Proof.
+  Proof using .
     apply (bv_eq_of_bytes (n:=8)). intros j Hj.
     assert (Hj8 : (j < 8)%nat) by lia.
     destruct (decide (j < 4)%nat) as [Hlt | Hge].
@@ -2130,7 +2130,7 @@ Section ProofPrintk.
       Rest -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using wp_printint.
     intros sp0 s0v HK Hk Hn31 Hs0 Hs6 Hbelow.
     assert (HK14 : (28 <= K)%nat) by lia.
     iIntros "Hcg #Htext #Hkdata Hpc Hap Hva Hcnt #Hpre HR Hcont".
@@ -3278,7 +3278,7 @@ Section ProofPrintk.
       Rest -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using wp_printint.
     intros sp0 s0v HK Hk Hn31 Hs0 Hs6 Hbelow.
     assert (HK14 : (28 <= K)%nat) by lia.
     iIntros "Hcg #Htext #Hkdata Hpc Hap Hva Hcnt #Hpre HR Hcont".
@@ -3418,7 +3418,7 @@ Section ProofPrintk.
       Rest -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using wp_printint.
     intros sp0 s0v HK Hk Hn31 Hs0 Hs6 Hbelow.
     assert (HK14 : (28 <= K)%nat) by lia.
     iIntros "Hcg #Htext #Hkdata Hpc Hap Hva Hcnt #Hpre HR Hcont".
@@ -3561,7 +3561,7 @@ Section ProofPrintk.
       Rest -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using wp_prputc.
     intros sp0 s0v HK Hk Hn31 Hs0 Hbelow.
     assert (HK6 : (20 <= K)%nat) by lia.
     iIntros "Hcg #Htext Hpc Hap Hva Hcnt #Hpre HR Hcont".
@@ -3836,14 +3836,14 @@ Section ProofPrintk.
 
   Lemma string_bytes_length (s : string) :
     length (string_bytes s) = String.length s.
-  Proof. induction s as [|c s IH]; [reflexivity | cbn; rewrite IH; reflexivity]. Qed.
+  Proof using . induction s as [|c s IH]; [reflexivity | cbn; rewrite IH; reflexivity]. Qed.
 
   (* a character of a NUL-free string is not the terminator: what makes the
      loop test [bnez] at 0x234 go round again. *)
   Lemma ascii_byte_nonzero (c : Ascii.ascii) :
     Ascii.eqb c pk_nul = false ->
     (Z_to_bv 8 (Z.of_N (Ascii.N_of_ascii c)) : bv 8) <> (Z_to_bv 8 0 : bv 8).
-  Proof.
+  Proof using .
     destruct c as [[|] [|] [|] [|] [|] [|] [|] [|]]; intros Hc Heq;
       try (vm_compute in Hc; discriminate Hc);
       apply (f_equal bv_unsigned) in Heq; vm_compute in Heq; discriminate Heq.
@@ -3851,7 +3851,7 @@ Section ProofPrintk.
 
   Lemma string_bytes_lookup_nonzero (s : string) (i : nat) (b : bv 8) :
     nonul s = true -> string_bytes s !! i = Some b -> b <> (Z_to_bv 8 0 : bv 8).
-  Proof.
+  Proof using .
     revert i. induction s as [|c s IH]; intros i Hn Hb; [destruct i; discriminate | ].
     cbn in Hn. apply andb_prop in Hn as [Hc Hn].
     destruct i as [|i]; cbn in Hb.
@@ -3862,7 +3862,7 @@ Section ProofPrintk.
   Lemma pk_fbyte_nonzero (s : string) (i : nat) :
     nonul s = true -> (i < length (string_bytes s))%nat ->
     pk_fbyte s i <> (mword_of_int 0 : mword 8).
-  Proof.
+  Proof using .
     intros Hn Hi.
     destruct (lookup_lt_is_Some_2 (string_bytes s) i Hi) as [b Hb].
     assert (Hc : cstring_bytes s !! i = Some b)
@@ -3874,7 +3874,7 @@ Section ProofPrintk.
 
   Lemma pk_fbyte_nul (s : string) :
     pk_fbyte s (length (string_bytes s)) = (mword_of_int 0 : mword 8).
-  Proof.
+  Proof using .
     rewrite /pk_fbyte (list_lookup_total_correct _ _ (Z_to_bv 8 0)).
     - apply bv_eq; vm_compute; reflexivity.
     - rewrite /cstring_bytes lookup_app_r; [| lia]. rewrite Nat.sub_diag. reflexivity.
@@ -3884,7 +3884,7 @@ Section ProofPrintk.
   Lemma zext8_nonzero (b : mword 8) :
     b <> (mword_of_int 0 : mword 8) ->
     eq_vec (zero_extend' 64 b) (zero_reg : mword 64) = false.
-  Proof.
+  Proof using .
     intro H. destruct (eq_vec (zero_extend' 64 b) (zero_reg : mword 64)) eqn:E;
       [ exfalso; apply H; exact (zext8_zero b E) | reflexivity ].
   Qed.
@@ -4099,7 +4099,7 @@ Section ProofPrintk.
       Rest -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using wp_prputc.
     intros sp0 s0v HK Hk Hn31 Hnonul Hnn Hs0 Hbelow.
     iIntros "Hcg #Htext Hpc Hap Hva Hstr Hcnt #Hpre HR Hcont".
     iApply (wp_printk_vaarg mc K 0x202 sp0 s0v k b pcur Hs0 eq_refl
@@ -4221,7 +4221,7 @@ Section ProofPrintk.
 
   Lemma pk_null_data :
     kernel_data -∗ (mword_of_int pk_null_str : mword 64) ↦ₛ□ "(null)"%string.
-  Proof.
+  Proof using .
     iIntros "#Hd".
     iApply (kernel_data_string pk_null_str "(null)"%string _ eq_refl
               ltac:(unfold text_end, pk_null_str; lia)
@@ -4408,7 +4408,7 @@ Section ProofPrintk.
 
   Lemma pk_digits_data :
     kernel_data -∗ pk_digits (mword_of_int pk_digits_addr : mword 64).
-  Proof.
+  Proof using .
     iIntros "#Hd".
     assert (Hbytes : forall j b, cstring_bytes "0123456789abcdef"%string !! j = Some b ->
                      KernelData.kernel_data !! (pk_digits_addr + Z.of_nat j)%Z = Some b).
@@ -4433,7 +4433,7 @@ Section ProofPrintk.
      counter's back-edge test. *)
   Lemma moi_small_nz (j : nat) :
     (j < 16)%nat -> neq_vec (mword_of_int (Z.of_nat j) : mword 64) zero_reg = negb (Nat.eqb j 0).
-  Proof.
+  Proof using .
     intro Hj. do 16 (destruct j as [|j]; [vm_compute; reflexivity | ]). lia.
   Qed.
 
@@ -4679,7 +4679,7 @@ Section ProofPrintk.
       Rest -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using wp_prputc.
     intros sp0 spd s0v HK Hk Hn31 Hsp Hs0 Hbelow.
     assert (HK6 : (20 <= K)%nat) by lia.
     iIntros "Hcg #Htext #Hdata Hpc S19 Hap Hva Hcnt #Hpre HR Hcont".
@@ -4907,11 +4907,11 @@ Section ProofPrintk.
 
   Lemma cstring_bytes_cons (c : Ascii.ascii) (f : string) :
     cstring_bytes (String.String c f) = pk_byte c :: cstring_bytes f.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma pk_fbyte_ch (f : string) (j : nat) :
     (j <= String.length f)%nat -> pk_fbyte f j = pk_byte (pk_ch f j).
-  Proof.
+  Proof using .
     revert j. induction f as [|c f IH]; intros j Hj.
     - destruct j as [|j]; [ | cbn in Hj; lia ].
       rewrite /pk_fbyte /pk_byte /cstring_bytes /=. apply bv_eq; vm_compute; reflexivity.
@@ -4928,7 +4928,7 @@ Section ProofPrintk.
     -9223372036854775808 <= x < 9223372036854775808 ->
     -9223372036854775808 <= y < 9223372036854775808 ->
     (mword_of_int x : mword 64) = mword_of_int y -> x = y.
-  Proof.
+  Proof using .
     intros Hx Hy H. apply (f_equal bv_unsigned) in H.
     rewrite !moi64_mod in H.
     assert (Hd : (x - y) `mod` 18446744073709551616 = 0).
@@ -4941,7 +4941,7 @@ Section ProofPrintk.
     -9223372036854775808 <= x < 9223372036854775808 ->
     -9223372036854775808 <= y < 9223372036854775808 ->
     eq_vec (mword_of_int x : mword 64) (mword_of_int y) = Z.eqb x y.
-  Proof.
+  Proof using .
     intros Hx Hy.
     destruct (eq_vec (mword_of_int x : mword 64) (mword_of_int y)) eqn:E.
     - apply eq_vec_true_iff in E. symmetry. apply Z.eqb_eq.
@@ -4955,7 +4955,7 @@ Section ProofPrintk.
   (* the character's code, as a plain [Z] bound -- stated separately because
      [lia] cannot cross [N] to [Z] under the bitvector zify hook. *)
   Lemma pk_N_bound (c : Ascii.ascii) : 0 <= Z.of_N (Ascii.N_of_ascii c) < 256.
-  Proof.
+  Proof using .
     pose proof (Ascii.N_ascii_bounded c) as Hb.
     apply N2Z.inj_lt in Hb. change (Z.of_N 256) with 256 in Hb.
     split; [apply N2Z.is_nonneg | exact Hb].
@@ -4963,7 +4963,7 @@ Section ProofPrintk.
 
   Lemma zext_pk_byte (c : Ascii.ascii) :
     (zero_extend' 64 (pk_byte c) : mword 64) = mword_of_int (Z.of_N (Ascii.N_of_ascii c)).
-  Proof.
+  Proof using .
     destruct (pk_N_bound c) as [Hnn Hb].
     apply bv_eq. rewrite /pk_byte.
     unfold zero_extend', Operators_mwords.zero_extend, Operators_mwords.extz_vec,
@@ -4980,7 +4980,7 @@ Section ProofPrintk.
   Lemma pk_eq_ascii (c d : Ascii.ascii) (x : mword 64) :
     x = mword_of_int (Z.of_N (Ascii.N_of_ascii d)) ->
     eq_vec (zero_extend' 64 (pk_byte c) : mword 64) x = Ascii.eqb c d.
-  Proof.
+  Proof using .
     intros ->. rewrite zext_pk_byte.
     pose proof (pk_N_bound c); pose proof (pk_N_bound d).
     rewrite moi64_eqb_small; [| lia | lia].
@@ -4994,7 +4994,7 @@ Section ProofPrintk.
   Lemma pk_sub_ascii (c d : Ascii.ascii) (y : mword 64) :
     y = mword_of_int (- Z.of_N (Ascii.N_of_ascii d)) ->
     eq_vec (add_vec (zero_extend' 64 (pk_byte c)) y) (zero_reg : mword 64) = Ascii.eqb c d.
-  Proof.
+  Proof using .
     intros ->. rewrite zext_pk_byte moi_add.
     replace (zero_reg : mword 64) with (mword_of_int 0 : mword 64)
       by (apply bv_eq; vm_compute; reflexivity).
@@ -5012,7 +5012,7 @@ Section ProofPrintk.
   (* [seqz]: the model's [x <u 1] IS "x is zero" *)
   Lemma ltu1_eqz (x y : mword 64) :
     y = mword_of_int 1 -> zopz0zI_u x y = eq_vec x (zero_reg : mword 64).
-  Proof.
+  Proof using .
     intros ->. unfold zopz0zI_u.
     assert (Hu1 : uint (mword_of_int 1 : mword 64) = 1) by (vm_compute; reflexivity).
     rewrite Hu1.
@@ -5034,10 +5034,10 @@ Section ProofPrintk.
   Definition pk_bit (b : bool) : mword 64 := zero_extend' 64 (bool_to_bit b).
 
   Lemma pk_bit_nz (b : bool) : neq_vec (pk_bit b) (zero_reg : mword 64) = b.
-  Proof. destruct b; vm_compute; reflexivity. Qed.
+  Proof using . destruct b; vm_compute; reflexivity. Qed.
 
   Lemma pk_bit_and (b1 b0 : bool) : and_vec (pk_bit b1) (pk_bit b0) = pk_bit (b1 && b0).
-  Proof. destruct b1, b0; apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . destruct b1, b0; apply bv_eq; vm_compute; reflexivity. Qed.
 
   (* ================================================================== *)
   (*  THE DISPATCH (0x8a .. 0x328): which arm a directive selects.       *)
@@ -5117,7 +5117,7 @@ Section ProofPrintk.
       fmt ↦ₛ{ dqf } f -∗ Rest -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hlen Hi31 Hs4 Hs2.
     iIntros "Hcg #Htext Hpc Hfmt HR K0 K1 Kgo".
     (* +0x8a addiw a5,s4,1 : the index of c0 *)
@@ -5332,7 +5332,7 @@ Section ProofPrintk.
 
   Lemma pk_chain_kept_trans (m1 m2 m3 : regfile) :
     pk_chain_kept m1 m2 -> pk_chain_kept m2 m3 -> pk_chain_kept m1 m3.
-  Proof. intros H1 H2 c A B C D E. rewrite (H1 c A B C D E). apply H2; assumption. Qed.
+  Proof using . intros H1 H2 c A B C D E. rewrite (H1 c A B C D E). apply H2; assumption. Qed.
 
   (* ---- 0x2fa .. 0x31a: the six single-character tests and the fall-out -- *)
   Lemma wp_printk_chain_2ce `{CID0 : CpuId}
@@ -5360,7 +5360,7 @@ Section ProofPrintk.
       Rest -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros E1 E2 E3 E4 E5 E6 E7 E8 E9 Hs5 Hs11.
     iIntros "Hcg #Htext Hpc HR Hcont".
     assert (Hid : pk_chain_kept mq mq) by (intros c ????; reflexivity).
@@ -5581,7 +5581,7 @@ Section ProofPrintk.
       Rest -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros E1 E2 E3 E4 E5 E6 E7 E8 Hs5 Hs11 Ha3 Ha5.
     iIntros "Hcg #Htext Hpc HR Hcont".
     (* +0x2f0 addi a3,a3,-120 *)
@@ -5698,7 +5698,7 @@ Section ProofPrintk.
       Rest -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros E1 E2 E3 E4 E5 E6 Hs5 Hs10 Hs11 Ha2 Ha3 Ha4 Ha5.
     iIntros "Hcg #Htext Hpc HR Hcont".
     assert (Hid : pk_chain_kept mq mq) by (intros c ????; reflexivity).
@@ -5843,7 +5843,7 @@ Section ProofPrintk.
       Rest -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros E1 E2 E3 E4 E5 Hs5 Hs10 Hs11 Ha2 Ha3 Ha4 Ha5.
     iIntros "Hcg #Htext Hpc HR Hcont".
     (* +0x2d8 addi a1,a3,-117 *)
@@ -5966,7 +5966,7 @@ Section ProofPrintk.
       Rest -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros E1 E2 E3 Hs5 Hs8 Hs10 Hs11 Ha2 Ha3 Ha4 Ha5.
     iIntros "Hcg #Htext Hpc HR Hcont".
     assert (Hid : pk_chain_kept mq mq) by (intros c ????; reflexivity).
@@ -6113,7 +6113,7 @@ Section ProofPrintk.
       Rest -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros E1 E2 Hs5 Hs8 Hs10 Hs11 Ha2 Ha3 Ha4.
     iIntros "Hcg #Htext Hpc HR Hcont".
     (* +0x2b6 addi a5,a2,-108 ; +0x2ba seqz a5,a5 : c1 == 'l' *)
@@ -6265,7 +6265,7 @@ Section ProofPrintk.
   (* the character at or past the end is the NUL [pk_dir] is applied to *)
   Lemma pk_ch_nul (f : string) (j : nat) :
     (String.length f <= j)%nat -> pk_ch f j = pk_nul.
-  Proof.
+  Proof using .
     revert j. induction f as [|c f IH]; intros j Hj; [destruct j; reflexivity | ].
     destruct j as [|j]; [cbn in Hj; lia | ]. cbn. apply IH. cbn in Hj. lia.
   Qed.
@@ -6274,7 +6274,7 @@ Section ProofPrintk.
   Lemma pk_fbyte_zero_end (f : string) (j : nat) :
     nonul f = true -> (j <= String.length f)%nat ->
     pk_fbyte f j = (mword_of_int 0 : mword 8) -> j = String.length f.
-  Proof.
+  Proof using .
     intros Hn Hj Hz.
     destruct (Nat.eq_dec j (String.length f)) as [He | He]; [exact He | ].
     exfalso. apply (pk_fbyte_nonzero f j Hn); [ rewrite string_bytes_length; lia | exact Hz ].
@@ -6300,7 +6300,7 @@ Section ProofPrintk.
       Rest -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn0 Hn1 Hn2 Hs5 Hs8 Hs10 Hs11.
     iIntros "Hcg #Htext Hpc HR Hcont".
     (* +0x2aa addi a4,s5,-108 ; +0x2ae seqz a4,a4 *)
@@ -6413,7 +6413,7 @@ Section ProofPrintk.
       Rest -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn1 Hn2 Hs5 Ha3 Hs7 Hs8 Hs10 Hs11.
     iIntros "Hcg #Htext Hpc HR Hcont".
     assert (Hid : pk_chain_kept mq mq) by (intros c ????; reflexivity).
@@ -6573,7 +6573,7 @@ Section ProofPrintk.
       fmt ↦ₛ{ dqf } f -∗ Rest -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hlen Hi31 Hc2 E1 E2 Hmqs5 Hmqa3 Hmqa4 Hmqa5 Hmqs2 Hmqs8 Hmqs10 Hmqs11.
     iIntros "Hcg #Htext Hpc Hfmt HR Hout".
 
@@ -6701,7 +6701,7 @@ Section ProofPrintk.
       fmt ↦ₛ{ dqf } f -∗ Rest -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hlen Hi31 Hc2 Hs5 Ha3 Ha5 Hs2 Hs7 Hs8 Hs10 Hs11.
     iIntros "Hcg #Htext Hpc Hfmt HR Hcont".
     assert (Hid : pk_chain_kept mq mq) by (intros c ????; reflexivity).
@@ -6871,14 +6871,14 @@ Section ProofPrintk.
   Lemma pk_fbyte_nz_lt (f : string) (j : nat) :
     (j < length (cstring_bytes f))%nat -> pk_fbyte f j <> (mword_of_int 0 : mword 8) ->
     (j < String.length f)%nat.
-  Proof.
+  Proof using .
     intros Hj Hnz. rewrite cstring_bytes_length in Hj.
     destruct (Nat.eq_dec j (String.length f)) as [He | He]; [ | lia ].
     exfalso. apply Hnz. rewrite He -(string_bytes_length f). apply pk_fbyte_nul.
   Qed.
 
   Lemma zext_pk_byte_nul : (zero_extend' 64 (pk_byte pk_nul) : mword 64) = zero_reg.
-  Proof. apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . apply bv_eq; vm_compute; reflexivity. Qed.
 
   (* the whole dispatch, 0x8a to whichever arm the directive selects.  The
      three shapes [pk_kinds] distinguishes are exactly the head's three exits,
@@ -6914,7 +6914,7 @@ Section ProofPrintk.
       fmt ↦ₛ{ dqf } f -∗ Rest -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hlen Hi31 Hnn Hs4 Hs2 Hconsts.
     destruct Hconsts as (Hs3 & Hs6 & Hs7 & Hs8 & Hs10 & Hs11).
     iIntros "Hcg #Htext Hpc Hfmt HR Hcont".
@@ -7031,7 +7031,7 @@ Section ProofPrintk.
 
   Lemma ascii_eqb_neq (c d e : Ascii.ascii) :
     Ascii.eqb c d = true -> Ascii.eqb d e = false -> Ascii.eqb c e = false.
-  Proof. intros H1 H2. apply Ascii.eqb_eq in H1. subst c. exact H2. Qed.
+  Proof using . intros H1 H2. apply Ascii.eqb_eq in H1. subst c. exact H2. Qed.
 
   Lemma wp_printk_arm_num `{CID0 : CpuId}
       (m mc : regfile) (K : nat) (k i : nat) (n : nat) (eb : bool)
@@ -7075,7 +7075,7 @@ Section ProofPrintk.
       Rest -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using wp_printint wp_prputc.
     intros sp0 spd s0v HK Hk Hi31 Hn31 Hnum Hsp Hs0 Hs6 Hs4 Hs1 Hbelow.
     assert (HK16 : (20 <= K)%nat) by lia.
     iIntros "Hcg #Htext #Hkdata Hpc S19 Hap Hva Hcnt #Hpre HR Hcont".
@@ -7541,7 +7541,7 @@ Section ProofPrintk.
   (* a character strictly inside the string, from its byte being nonzero *)
   Lemma pk_ch_lt (g : string) (j : nat) :
     pk_ch g j <> pk_nul -> (j < String.length g)%nat.
-  Proof.
+  Proof using .
     intro Hnz. destruct (decide (String.length g <= j)%nat) as [Hle | Hgt].
     - exfalso. apply Hnz. apply pk_ch_nul. exact Hle.
     - lia.
@@ -7549,7 +7549,7 @@ Section ProofPrintk.
 
   Lemma pk_ch_nonzero (g : string) (j : nat) :
     nonul g = true -> (j < String.length g)%nat -> pk_ch g j <> pk_nul.
-  Proof.
+  Proof using .
     intros Hn Hj He.
     apply (pk_fbyte_nonzero g j Hn).
     - rewrite string_bytes_length. exact Hj.
@@ -7646,7 +7646,7 @@ Section ProofPrintk.
       (pa_stk sp0 23) ↦₈[kt] w23 -∗
       (∃ w : mword 64, (pa_stk sp0 24) ↦₈[kt] w) -∗
       pk_slots_rest sp0.
-    Proof.
+    Proof using .
       iIntros "(V7 & V6 & V5 & V4 & V3 & V2 & V1) S8 S19 S22 Hap S24".
       rewrite /pk_slots_rest. cbn [big_opL].
       iSplitL "V1". { iExists (m !!! Regidx (mword_of_int 17 : mword 5)). iExact "V1". }
@@ -7675,7 +7675,7 @@ Section ProofPrintk.
       mg !!! Regidx csp_rs1 = spd /\ mg !!! Regidx s0_idx = s0v /\ mg !!! Regidx s2_idx = fmtv
       /\ mg !!! Regidx (mword_of_int 25 : mword 5) = m !!! Regidx (mword_of_int 25 : mword 5)
       /\ pk_consts mg.
-    Proof.
+    Proof using .
       destruct Hcn as (A1 & A2 & A3 & A4 & A5 & A6).
       refine (conj _ (conj _ (conj _ (conj _ _)))).
       - rewrite (Hgq csp_rs1 ltac:(vm_compute; reflexivity) ltac:(mw_neq) ltac:(mw_neq) ltac:(mw_neq)). exact Hsp.
@@ -7696,7 +7696,7 @@ Section ProofPrintk.
       forall c : mword 5, is_cs_idx c = true ->
         c <> mword_of_int 9 -> c <> mword_of_int 20 -> c <> mword_of_int 21 ->
         mf !!! Regidx c = mq !!! Regidx c.
-    Proof.
+    Proof using .
       intros c Hc N9 _ N21.
       assert (N11 : c <> (mword_of_int 11 : mword 5)) by (intro He; subst c; vm_compute in Hc; discriminate).
       assert (N12 : c <> (mword_of_int 12 : mword 5)) by (intro He; subst c; vm_compute in Hc; discriminate).
@@ -7711,7 +7711,7 @@ Section ProofPrintk.
       forall c : mword 5, is_cs_idx c = true ->
         c <> mword_of_int 9 -> c <> mword_of_int 20 -> c <> mword_of_int 21 ->
         mf !!! Regidx c = mq !!! Regidx c.
-    Proof.
+    Proof using .
       intros c Hc N9 N20 _.
       assert (N10 : c <> (mword_of_int 10 : mword 5)) by (intro He; subst c; vm_compute in Hc; discriminate).
       exact (Hkept c N9 N20 N10).

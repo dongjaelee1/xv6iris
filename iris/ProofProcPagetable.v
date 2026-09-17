@@ -209,13 +209,13 @@ Section ProofProcPagetable.
        c <> (mword_of_int 9 : mword 5) ->
        c <> (mword_of_int 18 : mword 5) -> Regidx c <> Regidx k) ->
     ppt_thr mm m -> ppt_thr mm (<[Regidx k := v]> m).
-  Proof.
+  Proof using .
     intros Hk H c Hc H2 H8 H9 H18.
     rewrite upd_ne; [| exact (Hk c Hc H2 H8 H9 H18)]. apply H; assumption.
   Qed.
 
   Lemma ppt_thr_refl (mm : regfile) : ppt_thr mm mm.
-  Proof. intros c _ _ _ _ _. reflexivity. Qed.
+  Proof using . intros c _ _ _ _ _. reflexivity. Qed.
 
   (* unfold the head [set] variable, or peel one write; repeat *)
   Ltac thr_peel :=
@@ -230,7 +230,7 @@ Section ProofProcPagetable.
       (mm : regfile) (tf : mword 64) (dqtf : dfrac) (lvl K : nat) (eb : bool)
       (p : mword 64) (on : option nat) (b : bool) (lks : gset string)
     : wp_proc_pagetable_core_body γa γk mm tf dqtf lvl K eb p on b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_proc_pagetable_core_body].
     intros pp tfp ret_tgt Hlvl HK Htfal Htfb Hlkbelow.
     pose proof (ppt_cap_bounds K HK) as (Hc4 & Hc18 & Hc32 & Hc36 & Hc22).
@@ -1318,7 +1318,7 @@ Section SealProcPagetable.
       (mm : regfile) (tf : mword 64) (dqtf : dfrac) (lvl K : nat) (eb : bool)
       (p : mword 64) (on : option nat) (b : bool) (lks : gset string)
     : wp_proc_pagetable_sconf_body γa γk mm tf dqtf lvl K eb p on b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_proc_pagetable_sconf_body].
     intros pp tfp ret_tgt Hlvl HK Hex Htfal Htfb Hlkbelow.
     destruct Hex as (nb & Hon & Hnb). subst on.

@@ -164,7 +164,7 @@ Section decode.
                        encdec_creg_backwards
                          (subrange_vec_dec hp_half 4 2))⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDmisa HmisaC.
     apply (swp_hfrun 100 Drw Dro Df rs rs _ _ Hdisj).
     exact (hfrun_decode_hp (Drw ∪ Dro) Drw rs HDmisa HmisaC).
@@ -183,7 +183,7 @@ Section decode.
                            (BinaryString.Raw.to_N "00" 0))),
                       creg2reg_idx r2, creg2reg_idx r1, 4))⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj.
     apply (swp_hfrun 4 Drw Dro Df rs rs _ _ Hdisj).
     exact (hfrun_execute_C_SW (Drw ∪ Dro) Drw rs uimm r1 r2).

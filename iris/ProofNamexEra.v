@@ -191,7 +191,7 @@ Section ProofNamexTrMain.
     (pa_add a i ↦ₘ[KT1]{dqm} f i)
     ∗ ((pa_add a i ↦ₘ[KT1]{dqm} f i) -∗
        [∗ list] ii ∈ seq 0 N, pa_add a ii ↦ₘ[KT1]{dqm} f ii).
-  Proof.
+  Proof using .
     intro Hi. iIntros "Hbuf".
     iDestruct (big_sepL_lookup_acc _ (seq 0 N) i i with "Hbuf") as "[Hb Hback]".
     { rewrite lookup_seq_lt; [reflexivity | exact Hi]. }
@@ -205,7 +205,7 @@ Section ProofNamexTrMain.
       (k : nat) : (k < NINODE)%nat ->
     (ic_escrows fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst -∗ ic_escrow fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k
      : iProp Σ).
-  Proof.
+  Proof using .
     iIntros (Hk) "H".
     iApply (ic_escrows_lookup fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k Hk with "H").
   Qed.
@@ -216,14 +216,14 @@ Section ProofNamexTrMain.
      "_pattern_value_ is used in conclusion". *)
   Lemma nx_bs3_split :
     (bslots 3 : iProp Σ) -∗ bslot ∗ bslots 2.
-  Proof.
+  Proof using .
     rewrite /bslot. change 3%nat with (1 + 2)%nat. rewrite bslots_op.
     iIntros "$".
   Qed.
 
   Lemma nx_bs3_join :
     (bslot : iProp Σ) -∗ bslots 2 -∗ bslots 3.
-  Proof.
+  Proof using .
     iIntros "A B". rewrite /bslot. change 3%nat with (1 + 2)%nat.
     rewrite bslots_op. iFrame.
   Qed.
@@ -236,7 +236,7 @@ Section ProofNamexTrMain.
      destination side (the name buffer's first [len] bytes). *)
   Lemma nx_seq_split (l N : nat) : (l <= N)%nat ->
     seq 0 N = seq 0 l ++ seq l (N - l).
-  Proof.
+  Proof using .
     intro H. replace N with (l + (N - l))%nat at 1 by lia.
     rewrite seq_app. reflexivity.
   Qed.
@@ -247,7 +247,7 @@ Section ProofNamexTrMain.
   Lemma nx_win_shift (q : mword 64) (dqm : dfrac) (g : nat -> bv 8) (a l : nat) :
     ([∗ list] i ∈ seq a l, pa_add q i ↦ₘ[KT1]{dqm} g i)
     ⊣⊢ ([∗ list] jj ∈ seq 0 l, pa_add (pa_add q a) jj ↦ₘ[KT1]{dqm} g (a + jj)%nat).
-  Proof.
+  Proof using .
     replace (seq a l) with ((Nat.add a) <$> seq 0 l)
       by (rewrite fmap_add_seq Nat.add_0_r; reflexivity).
     rewrite big_sepL_fmap.
@@ -256,7 +256,7 @@ Section ProofNamexTrMain.
 
   Lemma nx_seq_split2 (s l t : nat) : (l <= t)%nat ->
     seq s t = seq s l ++ seq (s + l) (t - l).
-  Proof.
+  Proof using .
     intro H. replace t with (l + (t - l))%nat at 1 by lia.
     rewrite seq_app. reflexivity.
   Qed.
@@ -267,7 +267,7 @@ Section ProofNamexTrMain.
     ⊣⊢ (([∗ list] i ∈ seq 0 a, pa_add q i ↦ₘ[KT1]{dqm} g i)
         ∗ ([∗ list] jj ∈ seq 0 l, pa_add (pa_add q a) jj ↦ₘ[KT1]{dqm} g (a + jj)%nat)
         ∗ ([∗ list] i ∈ seq (a + l) (N - a - l), pa_add q i ↦ₘ[KT1]{dqm} g i)).
-  Proof.
+  Proof using .
     intro H.
     rewrite (nx_seq_split a N ltac:(lia)) big_sepL_app.
     rewrite (nx_seq_split2 a l (N - a)%nat ltac:(lia)) big_sepL_app.
@@ -282,7 +282,7 @@ Section ProofNamexTrMain.
     ⊣⊢ (([∗ list] i ∈ seq 0 l, pa_add q i ↦ₘ[KT1] g i)
         ∗ (pa_add q l ↦ₘ[KT1] g l)
         ∗ ([∗ list] i ∈ seq (S l) (13 - l), pa_add q i ↦ₘ[KT1] g i)).
-  Proof.
+  Proof using .
     intro H.
     rewrite (nx_seq_split l 14 ltac:(lia)) big_sepL_app.
     replace (14 - l)%nat with (S (13 - l)) by lia.
@@ -294,14 +294,14 @@ Section ProofNamexTrMain.
     ([∗ list] i ∈ seq 0 14, pa_add q i ↦ₘ[KT1] g i) -∗
     ([∗ list] i ∈ seq 0 l, pa_add q i ↦ₘ[KT1] g i) ∗ (pa_add q l ↦ₘ[KT1] g l)
     ∗ ([∗ list] i ∈ seq (S l) (13 - l), pa_add q i ↦ₘ[KT1] g i).
-  Proof. intro H. rewrite (nx_name_split q g l H). iIntros "$". Qed.
+  Proof using . intro H. rewrite (nx_name_split q g l H). iIntros "$". Qed.
 
   Lemma nx_name_join (q : mword 64) (g : nat -> bv 8) (l : nat) :
     (l < 14)%nat ->
     ([∗ list] i ∈ seq 0 l, pa_add q i ↦ₘ[KT1] g i) -∗ (pa_add q l ↦ₘ[KT1] g l) -∗
     ([∗ list] i ∈ seq (S l) (13 - l), pa_add q i ↦ₘ[KT1] g i) -∗
     ([∗ list] i ∈ seq 0 14, pa_add q i ↦ₘ[KT1] g i).
-  Proof.
+  Proof using .
     intro H. iIntros "A B C". rewrite (nx_name_split q g l H). iFrame.
   Qed.
 
@@ -311,7 +311,7 @@ Section ProofNamexTrMain.
     (forall i : nat, (s <= i)%nat -> (i < s + t)%nat -> g i = h i) ->
     ([∗ list] i ∈ seq s t, pa_add q i ↦ₘ[KT1] g i) -∗
     ([∗ list] i ∈ seq s t, pa_add q i ↦ₘ[KT1] h i).
-  Proof.
+  Proof using .
     intro H. iIntros "Hb". iApply (big_sepL_mono with "Hb").
     intros kk x Hx. apply lookup_seq in Hx. destruct Hx as [Hx Hk].
     rewrite Hx. rewrite (H (s + kk)%nat ltac:(lia) ltac:(lia)). done.
@@ -329,7 +329,7 @@ Section ProofNamexTrMain.
     ([∗ list] jj ∈ seq 0 l, pa_add (pa_add q a) jj ↦ₘ[KT1]{dqm} g (a + jj)%nat)
     ∗ (([∗ list] jj ∈ seq 0 l, pa_add (pa_add q a) jj ↦ₘ[KT1]{dqm} g (a + jj)%nat) -∗
        [∗ list] i ∈ seq 0 N, pa_add q i ↦ₘ[KT1]{dqm} g i).
-  Proof.
+  Proof using .
     intro H. iIntros "Hb".
     iEval (rewrite (nx_win_iff q dqm g a l N H)) in "Hb".
     iDestruct "Hb" as "(Hlo & Hmid & Hhi)". iFrame "Hmid".
@@ -773,7 +773,7 @@ Section ProofNamexTrMain.
  gf
  plen pfun nfun n Sb P Pmiss
                        pidv dq dqb dqs dqpv m K eb b lks Upr.
-  Proof.
+  Proof using .
     cbv beta delta [wp_namex_era_body].
     intros pcE pjv pv nb ret_tgt pl L
            HK Hroot Hnib0 Hlg Hsize Hbmap0 Hbmapcov

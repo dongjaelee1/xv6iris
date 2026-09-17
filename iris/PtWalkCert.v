@@ -789,7 +789,7 @@ Section PteRead.
   Lemma pr_exec_pma (roc : bool) :
     exec (pmaCheck (Physaddr addr) 8 (Load PageTableEntry) PBMT_PMA roc) s
       = Some (Ok pma_ok_aligned, s).
-  Proof.
+  Proof using Halign Hmatch Hread.
     destruct region as [rbase rsize rattr rdtree].
     pma_ok_peel Hmatch Hread (exec_is_mag_applicable_load_pte 8 s) Halign.
   Qed.
@@ -797,7 +797,7 @@ Section PteRead.
   Lemma pr_exec_cp (roc : bool) :
     exec (check_pma_with_pmp_priority (Load PageTableEntry) PBMT_PMA Supervisor
             (Physaddr addr) 8 roc) s = Some (Ok pma_ok_aligned, s).
-  Proof.
+  Proof using Halign Hmatch Hread.
     unfold check_pma_with_pmp_priority.
     rewrite (exec_bind_Some _ _ _ _ _ (pr_exec_pma roc)). cbn match.
     apply exec_returnM.
@@ -806,7 +806,7 @@ Section PteRead.
   Lemma pr_good_cp (roc : bool) :
     goodmb Dr Dw (check_pma_with_pmp_priority (Load PageTableEntry) PBMT_PMA
                     Supervisor (Physaddr addr) 8 roc) s mm = true.
-  Proof.
+  Proof using HDp Halign Hmatch Hread.
     exact (goodmb_check_pma_with_pmp_priority Dr Dw _ _ Supervisor _ _ roc _ s mm
              (goodmb_pmaCheck_pte_read Dr Dw addr region roc s mm HDp Hmatch Halign Hread)
              (pr_exec_pma roc)).
@@ -814,7 +814,7 @@ Section PteRead.
 
   Lemma pr_exec_mmio :
     exec (within_mmio_readable (Physaddr addr) 8) s = Some (false, s).
-  Proof.
+  Proof using Hc Hhtif Hsig.
     unfold within_mmio_readable. cbn [get_config_rvfi].
     rewrite (exec_or_boolM_Some _ _ _ _ _ Hc). cbn match.
     rewrite (exec_or_boolM_Some _ _ _ _ _ Hsig). cbn match.
@@ -839,7 +839,7 @@ Section PteRead.
     Lemma pr_exec_chk :
       exec (checked_mem_read (Load PageTableEntry) PBMT_PMA Supervisor
               (Physaddr addr) 8 aq rl res false) s = Some (Ok (w, default_meta), s).
-    Proof.
+    Proof using HA HR Halign Hc Hhtif Hmatch Hord Hram Hrange Hread Hrkf Hsig.
       unfold checked_mem_read. rewrite exec_catch_early_return.
       rewrite (execR_liftR_seq _ _ _ _ _ (pr_exec_cp _)). cbn beta. cbn match.
       rewrite execR_bind. rewrite execR_returnR. cbn match beta.
@@ -876,7 +876,7 @@ Section PteRead.
     Lemma pr_good_chk :
       goodmb Dr Dw (checked_mem_read (Load PageTableEntry) PBMT_PMA Supervisor
                (Physaddr addr) 8 aq rl res false) s mm = true.
-    Proof.
+    Proof using HA HDa HDc HDh HDp HR Halign Hbytes Hc Hdev Hhtif Hmatch Hord Hown Hram Hrange Hread Hrkf Hrkg Hrkok Hsig.
       unfold checked_mem_read. apply goodmb_cer.
       erewrite gm_liftR_seq; [ | apply pr_good_cp | apply pr_exec_cp ].
       cbn beta. cbn match.
@@ -972,7 +972,7 @@ Section PteRead.
 
   Lemma goodmb_read_pte_S :
     goodmb Dr Dw (read_pte (Physaddr addr) 8) s mm = true.
-  Proof.
+  Proof using HA HDa HDc HDh HDp HR Halign Hbytes Hc Hdev Hhtif Hmatch Hord Hown Hrange Hread Hsig.
     (* the walk's PTE read is a [Read_ttw]: [rk_select]'s tagged arm *)
     pose proof (execR_rk_select_ttw (R := result (mword (8 * 8) * unit) (physaddr * ExceptionType))
                   false false s) as Hrkf.
@@ -1000,7 +1000,7 @@ Section PteRead.
 
   Lemma goodmb_read_pte_exclusive_S :
     goodmb Dr Dw (read_pte_exclusive (Physaddr addr) 8) s mm = true.
-  Proof.
+  Proof using HA HDa HDc HDh HDp HR Halign Hbytes Hc Hdev Hhtif Hmatch Hord Hown Hrange Hread Hsig.
     (* the RESERVED re-read keeps the flag-derived kind ([rk_select]'s
        fall-through arm): [Read_RISCV_reserved] *)
     assert (Hrkf0 : exec (read_kind_of_flags false false true) s
@@ -1124,7 +1124,7 @@ Section WalkCert.
     register_lookup menvcfg s.(sregs) = menvcfg0 ->
     eq_vec (_get_MEnvcfg_PBMTE menvcfg0) ('b"0") = true ->
     goodmb Dr Dw (check_leaf_pte 39 vpn acc p mxr do_sum pte0 pa 0 tt) s mm = true.
-  Proof.
+  Proof using H0N H0i H0ig H0nl HDme HDmi Hchk0 Hchk0g.
     intros Hmisa Hmenv HPBMTE.
     apply (goodmb_mono D_leafchk Dw Dr Dw _ (D_leafchk_sub Dr HDmi HDme)
              (fun r Hr => Hr) s mm).
@@ -1143,7 +1143,7 @@ Section WalkCert.
     eq_vec (_get_MEnvcfg_PBMTE menvcfg0) ('b"0") = true ->
     goodmb Dr Dw (_rec_pt_walk 39 vpn acc p mxr do_sum (u_next_base pte1) 0 g tt 0 wfacc)
       s mm = true.
-  Proof.
+  Proof using H0N H0i H0ig H0nl HDme HDmi Hchk0 Hchk0g.
     intros Hmisa Hrd0 Hrd0g Hmenv HPBMTE.
     destruct wfacc as [a0].
     cbn [_rec_pt_walk].
@@ -1199,7 +1199,7 @@ Section WalkCert.
     eq_vec (_get_MEnvcfg_PBMTE menvcfg0) ('b"0") = true ->
     goodmb Dr Dw (_rec_pt_walk 39 vpn acc p mxr do_sum (u_next_base pte2) 1 g tt 1 wfacc)
       s mm = true.
-  Proof.
+  Proof using H0N H0i H0ig H0nl H1i H1ig H1nl HDme HDmi Hchk0 Hchk0g.
     intros Hmisa Hrd1 Hrd1g Hrd0 Hrd0g Hmenv HPBMTE.
     destruct wfacc as [a1].
     cbn [_rec_pt_walk].
@@ -1262,7 +1262,7 @@ Section WalkCert.
     register_lookup menvcfg s.(sregs) = menvcfg0 ->
     eq_vec (_get_MEnvcfg_PBMTE menvcfg0) ('b"0") = true ->
     goodmb Dr Dw (pt_walk 39 vpn acc p mxr do_sum root 2 false tt) s mm = true.
-  Proof.
+  Proof using H0N H0i H0ig H0nl H1i H1ig H1nl H2i H2ig H2nl HDme HDmi Hchk0 Hchk0g.
     intros Hmisa Hrd2 Hrd2g Hrd1 Hrd1g Hrd0 Hrd0g Hmenv HPBMTE.
     unfold pt_walk. destruct (Defs.Zwf_guarded _) as [a2].
     cbn [_rec_pt_walk].
@@ -1321,7 +1321,7 @@ Section WalkCert.
          (autocast (T := mword) ((autocast (T := mword) (PPN_of_PTE pte0)) : mword 44))
          (autocast (T := mword) pte0) (Physaddr addr0) 0 (u_global pte2 pte1 pte0))
       s mm = true.
-  Proof.
+  Proof using .
     intros HDt HWt. unfold add_to_TLB. cbn zeta.
     gmm_rr tlb HDt.
     unfold Defs.bind0. gmm_wr tlb HWt.
@@ -1344,7 +1344,7 @@ Section WalkCert.
     register_lookup menvcfg s.(sregs) = menvcfg0 ->
     eq_vec (_get_MEnvcfg_PBMTE menvcfg0) ('b"0") = true ->
     goodmb Dr Dw (translate_TLB_miss 39 asid root vpn acc p mxr do_sum tt) s mm = true.
-  Proof.
+  Proof using H0N H0i H0ig H0nl H1i H1ig H1nl H2i H2ig H2nl HDme HDmi Hchk0 Hchk0g.
     intros HDt HWt Hmisa Hnoupd Hrd2 Hrd2g Hrd1 Hrd1g Hrd0 Hrd0g Hmenv HPBMTE.
     unfold translate_TLB_miss. cbn zeta.
     gmm_peel (goodmb_pt_walk_user menvcfg0 s mm Hmisa Hrd2 Hrd2g Hrd1 Hrd1g
@@ -1395,7 +1395,7 @@ Section WalkFaultCert.
     (forall s0, exec (pte_is_invalid (Mk_PTE_Flags (subrange_vec_dec pte 7 0))
                         (ext_bits_of_PTE pte)) s0 = Some (true, s0)) ->
     goodmb Dr Dw (check_leaf_pte 39 vpn acc p mxr do_sum pte pa lvl tt) s mm = true.
-  Proof.
+  Proof using .
     intros Hinvg Hinv. unfold check_leaf_pte.
     erewrite gm_cer_liftR_seq;
       [ | apply (goodmb_of_goodb Dr Dw _ s mm); apply Hinvg | apply Hinv ].
@@ -1419,7 +1419,7 @@ Section WalkFaultCert.
                         (ext_bits_of_PTE pte) tt) s0
        = Some (PTE_Check_Failure (tt, f), s0)) ->
     goodmb Dr Dw (check_leaf_pte 39 vpn acc p mxr do_sum pte pa 0 tt) s mm = true.
-  Proof.
+  Proof using .
     intros Hinvg Hinv Hnl Hchkg Hchk. unfold check_leaf_pte.
     erewrite gm_cer_liftR_seq;
       [ | apply (goodmb_of_goodb Dr Dw _ s mm); apply Hinvg | apply Hinv ].
@@ -1458,7 +1458,7 @@ Section WalkFaultCert.
     (forall s0, exec (pte_is_invalid (Mk_PTE_Flags (subrange_vec_dec pte 7 0))
                        (ext_bits_of_PTE pte)) s0 = Some (true, s0)) ->
     goodmb Dr Dw (_rec_pt_walk 39 vpn acc p mxr do_sum base 0 g tt 0 wfacc) s mm = true.
-  Proof.
+  Proof using .
     intros Hrd Hrdg Hinvg Hinv.
     destruct wfacc as [a0].
     cbn [_rec_pt_walk]. change (0 >=? 0) with true.
@@ -1522,7 +1522,7 @@ Section WalkFaultCert.
                         (ext_bits_of_PTE pte) tt) s0
        = Some (PTE_Check_Failure (tt, f), s0)) ->
     goodmb Dr Dw (_rec_pt_walk 39 vpn acc p mxr do_sum base 0 g tt 0 wfacc) s mm = true.
-  Proof.
+  Proof using .
     intros Hrd Hrdg Hinvg Hinv Hnl Hchkg Hchk.
     destruct wfacc as [a0].
     cbn [_rec_pt_walk]. change (0 >=? 0) with true.
@@ -1580,7 +1580,7 @@ Section WalkFaultCert.
     (forall s0, exec (pte_is_invalid (Mk_PTE_Flags (subrange_vec_dec pte 7 0))
                        (ext_bits_of_PTE pte)) s0 = Some (true, s0)) ->
     goodmb Dr Dw (_rec_pt_walk 39 vpn acc p mxr do_sum base 1 g tt 1 wfacc) s mm = true.
-  Proof.
+  Proof using .
     intros Hrd Hrdg Hinvg Hinv.
     destruct wfacc as [a1].
     cbn [_rec_pt_walk]. change (1 >=? 0) with true.
@@ -1638,7 +1638,7 @@ Section WalkFaultCert.
        goodmb Dr Dw (_rec_pt_walk 39 vpn acc p mxr do_sum (u_next_base pte) 0 g' tt 0 a)
          s mm = true) ->
     goodmb Dr Dw (_rec_pt_walk 39 vpn acc p mxr do_sum base 1 g tt 1 wfacc) s mm = true.
-  Proof.
+  Proof using .
     intros Hrd Hrdg Hinvg Hinv Hnl Hsubg.
     destruct wfacc as [a1].
     cbn [_rec_pt_walk]. change (1 >=? 0) with true.
@@ -1692,7 +1692,7 @@ Section WalkFaultCert.
     (forall s0, exec (pte_is_invalid (Mk_PTE_Flags (subrange_vec_dec pte 7 0))
                        (ext_bits_of_PTE pte)) s0 = Some (true, s0)) ->
     goodmb Dr Dw (pt_walk 39 vpn acc p mxr do_sum root 2 false tt) s mm = true.
-  Proof.
+  Proof using .
     intros Hrd Hrdg Hinvg Hinv.
     unfold pt_walk. destruct (Defs.Zwf_guarded _) as [a2].
     cbn [_rec_pt_walk]. change (2 >=? 0) with true.
@@ -1750,7 +1750,7 @@ Section WalkFaultCert.
        goodmb Dr Dw (_rec_pt_walk 39 vpn acc p mxr do_sum (u_next_base pte) 1 g' tt 1 a)
          s mm = true) ->
     goodmb Dr Dw (pt_walk 39 vpn acc p mxr do_sum root 2 false tt) s mm = true.
-  Proof.
+  Proof using .
     intros Hrd Hrdg Hinvg Hinv Hnl Hsubg.
     unfold pt_walk. destruct (Defs.Zwf_guarded _) as [a2].
     cbn [_rec_pt_walk]. change (2 >=? 0) with true.
@@ -1798,7 +1798,7 @@ Section WalkFaultCert.
     exec (pt_walk 39 vpn acc p mxr do_sum root 2 false tt) s = Some (Err (f, tt), s) ->
     goodmb Dr Dw (pt_walk 39 vpn acc p mxr do_sum root 2 false tt) s mm = true ->
     goodmb Dr Dw (translate_TLB_miss 39 asid root vpn acc p mxr do_sum tt) s mm = true.
-  Proof.
+  Proof using .
     intros Hwalk Hwalkg. unfold translate_TLB_miss. cbn zeta.
     gmm_peel Hwalkg Hwalk. cbn match. apply goodmb_returnm.
   Qed.
@@ -1806,7 +1806,7 @@ Section WalkFaultCert.
   (* the TLB lookup itself: one read of [tlb], whatever it answers *)
   Lemma goodmb_lookup_TLB (asid : mword 16) (s : mstate) (mm : pamap) :
     Dr tlb = true -> goodmb Dr Dw (lookup_TLB 39 asid vpn) s mm = true.
-  Proof.
+  Proof using .
     intros HD. unfold lookup_TLB. gmm_rr tlb HD. apply goodmb_returnm.
   Qed.
 
@@ -1817,7 +1817,7 @@ Section WalkFaultCert.
     exec (lookup_TLB 39 asid vpn) s = Some (None, s) ->
     goodmb Dr Dw (translate_TLB_miss 39 asid root vpn acc p mxr do_sum tt) s mm = true ->
     goodmb Dr Dw (translate 39 asid root vpn acc p mxr do_sum tt) s mm = true.
-  Proof.
+  Proof using .
     intros HD Hlk Hmiss. unfold translate.
     gmm_peel (goodmb_lookup_TLB asid s mm HD) Hlk. cbn match. exact Hmiss.
   Qed.
@@ -1891,7 +1891,7 @@ Section PteWrite.
   Let sw : mstate := MState s.(sregs) (write_bytes s.(mem) a 8 w') s.(mdev).
 
   Lemma pw_fit : (uint a + 8 <= ram_base + ram_size)%Z.
-  Proof.
+  Proof using Hram Hram7.
     assert (Hnw : (uint a + Z.of_nat 7 < 18446744073709551616)%Z).
     { destruct Hram as [_ Hh]. unfold ram_base, ram_size in Hh.
       change (Z.of_nat 7) with 7. lia. }
@@ -1904,14 +1904,14 @@ Section PteWrite.
   Lemma pw_range : pmpRangeMatch (Z.mul (uint (zeros' 64 : mword 64)) 4)
     (Z.mul (uint (vec_access_dec (register_lookup pmpaddr_n s.(sregs)) 0)) 4)
     (uint a) (uint (to_bits 64 8)) = PMP_Match.
-  Proof.
+  Proof using Hcov Hram Hram7.
     apply (ram_pmp_match_w a _ 8);
       [ lia | vm_compute; reflexivity | | exact pw_fit | exact Hcov ].
     destruct Hram as [Hlo _]. exact Hlo.
   Qed.
 
   Lemma pw_exec_mmio : exec (within_mmio_writable (Physaddr a) 8) s = Some (false, s).
-  Proof.
+  Proof using Hhtif Hram.
     unfold within_mmio_writable. cbn [get_config_rvfi].
     rewrite (exec_or_boolM_Some _ _ _ _ _
                (within_clint_false a 8 s (addr_is_ram_not_in_clint _ Hram) ltac:(lia))).
@@ -1926,7 +1926,7 @@ Section PteWrite.
   Lemma pw_exec_pma (roc : bool) :
     exec (pmaCheck (Physaddr a) 8 (Store PageTableEntry) PBMT_PMA roc) s
       = Some (Ok pma_ok_aligned, s).
-  Proof.
+  Proof using Halign Hmatch Hwr.
     destruct region as [rbase rsize rattr rdtree].
     pma_ok_peel Hmatch Hwr (exec_is_mag_applicable_store_pte 8 s) Halign.
   Qed.
@@ -1934,7 +1934,7 @@ Section PteWrite.
   Lemma pw_exec_cp (roc : bool) :
     exec (check_pma_with_pmp_priority (Store PageTableEntry) PBMT_PMA Supervisor
             (Physaddr a) 8 roc) s = Some (Ok pma_ok_aligned, s).
-  Proof.
+  Proof using Halign Hmatch Hwr.
     unfold check_pma_with_pmp_priority.
     rewrite (exec_bind_Some _ _ _ _ _ (pw_exec_pma roc)). cbn match.
     apply exec_returnM.
@@ -1943,7 +1943,7 @@ Section PteWrite.
   Lemma pw_good_cp (roc : bool) :
     goodmb Dr Dw (check_pma_with_pmp_priority (Store PageTableEntry) PBMT_PMA
                     Supervisor (Physaddr a) 8 roc) s mm = true.
-  Proof.
+  Proof using HDp Halign Hmatch Hwr.
     exact (goodmb_check_pma_with_pmp_priority Dr Dw _ _ Supervisor _ _ roc _ s mm
              (goodmb_pmaCheck_pte_write Dr Dw a region roc s mm HDp Hmatch Halign Hwr)
              (pw_exec_pma roc)).
@@ -1960,7 +1960,7 @@ Section PteWrite.
     Lemma pw_exec_chk :
       exec (checked_mem_write (Physaddr a) 8 (w' : mword 64) (Store PageTableEntry)
               PBMT_PMA Supervisor tt aq rl con) s = Some (Ok true, sw).
-    Proof.
+    Proof using HA HW Halign Hcov Hhtif Hmatch Hord Hram Hram7 Hwkf Hwr Hwram.
       unfold checked_mem_write. rewrite exec_catch_early_return.
       rewrite (execR_liftR_seq _ _ _ _ _ (pw_exec_cp _)). cbn beta. cbn match.
       rewrite execR_bind. rewrite execR_returnR. cbn match beta.
@@ -1997,7 +1997,7 @@ Section PteWrite.
     Lemma pw_good_chk :
       goodmb Dr Dw (checked_mem_write (Physaddr a) 8 (w' : mword 64)
                (Store PageTableEntry) PBMT_PMA Supervisor tt aq rl con) s mm = true.
-    Proof.
+    Proof using HA HDa HDc HDh HDp HW Halign Hcov Hhtif Hmatch Hord Hown Hram Hram7 Hwkf Hwkg Hwkok Hwr Hwram.
       unfold checked_mem_write. apply goodmb_cer.
       erewrite gm_liftR_seq; [ | apply pw_good_cp | apply pw_exec_cp ].
       cbn beta. cbn match.
@@ -2095,7 +2095,7 @@ Section PteWrite.
 
   Lemma goodmb_write_pte_ram :
     goodmb Dr Dw (write_pte (Physaddr a) 8 (w' : mword 64)) s mm = true.
-  Proof.
+  Proof using HA HDa HDc HDh HDp HW Halign Hcov Hhtif Hmatch Hord Hown Hram Hram7 Hwr.
     assert (Hwkf : exec (write_kind_of_flags false false false) s
                    = Some (rv64d_types.Write_plain, s))
       by (unfold write_kind_of_flags; cbn match; apply exec_returnM).
@@ -2113,7 +2113,7 @@ Section PteWrite.
 
   Lemma goodmb_write_pte_conditional_ram :
     goodmb Dr Dw (write_pte_conditional (Physaddr a) 8 (w' : mword 64)) s mm = true.
-  Proof.
+  Proof using HA HDa HDc HDh HDp HW Halign Hcov Hhtif Hmatch Hord Hown Hram Hram7 Hwr.
     assert (Hwkf : exec (write_kind_of_flags false false true) s
                    = Some (rv64d_types.Write_RISCV_conditional, s))
       by (unfold write_kind_of_flags; cbn match; apply exec_returnM).
@@ -2171,7 +2171,7 @@ Section PtAdue.
       (s : mstate) (mm : pamap) :
     pte_pbmt0 q0 ->
     goodmb Dr Dw (tlb_get_pbmt (u_walk_entry vpn q2 q1 q0 asid)) s mm = true.
-  Proof.
+  Proof using .
     intros Hpb. unfold tlb_get_pbmt, u_walk_entry. cbn [TLB_Entry_pte]. cbn zeta.
     rewrite zero_extend64_id. rewrite autocast_id.
     unfold pte_pbmt0 in Hpb. rewrite Hpb.
@@ -2331,7 +2331,7 @@ Section PtAdue.
     pte_pbmt0 q0 ->
     goodmb Dr Dw (translate_TLB_hit 39 asid vpn acc pv mxr do_sum tt idx
                     (u_walk_entry vpn q2 q1 q0 asid)) s mm = true.
-  Proof.
+  Proof using .
     intros Hchk Hpure Hupd Hpb.
     apply (goodmb_of_goodb Dr Dw _ s mm).
     exact (goodb_translate_TLB_hit_pt acc pv mxr do_sum Dr vpn q2 q1 q0 asid idx s
@@ -2660,7 +2660,7 @@ Section TranslateFront.
          (translate 39 (mword_of_int 0 : mword 16) root vpn acc pv mxr do_sum tt)
          s mm = true) ->
     goodmb Dr Dw (translateAddr (Virtaddr va) acc) s mm = true.
-  Proof.
+  Proof using HDcp HDms HDsatp.
     intros Heff Heffg Hss Hssg Hcp Htm Htmg Hsatp Hppn Hasid Hcanon Hvpn_def
            [s' Htr] Htrg.
     unfold translateAddr. apply goodmb_cer.
@@ -2741,7 +2741,7 @@ Section SlotCert.
     pmpRangeMatch (Z.mul (uint (zeros' 64 : mword 64)) 4)
       (Z.mul (uint (vec_access_dec (register_lookup pmpaddr_n sg.(sregs)) 0)) 4)
       (uint a) (uint (to_bits 64 8)) = PMP_Match.
-  Proof.
+  Proof using .
     intros (Hbytes & Hram & Hram7 & Halign) Hcov.
     assert (Hnw : (uint a + Z.of_nat 7 < 18446744073709551616)%Z).
     { destruct Hram as [_ Hh]. unfold ram_base, ram_size in Hh.
@@ -2769,7 +2769,7 @@ Section SlotCert.
     (override_PMA (PMA_Region_attributes region) PBMT_PMA).(PMA_supports_pte_read) = true ->
     register_lookup htif_tohost_base sg.(sregs) = None ->
     goodmb Dr Dw (read_pte (Physaddr a) 8) sg mm = true.
-  Proof.
+  Proof using HDa HDc HDh HDp.
     intros Hsm Hown HA Hord HR Hcov Hmatch Hpma Hhtif.
     pose proof (slot_pmp_range sg a w Hsm Hcov) as Hrange.
     destruct Hsm as (Hbytes & Hram & Hram7 & Halign).
@@ -2793,7 +2793,7 @@ Section SlotCert.
     (override_PMA (PMA_Region_attributes region) PBMT_PMA).(PMA_supports_pte_read) = true ->
     register_lookup htif_tohost_base sg.(sregs) = None ->
     goodmb Dr Dw (read_pte_exclusive (Physaddr a) 8) sg mm = true.
-  Proof.
+  Proof using HDa HDc HDh HDp.
     intros Hsm Hown HA Hord HR Hcov Hmatch Hpma Hhtif.
     pose proof (slot_pmp_range sg a w Hsm Hcov) as Hrange.
     destruct Hsm as (Hbytes & Hram & Hram7 & Halign).
@@ -2817,7 +2817,7 @@ Section SlotCert.
     (override_PMA (PMA_Region_attributes region) PBMT_PMA).(PMA_supports_pte_write) = true ->
     register_lookup htif_tohost_base sg.(sregs) = None ->
     goodmb Dr Dw (write_pte_conditional (Physaddr a) 8 (w' : mword 64)) sg mm = true.
-  Proof.
+  Proof using HDa HDc HDh HDp.
     intros Hsm Hown HA Hord HW Hcov Hmatch Hpma Hhtif.
     destruct Hsm as (Hbytes & Hram & Hram7 & Halign).
     exact (goodmb_write_pte_conditional_ram Dr Dw a w' region sg mm HDc HDa HDp HDh
@@ -2902,7 +2902,7 @@ Section PtreeTranslateCert.
     pma_allows_pte_write (register_lookup pma_regions sg.(sregs)) ->
     goodmb Dr Dw (translate 39 (mword_of_int 0 : mword 16) root_ppn vpn acc pv mxr do_sum tt)
       sg mm = true.
-  Proof.
+  Proof using HDa HDc HDh HDme HDmi HDp HDt HWt.
     intros vpn p0 Hchk Hgchk Hv2 Hn2 Hv1 Hn1 Hv0 Hl0 Hnap Hg2 Hg1 Hg0
            Hsm2 Hsm1 Hsm0 Hown2 Hown1 Hown0
            Hmisa Hmenv Hhtif Htlb Hlk HA Hord HR HW Hcov Hpmar Hpmaw.
@@ -3019,7 +3019,7 @@ Section PtreeTranslateCert.
     pma_allows_pte_read (register_lookup pma_regions sg.(sregs)) ->
     pma_allows_pte_write (register_lookup pma_regions sg.(sregs)) ->
     goodmb Dr Dw (translateAddr (Virtaddr va) acc) sg mm = true.
-  Proof.
+  Proof using HDa HDc HDcp HDh HDme HDmi HDms HDp HDsatp HDt HWt.
     intros vpn p0 Hchk Hgchk Hcanon Hout Hvarp Hbase Hmaps Htlbok Hg2 Hg1 Hg0
            Hsm2 Hsm1 Hsm0 Hown2 Hown1 Hown0
            Hmisa Hmenv Hhtif Hcp Htm Htmg Heff Heffg Hss Hssg

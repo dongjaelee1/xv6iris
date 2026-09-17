@@ -79,7 +79,7 @@ Section UkRunExecRef.
   Lemma sbundle_pay_ref_of_refR (X : uvis -d> iPropO Σ) (Q : Z -> iProp Σ)
       (W : uvis) :
     sbundle_pay_refR X Q (Q (-1)) W -∗ sbundle_pay_ref X Q W.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as (f) "(%Hp & #Hrf & Hb)".
     rewrite /sbundle_pay_ref. iExists f. iSplitR; [ done | ].
     iSplitR; [ iExact "Hrf" | iExact "Hb" ].
@@ -104,7 +104,7 @@ Section UkRunExecRef.
   Lemma udepw_at_ref_of_refR (N : uk_names Σ) (m : regfile) (pc : mword 64)
       (c : Z) :
     udepw_at_refR N m pc c (ukn_pay N (-1)) -∗ udepw_at_ref N m pc c.
-  Proof.
+  Proof using .
     rewrite /udepw_at_refR /udepw_at_ref.
     iIntros "Hd" (M pm sz fdv gn cs pidv) "Hmp #Hnpw Hh Hf".
     iDestruct ("Hd" $! M pm sz fdv gn cs pidv with "Hmp Hnpw Hh Hf")
@@ -134,7 +134,7 @@ Section UkRunExecRef.
          (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hal4.
     iIntros "#Hi Hrun Hcwd Hsb Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -257,7 +257,7 @@ Section UkRunExecRef.
   Lemma udepw_at_refR_ids_of_refR (N : uk_names Σ) (m : regfile) (pc : mword 64)
       (c : Z) (R : iProp Σ) :
     udepw_at_refR N m pc c R -∗ udepw_at_refR_ids N m pc c R.
-  Proof.
+  Proof using .
     rewrite /udepw_at_refR /udepw_at_refR_ids.
     iIntros "Hd" (M pm sz fdv gn cs pidv) "Hmp #Hnpw Hh Hf Hids".
     iDestruct ("Hd" $! M pm sz fdv gn cs pidv with "Hmp Hnpw Hh Hf")
@@ -286,7 +286,7 @@ Section UkRunExecRef.
          (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hal4.
     iIntros "#Hi Hrun Hcwd Hsb Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".

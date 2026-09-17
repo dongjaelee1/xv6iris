@@ -1718,11 +1718,11 @@ Section fs_crash.
     own γ (◯ML (l : list fs_histO)).
 
   Global Instance fs_hist_lb_persistent γ l : Persistent (fs_hist_lb γ l).
-  Proof. rewrite /fs_hist_lb. apply _. Qed.
+  Proof using . rewrite /fs_hist_lb. apply _. Qed.
 
   Lemma fs_hist_alloc (l : list (gmap Z (list (bv 8)))) :
     ⊢ |==> ∃ γ : gname, fs_hist_auth γ l ∗ fs_hist_lb γ l.
-  Proof.
+  Proof using .
     iMod (own_alloc (●ML (l : list fs_histO) ⋅ ◯ML (l : list fs_histO)))
       as (γ) "[Ha Hf]".
     { apply mono_list_both_valid_L. reflexivity. }
@@ -1731,14 +1731,14 @@ Section fs_crash.
 
   Lemma fs_hist_snapshot γ l :
     fs_hist_auth γ l -∗ fs_hist_auth γ l ∗ fs_hist_lb γ l.
-  Proof.
+  Proof using .
     rewrite /fs_hist_auth /fs_hist_lb -own_op -mono_list_auth_lb_op.
     iIntros "$".
   Qed.
 
   Lemma fs_hist_valid γ l l' :
     fs_hist_auth γ l -∗ fs_hist_lb γ l' -∗ ⌜l' `prefix_of` l⌝.
-  Proof.
+  Proof using .
     rewrite /fs_hist_auth /fs_hist_lb. iIntros "Ha Hf".
     iDestruct (own_valid_2 with "Ha Hf") as %Hv.
     iPureIntro. by apply mono_list_both_valid_L in Hv.
@@ -1746,7 +1746,7 @@ Section fs_crash.
 
   Lemma fs_hist_update γ l l' :
     l `prefix_of` l' -> fs_hist_auth γ l ==∗ fs_hist_auth γ l'.
-  Proof.
+  Proof using .
     intros Hpre. rewrite /fs_hist_auth. iIntros "Ha".
     iApply (own_update with "Ha"). by apply mono_list_update.
   Qed.
@@ -1764,13 +1764,13 @@ Section fs_crash.
   Definition fs_boot_tok (γg : gname) : iProp Σ := lock_tok_excl γg.
 
   Lemma fs_boot_tok_alloc : ⊢ |==> ∃ γg : gname, fs_boot_tok γg.
-  Proof. rewrite /fs_boot_tok. iApply lock_tok_excl_alloc. Qed.
+  Proof using . rewrite /fs_boot_tok. iApply lock_tok_excl_alloc. Qed.
 
   Lemma fs_boot_tok_excl γg : fs_boot_tok γg -∗ fs_boot_tok γg -∗ False.
-  Proof. rewrite /fs_boot_tok. iApply lock_tok_excl_exclusive. Qed.
+  Proof using . rewrite /fs_boot_tok. iApply lock_tok_excl_exclusive. Qed.
 
   Global Instance fs_boot_tok_timeless γg : Timeless (fs_boot_tok γg).
-  Proof. rewrite /fs_boot_tok. apply _. Qed.
+  Proof using . rewrite /fs_boot_tok. apply _. Qed.
 
   (* -------------------------------------------------------------------- *)
   (* 2c. the tie's CLIENT-SIDE half and the receipts                       *)
@@ -1785,7 +1785,7 @@ Section fs_crash.
     (∃ l : list (gmap Z (list (bv 8))), fs_hist_lb (fcn_hist γs) (l ++ [D]))%I.
 
   Global Instance fs_receipt_persistent γs D : Persistent (fs_receipt γs D).
-  Proof. rewrite /fs_receipt. apply _. Qed.
+  Proof using . rewrite /fs_receipt. apply _. Qed.
 
   (* ==================================================================== *)
   (* 3. [P_fs] -- THE CRASH PREDICATE.                                     *)
@@ -1818,9 +1818,9 @@ Section fs_crash.
     mono_nat_lb_own (fcn_start γs) (S g).
 
   Global Instance fs_era_reg_persistent γs g E : Persistent (fs_era_reg γs g E).
-  Proof. rewrite /fs_era_reg. apply _. Qed.
+  Proof using . rewrite /fs_era_reg. apply _. Qed.
   Global Instance fs_started_persistent γs g : Persistent (fs_started γs g).
-  Proof. rewrite /fs_started. apply _. Qed.
+  Proof using . rewrite /fs_started. apply _. Qed.
 
   Definition fs_custody (γs : fs_crash_names) (cov : gset Z) (ls : Z)
       (dk : Z -> bv 8) (g'' : nat) : iProp Σ :=
@@ -1838,7 +1838,7 @@ Section fs_crash.
   (* the at-rest arm, as adequacy mints it *)
   Lemma fs_arm_at_rest γs cov ls dk :
     mono_nat_auth_own (fcn_swap γs) 1 0%nat ⊢ fs_arm γs cov ls dk.
-  Proof.
+  Proof using .
     iIntros "Ha". rewrite /fs_arm. iExists 0%nat. iFrame "Ha". by iLeft.
   Qed.
 
@@ -1849,7 +1849,7 @@ Section fs_crash.
   Local Lemma fs_custody_started γs cov ls dk g'' :
     fs_custody γs cov ls dk g'' -∗
     fs_started γs g'' ∗ fs_custody γs cov ls dk g''.
-  Proof.
+  Proof using .
     rewrite /fs_custody. iIntros "H".
     iDestruct "H" as (E M) "(#Hr & #Hs & Hm & %Hok)".
     iSplitR; [iExact "Hs"|].
@@ -1862,7 +1862,7 @@ Section fs_crash.
     (⌜c = 0%nat⌝ ∨ ∃ g'' : nat, ⌜c = S g''⌝ ∗ fs_custody γs cov ls dk g'') -∗
     ⌜(c <= S g)%nat⌝ ∗ mono_nat_auth_own (fcn_start γs) 1 n ∗
     (⌜c = 0%nat⌝ ∨ ∃ g'' : nat, ⌜c = S g''⌝ ∗ fs_custody γs cov ls dk g'').
-  Proof.
+  Proof using .
     intros ->. iIntros "Hsa Hd".
     iDestruct "Hd" as "[%Hc0 | Hc]".
     { iFrame "Hsa". iSplitR; [iPureIntro; lia|]. by iLeft. }
@@ -1896,7 +1896,7 @@ Section fs_crash.
     fs_arm γs cov ls dk ==∗
       fs_arm γs cov ls dk' ∗ mono_nat_auth_own (fcn_start γs) 1 n ∗
       mono_nat_lb_own (fcn_swap γs) (S g).
-  Proof.
+  Proof using .
     intros Hn Hok. iIntros "#Hreg #Hst Hsa Hmir Harm".
     rewrite {1}/fs_arm. iDestruct "Harm" as (c) "[Hc Hrest]".
     iDestruct (fs_arm_le γs cov ls dk g n c Hn with "Hsa Hrest")
@@ -1927,7 +1927,7 @@ Section fs_crash.
       (∀ (dk' : Z -> bv 8) (M' : log_mirror),
          ⌜log_mirror_ok M' (fs_blocks dk') cov ls⌝ ==∗
            fs_arm γs cov ls dk' ∗ ghost_var (era_mirror_name E) (1/2) M').
-  Proof.
+  Proof using .
     intros Hn. iIntros "#Hreg #Hswlb Hsa Hmir Harm".
     rewrite {1}/fs_arm. iDestruct "Harm" as (c) "[Hc Hrest]".
     (* ABOVE: the arm's generation is at most the ambient one *)
@@ -2066,7 +2066,7 @@ Section fs_crash.
     disk_read dk 0 N = disk_read dk' 0 N ->
     0 <= b -> (b + 1) * Z.of_nat BSIZE <= Z.of_nat N ->
     fs_blocks dk b = fs_blocks dk' b.
-  Proof.
+  Proof using .
     intros Heq Hb0 HbN. rewrite /fs_blocks.
     apply list_eq. intro j. rewrite /disk_read !list_lookup_fmap.
     destruct (decide (j < BSIZE)%nat) as [Hj | Hj].
@@ -2082,7 +2082,7 @@ Section fs_crash.
     fs_extent cov ls N ->
     s ⊆ cov ∪ log_region_set ls ->
     fs_restrict (fs_blocks dk) s = fs_restrict (fs_blocks dk') s.
-  Proof.
+  Proof using .
     intros Heq Hext Hs. apply fs_restrict_ext. intros b Hb.
     destruct (Hext b (Hs b Hb)) as [Hb0 HbN].
     exact (fs_blocks_agree dk dk' N b Heq Hb0 HbN).
@@ -2095,7 +2095,7 @@ Section fs_crash.
     fs_extent cov ls N ->
     P_fs_rec_named_at gt γsw γreg γst cov ls dk -∗
     P_fs_rec_named_at gt γsw γreg γst cov ls dk'.
-  Proof.
+  Proof using .
     intros Heq Hext.
     assert (Hblk : forall b, b ∈ cov ∪ log_region_set ls ->
                      fs_blocks dk b = fs_blocks dk' b).
@@ -2155,7 +2155,7 @@ Section fs_crash.
               (h : list (gmap Z (list (bv 8)))),
          fs_recovery (fs_blocks dk) D cov logstart /\
          h <> [] /\ last h = Some D⌝.
-  Proof.
+  Proof using .
     rewrite /P_fs /P_fs_at.
     iIntros "Hp". iDestruct "Hp" as (gt r) "(_ & %Hwf & _)".
     iPureIntro. exists (fr_D r), (fr_hist r).
@@ -2169,7 +2169,7 @@ Section fs_crash.
     P_fs γs cov logstart dk -∗ fs_receipt γs D -∗
       ⌜exists r : fs_rec,
          fs_rec_wf r (fs_blocks dk) cov logstart /\ D ∈ fr_hist r⌝.
-  Proof.
+  Proof using .
     rewrite /P_fs /P_fs_at /fs_receipt.
     iIntros "Hp Hr". iDestruct "Hp" as (gt r) "(Hauth & %Hwf & _)".
     iDestruct "Hr" as (l) "Hlb".
@@ -2207,7 +2207,7 @@ Section fs_crash.
       ∃ (D : gmap Z (list (bv 8))) (S : fs_state_rec),
         ⌜fs_recovery (fs_blocks dk) D cov ls⌝ ∗ ⌜snap_ok S D⌝ ∗
         P_fs γs cov ls dk.
-  Proof.
+  Proof using .
     rewrite /P_fs /P_fs_at. iIntros "Hp".
     iDestruct "Hp" as (gt r) "(Hh & %Hwf & Harm & Hdur)".
     iDestruct (P_dur_at_tie_keep gt (fr_D r)
@@ -2239,7 +2239,7 @@ Section fs_crash.
     P_fs_at gt γs cov ls dk -∗
       ∃ D : gmap Z (list (bv 8)),
         fs_receipt γs D ∗ ⌜snap_holds D⌝ ∗ P_fs_at gt γs cov ls dk.
-  Proof.
+  Proof using .
     rewrite {1}/P_fs_at. iIntros "Hp".
     iDestruct "Hp" as (r) "(Hauth & %Hwf & Harm & Hdur)".
     iDestruct (P_dur_at_tie_keep gt (fr_D r)
@@ -2266,7 +2266,7 @@ Section fs_crash.
       ∃ D : gmap Z (list (bv 8)),
         ⌜fs_recovery (fs_blocks dk) D cov ls⌝ ∗ P_dur_at gt D ∗
         (P_dur_at gt D -∗ P_fs_at gt γs cov ls dk).
-  Proof.
+  Proof using .
     rewrite /P_fs_at. iIntros "Hp".
     iDestruct "Hp" as (r) "(Hh & %Hwf & Harm & Hdur)".
     iExists (fr_D r). iSplitR; [iPureIntro; exact (proj1 Hwf) |].
@@ -2301,7 +2301,7 @@ Section fs_crash.
 
   Global Instance P_fs_lend_at_timeless gt cov ls dk :
     Timeless (P_fs_lend_at gt cov ls dk).
-  Proof. rewrite /P_fs_lend_at. apply _. Qed.
+  Proof using . rewrite /P_fs_lend_at. apply _. Qed.
 
   (* -------------------------------------------------------------------- *)
   (* 3a'. THE PURE PROJECTION (stage H0, claude-notes/projects/             *)
@@ -2322,7 +2322,7 @@ Section fs_crash.
      [mono_nat] / [own] over a discrete cmra *)
   Global Instance P_fs_named_at_timeless gt γd N γsw γreg γst cov ls :
     Timeless (P_fs_named_at gt γd N γsw γreg γst cov ls).
-  Proof.
+  Proof using .
     rewrite /P_fs_named_at /P_fs_rec_named_at /P_fs_at /fs_arm /fs_custody
       /fs_hist_auth.
     apply _.
@@ -2330,7 +2330,7 @@ Section fs_crash.
 
   Global Instance P_fs_named_timeless γd N γsw γreg γst cov ls :
     Timeless (P_fs_named γd N γsw γreg γst cov ls).
-  Proof. rewrite /P_fs_named. apply _. Qed.
+  Proof using . rewrite /P_fs_named. apply _. Qed.
 
   (* the record's own [fs_rec_wf] conjuncts, read off at its committed view
      [fr_D], AND (lane CE) the durable snapshot's tie beside them: what the
@@ -2348,7 +2348,7 @@ Section fs_crash.
          fs_recovery (fs_blocks dk) D cov ls /\
          hdr_wf (fs_blocks dk) cov ls /\
          exists S : fs_state_rec, snap_ok S D⌝.
-  Proof.
+  Proof using .
     rewrite /P_fs_rec_named_at /P_fs_at.
     iIntros "H". iDestruct "H" as (γs) "[_ H]".
     iDestruct "H" as (r) "(_ & %Hwf & _ & Hdur)".
@@ -2376,7 +2376,7 @@ Section fs_crash.
           fs_recovery (fs_blocks dk) D cov ls /\
           hdr_wf (fs_blocks dk) cov ls /\
           exists S : fs_state_rec, snap_ok S D⌝).
-  Proof.
+  Proof using .
     iIntros "Ha HP". iMod "HP".
     rewrite /P_fs_named_at. iDestruct "HP" as (dk0) "(Hfr & %Hext & HPr)".
     (* the fragments read the machine's image: the record's [dk0] agrees
@@ -2451,7 +2451,7 @@ Section fs_crash.
             owns is spent and no arity of [P_fs] moves -- WITH the clone's
             guest half at the caller's map (round C). *)
          ∃ gt' : gname, P_fs_lend_at gt' cov ls dk ∗ snap_guest gt' I).
-  Proof.
+  Proof using .
     iIntros "#Hreg #Hst Hsa Ha HM Hguest HP". iMod "HP".
     rewrite /P_fs_named_at. iDestruct "HP" as (dk0) "(Hfr & %Hext & HPr)".
     (* the record's image agrees with the machine's on the whole durable
@@ -2527,7 +2527,7 @@ Section fs_crash.
     fs_recovery (fs_blocks dk)
       (fs_install (lm_view M) ls (lm_hdr M ls).2
          (fs_restrict (lm_view M) (fs_home_set cov ls))) cov ls.
-  Proof. intros HM. rewrite /fs_recovery /lm_hdr HM //. Qed.
+  Proof using . intros HM. rewrite /fs_recovery /lm_hdr HM //. Qed.
 
   (* -------------------------------------------------------------------- *)
   (* 3b. ALLOCATION -- mkfs's obligation, discharged                        *)
@@ -2566,7 +2566,7 @@ Section fs_crash.
       ⌜fcn_swap γs = γsw /\ fcn_reg γs = γreg /\ fcn_start γs = γst⌝ ∗
       P_fs_at gt γs cov logstart dk0 ∗ snap_guest gt (fss_inodes S0) ∗
       fs_receipt γs D0.
-  Proof.
+  Proof using .
     intros Hrec Hhwf Hsnap. iIntros "Hsw".
     iMod (fs_hist_alloc [D0]) as (γh) "[Hauth #Hlb]".
     (* THE DURABLE FILE SYSTEM ARRIVES HERE (lane CE / H5): one copy of the
@@ -2619,7 +2619,7 @@ Section fs_crash_seam.
 
   Global Instance P_fs_rec_at_timeless gt cov ls dk :
     Timeless (P_fs_rec_at gt cov ls dk).
-  Proof.
+  Proof using .
     rewrite /P_fs_rec_at /P_fs_rec_named_at /P_fs_at /fs_arm /fs_custody
       /fs_hist_auth.
     apply _.
@@ -2634,7 +2634,7 @@ Section fs_crash_seam.
 
   Global Instance P_fs_any_at_timeless gt cov ls :
     Timeless (P_fs_any_at gt cov ls).
-  Proof.
+  Proof using .
     rewrite /P_fs_any_at /P_fs_named_at /P_fs_rec_named_at /P_fs_at /fs_arm
       /fs_custody /fs_hist_auth.
     apply _.
@@ -2677,15 +2677,15 @@ Section fs_crash_seam.
 
   Global Instance fs_crash_seam_at_persistent G cov ls :
     Persistent (fs_crash_seam_at G cov ls).
-  Proof. rewrite /fs_crash_seam_at. apply _. Qed.
+  Proof using . rewrite /fs_crash_seam_at. apply _. Qed.
 
   Global Instance fs_crash_seam_persistent cov ls :
     Persistent (fs_crash_seam cov ls).
-  Proof. rewrite /fs_crash_seam. apply _. Qed.
+  Proof using . rewrite /fs_crash_seam. apply _. Qed.
 
   Lemma fs_crash_seam_of_at (G : gname -> iProp Σ) (cov : gset Z) (ls : Z) :
     fs_crash_seam_at G cov ls -∗ fs_crash_seam cov ls.
-  Proof. iIntros "#H". rewrite /fs_crash_seam. iExists G. iExact "H". Qed.
+  Proof using . iIntros "#H". rewrite /fs_crash_seam. iExists G. iExact "H". Qed.
 
   (* A PERMIT STATED ON THE RECORD ALONE: what each WAL fupd actually proves.
      [fs_permit_of_rec] turns it into the machine's [disk_write_permit] by
@@ -2708,7 +2708,7 @@ Section fs_crash_seam.
     fs_crash_seam_at G cov ls -∗
     fs_rec_permit G cov ls gd w Q -∗
     disk_write_permit gd w Q.
-  Proof.
+  Proof using .
     iIntros "#Hseam Hrec". rewrite /disk_write_permit.
     iIntros (dk n) "Hsa %Hn Ha HP".
     iDestruct "Hseam" as "[Hfwd Hbwd]".
@@ -2747,7 +2747,7 @@ Section fs_crash_seam.
         fcn_start γs = riscv_start_name⌝ ∗ fs_receipt γs D)%I.
 
   Global Instance fs_receipt_any_persistent D : Persistent (fs_receipt_any D).
-  Proof. rewrite /fs_receipt_any. apply _. Qed.
+  Proof using . rewrite /fs_receipt_any. apply _. Qed.
 
   (* ==================================================================== *)
   (* (5b) THE BANK (fs-syscall-specs lane Y, owner-ruled)                  *)
@@ -2769,7 +2769,7 @@ Section fs_crash_seam.
     (∃ D : gmap Z (list (bv 8)), fs_receipt_any D ∗ ⌜snap_holds D⌝)%I.
 
   Global Instance fs_bank_persistent : Persistent fs_bank.
-  Proof. rewrite /fs_bank. apply _. Qed.
+  Proof using . rewrite /fs_bank. apply _. Qed.
 
   (* EVERY RECORD-LEVEL PERMIT CAN BANK, FOR FREE.  The permit already has
      the record open at the POST-write image -- that is what it is -- and
@@ -2781,7 +2781,7 @@ Section fs_crash_seam.
   Lemma fs_rec_permit_bank (G : gname -> iProp Σ) (cov : gset Z) (ls : Z)
       (gd : nat) (w : disk_wr) (Q : iProp Σ) :
     fs_rec_permit G cov ls gd w Q -∗ fs_rec_permit G cov ls gd w (Q ∗ fs_bank).
-  Proof.
+  Proof using .
     iIntros "Hp". rewrite /fs_rec_permit. iIntros (dk n gt) "Hsa %Hn HP HG".
     iMod ("Hp" $! dk n gt with "Hsa [//] HP HG") as (gt') "(HP & HG & Hsa & HQ)".
     iMod "HP". rewrite /P_fs_rec_at /P_fs_rec_named_at.
@@ -2817,7 +2817,7 @@ Section fs_crash_seam.
   Lemma fs_rec_permit_mono (G : gname -> iProp Σ) (cov : gset Z) (ls : Z)
       (gd : nat) (w : disk_wr) (R R' : iProp Σ) :
     (R -∗ R') -∗ fs_rec_permit G cov ls gd w R -∗ fs_rec_permit G cov ls gd w R'.
-  Proof.
+  Proof using .
     iIntros "HR Hp". rewrite /fs_rec_permit. iIntros (dk n gt) "Hsa %Hn HP HG".
     iMod ("Hp" $! dk n gt with "Hsa [//] HP HG") as (gt') "(HP & HG & Hsa & HR0)".
     iModIntro. iExists gt'. iFrame "HP HG Hsa". by iApply "HR".
@@ -2867,7 +2867,7 @@ Section fs_crash_seam.
       (Some ((blk * Z.of_nat BSIZE + Z.of_nat 0)%Z, take virtio_sector_bytes bs))
       (log_mirror_half (lm_upd M0 blk (blk_sec0 (lm_view M0 blk) bs))
        ∗ ⌜length (lm_view M0 blk) = BSIZE⌝).
-  Proof.
+  Proof using .
     intros Hlen Hext Hwf. iIntros "#Hreg #Hswlb Hmir".
     assert (Hfit : (0 + length (take virtio_sector_bytes bs) <= BSIZE)%nat)
       by (rewrite (sector0_len bs Hlen) bsize_two_sectors; lia).
@@ -2935,7 +2935,7 @@ Section fs_crash_seam.
              take virtio_sector_bytes (drop virtio_sector_bytes bs)))
       (log_mirror_half (lm_upd M0 blk (blk_sec1 (lm_view M0 blk) bs))
        ∗ ⌜length (lm_view M0 blk) = BSIZE⌝).
-  Proof.
+  Proof using .
     intros Hlen Hext Hwf. iIntros "#Hreg #Hswlb Hmir".
     assert (Hfit : (virtio_sector_bytes
                     + length (take virtio_sector_bytes
@@ -3057,7 +3057,7 @@ Section fs_crash_seam.
           (blk_sec0 (lm_view M0 (log_hdr_bno ls)) bs))
        ∗ fs_receipt_any (fs_restrict (dv_of_D L) (fs_home_set cov ls))
        ∗ ⌜length (lm_view M0 (log_hdr_bno ls)) = BSIZE⌝).
-  Proof.
+  Proof using .
     intros Hlen Hdec Hnn Hnd Hin Hinsb HM0 Hoff Htie Hslot.
     iIntros "#Hreg #Hswlb Hmir Hepoch".
     assert (Hbound : ((hdr_dec bs).1 <= LOGBLOCKS)%nat) by (rewrite Hdec /=; lia).
@@ -3194,7 +3194,7 @@ Section fs_crash_seam.
       (log_mirror_half (lm_upd M0 (log_hdr_bno ls)
           (blk_sec0 (lm_view M0 (log_hdr_bno ls)) bs))
        ∗ ⌜length (lm_view M0 (log_hdr_bno ls)) = BSIZE⌝).
-  Proof.
+  Proof using .
     intros Hlen Hn0 HM0 Hoff Hcaught. iIntros "#Hreg #Hswlb Hmir".
     assert (Hz : hdr_dec bs = (0%nat, [])) by exact (hdr_dec_zero bs Hn0).
     assert (Hbound : ((hdr_dec bs).1 <= LOGBLOCKS)%nat) by (rewrite Hz /=; lia).
@@ -3292,7 +3292,7 @@ Section fs_crash_seam.
     log_mirror_half M0 -∗
     disk_seq_permit gen_id (Some ((1024 * log_slot_bno ls i)%Z, bs))
       (log_mirror_half (lm_upd M0 (log_slot_bno ls i) bs)).
-  Proof.
+  Proof using .
     intros Hlen Hi HM0. iIntros "Hseam #Hreg #Hswlb Hmir".
     (* the seam at SOME guest: opened once, the guest stays opaque and is
        framed by every landing below (round C) *)
@@ -3420,7 +3420,7 @@ Section fs_crash_seam.
     ▷ log_mirror_half M0 -∗
     disk_seq_permit gen_id (Some ((1024 * b)%Z, bs))
       (log_mirror_half (lm_upd M0 b bs)).
-  Proof.
+  Proof using .
     intros Hlen Hnd Hwlen Hi Hbc Hb HM0. iIntros "Hseam #Hreg #Hswlb Hmir".
     (* the seam at SOME guest: opened once, the guest stays opaque and is
        framed by every landing below (round C) *)
@@ -3566,7 +3566,7 @@ Section fs_crash_seam.
      last write of the whole commit, so the copy it takes is this commit's
      own outcome and is fresher.  Banking here as well would only mean two
      copies to carry through the same proof. *)
-  Proof.
+  Proof using .
     intros Hlen Hdec Hnn Hnd Hin Hinsb HM0 Hoff Hrow Hslot.
     iIntros "#Hseam #Hreg #Hswlb Hmir Hepoch".
     assert (Hext : log_hdr_bno ls ∈ cov ∪ log_region_set ls)
@@ -3692,7 +3692,7 @@ Section fs_crash_seam.
           point of the CLEAR), so the copy is the disk's current durable
           state exactly. *)
        ∗ fs_bank).
-  Proof.
+  Proof using .
     intros Hlen Hn0 Hnn HM0 Hoff Hcaught. iIntros "Hseam #Hreg #Hswlb Hmir".
     (* the seam at SOME guest: opened once, the guest stays opaque and is
        framed by every landing below (round C) *)

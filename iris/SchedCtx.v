@@ -306,10 +306,10 @@ Section SchedCtx.
     (⌜kl = (mword_of_int 0 : mword 32)⌝)%I.
 
   Global Instance kill_free_persistent kl : Persistent (kill_free kl).
-  Proof. rewrite /kill_free. apply _. Qed.
+  Proof using . rewrite /kill_free. apply _. Qed.
 
   Lemma kill_free_zero : ⊢ kill_free (mword_of_int 0 : mword 32).
-  Proof. rewrite /kill_free. by iPureIntro. Qed.
+  Proof using . rewrite /kill_free. by iPureIntro. Qed.
   (* ...AND THE LIVE ARM PUBLISHES HOW A KILLER PAYS (lane SELF-KILL, 4b';
      the owner's ruling of 2026-09-13).  A [kill(2)] costs the TARGET's
      exit payload at -1, and the party that calls kill holds none of the
@@ -364,7 +364,7 @@ Section SchedCtx.
   (* the row's three arms *)
   Lemma kill_row_zero (gn : gname) :
     ChildTok.kill_pend gn -∗ kill_row gn (mword_of_int 0 : mword 32).
-  Proof.
+  Proof using .
     rewrite /kill_row. iIntros "H". iLeft. iFrame "H". done.
   Qed.
 
@@ -372,7 +372,7 @@ Section SchedCtx.
     kl <> (mword_of_int 0 : mword 32) ->
     ChildTok.kill_shot gn -∗ □ riscv_kill_cred -∗ ChildTok.kill_owed gn -∗
     kill_row gn kl.
-  Proof.
+  Proof using .
     intro Hnz. rewrite /kill_row. iIntros "#Hs #Hc H". iRight.
     iSplitR; [ by iPureIntro | ]. iSplitR; [ iExact "Hs" | ]. iLeft.
     iFrame "H". iExact "Hc".
@@ -381,7 +381,7 @@ Section SchedCtx.
   Lemma kill_row_of_taken (gn : gname) (kl : mword 32) :
     kl <> (mword_of_int 0 : mword 32) ->
     ChildTok.kill_shot gn -∗ ChildTok.taken_at gn -∗ kill_row gn kl.
-  Proof.
+  Proof using .
     intro Hnz. rewrite /kill_row. iIntros "#Hs H". iRight.
     iSplitR; [ by iPureIntro | ]. iSplitR; [ iExact "Hs" | ]. iRight. iExact "H".
   Qed.
@@ -391,7 +391,7 @@ Section SchedCtx.
   Lemma kill_row_shot_nz (gn : gname) (kl : mword 32) :
     kill_row gn kl -∗ ChildTok.kill_shot gn -∗
     kill_row gn kl ∗ ⌜kl <> (mword_of_int 0 : mword 32)⌝.
-  Proof.
+  Proof using .
     rewrite /kill_row. iIntros "[[_ Hp] | Hr] #Hs".
     - iDestruct (ChildTok.kill_pend_shot with "Hp Hs") as %[].
     - iDestruct "Hr" as "[%Hnz Hr]". iSplitR ""; [ | by iPureIntro ].
@@ -405,7 +405,7 @@ Section SchedCtx.
   Lemma kill_row_shot (gn : gname) (kl : mword 32) :
     kl <> (mword_of_int 0 : mword 32) ->
     kill_row gn kl -∗ ChildTok.kill_shot gn ∗ kill_row gn kl.
-  Proof.
+  Proof using .
     intro Hnz. rewrite /kill_row.
     iIntros "[[%Hz _] | [_ [#Hs H]]]"; [ exfalso; exact (Hnz Hz) | ].
     iSplitR; [ iExact "Hs" | ]. iRight. iFrame "Hs H". by iPureIntro.
@@ -418,7 +418,7 @@ Section SchedCtx.
      process says nothing new and costs the same. *)
   Lemma kill_row_fire (gn : gname) (kl : mword 32) :
     kill_row gn kl ==∗ ChildTok.kill_shot gn.
-  Proof.
+  Proof using .
     rewrite /kill_row. iIntros "[[_ Hp] | [_ [#Hs _]]]".
     - iApply (ChildTok.kill_pend_fire with "Hp").
     - iModIntro. iExact "Hs".
@@ -435,7 +435,7 @@ Section SchedCtx.
   Lemma kill_row_take (gn : gname) (kl : mword 32) :
     ChildTok.kill_shot gn -∗ ChildTok.taken_at gn -∗ kill_row gn kl -∗
     ChildTok.kill_owed gn ∗ kill_row gn kl.
-  Proof.
+  Proof using .
     iIntros "#Hs Ht Hrow". rewrite /kill_row.
     iDestruct "Hrow" as "[[_ Hp] | [%Hnz [_ [[Ho _] | Ht2]]]]".
     - iDestruct (ChildTok.kill_pend_shot with "Hp Hs") as %[].
@@ -451,7 +451,7 @@ Section SchedCtx.
   Lemma kill_paid_zero (pid : mword 32) (kl : mword 32) :
     bv_unsigned pid = 0 -> kl = (mword_of_int 0 : mword 32) ->
     ⊢ kill_paid pid kl.
-  Proof.
+  Proof using .
     intros H Hk. rewrite /kill_paid. iLeft.
     iSplitR; [ iPureIntro; exact H | ]. rewrite Hk. iApply kill_free_zero.
   Qed.
@@ -461,7 +461,7 @@ Section SchedCtx.
     bv_unsigned pid <> 0 ->
     pid_reg pid (DfracOwn qeighth) gn -∗ ChildTok.my_pay gn Q -∗
     □ (riscv_kill_cred -∗ Q (-1)) -∗ kill_row gn kl -∗ kill_paid pid kl.
-  Proof.
+  Proof using .
     intro Hnz. rewrite /kill_paid. iIntros "Hr #Hmy #Hw Hk". iRight.
     iSplitR; [ iPureIntro; exact Hnz | ]. iExists gn, Q.
     iSplitL "Hr"; [ iExact "Hr" | ].
@@ -490,7 +490,7 @@ Section SchedCtx.
     bv_unsigned pid <> 0 ->
     ⌜kl' <> (mword_of_int 0 : mword 32)⌝ -∗
     □ riscv_kill_cred -∗ kill_paid pid kl ==∗ kill_paid pid kl'.
-  Proof.
+  Proof using .
     intro Hpnz. rewrite /kill_paid.
     iIntros "%Hknz #Hsup [[%Hz _] | [%Hnz Hr]]".
     - exfalso. exact (Hpnz Hz).
@@ -520,7 +520,7 @@ Section SchedCtx.
     pid_reg pid dq gn -∗ □ riscv_kill_cred -∗ ChildTok.kill_owed gn -∗
     kill_paid pid kl ==∗
     pid_reg pid dq gn ∗ kill_paid pid kl'.
-  Proof.
+  Proof using .
     intro Hpnz. rewrite /kill_paid.
     iIntros "%Hknz Hmine #Hsup Howed [[%Hz _] | [%Hnz Hr]]".
     - exfalso. exact (Hpnz Hz).
@@ -560,7 +560,7 @@ Section SchedCtx.
     kill_paid pid kl ==∗
     pid_reg pid dq gn ∗ ChildTok.kill_shot gn ∗ kill_paid pid kl' ∗
     (if self then ChildTok.kill_owed gn else □ riscv_kill_cred).
-  Proof.
+  Proof using .
     intro Hpnz. rewrite /kill_paid.
     iIntros "%Hknz Hmine Hpay [[%Hz _] | [%Hnz Hr]]".
     - exfalso. exact (Hpnz Hz).
@@ -598,7 +598,7 @@ Section SchedCtx.
      lands. *)
   Lemma kill_paid_flag (pid : mword 32) (kl : mword 32) :
     bv_unsigned pid = 0 -> kill_paid pid kl -∗ kill_free kl.
-  Proof.
+  Proof using .
     intro Hz. rewrite /kill_paid.
     iIntros "[[_ Hf] | [%Hnz _]]"; [ iExact "Hf" | exfalso; exact (Hnz Hz) ].
   Qed.
@@ -616,7 +616,7 @@ Section SchedCtx.
           pid_reg pid (DfracOwn qeighth) gn ∗ ChildTok.my_pay gn Q ∗
           □ (riscv_kill_cred -∗ Q (-1)) ∗ kill_row gn kl)) ∗
     pid_reg pid dq gn.
-  Proof.
+  Proof using .
     rewrite /kill_paid. iIntros "[[%Hz #Hf] | [%Hnz Hr]] Hmine".
     - iFrame "Hmine". iLeft. iSplitR; [ iPureIntro; exact Hz | ].
       iExact "Hf".
@@ -650,7 +650,7 @@ Section SchedCtx.
     kill_paid pid kl -∗ pid_reg pid dq gn -∗
     kill_paid pid kl ∗ pid_reg pid dq gn ∗
     (⌜kl = (mword_of_int 0 : mword 32)⌝ ∨ ChildTok.kill_shot gn).
-  Proof.
+  Proof using .
     iIntros "Hkp Hmine".
     iDestruct (kill_paid_agree pid kl dq gn with "Hkp Hmine")
       as "[Harm Hmine]".
@@ -680,7 +680,7 @@ Section SchedCtx.
     kill_paid pid kl ∗ pid_reg pid dq gn ∗ ChildTok.taken_at gn ∗
     (⌜kl = (mword_of_int 0 : mword 32)⌝
      ∨ (ChildTok.kill_shot gn ∗ □ riscv_kill_cred)).
-  Proof.
+  Proof using .
     iIntros "Hkp Hmine Ht".
     iDestruct (kill_paid_agree pid kl dq gn with "Hkp Hmine")
       as "[Harm Hmine]".
@@ -720,7 +720,7 @@ Section SchedCtx.
     kill_paid pid kl -∗ pid_reg pid dq gn -∗ ChildTok.kill_shot gn -∗
     kill_paid pid kl ∗ pid_reg pid dq gn ∗
     ⌜kl <> (mword_of_int 0 : mword 32)⌝.
-  Proof.
+  Proof using .
     intro Hnz. iIntros "Hkp Hmine #Hs".
     iDestruct (kill_paid_agree pid kl dq gn with "Hkp Hmine")
       as "[Harm Hmine]".
@@ -744,7 +744,7 @@ Section SchedCtx.
     ChildTok.kill_shot gn -∗ ChildTok.taken_at gn -∗
     pid_reg pid dq gn -∗ kill_paid pid kl -∗
     ChildTok.kill_owed gn ∗ pid_reg pid dq gn ∗ kill_paid pid kl.
-  Proof.
+  Proof using .
     intro Hpnz. iIntros "#Hs Ht Hmine Hkp".
     iDestruct (kill_paid_agree pid kl dq gn with "Hkp Hmine")
       as "[Harm Hmine]".
@@ -803,11 +803,11 @@ Section SchedCtx.
 
   Lemma park_pay_live (pa : mword 64) (st : mword 32) :
     inv_dormant st = false -> ⊢ park_pay pa st.
-  Proof. intros Hd. rewrite /park_pay Hd. auto. Qed.
+  Proof using . intros Hd. rewrite /park_pay Hd. auto. Qed.
 
   Lemma park_pay_needs_ctx (pa : mword 64) (st : mword 32) :
     needs_ctx st = true -> ⊢ park_pay pa st.
-  Proof. intros Hn. exact (park_pay_live pa st (inv_dormant_of_needs_ctx st Hn)). Qed.
+  Proof using . intros Hn. exact (park_pay_live pa st (inv_dormant_of_needs_ctx st Hn)). Qed.
 
   (* ------------------------------------------------------------------ *)
   (* The chain payload predicate.  The FOURTH argument is the crossing's  *)
@@ -895,7 +895,7 @@ Section SchedCtxPay.
      [ProcDefs] ([proc_dormant*]) and from [WpLock] ([lk_floor]). *)
   Global Instance locked_morph γ i :
     CtxMorph (λ ξ, WpLock.locked (XI := ξ) γ i).
-  Proof.
+  Proof using .
     rewrite /WpLock.locked /WpLock.locked_core /WpLock.lock_ctx_held.
     ctx_morph_solve.
   Qed.
@@ -903,19 +903,19 @@ Section SchedCtxPay.
      stands with the slot pile further down, below this one. *)
   Global Instance proc_held_morph i j γl st ch :
     CtxMorph (λ ξ, proc_held (XI := ξ) i j γl st ch).
-  Proof. rewrite /proc_held /proc_pub. ctx_morph_solve. Qed.
+  Proof using . rewrite /proc_held /proc_pub. ctx_morph_solve. Qed.
   (* the dormant block is taken BY NAME: left to instance search, the leaf
      tries every later-declared instance against the block's body up to δ
      before reaching [ProcDefs.proc_dormant_noctx_morph] -- measured as a
      hang, not a slow step *)
   Global Instance park_pay_morph pa st :
     CtxMorph (λ ξ, park_pay (XI := ξ) pa st).
-  Proof.
+  Proof using .
     rewrite /park_pay. apply ctx_morph_if_then.
     apply ProcDefs.proc_dormant_noctx_morph.
   Qed.
   Global Instance is_lock_morph γ lk s R : CtxMorph (λ ξ, is_lock (XI := ξ) γ lk s R).
-  Proof. rewrite /is_lock. ctx_morph_solve. Qed.
+  Proof using . rewrite /is_lock. ctx_morph_solve. Qed.
   (* A6.139: the handler ENVIRONMENT re-homes across a domination by the
      witness packed beside it in [intr_res]; everything else in the bundle
      is context-free.  These two instances are what lets the payload rows
@@ -923,7 +923,7 @@ Section SchedCtxPay.
      the bundle's hart [CIDh] is a parameter of the payload. *)
   Global Instance intr_res_morph (kt : ktier) (CIDh : CpuId) :
     CtxMorph (λ ξ, intr_res (XI := ξ) (CID := CIDh) kt).
-  Proof.
+  Proof using .
     iIntros (ξ ξ') "Hd Hres".
     iEval (rewrite /intr_res) in "Hres".
     iDestruct "Hres" as (E) "(Hat & #HE & #Hmv)".
@@ -934,11 +934,11 @@ Section SchedCtxPay.
 
   Global Instance trap_csrs_morph (kt : ktier) (CIDh : CpuId) :
     CtxMorph (λ ξ, trap_csrs (XI := ξ) (CID := CIDh) kt).
-  Proof. rewrite /trap_csrs. ctx_morph_solve. Qed.
+  Proof using . rewrite /trap_csrs. ctx_morph_solve. Qed.
 
   Global Instance p_sched_morph h A' c cret tpv p back :
     CtxMorph (λ ξ, p_sched h A' c cret tpv p back ξ).
-  Proof.
+  Proof using .
     rewrite /p_sched. ctx_morph_solve.
     all: apply (trap_csrs_morph KT1 h).
   Qed.
@@ -979,7 +979,7 @@ Section SchedCtxPay.
     park_pay (proc_addr j) st -∗
     p_sched i None (a_cpu_ctx (cid_word_of i))
       (p_context (proc_addr j)) (cid_word_of i) (proc_addr j) (needs_ctx st) cur_ctx.
-  Proof.
+  Proof using .
     iIntros (Hj Hgl Hst) "Htc Hheld Htag Hpay".
     iSplit; [done|]. iFrame "Htc". iLeft. iSplit; [done|]. iSplit; [done|].
     iExists j, γl, st, ch. iFrame. done.
@@ -997,7 +997,7 @@ Section SchedCtxPay.
     hart_full j i -∗
     p_sched i (Some i) (p_context (proc_addr j))
       (a_cpu_ctx (cid_word_of i)) (cid_word_of i) (proc_addr j) true cur_ctx.
-  Proof.
+  Proof using .
     iIntros (Hj Hgl) "Htc Hheld Htag".
     iSplit; [done|]. iFrame "Htc". iRight.
     iExists j, γl, ch. iFrame. done.
@@ -1015,7 +1015,7 @@ Section SchedCtxPay.
     trap_csrs KT1 (CID := i) ∗
     ∃ (γl : gname) (ch : mword 64),
       ⌜γs !! j = Some γl⌝ ∗ proc_held i j γl RUNNING ch ∗ hart_full j i.
-  Proof.
+  Proof using .
     iIntros (Hj) "(%Htp & Htc & Hpay)". iSplit; [done|].
     iDestruct "Hpay" as "[(%Hc & _ & _) | Hpay]".
     { exfalso.
@@ -1050,7 +1050,7 @@ Section SchedCtxPay.
     ∃ (γl : gname) (st : mword 32) (ch : mword 64),
       ⌜γs !! j = Some γl /\ park_ok st = true /\ back = needs_ctx st⌝ ∗
       proc_held i j γl st ch ∗ hart_full j i ∗ park_pay (proc_addr j) st.
-  Proof.
+  Proof using .
     iIntros (Hj) "(%Htp & Htc & Hpay)". iSplit; [done|].
     iDestruct "Hpay" as "[(_ & %HA & Hpay) | Hpay]".
     { iDestruct "Hpay" as (j' γl st ch) "[%Hfacts Hpay]".
@@ -1068,7 +1068,7 @@ Section SchedCtxPay.
 
 
   Lemma needs_ctx_ZOMBIE_false : needs_ctx ZOMBIE = false.
-  Proof. vm_compute. reflexivity. Qed.
+  Proof using . vm_compute. reflexivity. Qed.
 
   (* ------------------------------------------------------------------ *)
   (* The per-proc lock invariant.                                        *)
@@ -1155,11 +1155,11 @@ Section SchedCtxPay.
      name, the invariant and a floor; a floor's dirty arm crosses by
      [TsoCtx.ctx_dom_wrote_floor]). *)
   Global Instance ctx_cells_morph c vs : CtxMorph (λ ξ, ctx_cells (XI := ξ) c vs).
-  Proof. rewrite /ctx_cells. apply ctx_cells_at_morph. Qed.
+  Proof using . rewrite /ctx_cells. apply ctx_cells_at_morph. Qed.
   Global Instance own_ctx_morph pa : CtxMorph (λ ξ, own_ctx (XI := ξ) pa).
-  Proof. rewrite /own_ctx. ctx_morph_solve. Qed.
+  Proof using . rewrite /own_ctx. ctx_morph_solve. Qed.
   Global Instance run_slot_at_morph pa : CtxMorph (λ ξ, run_slot_at ξ pa).
-  Proof. rewrite /run_slot_at. ctx_morph_solve. Qed.
+  Proof using . rewrite /run_slot_at. ctx_morph_solve. Qed.
 
 
 
@@ -1219,46 +1219,46 @@ Section SchedCtxPay.
      named piece (the pieces of a dormant slot down to its page table;
      [PtTreeMorph] carries the tree). *)
   Global Instance pname_cells_morph pa dq bs : CtxMorph (λ ξ, pname_cells (XI := ξ) pa dq bs).
-  Proof. rewrite /pname_cells. ctx_morph_solve. Qed.
+  Proof using . rewrite /pname_cells. ctx_morph_solve. Qed.
   Global Instance proc_fields_morph pa dq V : CtxMorph (λ ξ, proc_fields (XI := ξ) pa dq V).
-  Proof. rewrite /proc_fields. ctx_morph_solve. Qed.
+  Proof using . rewrite /proc_fields. ctx_morph_solve. Qed.
   Global Instance ofile_cells_morph pa fs : CtxMorph (λ ξ, ofile_cells (XI := ξ) pa fs).
-  Proof. rewrite /ofile_cells. ctx_morph_solve. Qed.
+  Proof using . rewrite /ofile_cells. ctx_morph_solve. Qed.
   Global Instance tf_words_morph tfp ws : CtxMorph (λ ξ, tf_words (XI := ξ) tfp ws).
-  Proof. rewrite /tf_words. ctx_morph_solve. Qed.
+  Proof using . rewrite /tf_words. ctx_morph_solve. Qed.
   Global Instance tf_tail_morph tfp : CtxMorph (λ ξ, tf_tail (XI := ξ) tfp).
-  Proof. rewrite /tf_tail. ctx_morph_solve. Qed.
+  Proof using . rewrite /tf_tail. ctx_morph_solve. Qed.
   Global Instance tf_page_morph tfp ws : CtxMorph (λ ξ, tf_page (XI := ξ) tfp ws).
-  Proof. rewrite /tf_page. ctx_morph_solve. Qed.
+  Proof using . rewrite /tf_page. ctx_morph_solve. Qed.
   Global Instance is_kstack_morph pa ks : CtxMorph (λ ξ, is_kstack (XI := ξ) pa ks).
-  Proof. rewrite /is_kstack. ctx_morph_solve. Qed.
+  Proof using . rewrite /is_kstack. ctx_morph_solve. Qed.
   Global Instance kstack_free_morph pa : CtxMorph (λ ξ, kstack_free (XI := ξ) pa).
-  Proof. rewrite /kstack_free. ctx_morph_solve. Qed.
+  Proof using . rewrite /kstack_free. ctx_morph_solve. Qed.
   Global Instance phys_byte_any_morph a : CtxMorph (λ ξ, phys_byte_any (XI := ξ) a).
-  Proof. rewrite /phys_byte_any. ctx_morph_solve. Qed.
+  Proof using . rewrite /phys_byte_any. ctx_morph_solve. Qed.
   Global Instance phys_page_own_morph ppn : CtxMorph (λ ξ, phys_page_own (XI := ξ) ppn).
-  Proof. rewrite /phys_page_own. ctx_morph_solve. Qed.
+  Proof using . rewrite /phys_page_own. ctx_morph_solve. Qed.
   Global Instance upt_pages_own_morph um : CtxMorph (λ ξ, upt_pages_own (XI := ξ) um).
-  Proof. rewrite /upt_pages_own. ctx_morph_solve. Qed.
+  Proof using . rewrite /upt_pages_own. ctx_morph_solve. Qed.
   Global Instance proc_pt_own_morph P : CtxMorph (λ ξ, proc_pt_own (XI := ξ) P).
-  Proof. rewrite /proc_pt_own. ctx_morph_solve. Qed.
+  Proof using . rewrite /proc_pt_own. ctx_morph_solve. Qed.
   (* [proc_pt]'s morphs are ProcPtOwn's (main keys the image by [M]);
      [proc_dormant*] morphs are ProcDefs'; [own_ctx]/cell towers are
      SwtchCtx's -- all imported, none restated here. *)
   Global Instance proc_pub_morph pa : CtxMorph (λ ξ, proc_pub (XI := ξ) pa).
-  Proof. rewrite /proc_pub. ctx_morph_solve. Qed.
+  Proof using . rewrite /proc_pub. ctx_morph_solve. Qed.
 
   Global Instance proc_ctx_at_morph pa : CtxMorph (λ ξ, proc_ctx_at ξ pa).
-  Proof.
+  Proof using .
     rewrite /proc_ctx_at. apply ctx_morph_exist; intros XIp.
     apply ctx_morph_sep; [apply ctx_parked_morph | apply ctx_morph_const].
   Qed.
   Global Instance proc_slots_at_morph pa st : CtxMorph (λ ξ, proc_slots_at ξ pa st).
-  Proof. rewrite /proc_slots_at. ctx_morph_solve. Qed.
+  Proof using . rewrite /proc_slots_at. ctx_morph_solve. Qed.
   Global Instance proc_lock_res_at_morph γl pa : CtxMorph (λ ξ, proc_lock_res_at ξ γl pa).
-  Proof. rewrite /proc_lock_res_at. ctx_morph_solve. Qed.
+  Proof using . rewrite /proc_lock_res_at. ctx_morph_solve. Qed.
   Global Instance proc_lock_pay_morph γl pa : CtxMorph (proc_lock_pay γl pa).
-  Proof. rewrite /proc_lock_pay. apply _. Qed.
+  Proof using . rewrite /proc_lock_pay. apply _. Qed.
 
   (* A state change that moves NO resource -- every transition except the
      allocation/parking ones.  Both side conditions are [vm_compute], and
@@ -1273,7 +1273,7 @@ Section SchedCtxPay.
     not_running st' = not_running st ->
     inv_dormant st = false -> inv_dormant st' = false ->
     proc_slots pa st -∗ proc_slots pa st'.
-  Proof.
+  Proof using .
     intros Hn Hr Hd Hd'.
     (* [is_running] is [negb not_running], so [Hr] fixes the new arm too --
        recast needs no extra premise.  Nor does the allocation marker: both
@@ -1292,7 +1292,7 @@ Section SchedCtxPay.
   Lemma proc_slots_marker (pa : mword 64) (st : mword 32) :
     is_unused st = false ->
     proc_slots pa st -∗ pslot_used_at pa ∗ proc_slots pa st.
-  Proof.
+  Proof using .
     intros Hu. rewrite {1}/proc_slots {1}/proc_slots_at Hu.
     iIntros "(H1 & H2 & H3 & H4 & #Hm)". iFrame "Hm".
     rewrite /proc_slots /proc_slots_at Hu. iFrame "H1 H2 H3 H4 Hm".
@@ -1304,7 +1304,7 @@ Section SchedCtxPay.
      has to carry it to the USED state it re-establishes. *)
   Lemma proc_slots_unused (pa : mword 64) :
     proc_slots pa UNUSED -∗ proc_dormant pa UNUSED ∗ hart_at_any pa.
-  Proof.
+  Proof using .
     rewrite /proc_slots /proc_slots_at inv_dormant_UNUSED not_running_UNUSED is_running_UNUSED
             is_unused_UNUSED.
     rewrite (_ : needs_ctx UNUSED = false); [| vm_compute; reflexivity].
@@ -1320,7 +1320,7 @@ Section SchedCtxPay.
      a freed slot is simply never re-counted as available. *)
   Lemma proc_slots_unused_intro (pa : mword 64) :
     proc_dormant pa UNUSED -∗ hart_at_any pa -∗ proc_slots pa UNUSED.
-  Proof.
+  Proof using .
     rewrite /proc_slots /proc_slots_at inv_dormant_UNUSED not_running_UNUSED is_running_UNUSED
             is_unused_UNUSED.
     rewrite (_ : needs_ctx UNUSED = false); [| vm_compute; reflexivity].
@@ -1333,7 +1333,7 @@ Section SchedCtxPay.
      as RUNNABLE does.  Only the dormant and running guards are false. *)
   Lemma proc_slots_used (pa : mword 64) :
     proc_ctx pa -∗ hart_at_any pa -∗ pslot_used_at pa -∗ proc_slots pa USED.
-  Proof.
+  Proof using .
     rewrite /proc_slots /proc_slots_at inv_dormant_USED not_running_USED is_running_USED
             needs_ctx_USED is_unused_USED.
     iIntros "$ $ $".
@@ -1349,7 +1349,7 @@ Section SchedCtxPay.
   Lemma proc_slots_dispatch (pa : mword 64) (st : mword 32) :
     needs_ctx st = true ->
     proc_slots pa st -∗ proc_ctx pa ∗ hart_at_any pa ∗ pslot_used_at pa.
-  Proof.
+  Proof using .
     intros Hn. rewrite /proc_slots /proc_slots_at Hn.
     rewrite (not_running_of_needs_ctx st Hn).
     rewrite (is_running_of_needs_ctx st Hn).
@@ -1361,7 +1361,7 @@ Section SchedCtxPay.
   Lemma proc_slots_park (pa : mword 64) (st : mword 32) :
     needs_ctx st = true ->
     proc_ctx pa -∗ hart_at_any pa -∗ pslot_used_at pa -∗ proc_slots pa st.
-  Proof.
+  Proof using .
     intros Hn. rewrite /proc_slots /proc_slots_at Hn.
     rewrite (not_running_of_needs_ctx st Hn).
     rewrite (is_running_of_needs_ctx st Hn).
@@ -1385,7 +1385,7 @@ Section SchedCtxPay.
   Lemma sched_vc_at_intro (h : CPU) (c p : mword 64) (XIs : CtxId) :
     own_context (CID := h) XIs -∗ ▷ valid_context p_sched (Some h) c p XIs -∗
     ▷ sched_vc_at h c p.
-  Proof.
+  Proof using .
     iIntros "Hown Hrec". rewrite /sched_vc_at bi.later_exist. iExists XIs.
     rewrite bi.later_sep. iFrame "Hrec". iNext. iExact "Hown".
   Qed.
@@ -1393,7 +1393,7 @@ Section SchedCtxPay.
   Lemma sched_vc_at_tok (E : coPset) (h : CPU) (c p : mword 64) :
     ▷ sched_vc_at h c p ={E}=∗
     ∃ XIs : CtxId, own_context (CID := h) XIs ∗ ▷ valid_context p_sched (Some h) c p XIs.
-  Proof.
+  Proof using .
     rewrite /sched_vc_at bi.later_exist. iIntros "(%XIs & H)".
     rewrite bi.later_sep. iDestruct "H" as "[Hown Hrec]".
     iPoseProof (@timeless _ (own_context (CID := h) XIs) (own_context_timeless XIs)
@@ -1407,7 +1407,7 @@ Section SchedCtxPay.
     proc_ctx pa -∗
     ∃ XIt : CtxId, resume_tok None XIt ∗
                    ▷ valid_context p_sched None (p_context pa) pa XIt.
-  Proof.
+  Proof using .
     rewrite /proc_ctx /proc_ctx_at /resume_tok /=.
     iIntros "(%XIp & Hpk & Hrec)". iExists XIp. iFrame "Hpk Hrec".
   Qed.
@@ -1418,7 +1418,7 @@ Section SchedCtxPay.
   Lemma proc_ctx_of_tok (pa : mword 64) (XIo : CtxId) :
     park_tok None XIo -∗ ▷ valid_context p_sched None (p_context pa) pa XIo -∗
     proc_ctx pa.
-  Proof.
+  Proof using .
     rewrite /park_tok /park_tok_at /proc_ctx /proc_ctx_at /=. iIntros "Hpk Hrec".
     iExists XIo. iFrame "Hpk Hrec".
   Qed.
@@ -1435,7 +1435,7 @@ Section SchedCtxPay.
     (if needs_ctx st then proc_ctx pa else own_ctx (p_context pa)) -∗
     hart_at_any pa -∗ pslot_used_at pa -∗ park_pay pa st -∗
     proc_slots pa st.
-  Proof.
+  Proof using .
     intros Hst. iIntros "Hctx Hpark #Hused Hpay".
     pose proof (is_unused_of_park_ok st Hst) as Hu.
     apply park_ok_cases in Hst as [Hn | Hz].
@@ -1470,7 +1470,7 @@ Section SchedCtxPay.
     own_ctx (p_context (proc_addr j)) ∗
     ▷ sched_vc_at h (a_cpu_ctx (cid_word_of h)) (proc_addr j) ∗
     pslot_used_at (proc_addr j).
-  Proof.
+  Proof using .
     iIntros (Hj) "Hhlf Hslot".
     rewrite /proc_slots /proc_slots_at.
     (* first: refute [not_running], which is the whole argument. *)
@@ -1507,7 +1507,7 @@ Section SchedCtxPay.
     ▷ sched_vc_at h (a_cpu_ctx (cid_word_of h)) (proc_addr j) -∗
     pslot_used_at (proc_addr j) -∗
     proc_slots (proc_addr j) RUNNING.
-  Proof.
+  Proof using .
     iIntros (Hj) "Hhlf Hown Hrec #Hused". rewrite /proc_slots /proc_slots_at /run_slot_at.
     rewrite needs_ctx_RUNNING inv_dormant_RUNNING not_running_RUNNING
             is_running_RUNNING is_unused_RUNNING.
@@ -1531,26 +1531,26 @@ Section SchedCtxPay.
      [∗ list] i ↦ _ ∈ γs, ∃ ks : mword 64, is_kstack (proc_addr i) ks)%I.
 
   Global Instance procs_inv_persistent : Persistent procs_inv.
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* the per-proc [is_lock] extracted from the global invariant. *)
   Lemma procs_inv_lookup (i : nat) (γl : gname) :
     γs !! i = Some γl ->
     procs_inv -∗ is_lock γl (proc_addr i) "proc"%string (proc_lock_pay γl (proc_addr i)).
-  Proof.
+  Proof using .
     iIntros (Hi) "[_ [Hbig _]]".
     by iDestruct (big_sepL_lookup with "Hbig") as "$".
   Qed.
 
   (* the array's length -- what a scan's fuel bound is stated over. *)
   Lemma procs_inv_len : procs_inv -∗ ⌜length γs = NPROC⌝.
-  Proof. iIntros "[$ _]". Qed.
+  Proof using . iIntros "[$ _]". Qed.
 
   (* ... and the per-proc kstack address. *)
   Lemma procs_inv_kstack (i : nat) (γl : gname) :
     γs !! i = Some γl ->
     procs_inv -∗ ∃ ks : mword 64, is_kstack (proc_addr i) ks.
-  Proof.
+  Proof using .
     iIntros (Hi) "[_ [_ Hbig]]".
     by iDestruct (big_sepL_lookup with "Hbig") as "$".
   Qed.
@@ -1565,7 +1565,7 @@ Section SchedCtxPay.
     proc_pub pa -∗
     proc_slots pa st -∗
     proc_lock_res γl pa.
-  Proof.
+  Proof using .
     iIntros "Hs Hg Hc Hpub Hsl". iExists st, ch. iFrame "Hs Hg Hc Hsl". iExact "Hpub".
   Qed.
 
@@ -1578,14 +1578,14 @@ Section SchedCtxPay.
     proc_pub (XI := ξl) pa -∗
     proc_slots_at ξl pa st -∗
     proc_lock_res_at ξl γl pa.
-  Proof. iIntros "Hs Hg Hc Hpub Hsl". iExists st, ch. iFrame. Qed.
+  Proof using . iIntros "Hs Hg Hc Hpub Hsl". iExists st, ch. iFrame. Qed.
 
   Lemma proc_lock_res_elim (γl : gname) (pa : mword 64) :
     proc_lock_res γl pa -∗
     ∃ (st : mword 32) (ch : mword 64),
       p_state pa ↦₄ st ∗ pstate_lock pa st ∗
       p_chan pa ↦₈ ch ∗ proc_pub pa ∗ proc_slots pa st.
-  Proof. iIntros "H". iExact "H". Qed.
+  Proof using . iIntros "H". iExact "H". Qed.
 
   (* the wakeup transition: a proc found SLEEPING (hence carrying the
      ▷-guarded context), with its state cell flipped to RUNNABLE, still
@@ -1601,7 +1601,7 @@ Section SchedCtxPay.
     proc_pub pa -∗
     proc_slots pa st -∗
     |==> proc_lock_res γl pa.
-  Proof.
+  Proof using .
     intros ->. iIntros "Hs Hg Hc Hpub Hsl".
     iMod (pstate_lock_write pa SLEEPING RUNNABLE
             unclaimed_SLEEPING unclaimed_RUNNABLE with "Hg") as "Hg".
@@ -1621,7 +1621,7 @@ Section SchedCtxTable.
   Context `{GEN : GenId} `{CID : CpuId}.
   Context (γs : list gname).
   Global Instance procs_inv_morph : CtxMorph (λ ξ, procs_inv (XI := ξ) γs).
-  Proof. rewrite /procs_inv. ctx_morph_solve. Qed.
+  Proof using . rewrite /procs_inv. ctx_morph_solve. Qed.
 End SchedCtxTable.
 
 

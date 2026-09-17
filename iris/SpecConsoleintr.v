@@ -234,14 +234,14 @@ Section EchoShift.
 
   Global Instance cons_echo_shift_persistent `{XI : CurCtx} :
     Persistent (cons_echo_shift (XI := XI)).
-  Proof. rewrite /cons_echo_shift. apply _. Qed.
+  Proof using . rewrite /cons_echo_shift. apply _. Qed.
 
   (* THE TRIVIAL APPLICATION'S DISCHARGE.  When the machine's console claim
      is [RiscvPtsto.cons_res_triv] every link is free, so the echo justifies
      itself. *)
   Lemma cons_echo_shift_triv `{XI : CurCtx} :
     riscv_cons_res = cons_res_triv -> ⊢ cons_echo_shift (XI := XI).
-  Proof.
+  Proof using .
     intros Hc. iIntros "!>" (h c cs Φ) "_ _ _ _ _ HΦ".
     iAssert cons_licence as "#Hlic"; [by iApply cons_licence_triv|].
     iApply (cons_link_of_licence with "Hlic").
@@ -285,12 +285,12 @@ Section ConsoleCaps.
        uarts_words)%I.
 
   Global Instance console_caps_persistent `{XI : CurCtx} γu : Persistent (console_caps γu).
-  Proof. rewrite /console_caps. apply _. Qed.
+  Proof using . rewrite /console_caps. apply _. Qed.
 
   (* the capabilities are two lock handles, so they ride any domination *)
   Global Instance console_caps_morph γu :
     CtxMorph (λ ξ, console_caps (XI := ξ) γu).
-  Proof.
+  Proof using .
     rewrite /console_caps /UartTxInv.is_txlock /SpecUartPutc.uarts_words
             /cons_echo_shift.
     ctx_morph_solve.

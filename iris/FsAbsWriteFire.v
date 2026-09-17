@@ -652,7 +652,7 @@ Section WriteFire.
 
   Lemma awrite_chain_0 Γ E i γo M ua Q k :
     awrite_chain Γ E i γo M ua Q k 0 ⊣⊢ Q k.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma awrite_chain_S Γ E i γo M ua Q k cnt :
     awrite_chain Γ E i γo M ua Q k (S cnt) ⊣⊢
@@ -661,14 +661,14 @@ Section WriteFire.
            (awrite_chain Γ E i γo M ua Q (S k) cnt)
          ∧ awrite_part_at Γ E i γo M ua k
              (awrite_chain Γ E i γo M ua Q (S k) cnt)).
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* THE CALLER'S ELIMINATION, at any stop position and any remaining
      count: the node IS the cursor.  This is the whole of what the two
      exits of filewrite's loop read off. *)
   Lemma awrite_chain_cursor Γ E i γo M ua Q k cnt :
     awrite_chain Γ E i γo M ua Q k cnt -∗ Q k.
-  Proof.
+  Proof using .
     destruct cnt as [| cnt'].
     - rewrite awrite_chain_0. iIntros "$".
     - rewrite awrite_chain_S. iIntros "[$ _]".
@@ -685,7 +685,7 @@ Section WriteFire.
   Lemma awrite_chain_unit (γfs : fs_names) E i γo M ua k cnt :
     app_sup -∗
     awrite_chain (fs_gamma_L γfs) E i γo M ua (fun _ => True%I) k cnt.
-  Proof.
+  Proof using .
     revert k. induction cnt as [| cnt IH]; intros k.
     { rewrite awrite_chain_0. by iIntros "_". }
     rewrite awrite_chain_S. iIntros "#Hsup". iSplit; [done |]. iSplit.
@@ -735,7 +735,7 @@ Section WriteFire.
       top_frag (fs_gamma_L γfs) i n'
       ∗ off_gv γo (1/2) (Z.of_nat (off + length bs))
       ∗ ROff ∗ REST.
-  Proof.
+  Proof using .
     intros HE Hloc Hpos Hoff Hcap Hnz Habs Hnz' Habs' Hby.
     iIntros "#Hi #Hai Hsup Hcm Hf Hg".
     (* the re-spelling is needed because the unifier cannot solve
@@ -810,7 +810,7 @@ Section WriteFire.
       top_frag (fs_gamma_L γfs) i n'
       ∗ off_gv γo (1/2) (Z.of_nat (off + length bs))
       ∗ REST.
-  Proof.
+  Proof using .
     intros HE Hloc Hpos Hoff Hcap Hnz Habs Hnz' Habs' Hby.
     iIntros "#Hi #Hai #Hoinv Hcm Hf Hg".
     assert (Hfoff : ↑foffN ⊆ E).
@@ -848,7 +848,7 @@ Section WriteFire.
       top_frag (fs_gamma_L γfs) i n'
       ∗ off_gv γo (1/2) (Z.of_nat (off + length bs))
       ∗ uoff γo (off + length bs) ∗ REST.
-  Proof.
+  Proof using .
     intros HE Hloc Hpos Hoff Hcap Hnz Habs Hnz' Habs' Hby.
     iIntros "#Hi #Hai Hu Hcm Hf Hg".
     iApply (wrf_awrite_fire_gen γfs E i γo M ua k REST (uoff γo (off + length bs))
@@ -887,7 +887,7 @@ Section WriteFire.
       top_frag (fs_gamma_L γfs) i n'
       ∗ off_gv γo (1/2) (Z.of_nat (off + r))
       ∗ ROff ∗ REST.
-  Proof.
+  Proof using .
     intros HE Hloc Hpos Hoff Hcap Hr Hgap Hnz Habs Hnz' Habs' Hby.
     iIntros "#Hi #Hai Hsup Hcm Hf Hg".
     rewrite /top_frag /fs_gamma_L /=.
@@ -954,7 +954,7 @@ Section WriteFire.
       top_frag (fs_gamma_L γfs) i n'
       ∗ off_gv γo (1/2) (Z.of_nat (off + r))
       ∗ REST.
-  Proof.
+  Proof using .
     intros HE Hloc Hpos Hoff Hcap Hr Hgap Hnz Habs Hnz' Habs' Hby.
     iIntros "#Hi #Hai #Hoinv Hcm Hf Hg".
     assert (Hfoff : ↑foffN ⊆ E).
@@ -992,7 +992,7 @@ Section WriteFire.
       top_frag (fs_gamma_L γfs) i n'
       ∗ off_gv γo (1/2) (Z.of_nat (off + r))
       ∗ uoff γo (off + r) ∗ REST.
-  Proof.
+  Proof using .
     intros HE Hloc Hpos Hoff Hcap Hr Hgap Hnz Habs Hnz' Habs' Hby.
     iIntros "#Hi #Hai Hu Hcm Hf Hg".
     iApply (wrf_apart_fire_gen γfs E i γo M ua k REST (uoff γo (off + r))

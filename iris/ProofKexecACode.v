@@ -311,7 +311,7 @@ Section KexecABody.
   Lemma kxc_moi_nat64_inj (a c : nat) : (a <= 64)%nat -> (c <= 64)%nat ->
     (mword_of_int (Z.of_nat a) : mword 64)
       = (mword_of_int (Z.of_nat c) : mword 64) -> a = c.
-  Proof.
+  Proof using .
     intros Ha Hc Heq. apply (f_equal bv_unsigned) in Heq.
     rewrite !moi64_unsigned in Heq.
     rewrite !bvw64_small in Heq;
@@ -421,7 +421,7 @@ Section KexecABody.
         wp_next (CID0 := CID) true (proc_addr jp) KEX -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hqf HK Hroot Hnib0 Hlg Hsz Hbm0 Hbmc Hbml Hins0 Hcovb
            Hiregb Hcstr Hplen Hjp Hgs Hsp Hra Hs0 Hs1 Hs2 Ha0 Ha1.
     
@@ -922,7 +922,7 @@ Section KexecABody.
     R -∗
     wp_next (CID0 := CIDx) true pj KEX -∗
     wp_next (CID0 := CIDx) true pj E.
-  Proof.
+  Proof using .
     rewrite /wp_next. iIntros "#Hw HR H" (CID Hcr).
     iSpecialize ("H" $! CID with "[%]"); [exact Hcr |].
     iApply ("Hw" with "H HR").
@@ -1130,7 +1130,7 @@ Section KexecABody.
     (* ---- and the FALL-THROUGH: the state at +0x090, phase B's entry ---- *)
     wp_next true (proc_addr jp) (fun CID : CpuId => kxc_a2_exit1_r jp gf plen pfun na avf aslen afun pidv U dqb dqs dqa dqpv dqas m K eb b lks sp0 ra0 s00 s10 s20 pv av RX KEX CID) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hqf HK Hroot Hnib0 Hlg Hsz Hbm0 Hbmc Hbml Hins0 Hcovb
            Hiregb Hjp Hgs Hsp Hra Hs0 Hs1 Hs2.
     pose proof HK as HK'. 
@@ -2101,7 +2101,7 @@ Section KexecABody.
     (* ---- and the FALL-THROUGH: the state at +0x090, phase B's entry ---- *)
     wp_next true (proc_addr jp) (fun CID : CpuId => kxc_a2_exit1 jp gf plen pfun na avf aslen afun pidv U dqb dqs dqa dqpv dqas m K eb b lks sp0 ra0 s00 s10 s20 pv av HD XCH KEX CID) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hqf HK Hroot Hnib0 Hlg Hsz Hbm0 Hbmc Hbml Hins0 Hcovb
            Hiregb Hjp Hgs Hsp Hra Hs0 Hs1 Hs2.
     iIntros "#Htext #Hfab Horacle Hseam Hcont #Hkw Hcont90".
@@ -2334,7 +2334,7 @@ Section KexecAMain.
         wp_next (CID0 := CID) true (proc_addr jp) KEX -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hqf HK Hroot Hnib0 Hlg Hsz Hbm0 Hbmc Hbml Hins0 Hcovb
            Hiregb Hcstr Hplen Hjp Hgs Hsp Hra Hs0 Hs1 Hs2 Ha0 Ha1.
     iIntros "Hcg Hcnt Hextc Hclmc #Htext Hpc #Hfab Horacle #Hka Hbm Hins #Hbits Hpriv

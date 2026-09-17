@@ -1,7 +1,7 @@
 # ucode_cat.txt -- the pc set of iris/UCodeCat.v, for tools/gen_ucode.py.
 #
-#   tools/gen_ucode.py --module Cat --out iris/UCodeCat.v \
-#       --spec tools/ucode_cat.txt
+# tools/ucode_manifest.json binds this spec to iris/UCodeCat.v; `make gen-ucode`
+# rewrites that file from it, and `make check-ucode` fails if it moved.
 #
 # cat is the first verified program whose SYSCALLS WRITE ITS MEMORY.  init,
 # echo and sync issue only quiet syscalls and exec/fork/wait; cat's inner

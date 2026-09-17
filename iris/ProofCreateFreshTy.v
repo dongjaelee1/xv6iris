@@ -373,7 +373,7 @@ Section CftHelpers.
     (k < NINODE)%nat ->
     (ic_escrows fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst -∗ ic_escrow fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k
      : iProp Σ).
-  Proof.
+  Proof using .
     iIntros (Hk) "H". rewrite /ic_escrows /ic_boxes_all /ic_escrow.
     assert (Hl : seq 0 NINODE !! k = Some k) by (rewrite lookup_seq; lia).
     iDestruct (big_sepL_lookup _ _ k k Hl with "H") as "$".
@@ -381,7 +381,7 @@ Section CftHelpers.
 
   Lemma cft_bs3 :
     (bslots 3 : iProp Σ) ⊣⊢ bslot ∗ bslots 2.
-  Proof. rewrite /bslot. change 3%nat with (1 + 2)%nat. apply bslots_op. Qed.
+  Proof using . rewrite /bslot. change 3%nat with (1 + 2)%nat. apply bslots_op. Qed.
 End CftHelpers.
 
 Section CreateFreshTySpan.
@@ -412,7 +412,7 @@ Lemma create_fresh_ty :
       create_fresh_ty_body γs j γl pd pav pu
  ty kd dqp
                            u Sb t qt qc pidv dq dqs dqn Ma K eb b lks Upr.
-Proof.
+Proof using .
   intros.
   cbv beta delta [create_fresh_ty_body]. cbv zeta.
   intros HKia HKil Hlg Hist Hiregb Hn1 Hn2 Hn3 Htynz Htyk Hj Hgs Hdevr

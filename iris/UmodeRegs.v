@@ -47,7 +47,7 @@ Section UmodeRegs.
     (hw_config ∗ minstret_inv ∗ wire_inv)%I.
 
   Global Instance uv_amb_persistent : Persistent uv_amb.
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* the kernel's per-step cell bundle at a CONCRETE resume state
      ([UserFrame.u_regs], PC and nextPC both at [va]) is [uv_regs] -- CSR
@@ -57,7 +57,7 @@ Section UmodeRegs.
     user_mstatus_ok ms_v ->
     u_regs (HART_ACTIVE tt) ms_v sc_v stval_v sepc_v va va g -∗
     uv_regs ∗ gpr_file g ∗ pc_is va.
-  Proof.
+  Proof using .
     iIntros (Hms) "Hregs".
     iEval (rewrite u_regs_pc_is) in "Hregs".
     iDestruct "Hregs" as "(Hhs & Hpriv & Hmst & Hsc & Hstv & Hsep & Hpc & Hg)".
@@ -73,7 +73,7 @@ Section UmodeRegs.
     ∃ ms_v sc_v stval_v sepc_v : mword 64,
       ⌜user_mstatus_ok ms_v⌝ ∗
       u_regs (HART_ACTIVE tt) ms_v sc_v stval_v sepc_v va va g.
-  Proof.
+  Proof using .
     iIntros "Hur Hg Hpc".
     iDestruct "Hur" as (ms_v sc_v stval_v sepc_v)
       "(%Hms & Hhs & Hpriv & Hmst & Hsc & Hstv & Hsep)".
@@ -85,6 +85,6 @@ Section UmodeRegs.
 
   Lemma uv_amb_intro :
     hw_config -∗ minstret_inv -∗ wire_inv -∗ uv_amb.
-  Proof. iIntros "Hhw Hmi Hwi". rewrite /uv_amb. iFrame "Hhw Hmi Hwi". Qed.
+  Proof using . iIntros "Hhw Hmi Hwi". rewrite /uv_amb. iFrame "Hhw Hmi Hwi". Qed.
 
 End UmodeRegs.

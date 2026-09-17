@@ -38,7 +38,7 @@ Section CodeTrapinitBundle.
   Lemma tri_code :
     kernel_text -∗ ilw_code KernelSyms.trapinit (mword_of_int 5) (mword_of_int 22)
                             (mword_of_int 3434) (mword_of_int 3410) (mword_of_int 2090690).
-  Proof.
+  Proof using .
     iIntros "#Ht". rewrite /ilw_code.
     iSplitR; [iApply (tri_00 with "Ht")|].
     iSplitR; [iApply (tri_02 with "Ht")|].
@@ -69,7 +69,7 @@ Section ProofTrapinit.
   Lemma wp_trapinit_sconf
       (m : regfile) (K : nat) (vlock : bv 32) (vname vcpu : bv 64) (b : bool) (p : mword 64)
     : wp_trapinit_sconf_body m K vlock vname vcpu b p.
-  Proof.
+  Proof using .
     cbv beta delta [wp_trapinit_sconf_body].
     intros pcE ret_tgt lk c_name c_cpu HK.
     (* &"time" is proof-local: the spec speaks of the lock's NAME, not of the

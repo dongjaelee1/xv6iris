@@ -410,9 +410,9 @@ Section LogMirrorDefs.
     (∃ M : log_mirror, log_mirror_half M ∗ ⌜lm_hdr M ls = h⌝)%I.
 
   Global Instance log_mirror_half_timeless M : Timeless (log_mirror_half M).
-  Proof. rewrite /log_mirror_half. apply _. Qed.
+  Proof using . rewrite /log_mirror_half. apply _. Qed.
   Global Instance log_mirror_at_timeless ls h : Timeless (log_mirror_at ls h).
-  Proof. rewrite /log_mirror_at /log_mirror_half. apply _. Qed.
+  Proof using . rewrite /log_mirror_at /log_mirror_half. apply _. Qed.
 
   (* THE ERA'S MIRROR, BORN TRUE AND IN CUSTODY (durable-disk 1a).
      PowerOn allocates the era's mirror variable at the picture of the disk
@@ -432,7 +432,7 @@ Section LogMirrorDefs.
 
   Global Instance log_mirror_born_timeless `{GEN : GenId} M :
     Timeless (log_mirror_born M).
-  Proof. rewrite /log_mirror_born /log_mirror_half /swap_lb. apply _. Qed.
+  Proof using . rewrite /log_mirror_born /log_mirror_half /swap_lb. apply _. Qed.
 End LogMirrorDefs.
 
 Record log_names := MkLogNames {
@@ -476,17 +476,17 @@ Section LogFrags.
     mono_nat_lb_own (ln_ep γ) e.
 
   Global Instance log_epoch_lb_persistent γ e : Persistent (log_epoch_lb γ e).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Global Instance log_epoch_lb_timeless γ e : Timeless (log_epoch_lb γ e).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* MINTING, where the auth is open (every log ghost step, and begin_op's
      in particular).  Free: the auth is handed straight back. *)
   Lemma log_epoch_lb_get (γ : log_names) (E : nat) :
     mono_nat_auth_own (ln_ep γ) 1 E -∗
     mono_nat_auth_own (ln_ep γ) 1 E ∗ log_epoch_lb γ E.
-  Proof.
+  Proof using .
     iIntros "Ha".
     iDestruct (mono_nat_lb_own_get with "Ha") as "#Hlb".
     iFrame "Ha". iApply "Hlb".
@@ -495,14 +495,14 @@ Section LogFrags.
   (* ...and USING one, back under the auth: the bound is real. *)
   Lemma log_epoch_lb_le (γ : log_names) (E e : nat) :
     mono_nat_auth_own (ln_ep γ) 1 E -∗ log_epoch_lb γ e -∗ ⌜(e <= E)%nat⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Hl".
     iDestruct (mono_nat_lb_own_valid with "Ha Hl") as %[_ Hle]. done.
   Qed.
 
   (* ...and the trivial anchor, for every caller that wants none of it *)
   Lemma log_epoch_lb_0 (γ : log_names) : ⊢ |==> log_epoch_lb γ 0.
-  Proof. rewrite /log_epoch_lb. iApply mono_nat_lb_own_0. Qed.
+  Proof using . rewrite /log_epoch_lb. iApply mono_nat_lb_own_0. Qed.
 
   (* ---------------------------------------------------------------- *)
   (*  THE EPOCH AND THE APPEND REGISTRY (fs-log.md §G.2)               *)
@@ -518,10 +518,10 @@ Section LogFrags.
     own (ln_lg γ) (◯ ({[(e, b)]} : gset (nat * Z))).
 
   Global Instance logged_at_persistent γ e b : Persistent (logged_at γ e b).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Global Instance logged_at_timeless γ e b : Timeless (logged_at γ e b).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* the registry's two operations, over the [gset] auth: minting is an
      allocation into a union (idempotent, so the fragment is core-id and
@@ -529,7 +529,7 @@ Section LogFrags.
   Lemma log_mint_logged (γ : log_names) (X : gset (nat * Z)) (e : nat) (b : Z) :
     own (ln_lg γ) (● X) ==∗
     own (ln_lg γ) (● (X ∪ {[(e, b)]})) ∗ logged_at γ e b.
-  Proof.
+  Proof using .
     iIntros "H".
     iMod (own_update _ _ (● (X ∪ {[(e, b)]} : gset (nat * Z))
                           ⋅ ◯ (X ∪ {[(e, b)]} : gset (nat * Z))) with "H")
@@ -545,7 +545,7 @@ Section LogFrags.
 
   Lemma logged_at_in (γ : log_names) (X : gset (nat * Z)) (e : nat) (b : Z) :
     own (ln_lg γ) (● X) -∗ logged_at γ e b -∗ ⌜(e, b) ∈ X⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Hf".
     iDestruct (own_valid_2 with "Ha Hf") as %Hv.
     iPureIntro.
@@ -591,7 +591,7 @@ Section LogGhostAlloc.
      ghost_map_auth (ln_tx γ) 1 (∅ : gmap nat unit))%I.
 
   Lemma log_ghost_alloc : ⊢ |==> ∃ γ : log_names, log_free_tok γ.
-  Proof.
+  Proof using .
     iMod lock_ghost_alloc as (γlk) "Hlk".
     iMod (ghost_map_alloc_empty (K:=nat) (V:=op_entry)) as (γops) "Hops".
     iMod (mono_nat_own_alloc 1%nat) as (γep) "[Hep _]".

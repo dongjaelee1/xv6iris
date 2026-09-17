@@ -88,7 +88,7 @@ Section UserKernelBridge.
     eq_vec (_get_Mstatus_MPP ms0) ('b"10") = false ->
     _get_Mstatus_SPIE ms0 = ('b"1" : mword 1) ->
     user_mstatus_ok (sret_ms5 ms0).
-  Proof.
+  Proof using .
     intros HSXL HMXR HFS HVS HTVM HTSR HXS HSD HMPP HSPIE.
     unfold user_mstatus_ok.
     split_and!.
@@ -178,7 +178,7 @@ Section UserKernelBridge.
            (ret_pc sepc0) (ret_pc sepc0) g ∗
     user_ptm_inv_x pt sz Mim ∗
     user_cfg C.
-  Proof.
+  Proof using .
     intros HSXL HMXR HFS HVS HTVM HTSR HXS HSD HMPP HSPIE Hdqc Hstvec Hmie Hmdl Hmedl
       Hroot Htfp Hum Hmenv Hsenv Hmse Hsse Hinj Hacc.
     subst menvcfg0 senvcfg0 mstateen0v sstateen0v.

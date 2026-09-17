@@ -1,13 +1,13 @@
 # ucode_shp.txt -- the pc set of iris/UCodeShP.v, for tools/gen_ucode.py.
 #
-#   tools/gen_ucode.py --module Sh --prog shp --out iris/UCodeShP.v \
-#       --spec tools/ucode_shp.txt
+# tools/ucode_manifest.json binds this spec to iris/UCodeShP.v; `make gen-ucode`
+# rewrites that file from it, and `make check-ucode` fails if it moved.
 #
-# THE THIRD CATALOG OVER THE SAME DUMP, AND THE REASON THERE IS A THIRD.
-# tools/ucode_sh.txt drives iris/UCodeSh.v (the [uinstr] / page-table form the
-# first-generation UProofSh*.v proofs take); tools/ucode_shk.txt drives
-# iris/UCodeShK.v (the urun form, SH lane stages 1-2: start, main, getcmd,
-# memset, gets and their syscall stubs).  This file drives the SH lane's
+# WHY sh HAS A CATALOG PER STAGE, AND THE MEASUREMENT BEHIND IT.
+# tools/ucode_shk.txt drives iris/UCodeShK.v (SH lane stages 1-2: start,
+# main, getcmd, memset, gets and their syscall stubs, plus stage 5 and the
+# diagnostic subtree); tools/ucode_shm.txt drives iris/UCodeShM.v (stage 3,
+# the allocator).  This file drives the SH lane's
 # STAGE 4 -- the parser -- and it is a file of its own for a MEASURED reason,
 # not a stylistic one: stage 1 re-measured the catalog's cost serially and
 # found it LINEAR in instructions, ~22 s fixed + ~1.9 s per instruction, with

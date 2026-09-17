@@ -346,7 +346,7 @@ Section KexitMsg.
 
   Lemma kx_msg_str :
     (kernel_data : iProp Σ) -∗ (mword_of_int kx_msg_a : mword 64) ↦ₛ□ kx_msg.
-  Proof.
+  Proof using .
     iIntros "#Hd".
     iApply (kernel_data_string kx_msg_a kx_msg _ eq_refl
               ltac:(unfold text_end, kx_msg_a; lia)
@@ -386,7 +386,7 @@ Section KexitPro.
         kx_frame spF -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros sp0 spF HK6 Hdom.
     iIntros "Hcg #Htext Hpc Hcont".
     (* +0x00 c.addi16sp sp,-48 : trade 6 slots out of the capability *)
@@ -544,7 +544,7 @@ Section KexitLoop.
       (γf : gname) (pa : mword 64) (pid : mword 32)
       (U : ustate) :
     proc_priv_unmarked γf pa pid U -∗ ⌜length (pv_ofile (us_V U)) = NOFILE⌝.
-  Proof. iIntros "(Hn & _)". iApply (proc_priv_nocwd_ofile_len with "Hn"). Qed.
+  Proof using . iIntros "(Hn & _)". iApply (proc_priv_nocwd_ofile_len with "Hn"). Qed.
 
   Lemma kx_unmarked_bare_ofile `{GEN : GenId} `{XI : CurCtx}
       (γf : gname) (pa : mword 64) (pid : mword 32)
@@ -554,7 +554,7 @@ Section KexitLoop.
     proc_priv_bare pa pid U ∗ ofile_slot γf (pv_fdg (us_V U)) pa fd v ∗
     (∀ v', proc_priv_bare pa pid U -∗ ofile_slot γf (pv_fdg (us_V U)) pa fd v' -∗
            proc_priv_unmarked γf pa pid (us_ofile U fd v')).
-  Proof.
+  Proof using .
     iIntros (Hfd) "(Hn & Hrest)".
     iDestruct (proc_priv_nocwd_lazy with "Hn") as %Hlz.
     rewrite (proc_priv_nocwd_bare γf pa pid U Hlz).
@@ -649,7 +649,7 @@ Section KexitLoop.
       fileclose_fs_env_nopid fn 0%nat eb pj -∗
        iref_slot -∗
       WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pj Hj Hfnj Hfndq Hfnpid Hav Hfresh.
     iIntros "#Htext #Hkd #Hft #Hpe Hqexit".
     iAssert (∀ (fuel : nat),
@@ -1161,7 +1161,7 @@ Section KexitPark.
      ∨ (⌜xstate_of sv = -1⌝ ∗ ChildTok.kill_shot (pv_gen (us_V U))
         ∗ ChildTok.taken_at (pv_gen (us_V U)))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pj Hj Hgl Hav Hregs Hof Hcwd Hfresh.
     destruct Hregs as (Hs3 & Hs4 & Hsp0 & Hdom).
     iIntros "Hcg Hcloser Hown Htce Hcce #Htext Hpc #Hprocs #Hwl Hinit #Hid Hsp Hir Hbs Hpriv Hgq Hrow Hxb Hgh #Hmy HQ".
@@ -1908,7 +1908,7 @@ Section KexitRest.
      ∨ (⌜xstate_of sv = -1⌝ ∗ ChildTok.kill_shot (pv_gen (us_V U))
         ∗ ChildTok.taken_at (pv_gen (us_V U)))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pj Hj Hgl Hav Hgeom Hregs Hof
            Hsize Hbm0 Hbmcov Hbmlog Hist0 Hinumgeo Hcovb Hfresh.
     destruct Hregs as (Hs3 & Hs4 & Hsp0 & Hdom).
@@ -2221,7 +2221,7 @@ Section ProofKexit.
  ip dqi
 
                           on fn m av eb b lks pid U sts cs Q.
-  Proof.
+  Proof using .
     cbv beta delta [wp_kexit_sconf_body].
     intros pcE pj Hfn Hj Hgl HK Hgeom Hfresh. subst fn.
     

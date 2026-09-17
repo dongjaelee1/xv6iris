@@ -100,20 +100,20 @@ Section flushed_hist.
 
   Global Instance flushed_at_persistent γs b D :
     Persistent (flushed_at γs b D).
-  Proof. rewrite /flushed_at. apply _. Qed.
+  Proof using . rewrite /flushed_at. apply _. Qed.
 
   (* the two directions against the landed receipt: the index is exactly
      what [fs_receipt] existentially closes *)
   Lemma flushed_at_receipt γs b D :
     flushed_at γs b D -∗ fs_receipt γs D.
-  Proof.
+  Proof using .
     rewrite /flushed_at /fs_receipt. iIntros "H".
     iDestruct "H" as (l _) "Hlb". iExists l. iExact "Hlb".
   Qed.
 
   Lemma flushed_at_of_receipt γs D :
     fs_receipt γs D -∗ ∃ b : nat, flushed_at γs b D.
-  Proof.
+  Proof using .
     rewrite /flushed_at /fs_receipt. iIntros "H".
     iDestruct "H" as (l) "Hlb". iExists (length l), l.
     iSplitR; [by iPureIntro | iExact "Hlb"].
@@ -128,7 +128,7 @@ Section flushed_hist.
      holding "committed through b'" for every earlier b'. *)
   Lemma fs_hist_lb_prefix (γ : gname) (l l' : list (gmap Z (list (bv 8)))) :
     l' `prefix_of` l -> fs_hist_lb γ l -∗ fs_hist_lb γ l'.
-  Proof.
+  Proof using .
     intros Hpre. rewrite /fs_hist_lb. iApply own_mono.
     by apply mono_list_lb_mono.
   Qed.
@@ -138,7 +138,7 @@ Section flushed_hist.
   Lemma fs_hist_lb_compare (γ : gname) (l l' : list (gmap Z (list (bv 8)))) :
     fs_hist_lb γ l -∗ fs_hist_lb γ l' -∗
       ⌜l `prefix_of` l' \/ l' `prefix_of` l⌝.
-  Proof.
+  Proof using .
     rewrite /fs_hist_lb. iIntros "H H'".
     iDestruct (own_valid_2 with "H H'") as %Hv.
     iPureIntro. by apply mono_list_lb_op_valid_L in Hv.
@@ -155,7 +155,7 @@ Section flushed_hist.
      "two bounded carriers + one flushed, same b"). *)
   Lemma flushed_at_agree γs b D D' :
     flushed_at γs b D -∗ flushed_at γs b D' -∗ ⌜D = D'⌝.
-  Proof.
+  Proof using .
     iIntros "H H'".
     iDestruct "H" as (l Hl) "Hlb". iDestruct "H'" as (l' Hl') "Hlb'".
     iDestruct (fs_hist_lb_compare with "Hlb Hlb'") as %Hc.
@@ -175,7 +175,7 @@ Section flushed_hist.
   Lemma flushed_at_earlier γs (b b' : nat) D :
     (b' <= b)%nat ->
     flushed_at γs b D -∗ ∃ D' : gmap Z (list (bv 8)), flushed_at γs b' D'.
-  Proof.
+  Proof using .
     intros Hle. iIntros "H". iDestruct "H" as (l Hl) "Hlb".
     assert (Hlt : (b' < length (l ++ [D]))%nat)
       by (rewrite length_app Hl; simpl; lia).
@@ -193,7 +193,7 @@ Section flushed_hist.
     P_fs γs cov ls dk -∗ flushed_at γs b D -∗
       ⌜exists r : fs_rec,
          fs_rec_wf r (fs_blocks dk) cov ls /\ fr_hist r !! b = Some D⌝.
-  Proof.
+  Proof using .
     rewrite /P_fs /P_fs_at /flushed_at.
     iIntros "Hp Hf". iDestruct "Hp" as (gt r) "(Hauth & %Hwf & _)".
     iDestruct "Hf" as (l Hl) "Hlb".
@@ -223,7 +223,7 @@ Section flushed_hist.
       ∃ (b : nat) (D : gmap Z (list (bv 8))),
         ⌜fs_recovery (fs_blocks dk) D cov ls⌝ ∗ ⌜snap_holds D⌝ ∗
         flushed_at γs b D ∗ P_fs γs cov ls dk.
-  Proof.
+  Proof using .
     rewrite /P_fs /P_fs_at. iIntros "Hp".
     iDestruct "Hp" as (gt r) "(Hauth & %Hwf & Harm & Hdur)".
     iDestruct (P_dur_at_tie_keep gt (fr_D r)
@@ -248,7 +248,7 @@ Section flushed_hist.
       ⌜exists r : fs_rec,
          fs_rec_wf r (fs_blocks dk) cov ls /\ fr_hist r !! b = Some D⌝ ∗
       P_fs γs cov ls dk.
-  Proof.
+  Proof using .
     iIntros "Hp #Hf".
     iDestruct (P_fs_flushed_lookup with "Hp Hf") as %H.
     iSplitR; [by iPureIntro | iExact "Hp"].
@@ -284,10 +284,10 @@ Section flushed_seam.
         fcn_start γs = riscv_start_name⌝ ∗ flushed_at γs b D)%I.
 
   Global Instance flushed_persistent b D : Persistent (flushed b D).
-  Proof. rewrite /flushed. apply _. Qed.
+  Proof using . rewrite /flushed. apply _. Qed.
 
   Lemma flushed_receipt_any b D : flushed b D -∗ fs_receipt_any D.
-  Proof.
+  Proof using .
     rewrite /flushed /fs_receipt_any. iIntros "H".
     iDestruct "H" as (γs Hseam) "Hf". iExists γs.
     iSplitR; [by iPureIntro |]. by iApply flushed_at_receipt.
@@ -299,7 +299,7 @@ Section flushed_seam.
      is inside the mono-list already. *)
   Lemma flushed_of_receipt_any D :
     fs_receipt_any D -∗ ∃ b : nat, flushed b D.
-  Proof.
+  Proof using .
     rewrite /fs_receipt_any. iIntros "H".
     iDestruct "H" as (γs Hseam) "Hr".
     iDestruct (flushed_at_of_receipt with "Hr") as (b) "Hf".
@@ -309,7 +309,7 @@ Section flushed_seam.
   Lemma flushed_earlier (b b' : nat) D :
     (b' <= b)%nat ->
     flushed b D -∗ ∃ D' : gmap Z (list (bv 8)), flushed b' D'.
-  Proof.
+  Proof using .
     intros Hle. iIntros "H". iDestruct "H" as (γs Hseam) "Hf".
     iDestruct (flushed_at_earlier _ b b' D Hle with "Hf") as (D') "Hf'".
     iExists D', γs. iSplitR; [by iPureIntro |]. iExact "Hf'".
@@ -331,7 +331,7 @@ Section flushed_seam.
   Lemma flushed_of_bank :
     fs_bank -∗ ∃ (b : nat) (D : gmap Z (list (bv 8))),
                  flushed b D ∗ ⌜snap_holds D⌝.
-  Proof.
+  Proof using .
     rewrite /fs_bank. iIntros "H". iDestruct "H" as (D) "[Hr %Hh]".
     iDestruct (flushed_of_receipt_any with "Hr") as (b) "Hf".
     iExists b, D. iSplitL; [iExact "Hf" | by iPureIntro].

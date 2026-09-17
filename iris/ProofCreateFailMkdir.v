@@ -249,7 +249,7 @@ Section ProofCreateFailMkdir.
                    dqb dqs dqbs dqn m sp0 ret_tgt K eb b lks
                    kd qd gd γil γisl dind nf nsl t CIDf
                    P Pmiss Farm Fdots Fun Fok Fex).
-  Proof.
+  Proof using .
     intros HK Hnib16 Hlg Hsize Hbms0 Hbmsc Hbmsl Hist0 Hcovb
            Hiregb Hns Hj Hgs Hspm Hrt Hal10 Hal9 Heb.
     destruct (cr_kb K HK)

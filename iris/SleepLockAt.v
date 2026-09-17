@@ -32,7 +32,7 @@ Section SleepLockAt.
     (lock_free_tok p.1 ∗ sl_free_tok p.2)%I.
 
   Lemma sl_pair_ghost_alloc : ⊢ |==> ∃ p : gname * gname, sl_free_pair p.
-  Proof.
+  Proof using .
     iMod lock_ghost_alloc as (γl) "Hl".
     iMod slh_ghost_alloc as (γ) "[Hf _]".
     iModIntro. iExists (γl, γ). rewrite /sl_free_pair /=. iFrame "Hl Hf".
@@ -57,7 +57,7 @@ Section SleepLockAt.
     sl_pid slk ↦₄ (mword_of_int 0 : mword 32) -∗
     own_context cur_ctx -∗
     R cur_ctx ={E}=∗ own_context cur_ctx ∗ is_sleeplock_genl p.1 p.2 slk s R H.
-  Proof.
+  Proof using .
     iIntros "[Hlfree Hfree] #Hlnm #Hsnm Hlkw Hcpu Hw Hpid Hrun HR".
     iDestruct (sl_free_hold_intro with "Hfree Hpid") as (q0) "[Htok Hha]".
     iMod (newlock_at E p.1 (sl_lk slk) "sleep lock"%string (sl_pay p.2 slk R H)
@@ -80,7 +80,7 @@ Section SleepLockAt.
     sl_pid slk ↦₄ (mword_of_int 0 : mword 32) -∗
     own_context cur_ctx -∗
     R ={E}=∗ own_context cur_ctx ∗ is_sleeplock_gen p.1 p.2 slk s R H.
-  Proof.
+  Proof using .
     iIntros "Hp #Hlnm #Hsnm Hlkw Hcpu Hw Hpid Hrun HR".
     iApply (new_sleeplock_genl_at2 E p slk s (fun _ => R) H
               with "Hp Hlnm Hsnm Hlkw Hcpu Hw Hpid Hrun HR").
@@ -91,7 +91,7 @@ Section SleepLockAt.
       (s : string) (R : CtxIdDefs.CtxId -> iProp Σ) `{HmR : !TsoCtx.CtxMorph R} (H : Qp -> iProp Σ) :
     sl_free_pair p -∗ sl_fresh slk s -∗ own_context cur_ctx -∗ R cur_ctx ={E}=∗
     own_context cur_ctx ∗ is_sleeplock_genl p.1 p.2 slk s R H.
-  Proof.
+  Proof using .
     iIntros "Hp (Hw & Hlkw & #Hlnm & Hcpu & #Hsnm & Hpid) Hrun HR".
     iApply (new_sleeplock_genl_at2 E p slk s R H
               with "Hp Hlnm Hsnm Hlkw Hcpu Hw Hpid Hrun HR").
@@ -104,7 +104,7 @@ Section SleepLockAt.
       (s : string) (R : iProp Σ) (H : Qp -> iProp Σ) :
     sl_free_pair p -∗ sl_fresh slk s -∗ own_context cur_ctx -∗ R ={E}=∗
     own_context cur_ctx ∗ is_sleeplock_gen p.1 p.2 slk s R H.
-  Proof.
+  Proof using .
     iIntros "Hp (Hw & Hlkw & #Hlnm & Hcpu & #Hsnm & Hpid) Hrun HR".
     iApply (new_sleeplock_gen_at2 E p slk s R H
               with "Hp Hlnm Hsnm Hlkw Hcpu Hw Hpid Hrun HR").
@@ -115,7 +115,7 @@ Section SleepLockAt.
       (s : string) (R : iProp Σ) :
     sl_free_pair p -∗ sl_fresh slk s -∗ own_context cur_ctx -∗ R ={E}=∗
     own_context cur_ctx ∗ is_sleeplock p.1 p.2 slk s R.
-  Proof.
+  Proof using .
     iIntros "Hp Hf Hrun HR".
     iApply (sl_fresh_new_gen_at2 E p slk s R sl_untracked with "Hp Hf Hrun HR").
   Qed.

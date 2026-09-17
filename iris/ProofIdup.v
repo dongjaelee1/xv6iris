@@ -137,7 +137,7 @@ Section ProofIdup.
   Local Lemma sie_b_agree (m : regfile) (n K0 : nat) (eb b : bool) (p : mword 64) (lks : gset string) :
     sie_cap_gpr KT1 m K0 b p -∗ cpu_own n eb p b lks -∗
     ⌜ b = match n with O => eb | S _ => false end ⌝.
-  Proof.
+  Proof using .
     iIntros "Hcg Hcnt". destruct b.
     - iDestruct "Hcnt" as "%Hb". destruct Hb as (-> & -> & _). done.
     - destruct n as [|n']; [ | done ].
@@ -193,7 +193,7 @@ Section ProofIdup.
       runit_any (bv_unsigned inum) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pcE ret_tgt HK HnZ Hk Ha0 Hfresh.
 
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).
@@ -997,7 +997,7 @@ Section ProofIdup.
       (K : nat) (b : bool) (lks : gset string)
     : wp_idup_sconf_body k z
                          m n eb p K b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_idup_sconf_body].
     intros pcE ret_tgt HK HnZ Hk Ha0 Hfresh.
     iIntros "Hcg Hcnt #Htext Hpc #Hlock #Hinv #Hrinv Hislot Hheld Hcont".

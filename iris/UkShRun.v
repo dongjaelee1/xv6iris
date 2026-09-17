@@ -262,23 +262,23 @@ Section UkShRun.
   (* is destructed ONCE, here, exactly as UkSh.v does for stages 1-2.       *)
   (* ===================================================================== *)
   Local Lemma shr_exit   : ShSyms.exit   = 0xc86.
-  Proof. destruct shk_syms_pins as (_&_&_&_&_&_&_&H&_). exact H. Qed.
+  Proof using . destruct shk_syms_pins as (_&_&_&_&_&_&_&H&_). exact H. Qed.
   Local Lemma shr_runcmd : ShSyms.runcmd = 0x8e.
-  Proof. destruct shk_syms_pins as (_&_&_&_&_&_&_&_&_&_&H&_). exact H. Qed.
+  Proof using . destruct shk_syms_pins as (_&_&_&_&_&_&_&_&_&_&H&_). exact H. Qed.
   Local Lemma shr_fork1  : ShSyms.fork1  = 0x68.
-  Proof. destruct shk_syms_pins as (_&_&_&_&_&_&_&_&_&_&_&H&_). exact H. Qed.
+  Proof using . destruct shk_syms_pins as (_&_&_&_&_&_&_&_&_&_&_&H&_). exact H. Qed.
   Local Lemma shr_fork   : ShSyms.fork   = 0xc7e.
-  Proof. destruct shk_syms_pins as (_&_&_&_&_&_&_&_&_&_&_&_&H&_). exact H. Qed.
+  Proof using . destruct shk_syms_pins as (_&_&_&_&_&_&_&_&_&_&_&_&H&_). exact H. Qed.
   Local Lemma shr_exec   : ShSyms.exec   = 0xcbe.
-  Proof. destruct shk_syms_pins as (_&_&_&_&_&_&_&_&_&_&_&_&_&H&_). exact H. Qed.
+  Proof using . destruct shk_syms_pins as (_&_&_&_&_&_&_&_&_&_&_&_&_&H&_). exact H. Qed.
   Local Lemma shr_pipe   : ShSyms.pipe   = 0xc96.
-  Proof. destruct shk_syms_pins as (_&_&_&_&_&_&_&_&_&_&_&_&_&_&H&_). exact H. Qed.
+  Proof using . destruct shk_syms_pins as (_&_&_&_&_&_&_&_&_&_&_&_&_&_&H&_). exact H. Qed.
   Local Lemma shr_wait   : ShSyms.wait   = 0xc8e.
-  Proof. destruct shk_syms_pins as (_&_&_&_&_&_&_&_&_&_&_&_&_&_&_&H&_). exact H. Qed.
+  Proof using . destruct shk_syms_pins as (_&_&_&_&_&_&_&_&_&_&_&_&_&_&_&H&_). exact H. Qed.
   Local Lemma shr_dup    : ShSyms.dup    = 0xcfe.
-  Proof. destruct shk_syms_pins as (_&_&_&_&_&_&_&_&_&_&_&_&_&_&_&_&H&_). exact H. Qed.
+  Proof using . destruct shk_syms_pins as (_&_&_&_&_&_&_&_&_&_&_&_&_&_&_&_&H&_). exact H. Qed.
   Local Lemma shr_panic  : ShSyms.panic  = 0x4a.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* ===================================================================== *)
   (* §2 THE NODE PREDICATE.                                                 *)
@@ -324,11 +324,11 @@ Section UkShRun.
      end)%I.
 
   Global Instance ush_w32_persistent g a v : Persistent (ush_w32 g a v).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance ush_ptr_persistent g a p : Persistent (ush_ptr g a p).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance ush_str_persistent g x : Persistent (ush_str g x).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* Structural, not one [apply _] per branch: [apply] peels straight through
      [ush_w32]/[ush_ptr]/[ush_str] -- each of which already HAS its instance
@@ -343,7 +343,7 @@ Section UkShRun.
     end.
 
   Global Instance ush_cmd_persistent g t c : Persistent (ush_cmd g t c).
-  Proof.
+  Proof using .
     revert t. induction c as [ args | c1 IH file mode fd | l IHl r IHr
                              | l IHl r IHr | c1 IH ]; intros t;
       cbn [ush_cmd]; ush_pers.
@@ -351,11 +351,11 @@ Section UkShRun.
 
   Lemma ush_cmd_addr (g : gname) (t : Z) (c : ushcmd) :
     ush_cmd g t c -∗ ⌜ 0 < t < 2 ^ 38 /\ t mod 8 = 0 ⌝.
-  Proof. destruct c; iIntros "(%H1 & %H2 & _)"; iPureIntro; done. Qed.
+  Proof using . destruct c; iIntros "(%H1 & %H2 & _)"; iPureIntro; done. Qed.
 
   Lemma ush_cmd_type (g : gname) (t : Z) (c : ushcmd) :
     ush_cmd g t c -∗ ush_w32 g t (ush_ty c).
-  Proof. destruct c; iIntros "(_ & _ & #H & _)"; iExact "H". Qed.
+  Proof using . destruct c; iIntros "(_ & _ & #H & _)"; iExact "H". Qed.
 
   (* ===================================================================== *)
   (* §2a THE TREE CROSSES A FORK.  Every conjunct is one of the class's     *)
@@ -364,21 +364,21 @@ Section UkShRun.
   (* ===================================================================== *)
   Lemma forkable_ush_w32 (a v : Z) :
     Forkable (fun _ g _ => ush_w32 g a v).
-  Proof. apply forkable_ubytesq_disc. Qed.
+  Proof using . apply forkable_ubytesq_disc. Qed.
 
   Lemma forkable_ush_ptr (a p : Z) :
     Forkable (fun _ g _ => ush_ptr g a p).
-  Proof. apply forkable_uwordq_disc. Qed.
+  Proof using . apply forkable_uwordq_disc. Qed.
 
   Lemma forkable_ush_str (x : uarg) :
     Forkable (fun _ g _ => ush_str g x).
-  Proof.
+  Proof using .
     apply forkable_sep; [ apply forkable_pure | apply forkable_ustr_disc ].
   Qed.
 
   Lemma ush_cmd_forkable (t : Z) (c : ushcmd) :
     Forkable (fun _ g _ => ush_cmd g t c).
-  Proof.
+  Proof using .
     revert t.
     induction c as [ args | c1 IH file mode fd | l IHl r IHr
                    | l IHl r IHr | c1 IH ]; intros t.
@@ -428,22 +428,22 @@ Section UkShRun.
   (* ===================================================================== *)
   Lemma forkable_ush_jrow (k : Z) :
     Forkable (fun g _ _ => ush_jrow g k).
-  Proof. apply forkable_utext_run. Qed.
+  Proof using . apply forkable_utext_run. Qed.
 
   Lemma forkable_shk_code : Forkable (fun g _ _ => shk_code g).
-  Proof.
+  Proof using .
     eapply Forkable_ext; [ | apply (forkable_utext_map ShInstrs.sh_bytes) ].
     intros g gd gs. rewrite /shk_code /utext_img. reflexivity.
   Qed.
 
   Lemma forkable_shk_rodata : Forkable (fun g _ _ => shk_rodata g).
-  Proof.
+  Proof using .
     eapply Forkable_ext; [ | apply (forkable_utext_map shk_ro) ].
     intros g gd gs. rewrite /shk_rodata /utext_img. reflexivity.
   Qed.
 
   Lemma forkable_ush_jtab : Forkable (fun g _ _ => ush_jtab g).
-  Proof.
+  Proof using .
     apply forkable_sep; [ apply forkable_ush_jrow | ].
     apply forkable_sep; [ apply forkable_ush_jrow | ].
     apply forkable_sep; [ apply forkable_ush_jrow | ].
@@ -455,7 +455,7 @@ Section UkShRun.
   (* the row a node selects, and the entry it holds *)
   Lemma ush_jtab_row (g : gname) (c : ushcmd) :
     ush_jtab g -∗ ush_jrow g (ush_ty c).
-  Proof.
+  Proof using .
     destruct c; cbn [ush_ty];
       iIntros "(#H1 & #H2 & #H3 & #H4 & #H5 & _)";
       [ iExact "H1" | iExact "H2" | iExact "H3" | iExact "H4" | iExact "H5" ].
@@ -490,7 +490,7 @@ Section UkShRun.
            (add_vec_int pc 2) avail -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hns He1 He2 Ha Hal Hrd. iIntros "#Hi Hw Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -533,7 +533,7 @@ Section UkShRun.
            (add_vec_int pc 2) avail -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hns He1 He2 Ha Hal Hrd. iIntros "#Hi Hw Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -574,7 +574,7 @@ Section UkShRun.
            (add_vec_int pc 4) avail -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hns Ha Hal Hrd. iIntros "#Hi Hw Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -604,14 +604,14 @@ Section UkShRun.
   (* ===================================================================== *)
   Local Lemma ushr_ridx_ne (r q : mword 5) :
     uint r <> uint q -> Regidx r <> Regidx q.
-  Proof.
+  Proof using .
     intros H He. apply H.
     assert (Hrq : r = q) by (injection He; trivial). rewrite Hrq. reflexivity.
   Qed.
 
   Local Lemma ushr_ridx_eq (r q : mword 5) :
     uint r = uint q -> Regidx r = Regidx q.
-  Proof.
+  Proof using .
     intros H. f_equal. apply bv_eq. rewrite <- !(uint_unsigned_n 5). exact H.
   Qed.
 
@@ -619,7 +619,7 @@ Section UkShRun.
     ucallee_saved_idx q = true ->
     uint q = 2 \/ uint q = 3 \/ uint q = 4 \/ uint q = 8 \/ uint q = 9 \/
     (18 <= uint q <= 27).
-  Proof.
+  Proof using .
     unfold ucallee_saved_idx. cbv zeta. intros H.
     repeat (apply orb_true_iff in H as [H | H]).
     all: first [ apply Z.eqb_eq in H; lia
@@ -633,7 +633,7 @@ Section UkShRun.
     ucallee_saved_idx q = true ->
     (uint r = 1 \/ uint r = 10 \/ uint r = 11 \/ uint r = 12 \/ uint r = 17) ->
     Regidx q <> Regidx r.
-  Proof.
+  Proof using .
     intros Hq Hr. apply ushr_ridx_ne.
     destruct (ushr_cs_bounds q Hq) as [E | [E | [E | [E | [E | E]]]]];
       destruct Hr as [Er | [Er | [Er | [Er | Er]]]]; lia.
@@ -656,7 +656,7 @@ Section UkShRun.
          (mword_of_int tgt) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Htgt Hret Hal. iIntros "#Hi Hrun Hcont".
     iApply (wp_uk_jal N h m (mword_of_int pc) imm ra_idx
               (mword_of_int tgt) (mword_of_int ret) avail
@@ -692,7 +692,7 @@ Section UkShRun.
        urun N h' m' (mword_of_int ret) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hsym Hret Hal Hrp. iIntros "#Hcode #Hi Hrun Hcont".
     iApply (wp_kshr_jal N h m pc sym ret imm avail Hsym Hret Hal
               with "Hi Hrun").
@@ -770,7 +770,7 @@ Section UkShRun.
        urun N h' m' (mword_of_int ret) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hsym Hret Hal Hrp. iIntros "#Hcode #Hi HR Hrun Hcont".
     iApply (wp_kshr_jal N h m pc sym ret imm avail Hsym Hret Hal
               with "Hi Hrun").
@@ -834,7 +834,7 @@ Section UkShRun.
        UserChildren.uch (ukn_ch N) Sc' -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using Hpsok_free.
     intros Ha0. iIntros "#Hcode Hrun Hch Hcont".
     rewrite shr_wait.
     (* ---- 0xc8e  c.li a7,3 ---- *)
@@ -994,7 +994,7 @@ Section UkShRun.
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "#Hcode Hrun Hsbx Hcont".
     rewrite shr_exec.
     iApply (wp_uk_cli N h m (mword_of_int 0xcbe)
@@ -1121,7 +1121,7 @@ Section UkShRun.
           (ret_pc (m !!! Regidx ra_idx)) avail -∗
         WP (Loop : expr riscv_lang))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HQc.
     iIntros "#Hcode HP Hsz Hstd Hcwd Hch HD HRc #Hkw Hrun [Hpar Hchi]".
     rewrite shr_fork.
@@ -1255,7 +1255,7 @@ Section UkShRun.
 
   Lemma ush_diag_res_panic (g : gname) (m : regfile) :
     ush_diag_res g ShSyms.panic m = emp%I.
-  Proof.
+  Proof using .
     rewrite /ush_diag_res.
     destruct (decide (ShSyms.panic = 0xda)) as [Hc | _];
       [ exfalso; unfold ShSyms.panic in Hc; discriminate Hc | ].
@@ -1358,7 +1358,7 @@ Section UkShRun.
        urun N h' m' (ret_pc vra) (2 + (Dg + n)) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hal8 Hlo Hsp.
     iIntros "#Hcode #Hro Hw8 Hw0 Hpayv Hrun Hpanic Hcont".
     assert (Hbsp1 : bv_unsigned (add_vec_int sp0 (- (8 * Z.of_nat 2)))
@@ -1671,7 +1671,7 @@ Section UkShRun.
         urun N' h' m' (ret_pc (m !!! Regidx ra_idx)) (2 + (Dg + n)) -∗
         WP (Loop : expr riscv_lang))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HQc.
     iIntros "#Hcode #Hro HP Hsz Hstd Hcwd Hch HD HRc #Hkw Hpayv Hrun
              (Hpanic & Hpar & Hchi)".
@@ -2073,30 +2073,30 @@ Section UkShRun.
     uv_btaken BLTU (sign_extend' 64 (mword_of_int 5 : mword 6) : mword 64)
       (sign_extend' 64 (mword_of_int (ush_ty c) : mword 32) : mword 64)
     = false.
-  Proof. destruct c; vm_compute; reflexivity. Qed.
+  Proof using . destruct c; vm_compute; reflexivity. Qed.
 
   Lemma ush_slli_eq (c : ushcmd) :
     shift_bits_left
       (zero_extend' 64 (mword_of_int (ush_ty c) : mword 32) : mword 64)
       (subrange_vec_dec (mword_of_int 2 : mword 6) (Z.sub log2_xlen 1) 0)
     = mword_of_int (4 * ush_ty c).
-  Proof. destruct c; apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . destruct c; apply bv_eq; vm_compute; reflexivity. Qed.
 
   Lemma ush_jarm_eq (c : ushcmd) :
     add_vec (sign_extend' 64 (ush_jent (ush_ty c)) : mword 64)
       (mword_of_int SH_JTAB)
     = mword_of_int (ush_jarm c).
-  Proof. destruct c; apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . destruct c; apply bv_eq; vm_compute; reflexivity. Qed.
 
   Lemma ush_jarm_even (c : ushcmd) :
     ret_pc (mword_of_int (ush_jarm c) : mword 64) = mword_of_int (ush_jarm c).
-  Proof. destruct c; apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . destruct c; apply bv_eq; vm_compute; reflexivity. Qed.
 
   Lemma ush_jtab_align (c : ushcmd) : (SH_JTAB + 4 * ush_ty c) mod 4 = 0.
-  Proof. destruct c; vm_compute; reflexivity. Qed.
+  Proof using . destruct c; vm_compute; reflexivity. Qed.
 
   Lemma ush_jtab_bnd (c : ushcmd) : 0 <= SH_JTAB + 4 * ush_ty c < Z64.
-  Proof. destruct c; unfold Z64; cbn [ush_ty]; unfold SH_JTAB; lia. Qed.
+  Proof using . destruct c; unfold Z64; cbn [ush_ty]; unfold SH_JTAB; lia. Qed.
 
   (* PUBLIC (lane E4): see [wp_kshr_jal]. *)
   Lemma wp_kshr_entry (N : uk_names Σ) `{!ukn_const N} (c : ushcmd)
@@ -2115,7 +2115,7 @@ Section UkShRun.
        urun N h' m' (mword_of_int (ush_jarm c)) n -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Ha0. iIntros "#Hcode #Hjt #Htree Hrun Hcont".
     rewrite shr_runcmd.
     iDestruct (ush_cmd_addr with "Htree") as %[Htr Ht8].
@@ -2553,7 +2553,7 @@ Section UkShRun.
     uargv g (t + 8) args ∗
     ush_ptr g (t + 8 + 8 * Z.of_nat (length args)) 0 ∗
     ([∗ list] x ∈ args, ush_str g x).
-  Proof.
+  Proof using .
     cbn [ush_cmd]. iIntros "(_ & _ & _ & #A & #B & #C)". iFrame "A B C".
   Qed.
 
@@ -2563,7 +2563,7 @@ Section UkShRun.
     (∃ q : Z, ush_ptr g (t + 8) q ∗ ush_cmd g q c1) ∗
     ush_ptr g (t + 16) (ua_ptr file) ∗ ush_str g file ∗
     ush_w32 g (t + 32) mode ∗ ush_w32 g (t + 36) fd.
-  Proof.
+  Proof using .
     cbn [ush_cmd]. iIntros "(_ & _ & _ & #A & #B & #C & #D & #E)".
     iFrame "A B C D E".
   Qed.
@@ -2572,17 +2572,17 @@ Section UkShRun.
     ush_cmd g t (UPipe l r) -∗
     (∃ q : Z, ush_ptr g (t + 8) q ∗ ush_cmd g q l) ∗
     (∃ q : Z, ush_ptr g (t + 16) q ∗ ush_cmd g q r).
-  Proof. cbn [ush_cmd]. iIntros "(_ & _ & _ & #A & #B)". iFrame "A B". Qed.
+  Proof using . cbn [ush_cmd]. iIntros "(_ & _ & _ & #A & #B)". iFrame "A B". Qed.
 
   Lemma ush_cmd_list (g : gname) (t : Z) (l r : ushcmd) :
     ush_cmd g t (UList l r) -∗
     (∃ q : Z, ush_ptr g (t + 8) q ∗ ush_cmd g q l) ∗
     (∃ q : Z, ush_ptr g (t + 16) q ∗ ush_cmd g q r).
-  Proof. cbn [ush_cmd]. iIntros "(_ & _ & _ & #A & #B)". iFrame "A B". Qed.
+  Proof using . cbn [ush_cmd]. iIntros "(_ & _ & _ & #A & #B)". iFrame "A B". Qed.
 
   Lemma ush_cmd_back (g : gname) (t : Z) (c1 : ushcmd) :
     ush_cmd g t (UBack c1) -∗ ∃ q : Z, ush_ptr g (t + 8) q ∗ ush_cmd g q c1.
-  Proof. cbn [ush_cmd]. iIntros "(_ & _ & _ & #A)". iFrame "A". Qed.
+  Proof using . cbn [ush_cmd]. iIntros "(_ & _ & _ & #A)". iFrame "A". Qed.
 
   (* argv[0], which is what the EXEC arm's null test looks at: the NUL cap
      when the vector is empty, and the first string's pointer otherwise. *)
@@ -2592,7 +2592,7 @@ Section UkShRun.
     | [] => ush_ptr g (t + 8) 0
     | x :: _ => ush_ptr g (t + 8) (ua_ptr x) ∗ ush_str g x
     end.
-  Proof.
+  Proof using .
     iIntros "#Ht". iDestruct (ush_cmd_exec with "Ht") as "(#Hv & #Hn & #Hs)".
     destruct args as [| x rest ].
     - rewrite /ush_ptr. cbn [length]. rewrite Z.mul_0_r Z.add_0_r.
@@ -2613,7 +2613,7 @@ Section UkShRun.
   (* ===================================================================== *)
   Local Lemma ush_bytes_as_word (g : gname) (a : Z) (f : nat -> bv 8) :
     ubytes g a 4 f -∗ ∃ wv : mword 32, ubytes g a 4 (nth_byte wv).
-  Proof.
+  Proof using .
     iIntros "Hbs".
     iExists (Z_to_bv 32 (assemble_bytes
                            [f 0%nat; f 1%nat; f 2%nat; f 3%nat])).
@@ -2630,7 +2630,7 @@ Section UkShRun.
     ubytes g a 8 f -∗
     ∃ w0 w1 : mword 32,
       ubytes g a 4 (nth_byte w0) ∗ ubytes g (a + 4) 4 (nth_byte w1).
-  Proof.
+  Proof using .
     iIntros "Hbs".
     rewrite (ubytes_split g a 4 8 f ltac:(lia)).
     iDestruct "Hbs" as "[Hlo Hhi]".
@@ -2670,7 +2670,7 @@ Section UkShRun.
        UserChildren.uch_any (ukn_ch N) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using Hpsok_free.
     intros E01 Hsym Hret Hal Hrp. iIntros "#Hcode #Hi0 #Hi1 Hrun Hch Hcont".
     iApply (wp_uk_cli N h m (mword_of_int pc0)
               (mword_of_int 0 : mword 6) a0_idx avail
@@ -2736,7 +2736,7 @@ Section UkShRun.
     uinstr_is (ukn_t N) (mword_of_int pc1) false (JAL (imm, Regidx ra_idx)) -∗
     urun N h m (mword_of_int pc0) avail -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hpx E01 Hsym Hret Hal. iIntros "#Hcode #Hi0 #Hi1 Hrun".
     iApply (wp_uk_cli N h m (mword_of_int pc0) k a0_idx avail
               ltac:(unfold unot_sp; vm_compute; discriminate)
@@ -2766,7 +2766,7 @@ Section UkShRun.
     shk_code (ukn_t N) -∗
     urun N h m (mword_of_int ShSyms.runcmd) (6 + n) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hpx Ha0. iIntros "#Hcode Hrun".
     rewrite shr_runcmd.
     iDestruct (urun_stack with "Hrun") as %[Hal8 Hroom].
@@ -2901,7 +2901,7 @@ Section UkShRun.
 
   Lemma ush_st_cs (m m' : regfile) (sp0 : mword 64) (t : Z) :
     ush_st m sp0 t -> ucallee_saved m m' -> ush_st m' sp0 t.
-  Proof.
+  Proof using .
     intros [H0 H1] Hcs. split.
     - rewrite (Hcs s0_idx ltac:(vm_compute; reflexivity)). exact H0.
     - rewrite (Hcs s1_idx ltac:(vm_compute; reflexivity)). exact H1.
@@ -2911,7 +2911,7 @@ Section UkShRun.
       (v : mword 64) :
     ush_st m sp0 t -> uint q <> 8 -> uint q <> 9 ->
     ush_st (<[Regidx q := v]> m) sp0 t.
-  Proof.
+  Proof using .
     intros [H0 H1] H8 H9. split.
     - rewrite (upd_ne m (Regidx q) (Regidx s0_idx) v
                  (ushr_ridx_ne s0_idx q
@@ -2964,7 +2964,7 @@ Section UkShRun.
          urun N h' m' (mword_of_int ret) avail -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hs0 Ha Hal E01 Hsym Hret Halv Hrp.
     iIntros "#Hcode #Hi0 #Hi1 Hbs Hrun Hcont".
     iApply (wp_uk_lw N h m (mword_of_int pc0) imm12 s0_idx a0_idx
@@ -2989,7 +2989,7 @@ Section UkShRun.
      hands back: the parent's is non-zero by the leaf's own arm. *)
   Local Lemma ush_neqv_true (x : mword 64) :
     x <> (mword_of_int 0 : mword 64) -> neq_vec x zero_reg = true.
-  Proof.
+  Proof using .
     intros H. unfold neq_vec.
     rewrite (proj2 (eq_vec_false_iff x zero_reg)
                ltac:(rewrite zero_reg_moi; exact H)).
@@ -2999,7 +2999,7 @@ Section UkShRun.
   (* the two payload shapes the three forking arms carry across [fork] *)
   Local Lemma forkable_ush_pay (t : Z) (c : ushcmd) :
     Forkable (fun gt gd _ => (ush_jtab gt ∗ ush_cmd gd t c)%I).
-  Proof.
+  Proof using .
     apply forkable_sep; [ apply forkable_ush_jtab | apply ush_cmd_forkable ].
   Qed.
 
@@ -3007,7 +3007,7 @@ Section UkShRun.
     Forkable (fun gt gd _ => (ush_jtab gt ∗ ush_cmd gd t c
                               ∗ ubytes gd a 4 (nth_byte w0)
                               ∗ ubytes gd b 4 (nth_byte w1))%I).
-  Proof.
+  Proof using .
     apply forkable_sep; [ apply forkable_ush_jtab | ].
     apply forkable_sep; [ apply ush_cmd_forkable | ].
     apply forkable_sep; apply forkable_ubytes.
@@ -3092,7 +3092,7 @@ Section UkShRun.
       urun N h m (mword_of_int ShSyms.runcmd)
         (6 * ush_ht c + (2 + (Dg + n))) -∗
       WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using Hpsok_free ush_diag_leaf.
     induction c as [ args | c1 IH file mode fd | l IHl r IHr
                    | l IHl r IHr | c1 IH ];
       intros Hs N Hcst h m t szv ld n Hpx Ha0;

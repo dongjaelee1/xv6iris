@@ -103,7 +103,7 @@ Section ProofKerneltrapParts.
     mf !!! Regidx s3_idx = m0 !!! Regidx s3_idx ->
     kt_thr m0 mf ->
     callee_saved m0 mf.
-  Proof.
+  Proof using .
     intros Hsp Hs0 Hs1 Hs2 Hs3 Hthr. unfold callee_saved.
     split_and!;
       first [ exact Hsp | exact Hs0 | exact Hs1 | exact Hs2 | exact Hs3
@@ -114,7 +114,7 @@ Section ProofKerneltrapParts.
      cs register, and all five [kt_thr] excludes are cs. *)
   Lemma kt_thr_cs (m M M' : regfile) :
     kt_thr m M -> callee_saved M M' -> kt_thr m M'.
-  Proof.
+  Proof using .
     intros Hthr Hcs r Hr Hsp Hs0 Hs1 Hs2 Hs3.
     rewrite (callee_saved_lookup Hcs r Hr). apply Hthr; assumption.
   Qed.
@@ -127,19 +127,19 @@ Section ProofKerneltrapParts.
 
   Lemma kt_pa1 (sp0 : mword 64) :
     add_vec (pa_stk sp0 6) (zero_extend' 64 (concat_vec (mword_of_int 5 : mword 6) ('b"000"))) = pa_stk sp0 1.
-  Proof. ktslot. Qed.
+  Proof using . ktslot. Qed.
   Lemma kt_pa2 (sp0 : mword 64) :
     add_vec (pa_stk sp0 6) (zero_extend' 64 (concat_vec (mword_of_int 4 : mword 6) ('b"000"))) = pa_stk sp0 2.
-  Proof. ktslot. Qed.
+  Proof using . ktslot. Qed.
   Lemma kt_pa3 (sp0 : mword 64) :
     add_vec (pa_stk sp0 6) (zero_extend' 64 (concat_vec (mword_of_int 3 : mword 6) ('b"000"))) = pa_stk sp0 3.
-  Proof. ktslot. Qed.
+  Proof using . ktslot. Qed.
   Lemma kt_pa4 (sp0 : mword 64) :
     add_vec (pa_stk sp0 6) (zero_extend' 64 (concat_vec (mword_of_int 2 : mword 6) ('b"000"))) = pa_stk sp0 4.
-  Proof. ktslot. Qed.
+  Proof using . ktslot. Qed.
   Lemma kt_pa5 (sp0 : mword 64) :
     add_vec (pa_stk sp0 6) (zero_extend' 64 (concat_vec (mword_of_int 1 : mword 6) ('b"000"))) = pa_stk sp0 5.
-  Proof. ktslot. Qed.
+  Proof using . ktslot. Qed.
 
   (* ================================================================== *)
   (* THE TWO BRANCH OBLIGATIONS -- what makes the panic arms dead.        *)
@@ -161,7 +161,7 @@ Section ProofKerneltrapParts.
     _get_Mstatus_SPP ms = ('b"1" : mword 1) ->
     eq_vec (and_vec (sstatus_read ms)
               (sign_extend' 64 (mword_of_int 256 : mword 12))) zero_reg = false.
-  Proof.
+  Proof using .
     intro HSPP.
     rewrite WpGprCsrwC.sstatus_spp_mask HSPP. reflexivity.
   Qed.
@@ -209,7 +209,7 @@ Section ProofKerneltrapParts.
         (∃ v : mword 64, pa_stk (m !!! Regidx csp_rs1) 6 ↦₈[KT1] v) -∗
         WP (Loop : expr riscv_lang) ) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hav Hepal.
     iIntros "Hcg Hmir #Htext Hpc Hsepc Hscause Hcont".
     (* ---- +0x00: c.addi16sp sp,-48 -- push the 6-slot frame ---- *)
@@ -575,7 +575,7 @@ Section ProofKerneltrapParts.
         pc_is (ret_pc ra0) -∗
         WP (Loop : expr riscv_lang) ) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hm0sp Hm0ra Hm0s0 Hm0s1 Hm0s2 Hm0s3 HMsp HMs2 HMs1
            Hepal Hms0f Hsie0 Hspp0 Hspie0 Hthr.
     iIntros "Hcg Hmir Hcpu #Htext Hpc Hsepc Hb1 Hb2 Hb3 Hb4 Hb5 Hb6 Hcont".

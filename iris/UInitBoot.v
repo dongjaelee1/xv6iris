@@ -294,14 +294,14 @@ Section UInitBoot.
      frames have to fit in. *)
   Lemma init_boot_sp_final :
     kxc_sp_final 0x4000 (fun _ => 5%nat) 1%nat = 0x3FE0.
-  Proof. vm_compute. reflexivity. Qed.
+  Proof using . vm_compute. reflexivity. Qed.
 
   Lemma init_boot_room (n0 : nat) :
     8 * Z.of_nat (2 + (4 + (12 + (12 + (4 + n0))))) <= 0xFE0 ->
     kexec_sz ElfUser.init_elf - PGSIZE
       + 8 * Z.of_nat (2 + (4 + (12 + (12 + (4 + n0)))))
       <= kxc_sp_final (kexec_sz ElfUser.init_elf) (fun _ => 5%nat) 1%nat.
-  Proof.
+  Proof using .
     intros Hn0. rewrite init_kexec_sz init_boot_sp_final.
     unfold PGSIZE. lia.
   Qed.
@@ -337,7 +337,7 @@ Section UInitBoot.
     □ (T -∗ UkRun.udepw_law (PS := PSx) 15) -∗
     □ (T -∗ UkRun.udepw_law (PS := PSx) 17) -∗
     □ UkInit.init_deps (PS := PSx) T.
-  Proof.
+  Proof using .
     iIntros "#Hwr #Hwcl #H15 #H17 !>". rewrite /UkInit.init_deps /UkInit.kinit_wlaw.
     iSplit; [ iSplit; [ iModIntro; iExact "Hwr" | iExact "Hwcl" ] | ]. iSplit.
     - iModIntro. iExact "H15".
@@ -361,7 +361,7 @@ Section UInitBoot.
                (echo_taint γ) (cons_never r))
         ∗ cons_never r)
      ∨ echo_taint γ).
-  Proof.
+  Proof using .
     intros Heq. iIntros "#Hinv #Hc".
     rewrite /init_cons_cred.
     iDestruct "Hc" as "[#Hn | [[%i #Hm] | #HT]]".
@@ -403,7 +403,7 @@ Section UInitBoot.
       (UInitSh.sh_pay (echo_taint γ) Cr Rsh n0) -∗
     UkInit.init_cons_sup cn (echo_taint γ)
       (init_cons_cred (echo_taint γ) r) st Cr.
-  Proof.
+  Proof using .
     intros Heq Hpsok_free Hn0 Hst HCr.
     iIntros "#Hdep #Hdp #Hplaw #Hcore". rewrite /UkInit.init_cons_sup. iSplit.
     - iIntros "!> #Hcns".
@@ -461,7 +461,7 @@ Section UInitBoot.
     (* the linear half, as a wand from the token the kernel hands in *)
     (cons_reader fsc_cons 0%nat -∗ Pay) -∗
     init_boot_bundle (bv_unsigned InodeInv.ROOTINO) fdt0.
-  Proof.
+  Proof using .
     iIntros "#Hcl #Hinv #Hcon #Hgen HPay".
     rewrite /init_boot_bundle. iIntros "Hrd".
     iDestruct ("HPay" with "Hrd") as "HPay".
@@ -532,7 +532,7 @@ Section EchoInitBoot.
         HPav : !pavG Σ, HWc : !wchG Σ, HF : !fileG Σ}
       (γ : echo_fixed) :
     forall i : nat, Timeless (UShLine.ush_rd_pin γ i).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* THE BANNER-OWED FAMILY AT THE ERA'S INPUT (project echo-any-line):
      /init's own [UInitBanner.kinit_ban] is this at a COUNT with the input
@@ -551,7 +551,7 @@ Section EchoInitBoot.
         HPav : !pavG Σ, HWc : !wchG Σ, HF : !fileG Σ}
       (γ : echo_fixed) :
     forall I : list (bv 8), Timeless (echo_wb HR GEN γ I).
-  Proof. rewrite /echo_wb. apply _. Qed.
+  Proof using . rewrite /echo_wb. apply _. Qed.
 
   Definition echo_cc (HR : riscvGS Σ) (GEN : GenId)
       `{HBs : !bioslotG Σ, HFd : !fdslotG Σ, HIr : !irefslotG Σ,
@@ -576,7 +576,7 @@ Section EchoInitBoot.
     @file_app Σ HF = MkAppcfg echo_names (echo_pred γ) r ->
     (⊢ EchoLinks.echo_links (echo_taint γ) γ) ->
     cons_cred_holds fsc_cons (echo_taint γ) (echo_cc HR GEN γ).
-  Proof.
+  Proof using .
     intros Heq Hlkc.
     (* THE TWO READINGS OF THE SUPPLY, at Coq level: the console ring's
        dirty credential read AS THE TAINT and back
@@ -794,7 +794,7 @@ Section EchoInitBoot.
          ECHO-OUT's ledger will spend it. *)
       echo_turn γ (S gen_id) -∗
       |==> init_boot_bundle (bv_unsigned InodeInv.ROOTINO) fdt0.
-  Proof.
+  Proof using HU.
     intros Heq Hiface.
     (* the three projections, off the one equation *)
     assert (Htag : @riscv_rx_tag Σ (@riscv_fixedGS Σ HR) = echo_tag γ)

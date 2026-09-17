@@ -167,7 +167,7 @@ Lemma wp_sw_plic_pinv_s_sconf (γ γ1 : uart_names) (pc : mword 64) (is_rvc : bo
     S -∗
     WP (Loop : expr riscv_lang)) -∗
   WP (Loop : expr riscv_lang).
-Proof.
+Proof using .
   intros ea a8 storeword Hrange Halign Hcanon Hdevvpn Hwrite.
   (* the class, consumed at [rs1 / rs2] -- the one line the funnel change needs,
      and this leaf's wiring check.  See the family note at the head of this
@@ -439,7 +439,7 @@ Lemma wp_sw_plic_dev_s_sconf (γd : uart_names) (γv : disk_names) (pc : mword 6
     S -∗
     WP (Loop : expr riscv_lang)) -∗
   WP (Loop : expr riscv_lang).
-Proof.
+Proof using .
   intros ea a8 storeword Hrange Halign Hcanon Hdevvpn Hwrite.
   (* the class, consumed at [rs1 / rs2] -- the one line the funnel change needs,
      and this leaf's wiring check.  See the family note at the head of this
@@ -500,7 +500,7 @@ Lemma wp_lw_plic_pinv_s_sconf (γd γ1 : uart_names) (pc : mword 64) (is_rvc is_
       S v -∗
       WP (Loop : expr riscv_lang))) -∗
   WP (Loop : expr riscv_lang).
-Proof.
+Proof using .
   intros ea a8 ldval Hrange Halign Hcanon Hdevvpn Hrd Hrdok Hread.
   (* the class, consumed at [rs1] -- the one line the funnel change needs,
      and this leaf's wiring check.  See the family note at the head of this

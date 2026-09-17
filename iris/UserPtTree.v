@@ -1084,7 +1084,7 @@ Section UserPtInv.
   Lemma bigset_gather {A} `{Countable A} (Phi : A -> bv 8 -> iProp Σ) (D : gset A) :
     ([∗ set] x ∈ D, ∃ b : bv 8, Phi x b) ⊣⊢
     (∃ m : gmap A (bv 8), ⌜dom m = D⌝ ∗ [∗ map] x ↦ b ∈ m, Phi x b).
-  Proof.
+  Proof using .
     iSplit.
     - iIntros "H".
       iInduction D as [| x D' Hnin] "IH" using set_ind_L.
@@ -1116,7 +1116,7 @@ Section UserPtInv.
     (forall x y, x ∈ X -> y ∈ X -> h x = h y -> x = y) ->
     (forall a, a ∈ S <-> exists x, x ∈ X /\ h x = a) ->
     ([∗ set] x ∈ X, Phi (h x)) ⊣⊢ ([∗ set] a ∈ S, Phi a).
-  Proof.
+  Proof using .
     (* NO [set_solver] anywhere below, on purpose: on an abstract
        [Countable] key the hypothesis-discharging goals it would be aimed
        at include a bare [h y = h z], and there it does not terminate. *)
@@ -1180,7 +1180,7 @@ Section UserPtInv.
     ([∗ set] x ∈ D, ∃ b : bv 8, Phi (f x) b) ⊣⊢
     (∃ m : gmap B (bv 8), ⌜forall a, Psi a <-> is_Some (m !! a)⌝ ∗
        [∗ map] a ↦ b ∈ m, Phi a b).
-  Proof.
+  Proof using .
     intros Hinj HPsi.
     assert (Hmem : forall a : B, a ∈ set_map (D := gset B) f D <-> Psi a).
     { intros a. rewrite elem_of_map (HPsi a). split.
@@ -1229,7 +1229,7 @@ Section UserPtInv.
   (* a mapped va is exactly a va the image records *)
   Lemma umem_own_lookup_is_Some (P : uptd) (M : gmap Z (bv 8)) (va : Z) :
     dom M = uva_dom P -> (is_Some (M !! va) <-> uva_mapped P va).
-  Proof.
+  Proof using .
     intros Hdom. rewrite <- elem_of_dom. rewrite Hdom. apply elem_of_uva_dom.
   Qed.
 
@@ -1244,7 +1244,7 @@ Section UserPtInv.
      (∀ b' : bv 8,
         TsoCtx.ctx_phys_pointsto XI (uva_pa P va : Arch.pa) (DfracOwn 1) b' -∗
         umem_own P (<[va := b']> M))).
-  Proof.
+  Proof using .
     iIntros (Hl) "[%Hdom HM]".
     iDestruct (big_sepM_insert_acc with "HM") as "[Hb Hrest]"; [exact Hl |].
     iFrame "Hb". iIntros (b') "Hb". iSplitR.
@@ -1263,7 +1263,7 @@ Section UserPtInv.
     umem_any P ⊣⊢
     ([∗ set] va ∈ uva_dom P, ∃ b : bv 8,
        TsoCtx.ctx_phys_pointsto XI (uva_pa P va : Arch.pa) (DfracOwn 1) b).
-  Proof.
+  Proof using .
     rewrite /umem_any /umem_own.
     symmetry.
     apply (bigset_gather
@@ -1287,7 +1287,7 @@ Section UserPtInv.
     user_pt_any P ⊣⊢
     (utlb_inv_pt P.(ud_root) P.(ud_tfp) P.(ud_um) ∗ umem_any P ∗
      ⌜uva_pa_inj P⌝ ∗ ⌜upt_acc_wf P.(ud_um)⌝).
-  Proof.
+  Proof using .
     rewrite /user_pt_any /user_pt_inv /umem_any. iSplit.
     - iIntros "H". iDestruct "H" as (M) "(Htlb & Hm & %Hinj & %Hacc)".
       iFrame "Htlb". iSplitL "Hm"; [iExists M; iExact "Hm" |].
@@ -1298,7 +1298,7 @@ Section UserPtInv.
 
   Lemma user_pt_any_intro (P : uptd) (M : gmap Z (bv 8)) :
     user_pt_inv P M -∗ user_pt_any P.
-  Proof. iIntros "H". iExists M. iExact "H". Qed.
+  Proof using . iIntros "H". iExists M. iExact "H". Qed.
 
   (* ------------------------------------------------------------------ *)
   (* §3e THE BYTE WINDOW: reading and writing a RUN of user vas.         *)
@@ -1318,7 +1318,7 @@ Section UserPtInv.
     ([∗ map] va ↦ b ∈ M, Phi va b) ⊣⊢
     ([∗ list] j ∈ seq 0 n, Phi (a + Z.of_nat j)%Z (M !!! (a + Z.of_nat j)%Z)) ∗
     ([∗ map] va ↦ b ∈ umem_del M a n, Phi va b).
-  Proof.
+  Proof using .
     induction n as [| k IH]; intros Hsome.
     - cbn [umem_del]. rewrite big_sepL_nil bi.emp_sep. reflexivity.
     - assert (Hk : forall j, (j < k)%nat -> is_Some (M !! (a + Z.of_nat j)%Z))
@@ -1354,7 +1354,7 @@ Section UserPtInv.
             TsoCtx.ctx_phys_pointsto XI (uva_pa P (a + Z.of_nat j)%Z : Arch.pa)
               (DfracOwn 1) (bs j)) -∗
          umem_own P (umem_write M a n bs)).
-  Proof.
+  Proof using .
     intros Hsome. iIntros "[%Hdom HM]".
     rewrite (bigM_window
                (fun va b =>
@@ -1386,7 +1386,7 @@ Section UserPtInv.
     ([∗ list] j ∈ seq 0 4096,
        Phi (bv_unsigned vpn * 4096 + Z.of_nat j)%Z (bs j)) ⊣⊢
     ([∗ map] va ↦ b ∈ upage_map vpn bs, Phi va b).
-  Proof.
+  Proof using .
     rewrite /upage_map (big_sepM_list_to_map Phi _ (upage_kv_nodup vpn bs)).
     rewrite /upage_kv big_sepL_fmap. reflexivity.
   Qed.
@@ -1418,14 +1418,14 @@ Section UserPtInv.
      to the mapped-only one and back *)
   Lemma umem_lazy_any (P : uptd) (sz : Z) (M : gmap Z (bv 8)) :
     umem_lazy P sz M -∗ umem_any P.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as (Mp) "(_ & _ & _ & Hm)".
     iExists Mp. iExact "Hm".
   Qed.
 
   Lemma umem_lazy_intro (P : uptd) (sz : Z) :
     umem_any P -∗ ∃ M : gmap Z (bv 8), umem_lazy P sz M.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as (Mp) "Hm".
     iDestruct "Hm" as "[%Hdom Hm]".
     iExists (Mp ∪ gset_to_gmap (bv_0 8) (live_set sz)), Mp.
@@ -1453,7 +1453,7 @@ Section UserPtInv.
   Lemma umem_lazy_mapped_lookup (P : uptd) (M Mp : gmap Z (bv 8)) (va : Z) :
     Mp ⊆ M -> dom Mp = uva_dom P -> uva_mapped P va ->
     Mp !!! va = M !!! va.
-  Proof.
+  Proof using .
     intros Hsub Hdom Hm.
     assert (Hs : is_Some (Mp !! va))
       by (apply elem_of_dom; rewrite Hdom; by apply elem_of_uva_dom).
@@ -1476,7 +1476,7 @@ Section UserPtInv.
             TsoCtx.ctx_phys_pointsto XI (uva_pa P (a + Z.of_nat j)%Z : Arch.pa)
               (DfracOwn 1) (bs j)) -∗
          umem_lazy P sz (umem_write M a n bs)).
-  Proof.
+  Proof using .
     intros Hmap. iIntros "H".
     iDestruct "H" as (Mp) "(%Hsub & %Hdm & %Hlz & Hm)".
     iDestruct "Hm" as "[%Hdom Hm]".
@@ -1577,7 +1577,7 @@ Section UserPtTranslate.
          exists tv, σ'.(sregs) = register_set tlb tv σ.(sregs))%type ⌝ ∗
       S σ'.(mem) ∗
       reg_interp σ'.(sregs) ∗ gen_heap_interp σ'.(mem) ∗ utlb_inv_pt uroot tfp um.
-  Proof.
+  Proof using .
     intros Hl Hchk Hcanon Hout Hmisa Hmenv Hhtif Hcp HSXL Heff Hss Hall.
     apply (utlb_inv_pt_translateAddr acc User uroot tfp um w va pa σ S
              Hchk (or_intror (or_intror Hl))
@@ -1599,7 +1599,7 @@ Section UserPtTranslate.
       eq_vec (_get_Pmpcfg_ent_R (vec_access_dec (register_lookup pmpcfg_n σ.(sregs)) 0)) ('b"1") = true /\
       eq_vec (_get_Pmpcfg_ent_W (vec_access_dec (register_lookup pmpcfg_n σ.(sregs)) 0)) ('b"1") = true /\
       (ram_base + ram_size <= uint (vec_access_dec (register_lookup pmpaddr_n σ.(sregs)) 0) * 4)%Z)%type⌝.
-  Proof.
+  Proof using .
     iIntros "Hri Hinv".
     iDestruct "Hinv" as (usatp tlbvec t)
       "(_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hpmp)".
@@ -1641,7 +1641,7 @@ Section UserPtFault.
     exec (translationException acc (PTW_Invalid_Addr tt)) σ = Some (e, σ) ->
     reg_interp σ.(sregs) -∗ utlb_inv_pt uroot tfp um -∗
     ⌜exec (translateAddr (Virtaddr va) acc) σ = Some (Err (e, tt), σ)⌝.
-  Proof.
+  Proof using .
     intros Hcanon Hcp HSXL Heff Hss Hte.
     iIntros "Hri Hinv".
     iDestruct "Hinv" as (usatp tlbvec t)
@@ -1674,7 +1674,7 @@ Section UserPtFault.
     exec (translationException acc (PTW_Invalid_PTE tt)) σ = Some (e, σ) ->
     reg_interp σ.(sregs) -∗ gen_heap_interp σ.(mem) -∗ utlb_inv_pt uroot tfp um -∗
     ⌜exec (translateAddr (Virtaddr va) acc) σ = Some (Err (e, tt), σ)⌝.
-  Proof.
+  Proof using .
     intros Hnone Hnt Hntf Hcanon Hhtif Hcp HSXL Heff Hss Hall Hte.
     iIntros "Hri Hgh Hinv".
     iDestruct "Hinv" as (usatp tlbvec t)
@@ -1799,7 +1799,7 @@ Section UserPtFault.
     exec (translationException acc (PTW_No_Permission tt)) σ = Some (e, σ) ->
     reg_interp σ.(sregs) -∗ gen_heap_interp σ.(mem) -∗ utlb_inv_pt uroot tfp um -∗
     ⌜exec (translateAddr (Virtaddr va) acc) σ = Some (Err (e, tt), σ)⌝.
-  Proof.
+  Proof using .
     intros Hleaf Hden Hcanon Hhtif Hcp HSXL Heff Hss Hall Hte.
     iIntros "Hri Hgh Hinv".
     iDestruct "Hinv" as (usatp tlbvec t)
@@ -1948,7 +1948,7 @@ Section UserPtFaultCombined.
     exec (translationException acc (PTW_No_Permission tt)) σ = Some (e, σ) ->
     reg_interp σ.(sregs) -∗ gen_heap_interp σ.(mem) -∗ utlb_inv_pt uroot tfp um -∗
     ⌜exec (translateAddr (Virtaddr va) acc) σ = Some (Err (e, tt), σ)⌝.
-  Proof.
+  Proof using .
     intros Hflavor Hhtif Hcp HSXL Heff Hss Hall Hte1 Hte2 Hte3.
     iIntros "Hri Hgh Hinv".
     destruct Hflavor as
@@ -2152,7 +2152,7 @@ Definition user_ptm_inv (P : uptd) (sz : Z) (M : gmap Z (bv 8)) : iProp Σ :=
 
   Lemma user_ptm_inv_any (P : uptd) (sz : Z) (M : gmap Z (bv 8)) :
     user_ptm_inv P sz M -∗ user_pt_any P.
-  Proof.
+  Proof using .
     rewrite /user_ptm_inv user_pt_any_unfold.
     iIntros "(Htlb & Hm & %Hinj & %Hacc)".
     iFrame "Htlb".
@@ -2165,7 +2165,7 @@ Definition user_ptm_inv (P : uptd) (sz : Z) (M : gmap Z (bv 8)) : iProp Σ :=
 
   Lemma user_ptm_inv_pt (P : uptd) (sz : Z) (M : gmap Z (bv 8)) :
     user_ptm_inv P sz M -∗ ∃ Mp : gmap Z (bv 8), user_pt_inv P Mp.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct (user_ptm_inv_any with "H") as "H".
     rewrite /user_pt_any. iExact "H".
   Qed.
@@ -2174,7 +2174,7 @@ Definition user_ptm_inv (P : uptd) (sz : Z) (M : gmap Z (bv 8)) : iProp Σ :=
 
   Lemma user_ptm_inv_intro (P : uptd) (sz : Z) :
     user_pt_any P -∗ ∃ M : gmap Z (bv 8), user_ptm_inv P sz M.
-  Proof.
+  Proof using .
     rewrite user_pt_any_unfold /user_ptm_inv.
     iIntros "(Htlb & Hm & %Hinj & %Hacc)".
     iDestruct (umem_lazy_intro P sz with "Hm") as (M) "Hm".

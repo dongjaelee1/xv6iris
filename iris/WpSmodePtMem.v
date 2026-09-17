@@ -472,7 +472,7 @@ Local Lemma exec_mem_write_value_1_S (pbmt : page_based_mem_type) (addr : mword 
   Lemma exec_vmem_read_addr_4_S_walk_pt :
     exec (vmem_read_addr (Virtaddr a) 4 (Load Data) false false false) s
       = Some (Ok v, s').
-  Proof.
+  Proof using HA HR Halign Hbytes Hc Hcp' Hcps Hdev Hh Hmatch Hmprv' Hmprvs Hord Hpalign Hrange Hread Hsig Htm Htr.
     assert (Heff : exec (effectivePrivilege (Load Data) (register_lookup mstatus s.(sregs))
                            (register_lookup cur_privilege s.(sregs))) s = Some (Supervisor, s)).
     { rewrite Hcps. apply exec_effectivePrivilege_load_S. exact Hmprvs. }
@@ -523,7 +523,7 @@ Local Lemma exec_mem_write_value_1_S (pbmt : page_based_mem_type) (addr : mword 
 
   Lemma exec_vmem_read_4_gpr_S_walk_pt :
     exec (vmem_read (Regidx rs1) offset 4 (Load Data) false false false) s = Some (Ok v, s').
-  Proof.
+  Proof using HA HR Halign Hbytes Hc Hcp' Hcps Hdev Hh Hmatch Hmprv' Hmprvs Hord Hpalign Hrange Hread Hsig Htea Htm Htr.
     unfold vmem_read. rewrite exec_catch_early_return.
     assert (Ha8ea : a8 = ea) by (unfold a8; rewrite subrange_id; apply sign_extend'_id).
     assert (Hgta : exec (get_transformed_data_addr (Regidx rs1) offset (Load Data) 4) s
@@ -586,7 +586,7 @@ Local Lemma exec_mem_write_value_1_S (pbmt : page_based_mem_type) (addr : mword 
     exec (execute (LOAD (imm, Regidx rs1, Regidx rd, false, 4))) s
       = Some (RETIRE_SUCCESS,
               set_reg s' (R_bitvector_64 (gpr_of_Z (uint rd))) (regval_into_reg (extend_value false v))).
-  Proof.
+  Proof using HA HR Halign Hbytes Hc Hcp' Hcps Hdev Hh Hmatch Hmprv' Hmprvs Hord Hpalign Hrange Hrd Hread Hsig Htea Htm Htr.
     change (execute (LOAD (imm, Regidx rs1, Regidx rd, false, 4)))
       with (execute_LOAD imm (Regidx rs1) (Regidx rd) false 4).
     unfold execute_LOAD.
@@ -640,7 +640,7 @@ Local Lemma exec_mem_write_value_1_S (pbmt : page_based_mem_type) (addr : mword 
   Lemma exec_vmem_write_addr_4_S_walk_pt :
     exec (vmem_write_addr (Virtaddr a) 4 data (Store Data) false false false) s
       = Some (Ok true, MState s'.(sregs) (write_bytes s'.(mem) pa 4 data) s'.(mdev)).
-  Proof.
+  Proof using HA HW Halign Hc Hcp Hcps Hdev Hh Hmatch Hmprv Hmprvs Hord Hpalign Hrange Hsig Htm Htr Hwrite.
     assert (Heff : exec (effectivePrivilege (Store Data) (register_lookup mstatus s.(sregs))
                            (register_lookup cur_privilege s.(sregs))) s = Some (Supervisor, s)).
     { rewrite Hcps. apply exec_effectivePrivilege_store_S. exact Hmprvs. }
@@ -706,7 +706,7 @@ Local Lemma exec_mem_write_value_1_S (pbmt : page_based_mem_type) (addr : mword 
   Lemma exec_vmem_write_4_gpr_S_walk_pt :
     exec (vmem_write (Regidx rs1) offset 4 data (Store Data) false false false) s
       = Some (Ok true, MState s'.(sregs) (write_bytes s'.(mem) pa 4 data) s'.(mdev)).
-  Proof.
+  Proof using HA HW Halign Hc Hcp' Hcps Hdev Hh Hmatch Hmprv' Hmprvs Hord Hpalign Hrange Hsig Htea Htm Htr Hwrite.
     unfold vmem_write. rewrite exec_catch_early_return.
     assert (Ha8ea : a8 = ea) by (unfold a8; rewrite subrange_id; apply sign_extend'_id).
     assert (Hgta : exec (get_transformed_data_addr (Regidx rs1) offset (Store Data) 4) s
@@ -769,7 +769,7 @@ Local Lemma exec_mem_write_value_1_S (pbmt : page_based_mem_type) (addr : mword 
       = Some (RETIRE_SUCCESS,
               MState s'.(sregs) (write_bytes s'.(mem) pa 4
                 (autocast (T := mword) (subrange_vec_dec vrs2 (Z.sub (Z.mul 4 8) 1) 0) : mword 32)) s'.(mdev)).
-  Proof.
+  Proof using HA HW Halign Hc Hcp' Hcps Hdev Hh Hmatch Hmprv' Hmprvs Hord Hpalign Hrange Hsig Htea Htm Htr Hwrite.
     change (execute (STORE (imm, Regidx rs2, Regidx rs1, 4)))
       with (execute_STORE imm (Regidx rs2) (Regidx rs1) 4).
     unfold execute_STORE.
@@ -820,7 +820,7 @@ Local Lemma exec_mem_write_value_1_S (pbmt : page_based_mem_type) (addr : mword 
   Lemma exec_vmem_write_addr_1_S_walk_pt :
     exec (vmem_write_addr (Virtaddr a) 1 data (Store Data) false false false) s
       = Some (Ok true, MState s'.(sregs) (write_bytes s'.(mem) pa 1 data) s'.(mdev)).
-  Proof.
+  Proof using HA HW Halign Hc Hcp Hcps Hdev Hh Hmatch Hmprv Hmprvs Hord Hrange Hsig Htm Htr Hwrite.
     assert (Heff : exec (effectivePrivilege (Store Data) (register_lookup mstatus s.(sregs))
                            (register_lookup cur_privilege s.(sregs))) s = Some (Supervisor, s)).
     { rewrite Hcps. apply exec_effectivePrivilege_store_S. exact Hmprvs. }
@@ -888,7 +888,7 @@ Local Lemma exec_mem_write_value_1_S (pbmt : page_based_mem_type) (addr : mword 
   Lemma exec_vmem_write_1_gpr_S_walk_pt :
     exec (vmem_write (Regidx rs1) offset 1 data (Store Data) false false false) s
       = Some (Ok true, MState s'.(sregs) (write_bytes s'.(mem) pa 1 data) s'.(mdev)).
-  Proof.
+  Proof using HA HW Halign Hc Hcp' Hcps Hdev Hh Hmatch Hmprv' Hmprvs Hord Hrange Hsig Htea Htm Htr Hwrite.
     unfold vmem_write. rewrite exec_catch_early_return.
     assert (Ha8ea : a8 = ea) by (unfold a8; rewrite subrange_id; apply sign_extend'_id).
     assert (Hgta : exec (get_transformed_data_addr (Regidx rs1) offset (Store Data) 1) s
@@ -951,7 +951,7 @@ Local Lemma exec_mem_write_value_1_S (pbmt : page_based_mem_type) (addr : mword 
       = Some (RETIRE_SUCCESS,
               MState s'.(sregs) (write_bytes s'.(mem) pa 1
                 (autocast (T := mword) (subrange_vec_dec vrs2 (Z.sub (Z.mul 1 8) 1) 0) : mword 8)) s'.(mdev)).
-  Proof.
+  Proof using HA HW Halign Hc Hcp' Hcps Hdev Hh Hmatch Hmprv' Hmprvs Hord Hrange Hsig Htea Htm Htr Hwrite.
     change (execute (STORE (imm, Regidx rs2, Regidx rs1, 1)))
       with (execute_STORE imm (Regidx rs2) (Regidx rs1) 1).
     unfold execute_STORE.
@@ -1053,7 +1053,7 @@ Section WpSmodePtMemLeaves.
       pa ↦₄[kt']{ dqm } v -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros ea a8 pa Hrd HSIE HMPRV HSXL Hmm HMXR Hpmm HPBMTE Hmenvval0.
     (* the three [let]s collapse: the engine spells the address as the term,
        and a local definition is not syntactically it *)
@@ -1329,7 +1329,7 @@ Section WpSmodePtMemLeaves.
       pa ↦₄{ dqm } v -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros ea a8 pa Hrd HSIE HMPRV HSXL Hmm HMXR Hpmm HPBMTE Hmenvval0.
     iPoseProof (sr_ktier_wit_KT0 R) as "#Hwit".
     iApply (wp_clw_s_r_t R KT0 KT0 pc rd rs1 imm m v mstatus0 mie_v mdv0 menvcfg0
@@ -1402,7 +1402,7 @@ Section WpSmodePtMemLeaves.
       pa ↦₈[kt']{ dqm } v -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros ea a8 pa Hrd HSIE HMPRV HSXL Hmm HMXR Hpmm HPBMTE Hmenvval0.
     (* the three [let]s collapse: the engine spells the address as the term,
        and a local definition is not syntactically it *)
@@ -1678,7 +1678,7 @@ Section WpSmodePtMemLeaves.
       pa ↦₈{ dqm } v -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros ea a8 pa Hrd HSIE HMPRV HSXL Hmm HMXR Hpmm HPBMTE Hmenvval0.
     iPoseProof (sr_ktier_wit_KT0 R) as "#Hwit".
     iApply (wp_ld_s_r_t R KT0 KT0 pc rd rs1 imm m v mstatus0 mie_v mdv0 menvcfg0
@@ -1750,7 +1750,7 @@ Section WpSmodePtMemLeaves.
       pa ↦₄[kt'] storeval -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros ea a8 pa storeval HSIE HMPRV HSXL Hmm HMXR Hpmm HPBMTE Hmenvval0.
     unfold pa, a8, ea, storeval in *. clear pa a8 ea storeval.
     iIntros "#Hwit #Hhw #Hinv Hhs Hpriv Hms Hmie Hmdl Hmenv Htlbinv
@@ -2009,7 +2009,7 @@ Section WpSmodePtMemLeaves.
       pa ↦₄ storeval -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros ea a8 pa storeval HSIE HMPRV HSXL Hmm HMXR Hpmm HPBMTE Hmenvval0.
     iPoseProof (sr_ktier_wit_KT0 R) as "#Hwit".
     iApply (wp_csw_s_r_t R KT0 KT0 pc rs2 rs1 imm m vold mstatus0 mie_v mdv0 menvcfg0
@@ -2082,7 +2082,7 @@ Section WpSmodePtMemLeaves.
       pa ↦₈[kt'] (m !!! Regidx rs2) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros ea a8 pa HSIE HMPRV HSXL Hmm HMXR Hpmm HPBMTE Hmenvval0.
     unfold pa, a8, ea in *. clear pa a8 ea.
     iIntros "#Hwit #Hhw #Hinv Hhs Hpriv Hms Hmie Hmdl Hmenv Htlbinv
@@ -2339,7 +2339,7 @@ Section WpSmodePtMemLeaves.
       pa ↦₈ (m !!! Regidx rs2) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros ea a8 pa HSIE HMPRV HSXL Hmm HMXR Hpmm HPBMTE Hmenvval0.
     iPoseProof (sr_ktier_wit_KT0 R) as "#Hwit".
     iApply (wp_sd_s_r_t R KT0 KT0 pc rs2 rs1 imm m vold mstatus0 mie_v mdv0 menvcfg0

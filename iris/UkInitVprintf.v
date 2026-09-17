@@ -108,7 +108,7 @@ Section UkInitVprintf.
        urun N h' m' (ret_pc vra) (12 + n) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hsp Hal8 Hlo. iIntros "#Hcode Hwra Hws0 Hws1 Hw4 Hw5 Hw6 Hw7 Hw8 Hw9 Hw10 Hw11 Hw12 Hrun Hcont".
     assert (Hbsp : bv_unsigned (add_vec_int sp0 (- (8 * Z.of_nat 12)))
                    = bv_unsigned sp0 - 96).
@@ -301,7 +301,7 @@ Section UkInitVprintf.
        urun N h' m' (ret_pc (m0 !!! Regidx ra_idx)) (12 + n) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hsp Hsp0 Hal8 Hlo Hfree.
     iIntros "#Hcode Hwra Hws0 Hws1 Hw2 Hw3 Hw4 Hw5 Hw6 Hw7 Hw8 Hw11 Hw12 Hrun Hcont".
     assert (Hbsp : bv_unsigned (add_vec_int sp0 (- (8 * Z.of_nat 12)))
@@ -749,7 +749,7 @@ Section UkInitVprintf.
   Lemma vp_inv_call (m0 m m' : regfile) (sp0 : mword 64) (a : Z) (fd : mword 64)
       (i : nat) :
     ucallee_saved m m' -> vp_inv m0 m sp0 a fd i -> vp_inv m0 m' sp0 a fd i.
-  Proof.
+  Proof using .
     intros Hcs (Hsp & Hs0 & Hs2 & Hs3 & Hs4 & Hs5 & Hs6 & Hfr).
     unfold vp_inv.
     rewrite (Hcs csp_rs1 ltac:(vm_compute; reflexivity)).
@@ -778,7 +778,7 @@ Section UkInitVprintf.
     vp_writable r = true ->
     (z = 2 \/ z = 3 \/ z = 4 \/ z = 8 \/ (18 <= z <= 22) \/ (25 <= z <= 27)) ->
     uint r <> z.
-  Proof.
+  Proof using .
     unfold vp_writable. intro H. apply negb_true_iff in H.
     rewrite !orb_false_iff in H.
     destruct H as [[[[[H1 H2] H3] H4] H5] H6].
@@ -795,7 +795,7 @@ Section UkInitVprintf.
     vp_writable r = true ->
     vp_inv m0 m sp0 a fd i ->
     vp_inv m0 (<[Regidx r := regval_into_reg v]> m) sp0 a fd i.
-  Proof.
+  Proof using .
     intros Hw (Hsp & Hs0 & Hs2 & Hs3 & Hs4 & Hs5 & Hs6 & Hfr).
     unfold vp_inv.
     rewrite (upd_ne m (Regidx r) (Regidx csp_rs1) (regval_into_reg v)
@@ -847,7 +847,7 @@ Section UkInitVprintf.
     v = mword_of_int (Z.of_nat j) ->
     vp_inv m0 m sp0 a fd i ->
     vp_inv m0 (<[Regidx s2_idx := regval_into_reg v]> m) sp0 a fd j.
-  Proof.
+  Proof using .
     intros -> (Hsp & Hs0 & _ & Hs3 & Hs4 & Hs5 & Hs6 & Hfr).
     unfold vp_inv.
     rewrite (upd_ne m (Regidx s2_idx) (Regidx csp_rs1) _
@@ -899,7 +899,7 @@ Section UkInitVprintf.
        urun N h' m' (mword_of_int 0x528) (4 + n) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Ha0 Habnd Hpct Hinv Hs1.
     destruct Hinv as (Hsp & Hs0 & Hs2 & Hs3 & Hs4 & Hs5 & Hs6 & Hfr).
     iIntros "Hw1 #Hcode #Hb1 HCi Hrun Hcont".
@@ -1270,7 +1270,7 @@ Section UkInitVprintf.
          urun N h' m' (ret_pc (m0 !!! Regidx ra_idx)) (12 + (4 + n)) -∗
          WP (Loop : expr riscv_lang)) -∗
       WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Ha0 Habnd Hpct Hsp0 Hal8 Hlo.
     induction k as [| k IH ];
       intros i h m n Hik Hinv Hs1;
@@ -1384,7 +1384,7 @@ Section UkInitVprintf.
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (12 + (4 + n)) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Ha0 Habnd Hlen Hpct Ha1 Ha0r.
     iIntros "#Hw #Hcode #Hstr HCh Hrun Hcont".
     iDestruct (utext_str_nonul with "Hstr") as %Hnn.

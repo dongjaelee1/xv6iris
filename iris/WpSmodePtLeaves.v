@@ -104,7 +104,7 @@ Section WpSmodePtGprEngine.
       gpr_file (<[Regidx rd := regval_into_reg wval]> m) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (HSIE HMPRV HSXL Hmm HPBMTE Hmenvval0)
       "Hex #Hhw #Hminv Hhs Hpriv Hms Hmie Hmdl Hmenv Hinv Hpc Hfile Hinstr
        Hcont".
@@ -192,7 +192,7 @@ Hypothesis Hbytes : forall j : nat, (N.of_nat j < 8)%N -> s'.(mem) !! (pa_add pa
 Lemma exec_vmem_read_addr_8_S_walk_pt :
   exec (vmem_read_addr (Virtaddr a) 8 (Load Data) false false false) s
     = Some (Ok v, s').
-Proof.
+Proof using HA HR Halign Hbytes Hc Hcp' Hcps Hdev Hh Hmatch Hmprv' Hmprvs Hord Hpalign Hrange Hread Hsig Htm Htr.
   assert (Heff : exec (effectivePrivilege (Load Data) (register_lookup mstatus s.(sregs))
                          (register_lookup cur_privilege s.(sregs))) s = Some (Supervisor, s)).
   { rewrite Hcps. apply exec_effectivePrivilege_load_S. exact Hmprvs. }
@@ -243,7 +243,7 @@ Hypothesis Hbytes : forall j : nat, (N.of_nat j < 8)%N -> s'.(mem) !! (pa_add pa
 
 Lemma exec_vmem_read_8_gpr_S_walk_pt :
   exec (vmem_read (Regidx rs1) offset 8 (Load Data) false false false) s = Some (Ok v, s').
-Proof.
+Proof using HA HR Halign Hbytes Hc Hcp' Hcps Hdev Hh Hmatch Hmprv' Hmprvs Hord Hpalign Hrange Hread Hsig Htea Htm Htr.
   unfold vmem_read. rewrite exec_catch_early_return.
   assert (Ha8ea : a8 = ea) by (unfold a8; rewrite subrange_id; apply sign_extend'_id).
   assert (Hgta : exec (get_transformed_data_addr (Regidx rs1) offset (Load Data) 8) s
@@ -306,7 +306,7 @@ Lemma exec_execute_LOAD_8_gpr_S_walk_pt :
   exec (execute (LOAD (imm, Regidx rs1, Regidx rd, false, 8))) s
     = Some (RETIRE_SUCCESS,
             set_reg s' (R_bitvector_64 (gpr_of_Z (uint rd))) (regval_into_reg (extend_value false v))).
-Proof.
+Proof using HA HR Halign Hbytes Hc Hcp' Hcps Hdev Hh Hmatch Hmprv' Hmprvs Hord Hpalign Hrange Hrd Hread Hsig Htea Htm Htr.
   change (execute (LOAD (imm, Regidx rs1, Regidx rd, false, 8)))
     with (execute_LOAD imm (Regidx rs1) (Regidx rd) false 8).
   unfold execute_LOAD.
@@ -401,7 +401,7 @@ Section WpSmodePtLoad.
       pa ↦₈[kt']{ dqm } v -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros ea a8 pa Hrd HSIE HMPRV HSXL Hmm HMXR Hpmm HPBMTE Hmenvval0.
     (* the three [let]s collapse: the engine spells the address as the term,
        and a local definition is not syntactically it *)
@@ -667,7 +667,7 @@ Section WpSmodePtLoad.
       pa ↦₈{ dqm } v -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros ea a8 pa Hrd HSIE HMPRV HSXL Hmm HMXR Hpmm HPBMTE Hmenvval0.
     iPoseProof (sr_ktier_wit_KT0 R) as "#Hwit".
     iApply (wp_cld_s_r_t R KT0 KT0 pc rd rs1 imm m v mstatus0 mie_v mdv0 menvcfg0
@@ -717,7 +717,7 @@ Hypothesis Hdev : dev_addr pa = false.
 Lemma exec_vmem_write_addr_8_S_walk_pt :
   exec (vmem_write_addr (Virtaddr a) 8 data (Store Data) false false false) s
     = Some (Ok true, MState s'.(sregs) (write_bytes s'.(mem) pa 8 data) s'.(mdev)).
-Proof.
+Proof using HA HW Halign Hc Hcp Hcps Hdev Hh Hmatch Hmprv Hmprvs Hord Hpalign Hrange Hsig Htm Htr Hwrite.
   assert (Heff : exec (effectivePrivilege (Store Data) (register_lookup mstatus s.(sregs))
                          (register_lookup cur_privilege s.(sregs))) s = Some (Supervisor, s)).
   { rewrite Hcps. apply exec_effectivePrivilege_store_S. exact Hmprvs. }
@@ -783,7 +783,7 @@ Hypothesis Hdev : dev_addr pa = false.
 Lemma exec_vmem_write_8_gpr_S_walk_pt :
   exec (vmem_write (Regidx rs1) offset 8 data (Store Data) false false false) s
     = Some (Ok true, MState s'.(sregs) (write_bytes s'.(mem) pa 8 data) s'.(mdev)).
-Proof.
+Proof using HA HW Halign Hc Hcp' Hcps Hdev Hh Hmatch Hmprv' Hmprvs Hord Hpalign Hrange Hsig Htea Htm Htr Hwrite.
   unfold vmem_write. rewrite exec_catch_early_return.
   assert (Ha8ea : a8 = ea) by (unfold a8; rewrite subrange_id; apply sign_extend'_id).
   assert (Hgta : exec (get_transformed_data_addr (Regidx rs1) offset (Store Data) 8) s
@@ -844,7 +844,7 @@ Hypothesis Hdev : dev_addr pa = false.
 Lemma exec_execute_STORE_8_gpr_S_walk_pt :
   exec (execute (STORE (imm, Regidx rs2, Regidx rs1, 8))) s
     = Some (RETIRE_SUCCESS, MState s'.(sregs) (write_bytes s'.(mem) pa 8 vrs2) s'.(mdev)).
-Proof.
+Proof using HA HW Halign Hc Hcp' Hcps Hdev Hh Hmatch Hmprv' Hmprvs Hord Hpalign Hrange Hsig Htea Htm Htr Hwrite.
   change (execute (STORE (imm, Regidx rs2, Regidx rs1, 8)))
     with (execute_STORE imm (Regidx rs2) (Regidx rs1) 8).
   unfold execute_STORE.
@@ -940,7 +940,7 @@ Section WpSmodePtStore.
       pa ↦₈[kt'] (m !!! Regidx rs2) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros ea a8 pa HSIE HMPRV HSXL Hmm HMXR Hpmm HPBMTE Hmenvval0.
     unfold pa, a8, ea in *. clear pa a8 ea.
     iIntros "#Hwit #Hhw #Hinv Hhs Hpriv Hms Hmie Hmdl Hmenv Htlbinv
@@ -1184,7 +1184,7 @@ Section WpSmodePtStore.
       pa ↦₈ (m !!! Regidx rs2) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros ea a8 pa HSIE HMPRV HSXL Hmm HMXR Hpmm HPBMTE Hmenvval0.
     iPoseProof (sr_ktier_wit_KT0 R) as "#Hwit".
     iApply (wp_csd_s_r_t R KT0 KT0 pc rs2 rs1 imm m vold mstatus0 mie_v mdv0 menvcfg0
@@ -1213,7 +1213,7 @@ Section WpSmodePtGprGamma.
      the bundle needs it to pay the fetch translation. *)
   Lemma smode_config_hw (γ : gname) (dq : dfrac) :
     smode_config γ dq -∗ hw_config ∗ smode_config γ dq.
-  Proof.
+  Proof using .
     rewrite /smode_config. iIntros "[#Hhw H]".
     iSplitR; [iExact "Hhw"|]. iSplitR; [iExact "Hhw"|]. iExact "H".
   Qed.
@@ -1241,7 +1241,7 @@ Section WpSmodePtGprGamma.
       gpr_file (<[Regidx rd := regval_into_reg wval]> m) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "Hex Hsm Hinv Hpc Hfile Hinstr Hcont".
     (* UNBUNDLE rather than ride a [smode_config]-shaped wrapper: such a
        wrapper's fetch obligation does not forward mstatus.MPRV, which the
@@ -1285,7 +1285,7 @@ Section WpSmodePtGprGamma.
         (add_vec (m !!! Regidx csp_rs1) (sign_extend' 64 (caddi16sp_imm imm6)))]> m) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "Hsm Hinv Hpc Hfile Hinstr Hcont".
     assert (Hsp : uint csp_rs1 <> 0) by (vm_compute; discriminate).
     iApply (wp_rvc_gpr_write_s_r R γ pc csp_rs1
@@ -1319,7 +1319,7 @@ Section WpSmodePtGprGamma.
         (add_vec (m !!! Regidx csp_rs1) (sign_extend' 64 (caddi16sp_imm imm6)))]> m) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-    Proof.
+    Proof using .
     exact (wp_caddi16sp_gpr_s_r (kpt_share_regime root_ppn) γ pc imm6 m q).
   Qed.
 

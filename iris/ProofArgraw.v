@@ -138,7 +138,7 @@ Section ArgrawDispatch.
     kernel_text -∗ instr (mword_of_int (KernelSyms.argraw + ar_case_off k) : mword 64) true
       (LOAD (zero_extend' 12 (concat_vec (mword_of_int 11 : mword 5) ('b"000")),
              creg2reg_idx (Cregidx (mword_of_int 2)), creg2reg_idx (Cregidx (mword_of_int 7)), false, 8)).
-  Proof.
+  Proof using .
     intro Hk. unfold NARG in Hk. destruct k as [|[|[|[|[|[|k']]]]]]; try lia; cbn [ar_case_off];
       [ exact ari_28 | exact ari_36 | exact ari_3c | exact ari_42 | exact ari_48 | exact ari_4e ].
   Qed.
@@ -147,7 +147,7 @@ Section ArgrawDispatch.
     kernel_text -∗ instr (mword_of_int (KernelSyms.argraw + ar_ld_off k) : mword 64) true
       (LOAD (zero_extend' 12 (concat_vec (mword_of_int (14 + Z.of_nat k) : mword 5) ('b"000")),
              creg2reg_idx (Cregidx (mword_of_int 7)), creg2reg_idx (Cregidx (mword_of_int 2)), false, 8)).
-  Proof.
+  Proof using .
     intro Hk. unfold NARG in Hk. destruct k as [|[|[|[|[|[|k']]]]]]; try lia;
       cbn [ar_ld_off Z.of_nat]; cbn [Z.add];
       [ exact ari_2a | exact ari_38 | exact ari_3e | exact ari_44 | exact ari_4a | exact ari_50 ].
@@ -156,7 +156,7 @@ Section ArgrawDispatch.
   Lemma ar_i_cj (k : nat) : (1 <= k < NARG)%nat ->
     kernel_text -∗ instr (mword_of_int (KernelSyms.argraw + ar_ld_off k + 2) : mword 64) true
       (JAL (sign_extend' 21 (concat_vec (mword_of_int (ar_cj_imm k) : mword 11) ('b"0")), zreg)).
-  Proof.
+  Proof using .
     intro Hk. unfold NARG in Hk. destruct k as [|[|[|[|[|[|k']]]]]]; try lia;
       cbn [ar_ld_off ar_cj_imm];
       [ exact ari_3a | exact ari_40 | exact ari_46 | exact ari_4c | exact ari_52 ].
@@ -215,7 +215,7 @@ Section ProofArgraw.
   (* the switch index is in range, so [bltu a5,s1] (5 <u n) does not fire *)
   Lemma ar_bltu_false (i : nat) : (i < NARG)%nat ->
     zopz0zI_u (mword_of_int 5 : mword 64) (mword_of_int (Z.of_nat i) : mword 64) = false.
-  Proof. intro Hi. unfold NARG in Hi. destruct i as [|[|[|[|[|[|i']]]]]]; try lia; vm_compute; reflexivity. Qed.
+  Proof using . intro Hi. unfold NARG in Hi. destruct i as [|[|[|[|[|[|i']]]]]]; try lia; vm_compute; reflexivity. Qed.
 
   (* The jump table's .rodata bytes, as ONE PURE lemma over a SYMBOLIC index,
      outside any Iris goal.  [ar_table_word] then passes it to
@@ -230,7 +230,7 @@ Section ProofArgraw.
     forall j, (j < 4)%nat ->
       KernelData.kernel_data !! (ar_tbl + 4 * Z.of_nat i + Z.of_nat j)%Z
         = Some (nth_byte (ar_entry i) j).
-  Proof.
+  Proof using .
     unfold NARG. intros Hi j Hj.
     destruct i as [|[|[|[|[|[|i']]]]]]; try lia;
       (destruct j as [|[|[|[|j']]]]; try lia;
@@ -242,7 +242,7 @@ Section ProofArgraw.
      every premise a named hypothesis. *)
   Lemma ar_table_word (i : nat) : (i < NARG)%nat ->
     kernel_data -∗ (mword_of_int (ar_tbl + 4 * Z.of_nat i) : mword 64) ↦₄□ ar_entry i.
-  Proof.
+  Proof using .
     intro Hi.
     assert (Hle : text_end <= ar_tbl + 4 * Z.of_nat i) by (unfold text_end, ar_tbl, KernelSyms.states_0; lia).
     assert (Hhi : ar_tbl + 4 * Z.of_nat i + Z.of_nat 4%nat <= rodata_end)
@@ -264,7 +264,7 @@ Section ProofArgraw.
   Lemma ar_stk (sp0 : mword 64) (j u : nat) :
     (j + u = 4)%nat -> (u < 4)%nat ->
     pa_stk sp0 j = add_vec (pa_stk sp0 4) (zero_extend' 64 (concat_vec (mword_of_int (Z.of_nat u) : mword 6) ('b"000"))).
-  Proof.
+  Proof using .
     intros Hju Hu.
     destruct u as [|[|[|[|]]]]; try lia; destruct j as [|[|[|[|[|]]]]]; try lia;
       unfold pa_stk, add_vec_int; rewrite add_vec_off2;
@@ -293,7 +293,7 @@ Section ProofArgraw.
         pc_is (ret_pc ra0) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intro HMsp.
     iIntros "Hcg #Htext Hpc Hr24 Hr16 Hr8 Hgap Hcont".
     assert (Hb1 : pa_stk sp0 1 = add_vec (pa_stk sp0 4) (zero_extend' 64 (concat_vec (mword_of_int 3 : mword 6) ('b"000"))))
@@ -415,7 +415,7 @@ Section ProofArgraw.
   Lemma ar_jump_tgt (k : nat) : (k < NARG)%nat ->
     ret_pc (add_vec (sign_extend' 64 (ar_entry k)) (mword_of_int ar_tbl))
     = (mword_of_int (KernelSyms.argraw + ar_case_off k) : mword 64).
-  Proof.
+  Proof using .
     intro Hk. unfold NARG in Hk. destruct k as [|[|[|[|[|[|k']]]]]]; try lia;
       apply bv_eq; vm_compute; reflexivity.
   Qed.
@@ -428,7 +428,7 @@ Section ProofArgraw.
     add_vec (page_base tfp)
       (sign_extend' 64 (zero_extend' 12 (concat_vec (mword_of_int (14 + Z.of_nat k) : mword 5) ('b"000"))))
     = tf_pa tfp (8 * Z.of_nat (tf_arg_idx k)).
-  Proof.
+  Proof using .
     intro Hk. unfold NARG in Hk.
     rewrite (tf_pa_eq_pa_add8 tfp (tf_arg_idx k) ltac:(unfold tf_arg_idx; lia)).
     rewrite /tf_arg_idx /pa_add /add_vec_int.
@@ -438,12 +438,12 @@ Section ProofArgraw.
   Lemma ar_lw_off :
     sign_extend' 64 (zero_extend' 12 (concat_vec (mword_of_int 0 : mword 5) ('b"00")))
     = (mword_of_int 0 : mword 64).
-  Proof. apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . apply bv_eq; vm_compute; reflexivity. Qed.
 
   Lemma ar_tf_off (X : mword 64) :
     add_vec X (sign_extend' 64 (zero_extend' 12 (concat_vec (mword_of_int 11 : mword 5) ('b"000"))))
     = p_trapframe X.
-  Proof. rewrite /p_trapframe. f_equal; apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . rewrite /p_trapframe. f_equal; apply bv_eq; vm_compute; reflexivity. Qed.
 
   (* the six arms re-join at +0x2c: case 0 falls through, 1..5 take a [c.j].
      The six-way dispatch is done on the INSTR fact and on a pure equation --
@@ -455,13 +455,13 @@ Section ProofArgraw.
     add_vec (mword_of_int (KernelSyms.argraw + ar_ld_off k + 2) : mword 64)
       (sign_extend' 64 (sign_extend' 21 (concat_vec (mword_of_int (ar_cj_imm k) : mword 11) ('b"0"))))
     = mword_of_int (KernelSyms.argraw + 0x2c).
-  Proof.
+  Proof using .
     intro Hk. unfold NARG in Hk. destruct k as [|[|[|[|[|[|k']]]]]]; try lia;
       cbn [ar_ld_off ar_cj_imm]; apply bv_eq; vm_compute; reflexivity.
   Qed.
 
   Lemma ar_fall0 : (mword_of_int (KernelSyms.argraw + ar_ld_off 0 + 2) : mword 64) = mword_of_int (KernelSyms.argraw + 0x2c).
-  Proof. cbn [ar_ld_off]. apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . cbn [ar_ld_off]. apply bv_eq; vm_compute; reflexivity. Qed.
 
   Lemma ar_join `{CID0 : CpuId} (M : regfile) (k : nat) (av' : nat) (b : bool) (p : mword 64) :
     (k < NARG)%nat ->
@@ -471,7 +471,7 @@ Section ProofArgraw.
       sie_cap_gpr KT1 M av' b p -∗ pc_is (mword_of_int (KernelSyms.argraw + 0x2c) : mword 64) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intro Hk. iIntros "#Htext Hcg Hpc Hcont".
     destruct (decide (k = 0%nat)) as [->|Hne].
     { iEval (rewrite ar_fall0) in "Hpc".
@@ -497,7 +497,7 @@ Section ProofArgraw.
   Lemma ar_ld_after_case (k : nat) : (k < NARG)%nat ->
     add_vec_int (mword_of_int (KernelSyms.argraw + ar_case_off k) : mword 64) 2
     = mword_of_int (KernelSyms.argraw + ar_ld_off k).
-  Proof.
+  Proof using .
     intro Hk. unfold NARG in Hk. destruct k as [|[|[|[|[|[|k']]]]]]; try lia;
       cbn [ar_case_off ar_ld_off]; apply bv_eq; vm_compute; reflexivity.
   Qed.
@@ -548,7 +548,7 @@ Section ProofArgraw.
       (M : regfile) (av' : nat) (sp0 ra0 s00 s10 vgap p : mword 64) (tfp : mword 44)
       (ws : list (mword 64)) (v : mword 64) (dqt : dfrac) (b : bool) :
     ar_arm_body M 0%nat av' sp0 ra0 s00 s10 vgap p tfp ws v dqt b.
-  Proof.
+  Proof using .
     cbv beta delta [ar_arm_body].
     intros Hk Hws HMs1 HMa4 HMa0 HMsp Hpv.
     iIntros "#Htext #Hdata Hcg Hpc Htfp Htf Hr24 Hr16 Hr8 Hgap Hcont".
@@ -668,7 +668,7 @@ Section ProofArgraw.
       (M : regfile) (av' : nat) (sp0 ra0 s00 s10 vgap p : mword 64) (tfp : mword 44)
       (ws : list (mword 64)) (v : mword 64) (dqt : dfrac) (b : bool) :
     ar_arm_body M 1%nat av' sp0 ra0 s00 s10 vgap p tfp ws v dqt b.
-  Proof.
+  Proof using .
     cbv beta delta [ar_arm_body].
     intros Hk Hws HMs1 HMa4 HMa0 HMsp Hpv.
     iIntros "#Htext #Hdata Hcg Hpc Htfp Htf Hr24 Hr16 Hr8 Hgap Hcont".
@@ -788,7 +788,7 @@ Section ProofArgraw.
       (M : regfile) (av' : nat) (sp0 ra0 s00 s10 vgap p : mword 64) (tfp : mword 44)
       (ws : list (mword 64)) (v : mword 64) (dqt : dfrac) (b : bool) :
     ar_arm_body M 2%nat av' sp0 ra0 s00 s10 vgap p tfp ws v dqt b.
-  Proof.
+  Proof using .
     cbv beta delta [ar_arm_body].
     intros Hk Hws HMs1 HMa4 HMa0 HMsp Hpv.
     iIntros "#Htext #Hdata Hcg Hpc Htfp Htf Hr24 Hr16 Hr8 Hgap Hcont".
@@ -908,7 +908,7 @@ Section ProofArgraw.
       (M : regfile) (av' : nat) (sp0 ra0 s00 s10 vgap p : mword 64) (tfp : mword 44)
       (ws : list (mword 64)) (v : mword 64) (dqt : dfrac) (b : bool) :
     ar_arm_body M 3%nat av' sp0 ra0 s00 s10 vgap p tfp ws v dqt b.
-  Proof.
+  Proof using .
     cbv beta delta [ar_arm_body].
     intros Hk Hws HMs1 HMa4 HMa0 HMsp Hpv.
     iIntros "#Htext #Hdata Hcg Hpc Htfp Htf Hr24 Hr16 Hr8 Hgap Hcont".
@@ -1028,7 +1028,7 @@ Section ProofArgraw.
       (M : regfile) (av' : nat) (sp0 ra0 s00 s10 vgap p : mword 64) (tfp : mword 44)
       (ws : list (mword 64)) (v : mword 64) (dqt : dfrac) (b : bool) :
     ar_arm_body M 4%nat av' sp0 ra0 s00 s10 vgap p tfp ws v dqt b.
-  Proof.
+  Proof using .
     cbv beta delta [ar_arm_body].
     intros Hk Hws HMs1 HMa4 HMa0 HMsp Hpv.
     iIntros "#Htext #Hdata Hcg Hpc Htfp Htf Hr24 Hr16 Hr8 Hgap Hcont".
@@ -1148,7 +1148,7 @@ Section ProofArgraw.
       (M : regfile) (av' : nat) (sp0 ra0 s00 s10 vgap p : mword 64) (tfp : mword 44)
       (ws : list (mword 64)) (v : mword 64) (dqt : dfrac) (b : bool) :
     ar_arm_body M 5%nat av' sp0 ra0 s00 s10 vgap p tfp ws v dqt b.
-  Proof.
+  Proof using .
     cbv beta delta [ar_arm_body].
     intros Hk Hws HMs1 HMa4 HMa0 HMsp Hpv.
     iIntros "#Htext #Hdata Hcg Hpc Htfp Htf Hr24 Hr16 Hr8 Hgap Hcont".
@@ -1273,7 +1273,7 @@ Section ProofArgraw.
       (sp0 ra0 s00 s10 vgap p : mword 64) (tfp : mword 44)
       (ws : list (mword 64)) (v : mword 64) (dqt : dfrac) (b : bool) :
     ar_arm_body M k av' sp0 ra0 s00 s10 vgap p tfp ws v dqt b.
-  Proof.
+  Proof using .
     destruct k as [|[|[|[|[|[|k']]]]]];
       [ apply ar_arm0 | apply ar_arm1 | apply ar_arm2
       | apply ar_arm3 | apply ar_arm4 | apply ar_arm5 | ].
@@ -1286,7 +1286,7 @@ Section ProofArgraw.
       (i : nat) (tfp : mword 44) (ws : list (mword 64)) (v : mword 64)
       (dqt : dfrac) (b : bool) (lks : gset string)
     : wp_argraw_sconf_body m av n eb p i tfp ws v dqt b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_argraw_sconf_body].
     intros pcE ret_tgt Hi Ha0 Hargs Hn Hav Hpv.
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).

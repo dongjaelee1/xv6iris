@@ -93,7 +93,7 @@ Section ProofSysGetpid.
       (m : regfile) (av : nat) (n : nat) (eb : bool) (p : mword 64)
       (pid : mword 32) (U : ustate) (b : bool) (lks : gset string)
     : wp_sys_getpid_sconf_body γf m av n eb p pid U b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_sys_getpid_sconf_body].
     intros pcE ret_tgt Hn Hav.
     set (imm_entry := (mword_of_int 48 : mword 6)).

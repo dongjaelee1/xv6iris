@@ -113,7 +113,7 @@ Section ProofKfork.
 
   Lemma kfk_frame_at_weaken `{XI : CurCtx} (sp0 ra0 s00 s10 s50 w4 w5 w6 : mword 64) :
     kfk_frame_at sp0 ra0 s00 s10 s50 w4 w5 w6 -∗ kfk_frame sp0 ra0 s00 s10 s50.
-  Proof.
+  Proof using .
     rewrite /kfk_frame_at /kfk_frame.
     iIntros "(Hb1 & Hb2 & Hb3 & Hb4 & Hb5 & Hb6 & Hb7 & Hb8)".
     iFrame "Hb1 Hb2 Hb3 Hb7 Hb8".
@@ -149,7 +149,7 @@ Section ProofKfork.
         pc_is (ret_pc ra0) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hsp0 Hra0 Hs00 Hs10 Hs50 Hmtsp Hmts1 Hthr.
     iIntros "Hcg #Htext Hpc (Hb1 & Hb2 & Hb3 & (%w4 & Hb4) & (%w5 & Hb5) &
                              (%w6 & Hb6) & Hb7 & (%w8 & Hb8)) Hcont".
@@ -191,7 +191,7 @@ Section ProofKfork.
         pc_is (ret_pc ra0) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hsp0 Hra0 Hs00 Hs10 Hs50 Hmtsp Hthr.
     iIntros "Hcg #Htext Hpc Hframe Hcont".
     (* ---- +0x10a: c.li s1,-1 ---- *)
@@ -283,7 +283,7 @@ Section ProofKfork.
         pc_is (ret_pc ra0) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hsp0 Hra0 Hs00 Hs10 Hs50 Hmtsp Hmts1 Hthr.
     iIntros "Hcg #Htext Hpc Hb1 Hb2 Hb3 Hb4 Hb5 Hb6 Hb7 Hb8 Hcont".
     (* ---- +0xf6: c.ldsp s2,32(sp) ---- *)

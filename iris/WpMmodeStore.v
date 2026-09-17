@@ -200,7 +200,7 @@ Section StoreFrame.
   Context `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}.
 
   Lemma st_frame_empty (rs : regstate) : ⊢ (hreg_frame rs ∅ : iProp Σ).
-  Proof. rewrite /hreg_frame big_sepS_empty. auto. Qed.
+  Proof using . rewrite /hreg_frame big_sepS_empty. auto. Qed.
 
   Lemma st_frames (dq : dfrac) (ms0 sec0 : mword 64)
       (pcfg : type_of_register pmpcfg_n) (paddrs : type_of_register pmpaddr_n)
@@ -213,7 +213,7 @@ Section StoreFrame.
         reg_pointsto pmpcfg_n dq pcfg ∗
         reg_pointsto pma_regions DfracDiscarded pmar0 ∗
         reg_pointsto htif_tohost_base DfracDiscarded None).
-  Proof.
+  Proof using .
     rewrite /hreg_frame_ro /st_Dro.
     repeat (rewrite big_sepS_union; last set_solver).
     rewrite !big_sepS_singleton.
@@ -234,7 +234,7 @@ Section StoreFrame.
         reg_pointsto pmpcfg_n dq pcfg ∗
         reg_pointsto pma_regions DfracDiscarded pmar0 ∗
         reg_pointsto htif_tohost_base DfracDiscarded None).
-  Proof.
+  Proof using .
     rewrite /hreg_frame_ro /st_Dro_tor.
     rewrite big_sepS_union; last (rewrite /st_Dro; set_solver).
     rewrite big_sepS_singleton st_rs_paddr st_Df_paddr.
@@ -255,7 +255,7 @@ Section StoreFrame.
     (hreg_frame (st_rs ms0 sec0 pcfg paddrs pmar0) ∅ ∗
      hreg_frame_ro (st_Df dq) (st_rs ms0 sec0 pcfg paddrs pmar0) st_Dro
        : iProp Σ).
-  Proof.
+  Proof using .
     iIntros "H1 H2 H3 H4 H5 H6". iSplitR; [iApply st_frame_empty|].
     rewrite (st_frames dq ms0 sec0 pcfg paddrs pmar0). iFrame.
   Qed.
@@ -271,7 +271,7 @@ Section StoreFrame.
      reg_pointsto pmpcfg_n dq pcfg ∗
      reg_pointsto pma_regions DfracDiscarded pmar0 ∗
      reg_pointsto htif_tohost_base DfracDiscarded None).
-  Proof.
+  Proof using .
     rewrite (st_frames dq ms0 sec0 pcfg paddrs pmar0). iIntros "H". iExact "H".
   Qed.
 
@@ -288,7 +288,7 @@ Section StoreFrame.
     (hreg_frame (st_rs ms0 sec0 pcfg paddrs pmar0) ∅ ∗
      hreg_frame_ro (st_Df dq) (st_rs ms0 sec0 pcfg paddrs pmar0) st_Dro_tor
        : iProp Σ).
-  Proof.
+  Proof using .
     iIntros "H0 H1 H2 H3 H4 H5 H6". iSplitR; [iApply st_frame_empty|].
     rewrite (st_frames_tor dq ms0 sec0 pcfg paddrs pmar0). iFrame.
   Qed.
@@ -305,7 +305,7 @@ Section StoreFrame.
      reg_pointsto pmpcfg_n dq pcfg ∗
      reg_pointsto pma_regions DfracDiscarded pmar0 ∗
      reg_pointsto htif_tohost_base DfracDiscarded None).
-  Proof.
+  Proof using .
     rewrite (st_frames_tor dq ms0 sec0 pcfg paddrs pmar0).
     iIntros "H". iExact "H".
   Qed.
@@ -404,7 +404,7 @@ Section WpStoreGpr.
   Local Lemma ctx_phys_word_ram (xi : CtxIdDefs.CtxId) (a : Arch.pa)
       (dq : dfrac) (w : bv 64) :
     TsoCtx.ctx_phys_word_pointsto xi a dq w ⊢ ⌜addr_is_ram a⌝.
-  Proof.
+  Proof using .
     iIntros "H".
     iDestruct (TsoCtx.ctx_phys_word_pointsto_forget with "H") as "H".
     by iApply phys_word_pointsto_ram.
@@ -444,7 +444,7 @@ Section WpStoreGpr.
       own_context cur_ctx -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros offset ea Hpmp Hstat.
     iIntros "Hmm Hpmpc Hpc Hfile Hinstr Hbw Hrun Hcont".
     iDestruct (ctx_phys_word_ram with "Hbw") as %Hram_ea.
@@ -601,7 +601,7 @@ Section MmodeStoreTor.
       own_context cur_ctx -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros offset ea Hpmp Hstat Htor.
     iIntros "Hmm Hpmpc Hpaddr Hpc Hfile Hinstr Hbw Hrun Hcont".
     iDestruct (ctx_phys_word_ram with "Hbw") as %Hram_ea.
@@ -757,7 +757,7 @@ Section MmodeStoreTor.
       own_context cur_ctx -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros imm ea Hpmp Hstat Htor.
     iIntros "Hmm Hpmpc Hpaddr Hpc Hfile Hinstr Hbytes Hrun Hcont".
     iApply (wp_store_gpr_tor pc true csp_rs1 rs2 imm m vold

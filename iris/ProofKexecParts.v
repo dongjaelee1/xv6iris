@@ -194,14 +194,14 @@ Section ProofKexecParts.
     ⌜forall i, (i < 8)%nat ->
        is_aligned_paddr (Physaddr (pa_stk sp0 (54 - i))) 8 = true⌝ ∗
     bytes_own (KTR := KT1) (DfracOwn 1) (pa_stk sp0 54) 64.
-  Proof. exact (slotsn_bytes_own (KTR := KT1) sp0 54 8 ltac:(lia)). Qed.
+  Proof using . exact (slotsn_bytes_own (KTR := KT1) sp0 54 8 ltac:(lia)). Qed.
 
   Lemma kxc_bytes_elf (sp0 : mword 64) :
     (forall i, (i < 8)%nat ->
        is_aligned_paddr (Physaddr (pa_stk sp0 (54 - i))) 8 = true) ->
     bytes_own (KTR := KT1) (DfracOwn 1) (pa_stk sp0 54) 64 ⊢
     [∗ list] i ∈ seq 0 8, ∃ w : mword 64, pa_stk sp0 (54 - i) ↦₈[KT1] w.
-  Proof. exact (bytes_own_slotsn (KTR := KT1) sp0 54 8 ltac:(lia)). Qed.
+  Proof using . exact (bytes_own_slotsn (KTR := KT1) sp0 54 8 ltac:(lia)). Qed.
 
   (* struct proghdr ph -- 56 bytes, slots 61 down to 55. *)
   Lemma kxc_slots_ph (sp0 : mword 64) :
@@ -209,14 +209,14 @@ Section ProofKexecParts.
     ⌜forall i, (i < 7)%nat ->
        is_aligned_paddr (Physaddr (pa_stk sp0 (61 - i))) 8 = true⌝ ∗
     bytes_own (KTR := KT1) (DfracOwn 1) (pa_stk sp0 61) 56.
-  Proof. exact (slotsn_bytes_own (KTR := KT1) sp0 61 7 ltac:(lia)). Qed.
+  Proof using . exact (slotsn_bytes_own (KTR := KT1) sp0 61 7 ltac:(lia)). Qed.
 
   Lemma kxc_bytes_ph (sp0 : mword 64) :
     (forall i, (i < 7)%nat ->
        is_aligned_paddr (Physaddr (pa_stk sp0 (61 - i))) 8 = true) ->
     bytes_own (KTR := KT1) (DfracOwn 1) (pa_stk sp0 61) 56 ⊢
     [∗ list] i ∈ seq 0 7, ∃ w : mword 64, pa_stk sp0 (61 - i) ↦₈[KT1] w.
-  Proof. exact (bytes_own_slotsn (KTR := KT1) sp0 61 7 ltac:(lia)). Qed.
+  Proof using . exact (bytes_own_slotsn (KTR := KT1) sp0 61 7 ltac:(lia)). Qed.
 
   (* uint64 ustack[33] -- 264 bytes, slots 46 down to 14.  Slot 14 is
      sp+432..sp+439, and s11's spill is sp+440: there is NO slack here. *)
@@ -225,14 +225,14 @@ Section ProofKexecParts.
     ⌜forall i, (i < 33)%nat ->
        is_aligned_paddr (Physaddr (pa_stk sp0 (46 - i))) 8 = true⌝ ∗
     bytes_own (KTR := KT1) (DfracOwn 1) (pa_stk sp0 46) 264.
-  Proof. exact (slotsn_bytes_own (KTR := KT1) sp0 46 33 ltac:(lia)). Qed.
+  Proof using . exact (slotsn_bytes_own (KTR := KT1) sp0 46 33 ltac:(lia)). Qed.
 
   Lemma kxc_bytes_ustack (sp0 : mword 64) :
     (forall i, (i < 33)%nat ->
        is_aligned_paddr (Physaddr (pa_stk sp0 (46 - i))) 8 = true) ->
     bytes_own (KTR := KT1) (DfracOwn 1) (pa_stk sp0 46) 264 ⊢
     [∗ list] i ∈ seq 0 33, ∃ w : mword 64, pa_stk sp0 (46 - i) ↦₈[KT1] w.
-  Proof. exact (bytes_own_slotsn (KTR := KT1) sp0 46 33 ltac:(lia)). Qed.
+  Proof using . exact (bytes_own_slotsn (KTR := KT1) sp0 46 33 ltac:(lia)). Qed.
 
   (* =================================================================== *)
   (*  +0x72 .. +0x86 -- THE EPILOGUE.  Every exit reaches it.             *)
@@ -295,7 +295,7 @@ Section ProofKexecParts.
         pc_is (ret_pc ra0) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hsp0 Hra0 Hs00 Hs10 Hs20 Hmtsp Hthr.
     iIntros "Hcg #Htext Hpc Hb1 Hb2 Hb3 Hb4 Hb5 Hb6 Hb7 Hb8 Hb9 Hb10 Hb11
              Hb12 Hb13 Hrest Hcont".
@@ -529,7 +529,7 @@ Section ProofKexecParts.
       (w5 w6 w7 w8 w9 w10 w11 w12 w13 : mword 64) :
     kxc_frame_at sp0 ra0 s00 s10 s20 w5 w6 w7 w8 w9 w10 w11 w12 w13 -∗
     kxc_frame sp0 ra0 s00 s10 s20.
-  Proof.
+  Proof using .
     rewrite /kxc_frame_at /kxc_frame.
     iIntros "(Hb1 & Hb2 & Hb3 & Hb4 & Hb5 & Hb6 & Hb7 & Hb8 & Hb9 & Hb10 &
               Hb11 & Hb12 & Hb13 & Hrest)".
@@ -570,7 +570,7 @@ Section ProofKexecParts.
         pc_is (ret_pc ra0) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hsp0 Hra0 Hs00 Hs10 Hs20 Hmtsp Hthr.
     iIntros "Hcg #Htext Hpc
              (Hb1 & Hb2 & Hb3 & Hb4 & (%w5 & Hb5) & (%w6 & Hb6) & (%w7 & Hb7) &

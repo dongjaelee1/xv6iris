@@ -77,7 +77,7 @@ Section WpSconfCtl.
       pc_is (add_vec_int pc 4) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "Hcg Hpc Hinstr Hcont".
     iApply (wp_instr_s_gen pc (add_vec_int pc 4) false
               (FENCE (fm, pred, succ, rs, rd)) m m n n b emp%I
@@ -106,7 +106,7 @@ Section WpSconfCtl.
       pc_is (add_vec_int pc 4) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "Hcg Hpc Hinstr Hcont".
     iApply (wp_instr_s_gen pc (add_vec_int pc 4) false
               (FENCEI (imm, rs, rd)) m m n n b emp%I
@@ -137,7 +137,7 @@ Section WpSconfCtl.
       pc_is (add_vec_int pc 4) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     exact (wp_fence_gen_s_sconf pc (mword_of_int 0) (mword_of_int 3) (mword_of_int 1)
              (Regidx (mword_of_int 0)) (Regidx (mword_of_int 0)) m n b).
   Qed.
@@ -170,7 +170,7 @@ Section WpSconfCtl.
         pc_is (add_vec_int pc 4) -∗
         WP (Loop : expr riscv_lang))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "Hcg Hpc Hinstr Hcont".
     iApply (wp_instr_s_gen pc (add_vec_int pc 4) false
               (FENCE (fm, pred, succ, rs, rd)) m m n n b emp%I
@@ -207,7 +207,7 @@ Section WpSconfCtl.
         pc_is tgt -∗
         WP (Loop : expr riscv_lang))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros tgt Hal0.
     iIntros "Hcg Hpc Hinstr Hcont".
     assert (Hz : uint (zero_extend' 5 ('b"00") : mword 5) = 0)
@@ -247,7 +247,7 @@ Section WpSconfCtl.
       pc_is (add_vec pc (sign_extend' 64 imm)) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hrd Hrdok Hal0) "Hcg Hpc Hinstr Hcont".
     pose proof (rd_ok_sp rd Hrdok) as Hrdsp.
     pose proof (rd_ok_tp rd Hrdok) as Hrdtp.
@@ -320,7 +320,7 @@ Section WpSconfCtl.
       pc_is tgt -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros tgt Hra.
     (* THE CLASS, CONSUMED -- and this line is the leaf's WIRING CHECK, not
        decoration: it names [ra], the register the statement above reads, so
@@ -389,7 +389,7 @@ Section WpSconfCtl.
       pc_is tgt -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros tgt Hrs1 Hrd Hrdok.
     (* the class, consumed at [rs1] -- the leaf's wiring check, exactly as in
        [wp_cret_s_sconf] above.  The link write is [rd]'s business and is

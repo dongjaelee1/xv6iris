@@ -157,7 +157,7 @@ Section swpbase.
     swp mo (fun e => ⌜e = x⌝ ∗
        gpr_file (<[Regidx rd :=
           regval_into_reg (f (m !!! Regidx rs1) (m !!! Regidx rs2))]> m)).
-  Proof.
+  Proof using .
     intros Hred Hrd. iIntros "#Hcert Hf". rewrite Hred.
     iApply (swp_bind_use _ _
               (fun v => ⌜v = f (m !!! Regidx rs1) (m !!! Regidx rs2)⌝ ∗
@@ -186,7 +186,7 @@ Section swpbase.
     gen_cert -∗ gpr_file m -∗
     swp mo (fun e => ⌜e = x⌝ ∗
        gpr_file (<[Regidx rd := regval_into_reg (g (m !!! Regidx rs1))]> m)).
-  Proof.
+  Proof using .
     intros Hred Hrd. iIntros "#Hcert Hf". rewrite Hred.
     iApply (swp_bind_use _ _
               (fun v => ⌜v = g (m !!! Regidx rs1)⌝ ∗ gpr_file m)%I _
@@ -209,7 +209,7 @@ Section swpbase.
     gen_cert -∗ gpr_file m -∗
     swp mo (fun e => ⌜e = x⌝ ∗
        gpr_file (<[Regidx rd := regval_into_reg v]> m)).
-  Proof.
+  Proof using .
     intros Hred Hrd. iIntros "#Hcert Hf". rewrite Hred.
     iApply (swp_bind0_use _ _ _ _ with "[Hf] [-]").
     { iApply (swp_wX_file rd m v Hrd with "Hcert Hf"). }
@@ -230,7 +230,7 @@ Section swpbase.
     gen_cert -∗ gpr_file m -∗
     swp mo (fun e => ⌜e = x⌝ ∗
        gpr_file (<[Regidx rd := regval_into_reg (g (m !!! Regidx rs1))]> m)).
-  Proof.
+  Proof using .
     intros Hred Hrd. iIntros "#Hcert Hf". rewrite Hred.
     iApply (swp_bind_use (rX_bits (Regidx rs1)) _ _ _ with "[Hf] [-]").
     { iApply (swp_rX_file rs1 m with "Hcert Hf"). }
@@ -253,7 +253,7 @@ Section swpbase.
     swp mo (fun e => ⌜e = x⌝ ∗
        gpr_file (<[Regidx rd :=
           regval_into_reg (f (m !!! Regidx rs1) (m !!! Regidx rs2))]> m)).
-  Proof.
+  Proof using .
     intros Hred Hrd. iIntros "#Hcert Hf". rewrite Hred.
     iApply (swp_bind_use (rX_bits (Regidx rs1)) _ _ _ with "[Hf] [-]").
     { iApply (swp_rX_file rs1 m with "Hcert Hf"). }
@@ -276,7 +276,7 @@ Section swpbase.
     gen_cert -∗ gpr_file m -∗
     swp mo (fun e => ⌜e = x⌝ ∗
        gpr_file (<[Regidx rd := regval_into_reg v]> m)).
-  Proof.
+  Proof using .
     intros Hred Hrd. iIntros "#Hcert Hf". rewrite Hred.
     iApply (swp_bind_use (returnM v) _ (fun w => ⌜w = v⌝ ∗ gpr_file m)%I _
               with "[Hf] [-]").
@@ -302,7 +302,7 @@ Section swpbase.
     swp mo (fun e => ⌜e = x⌝ ∗
        gpr_file (<[Regidx rd := regval_into_reg (g pc)]> m) ∗
        (R_bitvector_64 PC) ↦ᵣ pc).
-  Proof.
+  Proof using .
     intros Hred Hrd. iIntros "#Hcert Hf HPC". rewrite Hred.
     iApply (swp_bind_use _ _
               (fun v => ⌜v = g pc⌝ ∗ gpr_file m ∗

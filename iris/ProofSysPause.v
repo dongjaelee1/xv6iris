@@ -457,7 +457,7 @@ Section SpBodies.
         tf_page tfp ws -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros ret_tgt Hav Hanch Hbase Hsav Hra0 Hrv Hsp0.
     destruct Hbase as (Hsp & Hs0M & Hhi).
     iIntros "#Htext Hs1 Hs2 Hfree Hs7 Hcg Hown Htf Hpage Hpc Hcont".
@@ -604,7 +604,7 @@ Section SpBodies.
     pc_is (mword_of_int (KernelSyms.sys_pause + 0x80)) -∗
     sp_tail CID0 j m av eb sp0 pj lks -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hav Heb Hanch Hbn Hsn Hfresh. subst eb.
     iIntros "#Htext #Hlkt Hx1 Hx2 Hfree Hx7 Htok HR Hcg Hown Hpay Hpc Htail".
     iPoseProof (is_tickslock_lock with "Hlkt") as "#Hlk2".
@@ -727,7 +727,7 @@ Section SpBodies.
     pc_is (mword_of_int (KernelSyms.sys_pause + 0x9c)) -∗
     sp_tail CID0 j m av eb sp0 pj lks -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hav Heb Hanch Hbn Hln Hfresh. subst eb.
     iIntros "#Htext #Hlkt Hy1 Hy2 Hy3 Hy4 Hy5 Hy6 Hy7 Hy8 Htok HR Hcg Hown Hpay Hpc Htail".
     iPoseProof (is_tickslock_lock with "Hlkt") as "#Hlk2".
@@ -940,7 +940,7 @@ Section SpBodies.
     cpu_own 1 eb pj false ({["time"]} ∪ lks) -∗ arm_pay KT1 0 eb pj -∗
     pc_is (mword_of_int (KernelSyms.sys_pause + 0x6a)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     (* NB: [eb] is deliberately NOT substituted here.  This body runs [iNext]
        over [cpu_own]; with [eb] literal [intr_count]'s [if eb] reduces,
        [iNext] descends into [IntrDefs.intr_res] and strips ITS later, after
@@ -1157,7 +1157,7 @@ Section SpBodies.
     cpu_own 1 eb pj false ({["time"]} ∪ lks) -∗ arm_pay KT1 0 eb pj -∗
     pc_is (mword_of_int (KernelSyms.sys_pause + 0x4a)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using fileG0.
     (* [sleep]'s contract names the parking proc as [proc_addr j] literally, so
        the caller's [pj] has to be spelled that way before the crossing. *)
     intros Hav Heb Hj Hjl Hpjv Hanch Hbn Hln Hfresh. subst pj.
@@ -1532,7 +1532,7 @@ Section SpBodies.
     pc_is (mword_of_int (KernelSyms.sys_pause + 0x1a)) -∗
     sp_tail CID0 j m av eb sp0 pj lks -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using fileG0.
     intros Hav Heb Hj Hjl Hpjv Hanch Hb Hsv Hfresh.
     iIntros "#Htext #Hlkt #Hpinv Hs1 Hs2 Hfree Hnc Hjoin7
               Hcg Hown Hpc Htail".
@@ -1864,7 +1864,7 @@ Section ProofSysPause.
       (i : nat) (tfp : mword 44) (ws : list (mword 64))
       (v : mword 64) (dqt : dfrac) (b : bool) (lks : gset string)
     : wp_sys_pause_sconf_body γs j γl γt m av eb i tfp ws v dqt b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_sys_pause_sconf_body].
     intros pcE pj ret_tgt Hj Hjl Hi0 Hws Hav Heb Hfresh Hpv.
     subst i.

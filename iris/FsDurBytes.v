@@ -236,7 +236,7 @@ Section DbytesGen.
     blk_owned Γ b bs
     ⊣⊢ ([∗ map] a ↦ v ∈ (map_seqZ (b * Z.of_nat BSIZE) bs : gmap Z (bv 8)),
           fsΦ Γ (DfracOwn 1) a v).
-  Proof.
+  Proof using .
     intros Hlen.
     rewrite big_sepM_map_seqZ_gen.
     rewrite /blk_owned /byte_range /byte_range_q.
@@ -264,7 +264,7 @@ Section DbytesGen.
     (forall b bs, D !! b = Some bs -> length bs = BSIZE) ->
     ([∗ map] a ↦ v ∈ fs_dbytes D, fsΦ Γ (DfracOwn 1) a v)
     ⊣⊢ ([∗ map] b ↦ bs ∈ D, blk_owned Γ b bs).
-  Proof.
+  Proof using .
     induction D as [| b bs D Hb IH] using map_ind; intros Hlen.
     - rewrite fs_dbytes_empty big_sepM_empty big_sepM_empty //.
     - assert (Hok : dbytes_ok (<[b := bs]> D))
@@ -307,7 +307,7 @@ Section DbytesGen.
     (forall b, b ∈ home -> length (Pb b) = BSIZE) ->
     ([∗ map] a ↦ v ∈ fs_dbytes (fs_restrict Pb home), fsΦ Γ (DfracOwn 1) a v)
     ⊣⊢ ([∗ set] b ∈ home, blk_owned Γ b (Pb b)).
-  Proof.
+  Proof using .
     intros Hlen.
     assert (Hml : forall b bs,
                fs_restrict Pb home !! b = Some bs -> length bs = BSIZE).
@@ -334,7 +334,7 @@ Section DbytesGen.
     b ∈ home -> Pb b !! k = Some v ->
     fs_dbytes (fs_restrict Pb home) !! (b * Z.of_nat BSIZE + Z.of_nat k)
     = Some v.
-  Proof.
+  Proof using .
     intros Hlen Hb Hk.
     apply (fs_dbytes_lookup _ b (Pb b) k v).
     - apply dbytes_ok_full. intros c cs Hc.
@@ -371,14 +371,14 @@ Section SnapGamma.
 
   Global Instance snap_gamma_gtimeless g gl gt :
     GTimeless (snap_gamma g gl gt).
-  Proof. intros dq a v. rewrite /snap_gamma /=. apply _. Qed.
+  Proof using . intros dq a v. rewrite /snap_gamma /=. apply _. Qed.
 
   (* two owners of one byte is [False].  [FsStateDefs.phi_excl]'s consumers
      -- [FsStateBitmap.free_pool_used], hence xv6's "freeing free block"
      panic arm, and [FsStateDefs.blk_owned_ne] -- therefore read on the
      durable side exactly as they do at the era's view. *)
   Lemma snap_gamma_excl g gl gt : phi_excl (snap_gamma g gl gt).
-  Proof.
+  Proof using .
     intros a v w dq1 dq2. rewrite /snap_gamma /=.
     iIntros "[H1 H2]".
     iDestruct (ghost_map_elem_valid_2 with "H1 H2") as %[Hv _].

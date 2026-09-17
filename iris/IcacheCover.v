@@ -77,7 +77,7 @@ Section IcacheCover.
     ↑(icBoxN .@ k) ⊆ E ->
     ic_box cn γfs γi cov logstart k ={E, E ∖ ↑(icBoxN .@ k)}=∗
     ic_arm_cover cn γfs γi cov logstart E k.
-  Proof.
+  Proof using .
     iIntros (HE) "#Hbox".
     iMod (CtxBox.box_view (ic_hdr cn γfs γi cov logstart k) (ic_rest k)
             (ic_q1 cn γfs γi cov logstart k) (ic_q2 cn γfs γi cov logstart k)
@@ -88,7 +88,7 @@ Section IcacheCover.
 
   Lemma ic_arm_cover_close (cn : ic_names) (γfs : fs_names) (γi : gname) (cov : gset Z) (logstart : Z) (E : coPset) (k : nat) :
     ic_arm_cover cn γfs γi cov logstart E k ={E ∖ ↑(icBoxN .@ k), E}=∗ True.
-  Proof.
+  Proof using .
     iIntros "Hc". iDestruct "Hc" as (T ξb m c r s) "(_ & Harm & Hcl)".
     iApply ("Hcl" with "Harm").
   Qed.
@@ -96,7 +96,7 @@ Section IcacheCover.
   (* an ordinary pool row's shape reads as the marker or the free record's leg *)
   Lemma ic_np_read (γfs : fs_names) (γi : gname) (cov : gset Z) (logstart : Z) (inum : mword 32) :
     ipool_shape_np γfs γi cov logstart inum ⊢ ic_cover_read γfs γi inum.
-  Proof.
+  Proof using .
     rewrite /ipool_shape_np /ic_cover_read.
     iIntros "[Halloc | Hmk]"; [| iLeft; iExact "Hmk"].
     rewrite /ipool_alloc.
@@ -112,7 +112,7 @@ Section IcacheCover.
   (* the read arm's three-quarter leg reads as the leg *)
   Lemma ic_rd_arm_read (γfs : fs_names) (γi : gname) (cov : gset Z) (logstart : Z) (inum : mword 32) :
     ic_rd_arm γfs γi cov logstart inum ⊢ ic_cover_read γfs γi inum.
-  Proof.
+  Proof using .
     rewrite /ic_rd_arm /ic_cover_read.
     iIntros "H". iDestruct "H" as (dn bm data) "(%Hok & %Hdok & %Hddix & %Hdoc & _ & Hleg)".
     iRight. iExists (era_node dn bm data). iFrame "Hleg". iPureIntro.
@@ -123,7 +123,7 @@ Section IcacheCover.
   (* a window pin is a share of an open transaction: none at quiescence *)
   Lemma ic_pin_tx_quiet k :
     ghost_map_auth (ln_tx icfg_log) 1 (∅ : gmap nat unit) -∗ ic_pin_tx k -∗ False.
-  Proof.
+  Proof using .
     iIntros "Hauth Hpin". rewrite /ic_pin_tx. iDestruct "Hpin" as (t q) "[_ Htx]".
     iApply (TxPin.tx_pin_no_ops with "Hauth Htx").
   Qed.
@@ -134,7 +134,7 @@ Section IcacheCover.
     ic_id cn k (1/4) true dev inum -∗
     ic_arm_cover cn γfs γi cov logstart E k -∗
     ic_cover_read γfs γi inum.
-  Proof.
+  Proof using .
     iIntros "Hauth Hq Hc".
     iDestruct "Hc" as (T ξb m c r s) "(_ & Harm & _)".
     rewrite /ic_arm /CtxBox.box_arm.
@@ -199,7 +199,7 @@ Section IcacheCover.
   (* ================================================================== *)
   Definition icEscN : namespace := icBoxN.
   Lemma ic_escrow_ns_sub (k : nat) : ↑(icEscN .@ k) ⊆ (↑icEscN : coPset).
-  Proof. apply nclose_subseteq. Qed.
+  Proof using . apply nclose_subseteq. Qed.
 
   Definition ic_escrow_body (cn : ic_names) (γfs : fs_names) (γi : gname) (cov : gset Z) (logstart : Z)
       (k : nat) : iProp Σ :=
@@ -208,11 +208,11 @@ Section IcacheCover.
 
   Lemma ic_escrow_is_inv (cn : ic_names) (γfs : fs_names) (γi : gname) (cov : gset Z) (logstart : Z) (k : nat) :
     ic_escrow cn γfs γi cov logstart k = inv (icEscN .@ k) (ic_escrow_body cn γfs γi cov logstart k).
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Global Instance ic_escrow_body_timeless cn γfs γi cov logstart k :
     Timeless (ic_escrow_body cn γfs γi cov logstart k).
-  Proof.
+  Proof using .
     rewrite /ic_escrow_body /CtxBox.box_body.
     repeat (apply bi.exist_timeless; intro). apply _.
   Qed.
@@ -239,7 +239,7 @@ Section IcacheCover.
     ic_escrow_body cn γfs γi cov logstart k -∗
     ghost_map_auth (ln_tx icfg_log) 1 (∅ : gmap nat unit)
     ∗ ic_slot_cover cn γfs γi cov logstart k.
-  Proof.
+  Proof using .
     iIntros "Hauth Hbody".
     rewrite /ic_escrow_body /CtxBox.box_body.
     iDestruct "Hbody" as (T ξb m c r s) "(Hpk & #Hllb & Hst & Hc & Hrd & Hrp & %Hrows & Harm)".

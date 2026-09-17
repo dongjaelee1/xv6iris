@@ -934,7 +934,7 @@ Section KexecAU.
     exec_au_pre (MkPfam S True%I) Γ γfs cw (fun _ => True%I)
       (fun _ _ => True%I) (fun _ _ => True%I) (pfam_triv (fun _ _ _ => True%I))
       pl na alen afun sts cs pidv.
-  Proof.
+  Proof using .
     iIntros "#HS". rewrite /exec_au_pre. iSplitR.
     { rewrite /ex_start /ex_hops_from. iIntros (r) "_". iModIntro.
       iSplit; [done |]. iApply ax_hops_triv. }
@@ -959,7 +959,7 @@ Section KexecAU.
     ⊢ exec_au_pre (MkPfam (fun _ => emp%I) True%I) Γ γfs cw (fun _ => True%I)
         (fun _ _ => True%I) (fun _ _ => True%I) (pfam_triv (fun _ _ _ => True%I))
         pl na alen afun sts cs pidv.
-  Proof.
+  Proof using .
     iApply (exec_au_pre_triv_at (fun _ => emp%I)).
     iIntros "!>" (W) "_". iEmpIntro.
   Qed.
@@ -976,7 +976,7 @@ Section KexecAU.
     S ≡{n}≡ S' ->
     exec_slot_pre S Q Pfin Φo cw na alen afun sts cs pidv
     ≡{n}≡ exec_slot_pre S' Q Pfin Φo cw na alen afun sts cs pidv.
-  Proof. intros HS. rewrite /exec_slot_pre. solve_proper. Qed.
+  Proof using . intros HS. rewrite /exec_slot_pre. solve_proper. Qed.
 
   (* ...and at the PAIR the bundle takes: the refund does not move with the
      fixpoint, so it is an ordinary binder here. *)
@@ -990,7 +990,7 @@ Section KexecAU.
     S ≡{n}≡ S' ->
     exec_au_pre (MkPfam S Rs) Γ γfs cw Q P Pmiss Fo pl na alen afun sts cs pidv
     ≡{n}≡ exec_au_pre (MkPfam S' Rs) Γ γfs cw Q P Pmiss Fo pl na alen afun sts cs pidv.
-  Proof.
+  Proof using .
     intros HS. rewrite /exec_au_pre /pf_at. cbn [pf_recv pf_refund].
     by rewrite (exec_slot_pre_ne n S S' Q (P (length (path_elems pl)))
                   Fo.(pf_recv) cw na alen afun sts cs pidv HS).
@@ -1093,7 +1093,7 @@ Section KexecAU.
       (sts : list fdstate) (cs : gset gname) (pidv : mword 32) :
     exec_post_fail Fs Γ γfs cw Q P Pmiss Fo pl na alen afun sts cs pidv
       ⊢ Fs.(pf_refund).
-  Proof.
+  Proof using .
     rewrite /exec_post_fail /exec_au_pre.
     iIntros "[(_ & _ & Hs) | [(_ & _ & Hs) | Hc]]".
     - iApply (pf_at_refund with "Hs").
@@ -1132,7 +1132,7 @@ Section KexecAU.
     exec_arms Fs Γ γfs cw Q P Pmiss Fo pl na alen afun sts gn cs pidv U U' r ⊢
       ⌜exists (entry spv szv' : mword 64),
          kexec_ok (us_V U) (us_V U') r entry spv szv' na alen⌝.
-  Proof.
+  Proof using .
     rewrite /exec_arms /exec_post_ok.
     iIntros "[[(%Hr & %HV & _) _] | H]".
     - iPureIntro. exists (mword_of_int 0), (mword_of_int 0), (mword_of_int 0).
@@ -1166,7 +1166,7 @@ Section KexecAU.
       ⌜exists (entry spv szv' : mword 64),
          kexec_ok (us_V U) (us_V U') r entry spv szv' na alen⌝
       ∧ exec_arms Fs Γ γfs cw Q P Pmiss Fo pl na alen afun sts gn cs pidv U U' r.
-  Proof.
+  Proof using .
     iIntros "H". iSplit; [| iExact "H"].
     iApply (exec_arms_landed with "H").
   Qed.
@@ -1189,7 +1189,7 @@ Section KexecAU.
     exec_post_ok Fs Γ Q P Fo pl na alen afun sts gn cs pidv U U' r ⊢
       ⌜r <> (mword_of_int (-1) : mword 64)⌝
       ∗ Fs.(pf_recv) (exec_key U' sts gn cs pidv na).
-  Proof.
+  Proof using .
     rewrite /exec_post_ok. iIntros "H".
     iDestruct "H" as (i av a) "(_ & [Ha | Hb])".
     - iDestruct "Ha" as (f nl) "(_ & _ & %Hok & _ & $)".

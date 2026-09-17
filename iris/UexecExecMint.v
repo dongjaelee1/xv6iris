@@ -89,7 +89,7 @@ Section UexecExecMint.
      together. *)
   Lemma udep_gen :
     app_sup -∗ □ riscv_kill_cred -∗ cons_licence -∗ udep.
-  Proof.
+  Proof using .
     rewrite /udep /Dsup /= /xv6_ssupply.
     iIntros "#Hsup #Hkc #Hlic".
     iSplitR;
@@ -128,7 +128,7 @@ Section UexecExecMint.
   (* [n <> USYS_exec], and [xv6_free n] is the former.                       *)
   (* ===================================================================== *)
   Lemma udep_free : ⊢ udep (PS := uprogSG_free).
-  Proof.
+  Proof using .
     rewrite /udep /Dsup /=.
     iSplit; [ iModIntro; done | ].
     iSplitR; [ iPureIntro; intros n W Q Hok _; iIntros "_";
@@ -163,7 +163,7 @@ Section UexecExecMint.
      sweep ([UkRun.udepw_of_psok] at [psok := xv6_free]). *)
   Lemma udepw_free (N : uk_names Σ) (m : regfile) (pc : mword 64) (n : Z) :
     xv6_free n -> ⊢ udepw (PS := uprogSG_free) N m pc n.
-  Proof.
+  Proof using .
     intros Hn.
     exact (udepw_of_psok (PS := uprogSG_free) N m pc n Hn
              (proj1 Hn)).
@@ -195,7 +195,7 @@ Section UexecExecMint.
   Lemma udepw_of_sup `{PSx : uprogSG Σ} (N : uk_names Σ) (m : regfile)
       (pc : mword 64) (n : Z) :
     n = 15 \/ n = 17 -> app_sup -∗ udepw (PS := PSx) N m pc n.
-  Proof.
+  Proof using .
     intros Hn. iIntros "#Hsup".
     rewrite /udepw. iIntros (M pm sz fdv cw gn cs pidv) "#Hmp Hheap Hufd".
     iFrame "Hheap Hufd". iRight.
@@ -229,7 +229,7 @@ Section UexecExecMint.
 
   Lemma udepw_law_of_sup `{PSx : uprogSG Σ} (n : Z) :
     n = 15 \/ n = 17 -> app_sup -∗ udepw_law (PS := PSx) n.
-  Proof.
+  Proof using .
     intros Hn. iIntros "#Hsup". rewrite /udepw_law.
     iIntros "!>" (N m pc). iApply (udepw_of_sup N m pc n Hn with "Hsup").
   Qed.
@@ -252,7 +252,7 @@ Section UexecExecMint.
       (ua : mword 64) :
     app_sup -∗ cons_licence -∗ □ riscv_kill_cred -∗
     filewrite_in st n M ua (fun _ => True%I) (fun _ _ => True%I).
-  Proof.
+  Proof using .
     iIntros "#Hsup #Hlic #Hkc".
     rewrite /filewrite_in.
     destruct st as [| rb wb ty]; [ iEmpIntro | ].
@@ -266,7 +266,7 @@ Section UexecExecMint.
   Lemma udepw_of_sup_write `{PSx : uprogSG Σ} (N : uk_names Σ) (m : regfile)
       (pc : mword 64) :
     app_sup -∗ cons_licence -∗ □ riscv_kill_cred -∗ udepw (PS := PSx) N m pc 16.
-  Proof.
+  Proof using .
     iIntros "#Hsup #Hlic #Hkc".
     rewrite /udepw. iIntros (M pm sz fdv cw gn cs pidv) "#Hmp Hheap Hufd".
     iFrame "Hheap Hufd". iRight.
@@ -288,7 +288,7 @@ Section UexecExecMint.
 
   Lemma udepw_law_of_sup_write `{PSx : uprogSG Σ} :
     app_sup -∗ cons_licence -∗ □ riscv_kill_cred -∗ udepw_law (PS := PSx) 16.
-  Proof.
+  Proof using .
     iIntros "#Hsup #Hlic #Hkc". rewrite /udepw_law.
     iIntros "!>" (N m pc). iApply (udepw_of_sup_write N m pc with "Hsup Hlic Hkc").
   Qed.
@@ -303,7 +303,7 @@ Section UexecExecMint.
   Lemma udepw_of_sup_close `{PSx : uprogSG Σ} (N : uk_names Σ) (m : regfile)
       (pc : mword 64) :
     □ riscv_kill_cred -∗ udepw (PS := PSx) N m pc 21.
-  Proof.
+  Proof using .
     iIntros "#Hkc".
     rewrite /udepw. iIntros (M pm sz fdv cw gn cs pidv) "#Hmp Hheap Hufd".
     iFrame "Hheap Hufd". iRight.
@@ -328,7 +328,7 @@ Section UexecExecMint.
 
   Lemma udepw_law_of_sup_close `{PSx : uprogSG Σ} :
     □ riscv_kill_cred -∗ udepw_law (PS := PSx) 21.
-  Proof.
+  Proof using .
     iIntros "#Hkc". rewrite /udepw_law.
     iIntros "!>" (N m pc). iApply (udepw_of_sup_close N m pc with "Hkc").
   Qed.
@@ -345,7 +345,7 @@ Section UexecExecMint.
   Lemma udepw_of_sup_exit `{PSx : uprogSG Σ} (N : uk_names Σ) (m : regfile)
       (pc : mword 64) :
     □ riscv_kill_cred -∗ udepw (PS := PSx) N m pc USYS_exit.
-  Proof.
+  Proof using .
     iIntros "#Hkc".
     rewrite /udepw. iIntros (M pm sz fdv cw gn cs pidv) "#Hmp Hheap Hufd".
     iFrame "Hheap Hufd". iRight.
@@ -371,7 +371,7 @@ Section UexecExecMint.
 
   Lemma udepw_law_of_sup_exit `{PSx : uprogSG Σ} :
     □ riscv_kill_cred -∗ udepw_law (PS := PSx) USYS_exit.
-  Proof.
+  Proof using .
     iIntros "#Hkc". rewrite /udepw_law.
     iIntros "!>" (N m pc). iApply (udepw_of_sup_exit N m pc with "Hkc").
   Qed.
@@ -386,7 +386,7 @@ Section UexecExecMint.
   Lemma uslot_mint :
     app_sup -∗ □ riscv_kill_cred -∗ cons_licence -∗ □ uexec_wp -∗
     □ (∀ W : uvis, my_pay (uvis_gen W) (fun _ => True)%I -∗ uslot W).
-  Proof.
+  Proof using ghost_varG0 ufdG0.
     iIntros "#Hsup #Hkc #Hlic #Hgen".
     iDestruct (udep_gen with "Hsup Hkc Hlic") as "#Hdep".
     iIntros "!>" (W) "#Hpay".
@@ -422,7 +422,7 @@ Section UexecExecMint.
     app_sup -∗ □ riscv_kill_cred -∗ cons_licence -∗ □ uexec_wp -∗
     □ (∀ W : uvis, my_pay (uvis_gen W) (fun _ => R)%I -∗
                    □ (riscv_kill_cred -∗ R) -∗ uslot W).
-  Proof.
+  Proof using .
     iIntros "#Hsup #Hkc #Hlic #Hgen".
     iIntros "!>" (W) "#Hpay #HR".
     iApply (UexecCond.cond_entry_slot_pay R W with "[] Hkc Hgen Hpay HR").
@@ -442,7 +442,7 @@ Section UexecExecMint.
     □ (∀ (R : iProp Σ) (W : uvis),
          my_pay (uvis_gen W) (fun _ => R)%I -∗
          □ (riscv_kill_cred -∗ R) -∗ uslot W).
-  Proof.
+  Proof using .
     iIntros "#Hsup #Hkc #Hlic #Hgen".
     iIntros "!>" (R W) "#Hpay #HR".
     iApply (UexecCond.cond_entry_slot_pay R W with "[] Hkc Hgen Hpay HR").

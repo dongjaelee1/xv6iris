@@ -352,7 +352,7 @@ Hypothesis Hbytes : forall j : nat, (N.of_nat j < 8)%N -> s.(mem) !! (pa_add pa 
 Lemma exec_vmem_read_addr_8 :
   exec (vmem_read_addr (Virtaddr a) 8 (Load Data) false false false) s
     = Some (Ok v, s).
-Proof.
+Proof using Halign Hbytes Hc Hdev Hh Hmatch Hmprv Hpalign Hpmp Hpriv Hread Hsig.
   unfold vmem_read_addr.
   rewrite exec_catch_early_return.
   rewrite Halign. cbn [Riscv.rv64d.not negb].

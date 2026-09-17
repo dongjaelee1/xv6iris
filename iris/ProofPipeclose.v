@@ -97,7 +97,7 @@ Section ProofPipeclose.
       (p0 : mword 64) (lks : gset string) :
     sie_cap_gpr KT1 m0 K0 b0 p0 -∗ cpu_own n0 eb0 p0 b0 lks -∗
     ⌜ b0 = match n0 with O => eb0 | S _ => false end ⌝.
-  Proof.
+  Proof using .
     iIntros "Hcg Hcnt". destruct b0.
     - iDestruct "Hcnt" as "%Hb". destruct Hb as (-> & -> & _). done.
     - destruct n0 as [|n']; [ | done ].
@@ -124,21 +124,21 @@ Section ProofPipeclose.
      Two lemmas rather than one in [w], because the proof has already
      [destruct]ed [w] by the time it reaches the store. *)
   Local Lemma pflag_bool_zero : pflag_bool (mword_of_int 0 : mword 32) = false.
-  Proof. apply bool_decide_eq_false_2, pflag_zero_not_open. Qed.
+  Proof using . apply bool_decide_eq_false_2, pflag_zero_not_open. Qed.
 
   (* [pipe_clink] is [Typeclasses Opaque], so it cannot be [iSpecialize]d at a
      state directly; this is its elimination, stated where the definition is
      still visible. *)
   Local Lemma pipe_clink_apply (γ : gname) (w : bool) (Φ : iProp Σ) (s : pipe_st) :
     pipe_clink γ w Φ -∗ pipe_qauth γ s ={⊤}=∗ pipe_qauth γ (pst_close w s) ∗ Φ.
-  Proof. rewrite /pipe_clink. iIntros "H". iApply "H". Qed.
+  Proof using . rewrite /pipe_clink. iIntros "H". iApply "H". Qed.
 
   Local Lemma pipe_qres_close_w (γp : pipe_names) (Φ : iProp Σ)
       (nr nw ro wo wo' : mword 32) (bs : list (bv 8)) :
     pflag_bool wo' = false ->
     pipe_cpay (pn_queue γp) true Φ -∗ pipe_qres γp nr nw ro wo bs
     ={⊤}=∗ pipe_qres γp nr nw ro wo' bs ∗ pipe_cpost (pn_queue γp) true Φ true.
-  Proof.
+  Proof using .
     intros Hwo'. iIntros "Hpay [Hc | #Ht]".
     2:{ iModIntro. iSplitR; [by iApply pipe_qres_taint |].
         iApply (pipe_cpost_taint with "Ht"). iExact "Hpay". }
@@ -158,7 +158,7 @@ Section ProofPipeclose.
     pflag_bool ro' = false ->
     pipe_cpay (pn_queue γp) false Φ -∗ pipe_qres γp nr nw ro wo bs
     ={⊤}=∗ pipe_qres γp nr nw ro' wo bs ∗ pipe_cpost (pn_queue γp) false Φ true.
-  Proof.
+  Proof using .
     intros Hro'. iIntros "Hpay [Hc | #Ht]".
     2:{ iModIntro. iSplitR; [by iApply pipe_qres_taint |].
         iApply (pipe_cpost_taint with "Ht"). iExact "Hpay". }
@@ -179,7 +179,7 @@ Section ProofPipeclose.
       (m : regfile) (n : nat) (eb : bool) (pme : mword 64) (av : nat)
       (b : bool) (lks : gset string) (Φ : iProp Σ)
     : wp_pipeclose_sconf_body γs γl γp w γkl γk klk kfl on m n eb pme av b lks Φ.
-  Proof.
+  Proof using .
     cbv beta delta [wp_pipeclose_sconf_body].
     intros pcE pi ret_tgt Hw Hav Hpos Hklk Hkfl Hno.
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).

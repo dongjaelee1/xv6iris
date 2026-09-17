@@ -36,39 +36,39 @@ Section CodeMemcpy.
   (* ---- memcpy @ KernelSyms.memcpy, 20 bytes ---- *)
 
   Lemma mcpi_00 : kernel_text -∗ instr (mword_of_int KernelSyms.memcpy : mword 64) true (ITYPE (sign_extend' 12 (mword_of_int 48 : mword 6), Regidx (mword_of_int 2), Regidx (mword_of_int 2), ADDI)).
-  Proof. mk_rvc KernelSyms.memcpy (mword_of_int 0x1141 : mword 16)
+  Proof using . mk_rvc KernelSyms.memcpy (mword_of_int 0x1141 : mword 16)
     (mword_of_int KernelSyms.memcpy : mword 64) (ITYPE (sign_extend' 12 (mword_of_int 48 : mword 6), Regidx (mword_of_int 2), Regidx (mword_of_int 2), ADDI)) kd_1141 exec_execute_C_ADDI. Qed.
 
   Lemma mcpi_02 : kernel_text -∗ instr (mword_of_int (KernelSyms.memcpy + 0x2) : mword 64) true (STORE (zero_extend' 12 (concat_vec (mword_of_int 1 : mword 6) ('b"000")), Regidx (mword_of_int 1), sp, 8)).
-  Proof. mk_rvc (KernelSyms.memcpy + 0x2) (mword_of_int 0xe406 : mword 16)
+  Proof using . mk_rvc (KernelSyms.memcpy + 0x2) (mword_of_int 0xe406 : mword 16)
     (mword_of_int (KernelSyms.memcpy + 0x2) : mword 64) (STORE (zero_extend' 12 (concat_vec (mword_of_int 1 : mword 6) ('b"000")), Regidx (mword_of_int 1), sp, 8)) kd_e406 exec_execute_C_SDSP. Qed.
 
   Lemma mcpi_04 : kernel_text -∗ instr (mword_of_int (KernelSyms.memcpy + 0x4) : mword 64) true (STORE (zero_extend' 12 (concat_vec (mword_of_int 0 : mword 6) ('b"000")), Regidx (mword_of_int 8), sp, 8)).
-  Proof. mk_rvc (KernelSyms.memcpy + 0x4) (mword_of_int 0xe022 : mword 16)
+  Proof using . mk_rvc (KernelSyms.memcpy + 0x4) (mword_of_int 0xe022 : mword 16)
     (mword_of_int (KernelSyms.memcpy + 0x4) : mword 64) (STORE (zero_extend' 12 (concat_vec (mword_of_int 0 : mword 6) ('b"000")), Regidx (mword_of_int 8), sp, 8)) kd_e022 exec_execute_C_SDSP. Qed.
 
   Lemma mcpi_06 : kernel_text -∗ instr (mword_of_int (KernelSyms.memcpy + 0x6) : mword 64) true (ITYPE (caddi4spn_imm (mword_of_int 4 : mword 8), sp, creg2reg_idx (Cregidx (mword_of_int 0)), ADDI)).
-  Proof. mk_rvc (KernelSyms.memcpy + 0x6) (mword_of_int 0x0800 : mword 16)
+  Proof using . mk_rvc (KernelSyms.memcpy + 0x6) (mword_of_int 0x0800 : mword 16)
     (mword_of_int (KernelSyms.memcpy + 0x6) : mword 64) (ITYPE (caddi4spn_imm (mword_of_int 4 : mword 8), sp, creg2reg_idx (Cregidx (mword_of_int 0)), ADDI)) kd_0800 exec_execute_C_ADDI4SPN. Qed.
 
   Lemma mcpi_08 : kernel_text -∗ instr (mword_of_int (KernelSyms.memcpy + 0x8) : mword 64) false (JAL (mword_of_int 2097048 : mword 21, Regidx (mword_of_int 1))).
-  Proof. mk_base (KernelSyms.memcpy + 0x8) (mword_of_int 0xf99ff0ef : mword 32)
+  Proof using . mk_base (KernelSyms.memcpy + 0x8) (mword_of_int 0xf99ff0ef : mword 32)
     (mword_of_int (KernelSyms.memcpy + 0x8) : mword 64) (JAL (mword_of_int 2097048 : mword 21, Regidx (mword_of_int 1))) kd_f99ff0ef. Qed.
 
   Lemma mcpi_0c : kernel_text -∗ instr (mword_of_int (KernelSyms.memcpy + 0xc) : mword 64) true (LOAD (zero_extend' 12 (concat_vec (mword_of_int 1 : mword 6) ('b"000")), sp, Regidx (mword_of_int 1), false, 8)).
-  Proof. mk_rvc (KernelSyms.memcpy + 0xc) (mword_of_int 0x60a2 : mword 16)
+  Proof using . mk_rvc (KernelSyms.memcpy + 0xc) (mword_of_int 0x60a2 : mword 16)
     (mword_of_int (KernelSyms.memcpy + 0xc) : mword 64) (LOAD (zero_extend' 12 (concat_vec (mword_of_int 1 : mword 6) ('b"000")), sp, Regidx (mword_of_int 1), false, 8)) kd_60a2 exec_execute_C_LDSP. Qed.
 
   Lemma mcpi_0e : kernel_text -∗ instr (mword_of_int (KernelSyms.memcpy + 0xe) : mword 64) true (LOAD (zero_extend' 12 (concat_vec (mword_of_int 0 : mword 6) ('b"000")), sp, Regidx (mword_of_int 8), false, 8)).
-  Proof. mk_rvc (KernelSyms.memcpy + 0xe) (mword_of_int 0x6402 : mword 16)
+  Proof using . mk_rvc (KernelSyms.memcpy + 0xe) (mword_of_int 0x6402 : mword 16)
     (mword_of_int (KernelSyms.memcpy + 0xe) : mword 64) (LOAD (zero_extend' 12 (concat_vec (mword_of_int 0 : mword 6) ('b"000")), sp, Regidx (mword_of_int 8), false, 8)) kd_6402 exec_execute_C_LDSP. Qed.
 
   Lemma mcpi_10 : kernel_text -∗ instr (mword_of_int (KernelSyms.memcpy + 0x10) : mword 64) true (ITYPE (sign_extend' 12 (mword_of_int 16 : mword 6), Regidx (mword_of_int 2), Regidx (mword_of_int 2), ADDI)).
-  Proof. mk_rvc (KernelSyms.memcpy + 0x10) (mword_of_int 0x0141 : mword 16)
+  Proof using . mk_rvc (KernelSyms.memcpy + 0x10) (mword_of_int 0x0141 : mword 16)
     (mword_of_int (KernelSyms.memcpy + 0x10) : mword 64) (ITYPE (sign_extend' 12 (mword_of_int 16 : mword 6), Regidx (mword_of_int 2), Regidx (mword_of_int 2), ADDI)) kd_0141 exec_execute_C_ADDI. Qed.
 
   Lemma mcpi_12 : kernel_text -∗ instr (mword_of_int (KernelSyms.memcpy + 0x12) : mword 64) true (JALR (zeros' 12, Regidx (mword_of_int 1), zreg)).
-  Proof. mk_rvc (KernelSyms.memcpy + 0x12) (mword_of_int 0x8082 : mword 16)
+  Proof using . mk_rvc (KernelSyms.memcpy + 0x12) (mword_of_int 0x8082 : mword 16)
     (mword_of_int (KernelSyms.memcpy + 0x12) : mword 64) (JALR (zeros' 12, Regidx (mword_of_int 1), zreg)) kd_8082 exec_execute_C_JR. Qed.
 
 End CodeMemcpy.

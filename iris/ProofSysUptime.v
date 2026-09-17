@@ -120,7 +120,7 @@ Section ProofSysUptime.
   Lemma wp_sys_uptime_sconf (γl : gname)
       (m : regfile) (n : nat) (eb : bool) (p : mword 64) (av : nat) (b : bool) (lks : gset string)
     : wp_sys_uptime_sconf_body γl m n eb p av b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_sys_uptime_sconf_body].
     intros pcE ret_tgt Hn Hav Hfresh.
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).

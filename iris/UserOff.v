@@ -79,13 +79,13 @@ Section UserOff.
     off_gv γo (1/2) (Z.of_nat off).
 
   Global Instance uoff_timeless γo off : Timeless (uoff γo off).
-  Proof. rewrite /uoff. apply _. Qed.
+  Proof using . rewrite /uoff. apply _. Qed.
 
   (* two holders of the half agree on the position (the kernel's half and
      a held one agree the same way -- [OffGv.off_gv_agree] directly). *)
   Lemma uoff_agree γo (off off' : nat) :
     uoff γo off -∗ uoff γo off' -∗ ⌜off = off'⌝.
-  Proof.
+  Proof using .
     rewrite /uoff. iIntros "H1 H2".
     iDestruct (off_gv_agree with "H1 H2") as %Heq. iPureIntro. lia.
   Qed.
@@ -94,7 +94,7 @@ Section UserOff.
      holds [uoff] knows about the value in the off box. *)
   Lemma uoff_agree_k γo (off : nat) (z : Z) :
     uoff γo off -∗ off_gv γo (1/2) z -∗ ⌜z = Z.of_nat off⌝.
-  Proof.
+  Proof using .
     rewrite /uoff. iIntros "H1 H2".
     iDestruct (off_gv_agree with "H1 H2") as %Heq. iPureIntro. lia.
   Qed.
@@ -103,7 +103,7 @@ Section UserOff.
      converse: [off_user_inv] is persistent. *)
   Lemma uoff_park (E : coPset) γo (off : nat) :
     uoff γo off ={E}=∗ off_user_inv γo.
-  Proof.
+  Proof using .
     rewrite /uoff. iIntros "H". iApply (off_user_inv_alloc E γo _ with "H").
   Qed.
 
@@ -113,7 +113,7 @@ Section UserOff.
   Lemma uoff_advance γo (off d : nat) :
     uoff γo off -∗ off_gv γo (1/2) (Z.of_nat off) ==∗
       off_gv γo (1/2) (Z.of_nat (off + d)) ∗ uoff γo (off + d).
-  Proof.
+  Proof using .
     rewrite /uoff. iIntros "Hu Hk".
     iMod (off_gv_update_halves (Z.of_nat (off + d)) γo _ _ with "Hk Hu")
       as "[$ $]". done.
@@ -140,7 +140,7 @@ Section UserOff.
   Lemma off_supply_parked (E : coPset) γo (off d : nat) :
     ↑foffN ⊆ E ->
     off_user_inv γo -∗ off_supply γo E off d True.
-  Proof.
+  Proof using .
     intros HE. rewrite /off_supply. iIntros "#Hinv Hk".
     iMod (off_user_inv_move E γo (Z.of_nat off) (Z.of_nat (off + d)) HE
             with "Hinv Hk") as "Hk".
@@ -152,7 +152,7 @@ Section UserOff.
      no invariant is opened, so this supplier is good at EVERY mask. *)
   Lemma off_supply_held (E : coPset) γo (off d : nat) :
     uoff γo off -∗ off_supply γo E off d (uoff γo (off + d)).
-  Proof.
+  Proof using .
     rewrite /off_supply. iIntros "Hu Hk".
     iMod (uoff_advance γo off d with "Hu Hk") as "[$ $]". done.
   Qed.
@@ -171,7 +171,7 @@ Section UserOff.
      descriptor bundle carries for every [FdInode] row. *)
   Lemma off_pub_park (E : coPset) γo (z : Z) :
     off_gv γo 1 z ={E}=∗ off_gv γo (1/2) z ∗ off_user_inv γo.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct (off_gv_halves with "H") as "[Hk Hu]".
     iMod (off_user_inv_alloc E γo z with "Hu") as "#Hinv".
     iModIntro. by iFrame "Hk Hinv".
@@ -185,14 +185,14 @@ Section UserOff.
   Lemma off_pub_hand γo (off : nat) :
     off_gv γo 1 (Z.of_nat off) -∗
       off_gv γo (1/2) (Z.of_nat off) ∗ uoff γo off.
-  Proof.
+  Proof using .
     rewrite /uoff. iIntros "H".
     iDestruct (off_gv_halves with "H") as "[$ $]".
   Qed.
 
   Lemma off_pub_hand_0 γo :
     off_gv γo 1 0 -∗ off_gv γo (1/2) 0 ∗ uoff γo 0.
-  Proof. exact (off_pub_hand γo 0). Qed.
+  Proof using . exact (off_pub_hand γo 0). Qed.
 
 End UserOff.
 

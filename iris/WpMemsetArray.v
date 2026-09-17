@@ -57,7 +57,7 @@ Section WpMemsetArray.
   Lemma wp_memset_sconf_zero
       (m0 : regfile) (n : nat) (cval : mword 64) (b : bool) (pcur : mword 64)
     : wp_memset_free_sconf_body kt ktb m0 n 0 cval b pcur.
-  Proof.
+  Proof using .
     cbv beta delta [wp_memset_free_sconf_body].
     intros a0_idx a1_idx a2_idx pcE ra0 p ret_tgt cbyte Hn Hlen32 Hcval Ha2.
     pose (sp0 := (m0 !!! Regidx csp_rs1 : mword 64)).
@@ -128,7 +128,7 @@ Section WpMemsetArray.
   Lemma wp_memset_sconf_pos
       (m0 : regfile) (n : nat) (len : nat) (cval : mword 64) (b : bool) (pcur : mword 64)
     : (0 < len)%nat -> wp_memset_free_sconf_body kt ktb m0 n len cval b pcur.
-  Proof.
+  Proof using .
     intro Hlen0.
     cbv beta delta [wp_memset_free_sconf_body].
     intros a0_idx a1_idx a2_idx pcE ra0 p ret_tgt cbyte Hn Hlen32 Hcval Ha2.
@@ -303,7 +303,7 @@ Section WpMemsetArray.
   Lemma wp_memset_free_sconf
       (m0 : regfile) (n : nat) (len : nat) (cval : mword 64) (b : bool) (pcur : mword 64)
     : wp_memset_free_sconf_body kt ktb m0 n len cval b pcur.
-  Proof.
+  Proof using .
     destruct len as [| len' ].
     - apply (wp_memset_sconf_zero).
     - apply (wp_memset_sconf_pos). lia.
@@ -314,7 +314,7 @@ Section WpMemsetArray.
   Lemma wp_memset_sconf
       (m0 : regfile) (n : nat) (len : nat) (cval : mword 64) (olds : nat -> bv 8) (b : bool) (pcur : mword 64)
     : wp_memset_sconf_body kt ktb m0 n len cval olds b pcur.
-  Proof.
+  Proof using .
     cbv beta delta [wp_memset_sconf_body].
     intros a0_idx a1_idx a2_idx pcE ra0 p ret_tgt cbyte Hn Hlen32 Hcval Ha2.
     iIntros "Hcg #Htext Hpc Hbuf Hcont".

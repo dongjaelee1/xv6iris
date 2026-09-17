@@ -338,7 +338,7 @@ Section KforkArms.
           (mr !!! Regidx Ra0) lks -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hlvl Hbeq Hmsp Hmra Hms0 Hms1 Hms5 HMtsp HMts4 Hnpa HjN Hgamma
       Hofnull Hcwdnull HMtthr Hbelow.
     subst npa.
@@ -440,7 +440,7 @@ Section KforkArms.
           (mr !!! Regidx Ra0) lks -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK8 Hmsp Hmra Hms0 Hms1 Hms5 HMtsp HMtthr.
     iIntros "Hcg Hcpu #Htext Hpc Hframe Hpv Hpfrag Hprow Hkalloc HRc Hcont".
     iApply (ProofKfork.kfk_exit_alloc m Mt K sp0 ra0 s00 s10 s50 pme b
@@ -672,7 +672,7 @@ Section KforkArms.
           (mr !!! Regidx Ra0) lks -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using ufdG0.
     intros HK Hlvl Hbeq Hmsp Hmra Hms0 Hms1 Hms5 HMtsp HMts4 HMts5
       HMta5 HMta4 HMta3 Htfsrc Htfdst HMtthr Hnpa HjN Hgamma
       Hofnull Hcwdnull Hpidc Hpidne Hshsz Hshimg Hshperm Hshlz Hbelow.
@@ -1020,7 +1020,7 @@ Section KforkMain.
  :
     wp_kfork_sconf_body γp γw γl γf γs
  m lvl K eb pme b pid_p Up stsP csP Q Rc lks.
-  Proof.
+  Proof using ufdG0.
     cbv beta delta [wp_kfork_sconf_body]. cbn zeta.
     intros HK Hlvl Hbelow.
     iIntros "Hcg Hcpu #Htext Hpc #Hprocs #Hplock #Hwlock #Hftbl #Hpe

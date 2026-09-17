@@ -210,7 +210,7 @@ Section FsCfgKits.
         ghost_var (ghost_varG0 := kalloc_count_inG) (bx_cnt (icfg_box k)) 1 0%nat ∗
         ghost_var (bx_slotd (icfg_box k)) 1 (inhabitant : slot_reg ic_bid ic_x) ∗
         ghost_var (bx_slotp (icfg_box k)) 1 (inhabitant : l2_reg ic_bid)).
-  Proof. iIntros "H". iExact "H". Qed.
+  Proof using . iIntros "H". iExact "H". Qed.
 
   (* ==================================================================== *)
   (*  KIT 2 -- WHAT MUST SURVIVE TO forkret'S FIRST ARM                    *)
@@ -360,7 +360,7 @@ Section FsCfgKits.
       AppInv.app_inv (APP := APP) fsc_fs ∗
       FsCrash.fs_crash_seam_at (app_guest (APP := APP)) fsc_cov fsc_logst ∗
       AppInv.app_xfer (APP := APP).
-  Proof. iIntros "H". iExact "H". Qed.
+  Proof using . iIntros "H". iExact "H". Qed.
 
   (* ==================================================================== *)
   (*  KIT 1'S TWO EARLY PEELS (stage (e))                                  *)
@@ -426,7 +426,7 @@ Section FsCfgKits.
     fs_kit_icache ICFG FSC -∗
       fs_kit_printk ICFG FSC ∗ fs_kit_kalloc ICFG FSC ∗
       fs_kit_icache_rest ICFG FSC.
-  Proof.
+  Proof using .
     iIntros "H".
     iDestruct (fs_kit_icache_open with "H")
       as "(Hiref & Hlive & Hislg & Hstmp & Hipool & Hpkey & Hxkey & Hitlk & Htok & Hdep & Hgid &
@@ -441,7 +441,7 @@ Section FsCfgKits.
       lock_free_tok fsc_kalloc ∗
       kalloc_avail fsc_kpages (Some 0%nat) ∗
       kmem_avail_auth fsc_kpages 0%nat.
-  Proof. iIntros "H". iExact "H". Qed.
+  Proof using . iIntros "H". iExact "H". Qed.
 
   Lemma fs_kit_icache_rest_open (ICFG : icfg) (FSC : fscfg) :
     fs_kit_icache_rest ICFG FSC -∗
@@ -470,7 +470,7 @@ Section FsCfgKits.
         ghost_var (ghost_varG0 := kalloc_count_inG) (bx_cnt (icfg_box k)) 1 0%nat ∗
         ghost_var (bx_slotd (icfg_box k)) 1 (inhabitant : slot_reg ic_bid ic_x) ∗
         ghost_var (bx_slotp (icfg_box k)) 1 (inhabitant : l2_reg ic_bid)).
-  Proof. iIntros "H". iExact "H". Qed.
+  Proof using . iIntros "H". iExact "H". Qed.
 
   (*  THE ONE ROW OF KIT 2 THAT main ITSELF NEEDS, peeled without spending
       the kit.  [ireg_inv] is PERSISTENT, so this is a duplication, not a
@@ -484,7 +484,7 @@ Section FsCfgKits.
     fs_kit_fsinit_ghost ICFG FSC APP P Rspent Pb Xexc -∗
       ireg_reg fsc_ireg fsc_fs icfg_ist icfg_nib ∗
       fs_kit_fsinit_ghost ICFG FSC APP P Rspent Pb Xexc.
-  Proof.
+  Proof using .
     iIntros "H".
     iDestruct (fs_kit_fsinit_ghost_open with "H")
       as "(Hlog & Hboot & #Hireg & Hb1 & Hauths & Hdty & Hhdr & Hslots &
@@ -504,7 +504,7 @@ Section FsCfgKits.
     fs_kit_fsinit_ghost ICFG FSC APP P Rspent Pb Xexc -∗
       bitmap_reg fsc_fs fsc_bmapstart fsc_cov fsc_logst fsc_size ∗
       fs_kit_fsinit_ghost ICFG FSC APP P Rspent Pb Xexc.
-  Proof.
+  Proof using .
     iIntros "H".
     iDestruct (fs_kit_fsinit_ghost_open with "H")
       as "(Hlog & Hboot & #Hireg & Hb1 & Hauths & Hdty & Hhdr & Hslots &

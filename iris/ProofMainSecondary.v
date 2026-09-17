@@ -127,7 +127,7 @@ Section ProofMainSecondary.
      bundle -- what [Kernelvec.kernelvec_handler_spec] consumes. *)
   Local Lemma ms_dup_hw {kt : ktier} m avail b p :
     sie_cap_gpr kt m avail b p -∗ hw_config ∗ minstret_inv ∗ sie_cap_gpr kt m avail b p.
-  Proof.
+  Proof using .
     iIntros "Hcg".
     iDestruct (sie_cap_gpr_split with "Hcg") as "(Hhs & Hsc & Hsie & Hgpr)".
     iEval (rewrite /sconf) in "Hsc".
@@ -157,7 +157,7 @@ Section ProofMainSecondary.
             (sign_extend' 64 (mword_of_int 0 : mword 12)) = started_addr ⌝ -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hcid HK.
     pose proof (ms_bounds K HK) as (Hc2 & Hn52 & Hn20).
     iIntros "Hcg #Htext Hpc Hcont".
@@ -330,7 +330,7 @@ Section ProofMainSecondary.
            TsoGhost.view_lb view_name loglen_name (hart_agent cpu_id) pos) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Ha4 Hcid.
     iIntros "Hcg #Htext Hpc #Hsinv Hcont".
     iLöb as "IH" forall (m Ha4).
@@ -496,7 +496,7 @@ Section ProofMainSecondary.
         cpu_own 0 false p0 false ∅ -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn.
     iIntros "Hcg #Htext #Hkdata Hpc Hfree Hcpu #Hpenv Hcont".
     iPoseProof (kernel_data_string ms_hart_addr ms_hart
@@ -653,7 +653,7 @@ Section ProofMainSecondary.
        them to seal the KPT arm.  See [SpecMainSecondary]'s own row. *)
     KptShare.kpt_creds -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hdc Hcidne Hp0.
     iIntros "Hcg #Htext Hpc Hfree Hcpu Hq Hsbit Htlb Htcsr #Hkinv #Hkptp #Hdev #Hpinv #Hccaps #Hu1 #Hdlock #Hgeom #Htimc #Hcreds".
     (* ---- +0x32 jal kvminithart ---- *)

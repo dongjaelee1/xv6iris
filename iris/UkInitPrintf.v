@@ -124,7 +124,7 @@ Section UkInitPrintf.
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (12 + (12 + (4 + n))) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Ha0 Habnd Hlen Hpct Ha0r.
     iIntros "#Hw #Hcode #Hstr HCh Hrun Hcont".
     destruct init_syms_pins
@@ -672,7 +672,7 @@ Section UkInitPrintf.
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (12 + (12 + (4 + n))) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Ha0 Habnd Hlen Hpct Ha0r.
     iIntros "#Hwr #Hcode #Hstr Hrun Hcont".
     iApply (wp_kinit_printf_chain a len f (fun _ => emp)%I h m n

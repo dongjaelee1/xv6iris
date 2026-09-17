@@ -225,7 +225,7 @@ Section ProofSysOpenEntryC.
 
   (* create's live-type premise at the literal open passes (2b-inode-3). *)
   Lemma soc_tfile_nz : bv_unsigned FsAbsCreateFire.T_FILE <> 0.
-  Proof. rewrite FsAbsCreateFire.T_FILE_value. lia. Qed.
+  Proof using . rewrite FsAbsCreateFire.T_FILE_value. lia. Qed.
 
   Lemma so_entry_c_au `{GEN : GenId} `{CID0 : CpuId} `{XI : CurCtx}
       (gfl gf : gname)
@@ -336,7 +336,7 @@ Section ProofSysOpenEntryC.
                 dqb dqs dqbs dqn (proc_addr jx) pidv Mim pvv vom U sts
                 P Pmiss Phiarm Phiun Phiok Phiex Phio Phit m K eb b lks) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK HdevR Hnib0 Hgeom Hsize Hbm0 Hbmcov
            Hbmlog Hist0 Hcovb Hbmgeo Hiregb Hpcstr Hplen Hni1 Hni2 Hni3 Hush
  Hnsb Hj Hgl Heb Hlkempty Hpof Hom Hal23 Hsp0 HNsp HNthr HNs0 HNs2 HNs3

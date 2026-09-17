@@ -46,28 +46,22 @@ Require Import ProcAvail.
 Require Import FileInvDefs.
 Require Import UserFd.
 Require Import UserHeap.
-Require Import UserPerm.
 Require Import UserCwd.
-Require Import ChildTok.
-Require Import UexecSlot UexecRet UsysMemOk UexecSG.
-Require Import UkRun UkRunSys UkRunExecRef UexecExecInst.
+Require Import UexecRet UsysMemOk.
+Require Import UkRun UkRunSys.
 Require Import ElfFile.          (* [elf_bytes] *)
 Require Import PathElems.        (* [path_elems] / [SLASH] *)
 Require Import FsTree.           (* [fname] / [fs_proper] *)
 Require Import FsImg.            (* [ROOTINO] *)
 Require Import SpecKexec.        (* [kexec_loadable] *)
-Require Import SpecSysExec.      (* [exec_path_of] *)
-Require Import PieceFam.
 Require Import AppCfg AppInv.
 Require Import FsCfg.            (* [fsc_fs] *)
 Require Import ExecEntry.        (* [image_entry] / [image_entry_taint] *)
-Require Import ExecBundle.
 Require Import ExecRun.          (* [exec_walk_of_abs], the content-level rule *)
 Require Import FsAbsEra.         (* [um_start_of] *)
 Require Import TreeView.
 Require Import AppTree.
 Require Import TreeObs.
-Require Import PinnedObs.
 Require Import FsAbsDefs.
 Import Defs.
 
@@ -103,7 +97,7 @@ Section TreeExec.
     tree_pin r g root t -∗
     app_inv fsc_fs -∗
     exec_walk_of_abs cw (tree_taint c) pl (AFile f).
-  Proof.
+  Proof using .
     intros Heq Hp Hstart Hd Hres. iIntros "#Hpin #Hinv".
     iDestruct (tree_pin_claim_law c r g root t Heq with "Hpin") as "#Hcl".
     iApply (exec_walk_of_abs_pin (fun v => subtree v root = Some t)
@@ -125,7 +119,7 @@ Section TreeExec.
     tree_pin r g FsImg.ROOTINO t -∗
     app_inv fsc_fs -∗
     exec_walk_of_abs cw (tree_taint c) pl (AFile f).
-  Proof.
+  Proof using .
     intros Heq Hp Hsl Hd Hres.
     exact (exec_walk_of_own c r g FsImg.ROOTINO FsImg.ROOTINO i t f cw pl Heq
              Hp (um_start_of_slash cw pl Hsl) Hd Hres).
@@ -186,7 +180,7 @@ Section TreeExec.
          (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Heq Hn Ha0 Ha1 Hal4 Hload Hp Hstart Hd Hres.
     iIntros "#Hi Hrun Hcwd #Hpin #Hinv #Hrd #Hcon #Hgen #Hrf HPay Hcont".
     iApply (wp_uk_ecall_exec_run_abs N h m pc avail cw (tree_taint c) pv av

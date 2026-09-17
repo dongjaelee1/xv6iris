@@ -278,7 +278,7 @@ Section UexecCond.
        ANY table. *)
     UkRun.urun_nopipe (uvis_fd W) -∗
     udep (PS := PF) -∗ my_pay (uvis_gen W) (fun _ => True)%I -∗ uslot W.
-  Proof.
+  Proof using ghost_varG0 ghost_varG1 ufdG0.
     intros Hpsok_free (Hteq & Hpc & Hxo & Hroom & Hal8 & Hstk & Hfdlen & Hlzf
                       & Hstop).
     exact (sync_uexec_slot (PS := PF) W Hpc
@@ -306,7 +306,7 @@ Section UexecCond.
        ANY table. *)
     UkRun.urun_nopipe (uvis_fd W) -∗
     udep (PS := PF) -∗ my_pay (uvis_gen W) (fun _ => True)%I -∗ uslot W.
-  Proof.
+  Proof using ghost_varG1.
     intros (Hteq & Hpc & Hxo & Hroom & Hal8 & Hstk & Hargs & Havd & Havs
             & Hfdlen & Hlzf & Hstop).
     exact (echo_uexec_slot (PS := PF) W Hpc
@@ -347,7 +347,7 @@ Section UexecCond.
        page-fault arms are refuted at [uvis_lazy W = false]. *)
     udep (PS := PF) -∗ □ ssupply -∗ □ riscv_kill_cred -∗ □ uexec_wp -∗
     my_pay (uvis_gen W) (fun _ => True)%I -∗ uslot W.
-  Proof.
+  Proof using ghost_varG1.
     intros Hpsok_free. iIntros "#Hwr #Hdep #Hsup #Hkc #Hgen #Hpay".
     (* THE TABLE FACT THE TWO GATED ARMS NEED IS THE CREDENTIAL ITSELF
        (design/pipe.md, "The exit path"): this slot answers at every cause,
@@ -380,7 +380,7 @@ Section UexecCond.
   Lemma cond_entry_slot_pay (R : iProp Σ) (W : uvis) :
     □ ssupply -∗ □ riscv_kill_cred -∗ □ uexec_wp -∗
     my_pay (uvis_gen W) (fun _ => R)%I -∗ □ (riscv_kill_cred -∗ R) -∗ uslot W.
-  Proof.
+  Proof using .
     iIntros "#Hsup #Hkc #Hgen #Hpay #HR".
     iApply (uexec_wp_uslot R W with "Hsup Hkc Hgen Hpay HR").
   Qed.

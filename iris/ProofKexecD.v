@@ -155,7 +155,7 @@ Section KexecDName.
   Lemma pa_add_pred (p : mword 64) (i : nat) :
     add_vec (pa_add p (S i)) (sign_extend' 64 (mword_of_int 4095 : mword 12))
     = pa_add p i.
-  Proof.
+  Proof using .
     assert (Hm1 : (sign_extend' 64 (mword_of_int 4095 : mword 12) : mword 64)
                   = mword_of_int (-1)) by (apply bv_eq; vm_compute; reflexivity).
     (* [StackBytes.pa_add_S]'s own order -- idemp_r BEFORE idemp_l.  The
@@ -169,7 +169,7 @@ Section KexecDName.
   (* the frame slot [last] lives in, as [sd a5,-528(s0)] addresses it *)
   Lemma kxd_last_slot (sp0 : mword 64) :
     add_vec sp0 (sign_extend' 64 (mword_of_int 3568 : mword 12)) = pa_stk sp0 66.
-  Proof.
+  Proof using .
     assert (Hm : (sign_extend' 64 (mword_of_int 3568 : mword 12) : mword 64)
                  = mword_of_int (-528)) by (apply bv_eq; vm_compute; reflexivity).
     (* [f_equal] closes this outright -- [reflexivity]'s kernel conversion
@@ -181,7 +181,7 @@ Section KexecDName.
   (* the [lbu] result as a plain unsigned byte (ProofBallocParts' copy) *)
   Lemma kxd_zext8_unsigned (v : mword 8) :
     bv_unsigned (zero_extend' 64 v : mword 64) = bv_unsigned v.
-  Proof.
+  Proof using .
     cbv [zero_extend' Operators_mwords.zero_extend Operators_mwords.extz_vec
          Values.to_word get_word MachineWord.MachineWord.zero_extend].
     rewrite bv_zero_extend_unsigned. reflexivity.
@@ -194,7 +194,7 @@ Section KexecDName.
      why there is no general width-8 literal bridge here. *)
   Lemma kxd_zext8_zero (v : mword 8) :
     ((zero_extend' 64 v : mword 64) = mword_of_int 0) <-> v = mword_of_int 0.
-  Proof.
+  Proof using .
     split; intro Heq.
     - apply bv_eq.
       apply (f_equal (@bv_unsigned 64)) in Heq.
@@ -204,14 +204,14 @@ Section KexecDName.
   Qed.
 
   Lemma kxd_neq_vec64 (x y : mword 64) : x <> y -> neq_vec x y = true.
-  Proof.
+  Proof using .
     intro Hxy. unfold neq_vec.
     destruct (eq_vec x y) eqn:E; [| reflexivity].
     apply eq_vec_true_iff in E. contradiction.
   Qed.
 
   Lemma kxd_eq_vec64_false (x y : mword 64) : x <> y -> eq_vec x y = false.
-  Proof.
+  Proof using .
     intro Hxy. destruct (eq_vec x y) eqn:E; [| reflexivity].
     apply eq_vec_true_iff in E. contradiction.
   Qed.
@@ -271,7 +271,7 @@ Section KexecDName.
     ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 66) (DfracOwn 1) (pa_add pv q) -∗
     kxd_scan_out pj b n plen pfun dqpv sp0 pv vsp v1 v2 v4 v5 v6 v10 v11 i -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros [Hnonul Hnul] Hiplen Hq Hsp Hs0 Hv1 Hv2 Hv4 Hv5 Hv6 Hv10 Hv11 Ha3 Ha5.
     iIntros "#Htext Hpc Hcg Hpath Hlast Hout".
     (* ---- +0x2c0: c.addi a5,a5,1 ---- *)
@@ -438,7 +438,7 @@ Section KexecDName.
     ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 66) (DfracOwn 1) (pa_add pv q) -∗
     kxd_scan_out pj b n plen pfun dqpv sp0 pv vsp v1 v2 v4 v5 v6 v10 v11 i -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hcstr Hiplen Hq Hsp Hs0 Hv1 Hv2 Hv4 Hv5 Hv6 Hv10 Hv11 Ha3 Ha4 Ha5.
     iIntros "#Htext Hpc Hcg Hpath Hlast Hout".
     assert (Htgt2bc : add_vec (mword_of_int (KXD + 0x2c4) : mword 64)
@@ -559,7 +559,7 @@ Section KexecDName.
         ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 66) (DfracOwn 1) (pa_add pv q') -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hcstr W. revert CID0.
     induction W as [| W IH]; intros CID0 M i q Hfuel Hiplen Hq
       Hsp Hs0 Hv1 Hv2 Hv4 Hv5 Hv6 Hv10 Hv11 Ha3 Ha4 Ha5.
@@ -633,7 +633,7 @@ Section KexecDCommit.
       = mword_of_int (8 * Z.of_nat i) ->
     add_vec (page_base tfp) (sign_extend' 64 (mword_of_int z : mword 12))
     = tf_pa tfp (8 * Z.of_nat i).
-  Proof.
+  Proof using .
     intros Hi Hz. rewrite (tf_pa_eq_pa_add8 tfp i Hi).
     rewrite Hz /pa_add /add_vec_int.
     f_equal. f_equal. lia.
@@ -644,7 +644,7 @@ Section KexecDCommit.
      it, and the block writes three different words. *)
   Lemma kxd_tf_len (tfp : mword 44) (ws : list (mword 64)) :
     tf_page tfp ws ⊢ ⌜length ws = TFWORDS⌝ ∗ tf_page tfp ws.
-  Proof.
+  Proof using .
     rewrite /tf_page. iIntros "(%Hl & A & B)".
     iSplitR; [done |]. iSplitR; [done |].
     iSplitL "A"; [iExact "A" | iExact "B"].
@@ -660,7 +660,7 @@ Section KexecDCommit.
     (pa_add a o ↦₈[KT1] (Z_to_bv 64 (le_at f o 8) : mword 64)) ∗
     ((pa_add a o ↦₈[KT1] (Z_to_bv 64 (le_at f o 8) : mword 64)) -∗
        [∗ list] j ∈ seq 0 n, pa_add a j ↦ₘ[KT1] f j).
-  Proof.
+  Proof using .
     intros Hn Hal.
     rewrite (bb_split3 a o 8 r n f (DfracOwn 1) Hn).
     iIntros "(Hpre & Hmid & Hsuf)".
@@ -683,7 +683,7 @@ Section KexecDCommit.
       (ns : list (bv 8)) (P' : uptd) (szv : mword 64) :
     upd_lazy (upd_sz (upd_pt (upd_name (upd_tf V ws1) ns) P' ws3) szv) false
     = upd_exec V szv P' ws3 ns.
-  Proof. by destruct V. Qed.
+  Proof using . by destruct V. Qed.
 
   (* AT THE RECORD.  The four field writes the commit block does arrive as
      the lifted updaters ([us_tf], [us_name]) with the NEW IMAGE spelled by
@@ -707,7 +707,7 @@ Section KexecDCommit.
                      false))
                Mx) -∗
     proc_priv gf pa pid (upd_usM (us_exec U szv P' ws3 ns) Mx).
-  Proof. destruct U as [V M]; destruct V. iIntros "H". iExact "H". Qed.
+  Proof using . destruct U as [V M]; destruct V. iIntros "H". iExact "H". Qed.
 
   (* the two trapframe words the commit writes SECOND and THIRD are at
      distinct indices, so the order the block happens to write them in is
@@ -715,13 +715,13 @@ Section KexecDCommit.
   Lemma kxd_tf_swap (ws : list (mword 64)) (a b : mword 64) :
     <[kxc_tf_sp_idx := b]> (<[tf_epc_idx := a]> ws)
     = <[tf_epc_idx := a]> (<[kxc_tf_sp_idx := b]> ws).
-  Proof. apply list_insert_commute. unfold kxc_tf_sp_idx, tf_epc_idx. lia. Qed.
+  Proof using . apply list_insert_commute. unfold kxc_tf_sp_idx, tf_epc_idx. lia. Qed.
 
   (* the two accessor closes that touch only the trapframe words, folded to
      the one-field update [upd_tf] the commit block reasons over. *)
   Lemma kxd_close_tf (V : pprivate) (ws : list (mword 64)) :
     upd_sz (upd_pt V (pv_upt V) ws) (pv_sz V) = upd_tf V ws.
-  Proof. by destruct V. Qed.
+  Proof using . by destruct V. Qed.
 
   (* ...at the RESOURCE, because [iEval (rewrite ...)] on a [pprivate]
      equation inside [proc_priv] finds no relation to rewrite. *)
@@ -729,7 +729,7 @@ Section KexecDCommit.
       (U : ustate) (ws : list (mword 64)) :
     proc_priv gf pa pid (upd_usV U (upd_sz (upd_pt (us_V U) (pv_upt (us_V U)) ws) (pv_sz (us_V U)))) -∗
     proc_priv gf pa pid (us_tf U ws).
-  Proof. rewrite kxd_close_tf. iIntros "H". iExact "H". Qed.
+  Proof using . rewrite kxd_close_tf. iIntros "H". iExact "H". Qed.
 
   (* THE EXIT'S OWN [kexec_ok], assembled.  Stated separately because the
      commit block reaches it from a register file it has just reloaded nine
@@ -762,7 +762,7 @@ Section KexecDCommit.
                   (pv_tf V))))
          ns)
       r entry (mword_of_int (kxc_sp_final (uint sz1) alen na)) sz1 na alen.
-  Proof.
+  Proof using .
     intros HQ Hr Hna Hstk Htfp Hns Hlo Hhi. right.
     rewrite kxd_tf_swap.
     split_and!; try reflexivity; try assumption; try (unfold MAXARG in *; lia).
@@ -825,7 +825,7 @@ Section KexecDCommit.
   Lemma kxd_elf_entry_addr (sp0 : mword 64) :
     add_vec sp0 (sign_extend' 64 (mword_of_int 3688 : mword 12))
     = pa_add (pa_stk sp0 54) 24.
-  Proof.
+  Proof using .
     assert (Hm : (sign_extend' 64 (mword_of_int 3688 : mword 12) : mword 64)
                  = mword_of_int (-408)) by (apply bv_eq; vm_compute; reflexivity).
     rewrite Hm. unfold pa_add, pa_stk. rewrite avi_assoc. f_equal.
@@ -837,7 +837,7 @@ Section KexecDCommit.
        (add_vec (mword_of_int (Z.of_nat n) : mword 64)
                 (sign_extend' 64 (mword_of_int 0 : mword 12))) 31 0)
     = (mword_of_int (Z.of_nat n) : mword 64).
-  Proof.
+  Proof using .
     intro Hn.
     assert (E : (subrange_vec_dec
                    (add_vec (mword_of_int (Z.of_nat n) : mword 64)
@@ -866,7 +866,7 @@ Section KexecDCommit.
 
   Lemma kxd_name_fn_spec (bs : list (bv 8)) (i : nat) :
     (i < length bs)%nat -> bs !! i = Some (kxd_name_fn bs i).
-  Proof.
+  Proof using .
     intro Hi. unfold kxd_name_fn.
     destruct (bs !! i) as [x |] eqn:E; [reflexivity |].
     exfalso. apply lookup_ge_None in E. lia.
@@ -874,7 +874,7 @@ Section KexecDCommit.
 
   Lemma kxd_name_fn_len (n : nat) (h : nat -> bv 8) :
     length (h <$> seq 0 n) = n.
-  Proof. by rewrite length_fmap length_seq. Qed.
+  Proof using . by rewrite length_fmap length_seq. Qed.
 
   (* [ProofKexecC]'s two [kxc_sp] facts, local there and needed here to put
      the final [sp] back in range: it is at most the stack top (the
@@ -882,11 +882,11 @@ Section KexecDCommit.
      (the [bltu] at +0x290, carried in [kxc_stack_ok]). *)
   Lemma kxd_sp_S (top : Z) (len : nat -> nat) (i : nat) :
     kxc_sp top len (S i) = kxc_round16 (kxc_sp top len i - (Z.of_nat (len i) + 1)).
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma kxd_sp_le_top (top : Z) (len : nat -> nat) (i : nat) :
     kxc_sp top len i <= top.
-  Proof.
+  Proof using .
     induction i as [| i IH].
     - change (kxc_sp top len 0) with top. lia.
     - rewrite kxd_sp_S. unfold kxc_round16.
@@ -897,7 +897,7 @@ Section KexecDCommit.
 
   Lemma kxd_sp_final_le_top (top : Z) (len : nat -> nat) (i : nat) :
     kxc_sp_final top len i <= top.
-  Proof.
+  Proof using .
     unfold kxc_sp_final, kxc_round16.
     pose proof (kxd_sp_le_top top len i) as Hle.
     pose proof (Z.mod_pos_bound
@@ -990,7 +990,7 @@ Section KexecDCommit.
          eb eb ∅ dqb dqs fsc_bmapstart na alen plen pv dqpv pfun
          av dqa avf aslen dqas afun) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HQe HK Hcstr Hq Hnamax Hsz1ge Hceq Hstk HPtfp Hbelow Hcov Hal
            Hmsp Hmra Hms0 Hms1 Hms2
            Hmw5 Hmw6 Hmw7 Hmw8 Hmw9 Hmw10 Hmw11 Hmw12
@@ -1959,17 +1959,17 @@ Section KexecDMain.
   Lemma kxd_last_at0 (sp0 pv : mword 64) :
     ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 66) (DfracOwn 1) pv -∗
     ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 66) (DfracOwn 1) (pa_add pv 0).
-  Proof. rewrite pa_add_0. iIntros "H". iExact "H". Qed.
+  Proof using . rewrite pa_add_0. iIntros "H". iExact "H". Qed.
 
   (* [c.addi a5,a5,1] at +0x2b8 steps [path] to [path + 1] *)
   Lemma kxd_add_one (p : mword 64) :
     add_vec p (mword_of_int 1 : mword 64) = pa_add p 1.
-  Proof. unfold pa_add, add_vec_int. f_equal. Qed.
+  Proof using . unfold pa_add, add_vec_int. f_equal. Qed.
 
   (* the [lbu a4,0(a5)] at +0x2b2 reads the path's own byte 0 *)
   Lemma kxd_add_zero (p : mword 64) :
     add_vec p (sign_extend' 64 (mword_of_int 0 : mword 12)) = pa_add p 0.
-  Proof.
+  Proof using .
     unfold pa_add, add_vec_int. f_equal.
   Qed.
 
@@ -2032,7 +2032,7 @@ Section KexecDMain.
          eb eb ∅ dqb dqs fsc_bmapstart na alen plen pv dqpv pfun
          av dqa avf aslen dqas afun) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HQe HK Hcstr Hnamax Hsz1ge Havf_nz Hal Hmsp Hmra Hms0 Hms1 Hms2
            Hmw5 Hmw6 Hmw7 Hmw8 Hmw9 Hmw10 Hmw11 Hmw12.
 

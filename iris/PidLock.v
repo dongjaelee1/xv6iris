@@ -155,7 +155,7 @@ Section PidLock.
   Definition nextpid_res : iProp Σ := nextpid_res_at CtxIdDefs.cur_ctx.
 
   Global Instance nextpid_res_at_morph : TsoCtx.CtxMorph nextpid_res_at.
-  Proof. rewrite /nextpid_res_at /pid_lock_share_at. CtxMorphTac.ctx_morph_solve. Qed.
+  Proof using . rewrite /nextpid_res_at /pid_lock_share_at. CtxMorphTac.ctx_morph_solve. Qed.
 
   (* THE BOOT CARVE'S SHAPE, GATHERED, exactly as the parent cells' is
      ([WaitInv.parents_cells_gather]): the carve hands the 64 quarters out
@@ -166,7 +166,7 @@ Section PidLock.
     ([∗ list] i ∈ seq k n, pid_lock_share_at CtxIdDefs.cur_ctx (proc_addr i) v)
     -∗ [∗ list] j ↦ p ∈ replicate n v,
          pid_lock_share_at CtxIdDefs.cur_ctx (proc_addr (k + j)) p.
-  Proof.
+  Proof using .
     revert k. induction n as [|n IH]; intros k.
     - iIntros "_". done.
     - cbn [seq replicate]. rewrite !big_sepL_cons.
@@ -190,6 +190,6 @@ Section PidLock.
          pid_reg_auth R ∗
          (⌜Forall (fun q : mword 32 => bv_unsigned q <> 1) pids⌝
           ∨ SlotGen.nextpid_shot)).
-  Proof. rewrite /nextpid_res /nextpid_res_at /pid_lock_share. reflexivity. Qed.
+  Proof using . rewrite /nextpid_res /nextpid_res_at /pid_lock_share. reflexivity. Qed.
 
 End PidLock.

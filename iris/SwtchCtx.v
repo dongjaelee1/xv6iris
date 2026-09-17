@@ -117,21 +117,21 @@ Section SwtchCells.
     (∃ vs : list (mword 64), ⌜length vs = 14%nat⌝ ∗ ctx_cells pa vs)%I.
 
   Local Instance ctx_cells_at_timeless c off vs : Timeless (ctx_cells_at c off vs).
-  Proof.
+  Proof using .
     revert off; induction vs as [|v vs IH]; intros off; simpl.
     - apply _.
     - apply bi.sep_timeless; [ | apply IH ].
       rewrite /word_pointsto /mem_pointsto. apply _.
   Qed.
   Global Instance ctx_cells_timeless c vs : Timeless (ctx_cells c vs).
-  Proof. rewrite /ctx_cells. apply _. Qed.
+  Proof using . rewrite /ctx_cells. apply _. Qed.
 
   (* ... and so is the contents-existential form.  Needed as an INSTANCE
      rather than derived at the use site: [SchedCtx.proc_ctx_own_ctx] strips
      the ▷ a parked record always arrives under, and instance search does not
      unfold [own_ctx] on its own. *)
   Global Instance own_ctx_timeless pa : Timeless (own_ctx pa).
-  Proof. rewrite /own_ctx. apply _. Qed.
+  Proof using . rewrite /own_ctx. apply _. Qed.
 End SwtchCells.
 
 Section SwtchCtx.
@@ -267,11 +267,11 @@ Section SwtchCtx.
     end.
 
   Global Instance park_tok_at_timeless ξ A XIo : Timeless (park_tok_at ξ A XIo).
-  Proof. destruct A; rewrite /park_tok_at; [apply own_context_timeless | apply _]. Qed.
+  Proof using . destruct A; rewrite /park_tok_at; [apply own_context_timeless | apply _]. Qed.
   Global Instance park_tok_timeless A XIo : Timeless (park_tok A XIo).
-  Proof. rewrite /park_tok. apply _. Qed.
+  Proof using . rewrite /park_tok. apply _. Qed.
   Global Instance resume_tok_timeless A XIt : Timeless (resume_tok A XIt).
-  Proof. destruct A; rewrite /resume_tok; [apply own_context_timeless | apply _]. Qed.
+  Proof using . destruct A; rewrite /resume_tok; [apply own_context_timeless | apply _]. Qed.
 
   Definition valid_context_pre
       (P : CPU -d> ctx_adm -d> mword 64 -d> mword 64 -d>
@@ -335,7 +335,7 @@ Section SwtchCtx.
      The [back] case split comes FIRST: the recursive occurrence now sits in
      one arm of an [if], and nothing can see through that arm until the
      boolean is destructed. *)
-  Proof.
+  Proof using .
     solve_proper_prepare.
     repeat (f_contractive || f_equiv).
     all: try apply H.
@@ -353,7 +353,7 @@ Section SwtchCtx.
       (A : ctx_adm) (c p : mword 64) (XIp : CtxId) :
     valid_context P A c p XIp ⊣⊢
       valid_context_pre P (valid_context P) A c p XIp.
-  Proof. apply (fixpoint_unfold (valid_context_pre P) A c p XIp). Qed.
+  Proof using . apply (fixpoint_unfold (valid_context_pre P) A c p XIp). Qed.
 
 End SwtchCtx.
 
@@ -384,7 +384,7 @@ Section CtxCellsReindex.
 
   Lemma ctx_cells_at_morph (c : mword 64) (off : Z) (vs : list (mword 64)) :
     CtxMorph (λ ξ, ctx_cells_at (XI := ξ) c off vs).
-  Proof.
+  Proof using .
     revert off. induction vs as [|v vs IH] => off; iIntros (ξ ξ') "Hd Hc".
     - iModIntro. iFrame "Hd".
     - iDestruct "Hc" as "[Hv Hrest]".
@@ -398,23 +398,23 @@ Section CtxCellsReindex.
       (vs : list (mword 64)) :
     ctx_dom ξ ξ' -∗ ctx_cells_at (XI := ξ) c off vs ==∗
     ctx_dom ξ ξ' ∗ ctx_cells_at (XI := ξ') c off vs.
-  Proof. exact (ctx_cells_at_morph c off vs ξ ξ'). Qed.
+  Proof using . exact (ctx_cells_at_morph c off vs ξ ξ'). Qed.
 
   Lemma ctx_cells_reindex (ξ ξ' : CtxId) (c : mword 64)
       (vs : list (mword 64)) :
     ctx_dom ξ ξ' -∗ ctx_cells (XI := ξ) c vs ==∗
     ctx_dom ξ ξ' ∗ ctx_cells (XI := ξ') c vs.
-  Proof. exact (ctx_cells_at_reindex ξ ξ' c 0 vs). Qed.
+  Proof using . exact (ctx_cells_at_reindex ξ ξ' c 0 vs). Qed.
 
   (* main's instance faces of the two cell towers (the ProcDefs/SchedCtx
      morph piles consume them by name) *)
   Global Instance ctx_cells_morph_i (c : mword 64) (vs : list (mword 64)) :
     CtxMorph (λ ξ0 : CtxId, ctx_cells (XI := ξ0) c vs).
-  Proof. rewrite /ctx_cells. apply ctx_cells_at_morph. Qed.
+  Proof using . rewrite /ctx_cells. apply ctx_cells_at_morph. Qed.
 
   Global Instance own_ctx_morph (pa : mword 64) :
     CtxMorph (λ ξ0 : CtxId, own_ctx (XI := ξ0) pa).
-  Proof.
+  Proof using .
     iIntros (ξ ξ') "Hd H". iDestruct "H" as (vs) "[%Hl H]".
     iMod (ctx_cells_at_morph pa 0 vs ξ ξ' with "Hd H") as "[Hd H]".
     iModIntro. iFrame "Hd". iExists vs. by iFrame.
@@ -424,7 +424,7 @@ Section CtxCellsReindex.
      child context needs (A6.127 §6). *)
   Global Instance stack_own_morph (sp : Arch.pa) (n : nat) :
     CtxMorph (λ ξ, stack_own (KTR := KT1) (XI := ξ) sp n).
-  Proof. iIntros (ξ ξ') "Hd H". iApply (stack_own_reindex ξ ξ' sp n with "Hd H"). Qed.
+  Proof using . iIntros (ξ ξ') "Hd H". iApply (stack_own_reindex ξ ξ' sp n with "Hd H"). Qed.
 
 End CtxCellsReindex.
 

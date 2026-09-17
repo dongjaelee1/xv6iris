@@ -305,6 +305,7 @@ UkAbi.v
 UexecCond.v
 UCodeEcho.v
 UCodeInit.v
+UInitArgv.v
 UCodeCat.v
 UkCat.v
 UkCatPutc.v

@@ -120,7 +120,7 @@ Section Refund.
      the [∧] hands each of them. *)
   Lemma refund_mono (A A' R : iProp Σ) :
     (A -∗ A') -∗ (A ∧ R) -∗ (A' ∧ R).
-  Proof.
+  Proof using .
     iIntros "HW H". iSplit.
     - iDestruct "H" as "[H _]". iApply ("HW" with "H").
     - iDestruct "H" as "[_ H]". iExact "H".
@@ -130,7 +130,7 @@ Section Refund.
      of its own (the common case: a definitional weakening). *)
   Lemma refund_mono_ent (A A' R : iProp Σ) :
     (A ⊢ A') -> (A ∧ R) ⊢ (A' ∧ R).
-  Proof.
+  Proof using .
     intros HA. iIntros "H". iSplit.
     - iDestruct "H" as "[H _]". iApply (HA with "H").
     - iDestruct "H" as "[_ H]". iExact "H".
@@ -139,33 +139,33 @@ Section Refund.
   (* the elimination the fire lemmas open with, named so a proof reads as
      "the piece is spent" rather than as an anonymous projection *)
   Lemma refund_au (A R : iProp Σ) : (A ∧ R) ⊢ A.
-  Proof. iIntros "[$ _]". Qed.
+  Proof using . iIntros "[$ _]". Qed.
 
   Lemma refund_ref (A R : iProp Σ) : (A ∧ R) ⊢ R.
-  Proof. iIntros "[_ $]". Qed.
+  Proof using . iIntros "[_ $]". Qed.
 
   (* ...at [pf_at]: what a FIRE takes, and what a caller that did not get
      its fire eliminates the returned piece to *)
   Lemma pf_at_au {A : Type} (AU : A -> iProp Σ) (F : pfam Σ A) :
     pf_at AU F ⊢ AU F.(pf_recv).
-  Proof. rewrite /pf_at. iIntros "[$ _]". Qed.
+  Proof using . rewrite /pf_at. iIntros "[$ _]". Qed.
 
   Lemma pf_at_refund {A : Type} (AU : A -> iProp Σ) (F : pfam Σ A) :
     pf_at AU F ⊢ F.(pf_refund).
-  Proof. rewrite /pf_at. iIntros "[_ $]". Qed.
+  Proof using . rewrite /pf_at. iIntros "[_ $]". Qed.
 
   (* the intro a discharger uses: prove the AU and the refund from the
      same context, which is the ruling's own sentence *)
   Lemma pf_at_intro {A : Type} (AU : A -> iProp Σ) (F : pfam Σ A) :
     AU F.(pf_recv) ∧ F.(pf_refund) ⊢ pf_at AU F.
-  Proof. by rewrite /pf_at. Qed.
+  Proof using . by rewrite /pf_at. Qed.
 
   (* the discharger's shape at the TRIVIAL PAIR: prove the AU at the
      trivial receipt and the refund is [True].  Every [fsabs_*] and every
      [_unit] bundle goes through this, so no proof reduces the record. *)
   Lemma pf_at_triv {A : Type} (Φ : A) (AU : A -> iProp Σ) :
     AU Φ ⊢ pf_at AU (pfam_triv Φ).
-  Proof.
+  Proof using .
     rewrite /pf_at /pfam_triv /=. iIntros "H". iSplit; [iExact "H" | done].
   Qed.
 
@@ -174,7 +174,7 @@ Section Refund.
      ([FsAbsCreateFire.acre_commit_at_gen_ext] is the worked instance). *)
   Lemma pf_at_mono {A : Type} (AU AU' : A -> iProp Σ) (F : pfam Σ A) :
     (AU F.(pf_recv) -∗ AU' F.(pf_recv)) -∗ pf_at AU F -∗ pf_at AU' F.
-  Proof.
+  Proof using .
     rewrite /pf_at. iIntros "HW H". iApply (refund_mono with "HW H").
   Qed.
 
@@ -186,7 +186,7 @@ Section Refund.
       (F : pfam Σ A) (G : pfam Σ B) :
     F.(pf_refund) = G.(pf_refund) ->
     (AU F.(pf_recv) -∗ AU' G.(pf_recv)) -∗ pf_at AU F -∗ pf_at AU' G.
-  Proof.
+  Proof using .
     intros HR. rewrite /pf_at HR. iIntros "HW H".
     iApply (refund_mono with "HW H").
   Qed.

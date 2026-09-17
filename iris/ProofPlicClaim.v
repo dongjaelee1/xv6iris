@@ -122,7 +122,7 @@ Section ProofPlicClaim.
   (* =================================================================== *)
   Lemma wp_plic_claim_sconf (γd γd1 : uart_names) (γv : disk_names) (m0 : regfile) (n : nat) (p : mword 64)
     : wp_plic_claim_sconf_body γd γd1 γv m0 n p.
-  Proof.
+  Proof using .
     cbv beta delta [wp_plic_claim_sconf_body].
     intros ra_idx tp_idx a0_idx pcE ra0 ret_tgt Hhart Hn.
     (* [tp] is pinned to the hart: [rget _ tp_idx] is [cid_word] at EVERY

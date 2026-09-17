@@ -291,7 +291,7 @@ Section WpTimerinitThm.
       own_context cur_ctx -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn2 Hpmp Htor_ra Htor_s0 Hsp Hra Hs0.
     iIntros "Hmm Hpmpc Hpaddr Hpc Hfile Hmenv Hmcen Hstc Hstk Hctx #Htext Hcont".
     iDestruct (stack_own_phys_split_1 sp0 2 n ltac:(lia) with "Hstk") as "[Htop Hdeep]".

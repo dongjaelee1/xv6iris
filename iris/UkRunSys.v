@@ -295,7 +295,7 @@ Section UkRunSys.
     uheap γt γd γs M pmv sz -∗ ubytesq γd dq a nb f -∗
     ⌜ forall j : nat, (j < nb)%nat ->
         M !! (a + Z.of_nat j)%Z = Some (f j) /\ 0 <= a + Z.of_nat j < 2 ^ 38 ⌝.
-  Proof.
+  Proof using .
     iInduction nb as [| kb IH] "IH"; iIntros "Hheap Hbs".
     { iPureIntro. intros j Hj. exfalso. lia. }
     iEval (rewrite /ubytesq seq_S big_sepL_app /=) in "Hbs".
@@ -317,7 +317,7 @@ Section UkRunSys.
       (f : nat -> bv 8) :
     uheap γt γd γs M pmv sz -∗ ubytesq γd dq a nb f -∗
     ⌜ forall j : nat, (j < nb)%nat -> uw_addr pmv (a + Z.of_nat j)%Z ⌝.
-  Proof.
+  Proof using .
     iInduction nb as [| kb IH] "IH"; iIntros "Hheap Hbs".
     { iPureIntro. intros j Hj. exfalso. lia. }
     iEval (rewrite /ubytesq seq_S big_sepL_app /=) in "Hbs".
@@ -344,7 +344,7 @@ Section UkRunSys.
     ⌜ forall j : nat, (j < nb)%nat ->
         M !! (a + Z.of_nat j)%Z = Some (f j)
         /\ ux_addr pmv (a + Z.of_nat j)%Z /\ 0 <= a + Z.of_nat j < 2 ^ 38 ⌝.
-  Proof.
+  Proof using .
     iInduction nb as [| kb IH] "IH"; iIntros "Hheap Hbs".
     { iPureIntro. intros j Hj. exfalso. lia. }
     iEval (rewrite seq_S big_sepL_app /=) in "Hbs".
@@ -392,7 +392,7 @@ Section UkRunSys.
     lazy_free (ud_um P) sz ->
     uheap γt γd γs M pmv sz -∗ ubytesq γd dq (uint dst) k f -∗
     ⌜ UserPtTree.uva_wmapped P (uint (add_vec_int dst (Z.of_nat d))) ⌝.
-  Proof.
+  Proof using .
     intros Hdk Hwf Hpm Hlf. iIntros "Hheap Hbs".
     iDestruct (uheap_ubytes_run γt γd γs M pmv sz dq (uint dst) k f
                  with "Hheap Hbs") as %Hbnd.
@@ -420,7 +420,7 @@ Section UkRunSys.
     ubytes γd a nb f ⊣⊢
     ubytes γd a kb f ∗
     ubytes γd (a + Z.of_nat kb) (nb - kb) (fun j => f (kb + j)%nat).
-  Proof.
+  Proof using .
     intros Hk. replace nb with (kb + (nb - kb))%nat at 1 by lia.
     apply ubytes_app.
   Qed.
@@ -432,7 +432,7 @@ Section UkRunSys.
   Lemma ubytes_ext (γd : gname) (a : Z) (nb : nat) (f g : nat -> bv 8) :
     (forall j : nat, (j < nb)%nat -> f j = g j) ->
     ubytes γd a nb f -∗ ubytes γd a nb g.
-  Proof.
+  Proof using .
     intros He. rewrite /ubytes /ubytesq. iApply big_sepL_mono.
     intros i y Hy. apply lookup_seq in Hy as [-> Hi].
     rewrite (He (0 + i)%nat ltac:(lia)). done.
@@ -462,7 +462,7 @@ Section UkRunSys.
     usys_fd_ok n tf r fdv fdv' ->
     ufd_auth γfd fdv -∗ ustd γfd l ==∗
     ufd_auth γfd fdv' ∗ ∃ l' : list fdstate, ustd γfd l'.
-  Proof.
+  Proof using .
     intros Hnc Hrow. iIntros "Hufd Hstd". unfold usys_fd_ok in Hrow.
     destruct (decide (n = USYS_close)) as [Hc | _]; [ contradiction (Hnc Hc) | ].
     destruct (decide (n = USYS_dup)) as [_ | _].
@@ -512,7 +512,7 @@ Section UkRunSys.
     n <> USYS_close ->
     usys_fd_ok n tf r fdv fdv' ->
     ufd_state γfd fdv ==∗ ufd_state γfd fdv'.
-  Proof.
+  Proof using .
     intros Hnc Hrow. rewrite /ufd_state /ustd_any.
     iIntros "[Ha Hl]". iDestruct "Hl" as (l) "Hl".
     iMod (ufd_auth_move γfd n tf r fdv fdv' l Hnc Hrow with "Ha Hl") as "[$ $]".
@@ -554,7 +554,7 @@ Section UkRunSys.
        urun N h' (<[Regidx (mword_of_int 10) := r]> m) (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hexit Hfork Hexec Hsbrk H3 H4 H5 H8 Hcl Hdp Hop Hcd Hal4.
     iIntros "#Hi Hrun Hsb Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -670,7 +670,7 @@ Section UkRunSys.
   (* ------------------------------------------------------------------- *)
   Local Lemma usys_cwd_ok_chdir_fwd (r : mword 64) (c c' : Z) :
     usys_cwd_ok USYS_chdir r c c' -> uint r <> 0 -> c' = c.
-  Proof.
+  Proof using .
     unfold usys_cwd_ok.
     destruct (decide (USYS_chdir = USYS_chdir)) as [_ | Hne];
       [ exact (fun H => H) | exfalso; exact (Hne eq_refl) ].
@@ -691,7 +691,7 @@ Section UkRunSys.
          (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hal4.
     iIntros "#Hi Hrun Hsb Hcwd Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -795,7 +795,7 @@ Section UkRunSys.
          (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hal4. iIntros "#Hi Hrun Hsb Hcwd Hcont".
     iDestruct "Hcwd" as (c) "Hcwd".
     iApply (wp_uk_ecall_chdir N h m pc avail c Hn Hal4 with "Hi Hrun Hsb Hcwd").
@@ -853,7 +853,7 @@ Section UkRunSys.
          (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hal4.
     iIntros "#Hi Hrun Hsb Hstd Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -1017,7 +1017,7 @@ Section UkRunSys.
          (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Harg Hstne Hal4.
     iIntros "#Hi Hrun Hsb Hstd Hh0 Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -1184,7 +1184,7 @@ Section UkRunSys.
          (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hal4.
     iIntros "#Hi Hrun Hsb Hstd Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -1349,7 +1349,7 @@ Section UkRunSys.
          (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Harg Hlt Hrow Hal4.
     iIntros "#Hi Hrun Hsb Hstd Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -1442,7 +1442,7 @@ Section UkRunSys.
     (fd < NOFILE)%nat ->
     fdv !! fd = Some st ->
     fd_st_of_key v0 fdv = st.
-  Proof.
+  Proof using .
     intros H0 Hlt Hlk. rewrite /fd_st_of_key H0.
     destruct (decide (0 <= Z.of_nat fd < Z.of_nat NOFILE)) as [_ | Hc];
       [ | exfalso; apply Hc; lia ].
@@ -1462,7 +1462,7 @@ Section UkRunSys.
     fdv !! fd = Some st -> st <> FdClosed ->
     usys_fd_ok USYS_close (tf_of m pc) r fdv fdv' ->
     uint r = 0 /\ fdv' = <[fd := FdClosed]> fdv.
-  Proof.
+  Proof using .
     intros Harg Hi Hne Hrow.
     assert (Haz : usys_argfd (tf_of m pc) = Z.of_nat fd)
       by (unfold usys_argfd; cbn [tf_of]; exact Harg).
@@ -1520,7 +1520,7 @@ Section UkRunSys.
          (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Harg Hal4.
     iIntros "#Hi Hrun Hsb Hh Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -1639,7 +1639,7 @@ Section UkRunSys.
          (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Harg Hs Hkl Hne Hal4.
     iIntros "#Hi Hrun Hsb Hstd Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -1769,7 +1769,7 @@ Section UkRunSys.
          (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hal4.
     iIntros "#Hi Hrun Hsb Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -1909,7 +1909,7 @@ Section UkRunSys.
          (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hal4.
     iIntros "#Hi Hrun Hcwd Hsb Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -2053,7 +2053,7 @@ Section UkRunSys.
        urun N h' (<[Regidx (mword_of_int 10) := r]> m) (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hal4. iIntros "#Hi Hrun Hsb Hcont".
     iApply (wp_uk_ecall_quiet N h m pc USYS_kill avail Hn
               ltac:(unfold USYS_kill, USYS_exit; lia)
@@ -2132,7 +2132,7 @@ Section UkRunSys.
        uch (ukn_ch N) Sc' -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hz Hal4.
     iIntros "#Hi Hrun Hsb Hch Hrd Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -2276,7 +2276,7 @@ Section UkRunSys.
        uch (ukn_ch N) Sc' -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hz Hal4. iIntros "#Hi Hrun Hsb Hch Hcont".
     iApply (wp_uk_ecall_wait_null_gen N h m pc avail Sc (fun _ => emp)%I
               Hn Hz Hal4 with "Hi Hrun Hsb Hch [] [Hcont]").
@@ -2314,7 +2314,7 @@ Section UkRunSys.
        uch (ukn_ch N) Sc' -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hz Hal4. iIntros "#Hi Hrun Hsb Hch Hpid Hcont".
     iApply (wp_uk_ecall_wait_null_gen N h m pc avail Sc
               (fun pidv => ⌜bv_unsigned pidv = p⌝ ∗
@@ -2347,7 +2347,7 @@ Section UkRunSys.
        uch (ukn_ch N) Sc' -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hz Hal4. iIntros "#Hi Hrun Hsb Hch Hcont".
     iApply (wp_uk_ecall_wait_null_live N h m pc avail Sc Hn Hz Hal4
               with "Hi Hrun Hsb Hch").
@@ -2397,7 +2397,7 @@ Section UkRunSys.
   Lemma uwait_status_ans (r : mword 64) (cs cs' : gset gname)
       (pidv : mword 32) (g : nat -> bv 8) :
     uwait_status r cs cs' pidv g -∗ uwait_ans_pid r cs cs' pidv.
-  Proof.
+  Proof using .
     iIntros "(%gn & %b & %rv & %xw & %Hr & _ & Ha)".
     iExists gn, b, rv, (xstate_val xw).
     iSplitR; [ iPureIntro; exact Hr | iExact "Ha" ].
@@ -2419,7 +2419,7 @@ Section UkRunSys.
        γ' ∈ cs /\ (1 <= bv_unsigned rv <= PIDMAX)%Z /\
        (forall j : nat, (j < 4)%nat -> g j = nth_byte xw j)⌝ ∗
       ChildTok.exit_tok γ' rv (xstate_val xw) ∗ ChildTok.gen_uniq cs rv γ'.
-  Proof.
+  Proof using .
     intros Hne Hm1.
     iIntros "(%gn & %b & %rv & %xw & %Hr & %Hby & Ha)".
     iDestruct "Ha" as "[[%Hf _] | (%γ' & %Hrng & %Hoci & Hesc & Huniq)]".
@@ -2470,7 +2470,7 @@ Section UkRunSys.
        ubytes (ukn_d N) (uint dst) k g -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hdst Hnz Hk4 Hal4.
     iIntros "#Hi Hrun Hsb Hch Hbuf Hpid Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -2681,7 +2681,7 @@ Section UkRunSys.
        ubytes (ukn_d N) (uint dst) k g -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hwin Hcapk Hcl Hdp Hop Hpp Hwt Hal4.
     iIntros "#Hi Hrun Hsb Hbuf Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -2834,7 +2834,7 @@ Section UkRunSys.
     fdv' = <[b2 := FdOpen false true (FdPipe gp2)]>
              (<[a2 := FdOpen true false (FdPipe gp2)]> fdv) ->
     gp2 = gp.
-  Proof.
+  Proof using .
     intros Hca Hcb -> Hca2 Hcb2 Heq.
     (* the two read ends are the same slot: [fd_lowest_closed] is a function *)
     rewrite (fd_least_closed_unique fdv a2 a Hca2 Hca) in Hcb2, Heq.
@@ -2956,7 +2956,7 @@ Section UkRunSys.
        ubytes (ukn_d N) (uint (m !!! Regidx (mword_of_int 10))) 8 g -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hal4.
     set (dst := m !!! Regidx (mword_of_int 10)).
     iIntros "#Hi Hrun Hsb #Hktnt Hstd Hbuf Hcont".
@@ -3244,7 +3244,7 @@ Section UkRunSys.
        ubytes (ukn_d N) (uint (m !!! Regidx (mword_of_int 11))) k g -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hcnt Hk Hal4. iIntros "#Hi Hrun Hsb Hbuf Hcont".
     assert (Hw : usyswin m USYS_read
                  = Some (m !!! Regidx (mword_of_int 11), Z.to_nat cnt)).
@@ -3284,7 +3284,7 @@ Section UkRunSys.
       (pc : mword 64) (avail : nat) (a : Z) (nb : nat) (f : nat -> bv 8) :
     urun N h m pc avail -∗ ubytes (ukn_d N) a nb f -∗
     ⌜ forall j : nat, (j < nb)%nat -> 0 <= a + Z.of_nat j < 2 ^ 38 ⌝.
-  Proof.
+  Proof using .
     iIntros "Hrun Hbs".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv)
       "(_ & _ & _ & _ & Hheap & _)".
@@ -3328,7 +3328,7 @@ Section UkRunSys.
          (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Ha1 Hcnt Hal4.
     iIntros "#Hi Hbs Hrun Hsb Hcont".
     assert (Hk : (Z.to_nat (Z.of_nat cnt) <= cnt)%nat)
@@ -3443,7 +3443,7 @@ Section UkRunSys.
       (n : Z) (fdep : sfam) (l : list fdstate) :
     udepwf_std N m pc n fdep l
     ⊣⊢ udepwf_K N m pc n fdep (fun fdv => take NSTD fdv = l).
-  Proof. rewrite /udepwf_std /udepwf_K. iSplit; iIntros "H"; iExact "H". Qed.
+  Proof using . rewrite /udepwf_std /udepwf_K. iSplit; iIntros "H"; iExact "H". Qed.
 
   Lemma wp_uk_ecall_read_at (N : uk_names Σ) (h : CpuId)
       (m : regfile) (pc : mword 64) (cnt : Z) (k : nat) (f : nat -> bv 8)
@@ -3544,7 +3544,7 @@ Section UkRunSys.
        ubytes (ukn_d N) (uint (m !!! Regidx (mword_of_int 11))) k g -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hcnt Hcapk Hal4 Hag.
     iIntros "#Hi Hrun Hsb Hstd Hbuf Hcont".
     set (dst := m !!! Regidx (mword_of_int 11) : mword 64).
@@ -3766,7 +3766,7 @@ Section UkRunSys.
        ubytes (ukn_d N) (uint (m !!! Regidx (mword_of_int 11))) k g -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hcnt Hcapk Hal4.
     iIntros "#Hi Hrun Hsb Hstd Hbuf Hcont".
     iApply (wp_uk_ecall_read_at N h m pc cnt k f avail fdep
@@ -3880,7 +3880,7 @@ Section UkRunSys.
          (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hal4.
     iIntros "#Hi Hrun Hcwd Hsb Hstd Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -4041,7 +4041,7 @@ Section UkRunSys.
          (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hexit Hfork Hexec Hsbrk H3 H4 H5 H8 Hcl Hdp Hop Hcd Hal4.
     iIntros "#Hi Hrun Hcwd Hsb Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -4131,7 +4131,7 @@ Section UkRunSys.
     uheap γt γd γs M pmv sz -∗ ubytesq γd dq (uint ua) nb f -∗
     ⌜ forall j : nat, (j < nb)%nat ->
         M !! uint (add_vec_int ua (Z.of_nat j)) = Some (f j) ⌝.
-  Proof.
+  Proof using .
     iIntros "Hheap Hbs".
     iDestruct (uheap_ubytes_run γt γd γs M pmv sz dq (uint ua) nb f
                  with "Hheap Hbs") as %Hrun.
@@ -4187,7 +4187,7 @@ Section UkRunSys.
       (ua : mword 64) (nb : nat) (f : nat -> bv 8) :
     uheap γt γd γs M pmv sz -∗ ubytesq γd dq (uint ua) nb f -∗
     ⌜usrc_ok M pmv sz ua nb f⌝.
-  Proof.
+  Proof using .
     iIntros "Hheap Hbs".
     iDestruct (uheap_ubytes_run γt γd γs M pmv sz dq (uint ua) nb f
                  with "Hheap Hbs") as %Hbnd.
@@ -4220,7 +4220,7 @@ Section UkRunSys.
     uheap γt γd γs M pmv sz -∗
     ([∗ list] j ∈ seq 0 nb, utext γt (uint ua + Z.of_nat j)%Z (f j)) -∗
     ⌜usrc_ok M pmv sz ua nb f⌝.
-  Proof.
+  Proof using .
     iIntros "Hheap Hbs".
     iDestruct (uheap_text_bytes γt γd γs M pmv sz (uint ua) nb f
                  with "Hheap Hbs") as %Hbnd.
@@ -4318,7 +4318,7 @@ Section UkRunSys.
          (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hal4 Hag Hsrc.
     iIntros "#Hi Hrun Hsb Hstd Hbuf Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -4521,7 +4521,7 @@ Section UkRunSys.
      ([UserFd.ustd_agree], [usrc_ok_ubytesq]).  The image row the one walk
      hands out is DROPPED here, because that is what the former statement
      said; the file arm is where it is spent. *)
-  Proof.
+  Proof using .
     intros Hn Hal4.
     iIntros "#Hi Hrun Hsb Hstd Hbuf Hcont".
     iApply (wp_uk_ecall_write_at N h m pc avail fdep
@@ -4570,7 +4570,7 @@ Section UkRunSys.
          (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hal4. iIntros "#Hi Hrun Hsb Hstd Hcont".
     iApply (wp_uk_ecall_write_chain_buf N h m pc avail fdep l (DfracOwn 1)
               0%nat (fun _ => bv_0 8) Hn Hal4 with "Hi Hrun Hsb Hstd []").
@@ -4648,7 +4648,7 @@ Section UkRunSys.
   (* ...AND IT IS THE ONE WALK AT THE TEXT HALF (lane RD-6), at its exact
      former statement: the only thing that ever differed from the buffer
      leaf is which answer to [usrc_ok] the caller's run gives. *)
-  Proof.
+  Proof using .
     intros Hn Hal4.
     iIntros "#Hi Hrun Hsb Hstd #Hbs Hcont".
     iApply (wp_uk_ecall_write_at N h m pc avail fdep
@@ -4740,7 +4740,7 @@ Section UkRunSys.
          (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hal4.
     iIntros "#Hi #Himg Hrun Hcwd Hsb Hstd Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -4892,7 +4892,7 @@ Section UkRunSys.
          (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hexit Hfork Hexec Hsbrk H3 H4 H5 H8 Hcl Hdp Hop Hcd Hal4.
     iIntros "#Hi #Himg Hrun Hcwd Hsb Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -4972,7 +4972,7 @@ Section UkRunSys.
      arguments turn on. *)
   Local Lemma upage_floor_ge (a c : Z) :
     0 <= c -> c mod 4096 = 0 -> c <= a -> c <= (a / 4096) * 4096.
-  Proof.
+  Proof using .
     intros Hc0 Hcm Hle.
     assert (Hk : c = 4096 * (c / 4096))
       by (apply (proj2 (Z.div_exact c 4096 ltac:(discriminate))); exact Hcm).
@@ -4986,7 +4986,7 @@ Section UkRunSys.
   Local Lemma usvpn_floor (a : Z) :
     0 <= a < 2 ^ 38 ->
     bv_unsigned (svpn_of (mword_of_int a : mword 64)) * 4096 = (a / 4096) * 4096.
-  Proof.
+  Proof using .
     intros Ha.
     rewrite (ProcPtOwn.svpn_of_unsigned_gen (mword_of_int a : mword 64)).
     rewrite <- uint_unsigned. rewrite (uint_moi a ltac:(unfold Z64; lia)).
@@ -5053,7 +5053,7 @@ Section UkRunSys.
          (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Harg Heag Hn0 Hsz0 Hszok' Hal Hal4.
     (* the new break is inside the user region, which is what every bound
        below reads off [usz_ok] *)
@@ -5325,7 +5325,7 @@ Section UkRunSys.
        at all. *)
     urun N h m pc avail -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn. iIntros "#Hi Hpay Hrun".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iMod (udep_exit_run N m pc M pm sz fdv cw gn cs pidv

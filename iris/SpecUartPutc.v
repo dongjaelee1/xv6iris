@@ -180,7 +180,7 @@ Section UartBaseWord.
     ((pa_of_z (uart_f_base i)) ↦₈[KT0]□ (Z_to_bv 64 (uart_base i)))%I.
 
   Global Instance uart_base_word_persistent i : Persistent (uart_base_word i).
-  Proof. rewrite /uart_base_word /word_pointsto. apply _. Qed.
+  Proof using . rewrite /uart_base_word /word_pointsto. apply _. Qed.
 
   (* WHERE IT COMES FROM, AND THE ONE GAP THIS LANE CANNOT CLOSE.
      [UartsFields.uart_base_pinned i] is the same fact at the RAW PHYSICAL
@@ -220,27 +220,27 @@ Section UartBaseWord.
     ([∗ list] i ∈ enum uart_id, uart_base_word i ∗ uart_rx_word i)%I.
 
   Global Instance uarts_words_persistent : Persistent uarts_words.
-  Proof. rewrite /uarts_words. apply _. Qed.
+  Proof using . rewrite /uarts_words. apply _. Qed.
 
   (* focus one port out of the four, the only way a driver reaches one *)
   Lemma uarts_words_at (i : uart_id) :
     uarts_words -∗ uart_base_word i ∗ uart_rx_word i.
-  Proof.
+  Proof using .
     rewrite /uarts_words /enum /uart_id_finite /=.
     iIntros "#(H0 & H1 & _)". by destruct i.
   Qed.
 
   Lemma uarts_words_base (i : uart_id) : uarts_words -∗ uart_base_word i.
-  Proof. iIntros "#H". by iDestruct (uarts_words_at i with "H") as "[$ _]". Qed.
+  Proof using . iIntros "#H". by iDestruct (uarts_words_at i with "H") as "[$ _]". Qed.
 
   Lemma uarts_words_rx (i : uart_id) : uarts_words -∗ uart_rx_word i.
-  Proof. iIntros "#H". by iDestruct (uarts_words_at i with "H") as "[_ $]". Qed.
+  Proof using . iIntros "#H". by iDestruct (uarts_words_at i with "H") as "[_ $]". Qed.
 
   (* ...and the assembly, which only the boot chain runs *)
   Lemma uarts_words_intro :
     uart_base_word Uart0 -∗ uart_rx_word Uart0 -∗
     uart_base_word Uart1 -∗ uart_rx_word Uart1 -∗ uarts_words.
-  Proof.
+  Proof using .
     iIntros "#Hb0 #Hr0 #Hb1 #Hr1".
     rewrite /uarts_words /enum /uart_id_finite /=.
     iFrame "Hb0 Hr0 Hb1 Hr1".

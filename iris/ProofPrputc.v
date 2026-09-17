@@ -381,7 +381,7 @@ Section PrputcSealed.
       ⌜ callee_saved m0 mf /\ mf !!! Regidx ra_idx = m0 !!! Regidx ra_idx ⌝ -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Ha0 Hn Hbelow.
     iIntros "Hcg Hcpu #Htext Hpc #Huinv #Hbase #Htxl Hcont".
     (* THE KERNEL'S PORT OWES NOTHING (lane OUT-FUPD, the owner's ruling

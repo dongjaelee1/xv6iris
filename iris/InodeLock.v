@@ -160,7 +160,7 @@ Section InodeLockResMorph.
      does not import TsoCtx. *)
   Global Instance inode_raw_morph (ip : mword 64) :
     TsoCtx.CtxMorph (λ ξ : CtxIdDefs.CtxId, inode_raw (XI := ξ) ip).
-  Proof.
+  Proof using .
     iIntros (ξ ξ') "Hd [[%d Hm] (%l & %Hl & Ha)]". rewrite /inode_raw.
     iMod (inode_meta_morph ip d ξ ξ' with "Hd Hm") as "[Hd Hm]".
     iMod (inode_addrs_morph ip l ξ ξ' with "Hd Ha") as "[Hd Ha]".

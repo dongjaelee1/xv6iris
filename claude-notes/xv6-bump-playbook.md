@@ -70,6 +70,27 @@ reassuring you.
   to a term but is bound to the identifier `kd_…`"*. **A Code file the manifest
   does not list is the tell.**
 
+### And the user tier: `gen_ucode.py`
+
+The user programs' `iris/UCode<Prog>.v` are the same generated layer over
+`user-rocq/` (`make gen-ucode` / `make check-ucode`, records in
+`tools/ucode_manifest.json` and `tools/ucode_<prog>.txt`; see
+[`design/code-organization.md`](design/code-organization.md)). What is
+different on a bump:
+
+- **It needs a BUILT `iris/`**, because it reads every AST off the model
+  rather than computing it. So `check-ucode` cannot run at step 0 the way
+  `check-decode` does — run it once the tree is green, and treat its diff as
+  the user-image half of the same signal.
+- **Whether a bump touches it at all is a separate question from the kernel.**
+  A pin that relays out the whole kernel routinely leaves the user ELFs and
+  `fs.img` byte-identical, so an empty diff is the usual outcome here — a
+  result, not a reason to skip the check.
+- **A diff on an UNCHANGED image means somebody hand edited a generated
+  catalog**, and the edit is about to be lost. The fix is to move the content
+  to a hand-written file beside the catalog (`iris/UInitArgv.v` is the worked
+  example) or into the generator, never to re-apply it.
+
 ## 2. Classify before you fix
 
 This decides whether the bump costs an hour or a week.
@@ -696,15 +717,14 @@ output means the file can be worked on concurrently with any other.
 
 ## 7. Finishing
 
-0. **`make check-decode` BEFORE the validating build, never after.** It is
-   `gen-code` plus `git diff --exit-code`, and both halves surprise you at the
-   end. The diff is against HEAD, so while the bump is uncommitted it
-   necessarily fails and its output is just the bump's own decode changes.
-   Worse, the `gen-code` half rewrites every generated file unconditionally, so
-   running it after a green build touches every mtime and forces a from-scratch
-   recompile. Confirm the rewrite is a content no-op with a hash sweep instead:
-   `cd iris && md5sum KernelDecode*.v KernelConsts.v Code*.v | md5sum`, before
-   and after.
+0. **`make check-decode` BEFORE the validating build.** Its `git diff
+   --exit-code` half is against HEAD, so while the bump is uncommitted it
+   necessarily fails and its output is just the bump's own decode changes —
+   which is the signal you want early, not at the end. Both generators now
+   leave an unchanged file alone, so running one after a green build no longer
+   forces a from-scratch recompile. **`make check-ucode` is the opposite**: it
+   reads every AST off the model, so it needs the tree already built. Run it
+   after step 1.
 1. `make -k` clean.
 2. **`make audit-only`** — the only check that sees through every functor and
    seal. Diff against the baseline in `durable-notes.md` textually, not by

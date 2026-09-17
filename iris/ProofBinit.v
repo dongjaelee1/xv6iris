@@ -90,12 +90,12 @@ Section ProofBinit.
   Definition hbase : mword 64 := mword_of_int (KernelSyms.bcache + 32768).
 
   Lemma hbase_prev : add_vec hbase (sign_extend' 64 (mword_of_int 688 : mword 12)) = bprev bhead.
-  Proof.
+  Proof using .
     unfold hbase, bprev, bhead, bnode, acur, buf_base, buf_stride, NBUF, KernelSyms.bcache.
     apply bv_eq; vm_compute; reflexivity.
   Qed.
   Lemma hbase_next : add_vec hbase (sign_extend' 64 (mword_of_int 696 : mword 12)) = bnext bhead.
-  Proof.
+  Proof using .
     unfold hbase, bnext, bhead, bnode, acur, buf_base, buf_stride, NBUF, KernelSyms.bcache.
     apply bv_eq; vm_compute; reflexivity.
   Qed.
@@ -131,7 +131,7 @@ Section ProofBinit.
       pc_is ret_tgt -∗ ⌜ callee_saved m mr ⌝ -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros sp0 spr ret_tgt HK6 HMesp HMecs.
     assert (Hspr6 : spr = pa_stk sp0 6).
     { unfold spr, pa_stk, add_vec_int. f_equal; try (apply bv_eq; vm_compute; reflexivity). }
@@ -335,7 +335,7 @@ Section ProofBinit.
       (m : regfile) (K : nat)
       (vlock : mword 32) (vname vcpu : mword 64) (b : bool) (pcur : mword 64)
     : wp_binit_sconf_body m K vlock vname vcpu b pcur.
-  Proof.
+  Proof using .
     cbv beta delta [wp_binit_sconf_body].
     intros pcE ret_tgt lk c_name c_cpu HK.
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).

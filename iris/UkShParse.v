@@ -12,9 +12,9 @@
 (*                                                                        *)
 (* 564 instructions in eleven functions.                                   *)
 (*                                                                        *)
-(* ITS OWN CATALOG, FOR A MEASURED REASON.  [UCodeShP.v] is a THIRD        *)
-(* catalog over the same dump as [UCodeSh.v] (the first-generation         *)
-(* [uinstr] form) and [UCodeShK.v] (stages 1-2 on urun).  Stage 1          *)
+(* ITS OWN CATALOG, FOR A MEASURED REASON.  [UCodeShP.v] is one of three   *)
+(* catalogs over the same dump, beside [UCodeShK.v] (stages 1-2 and 5)     *)
+(* and [UCodeShM.v] (stage 3, the allocator).  Stage 1                     *)
 (* re-measured the catalog's compile cost serially and found it LINEAR in  *)
 (* instructions -- ~22 s fixed plus ~1.9 s each, with no superlinear term  *)
 (* to remove -- so the parser's 564 instructions are a file of their own   *)
@@ -76,10 +76,10 @@
 (* FUNCTION ([nat -> bv 8], which is what [UserHeap.ubytes] and            *)
 (* [UserHeap.ustr] are indexed by) rather than over a [list (bv 8)].  They *)
 (* are re-stated and not required for the reason UkSh.v re-stated          *)
-(* [USpecSh.SH_BUF] as [sh_buf]: requiring USpecShParse.v drags UCodeSh.v  *)
-(* (10 148 lines), UmodeIo and Xv6G -- the whole first-generation engine -- *)
-(* into a urun-tier file.  Stage 6 reconciles the two spellings; R10 keeps *)
-(* the old statements where they are.                                     *)
+(* [USpecSh.SH_BUF] as [sh_buf]: requiring the first-generation engine's  *)
+(* files would have dragged its whole cone into a urun-tier file.  Those   *)
+(* files are since retired; the two spellings are not yet reconciled, and  *)
+(* R10 keeps the old statements where they are.                           *)
 (*                                                                        *)
 (* (2) THE TREE PREDICATE, the deliverable interface for stages 5-6:       *)
 (* [ushp_tree] -- a well-formed cmd tree for this token list sits at this *)
@@ -850,31 +850,31 @@ Section UkShParse.
   (* them costs nothing but one extra ~22 s prelude.                        *)
   (* ===================================================================== *)
   Lemma ushp_code_shk (g : gname) : shp_code g -∗ shk_code g.
-  Proof. rewrite /shp_code /shk_code. iIntros "#H". iExact "H". Qed.
+  Proof using . rewrite /shp_code /shk_code. iIntros "#H". iExact "H". Qed.
 
   (* ---- the symbol pins this file uses, one name each ------------------ *)
   Lemma shpp_strchr : ShSyms.strchr = 0xa82.
-  Proof. destruct shp_syms_pins as (_&_&_&_&_&_&_&_&_&_&H). exact H. Qed.
+  Proof using . destruct shp_syms_pins as (_&_&_&_&_&_&_&_&_&_&H). exact H. Qed.
   Lemma shpp_strlen : ShSyms.strlen = 0xa30.
-  Proof. destruct shp_syms_pins as (_&_&_&_&_&_&_&_&_&H&_). exact H. Qed.
+  Proof using . destruct shp_syms_pins as (_&_&_&_&_&_&_&_&_&H&_). exact H. Qed.
   Lemma shpp_execcmd : ShSyms.execcmd = 0x1d2.
-  Proof. destruct shp_syms_pins as (_&_&_&_&_&_&_&_&H&_&_). exact H. Qed.
+  Proof using . destruct shp_syms_pins as (_&_&_&_&_&_&_&_&H&_&_). exact H. Qed.
   Lemma shpp_gettoken : ShSyms.gettoken = 0x310.
-  Proof. destruct shp_syms_pins as (_&_&_&_&_&_&_&H&_&_&_). exact H. Qed.
+  Proof using . destruct shp_syms_pins as (_&_&_&_&_&_&_&H&_&_&_). exact H. Qed.
   Lemma shpp_peek : ShSyms.peek = 0x448.
-  Proof. destruct shp_syms_pins as (_&_&_&_&_&_&H&_&_&_&_). exact H. Qed.
+  Proof using . destruct shp_syms_pins as (_&_&_&_&_&_&H&_&_&_&_). exact H. Qed.
   Lemma shpp_nulterminate : ShSyms.nulterminate = 0x7ee.
-  Proof. destruct shp_syms_pins as (_&_&_&_&_&H&_&_&_&_&_). exact H. Qed.
+  Proof using . destruct shp_syms_pins as (_&_&_&_&_&H&_&_&_&_&_). exact H. Qed.
   Lemma shpp_parseredirs : ShSyms.parseredirs = 0x4ac.
-  Proof. destruct shp_syms_pins as (_&_&_&_&H&_&_&_&_&_&_). exact H. Qed.
+  Proof using . destruct shp_syms_pins as (_&_&_&_&H&_&_&_&_&_&_). exact H. Qed.
   Lemma shpp_parseexec : ShSyms.parseexec = 0x590.
-  Proof. destruct shp_syms_pins as (_&_&_&H&_&_&_&_&_&_&_). exact H. Qed.
+  Proof using . destruct shp_syms_pins as (_&_&_&H&_&_&_&_&_&_&_). exact H. Qed.
   Lemma shpp_parsepipe : ShSyms.parsepipe = 0x682.
-  Proof. destruct shp_syms_pins as (_&_&H&_&_&_&_&_&_&_&_). exact H. Qed.
+  Proof using . destruct shp_syms_pins as (_&_&H&_&_&_&_&_&_&_&_). exact H. Qed.
   Lemma shpp_parseline : ShSyms.parseline = 0x6e2.
-  Proof. destruct shp_syms_pins as (_&H&_&_&_&_&_&_&_&_&_). exact H. Qed.
+  Proof using . destruct shp_syms_pins as (_&H&_&_&_&_&_&_&_&_&_). exact H. Qed.
   Lemma shpp_parsecmd : ShSyms.parsecmd = 0x86e.
-  Proof. destruct shp_syms_pins as (H&_&_&_&_&_&_&_&_&_&_). exact H. Qed.
+  Proof using . destruct shp_syms_pins as (H&_&_&_&_&_&_&_&_&_&_). exact H. Qed.
 
   (* ===================================================================== *)
   (* §2 THE BYTE / REGISTER ALGEBRA THIS FILE NEEDS.                        *)
@@ -887,12 +887,12 @@ Section UkShParse.
   (* ===================================================================== *)
 
   Lemma ushp_ridx_eq (r q : mword 5) : uint r = uint q -> Regidx r = Regidx q.
-  Proof.
+  Proof using .
     intro H. f_equal. apply bv_eq. rewrite <- !(uint_unsigned_n 5). exact H.
   Qed.
 
   Lemma ushp_ridx_ne (r q : mword 5) : uint r <> uint q -> Regidx r <> Regidx q.
-  Proof.
+  Proof using .
     intros H He. apply H.
     assert (Hrq : r = q) by (injection He; trivial). rewrite Hrq. reflexivity.
   Qed.
@@ -900,7 +900,7 @@ Section UkShParse.
   Lemma ushp_cs_ne (r q : mword 5) :
     ucallee_saved_idx r = true -> ucallee_saved_idx q = false ->
     Regidx r <> Regidx q.
-  Proof.
+  Proof using .
     intros Hr Hq He.
     assert (Hrr : r = q) by (injection He; trivial).
     rewrite Hrr Hq in Hr. discriminate.
@@ -908,7 +908,7 @@ Section UkShParse.
 
   (* a byte's numeric value is in range *)
   Lemma ushp_byte_rng (b : bv 8) : 0 <= bv_unsigned b < 256.
-  Proof.
+  Proof using .
     pose proof (bv_unsigned_in_range 8 b) as Hr8.
     assert (Em8 : bv_modulus 8 = 256) by (vm_compute; reflexivity).
     rewrite Em8 in Hr8. exact Hr8.
@@ -921,7 +921,7 @@ Section UkShParse.
     eq_vec (mword_of_int (bv_unsigned c) : mword 64)
            (mword_of_int (bv_unsigned b) : mword 64)
     = bool_decide (b = c).
-  Proof.
+  Proof using .
     pose proof (ushp_byte_rng b) as Hb. pose proof (ushp_byte_rng c) as Hc.
     rewrite (moi_eq_vec (bv_unsigned c) (bv_unsigned b)
                ltac:(unfold Z64; lia) ltac:(unfold Z64; lia)).
@@ -936,7 +936,7 @@ Section UkShParse.
   Lemma ushp_zext_nul (b : bv 8) :
     eq_vec (mword_of_int (bv_unsigned b) : mword 64) zero_reg
     = bool_decide (b = ubyte0).
-  Proof.
+  Proof using .
     pose proof (ushp_byte_rng b) as Hb.
     assert (Ez : (zero_reg : mword 64) = mword_of_int 0)
       by (apply bv_eq; vm_compute; reflexivity).
@@ -960,7 +960,7 @@ Section UkShParse.
   Lemma urun_x0 (h : CpuId) (m : regfile) (pc : mword 64) (avail : nat) :
     urun N h m pc avail -∗
     ⌜ m !!! Regidx x0_idx = zero_reg ⌝ ∗ urun N h m pc avail.
-  Proof.
+  Proof using .
     iIntros "Hrun".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv)
       "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -978,7 +978,7 @@ Section UkShParse.
     (zero_extend' 64 (bool_to_bit (zopz0zI_u (zero_reg : mword 64)
                                      (mword_of_int v))) : mword 64)
     = mword_of_int (if Z.ltb 0 v then 1 else 0).
-  Proof.
+  Proof using .
     intro Hv.
     assert (Ez : (zero_reg : mword 64) = mword_of_int 0)
       by (apply bv_eq; vm_compute; reflexivity).
@@ -1038,11 +1038,11 @@ Section UkShParse.
 
   Lemma ushp_sstr_data (dq : dfrac) (a : Z) (len : nat) (f : nat -> bv 8) :
     ushp_sstr false dq a len f = ustr γd dq a len f.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma ushp_sstr_text (dq : dfrac) (a : Z) (len : nat) (f : nat -> bv 8) :
     ushp_sstr true dq a len f = utext_str γt a len f.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* the three accessors [strchr]'s walk uses, at either half.  The
      give-back wand is kept even in the text case (where the byte is
@@ -1051,12 +1051,12 @@ Section UkShParse.
   Lemma ushp_sstr_nonul (tx : bool) (dq : dfrac) (a : Z) (len : nat)
       (f : nat -> bv 8) :
     ushp_sstr tx dq a len f -∗ ⌜ forall j : nat, (j < len)%nat -> f j <> ubyte0 ⌝.
-  Proof. iIntros "(%H & _ & _ & _)". iPureIntro. exact H. Qed.
+  Proof using . iIntros "(%H & _ & _ & _)". iPureIntro. exact H. Qed.
 
   Lemma ushp_sstr_len (tx : bool) (dq : dfrac) (a : Z) (len : nat)
       (f : nat -> bv 8) :
     ushp_sstr tx dq a len f -∗ ⌜ Z.of_nat len < 2 ^ 31 ⌝.
-  Proof. iIntros "(_ & %H & _ & _)". iPureIntro. exact H. Qed.
+  Proof using . iIntros "(_ & %H & _ & _)". iPureIntro. exact H. Qed.
 
   Lemma ushp_sstr_byte (tx : bool) (dq : dfrac) (a : Z) (len : nat)
       (f : nat -> bv 8) (j : nat) :
@@ -1064,7 +1064,7 @@ Section UkShParse.
     ushp_sstr tx dq a len f -∗
       ushp_sbq tx dq (a + Z.of_nat j) (f j) ∗
       (ushp_sbq tx dq (a + Z.of_nat j) (f j) -∗ ushp_sstr tx dq a len f).
-  Proof.
+  Proof using .
     intros Hj. iIntros "(#Hne & #Hlen & Hbs & Hnul)".
     iDestruct (big_sepL_lookup_acc _ _ j j with "Hbs") as "[Hb Hcl]";
       [ apply lookup_seq; split; [ lia | exact Hj ] | ].
@@ -1077,7 +1077,7 @@ Section UkShParse.
     ushp_sstr tx dq a len f -∗
       ushp_sbq tx dq (a + Z.of_nat len) ubyte0 ∗
       (ushp_sbq tx dq (a + Z.of_nat len) ubyte0 -∗ ushp_sstr tx dq a len f).
-  Proof.
+  Proof using .
     iIntros "(#Hne & #Hlen & Hbs & Hnul)". iFrame "Hnul". iIntros "Hnul".
     rewrite /ushp_sstr. iFrame "Hne Hlen Hbs Hnul".
   Qed.
@@ -1101,7 +1101,7 @@ Section UkShParse.
            (add_vec_int pc 4) avail -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hns Ha Hrd. iIntros "#Hi Hb Hrun Hcont".
     destruct tx.
     - rewrite /ushp_sbq. iDestruct "Hb" as "#Hb".
@@ -1161,14 +1161,14 @@ Section UkShParse.
      [mword_of_int] already reduces mod 2^64. *)
   Lemma ushp_pc_step (x d : Z) :
     add_vec_int (mword_of_int x : mword 64) d = mword_of_int (x + d).
-  Proof. unfold add_vec_int. apply moi_add. Qed.
+  Proof using . unfold add_vec_int. apply moi_add. Qed.
 
   (* ...and the same with the DESTINATION named, so a walk never carries a
      [mword_of_int (0x420 + 4)] a later [rewrite] then fails to match. *)
   Lemma ushp_pc_step' (x d y : Z) :
     x + d = y ->
     add_vec_int (mword_of_int x : mword 64) d = mword_of_int y.
-  Proof. intro H. rewrite ushp_pc_step. f_equal. exact H. Qed.
+  Proof using . intro H. rewrite ushp_pc_step. f_equal. exact H. Qed.
 
 
   (* THE FRAME POINTER, AS A PREMISE-FREE STEP.  [c.addi4spn s0,sp,N] is
@@ -1190,7 +1190,7 @@ Section UkShParse.
          (mword_of_int (p + 2)) nn -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "#Hi Hrun Hcont".
     iApply (wp_uk_caddi4spn N h m (mword_of_int p)
               (mword_of_int 0 : mword 3) nz s0_idx
@@ -1232,7 +1232,7 @@ Section UkShParse.
        urun N h' m' (mword_of_int p4) nn -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hp1 Hp2 Hp3 Hp4. subst p1 p2 p3 p4.
     iIntros "#Hi0 #Hi1 #Hi2 #Hi3 Hrun Hcont".
     iDestruct (urun_stack with "Hrun") as %[Hal8 Hroom].
@@ -1339,7 +1339,7 @@ Section UkShParse.
        urun N h' m' (ret_pc vra) (2 + nn) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hq1 Hq2 Hq3 Hal8 Hlo Hsp. subst q1 q2 q3.
     iIntros "#Hi0 #Hi1 #Hi2 #Hi3 Hw8 Hw0 Hrun Hcont".
     assert (Hbsp1 : bv_unsigned (add_vec_int sp0 (- (8 * Z.of_nat 2)))
@@ -1458,7 +1458,7 @@ Section UkShParse.
          urun N h' mc' (mword_of_int 0xa9e) nn -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros r. induction r as [| r IH ];
       intros j h mc Hr Hj Hs0 Hs64 Ha0 Ha5 Ha1;
       iIntros "#Hcode Hstr Hrun Hcont"; [ lia | ].
@@ -1685,7 +1685,7 @@ Section UkShParse.
          urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (2 + nn) -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Ha0 Ha1 Hs0 Hs64. iIntros "#Hcode Hstr Hrun Hcont".
     rewrite shpp_strchr.
     iDestruct (ushp_sstr_nonul with "Hstr") as %Hne.
@@ -1953,7 +1953,7 @@ Section UkShParse.
   (* [c.mv rd,rs] is [add rd,x0,rs], so the value written is [0 + rs]. *)
   Lemma ushp_mv_val (v : Z) :
     add_vec zero_reg (mword_of_int v : mword 64) = mword_of_int v.
-  Proof.
+  Proof using .
     assert (Ez : (zero_reg : mword 64) = mword_of_int 0)
       by (apply bv_eq; vm_compute; reflexivity).
     rewrite Ez moi_add. f_equal; lia.
@@ -1983,7 +1983,7 @@ Section UkShParse.
          urun N h' mc' (mword_of_int 0xa4c) nn -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros r. induction r as [| r IH ];
       intros k h mc Hr Hk Hs0 Hs64 Ha5;
       iIntros "#Hcode Hstr Hrun Hcont"; [ lia | ].
@@ -2144,7 +2144,7 @@ Section UkShParse.
   Lemma ushp_moi_neq (x y : Z) :
     0 <= x < Z64 -> 0 <= y < Z64 ->
     neq_vec (mword_of_int x : mword 64) (mword_of_int y) = negb (Z.eqb x y).
-  Proof.
+  Proof using .
     intros Hx Hy. unfold neq_vec. rewrite (moi_eq_vec x y Hx Hy). reflexivity.
   Qed.
 
@@ -2163,7 +2163,7 @@ Section UkShParse.
          urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (2 + nn) -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Ha0 Hs0 Hs64. iIntros "#Hcode Hstr Hrun Hcont".
     rewrite shpp_strlen.
     iDestruct (ustr_nonul with "Hstr") as %Hne.
@@ -2488,7 +2488,7 @@ Section UkShParse.
   (* consume it in *)
   Lemma ushp_sepL_seq {A : Type} (l : list A) (Φ : nat -> iProp Σ) :
     ([∗ list] i ∈ seq 0 (length l), Φ i) ⊣⊢ ([∗ list] i ↦ _ ∈ l, Φ i).
-  Proof.
+  Proof using .
     revert Φ. induction l as [| x l IH ]; intros Φ; [ reflexivity | ].
     cbn [length seq]. rewrite !big_sepL_cons.
     rewrite <- (seq_shift (length l) 0), big_sepL_fmap.
@@ -2498,7 +2498,7 @@ Section UkShParse.
   (* a slot of an 8-aligned frame is itself 8-aligned *)
   Lemma ushp_slot_al (sp : Z) (i : nat) :
     sp mod 8 = 0 -> (sp - 8 * (Z.of_nat i + 1)) mod 8 = 0.
-  Proof.
+  Proof using .
     intro H. rewrite Zminus_mod H.
     assert (E : (8 * (Z.of_nat i + 1)) mod 8 = 0)
       by (rewrite Z.mul_comm; apply Z_mod_mult).
@@ -2510,7 +2510,7 @@ Section UkShParse.
      every store into them is aligned by the node's own alignment. *)
   Lemma ushp_slot_al8 (p c : Z) (k : nat) :
     p mod 8 = 0 -> (p + 8 * c + 8 * Z.of_nat k) mod 8 = 0.
-  Proof.
+  Proof using .
     intro Hp.
     assert (Hm : (8 * (c + Z.of_nat k)) mod 8 = 0)
       by (rewrite Z.mul_comm; apply Z_mod_mult).
@@ -2528,7 +2528,7 @@ Section UkShParse.
       ([∗ list] i ↦ _ ∈ rs,
          ∃ w : mword 64, uword γd (uint sp0 - 8 * (Z.of_nat i + 1)) w) ∗
       ustack γd sp1 n.
-  Proof.
+  Proof using .
     intros Hsp1. rewrite (ustack_app γd sp0 sp1 (length rs) n Hsp1).
     rewrite /ustack /ustack_body.
     rewrite (ushp_sepL_seq rs
@@ -2544,7 +2544,7 @@ Section UkShParse.
        uword γd (uint sp0 - 8 * (Z.of_nat i + 1)) (vals i)) -∗
     ustack γd sp1 n -∗
     ustack γd sp0 (length rs + n).
-  Proof.
+  Proof using .
     intros Hsp1. rewrite (ustack_app γd sp0 sp1 (length rs) n Hsp1).
     rewrite /ustack /ustack_body.
     rewrite (ushp_sepL_seq rs
@@ -2583,7 +2583,7 @@ Section UkShParse.
     ushp_ne_list q rs = true ->
     forall (i : nat) (r : mword 5) (u : mword 6),
       rs !! i = Some (r, u) -> Regidx q <> Regidx r.
-  Proof.
+  Proof using .
     unfold ushp_ne_list.
     induction rs as [| ru rs IH ]; intros Hb i r u Hi.
     { destruct i; discriminate Hi. }
@@ -2601,7 +2601,7 @@ Section UkShParse.
     ushp_ne_list q (tail rs) = true ->
     forall (i : nat) (r : mword 5) (u : mword 6),
       rs !! S i = Some (r, u) -> Regidx q <> Regidx r.
-  Proof.
+  Proof using .
     intros Hb i r u Hi. destruct rs as [| ru rs ]; [ discriminate Hi | ].
     exact (ushp_ne_of_list q rs Hb i r u Hi).
   Qed.
@@ -2627,7 +2627,7 @@ Section UkShParse.
          urun N h' m (mword_of_int (pcs (length rs))) nn -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     induction rs as [| ru rs IH ];
       intros pcs ad vals h m Hsp Hpc Hoff; iIntros "#Hi Hw Hrun Hcont".
     - iSpecialize ("Hcont" with "Hw"). cbn [length].
@@ -2674,7 +2674,7 @@ Section UkShParse.
     (forall (i : nat) (r : mword 5) (u : mword 6),
        rs !! i = Some (r, u) -> Regidx q <> Regidx r) ->
     ushp_spillback rs vals me !!! Regidx q = me !!! Regidx q.
-  Proof.
+  Proof using .
     revert vals me. induction rs as [| ru rs IH ]; intros vals me Hne;
       [ reflexivity | ].
     cbn [ushp_spillback].
@@ -2695,7 +2695,7 @@ Section UkShParse.
     (forall (i : nat) (r : mword 5) (u : mword 6),
        rs !! (S i) = Some (r, u) -> Regidx ra_idx <> Regidx r) ->
     ushp_spillback rs vals me !!! Regidx ra_idx = vals 0%nat.
-  Proof.
+  Proof using .
     destruct rs as [| ru0 rs' ]; intros Hra0 Htl; [ discriminate | ].
     cbn in Hra0. injection Hra0 as Hru0. subst ru0.
     cbn [ushp_spillback fst].
@@ -2725,7 +2725,7 @@ Section UkShParse.
     (forall (i : nat) (r' : mword 5) (u : mword 6),
        rs !! i = Some (r', u) -> Regidx r' = Regidx r -> vals i = w) ->
     ushp_spillback rs vals me !!! Regidx r = w.
-  Proof.
+  Proof using .
     revert vals me. induction rs as [| ru rs' IH ]; intros vals me Hmiss Hhit.
     - cbn [ushp_spillback]. apply Hmiss.
       intros i r' u Hi. rewrite lookup_nil in Hi. discriminate.
@@ -2758,7 +2758,7 @@ Section UkShParse.
        me !!! Regidx r = m !!! Regidx r) ->
     ucallee_saved m
       (<[Regidx csp_rs1 := regval_into_reg sp0]> (ushp_spillback rs vals me)).
-  Proof.
+  Proof using .
     intros Hsp Hvals Hkeep r Hr.
     destruct (decide (Regidx r = Regidx csp_rs1)) as [ E | E ].
     - rewrite E.
@@ -2793,7 +2793,7 @@ Section UkShParse.
            (mword_of_int (pcs (length rs))) nn -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     induction rs as [| ru rs IH ];
       intros pcs ad vals h m Hsp Hpc Hoff; iIntros "#Hi Hw Hrun Hcont".
     - iSpecialize ("Hcont" with "Hw"). cbn [length ushp_spillback].
@@ -2889,7 +2889,7 @@ Section UkShParse.
          (mword_of_int (pcs (length rs) + 2)) nn -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Ek Himm Hp0 Hpc Hoff.
     iIntros "#Hi0 #Hisp #Hifp Hrun Hcont".
     iDestruct (urun_stack with "Hrun") as %[Hal8 Hroom].
@@ -2980,7 +2980,7 @@ Section UkShParse.
          (ret_pc (vals 0%nat)) (k + nn) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Ek Hal8 Hlo Hhi Hsplu Hsp Himm Hpc Hoff Hra0 Hratl.
     iIntros "#Hcode #Hild #Hipop #Hijr Hsl Hloc Hrun Hcont".
     set (spn := add_vec_int sp0 (- (8 * Z.of_nat k))).
@@ -3157,7 +3157,7 @@ Section UkShParse.
      need before the node is filled: an EXEC node pins its own address *)
   Lemma ushp_exec_at_addr (s0 p : Z) (toks : list (nat * nat)) :
     ushp_exec_at s0 p toks -∗ ⌜ 0 < p /\ p mod 8 = 0 ⌝.
-  Proof.
+  Proof using .
     rewrite /ushp_exec_at. iIntros "(_ & %Hp & %Hal & _)".
     iPureIntro. exact (conj Hp Hal).
   Qed.
@@ -3172,7 +3172,7 @@ Section UkShParse.
   Lemma ushp_ubytes_ext (a : Z) (n : nat) (f g : nat -> bv 8) :
     (forall j : nat, (j < n)%nat -> f j = g j) ->
     ubytes γd a n f -∗ ubytes γd a n g.
-  Proof.
+  Proof using .
     intros Hfg. rewrite /ubytes /ubytesq. iIntros "H".
     iApply (big_sepL_mono with "H"). intros i j Hj.
     apply lookup_seq in Hj as [ -> Hlt ]. rewrite Nat.add_0_l.
@@ -3185,7 +3185,7 @@ Section UkShParse.
     b = a + Z.of_nat k ->
     ubytes γd a (k + n) f -∗
       ubytes γd a k f ∗ ubytes γd b n (fun j => f (k + j)%nat).
-  Proof.
+  Proof using .
     intros Hb. rewrite (ubytes_app γd a k n f) Hb. iIntros "$".
   Qed.
 
@@ -3197,14 +3197,14 @@ Section UkShParse.
     ubytes γd a (k + n) (fun _ : nat => ubyte0) -∗
       ubytes γd a k (fun _ : nat => ubyte0) ∗
       ubytes γd b n (fun _ : nat => ubyte0).
-  Proof.
+  Proof using .
     intros Hb. rewrite (ubytes_app γd a k n (fun _ : nat => ubyte0)) Hb.
     iIntros "$".
   Qed.
 
   Lemma ushp_nth_byte_zero (j : nat) :
     (j < 8)%nat -> nth_byte (mword_of_int 0 : mword 64) j = ubyte0.
-  Proof.
+  Proof using .
     intro Hj. destruct j as [| [| [| [| [| [| [| [| j ]]]]]]]];
       try (vm_compute; reflexivity). lia.
   Qed.
@@ -3217,7 +3217,7 @@ Section UkShParse.
     (forall j : nat, (j < 8)%nat -> f j = ubyte0) ->
     ubytes γd base 80 f -∗
     [∗ list] i ∈ seq 0 10, ushp_slot t0 base [] sel i.
-  Proof.
+  Proof using .
     intros Hf. iIntros "Hb".
     iDestruct (ushp_peel base (base + 8) 8 72 _ ltac:(lia) with "Hb")
       as "[H0 Hb]".
@@ -3298,7 +3298,7 @@ Section UkShParse.
       (sel : nat * nat -> nat) :
     ([∗ list] i ∈ seq 0 10, ushp_slot0 s0 base toks sel i) -∗
     ([∗ list] i ∈ seq 0 10, ushp_slot  s0 base toks sel i).
-  Proof.
+  Proof using .
     iIntros "H". iApply (big_sepL_mono with "H").
     intros k y Hy. apply lookup_seq in Hy as [ -> Hlt ].
     rewrite Nat.add_0_l /ushp_slot0 /ushp_slot.
@@ -3309,7 +3309,7 @@ Section UkShParse.
 
   Lemma ushp_exec_pre_at (s0 p : Z) (toks : list (nat * nat)) :
     ushp_exec_pre s0 p toks -∗ ushp_exec_at s0 p toks.
-  Proof.
+  Proof using .
     rewrite /ushp_exec_pre /ushp_exec_at.
     iIntros "(%H1 & %H2 & %H3 & Hty & Hav & Hev)".
     iSplitR; [ iPureIntro; exact H1 | ].
@@ -3322,7 +3322,7 @@ Section UkShParse.
 
   Lemma ushp_exec_pre_addr (s0 p : Z) (toks : list (nat * nat)) :
     ushp_exec_pre s0 p toks -∗ ⌜ 0 < p /\ p mod 8 = 0 ⌝.
-  Proof.
+  Proof using .
     rewrite /ushp_exec_pre. iIntros "(_ & %Hp & %Hal & _)".
     iPureIntro. exact (conj Hp Hal).
   Qed.
@@ -3333,7 +3333,7 @@ Section UkShParse.
     (forall j : nat, (j < 80)%nat -> f j = ubyte0) ->
     ubytes γd base 80 f -∗
     [∗ list] i ∈ seq 0 10, ushp_slot0 t0 base [] sel i.
-  Proof.
+  Proof using .
     intros Hf. iIntros "Hb".
     iDestruct (ushp_ubytes_ext base 80 f (fun _ : nat => ubyte0) Hf
                  with "Hb") as "Hb".
@@ -3423,7 +3423,7 @@ Section UkShParse.
   Lemma ushp_lookup_app_ne (done : list (nat * nat)) (tk : nat * nat)
       (y : nat) :
     y <> length done -> (done ++ [tk]) !! y = done !! y.
-  Proof.
+  Proof using .
     intro Hy. destruct (Nat.lt_ge_cases y (length done)) as [ Hlt | Hge ].
     - apply lookup_app_l. exact Hlt.
     - assert (Hla : (done ++ [tk]) !! y = [tk] !! (y - length done)%nat)
@@ -3435,7 +3435,7 @@ Section UkShParse.
 
   Lemma ushp_lookup_app_mid (done : list (nat * nat)) (tk : nat * nat) :
     (done ++ [tk]) !! (length done) = Some tk.
-  Proof.
+  Proof using .
     assert (Hla : (done ++ [tk]) !! (length done)
                   = [tk] !! (length done - length done)%nat)
       by (apply lookup_app_r; lia).
@@ -3456,7 +3456,7 @@ Section UkShParse.
     uword γd (base + 8 * Z.of_nat (length toks)) (mword_of_int 0) ∗
     (uword γd (base + 8 * Z.of_nat (length toks)) (mword_of_int 0) -∗
      [∗ list] i ∈ seq 0 10, ushp_slot0 s0 base toks sel i).
-  Proof.
+  Proof using .
     intro Hlt. iIntros "H".
     assert (Hj : seq 0 10 !! (length toks) = Some (length toks))
       by (apply lookup_seq; lia).
@@ -3485,7 +3485,7 @@ Section UkShParse.
     (uword γd (base + 8 * Z.of_nat (length done))
        (mword_of_int (s0 + Z.of_nat (sel tk))) -∗
      [∗ list] i ∈ seq 0 10, ushp_slot0 s0 base (done ++ [tk]) sel i).
-  Proof.
+  Proof using .
     intro Hlt. iIntros "H".
     assert (Hj : seq 0 10 !! (length done) = Some (length done))
       by (apply lookup_seq; lia).

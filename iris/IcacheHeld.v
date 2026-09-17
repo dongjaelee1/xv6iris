@@ -118,10 +118,10 @@ Section IcacheHeld.
       ⌜bv_unsigned inum < 16 * Z.of_nat icfg_nib⌝ ∗
       ⌜0 < bv_unsigned inum⌝ ∗
       inode_refp k q icfg_dev inum.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Global Instance inode_held_timeless v : Timeless (inode_held v).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* THE SAME REFERENCE, CARRYING ITS RECORD'S TYPE (fs-log.md §G.24,
      G-4d).  ADDITIVE: [inode_held] does not move, and this is it with the
@@ -143,7 +143,7 @@ Section IcacheHeld.
        runit_any (bv_unsigned inum))%I.
 
   Lemma inode_held_ty_forget v ty : inode_held_ty v ty -∗ inode_held v.
-  Proof.
+  Proof using .
     iIntros "(%k & %q & %inum & %g & %lo & %tl &
               %Hv & %Hk & %Hb & %Hpos & %Hle & #Hfl & Href & _ & Hru)".
     iDestruct "Href" as "(Hf & Hg & Hid & Hs & Hst)".
@@ -156,12 +156,12 @@ Section IcacheHeld.
   Qed.
 
   Global Instance inode_held_ty_timeless v ty : Timeless (inode_held_ty v ty).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* the pointer of a held entry is not null -- [fileclose] and [kexit]
      need it only to tell the two arms of [cwd_ref] apart. *)
   Lemma inode_held_ne_zero v : inode_held v -∗ ⌜v <> (zero_reg : mword 64)⌝.
-  Proof.
+  Proof using .
     iIntros "(%k & %q & %inum & -> & %Hk & _ & _ & _ & _)". iPureIntro.
     apply ientry_ne_zero. lia.
   Qed.
@@ -183,7 +183,7 @@ Section IcacheHeld.
 
   Lemma inode_held_at_held (v : mword 64) (z : Z) :
     inode_held_at v z ⊢ inode_held v.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as (k q inum) "(%Hv & %Hk & %Hb & %Hp & %Hz & Hr)".
     rewrite /inode_held. iExists k, q, inum.
     iSplit; [done |]. iSplit; [done |]. iSplit; [done |]. iSplit; [done |].
@@ -192,7 +192,7 @@ Section IcacheHeld.
 
   Lemma inode_held_zi (v : mword 64) :
     inode_held v ⊢ ∃ z : Z, inode_held_at v z.
-  Proof.
+  Proof using .
     rewrite /inode_held /inode_held_at. iIntros "H".
     iDestruct "H" as (k q inum) "(%Hv & %Hk & %Hlt & %Hp & Hr)".
     iExists (bv_unsigned inum), k, q, inum.
@@ -203,10 +203,10 @@ Section IcacheHeld.
 
   Lemma inode_held_at_ne_zero (v : mword 64) (z : Z) :
     inode_held_at v z -∗ ⌜v <> (zero_reg : mword 64)⌝.
-  Proof. iIntros "H". iApply inode_held_ne_zero. by iApply inode_held_at_held. Qed.
+  Proof using . iIntros "H". iApply inode_held_ne_zero. by iApply inode_held_at_held. Qed.
 
   Global Instance inode_held_at_timeless v z : Timeless (inode_held_at v z).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* ---- THE SAME TWO SHAPES FOR A SHARE, AND FOR A PARKED SHORT PARENT ----
 
@@ -273,7 +273,7 @@ Section IcacheHeld.
 
   Lemma inode_shr_held_gen_forget v s g inum :
     inode_shr_held_gen v s g inum -∗ inode_shr_held v s.
-  Proof.
+  Proof using .
     rewrite /inode_shr_held_gen /inode_shr_held.
     iIntros "(%k & %lo & %tl & %Hv & %Hk & %Hb & %Hle & #Hfl & Hs)".
     iExists k, inum.
@@ -288,7 +288,7 @@ Section IcacheHeld.
   Lemma inode_shr_held_gen_bound v s g inum :
     inode_shr_held_gen v s g inum -∗
     ⌜bv_unsigned inum < 16 * Z.of_nat icfg_nib⌝.
-  Proof. iIntros "(%k & %lo & %tl & _ & _ & $ & _)". Qed.
+  Proof using . iIntros "(%k & %lo & %tl & _ & _ & $ & _)". Qed.
 
   (* THE SPLIT.  Both halves name the SAME inum, which is the point of naming
      it at all: a file's inum is fixed for the life of its reference, so
@@ -297,7 +297,7 @@ Section IcacheHeld.
   Lemma inode_shr_held_gen_split v s1 s2 g inum :
     inode_shr_held_gen v (s1 + s2)%Qp g inum ⊣⊢
     inode_shr_held_gen v s1 g inum ∗ inode_shr_held_gen v s2 g inum.
-  Proof.
+  Proof using .
     rewrite /inode_shr_held_gen /inode_shr_genlo. iSplit.
     - iIntros "(%k & %lo & %tl & %Hv & %Hk & %Hb & %Hle & #Hfl & (Hid & Hlv & Hs & Hst))".
       rewrite inode_ident_split live_genlo_split slh_tok_split ic_ref_stamps_split.
@@ -320,12 +320,12 @@ Section IcacheHeld.
 
   Global Instance inode_shr_held_gen_timeless v s g inum :
     Timeless (inode_shr_held_gen v s g inum).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Global Instance inode_shr_held_timeless v s : Timeless (inode_shr_held v s).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance inode_held_short_timeless v s : Timeless (inode_held_short v s).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* the share splits and rejoins at the POINTER too.  Rightwards is
      [inode_shr_split]; leftwards also needs the two existentials to agree,
@@ -334,7 +334,7 @@ Section IcacheHeld.
      both directions (filedup leftwards, fileclose rightwards). *)
   Lemma inode_shr_held_split v s1 s2 :
     inode_shr_held v (s1 + s2)%Qp ⊣⊢ inode_shr_held v s1 ∗ inode_shr_held v s2.
-  Proof.
+  Proof using .
     rewrite /inode_shr_held. iSplit.
     - iIntros "(%k & %inum & %Hv & %Hk & %Hb & Hs)".
       rewrite inode_shr_split. iDestruct "Hs" as "[Hs1 Hs2]".
@@ -355,7 +355,7 @@ Section IcacheHeld.
      that re-forms a canonical reference for iput. *)
   Lemma inode_held_shed (v : mword 64) :
     inode_held v -∗ ∃ s : Qp, inode_held_short v s ∗ inode_shr_held v s.
-  Proof.
+  Proof using .
     iIntros "(%k & %q & %inum & -> & %Hk & %Hb & %Hp & Href & Hru)".
     rewrite inode_ref_shed. iDestruct "Href" as "[Hsh Hs]".
     iExists (q/2)%Qp. iSplitR "Hs".
@@ -365,7 +365,7 @@ Section IcacheHeld.
 
   Lemma inode_held_gather (v : mword 64) (s : Qp) :
     inode_held_short v s -∗ inode_shr_held v s -∗ inode_held v.
-  Proof.
+  Proof using .
     iIntros "(%k1 & %qt & %qi & %n1 & %Hv1 & %Hk1 & %Hb1 & %Hp1 & -> & Hsh & Hru)".
     iIntros "(%k2 & %n2 & %Hv2 & %Hk2 & %Hb2 & Hs)".
     assert (Hkk : k1 = k2).
@@ -409,7 +409,7 @@ Section IcacheHeldAny.
      are what [FileInvDefs]'s payload chain needs (M1 flip, stage 2). ---- *)
   Global Instance inode_ident_morph (k : nat) (dq : dfrac) (dev inum : mword 32) :
     CtxMorph (λ ξ, inode_ident (XI := ξ) k dq dev inum).
-  Proof.
+  Proof using .
     iIntros (ξ ξ') "Hd [Hdv Hin]".
     iMod (ctx_morph_word4 _ _ _ _ ξ ξ' with "Hd Hdv") as "[Hd Hdv]".
     iMod (ctx_morph_word4 _ _ _ _ ξ ξ' with "Hd Hin") as "[Hd Hin]".
@@ -419,7 +419,7 @@ Section IcacheHeldAny.
   Global Instance inode_shr_gen_morph (k : nat) (s : Qp) (dev inum : mword 32)
       (g : gname) :
     CtxMorph (λ ξ, inode_shr_gen (XI := ξ) k s dev inum g).
-  Proof.
+  Proof using .
     iIntros (ξ ξ') "Hd (Hid & Hlv & Hsl & Hst)".
     iMod (inode_ident_morph k (DfracOwn s) dev inum ξ ξ'
                  with "Hd Hid") as "[Hd Hid]".
@@ -429,7 +429,7 @@ Section IcacheHeldAny.
   Global Instance inode_shr_gen_bare_morph (k : nat) (s : Qp)
       (dev inum : mword 32) (g : gname) :
     CtxMorph (λ ξ, inode_shr_gen_bare (XI := ξ) k s dev inum g).
-  Proof.
+  Proof using .
     iIntros (ξ ξ') "Hd (Hid & Hlv)".
     iMod (inode_ident_morph k (DfracOwn s) dev inum ξ ξ'
                  with "Hd Hid") as "[Hd Hid]".
@@ -459,7 +459,7 @@ Section IcacheHeldAny.
 
   Global Instance live_fracc_morph (k : nat) (s : Qp) :
     CtxMorph (λ ξ, live_fracc (XI := ξ) k s).
-  Proof.
+  Proof using .
     iIntros (ξ ξ') "Hd H". rewrite /live_fracc /cred_floor.
     iDestruct "H" as (g lo tl) "(Hlv & %Hle & [#Hfl | (%a & #Hw)])".
     - iDestruct (TsoCtx.ctx_floor_dom with "Hd Hfl") as "[Hd #Hfl']".
@@ -475,7 +475,7 @@ Section IcacheHeldAny.
   Global Instance inode_shr_genlo_morph (k : nat) (s : Qp)
       (dev inum : mword 32) (g : gname) (lo : nat) :
     CtxMorph (λ ξ, inode_shr_genlo (XI := ξ) k s dev inum g lo).
-  Proof.
+  Proof using .
     iIntros (ξ ξ') "Hd (Hid & Hlv & Hsl & Hst)".
     iMod (inode_ident_morph k (DfracOwn s) dev inum ξ ξ'
                  with "Hd Hid") as "[Hd Hid]".
@@ -485,7 +485,7 @@ Section IcacheHeldAny.
   Global Instance inode_shr_held_gen_morph (v : mword 64) (s : Qp)
       (g : gname) (inum : mword 32) :
     CtxMorph (λ ξ, inode_shr_held_gen (XI := ξ) v s g inum).
-  Proof.
+  Proof using .
     iIntros (ξ ξ') "Hd H". rewrite /inode_shr_held_gen /cred_floor.
     iDestruct "H" as (k lo tl)
       "(%Hv & %Hk & %Hb & %Hle & [#Hfl | (%a & #Hw)] & Hs)".
@@ -511,7 +511,7 @@ Section IcacheHeldAny.
 
   Global Instance inode_shr_morph (k : nat) (s : Qp) (dev inum : mword 32) :
     CtxMorph (λ ξ, inode_shr (XI := ξ) k s dev inum).
-  Proof.
+  Proof using .
     iIntros (ξ ξ') "Hd (Hid & Hlv & Hsl & Hst)".
     iMod (inode_ident_morph k (DfracOwn s) dev inum ξ ξ'
                  with "Hd Hid") as "[Hd Hid]".
@@ -521,7 +521,7 @@ Section IcacheHeldAny.
 
   Global Instance inode_ref_morph (k : nat) (q : Qp) (dev inum : mword 32) :
     CtxMorph (λ ξ, inode_ref (XI := ξ) k q dev inum).
-  Proof.
+  Proof using .
     iIntros (ξ ξ') "Hd (Hfr & Hlv & Hsl & Hid & Hst)".
     iMod (live_fracc_morph k q ξ ξ' with "Hd Hlv") as "[Hd Hlv]".
     iMod (inode_ident_morph k (DfracOwn q) dev inum ξ ξ'
@@ -532,7 +532,7 @@ Section IcacheHeldAny.
   Global Instance inode_ref_short_morph (k : nat) (qt qi : Qp)
       (dev inum : mword 32) :
     CtxMorph (λ ξ, inode_ref_short (XI := ξ) k qt qi dev inum).
-  Proof.
+  Proof using .
     iIntros (ξ ξ') "Hd (Hfr & Hlv & Hid & Hsl & Hst)".
     iMod (live_fracc_morph k qi ξ ξ' with "Hd Hlv") as "[Hd Hlv]".
     iMod (inode_ident_morph k (DfracOwn qi) dev inum ξ ξ'
@@ -542,7 +542,7 @@ Section IcacheHeldAny.
 
   Global Instance inode_refp_morph (k : nat) (q : Qp) (dev inum : mword 32) :
     CtxMorph (λ ξ, inode_refp (XI := ξ) k q dev inum).
-  Proof.
+  Proof using .
     iIntros (ξ ξ') "Hd [Hr Hu]".
     iMod (inode_ref_morph k q dev inum ξ ξ' with "Hd Hr") as "[Hd Hr]".
     iModIntro. iFrame.
@@ -551,7 +551,7 @@ Section IcacheHeldAny.
   Global Instance inode_refp_short_morph (k : nat) (qt qi : Qp)
       (dev inum : mword 32) :
     CtxMorph (λ ξ, inode_refp_short (XI := ξ) k qt qi dev inum).
-  Proof.
+  Proof using .
     iIntros (ξ ξ') "Hd [Hr Hu]".
     iMod (inode_ref_short_morph k qt qi dev inum ξ ξ' with "Hd Hr")
       as "[Hd Hr]".
@@ -560,7 +560,7 @@ Section IcacheHeldAny.
 
   Global Instance inode_shr_held_morph (v : mword 64) (s : Qp) :
     CtxMorph (λ ξ, inode_shr_held (XI := ξ) v s).
-  Proof.
+  Proof using .
     iIntros (ξ ξ') "Hd H". rewrite /inode_shr_held.
     iDestruct "H" as (k inum) "(%Hv & %Hk & %Hb & Hs)".
     iMod (inode_shr_morph k s icfg_dev inum ξ ξ' with "Hd Hs") as "[Hd Hs]".
@@ -570,7 +570,7 @@ Section IcacheHeldAny.
 
   Global Instance inode_held_short_morph (v : mword 64) (s : Qp) :
     CtxMorph (λ ξ, inode_held_short (XI := ξ) v s).
-  Proof.
+  Proof using .
     iIntros (ξ ξ') "Hd H". rewrite /inode_held_short.
     iDestruct "H" as (k qt qi inum) "(%Hv & %Hk & %Hb & %Hp & %Hq & Hs)".
     iMod (inode_refp_short_morph k qt qi icfg_dev inum ξ ξ'
@@ -582,7 +582,7 @@ Section IcacheHeldAny.
 
   Global Instance inode_held_morph (v : mword 64) :
     CtxMorph (λ ξ, inode_held (XI := ξ) v).
-  Proof.
+  Proof using .
     iIntros (ξ ξ') "Hd H". rewrite /inode_held.
     iDestruct "H" as (k q inum) "(%Hv & %Hk & %Hb & %Hp & Hs)".
     iMod (inode_refp_morph k q icfg_dev inum ξ ξ' with "Hd Hs") as "[Hd Hs]".
@@ -595,7 +595,7 @@ Section IcacheHeldAny.
      conjunct, and the reference itself is what moves *)
   Global Instance inode_held_at_morph (v : mword 64) (z : Z) :
     CtxMorph (λ ξ, inode_held_at (XI := ξ) v z).
-  Proof.
+  Proof using .
     iIntros (ξ ξ') "Hd H". rewrite /inode_held_at.
     iDestruct "H" as (k q inum) "(%Hv & %Hk & %Hb & %Hp & %Hz & Hs)".
     iMod (inode_refp_morph k q icfg_dev inum ξ ξ' with "Hd Hs") as "[Hd Hs]".

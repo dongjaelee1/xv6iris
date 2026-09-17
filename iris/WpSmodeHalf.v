@@ -69,17 +69,17 @@ Section WpSmodeHalf.
      gets the sign- resp. zero-extension of the loaded halfword. *)
   Lemma data2_ext_2 (v : mword 16) :
     extend_value false v = sign_extend' 64 v.
-  Proof. unfold extend_value. reflexivity. Qed.
+  Proof using . unfold extend_value. reflexivity. Qed.
 
   Lemma data2_ext_2_unsigned (v : mword 16) :
     extend_value true v = zero_extend' 64 v.
-  Proof. unfold extend_value. reflexivity. Qed.
+  Proof using . unfold extend_value. reflexivity. Qed.
 
   (* the store twin: the model's chunk-extraction of an already-truncated
      halfword is the identity ([WpSconfMem.autocast_subrange32_id] at 16). *)
   Lemma autocast_subrange16_id (d : mword 16) :
     autocast (T := mword) (subrange_vec_dec d (8*(0+1)*2-1) (8*0*2)) = d.
-  Proof.
+  Proof using .
     change (8*(0+1)*2-1) with 15. change (8*0*2) with 0.
     unfold subrange_vec_dec. change (15 - 0 + 1) with 16. rewrite autocast_id.
     apply bv_eq. rewrite autocast_id.
@@ -92,7 +92,7 @@ Section WpSmodeHalf.
 
   Lemma store_ext_2 (r : mword 64) :
     (autocast (T := mword) (subrange_vec_dec r (2*8-1) 0) : mword (8*2)) = trunc16 r.
-  Proof. unfold trunc16. reflexivity. Qed.
+  Proof using . unfold trunc16. reflexivity. Qed.
 
 
   (* ==================================================================== *)
@@ -165,7 +165,7 @@ Section WpSmodeHalf.
       pc_is (add_vec_int pc 4) -∗ pa ↦₂[ktd]{ dqm } v -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pa Hrd Hrdok.
     (* the class, consumed at [rs1] -- the one line the funnel change needs,
        and this leaf's wiring check.  See the family note at the head of this
@@ -195,7 +195,7 @@ Section WpSmodeHalf.
       pc_is (add_vec_int pc 4) -∗ pa ↦₂[ktd]{ dqm } v -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pa Hrd Hrdok.
     (* the class, consumed at [rs1] -- the one line the funnel change needs,
        and this leaf's wiring check.  See the family note at the head of this
@@ -227,7 +227,7 @@ Section WpSmodeHalf.
       pc_is (add_vec_int pc 4) -∗ pa ↦₂[ktd] storeval -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pa storeval.
     (* the class, consumed at [rs1 / rs2] -- the one line the funnel change needs,
        and this leaf's wiring check.  See the family note at the head of this

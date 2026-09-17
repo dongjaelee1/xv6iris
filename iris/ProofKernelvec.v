@@ -292,7 +292,7 @@ Section KernelvecCore.
   Lemma gpr_file_ext (m1 m2 : regfile) :
     (∀ r : regidx, m1 !!! r = m2 !!! r) ->
     gpr_file m1 -∗ gpr_file m2.
-  Proof.
+  Proof using .
     iIntros (Hpt) "Hfile".
     assert (Heq : m1 = m2) by (apply functional_extensionality; intro r; exact (Hpt r)).
     rewrite -Heq. iExact "Hfile".
@@ -300,7 +300,7 @@ Section KernelvecCore.
 
   Lemma kv_store_instrs :
     kernel_text -∗ block_instrs_s (KernelSyms.kernelvec + 0x2) kv_store_prog.
-  Proof.
+  Proof using .
     iIntros "#Ht". cbn [block_instrs_s kv_store_prog vop_s_ast].
     iSplitR; [by iApply kv_i2|].
     replace (KernelSyms.kernelvec + 0x2 + 2) with (KernelSyms.kernelvec + 0x4) by lia.
@@ -340,7 +340,7 @@ Section KernelvecCore.
 
   Lemma kv_load_instrs :
     kernel_text -∗ block_instrs_s (KernelSyms.kernelvec + 0x28) kv_load_prog.
-  Proof.
+  Proof using .
     iIntros "#Ht". cbn [block_instrs_s kv_load_prog vop_s_ast].
     iSplitR; [by iApply kv_i20|].
     replace (KernelSyms.kernelvec + 0x28 + 2) with (KernelSyms.kernelvec + 0x2a) by lia.
@@ -443,7 +443,7 @@ Section KernelvecCore.
       TsoCtx.own_context XI -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros.
     iIntros "Hsm Htlbinv
              Hpc Hfile #Htext Hw1 Hw2 Hw3 Hw4 Hw5 Hw6 Hw7 Hw8 Hw9 Hw10 Hw11 Hw12 Hw13 Hw14 Hw15 Hw16 Hw17 Hctx Hcont".
@@ -614,7 +614,7 @@ Section KernelvecCore.
       TsoCtx.own_context XI -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros.
     iIntros "Hsm Htlbinv
              Hpc Hfile #Htext Hw1 Hw2 Hw3 Hw4 Hw5 Hw6 Hw7 Hw8 Hw9 Hw10 Hw11 Hw12 Hw13 Hw14 Hw15 Hw16 Hw17 Hctx Hcont".
@@ -866,7 +866,7 @@ Section KernelvecCore.
       TsoCtx.own_context XI -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros.
     iIntros "Hsm Htlbinv Hpc Hfile
              #Htext Hw1 Hw2 Hw3 Hw4 Hw5 Hw6 Hw7 Hw8 Hw9 Hw10 Hw11 Hw12 Hw13 Hw14 Hw15 Hw16 Hw17 Hctx Hcont".
@@ -1096,7 +1096,7 @@ Section KernelvecCore.
       TsoCtx.own_context XI -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HSIE HMPRV HSXL Hmm HPBMTE Hmenvval0 Hsp0.
     iIntros "#Hhw #Hinv Hsm Hhs2 Hpriv2 Hms2 Hmie2 Hmdl2 Hmenv2 Htlbinv Hpc Hfile
              #Htext Hv1 Hv2 Hv3 Hv4 Hv5 Hv6 Hv7 Hv8 Hv9 Hv10 Hv11 Hv12 Hv13 Hv14 Hv15 Hv16 Hv17 Hctx Hcont".
@@ -1448,7 +1448,7 @@ Section KernelvecHandler.
   Lemma kernelvec_handler_spec (γu : uart_names) (γv : disk_names)
       (γdk γtl : gname) (γs : list gname) (pd pav pu : mword 64) :
     kernelvec_handler_spec_body γu γv γdk γtl γs pd pav pu.
-  Proof.
+  Proof using .
     cbv beta delta [kernelvec_handler_spec_body].
     iIntros (Hgs) "#Hhw #Hinv #Htext".
     iApply (intr_handler_spec_intro

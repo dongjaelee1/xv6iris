@@ -159,14 +159,14 @@ Section UtArmsCommon.
     ut_hold Rsys N U false lks sts cs pid -∗
       cpu_own 0%nat false (un_pj N) false lks ∗ trap_csrs KT1 ∗
       cpu_claim (un_pj N) ∗ ut_env Rsys N U sts cs pid.
-  Proof. iIntros "H". iExact "H". Qed.
+  Proof using . iIntros "H". iExact "H". Qed.
 
   Lemma ua_hold_on (N : ut_names) (U : ustate) (lks : gset string)
       (sts : list fdstate) (cs : gset gname) (pid : mword 32) :
     cpu_own 0%nat false (un_pj N) false lks -∗ trap_csrs KT1 -∗
     cpu_claim (un_pj N) -∗ ut_env Rsys N U sts cs pid -∗
     ut_hold Rsys N U false lks sts cs pid.
-  Proof.
+  Proof using .
     iIntros "Hcpu Hcsrs Hclm Henv". rewrite /ut_hold.
     iSplitL "Hcpu"; [iExact "Hcpu"|].
     iSplitL "Hcsrs"; [iExact "Hcsrs"|].
@@ -181,7 +181,7 @@ Section UtArmsCommon.
     cpu_own 0%nat false (un_pj N) false lks -∗ trap_csrs KT1 -∗
     cpu_claim (un_pj N) -∗ (ut_caps N ∗ T.ut_own_nm Rsys N U sts cs pid) -∗
     T.ut_hold_nm Rsys N U false lks sts cs pid.
-  Proof.
+  Proof using .
     iIntros "Hcpu Hcsrs Hclm Henv". rewrite /T.ut_hold_nm.
     iSplitL "Hcpu"; [iExact "Hcpu"|].
     iSplitL "Hcsrs"; [iExact "Hcsrs"|].
@@ -196,7 +196,7 @@ Section UtArmsCommon.
   Lemma ua_pin_sie_cap_gpr (M : regfile) (avail : nat) (bb : bool)
       (pp : mword 64) :
     sie_cap_gpr KT1 (tp_pin M) avail bb pp = sie_cap_gpr KT1 M avail bb pp.
-  Proof.
+  Proof using .
     unfold sie_cap_gpr, sie_cap.
     rewrite (tp_pin_id (tp_pin M) (rget_tp M)).
     rewrite (tp_pin_sp M).
@@ -205,10 +205,10 @@ Section UtArmsCommon.
 
   Lemma ua_pin_lookup (M : regfile) (k : mword 5) :
     Regidx k <> Regidx Rtp -> tp_pin M !!! Regidx k = M !!! Regidx k.
-  Proof. intro H. rewrite /tp_pin. apply upd_ne. exact H. Qed.
+  Proof using . intro H. rewrite /tp_pin. apply upd_ne. exact H. Qed.
 
   Lemma ua_pin_cs (m0 M : regfile) : ut_cs m0 M -> ut_cs m0 (tp_pin M).
-  Proof.
+  Proof using .
     intro H. rewrite /tp_pin.
     apply ut_cs_insert; [vm_compute; reflexivity | exact H].
   Qed.
@@ -305,7 +305,7 @@ Section Ut56.
       (fun CID' => usertrap_post (CID := CID') (ut_res (CID := CID') Rsys) pt ksp m0
                      mie_v menvcfg0 U0 sts gn cs pid epv scv fdep Wk) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hfdk Hwf Hgenr Hav Hnx Htfpe Hksp Hm0sp Hmsp Hms1 Hcs Hmiev Hmenvv Hrd Hnec.
     pose proof (ut_nx_bound false av nx Hav Hnx) as Hks.
     
@@ -890,7 +890,7 @@ Section UtD0.
       (fun CID' => usertrap_post (CID := CID') (ut_res (CID := CID') Rsys) pt ksp m0
                      mie_v menvcfg0 U0 sts gn cs pid epv scv fdep Wk) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hfdk Hwf Hgenr Hav Hnx Htfpe Hksp Hm0sp Hmsp Hms1 Hcs Hmiev Hmenvv Hrd Hnec.
     pose proof (ut_nx_bound false av nx Hav Hnx) as Hks.
     
@@ -1356,7 +1356,7 @@ Section UtE8.
       (fun CID' => usertrap_post (CID := CID') (ut_res (CID := CID') Rsys) pt ksp m0
                      mie_v menvcfg0 U0 sts gn cs pid epv scv fdep Wk) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hwf Hgenr Hav Hnx Htfpe Hksp Hm0sp Hmsp Hms1 Hcs Hmiev Hmenvv Hrd Hnec.
     pose proof (ut_nx_bound false av nx Hav Hnx) as Hks.
     

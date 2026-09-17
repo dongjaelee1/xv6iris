@@ -453,7 +453,7 @@ Section BarePt.
   Lemma uptg_wf_get (fx : gmap (mword 27) (mword 64)) (uroot : mword 44)
       (um : gmap (mword 27) (mword 64)) :
     uptg fx uroot um ⊢ ⌜uptg_wf um⌝ ∗ ⌜fx_wf fx⌝.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /uptg.
     iDestruct "H" as "(%Hwf & %Hfx & _ & _)". iPureIntro. split; assumption.
   Qed.
@@ -466,7 +466,7 @@ Section BarePt.
     uptg_wf um -> um !! vpn = Some w ->
     KMap.kmap_static_claims -∗ upt_pages_own um -∗
       page_own (page_base (pte_ppn w)) ∗ upt_pages_own (delete vpn um).
-  Proof.
+  Proof using .
     intros Hwf Hl.
     pose proof (uptg_page_valid um vpn w Hwf Hl) as Hval.
     destruct Hwf as (_ & _ & Hinj).
@@ -483,7 +483,7 @@ Section BarePt.
      direction must therefore be given. *)
   Lemma proc_pt_uptg (P : uptd) :
     proc_pt_any P ⊢ uptg (upt_fixed_both P.(ud_tfp)) P.(ud_root) P.(ud_um).
-  Proof.
+  Proof using .
     iIntros "H". rewrite proc_pt_any_unfold /uptg /proc_pt_own /pt_frame.
     iDestruct "H" as "(%Hwf & Ht & Hown)".
     iDestruct "Ht" as (t) "(%Hspec & Ht)".
@@ -513,7 +513,7 @@ Section BarePt.
   Lemma uptg_split (fx : gmap (mword 27) (mword 64)) (uroot : mword 44)
       (um : gmap (mword 27) (mword 64)) :
     uptg fx uroot um ⊣⊢ uptg_tree fx uroot um ∗ upt_pages_own um.
-  Proof.
+  Proof using .
     rewrite /uptg /uptg_tree. iSplit.
     - iIntros "(%H1 & %H2 & Ht & Ho)". iFrame "Ht Ho".
       iSplitR; iPureIntro; assumption.
@@ -524,7 +524,7 @@ Section BarePt.
   Lemma uptg_join (fx : gmap (mword 27) (mword 64)) (uroot : mword 44)
       (um : gmap (mword 27) (mword 64)) :
     uptg_tree fx uroot um -∗ upt_pages_own um -∗ uptg fx uroot um.
-  Proof.
+  Proof using .
     iIntros "Ht Ho". rewrite uptg_split. iFrame "Ht Ho".
   Qed.
 
@@ -533,7 +533,7 @@ Section BarePt.
     uptg_tree fx uroot um ⊢ ∃ t m_ad,
       ⌜pt_rep0 t m_ad⌝ ∗ ⌜uptg_view fx um m_ad⌝ ∗ ⌜pt_base t = uroot⌝ ∗
       ⌜uptg_wf um⌝ ∗ ⌜fx_wf fx⌝ ∗ ptree_own 2 (DfracOwn 1) t.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /uptg_tree /pt_frame.
     iDestruct "H" as "(%Hwf & %Hfx & Ht)".
     iDestruct "Ht" as (t) "(%Hspec & Ht)".
@@ -553,7 +553,7 @@ Section BarePt.
     uptg_wf um -> fx_wf fx -> uptg_view fx um m_ad ->
     pt_rep0 t' m_ad -> pt_base t' = uroot ->
     ptree_own 2 (DfracOwn 1) t' -∗ uptg_tree fx uroot um.
-  Proof.
+  Proof using .
     intros Hwf Hfx Hview Hrep Hbase. iIntros "Ht".
     rewrite /uptg_tree /pt_frame.
     iSplitR; [iPureIntro; exact Hwf |].
@@ -569,7 +569,7 @@ Section BarePt.
     proc_ptm P sz M
     ⊢ uptg_tree (upt_fixed_both P.(ud_tfp)) P.(ud_root) P.(ud_um)
       ∗ umem_lazy P sz M.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /proc_ptm /uptg_tree /pt_frame.
     iDestruct "H" as "(%Hwf & Ht & Hm)".
     iDestruct "Ht" as (t) "(%Hspec & Ht)".
@@ -585,7 +585,7 @@ Section BarePt.
     upt_acc_wf P.(ud_um) -> page_valid (page_base P.(ud_tfp)) ->
     uptg_tree (upt_fixed_both P.(ud_tfp)) P.(ud_root) P.(ud_um) -∗
     umem_lazy P sz M -∗ proc_ptm P sz M.
-  Proof.
+  Proof using .
     intros Hacc Hval. iIntros "H Hm".
     rewrite /proc_ptm /uptg_tree /pt_frame.
     iDestruct "H" as "(%Hwf & %Hfx & Ht)".
@@ -604,7 +604,7 @@ Section BarePt.
     uptg fx uroot um ⊢ ∃ t m_ad,
       ⌜pt_rep0 t m_ad⌝ ∗ ⌜uptg_view fx um m_ad⌝ ∗ ⌜pt_base t = uroot⌝ ∗
       ⌜uptg_wf um⌝ ∗ ⌜fx_wf fx⌝ ∗ ptree_own 2 (DfracOwn 1) t ∗ upt_pages_own um.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /uptg /pt_frame.
     iDestruct "H" as "(%Hwf & %Hfx & Ht & Hown)".
     iDestruct "Ht" as (t) "(%Hspec & Ht)".
@@ -624,7 +624,7 @@ Section BarePt.
     uptg_wf um -> fx_wf fx -> uptg_view fx um m_ad ->
     pt_rep0 t' m_ad -> pt_base t' = uroot ->
     ptree_own 2 (DfracOwn 1) t' -∗ upt_pages_own um -∗ uptg fx uroot um.
-  Proof.
+  Proof using .
     intros Hwf Hfx Hview Hrep Hbase. iIntros "Ht Hown".
     rewrite /uptg /pt_frame.
     iSplitR; [iPureIntro; exact Hwf |].
@@ -642,7 +642,7 @@ Section BarePt.
     fx_wf fx -> (bv_unsigned vpn < bv_unsigned tf_vpn)%Z ->
     uptg_view fx um m_ad -> m_ad !! vpn = Some w' ->
     exists w (a d : mword 1), um !! vpn = Some w /\ w' = pte_set_ad w a d.
-  Proof.
+  Proof using .
     intros Hfx Hlt (_ & Hsome) Hl.
     destruct (Hsome vpn w' Hl) as (w & a & d & Hf & Hr).
     rewrite (uptg_map_user fx um vpn Hfx Hlt) in Hf.
@@ -653,7 +653,7 @@ Section BarePt.
       (vpn : mword 27) :
     fx_wf fx -> (bv_unsigned vpn < bv_unsigned tf_vpn)%Z ->
     uptg_view fx um m_ad -> m_ad !! vpn = None -> um !! vpn = None.
-  Proof.
+  Proof using .
     intros Hfx Hlt (Hnone & _) Hl.
     rewrite <- (uptg_map_user fx um vpn Hfx Hlt).
     exact (proj1 (Hnone vpn) Hl).
@@ -663,7 +663,7 @@ Section BarePt.
       (vpn : mword 27) :
     fx_wf fx -> (bv_unsigned vpn < bv_unsigned tf_vpn)%Z ->
     uptg_view fx um m_ad -> uptg_view fx (delete vpn um) (delete vpn m_ad).
-  Proof.
+  Proof using .
     intros Hfx Hlt (Hnone & Hsome).
     rewrite /uptg_view (uptg_map_delete fx um vpn Hfx Hlt).
     split.
@@ -690,7 +690,7 @@ Section BarePt.
     upt_map_wf um -> (v = tramp_vpn \/ v = tf_vpn) ->
     uptg_view fx um m_ad -> m_ad !! v = Some w' ->
     exists w (a d : mword 1), fx !! v = Some w /\ w' = pte_set_ad w a d.
-  Proof.
+  Proof using .
     intros Hwf Hv (_ & Hsome) Hl.
     destruct (Hsome v w' Hl) as (w & a & d & Hf & Hr).
     rewrite (uptg_map_fixed fx um v Hwf Hv) in Hf.
@@ -701,7 +701,7 @@ Section BarePt.
       (v : mword 27) :
     upt_map_wf um -> (v = tramp_vpn \/ v = tf_vpn) ->
     uptg_view fx um m_ad -> m_ad !! v = None -> fx !! v = None.
-  Proof.
+  Proof using .
     intros Hwf Hv (Hnone & _) Hl.
     rewrite <- (uptg_map_fixed fx um v Hwf Hv).
     exact (proj1 (Hnone v) Hl).
@@ -711,7 +711,7 @@ Section BarePt.
       (v : mword 27) :
     upt_map_wf um -> (v = tramp_vpn \/ v = tf_vpn) ->
     uptg_view fx um m_ad -> uptg_view (delete v fx) um (delete v m_ad).
-  Proof.
+  Proof using .
     intros Hwf Hv (Hnone & Hsome).
     rewrite /uptg_view (uptg_map_delete_fixed fx um v Hwf Hv).
     split.
@@ -759,7 +759,7 @@ Section BarePt.
   Lemma fx_wf_del_run (fx : gmap (mword 27) (mword 64)) (vpn0 : mword 27)
       (k : nat) :
     fx_wf fx -> fx_wf (um_del_run fx vpn0 k).
-  Proof.
+  Proof using .
     intros Hwf. induction k as [| k IH]; [exact Hwf |].
     cbn [um_del_run]. exact (fx_wf_delete _ _ IH).
   Qed.
@@ -767,7 +767,7 @@ Section BarePt.
   Lemma uu_fx_wf (df : bool) (fx : gmap (mword 27) (mword 64))
       (vpn0 : mword 27) (k : nat) :
     fx_wf fx -> fx_wf (uu_fx df fx vpn0 k).
-  Proof.
+  Proof using .
     intros Hwf. rewrite /uu_fx. destruct df; [exact Hwf |].
     exact (fx_wf_del_run fx vpn0 k Hwf).
   Qed.
@@ -775,7 +775,7 @@ Section BarePt.
   Lemma uu_um_wf (df : bool) (um : gmap (mword 27) (mword 64))
       (vpn0 : mword 27) (k : nat) :
     uptg_wf um -> uptg_wf (uu_um df um vpn0 k).
-  Proof.
+  Proof using .
     intros Hwf. rewrite /uu_um. destruct df; [| exact Hwf].
     exact (uptg_wf_del_run um vpn0 k Hwf).
   Qed.
@@ -804,7 +804,7 @@ Section BarePt.
            ⌜uu_um df um vpn0 (S k) = uu_um df um vpn0 k⌝ -∗
            upt_pages_own (uu_um df um vpn0 k) -∗
            upt_pages_own (uu_um df um vpn0 (S k))).
-  Proof.
+  Proof using .
     intros Hwf Hside. iIntros "#Hb". iSplit.
     - iIntros "!>" (k w) "%Hk %Hl Ho".
       destruct df.
@@ -830,7 +830,7 @@ Section BarePt.
     m_ad !! vpn_at vpn0 k = None ->
     uu_fx df fx vpn0 (S k) = uu_fx df fx vpn0 k
     /\ uu_um df um vpn0 (S k) = uu_um df um vpn0 k.
-  Proof.
+  Proof using .
     intros Hwf Hfx Hok Hview Hnone. rewrite /uu_fx /uu_um in Hview |- *.
     destruct df.
     - split; [reflexivity |]. cbn [um_del_run]. apply delete_notin.
@@ -849,7 +849,7 @@ Section BarePt.
     uptg_view (uu_fx df fx vpn0 k) (uu_um df um vpn0 k) m_ad ->
     uptg_view (uu_fx df fx vpn0 (S k)) (uu_um df um vpn0 (S k))
               (delete (vpn_at vpn0 k) m_ad).
-  Proof.
+  Proof using .
     intros Hwf Hfx Hok Hview. rewrite /uu_fx /uu_um in Hview |- *.
     destruct df; cbn [um_del_run].
     - exact (uptg_view_delete fx (um_del_run um vpn0 k) m_ad (vpn_at vpn0 k)
@@ -876,13 +876,13 @@ Section BarePt.
   (* ================================================================== *)
 
   Lemma uptg_wf_empty : uptg_wf ∅.
-  Proof.
+  Proof using .
     split_and!;
       [ exact upt_map_wf_empty | exact um_pages_valid_empty | exact um_inj_empty ].
   Qed.
 
   Lemma upt_pages_own_empty : ⊢ upt_pages_own (∅ : gmap (mword 27) (mword 64)).
-  Proof.
+  Proof using .
     rewrite /upt_pages_own.
     rewrite (_ : um_ppns ∅ = (∅ : gset (mword 44))); [| apply um_ppns_empty ].
     rewrite big_sepS_empty. done.
@@ -893,7 +893,7 @@ Section BarePt.
   Lemma uptg_of_rep0_empty (uroot : mword 44) (t : ptree) :
     pt_rep0 t ∅ -> pt_base t = uroot ->
     ptree_own 2 (DfracOwn 1) t ⊢ bare_pt uroot ∅.
-  Proof.
+  Proof using .
     intros Hrep Hbase.
     assert (Hview : uptg_view ∅ ∅ (∅ : gmap (mword 27) (mword 64))).
     { rewrite /uptg_view. split.
@@ -917,13 +917,13 @@ Section BarePt.
   Lemma tramp_pte_ad :
     mappages_pte tramp_ppn 10 0
     = pte_set_ad pte_tramp (mword_of_int 0 : mword 1) (mword_of_int 0 : mword 1).
-  Proof. apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . apply bv_eq; vm_compute; reflexivity. Qed.
 
   Lemma uptg_of_rep0_tramp (uroot : mword 44) (t : ptree) :
     pt_rep0 t (<[tramp_vpn := mappages_pte tramp_ppn 10 0]> ∅) ->
     pt_base t = uroot ->
     ptree_own 2 (DfracOwn 1) t ⊢ uptg upt_fixed_tramp uroot ∅.
-  Proof.
+  Proof using .
     intros Hrep Hbase.
     assert (Hview : uptg_view upt_fixed_tramp ∅
                       (<[tramp_vpn := mappages_pte tramp_ppn 10 0]> ∅)).
@@ -951,7 +951,7 @@ Section BarePt.
   Lemma bare_pt_empty_free (uroot : mword 44) :
     bare_pt uroot ∅ ⊢ ∃ t : ptree,
       ⌜pt_base t = uroot⌝ ∗ ⌜pt_free_ok 2 t⌝ ∗ ptree_own 2 (DfracOwn 1) t.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /bare_pt /uptg /pt_frame.
     iDestruct "H" as "(%Hwf & %Hfx & Ht & Hown)".
     iDestruct "Ht" as (t) "(%Hspec & Ht)".

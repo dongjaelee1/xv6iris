@@ -95,15 +95,15 @@ Section Lock.
     (∃ B : nat, lock_frag_at γ st B)%I.
 
   Global Instance lock_auth_at_timeless γ st B : Timeless (lock_auth_at γ st B).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance lock_frag_at_timeless γ st B : Timeless (lock_frag_at γ st B).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* THE AGREEMENT, and it is the tie the word's pin needs: the position the
      invariant minted at the AMO is the position the holder was handed. *)
   Lemma lock_pos_agree γ st st' B B' :
     lock_auth_at γ st B -∗ lock_frag_at γ st' B' -∗ ⌜st = st' /\ B = B'⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Hf".
     iDestruct (own_valid_2 with "Ha Hf") as %[Hv1 Hv2].
     iPureIntro. split.
@@ -174,16 +174,16 @@ Section Lock.
        TsoCtx.ctx_floor cur_ctx B)%I.
 
   Global Instance locked_core_timeless γ i : Timeless (locked_core γ i).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance lock_ctx_held_timeless : Timeless lock_ctx_held.
-  Proof. rewrite /lock_ctx_held. apply _. Qed.
+  Proof using . rewrite /lock_ctx_held. apply _. Qed.
   Global Instance locked_timeless γ i : Timeless (locked γ i).
-  Proof. rewrite /locked. apply _. Qed.
+  Proof using . rewrite /locked. apply _. Qed.
   Global Instance locked_pre_timeless γ i : Timeless (locked_pre γ i).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma locked_split γ i : locked γ i ⊣⊢ locked_core γ i ∗ lock_ctx_held.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* the value [lk->cpu] holds in each state: the OWNER word. *)
   Definition lk_cpu_val (st : lock_state) : mword 64 :=
@@ -214,29 +214,29 @@ Section Lock.
     match st with Some (i, _) => Some i | None => None end.
 
   Lemma lk_wex_none : lk_wex None = None.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
   Lemma lk_wex_some (i : CPU) (o : bool) : lk_wex (Some (i, o)) = Some i.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma lk_cpu_val_none : lk_cpu_val None = (zero_reg : mword 64).
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
   Lemma lk_cpu_val_win (i : CPU) : lk_cpu_val (Some (i, false)) = (zero_reg : mword 64).
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
   Lemma lk_cpu_val_held (i : CPU) : lk_cpu_val (Some (i, true)) = cpus_ptr i.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
 
   Global Instance lock_auth_timeless γ st : Timeless (lock_auth γ st).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance lock_frag_timeless γ st : Timeless (lock_frag γ st).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* ---- the ghost laws ------------------------------------------------ *)
 
   (* the fragment agrees with the authority: this is what pins [lk->cpu]. *)
   Lemma lock_frag_agree γ st st' :
     lock_auth γ st -∗ lock_frag γ st' -∗ ⌜st = st'⌝.
-  Proof.
+  Proof using .
     iIntros "(%B & Ha) (%B' & Hf)".
     iDestruct (lock_pos_agree with "Ha Hf") as %[-> _]. done.
   Qed.
@@ -244,7 +244,7 @@ Section Lock.
      states they claim -- so two holder tokens are impossible. *)
   Lemma lock_frag_exclusive γ st st' :
     lock_frag γ st -∗ lock_frag γ st' -∗ False.
-  Proof.
+  Proof using .
     iIntros "(%B & H1) (%B' & H2)".
     iDestruct (own_valid_2 with "H1 H2") as %[Hv1 _].
     destruct (proj1 (excl_auth_frag_op_valid _ _) Hv1).
@@ -253,18 +253,18 @@ Section Lock.
 
   Lemma lock_frag_at_exclusive γ st st' B B' :
     lock_frag_at γ st B -∗ lock_frag_at γ st' B' -∗ False.
-  Proof.
+  Proof using .
     iIntros "H1 H2".
     iDestruct (own_valid_2 with "H1 H2") as %[Hv1 _].
     destruct (proj1 (excl_auth_frag_op_valid _ _) Hv1).
   Qed.
   Lemma locked_core_exclusive γ i j : locked_core γ i -∗ locked_core γ j -∗ False.
-  Proof.
+  Proof using .
     iIntros "(%B & H1 & _) (%B' & H2 & _)".
     iApply (lock_frag_at_exclusive with "H1 H2").
   Qed.
   Lemma locked_exclusive γ i j : locked γ i -∗ locked γ j -∗ False.
-  Proof.
+  Proof using .
     iIntros "[H1 _] [H2 _]". iApply (locked_core_exclusive with "H1 H2").
   Qed.
 
@@ -275,11 +275,11 @@ Section Lock.
   Definition lock_tok_excl (γ : gname) : iProp Σ := lock_frag γ None.
   Lemma lock_tok_excl_exclusive γ :
     lock_tok_excl γ -∗ lock_tok_excl γ -∗ False.
-  Proof. apply lock_frag_exclusive. Qed.
+  Proof using . apply lock_frag_exclusive. Qed.
   Global Instance lock_tok_excl_timeless γ : Timeless (lock_tok_excl γ).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Lemma lock_tok_excl_alloc : ⊢ |==> ∃ γ : gname, lock_tok_excl γ.
-  Proof.
+  Proof using .
     iMod (own_alloc (((◯E (None : leibnizO lock_state)),
                       (◯E (0%nat : leibnizO nat))) : lockUR)) as (γ) "H".
     { split; apply auth_frag_valid; done. }
@@ -293,7 +293,7 @@ Section Lock.
   Lemma locked_core_state_at γ st B i :
     lock_auth_at γ st B -∗ locked_core γ i -∗
     ⌜st = Some (i, true)⌝ ∗ TsoCtx.ctx_floor cur_ctx B.
-  Proof.
+  Proof using .
     iIntros "Ha (%B' & Hf & #Hfl)".
     iDestruct (lock_pos_agree with "Ha Hf") as %[-> ->].
     iSplitR; [done|]. iExact "Hfl".
@@ -301,12 +301,12 @@ Section Lock.
   Lemma locked_state_at γ st B i :
     lock_auth_at γ st B -∗ locked γ i -∗
     ⌜st = Some (i, true)⌝ ∗ TsoCtx.ctx_floor cur_ctx B.
-  Proof. iIntros "Ha [Hc _]". iApply (locked_core_state_at with "Ha Hc"). Qed.
+  Proof using . iIntros "Ha [Hc _]". iApply (locked_core_state_at with "Ha Hc"). Qed.
 
   Lemma locked_pre_state_at γ st B i :
     lock_auth_at γ st B -∗ locked_pre γ i -∗
     ⌜st = Some (i, false)⌝ ∗ TsoCtx.ctx_floor cur_ctx B.
-  Proof.
+  Proof using .
     iIntros "Ha (%B' & Hf & #Hfl)".
     iDestruct (lock_pos_agree with "Ha Hf") as %[-> ->].
     iSplitR; [done|]. iExact "Hfl".
@@ -314,21 +314,21 @@ Section Lock.
 
   Lemma locked_state γ st i :
     lock_auth γ st -∗ locked γ i -∗ ⌜st = Some (i, true)⌝.
-  Proof.
+  Proof using .
     iIntros "(%B & Ha) Ht".
     iDestruct (locked_state_at with "Ha Ht") as "[$ _]".
   Qed.
 
   Lemma locked_pre_state γ st i :
     lock_auth γ st -∗ locked_pre γ i -∗ ⌜st = Some (i, false)⌝.
-  Proof.
+  Proof using .
     iIntros "(%B & Ha) Ht".
     iDestruct (locked_pre_state_at with "Ha Ht") as "[$ _]".
   Qed.
 
   Lemma locked_cpu_eq γ st i :
     lock_auth γ st -∗ locked γ i -∗ ⌜lk_cpu_val st = cpus_ptr i⌝.
-  Proof.
+  Proof using .
     iIntros "Hg Ht".
     iDestruct (locked_state with "Hg Ht") as %->. done.
   Qed.
@@ -341,7 +341,7 @@ Section Lock.
   Local Lemma lock_state_update_at γ st st' B B' :
     lock_auth_at γ st B -∗ lock_frag_at γ st B ==∗
     lock_auth_at γ st' B' ∗ lock_frag_at γ st' B'.
-  Proof.
+  Proof using .
     iIntros "Ha Hf".
     rewrite /lock_auth_at /lock_frag_at -own_op.
     iApply (own_update_2 with "Ha Hf").
@@ -350,7 +350,7 @@ Section Lock.
 
   Local Lemma lock_state_update γ st st' :
     lock_auth γ st -∗ lock_frag γ st ==∗ lock_auth γ st' ∗ lock_frag γ st'.
-  Proof.
+  Proof using .
     iIntros "(%B & Ha) (%B' & Hf)".
     iDestruct (lock_pos_agree with "Ha Hf") as %[_ ->].
     iMod (lock_state_update_at γ st st' B' B' with "Ha Hf") as "[Ha Hf]".
@@ -363,7 +363,7 @@ Section Lock.
     TsoCtx.ctx_floor cur_ctx B -∗
     lock_auth γ None -∗ lock_frag γ None ==∗
     lock_auth_at γ (Some (i, false)) B ∗ locked_pre γ i.
-  Proof.
+  Proof using .
     iIntros "#Hfl (%B0 & Ha) (%B1 & Hf)".
     iDestruct (lock_pos_agree with "Ha Hf") as %[_ ->].
     iMod (lock_state_update_at γ None (Some (i, false)) B1 B with "Ha Hf")
@@ -376,7 +376,7 @@ Section Lock.
   Lemma lock_setcpu γ st B i :
     lock_auth_at γ st B -∗ locked_pre γ i ==∗
     ⌜st = Some (i, false)⌝ ∗ lock_auth_at γ (Some (i, true)) B ∗ locked_core γ i.
-  Proof.
+  Proof using .
     iIntros "Ha (%B' & Hf & #Hfl)".
     iDestruct (lock_pos_agree with "Ha Hf") as %[-> ->].
     iMod (lock_state_update_at γ (Some (i, false)) (Some (i, true)) B' B' with "Ha Hf") as "[Ha Hf]".
@@ -387,7 +387,7 @@ Section Lock.
   Lemma lock_clrcpu γ st B i :
     lock_auth_at γ st B -∗ locked_core γ i ==∗
     ⌜st = Some (i, true)⌝ ∗ lock_auth_at γ (Some (i, false)) B ∗ locked_pre γ i.
-  Proof.
+  Proof using .
     iIntros "Ha (%B' & Hf & #Hfl)".
     iDestruct (lock_pos_agree with "Ha Hf") as %[-> ->].
     iMod (lock_state_update_at γ (Some (i, true)) (Some (i, false)) B' B' with "Ha Hf") as "[Ha Hf]".
@@ -399,7 +399,7 @@ Section Lock.
   Lemma lock_give γ st B i :
     lock_auth_at γ st B -∗ locked_pre γ i ==∗
     ⌜st = Some (i, false)⌝ ∗ lock_auth γ None ∗ lock_frag γ None.
-  Proof.
+  Proof using .
     iIntros "Ha (%B' & Hf & _)".
     iDestruct (lock_pos_agree with "Ha Hf") as %[-> ->].
     iMod (lock_state_update_at γ (Some (i, false)) None B' B'
@@ -515,7 +515,7 @@ Section Lock.
 
   Global Instance lock_word_pin_timeless B lk v :
     Timeless (lock_word_pin B lk v).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* the word conjunct of the invariant, at whichever arm the state selects *)
   Definition lock_word_at (st : lock_state) (B : nat) (lk : mword 64)
@@ -527,7 +527,7 @@ Section Lock.
 
   Global Instance lock_word_at_timeless st B lk v :
     Timeless (lock_word_at st B lk v).
-  Proof. destruct st; apply _. Qed.
+  Proof using . destruct st; apply _. Qed.
 
   Definition lock_word_ex (ex : option CPU) (lk : mword 64) (v : mword 32)
       : iProp Σ :=
@@ -537,22 +537,22 @@ Section Lock.
     end.
 
   Global Instance lock_word_ex_timeless ex lk v : Timeless (lock_word_ex ex lk v).
-  Proof. destruct ex; rewrite /lock_word_ex /lock_word; apply _. Qed.
+  Proof using . destruct ex; rewrite /lock_word_ex /lock_word; apply _. Qed.
 
   (* the held arm forgets its receipt: what release spends on the way out *)
   Lemma lock_word_ex_forget ex lk v : lock_word_ex ex lk v ⊢ lock_word lk v.
-  Proof.
+  Proof using .
     destruct ex as [i|]; [| by iIntros "$"].
     rewrite /lock_word_ex /lock_word.
     iIntros "H". by iApply TsoCtx.phys_ledger_word4_vis_forget.
   Qed.
 
   Lemma lock_word_ex_free lk v : lock_word_ex None lk v ⊣⊢ lock_word lk v.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma lock_word_ex_aligned_p ex lk v :
     lock_word_ex ex lk v ⊢ ⌜is_aligned_paddr (Physaddr lk) 4 = true⌝.
-  Proof.
+  Proof using .
     destruct ex as [i|].
     - iApply TsoCtx.phys_ledger_word4_vis_aligned_p.
     - iApply TsoCtx.phys_ledger_word4_aligned_p.
@@ -562,7 +562,7 @@ Section Lock.
      deliberately: the lock's word never goes back to the ctx tower. *)
   Lemma lock_word_intro (lk : mword 64) (v : mword 32) :
     lk ↦₄ v ⊢ lock_word lk v.
-  Proof. rewrite /lock_word. iIntros "H". by iApply TsoCtx.ctx_word4_ledger_kt0. Qed.
+  Proof using . rewrite /lock_word. iIntros "H". by iApply TsoCtx.ctx_word4_ledger_kt0. Qed.
 
   (* ===================================================================
      THE OWNER FIELD, AND THE HELD-SET FRAGMENT BESIDE IT.
@@ -649,7 +649,7 @@ Section Lock.
 
   Global Instance lk_addr_claim_persistent a width :
     Persistent (lk_addr_claim a width).
-  Proof. rewrite /lk_addr_claim. apply _. Qed.
+  Proof using . rewrite /lk_addr_claim. apply _. Qed.
 
   (* the per-byte half, which is what a free page's bytes are keyed by *)
   Lemma lk_addr_claim_bytes (a : Arch.pa) (width : Z) :
@@ -660,13 +660,13 @@ Section Lock.
         ⌜(uint (pa_add a j) < 274877906944)%Z⌝ ∗
         ⌜ktier_pin KT0 ppj (pa_add a j)⌝ ∗
         ⌜addr_is_ram (pa_add a j)⌝.
-  Proof. rewrite /lk_addr_claim. by iIntros "(_ & % & _ & _ & _ & _ & $)". Qed.
+  Proof using . rewrite /lk_addr_claim. by iIntros "(_ & % & _ & _ & _ & _ & $)". Qed.
 
   (* the pure half, which is all [ledger_read_any_word_ok] wants *)
   Lemma lk_addr_claim_ram (a : Arch.pa) (width : Z) :
     lk_addr_claim a width ⊢
     ⌜forall j : nat, (j < Z.to_nat width)%nat -> addr_is_ram (pa_add a j)⌝.
-  Proof.
+  Proof using .
     rewrite lk_addr_claim_bytes. iIntros "Hb". iIntros (j Hj).
     iDestruct (big_sepL_lookup _ _ j j with "Hb") as (ppj) "(_ & _ & _ & %Hr)".
     { rewrite lookup_seq_lt; [reflexivity | lia]. }
@@ -682,7 +682,7 @@ Section Lock.
     ([∗ list] j ∈ seq 0 (Z.to_nat w),
        ctx_pointsto (KTR := KT0) cur_ctx (pa_add a j) dq (f j))
     ⊢ lk_addr_claim a w.
-  Proof.
+  Proof using .
     intros Hw Hal. iIntros "Hb".
     iAssert ([∗ list] j ∈ seq 0 (Z.to_nat w),
                ∃ ppj : mword 44,
@@ -709,7 +709,7 @@ Section Lock.
   (* a ctx word carries its own claim, which is how the creators pay it *)
   Lemma lk_addr_claim_of4 (lk : mword 64) (dq : dfrac) (v : mword 32) :
     ctx_word4_pointsto (KTR := KT0) cur_ctx lk dq v ⊢ lk_addr_claim lk 4.
-  Proof.
+  Proof using .
     rewrite ctx_word4_pointsto_unfold. iIntros "[%Hal Hb]".
     iApply (lk_addr_claim_of_bytes lk dq 4 (nth_byte v) ltac:(lia) Hal).
     iExact "Hb".
@@ -719,7 +719,7 @@ Section Lock.
      cell's claim BEFORE the store that takes the cell out of the tower. *)
   Lemma lk_addr_claim_of8 (a : Arch.pa) (dq : dfrac) (v : mword 64) :
     ctx_word_pointsto (KTR := KT0) cur_ctx a dq v ⊢ lk_addr_claim a 8.
-  Proof.
+  Proof using .
     rewrite ctx_word_pointsto_unfold. iIntros "[%Hal Hb]".
     iApply (lk_addr_claim_of_bytes a dq 8 (nth_byte v) ltac:(lia) Hal).
     iExact "Hb".
@@ -765,7 +765,7 @@ Section Lock.
   (* two words that differ, differ at a byte *)
   Lemma nth_byte_ne (w1 w2 : mword 64) :
     w1 <> w2 -> exists k, (k < 8)%nat /\ nth_byte w1 k <> nth_byte w2 k.
-  Proof.
+  Proof using .
     intros Hne.
     assert (H : forall l : list nat,
               (exists k, k ∈ l /\ nth_byte w1 k <> nth_byte w2 k)
@@ -786,7 +786,7 @@ Section Lock.
 
   (* a hart's [struct cpu] pointer is not the clear word *)
   Lemma cpus_ptr_ne_zero (i : CPU) : (zero_reg : mword 64) <> cpus_ptr i.
-  Proof.
+  Proof using .
     intros Heq. pose proof (cpus_ptr_nonzero i) as Hne.
     rewrite -Heq in Hne.
     assert (Ht : eq_vec (zero_reg : mword 64) (zero_reg : mword 64) = true)
@@ -803,7 +803,7 @@ Section Lock.
     end.
 
   Lemma agent_cpus_ptr_hart (c : CPU) : agent_cpus_ptr (hart_agent c) = cpus_ptr c.
-  Proof.
+  Proof using .
     rewrite /agent_cpus_ptr. case_decide as Hh.
     - f_equal. apply fin_to_nat_inj. by rewrite fin_to_nat_to_fin.
     - exfalso. pose proof (fin_to_nat_lt c). rewrite /hart_agent in Hh. lia.
@@ -811,7 +811,7 @@ Section Lock.
 
   Lemma agent_cpus_ptr_ne (h : agent) (c : CPU) :
     h <> hart_agent c -> agent_cpus_ptr h <> cpus_ptr c.
-  Proof.
+  Proof using .
     intros Hne. rewrite /agent_cpus_ptr. case_decide as Hh.
     - intros Heq. apply cpus_ptr_inj in Heq. apply Hne.
       rewrite /hart_agent -Heq fin_to_nat_to_fin //.
@@ -848,7 +848,7 @@ Section Lock.
     ⌜forall (tv : nat), (g.(gtv) cpu_id <= tv)%nat -> forall w : mword 64,
        tso_read_bytes g.(gimg) g.(glog) (hart_agent cpu_id) tv (lock_cpu lk)
          (N.of_nat 8) w -> w <> cpus_ptr cpu_id⌝.
-  Proof.
+  Proof using .
     intros Hown.
     assert (Hcpw : forall k, (k < 8)%nat ->
               nth_byte (cpus_ptr cpu_id) k = lkcpu_cp (hart_agent cpu_id) k).
@@ -915,7 +915,7 @@ Section Lock.
 
   Lemma lk_cpu_pay_vis_forget h lk v own lo :
     lk_cpu_pay_vis h lk v own lo ⊢ lk_cpu_pay lk v own lo.
-  Proof.
+  Proof using .
     rewrite /lk_cpu_pay_vis /lk_cpu_pay.
     iIntros "H". iApply (big_sepL_impl with "H").
     iIntros "!>" (k j _) "(%t & _ & H)". by iExists t.
@@ -923,10 +923,10 @@ Section Lock.
 
   Global Instance lk_cpu_pay_timeless lk v own lo :
     Timeless (lk_cpu_pay lk v own lo).
-  Proof. rewrite /lk_cpu_pay. apply _. Qed.
+  Proof using . rewrite /lk_cpu_pay. apply _. Qed.
   Global Instance lk_cpu_pay_vis_timeless h lk v own lo :
     Timeless (lk_cpu_pay_vis h lk v own lo).
-  Proof. rewrite /lk_cpu_pay_vis. apply _. Qed.
+  Proof using . rewrite /lk_cpu_pay_vis. apply _. Qed.
 
   (* >>> THE OWN-INVARIANT, AND IT IS ONE SENTENCE: the ONLY agent that
      may be missing an own-last record is the HOLDER.  Acquire's store
@@ -971,11 +971,11 @@ Section Lock.
 
   Global Instance lk_own_anchored_persistent lo own :
     Persistent (lk_own_anchored lo own).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma lk_own_anchored_mint (lo : nat) :
     ⊢ lk_own_anchored lo (fun _ => Some lo).
-  Proof.
+  Proof using .
     iIntros (h t) "%Heq". injection Heq as <-.
     iApply TsoCtx.ledger_vis_below. lia.
   Qed.
@@ -1002,7 +1002,7 @@ Section Lock.
     lk_cpu_cell_ex lo lk v ex ⊢
     ∃ own : agent -> option nat,
       ⌜lk_own_ok ex own⌝ ∗ lk_own_anchored lo own ∗ lk_cpu_pay lk v own lo.
-  Proof.
+  Proof using .
     iIntros "(%own & %Hok & #Han & Hb)". iExists own.
     iSplitR; [done|]. iFrame "Han".
     destruct ex as [i|]; [ by iApply lk_cpu_pay_vis_forget | iExact "Hb" ].
@@ -1014,7 +1014,7 @@ Section Lock.
       (i : CPU) :
     lk_own_ok ex own -> ex <> Some i ->
     exists t : nat, own (hart_agent i) = Some t.
-  Proof.
+  Proof using .
     intros Hok Hne. destruct (own (hart_agent i)) as [t|] eqn:Heq.
     - by exists t.
     - destruct (Hok _ Heq) as (i' & -> & Hag).
@@ -1026,7 +1026,7 @@ Section Lock.
      one, at the cost of the exactness the holder had *)
   Lemma lk_cpu_cell_ex_forget lo lk v ex :
     lk_cpu_cell_ex lo lk v ex ⊢ lk_cpu_cell lo lk v ∨ ⌜is_Some ex⌝.
-  Proof.
+  Proof using .
     iIntros "(%own & %Hok & #Han & Hb)". destruct ex as [i|].
     - iRight. iPureIntro. by eexists.
     - iLeft. iExists own. by iFrame "Han Hb".
@@ -1049,7 +1049,7 @@ Section Lock.
 
   Lemma lk_cpu_fresh_at (lo : nat) (lk : mword 64) :
     lk_cpu_fresh lo lk ⊣⊢ lk_cpu_at lo lk (zero_reg : mword 64).
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* >>> A6.105: THE FLOOR RIDES WITH THE CELL, and that is what keeps the
      whole creator sweep to a rename.  A creator needs two things to hand
@@ -1106,17 +1106,17 @@ Section Lock.
     (TsoCtx.ctx_floor ξ lo ∨ ∃ a : Arch.pa, TsoCtx.ctx_wrote ξ lo a)%I.
 
   Global Instance lk_floor_persistent ξ lo : Persistent (lk_floor ξ lo).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma lk_floor_0 ξ : ⊢ lk_floor ξ 0.
-  Proof. iLeft. iApply TsoCtx.ctx_floor_0. Qed.
+  Proof using . iLeft. iApply TsoCtx.ctx_floor_0. Qed.
 
   Lemma lk_floor_of_ctx ξ lo : TsoCtx.ctx_floor ξ lo -∗ lk_floor ξ lo.
-  Proof. iIntros "H". by iLeft. Qed.
+  Proof using . iIntros "H". by iLeft. Qed.
 
   Lemma lk_floor_of_wrote ξ lo (a : Arch.pa) :
     TsoCtx.ctx_wrote ξ lo a -∗ lk_floor ξ lo.
-  Proof. iIntros "#Hw". iRight. by iExists a. Qed.
+  Proof using . iIntros "#Hw". iRight. by iExists a. Qed.
 
   (* A6.123: the floor TRANSPORTS -- the left arm lands on the receiver's
      left arm (A6.117's [ctx_floor_dom]); the right arm lands on whichever
@@ -1126,7 +1126,7 @@ Section Lock.
      a floor (a lease-held word's, a nested handle's) is [CtxMorph] with no
      absorb capability at all. *)
   Global Instance lk_floor_morph (lo : nat) : CtxMorph (λ ξ, lk_floor ξ lo).
-  Proof.
+  Proof using .
     iIntros (ξ ξ') "Hd [#Hfl | (%a & #Hw)]".
     - iDestruct (TsoCtx.ctx_floor_dom with "Hd Hfl") as "[Hd #Hfl']".
       iModIntro. iFrame "Hd". by iLeft.
@@ -1147,7 +1147,7 @@ Section Lock.
     TsoCtx.own_context ξ ∗ ∃ K : nat,
       TsoGhost.view_lb view_name loglen_name (hart_agent cpu_id) K ∗
       TsoCtx.ledger_vis (hart_agent cpu_id) K lo.
-  Proof.
+  Proof using .
     iIntros "Hrun #Hfl". iDestruct "Hfl" as "[#Hfl | (%a & #Hw)]".
     - iDestruct (TsoCtx.own_context_floor_view with "Hrun Hfl")
         as "[Hrun (%K & #HK & %HloK)]".
@@ -1183,7 +1183,7 @@ Section Lock.
     lock_word_fresh lk ⊢
     [∗ list] j ∈ seq 0 4,
       TsoCtx.mem_free (KTR := KT0) (pa_add lk j) (DfracOwn 1).
-  Proof.
+  Proof using .
     rewrite /lock_word_fresh /lock_word TsoCtx.phys_ledger_word4_unfold.
     iIntros "[#Hcl [_ Hp]]".
     iDestruct (lk_addr_claim_bytes with "Hcl") as "#Hb".
@@ -1206,7 +1206,7 @@ Section Lock.
     lk_cpu_fresh lo lk ⊢
     [∗ list] j ∈ seq 0 8,
       TsoCtx.mem_free (KTR := KT0) (pa_add (lock_cpu lk) j) (DfracOwn 1).
-  Proof.
+  Proof using .
     rewrite /lk_cpu_fresh /lk_cpu_at /lk_cpu_cell /lk_cpu_cell_ex /lk_cpu_pay.
     iIntros "[#Hcl (%own & _ & _ & Hp)]".
     iDestruct (lk_addr_claim_bytes with "Hcl") as "#Hb".
@@ -1226,9 +1226,9 @@ Section Lock.
      [st] is a VARIABLE there, so the match is stuck and the structural
      instances cannot see the two branches.  Stated once, here. *)
   Global Instance lk_cpu_frag_timeless st r : Timeless (lk_cpu_frag st r).
-  Proof. destruct st as [[i []]|]; apply _. Qed.
+  Proof using . destruct st as [[i []]|]; apply _. Qed.
   Global Instance lk_cpu_res_timeless lo st lk r : Timeless (lk_cpu_res lo st lk r).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* THE OWNER CELL, NAMED (§6 amendment A6.8).  The SC-era file stated the
      ∃-cell EQUAL to the acting hart's ambient form ([lk_cpu_cell_acc], via
@@ -1251,10 +1251,10 @@ Section Lock.
   (* the free / window form: the whole cell at 0 and no fragment. *)
   Lemma lk_cpu_res_free (lo : nat) (lk : mword 64) (r : string) :
     lk_cpu_res lo None lk r ⊣⊢ lk_cpu_cell lo lk (zero_reg : mword 64).
-  Proof. rewrite /lk_cpu_res /lk_cpu_cell /=. apply bi.sep_emp. Qed.
+  Proof using . rewrite /lk_cpu_res /lk_cpu_cell /=. apply bi.sep_emp. Qed.
   Lemma lk_cpu_res_win (lo : nat) (i : CPU) (lk : mword 64) (r : string) :
     lk_cpu_res lo (Some (i, false)) lk r ⊣⊢ lk_cpu_cell lo lk (zero_reg : mword 64).
-  Proof. rewrite /lk_cpu_res /lk_cpu_cell /=. apply bi.sep_emp. Qed.
+  Proof using . rewrite /lk_cpu_res /lk_cpu_cell /=. apply bi.sep_emp. Qed.
   (* THE HELD FORM CARRIES MORE THAN THE OTHER TWO, and that is the
      author-fragment point (A6.78 §(2)): the holder's own read of the
      cell must be EXACT, so the held cell keeps the store's message
@@ -1262,7 +1262,7 @@ Section Lock.
   Lemma lk_cpu_res_held (lo : nat) (i : CPU) (lk : mword 64) (r : string) :
     lk_cpu_res lo (Some (i, true)) lk r ⊣⊢
     lk_cpu_cell_ex lo lk (cpus_ptr i) (Some i) ∗ lk_in i r.
-  Proof. rewrite /lk_cpu_res /=. reflexivity. Qed.
+  Proof using . rewrite /lk_cpu_res /=. reflexivity. Qed.
 
   (* A6.66 THE PARKED-RECORD FREE ARM (tso-port.md §0.18′, ported from the
      main tree's landed shape).  The free arm holds the payload's facts
@@ -1303,7 +1303,7 @@ Section Lock.
        ctx_stamped ξ T -∗ Rin ξ ==∗ ∃ T' : nat, ctx_stamped ξ T' ∗ R ξ)%I.
 
   Lemma lock_hook_id (R : CtxId -> iProp Σ) : ⊢ lock_ctx_hook R R.
-  Proof. rewrite /lock_ctx_hook. iIntros (ξ T) "Hs HR". iModIntro. iExists T. iFrame. Qed.
+  Proof using . rewrite /lock_ctx_hook. iIntros (ξ T) "Hs HR". iModIntro. iExists T. iFrame. Qed.
 
   (* the floor fold: the record's stamp rises to the receipt's position for
      free ([TsoCtx.ctx_stamped_raise] -- a stamped context has no hart) and
@@ -1311,7 +1311,7 @@ Section Lock.
   Lemma lock_hook_llb (Rin R : CtxId -> iProp Σ) (tl : nat) :
     (forall ξ : CtxId, Rin ξ ∗ TsoCtx.ctx_floor ξ tl ⊢ R ξ) ->
     TsoGhost.llb loglen_name tl -∗ lock_ctx_hook R Rin.
-  Proof.
+  Proof using .
     iIntros (Hfold) "#Hllb". rewrite /lock_ctx_hook. iIntros (ξ T) "Hs HR".
     iMod (TsoCtx.ctx_stamped_raise ξ T tl with "Hllb Hs") as "[Hs #Hfl]".
     iModIntro. iExists (Nat.max T tl). iFrame "Hs". iApply Hfold. iFrame "HR Hfl".
@@ -1325,7 +1325,7 @@ Section Lock.
   Lemma lock_pay_born `{CID : CpuId} (Rin R : CtxId -> iProp Σ) `{!CtxMorph Rin} :
     own_context cur_ctx -∗ Rin cur_ctx -∗ lock_ctx_hook R Rin ==∗
     own_context cur_ctx ∗ lock_pay R.
-  Proof.
+  Proof using .
     iIntros "Hrun HR Hhook".
     iMod (own_context_twin cur_ctx with "Hrun") as "[Hrun (%ξL & HξL)]".
     iMod (ctx_move (R := Rin) cur_ctx ξL with "Hrun HξL HR") as "(Hrun & HξL & HR)".
@@ -1336,7 +1336,7 @@ Section Lock.
 
   Lemma lock_pay_born_id `{CID : CpuId} (R : CtxId -> iProp Σ) `{!CtxMorph R} :
     own_context cur_ctx -∗ R cur_ctx ==∗ own_context cur_ctx ∗ lock_pay R.
-  Proof.
+  Proof using .
     iIntros "Hrun HR". iApply (lock_pay_born R R with "Hrun HR"). iApply lock_hook_id.
   Qed.
 
@@ -1346,7 +1346,7 @@ Section Lock.
   Lemma lock_pay_intro `{CID : CpuId} (Rin R : CtxId -> iProp Σ) `{!CtxMorph Rin} :
     own_context cur_ctx -∗ lock_ctx_held -∗ Rin cur_ctx -∗ lock_ctx_hook R Rin ==∗
     own_context cur_ctx ∗ lock_pay R.
-  Proof.
+  Proof using .
     iIntros "Hrun (%ξL & Hpk) HR Hhook".
     iMod (ctx_resume ξL cur_ctx with "Hrun Hpk") as "[Hrun HξL]".
     iMod (ctx_move (R := Rin) cur_ctx ξL with "Hrun HξL HR") as "(Hrun & HξL & HR)".
@@ -1364,7 +1364,7 @@ Section Lock.
   Lemma lock_pay_take `{CID : CpuId} (R : CtxId -> iProp Σ) `{!CtxMorph R} :
     own_context cur_ctx -∗ lock_pay_won R ==∗
     own_context cur_ctx ∗ R cur_ctx ∗ lock_ctx_held.
-  Proof.
+  Proof using .
     iIntros "Hrun (%ξL & %T & Hst & #Hfl & HR)".
     iDestruct (TsoCtx.own_context_floor_view cur_ctx T with "Hrun Hfl")
       as "[Hrun (%K & #HK & %HTK)]".
@@ -1435,12 +1435,12 @@ Section Lock.
   Lemma lock_inv_open γ lk s R lo :
     lock_inv γ lk s R lo ⊢
     lock_body γ lk s R lo ∗ lk_addr_claim lk 4 ∗ lk_addr_claim (lock_cpu lk) 8.
-  Proof. by rewrite /lock_inv. Qed.
+  Proof using . by rewrite /lock_inv. Qed.
 
   Lemma lock_inv_close γ lk s R lo :
     lk_addr_claim lk 4 -∗ lk_addr_claim (lock_cpu lk) 8 -∗
     lock_body γ lk s R lo -∗ lock_inv γ lk s R lo.
-  Proof. rewrite /lock_inv. iIntros "#H4 #H8 $". by iFrame "H4 H8". Qed.
+  Proof using . rewrite /lock_inv. iIntros "#H4 #H8 $". by iFrame "H4 H8". Qed.
 
   (* the lock's NAME: [lk->name] (the 8-byte pointer field at +8) holds the
      address of a NUL-terminated string [s].  initlock writes the field once
@@ -1473,7 +1473,7 @@ Section Lock.
        ctx_string_all p DfracDiscarded s)%I.
 
   Global Instance lock_name_persistent lk s : Persistent (lock_name lk s).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* Sealing the name field.  [initlock] hands the field back OWNED (it is
      inside the object's storage, and [kfree] memsets it, so a lock on a
@@ -1483,7 +1483,7 @@ Section Lock.
   Lemma lock_name_intro (lk p : mword 64) (s : string) :
     ctx_string_all p DfracDiscarded s -∗
     lock_name_field lk ↦₈ p ==∗ lock_name lk s.
-  Proof.
+  Proof using .
     iIntros "#Hs Hf".
     iDestruct (ctx_word_pointsto_forget with "Hf") as "Hf".
     iMod (word_pointsto_persist with "Hf") as "#Hfp".
@@ -1513,7 +1513,7 @@ Section Lock.
 
   Global Instance is_lock_persistent γ lk s R :
     Persistent (is_lock γ lk s R).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* PERFORMANCE, and it is a big one: WITHOUT this seal, every [iIntros "#Hlk"]
      of an [is_lock] re-derives persistence by UNFOLDING the definition and
@@ -1534,21 +1534,21 @@ Section Lock.
      [Typeclasses Opaque] above means an [iDestruct]/[iFrame] elsewhere can no
      longer take it apart, which is the point: it must come through here. *)
   Lemma is_lock_name γ lk s R : is_lock γ lk s R -∗ lock_name lk s.
-  Proof. rewrite /is_lock. iIntros "(% & $ & _)". Qed.
+  Proof using . rewrite /is_lock. iIntros "(% & $ & _)". Qed.
   (* the invariant projection EXHIBITS the floor: a leaf that opens the body
      needs the [lo] it was allocated at, and that same [lo] is what its read
      discharges against. *)
   Lemma is_lock_inv γ lk s R :
     is_lock γ lk s R -∗
     ∃ lo : nat, inv lockN (lock_inv γ lk s R lo) ∗ lk_floor cur_ctx lo.
-  Proof.
+  Proof using .
     rewrite /is_lock. iIntros "(%lo & _ & #Hi & #Hf)".
     iExists lo. by iFrame "Hi Hf".
   Qed.
   Lemma is_lock_intro γ lk s R lo :
     lock_name lk s -∗ inv lockN (lock_inv γ lk s R lo) -∗
     lk_floor cur_ctx lo -∗ is_lock γ lk s R.
-  Proof.
+  Proof using .
     rewrite /is_lock. iIntros "#Hn #Hi #Hf". iExists lo. by iFrame "Hn Hi Hf".
   Qed.
 
@@ -1636,11 +1636,11 @@ Section Lock.
 
   Global Instance lock_openable_c_persistent γ lk s R D :
     Persistent (lock_openable_c γ lk s R D).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma lock_openable_of_c γ lk s R D :
     lock_openable_c γ lk s R D -∗ lock_openable γ lk s R D.
-  Proof.
+  Proof using .
     iIntros "(%lo & #Hf & #Ho)". iExists lo. iFrame "Ho".
     by iApply lk_floor_of_ctx.
   Qed.
@@ -1654,13 +1654,13 @@ Section Lock.
           ▷ lock_inv γ lk s R lo ∗ T ∗
           ((▷ lock_inv γ lk s R lo ={E ∖ ↑lockN, E}=∗ True)
            ∧ (D ={E ∖ ↑lockN, E}=∗ True)).
-  Proof. by iIntros "$". Qed.
+  Proof using . by iIntros "$". Qed.
 
   (* the boot-static producer: floor 0 is free, so every lock whose owner
      cell is an era-image cell has this opener for nothing (A6.101). *)
   Lemma lock_openable_c_inv_0 γ lk s R :
     inv lockN (lock_inv γ lk s R 0) -∗ lock_openable_c γ lk s R False.
-  Proof.
+  Proof using .
     iIntros "#Hi". iExists 0%nat. iSplitR; [ iApply TsoCtx.ctx_floor_0 | ].
     iIntros "!>" (E T HE) "_ HT".
     iMod (inv_acc E lockN with "Hi") as "[Hbody Hclose]"; [done|].
@@ -1680,18 +1680,18 @@ Section Lock.
           ▷ lock_inv γ lk s R lo ∗ T ∗
           ((▷ lock_inv γ lk s R lo ={E ∖ ↑lockN, E}=∗ True)
            ∧ (D ={E ∖ ↑lockN, E}=∗ True)).
-  Proof. by iIntros "$". Qed.
+  Proof using . by iIntros "$". Qed.
 
   Global Instance lock_openable_persistent γ lk s R D :
     Persistent (lock_openable γ lk s R D).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* a permanent [inv]: nothing has to be refuted, and no disposal is
      possible. *)
   Lemma lock_openable_inv γ lk s R lo :
     inv lockN (lock_inv γ lk s R lo) -∗ lk_floor cur_ctx lo -∗
     lock_openable γ lk s R False.
-  Proof.
+  Proof using .
     iIntros "#Hi #Hf". iExists lo. iFrame "Hf". iIntros "!>" (E T HE) "_ HT".
     iMod (inv_acc E lockN with "Hi") as "[Hbody Hclose]"; [done|].
     iModIntro. iFrame "Hbody HT".
@@ -1702,14 +1702,14 @@ Section Lock.
      instance of the generic one. *)
   Lemma is_lock_openable γ lk s R :
     is_lock γ lk s R ⊢ lock_openable γ lk s R False.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct (is_lock_inv with "H") as (lo) "[#Hi #Hf]".
     iApply (lock_openable_inv with "Hi Hf").
   Qed.
 
   (* the refutation obligation is vacuous for a lock that cannot die. *)
   Lemma lock_refute_False (T : iProp Σ) : ⊢ T -∗ False -∗ False.
-  Proof. iIntros "_ []". Qed.
+  Proof using . iIntros "_ []". Qed.
 
   (* ---- the CANCELLABLE flavour ----------------------------------------
 
@@ -1727,7 +1727,7 @@ Section Lock.
   Lemma lock_openable_of_dead γ lk s R D lo `{!Timeless D} :
     inv lockN (lock_inv γ lk s R lo ∨ D) -∗ lk_floor cur_ctx lo -∗
     lock_openable γ lk s R D.
-  Proof.
+  Proof using .
     iIntros "#Hi #Hf". iExists lo. iFrame "Hf". iIntros "!>" (E T HE) "Hrefute HT".
     iMod (inv_acc E lockN with "Hi") as "[Hbody Hclose]"; [done|].
     rewrite bi.later_or. iDestruct "Hbody" as "[Hlive | >Hdead]".
@@ -1808,7 +1808,7 @@ Section Lock.
 
   Lemma lock_finisher_to_pay `{CID : CpuId} γ lk s R D Out E :
     R cur_ctx -∗ lock_finisher γ lk s R D Out E -∗ lock_finisher_pay γ lk s R D Out E.
-  Proof.
+  Proof using .
     iIntros "HR (%Pay & Hpre & Hbody)". iExists Pay. iFrame "Hbody".
     iIntros "Hrun Hheld". iApply ("Hpre" with "Hrun Hheld HR").
   Qed.
@@ -1816,7 +1816,7 @@ Section Lock.
   (* the closing body: the free arm is rebuilt from the pieces and the record *)
   Lemma lock_finisher_close_body γ lk s R D E :
     ⊢ lock_finisher_body γ lk s R D emp E (lock_pay R).
-  Proof.
+  Proof using .
     iIntros (lo) "[Hclose _] Hauth Hfrag [#Hc4 Hword] [#Hc8 Hcpu] _ HR".
     iDestruct "Hauth" as (B) "Hauth".
     iMod ("Hclose" with "[Hauth Hfrag Hword Hcpu HR]") as "_"; [| by iModIntro].
@@ -1832,7 +1832,7 @@ Section Lock.
   Lemma lock_finisher_close_hook `{CID : CpuId} γ lk s (Rin R : CtxId → iProp Σ)
       `{!CtxMorph Rin} D E :
     Rin cur_ctx -∗ lock_ctx_hook R Rin -∗ lock_finisher_pay γ lk s R D emp E.
-  Proof.
+  Proof using .
     iIntros "HR Hhook". iExists (lock_pay R). iSplitL.
     { iIntros "Hrun Hheld". iApply (lock_pay_intro Rin R with "Hrun Hheld HR Hhook"). }
     iApply lock_finisher_close_body.
@@ -1842,7 +1842,7 @@ Section Lock.
      merely still has other holders. *)
   Lemma lock_finisher_close `{CID : CpuId} γ lk s R `{!CtxMorph R} D E :
     ⊢ lock_finisher γ lk s R D emp E.
-  Proof.
+  Proof using .
     iExists (lock_pay R). iSplitR.
     { iIntros "Hrun Hheld HR".
       iApply (lock_pay_intro R R with "Hrun Hheld HR"). iApply lock_hook_id. }
@@ -1865,7 +1865,7 @@ Section Lock.
   Lemma lock_finisher_destroy `{CID : CpuId} γ lk s R D Out E :
     (lock_frag γ None -∗ R cur_ctx ==∗ D ∗ Out) -∗
     lock_finisher γ lk s R D (lock_word_fresh lk ∗ lk_cpu_ready lk ∗ Out) E.
-  Proof.
+  Proof using .
     iIntros "Hcomplete". iExists (R cur_ctx). iSplitR "Hcomplete".
     { iIntros "Hrun _ HR". iModIntro. iFrame "Hrun HR". }
     iIntros (lo) "[_ Hdispose] Hauth Hfrag Hword Hcpu #Hfl HR".
@@ -1878,7 +1878,7 @@ Section Lock.
   (* [mem_pointsto]'s and [word4_pointsto]'s [Timeless] instances now live in
      RiscvPtsto.v, beside the definitions. *)
   Global Instance lock_word_timeless lk v : Timeless (lock_word lk v).
-  Proof. rewrite /lock_word. apply _. Qed.
+  Proof using . rewrite /lock_word. apply _. Qed.
 
   (* ---- lock construction (the "newlock" ghost step) ------------------ *)
 
@@ -1898,7 +1898,7 @@ Section Lock.
     lk ↦₄ (mword_of_int 0 : mword 32) -∗
     lk_cpu_fresh lo lk -∗
     R cur_ctx ==∗ own_context cur_ctx ∗ ∃ γ : gname, lock_inv γ lk s R lo.
-  Proof.
+  Proof using .
     iIntros "Hrun Hword [#Hc8 Hcpu] HR".
     iDestruct (lk_addr_claim_of4 with "Hword") as "#Hc4".
     iMod (lock_pay_born_id R with "Hrun HR") as "[Hrun HR]".
@@ -1928,7 +1928,7 @@ Section Lock.
     ∃ γ : gname, ∀ (R : CtxId → iProp Σ) (D : iProp Σ),
       ⌜CtxMorph R⌝ -∗ own_context cur_ctx -∗
       R cur_ctx ={E}=∗ own_context cur_ctx ∗ inv lockN (lock_inv γ lk s R lo ∨ D).
-  Proof.
+  Proof using .
     iIntros "Hword [#Hc8 Hcpu]".
     iDestruct (lk_addr_claim_of4 with "Hword") as "#Hc4".
     iMod (own_alloc ((((●E (None : leibnizO lock_state)),
@@ -1962,7 +1962,7 @@ Section Lock.
     lk ↦₄ (mword_of_int 0 : mword 32) -∗
     lk_cpu_ready lk -∗
     R cur_ctx ={E}=∗ own_context cur_ctx ∗ ∃ γ : gname, is_lock γ lk s R.
-  Proof.
+  Proof using .
     iIntros "#Hnm Hrun Hword Hready HR".
     rewrite /lk_cpu_ready /lk_cpu_ready_at.
     iDestruct "Hready" as (lo) "[Hcpu #Hfl]".
@@ -1992,7 +1992,7 @@ Section Lock.
     ∃ γ : gname, ∀ R : CtxId → iProp Σ,
       ⌜CtxMorph R⌝ -∗ own_context cur_ctx -∗
       R cur_ctx ={E}=∗ own_context cur_ctx ∗ is_lock γ lk s R.
-  Proof.
+  Proof using .
     iIntros "#Hnm Hword Hready".
     rewrite /lk_cpu_ready /lk_cpu_ready_at.
     iDestruct "Hready" as (lo) "[[#Hc8 Hcpu] #Hfl]".
@@ -2028,7 +2028,7 @@ Section Lock.
       ⌜forall ξ : CtxId, Rdep ξ ∗ TsoCtx.ctx_floor ξ tl ⊢ R ξ⌝ -∗
       TsoGhost.llb loglen_name tl -∗ own_context cur_ctx -∗
       Rdep cur_ctx ={E}=∗ own_context cur_ctx ∗ is_lock γ lk s R.
-  Proof.
+  Proof using .
     iIntros "#Hnm Hword Hready".
     rewrite /lk_cpu_ready /lk_cpu_ready_at.
     iDestruct "Hready" as (lo) "[[#Hc8 Hcpu] #Hfl]".

@@ -228,7 +228,7 @@ Section SpecFileclose.
     (k < NINODE)%nat ->
     (ic_escrows fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst -∗ ic_escrow fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k
      : iProp Σ).
-  Proof.
+  Proof using .
     iIntros (Hk) "H". rewrite /ic_escrows /ic_boxes_all /ic_escrow.
     assert (Hl : seq 0 NINODE !! k = Some k) by (rewrite lookup_seq; lia).
     iDestruct (big_sepL_lookup _ _ k k Hl with "H") as "$".
@@ -301,7 +301,7 @@ Section SpecFileclose.
 
   Lemma fileclose_fs_env_nopid_eq fn n eb p :
     fileclose_fs_env fn n eb p ⊣⊢ fileclose_fs_env_nopid fn n eb p.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Definition fileclose_fs_out (fn : fclose_names) : iProp Σ :=
     (* the slots alone.  ([iput]'s [iref_slot] give-back is NOT here for the
@@ -335,7 +335,7 @@ Section SpecFileclose.
      [SpecFilealloc]'s post already pins the type. *)
   Lemma fileclose_env_none fn on n eb p :
     ⊢ fileclose_env fn on n eb p FdClosed.
-  Proof. done. Qed.
+  Proof using . done. Qed.
 
   (* ---- THE BYTE QUEUE'S CLOSE PAYMENT, beside the environment (design/
      pipe.md, "The byte queue").  Clearing a pipe end's flag word is a step
@@ -369,11 +369,11 @@ Section SpecFileclose.
     (∃ q : Qp, fileclose_cpost q st Φc)%I.
 
   Lemma fileclose_cpay_none Φc : ⊢ fileclose_cpay FdClosed Φc.
-  Proof. done. Qed.
+  Proof using . done. Qed.
 
   (* the generic closer pays every row out of the taint *)
   Lemma fileclose_cpay_taint st Φc : pipe_taint_cred -∗ fileclose_cpay st Φc.
-  Proof.
+  Proof using .
     iIntros "#Ht". rewrite /fileclose_cpay.
     destruct st as [| ? w [? ? ?| γp |?]]; try done.
     by iApply pipe_cpay_taint.
@@ -383,7 +383,7 @@ Section SpecFileclose.
      reference's close *)
   Lemma fileclose_cpost_of_cpay q st Φc :
     q <> 1%Qp -> fileclose_cpay st Φc -∗ fileclose_cpost q st Φc.
-  Proof.
+  Proof using .
     intros Hq. rewrite /fileclose_cpay /fileclose_cpost.
     destruct st as [| ? w [? ? ?| γp |?]]; try (by iIntros "_").
     rewrite (bool_decide_eq_false_2 _ Hq). iApply pipe_cpost_unfired.
@@ -391,7 +391,7 @@ Section SpecFileclose.
 
   Lemma fileclose_cpost_any_of q st Φc :
     fileclose_cpost q st Φc -∗ fileclose_cpost_any st Φc.
-  Proof. iIntros "H". by iExists q. Qed.
+  Proof using . iIntros "H". by iExists q. Qed.
 
   (* ---- THE TWO STEPS fileclose's LAST close takes, at the key the walk
      holds after the [ff.type == FD_PIPE] branch: the file's CONTENT, not a
@@ -405,7 +405,7 @@ Section SpecFileclose.
       (r w : bool) (γp : pipe_names) :
     st = FdOpen r w (FdPipe γp) ->
     pipe_cpost (pn_queue γp) w Φc true -∗ fileclose_cpost q st Φc.
-  Proof.
+  Proof using .
     intros ->. rewrite /fileclose_cpost.
     iIntros "[HΦ | [[#Ht Hp] | [%Hf _]]]".
     - by iApply pipe_cpost_fired.
@@ -418,7 +418,7 @@ Section SpecFileclose.
       (Φc : iProp Σ) :
     st = FdOpen r w (FdPipe γp) ->
     fileclose_cpay st Φc -∗ pipe_cpay (pn_queue γp) w Φc.
-  Proof. intros ->. by iIntros "$". Qed.
+  Proof using . intros ->. by iIntros "$". Qed.
 
   (* ...and the arms that are not a pipe at all: both payment and post are
      [emp] there, but only the file's type says so. *)
@@ -426,7 +426,7 @@ Section SpecFileclose.
       (C : fcontent) (st : fdstate) (q : Qp) (Φc : iProp Σ) :
     fdstate_ok inum γo γp C st -> fc_type C <> FD_PIPE ->
     fileclose_cpay st Φc -∗ fileclose_cpost q st Φc.
-  Proof.
+  Proof using .
     intros Hok Hne. rewrite /fileclose_cpay /fileclose_cpost.
     destruct st as [| rb wb [i g om | g | mj]]; try (by iIntros "_").
     exfalso. apply Hne. by destruct Hok as (_ & _ & Ht & _).
@@ -442,7 +442,7 @@ Section SpecFileclose.
     (forall st : fdstate, st ∈ sts ->
        forall (rb wb : bool) (gp : pipe_names), st <> FdOpen rb wb (FdPipe gp)) ->
     ⊢ fileclose_cpays sts.
-  Proof.
+  Proof using .
     intros Hnp. rewrite /fileclose_cpays.
     induction sts as [| st sts IH]; [ done | ].
     rewrite big_sepL_cons. iSplitR.
@@ -454,7 +454,7 @@ Section SpecFileclose.
   Qed.
 
   Lemma fileclose_cpays_taint sts : pipe_taint_cred -∗ fileclose_cpays sts.
-  Proof.
+  Proof using .
     iIntros "#Ht". rewrite /fileclose_cpays. iApply big_sepL_intro.
     iIntros "!>" (k st _). by iApply fileclose_cpay_taint.
   Qed.
@@ -464,14 +464,14 @@ Section SpecFileclose.
      stated with one of its returns going the wrong way. *)
   Lemma fileclose_pipe_env_out fn on n :
     fileclose_pipe_env fn on n -∗ fileclose_pipe_out fn on.
-  Proof.
+  Proof using .
     rewrite /fileclose_pipe_env /fileclose_pipe_out.
     iIntros "(_ & _ & _ & Hav)". by iLeft.
   Qed.
 
   Lemma fileclose_fs_env_out fn n eb p :
     fileclose_fs_env fn n eb p -∗ fileclose_fs_out fn.
-  Proof.
+  Proof using .
     rewrite /fileclose_fs_env /fileclose_fs_env_nopid /fileclose_fs_out.
     iIntros "(_ & _ & _ & _ & _ & _ & Hbs)".
     iExact "Hbs".
@@ -483,7 +483,7 @@ Section SpecFileclose.
      promises. *)
   Lemma fileclose_env_out_of_env fn on n eb p st :
     fileclose_env fn on n eb p st -∗ fileclose_env_out fn on st.
-  Proof.
+  Proof using .
     rewrite /fileclose_env /fileclose_env_out.
     destruct st as [|? ? [? ? ?| |?]].
     - by iIntros "_".
@@ -509,7 +509,7 @@ Section SpecFileclose.
     fileclose_pipe_env fn on n -∗
     fileclose_pipe_env fn on n ∗
     □ (fileclose_pipe_out fn on -∗ ∃ on', fileclose_pipe_env fn on' n).
-  Proof.
+  Proof using .
     rewrite /fileclose_pipe_env /fileclose_pipe_out.
     iIntros "(%Hb & #Hpi & #Hlk & Hav)".
     iSplitL "Hav".
@@ -523,7 +523,7 @@ Section SpecFileclose.
     fileclose_fs_env fn n eb p -∗
     fileclose_fs_env fn n eb p ∗
     □ (fileclose_fs_out fn -∗ fileclose_fs_env fn n eb p).
-  Proof.
+  Proof using .
     rewrite /fileclose_fs_env /fileclose_fs_env_nopid /fileclose_fs_out.
     iIntros "(%H1 & %H2 & %H3 & %H4 & #Hpr & #Hrdy & Hbs)".
     iSplitL "Hbs".
@@ -560,7 +560,7 @@ Section SpecFileclose.
     fileclose_env fn on n eb p st ∗
     (fileclose_env_out fn on st -∗
        fileclose_pipe_out fn on ∗ fileclose_fs_out fn).
-  Proof.
+  Proof using .
     rewrite /fileclose_env /fileclose_env_out.
     destruct st as [|? ? [? ? ?| |?]].
     - iIntros "Hp Hf". iSplitR; [done|]. iIntros "_".
@@ -585,7 +585,7 @@ Section SpecFileclose.
     (fileclose_env_out fn on st -∗
        (∃ on', fileclose_pipe_env fn on' n) ∗
        fileclose_fs_env fn n eb p).
-  Proof.
+  Proof using .
     iIntros "Hp Hf".
     iDestruct (fileclose_pipe_env_reuse with "Hp") as "[Hp #Hpre]".
     iDestruct (fileclose_fs_env_reuse with "Hf") as "[Hf #Hfre]".
@@ -607,7 +607,7 @@ Section SpecFileclose.
     (fileclose_env_out fn on st -∗
        (∃ on', fileclose_pipe_env fn on' n) ∗
        fileclose_fs_env_nopid fn n eb p).
-  Proof.
+  Proof using .
     rewrite -!fileclose_fs_env_nopid_eq.
     exact (fileclose_env_frame fn on n eb p st).
   Qed.

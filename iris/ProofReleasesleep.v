@@ -81,7 +81,7 @@ Section ProofReleasesleep.
       (m : regfile) (pd : mword 32) (pme : mword 64) (av : nat) (eb : bool) (b : bool) (lks : gset string)
       (tl : nat)
     : wp_releasesleep_genin_sconf_body γs γl γsl s R Rdep H q m pd pme av eb b lks tl.
-  Proof.
+  Proof using .
     cbv beta delta [wp_releasesleep_genin_sconf_body].
     intros pcE slk ret_tgt Hav Hno Hfold.
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).
@@ -574,7 +574,7 @@ Section ProofReleasesleep.
       `{HmR : !TsoCtx.CtxMorph R} (H : Qp -> iProp Σ) (q : Qp)
       (m : regfile) (pd : mword 32) (pme : mword 64) (av : nat) (eb : bool) (b : bool) (lks : gset string)
     : wp_releasesleep_genl_sconf_body γs γl γsl s R H q m pd pme av eb b lks.
-  Proof.
+  Proof using .
     pose proof (wp_releasesleep_genin_sconf γs γl γsl s R R H q m pd pme av eb b lks 0%nat) as HK.
     cbv beta zeta delta [wp_releasesleep_genin_sconf_body] in HK.
     cbv beta zeta delta [wp_releasesleep_genl_sconf_body].
@@ -591,7 +591,7 @@ Section ProofReleasesleep.
       (γl γsl : gname) (s : string) (R : iProp Σ) (H : Qp -> iProp Σ) (q : Qp)
       (m : regfile) (pd : mword 32) (pme : mword 64) (av : nat) (eb : bool) (b : bool) (lks : gset string)
     : wp_releasesleep_gen_sconf_body γs γl γsl s R H q m pd pme av eb b lks.
-  Proof.
+  Proof using .
     pose proof (wp_releasesleep_genl_sconf γs γl γsl s (fun _ => R) H q m pd pme av eb b lks) as HK.
     cbv beta zeta delta [wp_releasesleep_genl_sconf_body] in HK.
     cbv beta zeta delta [wp_releasesleep_gen_sconf_body].
@@ -606,7 +606,7 @@ Section ProofReleasesleep.
       (γl γsl : gname) (s : string) (R : iProp Σ)
       (m : regfile) (pd : mword 32) (pme : mword 64) (av : nat) (eb : bool) (b : bool) (lks : gset string)
     : wp_releasesleep_sconf_body γs γl γsl s R m pd pme av eb b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_releasesleep_sconf_body].
     intros pcE slk ret_tgt Hav Hno.
     iIntros "Hcg Hown #Htext Hpc #Hslp Hslk HR #Hpinv Hcont".

@@ -392,7 +392,7 @@ Section WriteiBytes.
     length l = nn ->
     ([∗ list] j ↦ x ∈ l, pa_add a j ↦ₘ x) -∗
     ([∗ list] j ∈ seq 0 nn, pa_add a j ↦ₘ (l !!! j)).
-  Proof.
+  Proof using .
     intros <-. iIntros "H".
     iApply (bi.equiv_entails_1_1 _ _ (bb_bytes_of_list a l)). iExact "H".
   Qed.
@@ -400,7 +400,7 @@ Section WriteiBytes.
   Local Lemma wi_bytes_to_list (a : mword 64) (nn : nat) (f : nat -> bv 8) :
     ([∗ list] j ∈ seq 0 nn, pa_add a j ↦ₘ (f j)) -∗
     ([∗ list] j ↦ x ∈ (f <$> seq 0 nn), pa_add a j ↦ₘ x).
-  Proof.
+  Proof using .
     iIntros "H".
     iApply (bi.equiv_entails_1_1 _ _ (bb_bytes_to_list a nn f)). iExact "H".
   Qed.
@@ -411,7 +411,7 @@ Section WriteiBytes.
     ([∗ list] j ∈ seq 0 a, pa_add pp j ↦ₘ (f j))
     ∗ ([∗ list] j ∈ seq 0 bb, pa_add (pa_add pp a) j ↦ₘ (f (a + j)%nat))
     ∗ ([∗ list] j ∈ seq 0 c, pa_add (pa_add (pa_add pp a) bb) j ↦ₘ (f (a + (bb + j))%nat)).
-  Proof.
+  Proof using .
     intros H. iIntros "Hb".
     iApply (bi.equiv_entails_1_1 _ _ (bb_split3 pp a bb c L f (DfracOwn 1) H)). iExact "Hb".
   Qed.
@@ -422,7 +422,7 @@ Section WriteiBytes.
     ([∗ list] j ∈ seq 0 bb, pa_add (pa_add pp a) j ↦ₘ (f (a + j)%nat)) -∗
     ([∗ list] j ∈ seq 0 c, pa_add (pa_add (pa_add pp a) bb) j ↦ₘ (f (a + (bb + j))%nat)) -∗
     ([∗ list] j ∈ seq 0 L, pa_add pp j ↦ₘ (f j)).
-  Proof.
+  Proof using .
     intros H. iIntros "H1 H2 H3".
     iApply (bi.equiv_entails_1_2 _ _ (bb_split3 pp a bb c L f (DfracOwn 1) H)).
     iSplitL "H1"; [iExact "H1"|]. iSplitL "H2"; [iExact "H2"|]. iExact "H3".
@@ -448,7 +448,7 @@ Section WriteiRes.
       (∀ g : nat -> bv 8,
          ([∗ list] i ∈ seq 0 len, pa_add (pa_add (b_data pb) o) i ↦ₘ (g i)) -∗
          buf_own pb bno dsk (wi_splice bs o len g)).
-  Proof.
+  Proof using .
     intros Hol.
     iIntros "(Hb & Hd & %Hlen & Hby)".
     assert (HlenB : length bs = BSIZE) by exact Hlen.
@@ -485,11 +485,11 @@ Section WriteiRes.
 
   Lemma wi_slots_split (a c : nat) :
     bslots (a + c) -∗ bslots a ∗ bslots c.
-  Proof. rewrite bslots_op. iIntros "$". Qed.
+  Proof using . rewrite bslots_op. iIntros "$". Qed.
 
   Lemma wi_slots_join (a c : nat) :
     bslots a -∗ bslots c -∗ bslots (a + c).
-  Proof.
+  Proof using .
     iIntros "H1 H2". rewrite bslots_op. iSplitL "H1"; [iExact "H1"|iExact "H2"].
   Qed.
 
@@ -500,7 +500,7 @@ Section WriteiRes.
       (∀ bs' : list (bv 8),
          buf_own (bpa k) bno (mword_of_int 0 : mword 32) bs' -∗
          bio_held bn V k pidv dev bno bs' bsl bsd d).
-  Proof.
+  Proof using .
     rewrite /bio_held.
     iIntros "(%A & %B & %C & H1 & H3 & H4 & H5 & H6 & H7)".
     iSplitL "H5"; [iExact "H5"|].
@@ -514,7 +514,7 @@ Section WriteiRes.
   Lemma wi_held_k (bn : bio_names) (V : bio_view Σ) (k : nat)
       (pidv dev bno : mword 32) (bs bsl bsd : list (bv 8)) (d : bool) :
     bio_held bn V k pidv dev bno bs bsl bsd d -∗ ⌜(k < NBUF)%nat⌝.
-  Proof. rewrite /bio_held. iIntros "(%A & _)". done. Qed.
+  Proof using . rewrite /bio_held. iIntros "(%A & _)". done. Qed.
 
   Lemma wi_held_content (E : coPset) (bn : bio_names) (γfs : fs_names)
       (γd : disk_names)
@@ -526,7 +526,7 @@ Section WriteiRes.
     bio_held bn (fs_view γfs γd dev cov) k pidv dv bno bs bsl bsd d ={E}=∗
     ⌜bsl = bs0⌝ ∗ fsblock (fs_bytes γfs) (uint bno) bs0 ∗
     bio_held bn (fs_view γfs γd dev cov) k pidv dv bno bs bsl bsd d.
-  Proof.
+  Proof using .
     iIntros (HE) "#Hrow Hc Hheld".
     iEval (rewrite /bio_held /bio_pay /fs_view /=) in "Hheld".
     iDestruct "Hheld" as "(%A & %B & %C & H1 & H3 & H4 & H5 & H6 & Hpay)".

@@ -218,7 +218,7 @@ Section FsState.
         ∗ fs_inodes Γ (fss_sb S) (fss_inodes S)
         ∗ free_bitmap Γ (fss_sb S) (fss_used S)
         ∗ ⌜fs_geom S⌝).
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* ...AND THE OTHER WAY ROUND: the predicate at a share IS the predicate
      at FULL share over the constant-share VIEW, because [gamma_q] is
@@ -229,7 +229,7 @@ Section FsState.
      new proof (durable-disk EV-X). *)
   Lemma fs_state_gq Γ dq S :
     fs_state Γ dq S = fs_state (gamma_q Γ dq) (DfracOwn 1) S.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Definition top_frag Γ (i : Z) (n : fs_node) : iProp Σ := i ↪[γtop Γ] n.
 
@@ -249,22 +249,22 @@ Section FsState.
     i ↪[γtop Γ]{dq} n.
 
   Lemma top_frag_1 Γ i n : top_frag Γ i n = top_frag_q Γ (DfracOwn 1) i n.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Global Instance top_frag_q_timeless Γ dq i n : Timeless (top_frag_q Γ dq i n).
-  Proof. rewrite /top_frag_q. apply _. Qed.
+  Proof using . rewrite /top_frag_q. apply _. Qed.
 
   Lemma top_frag_q_split Γ (q1 q2 : Qp) i n :
     top_frag_q Γ (DfracOwn (q1 + q2)) i n
     ⊣⊢ top_frag_q Γ (DfracOwn q1) i n ∗ top_frag_q Γ (DfracOwn q2) i n.
-  Proof.
+  Proof using .
     rewrite /top_frag_q -ghost_map_elem_fractional //.
   Qed.
 
   (* THE PIN: two shares of the same inum's fragment name the SAME node. *)
   Lemma top_frag_q_agree Γ dq1 dq2 i n1 n2 :
     top_frag_q Γ dq1 i n1 -∗ top_frag_q Γ dq2 i n2 -∗ ⌜n1 = n2⌝.
-  Proof.
+  Proof using .
     rewrite /top_frag_q. iIntros "H1 H2".
     by iDestruct (ghost_map_elem_agree with "H1 H2") as %->.
   Qed.
@@ -275,18 +275,18 @@ Section FsState.
 
   Global Instance sb_owned_timeless `{!GTimeless Γ} sb bs :
     Timeless (sb_owned Γ sb bs).
-  Proof. rewrite /sb_owned. apply _. Qed.
+  Proof using . rewrite /sb_owned. apply _. Qed.
 
   Global Instance fs_inodes_timeless `{!GTimeless Γ} sb I :
     Timeless (fs_inodes Γ sb I).
-  Proof. rewrite /fs_inodes. apply _. Qed.
+  Proof using . rewrite /fs_inodes. apply _. Qed.
 
   Global Instance fs_state_timeless `{!GTimeless Γ} dq S :
     Timeless (fs_state Γ dq S).
-  Proof. rewrite /fs_state. apply _. Qed.
+  Proof using . rewrite /fs_state. apply _. Qed.
 
   Global Instance top_frag_timeless Γ i n : Timeless (top_frag Γ i n).
-  Proof. rewrite /top_frag. apply _. Qed.
+  Proof using . rewrite /top_frag. apply _. Qed.
 
   (* ---------------------------------------------------------------- *)
   (*  4.  THE FOOTPRINT / GHOST FACTORING                              *)
@@ -311,11 +311,11 @@ Section FsState.
         ∗ ([∗ map] i ↦ n ∈ fss_inodes S, inode_phi Γ (fss_sb S) i n)
         ∗ blk_owned Γ (sb_bmapstart (fss_sb S)) (bm_bytes BSIZE (fss_used S))
         ∗ free_pool Γ (sb_size (fss_sb S)) (fss_used S)).
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma fs_footprint_gq Γ dq S :
     fs_footprint Γ dq S = fs_footprint (gamma_q Γ dq) (DfracOwn 1) S.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Definition fs_ghost Γ S : iProp Σ :=
     (⌜fs_parse_sb (fun _ => fss_sbb S) = Some (fss_sb S)⌝
@@ -324,15 +324,15 @@ Section FsState.
 
   Global Instance fs_footprint_timeless `{!GTimeless Γ} dq S :
     Timeless (fs_footprint Γ dq S).
-  Proof. rewrite /fs_footprint. apply _. Qed.
+  Proof using . rewrite /fs_footprint. apply _. Qed.
 
   Global Instance fs_ghost_timeless Γ S : Timeless (fs_ghost Γ S).
-  Proof. rewrite /fs_ghost. apply _. Qed.
+  Proof using . rewrite /fs_ghost. apply _. Qed.
 
   (* the footprint does not read [γlink] or [γtop] *)
   Lemma fs_footprint_gname Γ g t dq S :
     fs_footprint Γ dq S ⊣⊢ fs_footprint (MkFsView (fsΦ Γ) g t) dq S.
-  Proof. done. Qed.
+  Proof using . done. Qed.
 
   (* SHEDDING A SHARE (durable-disk EV-X).  The commit's collection meets
      the metadata objects and the region's records at fraction 1 and each
@@ -344,7 +344,7 @@ Section FsState.
   Lemma fs_footprint_shed Γ (Hfr : phi_frac Γ) (q1 q2 : Qp) S :
     fs_footprint Γ (DfracOwn (q1 + q2)) S
     ⊢ fs_footprint Γ (DfracOwn q1) S ∗ fs_footprint Γ (DfracOwn q2) S.
-  Proof.
+  Proof using .
     pose proof (gamma_q_shed Γ Hfr q1 q2) as Hs.
     rewrite /fs_footprint. iIntros "(Hsb & Hin & Hbm & Hpool)".
     iDestruct (blk_owned_shed _ _ _ Hs with "Hsb") as "[Hsb1 Hsb2]".
@@ -373,7 +373,7 @@ Section FsState.
 
   Lemma fs_state_split Γ dq S :
     fs_state Γ dq S ⊣⊢ fs_footprint Γ dq S ∗ fs_ghost Γ S.
-  Proof.
+  Proof using .
     rewrite /fs_state /fs_footprint /fs_ghost /sb_owned /fs_inodes
             /free_bitmap /free_bitmap_at /inode_owned.
     rewrite (big_sepM_proper
@@ -422,7 +422,7 @@ Section FsState.
                 ∗ own g (link_elem_node i n v tyf))%I.
 
   Global Instance fs_link_node_timeless g i n : Timeless (fs_link_node g i n).
-  Proof. rewrite /fs_link_node. apply _. Qed.
+  Proof using . rewrite /fs_link_node. apply _. Qed.
 
   Definition fs_links (g : gname) (I : gmap Z fs_node) : iProp Σ :=
     ([∗ map] i ↦ n ∈ I, fs_link_node g i n)%I.
@@ -431,7 +431,7 @@ Section FsState.
   Lemma link_elem_ext (I : gmap Z fs_node) (f g : link_choice) :
     (forall i, is_Some (I !! i) -> f i = g i) ->
     link_elem I f ≡ link_elem I g.
-  Proof.
+  Proof using .
     intros Hfg. rewrite /link_elem. apply big_opM_proper.
     intros i n Hi. rewrite /lc_v /lc_tyf (Hfg i ltac:(by eexists)) //.
   Qed.
@@ -443,7 +443,7 @@ Section FsState.
       (h : Z -> fs_node -> A) (j : Z) :
     (([^op map] i ↦ n ∈ I, ({[ i := h i n ]} : gmap Z A)) !! j)
     ≡ (fun n => h j n) <$> (I !! j).
-  Proof.
+  Proof using .
     revert j. induction I as [| i n I Hi IH] using map_ind; intros j.
     - rewrite big_opM_empty lookup_empty //.
     - assert (Heq : ([^op map] k ↦ m ∈ <[i := n]> I,
@@ -461,24 +461,24 @@ Section FsState.
   Qed.
 
   Lemma link_elem_empty (f : link_choice) : link_elem ∅ f = ε.
-  Proof. rewrite /link_elem big_opM_empty //. Qed.
+  Proof using . rewrite /link_elem big_opM_empty //. Qed.
 
   Lemma link_elem_insert (I : gmap Z fs_node) (i : Z) (n : fs_node)
       (f : link_choice) :
     I !! i = None ->
     link_elem (<[i := n]> I) f ≡ link_elem_node i n (lc_v f i) (lc_tyf f i) ⋅ link_elem I f.
-  Proof. intros Hi. rewrite /link_elem big_opM_insert //. Qed.
+  Proof using . intros Hi. rewrite /link_elem big_opM_insert //. Qed.
 
   Lemma link_elem_delete (I : gmap Z fs_node) (i : Z) (n : fs_node)
       (f : link_choice) :
     I !! i = Some n ->
     link_elem I f ≡ link_elem_node i n (lc_v f i) (lc_tyf f i) ⋅ link_elem (delete i I) f.
-  Proof. intros Hi. rewrite /link_elem (big_opM_delete _ I i n) //. Qed.
+  Proof using . intros Hi. rewrite /link_elem (big_opM_delete _ I i n) //. Qed.
 
   Lemma link_elem_ok_ext (I : gmap Z fs_node) (f g : link_choice) :
     (forall i, is_Some (I !! i) -> f i = g i) ->
     link_elem_ok I f -> link_elem_ok I g.
-  Proof.
+  Proof using .
     intros Hfg Hok i n Hi. rewrite /lc_D /lc_v /lc_tyf.
     rewrite -(Hfg i ltac:(by eexists)). exact (Hok i n Hi).
   Qed.
@@ -489,17 +489,17 @@ Section FsState.
      ∗ ⌜fs_geom S⌝)%I.
 
   Global Instance fs_pure_persistent S : Persistent (fs_pure S).
-  Proof. rewrite /fs_pure. apply _. Qed.
+  Proof using . rewrite /fs_pure. apply _. Qed.
 
   Global Instance fs_pure_timeless S : Timeless (fs_pure S).
-  Proof. rewrite /fs_pure. apply _. Qed.
+  Proof using . rewrite /fs_pure. apply _. Qed.
 
   Global Instance fs_links_timeless g I : Timeless (fs_links g I).
-  Proof. rewrite /fs_links. apply _. Qed.
+  Proof using . rewrite /fs_links. apply _. Qed.
 
   Lemma fs_ghost_split Γ S :
     fs_ghost Γ S ⊣⊢ fs_links (γlink Γ) (fss_inodes S) ∗ fs_pure S.
-  Proof.
+  Proof using .
     rewrite /fs_ghost /fs_pure /fs_links /fs_link_node.
     rewrite (big_sepM_proper
                (fun i n => inode_ghost Γ i n)%I
@@ -523,7 +523,7 @@ Section FsState.
   Lemma fs_links_gather g I (x : fsLinkUR) :
     own g x -∗ fs_links g I -∗
     ∃ f, ⌜link_elem_ok I f⌝ ∗ own g (x ⋅ link_elem I f).
-  Proof.
+  Proof using .
     revert x. induction I as [| i n I Hi IH] using map_ind; intros x.
     - iIntros "Hx _". iExists (fun _ => (∅, (TFile, fun _ => TFile))). iSplitR.
       { iPureIntro. intros j m Hj. rewrite lookup_empty in Hj. discriminate. }
@@ -553,7 +553,7 @@ Section FsState.
 
   Lemma fs_links_valid g I :
     fs_links g I -∗ ⌜∃ f, link_elem_ok I f /\ ✓ link_elem I f⌝.
-  Proof.
+  Proof using .
     destruct (decide (I = ∅)) as [-> | Hne].
     - iIntros "_". iPureIntro. exists (fun _ => (∅, (TFile, fun _ => TFile))). split.
       + intros j m Hj. rewrite lookup_empty in Hj. discriminate.
@@ -593,7 +593,7 @@ Section FsState.
   Lemma fs_links_valid_tok g I i (v : ity) :
     fs_links g I -∗ own g (link_tok_elem i v) -∗
     ⌜∃ f, link_elem_ok I f /\ ✓ (link_elem I f ⋅ link_tok_elem i v)⌝.
-  Proof.
+  Proof using .
     iIntros "HI Ht".
     iDestruct (fs_links_gather g I (link_tok_elem i v) with "Ht HI")
       as (f) "[%Hf H]".
@@ -604,7 +604,7 @@ Section FsState.
   Lemma fs_links_alloc (I : gmap Z fs_node) (f : link_choice) :
     link_elem_ok I f -> ✓ link_elem I f ->
     ⊢ |==> ∃ g : gname, fs_links g I.
-  Proof.
+  Proof using .
     intros Hok Hv.
     iMod (own_alloc (link_elem I f)) as (g) "H"; [done |].
     iExists g. iModIntro.
@@ -638,7 +638,7 @@ Section FsState.
     link_elem_node i n v tyf
     ≡ ({[ i := (● (link_reps (fn_mult n) v) : fsLinkElemUR) ]}
        : fsLinkUR).
-  Proof.
+  Proof using .
     intros He. rewrite /link_elem_node He big_opM_empty right_id
       /link_auth_elem //.
   Qed.
@@ -649,7 +649,7 @@ Section FsState.
     link_elem I f !! j
     ≡ (fun n => (● (link_reps (fn_mult n) (lc_v f j)) : fsLinkElemUR))
       <$> (I !! j).
-  Proof.
+  Proof using .
     intros Hall.
     assert (Heq : link_elem I f
                   ≡ ([^op map] i ↦ n ∈ I,
@@ -666,7 +666,7 @@ Section FsState.
 
   Lemma link_elem_valid_no_ents (I : gmap Z fs_node) (f : link_choice) :
     (forall i n, I !! i = Some n -> dir_entries n = ∅) -> ✓ link_elem I f.
-  Proof.
+  Proof using .
     intros Hall j. rewrite (link_elem_no_ents_lookup I f j Hall).
     destruct (I !! j) as [n |] eqn:E; [| done].
     rewrite /= Some_valid. by apply auth_auth_valid.
@@ -691,7 +691,7 @@ Section FsState.
         ghost_map_auth gt 1 IT
         ∗ ([∗ map] i ↦ n ∈ IT, i ↪[gt] n)
         ∗ fs_links gl IL.
-  Proof.
+  Proof using .
     intros Hok Hv.
     iMod (fs_links_alloc IL f Hok Hv) as (gl) "Hl".
     iMod (ghost_map_alloc IT) as (gt) "[Ha Hf]".
@@ -723,14 +723,14 @@ Section FsState.
 
   Global Instance fs_links_full_timeless g I fv :
     Timeless (fs_links_full g I fv).
-  Proof. rewrite /fs_links_full. apply _. Qed.
+  Proof using . rewrite /fs_links_full. apply _. Qed.
 
   Lemma link_full_map_lookup (I : gmap Z fs_node) (fv : Z -> ity) (j : Z) :
     link_full_map I fv !! j
     ≡ (fun n => (● (link_reps (fn_mult n) (fv j))
                  ⋅ ◯ (link_reps (fn_mult n) (fv j)) : fsLinkElemUR))
       <$> (I !! j).
-  Proof.
+  Proof using .
     assert (Heq : link_full_map I fv
                   ≡ ([^op map] i ↦ n ∈ I,
                        ({[ i := (● (link_reps (fn_mult n) (fv i))
@@ -747,7 +747,7 @@ Section FsState.
 
   Lemma link_full_map_valid (I : gmap Z fs_node) (fv : Z -> ity) :
     ✓ link_full_map I fv.
-  Proof.
+  Proof using .
     intros j. rewrite (link_full_map_lookup I fv j).
     destruct (I !! j) as [n |] eqn:E; [| done].
     rewrite /= Some_valid. apply auth_both_valid_discrete.
@@ -756,7 +756,7 @@ Section FsState.
 
   Lemma fs_links_full_alloc (I : gmap Z fs_node) (fv : Z -> ity) :
     ⊢ |==> ∃ g : gname, fs_links_full g I fv.
-  Proof.
+  Proof using .
     iMod (own_alloc (link_full_map I fv)) as (g) "H";
       [apply link_full_map_valid |].
     iExists g. iModIntro.
@@ -770,7 +770,7 @@ Section FsState.
         ghost_map_auth gt 1 IT
         ∗ ([∗ map] i ↦ n ∈ IT, i ↪[gt] n)
         ∗ fs_links_full gl IL fv.
-  Proof.
+  Proof using .
     iMod (fs_links_full_alloc IL fv) as (gl) "Hl".
     iMod (ghost_map_alloc IT) as (gt) "[Ha Hf]".
     iModIntro. iExists gl, gt. iFrame.
@@ -791,7 +791,7 @@ Section FsState.
         ∗ ([∗ map] i ↦ n ∈ I, i ↪[gt] n)
         ∗ fs_links gl I
         ∗ own gl (link_tok_elem r v).
-  Proof.
+  Proof using .
     intros Hok Hv.
     iMod (own_alloc (link_elem I f ⋅ link_tok_elem r v)) as (gl) "H";
       [done |].
@@ -811,7 +811,7 @@ Section FsState.
         ghost_map_auth gt 1 I
         ∗ ([∗ map] i ↦ n ∈ I, i ↪[gt] n)
         ∗ fs_links gl I.
-  Proof. exact (fs_boot_alloc_at I I f). Qed.
+  Proof using . exact (fs_boot_alloc_at I I f). Qed.
 
   (* The two directions of the factoring, AS WANDS.  A bare [rewrite] of an
      [⊣⊢] inside the proofmode rewrites the CONTEXT and the CONCLUSION
@@ -820,14 +820,14 @@ Section FsState.
   Lemma fs_state_to Γ dq S :
     fs_state Γ dq S -∗
       fs_footprint Γ dq S ∗ fs_links (γlink Γ) (fss_inodes S) ∗ fs_pure S.
-  Proof.
+  Proof using .
     rewrite {1}fs_state_split fs_ghost_split. iIntros "($ & $ & $)".
   Qed.
 
   Lemma fs_state_of Γ dq S :
     fs_footprint Γ dq S -∗ fs_links (γlink Γ) (fss_inodes S) -∗ fs_pure S -∗
     fs_state Γ dq S.
-  Proof.
+  Proof using .
     rewrite fs_state_split fs_ghost_split. iIntros "H1 H2 H3". iFrame.
   Qed.
 
@@ -835,10 +835,10 @@ Section FsState.
      Nothing is spent -- the conclusion is pure -- so a snapshot's consumer
      and a commit's collection read it the same way. *)
   Lemma fs_state_geom Γ dq S : fs_state Γ dq S -∗ ⌜fs_geom S⌝.
-  Proof. rewrite /fs_state. iIntros "(_ & _ & _ & $)". Qed.
+  Proof using . rewrite /fs_state. iIntros "(_ & _ & _ & $)". Qed.
 
   Lemma fs_pure_geom S : fs_pure S -∗ ⌜fs_geom S⌝.
-  Proof. rewrite /fs_pure. iIntros "(_ & _ & $)". Qed.
+  Proof using . rewrite /fs_pure. iIntros "(_ & _ & $)". Qed.
 
   (* ---------------------------------------------------------------- *)
   (*  6.  THE MINT IS THE TRANSPORT, AND IT LIVES IN [FsDurXfer]        *)
@@ -862,7 +862,7 @@ Section FsState.
     fs_inodes Γ sb I ⊢
       inode_owned Γ sb i n
       ∗ (∀ n', inode_owned Γ sb i n' -∗ fs_inodes Γ sb (<[i := n']> I)).
-  Proof.
+  Proof using .
     intros Hi. rewrite /fs_inodes.
     iIntros "H".
     iDestruct (big_sepM_insert_acc _ _ i n Hi with "H") as "[$ H]".
@@ -884,7 +884,7 @@ Section FsState.
                     -∗ fs_state Γ dq (MkFsS (fss_sb S) (fss_sbb S)
                                             (<[i := n']> (fss_inodes S))
                                             (fss_used S))).
-  Proof.
+  Proof using .
     intros Hi. rewrite /fs_state.
     iIntros "(Hsb & Hin & Hbm & %Hgeo)".
     iDestruct (fs_inodes_acc _ _ _ i n Hi with "Hin") as "[$ Hin]".

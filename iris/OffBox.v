@@ -104,30 +104,30 @@ Section OffBox.
   Definition off_rest (_ : unit) (_ : CtxId) : iProp Σ := emp%I.
 
   Global Instance off_hdr_morph γo k x : CtxMorph (off_hdr γo k x).
-  Proof. rewrite /off_hdr /off_resident. ctx_morph_solve. Qed.
+  Proof using . rewrite /off_hdr /off_resident. ctx_morph_solve. Qed.
   Global Instance off_rest_morph x : CtxMorph (off_rest x).
-  Proof. rewrite /off_rest. apply ctx_morph_const. Qed.
+  Proof using . rewrite /off_rest. apply ctx_morph_const. Qed.
   Global Instance off_hdr_timeless γo k x ξ : Timeless (off_hdr γo k x ξ).
   (* peel the connectives and let [apply _] see only the LEAVES: a single
      [apply _] over the [∃ ∗ ⌜⌝] tower unifies up to delta, walks straight
      through [↦₄]'s own instance into the byte tower and backtracks over the
      lot (claude-notes/optimization.md, "prove a big Timeless/Persistent
      instance STRUCTURALLY").  This one instance was over half of the file. *)
-  Proof.
+  Proof using .
     rewrite /off_hdr /off_resident.
     apply bi.exist_timeless; intros ?.
     apply bi.sep_timeless; [apply _|].
     apply bi.sep_timeless; apply _.
   Qed.
   Global Instance off_rest_timeless x ξ : Timeless (off_rest x ξ).
-  Proof. rewrite /off_rest. apply _. Qed.
+  Proof using . rewrite /off_rest. apply _. Qed.
 
   (* THE BOX of file slot k, at names γ and shadow γo (both fresh per
      publish lifetime) *)
   Definition off_box (k : nat) γ (γo : gname) : iProp Σ :=
     CtxBox.is_box (X := unit) (off_hdr γo) off_rest (λ _ : nat, emp%I) emp%I (offBoxN .@ k) γ.
   Global Instance off_box_persistent k γ γo : Persistent (off_box k γ γo).
-  Proof. rewrite /off_box /CtxBox.is_box. apply _. Qed.
+  Proof using . rewrite /off_box /CtxBox.is_box. apply _. Qed.
 
   (* ---- registers, per box ------------------------------------------------ *)
   Definition off_cnt γ (c : nat) : iProp Σ := CtxBox.cnt_half (X := unit) γ c.
@@ -156,10 +156,10 @@ Section OffBox.
      [IcacheRef.ic_ref_stamps_split]'s proof over this box's reference *)
   Lemma off_ref_stamps_mass_eq γ k (μ1 μ2 : Qp) :
     μ1 = μ2 -> off_ref_stamps γ k μ1 -∗ off_ref_stamps γ k μ2.
-  Proof. intros ->. iIntros "$". Qed.
+  Proof using . intros ->. iIntros "$". Qed.
   Lemma off_ref_stamps_join γ k (μ1 μ2 : Qp) :
     off_ref_stamps γ k μ1 -∗ off_ref_stamps γ k μ2 -∗ off_ref_stamps γ k (μ1 + μ2)%Qp.
-  Proof.
+  Proof using .
     rewrite /off_ref_stamps.
     iIntros "(%m1 & %Hq1 & H1) (%m2 & %Hq2 & H2)".
     iDestruct (CtxBox.reference_join with "H1 H2") as "H".
@@ -168,7 +168,7 @@ Section OffBox.
   Qed.
   Lemma off_ref_stamps_split γ k (μ1 μ2 : Qp) :
     off_ref_stamps γ k (μ1 + μ2)%Qp -∗ off_ref_stamps γ k μ1 ∗ off_ref_stamps γ k μ2.
-  Proof.
+  Proof using .
     rewrite /off_ref_stamps. iIntros "(%m & %Hq & H)".
     iDestruct (CtxBox.reference_split _ _ _ (μ1 / (μ1 + μ2))%Qp (μ2 / (μ1 + μ2))%Qp
                  with "H") as "[H1 H2]".
@@ -183,7 +183,7 @@ Section OffBox.
   Definition off_set_auth on i (L : gset box_names) : iProp Σ := own (on_set on i) (● L).
   Definition off_member on i γ : iProp Σ := own (on_set on i) (◯ {[ γ ]}).
   Global Instance off_member_persistent on i γ : Persistent (off_member on i γ).
-  Proof. rewrite /off_member. apply _. Qed.
+  Proof using . rewrite /off_member. apply _. Qed.
 
   (* one published box's L2 row at rest, with its llb (so the releasesleep
      fold can re-floor every row at the maximum) *)
@@ -198,13 +198,13 @@ Section OffBox.
        [∗ set] γ ∈ L, ∃ s : l2_reg nat, off_l2_row γ s ξ)%I.
   (* the row is [l2_row]'s morph beside a ξ-constant llb *)
   Global Instance off_l2_row_morph γ (s : l2_reg nat) : CtxMorph (off_l2_row γ s).
-  Proof.
+  Proof using .
     rewrite /off_l2_row.
     apply ctx_morph_sep; [apply CtxBox.l2_row_morph | apply ctx_morph_const].
   Qed.
 
   Global Instance off_rows_morph on i : CtxMorph (off_rows on i).
-  Proof.
+  Proof using .
     rewrite /off_rows.
     apply ctx_morph_exist. intros L.
     apply ctx_morph_sep; [apply ctx_morph_const|].
@@ -217,7 +217,7 @@ Section OffBox.
   Lemma off_rows_take on i γ (ξ : CtxId) :
     off_member on i γ -∗ off_rows on i ξ -∗
     (∃ s, off_l2_row γ s ξ) ∗ (∀ s', off_l2_row γ s' ξ -∗ off_rows on i ξ).
-  Proof.
+  Proof using .
     rewrite /off_rows /off_member /off_set_auth.
     iIntros "Hmem (%L & Hauth & Hset)".
     iDestruct (own_valid_2 with "Hauth Hmem") as %Hv.
@@ -234,7 +234,7 @@ Section OffBox.
   (* the publisher, under ip->lock, appends a fresh box's row *)
   Lemma off_rows_insert on i γ (s : l2_reg nat) (ξ : CtxId) :
     off_rows on i ξ -∗ off_l2_row γ s ξ ==∗ off_rows on i ξ ∗ off_member on i γ.
-  Proof.
+  Proof using .
     rewrite /off_rows /off_member /off_set_auth.
     iIntros "(%L & Hauth & Hset) Hrow".
     iMod (own_update _ _ (● ({[γ]} ∪ L) ⋅ ◯ ({[γ]} ∪ L)) with "Hauth")
@@ -261,7 +261,7 @@ Section OffBox.
     CtxBox.slotp_half (X := unit) γ (L2Reg T' None) -∗
     llb loglen_name T' ==∗
     (ctx_floor ξ T' -∗ off_rows on i ξ) ∗ off_member on i γ.
-  Proof.
+  Proof using .
     rewrite /off_rows /off_member /off_set_auth.
     iIntros "(%L & Hauth & Hset) Hp #Hllb".
     iMod (own_update _ _ (● ({[γ]} ∪ L) ⋅ ◯ ({[γ]} ∪ L)) with "Hauth")
@@ -305,7 +305,7 @@ Section OffBox.
          ⌜(lr_tp s ≤ T)%nat⌝)%I.
   Lemma off_rows_fold on i (T : nat) (ξ : CtxId) :
     off_rows_dep on i T ∗ ctx_floor ξ T ⊢ off_rows on i ξ.
-  Proof.
+  Proof using .
     rewrite /off_rows_dep /off_rows /off_l2_row /CtxBox.l2_row /off_regp.
     iIntros "[(%L & Hauth & #HllbT & Hset) #Hfl]".
     iExists L. iFrame "Hauth".
@@ -323,7 +323,7 @@ Section OffBox.
       [∗ set] γ ∈ L, ∃ s : l2_reg nat,
         off_regp γ s ∗ ⌜lr_hold s = None⌝ ∗ llb loglen_name (lr_tp s) ∗
         ⌜(lr_tp s ≤ T)%nat⌝.
-  Proof.
+  Proof using .
     rewrite /off_l2_row /CtxBox.l2_row /off_regp.
     induction L as [|γ L Hγ IH] using set_ind_L.
     - iIntros "_". iExists 0%nat. rewrite !big_sepS_empty.
@@ -357,7 +357,7 @@ Section OffBox.
   Lemma off_rows_take_dep on i γ (ξ : CtxId) :
     off_member on i γ -∗ off_rows on i ξ -∗
     (∃ s, off_l2_row γ s ξ) ∗ ∃ T : nat, off_rows_dep_but on i γ T.
-  Proof.
+  Proof using .
     rewrite /off_rows /off_member /off_rows_dep_but /off_set_auth.
     iIntros "Hmem (%L & Hauth & Hset)".
     iDestruct (own_valid_2 with "Hauth Hmem") as %Hv.
@@ -374,7 +374,7 @@ Section OffBox.
     lr_hold s' = None ->
     off_rows_dep_but on i γ T -∗ off_regp γ s' -∗ llb loglen_name (lr_tp s') -∗
     off_rows_dep on i (Nat.max T (lr_tp s')).
-  Proof.
+  Proof using .
     iIntros (Hh) "(%L & %HγL & Hauth & #HllbT & Hset) Hrp #Hllbs".
     rewrite /off_rows_dep. iExists L. iFrame "Hauth".
     iSplitR; [iApply (llb_max with "HllbT Hllbs")|].
@@ -387,7 +387,7 @@ Section OffBox.
 
   Lemma off_rows_to_dep on i (ξ : CtxId) :
     off_rows on i ξ -∗ ∃ T : nat, off_rows_dep on i T.
-  Proof.
+  Proof using .
     rewrite /off_rows /off_rows_dep.
     iIntros "(%L & Hauth & Hset)".
     iDestruct (off_rows_bound with "Hset") as (T) "[#HllbT Hset]".
@@ -445,7 +445,7 @@ Section OffBox.
       CtxBox.reference (X := unit) γ k {[ (k, T) := 1%Qp ]} ∗
       off_member on i γ ∗
       off_rows on i ξ.
-  Proof. (* box_alloc_at (the deposit), box_ref_incr (the birth share),
+  Proof using . (* box_alloc_at (the deposit), box_ref_incr (the birth share),
             off_rows_insert_row at [L2Reg 0 None] -- whose floor the lemma
             discharges itself with [ctx_floor_0], so what comes out is the
             next link's premise (item 31 (a)) *)
@@ -478,7 +478,7 @@ Section OffBox.
     (* the row, taken from the inode payload's set: its floor is Kp *)
     (∃ s : l2_reg nat, ⌜lr_hold s = None⌝ ∗ ⌜(lr_tp s ≤ Kp)%nat⌝ ∗ off_regp γ s) ={E}=∗
     own_context ξ ∗ off_resident (XI := ξ) γo k ∗ CtxBox.l2_hold (X := unit) γ k m.
-  Proof. (* box_checkout at Q := emp, the row's own floor as Kp *)
+  Proof using . (* box_checkout at Q := emp, the row's own floor as Kp *)
     intros HE HKt. rewrite /off_box /off_regp.
     iIntros "#Hbox Hrun #Hflt #Hflp #Hmem Href (%s & %Hh & %Htp & Hrp)".
     iMod (CtxBox.box_checkout (off_hdr γo) off_rest (λ _ : nat, emp%I) emp%I
@@ -501,7 +501,7 @@ Section OffBox.
       off_regp γ (L2Reg T' None) ∗
       CtxBox.reference (X := unit) γ k {[ (k, T') := q ]} ∗
       llb loglen_name T'.
-  Proof. (* box_park at Q := emp *)
+  Proof using . (* box_park at Q := emp *)
     intros HE. rewrite /off_box /off_regp.
     iIntros "#Hbox Hrun Hcell Hhold".
     iMod (CtxBox.box_park (off_hdr γo) off_rest (λ _ : nat, emp%I) emp%I
@@ -547,7 +547,7 @@ Section OffBox.
     CtxBox.reference (X := unit) γ k m ={E}=∗
     off_cnt γ 1 ∗
     ([∗ list] j ∈ seq 0 4, TsoCtx.mem_free (pa_add (a_foff k) j) (DfracOwn 1)).
-  Proof. (* [box_withdraw_L1_free] at [Qc := emp], [Q1 1 = emp]; the hook is
+  Proof using . (* [box_withdraw_L1_free] at [Qc := emp], [Q1 1 = emp]; the hook is
             the plain entailment [off_resident (XI := ξb) k ⊢ the four free
             bytes] -- one [ctx_pointsto_free] per byte, at the box's own
             context, with no floor and no [own_context] *)

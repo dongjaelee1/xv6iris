@@ -44,6 +44,7 @@ Require Import UkRun UkRunLeaf UkRunSys.
 Require Import UkRunExecRef.  (* [udepw_at_refR] -- the exec deposit at a
                                  supplier-named refund (lane M6b) *)
 Require Import UCodeInit.
+Require Import UInitArgv.  (* [init_argv] -- the writable half of init's image *)
 Require Import CtxIdDefs.
 Require User.InitSyms User.InitInstrs.
 Require Import ChildTok.  (* [genF] -- the capacity the slot's fork arms name *)
@@ -190,7 +191,7 @@ Section UkInit.
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "#Hwr #Hcode Hrun Hstd Hcont".
     iDestruct "Hstd" as (l) "Hstd".
     destruct init_syms_pins as (Hstart & Hmain & Hprintf & Hvprintf & Hputc & Hopen & Hmknod & Hdup & Hfork & Hwait & Hexec & Hwrite & Hexit). rewrite Hopen.
@@ -467,7 +468,7 @@ Section UkInit.
 
   Global Instance init_cons_leaves_persistent T K Cns stc :
     Persistent (init_cons_leaves T K Cns stc).
-  Proof. rewrite /init_cons_leaves. apply _. Qed.
+  Proof using . rewrite /init_cons_leaves. apply _. Qed.
 
   (* ===================================================================== *)
   (* THE OTHER ARM OF THE CONSOLE DANCE (lane E2): THE VIEW ALREADY HAS      *)
@@ -521,7 +522,7 @@ Section UkInit.
      17's deposit off the taint. *)
   Lemma uki_mknod_hit_of_leaf (T K Cns : iProp Σ) (stc : fdstate) :
     uki_mknod_leaf T K Cns stc -∗ K -∗ uki_mknod_hit_leaf T Cns stc.
-  Proof.
+  Proof using .
     iIntros "Hl HK" (h m avail) "#Hcode #Hro %Hargs Hrun Hcwd Hcont".
     iApply ("Hl" $! h m avail with "Hcode Hro [%] Hrun Hcwd HK Hcont").
     exact Hargs.
@@ -548,14 +549,14 @@ Section UkInit.
 
   Lemma init_cons_dance_miss (T K Cns : iProp Σ) (stc : fdstate) :
     init_cons_leaves T K Cns stc -∗ K -∗ init_cons_dance T Cns stc.
-  Proof.
+  Proof using .
     iIntros "#Hl HK". rewrite /init_cons_dance. iLeft.
     iExists K. iFrame "Hl HK".
   Qed.
 
   Lemma init_cons_dance_hit (T Cns : iProp Σ) (stc : fdstate) :
     init_cons_hit T Cns stc -∗ init_cons_dance T Cns stc.
-  Proof. iIntros "Hh". rewrite /init_cons_dance. by iRight. Qed.
+  Proof using . iIntros "Hh". rewrite /init_cons_dance. by iRight. Qed.
 
   (* ===================================================================== *)
   (* THE DEPOSITS /init OWES (lane SUPPLY-SPLIT, P4), as ONE persistent      *)
@@ -599,7 +600,7 @@ Section UkInit.
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "#Hwr #Hcode Hrun Hcont".
     destruct init_syms_pins as (Hstart & Hmain & Hprintf & Hvprintf & Hputc & Hopen & Hmknod & Hdup & Hfork & Hwait & Hexec & Hwrite & Hexit). rewrite Hmknod.
     (* ---- 0x3ba  c.li a7,17 ---- *)
@@ -664,7 +665,7 @@ Section UkInit.
   Lemma uki_mknod_hit_of_taint (T Cns : iProp Σ) `{!Persistent T}
       (stc : fdstate) :
     □ (T -∗ udepw_law 17) -∗ T -∗ uki_mknod_hit_leaf T Cns stc.
-  Proof.
+  Proof using .
     iIntros "#Hwl #Ht" (h m avail) "#Hcode #Hro %Hargs Hrun Hcwd Hcont".
     iDestruct ("Hwl" with "Ht") as "#Hwr17".
     iApply (wp_kinit_mknod h m avail with "Hwr17 Hcode Hrun").
@@ -719,7 +720,7 @@ Section UkInit.
   Lemma uki_open1_of_dance (T Cns : iProp Σ) `{!Persistent T}
       (stc : fdstate) :
     □ (T -∗ udepw_law 17) -∗ init_cons_dance T Cns stc -∗ uki_open1 T Cns stc.
-  Proof.
+  Proof using .
     iIntros "#Hwl17 Hd".
     iIntros (h m avail) "#Hcode #Hro %Hargs Hrun Hcwd Hstd Hcont".
     iDestruct "Hd" as "[[%K [[#Habs #Hmkl] HK]] | (#Hcl0 & #Hmklh & HC)]".
@@ -761,7 +762,7 @@ Section UkInit.
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using Hpsok_free.
     iIntros "#Hcode Hrun Hstd Hcont".
     iDestruct "Hstd" as (l) "Hstd".
     destruct init_syms_pins as (Hstart & Hmain & Hprintf & Hvprintf & Hputc & Hopen & Hmknod & Hdup & Hfork & Hwait & Hexec & Hwrite & Hexit). rewrite Hdup.
@@ -1054,7 +1055,7 @@ Section UkInit.
      name an application, so what crosses is the deposit as a LAW OFF [T]. *)
   Lemma uki_open2_taint_arm (T : iProp Σ) `{!Persistent T} (stc : fdstate) :
     □ (T -∗ udepw_law 15) -∗ T -∗ uki_open2 T stc.
-  Proof.
+  Proof using .
     rewrite /uki_open2 /uki_open2_in.
     iIntros "#Hwl #Ht" (h m avail) "#Hcode #Hro %Hargs Hrun Hcwd Hin Hcont".
     iDestruct ("Hwl" with "Ht") as "#Hwr".
@@ -1069,7 +1070,7 @@ Section UkInit.
      is the lemma above, because under the taint there is no pin. *)
   Lemma uki_open2_of_console (T : iProp Σ) `{!Persistent T} (stc : fdstate) :
     □ (T -∗ udepw_law 15) -∗ uki_open_console_leaf T stc -∗ uki_open2 T stc.
-  Proof.
+  Proof using .
     iIntros "#Hwl Hlf".
     rewrite /uki_open2 /uki_open2_in.
     iIntros (h m avail) "#Hcode #Hro %Hargs Hrun Hcwd Hin Hcont".
@@ -1093,7 +1094,7 @@ Section UkInit.
      and fd 0 stays closed *)
   Lemma uki_open2_of_absent (T K : iProp Σ) `{!Persistent T} (stc : fdstate) :
     □ (T -∗ udepw_law 15) -∗ uki_open_absent_leaf T K -∗ K -∗ uki_open2 T stc.
-  Proof.
+  Proof using .
     iIntros "#Hwl Hlf HK".
     rewrite /uki_open2 /uki_open2_in.
     iIntros (h m avail) "#Hcode #Hro %Hargs Hrun Hcwd Hin Hcont".
@@ -1188,7 +1189,7 @@ Section UkInit.
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "#Hwr #Hcode Hrun Hcont".
     destruct init_syms_pins as (Hstart & Hmain & Hprintf & Hvprintf & Hputc & Hopen & Hmknod & Hdup & Hfork & Hwait & Hexec & Hwrite & Hexit). rewrite Hwrite.
     (* ---- 0x392  c.li a7,16 ---- *)
@@ -1274,7 +1275,7 @@ Section UkInit.
      width the store leaves it ([RiscvModelBytes.nth_byte] at 0) *)
   Lemma nth_byte0_moi (b : bv 8) :
     nth_byte (mword_of_int (bv_unsigned b) : mword 64) 0%nat = b.
-  Proof.
+  Proof using .
     rewrite <- zext8_moi. apply bv_eq.
     rewrite /nth_byte bv_extract_unsigned zext8_unsigned.
     change (8 * N.of_nat 0)%N with 0%N.
@@ -1307,7 +1308,7 @@ Section UkInit.
      lane IO-LEAF and what init's three DIE arms still do. *)
   Lemma kinit_w1_of_law (fdv : mword 64) (b : bv 8) :
     udepw_law 16 -∗ kinit_w1 fdv b emp emp.
-  Proof.
+  Proof using .
     iIntros "#Hwr" (h m avail) "_ _ #Hcode Hbuf _ Hrun Hcont".
     iApply (wp_kinit_write h m avail with "Hwr Hcode Hrun").
     iIntros (h' ret) "Hrun".
@@ -1319,7 +1320,7 @@ Section UkInit.
      console arm reads its row from travels with the cursor. *)
   Lemma kinit_w1_frame (fdv : mword 64) (b : bv 8) (Ci Co R : iProp Σ) :
     kinit_w1 fdv b Ci Co -∗ kinit_w1 fdv b (Ci ∗ R) (Co ∗ R).
-  Proof.
+  Proof using .
     iIntros "Hw" (h m avail) "%Ha0 %Ha2 #Hcode Hbuf [HCi HR] Hrun Hcont".
     iApply ("Hw" $! h m avail with "[%] [%] Hcode Hbuf HCi Hrun");
       [ exact Ha0 | exact Ha2 | ].
@@ -1405,7 +1406,7 @@ Section UkInit.
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "#Hcode Hrun Hsb Hstd Hbuf Hcont".
     destruct init_syms_pins as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hwrite & _). rewrite Hwrite.
     (* ---- 0x392  c.li a7,16 ---- *)
@@ -1500,7 +1501,7 @@ Section UkInit.
     ukn_pay N (-1) -∗
     urun N h m (mword_of_int InitSyms.exit) avail -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using Hpay.
     iIntros "#Hcode Hpay Hrun".
     destruct init_syms_pins as (Hstart & Hmain & Hprintf & Hvprintf & Hputc & Hopen & Hmknod & Hdup & Hfork & Hwait & Hexec & Hwrite & Hexit). rewrite Hexit.
     iApply (wp_uk_cli N h m (mword_of_int 0x372)
@@ -1587,7 +1588,7 @@ Section UkInit.
           udepw_at_ref N' m pc FsImg.ROOTINO))%I.
 
   Global Instance init_exec_sup_persistent : Persistent init_exec_sup.
-  Proof. rewrite /init_exec_sup. apply _. Qed.
+  Proof using . rewrite /init_exec_sup. apply _. Qed.
 
   (* the trivial supplier still pays it: a bundle at every key is a bundle
      at init's *)
@@ -1596,7 +1597,7 @@ Section UkInit.
      the bundle the trivial supplier hands over is at exactly the payload
      the record names. *)
   Lemma init_exec_sup_of_uxsup : uxsup -∗ init_exec_sup.
-  Proof.
+  Proof using .
     iIntros "#Hx". iModIntro. iIntros (N' m pc) "%Hpeq _ _ _ _ _".
     pose proof (Hpeq : UkRun.ukn_triv N') as Hti.
     iApply (udepw_at_ref_of_uxsup with "Hx").
@@ -1664,7 +1665,7 @@ Section UkInit.
       `{!forall i : nat, Timeless (Rdl i)} `{!forall i : nat, Timeless (Wb i)}
       (n : nat) :
     Timeless (init_rd Rdl Wb n).
-  Proof. rewrite /init_rd /init_rd_cred. apply _. Qed.
+  Proof using . rewrite /init_rd /init_rd_cred. apply _. Qed.
 
   (* the credential the lend carries, AT THE LEDGER the child inherits.
      ON THE CONSOLE ROW IT IS THE ROUND-OPEN SHAPE [Wp n] (lane M6b; top:
@@ -1755,7 +1756,7 @@ Section UkInit.
 
   Global Instance init_exec_sup_lend_persistent cn T st Cr :
     Persistent (init_exec_sup_lend cn T st Cr).
-  Proof. rewrite /init_exec_sup_lend. apply _. Qed.
+  Proof using . rewrite /init_exec_sup_lend. apply _. Qed.
 
   (* ...AND THE SAME SUPPLY AS A WAND FROM THE CONSOLE CREDENTIAL (lane E2).
      The exec'd shell's entry is told which console state its parent left
@@ -1772,13 +1773,13 @@ Section UkInit.
 
   Global Instance init_cons_sup_persistent cn T Cns st Cr :
     Persistent (init_cons_sup cn T Cns st Cr).
-  Proof. rewrite /init_cons_sup. apply _. Qed.
+  Proof using . rewrite /init_cons_sup. apply _. Qed.
 
   Lemma init_cons_sup_taint (cn : cons_names) (T Cns : iProp Σ)
       (st : fdstate) (Cr : cons_cred Σ) :
     init_cons_sup cn T Cns st Cr -∗ T -∗
     init_exec_sup_lend cn T st Cr.
-  Proof.
+  Proof using .
     iIntros "[#Hw #Ht] HT". iApply "Hw". iApply ("Ht" with "HT").
   Qed.
 
@@ -1819,7 +1820,7 @@ Section UkInit.
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "#Hcode Hrun Hcwd Hsbx Hcont".
     destruct init_syms_pins as (Hstart & Hmain & Hprintf & Hvprintf & Hputc & Hopen & Hmknod & Hdup & Hfork & Hwait & Hexec & Hwrite & Hexit). rewrite Hexec.
     iApply (wp_uk_cli N h m (mword_of_int 0x3aa)
@@ -1910,7 +1911,7 @@ Section UkInit.
        UserChildren.uch (ukn_ch N) cs' -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using Hpsok_free.
     intros Hz.
     iIntros "#Hcode Hrun Hch Hcont".
     destruct init_syms_pins as (Hstart & Hmain & Hprintf & Hvprintf & Hputc & Hopen & Hmknod & Hdup & Hfork & Hwait & Hexec & Hwrite & Hexit). rewrite Hwait.
@@ -2002,17 +2003,17 @@ Section InitDeps.
             (UserFd.ustd (ukn_fd N0) ufd_l0) (UserFd.ustd (ukn_fd N0) ufd_l0)))%I.
 
   Global Instance kinit_wcl_persistent : Persistent kinit_wcl.
-  Proof. rewrite /kinit_wcl. apply _. Qed.
+  Proof using . rewrite /kinit_wcl. apply _. Qed.
 
   Definition kinit_wlaw (T : iProp Σ) : iProp Σ :=
     (□ (T -∗ udepw_law 16) ∗ kinit_wcl)%I.
 
   Global Instance kinit_wlaw_persistent T : Persistent (kinit_wlaw T).
-  Proof. rewrite /kinit_wlaw. apply _. Qed.
+  Proof using . rewrite /kinit_wlaw. apply _. Qed.
 
   Definition init_deps (T : iProp Σ) : iProp Σ :=
     (kinit_wlaw T ∗ □ (T -∗ udepw_law 15) ∗ □ (T -∗ udepw_law 17))%I.
 
   Global Instance init_deps_persistent T : Persistent (init_deps T).
-  Proof. rewrite /init_deps. apply _. Qed.
+  Proof using . rewrite /init_deps. apply _. Qed.
 End InitDeps.

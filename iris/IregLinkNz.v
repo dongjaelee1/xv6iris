@@ -85,7 +85,7 @@ Section IregLinkNz.
     dinode_at γi inum dn ∗
     FsStateLink.link_tok (FsBytesGamma.fs_gamma_L γfs) (bv_unsigned inum) v ∗
     FsStateLink.link_tok (FsBytesGamma.fs_gamma_L γfs) (bv_unsigned inum) v'.
-  Proof.
+  Proof using .
     iIntros (HE Hin) "#Hinv Hdn Hfrag Hfrag2".
     pose proof (islot_lt inum) as Hsl.
     assert (Hkey : (16 * Z.of_nat (ireg_bi inum) + Z.of_nat (islot inum))%Z
@@ -139,7 +139,7 @@ Section IregLinkNz.
      /\ ireg_reg_ok (bv_unsigned (di_type dn)) v⌝ ∗
     dinode_at γi inum dn ∗
     FsStateLink.link_tok (FsBytesGamma.fs_gamma_L γfs) (bv_unsigned inum) v.
-  Proof.
+  Proof using .
     iIntros (HE Hin) "#Hinv Hdn Hfrag".
     pose proof (islot_lt inum) as Hsl.
     assert (Hkey : (16 * Z.of_nat (ireg_bi inum) + Z.of_nat (islot inum))%Z
@@ -212,7 +212,7 @@ Section IregLinkNz.
     ireg_inv γi γfs inodestart nib -∗
     ireg_boot -∗
     iclaim (bv_unsigned inum) ty t qt ={E}=∗ False.
-  Proof.
+  Proof using .
     iIntros (HE Hin) "#Hinv Hboot Hcl".
     pose proof (islot_lt inum) as Hsl.
     assert (Hkey : (16 * Z.of_nat (ireg_bi inum) + Z.of_nat (islot inum))%Z
@@ -259,7 +259,7 @@ Section IregLinkNz.
     dinode_at γi inum dn ∗
     FsStateLink.link_toks (FsBytesGamma.fs_gamma_L γfs) (bv_unsigned inum)
       (FsStateLink.link_reps k v).
-  Proof.
+  Proof using .
     iIntros (HE Hin) "#Hinv Hdn Hfrag".
     pose proof (islot_lt inum) as Hsl.
     assert (Hkey : (16 * Z.of_nat (ireg_bi inum) + Z.of_nat (islot inum))%Z
@@ -314,7 +314,7 @@ Section IregLinkNz.
      absolute walk, or [ireg_tok_root_le]'s -- rewrites with this and is
      done. *)
   Lemma ireg_root_ROOTINO : bv_unsigned ROOTINO = ireg_root.
-  Proof. vm_compute. reflexivity. Qed.
+  Proof using . vm_compute. reflexivity. Qed.
 
 
 End IregLinkNz.

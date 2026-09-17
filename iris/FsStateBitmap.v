@@ -67,7 +67,7 @@ Section Bitmap.
   Lemma free_bitmap_unfold Γ sb u :
     free_bitmap Γ sb u
     ⊣⊢ free_bitmap_at Γ (sb_bmapstart sb) (sb_size sb) u.
-  Proof. done. Qed.
+  Proof using . done. Qed.
 
   (* neither the link family nor the top map is read here: the bitmap piece
      of a view depends on [fsΦ] alone.  [FsState.fs_footprint_gname] is the
@@ -77,23 +77,23 @@ Section Bitmap.
   Lemma free_bitmap_at_gname Γ g t bms nb u :
     free_bitmap_at Γ bms nb u
     ⊣⊢ free_bitmap_at (MkFsView (fsΦ Γ) g t) bms nb u.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Global Instance pool_elt_timeless `{!GTimeless Γ} u b :
     Timeless (pool_elt Γ u b).
-  Proof. rewrite /pool_elt. destruct (bool_decide (b ∈ u)); apply _. Qed.
+  Proof using . rewrite /pool_elt. destruct (bool_decide (b ∈ u)); apply _. Qed.
 
   Global Instance free_pool_timeless `{!GTimeless Γ} nb u :
     Timeless (free_pool Γ nb u).
-  Proof. rewrite /free_pool. apply _. Qed.
+  Proof using . rewrite /free_pool. apply _. Qed.
 
   Global Instance free_bitmap_at_timeless `{!GTimeless Γ} bms nb u :
     Timeless (free_bitmap_at Γ bms nb u).
-  Proof. rewrite /free_bitmap_at. apply _. Qed.
+  Proof using . rewrite /free_bitmap_at. apply _. Qed.
 
   Global Instance free_bitmap_timeless `{!GTimeless Γ} sb u :
     Timeless (free_bitmap Γ sb u).
-  Proof. rewrite /free_bitmap. apply _. Qed.
+  Proof using . rewrite /free_bitmap. apply _. Qed.
 
   (* ---------------------------------------------------------------- *)
   (*  The pool, at one block                                           *)
@@ -101,7 +101,7 @@ Section Bitmap.
 
   Lemma seqZ_lookup_nat (nb : Z) (i : nat) :
     (Z.of_nat i < nb)%Z -> seqZ 0 nb !! i = Some (Z.of_nat i).
-  Proof.
+  Proof using .
     intros Hi.
     rewrite lookup_seqZ_lt //.
   Qed.
@@ -110,7 +110,7 @@ Section Bitmap.
     (Z.of_nat i0 < nb)%Z ->
     free_pool Γ nb u ⊣⊢
       pool_elt Γ u (Z.of_nat i0) ∗ free_pool_but Γ nb u i0.
-  Proof.
+  Proof using .
     intros Hi.
     rewrite /free_pool /free_pool_but.
     by rewrite (big_sepL_delete _ (seqZ 0 nb) i0 (Z.of_nat i0))
@@ -121,7 +121,7 @@ Section Bitmap.
   Lemma free_pool_but_eq Γ nb u u' (i0 : nat) :
     (forall x : Z, x <> Z.of_nat i0 -> (x ∈ u <-> x ∈ u')) ->
     free_pool_but Γ nb u i0 ⊣⊢ free_pool_but Γ nb u' i0.
-  Proof.
+  Proof using .
     intros Hoff.
     rewrite /free_pool_but.
     apply big_sepL_proper. intros k x Hk.
@@ -141,7 +141,7 @@ Section Bitmap.
   Lemma free_pool_take Γ nb u (b : Z) :
     0 <= b < nb -> b ∉ u ->
     free_pool Γ nb u ⊢ (∃ bs, blk_owned Γ b bs) ∗ free_pool Γ nb (u ∪ {[b]}).
-  Proof.
+  Proof using .
     intros [Hb0 Hbn] Hnu.
     assert (Hb : Z.of_nat (Z.to_nat b) = b) by lia.
     assert (Hub : b ∈ u ∪ {[b]}) by set_solver.
@@ -164,7 +164,7 @@ Section Bitmap.
   Lemma free_pool_used_q Γ (Hex : phi_excl Γ) dq nb u (b : Z) bs :
     0 <= b < nb ->
     free_pool Γ nb u -∗ blk_owned_q Γ dq b bs -∗ ⌜b ∈ u⌝.
-  Proof.
+  Proof using .
     intros [Hb0 Hbn].
     assert (Hb : Z.of_nat (Z.to_nat b) = b) by lia.
     destruct (decide (b ∈ u)) as [Hin | Hnot].
@@ -181,7 +181,7 @@ Section Bitmap.
   Lemma free_pool_used Γ (Hex : phi_excl Γ) nb u (b : Z) bs :
     0 <= b < nb ->
     free_pool Γ nb u -∗ blk_owned Γ b bs -∗ ⌜b ∈ u⌝.
-  Proof.
+  Proof using .
     intros Hrng. rewrite blk_owned_1.
     iApply (free_pool_used_q Γ Hex (DfracOwn 1) nb u b bs Hrng).
   Qed.
@@ -190,7 +190,7 @@ Section Bitmap.
   Lemma free_pool_give Γ (Hex : phi_excl Γ) nb u (b : Z) bs :
     0 <= b < nb ->
     blk_owned Γ b bs -∗ free_pool Γ nb u -∗ free_pool Γ nb (u ∖ {[b]}).
-  Proof.
+  Proof using .
     intros [Hb0 Hbn].
     assert (Hb : Z.of_nat (Z.to_nat b) = b) by lia.
     assert (Hnb : b ∉ u ∖ {[b]}) by set_solver.
@@ -220,7 +220,7 @@ Section Bitmap.
 
   Lemma elem_of_free_set (nb : Z) (u : gset Z) (x : Z) :
     x ∈ free_set nb u <-> (0 <= x < nb /\ x ∉ u).
-  Proof.
+  Proof using .
     unfold free_set.
     rewrite elem_of_difference elem_of_list_to_set elem_of_seqZ.
     split.
@@ -229,14 +229,14 @@ Section Bitmap.
   Qed.
 
   Lemma diff_int_split (X Y : gset Z) : X = (X ∖ Y) ∪ (X ∩ Y).
-  Proof.
+  Proof using .
     apply set_eq. intros x.
     rewrite elem_of_union elem_of_difference elem_of_intersection.
     destruct (decide (x ∈ Y)); tauto.
   Qed.
 
   Lemma diff_int_disj (X Y : gset Z) : (X ∖ Y) ## (X ∩ Y).
-  Proof.
+  Proof using .
     intros x Hx1 Hx2.
     apply elem_of_difference in Hx1 as [_ Hn].
     apply elem_of_intersection in Hx2 as [_ Hi]. exact (Hn Hi).
@@ -244,7 +244,7 @@ Section Bitmap.
 
   Lemma free_pool_intro Γ (nb : Z) (u : gset Z) :
     ([∗ set] b ∈ free_set nb u, ∃ bs, blk_owned Γ b bs) ⊢ free_pool Γ nb u.
-  Proof.
+  Proof using .
     rewrite /free_pool.
     rewrite -(big_sepS_list_to_set (fun b => pool_elt Γ u b) (seqZ 0 nb)
                 (NoDup_seqZ 0 nb)).
@@ -266,7 +266,7 @@ Section Bitmap.
      to -- the transport returns its source. *)
   Lemma free_pool_shed Γ Γ1 Γ2 (Hs : view_shed Γ Γ1 Γ2) nb u :
     free_pool Γ nb u ⊢ free_pool Γ1 nb u ∗ free_pool Γ2 nb u.
-  Proof.
+  Proof using .
     rewrite /free_pool -big_sepL_sep.
     apply big_sepL_mono. intros k b _.
     rewrite /pool_elt. case_bool_decide.
@@ -287,7 +287,7 @@ Section Bitmap.
       ∗ blk_owned Γ bms (bm_bytes BSIZE u)
       ∗ (blk_owned Γ bms (bm_bytes BSIZE (u ∪ {[b]}))
          -∗ free_bitmap_at Γ bms nb (u ∪ {[b]})).
-  Proof.
+  Proof using .
     intros Hrng Hnu. rewrite /free_bitmap_at (free_pool_take Γ nb u b Hrng Hnu).
     iIntros "(Hbm & Hblk & Hpool)". iFrame "Hblk Hbm".
     iIntros "$". iExact "Hpool".
@@ -300,7 +300,7 @@ Section Bitmap.
       ∗ blk_owned Γ bms (bm_bytes BSIZE u)
       ∗ (blk_owned Γ bms (bm_bytes BSIZE (u ∖ {[b]}))
          -∗ free_bitmap_at Γ bms nb (u ∖ {[b]})).
-  Proof.
+  Proof using .
     intros Hrng. rewrite /free_bitmap_at.
     iIntros "(Hbm & Hpool) Hin".
     iDestruct (free_pool_used Γ Hex nb u b bs Hrng with "Hpool Hin") as %Hin.

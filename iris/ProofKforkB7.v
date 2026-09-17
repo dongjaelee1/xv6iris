@@ -97,7 +97,7 @@ Section KforkB7.
      pure" rule, so this can be read off [Htfp] without losing it. *)
   Lemma kfkb7_tf_len (tfp : mword 44) (ws : list (mword 64)) :
     tf_page tfp ws -∗ ⌜length ws = TFWORDS⌝.
-  Proof. rewrite /tf_page. iIntros "(%Hlen & _ & _)". done. Qed.
+  Proof using . rewrite /tf_page. iIntros "(%Hlen & _ & _)". done. Qed.
 
   (* =================================================================== *)
   (*  THE BLOCK.                                                          *)
@@ -122,7 +122,7 @@ Section KforkB7.
         proc_priv_nocwd γf npa pid_c (us_pt U (pv_upt (us_V U)) (<[(14%nat) := zero_reg]> (pv_tf (us_V U)))) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HM4 HM5.
     iIntros "Hcg #Htext Hpc Hpv Hcont".
     (* ---- open the child's proc_priv for the read+write on its trapframe ---- *)

@@ -56,7 +56,7 @@ Section ProofUexecWp.
   Context `{GEN : GenId}.
 
   Theorem uexec_wp_gen : ⊢ □ uexec_wp.
-  Proof.
+  Proof using .
     (* the WP this slot RETURNS at every trap is this slot: the Löb
        hypothesis is both the recursion and the return value. *)
     iLöb as "IH".

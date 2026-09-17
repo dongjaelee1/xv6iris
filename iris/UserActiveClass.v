@@ -267,7 +267,7 @@ Section UserActiveClass.
   Lemma fetch_classify (va : mword 64) :
     upt_acc_wf pt.(ud_um) ->
     u_fetchable pt.(ud_um) va \/ u_fetch_fault_flavor pt.(ud_tfp) pt.(ud_um) va.
-  Proof.
+  Proof using .
     intro Hwf.
     unfold u_fetch_fault_flavor, u_fault_flavor.
     destruct (neq_vec (bits_of_virtaddr (Virtaddr va))
@@ -342,7 +342,7 @@ Section UserActiveClass.
     hreg_frame rs3 u_Drw -∗ hreg_frame_ro (u_Df (uc_dqc C)) rs3 u_Dro -∗
     resv_any cpu_id -∗ Rut pt -∗
     user_trap_frame C pt Rut.
-  Proof.
+  Proof using .
     intros Hmsok Lhs Lpriv Lpc Lnpc Lstvec Lmie Lmdl Lmenv Lsatp Lpcfg Lpaddr
       Ltlb Htlbok Hwf.
     iIntros "Hopen Hrw Hro Hresv Hrut".
@@ -444,7 +444,7 @@ Section UserActiveClass.
     (exists rsP : regstate, tsf_post (u_land rs1) rs2 rsP /\
        reg_agree_on ((u_Drw ∪ u_Dro) ∖ tk_clock3) rs3 rsP) ->
     u_tail rs2 rs3.
-  Proof.
+  Proof using .
     intros (rsP & (st & Hq & Hsh) & Hag).
     assert (T : forall r : register, r ∈ u_Drw ∪ u_Dro -> r ∉ tk_clock3 ->
               register_lookup r rs3 = register_lookup r rsP).
@@ -467,7 +467,7 @@ Section UserActiveClass.
     register_beq r (R_bitvector_64 PC) = false ->
     register_beq r hart_state = false ->
     register_lookup r rs3 = register_lookup r rs2.
-  Proof.
+  Proof using .
     intros [(mi & T) | (wr & ib & _ & _ & T)] Hin Hnc Hms Hpc Hhs.
     - rewrite (T r Hin Hnc). exact (wrap_post_other r rs2 mi Hms Hpc).
     - rewrite (T r Hin Hnc). exact (irrelevant_register_set r hart_state _ _ Hhs).
@@ -490,7 +490,7 @@ Section UserActiveClass.
             = register_lookup (R_bitvector_64 PC) rs2 /\
           register_lookup (R_bitvector_64 nextPC) rs3
             = register_lookup (R_bitvector_64 nextPC) rs2).
-  Proof.
+  Proof using .
     intros Lhs [(mi & T) | (wr & ib & Hwr & Hcp & T)].
     - left. split_and!.
       + rewrite (T _ u_in_hart ltac:(u_notin_clock))
@@ -537,7 +537,7 @@ Section UserActiveClass.
     u_open C pt t mm usatp pcfg paddr mcenv scenv hpm -∗
     Rut pt -∗
     u_step_psi C pt Rut rs1 rs2.
-  Proof.
+  Proof using .
     intros Lhs Lpriv Hmsok Lstvec Lmie Lmdl Lmenv Lsatp Lpcfg Lpaddr Ltlb
       Htlbok Hwf.
     iIntros "Hresv Hopen Hrut".
@@ -630,7 +630,7 @@ Section UserActiveClass.
     u_open C pt t mm usatp pcfg paddr mcenv scenv hpm -∗
     Rut pt -∗
     u_step_psi C pt Rut rs1 rs2.
-  Proof.
+  Proof using .
     intros Lhs Lpriv Hmsok Lnpc Lstvec Lmie Lmdl Lmenv Lsatp Lpcfg Lpaddr Ltlb
       Htlbok Hwf.
     iIntros "Hresv Hopen Hrut".
@@ -692,7 +692,7 @@ Section UserActiveClass.
     hreg_frame_ro (u_Df dq) rs u_Dro -∗
     (R_bitvector_1 elp) ↦ᵣ□ (register_lookup (R_bitvector_1 elp) rs) ∗
     hreg_frame_ro (u_Df dq) rs u_Dro.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /hreg_frame_ro.
     iDestruct (big_sepS_elem_of_acc _ u_Dro (R_bitvector_1 elp : register)
                  with "H") as "[Hc Hback]"; [ u_in_ro | ].
@@ -705,7 +705,7 @@ Section UserActiveClass.
     hreg_frame_ro (u_Df dq) rs u_Dro -∗
     (R_bitvector_64 medeleg) ↦ᵣ□ (register_lookup (R_bitvector_64 medeleg) rs) ∗
     hreg_frame_ro (u_Df dq) rs u_Dro.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /hreg_frame_ro.
     iDestruct (big_sepS_elem_of_acc _ u_Dro (R_bitvector_64 medeleg : register)
                  with "H") as "[Hc Hback]"; [ u_in_ro | ].
@@ -721,7 +721,7 @@ Section UserActiveClass.
     u_open C pt t mm usatp pcfg paddr mcenv scenv hpm -∗
     (R_bitvector_64 medeleg) ↦ᵣ□ uc_medeleg C ∗
     u_open C pt t mm usatp pcfg paddr mcenv scenv hpm.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /u_open.
     iDestruct "H" as "(H1 & #H2 & H3)". iFrame "H2 H1 H3".
   Qed.
@@ -729,7 +729,7 @@ Section UserActiveClass.
   Lemma u_reg_pointsto_agree (r : register) (dq1 dq2 : dfrac)
       (v1 v2 : type_of_register r) :
     reg_pointsto r dq1 v1 -∗ reg_pointsto r dq2 v2 -∗ ⌜v1 = v2⌝.
-  Proof.
+  Proof using .
     iIntros "H1 H2". rewrite /reg_pointsto.
     iDestruct (ghost_map_elem_agree with "H1 H2") as %He.
     iPureIntro. exact (reg_existT_inj r v1 v2 He).
@@ -747,7 +747,7 @@ Section UserActiveClass.
     ⌜register_lookup (R_bitvector_64 medeleg) rs = uc_medeleg C⌝ ∗
     u_open C pt t mm usatp pcfg paddr mcenv scenv hpm ∗
     hreg_frame_ro (u_Df (uc_dqc C)) rs u_Dro.
-  Proof.
+  Proof using .
     iIntros "Hopen Hro".
     iDestruct (u_open_medl with "Hopen") as "[#Hm1 Hopen]".
     iDestruct (u_ro_medl_acc with "Hro") as "[#Hm2 Hro]".
@@ -781,7 +781,7 @@ Section UserActiveClass.
     u_open C pt t mm usatp pcfg paddr mcenv scenv hpm -∗
     Rut pt -∗
     u_arm_res C pt Rut rs1 (u_trap_rs rsf c info pcx (uc_stvec C)).
-  Proof.
+  Proof using .
     intros Lhs Hmsok Lstvec Lmie Lmdl Lmenv Lsatp Lpcfg Lpaddr Htlbok Hwf Hag.
     iIntros "Hrw Hro Hany Hopen Hrut".
     rewrite /u_arm_res.
@@ -841,7 +841,7 @@ Section UserActiveClass.
     u_open C pt t mm usatp pcfg paddr mcenv scenv hpm -∗
     Rut pt -∗
     u_step_post C pt Rut rs1 (Step_Pending_Interrupt (i, Supervisor)).
-  Proof.
+  Proof using .
     intros Lhs Lpriv Hmsok Lmi Lstvec Lmie Lmdl Lmenv Lsatp Lpcfg Lpaddr
       Hpins Hwf.
     destruct Hpins as ((Hmisa & _ & _ & _ & _ & Helpne) & _ & _ & Htlbok).
@@ -918,7 +918,7 @@ Section UserActiveClass.
     u_open C pt t mm usatp pcfg paddr mcenv scenv hpm -∗
     Rut pt -∗
     u_step_post C pt Rut rs1 (Step_Fetch_Failure (Virtaddr xv, e)).
-  Proof.
+  Proof using .
     intros Hue Lhs Lpriv Hmsok Lmi Lstvec Lmie Lmdl Lmenv Lsatp Lpcfg Lpaddr
       Hpins Hwf.
     destruct Hpins as ((Hmisa & _ & _ & _ & _ & Helpne) & _ & _ & Htlbok).
@@ -1003,7 +1003,7 @@ Section UserActiveClass.
     u_open C pt t mm usatp pcfg paddr mcenv scenv hpm -∗
     Rut pt -∗
     u_step_post C pt Rut rs1 (Step_Execute (Illegal_Instruction tt, ib)).
-  Proof.
+  Proof using .
     intros Lhs Lpriv Hmsok Lmi Lstvec Lmie Lmdl Lmenv Lsatp Lpcfg Lpaddr
       Hpins Hwf.
     iIntros "Hcert Hany Hrw Hro Hopen Hrut".
@@ -1049,7 +1049,7 @@ Section UserActiveClass.
     Rut pt -∗
     u_step_post C pt Rut rs1
       (Step_Execute (rv64d_types.Trap (User, make_sync_exception e xv, pcx), ib)).
-  Proof.
+  Proof using .
     intros Hue Lhs Lpriv Hmsok Lmi Lstvec Lmie Lmdl Lmenv Lsatp Lpcfg Lpaddr
       Hpins Hwf.
     destruct Hpins as ((Hmisa & _ & _ & _ & _ & Helpne) & _ & _ & Htlbok).
@@ -1132,7 +1132,7 @@ Section UserActiveClass.
        bytes_own mm' -∗ resv_any cpu_id -∗
        run_fetch_post u_Drw u_Dro (u_Df dq) Pe Pf Px fr) -∗
     swp (fetch tt) (run_fetch_post u_Drw u_Dro (u_Df dq) Pe Pf Px).
-  Proof.
+  Proof using .
     intros He Hg Hwf Hstep.
     iIntros "#Hcert Hany Hrw Hro Hrun Hown Hk".
     iApply (swp_mono with "[Hk] [Hany Hrw Hro Hrun Hown]").
@@ -1186,7 +1186,7 @@ Section UserActiveClass.
        bytes_own s_x.(mem) -∗ resv_any cpu_id -∗
        Pe r ib) -∗
     swp (execute instr) (run_exec_post Pe ib).
-  Proof.
+  Proof using .
     intros Hexe Hnr Hwf Hstep.
     iIntros "#Hcert Hany Hrw Hro Hrun Hown Hk".
     destruct Hexe as [(He & Hg) | (other & He1 & Hg1 & He2 & Hg2)].
@@ -1256,7 +1256,7 @@ Section UserActiveClass.
     (∀ (t' : ptree) (mm' : PtBytes.pamap),
        ⌜u_mem_step pt t t' mm mm'⌝ -∗ bytes_own mm' -∗
        u_open C pt t' mm' usatp pcfg paddr mcenv scenv hpm).
-  Proof.
+  Proof using .
     rewrite /u_open.
     iIntros "(Hpmp & #Hmedl & #Hsenv & #Hmste & #Hsste & #Hmcen & #Hscen &
               #Hhpm & #Hclaims & Hbytes & Hclose)".
@@ -1280,7 +1280,7 @@ Section UserActiveClass.
   (* write or to skip a TLB fill.                                             *)
   Lemma u_fix_ne_nPC (r : register) :
     r ∈ u_Dfix -> register_beq r (R_bitvector_64 nextPC) = false.
-  Proof.
+  Proof using .
     intros Hr. destruct (register_beq r (R_bitvector_64 nextPC)) eqn:Hb;
       [| reflexivity].
     apply register_beq_true in Hb. subst r. exfalso. exact (u_fix_nPC Hr).
@@ -1288,7 +1288,7 @@ Section UserActiveClass.
 
   Lemma u_fix_ne_tlb (r : register) :
     r ∈ u_Dfix -> register_beq r (tlb : register) = false.
-  Proof.
+  Proof using .
     intros Hr. destruct (register_beq r (tlb : register)) eqn:Hb;
       [| reflexivity].
     apply register_beq_true in Hb. subst r. exfalso. exact (u_fix_tlb Hr).
@@ -1300,7 +1300,7 @@ Section UserActiveClass.
        register_lookup r rs' = register_lookup r rs) ->
     tlb_ok_pt (mword_of_int 0) t' (register_lookup tlb rs') ->
     u_exec_pins pt t rs -> u_exec_pins pt t' rs'.
-  Proof.
+  Proof using .
     intros T Htlbok' (Hhw & Hcfgp & Hpt & _).
     destruct Hhw as (Hmisa & Hsec & Hsenv & Hhtif & Hall & Help).
     destruct Hcfgp as (Hmst0 & Hsst0).
@@ -1365,7 +1365,7 @@ Section UserActiveClass.
     u_open C pt t mm usatp pcfg paddr mcenv scenv hpm -∗
     Rut pt -∗
     u_step_post C pt Rut rs1 (Step_Execute (r, ib)).
-  Proof.
+  Proof using .
     intros Hrok Lhs Lcp Hmsok Lmi Lstvec Lmie Lmdl Lmenv Lsatp Lpcfg Lpaddr
       Hpins Hwf.
     pose proof Hpins as (_ & _ & _ & Htlbok).
@@ -1474,7 +1474,7 @@ Section UserActiveClass.
          (fun (xv : mword 64) (e : ExceptionType) =>
             u_step_post C pt Rut rs1 (Step_Fetch_Failure (Virtaddr xv, e)))
          (fun _ : ext_fetch_addr_error => False)).
-  Proof.
+  Proof using Rut_ctx.
     intros Hbase Hrvc Lhs Lcp Hmsok Lmi Lpc Lstvec Lmie Lmdl Lmenv Lsatp
       Lpcfg Lpaddr Hpins Hwf.
     iIntros "#Hcert Hany Hrw Hro Hbytes Hoback Hrut Hbridge".
@@ -1686,7 +1686,7 @@ Section UserActiveClass.
          (fun (xv : mword 64) (e : ExceptionType) =>
             u_step_post C pt Rut rs1 (Step_Fetch_Failure (Virtaddr xv, e)))
          (fun _ : ext_fetch_addr_error => False)).
-  Proof.
+  Proof using Rut_ctx.
     intros Hbase Hrvc Lhs Lcp Hmsok Lmi Lpc Lstvec Lmie Lmdl Lmenv Lsatp
       Lpcfg Lpaddr Hpins Hwf Hex Hg Hfrok Htr Htlbok' Hstep.
     iIntros "#Hcert Hany Hrw Hro Hbytes Hoback Hrut".
@@ -1737,7 +1737,7 @@ Section UserActiveClass.
     forall q : register, q ∈ u_Drw ∪ u_Dro ->
       register_beq q (tlb : register) = false ->
       register_lookup q rs2 = register_lookup q rsA.
-  Proof. intros Htlb Hag q Hq Hne. rewrite (Hag q Hq). exact (Htlb q Hne). Qed.
+  Proof using . intros Htlb Hag q Hq Hne. rewrite (Hag q Hq). exact (Htlb q Hne). Qed.
 
   (* the WALK, as the translate premise the [spt_fetch_bytes_*] shells want *)
   Lemma u_bridge_walk (dq : dfrac) (t t' : ptree) (mm mm' : PtBytes.pamap)
@@ -1757,7 +1757,7 @@ Section UserActiveClass.
                 ∃ rsf : regstate, ⌜Qf rsf⌝ ∗
                 (own_context cur_ctx ∗ bytes_own mm' ∗ resv_any cpu_id) ∗
                 hreg_frame rsf u_Drw ∗ hreg_frame_ro (u_Df dq) rsf u_Dro).
-  Proof.
+  Proof using .
     intros Htr Htrg Hstepk HQ.
     iIntros "#Hcert Hany Hrw Hro Hrun Hown".
     iApply (swp_mono with "[] [Hany Hrw Hro Hrun Hown]").
@@ -1794,7 +1794,7 @@ Section UserActiveClass.
                 ∃ rsf : regstate, ⌜Qf rsf⌝ ∗
                 (own_context cur_ctx ∗ bytes_own mm ∗ resv_any cpu_id) ∗
                 hreg_frame rsf u_Drw ∗ hreg_frame_ro (u_Df dq) rsf u_Dro).
-  Proof.
+  Proof using .
     intros Htr Htrg Hok HQ.
     iIntros "#Hcert Hany Hrw Hro Hrun Hown".
     iApply (swp_mono with "[] [Hany Hrw Hro Hrun Hown]").
@@ -1830,7 +1830,7 @@ Section UserActiveClass.
            (Physaddr pa) 4 false false false false)
       (fun r => ∃ w : mword 32, ⌜r = Values.Ok (w, tt)⌝ ∗
                 hreg_frame rs2 u_Drw ∗ hreg_frame_ro (u_Df dq) rs2 u_Dro).
-  Proof.
+  Proof using .
     intros Hpins Hmv Hram0 Hram3 Halp.
     pose proof Hpins as (Hhw & _ & Hpt & _).
     destruct Hhw as (_ & _ & _ & Hhtif & Hall & _).
@@ -1861,7 +1861,7 @@ Section UserActiveClass.
            (Physaddr pa) 2 false false false false)
       (fun r => ∃ h : mword 16, ⌜r = Values.Ok (h, tt)⌝ ∗
                 hreg_frame rs2 u_Drw ∗ hreg_frame_ro (u_Df dq) rs2 u_Dro).
-  Proof.
+  Proof using .
     intros Hpins Hmv Hram0 Hram1 Halp.
     pose proof Hpins as (Hhw & _ & Hpt & _).
     destruct Hhw as (_ & _ & _ & Hhtif & Hall & _).
@@ -1884,7 +1884,7 @@ Section UserActiveClass.
     u_mem_wf pt t mm ->
     (forall j : nat, (j < k)%nat -> is_Some (mm !! RiscvModelBytes.pa_add pa j)) ->
     forall j : nat, (j < k)%nat -> addr_is_ram (RiscvModelBytes.pa_add pa j).
-  Proof.
+  Proof using .
     intros Hwf Hwin j Hj. destruct Hwf as (md & _ & _ & _ & _ & Hram & _).
     apply Hram. apply elem_of_dom. exact (Hwin j Hj).
   Qed.
@@ -1910,7 +1910,7 @@ Section UserActiveClass.
     hreg_frame rsA u_Drw -∗ hreg_frame_ro (u_Df dq) rsA u_Dro -∗
     own_context cur_ctx -∗ bytes_own mm -∗
     swp (fetch tt) (u_fetch_bridge_post dq rsA t mm va).
-  Proof.
+  Proof using .
     intros Hum Hok Hcanon Hb0 Hal4 Lpc Lcp Hmsok Lmenv Hpins Hwf Hwin4.
     pose proof Hmsok as (Lsxl & _).
     destruct (align4_low_bits va Hal4) as (_ & Hb1).
@@ -1999,7 +1999,7 @@ Section UserActiveClass.
         u_fetch_res2 rsA t mm fb rs2 ∗
         hreg_frame rs2 u_Drw ∗ hreg_frame_ro (u_Df dq) rs2 u_Dro)) -∗
     u_fetch_bridge_post dq rsA t mm va r.
-  Proof.
+  Proof using .
     intros Hal2 Htlb1 Htlbok1 Hstep1.
     iIntros "[H|H]".
     - iDestruct "H" as (ilo rs1) "(%Hrvc & -> & %Hag & (Hrun & Hown & Hany) & Hrw & Hro)".
@@ -2043,7 +2043,7 @@ Section UserActiveClass.
                 ∃ rs1 : regstate, ⌜reg_agree_on (u_Drw ∪ u_Dro) rs1 rsf1⌝ ∗
                 (own_context cur_ctx ∗ bytes_own mm1 ∗ resv_any cpu_id) ∗
                 hreg_frame rs1 u_Drw ∗ hreg_frame_ro (u_Df dq) rs1 u_Dro).
-  Proof.
+  Proof using .
     intros Htr1 Htr1g Hstepk1 Htlb1 Hal2 Lcp Hpins Hwf Hwin2.
     pose proof (u_bridge_ram t mm (CommonWalk.u_walk_pa w va) 2 Hwf Hwin2) as Hram.
     assert (Hram0 : addr_is_ram (CommonWalk.u_walk_pa w va)).
@@ -2087,7 +2087,7 @@ Section UserActiveClass.
     register_lookup cur_privilege rs1 = User /\
     _get_Mstatus_SXL (register_lookup (R_bitvector_64 mstatus) rs1) = 'b"10" /\
     register_lookup (R_bitvector_64 menvcfg) rs1 = MENVCFG_S.
-  Proof.
+  Proof using .
     intros Htlb1 Htlbok1 HQ1 Lcp Hmsok Lmenv Hpins.
     pose proof Hmsok as (Lsxl & _).
     assert (TF1 : forall q : register, q ∈ u_Dfix ->
@@ -2136,7 +2136,7 @@ Section UserActiveClass.
     hreg_frame rsA u_Drw -∗ hreg_frame_ro (u_Df dq) rsA u_Dro -∗
     own_context cur_ctx -∗ bytes_own mm -∗
     swp (fetch tt) (u_fetch_bridge_post dq rsA t mm va).
-  Proof.
+  Proof using .
     intros Hum Hok Hcanon Humh Hokh Hcanonh Hb0 Hb1 Hal4 Lpc Lcp Hmsok Lmenv
       Hpins Hwf Hwin2 Hwin2h.
     pose proof Hmsok as (Lsxl & _).
@@ -2254,7 +2254,7 @@ Section UserActiveClass.
     hreg_frame rsA u_Drw -∗ hreg_frame_ro (u_Df dq) rsA u_Dro -∗
     own_context cur_ctx -∗ bytes_own mm -∗
     swp (fetch tt) (u_fetch_bridge_post dq rsA t mm va).
-  Proof.
+  Proof using .
     intros Hum Hok Hcanon Hfaulth Hb0 Hb1 Hal4 Lpc Lcp Hmsok Lmenv Hpins Hwf Hwin2.
     pose proof Hmsok as (Lsxl & _).
     assert (Hal2 : is_aligned_vaddr (Virtaddr va) 2 = true)

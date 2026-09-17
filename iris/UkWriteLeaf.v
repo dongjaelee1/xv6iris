@@ -151,7 +151,7 @@ Section UkWriteLeaf.
   (* the payload row [UkRun.udepwf_std] asks for, by computation *)
   Lemma xfam_wr_pay (Q : nat -> iProp Σ) (Xp : Z -> iProp Σ) :
     sexit_pay (xfam_wr Q Xp) = Xp.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* =================================================================== *)
   (*  S2  THE TWO KEY-LEVEL ROWS, IN THE PROCESS'S DIRECTION              *)
@@ -181,7 +181,7 @@ Section UkWriteLeaf.
     uvis_M W = Mv ->
     filewrite_in (fd_st_of_key v0 sts) (sys_rw_count v2) Mv v1 (wf_Q f) (wf_Qe f) -∗
     sbundle_at X 16 f W.
-  Proof.
+  Proof using .
     intros H0 H1 H2 Hfd HM. iIntros "H".
     (* the REWRITE GOES FIRST, against the lemma's own variables
        ([UConsOpen.sbundle_at_open_intro_at]'s note) *)
@@ -210,7 +210,7 @@ Section UkWriteLeaf.
       ⌜uvis_lazy W = false -> lazy_free (ud_um P) (uvis_sz W)⌝ ∗
       filewrite_extra (uvis_gen W) P (fd_st_of_key v0 sts) (sys_rw_count v2) Mv v1
         (wf_Q f) (wf_Qe f) r.
-  Proof.
+  Proof using .
     intros H0 H1 H2 Hfd HM. iIntros "H".
     rewrite -H0 -H1 -H2 -Hfd -HM.
     rewrite /spost_at /= /xv6_spost /xk_a.
@@ -234,7 +234,7 @@ Section UkWriteLeaf.
     take NSTD fdv = l ->
     l !! i = Some (FdOpen rb true (FdDevice mj)) ->
     fd_st_of_key v0 fdv = FdOpen rb true (FdDevice mj).
-  Proof.
+  Proof using .
     intros H0 Hi Htake Hli. rewrite /fd_st_of_key H0.
     destruct (decide (0 <= Z.of_nat i < Z.of_nat NOFILE)) as [_ | Hc];
       [ | exfalso; apply Hc; unfold NOFILE, NSTD in *; lia ].
@@ -265,7 +265,7 @@ Section UkWriteLeaf.
        cons_out_chain (S gen_id) M (m !!! Regidx a1_idx) Q 0%nat
          (Z.to_nat (sys_rw_count (m !!! Regidx a2_idx)))) -∗
     udepwf_std N m pc 16 (xfam_wr Q (ukn_pay N)) l.
-  Proof.
+  Proof using .
     intros H0 Hi Hli. iIntros "Hch".
     rewrite /udepwf_std. iSplitR; [ iPureIntro; reflexivity | ].
     iIntros (M pm sz fdv cw gn cs pidv) "%Htake #Hmpay Hheap Hufd".
@@ -302,7 +302,7 @@ Section UkWriteLeaf.
       ⌜uvis_lazy W = false -> lazy_free (ud_um P) (uvis_sz W)⌝ ∗
       write_cons_arms P (tf_w (uvis_tf W) (tf_arg_idx 1)) Q
         (sys_rw_count (tf_w (uvis_tf W) (tf_arg_idx 2))) r.
-  Proof.
+  Proof using .
     intros H0 Hi Htake Hli. iIntros "H".
     iDestruct (spost_at_write_elim_at uslot (xfam_wr Q Xp) W
                  (tf_w (uvis_tf W) (tf_arg_idx 0))
@@ -336,7 +336,7 @@ Section UkWriteLeaf.
       (Q : nat -> iProp Σ) (k cnt : nat) :
     (forall j : nat, (k <= j <= k + cnt)%nat -> ⊢ Q j) ->
     cons_licence -∗ cons_out_chain (S gen_id) M ua Q k cnt.
-  Proof.
+  Proof using .
     revert k. induction cnt as [| cnt IH]; intros k HQ.
     - iIntros "_". cbn [cons_out_chain].
       iApply (HQ k ltac:(lia)).
@@ -357,7 +357,7 @@ Section UkWriteLeaf.
     sys_rw_count (m !!! Regidx a2_idx) = 2 ->
     cons_licence -∗
     udepwf_std N m pc 16 (xfam_wr uwr_demo_Q (ukn_pay N)) l.
-  Proof.
+  Proof using .
     intros H0 Hi Hli Hcnt. iIntros "#Hlic".
     iApply (uwrite_chain_sup N uwr_demo_Q m pc l i rb mj H0 Hi Hli).
     iIntros (M pm sz) "Hheap". iFrame "Hheap".
@@ -382,7 +382,7 @@ Section UkWriteLeaf.
     spost_at uslot 16 (xfam_wr uwr_demo_Q Xp) W r M' fdv' cw' cs' -∗
     ⌜filewrite_ret 2 r⌝ ∗
     ∃ k : nat, ⌜r = (mword_of_int (Z.of_nat k) : mword 64) /\ (k <= 2)%nat⌝.
-  Proof.
+  Proof using .
     intros H0 Hi Htake Hli Hcnt. iIntros "H".
     iDestruct (uwrite_post_cons uwr_demo_Q Xp W r M' fdv' cw' cs' l i rb
                  H0 Hi Htake Hli with "H") as (P) "(_ & _ & _ & H)".
@@ -438,7 +438,7 @@ Section UkWriteLeaf.
          (uint (add_vec_int (tf_w (uvis_tf W) (tf_arg_idx 1)) (Z.of_nat j)))) ->
     spost_at uslot 16 (xfam_wr Q Xp) W r M' fdv' cw' cs' -∗
     ⌜r = (mword_of_int (Z.of_nat nb) : mword 64)⌝ ∗ Q nb.
-  Proof.
+  Proof using .
     intros H0 Hi Htake Hli Hcnt Hlz Hnf. iIntros "H".
     iDestruct (uwrite_post_cons Q Xp W r M' fdv' cw' cs' l i rb
                  H0 Hi Htake Hli with "H") as (P) "(%Hperm & %Hwf & %Hlf & H)".

@@ -155,13 +155,13 @@ Section MknodFire.
   Lemma mkf_abs_of_dir (n : fs_node) :
     fn_is_dir n = true -> fn_nlink n <> 0%nat ->
     abs_of n = Some (MkAnode (ADir (dir_entries n)) (fn_nlink n)).
-  Proof. apply abs_of_dir. Qed.
+  Proof using . apply abs_of_dir. Qed.
 
   Lemma mkf_era_is_dir (dn : dinode) (bm : blkmap)
       (data : nat -> list (bv 8)) :
     bv_unsigned (di_type dn) = T_DIR_z ->
     fn_is_dir (era_node dn bm data) = true.
-  Proof.
+  Proof using .
     intros Hty. rewrite /fn_is_dir /fn_type era_node_rec.
     by apply bool_decide_eq_true_2.
   Qed.
@@ -169,13 +169,13 @@ Section MknodFire.
   Lemma mkf_era_nlink (dn : dinode) (bm : blkmap)
       (data : nat -> list (bv 8)) :
     fn_nlink (era_node dn bm data) = Z.to_nat (bv_unsigned (di_nlink dn)).
-  Proof. by rewrite /fn_nlink era_node_rec. Qed.
+  Proof using . by rewrite /fn_nlink era_node_rec. Qed.
 
   (* ...and a nonzero record count is a nonzero [fn_nlink] (E2-V2) *)
   Lemma mkf_era_live (dn : dinode) (bm : blkmap)
       (data : nat -> list (bv 8)) :
     bv_unsigned (di_nlink dn) <> 0 -> fn_nlink (era_node dn bm data) <> 0%nat.
-  Proof.
+  Proof using .
     intros Hnz. rewrite mkf_era_nlink.
     pose proof (proj1 (bv_unsigned_in_range _ (di_nlink dn))). lia.
   Qed.
@@ -200,7 +200,7 @@ Section MknodFire.
     abs_of (era_node dn' bm' data')
     = Some (MkAnode (ADir (<[s := v]> (dir_entries (era_node dn bm data))))
                     (fn_nlink (era_node dn bm data))).
-  Proof.
+  Proof using .
     intros Hty Hty' Hnl' Hnl Hents.
     assert (Hdir' : fn_is_dir (era_node dn' bm' data') = true).
     { apply mkf_era_is_dir. by rewrite Hty'. }
@@ -216,7 +216,7 @@ Section MknodFire.
     dn = create_made T_DEVICE major minor ->
     abs_of (era_node dn bm data)
     = Some (MkAnode (ADev (bv_unsigned major) (bv_unsigned minor)) 1%nat).
-  Proof.
+  Proof using .
     intros ->. apply abs_of_create_dev. by rewrite era_node_rec.
   Qed.
 
@@ -243,7 +243,7 @@ Section MknodFire.
           ⌜av !! d = Some (MkAnode (ADir (dir_entries n)) (fn_nlink n))⌝
           ∗ ⌜dir_entries n !! nm = Some i⌝
           ∗ Fex.(pf_recv) av d nm i.
-  Proof.
+  Proof using .
     intros HE Hdir Hnl Hnm. iIntros "#Hi Hcm Hf".
     (* THE PIECE IS SPENT: the fire eliminates to the AU side. *)
     iDestruct (pf_at_au with "Hcm") as "Hcm".
@@ -459,18 +459,18 @@ Section NparMknod.
 
   Lemma np_elems_is_mknod_parent_elems (pl : list (bv 8)) :
     np_elems pl = npar_elems pl.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma ep_hops_is_mknod_hops (γfs : fs_names)
       (P Pmiss : nat -> Z -> iProp Σ) (pl : list (bv 8)) (n : nat) :
     ep_hops_from γfs P Pmiss pl n
     = ax_hops_from (elend (fs_gamma_L γfs)) P Pmiss (npar_elems pl) n.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* the roots agree *)
   Lemma np_rootino_agree :
     bv_unsigned InodeInv.ROOTINO = FsImg.ROOTINO.
-  Proof. vm_compute. reflexivity. Qed.
+  Proof using . vm_compute. reflexivity. Qed.
 
   (* ------------------------------------------------------------------ *)
   (*  (2) lane W's one-shot supplies the walk's two trace premises       *)
@@ -484,7 +484,7 @@ Section NparMknod.
   Lemma np_start_of_mknod (γfs : fs_names) (cw : Z) (P Pmiss : nat -> Z -> iProp Σ)
       (pl : list (bv 8)) :
     npar_walk_pre_era γfs cw P Pmiss -∗ ep_start γfs cw P Pmiss pl.
-  Proof.
+  Proof using .
     iIntros "Hpre". rewrite /ep_start. iIntros (r Hr).
     rewrite /npar_walk_pre_era.
     iMod ("Hpre" $! pl r with "[%]") as "[$ $]"; [exact Hr | done].
@@ -496,7 +496,7 @@ Section NparMknod.
     npar_walk_pre_era γfs cw P Pmiss ={⊤}=∗
       P 0%nat (bv_unsigned InodeInv.ROOTINO)
       ∗ ep_hops_from γfs P Pmiss pl 0%nat.
-  Proof.
+  Proof using .
     iIntros (Hsl) "Hpre". rewrite /npar_walk_pre_era.
     iMod ("Hpre" $! pl (bv_unsigned InodeInv.ROOTINO) with "[%]") as "[$ $]".
     { rewrite (um_start_of_slash _ _ Hsl). exact np_rootino_agree. }
@@ -512,7 +512,7 @@ Section NparMknod.
     np_dead γfs P Pmiss pl -∗
       npar_walk_dead_era γfs P Pmiss pl
       ∨ (∃ d : Z, P (length (npar_elems pl)) d).
-  Proof.
+  Proof using .
     rewrite /np_dead /npar_walk_dead_era.
     iIntros "[Hl | Hr]".
     - iDestruct "Hl" as (k d) "(%Hk & HP & Hh)".
@@ -533,7 +533,7 @@ Section NparMknod.
   Lemma np_ok_is_mknod_ok (P : nat -> Z -> iProp Σ) (pl : list (bv 8))
       (iL : Z) :
     P (length (np_elems pl)) iL = P (length (npar_elems pl)) iL.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
 End NparMknod.
 
@@ -811,7 +811,7 @@ Section CreateFire.
     abs_of n
     = Some (MkAnode (cre_c0 (bv_unsigned ty) (bv_unsigned major) (bv_unsigned minor))
                     1%nat).
-  Proof.
+  Proof using .
     intros Hr Hty.
     assert (Hnty : fn_type n = bv_unsigned ty)
       by (rewrite /fn_type Hr; reflexivity).
@@ -851,7 +851,7 @@ Section CreateFire.
     abs_of (era_node (create_made ty major minor) bm data)
     = Some (MkAnode (cre_c0 (bv_unsigned ty) (bv_unsigned major) (bv_unsigned minor))
                     1%nat).
-  Proof.
+  Proof using .
     intros Hty.
     exact (caf_made_row_node _ ty major minor
              (era_node_rec (create_made ty major minor) bm data) Hty).

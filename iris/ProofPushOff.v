@@ -101,7 +101,7 @@ Section ProofPushOff.
   Context {kt : ktier}.
   Lemma ppi_24 : kernel_text -∗ instr (mword_of_int (KernelSyms.pop_off + 0x24) : mword 64) false
       (CSRImm (csr_sstatus, mword_of_int 2, Regidx (mword_of_int 0), CSRRS)).
-  Proof. mk_base (KernelSyms.pop_off + 0x24)%Z (mword_of_int 0x10016073 : mword 32)
+  Proof using . mk_base (KernelSyms.pop_off + 0x24)%Z (mword_of_int 0x10016073 : mword 32)
     (mword_of_int (KernelSyms.pop_off + 0x24) : mword 64)
     (CSRImm (csr_sstatus, mword_of_int 2, Regidx (mword_of_int 0), CSRRS)) bdec_10016073. Qed.
 
@@ -134,7 +134,7 @@ Section ProofPushOff.
               (<[Regidx (mword_of_int 1 : mword 5) := regval_into_reg ra0e]> M)) ⌝ -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros spd sp0up ret_tgt.
     set (M4 := <[Regidx (mword_of_int 1 : mword 5) := regval_into_reg ra0e]> M).
     set (M5 := <[Regidx (mword_of_int 8 : mword 5) := regval_into_reg s00e]> M4).
@@ -243,7 +243,7 @@ Section ProofPushOff.
     ⌜ bx = true -> k = 0%nat /\ ebx = true /\ lks = ∅ ⌝ ∗
     intr_count_pre bx k ebx ∗
     (if bx then emp else cpu_priv k ebx px lks).
-  Proof.
+  Proof using .
     destruct bx.
     - iIntros "%Hk".
       iSplitR; [ iPureIntro; intros _; exact Hk |].
@@ -263,7 +263,7 @@ Section ProofPushOff.
     (bx = false \/ px = zero_reg -> (CID1 : CPU) = (CID0 : CPU)) ->
     (if bx then emp else cpu_priv (CID := CID0) k ebx px lks) -∗
     (if bx then emp else cpu_priv (CID := CID1) k ebx px lks).
-  Proof.
+  Proof using .
     intros Heq. destruct bx.
     - iIntros "H". iExact "H".
     - rewrite (_ : CID1 = CID0); [ iIntros "$" | exact (Heq (or_introl eq_refl)) ].
@@ -324,7 +324,7 @@ Section ProofPushOff.
       a8_noff ↦₄ storeval -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros P spm a0v a8_noff a8_p24 a8_p16 a8_p8 sp0up noff_a5 storeval cret_tgt Hav.
     set (s00 := ms !!! Regidx (mword_of_int 8 : mword 5)).
     assert (Hm0sp : (<[Regidx (mword_of_int 1 : mword 5) := regval_into_reg (add_vec_int P 4)]> ms) !!! Regidx csp_rs1 = spm)
@@ -619,7 +619,7 @@ Section ProofPushOff.
       (n : nat) (eb : bool) (p : mword 64) (b : bool)
       (lks : gset string)
     : wp_push_off_sconf_body kt m av n eb p b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_push_off_sconf_body].
     intros caller_ret Hnbound Hav.
     assert (Hbound : (Z.of_nat n < 2 ^ 31)%Z) by (clear - Hnbound; lia).
@@ -1222,7 +1222,7 @@ Section ProofPushOff.
       (m : regfile) (av : nat) (n : nat) (eb : bool) (p : mword 64)
       (lks : gset string)
     : wp_pop_off_sconf_body kt m av n eb p lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_pop_off_sconf_body].
     intros pcE ret_tgt bexit Hav Hszlks.
     pose (a0v := mycpu_ret cid_word : mword 64).

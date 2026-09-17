@@ -105,7 +105,7 @@ Section ProofCpuid.
   Lemma wp_cpuid_sconf
       (m0 : regfile) (n : nat) (p : mword 64)
     : wp_cpuid_sconf_body kt m0 n p.
-  Proof.
+  Proof using .
     cbv beta delta [wp_cpuid_sconf_body].
     intros ra_idx tp_idx a0_idx pcE ra0 ret_tgt cret Hn.
     (* THE tp READ, once: [tp] is pinned to the hart, so a read at index 4 is
@@ -314,7 +314,7 @@ Section ProofCpuid.
       (P : mword 64) (jimm : mword 21)
       (m : regfile) (n : nat) (p : mword 64)
     : wp_call_cpuid_sconf_cs_body kt P jimm m n p.
-  Proof.
+  Proof using .
     cbv beta delta [wp_call_cpuid_sconf_cs_body].
     intros ra_idx tp_idx a0_idx m0 pcE ra0 ret_tgt cret Htarget Halpce Hn.
     iIntros "Hcg #Htext Hpc Hjal Hcont".

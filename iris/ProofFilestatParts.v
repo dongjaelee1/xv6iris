@@ -211,7 +211,7 @@ Section FilestatParts.
   Lemma fst_bytes_w4 `{XI : CurCtx} (a : Arch.pa) :
     is_aligned_paddr (Physaddr a) 4 = true ->
     bytes_own (DfracOwn 1) a 4 ⊢ ∃ w : bv 32, a ↦₄ w.
-  Proof.
+  Proof using .
     intro Hal. rewrite /bytes_own. cbn [seq].
     iIntros "(H0 & H1 & H2 & H3 & _)".
     iDestruct "H0" as (b0) "H0". iDestruct "H1" as (b1) "H1".
@@ -231,7 +231,7 @@ Section FilestatParts.
   Lemma fst_bytes_w2 `{XI : CurCtx} (a : Arch.pa) :
     is_aligned_paddr (Physaddr a) 2 = true ->
     bytes_own (DfracOwn 1) a 2 ⊢ ∃ w : bv 16, a ↦₂ w.
-  Proof.
+  Proof using .
     intro Hal. rewrite /bytes_own. cbn [seq].
     iIntros "(H0 & H1 & _)".
     iDestruct "H0" as (b0) "H0". iDestruct "H1" as (b1) "H1".
@@ -258,7 +258,7 @@ Section FilestatParts.
     bytes_own (DfracOwn 1) st 24 ⊢
     ∃ (dev ino : mword 32) (ty nl : mword 16) (sz : mword 64),
       stat_at st dev ino ty nl sz ∗ bytes_own (DfracOwn 1) (pa_add st 12) 4.
-  Proof.
+  Proof using .
     intros Ha0 Ha8 Ha16.
     (* 24 = 4 + (4 + (2 + (2 + (4 + 8)))) *)
     (* the run splits 4/4/2/2/4/8; each [change] is what lets [bytes_own_app]
@@ -321,7 +321,7 @@ Section FilestatParts.
      from [seq 0 n] onto [seq o n], which buys nothing here. *)
   Lemma fst_w4_bytes `{XI : CurCtx} (a : Arch.pa) (w : mword 32) :
     a ↦₄ w ⊢ bytes_own (DfracOwn 1) a 4.
-  Proof.
+  Proof using .
     iIntros "Hw". iDestruct (ctx_word4_pointsto_bytes with "Hw") as "Hbs".
     rewrite /bytes_own. iApply (big_sepL_impl with "Hbs").
     (* M1 STAGE 2 PAYOFF: the crossing that sat here is GONE. *)
@@ -330,7 +330,7 @@ Section FilestatParts.
 
   Lemma fst_w2_bytes `{XI : CurCtx} (a : Arch.pa) (w : mword 16) :
     a ↦₂ w ⊢ bytes_own (DfracOwn 1) a 2.
-  Proof.
+  Proof using .
     iIntros "Hw". iDestruct (ctx_word2_pointsto_bytes with "Hw") as "Hbs".
     rewrite /bytes_own. iApply (big_sepL_impl with "Hbs").
     (* M1 STAGE 2 PAYOFF: the crossing that sat here is GONE. *)
@@ -342,7 +342,7 @@ Section FilestatParts.
     stat_at st dev ino ty nl sz -∗
     bytes_own (DfracOwn 1) (pa_add st 12) 4 -∗
     bytes_own (DfracOwn 1) st 24.
-  Proof.
+  Proof using .
     assert (E4  : pa_add (pa_add st 4)  4 = pa_add st 8)
       by (rewrite pa_add_add; reflexivity).
     assert (E8  : pa_add (pa_add st 8)  2 = pa_add st 10)
@@ -383,7 +383,7 @@ Section FilestatParts.
      naming function; the frame does not care what it holds. *)
   Lemma fst_bytes_any `{XI : CurCtx} (st : mword 64) (f : nat -> bv 8) (n : nat) :
     ([∗ list] j ∈ seq 0 n, (pa_add st j) ↦ₘ f j) ⊢ bytes_own (DfracOwn 1) st n.
-  Proof.
+  Proof using .
     rewrite /bytes_own. iIntros "H".
     iApply (big_sepL_mono with "H"). intros i j Hj. iIntros "Hb". by iExists (f j).
   Qed.
@@ -658,7 +658,7 @@ Section ProofFilestatParts.
   Lemma fst_bytes_name24 `{XI : CurCtx} (a : Arch.pa) :
     bytes_own (KTR := KT1) (DfracOwn 1) a 24 ⊢
     ∃ f : nat -> bv 8, ([∗ list] j ∈ seq 0 24, (pa_add a j) ↦ₘ[KT1] f j).
-  Proof.
+  Proof using .
     rewrite /bytes_own. cbn [seq].
     iIntros "(H0 & H1 & H2 & H3 & H4 & H5 & H6 & H7 & H8 & H9 & H10 & H11 &
               H12 & H13 & H14 & H15 & H16 & H17 & H18 & H19 & H20 & H21 &
@@ -720,7 +720,7 @@ Section ProofFilestatParts.
         pc_is (ret_pc ra0) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hsp0 Hra0 Hs00 Hs10 Hs40 Hmtsp Hmta0 Hthr.
     iIntros "Hcg #Htext Hpc Hb1 Hb2 Hb3 Hb4 Hb5 Hb6 Hb7 Hb8 Hb9 Hb10 Hcont".
     (* ---- +0x56: c.ldsp ra,72(sp) ---- *)

@@ -112,11 +112,11 @@ Section UInitDiag.
                                  (bv_unsigned (init_lit LIT_EXEC j))
                | None => false
                end) (seq 0 21) = true.
-  Proof. vm_compute. reflexivity. Qed.
+  Proof using . vm_compute. reflexivity. Qed.
 
   Lemma init_execfail_bytes (j : nat) :
     (j < 21)%nat -> pro_alts !!! 1%nat !! j = Some (init_lit LIT_EXEC j).
-  Proof.
+  Proof using .
     intros Hj. pose proof init_execfail_bytes_bool as H.
     rewrite forallb_forall in H.
     specialize (H j ltac:(apply in_seq; lia)).
@@ -131,11 +131,11 @@ Section UInitDiag.
                                  (bv_unsigned (init_lit LIT_FORK j))
                | None => false
                end) (seq 0 18) = true.
-  Proof. vm_compute. reflexivity. Qed.
+  Proof using . vm_compute. reflexivity. Qed.
 
   Lemma init_forkfail_bytes (j : nat) :
     (j < 18)%nat -> pro_alts !!! 2%nat !! j = Some (init_lit LIT_FORK j).
-  Proof.
+  Proof using .
     intros Hj. pose proof init_forkfail_bytes_bool as H.
     rewrite forallb_forall in H.
     specialize (H j ltac:(apply in_seq; lia)).

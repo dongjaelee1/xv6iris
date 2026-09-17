@@ -253,7 +253,7 @@ Section twin.
   Lemma ctx_dom_mint log tvs ξ ξ' h' :
     (length log ≤ tvs h')%nat →
     own_context ξ' h' -∗ ctx_dom log tvs ξ ξ'.
-  Proof. iIntros (?) "H". iExists h'. by iFrame. Qed.
+  Proof using . iIntros (?) "H". iExists h'. by iFrame. Qed.
 
   Definition tso_interp (img : gmap Z (bv 8)) (log : list wmsg)
       (tvs : agent → nat) (run : gmap agent CtxId)
@@ -274,7 +274,7 @@ Section twin.
     ctx_pointsto ξ a v ⊢
     ⌜∀ tv', (tvs h ≤ tv')%nat →
        tso_read (img_fun img) log h tv' a = Some v⌝.
-  Proof.
+  Proof using .
     iIntros "(Hint & Hrun & Hpt)".
     iDestruct "Hint" as (HM LL) "(Hh & Hl & Hr & Hp & %Hwf)".
     rewrite /own_context /ctx_pointsto.
@@ -303,7 +303,7 @@ Section twin.
     ctx_pointsto ξ a v ==∗
     tso_interp img (store_log log h a [w]) tvs run parked ∗
     own_context ξ h ∗ ctx_pointsto ξ a w.
-  Proof.
+  Proof using .
     iIntros "Hint Hrun Hpt".
     iDestruct "Hint" as (HM LL) "(Hh & Hl & Hr & Hp & %Hwf)".
     rewrite /own_context /ctx_pointsto.
@@ -381,7 +381,7 @@ Section twin.
     ctx_pointsto ξ a v ==∗
     tso_interp img log tvs run parked ∗ ctx_dom log tvs ξ ξ' ∗
     ctx_pointsto ξ' a v.
-  Proof.
+  Proof using .
     iIntros "Hint Hdom Hpt".
     destruct (decide (ξ = ξ')) as [->|Hne].
     { iModIntro. iFrame. }
@@ -457,7 +457,7 @@ Section twin.
     tso_interp img log tvs run parked -∗ own_context ξ h ==∗
     tso_interp img log tvs (delete h run) (<[ξ := length log]> parked) ∗
     ctx_parked ξ (length log).
-  Proof.
+  Proof using .
     iIntros "Hint Hrun".
     iDestruct "Hint" as (HM LL) "(Hh & Hl & Hr & Hp & %Hwf)".
     rewrite /own_context /ctx_parked.
@@ -513,7 +513,7 @@ Section twin.
     tso_interp img log tvs run parked -∗ ctx_parked ξ T ==∗
     tso_interp img log tvs (<[h' := ξ]> run) (delete ξ parked) ∗
     own_context ξ h'.
-  Proof.
+  Proof using .
     iIntros (Hfresh Hcov) "Hint Hparked".
     iDestruct "Hint" as (HM LL) "(Hh & Hl & Hr & Hp & %Hwf)".
     rewrite /own_context /ctx_parked.
@@ -573,7 +573,7 @@ Section twin.
      fractional refinement, deferred). *)
   Lemma twin_pointsto_excl ξ1 ξ2 a v1 v2 :
     ctx_pointsto ξ1 a v1 -∗ ctx_pointsto ξ2 a v2 -∗ False.
-  Proof.
+  Proof using .
     rewrite /ctx_pointsto.
     iIntros "[%t1 [H1 _]] [%t2 [H2 _]]".
     iDestruct (ghost_map_elem_ne with "H1 H2") as %Hne.
@@ -588,7 +588,7 @@ Section twin.
     (ctx_pointsto ξ a1 v1 ∗ ∃ v2 : bv 8, ⌜P⌝ ∗ ctx_pointsto ξ a2 v2) ==∗
     tso_interp img log tvs run parked ∗ ctx_dom log tvs ξ ξ' ∗
     (ctx_pointsto ξ' a1 v1 ∗ ∃ v2 : bv 8, ⌜P⌝ ∗ ctx_pointsto ξ' a2 v2).
-  Proof.
+  Proof using .
     iIntros "Hint Hdom [Hp1 (%v2 & %HP & Hp2)]".
     iMod (twin_transport with "Hint Hdom Hp1") as "(Hint & Hdom & Hp1)".
     iMod (twin_transport with "Hint Hdom Hp2") as "(Hint & Hdom & Hp2)".

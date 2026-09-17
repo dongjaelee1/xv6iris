@@ -63,29 +63,29 @@ Section MachineProof.
 
   Local Lemma snc_cs_ne (k r : mword 5) :
     is_cs_idx k = false -> is_cs_idx r = true -> Regidx r <> Regidx k.
-  Proof. intros Hk Hr He. symmetry in He. exact (is_cs_idx_true_neq k r Hk Hr He). Qed.
+  Proof using . intros Hk Hr He. symmetry in He. exact (is_cs_idx_true_neq k r Hk Hr He). Qed.
 
   Local Lemma snc_K_restore (K : nat) : (2 <= K)%nat -> ((K - 2) + 2)%nat = K.
-  Proof. lia. Qed.
+  Proof using . lia. Qed.
 
   Local Lemma snc_push (X : mword 64) :
     add_vec X (sign_extend' 64 (sign_extend' 12 (mword_of_int 48 : mword 6))) = pa_stk X 2.
-  Proof. unfold pa_stk, add_vec_int. apply f_equal. apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . unfold pa_stk, add_vec_int. apply f_equal. apply bv_eq; vm_compute; reflexivity. Qed.
 
   Local Lemma snc_bump1 (q : mword 64) (j : nat) :
     add_vec (pa_add q j) (sign_extend' 64 (sign_extend' 12 (mword_of_int 1 : mword 6)))
     = pa_add q (S j).
-  Proof. apply pa_add_step. apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . apply pa_add_step. apply bv_eq; vm_compute; reflexivity. Qed.
 
   Local Lemma snc_back1 (q : mword 64) (j : nat) :
     add_vec (pa_add q (S j)) (sign_extend' 64 (mword_of_int 4095 : mword 12)) = pa_add q j.
-  Proof. apply pa_add_back1. apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . apply pa_add_back1. apply bv_eq; vm_compute; reflexivity. Qed.
 
   Local Lemma snc_sb_zero (M : regfile) :
     M !!! Regidx (mword_of_int 0 : mword 5) = zero_reg ->
     forall CID' : CpuId,
       trunc8 (rget (CID := CID') M (mword_of_int 0 : mword 5)) = (mword_of_int 0 : mword 8).
-  Proof.
+  Proof using .
     intros Hx0 CID'. rgne. rewrite Hx0. apply bv_eq; vm_compute; reflexivity.
   Qed.
 
@@ -101,7 +101,7 @@ Section MachineProof.
       (sub_vec (subrange_vec_dec endw 31 0 : mword 32)
                (subrange_vec_dec (pa_add s k) 31 0 : mword 32))
       = (mword_of_int (Z.of_nat rem) : mword 64).
-  Proof.
+  Proof using .
     intros Hsum Hn31 Hend. rewrite Hend.
     apply bc_subw_diff.
     - lia.
@@ -112,7 +112,7 @@ Section MachineProof.
   Local Lemma snc_bgtz_nat (r : nat) :
     (Z.of_nat r < 2 ^ 31)%Z ->
     zopz0zI_s zero_reg (mword_of_int (Z.of_nat r) : mword 64) = Nat.ltb 0 r.
-  Proof.
+  Proof using .
     intro Hr. unfold zopz0zI_s.
     assert (Hz : sint (zero_reg : mword 64) = 0%Z) by (vm_compute; reflexivity).
     rewrite Hz (sint_moi_small (Z.of_nat r) ltac:(lia)).
@@ -124,7 +124,7 @@ Section MachineProof.
       (add_vec (mword_of_int (Z.of_nat r) : mword 64)
                (sign_extend' 64 (mword_of_int 4095 : mword 12))) 31 0)
     = (mword_of_int (Z.of_nat (r - 1)) : mword 64).
-  Proof.
+  Proof using .
     intros Hr H31.
     assert (Hsub : Z.of_nat (r - 1) = (Z.of_nat r - 1)%Z) by lia.
     apply bv_eq.
@@ -154,7 +154,7 @@ Section MachineProof.
     (Z.of_nat r < 2 ^ 31)%Z ->
     zopz0zKzJ_s (zero_reg : mword 64) (mword_of_int (Z.of_nat r) : mword 64)
       = Nat.eqb r 0.
-  Proof.
+  Proof using .
     intro Hr. unfold zopz0zKzJ_s.
     assert (Hz : sint (zero_reg : mword 64) = 0%Z) by (vm_compute; reflexivity).
     rewrite Hz (sint_moi_small (Z.of_nat r) ltac:(lia)).
@@ -175,7 +175,7 @@ Section MachineProof.
           (sign_extend' 64 (sign_extend' 12 (mword_of_int 63 : mword 6)))) 31 0) in
     (subrange_vec_dec w2 31 0 : mword 32)
       = subrange_vec_dec (pa_add s n) 31 0.
-  Proof.
+  Proof using .
     intros Hsum. cbn zeta.
     assert (Hm1 : trunc32
         (sign_extend' 64 (sign_extend' 12 (mword_of_int 63 : mword 6)))
@@ -218,7 +218,7 @@ Section MachineProof.
         sie_cap_gpr KT1 mf K b p -∗ pc_is (ret_pc ra0) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hsp0 Hra0 Hs00 Hmtsp Hmta0 Hthr.
     iIntros "Hcg #Htext Hpc Hb1 Hb2 Hcont".
     assert (Hpa1 : add_vec (Mt !!! Regidx csp_rs1)
@@ -319,7 +319,7 @@ Section MachineProof.
 Lemma snc_copy_suffix_step (g h : nat -> bv 8) (d : nat) (v : bv 8) :
   (forall j, (d <= j)%nat -> h j = g j) ->
   forall j, (S d <= j)%nat -> bb_upd h d v j = g j.
-Proof.
+Proof using .
   intros H j Hj. rewrite (bb_upd_ne h d v j ltac:(lia)). apply H. lia.
 Qed.
 
@@ -329,7 +329,7 @@ Lemma snc_pad_suffix_step (h : nat -> bv 8) (n k : nat) :
   (forall j, (S k <= j)%nat -> (j < n)%nat -> h j = (mword_of_int 0 : mword 8)) ->
   forall j, (k <= j)%nat -> (j < n)%nat ->
     bb_upd h k (mword_of_int 0 : mword 8) j = (mword_of_int 0 : mword 8).
-Proof.
+Proof using .
   intros H j Hkj Hjn. destruct (Nat.eq_dec j k) as [-> | Hne].
   - apply bb_upd_eq.
   - rewrite (bb_upd_ne h k _ j Hne). apply H; lia.
@@ -342,7 +342,7 @@ Lemma snc_pad_prefix_preserved (f h : nat -> bv 8) (k d : nat) :
   (forall j, (j < d)%nat -> h j = f j) ->
   forall j, (j < d)%nat ->
     bb_upd h k (mword_of_int 0 : mword 8) j = f j.
-Proof.
+Proof using .
   intros Hdk Hcopy j Hj. rewrite (bb_upd_ne h k _ j ltac:(lia)). apply Hcopy; exact Hj.
 Qed.
 
@@ -350,7 +350,7 @@ Lemma snc_pad_extend (h : nat -> bv 8) (k0 k : nat) :
   (forall j, (k0 <= j)%nat -> (j < k)%nat -> h j = (mword_of_int 0 : mword 8)) ->
   forall j, (k0 <= j)%nat -> (j < S k)%nat ->
     bb_upd h k (mword_of_int 0 : mword 8) j = (mword_of_int 0 : mword 8).
-Proof.
+Proof using .
   intros H j Hj0 Hjk. destruct (Nat.eq_dec j k) as [-> | Hne].
   - apply bb_upd_eq.
   - rewrite (bb_upd_ne h k _ j Hne). apply H; lia.
@@ -361,7 +361,7 @@ Lemma snc_post_full (f h : nat -> bv 8) (n : nat) :
   bb_nonul f n ->
   (forall j, (j < n)%nat -> h j = f j) ->
   snc_post f h n.
-Proof. intros Hnz Hcopy. left. split; assumption. Qed.
+Proof using . intros Hnz Hcopy. left. split; assumption. Qed.
 
 (* Once the first NUL at [k] has been copied, the padding loop writes zero
    throughout its suffix.  This is the exact pure fact consumed by the final
@@ -371,7 +371,7 @@ Lemma snc_post_padded (f h : nat -> bv 8) (n k : nat) :
   (forall j, (j < k)%nat -> h j = f j) ->
   (forall j, (k <= j)%nat -> (j < n)%nat -> h j = (mword_of_int 0 : mword 8)) ->
   snc_post f h n.
-Proof.
+Proof using .
   intros Hkn Hstr Hcopy Hzero. right. exists k.
   split; [exact Hkn |]. split; [exact Hstr |]. split; assumption.
 Qed.
@@ -411,7 +411,7 @@ Qed.
         ([∗ list] j ∈ seq 0 n, (pa_add s j) ↦ₘ[KT1] hf j) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hk0n Hcstr Hn31 Hend rem.
     induction rem as [|rem IH]; intros k h M CID0 Hchain Hpos Hsum Hk0k Hcopy Hzero
       Hsp Ha0 Ha4 Ha5 Hthr; [lia|].
@@ -588,7 +588,7 @@ Qed.
         ([∗ list] j ∈ seq 0 n, (pa_add s j) ↦ₘ[KT1] hf j) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn31 rem. induction rem as [|rem IH];
       intros d h M CID0 Hchain Hsum Hcopy Hunt Hnn Hsp Ha0 Ha1 Ha2 Ha5 Hthr;
       iIntros "Hcg #Htext Hpc Hsrc Hdst Hcont".
@@ -986,7 +986,7 @@ Qed.
   Lemma wp_strncpy_sconf (mm : regfile)
       (n : nat) (f g : nat -> bv 8) (K : nat) (dq : dfrac) (b : bool) (p : mword 64)
     : wp_strncpy_sconf_body mm n f g K dq b p.
-  Proof.
+  Proof using .
     cbv beta delta [wp_strncpy_sconf_body].
     intros pcE s t ret_tgt HK Hn2 Hn31.
     pose (sp0 := (mm !!! Regidx csp_rs1 : mword 64)).

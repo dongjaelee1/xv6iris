@@ -85,14 +85,14 @@ Section TxPin.
     ([∗ map] _ ↦ p ∈ M, tx_pin γ p.1 p.2)%I.
 
   Global Instance tx_pin_timeless γ t q : Timeless (tx_pin γ t q).
-  Proof. rewrite /tx_pin. apply _. Qed.
+  Proof using . rewrite /tx_pin. apply _. Qed.
 
   Global Instance tx_pin_o_timeless γ o : Timeless (tx_pin_o γ o).
-  Proof. rewrite /tx_pin_o. destruct o; apply _. Qed.
+  Proof using . rewrite /tx_pin_o. destruct o; apply _. Qed.
 
   Global Instance tx_pins_timeless γ `{Countable K} M :
     Timeless (tx_pins (K:=K) γ M).
-  Proof. rewrite /tx_pins. apply _. Qed.
+  Proof using . rewrite /tx_pins. apply _. Qed.
 
   (* ==================================================================== *)
   (*  THE REFUTATION EVERY PARK'S OWN [_no_ops] IS AN INSTANCE OF          *)
@@ -104,7 +104,7 @@ Section TxPin.
      off the ledger), so the state the park witnesses cannot be standing. *)
   Lemma tx_pin_no_ops (γ : log_names) (t : nat) (q : Qp) :
     ghost_map_auth (ln_tx γ) 1 (∅ : gmap nat unit) -∗ tx_pin γ t q -∗ False.
-  Proof.
+  Proof using .
     iIntros "Ha Hp". rewrite /tx_pin.
     iDestruct (ghost_map_lookup with "Ha Hp") as %Hbad.
     rewrite lookup_empty in Hbad. discriminate.
@@ -114,7 +114,7 @@ Section TxPin.
   Lemma tx_pin_o_no_ops (γ : log_names) (o : option (nat * Qp)) :
     ghost_map_auth (ln_tx γ) 1 (∅ : gmap nat unit) -∗
     tx_pin_o γ o -∗ ⌜o = None⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Hp". destruct o as [p |]; [| done].
     rewrite /tx_pin_o. iDestruct (tx_pin_no_ops with "Ha Hp") as %[].
   Qed.
@@ -126,7 +126,7 @@ Section TxPin.
       (M : gmap K (nat * Qp)) :
     ghost_map_auth (ln_tx γ) 1 (∅ : gmap nat unit) -∗
     tx_pins γ M -∗ ⌜M = ∅⌝.
-  Proof.
+  Proof using .
     iIntros "Ha HM". rewrite /tx_pins.
     destruct (decide (M = ∅)) as [-> | Hne]; [done |].
     destruct (map_choose M Hne) as (z & p & Hz).
@@ -147,12 +147,12 @@ Section TxPin.
   Lemma tx_pin_split (γ : log_names) (t : nat) (q q1 q2 : Qp) :
     q = (q1 + q2)%Qp ->
     tx_pin γ t q -∗ tx_pin γ t q1 ∗ tx_pin γ t q2.
-  Proof. intros ->. rewrite /tx_pin. iIntros "H". iDestruct "H" as "[$ $]". Qed.
+  Proof using . intros ->. rewrite /tx_pin. iIntros "H". iDestruct "H" as "[$ $]". Qed.
 
   Lemma tx_pin_join_q (γ : log_names) (t : nat) (q q1 q2 : Qp) :
     q = (q1 + q2)%Qp ->
     tx_pin γ t q1 -∗ tx_pin γ t q2 -∗ tx_pin γ t q.
-  Proof.
+  Proof using .
     intros ->. rewrite /tx_pin. iIntros "H1 H2".
     iDestruct (ghost_map_elem_combine with "H1 H2") as "[H _]".
     rewrite dfrac_op_own. iExact "H".
@@ -163,5 +163,5 @@ Section TxPin.
      definition by hand *)
   Lemma tx_pin_elem (γ : log_names) (t : nat) (q : Qp) :
     tx_pin γ t q ⊣⊢ (t ↪[ln_tx γ]{#q} tt).
-  Proof. rewrite /tx_pin. done. Qed.
+  Proof using . rewrite /tx_pin. done. Qed.
 End TxPin.

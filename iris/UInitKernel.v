@@ -11,7 +11,7 @@
 (*  segment, and the exec deposit reads them back off the process image.  *)
 (*  So the entry takes the [UkRun.uslot_of_urun_all] carve, lifts those   *)
 (*  sixteen bytes out of the exclusive data below the frame and persists  *)
-(*  them ([UserHeap.uarea_persist]), yielding [UCodeInit.init_argv]: init *)
+(*  them ([UserHeap.uarea_persist]), yielding [UInitArgv.init_argv]: init *)
 (*  never stores into .data, so a read-only view is all it wants, and a   *)
 (*  persisted view is what crosses the fork.  The rest of that page       *)
 (*  (.bss and slack) is dropped.                                          *)
@@ -69,7 +69,7 @@ Require Import FdSlots.
 Require Import ProcGeom.
 Require Import UserFd.
 Require Import UInitFd.    (* [ufd_l0] -- /init's all-closed entry ledger *)
-Require Import UCodeInit UkInit UkInitMain.
+Require Import UCodeInit UInitArgv UkInit UkInitMain.
 Require Import UkRun.          (* [udep] / [uslot_of_urun_all] / [urun] *)
 Require Import PageGeom.       (* [PGSIZE] *)
 Require Import UserPtTree.     (* [pgroundup] *)
@@ -154,11 +154,11 @@ Proof. apply bv_eq. vm_compute. reflexivity. Qed.
 
 (* [UShKernel]'s two closed-arithmetic tactics, which are [Local] there *)
 (* [init_argv_map] IS A FILTER OVER A 1296-ENTRY DUMPED MAP: nothing here
-   computes it (every reading goes through [UCodeInit.init_argv_map_range] /
+   computes it (every reading goes through [UInitArgv.init_argv_map_range] /
    [_data]), but the unifier will if it is let to, and the big-op steps
    below are exactly where it would (durable-notes, "a definition nobody
    computes but the unifier will"). *)
-Local Opaque UCodeInit.init_argv_map.
+Local Opaque UInitArgv.init_argv_map.
 
 Local Ltac zclosed :=
   split; [ vm_compute; discriminate | vm_compute; reflexivity ].
@@ -191,7 +191,7 @@ Section UInitKernel.
   Lemma ubyte_map_sub (γd : gname) (A B : gmap Z (bv 8)) :
     A ⊆ B ->
     ([∗ map] k ↦ b ∈ B, ubyte γd k b) -∗ ([∗ map] k ↦ b ∈ A, ubyte γd k b).
-  Proof.
+  Proof using .
     intros Hsub. iIntros "H".
     iApply (big_sepM_subseteq _ _ _ Hsub with "H").
   Qed.
@@ -218,7 +218,7 @@ Section UInitKernel.
   Lemma init_cons_dance_at (N : uk_names Σ) (T Cns : iProp Σ)
       (stc : fdstate) :
     init_cons_dance_all T Cns stc -∗ UkInit.init_cons_dance N T Cns stc.
-  Proof.
+  Proof using .
     iIntros "[[%K [#Hl HK]] | [#Hh HC]]".
     - iApply (UkInit.init_cons_dance_miss N T K Cns stc with "[] HK").
       iApply "Hl".
@@ -377,7 +377,7 @@ Section UInitKernel.
        payload, which is the only place a kill gives it back. *)
     my_pay (uvis_gen W) (fun _ => True)%I -∗
     uslot W.
-  Proof.
+  Proof using .
     intros Hne Hkt Hpc Hsub Hx Hwd Hszd Hbase Hal8 Hroom Hstk Hfdlen Hl0 Hnpk
            Hstop Hcw Hpsok_free Hlzf.
     (* [Hdp] LINEARLY, and that is not a style choice: [UkInit.init_deps]
@@ -510,7 +510,7 @@ Section UInitKernel.
     (* ...and the two diagnostics' conversions (lane M6b), likewise *)
     UkInitMain.kinit_diag_law stc (cc_wp Cr) (cc_wbn Cr) -∗
     my_pay (uvis_gen W') (fun _ => True)%I -∗ uslot W'.
-  Proof.
+  Proof using .
     intros Hne Hkt Hok Hroom Hlen Hl0 Hnpk Hcw Hpsok_free Hlzf.
     (* THE MAP STOPS AT THE BREAK, off the image fact's own row --
        [UShKernel.sh_slot_of_kexec]'s note is the reasoning. *)
@@ -705,7 +705,7 @@ Section UInitKernel.
          ⌜uvis_lazy W' = false⌝ -∗
          my_pay (uvis_gen W') (fun _ => True)%I -∗
          init_boot_pay T Cns cn stc Cr -∗ uslot W').
-  Proof.
+  Proof using .
     (* THE BUNDLE IS NEVER TAKEN APART: it goes in through the box and
        straight out into [init_slot_of_kexec]'s own linear premise.  No
        [Persistent] search, no [iFrame] against a [□]-wand -- see the
@@ -725,7 +725,7 @@ Section UInitKernel.
   Lemma init_cons_dance_all_miss (T Cns K : iProp Σ) (stc : fdstate) :
     □ (∀ N : uk_names Σ, UkInit.init_cons_leaves N T K Cns stc) -∗ K -∗
     init_cons_dance_all T Cns stc.
-  Proof.
+  Proof using .
     iIntros "#Hl HK". rewrite /init_cons_dance_all. iLeft.
     iExists K. iSplitR "HK"; [ iExact "Hl" | iExact "HK" ].
   Qed.
@@ -735,7 +735,7 @@ Section UInitKernel.
          □ UkInit.uki_open_console_leaf N T stc
          ∗ □ UkInit.uki_mknod_hit_leaf N T Cns stc) -∗ Cns -∗
     init_cons_dance_all T Cns stc.
-  Proof.
+  Proof using .
     iIntros "#Hh HC". rewrite /init_cons_dance_all. iRight.
     iSplitR "HC"; [ iExact "Hh" | iExact "HC" ].
   Qed.

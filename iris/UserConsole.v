@@ -149,9 +149,9 @@ Section UserConsole.
     ghost_var γ (1/2) n.
 
   Global Instance upos_timeless γ n : Timeless (upos γ n).
-  Proof. rewrite /upos. apply _. Qed.
+  Proof using . rewrite /upos. apply _. Qed.
   Global Instance upos_a_timeless γ n : Timeless (upos_a γ n).
-  Proof. rewrite /upos_a. apply _. Qed.
+  Proof using . rewrite /upos_a. apply _. Qed.
 
   (* THE MINT, at the position the token currently stands at.  init calls
      it once per child, immediately before the fork that lends that child
@@ -159,7 +159,7 @@ Section UserConsole.
      continuation takes [upos]. *)
   Lemma upos_alloc (n : nat) :
     ⊢ |==> ∃ γ : gname, upos γ n ∗ upos_a γ n.
-  Proof.
+  Proof using .
     iMod (ghost_var_alloc n) as (γ) "Hg".
     iEval (rewrite -Qp.half_half) in "Hg".
     iDestruct (ghost_var_split with "Hg") as "[H1 H2]".
@@ -171,14 +171,14 @@ Section UserConsole.
      reader's own cursor *)
   Lemma upos_agree (γ : gname) (n n' : nat) :
     upos γ n -∗ upos_a γ n' -∗ ⌜n = n'⌝.
-  Proof.
+  Proof using .
     iIntros "H1 H2". by iDestruct (ghost_var_agree with "H1 H2") as %->.
   Qed.
 
   (* ...and BOTH halves move it, which is what a read spends *)
   Lemma upos_update (γ : gname) (n n' : nat) :
     upos γ n -∗ upos_a γ n ==∗ upos γ n' ∗ upos_a γ n'.
-  Proof. iIntros "H1 H2". iApply (ghost_var_update_halves with "H1 H2"). Qed.
+  Proof using . iIntros "H1 H2". iApply (ghost_var_update_halves with "H1 H2"). Qed.
 
   (* ---- the ring's two resources, at the narrow class ---- *)
   (* THE BOUND ON THE STORED SEQUENCE a receipt hands out
@@ -192,10 +192,10 @@ Section UserConsole.
 
   Global Instance ucons_stored_lb_persistent cn st :
     Persistent (ucons_stored_lb cn st).
-  Proof. rewrite /ucons_stored_lb. apply _. Qed.
+  Proof using . rewrite /ucons_stored_lb. apply _. Qed.
   Global Instance ucons_stored_lb_timeless cn st :
     Timeless (ucons_stored_lb cn st).
-  Proof. rewrite /ucons_stored_lb. apply _. Qed.
+  Proof using . rewrite /ucons_stored_lb. apply _. Qed.
 
   (* THE READER TOKEN.  [ConsoleInv.cons_reader] spelled at [uartGhostG];
      §3 proves them equal, and that proof is [reflexivity], so this must be
@@ -226,7 +226,7 @@ Section UserConsole.
     (ucons_rdtok cn n ∗ ucons_dl cn n)%I.
 
   Global Instance ucons_reader_timeless cn n : Timeless (ucons_reader cn n).
-  Proof.
+  Proof using .
     rewrite /ucons_reader /ucons_rdtok /ucons_dl /ucons_deliv
             /ucons_stored_lb /ucons_dirty_lb. apply _.
   Qed.
@@ -269,7 +269,7 @@ Section UserConsole.
 
   Global Instance ucons_swallow_persistent cn fault sl d dc :
     Persistent (ucons_swallow cn fault sl d dc).
-  Proof. rewrite /ucons_swallow. ucons_pers. Qed.
+  Proof using . rewrite /ucons_swallow. ucons_pers. Qed.
 
   (* THE REASON WEAKENS ([ConsoleInv.cons_swallow_mono]'s twin).  [fault]
      is a statement about the reader's own address space, and the verified
@@ -279,7 +279,7 @@ Section UserConsole.
       (sl : list (list mobs * bv 8)) (d dc : nat) :
     (f1 -> f2) ->
     ucons_swallow cn f1 sl d dc -∗ ucons_swallow cn f2 sl d dc.
-  Proof.
+  Proof using .
     intros Himp. rewrite /ucons_swallow.
     iIntros "[%He | [%He H]]"; [ iLeft; by iPureIntro | ].
     iRight. iSplitR; [ by iPureIntro | ].
@@ -295,13 +295,13 @@ Section UserConsole.
   Lemma ucons_swallow_refl (cn : cons_names) (fault : Prop)
       (sl : list (list mobs * bv 8)) (d : nat) :
     ⊢ ucons_swallow cn fault sl d d.
-  Proof. rewrite /ucons_swallow. iLeft. by iPureIntro. Qed.
+  Proof using . rewrite /ucons_swallow. iLeft. by iPureIntro. Qed.
 
   (* ...and the bound it carries, which is what the landed callers read *)
   Lemma ucons_swallow_range (cn : cons_names) (fault : Prop)
       (sl : list (list mobs * bv 8)) (d dc : nat) :
     ucons_swallow cn fault sl d dc -∗ ⌜(d <= dc <= d + 1)%nat⌝.
-  Proof.
+  Proof using .
     rewrite /ucons_swallow. iIntros "[%He | [%He _]]"; iPureIntro; lia.
   Qed.
 
@@ -312,7 +312,7 @@ Section UserConsole.
   Lemma ucons_swallow_nofault_1 (cn : cons_names)
       (sl : list (list mobs * bv 8)) (dc : nat) :
     ucons_swallow cn False sl 1%nat dc -∗ ⌜dc = 1%nat⌝.
-  Proof.
+  Proof using .
     rewrite /ucons_swallow. iIntros "[%He | [%He H]]"; [ by iPureIntro | ].
     iDestruct "H" as (h b) "(_ & _ & _ & _ & [%Hd | %Hf])";
       [ iPureIntro; lia | done ].
@@ -358,13 +358,13 @@ Section UserConsole.
   Global Instance ucons_pay_timeless cn γ T Rd `{!Timeless T}
       `{!forall n : nat, Timeless (Rd n)} (xs : Z) :
     Timeless (ucons_pay cn γ T Rd xs).
-  Proof. rewrite /ucons_pay. apply _. Qed.
+  Proof using . rewrite /ucons_pay. apply _. Qed.
 
   (* the payload does not read the status -- [UkRun.ukn_const]'s witness *)
   Lemma ucons_pay_const (cn : cons_names) (γ : gname) (T : iProp Σ)
       (Rd : nat -> iProp Σ) (x y : Z) :
     ucons_pay cn γ T Rd x = ucons_pay cn γ T Rd y.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* ...AND THE SAME FACT IN THE FORM THE GENERIC SLOT IS STATED AT: the
      payload IS the constant function at the resource it names, so a lemma
@@ -373,14 +373,14 @@ Section UserConsole.
   Lemma ucons_pay_eta (cn : cons_names) (γ : gname) (T : iProp Σ)
       (Rd : nat -> iProp Σ) :
     (fun _ : Z => ucons_pay cn γ T Rd (-1)) = ucons_pay cn γ T Rd.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* the two constructors: the lender's, at the position it minted the
      pair at, and the tainted one's *)
   Lemma ucons_pay_tok (cn : cons_names) (γ : gname) (T : iProp Σ)
       (Rd : nat -> iProp Σ) (n : nat) (xs : Z) :
     ucons_reader cn n -∗ upos_a γ n -∗ Rd n -∗ ucons_pay cn γ T Rd xs.
-  Proof.
+  Proof using .
     iIntros "Hr Hp Hd". rewrite /ucons_pay. iLeft. iExists n.
     iFrame "Hr Hp Hd".
   Qed.
@@ -388,7 +388,7 @@ Section UserConsole.
   Lemma ucons_pay_taint (cn : cons_names) (γ : gname) (T : iProp Σ)
       (Rd : nat -> iProp Σ) (xs : Z) :
     T -∗ ucons_pay cn γ T Rd xs.
-  Proof. iIntros "HT". rewrite /ucons_pay. by iRight. Qed.
+  Proof using . iIntros "HT". rewrite /ucons_pay. by iRight. Qed.
 
   (* ...and the payload at a WEAKER credential family, pointwise: what
      the lender converts the exit family's lease to before handing it to
@@ -397,7 +397,7 @@ Section UserConsole.
       (Rd Rd' : nat -> iProp Σ) (xs : Z) :
     □ (∀ n : nat, Rd n -∗ Rd' n) -∗
     ucons_pay cn γ T Rd xs -∗ ucons_pay cn γ T Rd' xs.
-  Proof.
+  Proof using .
     iIntros "#Hm". rewrite /ucons_pay. iIntros "[Hl | HT]"; [ | by iRight ].
     iDestruct "Hl" as (n) "(Hr & Hp & Hd)". iLeft. iExists n.
     iFrame "Hr Hp". iApply ("Hm" with "Hd").
@@ -416,7 +416,7 @@ Section UserConsole.
   Lemma ucons_pay_redeem (cn : cons_names) (γ : gname) (T : iProp Σ)
       (Rd : nat -> iProp Σ) (xs : Z) :
     ucons_pay cn γ T Rd xs -∗ (∃ n : nat, ucons_reader cn n ∗ Rd n) ∨ T.
-  Proof.
+  Proof using .
     rewrite /ucons_pay. iIntros "[Hl | HT]"; [| by iRight ].
     iDestruct "Hl" as (n) "(Hr & _ & Hd)". iLeft. iExists n. iFrame "Hr Hd".
   Qed.
@@ -455,7 +455,7 @@ Section UserConsole.
   Lemma uinit_tok_0 (cn : cons_names) (T : iProp Σ)
       (Rd : nat -> iProp Σ) :
     ucons_reader cn 0%nat -∗ Rd 0%nat -∗ uinit_tok cn T Rd.
-  Proof.
+  Proof using .
     iIntros "Hr Hd". rewrite /uinit_tok. iLeft. iExists 0%nat.
     iFrame "Hr Hd".
   Qed.
@@ -467,7 +467,7 @@ Section UserConsole.
       (xs : Z) :
     uinit_tok cn T Rd ==∗
     ∃ (γ : gname) (n : nat), ucons_pay cn γ T Rd xs ∗ upos γ n.
-  Proof.
+  Proof using .
     rewrite /uinit_tok. iIntros "[Hl | HT]".
     - iDestruct "Hl" as (n) "[Hr Hd]".
       iMod (upos_alloc n) as (γ) "[Hp Hpa]".
@@ -489,7 +489,7 @@ Section UserConsole.
       (Rd C : nat -> iProp Σ) (xs : Z) :
     uinit_tok cn T (fun n => Rd n ∗ C n)%I ==∗
     ∃ (γ : gname) (n : nat), ucons_pay cn γ T Rd xs ∗ upos γ n ∗ (C n ∨ T).
-  Proof.
+  Proof using .
     rewrite /uinit_tok. iIntros "[Hl | #HT]".
     - iDestruct "Hl" as (n) "[Hr [Hd Hc]]".
       iMod (upos_alloc n) as (γ) "[Hp Hpa]".
@@ -508,7 +508,7 @@ Section UserConsole.
   Lemma uinit_redeem (cn : cons_names) (γ : gname) (T : iProp Σ)
       (Rd : nat -> iProp Σ) (xs : Z) :
     ucons_pay cn γ T Rd xs -∗ uinit_tok cn T Rd.
-  Proof. rewrite /uinit_tok. iApply (ucons_pay_redeem cn γ T Rd xs). Qed.
+  Proof using . rewrite /uinit_tok. iApply (ucons_pay_redeem cn γ T Rd xs). Qed.
 
 End UserConsole.
 
@@ -529,15 +529,15 @@ Section UserConsoleBridge.
 
   Lemma ucons_reader_eq (cn : cons_names) (n : nat) :
     ucons_reader cn n = ConsoleInv.cons_reader cn n.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma ucons_stored_lb_eq (cn : cons_names)
       (st : list (list mobs * bv 8)) :
     ucons_stored_lb cn st = ConsoleInv.cons_stored_lb cn st.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma ucons_swallow_eq (cn : cons_names) (fault : Prop)
       (sl : list (list mobs * bv 8)) (d dc : nat) :
     ucons_swallow cn fault sl d dc = ConsoleInv.cons_swallow cn fault sl d dc.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 End UserConsoleBridge.

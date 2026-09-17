@@ -42,7 +42,7 @@ Section WpAuipcGpr.
       gpr_file (<[Regidx rd := regval_into_reg (add_vec pc (auipc_off imm))]> m) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hpmp Hstat Hrd) "Hmm Hpmpc Hpc Hf Hinstr Hcont".
     iDestruct (mmode_config_cert with "Hmm") as "[#Hcert Hmm]".
     iApply (wp_instr pc (add_vec_int pc 4) false
@@ -90,7 +90,7 @@ Section WpLuiGpr.
       gpr_file (<[Regidx rd := regval_into_reg (luival imm)]> m) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hpmp Hstat Hrd) "Hmm Hpmpc Hpc Hf Hinstr Hcont".
     iDestruct (mmode_config_cert with "Hmm") as "[#Hcert Hmm]".
     iApply (wp_instr pc (add_vec_int pc (if is_rvc then 2 else 4)) is_rvc

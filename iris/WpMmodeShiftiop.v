@@ -137,7 +137,7 @@ Section Wp_slli.
           (subrange_vec_dec shamt (Z.sub log2_xlen 1) 0))]> m) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hpmp Hstat Hrd) "Hmm Hpmpc Hpc Hf Hinstr Hcont".
     iDestruct (mmode_config_cert with "Hmm") as "[#Hcert Hmm]".
     iApply (wp_instr pc (add_vec_int pc (if is_rvc then 2 else 4)) is_rvc
@@ -181,7 +181,7 @@ Section Wp_srli.
           (subrange_vec_dec shamt (Z.sub log2_xlen 1) 0))]> m) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hpmp Hstat Hrd) "Hmm Hpmpc Hpc Hf Hinstr Hcont".
     iDestruct (mmode_config_cert with "Hmm") as "[#Hcert Hmm]".
     iApply (wp_instr pc (add_vec_int pc (if is_rvc then 2 else 4)) is_rvc

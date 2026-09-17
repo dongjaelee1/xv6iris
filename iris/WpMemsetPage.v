@@ -81,7 +81,7 @@ Section WpMemsetPage.
     forall (start : nat) (P : nat -> bv 8 -> iProp Σ),
     ([∗ list] k ∈ seq start n, ∃ b : bv 8, P k b) ⊢
     ∃ f : nat -> bv 8, [∗ list] k ∈ seq start n, P k (f k).
-  Proof.
+  Proof using .
     induction n as [|n IH]; intros start P.
     - iIntros "_". iExists (fun _ => bv_0 8). done.
     - cbn [seq]. rewrite big_sepL_cons.

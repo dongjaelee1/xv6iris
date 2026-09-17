@@ -65,7 +65,8 @@ Require Import LogInv.
 Require Import IrefSlots.
 Require Import SpecArgfd SpecArgint SpecArgaddr SpecFileread.
 Require Import SpecSysRead.
-Require Import PipeQueue.   (* the pipe's byte-queue ghost: [pipe_st], the read payment *)
+Require Import PipeNames.   (* the pipe's byte-queue ghost: [pipe_st], the read payment *)
+Require Import Xv6Cameras.
 Require Import CodeSysRead.
 From Kernel Require KernelInstrs.
 From Kernel Require KernelSyms.
@@ -148,7 +149,7 @@ Section ProofSysRead.
     (0 < kk)%nat ->
     sie_cap_gpr KT1 mm kk bb pp -∗
     ⌜(8 <= uint (mm !!! Regidx csp_rs1) < 274877906944 + 8)%Z⌝.
-  Proof.
+  Proof using .
     iIntros (Hk) "(_ & _ & (Hstk & _ & _) & _)".
     iApply (stack_own_sp_bounds (KTR := KT1) _ (trap_res bb + kk)%nat with "Hstk").
     destruct bb; unfold trap_res; lia.
@@ -188,7 +189,7 @@ Section ProofSysRead.
         pc_is (ret_pc ra0) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hav Hsp0 Hra0 Hs00 Hmtsp Hmta0 Hthr.
     iIntros "Hcg #Htext Hpc Hb1 Hb2 Hb3 Hb4 Hb5 Hb6 Hcont".
     (* ---- +0x40: c.ldsp ra,40(sp) ---- *)
@@ -328,7 +329,7 @@ Section ProofSysRead.
       (P : iProp Σ)
     : wp_sys_read_sconf_body γf γs j γlp fn pidv U sts v v1 v2 m av eb b lks
         Fr Rd Rin Rp Rpe P.
-  Proof.
+  Proof using .
     cbv beta delta [wp_sys_read_sconf_body].
     intros pcE pj ret_tgt Hav Hj Hgs Hlens Harg0 Harg1 Harg2 Hrp Hdq Heb.
     (* every budget, or [lia] cannot see past [fileread_stack] -- it is an

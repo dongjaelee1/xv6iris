@@ -177,7 +177,7 @@ Section YieldPostSched.
         cpu_claim_ext eb pj -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pj Hav Hj Hspd Hsp0 Hsp_msch Hs1_msch
            Hmsch18 Hmsch19 Hmsch20 Hmsch21 Hmsch22 Hmsch23 Hmsch24 Hmsch25 Hmsch26 Hmsch27 Hfresh.
     iIntros "#Htext #Hislock Hcg Hpc Hheld' Htc Hcpuemp Hown' #Hmk Htag Hvc' Hr24 Hr16 Hr8 Hgap Hcont".
@@ -470,7 +470,7 @@ Section ProofYield.
       (γs : list gname) (j : nat) (γl : gname)
       (m : regfile) (av : nat) (eb : bool)
     : wp_yield_sconf_body γs j γl m av eb.
-  Proof.
+  Proof using .
     cbv beta delta [wp_yield_sconf_body].
     intros pcE pj ret_tgt Hj Hgl Hav.
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).

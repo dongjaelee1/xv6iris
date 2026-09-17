@@ -80,11 +80,11 @@ Section ProofMemcpy.
 
   Local Lemma cs_ne (k r : mword 5) :
     is_cs_idx k = false -> is_cs_idx r = true -> Regidx r <> Regidx k.
-  Proof. intros Hk Hr He. symmetry in He. exact (is_cs_idx_true_neq k r Hk Hr He). Qed.
+  Proof using . intros Hk Hr He. symmetry in He. exact (is_cs_idx_true_neq k r Hk Hr He). Qed.
 
   Local Lemma mcp_push (X : mword 64) :
     add_vec X (sign_extend' 64 (sign_extend' 12 (mword_of_int 48 : mword 6))) = pa_stk X 2.
-  Proof. unfold pa_stk, add_vec_int. apply f_equal. apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . unfold pa_stk, add_vec_int. apply f_equal. apply bv_eq; vm_compute; reflexivity. Qed.
 
   (* ---- the epilogue, +0x0c .. +0x12 --------------------------------- *)
   Local Lemma mcp_tail `{CID0 : CpuId}
@@ -109,7 +109,7 @@ Section ProofMemcpy.
         pc_is (ret_pc ra0) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hsp0 Hra0 Hs00 Hmtsp Hmta0 Hthr.
     iIntros "Hcg #Htext Hpc Hb1 Hb2 Hcont".
     (* ---- +0x0c: c.ldsp ra,8(sp) ---- *)
@@ -230,7 +230,7 @@ Section ProofMemcpy.
   Lemma wp_memcpy_sconf
       (m0 : regfile) (n : nat) (len : nat) (src_bytes dst_olds : nat -> bv 8) (b : bool) (p : mword 64)
     : wp_memcpy_sconf_body kt kts ktw m0 n len src_bytes dst_olds b p.
-  Proof.
+  Proof using .
     cbv beta delta [wp_memcpy_sconf_body].
     intros a0_idx a1_idx a2_idx pcE ra0 p_dst p_src ret_tgt Hn Hlen32 Ha2.
     pose (sp0 := (m0 !!! Regidx csp_rs1 : mword 64)).

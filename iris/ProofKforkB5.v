@@ -139,7 +139,7 @@ Section PstateUsedHelper.
      two [UexecRet.uslot]s print identically -- the unifier does not stop. *)
   Lemma kfkb5_pwhole_used (pa : mword 64) :
     pstate_whole pa USED ⊣⊢ pstate_lock pa USED ∗ pstate_at_hlf pa USED.
-  Proof. rewrite pstate_whole_split unclaimed_USED. done. Qed.
+  Proof using . rewrite pstate_whole_split unclaimed_USED. done. Qed.
 End PstateUsedHelper.
 
 Module KforkB5 (AQ : ACQUIRE) (RL : RELEASE).
@@ -302,7 +302,7 @@ Section ProofKforkB5.
         WaitInv.ch_frag gpar pme (csPar ∪ {[ProcDefs.pv_gen (us_V Uc)]}) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using ufdG0.
     intros HK Hlvl Hj Hgl Hrest Hb Hm20 Hm21 Hm9 Hurun Hkfd Hkgn Hkch Hkpid Hfresh.
     iIntros "Hcg Hown Hpay #Htext Hpc #Hpinv #Hwl #Hft #Hpe #Hworld #Htoken #Hfdone Hheld Hhart Hpriv Hfrag Hcrow Hprow Hsg34 Hpr34 #Hgslot #Hgpid Hjslot #Hmk
              Hfd Hirsp Hbsl Hkfree #Hks Hctx Hcont".

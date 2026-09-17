@@ -212,9 +212,9 @@ Section EchoLedger.
     mono_nat_lb_own (eg_taint γcl) 1.
 
   Global Instance echo_taint_persistent γcl : Persistent (echo_taint γcl).
-  Proof. rewrite /echo_taint. apply _. Qed.
+  Proof using . rewrite /echo_taint. apply _. Qed.
   Global Instance echo_taint_timeless γcl : Timeless (echo_taint γcl).
-  Proof. rewrite /echo_taint. apply _. Qed.
+  Proof using . rewrite /echo_taint. apply _. Qed.
 
   (* what the birth step yields: the counter, whole, at 0, AND the era map
      empty -- [EchoOut.echo_led_init]'s two arguments, which is what makes
@@ -226,7 +226,7 @@ Section EchoLedger.
   (* THE BIRTH STEP: run first by the power theorem, before the crash slot,
      so both the crash predicate and the ledger can name the counter *)
   Lemma echo_birth : ⊢ |==> ∃ γ : echo_fixed, echo_cl γ.
-  Proof.
+  Proof using .
     iMod (mono_nat_own_alloc 0%nat) as (γt) "[Ha _]".
     iMod (ghost_map_alloc (∅ : gmap nat era_pins)) as (γp) "[Hm _]".
     iModIntro. iExists (MkEchoGn γt γp). rewrite /echo_cl /=. iFrame "Ha Hm".
@@ -240,7 +240,7 @@ Section EchoLedger.
     EchoOut.echo_led (echo_taint γcl) γcl h.
 
   Global Instance echo_R_timeless γcl h : Timeless (echo_R γcl h).
-  Proof. rewrite /echo_R. apply _. Qed.
+  Proof using . rewrite /echo_R. apply _. Qed.
 
   (* THE INPUT TAG (app-echo.md lane L5), this application's entry in the
      machine's ambient tag slot ([RiscvPtsto.riscv_rx_tag], set by
@@ -256,16 +256,16 @@ Section EchoLedger.
     EchoOut.etag (echo_taint γcl) h.
 
   Global Instance echo_tag_persistent γcl h : Persistent (echo_tag γcl h).
-  Proof. rewrite /echo_tag. apply _. Qed.
+  Proof using . rewrite /echo_tag. apply _. Qed.
   Global Instance echo_tag_timeless γcl h : Timeless (echo_tag γcl h).
-  Proof. rewrite /echo_tag. apply _. Qed.
+  Proof using . rewrite /echo_tag. apply _. Qed.
 
   (* "untainted" is the counter at 0: what the end of the trace reads.  The
      taint is this application's own fact now (it was the machine's
      [client_lb 1] before round D0). *)
   Lemma echo_R_untainted γcl h :
     disc h -> echo_R γcl h -∗ echo_taint γcl -∗ False.
-  Proof.
+  Proof using .
     intros Hd. iIntros "H Hlb".
     rewrite /echo_R /EchoOut.echo_led /echo_taint decide_True; last exact Hd.
     iDestruct "H" as "(Ha & _ & _)".
@@ -278,7 +278,7 @@ Section EchoLedger.
      its premise is the identity. *)
   Lemma echo_R_phi (γcl : echo_fixed) (h : list mobs) :
     echo_R γcl h ⊢ ⌜disc h -> Forall good_out (cycles_of h)⌝.
-  Proof.
+  Proof using .
     rewrite /echo_R. iIntros "H".
     iApply (EchoOut.echo_led_phi (echo_taint γcl) γcl h with "[] H").
     rewrite /echo_taint. iIntros "$".
@@ -288,7 +288,7 @@ Section EchoLedger.
      [App.xv6_app_adequacy]'s [HR0] *)
   Lemma echo_R_alloc γcl :
     echo_cl γcl ⊢ |==> echo_R γcl [].
-  Proof.
+  Proof using .
     rewrite /echo_cl /echo_R. iIntros "[Ht Hm]". iModIntro.
     iApply (EchoOut.echo_led_init (echo_taint γcl) γcl with "Ht Hm").
   Qed.
@@ -301,7 +301,7 @@ Section EchoLedger.
     trace_shape h true ->
     echo_R γcl h ==∗
       echo_R γcl (h ++ [ObsUartIn i b]) ∗ echo_tag γcl (h ++ [ObsUartIn i b]).
-  Proof.
+  Proof using .
     intros Hsh. iIntros "H". rewrite /echo_R.
     iMod (EchoOut.echo_led_rx (echo_taint γcl) γcl h i b Hsh with "H")
       as "[H Htg]".
@@ -382,7 +382,7 @@ Section EchoPred.
     own r.2 (●ML ([] : list (leibnizO Z))).
 
   Global Instance cons_key_timeless r : Timeless (cons_key r).
-  Proof. rewrite /cons_key. apply _. Qed.
+  Proof using . rewrite /cons_key. apply _. Qed.
 
   (* ...AND WHAT THE KEY BECOMES WHEN /init's MKNOD FAILS: THE SEAL.
      app-echo.md, lane SH-OPEN's finding -- sh's own console preamble has
@@ -418,17 +418,17 @@ Section EchoPred.
     own r.2 (◯ML ([0] : list (leibnizO Z))).
 
   Global Instance cons_never_persistent r : Persistent (cons_never r).
-  Proof. rewrite /cons_never. apply _. Qed.
+  Proof using . rewrite /cons_never. apply _. Qed.
   Global Instance cons_never_timeless r : Timeless (cons_never r).
-  Proof. rewrite /cons_never. apply _. Qed.
+  Proof using . rewrite /cons_never. apply _. Qed.
   Global Instance cons_seal_tok_timeless r : Timeless (cons_seal_tok r).
-  Proof. rewrite /cons_seal_tok. apply _. Qed.
+  Proof using . rewrite /cons_seal_tok. apply _. Qed.
 
   (* the two exclusions the sealed arm is read by: an UNSEALED key refutes
      it, and so does a second seal *)
   Lemma cons_key_never_False (r : echo_names) :
     cons_key r -∗ cons_never r -∗ False.
-  Proof.
+  Proof using .
     rewrite /cons_key /cons_never. iIntros "Ha Hb".
     iDestruct (own_valid_2 with "Ha Hb") as %Hv%mono_list_both_valid_L.
     iPureIntro. destruct Hv as [k Hk]. by destruct k; simplify_eq/=.
@@ -436,7 +436,7 @@ Section EchoPred.
 
   Lemma cons_key_seal_False (r : echo_names) :
     cons_key r -∗ cons_seal_tok r -∗ False.
-  Proof.
+  Proof using .
     rewrite /cons_key /cons_seal_tok. iIntros "Ha Hb".
     iDestruct (own_valid_2 with "Ha Hb") as %Hv.
     iPureIntro. apply mono_list_auth_dfrac_op_valid_L in Hv.
@@ -447,7 +447,7 @@ Section EchoPred.
      twin at the key's name *)
   Lemma cons_seal_never (r : echo_names) :
     cons_seal_tok r -∗ cons_seal_tok r ∗ cons_never r.
-  Proof.
+  Proof using .
     rewrite /cons_seal_tok /cons_never. iIntros "Ha".
     iDestruct (own_mono _ _ (◯ML ([0] : list (leibnizO Z)))
                  with "Ha") as "#Hb"; [ apply mono_list_included |].
@@ -456,7 +456,7 @@ Section EchoPred.
 
   Lemma cons_seal (r : echo_names) :
     cons_key r ==∗ cons_seal_tok r ∗ cons_never r.
-  Proof.
+  Proof using .
     rewrite /cons_key /cons_seal_tok. iIntros "Ha".
     iMod (own_update _ _ (●ML ([0] : list (leibnizO Z))) with "Ha") as "Ha".
     { apply mono_list_update. apply prefix_nil. }
@@ -464,7 +464,7 @@ Section EchoPred.
   Qed.
 
   Lemma cons_key_excl (r : echo_names) : cons_key r -∗ cons_key r -∗ False.
-  Proof.
+  Proof using .
     rewrite /cons_key. iIntros "Ha Hb".
     iDestruct (own_valid_2 with "Ha Hb") as %Hv.
     iPureIntro. apply mono_list_auth_dfrac_op_valid_L in Hv.
@@ -472,20 +472,20 @@ Section EchoPred.
   Qed.
 
   Global Instance cons_made_persistent r i : Persistent (cons_made r i).
-  Proof. rewrite /cons_made. apply _. Qed.
+  Proof using . rewrite /cons_made. apply _. Qed.
   Global Instance cons_made_timeless r i : Timeless (cons_made r i).
-  Proof. rewrite /cons_made. apply _. Qed.
+  Proof using . rewrite /cons_made. apply _. Qed.
   Global Instance cons_tok_timeless r : Timeless (cons_tok r).
-  Proof. rewrite /cons_tok. apply _. Qed.
+  Proof using . rewrite /cons_tok. apply _. Qed.
   Global Instance cons_shot_timeless r i : Timeless (cons_shot r i).
-  Proof. rewrite /cons_shot. apply _. Qed.
+  Proof using . rewrite /cons_shot. apply _. Qed.
 
   (* THE EXCLUSION, which is what a holder of the flag refutes the
      unmade states with: a lower bound at [[i]] and an authority at [[]]
      do not compose ([[i]] is not a prefix of [[]]). *)
   Lemma cons_tok_made_False (r : echo_names) (i : Z) :
     cons_tok r -∗ cons_made r i -∗ False.
-  Proof.
+  Proof using .
     rewrite /cons_tok /cons_made. iIntros "Ha Hb".
     iDestruct (own_valid_2 with "Ha Hb") as %Hv%mono_list_both_valid_L.
     iPureIntro. destruct Hv as [k Hk]. by destruct k; simplify_eq/=.
@@ -494,7 +494,7 @@ Section EchoPred.
   (* THE AGREEMENT: the flag names ONE inum *)
   Lemma cons_shot_made_agree (r : echo_names) (i j : Z) :
     cons_shot r i -∗ cons_made r j -∗ ⌜j = i⌝.
-  Proof.
+  Proof using .
     rewrite /cons_shot /cons_made. iIntros "Ha Hb".
     iDestruct (own_valid_2 with "Ha Hb") as %Hv%mono_list_both_valid_L.
     iPureIntro. destruct Hv as [k Hk]. by simplify_eq/=.
@@ -502,7 +502,7 @@ Section EchoPred.
 
   Lemma cons_made_agree (r : echo_names) (i j : Z) :
     cons_made r i -∗ cons_made r j -∗ ⌜j = i⌝.
-  Proof.
+  Proof using .
     rewrite /cons_made. iIntros "Ha Hb".
     iDestruct (own_valid_2 with "Ha Hb") as %Hv%mono_list_lb_op_valid_L.
     iPureIntro. destruct Hv as [[k Hk] | [k Hk]]; by simplify_eq/=.
@@ -511,7 +511,7 @@ Section EchoPred.
   (* THE SNAPSHOT: the authority yields its own lower bound and stays *)
   Lemma cons_shot_made (r : echo_names) (i : Z) :
     cons_shot r i -∗ cons_shot r i ∗ cons_made r i.
-  Proof.
+  Proof using .
     rewrite /cons_shot /cons_made. iIntros "Ha".
     iDestruct (own_mono _ _ (◯ML ([i] : list (leibnizO Z)))
                  with "Ha") as "#Hb"; [ apply mono_list_included |].
@@ -521,7 +521,7 @@ Section EchoPred.
   (* THE ONE UPDATE, and it happens inside /init's mknod commit *)
   Lemma cons_shoot (r : echo_names) (i : Z) :
     cons_tok r ==∗ cons_shot r i ∗ cons_made r i.
-  Proof.
+  Proof using .
     rewrite /cons_tok /cons_shot. iIntros "Ha".
     iMod (own_update _ _ (●ML ([i] : list (leibnizO Z))) with "Ha") as "Ha".
     { apply mono_list_update. apply prefix_nil. }
@@ -531,7 +531,7 @@ Section EchoPred.
   (* THE INSTANCE IS BORN with the flag unraised and the key in hand: both
      names are fresh, and the key is what the era mint hands /init. *)
   Lemma cons_tok_alloc : ⊢ |==> ∃ r : echo_names, cons_tok r ∗ cons_key r.
-  Proof.
+  Proof using .
     iMod (own_alloc (●ML ([] : list (leibnizO Z)))) as (g1) "H1";
       [ apply mono_list_auth_valid |].
     iMod (own_alloc (●ML ([] : list (leibnizO Z)))) as (g2) "H2";
@@ -567,7 +567,7 @@ Section EchoPred.
      ∨ (⌜cons_absent av⌝ ∗ cons_tok r ∗ cons_seal_tok r))%I.
 
   Global Instance cons_state_timeless r av : Timeless (cons_state r av).
-  Proof. rewrite /cons_state. apply _. Qed.
+  Proof using . rewrite /cons_state. apply _. Qed.
 
   (* THE APPLICATION'S PREDICATE ([App.app_pred], app-instances.md section
      1 and app-echo.md "ARM-c"): TAINTED, or the three binaries are the
@@ -586,12 +586,12 @@ Section EchoPred.
     (echo_taint γ ∨ (⌜echo_fs_pure av⌝ ∗ cons_state r av))%I.
 
   Global Instance echo_pred_timeless γ r av : Timeless (echo_pred γ r av).
-  Proof. rewrite /echo_pred. apply _. Qed.
+  Proof using . rewrite /echo_pred. apply _. Qed.
 
   (* the era-0 shape: the pins, the console absent, the flag unraised *)
   Lemma echo_pred_absent (γ : echo_fixed) (r : echo_names) (av : aview) :
     echo_fs_pure av -> cons_absent av -> cons_tok r -∗ echo_pred γ r av.
-  Proof.
+  Proof using .
     intros Hp Hc. iIntros "Ht". rewrite /echo_pred. iRight.
     iSplitR; [ by iPureIntro |]. rewrite /cons_state. iLeft.
     iSplitR; [ by iPureIntro | iExact "Ht" ].
@@ -611,7 +611,7 @@ Section EchoPred.
     cons_made r i -∗
     □ (∀ v : aview, echo_pred γ r v -∗
          echo_pred γ r v ∗ (⌜cons_present_at i v⌝ ∨ echo_taint γ)).
-  Proof.
+  Proof using .
     iIntros "#Hm !>" (v) "Hp". rewrite /echo_pred.
     iDestruct "Hp" as "[#Ht | [%Hpins Hcs]]".
     { iSplitR; [ iLeft; iExact "Ht" |]. iRight. iExact "Ht". }
@@ -648,7 +648,7 @@ Section EchoPred.
   Lemma echo_cons_abs_law (γ : echo_fixed) (r : echo_names) :
     ⊢ □ (∀ v : aview, cons_key r -∗ echo_pred γ r v -∗
            echo_pred γ r v ∗ cons_key r ∗ (⌜cons_absent v⌝ ∨ echo_taint γ)).
-  Proof.
+  Proof using .
     iIntros "!>" (v) "Hkey Hp". rewrite /echo_pred.
     iDestruct "Hp" as "[#Ht | [%Hpins Hcs]]".
     { iSplitR; [ iLeft; iExact "Ht" |]. iFrame "Hkey". iRight. iExact "Ht". }
@@ -690,7 +690,7 @@ Section EchoPred.
     ⊢ □ (cons_never r -∗
            □ (∀ v : aview, echo_pred γ r v -∗
                 echo_pred γ r v ∗ (⌜cons_absent v⌝ ∨ echo_taint γ))).
-  Proof.
+  Proof using .
     iIntros "!> #Hn !>" (v) "Hp". rewrite /echo_pred.
     iDestruct "Hp" as "[#Ht | [%Hpins Hcs]]".
     { iSplitR; [ iLeft; iExact "Ht" |]. iRight. iExact "Ht". }
@@ -718,7 +718,7 @@ Section EchoPred.
   Lemma echo_cons_seal_step (γ : echo_fixed) (r : echo_names) (av : aview) :
     cons_key r -∗ echo_pred γ r av ==∗
       echo_pred γ r av ∗ (cons_never r ∨ echo_taint γ).
-  Proof.
+  Proof using .
     iIntros "Hkey Hp". rewrite /echo_pred.
     iDestruct "Hp" as "[#Ht | [%Hpins Hcs]]".
     { iModIntro. iSplitR; [ by iLeft |]. iRight. iExact "Ht". }
@@ -747,7 +747,7 @@ Section EchoPred.
     cons_key r -∗ echo_pred γ r av -∗
       echo_pred γ r (delta_create FsImg.ROOTINO fname_console i
                        (ADev CONSOLE 0) av).
-  Proof.
+  Proof using .
     intros Hpre. iIntros "Hkey Hp". rewrite /echo_pred.
     iDestruct "Hp" as "[#Ht | [%Hpins Hcs]]"; [ by iLeft |].
     iRight. iSplitR.
@@ -787,7 +787,7 @@ Section EchoPred.
       (i : Z) :
     cons_present_at i av ->
     echo_pred γ r av ==∗ echo_pred γ r av ∗ (cons_made r i ∨ echo_taint γ).
-  Proof.
+  Proof using .
     intros Hpr. iIntros "Hp". rewrite /echo_pred.
     iDestruct "Hp" as "[#Ht | [%Hpins Hcs]]".
     { iModIntro. iSplitR; [ by iLeft |]. iRight. iExact "Ht". }
@@ -824,7 +824,7 @@ Section EchoPred.
      UNARM leg needs to know the pins survive deleting a FRESH inum. *)
   Lemma echo_fs_pure_acc (γ : echo_fixed) (r : echo_names) (v : aview) :
     echo_pred γ r v -∗ echo_pred γ r v ∗ (⌜echo_fs_pure v⌝ ∨ echo_taint γ).
-  Proof.
+  Proof using .
     iIntros "Hp". rewrite /echo_pred.
     iDestruct "Hp" as "[#Ht | [%Hpins Hcs]]".
     { iSplitR; [ by iLeft |]. iRight. iExact "Ht". }
@@ -837,7 +837,7 @@ Section EchoPred.
       (i ma mi : Z) :
     av !! i = None ->
     echo_pred γ r av -∗ echo_pred γ r (delta_arm i (ADev ma mi) av).
-  Proof.
+  Proof using .
     intros Hfree. iIntros "Hp". rewrite /echo_pred.
     iDestruct "Hp" as "[#Ht | [%Hpins Hcs]]"; [ by iLeft |].
     iRight. iSplitR.
@@ -877,7 +877,7 @@ Section EchoPred.
     echo_fs_pure av0 ->
     cons_absent av ->
     echo_pred γ r av -∗ echo_pred γ r (delta_unarm i av).
-  Proof.
+  Proof using .
     intros Hfree Hp0 Hab0. iIntros "Hp". rewrite /echo_pred.
     iDestruct "Hp" as "[#Ht | [%Hpins Hcs]]"; [ by iLeft |].
     iRight. iSplitR.
@@ -918,7 +918,7 @@ Section EchoPred.
     (d <> FsImg.ROOTINO \/ nmn <> fname_console) ->
     echo_pred γ r av -∗
       echo_pred γ r (delta_create d nmn i (ADev ma mi) av).
-  Proof.
+  Proof using .
     intros Hpre Hother. iIntros "Hp". rewrite /echo_pred.
     iDestruct "Hp" as "[#Ht | [%Hpins Hcs]]"; [ by iLeft |].
     iRight. iSplitR.
@@ -973,7 +973,7 @@ Section EchoPred.
     echo_fs_pure av0 ->
     cons_present_at j av0 ->
     cons_made r j -∗ echo_pred γ r av -∗ echo_pred γ r (delta_unarm i av).
-  Proof.
+  Proof using .
     intros Hfree Hp0 Hpr0. iIntros "#Hm Hp". rewrite /echo_pred.
     iDestruct "Hp" as "[#Ht | [%Hpins Hcs]]"; [ by iLeft |].
     iRight. iSplitR.
@@ -1015,7 +1015,7 @@ Section EchoPred.
     cons_made r j -∗ echo_pred γ r av -∗
       echo_pred γ r (delta_create FsImg.ROOTINO fname_console i
                        (ADev CONSOLE 0) av).
-  Proof.
+  Proof using .
     intros Hpre. iIntros "#Hm Hp".
     iDestruct (echo_cons_law γ r j with "Hm") as "#Hl".
     iDestruct ("Hl" $! av with "Hp") as "[Hp [%Hpr | #Ht]]"; last first.
@@ -1035,7 +1035,7 @@ Section EchoPred.
      instance names without spending the original.  Both arms of
      [echo_pred] are persistent, so the general law does it. *)
   Lemma echo_xfer (γ : echo_fixed) : ⊢ app_xfer_raw (echo_pred γ).
-  Proof.
+  Proof using .
     rewrite /app_xfer_raw. iIntros "!>" (r av) "H".
     (* THE FRESH FLAG IS ALLOCATED AT THE VIEW'S OWN VALUE
        ([FsConsPin.cons_inum]) and not at the arm's: the allocation is an
@@ -1129,7 +1129,7 @@ Section EchoPred.
     ⊢ □ (∀ (r : echo_names) (av : FsAbsDefs.aview),
            ▷ echo_pred γ r av ==∗ ▷ echo_pred γ r av ∗
            ∃ r' : echo_names, ▷ echo_pred γ r' av ∗ echo_boot γ k r').
-  Proof.
+  Proof using .
     iIntros "!>" (r av) "H".
     iMod (own_alloc (●ML (cons_inum av : list (leibnizO Z)))) as (g1) "Ha";
       [ apply mono_list_auth_valid |].
@@ -1216,7 +1216,7 @@ Section EchoPred.
      sh's continuation. *)
   Lemma echo_sup_of_taint (γ : echo_fixed) (r : echo_names) :
     echo_taint γ -∗ app_sup_raw (echo_pred γ) r.
-  Proof.
+  Proof using .
     iIntros "#Ht". rewrite /app_sup_raw. iIntros "!>" (av).
     rewrite /echo_pred. iLeft. iExact "Ht".
   Qed.
@@ -1231,7 +1231,7 @@ Section EchoPred.
      what it is handed instead of the window is exactly this credential. *)
   Lemma echo_taint_of_sup (γ : echo_fixed) (r : echo_names) :
     app_sup_raw (echo_pred γ) r -∗ echo_taint γ.
-  Proof.
+  Proof using .
     rewrite /app_sup_raw. iIntros "#Hs".
     iSpecialize ("Hs" $! (∅ : aview)).
     rewrite /echo_pred.
@@ -1285,7 +1285,7 @@ Section EchoInit.
     snap_ok S D ->
     ⊢ |==> ∃ r : echo_names,
         echo_pred γ r (abs_view (fss_inodes S)) ∗ cons_key r.
-  Proof.
+  Proof using .
     intros Hdk Hrec HS.
     (* the instance IS the console flag and its key, so the era-0 claim is
        where both are born -- unraised, beside the three pins and the
@@ -1302,7 +1302,7 @@ Section EchoInit.
     fs_recovery (fs_blocks dk) D fsimg_cov (FsImg.sb_logstart fsimg_sb) ->
     snap_ok S D ->
     ⊢ |==> ∃ r : echo_names, echo_pred γ r (abs_view (fss_inodes S)).
-  Proof.
+  Proof using .
     intros Hdk Hrec HS.
     iMod (echo_init_key γ dk D S Hdk Hrec HS) as (r) "[Hp _]".
     iModIntro. iExists r. iExact "Hp".
@@ -1335,7 +1335,7 @@ Section EchoInit.
     ⊢ |==> ∃ r : echo_names,
         echo_pred γ r (abs_view (fss_inodes
           (FsDurImg.img_state (fs_blocks dk) sb nib))).
-  Proof.
+  Proof using .
     intros Himg Hdk -> ->.
     pose proof (img_snap_ok dk ndisk fsimg_sb nib fsimg_cov Himg) as HS.
     (* the era-0 disk equation, applied to BOTH the snapshot's state and
@@ -1426,7 +1426,7 @@ Section EchoApp.
 
   Global Instance echo_cons_timeless γ k h H :
     Timeless (echo_cons γ k h H).
-  Proof. rewrite /echo_cons. apply _. Qed.
+  Proof using . rewrite /echo_cons. apply _. Qed.
 
   (* THE APPLICATION'S CONSOLE INTERFACE (redesign R4), as one value: the
      tag beside a received byte, the kill credential (which IS the taint --
@@ -1446,25 +1446,25 @@ Section EchoApp.
 
   (* ---- THE BIRTH STEP ---- *)
   Lemma echo_Hbirth : ⊢ |==> ∃ c : app_fixed app_echo, app_cl app_echo c.
-  Proof. cbn [app_echo app_fixed app_cl]. exact echo_birth. Qed.
+  Proof using . cbn [app_echo app_fixed app_cl]. exact echo_birth. Qed.
 
   (* ---- THE TRACE LEDGER'S FIVE ---- *)
   Lemma echo_HRt (c : app_fixed app_echo) (h : list mobs) :
     Timeless (app_R app_echo c h).
-  Proof. cbn [app_echo app_fixed app_R] in c |- *. apply _. Qed.
+  Proof using . cbn [app_echo app_fixed app_R] in c |- *. apply _. Qed.
 
   (* [echo_Htagp], [echo_Htagt], [echo_Hkillp] and [echo_Hkillt] lived
      here: they ride [echo_ifc] now (redesign R4). *)
 
   Lemma echo_Hkillt (c : app_fixed app_echo) :
     Timeless (app_kill app_echo c).
-  Proof. cbn [app_echo app_fixed app_kill] in c |- *. apply _. Qed.
+  Proof using . cbn [app_echo app_fixed app_kill] in c |- *. apply _. Qed.
 
   (* the supply buys the credential, and at echo the two are the same
      reading of the counter ([echo_taint_of_sup]) *)
   Lemma echo_al_kill (c : app_fixed app_echo) (r : app_names app_echo) :
     AppInv.app_sup_raw (app_pred app_echo c) r ⊢ □ app_kill app_echo c.
-  Proof.
+  Proof using .
     rewrite /app_kill.
     cbn [app_echo app_fixed app_names app_pred app_ifc echo_ifc ai_kill]
       in c, r |- *.
@@ -1486,7 +1486,7 @@ Section EchoApp.
              (ev : ConsLog.cons_ev),
              app_cons app_echo c k h H ==∗
              app_cons app_echo c k h (ConsLog.cons_step H ev)).
-  Proof.
+  Proof using .
     rewrite /app_cons.
     cbn [app_echo app_fixed app_names app_ifc echo_ifc ai_cons echo_cons]
       in c, r |- *.
@@ -1498,7 +1498,7 @@ Section EchoApp.
 
   Lemma echo_HR0 (c : app_fixed app_echo) :
     app_cl app_echo c ⊢ |==> app_R app_echo c [].
-  Proof. cbn [app_echo app_fixed app_cl app_R] in c |- *. exact (echo_R_alloc c). Qed.
+  Proof using . cbn [app_echo app_fixed app_cl app_R] in c |- *. exact (echo_R_alloc c). Qed.
 
   (* ...AND THE ERA'S FOUR YIELDS ON THE ON-ARM (lane CONS-IO milestone E,
      e5-design REVISION 8; the claims are real since lane ECHO-OUT part 5).
@@ -1516,7 +1516,7 @@ Section EchoApp.
             (* ...and the era's turn beside it: this is where the era's
                LINEAR seed is minted out of the ledger, for <init>. *)
             app_turn app_echo c (S (obs_boots h))).
-  Proof.
+  Proof using .
     intros _.
     rewrite /app_cons.
     cbn [app_echo app_fixed app_R echo_R app_ifc echo_ifc ai_cons echo_cons
@@ -1549,7 +1549,7 @@ Section EchoApp.
              ={⊤ ∖ ↑uartN i ∖ ↑obsN}=∗
            (if i is Uart0 then app_cons app_echo c (S gen_id) ho H else emp) ∗
            uart_ghosts γ u' ∗ app_R app_echo c (h ++ [ObsUartOut i b])%list).
-  Proof.
+  Proof using .
     intros _ _.
     rewrite /app_cons.
     cbn [app_echo app_fixed app_R echo_R app_ifc echo_ifc ai_cons echo_cons]
@@ -1609,7 +1609,7 @@ Section EchoApp.
        interface this record sets. *)
     @riscvF_app_iface Σ (@riscv_fixedGS Σ HR) = app_ifc app_echo c ->
     ⊢ ∀ (GEN : GenId) (XI : CurCtx), @cons_echo_shift Σ HR GEN XI.
-  Proof.
+  Proof using .
     cbn [app_echo app_fixed app_ifc] in c |- *.
     intros Hiface.
     iApply (EchoOut.echo_happ_echo (echo_taint c) c (HRg := HR)).
@@ -1630,7 +1630,7 @@ Section EchoApp.
              ={⊤ ∖ ↑uartN i ∖ ↑obsN}=∗
            uart_ghosts γ u' ∗ app_R app_echo c (h ++ [ObsUartIn i b])%list ∗
            app_tag app_echo c (h ++ [ObsUartIn i b])%list).
-  Proof.
+  Proof using .
     intros _ _.
     cbn [app_echo app_fixed app_R app_tag] in c |- *.
     iIntros "!>" (h b u u') "_ %Hsh _ Hg Hled".
@@ -1641,7 +1641,7 @@ Section EchoApp.
   (* ---- THE TRANSPORT, WITH THE FIRST PROCESS'S BOOT RESOURCE ---- *)
   Lemma echo_Happ_boot (c : app_fixed app_echo) (k : nat) :
     ⊢ app_xfer_boot_raw (app_pred app_echo c) (app_boot app_echo c k).
-  Proof.
+  Proof using .
     cbn [app_echo app_fixed app_names app_pred app_boot] in c |- *.
     rewrite /app_xfer_boot_raw. iApply echo_xfer_boot.
   Qed.
@@ -1650,7 +1650,7 @@ Section EchoApp.
      still take ([SystemAdequacy.app_xfer_raw_of_boot]) *)
   Lemma echo_Happ_xfer (c : app_fixed app_echo) :
     ⊢ app_xfer_raw (app_pred app_echo c).
-  Proof.
+  Proof using .
     cbn [app_echo app_fixed app_names app_pred] in c |- *. exact (echo_xfer c).
   Qed.
 
@@ -1667,7 +1667,7 @@ Section EchoApp.
       ⊢ |==> ∃ r : app_names app_echo,
           app_pred app_echo c r (abs_view (fss_inodes (FsDurImg.img_state
              (fs_blocks (v_disk (g.(gdev).(dvirtio)))) sb nib))).
-  Proof.
+  Proof using .
     intros Himg Hdk Hsb Hcov c.
     cbn [app_echo app_fixed app_names app_pred] in c |- *.
     exact (echo_init_img c _ XV6_DISK_BYTES sb nib cov Himg Hdk Hsb Hcov).
@@ -1682,7 +1682,7 @@ Section EchoApp.
          about the TRACE, and the ledger holds it. ---- *)
   Lemma echo_Hphi_R (c : app_fixed app_echo) (g : gstate) (h : list mobs) :
     app_R app_echo c h ⊢ ⌜app_phi app_echo g h⌝.
-  Proof.
+  Proof using .
     cbn [app_echo app_fixed app_R app_phi echo_phi] in c |- *.
     exact (echo_R_phi c h).
   Qed.

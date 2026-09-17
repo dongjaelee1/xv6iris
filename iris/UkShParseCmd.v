@@ -1367,7 +1367,7 @@ Section UkShParseCmd.
     ubytes γd a n g -∗
     ubyte γd (a + Z.of_nat j) (g j) ∗
     (ubyte γd (a + Z.of_nat j) b -∗ ubytes γd a n (ushp_setb g j b)).
-  Proof.
+  Proof using .
     intro Hj. iIntros "H".
     assert (Hjs : seq 0 n !! j = Some j) by (apply lookup_seq; lia).
     rewrite /ubytes /ubytesq.
@@ -1401,7 +1401,7 @@ Section UkShParseCmd.
     ushp_slot t0 base toks sel i ∗
     (ushp_slot t0 base toks sel i -∗
      [∗ list] j ∈ seq 0 10, ushp_slot t0 base toks sel j).
-  Proof.
+  Proof using .
     intro Hi. iIntros "H".
     iApply (big_sepL_lookup_acc _ (seq 0 10) i i
               ltac:(apply lookup_seq; lia) with "H").
@@ -1410,7 +1410,7 @@ Section UkShParseCmd.
   (* ---- one byte of the read-only image, by its address ---------------- *)
   Lemma ushp_ro_byte (a : Z) (b : bv 8) :
     shp_ro !! a = Some b -> shp_rodata γt -∗ utext γt a b.
-  Proof.
+  Proof using .
     intro Ha. iIntros "#H". rewrite /shp_rodata /utext_img.
     iApply (big_sepM_lookup _ _ a b with "H"). exact Ha.
   Qed.
@@ -1423,7 +1423,7 @@ Section UkShParseCmd.
     [∗ list] j ∈ seq 0 4,
       utext γt (0x13b4 + Z.of_nat j)
         (nth_byte (mword_of_int 4294964330 : mword 32) j).
-  Proof.
+  Proof using .
     iIntros "#H". rewrite !big_sepL_cons big_sepL_nil.
     iSplit; [ iApply (ushp_ro_byte (0x13b4 + Z.of_nat 0%nat)
                         (nth_byte (mword_of_int 4294964330 : mword 32) 0%nat)
@@ -1468,7 +1468,7 @@ Section UkShParseCmd.
          urun N h' mc' (mword_of_int 0x83e) nn -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intro rest.
     induction rest as [| tk' rest IH ];
       intros done tk toks g h mc Hs0 Hs64 Hp0 Hp8 Hpsz Htoksd Htlen Hsnd Ha5;
@@ -1750,7 +1750,7 @@ Section UkShParseCmd.
          (ret_pc (vals 0%nat)) (4 + nn) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hal8 Hlo Hhi Hsplu Hsp Hs1.
     iIntros "#Hcode Hsl Hloc Hrun Hcont".
     iApply (wp_uk_cmv N h me (mword_of_int 0x83e) a0_idx s1_idx
@@ -1826,7 +1826,7 @@ Section UkShParseCmd.
          urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (4 + nn) -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Ha0 Hs0 Hs64 Hp0 Hp8 Hpsz Htlen Hsnd.
     iIntros "#Hcode #Hro Hnode Hline Hrun Hcont".
     rewrite shpp_nulterminate.
@@ -2485,7 +2485,7 @@ Section UkShParseCmd.
 
   Lemma ushp_ustr_bytes (a : Z) (len : nat) (f : nat -> bv 8) :
     ustr γd (DfracOwn 1) a len f -∗ ubytes γd a (S len) (ushp_ext len f).
-  Proof.
+  Proof using .
     iIntros "(_ & _ & Hbs & Hnul)".
     assert (ES : S len = (len + 1)%nat) by lia.
     rewrite ES (ubytes_app γd a len 1 (ushp_ext len f)).
@@ -3393,7 +3393,7 @@ Section UkShParseCmd.
   Lemma ushp_nulfold_keep (toks : list (nat * nat)) (g : nat -> bv 8)
       (j : nat) :
     g j = ubyte0 -> ushp_nulfold toks g j = ubyte0.
-  Proof.
+  Proof using .
     revert g. induction toks as [| tk r IH ]; intros g Hg;
       cbn [ushp_nulfold]; [ exact Hg | ].
     apply IH. rewrite /ushp_setb.
@@ -3403,7 +3403,7 @@ Section UkShParseCmd.
   Lemma ushp_nulfold_hit (toks : list (nat * nat)) (g : nat -> bv 8)
       (i : nat) (tk : nat * nat) :
     toks !! i = Some tk -> ushp_nulfold toks g (snd tk) = ubyte0.
-  Proof.
+  Proof using .
     revert g i. induction toks as [| t r IH ]; intros g i Hi;
       [ rewrite lookup_nil in Hi; discriminate | ].
     destruct i as [| i ]; cbn in Hi.
@@ -3452,7 +3452,7 @@ Section UkShParseCmd.
              (60 + nn) -∗
            WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using ushp_malloc_ok.
     intros Ha0 Hnosym Htoks Htlen Hs0 Hs64.
     iIntros "#Hcode #Hro Hstr Hws Hsy HM #Hpx Hpay Hrun Hcont".
     iApply (wp_kshp_parsecmd h m dw dv s0 len f toks nn

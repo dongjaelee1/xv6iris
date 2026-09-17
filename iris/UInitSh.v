@@ -61,12 +61,12 @@ Require Import FileInvDefs.     (* [fileG], and its [appcfg] / [icfg] fields *)
 Require Import UserFd.
 Require Import UserHeap.
 Require Import ChildTok.  (* [my_pay]: the exec wands' pay fact *)
-Require Import UexecSlot UexecRet UsysMemOk UexecSG.
+Require Import UexecSlot UexecRet UexecSG.
 Require Import UInitFd.  (* [ufd_head] / [ufd_head_row] -- init's own
                             descriptor head, and the row sh's entry reads
                             off it against the lent authority *)
 Require Import UkRun.
-Require Import UCodeInit UkInit.
+Require Import UCodeInit UInitArgv UkInit.
 Require Import LineWords.       (* [wl_nl]: the credential steps are stated
                                    at the line the read delivered *)
 Require Import UkSh UShKernel.
@@ -115,18 +115,11 @@ Require Import ExecArgs.        (* [uargv_img] / [uargv_shape] / [uargv_det]:
                                    the argument reading at ANY layout
                                    (lane EX-3); /init's is this one at a
                                    CONSTANT layout *)
-Require Import PieceFam.           (* [pfam] / [MkPfam] -- the exec deposit's
-                                      one-shot piece, named by the refund
-                                      twin below (lane M6b) *)
-Require Import FsBytesGamma.       (* [fs_gamma_L] -- likewise *)
 Require Import UexecExecInst.      (* [sbundle_exec_intro] -- THE INSTANCE *)
 Require Import Xv6Cameras.         (* [uartGhostG] *)
 Require Import UartNames.          (* [cons_names] *)
 Require Import UserConsole.        (* [ucons_pay] / [upos] *)
 Require Import CtxIdDefs.
-Require Import TsoCtx.
-Require Import UkRunExecRef.    (* [udepw_at_refR] / [sbundle_pay_refR]: EX-4's instances *)
-Require Import SpecCopyin.         (* [uimg_word_at] *)
 Require User.InitData.
 Import Defs.
 
@@ -179,18 +172,18 @@ Qed.
 Lemma init_argv_words_bool :
   forallb (fun k : nat =>
       bool_decide (
-        UCodeInit.init_argv_map !! (0x1000 + Z.of_nat k)
+        UInitArgv.init_argv_map !! (0x1000 + Z.of_nat k)
           = Some (nth_byte (mword_of_int 0x9a8 : mword 64) k)
-        /\ UCodeInit.init_argv_map !! (0x1008 + Z.of_nat k)
+        /\ UInitArgv.init_argv_map !! (0x1008 + Z.of_nat k)
           = Some (nth_byte (mword_of_int 0 : mword 64) k)))
     (seq 0 8) = true.
 Proof. vm_compute. reflexivity. Qed.
 
 Lemma init_argv_words (k : nat) :
   (k < 8)%nat ->
-  UCodeInit.init_argv_map !! (0x1000 + Z.of_nat k)
+  UInitArgv.init_argv_map !! (0x1000 + Z.of_nat k)
     = Some (nth_byte (mword_of_int 0x9a8 : mword 64) k)
-  /\ UCodeInit.init_argv_map !! (0x1008 + Z.of_nat k)
+  /\ UInitArgv.init_argv_map !! (0x1008 + Z.of_nat k)
     = Some (nth_byte (mword_of_int 0 : mword 64) k).
 Proof.
   intro Hk.
@@ -282,7 +275,7 @@ Lemma init_ro_sh_bytes_bool :
 Proof. vm_compute. reflexivity. Qed.
 
 Lemma init_argv_img (M : gmap Z (bv 8)) :
-  uimg_sub UCodeInit.init_argv_map M ->
+  uimg_sub UInitArgv.init_argv_map M ->
   uimg_sub UCodeInit.init_ro M ->
   uargv_img M 0x1000 init_argv_args.
 Proof.
@@ -325,7 +318,7 @@ Qed.
 
 Lemma init_args_det (M : gmap Z (bv 8)) (na : nat) (alen : nat -> nat)
     (afun : nat -> nat -> bv 8) :
-  uimg_sub UCodeInit.init_argv_map M ->
+  uimg_sub UInitArgv.init_argv_map M ->
   uimg_sub UCodeInit.init_ro M ->
   exec_args_of M (mword_of_int 0x1000 : mword 64) na alen afun ->
   na = 1%nat /\ alen 0%nat = 2%nat.
@@ -624,14 +617,14 @@ Section UInitSh.
          (Rsh (ukn_t N) (ukn_d N) (ukn_s N))) -∗
     UkSh.ush_tag_law T -∗
     sh_pay T Cr Rsh n0.
-  Proof.
+  Proof using .
     iIntros "#Hst #Hre #Htg". rewrite /sh_pay /sh_pay_state.
     iSplitR; [ iExact "Hst" | ]. iSplitR; [ iExact "Hre" | iExact "Htg" ].
   Qed.
 
   Global Instance sh_pay_persistent T Cr Rsh n0 :
     Persistent (sh_pay T Cr Rsh n0).
-  Proof. rewrite /sh_pay. apply _. Qed.
+  Proof using . rewrite /sh_pay. apply _. Qed.
 
   (* ------------------------------------------------------------------- *)
   (* THE CARVE (lane SH-STATE): sh's static state and its line buffer,    *)
@@ -643,7 +636,7 @@ Section UInitSh.
          ubyte g k b)
       ∗ ([∗ map] k ↦ b ∈ base.filter (fun kv : Z * bv 8 => ~ (lo <= kv.1 < hi)) D,
            ubyte g k b).
-  Proof.
+  Proof using .
     iIntros "H".
     rewrite -(big_sepM_union (fun k b => ubyte g k b)
                 (base.filter (fun kv : Z * bv 8 => lo <= kv.1 < hi) D)
@@ -659,7 +652,7 @@ Section UInitSh.
     (forall j : nat, (j < n)%nat -> D !! (a + Z.of_nat j) = Some (f j)) ->
     ([∗ map] k ↦ b ∈ base.filter (fun kv : Z * bv 8 => lo <= kv.1 < hi) D,
        ubyte g k b) -∗ ubytes g a n f.
-  Proof.
+  Proof using .
     intros Hr HD. iIntros "H".
     assert (Hlk : forall j : nat, (j < n)%nat ->
               base.filter (fun kv : Z * bv 8 => lo <= kv.1 < hi) D
@@ -679,7 +672,7 @@ Section UInitSh.
     D !! (a + Z.of_nat len) = Some ubyte0 ->
     ([∗ map] k ↦ b ∈ base.filter (fun kv : Z * bv 8 => lo <= kv.1 < hi) D,
        ubyteq g DfracDiscarded k b) -∗ ustr g DfracDiscarded a len f.
-  Proof.
+  Proof using .
     intros Hne Hlen Hr HD Hnul. iIntros "#H".
     assert (Hlk : forall j : nat, (j < len)%nat ->
               base.filter (fun kv : Z * bv 8 => lo <= kv.1 < hi) D
@@ -703,7 +696,7 @@ Section UInitSh.
     fun _ γd γs => (UkShLoop.ushl_dat γd ∗ usz γs (kexec_sz ElfUser.sh_elf))%I.
 
   Lemma sh_pay_state_holds : ⊢ sh_pay_state sh_Rsh 0%nat.
-  Proof.
+  Proof using .
     rewrite /sh_pay_state /sh_Rsh.
     destruct sh_tbl_parts as (Hsy & Hws & Hsy0 & Hws0).
     iModIntro. iIntros (W' γt γd γs) "%Hkey Hszf HD".
@@ -876,11 +869,11 @@ Section UInitSh.
 
   Global Instance init_sh_slot_core_persistent T Pay `{!Persistent Pay} :
     Persistent (init_sh_slot_core T Pay).
-  Proof. rewrite /init_sh_slot_core. apply _. Qed.
+  Proof using . rewrite /init_sh_slot_core. apply _. Qed.
 
   Global Instance init_sh_slot_persistent T Pay `{!Persistent Pay} :
     Persistent (init_sh_slot T Pay).
-  Proof. rewrite /init_sh_slot /init_sh_slot_core. apply _. Qed.
+  Proof using . rewrite /init_sh_slot /init_sh_slot_core. apply _. Qed.
 
   (* the projection /sh's own pinned exec wants *)
   Lemma sh_pins_of_fs_pure (T : iProp Σ) :
@@ -888,7 +881,7 @@ Section UInitSh.
          app_pred app_run v ∗ (⌜echo_fs_pure v⌝ ∨ T)) -∗
     □ (∀ v : aview, app_pred app_run v -∗
          app_pred app_run v ∗ (⌜FsShPin.era0_sh_pins v⌝ ∨ T)).
-  Proof.
+  Proof using .
     iIntros "#Hl !>" (v) "Hp".
     iDestruct ("Hl" $! v with "Hp") as "[Hp [%Hf | HT]]";
       [ iFrame "Hp"; iLeft; iPureIntro; exact (proj1 (proj2 Hf))
@@ -901,7 +894,7 @@ Section UInitSh.
          app_pred app_run v ∗ (⌜echo_fs_pure v⌝ ∨ T)) -∗
     □ (∀ v : aview, app_pred app_run v -∗
          app_pred app_run v ∗ (⌜FsEchoPin.era0_echo_pins v⌝ ∨ T)).
-  Proof.
+  Proof using .
     iIntros "#Hl !>" (v) "Hp".
     iDestruct ("Hl" $! v with "Hp") as "[Hp [%Hf | HT]]";
       [ iFrame "Hp"; iLeft; iPureIntro; exact (proj2 (proj2 Hf))
@@ -918,7 +911,7 @@ Section UInitSh.
   (* ------------------------------------------------------------------- *)
   Lemma init_sh_sp_final (alen : nat -> nat) :
     alen 0%nat = 2%nat -> kxc_sp_final 0x5000 alen 1%nat = 0x4FE0.
-  Proof.
+  Proof using .
     intro Ha. unfold kxc_sp_final. cbn [kxc_sp]. rewrite Ha.
     vm_compute. reflexivity.
   Qed.
@@ -929,7 +922,7 @@ Section UInitSh.
     kexec_sz ElfUser.sh_elf - PGSIZE
       + 8 * Z.of_nat (2 + (8 + (16 + (ush_Dbody + n0))))
       <= kxc_sp_final (kexec_sz ElfUser.sh_elf) alen 1%nat.
-  Proof.
+  Proof using .
     intros Ha Hn0. rewrite sh_kexec_sz. rewrite (init_sh_sp_final alen Ha).
     unfold PGSIZE. lia.
   Qed.
@@ -940,7 +933,7 @@ Section UInitSh.
   Lemma init_sh_path_of (M : gmap Z (bv 8)) :
     uimg_sub UCodeInit.init_ro M ->
     exec_path_of M (mword_of_int 0x9a8 : mword 64) init_sh_pl.
-  Proof.
+  Proof using .
     intro Hro.
     pose proof (bool_decide_eq_true_1 _ init_ro_sh_bool) as (Hb0 & Hb1 & Hb2).
     split_and!.
@@ -970,7 +963,7 @@ Section UInitSh.
     ufd_auth γfd fdv ∗
     ((⌜take NSTD fdv !! 0%nat = Some st⌝ ∗ ⌜take NSTD fdv !! 2%nat = Some st⌝)
      ∨ ⌜take NSTD fdv !! 0%nat = Some FdClosed⌝ ∨ T).
-  Proof.
+  Proof using .
     rewrite /ufd_head /ufd_headL.
     iIntros "Ha [H | [H | [_ HT]]]".
     - iDestruct (ustd_agree with "Ha H") as %->.
@@ -994,7 +987,7 @@ Section UInitSh.
   (* /init's all-closed ledger is the closed-arm shape at zero opens
      (step 4) *)
   Lemma ufd_l0_lcl : UkSh.ush_lcl UInitFd.ufd_l0 0%nat.
-  Proof.
+  Proof using .
     split; [ intros i Hi; lia | ].
     intros i [_ Hi]. unfold NSTD in Hi.
     destruct i as [| [| [| i]]];
@@ -1043,7 +1036,7 @@ Section UInitSh.
     8 * Z.of_nat (2 + (8 + (16 + (ush_Dbody + n0)))) <= 0xFE0 ->
     (* the two readings of /init's own image the argument vector is
        determined by ([init_args_det]) *)
-    uimg_sub UCodeInit.init_argv_map M ->
+    uimg_sub UInitArgv.init_argv_map M ->
     uimg_sub UCodeInit.init_ro M ->
     (* /init's ledger, its children set and its pid, as the caller holds
        them *)
@@ -1077,7 +1070,7 @@ Section UInitSh.
                 (FdOpen true true (FdDevice ConsoleInv.CONSOLE))
                 (cc_wp Cr) (cc_wbn Cr) l np))%I
       uslot.
-  Proof.
+  Proof using .
     intros Hpsok_free Hn0 Hsav Hsro Hl Hcs Hpid Hlen HCr.
     pose proof HCr as (Hrl & Hpm1 & Hpm3 & Hpmwb & Hwc
                        & Hwbwc & Hwbl & Hwbr & Hbd & Hpw).
@@ -1251,7 +1244,7 @@ Section UInitSh.
        entry puts in its loop's own slot ([UkSh.ush_wcp]).  This is the
        ONE place the two ends meet. *)
     UkInit.init_exec_sup_lend cn T st Cr.
-  Proof.
+  Proof using .
     intros Hpsok_free Hn0 Hst HCr.
     pose proof HCr as (Hrl & Hpm1 & Hpm3 & Hpmwb & Hwc
                        & Hwbwc & Hwbl & Hwbr & Hbd & Hpw).
@@ -1331,7 +1324,7 @@ Section UInitSh.
       iDestruct (big_sepM_lookup _ _ a b Hb with "Hro") as "Hb".
       iDestruct (uheap_text with "Hheap Hb") as %(HM & _ & _).
       iPureIntro. exact HM. }
-    iAssert (⌜uimg_sub UCodeInit.init_argv_map M⌝)%I as %Hsav.
+    iAssert (⌜uimg_sub UInitArgv.init_argv_map M⌝)%I as %Hsav.
     { iIntros (a b Hb).
       rewrite /init_argv.
       iDestruct (big_sepM_lookup _ _ a b Hb with "Hargv") as "Hb".

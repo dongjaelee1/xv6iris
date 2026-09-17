@@ -87,15 +87,15 @@ Section ProofMemcmp.
 
   Local Lemma cs_ne (k r : mword 5) :
     is_cs_idx k = false -> is_cs_idx r = true -> Regidx r <> Regidx k.
-  Proof. intros Hk Hr He. symmetry in He. exact (is_cs_idx_true_neq k r Hk Hr He). Qed.
+  Proof using . intros Hk Hr He. symmetry in He. exact (is_cs_idx_true_neq k r Hk Hr He). Qed.
 
   Local Lemma mc_push (X : mword 64) :
     add_vec X (sign_extend' 64 (sign_extend' 12 (mword_of_int 48 : mword 6))) = pa_stk X 2.
-  Proof. unfold pa_stk, add_vec_int. apply f_equal. apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . unfold pa_stk, add_vec_int. apply f_equal. apply bv_eq; vm_compute; reflexivity. Qed.
 
   Local Lemma mc_step (s : mword 64) (j : nat) :
     add_vec (pa_add s j) (sign_extend' 64 (sign_extend' 12 (mword_of_int 1 : mword 6))) = pa_add s (S j).
-  Proof. apply pa_add_step. apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . apply pa_add_step. apply bv_eq; vm_compute; reflexivity. Qed.
 
   (* [subw a0,a5,a4] on two ZERO-EXTENDED bytes: the 32-bit difference,
      sign-extended to 64, is exactly the difference of the two unsigned byte
@@ -106,7 +106,7 @@ Section ProofMemcmp.
       (sub_vec (subrange_vec_dec (zero_extend' 64 (b1 : mword 8) : mword 64) 31 0 : mword 32)
                (subrange_vec_dec (zero_extend' 64 (b2 : mword 8) : mword 64) 31 0 : mword 32))
     = (mword_of_int (bv_unsigned b1 - bv_unsigned b2) : mword 64).
-  Proof.
+  Proof using .
     apply bv_eq.
     rewrite moi64_unsigned.
     assert (Hze1 : (8 <= 64)%N) by (vm_compute; intro Hc; discriminate Hc).
@@ -160,7 +160,7 @@ Section ProofMemcmp.
   Local Lemma mc_zext8_inj (b1 b2 : bv 8) :
     eq_vec (zero_extend' 64 (b1 : mword 8) : mword 64) (zero_extend' 64 (b2 : mword 8) : mword 64) = true ->
     b1 = b2.
-  Proof.
+  Proof using .
     intro Heq. apply eq_vec_true_iff in Heq. apply (f_equal bv_unsigned) in Heq.
     unfold zero_extend', Operators_mwords.zero_extend, Operators_mwords.extz_vec,
       to_word, get_word, MachineWord.MachineWord.zero_extend in Heq.
@@ -193,7 +193,7 @@ Section ProofMemcmp.
         pc_is (ret_pc ra0) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hsp0 Hra0 Hs00 Hmtsp Hmta0 Hthr.
     iIntros "Hcg #Htext Hpc Hb1 Hb2 Hcont".
     (* ---- +0x2e: c.ldsp ra,8(sp) ---- *)
@@ -348,7 +348,7 @@ Section ProofMemcmp.
         ([∗ list] j ∈ seq 0 n, (pa_add s2 j) ↦ₘ{dq2} g j) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn64 rem.
     induction rem as [| rem' IH]; intros t M CID0 Hchain Hsum Hrem Heq Hsp Ha0 Ha1 Ha3 Hthr;
       [ exfalso; lia |].
@@ -632,7 +632,7 @@ Section ProofMemcmp.
   Lemma wp_memcmp_sconf (mm : regfile)
       (n : nat) (f g : nat -> bv 8) (K : nat) (dq1 dq2 : dfrac) (b : bool) (p : mword 64)
     : wp_memcmp_sconf_body mm n f g K dq1 dq2 b p.
-  Proof.
+  Proof using .
     cbv beta delta [wp_memcmp_sconf_body].
     intros pcE s1 s2 ret_tgt HK Ha2 Hn32.
     pose (sp0 := (mm !!! Regidx csp_rs1 : mword 64)).

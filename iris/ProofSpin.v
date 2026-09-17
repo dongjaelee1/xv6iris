@@ -44,7 +44,7 @@ Section ProofSpin.
   Lemma decode_C_J s :
     eq_vec (_get_Misa_C (register_lookup misa s.(sregs))) ('b"1") = true ->
     exec (ext_decode_compressed h_spin) s = Some (C_J imm_spin, s).
-  Proof.
+  Proof using .
   intro HmisaC. rvc_oneshot s HmisaC.
 Qed.
 
@@ -55,7 +55,7 @@ Qed.
     eq_vec (access_vec_dec target 0) ('b"0") = true ->
     exec (currentlyEnabled Ext_Zca) s = Some (true, s) ->
     exec (jump_to target) s = Some (RETIRE_SUCCESS, set_reg s nextPC target).
-  Proof.
+  Proof using .
     intros Halign Hzca.
     unfold jump_to. rewrite exec_catch_early_return.
     change (ext_control_check_pc target) with (@None unit). cbv iota beta.
@@ -91,7 +91,7 @@ Qed.
     exec (execute_JAL imm zreg) s
       = Some (RETIRE_SUCCESS,
               set_reg s nextPC (add_vec (register_lookup PC s.(sregs)) (sign_extend' 64 imm))).
-  Proof.
+  Proof using .
     intros Halign Hzca.
     unfold execute_JAL, get_next_pc.
     rewrite (exec_bind_Some _ _ _ _ _ (exec_read_reg nextPC s)).
@@ -108,7 +108,7 @@ Qed.
   (* ---- the [instr] fact for the spin instruction, off the kernel text ---- *)
   Lemma spin_instr :
     kernel_text -∗ instr pc_spin true (JAL (jimm_spin, zreg)).
-  Proof.
+  Proof using .
     mk_rvc KernelSyms.spin h_spin pc_spin (JAL (jimm_spin, zreg))
       decode_C_J exec_execute_C_J.
   Qed.
@@ -128,7 +128,7 @@ Qed.
   Lemma wp_spin (m : regfile)
       (pmpcfg0 : type_of_register pmpcfg_n) (q : Qp) :
     wp_spin_body m pmpcfg0 q.
-  Proof.
+  Proof using .
     cbv beta delta [wp_spin_body].
     assert (Hbit0 : eq_vec (access_vec_dec pc_spin 0) ('b"0") = true)
       by (vm_compute; reflexivity).

@@ -842,7 +842,7 @@ Section Snap.
 
   Global Instance fs_snap_timeless `{!GTimeless Γ} g D S :
     Timeless (fs_snap Γ g D S).
-  Proof. rewrite /fs_snap. apply _. Qed.
+  Proof using . rewrite /fs_snap. apply _. Qed.
 
   (* THE GUEST HALF of a snapshot's abstract map, at the map name [gt]
      (round C): what every producer of a snapshot hands out beside it, and
@@ -851,13 +851,13 @@ Section Snap.
     ghost_map_auth gt (1/2) I.
 
   Global Instance snap_guest_timeless gt I : Timeless (snap_guest gt I).
-  Proof. rewrite /snap_guest. apply _. Qed.
+  Proof using . rewrite /snap_guest. apply _. Qed.
 
   (* the tie, read: any fraction of the snapshot's map authority agrees with
      the snapshot's own node map *)
   Lemma fs_snap_top_agree Γ (g : gname) D S (q : Qp) (I : gmap Z fs_node) :
     fs_snap Γ g D S -∗ ghost_map_auth (γtop Γ) q I -∗ ⌜I = fss_inodes S⌝.
-  Proof.
+  Proof using .
     rewrite /fs_snap. iIntros "(_ & Hta & _) Hh".
     iDestruct (ghost_map_auth_agree with "Hh Hta") as %Heq.
     iPureIntro. exact Heq.
@@ -869,7 +869,7 @@ Section Snap.
     fs_snap Γ g D S -∗
       ghost_map_auth (γtop Γ) (1/2) (fss_inodes S) ∗
       (ghost_map_auth (γtop Γ) (1/2) (fss_inodes S) -∗ fs_snap Γ g D S).
-  Proof.
+  Proof using .
     rewrite /fs_snap. iIntros "(Hba & Hta & Htf & HS & Hlk & %Hsh)".
     iFrame "Hta". iIntros "Hta".
     iSplitL "Hba"; [iExact "Hba" |].
@@ -897,10 +897,10 @@ Section Snap.
   Definition P_dur D : iProp Σ := (∃ gt : gname, P_dur_at gt D)%I.
 
   Global Instance P_dur_at_timeless gt D : Timeless (P_dur_at gt D).
-  Proof. rewrite /P_dur_at. apply _. Qed.
+  Proof using . rewrite /P_dur_at. apply _. Qed.
 
   Global Instance P_dur_timeless D : Timeless (P_dur D).
-  Proof. rewrite /P_dur. apply _. Qed.
+  Proof using . rewrite /P_dur. apply _. Qed.
 
   (* THE PAIR (round C): the snapshot AND an OPAQUE guest at its map name,
      the guest UNDER A LATER -- the transport yields [▷ A], so this is the
@@ -946,7 +946,7 @@ Section Snap.
       ∗ own (γlink Γ) (link_tok_elem ROOTINO v)
       (* ...and the fresh epoch WITH ITS GUEST HALF (round C, ruling 6) *)
       ∗ ∃ gt : gname, P_dur_at gt D ∗ snap_guest gt (fss_inodes S).
-  Proof.
+  Proof using .
     intros Hq Hsh Hle. iIntros "HA HS Ht".
     iMod (fs_state_xfer_tok Γ Hex A M Hag q S ROOTINO v Hq with "HA HS Ht")
       as (g gl gt B) "(%Hin & HA & HS & Ht & Hba & Hta & Htf & HS' & Ht')".
@@ -1000,7 +1000,7 @@ Section Snap.
     P_dur_at gt D -∗ ghost_map_auth gt (1/2) I ==∗
       P_dur_at gt D ∗ ghost_map_auth gt (1/2) I
       ∗ ∃ gt' : gname, P_dur_at gt' D ∗ snap_guest gt' I.
-  Proof.
+  Proof using .
     iIntros "HD Hg". rewrite {1}/P_dur_at.
     iDestruct "HD" as (g gl S) "Hs".
     iDestruct (fs_snap_top_agree (snap_gamma g gl gt) g D S (1/2) I
@@ -1044,7 +1044,7 @@ Section Snap.
     ([∗ map] k ↦ bs ∈ fn_blk n,
        blk_owned (snap_gamma g gl gt) (fn_naddr n k) bs) -∗
     ⌜forall k bs, fn_blk n !! k = Some bs -> D !! fn_naddr n k = Some bs⌝.
-  Proof.
+  Proof using .
     intros Hf. iIntros "Hau Hdat".
     rewrite bi.pure_forall. iIntros (k).
     rewrite bi.pure_forall. iIntros (bs).
@@ -1057,7 +1057,7 @@ Section Snap.
     dblk_full D ->
     snap_auth g D -∗ ind_owned (snap_gamma g gl gt) n -∗
     ⌜fn_indb n <> 0 -> D !! fn_indb n = Some (ind_bytes (fn_ent n))⌝.
-  Proof.
+  Proof using .
     intros Hf. iIntros "Hau Hind".
     rewrite bi.pure_impl. iIntros (Hnz).
     rewrite /ind_owned (decide_False _ _ Hnz).
@@ -1069,7 +1069,7 @@ Section Snap.
     dblk_full D ->
     snap_auth g D -∗ free_pool (snap_gamma g gl gt) nb u -∗
     ⌜forall b, 0 <= b < nb -> b ∉ u -> is_Some (D !! b)⌝.
-  Proof.
+  Proof using .
     intros Hf. iIntros "Hau Hpool".
     rewrite bi.pure_forall. iIntros (b).
     rewrite bi.pure_impl. iIntros (Hb).
@@ -1086,7 +1086,7 @@ Section Snap.
 
   Lemma inode_dat_owns Γ (n : fs_node) (b : Z) :
     fn_owns n b -> inode_dat Γ n ⊢ ∃ bs, blk_owned Γ b bs.
-  Proof.
+  Proof using .
     intros Hon. rewrite /inode_dat. iIntros "[Hd Hi]".
     destruct Hon as [(k & [bs Hk] & <-) | [Hnz <-]].
     - iDestruct (big_sepM_lookup _ _ k bs Hk with "Hd") as "Hb".
@@ -1097,14 +1097,14 @@ Section Snap.
 
   Lemma inode_phi_owns Γ (sb : fs_sb) (i : Z) (n : fs_node) (b : Z) :
     fn_owns n b -> inode_phi Γ sb i n ⊢ ∃ bs, blk_owned Γ b bs.
-  Proof.
+  Proof using .
     intros Hon. rewrite inode_phi_dat. iIntros "[_ Hd]".
     iApply (inode_dat_owns Γ n b Hon with "Hd").
   Qed.
 
   Lemma inode_dat_slot_inj Γ (Hex : phi_excl Γ) (i : Z) (n : fs_node) :
     inode_local i n -> inode_dat Γ n -∗ ⌜fn_slot_inj n⌝.
-  Proof.
+  Proof using .
     intros Hloc. iIntros "Hd".
     rewrite bi.pure_forall. iIntros (k).
     rewrite bi.pure_forall. iIntros (j).
@@ -1163,7 +1163,7 @@ Section Snap.
     snap_auth g D -∗
     inode_phi (snap_gamma g gl gt) sb i n -∗
     ⌜snap_inode_read sb D i n⌝.
-  Proof.
+  Proof using .
     intros Hf Hi Hloc. iIntros "Hau Hphi".
     rewrite inode_phi_dat. iDestruct "Hphi" as "[Hrec Hdat]".
     iDestruct (inode_dat_slot_inj (snap_gamma g gl gt)
@@ -1198,7 +1198,7 @@ Section Snap.
     snap_auth g D -∗
     ([∗ map] i ↦ n ∈ I, inode_phi (snap_gamma g gl gt) sb i n) -∗
     ⌜forall i n, I !! i = Some n -> snap_inode_read sb D i n⌝.
-  Proof.
+  Proof using .
     intros Hf Hrng Hloc. iIntros "Hau Hin".
     rewrite bi.pure_forall. iIntros (i).
     rewrite bi.pure_forall. iIntros (n).
@@ -1215,7 +1215,7 @@ Section Snap.
     ([∗ map] i ↦ n ∈ I, inode_phi Γ sb i n) -∗
     ⌜forall i n j m b, I !! i = Some n -> I !! j = Some m ->
        fn_owns n b -> fn_owns m b -> i = j⌝.
-  Proof.
+  Proof using .
     iIntros "Hin".
     rewrite bi.pure_forall. iIntros (i).
     rewrite bi.pure_forall. iIntros (n).
@@ -1243,7 +1243,7 @@ Section Snap.
     free_pool Γ nb u -∗
     ([∗ map] i ↦ n ∈ I, inode_phi Γ sb i n) -∗
     ⌜forall i n b, I !! i = Some n -> fn_owns n b -> 0 <= b < nb -> b ∈ u⌝.
-  Proof.
+  Proof using .
     iIntros "Hpool Hin".
     rewrite bi.pure_forall. iIntros (i).
     rewrite bi.pure_forall. iIntros (n).
@@ -1264,7 +1264,7 @@ Section Snap.
     I !! i = Some n -> I !! z = Some m -> fn_owns n b ->
     ([∗ map] j ↦ x ∈ I, inode_phi Γ sb j x) ⊢
       (∃ bs, blk_owned Γ b bs) ∗ rec_owned Γ sb z (fn_rec m).
-  Proof.
+  Proof using .
     intros Hi Hz Hon.
     destruct (decide (z = i)) as [Hzi | Hne].
     - subst z. rewrite Hi in Hz. injection Hz as Hnm. subst m.
@@ -1288,7 +1288,7 @@ Section Snap.
     ([∗ map] j ↦ m ∈ fss_inodes S, inode_phi Γ (fss_sb S) j m) -∗
     ⌜forall i n b, fss_inodes S !! i = Some n -> fn_owns n b ->
        ~ snap_meta S b⌝.
-  Proof.
+  Proof using .
     intros Hrng Hloc. iIntros "Hsbb Hbmb Hin".
     rewrite bi.pure_forall. iIntros (i).
     rewrite bi.pure_forall. iIntros (n).
@@ -1332,7 +1332,7 @@ Section Snap.
     free_pool Γ (sb_size (fss_sb S)) (fss_used S) -∗
     ⌜forall b, snap_meta S b -> 0 <= b < sb_size (fss_sb S) ->
        b ∈ fss_used S⌝.
-  Proof.
+  Proof using .
     intros Hrng Hloc. iIntros "Hsbb Hbmb Hin Hpool".
     rewrite bi.pure_forall. iIntros (b).
     rewrite bi.pure_impl. iIntros (Hmeta).
@@ -1368,7 +1368,7 @@ Section Snap.
   Theorem fs_snap_read_ok (g gl gt : gname) D S :
     dblk_full D ->
     fs_snap (snap_gamma g gl gt) g D S -∗ ⌜snap_ok S D⌝.
-  Proof.
+  Proof using .
     (* [snap_auth] is itself a pair, so the epoch's identity comes off as
        ONE hypothesis (a [&]-pattern would descend into it) *)
     intros Hf. iIntros "[Hau Hrest]".
@@ -1454,7 +1454,7 @@ Section Snap.
     dblk_full D ->
     fs_snap (snap_gamma g gl gt) g D S -∗
     ⌜snap_ok S D⌝ ∗ fs_snap (snap_gamma g gl gt) g D S.
-  Proof.
+  Proof using .
     intros Hf. iIntros "H".
     iDestruct (fs_snap_read_ok _ _ _ _ _ Hf with "H") as %Hok.
     iSplitR; [by iPureIntro | iExact "H"].
@@ -1472,7 +1472,7 @@ Section Snap.
      about [D] at all.  The guest stays OPAQUE here. *)
   Lemma dsnap_step_xfer (G : gname -> iProp Σ) (gt : gname) D D' :
     dur_pair G D' -∗ P_dur_at gt D -∗ ▷ G gt ==∗ dur_pair G D'.
-  Proof. iIntros "H _ _". by iModIntro. Qed.
+  Proof using . iIntros "H _ _". by iModIntro. Qed.
 
   (* ------------------------------------------------------------------ *)
   (*  8.  WHAT A CONSUMER READS OFF THE CURRENT SNAPSHOT                  *)
@@ -1483,13 +1483,13 @@ Section Snap.
      conclusion is pure and the snapshot stays whole. *)
   Lemma P_dur_at_tie (gt : gname) D :
     dblk_full D -> P_dur_at gt D -∗ ∃ S, ⌜snap_ok S D⌝.
-  Proof.
+  Proof using .
     intros Hf. iIntros "H". iDestruct "H" as (g gl S) "Hs".
     iDestruct (fs_snap_read_ok _ _ _ _ _ Hf with "Hs") as %Hok. eauto.
   Qed.
 
   Lemma P_dur_tie D : dblk_full D -> P_dur D -∗ ∃ S, ⌜snap_ok S D⌝.
-  Proof.
+  Proof using .
     intros Hf. iIntros "H". iDestruct "H" as (gt) "Hs".
     iApply (P_dur_at_tie gt D Hf with "Hs").
   Qed.
@@ -1499,7 +1499,7 @@ Section Snap.
      snapshot goes through this plus the pure clauses of [snap_ok]. *)
   Lemma P_dur_at_tie_keep (gt : gname) D :
     dblk_full D -> P_dur_at gt D -∗ ∃ S, ⌜snap_ok S D⌝ ∗ P_dur_at gt D.
-  Proof.
+  Proof using .
     intros Hf. iIntros "H". iDestruct "H" as (g gl S) "Hs".
     iDestruct (fs_snap_read_ok _ _ _ _ _ Hf with "Hs") as %Hok.
     iExists S. iSplitR; [iPureIntro; exact Hok |].
@@ -1508,7 +1508,7 @@ Section Snap.
 
   Lemma P_dur_tie_keep D :
     dblk_full D -> P_dur D -∗ ∃ S, ⌜snap_ok S D⌝ ∗ P_dur D.
-  Proof.
+  Proof using .
     intros Hf. iIntros "H". iDestruct "H" as (gt) "Hs".
     iDestruct (P_dur_at_tie_keep gt D Hf with "Hs") as (S) "[%Hok Hs]".
     iExists S. iSplitR; [iPureIntro; exact Hok |]. iExists gt. iExact "Hs".
@@ -1768,7 +1768,7 @@ Section EraHome.
     (forall b, b ∈ home -> length (Pb b) = BSIZE) ->
     ([∗ set] b ∈ home, fsblock (fs_bytes γfs) b (Pb b))
     ⊣⊢ phi_map (fs_gamma_L γfs) (fs_dbytes (fs_restrict Pb home)).
-  Proof.
+  Proof using .
     intros Hlen.
     rewrite (phi_map_set_blocks (fs_gamma_L γfs) Pb home Hlen).
     apply big_sepS_proper. intros b Hb.
@@ -1791,7 +1791,7 @@ Section EraHome.
     ⊢ fs_footprint (fs_gamma_L γfs) (DfracOwn 1) S
       ∗ phi_map (fs_gamma_L γfs)
           (fs_dbytes (fs_restrict Pb home) ∖ xr_union (xr_fs S PM)).
-  Proof.
+  Proof using .
     intros Hlen Hshape Hdisj Hsub.
     rewrite (fs_home_blocks_phi_map γfs Pb home Hlen).
     exact (fs_footprint_install (fs_gamma_L γfs) S PM _ Hshape Hdisj Hsub).
@@ -1808,7 +1808,7 @@ Section EraHome.
     ⊢ fs_state (fs_gamma_L γfs) (DfracOwn 1) S
       ∗ phi_map (fs_gamma_L γfs)
           (fs_dbytes (fs_restrict Pb home) ∖ xr_union (xr_fs S PM)).
-  Proof.
+  Proof using .
     intros Hlen Hshape Hdisj Hsub.
     rewrite (fs_home_blocks_phi_map γfs Pb home Hlen).
     exact (fs_state_install (fs_gamma_L γfs) S PM _ Hshape Hdisj Hsub).

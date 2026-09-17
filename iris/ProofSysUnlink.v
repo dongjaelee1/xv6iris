@@ -118,7 +118,7 @@ Section ProofSysUnlink.
       pu
       dqb dqs dqbs v0 pid U m K eb b lks P Pmiss
       Phient Phitgt Phiex Phimiss.
-  Proof.
+  Proof using .
     cbv beta zeta delta [wp_sys_unlink_body wp_sys_unlink_frame].
     intros HK HdevR Hnib0 Hgeom Hsize Hbm0 Hbmcov
            Hbmlog Hist0 Hcovb Hbmgeo Hiregb Hnib16 Hj Hgl Heb Harg0.

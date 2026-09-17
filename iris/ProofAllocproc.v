@@ -744,7 +744,7 @@ Section ProofAllocprocPid.
            else SlotGen.nextpid_shot ∗ SlotGen.init_reg) -∗
     wp_next false p (fun (CIDc : CpuId) => ap_pid_post (CID := CIDc) m k av n eb p lks tk Q) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hav Hk Hs1 Hbelow Hpid0.
     iIntros "Hcg Hcpu #Htext Hpc #Hislock Hpidi Hpidh Hsg Htok Hcont".
     (* release below spells the window index at its own exit arm; the two
@@ -1497,7 +1497,7 @@ Section ProofAllocproc.
       (pme : mword 64) (on : option nat) (op : option nat) (tk : bool)
       (b : bool) (lks : gset string) (Q : Z -> iProp Σ)
     : wp_allocproc_core_body γa γk γp γf γs m lvl K eb pme on op tk b lks Q.
-  Proof.
+  Proof using .
     cbv beta delta [wp_allocproc_core_body].
     intros pcE ret_tgt HK Hlvl Hbelow.
     pose proof (locks_below_not_elem _ _ Hbelow) as Hfresh.
@@ -3425,7 +3425,7 @@ Section SealAllocproc.
       (pme : mword 64) (on : option nat) (op : option nat) (tk : bool)
       (b : bool) (lks : gset string) (Q : Z -> iProp Σ)
     : wp_allocproc_sconf_body γa γk γp γf γs m lvl K eb pme on op tk b lks Q.
-  Proof.
+  Proof using .
     cbv beta delta [wp_allocproc_sconf_body].
     intros pcE ret_tgt HK Hlvl Hex Hbelow.
     destruct Hex as (nb & Hon & Hnb). subst on.

@@ -102,7 +102,7 @@ Section SPtFetch.
     hw_config -∗
     spt_fetch_tr (s_Df_mix dq) (sr_swp_res_at R satp0) pc mst0 satp0 mie0
       mdv0 menv0 pcfg paddr.
-  Proof.
+  Proof using .
     intros Hmenv HSXL HMPRV Hsatpok Hpmpok.
     iIntros "#Hhw".
     iDestruct (hw_config_cert with "Hhw") as "#Hcert".
@@ -161,7 +161,7 @@ Section SPtFetch.
     hw_config -∗
     spt_fetch_tr_b (s_Df_mix dq) (sr_swp_res_at R satp0) pc mst0 satp0 mie0
       mdv0 menv0 pcfg paddr.
-  Proof.
+  Proof using .
     intros Hmenv HSXL HMPRV Hsatpok Hpmpok Hbare Hbside.
     iIntros "#Hhw".
     iDestruct (hw_config_cert with "Hhw") as "#Hcert".
@@ -286,7 +286,7 @@ Section SPtData.
                   hreg_frame rsf SD ∗
                   hreg_frame_ro (sda_Df dq) rsf sda_Dro ∗
                   sr_swp_res R rsf ∗ resv_any cpu_id).
-  Proof.
+  Proof using .
     intros Hacc Hallow Hmenv HSXL HMPRV Hsok Hpmp Hpma Hlt Hpin Hdisj Hside.
     assert (Heff : exec (effectivePrivilege acc
                      (register_lookup mstatus
@@ -415,7 +415,7 @@ Section SPtData.
          reg_pointsto pma_regions DfracDiscarded pmar0 ∗
          reg_pointsto htif_tohost_base DfracDiscarded None ∗
          reg_pointsto misa DfracDiscarded MISA_C ∗ sr_inv R).
-  Proof.
+  Proof using .
     intros Hmenv HSXL HMPRV Hpma.
     iIntros "Hms Hpriv Hmenv Hpma Hhtif Hmisa Hinv".
     iDestruct (sr_slot_acc R with "Hinv") as (satp0 pcfg paddr tlbv)
@@ -609,7 +609,7 @@ Section SPtFolded.
          pc_is npc -∗ Rl npc ms1 mdv1 -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HSIE HMPRV HSXL Hmm HPBMTE Hmenvval.
     iIntros "#Hhw #Hminv Hhs Hpriv Hmst Hmie Hmdl Hmenv Hinv Hpc Hinstr Hex
              Hcont".

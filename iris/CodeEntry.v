@@ -35,35 +35,35 @@ Section CodeEntry.
   (* ---- _entry @ KernelSyms._entry, 26 bytes ---- *)
 
   Lemma eni_00 : kernel_text -∗ instr (mword_of_int KernelSyms._entry : mword 64) false (UTYPE (mword_of_int 10 : mword 20, Regidx (mword_of_int 2), AUIPC)).
-  Proof. mk_base KernelSyms._entry (mword_of_int 0x0000a117 : mword 32)
+  Proof using . mk_base KernelSyms._entry (mword_of_int 0x0000a117 : mword 32)
     (mword_of_int KernelSyms._entry : mword 64) (UTYPE (mword_of_int 10 : mword 20, Regidx (mword_of_int 2), AUIPC)) kd_0000a117. Qed.
 
   Lemma eni_04 : kernel_text -∗ instr (mword_of_int (KernelSyms._entry + 0x4) : mword 64) false (LOAD (mword_of_int 792 : mword 12, Regidx (mword_of_int 2), Regidx (mword_of_int 2), false, 8)).
-  Proof. mk_base (KernelSyms._entry + 0x4) (mword_of_int 0x31813103 : mword 32)
+  Proof using . mk_base (KernelSyms._entry + 0x4) (mword_of_int 0x31813103 : mword 32)
     (mword_of_int (KernelSyms._entry + 0x4) : mword 64) (LOAD (mword_of_int 792 : mword 12, Regidx (mword_of_int 2), Regidx (mword_of_int 2), false, 8)) kd_31813103. Qed.
 
   Lemma eni_08 : kernel_text -∗ instr (mword_of_int (KernelSyms._entry + 0x8) : mword 64) true (UTYPE (sign_extend' 20 (mword_of_int 1 : mword 6), Regidx (mword_of_int 10), LUI)).
-  Proof. mk_rvc (KernelSyms._entry + 0x8) (mword_of_int 0x6505 : mword 16)
+  Proof using . mk_rvc (KernelSyms._entry + 0x8) (mword_of_int 0x6505 : mword 16)
     (mword_of_int (KernelSyms._entry + 0x8) : mword 64) (UTYPE (sign_extend' 20 (mword_of_int 1 : mword 6), Regidx (mword_of_int 10), LUI)) kd_6505 exec_execute_C_LUI. Qed.
 
   Lemma eni_0a : kernel_text -∗ instr (mword_of_int (KernelSyms._entry + 0xa) : mword 64) false (CSRReg (mword_of_int 3860 : mword 12, zreg, Regidx (mword_of_int 11), CSRRS)).
-  Proof. mk_base (KernelSyms._entry + 0xa) (mword_of_int 0xf14025f3 : mword 32)
+  Proof using . mk_base (KernelSyms._entry + 0xa) (mword_of_int 0xf14025f3 : mword 32)
     (mword_of_int (KernelSyms._entry + 0xa) : mword 64) (CSRReg (mword_of_int 3860 : mword 12, zreg, Regidx (mword_of_int 11), CSRRS)) kd_f14025f3. Qed.
 
   Lemma eni_0e : kernel_text -∗ instr (mword_of_int (KernelSyms._entry + 0xe) : mword 64) true (ITYPE (sign_extend' 12 (mword_of_int 1 : mword 6), Regidx (mword_of_int 11), Regidx (mword_of_int 11), ADDI)).
-  Proof. mk_rvc (KernelSyms._entry + 0xe) (mword_of_int 0x0585 : mword 16)
+  Proof using . mk_rvc (KernelSyms._entry + 0xe) (mword_of_int 0x0585 : mword 16)
     (mword_of_int (KernelSyms._entry + 0xe) : mword 64) (ITYPE (sign_extend' 12 (mword_of_int 1 : mword 6), Regidx (mword_of_int 11), Regidx (mword_of_int 11), ADDI)) kd_0585 exec_execute_C_ADDI. Qed.
 
   Lemma eni_10 : kernel_text -∗ instr (mword_of_int (KernelSyms._entry + 0x10) : mword 64) false (MUL (Regidx (mword_of_int 11), Regidx (mword_of_int 10), Regidx (mword_of_int 10), mulop_mul)).
-  Proof. mk_base (KernelSyms._entry + 0x10) (mword_of_int 0x02b50533 : mword 32)
+  Proof using . mk_base (KernelSyms._entry + 0x10) (mword_of_int 0x02b50533 : mword 32)
     (mword_of_int (KernelSyms._entry + 0x10) : mword 64) (MUL (Regidx (mword_of_int 11), Regidx (mword_of_int 10), Regidx (mword_of_int 10), mulop_mul)) kd_02b50533. Qed.
 
   Lemma eni_14 : kernel_text -∗ instr (mword_of_int (KernelSyms._entry + 0x14) : mword 64) true (RTYPE (Regidx (mword_of_int 10), Regidx (mword_of_int 2), Regidx (mword_of_int 2), ADD)).
-  Proof. mk_rvc (KernelSyms._entry + 0x14) (mword_of_int 0x912a : mword 16)
+  Proof using . mk_rvc (KernelSyms._entry + 0x14) (mword_of_int 0x912a : mword 16)
     (mword_of_int (KernelSyms._entry + 0x14) : mword 64) (RTYPE (Regidx (mword_of_int 10), Regidx (mword_of_int 2), Regidx (mword_of_int 2), ADD)) kd_912a exec_execute_C_ADD. Qed.
 
   Lemma eni_16 : kernel_text -∗ instr (mword_of_int (KernelSyms._entry + 0x16) : mword 64) false (JAL (mword_of_int 66 : mword 21, Regidx (mword_of_int 1))).
-  Proof. mk_base (KernelSyms._entry + 0x16) (mword_of_int 0x042000ef : mword 32)
+  Proof using . mk_base (KernelSyms._entry + 0x16) (mword_of_int 0x042000ef : mword 32)
     (mword_of_int (KernelSyms._entry + 0x16) : mword 64) (JAL (mword_of_int 66 : mword 21, Regidx (mword_of_int 1))) kd_042000ef. Qed.
 
 End CodeEntry.

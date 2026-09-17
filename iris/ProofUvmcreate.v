@@ -126,7 +126,7 @@ Section ProofUvmcreate.
       uvmcreate_post γa γk on (mm !!! Regidx (mword_of_int 4)) (mr !!! Regidx (mword_of_int 10)) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hc4 Htsp Hts1 Htrest Hmmsp.
     set (spr := add_vec sp0 (sign_extend' 64 (sign_extend' 12 (mword_of_int 32 : mword 6)))).
     (* the three saved-slot addresses, purely arithmetic in [sp0] -- the
@@ -278,7 +278,7 @@ Section ProofUvmcreate.
       (mm : regfile) (lvl K : nat) (eb : bool) (p : mword 64)
       (on : option nat) (b : bool) (lks : gset string)
     : wp_uvmcreate_sconf_body γa γk mm lvl K eb p on b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_uvmcreate_sconf_body].
     intros ret_tgt Hlvl HK Hcid Hbelow.
     pose proof (uvc_cap_bounds K HK) as (Hc4 & Hc2 & Hc14).

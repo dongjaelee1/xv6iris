@@ -73,7 +73,7 @@ Section ProofSetkilled.
       (m : regfile) (av : nat) (n : nat) (eb : bool) (p : mword 64) (b : bool) (lks : gset string)
       (pidv : mword 32) (gn : gname) (self : bool)
     : wp_setkilled_sconf_body γs j γl m av n eb p b lks pidv gn self.
-  Proof.
+  Proof using .
     cbv beta delta [wp_setkilled_sconf_body].
     intros pcE ret_tgt Ha0 Hj Hgl Hn Hav Hpidnz Hno.
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).

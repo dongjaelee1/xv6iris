@@ -428,7 +428,7 @@ Section UvLoadPure.
       tlb_ok_pt (mword_of_int 0) t' (register_lookup tlb rs') /\
       uv_tree_ok pt md t' /\
       pt_same_shape 2 t t'.
-  Proof.
+  Proof using Hk Hk8 Hkdvd Hread_plain Huintk.
     intros Hl Hleaf Hcanon Hal Hin Hwin Hcfg Hpins Htok.
     destruct (uv_walk_data (Load Data) pt t md rs w va
                 (or_intror (or_introl eq_refl))
@@ -596,7 +596,7 @@ Section UmodeLoadExec.
       = Some (RETIRE_SUCCESS,
               set_reg s2 (R_bitvector_64 (gpr_of_Z (uint rd)))
                 (regval_into_reg (extend_value is_unsigned dv))).
-  Proof.
+  Proof using Hkw.
     intros Hrd Hcp Heff Hpml Htm Hbase Hvra.
     apply (exec_execute_LOAD_u_ok imm rs1 rd is_unsigned k dv s s2
              ltac:(change xlen_bytes with 8; apply Z.leb_le;
@@ -627,7 +627,7 @@ Section UmodeLoadExec.
             (Load Data) false false false) s mm = true ->
     goodmb Du_r Du_w (execute (LOAD (imm, Regidx rs1, Regidx rd, is_unsigned, k)))
       s mm = true.
-  Proof.
+  Proof using Hkw.
     intros Hrd Hcp Heff Heffg Hpml Hpmlg Htm Htmg Hbase Hvra Hvrag.
     apply (goodmb_execute_LOAD_u_ok Du_r Du_w imm rs1 rd is_unsigned k dv s s2 mm
              (Du_gpr_of_Z rd Hrd)
@@ -725,7 +725,7 @@ Section UvLoadPostFetch.
     swp (execute i)
       (run_exec_post (fun (r : ExecutionResult) (ib' : mword 32) =>
                         uv_step_post C R rsE (Step_Execute (r, ib'))) ib).
-  Proof.
+  Proof using .
     intros Hkw Hred Hg1 Hexp Hrd Hva Hwval Hl Hchk Hcanon Hntx Hpg Hal HMb Hinj
       Hpins2 Lpc2 Lhs2 Lcp2 Hms2 Hgag2 Hx0 Lstvec2 Lmie2 Lmdl2 Lmedl2 Lmenv2
       Lmste2 Lsste2 Lsenv2 Lsatp2 Lpcfg2 Lpaddr2 Lmi2 Hagd2 Htok'.
@@ -995,7 +995,7 @@ Section UvLoadObl.
          (fun (xv : mword 64) (e : ExceptionType) =>
             uv_step_post C R rs1 (Step_Fetch_Failure (Virtaddr xv, e)))
          (fun _ : ext_fetch_addr_error => False)).
-  Proof.
+  Proof using .
     intros Hpre Hdec Hkw Hred Hg1 Hexp Hrd Hva
       Hwval Hl Hchk Hcanon Hntx Hpg Hal HMb.
     pose proof Hpre as (Hinj & Htok & HpinsA & LhsA & LcpA & HmsokA & LpcA &
@@ -1116,7 +1116,7 @@ Section UvLoadObl.
          (fun (xv : mword 64) (e : ExceptionType) =>
             uv_step_post C R rs1 (Step_Fetch_Failure (Virtaddr xv, e)))
          (fun _ : ext_fetch_addr_error => False)).
-  Proof.
+  Proof using .
     intros Hpre Hdec Hkw Hred Hg1 Hexp Hrd Hva
       Hwval Hl Hchk Hcanon Hntx Hpg Hal HMb.
     pose proof Hpre as (Hinj & Htok & HpinsA & LhsA & LcpA & HmsokA & LpcA &
@@ -1254,7 +1254,7 @@ Section WpUmodeLoad.
          pc_is (CID := CID0) (add_vec_int pc (if is_rvc then 2 else 4)) -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hkw Hui Hred Hg1 Hlpad Hexp Hrd Hva Hl Hchk Hcanon Hntx Hpg Hal HMb Hwval.
     iIntros "Hcg Hpc Hcont".
     iApply (wp_uv_step C pt _ Ψ M m pc with "Hcg Hpc [] Hcont").
@@ -1318,7 +1318,7 @@ Section WpUmodeLoad.
        pc_is (CID := CID0) (add_vec_int pc (if is_rvc then 2 else 4)) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hkw Hui Hred Hg1 Hlpad Hexp Hrd Hva Hl Hchk Hcanon Hntx Hpg Hal HMb Hwval.
     iIntros "Hcg Hpc Hcont".
     iApply (wp_uv_load_later Ψ M m pc is_rvc i o imm rs1 rd is_unsigned k
@@ -1356,7 +1356,7 @@ Section WpUmodeLoad.
        pc_is (CID := CID0) (add_vec_int pc 4) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hui Hrd Hva Hl Hchk Hcanon Hntx Hpg Hal HMb Hwval.
     iIntros "Hcg Hpc Hcont".
     iApply (wp_uv_load Ψ M m pc false
@@ -1399,7 +1399,7 @@ Section WpUmodeLoad.
        pc_is (CID := CID0) (add_vec_int pc 2) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hui Hrd Hva Hl Hchk Hcanon Hntx Hpg Hal HMb Hwval.
     iIntros "Hcg Hpc Hcont".
     iApply (wp_uv_load Ψ M m pc true (C_LDSP (uimm, Regidx rd))
@@ -1443,7 +1443,7 @@ Section WpUmodeLoad.
        pc_is (CID := CID0) (add_vec_int pc 4) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hui Hrd Hva Hl Hchk Hcanon Hntx Hbb Hwval.
     iIntros "Hcg Hpc Hcont".
     iApply (wp_uv_load Ψ M m pc false
@@ -1490,7 +1490,7 @@ Section WpUmodeLoad.
        pc_is (CID := CID0) (add_vec_int pc 4) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hui Hrd Hva Hl Hchk Hcanon Hntx Hpg Hal Hbw Hwval.
     iIntros "Hcg Hpc Hcont".
     iApply (wp_uv_load Ψ M m pc false
@@ -1530,7 +1530,7 @@ Section WpUmodeLoad.
        pc_is (CID := CID0) (add_vec_int pc 4) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hui Hrd Hva Hl Hchk Hcanon Hntx Hpg Hal Hbw Hwval.
     iIntros "Hcg Hpc Hcont".
     iApply (wp_uv_load Ψ M m pc false
@@ -1576,7 +1576,7 @@ Section WpUmodeLoad.
        pc_is (CID := CID0) (add_vec_int pc 2) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hui Hcr1 Hcrd Hrd Hva Hl Hchk Hcanon Hntx Hpg Hal Hbw Hwval.
     iIntros "Hcg Hpc Hcont".
     iApply (wp_uv_load Ψ M m pc true (C_LW (uimm, Cregidx crs1, Cregidx crd))
@@ -1628,7 +1628,7 @@ Section WpUmodeLoad.
        pc_is (CID := CID0) (add_vec_int pc 2) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hui Hcr1 Hcrd Hrd Hva Hl Hchk Hcanon Hntx Hpg Hal Hbw.
     iIntros "Hcg Hpc Hcont".
     iApply (wp_uv_load Ψ M m pc true (C_LD (uimm, Cregidx crs1, Cregidx crd))

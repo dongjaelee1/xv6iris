@@ -178,29 +178,29 @@ Section twin2.
     (mono_nat_lb_own γloglen K ∨ ⌜K = 0%nat⌝)%I.
 
   Global Instance llb_persistent K : Persistent (llb K).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance llb_timeless K : Timeless (llb K).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma llb_0 : ⊢ llb 0.
-  Proof. by iRight. Qed.
+  Proof using . by iRight. Qed.
 
   Lemma llb_le K K' : (K' ≤ K)%nat → llb K -∗ llb K'.
-  Proof.
+  Proof using .
     iIntros (Hle) "[Hlb|%Hz]".
     - iLeft. by iApply mono_nat_lb_own_le.
     - iRight. iPureIntro. lia.
   Qed.
 
   Lemma llb_max K1 K2 : llb K1 -∗ llb K2 -∗ llb (Nat.max K1 K2).
-  Proof.
+  Proof using .
     iIntros "H1 H2". destruct (decide (K1 ≤ K2)%nat) as [Hle|Hgt].
     - iClear "H1". iApply (llb_le with "H2"). lia.
     - iClear "H2". iApply (llb_le with "H1"). lia.
   Qed.
 
   Lemma llb_valid n K : mono_nat_auth_own γloglen 1 n -∗ llb K -∗ ⌜(K ≤ n)%nat⌝.
-  Proof.
+  Proof using .
     iIntros "Ha [Hlb|%Hz]".
     - by iDestruct (mono_nat_lb_own_valid with "Ha Hlb") as %[_ ?].
     - iPureIntro. lia.
@@ -216,15 +216,15 @@ Section twin2.
     ((own γview (◯ vone h K) ∗ mono_nat_lb_own γloglen K) ∨ ⌜K = 0%nat⌝)%I.
 
   Global Instance view_lb_persistent h K : Persistent (view_lb h K).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance view_lb_timeless h K : Timeless (view_lb h K).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma view_lb_0 h : ⊢ view_lb h 0.
-  Proof. by iRight. Qed.
+  Proof using . by iRight. Qed.
 
   Lemma view_lb_llb h K : view_lb h K -∗ llb K.
-  Proof.
+  Proof using .
     iIntros "[[_ Hlb]|%Hz]"; [by iLeft | by iRight].
   Qed.
 
@@ -236,14 +236,14 @@ Section twin2.
 
   Lemma view_auth_frag tvs h K :
     (K ≤ tvs h)%nat → view_auth tvs -∗ own γview (◯ vone h K).
-  Proof.
+  Proof using .
     iIntros (HK) "Hv". iApply (own_mono with "Hv").
     etrans; [apply auth_frag_mono, vone_incl_vf, HK | apply cmra_included_r].
   Qed.
 
   Lemma view_auth_valid tvs h K :
     view_auth tvs -∗ view_lb h K -∗ ⌜(K ≤ tvs h)%nat⌝.
-  Proof.
+  Proof using .
     iIntros "Ha [[Hf _]|%Hz]"; last (iPureIntro; lia).
     iDestruct (own_valid_2 with "Ha Hf") as %Hv. iPureIntro.
     move: Hv. rewrite -assoc -auth_frag_op.
@@ -256,7 +256,7 @@ Section twin2.
 
   Lemma view_auth_update tvs tvs' :
     (∀ h, tvs h ≤ tvs' h)%nat → view_auth tvs ==∗ view_auth tvs'.
-  Proof.
+  Proof using .
     iIntros (Hle). iApply own_update.
     by apply auth_update, vf_local_update.
   Qed.
@@ -273,7 +273,7 @@ Section twin2.
 
   Lemma ctx_at_halves ξ B D :
     ctx_at ξ 1 B D ⊣⊢ ctx_at ξ (1/2) B D ∗ ctx_at ξ (1/2) B D.
-  Proof.
+  Proof using .
     rewrite /ctx_at.
     rewrite (fractional_half (mono_nat_auth_own (tc_bnd ξ) 1 B)).
     rewrite (fractional_half (ghost_map_auth (tc_dirty ξ) 1 D)).
@@ -282,7 +282,7 @@ Section twin2.
 
   Lemma ctx_at_agree ξ q1 q2 B1 D1 B2 D2 :
     ctx_at ξ q1 B1 D1 -∗ ctx_at ξ q2 B2 D2 -∗ ⌜B1 = B2 ∧ D1 = D2⌝.
-  Proof.
+  Proof using .
     iIntros "[Hb1 Hd1] [Hb2 Hd2]".
     iDestruct (mono_nat_auth_own_agree with "Hb1 Hb2") as %[_ ?].
     iDestruct (ghost_map_auth_agree with "Hd1 Hd2") as %?.
@@ -301,11 +301,11 @@ Section twin2.
      ∃ i m, ⌜k.1 = S i⌝ ∗ i ↪[γlogm]□ m ∗ ⌜wm_tid m = h⌝)%I.
 
   Global Instance dirty_ok_persistent h B k : Persistent (dirty_ok h B k).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma dirty_ok_mono h B B' k :
     (B ≤ B')%nat → dirty_ok h B k -∗ dirty_ok h B' k.
-  Proof.
+  Proof using .
     iIntros (Hle) "[%Hb|H]"; [iLeft; iPureIntro; lia | by iRight].
   Qed.
 
@@ -356,7 +356,7 @@ Section twin2.
   (* Exclusivity / pairwise collisions: one authority, one token. *)
   Lemma own_context_excl ξ h1 h2 :
     own_context ξ h1 -∗ own_context ξ h2 -∗ False.
-  Proof.
+  Proof using .
     iIntros "(%B1 & %K1 & %W1 & %D1 & [Hb1 _] & _)".
     iIntros "(%B2 & %K2 & %W2 & %D2 & [Hb2 _] & _)".
     iApply (mono_nat_auth_own_exclusive with "Hb1 Hb2").
@@ -364,33 +364,33 @@ Section twin2.
 
   Lemma ctx_parked_excl ξ T1 T2 :
     ctx_parked ξ T1 -∗ ctx_parked ξ T2 -∗ False.
-  Proof.
+  Proof using .
     iIntros "(%D1 & [Hb1 _] & _) (%D2 & [Hb2 _] & _)".
     iApply (mono_nat_auth_own_exclusive with "Hb1 Hb2").
   Qed.
 
   Lemma own_context_parked_excl ξ h T :
     own_context ξ h -∗ ctx_parked ξ T -∗ False.
-  Proof.
+  Proof using .
     iIntros "(%B & %K & %W & %D & [Hb1 _] & _) (%D2 & [Hb2 _] & _)".
     iApply (mono_nat_auth_own_exclusive with "Hb1 Hb2").
   Qed.
 
   Global Instance own_context_timeless ξ h : Timeless (own_context ξ h).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance ctx_parked_timeless ξ T : Timeless (ctx_parked ξ T).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance ctx_pointsto_timeless ξ a dq v :
     Timeless (ctx_pointsto ξ a dq v).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance ctx_dom_timeless ξ ξ' : Timeless (ctx_dom ξ ξ').
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (** A discarded byte is persistent -- the dq is mirrored onto the dirty
       fragment precisely so this instance exists definitionally. *)
   Global Instance ctx_pointsto_discarded_persistent ξ a v :
     Persistent (ctx_pointsto ξ a DfracDiscarded v).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* ---------------------------------------------------------------- *)
   (** ** 5. The state interpretation -- MACHINE ONLY                   *)
@@ -415,7 +415,7 @@ Section twin2.
       load/AMO leaves, where the interp is open.) *)
   Lemma twin_view_lb_get img log tvs h :
     tso_interp img log tvs -∗ tso_interp img log tvs ∗ view_lb h (tvs h).
-  Proof.
+  Proof using .
     iIntros "(%HM & %LM & Hh & %Hlat & Hm & %HLM & Hlen & Hv & %Htvs)".
     iDestruct (view_auth_frag tvs h (tvs h) with "Hv") as "#Hf"; first done.
     iDestruct (mono_nat_lb_own_get with "Hlen") as "#Hlb".
@@ -429,7 +429,7 @@ Section twin2.
     (tvs h ≤ tv')%nat → (tv' ≤ length log)%nat →
     tso_interp img log tvs ==∗
     tso_interp img log (λ h0, if decide (h0 = h) then tv' else tvs h0).
-  Proof.
+  Proof using .
     iIntros (Hle Htop) "(%HM & %LM & Hh & %Hlat & Hm & %HLM & Hlen & Hv & %Htvs)".
     iMod (view_auth_update tvs (λ h0, if decide (h0 = h) then tv' else tvs h0)
             with "Hv") as "Hv".
@@ -451,7 +451,7 @@ Section twin2.
     tso_interp img log tvs -∗ own_context ξ h -∗ ctx_pointsto ξ a dq v -∗
     ⌜∀ tv', (tvs h ≤ tv')%nat →
        tso_read (img_fun img) log h tv' a = Some v⌝.
-  Proof.
+  Proof using .
     iIntros "(%HM & %LM & Hh & %Hlat & Hm & %HLM & Hlen & Hv & %Htvs)".
     iIntros "(%B & %K & %W & %D & [Hb Hd] & #HK & %HBK & _ & _ & #Hoks)".
     iIntros "(%t & Hpt & Hbit)".
@@ -486,7 +486,7 @@ Section twin2.
     ctx_pointsto ξ a (DfracOwn 1) v ==∗
     tso_interp img (store_log log h a [w]) tvs ∗ own_context ξ h ∗
     ctx_pointsto ξ a (DfracOwn 1) w.
-  Proof.
+  Proof using .
     iIntros "(%HM & %LM & Hh & %Hlat & Hm & %HLM & Hlen & Hv & %Htvs)".
     iIntros "(%B & %K & %W & %D & [Hb Hd] & #HK & %HBK & #HW & %HDW & #Hoks)".
     iIntros "(%t & Hpt & Hbit)".
@@ -568,7 +568,7 @@ Section twin2.
 
   Global Instance ctx_morph_pointsto a dq v :
     CtxMorph (λ ξ, ctx_pointsto ξ a dq v).
-  Proof.
+  Proof using .
     iIntros (ξ ξ') "(%B & %W & %B' & %D & [Hb Hd] & %HDW & %HBB' & %HWB' & #Hlb')".
     iIntros "(%t & Hpt & Hbit)".
     iAssert (⌜(t ≤ B')%nat⌝)%I as %HtB'.
@@ -592,11 +592,11 @@ Section twin2.
   Qed.
 
   Global Instance ctx_morph_const (P : iProp Σ) : CtxMorph (λ _, P) | 100.
-  Proof. iIntros (ξ ξ') "Hd HP !>". iFrame. Qed.
+  Proof using . iIntros (ξ ξ') "Hd HP !>". iFrame. Qed.
 
   Global Instance ctx_morph_sep (R1 R2 : CtxId → iProp Σ) :
     CtxMorph R1 → CtxMorph R2 → CtxMorph (λ ξ, R1 ξ ∗ R2 ξ)%I.
-  Proof.
+  Proof using .
     iIntros (H1 H2 ξ ξ') "Hd [HR1 HR2]".
     iMod (ctx_morph with "Hd HR1") as "[Hd HR1]".
     iMod (ctx_morph with "Hd HR2") as "[Hd HR2]".
@@ -605,7 +605,7 @@ Section twin2.
 
   Global Instance ctx_morph_exist {A} (Φ : A → CtxId → iProp Σ) :
     (∀ x, CtxMorph (Φ x)) → CtxMorph (λ ξ, ∃ x, Φ x ξ)%I.
-  Proof.
+  Proof using .
     iIntros (HΦ ξ ξ') "Hd [%x HR]".
     iMod (ctx_morph with "Hd HR") as "[Hd HR]".
     iModIntro. iFrame "Hd". iExists x. iExact "HR".
@@ -615,7 +615,7 @@ Section twin2.
       (Φ : nat → A → CtxId → iProp Σ) :
     (∀ i x, CtxMorph (Φ i x)) →
     CtxMorph (λ ξ, [∗ list] i ↦ x ∈ l, Φ i x ξ)%I.
-  Proof.
+  Proof using .
     revert Φ. induction l as [|x l IH] => Φ HΦ.
     - iIntros (ξ ξ') "Hd _ !>". by iFrame.
     - iIntros (ξ ξ') "Hd [HR HRs]".
@@ -629,7 +629,7 @@ Section twin2.
     CtxMorph (λ ξ, ctx_pointsto ξ a1 (DfracOwn 1) v1 ∗
                    (∃ v2 : bv 8, ⌜v2 ≠ v1⌝ ∗
                       ctx_pointsto ξ a2 (DfracOwn 1) v2) ∗ P)%I.
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* ---------------------------------------------------------------- *)
   (** ** 9. The [ctx_dom] mints -- borrow accessors on the tokens      *)
@@ -645,7 +645,7 @@ Section twin2.
     own_context ξ h -∗ ctx_parked ξ' T ==∗
     ∃ T', ⌜(T ≤ T')%nat⌝ ∗ ctx_parked ξ' T' ∗ ctx_dom ξ ξ' ∗
           (ctx_dom ξ ξ' -∗ own_context ξ h).
-  Proof.
+  Proof using .
     iIntros "(%B & %K & %W & %D & Hat & #HK & %HBK & #HW & %HDW & #Hoks)".
     iIntros "(%D' & [Hb' Hd'] & #HT & %HD'T)".
     set (T' := Nat.max T (Nat.max K W)).
@@ -680,7 +680,7 @@ Section twin2.
     tso_interp img log tvs -∗ own_context ξ' h -∗ ctx_parked ξ T ==∗
     tso_interp img log tvs ∗ own_context ξ' h ∗
     ctx_dom ξ ξ' ∗ (ctx_dom ξ ξ' -∗ ctx_parked ξ T).
-  Proof.
+  Proof using .
     iIntros (Htop) "Hint Hrun Hpk".
     iDestruct "Hint" as "(%HM & %LM & Hh & %Hlat & Hm & %HLM & Hlen & Hv & %Htvs)".
     iDestruct "Hrun" as "(%B' & %K & %W & %D' & [Hb' Hd'] & #HK & %HBK & #HW & %HDW & #Hoks)".
@@ -733,7 +733,7 @@ Section twin2.
       acquire then passes.) *)
   Lemma twin_park ξ h :
     own_context ξ h ==∗ ∃ T, ctx_parked ξ T.
-  Proof.
+  Proof using .
     iIntros "(%B & %K & %W & %D & [Hb Hd] & #HK & %HBK & #HW & %HDW & _)".
     set (T := Nat.max K W).
     iMod (mono_nat_own_update T with "Hb") as "[Hb _]"; first lia.
@@ -750,7 +750,7 @@ Section twin2.
   Lemma twin_resume ξ T h K :
     (T ≤ K)%nat →
     view_lb h K -∗ ctx_parked ξ T -∗ own_context ξ h.
-  Proof.
+  Proof using .
     iIntros (HTK) "#HK (%D & Hat & #HT & %HDT)".
     iExists T, K, T, D. iFrame "Hat HK HT".
     iSplitR; first done.
@@ -770,7 +770,7 @@ Section twin2.
       persistent-monotone, so it survives every step between the acquire
       and the swtch. *)
   Lemma ctx_parked_llb ξ T : ctx_parked ξ T -∗ ctx_parked ξ T ∗ llb T.
-  Proof.
+  Proof using .
     iIntros "(%D & Hat & #HT & %HDT)".
     iSplitL "Hat"; last iExact "HT".
     iExists D. iFrame "Hat HT". by iPureIntro.
@@ -780,7 +780,7 @@ Section twin2.
     (length log ≤ tvs h)%nat →
     tso_interp img log tvs -∗ llb T -∗
     tso_interp img log tvs ∗ view_lb h (tvs h) ∗ ⌜(T ≤ tvs h)%nat⌝.
-  Proof.
+  Proof using .
     iIntros (Htop) "Hint #HT".
     iDestruct "Hint" as "(%HM & %LM & Hh & %Hlat & Hm & %HLM & Hlen & Hv & %Htvs)".
     iDestruct (llb_valid with "Hlen HT") as %HTlen.
@@ -798,7 +798,7 @@ Section twin2.
     (T ≤ K)%nat →
     view_lb h K -∗ own_context ξ1 h -∗ ctx_parked ξ2 T ==∗
     own_context ξ2 h ∗ ∃ T1, ctx_parked ξ1 T1.
-  Proof.
+  Proof using .
     iIntros (HTK) "#HK Hrun Hpk".
     iMod (twin_park with "Hrun") as (T1) "Hpk1".
     iModIntro. iSplitR "Hpk1"; last by iExists T1.
@@ -816,7 +816,7 @@ Section twin2.
       NO INTERP, and no freshness side conditions at all. *)
   Lemma twin_fork ξ h :
     own_context ξ h ==∗ own_context ξ h ∗ ∃ ξc T, ctx_parked ξc T.
-  Proof.
+  Proof using .
     iIntros "(%B & %K & %W & %D & Hat & #HK & %HBK & #HW & %HDW & #Hoks)".
     set (T := Nat.max K W).
     iMod (mono_nat_own_alloc T) as (γb) "[Hbc _]".
@@ -838,7 +838,7 @@ Section twin2.
       refinement is subsumed by [twin_deposit] below, which raises the
       child's stamp per deposited fact. *)
   Lemma twin_parked_alloc : ⊢ |==> ∃ ξc, ctx_parked ξc 0.
-  Proof.
+  Proof using .
     iMod (mono_nat_own_alloc 0) as (γb) "[Hb _]".
     iMod (ghost_map_alloc_empty (K := nat * Z) (V := unit)) as (γd) "Hd".
     iModIntro. iExists (MkCtxId γb γd), ∅. iFrame "Hb Hd".
@@ -853,7 +853,7 @@ Section twin2.
   Lemma twin_deposit (R : CtxId → iProp Σ) `{!CtxMorph R} ξ ξc h T :
     own_context ξ h -∗ ctx_parked ξc T -∗ R ξ ==∗
     own_context ξ h ∗ ∃ T', ⌜(T ≤ T')%nat⌝ ∗ ctx_parked ξc T' ∗ R ξc.
-  Proof.
+  Proof using .
     iIntros "Hrun Hpk HR".
     iMod (ctx_dom_to_parked ξ ξc h T with "Hrun Hpk")
       as (T') "(%HTT' & Hpk & Hdom & Hback)".
@@ -869,7 +869,7 @@ Section twin2.
   Lemma twin_fork_deposit ξ h a dq v :
     own_context ξ h -∗ ctx_pointsto ξ a dq v ==∗
     own_context ξ h ∗ ∃ ξc T, ctx_parked ξc T ∗ ctx_pointsto ξc a dq v.
-  Proof.
+  Proof using .
     iIntros "Hrun Hpt".
     iMod (twin_fork with "Hrun") as "[Hrun (%ξc & %T & Hpk)]".
     iMod (ctx_dom_to_parked ξ ξc h T with "Hrun Hpk")
@@ -890,7 +890,7 @@ Section twin2.
       mints parked, swtch exchanges) stands as kernel meaning, not as a
       soundness necessity. *)
   Lemma twin_run_alloc h : ⊢ |==> ∃ ξ, own_context ξ h.
-  Proof.
+  Proof using .
     iMod (mono_nat_own_alloc 0) as (γb) "[Hb _]".
     iMod (ghost_map_alloc_empty (K := nat * Z) (V := unit)) as (γd) "Hd".
     iModIntro. iExists (MkCtxId γb γd), 0%nat, 0%nat, 0%nat, ∅.
@@ -908,7 +908,7 @@ Section twin2.
 
   Lemma ctx_pointsto_agree ξ1 ξ2 a dq1 v1 dq2 v2 :
     ctx_pointsto ξ1 a dq1 v1 -∗ ctx_pointsto ξ2 a dq2 v2 -∗ ⌜v1 = v2⌝.
-  Proof.
+  Proof using .
     iIntros "(%t1 & H1 & _) (%t2 & H2 & _)".
     iDestruct (ghost_map_elem_agree with "H1 H2") as %[= _ ->]. done.
   Qed.
@@ -916,7 +916,7 @@ Section twin2.
   Lemma ctx_pointsto_ne ξ1 ξ2 a1 a2 dq v1 v2 :
     ctx_pointsto ξ1 a1 (DfracOwn 1) v1 -∗ ctx_pointsto ξ2 a2 dq v2 -∗
     ⌜a1 ≠ a2⌝.
-  Proof.
+  Proof using .
     iIntros "(%t1 & H1 & _) (%t2 & H2 & _)".
     by iDestruct (ghost_map_elem_ne with "H1 H2") as %?.
   Qed.
@@ -924,7 +924,7 @@ Section twin2.
   Lemma ctx_pointsto_frac_split ξ a q1 q2 v :
     ctx_pointsto ξ a (DfracOwn (q1 + q2)) v ⊣⊢
     ctx_pointsto ξ a (DfracOwn q1) v ∗ ctx_pointsto ξ a (DfracOwn q2) v.
-  Proof.
+  Proof using .
     iSplit.
     - iIntros "(%t & Hpt & Hbit)".
       iDestruct "Hpt" as "[Hpt1 Hpt2]".
@@ -945,7 +945,7 @@ Section twin2.
 
   Lemma ctx_pointsto_persist ξ a dq v :
     ctx_pointsto ξ a dq v ==∗ ctx_pointsto ξ a DfracDiscarded v.
-  Proof.
+  Proof using .
     iIntros "(%t & Hpt & Hbit)".
     iMod (ghost_map_elem_persist with "Hpt") as "Hpt".
     iDestruct "Hbit" as "[#Hcl | Hdt]".
@@ -962,7 +962,7 @@ Section twin2.
     ctx_dom ξ ξ' -∗ ctx_pointsto ξ a (DfracOwn 1) v ==∗
     ctx_dom ξ ξ' ∗ ctx_pointsto ξ a (DfracOwn (1/2)) v ∗
     ctx_pointsto ξ' a (DfracOwn (1/2)) v.
-  Proof.
+  Proof using .
     iIntros "Hdom Hpt".
     rewrite -{1}(Qp.div_2 1) ctx_pointsto_frac_split.
     iDestruct "Hpt" as "[Hpt1 Hpt2]".
@@ -981,7 +981,7 @@ Section twin2.
       any holder can justify it.) *)
   Lemma own_context_lb0 ξ h :
     own_context ξ h -∗ own_context ξ h ∗ mono_nat_lb_own (tc_bnd ξ) 0.
-  Proof.
+  Proof using .
     iIntros "(%B & %K & %W & %D & [Hb Hd] & #HK & %HBK & #HW & %HDW & #Hoks)".
     iDestruct (mono_nat_lb_own_get with "Hb") as "#Hlb".
     iSplitL.
@@ -993,7 +993,7 @@ Section twin2.
     a ↪[γheap]{dq} ((0%nat, v) : nat * bv 8) -∗
     mono_nat_lb_own (tc_bnd ξ) 0 -∗
     ctx_pointsto ξ a dq v.
-  Proof.
+  Proof using .
     iIntros "Hpt #Hlb". iExists 0%nat. iFrame "Hpt". by iLeft.
   Qed.
 

@@ -347,14 +347,14 @@ Section SpecFileread.
 
   Global Instance fileread_dev_caps_persistent fn :
     Persistent (fileread_dev_caps fn).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma fileread_dev_caps_lock (fn : fread_names) :
     fileread_dev_caps fn -∗ is_conslock fsc_cons app_sup (frn_cons fn).
-  Proof. by iIntros "[$ _]". Qed.
+  Proof using . by iIntros "[$ _]". Qed.
   Lemma fileread_dev_caps_uart (fn : fread_names) :
     fileread_dev_caps fn -∗ WpUart.uart_inv Uart0 (cn_uart fsc_cons).
-  Proof. by iIntros "[_ $]". Qed.
+  Proof using . by iIntros "[_ $]". Qed.
 
   (* ---- THE CONSOLE INVARIANT, PINNED, AND WHY THE PIN LIVES HERE ------
 
@@ -388,20 +388,20 @@ Section SpecFileread.
      WpUart.uart_inv Uart0 (cn_uart fsc_cons))%I.
 
   Global Instance console_ready_app_persistent : Persistent console_ready_app.
-  Proof. rewrite /console_ready_app. apply _. Qed.
+  Proof using . rewrite /console_ready_app. apply _. Qed.
 
   Lemma console_ready_app_intro (γ : gname) :
     ConsoleInv.console_inv fsc_cons app_sup γ -∗
     WpUart.uart_inv Uart0 (cn_uart fsc_cons) -∗ console_ready_app.
-  Proof. iIntros "H #Hu". rewrite /console_ready_app. iFrame "Hu". iExists γ. iExact "H". Qed.
+  Proof using . iIntros "H #Hu". rewrite /console_ready_app. iFrame "Hu". iExists γ. iExact "H". Qed.
 
   (* ...and the devsw half alone, which is all most consumers want *)
   Lemma console_ready_app_devsw : console_ready_app -∗ ConsoleInv.devsw_table.
-  Proof. iIntros "[H _]". iDestruct "H" as (γ) "[_ $]". Qed.
+  Proof using . iIntros "[H _]". iDestruct "H" as (γ) "[_ $]". Qed.
 
   Lemma console_ready_app_uart :
     console_ready_app -∗ WpUart.uart_inv Uart0 (cn_uart fsc_cons).
-  Proof. by iIntros "[_ $]". Qed.
+  Proof using . by iIntros "[_ $]". Qed.
 
   (* ONE cell, and only when the major is in range.  The disjunction is the
      honest statement of what the kernel installs: [consoleinit] fills
@@ -485,7 +485,7 @@ Section SpecFileread.
     ConsoleInv.console_inv fsc_cons app_sup (frn_cons fn) -∗
     WpUart.uart_inv Uart0 (cn_uart fsc_cons) -∗
     fileread_devsw fn.
-  Proof.
+  Proof using .
     intros Hrp Hdq. iIntros "#Hci #Huinv".
     iDestruct (ConsoleInv.console_inv_conslock with "Hci") as "#Hlk".
     iDestruct (ConsoleInv.console_inv_devsw with "Hci") as "#Htbl".
@@ -507,7 +507,7 @@ Section SpecFileread.
   Lemma fileread_devsw_acc (fn : fread_names) (mj : Z) :
     fileread_devsw fn -∗
     fileread_dev_env fn mj ∗ (fileread_dev_out fn mj -∗ fileread_devsw fn).
-  Proof.
+  Proof using .
     (* THE UNFOLD ORDER MATTERS: [/fileread_dev_out] rewrites to [fileread_dev_env], so
        unfolding [fileread_dev_env] FIRST leaves the out side folded and the
        closing [iExact] fails on two terms that print differently for that
@@ -624,7 +624,7 @@ Section SpecFileread.
      promises. *)
   Lemma fileread_fs_env_out γf fn :
     fileread_fs_env γf fn -∗ fileread_fs_out fn.
-  Proof.
+  Proof using .
     rewrite /fileread_fs_env /fileread_fs_out.
     iIntros "(_ & _ & _ & _ & _ & _ & _ & _ & _ & Hsb & _ & _ & _ & Hbs)".
     iFrame "Hsb Hbs".
@@ -632,7 +632,7 @@ Section SpecFileread.
 
   Lemma fileread_env_out_of_env γf fn st :
     fileread_env γf fn st -∗ fileread_env_out fn st.
-  Proof.
+  Proof using .
     rewrite /fileread_env /fileread_env_out.
     destruct st as [|? ? [? ? ?| |?]]; try by iIntros "$".
     iApply fileread_fs_env_out.
@@ -642,7 +642,7 @@ Section SpecFileread.
      reader nothing -- the arm is [panic], discharged against [SpecPanic]. *)
   Lemma fileread_env_none γf fn :
     ⊢ fileread_env γf fn FdClosed.
-  Proof. done. Qed.
+  Proof using . done. Qed.
 
   (* ==================================================================== *)
   (*  THE CARVE, AND THE SHARE ALGEBRA IT NEEDS                           *)
@@ -667,7 +667,7 @@ Section SpecFileread.
     IcacheRef.inode_shr_gen ik (s1 + s2)%Qp icfg_dev inum g ⊣⊢
     IcacheRef.inode_shr_gen ik s1 icfg_dev inum g ∗
     IcacheRef.inode_shr_gen ik s2 icfg_dev inum g.
-  Proof. apply IcacheRef.inode_shr_gen_split. Qed.
+  Proof using . apply IcacheRef.inode_shr_gen_split. Qed.
 
   (* halving, as its OWN lemma -- durable-notes' [rewrite -(Qp.div_2 q)]
      trap: written at a call site inside the proofmode the split's evar lands
@@ -677,7 +677,7 @@ Section SpecFileread.
     IcacheRef.inode_shr_gen ik s icfg_dev inum g ⊣⊢
     IcacheRef.inode_shr_gen ik (s/2)%Qp icfg_dev inum g ∗
     IcacheRef.inode_shr_gen ik (s/2)%Qp icfg_dev inum g.
-  Proof. rewrite -inode_shr_gen_split2 Qp.div_2. reflexivity. Qed.
+  Proof using . rewrite -inode_shr_gen_split2 Qp.div_2. reflexivity. Qed.
 
   (* THE REGEN.  iunlock returns the arity-preserving [IcacheRef.inode_shr]
      (its [∃ g] form), and a payload's slice is generation-NAMED, so the two
@@ -690,7 +690,7 @@ Section SpecFileread.
     IcacheRef.inode_shr_gen ik s1 icfg_dev inum g -∗
     IcacheRef.inode_shr ik s2 icfg_dev inum -∗
     IcacheRef.inode_shr_gen ik (s1 + s2)%Qp icfg_dev inum g.
-  Proof.
+  Proof using .
     iIntros "H1 H2".
     iEval (rewrite IcacheRef.inode_shr_gen_intro) in "H2".
     iDestruct "H2" as (g2 lo2 tl2) "(%Hle2 & #Hfl2 & H2)".
@@ -710,7 +710,7 @@ Section SpecFileread.
     (ik < NINODE)%nat ->
     (ic_escrows fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst -∗ ic_escrow fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst ik
      : iProp Σ).
-  Proof.
+  Proof using .
     iIntros (Hk) "H". rewrite /ic_escrows /ic_boxes_all /ic_escrow.
     assert (Hl : seq 0 NINODE !! ik = Some ik) by (rewrite lookup_seq; lia).
     iDestruct (big_sepL_lookup _ _ ik ik Hl with "H") as "$".
@@ -757,13 +757,13 @@ Section SpecFileread.
 
   Lemma carve_off_inode (tyc : mword 32) (k : nat) (q : Qp) γb γo Cf :
     tyc = FD_INODE -> carve_off tyc k q γb γo Cf = off_fd k q γb γo Cf.
-  Proof.
+  Proof using .
     intros ->. rewrite /carve_off. case_bool_decide; [reflexivity | congruence].
   Qed.
 
   Lemma carve_off_dev (tyc : mword 32) (k : nat) (q : Qp) γb γo Cf :
     tyc = FD_DEVICE -> carve_off tyc k q γb γo Cf = off_free k q.
-  Proof.
+  Proof using .
     intros ->. rewrite /carve_off. case_bool_decide as Hc; [|reflexivity].
     exfalso. apply (f_equal bv_unsigned) in Hc. by vm_compute in Hc.
   Qed.
@@ -789,7 +789,7 @@ Section SpecFileread.
       (IcacheRef.inode_shr_genlo ik s icfg_dev inum g lo -∗
        carve_off (fc_type Cf) k q γb γo Cf -∗
          file_pay_st γf k q Cf st).
-  Proof.
+  Proof using .
     intros Hty. iIntros "(%pn & %Hst & Hpn & Hpl)".
     assert (Hnp : bool_decide (fc_type Cf = FD_PIPE) = false).
     { apply bool_decide_eq_false_2.
@@ -1159,7 +1159,7 @@ Section SpecFileread.
     Rd cur d' -∗
     (⌜(n < 0)%Z⌝ ∨ ChildTok.kill_shot gn) -∗
     console_receipt gn P Rd Rin n (mword_of_int (-1) : mword 64) M' addr.
-  Proof.
+  Proof using .
     iIntros "Hrd Hwhy". rewrite /console_receipt. iLeft. iSplitR; [done|].
     iSplitL "Hwhy"; [ iExact "Hwhy" | ].
     iExists cur, d'. iExact "Hrd".
@@ -1182,7 +1182,7 @@ Section SpecFileread.
     console_receipt gn P Rd Rin n r M' addr -∗
     (⌜(n < 0)%Z⌝ ∨ ChildTok.kill_shot gn) ∗
     console_receipt gn P Rd Rin n r M' addr.
-  Proof.
+  Proof using .
     intros Hnb Hr. rewrite /console_receipt.
     iIntros "[ (%Hm1 & #Hwhy & Hrd) | Hrun ]".
     - iSplitR "Hrd"; [ iExact "Hwhy" | ].
@@ -1228,7 +1228,7 @@ Section SpecFileread.
        Rin ws) -∗
     Rd cur dc -∗
     console_receipt gn P Rd Rin n r (umem_wr M addr d bs) addr.
-  Proof.
+  Proof using .
     intros Hd Hdmax Hb1 Hb4 (Hsl & Hhl & Hwin) Hch.
     iIntros "Hts Hlb #Hsw Hin Hrd".
     rewrite /console_receipt. iRight. iExists d, dc, cur, hs, sl.
@@ -1273,7 +1273,7 @@ Section SpecFileread.
     cons_dirty_cred app_sup -∗
     Rd cur dc -∗
     console_receipt gn P Rd Rin n r (umem_wr M addr d bs) addr.
-  Proof.
+  Proof using .
     intros Hd Hdmax Hb1 Hb4 [Hhl Htie].
     iIntros "Hts Hlb #Hcred Hrd".
     rewrite /console_receipt. iRight. iExists d, dc, cur, hs, sl.
@@ -1355,14 +1355,14 @@ Section SpecFileread.
 
   Lemma fileread_arms_ret (gn : gname) (pt : uptd) st n F Rd Rin Rp Rpe P r M' addr :
     fileread_arms gn pt st n F Rd Rin Rp Rpe P r M' addr -∗ ⌜fileread_ret n r⌝.
-  Proof. iIntros "[%H _]". by iPureIntro. Qed.
+  Proof using . iIntros "[%H _]". by iPureIntro. Qed.
 
   (* the payload off the post, which is the dispatcher's whole business
      with it *)
   Lemma fileread_extra_pay (gn : gname) (pt : uptd) st n F Rd Rin Rp Rpe P r M' addr :
     fileread_extra gn pt st n F Rd Rin Rp Rpe P r M' addr -∗
     P ∗ fileread_extra_core gn pt st n F Rd Rin Rp Rpe r M' addr.
-  Proof. by iIntros "$". Qed.
+  Proof using . by iIntros "$". Qed.
 
   (* ...and the same at the arm the dispatcher's row 5 is stated at *)
   Lemma fileread_extra_core_m1_why (gn : gname) (pt : uptd) (rb : bool) (n : Z)
@@ -1376,7 +1376,7 @@ Section SpecFileread.
     fileread_extra_core gn pt (FdOpen true rb (FdDevice CONSOLE)) n F Rd Rin Rp Rpe r M' addr -∗
     (⌜(n < 0)%Z⌝ ∨ ChildTok.kill_shot gn) ∗
     fileread_extra_core gn pt (FdOpen true rb (FdDevice CONSOLE)) n F Rd Rin Rp Rpe r M' addr.
-  Proof.
+  Proof using .
     intros Hnb Hr. rewrite /fileread_extra_core.
     destruct (decide (CONSOLE = CONSOLE)) as [_ | Hne];
       [| exfalso; exact (Hne eq_refl)].
@@ -1391,7 +1391,7 @@ Section SpecFileread.
   Lemma fileread_in_inode wb i γo n F Rd Rin Rp Rpe P :
     fileread_in (FdOpen true wb (FdInode i γo OffParked)) n F Rd Rin Rp Rpe P -∗ P -∗
     P ∗ pf_at (aread_commit_at (fs_gamma_L fsc_fs) appE i γo) F.
-  Proof. rewrite /fileread_in. iIntros "H HP". iApply ("H" with "HP"). Qed.
+  Proof using . rewrite /fileread_in. iIntros "H HP". iApply ("H" with "HP"). Qed.
 
   (* [P] FIRST, before the arm's own payout: a caller [iApply]s these with
      the payload in hand and BUILDS the payout in the goal that is left,
@@ -1399,7 +1399,7 @@ Section SpecFileread.
   Lemma fileread_extra_inode (gn : gname) (pt : uptd) wb i γo n F Rd Rin Rp Rpe P r M' addr :
     P -∗ read_arms (fs_gamma_L fsc_fs) i γo n F r M' addr -∗
     fileread_extra gn pt (FdOpen true wb (FdInode i γo OffParked)) n F Rd Rin Rp Rpe P r M' addr.
-  Proof. iIntros "HP H". rewrite /fileread_extra. iFrame "HP". iExact "H". Qed.
+  Proof using . iIntros "HP H". rewrite /fileread_extra. iFrame "HP". iExact "H". Qed.
 
   (* ...and the two at a state the walk holds only through an EQUATION: a
      descriptor's shape is derived from its content, not matched on. *)
@@ -1408,7 +1408,7 @@ Section SpecFileread.
     st = FdOpen true wb (FdInode i γo OffParked) ->
     fileread_in st n F Rd Rin Rp Rpe P -∗ P -∗
     P ∗ pf_at (aread_commit_at (fs_gamma_L fsc_fs) appE i γo) F.
-  Proof.
+  Proof using .
     intros ->. rewrite /fileread_in. iIntros "H HP". iApply ("H" with "HP").
   Qed.
 
@@ -1417,7 +1417,7 @@ Section SpecFileread.
     st = FdOpen true wb (FdInode i γo OffParked) ->
     P -∗ read_arms (fs_gamma_L fsc_fs) i γo n F r M' addr -∗
     fileread_extra gn pt st n F Rd Rin Rp Rpe P r M' addr.
-  Proof.
+  Proof using .
     intros ->. iIntros "HP H". rewrite /fileread_extra. iFrame "HP". iExact "H".
   Qed.
 
@@ -1427,7 +1427,7 @@ Section SpecFileread.
   Lemma fileread_extra_pipe (gn : gname) (pt : uptd) wb (γp : pipe_names) n F Rd Rin Rp Rpe P r M' addr :
     P -∗ pipe_rpost_img pt (pn_queue γp) Rp Rpe (ChildTok.kill_shot gn) (Z.to_nat n) r M' addr -∗
     fileread_extra gn pt (FdOpen true wb (FdPipe γp)) n F Rd Rin Rp Rpe P r M' addr.
-  Proof.
+  Proof using .
     rewrite /fileread_extra /fileread_extra_core. iIntros "HP H".
     iFrame "HP". iExact "H".
   Qed.
@@ -1436,14 +1436,14 @@ Section SpecFileread.
   Lemma fileread_in_pipe wb (γp : pipe_names) n F Rd Rin Rp Rpe P :
     fileread_in (FdOpen true wb (FdPipe γp)) n F Rd Rin Rp Rpe P -∗ P -∗
     P ∗ pipe_rpay (pn_queue γp) Rp Rpe (Z.to_nat n).
-  Proof. rewrite /fileread_in. iIntros "H HP". iApply ("H" with "HP"). Qed.
+  Proof using . rewrite /fileread_in. iIntros "H HP". iApply ("H" with "HP"). Qed.
 
   Lemma fileread_in_pipe_of (st : fdstate) (wb : bool) (γp : pipe_names)
       n F Rd Rin Rp Rpe P :
     st = FdOpen true wb (FdPipe γp) ->
     fileread_in st n F Rd Rin Rp Rpe P -∗ P -∗
     P ∗ pipe_rpay (pn_queue γp) Rp Rpe (Z.to_nat n).
-  Proof.
+  Proof using .
     intros ->. rewrite /fileread_in. iIntros "H HP". iApply ("H" with "HP").
   Qed.
 
@@ -1453,7 +1453,7 @@ Section SpecFileread.
   Lemma fileread_extra_dev_other (gn : gname) (pt : uptd) wb (mj : Z) n F Rd Rin Rp Rpe P r M' addr :
     mj <> CONSOLE ->
     P -∗ fileread_extra gn pt (FdOpen true wb (FdDevice mj)) n F Rd Rin Rp Rpe P r M' addr.
-  Proof.
+  Proof using .
     intro Hmj. rewrite /fileread_extra /fileread_extra_core. iIntros "HP".
     iFrame "HP".
     rewrite (decide_False (P := (mj = CONSOLE)) _ _ Hmj). done.
@@ -1476,7 +1476,7 @@ Section SpecFileread.
     fileread_in (FdOpen rb wb (FdDevice mj)) n F Rd Rin Rp Rpe P -∗ P ==∗
     fileread_extra gn pt (FdOpen rb wb (FdDevice mj)) n F Rd Rin Rp Rpe P
         (mword_of_int (-1) : mword 64) M' addr.
-  Proof.
+  Proof using .
     intro Hne.
     rewrite /fileread_extra /fileread_extra_core /fileread_in.
     destruct rb;
@@ -1490,7 +1490,7 @@ Section SpecFileread.
   Lemma fileread_extra_dev_console (gn : gname) (pt : uptd) wb n F Rd Rin Rp Rpe P r M' addr :
     P -∗ console_receipt gn pt Rd Rin n r M' addr -∗
     fileread_extra gn pt (FdOpen true wb (FdDevice CONSOLE)) n F Rd Rin Rp Rpe P r M' addr.
-  Proof.
+  Proof using .
     iIntros "HP H". rewrite /fileread_extra /fileread_extra_core.
     iFrame "HP".
     case_decide as Hc; [iExact "H" | exfalso; by apply Hc].
@@ -1499,7 +1499,7 @@ Section SpecFileread.
   Lemma fileread_extra_closed (gn : gname) (pt : uptd) n F Rd Rin Rp Rpe P M' addr :
     P -∗ fileread_extra gn pt FdClosed n F Rd Rin Rp Rpe P
            (mword_of_int (-1) : mword 64) M' addr.
-  Proof.
+  Proof using .
     rewrite /fileread_extra /fileread_extra_core. iIntros "$". by iPureIntro.
   Qed.
 
@@ -1516,7 +1516,7 @@ Section SpecFileread.
            (zero_reg : mword 64) = false ->
     P -∗ pipe_rpost_img pt (pn_queue γp) Rp Rpe (ChildTok.kill_shot gn) (Z.to_nat n) r M' addr -∗
     fileread_extra gn pt st n F Rd Rin Rp Rpe P r M' addr.
-  Proof.
+  Proof using .
     intros Hok Ht Hrd.
     destruct (fdstate_ok_pipe inum γo γp C st Hok Ht) as (rb & wb & Hst).
     destruct rb; last first.
@@ -1533,7 +1533,7 @@ Section SpecFileread.
            (zero_reg : mword 64) = false ->
     fileread_in st n F Rd Rin Rp Rpe P -∗ P -∗
     P ∗ pipe_rpay (pn_queue γp) Rp Rpe (Z.to_nat n).
-  Proof.
+  Proof using .
     intros Hok Ht Hrd.
     destruct (fdstate_ok_pipe inum γo γp C st Hok Ht) as (rb & wb & Hst).
     destruct rb; last first.
@@ -1548,7 +1548,7 @@ Section SpecFileread.
     bv_unsigned (fc_major C) <> CONSOLE ->
     fileread_in st n F Rd Rin Rp Rpe P -∗ P ==∗
     fileread_extra gn pt st n F Rd Rin Rp Rpe P (mword_of_int (-1) : mword 64) M' addr.
-  Proof.
+  Proof using .
     intros Hok Ht Hne.
     destruct (fdstate_ok_device inum γo γp C st Hok Ht) as (rb & wb & ->).
     iIntros "Hrd HP". iApply (fileread_extra_dev_m1 gn _ _ _ _ _ _ _ _ _ _ _ _ _ Hne with "Hrd HP").
@@ -1562,7 +1562,7 @@ Section SpecFileread.
     eq_vec (zero_extend' 64 (fc_readable C : mword 8) : mword 64)
            (zero_reg : mword 64) = false ->
     P -∗ fileread_extra gn pt st n F Rd Rin Rp Rpe P r M' addr.
-  Proof.
+  Proof using .
     intros Hok Ht Hmj Hrd.
     destruct (fdstate_ok_device inum γo γp C st Hok Ht) as (rb & wb & Hst).
     destruct rb; last first.
@@ -1582,7 +1582,7 @@ Section SpecFileread.
            (zero_reg : mword 64) = false ->
     P -∗ console_receipt gn pt Rd Rin n r M' addr -∗
     fileread_extra gn pt st n F Rd Rin Rp Rpe P r M' addr.
-  Proof.
+  Proof using .
     intros Hok Ht Hmj Hrd.
     destruct (fdstate_ok_device inum γo γp C st Hok Ht) as (rb & wb & Hst).
     destruct rb; last first.
@@ -1602,7 +1602,7 @@ Section SpecFileread.
     eq_vec (zero_extend' 64 (fc_readable C : mword 8) : mword 64)
            (zero_reg : mword 64) = false ->
     exists wb : bool, st = FdOpen true wb (FdInode (bv_unsigned inum) γo OffParked).
-  Proof.
+  Proof using .
     intros Hok Ht Hrd.
     destruct (fdstate_ok_inode inum γo γp C st Hok Ht) as (rb & wb & Hst).
     destruct rb; [by exists wb | exfalso].
@@ -1620,7 +1620,7 @@ Section SpecFileread.
     eq_vec (zero_extend' 64 (fc_readable C : mword 8) : mword 64)
            (zero_reg : mword 64) = false ->
     exists wb : bool, st = FdOpen true wb (FdDevice (bv_unsigned (fc_major C))).
-  Proof.
+  Proof using .
     intros Hok Ht Hrd.
     destruct (fdstate_ok_device inum γo γp C st Hok Ht) as (rb & wb & Hst).
     destruct rb; [by exists wb | exfalso].
@@ -1639,7 +1639,7 @@ Section SpecFileread.
     fileread_in st n F Rd Rin Rp Rpe P -∗ P -∗
     cons_acc fsc_cons app_sup (fun cur dc => P ∗ Rd cur dc)
     ∗ WpUart.cons_read_pay (S gen_id) Rin.
-  Proof.
+  Proof using .
     intros -> ->. rewrite /fileread_in.
     case_decide as Hc; [| exfalso; by apply Hc].
     iIntros "H HP". iApply ("H" with "HP").
@@ -1657,7 +1657,7 @@ Section SpecFileread.
            (zero_reg : mword 64) = true ->
     P -∗ fileread_extra gn pt st n F Rd Rin Rp Rpe P
            (mword_of_int (-1) : mword 64) M' addr.
-  Proof.
+  Proof using .
     rewrite /fileread_extra /fileread_extra_core.
     destruct st as [| rb wb ty];
       [ iIntros (? ?) "$"; by iPureIntro |].
@@ -1677,7 +1677,7 @@ Section SpecFileread.
     (n < 0)%Z ->
     fileread_in st n F Rd Rin Rp Rpe P -∗ P ==∗
     fileread_extra gn pt st n F Rd Rin Rp Rpe P (mword_of_int (-1) : mword 64) M' addr.
-  Proof.
+  Proof using .
     intros Hn. rewrite /fileread_in /fileread_extra /fileread_extra_core.
     destruct st as [| rb wb ty];
       [ iIntros "H HP"; iDestruct ("H" with "HP") as "H"; iModIntro;
@@ -1720,7 +1720,7 @@ Section FilereadConsoleMorph.
 
   Global Instance console_ready_app_morph :
     CtxMorph (λ ξ0 : CtxIdDefs.CtxId, console_ready_app (XI := ξ0)).
-  Proof.
+  Proof using .
     iIntros (ξ ξ') "Hd H". rewrite /console_ready_app.
     iDestruct "H" as "[H #Hu]".
     iDestruct "H" as (γ) "H".

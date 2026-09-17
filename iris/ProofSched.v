@@ -226,7 +226,7 @@ Section SchedPostSwtch.
         ▷ sched_vc_at γs cpu_id (a_cpu_ctx cid_word) pj -∗
         WP (Loop : expr riscv_lang) ) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pj Hav Hspd Hsp0 Hsp_m' Hs2addr Hs3v
            Hm20 Hm21 Hm22 Hm23 Hm24 Hm25 Hm26 Hm27.
     iIntros "#Htext Hcg Hcpu Hpc Hr1 Hr2 Hr3 Hr4 Hr5 Hgap Hheld' Htc Hown Htag Hvc' Hcont".
@@ -553,7 +553,7 @@ Section ProofSched.
       (γs : list gname) (j : nat) (γl : gname) (st : mword 32) (ch : mword 64)
       (m : regfile) (av : nat) (eb : bool)
     : wp_sched_sconf_body γs j γl st ch m av eb.
-  Proof.
+  Proof using .
     cbv beta delta [wp_sched_sconf_body].
     intros pcE pj ret_tgt Hj Hgl Hneeds Hav.
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).

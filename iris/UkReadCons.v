@@ -126,7 +126,7 @@ Section UkReadCons.
   Lemma cons_acc_triv (cn : cons_names) (Wd : iProp Σ)
       (Rd : nat -> nat -> iProp Σ) :
     cons_acc cn Wd Rd -∗ cons_acc cn Wd (fun cur dc => True ∗ Rd cur dc).
-  Proof.
+  Proof using .
     rewrite /cons_acc. iIntros "[Hl | Hr]".
     - iDestruct "Hl" as (n) "[Hrd Hw]". iLeft. iExists n. iFrame "Hrd".
       iIntros (cur dc) "Hout". iMod ("Hw" with "Hout") as "HR".
@@ -152,7 +152,7 @@ Section UkReadCons.
     cons_acc fsc_cons app_sup Rd -∗
     cons_read_pay (S gen_id) Rin -∗
     udepwf_std N m pc USYS_read (read_cons_fam (ukn_pay N) Rd Rin) l.
-  Proof.
+  Proof using .
     intros Ha0 Hlt Hl0. iIntros "Hacc Hlink".
     rewrite /udepwf_std. iSplitR; [ iPureIntro; reflexivity | ].
     iIntros (M pm sz fdv cw gn cs pidv) "%Htake #Hmpay Hheap Hufd".
@@ -254,7 +254,7 @@ Section UkReadCons.
        urun N h' (<[Regidx a0_idx := r]> m) (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Ha0 Hfdlt Hl0 Ha1 Ha2 Hcapk Hcap31 Hal.
     iIntros "#Hi Hrun Hstd Hbuf Hacc Hlink Hcont".
     subst a.

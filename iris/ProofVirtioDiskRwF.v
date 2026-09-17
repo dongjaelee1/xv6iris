@@ -365,7 +365,7 @@ Section VdrwfBridges.
 
   Lemma cm_split (ξ : CtxId) (l : list _) :
     pm_ok l -> ccell_map ξ (foldr union ∅ l) -∗ cm_list ξ l.
-  Proof.
+  Proof using .
     induction l as [|m l IH]; intro Hok.
     - iIntros "_". rewrite /cm_list. done.
     - destruct Hok as [Hd Hokl].
@@ -382,7 +382,7 @@ Section VdrwfBridges.
     (forall j, (j < 2)%nat ->
        (uint (pa_add a j : SailStdpp.Values.mword 64) < 274877906944)%Z) ->
     kmap_static_claims -∗ ccell_map cur_ctx (range_map a 2 (nth_byte w)) -∗ a ↦₂ w.
-  Proof.
+  Proof using .
     iIntros (Hal Hs Hc) "#Hb H".
     iDestruct (ctx_win_of_ccell a 2 (nth_byte w) ltac:(lia) Hs Hc with "Hb H") as "H".
     rewrite /ctx_word2_pointsto. iSplitR; [iPureIntro; exact Hal|]. iExact "H".
@@ -394,7 +394,7 @@ Section VdrwfBridges.
     (forall j, (j < 4)%nat ->
        (uint (pa_add a j : SailStdpp.Values.mword 64) < 274877906944)%Z) ->
     kmap_static_claims -∗ ccell_map cur_ctx (range_map a 4 (nth_byte w)) -∗ a ↦₄ w.
-  Proof.
+  Proof using .
     iIntros (Hal Hs Hc) "#Hb H".
     iDestruct (ctx_win_of_ccell a 4 (nth_byte w) ltac:(lia) Hs Hc with "Hb H") as "H".
     rewrite /ctx_word4_pointsto. iSplitR; [iPureIntro; exact Hal|]. iExact "H".
@@ -406,7 +406,7 @@ Section VdrwfBridges.
     (forall j, (j < 8)%nat ->
        (uint (pa_add a j : SailStdpp.Values.mword 64) < 274877906944)%Z) ->
     kmap_static_claims -∗ ccell_map cur_ctx (range_map a 8 (nth_byte w)) -∗ a ↦₈ w.
-  Proof.
+  Proof using .
     iIntros (Hal Hs Hc) "#Hb H".
     iDestruct (ctx_win_of_ccell a 8 (nth_byte w) ltac:(lia) Hs Hc with "Hb H") as "H".
     rewrite /ctx_word_pointsto. iSplitR; [iPureIntro; exact Hal|]. iExact "H".
@@ -523,7 +523,7 @@ Section VdrwfP6.
   Lemma vdrwf_fr_false (γd : disk_names) (pd : Arch.pa) (fr : nat -> bool) (i : nat) :
     (i < 8)%nat ->
     free_bundles γd pd fr -∗ i ↪[dn_head γd] HInactive -∗ ⌜fr i = false⌝.
-  Proof.
+  Proof using .
     intro Hi. iIntros "Hfb Hfrag".
     destruct (fr i) eqn:Hfri; [| done].
     iEval (rewrite (free_bundles_split γd pd fr i Hi)) in "Hfb".
@@ -574,7 +574,7 @@ Section VdrwfP6.
         free_bundles γd pd (fr_upd fr i true) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hav Hi8 Hfri Hlen Hs2 Hs3 Hbelow.
     iIntros "Hcg Hown #Htext Hpc #Hpinv #Hdp Hd0 Hd8 Hd12 Hd14 Hbun Hrest Hfrag Hcont".
     (* ---- +0x1f4  slli a4,s2,4 ---- *)
@@ -817,7 +817,7 @@ Section VdrwfP6.
         WP (Loop : expr riscv_lang)) -∗
     P5.vdrw_p5_exit CID γk γs j γd pd pav pu K eb sp0 b wr sector bs_buf
                     bs_disk m kq lks.
-  Proof.
+  Proof using .
     intros HK Hglen Hlenbuf Hlendisk Hsec Hbufkd Hsp0m Hbelow.
     iIntros "#Htext #Hpinv #Hqinv #Hrcpt #Hdinv #Hgeom #Hlk Hsaved Hbno Hcont".
     rewrite /P5.vdrw_p5_exit.
@@ -1841,7 +1841,7 @@ Section ProofVirtioDiskRwF.
       (b : bool) (Q : iProp Σ) (lks : gset string)
     : wp_virtio_disk_rw_sconf_body γs j γl γu γd γk pd pav pu
                                    m K eb bno dsk0 bs_buf bs_disk b Q lks.
-  Proof.
+  Proof using .
     cbv beta zeta delta [wp_virtio_disk_rw_sconf_body].
     intros HK Hbnolt Hbufkd Hj Hjl Hbelow.
     iIntros "Hcg Hown Hextc Hextm #Htext Hpc #Hpinv

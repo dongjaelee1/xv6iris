@@ -53,7 +53,7 @@ Section TicksInv.
   Definition ticks_res : iProp Σ := ticks_res_at cur_ctx.
 
   Global Instance ticks_res_at_morph : CtxMorph ticks_res_at.
-  Proof.
+  Proof using .
     rewrite /ticks_res_at.
     apply (ctx_morph_exist (λ (t : mword 32) (ξ : CtxId),
                               ctx_word4_pointsto ξ a_ticks (DfracOwn 1) t)).
@@ -61,17 +61,17 @@ Section TicksInv.
   Qed.
 
   Lemma ticks_res_intro (t : mword 32) : a_ticks ↦₄ t -∗ ticks_res.
-  Proof. iIntros "H". rewrite /ticks_res /ticks_res_at. iExists t. iFrame "H". Qed.
+  Proof using . iIntros "H". rewrite /ticks_res /ticks_res_at. iExists t. iFrame "H". Qed.
 
   Definition is_tickslock (γl : gname) : iProp Σ :=
     is_lock γl a_tickslock "time"%string ticks_res_at.
 
   Global Instance is_tickslock_persistent γl : Persistent (is_tickslock γl).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma is_tickslock_lock γl :
     is_tickslock γl -∗ is_lock γl a_tickslock "time"%string ticks_res_at.
-  Proof. iIntros "$". Qed.
+  Proof using . iIntros "$". Qed.
 
   (* ---- construction (the "newlock" ghost step): what a caller does with
      trapinit's postcondition -- the freshly zeroed lock word and its
@@ -84,7 +84,7 @@ Section TicksInv.
     a_tickslock ↦₄ (mword_of_int 0 : mword 32) -∗
     WpLock.lk_cpu_ready a_tickslock -∗
     a_ticks ↦₄ t ={E}=∗ own_context cur_ctx ∗ ∃ γl : gname, is_tickslock γl.
-  Proof.
+  Proof using .
     iIntros "#Hnm Hrun Hlkw Hcpu Hticks".
     iApply (newlock E a_tickslock "time"%string ticks_res_at
               with "Hnm Hrun Hlkw Hcpu [Hticks]").

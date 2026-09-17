@@ -113,7 +113,7 @@ Section Au4Leaves.
         Ψ v -∗
         WP (Loop : expr riscv_lang))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hrd Hrdok HkptEm.
     (* the class, consumed at [rs1]: the address this leaf promises is the same
        word at every hart, so the cell the caller produces inside the engine's
@@ -183,7 +183,7 @@ Section Au4Leaves.
         T -∗
         WP (Loop : expr riscv_lang))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hrd Hrdok HkptEm Hobl.
     assert (Hea_all : forall hh : CpuId,
               add_vec (rget (CID := hh) m rs1) (sign_extend' 64 imm)
@@ -264,7 +264,7 @@ Section Au4Leaves.
       Ψ -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HkptEm Hobl.
     assert (Hea_all : forall hh : CpuId,
               add_vec (rget (CID := hh) m rs1) (sign_extend' 64 imm)
@@ -313,7 +313,7 @@ Section Au4Leaves.
       Ψ -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intro HkptEm.
     (* the class, consumed at [rs1] (address) and [rs2] (stored value) -- two
        independent instances, and the per-register wiring check. *)

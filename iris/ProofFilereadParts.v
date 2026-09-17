@@ -494,7 +494,7 @@ Section ProofFilereadParts.
         pc_is (ret_pc ra0) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hsp0 Hra0 Hs00 Hs20 Hmtsp Hmts2 Hthr.
     iIntros "Hcg #Htext Hpc Hb1 Hb2 Hb3 Hb4 Hb5 Hb6 Hcont".
     (* ---- +0x58: c.mv a0,s2 ---- *)
@@ -670,7 +670,7 @@ Section ProofFilereadParts.
         ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 5) (DfracOwn 1) v3 -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hmtsp Hab Hbc.
     iIntros "Hcg Hpc Hia Hib Hb3 Hb5 Hcont".
     (* ---- s1 ---- *)
@@ -754,7 +754,7 @@ Section ProofFilereadParts.
         ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 5) (DfracOwn 1) v3 -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hmtsp Hab Hbc Hcd Hde Hjt.
     iIntros "Hcg Hpc Hia Hib Hic Hid Hie Hb3 Hb5 Hcont".
     (* c.li a5,-1 *)

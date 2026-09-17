@@ -36,7 +36,7 @@ Section MorphMore.
 
   Global Instance ctx_morph_or (R1 R2 : CtxId → iProp Σ) :
     CtxMorph R1 → CtxMorph R2 → CtxMorph (λ ξ, R1 ξ ∨ R2 ξ)%I.
-  Proof.
+  Proof using .
     iIntros (H1 H2 ξ ξ') "Hd [HR | HR]".
     - iMod (ctx_morph with "Hd HR") as "[Hd HR]". iModIntro. iFrame "Hd". by iLeft.
     - iMod (ctx_morph with "Hd HR") as "[Hd HR]". iModIntro. iFrame "Hd". by iRight.
@@ -45,7 +45,7 @@ Section MorphMore.
   Global Instance ctx_morph_big_sepS `{Countable A} (X : gset A)
       (Φ : A → CtxId → iProp Σ) :
     (∀ x, CtxMorph (Φ x)) → CtxMorph (λ ξ, [∗ set] x ∈ X, Φ x ξ)%I.
-  Proof.
+  Proof using .
     intros HΦ. induction X as [|x X Hx IH] using set_ind_L.
     - iIntros (ξ ξ') "Hd _ !>". rewrite big_sepS_empty. by iFrame.
     - iIntros (ξ ξ') "Hd HR".
@@ -57,7 +57,7 @@ Section MorphMore.
 
   Global Instance ctx_morph_phys_pointsto (a : Arch.pa) (dq : dfrac) (v : bv 8) :
     CtxMorph (λ ξ, ctx_phys_pointsto ξ a dq v).
-  Proof.
+  Proof using .
     iIntros (ξ ξ') "Hd HP".
     rewrite !ctx_phys_pointsto_unseal /ctx_phys_pointsto_def.
     iDestruct "HP" as "(%t & Hpt & Hts & Hbit)".
@@ -67,7 +67,7 @@ Section MorphMore.
 
   Global Instance ctx_morph_phys_word (a : Arch.pa) (dq : dfrac) (w : bv 64) :
     CtxMorph (λ ξ, ctx_phys_word_pointsto ξ a dq w).
-  Proof.
+  Proof using .
     iIntros (ξ ξ') "Hd [%Hal H]".
     iMod (ctx_morph_big_sepL (seq 0 8)
             (λ _ j ξ, ctx_phys_pointsto ξ (pa_add a j) dq (nth_byte w j))

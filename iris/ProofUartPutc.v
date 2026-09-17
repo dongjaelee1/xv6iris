@@ -210,15 +210,15 @@ Section UartPutcMaps.
 
   Lemma ppc_f1_a3 (i : uart_id) (m : regfile) :
     ppc_f1 i m !!! Regidx (mword_of_int 13) = uart_pa i 0.
-  Proof. unfold ppc_f1. rewrite upd_eq. reflexivity. Qed.
+  Proof using . unfold ppc_f1. rewrite upd_eq. reflexivity. Qed.
 
   Lemma ppc_f2_a4 (i : uart_id) (m : regfile) :
     ppc_f2 i m !!! Regidx (mword_of_int 14) = uart_pa i 5.
-  Proof. unfold ppc_f2. rewrite upd_eq. rewrite (ppc_f1_a3 i m). apply ui_pa5. Qed.
+  Proof using . unfold ppc_f2. rewrite upd_eq. rewrite (ppc_f1_a3 i m). apply ui_pa5. Qed.
 
   Lemma ppc_f2_a3 (i : uart_id) (m : regfile) :
     ppc_f2 i m !!! Regidx (mword_of_int 13) = uart_pa i 0.
-  Proof.
+  Proof using .
     unfold ppc_f2. rewrite upd_ne; [| vm_compute; discriminate].
     apply (ppc_f1_a3 i m).
   Qed.
@@ -238,14 +238,14 @@ Section UartPutcMaps.
 
   Lemma ppc_f4'_s5 (i : uart_id) (m : regfile) (bt : bv 8) :
     ppc_f4' i m bt !!! Regidx (mword_of_int 21) = m !!! Regidx (mword_of_int 21).
-  Proof.
+  Proof using .
     unfold ppc_f4', ppc_f2, ppc_f1.
     do 3 (rewrite upd_ne; [| vm_compute; discriminate]). reflexivity.
   Qed.
 
   Lemma ppc_f5'_a3 (i : uart_id) (m : regfile) (bt : bv 8) :
     ppc_f5' i m bt !!! Regidx (mword_of_int 13) = uart_pa i 0.
-  Proof.
+  Proof using .
     unfold ppc_f5', ppc_f4'.
     do 2 (rewrite upd_ne; [| vm_compute; discriminate]).
     apply (ppc_f2_a3 i m).
@@ -254,13 +254,13 @@ Section UartPutcMaps.
   Lemma ppc_f5'_a5 (i : uart_id) (m : regfile) (bt : bv 8) :
     ppc_f5' i m bt !!! Regidx (mword_of_int 15)
     = and_vec (m !!! Regidx (mword_of_int 21)) (sign_extend' 64 (mword_of_int 255 : mword 12)).
-  Proof. unfold ppc_f5'. rewrite upd_eq. rewrite (ppc_f4'_s5 i m bt). reflexivity. Qed.
+  Proof using . unfold ppc_f5'. rewrite upd_eq. rewrite (ppc_f4'_s5 i m bt). reflexivity. Qed.
 
   (* the device core writes only a3/a4/a5, so every other index survives it *)
   Lemma ppc_f5'_cs (i : uart_id) (m : regfile) (bt : bv 8) (c : mword 5) :
     c <> mword_of_int 13 -> c <> mword_of_int 14 -> c <> mword_of_int 15 ->
     ppc_f5' i m bt !!! Regidx c = m !!! Regidx c.
-  Proof.
+  Proof using .
     intros N13 N14 N15.
     unfold ppc_f5', ppc_f4', ppc_f2, ppc_f1.
     rewrite upd_ne; [| congruence].
@@ -304,7 +304,7 @@ Section ProofUartPutc.
       uart_tx_own γd l -∗ uart_out_lb γd l -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Ha4e.
     iIntros "Hcg #Ht Hpc #Huinv Hown Hcont".
     assert (P44 : add_vec_int (mword_of_int (KernelSyms.uartputc_sync + 0x40) : mword 64) 4 = mword_of_int (KernelSyms.uartputc_sync + 0x44)) by (apply bv_eq; vm_compute; reflexivity).
@@ -403,7 +403,7 @@ Section ProofUartPutc.
       uart_tx_own γd (l ++ [sb]) -∗ uart_sent γd (l ++ [sb]) -∗ Φ -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros sb Hs4.
     iIntros "Hcg #Ht Hpc #Huinv #Hbw Hown #Hoff HΨ Hcont".
     assert (P3c : add_vec_int (mword_of_int (KernelSyms.uartputc_sync + 0x38) : mword 64) 4 = mword_of_int (KernelSyms.uartputc_sync + 0x3c)) by (apply bv_eq; vm_compute; reflexivity).
@@ -482,7 +482,7 @@ Section ProofUartPutc.
       (m0 : regfile) (K : nat) (Φ : iProp Σ) (n : nat) (eb : bool)
       (b : bool) (p : mword 64) (lks : gset string)
     : wp_uartputc_sconf_body kt i γl γd m0 K Φ n eb b p lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_uartputc_sconf_body].
     intros ra_idx a0_idx a1_idx pcE ra0 a10 ret_tgt sb HK Ha0 Hn Hfresh.
     assert (HK18 : (18 <= K)%nat) by (exact HK).

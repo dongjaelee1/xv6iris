@@ -146,7 +146,7 @@ Section ProofSysFstat.
     (0 < kk)%nat ->
     sie_cap_gpr KT1 mm kk b pp -∗
     ⌜(8 <= uint (mm !!! Regidx csp_rs1) < 274877906944 + 8)%Z⌝.
-  Proof.
+  Proof using .
     iIntros (Hk) "(_ & _ & (Hstk & _ & _) & _)".
     iApply (stack_own_sp_bounds (KTR := KT1) _ (trap_res b + kk)%nat with "Hstk").
     destruct b; unfold trap_res; lia.
@@ -164,7 +164,7 @@ Section ProofSysFstat.
   Local Lemma sfs_env_frame (fn : fstat_names) (st : fdstate) :
     filestat_fs_env fn -∗
     filestat_env fn st ∗ (filestat_env_out fn st -∗ filestat_fs_out fn).
-  Proof.
+  Proof using .
     rewrite /filestat_env /filestat_env_out. destruct st as [|? ? [? ? ?| |?]].
     - iIntros "H". iSplitR; [done|]. iIntros "_".
       iApply (filestat_fs_env_out with "H").
@@ -206,7 +206,7 @@ Section ProofSysFstat.
         pc_is (ret_pc ra0) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hav Hsp0 Hra0 Hs00 Hmtsp Hmta0 Hthr.
     iIntros "Hcg #Htext Hpc Hb1 Hb2 Hb3 Hb4 Hcont".
     (* ---- +0x32: c.ldsp ra,24(sp) ---- *)
@@ -330,7 +330,7 @@ Section ProofSysFstat.
       (fn : fstat_names) (pidv : mword 32) (U : ustate) (v v1 : mword 64)
       (m : regfile) (av : nat) (eb : bool) (b : bool) (lks : gset string)
     : wp_sys_fstat_sconf_body γf γs j γlp fn pidv U v v1 m av eb b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_sys_fstat_sconf_body].
     intros pcE pj ret_tgt Hav Hj Hgs Hlens Harg0 Harg1 Heb.
     (* BOTH budgets, or [lia] cannot see past [filestat_stack] -- it is an

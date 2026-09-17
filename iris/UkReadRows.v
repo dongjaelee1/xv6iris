@@ -211,7 +211,7 @@ Section UkReadRows.
     fileread_in (fd_st_of_key v0 sts) (sys_rw_count v2) (rf_F f) (rf_ret f) (rf_in f)
       (rf_pq f) (rf_pqe f) True%I -∗
     sbundle_at X USYS_read f W.
-  Proof.
+  Proof using .
     intros H0 H2 Hfd. iIntros "H".
     (* the REWRITE GOES FIRST, against the lemma's own variables
        ([UConsOpen.sbundle_at_open_intro_at]'s note) *)
@@ -240,7 +240,7 @@ Section UkReadRows.
       ⌜uvis_lazy W = false -> lazy_free (ud_um P) (uvis_sz W)⌝ ∗
       fileread_extra_core (uvis_gen W) P (fd_st_of_key v0 sts) (sys_rw_count v2)
         (rf_F f) (rf_ret f) (rf_in f) (rf_pq f) (rf_pqe f) r M' v1.
-  Proof.
+  Proof using .
     intros H0 H1 H2 Hfd. iIntros "H".
     rewrite -H0 -H1 -H2 -Hfd.
     rewrite /spost_at /= /xv6_spost /xk_a.
@@ -261,7 +261,7 @@ Section UkReadRows.
     take NSTD fdv = l ->
     l !! fd = Some st ->
     fd_st_of_key v0 fdv = st.
-  Proof.
+  Proof using .
     intros H0 Hlt Htake Hl0. rewrite /fd_st_of_key H0.
     destruct (decide (0 <= Z.of_nat fd < Z.of_nat NOFILE)) as [_ | Hc];
       [ | exfalso; apply Hc; unfold NSTD, NOFILE in *; lia ].
@@ -276,7 +276,7 @@ Section UkReadRows.
     (fd < NOFILE)%nat ->
     fdv !! fd = Some st ->
     fd_st_of_key v0 fdv = st.
-  Proof.
+  Proof using .
     intros H0 Hlt Hlk. rewrite /fd_st_of_key H0.
     destruct (decide (0 <= Z.of_nat fd < Z.of_nat NOFILE)) as [_ | Hc];
       [ | exfalso; apply Hc; lia ].
@@ -328,7 +328,7 @@ Section UkReadRows.
     ⊣⊢ udepwf_K N m pc n fdep
           (fun fdv =>
              fd_st_of_key (m !!! Regidx (mword_of_int 10 : mword 5)) fdv = st).
-  Proof. rewrite /udepwf_st /udepwf_K. iSplit; iIntros "H"; iExact "H". Qed.
+  Proof using . rewrite /udepwf_st /udepwf_K. iSplit; iIntros "H"; iExact "H". Qed.
 
   (* THE DESCRIPTOR THE CALL WILL RUN ON, OUT OF THE CALLER'S OWN HANDLE --
      the walks' agreement premise at the HANDLE.  The console twin reads it
@@ -343,7 +343,7 @@ Section UkReadRows.
     forall fdv : list fdstate,
       ufd_auth (ukn_fd N) fdv -∗ UserFd.ufd (ukn_fd N) fd st -∗
       ⌜fd_st_of_key v0 fdv = st⌝.
-  Proof.
+  Proof using .
     intros H0 Hlt fdv. iIntros "Ha Hh".
     iDestruct (ufd_agree (ukn_fd N) fdv fd st with "Ha Hh") as %Hlk.
     iPureIntro. exact (ufd_fd_st_of_key v0 fdv fd st H0 Hlt Hlk).
@@ -361,7 +361,7 @@ Section UkReadRows.
   Lemma uread_count_le (w : mword 64) (k : nat) :
     uint w = Z.of_nat k ->
     (Z.to_nat (bv_signed (subrange_vec_dec w 31 0 : mword 32)) <= k)%nat.
-  Proof.
+  Proof using .
     intros Hu. rewrite uint_unsigned in Hu.
     pose proof (subrange_31_0_unsigned w) as Hlo.
     assert (Hs : bv_signed (subrange_vec_dec w 31 0 : mword 32)
@@ -382,7 +382,7 @@ Section UkReadRows.
   Lemma uread_count_is_cap (w : mword 64) (cap : nat) :
     uint w = Z.of_nat cap -> (Z.of_nat cap < 2 ^ 31)%Z ->
     sys_rw_count w = Z.of_nat cap.
-  Proof.
+  Proof using .
     intros Hu Hlt. rewrite uint_unsigned in Hu.
     change (2 ^ 31)%Z with 2147483648%Z in Hlt.
     rewrite /sys_rw_count. unfold bv_signed.

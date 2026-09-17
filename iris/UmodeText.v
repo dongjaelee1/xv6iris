@@ -268,33 +268,33 @@ Section UmodeText.
 
   Lemma umem_split (pt : uptd) (M : gmap Z (bv 8)) :
     umem pt M ⊣⊢ umem pt (uM_text pt M) ∗ umem pt (uM_data pt M).
-  Proof.
+  Proof using .
     rewrite /umem -{1}(uM_union pt M). apply big_sepM_union. apply uM_disj.
   Qed.
 
   (* the stamps are forgotten at the trap back into the kernel *)
   Lemma umem_text_forget (pt : uptd) (M : gmap Z (bv 8)) (IK : nat) :
     umem_text pt M IK ⊢ umem pt (uM_text pt M).
-  Proof.
+  Proof using .
     rewrite /umem_text /umem. apply big_sepM_mono. intros va b _.
     apply ctx_phys_xpointsto_forget.
   Qed.
 
   Lemma umem_x_forget (pt : uptd) (M : gmap Z (bv 8)) :
     umem_x pt M ⊢ umem pt M.
-  Proof.
+  Proof using .
     rewrite /umem_x. iIntros "(%IK & _ & Ht & Hd)".
     rewrite (umem_split pt M). iFrame "Hd". by iApply umem_text_forget.
   Qed.
 
   Lemma umem_x_uva_inj (pt : uptd) (M : gmap Z (bv 8)) :
     umem_x pt M ⊢ ⌜uva_inj pt M⌝.
-  Proof. rewrite umem_x_forget. apply umem_uva_inj. Qed.
+  Proof using . rewrite umem_x_forget. apply umem_uva_inj. Qed.
 
   (* two separately owned maps are disjoint whatever the payload *)
   Lemma bytes_own_p_disj (F : Arch.pa -> option nat) (m1 m2 : PtBytes.pamap) :
     bytes_own m1 -∗ bytes_own_p F m2 -∗ ⌜m1 ##ₘ m2⌝.
-  Proof.
+  Proof using .
     iIntros "H1 H2". iDestruct (bytes_own_p_forget with "H2") as "H2".
     iApply (bytes_own_disj with "H1 H2").
   Qed.
@@ -306,7 +306,7 @@ Section UmodeText.
     uva_inj pt M ->
     ([∗ map] a ↦ b ∈ upa_map pt M, Φ a b)
     ⊣⊢ ([∗ map] va ↦ b ∈ M, Φ (uva_pa pt va : Arch.pa) b).
-  Proof.
+  Proof using .
     intros Hinj. rewrite /upa_map.
     rewrite big_sepM_list_to_map; [| by apply upa_list_nodup].
     rewrite /upa_list big_sepL_fmap big_sepM_map_to_list. reflexivity.
@@ -318,7 +318,7 @@ Section UmodeText.
     uva_inj pt M ->
     umem_text pt M IK ∗ umem pt (uM_data pt M)
     ⊣⊢ bytes_own_p (uv_F pt M IK) (upa_map pt M).
-  Proof.
+  Proof using .
     intros Hinj.
     pose proof (uva_inj_sub pt M _ (uM_text_sub pt M) Hinj) as Hinjt.
     pose proof (uva_inj_sub pt M _ (uM_data_sub pt M) Hinj) as Hinjd.
@@ -338,12 +338,12 @@ Section UmodeText.
   Lemma umem_x_to_bytes (pt : uptd) (M : gmap Z (bv 8)) (IK : nat) :
     uva_inj pt M ->
     umem_text pt M IK ∗ umem pt (uM_data pt M) ⊢ bytes_own_p (uv_F pt M IK) (upa_map pt M).
-  Proof. intros Hinj. rewrite (umem_x_bytes pt M IK Hinj). reflexivity. Qed.
+  Proof using . intros Hinj. rewrite (umem_x_bytes pt M IK Hinj). reflexivity. Qed.
 
   Lemma bytes_to_umem_x (pt : uptd) (M : gmap Z (bv 8)) (IK : nat) :
     uva_inj pt M ->
     bytes_own_p (uv_F pt M IK) (upa_map pt M) ⊢ umem_text pt M IK ∗ umem pt (uM_data pt M).
-  Proof. intros Hinj. rewrite (umem_x_bytes pt M IK Hinj). reflexivity. Qed.
+  Proof using . intros Hinj. rewrite (umem_x_bytes pt M IK Hinj). reflexivity. Qed.
 
   (* ---- THE MINT, at a [fence.i]: every text byte of a RUNNING image is
      stamped at the raised instruction view ([TsoCtx.ctx_phys_xstamp], one
@@ -359,7 +359,7 @@ Section UmodeText.
     tso_interp_at riscv_eraGS g ∗ TsoCtx.own_context XI ∗
     ([∗ map] va ↦ b ∈ T,
        TsoCtx.ctx_phys_xpointsto XI IK (uva_pa pt va : Arch.pa) (DfracOwn 1) b).
-  Proof.
+  Proof using .
     intros Htv Hpub.
     induction T as [|va b T Hfresh IH] using map_ind.
     - iIntros "Hint Hrun _". rewrite big_sepM_empty. by iFrame.
@@ -374,7 +374,7 @@ Section UmodeText.
   Lemma umem_x_mint (pt : uptd) (M : gmap Z (bv 8)) :
     ⊢ ifence_step (umem pt M ∗ TsoCtx.own_context XI)
                   (umem_x pt M ∗ TsoCtx.own_context XI).
-  Proof.
+  Proof using .
     rewrite /ifence_step. iIntros (g IK) "%Htv %Hpub #Hlb Hgh Hint [Hm Hrun]".
     rewrite (umem_split pt M). iDestruct "Hm" as "[Ht Hd]".
     iDestruct (umem_text_stamp pt (uM_text pt M) g IK Htv Hpub
@@ -409,7 +409,7 @@ Section UmodeText.
 
   Lemma umem_lazy_x_forget (P : uptd) (sz : Z) (M : gmap Z (bv 8)) :
     umem_lazy_x P sz M ⊢ umem_lazy P sz M.
-  Proof.
+  Proof using .
     rewrite /umem_lazy_x /umem_lazy /umem_own_x /umem_own.
     iIntros "(%Mp & %Hsub & %Hiff & %Hz & %Hdom & Hm)".
     iExists Mp. iSplitR; [done|]. iSplitR; [done|]. iSplitR; [done|].
@@ -418,7 +418,7 @@ Section UmodeText.
 
   Lemma user_ptm_inv_x_forget (P : uptd) (sz : Z) (M : gmap Z (bv 8)) :
     user_ptm_inv_x P sz M ⊢ user_ptm_inv P sz M.
-  Proof.
+  Proof using .
     rewrite /user_ptm_inv_x /user_ptm_inv.
     iIntros "(Htlb & Hm & %Hinj & %Hacc)". iFrame "Htlb".
     iSplitL "Hm"; [iApply (umem_lazy_x_forget with "Hm") |].
@@ -429,7 +429,7 @@ Section UmodeText.
   Lemma user_ptm_inv_x_mint (P : uptd) (sz : Z) (M : gmap Z (bv 8)) :
     ⊢ ifence_step (user_ptm_inv P sz M ∗ TsoCtx.own_context XI)
                   (user_ptm_inv_x P sz M ∗ TsoCtx.own_context XI).
-  Proof.
+  Proof using .
     rewrite /ifence_step. iIntros (g IK) "%Htv %Hpub #Hlb Hgh Hint [Hpt Hrun]".
     rewrite /user_ptm_inv /user_ptm_inv_x /umem_lazy /umem_lazy_x /umem_own /umem_own_x.
     iDestruct "Hpt" as "(Htlb & (%Mp & %Hsub & %Hiff & %Hz & %Hdom & Hm) & %Hinj & %Hacc)".
@@ -448,7 +448,7 @@ Section UmodeText.
   Lemma umem_lazy_x_mint (P : uptd) (sz : Z) (M : gmap Z (bv 8)) :
     ⊢ ifence_step (umem_lazy P sz M ∗ TsoCtx.own_context XI)
                   (umem_lazy_x P sz M ∗ TsoCtx.own_context XI).
-  Proof.
+  Proof using .
     rewrite /ifence_step. iIntros (g IK) "%Htv %Hpub #Hlb Hgh Hint [Hlz Hrun]".
     rewrite /umem_lazy /umem_lazy_x /umem_own /umem_own_x.
     iDestruct "Hlz" as "(%Mp & %Hsub & %Hiff & %Hz & %Hdom & Hm)".
@@ -472,7 +472,7 @@ Section UmodeText.
 
   Lemma user_pt_inv_x_forget (P : uptd) (M : gmap Z (bv 8)) :
     user_pt_inv_x P M ⊢ user_pt_inv P M.
-  Proof.
+  Proof using .
     rewrite /user_pt_inv_x /user_pt_inv /umem_own_x /umem_own.
     iIntros "(Htlb & (%Hdom & Hm) & %Hinj & %Hacc)". iFrame "Htlb".
     iSplitL "Hm"; [ iSplitR; [done|]; iApply (umem_x_forget with "Hm") | ].
@@ -482,7 +482,7 @@ Section UmodeText.
   (* the mapped sub-image at some map ([UserPtTree.user_ptm_inv_pt]) *)
   Lemma user_ptm_inv_x_pt (P : uptd) (sz : Z) (M : gmap Z (bv 8)) :
     user_ptm_inv_x P sz M -∗ ∃ Mp : gmap Z (bv 8), user_pt_inv_x P Mp.
-  Proof.
+  Proof using .
     rewrite /user_ptm_inv_x /umem_lazy_x /user_pt_inv_x.
     iIntros "(Htlb & (%Mp & _ & _ & _ & Hm) & %Hinj & %Hacc)".
     iExists Mp. iFrame "Htlb Hm". iPureIntro. exact (conj Hinj Hacc).
@@ -495,7 +495,7 @@ Section UmodeText.
     utlb_inv_pt P.(ud_root) P.(ud_tfp) P.(ud_um) -∗
     umem_lazy_x P sz M -∗
     user_ptm_inv_x (ud_norm P) sz M.
-  Proof.
+  Proof using .
     intros (Hmwf & Hacc & _ & Hinj & _).
     rewrite /user_ptm_inv_x.
     unfold ud_norm; cbn [ud_root ud_tfp ud_um ud_data].

@@ -250,7 +250,7 @@ Section UInitCons.
     open_in (fs_gamma_L γfs) γfs FsImg.ROOTINO M pv vom
       (pobs_P T [FsImg.ROOTINO; i]) (pobs_Pmiss T) Farm Fun Fok Fex
       (pobs_Fo (cons_present_at i) T) Ft.
-  Proof.
+  Proof using .
     intros Hcr Hpath. iIntros "#Hcl #Hinv Ht".
     iApply (pinned_open_bundle γfs (cons_present_at i) T FsImg.ROOTINO
               init_cons_pl [FsImg.ROOTINO; i] i cons_dev M pv vom Ft
@@ -277,7 +277,7 @@ Section UInitCons.
     open_in (fs_gamma_L γfs) γfs FsImg.ROOTINO M pv vom
       (pobs_P T [FsImg.ROOTINO; i]) (pobs_Pmiss T) Farm Fun Fok Fex
       (pobs_Fo (cons_present_at i) T) Ft.
-  Proof.
+  Proof using .
     intros Hom Hpath. iIntros "#Hcl #Hinv".
     destruct (om_rdwr_plain vom Hom) as [Hcr Htr].
     iApply (init_cons_open_bundle γfs T i M pv vom Ft Farm Fun Fok Fex
@@ -307,7 +307,7 @@ Section UInitCons.
               (FdDevice CONSOLE) sts r fdv'⌝
           ∗ open_trunc_piece (fs_gamma_L γfs) vom Ft)
        ∨ T).
-  Proof.
+  Proof using .
     intros Hpath. iIntros "Hrc".
     iApply (pinned_open_dev γfs (cons_present_at i) T FsImg.ROOTINO
               init_cons_pl [FsImg.ROOTINO; i] i CONSOLE 0 1%nat M pv vom Ft
@@ -371,7 +371,7 @@ Section UInitCons.
     open_in (fs_gamma_L γfs) γfs FsImg.ROOTINO M pv vom
       (pobs_P_dead T FsImg.ROOTINO) Pmiss Farm Fun Fok Fex
       (pfam_triv (fun (_ : aview) (_ : Z) (_ : anode) => True%I)) Ft.
-  Proof.
+  Proof using .
     intros Hom Hpath. iIntros "#Hcl #Hfree #Hinv HK".
     destruct (om_rdwr_plain vom Hom) as [Hcr Htr].
     iApply (pinned_open_bundle_dead γfs cons_absent T K Pmiss FsImg.ROOTINO
@@ -393,7 +393,7 @@ Section UInitCons.
     open_receipt_plain (fs_gamma_L γfs) γfs FsImg.ROOTINO M pv vom
       (pobs_P_dead T FsImg.ROOTINO) Pmiss Fo Ft sts r fdv' -∗
       ((⌜r = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜fdv' = sts⌝) ∨ T).
-  Proof.
+  Proof using .
     intros Hpath. iIntros "Hrc".
     iApply (pinned_open_dead γfs T Pmiss FsImg.ROOTINO init_cons_pl
               FsImg.ROOTINO M pv vom Fo Ft sts r fdv' Hpath
@@ -489,7 +489,7 @@ Section UInitCons.
   Lemma init_cons_fok_at (r : echo_names) (T K : iProp Σ) (av : aview) (i : Z) :
     init_cons_fok r T K av FsImg.ROOTINO fname_console i -∗
     init_cons_made_of_fok r T i.
-  Proof.
+  Proof using .
     rewrite /init_cons_fok /init_cons_made_of_fok.
     iIntros "[[%Hne _] | H]"; [| iExact "H"].
     exfalso. destruct Hne as [Hc | Hc]; exact (Hc eq_refl).
@@ -549,7 +549,7 @@ Section UInitCons.
     mknod_au_at (fs_gamma_L γfs) γfs FsImg.ROOTINO M pv CONSOLE 0
       (init_mk_P T) (fun _ _ => True%I)
       (init_mk_Farm Pv T K) (init_mk_Fun T K) (init_mk_Fok r T K) init_mk_Fex.
-  Proof.
+  Proof using .
     intros Hpath.
     iIntros "#Hsup #Hpure #Habs #Harml #Hunl #Hmk #Hoth #Hshoot #Hinv HK".
     rewrite /mknod_au_at.
@@ -711,7 +711,7 @@ Section UInitCons.
     mknod_post_ok (fs_gamma_L γfs) M pv CONSOLE 0 (init_mk_P T)
       (init_mk_Farm Pv T K) (init_mk_Fun T K) (init_mk_Fok r T K) init_mk_Fex -∗
       ((∃ i : Z, cons_made r i) ∨ T).
-  Proof.
+  Proof using .
     intros Hpath. rewrite /mknod_post_ok. iIntros "H".
     iDestruct "H" as (pl i) "(%Hpath' & %Hb & H)".
     rewrite (arg_path_of_uniq M pv pl init_cons_pl Hpath' Hpath).
@@ -737,7 +737,7 @@ Section UInitCons.
     mknod_post_fail (fs_gamma_L γfs) γfs FsImg.ROOTINO M pv CONSOLE 0
       (init_mk_P T) Pmiss (init_mk_Farm Pv T K) (init_mk_Fun T K)
       (init_mk_Fok r T K) init_mk_Fex -∗ (K ∨ T).
-  Proof.
+  Proof using .
     rewrite /mknod_post_fail /cre_child_unfired /cre_child_pair. iIntros "H".
     iDestruct "H" as "[Hau | Hf]".
     { rewrite /mknod_au_at. iDestruct "Hau" as "(_ & _ & _ & Harm & _)".
@@ -764,7 +764,7 @@ Section UInitCons.
   Definition init_cons_l0 : list fdstate := ufd_l0.
 
   Lemma init_cons_l0_len : length init_cons_l0 = NSTD.
-  Proof. exact ufd_l0_len. Qed.
+  Proof using . exact ufd_l0_len. Qed.
 
   (* the console descriptor /init's open and its two dups install *)
   Definition init_cons_fd : fdstate := FdOpen true true (FdDevice CONSOLE).
@@ -777,28 +777,28 @@ Section UInitCons.
   (* the three scans, by computation: this is what turns
      [UserFd.ualloc]'s two arms into ONE at each of init's three calls. *)
   Lemma init_cons_scan0 : fd_lowest_closed init_cons_l0 = Some 0%nat.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
   Lemma init_cons_scan1 :
     fd_lowest_closed (<[0%nat := init_cons_fd]> init_cons_l0) = Some 1%nat.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
   Lemma init_cons_scan2 :
     fd_lowest_closed
       (<[1%nat := init_cons_fd]> (<[0%nat := init_cons_fd]> init_cons_l0))
     = Some 2%nat.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* ...and the three readings of [ualloc] they license, which is the
      whole of "which descriptor came back" at each of init's calls. *)
   Lemma init_cons_alloc0 (γfd : gname) (fd : nat) :
     ualloc γfd init_cons_l0 fd init_cons_fd -∗
     ⌜fd = 0%nat⌝ ∗ ustd γfd (<[0%nat := init_cons_fd]> init_cons_l0).
-  Proof. iApply (ualloc_std γfd init_cons_l0 fd 0%nat init_cons_fd init_cons_scan0). Qed.
+  Proof using . iApply (ualloc_std γfd init_cons_l0 fd 0%nat init_cons_fd init_cons_scan0). Qed.
 
   Lemma init_cons_alloc1 (γfd : gname) (fd : nat) :
     ualloc γfd (<[0%nat := init_cons_fd]> init_cons_l0) fd init_cons_fd -∗
     ⌜fd = 1%nat⌝ ∗ ustd γfd (<[1%nat := init_cons_fd]>
                                (<[0%nat := init_cons_fd]> init_cons_l0)).
-  Proof.
+  Proof using .
     iApply (ualloc_std γfd _ fd 1%nat init_cons_fd init_cons_scan1).
   Qed.
 
@@ -806,7 +806,7 @@ Section UInitCons.
     ualloc γfd (<[1%nat := init_cons_fd]>
                   (<[0%nat := init_cons_fd]> init_cons_l0)) fd init_cons_fd -∗
     ⌜fd = 2%nat⌝ ∗ ustd γfd init_cons_l3.
-  Proof.
+  Proof using .
     iApply (ualloc_std γfd _ fd 2%nat init_cons_fd init_cons_scan2).
   Qed.
 
@@ -820,11 +820,11 @@ Section UInitCons.
 
   Lemma init_cons_l3_row :
     init_cons_l3 !! 0%nat = Some (FdOpen true true (FdDevice CONSOLE)).
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma init_std_cons_l3 (γfd : gname) :
     ustd γfd init_cons_l3 -∗ init_std_cons γfd init_cons_l3.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /init_std_cons. iFrame "H". iPureIntro.
     exists true. exact init_cons_l3_row.
   Qed.
@@ -843,7 +843,7 @@ Section UInitCons.
       r = (mword_of_int (Z.of_nat fd) : mword 64)
       /\ sts !! fd = Some FdClosed
       /\ fdv' = <[fd := init_cons_fd]> sts.
-  Proof.
+  Proof using .
     intros Hom Hrc. destruct (om_rdwr_modes vom Hom) as [Hrd Hwr].
     rewrite Hrd Hwr in Hrc. exact Hrc.
   Qed.
@@ -852,23 +852,23 @@ Section UInitCons.
      row 0 ([UserFd.ufd_own]'s left arm -- a standard stream, not a handle),
      and the TRACKED leaf's [st <> FdClosed] premise holds there. *)
   Lemma init_cons_fd_ne : init_cons_fd <> FdClosed.
-  Proof. discriminate. Qed.
+  Proof using . discriminate. Qed.
 
   Lemma init_cons_dup_src (γfd : gname) (l : list fdstate) :
     l !! 0%nat = Some init_cons_fd -> ⊢ ufd_own γfd l 0%nat init_cons_fd.
-  Proof.
+  Proof using .
     intros Hl. iApply (ufd_own_std γfd l 0%nat init_cons_fd); [ | exact Hl ].
     unfold NSTD. lia.
   Qed.
 
   Lemma init_cons_l1_row :
     (<[0%nat := init_cons_fd]> init_cons_l0) !! 0%nat = Some init_cons_fd.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma init_cons_l2_row :
     (<[1%nat := init_cons_fd]> (<[0%nat := init_cons_fd]> init_cons_l0))
       !! 0%nat = Some init_cons_fd.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* ...AND THE CLOSED ARM HAS ITS OWN DUP LEAF.  There fd 0 is CLOSED, and
      [UkRunSys.wp_uk_ecall_dup] takes [st <> FdClosed] as a PREMISE, so
@@ -880,7 +880,7 @@ Section UInitCons.
      so the call provably returned [-1].  /init reads neither dup result, so
      only the ledger half is consumed. *)
   Lemma init_cons_l0_row0 : init_cons_l0 !! 0%nat = Some FdClosed.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* INIT'S HEAD: THREE ARMS.  What the fork carries to sh is one of
 
@@ -912,22 +912,22 @@ Section UInitCons.
      hands the child the same list at a fresh name. *)
   Lemma init_cons_head_console (γcl : echo_fixed) (γfd : gname) :
     ustd γfd init_cons_l3 -∗ init_cons_head γcl γfd.
-  Proof. iIntros "H". iApply (ufd_head_l3 with "H"). Qed.
+  Proof using . iIntros "H". iApply (ufd_head_l3 with "H"). Qed.
 
   Lemma init_cons_head_closed (γcl : echo_fixed) (γfd : gname) :
     ustd γfd init_cons_l0 -∗ init_cons_head γcl γfd.
-  Proof. iIntros "H". iApply (ufd_head_closed with "H"). Qed.
+  Proof using . iIntros "H". iApply (ufd_head_closed with "H"). Qed.
 
   Lemma init_cons_head_taint (γcl : echo_fixed) (γfd : gname)
       (l : list fdstate) :
     echo_taint γcl -∗ ustd γfd l -∗ init_cons_head γcl γfd.
-  Proof. iIntros "#Ht H". iApply (ufd_head_taint with "Ht H"). Qed.
+  Proof using . iIntros "#Ht H". iApply (ufd_head_taint with "Ht H"). Qed.
 
   (* ...and the ledger every arm carries, which is what the two [dup]
      leaves and the fork are stated over. *)
   Lemma init_cons_head_ledger (γcl : echo_fixed) (γfd : gname) :
     init_cons_head γcl γfd -∗ ∃ l : list fdstate, ustd γfd l.
-  Proof. iIntros "H". iApply (ufd_head_ledger with "H"). Qed.
+  Proof using . iIntros "H". iApply (ufd_head_ledger with "H"). Qed.
 
   (* ...AND WHAT SH-LINE READS OFF THE CONSOLE ARM: row 0 is an OPEN
      READABLE CONSOLE DEVICE ([UConsLine.ush_std_cons]'s own shape).  Since
@@ -938,7 +938,7 @@ Section UInitCons.
     init_cons_head γcl γfd -∗
     (∃ l : list fdstate, init_std_cons γfd l)
     ∨ ustd γfd init_cons_l0 ∨ (ustd_any γfd ∗ echo_taint γcl).
-  Proof.
+  Proof using .
     rewrite /init_cons_head /ufd_head /ufd_headL.
     iIntros "[H | H]"; [| by iRight ].
     iLeft. iExists init_cons_l3. iApply (init_std_cons_l3 with "H").
@@ -1045,11 +1045,11 @@ Section UInitCons.
 
   Global Instance init_cons_laws_at_persistent Pv (T K : iProp Σ)
       (r : echo_names) : Persistent (init_cons_laws_at Pv T K r).
-  Proof. rewrite /init_cons_laws_at /init_cons_pin_law. apply _. Qed.
+  Proof using . rewrite /init_cons_laws_at /init_cons_pin_law. apply _. Qed.
 
   Global Instance init_cons_laws_persistent (T K : iProp Σ) (r : echo_names) :
     Persistent (init_cons_laws T K r).
-  Proof. rewrite /init_cons_laws. apply _. Qed.
+  Proof using . rewrite /init_cons_laws. apply _. Qed.
 
   (* ===================================================================== *)
   (*  9b.  THE CREDENTIAL /init HANDS THE SHELL (lane E2 / SH-OPEN)         *)
@@ -1068,21 +1068,21 @@ Section UInitCons.
 
   Global Instance init_cons_cred_persistent T r `{!Persistent T} :
     Persistent (init_cons_cred T r).
-  Proof. rewrite /init_cons_cred. apply _. Qed.
+  Proof using . rewrite /init_cons_cred. apply _. Qed.
 
   Lemma init_cons_cred_of_never (T : iProp Σ) (r : echo_names) :
     cons_never r -∗ init_cons_cred T r.
-  Proof. iIntros "#H". rewrite /init_cons_cred. by iLeft. Qed.
+  Proof using . iIntros "#H". rewrite /init_cons_cred. by iLeft. Qed.
 
   Lemma init_cons_cred_of_made (T : iProp Σ) (r : echo_names) (i : Z) :
     cons_made r i -∗ init_cons_cred T r.
-  Proof.
+  Proof using .
     iIntros "#H". rewrite /init_cons_cred. iRight. iLeft. by iExists i.
   Qed.
 
   Lemma init_cons_cred_of_taint (T : iProp Σ) (r : echo_names) :
     T -∗ init_cons_cred T r.
-  Proof. iIntros "H". rewrite /init_cons_cred. iRight. by iRight. Qed.
+  Proof using . iIntros "H". rewrite /init_cons_cred. iRight. by iRight. Qed.
 
   (* ---- the three bundles, restated against the bundle ---- *)
 
@@ -1098,7 +1098,7 @@ Section UInitCons.
     mknod_au_at (fs_gamma_L γfs) γfs FsImg.ROOTINO M pv CONSOLE 0
       (init_mk_P T) (fun _ _ => True%I)
       (init_mk_Farm Pv T K) (init_mk_Fun T K) (init_mk_Fok r T K) init_mk_Fex.
-  Proof.
+  Proof using .
     intros Hpath. rewrite /init_cons_laws_at.
     iIntros "(#Ha & #Hb & #Hc & #Hd & #He & #Hf & #Hg & #Hh & _) #Hinv HK".
     iApply (init_cons_mknod_bundle γfs r Pv T K M pv Hpath
@@ -1121,7 +1121,7 @@ Section UInitCons.
     open_in (fs_gamma_L γfs) γfs FsImg.ROOTINO M pv vom
       (pobs_P_dead T FsImg.ROOTINO) Pmiss Farm Fun Fok Fex
       (pfam_triv (fun (_ : aview) (_ : Z) (_ : anode) => True%I)) Ft.
-  Proof.
+  Proof using .
     intros Hom Hpath.
     iIntros "#Hc #Hfree #Hinv HK".
     iApply (init_cons_open_bundle_absent γfs T K Pmiss M pv vom Ft
@@ -1143,7 +1143,7 @@ Section UInitCons.
     open_in (fs_gamma_L γfs) γfs FsImg.ROOTINO M pv vom
       (pobs_P T [FsImg.ROOTINO; i]) (pobs_Pmiss T) Farm Fun Fok Fex
       (pobs_Fo (cons_present_at i) T) Ft.
-  Proof.
+  Proof using .
     intros Hom Hpath. rewrite /init_cons_laws_at.
     iIntros "(_ & _ & _ & _ & _ & _ & _ & _ & #Hi) #Hm #Hinv".
     iDestruct ("Hi" $! i with "Hm") as "#Hcl".
@@ -1163,7 +1163,7 @@ Section UInitCons.
   Lemma init_cons_laws_echo (γ : echo_fixed) (r : echo_names) :
     file_app = MkAppcfg echo_names (echo_pred γ) r ->
     ⊢ init_cons_laws (echo_taint γ) (cons_key r) r.
-  Proof.
+  Proof using .
     intros Heq.
     rewrite /init_cons_laws /init_cons_laws_at /init_cons_abs_law
             /init_cons_pin_law.
@@ -1202,7 +1202,7 @@ Section UInitCons.
     file_app = MkAppcfg echo_names (echo_pred γ) r ->
     cons_made r i0 -∗
     init_cons_laws_at (cons_present_at i0) (echo_taint γ) (cons_made r i0) r.
-  Proof.
+  Proof using .
     intros Heq. rewrite /init_cons_laws_at /init_cons_pin_law.
     rewrite Heq. rewrite /app_sup. cbn [app_pred app_run app_names].
     iIntros "#Hm".

@@ -250,17 +250,17 @@ Section SpecArgfd.
      needing a setoid rewrite inside the proofmode context *)
   Lemma ofd_out_null `{XI : CurCtx} (a : mword 64) (w : mword 32) :
     a = (zero_reg : mword 64) -> ⊢ ofd_out a w.
-  Proof. intro Hz. rewrite /ofd_out bool_decide_true; [|exact Hz]. done. Qed.
+  Proof using . intro Hz. rewrite /ofd_out bool_decide_true; [|exact Hz]. done. Qed.
 
   Lemma ofd_out_intro `{XI : CurCtx} (a : mword 64) (w : mword 32) :
     a <> (zero_reg : mword 64) -> a ↦₄[KT1] w -∗ ofd_out a w.
-  Proof.
+  Proof using .
     intro Hn. rewrite /ofd_out bool_decide_false; [|exact Hn]. iIntros "$".
   Qed.
 
   Lemma ofd_out_elim `{XI : CurCtx} (a : mword 64) (w : mword 32) :
     a <> (zero_reg : mword 64) -> ofd_out a w -∗ a ↦₄[KT1] w.
-  Proof.
+  Proof using .
     intro Hn. rewrite /ofd_out bool_decide_false; [|exact Hn]. iIntros "$".
   Qed.
 

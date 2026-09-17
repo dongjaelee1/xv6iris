@@ -183,43 +183,43 @@ Section tower.
       | rewrite irrelevant_register_set; [ | reflexivity ] ].
 
   Lemma mm_rs_PC : register_lookup (R_bitvector_64 PC) mm_rs = pc.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
   Lemma mm_rs_nPC : register_lookup (R_bitvector_64 nextPC) mm_rs = npc.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
   Lemma mm_rs_ms : register_lookup (R_bitvector_64 minstret) mm_rs = ms.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
   Lemma mm_rs_mi : register_lookup (R_bool minstret_increment) mm_rs = bmi.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
   Lemma mm_rs_cy : register_lookup (R_bitvector_64 mcycle) mm_rs = cy.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
   Lemma mm_rs_ti : register_lookup (R_bitvector_64 mtime) mm_rs = ti.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
   Lemma mm_rs_ip : register_lookup (R_bitvector_64 mip) mm_rs = ip.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
   Lemma mm_rs_priv : register_lookup cur_privilege mm_rs = Machine.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
   Lemma mm_rs_mst : register_lookup mstatus mm_rs = mst0.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
   Lemma mm_rs_hart : register_lookup hart_state mm_rs = (HART_ACTIVE tt).
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
   Lemma mm_rs_pcfg : register_lookup pmpcfg_n mm_rs = pcfg.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
   Lemma mm_rs_mc : register_lookup (R_bitvector_32 mcountinhibit) mm_rs = mc.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
   Lemma mm_rs_micfg : register_lookup (R_bitvector_64 minstretcfg) mm_rs = micfg.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
   Lemma mm_rs_misa : register_lookup misa mm_rs = misa0.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
   Lemma mm_rs_sec : register_lookup mseccfg mm_rs = mseccfg0.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
   Lemma mm_rs_pma : register_lookup pma_regions mm_rs = pmar0.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
   Lemma mm_rs_htif : register_lookup htif_tohost_base mm_rs = None.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
   Lemma mm_rs_elp : register_lookup elp mm_rs = elp0.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
   Lemma mm_rs_senv : register_lookup senvcfg mm_rs = senv0.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
 
 
 End tower.
@@ -270,7 +270,7 @@ Section agree.
     reg_agree_on (mm_Drw ∪ mm_Dro) rs
       (mm_rs pc npc ms bmi cy ti ip mst0 pcfg mc micfg misa0 mseccfg0
          pmar0 elp0 senv0).
-  Proof.
+  Proof using .
     intros H1 H2 H3 H4 H5 H6 H7 H8 H9 H10 H11 H12 H13 H14 H15 H16 H17
       H18 H19.
     intros r Hr. rewrite /mm_Drw /mm_Dro in Hr.
@@ -290,11 +290,11 @@ Section agree.
   Qed.
   Lemma mm_agree_rw (rs rs' : regstate) :
     reg_agree_on (mm_Drw ∪ mm_Dro) rs rs' -> reg_agree_on mm_Drw rs rs'.
-  Proof. intros H r Hr. apply H. set_solver. Qed.
+  Proof using . intros H r Hr. apply H. set_solver. Qed.
 
   Lemma mm_agree_ro (rs rs' : regstate) :
     reg_agree_on (mm_Drw ∪ mm_Dro) rs rs' -> reg_agree_on mm_Dro rs rs'.
-  Proof. intros H r Hr. apply H. set_solver. Qed.
+  Proof using . intros H r Hr. apply H. set_solver. Qed.
 
   (* the read-only footprint's own agreement, same shape as [mm_rs_agree] and
      for the same reason: ONE side is a variable, so no tactic here ever has
@@ -315,7 +315,7 @@ Section agree.
     reg_agree_on mm_Dro rs
       (mm_rs pc npc ms bmi cy ti ip mst0 pcfg mc micfg misa0 mseccfg0
          pmar0 elp0 senv0).
-  Proof.
+  Proof using .
     intros H1 H2 H3 H4 H5 H6 H7 H8 H9 H10 H11 H12.
     intros r Hr. rewrite /mm_Dro in Hr.
     repeat (apply elem_of_union in Hr as [Hr|Hr]);
@@ -400,7 +400,7 @@ Section gpr.
   Local Lemma hregwrite_val_at_red (r : register) (ak : option unit)
       (v : type_of_register r) (K : unit -> M unit) :
     hregwrite_val_at r (Interface.Next (Interface.RegWrite r ak v) K) = Some v.
-  Proof.
+  Proof using .
     simpl. destruct (decide _) as [Heq|Hne]; [|congruence].
     assert (Heq = eq_refl) as -> by apply proof_irrel.
     reflexivity.
@@ -420,7 +420,7 @@ Section gpr.
   Lemma swp_read_reg_cell (r : register) (v : type_of_register r) :
     gen_cert -∗ r ↦ᵣ v -∗
     swp (Defs.read_reg r) (fun w => ⌜w = v⌝ ∗ r ↦ᵣ v).
-  Proof.
+  Proof using .
     iIntros "#Hcert Hpt".
     iApply (swp_hart_regread with "Hcert").
     { cbn [hregread_at]. apply bool_decide_eq_true_2. reflexivity. }
@@ -437,7 +437,7 @@ Section gpr.
   Lemma swp_write_reg_cell (r : register) (v w : type_of_register r) :
     gen_cert -∗ r ↦ᵣ v -∗
     swp (Defs.write_reg r w) (fun _ => r ↦ᵣ w).
-  Proof.
+  Proof using .
     iIntros "#Hcert Hpt".
     iApply (swp_hart_regwrite r w with "Hcert").
     { cbn [hregwrite_val_at Defs.write_reg].
@@ -471,7 +471,7 @@ Section gpr.
     gen_cert -∗
     gpr_pt (Regidx i) v -∗
     swp (rX_bits (Regidx i)) (fun w => ⌜w = v⌝ ∗ gpr_pt (Regidx i) v).
-  Proof.
+  Proof using .
     iIntros "#Hcert Hpt".
     pose proof (uint5_lt i) as Hb.
     assert (Hc : uint i = 0 \/ uint i = 1 \/ uint i = 2 \/ uint i = 3 \/
@@ -509,7 +509,7 @@ Section gpr.
     gpr_pt (Regidx i) v -∗
     swp (wX_bits (Regidx i) w)
       (fun _ => gpr_pt (Regidx i) (regval_into_reg w)).
-  Proof.
+  Proof using .
     intros Hnz. iIntros "#Hcert Hpt".
     pose proof (uint5_lt i) as Hb.
     assert (Hc : uint i = 1 \/ uint i = 2 \/ uint i = 3 \/
@@ -557,7 +557,7 @@ Section gpr.
     gen_cert -∗ gpr_file m -∗
     swp (rX_bits (Regidx i))
       (fun w => ⌜w = m !!! Regidx i⌝ ∗ gpr_file m).
-  Proof.
+  Proof using .
     iIntros "#Hcert Hf".
     iDestruct (gpr_file_lookup_acc m (Regidx i) with "Hf") as "[Hpt Hcl]".
     iApply (swp_mono with "[Hcl] [-]");
@@ -572,7 +572,7 @@ Section gpr.
     gen_cert -∗ gpr_file m -∗
     swp (wX_bits (Regidx i) w)
       (fun _ => gpr_file (<[Regidx i := regval_into_reg w]> m)).
-  Proof.
+  Proof using .
     intros Hnz. iIntros "#Hcert Hf".
     iDestruct (gpr_file_insert_acc m (Regidx i) (regval_into_reg w)
                  with "Hf") as "[Hpt Hcl]".
@@ -605,21 +605,21 @@ Section gpr.
     reflexivity.
 
   Lemma mm_Df_misa dq : mm_Df dq misa = DfracDiscarded.
-  Proof. dfq. Qed.
+  Proof using . dfq. Qed.
   Lemma mm_Df_sec dq : mm_Df dq mseccfg = DfracDiscarded.
-  Proof. dfq. Qed.
+  Proof using . dfq. Qed.
   Lemma mm_Df_pma dq : mm_Df dq pma_regions = DfracDiscarded.
-  Proof. dfq. Qed.
+  Proof using . dfq. Qed.
   Lemma mm_Df_htif dq : mm_Df dq htif_tohost_base = DfracDiscarded.
-  Proof. dfq. Qed.
+  Proof using . dfq. Qed.
   Lemma mm_Df_elp dq : mm_Df dq elp = DfracDiscarded.
-  Proof. dfq. Qed.
+  Proof using . dfq. Qed.
   Lemma mm_Df_senv dq : mm_Df dq senvcfg = DfracDiscarded.
-  Proof. dfq. Qed.
+  Proof using . dfq. Qed.
   Lemma mm_Df_mc dq : mm_Df dq (R_bitvector_32 mcountinhibit) = DfracDiscarded.
-  Proof. dfq. Qed.
+  Proof using . dfq. Qed.
   Lemma mm_Df_micfg dq : mm_Df dq (R_bitvector_64 minstretcfg) = DfracDiscarded.
-  Proof. dfq. Qed.
+  Proof using . dfq. Qed.
 
   (* THE FRAME <-> POINTS-TO BRIDGE, at the size it should have been all
      along: seven cells and twelve, not thirty-eight.  Instant. *)
@@ -634,7 +634,7 @@ Section gpr.
      (R_bitvector_64 mcycle) ↦ᵣ register_lookup (R_bitvector_64 mcycle) rs ∗
      (R_bitvector_64 mtime) ↦ᵣ register_lookup (R_bitvector_64 mtime) rs ∗
      (R_bitvector_64 mip) ↦ᵣ register_lookup (R_bitvector_64 mip) rs)%I.
-  Proof.
+  Proof using .
     rewrite /hreg_frame /mm_Drw.
     repeat (rewrite big_sepS_union; last set_solver).
     rewrite !big_sepS_singleton.
@@ -659,7 +659,7 @@ Section gpr.
        (register_lookup htif_tohost_base rs) ∗
      reg_pointsto elp DfracDiscarded (register_lookup elp rs) ∗
      reg_pointsto senvcfg DfracDiscarded (register_lookup senvcfg rs))%I.
-  Proof.
+  Proof using .
     rewrite /hreg_frame_ro /mm_Dro.
     repeat (rewrite big_sepS_union; last set_solver).
     rewrite !big_sepS_singleton.
@@ -689,7 +689,7 @@ Section gpr.
   Lemma mm_rw_ext' (rs rs' : regstate) :
     reg_agree_on mm_Drw rs rs' ->
     hreg_frame rs mm_Drw -∗ (hreg_frame rs' mm_Drw : iProp Σ).
-  Proof.
+  Proof using .
     intros Hag. rewrite (hreg_frame_ext _ _ mm_Drw Hag).
     iIntros "H". iExact "H".
   Qed.
@@ -698,7 +698,7 @@ Section gpr.
     reg_agree_on mm_Dro rs rs' ->
     hreg_frame_ro (mm_Df dq) rs mm_Dro -∗
     (hreg_frame_ro (mm_Df dq) rs' mm_Dro : iProp Σ).
-  Proof.
+  Proof using .
     intros Hag. rewrite (hreg_frame_ro_ext (mm_Df dq) _ _ mm_Dro Hag).
     iIntros "H". iExact "H".
   Qed.
@@ -706,13 +706,13 @@ Section gpr.
   Lemma mm_rw_ext (rs rs' : regstate) :
     reg_agree_on (mm_Drw ∪ mm_Dro) rs rs' ->
     hreg_frame rs mm_Drw -∗ (hreg_frame rs' mm_Drw : iProp Σ).
-  Proof. intros Hag. exact (mm_rw_ext' rs rs' (mm_agree_rw _ _ Hag)). Qed.
+  Proof using . intros Hag. exact (mm_rw_ext' rs rs' (mm_agree_rw _ _ Hag)). Qed.
 
   Lemma mm_ro_ext (dq : dfrac) (rs rs' : regstate) :
     reg_agree_on (mm_Drw ∪ mm_Dro) rs rs' ->
     hreg_frame_ro (mm_Df dq) rs mm_Dro -∗
     (hreg_frame_ro (mm_Df dq) rs' mm_Dro : iProp Σ).
-  Proof. intros Hag. exact (mm_ro_ext' dq rs rs' (mm_agree_ro _ _ Hag)). Qed.
+  Proof using . intros Hag. exact (mm_ro_ext' dq rs rs' (mm_agree_ro _ _ Hag)). Qed.
 
   Lemma mm_rw_open (pc npc ms : SailStdpp.Values.mword 64) (bmi : bool)
       (cy ti ip mst0 : SailStdpp.Values.mword 64)
@@ -725,7 +725,7 @@ Section gpr.
      (R_bitvector_64 minstret) ↦ᵣ ms ∗ (R_bool minstret_increment) ↦ᵣ bmi ∗
      (R_bitvector_64 mcycle) ↦ᵣ cy ∗ (R_bitvector_64 mtime) ↦ᵣ ti ∗
      (R_bitvector_64 mip) ↦ᵣ ip : iProp Σ).
-  Proof.
+  Proof using .
     rewrite mm_rw_split mm_rs_PC mm_rs_nPC mm_rs_ms mm_rs_mi mm_rs_cy
       mm_rs_ti mm_rs_ip. iIntros "H". iExact "H".
   Qed.
@@ -757,7 +757,7 @@ Section gpr.
      reg_pointsto htif_tohost_base DfracDiscarded None ∗
      reg_pointsto elp DfracDiscarded elp0 ∗
      reg_pointsto senvcfg DfracDiscarded senv0 : iProp Σ).
-  Proof.
+  Proof using .
     rewrite mm_ro_split mm_rs_priv mm_rs_mst mm_rs_hart mm_rs_pcfg mm_rs_mc
       mm_rs_micfg mm_rs_misa mm_rs_sec mm_rs_pma mm_rs_htif mm_rs_elp
       mm_rs_senv. iIntros "H". iExact "H".
@@ -774,7 +774,7 @@ Section gpr.
      (R_bitvector_64 mip) ↦ᵣ ip : iProp Σ) -∗
     hreg_frame (mm_rs pc npc ms bmi cy ti ip mst0 pcfg mc micfg misa0
                   mseccfg0 pmar0 elp0 senv0) mm_Drw.
-  Proof.
+  Proof using .
     rewrite mm_rw_split mm_rs_PC mm_rs_nPC mm_rs_ms mm_rs_mi mm_rs_cy
       mm_rs_ti mm_rs_ip. iIntros "H". iExact "H".
   Qed.

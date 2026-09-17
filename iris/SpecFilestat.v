@@ -301,7 +301,7 @@ Section SpecFilestat.
      only has to hold on the [decide] branch that is taken. *)
   Lemma filestat_fs_env_out fn :
     filestat_fs_env fn -∗ filestat_fs_out fn.
-  Proof.
+  Proof using .
     rewrite /filestat_fs_env /filestat_fs_out.
     iIntros "(_ & _ & _ & _ & _ & _ & _ & _ & _ & Hsb & _ & _ & _ & Hbs)".
     iFrame "Hsb Hbs".
@@ -309,7 +309,7 @@ Section SpecFilestat.
 
   Lemma filestat_env_out_of_env fn st :
     filestat_env fn st -∗ filestat_env_out fn st.
-  Proof.
+  Proof using .
     rewrite /filestat_env /filestat_env_out.
     destruct st as [|? ? [? ? ?| |?]]; try by iIntros "$".
     all: iApply filestat_fs_env_out.
@@ -333,7 +333,7 @@ Section SpecFilestat.
     IcacheRef.inode_shr_gen ik (s1 + s2)%Qp icfg_dev inum g ⊣⊢
     IcacheRef.inode_shr_gen ik s1 icfg_dev inum g ∗
     IcacheRef.inode_shr_gen ik s2 icfg_dev inum g.
-  Proof. apply IcacheRef.inode_shr_gen_split. Qed.
+  Proof using . apply IcacheRef.inode_shr_gen_split. Qed.
 
   (* halving, as its OWN lemma -- durable-notes' [rewrite -(Qp.div_2 q)]
      trap: written at a call site inside the proofmode the split's evar lands
@@ -343,7 +343,7 @@ Section SpecFilestat.
     IcacheRef.inode_shr_gen ik s icfg_dev inum g ⊣⊢
     IcacheRef.inode_shr_gen ik (s/2)%Qp icfg_dev inum g ∗
     IcacheRef.inode_shr_gen ik (s/2)%Qp icfg_dev inum g.
-  Proof. rewrite -inode_shr_gen_split2 Qp.div_2. reflexivity. Qed.
+  Proof using . rewrite -inode_shr_gen_split2 Qp.div_2. reflexivity. Qed.
 
   (* THE REGEN.  iunlock returns the arity-preserving [IcacheRef.inode_shr]
      (its [∃ g] form), and a payload's slice is generation-NAMED, so the two
@@ -357,7 +357,7 @@ Section SpecFilestat.
     IcacheRef.inode_shr_gen ik s1 icfg_dev inum g -∗
     IcacheRef.inode_shr ik s2 icfg_dev inum -∗
     IcacheRef.inode_shr_gen ik (s1 + s2)%Qp icfg_dev inum g.
-  Proof.
+  Proof using .
     iIntros "H1 H2".
     iEval (rewrite IcacheRef.inode_shr_gen_intro) in "H2".
     iDestruct "H2" as (g2 lo2 tl2) "(%Hle2 & #Hfl2 & H2)".
@@ -377,7 +377,7 @@ Section SpecFilestat.
     (ik < NINODE)%nat ->
     (ic_escrows fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst -∗ ic_escrow fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst ik
      : iProp Σ).
-  Proof.
+  Proof using .
     iIntros (Hk) "H". rewrite /ic_escrows /ic_boxes_all /ic_escrow.
     assert (Hl : seq 0 NINODE !! ik = Some ik) by (rewrite lookup_seq; lia).
     iDestruct (big_sepL_lookup _ _ ik ik Hl with "H") as "$".
@@ -413,7 +413,7 @@ Section SpecFilestat.
       IcacheRef.inode_shr_genlo ik s icfg_dev inum g lo ∗
       (IcacheRef.inode_shr_genlo ik s icfg_dev inum g lo -∗
          file_pay_st γf k q Cf st).
-  Proof.
+  Proof using .
     intros Hty. iIntros "(%pn & %Hst & Hpn & Hpl)".
     assert (Hnp : bool_decide (fc_type Cf = FD_PIPE) = false).
     { apply bool_decide_eq_false_2.
@@ -473,7 +473,7 @@ Section SpecFilestat.
     | FdOpen _ _ (FdInode _ _ _) | FdOpen _ _ (FdDevice _) => False
     | _ => True
     end -> ⊢ filestat_env fn st.
-  Proof. destruct st as [|? ? [? ? ?| |?]]; done. Qed.
+  Proof using . destruct st as [|? ? [? ? ?| |?]]; done. Qed.
 
 End SpecFilestat.
 

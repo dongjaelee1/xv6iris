@@ -211,16 +211,16 @@ Section FsReady.
      spells them one by one (every create-family syscall does) reads them
      off this record without unfolding [BitmapInv]'s bundle by hand. *)
   Lemma fgo_size : fs_geom_ok -> 0 < fsc_size <= BPB.
-  Proof. intro G. apply (proj1 (fgo_bmgeom G)). Qed.
+  Proof using . intro G. apply (proj1 (fgo_bmgeom G)). Qed.
 
   Lemma fgo_bm_nn : fs_geom_ok -> 0 <= fsc_bmapstart.
-  Proof. intro G. apply (proj1 (proj2 (fgo_bmgeom G))). Qed.
+  Proof using . intro G. apply (proj1 (proj2 (fgo_bmgeom G))). Qed.
 
   Lemma fgo_bm_cov : fs_geom_ok -> fsc_bmapstart ∈ fsc_cov.
-  Proof. intro G. apply (proj1 (proj2 (proj2 (fgo_bmgeom G)))). Qed.
+  Proof using . intro G. apply (proj1 (proj2 (proj2 (fgo_bmgeom G)))). Qed.
 
   Lemma fgo_bm_out : fs_geom_ok -> ~ (fsc_bmapstart ∈ log_region_set fsc_logst).
-  Proof. intro G. apply (proj2 (proj2 (proj2 (fgo_bmgeom G)))). Qed.
+  Proof using . intro G. apply (proj2 (proj2 (proj2 (fgo_bmgeom G)))). Qed.
 
   (* ...and the region-wide inum fact in the QUANTIFIED, split form the
      content-independent bundles ([SpecFileread.fileread_fs_env],
@@ -229,7 +229,7 @@ Section FsReady.
   Lemma fgo_iblock_cov : fs_geom_ok ->
     forall inum : mword 32, bv_unsigned inum < 16 * Z.of_nat icfg_nib ->
       DinodeEnc.IBLOCK inum icfg_ist ∈ fsc_cov.
-  Proof. intros G inum Hi. apply (proj1 (fgo_iblocks G inum Hi)). Qed.
+  Proof using . intros G inum Hi. apply (proj1 (fgo_iblocks G inum Hi)). Qed.
 
   (* ================================================================== *)
   (*  0b.  THE SUPERBLOCK'S FOUR CELLS                                   *)
@@ -261,7 +261,7 @@ Section FsReady.
      sb_bmapstart  ↦₄□ (mword_of_int fsc_bmapstart : mword 32))%I.
 
   Global Instance fs_sb_cells_persistent : Persistent fs_sb_cells.
-  Proof. rewrite /fs_sb_cells. apply _. Qed.
+  Proof using . rewrite /fs_sb_cells. apply _. Qed.
 
   (* ================================================================== *)
   (*  1.  THE PREDICATE                                                  *)
@@ -350,7 +350,7 @@ Section FsReady.
      bitmap_inv fsc_fs fsc_bmapstart fsc_cov fsc_logst fsc_size)%I.
 
   Global Instance fs_ready_persistent : Persistent fs_ready.
-  Proof. rewrite /fs_ready. apply _. Qed.
+  Proof using . rewrite /fs_ready. apply _. Qed.
 
   (* MEASURED, AND LOAD-BEARING (SIMP-2 executor finding).  Without this,
      resolving [Persistent fs_ready_pre] below tries [fs_ready_persistent]
@@ -378,7 +378,7 @@ Section FsReady.
      mentions nothing else.  "Booting is over the instant the predicate
      exists" is exactly this lemma. *)
   Lemma fs_ready_seal : ireg_boot ==∗ ireg_open.
-  Proof.
+  Proof using .
     iIntros "Hboot". rewrite /ireg_boot /ireg_open.
     iMod (ity_shoot _ (mword_of_int (len:=16) 0) with "Hboot") as "#Hs".
     iModIntro. by iExists _.
@@ -414,7 +414,7 @@ Section FsReady.
      bitmap_inv fsc_fs fsc_bmapstart fsc_cov fsc_logst fsc_size)%I.
 
   Global Instance fs_ready_pre_persistent : Persistent fs_ready_pre.
-  Proof. rewrite /fs_ready_pre. apply _. Qed.
+  Proof using . rewrite /fs_ready_pre. apply _. Qed.
 
   (* ...and the same seal, for the same measured reason. *)
   Typeclasses Opaque fs_ready_pre.
@@ -425,7 +425,7 @@ Section FsReady.
      back), hold fsinit's returned [ireg_boot], and the runtime file system
      exists.  Nothing is left over and nothing else is required. *)
   Lemma fs_ready_establish : fs_ready_pre -∗ ireg_boot ==∗ fs_ready.
-  Proof.
+  Proof using .
     iIntros "Hpre Hboot".
     iMod (fs_ready_seal with "Hboot") as "#Hopen".
     iModIntro. rewrite /fs_ready /fs_ready_pre.
@@ -443,7 +443,7 @@ Section FsReady.
      been handed [fs_ready] re-enter a pre-seal-shaped callee -- ireclaim,
      say -- without unfolding by hand.) *)
   Lemma fs_ready_pre_of : fs_ready -∗ fs_ready_pre.
-  Proof.
+  Proof using .
     rewrite /fs_ready /fs_ready_pre.
     iIntros "(H1 & H2 & H5 & H6 & H7 & H8 & H9 & H10 & H11
               & H12 & H13 & H14 & H15 & _ & H16 & H17 & %H18 & #H19 & #H20
@@ -467,21 +467,21 @@ Section FsReady.
      the inode region's two, and the allocator. *)
 
   Lemma fs_ready_data : fs_ready -∗ kernel_data.
-  Proof. rewrite /fs_ready. by iIntros "(_ & $ & _)". Qed.
+  Proof using . rewrite /fs_ready. by iIntros "(_ & $ & _)". Qed.
 
   Lemma fs_ready_bio :
     fs_ready -∗ bio_ctx fsc_bio (fs_view fsc_fs fsc_disk icfg_dev fsc_cov).
-  Proof. rewrite /fs_ready. by iIntros "(_ & _ & $ & _)". Qed.
+  Proof using . rewrite /fs_ready. by iIntros "(_ & _ & $ & _)". Qed.
 
   Lemma fs_ready_log :
     fs_ready -∗ log_ctx icfg_log fsc_bio fsc_fs fsc_cov fsc_logst icfg_dev.
-  Proof. rewrite /fs_ready. by iIntros "(_ & _ & _ & $ & _)". Qed.
+  Proof using . rewrite /fs_ready. by iIntros "(_ & _ & _ & $ & _)". Qed.
 
   Lemma fs_ready_seam : fs_ready -∗ fs_crash_seam fsc_cov fsc_logst.
-  Proof. rewrite /fs_ready. by iIntros "(_ & _ & _ & _ & $ & _)". Qed.
+  Proof using . rewrite /fs_ready. by iIntros "(_ & _ & _ & _ & $ & _)". Qed.
 
   Lemma fs_ready_gen : fs_ready -∗ gen_cert.
-  Proof. rewrite /fs_ready. by iIntros "(_ & _ & _ & _ & _ & $ & _)". Qed.
+  Proof using . rewrite /fs_ready. by iIntros "(_ & _ & _ & _ & _ & $ & _)". Qed.
 
   (* THE RECOVERY R1 RESTS ON.  The three ring pages left [fscfg] because
      [virtio_disk_init] [kalloc]s them at WP time, so [fs_ready] quantifies
@@ -498,7 +498,7 @@ Section FsReady.
   Lemma disk_geom_agree γ (pd pav pu pd' pav' pu' : mword 64) :
     disk_geom γ pd pav pu -∗ disk_geom γ pd' pav' pu' -∗
     ⌜pd = pd' /\ pav = pav' /\ pu = pu'⌝.
-  Proof.
+  Proof using .
     rewrite /disk_geom.
     iIntros "(Hd & Ha & Hu & _) (Hd' & Ha' & Hu' & _)".
     iDestruct (ctx_word_pointsto_agree with "Hd Hd'") as %Hd.
@@ -514,7 +514,7 @@ Section FsReady.
                 (∃ pd pav pu : mword 64,
                    disk_geom fsc_disk pd pav pu ∗
                    is_lock fsc_dlock d_lock "virtio_disk"%string (disk_res_at fsc_disk pd pav pu)).
-  Proof.
+  Proof using .
     rewrite /fs_ready.
     by iIntros "(_ & _ & _ & _ & _ & _ & $ & $ & _)".
   Qed.
@@ -525,7 +525,7 @@ Section FsReady.
                            icfg_nib icfg_dev ∗ itable_inv ∗
                 ic_escrows fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst ∗
                 ic_sleeplocks fsc_ic.
-  Proof.
+  Proof using .
     rewrite /fs_ready.
     by iIntros "(_ & _ & _ & _ & _ & _ & _ & _ & $ & $ & $ & $ & _)".
   Qed.
@@ -537,7 +537,7 @@ Section FsReady.
      thread, because the seal already happened. *)
   Lemma fs_ready_region :
     fs_ready -∗ ireg_inv fsc_ireg fsc_fs icfg_ist icfg_nib ∗ ireg_open.
-  Proof.
+  Proof using .
     rewrite /fs_ready.
     by iIntros "(_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & $ & $ & _)".
   Qed.
@@ -550,13 +550,13 @@ Section FsReady.
     is_lock fsc_kalloc (mword_of_int KernelSyms.kmem) "kmem"%string
       (λ ξ : CtxId, kmem_res (XIk := ξ) fsc_kpages (mword_of_int (KernelSyms.kmem + 24))) ∗
     kalloc_avail fsc_kpages None.
-  Proof.
+  Proof using .
     rewrite /fs_ready.
     by iIntros "(_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & $ & $ & _)".
   Qed.
 
   Lemma fs_ready_kalloc : fs_ready -∗ kalloc_env fsc_kalloc None.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct (fs_ready_kmem with "H") as "[Hk Hav]".
     rewrite /kalloc_env. iExists fsc_kpages. iFrame "Hk Hav".
   Qed.
@@ -566,17 +566,17 @@ Section FsReady.
      premises and four superblock cells free: a caller holding [fs_ready]
      reads them off it, and needs nothing of its own. *)
   Lemma fs_ready_geom : fs_ready -∗ ⌜fs_geom_ok⌝.
-  Proof. rewrite /fs_ready. by iIntros "(_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & $ & _)". Qed.
+  Proof using . rewrite /fs_ready. by iIntros "(_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & $ & _)". Qed.
 
   Lemma fs_ready_sb : fs_ready -∗ fs_sb_cells.
-  Proof. rewrite /fs_ready. by iIntros "(_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & $ & _)". Qed.
+  Proof using . rewrite /fs_ready. by iIntros "(_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & $ & _)". Qed.
 
   (* ---- THE BITMAP --------------------------------------------------
      The row balloc and bfree take, and the one [SpecFileclose]'s persistent
      bundle carries in place of the exclusive [bitmap_res] it used to. *)
   Lemma fs_ready_bitmap :
     fs_ready -∗ bitmap_inv fsc_fs fsc_bmapstart fsc_cov fsc_logst fsc_size.
-  Proof. rewrite /fs_ready. by iIntros "(_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & $)". Qed.
+  Proof using . rewrite /fs_ready. by iIntros "(_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & $)". Qed.
 
   (* the same four cells, spelled one by one -- the form every existing fs
      contract states them in, at [dq := DfracDiscarded]. *)
@@ -586,7 +586,7 @@ Section FsReady.
     sb_inodestart ↦₄□ (mword_of_int icfg_ist      : mword 32) ∗
     sb_size       ↦₄□ (mword_of_int fsc_size      : mword 32) ∗
     sb_bmapstart  ↦₄□ (mword_of_int fsc_bmapstart : mword 32).
-  Proof. iIntros "H". iDestruct (fs_ready_sb with "H") as "$". Qed.
+  Proof using . iIntros "H". iDestruct (fs_ready_sb with "H") as "$". Qed.
 
   (* ---- THE FORKRET ROW, spelled out -------------------------------
      This is the acceptance criterion of ghost-simplification.md §5.3, as a
@@ -615,7 +615,7 @@ Section FsReady.
     kalloc_env fsc_kalloc None ∗
     ⌜fs_geom_ok⌝ ∗ fs_sb_cells ∗
     bitmap_inv fsc_fs fsc_bmapstart fsc_cov fsc_logst fsc_size.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct (fs_ready_kalloc with "H") as "#Hka".
     rewrite /fs_ready.
     iDestruct "H" as "(H1 & H2 & H5 & H6 & H7 & H8 & H9 & H10
@@ -641,10 +641,10 @@ Section FsReadyMorph.
   (* the four superblock cells [fsinit] froze: [↦₄□]s and nothing else. *)
   Global Instance fs_sb_cells_morph :
     CtxMorph (λ ξ : CtxId, (fs_sb_cells (XI := ξ) : iProp Σ)).
-  Proof. rewrite /fs_sb_cells. ctx_morph_solve. Qed.
+  Proof using . rewrite /fs_sb_cells. ctx_morph_solve. Qed.
 
   Global Instance fs_ready_morph : CtxMorph (λ ξ : CtxId, fs_ready (XI := ξ)).
-  Proof. rewrite /fs_ready. ctx_morph_solve; apply _. Qed.
+  Proof using . rewrite /fs_ready. ctx_morph_solve; apply _. Qed.
 End FsReadyMorph.
 
 (* AND THE SAME TWO SEALS AT TOP LEVEL.  [Typeclasses Opaque] inside a

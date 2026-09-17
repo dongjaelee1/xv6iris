@@ -242,7 +242,7 @@ Section SpecSysPipe.
             (upd_usV UW (upd_ofile (upd_ofile (us_V UW) fd0 (fnode k0)) fd1 (fnode k1))) ∗
           pipe_qfrag (pn_queue γp) pst0)
      ∗ fd_frags_any (pv_fdg (us_V UW)) ∗ fd_slot ∗ fd_slot).
-  Proof.
+  Proof using .
     rewrite /sys_pipe_post /fd_frags_any.
     iIntros "[[(%Hr & Hp & Hb) | (%fd0 & %fd1 & %l & %k0 & %k1 & %γp & %Hpu & Hp & Hb & Hq)]
               [Hu0 Hu1]]".

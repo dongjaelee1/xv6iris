@@ -99,7 +99,7 @@ Section FsRep.
 
   Lemma inum_of_unsigned (i : Z) :
     0 <= i < 2 ^ 32 -> bv_unsigned (inum_of i) = i.
-  Proof.
+  Proof using .
     intros H. unfold inum_of. rewrite Z_to_bv_unsigned.
     unfold bv_wrap, bv_modulus. cbn. apply Z.mod_small. exact H.
   Qed.
@@ -126,7 +126,7 @@ Section FsRep.
     node_rep n dn data ->
     dinode_at γi (inum_of i) dn -∗ inode_blocks γfs bm data -∗
     fnode γi γfs i n.
-  Proof.
+  Proof using .
     intros Hrep. iIntros "Hd Hb". iExists dn, bm, data. iFrame. done.
   Qed.
 
@@ -138,7 +138,7 @@ Section FsRep.
     dir_names_unique data (dir_nrec (bv_unsigned (di_size dn))) ->
     dinode_at γi (inum_of i) dn -∗ inode_blocks γfs bm data -∗
     fnode γi γfs i (node_of dn data).
-  Proof.
+  Proof using .
     intros Hnz Hu. iApply fnode_intro. exact (node_rep_of dn data Hnz Hu).
   Qed.
 
@@ -148,7 +148,7 @@ Section FsRep.
      because anything was assumed. *)
   Lemma fnode_excl (γi : gname) (γfs : fs_names) (i : Z) (n1 n2 : fsnode) :
     fnode γi γfs i n1 -∗ fnode γi γfs i n2 -∗ False.
-  Proof.
+  Proof using .
     iIntros "H1 H2".
     iDestruct "H1" as (dn1 bm1 data1) "(Hd1 & _ & _)".
     iDestruct "H2" as (dn2 bm2 data2) "(Hd2 & _ & _)".
@@ -171,7 +171,7 @@ Section FsRep.
       ∃ (dn : dinode) (bm : blkmap) (data : nat -> list (bv 8)),
         ⌜node_rep n dn data⌝ ∗ ⌜bv_unsigned (di_type dn) <> 0⌝ ∗
         dinode_at γi (inum_of i) dn ∗ inode_blocks γfs bm data.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as (dn bm data) "(Hd & Hb & %Hrep)".
     iExists dn, bm, data. iFrame.
     iPureIntro. split; [exact Hrep | exact (node_rep_alloc n dn data Hrep)].
@@ -211,7 +211,7 @@ Section FsRep.
         ⌜dir_bname data k = s⌝ ∗
         ⌜bv_unsigned (dir_inum data k) = z⌝ ∗
         dinode_at γi (inum_of i) dn ∗ inode_blocks γfs bm data.
-  Proof.
+  Proof using .
     intros Hs. iIntros "H". iDestruct "H" as (dn bm data) "(Hd & Hb & %Hrep)".
     destruct (node_rep_ent ents dn data s z Hrep Hs)
       as (k & Hfirst & Hlive & Hname & Hz).
@@ -233,7 +233,7 @@ Section FsRep.
     node_rep (NDir ents) dn data ->
     (k < dir_nrec (bv_unsigned (di_size dn)))%nat -> dir_live data k ->
     ents !! dir_bname data k = Some (bv_unsigned (dir_inum data k)).
-  Proof. intros Hrep Hk Hl. exact (node_rep_ent_of ents dn data k Hrep Hk Hl). Qed.
+  Proof using . intros Hrep Hk Hl. exact (node_rep_ent_of ents dn data k Hrep Hk Hl). Qed.
 
   (* **THE HEADLINE (R9).**  §20.17.4's owed fact, at the one name it is
      owed for.  This is [fnode_ent] at [s := DOTDOT], stated on its own
@@ -254,7 +254,7 @@ Section FsRep.
         ⌜dir_bname data k = DOTDOT⌝ ∗
         ⌜bv_unsigned (dir_inum data k) = dp⌝ ∗
         dinode_at γi (inum_of ip) dn ∗ inode_blocks γfs bm data.
-  Proof. apply fnode_ent. Qed.
+  Proof using . apply fnode_ent. Qed.
 
   (* ------------------------------------------------------------------ *)
   (*  4.  THE WHOLE READING, AND THE CSL DIVIDEND                        *)
@@ -273,25 +273,25 @@ Section FsRep.
   Lemma fmap_rep_union (γi : gname) (γfs : fs_names) (m1 m2 : gmap Z fsnode) :
     m1 ##ₘ m2 ->
     fmap_rep γi γfs (m1 ∪ m2) ⊣⊢ fmap_rep γi γfs m1 ∗ fmap_rep γi γfs m2.
-  Proof. intros Hd. rewrite /fmap_rep. by rewrite big_sepM_union. Qed.
+  Proof using . intros Hd. rewrite /fmap_rep. by rewrite big_sepM_union. Qed.
 
   Lemma fmap_rep_empty (γi : gname) (γfs : fs_names) :
     fmap_rep γi γfs ∅ ⊣⊢ emp.
-  Proof. rewrite /fmap_rep. by rewrite big_sepM_empty. Qed.
+  Proof using . rewrite /fmap_rep. by rewrite big_sepM_empty. Qed.
 
   Lemma fmap_rep_insert (γi : gname) (γfs : fs_names) (m : gmap Z fsnode)
       (i : Z) (n : fsnode) :
     m !! i = None ->
     fmap_rep γi γfs (<[i := n]> m)
     ⊣⊢ fnode γi γfs i n ∗ fmap_rep γi γfs m.
-  Proof. intros H. rewrite /fmap_rep. by rewrite big_sepM_insert. Qed.
+  Proof using . intros H. rewrite /fmap_rep. by rewrite big_sepM_insert. Qed.
 
   Lemma fmap_rep_acc (γi : gname) (γfs : fs_names) (m : gmap Z fsnode)
       (i : Z) (n : fsnode) :
     m !! i = Some n ->
     fmap_rep γi γfs m -∗
       fnode γi γfs i n ∗ (fnode γi γfs i n -∗ fmap_rep γi γfs m).
-  Proof.
+  Proof using .
     intros H. rewrite /fmap_rep. apply bi.entails_wand.
     by apply big_sepM_lookup_acc.
   Qed.
@@ -303,7 +303,7 @@ Section FsRep.
     fs_nodes t !! i = Some n ->
     fs_rep γi γfs t -∗
       fnode γi γfs i n ∗ (fnode γi γfs i n -∗ fs_rep γi γfs t).
-  Proof.
+  Proof using .
     intros H. iIntros "[Hm %Hwf]".
     iDestruct (fmap_rep_acc γi γfs (fs_nodes t) i n H with "Hm") as "[$ Hback]".
     iIntros "Hn". iSplitL "Hback Hn"; [| done]. iApply "Hback". iFrame.
@@ -314,7 +314,7 @@ Section FsRep.
   Lemma fs_rep_node_det (γi : gname) (γfs : fs_names) (t : fstree)
       (i : Z) (n1 n2 : fsnode) :
     fs_nodes t !! i = Some n1 -> fs_nodes t !! i = Some n2 -> n1 = n2.
-  Proof. intros H1 H2. congruence. Qed.
+  Proof using . intros H1 H2. congruence. Qed.
 
   (* ------------------------------------------------------------------ *)
   (*  5.  PATH SLICES                                                    *)
@@ -340,7 +340,7 @@ Section FsRep.
     fmap_rep γi γfs m
     ⊣⊢ fmap_rep γi γfs (stdpp.base.filter (fun kv : Z * fsnode => kv.1 ∈ D) m)
         ∗ fmap_rep γi γfs (stdpp.base.filter (fun kv : Z * fsnode => kv.1 ∉ D) m).
-  Proof.
+  Proof using .
     rewrite -fmap_rep_union.
     2:{ apply map_disjoint_filter_complement. }
     f_equiv. symmetry. apply map_filter_union_complement.
@@ -351,7 +351,7 @@ Section FsRep.
     path_at t i p = Some j ->
     fs_rep γi γfs t -∗
       fslice γi γfs t i p j ∗ (fslice γi γfs t i p j -∗ fs_rep γi γfs t).
-  Proof.
+  Proof using .
     intros Hp. iIntros "[Hm %Hwf]".
     iDestruct (fmap_rep_split γi γfs (fs_nodes t) (path_nodes t i p) with "Hm")
       as "[Hin Hout]".
@@ -364,7 +364,7 @@ Section FsRep.
      [fslice] usable at all *)
   Lemma fslice_last (t : fstree) (i : Z) (p : list fname) (j : Z) :
     path_at t i p = Some j -> j ∈ path_nodes t i p.
-  Proof.
+  Proof using .
     intros H. rewrite /path_nodes elem_of_list_to_set.
     exact (path_chain_last t i j p H).
   Qed.

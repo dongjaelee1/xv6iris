@@ -172,7 +172,7 @@ Section KexecCSetup.
       (vpn : mword 27) (x : mword 64) :
     um_below szv um -> (bv_unsigned vpn * 4096 < bv_unsigned szv)%Z ->
     um_below szv (<[vpn := x]> um).
-  Proof.
+  Proof using .
     intros Hb Hvpn vpn' w Hl.
     destruct (decide (vpn' = vpn)) as [-> | Hne].
     - exact Hvpn.
@@ -182,7 +182,7 @@ Section KexecCSetup.
   Local Lemma kxc_um_covered_insert (szv : mword 64) (um : gmap (mword 27) (mword 64))
       (vpn : mword 27) (x : mword 64) :
     um_covered szv um -> um_covered szv (<[vpn := x]> um).
-  Proof.
+  Proof using .
     intros Hc vpn' Hlt.
     destruct (decide (vpn' = vpn)) as [-> | Hne].
     - rewrite lookup_insert. eauto.
@@ -190,23 +190,23 @@ Section KexecCSetup.
   Qed.
 
   Local Lemma neq_vec64_true (x y : mword 64) : x <> y -> neq_vec x y = true.
-  Proof.
+  Proof using .
     intro Hxy. unfold neq_vec.
     destruct (eq_vec x y) eqn:E; [| reflexivity].
     apply eq_vec_true_iff in E. contradiction.
   Qed.
 
   Local Lemma zero_reg64 : (zero_reg : mword 64) = mword_of_int 0.
-  Proof. apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . apply bv_eq; vm_compute; reflexivity. Qed.
 
   Local Lemma eq_vec64_false (x y : mword 64) : x <> y -> eq_vec x y = false.
-  Proof.
+  Proof using .
     intro Hxy. destruct (eq_vec x y) eqn:E; [| reflexivity].
     apply eq_vec_true_iff in E. contradiction.
   Qed.
 
   Local Lemma uvm_maxsz_lit : uvm_maxsz = 274877898752%Z.
-  Proof. unfold uvm_maxsz. vm_compute. reflexivity. Qed.
+  Proof using . unfold uvm_maxsz. vm_compute. reflexivity. Qed.
 
   (* THE TWO SPELLINGS OF PGROUNDUP.  [ProcPtOwn]'s is the mword one the
      page tables run on; [UserPtTree]'s is the [Z] one [KexecBuilt]'s size
@@ -214,7 +214,7 @@ Section KexecCSetup.
   Local Lemma kxc_pgu_bridge (x : mword 64) :
     (bv_unsigned x + 4095 < 2 ^ 64)%Z ->
     bv_unsigned (pgroundup x) = UserPtTree.pgroundup (bv_unsigned x).
-  Proof.
+  Proof using .
     intros Hlt. rewrite (pgroundup_unsigned x Hlt).
     unfold UserPtTree.pgroundup.
     pose proof (Z.div_mod (bv_unsigned x + 4095) 4096 ltac:(lia)). lia.
@@ -223,7 +223,7 @@ Section KexecCSetup.
   Local Lemma add_neg8192_eq_sub (x : mword 64) :
     add_vec (mword_of_int (-8192) : mword 64) x
     = sub_vec x (mword_of_int 8192 : mword 64).
-  Proof.
+  Proof using .
     apply bv_eq. rewrite add_vec_unsigned sub_vec_unsigned !moi64_unsigned.
     unfold bv_wrap. change (MachineWord.MachineWord.Z_idx 64) with 64%N.
     rewrite Zplus_mod_idemp_l Zminus_mod_idemp_r. f_equal. lia.
@@ -241,14 +241,14 @@ Section KexecCSetup.
      that). *)
   Local Lemma kxc_wrap_add3' (a b c : Z) :
     bv_wrap 64 (a + bv_wrap 64 b + c) = bv_wrap 64 (a + b + c).
-  Proof.
+  Proof using .
     replace (a + bv_wrap 64 b + c) with (bv_wrap 64 b + (a + c)) by ring.
     rewrite bv_wrap_add_idemp_l. f_equal. ring.
   Qed.
 
   Local Lemma kxc_addv_moi_moi (x : mword 64) (a b : Z) :
     add_vec (add_vec x (mword_of_int a)) (mword_of_int b) = add_vec x (mword_of_int (a + b)).
-  Proof.
+  Proof using .
     apply bv_eq. rewrite !add_vec64_unsigned !moi64_unsigned.
     rewrite bv_wrap_add_idemp_l !bv_wrap_add_idemp_r.
     rewrite kxc_wrap_add3'. f_equal. ring.
@@ -270,7 +270,7 @@ Section KexecCSetup.
      overflow at [na].  ---- *)
   Lemma kxc_round16_mono (x y : Z) :
     (x <= y)%Z -> (kxc_round16 x <= kxc_round16 y)%Z.
-  Proof.
+  Proof using .
     intros H. unfold kxc_round16.
     rewrite (Z.mod_eq x 16 ltac:(lia)) (Z.mod_eq y 16 ltac:(lia)).
     assert (Hd : (x / 16 <= y / 16)%Z) by (apply Z.div_le_mono; lia). lia.
@@ -278,7 +278,7 @@ Section KexecCSetup.
 
   Lemma kxc_sp_final_mono (top : Z) (len : nat -> nat) (i k : nat) :
     (i <= k)%nat -> (kxc_sp_final top len k <= kxc_sp_final top len i)%Z.
-  Proof.
+  Proof using .
     intros H. unfold kxc_sp_final. apply kxc_round16_mono.
     pose proof (kxc_sp_mono top len i k H).
     pose proof (Nat2Z.is_nonneg i). pose proof (Nat2Z.is_nonneg k).
@@ -355,7 +355,7 @@ Section KexecCSetup.
                pfun av dqa avf aslen dqas afun) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hqfnm HK Hmsp Hmra Hms0 Hms1 Hms2
            Hmw5 Hmw6 Hmw7 Hmw8 Hmw9 Hmw10 Hmw11 Hmw12
            Halen_bound Halen_cstr Halen_4096 Havf_na.
@@ -1984,7 +1984,7 @@ Section KexecCExitM1.
     (c < 46)%nat ->
     ([∗ list] j ∈ seq 0 c, pa_stk sp0 (46 - j) ↦₈[KT1] (f j : mword 64)) -∗
     stack_own (KTR := KT1) (pa_stk sp0 (46 - c)) c.
-  Proof.
+  Proof using .
     induction c as [| c IH]; intro Hc46.
     - rewrite (stack_own_0 (KTR := KT1)). auto.
     - rewrite seq_S big_sepL_app big_sepL_singleton.
@@ -2016,7 +2016,7 @@ Section KexecCExitM1.
      does to a symbolic [mword]. *)
   Local Lemma avi_moi (z k : Z) :
     add_vec_int (mword_of_int z : mword 64) k = (mword_of_int (z + k) : mword 64).
-  Proof.
+  Proof using .
     change (add_vec_int (mword_of_int z : mword 64) k)
       with (add_vec (mword_of_int z : mword 64) (mword_of_int k : mword 64)).
     apply bv_eq. rewrite add_vec64_unsigned !moi64_unsigned.
@@ -2032,7 +2032,7 @@ Section KexecCExitM1.
   Local Lemma stack_own_join (sp : Arch.pa) (n n1 n2 : nat) :
     (n = n1 + n2)%nat ->
     stack_own (KTR := KT1) sp n1 -∗ stack_own (KTR := KT1) (pa_stk sp n1) n2 -∗ stack_own (KTR := KT1) sp n.
-  Proof. intros ->. iIntros "A B". rewrite (stack_own_app (KTR := KT1)). iSplitL "A"; done. Qed.
+  Proof using . intros ->. iIntros "A B". rewrite (stack_own_app (KTR := KT1)). iSplitL "A"; done. Qed.
 
   Local Lemma kxc_frameC_collapse
       (sp0 ra0 s00 s10 s20 pv av : mword 64)
@@ -2045,7 +2045,7 @@ Section KexecCExitM1.
     kxc_frameC sp0 ra0 s00 s10 s20 pv av
                w5 w6 w7 w8 w9 w10 w11 w12 w13 w67 c sz1 alen -∗
     kxc_frame_at sp0 ra0 s00 s10 s20 w5 w6 w7 w8 w9 w10 w11 w12 w13.
-  Proof.
+  Proof using .
     intros Hc33 Hal. iIntros "Helf".
     rewrite /kxc_frameC /kxc_frame_at.
     iIntros "(Hf1 & Hf2 & Hf3 & Hf4 & Hf5 & Hf6 & Hf7 & Hf8 & Hf9 & Hf10 &
@@ -2112,7 +2112,7 @@ Section KexecCExitM1.
     ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 68) (DfracOwn 1) w68 -∗
     kxc_frameC sp0 ra0 s00 s10 s20 pv av
                w5 w6 w7 w8 w9 w10 w11 w12 w13 w67 c sz1 alen.
-  Proof.
+  Proof using .
     iIntros "H1 H2 H3 H4 H5 H6 H7 H8 H9 H10 H11 H12 H13
              Hust Hwr Hph H64 H65 H66 H67 H68".
     rewrite /kxc_frameC.
@@ -2159,7 +2159,7 @@ Section KexecCExitM1.
               plen pfun na avf aslen afun pidv U dqb dqs dqa dqpv dqas
               sp0 ra0 s00 s10 s20 pv av
               w5 w6 w7 w8 w9 w10 w11 w12 w13 w67 ef P Mi c sz1 alen.
-  Proof.
+  Proof using .
     iIntros "Hirs Hbm Hins Hbits Hbs Hka Hpt Hpriv Hpath Hargv Hargs Helf Hframe".
     rewrite /kxc_c_res.
     iSplitL "Hirs"; [iExact "Hirs" |]. iSplitL "Hbm"; [iExact "Hbm" |].
@@ -2227,7 +2227,7 @@ Section KexecCExitM1.
          eb eb ∅ dqb dqs fsc_bmapstart na alen plen pv dqpv pfun
          av dqa avf aslen dqas afun) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hqf HK Hc33 Hal Hmsp Hmra Hms0 Hms1 Hms2
            Hmw5 Hmw6 Hmw7 Hmw8 Hmw9 Hmw10 Hmw11 Hmw12
            HMsp HMs4 HMs6 HMs11 Hbelow Hcov Htgt.
@@ -2342,7 +2342,7 @@ Section KexecCLoop.
        (add_vec (mword_of_int (Z.of_nat n) : mword 64)
                 (sign_extend' 64 (mword_of_int 1 : mword 12))) 31 0)
     = (mword_of_int (Z.of_nat n + 1) : mword 64).
-  Proof.
+  Proof using .
     intro Hn.
     assert (E : (subrange_vec_dec
                    (add_vec (mword_of_int (Z.of_nat n) : mword 64)
@@ -2373,7 +2373,7 @@ Section KexecCLoop.
      64-bit rendering of [-16] (i.e. [2^64-16]), not [-16] itself. *)
   Local Lemma kxc_round16_land (Y : Z) : (0 <= Y < 18446744073709551616)%Z ->
     Z.land Y 18446744073709551600 = Y - Y mod 16.
-  Proof.
+  Proof using .
     intro HY.
     assert (Hc : (18446744073709551600 = Z.land (-16) (Z.ones 64))%Z)
       by (rewrite Z.land_ones; [vm_compute; reflexivity | lia]).
@@ -2389,7 +2389,7 @@ Section KexecCLoop.
   Local Lemma kxc_round16_andi (X : mword 64) :
     and_vec X (sign_extend' 64 (mword_of_int (-16) : mword 12))
     = (mword_of_int (kxc_round16 (bv_unsigned X)) : mword 64).
-  Proof.
+  Proof using .
     apply bv_eq.
     assert (Hm : bv_unsigned (sign_extend' 64 (mword_of_int (-16) : mword 12) : mword 64)
                = 18446744073709551600%Z) by (vm_compute; reflexivity).
@@ -2416,11 +2416,11 @@ Section KexecCLoop.
      so it always succeeds. *)
   Local Lemma kxc_sp_S (top : Z) (len : nat -> nat) (i : nat) :
     kxc_sp top len (S i) = kxc_round16 (kxc_sp top len i - (Z.of_nat (len i) + 1)).
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Local Lemma kxc_sp_le_top (top : Z) (len : nat -> nat) (i : nat) :
     kxc_sp top len i <= top.
-  Proof.
+  Proof using .
     induction i as [| i IH].
     - change (kxc_sp top len 0) with top. lia.
     - rewrite kxc_sp_S. unfold kxc_round16.
@@ -2438,7 +2438,7 @@ Section KexecCLoop.
   Local Lemma kxc_pa_stk_add (sp : mword 64) (k c : nat) :
     (c <= k)%nat ->
     add_vec (pa_stk sp k) (mword_of_int (8 * Z.of_nat c) : mword 64) = pa_stk sp (k - c).
-  Proof.
+  Proof using .
     intro Hle.
     change (add_vec (pa_stk sp k) (mword_of_int (8 * Z.of_nat c) : mword 64))
       with (add_vec_int (pa_stk sp k) (8 * Z.of_nat c)).
@@ -2518,7 +2518,7 @@ Section KexecCLoop.
                pfun av dqa avf aslen dqas afun) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hqfnm Hqfaf HK Hcna Halenlt Hcstr Halen4096 Hsz1ge Hnamax Hal
            Hmsp Hmra Hms0 Hms1 Hms2 Hmw5 Hmw6 Hmw7 Hmw8 Hmw9 Hmw10 Hmw11 Hmw12.
     unfold MAXARG in Hnamax.
@@ -4046,7 +4046,7 @@ Section KexecCArgvLoop.
                pfun av dqa avf aslen dqas afun) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hqfnm Hqfaf HK Halen_bound Halen_cstr Halen_4096 Havf_na Hsz1ge Hnamax Hal
            Hmsp Hmra Hms0 Hms1 Hms2 Hmw5 Hmw6 Hmw7 Hmw8 Hmw9 Hmw10 Hmw11
            Hmw12.
@@ -4158,7 +4158,7 @@ Section KexecCClose.
      and the invariant therefore never needed the [forall] form. *)
   Local Lemma kxc_sp_mono (top : Z) (len : nat -> nat) (i j : nat) :
     (i <= j)%nat -> (kxc_sp top len j <= kxc_sp top len i)%Z.
-  Proof.
+  Proof using .
     intro Hij. induction j as [| j IH].
     - assert (Hi0 : i = 0%nat) by lia. rewrite Hi0. lia.
     - destruct (Nat.eq_dec i (S j)) as [Heqi | Hne]; [rewrite Heqi; lia |].
@@ -4176,7 +4176,7 @@ Section KexecCClose.
     (n <= 46)%nat ->
     ([∗ list] i ∈ seq 0 n, ∃ w : mword 64, pa_stk sp0 (46 - i) ↦₈[KT1] w) -∗
     stack_own (KTR := KT1) (pa_stk sp0 (46 - n)) n.
-  Proof.
+  Proof using .
     induction n as [| n IH]; intro Hn.
     - rewrite (stack_own_0 (KTR := KT1)). auto.
     - rewrite seq_S big_sepL_app big_sepL_singleton.
@@ -4203,7 +4203,7 @@ Section KexecCClose.
     ([∗ list] j ∈ seq 0 64, pa_add (pa_stk sp0 54) j ↦ₘ[KT1] ef j) -∗
     kxc_frameB sp0 ra0 s00 s10 s20 pv av w5 w6 w7 w8 w9 w10 w11 w12 w13 w67 -∗
     kxc_frame_at sp0 ra0 s00 s10 s20 w5 w6 w7 w8 w9 w10 w11 w12 w13.
-  Proof.
+  Proof using .
     intro Hal. iIntros "Helf".
     rewrite /kxc_frameB /kxc_frame_at.
     iIntros "(Hf1 & Hf2 & Hf3 & Hf4 & Hf5 & Hf6 & Hf7 & Hf8 & Hf9 & Hf10 &
@@ -4252,7 +4252,7 @@ Section KexecCClose.
     ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 67) (DfracOwn 1) w67 -∗
     ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 68) (DfracOwn 1) w68 -∗
     kxc_frameB sp0 ra0 s00 s10 s20 pv av w5 w6 w7 w8 w9 w10 w11 w12 w13 w67.
-  Proof.
+  Proof using .
     iIntros "H1 H2 H3 H4 H5 H6 H7 H8 H9 H10 H11 H12 H13
              Hust Hph H64 H65 H66 H67 H68".
     rewrite /kxc_frameB.
@@ -4280,7 +4280,7 @@ Section KexecCClose.
                         (mword_of_int (-112) : mword 64)) sp0)
             (mword_of_int (-256) : mword 64)
     = pa_stk sp0 (46 - c).
-  Proof.
+  Proof using .
     intro Hc. unfold pa_stk, add_vec_int. apply bv_eq.
     rewrite !add_vec64_unsigned !moi64_unsigned.
     (* the second [bv_wrap_add_idemp_l] pass needs the sum RE-ASSOCIATED
@@ -4342,7 +4342,7 @@ Section KexecCClose.
                pfun av dqa avf aslen dqas afun) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hqfnm Hqfaf HK Hsz1ge Hal Hmsp Hmra Hms0 Hms1 Hms2
            Hmw5 Hmw6 Hmw7 Hmw8 Hmw9 Hmw10 Hmw11 Hmw12.
     

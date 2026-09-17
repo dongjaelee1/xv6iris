@@ -86,7 +86,7 @@ Section EchoAdequacy.
      laws that are about an IMAGE.
      ==================================================================== *)
   Global Instance echo_laws : App.xv6_app_laws app_echo.
-  Proof.
+  Proof using ufdG0.
     split.
     - exact echo_Hbirth.
     - exact echo_HRt.
@@ -174,7 +174,7 @@ Section EchoAdequacy.
         κs (t2, g2) ->
       (forall e2, e2 ∈ t2 -> language.reducible (Λ := riscv_lang) e2 g2)
       /\ app_phi app_echo g2 κs.
-  Proof.
+  Proof using bioslotGpreS0 fdslotGpreS0 fileGpreS0 irefslotGpreS0 pavGpreS0 riscvGpreS0 ufdG0 wchGpreS0 xv6G0.
     intros n κs t2 g2 Hn.
     (* EVERY OBLIGATION GOES IN AS A HOLE, and that is not a style choice.
        Handing [xv6_app_adequacy] its fifteen arguments at once makes the

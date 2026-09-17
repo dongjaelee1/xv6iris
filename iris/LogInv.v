@@ -450,7 +450,7 @@ Section LogInv.
 
   Global Instance log_flushed_bank_persistent γ e :
     Persistent (log_flushed_bank γ e).
-  Proof. rewrite /log_flushed_bank. apply _. Qed.
+  Proof using . rewrite /log_flushed_bank. apply _. Qed.
 
   (* THE DEPOSIT SIDE, as one step: the copy a WAL write left
      ([FsCrash.fs_bank], through [FsFlushedCore.flushed_of_bank]) plus the
@@ -460,7 +460,7 @@ Section LogInv.
   Lemma log_flushed_bank_mk (γ : log_names) (E : nat) :
     mono_nat_auth_own (ln_ep γ) 1 E -∗ FsCrash.fs_bank -∗
     mono_nat_auth_own (ln_ep γ) 1 E ∗ log_flushed_bank γ E.
-  Proof.
+  Proof using .
     iIntros "Ha Hbk".
     iDestruct (log_epoch_lb_get with "Ha") as "[Ha #Hlb]".
     iDestruct (flushed_of_bank with "Hbk") as (b D) "[#Hf %Hh]".
@@ -477,7 +477,7 @@ Section LogInv.
      made durable because nothing needed to be. *)
   Lemma log_flushed_bank_recycle (γ : log_names) (e : nat) :
     log_flushed_bank γ e -∗ FsCrash.fs_bank.
-  Proof.
+  Proof using .
     rewrite /log_flushed_bank /FsCrash.fs_bank. iIntros "H".
     iDestruct "H" as (b D) "(_ & Hf & %Hh)".
     iExists D. iSplitL; [by iApply flushed_receipt_any | by iPureIntro].
@@ -488,7 +488,7 @@ Section LogInv.
      re-indexing the copy is free. *)
   Lemma log_flushed_bank_le (γ : log_names) (E e : nat) :
     (e <= E)%nat -> log_flushed_bank γ E -∗ log_flushed_bank γ e.
-  Proof.
+  Proof using .
     intros Hle. rewrite /log_flushed_bank. iIntros "H".
     iDestruct "H" as (b D) "(#Hlb & #Hf & %Hh)".
     iExists b, D. iSplitR; [| iSplitR; [iExact "Hf" | by iPureIntro]].
@@ -539,14 +539,14 @@ Section LogInv.
      carries out of the op's scope *)
   Lemma log_opSe_lb (γ : log_names) (u : nat) (Sb : gset Z) (e0 : nat) :
     log_opSe γ u Sb e0 -∗ log_epoch_lb γ e0.
-  Proof. iIntros "(_ & #H & _)". iApply "H". Qed.
+  Proof using . iIntros "(_ & #H & _)". iApply "H". Qed.
 
   (* ...and GENESIS-POSITIVITY, the conjunct's whole purpose: an op's birth
      epoch is at least one, so an observation counter's "never observed"
      zero can never be an epoch this op could have written in. *)
   Lemma log_opSe_pos (γ : log_names) (u : nat) (Sb : gset Z) (e0 : nat) :
     log_opSe γ u Sb e0 -∗ ⌜(1 <= e0)%nat⌝.
-  Proof. iIntros "(_ & _ & %H)". iPureIntro. exact H. Qed.
+  Proof using . iIntros "(_ & _ & %H)". iPureIntro. exact H. Qed.
 
   (* ...AND THE FROZEN ABI.  Three arguments, exactly as before: every
      landed threader ([ProofWritei], [ProofItrunc], [ProofDirlink], and the
@@ -595,24 +595,24 @@ Section LogInv.
     (log_opb γ u ∗ log_tx γ)%I.
 
   Global Instance log_tx_timeless γ : Timeless (log_tx γ).
-  Proof. rewrite /log_tx. apply _. Qed.
+  Proof using . rewrite /log_tx. apply _. Qed.
 
   Global Instance log_opb_timeless γ u : Timeless (log_opb γ u).
-  Proof. rewrite /log_opb. apply _. Qed.
+  Proof using . rewrite /log_opb. apply _. Qed.
 
   Global Instance log_opSe_timeless γ u Sb e0 : Timeless (log_opSe γ u Sb e0).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Global Instance log_opS_timeless γ u Sb : Timeless (log_opS γ u Sb).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* the two conversions; [log_opS_named] is how a client that must compare
      epochs gets a name for its own, and it loses nothing *)
   Lemma log_opSe_opS γ u Sb e0 : log_opSe γ u Sb e0 -∗ log_opS γ u Sb.
-  Proof. iIntros "H". iExists e0. iFrame. Qed.
+  Proof using . iIntros "H". iExists e0. iFrame. Qed.
 
   Lemma log_opS_named γ u Sb : log_opS γ u Sb -∗ ∃ e0, log_opSe γ u Sb e0.
-  Proof. iIntros "H". iDestruct "H" as (e0) "H". iExists e0. iFrame. Qed.
+  Proof using . iIntros "H". iDestruct "H" as (e0) "H". iExists e0. iFrame. Qed.
 
   (* ---------------------------------------------------------------- *)
   (*  THE APPEND RECEIPT: log_write's own post-state currency           *)
@@ -686,24 +686,24 @@ Section LogInv.
       (e0 : nat) (b : Z) (v : nat) :
     (v <= e0)%nat ->
     log_opSe γ u Sb e0 -∗ logged_at γ e0 b -∗ log_opSwe γ u Sb b v e0.
-  Proof. intros Hv. iIntros "H Hw". iFrame. iPureIntro. exact Hv. Qed.
+  Proof using . intros Hv. iIntros "H Hw". iFrame. iPureIntro. exact Hv. Qed.
 
   (* the epoch closed: what a depositor threads *)
   Lemma log_opSwe_opSw (γ : log_names) (u : nat) (Sb : gset Z)
       (b : Z) (v : nat) (e0 : nat) :
     log_opSwe γ u Sb b v e0 -∗ log_opSw γ u Sb b v.
-  Proof. iIntros "H". iExists e0. iFrame. Qed.
+  Proof using . iIntros "H". iExists e0. iFrame. Qed.
 
   (* ...and the entry alone, at the epoch it came back at: what a WALKER
      threads, and the whole point of the named form *)
   Lemma log_opSwe_opSe (γ : log_names) (u : nat) (Sb : gset Z)
       (b : Z) (v : nat) (e0 : nat) :
     log_opSwe γ u Sb b v e0 -∗ log_opSe γ u Sb e0.
-  Proof. iIntros "(H & _ & _)". iFrame. Qed.
+  Proof using . iIntros "(H & _ & _)". iFrame. Qed.
 
   Lemma log_opSw_opS (γ : log_names) (u : nat) (Sb : gset Z) (b : Z) (v : nat) :
     log_opSw γ u Sb b v -∗ log_opS γ u Sb.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as (e0) "H".
     iApply (log_opSe_opS with "[H]"). iApply (log_opSwe_opSe with "H").
   Qed.
@@ -714,7 +714,7 @@ Section LogInv.
       (v : nat) :
     log_opSw γ u Sb b v -∗
     log_opS γ u Sb ∗ ∃ e : nat, logged_at γ e b ∗ ⌜(v <= e)%nat⌝.
-  Proof.
+  Proof using .
     rewrite /log_opSw /log_opSwe.
     iIntros "H". iDestruct "H" as (e0) "(H & #Hw & %Hv)".
     iSplitL "H"; [iExists e0; iFrame |].
@@ -755,18 +755,18 @@ Section LogInv.
 
   Global Instance log_credit_persistent γ cr Sb e0 b :
     Persistent (log_credit γ cr Sb e0 b).
-  Proof. rewrite /log_credit. destruct cr; apply _. Qed.
+  Proof using . rewrite /log_credit. destruct cr; apply _. Qed.
 
   Global Instance log_credit_timeless γ cr Sb e0 b :
     Timeless (log_credit γ cr Sb e0 b).
-  Proof. rewrite /log_credit. destruct cr; apply _. Qed.
+  Proof using . rewrite /log_credit. destruct cr; apply _. Qed.
 
   (* the OWN-SET claimant's conversion: the pure premise every landed
      credited caller already discharges, in one step *)
   Lemma log_credit_own (γ : log_names) (cr : bool) (Sb : gset Z)
       (e0 : nat) (b : Z) :
     (cr = true -> b ∈ Sb) -> ⊢ log_credit γ cr Sb e0 b.
-  Proof.
+  Proof using .
     intros H. rewrite /log_credit. destruct cr.
     - iLeft. iPureIntro. exact (H eq_refl).
     - iEmpIntro.
@@ -776,7 +776,7 @@ Section LogInv.
   Lemma log_credit_group (γ : log_names) (cr : bool) (Sb : gset Z)
       (e0 e : nat) (b : Z) :
     (e0 <= e)%nat -> logged_at γ e b -∗ log_credit γ cr Sb e0 b.
-  Proof.
+  Proof using .
     intros Hle. iIntros "#Hw". rewrite /log_credit. destruct cr; [| iEmpIntro].
     iRight. iExists e. iFrame "Hw". iPureIntro. exact Hle.
   Qed.
@@ -790,7 +790,7 @@ Section LogInv.
   Lemma log_credit_mono (γ : log_names) (cr : bool) (Sb Sb' : gset Z)
       (e0 : nat) (b : Z) :
     Sb ⊆ Sb' -> log_credit γ cr Sb e0 b -∗ log_credit γ cr Sb' e0 b.
-  Proof.
+  Proof using .
     intros Hsub. rewrite /log_credit. destruct cr; [| iIntros "_"; iEmpIntro].
     iIntros "[%Hin | Hw]".
     - iLeft. iPureIntro. exact (elem_of_weaken _ _ _ Hin Hsub).
@@ -798,27 +798,27 @@ Section LogInv.
   Qed.
 
   Global Instance log_op_timeless γ u : Timeless (log_op γ u).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* the forgetful direction, used wherever a credited op is handed to a
      callee that does not care.  It takes the transaction token back
      BESIDE the budget, because the two travel together everywhere except
      inside a suspended row's window. *)
   Lemma log_opS_op γ u Sb : log_opS γ u Sb -∗ log_tx γ -∗ log_op γ u.
-  Proof.
+  Proof using .
     iIntros "H Ht". rewrite /log_op /log_opb. iFrame "Ht". iExists Sb. iFrame.
   Qed.
 
   (* ...and its budget-only half, for a walk that is between the arm and
      the disarm of a row and therefore holds no transaction token *)
   Lemma log_opS_opb γ u Sb : log_opS γ u Sb -∗ log_opb γ u.
-  Proof. iIntros "H". rewrite /log_opb. iExists Sb. iFrame. Qed.
+  Proof using . iIntros "H". rewrite /log_opb. iExists Sb. iFrame. Qed.
 
   (* THE OPENING EVERY THREADER USES: the budget at a named set beside the
      transaction token.  Written as one lemma so a caller that used to
      destructure [log_op]'s existential keeps one line. *)
   Lemma log_op_openS γ u : log_op γ u -∗ ∃ Sb, log_opS γ u Sb ∗ log_tx γ.
-  Proof.
+  Proof using .
     iIntros "[Hb Ht]". rewrite /log_opb. iDestruct "Hb" as (Sb) "Hb".
     iExists Sb. iFrame.
   Qed.
@@ -836,14 +836,14 @@ Section LogInv.
   Lemma log_tx_halve (γ : log_names) :
     log_tx γ -∗ ∃ t : nat,
       t ↪[ln_tx γ]{#(1/2)} () ∗ t ↪[ln_tx γ]{#(1/2)} ().
-  Proof.
+  Proof using .
     iIntros "H". rewrite /log_tx. iDestruct "H" as (t) "Ht".
     iExists t. iDestruct "Ht" as "[$ $]".
   Qed.
 
   Lemma log_tx_join (γ : log_names) (t : nat) :
     t ↪[ln_tx γ]{#(1/2)} () -∗ t ↪[ln_tx γ]{#(1/2)} () -∗ log_tx γ.
-  Proof.
+  Proof using .
     iIntros "H1 H2". rewrite /log_tx. iExists t.
     iDestruct (ghost_map_elem_combine with "H1 H2") as "[H _]".
     rewrite dfrac_op_own Qp.half_half. iExact "H".
@@ -861,7 +861,7 @@ Section LogInv.
     q = (q1 + q2)%Qp ->
     t ↪[ln_tx γ]{#q} () -∗
     t ↪[ln_tx γ]{#q1} () ∗ t ↪[ln_tx γ]{#q2} ().
-  Proof. intros ->. iIntros "H". iDestruct "H" as "[$ $]". Qed.
+  Proof using . intros ->. iIntros "H". iDestruct "H" as "[$ $]". Qed.
 
   (* ...and its inverse at ARBITRARY fractions ([log_tx_join] above is the
      1/2 + 1/2 reading).  A walk that lends a share of its transaction to a
@@ -871,7 +871,7 @@ Section LogInv.
   Lemma log_tx_join_q (γ : log_names) (t : nat) (q q1 q2 : Qp) :
     q = (q1 + q2)%Qp ->
     t ↪[ln_tx γ]{#q1} () -∗ t ↪[ln_tx γ]{#q2} () -∗ t ↪[ln_tx γ]{#q} ().
-  Proof.
+  Proof using .
     intros ->. iIntros "H1 H2".
     iDestruct (ghost_map_elem_combine with "H1 H2") as "[H _]".
     rewrite dfrac_op_own. iExact "H".
@@ -880,7 +880,7 @@ Section LogInv.
   Lemma log_tx_add (γ : log_names) (t : nat) (q q1 q2 : Qp) :
     q = (q1 + q2)%Qp ->
     t ↪[ln_tx γ]{#q1} () -∗ t ↪[ln_tx γ]{#q2} () -∗ t ↪[ln_tx γ]{#q} ().
-  Proof.
+  Proof using .
     intros ->. iIntros "H1 H2".
     iDestruct (ghost_map_elem_combine with "H1 H2") as "[H _]".
     rewrite dfrac_op_own. iExact "H".
@@ -891,14 +891,14 @@ Section LogInv.
      without unfolding the definition *)
   Lemma log_tx_full (γ : log_names) (t : nat) :
     t ↪[ln_tx γ]{#1} () -∗ log_tx γ.
-  Proof. iIntros "H". rewrite /log_tx. iExists t. iExact "H". Qed.
+  Proof using . iIntros "H". rewrite /log_tx. iExists t. iExact "H". Qed.
 
   Lemma log_tx_open (γ : log_names) :
     log_tx γ -∗ ∃ t : nat, t ↪[ln_tx γ]{#1} ().
-  Proof. iIntros "H". iExact "H". Qed.
+  Proof using . iIntros "H". iExact "H". Qed.
 
   Lemma log_op_split γ u : log_op γ u -∗ log_opb γ u ∗ log_tx γ.
-  Proof. iIntros "[$ $]". Qed.
+  Proof using . iIntros "[$ $]". Qed.
 
   (* ---- THE SET FORM BESIDE THE TOKEN, AS ONE CONJUNCT ----------------
      (durable-fs-plan.md section 3, [ilock]; durable-disk B''-tx)
@@ -915,24 +915,24 @@ Section LogInv.
     (log_opS γ u Sb ∗ log_tx γ)%I.
 
   Global Instance log_opSt_timeless γ u Sb : Timeless (log_opSt γ u Sb).
-  Proof. rewrite /log_opSt. apply _. Qed.
+  Proof using . rewrite /log_opSt. apply _. Qed.
 
   Lemma log_opSt_split γ u Sb :
     log_opSt γ u Sb -∗ log_opS γ u Sb ∗ log_tx γ.
-  Proof. iIntros "[$ $]". Qed.
+  Proof using . iIntros "[$ $]". Qed.
 
   Lemma log_opSt_intro γ u Sb :
     log_opS γ u Sb -∗ log_tx γ -∗ log_opSt γ u Sb.
-  Proof. iIntros "H Ht". rewrite /log_opSt. iFrame. Qed.
+  Proof using . iIntros "H Ht". rewrite /log_opSt. iFrame. Qed.
 
   Lemma log_op_openSt γ u : log_op γ u -∗ ∃ Sb, log_opSt γ u Sb.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct (log_op_openS with "H") as (Sb) "[H Ht]".
     iExists Sb. iApply (log_opSt_intro with "H Ht").
   Qed.
 
   Lemma log_opSt_op γ u Sb : log_opSt γ u Sb -∗ log_op γ u.
-  Proof.
+  Proof using .
     iIntros "[H Ht]". iApply (log_opS_op with "H Ht").
   Qed.
 
@@ -956,18 +956,18 @@ Section LogInv.
 
   Global Instance log_opSet_timeless γ u Sb e0 t q :
     Timeless (log_opSet γ u Sb e0 t q).
-  Proof. rewrite /log_opSet. apply _. Qed.
+  Proof using . rewrite /log_opSet. apply _. Qed.
 
   Lemma log_opSet_split γ u Sb e0 t q :
     log_opSet γ u Sb e0 t q -∗ log_opSe γ u Sb e0 ∗ t ↪[ln_tx γ]{#q} ().
-  Proof. iIntros "[$ $]". Qed.
+  Proof using . iIntros "[$ $]". Qed.
 
   Lemma log_opSet_intro γ u Sb e0 t q :
     log_opSe γ u Sb e0 -∗ t ↪[ln_tx γ]{#q} () -∗ log_opSet γ u Sb e0 t q.
-  Proof. iIntros "H Ht". rewrite /log_opSet. iFrame. Qed.
+  Proof using . iIntros "H Ht". rewrite /log_opSet. iFrame. Qed.
 
   Lemma log_opb_op γ u : log_opb γ u -∗ log_tx γ -∗ log_op γ u.
-  Proof. iIntros "H Ht". iFrame. Qed.
+  Proof using . iIntros "H Ht". iFrame. Qed.
 
   (* ---------------------------------------------------------------- *)
   (*  The ERA's half of the log-region MIRROR (phase C2b/D1 stage 2)    *)
@@ -1068,7 +1068,7 @@ Section LogInv.
     (* the logged view, at the entries the batch wrote *)
     (forall (j : nat) (b : Z), W !! j = Some b -> L !! b = Some (Lw j)) ->
     log_mirror_tie_body M' L cov ls ∅.
-  Proof.
+  Proof using .
     intros -> Htie Hhit Hmiss HLw b Hb _.
     destruct (decide (b ∈ (list_to_set W : gset Z))) as [Hin|Hout].
     - apply elem_of_list_to_set, elem_of_list_lookup in Hin as [j Hj].
@@ -1175,7 +1175,7 @@ Section LogInv.
     pend ⊆ pend' ->
     log_state bn γfs cov logstart n LB pend -∗
     log_state bn γfs cov logstart n LB pend'.
-  Proof. intros _. rewrite /log_state. iIntros "H". iExact "H". Qed.
+  Proof using . intros _. rewrite /log_state. iIntros "H". iExact "H". Qed.
 
   (* SHRINKAGE -- [end_op]'s retire, where the ending op's already-logged
      BLOCKS leave the pending union.  flip-C1's [end_op_fin] bundle
@@ -1186,7 +1186,7 @@ Section LogInv.
       (logstart : Z) (n : nat) (LB F pend : gset Z) :
     log_state bn γfs cov logstart n LB pend -∗
     log_state bn γfs cov logstart n LB (pend ∖ F).
-  Proof. rewrite /log_state. iIntros "H". iExact "H". Qed.
+  Proof using . rewrite /log_state. iIntros "H". iExact "H". Qed.
 
   (* ---------------------------------------------------------------- *)
   (*  The lock's resource                                              *)
@@ -1306,7 +1306,7 @@ Section LogInv.
     log_epoch_lb γ e -∗ log_res γ bn γfs cov logstart -∗
       (∃ E : nat, ⌜(e <= E)%nat⌝ ∗ log_flushed_bank γ E)
       ∗ log_res γ bn γfs cov logstart.
-  Proof.
+  Proof using .
     rewrite /log_res. iIntros "#Hlb H".
     iDestruct "H" as (out cmt nc om E X T)
       "(Hout & Hcmt & Hnc & Hauth & %Hsz & %Hbnd & %Hout3 & %Hcmt0 & Hepa &
@@ -1370,7 +1370,7 @@ Section LogResAt.
   Global Instance log_state_morph (bn : bio_names) (γfs : fs_names)
       (cov : gset Z) (logstart : Z) (n : nat) (LB pend : gset Z) :
     CtxMorph (λ ξ : CtxId, log_state (XI := ξ) bn γfs cov logstart n LB pend).
-  Proof. rewrite /log_state. ctx_morph_solve. Qed.
+  Proof using . rewrite /log_state. ctx_morph_solve. Qed.
 
   Definition log_res_at (γ : log_names) (bn : bio_names) (γfs : fs_names)
       (cov : gset Z) (logstart : Z) (ξ : CtxId) : iProp Σ :=
@@ -1379,7 +1379,7 @@ Section LogResAt.
   Global Instance log_res_at_morph (γ : log_names) (bn : bio_names)
       (γfs : fs_names) (cov : gset Z) (logstart : Z) :
     CtxMorph (log_res_at γ bn γfs cov logstart).
-  Proof.
+  Proof using .
     rewrite /log_res_at /log_res. ctx_morph_solve.
     all: apply log_state_morph.
   Qed.
@@ -1455,13 +1455,13 @@ Section LogCtx.
 
   Global Instance log_ctx_persistent γ bn γfs cov logstart dev :
     Persistent (log_ctx γ bn γfs cov logstart dev).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
 
   Lemma log_ctx_lock γ bn γfs cov logstart dev :
     log_ctx γ bn γfs cov logstart dev -∗
     is_lock (ln_lk γ) log_addr "log"%string (log_res_at γ bn γfs cov logstart).
-  Proof. rewrite /log_ctx. iIntros "($ & _)". Qed.
+  Proof using . rewrite /log_ctx. iIntros "($ & _)". Qed.
 
   (* THE FROZEN CELLS ALONE -- log_ctx minus the lock.  The COMMITTER-ONLY
      helpers (write_head, install_trans) run with NO lock held (that is what
@@ -1477,27 +1477,27 @@ Section LogCtx.
 
   Global Instance log_frozen_persistent logstart dev :
     Persistent (log_frozen logstart dev).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma log_ctx_frozen γ bn γfs cov logstart dev :
     log_ctx γ bn γfs cov logstart dev -∗ log_frozen logstart dev.
-  Proof. rewrite /log_ctx /log_frozen. iIntros "(_ & $ & $ & _)". Qed.
+  Proof using . rewrite /log_ctx /log_frozen. iIntros "(_ & $ & $ & _)". Qed.
 
   (* the byte view's row, off the context every log function threads *)
   Lemma log_ctx_bytes γ bn γfs cov logstart dev :
     log_ctx γ bn γfs cov logstart dev -∗
     fs_bytes_at γfs (fs_home_set cov logstart).
-  Proof. rewrite /log_ctx. iIntros "(_ & _ & _ & _ & $ & _)". Qed.
+  Proof using . rewrite /log_ctx. iIntros "(_ & _ & _ & _ & $ & _)". Qed.
 
   (* THE SEAL, off the same context (durable-disk lane E-except) *)
   Lemma log_ctx_seal γ bn γfs cov logstart dev :
     log_ctx γ bn γfs cov logstart dev -∗ exc_sealed (fs_exc γfs).
-  Proof. rewrite /log_ctx. iIntros "(_ & _ & _ & _ & _ & _ & _ & $)". Qed.
+  Proof using . rewrite /log_ctx. iIntros "(_ & _ & _ & _ & _ & _ & _ & $)". Qed.
 
   (* ...and the home-set-free form every bread client above takes *)
   Lemma log_ctx_bytes_any γ bn γfs cov logstart dev :
     log_ctx γ bn γfs cov logstart dev -∗ fs_bytes_any γfs.
-  Proof.
+  Proof using .
     iIntros "#H". rewrite /fs_bytes_any.
     iPoseProof (log_ctx_bytes with "H") as "Hb".
     iPoseProof (log_ctx_seal with "H") as "Hs".
@@ -1507,7 +1507,7 @@ Section LogCtx.
 
   Lemma log_ctx_swap γ bn γfs cov logstart dev :
     log_ctx γ bn γfs cov logstart dev -∗ swap_lb (S gen_id).
-  Proof. rewrite /log_ctx. iIntros "(_ & _ & _ & $ & _ & _)". Qed.
+  Proof using . rewrite /log_ctx. iIntros "(_ & _ & _ & $ & _ & _)". Qed.
 
   (* BLOCK 1'S PARK, off the context end_op already threads (durable-disk
      lane C-3a).  This is the whole of what the commit's collection needs of
@@ -1515,7 +1515,7 @@ Section LogCtx.
      step the collection runs in. *)
   Lemma log_ctx_sb γ bn γfs cov logstart dev :
     log_ctx γ bn γfs cov logstart dev -∗ sb_parked γfs.
-  Proof. rewrite /log_ctx. iIntros "(_ & _ & _ & _ & _ & $ & _)". Qed.
+  Proof using . rewrite /log_ctx. iIntros "(_ & _ & _ & _ & _ & $ & _)". Qed.
 
   (* THE LAW, off the context end_op already threads (durable-disk C-8).
      This is the whole of what the commit needs of the file system: it runs
@@ -1523,7 +1523,7 @@ Section LogCtx.
      authorities back.  [LogSnapLaw.snap_law_run] is the reading. *)
   Lemma log_ctx_snap_law γ bn γfs cov logstart dev :
     log_ctx γ bn γfs cov logstart dev -∗ snap_law γ γfs cov logstart.
-  Proof. rewrite /log_ctx. iIntros "(_ & _ & _ & _ & _ & _ & $ & _)". Qed.
+  Proof using . rewrite /log_ctx. iIntros "(_ & _ & _ & _ & _ & _ & $ & _)". Qed.
 
   (* ---------------------------------------------------------------- *)
   (*  The three ledger transitions                                      *)
@@ -1547,7 +1547,7 @@ Section LogCtx.
       ghost_map_auth (ln_ops γ) 1 (<[i := (MAXOPBLOCKS, ∅, E)]> om) ∗
       mono_nat_auth_own (ln_ep γ) 1 E ∗
       log_opSe γ MAXOPBLOCKS ∅ E.
-  Proof.
+  Proof using .
     intros Hpos. iIntros "Ha Hep".
     set (i := fresh (dom om)).
     assert (Hi : om !! i = None).
@@ -1567,7 +1567,7 @@ Section LogCtx.
     (forall i e, om !! i = Some e -> (e.1.1 <= MAXOPBLOCKS)%nat) ->
     (n + (out + 1) * MAXOPBLOCKS <= LOGBLOCKS)%nat ->
     (n + (MAXOPBLOCKS + op_sum om) <= LOGBLOCKS)%nat.
-  Proof.
+  Proof using .
     intros Hsz Hb Hg.
     pose proof (op_sum_bound om MAXOPBLOCKS Hb) as Hsum.
     rewrite Hsz in Hsum. lia.
@@ -1584,7 +1584,7 @@ Section LogCtx.
     ∃ i, ⌜om !! i = Some (S u, Sb, e0)⌝ ∗
       ghost_map_auth (ln_ops γ) 1 (<[i := (u, Sb ∪ {[b]}, e0)]> om) ∗
       log_opSe γ u (Sb ∪ {[b]}) e0.
-  Proof.
+  Proof using .
     iIntros "Ha He". rewrite /log_opSe.
     (* the lb is PERSISTENT and the positivity clause PURE, so every step
        below is a re-pack, not a transfer: both survive the update
@@ -1606,7 +1606,7 @@ Section LogCtx.
       (e0 : nat) :
     ghost_map_auth (ln_ops γ) 1 om -∗ log_opSe γ u Sb e0 -∗
     ∃ i, ⌜om !! i = Some (u, Sb, e0)⌝.
-  Proof.
+  Proof using .
     iIntros "Ha (He & _ & _)". iDestruct "He" as (i) "He".
     iDestruct (ghost_map_lookup with "Ha He") as %Hi.
     iExists i. done.
@@ -1629,7 +1629,7 @@ Section LogCtx.
     ∃ i, ⌜om !! i = Some (u, Sb, e0)⌝ ∗
       ghost_map_auth (ln_ops γ) 1 (<[i := (u, Sb ∪ {[b]}, e0)]> om) ∗
       log_opSe γ u (Sb ∪ {[b]}) e0.
-  Proof.
+  Proof using .
     iIntros "Ha He". rewrite /log_opSe.
     (* the lb is PERSISTENT and the positivity clause PURE, so this is a
        re-pack, not a transfer *)
@@ -1651,7 +1651,7 @@ Section LogCtx.
     ghost_map_auth (ln_ops γ) 1 om -∗ log_opb γ u ==∗
     ∃ i Sb e0, ⌜om !! i = Some (u, Sb, e0)⌝ ∗
       ghost_map_auth (ln_ops γ) 1 (delete i om).
-  Proof.
+  Proof using .
     iIntros "Ha He". rewrite /log_opb /log_opS /log_opSe.
     iDestruct "He" as (Sb e0) "(He & _ & _)". iDestruct "He" as (i) "He".
     iDestruct (ghost_map_lookup with "Ha He") as %Hi.
@@ -1669,7 +1669,7 @@ Section LogCtx.
     ghost_map_auth (ln_tx γ) 1 T ==∗
     ∃ t, ⌜T !! t = None⌝ ∗
       ghost_map_auth (ln_tx γ) 1 (<[t := tt]> T) ∗ log_tx γ.
-  Proof.
+  Proof using .
     iIntros "Ha".
     set (t := fresh (dom T)).
     assert (Ht : T !! t = None).
@@ -1687,7 +1687,7 @@ Section LogCtx.
   Lemma log_tx_retire (γ : log_names) (T : gmap nat unit) :
     ghost_map_auth (ln_tx γ) 1 T -∗ log_tx γ ==∗
     ∃ t, ⌜T !! t = Some tt⌝ ∗ ghost_map_auth (ln_tx γ) 1 (delete t T).
-  Proof.
+  Proof using .
     iIntros "Ha He". rewrite /log_tx. iDestruct "He" as (t) "He".
     iDestruct (ghost_map_lookup with "Ha He") as %Ht.
     iMod (ghost_map_delete with "Ha He") as "Ha".
@@ -1707,7 +1707,7 @@ Section LogCtx.
     size T = size om ->
     om = ∅ ->
     T = ∅.
-  Proof.
+  Proof using .
     intros Hsz ->. rewrite map_size_empty in Hsz.
     by apply map_size_empty_iff.
   Qed.
@@ -1743,7 +1743,7 @@ Section LogCtx.
          snap_law_out G C (fs_home_set cov logstart))
       ∗ ghost_map_auth (fs_bytes γfs) 1 Lb
       ∗ ghost_map_auth (ln_tx γ) 1 T.
-  Proof.
+  Proof using .
     intros Hsz Hom Hdom Hlens Htie Hdm. iIntros "#Hctx Hb Ht".
     rewrite (log_tx_empty_of_ops om T Hsz Hom).
     iDestruct (log_ctx_snap_law with "Hctx") as "#Hlaw".
@@ -1761,7 +1761,7 @@ Section LogCtx.
       (e0 : nat) :
     ghost_map_auth (ln_ops γ) 1 om -∗ log_opSe γ u Sb e0 -∗
     ⌜(1 <= size om)%nat⌝.
-  Proof.
+  Proof using .
     iIntros "Ha He". rewrite /log_opSe.
     iDestruct "He" as "(He & _ & _)". iDestruct "He" as (i) "He".
     iDestruct (ghost_map_lookup with "Ha He") as %Hi.
@@ -1776,7 +1776,7 @@ Section LogCtx.
   Lemma log_opS_positive γ (om : gmap nat op_entry) (u : nat) (Sb : gset Z) :
     ghost_map_auth (ln_ops γ) 1 om -∗ log_opS γ u Sb -∗
     ⌜(1 <= size om)%nat⌝.
-  Proof.
+  Proof using .
     iIntros "Ha He". rewrite /log_opS. iDestruct "He" as (e0) "He".
     iApply (log_opSe_positive with "Ha He").
   Qed.
@@ -1784,7 +1784,7 @@ Section LogCtx.
   Lemma log_op_positive γ (om : gmap nat op_entry) (u : nat) :
     ghost_map_auth (ln_ops γ) 1 om -∗ log_op γ u -∗
     ⌜(1 <= size om)%nat⌝.
-  Proof.
+  Proof using .
     iIntros "Ha [He _]". rewrite /log_opb /log_opS.
     iDestruct "He" as (Sb e0) "He".
     iApply (log_opSe_positive with "Ha He").
@@ -1795,7 +1795,7 @@ Section LogCtx.
   Lemma log_opb_positive γ (om : gmap nat op_entry) (u : nat) :
     ghost_map_auth (ln_ops γ) 1 om -∗ log_opb γ u -∗
     ⌜(1 <= size om)%nat⌝.
-  Proof.
+  Proof using .
     iIntros "Ha He". rewrite /log_opb /log_opS.
     iDestruct "He" as (Sb e0) "He".
     iApply (log_opSe_positive with "Ha He").
@@ -1828,7 +1828,7 @@ Section LogCtx.
     log_opSe γ u Sb e0 -∗
     logged_at γ e b -∗
     ⌜b ∈ LB⌝.
-  Proof.
+  Proof using .
     intros Hlive Hcap Hreg Hle.
     iIntros "Hao Hax He Hw".
     iDestruct (log_absorb_step γ om u Sb e0 with "Hao He") as (i) "%Hi".
@@ -1863,7 +1863,7 @@ Section LogCtx.
     log_opSe γ u Sb e0 -∗
     log_credit γ cr Sb e0 b -∗
     ⌜cr = true -> b ∈ LB⌝.
-  Proof.
+  Proof using .
     intros Hlive Hcap Hreg Hsub.
     iIntros "Hao Hax He Hcr". rewrite /log_credit.
     destruct cr; [| iPureIntro; discriminate].
@@ -1896,7 +1896,7 @@ Section LogCtx.
      there forces [om = ∅]. *)
   Lemma log_epoch_bump (γ : log_names) (E : nat) :
     mono_nat_auth_own (ln_ep γ) 1 E ==∗ mono_nat_auth_own (ln_ep γ) 1 (S E).
-  Proof.
+  Proof using .
     iIntros "H". iMod (mono_nat_own_update (S E) with "H") as "[$ _]";
       [lia | done].
   Qed.
@@ -1916,14 +1916,14 @@ Section LogCtx.
      are [e0 = E] and [e' <= E], and the bump only raises. *)
   Lemma log_epoch_alloc :
     ⊢ |==> ∃ γe : gname, mono_nat_auth_own γe 1 1%nat.
-  Proof.
+  Proof using .
     iMod (mono_nat_own_alloc 1%nat) as (γ) "[Ha _]".
     iModIntro. iExists γ. iFrame.
   Qed.
 
   Lemma log_reg_alloc :
     ⊢ |==> ∃ γl : gname, own γl (● (∅ : gset (nat * Z))).
-  Proof.
+  Proof using .
     iMod (own_alloc (● (∅ : gset (nat * Z)))) as (γ) "Ha".
     { apply auth_auth_valid. done. }
     iModIntro. iExists γ. iFrame.
@@ -1931,7 +1931,7 @@ Section LogCtx.
 
   Lemma log_ledger_alloc :
     ⊢ |==> ∃ γops : gname, ghost_map_auth γops 1 (∅ : gmap nat op_entry).
-  Proof.
+  Proof using .
     iMod (ghost_map_alloc_empty (K:=nat) (V:=op_entry)) as (γ) "Ha".
     iModIntro. iExists γ. iFrame.
   Qed.
@@ -1955,7 +1955,7 @@ Section LogCtxMorph.
      ride across as the same proposition. *)
   Global Instance log_ctx_morph γ bn γfs cov logstart dev :
     CtxMorph (λ ξ : CtxId, log_ctx (XI := ξ) γ bn γfs cov logstart dev).
-  Proof.
+  Proof using .
     iIntros (ξ ξ') "Hd H". rewrite /log_ctx.
     iDestruct "H" as "(#Hlk & Hdev & Hst & Hrest)".
     iMod (WpLock.is_lock_handle_morph (ln_lk γ) log_addr "log"%string

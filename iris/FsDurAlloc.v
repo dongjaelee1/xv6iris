@@ -695,13 +695,13 @@ Section Ledger.
 
   Lemma blk_ledger_lookup Γ D b bs :
     D !! b = Some bs -> blk_ledger Γ D ⊢ blk_owned Γ b bs.
-  Proof. intros Hb. rewrite /blk_ledger (big_sepM_lookup _ _ b bs Hb) //. Qed.
+  Proof using . intros Hb. rewrite /blk_ledger (big_sepM_lookup _ _ b bs Hb) //. Qed.
 
   (* a RECORD out of its block: [byte_range_app] twice, keeping the middle *)
   Lemma blk_owned_rec_in Γ b bs off dn :
     rec_in_blk bs off dn ->
     blk_owned Γ b bs ⊢ byte_range Γ b off (dinode_bytes dn).
-  Proof.
+  Proof using .
     intros (pre & post & -> & Hlen).
     rewrite /blk_owned. iIntros "[_ H]".
     rewrite byte_range_app. iDestruct "H" as "[_ H]".
@@ -716,7 +716,7 @@ Section Ledger.
   Lemma byte_range_run Γ b off bs :
     byte_range Γ b off bs
     ⊣⊢ ([∗ map] a ↦ v ∈ fp_run b off bs, fsΦ Γ (DfracOwn 1) a v).
-  Proof.
+  Proof using .
     rewrite /fp_run big_sepM_map_seqZ_gen /byte_range /byte_range_q //.
   Qed.
 
@@ -724,7 +724,7 @@ Section Ledger.
     length bs = BSIZE ->
     blk_owned Γ b bs
     ⊣⊢ ([∗ map] a ↦ v ∈ fp_run b 0 bs, fsΦ Γ (DfracOwn 1) a v).
-  Proof.
+  Proof using .
     intros Hl. rewrite /blk_owned byte_range_run.
     iSplit.
     - iIntros "[_ H]". iExact "H".
@@ -748,7 +748,7 @@ Section Ledger.
     (forall x y, x ∈ l -> y ∈ l -> x <> y -> f x ##ₘ f y) ->
     ([∗ map] a ↦ v ∈ B, Φ a v)
     ⊢ [∗ list] x ∈ l, ([∗ map] a ↦ v ∈ f x, Φ a v).
-  Proof.
+  Proof using .
     revert B. induction l as [| x l IH]; intros B Hnd Hsub Hdisj.
     { rewrite big_sepL_nil. iIntros "_". done. }
     apply NoDup_cons in Hnd as [Hx Hnd].
@@ -777,7 +777,7 @@ Section Ledger.
     blk_ledger Γ D
     ⊢ [∗ list] x ∈ fp_list S,
         byte_range Γ (fp_blk S x) (fp_off x) (fp_bs S D x).
-  Proof.
+  Proof using .
     intros Hb.
     rewrite /blk_ledger -(fs_dbytes_blocks Γ D (sk_bsz Hb)).
     rewrite (ledger_carve (fsΦ Γ (DfracOwn 1)) (fs_dbytes D) (fp_list S)
@@ -796,11 +796,11 @@ Section Ledger.
 
   Lemma big_sepL_elements_dom {A : Type} (I : gmap Z A) (Ψ : Z -> iProp Σ) :
     ([∗ list] i ∈ elements (dom I), Ψ i) ⊣⊢ ([∗ map] i ↦ _ ∈ I, Ψ i).
-  Proof. rewrite -big_sepS_elements -big_sepM_dom //. Qed.
+  Proof using . rewrite -big_sepS_elements -big_sepM_dom //. Qed.
 
   Lemma big_sepL_elements_dom_nat {A : Type} (m : gmap nat A) (Ψ : nat -> iProp Σ) :
     ([∗ list] k ∈ elements (dom m), Ψ k) ⊣⊢ ([∗ map] k ↦ _ ∈ m, Ψ k).
-  Proof. rewrite -big_sepS_elements -big_sepM_dom //. Qed.
+  Proof using . rewrite -big_sepS_elements -big_sepM_dom //. Qed.
 
   (* ------------------------------------------------------------------ *)
   (*  4.  THE INSTANCE, FROM A LINEAR LEDGER AND THE PURE TIE             *)
@@ -817,7 +817,7 @@ Section Ledger.
     snap_ok S D ->
     blk_ledger Γ D -∗ fs_links (γlink Γ) (fss_inodes S) -∗
     fs_state Γ (DfracOwn 1) S.
-  Proof.
+  Proof using .
     intros [Hok Hloc]. iIntros "Hled Hlinks".
     iDestruct (blk_ledger_cut Γ S D Hok with "Hled") as "H".
     iEval (rewrite /fp_list /fp_recs /fp_blks /fp_inds /fp_pools /fp_inums
@@ -930,7 +930,7 @@ Section AllocSnap.
     (forall b bs, D !! b = Some bs -> length bs = BSIZE) ->
     ([∗ map] a ↦ v ∈ fs_dbytes D, a ↪[g] v)
     ⊢ blk_ledger (snap_gamma g gl gt) D.
-  Proof.
+  Proof using .
     intros Hlen.
     rewrite /blk_ledger -(fs_dbytes_blocks (snap_gamma g gl gt) D Hlen).
     iIntros "H". iExact "H".
@@ -941,7 +941,7 @@ Section AllocSnap.
   Lemma snap_bytes_alloc (B : gmap Z (bv 8)) :
     ⊢ |==> ∃ g : gname,
         ghost_map_auth g 1 B ∗ ([∗ map] a ↦ v ∈ B, a ↪[g] v).
-  Proof.
+  Proof using .
     iMod (ghost_map_alloc B) as (g) "[Ha Hel]".
     iModIntro. iExists g. iFrame.
   Qed.
@@ -961,7 +961,7 @@ Section AllocSnap.
         fs_snap (snap_gamma g gl gt) g D S
         (* ...and the GUEST HALF of its map (app-instances.md round C) *)
         ∗ snap_guest gt (fss_inodes S).
-  Proof.
+  Proof using .
     intros Hok.
     iMod (snap_bytes_alloc (fs_dbytes D)) as (g) "[Hba Hbe]".
     destruct (sk_links (sk_bytes Hok)) as (fpar & kv & Hpok & Hpv).
@@ -985,7 +985,7 @@ Section AllocSnap.
   Lemma P_dur_alloc S D :
     snap_ok S D ->
     ⊢ |==> ∃ gt : gname, P_dur_at gt D ∗ snap_guest gt (fss_inodes S).
-  Proof.
+  Proof using .
     intros Hok.
     iMod (fs_snap_alloc S D Hok) as (g gl gt) "[Hsnap Hguest]".
     (* placed by name: a bare [iFrame] of the half would unfold the snapshot

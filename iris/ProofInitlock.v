@@ -67,7 +67,7 @@ Section ProofInitlock.
       (vlock : bv 32) (vname vcpu : bv 64) (s : string)
       (K : nat) (b : bool) (p : mword 64)
     : wp_initlock_sconf_body kt m vlock vname vcpu s K b p.
-  Proof.
+  Proof using .
     cbv beta delta [wp_initlock_sconf_body].
     intros pcE lk name ret_tgt c_name c_cpu HK.
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).

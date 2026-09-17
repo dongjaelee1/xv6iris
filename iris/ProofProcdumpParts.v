@@ -106,7 +106,7 @@ Section ProofProcdumpParts.
         pc_is (mword_of_int (KernelSyms.procdump + 0x1e)) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intro HK.
     rewrite /pdR.
     change (Regidx (mword_of_int 2 : mword 5)) with (Regidx csp_rs1).
@@ -343,7 +343,7 @@ Section ProofProcdumpParts.
         pc_is (mword_of_int (KernelSyms.procdump + 0x6e)) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     rewrite /pdR.
     change (Regidx (mword_of_int 2 : mword 5)) with (Regidx csp_rs1).
     iIntros "Hcg #Htext Hpc Hcont".
@@ -557,7 +557,7 @@ Section ProofProcdumpParts.
         pc_is (ret_pc (m !!! pdR 1 : mword 64)) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hxsp0 Hhi.
     assert (Hxsp : Mx !!! Regidx csp_rs1 = pa_stk (m !!! Regidx csp_rs1 : mword 64) 10)
       by exact Hxsp0.

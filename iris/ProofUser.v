@@ -47,7 +47,7 @@ Section ProofUser.
      Variables with their proven arms.  PURE: no [C], no mask, no state. *)
   Lemma base_exec_total_u_closed (va : mword 64) (mi : bool) :
     base_exec_total_u pt va mi.
-  Proof.
+  Proof using .
     apply (base_exec_total_u_holds pt
              (arm_LOAD_u pt) (arm_STORE_u pt) (arm_AMO_u pt)
              (arm_LOADRES_u pt) (arm_STORECON_u pt) (arm_ZICBOP_u pt)).
@@ -57,7 +57,7 @@ Section ProofUser.
      compressed memory Variables with their proven arms. *)
   Lemma rvc_exec_total_u_closed (va : mword 64) (mi : bool) :
     rvc_exec_total_u pt va mi.
-  Proof.
+  Proof using .
     apply (rvc_exec_total_u_holds pt
              (arm_C_LW_u pt) (arm_C_LD_u pt) (arm_C_LWSP_u pt) (arm_C_LDSP_u pt)
              (arm_C_SW_u pt) (arm_C_SD_u pt) (arm_C_SWSP_u pt) (arm_C_SDSP_u pt)
@@ -69,7 +69,7 @@ Section ProofUser.
      totality hypotheses -- the two totalities are now unconditional. *)
   Theorem wp_user_exec_closed :
     wp_user_exec_closed_body C pt Rut.
-  Proof.
+  Proof using .
     cbv beta delta [wp_user_exec_closed_body].
     intro Rut_ctx.
     apply (wp_user_exec_full C pt Rut Rut_ctx

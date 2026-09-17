@@ -108,7 +108,7 @@ Section CtxPinw.
     tso_interp_at riscv_eraGS g ∗
     ([∗ list] j ∈ l,
        phys_ledger_pinw (pa_add base j) (DfracOwn 1) (f j) (tf j) (Wf j)).
-  Proof.
+  Proof using .
     induction l as [|j l IH]; intros Hok.
     - iIntros "Hint _". iModIntro. iFrame "Hint". done.
     - iIntros "Hint Hb".
@@ -130,7 +130,7 @@ Section CtxPinw.
        phys_ledger_pinw (pa_add base j) (DfracOwn 1) (f j) t (Wf j)) ==∗
     tso_interp_at riscv_eraGS g ∗
     ([∗ list] j ∈ l, phys_ledger (pa_add base j) (DfracOwn 1) (f j)).
-  Proof.
+  Proof using .
     induction l as [|j l IH].
     - iIntros "Hint _". iModIntro. iFrame "Hint". done.
     - iIntros "Hint Hb".
@@ -168,7 +168,7 @@ Section CtxPinw.
        ⌜(t <= length g'.(glog))%nat⌝ ∗
        phys_ledger_pinw (pa_add base j) (DfracOwn 1) (nth_byte vnew j) t
          (TsPinw base (N.to_nat n) j lo Sw)).
-  Proof.
+  Proof using .
     intros Hn HSw Himg Hlog Hmem Htv Htvok'.
     iIntros "Hgh Hint Hpw".
     (* the pure claims, pre-append *)
@@ -255,7 +255,7 @@ Section CtxPinw.
        ⌜(t <= length g'.(glog))%nat⌝ ∗
        phys_ledger_pinw (pa_add base j) (DfracOwn 1) (nth_byte vnew j) t
          (TsPinw base (N.to_nat n) j (length g'.(glog)) Sw)).
-  Proof.
+  Proof using .
     intros Hn H0n HSw Himg Hlog Hmem Htv Htvok'.
     iIntros "Hgh Hint Hcells".
     (* the ctx bits drop; the bytes stay *)
@@ -319,7 +319,7 @@ Section CtxPinw.
     tso_interp_at riscv_eraGS g ∗
     ([∗ list] j ∈ seq 0 (N.to_nat n),
        ctx_phys_pointsto ξ (pa_add base j) (DfracOwn 1) (nth_byte v j)).
-  Proof.
+  Proof using .
     iIntros "Hint #Hfl Hpw".
     iInduction (seq 0 (N.to_nat n)) as [| j l] "IH".
     - iModIntro. iFrame "Hint". done.
@@ -351,7 +351,7 @@ Section CtxPinw.
     ⌜forall tv : nat, (g.(gtv) cpu_id <= tv)%nat -> forall j, (j < nn)%nat ->
        tso_read g.(gimg) g.(glog) (hart_agent cpu_id) tv (pa_add base j)
        = Some (f j)⌝.
-  Proof.
+  Proof using .
     iIntros "Hint Hgh #Htl Hb".
     iAssert (⌜forall j, (j < nn)%nat -> exists t, (t <= tl)%nat /\
                TsoMemPa.latest g.(gimg) g.(glog) (pa_add base j) t (f j)⌝)%I
@@ -409,7 +409,7 @@ Section CtxPinw.
        ⌜(t <= S (length log))%nat⌝ ∗
        phys_ledger_pinw (pa_add pa j) (DfracOwn 1) (nth_byte vnew j) t
          (TsPinw pa (N.to_nat n) j lo Sw)).
-  Proof.
+  Proof using .
     intros Hn HSw. iIntros "Hgh Htso Hpw".
     iDestruct (tso_interp_of_pin with "Htso") as %Hpin.
     iDestruct (tso_interp_of_bound with "Htso") as %Hb.
@@ -493,7 +493,7 @@ Section CtxPinw.
        ⌜(t <= S (length log))%nat⌝ ∗
        phys_ledger_pinw (pa_add pa j) (DfracOwn 1) (nth_byte vnew j) t
          (TsPinw pa (N.to_nat n) j (S (length log)) Sw)).
-  Proof.
+  Proof using .
     intros Hn H0n HSw. iIntros "Hgh Htso Hpw".
     iDestruct (tso_interp_of_pin with "Htso") as %Hpin.
     iDestruct (tso_interp_of_bound with "Htso") as %Hb.
@@ -571,7 +571,7 @@ Section CtxPinw.
     ([∗ list] j ∈ seq 0 (N.to_nat n),
        ctx_phys_pointsto cur_ctx (pa_add pa j) (DfracOwn 1)
          (nth_byte vnew j)).
-  Proof.
+  Proof using .
     intros Hn. iIntros "Hgh Htso Hctx #Hfl Hpw".
     iDestruct (tso_interp_of_pin with "Htso") as %Hpin.
     iDestruct (tso_interp_of_bound with "Htso") as %Hb.

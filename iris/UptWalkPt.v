@@ -166,7 +166,7 @@ Section UptRes.
       satp ↦ᵣ satp0 ∗ tlb ↦ᵣ tlbv ∗
       pmpcfg_n ↦ᵣ pcfg ∗ pmpaddr_n ↦ᵣ paddr ∗
       upt_res_pt uroot tfp um tlbv.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as (usatp tlbvec t)
       "(Hsatp & %Hmode & %Hasid & %Hppn & Htlbc & %Hok & %Hspec & %Hwfm &
         %Hpmaw & Htree & Hpmp)".
@@ -191,7 +191,7 @@ Section UptRes.
     pmpcfg_n ↦ᵣ pcfg -∗ pmpaddr_n ↦ᵣ paddr -∗
     upt_res_pt uroot tfp um tlbv -∗
     utlb_inv_pt uroot tfp um.
-  Proof.
+  Proof using .
     intros (Hmode & Hasid & Hppn & Hpmaw) (HA & Hord & HX & HW & HR & Hcov).
     iIntros "Hsatp Htlbc Hpcfg Hpaddr Hres".
     iDestruct "Hres" as (t) "(%Hok & %Hspec & %Hwfm & Htree)".
@@ -295,7 +295,7 @@ Section UptWalk.
                   upt_res_pt uroot tfp um (register_lookup tlb rsf) ∗
                   TsoCtx.own_context XI ∗
                   resv_any cpu_id).
-  Proof.
+  Proof using .
     intros Hdisjf HDr HDw Hacc Hmisa Hmenv Hhtif Hcp Hms HSXL HMPRV
            Hsatp Htlb Hpcfg Hpaddr Hpma Hsatpok Hpmpok Hall Hleaf Hchk Hgchk
            Hcanon Hout.
@@ -712,7 +712,7 @@ Section UptData.
                   upt_res_pt uroot tfp um (register_lookup tlb rsf) ∗
                   TsoCtx.own_context XI ∗
                   resv_any cpu_id).
-  Proof.
+  Proof using .
     intros Hacc Hdisjf HDr HDw Hmisa Hmenv Hhtif Hcp Hms HSXL HMPRV Hsatp
            Hpcfg Hpaddr Hpma Hsatpok Hpmpok Hall Hvpn Hcanon Hid.
     assert (Hout : zero_extend' 64 (concat_vec

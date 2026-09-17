@@ -207,7 +207,7 @@ Section SleepJoin.
         cpu_claim_ext eb pj -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pj Hav Hj Hno Hspd Hsp0 Hsp_mj Hs1_mj
            Hmj18 Hmj19 Hmj20 Hmj21 Hmj22 Hmj23 Hmj24 Hmj25 Hmj26 Hmj27.
     iIntros "#Htext #Hislock Hcg Hpc Hheld' Htc Hcpu Hown' #Hmk Htag Hvc' Hr24 Hr16 Hr8 Hgap Hcont".
@@ -499,7 +499,7 @@ Section ProofSleepBody.
       (γs : list gname) (j : nat) (γl : gname)
       (m : regfile) (av : nat) (eb : bool) (lks : gset string)
     : wp_sleep_sconf_body γs j γl m av eb lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_sleep_sconf_body].
     intros pcE pj ret_tgt Hj Hgl Hav Hno.
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).

@@ -425,7 +425,7 @@ Section FsLookup.
     node_rep (NDir ents) dn data ->
     dinode_at fsc_ireg (inum_of i) dn -∗ inode_blocks fsc_fs bm data -∗
     fdir i ents dn bm data.
-  Proof.
+  Proof using .
     intros Hrep. iIntros "Hd Hb". rewrite /fdir.
     iSplitL "Hd"; [iExact "Hd" |].
     iSplitL "Hb"; [iExact "Hb" |].
@@ -436,7 +436,7 @@ Section FsLookup.
       (ents : gmap fname Z) (dn : dinode) (bm : blkmap)
       (data : nat -> list (bv 8)) :
     fdir i ents dn bm data -∗ fnode fsc_ireg fsc_fs i (NDir ents).
-  Proof.
+  Proof using .
     iIntros "(Hd & Hb & %Hrep)".
     iApply (fnode_intro fsc_ireg fsc_fs i (NDir ents) dn bm data Hrep with "Hd Hb").
   Qed.
@@ -446,7 +446,7 @@ Section FsLookup.
     fnode fsc_ireg fsc_fs i (NDir ents) -∗
       ∃ (dn : dinode) (bm : blkmap) (data : nat -> list (bv 8)),
         fdir i ents dn bm data.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as (dn bm data) "(Hd & Hb & %Hrep)".
     iExists dn, bm, data.
     iApply (fdir_intro i ents dn bm data Hrep with "Hd Hb").
@@ -458,7 +458,7 @@ Section FsLookup.
       (ents : gmap fname Z) (dn : dinode) (bm : blkmap)
       (data : nat -> list (bv 8)) :
     fdir i ents dn bm data -∗ ⌜di_type dn = T_DIR⌝.
-  Proof.
+  Proof using .
     iIntros "(_ & _ & %Hrep)". iPureIntro.
     exact (node_rep_T_DIR ents dn data Hrep).
   Qed.
@@ -761,7 +761,7 @@ Section FsLookupAu.
 
   Lemma tree_ins_ent (t : fstree) (i : Z) (ents : gmap fname Z) (f : fname) :
     tree_ent (tree_ins t i (NDir ents)) i f = ents !! f.
-  Proof.
+  Proof using .
     rewrite /tree_ent /tree_ins /=. rewrite lookup_insert. reflexivity.
   Qed.
 
@@ -800,7 +800,7 @@ Section FsLookupAu.
       (dpi : Z) (ents : gmap fname Z) (s : fname)
       (Φt : option Z -> iProp Σ) :
     dl_au Ed dpi ents s Φt ={⊤}=∗ Φt (ents !! s).
-  Proof.
+  Proof using .
     iIntros "Hau". iMod "Hau" as (t) "(%Hhole & Ht & Hclose)".
     iEval (rewrite tree_ins_ent) in "Hclose".
     iMod ("Hclose" with "Ht") as "HΦ". by iModIntro.
@@ -816,7 +816,7 @@ Section FsLookupAu.
     dir_first data (dnrec dn) s = Some k ->
     dl_au Ed dpi ents s Φt
     ={⊤}=∗ Φt (Some (bv_unsigned (dir_inum data k))).
-  Proof.
+  Proof using .
     intros Hrep Hf.
     rewrite <- (node_lookup_found ents dn data s k Hrep Hf).
     iApply dl_au_fire.
@@ -829,7 +829,7 @@ Section FsLookupAu.
     node_rep (NDir ents) dn data ->
     dir_first data (dnrec dn) s = None ->
     dl_au Ed dpi ents s Φt ={⊤}=∗ Φt None.
-  Proof.
+  Proof using .
     intros Hrep Hf.
     rewrite <- (node_lookup_none ents dn data s Hrep Hf).
     iApply dl_au_fire.
@@ -937,7 +937,7 @@ Section FsLookupDots.
   (* ===================================================================== *)
 
   Lemma inum_of_self (inum : mword 32) : inum_of (bv_unsigned inum) = inum.
-  Proof.
+  Proof using .
     apply bv_eq. apply inum_of_unsigned.
     pose proof (bv_unsigned_in_range 32 inum) as H.
     unfold bv_modulus in H. cbn in H. lia.
@@ -953,7 +953,7 @@ Section FsLookupDots.
         (fdir (bv_unsigned inum)
               (dir_view data (dnrec dn)) dn bm data -∗
          ic_loaded fsc_fs fsc_ireg fsc_cov fsc_logst k inum dn bm).
-  Proof.
+  Proof using .
     intros Hty.
     iIntros "H". iDestruct (ic_loaded_open with "H") as (data)
       "(%Hiok & %Hrl & %Hdok & %Hddix & %Hdoc & %Hduq & Hdlnk & Hdiat & Hmeta &
@@ -985,7 +985,7 @@ Section FsLookupDots.
         (fdir (bv_unsigned inum)
               (dir_view data (dnrec dn)) dn bm data -∗
          ic_loaded fsc_fs fsc_ireg fsc_cov fsc_logst k inum dn bm).
-  Proof.
+  Proof using .
     intros Hty. iIntros "H".
     iDestruct (ic_loaded_fdir k inum dn bm Hty with "H")
       as (data) "[Hfd Hback]".

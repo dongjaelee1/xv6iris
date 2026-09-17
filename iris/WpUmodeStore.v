@@ -807,7 +807,7 @@ Section UvStorePure.
       tlb_ok_pt (mword_of_int 0) t' (register_lookup tlb rs') /\
       uv_tree_ok pt md t' /\
       pt_same_shape 2 t t'.
-  Proof.
+  Proof using Hk Hk8 Hkdvd Huintk Hwrite_plain.
     intros Hl Hleaf Hcanon Hal Hin Hwin Hcfg Hpins Htok.
     destruct (uv_walk_data (Store Data) pt t md rs w va
                 (or_intror (or_intror (or_introl eq_refl)))
@@ -1057,7 +1057,7 @@ Section UmodeStoreExec.
       = Some (Ok true, sfin) ->
     exec (execute (STORE (imm, Regidx rs2, Regidx rs1, k))) s
       = Some (RETIRE_SUCCESS, sfin).
-  Proof.
+  Proof using Hkw.
     intros Hcp Heff Hpml Htm Hbase Hv Hvwa.
     apply (exec_execute_STORE_u_ok imm rs2 rs1 k true s sfin
              ltac:(change xlen_bytes with 8; apply Z.leb_le;
@@ -1089,7 +1089,7 @@ Section UmodeStoreExec.
     goodmb Du_r Du_w (vmem_write_addr (Virtaddr (add_vec base (sign_extend' 64 imm))) k
             (ustore_data k v) (Store Data) false false false) s mm = true ->
     goodmb Du_r Du_w (execute (STORE (imm, Regidx rs2, Regidx rs1, k))) s mm = true.
-  Proof.
+  Proof using Hkw.
     intros Hcp Heff Heffg Hpml Hpmlg Htm Htmg Hbase Hv Hvwa Hvwag.
     apply (goodmb_execute_STORE_u_ok Du_r Du_w imm rs2 rs1 k true s sfin mm
              (fun H => Du_gpr_of_Z_r rs2 H)
@@ -1131,7 +1131,7 @@ Section UvStoreRes.
     upt_satp_ok_pt (ud_root pt) usatp ->
     pmp_ent0_ok pcfg paddr ->
     pt_claims 2 t -∗ uv_res pt M t usatp pcfg paddr.
-  Proof.
+  Proof using .
     intros Hinj Hsatpok Hpmpok.
     iIntros "#Hclaims". rewrite /uv_res. iFrame "Hclaims".
     iIntros (t' tlbv') "%Hshape %Htok' %Htlbok' Hsatp Htlb Hpcfg Hpaddr Hmm".
@@ -1182,7 +1182,7 @@ Section UvStoreRes.
        TsoCtx.own_context XI -∗
        uv_bytes pt M' t' -∗ resv_any cpu_id -∗ Pe RETIRE_SUCCESS ib) -∗
     swp (execute i) (run_exec_post Pe ib).
-  Proof.
+  Proof using .
     intros Hred Hg1 Hinj Hinj' Htext Htok Htok' Hdom Hg2 He.
     iIntros "#Hcert Hany Hrw Hro Hrun Hmm Hk".
     destruct o as [j | ].
@@ -1317,7 +1317,7 @@ Section UvStorePostFetch.
     swp (execute i)
       (run_exec_post (fun (r : ExecutionResult) (ib' : mword 32) =>
                         uv_step_post C R rsE (Step_Execute (r, ib'))) ib).
-  Proof.
+  Proof using .
     intros Hkw Hred Hexp Hva Hwval Hl Hchk Hcanon Hpg Hal HMb Hntx Hinj Hg1
       Hpins2 Lpc2 Lhs2 Lcp2 Hms2 Hgag2 Hx0 Lstvec2 Lmie2 Lmdl2 Lmedl2 Lmenv2
       Lmste2 Lsste2 Lsenv2 Lsatp2 Lpcfg2 Lpaddr2 Lmi2 Hagd2 Htok'.
@@ -1609,7 +1609,7 @@ Section UvStoreObl.
          (fun (xv : mword 64) (e : ExceptionType) =>
             uv_step_post C R rs1 (Step_Fetch_Failure (Virtaddr xv, e)))
          (fun _ : ext_fetch_addr_error => False)).
-  Proof.
+  Proof using .
     intros Hpre Hdec Hkw Hred Hg1 Hexp Hva Hwval
       Hl Hchk Hcanon Hpg Hal HMb Hntx.
     pose proof Hpre as (Hinj & Htok & HpinsA & LhsA & LcpA & HmsokA & LpcA &
@@ -1728,7 +1728,7 @@ Section UvStoreObl.
          (fun (xv : mword 64) (e : ExceptionType) =>
             uv_step_post C R rs1 (Step_Fetch_Failure (Virtaddr xv, e)))
          (fun _ : ext_fetch_addr_error => False)).
-  Proof.
+  Proof using .
     intros Hpre Hdec Hkw Hred Hg1 Hexp Hva Hwval
       Hl Hchk Hcanon Hpg Hal HMb Hntx.
     pose proof Hpre as (Hinj & Htok & HpinsA & LhsA & LcpA & HmsokA & LpcA &
@@ -1859,7 +1859,7 @@ Section WpUmodeStore.
          pc_is (CID := CID0) (add_vec_int pc (if is_rvc then 2 else 4)) -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hkw Hui Hred Hg1 Hlpad Hexp Hva Hwval Hl Hchk Hcanon Hpg Hal HMb Hntx.
     iIntros "Hcg Hpc Hcont".
     iApply (wp_uv_step C pt _ Ψ M m pc with "Hcg Hpc [] Hcont").
@@ -1921,7 +1921,7 @@ Section WpUmodeStore.
        pc_is (CID := CID0) (add_vec_int pc (if is_rvc then 2 else 4)) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hkw Hui Hred Hg1 Hlpad Hexp Hva Hwval Hl Hchk Hcanon Hpg Hal HMb Hntx.
     iIntros "Hcg Hpc Hcont".
     iApply (wp_uv_store_later Ψ M m pc is_rvc i o imm rs1 rs2 k w_st va wval
@@ -1954,7 +1954,7 @@ Section WpUmodeStore.
        pc_is (CID := CID0) (add_vec_int pc 4) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hui Hva Hwval Hl Hchk Hcanon Hpg Hal HMb Hntx.
     iIntros "Hcg Hpc Hcont".
     iApply (wp_uv_store Ψ M m pc false
@@ -1989,7 +1989,7 @@ Section WpUmodeStore.
        pc_is (CID := CID0) (add_vec_int pc 4) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hui Hva Hwval Hl Hchk Hcanon Hpg Hal HMb Hntx.
     iIntros "Hcg Hpc Hcont".
     iApply (wp_uv_store Ψ M m pc false
@@ -2025,7 +2025,7 @@ Section WpUmodeStore.
        pc_is (CID := CID0) (add_vec_int pc 4) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hui Hva Hwval Hl Hchk Hcanon Hbb Hntx.
     iIntros "Hcg Hpc Hcont".
     iApply (wp_uv_store Ψ M m pc false
@@ -2067,7 +2067,7 @@ Section WpUmodeStore.
        pc_is (CID := CID0) (add_vec_int pc 2) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hui Htgt Hwval Hl Hchk Hcanon Hpg Hal HMb Hntx.
     iIntros "Hcg Hpc Hcont".
     iApply (wp_uv_store Psi M m pc true (C_SDSP (uimm, Regidx rs2))
@@ -2113,7 +2113,7 @@ Section WpUmodeStore.
        pc_is (CID := CID0) (add_vec_int pc 2) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hui Hcr1 Hcr2 Hva Hwval Hl Hchk Hcanon Hpg Hal HMb Hntx.
     iIntros "Hcg Hpc Hcont".
     iApply (wp_uv_store Ψ M m pc true (C_SD (uimm, Cregidx cr1, Cregidx cr2))
@@ -2159,7 +2159,7 @@ Section WpUmodeStore.
        pc_is (CID := CID0) (add_vec_int pc 2) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hui Hcr1 Hcr2 Hva Hwval Hl Hchk Hcanon Hpg Hal HMb Hntx.
     iIntros "Hcg Hpc Hcont".
     iApply (wp_uv_store Ψ M m pc true (C_SW (uimm, Cregidx cr1, Cregidx cr2))

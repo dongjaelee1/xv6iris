@@ -296,7 +296,7 @@ Section BootEntryPre.
              harts by the client) --- *)
       sig_seip ↦ᵣ register_lookup sig_seip rs ∗
       sig_meip ↦ᵣ register_lookup sig_meip rs.
-  Proof.
+  Proof using .
     intros (Hpc0 & Hnpc0 & Hpv0 & Hhs0 & Hmh0 & Hms0 & Hmisa0 & Hsec0 & Hmenv0 &
             Hhtif0 & Help0 & Hpma0 & _ & _ & _ & Hsenv0 & Hmse0 & Hsse0).
     iIntros "#Hcl #Hcert Hresv Hregs".

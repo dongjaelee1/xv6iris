@@ -160,7 +160,7 @@ Section WfiFrames.
      (R_bitvector_64 mip) ↦ᵣ register_lookup (R_bitvector_64 mip) rs ∗
      tlb ↦ᵣ register_lookup tlb rs ∗
      hart_state ↦ᵣ register_lookup hart_state rs)%I.
-  Proof.
+  Proof using .
     rewrite /hreg_frame /wfi_Drw.
     repeat (rewrite big_sepS_union; last set_solver).
     rewrite !big_sepS_singleton.
@@ -189,7 +189,7 @@ Section WfiFrames.
      reg_pointsto mie dq (register_lookup mie rs) ∗
      reg_pointsto mideleg dq (register_lookup mideleg rs) ∗
      reg_pointsto menvcfg dq (register_lookup menvcfg rs))%I.
-  Proof.
+  Proof using .
     rewrite /hreg_frame_ro /wfi_Dro.
     repeat (rewrite big_sepS_union; last set_solver).
     rewrite !big_sepS_singleton.
@@ -202,16 +202,16 @@ Section WfiFrames.
 
   Lemma wfi_agree_rw (rs rs' : regstate) :
     reg_agree_on (wfi_Drw ∪ wfi_Dro) rs rs' -> reg_agree_on wfi_Drw rs rs'.
-  Proof. intros Hag r Hr. apply Hag. set_solver. Qed.
+  Proof using . intros Hag r Hr. apply Hag. set_solver. Qed.
 
   Lemma wfi_agree_ro (rs rs' : regstate) :
     reg_agree_on (wfi_Drw ∪ wfi_Dro) rs rs' -> reg_agree_on wfi_Dro rs rs'.
-  Proof. intros Hag r Hr. apply Hag. set_solver. Qed.
+  Proof using . intros Hag r Hr. apply Hag. set_solver. Qed.
 
   Lemma wfi_rw_ext (rs rs' : regstate) :
     reg_agree_on (wfi_Drw ∪ wfi_Dro) rs rs' ->
     hreg_frame rs wfi_Drw -∗ (hreg_frame rs' wfi_Drw : iProp Σ).
-  Proof.
+  Proof using .
     intros Hag. rewrite (hreg_frame_ext _ _ wfi_Drw (wfi_agree_rw _ _ Hag)).
     iIntros "H". iExact "H".
   Qed.
@@ -220,7 +220,7 @@ Section WfiFrames.
     reg_agree_on (wfi_Drw ∪ wfi_Dro) rs rs' ->
     hreg_frame_ro (s_Df dq) rs wfi_Dro -∗
     (hreg_frame_ro (s_Df dq) rs' wfi_Dro : iProp Σ).
-  Proof.
+  Proof using .
     intros Hag.
     rewrite (hreg_frame_ro_ext _ _ _ wfi_Dro (wfi_agree_ro _ _ Hag)).
     iIntros "H". iExact "H".
@@ -407,24 +407,24 @@ Section WfiWait.
     register_beq r (hart_state : register).
 
   Lemma wfi_Dr_in (r : register) : wfi_Dr r = true -> r ∈ wfi_Drw ∪ wfi_Dro.
-  Proof.
+  Proof using .
     unfold wfi_Dr. intros Hr.
     apply orb_true_elim in Hr as [Hr|Hr]; apply register_beq_eq in Hr; subst r;
       rewrite /wfi_Drw /wfi_Dro; set_solver.
   Qed.
 
   Lemma wfi_Dw_in (r : register) : wfi_Dw r = true -> r ∈ wfi_Drw.
-  Proof.
+  Proof using .
     unfold wfi_Dw. intros Hr. apply register_beq_eq in Hr; subst r.
     apply wfi_w_hart.
   Qed.
 
   Lemma wfi_Dr_mip : wfi_Dr (R_bitvector_64 mip) = true.
-  Proof. unfold wfi_Dr. vm_compute. reflexivity. Qed.
+  Proof using . unfold wfi_Dr. vm_compute. reflexivity. Qed.
   Lemma wfi_Dr_mie : wfi_Dr (R_bitvector_64 mie) = true.
-  Proof. unfold wfi_Dr. vm_compute. reflexivity. Qed.
+  Proof using . unfold wfi_Dr. vm_compute. reflexivity. Qed.
   Lemma wfi_Dw_hart : wfi_Dw (hart_state : register) = true.
-  Proof. unfold wfi_Dw. vm_compute. reflexivity. Qed.
+  Proof using . unfold wfi_Dw. vm_compute. reflexivity. Qed.
 
   (* ------------------------------------------------------------------- *)
   (* THE WAIT LOOP.  A Löb induction over [swp_exec_step_waiting]: the     *)
@@ -446,7 +446,7 @@ Section WfiWait.
        hreg_frame_ro (s_Df (DfracOwn 1)) rs3 wfi_Dro -∗
        resv_any cpu_id -∗ Psi -∗ WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using XI.
     iIntros (Hhart) "#Hcert Hany Hrw Hro HPsi Hcont".
     iRevert "Hany Hrw Hro HPsi Hcont". iRevert (rs Hhart).
     iLöb as "IH".
@@ -479,7 +479,7 @@ Section WfiBridge.
   Context `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}.
 
   Lemma s_Df_hart (dq : dfrac) : s_Df dq (hart_state : register) = dq.
-  Proof.
+  Proof using .
     unfold s_Df. repeat (rewrite decide_False; [|discriminate]). reflexivity.
   Qed.
 
@@ -495,7 +495,7 @@ Section WfiBridge.
      hreg_frame_ro (s_Df (DfracOwn 1)) rs wfi_Dro : iProp Σ)
     ⊣⊢ (hreg_frame rs s_Drw ∗
         hreg_frame_ro (s_Df (DfracOwn 1)) rs s_Dro).
-  Proof.
+  Proof using .
     rewrite wfi_rw_split wfi_ro_split s_rw_split s_ro_split.
     iSplit.
     - iIntros "((?&?&?&?&?&?&?&?&?) & (?&?&?&?&?&?&?&?&?&?&?&?&?&?&?&?))".
@@ -551,7 +551,7 @@ Section WfiRun.
   Local Lemma wfi_decode_ok (tv : type_of_register tlb) :
     misa0 = MISA_C -> menv0 = MENVCFG_S ->
     decode_ok (s_Drw ∪ s_Dro) (srs tv).
-  Proof.
+  Proof using .
     intros Hmisa Hmenv. rewrite /decode_ok. split_and!.
     - exact s_in_priv.
     - exact s_in_misa.
@@ -624,7 +624,7 @@ Section WfiRun.
                    ∃ rs2 : regstate, ⌜Q rs2⌝ ∗
                    hreg_frame rs2 s_Drw ∗
                    hreg_frame_ro Df rs2 s_Dro ∗ Rr rs2).
-  Proof.
+  Proof using .
     intros Hplain Hmisa Hmenv Help HSIE Hmm Hpallow HA Hord HX Hcov.
     iIntros "#Hcert Hinstr HW Hfrag0 HRes Hrw Hro #Htr Hex".
     iDestruct (spt_dispatch_none Df pc ms bmi cy ti ip mst0 pcfg paddr mc
@@ -870,7 +870,7 @@ Section WfiLeaf.
   Lemma exec_execute_WFI_S (s : mstate) :
     register_lookup cur_privilege s.(sregs) = Supervisor ->
     exec (execute (WFI tt)) s = Some (Enter_Wait WAIT_WFI, s).
-  Proof.
+  Proof using .
     intros Hpriv.
     change (execute (WFI tt)) with (execute_WFI tt).
     unfold execute_WFI.
@@ -885,7 +885,7 @@ Section WfiLeaf.
     register_beq r (cur_privilege : register).
 
   Lemma wfi_Db_in (r : register) : wfi_Db r = true -> r ∈ s_Drw ∪ s_Dro.
-  Proof.
+  Proof using .
     unfold wfi_Db. intros Hr. apply register_beq_eq in Hr; subst r.
     exact s_in_priv.
   Qed.
@@ -894,7 +894,7 @@ Section WfiLeaf.
     register_lookup cur_privilege rs = Supervisor ->
     hval (s_Drw ∪ s_Dro) s_Drw rs (execute (WFI tt))
       (Enter_Wait WAIT_WFI) rs.
-  Proof.
+  Proof using .
     intros Hpriv.
     apply (hval_of_goodb wfi_Db (s_Drw ∪ s_Dro) s_Drw (execute (WFI tt))
              (MState (register_set cur_privilege Supervisor init_regstate) ∅
@@ -946,7 +946,7 @@ Section WfiLeaf.
         (s_rs pc pc msr bmi cy ti ip mst0 pcfg paddr mc micfg misa0
            mseccfg0 (mword_of_int 0) pmar0 elp0 satp0 MIE_S mdv0
            MENVCFG_S tv).
-  Proof.
+  Proof using .
     intros Hr Hhs Hnp -> (hv & ->) Hag3 (_ & _ & Hag4).
     (* NEVER [rewrite] between two register-file towers: a keyed match that
        fails on one side unfolds [register_set] and compares two update
@@ -979,7 +979,7 @@ Section WfiLeaf.
     register_lookup (R_bitvector_64 PC) rs4 = add_vec_int pc 4
     /\ register_lookup (R_bitvector_64 nextPC) rs4 = add_vec_int pc 4
     /\ register_lookup hart_state rs4 = HART_ACTIVE tt.
-  Proof.
+  Proof using .
     intros -> (hv & ->) Hag3 Hw.
     pose proof Hw as (Hh4 & Hpc4 & Hag4).
     assert (Hnp_hs : register_beq (R_bitvector_64 nextPC : register)
@@ -1009,7 +1009,7 @@ Section WfiLeaf.
      tv' = tlbv] and the wfi has to refute the antecedent.  By NAME, not by
      [set_solver]: the leaf's context carries the S-mode towers. *)
   Lemma s_Drw_ne_Drwb : s_Drw <> s_Drwb.
-  Proof.
+  Proof using .
     intros Heq. pose proof s_w_tlb as Hin. rewrite Heq /s_Drwb in Hin.
     revert Hin. clear. set_solver.
   Qed.
@@ -1053,7 +1053,7 @@ Section WfiLeaf.
           pc_is (add_vec_int pc 4) -∗
           WP (Loop : expr riscv_lang))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "#Hkpt Hcg Hcnt Hpc #Hinstr Hcont".
     (* ---- the bundles, into the 25 cells ---- *)
     iDestruct (sie_cap_gpr_split with "Hcg") as "(Hhs & Hsc & Hcap & Hfile)".

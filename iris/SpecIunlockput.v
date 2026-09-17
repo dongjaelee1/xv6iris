@@ -796,7 +796,7 @@ Section IunlockputOfDep.
                                 gil gisl
  k qi s gy loy tly inum dn' bm' n
                                 pidv dq dqb dqs m K eb b lks Upr.
-  Proof.
+  Proof using .
     cbv beta delta [wp_iunlockput_tx_sconf_body wp_iunlockput_dep_sconf_body].
     intros Hgen pcE ip pj ret_tgt HK Hk Hgeom Hsz Hbm0 Hbmc Hbml Hist Hcov
       Hnlog Hinlt Hcb Hn Hj Hgl Ha0 Hbelow.
@@ -845,7 +845,7 @@ Section IunlockputOfDep.
                               gil gisl
  k qi s gy loy tly inum dn' bm' n Sb crb cru
                               crz e0 pidv dq dqb dqs m K eb b lks Upr.
-  Proof.
+  Proof using .
     cbv beta delta [wp_iunlockput_tx_gen_body wp_iunlockput_dep_gen_body].
     intros Hgen pcE ip pj ret_tgt HK Hk Hcrb0 Hcru0 Hgeom Hsz Hbm0 Hbmc Hbml
       Hist Hcov Hnlog Hinlt Hcb Hn Hj Hgl Ha0 Hbelow.

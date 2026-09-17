@@ -176,7 +176,7 @@ Section ItruncSpec.
   (* entering the loops: two units and no credit yet *)
   Lemma bm_paid_intro u :
     log_opb icfg_log (S (S u)) -∗ bm_paid u.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /log_opb. iDestruct "H" as (Sb) "H".
     iRight. iExists Sb. iFrame.
   Qed.
@@ -251,7 +251,7 @@ Section ItruncSpec.
   Lemma bm_paidS_intro crb u Sb e0 :
     (crb = true -> fsc_bmapstart ∈ Sb) ->
     log_opSe icfg_log (it_entry crb u) Sb e0 -∗ bm_paidS crb u Sb e0.
-  Proof.
+  Proof using .
     intros Hcrb. iIntros "H". rewrite /bm_paidS /it_entry.
     destruct crb.
     - iLeft. iExists Sb. iSplitR; [iPureIntro; set_solver|].
@@ -278,7 +278,7 @@ Section ItruncSpec.
         ⌜(it_entry crb u - it_bm w <= n <= it_entry crb u)%nat
          /\ (S u <= n)%nat⌝ ∗
         log_opSe icfg_log n Sb' e0.
-  Proof.
+  Proof using .
     rewrite /bm_paidS /it_entry /it_bm. iIntros "[H|[%Hc H]]".
     - iDestruct "H" as (Sb') "(%Hsub & %Hin & H)".
       iExists (negb crb), (S u), Sb'. iSplitR; [iPureIntro; exact Hsub|].
@@ -295,7 +295,7 @@ Section ItruncSpec.
   (* leaving them: at least the [S u] units iupdate still needs *)
   Lemma bm_paid_elim u :
     bm_paid u -∗ ∃ n : nat, ⌜(S u <= n <= S (S u))%nat⌝ ∗ log_opb icfg_log n.
-  Proof.
+  Proof using .
     iIntros "[H|H]".
     - iDestruct "H" as (Sb) "(_ & H)". iExists (S u).
       iSplitR; [iPureIntro; lia|]. iApply (log_opS_opb with "H").

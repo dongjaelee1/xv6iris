@@ -1028,7 +1028,7 @@ Section WpCsrwGprNewA.
     register_lookup mseccfg rs = mword_of_int 0 ->
     register_lookup misa rs = MISA_C ->
     hval D Drw rs (legalize_menvcfg o v) (menvcfg_legalized o v) rs.
-  Proof.
+  Proof using .
     intros HD1 HD2 HD3 Hp Hs Hm.
     exact (hval_of_goodb D_m D Drw _ dstateM rs (menvcfg_legalized o v)
              (dm_sub D HD1 HD2 HD3)
@@ -1049,7 +1049,7 @@ Section WpCsrwGprNewA.
             (cw_Drw menvcfg) ∗
           hreg_frame_ro (cw_Df dq)
             (cw_rs menvcfg (menvcfg_legalized menvcfg0 v)) cw_Dro)).
-  Proof.
+  Proof using .
     intros Hfresh. iIntros "#Hcert Hrw Hro".
     rewrite write_CSR_menvcfg_red.
     iApply (swp_bind_use (Defs.read_reg menvcfg) _
@@ -1138,7 +1138,7 @@ Section WpCsrwGprNewA.
       medeleg ↦ᵣ legalize_medeleg medeleg0 (m !!! Regidx rs1) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hpmp Hstat Hrs1) "Hmm Hpmpc Hpc Hf Hcsr Hinstr Hcont".
     assert (Hfresh : cw_fresh medeleg)
       by (rewrite /cw_fresh; split_and!; vm_compute; reflexivity).
@@ -1250,7 +1250,7 @@ Section WpCsrwGprNewA.
       mcounteren ↦ᵣ legalize_mcounteren mcounteren0 (m !!! Regidx rs1) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hpmp Hstat Hrs1) "Hmm Hpmpc Hpc Hf Hcsr Hinstr Hcont".
     assert (Hfresh : cw_fresh mcounteren)
       by (rewrite /cw_fresh; split_and!; vm_compute; reflexivity).
@@ -1362,7 +1362,7 @@ Section WpCsrwGprNewA.
       menvcfg ↦ᵣ menvcfg_legalized menvcfg0 (m !!! Regidx rs1) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hpmp Hstat Hrs1) "Hmm Hpmpc Hpc Hf Hcsr Hinstr Hcont".
     assert (Hfresh : cw_fresh menvcfg)
       by (rewrite /cw_fresh; split_and!; vm_compute; reflexivity).
@@ -1443,7 +1443,7 @@ Section WpCsrwGprNewA.
       mepc ↦ᵣ mepc_val (m !!! Regidx rs1) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hpmp Hstat Hrs1) "Hmm Hpmpc Hpc Hf Hcsr Hinstr Hcont".
     assert (Hfresh : cw_fresh mepc)
       by (rewrite /cw_fresh; split_and!; vm_compute; reflexivity).

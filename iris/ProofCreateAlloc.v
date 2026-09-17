@@ -301,7 +301,7 @@ Section ProofCreateAlloc.
                     plen pfun pv ty major minor U u Sb ns pidv dqb dqs dqbs dqn
                     m sp0 ret_tgt K eb b lks CIDa
                     P Pmiss Farm Fdots Fun Fok Fex).
-  Proof.
+  Proof using .
     intros HK Hroot Hlg Hsize Hbms0 Hbmsc Hbmsl Hist0
            Hcovb Hbmgeo Hiregb Hni1 Hni2 Hni3 Hnib16 Htynz Htyk Hu Hns Hj Hgs
            Hspm Hrt Hal10 Hal9 Heb.

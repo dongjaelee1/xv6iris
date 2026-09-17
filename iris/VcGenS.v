@@ -368,7 +368,7 @@ Section VcGenSIris.
   (* expose gpr_file's dom-completeness fact without consuming it. *)
   Lemma gpr_file_dom (m : regfile) :
     gpr_file m -∗ ⌜ forall r : regidx, r ∈ dom (rf_to_gmap m) ⌝ ∗ gpr_file m.
-  Proof.
+  Proof using .
     iIntros "[%Hdom Hmap]".
     iSplitR; [iPureIntro; exact Hdom|].
     iSplitR; [iPureIntro; exact Hdom|].
@@ -421,7 +421,7 @@ Section VcGenSIris.
       TsoCtx.own_context XI -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HSIE HMPRV HSXL Hmm HMXR Hpmm HPBMTE Hmenvval0 Hwit.
     revert st. induction prog as [|op rest IH]; intros st Hblk.
     - (* empty block *)
@@ -851,7 +851,7 @@ Section VcGenSIris.
       TsoCtx.own_context XI -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-    Proof.
+    Proof using .
     exact (fun H1 H2 H3 H4 H5 H6 H7 H8 =>
              wp_vc_block_s_den_r (kpt_share_regime root_ppn) prog st st' ρ mstatus0 mie_v mdv0 menvcfg0 (dq:=dq)
                H1 H2 H3 H4 H5 H6 H7 H8 (sr_ktier_wit_kpt_share root_ppn KTR)).
@@ -881,7 +881,7 @@ Section VcGenSIris.
   Lemma agree_off_step {vr : gmap regidx sval} {mf m0 : regfile}
       {r : regidx} {sv : sval} {w : mword 64} :
     agree_off vr mf m0 -> agree_off (<[r := sv]> vr) (<[r := w]> mf) m0.
-  Proof.
+  Proof using .
     intros H r' Hr'. destruct (decide (r' = r)) as [->|Hne].
     - rewrite lookup_insert in Hr'. discriminate.
     - rewrite lookup_insert_ne in Hr'; [|congruence].
@@ -935,7 +935,7 @@ Section VcGenSIris.
       TsoCtx.own_context XI -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HSIE HMPRV HSXL Hmm HMXR Hpmm HPBMTE Hmenvval0 Hwit.
     revert st m. induction prog as [|op rest IH]; intros st m Hblk Hmatch Hao.
     - (* empty block *)
@@ -1344,7 +1344,7 @@ Section VcGenSIris.
       TsoCtx.own_context XI -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-    Proof.
+    Proof using .
     exact (fun H1 H2 H3 H4 H5 H6 H7 H8 =>
              wp_vc_block_s_aux_r (kpt_share_regime root_ppn) prog st st' ρ m m0 mstatus0 mie_v mdv0 menvcfg0 (dq:=dq)
                H1 H2 H3 H4 H5 H6 H7 H8 (sr_ktier_wit_kpt_share root_ppn KTR)).
@@ -1385,7 +1385,7 @@ Section VcGenSIris.
       TsoCtx.own_context XI -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hwit Hblk Hmatch.
     iIntros "Hsm Htlbinv Hpc Hgpr Hbi Hheap Hheap4 Hctx Hcont".
     iDestruct (smode_config_unbundle with "Hsm") as
@@ -1433,7 +1433,7 @@ Section VcGenSIris.
       TsoCtx.own_context XI -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-    Proof.
+    Proof using .
     exact (wp_vc_block_s_r (kpt_share_regime root_ppn) prog st st' ρ m γ (dq:=dq)
              (sr_ktier_wit_kpt_share root_ppn KTR)).
   Qed.
@@ -1479,7 +1479,7 @@ Section VcGenSIris.
       pc_is (add_vec_int pc 4) -∗ gpr_file m -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hrs1 Hrs2 Hal.
     iIntros "Hsm Htlbinv Hpc Hgpr Hinstr Htaken Hfall".
     destruct (neq_vec (m !!! Regidx rs1) (m !!! Regidx rs2)) eqn:Hcmp.
@@ -1514,7 +1514,7 @@ Section VcGenSIris.
       pc_is (add_vec_int pc 4) -∗ gpr_file m -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-    Proof.
+    Proof using .
     exact (wp_bne_split_s_r (kpt_share_regime root_ppn) pc imm rs2 rs1 m γ (dq:=dq)).
   Qed.
 
@@ -1537,7 +1537,7 @@ Section VcGenSIris.
       pc_is (add_vec_int pc 4) -∗ gpr_file m -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hrs1 Hrs2 Hal.
     iIntros "Hsm Htlbinv Hpc Hgpr Hinstr Htaken Hfall".
     destruct (eq_vec (m !!! Regidx rs1) (m !!! Regidx rs2)) eqn:Hcmp.
@@ -1572,7 +1572,7 @@ Section VcGenSIris.
       pc_is (add_vec_int pc 4) -∗ gpr_file m -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-    Proof.
+    Proof using .
     exact (wp_beq_split_s_r (kpt_share_regime root_ppn) pc imm rs2 rs1 m γ (dq:=dq)).
   Qed.
 

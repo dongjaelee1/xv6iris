@@ -255,7 +255,7 @@ Section WpUmodeBranch.
      kept here so adding it does not rebuild the leaf tower. *)
   Local Lemma uv_next_bool (b : bool) (t d : mword 64) :
     uv_next (if b then Some t else None) d = (if b then t else d).
-  Proof. destruct b; reflexivity. Qed.
+  Proof using . destruct b; reflexivity. Qed.
 
   (* ------------------------------------------------------------------- *)
   (* The core.  Beyond [wp_uv_btype] it abstracts the three axes the       *)
@@ -296,7 +296,7 @@ Section WpUmodeBranch.
            (if taken then tgt else add_vec_int pc (if is_rvc then 2 else 4)) -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hui Hred Hlpad Hg1 Hexp Htaken Htgt Halign.
     iIntros "Hcg Hpc Hcont".
     (* re-shape the continuation into the funnel's [uv_upd]/[uv_next] form *)
@@ -357,7 +357,7 @@ Section WpUmodeBranch.
          (if taken then tgt else add_vec_int pc (if is_rvc then 2 else 4)) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hui Hred Hlpad Hg1 Hexp Htaken Htgt Halign.
     iIntros "Hcg Hpc Hcont".
     iApply (wp_uv_btype_gen_later Ψ M m pc is_rvc i o imm rs2 rs1 op taken tgt
@@ -388,7 +388,7 @@ Section WpUmodeBranch.
        pc_is (CID := CID0) (if taken then tgt else add_vec_int pc 4) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hui Htaken Htgt Halign.
     exact (wp_uv_btype_gen Ψ M m pc false
              (BTYPE (imm, Regidx rs2, Regidx rs1, op)) None
@@ -419,7 +419,7 @@ Section WpUmodeBranch.
          pc_is (CID := CID0) (if taken then tgt else add_vec_int pc 4) -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hui Htaken Htgt Halign.
     exact (wp_uv_btype_gen_later Ψ M m pc false
              (BTYPE (imm, Regidx rs2, Regidx rs1, op)) None
@@ -455,7 +455,7 @@ Section WpUmodeBranch.
          pc_is (CID := CID0) (if taken then tgt else add_vec_int pc 4) -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hui Htaken Htgt Halign.
     iIntros "Hcg Hpc Hcont".
     iDestruct "Hcg" as "(Hcap & Hlin & Hgpr)".
@@ -483,7 +483,7 @@ Section WpUmodeBranch.
        pc_is (CID := CID0) (if taken then tgt else add_vec_int pc 4) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hui Htaken Htgt Halign.
     iIntros "Hcg Hpc Hcont".
     iApply (wp_uv_btype0_later Ψ M m pc imm rs1 op taken tgt
@@ -519,7 +519,7 @@ Section WpUmodeBranch.
        pc_is (CID := CID0) (if taken then tgt else add_vec_int pc 2) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hui Hcr Htaken Htgt Halign.
     iIntros "Hcg Hpc Hcont".
     iDestruct "Hcg" as "(Hcap & Hlin & Hgpr)".
@@ -565,7 +565,7 @@ Section WpUmodeBranch.
        pc_is (CID := CID0) (if taken then tgt else add_vec_int pc 2) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hui Hcr Htaken Htgt Halign.
     iIntros "Hcg Hpc Hcont".
     iDestruct "Hcg" as "(Hcap & Hlin & Hgpr)".

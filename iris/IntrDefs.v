@@ -329,7 +329,7 @@ Section IntrDefsBase.
 
   Lemma sret_bits_agree (a b a' b' : mword 1) :
     sret_bits a b -∗ sret_bits a' b' -∗ ⌜ a = a' /\ b = b' ⌝.
-  Proof.
+  Proof using .
     iIntros "[H1 H2] [H1' H2']".
     iDestruct (ghost_var_agree with "H1 H1'") as %->.
     iDestruct (ghost_var_agree with "H2 H2'") as %->.
@@ -338,7 +338,7 @@ Section IntrDefsBase.
 
   Lemma sret_bits_update (a b a' b' wa wb : mword 1) :
     sret_bits a b -∗ sret_bits a' b' ==∗ sret_bits wa wb ∗ sret_bits wa wb.
-  Proof.
+  Proof using .
     iIntros "[H1 H2] [H1' H2']".
     iMod (ghost_var_update_2 wa with "H1 H1'") as "[Ha Ha']";
       [ rewrite Qp.half_half // |].
@@ -359,7 +359,7 @@ Section IntrDefsBase.
     _get_Mstatus_SPP ms' = _get_Mstatus_SPP ms ->
     _get_Mstatus_SPIE ms' = _get_Mstatus_SPIE ms ->
     sret_tie ms -∗ sret_tie ms'.
-  Proof. intros H1 H2. rewrite /sret_tie H1 H2. iIntros "$". Qed.
+  Proof using . intros H1 H2. rewrite /sret_tie H1 H2. iIntros "$". Qed.
 
   (* RE-STATING THE TIE AT THE LITERAL VALUES ITS BITS ARE KNOWN TO HAVE, and
      it has to be a LEMMA rather than a rewrite at the use site.  Knowing
@@ -375,7 +375,7 @@ Section IntrDefsBase.
     _get_Mstatus_SPP ms = a ->
     _get_Mstatus_SPIE ms = b ->
     sret_tie ms -∗ sret_bits a b.
-  Proof. intros H1 H2. rewrite /sret_tie H1 H2. iIntros "$". Qed.
+  Proof using . intros H1 H2. rewrite /sret_tie H1 H2. iIntros "$". Qed.
 
   (* [sie_ghost_alloc] / [sie_ghost_flip]* stay GHOST-GENERIC: they are
      statements about a raw [ghost_var], with no sconf-tier resource in
@@ -385,7 +385,7 @@ Section IntrDefsBase.
   Lemma sie_ghost_alloc (v : mword 1) :
     ⊢ |==> ∃ γ : gname,
         ghost_var γ (1/2) v ∗ ghost_var γ (1/4) v ∗ ghost_var γ (1/4) v.
-  Proof.
+  Proof using .
     iMod (ghost_var_alloc v) as (γ) "Hg".
     iEval (rewrite -Qp.half_half) in "Hg".
     iDestruct (ghost_var_split with "Hg") as "[H1 H2]".
@@ -404,7 +404,7 @@ Section IntrDefsBase.
   Lemma sie_ghost_flip (γ : gname) (v1 v2 v3 w : mword 1) :
     ghost_var γ (1/2) v1 -∗ ghost_var γ (1/4) v2 -∗ ghost_var γ (1/4) v3 ==∗
     ghost_var γ (1/2) w ∗ ghost_var γ (1/4) w ∗ ghost_var γ (1/4) w.
-  Proof.
+  Proof using .
     iIntros "H1 H2 H3".
     iCombine "H2 H3" as "H23".
     iEval (rewrite Qp.quarter_quarter) in "H23".
@@ -422,7 +422,7 @@ Section IntrDefsBase.
     ghost_var γ (1/4) v3 ==∗
     ghost_var γ (1/2) ('b"0" : mword 1) ∗ ghost_var γ (1/4/2)%Qp ('b"0" : mword 1) ∗
     ghost_var γ (1/4/2)%Qp ('b"0" : mword 1) ∗ ghost_var γ (1/4) ('b"0" : mword 1).
-  Proof.
+  Proof using .
     iIntros "H1 H2a H2b H3".
     iCombine "H2a H2b" as "H2".
     iMod (sie_ghost_flip γ v1 v2a v3 ('b"0") with "H1 H2 H3") as "(H1 & H2 & H3)".
@@ -440,7 +440,7 @@ Section IntrDefsBase.
     ghost_var γ (1/4) v3 ==∗
     ghost_var γ (1/2) ('b"1" : mword 1) ∗ ghost_var γ (1/4/2)%Qp ('b"1" : mword 1) ∗
     ghost_var γ (1/4/2)%Qp ('b"1" : mword 1) ∗ ghost_var γ (1/4) ('b"1" : mword 1).
-  Proof.
+  Proof using .
     iIntros "H1 H2a H2b H3".
     iCombine "H2a H2b" as "H2".
     iMod (sie_ghost_flip γ v1 v2a v3 ('b"1") with "H1 H2 H3") as "(H1 & H2 & H3)".
@@ -576,7 +576,7 @@ Section IntrDefsBase.
   (* the conversion of property 1, available by name for the rare site
      that wants to SAY it rather than rely on it silently. *)
   Lemma trap_res_off (avail : nat) : (trap_res false + avail)%nat = avail.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* menvcfg is pinned to [MENVCFG_S] here rather than parameterized: the
      handler contract below is only PROVABLE at that value (its own fetches
@@ -656,10 +656,10 @@ Section IntrDefsBase.
     (sconf_msown ms ∗ (∀ ms' : mword 64, sconf_msown ms' -∗ sconf))%I.
 
   Lemma sconf_at_close (ms : mword 64) : sconf_at ms -∗ sconf.
-  Proof. iIntros "[Hown Hcl]". iApply ("Hcl" with "Hown"). Qed.
+  Proof using . iIntros "[Hown Hcl]". iApply ("Hcl" with "Hown"). Qed.
 
   Lemma sconf_at_open : sconf -∗ ∃ ms : mword 64, sconf_at ms.
-  Proof.
+  Proof using .
     iIntros "(#Hhw & #Hminv & Hpriv & Hmsx & Hmie & Hmenv)".
     iDestruct "Hmsx" as (ms) "(Hms & Hhalf & Hspp & %Hmsf)".
     iExists ms. iSplitL "Hms Hhalf Hspp".
@@ -673,7 +673,7 @@ Section IntrDefsBase.
      closing it -- what a caller reasoning about SPP/SPIE needs. *)
   Lemma sconf_at_facts (ms : mword 64) :
     sconf_at ms -∗ ⌜ sconf_ms_facts ms ⌝.
-  Proof. iIntros "[(_ & _ & _ & %H) _]". iPureIntro. exact H. Qed.
+  Proof using . iIntros "[(_ & _ & _ & %H) _]". iPureIntro. exact H. Qed.
 
   (* READING THE TWO sret BITS OFF THE BUNDLE.  A holder of the travelling
      half turns it into a fact about the LIVE mstatus by agreement with the
@@ -683,7 +683,7 @@ Section IntrDefsBase.
   Lemma sconf_at_sret (ms : mword 64) (a b : mword 1) :
     sconf_at ms -∗ sret_bits a b -∗
     ⌜ _get_Mstatus_SPP ms = a /\ _get_Mstatus_SPIE ms = b ⌝.
-  Proof.
+  Proof using .
     iIntros "[(_ & _ & Htie & _) _] Hc".
     iDestruct (sret_bits_agree with "Htie Hc") as %[-> ->]. done.
   Qed.
@@ -711,7 +711,7 @@ Section IntrDefsBase.
   Lemma sconf_priv_open :
     sconf -∗ ∃ ms : mword 64,
       sconf_priv_closer ∗ cur_privilege ↦ᵣ Supervisor ∗ sconf_msown ms.
-  Proof.
+  Proof using .
     iIntros "(#Hhw & #Hminv & Hpriv & Hmsx & Hmie & Hmenv)".
     iDestruct "Hmsx" as (ms) "(Hms & Hhalf & Htie & %Hmsf)".
     iExists ms. iSplitR "Hpriv Hms Hhalf Htie".
@@ -861,18 +861,18 @@ Section IntrDefsBase.
     kpt_on_at (strans_name c).
 
   Global Instance kpt_on_persistent (c : CPU) : Persistent (kpt_on c).
-  Proof. rewrite /kpt_on /kpt_on_at. apply _. Qed.
+  Proof using . rewrite /kpt_on /kpt_on_at. apply _. Qed.
   Global Instance kpt_on_timeless (c : CPU) : Timeless (kpt_on c).
-  Proof. rewrite /kpt_on /kpt_on_at. apply _. Qed.
+  Proof using . rewrite /kpt_on /kpt_on_at. apply _. Qed.
   Global Instance strans_pending_timeless : Timeless strans_pending.
-  Proof. rewrite /strans_pending /strans_pending_at. apply _. Qed.
+  Proof using . rewrite /strans_pending /strans_pending_at. apply _. Qed.
   Global Instance strans_kpt_timeless : Timeless strans_kpt.
-  Proof. rewrite /strans_kpt /strans_kpt_at. apply _. Qed.
+  Proof using . rewrite /strans_kpt /strans_kpt_at. apply _. Qed.
 
   (* THE TWO CONFLICTS, stated here beside the definitions because
      [strans_inv]'s accessors below are their only real consumers. *)
   Lemma kpt_on_pending_False : kpt_on cpu_id -∗ strans_pending -∗ ⌜ False ⌝.
-  Proof.
+  Proof using .
     rewrite /kpt_on /kpt_on_at /strans_pending /strans_pending_at.
     iIntros "Hlb Hauth".
     iDestruct (mono_nat_lb_own_valid with "Hauth Hlb") as %[_ Hle].
@@ -884,13 +884,13 @@ Section IntrDefsBase.
      KPT arm records that fact in a form it can keep: [kpt_on] is persistent,
      and [kpt_on_pending_False] then refutes any later Bare arm. *)
   Lemma strans_kpt_on : strans_kpt -∗ strans_kpt ∗ kpt_on cpu_id.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /strans_kpt /strans_kpt_at /kpt_on /kpt_on_at.
     iDestruct (mono_nat_lb_own_get with "H") as "#Hlb". iFrame "H Hlb".
   Qed.
 
   Lemma strans_pending_kpt_False : strans_pending -∗ strans_kpt -∗ ⌜ False ⌝.
-  Proof.
+  Proof using .
     rewrite /strans_pending /strans_pending_at /strans_kpt /strans_kpt_at.
     iIntros "H1 H2".
     iDestruct (mono_nat_auth_own_agree with "H1 H2") as %[Hq _].
@@ -906,7 +906,7 @@ Section IntrDefsBase.
   Lemma strans_pending_combine :
     strans_pending -∗ strans_pending -∗
     mono_nat_auth_own (strans_name cpu_id) 1%Qp 0%nat.
-  Proof.
+  Proof using .
     rewrite /strans_pending /strans_pending_at. iIntros "H1 H2".
     iAssert (mono_nat_auth_own (strans_name cpu_id) (1/2 + 1/2)%Qp 0%nat)
       with "[H1 H2]" as "H".
@@ -1132,17 +1132,17 @@ Section IntrDefsBase.
        pstate_hlf j RUNNING ∗ hart_hlf j cpu_id)%I.
 
   Lemma cpu_claim_idle : ⊢ cpu_claim zero_reg.
-  Proof. iLeft. done. Qed.
+  Proof using . iLeft. done. Qed.
 
   Lemma cpu_claim_proc (j : nat) :
     (j < NPROC)%nat ->
     pstate_hlf j RUNNING -∗ hart_hlf j cpu_id -∗ cpu_claim (proc_addr j).
-  Proof. iIntros (Hj) "H Ht". iRight. iExists j. by iFrame. Qed.
+  Proof using . iIntros (Hj) "H Ht". iRight. iExists j. by iFrame. Qed.
 
   Lemma cpu_claim_elim (j : nat) :
     (j < NPROC)%nat ->
     cpu_claim (proc_addr j) -∗ pstate_hlf j RUNNING ∗ hart_hlf j cpu_id.
-  Proof.
+  Proof using .
     iIntros (Hj) "[%Hz | (%j' & [%Hpa %Hj'] & Hh & Ht)]".
     - exfalso. exact (proc_addr_nonzero j Hj Hz).
     - assert (Hjj : j' = j) by exact (proc_addr_inj j' j Hj' Hj Hpa).
@@ -1168,7 +1168,7 @@ Section IntrDefsBase.
 
   Lemma cpu_claim_ext_split (eb : bool) (p : mword 64) :
     cpu_claim_pay 0 eb p ∗ cpu_claim_ext eb p ⊣⊢ cpu_claim p.
-  Proof.
+  Proof using .
     destruct eb; rewrite /cpu_claim_pay /cpu_claim_ext.
     - by rewrite bi.sep_emp.
     - by rewrite bi.emp_sep.
@@ -1215,18 +1215,18 @@ Section IntrDefsBase.
 
   Lemma strans_inv_intro (root_ppn : mword 44) :
     strans_kpt -∗ tlb_res_pt root_ppn -∗ strans_inv.
-  Proof. iIntros "Hbit H". iRight. iFrame "Hbit". iExists root_ppn. iExact "H". Qed.
+  Proof using . iIntros "Hbit H". iRight. iFrame "Hbit". iExists root_ppn. iExact "H". Qed.
 
   Lemma strans_inv_intro_bare (v : mword 64) :
     strans_pending -∗ bare_inv -∗ stvec ↦ᵣ v -∗ strans_inv.
-  Proof. iIntros "Hbit Hb Hstv". iLeft. iFrame "Hbit Hb". iExists v. iExact "Hstv". Qed.
+  Proof using . iIntros "Hbit Hb Hstv". iLeft. iFrame "Hbit Hb". iExists v. iExact "Hstv". Qed.
 
   (* the still-Bare receipt pins the arm at Bare and opens it, returning BOTH
      pending halves so the switch can shoot. *)
   Lemma strans_inv_acc_bare :
     strans_pending -∗ strans_inv -∗
     strans_pending ∗ strans_pending ∗ bare_inv ∗ (∃ v : mword 64, stvec ↦ᵣ v).
-  Proof.
+  Proof using .
     iIntros "Hrcpt [(Hbit & Hb & Hstv) | (Hbit & _)]".
     - iFrame "Hrcpt Hbit Hb Hstv".
     - iDestruct (strans_pending_kpt_False with "Hrcpt Hbit") as %[].
@@ -1245,7 +1245,7 @@ Section IntrDefsBase.
     kpt_on cpu_id -∗ strans_inv -∗
     ∃ root_ppn : mword 44,
       tlb_res_pt root_ppn ∗ (tlb_res_pt root_ppn -∗ strans_inv).
-  Proof.
+  Proof using .
     iIntros "Hrcpt [(Hbit & _ & _) | (Hbit & Hres)]".
     - iDestruct (kpt_on_pending_False with "Hrcpt Hbit") as %[].
     - iDestruct "Hres" as (root_ppn) "Hres".
@@ -1258,7 +1258,7 @@ Section IntrDefsBase.
      it never has to be handed anywhere again. *)
   Lemma strans_flip :
     strans_pending -∗ strans_pending ==∗ strans_kpt ∗ kpt_on cpu_id.
-  Proof.
+  Proof using .
     iIntros "H1 H2".
     iDestruct (strans_pending_combine with "H1 H2") as "H".
     rewrite /strans_kpt /strans_kpt_at /kpt_on /kpt_on_at.
@@ -1272,7 +1272,7 @@ Section IntrDefsBase.
   Lemma reg_pointsto_conflict (r : register) (dq : dfrac)
       (v1 v2 : type_of_register r) :
     r ↦ᵣ v1 -∗ r ↦ᵣ{ dq } v2 -∗ ⌜ False ⌝.
-  Proof.
+  Proof using .
     rewrite /reg_pointsto. iIntros "H1 H2".
     iDestruct (ghost_map_elem_ne with "H1 H2") as %Hne.
     iPureIntro. exact (Hne eq_refl).
@@ -1325,7 +1325,7 @@ Section IntrDefsBase.
           ⌜ pmp_grant_facts σ' ⌝ ∗
           S σ'.(mem) ∗
           reg_interp σ'.(sregs) ∗ gen_heap_interp σ'.(mem) ∗ strans_inv.
-  Proof.
+  Proof using .
     intros acc va pa ppn pc σ E S Hacc Hallow Hcanon Hconcat Hmisa Hmenv Hhtif Hcp HSXL Heff Hss Hall Hadm HE.
     iIntros "#Hpay Hsto Hat Hri Hgh [(Hbit & Hb & Hstv) | (Hbit & Hk)]".
     - iMod (bare_absorb acc va pa ppn pc σ E S Hacc Hallow Hcanon Hconcat Hmisa Hmenv Hhtif Hcp HSXL Heff Hss Hall Hadm HE
@@ -1351,7 +1351,7 @@ Section IntrDefsBase.
       exec (get_pmlen acc Supervisor) σ = Some (0, σ) ->
       ⊢ reg_interp σ.(sregs) -∗ strans_inv -∗
         ⌜ exec (transform_effective_address (Virtaddr ea) acc) σ = Some (Virtaddr ea, σ) ⌝.
-  Proof.
+  Proof using .
     intros acc ea σ Hacc Hcp HSXL Heff Hpml.
     iIntros "Hri [(_ & Hb & _) | (_ & Hk)]".
     - iApply (bare_transform acc ea σ Hacc Hcp HSXL Heff Hpml with "Hri Hb").
@@ -1364,7 +1364,7 @@ Section IntrDefsBase.
       _get_Mstatus_SXL (register_lookup mstatus σ.(sregs)) = 'b"10" ->
       ⊢ reg_interp σ.(sregs) -∗ strans_inv -∗
         ⌜ exists md, exec (translationMode Supervisor) σ = Some (md, σ) ⌝.
-  Proof.
+  Proof using .
     intros σ HSXL.
     iIntros "Hri [(_ & Hb & _) | (_ & Hk)]".
     - iApply (bare_tmode σ HSXL with "Hri Hb").
@@ -1417,7 +1417,7 @@ Section IntrDefsBase.
           ⌜ pmp_grant_facts σ' ⌝ ∗
           S σ'.(mem) ∗
           reg_interp σ'.(sregs) ∗ gen_heap_interp σ'.(mem) ∗ strans_inv.
-  Proof.
+  Proof using .
     intros acc va pa ppn pc σ E S Hacc Hallow Hcanon Hconcat Hmisa Hmenv Hhtif Hcp HSXL Heff Hss Hall HE.
     iIntros "#Hpay Hsto Hwit Hat Hri Hgh [(Hbit & Hb & Hstv) | (Hbit & Hk)]".
     - iDestruct (kpt_on_pending_False with "Hwit Hbit") as %[].
@@ -1479,7 +1479,7 @@ Section IntrDefsBase.
   Lemma strans_swp_res_agree (rs : regstate) :
     strans_res_at (register_lookup satp rs) (register_lookup tlb rs)
     ⊣⊢ strans_swp_res rs.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* ------------------------------------------------------------------ *)
   (* THE CELL-HANDOUT FACE, AND IT IS KPT-ONLY NOW.  [strans_inv] hides    *)
@@ -1500,7 +1500,7 @@ Section IntrDefsBase.
       satp ↦ᵣ satp0 ∗ tlb ↦ᵣ tlbv ∗
       pmpcfg_n ↦ᵣ pcfg ∗ pmpaddr_n ↦ᵣ paddr ∗
       strans_res_at satp0 tlbv.
-  Proof.
+  Proof using .
     iIntros "#Hon [(Hpend & _ & _) | (Hkpt & Hk)]".
     { iDestruct (kpt_on_pending_False with "Hon Hpend") as %[]. }
     - iDestruct "Hk" as (root_ppn) "Ht".
@@ -1523,7 +1523,7 @@ Section IntrDefsBase.
     kpt_on cpu_id -∗ satp ↦ᵣ satp0 -∗ tlb ↦ᵣ tlbv -∗
     pmpcfg_n ↦ᵣ pcfg -∗ pmpaddr_n ↦ᵣ paddr -∗
     strans_res_at satp0 tlbv -∗ strans_inv.
-  Proof.
+  Proof using .
     intros Hsok Hpmp. iIntros "#Hon Hsatp Htlb Hpcfg Hpaddr Hres".
     rewrite /strans_res_at.
     iDestruct "Hres" as "[(Hpend & Hstv & %Hmb) | (Hkpt & %Hmk & Hres)]".
@@ -1548,7 +1548,7 @@ Section IntrDefsBase.
   Lemma strans_satp_landing (rs rsf : regstate) :
     (rsf = rs \/ exists tv, rsf = register_set tlb tv rs) ->
     register_lookup satp rsf = register_lookup satp rs.
-  Proof.
+  Proof using .
     intros [-> | (tv & ->)]; [reflexivity |].
     rewrite irrelevant_register_set; [ reflexivity | vm_compute; reflexivity ].
   Qed.
@@ -1556,7 +1556,7 @@ Section IntrDefsBase.
   Lemma strans_root_landing (rs rsf : regstate) :
     (rsf = rs \/ exists tv, rsf = register_set tlb tv rs) ->
     strans_root rsf = strans_root rs.
-  Proof.
+  Proof using .
     intros H. rewrite /strans_root (strans_satp_landing rs rsf H). reflexivity.
   Qed.
 
@@ -1610,7 +1610,7 @@ Section IntrDefsBase.
                       ⌜ rsf = rs \/ exists tv, rsf = register_set tlb tv rs ⌝ ∗
                       hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro ∗
                       strans_swp_res rsf ∗ resv_any cpu_id).
-  Proof.
+  Proof using .
     intros acc Drw Dro Df rs dst Db va pa ppn kp rr Hdisj Hacc Hallow
       HDmst HDpriv HDsatp HDpma HDcfg HDaddr HDhtif HDb Hag HDlc Haglc
       Hcp Hhtif Hmstag Hmisa Hmenv HSXL Heff Heffg Hss Hssg Hcanon Hconcat
@@ -1672,7 +1672,7 @@ Section IntrDefsBase.
     bare_satp_ok (register_lookup satp rs) ->
     eq_vec (_get_Mstatus_MPRV (register_lookup mstatus rs)) ('b"1") = false ->
     strans_swp_side acc va ppn kp Db Drw Dro rs dst.
-  Proof.
+  Proof using .
     intros Hacc Hmode HMPRV. left.
     exact (bare_swp_side_intro acc va ppn kp Db Drw Dro rs dst Hacc Hmode HMPRV).
   Qed.
@@ -1690,7 +1690,7 @@ Section IntrDefsBase.
     register_lookup satp dst.(sregs) = register_lookup satp rs ->
     (tlb : register) ∈ Drw ->
     strans_swp_side acc va ppn kp Db Drw Dro rs dst.
-  Proof.
+  Proof using .
     intros Hacc [Hb | Hk] Hpmp Hpma HMPRV HDm HDs HSXL Hag HWtlb.
     - left.
       exact (bare_swp_side_ok acc va ppn kp Db Drw Dro rs dst
@@ -1712,7 +1712,7 @@ Section IntrDefsBase.
     strans_satp_ok satp0 ->
     satpMode_of_bits RV64 (_get_Satp64_Mode (Mk_Satp64 satp0))
     = Some (strans_mode satp0).
-  Proof.
+  Proof using .
     rewrite /strans_mode. intros [Hb | (Hk & _ & _)].
     - rewrite Hb. vm_compute. reflexivity.
     - rewrite Hk. vm_compute. reflexivity.
@@ -1771,7 +1771,7 @@ Section IntrDefsBase.
                       ⌜ rsf = rs \/ exists tv, rsf = register_set tlb tv rs ⌝ ∗
                       hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro ∗
                       strans_swp_res rsf ∗ resv_any cpu_id).
-  Proof.
+  Proof using .
     intros acc Drw Dro Df rs dst Db va pa ppn kp rr Hdisj Hacc Hallow
       HDmst HDpriv HDsatp HDpma HDcfg HDaddr HDhtif HDb Hag HDlc Haglc
       Hcp Hhtif Hmstag Hmisa Hmenv HSXL Heff Heffg Hss Hssg Hcanon Hconcat
@@ -1828,7 +1828,7 @@ Section IntrDefsBase.
          (∀ tv' : type_of_register tlb,
             satp ↦ᵣ satp0 -∗ pmpcfg_n ↦ᵣ pcfg -∗ pmpaddr_n ↦ᵣ paddr -∗
             strans_res_at satp0 tv' -∗ strans_inv)) ).
-  Proof.
+  Proof using .
     iIntros "[(Hpend & Hb & Hstv) | (Hkpt & Hk)]".
     - (* ---- BARE: there is NO cell here at all (the flip) ---- *)
       iDestruct "Hb" as (satp0) "(Hsatp & %Hmode & Hpmp)".
@@ -1895,7 +1895,7 @@ Section IntrDefsBase.
       (∀ tv' : type_of_register tlb,
          satp ↦ᵣ satp0 -∗ pmpcfg_n ↦ᵣ pcfg -∗ pmpaddr_n ↦ᵣ paddr -∗
          tlb ↦ᵣ tv' -∗ strans_res_at satp0 tv' -∗ strans_inv).
-  Proof.
+  Proof using .
     iIntros "#Hon [(Hpend & _ & _) | (Hkpt & Hk)]".
     { iDestruct (kpt_on_pending_False with "Hon Hpend") as %[]. }
     iDestruct "Hk" as (root_ppn) "Hres".
@@ -1934,7 +1934,7 @@ Section IntrDefsBase.
   (* [sr_inv strans_regime] is definitionally [strans_inv] -- the bridge the
      leaf/engine call sites use without unfolding the record. *)
   Lemma strans_regime_inv : sr_inv strans_regime ⊣⊢ strans_inv.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* =================================================================== *)
   (* §6c THE BUNDLE WITH THE INSTALLED-HANDLER CONJUNCT LEFT OPEN --      *)
@@ -2188,7 +2188,7 @@ Section IntrDefs.
        ▷ S c h)%I.
 
   Global Instance ires_of_contractive : Contractive ires_of.
-  Proof. rewrite /ires_of. solve_contractive. Qed.
+  Proof using . rewrite /ires_of. solve_contractive. Qed.
 
   (* THE CONTRACT.  [root_ppn] / [elp_v] / the entry mstatus / mie / mideleg
      USED TO BE PARAMETERS here, and are not any more: every one of them is
@@ -2220,7 +2220,7 @@ Section IntrDefs.
 
   Global Instance ihs_of_ne (kt : ktier) (E : CurCtx -d> iPropO Σ) :
     NonExpansive (ihs_of kt E).
-  Proof.
+  Proof using .
     rewrite /ihs_of /ihs_body_of /ihs_trap_of /ihs_entry_of /ihs_post_of
             /sie_cap_gpr_of /sie_cap_of /sie_arm_of /wp_next.
     solve_proper.
@@ -2254,7 +2254,7 @@ Section IntrDefs.
          ires_of (S E') c ∗ □ E' ξ ∗ □ env_move E')%I.
 
   Global Instance ires_pack_of_contractive : Contractive ires_pack_of.
-  Proof.
+  Proof using .
     intros n S1 S2 HS ξ c. rewrite /ires_pack_of.
     apply bi.exist_ne. intros E'.
     apply bi.sep_ne; [ | done ].
@@ -2266,7 +2266,7 @@ Section IntrDefs.
     fun E => ihs_of kt E (ires_pack_of S).
 
   Global Instance ihs_pre_contractive (kt : ktier) : Contractive (ihs_pre kt).
-  Proof.
+  Proof using .
     intros n S1 S2 HS E. rewrite /ihs_pre.
     apply ihs_of_ne. by apply ires_pack_of_contractive.
   Qed.
@@ -2287,7 +2287,7 @@ Section IntrDefs.
      The pre-fixpoint definition could afford [apply _]; this one cannot. *)
   Global Instance intr_handler_spec_persistent (kt : ktier) E handler :
     Persistent (intr_handler_spec kt E handler).
-  Proof.
+  Proof using .
     rewrite /intr_handler_spec /ihs
             (fixpoint_unfold (ihs_pre kt) E cpu_id handler)
             /ihs_pre /ihs_of /ihs_body_of.
@@ -2301,7 +2301,7 @@ Section IntrDefs.
       (handler : mword 64) :
     intr_handler_spec kt E handler ⊣⊢
     ihs_body_of kt E (ires_pack_of (ihs kt)) handler.
-  Proof.
+  Proof using .
     rewrite /intr_handler_spec /ihs.
     apply (fixpoint_unfold (ihs_pre kt) E cpu_id handler).
   Qed.
@@ -2328,7 +2328,7 @@ Section IntrDefs.
       (fun c' => ihs_post_of (CID := c') kt (ires_pack_of (ihs kt) XI)
                    m av p pc0) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hpc0 Hsc) "Hsp #HE Hentry Hnext".
     iEval (rewrite intr_handler_spec_unfold /ihs_body_of) in "Hsp".
     (* the contract is context-generic; consume it at the ambient thread *)
@@ -2350,7 +2350,7 @@ Section IntrDefs.
                         (ires_pack_of (ihs kt) XIc) m av p pc0) -∗
          WP (Loop : expr riscv_lang)) -∗
     intr_handler_spec kt E handler.
-  Proof.
+  Proof using .
     iIntros "#H".
     iEval (rewrite intr_handler_spec_unfold /ihs_body_of).
     iModIntro. iIntros (XIc m av p pc0 sc tv).
@@ -2463,7 +2463,7 @@ Section IntrDefs.
 
   Lemma intr_res_pack {kt : ktier} (E : CurCtx -d> iPropO Σ) :
     intr_res_at kt E -∗ □ E XI -∗ □ env_move E -∗ intr_res kt.
-  Proof. iIntros "Hat #HE #Hmv". iExists E. iFrame "Hat HE Hmv". Qed.
+  Proof using . iIntros "Hat #HE #Hmv". iExists E. iFrame "Hat HE Hmv". Qed.
 
   (* the CONTRACT with its environment, ∃-packed at the ambient context --
      the arity-stable spelling every carrier of a bare
@@ -2473,11 +2473,11 @@ Section IntrDefs.
        intr_handler_spec kt E h ∗ □ E XI ∗ □ env_move E)%I.
 
   Global Instance ihs_env_persistent kt h : Persistent (ihs_env kt h).
-  Proof. rewrite /ihs_env. apply _. Qed.
+  Proof using . rewrite /ihs_env. apply _. Qed.
 
   Lemma ihs_env_intro {kt : ktier} (E : CurCtx -d> iPropO Σ) (h : mword 64) :
     intr_handler_spec kt E h -∗ □ E XI -∗ □ env_move E -∗ ihs_env kt h.
-  Proof. iIntros "#Hs #HE #Hmv". iExists E. iFrame "Hs HE Hmv". Qed.
+  Proof using . iIntros "#Hs #HE #Hmv". iExists E. iFrame "Hs HE Hmv". Qed.
 
   Global Typeclasses Opaque ihs_env.
 
@@ -2498,7 +2498,7 @@ Section IntrDefs.
     □ E XI -∗
     □ env_move E -∗
     intr_res kt.
-  Proof.
+  Proof using .
     iIntros (Htvd Hsb) "Hq Hstv #Hspec #HE #Hmv".
     iExists E. iFrame "HE Hmv". iExists h, b. iFrame "Hq Hstv Hspec". by iSplit.
   Qed.
@@ -2544,11 +2544,11 @@ Section IntrDefs.
 
   Lemma trap_csrs_of_raw {kt : ktier} :
     trap_csrs_raw -∗ intr_res kt -∗ kpt_on cpu_id -∗ trap_csrs kt.
-  Proof. iIntros "(Ha & Hb & Hc & Hd) Hres Hkpt". iFrame. Qed.
+  Proof using . iIntros "(Ha & Hb & Hc & Hd) Hres Hkpt". iFrame. Qed.
 
   Lemma trap_csrs_to_raw {kt : ktier} :
     trap_csrs kt -∗ trap_csrs_raw ∗ intr_res kt ∗ kpt_on cpu_id.
-  Proof. iIntros "(Ha & Hb & Hc & Hd & Hres & Hkpt)". iFrame. Qed.
+  Proof using . iIntros "(Ha & Hb & Hc & Hd & Hres & Hkpt)". iFrame. Qed.
 
   Definition trap_csrs_pay (kt : ktier) (n : nat) (eb : bool) : iProp Σ :=
     (match n with
@@ -2577,7 +2577,7 @@ Section IntrDefs.
 
   Lemma trap_csrs_ext_split {kt : ktier} (eb : bool) :
     trap_csrs_pay kt 0 eb ∗ trap_csrs_ext kt eb ⊣⊢ trap_csrs kt.
-  Proof.
+  Proof using .
     destruct eb; rewrite /trap_csrs_pay /trap_csrs_ext.
     - by rewrite bi.sep_emp.
     - by rewrite bi.emp_sep.
@@ -2621,11 +2621,11 @@ Section IntrDefs.
 
   Lemma arm_pay_parts {kt : ktier} (n : nat) (eb : bool) (p : mword 64) :
     arm_pay kt n eb p ⊣⊢ trap_csrs_pay kt n eb ∗ cpu_claim_pay n eb p.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma arm_pay_on {kt : ktier} (p : mword 64) :
     arm_pay kt 0 true p ⊣⊢ trap_csrs kt ∗ cpu_claim p.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* ------------------------------------------------------------------- *)
   (* THE INDEX SPLIT AT LEVEL 0, IN BOTH DIRECTIONS.                      *)
@@ -2647,7 +2647,7 @@ Section IntrDefs.
   Lemma arm_pay_ext_split {kt : ktier} (eb : bool) (p : mword 64) :
     trap_csrs kt -∗ cpu_claim p -∗
     arm_pay kt 0 eb p ∗ (trap_csrs_ext kt eb ∗ cpu_claim_ext eb p).
-  Proof.
+  Proof using .
     rewrite /arm_pay /trap_csrs_pay /cpu_claim_pay /trap_csrs_ext /cpu_claim_ext.
     destruct eb; iIntros "Htc Hclm"; iFrame; try done.
   Qed.
@@ -2655,7 +2655,7 @@ Section IntrDefs.
   Lemma arm_pay_ext_join {kt : ktier} (eb : bool) (p : mword 64) :
     arm_pay kt 0 eb p -∗ (trap_csrs_ext kt eb ∗ cpu_claim_ext eb p) -∗
     trap_csrs kt ∗ cpu_claim p.
-  Proof.
+  Proof using .
     rewrite /arm_pay /trap_csrs_pay /cpu_claim_pay /trap_csrs_ext /cpu_claim_ext.
     destruct eb; iIntros "Hpay Hext"; iFrame; try done.
   Qed.
@@ -2692,7 +2692,7 @@ Section IntrDefs.
     ghost_var sie_gname (1/2) (_get_Mstatus_SIE ms) -∗
     sie_arm kt b px -∗
     ⌜ _get_Mstatus_SIE ms = sie_bit b ⌝.
-  Proof.
+  Proof using .
     iIntros "Hhalf Harm". rewrite /sie_arm. destruct b.
     - iDestruct "Harm" as "(Hq & _ & _ & _ & _ & _ & _ & _)".
       iDestruct (ghost_var_agree with "Hhalf Hq") as %H. iPureIntro. exact H.
@@ -2711,7 +2711,7 @@ Section IntrDefs.
       (∃ a b : mword 1, sret_bits a b) ∗
       cpu_claim p ∗
       cpu_hart 0 true p ∅)).
-  Proof.
+  Proof using .
     iSplit.
     - iIntros "H". iDestruct "H" as ([]) "H"; [ iRight | iLeft ]; iExact "H".
     - iIntros "[H|H]"; [ iExists false | iExists true ]; iExact "H".
@@ -2730,7 +2730,7 @@ Section IntrDefs.
     trap_csrs kt ∗
     cpu_claim p ∗
     cpu_hart 0 true p ∅.
-  Proof. iIntros "(Hbit & Hres & Hkpt & Hsep & Hsca & Hstv & Hspp & Hclm & Hcpu)". iFrame. Qed.
+  Proof using . iIntros "(Hbit & Hres & Hkpt & Hsep & Hsca & Hstv & Hspp & Hclm & Hcpu)". iFrame. Qed.
 
   Lemma sie_arm_on_in {kt : ktier} (p : mword 64) :
     ghost_var sie_gname (1/4/2)%Qp ('b"1" : mword 1) -∗
@@ -2738,7 +2738,7 @@ Section IntrDefs.
     cpu_claim p -∗
     cpu_hart 0 true p ∅ -∗
     sie_arm kt true p.
-  Proof. iIntros "Hbit (Hsep & Hsca & Hstv & Hspp & Hres & Hkpt) Hclm Hcpu". iFrame. Qed.
+  Proof using . iIntros "Hbit (Hsep & Hsca & Hstv & Hspp & Hres & Hkpt) Hclm Hcpu". iFrame. Qed.
 
   (* THE PUBLIC CAPABILITY, at the hart's regime [kt] -- see [sie_cap_of]
      above for what the index means.  Written out verbatim rather than as
@@ -2797,7 +2797,7 @@ Section IntrDefs.
       strans_kpt ∗ tlb_res_pt root_ppn ∗ sie_arm kt true p ∗
       own_context cur_ctx ∗
       timer_cap ∗ sr_ktier_wit strans_regime kt.
-  Proof.
+  Proof using .
     iIntros "(Hstk & Htr & Harm & Hctx & #Htc & #Hwit)".
     iDestruct "Htr" as "[(Hbit0 & Hbare & Hbstv) | (Hbit1 & Hkpt)]".
     { (* the arm's own KPT RECEIPT against the Bare arm's pending half: the
@@ -2839,7 +2839,7 @@ Section IntrDefs.
   (* for the rest of the era ([strans_flip], §6b).                        *)
   Lemma strans_ktier_wit_intro (kt : ktier) :
     kpt_on cpu_id -∗ sr_ktier_wit strans_regime kt.
-  Proof. iIntros "#Hkpt". destruct kt; [ done | iExact "Hkpt" ]. Qed.
+  Proof using . iIntros "#Hkpt". destruct kt; [ done | iExact "Hkpt" ]. Qed.
 
   (* READING THE WITNESS OFF THE CAPABILITY -- now trivial, because the
      conjunct IS the witness and it is persistent, so the capability is
@@ -2852,7 +2852,7 @@ Section IntrDefs.
       (m : regfile) (avail : nat) (b : bool) (p : mword 64) :
     sie_cap kt m avail b p -∗
     sie_cap kt m avail b p ∗ sr_ktier_wit strans_regime kt.
-  Proof.
+  Proof using .
     iIntros "(Hstk & Htr & Harm & Hctx & #Htc & #Hwit)".
     iFrame "Hstk Htr Harm Hctx Htc Hwit".
   Qed.
@@ -2873,7 +2873,7 @@ Section IntrDefs.
      threads: the receipt is one of its members for the same reason. *)
   Lemma trap_csrs_ktier_wit {kt0 : ktier} (kt : ktier) :
     trap_csrs kt0 -∗ trap_csrs kt0 ∗ sr_ktier_wit strans_regime kt.
-  Proof.
+  Proof using .
     iIntros "(Ha & Hb & Hc & Hd & Hres & #Hkpt)".
     iSplitL "Ha Hb Hc Hd Hres".
     - iFrame "Ha Hb Hc Hd Hres Hkpt".
@@ -2891,7 +2891,7 @@ Section IntrDefs.
      straight back. *)
   Lemma trap_csrs_kpt_on {kt0 : ktier} :
     trap_csrs kt0 -∗ trap_csrs kt0 ∗ kpt_on cpu_id.
-  Proof.
+  Proof using .
     iIntros "(Ha & Hb & Hc & Hd & Hres & #Hkpt)".
     iSplitL "Ha Hb Hc Hd Hres".
     - iFrame "Ha Hb Hc Hd Hres Hkpt".
@@ -2928,7 +2928,7 @@ Section IntrDefs.
       (m : regfile) (avail : nat) (p : mword 64) :
     sie_cap kt m avail false p -∗ kpt_on cpu_id -∗
     sie_cap kt' m avail false p.
-  Proof.
+  Proof using .
     iIntros "(Hstk & Htr & Harm & Hctx & #Htc & _) #Hkpt".
     iSplitL "Hstk"; [ iApply (stack_ktier_mono kt kt' with "Hstk") |].
     iFrame "Htr Harm Hctx Htc".
@@ -2939,9 +2939,9 @@ Section IntrDefs.
     rd <> csp_rs1 /\ Regidx rd <> Regidx Rtp.
 
   Lemma rd_ok_sp (rd : mword 5) : rd_ok rd -> rd <> csp_rs1.
-  Proof. by intros [H _]. Qed.
+  Proof using . by intros [H _]. Qed.
   Lemma rd_ok_tp (rd : mword 5) : rd_ok rd -> Regidx rd <> Regidx Rtp.
-  Proof. by intros [_ H]. Qed.
+  Proof using . by intros [_ H]. Qed.
 
   (* THE READ-SIDE PREMISE, AND WHY A LEAF NEEDS ONE AT ALL.  [sie_cap_gpr]
      owns [gpr_file (tp_pin m)] (HartTp.v): the register file is held at the
@@ -3007,28 +3007,28 @@ Section IntrDefs.
 
   Lemma ops_ok_rd (b : bool) (rd rs1 rs2 : mword 5) :
     ops_ok b rd rs1 rs2 -> rd_ok rd.
-  Proof. by intros [H _]. Qed.
+  Proof using . by intros [H _]. Qed.
   Lemma ops_ok_s1 (b : bool) (rd rs1 rs2 : mword 5) :
     ops_ok b rd rs1 rs2 -> src_ok b rs1.
-  Proof. by intros [_ [H _]]. Qed.
+  Proof using . by intros [_ [H _]]. Qed.
   Lemma ops_ok_s2 (b : bool) (rd rs1 rs2 : mword 5) :
     ops_ok b rd rs1 rs2 -> src_ok b rs2.
-  Proof. by intros [_ [_ H]]. Qed.
+  Proof using . by intros [_ [_ H]]. Qed.
 
   Lemma ops_ok_sp_rd (b : bool) (rd rs1 rs2 : mword 5) :
     ops_ok_sp b rd rs1 rs2 -> Regidx rd <> Regidx Rtp.
-  Proof. by intros [H _]. Qed.
+  Proof using . by intros [H _]. Qed.
   Lemma ops_ok_sp_s1 (b : bool) (rd rs1 rs2 : mword 5) :
     ops_ok_sp b rd rs1 rs2 -> src_ok b rs1.
-  Proof. by intros [_ [H _]]. Qed.
+  Proof using . by intros [_ [H _]]. Qed.
   Lemma ops_ok_sp_s2 (b : bool) (rd rs1 rs2 : mword 5) :
     ops_ok_sp b rd rs1 rs2 -> src_ok b rs2.
-  Proof. by intros [_ [_ H]]. Qed.
+  Proof using . by intros [_ [_ H]]. Qed.
 
   (* an [ops_ok] weakens to the cap engine's [ops_ok_sp] *)
   Lemma ops_ok_to_sp (b : bool) (rd rs1 rs2 : mword 5) :
     ops_ok b rd rs1 rs2 -> ops_ok_sp b rd rs1 rs2.
-  Proof. intros [Hrd Hs]. split; [ exact (rd_ok_tp _ Hrd) | exact Hs ]. Qed.
+  Proof using . intros [Hrd Hs]. split; [ exact (rd_ok_tp _ Hrd) | exact Hs ]. Qed.
 
   (* THE TWO CONSTRUCTORS a leaf that keeps [rd_ok rd] uses to feed the
      engines' widened premise.  A leaf reads nothing a caller can vary when
@@ -3038,10 +3038,10 @@ Section IntrDefs.
      [rd_ok rd] alone, so those leaves gain NO premise. *)
   Lemma src_ok_ne (b : bool) (rs : mword 5) :
     Regidx rs <> Regidx Rtp -> src_ok b rs.
-  Proof. by intros H _. Qed.
+  Proof using . by intros H _. Qed.
 
   Lemma ops_ok_self (b : bool) (rd : mword 5) : rd_ok rd -> ops_ok b rd rd rd.
-  Proof.
+  Proof using .
     intros Hrd. pose proof (src_ok_ne b rd (rd_ok_tp _ Hrd)) as Hs.
     split; [ exact Hrd | split; exact Hs ].
   Qed.
@@ -3049,7 +3049,7 @@ Section IntrDefs.
   Lemma ops_ok_conc (b : bool) (rd rs1 rs2 : mword 5) :
     rd_ok rd -> Regidx rs1 <> Regidx Rtp -> Regidx rs2 <> Regidx Rtp ->
     ops_ok b rd rs1 rs2.
-  Proof.
+  Proof using .
     intros Hrd H1 H2. split; [ exact Hrd | split ].
     - exact (src_ok_ne b _ H1).
     - exact (src_ok_ne b _ H2).
@@ -3059,7 +3059,7 @@ Section IntrDefs.
     Regidx rd <> Regidx Rtp ->
     Regidx rs1 <> Regidx Rtp -> Regidx rs2 <> Regidx Rtp ->
     ops_ok_sp b rd rs1 rs2.
-  Proof.
+  Proof using .
     intros Hrd H1 H2. split; [ exact Hrd | split ].
     - exact (src_ok_ne b _ H1).
     - exact (src_ok_ne b _ H2).
@@ -3076,7 +3076,7 @@ Section IntrDefs.
   Lemma rget_src_indep (b : bool) (m : regfile) (rs : mword 5) :
     b = true -> src_ok b rs ->
     forall c1 c2 : CpuId, rget (CID := c1) m rs = rget (CID := c2) m rs.
-  Proof. intros Hb Hrs. exact (rget_hart_indep m rs (Hrs Hb)). Qed.
+  Proof using . intros Hb Hrs. exact (rget_hart_indep m rs (Hrs Hb)). Qed.
 
   (* ... and for a leaf's two sources at once, which is the shape a converted
      leaf's σ-obligation will arrive in: the engine reads [rget m rsa] and
@@ -3086,7 +3086,7 @@ Section IntrDefs.
     forall c1 c2 : CpuId,
       rget (CID := c1) m rs1 = rget (CID := c2) m rs1
       /\ rget (CID := c1) m rs2 = rget (CID := c2) m rs2.
-  Proof.
+  Proof using .
     intros Hb Hops c1 c2. split.
     - exact (rget_src_indep b m rs1 Hb (ops_ok_s1 _ _ _ _ Hops) c1 c2).
     - exact (rget_src_indep b m rs2 Hb (ops_ok_s2 _ _ _ _ Hops) c1 c2).
@@ -3118,7 +3118,7 @@ Section IntrDefs.
     (b = false \/ pv = zero_reg -> (CIDn : CPU) = (CID : CPU)) ->
     src_ok b rs ->
     rget (CID := CIDn) m rs = rget (CID := CID) m rs.
-  Proof.
+  Proof using .
     intros Hs Hrs. destruct b.
     - exact (rget_src_indep true m rs eq_refl Hrs CIDn CID).
     - rewrite (_ : (CIDn : CpuId) = CID);
@@ -3132,7 +3132,7 @@ Section IntrDefs.
     ops_ok b rd rs1 rs2 ->
     rget (CID := CIDn) m rs1 = rget (CID := CID) m rs1
     /\ rget (CID := CIDn) m rs2 = rget (CID := CID) m rs2.
-  Proof.
+  Proof using .
     intros Hs Hops. split.
     - exact (rget_next_indep b pv CIDn m rs1 Hs (ops_ok_s1 _ _ _ _ Hops)).
     - exact (rget_next_indep b pv CIDn m rs2 Hs (ops_ok_s2 _ _ _ _ Hops)).
@@ -3144,7 +3144,7 @@ Section IntrDefs.
      Hoisted here (rather than re-derived per file with a hand-rolled [Regidx]
      disequality) because it is the single most repeated seam in the port. *)
   Lemma tp_pin_sp (m : regfile) : tp_pin m !!! Regidx csp_rs1 = m !!! Regidx csp_rs1.
-  Proof.
+  Proof using .
     apply (rget_ne m csp_rs1).
     intro He. injection He as He2. vm_compute in He2. congruence.
   Qed.
@@ -3207,7 +3207,7 @@ Section IntrDefs.
        boot chain keeps its copy. *)
     timer_cap -∗
     sie_cap KT0 m avail false p.
-  Proof.
+  Proof using .
     iIntros "Hstk Hbit Hb Hstv Hctx Htok #Htc".
     iFrame "Hstk".
     iSplitL "Hbit Hb Hstv".
@@ -3236,7 +3236,7 @@ Section IntrDefs.
       (m : regfile) (avail : nat) (p : mword 64) :
     sie_cap_gpr kt m avail false p -∗ kpt_on cpu_id -∗
     sie_cap_gpr kt' m avail false p.
-  Proof.
+  Proof using .
     iIntros "(Hhs & Hsc & Hcap & Hfile) #Hkpt". iFrame "Hhs Hsc Hfile".
     iApply (sie_cap_ktier_up kt kt' with "Hcap Hkpt").
   Qed.
@@ -3253,7 +3253,7 @@ Section IntrDefs.
 
   Lemma sie_cap_gpr_at_close {kt : ktier} (ms : mword 64) m avail b p :
     sie_cap_gpr_at kt ms m avail b p -∗ sie_cap_gpr kt m avail b p.
-  Proof.
+  Proof using .
     iIntros "(Hhs & Hsc & Hcap & Hfile)".
     iDestruct (sconf_at_close with "Hsc") as "Hsc".
     rewrite /sie_cap_gpr. iFrame "Hhs Hsc Hcap Hfile".
@@ -3261,7 +3261,7 @@ Section IntrDefs.
 
   Lemma sie_cap_gpr_at_open {kt : ktier} m avail b p :
     sie_cap_gpr kt m avail b p -∗ ∃ ms : mword 64, sie_cap_gpr_at kt ms m avail b p.
-  Proof.
+  Proof using .
     iIntros "(Hhs & Hsc & Hcap & Hfile)".
     iDestruct (sconf_at_open with "Hsc") as (ms) "Hsc".
     iExists ms. iFrame "Hhs Hsc Hcap Hfile".
@@ -3284,27 +3284,27 @@ Section IntrDefs.
 
   Lemma intr_res_at_of_eq {kt : ktier} (E : CurCtx -d> iPropO Σ) :
     intr_res_at kt E ⊣⊢ ires_of (ihs kt E) cpu_id.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma intr_res_of_eq {kt : ktier} :
     intr_res kt ⊣⊢ ires_pack_of (ihs kt) XI cpu_id.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma sie_arm_of_eq {kt : ktier} (b : bool) (p : mword 64) :
     sie_arm kt b p ⊣⊢ sie_arm_of (ires_pack_of (ihs kt) XI) b p.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma sie_cap_of_eq {kt : ktier}
       (m : regfile) (avail : nat) (b : bool) (p : mword 64) :
     sie_cap kt m avail b p ⊣⊢
     sie_cap_of kt (ires_pack_of (ihs kt) XI) m avail b p.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma sie_cap_gpr_of_eq {kt : ktier}
       (m : regfile) (avail : nat) (b : bool) (p : mword 64) :
     sie_cap_gpr kt m avail b p ⊣⊢
     sie_cap_gpr_of kt (ires_pack_of (ihs kt) XI) m avail b p.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Global Typeclasses Opaque ires_pack.
 
@@ -3316,7 +3316,7 @@ Section IntrDefs.
       (b : bool) (p : mword 64) :
     sie_arm_of (ires_of (ihs kt E)) b p -∗ □ E XI -∗ □ env_move E -∗
     sie_arm kt b p.
-  Proof.
+  Proof using .
     iIntros "Harm #HE #Hmv". rewrite sie_arm_of_eq /sie_arm_of.
     destruct b; last by iExact "Harm".
     iDestruct "Harm" as "(Hq & Hres & Hkpt & Ha & Hb & Hc & Hd & He & Hf)".
@@ -3329,7 +3329,7 @@ Section IntrDefs.
     sie_cap_of kt (ires_of (ihs kt E)) m avail b p -∗ □ E XI -∗
     □ env_move E -∗
     sie_cap kt m avail b p.
-  Proof.
+  Proof using .
     iIntros "(Hstk & Htr & Harm & Hctx & Htc & Hwit) #HE #Hmv".
     iDestruct (sie_arm_pack E with "Harm HE Hmv") as "Harm".
     rewrite sie_cap_of_eq /sie_cap_of.
@@ -3342,7 +3342,7 @@ Section IntrDefs.
     sie_cap_gpr_of kt (ires_of (ihs kt E)) m avail b p -∗ □ E XI -∗
     □ env_move E -∗
     sie_cap_gpr kt m avail b p.
-  Proof.
+  Proof using .
     iIntros "(Hhs & Hsc & Hcap & Hfile) #HE #Hmv".
     iDestruct (sie_cap_pack E with "Hcap HE Hmv") as "Hcap".
     rewrite /sie_cap_gpr. iFrame "Hhs Hsc Hcap Hfile".
@@ -3352,20 +3352,20 @@ Section IntrDefs.
     IntoSep (sie_cap_gpr kt m avail b p)
             (hart_state ↦ᵣ HART_ACTIVE tt)
             (sconf ∗ sie_cap kt m avail b p ∗ gpr_file (tp_pin m)).
-  Proof. rewrite /IntoSep /sie_cap_gpr. by iIntros "($ & $ & $ & $)". Qed.
+  Proof using . rewrite /IntoSep /sie_cap_gpr. by iIntros "($ & $ & $ & $)". Qed.
 
   Global Instance sie_cap_gpr_from_sep {kt : ktier} m avail b p :
     FromSep (sie_cap_gpr kt m avail b p)
             (hart_state ↦ᵣ HART_ACTIVE tt)
             (sconf ∗ sie_cap kt m avail b p ∗ gpr_file (tp_pin m)).
-  Proof. rewrite /FromSep /sie_cap_gpr. by iIntros "[$ [$ [$ $]]]". Qed.
+  Proof using . rewrite /FromSep /sie_cap_gpr. by iIntros "[$ [$ [$ $]]]". Qed.
 
   (* Foolproof split/join for the ports (no instance-resolution surprises). *)
   Lemma sie_cap_gpr_split {kt : ktier} m avail b p :
     sie_cap_gpr kt m avail b p -∗
     hart_state ↦ᵣ HART_ACTIVE tt ∗ sconf ∗ sie_cap kt m avail b p ∗
     gpr_file (tp_pin m).
-  Proof. by iIntros "$". Qed.
+  Proof using . by iIntros "$". Qed.
 
   Lemma sie_cap_gpr_join {kt : ktier} m avail b p :
     hart_state ↦ᵣ HART_ACTIVE tt -∗
@@ -3373,7 +3373,7 @@ Section IntrDefs.
     sie_cap kt m avail b p -∗
     gpr_file (tp_pin m) -∗
     sie_cap_gpr kt m avail b p.
-  Proof. iIntros "Hhs Hsc Hcap Hfile". rewrite /sie_cap_gpr. iFrame. Qed.
+  Proof using . iIntros "Hhs Hsc Hcap Hfile". rewrite /sie_cap_gpr. iFrame. Qed.
 
   (* [hw_config] is persistent and rides at the head of [sconf]; a
      whole-function proof threading [sie_cap_gpr] can pull it out (keeping the
@@ -3382,7 +3382,7 @@ Section IntrDefs.
      PT-node ↦ₘ→↦ₚ disassembly, which needs [kmap_static_claims]). *)
   Lemma sie_cap_gpr_dup_hw_config {kt : ktier} m avail b p :
     sie_cap_gpr kt m avail b p -∗ hw_config ∗ sie_cap_gpr kt m avail b p.
-  Proof.
+  Proof using .
     iIntros "Hcg".
     iDestruct (sie_cap_gpr_split with "Hcg") as "(Hhs & Hsc & Hsie & Hgpr)".
     iEval (rewrite /sconf) in "Hsc". iDestruct "Hsc" as "(#Hhw & Hrest)".
@@ -3402,14 +3402,14 @@ Section IntrDefs.
      capability apart. *)
   Lemma sie_cap_timer_cap {kt : ktier} m avail b p :
     sie_cap kt m avail b p -∗ timer_cap ∗ sie_cap kt m avail b p.
-  Proof.
+  Proof using .
     iIntros "(Hstk & Htr & Harm & Hctx & #Htc & #Hwit)".
     iSplitR; [iExact "Htc"|]. iFrame "Hstk Htr Harm Hctx Htc Hwit".
   Qed.
 
   Lemma sie_cap_gpr_timer_cap {kt : ktier} m avail b p :
     sie_cap_gpr kt m avail b p -∗ timer_cap ∗ sie_cap_gpr kt m avail b p.
-  Proof.
+  Proof using .
     iIntros "Hcg".
     iDestruct (sie_cap_gpr_split with "Hcg") as "(Hhs & Hsc & Hsie & Hgpr)".
     iDestruct (sie_cap_timer_cap with "Hsie") as "[#Htc Hsie]".
@@ -3427,7 +3427,7 @@ Section IntrDefs.
      the call is [iDestruct (… with "Hcg") as "[#Hkm Hcg]"]. *)
   Lemma sconf_kmap_claims :
     sconf -∗ kmap_static_claims ∗ sconf.
-  Proof.
+  Proof using .
     iIntros "Hsc".
     iEval (rewrite /sconf) in "Hsc". iDestruct "Hsc" as "(#Hhw & Hrest)".
     iDestruct (hw_config_kmap_claims with "Hhw") as "#Hkm".
@@ -3437,7 +3437,7 @@ Section IntrDefs.
 
   Lemma sie_cap_gpr_kmap_claims {kt : ktier} m avail b p :
     sie_cap_gpr kt m avail b p -∗ kmap_static_claims ∗ sie_cap_gpr kt m avail b p.
-  Proof.
+  Proof using .
     iIntros "Hcg".
     iDestruct (sie_cap_gpr_dup_hw_config with "Hcg") as "[Hhw Hcg]".
     iDestruct (hw_config_kmap_claims with "Hhw") as "#Hkm".
@@ -3450,7 +3450,7 @@ Section IntrDefs.
     uint i = 0 ->
     sie_cap_gpr kt m avail b p -∗
     ⌜ m !!! Regidx i = zero_reg ⌝ ∗ sie_cap_gpr kt m avail b p.
-  Proof.
+  Proof using .
     intro Hi. iIntros "Hcg".
     (* x0 is not tp, so the pinned file's x0 slot IS the map's. *)
     assert (Hne : Regidx i <> Regidx Rtp).
@@ -3478,7 +3478,7 @@ Section IntrDefs.
       (m m' : regfile) (avail : nat) (b : bool) {p : mword 64} :
     m !!! Regidx csp_rs1 = m' !!! Regidx csp_rs1 ->
     sie_cap kt m avail b p -∗ sie_cap kt m' avail b p.
-  Proof.
+  Proof using .
     iIntros (Hsp) "(Hstk & Htr & Harm & Hctx & #Htc & #Hwit)". iFrame "Htr Harm Hctx Htc Hwit".
     rewrite Hsp. iExact "Hstk".
   Qed.
@@ -3495,7 +3495,7 @@ Section IntrDefs.
     sie_cap kt m avail b p -∗
     sie_cap kt m' (avail - k) b p ∗
     stack_own (KTR := kt) (m !!! Regidx csp_rs1) k.
-  Proof.
+  Proof using .
     iIntros (Hk Hsp') "(Hstk & Htr & Harm & Hctx & #Htc & #Hwit)". iFrame "Htr Harm Hctx Htc Hwit".
     (* [trap_res b] is an OPAQUE [nat] atom here -- [lia] carries it through
        untouched, which is why the premise [k <= avail] does not move. *)
@@ -3521,7 +3521,7 @@ Section IntrDefs.
     stack_own (KTR := kt) (m' !!! Regidx csp_rs1) k -∗
     sie_cap kt m avail b p -∗
     sie_cap kt m' (avail + k) b p.
-  Proof.
+  Proof using .
     iIntros (Hsp) "Hframe (Hstk & Htr & Harm & Hctx & #Htc & #Hwit)". iFrame "Htr Harm Hctx Htc Hwit".
     replace (trap_res b + (avail + k))%nat
       with (k + (trap_res b + avail))%nat by lia.
@@ -3536,7 +3536,7 @@ Section IntrDefs.
     stack_own (KTR := kt) (pa_stk (m !!! Regidx csp_rs1) (trap_res b + avail)) k -∗
     sie_cap kt m avail b p -∗
     sie_cap kt m (avail + k) b p.
-  Proof.
+  Proof using .
     iIntros "Hdeep (Hstk & Htr & Harm & Hctx & #Htc & #Hwit)". iFrame "Htr Harm Hctx Htc Hwit".
     rewrite Nat.add_assoc. iApply (stack_own_app (KTR := kt)).
     iFrame "Hstk Hdeep".
@@ -3550,7 +3550,7 @@ Section IntrDefs.
     sie_cap kt m (avail - k) b p ∗
     stack_own (KTR := kt)
       (pa_stk (m !!! Regidx csp_rs1) (trap_res b + (avail - k))) k.
-  Proof.
+  Proof using .
     iIntros (Hk) "(Hstk & Htr & Harm & Hctx & #Htc & #Hwit)". iFrame "Htr Harm Hctx Htc Hwit".
     replace (trap_res b + avail)%nat
       with ((trap_res b + (avail - k)) + k)%nat by lia.
@@ -3583,22 +3583,22 @@ Section IntrDefs.
      longer be asked to conjure a handler resource it does not have. *)
   Lemma intr_count_retune_off (n : nat) (eb : bool) :
     intr_count (S n) eb -∗ intr_count (S n) false.
-  Proof. iIntros "Htok". iFrame. Qed.
+  Proof using . iIntros "Htok". iFrame. Qed.
 
   Lemma intr_count_retune_on (n : nat) (eb : bool) :
     intr_count (S n) eb -∗ intr_count (S n) true.
-  Proof. iIntros "Htok". iFrame. Qed.
+  Proof using . iIntros "Htok". iFrame. Qed.
 
   (* enter the boot discipline: base state OFF, nothing but the eighth *)
   Lemma intr_count_init_off :
     intr_off_tok -∗ intr_count 0 false.
-  Proof. iIntros "H". iExact "H". Qed.
+  Proof using . iIntros "H". iExact "H". Qed.
 
   (* n > 0 implies interrupts disabled: any fraction of '0' pins the arm *)
   Lemma intr_count_pos_off (n : nat) (eb : bool) :
     intr_count (S n) eb -∗
     ghost_var sie_gname (1/4/2)%Qp ('b"0" : mword 1).
-  Proof. iIntros "Htok". iFrame. Qed.
+  Proof using . iIntros "Htok". iFrame. Qed.
 
   (* the '0'-arm PUSH (csrci with interrupts already off): the level just
      increments -- at n = 0 ghost agreement with the capability's '0'
@@ -3608,7 +3608,7 @@ Section IntrDefs.
     intr_count n eb -∗
     ⌜ n = 0%nat -> eb = false ⌝ ∗
     ghost_var sie_gname (1/4/2)%Qp ('b"0" : mword 1) ∗ intr_count (S n) eb.
-  Proof.
+  Proof using .
     iIntros "Hcap Hcnt". destruct n.
     - iDestruct (ghost_var_agree with "Hcap Hcnt") as %Hb.
       destruct eb.
@@ -3621,14 +3621,14 @@ Section IntrDefs.
   (* the '0'-arm POP at eb = false (never re-enables): level decrement *)
   Lemma intr_count_pop_off (n : nat) :
     intr_count (S n) false -∗ intr_count n false.
-  Proof.
+  Proof using .
     iIntros "Htok". destruct n; [iExact "Htok" | iFrame].
   Qed.
 
   (* an interior POP (n+1 ≥ 2 → n+1 ≥ 1) *)
   Lemma intr_count_dec (n : nat) (eb : bool) :
     intr_count (S (S n)) eb -∗ intr_count (S n) eb.
-  Proof. iIntros "Htok". iFrame. Qed.
+  Proof using . iIntros "Htok". iFrame. Qed.
 
   (* at the '1' arm (cap-eighth-'1'), [intr_count n eb] forces n = 0 and
      eb = true, and yields the two '1' eighths -- the S-case and the
@@ -3639,7 +3639,7 @@ Section IntrDefs.
     ⌜ n = 0%nat /\ eb = true ⌝ ∗
     ghost_var sie_gname (1/4/2)%Qp ('b"1" : mword 1) ∗
     ghost_var sie_gname (1/4/2)%Qp ('b"1" : mword 1).
-  Proof.
+  Proof using .
     iIntros "Hcap Hcnt". destruct n.
     - destruct eb.
       + iFrame. done.
@@ -3662,13 +3662,13 @@ Section IntrDefs.
   Lemma intr_count_pack_S_on (n : nat) :
     ghost_var sie_gname (1/4/2)%Qp ('b"0" : mword 1) -∗
     intr_count (S n) true.
-  Proof. iIntros "Hc0". iFrame. Qed.
+  Proof using . iIntros "Hc0". iFrame. Qed.
 
   (* ... and the disabled-base level S n needs only the eighth *)
   Lemma intr_count_pack_S_off (n : nat) :
     ghost_var sie_gname (1/4/2)%Qp ('b"0" : mword 1) -∗
     intr_count (S n) false.
-  Proof. iIntros "Hc0". iFrame. Qed.
+  Proof using . iIntros "Hc0". iFrame. Qed.
 
 
 End IntrDefs.

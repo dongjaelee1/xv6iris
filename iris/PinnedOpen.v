@@ -97,7 +97,7 @@ Section PinnedOpen.
     open_trunc_piece (fs_gamma_L γfs) vom Ft -∗
     open_au_plain_at (fs_gamma_L γfs) γfs cw M pv vom
       (pobs_P T hops) (pobs_Pmiss T) (pobs_Fo Pin T) Ft.
-  Proof.
+  Proof using .
     intros Hres Hpath. iIntros "#Hcl #Hinv Ht".
     iDestruct (pinned_obs γfs Pin T (pobs_Pmiss T) cw pl hops ino a Hres
                  with "[] Hcl Hinv") as "(Hw & Ho & _)";
@@ -127,7 +127,7 @@ Section PinnedOpen.
     open_trunc_piece (fs_gamma_L γfs) vom Ft -∗
     open_in (fs_gamma_L γfs) γfs cw M pv vom
       (pobs_P T hops) (pobs_Pmiss T) Farm Fun Fok Fex (pobs_Fo Pin T) Ft.
-  Proof.
+  Proof using .
     intros Hcr Hres Hpath. iIntros "#Hcl #Hinv Ht".
     rewrite /open_in Hcr.
     iApply (pinned_open_bundle_at γfs Pin T cw pl hops ino a M pv vom Ft
@@ -154,7 +154,7 @@ Section PinnedOpen.
     app_inv γfs -∗
     open_in (fs_gamma_L γfs) γfs cw M pv vom
       (pobs_P T hops) (pobs_Pmiss T) Farm Fun Fok Fex (pobs_Fo Pin T) Ft.
-  Proof.
+  Proof using .
     intros Hcr Htr Hres Hpath. iIntros "#Hcl #Hinv".
     iApply (pinned_open_bundle γfs Pin T cw pl hops ino a M pv vom Ft
               Farm Fun Fok Fex Hcr Hres Hpath with "Hcl Hinv []").
@@ -194,7 +194,7 @@ Section PinnedOpen.
           ∗ open_trunc_piece (fs_gamma_L γfs) vom Ft)
        (* ...or the application is tainted *)
        ∨ T).
-  Proof.
+  Proof using .
     intros Hres Hpath. iIntros "Hrc". rewrite /open_receipt_plain.
     iDestruct "Hrc" as "[(%Hr & %Hfd & _) | Hok]".
     { iLeft. iPureIntro. exact (conj Hr Hfd). }
@@ -264,7 +264,7 @@ Section PinnedOpen.
     open_in (fs_gamma_L γfs) γfs cw M pv vom
       (pobs_P_dead T d0) Pmiss Farm Fun Fok Fex
       (pfam_triv (fun (_ : aview) (_ : Z) (_ : anode) => True%I)) Ft.
-  Proof.
+  Proof using .
     intros Hcr Htr Hres Hpath. iIntros "#Hcl #Hfree #Hinv HK".
     rewrite /open_in Hcr /open_au_plain_at.
     iSplitL "HK".
@@ -292,7 +292,7 @@ Section PinnedOpen.
     open_receipt_plain (fs_gamma_L γfs) γfs cw M pv vom
       (pobs_P_dead T d0) Pmiss Fo Ft sts r fdv' -∗
       ((⌜r = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜fdv' = sts⌝) ∨ T).
-  Proof.
+  Proof using .
     intros Hpath Hne. iIntros "Hrc". rewrite /open_receipt_plain.
     iDestruct "Hrc" as "[(%Hr & %Hfd & _) | Hok]".
     { iLeft. iPureIntro. exact (conj Hr Hfd). }

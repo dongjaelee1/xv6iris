@@ -38,59 +38,59 @@ Section CodeFlags2perm.
   (* ---- flags2perm @ KernelSyms.flags2perm, 32 bytes ---- *)
 
   Lemma fpi_00 : kernel_text -∗ instr (mword_of_int KernelSyms.flags2perm : mword 64) true (ITYPE (sign_extend' 12 (mword_of_int 48 : mword 6), Regidx (mword_of_int 2), Regidx (mword_of_int 2), ADDI)).
-  Proof. mk_rvc KernelSyms.flags2perm (mword_of_int 0x1141 : mword 16)
+  Proof using . mk_rvc KernelSyms.flags2perm (mword_of_int 0x1141 : mword 16)
     (mword_of_int KernelSyms.flags2perm : mword 64) (ITYPE (sign_extend' 12 (mword_of_int 48 : mword 6), Regidx (mword_of_int 2), Regidx (mword_of_int 2), ADDI)) kd_1141 exec_execute_C_ADDI. Qed.
 
   Lemma fpi_02 : kernel_text -∗ instr (mword_of_int (KernelSyms.flags2perm + 0x2) : mword 64) true (STORE (zero_extend' 12 (concat_vec (mword_of_int 1 : mword 6) ('b"000")), Regidx (mword_of_int 1), sp, 8)).
-  Proof. mk_rvc (KernelSyms.flags2perm + 0x2) (mword_of_int 0xe406 : mword 16)
+  Proof using . mk_rvc (KernelSyms.flags2perm + 0x2) (mword_of_int 0xe406 : mword 16)
     (mword_of_int (KernelSyms.flags2perm + 0x2) : mword 64) (STORE (zero_extend' 12 (concat_vec (mword_of_int 1 : mword 6) ('b"000")), Regidx (mword_of_int 1), sp, 8)) kd_e406 exec_execute_C_SDSP. Qed.
 
   Lemma fpi_04 : kernel_text -∗ instr (mword_of_int (KernelSyms.flags2perm + 0x4) : mword 64) true (STORE (zero_extend' 12 (concat_vec (mword_of_int 0 : mword 6) ('b"000")), Regidx (mword_of_int 8), sp, 8)).
-  Proof. mk_rvc (KernelSyms.flags2perm + 0x4) (mword_of_int 0xe022 : mword 16)
+  Proof using . mk_rvc (KernelSyms.flags2perm + 0x4) (mword_of_int 0xe022 : mword 16)
     (mword_of_int (KernelSyms.flags2perm + 0x4) : mword 64) (STORE (zero_extend' 12 (concat_vec (mword_of_int 0 : mword 6) ('b"000")), Regidx (mword_of_int 8), sp, 8)) kd_e022 exec_execute_C_SDSP. Qed.
 
   Lemma fpi_06 : kernel_text -∗ instr (mword_of_int (KernelSyms.flags2perm + 0x6) : mword 64) true (ITYPE (caddi4spn_imm (mword_of_int 4 : mword 8), sp, creg2reg_idx (Cregidx (mword_of_int 0)), ADDI)).
-  Proof. mk_rvc (KernelSyms.flags2perm + 0x6) (mword_of_int 0x0800 : mword 16)
+  Proof using . mk_rvc (KernelSyms.flags2perm + 0x6) (mword_of_int 0x0800 : mword 16)
     (mword_of_int (KernelSyms.flags2perm + 0x6) : mword 64) (ITYPE (caddi4spn_imm (mword_of_int 4 : mword 8), sp, creg2reg_idx (Cregidx (mword_of_int 0)), ADDI)) kd_0800 exec_execute_C_ADDI4SPN. Qed.
 
   Lemma fpi_08 : kernel_text -∗ instr (mword_of_int (KernelSyms.flags2perm + 0x8) : mword 64) true (RTYPE (Regidx (mword_of_int 10), zreg, Regidx (mword_of_int 15), ADD)).
-  Proof. mk_rvc (KernelSyms.flags2perm + 0x8) (mword_of_int 0x87aa : mword 16)
+  Proof using . mk_rvc (KernelSyms.flags2perm + 0x8) (mword_of_int 0x87aa : mword 16)
     (mword_of_int (KernelSyms.flags2perm + 0x8) : mword 64) (RTYPE (Regidx (mword_of_int 10), zreg, Regidx (mword_of_int 15), ADD)) kd_87aa exec_execute_C_MV. Qed.
 
   Lemma fpi_0a : kernel_text -∗ instr (mword_of_int (KernelSyms.flags2perm + 0xa) : mword 64) false (SHIFTIWOP (mword_of_int 3 : mword 5, Regidx (mword_of_int 10), Regidx (mword_of_int 10), SLLIW)).
-  Proof. mk_base (KernelSyms.flags2perm + 0xa) (mword_of_int 0x0035151b : mword 32)
+  Proof using . mk_base (KernelSyms.flags2perm + 0xa) (mword_of_int 0x0035151b : mword 32)
     (mword_of_int (KernelSyms.flags2perm + 0xa) : mword 64) (SHIFTIWOP (mword_of_int 3 : mword 5, Regidx (mword_of_int 10), Regidx (mword_of_int 10), SLLIW)) kd_0035151b. Qed.
 
   Lemma fpi_0e : kernel_text -∗ instr (mword_of_int (KernelSyms.flags2perm + 0xe) : mword 64) true (ITYPE (sign_extend' 12 (mword_of_int 8 : mword 6), creg2reg_idx (Cregidx (mword_of_int 2)), creg2reg_idx (Cregidx (mword_of_int 2)), ANDI)).
-  Proof. mk_rvc (KernelSyms.flags2perm + 0xe) (mword_of_int 0x8921 : mword 16)
+  Proof using . mk_rvc (KernelSyms.flags2perm + 0xe) (mword_of_int 0x8921 : mword 16)
     (mword_of_int (KernelSyms.flags2perm + 0xe) : mword 64) (ITYPE (sign_extend' 12 (mword_of_int 8 : mword 6), creg2reg_idx (Cregidx (mword_of_int 2)), creg2reg_idx (Cregidx (mword_of_int 2)), ANDI)) kd_8921 ke_8921. Qed.
 
   Lemma fpi_10 : kernel_text -∗ instr (mword_of_int (KernelSyms.flags2perm + 0x10) : mword 64) true (ITYPE (sign_extend' 12 (mword_of_int 2 : mword 6), creg2reg_idx (Cregidx (mword_of_int 7)), creg2reg_idx (Cregidx (mword_of_int 7)), ANDI)).
-  Proof. mk_rvc (KernelSyms.flags2perm + 0x10) (mword_of_int 0x8b89 : mword 16)
+  Proof using . mk_rvc (KernelSyms.flags2perm + 0x10) (mword_of_int 0x8b89 : mword 16)
     (mword_of_int (KernelSyms.flags2perm + 0x10) : mword 64) (ITYPE (sign_extend' 12 (mword_of_int 2 : mword 6), creg2reg_idx (Cregidx (mword_of_int 7)), creg2reg_idx (Cregidx (mword_of_int 7)), ANDI)) kd_8b89 ke_8b89. Qed.
 
   Lemma fpi_12 : kernel_text -∗ instr (mword_of_int (KernelSyms.flags2perm + 0x12) : mword 64) true (BTYPE (sign_extend' 13 (concat_vec (mword_of_int 3 : mword 8) ('b"0")), zreg, creg2reg_idx (Cregidx (mword_of_int 7)), BEQ)).
-  Proof. mk_rvc (KernelSyms.flags2perm + 0x12) (mword_of_int 0xc399 : mword 16)
+  Proof using . mk_rvc (KernelSyms.flags2perm + 0x12) (mword_of_int 0xc399 : mword 16)
     (mword_of_int (KernelSyms.flags2perm + 0x12) : mword 64) (BTYPE (sign_extend' 13 (concat_vec (mword_of_int 3 : mword 8) ('b"0")), zreg, creg2reg_idx (Cregidx (mword_of_int 7)), BEQ)) kd_c399 exec_execute_C_BEQZ. Qed.
 
   Lemma fpi_14 : kernel_text -∗ instr (mword_of_int (KernelSyms.flags2perm + 0x14) : mword 64) false (ITYPE (mword_of_int 4 : mword 12, Regidx (mword_of_int 10), Regidx (mword_of_int 10), ORI)).
-  Proof. mk_base (KernelSyms.flags2perm + 0x14) (mword_of_int 0x00456513 : mword 32)
+  Proof using . mk_base (KernelSyms.flags2perm + 0x14) (mword_of_int 0x00456513 : mword 32)
     (mword_of_int (KernelSyms.flags2perm + 0x14) : mword 64) (ITYPE (mword_of_int 4 : mword 12, Regidx (mword_of_int 10), Regidx (mword_of_int 10), ORI)) kd_00456513. Qed.
 
   Lemma fpi_18 : kernel_text -∗ instr (mword_of_int (KernelSyms.flags2perm + 0x18) : mword 64) true (LOAD (zero_extend' 12 (concat_vec (mword_of_int 1 : mword 6) ('b"000")), sp, Regidx (mword_of_int 1), false, 8)).
-  Proof. mk_rvc (KernelSyms.flags2perm + 0x18) (mword_of_int 0x60a2 : mword 16)
+  Proof using . mk_rvc (KernelSyms.flags2perm + 0x18) (mword_of_int 0x60a2 : mword 16)
     (mword_of_int (KernelSyms.flags2perm + 0x18) : mword 64) (LOAD (zero_extend' 12 (concat_vec (mword_of_int 1 : mword 6) ('b"000")), sp, Regidx (mword_of_int 1), false, 8)) kd_60a2 exec_execute_C_LDSP. Qed.
 
   Lemma fpi_1a : kernel_text -∗ instr (mword_of_int (KernelSyms.flags2perm + 0x1a) : mword 64) true (LOAD (zero_extend' 12 (concat_vec (mword_of_int 0 : mword 6) ('b"000")), sp, Regidx (mword_of_int 8), false, 8)).
-  Proof. mk_rvc (KernelSyms.flags2perm + 0x1a) (mword_of_int 0x6402 : mword 16)
+  Proof using . mk_rvc (KernelSyms.flags2perm + 0x1a) (mword_of_int 0x6402 : mword 16)
     (mword_of_int (KernelSyms.flags2perm + 0x1a) : mword 64) (LOAD (zero_extend' 12 (concat_vec (mword_of_int 0 : mword 6) ('b"000")), sp, Regidx (mword_of_int 8), false, 8)) kd_6402 exec_execute_C_LDSP. Qed.
 
   Lemma fpi_1c : kernel_text -∗ instr (mword_of_int (KernelSyms.flags2perm + 0x1c) : mword 64) true (ITYPE (sign_extend' 12 (mword_of_int 16 : mword 6), Regidx (mword_of_int 2), Regidx (mword_of_int 2), ADDI)).
-  Proof. mk_rvc (KernelSyms.flags2perm + 0x1c) (mword_of_int 0x0141 : mword 16)
+  Proof using . mk_rvc (KernelSyms.flags2perm + 0x1c) (mword_of_int 0x0141 : mword 16)
     (mword_of_int (KernelSyms.flags2perm + 0x1c) : mword 64) (ITYPE (sign_extend' 12 (mword_of_int 16 : mword 6), Regidx (mword_of_int 2), Regidx (mword_of_int 2), ADDI)) kd_0141 exec_execute_C_ADDI. Qed.
 
   Lemma fpi_1e : kernel_text -∗ instr (mword_of_int (KernelSyms.flags2perm + 0x1e) : mword 64) true (JALR (zeros' 12, Regidx (mword_of_int 1), zreg)).
-  Proof. mk_rvc (KernelSyms.flags2perm + 0x1e) (mword_of_int 0x8082 : mword 16)
+  Proof using . mk_rvc (KernelSyms.flags2perm + 0x1e) (mword_of_int 0x8082 : mword 16)
     (mword_of_int (KernelSyms.flags2perm + 0x1e) : mword 64) (JALR (zeros' 12, Regidx (mword_of_int 1), zreg)) kd_8082 exec_execute_C_JR. Qed.
 
 End CodeFlags2perm.

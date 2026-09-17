@@ -322,7 +322,7 @@ Section ProofSysUnlinkW3.
                 m sp0 dpv ipv K eb b lks X Upr -∗
     X -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Kre Hgeom Hj Hgl Heb Hlkempty Hsp0 Hal Hipv Hiok Hrl_dati Htyz
            Hnlz Hddix.
     pose proof Hiok as Hiok0.
@@ -880,7 +880,7 @@ Section ProofSysUnlinkW3.
                 m sp0 dpv ipv K eb b lks X Upr -∗
     X -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Kre Hgeom Hj Hgl Heb Hlkempty Hsp0 Hal Hipv Hiok Hrl_dati Htyz
            Hnlz Hddix Hregs.
     pose proof Hiok as Hiok0.
@@ -1381,7 +1381,7 @@ Section ProofSysUnlinkW3.
         dqb dqs dqbs (unlink_arms (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) P Pmiss
                         Phient Phitgt Phiex Phimiss (us_M U) v0)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hnib0 Hgeom Hsize Hbm0 Hbmcov Hbmlog Hist0
            Hcovb Hiregb Hj Hgl Heb Hsp0 Hal Hn1 Hupt1 Hregs Hkd Hks Hdinb
            Htydir Hiok Hrl_datd Hdok Hddix Hdoc Hduq Hnotdot Hnotdd Hfst

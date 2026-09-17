@@ -243,7 +243,7 @@ Section batch2.
       (rs rs' : regstate) (Dro : gset register) :
     reg_agree_on Dro rs rs' ->
     hreg_frame_ro Df rs Dro ⊣⊢ hreg_frame_ro Df rs' Dro.
-  Proof.
+  Proof using .
     intros Hag. rewrite /hreg_frame_ro. apply big_sepS_proper.
     intros r Hr. by rewrite (Hag r Hr).
   Qed.
@@ -258,7 +258,7 @@ Section batch2.
     ▷ (hreg_frame rs1 Drw -∗ hreg_frame_ro Df rs1 Dro -∗
        WP (HartE gen_id cpu_id m1 : expr riscv_lang)) -∗
     WP (HartE gen_id cpu_id m : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hdisj Hnode) "#Hcert Hrf Hro H".
     iApply (wp_hart_step with "Hcert").
     { intros oth0 h0 img0 σ0 log0 tv0 itv0 hr0 r0 m'0 σ'0 log'0 tv'0 itv'0 hr'0 r'0 Hs.
@@ -370,7 +370,7 @@ Section batch2.
     (hreg_frame y.2 Drw -∗ hreg_frame_ro Df y.2 Dro -∗
        WP (HartE gen_id cpu_id y.1 : expr riscv_lang)) -∗
     WP (HartE gen_id cpu_id x.1 : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hdisj Hrtc. induction Hrtc as [x|x y0 z Hxy _ IH].
     - iIntros "#Hcert Hrf Hro H". by iApply ("H" with "Hrf Hro").
     - destruct x as [m0 rs0], y0 as [m1 rs1]. simpl in Hxy |- *.
@@ -391,7 +391,7 @@ Section batch2.
      hreg_frame_ro Df (hsil2 n Drw Dro x).1 Dro -∗
        WP (HartE gen_id cpu_id (hsil2 n Drw Dro x).2 : expr riscv_lang)) -∗
     WP (HartE gen_id cpu_id x.2 : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hdisj.
     exact (wp_hsil2_rtc Drw Dro Df (x.2, x.1)
              ((hsil2 n Drw Dro x).2, (hsil2 n Drw Dro x).1) Hdisj
@@ -440,7 +440,7 @@ Section textbytes.
     gen_heap_interp (hG:=riscv_memGS) mm -∗
     ([∗ list] j ∈ l, (pa_add pa j) ↦ₓ□ nth_byte w j) -∗
     ⌜forall j, j ∈ l -> mm !! pa_add pa j = Some (nth_byte w j)⌝.
-  Proof.
+  Proof using .
     iInduction l as [|x xs] "IH"; simpl.
     - iIntros "_ _". iPureIntro. intros j Hj. by apply elem_of_nil in Hj.
     - iIntros "Hm [Ha Hrest]".
@@ -466,7 +466,7 @@ Section textbytes.
   (* ------------------------------------------------------------------ *)
   Local Lemma text_byte_phys_pristine (a : Arch.pa) (b : bv 8) :
     a ↦ₓ□ b -∗ phys_pointsto a DfracDiscarded b ∗ TsoCtx.pristine_byte a.
-  Proof.
+  Proof using .
     iIntros "Ha".
     iDestruct (text_pointsto_acc with "Ha")
       as (ppn) "(_ & _ & %Htx & %Hid & Hp & #Hts & _)".
@@ -483,7 +483,7 @@ Section textbytes.
     ([∗ list] j ∈ seq 0 (N.to_nat n), (pa_add pa j) ↦ₓ□ nth_byte w j) -∗
     ⌜forall (h : agent) (tv : nat),
        tso_read_bytes g.(gimg) g.(glog) h tv pa n w⌝.
-  Proof.
+  Proof using .
     iIntros "Hgh Hint #Hb".
     iAssert ([∗ list] j ∈ seq 0 (N.to_nat n),
                phys_pointsto (pa_add pa j) DfracDiscarded (nth_byte w j))%I
@@ -504,7 +504,7 @@ Section textbytes.
     gen_heap_interp (hG:=riscv_memGS) mm -∗
     ([∗ list] j ∈ seq 0 (N.to_nat n), (pa_add pa j) ↦ₓ□ nth_byte w j) -∗
     ⌜read_bytes mm pa n = Some w⌝.
-  Proof.
+  Proof using .
     iIntros "Hm Hb".
     iDestruct (text_bytes_lookup_local with "Hm Hb") as %Hl.
     iPureIntro.

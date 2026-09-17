@@ -387,7 +387,7 @@ Section UShKernel.
           shk_rodata (ukn_t N) -∗ UkSh.ush_prompt_law N Wc))%I.
 
   Global Instance sh_prompt_law_persistent Wc : Persistent (sh_prompt_law Wc).
-  Proof. rewrite /sh_prompt_law. apply _. Qed.
+  Proof using . rewrite /sh_prompt_law. apply _. Qed.
 
   (* ------------------------------------------------------------------- *)
   (* SS2 THE DEPOSIT (header (1), (2)).                                   *)
@@ -623,7 +623,7 @@ Section UShKernel.
     ((∃ I : list (bv 8), ⌜length I = n⌝
         ∗ UkSh.ush_wcp Wc Wb (take NSTD (uvis_fd W)) I 0%nat) ∨ T) -∗
     uslot W.
-  Proof.
+  Proof using .
     intros Hbd HQc Hpc Hsub Hx Hal8 Hroom Hstk Hfdlen Hstop Hcwd0 Hlzf Hch0 Hpid1.
     iIntros "#Hpay #Hnpw #Hdep #Hdp #Htag #Hplaw #Hrest #Hfd0 Hin #Hgen #Hmp Hpos
              Hlease Hwcp".
@@ -813,7 +813,7 @@ Section UShKernel.
     ((∃ I : list (bv 8), ⌜length I = n⌝
         ∗ UkSh.ush_wcp Wc Wb (take NSTD sts) I 0%nat) ∨ T) -∗
     uslot W'.
-  Proof.
+  Proof using .
     intros Hbd HQc Hok Hcwd0 Hroom Hlen Hlzf Hch0 Hpid1.
     (* THE MAP STOPS AT THE BREAK, off the image fact's own row: exec built
        a fresh address space, so [KexecBuilt.kxb_perm_below] says it maps
@@ -1022,7 +1022,7 @@ Section UShKernel.
        ∗ ((∃ I : list (bv 8), ⌜length I = n⌝
             ∗ UkSh.ush_wcp Wc Wb (take NSTD sts) I 0%nat) ∨ T))
       uslot.
-  Proof.
+  Proof using .
     intros Hbd HQc Hroom Hlen -> Hpid1.
     iIntros "#Hpay #Hnpw #Hdep #Hdp #Htag #Hplaw #Hrest #Hfd0 #Hin #Hgen".
     rewrite /image_entry_at. iIntros "!>" (W')

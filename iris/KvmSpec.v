@@ -152,12 +152,12 @@ Section KvmSpecs.
      typeclass resolution needs. *)
   Global Instance kalloc_env_at_None_persistent (γ : gname) (γk : gname * gname) :
     Persistent (kalloc_env_at γ γk None).
-  Proof. rewrite /kalloc_env_at. apply _. Qed.
+  Proof using . rewrite /kalloc_env_at. apply _. Qed.
   Global Typeclasses Opaque kalloc_env_at.
 
   Lemma kalloc_env_at_env (γ : gname) (γk : gname * gname) (on : option nat) :
     kalloc_env_at γ γk on -∗ kalloc_env γ on.
-  Proof.
+  Proof using .
     rewrite /kalloc_env_at /kalloc_env. iIntros "[#Hlk Hav]".
     iExists γk. iFrame "Hlk Hav".
   Qed.
@@ -166,21 +166,21 @@ Section KvmSpecs.
     kalloc_env_at γ γk on -∗
     is_lock γ (mword_of_int KernelSyms.kmem) "kmem"%string
       (λ ξ : CtxId, kmem_res (XIk := ξ) γk (mword_of_int (KernelSyms.kmem + 24))).
-  Proof. rewrite /kalloc_env_at. by iIntros "[#$ _]". Qed.
+  Proof using . rewrite /kalloc_env_at. by iIntros "[#$ _]". Qed.
 
   Lemma kalloc_env_at_avail (γ : gname) (γk : gname * gname) (on : option nat) :
     kalloc_env_at γ γk on -∗ kalloc_avail γk on.
-  Proof. rewrite /kalloc_env_at. by iIntros "[_ $]". Qed.
+  Proof using . rewrite /kalloc_env_at. by iIntros "[_ $]". Qed.
 
   Lemma kalloc_env_at_intro (γ : gname) (γk : gname * gname) (on : option nat) :
     is_lock γ (mword_of_int KernelSyms.kmem) "kmem"%string
       (λ ξ : CtxId, kmem_res (XIk := ξ) γk (mword_of_int (KernelSyms.kmem + 24))) -∗
     kalloc_avail γk on -∗ kalloc_env_at γ γk on.
-  Proof. rewrite /kalloc_env_at. iIntros "#Hlk Hav". iFrame "Hlk Hav". Qed.
+  Proof using . rewrite /kalloc_env_at. iIntros "#Hlk Hav". iFrame "Hlk Hav". Qed.
 
   Lemma kalloc_env_at_seal (γ : gname) (γk : gname * gname) (on : option nat) :
     kalloc_env_at γ γk on ==∗ kalloc_env_at γ γk None.
-  Proof.
+  Proof using .
     rewrite /kalloc_env_at. iIntros "[#Hlk Hav]".
     destruct on as [n|].
     - iMod (kalloc_avail_seal with "Hav") as "Hav". iModIntro. iFrame "Hlk Hav".
@@ -196,7 +196,7 @@ Section KvmSpecs.
      copyin/copyout (whose contracts consume the bundle) lives on. *)
   Global Instance kalloc_env_None_persistent (γ : gname) :
     Persistent (kalloc_env γ None).
-  Proof. rewrite /kalloc_env. apply _. Qed.
+  Proof using . rewrite /kalloc_env. apply _. Qed.
 
   (* Leave the counted regime for good.  A function whose ERROR TAIL calls a
      [None]-only callee (proc_pagetable's tails call uvmfree) has to do this:
@@ -207,7 +207,7 @@ Section KvmSpecs.
      the caller that gets a resealed bundle back can never count again. *)
   Lemma kalloc_env_seal_Some (γ : gname) (n : nat) :
     kalloc_env γ (Some n) ==∗ kalloc_env γ None.
-  Proof.
+  Proof using .
     iIntros "(%γk & #Hlk & Hav)".
     iMod (kalloc_avail_seal with "Hav") as "Hav".
     iModIntro. iExists γk. iFrame "Hlk Hav".
@@ -217,7 +217,7 @@ Section KvmSpecs.
      and at [None] the seal has already fired, so this is the identity. *)
   Lemma kalloc_env_seal (γ : gname) (on : option nat) :
     kalloc_env γ on ==∗ kalloc_env γ None.
-  Proof.
+  Proof using .
     destruct on as [n|]; [apply kalloc_env_seal_Some |].
     iIntros "H". iModIntro. iExact "H".
   Qed.

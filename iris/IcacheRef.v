@@ -184,7 +184,7 @@ Section IcacheLink.
      the claimant's -- is NOT a [runit_any]: it is spent at the withdraw,
      which is exactly RULING C''s conversion. *)
   Lemma runit_any_intro (z : Z) : runit false z -∗ runit_any z.
-  Proof. iIntros "H". iExact "H". Qed.
+  Proof using . iIntros "H". iExact "H". Qed.
 
   (* the two columns' bumps, named, so the movers' statements stay readable
      and the arithmetic side conditions are [destruct b]-shaped *)
@@ -213,30 +213,30 @@ Section IcacheLink.
   Definition ifreeze_post (rg : frzidx) (z : Z) : iProp Σ := ifreeze (FrzPost rg) z.
 
   Global Instance link_auth_e_timeless z a : Timeless (link_auth_e z a).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance link_frag_e_timeless z b : Timeless (link_frag_e z b).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance link_auth_timeless z c r f rc :
     Timeless (link_auth z c r f rc).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance iclaim_timeless z ty t q : Timeless (iclaim z ty t q).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance runit_plain_timeless z : Timeless (runit_plain z).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance runit_claim_timeless z : Timeless (runit_claim z).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance runit_timeless b z : Timeless (runit b z).
-  Proof. destruct b; apply _. Qed.
+  Proof using . destruct b; apply _. Qed.
   Global Instance runit_any_timeless z : Timeless (runit_any z).
-  Proof. rewrite /runit_any. apply _. Qed.
+  Proof using . rewrite /runit_any. apply _. Qed.
   Global Instance ifreeze_timeless ph z : Timeless (ifreeze ph z).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance ifreeze_off_timeless z : Timeless (ifreeze_off z).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance ifreeze_pre_timeless rg z : Timeless (ifreeze_pre rg z).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance ifreeze_post_timeless rg z : Timeless (ifreeze_post rg z).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* ------------------------------------------------------------------ *)
   (*  READING THE AUTHORITY                                              *)
@@ -247,7 +247,7 @@ Section IcacheLink.
      turns a held [iclaim] into agreement rather than a bound. *)
   Lemma link_agree_e (z : Z) (a b : linkElemUR) :
     link_auth_e z a -∗ link_frag_e z b -∗ ⌜b ≼ a⌝.
-  Proof.
+  Proof using .
     rewrite /link_auth_e /link_frag_e. iIntros "Ha Hb".
     iDestruct (own_valid_2 with "Ha Hb") as %Hv.
     rewrite singleton_op singleton_valid in Hv.
@@ -262,7 +262,7 @@ Section IcacheLink.
     link_auth z c r f rc -∗
     link_frag_e z (lelem c' r') -∗
     ⌜(r' <= r)%nat⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Hb".
     iDestruct (link_agree_e with "Ha Hb") as %Hincl.
     iPureIntro.
@@ -275,7 +275,7 @@ Section IcacheLink.
 
   Lemma link_r_ge (z : Z) (c : ctyUR) (r : nat) (f : frzUR) (rc : nat) :
     link_auth z c r f rc -∗ runit_plain z -∗ ⌜(1 <= r)%nat⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Hb". rewrite /runit_plain.
     iDestruct (link_agree with "Ha Hb") as %H. done.
   Qed.
@@ -286,7 +286,7 @@ Section IcacheLink.
      about the new column. *)
   Lemma link_rc_ge (z : Z) (c : ctyUR) (r : nat) (f : frzUR) (rc : nat) :
     link_auth z c r f rc -∗ runit_claim z -∗ ⌜(1 <= rc)%nat⌝.
-  Proof.
+  Proof using .
     rewrite /link_auth /runit_claim. iIntros "Ha Hb".
     iDestruct (link_agree_e with "Ha Hb") as %Hincl.
     iPureIntro. rewrite /lelemc in Hincl.
@@ -302,7 +302,7 @@ Section IcacheLink.
       (f : frzUR) (rc : nat) :
     link_auth z c r f rc -∗ runit b z -∗
     ⌜(1 <= if b then rc else r)%nat⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Hb". rewrite /runit. destruct b.
     - iApply (link_rc_ge with "Ha Hb").
     - iApply (link_r_ge with "Ha Hb").
@@ -314,7 +314,7 @@ Section IcacheLink.
       (ty : bv 16) (t : nat) (qt : Qp) :
     link_auth z c r f rc -∗ iclaim z ty t qt -∗
     ⌜c = Some (Excl ((ty, (t, qt)) : ctyval))⌝.
-  Proof.
+  Proof using .
     rewrite /link_auth /iclaim /link_auth_e /link_frag_e. iIntros "Ha Hb".
     iDestruct (own_valid_2 with "Ha Hb") as %Hv.
     rewrite singleton_op singleton_valid in Hv.
@@ -340,7 +340,7 @@ Section IcacheLink.
      valid. *)
   Local Lemma frz_incl_eq (f : frzUR) (ph : frz) :
     ✓ f -> (Some (Excl ph) : frzUR) ≼ f -> f = Some (Excl ph).
-  Proof.
+  Proof using .
     intros Hv [w Hw]. apply leibniz_equiv in Hw.
     destruct w as [w' |].
     - exfalso. rewrite Hw in Hv. exact Hv.
@@ -354,7 +354,7 @@ Section IcacheLink.
   Lemma link_freeze_agree (z : Z) (c : ctyUR) (r : nat)
       (f : frzUR) (rc : nat) (ph : frz) :
     link_auth z c r f rc -∗ ifreeze ph z -∗ ⌜f = Some (Excl ph)⌝.
-  Proof.
+  Proof using .
     rewrite /link_auth /ifreeze /link_auth_e /link_frag_e. iIntros "Ha Hb".
     iDestruct (own_valid_2 with "Ha Hb") as %Hv.
     rewrite singleton_op singleton_valid in Hv.
@@ -372,7 +372,7 @@ Section IcacheLink.
      rather than by a whole-program argument. *)
   Lemma ifreeze_excl (z : Z) (ph ph' : frz) :
     ifreeze ph z -∗ ifreeze ph' z -∗ False.
-  Proof.
+  Proof using .
     rewrite /ifreeze /link_frag_e. iIntros "H1 H2".
     iDestruct (own_valid_2 with "H1 H2") as %Hv.
     rewrite singleton_op singleton_valid -auth_frag_op auth_frag_valid in Hv.
@@ -387,7 +387,7 @@ Section IcacheLink.
   (* the identity local update, which every move needs on the three
      components it does NOT touch *)
   Lemma link_lu_id {A : ucmra} (x y : A) : (x, y) ~l~> (x, y).
-  Proof.
+  Proof using .
     apply local_update_unital. intros n mz Hv Hz.
     split; [exact Hv | exact Hz].
   Qed.
@@ -403,7 +403,7 @@ Section IcacheLink.
     (lelemc ac ar af arc, lelemc bc br bf brc)
       ~l~>
     (lelemc ac' ar' af arc', lelemc bc' br' bf brc').
-  Proof.
+  Proof using .
     rewrite /lelemc. intros Hc Hr Hrc.
     apply (prod_local_update' (A := linkElemUR1) (B := natUR));
       [| exact Hrc].
@@ -420,7 +420,7 @@ Section IcacheLink.
   Lemma link_update_alloc (z : Z) (a a' b' : linkElemUR) :
     (a, lelem None 0) ~l~> (a', b') ->
     link_auth_e z a ==∗ link_auth_e z a' ∗ link_frag_e z b'.
-  Proof.
+  Proof using .
     intros Hlu. rewrite /link_auth_e /link_frag_e. iIntros "Ha".
     iMod (own_update _ _ ({[ z := ● a' ⋅ ◯ b' ]} : linkUR) with "Ha") as "H".
     { apply singleton_update. apply auth_update_alloc. exact Hlu. }
@@ -431,7 +431,7 @@ Section IcacheLink.
     (a, b) ~l~> (a', b') ->
     link_auth_e z a -∗ link_frag_e z b ==∗
     link_auth_e z a' ∗ link_frag_e z b'.
-  Proof.
+  Proof using .
     intros Hlu. rewrite /link_auth_e /link_frag_e. iIntros "Ha Hb".
     iDestruct (own_op with "[$Ha $Hb]") as "H".
     rewrite singleton_op.
@@ -448,7 +448,7 @@ Section IcacheLink.
     link_auth z None r f rc ==∗
     link_auth z (Some (Excl ((ty, (t, qt)) : ctyval))) r f rc
     ∗ iclaim z ty t qt.
-  Proof.
+  Proof using .
     rewrite /link_auth /iclaim. iIntros "Ha".
     iApply (link_update_alloc with "Ha").
     apply lelemc_local_update; try apply link_lu_id.
@@ -460,7 +460,7 @@ Section IcacheLink.
       (ty : bv 16) (t : nat) (qt : Qp) :
     link_auth z c r f rc -∗ iclaim z ty t qt ==∗
     link_auth z None r f rc.
-  Proof.
+  Proof using .
     rewrite /link_auth /iclaim. iIntros "Ha Hb".
     iDestruct (link_claim_agree with "Ha Hb") as %->.
     iMod (link_update _ _ _ (lelemc None r f rc)
@@ -475,7 +475,7 @@ Section IcacheLink.
   Lemma link_mint_ref (z : Z) (c : ctyUR) (r : nat) (f : frzUR) (rc : nat) :
     link_auth z c r f rc ==∗
     link_auth z c (S r) f rc ∗ runit_plain z.
-  Proof.
+  Proof using .
     rewrite /link_auth /runit_plain. iIntros "Ha".
     iApply (link_update_alloc with "Ha").
     apply lelemc_local_update; try apply link_lu_id.
@@ -485,7 +485,7 @@ Section IcacheLink.
   Lemma link_spend_ref (z : Z) (c : ctyUR) (r : nat) (f : frzUR) (rc : nat) :
     link_auth z c (S r) f rc -∗ runit_plain z ==∗
     link_auth z c r f rc.
-  Proof.
+  Proof using .
     rewrite /link_auth /runit_plain. iIntros "Ha Hb".
     iMod (link_update _ _ _ (lelemc c r f rc)
             (lelem None 0)
@@ -499,7 +499,7 @@ Section IcacheLink.
   Lemma link_mint_refc (z : Z) (c : ctyUR) (r : nat) (f : frzUR) (rc : nat) :
     link_auth z c r f rc ==∗
     link_auth z c r f (S rc) ∗ runit_claim z.
-  Proof.
+  Proof using .
     rewrite /link_auth /runit_claim. iIntros "Ha".
     iApply (link_update_alloc with "Ha").
     apply lelemc_local_update; try apply link_lu_id.
@@ -509,7 +509,7 @@ Section IcacheLink.
   Lemma link_spend_refc (z : Z) (c : ctyUR) (r : nat) (f : frzUR) (rc : nat) :
     link_auth z c r f (S rc) -∗ runit_claim z ==∗
     link_auth z c r f rc.
-  Proof.
+  Proof using .
     rewrite /link_auth /runit_claim. iIntros "Ha Hb".
     iMod (link_update _ _ _ (lelemc c r f rc)
             (lelem None 0)
@@ -526,7 +526,7 @@ Section IcacheLink.
       (f : frzUR) (rc : nat) :
     link_auth z c r f rc ==∗
     link_auth z c (rup b r) f (rcup b rc) ∗ runit b z.
-  Proof.
+  Proof using .
     rewrite /runit /rup /rcup. destruct b.
     - iApply link_mint_refc.
     - iApply link_mint_ref.
@@ -536,7 +536,7 @@ Section IcacheLink.
       (f : frzUR) (rc : nat) :
     link_auth z c (rup b r) f (rcup b rc) -∗ runit b z ==∗
     link_auth z c r f rc.
-  Proof.
+  Proof using .
     rewrite /runit /rup /rcup. destruct b.
     - iApply link_spend_refc.
     - iApply link_spend_ref.
@@ -557,7 +557,7 @@ Section IcacheLink.
       (ph ph' : frz) (rc : nat) :
     link_auth z c r (Some (Excl ph)) rc -∗ ifreeze ph z ==∗
     link_auth z c r (Some (Excl ph')) rc ∗ ifreeze ph' z.
-  Proof.
+  Proof using .
     rewrite /link_auth /ifreeze. iIntros "Ha Hb".
     iApply (link_update with "Ha Hb").
     rewrite /lelemf /lelemc /lelem0.
@@ -584,15 +584,15 @@ Section IcacheLink.
   Definition icnt_half (z : Z) (n : nat) : iProp Σ := icnt_at z (1/2) n.
 
   Global Instance icnt_at_timeless z q n : Timeless (icnt_at z q n).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance icnt_half_timeless z n : Timeless (icnt_half z n).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* AGREEMENT NEEDS NO OPEN AT ALL: 1/2 + 1/2 <= 1 and the agree component
      collapses the values. *)
   Lemma icnt_agree (z : Z) (n1 n2 : nat) :
     icnt_half z n1 -∗ icnt_half z n2 -∗ ⌜n1 = n2⌝.
-  Proof.
+  Proof using .
     rewrite /icnt_half /icnt_at. iIntros "H1 H2".
     iDestruct (own_valid_2 with "H1 H2") as %Hv.
     rewrite singleton_op singleton_valid in Hv.
@@ -604,7 +604,7 @@ Section IcacheLink.
      reach the region's half. *)
   Lemma icnt_update (z : Z) (n m : nat) :
     icnt_half z n -∗ icnt_half z n ==∗ icnt_half z m ∗ icnt_half z m.
-  Proof.
+  Proof using .
     rewrite /icnt_half /icnt_at. iIntros "H1 H2".
     iMod (own_update_2 _ _ _
             (({[ z := to_frac_agree (1/2) (m : leibnizO nat) ]} : icntUR)
@@ -621,7 +621,7 @@ Section IcacheLink.
 
   Lemma icnt_split (z : Z) (n : nat) :
     icnt_full z n ⊣⊢ icnt_half z n ∗ icnt_half z n.
-  Proof.
+  Proof using .
     rewrite /icnt_full /icnt_half /icnt_at -own_op singleton_op.
     by rewrite -frac_agree_op Qp.half_half.
   Qed.
@@ -647,9 +647,9 @@ Section IcacheLink.
   Definition frzm_h (z : Z) (b : bool) : iProp Σ := frzm_at z (1/2) b.
 
   Global Instance frzm_at_timeless z q b : Timeless (frzm_at z q b).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance frzm_half_timeless z b : Timeless (frzm_h z b).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* AGREEMENT NEEDS NO OPEN AT ALL ([icnt_agree]'s line).  This is the
      BRANCH DECIDER: at the mint the freezer's own [false] half refutes the
@@ -657,7 +657,7 @@ Section IcacheLink.
      [false]. *)
   Lemma frzm_agree (z : Z) (b1 b2 : bool) :
     frzm_h z b1 -∗ frzm_h z b2 -∗ ⌜b1 = b2⌝.
-  Proof.
+  Proof using .
     rewrite /frzm_h /frzm_at. iIntros "H1 H2".
     iDestruct (own_valid_2 with "H1 H2") as %Hv.
     rewrite singleton_op singleton_valid in Hv.
@@ -671,7 +671,7 @@ Section IcacheLink.
      sites in the tree where both are true. *)
   Lemma frzm_update (z : Z) (b b' : bool) :
     frzm_h z b -∗ frzm_h z b ==∗ frzm_h z b' ∗ frzm_h z b'.
-  Proof.
+  Proof using .
     rewrite /frzm_h /frzm_at. iIntros "H1 H2".
     iMod (own_update_2 _ _ _
             (({[ z := to_frac_agree (1/2) (b' : leibnizO bool) ]} : frzmUR)
@@ -685,7 +685,7 @@ Section IcacheLink.
 
   Lemma frzm_split (z : Z) (b : bool) :
     frzm_full z b ⊣⊢ frzm_h z b ∗ frzm_h z b.
-  Proof.
+  Proof using .
     rewrite /frzm_full /frzm_h /frzm_at -own_op singleton_op.
     by rewrite -frac_agree_op Qp.half_half.
   Qed.
@@ -716,16 +716,16 @@ Section IcacheLink.
     hpn_at k (1/2) o.
 
   Global Instance hpn_at_timeless k q o : Timeless (hpn_at k q o).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance hpn_half_timeless k o : Timeless (hpn_h k o).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* AGREEMENT NEEDS NO OPEN AT ALL ([frzm_agree]'s line).  This is the
      RE-IDENTIFICATION: the walk's half against the arm's half says the
      [(t, q)] coming back out of the window is the one that went in. *)
   Lemma hpn_agree (k : nat) (o1 o2 : option (nat * Qp)) :
     hpn_h k o1 -∗ hpn_h k o2 -∗ ⌜o1 = o2⌝.
-  Proof.
+  Proof using .
     rewrite /hpn_h /hpn_at. iIntros "H1 H2".
     iDestruct (own_valid_2 with "H1 H2") as %Hv.
     rewrite singleton_op singleton_valid in Hv.
@@ -737,25 +737,25 @@ Section IcacheLink.
     hpn_at k 1 o.
 
   Global Instance hpn_full_timeless k o : Timeless (hpn_full k o).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma hpn_split (k : nat) (o : option (nat * Qp)) :
     hpn_full k o ⊣⊢ hpn_h k o ∗ hpn_h k o.
-  Proof.
+  Proof using .
     rewrite /hpn_full /hpn_h /hpn_at -own_op singleton_op.
     by rewrite -frac_agree_op Qp.half_half.
   Qed.
 
   Lemma hpn_join (k : nat) (o : option (nat * Qp)) :
     hpn_h k o -∗ hpn_h k o -∗ hpn_full k o.
-  Proof. iIntros "H1 H2". rewrite hpn_split. iFrame. Qed.
+  Proof using . iIntros "H1 H2". rewrite hpn_split. iFrame. Qed.
 
   (* THE ONE MOVER A WINDOW NEEDS: with the WHOLE cell in hand (which is
      what an arm at rest hands out) the value moves freely, and the result
      splits into the arm's half and the walk's. *)
   Lemma hpn_full_update (k : nat) (o o' : option (nat * Qp)) :
     hpn_full k o ==∗ hpn_full k o'.
-  Proof.
+  Proof using .
     rewrite /hpn_full /hpn_at. iIntros "H".
     iApply (own_update with "H").
     apply singleton_update, cmra_update_exclusive. done.
@@ -764,7 +764,7 @@ Section IcacheLink.
   (* the boot map fans out into the fifty pins the escrows start with *)
   Lemma hpn_boot_split :
     own icfg_hpn hpn_boot_map ⊢ [∗ list] k ∈ seq 0 NINODE, hpn_full k None.
-  Proof.
+  Proof using .
     rewrite /hpn_boot_map. iIntros "H".
     iDestruct (big_opL_own_1 with "H") as "H".
     iApply (big_sepL_mono with "H"). intros idx j _. iIntros "H". iExact "H".
@@ -783,7 +783,7 @@ Section IcacheLink.
   Lemma icnt_boot_split (P : gset Z) :
     own icfg_icnt (icnt_boot_map P) ⊢
       [∗ set] z ∈ P, icnt_half z 0%nat ∗ icnt_half z 0%nat.
-  Proof.
+  Proof using .
     rewrite /icnt_boot_map (gset_to_gmap_singletons (A := dfrac_agreeR (leibnizO nat))).
     rewrite big_opS_own_1. iIntros "H".
     iApply (big_sepS_mono with "H"). intros z _.
@@ -797,7 +797,7 @@ Section IcacheLink.
   Lemma frzm_boot_split (P : gset Z) :
     own icfg_frzm (frzm_boot_map P) ⊢
       [∗ set] z ∈ P, frzm_h z false ∗ frzm_h z false.
-  Proof.
+  Proof using .
     rewrite /frzm_boot_map (gset_to_gmap_singletons (A := dfrac_agreeR (leibnizO bool))).
     rewrite big_opS_own_1. iIntros "H".
     iApply (big_sepS_mono with "H"). intros z _.
@@ -815,7 +815,7 @@ Section IcacheLink.
     own icfg_link (link_boot_map P) ⊢
       [∗ set] z ∈ P,
         link_auth z None 0 (Some (Excl FrzOff)) 0 ∗ ifreeze_off z.
-  Proof.
+  Proof using .
     rewrite /link_boot_map (gset_to_gmap_singletons (A := authR linkElemUR)).
     rewrite big_opS_own_1. iIntros "H".
     iApply (big_sepS_mono with "H"). intros z _.
@@ -864,7 +864,7 @@ Section IcacheRefGhost.
   Lemma live_genlo_split k s1 s2 g lo :
     live_genlo k (s1 + s2)%Qp g lo ⊣⊢
     live_genlo k s1 g lo ∗ live_genlo k s2 g lo.
-  Proof.
+  Proof using .
     rewrite /live_genlo -own_op singleton_op -pair_op.
     by rewrite (frac_op s1 s2) agree_idemp.
   Qed.
@@ -874,7 +874,7 @@ Section IcacheRefGhost.
   Lemma live_genlo_agree k s1 g1 lo1 s2 g2 lo2 :
     live_genlo k s1 g1 lo1 -∗ live_genlo k s2 g2 lo2 -∗
     ⌜g1 = g2 /\ lo1 = lo2⌝.
-  Proof.
+  Proof using .
     iIntros "H1 H2".
     iDestruct (own_valid_2 with "H1 H2") as %Hv.
     iPureIntro. specialize (Hv k).
@@ -887,16 +887,16 @@ Section IcacheRefGhost.
   Lemma live_genlo_join k s1 s2 g lo :
     live_genlo k s1 g lo -∗ live_genlo k s2 g lo -∗
     live_genlo k (s1 + s2)%Qp g lo.
-  Proof. iIntros "H1 H2". rewrite live_genlo_split. iFrame. Qed.
+  Proof using . iIntros "H1 H2". rewrite live_genlo_split. iFrame. Qed.
 
   Lemma live_genlo_halve k q g lo :
     live_genlo k q g lo -∗
     live_genlo k (q/2)%Qp g lo ∗ live_genlo k (q/2)%Qp g lo.
-  Proof. iIntros "H". rewrite -live_genlo_split Qp.div_2. iFrame. Qed.
+  Proof using . iIntros "H". rewrite -live_genlo_split Qp.div_2. iFrame. Qed.
 
   Lemma live_gen_split k s1 s2 g :
     live_gen k (s1 + s2)%Qp g ⊣⊢ live_gen k s1 g ∗ live_gen k s2 g.
-  Proof.
+  Proof using .
     rewrite /live_gen. iSplit.
     - iIntros "[%lo H]". rewrite live_genlo_split.
       iDestruct "H" as "[H1 H2]". iSplitL "H1"; by iExists lo.
@@ -907,18 +907,18 @@ Section IcacheRefGhost.
 
   Lemma live_gen_agree k s1 g1 s2 g2 :
     live_gen k s1 g1 -∗ live_gen k s2 g2 -∗ ⌜g1 = g2⌝.
-  Proof.
+  Proof using .
     iIntros "[%lo1 H1] [%lo2 H2]".
     iDestruct (live_genlo_agree with "H1 H2") as %[<- _]. done.
   Qed.
 
   Lemma live_gen_join k s1 s2 g :
     live_gen k s1 g -∗ live_gen k s2 g -∗ live_gen k (s1 + s2)%Qp g.
-  Proof. iIntros "H1 H2". rewrite live_gen_split. iFrame. Qed.
+  Proof using . iIntros "H1 H2". rewrite live_gen_split. iFrame. Qed.
 
   Lemma live_frac_split k s1 s2 :
     live_frac k (s1 + s2)%Qp ⊣⊢ live_frac k s1 ∗ live_frac k s2.
-  Proof.
+  Proof using .
     rewrite /live_frac. iSplit.
     - iIntros "[%g H]". rewrite live_gen_split.
       iDestruct "H" as "[H1 H2]". iSplitL "H1"; by iExists g.
@@ -929,22 +929,22 @@ Section IcacheRefGhost.
 
   Lemma live_frac_join k s1 s2 :
     live_frac k s1 -∗ live_frac k s2 -∗ live_frac k (s1 + s2)%Qp.
-  Proof. iIntros "H1 H2". rewrite live_frac_split. iFrame. Qed.
+  Proof using . iIntros "H1 H2". rewrite live_frac_split. iFrame. Qed.
 
   (* halving, as its OWN lemma -- durable-notes' [rewrite -(Qp.div_2 q)]
      trap: written at a call site inside the proofmode the split's evar
      lands out of [q]'s scope and fails with "cannot instantiate ?b". *)
   Lemma live_frac_halve k q :
     live_frac k q -∗ live_frac k (q/2)%Qp ∗ live_frac k (q/2)%Qp.
-  Proof. iIntros "H". rewrite -live_frac_split Qp.div_2. iFrame. Qed.
+  Proof using . iIntros "H". rewrite -live_frac_split Qp.div_2. iFrame. Qed.
 
   Lemma live_gen_halve k q g :
     live_gen k q g -∗ live_gen k (q/2)%Qp g ∗ live_gen k (q/2)%Qp g.
-  Proof. iIntros "H". rewrite -live_gen_split Qp.div_2. iFrame. Qed.
+  Proof using . iIntros "H". rewrite -live_gen_split Qp.div_2. iFrame. Qed.
 
   Lemma live_genlo_bound k s1 g1 lo1 s2 g2 lo2 :
     live_genlo k s1 g1 lo1 -∗ live_genlo k s2 g2 lo2 -∗ ⌜(s1 + s2 ≤ 1)%Qp⌝.
-  Proof.
+  Proof using .
     iIntros "H1 H2".
     iDestruct (own_valid_2 with "H1 H2") as %Hv.
     iPureIntro. specialize (Hv k).
@@ -955,14 +955,14 @@ Section IcacheRefGhost.
 
   Lemma live_gen_bound k s1 g1 s2 g2 :
     live_gen k s1 g1 -∗ live_gen k s2 g2 -∗ ⌜(s1 + s2 ≤ 1)%Qp⌝.
-  Proof.
+  Proof using .
     iIntros "[%lo1 H1] [%lo2 H2]".
     iApply (live_genlo_bound with "H1 H2").
   Qed.
 
   Lemma live_frac_bound k s1 s2 :
     live_frac k s1 -∗ live_frac k s2 -∗ ⌜(s1 + s2 ≤ 1)%Qp⌝.
-  Proof.
+  Proof using .
     iIntros "[%g1 H1] [%g2 H2]".
     iApply (live_gen_bound with "H1 H2").
   Qed.
@@ -970,7 +970,7 @@ Section IcacheRefGhost.
   (* THE POOL'S WHOLE POINT, in one line: a slot whose unit is entire has no
      share outstanding, so any slice at all contradicts it. *)
   Lemma live_frac_full_excl k s : live_frac k 1%Qp -∗ live_frac k s -∗ False.
-  Proof.
+  Proof using .
     iIntros "H1 H2".
     iDestruct (live_frac_bound with "H1 H2") as %Hle. iPureIntro.
     apply (irreflexivity Qp.lt 1%Qp).
@@ -992,7 +992,7 @@ Section IcacheRefGhost.
   Lemma live_genlo_bump k (g : gname) (lo lo' : nat) :
     live_genlo k 1%Qp g lo ==∗
     ∃ g' : gname, live_genlo k 1%Qp g' lo' ∗ ity_pending g'.
-  Proof.
+  Proof using .
     iIntros "H".
     iMod (own_alloc (Cinl (Excl ()) : ityR)) as (g') "Hp"; [done|].
     rewrite /live_genlo.
@@ -1007,7 +1007,7 @@ Section IcacheRefGhost.
 
   Lemma live_gen_bump k (g : gname) :
     live_gen k 1%Qp g ==∗ ∃ g' : gname, live_gen k 1%Qp g' ∗ ity_pending g'.
-  Proof.
+  Proof using .
     iIntros "[%lo H]".
     iMod (live_genlo_bump k g lo 0%nat with "H") as (g') "[H Hp]".
     iModIntro. iExists g'. iFrame "Hp". by iExists 0%nat.
@@ -1015,7 +1015,7 @@ Section IcacheRefGhost.
 
   Lemma live_frac_bump k :
     live_frac k 1%Qp ==∗ ∃ g' : gname, live_gen k 1%Qp g' ∗ ity_pending g'.
-  Proof. iIntros "[%g H]". iApply (live_gen_bump with "H"). Qed.
+  Proof using . iIntros "[%g H]". iApply (live_gen_bump with "H"). Qed.
 
   (* A6.145 INTERIM: the ZERO-EPOCH slice -- what the POOL's arms hold
      until the cutover arms real epochs.  [lo] pinned 0 makes every floor
@@ -1028,11 +1028,11 @@ Section IcacheRefGhost.
     (∃ g : gname, live_genlo k s g 0%nat)%I.
 
   Lemma live_frac0_frac k s : live_frac0 k s -∗ live_frac k s.
-  Proof. iIntros "[%g H]". iExists g, 0%nat. iFrame "H". Qed.
+  Proof using . iIntros "[%g H]". iExists g, 0%nat. iFrame "H". Qed.
 
   Lemma live_frac0_split k s1 s2 :
     live_frac0 k (s1 + s2)%Qp ⊣⊢ live_frac0 k s1 ∗ live_frac0 k s2.
-  Proof.
+  Proof using .
     iSplit.
     - iIntros "[%g H]". rewrite live_genlo_split.
       iDestruct "H" as "[H1 H2]". iSplitL "H1"; by iExists g.
@@ -1043,13 +1043,13 @@ Section IcacheRefGhost.
 
   Lemma live_frac0_join k s1 s2 :
     live_frac0 k s1 -∗ live_frac0 k s2 -∗ live_frac0 k (s1 + s2)%Qp.
-  Proof. iIntros "H1 H2". rewrite live_frac0_split. iFrame. Qed.
+  Proof using . iIntros "H1 H2". rewrite live_frac0_split. iFrame. Qed.
 
   (* a zero-epoch residual ABSORBS any slice: agreement pins the slice's
      epoch to 0, and the join stays zero-epoch *)
   Lemma live_frac0_absorb k c q :
     live_frac0 k c -∗ live_frac k q -∗ live_frac0 k (c + q)%Qp.
-  Proof.
+  Proof using .
     iIntros "[%g0 H0] [%g [%lo H]]".
     iDestruct (live_genlo_agree with "H0 H") as %[<- <-].
     iExists g0. iApply (live_genlo_join with "H0 H").
@@ -1059,14 +1059,14 @@ Section IcacheRefGhost.
   Lemma live_frac0_pin k c s g lo :
     live_frac0 k c -∗ live_genlo k s g lo -∗
     ⌜lo = 0%nat⌝ ∗ live_frac0 k c ∗ live_genlo k s g lo.
-  Proof.
+  Proof using .
     iIntros "[%g0 H0] H".
     iDestruct (live_genlo_agree with "H0 H") as %[<- <-].
     iSplitR; [by iPureIntro|]. iSplitL "H0"; [by iExists g0 | iFrame "H"].
   Qed.
 
   Lemma live_frac0_full_excl k s : live_frac0 k 1%Qp -∗ live_frac0 k s -∗ False.
-  Proof.
+  Proof using .
     iIntros "[%g1 H1] [%g2 H2]".
     iDestruct (live_genlo_bound with "H1 H2") as %Hb.
     iPureIntro.
@@ -1077,7 +1077,7 @@ Section IcacheRefGhost.
 
   Lemma live_frac0_full_excl_frac k s :
     live_frac0 k 1%Qp -∗ live_frac k s -∗ False.
-  Proof.
+  Proof using .
     iIntros "[%g1 H1] [%g2 [%lo2 H2]]".
     iDestruct (live_genlo_bound with "H1 H2") as %Hb.
     iPureIntro.
@@ -1087,13 +1087,13 @@ Section IcacheRefGhost.
   Qed.
 
   Global Instance live_frac0_timeless k s : Timeless (live_frac0 k s).
-  Proof. rewrite /live_frac0 /live_genlo. apply _. Qed.
+  Proof using . rewrite /live_frac0 /live_genlo. apply _. Qed.
 
   (* the recycle at the zero epoch (interim: the cutover's bump supplies
      the real arm position instead) *)
   Lemma live_frac0_bump k :
     live_frac0 k 1%Qp ==∗ ∃ g' : gname, live_genlo k 1%Qp g' 0%nat ∗ ity_pending g'.
-  Proof.
+  Proof using .
     iIntros "[%g H]". iApply (live_genlo_bump k g 0%nat 0%nat with "H").
   Qed.
 
@@ -1101,7 +1101,7 @@ Section IcacheRefGhost.
   Lemma live_boot_split (g : gname) :
     own icfg_live (live_boot_map g)
       ⊢ [∗ list] k ∈ seq 0 (NINODE + NINODE), live_frac0 k 1%Qp.
-  Proof.
+  Proof using .
     rewrite /live_boot_map.
     iIntros "H".
     iDestruct (big_opL_own_1 with "H") as "H".
@@ -1140,11 +1140,11 @@ Section IcacheRefGhost.
     live_genlo (NINODE + k)%nat q (frzname b) 0%nat.
 
   Global Instance frzsel_timeless k q b : Timeless (frzsel k q b).
-  Proof. rewrite /frzsel /live_genlo. apply _. Qed.
+  Proof using . rewrite /frzsel /live_genlo. apply _. Qed.
 
   Lemma frzsel_agree k q1 b1 q2 b2 :
     frzsel k q1 b1 -∗ frzsel k q2 b2 -∗ ⌜b1 = b2⌝.
-  Proof.
+  Proof using .
     iIntros "H1 H2". rewrite /frzsel.
     iDestruct (live_genlo_agree with "H1 H2") as %[Heq _].
     iPureIntro. rewrite /frzname in Heq.
@@ -1153,15 +1153,15 @@ Section IcacheRefGhost.
 
   Lemma frzsel_split k q1 q2 b :
     frzsel k (q1 + q2)%Qp b ⊣⊢ frzsel k q1 b ∗ frzsel k q2 b.
-  Proof. rewrite /frzsel. apply live_genlo_split. Qed.
+  Proof using . rewrite /frzsel. apply live_genlo_split. Qed.
 
   Lemma frzsel_join k q1 q2 b :
     frzsel k q1 b -∗ frzsel k q2 b -∗ frzsel k (q1 + q2)%Qp b.
-  Proof. iIntros "H1 H2". rewrite frzsel_split. iFrame. Qed.
+  Proof using . iIntros "H1 H2". rewrite frzsel_split. iFrame. Qed.
 
   Lemma frzsel_halve k q b :
     frzsel k q b -∗ frzsel k (q/2)%Qp b ∗ frzsel k (q/2)%Qp b.
-  Proof. iIntros "H". rewrite -frzsel_split Qp.div_2. iFrame. Qed.
+  Proof using . iIntros "H". rewrite -frzsel_split Qp.div_2. iFrame. Qed.
 
   (* the two quarters the frozen span keeps apart -- one in [frz_park]'s ON
      arm (the itable-lock side), one in the escrow's frozen tail -- rejoined
@@ -1169,7 +1169,7 @@ Section IcacheRefGhost.
      [Qp.div_2] and no [Qp] numeral arithmetic is ever needed. *)
   Lemma frzsel_quarters k b :
     frzsel k ((1/2)/2)%Qp b -∗ frzsel k ((1/2)/2)%Qp b -∗ frzsel k (1/2)%Qp b.
-  Proof.
+  Proof using .
     iIntros "H1 H2". iDestruct (frzsel_join with "H1 H2") as "H".
     by iEval (rewrite Qp.div_2) in "H".
   Qed.
@@ -1178,7 +1178,7 @@ Section IcacheRefGhost.
      two-endpoint discipline: the mint must gather the arm's ½ and the
      park's ½, and the retirement the arm's ½ and the two quarters. *)
   Lemma frzsel_flip k b b' : frzsel k 1%Qp b ==∗ frzsel k 1%Qp b'.
-  Proof.
+  Proof using .
     rewrite /frzsel /live_genlo. iIntros "H".
     iMod (own_update _ _
             ({[ (NINODE + k)%nat
@@ -1195,7 +1195,7 @@ Section IcacheRefGhost.
      arm ([IcacheInv.live_pool_empty]). *)
   Lemma frzsel_boot (k : nat) :
     live_frac (NINODE + k)%nat 1%Qp ==∗ frzsel k 1%Qp false.
-  Proof.
+  Proof using .
     rewrite /frzsel /live_frac /live_gen /live_genlo.
     iIntros "[%g [%lo H]]".
     iMod (own_update _ _
@@ -1210,7 +1210,7 @@ Section IcacheRefGhost.
 
   Lemma frzsel_boot0 (k : nat) :
     live_frac0 (NINODE + k)%nat 1%Qp ==∗ frzsel k 1%Qp false.
-  Proof.
+  Proof using .
     iIntros "H". iApply frzsel_boot.
     by iApply live_frac0_frac.
   Qed.
@@ -1254,21 +1254,21 @@ Section IcacheRefGhost.
     (iref_frag k q ∗ live_frac0 k q ∗ slh_tok (icfg_isl k) q)%I.
 
   Lemma iref_tok0_tok k q : iref_tok0 k q -∗ iref_tok k q.
-  Proof.
+  Proof using .
     iIntros "(Hf & Hl & Hs)". iFrame "Hf Hs". by iApply live_frac0_frac.
   Qed.
 
   Global Instance iref_tok0_timeless k q : Timeless (iref_tok0 k q).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Global Instance itable_half_timeless M : Timeless (itable_half M).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance live_frac_timeless k s : Timeless (live_frac k s).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance iref_frag_timeless k q : Timeless (iref_frag k q).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance iref_tok_timeless k q : Timeless (iref_tok k q).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
 End IcacheRefGhost.
 
@@ -1291,7 +1291,7 @@ Section IcacheRef.
 
   Lemma inode_ident_agree k dq1 d1 n1 dq2 d2 n2 :
     inode_ident k dq1 d1 n1 -∗ inode_ident k dq2 d2 n2 -∗ ⌜d1 = d2 /\ n1 = n2⌝.
-  Proof.
+  Proof using .
     iIntros "[Hd1 Hn1] [Hd2 Hn2]".
     iDestruct (ctx_word4_pointsto_agree with "Hd1 Hd2") as %->.
     iDestruct (ctx_word4_pointsto_agree with "Hn1 Hn2") as %->.
@@ -1306,12 +1306,12 @@ Section IcacheRef.
      matches the goal only. *)
   Local Lemma word4_frac_join (a : Arch.pa) (q1 q2 : Qp) (w : bv 32) :
     a ↦₄{DfracOwn q1} w -∗ a ↦₄{DfracOwn q2} w -∗ a ↦₄{DfracOwn (q1 + q2)} w.
-  Proof. iIntros "H1 H2". rewrite ctx_word4_pointsto_frac_split. iFrame. Qed.
+  Proof using . iIntros "H1 H2". rewrite ctx_word4_pointsto_frac_split. iFrame. Qed.
 
   Lemma inode_ident_split k q1 q2 dev inum :
     inode_ident k (DfracOwn (q1 + q2)) dev inum ⊣⊢
     inode_ident k (DfracOwn q1) dev inum ∗ inode_ident k (DfracOwn q2) dev inum.
-  Proof.
+  Proof using .
     rewrite /inode_ident !ctx_word4_pointsto_frac_split.
     iSplit; [iIntros "[[$ $] [$ $]]" | iIntros "[[$ $] [$ $]]"].
   Qed.
@@ -1320,12 +1320,12 @@ Section IcacheRef.
     inode_ident k (DfracOwn q) dev inum -∗
     inode_ident k (DfracOwn (q/2)) dev inum ∗
     inode_ident k (DfracOwn (q/2)) dev inum.
-  Proof. iIntros "H". rewrite -inode_ident_split Qp.div_2. iFrame. Qed.
+  Proof using . iIntros "H". rewrite -inode_ident_split Qp.div_2. iFrame. Qed.
 
   Lemma slh_tok_halve_i k q :
     slh_tok (icfg_isl k) q -∗
     slh_tok (icfg_isl k) (q/2)%Qp ∗ slh_tok (icfg_isl k) (q/2)%Qp.
-  Proof. iIntros "H". rewrite -slh_tok_split Qp.div_2. iFrame. Qed.
+  Proof using . iIntros "H". rewrite -slh_tok_split Qp.div_2. iFrame. Qed.
 
   (* HOLDING ONE REFERENCE to itable slot [k].  Note it needs no inode
      POINTER argument beyond the slot, because [ientry] determines the
@@ -1352,20 +1352,20 @@ Section IcacheRef.
      ∃ a : Arch.pa, TsoCtx.ctx_wrote CtxIdDefs.cur_ctx lo a)%I.
 
   Global Instance cred_floor_persistent lo tl : Persistent (cred_floor lo tl).
-  Proof. rewrite /cred_floor. apply _. Qed.
+  Proof using . rewrite /cred_floor. apply _. Qed.
   Global Instance cred_floor_timeless lo tl : Timeless (cred_floor lo tl).
-  Proof. rewrite /cred_floor. apply _. Qed.
+  Proof using . rewrite /cred_floor. apply _. Qed.
 
   Lemma cred_floor_of_ctx (lo tl : nat) :
     TsoCtx.ctx_floor CtxIdDefs.cur_ctx tl -∗ cred_floor lo tl.
-  Proof. iIntros "H". by iLeft. Qed.
+  Proof using . iIntros "H". by iLeft. Qed.
 
   Lemma cred_floor_of_wrote (lo tl : nat) (a : Arch.pa) :
     TsoCtx.ctx_wrote CtxIdDefs.cur_ctx lo a -∗ cred_floor lo tl.
-  Proof. iIntros "H". iRight. by iExists a. Qed.
+  Proof using . iIntros "H". iRight. by iExists a. Qed.
 
   Lemma cred_floor_0 : ⊢ cred_floor 0 0.
-  Proof. iApply cred_floor_of_ctx. iApply TsoCtx.ctx_floor_0. Qed.
+  Proof using . iApply cred_floor_of_ctx. iApply TsoCtx.ctx_floor_0. Qed.
 
   Definition live_fracc (k : nat) (s : Qp) : iProp Σ :=
     (∃ (g : gname) (lo tl : nat),
@@ -1373,13 +1373,13 @@ Section IcacheRef.
        cred_floor lo tl)%I.
 
   Lemma live_fracc_frac k s : live_fracc k s -∗ live_frac k s.
-  Proof.
+  Proof using .
     iIntros "(%g & %lo & %tl & H & _ & _)". iExists g, lo. iFrame "H".
   Qed.
 
   Lemma live_fracc_split k s1 s2 :
     live_fracc k (s1 + s2)%Qp ⊣⊢ live_fracc k s1 ∗ live_fracc k s2.
-  Proof.
+  Proof using .
     iSplit.
     - iIntros "(%g & %lo & %tl & H & %Hle & #Hfl)".
       rewrite live_genlo_split. iDestruct "H" as "[H1 H2]".
@@ -1394,17 +1394,17 @@ Section IcacheRef.
 
   Lemma live_fracc_join k s1 s2 :
     live_fracc k s1 -∗ live_fracc k s2 -∗ live_fracc k (s1 + s2)%Qp.
-  Proof. iIntros "H1 H2". rewrite live_fracc_split. iFrame. Qed.
+  Proof using . iIntros "H1 H2". rewrite live_fracc_split. iFrame. Qed.
 
   Lemma live_fracc_halve k q :
     live_fracc k q -∗ live_fracc k (q/2)%Qp ∗ live_fracc k (q/2)%Qp.
-  Proof. iIntros "H". rewrite -live_fracc_split Qp.div_2. iFrame. Qed.
+  Proof using . iIntros "H". rewrite -live_fracc_split Qp.div_2. iFrame. Qed.
 
   Global Instance live_fracc_timeless k s : Timeless (live_fracc k s).
-  Proof. rewrite /live_fracc /live_genlo. apply _. Qed.
+  Proof using . rewrite /live_fracc /live_genlo. apply _. Qed.
 
   Lemma live_frac0_fracc k s : live_frac0 k s -∗ live_fracc k s.
-  Proof.
+  Proof using .
     iIntros "[%g H]". iExists g, 0%nat, 0%nat. iFrame "H".
     iSplitR; [by iPureIntro | iApply cred_floor_0].
   Qed.
@@ -1435,20 +1435,20 @@ Section IcacheRef.
     ic_stamps k (Some (dev, inum)) (1 + Qp_to_Qc qi - Qp_to_Qc qt)%Qc.
 
   Global Instance ic_stamps_timeless k i μ : Timeless (ic_stamps k i μ).
-  Proof.
+  Proof using .
     rewrite /ic_stamps. apply bi.exist_timeless => m.
     rewrite /CtxBox.reference /CtxBox.stamps_frag. apply _.
   Qed.
   Global Instance ic_ref_stamps_at_timeless k i μ : Timeless (ic_ref_stamps_at k i μ).
-  Proof. rewrite /ic_ref_stamps_at. apply _. Qed.
+  Proof using . rewrite /ic_ref_stamps_at. apply _. Qed.
   Global Instance ic_ref_stamps_timeless k dev inum μ : Timeless (ic_ref_stamps k dev inum μ).
-  Proof. rewrite /ic_ref_stamps. apply _. Qed.
+  Proof using . rewrite /ic_ref_stamps. apply _. Qed.
   Global Instance ic_lent_stamps_timeless k qt qi dev inum : Timeless (ic_lent_stamps k qt qi dev inum).
-  Proof. rewrite /ic_lent_stamps. apply _. Qed.
+  Proof using . rewrite /ic_lent_stamps. apply _. Qed.
 
   Lemma ic_stamps_join k i μ1 μ2 :
     ic_stamps k i μ1 -∗ ic_stamps k i μ2 -∗ ic_stamps k i (μ1 + μ2)%Qc.
-  Proof.
+  Proof using .
     iIntros "(%m1 & %H1 & Hr1) (%m2 & %H2 & Hr2)".
     iExists (m1 ⋅ m2). iSplitR; [iPureIntro; rewrite qsum_op H1 H2; reflexivity |].
     iApply (reference_join with "Hr1 Hr2").
@@ -1457,7 +1457,7 @@ Section IcacheRef.
     (s + s')%Qp = 1%Qp ->
     ic_stamps k i μ -∗
     ic_stamps k i (μ * Qp_to_Qc s)%Qc ∗ ic_stamps k i (μ * Qp_to_Qc s')%Qc.
-  Proof.
+  Proof using .
     iIntros (Hss) "(%m & %Hm & Hr)".
     iDestruct (reference_split _ _ m s s' Hss with "Hr") as "[Hr1 Hr2]".
     iSplitL "Hr1".
@@ -1466,13 +1466,13 @@ Section IcacheRef.
   Qed.
   Lemma ic_stamps_mass_eq k i μ μ' :
     μ = μ' -> ic_stamps k i μ ⊣⊢ ic_stamps k i μ'.
-  Proof. intros ->. reflexivity. Qed.
+  Proof using . intros ->. reflexivity. Qed.
 
   (* a share's stamps split with its identity fraction *)
   Lemma ic_ref_stamps_split k dev inum (μ1 μ2 : Qp) :
     ic_ref_stamps k dev inum (μ1 + μ2)%Qp ⊣⊢
     ic_ref_stamps k dev inum μ1 ∗ ic_ref_stamps k dev inum μ2.
-  Proof.
+  Proof using .
     rewrite /ic_ref_stamps /ic_ref_stamps_at. iSplit.
     - iIntros "H".
       iDestruct (ic_stamps_split _ _ _ (μ1 / (μ1 + μ2))%Qp (μ2 / (μ1 + μ2))%Qp
@@ -1491,7 +1491,7 @@ Section IcacheRef.
     (q + s ≤ 1)%Qp ->
     ic_ref_stamps k dev inum 1%Qp ⊣⊢
     ic_lent_stamps k (q + s)%Qp q dev inum ∗ ic_ref_stamps k dev inum s.
-  Proof.
+  Proof using .
     intros Hle. rewrite /ic_ref_stamps /ic_ref_stamps_at /ic_lent_stamps.
     assert (Hs1 : (s < 1)%Qp).
     { eapply Qp.lt_le_trans; [| exact Hle]. apply Qp.lt_add_r. }
@@ -1514,19 +1514,19 @@ Section IcacheRef.
   Qed.
   Lemma ic_lent_stamps_canon k q dev inum :
     ic_lent_stamps k q q dev inum ⊣⊢ ic_ref_stamps k dev inum 1%Qp.
-  Proof.
+  Proof using .
     rewrite /ic_lent_stamps /ic_ref_stamps /ic_ref_stamps_at Qp_to_Qc_1.
     apply ic_stamps_mass_eq. ring.
   Qed.
   (* the identity fraction is at most one: the liveness slice says so *)
   Lemma live_genlo_le1 k (s : Qp) g lo : live_genlo k s g lo -∗ ⌜(s ≤ 1)%Qp⌝.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct (own_valid with "H") as %Hv. iPureIntro.
     specialize (Hv k). rewrite lookup_singleton in Hv.
     apply Some_valid, pair_valid in Hv as [Hs _]. exact Hs.
   Qed.
   Lemma live_fracc_le1 k (s : Qp) : live_fracc k s -∗ ⌜(s ≤ 1)%Qp⌝.
-  Proof.
+  Proof using .
     rewrite /live_fracc. iIntros "(%g & %lo & %tl & H & _ & _)".
     iApply (live_genlo_le1 with "H").
   Qed.
@@ -1551,24 +1551,24 @@ Section IcacheRef.
      ⌜qsum m = Qp_to_Qc 1⌝ ∗ CtxBox.reference (X := ic_x) (icfg_box k) (Some (dev, inum)) m)%I.
   Lemma inode_ref_at_elim k q dev inum :
     inode_ref k q dev inum -∗ ∃ m, inode_ref_at k q dev inum m.
-  Proof.
+  Proof using .
     iIntros "(Hf & Hlv & Hs & Hid & Hst)".
     rewrite /ic_ref_stamps /ic_ref_stamps_at /ic_stamps.
     iDestruct "Hst" as (m) "[%Hm Hr]". iExists m. iFrame "Hf Hlv Hs Hid Hr". done.
   Qed.
   Lemma inode_ref_at_intro k q dev inum m :
     inode_ref_at k q dev inum m -∗ inode_ref k q dev inum.
-  Proof.
+  Proof using .
     iIntros "(Hf & Hlv & Hs & Hid & %Hm & Hr)". iFrame "Hf Hlv Hs Hid".
     rewrite /ic_ref_stamps /ic_ref_stamps_at /ic_stamps. iExists m. iFrame "Hr". done.
   Qed.
   Lemma inode_ref_at_llb k q dev inum m :
     inode_ref_at k q dev inum m -∗ TsoGhost.llb loglen_name (max_stamp m).
-  Proof. iIntros "(_ & _ & _ & _ & _ & Hr)". iApply (CtxBox.reference_llb with "Hr"). Qed.
+  Proof using . iIntros "(_ & _ & _ & _ & _ & Hr)". iApply (CtxBox.reference_llb with "Hr"). Qed.
 
   Lemma inode_ref_tok k q dev inum :
     inode_ref k q dev inum -∗ iref_tok k q ∗ inode_ident k (DfracOwn q) dev inum.
-  Proof.
+  Proof using .
     iIntros "(Hf & Hlv & Hs & Hi & _)". iFrame "Hi Hf Hs".
     by iApply live_fracc_frac.
   Qed.
@@ -1577,7 +1577,7 @@ Section IcacheRef.
      fractional cells; no [agree] ghost is needed *)
   Lemma inode_ref_agree k q1 d1 n1 q2 d2 n2 :
     inode_ref k q1 d1 n1 -∗ inode_ref k q2 d2 n2 -∗ ⌜d1 = d2 /\ n1 = n2⌝.
-  Proof.
+  Proof using .
     iIntros "(_ & _ & _ & H1 & _) (_ & _ & _ & H2 & _)".
     iApply (inode_ident_agree with "H1 H2").
   Qed.
@@ -1625,7 +1625,7 @@ Section IcacheRef.
     (inode_ident k (DfracOwn s) dev inum ∗ live_genlo k s g lo)%I.
   Lemma inode_shr_genlo_bare_gen k s dev inum g lo :
     inode_shr_genlo_bare k s dev inum g lo -∗ inode_shr_gen_bare k s dev inum g.
-  Proof. iIntros "[$ H]". by iExists lo. Qed.
+  Proof using . iIntros "[$ H]". by iExists lo. Qed.
   Definition inode_ref_gen_bare (k : nat) (q : Qp) (dev inum : mword 32)
       (g : gname) : iProp Σ :=
     (iref_frag k q ∗ live_gen k q g ∗ inode_ident k (DfracOwn q) dev inum)%I.
@@ -1635,12 +1635,12 @@ Section IcacheRef.
      inode_ident k (DfracOwn q) dev inum)%I.
   Lemma inode_ref_genlo_bare_gen k q dev inum g lo :
     inode_ref_genlo_bare k q dev inum g lo -∗ inode_ref_gen_bare k q dev inum g.
-  Proof. iIntros "($ & H & $)". by iExists lo. Qed.
+  Proof using . iIntros "($ & H & $)". by iExists lo. Qed.
   Lemma inode_shr_gen_bare_split k s dev inum g :
     inode_shr_gen k s dev inum g ⊣⊢
     inode_shr_gen_bare k s dev inum g ∗ slh_tok (icfg_isl k) s ∗
     ic_ref_stamps k dev inum s.
-  Proof.
+  Proof using .
     rewrite /inode_shr_gen /inode_shr_gen_bare.
     iSplit; [iIntros "($ & $ & $ & $)" | iIntros "[[$ $] [$ $]]"].
   Qed.
@@ -1648,13 +1648,13 @@ Section IcacheRef.
     inode_ref_gen k q dev inum g ⊣⊢
     inode_ref_gen_bare k q dev inum g ∗ slh_tok (icfg_isl k) q ∗
     ic_ref_stamps k dev inum 1%Qp.
-  Proof.
+  Proof using .
     rewrite /inode_ref_gen /inode_ref_gen_bare.
     iSplit; [iIntros "($ & $ & $ & $ & $)" | iIntros "[($ & $ & $) [$ $]]"].
   Qed.
   Global Instance inode_shr_gen_bare_timeless k s dev inum g :
     Timeless (inode_shr_gen_bare k s dev inum g).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* A6.145: the LO-EXPOSED forms, for the racy read and the floored
      intro equivalences.  [_genlo] names the epoch floor; the floor-FREE
@@ -1670,12 +1670,12 @@ Section IcacheRef.
      ic_ref_stamps k dev inum 1%Qp)%I.
   Lemma inode_shr_genlo_gen k s dev inum g lo :
     inode_shr_genlo k s dev inum g lo -∗ inode_shr_gen k s dev inum g.
-  Proof.
+  Proof using .
     iIntros "(Hid & Hg & Hs & Hst)". iFrame "Hid Hs Hst". by iExists lo.
   Qed.
   Lemma inode_ref_genlo_gen k q dev inum g lo :
     inode_ref_genlo k q dev inum g lo -∗ inode_ref_gen k q dev inum g.
-  Proof.
+  Proof using .
     iIntros "(Hf & Hg & Hid & Hs & Hst)". iFrame "Hf Hid Hs Hst". by iExists lo.
   Qed.
   (* the bare genlo share plus its two deposits IS the genlo share
@@ -1684,7 +1684,7 @@ Section IcacheRef.
     inode_shr_genlo k s dev inum g lo ⊣⊢
     inode_shr_genlo_bare k s dev inum g lo ∗ slh_tok (icfg_isl k) s ∗
     ic_ref_stamps k dev inum s.
-  Proof.
+  Proof using .
     rewrite /inode_shr_genlo /inode_shr_genlo_bare.
     iSplit; [iIntros "($ & $ & $ & $)" | iIntros "[[$ $] [$ $]]"].
   Qed.
@@ -1692,7 +1692,7 @@ Section IcacheRef.
     inode_ref_genlo k q dev inum g lo ⊣⊢
     inode_ref_genlo_bare k q dev inum g lo ∗ slh_tok (icfg_isl k) q ∗
     ic_ref_stamps k dev inum 1%Qp.
-  Proof.
+  Proof using .
     rewrite /inode_ref_genlo /inode_ref_genlo_bare.
     iSplit; [iIntros "($ & $ & $ & $ & $)" | iIntros "[($ & $ & $) [$ $]]"].
   Qed.
@@ -1704,7 +1704,7 @@ Section IcacheRef.
     ∃ (g : gname) (lo tl : nat),
       ⌜(lo <= tl)%nat⌝ ∗ cred_floor lo tl ∗
       inode_shr_genlo k s dev inum g lo.
-  Proof.
+  Proof using .
     rewrite /inode_shr /inode_shr_genlo /live_fracc.
     iSplit.
     - iIntros "[Hid [(%g & %lo & %tl & Hg & %Hle & #Hfl) [Hs Hst]]]".
@@ -1717,7 +1717,7 @@ Section IcacheRef.
     ∃ (g : gname) (lo tl : nat),
       ⌜(lo <= tl)%nat⌝ ∗ cred_floor lo tl ∗
       inode_ref_genlo k q dev inum g lo.
-  Proof.
+  Proof using .
     rewrite /inode_ref /inode_ref_genlo /live_fracc.
     iSplit.
     - iIntros "(Hf & (%g & %lo & %tl & Hg & %Hle & #Hfl) & Hs & Hid & Hst)".
@@ -1727,10 +1727,10 @@ Section IcacheRef.
   Qed.
   Global Instance inode_shr_gen_timeless k s dev inum g :
     Timeless (inode_shr_gen k s dev inum g).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance inode_ref_gen_timeless k q dev inum g :
     Timeless (inode_ref_gen k q dev inum g).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* A reference WITH A SHARE OUTSTANDING: the count fragment is still whole
      at [qtok] -- carving does not move the authority, and MUST not, since
@@ -1762,7 +1762,7 @@ Section IcacheRef.
     ∃ (g : gname) (lo tl : nat),
       ⌜(lo <= tl)%nat⌝ ∗ cred_floor lo tl ∗
       inode_ref_short_genlo k qt qi dev inum g lo.
-  Proof.
+  Proof using .
     rewrite /inode_ref_short /inode_ref_short_genlo /live_fracc.
     iSplit.
     - iIntros "(Hf & (%g & %lo & %tl & Hg & %Hle & #Hfl) & Hid & Hs & Hst)".
@@ -1773,7 +1773,7 @@ Section IcacheRef.
   Lemma inode_ref_short_genlo_gen k qt qi dev inum g lo :
     inode_ref_short_genlo k qt qi dev inum g lo -∗
     inode_ref_short_gen k qt qi dev inum g.
-  Proof.
+  Proof using .
     iIntros "(Hf & Hg & Hid & Hs & Hst)". iFrame "Hf Hid Hs Hst". by iExists lo.
   Qed.
 
@@ -1783,7 +1783,7 @@ Section IcacheRef.
     (lo <= tl)%nat ->
     cred_floor lo tl -∗
     inode_shr_genlo k s dev inum g lo -∗ inode_shr k s dev inum.
-  Proof.
+  Proof using .
     iIntros (Hle) "#Hfl H". rewrite inode_shr_gen_intro.
     iExists g, lo, tl. iFrame "H Hfl". by iPureIntro.
   Qed.
@@ -1792,7 +1792,7 @@ Section IcacheRef.
     cred_floor lo tl -∗
     inode_ref_short_genlo k qt qi dev inum g lo -∗
     inode_ref_short k qt qi dev inum.
-  Proof.
+  Proof using .
     iIntros (Hle) "#Hfl H". rewrite inode_ref_short_gen_intro.
     iExists g, lo, tl. iFrame "H Hfl". by iPureIntro.
   Qed.
@@ -1801,7 +1801,7 @@ Section IcacheRef.
   Lemma inode_ref_short_shr_gen_agree k qt qi s dev inum d2 n2 g1 g2 :
     inode_ref_short_gen k qt qi dev inum g1 -∗ inode_shr_gen k s d2 n2 g2 -∗
     ⌜g1 = g2⌝.
-  Proof.
+  Proof using .
     iIntros "(_ & H1 & _) (_ & H2 & _)". iApply (live_gen_agree with "H1 H2").
   Qed.
 
@@ -1812,7 +1812,7 @@ Section IcacheRef.
     inode_ref_short_genlo k qt qi d2 n2 gk lo -∗
     inode_shr_gen k s dev inum g -∗
     inode_ref_short_genlo k qt qi d2 n2 gk lo ∗ inode_shr k s dev inum.
-  Proof.
+  Proof using .
     iIntros (Hle) "#Hfl (Hkf & Hklv & Hkid & Hksl & Hkst) (Hid & [%lo2 Hlv] & Hsl & Hst)".
     iDestruct (live_genlo_agree with "Hlv Hklv") as %[<- <-].
     iSplitL "Hkf Hklv Hkid Hksl Hkst"; [by iFrame|].
@@ -1823,7 +1823,7 @@ Section IcacheRef.
       g1 lo1 g2 :
     inode_ref_short_genlo k qt qi dev inum g1 lo1 -∗
     inode_shr_gen k s d2 n2 g2 -∗ ⌜g1 = g2⌝.
-  Proof.
+  Proof using .
     iIntros "(_ & H1 & _) (_ & [%lo2 H2] & _)".
     iDestruct (live_genlo_agree with "H1 H2") as %[<- _]. done.
   Qed.
@@ -1832,7 +1832,7 @@ Section IcacheRef.
     inode_ref_short_genlo k qt qi dev inum g1 lo1 -∗
     inode_shr_genlo k s d2 n2 g2 lo2 -∗
     ⌜g1 = g2 /\ lo1 = lo2⌝.
-  Proof.
+  Proof using .
     iIntros "(_ & H1 & _) (_ & H2 & _)".
     iApply (live_genlo_agree with "H1 H2").
   Qed.
@@ -1840,7 +1840,7 @@ Section IcacheRef.
   Lemma inode_shr_genlo_split k s1 s2 dev inum g lo :
     inode_shr_genlo k (s1 + s2)%Qp dev inum g lo ⊣⊢
     inode_shr_genlo k s1 dev inum g lo ∗ inode_shr_genlo k s2 dev inum g lo.
-  Proof.
+  Proof using .
     rewrite /inode_shr_genlo inode_ident_split live_genlo_split slh_tok_split
             ic_ref_stamps_split.
     iSplit; [iIntros "([$ $] & [$ $] & [$ $] & [$ $])"
@@ -1850,14 +1850,14 @@ Section IcacheRef.
     inode_shr_genlo k s dev inum g lo ⊣⊢
     inode_shr_genlo k (s/2)%Qp dev inum g lo ∗
     inode_shr_genlo k (s/2)%Qp dev inum g lo.
-  Proof. rewrite -inode_shr_genlo_split Qp.div_2. reflexivity. Qed.
+  Proof using . rewrite -inode_shr_genlo_split Qp.div_2. reflexivity. Qed.
 
   (* THE LO-EXPOSED SHED (A6.145) *)
   Lemma inode_ref_genlo_shed k q dev inum g lo :
     inode_ref_genlo k q dev inum g lo ⊣⊢
     inode_ref_short_genlo k (q/2 + q/2)%Qp (q/2)%Qp dev inum g lo ∗
     inode_shr_genlo k (q/2)%Qp dev inum g lo.
-  Proof.
+  Proof using .
     rewrite /inode_ref_genlo /inode_ref_short_genlo /inode_shr_genlo.
     iSplit.
     - iIntros "(Hf & Hl & Hid & Hs & Hst)".
@@ -1890,7 +1890,7 @@ Section IcacheRef.
     inode_shr_gen k s dev inum g -∗
     inode_ref_short_genlo k qt qi d2 n2 gk lo ∗
     inode_shr_genlo k s dev inum gk lo.
-  Proof.
+  Proof using .
     iIntros "(Hf1 & Hl1 & Hid1 & Hs1 & Hst1) (Hid2 & [%lo2 Hl2] & Hs2 & Hst2)".
     iDestruct (live_genlo_agree with "Hl2 Hl1") as %[-> ->].
     iFrame "Hf1 Hl1 Hid1 Hs1 Hst1 Hid2 Hl2 Hs2 Hst2".
@@ -1900,7 +1900,7 @@ Section IcacheRef.
     inode_shr_gen k s2 dev inum g -∗
     inode_shr_genlo k s1 d2 n2 gk lo ∗
     inode_shr_genlo k s2 dev inum gk lo.
-  Proof.
+  Proof using .
     iIntros "(Hid1 & Hl1 & Hs1 & Hst1) (Hid2 & [%lo2 Hl2] & Hs2 & Hst2)".
     iDestruct (live_genlo_agree with "Hl2 Hl1") as %[-> ->].
     iFrame "Hid1 Hl1 Hs1 Hst1 Hid2 Hl2 Hs2 Hst2".
@@ -1911,7 +1911,7 @@ Section IcacheRef.
     inode_ref_short_genlo k (qi + s)%Qp qi dev inum g lo -∗
     inode_shr_genlo k s dev inum g lo -∗
     inode_ref_genlo k (qi + s)%Qp dev inum g lo.
-  Proof.
+  Proof using .
     iIntros "(Hf & Hl1 & Hid1 & Hs1 & Hst1) (Hid2 & Hl2 & Hs2 & Hst2)".
     rewrite /inode_ref_genlo. iFrame "Hf".
     iDestruct (live_genlo_join with "Hl1 Hl2") as "Hl".
@@ -1925,7 +1925,7 @@ Section IcacheRef.
     inode_ref_short_gen k (qi + s)%Qp qi dev inum g -∗
     inode_shr_gen k s dev inum g -∗
     inode_ref_gen k (qi + s)%Qp dev inum g.
-  Proof.
+  Proof using .
     iIntros "(Hf & Hl1 & Hid1 & Hs1 & Hst1) (Hid2 & Hl2 & Hs2 & Hst2)".
     rewrite /inode_ref_gen. iFrame "Hf".
     iDestruct (live_gen_join with "Hl1 Hl2") as "Hl".
@@ -1938,17 +1938,17 @@ Section IcacheRef.
   Qed.
   Global Instance inode_ref_short_gen_timeless k qt qi dev inum g :
     Timeless (inode_ref_short_gen k qt qi dev inum g).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma live_gen_le1 k (s : Qp) g : live_gen k s g -∗ ⌜(s ≤ 1)%Qp⌝.
-  Proof. iIntros "(%lo & H)". iApply (live_genlo_le1 with "H"). Qed.
+  Proof using . iIntros "(%lo & H)". iApply (live_genlo_le1 with "H"). Qed.
 
   (* THE GENERATION-NAMED CARVE and SHARE SPLIT -- the homes of the per-proof
      copies (cr_/su_/sl_carve_gen, the *_split2 twins), which now delegate. *)
   Lemma inode_shr_gen_split k s1 s2 dev inum g :
     inode_shr_gen k (s1 + s2)%Qp dev inum g ⊣⊢
     inode_shr_gen k s1 dev inum g ∗ inode_shr_gen k s2 dev inum g.
-  Proof.
+  Proof using .
     rewrite /inode_shr_gen inode_ident_split live_gen_split slh_tok_split
             ic_ref_stamps_split.
     iSplit; [iIntros "[[$ $] [[$ $] [[$ $] [$ $]]]]"
@@ -1957,7 +1957,7 @@ Section IcacheRef.
   Lemma inode_ref_carve_gen k q s dev inum g :
     inode_ref_gen k (q + s)%Qp dev inum g ⊣⊢
     inode_ref_short_gen k (q + s)%Qp q dev inum g ∗ inode_shr_gen k s dev inum g.
-  Proof.
+  Proof using .
     rewrite /inode_ref_gen /inode_ref_short_gen /inode_shr_gen.
     iSplit.
     - iIntros "(Hf & Hl & Hid & Hs & Hst)".
@@ -1977,7 +1977,7 @@ Section IcacheRef.
 
   Lemma inode_ref_canon k q dev inum :
     inode_ref k q dev inum ⊣⊢ inode_ref_short k q q dev inum.
-  Proof.
+  Proof using .
     rewrite /inode_ref /inode_ref_short ic_lent_stamps_canon.
     iSplit; [iIntros "($ & $ & $ & $ & $)" | iIntros "($ & $ & $ & $ & $)"].
   Qed.
@@ -1989,7 +1989,7 @@ Section IcacheRef.
   Lemma inode_ref_carve k q s dev inum :
     inode_ref k (q + s)%Qp dev inum ⊣⊢
     inode_ref_short k (q + s)%Qp q dev inum ∗ inode_shr k s dev inum.
-  Proof.
+  Proof using .
     rewrite /inode_ref /inode_ref_short /inode_shr.
     iSplit.
     - iIntros "(Hf & Hlv & Hs & Hid & Hst)".
@@ -2009,25 +2009,25 @@ Section IcacheRef.
   Lemma inode_ref_gather k q s dev inum :
     inode_ref_short k (q + s)%Qp q dev inum -∗ inode_shr k s dev inum -∗
     inode_ref k (q + s)%Qp dev inum.
-  Proof.
+  Proof using .
     iIntros "Hp Hs". rewrite inode_ref_carve. iFrame.
   Qed.
 
   (* the two identity values a share sees are the entry's, for free *)
   Lemma inode_shr_agree k s1 d1 n1 s2 d2 n2 :
     inode_shr k s1 d1 n1 -∗ inode_shr k s2 d2 n2 -∗ ⌜d1 = d2 /\ n1 = n2⌝.
-  Proof.
+  Proof using .
     iIntros "[H1 _] [H2 _]". iApply (inode_ident_agree with "H1 H2").
   Qed.
   Lemma inode_ref_shr_agree k q s d1 n1 d2 n2 :
     inode_ref k q d1 n1 -∗ inode_shr k s d2 n2 -∗ ⌜d1 = d2 /\ n1 = n2⌝.
-  Proof.
+  Proof using .
     iIntros "(_ & _ & _ & H1 & _) [H2 _]".
     iApply (inode_ident_agree with "H1 H2").
   Qed.
   Lemma inode_ref_short_shr_agree k qt qi s d1 n1 d2 n2 :
     inode_ref_short k qt qi d1 n1 -∗ inode_shr k s d2 n2 -∗ ⌜d1 = d2 /\ n1 = n2⌝.
-  Proof.
+  Proof using .
     iIntros "(_ & _ & H1 & _) [H2 _]". iApply (inode_ident_agree with "H1 H2").
   Qed.
 
@@ -2036,7 +2036,7 @@ Section IcacheRef.
   Lemma inode_shr_split k s1 s2 dev inum :
     inode_shr k (s1 + s2)%Qp dev inum ⊣⊢
     inode_shr k s1 dev inum ∗ inode_shr k s2 dev inum.
-  Proof.
+  Proof using .
     rewrite /inode_shr inode_ident_split live_fracc_split slh_tok_split
             ic_ref_stamps_split.
     iSplit; [iIntros "[[$ $] [[$ $] [[$ $] [$ $]]]]"
@@ -2050,23 +2050,23 @@ Section IcacheRef.
     inode_ref k q dev inum ⊣⊢
     inode_ref_short k (q/2 + q/2)%Qp (q/2)%Qp dev inum ∗
     inode_shr k (q/2)%Qp dev inum.
-  Proof.
+  Proof using .
     pose proof (inode_ref_carve k (q/2)%Qp (q/2)%Qp dev inum) as Hc.
     by rewrite {1}(Qp.div_2 q) in Hc.
   Qed.
 
   Global Instance inode_ident_timeless k dq dev inum :
     Timeless (inode_ident k dq dev inum).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance inode_ref_timeless k q dev inum :
     Timeless (inode_ref k q dev inum).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance inode_shr_timeless k s dev inum :
     Timeless (inode_shr k s dev inum).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance inode_ref_short_timeless k qt qi dev inum :
     Timeless (inode_ref_short k qt qi dev inum).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* ------------------------------------------------------------------
      THE FLAVOURED REFERENCE PACKAGE (SIMP-2, ghost-simplification.md §5.1)
@@ -2107,31 +2107,31 @@ Section IcacheRef.
 
   Lemma inode_refb_false_refp k q dev inum :
     inode_refb false k q dev inum ⊣⊢ inode_refp k q dev inum.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* SAT: exactly [SpecIget]'s two post rows, at any flavour.  The
      producer-side witness -- iget's post packs with zero new content. *)
   Lemma inode_refb_intro b k q dev inum :
     inode_ref k q dev inum -∗ runit b (bv_unsigned inum) -∗
     inode_refb b k q dev inum.
-  Proof. iIntros "H1 H2". iFrame. Qed.
+  Proof using . iIntros "H1 H2". iFrame. Qed.
 
   Lemma inode_refb_elim b k q dev inum :
     inode_refb b k q dev inum ⊣⊢
     inode_ref k q dev inum ∗ runit b (bv_unsigned inum).
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* SPEND: exactly [SpecIput]'s two premise rows, so the package-shaped
      iput contract is a rename and nothing more. *)
   Lemma inode_refp_spend k q dev inum :
     inode_refp k q dev inum ⊣⊢
     inode_ref k q dev inum ∗ runit_any (bv_unsigned inum).
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma inode_refp_intro k q dev inum :
     inode_ref k q dev inum -∗ runit_any (bv_unsigned inum) -∗
     inode_refp k q dev inum.
-  Proof. iIntros "H1 H2". iFrame. Qed.
+  Proof using . iIntros "H1 H2". iFrame. Qed.
 
   (* THE SHORT-PARENT PACKAGE.  [wp_iunlockput_*] is "iunlock; iput", and
      what its caller holds across the call is not a whole reference but the
@@ -2149,7 +2149,7 @@ Section IcacheRef.
   Lemma inode_refp_carve k q s dev inum :
     inode_refp k (q + s)%Qp dev inum ⊣⊢
     inode_refp_short k (q + s)%Qp q dev inum ∗ inode_shr k s dev inum.
-  Proof.
+  Proof using .
     rewrite /inode_refp /inode_refp_short inode_ref_carve.
     iSplit; [iIntros "[[$ $] $]" | iIntros "[[$ $] $]"].
   Qed.
@@ -2157,17 +2157,17 @@ Section IcacheRef.
   Lemma inode_refp_gather k q s dev inum :
     inode_refp_short k (q + s)%Qp q dev inum -∗ inode_shr k s dev inum -∗
     inode_refp k (q + s)%Qp dev inum.
-  Proof. iIntros "Hp Hs". rewrite inode_refp_carve. iFrame. Qed.
+  Proof using . iIntros "Hp Hs". rewrite inode_refp_carve. iFrame. Qed.
 
   Lemma inode_refp_canon k q dev inum :
     inode_refp k q dev inum ⊣⊢ inode_refp_short k q q dev inum.
-  Proof.
+  Proof using .
     rewrite /inode_refp /inode_refp_short inode_ref_canon. reflexivity.
   Qed.
 
   Global Instance inode_refp_short_timeless k qt qi dev inum :
     Timeless (inode_refp_short k qt qi dev inum).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* THE CLAIM PACKAGE -- [SpecIalloc]'s receipt, whole.  Its elim is
      [InodeRegion.inode_claimed_to_ClaimK]: the pair after the reference IS
@@ -2189,22 +2189,22 @@ Section IcacheRef.
     inode_ref k q dev inum -∗ runit_claim (bv_unsigned inum) -∗
     iclaim (bv_unsigned inum) ty t qt -∗
     inode_claimed ty k q dev inum t qt.
-  Proof. iIntros "H1 H2 H3". iFrame. Qed.
+  Proof using . iIntros "H1 H2 H3". iFrame. Qed.
 
   Lemma inode_claimed_elim ty k q dev inum t qt :
     inode_claimed ty k q dev inum t qt ⊣⊢
     inode_ref k q dev inum ∗ runit_claim (bv_unsigned inum) ∗
     iclaim (bv_unsigned inum) ty t qt.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Global Instance inode_refb_timeless b k q dev inum :
     Timeless (inode_refb b k q dev inum).
-  Proof. rewrite /inode_refb /runit. destruct b; apply _. Qed.
+  Proof using . rewrite /inode_refb /runit. destruct b; apply _. Qed.
   Global Instance inode_refp_timeless k q dev inum :
     Timeless (inode_refp k q dev inum).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance inode_claimed_timeless ty k q dev inum t qt :
     Timeless (inode_claimed ty k q dev inum t qt).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
 End IcacheRef.

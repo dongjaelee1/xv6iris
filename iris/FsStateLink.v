@@ -138,33 +138,33 @@ Section Link.
     link_toks Γ i {[+ ty +]}.
 
   Global Instance link_auth_timeless Γ i n ty : Timeless (link_auth Γ i n ty).
-  Proof. rewrite /link_auth. apply _. Qed.
+  Proof using . rewrite /link_auth. apply _. Qed.
   Global Instance link_toks_timeless Γ i Q : Timeless (link_toks Γ i Q).
-  Proof. rewrite /link_toks. apply _. Qed.
+  Proof using . rewrite /link_toks. apply _. Qed.
   Global Instance link_tok_timeless Γ i ty : Timeless (link_tok Γ i ty).
-  Proof. rewrite /link_tok. apply _. Qed.
+  Proof using . rewrite /link_tok. apply _. Qed.
 
   (* AT MULTIPLICITY ZERO THE TYPE IS NOT THERE AT ALL: the two type
      writes the kernel does (ialloc's claim, iput's free deposit) are this
      equality, not an update. *)
   Lemma link_auth_zero_retype Γ i ty ty' :
     link_auth Γ i 0 ty ⊣⊢ link_auth Γ i 0 ty'.
-  Proof. rewrite /link_auth /link_auth_elem !link_reps_0 //. Qed.
+  Proof using . rewrite /link_auth /link_auth_elem !link_reps_0 //. Qed.
 
   Lemma link_toks_split Γ i Q1 Q2 :
     link_toks Γ i (Q1 ⊎ Q2) ⊣⊢ link_toks Γ i Q1 ∗ link_toks Γ i Q2.
-  Proof.
+  Proof using .
     rewrite /link_toks /link_toks_elem -own_op singleton_op.
     by rewrite -auth_frag_op.
   Qed.
 
   Lemma link_toks_one Γ i ty : link_toks Γ i {[+ ty +]} ⊣⊢ link_tok Γ i ty.
-  Proof. done. Qed.
+  Proof using . done. Qed.
 
   Lemma link_toks_reps_S Γ i n ty :
     link_toks Γ i (link_reps (S n) ty)
     ⊣⊢ link_tok Γ i ty ∗ link_toks Γ i (link_reps n ty).
-  Proof. rewrite link_reps_S link_toks_split //. Qed.
+  Proof using . rewrite link_reps_S link_toks_split //. Qed.
 
   (* take a PREFIX of a pile and drop the rest (the ambient logic is
      affine, so a surplus fragment is thrown away rather than carried) *)
@@ -172,7 +172,7 @@ Section Link.
     (k <= n)%nat ->
     link_toks Γ i (link_reps n ty)
     ⊢ link_toks Γ i (link_reps k ty) ∗ link_toks Γ i (link_reps (n - k) ty).
-  Proof.
+  Proof using .
     intros Hle.
     assert (Hn : n = (k + (n - k))%nat) by lia.
     rewrite {1}Hn link_reps_add link_toks_split. done.
@@ -183,7 +183,7 @@ Section Link.
      One direction only, and no consumer wants the other. *)
   Lemma link_toks_list_at Γ i k ty j :
     link_toks Γ i (link_reps k ty) ⊢ [∗ list] _ ∈ seq j k, link_tok Γ i ty.
-  Proof.
+  Proof using .
     revert j. induction k as [| k IH]; intros j; [iIntros "_"; done |].
     replace (seq j (S k)) with (j :: seq (S j) k) by reflexivity.
     rewrite big_sepL_cons link_toks_reps_S. iIntros "[$ Ht]".
@@ -192,7 +192,7 @@ Section Link.
 
   Lemma link_toks_list Γ i k ty :
     link_toks Γ i (link_reps k ty) ⊢ [∗ list] _ ∈ seq 0 k, link_tok Γ i ty.
-  Proof. exact (link_toks_list_at Γ i k ty 0). Qed.
+  Proof using . exact (link_toks_list_at Γ i k ty 0). Qed.
 
   (* ---------------------------------------------------------------- *)
   (*  3.  THE LAW -- both readings at once                             *)
@@ -200,7 +200,7 @@ Section Link.
 
   Lemma link_auth_toks_valid Γ i n ty Q :
     link_auth Γ i n ty -∗ link_toks Γ i Q -∗ ⌜Q ⊆ link_reps n ty⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Hf".
     iDestruct (own_valid_2 with "Ha Hf") as %Hv.
     iPureIntro.
@@ -213,7 +213,7 @@ Section Link.
   Lemma link_auth_toks_le Γ i n ty Q :
     link_auth Γ i n ty -∗ link_toks Γ i Q -∗
     ⌜(size Q <= n)%nat /\ forall x, x ∈ Q -> x = ty⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Hf".
     iDestruct (link_auth_toks_valid with "Ha Hf") as %Hsub.
     iPureIntro. split.
@@ -224,7 +224,7 @@ Section Link.
   (* THE COUNT reading, at a pile of [k] *)
   Lemma link_auth_reps_le Γ i n ty k ty' :
     link_auth Γ i n ty -∗ link_toks Γ i (link_reps k ty') -∗ ⌜(k <= n)%nat⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Hf".
     iDestruct (link_auth_toks_le with "Ha Hf") as %[Hle _].
     iPureIntro. rewrite link_reps_size in Hle. lia.
@@ -234,7 +234,7 @@ Section Link.
      current type, and the multiplicity is at least one. *)
   Lemma link_auth_tok_agree Γ i n ty ty' :
     link_auth Γ i n ty -∗ link_tok Γ i ty' -∗ ⌜ty' = ty /\ (1 <= n)%nat⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Hf".
     iDestruct (link_auth_toks_le with "Ha Hf") as %[Hle Hall].
     iPureIntro. rewrite gmultiset_size_singleton in Hle.
@@ -245,7 +245,7 @@ Section Link.
   (* the [n = 0] reading the free path uses: no entry points here *)
   Lemma link_auth_zero_no_tok Γ i ty ty' :
     link_auth Γ i 0 ty -∗ link_tok Γ i ty' -∗ False.
-  Proof.
+  Proof using .
     iIntros "Ha Hf".
     iDestruct (link_auth_tok_agree with "Ha Hf") as %[_ Hle]. lia.
   Qed.
@@ -258,7 +258,7 @@ Section Link.
      (create / link / mkdir, and a directory's own ["."]) *)
   Lemma link_mint Γ i n ty :
     link_auth Γ i n ty ==∗ link_auth Γ i (S n) ty ∗ link_tok Γ i ty.
-  Proof.
+  Proof using .
     iIntros "Ha".
     iAssert (|==> own (γlink Γ) (link_auth_elem i (S n) ty
                                  ⋅ link_tok_elem i ty))%I
@@ -275,7 +275,7 @@ Section Link.
      rmdir / iput) *)
   Lemma link_return Γ i n ty ty' :
     link_auth Γ i (S n) ty -∗ link_tok Γ i ty' ==∗ link_auth Γ i n ty.
-  Proof.
+  Proof using .
     iIntros "Ha Hf".
     iDestruct (link_auth_tok_agree with "Ha Hf") as %[-> _].
     iAssert (own (γlink Γ) (link_auth_elem i (S n) ty ⋅ link_tok_elem i ty))%I
@@ -293,17 +293,17 @@ Section Link.
      [k = 0] corner every [k]-at-a-time mover below has. *)
   Lemma link_toks_elem_empty i :
     link_toks_elem i (∅ : gmultiset ity) = {[ i := (ε : fsLinkElemUR) ]}.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma link_auth_elem_frag_empty i n ty :
     link_auth_elem i n ty ≡ link_auth_elem i n ty ⋅ link_toks_elem i ∅.
-  Proof.
+  Proof using .
     rewrite link_toks_elem_empty /link_auth_elem singleton_op right_id //.
   Qed.
 
   Lemma link_toks_empty Γ i n ty :
     link_auth Γ i n ty ⊣⊢ link_auth Γ i n ty ∗ link_toks Γ i ∅.
-  Proof.
+  Proof using .
     rewrite /link_auth /link_toks -own_op.
     by rewrite -link_auth_elem_frag_empty.
   Qed.
@@ -313,7 +313,7 @@ Section Link.
   Lemma link_mint_reps Γ i n k ty :
     link_auth Γ i n ty ==∗
     link_auth Γ i (n + k) ty ∗ link_toks Γ i (link_reps k ty).
-  Proof.
+  Proof using .
     iIntros "Ha".
     iInduction k as [| k IH] "IH" forall (n).
     { iModIntro. rewrite link_reps_0 Nat.add_0_r.
@@ -330,7 +330,7 @@ Section Link.
   Lemma link_return_reps Γ i n k ty ty' :
     link_auth Γ i (n + k) ty -∗ link_toks Γ i (link_reps k ty') ==∗
     link_auth Γ i n ty.
-  Proof.
+  Proof using .
     iIntros "Ha Ht".
     destruct k as [| k'].
     { rewrite Nat.add_0_r. by iFrame. }
@@ -357,7 +357,7 @@ Section Link.
 
   Lemma link_family_alloc (M : fsLinkUR) :
     ✓ M -> ⊢ |==> ∃ g : gname, own g M.
-  Proof. intros HM. iMod (own_alloc M) as (g) "H"; [done |]. by iExists g. Qed.
+  Proof using . intros HM. iMod (own_alloc M) as (g) "H"; [done |]. by iExists g. Qed.
 
   (* ---------------------------------------------------------------- *)
   (*  5b. THE FULL ELEMENT: an authority with all its fragments AT HOME *)
@@ -374,12 +374,12 @@ Section Link.
   Lemma link_full_elem_singleton i n ty :
     link_full_elem i n ty
     ≡ {[ i := (● (link_reps n ty) ⋅ ◯ (link_reps n ty) : fsLinkElemUR) ]}.
-  Proof.
+  Proof using .
     rewrite /link_full_elem /link_auth_elem /link_toks_elem singleton_op //.
   Qed.
 
   Lemma link_full_elem_valid i n ty : ✓ link_full_elem i n ty.
-  Proof.
+  Proof using .
     rewrite link_full_elem_singleton. apply singleton_valid.
     apply auth_both_valid_discrete. split; [| done].
     apply gmultiset_included. done.
@@ -388,15 +388,15 @@ Section Link.
   Lemma link_full_split Γ i n ty :
     own (γlink Γ) (link_full_elem i n ty)
     ⊣⊢ link_auth Γ i n ty ∗ link_toks Γ i (link_reps n ty).
-  Proof. rewrite /link_full_elem own_op //. Qed.
+  Proof using . rewrite /link_full_elem own_op //. Qed.
 
   Lemma link_auth_of_elem Γ i n ty :
     own (γlink Γ) (link_auth_elem i n ty) ⊣⊢ link_auth Γ i n ty.
-  Proof. done. Qed.
+  Proof using . done. Qed.
 
   Lemma link_toks_of_elem Γ i Q :
     own (γlink Γ) (link_toks_elem i Q) ⊣⊢ link_toks Γ i Q.
-  Proof. done. Qed.
+  Proof using . done. Qed.
 
 End Link.
 
@@ -420,7 +420,7 @@ Section Gather.
   Lemma own_gather_list {B} (γ : gname) (f : B -> A) (l : list B) (x : A) :
     own γ x -∗ ([∗ list] y ∈ l, own γ (f y)) -∗
     own γ (x ⋅ [^op list] y ∈ l, f y).
-  Proof.
+  Proof using .
     revert x. induction l as [| y l IH]; intros x.
     - iIntros "Hx _". rewrite big_opL_nil right_id //.
     - rewrite big_sepL_cons big_opL_cons.
@@ -434,7 +434,7 @@ Section Gather.
       (l : list B) (x : A) :
     own γ x -∗ ([∗ list] y ∈ l, if p y then emp else own γ (f y)) -∗
     own γ (x ⋅ [^op list] y ∈ l, (if p y then ε else f y)).
-  Proof.
+  Proof using .
     revert x. induction l as [| y l IH]; intros x.
     - iIntros "Hx _". rewrite big_opL_nil right_id //.
     - rewrite big_sepL_cons big_opL_cons.
@@ -451,7 +451,7 @@ Section Gather.
       (m : gmap K V) (x : A) :
     own γ x -∗ ([∗ map] k ↦ v ∈ m, own γ (f k v)) -∗
     own γ (x ⋅ [^op map] k ↦ v ∈ m, f k v).
-  Proof.
+  Proof using .
     revert x. induction m as [| k v m Hk IH] using map_ind; intros x.
     - iIntros "Hx _". by rewrite big_opM_empty right_id.
     - iIntros "Hx Hm".
@@ -466,7 +466,7 @@ Section Gather.
     own γ x -∗
     ([∗ map] k ↦ v ∈ m, if p k v then emp else own γ (f k v)) -∗
     own γ (x ⋅ [^op map] k ↦ v ∈ m, (if p k v then ε else f k v)).
-  Proof.
+  Proof using .
     revert x. induction m as [| k v m Hk IH] using map_ind; intros x.
     - iIntros "Hx _". by rewrite big_opM_empty right_id.
     - iIntros "Hx Hm".
@@ -485,7 +485,7 @@ Section Gather.
       (p : K -> V -> bool) (m : gmap K V) :
     own γ ([^op map] k ↦ v ∈ m, (if p k v then ε else f k v)) ⊢
     [∗ map] k ↦ v ∈ m, (if p k v then emp else own γ (f k v)).
-  Proof.
+  Proof using .
     iIntros "H".
     iDestruct (big_opM_own_1 with "H") as "H".
     iApply (big_sepM_mono with "H"). intros k v _; simpl.
@@ -509,13 +509,13 @@ Section LinkLaw.
 
   Lemma link_toks_elem_add i Q1 Q2 :
     link_toks_elem i Q1 ⋅ link_toks_elem i Q2 ≡ link_toks_elem i (Q1 ⊎ Q2).
-  Proof. rewrite /link_toks_elem singleton_op -auth_frag_op //. Qed.
+  Proof using . rewrite /link_toks_elem singleton_op -auth_frag_op //. Qed.
 
   Lemma tok_elem_list i ty (l : list unit) :
     (0 < length l)%nat ->
     ([^op list] _ ∈ l, link_tok_elem i ty)
     ≡ link_toks_elem i (link_reps (length l) ty).
-  Proof.
+  Proof using .
     induction l as [| u l IH]; [simpl; lia |].
     intros _. rewrite big_opL_cons.
     destruct l as [| v l'].
@@ -531,7 +531,7 @@ Section LinkLaw.
   Lemma link_auth_tok_list Γ i n ty ty' (l : list unit) :
     link_auth Γ i n ty -∗ ([∗ list] _ ∈ l, link_tok Γ i ty') -∗
     ⌜(length l <= n)%nat⌝.
-  Proof.
+  Proof using .
     destruct l as [| u l].
     - iIntros "_ _". iPureIntro. simpl. lia.
     - iIntros "Ha Hl".

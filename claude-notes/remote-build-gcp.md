@@ -56,6 +56,43 @@ numbers that do not match your source.
 $?` in a pipeline reports the pipeline's. Write the sentinel into the log and
 grep the log.
 
+## The edit-check loop: `--check` before `--proofs`
+
+**`run-on-gcp --check Foo.v` is how you find out whether an edit still makes
+sense.** It elaborates the file and SKIPS its opaque proofs, which turns a
+one-to-two minute `.vo` compile into a couple of seconds — roughly thirty times
+faster on the big whole-function files. Iterate on `--check`; run `--proofs`
+when the shape is settled.
+
+**It catches a broken STATEMENT and not a broken PROOF.** A wrong type, a spec
+that no longer matches its module type, a renamed lemma, an import that no
+longer provides what a later file names — all of these fail `--check`. A tactic
+script that stops working does not: the proof was never run.
+`--check-proof Foo.v` is the other half, and costs about what the `.vo` does.
+
+**CI stays on the ordinary `.vo` build** and is the only thing that decides
+whether the tree is green.
+
+**Every proof carries a `Proof using`, and that is what makes `--check`
+possible.** Skipping a proof means knowing what it captures without running it;
+with no annotation Rocq has to run the proof to find out, and `-vos` then
+measures exactly the same as a full build. The annotations are minimal — they
+declare what Rocq already computes — so no lemma's type depends on them and
+`Set Suggest Proof Using` regenerates any that go missing.
+
+**Do not reach for a blanket `Set Default Proof Using` instead.** No selector
+fits this tree: `Type` takes the STATEMENT's variables, so it misses the section
+hypotheses proofs here routinely use, and at the same time takes more than a
+given proof needs — which grows that lemma's ARGUMENT LIST and breaks the
+positional applications and `Module Type` signatures the sealed functors rest
+on. `Type*` and `All` miss the same hypotheses. Minimal per-proof annotations
+are the only form that is both sufficient and type-preserving.
+
+**A normal `coqc` run writes EMPTY `.vos`/`.vok` files beside each `.vo`.** So
+`make vos` over a built tree reports success having done nothing, and any timing
+taken that way is measuring `make` statting files. `--check` compiles the one
+file directly for this reason.
+
 ## Getting the `.vo` back for a local recheck
 
 `run-on-gcp --pull-vo` copies `.vo`/`.vos`/`.vok`/`.glob`/`.aux` and the

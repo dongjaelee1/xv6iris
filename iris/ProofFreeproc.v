@@ -190,7 +190,7 @@ Section ProofFreeproc.
       m !!! Regidx c = mm !!! Regidx c.
 
   Lemma fr_thr_refl (mm : regfile) : fr_thr mm mm.
-  Proof. intros c _ _ _ _. reflexivity. Qed.
+  Proof using . intros c _ _ _ _. reflexivity. Qed.
 
   (* ONE INSERT AT A TIME.  Unfolding the whole [set]-bound tower first does
      not work: the written values contain lookups of their own, so [rewrite
@@ -199,7 +199,7 @@ Section ProofFreeproc.
      preserve every callee-saved register, so the threaded fact does too. *)
   Lemma fr_thr_cs (mm m m' : regfile) :
     callee_saved m m' -> fr_thr mm m -> fr_thr mm m'.
-  Proof.
+  Proof using .
     intros Hcs H c Hc H2 H8 H9.
     rewrite (callee_saved_lookup Hcs c Hc). apply H; assumption.
   Qed.
@@ -208,7 +208,7 @@ Section ProofFreeproc.
     (forall c : mword 5, is_cs_idx c = true ->
        c <> csp_rs1 -> c <> Rs0 -> c <> Rs1 -> Regidx c <> Regidx k) ->
     fr_thr mm m -> fr_thr mm (<[Regidx k := v]> m).
-  Proof.
+  Proof using .
     intros Hk H c Hc H2 H8 H9.
     rewrite upd_ne; [| exact (Hk c Hc H2 H8 H9)]. apply H; assumption.
   Qed.
@@ -232,7 +232,7 @@ Section ProofFreeproc.
       (K : nat) (eb : bool) (pme : mword 64)
       (ilvl : nat) (lks : gset string)
     : wp_freeproc_sconf_body γp γa mm j γl V g pid st ch opt otf K eb pme ilvl lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_freeproc_sconf_body].
     intros pcE pa ret_tgt HK Hj Hilvl Ha0 Hbelow_pid.
     (* the contract's floor is "nextpid" (the lock this function takes);

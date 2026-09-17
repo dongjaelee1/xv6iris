@@ -131,7 +131,7 @@ Section VtLeaves.
       pc_is (add_vec_int pc (if rvc then 2 else 4)) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hea Hg Hoff Hrd Hrdok Hread. destruct Hg as (Hr & Hal & Hcan & Hdv).
     (* the class, consumed at [rs1] -- see [IntrDefs.SrcOk].  This wrapper
        applies a converted leaf at a VARIABLE register and carries no tp fact
@@ -182,7 +182,7 @@ Section VtLeaves.
       pc_is (add_vec_int pc (if rvc then 2 else 4)) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hea Hg Hoff Hsw Hwr. destruct Hg as (Hr & Hal & Hcan & Hdv).
     (* the class, consumed at [rs1 / rs2] -- see [IntrDefs.SrcOk].  This wrapper
        applies a converted leaf at a VARIABLE register and carries no tp fact
@@ -231,7 +231,7 @@ Section VtLeaves.
         pc_is (mword_of_int (KernelSyms.virtio_disk_intr + 0x30) : mword 64) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "Hcg #Htext Hpc #Hdinv Hcont".
     (* ---- +0x1e: lui a5,0x10001 ---- *)
     iApply (wp_lui_s_sconf (mword_of_int (KernelSyms.virtio_disk_intr + 0x1e)) a5_idx
@@ -409,7 +409,7 @@ Section VtPrologue.
         (∃ vg : mword 64, pa_stk sp0 4 ↦₈[KT1] vg) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hav Hfresh.
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).
     iIntros "Hcg Hcnt #Htext Hpc #Hlk Hcont".
@@ -681,7 +681,7 @@ Section VtEpilogue.
         pc_is (ret_pc (m !!! Regidx ra_idx)) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hsp0 HMBcsp HMBthr Hav Hbeq Hfresh.
     set (spd := add_vec sp0 (sign_extend' 64 (sign_extend' 12 (mword_of_int 32 : mword 6)))).
     iIntros "Hcg #Htext Hpc #Hlk Htok HR Hcnt Hpay Hr24 Hr16 Hr8 Hgap Hcont".
@@ -967,7 +967,7 @@ Section VtLoopSeam.
 
   (* the T-leg's [disk_nr] is our [disk_read_at]: same ghost, same body *)
   Lemma vt_nr_eq (γ : disk_names) (n : nat) : disk_read_at γ n ⊣⊢ disk_nr γ n.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* [DiskInv.disk_res]'s body with the four existentials named. *)
   Definition disk_res_at (γ : disk_names) (pd pav pu : SailStdpp.Values.mword 64)
@@ -1008,7 +1008,7 @@ Section VtLoopSeam.
     disk_res γ pd pav pu -∗
     ∃ (np nr : nat) (cm : gmap nat dclaim) (fr : nat -> bool),
       disk_res_at γ pd pav pu np nr cm fr.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /disk_res.
     iDestruct "H" as (np nr cm fr) "H".
     iExists np, nr, cm, fr. rewrite /disk_res_at /free_bundles. iExact "H".
@@ -1017,7 +1017,7 @@ Section VtLoopSeam.
   Lemma disk_res_at_intro (γ : disk_names) (pd pav pu : SailStdpp.Values.mword 64)
       (np nr : nat) (cm : gmap nat dclaim) (fr : nat -> bool) :
     disk_res_at γ pd pav pu np nr cm fr -∗ disk_res γ pd pav pu.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /disk_res.
     iEval (rewrite /disk_res_at /free_bundles) in "H".
     iExists np, nr, cm, fr. iExact "H".
@@ -1041,7 +1041,7 @@ Section VtLoopSeam.
 
   Lemma vt_loop_state_close (γ : disk_names) (pd pav pu : SailStdpp.Values.mword 64) :
     vt_loop_state γ pd pav pu -∗ disk_res γ pd pav pu.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as (np nr cm fr c) "(_ & _ & _ & H)".
     iApply (disk_res_at_intro with "H").
   Qed.
@@ -1049,33 +1049,33 @@ Section VtLoopSeam.
   (* the completed-count lower bound weakens *)
   Lemma vt_done_lb_le (γ : disk_names) (n c : nat) :
     (n <= c)%nat -> disk_done_lb γ c -∗ disk_done_lb γ n.
-  Proof. intro H. rewrite /disk_done_lb. iApply (mono_nat_lb_own_le n H). Qed.
+  Proof using . intro H. rewrite /disk_done_lb. iApply (mono_nat_lb_own_le n H). Qed.
 
   (* the atomic-update leaves' window at the three widths the loop body
      touches through the device invariant ([WpSconfMem.wordw1_byte] is the
      byte instance; the other two are the definitions side by side) *)
   Lemma vt_byte_wordw (a : Arch.pa) (b : bv 8) :
     wordw_pointsto (KTR := KT0) 1 a (DfracOwn 1) b ⊣⊢ a ↦ₘ b.
-  Proof.
+  Proof using .
     rewrite (wordw1_byte (KTR := KT0)). reflexivity.
   Qed.
 
   Lemma vt_word4_wordw (a : Arch.pa) (w : SailStdpp.Values.mword 32) :
     a ↦₄ w ⊣⊢ wordw_pointsto (KTR := KT0) 4 a (DfracOwn 1) w.
-  Proof.
+  Proof using .
     rewrite /wordw_pointsto /TsoCtx.ctx_word4_pointsto.
     by change (Z.to_nat 4) with 4%nat.
   Qed.
 
   Lemma vt_word8_wordw (a : Arch.pa) (w : SailStdpp.Values.mword 64) :
     a ↦₈ w ⊣⊢ wordw_pointsto (KTR := KT0) 8 a (DfracOwn 1) w.
-  Proof. rewrite (wordw8_ctx (KTR2 := KT0)). reflexivity. Qed.
+  Proof using . rewrite (wordw8_ctx (KTR2 := KT0)). reflexivity. Qed.
 
   (* the width-1 unsigned load's extension, as [wp_load_s_sconf_au] wants
      it ([WpSconfMem]'s own copy is local to that file) *)
   Lemma vt_ext1 (v : SailStdpp.Values.mword 8) :
     extend_value true v = zero_extend' 64 v.
-  Proof. unfold extend_value. reflexivity. Qed.
+  Proof using . unfold extend_value. reflexivity. Qed.
 
 End VtLoopSeam.
 
@@ -1165,7 +1165,7 @@ Section VtDevRam.
     (uint (a : SailStdpp.Values.mword 64) < 274877906944)%Z ->
     addr_is_ram a ->
     kmap_static_claims -∗ wordw_claim (KTR := KT0) width a.
-  Proof.
+  Proof using .
     iIntros (Hal Hs Hc Hram) "#Hkm".
     iDestruct (kmap_static_claims_at _ KP_rw Hs with "Hkm") as "#Hk0".
     pose proof (pa_of_id a Hc) as Hid.
@@ -1182,7 +1182,7 @@ Section VtDevRam.
      ∨ TsoCtx.rel_cells (used_idx_pa c) 2 (DfracOwn 1) disk_agent lo tf
          (nth_byte (wrap16 0)) (nth_byte (wrap16 nc)) hist) -∗
     ⌜addr_is_ram (pa_add (used_idx_pa c) 0)⌝.
-  Proof.
+  Proof using .
     iIntros "[[_ Hpre] | Hrel]".
     - rewrite /TsoCtx.rel_pre_cells. iDestruct "Hpre" as "(Hc & _)".
       iDestruct (phys_ledger_at_ledger with "Hc") as "Hc".
@@ -1194,7 +1194,7 @@ Section VtDevRam.
 
   (* a byte is its own byte 0 *)
   Lemma vt_nth_byte0 (b : bv 8) : nth_byte b 0 = b.
-  Proof.
+  Proof using .
     unfold nth_byte. apply bv_eq. rewrite bv_extract_unsigned.
     replace (Z.of_N (8 * N.of_nat 0)) with 0%Z by reflexivity.
     rewrite Z.shiftr_0_r. apply bv_wrap_bv_unsigned.
@@ -1203,17 +1203,17 @@ Section VtDevRam.
   (* the bytes of a read pin the word *)
   Lemma vt_word1_of_bytes (v w : SailStdpp.Values.mword 8) :
     (forall j, (j < 1)%nat -> nth_byte v j = nth_byte w j) -> v = w.
-  Proof.
+  Proof using .
     intro H. apply (bv_eq_of_bytes (n := 1)). intros j Hj. apply H. lia.
   Qed.
   Lemma vt_word2_of_bytes (v w : SailStdpp.Values.mword 16) :
     (forall j, (j < 2)%nat -> nth_byte v j = nth_byte w j) -> v = w.
-  Proof.
+  Proof using .
     intro H. apply (bv_eq_of_bytes (n := 2)). intros j Hj. apply H. lia.
   Qed.
   Lemma vt_word4_of_bytes (v w : SailStdpp.Values.mword 32) :
     (forall j, (j < 4)%nat -> nth_byte v j = nth_byte w j) -> v = w.
-  Proof.
+  Proof using .
     intro H. apply (bv_eq_of_bytes (n := 4)). intros j Hj. apply H. lia.
   Qed.
 
@@ -1227,7 +1227,7 @@ Section VtDevRam.
        disk_done_lb γd k ∗
        [∗ list] p ∈ seq 0 k, ∃ q : nat, disk_done_pos γd p q ∗ ⌜(q <= V0)%nat⌝)%I.
   Global Instance vt_idx_q_persistent γd np nr v V0 : Persistent (vt_idx_q γd np nr v V0).
-  Proof. rewrite /vt_idx_q. apply _. Qed.
+  Proof using . rewrite /vt_idx_q. apply _. Qed.
 
   (* the window the AU hands the leaf, WITH its own close-wand: the leaf's
      [Res] comes back under fresh existentials, so the way back into the
@@ -1274,7 +1274,7 @@ Section VtDevRam.
            ⌜tso_read_bytes img log (hart_agent (@cpu_id CIDw)) tvr
               (pa_of ppn ea) (Z.to_N 2) v⌝ -∗
            vt_idx_q γd np nr v tvr).
-  Proof.
+  Proof using .
     intros -> CIDw img sigma log V ppn Hcan Hoff Hid _.
     rewrite (ktier_pin_id ppn _ Hid).
     iIntros "#Hk Hgh Htso Hctx (#Hf0 & #Hf1 & #HfF & HR)".
@@ -1346,7 +1346,7 @@ Section VtDevRam.
         pc_is (add_vec_int pc 4) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hea Hrd Hrdok.
     assert (Hea_all : forall hh : CpuId,
               add_vec (rget (CID := hh) m rs1) (sign_extend' 64 imm)
@@ -1479,7 +1479,7 @@ Section VtDevRam.
          /\ (forall v : mword 32,
                tso_read_bytes img log (hart_agent (@cpu_id CIDw)) tvr
                  (pa_of ppn ea) (Z.to_N 4) v -> v = head)⌝.
-  Proof.
+  Proof using .
     intros CIDw img sigma log V ppn Hcan Hoff Hid Hcid.
     pose proof (Hcid (or_introl eq_refl)) as Hceq.
     rewrite (ktier_pin_id ppn _ Hid).
@@ -1536,7 +1536,7 @@ Section VtDevRam.
          /\ (forall v : mword 8,
                tso_read_bytes img log (hart_agent (@cpu_id CIDw)) tvr
                  (pa_of ppn ea) (Z.to_N 1) v -> v = b)⌝.
-  Proof.
+  Proof using .
     intros CIDw img sigma log V ppn Hcan Hoff Hid Hcid.
     pose proof (Hcid (or_introl eq_refl)) as Hceq.
     rewrite (ktier_pin_id ppn _ Hid).
@@ -1599,7 +1599,7 @@ Section VtDevRam.
       disk_pub γd np -∗ disk_read_at γd u -∗ ghost_map_auth (dn_claim γd) 1 cm -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hea Hrd Hrdok.
     assert (Hea_all : forall hh : CpuId,
               add_vec (rget (CID := hh) m rs1) (sign_extend' 64 imm)
@@ -1703,15 +1703,15 @@ Section VtDevRam.
 
   (* the two 12-bit displacements the loop head uses, as plain 64-bit words *)
   Lemma vt_sext_2  : sign_extend' 64 (mword_of_int 2 : mword 12) = (mword_of_int 2 : mword 64).
-  Proof. apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . apply bv_eq; vm_compute; reflexivity. Qed.
   Lemma vt_sext_16 : sign_extend' 64 (mword_of_int 16 : mword 12) = (mword_of_int 16 : mword 64).
-  Proof. apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . apply bv_eq; vm_compute; reflexivity. Qed.
   Lemma vt_sext_32 : sign_extend' 64 (mword_of_int 32 : mword 12) = (mword_of_int 32 : mword 64).
-  Proof. apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . apply bv_eq; vm_compute; reflexivity. Qed.
 
   Lemma vt_zext16_unsigned (x : SailStdpp.Values.mword 16) :
     bv_unsigned (zero_extend' 64 x : SailStdpp.Values.mword 64) = bv_unsigned x.
-  Proof.
+  Proof using .
     cbv [zero_extend' Operators_mwords.zero_extend Operators_mwords.extz_vec
          Values.to_word get_word MachineWord.MachineWord.zero_extend].
     rewrite bv_zero_extend_unsigned. reflexivity.
@@ -1725,7 +1725,7 @@ Section VtDevRam.
      a liveness loss the spec promises nothing about.) *)
   Lemma vt_zext16_inj (a b : SailStdpp.Values.mword 16) :
     (zero_extend' 64 a : SailStdpp.Values.mword 64) = zero_extend' 64 b -> a = b.
-  Proof.
+  Proof using .
     intro He. apply bv_eq.
     rewrite <- (vt_zext16_unsigned a), <- (vt_zext16_unsigned b), He. reflexivity.
   Qed.
@@ -1772,7 +1772,7 @@ Section VtDevRam.
           disk_read_at γd nr -∗ disk_flr γd F -∗ disk_fl γd t0 t1 -∗
           WP (Loop : expr riscv_lang)) ) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HMs1.
     iIntros "Hcg #Htext Hpc #Hdinv #Hgeom Hpub Hidx Hnr Hflr Hfl #Hf0 #Hf1 #HfF Hcont".
     iDestruct "Hgeom" as "#Hgeomc". iPoseProof "Hgeomc" as "(_ & _ & #Hup & _)".
@@ -2247,7 +2247,7 @@ Section VtBody.
         TsoCtx.ctx_floor cur_ctx V0 -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HMs1 Hnrc.
     iIntros "Hcg #Htext Hpc #Hdinv #Hgeom Hpub #Hlbc Hrd Hauth Hidx #HR0 #Hq0 Hcont".
     iDestruct (vt_done_lb_le γd (S nr) c Hnrc with "Hlbc") as "#Hlbs".
@@ -2417,7 +2417,7 @@ Section VtBody.
   (* ---- the [struct disk] byte tier: the status cell is kernel DATA ---- *)
   Lemma vt_kdata_canon (a : Arch.pa) :
     addr_is_kdata a -> (uint (a : SailStdpp.Values.mword 64) < 274877906944)%Z.
-  Proof.
+  Proof using .
     intro Hka. unfold addr_is_kdata, ram_base, ram_size, text_end in Hka.
     first [ lia
           | (assert (Heq : (uint (a : SailStdpp.Values.mword 64) = uint a)%Z)
@@ -2425,18 +2425,18 @@ Section VtBody.
   Qed.
 
   Lemma vt_status_kdata (h : nat) : (h < 8)%nat -> addr_is_kdata (d_info_status h).
-  Proof. intro H. unfold d_info_status. apply vt_disk_kdata. lia. Qed.
+  Proof using . intro H. unfold d_info_status. apply vt_disk_kdata. lia. Qed.
 
   Lemma vt_infob_kdata (h : nat) : (h < 8)%nat -> addr_is_kdata (d_info_b h).
-  Proof. intro H. unfold d_info_b. apply vt_disk_kdata. lia. Qed.
+  Proof using . intro H. unfold d_info_b. apply vt_disk_kdata. lia. Qed.
 
   Lemma vt_sext_4 : sign_extend' 64 (mword_of_int 4 : mword 12) = (mword_of_int 4 : mword 64).
-  Proof. apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . apply bv_eq; vm_compute; reflexivity. Qed.
 
   Lemma vt_bdisk_addr (b : Arch.pa) :
     add_vec (b : SailStdpp.Values.mword 64) (sign_extend' 64 (mword_of_int 4 : mword 12))
     = (b_disk b : SailStdpp.Values.mword 64).
-  Proof. rewrite vt_sext_4. unfold b_disk, pa_add, add_vec_int. reflexivity. Qed.
+  Proof using . rewrite vt_sext_4. unfold b_disk, pa_add, add_vec_int. reflexivity. Qed.
 
   (* ---- CHUNK B (+0x50 .. +0x5e): &disk.info[id].status, the load, and  *)
   (* ---- CHUNK B (+0x50 .. +0x5e): &disk.info[id].status, the load, and  *)
@@ -2470,7 +2470,7 @@ Section VtBody.
         disk_pub γd np -∗ disk_read_at γd u -∗ ghost_map_auth (dn_claim γd) 1 cm -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HMs1 HMa5 Hh8 Hcm Hstatus.
     iIntros "Hcg #Htext Hpc #Hdinv Hpub #Hord Hrd Hauth #HV0 #Hq0 Hcont".
     iDestruct "Hq0" as (q0) "[#Hpos0 %Hq0V]".
@@ -2696,7 +2696,7 @@ Section VtBody.
         b_disk (dc_buf dc) ↦₄ (SailStdpp.Values.mword_of_int (len := 32) 0) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HMs1 HMa5 Hh8 Hcm Hhead.
     iIntros "Hcg #Htext Hpc #Hdinv Hpub #Hord Hrd Hauth Hflr #Hq0 Hib Hbd Hcont".
     iDestruct "Hq0" as (q0) "[#Hpos0 %Hq0V]".
@@ -2844,7 +2844,7 @@ Section VtBody.
 
   Lemma vt_trunc16_zext (x : SailStdpp.Values.mword 16) :
     trunc16 (zero_extend' 64 (x : SailStdpp.Values.mword 16) : mword 64) = x.
-  Proof.
+  Proof using .
     apply bv_eq. rewrite vt_trunc16_unsigned vt_zext16_unsigned.
     apply bv_wrap_bv_unsigned.
   Qed.
@@ -2878,7 +2878,7 @@ Section VtBody.
         disk_read_at γd (S nr) -∗ disk_flr γd F -∗ disk_fl γd t0 t1 -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HMs1.
     iIntros "Hcg #Htext Hpc #Hdinv #Hgeom Hpub Hidx Hnr Hflr Hfl #Hf0 #Hf1 #HfF Hcont".
     iPoseProof "Hgeom" as "(_ & _ & #Hup & _)".
@@ -3154,7 +3154,7 @@ Section VtLoopProof.
     kernel_text -∗ procs_inv γs -∗
     dev_inv γu γd -∗ disk_geom γd pd pav pu -∗
     vt_loop γd pd pav pu m av lvl eb pme sp0 lks.
-  Proof.
+  Proof using .
     intros Hav Hlen Hlvl Hfresh.
     iIntros "#Htext #Hpi #Hdinv #Hgeom".
     iLöb as "IH". rewrite {2}/vt_loop.
@@ -3399,7 +3399,7 @@ Section ProofVirtioDiskIntr.
       (m : regfile) (K lvl : nat) (eb : bool) (pme : mword 64)
       (b : bool) (lks : gset string)
     : wp_virtio_disk_intr_sconf_body γs γu γd γk pd pav pu m K lvl eb pme b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_virtio_disk_intr_sconf_body].
     intros pcE ret_tgt HK Hdom Hlen Hlvl Hfresh.
     assert (HKav : (22 <= K)%nat) by (exact HK).

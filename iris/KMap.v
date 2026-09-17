@@ -55,7 +55,7 @@ Section KMap.
     ghost_map_auth kmap_name 1 M.
 
   Global Instance kmap_auth_timeless M : Timeless (kmap_auth M).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* ---- the two working lemmas ---- *)
 
@@ -63,7 +63,7 @@ Section KMap.
   Lemma kmap_at_lookup (M : gmap (mword 27) (mword 44 * kperm))
       (vpn : mword 27) (ppn : mword 44) (pc : kperm) :
     kmap_auth M -∗ kmap_at vpn ppn pc -∗ ⌜M !! vpn = Some (ppn, pc)⌝.
-  Proof.
+  Proof using .
     rewrite /kmap_auth /kmap_at.
     iIntros "Hauth Hfrag".
     iDestruct (ghost_map_lookup with "Hauth Hfrag") as %Hl.
@@ -76,7 +76,7 @@ Section KMap.
       (vpn : mword 27) (ppn : mword 44) (pc : kperm) :
     M !! vpn = None ->
     kmap_auth M ==∗ kmap_auth (<[vpn := (ppn, pc)]> M) ∗ kmap_at vpn ppn pc.
-  Proof.
+  Proof using .
     rewrite /kmap_auth /kmap_at.
     iIntros (Hfresh) "Hauth".
     iMod (ghost_map_insert_persist vpn (ppn, pc) Hfresh with "Hauth")
@@ -95,7 +95,7 @@ Section KMap.
     ([∗ map] vpn ↦ e ∈ kmap_M0, kmap_at vpn e.1 e.2)%I.
 
   Global Instance kmap_static_claims_persistent : Persistent kmap_static_claims.
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* extraction: any statically classified vpn's identity claim, off the
      bundle -- this is how a proof with no claim in hand gets one (the
@@ -103,7 +103,7 @@ Section KMap.
   Lemma kmap_static_claims_at (vpn : mword 27) (pc : kperm) :
     kmap_static vpn pc ->
     kmap_static_claims -∗ kmap_at vpn (kpt_leaf_ppn vpn) pc.
-  Proof.
+  Proof using .
     iIntros (Hs) "#Hb".
     iApply (big_sepM_lookup _ _ vpn (kpt_leaf_ppn vpn, pc) with "Hb").
     rewrite kmap_M0_lookup. unfold kmap_static in Hs. rewrite Hs. reflexivity.
@@ -118,7 +118,7 @@ Section KMap.
   Lemma kmap_at_M0_static (vpn : mword 27) (ppn : mword 44) (pc : kperm) :
     kmap_auth kmap_M0 -∗ kmap_at vpn ppn pc -∗
     ⌜kmap_static vpn pc /\ ppn = kpt_leaf_ppn vpn⌝.
-  Proof.
+  Proof using .
     iIntros "Hauth Hat".
     iDestruct (kmap_at_lookup with "Hauth Hat") as %Hl.
     iPureIntro. rewrite kmap_M0_lookup in Hl.
@@ -140,7 +140,7 @@ Section KMap.
   Lemma mem_ident_phys (pa : mword 64) dq b :
     kmap_static (svpn_of pa) KP_rw ->
     kmap_static_claims -∗ pa ↦ₘ{dq} b -∗ pa ↦ₚ{dq} b.
-  Proof.
+  Proof using .
     iIntros (Hs) "#Hb H".
     iDestruct (kmap_static_claims_at (svpn_of pa) KP_rw Hs with "Hb") as "#Hk0".
     iDestruct (mem_pointsto_pin pa dq b (kpt_leaf_ppn (svpn_of pa)) with "Hk0 H")
@@ -155,7 +155,7 @@ Section KMap.
     kmap_static (svpn_of pa) KP_rw ->
     addr_is_ram pa -> (uint pa < 274877906944)%Z ->
     kmap_static_claims -∗ pa ↦ₚ{dq} b -∗ pa ↦ₘ{dq} b.
-  Proof.
+  Proof using .
     iIntros (Hs Hram Hc) "#Hb H".
     iDestruct (kmap_static_claims_at (svpn_of pa) KP_rw Hs with "Hb") as "#Hk0".
     iEval (rewrite /phys_pointsto) in "H". iDestruct "H" as "[Hp _]".
@@ -179,7 +179,7 @@ Section KMap.
   Lemma text_ident_phys (pa : mword 64) dq b :
     kmap_static (svpn_of pa) KP_rx ->
     kmap_static_claims -∗ pa ↦ₓ{dq} b -∗ pa ↦ₚ{dq} b.
-  Proof.
+  Proof using .
     iIntros (Hs) "#Hb H".
     iDestruct (kmap_static_claims_at (svpn_of pa) KP_rx Hs with "Hb") as "#Hk0".
     iDestruct (text_pointsto_pin pa dq b (kpt_leaf_ppn (svpn_of pa)) with "Hk0 H")
@@ -199,7 +199,7 @@ Section KMap.
     kmap_static_claims -∗
     ([∗ list] j ∈ seq 0 4096, (pa_add p j) ↦ₘ{dq} b) -∗
     ([∗ list] j ∈ seq 0 4096, (pa_add p j) ↦ₚ{dq} b).
-  Proof.
+  Proof using .
     iIntros (Hstat) "#Hb Hbytes".
     iApply (big_sepL_impl with "Hbytes").
     iIntros "!>" (k x Hk) "H".
@@ -218,7 +218,7 @@ Section KMap.
     kmap_static (svpn_of pa) KP_rx ->
     addr_is_text pa -> (uint pa < 274877906944)%Z ->
     kmap_static_claims -∗ pristine_elem pa -∗ pa ↦ₚ{dq} b -∗ pa ↦ₓ{dq} b.
-  Proof.
+  Proof using .
     iIntros (Hs Htx Hc) "#Hb #Hts H".
     iDestruct (kmap_static_claims_at (svpn_of pa) KP_rx Hs with "Hb") as "#Hk0".
     iEval (rewrite /phys_pointsto) in "H". iDestruct "H" as "[Hp _]".

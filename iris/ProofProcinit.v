@@ -240,7 +240,7 @@ Section ProofProcinit.
     iref_slots (length l * (1 + IREFSPARE)) -∗
     bslots (length l * 3) -∗
     [∗ list] i ∈ l, proc_seal (proc_addr i).
-  Proof.
+  Proof using .
     induction l as [|x l IH]; iIntros "Hraw Hsl Hir Hbs"; [done|].
     iDestruct "Hraw" as "[Hx Hraw]".
     cbn [length].
@@ -296,7 +296,7 @@ Section ProofProcinit.
       pc_is ret_tgt -∗ ⌜ callee_saved m mr ⌝ -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros sp0 spr ret_tgt HK8 HMesp HMecs.
     assert (Hspr8 : spr = pa_stk sp0 8).
     { unfold spr, pa_stk, add_vec_int. f_equal; try (apply bv_eq; vm_compute; reflexivity). }
@@ -575,7 +575,7 @@ Section ProofProcinit.
         ([∗ list] i ∈ seq 0 NPROC, proc_ready i) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros sp0 spr ret_tgt name_proc.
     revert CID.
     induction fuel as [|fuel IHf];
@@ -939,7 +939,7 @@ Section ProofProcinit.
   Lemma wp_procinit_sconf `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx} (m : regfile) (K : nat)
       (b : bool) (p : mword 64)
     : wp_procinit_sconf_body m K b p.
-  Proof.
+  Proof using .
     cbv beta delta [wp_procinit_sconf_body].
     intros pcE ret_tgt HK.
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).

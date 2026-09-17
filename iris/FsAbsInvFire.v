@@ -113,14 +113,14 @@ Section FsAbsInvFire.
 
   Lemma fsabs_open_walk (γfs : fs_names) (cw : Z) :
     ⊢ namei_walk_pre_era γfs cw (fun _ _ => True%I) (fun _ _ => True%I).
-  Proof.
+  Proof using .
     rewrite /namei_walk_pre_era. iIntros (pl r) "_". iModIntro.
     iSplit; [done |]. iApply ax_hops_triv.
   Qed.
 
   Lemma fsabs_mknod_walk (γfs : fs_names) (cw : Z) :
     ⊢ npar_walk_pre_era γfs cw (fun _ _ => True%I) (fun _ _ => True%I).
-  Proof.
+  Proof using .
     rewrite /npar_walk_pre_era. iIntros (pl r) "_". iModIntro.
     iSplit; [done |]. iApply ax_hops_triv.
   Qed.
@@ -135,21 +135,21 @@ Section FsAbsInvFire.
      piece in: the AU conjoined with its refund, both trivial. *)
   Lemma fsabs_aopen Γ :
     ⊢ pf_at (aopen_commit_at Γ appE) (pfam_triv (fun _ _ _ => True%I)).
-  Proof.
+  Proof using .
     iApply pf_at_triv. rewrite /aopen_commit_at. iIntros (I i a) "%Hi Ha".
     iModIntro. by iFrame "Ha".
   Qed.
 
   Lemma fsabs_dlookup Γ :
     ⊢ pf_at (dlookup_commit_at Γ appE) (pfam_triv (fun _ _ _ _ => True%I)).
-  Proof.
+  Proof using .
     iApply pf_at_triv. rewrite /dlookup_commit_at. iIntros (I d i nm ents nl) "%Hd %Hnm Ha".
     iModIntro. by iFrame "Ha".
   Qed.
 
   Lemma fsabs_dmiss Γ :
     ⊢ pf_at (dmiss_commit_at Γ appE) (pfam_triv (fun _ _ _ => True%I)).
-  Proof.
+  Proof using .
     iApply pf_at_triv. rewrite /dmiss_commit_at. iIntros (I d nm ents nl) "%Hd %Hnm Ha".
     iModIntro. by iFrame "Ha".
   Qed.
@@ -159,7 +159,7 @@ Section FsAbsInvFire.
   Lemma fsabs_atrunc (γfs : fs_names) :
     app_sup -∗
     pf_at (atrunc_commit_at (fs_gamma_L γfs) appE) (pfam_triv (fun _ _ _ => True%I)).
-  Proof.
+  Proof using .
     iIntros "#Hsup". iApply pf_at_triv.
     iApply (atrunc_commit_at_unit γfs appE with "Hsup").
   Qed.
@@ -171,7 +171,7 @@ Section FsAbsInvFire.
   Lemma fsabs_trunc_piece (γfs : fs_names) (vom : mword 64) :
     app_sup -∗
     open_trunc_piece (fs_gamma_L γfs) vom (pfam_triv (fun _ _ _ => True%I)).
-  Proof.
+  Proof using .
     iIntros "#Hsup". rewrite /open_trunc_piece. destruct (om_trunc vom).
     - iApply (fsabs_atrunc with "Hsup").
     - done.
@@ -185,7 +185,7 @@ Section FsAbsInvFire.
     app_sup -∗
     pf_at (acre_commit_at (fs_gamma_L γfs) appE c Pd Farm)
       (pfam_triv (fun _ _ _ _ => True%I)).
-  Proof.
+  Proof using .
     iIntros "#Hsup". iApply pf_at_triv.
     iApply (acre_commit_at_unit γfs appE c Pd Farm with "Hsup").
   Qed.
@@ -196,7 +196,7 @@ Section FsAbsInvFire.
   Lemma fsabs_child (γfs : fs_names) (c : absnode) :
     app_sup -∗
     cre_child_unfired (fs_gamma_L γfs) c (pfam_triv (fun _ _ => True%I)) (pfam_triv (fun _ _ => True%I)).
-  Proof.
+  Proof using .
     iIntros "#Hsup". rewrite /cre_child_unfired.
     iSplitR.
     { iApply pf_at_triv.
@@ -217,7 +217,7 @@ Section FsAbsInvFire.
   Lemma fsabs_utgt (γfs : fs_names) :
     app_sup -∗
     pf_at (utgt_commit_at (fs_gamma_L γfs) appE) (pfam_triv (fun _ _ => True%I)).
-  Proof.
+  Proof using .
     iIntros "#Hsup". iApply pf_at_triv.
     iApply (utgt_commit_at_unit γfs appE with "Hsup").
   Qed.
@@ -237,7 +237,7 @@ Section FsAbsInvFire.
      kernel may eliminate to either side.  FROM NOTHING. *)
   Lemma fsabs_aread Γ (i : Z) (γo : gname) :
     ⊢ pf_at (aread_commit_at Γ appE i γo) (pfam_triv (fun _ _ _ _ => True%I)).
-  Proof.
+  Proof using .
     iApply pf_at_triv. iApply aread_commit_at_unit.
   Qed.
 
@@ -245,7 +245,7 @@ Section FsAbsInvFire.
       (M : gmap Z (bv 8)) (ua : mword 64) (k cnt : nat) :
     app_sup -∗
     awrite_chain (fs_gamma_L γfs) appE i γo M ua (fun _ => True%I) k cnt.
-  Proof.
+  Proof using .
     iIntros "#Hsup".
     iApply (awrite_chain_unit γfs appE i γo M ua k cnt with "Hsup").
   Qed.
@@ -307,7 +307,7 @@ Section FsAbsInvFire.
     fileread_in st n (pfam_triv (fun _ _ _ _ => True%I))
                      (fun _ _ => True%I) (fun _ => True%I)
                      (fun _ => True%I) (fun _ _ => True%I) P.
-  Proof.
+  Proof using .
     rewrite /fileread_in. iIntros "#Hilic #Hsup #Htaint HP".
     destruct st as [| rb wb ty]; [iExact "HP" |].
     destruct rb; [| iExact "HP"].
@@ -355,7 +355,7 @@ Section FsAbsInvFire.
       (M : gmap Z (bv 8)) (ua : mword 64) :
     app_sup -∗ cons_licence -∗ pipe_taint_cred -∗
     |==> filewrite_in st n M ua (fun _ => True%I) (fun _ _ => True%I).
-  Proof.
+  Proof using .
     iIntros "#Hsup #Hlic #Htaint".
     rewrite /filewrite_in.
     destruct st as [| rb wb ty]; [by iModIntro |].
@@ -384,7 +384,7 @@ Section FsAbsInvFire.
     app_sup -∗
     open_au_pre_plain (fs_gamma_L γfs) γfs cw pl vom (fun _ _ => True%I)
       (fun _ _ => True%I) (pfam_triv (fun _ _ _ => True%I)) (pfam_triv (fun _ _ _ => True%I)).
-  Proof.
+  Proof using .
     iIntros "#Hsup".
     iApply (open_au_pre_plain_of_all with "[] [] []");
       [ iApply fsabs_open_walk | iApply fsabs_aopen
@@ -399,7 +399,7 @@ Section FsAbsInvFire.
   Lemma fsabs_exec_half Γ (γfs : fs_names) (cw : Z) :
     ⊢ namei_walk_pre_era γfs cw (fun _ _ => True%I) (fun _ _ => True%I)
       ∗ pf_at (aopen_commit_at Γ appE) (pfam_triv (fun _ _ _ => True%I)).
-  Proof.
+  Proof using .
     iSplitR; [iApply fsabs_open_walk | iApply fsabs_aopen].
   Qed.
 
@@ -409,7 +409,7 @@ Section FsAbsInvFire.
     open_au_pre_create (fs_gamma_L γfs) γfs cw pl vom (fun _ _ => True%I)
       (fun _ _ => True%I) (pfam_triv (fun _ _ => True%I)) (pfam_triv (fun _ _ => True%I)) (pfam_triv (fun _ _ _ _ => True%I)) (pfam_triv (fun _ _ _ _ => True%I))
       (pfam_triv (fun _ _ _ => True%I)) (pfam_triv (fun _ _ _ => True%I)).
-  Proof.
+  Proof using .
     iIntros "#Hsup".
     iApply (open_au_pre_create_of_all with "[] [] [] [] [] []");
       [ iApply fsabs_mknod_walk | iApply (fsabs_acre with "Hsup")
@@ -429,7 +429,7 @@ Section FsAbsInvFire.
     open_in (fs_gamma_L γfs) γfs cw M pv vom (fun _ _ => True%I) (fun _ _ => True%I)
       (pfam_triv (fun _ _ => True%I)) (pfam_triv (fun _ _ => True%I)) (pfam_triv (fun _ _ _ _ => True%I)) (pfam_triv (fun _ _ _ _ => True%I)) (pfam_triv (fun _ _ _ => True%I))
       (pfam_triv (fun _ _ _ => True%I)).
-  Proof.
+  Proof using .
     iIntros "#Hsup". rewrite /open_in. destruct (om_create vom).
     - iApply (open_au_create_at_of_all with "[] [] [] [] [] []");
         [ iApply fsabs_mknod_walk | iApply (fsabs_acre with "Hsup")
@@ -445,7 +445,7 @@ Section FsAbsInvFire.
     app_sup -∗
     mknod_au_at (fs_gamma_L γfs) γfs cw M pv ma mi (fun _ _ => True%I)
       (fun _ _ => True%I) (pfam_triv (fun _ _ => True%I)) (pfam_triv (fun _ _ => True%I)) (pfam_triv (fun _ _ _ _ => True%I)) (pfam_triv (fun _ _ _ _ => True%I)).
-  Proof.
+  Proof using .
     iIntros "#Hsup".
     iApply (mknod_au_at_of_all with "[] [] [] []");
       [ iApply fsabs_mknod_walk | iApply (fsabs_acre with "Hsup")
@@ -458,7 +458,7 @@ Section FsAbsInvFire.
   Lemma fsabs_chdir_pre Γ (γfs : fs_names) (cw : Z) :
     ⊢ chdir_au_pre Γ γfs cw (fun _ _ => True%I) (fun _ _ => True%I)
       (pfam_triv (fun _ _ _ => True%I)).
-  Proof.
+  Proof using .
     rewrite /chdir_au_pre.
     iSplitR; [iApply fsabs_open_walk | iApply fsabs_aopen].
   Qed.
@@ -472,7 +472,7 @@ Section FsAbsInvFire.
   Lemma fsabs_link_pre (γfs : fs_names) :
     app_sup -∗
     link_commits (fs_gamma_L γfs) (pfam_triv (fun _ _ _ => True%I)) (pfam_triv (fun _ _ _ _ => True%I)) (pfam_triv (fun _ _ => True%I)).
-  Proof. iIntros "#Hsup". iApply (link_commits_unit γfs with "Hsup"). Qed.
+  Proof using . iIntros "#Hsup". iApply (link_commits_unit γfs with "Hsup"). Qed.
 
   (* ...AT THE SYSCALL TIER (lane TL-3C, item (M)): unlink's bundle is now
      path-fixed under the reading of argument 0, and the generic family

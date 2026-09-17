@@ -283,7 +283,7 @@ Section HwConfig.
        (R_bitvector_32 scounteren) ↦ᵣ□ scen ∗ mhpmcounter ↦ᵣ□ hpm)%I.
 
   Global Instance counter_caps_persistent : Persistent counter_caps.
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Definition hw_config : iProp Σ :=
     (∃ (misa0 mseccfg0 : mword 64) (pmar0 : list PMA_Region) (elp0 : mword 1),
@@ -333,7 +333,7 @@ Section HwConfig.
      counter_caps)%I.
 
   Global Instance hw_config_persistent : Persistent hw_config.
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* the accessor lives in [UserExec] ([hw_config_counters]): this file has no
      proofmode import, and the only consumer is the U tier. *)

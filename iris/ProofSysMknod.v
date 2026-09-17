@@ -339,7 +339,7 @@ Section ProofSysMknodFrame.
     (∃ w : mword 64, (pa_stk sp0 19) ↦₈[KT1] w) ∗
     (∃ w : mword 64, (pa_stk sp0 20) ↦₈[KT1] w) ∗
     bytes_own (KTR := KT1) (DfracOwn 1) (pa_stk sp0 18) 128.
-  Proof.
+  Proof using .
     iIntros "H". rewrite (stack_own_slots (KTR := KT1)). cbn [seq].
     iDestruct "H" as "(H1 & H2 & H3 & H4 & H5 & H6 & H7 & H8 & H9 & H10 &
                        H11 & H12 & H13 & H14 & H15 & H16 & H17 & H18 & H19 &
@@ -368,7 +368,7 @@ Section ProofSysMknodFrame.
     (pa_stk sp0 19) ↦₈[KT1] w19 -∗ (pa_stk sp0 20) ↦₈[KT1] w20 -∗
     bytes_own (KTR := KT1) (DfracOwn 1) (pa_stk sp0 18) 128 -∗
     stack_own (KTR := KT1) sp0 20.
-  Proof.
+  Proof using .
     intro Hal. iIntros "H1 H2 H19 H20 Hb".
     change 128%nat with (8 * 16)%nat.
     iDestruct (bytes_own_slotsn (KTR := KT1) sp0 18 16 ltac:(lia) Hal with "Hb") as "Hs".
@@ -396,11 +396,11 @@ Section ProofSysMknodFrame.
   Lemma mn_bytes_name `{XI : CurCtx} (a : mword 64) (N : nat) :
     bytes_own (KTR := KT1) (DfracOwn 1) a N ⊢
     ∃ f : nat -> bv 8, [∗ list] j ∈ seq 0 N, pa_add a j ↦ₘ[KT1] f j.
-  Proof. rewrite /bytes_own. exact (bb_any_named (KTR := KT1) a N). Qed.
+  Proof using . rewrite /bytes_own. exact (bb_any_named (KTR := KT1) a N). Qed.
 
   Lemma mn_name_bytes `{XI : CurCtx} (a : mword 64) (N : nat) (f : nat -> bv 8) :
     ([∗ list] j ∈ seq 0 N, pa_add a j ↦ₘ[KT1] f j) ⊢ bytes_own (KTR := KT1) (DfracOwn 1) a N.
-  Proof. rewrite /bytes_own. exact (bb_named_any (KTR := KT1) a N f). Qed.
+  Proof using . rewrite /bytes_own. exact (bb_named_any (KTR := KT1) a N f). Qed.
 
   (* 128 = (k+1) + (127-k): create reads the NUL-terminated prefix, the rest
      rides through untouched *)
@@ -410,7 +410,7 @@ Section ProofSysMknodFrame.
     ([∗ list] j ∈ seq 0 (S k), pa_add a j ↦ₘ[KT1] f j)
     ∗ ([∗ list] j ∈ seq 0 (127 - k)%nat,
          pa_add (pa_add a (S k)) j ↦ₘ[KT1] f (S k + j)%nat).
-  Proof.
+  Proof using .
     intro Hk.
     replace 128%nat with (S k + (127 - k))%nat by lia.
     rewrite (bb_split a (S k) (127 - k)%nat f). iIntros "[$ $]".
@@ -422,7 +422,7 @@ Section ProofSysMknodFrame.
     ([∗ list] j ∈ seq 0 (127 - k)%nat,
        pa_add (pa_add a (S k)) j ↦ₘ[KT1] f (S k + j)%nat) -∗
     bytes_own (KTR := KT1) (DfracOwn 1) a 128.
-  Proof.
+  Proof using .
     intro Hk. iIntros "H1 H2".
     iDestruct (mn_name_bytes a (S k) f with "H1") as "B1".
     iDestruct (mn_name_bytes (pa_add a (S k)) (127 - k)%nat
@@ -586,7 +586,7 @@ Section HalfWords.
 
   Local Lemma big_sepL_seq_shift2 `{XI : CurCtx} (P : nat -> iProp Σ) (o n : nat) :
     ([∗ list] jj ∈ seq o n, P jj) ⊣⊢ ([∗ list] jj ∈ seq 0 n, P ((o + jj)%nat)).
-  Proof.
+  Proof using .
     assert (Hf : seq o n = (Nat.add o) <$> seq 0 n).
     { rewrite fmap_add_seq. by rewrite Nat.add_0_r. }
     rewrite Hf big_sepL_fmap. reflexivity.
@@ -594,7 +594,7 @@ Section HalfWords.
 
   Lemma word4_pointsto_split2 `{XI : CurCtx} (a : Arch.pa) (dq : dfrac) (w : mword 32) :
     a ↦₄{dq} w ⊢ a ↦₂{dq} hw_lo w ∗ (pa_add a 2) ↦₂{dq} hw_hi w.
-  Proof.
+  Proof using .
     iIntros "[%Hal Hbs]".
     assert (Hs : seq 0 4 = (seq 0 2 ++ seq 2 2)%list) by reflexivity.
     rewrite Hs big_sepL_app.
@@ -614,7 +614,7 @@ Section HalfWords.
   Lemma word4_pointsto_join2 `{XI : CurCtx} (a : Arch.pa) (dq : dfrac) (lo hi : mword 16) :
     is_aligned_paddr (Physaddr a) 4 = true ->
     a ↦₂{dq} lo -∗ (pa_add a 2) ↦₂{dq} hi -∗ a ↦₄{dq} hw_join lo hi.
-  Proof.
+  Proof using .
     iIntros (Hal) "[_ Hlo] [_ Hhi]".
     iSplit; [done|].
     assert (Hs : seq 0 4 = (seq 0 2 ++ seq 2 2)%list) by reflexivity.
@@ -685,7 +685,7 @@ Section ProofSysMknodEpilogue.
         pc_is (ret_pc (m !!! Regidx Rra : mword 64)) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK18 Kpop Hsp0 HMsp HMthr Hal.
     iIntros "Hcg #Htext Hpc Hf1 Hf2 Hf19 Hf20 Hbuf Hcont".
     assert (Hc1 : add_vec (M !!! Regidx csp_rs1 : mword 64)
@@ -879,7 +879,7 @@ Section ProofSysMknodM1Tail.
         proc_priv_bare (proc_addr jx) pidv Upr -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HKeo HK18 Kpop Hgeom Hj Hgl Hlkempty Hsp0 HMsp HMthr Hal.
     iIntros "Hcg Hown Htce Hcce #Htext #Hkd Hpc #Hpenv #Hbio #Hlog Hseam Hgen
               Hpid #Hprocs #Hdev #Hgeo #Hdlk Hop Hf1 Hf2 Hf19 Hf20 Hbuf Hcont".
@@ -1006,7 +1006,7 @@ Section ProofSysMknodBody.
     (k < NINODE)%nat ->
     (ic_escrows fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst -∗ ic_escrow fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k
      : iProp Σ).
-  Proof.
+  Proof using .
     iIntros (Hk) "H".
     iApply (ic_escrows_lookup fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k Hk with "H").
   Qed.
@@ -1028,7 +1028,7 @@ Section ProofSysMknodBody.
 
  ns dqb dqs dqbs dqn v0 v1 v2
                             pid U m K eb b lks P Pmiss Farm Fun Fok Fex.
-  Proof.
+  Proof using .
     (* the BODY's own three [let]s go first (ZETA), so the device numbers
        are the literal [dev_arg v1] / [dev_arg v2]; the FRAME's [let]s
        stay, because the walk below names [pj] and [ret_tgt]. *)
@@ -2137,7 +2137,7 @@ Section MknodStable.
     (j < length ps)%nat ->
     ghost_map_auth (γtop Γ) (1/2) I -∗ mkr_chain Γ avc ds ps -∗
       ⌜abs_view I !! (ds !!! j) = avc !! (ds !!! j)⌝.
-  Proof.
+  Proof using .
     intros Hj. iIntros "Ha Hc".
     destruct (lookup_lt_is_Some_2 ps j Hj) as [s Hs].
     rewrite /mkr_chain.
@@ -2155,7 +2155,7 @@ Section MknodStable.
     arun avc root ps ds ->
     ghost_map_auth (γtop Γ) (1/2) I -∗ mkr_chain Γ avc ds ps -∗
       ⌜arun (abs_view I) root ps ds⌝.
-  Proof.
+  Proof using .
     intros Hr. iIntros "Ha #Hc".
     iAssert (∀ j : nat, ⌜(j < length ps)%nat ->
                abs_view I !! (ds !!! j) = avc !! (ds !!! j)⌝)%I as %Hall.
@@ -2178,7 +2178,7 @@ Section MknodStable.
      the row this syscall writes. *)
   Lemma mkr_pin_persist Γ (avc : aview) (q : Qp) (d : Z) (a : anode) :
     avc !! d = Some a -> nview Γ q d a ==∗ mkr_pin Γ avc d.
-  Proof.
+  Proof using .
     intros Hav. rewrite /nview /nview_dq /top_frag_q /mkr_pin.
     iIntros "H". iDestruct "H" as (n) "[Hf %Hab]".
     iMod (ghost_map_elem_persist with "Hf") as "Hf".
@@ -2189,7 +2189,7 @@ Section MknodStable.
   Lemma mkr_chain_of_pins Γ (q : Qp) (avc : aview) (ds : list Z)
       (ps : list fname) :
     apr_pins Γ q avc ds ps ==∗ mkr_chain Γ avc ds ps.
-  Proof.
+  Proof using .
     rewrite /apr_pins /mkr_chain. iIntros "H".
     iApply big_sepL_bupd. iApply (big_sepL_impl with "H").
     iIntros "!>" (jj s Hjj) "Hp". rewrite /apn_pin.
@@ -2226,7 +2226,7 @@ Section MknodStable.
     arun avc root ps ds ->
     mkr_chain Γ avc ds ps -∗ dlookup_commit_at Γ E Φ -∗
       dlookup_commit_at Γ E (mkr_recv root ps ds Φ).
-  Proof.
+  Proof using .
     intros Hr. iIntros "#Hc Hcm". rewrite /dlookup_commit_at.
     iIntros (I d i nm ents nl) "%Hd %Hnm Ha".
     iDestruct (mkr_chain_run Γ I avc root ps ds Hr with "Ha Hc") as %Hrun.
@@ -2238,7 +2238,7 @@ Section MknodStable.
   Lemma mkr_dlookup_forget Γ (E : coPset) (root : Z) (ps : list fname)
       (ds : list Z) (Φ : aview -> Z -> fname -> Z -> iProp Σ) :
     dlookup_commit_at Γ E (mkr_recv root ps ds Φ) -∗ dlookup_commit_at Γ E Φ.
-  Proof.
+  Proof using .
     iIntros "Hcm". rewrite /dlookup_commit_at.
     iIntros (I d i nm ents nl) "%Hd %Hnm Ha".
     iMod ("Hcm" $! I d i nm ents nl with "[//] [//] Ha") as "[Ha HΦ]".
@@ -2288,7 +2288,7 @@ Section MknodStable.
     arun avc root ps ds ->
     mkr_chain Γ avc ds ps -∗ pf_at (dlookup_commit_at Γ E) F -∗
       pf_at (dlookup_commit_at Γ E) (mkr_fam root ps ds F).
-  Proof.
+  Proof using .
     intros Hr. iIntros "#Hc Hcm".
     iApply (pf_at_mono_pair (dlookup_commit_at Γ E) (dlookup_commit_at Γ E)
               F (mkr_fam root ps ds F) eq_refl with "[] Hcm").
@@ -2301,7 +2301,7 @@ Section MknodStable.
       (ds : list Z) (F : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ)) :
     pf_at (dlookup_commit_at Γ E) (mkr_fam root ps ds F) -∗
     pf_at (dlookup_commit_at Γ E) F.
-  Proof.
+  Proof using .
     iIntros "Hcm".
     iApply (pf_at_mono_pair (dlookup_commit_at Γ E) (dlookup_commit_at Γ E)
               (mkr_fam root ps ds F) F eq_refl with "[] Hcm").
@@ -2331,14 +2331,14 @@ Section MknodStable.
   Lemma mkr_hop_triv (F : Z -> dfrac -> gmap fname Z -> iProp Σ)
       (k : nat) (s : fname) :
     ⊢ ax_hop F (fun _ _ => True%I) (fun _ _ => True%I) k s.
-  Proof.
+  Proof using .
     rewrite /ax_hop. iIntros (d ents dqv) "_ HF". iModIntro. iFrame "HF".
     by destruct (ents !! s).
   Qed.
 
   Lemma mkr_walk_triv (γfs : fs_names) (cw : Z) :
     ⊢ npar_walk_pre_era γfs cw (fun _ _ => True%I) (fun _ _ => True%I).
-  Proof.
+  Proof using .
     rewrite /npar_walk_pre_era. iIntros (pl r) "%Hs". iModIntro.
     iSplitR; [done |]. rewrite /ax_hops_from.
     iApply big_sepL_intro. iIntros "!>" (j s Hj). iApply mkr_hop_triv.
@@ -2358,7 +2358,7 @@ Section MknodStable.
     mknod_post_ok Γ M pv ma mi (fun _ _ => True%I) Farm Fun
       (mkr_fam root ps ds Fok) (mkr_fam root ps ds Fex)
     ⊢ mknod_stable_ok Γ ma mi root ps ds Farm Fun Fok Fex.
-  Proof.
+  Proof using .
     rewrite /mknod_post_ok /mknod_stable_ok.
     iIntros "H". iDestruct "H" as (pl i) "[_ [%Hi H]]".
     iDestruct "H" as (av d nm ents nl)
@@ -2389,7 +2389,7 @@ Section MknodStable.
     mknod_post_fail Γ γfs cw M pv ma mi (fun _ _ => True%I) (fun _ _ => True%I)
       Farm Fun (mkr_fam root ps ds Fok) (mkr_fam root ps ds Fex)
     ⊢ mknod_stable_fail Γ ma mi root ps ds Farm Fun Fok Fex.
-  Proof.
+  Proof using .
     rewrite /mknod_post_fail /mknod_stable_fail /mknod_au_at.
     iIntros "[(_ & Hacre & Hdl & Hchild) | H]".
     { iLeft. iSplitL "Hacre".
@@ -2430,7 +2430,7 @@ Section MknodStable.
     mknod_arms Γ γfs cw M pv ma mi (fun _ _ => True%I) (fun _ _ => True%I)
       Farm Fun (mkr_fam root ps ds Fok) (mkr_fam root ps ds Fex) r
     ⊢ mknod_stable_arms Γ ma mi root ps ds Farm Fun Fok Fex r.
-  Proof.
+  Proof using .
     rewrite /mknod_arms /mknod_stable_arms.
     iIntros "[[%Hr Hok] | [%Hr Hfail]]".
     - iLeft. iSplitR; [by iPureIntro |]. iApply (mkr_ok_arm with "Hok").
@@ -2463,7 +2463,7 @@ Section MknodStableWp.
       (mkr_fam root ps ds Fok) (mkr_fam root ps ds Fex) ->
     wp_sys_mknod_stable_body γf gs j gl pd pav pu ns dqb dqs dqbs
       dqn v0 v1 v2 pid U m K eb b lks root avc ds ps Farm Fun Fok Fex.
-  Proof.
+  Proof using .
     intros HW.
     cbv beta delta [wp_sys_mknod_body wp_sys_mknod_frame] in HW.
     cbv beta delta [wp_sys_mknod_stable_body wp_sys_mknod_frame].

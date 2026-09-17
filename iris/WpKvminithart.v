@@ -245,7 +245,7 @@ Section KvmMint.
   (* the trampoline vpn is not statically classified (mirrors KvmMap's
      [kmap_class_tramp_None], which is Local there). *)
   Local Lemma kmi_class_tramp_None : kmap_class tramp_vpn = None.
-  Proof. unfold kmap_class. rewrite tramp_vpn_uns. reflexivity. Qed.
+  Proof using . unfold kmap_class. rewrite tramp_vpn_uns. reflexivity. Qed.
 
   (* the auth-map kstack layer misses off the kstack vpns (mirrors KvmMap's
      Local [kvm_M_stacks_miss]). *)
@@ -253,7 +253,7 @@ Section KvmMint.
       (M : gmap (mword 27) (mword 44 * kperm)) (vpn : mword 27) :
     (forall i : nat, (i < k)%nat -> vpn <> kstack_vpn i) ->
     kvm_M_stacks pas k M !! vpn = M !! vpn.
-  Proof.
+  Proof using .
     induction k as [|k' IH]; intros Hne.
     - reflexivity.
     - cbn [kvm_M_stacks]. rewrite lookup_insert_ne;
@@ -271,7 +271,7 @@ Section KvmMint.
     (forall i : nat, (i < k)%nat -> M0 !! kstack_vpn i = None) ->
     kmap_auth M0 ==∗ kmap_auth (kvm_M_stacks pas k M0) ∗
       ([∗ list] i ∈ seq 0 k, kmap_at (kstack_vpn i) (pas i) KP_rw).
-  Proof.
+  Proof using .
     induction k as [|k' IH]; iIntros (Hk Hfresh) "Hauth".
     - iModIntro. iFrame "Hauth". done.
     - iMod (IH ltac:(lia) ltac:(intros i Hi; apply Hfresh; lia) with "Hauth")
@@ -297,7 +297,7 @@ Section KvmMint.
     kmap_auth kmap_M0 ==∗ kmap_auth (kvm_M pas) ∗
       kmap_at tramp_vpn tramp_ppn KP_rx ∗
       ([∗ list] i ∈ seq 0 64, kmap_at (kstack_vpn i) (pas i) KP_rw).
-  Proof.
+  Proof using .
     iIntros "Hauth".
     (* the trampoline is fresh in [kmap_M0] (not statically classified) *)
     assert (Htf : kmap_M0 !! tramp_vpn = None).

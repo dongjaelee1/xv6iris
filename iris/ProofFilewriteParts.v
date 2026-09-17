@@ -138,7 +138,7 @@ Section FilewriteMsg.
 
   Lemma fw_msg_str :
     (kernel_data : iProp Σ) -∗ (mword_of_int fw_msg_a : mword 64) ↦ₛ□ fw_msg.
-  Proof.
+  Proof using .
     iIntros "#Hd".
     iApply (kernel_data_string fw_msg_a fw_msg _ eq_refl
               ltac:(unfold text_end, fw_msg_a; lia)
@@ -403,7 +403,7 @@ Section FwShare.
   Lemma fw_shr_gen_split (k : nat) (s1 s2 : Qp) (dev inum : mword 32) (g : gname) :
     inode_shr_gen k (s1 + s2)%Qp dev inum g ⊣⊢
     inode_shr_gen k s1 dev inum g ∗ inode_shr_gen k s2 dev inum g.
-  Proof.
+  Proof using .
     rewrite /inode_shr_gen inode_ident_split live_gen_split slh_tok_split
             ic_ref_stamps_split.
     iSplit; [iIntros "[[$ $] [[$ $] [[$ $] [$ $]]]]"
@@ -413,7 +413,7 @@ Section FwShare.
   Lemma fw_shr_gen_halve (k : nat) (s : Qp) (dev inum : mword 32) (g : gname) :
     inode_shr_gen k s dev inum g ⊣⊢
     inode_shr_gen k (s/2)%Qp dev inum g ∗ inode_shr_gen k (s/2)%Qp dev inum g.
-  Proof.
+  Proof using .
     pose proof (fw_shr_gen_split k (s/2)%Qp (s/2)%Qp dev inum g) as Hs.
     by rewrite {1}(Qp.div_2 s) in Hs.
   Qed.
@@ -424,7 +424,7 @@ Section FwShare.
   Lemma fw_shr_regen (k : nat) (s1 s2 : Qp) (dev inum : mword 32) (g : gname) :
     inode_shr_gen k s1 dev inum g -∗ inode_shr k s2 dev inum -∗
     inode_shr_gen k (s1 + s2)%Qp dev inum g.
-  Proof.
+  Proof using .
     iIntros "Hkeep Hback".
     iEval (rewrite inode_shr_gen_intro) in "Hback".
     iDestruct "Hback" as (g2 lo2 tl2) "(%Hle2 & #Hfl2 & Hback)".
@@ -499,7 +499,7 @@ Section ProofFilewriteParts.
         ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 12) (DfracOwn 1) w12 -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hsp0.
     iIntros "Hcg #Htext Hpc Hcont".
     (* ---- +0x08 c.addi16sp sp,sp,-96 ---- *)
@@ -669,7 +669,7 @@ Section ProofFilewriteParts.
         pc_is (ret_pc ra0) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hsp0 Hra0 Hs00 Hs20 Hs50 Hs60 Hmtsp Hmta0 Hthr.
     iIntros "Hcg #Htext Hpc Hb1 Hb2 Hb3 Hb4 Hb5 Hb6 Hb7 Hb8 Hb9 Hb10 Hb11 Hb12 Hcont".
     (* ---- +0xfc: c.ldsp ra,88(sp) ---- *)
@@ -930,7 +930,7 @@ Section ProofFilewriteParts.
         ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 11) (DfracOwn 1) v9 -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hmtsp Hab Hbc Hcd Hde Hef Hfg.
     iIntros "Hcg Hpc Hia Hib Hic Hid Hie Hif Hb3 Hb5 Hb6 Hb9 Hb10 Hb11 Hcont".
     (* ---- rs1 ---- *)
@@ -1069,7 +1069,7 @@ Section ProofFilewriteParts.
         pc_is (mword_of_int (FW + 0xf4) : mword 64) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hab Hjt.
     iIntros "Hcg Hpc Hia Hib Hcont".
     iApply (wp_cli_s_sconf (mword_of_int za) Ra0 (mword_of_int 63 : mword 6)
@@ -1124,7 +1124,7 @@ Section ProofFilewriteParts.
         ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 6) (DfracOwn 1) v4 -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hmtsp Hab Hbc Hjt.
     iIntros "Hcg Hpc Hia Hib Hic Hb6 Hcont".
     iApply (wp_cli_s_sconf (mword_of_int za) Ra0 (mword_of_int 63 : mword 6)
@@ -1190,7 +1190,7 @@ Section ProofFilewriteParts.
         ctx_word_pointsto cur_ctx (mword_of_int (KernelSyms.devsw + 16 * mj + 8)) dq slot -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hmj Ha5.
     iIntros "Hcg #Htext Hpc Hslot Hcont".
     (* ---- +0x6c c.slli a5,a5,4 : major * 16 ---- *)
@@ -1335,7 +1335,7 @@ Section ProofFilewriteParts.
     ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 10) (DfracOwn 1) u10 -∗
     ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 11) (DfracOwn 1) u11 -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using wp_panic_sconf.
     intros Hmtsp HK Hbelow.
     iIntros "Hcg Hcnt #Htext #Hkd Hpc #Hpenv Hb3 Hb5 Hb6 Hb9 Hb10 Hb11".
     (* ---- +0x10a c.sdsp s1,72(sp) ---- *)
@@ -1560,7 +1560,7 @@ Section ProofFilewriteParts.
         pc_is (ret_pc ra0) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hnz Hiz Hsp0 Hra0 Hs00 Hcs1 Hs20 Hcs3 Hs40 Hs50 Hs60 Hcs7 Hcs8 Hcs9
            Hmtsp Hmts5 Hmts4 Hthr.
     iIntros "Hcg #Htext Hpc Hb1 Hb2 Hb3 Hb4 Hb5 Hb6 Hb7 Hb8 Hb9 Hb10 Hb11 Hb12 Hcont".

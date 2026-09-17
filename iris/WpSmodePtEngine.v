@@ -322,7 +322,7 @@ Section SretSwp.
         reg_pointsto misa DfracDiscarded MISA_C ∗
         reg_pointsto menvcfg (DfracOwn 1) menv ∗
         reg_pointsto sepc (DfracOwn 1) sep).
-  Proof.
+  Proof using .
     rewrite /hreg_frame /hreg_frame_ro /sret_Drw /sret_Dro.
     repeat (rewrite big_sepS_union; last set_solver).
     rewrite !big_sepS_singleton.
@@ -341,7 +341,7 @@ Section SretSwp.
     reg_pointsto sepc (DfracOwn 1) sep -∗
     (hreg_frame (sret_rs ms p npc menv sep) sret_Drw ∗
      hreg_frame_ro sret_Df (sret_rs ms p npc menv sep) sret_Dro : iProp Σ).
-  Proof. iIntros "H1 H2 H3 H4 H5 H6". rewrite sret_frames. iFrame. Qed.
+  Proof using . iIntros "H1 H2 H3 H4 H5 H6". rewrite sret_frames. iFrame. Qed.
 
   Lemma sret_frames_out (ms : mword 64) (p : Privilege) (npc menv sep : mword 64) :
     (hreg_frame (sret_rs ms p npc menv sep) sret_Drw ∗
@@ -352,12 +352,12 @@ Section SretSwp.
      reg_pointsto misa DfracDiscarded MISA_C ∗
      reg_pointsto menvcfg (DfracOwn 1) menv ∗
      reg_pointsto sepc (DfracOwn 1) sep).
-  Proof. rewrite sret_frames. iIntros "H". iExact "H". Qed.
+  Proof using . rewrite sret_frames. iIntros "H". iExact "H". Qed.
 
   Lemma sret_rw_ext (rs rs' : regstate) :
     reg_agree_on (sret_Drw ∪ sret_Dro) rs rs' ->
     hreg_frame rs sret_Drw -∗ (hreg_frame rs' sret_Drw : iProp Σ).
-  Proof.
+  Proof using .
     intros Hag. rewrite (hreg_frame_ext _ _ sret_Drw
       (reg_agree_mono (sret_Drw ∪ sret_Dro) sret_Drw _ _ ltac:(set_solver) Hag)).
     iIntros "H". iExact "H".
@@ -367,7 +367,7 @@ Section SretSwp.
     reg_agree_on (sret_Drw ∪ sret_Dro) rs rs' ->
     hreg_frame_ro sret_Df rs sret_Dro -∗
     (hreg_frame_ro sret_Df rs' sret_Dro : iProp Σ).
-  Proof.
+  Proof using .
     intros Hag. rewrite (hreg_frame_ro_ext sret_Df _ _ sret_Dro
       (reg_agree_mono (sret_Drw ∪ sret_Dro) sret_Dro _ _ ltac:(set_solver) Hag)).
     iIntros "H". iExact "H".
@@ -390,7 +390,7 @@ Section SretSwp.
       (fun _ => hreg_frame (sret_rs (sret_elpclr ms) p npc menv sep) sret_Drw ∗
                 hreg_frame_ro sret_Df (sret_rs (sret_elpclr ms) p npc menv sep)
                   sret_Dro).
-  Proof.
+  Proof using .
     intros HL. iIntros "#Hcert #Help Hrw Hro".
     unfold zicfilp_restore_elp_on_xret. cbn match.
     iApply (swp_bind_use _ _
@@ -454,7 +454,7 @@ Section SretSwp.
         hreg_frame_ro sret_Df
           (sret_rs (sret_ms5 ms_cur) Supervisor (ret_pc sepc0) menvcfg1 sepc0)
           sret_Dro).
-  Proof.
+  Proof using .
     intros HTSR Hsup HL.
     assert (Hnpm : generic_neq Supervisor Machine = true)
       by (vm_compute; reflexivity).
@@ -704,29 +704,29 @@ Section sda_lookups.
   Local Notation rs := (sda_rs mst0 menv0 satp0 pmar0 pcfg paddr tlbv).
 
   Lemma sda_rs_tlb : register_lookup tlb rs = tlbv.
-  Proof. rewrite /sda_rs. apply register_lookup_set. Qed.
+  Proof using . rewrite /sda_rs. apply register_lookup_set. Qed.
   Lemma sda_rs_mst : register_lookup mstatus rs = mst0.
-  Proof. rewrite /sda_rs. sdtm. apply register_lookup_set. Qed.
+  Proof using . rewrite /sda_rs. sdtm. apply register_lookup_set. Qed.
   Lemma sda_rs_priv : register_lookup cur_privilege rs = Supervisor.
-  Proof. rewrite /sda_rs. sdtm. sdtm. apply register_lookup_set. Qed.
+  Proof using . rewrite /sda_rs. sdtm. sdtm. apply register_lookup_set. Qed.
   Lemma sda_rs_menv : register_lookup menvcfg rs = menv0.
-  Proof. rewrite /sda_rs. sdtm. sdtm. sdtm. apply register_lookup_set. Qed.
+  Proof using . rewrite /sda_rs. sdtm. sdtm. sdtm. apply register_lookup_set. Qed.
   Lemma sda_rs_satp : register_lookup satp rs = satp0.
-  Proof. rewrite /sda_rs. sdtm. sdtm. sdtm. sdtm. apply register_lookup_set. Qed.
+  Proof using . rewrite /sda_rs. sdtm. sdtm. sdtm. sdtm. apply register_lookup_set. Qed.
   Lemma sda_rs_pma : register_lookup pma_regions rs = pmar0.
-  Proof. rewrite /sda_rs. sdtm. sdtm. sdtm. sdtm. sdtm.
+  Proof using . rewrite /sda_rs. sdtm. sdtm. sdtm. sdtm. sdtm.
          apply register_lookup_set. Qed.
   Lemma sda_rs_pcfg : register_lookup pmpcfg_n rs = pcfg.
-  Proof. rewrite /sda_rs. sdtm. sdtm. sdtm. sdtm. sdtm. sdtm.
+  Proof using . rewrite /sda_rs. sdtm. sdtm. sdtm. sdtm. sdtm. sdtm.
          apply register_lookup_set. Qed.
   Lemma sda_rs_paddr : register_lookup pmpaddr_n rs = paddr.
-  Proof. rewrite /sda_rs. sdtm. sdtm. sdtm. sdtm. sdtm. sdtm. sdtm.
+  Proof using . rewrite /sda_rs. sdtm. sdtm. sdtm. sdtm. sdtm. sdtm. sdtm.
          apply register_lookup_set. Qed.
   Lemma sda_rs_htif : register_lookup htif_tohost_base rs = None.
-  Proof. rewrite /sda_rs. sdtm. sdtm. sdtm. sdtm. sdtm. sdtm. sdtm. sdtm.
+  Proof using . rewrite /sda_rs. sdtm. sdtm. sdtm. sdtm. sdtm. sdtm. sdtm. sdtm.
          apply register_lookup_set. Qed.
   Lemma sda_rs_misa : register_lookup misa rs = MISA_C.
-  Proof. rewrite /sda_rs. sdtm. sdtm. sdtm. sdtm. sdtm. sdtm. sdtm. sdtm. sdtm.
+  Proof using . rewrite /sda_rs. sdtm. sdtm. sdtm. sdtm. sdtm. sdtm. sdtm. sdtm. sdtm.
          apply register_lookup_set. Qed.
 End sda_lookups.
 
@@ -841,7 +841,7 @@ Section SdaFrames.
   Lemma sda_rw_ext (rs rs' : regstate) :
     reg_agree_on (sda_Drw ∪ sda_Dro) rs rs' ->
     hreg_frame rs sda_Drw -∗ (hreg_frame rs' sda_Drw : iProp Σ).
-  Proof.
+  Proof using .
     intros Hag. rewrite (hreg_frame_ext _ _ sda_Drw
       (reg_agree_mono (sda_Drw ∪ sda_Dro) sda_Drw _ _ ltac:(set_solver) Hag)).
     iIntros "H". iExact "H".
@@ -855,7 +855,7 @@ Section SdaFrames.
     D ⊆ sda_Drw ->
     reg_agree_on (sda_Drw ∪ sda_Dro) rs rs' ->
     hreg_frame rs D -∗ (hreg_frame rs' D : iProp Σ).
-  Proof.
+  Proof using .
     intros Hsub Hag.
     rewrite (hreg_frame_ext _ _ D
       (reg_agree_mono (sda_Drw ∪ sda_Dro) D _ _
@@ -866,7 +866,7 @@ Section SdaFrames.
   Lemma sda_ro_ext (Df : register -> dfrac) (rs rs' : regstate) :
     reg_agree_on (sda_Drw ∪ sda_Dro) rs rs' ->
     hreg_frame_ro Df rs sda_Dro -∗ (hreg_frame_ro Df rs' sda_Dro : iProp Σ).
-  Proof.
+  Proof using .
     intros Hag. rewrite (hreg_frame_ro_ext Df _ _ sda_Dro
       (reg_agree_mono (sda_Drw ∪ sda_Dro) sda_Dro _ _ ltac:(set_solver) Hag)).
     iIntros "H". iExact "H".
@@ -891,7 +891,7 @@ Section SdaFrames.
         reg_pointsto pmpaddr_n (DfracOwn 1) paddr ∗
         reg_pointsto htif_tohost_base DfracDiscarded None ∗
         reg_pointsto misa DfracDiscarded MISA_C).
-  Proof.
+  Proof using .
     rewrite /hreg_frame /hreg_frame_ro /sda_Drw /sda_Dro.
     repeat (rewrite big_sepS_union; last set_solver).
     rewrite !big_sepS_singleton.
@@ -922,7 +922,7 @@ Section SdaFrames.
         reg_pointsto pmpaddr_n (DfracOwn 1) paddr ∗
         reg_pointsto htif_tohost_base DfracDiscarded None ∗
         reg_pointsto misa DfracDiscarded MISA_C).
-  Proof.
+  Proof using .
     rewrite /hreg_frame /hreg_frame_ro /sda_Drwb /sda_Dro.
     rewrite big_sepS_empty left_id.
     repeat (rewrite big_sepS_union; last set_solver).
@@ -953,7 +953,7 @@ Section SdaFrames.
     (hreg_frame (sda_rs mst0 menv0 satp0 pmar0 pcfg paddr tlbv) sda_Drw ∗
      hreg_frame_ro (sda_Df dq)
        (sda_rs mst0 menv0 satp0 pmar0 pcfg paddr tlbv) sda_Dro : iProp Σ).
-  Proof.
+  Proof using .
     iIntros "H1 H2 H3 H4 H5 H6 H7 H8 H9 H10". rewrite sda_frames. iFrame.
   Qed.
 
@@ -974,7 +974,7 @@ Section SdaFrames.
      reg_pointsto pmpaddr_n (DfracOwn 1) paddr ∗
      reg_pointsto htif_tohost_base DfracDiscarded None ∗
      reg_pointsto misa DfracDiscarded MISA_C).
-  Proof. rewrite sda_frames. iIntros "H". iExact "H". Qed.
+  Proof using . rewrite sda_frames. iIntros "H". iExact "H". Qed.
 
   (* the BARE in/out pair: [sda_frames_b] as wands, and with no tlb cell. *)
   Lemma sda_frames_in_b (dq : dfrac)
@@ -993,7 +993,7 @@ Section SdaFrames.
     (hreg_frame (sda_rs mst0 menv0 satp0 pmar0 pcfg paddr tlbv) sda_Drwb ∗
      hreg_frame_ro (sda_Df dq)
        (sda_rs mst0 menv0 satp0 pmar0 pcfg paddr tlbv) sda_Dro : iProp Σ).
-  Proof.
+  Proof using .
     iIntros "H1 H2 H3 H4 H5 H6 H7 H8 H9". rewrite sda_frames_b. iFrame.
   Qed.
 
@@ -1013,7 +1013,7 @@ Section SdaFrames.
      reg_pointsto pmpaddr_n (DfracOwn 1) paddr ∗
      reg_pointsto htif_tohost_base DfracDiscarded None ∗
      reg_pointsto misa DfracDiscarded MISA_C).
-  Proof. rewrite sda_frames_b. iIntros "H". iExact "H". Qed.
+  Proof using . rewrite sda_frames_b. iIntros "H". iExact "H". Qed.
 
 End SdaFrames.
 
@@ -1087,7 +1087,7 @@ Section SbBranch.
 
   (* the ONE cell a jump needs out of the persistent config bundle *)
   Lemma sb_hw_config_misa : hw_config -∗ misa ↦ᵣ□ MISA_C.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as (misa0 mseccfg0 pmar0 elp0)
       "(Hmisa & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & %Hv & _)".
     rewrite Hv. iExact "Hmisa".
@@ -1097,7 +1097,7 @@ Section SbBranch.
     (hreg_frame (sb_rs npc0) sb_Drw ∗
      hreg_frame_ro sb_Df (sb_rs npc0) sb_Dro : iProp Σ)
     ⊣⊢ ((R_bitvector_64 nextPC) ↦ᵣ npc0 ∗ misa ↦ᵣ□ MISA_C).
-  Proof.
+  Proof using .
     rewrite /hreg_frame /hreg_frame_ro /sb_Drw /sb_Dro.
     rewrite !big_sepS_singleton.
     by rewrite sb_rs_nPC sb_rs_misa.
@@ -1111,7 +1111,7 @@ Section SbBranch.
     swp (jump_to target)
       (fun r => ⌜r = RETIRE_SUCCESS⌝ ∗
                 (R_bitvector_64 nextPC) ↦ᵣ target ∗ misa ↦ᵣ□ MISA_C).
-  Proof.
+  Proof using .
     intros Halign. iIntros "#Hcert HnPC Hmisa".
     iAssert (hreg_frame (sb_rs npc0) sb_Drw ∗
              hreg_frame_ro sb_Df (sb_rs npc0) sb_Dro)%I with "[HnPC Hmisa]"
@@ -1140,7 +1140,7 @@ Section SbBranch.
            (fun a => Defs.bind (rX_bits (Regidx rs2))
                        (fun c => returnM (cmp a c))))
       (fun v => ⌜v = cmp (m !!! Regidx rs1) (m !!! Regidx rs2)⌝ ∗ gpr_file m).
-  Proof.
+  Proof using .
     iIntros "#Hcert Hf".
     iApply (swp_bind_use (rX_bits (Regidx rs1)) _ _ _ with "[Hf] [-]").
     { iApply (swp_rX_file rs1 m with "Hcert Hf"). }
@@ -1159,7 +1159,7 @@ Section SbBranch.
     cmp (m !!! Regidx rs1) (m !!! Regidx rs2) = false ->
     gen_cert -∗ gpr_file m -∗
     swp mo (fun e => ⌜e = RETIRE_SUCCESS⌝ ∗ gpr_file m).
-  Proof.
+  Proof using .
     intros Hred Hcmp. iIntros "#Hcert Hf". rewrite Hred.
     iApply (swp_bind_use _ _
               (fun v => ⌜v = cmp (m !!! Regidx rs1) (m !!! Regidx rs2)⌝ ∗
@@ -1186,7 +1186,7 @@ Section SbBranch.
               (R_bitvector_64 PC) ↦ᵣ pc ∗
               (R_bitvector_64 nextPC) ↦ᵣ (add_vec pc (sign_extend' 64 imm)) ∗
               misa ↦ᵣ□ MISA_C).
-  Proof.
+  Proof using .
     intros Hred Hcmp Halign. iIntros "#Hcert Hf HPC HnPC Hmisa". rewrite Hred.
     iApply (swp_bind_use _ _
               (fun v => ⌜v = cmp (m !!! Regidx rs1) (m !!! Regidx rs2)⌝ ∗
@@ -1306,7 +1306,7 @@ Section CjCtl.
     ⊣⊢ ((R_bitvector_64 nextPC) ↦ᵣ npc0 ∗
         cur_privilege ↦ᵣ{ dq } Supervisor ∗ menvcfg ↦ᵣ{ dq } MENVCFG_S ∗
         misa ↦ᵣ□ MISA_C).
-  Proof.
+  Proof using .
     rewrite /hreg_frame /hreg_frame_ro /cj_Drw /cj_Dro.
     repeat (rewrite big_sepS_union; last set_solver).
     rewrite !big_sepS_singleton.
@@ -1327,7 +1327,7 @@ Section CjCtl.
                 cur_privilege ↦ᵣ{ dq } Supervisor ∗
                 menvcfg ↦ᵣ{ dq } MENVCFG_S ∗
                 misa ↦ᵣ□ MISA_C).
-  Proof.
+  Proof using .
     iIntros "#Hcert HnPC Hpriv Hmenv Hmisa".
     iAssert (hreg_frame (cj_rs npc0) cj_Drw ∗
              hreg_frame_ro (cj_Df dq) (cj_rs npc0) cj_Dro)%I
@@ -1364,7 +1364,7 @@ Section CjCtl.
                 (R_bitvector_64 PC) ↦ᵣ pc ∗
                 (R_bitvector_64 nextPC) ↦ᵣ (add_vec pc (sign_extend' 64 imm)) ∗
                 misa ↦ᵣ□ MISA_C).
-  Proof.
+  Proof using .
     intros Hrd Halign. iIntros "#Hcert Hf HPC HnPC Hmisa".
     change (execute (JAL (imm, Regidx rd))) with (execute_JAL imm (Regidx rd)).
     unfold execute_JAL. cbn match.
@@ -1401,7 +1401,7 @@ Section CjCtl.
                 cur_privilege ↦ᵣ{ dq } Supervisor ∗
                 menvcfg ↦ᵣ{ dq } MENVCFG_S ∗
                 misa ↦ᵣ□ MISA_C).
-  Proof.
+  Proof using .
     intros Hrdz.
     (* the alignment side condition is [ret_pc]'s own construction, and it has
        to be POSED rather than passed as an [ltac:] inside the application:

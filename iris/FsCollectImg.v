@@ -72,7 +72,7 @@ Lemma img_col_geom (dk : Z -> bv 8) (ndisk : nat) (sb : fs_sb) (nib : nat)
      statement at an arbitrary [nib] owes. *)
   nib = icfg_nib ->
   col_geom sb (sb_inodestart sb) nib (fs_home_set cov (sb_logstart sb)).
-Proof.
+Proof using .
   intros (Hwf & Hrwf & Hnin & Hwide & Hnib0 & Hnibeq & Hcov & Hcovm & Hcovd
           & Hparse & Hus & Hnd & Hleq & Hbare & Hself) Hicfg.
   pose proof (fsimg_wf_sb (fs_blocks dk) sb Hwf) as Hsbok.
@@ -148,7 +148,7 @@ Section SbOwnedAcc.
       ∃ sbb : list (bv 8),
         sb_owned (fs_gamma_L γfs) sb sbb ∗
         (sb_owned (fs_gamma_L γfs) sb sbb ={E ∖ ↑sbN, E}=∗ True).
-  Proof.
+  Proof using .
     intros HE. iIntros "#Hp".
     iMod (sb_park_acc E γfs sb HE with "Hp") as (bs) "(%Hparse & Hb & Hclose)".
     iModIntro. iExists bs.
@@ -170,7 +170,7 @@ Section SbOwnedAcc.
         ⌜fs_sb_ok sb⌝ ∗
         sb_owned (fs_gamma_L γfs) sb sbb ∗
         (sb_owned (fs_gamma_L γfs) sb sbb ={E ∖ ↑sbN, E}=∗ True).
-  Proof.
+  Proof using .
     intros HE. iIntros "#Hctx".
     iDestruct (log_ctx_sb with "Hctx") as (sb) "[%Hok #Hp]".
     iMod (sb_park_owned_acc E γfs sb HE with "Hp") as (sbb) "[Hsb Hclose]".
@@ -193,7 +193,7 @@ Section SbOwnedAcc.
     log_ctx γ bn γfs cov logstart dev -∗
     blk_owned_q (fs_gamma_L γfs) dq b bs ={E}=∗
       ⌜b <> SB_BNO⌝ ∗ blk_owned_q (fs_gamma_L γfs) dq b bs.
-  Proof.
+  Proof using .
     intros HE. iIntros "#Hctx Hblk".
     iMod (log_ctx_sb_owned_acc E γ bn γfs cov logstart dev HE with "Hctx")
       as (sb sbb) "(_ & Hsb & Hclose)".
@@ -238,7 +238,7 @@ Section CollectImgFree.
     0 <= z < 16 * Z.of_nat nib ->
     bv_unsigned (di_type (fs_dinode (fs_blocks dk) sb z)) = 0 ->
     img_node (fs_blocks dk) sb z = free_node (fs_dinode (fs_blocks dk) sb z).
-  Proof.
+  Proof using .
     intros Hwf Hz Hty.
     destruct Hwf as (_ & Hrw & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _
                      & Hbare & _).
@@ -260,7 +260,7 @@ Section CollectImgFree.
       (fs_dinode (fs_blocks dk) sb (bv_unsigned inum)) -∗
     col_bundle γfs γi (bv_unsigned inum)
       (img_node (fs_blocks dk) sb (bv_unsigned inum)).
-  Proof.
+  Proof using .
     intros Hwf Hlt Hty.
     pose proof (bv_unsigned_in_range _ inum) as [Hlo _].
     assert (Hz : 0 <= bv_unsigned inum < 16 * Z.of_nat nib) by lia.
@@ -315,7 +315,7 @@ Section CollectImgFree.
       ghost_map_auth (ln_tx icfg_log) 1 (∅ : gmap nat unit)
       ∗ col_bundle γfs γi (bv_unsigned inum)
           (img_node (fs_blocks dk) sb (bv_unsigned inum)).
-  Proof.
+  Proof using .
     intros Hwf Hlt.
     pose proof (bv_unsigned_in_range _ inum) as [Hlo _].
     assert (Hz : 0 <= bv_unsigned inum < 16 * Z.of_nat nib) by lia.
@@ -358,7 +358,7 @@ Section CollectImgFree.
          col_side γfs γi inum
          ∗ ireg_slot γfs γi (bv_unsigned inum)
              (fs_dinode (fs_blocks dk) sb (bv_unsigned inum))).
-  Proof.
+  Proof using .
     intros Hwf Hlt.
     pose proof (bv_unsigned_in_range _ inum) as [Hlo _].
     assert (Hz : 0 <= bv_unsigned inum < 16 * Z.of_nat nib) by lia.

@@ -174,7 +174,7 @@ Section ProofArgfd.
       ofd_out pfd wfd -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hs2 Ha4.
     assert (Ha4' : forall CID' : CpuId,
               rget (CID := CID') Mt (mword_of_int 14 : mword 5) = sign_extend' 64 wfd)
@@ -263,7 +263,7 @@ Section ProofArgfd.
         pc_is (ret_pc ra0) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hav Hsp0 Hra0 Hs00 Hs10 Hs20 Hmtsp Hmta0 Hthr.
     iIntros "Hcg #Htext Hpc Hb1 Hb2 Hb3 Hb4 Hb5 Hb6 Hcont".
     (* ---- +0x46: c.ldsp ra,40(sp) ---- *)
@@ -455,7 +455,7 @@ Section ProofArgfd.
       (i : nat) (v : mword 64)
       (pid : mword 32) (U : ustate) (oldfd : mword 32) (oldf : mword 64) (b : bool) (lks : gset string)
     : wp_argfd_sconf_body γf m av n eb p i v pid U oldfd oldf b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_argfd_sconf_body].
     intros pcE pfd pf ret_tgt Hi Ha0 Harg Hnzf Hn Hav.
     

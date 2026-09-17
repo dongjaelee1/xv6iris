@@ -108,7 +108,7 @@ Section KernelDataInv.
          ctx_pointsto ξ (mword_of_int a : Arch.pa) DfracDiscarded b)%I.
 
   Global Instance kernel_data_persistent : Persistent kernel_data.
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* THE ONE EXTRACTION RULE: the [W] persistent bytes the image holds at
      [A .. A+W), as an arbitrary byte FUNCTION.  Every caller is an instance
@@ -124,7 +124,7 @@ Section KernelDataInv.
     (forall j, (j < W)%nat ->
        KernelData.kernel_data !! (A + Z.of_nat j)%Z = Some (f j)) ->
     kernel_data -∗ ([∗ list] j ∈ seq 0 W, (pa_add a j) ↦ₘ□ f j).
-  Proof.
+  Proof using .
     iIntros (-> HA HR Hbytes) "#Hd".
     iDestruct ("Hd" $! cur_ctx) as "#Hd'".
     iApply big_sepL_intro. iIntros "!>" (k j Hk).
@@ -144,7 +144,7 @@ Section KernelDataInv.
        KernelData.kernel_data !! (A + Z.of_nat j)%Z = Some (nth_byte w j)) ->
     kernel_data -∗
     ([∗ list] j ∈ seq 0 W, (pa_add a j) ↦ₘ□ nth_byte w j).
-  Proof. exact (kernel_data_bytes A W (nth_byte w) a). Qed.
+  Proof using . exact (kernel_data_bytes A W (nth_byte w) a). Qed.
 
   (* Extract a NUL-terminated STRING literal from the image, AT EVERY
      CONTEXT: [TsoCtx.ctx_string_all], the derived context-free form of
@@ -167,7 +167,7 @@ Section KernelDataInv.
     (forall j b, cstring_bytes s !! j = Some b ->
        KernelData.kernel_data !! (A + Z.of_nat j)%Z = Some b) ->
     kernel_data -∗ ctx_string_all a DfracDiscarded s.
-  Proof.
+  Proof using .
     iIntros (-> HA HR Hbytes) "#Hd". iIntros (ξ).
     iDestruct ("Hd" $! ξ) as "#Hd'".
     rewrite /ctx_string_pointsto.
@@ -191,7 +191,7 @@ Section KernelDataInv.
     (forall j b, cstring_bytes s !! j = Some b ->
        KernelData.kernel_data !! (A + Z.of_nat j)%Z = Some b) ->
     kernel_data -∗ a ↦ₛ□ s.
-  Proof.
+  Proof using .
     iIntros (H1 H2 H3 H4) "Hd".
     iApply (ctx_string_all_elim cur_ctx).
     by iApply (kernel_data_string_all A s a H1 H2 H3 H4 with "Hd").
@@ -212,18 +212,18 @@ Section KernelDataInv.
 
   (* nothing at or above the boundary is resident in [kernel_data] *)
   Lemma kdata_ro_writable_none (a : Z) : rodata_end <= a -> kdata_ro !! a = None.
-  Proof.
+  Proof using .
     intro Ha. destruct (kdata_ro !! a) as [b|] eqn:E; [| reflexivity].
     exfalso. apply kdata_ro_bounds in E. lia.
   Qed.
 
   (* `first` -- forkret's `first = 0` stores to it *)
   Lemma kdata_ro_first : kdata_ro !! KernelSyms.first_1 = None.
-  Proof. apply kdata_ro_writable_none. vm_compute. discriminate. Qed.
+  Proof using . apply kdata_ro_writable_none. vm_compute. discriminate. Qed.
 
   (* `nextpid` -- allocpid's `nextpid = (pid == PIDMAX) ? 1 : pid + 1` stores to it *)
   Lemma kdata_ro_nextpid : kdata_ro !! KernelSyms.nextpid = None.
-  Proof. apply kdata_ro_writable_none. vm_compute. discriminate. Qed.
+  Proof using . apply kdata_ro_writable_none. vm_compute. discriminate. Qed.
 
 End KernelDataInv.
 

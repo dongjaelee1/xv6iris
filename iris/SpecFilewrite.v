@@ -340,7 +340,7 @@ Section SpecFilewrite.
 
   Global Instance filewrite_dev_caps_persistent fn :
     Persistent (filewrite_dev_caps fn).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* ONE cell, and only when the major is in range.  The disjunction is the
      honest statement of what the kernel installs: [consoleinit] fills
@@ -389,7 +389,7 @@ Section SpecFilewrite.
     fwn_wp fn = ConsoleInv.devsw_write_val ->
     fwn_dqv fn = (fun _ => DfracDiscarded) ->
     filewrite_dev_caps fn -∗ ConsoleInv.devsw_table -∗ filewrite_devsw fn.
-  Proof.
+  Proof using .
     intros Hwp Hdq. iIntros "#Hcaps #Htbl".
     rewrite /filewrite_devsw Hwp Hdq.
     iSplitR; [iExact "Hcaps" |].
@@ -403,7 +403,7 @@ Section SpecFilewrite.
   Lemma filewrite_devsw_acc (fn : fwrite_names) (mj : Z) :
     filewrite_devsw fn -∗
     filewrite_dev_env fn mj ∗ (filewrite_dev_out fn mj -∗ filewrite_devsw fn).
-  Proof.
+  Proof using .
     (* THE UNFOLD ORDER MATTERS: [/filewrite_dev_out] rewrites to [filewrite_dev_env], so
        unfolding [filewrite_dev_env] FIRST leaves the out side folded and the
        closing [iExact] fails on two terms that print differently for that
@@ -554,7 +554,7 @@ Section SpecFilewrite.
      contain everything the postcondition promises. *)
   Lemma filewrite_fs_env_out γf fn :
     filewrite_fs_env γf fn -∗ filewrite_fs_out fn.
-  Proof.
+  Proof using .
     rewrite /filewrite_fs_env /filewrite_fs_out.
     iIntros "(_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ &
               Hsbi & Hsbs & Hsbb & _ & _ & _ & _ & Hbsl)".
@@ -563,7 +563,7 @@ Section SpecFilewrite.
 
   Lemma filewrite_env_out_of_env γf fn st :
     filewrite_env γf fn st -∗ filewrite_env_out fn st.
-  Proof.
+  Proof using .
     rewrite /filewrite_env /filewrite_env_out.
     destruct st as [|? ? [? ? ?| |?]]; try by iIntros "$".
     iApply filewrite_fs_env_out.
@@ -574,7 +574,7 @@ Section SpecFilewrite.
      [SpecPanic] discharges it. *)
   Lemma filewrite_env_none γf fn :
     ⊢ filewrite_env γf fn FdClosed.
-  Proof. done. Qed.
+  Proof using . done. Qed.
 
   (* =================================================================== *)
   (*  THE ARMED POSTS, ONE PER DESCRIPTOR STATE                           *)
@@ -653,7 +653,7 @@ Section SpecFilewrite.
       (M : gmap Z (bv 8)) (ua : mword 64) (Q : nat -> iProp Σ)
       (r : mword 64) :
     write_arms_at Γ i γo n M ua Q r -∗ ⌜filewrite_ret n r⌝.
-  Proof.
+  Proof using .
     rewrite /write_arms_at. iIntros "[[%Hok _] | [%Hm1 _]]"; iPureIntro.
     - destruct Hok as [Hr Hn]. rewrite Hr. exact (filewrite_ret_all n Hn).
     - rewrite Hm1. exact (filewrite_ret_m1 n).
@@ -706,7 +706,7 @@ Section SpecFilewrite.
 
   Lemma write_cons_arms_ret P ua Q n r :
     write_cons_arms P ua Q n r -∗ ⌜filewrite_ret n r⌝.
-  Proof.
+  Proof using .
     iIntros "[[%Hr _] | [H | %Hr]]".
     - iPureIntro. destruct Hr as [-> Hn]. by apply filewrite_ret_all.
     - iDestruct "H" as (k) "(%Hr & %Hlt & _ & _)". iPureIntro.
@@ -720,7 +720,7 @@ Section SpecFilewrite.
      cons_out_chain_0]) *)
   Lemma write_cons_arms_zero (P : uptd) (ua : mword 64) (Q : nat -> iProp Σ) :
     Q 0%nat -∗ write_cons_arms P ua Q 0 (mword_of_int 0 : mword 64).
-  Proof.
+  Proof using .
     iIntros "H". iLeft. iSplitR; [iPureIntro; split; [done | lia]|].
     iExact "H".
   Qed.
@@ -733,7 +733,7 @@ Section SpecFilewrite.
     (0 <= n)%Z -> (0 <= r <= n)%Z ->
     ((r < n)%Z -> write_cons_short P ua (Z.to_nat r) n) ->
     Q (Z.to_nat r) -∗ write_cons_arms P ua Q n (mword_of_int r : mword 64).
-  Proof.
+  Proof using .
     iIntros (Hn Hr Hsh) "H".
     destruct (Z.eq_dec r n) as [-> | Hne].
     - iLeft. iSplitR; [by iPureIntro|]. iExact "H".
@@ -848,7 +848,7 @@ Section SpecFilewrite.
 
   Lemma filewrite_arms_ret gn P st n M ua Q Qe r :
     filewrite_arms gn P st n M ua Q Qe r -∗ ⌜filewrite_ret n r⌝.
-  Proof. iIntros "[%H _]". by iPureIntro. Qed.
+  Proof using . iIntros "[%H _]". by iPureIntro. Qed.
 
   (* ---- READING THE KEYED INPUT, BUILDING THE KEYED OUTPUT -------------
      Eight one-liners, so that no walk ever has to unfold the two matches
@@ -857,7 +857,7 @@ Section SpecFilewrite.
   Lemma filewrite_in_inode rb i γo n M ua Q Qe :
     filewrite_in (FdOpen rb true (FdInode i γo OffParked)) n M ua Q Qe -∗
     awrite_chain (fs_gamma_L fsc_fs) appE i γo M ua Q 0%nat (wchunks n).
-  Proof. by iIntros "$". Qed.
+  Proof using . by iIntros "$". Qed.
 
   (* the device arm's input is now the OUTPUT CHAIN (lane OUT-FUPD), the
      inode arm's twin: one node per byte instead of a trace seed, and at
@@ -865,18 +865,18 @@ Section SpecFilewrite.
   Lemma filewrite_in_cons rb (mj : Z) n M ua Q Qe :
     filewrite_in (FdOpen rb true (FdDevice mj)) n M ua Q Qe -∗
     cons_out_chain (S gen_id) M ua Q 0%nat (Z.to_nat n).
-  Proof. by iIntros "$". Qed.
+  Proof using . by iIntros "$". Qed.
 
   Lemma filewrite_extra_inode gn P rb i γo n M ua Q Qe r :
     write_arms_at (fs_gamma_L fsc_fs) i γo n M ua Q r -∗
     filewrite_extra gn P (FdOpen rb true (FdInode i γo OffParked)) n M ua Q Qe r.
-  Proof. by iIntros "$". Qed.
+  Proof using . by iIntros "$". Qed.
 
   Lemma filewrite_extra_cons gn P rb (mj : Z) n M ua Q Qe r :
     mj = ConsoleInv.CONSOLE ->
     write_cons_arms P ua Q n r -∗
     filewrite_extra gn P (FdOpen rb true (FdDevice mj)) n M ua Q Qe r.
-  Proof.
+  Proof using .
     intros Hmj. rewrite /filewrite_extra.
     case_decide as Hc; [by iIntros "$" | by exfalso].
   Qed.
@@ -886,7 +886,7 @@ Section SpecFilewrite.
   Lemma filewrite_extra_dev_other gn P rb wb (mj : Z) n M ua Q Qe r :
     mj <> ConsoleInv.CONSOLE ->
     ⊢ filewrite_extra gn P (FdOpen rb wb (FdDevice mj)) n M ua Q Qe r.
-  Proof.
+  Proof using .
     intros Hne. rewrite /filewrite_extra. destruct wb; [| done].
     case_decide as Hc; [by exfalso | done].
   Qed.
@@ -896,16 +896,16 @@ Section SpecFilewrite.
   Lemma filewrite_in_pipe rb (γp : pipe_names) n M ua Q Qe :
     filewrite_in (FdOpen rb true (FdPipe γp)) n M ua Q Qe -∗
     pipe_wpay (pn_queue γp) M ua Q Qe (Z.to_nat n).
-  Proof. by iIntros "$". Qed.
+  Proof using . by iIntros "$". Qed.
 
   Lemma filewrite_extra_pipe gn P rb (γp : pipe_names) n M ua Q Qe r :
     pipe_wpost P (pn_queue γp) M ua Q Qe (ChildTok.kill_shot gn) (Z.to_nat n) r -∗
     filewrite_extra gn P (FdOpen rb true (FdPipe γp)) n M ua Q Qe r.
-  Proof. by iIntros "$". Qed.
+  Proof using . by iIntros "$". Qed.
 
   Lemma filewrite_extra_pipe_ro gn P rb (γp : pipe_names) n M ua Q Qe r :
     ⊢ filewrite_extra gn P (FdOpen rb false (FdPipe γp)) n M ua Q Qe r.
-  Proof. rewrite /filewrite_extra. done. Qed.
+  Proof using . rewrite /filewrite_extra. done. Qed.
 
   (* the [f->writable == 0] early return: no arm of the match is armed
      there, because every armed one is a WRITABLE descriptor *)
@@ -917,7 +917,7 @@ Section SpecFilewrite.
     eq_vec (zero_extend' 64 (fc_writable C : mword 8) : mword 64)
            (zero_reg : mword 64) = true ->
     ⊢ filewrite_extra gn P st n M ua Q Qe r.
-  Proof.
+  Proof using .
     destruct st as [| rb wb ty]; [by iIntros |].
     destruct wb; [| rewrite /filewrite_extra; by iIntros].
     cbn. intros (_ & Hw & _) Hz. exfalso.
@@ -935,7 +935,7 @@ Section SpecFilewrite.
     (n < 0)%Z ->
     awrite_chain Γ appE i γo M ua Q 0%nat (wchunks n) -∗
     write_arms_at Γ i γo n M ua Q (mword_of_int (-1) : mword 64).
-  Proof.
+  Proof using .
     intros Hn. iIntros "Hc". rewrite /write_arms_at. iRight.
     iSplitR; [done |]. rewrite /write_post_fail_at.
     rewrite (wchunks_nonpos n ltac:(lia)).
@@ -951,7 +951,7 @@ Section SpecFilewrite.
     (n < 0)%Z ->
     filewrite_in st n M ua Q Qe -∗
     filewrite_extra gn P st n M ua Q Qe (mword_of_int (-1) : mword 64).
-  Proof.
+  Proof using .
     intros Hn. destruct st as [| rb wb ty]; [by iIntros |].
     destruct wb; [| by iIntros].
     destruct ty as [i γo om | γp | mj]; rewrite /filewrite_in /filewrite_extra.
@@ -971,7 +971,7 @@ Section SpecFilewrite.
     mj <> ConsoleInv.CONSOLE ->
     filewrite_in (FdOpen rb true (FdDevice mj)) n M ua Q Qe -∗
     filewrite_extra gn P (FdOpen rb true (FdDevice mj)) n M ua Q Qe r.
-  Proof.
+  Proof using .
     intros Hne. rewrite /filewrite_extra.
     case_decide as Hc; [by exfalso | by iIntros "_"].
   Qed.

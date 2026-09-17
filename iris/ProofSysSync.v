@@ -290,7 +290,7 @@ Section SsProps.
        l_cmt ↦₄ (mword_of_int (if cmt then 1 else 0) : mword 32) -∗
        l_ncommit ↦₄ nc -∗
        log_res γ bn γfs cov logstart).
-  Proof.
+  Proof using .
     rewrite /log_res.
     iIntros "H". iDestruct "H" as (out cmt nc om E X T)
       "(Hout & Hcmt & Hnc & Hauth & %Hsz & %Hbnd & %Hout3 & %Hcmt0 & Hepa & %Hepos & Hxa & %Hlive & %Hcap & Hrest)".
@@ -419,7 +419,7 @@ Section SsBodies.
         pc_is (ret_pc (m !!! Regidx Rra)) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pj HK Hanch Hspd Hsp0 Hss Hbelow.
     destruct Hss as (Hsp & Hs1v & Hs2v & Hsv).
     destruct Hsv as (H19 & H20 & H21 & H22 & H23 & H24 & H25 & H26 & H27).
@@ -673,7 +673,7 @@ Section SsBodies.
     sie_cap_gpr KT1 M (trap_res eb + (K - 4))%nat false pj -∗
     pc_is (mword_of_int (SS + 0x3e)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pj HK Hj Hjl Hanch Hspd Hss Hbelow.
     assert (Hbelowproc : locks_below lks "proc")
       by lkbelow.
@@ -1017,7 +1017,7 @@ Section SsBodies.
     sie_cap_gpr KT1 M (trap_res eb + (K - 4))%nat false pj -∗
     pc_is (mword_of_int (SS + 0x2a)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pj HK Hanch Hspd Hss.
     iIntros "#Htext Hloop Hexit Hr24 Hr16 Hr8 Hr0 Htok Hres Hown Htc Hclm Hcg Hpc".
     destruct Hss as (Hsp & Hs1v & Hs2v & Hsv).
@@ -1164,7 +1164,7 @@ Section ProofSysSync.
       (m : regfile) (K : nat) (eb : bool)
       (b : bool) (lks : gset string) (e : nat)
     : wp_sys_sync_sconf_body γs j γl bn γ γfs cov logstart dev m K eb b lks e.
-  Proof.
+  Proof using .
     cbv beta delta [wp_sys_sync_sconf_body].
     intros pcE pj ret_tgt HK Hj Hjl Hbelow.
     set (sp0 := (m !!! Regidx csp_rs1 : mword 64)).

@@ -144,15 +144,15 @@ Section ExecEntry.
   Global Instance image_entry_at_persistent f na alen afun sts cw cs pidv
       Q Pay X :
     Persistent (image_entry_at f na alen afun sts cw cs pidv Q Pay X).
-  Proof. rewrite /image_entry_at. apply _. Qed.
+  Proof using . rewrite /image_entry_at. apply _. Qed.
 
   Global Instance image_entry_persistent f M av sts cw cs pidv Q Pay X :
     Persistent (image_entry f M av sts cw cs pidv Q Pay X).
-  Proof. rewrite /image_entry. apply _. Qed.
+  Proof using . rewrite /image_entry. apply _. Qed.
 
   Global Instance image_entry_taint_persistent T Q X :
     Persistent (image_entry_taint T Q X).
-  Proof. rewrite /image_entry_taint. apply _. Qed.
+  Proof using . rewrite /image_entry_taint. apply _. Qed.
 
   (* ------------------------------------------------------------------ *)
   (*  4.  THE TWO SHAPES ARE THE SAME THING                               *)
@@ -170,7 +170,7 @@ Section ExecEntry.
          ⌜exec_args_of M av na alen afun⌝ -∗
          image_entry_at f na alen afun sts cw cs pidv Q Pay X) -∗
     image_entry f M av sts cw cs pidv Q Pay X.
-  Proof.
+  Proof using .
     iIntros "#H". rewrite /image_entry. iIntros "!>" (na alen afun W')
       "%Hok %Hcw %Hlz %Hch %Hpid %Hargs Hp HPay".
     iDestruct ("H" $! na alen afun with "[%]") as "#He"; [ exact Hargs | ].
@@ -187,7 +187,7 @@ Section ExecEntry.
     exec_args_of M av na alen afun ->
     image_entry f M av sts cw cs pidv Q Pay X -∗
     image_entry_at f na alen afun sts cw cs pidv Q Pay X.
-  Proof.
+  Proof using .
     intros Hargs. iIntros "#H". rewrite /image_entry_at.
     iIntros "!>" (W') "%Hok %Hcw %Hlz %Hch %Hpid Hp HPay".
     rewrite /image_entry.

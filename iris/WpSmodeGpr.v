@@ -291,7 +291,7 @@ Section SDataTranslate.
   Lemma exec_effectivePrivilege_load_S (m : mword 64) s :
     eq_vec (_get_Mstatus_MPRV m) ('b"1" : mword 1) = false ->
     exec (effectivePrivilege (Load Data) m Supervisor) s = Some (Supervisor, s).
-  Proof.
+  Proof using .
     intro H. unfold effectivePrivilege. cbn [generic_neq generic_eq].
     rewrite H. cbn [andb]. apply exec_returnm.
   Qed.

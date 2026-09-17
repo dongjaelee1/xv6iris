@@ -72,7 +72,7 @@ Section ProofSysKill.
       (m : regfile) (av : nat) (n : nat) (eb : bool) (p : mword 64)
       (tfp : mword 44) (ws : list (mword 64)) (v : mword 64) (dqt : dfrac) (b : bool) (lks : gset string)
     : wp_sys_kill_sconf_body γs m av n eb p tfp ws v dqt b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_sys_kill_sconf_body].
     intros pcE ret_tgt Hlen Hws Hn Hav Hbelow Hpv.
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).

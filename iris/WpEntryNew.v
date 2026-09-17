@@ -85,32 +85,32 @@ Section WpEntryNew.
   Definition entry_ld_ea : mword 64 := add_vec entry_sp1 (sign_extend' 64 imm_ld).
 
   Lemma entry_ld_ea_mb : entry_ld_ea = mb_ld_ea.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* ---- pure address / register arithmetic, all by vm_compute ---- *)
   Lemma pc_e0_e1 : add_vec_int pc_e0 4 = pc_e1.
-  Proof. vm_compute. reflexivity. Qed.
+  Proof using . vm_compute. reflexivity. Qed.
   Lemma pc_e1_e2 : add_vec_int pc_e1 4 = pc_e2.
-  Proof. vm_compute. reflexivity. Qed.
+  Proof using . vm_compute. reflexivity. Qed.
   Lemma pc_e2_e3 : add_vec_int pc_e2 2 = pc_e3.
-  Proof. vm_compute. reflexivity. Qed.
+  Proof using . vm_compute. reflexivity. Qed.
   Lemma pc_e3_e4 : add_vec_int pc_e3 4 = pc_e4.
-  Proof. vm_compute. reflexivity. Qed.
+  Proof using . vm_compute. reflexivity. Qed.
   Lemma pc_e4_e5 : add_vec_int pc_e4 2 = pc_e5.
-  Proof. vm_compute. reflexivity. Qed.
+  Proof using . vm_compute. reflexivity. Qed.
   Lemma pc_e5_e6 : add_vec_int pc_e5 4 = pc_e6.
-  Proof. vm_compute. reflexivity. Qed.
+  Proof using . vm_compute. reflexivity. Qed.
   Lemma pc_e6_e7 : add_vec_int pc_e6 2 = pc_e7.
-  Proof. vm_compute. reflexivity. Qed.
+  Proof using . vm_compute. reflexivity. Qed.
   Lemma pc_e7_start : add_vec pc_e7 (sign_extend' 64 imm_jal) = pc_start.
-  Proof. vm_compute. reflexivity. Qed.
+  Proof using . vm_compute. reflexivity. Qed.
   Lemma jal_aligned :
     is_aligned_paddr (Physaddr (add_vec pc_e7 (sign_extend' 64 imm_jal))) 4 = true.
-  Proof. vm_compute. reflexivity. Qed.
+  Proof using . vm_compute. reflexivity. Qed.
 
   (* i_ld and i_auipc are the same architectural register (x2/sp). *)
   Lemma reg_ld_auipc : (Regidx i_ld : regidx) = Regidx i_auipc.
-  Proof. vm_compute. reflexivity. Qed.
+  Proof using . vm_compute. reflexivity. Qed.
 
   (* [kernel_text], [kernel_window_pc], [pa_add_mword] and the [mk_base] /
      [mk_rvc] constructors come from the lightweight [KernelText] base. *)
@@ -185,7 +185,7 @@ Section WpEntryNew.
   Lemma m_jal_sp (m : regfile) (v_stack0 : bv 64) (mhartid_in : mword 64) :
     m_jal m v_stack0 mhartid_in !!! Regidx csp_rs1
     = mb_entry_sp v_stack0 mhartid_in.
-  Proof.
+  Proof using .
     unfold mb_entry_sp, m_jal, m_cadd, m_mul, m_caddi, m_csrr, m_clui, m_ld, m_auipc.
     replace imm_caddi with (mword_of_int 1 : mword 6)
       by (apply bv_eq; vm_compute; reflexivity).
@@ -230,7 +230,7 @@ Section WpEntryNew.
       entry_ld_ea ↦ₚ₈{ dq } v_stack0 -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hpmp)
       "Hmm Hpmpc Hpc Hfile Hmh Hbytes #Hpr #Htext Hcont".
     pose proof (pmp_all_off_allows_all _ Hpmp) as HpmpU.

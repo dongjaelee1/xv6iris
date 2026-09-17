@@ -187,7 +187,7 @@ Section KexecB2Frame.
     stack_own (KTR := KT1) (pa_stk sp0 54) 9 ⊣⊢
     stack_own (KTR := KT1) (pa_stk sp0 54) 8 ∗
     (∃ w : mword 64, ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 63) (DfracOwn 1) w).
-  Proof.
+  Proof using .
     rewrite (kxc_slots_asc sp0 9 54) (kxc_slots_asc sp0 8 54).
     cbn [seq big_opL Nat.add].
     (* BUILT, not framed, in both directions: a bare [iFrame] over nine
@@ -251,7 +251,7 @@ Section KexecB2Frame.
     kxc_frameB sp0 ra0 s00 s10 s20 pv av w5 w6 w7 w8 w9 w10 w11 w12 w13 w67 ⊢
     ∃ w63 w65, kxc_frameBpin sp0 ra0 s00 s10 s20 pv av
                         w5 w6 w7 w8 w9 w10 w11 w12 w13 w63 w65 w67.
-  Proof.
+  Proof using .
     rewrite /kxc_frameB /kxc_frameBpin.
     iIntros "(A1 & A2 & A3 & A4 & A5 & A6 & A7 & A8 & A9 & A10 & A11 & A12 &
               A13 & Aust & Aph & A64 & (%w65 & A65) & A66 & A67 & A68)".
@@ -275,7 +275,7 @@ Section KexecB2Frame.
     kxc_frameBpin sp0 ra0 s00 s10 s20 pv av
                  w5 w6 w7 w8 w9 w10 w11 w12 w13 w63 w65 w67 ⊢
     kxc_frameB sp0 ra0 s00 s10 s20 pv av w5 w6 w7 w8 w9 w10 w11 w12 w13 w67.
-  Proof.
+  Proof using .
     rewrite /kxc_frameB /kxc_frameBpin.
     iIntros "(A1 & A2 & A3 & A4 & A5 & A6 & A7 & A8 & A9 & A10 & A11 & A12 &
               A13 & Aust & Aph & A63 & A64 & A65 & A66 & A67 & A68)".
@@ -306,7 +306,7 @@ Section KexecB2Frame.
                  w5 w6 w7 w8 w9 w10 w11 w12 w13 w63 w65 w67 -∗
     ([∗ list] j ∈ seq 0 64, pa_add (pa_stk sp0 54) j ↦ₘ[KT1] ef j) -∗
     kxc_frameA6 sp0 ra0 s00 s10 s20 pv av w6.
-  Proof.
+  Proof using .
     intro Hal. rewrite /kxc_frameBpin /kxc_frameA6.
     iIntros "(A1 & A2 & A3 & A4 & A5 & A6 & A7 & A8 & A9 & A10 & A11 & A12 &
               A13 & Aust & Aph0 & A63 & A64 & A65 & A66 & A67 & A68) Helf".
@@ -399,7 +399,7 @@ Section KexecB2Res.
          callee this bracket is opened for -- moves no byte, so the node does
          not move and the SEAL hands it back unchanged. *)
       top_frag (fs_gamma_L fsc_fs) (bv_unsigned inumf) (era_node dnf bmf datl)).
-  Proof. rewrite /kxc_ldat. iIntros "H". iExact "H". Qed.
+  Proof using . rewrite /kxc_ldat. iIntros "H". iExact "H". Qed.
 
   Lemma kxc_load_seal `{XI : CurCtx}
       (kf : nat) (inumf : mword 32)
@@ -417,7 +417,7 @@ Section KexecB2Res.
     inode_blocks fsc_fs bmf datl -∗
     top_frag (fs_gamma_L fsc_fs) (bv_unsigned inumf) (era_node dnf bmf datl) -∗
     kxc_ldat kf inumf dnf bmf datl.
-  Proof.
+  Proof using .
     intros Hok Hrl Hdok Hddix Hdoc Hduq. rewrite /kxc_ldat.
     iIntros "Hdlk Hdiat Hmeta Hmap Hbl Htop".
     iSplitR; [iPureIntro; exact Hok |].
@@ -444,7 +444,7 @@ Section KexecB2Res.
     ∃ f : nat -> bv 8,
       ([∗ list] j ∈ seq 0 nn, pa_add q j ↦ₘ f j) ∗
       ([∗ list] j ∈ seq 0 (4096 - nn), pa_add (pa_add q nn) j ↦ₘ f (nn + j)%nat).
-  Proof.
+  Proof using .
     intro Hn.
     iIntros "H". iDestruct (bb_any_named q 4096 with "H") as (f) "H".
     iExists f.
@@ -457,7 +457,7 @@ Section KexecB2Res.
     ([∗ list] j ∈ seq 0 nn, pa_add q j ↦ₘ h j) -∗
     ([∗ list] j ∈ seq 0 (4096 - nn), pa_add (pa_add q nn) j ↦ₘ f (nn + j)%nat) -∗
     ([∗ list] j ∈ seq 0 4096, ∃ b : bv 8, pa_add q j ↦ₘ b).
-  Proof.
+  Proof using .
     intro Hn. iIntros "A B". rewrite /page_own /byte_any.
     iApply (bb_named_any q 4096 (fun j => if decide (j < nn)%nat then h j
                                           else f j)).
@@ -501,7 +501,7 @@ Section KexecB2Res.
     runit_any (bv_unsigned inumf) -∗
     kxc_open pidv kf qf sf gyf loyf tlyf inumf dnf bmf datl
              gilf gislf.
-  Proof.
+  Proof using .
     rewrite /kxc_open.
     iIntros "A B %C1 #C2 #C3 D D2 E F G H I I2 J K".
     iSplitL "A"; [iExact "A" |]. iSplitL "B"; [iExact "B" |].
@@ -531,7 +531,7 @@ Section KexecB2Res.
        ∃ w : mword 64, ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 (61 - i)) (DfracOwn 1) w) ∗
     (∃ w : mword 64, ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 62) (DfracOwn 1) w) ∗
     (∃ w : mword 64, ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 63) (DfracOwn 1) w).
-  Proof.
+  Proof using .
     rewrite (kxc_slots_asc sp0 9 54). cbn [seq big_opL].
     iIntros "(H1 & H2 & H3 & H4 & H5 & H6 & H7 & H8 & H9 & _)".
     cbn [Nat.add Nat.sub].
@@ -545,7 +545,7 @@ Section KexecB2Res.
     ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 62) (DfracOwn 1) w62 -∗
     ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 63) (DfracOwn 1) w63 -∗
     stack_own (KTR := KT1) (pa_stk sp0 54) 9.
-  Proof.
+  Proof using .
     iIntros "H A B".
     rewrite (kxc_slots_asc sp0 9 54). cbn [seq big_opL Nat.add Nat.sub].
     iDestruct "H" as "(H1 & H2 & H3 & H4 & H5 & H6 & H7 & _)".
@@ -563,7 +563,7 @@ Section KexecB2Res.
        is_aligned_paddr (Physaddr (pa_stk sp0 (61 - i))) 8 = true⌝ ∗
     ∃ f : nat -> bv 8,
       [∗ list] j ∈ seq 0 56, pa_add (pa_stk sp0 61) j ↦ₘ[KT1] f j.
-  Proof.
+  Proof using .
     iIntros "H".
     iDestruct (kxc_slots_ph sp0 with "H") as "[%Hal Hb]".
     iSplitR; [iPureIntro; exact Hal |].
@@ -577,7 +577,7 @@ Section KexecB2Res.
     ([∗ list] j ∈ seq 0 56, pa_add (pa_stk sp0 61) j ↦ₘ[KT1] h j) ⊢
     [∗ list] i ∈ seq 0 7,
       ∃ w : mword 64, ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 (61 - i)) (DfracOwn 1) w.
-  Proof.
+  Proof using .
     intro Hal. iIntros "Hh".
     iApply (kxc_bytes_ph sp0 Hal). rewrite /bytes_own.
     iApply (bb_named_any with "Hh").
@@ -593,7 +593,7 @@ Section KexecB2Res.
     (pa_add a o ↦₈[KT1] (Z_to_bv 64 (le_at f o 8) : mword 64)) ∗
     ((pa_add a o ↦₈[KT1] (Z_to_bv 64 (le_at f o 8) : mword 64)) -∗
        [∗ list] j ∈ seq 0 n, pa_add a j ↦ₘ[KT1] f j).
-  Proof.
+  Proof using .
     intros Hn Hal.
     rewrite (bb_split3 (KTR := KT1) a o 8 r n f (DfracOwn 1) Hn).
     iIntros "(Hpre & Hmid & Hsuf)".

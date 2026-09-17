@@ -54,7 +54,6 @@ Require Import PathElems.       (* [path_elems] *)
 Require Import FsTree.          (* [fname] *)
 Require Import FsImg.           (* [ROOTINO] *)
 Require Import AppCfg.          (* [app_pred] / [app_run] / [MkAppcfg] *)
-Require Import AppInv.          (* [app_inv] *)
 Require Import FsAbsEra.        (* [um_start_of] *)
 Require Import TreeView.        (* TL-1: [subtree], [resolves_from], the hops *)
 Require Import AppTree.         (* TL-2: [tree_pred], [tree_pin], the laws *)
@@ -195,7 +194,7 @@ Section TreeObs.
     □ (∀ v : aview, app_pred app_run v -∗
          app_pred app_run v ∗
          (⌜subtree v root = Some t⌝ ∨ tree_taint c)).
-  Proof.
+  Proof using .
     intros Heq. rewrite Heq. cbn [app_pred app_run app_names].
     iIntros "#Hp". iApply (tree_pin_law c r g root t with "Hp").
   Qed.
@@ -208,7 +207,7 @@ Section TreeObs.
            tree_own r g root t -∗ app_pred app_run v -∗
            app_pred app_run v ∗ tree_own r g root t ∗
            (⌜subtree v root = Some t⌝ ∨ tree_taint c)).
-  Proof.
+  Proof using .
     intros Heq. rewrite Heq. cbn [app_pred app_run app_names].
     iApply tree_claim_law.
   Qed.

@@ -149,7 +149,7 @@ Section ProofPrintint.
       ⌜ callee_saved m mf /\ mf !!! Regidx ra_idx = m !!! Regidx ra_idx ⌝ -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros sp0 spd HK Hsp Hagree.
     iIntros "Hcg #Htext Hpc Hc1 Hc2 Hc3 Hc4 Hc5 Hc6 Hc7 Hc8 Hcont".
     (* the pushed sp, in the [pa_stk] form the frame cells are indexed by.  NB
@@ -305,7 +305,7 @@ Section ProofPrintint.
       bytes_own (KTR := kt) (DfracOwn 1) buf 24 -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hi24 Hi31 Hbase Ha0 Ha3 Ha4 Ha6.
     iIntros "Hcg #Htext #Hdig Hpc Hbuf Hcont".
     (* the base is nonzero, so both M-extension ops take their ordinary arm *)
@@ -544,7 +544,7 @@ Section ProofPrintint.
       bytes_own (KTR := kt) (DfracOwn 1) buf 24 -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     induction f as [|f' IH]; intros i CID0 x md Hif Hxf Hbase Ha0 Ha3 Ha4 Ha6;
       iIntros "Hcg #Htext #Hdig Hpc Hbuf Hcont";
       iApply (wp_printint_dbody (CID0 := CID0) K buf dg i x md b pcur
@@ -1341,14 +1341,14 @@ Section ProofPrintint.
   Lemma digits_bytes (j : nat) : (j < 16)%nat ->
     KernelData.kernel_data !! (KernelSyms.digits + Z.of_nat j)%Z
       = Some (nth_byte digits_word j).
-  Proof.
+  Proof using .
     intro Hj.
     do 16 (destruct j as [|j]; [vm_compute; f_equal; apply bv_eq; reflexivity | ]).
     lia.
   Qed.
 
   Lemma digits_from_data : kernel_data -∗ digits_tbl (mword_of_int KernelSyms.digits).
-  Proof.
+  Proof using .
     assert (Hle : text_end <= KernelSyms.digits)
       by (unfold text_end, KernelSyms.digits; lia).
     assert (Hhi : KernelSyms.digits + Z.of_nat 16%nat <= rodata_end)

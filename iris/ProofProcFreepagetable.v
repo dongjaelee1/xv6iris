@@ -232,7 +232,7 @@ Section ProofProcFreepagetable.
       (P : uptd) (K : nat) (eb : bool) (p : mword 64)
       (ilvl : nat) (b : bool) (lks : gset string)
     : wp_proc_freepagetable_sconf_body γa mm P K eb p ilvl b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_proc_freepagetable_sconf_body].
     intros pcE sz ret_tgt HK Hilvl Hroot Hbnd Hbelow Hlkbelow.
     pose (sp0 := (mm !!! Regidx csp_rs1 : mword 64)).
@@ -947,7 +947,7 @@ Section ProofProcFreepagetable.
       (K : nat) (eb : bool) (p : mword 64)
       (ilvl : nat) (b : bool) (lks : gset string)
     : wp_proc_freepagetable_mem_sconf_body γa mm P szv M K eb p ilvl b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_proc_freepagetable_mem_sconf_body].
     intros pcE sz ret_tgt HK Hilvl Hroot Hbnd Hbelow Hlkbelow.
     iIntros "Hcg Hcpu #Htext Hpc Hpt #Henv Hcont".

@@ -39,7 +39,7 @@ Section CodePrintkinitBundle.
   Lemma pkni_code :
     kernel_text -∗ ilw_code KernelSyms.printkinit (mword_of_int 6) (mword_of_int 18)
                             (mword_of_int 1966) (mword_of_int 2934) (mword_of_int 846).
-  Proof.
+  Proof using .
     iIntros "#Ht". rewrite /ilw_code.
     iSplitR; [iApply (pkni_00 with "Ht")|].
     iSplitR; [iApply (pkni_02 with "Ht")|].
@@ -70,7 +70,7 @@ Section ProofPrintkinit.
   Lemma wp_printkinit_sconf
       (m : regfile) (K : nat) (vlock : bv 32) (vname vcpu : bv 64) (b : bool) (p : mword 64)
     : wp_printkinit_sconf_body m K vlock vname vcpu b p.
-  Proof.
+  Proof using .
     cbv beta delta [wp_printkinit_sconf_body].
     intros pcE ret_tgt lk c_name c_cpu HK.
     (* &"pr" is proof-local: the spec speaks of the lock's NAME, not of the

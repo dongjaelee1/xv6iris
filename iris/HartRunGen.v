@@ -149,7 +149,7 @@ Section rungen.
                  ∨ (⌜st = Step_Execute (RETIRE_SUCCESS, zero_extend' 32 w)⌝ ∗
                     ∃ rs2 : regstate, ⌜Q rs2⌝ ∗
                     hreg_frame rs2 Drw ∗ hreg_frame_ro Df rs2 Dro ∗ R)).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv HDpc HDnpc Hpriv Hpc Hdec Hlpad.
     iIntros "#Hcert Hrw Hro Hdisp Hfet Hex".
     unfold run_hart_active.
@@ -250,7 +250,7 @@ Section rungen.
       (fun st => (∃ ii pr, ⌜st = Step_Pending_Interrupt (ii, pr)⌝ ∗ Qi ii pr)
                  ∨ (⌜st = Step_Execute (RETIRE_SUCCESS, zero_extend' 32 w)⌝ ∗
                     hreg_frame rs2 Drw ∗ hreg_frame_ro Df rs2 Dro ∗ R)).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv HDpc HDnpc Hpriv Hpc Hdec Hlpad.
     iIntros "#Hcert Hrw Hro Hdisp Hfet Hex".
     iApply (swp_mono with "[] [-]");
@@ -326,7 +326,7 @@ Section rungen.
                  ∨ (⌜st = Step_Execute (RETIRE_SUCCESS, zero_extend' 32 h)⌝ ∗
                     ∃ rs2 : regstate, ⌜Q rs2⌝ ∗
                     hreg_frame rs2 Drw ∗ hreg_frame_ro Df rs2 Dro ∗ R)).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv HDmisa HDpc HDnpc Hpriv Hpc HmisaC Hdec Hlpad.
     iIntros "#Hcert Hrw Hro Hdisp Hfet Hexp Hex".
     unfold run_hart_active.
@@ -445,7 +445,7 @@ Section rungen.
       (fun st => (∃ ii pr, ⌜st = Step_Pending_Interrupt (ii, pr)⌝ ∗ Qi ii pr)
                  ∨ (⌜st = Step_Execute (RETIRE_SUCCESS, zero_extend' 32 h)⌝ ∗
                     hreg_frame rs2 Drw ∗ hreg_frame_ro Df rs2 Dro ∗ R)).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv HDmisa HDpc HDnpc Hpriv Hpc HmisaC Hdec Hlpad.
     iIntros "#Hcert Hrw Hro Hdisp Hfet Hexp Hex".
     iApply (swp_mono with "[] [-]");
@@ -485,7 +485,7 @@ Section rungen.
       (fun st => ⌜st = Step_Pending_Interrupt (ii, pr)⌝ ∗
                  ∃ rs2 : regstate, ⌜Q rs2⌝ ∗
                  hreg_frame rs2 Drw ∗ hreg_frame_ro Df rs2 Dro ∗ R).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv Hpriv.
     iIntros "#Hcert Hrw Hro Hdisp".
     unfold run_hart_active.
@@ -521,7 +521,7 @@ Section rungen.
     swp (run_hart_active 0)
       (fun st => ⌜st = Step_Pending_Interrupt (ii, pr)⌝ ∗
                  hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro ∗ R).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv Hpriv.
     iIntros "#Hcert Hrw Hro Hdisp".
     iApply (swp_mono with "[] [-]");

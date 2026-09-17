@@ -182,7 +182,7 @@ Section TranslateFrontFault.
     exec (translationException acc f) s = Some (e, s) ->
     goodb Dr (translationException acc f) s = true ->
     goodmb Dr Dw (translateAddr (Virtaddr va) acc) s mm = true.
-  Proof.
+  Proof using HDcp HDms HDsatp.
     intros Heff Heffg Hss Hssg Hcp Htm Htmg Hsatp Hppn Hasid Hcanon Hvpn_def
            Htr Htrg Hte Hteg.
     unfold translateAddr. apply goodmb_cer.
@@ -260,7 +260,7 @@ Section TranslateFrontFault.
     exec (translationException acc (PTW_Invalid_Addr tt)) s = Some (e, s) ->
     goodb Dr (translationException acc (PTW_Invalid_Addr tt)) s = true ->
     goodmb Dr Dw (translateAddr (Virtaddr va) acc) s mm = true.
-  Proof.
+  Proof using HDcp HDms HDsatp.
     intros Heff Heffg Hss Hssg Hcp Htm Htmg Hsatp Hcanon Hte Hteg.
     unfold translateAddr. apply goodmb_cer.
     gmm_liftT ltac:(rewrite goodmb_read_reg; exact HDms)
@@ -326,7 +326,7 @@ Section HitDeniedCert.
     pte_check_denied acc pv mxr do_sum (PTE_No_Permission tt) q0 ->
     goodmb Dr Dw (translate_TLB_hit 39 asid vpn acc pv mxr do_sum tt idx
                     (u_walk_entry vpn q2 q1 q0 asid)) s mm = true.
-  Proof.
+  Proof using .
     intros Hgchk Hden.
     unfold translate_TLB_hit. cbn zeta.
     match goal with |- context[tlb_get_pte ?sz ?e] => change sz with 8 end.
@@ -342,7 +342,7 @@ Section HitDeniedCert.
     exec (lookup_TLB 39 asid vpn) s = Some (Some (idx, ent), s) ->
     goodmb Dr Dw (translate_TLB_hit 39 asid vpn acc pv mxr do_sum tt idx ent) s mm = true ->
     goodmb Dr Dw (translate 39 asid root vpn acc pv mxr do_sum tt) s mm = true.
-  Proof.
+  Proof using .
     intros HD Hlk Hhit. unfold translate.
     gmm_peel (goodmb_lookup_TLB vpn Dr Dw asid s mm HD) Hlk.
     cbn match. exact Hhit.

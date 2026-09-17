@@ -141,7 +141,7 @@ Section SysExecAUBridge.
     exec_args_of Mim avp na alen afun ->
     sys_exec_au_pre Fs Γ γfs cw Qpay Pw Pmiss Fo Mim pvp avp sts cs pidv -∗
     exec_au_pre Fs Γ γfs cw Qpay Pw Pmiss Fo pl na alen afun sts cs pidv.
-  Proof.
+  Proof using .
     intros Hpsh Hsh. rewrite /sys_exec_au_pre /exec_au_pre.
     iIntros "(Hera & Hcom & Hslot)".
     (* the WALK piece narrows at the string argstr fetched -- the ONE path
@@ -174,7 +174,7 @@ Section SysExecAUBridge.
     us_V U1 = us_V U2 ->
     exec_post_ok Fs Γ Qp Pw Fo pl na alen afun sts gn cs pidv U1 U' r -∗
     exec_post_ok Fs Γ Qp Pw Fo pl na alen afun sts gn cs pidv U2 U' r.
-  Proof.
+  Proof using .
     intro HV. rewrite /exec_post_ok HV. iIntros "H". iExact "H".
   Qed.
 
@@ -318,7 +318,7 @@ Section SysExecBreakAU.
         proc_priv γf (proc_addr jp) pid U' -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using ufdG0.
     intros HK Hlb Hsp0 Hplen Hpcstr Hpof Hav Him Hnul Halp Hroot Hnib0
            Hlg Hsize Hbm0 Hbmc Hbml Hist0 Hcb Hireg Hjp Hgl Hbt Hebt.
     destruct (sx_kb K HK) as (Kkx & Kar & Kaa & Kfa & Kfs & K14 & K2 & K60 & Kpop).
@@ -605,7 +605,7 @@ Section SysExecWhole.
       (p : mword 64) (lks : gset string) :
     sie_cap_gpr KT1 m K0 b p -∗ cpu_own n eb p b lks -∗
     ⌜ b = match n with O => eb | S _ => false end ⌝.
-  Proof.
+  Proof using .
     iIntros "Hcg Hcnt". destruct b.
     - iDestruct "Hcnt" as "%Hb". destruct Hb as (-> & -> & _). done.
     - destruct n as [|n']; [ | done ].
@@ -633,7 +633,7 @@ Section SysExecWhole.
       wp_sys_exec_sconf_body Fs γf gs j gl pd pav pu dqb dqs v0 v1 pid U sts
         gn cs
         m K eb b lks Qpay P Pmiss Fo.
-  Proof.
+  Proof using .
     cbv beta zeta delta [wp_sys_exec_sconf_body].
     intros HK Hroot Hnib0 Hlg Hsize Hbm0 Hbmc Hbml Hist0
            Hcb Hireg Hjp Hgl Hebt Harg0 Harg1.

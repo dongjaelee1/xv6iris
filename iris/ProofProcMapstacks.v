@@ -168,7 +168,7 @@ Section ProofPMS.
          page_filled (zero_extend' 64 (concat_vec (pas' i) (zeros' 12 : mword 12))) kalloc_junk) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros sp0 spr ret_tgt Hlvl HK Hsp Hx25 Hx26 Hx27 Hbase Hrep Hnodes Hpasok Hmiss.
     iIntros "Hcg Hcnt #Htext Hpc
              Hc72 Hc64 Hc56 Hc48 Hc40 Hc32 Hc24 Hc16 Hc08 Hc00
@@ -403,7 +403,7 @@ Section ProofPMS.
 
   (* mappages_perm_ok for the RW perm 6 *)
   Lemma pms_perm_ok6 : mappages_perm_ok 6.
-  Proof.
+  Proof using .
     unfold mappages_perm_ok. split; [lia|].
     split; [intro s; vm_compute; reflexivity|].
     split; [vm_compute; reflexivity|].
@@ -415,7 +415,7 @@ Section ProofPMS.
     (forall j, (j < i)%nat -> f j = g j) ->
     ([∗ list] j ∈ seq 0 i, page_filled (zero_extend' 64 (concat_vec (f j) (zeros' 12 : mword 12))) kalloc_junk)
     ⊢ ([∗ list] j ∈ seq 0 i, page_filled (zero_extend' 64 (concat_vec (g j) (zeros' 12 : mword 12))) kalloc_junk).
-  Proof.
+  Proof using .
     intro Hfg. iIntros "H". iApply (big_sepL_mono with "H").
     iIntros (k y Hy) "Hp". apply lookup_seq in Hy. destruct Hy as [-> Hlt].
     replace (g (0 + k)%nat) with (f (0 + k)%nat) by (apply Hfg; lia). iExact "Hp".
@@ -493,7 +493,7 @@ Section ProofPMS.
          page_filled (zero_extend' 64 (concat_vec (pas' i0) (zeros' 12 : mword 12))) kalloc_junk) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     revert CID.
     induction rem as [| rem' IH]; intros CID i Mk tk gk pas sp0 spr ret_tgt
       Hlvl HK Hirem Hrem Hnbig Hroot Hres
@@ -1042,7 +1042,7 @@ Section ProofPMS.
       (mm : regfile) (t : ptree) (m : gmap (mword 27) (mword 64)) (lvl K : nat)
       (eb : bool) (p : mword 64) (on : option nat) (b : bool) (lks : gset string)
     : wp_proc_mapstacks_sconf_body γa γk mm t m lvl K eb p on b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_proc_mapstacks_sconf_body].
     intros ret_tgt Hlvl HK Hroot Hrep Hres Hnb Hbelow.
     destruct Hnb as (nb & Hon & Hnbig). subst on.

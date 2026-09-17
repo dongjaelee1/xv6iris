@@ -108,7 +108,7 @@ Section UkEcho.
   Local Lemma ucs_ne (r q : mword 5) :
     ucallee_saved_idx r = true -> ucallee_saved_idx q = false ->
     Regidx r <> Regidx q.
-  Proof.
+  Proof using .
     intros Hr Hq He.
     assert (Hrr : r = q) by (injection He; trivial).
     rewrite Hrr Hq in Hr. discriminate.
@@ -143,7 +143,7 @@ Section UkEcho.
        urun N h' m' (ret_pc vra) (2 + n) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hsp Hal8 Hlo. iIntros "#Hcode Hwra Hws0 Hrun Hcont".
     assert (Hbsp1 : bv_unsigned (add_vec_int sp0 (- (8 * Z.of_nat 2)))
                     = bv_unsigned sp0 - 16).
@@ -263,7 +263,7 @@ Section UkEcho.
   Lemma urun_ubyte_bnd (h : CpuId) (m : regfile) (pc : mword 64)
       (avail : nat) (dq : dfrac) (a : Z) (b : bv 8) :
     urun N h m pc avail -∗ ubyteq γd dq a b -∗ ⌜ 0 <= a < 2 ^ 38 ⌝.
-  Proof.
+  Proof using .
     iIntros "Hrun Hb".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(_ & _ & _ & _ & Hh & _ & _ & _ & _)".
     iDestruct (uheap_ubyte with "Hh Hb") as %(_ & _ & Hbnd).
@@ -274,7 +274,7 @@ Section UkEcho.
       (avail : nat) (dq : dfrac) (a : Z) (len : nat) (f : nat -> bv 8) :
     urun N h m pc avail -∗ ustr γd dq a len f -∗
     ⌜ 0 <= a /\ a + Z.of_nat len < 2 ^ 38 ⌝.
-  Proof.
+  Proof using .
     iIntros "Hrun Hs".
     iDestruct (ustr_nul with "Hs") as "[Hnul Hcl]".
     iDestruct (urun_ubyte_bnd with "Hrun Hnul") as %Hhi.
@@ -291,7 +291,7 @@ Section UkEcho.
       (avail : nat) (dq : dfrac) (a : Z) (w : mword 64) :
     urun N h m pc avail -∗ uwordq γd dq a w -∗
     ⌜ 0 <= a /\ a + 8 <= 2 ^ 38 ⌝.
-  Proof.
+  Proof using .
     iIntros "Hrun Hw". rewrite /uwordq /ubytesq.
     iDestruct (big_sepL_lookup_acc _ (seq 0 8) 0%nat 0%nat ltac:(reflexivity)
                  with "Hw") as "[H0 Hcl]".
@@ -336,7 +336,7 @@ Section UkEcho.
            tgt n -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hp0 Hp64 Hbz Ha5 Htgt. iIntros "#Hcode Hb Hrun Hcont".
     assert (Hbr : 0 <= bz < Z64).
     { rewrite <- Hbz. destruct (bv_unsigned_in_range _ b) as [Hlo Hhi].
@@ -456,7 +456,7 @@ Section UkEcho.
          urun N h' mc' (mword_of_int 0xf8) n -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros k. induction k as [| k IH ];
       intros j h mc n Hlen Ha0 Ha38 Ha5;
       change (2 ^ 38) with 274877906944 in Ha38;
@@ -554,7 +554,7 @@ Section UkEcho.
          urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (2 + n) -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Ha0. iIntros "#Hcode Hs Hrun Hcont".
     destruct echo_syms_pins as (_ & _ & Hstrlen & _ & _). rewrite Hstrlen.
     (* the free stack the run owns: sp is aligned and has two words of room *)
@@ -935,7 +935,7 @@ Section UkEcho.
     ukn_pay N (-1) -∗
     urun N h m (mword_of_int EchoSyms.exit) avail -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using Hpay.
     iIntros "#Hcode Hpay Hrun".
     destruct echo_syms_pins as (_ & _ & _ & Hexit & _). rewrite Hexit.
     (* ---- 0x332  c.li a7,2 ---- *)
@@ -988,7 +988,7 @@ Section UkEcho.
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "#Hwr #Hcode Hrun Hcont".
     destruct echo_syms_pins as (_ & _ & _ & _ & Hwrite). rewrite Hwrite.
     (* ---- 0x352  c.li a7,16 ---- *)
@@ -1110,7 +1110,7 @@ Section UkEcho.
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "#Hcode Hrun Hsb Hstd Hbuf Hcont".
     destruct echo_syms_pins as (_ & _ & _ & _ & Hwrite). rewrite Hwrite.
     (* ---- 0x352  c.li a7,16 ---- *)
@@ -1227,7 +1227,7 @@ Section UkEcho.
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "#Hcode Hrun Hsb Hstd #Hbs Hcont".
     destruct echo_syms_pins as (_ & _ & _ & _ & Hwrite). rewrite Hwrite.
     (* ---- 0x352  c.li a7,16 ---- *)
@@ -1349,7 +1349,7 @@ Section UkEcho.
      process entering on the generic path still does. *)
   Lemma kecho_w_of_law (ua : mword 64) (nb : nat) (Ci Co : iProp Σ) :
     (Ci ⊢ Co) -> udepw_law 16 -∗ kecho_w ua nb Ci Co.
-  Proof.
+  Proof using .
     intros Hm. iIntros "#Hwr" (h m avail) "_ _ _ #Hcode HCi Hrun Hcont".
     iApply (wp_kecho_write h m avail with "Hwr Hcode Hrun").
     iIntros (h' ret) "Hrun".
@@ -1360,7 +1360,7 @@ Section UkEcho.
      of a chain hand its cursor straight to the exit's payload. *)
   Lemma kecho_w_mono (ua : mword 64) (nb : nat) (Ci Co Co' : iProp Σ) :
     (Co -∗ Co') -∗ kecho_w ua nb Ci Co -∗ kecho_w ua nb Ci Co'.
-  Proof.
+  Proof using .
     iIntros "Hm Hw" (h m avail) "%Ha0 %Ha1 %Ha2 #Hcode HCi Hrun Hcont".
     iApply ("Hw" $! h m avail with "[%] [%] [%] Hcode HCi Hrun");
       [ exact Ha0 | exact Ha1 | exact Ha2 | ].
@@ -1410,7 +1410,7 @@ Section UkEcho.
   Lemma kecho_pay_of_law (args : list uarg) (k : nat) (Cend : iProp Σ) :
     (⊢ Cend) ->
     forall i : nat, udepw_law 16 -∗ kecho_pay args k i emp%I Cend.
-  Proof.
+  Proof using .
     intros HC. induction k as [| k IH]; intros i; iIntros "#Hwr" (g) "_".
     - iExists emp%I. iSplitL.
       + iApply (kecho_w_of_law _ _ _ _ ltac:(reflexivity) with "Hwr").
@@ -1423,7 +1423,7 @@ Section UkEcho.
 
   Lemma kecho_pay_all_of_law (args : list uarg) (Cend : iProp Σ) :
     (⊢ Cend) -> udepw_law 16 -∗ kecho_pay_all args emp%I Cend.
-  Proof.
+  Proof using .
     intros HC. iIntros "#Hwr". rewrite /kecho_pay_all. iSplit.
     - iIntros "_ _". iApply HC.
     - iIntros "_".
@@ -1507,7 +1507,7 @@ Section UkEcho.
          urun N h' mc' tgt (2 + n) -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hi Hav0 Hav38 Hs1 Hs3 Hs5 Htgt.
     iIntros "Hw #Hcode Hargv HCi Hrun Hcont".
     destruct echo_syms_pins as (_ & _ & Hstrlen & _ & Hwrite).
@@ -1791,7 +1791,7 @@ Section UkEcho.
        urun N h' mc' (mword_of_int 0x4e) (2 + n) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hav0 Hav38 Hi1 Hs1 Hs3 Hs4 Hs6.
     iIntros "Hw #Hcode HCi Hrun Hcont".
     destruct echo_syms_pins as (_ & _ & _ & _ & Hwrite).
@@ -2192,7 +2192,7 @@ Section UkEcho.
     Ci -∗
     urun N h m (mword_of_int EchoSyms.main) (8 + (2 + n)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using Hpay.
     intros Ha0 Ha1. iIntros "Hpay #Hcode Hargv HCi Hrun".
     destruct echo_syms_pins as (Hmain & _ & _ & _ & _). rewrite Hmain.
     iDestruct (urun_stack with "Hrun") as %[Hal8' Hroom].
@@ -2764,7 +2764,7 @@ Section UkEcho.
     Ci -∗
     urun N h m (mword_of_int EchoSyms.start) (2 + (8 + (2 + n))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using Hpay.
     intros Ha0 Ha1. iIntros "Hpay #Hcode Hargv HCi Hrun".
     destruct echo_syms_pins as (Hmain & Hstart & _ & _ & _). rewrite Hstart.
     iDestruct (urun_stack with "Hrun") as %[Hal8' Hroom].

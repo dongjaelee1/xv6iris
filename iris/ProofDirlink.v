@@ -163,7 +163,7 @@ Section DirlinkMsg.
 
   Lemma dl_msg_str :
     (kernel_data : iProp Σ) -∗ (mword_of_int dl_msg_a : mword 64) ↦ₛ□ dl_msg.
-  Proof.
+  Proof using .
     iIntros "#Hd".
     iApply (kernel_data_string dl_msg_a dl_msg _ eq_refl
               ltac:(unfold text_end, dl_msg_a; lia)
@@ -612,7 +612,7 @@ Section DlBuf.
     ⌜is_aligned_paddr (Physaddr (pa_stk sp0 10)) 8 = true
      /\ is_aligned_paddr (Physaddr (pa_stk sp0 9)) 8 = true⌝ ∗
     bytes_own (KTR := KT1) (DfracOwn 1) (pa_stk sp0 10) 16.
-  Proof.
+  Proof using .
     assert (E1 : pa_add (pa_stk sp0 10) 8 = pa_stk sp0 9)
       by (rewrite (pa_stk_next sp0 10 ltac:(lia)); reflexivity).
     iIntros "H1 H2".
@@ -628,7 +628,7 @@ Section DlBuf.
     is_aligned_paddr (Physaddr (pa_stk sp0 9)) 8 = true ->
     bytes_own (KTR := KT1) (DfracOwn 1) (pa_stk sp0 10) 16 ⊢
     ∃ w1 w2 : bv 64, (pa_stk sp0 10) ↦₈[KT1] w1 ∗ (pa_stk sp0 9) ↦₈[KT1] w2.
-  Proof.
+  Proof using .
     intros Ha1 Ha2.
     assert (E1 : pa_add (pa_stk sp0 10) 8 = pa_stk sp0 9)
       by (rewrite (pa_stk_next sp0 10 ltac:(lia)); reflexivity).
@@ -646,7 +646,7 @@ Section DlBuf.
   Lemma dl_bytes_half (a : Arch.pa) (g : nat -> bv 8) :
     is_aligned_paddr (Physaddr a) 2 = true ->
     ([∗ list] j ∈ seq 0 2, pa_add a j ↦ₘ[KT1] g j) ⊢ ∃ w : bv 16, a ↦₂[KT1] w.
-  Proof.
+  Proof using .
     intro Hal. iIntros "H".
     iExists (Z_to_bv (16%N) (assemble_bytes [g 0%nat; g 1%nat])).
     iApply (ctx_word2_pointsto_intro (KTR := KT1) cur_ctx a (DfracOwn 1) _ Hal).
@@ -664,14 +664,14 @@ Section DlBuf.
 
   Lemma dl_bs3 :
     (bslots 3 : iProp Σ) ⊣⊢ bslot ∗ bslots 2.
-  Proof. rewrite /bslot. change 3%nat with (1 + 2)%nat. apply bslots_op. Qed.
+  Proof using . rewrite /bslot. change 3%nat with (1 + 2)%nat. apply bslots_op. Qed.
 
     Lemma dl_esc_acc
       (k : nat) :
     (k < NINODE)%nat ->
     (ic_escrows fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst -∗ ic_escrow fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k
      : iProp Σ).
-  Proof.
+  Proof using .
     iIntros (Hk) "H". rewrite /ic_escrows /ic_boxes_all /ic_escrow.
     assert (Hl : seq 0 NINODE !! k = Some k) by (rewrite lookup_seq; lia).
     iDestruct (big_sepL_lookup _ _ k k Hl with "H") as "$".
@@ -995,7 +995,7 @@ Section ProofDirlinkMain.
     ([∗ list] jj ∈ seq 0 16, pa_add a jj ↦ₘ[KT1] file_byte data (16 * i + jj)%nat)
     ⊣⊢ a ↦₂[KT1] dir_inum data i
        ∗ ([∗ list] jj ∈ seq 0 14, pa_add (pa_add a 2) jj ↦ₘ[KT1] dir_name data i jj).
-  Proof.
+  Proof using .
     intro Hal.
     rewrite -(dlk_half_acc (KTR := KT1) data i a Hal).
     rewrite -(dlk_name_acc (KTR := KT1) data i (pa_add a 2)).
@@ -1310,7 +1310,7 @@ Section ProofDirlinkMain.
  ip dinum bm data dn dn0 fn inum
                           ncount Sb tid qtx pidv dq dqd dqn dqs dqb dqbs dqf
                           m K eb b lks Upr.
-  Proof.
+  Proof using .
     cbv beta delta [wp_dirlink_gen_body].
     intros pcE pjv nb ret_tgt nrec s k0 HK Htype Hbmcov Hszb Hinums
            Hdisj Horph
@@ -3525,7 +3525,7 @@ Section ProofDirlinkMain.
  ip dinum bm data dn dn0 fn inum
                             ncount pidv dq dqd dqn dqs dqb dqbs dqf
                             m K eb b lks Upr.
-  Proof.
+  Proof using .
     cbv beta delta [wp_dirlink_sconf_body].
     intros pcE pjv nb ret_tgt nrec s k0 HK Htype Hbmcov Hszb Hinums
            Hdisj Horph

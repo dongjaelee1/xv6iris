@@ -332,7 +332,7 @@ Section VdrwDefs.
 
   Lemma free_bundles_cells (γ : disk_names) (pd : Arch.pa) (fr : nat -> bool) :
     free_bundles γ pd fr ⊣⊢ [∗ list] i ∈ seq 0 8, free_cell_res γ pd fr i.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* the two scratch slots, contents irrelevant until P2 stores into them *)
   (* a STACK bundle: it rides the accessing hart's regime, so the tier is a
@@ -371,7 +371,7 @@ Section VdrwDefs.
      registers (s0/s3/s6/s7/tp) and the stack pointer. *)
   Lemma vdrw_regs_cs (M M' : regfile) (sp0 b : Arch.pa) (wr sector : mword 64) :
     callee_saved M M' -> vdrw_regs M sp0 b wr sector -> vdrw_regs M' sp0 b wr sector.
-  Proof.
+  Proof using .
     intros Hcs (Hsp & Hs0 & Hs3 & Hs6 & Hs7).
     unfold vdrw_regs.
     rewrite (proj1 Hcs).
@@ -502,7 +502,7 @@ Section VdrwbDefs.
   Lemma free_bundles_ext (γ : disk_names) (pd : Arch.pa) (fr fr' : nat -> bool) :
     (forall i, (i < 8)%nat -> fr i = fr' i) ->
     free_bundles γ pd fr ⊣⊢ free_bundles γ pd fr'.
-  Proof.
+  Proof using .
     intro Hext. rewrite /free_bundles. apply big_sepL_proper.
     intros k y Hk. apply lookup_seq in Hk as [-> Hlt].
     rewrite (Hext (0 + k)%nat ltac:(lia)). reflexivity.
@@ -576,7 +576,7 @@ Section VdrwbDefs.
       (np nr : nat)
       (cm : gmap nat dclaim) (fr : nat -> bool) :
     vdrw_body γ pd pav np nr cm fr -∗ disk_res γ pd pav pu.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /disk_res.
     iExists np, nr, cm, fr. iExact "H".
   Qed.
@@ -585,7 +585,7 @@ Section VdrwbDefs.
     disk_res γ pd pav pu -∗
     ∃ (np nr : nat) (cm : gmap nat dclaim) (fr : nat -> bool),
       vdrw_body γ pd pav np nr cm fr.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /disk_res.
     iDestruct "H" as (np nr cm fr) "H".
     iExists np, nr, cm, fr. iExact "H".
@@ -596,7 +596,7 @@ Section VdrwbDefs.
     is_aligned_paddr (Physaddr (pa_stk sp0 11)) 8 = true ->
     is_aligned_paddr (Physaddr (pa_stk sp0 12)) 8 = true ->
     vdrw_idx (KTR := KTR) sp0 v0 v1 v2 -∗ vdrw_scratch (KTR := KTR) sp0.
-  Proof.
+  Proof using .
   Proof.
     intros Hal11 Hal12. iIntros "(Hx0 & Hx1 & Hx2 & Hxp)".
     iDestruct "Hxp" as (vp) "Hxp".
@@ -1042,7 +1042,7 @@ Section VdrwcDefs.
 
   Lemma free_slot_split (pd : Arch.pa) (i : nat) :
     free_slot_res pd i ⊣⊢ desc_entry_own pd i ∗ vdrw_slot_rest i.
-  Proof. rewrite /free_slot_res /vdrw_slot_rest. iSplit; iIntros "($ & $ & $ & $)". Qed.
+  Proof using . rewrite /free_slot_res /vdrw_slot_rest. iSplit; iIntros "($ & $ & $ & $)". Qed.
 
   (* THE P3/P4 SEAM: the seventeen cells the chain formatting writes, at the
      values it writes, plus the two untouched slot remainders. *)

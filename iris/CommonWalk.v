@@ -207,7 +207,7 @@ Section UserWalk.
     eq_vec (_get_MEnvcfg_PBMTE menvcfg0) ('b"0") = true ->
     exec (check_leaf_pte 39 vpn acc p mxr do_sum pte0 pa 0 tt) s
       = Some (Ok (autocast (T := mword) (PPN_of_PTE pte0), PBMT_PMA, tt), s).
-  Proof.
+  Proof using H0N H0i H0nl Hchk0.
     intros Hmisa Hmenv HPBMTE.
     unfold check_leaf_pte. rewrite exec_catch_early_return.
     rewrite (execR_liftR_seq _ _ _ _ _ (H0i s)). cbv iota beta.
@@ -259,7 +259,7 @@ Section UserWalk.
     eq_vec (_get_MEnvcfg_PBMTE menvcfg0) ('b"0") = true ->
     goodb D_leafchk (check_leaf_pte 39 vpn acc p mxr do_sum pte0 pa 0 tt) s
     = true.
-  Proof.
+  Proof using H0N H0i H0ig H0nl Hchk0 Hchk0g.
     intros Hmisa Hmenv HPBMTE.
     unfold check_leaf_pte. apply goodb_cer.
     rewrite (goodb_bindR D_leafchk _ _ s false
@@ -344,7 +344,7 @@ Section UserWalk.
     eq_vec (_get_MEnvcfg_PBMTE menvcfg0) ('b"0") = true ->
     hval D Drw rs (check_leaf_pte 39 vpn acc p mxr do_sum pte0 pa 0 tt)
       (Ok (autocast (T := mword) (PPN_of_PTE pte0), PBMT_PMA, tt)) rs.
-  Proof.
+  Proof using H0N H0i H0ig H0nl Hchk0 Hchk0g.
     intros HD Hag Hmisa Hmenv HPBMTE.
     eapply (hval_of_goodb D_leafchk D Drw _ dst rs _ HD Hag).
     - exact (goodb_check_leaf_pte_leaf0 pa menvcfg0 dst Hmisa Hmenv HPBMTE).
@@ -365,7 +365,7 @@ Section UserWalk.
                      PTW_Output_level := 0;
                      PTW_Output_pbmt := PBMT_PMA;
                      PTW_Output_global := orb g (u_gbit pte0) |}, tt), s).
-  Proof.
+  Proof using H0N H0i H0nl Hchk0.
     intros Hmisa Hrd0 Hmenv HPBMTE.
     destruct wfacc as [a0].
     cbn [_rec_pt_walk].
@@ -441,7 +441,7 @@ Section UserWalk.
                            PTW_Output_pbmt := PBMT_PMA;
                            PTW_Output_global := orb g (u_gbit pte0) |}, tt)⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using H0N H0i H0ig H0nl Hchk0 Hchk0g.
     intros Hdisj HD Hag Hmisa Hmenv HPBMTE.
     iIntros "#Hcert Hrw Hro Hrd".
     destruct wfacc as [a0].
@@ -520,7 +520,7 @@ Section UserWalk.
                      PTW_Output_level := 0;
                      PTW_Output_pbmt := PBMT_PMA;
                      PTW_Output_global := orb (orb g (u_gbit pte1)) (u_gbit pte0) |}, tt), s).
-  Proof.
+  Proof using H0N H0i H0nl H1i H1nl Hchk0.
     intros Hmisa Hrd1 Hrd0 Hmenv HPBMTE.
     destruct wfacc as [a1].
     cbn [_rec_pt_walk].
@@ -593,7 +593,7 @@ Section UserWalk.
                            PTW_Output_global :=
                              orb (orb g (u_gbit pte1)) (u_gbit pte0) |}, tt)⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using H0N H0i H0ig H0nl H1i H1ig H1nl Hchk0 Hchk0g.
     intros Hdisj HD Hag Hmisa Hmenv HPBMTE.
     iIntros "#Hcert Hrw Hro Hrd1 Hrd0".
     destruct wfacc as [a1].
@@ -663,7 +663,7 @@ Section UserWalk.
                      PTW_Output_level := 0;
                      PTW_Output_pbmt := PBMT_PMA;
                      PTW_Output_global := u_global pte2 pte1 pte0 |}, tt), s).
-  Proof.
+  Proof using H0N H0i H0nl H1i H1nl H2i H2nl Hchk0.
     intros Hmisa Hrd2 Hrd1 Hrd0 Hmenv HPBMTE.
     unfold pt_walk.
     destruct (Defs.Zwf_guarded _) as [a2].
@@ -735,7 +735,7 @@ Section UserWalk.
                            PTW_Output_pbmt := PBMT_PMA;
                            PTW_Output_global := u_global pte2 pte1 pte0 |}, tt)⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using H0N H0i H0ig H0nl H1i H1ig H1nl H2i H2ig H2nl Hchk0 Hchk0g.
     intros Hdisj HD Hag Hmisa Hmenv HPBMTE.
     iIntros "#Hcert Hrw Hro Hrd2 Hrd1 Hrd0".
     unfold pt_walk.
@@ -810,7 +810,7 @@ Section UserWalk.
             (autocast (T := mword) pte0) (Physaddr addr0) 0 (u_global pte2 pte1 pte0)) s
       = Some (tt, set_reg s tlb (vec_update_dec (register_lookup tlb s.(sregs))
                                    (tlb_hash (__id 39) vpn) (Some (u_walk_entry asid)))).
-  Proof.
+  Proof using .
     unfold add_to_TLB. cbn zeta.
     rewrite (exec_bind_Some _ _ _ _ _ (exec_read_reg tlb s)).
     rewrite (exec_bind_Some _ _ _ _ _ (exec_write_reg tlb _ s)).
@@ -836,7 +836,7 @@ Section UserWalk.
     = Some (tt, register_set tlb
                   (vec_update_dec (register_lookup tlb rs)
                      (tlb_hash (__id 39) vpn) (Some (u_walk_entry asid))) rs).
-  Proof.
+  Proof using .
     intros HD HW. unfold add_to_TLB. cbn zeta.
     cbn beta iota zeta delta [Defs.bind Interface.iMon_bind Defs.read_reg
       Defs.write_reg Defs.returnm returnM].
@@ -890,7 +890,7 @@ Section UserWalk.
                     (vec_update_dec (register_lookup tlb rs)
                        (tlb_hash (__id 39) vpn) (Some (u_walk_entry asid))) rs)
                   Dro).
-  Proof.
+  Proof using H0N H0i H0ig H0nl H1i H1ig H1nl H2i H2ig H2nl Hchk0 Hchk0g.
     intros Hdisj HD Hag HWtlb Hmisa Hmenv HPBMTE Hnoupd.
     iIntros "#Hcert Hrw Hro Hrd2 Hrd1 Hrd0".
     unfold translate_TLB_miss. cbn zeta.
@@ -943,7 +943,7 @@ Section UserWalk.
       = Some (Ok (autocast (T := mword) ((autocast (T := mword) (PPN_of_PTE pte0)) : mword 44), PBMT_PMA, tt),
               set_reg s tlb (vec_update_dec (register_lookup tlb s.(sregs))
                                (tlb_hash (__id 39) vpn) (Some (u_walk_entry asid)))).
-  Proof.
+  Proof using H0N H0i H0nl H1i H1nl H2i H2nl Hchk0.
     intros Hmisa Hnoupd Hrd2 Hrd1 Hrd0 Hmenv HPBMTE.
     unfold translate_TLB_miss. cbn zeta.
     rewrite (exec_bind_Some _ _ _ _ _
@@ -994,7 +994,7 @@ Section UserWalkFault.
                         (ext_bits_of_PTE pte)) s0 = Some (true, s0)) ->
     exec (check_leaf_pte 39 vpn acc p mxr do_sum pte pa lvl tt) s
       = Some (Err (PTW_Invalid_PTE tt, tt), s).
-  Proof.
+  Proof using .
     intro Hinv.
     unfold check_leaf_pte. rewrite exec_catch_early_return.
     rewrite (execR_liftR_seq _ _ _ _ _ (Hinv s)). cbv iota beta.
@@ -1012,7 +1012,7 @@ Section UserWalkFault.
        = Some (PTE_Check_Failure (tt, f), s0)) ->
     exec (check_leaf_pte 39 vpn acc p mxr do_sum pte pa 0 tt) s
       = Some (Err (ext_get_ptw_error f, tt), s).
-  Proof.
+  Proof using .
     intros Hinv Hnl Hchk.
     unfold check_leaf_pte. rewrite exec_catch_early_return.
     rewrite (execR_liftR_seq _ _ _ _ _ (Hinv s)). cbv iota beta.
@@ -1036,7 +1036,7 @@ Section UserWalkFault.
                        (ext_bits_of_PTE pte)) s0 = Some (true, s0)) ->
     exec (_rec_pt_walk 39 vpn acc p mxr do_sum base 0 g tt 0 wfacc) s
       = Some (Err (PTW_Invalid_PTE tt, tt), s).
-  Proof.
+  Proof using .
     intros Hrd Hinv.
     destruct wfacc as [a0].
     walk_peel_asserts 0 s.
@@ -1073,7 +1073,7 @@ Section UserWalkFault.
        = Some (PTE_Check_Failure (tt, f), s0)) ->
     exec (_rec_pt_walk 39 vpn acc p mxr do_sum base 0 g tt 0 wfacc) s
       = Some (Err (ext_get_ptw_error f, tt), s).
-  Proof.
+  Proof using .
     intros Hrd Hinv Hnl Hchk.
     destruct wfacc as [a0].
     walk_peel_asserts 0 s.
@@ -1105,7 +1105,7 @@ Section UserWalkFault.
                        (ext_bits_of_PTE pte)) s0 = Some (true, s0)) ->
     exec (_rec_pt_walk 39 vpn acc p mxr do_sum base 1 g tt 1 wfacc) s
       = Some (Err (PTW_Invalid_PTE tt, tt), s).
-  Proof.
+  Proof using .
     intros Hrd Hinv.
     destruct wfacc as [a1].
     walk_peel_asserts 1 s.
@@ -1143,7 +1143,7 @@ Section UserWalkFault.
        exec (_rec_pt_walk 39 vpn acc p mxr do_sum (u_next_base pte) 0 g' tt 0 a) s
          = Some (r, s)) ->
     exec (_rec_pt_walk 39 vpn acc p mxr do_sum base 1 g tt 1 wfacc) s = Some (r, s).
-  Proof.
+  Proof using .
     intros Hrd Hinv Hnl Hsub.
     destruct wfacc as [a1].
     walk_peel_asserts 1 s.
@@ -1174,7 +1174,7 @@ Section UserWalkFault.
                        (ext_bits_of_PTE pte)) s0 = Some (true, s0)) ->
     exec (pt_walk 39 vpn acc p mxr do_sum root 2 false tt) s
       = Some (Err (PTW_Invalid_PTE tt, tt), s).
-  Proof.
+  Proof using .
     intros Hrd Hinv.
     unfold pt_walk.
     destruct (Defs.Zwf_guarded _) as [a2].
@@ -1209,7 +1209,7 @@ Section UserWalkFault.
        exec (_rec_pt_walk 39 vpn acc p mxr do_sum (u_next_base pte) 1 g' tt 1 a) s
          = Some (r, s)) ->
     exec (pt_walk 39 vpn acc p mxr do_sum root 2 false tt) s = Some (r, s).
-  Proof.
+  Proof using .
     intros Hrd Hinv Hnl Hsub.
     unfold pt_walk.
     destruct (Defs.Zwf_guarded _) as [a2].
@@ -1241,7 +1241,7 @@ Section UserWalkFault.
       = Some (Err (f, tt), s) ->
     exec (translate_TLB_miss 39 asid root vpn acc p mxr do_sum tt) s
       = Some (Err (f, tt), s).
-  Proof.
+  Proof using .
     intros Hwalk.
     unfold translate_TLB_miss. cbn zeta.
     rewrite (exec_bind_Some _ _ _ _ _ Hwalk).
@@ -1257,7 +1257,7 @@ Section UserWalkFault.
       = Some (Err (f, tt), s) ->
     exec (translate 39 asid root vpn acc p mxr do_sum tt) s
       = Some (Err (f, tt), s).
-  Proof.
+  Proof using .
     intros Hlk Hmiss.
     unfold translate.
     rewrite (exec_bind_Some _ _ _ _ _ Hlk).
@@ -1358,7 +1358,7 @@ Section UserWalkEx.
                            PTW_Output_pbmt := PBMT_PMA;
                            PTW_Output_global := orb g (u_gbit q0) |}, tt)⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using H0N H0i H0ig H0nl Hchk0 Hchk0g.
     intros Hdisj HD Hag Hmisa Hmenv HPBMTE.
     iIntros "#Hcert Hrw Hro Hrd".
     destruct wfacc as [a0].
@@ -1450,7 +1450,7 @@ Section UserWalkEx.
                            PTW_Output_global :=
                              orb (orb g (u_gbit pte1)) (u_gbit q0) |}, tt)⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using H0N H0i H0ig H0nl H1i H1ig H1nl Hchk0 Hchk0g.
     intros Hdisj HD Hag Hmisa Hmenv HPBMTE.
     iIntros "#Hcert Hrw Hro Hrd1 Hrd0".
     destruct wfacc as [a1].
@@ -1541,7 +1541,7 @@ Section UserWalkEx.
                            PTW_Output_pbmt := PBMT_PMA;
                            PTW_Output_global := u_global pte2 pte1 q0 |}, tt)⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using H0N H0i H0ig H0nl H1i H1ig H1nl H2i H2ig H2nl Hchk0 Hchk0g.
     intros Hdisj HD Hag Hmisa Hmenv HPBMTE.
     iIntros "#Hcert Hrw Hro Hrd2 Hrd1 Hrd0".
     unfold pt_walk.
@@ -1643,7 +1643,7 @@ Section UserWalkEx.
                     (vec_update_dec (register_lookup tlb rs)
                        (tlb_hash (__id 39) vpn)
                        (Some (u_walk_entry vpn pte2 pte1 q0 asid))) rs) Dro).
-  Proof.
+  Proof using H0N H0i H0ig H0nl H1i H1ig H1nl H2i H2ig H2nl Hchk0 Hchk0g.
     intros Hdisj HD Hag HWtlb Hmisa Hmenv HPBMTE Hnoupd.
     iIntros "#Hcert Hrw Hro Hrd2 Hrd1 Hrd0".
     unfold translate_TLB_miss. cbn zeta.

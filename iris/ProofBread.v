@@ -265,7 +265,7 @@ Section BreadMsg.
 
   Lemma bd_msg_str :
     (kernel_data : iProp Σ) -∗ (mword_of_int bd_msg_a : mword 64) ↦ₛ□ bd_msg.
-  Proof.
+  Proof using .
     iIntros "#Hd".
     iApply (kernel_data_string bd_msg_a bd_msg _ eq_refl
               ltac:(unfold text_end, bd_msg_a; lia)
@@ -340,7 +340,7 @@ Section BreadDefs.
     (true = false \/ pj = zero_reg -> (CIDb : CPU) = (CIDa : CPU)) ->
     bd_cont (CID0 := CIDa)  j bn V pidv dev bno dq m K eb pj lks Upr -∗
     bd_cont (CID0 := CIDb)  j bn V pidv dev bno dq m K eb pj lks Upr.
-  Proof.
+  Proof using .
     intros Hs. rewrite /bd_cont /wp_next.
     iIntros "H" (CID2 Hs2). iApply "H". iPureIntro.
     intro Hb. specialize (Hs2 Hb). specialize (Hs Hb). congruence.
@@ -402,7 +402,7 @@ Section BreadBlocks.
     bio_locked bn V k pidv dev bno bs_out bsd d -∗
     bd_cont (CID0 := CID0)  j bn V pidv dev bno dq m K eb (proc_addr j) lks Upr -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using bioslotG0.
     intros HK (HMsp & HMs2 & HMs3 & HMthr) HMs1.
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).
     set (spr := add_vec (m !!! Regidx csp_rs1 : mword 64)
@@ -671,7 +671,7 @@ Section BreadBlocks.
     CtxBox.reference (X := bio_x) (bn_box bn k) (dev, bno) {[((dev, bno), t) := 1%Qp]} -∗
     bd_cont (CID0 := CID0)  j bn V pidv dev bno dq m K eb (proc_addr j) lks Upr -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hbno Hk Hgd Hcov Hdv Hj Hgl Hregs HMs1 HKt.
     pose proof Hregs as (HMsp & HMs2 & HMs3 & HMthr).
     iIntros "Hcg #Htext Hpc #Hbox Hframe Hcnt Hextc Hextm #Hprocs Hppid".
@@ -1055,7 +1055,7 @@ Section BreadBlocks.
     is_lock γk d_lock "virtio_disk"%string (disk_res_at γd pd pav pu) -∗
     bd_cont (CID0 := CID0)  j bn V pidv dev bno dq m K eb (proc_addr j) lks Upr -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hbno Hk Hdevs Hbnos Hgd Hcov Hdv Hj Hgl Hregs HMs1 Hbelow.
     pose proof Hregs as (HMsp & HMs2 & HMs3 & HMthr).
     pose proof (locks_below_not_elem _ _ Hbelow) as Hfresh.
@@ -1356,7 +1356,7 @@ Section BreadBlocks.
     is_lock γk d_lock "virtio_disk"%string (disk_res_at γd pd pav pu) -∗
     bd_cont (CID0 := CID0)  j bn V pidv dev bno dq m K eb (proc_addr j) lks Upr -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hbno Hk HMk Hgd Hcov Hdv Htie Ha0 Ha1 Hj Hgl Hregs HMs1 Hbelow.
     pose proof Hregs as (HMsp & HMs2 & HMs3 & HMthr).
     pose proof (locks_below_not_elem _ _ Hbelow) as Hfresh.
@@ -1701,7 +1701,7 @@ Section BreadBlocks.
     is_lock γk d_lock "virtio_disk"%string (disk_res_at γd pd pav pu) -∗
     bd_cont (CID0 := CID0)  j bn V pidv dev bno dq m K eb (proc_addr j) lks Upr -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hbno Ha0 Ha1 Hj Hgl Hgd Hcov Hdv Htie Hbelow.
     induction n as [|n IH];
       intros pre post M Hlen Hord Hne Hregs HMs1 HMa4.
@@ -2005,7 +2005,7 @@ Section BreadBlocks.
     is_lock γk d_lock "virtio_disk"%string (disk_res_at γd pd pav pu) -∗
     bd_cont (CID0 := CID0)  j bn V pidv dev bno dq m K eb (proc_addr j) lks Upr -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hbno Ha0 Ha1 Hj Hgl Hgd Hcov Hdv Htie Hordp Hregs Hbelow.
     pose proof Hregs as (HMsp & HMs2 & HMs3 & HMthr).
     destruct (bd_ord_last ord (bd_ord_nonnil ord Hordp)) as (d0 & k0 & Hordl).
@@ -2227,7 +2227,7 @@ Section BreadBlocks.
     is_lock γk d_lock "virtio_disk"%string (disk_res_at γd pd pav pu) -∗
     bd_cont (CID0 := CID0)  j bn V pidv dev bno dq m K eb (proc_addr j) lks Upr -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hbno Ha0 Ha1 Hj Hgl Hgd Hcov Hdv Hordp Hbelow.
     induction n as [|n IH];
       intros done rest M Hlen Hord Hne Hdone Hregs HMs1 HMa4.
@@ -2567,7 +2567,7 @@ Section ProofBread.
       (b : bool) (lks : gset string) (Upr : ustate)
     : wp_bread_sconf_body γs j γl γu γd γk pd pav pu bn V
                           pidv dev bno dq m K eb b lks Upr.
-  Proof.
+  Proof using .
     cbv beta delta [wp_bread_sconf_body].
     intros pcE pj ret_tgt HK Hbno Hgd Hcov Hdv Hj Hgl Ha0 Ha1 Hbelow.
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).

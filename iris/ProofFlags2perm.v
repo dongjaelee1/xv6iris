@@ -187,7 +187,7 @@ Section ProofFlags2perm.
   Lemma wp_flags2perm_sconf
       (mm : regfile) (K : nat) (b : bool) (p : mword 64)
     : wp_flags2perm_sconf_body mm K b p.
-  Proof.
+  Proof using .
     cbv beta delta [wp_flags2perm_sconf_body].
     intros pcE fl ret_tgt HK.
     

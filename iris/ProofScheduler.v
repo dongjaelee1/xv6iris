@@ -500,7 +500,7 @@ Section ProofScheduler.
   Lemma wp_scheduler_sconf
       (γs : list gname) (m : regfile) (av : nat) (p0 : mword 64)
     : wp_scheduler_sconf_body γs m av p0.
-  Proof.
+  Proof using .
     cbv beta delta [wp_scheduler_sconf_body].
     intros pcE Hp0 Hav. subst p0.
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).

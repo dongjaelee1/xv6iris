@@ -236,7 +236,7 @@ Section FsAbsSeam.
     inode_rd_era γfs (DfracOwn q) inum n -∗
       inode_dat_q (fs_gamma_L γfs) (DfracOwn q) n
       ∗ nview (fs_gamma_L γfs) q (bv_unsigned inum) (abs_row n).
-  Proof.
+  Proof using .
     intros Hnz Hnl. rewrite /inode_rd_era. iIntros "[$ Ht]".
     by iApply (nview_of_frag_live _ _ _ _ Hnz Hnl).
   Qed.
@@ -255,7 +255,7 @@ Section FsAbsSeam.
       (q : Qp) (a : anode) :
     ic_loaded γfs γi cov logstart k inum dn bm -∗
     nview (fs_gamma_L γfs) q (bv_unsigned inum) a -∗ False.
-  Proof.
+  Proof using .
     iIntros "Hl Hn".
     iDestruct (ic_loaded_open with "Hl") as (data)
       "(_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Htp)".
@@ -269,7 +269,7 @@ Section FsAbsSeam.
       (logstart : Z) (inum : mword 32) (q : Qp) (a : anode) :
     ipool_alloc γfs γi cov logstart inum -∗
     nview (fs_gamma_L γfs) q (bv_unsigned inum) a -∗ False.
-  Proof.
+  Proof using .
     rewrite /ipool_alloc. iIntros "Hp Hn".
     iDestruct "Hp" as (dn0 bm0 data0) "(_ & _ & _ & _ & _ & Hleg)".
     iDestruct (ic_inode_leg_open with "Hleg") as "[_ Hown]".
@@ -284,7 +284,7 @@ Section FsAbsSeam.
       (q : Qp) (av : aview) :
     ic_loaded γfs γi cov logstart k inum dn bm -∗
     apn_pin (fs_gamma_L γfs) q av (bv_unsigned inum) -∗ False.
-  Proof.
+  Proof using .
     iIntros "Hl Hp". rewrite /apn_pin. iDestruct "Hp" as (a) "[_ Hn]".
     iApply (ic_loaded_nview_excl with "Hl Hn").
   Qed.
@@ -308,17 +308,17 @@ Section FsAbsEra.
        ∗ ⌜fn_is_dir n = true /\ dir_entries n = ents /\ fn_nlink n <> 0%nat⌝)%I.
 
   Global Instance elend_timeless Γ d dq ents : Timeless (elend Γ d dq ents).
-  Proof. rewrite /elend. apply _. Qed.
+  Proof using . rewrite /elend. apply _. Qed.
 
   Lemma elend_frag Γ d dq ents : elend Γ d dq ents ⊢ ∃ n, top_frag_q Γ dq d n.
-  Proof. iIntros "H". iDestruct "H" as (n) "[H _]". by iExists n. Qed.
+  Proof using . iIntros "H". iDestruct "H" as (n) "[H _]". by iExists n. Qed.
 
   (* the lend carries LIVENESS too (E2-V2): namex's [ip->nlink == 0] guard
      precedes every hop, so a lent directory has its row *)
   Lemma elend_intro Γ d dq (n : fs_node) :
     fn_is_dir n = true -> fn_nlink n <> 0%nat ->
     top_frag_q Γ dq d n ⊢ elend Γ d dq (dir_entries n).
-  Proof.
+  Proof using .
     intros Hd Hnl. iIntros "H". iExists n. iFrame "H". iPureIntro.
     split_and!; [exact Hd | reflexivity | exact Hnl].
   Qed.
@@ -331,7 +331,7 @@ Section FsAbsEra.
      fragment carries the node's TYPE while [dv_half] cannot
      ([FsAbsSeam], finding 2). *)
   Lemma elend_agrees Γ : lend_agrees Γ (elend Γ).
-  Proof.
+  Proof using .
     intros d dq ents q a. rewrite /elend. iIntros "HF Hn".
     iDestruct "HF" as (n) "[Hf (%Hdir & %Hde & %Hnl)]".
     iDestruct (nview_frag with "Hn") as (n') "[Hf' %Han]".
@@ -341,7 +341,7 @@ Section FsAbsEra.
   Qed.
 
   Lemma elend_reads Γ : lend_reads Γ (elend Γ).
-  Proof. apply lend_agrees_reads, elend_agrees. Qed.
+  Proof using . apply lend_agrees_reads, elend_agrees. Qed.
 
   (* THE READING AGAINST THE AUTHORITY -- the law the era walk exists for.
      No client-held share is needed: the lent fragment agrees with the
@@ -353,7 +353,7 @@ Section FsAbsEra.
       (ents : gmap fname Z) :
     astate_q Γ q av -∗ elend Γ d dq ents -∗
       ⌜∃ nl : nat, av !! d = Some (MkAnode (ADir ents) nl)⌝.
-  Proof.
+  Proof using .
     rewrite /elend. iIntros "Hst HF".
     iDestruct "HF" as (n) "[Hf (%Hdir & %Hde & %Hnl)]".
     iDestruct (nview_of_frag _ _ _ _ _ (abs_of_dir n Hdir Hnl) with "Hf") as "Hn".
@@ -367,7 +367,7 @@ Section FsAbsEra.
       (ents : gmap fname Z) :
     astate Γ av -∗ elend Γ d dq ents -∗
       ⌜∃ nl : nat, av !! d = Some (MkAnode (ADir ents) nl)⌝.
-  Proof.
+  Proof using .
     iIntros "Hst HF". iDestruct "Hst" as (q) "Hst".
     iApply (elend_astate_q with "Hst HF").
   Qed.
@@ -377,7 +377,7 @@ Section FsAbsEra.
   Lemma elend_aents Γ (av : aview) (d : Z) (dq : dfrac)
       (ents : gmap fname Z) :
     astate Γ av -∗ elend Γ d dq ents -∗ ⌜aents av d = Some ents⌝.
-  Proof.
+  Proof using .
     iIntros "Hst HF".
     iDestruct (elend_astate with "Hst HF") as %(nl & Hav).
     iPureIntro. by rewrite /aents Hav.
@@ -403,12 +403,12 @@ Section FsAbsEra.
 
   Lemma ex_hop_is_ax_hop (γfs : fs_names) P Pmiss k s :
     ex_hop γfs P Pmiss k s = ax_hop (elend (fs_gamma_L γfs)) P Pmiss k s.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma ex_hops_is_ax_hops (γfs : fs_names) P Pmiss pl n :
     ex_hops_from γfs P Pmiss pl n
     = ax_hops_from (elend (fs_gamma_L γfs)) P Pmiss (path_elems pl) n.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* PEEL THE HEAD HOP -- [ProofNamexTr.nxt_hops_cons] at this family, and
      the same two-line index shift. *)
@@ -417,7 +417,7 @@ Section FsAbsEra.
     drop k (path_elems pl) = s :: rest ->
     ex_hops_from γfs P Pmiss pl k -∗
     ex_hop γfs P Pmiss k s ∗ ex_hops_from γfs P Pmiss pl (S k).
-  Proof.
+  Proof using .
     iIntros (Hd) "H". rewrite /ex_hops_from /ax_hops_from.
     assert (HdS : drop (S k) (path_elems pl) = rest).
     { replace (S k) with (k + 1)%nat by lia.
@@ -446,7 +446,7 @@ Section FsAbsEra.
     top_frag_q (fs_gamma_L γfs) dq d (era_node dn bm data) ⊢
       elend (fs_gamma_L γfs) d dq
         (dir_view data (dir_nrec (bv_unsigned (di_size dn)))).
-  Proof.
+  Proof using .
     intros Hok Hty Hnl.
     assert (Hd : fn_is_dir (era_node dn bm data) = true).
     { rewrite /fn_is_dir /fn_type era_node_rec.
@@ -461,7 +461,7 @@ Section FsAbsEra.
   Lemma era_half_split Γ (d : Z) (n : fs_node) :
     top_frag Γ d n
     ⊣⊢ top_frag_q Γ (DfracOwn (1/2)) d n ∗ top_frag_q Γ (DfracOwn (1/2)) d n.
-  Proof. rewrite top_frag_1 -top_frag_q_split. by rewrite Qp.div_2. Qed.
+  Proof using . rewrite top_frag_1 -top_frag_q_split. by rewrite Qp.div_2. Qed.
 
   (* FIRE A HOP THAT HITS.  [ProofNamexTr.nxt_hop_hit]'s statement with the
      lent resource changed and NOTHING else: same caller fupd, same cursor
@@ -479,7 +479,7 @@ Section FsAbsEra.
     ex_hop γfs P Pmiss k s -∗ P k d -∗
     top_frag (fs_gamma_L γfs) d (era_node dn bm data) ={⊤}=∗
       top_frag (fs_gamma_L γfs) d (era_node dn bm data) ∗ P (S k) c.
-  Proof.
+  Proof using .
     intros Hok Hty Hnl He. iIntros "Hh HP Ht".
     rewrite era_half_split. iDestruct "Ht" as "[Ht1 Ht2]".
     iDestruct (elend_of_era γfs cov logstart (DfracOwn (1/2)) d dn bm data
@@ -506,7 +506,7 @@ Section FsAbsEra.
     ex_hop γfs P Pmiss k s -∗ P k d -∗
     top_frag (fs_gamma_L γfs) d (era_node dn bm data) ={⊤}=∗
       top_frag (fs_gamma_L γfs) d (era_node dn bm data) ∗ Pmiss k d.
-  Proof.
+  Proof using .
     intros Hok Hty Hnl He. iIntros "Hh HP Ht".
     rewrite era_half_split. iDestruct "Ht" as "[Ht1 Ht2]".
     iDestruct (elend_of_era γfs cov logstart (DfracOwn (1/2)) d dn bm data
@@ -539,7 +539,7 @@ Section FsAbsEra.
       ∗ ax_hops_from (elend Γ) (apn_P Γ q av ds ps) apn_Pmiss ps 0%nat
       ∗ (∀ iL : Z, apn_P Γ q av ds ps (length ps) iL -∗
                      ⌜apath_at av root ps = Some iL⌝).
-  Proof.
+  Proof using .
     intros Hr.
     iApply (apn_walk Γ q av (elend Γ) root ps ds (elend_agrees Γ) Hr).
   Qed.
@@ -560,7 +560,7 @@ Section FsAbsEra.
       ∗ (∀ iL : Z, apr_P Γ q av ds ps (length ps) iL -∗
                      ⌜apath_at av root ps = Some iL⌝
                      ∗ apr_pins Γ q av ds ps).
-  Proof.
+  Proof using .
     intros Hr.
     iApply (apr_walk Γ q av (elend Γ) root ps ds (elend_agrees Γ) Hr).
   Qed.
@@ -574,7 +574,7 @@ Section FsAbsEra.
     arun av root (path_elems pl) ds ->
     ⊢ ex_hops_from γfs
         (apr_P (fs_gamma_L γfs) q av ds (path_elems pl)) apn_Pmiss pl n.
-  Proof.
+  Proof using .
     intros Hr. rewrite ex_hops_is_ax_hops.
     iApply (apr_hops (fs_gamma_L γfs) q av (elend (fs_gamma_L γfs)) root
               (path_elems pl) ds n (elend_agrees (fs_gamma_L γfs)) Hr).
@@ -720,12 +720,12 @@ Section FsAbsNpar.
 
   Lemma ep_hop_is_ax_hop (γfs : fs_names) P Pmiss k s :
     ep_hop γfs P Pmiss k s = ax_hop (elend (fs_gamma_L γfs)) P Pmiss k s.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma ep_hops_is_ax_hops (γfs : fs_names) P Pmiss pl n :
     ep_hops_from γfs P Pmiss pl n
     = ax_hops_from (elend (fs_gamma_L γfs)) P Pmiss (np_elems pl) n.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* the head hop peels off exactly as [FsAbsEra.ex_hops_cons] peels it,
      at the shorter list *)
@@ -734,7 +734,7 @@ Section FsAbsNpar.
     drop k (np_elems pl) = s :: rest ->
     ep_hops_from γfs P Pmiss pl k -∗
     ep_hop γfs P Pmiss k s ∗ ep_hops_from γfs P Pmiss pl (S k).
-  Proof.
+  Proof using .
     iIntros (Hd) "H". rewrite /ep_hops_from /ax_hops_from.
     assert (HdS : drop (S k) (np_elems pl) = rest).
     { replace (S k) with (k + 1)%nat by lia.
@@ -751,7 +751,7 @@ Section FsAbsNpar.
       (pl : list (bv 8)) (k : nat) :
     (length (np_elems pl) <= k)%nat ->
     ⊢ ep_hops_from γfs P Pmiss pl k.
-  Proof.
+  Proof using .
     intros Hk. rewrite /ep_hops_from /ax_hops_from.
     rewrite (drop_ge (np_elems pl) k Hk). by iApply big_sepL_nil.
   Qed.
@@ -779,7 +779,7 @@ Section FsAbsNpar.
       (pl : list (bv 8)) (k : nat) (d : Z) :
     (k <= length (np_elems pl))%nat ->
     P k d -∗ ep_hops_from γfs P Pmiss pl k -∗ np_dead γfs P Pmiss pl.
-  Proof.
+  Proof using .
     iIntros (Hk) "HP Hh". rewrite /np_dead. iLeft.
     iExists k, d. iSplitR; [by iPureIntro |]. iFrame.
   Qed.
@@ -788,7 +788,7 @@ Section FsAbsNpar.
       (pl : list (bv 8)) (k : nat) (d : Z) :
     (k < length (np_elems pl))%nat ->
     Pmiss k d -∗ ep_hops_from γfs P Pmiss pl (S k) -∗ np_dead γfs P Pmiss pl.
-  Proof.
+  Proof using .
     iIntros (Hk) "HP Hh". rewrite /np_dead. iRight.
     iExists k, d. iSplitR; [by iPureIntro |]. iFrame.
   Qed.
@@ -799,7 +799,7 @@ Section FsAbsNpar.
       (pl : list (bv 8)) (d : Z) :
     path_elems pl = [] ->
     P 0%nat d -∗ np_dead γfs P Pmiss pl.
-  Proof.
+  Proof using .
     iIntros (Hnil) "HP".
     iApply (np_dead_unfired γfs P Pmiss pl 0%nat d with "HP").
     - lia.
@@ -960,7 +960,7 @@ Section FsAbsStart.
     P 0%nat (bv_unsigned ROOTINO) -∗
     ex_hops_from γfs P Pmiss pl 0%nat -∗
     ex_start γfs cw P Pmiss pl.
-  Proof.
+  Proof using .
     iIntros (Hsl) "HP Hh". rewrite /ex_start.
     iIntros (r Hr). rewrite Hr (um_start_of_slash _ _ Hsl) rootino_agree.
     iModIntro. iFrame.
@@ -972,7 +972,7 @@ Section FsAbsStart.
     P 0%nat (bv_unsigned ROOTINO) -∗
     ep_hops_from γfs P Pmiss pl 0%nat -∗
     ep_start γfs cw P Pmiss pl.
-  Proof.
+  Proof using .
     iIntros (Hsl) "HP Hh". rewrite /ep_start.
     iIntros (r Hr). rewrite Hr (um_start_of_slash _ _ Hsl) rootino_agree.
     iModIntro. iFrame.
@@ -990,7 +990,7 @@ Section FsAbsStart.
   Lemma ax_hops_triv (F : Z -> dfrac -> gmap fname Z -> iProp Σ)
       (ps : list fname) (n : nat) :
     ⊢ ax_hops_from F (fun _ _ => True%I) (fun _ _ => True%I) ps n.
-  Proof.
+  Proof using .
     rewrite /ax_hops_from. iApply big_sepL_intro.
     iIntros "!>" (j s _). rewrite /ax_hop.
     iIntros (d ents dqv) "_ Hl". iModIntro. iFrame "Hl".
@@ -999,7 +999,7 @@ Section FsAbsStart.
 
   Lemma ep_start_triv (γfs : fs_names) (cw : Z) (pl : list (bv 8)) :
     ⊢ ep_start γfs cw (fun _ _ => True%I) (fun _ _ => True%I) pl.
-  Proof.
+  Proof using .
     rewrite /ep_start. iIntros (r) "_". iModIntro.
     iSplit; [done |]. rewrite /ep_hops_from. iApply ax_hops_triv.
   Qed.

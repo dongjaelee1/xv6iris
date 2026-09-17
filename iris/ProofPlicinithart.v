@@ -121,7 +121,7 @@ Section ProofPlicinithart.
   (* =================================================================== *)
   Lemma wp_plicinithart_sconf (γd : uart_names) (γv : disk_names) (m0 : regfile) (n : nat) (p : mword 64)
     : wp_plicinithart_sconf_body γd γv m0 n p.
-  Proof.
+  Proof using .
     cbv beta delta [wp_plicinithart_sconf_body].
     intros ra_idx tp_idx pcE ra0 ret_tgt Hhart Hn.
     (* [tp] is pinned to the hart: [rget _ tp_idx] is [cid_word] at EVERY

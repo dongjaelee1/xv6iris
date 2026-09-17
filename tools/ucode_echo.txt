@@ -1,11 +1,12 @@
 # ucode_echo.txt -- the pc set of iris/UCodeEcho.v, for tools/gen_ucode.py.
 #
-#   tools/gen_ucode.py --module Echo --out iris/UCodeEcho.v \
-#       --spec tools/ucode_echo.txt
+# This file is the pc set; tools/ucode_manifest.json is the row that binds it
+# to iris/UCodeEcho.v, and `make gen-ucode` rewrites that file from it.
 #
-# iris/UCodeEcho.v is HAND-WRITTEN and stays that way; this file exists so
-# the generator can be checked against it (every [udec_*] and [ui_echo_*]
-# STATEMENT the two produce is character-for-character the same).
+# It began as the hand-written EXAMPLE the generator was written against --
+# every [udec_*] and [ui_echo_*] statement the two produced was
+# character-for-character the same -- and the generator has owned the output
+# since.
 
 note echo's five reachable functions.  main and start diverge; strlen and
 note the two syscall stubs return.

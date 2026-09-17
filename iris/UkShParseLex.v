@@ -232,7 +232,7 @@ Section UkShParseLex.
          urun N h' mc' (mword_of_int 0x482) (2 + nn) -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros r. induction r as [| r IH ];
       intros j h mc Hr Hj Hs0 Hs64 Hs1 Hs2 Hs3;
       iIntros "#Hcode Hstr Hws Hrun Hcont"; [ lia | ].
@@ -495,7 +495,7 @@ Section UkShParseLex.
          urun N h' mc' (mword_of_int 0x482) (2 + nn) -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hjle Hs0 Hs64 Hs1 Hs2 Hs3 Ha1.
     iIntros "#Hcode Hstr Hws Hrun Hcont".
     destruct (Nat.eq_dec j len) as [ Hend | Hne ].
@@ -580,7 +580,7 @@ Section UkShParseLex.
          (ret_pc (vals 0%nat)) (8 + (2 + nn)) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros h me Hal8 Hlo Hhi Hsplu Hsp.
     iIntros "#Hcode Hsl Hloc Hrun Hcont".
     set (spn := add_vec_int sp0 (- (8 * Z.of_nat 8))).
@@ -755,7 +755,7 @@ Section UkShParseLex.
          urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (8 + (2 + nn)) -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Ha0 Ha1 Ha2 Hoffle Hw0 Hs0 Hs64 Ht0 Ht64 Hps0 Hps8 Hpssz.
     iIntros "#Hcode Hcur Hstr Hws Htoks Hrun Hcont".
     rewrite shpp_peek.
@@ -1554,7 +1554,7 @@ Section UkShParseLex.
     ushp_lit_ok base len = true -> (j < len)%nat ->
     shp_ro !! (base + Z.of_nat j)%Z = Some (ushp_lit base j)
     /\ ushp_lit base j <> ubyte0.
-  Proof.
+  Proof using .
     unfold ushp_lit_ok, ushp_lit. intros H Hj.
     apply andb_true_iff in H as [ H _ ].
     rewrite forallb_forall in H.
@@ -1569,7 +1569,7 @@ Section UkShParseLex.
   Lemma ushp_lit_ok_nul (base : Z) (len : nat) :
     ushp_lit_ok base len = true ->
     shp_ro !! (base + Z.of_nat len)%Z = Some ubyte0.
-  Proof.
+  Proof using .
     unfold ushp_lit_ok. intro H.
     apply andb_true_iff in H as [ _ H ].
     destruct (shp_ro !! (base + Z.of_nat len)%Z) as [ b | ] eqn:Hb;
@@ -1583,7 +1583,7 @@ Section UkShParseLex.
     ushp_lit_ok base len = true ->
     Z.of_nat len < 2 ^ 31 ->
     shp_rodata γt -∗ ushp_sstr true dq base len (ushp_lit base).
-  Proof.
+  Proof using .
     intros Hok Hlen. iIntros "#Hro".
     rewrite ushp_sstr_text /shp_rodata.
     iApply (utext_str_of_img γt shp_ro base len (ushp_lit base)).
@@ -1598,7 +1598,7 @@ Section UkShParseLex.
   Lemma ushp_find_none (n i : nat) (f : nat -> bv 8) (b : bv 8) :
     (forall j : nat, (i <= j < i + n)%nat -> f j <> b) ->
     ushp_find n i f b = None.
-  Proof.
+  Proof using .
     revert i. induction n as [| n IH ]; intros i Hne; [ reflexivity | ].
     cbn [ushp_find].
     destruct (bool_decide (f i = b)) eqn:Hb.
@@ -1614,7 +1614,7 @@ Section UkShParseLex.
       (base : Z) :
     ushp_no_symbols len f -> ushp_lit_sym base tlen = true ->
     ushp_peek_res len f k tlen (ushp_lit base) = 0.
-  Proof.
+  Proof using .
     intros Hnos Hsym. rewrite /ushp_peek_res.
     destruct (bool_decide (k < len)%nat) eqn:Hk; [ | reflexivity ].
     apply bool_decide_eq_true in Hk.
@@ -1637,34 +1637,34 @@ Section UkShParseLex.
 
   (* ...and the two decidable checks, discharged once each *)
   Lemma ushp_T_redir_ok : ushp_lit_ok ushp_T_redir 2 = true.
-  Proof. vm_compute. reflexivity. Qed.
+  Proof using . vm_compute. reflexivity. Qed.
   Lemma ushp_T_block_ok : ushp_lit_ok ushp_T_block 1 = true.
-  Proof. vm_compute. reflexivity. Qed.
+  Proof using . vm_compute. reflexivity. Qed.
   Lemma ushp_T_arg_ok   : ushp_lit_ok ushp_T_arg 4 = true.
-  Proof. vm_compute. reflexivity. Qed.
+  Proof using . vm_compute. reflexivity. Qed.
   Lemma ushp_T_pipe_ok  : ushp_lit_ok ushp_T_pipe 1 = true.
-  Proof. vm_compute. reflexivity. Qed.
+  Proof using . vm_compute. reflexivity. Qed.
   Lemma ushp_T_back_ok  : ushp_lit_ok ushp_T_back 1 = true.
-  Proof. vm_compute. reflexivity. Qed.
+  Proof using . vm_compute. reflexivity. Qed.
   Lemma ushp_T_list_ok  : ushp_lit_ok ushp_T_list 1 = true.
-  Proof. vm_compute. reflexivity. Qed.
+  Proof using . vm_compute. reflexivity. Qed.
   Lemma ushp_T_none_ok  : ushp_lit_ok ushp_T_none 0 = true.
-  Proof. vm_compute. reflexivity. Qed.
+  Proof using . vm_compute. reflexivity. Qed.
 
   Lemma ushp_T_redir_sym : ushp_lit_sym ushp_T_redir 2 = true.
-  Proof. vm_compute. reflexivity. Qed.
+  Proof using . vm_compute. reflexivity. Qed.
   Lemma ushp_T_block_sym : ushp_lit_sym ushp_T_block 1 = true.
-  Proof. vm_compute. reflexivity. Qed.
+  Proof using . vm_compute. reflexivity. Qed.
   Lemma ushp_T_arg_sym   : ushp_lit_sym ushp_T_arg 4 = true.
-  Proof. vm_compute. reflexivity. Qed.
+  Proof using . vm_compute. reflexivity. Qed.
   Lemma ushp_T_pipe_sym  : ushp_lit_sym ushp_T_pipe 1 = true.
-  Proof. vm_compute. reflexivity. Qed.
+  Proof using . vm_compute. reflexivity. Qed.
   Lemma ushp_T_back_sym  : ushp_lit_sym ushp_T_back 1 = true.
-  Proof. vm_compute. reflexivity. Qed.
+  Proof using . vm_compute. reflexivity. Qed.
   Lemma ushp_T_list_sym  : ushp_lit_sym ushp_T_list 1 = true.
-  Proof. vm_compute. reflexivity. Qed.
+  Proof using . vm_compute. reflexivity. Qed.
   Lemma ushp_T_none_sym  : ushp_lit_sym ushp_T_none 0 = true.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* ===================================================================== *)
   (* §7 execcmd @0x1d2 -- 19 instructions, a four-word frame, NO branch.    *)
@@ -1698,9 +1698,9 @@ Section UkShParseLex.
   (* ===================================================================== *)
 
   Lemma shpp_malloc : ShSyms.malloc = 0x118c.
-  Proof. unfold ShSyms.malloc. reflexivity. Qed.
+  Proof using . unfold ShSyms.malloc. reflexivity. Qed.
   Lemma shpp_memset : ShSyms.memset = 0xa5c.
-  Proof. unfold ShSyms.memset. reflexivity. Qed.
+  Proof using . unfold ShSyms.memset. reflexivity. Qed.
 
   Lemma wp_kshp_execcmd {Pex : iProp Σ} (h : CpuId) (m : regfile) (s0 : Z) (nn : nat) :
     shp_code γt -∗
@@ -1729,7 +1729,7 @@ Section UkShParseLex.
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (4 + (10 + nn)) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using ushp_malloc_ok.
     iIntros "#Hcode HM #Hpx Hpay Hrun Hcont".
     iDestruct (ushp_code_shk γt with "Hcode") as "#Hkcode".
     rewrite shpp_execcmd.

@@ -417,7 +417,7 @@ Section ProofSafestrcpy.
   (* a callee-saved index is never one of the scratch indices a body writes. *)
   Local Lemma cs_ne (k r : mword 5) :
     is_cs_idx k = false -> is_cs_idx r = true -> Regidx r <> Regidx k.
-  Proof. intros Hk Hr He. symmetry in He. exact (is_cs_idx_true_neq k r Hk Hr He). Qed.
+  Proof using . intros Hk Hr He. symmetry in He. exact (is_cs_idx_true_neq k r Hk Hr He). Qed.
 
   Local Ltac peel_sym :=
     rewrite upd_ne;
@@ -432,7 +432,7 @@ Section ProofSafestrcpy.
   Local Lemma ssc_sb_zero (M : regfile) :
     M !!! Regidx Rz = zero_reg ->
     forall CID' : CpuId, trunc8 (rget (CID := CID') M Rz) = (mword_of_int 0 : mword 8).
-  Proof.
+  Proof using .
     intros Hx0 CID'. rgne. rewrite Hx0. apply bv_eq; vm_compute; reflexivity.
   Qed.
 
@@ -441,16 +441,16 @@ Section ProofSafestrcpy.
   Local Lemma ssc_bump1 (p : mword 64) (j : nat) :
     add_vec (pa_add p j) (sign_extend' 64 (sign_extend' 12 (mword_of_int 1 : mword 6)))
     = pa_add p (S j).
-  Proof. apply pa_add_step. apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . apply pa_add_step. apply bv_eq; vm_compute; reflexivity. Qed.
 
   Local Lemma ssc_back1 (p : mword 64) (j : nat) :
     add_vec (pa_add p (S j)) (sign_extend' 64 (mword_of_int 4095 : mword 12)) = pa_add p j.
-  Proof. apply pa_add_back1. apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . apply pa_add_back1. apply bv_eq; vm_compute; reflexivity. Qed.
 
   (* --- the frame --- *)
   Local Lemma ssc_push (X : mword 64) :
     add_vec X (sign_extend' 64 (sign_extend' 12 (mword_of_int 48 : mword 6))) = pa_stk X 2.
-  Proof. unfold pa_stk, add_vec_int. apply f_equal. apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . unfold pa_stk, add_vec_int. apply f_equal. apply bv_eq; vm_compute; reflexivity. Qed.
 
   (* ================================================================== *)
   (*  THE EPILOGUE (+0x2e .. +0x34), entered by all three arms.          *)
@@ -477,7 +477,7 @@ Section ProofSafestrcpy.
         pc_is (ret_pc ra0) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hsp0 Hra0 Hs00 Hmtsp Hmta0 Hthr.
     iIntros "Hcg #Htext Hpc Hb1 Hb2 Hcont".
     (* ---- +0x2e: c.ldsp ra,8(sp) ---- *)
@@ -636,7 +636,7 @@ Section ProofSafestrcpy.
         ([∗ list] j ∈ seq 0 n, (pa_add s j) ↦ₘ[kts] hf j) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn0 Hn31 Hsok rem.
     induction rem as [| rem IH]; intros d h M CID0 Hchain Hsum Hcp Hun Hnn Hsp Ha0 Ha1 Ha3 Ha5 Hthr;
       pose proof (ssc_d_lt64 n d _ Hsum Hn31) as Hd64;
@@ -890,7 +890,7 @@ Section ProofSafestrcpy.
   Lemma wp_safestrcpy_sconf (mm : regfile)
       (n ns : nat) (f g : nat -> bv 8) (K : nat) (dq : dfrac) (b : bool) (p : mword 64)
     : wp_safestrcpy_sconf_body kts ktt mm n ns f g K dq b p.
-  Proof.
+  Proof using .
     cbv beta delta [wp_safestrcpy_sconf_body].
     intros pcE s t ret_tgt HK Hn2 Hn31 Hsok.
     pose (sp0 := (mm !!! Regidx csp_rs1 : mword 64)).

@@ -289,7 +289,7 @@ Section ProofSysOpenAlloc.
       (so_cont_au gf nsj
                dqb dqs (proc_addr jx) pidv Mim pvv vom U sts P Pmiss Fo Ft m K eb b lks) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hqs HK Hkk Hinb Hipos Hgeom Hsize Hbm0 Hbmcov Hbmlog Hist0 Hiblk
            Hiblog Hcovb Hiu Hj Hgl Hlkempty Hdir Hpof Hom Hmajb Hal23 Hsp0 HNsp
            HNthr HNs0 HNs1 HNs2 HNs3 Hal Hnspos.

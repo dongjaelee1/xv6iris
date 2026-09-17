@@ -149,7 +149,7 @@ Section ProofIunlockMain.
       (b : bool) (lks : gset string) (Upr : ustate)
     : wp_iunlock_dep_sconf_body gs gil gisl k s g lo tl d
                                 dev inum dn' bm' pidv dq m K eb p b lks Upr.
-  Proof.
+  Proof using .
     cbv beta delta [wp_iunlock_dep_sconf_body].
     intros pcE ip ret_tgt HK Hdshr Hk Ha0 Hfresh.
     pose proof HK as HK'.
@@ -851,7 +851,7 @@ Section ProofIunlockMain.
       (b : bool) (lks : gset string) (Upr : ustate)
     : wp_iunlock_tx_sconf_body gs gil gisl k s g lo tl dev
                                inum dn' bm' pidv dq m K eb p b lks Upr.
-  Proof.
+  Proof using .
     apply wp_iunlock_tx_of_dep. intros d.
     apply wp_iunlock_dep_sconf.
   Qed.

@@ -108,7 +108,7 @@ Section barrier.
 
   (* the trivial one: a fence that publishes nothing still drains *)
   Lemma pub_step_id (P : iProp Σ) : ⊢ pub_step P P.
-  Proof. iIntros (g) "_ _ $ $ $". done. Qed.
+  Proof using . iIntros (g) "_ _ $ $ $". done. Qed.
 
   (* ------------------------------------------------------------------ *)
   (* §3 THE LEAF, at the WP over a context.                               *)
@@ -121,7 +121,7 @@ Section barrier.
     gen_cert -∗ pub_step P Q -∗ P -∗
     ▷ (Q -∗ WP (HartE gen_id cpu_id (C (hbar_resume m)) : expr riscv_lang)) -∗
     WP (HartE gen_id cpu_id (C m) : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (HC Hproj Hdrain) "#Hcert Hpub HP H".
     destruct (hbar_at_inv _ _ Hproj) as (K & Hm & Hres).
     assert (Hg : C m = Interface.Next (Interface.Barrier bk) (fun v => C (K v)))
@@ -195,7 +195,7 @@ Section barrier.
     gen_cert -∗ pub_step P Q -∗ P -∗
     ▷ (Q -∗ swp (hbar_resume m) Φ) -∗
     swp m Φ.
-  Proof.
+  Proof using .
     iIntros (Hproj Hdrain) "#Hcert Hpub HP H".
     rewrite /swp. iIntros (C) "%HC Hcont".
     iApply (wp_hart_barrier C bk m P Q HC Hproj Hdrain
@@ -230,12 +230,12 @@ Section barrier.
        tso_interp_at riscv_eraGS g ∗ Q)%I.
 
   Lemma ghost_step_id (P : iProp Σ) : ⊢ ghost_step P P.
-  Proof. iIntros (g) "$ $ $". done. Qed.
+  Proof using . iIntros (g) "$ $ $". done. Qed.
 
   (* a client that wants nothing from the drain may be run by either leaf *)
   Lemma pub_step_of_ghost_step (P Q : iProp Σ) :
     ghost_step P Q -∗ pub_step P Q.
-  Proof. iIntros "H" (g) "_ _ Hm Ht HP". iApply ("H" with "Hm Ht HP"). Qed.
+  Proof using . iIntros "H" (g) "_ _ Hm Ht HP". iApply ("H" with "Hm Ht HP"). Qed.
 
   Lemma wp_hart_barrier_gs {X : Type} (C : M X -> M unit) (bk : barrier_kind)
       (m : M X) (P Q : iProp Σ) :
@@ -244,7 +244,7 @@ Section barrier.
     gen_cert -∗ ghost_step P Q -∗ P -∗
     ▷ (Q -∗ WP (HartE gen_id cpu_id (C (hbar_resume m)) : expr riscv_lang)) -∗
     WP (HartE gen_id cpu_id (C m) : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (HC Hproj) "#Hcert Hpub HP H".
     destruct (hbar_at_inv _ _ Hproj) as (K & Hm & Hres).
     assert (Hg : C m = Interface.Next (Interface.Barrier bk) (fun v => C (K v)))
@@ -324,7 +324,7 @@ Section barrier.
        tso_interp_at riscv_eraGS g ∗ Q)%I.
 
   Lemma ifence_step_id (P : iProp Σ) : ⊢ ifence_step P P.
-  Proof. iIntros (g IK) "_ _ _ $ $ $". done. Qed.
+  Proof using . iIntros (g IK) "_ _ _ $ $ $". done. Qed.
 
   Lemma wp_hart_fence_i {X : Type} (C : M X -> M unit) (m : M X)
       (P Q : iProp Σ) :
@@ -333,7 +333,7 @@ Section barrier.
     gen_cert -∗ ifence_step P Q -∗ P -∗
     ▷ (Q -∗ WP (HartE gen_id cpu_id (C (hbar_resume m)) : expr riscv_lang)) -∗
     WP (HartE gen_id cpu_id (C m) : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (HC Hproj) "#Hcert Hstep HP H".
     destruct (hbar_at_inv _ _ Hproj) as (K & Hm & Hres).
     assert (Hg : C m = Interface.Next (Interface.Barrier Barrier_RISCV_i)
@@ -384,7 +384,7 @@ Section barrier.
     gen_cert -∗ ifence_step P Q -∗ P -∗
     ▷ (Q -∗ swp (hbar_resume m) Φ) -∗
     swp m Φ.
-  Proof.
+  Proof using .
     iIntros (Hproj) "#Hcert Hstep HP H".
     rewrite /swp. iIntros (C) "%HC Hcont".
     iApply (wp_hart_fence_i C m P Q HC Hproj with "Hcert Hstep HP [H Hcont]").
@@ -398,7 +398,7 @@ Section barrier.
     gen_cert -∗ ghost_step P Q -∗ P -∗
     ▷ (Q -∗ swp (hbar_resume m) Φ) -∗
     swp m Φ.
-  Proof.
+  Proof using .
     iIntros (Hproj) "#Hcert Hpub HP H".
     rewrite /swp. iIntros (C) "%HC Hcont".
     iApply (wp_hart_barrier_gs C bk m P Q HC Hproj
@@ -434,7 +434,7 @@ Section barrier.
     gen_cert -∗ hart_rview_lb_at cpu_id K -∗
     ▷ (hart_view_lb K -∗ WP (HartE gen_id cpu_id (C (hbar_resume m)) : expr riscv_lang)) -∗
     WP (HartE gen_id cpu_id (C m) : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (HC Hproj Hacq) "#Hcert #HK H".
     destruct (hbar_at_inv _ _ Hproj) as (Kc & Hm & Hres).
     assert (Hg : C m = Interface.Next (Interface.Barrier bk) (fun v => C (Kc v)))
@@ -492,7 +492,7 @@ Section barrier.
     gen_cert -∗ hart_rview_lb_at cpu_id K -∗
     ▷ (hart_view_lb K -∗ swp (hbar_resume m) Φ) -∗
     swp m Φ.
-  Proof.
+  Proof using .
     iIntros (Hproj Hacq) "#Hcert #HK H".
     rewrite /swp. iIntros (C) "%HC Hcont".
     iApply (wp_hart_fence_acq C bk m K HC Hproj Hacq with "Hcert HK [H Hcont]").

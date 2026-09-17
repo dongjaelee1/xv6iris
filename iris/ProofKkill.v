@@ -231,7 +231,7 @@ Section ProofKkill.
       cpu_own lvl eb pme b lks -∗
       kernel_text -∗ pc_is (mword_of_int (KernelSyms.kkill + 0x22)) -∗
       WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hpidnz Hlen Hlvl Hav Hno.
     iIntros "#Hkc #Hpinv Hqexit".
     (* BOUNDED loop: ordinary Coq induction on a [fuel] bounding the
@@ -917,7 +917,7 @@ Section ProofKkillMain.
   Lemma wp_kkill_sconf  (γs : list gname)
       (m : regfile) (av : nat) (n : nat) (eb : bool) (p : mword 64) (b : bool) (lks : gset string)
     : wp_kkill_sconf_body γs m av n eb p b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_kkill_sconf_body].
     intros pcE ret_tgt Hlen Hn Hav Hno.
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).

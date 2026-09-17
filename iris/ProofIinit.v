@@ -96,7 +96,7 @@ Section ProofIinit.
       pc_is ret_tgt -∗ ⌜ callee_saved m mr ⌝ -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros sp0 spr ret_tgt HK6 HMesp HMecs.
     assert (Hspr6 : spr = pa_stk sp0 6).
     { unfold spr, pa_stk, add_vec_int. f_equal; try (apply bv_eq; vm_compute; reflexivity). }
@@ -315,7 +315,7 @@ Section ProofIinit.
         ([∗ list] i ∈ seq 0 NINODE, sl_fresh (inode_lock i) "inode"%string) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros sp0 spr ret_tgt name_inode.
     revert CID.
     induction fuel as [|fuel IHf]; intros CID j M HK Hlen Hj HMs1 HMs2 HMs3 HMsp HMcs.
@@ -526,7 +526,7 @@ Section ProofIinit.
       (m : regfile) (K : nat)
       (vlock : mword 32) (vname vcpu : mword 64) (b : bool) (p : mword 64)
     : wp_iinit_sconf_body m K vlock vname vcpu b p.
-  Proof.
+  Proof using .
     cbv beta delta [wp_iinit_sconf_body].
     intros pcE ret_tgt lk c_name c_cpu HK.
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).

@@ -372,7 +372,7 @@ Section BmapRes.
          (pa_add (b_data p) (4 * q)%nat ↦₄ w) -∗
          buf_own p bno dsk ((bb_set (fun j => bs !!! j) (4 * q)%nat w)
                               <$> seq 0 1024)).
-  Proof.
+  Proof using .
     intros Hal Hq.
     iIntros "(Hb & Hd & %Hlen & Hby)".
     iEval (rewrite (bb_bytes_of_list (b_data p) bs) Hlen) in "Hby".
@@ -390,11 +390,11 @@ Section BmapRes.
      to bread and one to log_write *)
   Lemma bm_slots_split (a c : nat) :
     bslots (a + c) -∗ bslots a ∗ bslots c.
-  Proof. rewrite bslots_op. iIntros "$". Qed.
+  Proof using . rewrite bslots_op. iIntros "$". Qed.
 
   Lemma bm_slots_join (a c : nat) :
     bslots a -∗ bslots c -∗ bslots (a + c).
-  Proof.
+  Proof using .
     iIntros "H1 H2". rewrite bslots_op. iSplitL "H1"; [iExact "H1"|iExact "H2"].
   Qed.
 
@@ -406,7 +406,7 @@ Section BmapRes.
       (∀ bs' : list (bv 8),
          buf_own (bpa k) bno (mword_of_int 0 : mword 32) bs' -∗
          bio_held bn V k pidv dev bno bs' bsl bsd d).
-  Proof.
+  Proof using .
     rewrite /bio_held.
     iIntros "(%A & %B & %C & H1 & H3 & H4 & H5 & H6 & H7)".
     iSplitL "H5"; [iExact "H5"|].
@@ -420,7 +420,7 @@ Section BmapRes.
   Lemma bm_held_k (bn : bio_names) (V : bio_view Σ) (k : nat)
       (pidv dev bno : mword 32) (bs bsl bsd : list (bv 8)) (d : bool) :
     bio_held bn V k pidv dev bno bs bsl bsd d -∗ ⌜(k < NBUF)%nat⌝.
-  Proof. rewrite /bio_held. iIntros "(%A & _)". done. Qed.
+  Proof using . rewrite /bio_held. iIntros "(%A & _)". done. Qed.
 
   (* THE COUPLING of the indirect arm: the caller's own [fs_chalf] half
      against the handle's machinery half pins the buffer's logical content.
@@ -441,7 +441,7 @@ Section BmapRes.
     bio_held bn (fs_view γfs γd dev cov) k pidv dv bno bs bsl bsd d ={E}=∗
     ⌜bsl = bs0⌝ ∗ fsblock_q (fs_bytes γfs) dq (uint bno) bs0 ∗
     bio_held bn (fs_view γfs γd dev cov) k pidv dv bno bs bsl bsd d.
-  Proof.
+  Proof using .
     iIntros (HE) "#Hrow Hc Hheld".
     iEval (rewrite /bio_held /bio_pay /fs_view /=) in "Hheld".
     iDestruct "Hheld" as "(%A & %B & %C & H1 & H3 & H4 & H5 & H6 & Hpay)".

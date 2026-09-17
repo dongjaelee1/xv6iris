@@ -114,7 +114,7 @@ Section UveJalr.
                 cur_privilege ↦ᵣ{ dq } Supervisor ∗
                 menvcfg ↦ᵣ{ dq } menv0 ∗
                 misa ↦ᵣ□ MISA_C).
-  Proof.
+  Proof using .
     intros Hrd Hmenv. subst menv0.
     (* the alignment side condition is [ret_pc]'s own construction, and it
        has to be POSED rather than passed as an [ltac:] inside the
@@ -225,7 +225,7 @@ Section UservecExitPt.
       gpr_file (<[Regidx (mword_of_int 1) := regval_into_reg (uva 0x9c)]> m) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HSIE HMPRV HSXL HTVM Hmm HPBMTE Hmenvval0 Hwf Ht1 HkMode Hkasid Hkppn.
     iIntros "#Hhw #Hinv Hhs Hpriv Hms Hmie Hmdl Hmenv #Hclaim Hutlb #Hkinv
              #Hcreds Htok Hpc Hfmap Hi1 Hi2 Hi3 Hi4 Hcont".

@@ -273,14 +273,14 @@ Section ProofCopyinstr.
   (* [rget]'s equation with [tp_pin] already unfolded (ProofCopyin.tp_pin_ne) *)
   Local Lemma tp_pin_ne `{CIDx : CpuId} (m : regfile) (k : mword 5) :
     Regidx k <> Regidx Rtp -> tp_pin m !!! Regidx k = m !!! Regidx k.
-  Proof. exact (rget_ne m k). Qed.
+  Proof using . exact (rget_ne m k). Qed.
 
   (* vmfault's contract needs the RAW tp premise; copyinstr's own map carries
      no such invariant, so re-point at its own [tp_pin] image, for which the
      fact holds BY CONSTRUCTION (ProofCopyin.sie_cap_gpr_tp_pin). *)
   Local Lemma sie_cap_gpr_tp_pin `{CIDx : CpuId} (m : regfile) (n : nat) (b : bool) (pcur : mword 64) :
     sie_cap_gpr KT1 m n b pcur -∗ sie_cap_gpr KT1 (tp_pin m) n b pcur.
-  Proof.
+  Proof using .
     rewrite /sie_cap_gpr /sie_cap (tp_pin_sp m).
     assert (Htp2 : tp_pin (tp_pin m) = tp_pin m) by (apply tp_pin_id; exact (rget_tp m)).
     rewrite Htp2. iIntros "$".
@@ -339,7 +339,7 @@ Section ProofCopyinstr.
         pc_is (ret_pc ra0) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hav Hsp0 Hra0 Hs00 Hs10 Hs20 Hs30 Hs40 Hs50 Hs60 Hs70 Hs80 Hs90
            Hmtsp Hmta0 Hmt10 Hmt11.
     iIntros "Hcg #Htext Hpc Hb1 Hb2 Hb3 Hb4 Hb5 Hb6 Hb7 Hb8 Hb9 Hb10 Hb11 Hb12 Hcont".
@@ -619,7 +619,7 @@ Section ProofCopyinstr.
         pc_is (mword_of_int (KernelSyms.copyinstr + 0x4e) : mword 64) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Ha5 Hcase.
     iIntros "Hcg #Htext Hpc Hcont".
     (* the flipped flag, and the negation of it, as CLOSED literals *)
@@ -742,7 +742,7 @@ Section ProofCopyinstr.
           ([∗ list] j ∈ seq 0 maxn, (pa_add dst j) ↦ₘ[ktb] g j) -∗
           WP (Loop : expr riscv_lang)) )) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hdn Hmax64.
     assert (Hn64 : (Z.of_nat n < 18446744073709551616)%Z).
     { apply (Z.le_lt_trans _ (Z.of_nat maxn)); [apply Nat2Z.inj_le; lia | exact Hmax64]. }
@@ -1006,7 +1006,7 @@ Section ProofCopyinstr.
       ([∗ list] j ∈ seq 0 maxn, (pa_add dst j) ↦ₘ[ktb] g j) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hmax64 Hszb Hlvl.
     intro fuel.
     induction fuel as [| fuel IH];
@@ -2086,7 +2086,7 @@ Section ProofCopyinstr.
       (dst_olds : nat -> bv 8)
       (K lvl : nat) (eb : bool) (p : mword 64) (b : bool) (lks : gset string)
     : wp_copyinstr_sconf_mem_body ktb γa mm P M szv maxn dst_olds K lvl eb p b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_copyinstr_sconf_mem_body].
     intros pcE dst srcva ret_tgt HK Hroot Hsza1 Hmaxr Hmax64 Hszb Hlvl Hlkbelow.
     assert (E64 : (2 ^ 64)%Z = 18446744073709551616%Z) by (vm_compute; reflexivity).

@@ -103,11 +103,11 @@ Section ProofUvmdealloc.
     end.
 
   Lemma udl_cr5 : creg2reg_idx (Cregidx (mword_of_int 5)) = Regidx Ra3.
-  Proof. vm_compute. reflexivity. Qed.
+  Proof using . vm_compute. reflexivity. Qed.
   Lemma udl_cr6 : creg2reg_idx (Cregidx (mword_of_int 6)) = Regidx Ra4.
-  Proof. vm_compute. reflexivity. Qed.
+  Proof using . vm_compute. reflexivity. Qed.
   Lemma udl_cr7 : creg2reg_idx (Cregidx (mword_of_int 7)) = Regidx Ra5.
-  Proof. vm_compute. reflexivity. Qed.
+  Proof using . vm_compute. reflexivity. Qed.
 
   (* [CID0] is its OWN binder here (shadowing the section's fixed [Context
      CID]): this epilogue gets applied at whichever hart the THREE call
@@ -164,7 +164,7 @@ Section ProofUvmdealloc.
       Res -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK4 Hcross Hrettgt Hjsp Hjs1 Hjthr Hpay.
     pose (sp0 := (mm !!! Regidx csp_rs1 : mword 64)).
     set (spd := add_vec sp0 (sign_extend' 64 (sign_extend' 12 (mword_of_int 32 : mword 6)))).
@@ -341,7 +341,7 @@ Section ProofUvmdealloc.
       (P : uptd) (M : gmap Z (bv 8)) (K : nat) (eb : bool) (p : mword 64)
       (b : bool) (lks : gset string)
     : wp_uvmdealloc_mem_sconf_body γa mm P M K eb p b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_uvmdealloc_mem_sconf_body].
     intros pcE oldsz newsz ret_tgt HK Hroot Hob Hlkbelow.
     pose (sp0 := (mm !!! Regidx csp_rs1 : mword 64)).

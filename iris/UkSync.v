@@ -109,7 +109,7 @@ Section UkSync.
     sync_code γt -∗
     urun N h m (mword_of_int SyncSyms.exit) avail -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using Hpay.
     iIntros "#Hcode Hrun".
     destruct sync_syms_pins as (Hsmain & Hsstart & Hsexit & Hssync).
     rewrite Hsexit.
@@ -158,7 +158,7 @@ Section UkSync.
          (m !!! Regidx ra_idx) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using Hpsok_free.
     intros Hret2. iIntros "#Hcode Hrun Hcont".
     destruct sync_syms_pins as (Hsmain & Hsstart & Hsexit & Hssync).
     rewrite Hssync.
@@ -240,7 +240,7 @@ Section UkSync.
     sync_code γt -∗
     urun N h m (mword_of_int SyncSyms.main) (2 + n) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using Hpay Hpsok_free.
     intros Hsp. iIntros "#Hcode Hrun".
     (* the free stack the run already owns says sp is aligned and has room *)
     iDestruct (urun_stack with "Hrun") as %[Hal8' Hroom'].
@@ -386,7 +386,7 @@ Section UkSync.
     sync_code γt -∗
     urun N h m (mword_of_int SyncSyms.start) (2 + (2 + n)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using Hpay Hpsok_free.
     intros Hsp. iIntros "#Hcode Hrun".
     (* the free stack the run already owns says sp is aligned and has room *)
     iDestruct (urun_stack with "Hrun") as %[Hal8' Hroom'].

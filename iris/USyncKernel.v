@@ -86,7 +86,7 @@ Section USyncKernel.
   Lemma sync_xopage_addrs (π : gmap (mword 27) uperm) :
     sync_xopage π ->
     forall a : Z, 0 <= a < 4096 -> ux_addr π a /\ ~ uw_addr π a.
-  Proof.
+  Proof using .
     unfold sync_xopage.
     destruct (π !! svpn_of (mword_of_int 0 : mword 64)) as [q |] eqn:Hq;
       [ | intros [] ].
@@ -132,7 +132,7 @@ Section USyncKernel.
       is_Some (udata_lo (uvis_M W) (uvis_perm W) (uvis_sz W)
                 !! (uint (tf_resume_gpr0 (uvis_tf W) !!! Regidx csp_rs1)
                     - 8 * Z.of_nat 4 + Z.of_nat j)%Z).
-  Proof.
+  Proof using .
     unfold sync_stkdata. rewrite Forall_forall. intros HF j Hj.
     apply HF. apply in_seq. lia.
   Qed.
@@ -182,7 +182,7 @@ Section USyncKernel.
        reaches here from the caller. *)
     UkRun.urun_nopipe (uvis_fd W) -∗
     udep -∗ my_pay (uvis_gen W) (fun _ => True)%I -∗ uslot W.
-  Proof.
+  Proof using ghost_varG0 ghost_varG1 ufdG0.
     intros Hpc Hsub Hx Hroom Hal8 Hdata Hfdlen Hstop Hpsok_free Hlzf.
     iIntros "#Hnpw #Hdep #Hpay".
     iApply (uslot_of_urun W 4 (fun _ => True)%I

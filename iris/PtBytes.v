@@ -132,7 +132,7 @@ Section PtBytesIris.
     a ↦ₚ₈{dq} w ⊣⊢
     ⌜is_aligned_paddr (Physaddr a) 8 = true⌝ ∗
     ([∗ map] a' ↦ b ∈ word_bytes a w, a' ↦ₚ{dq} b).
-  Proof.
+  Proof using .
     rewrite /phys_word_pointsto /word_bytes.
     rewrite big_sepM_list_to_map; [| apply word_bytes_keys_nodup ].
     by rewrite big_sepL_fmap.
@@ -146,7 +146,7 @@ Section PtBytesIris.
   Lemma phys_word_bytes_own_full (a : Arch.pa) (w : bv 64) :
     TsoCtx.ctx_phys_word_pointsto XI a (DfracOwn 1) w ⊣⊢
     ⌜is_aligned_paddr (Physaddr a) 8 = true⌝ ∗ bytes_own (word_bytes a w).
-  Proof.
+  Proof using .
     rewrite /TsoCtx.ctx_phys_word_pointsto /bytes_own /word_bytes.
     rewrite big_sepM_list_to_map; [| apply word_bytes_keys_nodup ].
     by rewrite big_sepL_fmap.
@@ -202,7 +202,7 @@ Section BytesOwnFacts.
      addresses -- the one fact the disjointness below is made of *)
   Lemma phys_pointsto_ne (a1 a2 : Arch.pa) (dq : dfrac) (b1 b2 : bv 8) :
     a1 ↦ₚ b1 -∗ a2 ↦ₚ{dq} b2 -∗ ⌜a1 <> a2⌝.
-  Proof.
+  Proof using .
     rewrite /phys_pointsto. iIntros "[H1 _] [H2 _]".
     by iDestruct (pointsto_ne with "H1 H2") as %?.
   Qed.
@@ -213,7 +213,7 @@ Section BytesOwnFacts.
      is why the tier needs NO MMIO arm: a user page is RAM by ownership. *)
   Lemma bytes_own_ram (mm : gmap Arch.pa (bv 8)) :
     bytes_own mm ⊢ ⌜forall a : Arch.pa, a ∈ (dom mm : gset Arch.pa) -> addr_is_ram a⌝.
-  Proof.
+  Proof using .
     rewrite /bytes_own. iIntros "Hm".
     rewrite bi.pure_forall. iIntros (a). rewrite bi.pure_impl. iIntros (Ha).
     apply elem_of_dom in Ha as [b Hb].
@@ -224,7 +224,7 @@ Section BytesOwnFacts.
 
   Lemma bytes_own_not_dev (mm : gmap Arch.pa (bv 8)) :
     bytes_own mm ⊢ ⌜forall a : Arch.pa, a ∈ (dom mm : gset Arch.pa) -> dev_addr a = false⌝.
-  Proof.
+  Proof using .
     iIntros "Hm". iDestruct (bytes_own_ram with "Hm") as %Hram.
     iPureIntro. intros a Ha. by apply addr_is_ram_not_dev, Hram.
   Qed.
@@ -236,7 +236,7 @@ Section BytesOwnFacts.
      [u_mem_step] are propositions about maps. *)
   Lemma bytes_own_disj (m1 m2 : gmap Arch.pa (bv 8)) :
     bytes_own m1 -∗ bytes_own m2 -∗ ⌜m1 ##ₘ m2⌝.
-  Proof.
+  Proof using .
     rewrite /bytes_own. iIntros "H1 H2".
     rewrite map_disjoint_alt. rewrite bi.pure_forall. iIntros (a).
     destruct (m1 !! a) as [b1|] eqn:H1; [| iPureIntro; by left ].
@@ -250,11 +250,11 @@ Section BytesOwnFacts.
 
   Lemma bytes_own_union (m1 m2 : gmap Arch.pa (bv 8)) :
     m1 ##ₘ m2 -> bytes_own (m1 ∪ m2) ⊣⊢ bytes_own m1 ∗ bytes_own m2.
-  Proof. intros Hd. rewrite /bytes_own. by apply big_sepM_union. Qed.
+  Proof using . intros Hd. rewrite /bytes_own. by apply big_sepM_union. Qed.
 
   Lemma bytes_own_split (m1 m2 : gmap Arch.pa (bv 8)) :
     bytes_own m1 -∗ bytes_own m2 -∗ ⌜m1 ##ₘ m2⌝ ∗ bytes_own (m1 ∪ m2).
-  Proof.
+  Proof using .
     iIntros "H1 H2". iDestruct (bytes_own_disj with "H1 H2") as %Hd.
     iSplitR; [done |]. rewrite (bytes_own_union _ _ Hd). iFrame.
   Qed.
@@ -325,7 +325,7 @@ Section MapsUnion.
 
   Lemma bytes_own_list_disj (l : list (gmap Arch.pa (bv 8))) :
     ([∗ list] m ∈ l, bytes_own m) ⊢ ⌜maps_disj l⌝.
-  Proof.
+  Proof using .
     induction l as [| m l IH]; [by iIntros "_" |].
     rewrite big_sepL_cons. iIntros "[Hm Hl]".
     iDestruct (IH with "Hl") as %Hd.
@@ -339,7 +339,7 @@ Section MapsUnion.
 
   Lemma bytes_own_list_union (l : list (gmap Arch.pa (bv 8))) :
     maps_disj l -> ([∗ list] m ∈ l, bytes_own m) ⊣⊢ bytes_own (⋃ l).
-  Proof.
+  Proof using .
     induction l as [| m l IH]; intros Hd.
     - rewrite /bytes_own /=. by rewrite big_sepM_empty.
     - destruct Hd as [Hhd Htl].

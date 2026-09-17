@@ -101,7 +101,7 @@ Section ProofSysWait.
       (m : regfile) (av : nat) (eb : bool) (b : bool) (lks : gset string)
       (pid : mword 32) (U : ustate) (v0 : mword 64) (cs : gset gname)
     : wp_sys_wait_sconf_body γa γp γf γw γs j γl m av eb b lks pid U v0 cs.
-  Proof.
+  Proof using .
     cbv beta delta [wp_sys_wait_sconf_body].
     intros pcE pj ret_tgt Hj Hgl Hv0 Hav Heb.
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).

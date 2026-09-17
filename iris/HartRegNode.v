@@ -181,7 +181,7 @@ Section regnode.
                   (C (hregread_resume r (register_lookup r σ.(sregs)) m))
                 : expr riscv_lang))) -∗
     WP (HartE gen_id cpu_id (C m) : expr riscv_lang).
-  Proof.
+  Proof using .
     (* Proof plan: via wp_hart_step; the RegRead arm is deterministic
        (successor = K (register_lookup r σ.(sregs)), state unchanged). *)
     iIntros (HC Hat) "#Hcert H".
@@ -223,7 +223,7 @@ Section regnode.
             WP (HartE gen_id cpu_id (C (hregwrite_resume m))
                 : expr riscv_lang))) -∗
     WP (HartE gen_id cpu_id (C m) : expr riscv_lang).
-  Proof.
+  Proof using .
     (* Proof plan: via wp_hart_step; the RegWrite arm is deterministic. *)
     iIntros (HC Hat) "#Hcert H".
     destruct (hregwrite_val_at_inv r m v Hat) as (ak & K & -> & Hres).
@@ -258,7 +258,7 @@ Section regnode.
        ▷ (|={∅,⊤}=> mstate_interp σ ∗
             swp (hregread_resume r (register_lookup r σ.(sregs)) m) Φ)) -∗
     swp m Φ.
-  Proof.
+  Proof using .
     iIntros (Hat) "#Hcert H". rewrite /swp. iIntros (C) "%HC Hcont".
     iApply (wp_hart_regread C r m HC Hat with "Hcert [H Hcont]").
     iIntros (σ) "Hσ". iMod ("H" $! σ with "Hσ") as "Hk". iModIntro. iNext.
@@ -274,7 +274,7 @@ Section regnode.
        ▷ (|={∅,⊤}=> mstate_interp (set_reg σ r v) ∗
             swp (hregwrite_resume m) Φ)) -∗
     swp m Φ.
-  Proof.
+  Proof using .
     iIntros (Hat) "#Hcert H". rewrite /swp. iIntros (C) "%HC Hcont".
     iApply (wp_hart_regwrite C r v m HC Hat with "Hcert [H Hcont]").
     iIntros (σ) "Hσ". iMod ("H" $! σ with "Hσ") as "Hk". iModIntro. iNext.
@@ -309,7 +309,7 @@ Section regnode.
             WP (HartE gen_id cpu_id (C (hregwrite_resume m))
                 : expr riscv_lang))) -∗
     WP (HartE gen_id cpu_id (C m) : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (HC Hat) "#Hcert Hhook HP H".
     destruct (hregwrite_val_at_inv r m v Hat) as (ak & K & -> & Hres).
     rewrite (HC _ (Interface.RegWrite r ak v) K eq_refl).
@@ -354,7 +354,7 @@ Section regnode.
        ▷ (|={∅,⊤}=> mstate_interp (set_reg σ r v) ∗
             swp (hregwrite_resume m) Φ)) -∗
     swp m Φ.
-  Proof.
+  Proof using .
     iIntros (Hat) "#Hcert Hhook HP H". rewrite /swp. iIntros (C) "%HC Hcont".
     iApply (wp_hart_regwrite_gs C r v m P Q HC Hat
               with "Hcert Hhook HP [H Hcont]").
@@ -381,7 +381,7 @@ Section regnode.
     reg_pointsto r dq v -∗
     (reg_pointsto r dq v -∗ swp (hregwrite_resume m) Φ) -∗
     swp m Φ.
-  Proof.
+  Proof using .
     iIntros (Hat) "#Hcert Hpt Hcont".
     iApply (swp_hart_regwrite r v m _ Hat with "Hcert").
     iIntros (σ) "Hsi". rewrite /mstate_interp.

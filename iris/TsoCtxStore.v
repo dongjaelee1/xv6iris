@@ -35,7 +35,7 @@ Section ctx.
   Lemma ctx_phys_map_free (ξ : CtxId) (P : gmap Arch.pa (bv 8)) :
     ([∗ map] a ↦ v ∈ P, ctx_phys_pointsto ξ a (DfracOwn 1) v) ⊢
     ([∗ map] a ↦ _ ∈ P, phys_free a (DfracOwn 1)).
-  Proof. apply big_sepM_mono. intros ? ? _. apply ctx_phys_pointsto_free. Qed.
+  Proof using . apply big_sepM_mono. intros ? ? _. apply ctx_phys_pointsto_free. Qed.
 
   (* ---------------------------------------------------------------- *)
   (* The per-byte half of the store gate.  THE THREE AUTHORITIES that   *)
@@ -72,7 +72,7 @@ Section ctx.
       ([∗ map] a ↦ v ∈ Pnew,
          phys_pointsto a (DfracOwn 1) v ∗ a ↪[ts_name] (S i, ts_pay_none) ∗
          dset_in (ctx_dirty_name ξ) (S i, a)).
-  Proof.
+  Proof using .
     revert Pold. induction Pnew as [|a vn P2 Hfresh IH] using map_ind;
       intros Pold Hdom HD.
     - (* empty footprint: nothing moves *)
@@ -178,7 +178,7 @@ Section ctx.
     tso_interp_at riscv_eraGS g' ∗
     own_context ξ ∗
     ([∗ map] a ↦ v ∈ Pnew, ctx_phys_pointsto ξ a (DfracOwn 1) v).
-  Proof.
+  Proof using .
     iIntros (Hdom Himg Hlog Hmem Htv Htvok') "Hgh Hint Hrun Hold".
     rewrite own_context_unseal /own_context_def.
     iDestruct "Hint"
@@ -315,7 +315,7 @@ Section ctx.
     tso_interp_at riscv_eraGS g' ∗
     own_context ξ ∗
     ([∗ map] a ↦ v ∈ Pnew, ctx_phys_pointsto ξ a (DfracOwn 1) v).
-  Proof.
+  Proof using .
     iIntros (Hdom Himg Hlog Hmem Htv Htvok') "Hgh Hint Hrun Hold".
     iDestruct (ctx_phys_map_free with "Hold") as "Hold".
     by iApply (ctx_store_free_ok g g' ξ Pold Pnew Hdom Himg Hlog Hmem Htv Htvok'
@@ -341,7 +341,7 @@ Section ctx.
     gen_heap_interp (hG := riscv_memGS) (Pnew ∪ mem) ∗
     ghost_map_auth ts_name 1 (((fun _ => (S i, ts_pay_none)) <$> Pnew) ∪ TM) ∗
     ([∗ map] a ↦ v ∈ Pnew, phys_ledger_at a (DfracOwn 1) v (S i)).
-  Proof.
+  Proof using .
     revert Pold. induction Pnew as [|a vn P2 Hfresh IH] using map_ind;
       intros Pold Hdom.
     - rewrite dom_empty_L in Hdom. apply dom_empty_inv_L in Hdom as ->.
@@ -393,17 +393,17 @@ Section ctx.
   Local Lemma pin_tm_lookup i Bg Sf Pv a :
     pin_tm i Bg Sf Pv !! a
     = (fun _ : bv 8 => ((S i, ts_pay_pin (Sf a) (Bg a)) : ts_elem)) <$> (Pv !! a).
-  Proof.
+  Proof using .
     rewrite /pin_tm map_lookup_imap. by destruct (Pv !! a).
   Qed.
 
   Local Lemma pin_tm_empty i Bg Sf : pin_tm i Bg Sf ∅ = ∅.
-  Proof. apply map_eq. intros k. by rewrite pin_tm_lookup lookup_empty. Qed.
+  Proof using . apply map_eq. intros k. by rewrite pin_tm_lookup lookup_empty. Qed.
 
   Local Lemma pin_tm_insert i Bg Sf (P : gmap Arch.pa (bv 8)) a v :
     pin_tm i Bg Sf (<[a := v]> P)
     = <[a := ((S i, ts_pay_pin (Sf a) (Bg a)) : ts_elem)]> (pin_tm i Bg Sf P).
-  Proof.
+  Proof using .
     apply map_eq. intros k. rewrite pin_tm_lookup.
     destruct (decide (k = a)) as [->|Hne].
     - by rewrite !lookup_insert.
@@ -424,7 +424,7 @@ Section ctx.
     gen_heap_interp (hG := riscv_memGS) (Pnew ∪ mem) ∗
     ghost_map_auth ts_name 1 (pin_tm i Bg Sf Pnew ∪ TM) ∗
     ([∗ map] a ↦ v ∈ Pnew, phys_ledger_pin a (DfracOwn 1) v (S i) (Bg a) (Sf a)).
-  Proof.
+  Proof using .
     revert Pold. rewrite /pin_map_own.
     induction Pnew as [|a vn P2 Hfresh IH] using map_ind; intros Pold Hdom.
     - rewrite dom_empty_L in Hdom. apply dom_empty_inv_L in Hdom as ->.
@@ -487,7 +487,7 @@ Section ctx.
     ledger_msg_at (length g.(glog)) (PWMsg Pnew auth) ∗
     ([∗ map] a ↦ v ∈ Pnew,
        phys_ledger_pin a (DfracOwn 1) v (S (length g.(glog))) (Bg a) (Sf a)).
-  Proof.
+  Proof using .
     iIntros (Hdom Hin Himg Hlog Hmem Htv Htvok') "Hgh Hint Hold".
     iDestruct "Hint"
       as "(%TM & %LM & Hts & %Hdomtm & %Htie & Hm & %HLM & Hlen & Hv & %Hmm)".
@@ -613,7 +613,7 @@ Section ctx.
     ledger_msg_at (length g.(glog)) (PWMsg Pnew auth) ∗
     ([∗ map] a ↦ v ∈ Pnew,
        phys_ledger_at a (DfracOwn 1) v (S (length g.(glog)))).
-  Proof.
+  Proof using .
     iIntros (Hdom Himg Hlog Hmem Htv Htvok') "Hgh Hint Hold".
     iDestruct "Hint"
       as "(%TM & %LM & Hts & %Hdomtm & %Htie & Hm & %HLM & Hlen & Hv & %Hmm)".
@@ -720,7 +720,7 @@ Section ctx.
     tso_interp_at riscv_eraGS g' ∗
     own_context ξ ∗
     ([∗ map] a ↦ v ∈ Pnew ∪ mm, ctx_phys_pointsto ξ a (DfracOwn 1) v).
-  Proof.
+  Proof using .
     iIntros (Hsub Himg Hlog Hmem Htv Htvok') "Hgh Hint Hrun Hown".
     set (Pold := mm ∩ Pnew).
     assert (HPsub : Pold ⊆ mm).
@@ -766,7 +766,7 @@ Section ctx.
     ([∗ list] j ∈ l, Φ (pa_add pa j) (f j)) ⊣⊢
     ([∗ map] a ↦ b ∈ foldr (fun j acc => <[pa_add pa j := f j]> acc) ∅ l,
        Φ a b).
-  Proof.
+  Proof using .
     induction l as [|x xs IH]; intros Hnd.
     - by rewrite big_sepM_empty.
     - cbn [fmap list_fmap] in Hnd.
@@ -784,7 +784,7 @@ Section ctx.
     ([∗ list] j ∈ seq 0 (N.to_nat n),
        phys_ledger (pa_add pa j) dq (nth_byte v j)) ⊣⊢
     ([∗ map] a ↦ b ∈ snap_of pa n v, phys_ledger a dq b).
-  Proof.
+  Proof using .
     intros Hn. rewrite /snap_of /write_bytes.
     apply (big_sepM_foldr_ins (fun a b => phys_ledger a dq b)
              (fun j => nth_byte v j) pa (seq 0 (N.to_nat n))).
@@ -809,7 +809,7 @@ Section ctx.
     ([∗ list] j ∈ seq 0 (N.to_nat n),
        ∃ t : nat, phys_ledger_pin (pa_add pa j) dq (nth_byte v j) t (Bf j) (Sf j))
     ⊣⊢ pin_map_own (snap_of pa n v) dq Bg Sg.
-  Proof.
+  Proof using .
     intros Hn HS HB. rewrite /pin_map_own /snap_of /write_bytes.
     rewrite <- (big_sepM_foldr_ins
                  (fun a b => ∃ t : nat, phys_ledger_pin a dq b t (Bg a) (Sg a))%I
@@ -845,7 +845,7 @@ Section ctx.
     tso_interp_at riscv_eraGS g' ∗
     ([∗ list] j ∈ seq 0 (N.to_nat n),
        ∃ t : nat, phys_ledger_pin (pa_add pa j) (DfracOwn 1) (nth_byte vnew j) t (Bf j) (Sf j)).
-  Proof.
+  Proof using .
     iIntros (Hn HS HB Hin Himg Hlog Hmem Htv Htvok') "Hgh Hint Hold".
     rewrite (phys_ledger_pin_win_map pa n vold _ Bf Sf Sg Bg Hn HS HB).
     iMod (ledger_store_pin_ok g g' (hart_agent cpu_id)
@@ -869,7 +869,7 @@ Section ctx.
     ([∗ list] j ∈ seq 0 (N.to_nat n),
        phys_ledger_at (pa_add pa j) dq (nth_byte v j) t) ⊣⊢
     ([∗ map] a ↦ b ∈ snap_of pa n v, phys_ledger_at a dq b t).
-  Proof.
+  Proof using .
     intros Hn. rewrite /snap_of /write_bytes.
     apply (big_sepM_foldr_ins (fun a b => phys_ledger_at a dq b t)
              (fun j => nth_byte v j) pa (seq 0 (N.to_nat n))).
@@ -903,7 +903,7 @@ Section ctx.
     ([∗ list] j ∈ seq 0 (N.to_nat n),
        phys_ledger_at (pa_add pa j) (DfracOwn 1) (nth_byte vnew j)
          (S (length g.(glog)))).
-  Proof.
+  Proof using .
     iIntros (Hn Himg Hlog Hmem Htv Htvok') "Hgh Hint Hold".
     rewrite (phys_ledger_win_map pa n vold _ Hn).
     iMod (ledger_store_ok g g' (hart_agent cpu_id)
@@ -920,7 +920,7 @@ Section ctx.
     ([∗ list] j ∈ seq 0 (N.to_nat n),
        ctx_phys_pointsto ξ (pa_add pa j) dq (nth_byte v j)) ⊣⊢
     ([∗ map] a ↦ b ∈ snap_of pa n v, ctx_phys_pointsto ξ a dq b).
-  Proof.
+  Proof using .
     intros Hn. rewrite /snap_of /write_bytes.
     apply (big_sepM_foldr_ins (fun a b => ctx_phys_pointsto ξ a dq b)
              (fun j => nth_byte v j) pa (seq 0 (N.to_nat n))).
@@ -948,7 +948,7 @@ Section ctx.
     own_context ξ ∗
     ([∗ list] j ∈ seq 0 (N.to_nat n),
        ctx_phys_pointsto ξ (pa_add pa j) (DfracOwn 1) (nth_byte vnew j)).
-  Proof.
+  Proof using .
     iIntros (Hn Himg Hlog Hmem Htv Htvok') "Hgh Hint Hrun Hold".
     rewrite (ctx_phys_win_map ξ pa n vold _ Hn).
     iMod (ctx_store_ok g g' ξ (snap_of pa n vold) (snap_of pa n vnew)
@@ -1017,7 +1017,7 @@ Section ctx.
     phys_ledger_at a dq v t -∗
     ⌜forall tv' : nat, (g.(gtv) cpu_id <= tv')%nat ->
        tso_read g.(gimg) g.(glog) (hart_agent cpu_id) tv' a = Some v⌝.
-  Proof.
+  Proof using .
     iIntros "Hgh Hint #HB #Hvis [Hpt Htse]".
     iDestruct "Hint"
       as "(%TM & %LM & Hts & %Hdom & %Htie & Hm & %HLM & Hlen & Hv & %Hmm)".
@@ -1057,7 +1057,7 @@ Section ctx.
   Lemma ledger_img_cover (g : gstate) (a : Arch.pa) :
     addr_is_ram a ->
     tso_interp_at riscv_eraGS g -∗ ⌜is_Some (g.(gimg) !! a)⌝.
-  Proof.
+  Proof using .
     iIntros (Hram) "Hint".
     iDestruct "Hint"
       as "(%TM & %LM & Hauth & %Hdom & %Htie & Hm & %HLM & Hlen & Hvw & %Hmm)".
@@ -1070,7 +1070,7 @@ Section ctx.
       (t : nat) (R : ts_rel) :
     tso_interp_at riscv_eraGS g -∗ phys_ledger_rpay a dq v t R -∗
     ⌜rel_ok1 g.(gimg) g.(glog) a R⌝.
-  Proof.
+  Proof using .
     iIntros "Hint [_ Hts]".
     iDestruct "Hint"
       as "(%TM & %LM & Hauth & %Hdom & %Htie & Hm & %HLM & Hlen & Hvw & %Hmm)".
@@ -1086,7 +1086,7 @@ Section ctx.
     phys_ledger_at a (DfracOwn 1) v t ==∗
     tso_interp_at riscv_eraGS g ∗
     phys_ledger_rpay a (DfracOwn 1) v t R.
-  Proof.
+  Proof using .
     iIntros (Hr) "Hint [Hpt Hts]".
     iDestruct "Hint"
       as "(%TM & %LM & Hauth & %Hdom & %Htie & Hm & %HLM & Hlen & Hvw & %Hmm)".
@@ -1122,7 +1122,7 @@ Section ctx.
     tso_interp_at riscv_eraGS g -∗
     phys_ledger_rpay a (DfracOwn 1) v t R ==∗
     tso_interp_at riscv_eraGS g ∗ phys_ledger_at a (DfracOwn 1) v t.
-  Proof.
+  Proof using .
     iIntros "Hint [Hpt Hts]".
     iDestruct "Hint"
       as "(%TM & %LM & Hauth & %Hdom & %Htie & Hm & %HLM & Hlen & Hvw & %Hmm)".
@@ -1160,7 +1160,7 @@ Section ctx.
     ([∗ list] j ∈ l, phys_ledger_at (pa_add base j) (DfracOwn 1) (f j) (tf j)) ==∗
     tso_interp_at riscv_eraGS g ∗
     ([∗ list] j ∈ l, phys_ledger_rpay (pa_add base j) (DfracOwn 1) (f j) (tf j) (Rf j)).
-  Proof.
+  Proof using .
     induction l as [|j l IH]; intros Hok.
     - iIntros "Hint _". iModIntro. iFrame "Hint". done.
     - iIntros "Hint Hb".
@@ -1180,7 +1180,7 @@ Section ctx.
     ([∗ list] j ∈ l, ∃ t : nat, phys_ledger_rpay (pa_add base j) (DfracOwn 1) (f j) t (Rf j)) ==∗
     tso_interp_at riscv_eraGS g ∗
     ([∗ list] j ∈ l, phys_ledger (pa_add base j) (DfracOwn 1) (f j)).
-  Proof.
+  Proof using .
     induction l as [|j l IH].
     - iIntros "Hint _". iModIntro. iFrame "Hint". done.
     - iIntros "Hint Hb".
@@ -1210,7 +1210,7 @@ Section ctx.
     ([∗ list] j ∈ seq 0 n,
        phys_ledger_rpay (pa_add base j) (DfracOwn 1) (f j) (tf j)
          (TsRel base n j auth lo tf f [])).
-  Proof.
+  Proof using .
     iIntros (Hn Htf Hlo) "Hgh Hint Hb".
     iAssert (⌜forall k, (k < n)%nat -> is_Some (g.(gimg) !! pa_add base k)⌝)%I
       as %Hcov.
@@ -1272,7 +1272,7 @@ Section ctx.
          (S (length g.(glog)))
          (TsRel base (N.to_nat n) j auth lo tf fv
             (hist ++ [(S (length g.(glog)), nth_byte vnew)]))).
-  Proof.
+  Proof using .
     iIntros (Hn Hsub Hdom Himg Hlog Hmem Htv Htvok') "Hgh Hint Hold Hrel".
     rewrite /rel_cells.
     iAssert (⌜forall j, (j < N.to_nat n)%nat ->
@@ -1337,7 +1337,7 @@ Section ctx.
     phys_ledger_at a (DfracOwn 1) v t ==∗
     tso_interp_at riscv_eraGS g ∗
     phys_ledger_pinw a (DfracOwn 1) v t W.
-  Proof.
+  Proof using .
     iIntros (Hr) "Hint [Hpt Hts]".
     iDestruct "Hint"
       as "(%TM & %LM & Hauth & %Hdom & %Htie & Hm & %HLM & Hlen & Hvw & %Hmm)".
@@ -1373,7 +1373,7 @@ Section ctx.
     tso_interp_at riscv_eraGS g -∗
     phys_ledger_pinw a (DfracOwn 1) v t W ==∗
     tso_interp_at riscv_eraGS g ∗ phys_ledger_at a (DfracOwn 1) v t.
-  Proof.
+  Proof using .
     iIntros "Hint [Hpt Hts]".
     iDestruct "Hint"
       as "(%TM & %LM & Hauth & %Hdom & %Htie & Hm & %HLM & Hlen & Hvw & %Hmm)".
@@ -1413,7 +1413,7 @@ Section ctx.
          phys_ledger_at (pa_add a j) dq (nth_byte w j) t) -∗
     ⌜forall tv' : nat, (g.(gtv) cpu_id <= tv')%nat ->
        tso_read_bytes g.(gimg) g.(glog) (hart_agent cpu_id) tv' a n w⌝.
-  Proof.
+  Proof using .
     iIntros "Hgh Hint #HB Hb".
     iAssert (⌜forall j : nat, (N.of_nat j < n)%N ->
                forall tv' : nat, (g.(gtv) cpu_id <= tv')%nat ->

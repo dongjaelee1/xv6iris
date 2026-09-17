@@ -102,7 +102,7 @@ Section ProofPrepareReturn.
   (* the page's own length invariant, read off without consuming it *)
   Local Lemma prr_tf_len (tfp : mword 44) (ws : list (mword 64)) :
     tf_page tfp ws -∗ ⌜length ws = TFWORDS⌝.
-  Proof. rewrite /tf_page. iIntros "(%Hlen & _ & _)". done. Qed.
+  Proof using . rewrite /tf_page. iIntros "(%Hlen & _ & _)". done. Qed.
 
   (* the trapframe page's own [page_valid], read off [proc_priv] without
      consuming it -- [proc_pt_wf]'s last conjunct, the same projection
@@ -111,7 +111,7 @@ Section ProofPrepareReturn.
      [proc_priv_tf_upd] right afterward. *)
   Local Lemma prr_tfp_valid (γf : gname) (pa : mword 64) (pid : mword 32) (U : ustate) :
     proc_priv γf pa pid U -∗ ⌜page_valid (page_base (ud_tfp (pv_upt (us_V U))))⌝.
-  Proof.
+  Proof using .
     iIntros "[(_ & _ & _ & _ & Hpt & _) _]".
     rewrite /proc_ptm_at. iDestruct "Hpt" as "(_ & _ & Hptt)".
     iDestruct (proc_ptm_wf with "Hptt") as "%Hwf".
@@ -137,7 +137,7 @@ Section ProofPrepareReturn.
       (U : ustate) (m : regfile) (av : nat) (p : mword 64)
       (epc : mword 64) (b : bool) (lks : gset string)
     : wp_prepare_return_sconf_body γf ks pid U m av p epc b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_prepare_return_sconf_body].
     intros pcE ret_tgt Hav Hepc.
     

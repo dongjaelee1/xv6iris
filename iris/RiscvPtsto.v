@@ -1615,7 +1615,7 @@ Section mem_pointsto_share.
      precisely because the pin is PURE. *)
   Lemma mem_ktier_mono (kt kt' : ktier) `{!KtierLe kt kt'} a dq v :
     a ↦ₘ[kt]{dq} v ⊢ a ↦ₘ[kt']{dq} v.
-  Proof.
+  Proof using .
     rewrite /mem_pointsto. iIntros "H". iDestruct "H" as (ppn) "(#Hk & %Hc & %Hd & %Hp & Hpt)".
     iExists ppn. iFrame "Hk Hpt". iPureIntro.
     split; [exact Hc | split; [exact Hd | exact (ktier_pin_mono kt kt' ppn a Hp)]].
@@ -1626,7 +1626,7 @@ Section mem_pointsto_share.
      which looks at the pin -- agree on its value. *)
   Lemma mem_pointsto_agree {kt1 kt2 : ktier} a dq1 b1 dq2 b2 :
     a ↦ₘ[kt1]{dq1} b1 -∗ a ↦ₘ[kt2]{dq2} b2 -∗ ⌜b1 = b2⌝.
-  Proof.
+  Proof using .
     rewrite /mem_pointsto. iIntros "H1 H2".
     iDestruct "H1" as (ppn1) "(Hk1 & _ & _ & _ & Hp1)".
     iDestruct "H2" as (ppn2) "(Hk2 & _ & _ & _ & Hp2)".
@@ -1642,7 +1642,7 @@ Section mem_pointsto_share.
      the resources themselves (see [mem_bytes_notin]). *)
   Lemma mem_pointsto_ne {kt1 kt2 : ktier} a1 a2 dq b1 b2 :
     a1 ↦ₘ[kt1] b1 -∗ a2 ↦ₘ[kt2]{dq} b2 -∗ ⌜a1 ≠ a2⌝.
-  Proof.
+  Proof using .
     rewrite /mem_pointsto. iIntros "H1 H2".
     iDestruct "H1" as (ppn1) "(Hk1 & _ & _ & _ & Hp1)".
     iDestruct "H2" as (ppn2) "(Hk2 & _ & _ & _ & Hp2)".
@@ -1655,7 +1655,7 @@ Section mem_pointsto_share.
      pure conjuncts ride along on both halves at no cost. *)
   Lemma mem_pointsto_frac_split a q1 q2 b :
     a ↦ₘ{DfracOwn (q1 + q2)} b ⊣⊢ a ↦ₘ{DfracOwn q1} b ∗ a ↦ₘ{DfracOwn q2} b.
-  Proof.
+  Proof using .
     rewrite /mem_pointsto. iSplit.
     - iIntros "H". iDestruct "H" as (ppn) "(#Hk & %Hc & %Hd & %Hi & Hp)".
       rewrite -dfrac_op_own pointsto_fractional.
@@ -1679,7 +1679,7 @@ Section mem_pointsto_share.
     ([∗ list] j ∈ seq k n, (pa_add a j) ↦ₘ[kt1]{dq1} nth_byte w1 j) -∗
     ([∗ list] j ∈ seq k n, (pa_add a j) ↦ₘ[kt2]{dq2} nth_byte w2 j) -∗
     ⌜forall j, (k <= j < k + n)%nat -> nth_byte w1 j = nth_byte w2 j⌝.
-  Proof.
+  Proof using .
     revert k. induction n as [|n IH]; intros k; simpl.
     - iIntros "_ _". iPureIntro. intros j Hj. lia.
     - iIntros "[Hh1 Ht1] [Hh2 Ht2]".
@@ -1697,7 +1697,7 @@ Section mem_pointsto_share.
     ([∗ list] j ∈ seq k n, (pa_add a j) ↦ₘ[kt1] f j) -∗
     c ↦ₘ[kt2]{dq} v -∗
     ⌜forall j, (k <= j < k + n)%nat -> pa_add a j <> c⌝.
-  Proof.
+  Proof using .
     revert k. induction n as [|n IH]; intros k; simpl.
     - iIntros "_ _". iPureIntro. intros j Hj. lia.
     - iIntros "[Hh Ht] Hc".
@@ -1720,7 +1720,7 @@ Section mem_pointsto_share.
     ([∗ list] j ∈ seq k n, (pa_add a j) ↦ₘ[kt1]{dq} f j) -∗
     c ↦ₘ[kt2] v -∗
     ⌜forall j, (k <= j < k + n)%nat -> pa_add a j <> c⌝.
-  Proof.
+  Proof using .
     revert k. induction n as [|n IH]; intros k; simpl.
     - iIntros "_ _". iPureIntro. intros j Hj. lia.
     - iIntros "[Hh Ht] Hc".
@@ -1735,7 +1735,7 @@ Section mem_pointsto_share.
     ([∗ list] j ∈ seq k n, (pa_add a j) ↦ₘ{DfracOwn (q1 + q2)} nth_byte w j) ⊣⊢
     ([∗ list] j ∈ seq k n, (pa_add a j) ↦ₘ{DfracOwn q1} nth_byte w j) ∗
     ([∗ list] j ∈ seq k n, (pa_add a j) ↦ₘ{DfracOwn q2} nth_byte w j).
-  Proof.
+  Proof using .
     rewrite -big_sepL_sep. apply big_sepL_proper. intros ? j _.
     apply mem_pointsto_frac_split.
   Qed.
@@ -1876,39 +1876,39 @@ Section word_pointsto.
 
   Lemma word_pointsto_aligned_p a dq w :
     word_pointsto a dq w ⊢ ⌜is_aligned_paddr (Physaddr a) 8 = true⌝.
-  Proof. iIntros "[$ _]". Qed.
+  Proof using . iIntros "[$ _]". Qed.
   Lemma word_pointsto_bytes a dq w :
     word_pointsto a dq w ⊢ [∗ list] j ∈ seq 0 8, (pa_add a j) ↦ₘ{dq} nth_byte w j.
-  Proof. iIntros "[_ $]". Qed.
+  Proof using . iIntros "[_ $]". Qed.
   (* repackage a byte window + its alignment fact into a word points-to *)
   Lemma word_pointsto_intro a dq w :
     is_aligned_paddr (Physaddr a) 8 = true ->
     ([∗ list] j ∈ seq 0 8, (pa_add a j) ↦ₘ{dq} nth_byte w j) ⊢ word_pointsto a dq w.
-  Proof. iIntros (Hal) "H". by iFrame. Qed.
+  Proof using . iIntros (Hal) "H". by iFrame. Qed.
   Lemma word_pointsto_unfold a dq w :
     word_pointsto a dq w ⊣⊢
     ⌜is_aligned_paddr (Physaddr a) 8 = true⌝ ∗
     ([∗ list] j ∈ seq 0 8, (pa_add a j) ↦ₘ{dq} nth_byte w j).
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* ---- sharing (see [mem_pointsto_share]) ---- *)
   Lemma word_pointsto_agree {kt1 kt2 : ktier} a dq1 w1 dq2 w2 :
     a ↦₈[kt1]{dq1} w1 -∗ a ↦₈[kt2]{dq2} w2 -∗ ⌜w1 = w2⌝.
-  Proof.
+  Proof using .
     iIntros "[_ H1] [_ H2]".
     iDestruct (mem_bytes_agree with "H1 H2") as %Hb.
     iPureIntro. apply (bv_eq_of_bytes (n:=8)). intros j Hj. apply Hb. lia.
   Qed.
   Lemma word_pointsto_frac_split a q1 q2 w :
     a ↦₈{DfracOwn (q1 + q2)} w ⊣⊢ a ↦₈{DfracOwn q1} w ∗ a ↦₈{DfracOwn q2} w.
-  Proof.
+  Proof using .
     rewrite /word_pointsto mem_bytes_frac_split.
     iSplit; [iIntros "[#$ [$ $]]" | iIntros "[[#$ $] [_ $]]"].
   Qed.
 
   Lemma word_ktier_mono (kt kt' : ktier) `{!KtierLe kt kt'} a dq w :
     a ↦₈[kt]{dq} w ⊢ a ↦₈[kt']{dq} w.
-  Proof.
+  Proof using .
     iIntros "[$ Hbs]". iApply (big_sepL_mono with "Hbs").
     iIntros (k j _) "H". iApply (mem_ktier_mono kt kt' with "H").
   Qed.
@@ -1933,14 +1933,14 @@ Section phys_word_pointsto.
 
   Lemma phys_word_pointsto_aligned_p a dq w :
     phys_word_pointsto a dq w ⊢ ⌜is_aligned_paddr (Physaddr a) 8 = true⌝.
-  Proof. iIntros "[$ _]". Qed.
+  Proof using . iIntros "[$ _]". Qed.
   Lemma phys_word_pointsto_bytes a dq w :
     phys_word_pointsto a dq w ⊢ [∗ list] j ∈ seq 0 8, (pa_add a j) ↦ₚ{dq} nth_byte w j.
-  Proof. iIntros "[_ $]". Qed.
+  Proof using . iIntros "[_ $]". Qed.
   Lemma phys_word_pointsto_intro a dq w :
     is_aligned_paddr (Physaddr a) 8 = true ->
     ([∗ list] j ∈ seq 0 8, (pa_add a j) ↦ₚ{dq} nth_byte w j) ⊢ phys_word_pointsto a dq w.
-  Proof. iIntros (Hal) "H". by iFrame. Qed.
+  Proof using . iIntros (Hal) "H". by iFrame. Qed.
 End phys_word_pointsto.
 
 (* ---------------------------------------------------------------------- *)
@@ -1976,23 +1976,23 @@ Section word2_pointsto.
 
   Lemma word2_pointsto_bytes a dq w :
     word2_pointsto a dq w ⊢ [∗ list] j ∈ seq 0 2, (pa_add a j) ↦ₘ{dq} nth_byte w j.
-  Proof. iIntros "[_ $]". Qed.
+  Proof using . iIntros "[_ $]". Qed.
   Lemma word2_pointsto_intro a dq w :
     is_aligned_paddr (Physaddr a) 2 = true ->
     ([∗ list] j ∈ seq 0 2, (pa_add a j) ↦ₘ{dq} nth_byte w j) ⊢ word2_pointsto a dq w.
-  Proof. iIntros (Hal) "H". by iFrame. Qed.
+  Proof using . iIntros (Hal) "H". by iFrame. Qed.
 
   (* ---- sharing (see [mem_pointsto_share]) ---- *)
   Lemma word2_pointsto_agree {kt1 kt2 : ktier} a dq1 w1 dq2 w2 :
     a ↦₂[kt1]{dq1} w1 -∗ a ↦₂[kt2]{dq2} w2 -∗ ⌜w1 = w2⌝.
-  Proof.
+  Proof using .
     iIntros "[_ H1] [_ H2]".
     iDestruct (mem_bytes_agree with "H1 H2") as %Hb.
     iPureIntro. apply (bv_eq_of_bytes (n:=2)). intros j Hj. apply Hb. lia.
   Qed.
   Lemma word2_pointsto_frac_split a q1 q2 w :
     a ↦₂{DfracOwn (q1 + q2)} w ⊣⊢ a ↦₂{DfracOwn q1} w ∗ a ↦₂{DfracOwn q2} w.
-  Proof.
+  Proof using .
     rewrite /word2_pointsto mem_bytes_frac_split.
     iSplit; [iIntros "[#$ [$ $]]" | iIntros "[[#$ $] [_ $]]"].
   Qed.
@@ -2046,32 +2046,32 @@ Section word4_pointsto.
 
   Lemma word4_pointsto_aligned_p a dq w :
     word4_pointsto a dq w ⊢ ⌜is_aligned_paddr (Physaddr a) 4 = true⌝.
-  Proof. iIntros "[$ _]". Qed.
+  Proof using . iIntros "[$ _]". Qed.
   Lemma word4_pointsto_bytes a dq w :
     word4_pointsto a dq w ⊢ [∗ list] j ∈ seq 0 4, (pa_add a j) ↦ₘ{dq} nth_byte w j.
-  Proof. iIntros "[_ $]". Qed.
+  Proof using . iIntros "[_ $]". Qed.
   (* repackage a byte window + its alignment fact into a word points-to *)
   Lemma word4_pointsto_intro a dq w :
     is_aligned_paddr (Physaddr a) 4 = true ->
     ([∗ list] j ∈ seq 0 4, (pa_add a j) ↦ₘ{dq} nth_byte w j) ⊢ word4_pointsto a dq w.
-  Proof. iIntros (Hal) "H". by iFrame. Qed.
+  Proof using . iIntros (Hal) "H". by iFrame. Qed.
   Lemma word4_pointsto_unfold a dq w :
     word4_pointsto a dq w ⊣⊢
     ⌜is_aligned_paddr (Physaddr a) 4 = true⌝ ∗
     ([∗ list] j ∈ seq 0 4, (pa_add a j) ↦ₘ{dq} nth_byte w j).
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* ---- sharing (see [mem_pointsto_share]) ---- *)
   Lemma word4_pointsto_agree {kt1 kt2 : ktier} a dq1 w1 dq2 w2 :
     a ↦₄[kt1]{dq1} w1 -∗ a ↦₄[kt2]{dq2} w2 -∗ ⌜w1 = w2⌝.
-  Proof.
+  Proof using .
     iIntros "[_ H1] [_ H2]".
     iDestruct (mem_bytes_agree with "H1 H2") as %Hb.
     iPureIntro. apply (bv_eq_of_bytes (n:=4)). intros j Hj. apply Hb. lia.
   Qed.
   Lemma word4_pointsto_frac_split a q1 q2 w :
     a ↦₄{DfracOwn (q1 + q2)} w ⊣⊢ a ↦₄{DfracOwn q1} w ∗ a ↦₄{DfracOwn q2} w.
-  Proof.
+  Proof using .
     rewrite /word4_pointsto mem_bytes_frac_split.
     iSplit; [iIntros "[#$ [$ $]]" | iIntros "[[#$ $] [_ $]]"].
   Qed.
@@ -2086,15 +2086,15 @@ Section word4_pointsto.
      because the join direction is used as a wand and the split as a rewrite. *)
   Lemma word4_pointsto_half a w :
     a ↦₄ w ⊣⊢ a ↦₄{DfracOwn (1/2)} w ∗ a ↦₄{DfracOwn (1/2)} w.
-  Proof. rewrite -word4_pointsto_frac_split Qp.div_2. reflexivity. Qed.
+  Proof using . rewrite -word4_pointsto_frac_split Qp.div_2. reflexivity. Qed.
 
   Lemma word4_pointsto_half_split a w :
     a ↦₄ w -∗ a ↦₄{DfracOwn (1/2)} w ∗ a ↦₄{DfracOwn (1/2)} w.
-  Proof. rewrite word4_pointsto_half. iIntros "$". Qed.
+  Proof using . rewrite word4_pointsto_half. iIntros "$". Qed.
 
   Lemma word4_pointsto_half_join a w :
     a ↦₄{DfracOwn (1/2)} w -∗ a ↦₄{DfracOwn (1/2)} w -∗ a ↦₄ w.
-  Proof. iIntros "H1 H2". rewrite word4_pointsto_half. iFrame "H1 H2". Qed.
+  Proof using . iIntros "H1 H2". rewrite word4_pointsto_half. iFrame "H1 H2". Qed.
 
 End word4_pointsto.
 
@@ -2159,17 +2159,17 @@ Section string_pointsto.
 
   Global Instance string_pointsto_persistent (ktr : CurKtier) a s :
     Persistent (string_pointsto (KTR := ktr) a DfracDiscarded s).
-  Proof. rewrite /string_pointsto /mem_pointsto. apply _. Qed.
+  Proof using . rewrite /string_pointsto /mem_pointsto. apply _. Qed.
 
   Global Instance string_pointsto_persistent' (ktr : ktier) a s :
     Persistent (string_pointsto (KTR := ktr) a DfracDiscarded s).
-  Proof. exact (string_pointsto_persistent ktr a s). Qed.
+  Proof using . exact (string_pointsto_persistent ktr a s). Qed.
 
 
   (* the terminating NUL is the last byte owned *)
   Lemma cstring_bytes_length s :
     length (cstring_bytes s) = S (String.length s).
-  Proof.
+  Proof using .
     rewrite /cstring_bytes length_app /=.
     induction s as [|c s IH]; simpl; [reflexivity | rewrite IH; reflexivity].
   Qed.
@@ -2256,12 +2256,12 @@ Section DevBridge.
   Context `{!riscvGS Σ}.
 
   Lemma uart_agree i u u' : uart_auth i u -∗ uart_frag i u' -∗ ⌜u' = u⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Hf". by iDestruct (ghost_var_agree with "Ha Hf") as %->.
   Qed.
   Lemma uart_update i u u' u'' :
     uart_auth i u -∗ uart_frag i u' ==∗ uart_auth i u'' ∗ uart_frag i u''.
-  Proof. iApply ghost_var_update_halves. Qed.
+  Proof using . iApply ghost_var_update_halves. Qed.
 
   (* FOCUS ONE PORT out of the fabric's bundle: its half comes out, and
      putting a half back at a (possibly different) state rebuilds the
@@ -2270,7 +2270,7 @@ Section DevBridge.
   Lemma uarts_auth_acc (f : uart_id -> uart_state) (i : uart_id) :
     uarts_auth f -∗
       uart_auth i (f i) ∗ (∀ u, uart_auth i u -∗ uarts_auth (uupd f i u)).
-  Proof.
+  Proof using .
     rewrite /uarts_auth /era_uarts_half /enum /uart_id_finite /=.
     iIntros "(H0 & H1 & _)". destruct i.
     - iFrame "H0". iIntros (u) "H0".
@@ -2283,27 +2283,27 @@ Section DevBridge.
      fabric's authority never has to focus a port by hand *)
   Lemma uarts_agree (f : uart_id -> uart_state) (i : uart_id) (u : uart_state) :
     uarts_auth f -∗ uart_frag i u -∗ ⌜u = f i⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Hf". iDestruct (uarts_auth_acc _ i with "Ha") as "[Hi _]".
     by iDestruct (uart_agree with "Hi Hf") as %->.
   Qed.
 
 
   Lemma plic_agree p p' : plic_auth p -∗ plic_frag p' -∗ ⌜p' = p⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Hf". by iDestruct (ghost_var_agree with "Ha Hf") as %->.
   Qed.
   Lemma plic_update p p' p'' :
     plic_auth p -∗ plic_frag p' ==∗ plic_auth p'' ∗ plic_frag p''.
-  Proof. iApply ghost_var_update_halves. Qed.
+  Proof using . iApply ghost_var_update_halves. Qed.
 
   Lemma virtio_agree v v' : virtio_auth v -∗ virtio_frag v' -∗ ⌜v' = v⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Hf". by iDestruct (ghost_var_agree with "Ha Hf") as %->.
   Qed.
   Lemma virtio_update v v' v'' :
     virtio_auth v -∗ virtio_frag v' ==∗ virtio_auth v'' ∗ virtio_frag v''.
-  Proof. iApply ghost_var_update_halves. Qed.
+  Proof using . iApply ghost_var_update_halves. Qed.
 End DevBridge.
 
 (* one hart's view (its registers + the shared memory + the shared device
@@ -2823,14 +2823,14 @@ Section RegAt.
 
   Global Instance reg_pointsto_at_timeless c r dq v :
     Timeless (reg_pointsto_at c r dq v).
-  Proof. rewrite /reg_pointsto_at. apply _. Qed.
+  Proof using . rewrite /reg_pointsto_at. apply _. Qed.
 
 
   Lemma reg_update_at (c : CPU) rs r v v' :
     reg_interp_at (cpu_reg_name c) rs -∗ reg_pointsto_at c r (DfracOwn 1) v ==∗
       reg_interp_at (cpu_reg_name c) (register_set r v' rs) ∗
       reg_pointsto_at c r (DfracOwn 1) v'.
-  Proof.
+  Proof using .
     rewrite /reg_pointsto_at /reg_interp_at.
     iIntros "Hi Hr". iDestruct "Hi" as (m) "[Hm %Hag]".
     iMod (ghost_map_update (existT r v') with "Hm Hr") as "[Hm $]".
@@ -2849,7 +2849,7 @@ Section RegAt.
   Lemma gregs_interp_acc_at (c : CPU) (gr : CPU -> regstate) :
     gregs_interp gr ⊢ reg_interp_at (cpu_reg_name c) (gr c) ∗
       (∀ rs', reg_interp_at (cpu_reg_name c) rs' -∗ gregs_interp (<[c := rs']> gr)).
-  Proof.
+  Proof using .
     rewrite /gregs_interp.
     iIntros "H".
     iDestruct (big_sepS_delete _ _ c with "H") as "[Hcur Hrest]";
@@ -2880,7 +2880,7 @@ Section Bridge.
   (* reading a register cell agrees with the model's [register_lookup]. *)
   Lemma reg_valid rs r v :
     reg_interp rs -∗ r ↦ᵣ v -∗ ⌜register_lookup r rs = v⌝.
-  Proof.
+  Proof using .
     rewrite /reg_pointsto /reg_interp /reg_interp_at.
     iIntros "Hi Hr". iDestruct "Hi" as (m) "[Hm %Hag]".
     iDestruct (ghost_map_lookup with "Hm Hr") as %Hlk.
@@ -2891,7 +2891,7 @@ Section Bridge.
   Lemma reg_update rs r v v' :
     reg_interp rs -∗ r ↦ᵣ v ==∗
       reg_interp (register_set r v' rs) ∗ r ↦ᵣ v'.
-  Proof.
+  Proof using .
     rewrite /reg_pointsto /reg_interp /reg_interp_at.
     iIntros "Hi Hr". iDestruct "Hi" as (m) "[Hm %Hag]".
     iMod (ghost_map_update (existT r v') with "Hm Hr") as "[Hm $]".
@@ -2915,7 +2915,7 @@ Section Bridge.
       (v : type_of_register r) :
     register_lookup r rs = v ->
     reg_interp rs -∗ (reg_interp (register_set r v rs) : iProp Σ).
-  Proof.
+  Proof using .
     iIntros (Hlk) "Hi". iDestruct "Hi" as (mp) "[Hm %Hag]".
     iExists mp. iFrame "Hm". iPureIntro.
     intros k dv Hk.
@@ -2930,7 +2930,7 @@ Section Bridge.
      [r ↦ᵣ□ v].  ([reg_valid] is the [DfracOwn 1] special case.) *)
   Lemma reg_valid_dq rs r dq v :
     reg_interp rs -∗ reg_pointsto r dq v -∗ ⌜register_lookup r rs = v⌝.
-  Proof.
+  Proof using .
     rewrite /reg_pointsto /reg_interp /reg_interp_at.
     iIntros "Hi Hr". iDestruct "Hi" as (m) "[Hm %Hag]".
     iDestruct (ghost_map_lookup with "Hm Hr") as %Hlk.
@@ -2941,13 +2941,13 @@ Section Bridge.
      never consumed, so a WP that only READS it need neither take a fresh copy nor
      hand one back. *)
   Global Instance reg_pointsto_discarded_persistent r v : Persistent (r ↦ᵣ□ v).
-  Proof. rewrite /reg_pointsto. apply _. Qed.
+  Proof using . rewrite /reg_pointsto. apply _. Qed.
 
   (* KEEP-UNREFERENCED: public bridge API (fraction-discard / duplication).  Kept
      for downstream use even though currently unreferenced -- do not delete. *)
   (* discard the fraction: turn an owned register cell into the persistent one. *)
   Lemma reg_pointsto_persist r dq v : reg_pointsto r dq v ==∗ r ↦ᵣ□ v.
-  Proof. rewrite /reg_pointsto. iIntros "Hr". by iMod (ghost_map_elem_persist with "Hr"). Qed.
+  Proof using . rewrite /reg_pointsto. iIntros "Hr". by iMod (ghost_map_elem_persist with "Hr"). Qed.
 
   (* ---- the VA-based ↦ₘ ACCESSOR (uniform-claims) ---- *)
   (* THE primitive the ↦ₘ suite rests on: expose the mapping claim, the
@@ -2962,7 +2962,7 @@ Section Bridge.
       ⌜ktier_pin cur_ktier ppn a⌝ ∗
       pointsto (L:=Arch.pa) (V:=bv 8) (pa_of ppn a) dq b ∗
       (pointsto (L:=Arch.pa) (V:=bv 8) (pa_of ppn a) dq b -∗ a ↦ₘ{dq} b).
-  Proof.
+  Proof using .
     rewrite /mem_pointsto. iIntros "H". iDestruct "H" as (ppn) "(#Hk & %Hc & %Hd & %Hi & Hp)".
     iExists ppn. iFrame "Hk Hp".
     iSplit; [iPureIntro; exact Hc|]. iSplit; [iPureIntro; exact Hd|].
@@ -2972,7 +2972,7 @@ Section Bridge.
 
   (* the canonicality conjunct (positive Sv39 half): pins [a ↔ (vpn,off)]. *)
   Lemma mem_canonical a dq b : a ↦ₘ{dq} b -∗ ⌜(uint a < 274877906944)%Z⌝.
-  Proof.
+  Proof using .
     rewrite /mem_pointsto. iIntros "H". iDestruct "H" as (ppn) "(_ & %Hc & _ & _ & _)".
     iPureIntro; exact Hc.
   Qed.
@@ -2986,7 +2986,7 @@ Section Bridge.
     gen_heap_interp (hG:=riscv_memGS) mm -∗ a ↦ₘ{dq} b -∗ ∃ ppn : mword 44,
       kmap_at (svpn_of a) ppn KP_rw ∗ ⌜addr_is_ram (pa_of ppn a)⌝ ∗
       ⌜mm !! (pa_of ppn a) = Some b⌝.
-  Proof.
+  Proof using .
     rewrite /mem_pointsto. iIntros "Hm H". iDestruct "H" as (ppn) "(#Hk & _ & %Hd & _ & Hp)".
     iDestruct (gen_heap_valid with "Hm Hp") as %Hlk.
     iExists ppn. iFrame "Hk". iPureIntro. split; [exact Hd | exact Hlk].
@@ -2996,15 +2996,15 @@ Section Bridge.
      This is what makes [kernel_text] (built from [↦ₓ□] code bytes) duplicable. *)
   Global Instance mem_pointsto_discarded_persistent (ktr : CurKtier) a b :
     Persistent (mem_pointsto (KTR := ktr) a DfracDiscarded b).
-  Proof. rewrite /mem_pointsto. apply _. Qed.
+  Proof using . rewrite /mem_pointsto. apply _. Qed.
 
   Global Instance mem_pointsto_discarded_persistent' (ktr : ktier) a b :
     Persistent (mem_pointsto (KTR := ktr) a DfracDiscarded b).
-  Proof. exact (mem_pointsto_discarded_persistent ktr a b). Qed.
+  Proof using . exact (mem_pointsto_discarded_persistent ktr a b). Qed.
 
   (* discard the fraction: turn any memory byte into the persistent read-only one. *)
   Lemma mem_pointsto_persist a dq b : a ↦ₘ{dq} b ==∗ a ↦ₘ□ b.
-  Proof.
+  Proof using .
     rewrite /mem_pointsto. iIntros "H". iDestruct "H" as (ppn) "(#Hk & %Hc & %Hd & %Hi & Hp)".
     iMod (pointsto_persist with "Hp") as "Hp". iModIntro. iExists ppn.
     iFrame "Hk Hp". iPureIntro. split; [exact Hc | split; [exact Hd | exact Hi]].
@@ -3013,7 +3013,7 @@ Section Bridge.
   (* KEEP-UNREFERENCED: public bridge API (kept though currently unreferenced).
      a persistent (discarded) byte can be handed out repeatedly. *)
   Lemma mem_pointsto_dup a b : a ↦ₘ□ b -∗ a ↦ₘ□ b ∗ a ↦ₘ□ b.
-  Proof. iIntros "#H". by iSplitR. Qed.
+  Proof using . iIntros "#H". by iSplitR. Qed.
 
   (* ---- the CODE points-to bridge (rwx-kmap; mirrors the ↦ₘ suite) ---- *)
 
@@ -3026,7 +3026,7 @@ Section Bridge.
       pointsto (L:=Arch.pa) (V:=bv 8) (pa_of ppn a) dq b ∗
       pristine_elem (pa_of ppn a) ∗
       (pointsto (L:=Arch.pa) (V:=bv 8) (pa_of ppn a) dq b -∗ a ↦ₓ{dq} b).
-  Proof.
+  Proof using .
     rewrite /text_pointsto. iIntros "H".
     iDestruct "H" as (ppn) "(#Hk & %Hc & %Hd & %Hi & Hp & #Hts)".
     iExists ppn. iFrame "Hk Hp Hts".
@@ -3036,7 +3036,7 @@ Section Bridge.
   Qed.
 
   Lemma text_canonical a dq b : a ↦ₓ{dq} b -∗ ⌜(uint a < 274877906944)%Z⌝.
-  Proof.
+  Proof using .
     rewrite /text_pointsto. iIntros "H". iDestruct "H" as (ppn) "(_ & %Hc & _ & _ & _ & _)".
     iPureIntro; exact Hc.
   Qed.
@@ -3049,7 +3049,7 @@ Section Bridge.
     a ↦ₓ{dq} b -∗ ∃ ppn : mword 44,
       kmap_at (svpn_of a) ppn KP_rx ∗ ⌜addr_is_text (pa_of ppn a)⌝ ∗
       ⌜ktier_pin cur_ktier ppn a⌝.
-  Proof.
+  Proof using .
     rewrite /text_pointsto. iIntros "H". iDestruct "H" as (ppn) "(#Hk & _ & %Hd & %Hi & _ & _)".
     iExists ppn. iFrame "Hk". iPureIntro; split; [exact Hd | exact Hi].
   Qed.
@@ -3059,7 +3059,7 @@ Section Bridge.
   Lemma code_ram a dq b :
     a ↦ₓ{dq} b -∗ ∃ ppn : mword 44,
       kmap_at (svpn_of a) ppn KP_rx ∗ ⌜addr_is_ram (pa_of ppn a)⌝.
-  Proof.
+  Proof using .
     rewrite /text_pointsto. iIntros "H". iDestruct "H" as (ppn) "(#Hk & _ & %Hd & %Hi & _ & _)".
     iExists ppn. iFrame "Hk". iPureIntro; exact (addr_is_text_ram _ Hd).
   Qed.
@@ -3068,7 +3068,7 @@ Section Bridge.
     gen_heap_interp (hG:=riscv_memGS) mm -∗ a ↦ₓ{dq} b -∗ ∃ ppn : mword 44,
       kmap_at (svpn_of a) ppn KP_rx ∗ ⌜addr_is_text (pa_of ppn a)⌝ ∗
       ⌜mm !! (pa_of ppn a) = Some b⌝.
-  Proof.
+  Proof using .
     rewrite /text_pointsto. iIntros "Hm H". iDestruct "H" as (ppn) "(#Hk & _ & %Hd & _ & Hp & _)".
     iDestruct (gen_heap_valid with "Hm Hp") as %Hlk.
     iExists ppn. iFrame "Hk". iPureIntro. split; [exact Hd | exact Hlk].
@@ -3080,16 +3080,16 @@ Section Bridge.
      (F3's structural finding; the whole tier family is declared this way). *)
   Global Instance text_pointsto_discarded_persistent (ktr : CurKtier) a b :
     Persistent (text_pointsto (KTR := ktr) a DfracDiscarded b).
-  Proof. rewrite /text_pointsto. apply _. Qed.
+  Proof using . rewrite /text_pointsto. apply _. Qed.
 
   Global Instance text_pointsto_discarded_persistent' (ktr : ktier) a b :
     Persistent (text_pointsto (KTR := ktr) a DfracDiscarded b).
-  Proof. exact (text_pointsto_discarded_persistent ktr a b). Qed.
+  Proof using . exact (text_pointsto_discarded_persistent ktr a b). Qed.
 
   (* discard the fraction: turn any code byte into the persistent read-only
      one (adequacy init persists the whole sub-etext image this way). *)
   Lemma text_pointsto_persist a dq b : a ↦ₓ{dq} b ==∗ a ↦ₓ□ b.
-  Proof.
+  Proof using .
     rewrite /text_pointsto. iIntros "H".
     iDestruct "H" as (ppn) "(#Hk & %Hc & %Hd & %Hi & Hp & #Hts)".
     iMod (pointsto_persist with "Hp") as "Hp". iModIntro. iExists ppn.
@@ -3103,7 +3103,7 @@ Section Bridge.
      left to prove. *)
   Lemma text_ktier_mono (kt kt' : ktier) `{!KtierLe kt kt'} a dq b :
     a ↦ₓ[kt]{dq} b ⊢ a ↦ₓ[kt']{dq} b.
-  Proof.
+  Proof using .
     rewrite /text_pointsto. iIntros "H".
     iDestruct "H" as (ppn) "(#Hk & %Hc & %Hd & %Hp & Hpt & #Hts)".
     iExists ppn. iFrame "Hk Hpt Hts". iPureIntro.
@@ -3117,7 +3117,7 @@ Section Bridge.
      image byte it is minted from. *)
   Lemma text_pointsto_agree {kt1 kt2 : ktier} a dq1 b1 dq2 b2 :
     a ↦ₓ[kt1]{dq1} b1 -∗ a ↦ₓ[kt2]{dq2} b2 -∗ ⌜b1 = b2⌝.
-  Proof.
+  Proof using .
     rewrite /text_pointsto. iIntros "H1 H2".
     iDestruct "H1" as (ppn1) "(Hk1 & _ & _ & _ & Hp1 & _)".
     iDestruct "H2" as (ppn2) "(Hk2 & _ & _ & _ & Hp2 & _)".
@@ -3129,18 +3129,18 @@ Section Bridge.
 
   Lemma phys_valid (mm : gmap Arch.pa (bv 8)) a dq b :
     gen_heap_interp (hG:=riscv_memGS) mm -∗ a ↦ₚ{dq} b -∗ ⌜mm !! a = Some b⌝.
-  Proof.
+  Proof using .
     iIntros "Hm [Ha _]". by iDestruct (gen_heap_valid with "Hm Ha") as %?.
   Qed.
 
   Lemma phys_ram a dq b : a ↦ₚ{dq} b -∗ ⌜addr_is_ram a⌝.
-  Proof. by iIntros "[_ %H]". Qed.
+  Proof using . by iIntros "[_ %H]". Qed.
 
   (* the PHYSICAL word cell (a PT slot post-flip) sits in RAM -- trivial from
      [phys_ram] at byte 0.  Beside [phys_word_pointsto]'s suite; consumed by the
      walk's "slot address is nonzero because it is RAM" argument. *)
   Lemma phys_word_pointsto_ram a dq w : a ↦ₚ₈{dq} w ⊢ ⌜addr_is_ram a⌝.
-  Proof.
+  Proof using .
     iIntros "Hw". iDestruct (phys_word_pointsto_bytes with "Hw") as "Hbs".
     iDestruct (big_sepL_lookup _ _ 0%nat 0%nat with "Hbs") as "Hb0".
     { rewrite lookup_seq_lt; [reflexivity | lia]. }
@@ -3163,7 +3163,7 @@ Section Bridge.
      platform's DRAM region ends at PHYSTOP, so an 8-byte access is inside it
      only if its END is ([RiscvExtras.pma_access_ram]). *)
   Lemma phys_word_pointsto_ram7 a dq w : a ↦ₚ₈{dq} w ⊢ ⌜addr_is_ram (pa_add a 7)⌝.
-  Proof.
+  Proof using .
     iIntros "Hw". iDestruct (phys_word_pointsto_bytes with "Hw") as "Hbs".
     iDestruct (big_sepL_lookup _ _ 7%nat 7%nat with "Hbs") as "Hb7".
     { rewrite lookup_seq_lt; [reflexivity | lia]. }
@@ -3176,10 +3176,10 @@ Section Bridge.
      only if its END is ([RiscvExtras.pma_access_ram]). *)
 
   Global Instance phys_pointsto_discarded_persistent a b : Persistent (a ↦ₚ□ b).
-  Proof. rewrite /phys_pointsto. apply _. Qed.
+  Proof using . rewrite /phys_pointsto. apply _. Qed.
 
   Lemma phys_pointsto_persist a dq b : a ↦ₚ{dq} b ==∗ a ↦ₚ□ b.
-  Proof.
+  Proof using .
     iIntros "[Ha %Hr]". iMod (pointsto_persist with "Ha") as "Ha".
     iModIntro. by iFrame.
   Qed.
@@ -3188,7 +3188,7 @@ Section Bridge.
   Lemma phys_update (mm : _) (a : Arch.pa) (b b' : bv 8) :
     gen_heap_interp (hG:=riscv_memGS) mm -∗ a ↦ₚ{DfracOwn 1} b ==∗
       gen_heap_interp (hG:=riscv_memGS) (<[a := b']> mm) ∗ a ↦ₚ{DfracOwn 1} b'.
-  Proof.
+  Proof using .
     iIntros "Hm [Ha %Hr]". iMod (gen_heap_update with "Hm Ha") as "[Hm Ha]".
     iModIntro. iFrame "Hm Ha". iPureIntro. exact Hr.
   Qed.
@@ -3205,7 +3205,7 @@ Section Bridge.
       ⌜ktier_pin cur_ktier ppn0 pa⌝ ∗
       pointsto (L:=Arch.pa) (V:=bv 8) (pa_of ppn0 pa) dq b ∗
       (pointsto (L:=Arch.pa) (V:=bv 8) (pa_of ppn0 pa) dq b -∗ pa ↦ₘ{dq} b).
-  Proof.
+  Proof using .
     iIntros "#Hk0 H".
     iDestruct (mem_pointsto_acc with "H") as (ppn) "(#Hk & %Hc & %Hd & %Hi & Hp & Hcl)".
     iDestruct (kmap_at_agree with "Hk0 Hk") as %[<- _].
@@ -3226,7 +3226,7 @@ Section Bridge.
     addr_is_ram (pa_of ppn va) -> (uint va < 274877906944)%Z ->
     ktier_pin kt ppn va ->
     kmap_at (svpn_of va) ppn KP_rw -∗ (pa_of ppn va) ↦ₚ{dq} b -∗ va ↦ₘ[kt]{dq} b.
-  Proof.
+  Proof using .
     intros Hram Hcan Hpin. iIntros "#Hk [Hp _]".
     rewrite /mem_pointsto. iExists ppn. iFrame "Hk Hp".
     iPureIntro. split; [exact Hcan | split; [exact Hram | exact Hpin]].
@@ -3246,7 +3246,7 @@ Section Bridge.
   Lemma phys_to_mem_claim (pa : mword 64) (ppn : mword 44) dq b :
     pa_of ppn pa = pa -> addr_is_ram pa -> (uint pa < 274877906944)%Z ->
     kmap_at (svpn_of pa) ppn KP_rw -∗ pa ↦ₚ{dq} b -∗ pa ↦ₘ{dq} b.
-  Proof.
+  Proof using .
     intros Hid Hkd Hcan. iIntros "#Hk Hp".
     iApply (phys_to_mem_map cur_ktier pa ppn dq b with "Hk [Hp]").
     { rewrite Hid. exact Hkd. }
@@ -3258,7 +3258,7 @@ Section Bridge.
   Lemma mem_to_phys_claim (pa : mword 64) (ppn : mword 44) dq b :
     pa_of ppn pa = pa ->
     kmap_at (svpn_of pa) ppn KP_rw -∗ pa ↦ₘ{dq} b -∗ pa ↦ₚ{dq} b.
-  Proof.
+  Proof using .
     intros Hid. iIntros "#Hk H".
     iDestruct (mem_pointsto_pin pa dq b ppn with "Hk H") as "(%Hc & %Hd & _ & Hp & _)".
     rewrite Hid in Hd. iEval (rewrite Hid) in "Hp".
@@ -3272,7 +3272,7 @@ Section Bridge.
       pointsto (L:=Arch.pa) (V:=bv 8) (pa_of ppn0 pa) dq b ∗
       pristine_elem (pa_of ppn0 pa) ∗
       (pointsto (L:=Arch.pa) (V:=bv 8) (pa_of ppn0 pa) dq b -∗ pa ↦ₓ{dq} b).
-  Proof.
+  Proof using .
     iIntros "#Hk0 H".
     iDestruct (text_pointsto_acc with "H")
       as (ppn) "(#Hk & %Hc & %Hd & %Hi & Hp & #Hts & Hcl)".
@@ -3295,21 +3295,21 @@ Section pointsto_persist.
 
   Global Instance word_pointsto_discarded_persistent (ktr : CurKtier) a w :
     Persistent (word_pointsto (KTR := ktr) a DfracDiscarded w).
-  Proof. rewrite /word_pointsto. apply _. Qed.
+  Proof using . rewrite /word_pointsto. apply _. Qed.
 
   Global Instance word_pointsto_discarded_persistent' (ktr : ktier) a w :
     Persistent (word_pointsto (KTR := ktr) a DfracDiscarded w).
-  Proof. exact (word_pointsto_discarded_persistent ktr a w). Qed.
+  Proof using . exact (word_pointsto_discarded_persistent ktr a w). Qed.
   Global Instance word4_pointsto_discarded_persistent (ktr : CurKtier) a w :
     Persistent (word4_pointsto (KTR := ktr) a DfracDiscarded w).
-  Proof. rewrite /word4_pointsto. apply _. Qed.
+  Proof using . rewrite /word4_pointsto. apply _. Qed.
 
   Global Instance word4_pointsto_discarded_persistent' (ktr : ktier) a w :
     Persistent (word4_pointsto (KTR := ktr) a DfracDiscarded w).
-  Proof. exact (word4_pointsto_discarded_persistent ktr a w). Qed.
+  Proof using . exact (word4_pointsto_discarded_persistent ktr a w). Qed.
 
   Lemma word_pointsto_persist a dq w : a ↦₈{dq} w ==∗ a ↦₈□ w.
-  Proof.
+  Proof using .
     iIntros "[%Hal Hbs]".
     iAssert (|==> [∗ list] j ∈ seq 0 8,
                (pa_add a j) ↦ₘ□ nth_byte w j)%I with "[Hbs]" as ">Hbs".
@@ -3319,7 +3319,7 @@ Section pointsto_persist.
   Qed.
 
   Lemma word4_pointsto_persist a dq w : a ↦₄{dq} w ==∗ a ↦₄□ w.
-  Proof.
+  Proof using .
     iIntros "[%Hal Hbs]".
     iAssert (|==> [∗ list] j ∈ seq 0 4,
                (pa_add a j) ↦ₘ□ nth_byte w j)%I with "[Hbs]" as ">Hbs".
@@ -3330,7 +3330,7 @@ Section pointsto_persist.
 
 
   Global Instance phys_word_pointsto_discarded_persistent a w : Persistent (a ↦ₚ₈□ w).
-  Proof. rewrite /phys_word_pointsto. apply _. Qed.
+  Proof using . rewrite /phys_word_pointsto. apply _. Qed.
 
 End pointsto_persist.
 

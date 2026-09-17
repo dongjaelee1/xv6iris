@@ -65,7 +65,7 @@ Section ProofWakeupPartsEpi.
       (M : regfile) (K : nat)
       (vra vs0 vs1 vs2 vs3 vs4 vs5 vpad : mword 64) (b : bool) (p : mword 64)
     : wp_wakeup_epilogue_sconf_body M K vra vs0 vs1 vs2 vs3 vs4 vs5 vpad b p.
-  Proof.
+  Proof using .
     cbv beta delta [wp_wakeup_epilogue_sconf_body].
     intros spF sp0 rettgt HK8 Hdom.
     iIntros "Hcg #Htext Hpc Hf7 Hf6 Hf5 Hf4 Hf3 Hf2 Hf1 Hf0 Hcont".
@@ -251,7 +251,7 @@ Section ProofWakeupPartsPro.
   Lemma wp_wakeup_prologue_sconf
       (m : regfile) (K : nat) (b : bool) (p : mword 64)
     : wp_wakeup_prologue_sconf_body m K b p.
-  Proof.
+  Proof using .
     cbv beta delta [wp_wakeup_prologue_sconf_body].
     intros sp0 spF HK8 Hdom.
     iIntros "Hcg #Htext Hpc Hcont".

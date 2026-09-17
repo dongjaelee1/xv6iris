@@ -161,7 +161,7 @@ Section ProofWalkNoalloc.
     pt_kids t i = Some c ->
     ptree_own (S lvl) dq t ⊢
       ptree_own lvl dq c ∗ (ptree_own lvl dq c -∗ ptree_own (S lvl) dq t).
-  Proof.
+  Proof using .
     (* the two [ptree_own (S lvl) dq t] occurrences are IDENTICAL here (unlike
        [ptree_own_descend], whose wand returns [pt_upd_kid …]), so a bare
        [rewrite ptree_own_S] would hit both -- scope the first to the hyp. *)
@@ -223,7 +223,7 @@ Section ProofWalkNoalloc.
                \/ (w0 = mword_of_int 0 /\ m !! vpn = None))) ⌝ -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros va vpn sp0 spr ret_tgt HK Hsp Htp Hx23 Hx24 Hx25 Hx26 Hx27 Hpay.
     iIntros "Hcg #Htext Hpc
              Hc56 Hc48 Hc40 Hc32 Hc24 Hc16 Hc08 Hc00
@@ -484,7 +484,7 @@ Section ProofWalkNoalloc.
                \/ (w0 = mword_of_int 0 /\ m !! vpn = None))) ⌝ -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros va vpn sp0 spr ret_tgt HK Hsp Hs6 Htp Hx23 Hx24 Hx25 Hx26 Hx27 Hmv.
     iIntros "Hcg #Htext Hpc
              Hc56 Hc48 Hc40 Hc32 Hc24 Hc16 Hc08 Hc00
@@ -602,7 +602,7 @@ Section ProofWalkNoalloc.
                \/ (w0 = mword_of_int 0 /\ m !! vpn = None))) ⌝ -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros va vpn sp0 spr ret_tgt HK Hva' Hsp Hs3 Hs1 Htp Hx23 Hx24 Hx25 Hx26 Hx27 Hlvl.
     iIntros "Hcg #Htext Hpc
              Hc56 Hc48 Hc40 Hc32 Hc24 Hc16 Hc08 Hc00
@@ -734,7 +734,7 @@ Section ProofWalkNoalloc.
       slotaddr ↦₈{dqm} pte -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hs3 Hs4 Hslot.
     iIntros "Hcg #Htext Hpc Hown Hcont".
     (* +0x26 srl s2,s3,s4 *)
@@ -840,7 +840,7 @@ Section ProofWalkNoalloc.
       (mm : regfile) (t : ptree)
       (m : gmap (mword 27) (mword 64)) (K : nat) (dq : dfrac) (b : bool) (p : mword 64)
     : wp_walk_noalloc_sconf_body kt mm t m K dq b p.
-  Proof.
+  Proof using .
     cbv beta delta [wp_walk_noalloc_sconf_body].
     intros pcE va vpn ret_tgt HK Ha0 Ha2 Hva Hrep.
     pose (sp0 := (mm !!! Regidx csp_rs1 : mword 64)).

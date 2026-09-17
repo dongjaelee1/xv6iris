@@ -86,7 +86,7 @@ Section sframes.
          (register_lookup (R_bitvector_64 mip) rs)
          mst0 pcfg paddr mc micfg misa0 mseccfg0 senv0 pmar0 elp0
          satp0 mie0 mdv0 menv0 tlbv).
-  Proof.
+  Proof using .
     intros Hag. apply s_rs_agree.
     all: try reflexivity.
     all: (etransitivity;
@@ -126,7 +126,7 @@ Section sframes.
          (register_lookup (R_bitvector_64 mip) rs)
          mst0 pcfg paddr mc micfg misa0 mseccfg0 senv0 pmar0 elp0
          satp0 mie0 mdv0 menv0 (register_lookup tlb rs)).
-  Proof.
+  Proof using .
     intros Hag. apply s_rs_agree.
     all: try reflexivity.
     all: (etransitivity;
@@ -156,7 +156,7 @@ Section sframes.
          (minstret_inc_flag mc micfg Supervisor)
          cy ti ip mst0 pcfg paddr mc micfg misa0 mseccfg0 senv0 pmar0 elp0
          satp0 mie0 mdv0 menv0 tlbv).
-  Proof.
+  Proof using .
     apply s_rs_agree.
     all: try (rewrite wrap_pre_mi;
               by rewrite s_rs_mc s_rs_micfg s_rs_priv).

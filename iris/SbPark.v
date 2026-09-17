@@ -68,7 +68,7 @@ Section SbPark.
   Definition sbN : namespace := logN .@ "sb".
 
   Lemma sbN_sub (E : coPset) : (↑logN : coPset) ⊆ E -> (↑sbN : coPset) ⊆ E.
-  Proof.
+  Proof using .
     intros HE. etrans; [| exact HE]. rewrite /sbN. apply nclose_subseteq.
   Qed.
 
@@ -83,13 +83,13 @@ Section SbPark.
 
   Global Instance sb_park_body_timeless γfs sb :
     Timeless (sb_park_body γfs sb).
-  Proof. rewrite /sb_park_body. apply _. Qed.
+  Proof using . rewrite /sb_park_body. apply _. Qed.
 
   Definition sb_park (γfs : fs_names) (sb : fs_sb) : iProp Σ :=
     inv sbN (sb_park_body γfs sb).
 
   Global Instance sb_park_persistent γfs sb : Persistent (sb_park γfs sb).
-  Proof. rewrite /sb_park. apply _. Qed.
+  Proof using . rewrite /sb_park. apply _. Qed.
 
   (* ...and the form a bundle with no [fs_sb] parameter can carry.  The
      record is closed over rather than threaded: [log_ctx]'s arity is fixed
@@ -100,7 +100,7 @@ Section SbPark.
     (∃ sb : fs_sb, ⌜fs_sb_ok sb⌝ ∗ sb_park γfs sb)%I.
 
   Global Instance sb_parked_persistent γfs : Persistent (sb_parked γfs).
-  Proof. rewrite /sb_parked. apply _. Qed.
+  Proof using . rewrite /sb_parked. apply _. Qed.
 
   (* ---- birth ------------------------------------------------------- *)
 
@@ -108,7 +108,7 @@ Section SbPark.
       (bs : list (bv 8)) :
     fs_parse_sb (fun _ => bs) = Some sb ->
     fsblock (fs_bytes γfs) SB_BNO bs ={E}=∗ sb_park γfs sb.
-  Proof.
+  Proof using .
     intros Hparse. iIntros "Hb".
     iMod (inv_alloc sbN E (sb_park_body γfs sb) with "[Hb]") as "#Hi".
     { iApply bi.later_intro. rewrite /sb_park_body. iExists bs.
@@ -118,7 +118,7 @@ Section SbPark.
 
   Lemma sb_parked_of_park (γfs : fs_names) (sb : fs_sb) :
     fs_sb_ok sb -> sb_park γfs sb -∗ sb_parked γfs.
-  Proof.
+  Proof using .
     intros Hok. iIntros "#H". rewrite /sb_parked. iExists sb.
     iSplitR; [iPureIntro; exact Hok |]. iExact "H".
   Qed.
@@ -138,7 +138,7 @@ Section SbPark.
         ⌜fs_parse_sb (fun _ => bs) = Some sb⌝ ∗
         fsblock (fs_bytes γfs) SB_BNO bs ∗
         (fsblock (fs_bytes γfs) SB_BNO bs ={E ∖ ↑sbN, E}=∗ True).
-  Proof.
+  Proof using .
     intros HE. iIntros "#Hi".
     iMod (inv_acc E sbN with "Hi") as "[Hbody Hclose]"; [exact HE |].
     iDestruct "Hbody" as ">Hbody".
@@ -154,7 +154,7 @@ Section SbPark.
   (* the byte view's own invariant is at [FsBlocks.fsbN]; block 1's park is
      its SIBLING under [logN], so a consumer may hold both open *)
   Lemma fsbN_sbN_disj : (↑fsbN : coPset) ## ↑sbN.
-  Proof. solve_ndisj. Qed.
+  Proof using . solve_ndisj. Qed.
 
   (* ---- THE REFUTATION [log_write] READS (durable-disk lane E-blk1) ---- *)
 
@@ -175,7 +175,7 @@ Section SbPark.
     sb_parked γfs -∗
     byte_range (fs_bytes γfs) b (Z.of_nat off) sub ={E}=∗
       ⌜b <> SB_BNO⌝ ∗ byte_range (fs_bytes γfs) b (Z.of_nat off) sub.
-  Proof.
+  Proof using .
     intros HE Hoff Hpos. iIntros "#Hp Hr".
     rewrite /sb_parked. iDestruct "Hp" as (sb) "[%Hok #Hpark]".
     iMod (sb_park_acc E γfs sb (sbN_sub E HE) with "Hpark")

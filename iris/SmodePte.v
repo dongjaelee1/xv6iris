@@ -48,7 +48,7 @@ Section SmodePmpConfig.
     eq_vec (_get_Pmpcfg_ent_R (vec_access_dec pmpcfg0 0)) ('b"1") = true ->
     (ram_base + ram_size <= uint (vec_access_dec pmpaddr00 0) * 4)%Z ->
     pmpcfg_n ↦ᵣ pmpcfg0 -∗ pmpaddr_n ↦ᵣ pmpaddr00 -∗ pmp_config root_ppn.
-  Proof.
+  Proof using .
     intros HA Hord HX HW HR Hcov. iIntros "Hc Ha".
     iExists pmpcfg0, pmpaddr00. iFrame "Hc Ha". iPureIntro. tauto.
   Qed.

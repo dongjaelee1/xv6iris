@@ -164,7 +164,7 @@ Section PinnedExec.
     pin_resolves_at Pin cw pl hops ino a ->
     ⊢ ex_node_id T (pobs_P T hops (length (path_elems pl)))
         (pobs_recv Pin T) a.
-  Proof.
+  Proof using .
     intros Hres. rewrite /ex_node_id. iIntros "!>" (v i b) "HP Hr".
     iDestruct (pobs_node Pin T cw pl hops ino a v i b Hres with "HP Hr")
       as "[%Hid | HT]"; [ | iRight; iExact "HT" ].
@@ -219,7 +219,7 @@ Section PinnedExec.
      arms are stated and proved there, over an ARBITRARY supplier of
      [ex_node_id]; what is left here is which supplier, and the [□]
      constructor premise is [ExecEntry.image_entry_at] spelled out. *)
-  Proof.
+  Proof using .
     intros Hres Hload. iIntros "#Hcon #Hgen HPay".
     iApply (exec_slot_of_entry_at X T (pobs_P T hops (length (path_elems pl)))
               (pobs_recv Pin T) f nl Pay Q cw na alen afun sts cs pidv Hload
@@ -299,7 +299,7 @@ Section PinnedExec.
   (* ...AND IT IS [ExecBundle.sys_exec_slot_of_entry] AT THE PIN: the path
      reading's uniqueness, the argument reading's relay into the entry and
      the two arms are all stated there; the pin supplies [ex_node_id]. *)
-  Proof.
+  Proof using .
     intros Hres Hload Hpath. iIntros "#Hcon #Hgen HPay".
     iApply (sys_exec_slot_of_entry X T (pobs_P T hops) (pobs_recv Pin T)
               f nl Pay Q cw pl M pv av sts cs pidv Hload Hpath
@@ -353,7 +353,7 @@ Section PinnedExec.
      the walk is [PinnedObs.pobs_walk], the observation [pobs_aopen] and
      the node identification [pobs_node_id].  Nothing about exec is
      re-stated here -- (L) and (E) go straight through. *)
-  Proof.
+  Proof using .
     intros Hres Hload Hpath.
     iIntros "#Hcl #Hinv #Hcon #Hgen HPay".
     iApply (exec_bundle_of γfs X T (pobs_P T hops) (pobs_Pmiss T)
@@ -409,7 +409,7 @@ Section PinnedExec.
       (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ)),
       sys_exec_au_pre (MkPfam X Pay) (fs_gamma_L γfs) γfs cw Q P Pmiss Fo
         M pv av sts cs pidv.
-  Proof.
+  Proof using .
     intros Hres Hload Hpath. iIntros "#Hcl #Hinv #Hcon #Hgen HPay".
     iExists (pobs_P T hops), (pobs_Pmiss T), (pobs_Fo Pin T).
     iApply (pinned_exec_bundle_at γfs X Pin T cw pl hops ino f nl Pay Q
@@ -463,7 +463,7 @@ Section PinnedExec.
      (E) arrives at [ExecEntry.image_entry_at] -- the entry at THE
      argument shape -- and the two identity rows the boot constructor
      does not read are dropped where it is built. *)
-  Proof.
+  Proof using .
     intros Hres Hload. iIntros "#Hcl #Hinv #Hcon #Hgen HPay".
     iApply (exec_bundle_of_at γfs X T (pobs_P T hops) (pobs_Pmiss T)
               (pobs_Fo Pin T) cw pl f nl Pay Q na alen afun sts cs pidv
@@ -508,7 +508,7 @@ Section PinnedExec.
       ∀ (cs : gset gname) (pidv : mword 32),
         exec_au_pre (MkPfam X R) (fs_gamma_L γfs) γfs cw Q P Pmiss Fo
           pl na alen afun sts cs pidv.
-  Proof.
+  Proof using .
     intros Hres Hload. iIntros "#Hcl #Hinv #Hcon #Hgen HPay".
     iExists (pobs_P T hops), (pobs_Pmiss T), (pobs_Fo Pin T), Pay.
     iIntros (cs pidv).

@@ -1425,12 +1425,12 @@ Section GenCheckedReadU.
                      = Some ((w, default_meta), s).
 
   Local Lemma gcr_avi : add_vec_int addr (0 * k) = addr.
-  Proof. assert (H0 : (0 * k)%Z = 0) by lia. rewrite H0. apply avi0. Qed.
+  Proof using . assert (H0 : (0 * k)%Z = 0) by lia. rewrite H0. apply avi0. Qed.
 
   Lemma exec_checked_mem_read_u :
     exec (checked_mem_read acc pbmt priv (Physaddr addr) k aq rl res false) s
       = Some (Ok (w, default_meta), s).
-  Proof.
+  Proof using Hcpe Hk Hmmioe Hpmpe Hrame Hrkf.
     unfold checked_mem_read. rewrite exec_catch_early_return.
     rewrite (execR_liftR_seq _ _ _ _ _ Hcpe). cbn beta. cbn match.
     rewrite execR_bind. rewrite execR_returnR. cbn match beta.
@@ -1470,7 +1470,7 @@ Section GenCheckedReadU.
   Lemma goodmb_checked_mem_read_u :
     goodmb Dr Dw (checked_mem_read acc pbmt priv (Physaddr addr) k aq rl res false)
       s mm = true.
-  Proof.
+  Proof using Hcpe Hcpg Hdev Hk Hmmioe Hmmiog Hown Hpmpe Hpmpg Hrame Hrkf Hrkg Hrkram.
     unfold checked_mem_read. apply goodmb_cer.
     erewrite gm_liftR_seq; [ | exact Hcpg | exact Hcpe ].
     cbn beta. cbn match.
@@ -1965,12 +1965,12 @@ Section GenCheckedWriteU.
   Hypothesis Hwre : exec (write_ram wk (Physaddr addr) k data tt) s = Some (true, sw).
 
   Local Lemma gcw_avi : add_vec_int addr (0 * k) = addr.
-  Proof. assert (H0 : (0 * k)%Z = 0) by lia. rewrite H0. apply avi0. Qed.
+  Proof using . assert (H0 : (0 * k)%Z = 0) by lia. rewrite H0. apply avi0. Qed.
 
   Lemma exec_checked_mem_write_u :
     exec (checked_mem_write (Physaddr addr) k data acc pbmt priv tt aq rl con) s
       = Some (Ok true, sw).
-  Proof.
+  Proof using Hcpe Hk Hmmioe Hpmpe Hwkf Hwre.
     unfold checked_mem_write. rewrite exec_catch_early_return.
     rewrite (execR_liftR_seq _ _ _ _ _ Hcpe). cbn beta. cbn match.
     rewrite execR_bind. rewrite execR_returnR. cbn match beta.
@@ -2008,7 +2008,7 @@ Section GenCheckedWriteU.
   Lemma goodmb_checked_mem_write_u :
     goodmb Dr Dw (checked_mem_write (Physaddr addr) k data acc pbmt priv tt aq rl con)
       s mm = true.
-  Proof.
+  Proof using Hcpe Hcpg Hdev Hk Hmmioe Hmmiog Hown Hpmpe Hpmpg Hwkf Hwkg Hwkram Hwre.
     unfold checked_mem_write. apply goodmb_cer.
     erewrite gm_liftR_seq; [ | exact Hcpg | exact Hcpe ].
     cbn beta. cbn match.

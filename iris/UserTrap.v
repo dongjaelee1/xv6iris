@@ -877,7 +877,7 @@ Section UTrapReduce.
   Lemma goodmb_set_next_pc (Dr Dw : register -> bool) (v : mword 64)
       (st : mstate) :
     Dw nextPC = true -> goodmb Dr Dw (set_next_pc v) st ∅ = true.
-  Proof.
+  Proof using .
     intro HWnpc. unfold set_next_pc. cbn match.
     erewrite goodmb_bind0_empty;
       [ apply goodmb_returnm
@@ -1545,7 +1545,7 @@ Section UTrapGhost.
          cur_privilege ↦ᵣ Supervisor ∗
          nextPC ↦ᵣ stvec_base stvec_v ∗
          PC ↦ᵣ stvec_base stvec_v.
-  Proof.
+  Proof using .
     iIntros (Lelp Help_ne) "[Hreg Hmd] Hms Hsc Hstval Hsepc Hpriv Hnpc Hpc".
     pose proof (elp_no_lp elp0 Help_ne) as Help0.
     pose (ms_e := update_subrange_vec_dec ms_v 23 23 elp0).

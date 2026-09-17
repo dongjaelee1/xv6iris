@@ -278,7 +278,7 @@ Section ProofSysOpenJoin.
       (so_cont_au gf nsj
                dqb dqs (proc_addr jx) pidv Mim pvv vom U sts P Pmiss Fo Ft m K eb b lks) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hqs HK Hkk Hinb Hipos Hgeom Hsize Hbm0 Hbmcov Hbmlog Hist0 Hiblk
            Hiblog Hcovb Hiu Hj Hgl Hlkempty Hdir Hpof Hom Hal23 Hsp0 HMsp HMthr
            HMs0 HMs1 HMs2 HMs3 Hal Hnspos.

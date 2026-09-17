@@ -557,7 +557,7 @@ Section CreateFire.
 
   Lemma dlookup_commit_at_unit Γ E :
     ⊢ dlookup_commit_at Γ E (fun _ _ _ _ => True%I).
-  Proof.
+  Proof using .
     rewrite /dlookup_commit_at. iIntros (I d i nm ents nl) "%Hd %Hnm Ha".
     iModIntro. by iFrame "Ha".
   Qed.
@@ -589,7 +589,7 @@ Section CreateFire.
      of every view *)
   Lemma aarm_commit_at_unit (γfs : fs_names) E c :
     app_sup -∗ aarm_commit_at (fs_gamma_L γfs) E c (fun _ _ => True%I).
-  Proof.
+  Proof using .
     iIntros "#Hsup". rewrite /aarm_commit_at. iIntros (I i) "%Hnone %Hsome Ha".
     iDestruct (app_step_acc i I _ with "Hsup") as "Hstep".
     iModIntro. iFrame "Ha Hstep". iIntros (I') "%Heq Ha'". iModIntro.
@@ -598,7 +598,7 @@ Section CreateFire.
 
   Lemma adots_commit_at_unit (γfs : fs_names) E :
     app_sup -∗ adots_commit_at (fs_gamma_L γfs) E (fun _ _ _ _ => True%I).
-  Proof.
+  Proof using .
     iIntros "#Hsup". rewrite /adots_commit_at. iIntros (I i d full) "%Hrow Ha".
     iDestruct (app_step_acc i I _ with "Hsup") as "Hstep".
     iModIntro. iFrame "Ha Hstep". iIntros (I') "%Heq Ha'". iModIntro.
@@ -607,7 +607,7 @@ Section CreateFire.
 
   Lemma aunarm_commit_at_unit (γfs : fs_names) E (i : Z) :
     app_sup -∗ aunarm_commit_at (fs_gamma_L γfs) E i (fun _ _ => True%I).
-  Proof.
+  Proof using .
     iIntros "#Hsup". rewrite /aunarm_commit_at. iIntros (I c) "%Hrow Ha".
     iDestruct (app_step_acc i I _ with "Hsup") as "Hstep".
     iModIntro. iFrame "Ha Hstep". iIntros (I') "%Heq Ha'". iModIntro.
@@ -619,7 +619,7 @@ Section CreateFire.
   Lemma aunarm_of_arm_unit (γfs : fs_names) E
       (Farm : pfam Σ (aview -> Z -> iProp Σ)) :
     app_sup -∗ aunarm_of_arm (fs_gamma_L γfs) E Farm (fun _ _ => True%I).
-  Proof.
+  Proof using .
     iIntros "#Hsup". rewrite /aunarm_of_arm. iIntros (i) "_".
     iApply (aunarm_commit_at_unit γfs E i with "Hsup").
   Qed.
@@ -630,7 +630,7 @@ Section CreateFire.
   Lemma aunarm_of_arm_of_all Γ E (Farm : pfam Σ (aview -> Z -> iProp Σ))
       (Φ : aview -> Z -> iProp Σ) :
     (∀ i : Z, aunarm_commit_at Γ E i Φ) -∗ aunarm_of_arm Γ E Farm Φ.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /aunarm_of_arm. iIntros (i) "_". iApply "H".
   Qed.
 
@@ -643,7 +643,7 @@ Section CreateFire.
       (i : Z) :
     cre_arm_fired Farm i -∗ pf_at (aunarm_of_arm Γ E Farm) Fun -∗
       aunarm_commit_at Γ E i Fun.(pf_recv).
-  Proof.
+  Proof using .
     iIntros "Ha Hp". iDestruct (pf_at_au with "Hp") as "Hp".
     rewrite /aunarm_of_arm. iApply ("Hp" $! i with "Ha").
   Qed.
@@ -657,7 +657,7 @@ Section CreateFire.
   Lemma mkf_auth_frag Γ (q : Qp) (I : gmap Z fs_node) (dq : dfrac) (i : Z)
       (n : fs_node) :
     ghost_map_auth (γtop Γ) q I -∗ top_frag_q Γ dq i n -∗ ⌜I !! i = Some n⌝.
-  Proof.
+  Proof using .
     rewrite /top_frag_q. iIntros "Ha Hf".
     by iDestruct (ghost_map_lookup with "Ha Hf") as %Hl.
   Qed.
@@ -666,7 +666,7 @@ Section CreateFire.
       (a : anode) :
     ghost_map_auth (γtop Γ) q I -∗ nview_dq Γ dq i a -∗
       ⌜abs_view I !! i = Some a⌝.
-  Proof.
+  Proof using .
     rewrite /nview_dq. iIntros "Ha Hn". iDestruct "Hn" as (n) "[Hf %Han]".
     iDestruct (mkf_auth_frag with "Ha Hf") as %Hl.
     iPureIntro. exact (abs_view_lookup I i n a Hl Han).
@@ -679,7 +679,7 @@ Section CreateFire.
        ⌜d = dpin -> av !! dpin = Some a⌝ -∗ nview Γ q dpin a -∗
        Φ av d nm i) -∗
     dlookup_commit_at Γ E Φ.
-  Proof.
+  Proof using .
     iIntros "Hn HΦ". rewrite /dlookup_commit_at.
     iIntros (I d i nm ents nl) "%Hd %Hnm Ha".
     destruct (decide (d = dpin)) as [-> | Hne].
@@ -729,7 +729,7 @@ Section CreateFire.
     (∀ (av : aview) (i : Z),
        ⌜av !! jpin = Some a⌝ -∗ nview (fs_gamma_L γfs) q jpin a -∗ Φ av i) -∗
     aarm_commit_at (fs_gamma_L γfs) E c Φ.
-  Proof.
+  Proof using .
     iIntros "#Hsup Hn HΦ". rewrite /aarm_commit_at.
     iIntros (I i) "%Hnone %Hsome Ha".
     iDestruct (mkf_auth_nview with "Ha Hn") as %Hav.
@@ -745,7 +745,7 @@ Section CreateFire.
     (∀ (av : aview) (i d : Z) (full : bool),
        ⌜av !! jpin = Some a⌝ -∗ nview (fs_gamma_L γfs) q jpin a -∗ Φ av i d full) -∗
     adots_commit_at (fs_gamma_L γfs) E Φ.
-  Proof.
+  Proof using .
     iIntros "#Hsup Hn HΦ". rewrite /adots_commit_at.
     iIntros (I i d full) "%Hrow Ha".
     iDestruct (mkf_auth_nview with "Ha Hn") as %Hav.
@@ -761,7 +761,7 @@ Section CreateFire.
     (∀ (av : aview) (i : Z),
        ⌜av !! jpin = Some a⌝ -∗ nview (fs_gamma_L γfs) q jpin a -∗ Φ av i) -∗
     aunarm_commit_at (fs_gamma_L γfs) E i Φ.
-  Proof.
+  Proof using .
     iIntros "#Hsup Hn HΦ". rewrite /aunarm_commit_at.
     iIntros (I c) "%Hrow Ha".
     iDestruct (mkf_auth_nview with "Ha Hn") as %Hav.
@@ -795,7 +795,7 @@ Section CreateFire.
         ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) (<[i := n']> I) ∗ R)) -∗
     top_frag (fs_gamma_L γfs) i n ={E}=∗
       ireg_armed k t q S ∗ top_frag (fs_gamma_L γfs) i n' ∗ R.
-  Proof.
+  Proof using .
     iIntros (HE Hin) "#Hi #Hai Hrec Hcm Hf". rewrite /ireg_armed.
     (* [γtop (fs_gamma_L γfs)] IS [fs_top γfs] ([FsAbs.ftop_gamma_top], by
        reflexivity), spelled the body's way before the invariant is opened
@@ -839,7 +839,7 @@ Section CreateFire.
        (ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) (<[i := n']> I) ={appE}=∗
         ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) (<[i := n']> I) ∗ R)) -∗
     top_frag (fs_gamma_L γfs) i n ={E}=∗ top_frag (fs_gamma_L γfs) i n' ∗ R.
-  Proof.
+  Proof using .
     iIntros (HE Hloc) "#Hi #Hai Hcm Hf".
     rewrite /top_frag /fs_gamma_L /=.
     iMod (inv_acc E ftopN with "Hi") as "[Hbody Hclose]"; [solve_ndisj |].
@@ -882,7 +882,7 @@ Section CreateFire.
     pf_at (aarm_commit_at (fs_gamma_L γfs) appE c) Farm -∗
     top_frag (fs_gamma_L γfs) i n ={E}=∗
       ireg_armed k t q S ∗ top_frag (fs_gamma_L γfs) i n' ∗ cre_arm_fired Farm i.
-  Proof.
+  Proof using .
     iIntros (HE Hin Hnone Hrow) "#Hi #Hai Hrec Hcm Hf".
     (* THE PIECE IS SPENT: the fire eliminates to the AU side and the
        refund goes with the arm that did not happen. *)
@@ -918,7 +918,7 @@ Section CreateFire.
     top_frag (fs_gamma_L γfs) i n ={E}=∗
       ireg_armed k t q S ∗ top_frag (fs_gamma_L γfs) i n'
       ∗ cre_dots_fired Fdots i d full.
-  Proof.
+  Proof using .
     iIntros (HE Hin Hrow Hrow') "#Hi #Hai Hrec Hcm Hf".
     iDestruct (pf_at_au with "Hcm") as "Hcm".
     iApply (caf_armed_retag γfs E k t q S i n n' _ HE Hin
@@ -951,7 +951,7 @@ Section CreateFire.
     aunarm_commit_at (fs_gamma_L γfs) appE i Fun.(pf_recv) -∗
     top_frag (fs_gamma_L γfs) i n ={E}=∗
       ireg_armed k t q S ∗ top_frag (fs_gamma_L γfs) i n' ∗ cre_unarm_fired Fun i.
-  Proof.
+  Proof using .
     iIntros (HE Hin Hrow Hnone) "#Hi #Hai Hrec Hcm Hf".
     iApply (caf_armed_retag γfs E k t q S i n n' _ HE Hin
               with "Hi Hai Hrec [Hcm] Hf").
@@ -981,7 +981,7 @@ Section CreateFire.
     aunarm_commit_at (fs_gamma_L γfs) appE i Fun.(pf_recv) -∗
     top_frag (fs_gamma_L γfs) i n ={E}=∗
       top_frag (fs_gamma_L γfs) i n' ∗ cre_unarm_fired Fun i.
-  Proof.
+  Proof using .
     iIntros (HE Hloc Hrow Hnone) "#Hi #Hai Hcm Hf".
     iApply (caf_retag γfs E i n n' _ HE Hloc with "Hi Hai [Hcm] Hf").
     iIntros (I Hlk) "Hta".

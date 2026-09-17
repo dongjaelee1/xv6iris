@@ -264,36 +264,36 @@ Section IcacheEscrow.
 
   Global Instance word2_pointsto_timeless (ktr : CurKtier) (a : Arch.pa) (dq : dfrac) (w : bv 16) :
     Timeless (word2_pointsto (KTR := ktr) a dq w).
-  Proof. rewrite /word2_pointsto. tl_struct. Qed.
+  Proof using . rewrite /word2_pointsto. tl_struct. Qed.
 
   Global Instance word2_pointsto_timeless' (ktr : ktier) (a : Arch.pa) (dq : dfrac) (w : bv 16) :
     Timeless (word2_pointsto (KTR := ktr) a dq w).
-  Proof. exact (word2_pointsto_timeless ktr a dq w). Qed.
+  Proof using . exact (word2_pointsto_timeless ktr a dq w). Qed.
 
   Global Instance inode_meta_timeless (ip : mword 64) (d : dinode) :
     Timeless (inode_meta ip d).
-  Proof. rewrite /inode_meta. tl_struct. Qed.
+  Proof using . rewrite /inode_meta. tl_struct. Qed.
 
   Global Instance inode_addrs_timeless (ip : mword 64) (l : list (bv 32)) :
     Timeless (inode_addrs ip l).
-  Proof. rewrite /inode_addrs. tl_struct. Qed.
+  Proof using . rewrite /inode_addrs. tl_struct. Qed.
 
   Global Instance inode_raw_timeless (ip : mword 64) : Timeless (inode_raw ip).
-  Proof. rewrite /inode_raw. tl_struct. Qed.
+  Proof using . rewrite /inode_raw. tl_struct. Qed.
 
   Global Instance ind_blk_timeless γfs bm : Timeless (ind_blk γfs bm).
-  Proof. rewrite /ind_blk. case_decide; apply _. Qed.
+  Proof using . rewrite /ind_blk. case_decide; apply _. Qed.
 
 
   Global Instance ind_res_timeless γfs bm : Timeless (ind_res γfs bm).
-  Proof. rewrite /ind_res. tl_struct. Qed.
+  Proof using . rewrite /ind_res. tl_struct. Qed.
 
   Global Instance blk_res_timeless γfs w bs : Timeless (blk_res γfs w bs).
-  Proof. rewrite /blk_res. case_decide; apply _. Qed.
+  Proof using . rewrite /blk_res. case_decide; apply _. Qed.
 
   Global Instance inode_blocks_timeless γfs bm data :
     Timeless (inode_blocks γfs bm data).
-  Proof. rewrite /inode_blocks. tl_struct. Qed.
+  Proof using . rewrite /inode_blocks. tl_struct. Qed.
 
   (* full ownership of a 4-byte cell is exclusive AGAINST ANY FRACTION --
      which is what makes the FULL-versus-½ inum cell a discriminator.
@@ -302,7 +302,7 @@ Section IcacheEscrow.
      whole-tree rebuild this additive file does not take.) *)
   Lemma ic_word4_excl (a : Arch.pa) (w1 w2 : bv 32) (dq : dfrac) :
     a ↦₄ w1 -∗ a ↦₄{dq} w2 -∗ False.
-  Proof.
+  Proof using .
     iIntros "H1 H2".
     rewrite !ctx_word4_pointsto_unfold.
     iDestruct "H1" as "[_ H1]". iDestruct "H2" as "[_ H2]".
@@ -337,7 +337,7 @@ Section IcacheEscrow.
   Definition ic_tok (cn : ic_names) (k : nat) : iProp Σ :=
     ghost_var (icn_esc cn k) 1 DepNone.
   Lemma ic_tok_exclusive cn k : ic_tok cn k -∗ ic_tok cn k -∗ False.
-  Proof.
+  Proof using .
     rewrite /ic_tok. iIntros "H1 H2".
     iDestruct (ghost_var_valid_2 with "H1 H2") as %[Hv _].
     iPureIntro. by apply (Qp.not_add_le_l 1 1).
@@ -360,7 +360,7 @@ Section IcacheEscrow.
      into the arm, the other travels with it. *)
   Lemma ic_dep_checkout cn k (d : ic_dep) :
     ic_dep_neutral cn k ==∗ ic_deposit cn k d ∗ ic_deposit cn k d.
-  Proof.
+  Proof using .
     rewrite /ic_dep_neutral /ic_deposit. iIntros "H".
     iMod (ghost_var_update d with "H") as "H".
     iModIntro. iDestruct "H" as "[H1 H2]". iFrame.
@@ -371,7 +371,7 @@ Section IcacheEscrow.
      releasesleep. *)
   Lemma ic_dep_park cn k (d1 d2 : ic_dep) :
     ic_deposit cn k d1 -∗ ic_deposit cn k d2 ==∗ ⌜d1 = d2⌝ ∗ ic_dep_neutral cn k.
-  Proof.
+  Proof using .
     rewrite /ic_deposit /ic_dep_neutral. iIntros "H1 H2".
     iDestruct (ghost_var_agree with "H1 H2") as %<-.
     iMod (ghost_var_update_halves DepNone with "H1 H2") as "[H1 H2]".
@@ -381,12 +381,12 @@ Section IcacheEscrow.
 
   Lemma ic_deposit_agree cn k d1 d2 :
     ic_deposit cn k d1 -∗ ic_deposit cn k d2 -∗ ⌜d1 = d2⌝.
-  Proof. rewrite /ic_deposit. iIntros "H1 H2". by iApply (ghost_var_agree with "H1 H2"). Qed.
+  Proof using . rewrite /ic_deposit. iIntros "H1 H2". by iApply (ghost_var_agree with "H1 H2"). Qed.
 
   Global Instance ic_tok_timeless cn k : Timeless (ic_tok cn k).
-  Proof. rewrite /ic_tok. tl_struct. Qed.
+  Proof using . rewrite /ic_tok. tl_struct. Qed.
   Global Instance ic_deposit_timeless cn k d : Timeless (ic_deposit cn k d).
-  Proof. rewrite /ic_deposit. tl_struct. Qed.
+  Proof using . rewrite /ic_deposit. tl_struct. Qed.
 
   (* ---- ...AND THE IDENTIFICATION AGREEMENT (§13.8) ------------------- *)
 
@@ -421,12 +421,12 @@ Section IcacheEscrow.
 
   Global Instance ic_id_timeless cn k q v dev inum :
     Timeless (ic_id cn k q v dev inum).
-  Proof. rewrite /ic_id. tl_struct. Qed.
+  Proof using . rewrite /ic_id. tl_struct. Qed.
 
   Lemma ic_id_agree cn k q1 q2 v1 d1 n1 v2 d2 n2 :
     ic_id cn k q1 v1 d1 n1 -∗ ic_id cn k q2 v2 d2 n2 -∗
     ⌜v1 = v2 /\ d1 = d2 /\ n1 = n2⌝.
-  Proof.
+  Proof using .
     rewrite /ic_id. iIntros "H1 H2".
     iDestruct (ghost_var_agree with "H1 H2") as %Heq.
     iPureIntro. by injection Heq.
@@ -440,7 +440,7 @@ Section IcacheEscrow.
   Lemma ic_id_flip cn k (v v' : bool) (d n d' n' : mword 32) :
     ic_id cn k (1/2) v d n -∗ ic_id cn k (1/2) v d n ==∗
     ic_id cn k (1/2) v' d' n' ∗ ic_id cn k (1/2) v' d' n'.
-  Proof.
+  Proof using .
     rewrite /ic_id. iIntros "H1 H2".
     iApply (ghost_var_update_halves (v', d', n') with "H1 H2").
   Qed.
@@ -549,7 +549,7 @@ Section IcacheEscrow.
 
   Global Instance dlinks_timeless γfs self dn bm data :
     Timeless (dlinks γfs self dn bm data).
-  Proof. rewrite /dlinks. tl_struct. Qed.
+  Proof using . rewrite /dlinks. tl_struct. Qed.
 
   Lemma dlinks_open γfs self dn bm data :
     dlinks γfs self dn bm data -∗
@@ -557,7 +557,7 @@ Section IcacheEscrow.
             /\ FsStateInode.node_exact (era_node dn bm data) D⌝
            ∗ FsStateInode.ent_toks (fs_gamma_L γfs) self
                (era_node dn bm data) D.
-  Proof.
+  Proof using .
     iIntros "(%D & %Hd & %Hx & Ht)". iExists D.
     iSplitR; [iPureIntro; split; [exact Hd | exact Hx] |]. iExact "Ht".
   Qed.
@@ -567,7 +567,7 @@ Section IcacheEscrow.
     FsStateInode.node_exact (era_node dn bm data) D ->
     FsStateInode.ent_toks (fs_gamma_L γfs) self (era_node dn bm data) D -∗
     dlinks γfs self dn bm data.
-  Proof.
+  Proof using .
     intros Hd Hx. iIntros "H2". iExists D.
     iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |]. iExact "H2".
   Qed.
@@ -576,7 +576,7 @@ Section IcacheEscrow.
      neither does a record whose size is zero (a claim box, a corpse) *)
   Lemma dlinks_not_dir γfs self dn bm data :
     bv_unsigned (di_type dn) <> T_DIR_z -> ⊢ dlinks γfs self dn bm data.
-  Proof.
+  Proof using .
     intros Hne. rewrite /dlinks.
     iApply (FsStateEra.ent_toks_x_era_not_dir _ self dn bm data Hne).
   Qed.
@@ -584,7 +584,7 @@ Section IcacheEscrow.
   Lemma dlinks_size_zero γfs self dn bm data :
     bv_unsigned (di_size dn) = 0 ->
     bv_unsigned (di_nlink dn) <= 1 -> ⊢ dlinks γfs self dn bm data.
-  Proof.
+  Proof using .
     intros Hsz Hnl. rewrite /dlinks.
     iApply (FsStateEra.ent_toks_x_era_nrec0 _ self dn bm data
               ltac:(rewrite Hsz /dir_nrec //)).
@@ -642,7 +642,7 @@ Section IcacheEscrow.
      search short.  Naming the two instances makes the sentence free. *)
   Global Instance ic_inode_leg_timeless γfs dq γi inum n :
     Timeless (ic_inode_leg γfs dq γi inum n).
-  Proof.
+  Proof using .
     rewrite /ic_inode_leg.
     apply bi.sep_timeless;
       [apply FsStateInode.ent_toks_x_timeless
@@ -667,13 +667,13 @@ Section IcacheEscrow.
     ic_inode_leg γfs dq γi inum n -∗
       FsStateInode.ent_toks_x (fs_gamma_L γfs) (bv_unsigned inum) n
       ∗ inode_owned_era_q γfs dq γi inum n.
-  Proof. rewrite /ic_inode_leg. iIntros "[H1 H2]". iFrame. Qed.
+  Proof using . rewrite /ic_inode_leg. iIntros "[H1 H2]". iFrame. Qed.
 
   Lemma ic_inode_leg_intro γfs dq γi (inum : mword 32) n :
     FsStateInode.ent_toks_x (fs_gamma_L γfs) (bv_unsigned inum) n -∗
     inode_owned_era_q γfs dq γi inum n -∗
     ic_inode_leg γfs dq γi inum n.
-  Proof.
+  Proof using .
     rewrite /ic_inode_leg. iIntros "H1 H2".
     iSplitL "H1"; [iExact "H1" | iExact "H2"].
   Qed.
@@ -682,13 +682,13 @@ Section IcacheEscrow.
     ic_inode_leg γfs dq γi inum (era_node dn bm data) -∗
       dlinks γfs (bv_unsigned inum) dn bm data
       ∗ inode_owned_era_q γfs dq γi inum (era_node dn bm data).
-  Proof. rewrite /ic_inode_leg /dlinks. iIntros "[H1 H2]". iFrame. Qed.
+  Proof using . rewrite /ic_inode_leg /dlinks. iIntros "[H1 H2]". iFrame. Qed.
 
   Lemma ic_inode_leg_era_intro γfs dq γi (inum : mword 32) dn bm data :
     dlinks γfs (bv_unsigned inum) dn bm data -∗
     inode_owned_era_q γfs dq γi inum (era_node dn bm data) -∗
     ic_inode_leg γfs dq γi inum (era_node dn bm data).
-  Proof.
+  Proof using .
     rewrite /ic_inode_leg /dlinks. iIntros "H1 H2".
     iSplitL "H1"; [iExact "H1" | iExact "H2"].
   Qed.
@@ -698,7 +698,7 @@ Section IcacheEscrow.
      pair. *)
   Lemma ic_inode_leg_local γfs dq γi (inum : mword 32) n :
     ic_inode_leg γfs dq γi inum n -∗ ⌜inode_local (bv_unsigned inum) n⌝.
-  Proof.
+  Proof using .
     rewrite /ic_inode_leg /inode_owned_era_q.
     iIntros "(_ & _ & _ & _ & $)".
   Qed.
@@ -712,7 +712,7 @@ Section IcacheEscrow.
     ic_inode_leg γfs (DfracOwn 1) γi inum n -∗
     ic_inode_leg γfs (DfracOwn (3/4)) γi inum n
     ∗ inode_rd_era γfs (DfracOwn (1/4)) inum n.
-  Proof.
+  Proof using .
     rewrite /ic_inode_leg. iIntros "[Hte Hn]".
     iDestruct (inode_owned_era_shed_to with "Hn") as "[Hn34 Hn14]".
     iSplitR "Hn14"; [| iExact "Hn14"].
@@ -725,7 +725,7 @@ Section IcacheEscrow.
   Lemma ic_inode_leg_rd_agree γfs dq1 dq2 γi (inum : mword 32) n1 n2 :
     ic_inode_leg γfs dq1 γi inum n1 -∗
     inode_rd_era γfs dq2 inum n2 -∗ ⌜n1 = n2⌝.
-  Proof.
+  Proof using .
     rewrite /ic_inode_leg. iIntros "[_ Hn] Hrd".
     iApply (inode_rd_era_agree with "Hn Hrd").
   Qed.
@@ -734,7 +734,7 @@ Section IcacheEscrow.
     ic_inode_leg γfs (DfracOwn (3/4)) γi inum n -∗
     inode_rd_era γfs (DfracOwn (1/4)) inum n -∗
     ic_inode_leg γfs (DfracOwn 1) γi inum n.
-  Proof.
+  Proof using .
     rewrite /ic_inode_leg. iIntros "[Hte Hn34] Hn14".
     iSplitL "Hte"; [iExact "Hte" |].
     iApply (inode_owned_era_shed_of with "Hn34 Hn14").
@@ -759,7 +759,7 @@ Section IcacheEscrow.
     ∗ ⌜inode_local (bv_unsigned inum) n⌝
     ∗ dinode_at γi inum (fn_rec n)
     ∗ top_frag (fs_gamma_L γfs) (bv_unsigned inum) n.
-  Proof.
+  Proof using .
     rewrite /ic_inode_leg /inode_owned_era_q /FsStateInode.inode_phi_at.
     rewrite -(FsStateInode.inode_dat_1 (fs_gamma_L γfs) n).
     iIntros "(Hte & Hd & Hb & Ht & %Hloc) Hrec".
@@ -783,7 +783,7 @@ Section IcacheEscrow.
     ∗ FsStateInode.inode_dat (fs_gamma_L γfs) n
     ∗ dinode_at γi inum (fn_rec n)
     ∗ top_frag (fs_gamma_L γfs) (bv_unsigned inum) n.
-  Proof.
+  Proof using .
     intros Hv.
     rewrite /ic_inode_leg /inode_owned_era_q.
     rewrite -(FsStateInode.inode_dat_1 (fs_gamma_L γfs) n).
@@ -811,7 +811,7 @@ Section IcacheEscrow.
     FsStateInode.inode_owned (fs_gamma_L γfs) sb (bv_unsigned inum) n
     ∗ dinode_at γi inum (fn_rec n)
     ∗ top_frag (fs_gamma_L γfs) (bv_unsigned inum) n.
-  Proof.
+  Proof using .
     intros Hv.
     (* the range premise, proved with the proofmode context still EMPTY --
        [lia] in a nine-conjunct Iris context is the hygiene rule's case *)
@@ -998,16 +998,16 @@ Section IcacheEscrow.
 
   Global Instance ipool_ord_timeless γfs γi cov logstart inum :
     Timeless (ipool_ord γfs γi cov logstart inum).
-  Proof. rewrite /ipool_ord. tl_struct. Qed.
+  Proof using . rewrite /ipool_ord. tl_struct. Qed.
 
 
   Global Instance ipool_alloc_timeless γfs γi cov logstart inum :
     Timeless (ipool_alloc γfs γi cov logstart inum).
-  Proof. rewrite /ipool_alloc. tl_struct. Qed.
+  Proof using . rewrite /ipool_alloc. tl_struct. Qed.
 
   Global Instance ipool_shape_np_timeless γfs γi cov logstart inum :
     Timeless (ipool_shape_np γfs γi cov logstart inum).
-  Proof. rewrite /ipool_shape_np. tl_struct. Qed.
+  Proof using . rewrite /ipool_shape_np. tl_struct. Qed.
 
   (* A LOADED entry's parked content: the in-memory record [dn] in the five
      metadata cells and the block map in the thirteen addrs cells, with the
@@ -1088,11 +1088,11 @@ Section IcacheEscrow.
 
   Global Instance ic_loaded_timeless γfs γi cov logstart k inum dn bm :
     Timeless (ic_loaded γfs γi cov logstart k inum dn bm).
-  Proof. rewrite /ic_loaded. tl_struct. Qed.
+  Proof using . rewrite /ic_loaded. tl_struct. Qed.
 
   Global Instance ic_unloaded_timeless γfs γi cov logstart k inum :
     Timeless (ic_unloaded γfs γi cov logstart k inum).
-  Proof. rewrite /ic_unloaded. tl_struct. Qed.
+  Proof using . rewrite /ic_unloaded. tl_struct. Qed.
 
   (* ==================================================================== *)
   (*  THE READ ARM (durable-fs-plan.md section 3, [ilock] without a        *)
@@ -1157,11 +1157,11 @@ Section IcacheEscrow.
 
   Global Instance ic_rd_arm_timeless γfs γi cov logstart inum :
     Timeless (ic_rd_arm γfs γi cov logstart inum).
-  Proof. rewrite /ic_rd_arm. tl_struct. Qed.
+  Proof using . rewrite /ic_rd_arm. tl_struct. Qed.
 
   Global Instance ic_rd_held_timeless γfs cov logstart k inum dn bm :
     Timeless (ic_rd_held γfs cov logstart k inum dn bm).
-  Proof. rewrite /ic_rd_held. tl_struct. Qed.
+  Proof using . rewrite /ic_rd_held. tl_struct. Qed.
 
   (* SEALED THE DAY THEY ARE WRITTEN (durable-notes, the [iFrame]-up-to-delta
      rule): both bodies are separating conjunctions over [dlinks] and the era
@@ -1177,7 +1177,7 @@ Section IcacheEscrow.
     ic_loaded γfs γi cov logstart k inum dn bm -∗
     ic_rd_arm γfs γi cov logstart inum
     ∗ ic_rd_held γfs cov logstart k inum dn bm.
-  Proof.
+  Proof using .
     rewrite /ic_loaded /ic_rd_arm /ic_rd_held. iIntros "H".
     iDestruct "H" as (data)
       "(%Hok & %Hdok & %Hddix & %Hdoc & %Hduq & Hleg & Hm & Ha)".
@@ -1204,7 +1204,7 @@ Section IcacheEscrow.
     ic_rd_arm γfs γi cov logstart inum -∗
     ic_rd_held γfs cov logstart k inum dn bm -∗
     ic_loaded γfs γi cov logstart k inum dn bm.
-  Proof.
+  Proof using .
     rewrite /ic_rd_arm /ic_rd_held /ic_loaded.
     iIntros "Harm Hheld".
     iDestruct "Harm" as (dn' bm' data')
@@ -1279,7 +1279,7 @@ Section IcacheEscrow.
 
   Global Instance ic_payload_np_timeless γfs γi cov logstart k inum g v :
     Timeless (ic_payload_np γfs γi cov logstart k inum g v).
-  Proof. rewrite /ic_payload_np. destruct v; tl_struct. Qed.
+  Proof using . rewrite /ic_payload_np. destruct v; tl_struct. Qed.
 
   (* ==================================================================== *)
   (*  THE FREEZE TOKEN RIDES THE PAYLOAD (iclaim-ledger.md §3.1 A-custody, *)
@@ -1330,19 +1330,19 @@ Section IcacheEscrow.
 
   Global Instance ic_payload_timeless γfs γi cov logstart k inum g v :
     Timeless (ic_payload γfs γi cov logstart k inum g v).
-  Proof. rewrite /ic_payload. tl_struct. Qed.
+  Proof using . rewrite /ic_payload. tl_struct. Qed.
 
   Lemma ic_payload_split γfs γi cov logstart k inum g v :
     ic_payload γfs γi cov logstart k inum g v -∗
     ic_payload_np γfs γi cov logstart k inum g v ∗
     ifreeze_off (bv_unsigned inum).
-  Proof. rewrite /ic_payload. iIntros "H". iExact "H". Qed.
+  Proof using . rewrite /ic_payload. iIntros "H". iExact "H". Qed.
 
   Lemma ic_payload_join γfs γi cov logstart k inum g v :
     ic_payload_np γfs γi cov logstart k inum g v -∗
     ifreeze_off (bv_unsigned inum) -∗
     ic_payload γfs γi cov logstart k inum g v.
-  Proof.
+  Proof using .
     rewrite /ic_payload. iIntros "H Ht".
     iSplitL "H"; [iExact "H" | iExact "Ht"].
   Qed.
@@ -1412,9 +1412,9 @@ Section IcacheEscrow.
        hpn_h k (Some (t, q)) ∗ tx_pin icfg_log t q)%I.
 
   Global Instance ic_pin_rest_timeless k : Timeless (ic_pin_rest k).
-  Proof. rewrite /ic_pin_rest. tl_struct. Qed.
+  Proof using . rewrite /ic_pin_rest. tl_struct. Qed.
   Global Instance ic_pin_tx_timeless k : Timeless (ic_pin_tx k).
-  Proof. rewrite /ic_pin_tx. tl_struct. Qed.
+  Proof using . rewrite /ic_pin_tx. tl_struct. Qed.
 
   (* THE REFUTATION THE COMMIT READS, and the whole reason the pin exists:
      an arm inside one of iput's two windows holds a POSITIVE share of some
@@ -1433,7 +1433,7 @@ Section IcacheEscrow.
   Lemma ic_pin_enter k (t : nat) (q : Qp) :
     ic_pin_rest k -∗ t ↪[ln_tx icfg_log]{#q} tt ==∗
     ic_pin_tx k ∗ hpn_h k (Some (t, q)).
-  Proof.
+  Proof using .
     iIntros "Hp Htx". rewrite /ic_pin_rest /ic_pin_tx /tx_pin.
     iMod (hpn_full_update _ _ (Some (t, q)) with "Hp") as "Hp".
     rewrite hpn_split. iDestruct "Hp" as "[Hp1 Hp2]".
@@ -1444,7 +1444,7 @@ Section IcacheEscrow.
   Lemma ic_pin_exit k (t : nat) (q : Qp) :
     hpn_h k (Some (t, q)) -∗ ic_pin_tx k ==∗
     ic_pin_rest k ∗ t ↪[ln_tx icfg_log]{#q} tt.
-  Proof.
+  Proof using .
     iIntros "Hh Hpin". rewrite /ic_pin_tx /ic_pin_rest /tx_pin.
     iDestruct "Hpin" as (t' q') "[Hh' Htx]".
     iDestruct (hpn_agree with "Hh Hh'") as %Heq.
@@ -1477,7 +1477,7 @@ Section IcacheEscrow.
 
   Global Instance ic_payload_arm_timeless γfs γi cov logstart k inum g v :
     Timeless (ic_payload_arm γfs γi cov logstart k inum g v).
-  Proof. rewrite /ic_payload_arm. tl_struct. Qed.
+  Proof using . rewrite /ic_payload_arm. tl_struct. Qed.
 
   (* the ordinary holder's bundle + the arm's liveness half IS an arm's tail,
      on its LEFT alternative *)
@@ -1486,7 +1486,7 @@ Section IcacheEscrow.
     live_gen k (1/2) g -∗
     ic_pin_rest k -∗
     ic_payload_arm γfs γi cov logstart k inum g v.
-  Proof.
+  Proof using .
     rewrite /ic_payload /ic_payload_arm.
     iIntros "[H Ht] Hl Hpin". iLeft. iFrame.
   Qed.
@@ -1497,7 +1497,7 @@ Section IcacheEscrow.
     frzsel k ((1/2)/2)%Qp true -∗
     ic_pin_tx k -∗
     ic_payload_arm γfs γi cov logstart k inum g v.
-  Proof. rewrite /ic_payload_arm. iIntros "Hs Hpin". iRight. iFrame. Qed.
+  Proof using . rewrite /ic_payload_arm. iIntros "Hs Hpin". iRight. iFrame. Qed.
 
   (* THE DECIDER at the free path's two readers (+0x70, +0x8a): the
      [ifreeze_pre] the walk has kept in hand since the mint kills the LEFT
@@ -1512,7 +1512,7 @@ Section IcacheEscrow.
        +0x8a eviction rejoins with the half it has held since the +0x70
        park: the share comes back at the [(t, q)] the arm NAMES. *)
     ic_pin_tx k.
-  Proof.
+  Proof using .
     rewrite /ic_payload_arm. iIntros "Hpre [(_ & Hoff & _) | Hrc]".
     - iExFalso. rewrite /ifreeze_pre /ifreeze_off.
       iApply (ifreeze_excl with "Hpre Hoff").
@@ -1548,12 +1548,12 @@ Section IcacheEscrow.
 
   Global Instance ic_payload_at_timeless γfs γi cov logstart k inum g dn bm :
     Timeless (ic_payload_at γfs γi cov logstart k inum g dn bm).
-  Proof. rewrite /ic_payload_at. tl_struct. Qed.
+  Proof using . rewrite /ic_payload_at. tl_struct. Qed.
 
   Lemma ic_payload_at_pack_np γfs γi cov logstart k inum g dn bm :
     ic_payload_at γfs γi cov logstart k inum g dn bm -∗
     ic_payload_np γfs γi cov logstart k inum g true.
-  Proof.
+  Proof using .
     rewrite /ic_payload_np /ic_payload_at. iIntros "H". iExists dn, bm.
     iExact "H".
   Qed.
@@ -1604,15 +1604,15 @@ Section IcacheEscrow.
 
   Global Instance ic_dep_own_timeless k d dev inum :
     Timeless (ic_dep_own k d dev inum).
-  Proof. rewrite /ic_dep_own. destruct d; tl_struct. Qed.
+  Proof using . rewrite /ic_dep_own. destruct d; tl_struct. Qed.
 
   Global Instance ic_dep_half_timeless k d :
     Timeless (ic_dep_half k d).
-  Proof. rewrite /ic_dep_half. destruct d; tl_struct. Qed.
+  Proof using . rewrite /ic_dep_half. destruct d; tl_struct. Qed.
 
   Global Instance ic_dep_res_timeless k d dev inum :
     Timeless (ic_dep_res k d dev inum).
-  Proof. rewrite /ic_dep_res. tl_struct. Qed.
+  Proof using . rewrite /ic_dep_res. tl_struct. Qed.
 
   (* the descriptor's generation is the one its slice names -- the bridge
      between the pure [IcacheRefDefs.ic_dep_gname] side condition every swap
@@ -1620,7 +1620,7 @@ Section IcacheEscrow.
   Lemma ic_dep_half_gname k d :
     ic_dep_half k d -∗
     ∃ g : gname, ⌜ic_dep_gname d = Some g⌝ ∗ live_gen k (1/2) g.
-  Proof.
+  Proof using .
     rewrite /ic_dep_half /ic_dep_gname.
     destruct d as [| qf dv nu | s dv nu g lo t q | s dv nu g lo];
       [iIntros "[]" | iIntros "[]" | |];
@@ -1636,7 +1636,7 @@ Section IcacheEscrow.
     ∃ f : Qp,
       inode_ident k (DfracOwn f) dev inum ∗
       (inode_ident k (DfracOwn f) dev inum -∗ ic_dep_own k d dev inum).
-  Proof.
+  Proof using .
     rewrite /ic_dep_own.
     destruct d as [| qf dv nu | s dv nu g lo t q | s dv nu g lo];
       [iIntros "[]" | iIntros "[]" | |].
@@ -1657,7 +1657,7 @@ Section IcacheEscrow.
   Lemma ic_dep_res_live k d dev inum :
     ic_dep_res k d dev inum -∗
     ∃ s : Qp, live_frac k s ∗ (live_frac k s -∗ ic_dep_res k d dev inum).
-  Proof.
+  Proof using .
     rewrite /ic_dep_res /ic_dep_half /live_frac.
     destruct d as [| qf dv nu | s dv nu g lo t q | s dv nu g lo];
       [iIntros "[[] _]" | iIntros "[[] _]" | |].
@@ -1691,7 +1691,7 @@ Section IcacheEscrow.
       ⌜ic_dep_gname d = Some g⌝ ∗ ⌜ic_dep_lo d = Some lo⌝ ∗
       IcacheRef.live_genlo k s g lo ∗
       (IcacheRef.live_genlo k s g lo -∗ ic_dep_own k d dev inum).
-  Proof.
+  Proof using .
     rewrite /ic_dep_own /ic_dep_gname /ic_dep_lo.
     destruct d as [| qf dv nu | s dv nu g lo t q | s dv nu g lo];
       [iIntros "[]" | iIntros "[]" | |].
@@ -1707,7 +1707,7 @@ Section IcacheEscrow.
 
   Lemma ic_dep_half_intro k d g :
     ic_dep_gname d = Some g -> live_gen k (1/2) g -∗ ic_dep_half k d.
-  Proof.
+  Proof using .
     rewrite /ic_dep_gname /ic_dep_half.
     destruct d as [| qf dv nu | s dv nu g2 lo t q | s dv nu g2 lo];
       intros H;
@@ -1755,21 +1755,21 @@ Section IcacheEscrow.
   Lemma ic_dep_side_of_tx (d : ic_dep) (t : nat) (q : Qp) :
     ic_dep_side_tx d = Some (t, q) ->
     ic_dep_side d = tx_pin icfg_log t q.
-  Proof. rewrite /ic_dep_side. intros ->. reflexivity. Qed.
+  Proof using . rewrite /ic_dep_side. intros ->. reflexivity. Qed.
 
   Global Instance ic_dep_side_timeless d : Timeless (ic_dep_side d).
-  Proof. rewrite /ic_dep_side. apply _. Qed.
+  Proof using . rewrite /ic_dep_side. apply _. Qed.
 
   Lemma ic_dep_gname_of_shr d (s : Qp) (dev inum : mword 32) (g : gname) (lo : nat) :
     ic_dep_shr d = Some (s, dev, inum, g, lo) -> ic_dep_gname d = Some g.
-  Proof.
+  Proof using .
     rewrite /ic_dep_shr /ic_dep_gname.
     destruct d; try discriminate; intros H; injection H as _ _ _ <- _; reflexivity.
   Qed.
 
   Lemma ic_dep_lo_of_shr d (s : Qp) (dev inum : mword 32) (g : gname) (lo : nat) :
     ic_dep_shr d = Some (s, dev, inum, g, lo) -> ic_dep_lo d = Some lo.
-  Proof.
+  Proof using .
     rewrite /ic_dep_shr /ic_dep_lo.
     destruct d; try discriminate; intros H; injection H as _ _ _ _ <-; reflexivity.
   Qed.
@@ -1778,7 +1778,7 @@ Section IcacheEscrow.
     ic_dep_shr d = Some (s, dev, inum, g, lo) ->
     ic_dep_rd d = true ->
     d = DepRd s dev inum g lo.
-  Proof.
+  Proof using .
     rewrite /ic_dep_shr /ic_dep_rd.
     destruct d; try discriminate; intros H _;
       injection H as <- <- <- <- <-; reflexivity.
@@ -1788,7 +1788,7 @@ Section IcacheEscrow.
     ic_dep_shr d = Some (s, dev, inum, g, lo) ->
     inode_shr_genlo_bare k s dev inum g lo -∗ ic_dep_side d -∗
     ic_dep_own k d dev inum.
-  Proof.
+  Proof using .
     rewrite /ic_dep_shr /ic_dep_own /ic_dep_side.
     destruct d; try discriminate; intros H; injection H as <- <- <- <- <-;
       iIntros "Hshr Hpark".
@@ -1869,7 +1869,7 @@ Section IcacheEscrow.
 
   Global Instance ic_out_frz_timeless k d dev inum :
     Timeless (ic_out_frz k d dev inum).
-  Proof. rewrite /ic_out_frz /inode_ident. destruct d; tl_struct. Qed.
+  Proof using . rewrite /ic_out_frz /inode_ident. destruct d; tl_struct. Qed.
 
   (* ...and the refutation the commit reads off it, at the freeze window: a
      [DepFrz] arm holds a positive share of an open transaction's element, so
@@ -1892,11 +1892,11 @@ Section IcacheEscrow.
   Lemma ic_out_rd_none γfs γi cov logstart d inum :
     ic_dep_rd d = false ->
     ic_out_rd γfs γi cov logstart d inum = emp%I.
-  Proof. destruct d; cbn; try reflexivity. discriminate. Qed.
+  Proof using . destruct d; cbn; try reflexivity. discriminate. Qed.
 
   Global Instance ic_out_rd_timeless γfs γi cov logstart d inum :
     Timeless (ic_out_rd γfs γi cov logstart d inum).
-  Proof. rewrite /ic_out_rd. destruct d; tl_struct. Qed.
+  Proof using . rewrite /ic_out_rd. destruct d; tl_struct. Qed.
 
   Local Typeclasses Opaque ic_out_rd.
 
@@ -1920,7 +1920,7 @@ Section IcacheEscrow.
     inode_raw (ientry k) -∗
     ipool_shape_np γfs γi cov logstart inum -∗
     ic_unloaded γfs γi cov logstart k inum.
-  Proof.
+  Proof using .
     iIntros "Hr Hp". rewrite /ic_unloaded.
     iSplitL "Hr"; [iExact "Hr" | iExact "Hp"].
   Qed.
@@ -1957,7 +1957,7 @@ Section IcacheEscrow.
     inode_blocks γfs bm data -∗
     top_frag (fs_gamma_L γfs) (bv_unsigned inum) (era_node dn bm data) -∗
     ic_loaded γfs γi cov logstart k inum dn bm.
-  Proof.
+  Proof using .
     intros Hok Hrl Hdok Hddix Hdoc Hduq.
     iIntros "Hl Hd Hm Ha Hr Hb Ht".
     pose proof (node_shape_ok_of_inode_ok cov logstart dn bm data Hok) as Hsh.
@@ -2021,7 +2021,7 @@ Section IcacheEscrow.
   Lemma ic_loaded_bm_len γfs γi cov logstart k (inum : mword 32)
       (dn : dinode) (bm : blkmap) :
     ic_loaded γfs γi cov logstart k inum dn bm -∗ ⌜length (bm_cells bm) = 13%nat⌝.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /ic_loaded. iDestruct "H" as (data) "(%Hok & _)".
     iPureIntro. destruct Hok as (Hwf & _).
     rewrite /bm_cells length_app (blkmap_wf_dir_len _ _ _ Hwf). reflexivity.
@@ -2031,7 +2031,7 @@ Section IcacheEscrow.
       (dn : dinode) (bm : blkmap) :
     ic_loaded γfs γi cov logstart k inum dn bm -∗
     ic_loaded_flat_body γfs γi cov logstart k inum dn bm.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /ic_loaded /ic_loaded_flat_body.
     iDestruct "H" as (data)
       "(%Hok & %Hdok & %Hddix & %Hdoc & %Hduq & Hleg & Hm & Ha)".
@@ -2058,7 +2058,7 @@ Section IcacheEscrow.
       (dn : dinode) (bm : blkmap) :
     ic_loaded_flat_body γfs γi cov logstart k inum dn bm -∗
     ic_loaded γfs γi cov logstart k inum dn bm.
-  Proof.
+  Proof using .
     rewrite /ic_loaded_flat_body. iIntros "H".
     iDestruct "H" as (data)
       "(%Hok & %Hrl & %Hdok & %Hddix & %Hdoc & %Hduq & Hl & Hd & Hm & Ha & Hr & Hb
@@ -2085,7 +2085,7 @@ Section IcacheEscrow.
        takes it, and the corpse ledger's row in [ipool_body] is the other
        half. *)
     ipool_ext γfs γi cov logstart inum.
-  Proof.
+  Proof using .
     iIntros "Hcnt Hmir #Hesc Htk". rewrite /ipool_ext.
     iSplitL "Hcnt"; [iExact "Hcnt" |].
     iSplitL "Hmir"; [iExact "Hmir" |].
@@ -2115,7 +2115,7 @@ Section IcacheEscrow.
   Lemma ci_inums_spec (ci : gmap nat (mword 32 * mword 32)) (z : Z) :
     z ∈ ci_inums ci <->
     ∃ (k : nat) (p : mword 32 * mword 32), ci !! k = Some p /\ z = bv_unsigned (snd p).
-  Proof.
+  Proof using .
     rewrite /ci_inums elem_of_list_to_set elem_of_list_fmap.
     split.
     - intros ([k p] & -> & Hin). exists k, p.
@@ -2130,7 +2130,7 @@ Section IcacheEscrow.
 
   Lemma region_inums_spec (nib : nat) (z : Z) :
     z ∈ region_inums nib <-> 0 <= z < 16 * Z.of_nat nib.
-  Proof.
+  Proof using .
     rewrite /region_inums elem_of_list_to_set elem_of_list_fmap.
     split.
     - intros (j & -> & Hj). apply elem_of_seq in Hj. lia.
@@ -2192,7 +2192,7 @@ Section IcacheEscrow.
     (16 * Z.of_nat nib <= 2 ^ 32) ->
     z ∈ region_inums nib ->
     bv_unsigned (mword_of_int z : mword 32) = z.
-  Proof.
+  Proof using .
     intros Hnib Hz. apply region_inums_spec in Hz.
     apply moi32_small. lia.
   Qed.
@@ -2241,7 +2241,7 @@ Section IcacheEscrow.
 
   Global Instance ipool_rows_timeless γfs γi cov logstart P :
     Timeless (ipool_rows γfs γi cov logstart P).
-  Proof. rewrite /ipool_rows. tl_struct. Qed.
+  Proof using . rewrite /ipool_rows. tl_struct. Qed.
 
   (* THE RESIDENCY KEY.  Two halves at [icfg_pool] (ambient, see
      [IcacheRef]): one inside the invariant, one under the itable lock, so
@@ -2348,7 +2348,7 @@ Section IcacheEscrow.
     tx_pins icfg_log T.
 
   Global Instance ipool_transit_timeless T : Timeless (ipool_transit T).
-  Proof. rewrite /ipool_transit. tl_struct. Qed.
+  Proof using . rewrite /ipool_transit. tl_struct. Qed.
 
   (* THE REFUTATION THE COMMIT READS, and the whole reason the ledger exists:
      every inum in transit has a POSITIVE share of some transaction's [ln_tx]
@@ -2413,13 +2413,13 @@ Section IcacheEscrow.
     ([∗ map] z ↦ v ∈ K, crp_row γi z v)%I.
 
   Global Instance crp_row_timeless γi z v : Timeless (crp_row γi z v).
-  Proof. destruct v; rewrite /crp_row; apply _. Qed.
+  Proof using . destruct v; rewrite /crp_row; apply _. Qed.
 
   Global Instance ipool_corpse_timeless γi K : Timeless (ipool_corpse γi K).
-  Proof. rewrite /ipool_corpse. tl_struct. Qed.
+  Proof using . rewrite /ipool_corpse. tl_struct. Qed.
 
   Global Instance ipool_ckey_timeless K : Timeless (ipool_ckey K).
-  Proof. rewrite /ipool_ckey. tl_struct. Qed.
+  Proof using . rewrite /ipool_ckey. tl_struct. Qed.
 
   (* THE WHOLE LEDGER, REFUTED ROW BY ROW: a corpse whose deposit has not
      run parks a POSITIVE share of the freeing transaction's element, and at
@@ -2432,7 +2432,7 @@ Section IcacheEscrow.
   Lemma ipool_corpse_no_ops γi (K : gmap Z icorpse) :
     ghost_map_auth (ln_tx icfg_log) 1 (∅ : gmap nat unit) -∗
     ipool_corpse γi K -∗ ⌜map_Forall (fun _ v => v = CrpDep) K⌝.
-  Proof.
+  Proof using .
     rewrite /ipool_corpse.
     iInduction K as [| z v K Hz] "IH" using map_ind.
     { iIntros "_ _". iPureIntro. apply map_Forall_empty. }
@@ -2449,7 +2449,7 @@ Section IcacheEscrow.
   Lemma ipool_corpse_marks γi (K : gmap Z icorpse) :
     map_Forall (fun _ v => v = CrpDep) K ->
     ipool_corpse γi K ⊣⊢ ([∗ set] z ∈ dom K, imark γi z).
-  Proof.
+  Proof using .
     intros HF. rewrite /ipool_corpse -big_sepM_dom.
     apply big_sepM_proper. intros z v Hzv.
     rewrite (HF z v Hzv). done.
@@ -2459,7 +2459,7 @@ Section IcacheEscrow.
      names the inum as a word wants it back. *)
   Lemma ipl_moi_inum (w : mword 32) :
     (mword_of_int (bv_unsigned w) : mword 32) = w.
-  Proof.
+  Proof using .
     apply bv_eq. rewrite moi32_unsigned.
     apply bv_wrap_small. apply bv_unsigned_in_range.
   Qed.
@@ -2469,7 +2469,7 @@ Section IcacheEscrow.
      decidable split on [y = z]. *)
   Lemma gset_move4_out (A B C D : gset Z) (z : Z) :
     z ∈ A -> A ∪ B ∪ C ∪ D = (A ∖ {[z]}) ∪ B ∪ C ∪ (D ∪ {[z]}).
-  Proof.
+  Proof using .
     intros Hz. apply set_eq. intros y.
     rewrite !elem_of_union elem_of_difference elem_of_singleton.
     destruct (decide (y = z)) as [->|Hne]; naive_solver.
@@ -2477,7 +2477,7 @@ Section IcacheEscrow.
 
   Lemma gset_move4_mid (A B C D : gset Z) (z : Z) :
     z ∈ B -> A ∪ B ∪ C ∪ D = A ∪ (B ∖ {[z]}) ∪ C ∪ (D ∪ {[z]}).
-  Proof.
+  Proof using .
     intros Hz. apply set_eq. intros y.
     rewrite !elem_of_union elem_of_difference elem_of_singleton.
     destruct (decide (y = z)) as [->|Hne]; naive_solver.
@@ -2490,7 +2490,7 @@ Section IcacheEscrow.
     ([∗ list] k ↦ p ∈ ids, ic_id cn k (1/4) p.1.1 p.1.2 p.2)%I.
 
   Global Instance ic_ids_timeless cn ids : Timeless (ic_ids cn ids).
-  Proof. rewrite /ic_ids. tl_struct. Qed.
+  Proof using . rewrite /ic_ids. tl_struct. Qed.
 
   (* one slot's contribution to the cached set: its inum when it is live,
      nothing when it is not *)
@@ -2499,7 +2499,7 @@ Section IcacheEscrow.
 
   Lemma ic_id_inum_spec (p : bool * mword 32 * mword 32) (z : Z) :
     z ∈ ic_id_inum p <-> (p.1.1 = true /\ z = bv_unsigned p.2).
-  Proof.
+  Proof using .
     rewrite /ic_id_inum. destruct (p.1.1) eqn:Hv.
     - rewrite elem_of_singleton. split; [by intros -> | by intros [_ ->]].
     - split; [by intros ?%elem_of_empty | by intros [Hc _]].
@@ -2514,7 +2514,7 @@ Section IcacheEscrow.
     z ∈ ic_live_inums ids <->
     ∃ (k : nat) (p : bool * mword 32 * mword 32),
       ids !! k = Some p /\ p.1.1 = true /\ z = bv_unsigned p.2.
-  Proof.
+  Proof using .
     rewrite /ic_live_inums elem_of_list_to_set elem_of_list_omap.
     split.
     - intros (p & Hp & Hf). apply elem_of_list_lookup in Hp as [k Hk].
@@ -2531,7 +2531,7 @@ Section IcacheEscrow.
     ids !! k = Some q ->
     ic_live_inums (<[k := p]> ids) ∪ ic_id_inum q
     = ic_live_inums ids ∪ ic_id_inum p.
-  Proof.
+  Proof using .
     intros Hk.
     assert (Hlen : (k < length ids)%nat)
       by (apply lookup_lt_is_Some; by eexists).
@@ -2562,7 +2562,7 @@ Section IcacheEscrow.
       ic_id cn k (1/4) v d n ∗
       (∀ (v' : bool) (d' n' : mword 32),
          ic_id cn k (1/4) v' d' n' -∗ ic_ids cn (<[k := (v', d', n')]> ids)).
-  Proof.
+  Proof using .
     intros Hk. rewrite /ic_ids.
     iIntros "H".
     iDestruct (big_sepL_insert_acc _ _ k (v, d, n) Hk with "H") as "[Hq Hback]".
@@ -2574,7 +2574,7 @@ Section IcacheEscrow.
     (forall (k : nat) (p : bool * mword 32 * mword 32),
        ids !! k = Some p -> p.1.1 = false) ->
     ic_live_inums ids = ∅.
-  Proof.
+  Proof using .
     intros H. apply set_eq. intros z. rewrite ic_live_inums_lookup.
     split; [| by intros ?%elem_of_empty].
     intros (k & p & Hk & Hv & _). rewrite (H k p Hk) in Hv. discriminate.
@@ -2586,11 +2586,11 @@ Section IcacheEscrow.
     (fun k => (false, (dvs k).1, (dvs k).2)) <$> seq 0 NINODE.
 
   Lemma ic_ids_of_length dvs : length (ic_ids_of dvs) = NINODE.
-  Proof. rewrite /ic_ids_of length_fmap length_seq //. Qed.
+  Proof using . rewrite /ic_ids_of length_fmap length_seq //. Qed.
 
 
   Lemma ic_ids_of_live dvs : ic_live_inums (ic_ids_of dvs) = ∅.
-  Proof.
+  Proof using .
     apply ic_live_inums_none. intros k p Hk.
     rewrite /ic_ids_of list_lookup_fmap in Hk.
     destruct (seq 0 NINODE !! k) as [x |] eqn:Hx; [| discriminate].
@@ -2600,7 +2600,7 @@ Section IcacheEscrow.
   Lemma ic_ids_of_intro cn dvs :
     ([∗ list] k ∈ seq 0 NINODE, ic_id cn k (1/4) false (dvs k).1 (dvs k).2)
     ⊢ ic_ids cn (ic_ids_of dvs).
-  Proof.
+  Proof using .
     rewrite /ic_ids /ic_ids_of big_sepL_fmap.
     iIntros "H". iApply (big_sepL_impl with "H").
     iIntros "!>" (j x Hjx) "Hq".
@@ -2627,7 +2627,7 @@ Section IcacheEscrow.
 
   Global Instance ipool_body_timeless cn γfs γi cov logstart nib :
     Timeless (ipool_body cn γfs γi cov logstart nib).
-  Proof.
+  Proof using .
     rewrite /ipool_body /ipool_key /ipool_xkey /ipool_tkey. tl_struct.
   Qed.
 
@@ -2643,7 +2643,7 @@ Section IcacheEscrow.
 
   Global Instance ipool_inv_persistent cn γfs γi cov logstart nib :
     Persistent (ipool_inv cn γfs γi cov logstart nib).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* WHAT THE LOCK KEEPS, in [ipool]'s own position: the residency key for
      the invariant's index set, the in-transition key at the ext rows plus
@@ -2676,7 +2676,7 @@ Section IcacheEscrow.
     ipool_rows γfs γi cov logstart (region_inums nib) ={E}=∗
       ipool_inv cn γfs γi cov logstart nib ∗
       ipool γfs γi cov logstart (region_inums nib) ∅.
-  Proof.
+  Proof using .
     intros Hlen Hlive. iIntros "Hkey Hxkey Htkey Hckey Hids Hrows".
     iMod (ghost_var_update (region_inums nib) with "Hkey") as "Hkey".
     iAssert (ipool_key (region_inums nib) ∗ ipool_key (region_inums nib))%I
@@ -2723,17 +2723,17 @@ Section IcacheEscrow.
 
   Lemma ic_id_join cn k (q1 q2 : Qp) v d n :
     ic_id cn k q1 v d n -∗ ic_id cn k q2 v d n -∗ ic_id cn k (q1 + q2) v d n.
-  Proof.
+  Proof using .
     rewrite /ic_id. iIntros "H1 H2". iCombine "H1 H2" as "H". iExact "H".
   Qed.
 
   Lemma ic_id_split_q cn k (q1 q2 : Qp) v d n :
     ic_id cn k (q1 + q2) v d n -∗ ic_id cn k q1 v d n ∗ ic_id cn k q2 v d n.
-  Proof. rewrite /ic_id. iApply ghost_var_split. Qed.
+  Proof using . rewrite /ic_id. iApply ghost_var_split. Qed.
 
   Lemma ic_id_quarters_join cn k v d n :
     ic_id cn k (1/4) v d n -∗ ic_id cn k (1/4) v d n -∗ ic_id cn k (1/2) v d n.
-  Proof.
+  Proof using .
     iIntros "H1 H2".
     iDestruct (ic_id_join cn k (1/4) (1/4) with "H1 H2") as "H".
     by rewrite Qp.quarter_quarter.
@@ -2741,7 +2741,7 @@ Section IcacheEscrow.
 
   Lemma ic_id_quarters_split cn k v d n :
     ic_id cn k (1/2) v d n -∗ ic_id cn k (1/4) v d n ∗ ic_id cn k (1/4) v d n.
-  Proof.
+  Proof using .
     iIntros "H". rewrite -Qp.quarter_quarter.
     iApply (ic_id_split_q cn k (1/4) (1/4) with "H").
   Qed.
@@ -2795,7 +2795,7 @@ Section IcacheEscrow.
       (∀ dv1 nu1 : mword 32, ⌜bv_unsigned nu1 = bv_unsigned inum⌝ -∗
          ic_id cn k (1/2) true dv1 nu1 ={E ∖ ↑ipoolN, E}=∗
          ic_id cn k (1/4) true dv1 nu1).
-  Proof.
+  Proof using .
     iIntros (HE HEesc HEreg HEreg2 Hk Hz Hin) "#Hrinv #Hinv H Hq Hl".
     rewrite {1}/ipool.
     iDestruct "H" as (O) "(%Hsub & Hkey & Hxkey & Htkey & Hext)".
@@ -2948,7 +2948,7 @@ Section IcacheEscrow.
       (∀ dv1 nu1 : mword 32,
          ic_id cn k (1/2) false dv1 nu1 -∗ t ↪[ln_tx icfg_log]{#q} tt
          ={E ∖ ↑ipoolN, E}=∗ ic_id cn k (1/4) false dv1 nu1).
-  Proof.
+  Proof using .
     iIntros (HE Hk Hnu0) "#Hinv H Hq". rewrite {1}/ipool.
     iDestruct "H" as (O) "(%Hsub & Hkey & Hxkey & Htkey & Hext)".
     iMod (inv_acc E ipoolN with "Hinv") as "[Hb Hclose]"; [exact HE |].
@@ -3011,7 +3011,7 @@ Section IcacheEscrow.
       (∀ dv1 nu1 : mword 32,
          ic_id cn k (1/2) false dv1 nu1 ={E ∖ ↑ipoolN, E}=∗
          ic_id cn k (1/4) false dv1 nu1).
-  Proof.
+  Proof using .
     iIntros (HE Hk) "#Hinv Hq".
     iMod (inv_acc E ipoolN with "Hinv") as "[Hb Hclose]"; [exact HE |].
     iDestruct "Hb" as ">Hb".
@@ -3062,7 +3062,7 @@ Section IcacheEscrow.
       ipool gfs gi cov logstart ({[z]} ∪ P) ∅ ∗
       (* the share the eviction parked, back at the ledger's own [(t, q)] *)
       t ↪[ln_tx icfg_log]{#q} tt.
-  Proof.
+  Proof using .
     iIntros (HE Hz) "#Hinv Hrow H". rewrite {1}/ipool.
     iDestruct "H" as (O) "(%Hsub & Hkey & Hxkey & Htkey & Hext)".
     assert (Hzo : z ∉ O) by set_solver.
@@ -3118,7 +3118,7 @@ Section IcacheEscrow.
     ipool gfs gi cov logstart P {[z := (t, q)]} ={E}=∗
       ipool gfs gi cov logstart ({[z]} ∪ P) ∅ ∗
       crp_elem z (CrpPre t q).
-  Proof.
+  Proof using .
     iIntros (HE Hz) "#Hinv Hrow H". rewrite {1}/ipool.
     iDestruct "H" as (O) "(%Hsub & Hkey & Hxkey & Htkey & Hext)".
     assert (Hzo : z ∉ O) by set_solver.
@@ -3180,7 +3180,7 @@ Section IcacheEscrow.
     crp_elem z (CrpPre t q) -∗
     imark gi z ={E}=∗
       crp_elem z CrpDep ∗ t ↪[ln_tx icfg_log]{#q} tt.
-  Proof.
+  Proof using .
     iIntros (HE) "#Hinv Hel Hmk".
     iInv "Hinv" as ">Hb" "Hclose".
     iDestruct "Hb" as (O X T ids K)
@@ -3234,7 +3234,7 @@ Section IcacheEscrow.
         ipool_transit T ∗ ipool_corpse γi K ∗
         ((ipool_rows γfs γi cov logstart O ∗ ic_ids cn ids ∗
           ipool_transit T ∗ ipool_corpse γi K) ={E ∖ ↑ipoolN, E}=∗ True).
-  Proof.
+  Proof using .
     iIntros (HE) "#Hinv".
     iMod (inv_acc E ipoolN with "Hinv") as "[Hb Hclose]"; [exact HE |].
     iDestruct "Hb" as ">Hb".
@@ -3294,7 +3294,7 @@ Section IcacheEscrow.
         ([∗ set] z ∈ X, imark γi z) ∗
         ((ipool_rows γfs γi cov logstart O ∗ ic_ids cn ids ∗
           ([∗ set] z ∈ X, imark γi z)) ={E ∖ ↑ipoolN, E}=∗ True).
-  Proof.
+  Proof using .
     iIntros (HE) "#Hinv Htxa".
     iMod (ipool_inv_acc E cn γfs γi cov logstart nib HE with "Hinv")
       as (O X T ids K) "(%Hlen & %Hrow & %Hdk & Hrows & Hids & Htr & Hcrp & Hback)".
@@ -3322,7 +3322,7 @@ Section IcacheEscrow.
     z ∈ O \/ z ∈ X \/
     ∃ (k : nat) (p : bool * mword 32 * mword 32),
       ids !! k = Some p /\ p.1.1 = true /\ bv_unsigned p.2 = z.
-  Proof.
+  Proof using .
     intros Hrow Hz. rewrite Hrow in Hz.
     apply elem_of_union in Hz as [Hz | Hz].
     - apply elem_of_union in Hz as [Hz | Hz]; [by left | by right; left].
@@ -3339,7 +3339,7 @@ Section IcacheEscrow.
       (q : Qp) (v' : bool) (d' n' : mword 32) :
     ids !! k = Some (v, d, n) ->
     ic_ids cn ids -∗ ic_id cn k q v' d' n' -∗ ⌜v' = v /\ d' = d /\ n' = n⌝.
-  Proof.
+  Proof using .
     intros Hk. iIntros "Hids Hq".
     iDestruct (ic_ids_acc cn ids k v d n Hk with "Hids") as "[Hqp _]".
     iApply (ic_id_agree with "Hq Hqp").
@@ -3537,15 +3537,15 @@ Section IcacheBoxAmb.
   (* M-1': the dead header's shape is known *)
   Lemma ic_hdr_dead_raw cn γfs γi cov logstart k x :
     ic_hdr_amb cn γfs γi cov logstart k None x -∗ ⌜x = IcRaw⌝.
-  Proof. iIntros "(% & _)". by iPureIntro. Qed.
+  Proof using . iIntros "(% & _)". by iPureIntro. Qed.
 
   (* F14: the two P_rest entailments the shape-changing (b) needs *)
   Lemma ic_rest_raw_unloaded k g :
     ic_rest_amb k IcRaw ⊣⊢ ic_rest_amb k (IcUnloaded g).
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
   Lemma ic_rest_to_raw k x :
     ic_rest_amb k x ⊢ ic_rest_amb k IcRaw.
-  Proof.
+  Proof using .
     destruct x as [|g|g dn bm]; simpl; [iIntros "H"; iExact "H" | iIntros "H"; iExact "H" |].
     iIntros "(%Hlen & Hm & Ha)". iSplitL "Hm". { iExists dn. iExact "Hm". }
     iExists (bm_cells bm). iFrame "Ha". by iPureIntro.
@@ -3568,17 +3568,17 @@ Section IcacheBoxAmb.
     end.
   Global Instance ic_loaded_ghost_timeless γfs γi cov logstart inum dn bm :
     Timeless (ic_loaded_ghost γfs γi cov logstart inum dn bm).
-  Proof. rewrite /ic_loaded_ghost. tl_struct. Qed.
+  Proof using . rewrite /ic_loaded_ghost. tl_struct. Qed.
   Global Instance ic_pay_timeless γfs γi cov logstart k inum x :
     Timeless (ic_pay γfs γi cov logstart k inum x).
-  Proof. rewrite /ic_pay. destruct x; tl_struct. Qed.
+  Proof using . rewrite /ic_pay. destruct x; tl_struct. Qed.
   Global Instance ic_meta_rest_timeless ip d : Timeless (ic_meta_rest ip d).
-  Proof. rewrite /ic_meta_rest. tl_struct. Qed.
+  Proof using . rewrite /ic_meta_rest. tl_struct. Qed.
   Global Instance ic_rest_amb_timeless k x : Timeless (ic_rest_amb k x).
-  Proof. rewrite /ic_rest_amb. destruct x; tl_struct. Qed.
+  Proof using . rewrite /ic_rest_amb. destruct x; tl_struct. Qed.
   Global Instance ic_hdr_amb_timeless cn γfs γi cov logstart k i x :
     Timeless (ic_hdr_amb cn γfs γi cov logstart k i x).
-  Proof.
+  Proof using .
     rewrite /ic_hdr_amb /inode_ident. destruct i as [[dev inum]|]; [destruct x|]; tl_struct.
   Qed.
 
@@ -3591,7 +3591,7 @@ Section IcacheBoxAmb.
     ic_id cn k (1/4) true dev inum -∗
     ic_hdr_amb cn γfs γi cov logstart k (Some (dev, inum)) (IcLoaded g dn bm) ∗
     ic_rest_amb k (IcLoaded g dn bm).
-  Proof.
+  Proof using .
     iIntros (Hlen) "Hid Hv Hl Hty Hoff Hlg Hgid".
     rewrite /ic_loaded. iDestruct "Hl" as (data) "(%H1 & %H2 & %H3 & %H4 & %H5 & Hleg & Hmeta & Haddr)".
     rewrite /inode_meta. iDestruct "Hmeta" as "(Hty2 & Hmaj & Hmin & Hnl & Hsz)".
@@ -3610,7 +3610,7 @@ Section IcacheBoxAmb.
       ifreeze_off (bv_unsigned inum) ∗ live_gen k (1/2) g)
      ∨ (frzsel k ((1/2)/2)%Qp true ∗ ic_pin_tx k ∗
         inode_meta (ientry k) dn ∗ inode_addrs (ientry k) (bm_cells bm))).
-  Proof.
+  Proof using .
     rewrite /ic_hdr_amb /ic_rest_amb /ic_meta_rest.
     iIntros "(Hv & Hid & Hnl & Hpay & Hgid) (%Hlen & (Hty2 & Hmaj & Hmin & Hsz) & Haddr)".
     iFrame "Hid Hv Hgid". rewrite /ic_pay.
@@ -3631,7 +3631,7 @@ Section IcacheBoxAmb.
     ic_id cn k (1/4) true dev inum -∗
     ic_hdr_amb cn γfs γi cov logstart k (Some (dev, inum)) (IcUnloaded g) ∗
     ic_rest_amb k (IcUnloaded g).
-  Proof.
+  Proof using .
     iIntros "Hid Hv Hnl Hm Ha Hpool Hty Hoff Hlg Hgid".
     rewrite /ic_hdr_amb /ic_rest_amb. iFrame "Hv Hid Hnl Hm Ha Hgid".
     rewrite /ic_pay. iLeft. iFrame "Hpool Hty Hoff Hlg".
@@ -3648,7 +3648,7 @@ Section IcacheBoxAmb.
     ((ipool_shape_np γfs γi cov logstart inum ∗ ity_pending g ∗
       ifreeze_off (bv_unsigned inum) ∗ live_gen k (1/2) g)
      ∨ (frzsel k ((1/2)/2)%Qp true ∗ ic_pin_tx k)).
-  Proof.
+  Proof using .
     rewrite /ic_hdr_amb /ic_rest_amb. iIntros "(Hv & Hid & Hnl & Hpay & Hgid) (Hm & Ha)".
     iFrame "Hid Hv Hnl Hm Ha Hgid". iExact "Hpay".
   Qed.
@@ -3659,14 +3659,14 @@ Section IcacheBoxAmb.
     (∃ n : bv 16, i_nlink (ientry k) ↦₂ n) -∗
     (∃ dev inum : mword 32, ic_id cn k (1/4) false dev inum) -∗
     ic_hdr_amb cn γfs γi cov logstart k None IcRaw.
-  Proof. iIntros "Hv Hid Hnl Hgid". rewrite /ic_hdr_amb. iFrame "Hv Hid Hnl Hgid". done. Qed.
+  Proof using . iIntros "Hv Hid Hnl Hgid". rewrite /ic_hdr_amb. iFrame "Hv Hid Hnl Hgid". done. Qed.
   (* the LOADED bundle's ghost side goes back to the free pool as the
      pool's [np] shape -- the eviction's re-pack (today's
      ic_close_to_empty_core, minus the cells the box keeps) *)
   Lemma ic_loaded_ghost_to_np γfs γi cov logstart (inum : mword 32) (dn : dinode) (bm : blkmap) :
     ic_loaded_ghost γfs γi cov logstart inum dn bm -∗
     ipool_shape_np γfs γi cov logstart inum.
-  Proof.
+  Proof using .
     rewrite /ic_loaded_ghost.
     iIntros "(%data & %Hok & %Hdok & %Hddix & %Hdoc & %Hduq & Hleg)".
     rewrite /ipool_shape_np /ipool_alloc. iLeft. iExists dn, bm, data.
@@ -3686,7 +3686,7 @@ Section IcacheBoxAmb.
     inode_ident k (DfracOwn (1/2)) dev inum ∗
     (inode_ident k (DfracOwn (1/2)) dev inum -∗
      ic_hdr_amb cn γfs γi cov logstart k (Some (dev, inum)) x).
-  Proof.
+  Proof using .
     rewrite /ic_hdr_amb. iIntros "(Hv & Hid & Hnl & Hpay & Hgid)". iFrame "Hid".
     iIntros "Hid". iFrame "Hv Hid Hnl Hpay Hgid".
   Qed.
@@ -3695,7 +3695,7 @@ Section IcacheBoxAmb.
     i_nlink (ientry k) ↦₂ di_nlink dn ∗
     (i_nlink (ientry k) ↦₂ di_nlink dn -∗
      ic_hdr_amb cn γfs γi cov logstart k (Some (dev, inum)) (IcLoaded g dn bm)).
-  Proof.
+  Proof using .
     rewrite /ic_hdr_amb. iIntros "(Hv & Hid & Hnl & Hpay & Hgid)". iFrame "Hnl".
     iIntros "Hnl". iFrame "Hv Hid Hnl Hpay Hgid".
   Qed.
@@ -3707,7 +3707,7 @@ Section IcacheBoxAmb.
     i_valid (ientry k) ↦₄ valid_word (ic_x_loaded x) ∗
     (i_valid (ientry k) ↦₄ valid_word (ic_x_loaded x) -∗
      ic_hdr_amb cn γfs γi cov logstart k (Some (dev, inum)) x).
-  Proof.
+  Proof using .
     rewrite /ic_hdr_amb. iIntros "(Hv & Hid & Hnl & Hpay & Hgid)". iFrame "Hv".
     iIntros "Hv". iFrame "Hv Hid Hnl Hpay Hgid".
   Qed.
@@ -3727,7 +3727,7 @@ Section IcacheBoxAmb.
        ⌜dir_orphan_clean dn data⌝ ∗
        ⌜dir_uniq dn data⌝ ∗
        ic_inode_leg γfs (DfracOwn 1) γi inum (era_node dn bm data).
-  Proof. rewrite /ic_loaded_ghost. iIntros "H". iExact "H". Qed.
+  Proof using . rewrite /ic_loaded_ghost. iIntros "H". iExact "H". Qed.
   Lemma ic_mk_loaded_ghost γfs γi cov logstart (inum : mword 32)
       (dn : dinode) (bm : blkmap) (data : nat -> list (bv 8)) :
     inode_ok cov logstart dn bm data ->
@@ -3737,7 +3737,7 @@ Section IcacheBoxAmb.
     dir_uniq dn data ->
     ic_inode_leg γfs (DfracOwn 1) γi inum (era_node dn bm data) -∗
     ic_loaded_ghost γfs γi cov logstart inum dn bm.
-  Proof.
+  Proof using .
     iIntros (H1 H2 H3 H4 H5) "Hleg". rewrite /ic_loaded_ghost. iExists data.
     iFrame "Hleg". iPureIntro. split_and!; assumption.
   Qed.
@@ -3749,7 +3749,7 @@ Section IcacheBoxAmb.
     ic_loaded γfs γi cov logstart k inum dn bm ⊣⊢
     ic_loaded_ghost γfs γi cov logstart inum dn bm ∗
     inode_meta (ientry k) dn ∗ inode_addrs (ientry k) (bm_cells bm).
-  Proof.
+  Proof using .
     rewrite /ic_loaded /ic_loaded_ghost. iSplit.
     - iIntros "(%data & %H1 & %H2 & %H3 & %H4 & %H5 & Hleg & Hmeta & Haddr)".
       iFrame "Hmeta Haddr". iExists data. iFrame "Hleg". done.
@@ -3765,7 +3765,7 @@ Section IcacheBoxAmb.
     (∃ d : dinode, ic_meta_rest (ientry k) d) -∗
     (∃ l : list (bv 32), ⌜length l = 13%nat⌝ ∗ inode_addrs (ientry k) l) -∗
     inode_raw (ientry k).
-  Proof.
+  Proof using .
     iIntros "(%n & Hnl) (%d & (Hty & Hmaj & Hmin & Hsz)) Ha".
     rewrite /inode_raw. iFrame "Ha".
     iExists (MkDinode (di_type d) (di_major d) (di_minor d) n (di_size d) (di_addrs d)).
@@ -3784,12 +3784,12 @@ Section IcacheBoxAmb.
        inode_rd_era γfs (DfracOwn (1/4)) inum (era_node dn bm data))%I.
   Global Instance ic_rd_held_ghost_timeless γfs cov logstart inum dn bm :
     Timeless (ic_rd_held_ghost γfs cov logstart inum dn bm).
-  Proof. rewrite /ic_rd_held_ghost. tl_struct. Qed.
+  Proof using . rewrite /ic_rd_held_ghost. tl_struct. Qed.
   (* the shed and the join, [ic_loaded_shed]/[ic_rd_join] minus the cells *)
   Lemma ic_loaded_ghost_shed γfs γi cov logstart (inum : mword 32) dn bm :
     ic_loaded_ghost γfs γi cov logstart inum dn bm -∗
     ic_rd_arm γfs γi cov logstart inum ∗ ic_rd_held_ghost γfs cov logstart inum dn bm.
-  Proof.
+  Proof using .
     rewrite /ic_loaded_ghost /ic_rd_arm /ic_rd_held_ghost. iIntros "H".
     iDestruct "H" as (data) "(%Hok & %Hdok & %Hddix & %Hdoc & %Hduq & Hleg)".
     iDestruct (ic_inode_leg_local with "Hleg") as %Hloc.
@@ -3809,7 +3809,7 @@ Section IcacheBoxAmb.
     ic_rd_arm γfs γi cov logstart inum -∗
     ic_rd_held_ghost γfs cov logstart inum dn bm -∗
     ic_loaded_ghost γfs γi cov logstart inum dn bm.
-  Proof.
+  Proof using .
     rewrite /ic_rd_arm /ic_rd_held_ghost /ic_loaded_ghost. iIntros "Harm Hheld".
     iDestruct "Harm" as (dn' bm' data') "(%Hok' & %Hdok & %Hddix & %Hdoc & %Hduq & Hleg)".
     iDestruct "Hheld" as (data) "(%Hok & %Hloc & Hn14)".
@@ -3860,10 +3860,10 @@ Section IcacheBoxAmb.
     end.
   Global Instance ic_pay_held_timeless γfs γi cov logstart k inum rd x :
     Timeless (ic_pay_held γfs γi cov logstart k inum rd x).
-  Proof. rewrite /ic_pay_held. destruct rd; [destruct x; tl_struct | apply _]. Qed.
+  Proof using . rewrite /ic_pay_held. destruct rd; [destruct x; tl_struct | apply _]. Qed.
   Global Instance ic_hdr_held_amb_timeless cn γfs γi cov logstart k rd i x :
     Timeless (ic_hdr_held_amb cn γfs γi cov logstart k rd i x).
-  Proof.
+  Proof using .
     rewrite /ic_hdr_held_amb. destruct i as [[dev inum]|]; [| apply _].
     rewrite /inode_ident. destruct x; tl_struct.
   Qed.
@@ -3873,7 +3873,7 @@ Section IcacheBoxAmb.
     ic_hdr_amb cn γfs γi cov logstart k (Some (dev, inum)) x -∗
     ic_hdr_held_amb cn γfs γi cov logstart k false (Some (dev, inum)) x ∗
     ic_id cn k (1/4) true dev inum.
-  Proof.
+  Proof using .
     rewrite /ic_hdr_amb /ic_hdr_held_amb /ic_pay_held. iIntros "(Hv & Hid & Hnl & Hpay & Hgid)".
     iFrame "Hv Hid Hnl Hpay Hgid".
   Qed.
@@ -3881,7 +3881,7 @@ Section IcacheBoxAmb.
     ic_hdr_held_amb cn γfs γi cov logstart k false (Some (dev, inum)) x -∗
     ic_id cn k (1/4) true dev inum -∗
     ic_hdr_amb cn γfs γi cov logstart k (Some (dev, inum)) x.
-  Proof.
+  Proof using .
     rewrite /ic_hdr_amb /ic_hdr_held_amb /ic_pay_held. iIntros "(Hv & Hid & Hnl & Hpay) Hgid".
     iFrame "Hv Hid Hnl Hpay Hgid".
   Qed.
@@ -3891,7 +3891,7 @@ Section IcacheBoxAmb.
     ic_id cn k (1/4) true dev inum -∗
     ic_rd_arm γfs γi cov logstart inum -∗
     ic_hdr_amb cn γfs γi cov logstart k (Some (dev, inum)) x.
-  Proof.
+  Proof using .
     rewrite /ic_hdr_amb /ic_hdr_held_amb /ic_pay_held. iIntros "(Hv & Hid & Hnl & Hpay) Hgid Harm".
     destruct x as [|g|g dn bm]; [iDestruct "Hpay" as %[] | iDestruct "Hpay" as %[] |].
     iDestruct "Hpay" as "(Hheld & Hty & Hoff & Hlg)".
@@ -3909,7 +3909,7 @@ Section IcacheBoxAmb.
     ic_hdr_held_amb cn γfs γi cov logstart k true (Some (dev, inum)) x ∗
     ic_id cn k (1/4) true dev inum ∗
     ic_rd_arm γfs γi cov logstart inum ∗ live_genlo k s g lo.
-  Proof.
+  Proof using .
     iIntros (HE Hk) "#Hinv #Hshot Hlv (Hv & Hid & Hnl & Hpay & Hgid)".
     iAssert itable_inv_pinw with "[]" as "#Hinvp". { rewrite /itable_inv_pinw. iExact "Hinv". }
     rewrite /ic_hdr_held_amb /ic_pay_held /ic_pay. destruct x as [|g'|g' dn bm].
@@ -3930,7 +3930,7 @@ Section IcacheBoxAmb.
      token and the liveness half the handle carried -- by arm kind. *)
   Lemma ic_dep_held_bm_len γfs γi cov logstart d k (inum : mword 32) dn bm :
     ic_dep_held γfs γi cov logstart d k inum dn bm -∗ ⌜length (bm_cells bm) = 13%nat⌝.
-  Proof.
+  Proof using .
     rewrite /ic_dep_held. destruct (ic_dep_rd d); [| apply ic_loaded_bm_len].
     rewrite /ic_rd_held. iIntros "H". iDestruct "H" as (data) "(%Hok & _)".
     iPureIntro. destruct Hok as (Hwf & _).
@@ -3946,7 +3946,7 @@ Section IcacheBoxAmb.
     ity_shot g (di_type dn) -∗ ifreeze_off (bv_unsigned inum) -∗ live_gen k (1/2) g -∗
     ic_hdr_held_amb cn γfs γi cov logstart k (ic_dep_rd d) (Some (dev, inum)) (IcLoaded g dn bm) ∗
     ic_rest_amb k (IcLoaded g dn bm).
-  Proof.
+  Proof using .
     iIntros (Hshr Hlen) "Hid Hv Hheld Hty Hoff Hlg".
     rewrite /ic_dep_held /ic_hdr_held_amb /ic_pay_held. destruct (ic_dep_rd d).
     - rewrite /ic_rd_held.
@@ -3972,7 +3972,7 @@ Section IcacheBoxAmb.
     i_valid (ientry k) ↦₄ valid_word (ic_x_loaded x) ∗
     (i_valid (ientry k) ↦₄ valid_word (ic_x_loaded x) -∗
      ic_hdr_held_amb cn γfs γi cov logstart k rd (Some (dev, inum)) x).
-  Proof.
+  Proof using .
     rewrite /ic_hdr_held_amb. iIntros "(Hv & Hid & Hnl & Hpay)". iFrame "Hv".
     iIntros "Hv". iFrame "Hv Hid Hnl Hpay".
   Qed.
@@ -3989,7 +3989,7 @@ Section IcacheBoxAmb.
       ifreeze_off (bv_unsigned inum) ∗ live_gen k (1/2) g)
      ∨ (frzsel k ((1/2)/2)%Qp true ∗ ic_pin_tx k ∗
         inode_meta (ientry k) dn ∗ inode_addrs (ientry k) (bm_cells bm))).
-  Proof.
+  Proof using .
     rewrite /ic_hdr_held_amb /ic_pay_held /ic_rest_amb /ic_meta_rest /ic_dep_held.
     iIntros "(Hv & Hid & Hnl & Hpay) (%Hlen & (Hty2 & Hmaj & Hmin & Hsz) & Haddr)".
     iFrame "Hid Hv". destruct (ic_dep_rd d).
@@ -4015,7 +4015,7 @@ Section IcacheBoxAmb.
     ((ipool_shape_np γfs γi cov logstart inum ∗ ity_pending g ∗
       ifreeze_off (bv_unsigned inum) ∗ live_gen k (1/2) g)
      ∨ (frzsel k ((1/2)/2)%Qp true ∗ ic_pin_tx k)).
-  Proof.
+  Proof using .
     rewrite /ic_hdr_held_amb /ic_pay_held /ic_rest_amb.
     iIntros "(Hv & Hid & Hnl & Hpay) (Hm & Ha)". iFrame "Hid Hv Hnl Hm Ha". iExact "Hpay".
   Qed.
@@ -4052,7 +4052,7 @@ Section IcacheBoxAmb.
     end.
 
   Global Instance ic_hdr_bare_amb_timeless k i x : Timeless (ic_hdr_bare_amb k i x).
-  Proof.
+  Proof using .
     rewrite /ic_hdr_bare_amb.
     destruct i as [[d n]|]; [destruct x|]; tl_struct_amb.
   Qed.
@@ -4075,7 +4075,7 @@ Section IcacheBoxAmb.
          ifreeze_pre rg (bv_unsigned inum))%I
     end.
   Global Instance ic_hdr_frz_amb_timeless cn rg k i x : Timeless (ic_hdr_frz_amb cn rg k i x).
-  Proof. rewrite /ic_hdr_frz_amb. destruct i as [[d n]|]; tl_struct_amb. Qed.
+  Proof using . rewrite /ic_hdr_frz_amb. destruct i as [[d n]|]; tl_struct_amb. Qed.
 End IcacheBoxAmb.
 
 (* ====================================================================== *)
@@ -4099,7 +4099,7 @@ Section IcacheBox.
   Definition ic_hdr_frz cn (rg : frzidx) (k : nat) (i : ic_bid) (x : ic_x) (ξ : CtxId) : iProp Σ :=
     ic_hdr_frz_amb (XI := ξ) cn rg k i x.
   Global Instance ic_hdr_frz_morph cn rg k i x : CtxMorph (ic_hdr_frz cn rg k i x).
-  Proof.
+  Proof using .
     rewrite /ic_hdr_frz /ic_hdr_frz_amb /inode_ident.
     destruct i as [[dev inum]|]; [| apply ctx_morph_const].
     apply ctx_morph_sep; [apply ctx_morph_const|].
@@ -4110,13 +4110,13 @@ Section IcacheBox.
     apply ctx_morph_sep; apply ctx_morph_const.
   Qed.
   Global Instance ic_hdr_frz_timeless cn rg k i x ξ : Timeless (ic_hdr_frz cn rg k i x ξ).
-  Proof. rewrite /ic_hdr_frz. apply _. Qed.
+  Proof using . rewrite /ic_hdr_frz. apply _. Qed.
   Definition ic_rest (k : nat) (x : ic_x) (ξ : CtxId) : iProp Σ :=
     ic_rest_amb (XI := ξ) k x.
 
   (* ---- the client obligations (CtxBox's section Context) ------------ *)
   Global Instance ic_hdr_morph cn γfs γi cov logstart k i x : CtxMorph (ic_hdr cn γfs γi cov logstart k i x).
-  Proof.
+  Proof using .
     rewrite /ic_hdr /ic_hdr_amb /inode_ident.
     destruct i as [[dev inum]|].
     - apply ctx_morph_sep; [apply ctx_morph_word4|].
@@ -4133,7 +4133,7 @@ Section IcacheBox.
         apply ctx_morph_const.
   Qed.
   Global Instance ic_rest_morph k x : CtxMorph (ic_rest k x).
-  Proof.
+  Proof using .
     rewrite /ic_rest /ic_rest_amb /ic_meta_rest /inode_addrs.
     destruct x as [|g|g dn bm].
     1,2: apply ctx_morph_sep;
@@ -4148,13 +4148,13 @@ Section IcacheBox.
       | apply ctx_morph_big_sepL; intros j a; apply ctx_morph_word4].
   Qed.
   Global Instance ic_hdr_timeless cn γfs γi cov logstart k i x ξ : Timeless (ic_hdr cn γfs γi cov logstart k i x ξ).
-  Proof. rewrite /ic_hdr. apply ic_hdr_amb_timeless. Qed.
+  Proof using . rewrite /ic_hdr. apply ic_hdr_amb_timeless. Qed.
   (* the held header as a box λ (P_hdr' of (e′)/(f′)), by arm kind *)
   Definition ic_hdr_held cn (γfs : fs_names) (γi : gname) (cov : gset Z) (logstart : Z)
       (k : nat) (rd : bool) (i : ic_bid) (x : ic_x) (ξ : CtxId) : iProp Σ :=
     ic_hdr_held_amb (XI := ξ) cn γfs γi cov logstart k rd i x.
   Global Instance ic_hdr_held_morph cn γfs γi cov logstart k rd i x : CtxMorph (ic_hdr_held cn γfs γi cov logstart k rd i x).
-  Proof.
+  Proof using .
     destruct i as [[dev inum]|]; [| exact (ic_hdr_morph cn γfs γi cov logstart k None x)].
     rewrite /ic_hdr_held /ic_hdr_held_amb /inode_ident.
     apply ctx_morph_sep; [apply ctx_morph_word4|].
@@ -4165,14 +4165,14 @@ Section IcacheBox.
                 | apply ctx_morph_word2].
   Qed.
   Global Instance ic_hdr_held_timeless cn γfs γi cov logstart k rd i x ξ : Timeless (ic_hdr_held cn γfs γi cov logstart k rd i x ξ).
-  Proof. rewrite /ic_hdr_held. apply ic_hdr_held_amb_timeless. Qed.
+  Proof using . rewrite /ic_hdr_held. apply ic_hdr_held_amb_timeless. Qed.
   (* the read arm's split wand needs the reader's slice and two persistent
      facts INSIDE the box's fupd; they ride the caller residue Qc *)
   Global Instance ic_rest_timeless k x ξ : Timeless (ic_rest k x ξ).
-  Proof. rewrite /ic_rest. apply ic_rest_amb_timeless. Qed.
+  Proof using . rewrite /ic_rest. apply ic_rest_amb_timeless. Qed.
   Lemma ic_hdr_excl cn γfs γi cov logstart k : forall (i i' : ic_bid) (x x' : ic_x) (ξ ξ' : CtxId),
     ic_hdr cn γfs γi cov logstart k i x ξ -∗ ic_hdr cn γfs γi cov logstart k i' x' ξ' -∗ False.
-  Proof.
+  Proof using .
     iIntros (i i' x x' ξ ξ') "H1 H2".
     iAssert (∃ w : mword 32, ctx_word4_pointsto ξ (i_valid (ientry k)) (DfracOwn 1) w)%I
       with "[H1]" as (w1) "H1".
@@ -4188,7 +4188,7 @@ Section IcacheBox.
   Qed.
   Lemma ic_rest_excl k : forall (x x' : ic_x) (ξ ξ' : CtxId),
     ic_rest k x ξ -∗ ic_rest k x' ξ' -∗ False.
-  Proof.
+  Proof using .
     iIntros (x x' ξ ξ') "H1 H2".
     iAssert (∃ w : mword 32, ctx_word4_pointsto ξ (i_size (ientry k)) (DfracOwn 1) w)%I
       with "[H1]" as (w1) "H1".
@@ -4203,7 +4203,7 @@ Section IcacheBox.
     iApply (ctx_word4_excl_x with "H1 H2").
   Qed.
   Lemma ic_tok_excl cn k : ic_tok cn k -∗ ic_tok cn k -∗ False.
-  Proof. apply ic_tok_exclusive. Qed.
+  Proof using . apply ic_tok_exclusive. Qed.
 
   (* THE STITCH'S Q -- main's durable-disk ghost that rides the box while a
      slot is checked out under ip->lock: the arm's half of the descriptor
@@ -4283,26 +4283,26 @@ Section IcacheBox.
     end.
   Global Instance ic_q_side_timeless γfs γi cov logstart k d :
     Timeless (ic_q_side γfs γi cov logstart k d).
-  Proof. rewrite /ic_q_side. destruct d; tl_struct. Qed.
+  Proof using . rewrite /ic_q_side. destruct d; tl_struct. Qed.
   Global Instance ic_q_recycle_timeless cn γfs γi cov logstart k :
     Timeless (ic_q_recycle cn γfs γi cov logstart k).
-  Proof. rewrite /ic_q_recycle. tl_struct. Qed.
+  Proof using . rewrite /ic_q_recycle. tl_struct. Qed.
   Global Instance ic_q1_timeless cn γfs γi cov logstart k c :
     Timeless (ic_q1 cn γfs γi cov logstart k c).
-  Proof. rewrite /ic_q1. destruct c; apply _. Qed.
+  Proof using . rewrite /ic_q1. destruct c; apply _. Qed.
   Global Instance ic_q2_timeless cn γfs γi cov logstart k :
     Timeless (ic_q2 cn γfs γi cov logstart k).
-  Proof. rewrite /ic_q2. tl_struct. Qed.
+  Proof using . rewrite /ic_q2. tl_struct. Qed.
   Lemma ic_q1_0 cn γfs γi cov logstart k :
     ic_q1 cn γfs γi cov logstart k 0%nat = ic_q_recycle cn γfs γi cov logstart k.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
   Lemma ic_q1_S cn γfs γi cov logstart k c : ic_q1 cn γfs γi cov logstart k (S c) = ic_pin_tx k.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
   Lemma ic_q2_intro cn γfs γi cov logstart k d dev inum :
     ic_dep_id d = Some (dev, inum) ->
     ic_deposit cn k d -∗ ic_q_side γfs γi cov logstart k d -∗ ic_id cn k (1/4) true dev inum -∗
     ic_q2 cn γfs γi cov logstart k.
-  Proof. iIntros (Hid) "Hd Hs Hq". rewrite /ic_q2. iExists d, dev, inum. iFrame. done. Qed.
+  Proof using . iIntros (Hid) "Hd Hs Hq". rewrite /ic_q2. iExists d, dev, inum. iFrame. done. Qed.
   (* THE BOX, per slot: Q1 := ic_q1 (by count), Q2 := ic_q2 (the stitch) *)
   Definition ic_box cn (γfs : fs_names) (γi : gname) (cov : gset Z) (logstart : Z)
       (k : nat) : iProp Σ :=
@@ -4364,10 +4364,10 @@ Section IcacheBox.
     ic_boxes_all cn γfs γi cov logstart.
   Global Instance ic_escrow_persistent cn γfs γi cov logstart k :
     Persistent (ic_escrow cn γfs γi cov logstart k).
-  Proof. rewrite /ic_escrow /ic_box. apply _. Qed.
+  Proof using . rewrite /ic_escrow /ic_box. apply _. Qed.
   Global Instance ic_escrows_persistent cn γfs γi cov logstart :
     Persistent (ic_escrows cn γfs γi cov logstart).
-  Proof. rewrite /ic_escrows /ic_boxes_all. apply _. Qed.
+  Proof using . rewrite /ic_escrows /ic_boxes_all. apply _. Qed.
   (* the holder's handle row under its old name (M-4/F7: 21 opaque sites).
      F27: (e) hands the holder P_hdr WHOLE, and the payload ghost's liveness
      half [live_gen k ½ g] is the one piece of it no spec row of ilock's
@@ -4402,26 +4402,26 @@ Section IcacheBox.
   (* the descriptor's PURE projections at a share-bearing descriptor *)
   Lemma ic_dep_id_of_shr d (s : Qp) (dev inum : mword 32) (g : gname) (lo : nat) :
     ic_dep_shr d = Some (s, dev, inum, g, lo) -> ic_dep_id d = Some (dev, inum).
-  Proof.
+  Proof using .
     rewrite /ic_dep_shr /ic_dep_id.
     destruct d; try discriminate; intros H; injection H as _ <- <- _ _; reflexivity.
   Qed.
   Lemma ic_dep_mass_of_shr d (s : Qp) (dev inum : mword 32) (g : gname) (lo : nat) :
     ic_dep_shr d = Some (s, dev, inum, g, lo) -> ic_dep_mass d = s.
-  Proof.
+  Proof using .
     rewrite /ic_dep_shr /ic_dep_mass.
     destruct d; try discriminate; intros H; injection H as <- _ _ _ _; reflexivity.
   Qed.
   Lemma ic_pay_live_of_shr k d (s : Qp) (dev inum : mword 32) (g : gname) (lo : nat) :
     ic_dep_shr d = Some (s, dev, inum, g, lo) -> ic_pay_live k d = live_gen k (1/2) g.
-  Proof.
+  Proof using .
     rewrite /ic_dep_shr /ic_pay_live.
     destruct d; try discriminate; intros H; injection H as _ _ _ <- _; reflexivity.
   Qed.
   Lemma ic_body_of_shr k d (s : Qp) (dev inum : mword 32) (g : gname) (lo : nat) :
     ic_dep_shr d = Some (s, dev, inum, g, lo) ->
     ic_body k d = (inode_ident k (DfracOwn s) dev inum ∗ live_genlo k s g lo)%I.
-  Proof.
+  Proof using .
     rewrite /ic_dep_shr /ic_body.
     destruct d; try discriminate; intros H; injection H as <- <- <- <- <-; reflexivity.
   Qed.
@@ -4480,7 +4480,7 @@ Section IcacheBox.
 
   Global Instance ic_tx_dep_timeless cn k s dev inum g lo :
     Timeless (ic_tx_dep cn k s dev inum g lo).
-  Proof. rewrite /ic_tx_dep. tl_struct. Qed.
+  Proof using . rewrite /ic_tx_dep. tl_struct. Qed.
 
 
 
@@ -4488,7 +4488,7 @@ Section IcacheBox.
     ic_handle cn k (DepTx s dev inum g lo t (1/2)) -∗
     t ↪[ln_tx icfg_log]{#(1/2)} tt -∗
     ic_tx_dep cn k s dev inum g lo.
-  Proof. iIntros "Hd Ht". iExists t. iFrame. Qed.
+  Proof using . iIntros "Hd Ht". iExists t. iFrame. Qed.
 
   (* ------------------------------------------------------------------ *)
   (*  4c-2.  TWO SLOTS AT ONE TRANSACTION (durable-disk B''-tx2)          *)
@@ -4522,7 +4522,7 @@ Section IcacheBox.
   Lemma ic_tx_dep_at_of_half cn k s dev inum g lo :
     ic_tx_dep cn k s dev inum g lo -∗
     ∃ t : nat, ic_tx_dep_at cn k s dev inum g lo t (1/2).
-  Proof.
+  Proof using .
     rewrite /ic_tx_dep /ic_tx_dep_at. iIntros "H".
     iDestruct "H" as (t) "[Hd Ht]". iExists t. iFrame.
   Qed.
@@ -4533,13 +4533,13 @@ Section IcacheBox.
     q = (q1 + q2)%Qp ->
     t ↪[ln_tx icfg_log]{#q} tt -∗
     t ↪[ln_tx icfg_log]{#q1} tt ∗ t ↪[ln_tx icfg_log]{#q2} tt.
-  Proof. intros ->. iIntros "H". iDestruct "H" as "[$ $]". Qed.
+  Proof using . intros ->. iIntros "H". iDestruct "H" as "[$ $]". Qed.
 
   Local Lemma ic_tx_share_join (t : nat) (q q1 q2 : Qp) :
     q = (q1 + q2)%Qp ->
     t ↪[ln_tx icfg_log]{#q1} tt -∗ t ↪[ln_tx icfg_log]{#q2} tt -∗
     t ↪[ln_tx icfg_log]{#q} tt.
-  Proof.
+  Proof using .
     intros ->. iIntros "H1 H2".
     iDestruct (ghost_map_elem_combine with "H1 H2") as "[H _]".
     rewrite dfrac_op_own. iExact "H".
@@ -4568,7 +4568,7 @@ Section IcacheBox.
     t ↪[ln_tx icfg_log]{#q2} tt ={E}=∗
       i_valid (ientry k) ↦₄ valid_word v ∗
       ic_handle cn k (DepTx s dev inum g lo t q).
-  Proof.
+  Proof using .
     iIntros (Hq HE) "#Hesc Hvld (Hd2 & Hpl & Hdep & Htok) Htx".
     iFrame "Hvld".
     rewrite /ic_deposit2. cbn [ic_dep_id ic_dep_mass].
@@ -4607,7 +4607,7 @@ Section IcacheBox.
       i_valid (ientry k) ↦₄ valid_word v ∗
       ic_handle cn k (DepTx s dev inum g lo t q1) ∗
       t ↪[ln_tx icfg_log]{#q2} tt.
-  Proof.
+  Proof using .
     iIntros (Hq HE) "#Hesc Hvld (Hd2 & Hpl & Hdep & Htok)".
     iFrame "Hvld".
     rewrite /ic_deposit2. cbn [ic_dep_id ic_dep_mass].
@@ -4644,7 +4644,7 @@ Section IcacheBox.
       ic_tok cn k ∗ ic_dep_neutral cn k ∗
       off_rows off_cfg k ξ)%I.
   Global Instance ic_slp_morph cn k : CtxMorph (ic_slp cn k).
-  Proof.
+  Proof using .
     rewrite /ic_slp. apply ctx_morph_exist => s.
     apply ctx_morph_sep; [apply _ |].
     apply ctx_morph_sep; [apply ctx_morph_const |].
@@ -4664,10 +4664,10 @@ Section IcacheBox.
        ic_tok cn k ∗ ic_regp k (L2Reg Tp None) ∗ ic_dep_neutral cn k ∗
        off_rows_dep off_cfg k T)%I.
   Lemma ic_slp_dep_llb cn k T : ic_slp_dep cn k T -∗ llb loglen_name T.
-  Proof. iIntros "(% & _ & #H & _)". iExact "H". Qed.
+  Proof using . iIntros "(% & _ & #H & _)". iExact "H". Qed.
   Lemma ic_slp_fold cn k T (ξ : CtxId) :
     ic_slp_dep cn k T ∗ ctx_floor ξ T ⊢ ic_slp cn k ξ.
-  Proof.
+  Proof using .
     iIntros "[(%Tp & %HTp & #Hllb & Ht & Hrp & Hn & Hoff) #Hfl]".
     rewrite /ic_slp. iExists (L2Reg Tp None).
     iSplitL "Hrp".
@@ -4681,7 +4681,7 @@ Section IcacheBox.
     iSplitL "Hoff"; [iExact "Hoff" | iExact "Hfl"].
   Qed.
   Global Instance ic_slp_dep_morph cn k T' : CtxMorph (fun _ => ic_slp_dep cn k T').
-  Proof. apply ctx_morph_const. Qed.
+  Proof using . apply ctx_morph_const. Qed.
 
   (* [off_rows_dep] is monotone in its bound, given the bigger bound's own
      [llb] -- what the genin releases need to lift the off rows from their
@@ -4691,7 +4691,7 @@ Section IcacheBox.
   Lemma off_rows_dep_le (i : nat) (T T' : nat) :
     (T <= T')%nat ->
     llb loglen_name T' -∗ off_rows_dep off_cfg i T -∗ off_rows_dep off_cfg i T'.
-  Proof.
+  Proof using .
     iIntros (Hle) "#Hllb (%L & Hauth & _ & Hset)".
     iExists L. iFrame "Hauth Hllb".
     iApply (big_sepS_impl with "Hset"). iIntros "!>" (γ _) "(%s & Hp & %Hh & #Hl & %Hb)".
@@ -4712,7 +4712,7 @@ Section IcacheBox.
     ic_tok cn k -∗ ic_regp k (L2Reg Tp None) -∗ ic_dep_neutral cn k -∗
     off_rows_dep off_cfg k T -∗
     ∃ Tc : nat, ⌜(Tp <= Tc)%nat⌝ ∗ llb loglen_name Tc ∗ ic_slp_dep cn k Tc.
-  Proof.
+  Proof using .
     iIntros "#HllbP Ht Hrp Hn Hdep".
     iAssert (llb loglen_name T) as "#HllbO".
     { iDestruct "Hdep" as (L) "(_ & #H & _)". iExact "H". }
@@ -4730,7 +4730,7 @@ Section IcacheBox.
     ic_tok cn k -∗ ic_regp k (L2Reg Tp None) -∗ ic_dep_neutral cn k -∗
     off_rows off_cfg k ξ -∗
     ∃ T : nat, ⌜(Tp <= T)%nat⌝ ∗ llb loglen_name T ∗ ic_slp_dep cn k T.
-  Proof.
+  Proof using .
     iIntros "#HllbP Ht Hrp Hn Hoff".
     iDestruct (off_rows_to_dep off_cfg k ξ with "Hoff") as (T') "Hdep".
     iAssert (llb loglen_name T') as "#HllbO".
@@ -4779,7 +4779,7 @@ Section IcacheBox.
     ∃ T0 : nat, ⌜(T0 <= Kd)%nat⌝ ∗
       ic_regd k (SlotReg (sr_td r) true None (Some (IcRaw, T0))) ∗
       ic_hdr cn γfs γi cov logstart k None IcRaw ξ.
-  Proof.
+  Proof using .
     iIntros (HE Hw Hid HKd) "#Hbox Hrun #Hfl Hrd Hc Hqr".
     assert (HEk : ↑(icBoxN .@ k) ⊆ E) by (etrans; [apply nclose_subseteq | exact HE]).
     iMod (own_unit (authUR (gmapUR (ic_bid * nat) ufracR)) (bx_stamps (icfg_box k))) as "Hf0".
@@ -4839,7 +4839,7 @@ Section IcacheBox.
     ipool γfs γi cov logstart (P ∖ {[bv_unsigned inum]}) ∅ ∗
     (* the table's half at the NEW identity (the live row's) *)
     ic_id cn k (1/2) true dev inum.
-  Proof.
+  Proof using .
     iIntros (HE HEp HEe HEr HEr2 Hw Hk Hin Hnib) "#Hbox #Hrinv #Hpinv Hrd Hc Hpool HgidT HgidB Hlic".
     iMod (CtxBox.box_q1_update (ic_hdr cn γfs γi cov logstart k) (ic_rest k)
             (ic_q1 cn γfs γi cov logstart k) (ic_q2 cn γfs γi cov logstart k)
@@ -4895,7 +4895,7 @@ Section IcacheBox.
       ic_cnt k 1 ∗
       ic_ref_stamps k dev inum 1%Qp ∗
       llb loglen_name T'.
-  Proof.
+  Proof using .
     iIntros (HE Hw Hx) "#Hbox Hrun Hrd Hc Hbare Hpend Hfoff Hlvh Hgid".
     assert (HEk : ↑(icBoxN .@ k) ⊆ E) by (etrans; [apply nclose_subseteq | exact HE]).
     assert (Hhook : ∀ ξb : CtxId,
@@ -4944,7 +4944,7 @@ Section IcacheBox.
     ic_box cn γfs γi cov logstart k -∗
     ic_regd k r -∗ ic_cnt k (S c) ={E}=∗
     ic_regd k r ∗ ic_cnt k (S (S c)) ∗ ic_ref_stamps k dev inum 1%Qp.
-  Proof.
+  Proof using .
     iIntros (HE Hw Hid) "#Hbox Hrd Hc".
     assert (HEk : ↑(icBoxN .@ k) ⊆ E) by (etrans; [apply nclose_subseteq | exact HE]).
     iMod (CtxBox.box_ref_incr (ic_hdr cn γfs γi cov logstart k) (ic_rest k) (ic_q1 cn γfs γi cov logstart k) (ic_q2 cn γfs γi cov logstart k)
@@ -4965,7 +4965,7 @@ Section IcacheBox.
     ∃ td' : nat, ⌜(sr_td r <= td')%nat⌝ ∗
       ic_regd k (SlotReg td' false (sr_ident r) (sr_x r)) ∗ ic_cnt k c ∗
       llb loglen_name td'.
-  Proof.
+  Proof using .
     iIntros (HE Hw) "#Hbox Hrd #Hllb Hc Href". iDestruct "Href" as (m) "[%Hm Href]".
     assert (HEk : ↑(icBoxN .@ k) ⊆ E) by (etrans; [apply nclose_subseteq | exact HE]).
     assert (Hq : qsum m = nat_Qc 1) by (rewrite Hm Qp_to_Qc_1 nat_Qc_1; reflexivity).
@@ -4987,14 +4987,14 @@ Section IcacheBox.
   Lemma ic_dep_side_q_side γfs γi cov logstart k d (s : Qp) (dev inum : mword 32) (g : gname) (lo : nat) :
     ic_dep_shr d = Some (s, dev, inum, g, lo) -> ic_dep_rd d = false ->
     ic_dep_side d -∗ ic_q_side γfs γi cov logstart k d.
-  Proof.
+  Proof using .
     rewrite /ic_q_side /ic_dep_side /ic_dep_side_tx /tx_pin_o /ic_dep_shr /ic_dep_rd.
     destruct d; try discriminate; intros _ _; iIntros "H"; iExact "H".
   Qed.
   Lemma ic_park_side_dep_side γfs γi cov logstart k d (s : Qp) (dev inum : mword 32) (g : gname) (lo : nat) :
     ic_dep_shr d = Some (s, dev, inum, g, lo) ->
     ic_park_side γfs γi cov logstart k d -∗ ic_dep_side d.
-  Proof.
+  Proof using .
     rewrite /ic_park_side /ic_q_side /ic_dep_side /ic_dep_side_tx /tx_pin_o.
     destruct d; try discriminate; intros _; iIntros "H"; [iExact "H" | done].
   Qed.
@@ -5028,7 +5028,7 @@ Section IcacheBox.
     own_context ξ ∗
     (∃ x : ic_x, ic_hdr_held cn γfs γi cov logstart k false (Some (dev, inum)) x ξ ∗ ic_rest k x ξ) ∗
     ic_deposit2 k d.
-  Proof.
+  Proof using .
     iIntros (HE Hid Hrd Hs0 HKp) "#Hbox Hrun #Hflt #Hflp Hbody Href Hd Hs Hrp".
     assert (HEk : ↑(icBoxN .@ k) ⊆ E) by (etrans; [apply nclose_subseteq | exact HE]).
     iDestruct "Href" as (m) "(%Hm & %Hmt & Href)".
@@ -5063,7 +5063,7 @@ Section IcacheBox.
     (ic_hdr_held cn γfs γi cov logstart k true i x ξ ∗ live_genlo k s g lo)%I.
   Global Instance ic_hdr_held_rd_sl_morph cn γfs γi cov logstart k s g lo i x :
     CtxMorph (ic_hdr_held_rd_sl cn γfs γi cov logstart k s g lo i x).
-  Proof. rewrite /ic_hdr_held_rd_sl. apply ctx_morph_sep; [apply _ | apply ctx_morph_const]. Qed.
+  Proof using . rewrite /ic_hdr_held_rd_sl. apply ctx_morph_sep; [apply _ | apply ctx_morph_const]. Qed.
   Lemma ic_checkout_rd `{CID : RiscvLang.CpuId} cn γfs γi cov logstart (k : nat)
       (ξ : CtxId) (s : Qp) (dev inum : mword 32) (g : gname) (lo : nat) (ty : bv 16)
       (s0 : l2_reg ic_bid) (Kt Kp : nat) (E : coPset) :
@@ -5082,7 +5082,7 @@ Section IcacheBox.
     own_context ξ ∗
     (∃ x : ic_x, ic_hdr_held cn γfs γi cov logstart k true (Some (dev, inum)) x ξ ∗ ic_rest k x ξ) ∗
     ic_deposit2 k (DepRd s dev inum g lo).
-  Proof.
+  Proof using .
     iIntros (HE HEi Hk Hs0 HKp) "#Hbox Hrun #Hflt #Hflp #Hinv #Hshot Hbody Href Hd Hrp".
     assert (HEk : ↑(icBoxN .@ k) ⊆ E) by (etrans; [apply nclose_subseteq | exact HE]).
     assert (HEi' : ↑icacheN ⊆ E ∖ ↑(icBoxN .@ k)) by solve_ndisj.
@@ -5137,7 +5137,7 @@ Section IcacheBox.
       CtxBox.reference (X := ic_x) (icfg_box k) (Some (dev, inum))
         {[ (Some (dev, inum), T') := μ ]} ∗
       llb loglen_name T'.
-  Proof.
+  Proof using .
     iIntros (HE Hid) "#Hbox Hrun Hhdr Hrest Hd Hhold".
     assert (HEk : ↑(icBoxN .@ k) ⊆ E) by (etrans; [apply nclose_subseteq | exact HE]).
     iDestruct "Hhold" as (m) "[%Hm Hhold]".
@@ -5185,7 +5185,7 @@ Section IcacheBox.
       CtxBox.reference (X := ic_x) (icfg_box k) (Some (dev, inum))
         {[ (Some (dev, inum), T') := ic_dep_mass d ]} ∗
       llb loglen_name T'.
-  Proof.
+  Proof using .
     iIntros (HE Hid) "#Hbox Hrun Hhdr Hrest Hd Hdep".
     rewrite /ic_deposit2 Hid. iDestruct "Hdep" as "[Hhold Hbody]".
     iMod (ic_park_hold cn γfs γi cov logstart k ξ d dev inum x0 (ic_dep_mass d) E HE Hid
@@ -5213,7 +5213,7 @@ Section IcacheBox.
     ∃ (x0 : ic_x) (T0 : nat), ⌜x0 ≠ IcRaw⌝ ∗ ⌜(T0 <= Nat.max Kd Kt)%nat⌝ ∗
       ic_regd k (SlotReg (sr_td r) true (Some (dev, inum)) (Some (x0, T0))) ∗
       ic_hdr cn γfs γi cov logstart k (Some (dev, inum)) x0 ξ.
-  Proof.
+  Proof using .
     iIntros (HE Hw Hid HKd) "#Hbox Hrun #Hfld #Hflt Hrd Hc Href Hpin".
     assert (HEk : ↑(icBoxN .@ k) ⊆ E) by (etrans; [apply nclose_subseteq | exact HE]).
     iDestruct "Href" as (m) "(%Hm & %Hmt & Href)".
@@ -5254,7 +5254,7 @@ Section IcacheBox.
     ∃ (x0 : ic_x) (T0 : nat), ⌜(T0 <= Nat.max Kd Kt)%nat⌝ ∗
       ic_regd k (SlotReg (sr_td r) true (Some (dev, inum)) (Some (x0, T0))) ∗
       ic_hdr_frz cn rg k (Some (dev, inum)) x0 ξ.
-  Proof.
+  Proof using .
     iIntros (HE Hw Hid HKd) "#Hbox Hrun #Hfld #Hflt Hrd Hc Href Hpre".
     assert (HEk : ↑(icBoxN .@ k) ⊆ E) by (etrans; [apply nclose_subseteq | exact HE]).
     iDestruct "Href" as (m) "(%Hm & %Hmt & Href)".
@@ -5307,7 +5307,7 @@ Section IcacheBox.
       CtxBox.reference (X := ic_x) (icfg_box k) (Some (dev, inum))
         {[ (Some (dev, inum), T') := 1%Qp ]} ∗
       llb loglen_name T'.
-  Proof.
+  Proof using .
     iIntros (HE) "#Hbox Hrun Hbare Hrest Hd Hpin Hhold".
     assert (HEk : ↑(icBoxN .@ k) ⊆ E) by (etrans; [apply nclose_subseteq | exact HE]).
     iDestruct "Hhold" as (m) "[%Hm Hhold]".
@@ -5357,7 +5357,7 @@ Section IcacheBox.
       ic_cnt k 1 ∗
       ic_ref_stamps k dev inum 1%Qp ∗
       llb loglen_name T'.
-  Proof.
+  Proof using .
     iIntros (HE Hw Hx Hid) "#Hbox Hrun Hrd Hc Hhdr".
     assert (HEk : ↑(icBoxN .@ k) ⊆ E) by (etrans; [apply nclose_subseteq | exact HE]).
     iMod (CtxBox.box_deposit_L1 (ic_hdr cn γfs γi cov logstart k) (ic_rest k) (ic_q1 cn γfs γi cov logstart k) (ic_q2 cn γfs γi cov logstart k)
@@ -5389,7 +5389,7 @@ Section IcacheBox.
       ic_cnt k 1 ∗
       ic_ref_stamps k dev inum 1%Qp ∗
       llb loglen_name T'.
-  Proof.
+  Proof using .
     iIntros (HE Hw Hx Hid) "#Hbox Hrun Hrd Hc Hhdr".
     assert (HEk : ↑(icBoxN .@ k) ⊆ E) by (etrans; [apply nclose_subseteq | exact HE]).
     iMod (CtxBox.box_deposit_L1_shape (ic_hdr cn γfs γi cov logstart k) (ic_rest k) (ic_q1 cn γfs γi cov logstart k) (ic_q2 cn γfs γi cov logstart k)
@@ -5422,7 +5422,7 @@ Section IcacheBox.
       (∃ m : gmap (ic_bid * nat) ufrac, ⌜qsum m = Qp_to_Qc 1⌝ ∗
          CtxBox.reference (X := ic_x) (icfg_box k) None m) ∗
       llb loglen_name T'.
-  Proof.
+  Proof using .
     iIntros (HE Hw Hx) "#Hbox Hrun Hrd Hc Hhdr".
     assert (HEk : ↑(icBoxN .@ k) ⊆ E) by (etrans; [apply nclose_subseteq | exact HE]).
     iMod (CtxBox.box_deposit_L1_shape (ic_hdr cn γfs γi cov logstart k) (ic_rest k) (ic_q1 cn γfs γi cov logstart k) (ic_q2 cn γfs γi cov logstart k)
@@ -5456,7 +5456,7 @@ Section IcacheBox.
     ic_regd k (SlotReg (sr_td r) false (Some (dev, inum)) None) ∗
     ic_cnt k 1 ∗
     ic_hold k dev inum 1%Qp.
-  Proof.
+  Proof using .
     iIntros (HE Hw Hx Hid HTK Hs0) "#Hbox Hrun #Hfl Hrd Hc Hq Hrp".
     assert (HEk : ↑(icBoxN .@ k) ⊆ E) by (etrans; [apply nclose_subseteq | exact HE]).
     iMod (CtxBox.box_l1_to_l2 (ic_hdr cn γfs γi cov logstart k) (ic_rest k) (ic_q1 cn γfs γi cov logstart k) (ic_q2 cn γfs γi cov logstart k)
@@ -5486,7 +5486,7 @@ Section IcacheBox.
     ([∗ list] k ∈ seq 0 NINODE, ∃ T_boot : nat,
        ic_regd k (SlotReg T_boot false None None) ∗ llb loglen_name T_boot ∗
        ic_cnt k 0 ∗ ic_regp k (L2Reg 0 None)).
-  Proof.
+  Proof using .
     iIntros "Hrun Hall".
     iAssert ([∗ list] i↦k ∈ seq 0 NINODE,
                own_context ξ -∗
@@ -5628,7 +5628,7 @@ Section IcacheTable.
      take no context. *)
   Global Instance islot_rest_at_morph (k : nat) (q : Qp) (dev inum : mword 32) :
     CtxMorph (fun ξ => islot_rest_at (XI := ξ) k q dev inum).
-  Proof.
+  Proof using .
     rewrite /islot_rest_at.
     destruct (1/2 - q)%Qp as [q'|].
     - apply inode_ident_morph.
@@ -5637,11 +5637,11 @@ Section IcacheTable.
 
   Global Instance islot_free_at_morph (k : nat) (dev inum : mword 32) :
     CtxMorph (fun ξ => islot_free_at (XI := ξ) k dev inum).
-  Proof. rewrite /islot_free_at. apply inode_ident_morph. Qed.
+  Proof using . rewrite /islot_free_at. apply inode_ident_morph. Qed.
 
   Global Instance islot_empty_morph (cn : ic_names) (k : nat) :
     CtxMorph (fun ξ => islot_empty ξ cn k).
-  Proof.
+  Proof using .
     rewrite /islot_empty.
     apply ctx_morph_exist; intros dev. apply ctx_morph_exist; intros inum.
     apply ctx_morph_sep; [apply islot_free_at_morph |].
@@ -5651,7 +5651,7 @@ Section IcacheTable.
   Global Instance islot2_morph (cn : ic_names) (M : gmap nat (Qp * positive))
       (ci : gmap nat (mword 32 * mword 32)) (k : nat) :
     CtxMorph (fun ξ => islot2 ξ cn M ci k).
-  Proof.
+  Proof using .
     rewrite /islot2.
     destruct (M !! k) as [[q n]|]; destruct (ci !! k) as [[dev inum]|].
     - apply ctx_morph_sep; [apply islot_rest_at_morph |].
@@ -5725,7 +5725,7 @@ Section IcacheTable.
       (k : nat) :
     itable_slot_res_bare ξ tl M ci k ∗ TsoCtx.ctx_floor ξ tl ⊢
     itable_slot_res ξ M ci k.
-  Proof.
+  Proof using .
     rewrite /itable_slot_res_bare /itable_slot_res /ic_slot_row_bare /ic_slot_row_fl.
     iIntros "[[Hrow H] #Hfl]".
     iSplitL "Hrow".
@@ -5759,7 +5759,7 @@ Section IcacheTable.
   Global Instance itable_slot_res_llb_morph (M : gmap nat (Qp * positive))
       (ci : gmap nat (mword 32 * mword 32)) (k : nat) :
     CtxMorph (fun ξ => itable_slot_res_llb ξ M ci k).
-  Proof.
+  Proof using .
     rewrite /itable_slot_res_llb.
     destruct (M !! k) as [[qt n]|].
     - iIntros (ξ ξ') "Hd H". iModIntro. iFrame.
@@ -5773,7 +5773,7 @@ Section IcacheTable.
     Global Instance itable_slot_res_morph (M : gmap nat (Qp * positive))
       (ci : gmap nat (mword 32 * mword 32)) (k : nat) :
     CtxMorph (fun ξ => itable_slot_res ξ M ci k).
-  Proof.
+  Proof using .
     rewrite /itable_slot_res /ic_slot_row_fl.
     iIntros (ξ ξ') "Hd [Hrow H]".
     iDestruct "Hrow" as (tb) "(Hrow & #Hllb & #Hfl)".
@@ -5804,7 +5804,7 @@ Section IcacheTable.
          ⌜forall j, j <> k -> ci' !! j = ci !! j⌝ -∗
          itable_slot_res ξ M' ci' k -∗
          [∗ list] j ∈ seq 0 NINODE, itable_slot_res ξ M' ci' j).
-  Proof.
+  Proof using .
     intros Hk. iIntros "Hs".
     iDestruct (big_sepL_delete _ (seq 0 NINODE) k k
                  ltac:(apply lookup_seq; split; [lia|exact Hk]) with "Hs")
@@ -5825,7 +5825,7 @@ Section IcacheTable.
       (M : gmap nat (Qp * positive)) (ci : gmap nat (mword 32 * mword 32))
       (k : nat) :
     itable_slot_res ξ M ci k ⊢ itable_slot_res_llb ξ M ci k.
-  Proof.
+  Proof using .
     rewrite /itable_slot_res /itable_slot_res_llb /ic_slot_row_fl /ic_slot_row_llb.
     iIntros "[Hrow H]". iSplitL "Hrow".
     { iDestruct "Hrow" as (tb) "(Hrow & #Hllb & _)". iExists tb. iFrame "Hrow Hllb". }
@@ -5850,7 +5850,7 @@ Section IcacheTable.
          ⌜forall j, j <> k -> ci' !! j = ci !! j⌝ -∗
          itable_slot_res_llb ξ M' ci' k -∗
          [∗ list] j ∈ seq 0 NINODE, itable_slot_res_llb ξ M' ci' j).
-  Proof.
+  Proof using .
     intros Hk. iIntros "Hs".
     iDestruct (big_sepL_delete _ (seq 0 NINODE) k k
                  ltac:(apply lookup_seq; split; [lia|exact Hk]) with "Hs")
@@ -5872,7 +5872,7 @@ Section IcacheTable.
       (M : gmap nat (Qp * positive)) (ci : gmap nat (mword 32 * mword 32)) :
     ([∗ list] k ∈ seq 0 NINODE, itable_slot_res ξ M ci k) ⊢
     ([∗ list] k ∈ seq 0 NINODE, itable_slot_res_llb ξ M ci k).
-  Proof.
+  Proof using .
     apply big_sepL_mono. intros n y Hny. apply itable_slot_res_to_llb.
   Qed.
 
@@ -5930,7 +5930,7 @@ Section IcacheTable.
     ([∗ list] k ∈ seq 0 NINODE, islot2 ξ cn M ci k) -∗
     ipool γfs γi cov logstart (region_inums nib ∖ ci_inums ci) ∅ -∗
     itable_res2 ξ cn γfs γi cov logstart nib dv.
-  Proof.
+  Proof using .
     iIntros "Hhalf Hrows Hia Hip Hslots Hpool".
     rewrite /itable_res2. iExists M, ci.
     iSplitL "Hhalf"; [iExact "Hhalf"|].
@@ -5955,7 +5955,7 @@ Section IcacheTable.
     ([∗ list] k ∈ seq 0 NINODE, islot2 ξ cn M ci k) -∗
     ipool γfs γi cov logstart (region_inums nib ∖ ci_inums ci) ∅ -∗
     itable_res2_llb ξ cn γfs γi cov logstart nib dv.
-  Proof.
+  Proof using .
     iIntros "Hhalf Hrows Hia Hip Hslots Hpool".
     rewrite /itable_res2_llb. iExists M, ci.
     iSplitL "Hhalf"; [iExact "Hhalf"|].
@@ -5972,7 +5972,7 @@ Section IcacheTable.
       (γi : gname) (cov : gset Z) (logstart : Z) (nib : nat)
       (dv : mword 32) :
     CtxMorph (fun ξ => itable_res2_llb ξ cn γfs γi cov logstart nib dv).
-  Proof. rewrite /itable_res2_llb. ctx_morph_solve. Qed.
+  Proof using . rewrite /itable_res2_llb. ctx_morph_solve. Qed.
 
   (* THE BARE TABLE: every row's floor stripped and bounded by ONE [tl] --
      what the boot deposits through [newlock_at_llb] (the fifty boot stamps
@@ -5981,7 +5981,7 @@ Section IcacheTable.
   Global Instance itable_slot_res_bare_morph (tl : nat) (M : gmap nat (Qp * positive))
       (ci : gmap nat (mword 32 * mword 32)) (k : nat) :
     CtxMorph (fun ξ => itable_slot_res_bare ξ tl M ci k).
-  Proof.
+  Proof using .
     rewrite /itable_slot_res_bare.
     destruct (M !! k) as [[qt n]|].
     - iIntros (ξ ξ') "Hd H". iModIntro. iFrame.
@@ -6007,14 +6007,14 @@ Section IcacheTable.
   Global Instance itable_res2_bare_morph (tl : nat) (cn : ic_names) (γfs : fs_names)
       (γi : gname) (cov : gset Z) (logstart : Z) (nib : nat) (dv : mword 32) :
     CtxMorph (fun ξ => itable_res2_bare ξ tl cn γfs γi cov logstart nib dv).
-  Proof. rewrite /itable_res2_bare. ctx_morph_solve. Qed.
+  Proof using . rewrite /itable_res2_bare. ctx_morph_solve. Qed.
 
   Lemma itable_res2_of_bare (ξ : CtxIdDefs.CtxId) (tl : nat)
       (cn : ic_names) (γfs : fs_names) (γi : gname)
       (cov : gset Z) (logstart : Z) (nib : nat) (dv : mword 32) :
     itable_res2_bare ξ tl cn γfs γi cov logstart nib dv ∗ TsoCtx.ctx_floor ξ tl ⊢
     itable_res2 ξ cn γfs γi cov logstart nib dv.
-  Proof.
+  Proof using .
     iIntros "[H #Hfl]".
     iDestruct "H" as (M ci) "(Hhalf & Hrows & %Hwf & %Hciwf & Hia & Hip & Hslots & Hpool)".
     (* re-floor the rows FIRST, then hand the six to the constructor: the
@@ -6033,7 +6033,7 @@ Section IcacheTable.
       (k : nat) :
     ctx_stamped ξc T -∗ itable_slot_res_llb ξc M ci k ==∗
     ∃ T' : nat, ctx_stamped ξc T' ∗ itable_slot_res ξc M ci k.
-  Proof.
+  Proof using .
     rewrite /itable_slot_res_llb /itable_slot_res /ic_slot_row_llb /ic_slot_row_fl.
     iIntros "Hpk [Hrow H]".
     iDestruct "Hrow" as (tb) "(Hrow & #Hllb)".
@@ -6057,7 +6057,7 @@ Section IcacheTable.
     ([∗ list] k ∈ l, itable_slot_res_llb ξc M ci k) ==∗
     ∃ T' : nat, ctx_stamped ξc T' ∗
     ([∗ list] k ∈ l, itable_slot_res ξc M ci k).
-  Proof.
+  Proof using .
     iIntros "Hpk Hrows".
     iInduction l as [| k l] "IH" forall (T).
     - iModIntro. iExists T. iFrame "Hpk". done.
@@ -6077,7 +6077,7 @@ Section IcacheTable.
       (dv : mword 32) :
     ⊢ lock_ctx_hook (fun ξ => itable_res2 ξ cn γfs γi cov logstart nib dv)
         (fun ξ => itable_res2_llb ξ cn γfs γi cov logstart nib dv).
-  Proof.
+  Proof using .
     rewrite /lock_ctx_hook. iIntros (ξ T) "Hpk HR".
     iDestruct "HR" as (M ci) "(Hhalf & Hrows & %Hwf & %Hciwf & Hia & Hip &
                                Hslots & Hpool)".
@@ -6093,7 +6093,7 @@ Section IcacheTable.
       (γi : gname) (cov : gset Z) (logstart : Z) (nib : nat)
       (dv : mword 32) :
     CtxMorph (fun ξ => itable_res2 ξ cn γfs γi cov logstart nib dv).
-  Proof. rewrite /itable_res2. ctx_morph_solve. Qed.
+  Proof using . rewrite /itable_res2. ctx_morph_solve. Qed.
 
     Definition is_itable2 (γl : gname) (cn : ic_names) (γfs : fs_names)
       (γi : gname) (cov : gset Z) (logstart : Z) (nib : nat)
@@ -6121,30 +6121,30 @@ Section IcacheTable.
     is_itable2 γl cn γfs γi cov logstart nib dv -∗
     is_lock γl itable_lock "itable"%string
       (fun ξ => itable_res2 ξ cn γfs γi cov logstart nib dv).
-  Proof. iIntros "($ & _ & _ & _)". Qed.
+  Proof using . iIntros "($ & _ & _ & _)". Qed.
 
   Lemma is_itable2_claims (γl : gname) (cn : ic_names) (γfs : fs_names)
       (γi : gname) (cov : gset Z) (logstart : Z) (nib : nat)
       (dv : mword 32) :
     is_itable2 γl cn γfs γi cov logstart nib dv -∗ iref_claims.
-  Proof. iIntros "(_ & $ & _ & _)". Qed.
+  Proof using . iIntros "(_ & $ & _ & _)". Qed.
 
   Lemma is_itable2_escrows (γl : gname) (cn : ic_names) (γfs : fs_names)
       (γi : gname) (cov : gset Z) (logstart : Z) (nib : nat)
       (dv : mword 32) :
     is_itable2 γl cn γfs γi cov logstart nib dv -∗ ic_escrows cn γfs γi cov logstart.
-  Proof. iIntros "(_ & _ & $ & _)". Qed.
+  Proof using . iIntros "(_ & _ & $ & _)". Qed.
   Lemma is_itable2_pool (γl : gname) (cn : ic_names) (γfs : fs_names)
       (γi : gname) (cov : gset Z) (logstart : Z) (nib : nat)
       (dv : mword 32) :
     is_itable2 γl cn γfs γi cov logstart nib dv -∗ ipool_inv cn γfs γi cov logstart nib.
-  Proof. iIntros "(_ & _ & _ & $)". Qed.
+  Proof using . iIntros "(_ & _ & _ & $)". Qed.
 
   Lemma ic_escrows_lookup (cn : ic_names) (γfs : fs_names) (γi : gname)
       (cov : gset Z) (logstart : Z) (k : nat) :
     (k < NINODE)%nat ->
     ic_escrows cn γfs γi cov logstart -∗ ic_escrow cn γfs γi cov logstart k.
-  Proof.
+  Proof using .
     iIntros (Hk) "H". rewrite /ic_escrows /ic_boxes_all /ic_escrow.
     assert (Hl : seq 0 NINODE !! k = Some k) by (rewrite lookup_seq; lia).
     iDestruct (big_sepL_lookup _ _ k k Hl with "H") as "$".
@@ -6152,7 +6152,7 @@ Section IcacheTable.
 
   Global Instance is_itable2_persistent γl cn γfs γi cov logstart nib dv :
     Persistent (is_itable2 γl cn γfs γi cov logstart nib dv).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* the slot accessor a WRITER needs: BOTH pure maps may come back changed,
      provided they changed only at [k].  [big_sepL_delete] over
@@ -6168,7 +6168,7 @@ Section IcacheTable.
          ⌜forall j, j <> k -> ci' !! j = ci !! j⌝ -∗
          islot2 cur_ctx cn M' ci' k -∗
          [∗ list] j ∈ seq 0 NINODE, islot2 cur_ctx cn M' ci' j).
-  Proof.
+  Proof using .
     intros Hk. iIntros "Hs".
     iDestruct (big_sepL_delete _ (seq 0 NINODE) k k
                  ltac:(apply lookup_seq; split; [lia | exact Hk]) with "Hs")
@@ -6215,7 +6215,7 @@ Section IcacheTable.
                            (ic_slp cn k) (slh_tok (icfg_isl k)))%I.
 
   Global Instance ic_sleeplocks_persistent cn : Persistent (ic_sleeplocks cn).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* A BIG-OP UNDER A TRANSPARENT NAME IS AN [iFrame] BOMB (optimization.md,
      the [InodeInv.inode_blocks] entry): [iFrame]'s [Frame] search unfolds a
@@ -6238,7 +6238,7 @@ Section IcacheTable.
     ∃ γil γisl : gname,
       is_sleeplock_genl γil γisl (i_lock (ientry k)) "inode"%string
                         (ic_slp cn k) (slh_tok (icfg_isl k)).
-  Proof.
+  Proof using .
     iIntros (Hk) "H". rewrite /ic_sleeplocks.
     assert (Hl : seq 0 NINODE !! k = Some k) by (rewrite lookup_seq; lia).
     iDestruct (big_sepL_lookup _ _ k k Hl with "H") as "$".
@@ -6266,7 +6266,7 @@ Section IcacheEnvMorph.
      existentials; the payload λ is [ic_slp cn k] ([ic_slp_morph]). *)
   Global Instance ic_sleeplocks_morph (cn : ic_names) :
     CtxMorph (fun ξ : CtxId => (ic_sleeplocks (XI := ξ) cn : iProp Σ)).
-  Proof. rewrite /ic_sleeplocks. ctx_morph_solve. Qed.
+  Proof using . rewrite /ic_sleeplocks. ctx_morph_solve. Qed.
 
   (* THE ITABLE (plan item 28 (c)): the row that could not be stated before
      the SIXTH shape landed.  [itable_res2] used to take the DEFINER's
@@ -6280,7 +6280,7 @@ Section IcacheEnvMorph.
       (γi : gname) (cov : gset Z) (logstart : Z) (nib : nat) (dv : mword 32) :
     CtxMorph (fun ξ : CtxId =>
       (is_itable2 (XI := ξ) γl cn γfs γi cov logstart nib dv : iProp Σ)).
-  Proof. rewrite /is_itable2. ctx_morph_solve. Qed.
+  Proof using . rewrite /is_itable2. ctx_morph_solve. Qed.
 
 End IcacheEnvMorph.
 
@@ -6293,7 +6293,7 @@ Section IcacheEscrowAlloc.
   Context `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ}.
 
   Local Lemma ic_seq_cons (j n : nat) : seq j (S n) = j :: seq (S j) n.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* GNAMES BEFORE THE RECORD (BioInv.tok_fun_alloc): [ic_names] cannot be
      built until every per-entry gname exists, and [ic_tok cn k] -- the
@@ -6303,7 +6303,7 @@ Section IcacheEscrowAlloc.
      [lock_tok_excl (f k)] by construction. *)
   Lemma ic_tok_fun_alloc (n j : nat) :
     ⊢ |==> ∃ f : nat -> gname, [∗ list] k ∈ seq j n, lock_tok_excl (f k).
-  Proof.
+  Proof using .
     iInduction n as [|n IH] forall (j).
     { iModIntro. iExists (fun _ => inhabitant). cbn [seq]. done. }
     iMod lock_tok_excl_alloc as (γ) "Hg".
@@ -6323,7 +6323,7 @@ Section IcacheEscrowAlloc.
   Lemma ic_dep_fun_alloc (n j : nat) :
     ⊢ |==> ∃ f : nat -> gname,
       [∗ list] k ∈ seq j n, ghost_var (f k) 1 DepNone.
-  Proof.
+  Proof using .
     iInduction n as [|n IH] forall (j).
     { iModIntro. iExists (fun _ => inhabitant). cbn [seq]. done. }
     iMod (ghost_var_alloc DepNone) as (γ) "Hg".
@@ -6342,7 +6342,7 @@ Section IcacheEscrowAlloc.
   Lemma ic_id_fun_alloc (dvs : nat -> mword 32 * mword 32) (n j : nat) :
     ⊢ |==> ∃ f : nat -> gname,
       [∗ list] k ∈ seq j n, ghost_var (f k) 1 (false, (dvs k).1, (dvs k).2).
-  Proof.
+  Proof using .
     iInduction n as [|n IH] forall (j).
     { iModIntro. iExists (fun _ => inhabitant). cbn [seq]. done. }
     iMod (ghost_var_alloc (false, (dvs j).1, (dvs j).2)) as (γ) "Hg".
@@ -6363,7 +6363,7 @@ Section IcacheEscrowAlloc.
       ([∗ list] k ∈ seq 0 NINODE, ic_tok cn k) ∗
       ([∗ list] k ∈ seq 0 NINODE, ic_dep_neutral cn k) ∗
       ([∗ list] k ∈ seq 0 NINODE, ic_id cn k 1 false (dvs k).1 (dvs k).2).
-  Proof.
+  Proof using .
     iMod (ic_dep_fun_alloc NINODE 0) as (fesc) "Hesc".
     iMod (ic_dep_fun_alloc NINODE 0) as (fdep) "Hdep".
     iMod (ic_id_fun_alloc dvs NINODE 0) as (fid) "Hid".

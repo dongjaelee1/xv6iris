@@ -375,7 +375,7 @@ Section BoProps.
     lh_n_pa ↦₄ (mword_of_int (Z.of_nat n) : mword 32) ∗
     (lh_n_pa ↦₄ (mword_of_int (Z.of_nat n) : mword 32) -∗
        log_state bn γfs cov logstart n LB pend).
-  Proof.
+  Proof using .
     iIntros "H". rewrite /log_state.
     iDestruct "H" as (W L D M) "(%Hlen & %HLB & %Hnd & %Hcv & Hn & Hblk & Hjunk & HL & HD & Hdirty & Hhdr & Hsl & Hpool & Hmirh & %Hmhdr & %Hmtie)".
     iSplitR; [iPureIntro; exact (proj2 Hlen)|].
@@ -510,7 +510,7 @@ Section BoBodies.
         log_op γ MAXOPBLOCKS -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pj HK Hanch Hspd Hsp0 Hbo Hbelow.
     pose proof (locks_below_not_elem _ _ Hbelow) as Hfresh.
     destruct Hbo as (Hs1 & Hs2 & Hsp & H19 & H20 & H21 & H22 & H23 & H24 & H25 & H26 & H27).
@@ -788,7 +788,7 @@ Section BoBodies.
     sie_cap_gpr KT1 M (trap_res eb + (K - 4))%nat false pj -∗
     pc_is (mword_of_int (KernelSyms.begin_op + 0x24)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pj HK Hj Hjl Hanch Hbo Hbelow.
     pose proof (locks_below_not_elem _ _ Hbelow) as Hfresh.
     iIntros "#Htext #Hlog #Hpinv IH Hexit Hr24 Hr16 Hr8 Hr0 Htok Hres Hpid Hown Htc Hclm Hcg Hpc".
@@ -1055,7 +1055,7 @@ Section BoBodies.
     sie_cap_gpr KT1 M (trap_res eb + (K - 4))%nat false pj -∗
     pc_is (mword_of_int (KernelSyms.begin_op + 0x54)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pj HK Hj Hjl Hanch Hbo Hbelow.
     pose proof (locks_below_not_elem _ _ Hbelow) as Hfresh.
     iIntros "#Htext #Hlog #Hpinv IH Hexit Hr24 Hr16 Hr8 Hr0 Htok Hres Hpid Hown Htc Hclm Hcg Hpc".
@@ -1331,7 +1331,7 @@ Section BoBodies.
     sie_cap_gpr KT1 M (trap_res eb + (K - 4))%nat false pj -∗
     pc_is (mword_of_int (KernelSyms.begin_op + 0x3a)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pj HK Hj Hjl Hanch Hbo Hbelow.
     iIntros "#Htext #Hlog #Hpinv IH Hexit Hr24 Hr16 Hr8 Hr0 Htok Hres Hpid Hown Htc Hclm Hcg Hpc".
     iPoseProof "Hlog" as "#Hlogc".
@@ -1836,7 +1836,7 @@ Section ProofBeginOp.
       (m : regfile) (K : nat) (eb : bool)
       (b : bool) (lks : gset string) (Upr : ustate)
     : wp_begin_op_sconf_body γs j γl bn γ γfs cov logstart dev pidv dq m K eb b lks Upr.
-  Proof.
+  Proof using .
     cbv beta delta [wp_begin_op_sconf_body].
     intros pcE pj ret_tgt HK Hj Hjl Hbelow.
     set (sp0 := (m !!! Regidx csp_rs1 : mword 64)).

@@ -69,7 +69,7 @@ Section MemClaim.
       (dq : dfrac) (v : mword 64) :
     wordw_pointsto (KTR := KTR2) 8 a dq v
     ⊣⊢ ctx_word_pointsto (KTR := KTR2) cur_ctx a dq v.
-  Proof.
+  Proof using .
     rewrite /wordw_pointsto ctx_word_pointsto_unfold.
     by change (Z.to_nat 8) with 8%nat.
   Qed.
@@ -80,7 +80,7 @@ Section MemClaim.
       (dq : dfrac) (v : mword 32) :
     wordw_pointsto (KTR := KTR2) 4 a dq v
     ⊣⊢ ctx_word4_pointsto (KTR := KTR2) cur_ctx a dq v.
-  Proof.
+  Proof using .
     rewrite /wordw_pointsto /TsoCtx.ctx_word4_pointsto.
     by change (Z.to_nat 4) with 4%nat.
   Qed.
@@ -89,7 +89,7 @@ Section MemClaim.
       (dq : dfrac) (v : mword 16) :
     wordw_pointsto (KTR := KTR2) 2 a dq v
     ⊣⊢ ctx_word2_pointsto (KTR := KTR2) cur_ctx a dq v.
-  Proof.
+  Proof using .
     rewrite /wordw_pointsto /TsoCtx.ctx_word2_pointsto.
     by change (Z.to_nat 2) with 2%nat.
   Qed.
@@ -116,11 +116,11 @@ Section MemClaim.
 
   Global Instance mem_claim_persistent `{KTR : !CurKtier} a :
     Persistent (mem_claim a).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma mem_pointsto_claim `{KTR : !CurKtier} (a : Arch.pa) (dq : dfrac) (b : bv 8) :
     a ↦ₘ{dq} b -∗ mem_claim a.
-  Proof.
+  Proof using .
     iIntros "Hb".
     iDestruct (TsoCtx.ctx_pointsto_forget with "Hb") as "Hb".
     iDestruct (mem_pointsto_acc with "Hb")
@@ -133,13 +133,13 @@ Section MemClaim.
 
   Global Instance wordw_claim_persistent `{KTR : !CurKtier} width a :
     Persistent (wordw_claim width a).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma wordw_claim_of `{KTR : !CurKtier} (width : Z) (a : Arch.pa) (dq : dfrac)
       (w : mword (8*width)) :
     0 < width ->
     wordw_pointsto width a dq w -∗ wordw_claim width a.
-  Proof.
+  Proof using .
     intros Hw0. iIntros "[%Hal Hb]".
     iDestruct (big_sepL_lookup_acc _ _ 0%nat 0%nat with "Hb") as "[Hb0 _]".
     { rewrite lookup_seq_lt; [reflexivity | lia]. }
@@ -155,7 +155,7 @@ Section MemClaim.
     (0 < 2)%Z ->
     ctx_word2_pointsto (KTR := KTR2) cur_ctx a dq w -∗
     wordw_claim (KTR := KTR2) 2 a.
-  Proof.
+  Proof using .
     intros _.
     rewrite -(wordw2_ctx (KTR2 := KTR2)).
     iApply (wordw_claim_of (KTR := KTR2) 2 a dq w ltac:(lia)).
@@ -166,7 +166,7 @@ Section MemClaim.
     (0 < 8)%Z ->
     ctx_word_pointsto (KTR := KTR2) cur_ctx a dq w -∗
     wordw_claim (KTR := KTR2) 8 a.
-  Proof.
+  Proof using .
     intros _.
     rewrite -(wordw8_ctx (KTR2 := KTR2)).
     iApply (wordw_claim_of (KTR := KTR2) 8 a dq w ltac:(lia)).
@@ -187,7 +187,7 @@ Section MemClaim.
 
   Lemma mem_free_claim `{KTR : !CurKtier} (a : Arch.pa) (dq : dfrac) :
     TsoCtx.mem_free a dq -∗ mem_claim a.
-  Proof.
+  Proof using .
     rewrite /TsoCtx.mem_free /mem_claim.
     iIntros "(%ppn & #Hk & %Hc & %Hp & Hb)".
     iDestruct (TsoCtx.phys_free_ram with "Hb") as %Hram.
@@ -196,7 +196,7 @@ Section MemClaim.
 
   Lemma wordw_free_claim `{KTR : !CurKtier} (width : Z) (a : Arch.pa) :
     0 < width -> wordw_free width a -∗ wordw_claim width a.
-  Proof.
+  Proof using .
     intros Hw0. iIntros "[%Hal Hb]".
     iDestruct (big_sepL_lookup_acc _ _ 0%nat 0%nat with "Hb") as "[Hb0 _]".
     { rewrite lookup_seq_lt; [reflexivity | lia]. }
@@ -207,7 +207,7 @@ Section MemClaim.
   (* the width-1 free window IS one free byte, the twin of [wordw1_byte] *)
   Lemma wordw1_free `{KTR : !CurKtier} (a : Arch.pa) :
     wordw_free 1 a ⊣⊢ TsoCtx.mem_free a (DfracOwn 1).
-  Proof.
+  Proof using .
     rewrite /wordw_free. change (Z.to_nat 1) with 1%nat.
     rewrite big_sepL_singleton pa_add_0.
     iSplit; [ iIntros "[_ $]"
@@ -220,7 +220,7 @@ Section MemClaim.
   Lemma wordw_pointsto_free `{KTR : !CurKtier} (width : Z) (a : Arch.pa)
       (w : mword (8*width)) :
     wordw_pointsto width a (DfracOwn 1) w ⊢ wordw_free width a.
-  Proof.
+  Proof using .
     rewrite /wordw_pointsto /wordw_free. iIntros "[$ Hb]".
     iApply (big_sepL_mono with "Hb"). iIntros (k j _) "H".
     by iApply TsoCtx.ctx_pointsto_free.

@@ -131,8 +131,7 @@ Require Import UexecApply.     (* [uslot_key_cong] -- the slot across the re-key
 Require Import UexecExecInst.  (* the class INSTANCE: the process's exec bundle *)
 Require Import SpecSysRead.    (* [sys_rw_count] -- the read's count, for [ut_live_out] *)
 Require Import SpecArgfd.      (* [fd_st_of_key] -- the descriptor the read names *)
-Require Import SpecFileclose.  (* [fileclose_cpays] -- exit's close payments *)
-Require Import PipeQueue.      (* [pipe_taint_cred] *)
+Require Import Xv6Cameras.      (* [pipe_taint_cred] *)
 Require Import ConsoleInv.     (* [CONSOLE] -- the device the read row is about *)
 Require Import StackOwn.       (* [uint_zero_reg] *)
 Require Import FirstTok.       (* [fsabs_env] -- what the loop mints the bundle from *)
@@ -1148,17 +1147,17 @@ Section UtKillRows.
 
   Lemma ut_kill_in_ecall (f : sfam) (W : uvis) (gn : gname) (sts : list fdstate) :
     uvis_gen W = gn -> uvis_fd W = sts -> ⊢ ut_kill_in f uecall_scause W gn sts.
-  Proof.
+  Proof using .
     intros Hg Hfd. rewrite /ut_kill_in. iSplitR; [ by iPureIntro | ].
     case_decide as Hc; [ done | exfalso; by apply Hc ].
   Qed.
 
   Lemma ut_kill_out_ecall (W : uvis) : ⊢ ut_kill_out uecall_scause W.
-  Proof. rewrite /ut_kill_out. case_decide as Hc; [ done | exfalso; by apply Hc ]. Qed.
+  Proof using . rewrite /ut_kill_out. case_decide as Hc; [ done | exfalso; by apply Hc ]. Qed.
 
   Lemma ut_resume_in_ecall (W : uvis) (gn : gname) :
     ⊢ ut_resume_in uecall_scause W gn.
-  Proof. rewrite /ut_resume_in. case_decide as Hc; [ done | exfalso; by apply Hc ]. Qed.
+  Proof using . rewrite /ut_resume_in. case_decide as Hc; [ done | exfalso; by apply Hc ]. Qed.
 
   (* the pair's two sides, at the cause that has one *)
   Lemma ut_kill_in_pair (f : sfam) (sc_v : mword 64) (W : uvis) (gn : gname)
@@ -1166,7 +1165,7 @@ Section UtKillRows.
     sc_v <> uecall_scause ->
     ut_kill_in f sc_v W gn sts -∗
     ⌜uvis_gen W = gn /\ uvis_fd W = sts⌝ ∗ (ukill_cred_at uslot gn sc_v W f ∧ uslot W).
-  Proof.
+  Proof using .
     intro Hne. rewrite /ut_kill_in.
     destruct (decide (sc_v = uecall_scause)) as [Hc | _]; [ by exfalso | ].
     iIntros "[%Hg H]". iSplitR; [ by iPureIntro | ].
@@ -1177,7 +1176,7 @@ Section UtKillRows.
      be carrying *)
   Lemma ut_resume_in_of_slot (sc_v : mword 64) (W : uvis) (gn : gname) :
     sc_v <> uecall_scause -> uslot W -∗ ut_resume_in sc_v W gn.
-  Proof.
+  Proof using .
     intro Hne. rewrite /ut_resume_in.
     destruct (decide (sc_v = uecall_scause)) as [Hc | _];
       [ exfalso; exact (Hne Hc) | ]. iIntros "H". iLeft. iExact "H".
@@ -1185,7 +1184,7 @@ Section UtKillRows.
 
   Lemma ut_resume_in_of_shot (sc_v : mword 64) (W : uvis) (gn : gname) :
     ChildTok.kill_shot gn -∗ ut_resume_in sc_v W gn.
-  Proof.
+  Proof using .
     rewrite /ut_resume_in.
     destruct (decide (sc_v = uecall_scause)) as [_ | _];
       [ by iIntros "_" | ]. iIntros "H". iRight. iExact "H".
@@ -1193,7 +1192,7 @@ Section UtKillRows.
 
   Lemma ut_kill_out_of_slot_ne (sc_v : mword 64) (W : uvis) :
     sc_v <> uecall_scause -> uslot W -∗ ut_kill_out sc_v W.
-  Proof.
+  Proof using .
     intro Hne. rewrite /ut_kill_out.
     destruct (decide (sc_v = uecall_scause)) as [Hc | _];
       [ exfalso; exact (Hne Hc) | ]. by iIntros "$".
@@ -1204,7 +1203,7 @@ Section UtKillRows.
     ut_resume_in sc_v W gn -∗
     (ChildTok.kill_shot gn -∗ False) -∗
     ut_kill_out sc_v W.
-  Proof.
+  Proof using .
     rewrite /ut_resume_in /ut_kill_out. case_decide as Hc; [ by iIntros "_ _" | ].
     iIntros "[H | Hs] Hno"; [ iExact "H" | iDestruct ("Hno" with "Hs") as %[] ].
   Qed.

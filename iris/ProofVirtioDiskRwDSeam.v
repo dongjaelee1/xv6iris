@@ -155,7 +155,7 @@ Section ProofVirtioDiskRwDSeam.
     vdrw_p4_exit CID γk γs jp γd pd pav pu K eb sp0 b wr (vdrw_sector_raw bno)
                  bs_buf bs_disk m0 kq lks -∗
     P3.vdrw_p3_exit CID γk γs jp γd pd pav pu K eb sp0 b wr (vdrw_sector_raw bno) m0 lks.
-  Proof.
+  Proof using .
     intros Hbno Hlenbuf Hbufkd.
     iIntros "#Htext #Hdinv #Hgeom Hbuf Hdisk Hpend Hexit".
     rewrite /P3.vdrw_p3_exit.

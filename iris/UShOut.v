@@ -216,7 +216,7 @@ Section UShOut.
     ushpr v I p -∗
     (ushpr v I (S p) -∗ Φ) -∗
     out_link Uart0 (S gen_id) b Φ.
-  Proof.
+  Proof using Persistent0.
     intros Hb Hp. destruct p as [| [| p]]; [| | exfalso; lia].
     - assert (Hb0 : b = u_prompt !!! 0%nat).
       { rewrite wr_prompt_head in Hb. by injection Hb. }
@@ -250,7 +250,7 @@ Section UShOut.
     echo_links T γ -∗
     ushpr v I i -∗
     cons_out_chain (S gen_id) M ua (fun j : nat => ushpr v I j) i c.
-  Proof.
+  Proof using Persistent0.
     intros c. induction c as [| c IH]; intros i Hle Hline HM.
     - iIntros "_ _ Hc". cbn [cons_out_chain]. iExact "Hc".
     - iIntros "#Hpin #Hlk Hc". cbn [cons_out_chain]. iSplit.
@@ -278,7 +278,7 @@ Section UShOut.
 
   Lemma shk_rodata_byte (g : gname) (a : Z) (b : bv 8) :
     shk_ro !! a = Some b -> shk_rodata g -∗ utext g a b.
-  Proof.
+  Proof using .
     intros Ha. rewrite /shk_rodata /utext_img. iIntros "#H".
     iApply (big_sepM_lookup _ _ a b with "H"). exact Ha.
   Qed.

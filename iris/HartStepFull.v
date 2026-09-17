@@ -352,7 +352,7 @@ Section stepfull.
     swp (try_step 0 false)
       (fun _ => ∃ rs3 rs2 : regstate, ⌜tsf_post Q rs2 rs3⌝ ∗
                   hreg_frame rs3 Drw ∗ hreg_frame_ro Df rs3 Dro ∗ R rs2)%I.
-  Proof.
+  Proof using .
     intros Hdisj HDpriv HWhart HDhart HDmc HDcfg HWmi HDmi HWms HDms
       HWpc HDpc HDnpc Hhart HQhart HQmi.
     iIntros "#Hcert Hrw Hro Hbody".
@@ -743,7 +743,7 @@ Section stepfull.
          hreg_frame rs3 Drw -∗ hreg_frame_ro Df rs3 Dro -∗ Psi rs2 -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hdisj HWcy HWti HWip HDpriv HWhart HDhart HDmc HDcfg HWmi HDmi
       HWms HDms HWpc HDpc HDnpc Hhart HQhart HQmi Hpre.
     iIntros "#Hcert Hfrag Hrw Hro Hbody Hcont".

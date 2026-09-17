@@ -262,7 +262,7 @@ Section TimeCheck.
     register_lookup mseccfg rs = mword_of_int 0 ->
     register_lookup misa rs = MISA_C ->
     hval D Drw rs (currentlyEnabled Ext_Zicntr) true rs.
-  Proof.
+  Proof using .
     intros HD1 HD2 HD3 Hp Hs Hm.
     apply (hval_of_goodb D_m D Drw _ dstateS rs true
              (dm_sub D HD1 HD2 HD3) (agree_dm_S rs Hp Hs Hm)).
@@ -286,7 +286,7 @@ Section TimeCheck.
     swp (check_CSR_result csr_time Supervisor CSRRead)
       (fun w => ⌜w = CSR_Check_OK tt⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDmc HDpriv HDsec HDmisa Lmc Lpriv Lsec Lmisa HTM.
     iIntros "#Hcert Hrw Hro".
     unfold check_CSR_result.
@@ -400,7 +400,7 @@ Section StimecmpSwp.
     register_lookup mseccfg rs = mword_of_int 0 ->
     register_lookup misa rs = MISA_C ->
     hval D Drw rs (currentlyEnabled Ext_Sstc) true rs.
-  Proof.
+  Proof using .
     intros HD1 HD2 HD3 Hp Hs Hm.
     apply (hval_of_goodb D_m D Drw _ dstateS rs true
              (dm_sub D HD1 HD2 HD3) (agree_dm_S rs Hp Hs Hm)).
@@ -415,7 +415,7 @@ Section StimecmpSwp.
     register_lookup mseccfg rs = mword_of_int 0 ->
     register_lookup misa rs = MISA_C ->
     hval D Drw rs (currentlyEnabled Ext_S) true rs.
-  Proof.
+  Proof using .
     intros HD1 HD2 HD3 Hp Hs Hm.
     apply (hval_of_goodb D_m D Drw _ dstateS rs true
              (dm_sub D HD1 HD2 HD3) (agree_dm_S rs Hp Hs Hm)).
@@ -434,7 +434,7 @@ Section StimecmpSwp.
     register_lookup mseccfg rs = mword_of_int 0 ->
     register_lookup misa rs = MISA_C ->
     hval D Drw rs (csr_name_write_callback "mip" V) tt rs.
-  Proof.
+  Proof using .
     intros HD1 HD2 HD3 Hp Hs Hm.
     apply (hval_of_goodb D_m D Drw _ dstateS rs tt
              (dm_sub D HD1 HD2 HD3) (agree_dm_S rs Hp Hs Hm)).
@@ -461,7 +461,7 @@ Section StimecmpSwp.
     swp (clint_dispatch false)
       (fun _ => (∃ z : mword 64, (R_bitvector_64 mip) ↦ᵣ z) ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv HDsec HDmisa Hpriv Hsec Hmisa.
     iIntros "#Hcert Hip Hrw Hro".
     unfold clint_dispatch.
@@ -608,7 +608,7 @@ Section StimecmpSwp.
     swp (check_CSR_result csr_stimecmp Supervisor CSRWrite)
       (fun w => ⌜w = CSR_Check_OK tt⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDmc HDme HDpriv HDsec HDmisa Lmc Lme Lpriv Lsec Lmisa HTM.
     assert (HSTCE : eq_vec (_get_MEnvcfg_STCE MENVCFG_S) ('b"1") = true)
       by (vm_compute; reflexivity).
@@ -717,7 +717,7 @@ Section StimecmpSwp.
       (fun x => (∃ cf : mword 64, ⌜x = Ok cf⌝) ∗
          (∃ z : mword 64, (R_bitvector_64 mip) ↦ᵣ z) ∗
          hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv HDsec HDmisa Hpriv Hsec Hmisa.
     iIntros "#Hinv #Hcert Hip Hrw Hro".
     rewrite write_CSR_stimecmp_red.
@@ -787,7 +787,7 @@ Section WpSconfTimer.
         pc_is (add_vec_int pc 4) -∗
         WP (Loop : expr riscv_lang))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hrd Hrdok) "#Htcap Hcg Hpc Hinstr Hcont".
     pose proof (rd_ok_sp rd Hrdok) as Hrdsp.
     pose proof (rd_ok_tp rd Hrdok) as Hrdtp.
@@ -916,7 +916,7 @@ Section WpSconfTimer.
       pc_is (add_vec_int pc 4) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hrs1) "#Htcap Hcg Hpc Hinstr Hcont".
     iDestruct "Htcap" as "[Hen #Hstci]".
     iDestruct "Hen" as (mcen) "[#Hmcen %HTM]".

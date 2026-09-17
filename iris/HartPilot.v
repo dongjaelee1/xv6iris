@@ -145,7 +145,7 @@ Section bytes.
     gen_heap_interp (hG:=riscv_memGS) mm -∗
     ([∗ list] j ∈ l, (pa_add pa j) ↦ₚ{dq} nth_byte w j) -∗
     ⌜forall j, j ∈ l -> mm !! pa_add pa j = Some (nth_byte w j)⌝.
-  Proof.
+  Proof using .
     iInduction l as [|x xs] "IH"; simpl.
     - iIntros "_ _". iPureIntro. intros j Hj. by apply elem_of_nil in Hj.
     - iIntros "Hm [Ha Hrest]".
@@ -160,7 +160,7 @@ Section bytes.
     gen_heap_interp (hG:=riscv_memGS) mm -∗
     ([∗ list] j ∈ seq 0 (N.to_nat n), (pa_add pa j) ↦ₚ{dq} nth_byte w j) -∗
     ⌜read_bytes mm pa n = Some w⌝.
-  Proof.
+  Proof using .
     (* per-byte [phys_valid] gives the lookups
        ∀ j < n, mm !! pa_add pa j = Some (nth_byte w j); then
        [read_bytes_ne] (RiscvFetchExec.v) rules out None, and
@@ -185,7 +185,7 @@ Section bytes.
     ([∗ list] j ∈ seq 0 (N.to_nat n), (pa_add pa j) ↦ₚ nth_byte vold j) ==∗
     gen_heap_interp (hG:=riscv_memGS) (write_bytes mm pa n vnew) ∗
     ([∗ list] j ∈ seq 0 (N.to_nat n), (pa_add pa j) ↦ₚ nth_byte vnew j).
-  Proof.
+  Proof using .
     (* [write_bytes] is a foldr of inserts over [seq 0 (N.to_nat n)];
        mirror [WpMmodeLeafBase.upd_window]'s induction (generalize the
        index list, [phys_update] per byte). *)
@@ -387,7 +387,7 @@ Section pilot.
        phys_pointsto (pa_add pa j) dq (nth_byte w j)) -∗
     TsoCtx.pristine_win pa (N.to_nat n) -∗
     ⌜∀ (h : agent) (tv' : nat), tso_read_bytes img log h tv' pa n w⌝.
-  Proof.
+  Proof using .
     iIntros "Hgh Htso Hb #Hpr".
     iDestruct (tso_interp_of_pin with "Htso") as %Hpin.
     rewrite (tso_interp_of_at_gs riscv_eraGS img sg.(mem) log V
@@ -447,7 +447,7 @@ Section pilot.
        resv_frag cpu_id None -∗
        WP (LoopE gen_id cpu_id : expr riscv_lang)) -∗
     WP (HartE gen_id cpu_id x0.2 : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hx1 Hx2 Hx3 Hreqf Hdevf Hexf Hreqw Hdevw Htag)
       "#Hcert Hfrag Hrf Hfetch #Hpr Hold Hwobl Hcont".
     (* stretch 1 *)
@@ -533,7 +533,7 @@ Section pilot.
        resv_frag cpu_id None -∗
        WP (LoopE gen_id cpu_id : expr riscv_lang)) -∗
     WP (HartE gen_id cpu_id (riscv_step false) : expr riscv_lang).
-  Proof.
+  Proof using .
     have Hx1 : hp_x1 = hsil 400 hp_D hp_x0 by reflexivity.
     have Hx2 : hp_x2 = hsil 600 hp_D (hcur_read (bv_unsigned hp_wf) hp_x1)
       by reflexivity.

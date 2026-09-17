@@ -273,7 +273,7 @@ Section BallocDefs.
          ⌜forall k, (k < 1024)%nat -> k <> d -> l' !!! k = l !!! k⌝ -∗
          pa_add (b_data pb) d ↦ₘ (l' !!! d) -∗
          buf_own pb bno dsk l').
-  Proof.
+  Proof using .
     intros Hlen Hd.
     iIntros "(Hb & Hdk & %Hl & Hby)".
     iEval (rewrite (bb_bytes_of_list (b_data pb) l) Hlen) in "Hby".
@@ -302,7 +302,7 @@ Section BallocDefs.
       (∀ f : nat -> bv 8,
          ([∗ list] jj ∈ seq 0 1024, pa_add (b_data pb) jj ↦ₘ f jj) -∗
          buf_own pb bno dsk (f <$> seq 0 1024)).
-  Proof.
+  Proof using .
     intros Hlen.
     iIntros "(Hb & Hdk & %Hl & Hby)".
     iEval (rewrite (bb_bytes_of_list (b_data pb) l) Hlen /bb_bytes) in "Hby".
@@ -368,7 +368,7 @@ Section BallocEpilogue.
     ba_cont (CID0 := CID0) γfs bn γ cov logstart bmapstart size u cr Sb
             pidv dq dqb dqs j m K eb b lks Upr -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hsp Hthr Hs1.
     pose proof HK as HK'. 
     iIntros "Hcg Hcnt Hextc Hextm #Htext Hpc Hframe Hppid Hsbsz Hsbbm Hsl
@@ -634,7 +634,7 @@ Section BallocOut.
     ba_cont (CID0 := CID0) γfs bn γ cov logstart bmapstart size u cr Sb
             pidv dq dqb dqs j m K eb b lks Upr -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hsp Hthr.
     pose proof HK as HK'. 
     pose proof ba_msg_fmt as (Hkmsg & Hnmsg & Hlmsg).
@@ -1024,7 +1024,7 @@ Section BallocExhaust.
     ba_cont (CID0 := CID0) γfs bn γ cov logstart bmapstart size u cr Sb
             pidv dq dqb dqs j m K eb b lks Upr -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hsize Hsp Hthr Hs2 Hs5 Hs6 Hs8 Hkk Hbelow.
     pose proof HK as HK'. 
     pose proof Hsize as Hsize'. rewrite BPB_value in Hsize'.
@@ -1241,7 +1241,7 @@ Section BallocRestore.
     ba_cont (CID0 := CID0) γfs bn γ cov logstart bmapstart size u cr Sb
             pidv dq dqb dqs j m K eb b lks Upr -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hsp Hthr Hs1 Hnz Hcv Hlg.
     pose proof HK as HK'. 
     iIntros "Hcg Hcnt Hextc Hextm #Htext Hpc Hframe Hppid Hsbsz Hsbbm Hsl
@@ -1521,7 +1521,7 @@ Section BallocBzero.
     ba_cont (CID0 := CID0) γfs bn γ cov logstart bmapstart size u cr Sb
             pidv dq dqb dqs j m K eb b lks Upr -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hsize Hbirange Hbicov Hbilog Hbinz HbsDlen Hj Hgl Hsp Hthr Hs1 Hs7 Hbelow.
     pose proof HK as HK'. 
     assert (HbiBPB : 0 <= bi < BPB) by lia.
@@ -2113,7 +2113,7 @@ Section BallocAlloc.
     ba_cont (CID0 := CID0) γfs bn γ cov logstart bmapstart size u cr Sb
             pidv dq dqb dqs j m K eb b lks Upr -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hgeom Hsize Hbirange Hbinu Hok HbnoB Hbmcov Hbmlog Hkk Hj Hgl
            Hsp Hthr Ha5 Ha2 Ha3 Hs1 Hs2 Hs7 Hcred Hbelow.
     pose proof HK as HK'. 
@@ -2581,7 +2581,7 @@ Section BallocScan.
     ba_cont (CID0 := CIDx) γfs bn γ cov logstart bmapstart size u cr Sb
             pidv dq dqb dqs j m K eb b lks Upr -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hgeom Hsize HbnoB Hbmcov Hbmlog Hok Hkk Hj Hgl Hcred.
     pose proof HK as HK'. 
     pose proof Hsize as Hsz'. rewrite BPB_value in Hsz'.
@@ -3451,7 +3451,7 @@ Section BallocMain.
                         (Sb ∪ {[bmapstart]} ∪ {[bv_unsigned blk]}))) -∗
           WP (Loop : expr riscv_lang)) -∗
       WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pcE pj ret_tgt HK Hgeom Hsize Hbm0 Hbmcov Hbmlog Hcred Hj Hgl Ha0 Hbelow.
     pose proof HK as HK'. 
     pose proof Hsize as Hsz'. rewrite BPB_value in Hsz'.
@@ -4394,7 +4394,7 @@ Section BallocMain.
     : wp_balloc_gen_body γs j γl γu γd γk pd pav pu bn γ γfs
                          cov logstart bmapstart size dev γpr u cr Sb
                          pidv dq dqb dqs m K eb b lks Upr.
-  Proof.
+  Proof using .
     exact (ba_main γs j γl γu γd γk pd pav pu bn γ γfs
              cov logstart bmapstart size dev γpr u cr Sb
              pidv dq dqb dqs m K eb b lks Upr).
@@ -4419,7 +4419,7 @@ Section BallocMain.
     : wp_balloc_sconf_body γs j γl γu γd γk pd pav pu bn γ γfs
                            cov logstart bmapstart size dev γpr u
                            pidv dq dqb dqs m K eb b lks Upr.
-  Proof.
+  Proof using .
     cbv beta delta [wp_balloc_sconf_body].
     intros pcE pj ret_tgt HK Hgeom Hsize Hbm0 Hbmcov Hbmlog Hj Hgl Ha0 Hbelow.
     iIntros "Hcg Hcnt Hextc Hextm #Htext Hpc #Hkdata #Hpenv #Hbio #Hlctx Hppid

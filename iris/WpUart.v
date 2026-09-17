@@ -75,7 +75,7 @@ Section DevGhost.
 
   Lemma dev_interp_agree d i u p :
     dev_interp d -∗ uart_frag i u -∗ plic_frag p -∗ ⌜duart d i = u /\ dplic d = p⌝.
-  Proof.
+  Proof using .
     iIntros "(Hua & Hpa & _) Hu Hp".
     iDestruct (uarts_auth_acc _ i with "Hua") as "[Hui _]".
     iDestruct (uart_agree with "Hui Hu") as %->.
@@ -89,7 +89,7 @@ Section DevGhost.
      invariant, so it never has the other devices' fragments to hand). *)
   Lemma dev_interp_agree_uart d i u :
     dev_interp d -∗ uart_frag i u -∗ ⌜duart d i = u⌝.
-  Proof.
+  Proof using .
     iIntros "(Hua & _ & _) Hu".
     iDestruct (uarts_auth_acc _ i with "Hua") as "[Hui _]".
     by iDestruct (uart_agree with "Hui Hu") as %->.
@@ -97,7 +97,7 @@ Section DevGhost.
 
   Lemma dev_interp_agree_plic d p :
     dev_interp d -∗ plic_frag p -∗ ⌜dplic d = p⌝.
-  Proof.
+  Proof using .
     iIntros "(_ & Hpa & _) Hp".
     by iDestruct (plic_agree with "Hpa Hp") as %->.
   Qed.
@@ -105,7 +105,7 @@ Section DevGhost.
   (* uart-only update (the plic component rides along) *)
   Lemma dev_interp_update_uart d i u u' :
     dev_interp d -∗ uart_frag i u ==∗ dev_interp (set_duart d i u') ∗ uart_frag i u'.
-  Proof.
+  Proof using .
     iIntros "(Hua & Hpa & Hva) Hu".
     iDestruct (uarts_auth_acc _ i with "Hua") as "[Hui Hback]".
     iMod (uart_update with "Hui Hu") as "[Hui $]".
@@ -115,7 +115,7 @@ Section DevGhost.
 
   Lemma dev_interp_update_plic d p p' :
     dev_interp d -∗ plic_frag p ==∗ dev_interp (set_dplic d p') ∗ plic_frag p'.
-  Proof.
+  Proof using .
     iIntros "(Hua & Hpa & Hva) Hp".
     iMod (plic_update with "Hpa Hp") as "[$ $]".
     rewrite /set_dplic /dev_interp /=. by iFrame "Hua Hva".
@@ -385,9 +385,9 @@ Section DevLoops.
     uart_dlab_is γ DfracDiscarded false.
 
   Global Instance uart_sent_persistent γ l : Persistent (uart_sent γ l).
-  Proof. rewrite /uart_sent. apply _. Qed.
+  Proof using . rewrite /uart_sent. apply _. Qed.
   Global Instance uart_sent_timeless γ l : Timeless (uart_sent γ l).
-  Proof. rewrite /uart_sent. apply _. Qed.
+  Proof using . rewrite /uart_sent. apply _. Qed.
   (* the transmitted-prefix authority yields its own lower bound, exactly as
      [uart_ghosts_alloc] peels the accepted-trace one off [uart_sent_auth].
      A boot client needs it because [SpecMain]'s precondition asks for
@@ -395,28 +395,28 @@ Section DevLoops.
      its way into [dev_inv_body] -- there is no other source. *)
   Lemma uart_out_auth_lb (γ : uart_names) (u : uart_state) :
     uart_out_auth γ u ⊢ uart_out_auth γ u ∗ uart_out_lb γ (u_out u).
-  Proof.
+  Proof using .
     rewrite /uart_out_auth /uart_out_lb {1}mono_list_auth_lb_op own_op.
     iIntros "[$ $]".
   Qed.
 
   Global Instance uart_out_lb_persistent γ l : Persistent (uart_out_lb γ l).
-  Proof. rewrite /uart_out_lb. apply _. Qed.
+  Proof using . rewrite /uart_out_lb. apply _. Qed.
   Global Instance uart_out_lb_timeless γ l : Timeless (uart_out_lb γ l).
-  Proof. rewrite /uart_out_lb. apply _. Qed.
+  Proof using . rewrite /uart_out_lb. apply _. Qed.
   Global Instance uart_dlab_off_persistent γ : Persistent (uart_dlab_off γ).
-  Proof. rewrite /uart_dlab_off /uart_dlab_is. apply _. Qed.
+  Proof using . rewrite /uart_dlab_off /uart_dlab_is. apply _. Qed.
   Global Instance uart_dlab_is_timeless γ dq b : Timeless (uart_dlab_is γ dq b).
-  Proof. rewrite /uart_dlab_is. apply _. Qed.
+  Proof using . rewrite /uart_dlab_is. apply _. Qed.
   Global Instance uart_sent_auth_timeless γ u : Timeless (uart_sent_auth γ u).
-  Proof. rewrite /uart_sent_auth. apply _. Qed.
+  Proof using . rewrite /uart_sent_auth. apply _. Qed.
   Global Instance uart_out_auth_timeless γ u : Timeless (uart_out_auth γ u).
-  Proof. rewrite /uart_out_auth. apply _. Qed.
+  Proof using . rewrite /uart_out_auth. apply _. Qed.
 
   (* -- accepted trace -- *)
   Lemma uart_sent_get γ u :
     uart_sent_auth γ u -∗ uart_sent_auth γ u ∗ uart_sent γ (uart_acc u).
-  Proof.
+  Proof using .
     iIntros "Ha". rewrite /uart_sent_auth /uart_sent.
     iEval (rewrite {1}mono_list_auth_lb_op) in "Ha".
     iDestruct "Ha" as "[$ $]".
@@ -426,7 +426,7 @@ Section DevLoops.
   Lemma uart_sent_update γ u u' :
     uart_acc u `prefix_of` uart_acc u' ->
     uart_sent_auth γ u ==∗ uart_sent_auth γ u' ∗ uart_sent γ (uart_acc u').
-  Proof.
+  Proof using .
     iIntros (Hpre) "Ha". rewrite /uart_sent_auth.
     iMod (own_update _ _ (●ML (uart_acc u' : list (leibnizO (bv 8))))
             with "Ha") as "Ha"; [by apply mono_list_update|].
@@ -435,12 +435,12 @@ Section DevLoops.
 
   Lemma uart_sent_auth_stable γ u u' :
     uart_acc u' = uart_acc u -> uart_sent_auth γ u -∗ uart_sent_auth γ u'.
-  Proof. iIntros (Heq) "Ha". rewrite /uart_sent_auth Heq. done. Qed.
+  Proof using . iIntros (Heq) "Ha". rewrite /uart_sent_auth Heq. done. Qed.
 
   (* -- transmitted prefix -- *)
   Lemma uart_out_get γ u :
     uart_out_auth γ u -∗ uart_out_auth γ u ∗ uart_out_lb γ (u_out u).
-  Proof.
+  Proof using .
     iIntros "Ha". rewrite /uart_out_auth /uart_out_lb.
     iEval (rewrite {1}mono_list_auth_lb_op) in "Ha".
     iDestruct "Ha" as "[$ $]".
@@ -448,7 +448,7 @@ Section DevLoops.
 
   Lemma uart_out_prefix γ u l :
     uart_out_auth γ u -∗ uart_out_lb γ l -∗ ⌜ l `prefix_of` u_out u ⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Hl". rewrite /uart_out_auth /uart_out_lb.
     by iDestruct (own_valid_2 with "Ha Hl") as %?%mono_list_both_valid_L.
   Qed.
@@ -456,7 +456,7 @@ Section DevLoops.
   Lemma uart_out_update γ u u' :
     u_out u `prefix_of` u_out u' ->
     uart_out_auth γ u ==∗ uart_out_auth γ u' ∗ uart_out_lb γ (u_out u').
-  Proof.
+  Proof using .
     iIntros (Hpre) "Ha". rewrite /uart_out_auth.
     iMod (own_update _ _ (●ML (u_out u' : list (leibnizO (bv 8))))
             with "Ha") as "Ha"; [by apply mono_list_update|].
@@ -465,14 +465,14 @@ Section DevLoops.
 
   Lemma uart_out_auth_stable γ u u' :
     u_out u' = u_out u -> uart_out_auth γ u -∗ uart_out_auth γ u'.
-  Proof. iIntros (Heq) "Ha". rewrite /uart_out_auth Heq. done. Qed.
+  Proof using . iIntros (Heq) "Ha". rewrite /uart_out_auth Heq. done. Qed.
 
   (* -- exclusive transmitter -- *)
 
   (* the owner's view of the accepted trace is the real one *)
   Lemma uart_tx_own_agree γ u l :
     uart_tx_auth γ u -∗ uart_tx_own γ l -∗ ⌜ uart_acc u = l ⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Ho". rewrite /uart_tx_auth /uart_tx_own.
     by iDestruct (ghost_var_agree with "Ha Ho") as %?.
   Qed.
@@ -481,7 +481,7 @@ Section DevLoops.
   Lemma uart_tx_own_update γ u l u' :
     uart_tx_auth γ u -∗ uart_tx_own γ l ==∗
     uart_tx_auth γ u' ∗ uart_tx_own γ (uart_acc u').
-  Proof.
+  Proof using .
     iIntros "Ha Ho". rewrite /uart_tx_auth /uart_tx_own.
     iMod (ghost_var_update_2 (uart_acc u') with "Ha Ho") as "[$ $]";
       [apply Qp.half_half|]. done.
@@ -489,19 +489,19 @@ Section DevLoops.
 
   Lemma uart_tx_auth_stable γ u u' :
     uart_acc u' = uart_acc u -> uart_tx_auth γ u -∗ uart_tx_auth γ u'.
-  Proof. iIntros (Heq) "Ha". rewrite /uart_tx_auth Heq. done. Qed.
+  Proof using . iIntros (Heq) "Ha". rewrite /uart_tx_auth Heq. done. Qed.
 
   (* -- DLAB -- *)
   Lemma uart_dlab_agree γ u dq b :
     uart_dlab_auth γ u -∗ uart_dlab_is γ dq b -∗ ⌜ uart_dlab u = b ⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Hb". rewrite /uart_dlab_auth /uart_dlab_is.
     by iDestruct (own_valid_2 with "Ha Hb") as %[_ ?]%dfrac_agree_op_valid_L.
   Qed.
 
   Lemma uart_dlab_auth_stable γ u u' :
     uart_dlab u' = uart_dlab u -> uart_dlab_auth γ u -∗ uart_dlab_auth γ u'.
-  Proof. iIntros (Heq) "Ha". rewrite /uart_dlab_auth Heq. done. Qed.
+  Proof using . iIntros (Heq) "Ha". rewrite /uart_dlab_auth Heq. done. Qed.
 
   (* MOVING DLAB NEEDS BOTH HALVES.  Only a write to the LCR can change DLAB,
      and this is the rule such a write's ghost step goes through: the invariant
@@ -515,7 +515,7 @@ Section DevLoops.
   Lemma uart_dlab_update γ (u u' : uart_state) (b : bool) :
     uart_dlab_auth γ u -∗ uart_dlab_is γ (DfracOwn (1/2)) b ==∗
     uart_dlab_auth γ u' ∗ uart_dlab_is γ (DfracOwn (1/2)) (uart_dlab u').
-  Proof.
+  Proof using .
     iIntros "Ha Hb". rewrite /uart_dlab_auth /uart_dlab_is.
     iCombine "Ha Hb" as "H".
     iMod (own_update _ _ (to_dfrac_agree (DfracOwn (1/2)) (uart_dlab u' : leibnizO bool)
@@ -528,7 +528,7 @@ Section DevLoops.
   (* freeze a half into the permanent fact "DLAB is false" *)
   Lemma uart_dlab_freeze γ :
     uart_dlab_is γ (DfracOwn (1/2)) false ==∗ uart_dlab_off γ.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /uart_dlab_is /uart_dlab_off /uart_dlab_is.
     iApply (own_update with "H"). apply dfrac_agree_persist.
   Qed.
@@ -562,7 +562,7 @@ Section DevLoops.
     uart_tx_own γ l -∗ uart_out_lb γ l -∗ uart_dlab_off γ -∗
     uart_tx_auth γ u2 -∗ uart_out_auth γ u2 -∗ uart_dlab_auth γ u2 -∗
     ⌜ u_tx u2 = [] /\ uart_dlab u2 = false ⌝.
-  Proof.
+  Proof using .
     iIntros "Hown Hlb Hoff Htxa Houta Hdla".
     iDestruct (uart_tx_own_agree with "Htxa Hown") as %Hacc2.
     iDestruct (uart_out_prefix with "Houta Hlb") as %Hpre.
@@ -578,7 +578,7 @@ Section DevLoops.
     uart_tx_own γ l -∗ uart_tx_auth γ u -∗ uart_out_auth γ u -∗
     uart_tx_own γ l ∗ uart_tx_auth γ u ∗ uart_out_auth γ u ∗ uart_out_lb γ l ∗
     ⌜ u_tx u = [] /\ uart_acc u = l ⌝.
-  Proof.
+  Proof using .
     iIntros (Hthre) "Hown Htxa Houta".
     iDestruct (uart_tx_own_agree with "Htxa Hown") as %Hacc.
     assert (Htx : u_tx u = []).
@@ -603,14 +603,14 @@ Section DevLoops.
      uart_tx_auth γ u ∗ uart_dlab_auth γ u)%I.
 
   Global Instance uart_ghosts_timeless γ u : Timeless (uart_ghosts γ u).
-  Proof. rewrite /uart_ghosts. apply _. Qed.
+  Proof using . rewrite /uart_ghosts. apply _. Qed.
 
   (* DLAB off, read off the bundle without spending it: what the RHR pop
      needs to know that offset 0 really is the receive register and not the
      divisor latch. *)
   Lemma uart_ghosts_dlab_off (γ : uart_names) (u : uart_state) :
     uart_dlab_off γ -∗ uart_ghosts γ u -∗ ⌜ uart_dlab u = false ⌝.
-  Proof.
+  Proof using .
     iIntros "Hoff (_ & _ & _ & Hdl)".
     by iDestruct (uart_dlab_agree with "Hdl Hoff") as %Hd.
   Qed.
@@ -621,7 +621,7 @@ Section DevLoops.
     u_out u' = u_out u ->
     uart_dlab u' = uart_dlab u ->
     uart_ghosts γ u -∗ uart_ghosts γ u'.
-  Proof.
+  Proof using .
     iIntros (Ha Ho Hd) "(Hs & Hout & Htx & Hdl)". rewrite /uart_ghosts.
     iDestruct (uart_sent_auth_stable _ u u' Ha with "Hs") as "$".
     iDestruct (uart_out_auth_stable _ u u' Ho with "Hout") as "$".
@@ -681,15 +681,15 @@ Section DevLoops.
 
   Global Instance uart_rx_pushed_lb_persistent γ n :
     Persistent (uart_rx_pushed_lb γ n).
-  Proof. rewrite /uart_rx_pushed_lb. apply _. Qed.
+  Proof using . rewrite /uart_rx_pushed_lb. apply _. Qed.
   Global Instance uart_rx_tok_timeless γ k hl : Timeless (uart_rx_tok γ k hl).
-  Proof. rewrite /uart_rx_tok. apply _. Qed.
+  Proof using . rewrite /uart_rx_tok. apply _. Qed.
   Global Instance uart_rx_hi_timeless γ q hh : Timeless (uart_rx_hi γ q hh).
-  Proof. rewrite /uart_rx_hi. apply _. Qed.
+  Proof using . rewrite /uart_rx_hi. apply _. Qed.
 
   Lemma uart_rx_tok_agree γ k k' hl hl' :
     uart_rx_popped γ k hl -∗ uart_rx_tok γ k' hl' -∗ ⌜k = k' /\ hl = hl'⌝.
-  Proof.
+  Proof using .
     iIntros "H1 H2".
     iDestruct (ghost_var_agree with "H1 H2") as %Heq.
     iPureIntro. by injection Heq.
@@ -697,24 +697,24 @@ Section DevLoops.
   Lemma uart_rx_tok_update γ k k' hl hl' :
     uart_rx_popped γ k hl -∗ uart_rx_tok γ k hl ==∗
       uart_rx_popped γ k' hl' ∗ uart_rx_tok γ k' hl'.
-  Proof.
+  Proof using .
     iIntros "H1 H2". iApply (ghost_var_update_halves with "H1 H2").
   Qed.
 
   Lemma uart_rx_hi_agree γ hh hh' :
     uart_rx_hi γ (1/2) hh -∗ uart_rx_hi γ (1/2) hh' -∗ ⌜hh = hh'⌝.
-  Proof.
+  Proof using .
     iIntros "H1 H2". by iDestruct (ghost_var_agree with "H1 H2") as %->.
   Qed.
   Lemma uart_rx_hi_update γ hh hh' :
     uart_rx_hi γ (1/2) hh -∗ uart_rx_hi γ (1/2) hh ==∗
       uart_rx_hi γ (1/2) hh' ∗ uart_rx_hi γ (1/2) hh'.
-  Proof.
+  Proof using .
     iIntros "H1 H2". iApply (ghost_var_update_halves with "H1 H2").
   Qed.
   Lemma uart_rx_hi_alloc (hh : option (list mobs)) :
     ⊢ |==> ∃ γn : gname, ghost_var γn (1/2) hh ∗ ghost_var γn (1/2) hh.
-  Proof.
+  Proof using .
     iMod (ghost_var_alloc hh) as (γn) "H".
     iEval (rewrite -Qp.half_half) in "H".
     iDestruct (ghost_var_split with "H") as "[H1 H2]".
@@ -731,18 +731,18 @@ Section DevLoops.
     mono_nat_lb_own γ.(un_init) 1.
 
   Global Instance uart_inited_persistent γ : Persistent (uart_inited γ).
-  Proof. rewrite /uart_inited. apply _. Qed.
+  Proof using . rewrite /uart_inited. apply _. Qed.
   Global Instance uart_preinit_timeless γ : Timeless (uart_preinit γ).
-  Proof. rewrite /uart_preinit. apply _. Qed.
+  Proof using . rewrite /uart_preinit. apply _. Qed.
 
   Lemma uart_preinit_inited_False γ : uart_preinit γ -∗ uart_inited γ -∗ False.
-  Proof.
+  Proof using .
     iIntros "Ha Hlb".
     iDestruct (mono_nat_lb_own_valid with "Ha Hlb") as %[_ Hle].
     iPureIntro. lia.
   Qed.
   Lemma uart_preinit_fire γ : uart_preinit γ ==∗ uart_inited γ.
-  Proof.
+  Proof using .
     iIntros "Ha". rewrite /uart_preinit /uart_inited.
     iMod (mono_nat_own_update 1%nat with "Ha") as "[_ Hlb]"; [lia|].
     by iModIntro.
@@ -813,9 +813,9 @@ Section DevLoops.
     match o with Some g => obs_hist_lb g | None => emp end.
 
   Global Instance obs_hist_lb_o_persistent o : Persistent (obs_hist_lb_o o).
-  Proof. destruct o; apply _. Qed.
+  Proof using . destruct o; apply _. Qed.
   Global Instance obs_hist_lb_o_timeless o : Timeless (obs_hist_lb_o o).
-  Proof. destruct o; apply _. Qed.
+  Proof using . destruct o; apply _. Qed.
 
   (* the optional bound placed inside the run's own history: at [None] the
      witness is [[]] and the fact is free.  This is what turns the output
@@ -823,7 +823,7 @@ Section DevLoops.
      OUT-FUPD). *)
   Lemma obs_hist_lb_o_prefix (o : option (list mobs)) (h : list mobs) :
     obs_auth h -∗ obs_hist_lb_o o -∗ ⌜default [] o `prefix_of` h⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Ho". destruct o as [g|]; [| iPureIntro; apply prefix_nil].
     cbn [obs_hist_lb_o default].
     by iDestruct (obs_hist_lb_prefix with "Ha Ho") as %Hp.
@@ -886,11 +886,11 @@ Section DevLoops.
 
   Global Instance cons_res_at_timeless iu k ho H :
     Timeless (chist_at iu k ho H).
-  Proof. rewrite /chist_at. destruct iu; apply _. Qed.
+  Proof using . rewrite /chist_at. destruct iu; apply _. Qed.
 
   Lemma cons_res_at_uart1 (k : nat) (ho : list mobs)
       (H : LogEntryDefs.cons_hist) : ⊢ chist_at Uart1 k ho H.
-  Proof. done. Qed.
+  Proof using . done. Qed.
 
   (* [win_at] and its four lines lived here: the echo window token's port
      indexing.  It rode the PLIC payload rather than an invariant, because
@@ -955,16 +955,16 @@ Section DevLoops.
     ghost_var γ.(un_arm) q a.
 
   Global Instance uart_arm_timeless γ q a : Timeless (uart_arm γ q a).
-  Proof. rewrite /uart_arm. apply _. Qed.
+  Proof using . rewrite /uart_arm. apply _. Qed.
 
   Lemma uart_arm_agree (γ : uart_names) (q1 q2 : Qp) (a1 a2 : option LogEntryDefs.cons_arm) :
     uart_arm γ q1 a1 -∗ uart_arm γ q2 a2 -∗ ⌜a1 = a2⌝.
-  Proof. rewrite /uart_arm. iIntros "H1 H2". by iApply (ghost_var_agree with "H1 H2"). Qed.
+  Proof using . rewrite /uart_arm. iIntros "H1 H2". by iApply (ghost_var_agree with "H1 H2"). Qed.
 
   Lemma uart_arm_update (γ : uart_names) (a1 a2 a' : option LogEntryDefs.cons_arm) :
     uart_arm γ (1/2) a1 -∗ uart_arm γ (1/2) a2 ==∗
       uart_arm γ (1/2) a' ∗ uart_arm γ (1/2) a'.
-  Proof.
+  Proof using .
     rewrite /uart_arm. iIntros "H1 H2".
     iMod (ghost_var_update_halves a' with "H1 H2") as "[$ $]". done.
   Qed.
@@ -979,18 +979,18 @@ Section DevLoops.
     own γ.(un_log) (◯ML (L : list (leibnizO LogEntryDefs.log_entry))).
 
   Global Instance in_log_lb_persistent γ L : Persistent (in_log_lb γ L).
-  Proof. rewrite /in_log_lb. apply _. Qed.
+  Proof using . rewrite /in_log_lb. apply _. Qed.
   Global Instance in_log_lb_timeless γ L : Timeless (in_log_lb γ L).
-  Proof. rewrite /in_log_lb. apply _. Qed.
+  Proof using . rewrite /in_log_lb. apply _. Qed.
   Global Instance uart_log_hi_timeless γ q hg : Timeless (uart_log_hi γ q hg).
-  Proof. rewrite /uart_log_hi. apply _. Qed.
+  Proof using . rewrite /uart_log_hi. apply _. Qed.
   Global Instance uart_deliv_timeless γ q dv : Timeless (uart_deliv γ q dv).
-  Proof. rewrite /uart_deliv. apply _. Qed.
+  Proof using . rewrite /uart_deliv. apply _. Qed.
   Global Instance uart_logm_timeless γ q L : Timeless (uart_logm γ q L).
-  Proof. rewrite /uart_logm. apply _. Qed.
+  Proof using . rewrite /uart_logm. apply _. Qed.
 
   Lemma in_log_lb_get γ L : in_log_auth γ L -∗ in_log_auth γ L ∗ in_log_lb γ L.
-  Proof.
+  Proof using .
     rewrite /in_log_auth /in_log_lb. iIntros "Ha".
     iEval (rewrite {1}mono_list_auth_lb_op) in "Ha".
     iDestruct "Ha" as "[Ha Hlb]". iFrame "Ha Hlb".
@@ -998,14 +998,14 @@ Section DevLoops.
 
   Lemma in_log_lb_valid γ L L' :
     in_log_auth γ L -∗ in_log_lb γ L' -∗ ⌜L' `prefix_of` L⌝.
-  Proof.
+  Proof using .
     rewrite /in_log_auth /in_log_lb. iIntros "Ha Hl".
     by iDestruct (own_valid_2 with "Ha Hl") as %?%mono_list_both_valid_L.
   Qed.
 
   Lemma in_log_auth_snoc γ L e :
     in_log_auth γ L ==∗ in_log_auth γ (L ++ [e]).
-  Proof.
+  Proof using .
     rewrite /in_log_auth. iIntros "Ha".
     iMod (own_update _ _
             (●ML ((L ++ [e]) : list (leibnizO LogEntryDefs.log_entry)))
@@ -1060,14 +1060,14 @@ Section DevLoops.
 
   Global Instance cons_claim_at_timeless iu γ u :
     Timeless (cons_claim_at iu γ u).
-  Proof. rewrite /cons_claim_at. apply _. Qed.
+  Proof using . rewrite /cons_claim_at. apply _. Qed.
 
   (* the claim is about the ACCEPTED bytes, so a transition that leaves them
      alone carries it over -- [uart_out_claim_stable]'s twin *)
   Lemma cons_claim_at_stable (iu : uart_id) (γ : uart_names) (u u' : uart_state) :
     uart_acc u' = uart_acc u ->
     cons_claim_at iu γ u -∗ cons_claim_at iu γ u'.
-  Proof. iIntros (Ha) "H". by rewrite /cons_claim_at Ha. Qed.
+  Proof using . iIntros (Ha) "H". by rewrite /cons_claim_at Ha. Qed.
 
   (* [in_claim_at] and its founding lived here: the clause the invariant
      carried for the input log. *)
@@ -1077,7 +1077,7 @@ Section DevLoops.
      before it *)
   Lemma obs_wire_open_seg_in (i j : uart_id) (h : list mobs) (b : bv 8) :
     obs_wire i (open_seg (h ++ [ObsUartIn j b])%list) = obs_wire i (open_seg h).
-  Proof.
+  Proof using .
     rewrite (open_seg_io h [ObsUartIn j b] ltac:(repeat constructor)).
     rewrite obs_wire_app. cbn [obs_wire]. by rewrite app_nil_r.
   Qed.
@@ -1123,7 +1123,7 @@ Section DevLoops.
      GONE with the pairing they split: the column is all there is. *)
   Lemma uart_colE_wire_out_keep (iu : uart_id) (γ : uart_names) (u : uart_state) :
     uart_colE iu γ u -∗ ⌜u_wire u = u_out u⌝ ∗ uart_colE iu γ u.
-  Proof.
+  Proof using .
     iIntros "H".
     iDestruct "H" as (hs np nk hl ht) "(Ha & Hk & Hts & Hht & %Hok)".
     iSplitR; [iPureIntro; exact (proj1 (proj2 (proj2 (proj2 Hok))))|].
@@ -1133,14 +1133,14 @@ Section DevLoops.
 
   Global Instance uart_col_timeless iu γ u hs np nk hl ht :
     Timeless (uart_col iu γ u hs np nk hl ht).
-  Proof. rewrite /uart_col /uart_rx_popped. apply _. Qed.
+  Proof using . rewrite /uart_col /uart_rx_popped. apply _. Qed.
   Global Instance uart_colE_timeless iu γ u : Timeless (uart_colE iu γ u).
-  Proof. rewrite /uart_colE. apply _. Qed.
+  Proof using . rewrite /uart_colE. apply _. Qed.
 
   (* the clause the tx arm reads: the column exists only with LOOP off *)
   Lemma uart_colE_loopback (iu : uart_id) (γ : uart_names) (u : uart_state) :
     uart_colE iu γ u -∗ ⌜uart_loopback u = false⌝.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as (hs np nk hl ht) "(_ & _ & _ & _ & %Hok)".
     iPureIntro. exact (proj1 (proj2 (proj2 Hok))).
   Qed.
@@ -1151,7 +1151,7 @@ Section DevLoops.
      drain popped sits at. *)
   Lemma uart_colE_wire_out (iu : uart_id) (γ : uart_names) (u : uart_state) :
     uart_colE iu γ u -∗ ⌜u_wire u = u_out u⌝.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as (hs np nk hl ht) "(_ & _ & _ & _ & %Hok)".
     iPureIntro. exact (proj1 (proj2 (proj2 (proj2 Hok)))).
   Qed.
@@ -1173,7 +1173,7 @@ Section DevLoops.
     u_out u' = u_out u ->
     uart_acc u' = uart_acc u ->
     uart_colE iu γ u -∗ uart_colE iu γ u'.
-  Proof.
+  Proof using .
     iIntros (Hrx Hlb Hw Ho Hacc) "H".
     iDestruct "H" as (hs np nk hl ht) "(Ha & Hk & Hts & Hht & %Hok)".
     iExists hs, np, nk, hl, ht. iFrame "Ha Hk Hts Hht". iPureIntro.
@@ -1189,7 +1189,7 @@ Section DevLoops.
   Lemma uart_colE_tx_pop (iu : uart_id) (γ : uart_names) (u u' : uart_state) (b : bv 8) :
     uart_tx_pop u = Some (b, u') ->
     uart_colE iu γ u -∗ uart_colE iu γ u'.
-  Proof.
+  Proof using .
     iIntros (Hpop) "H".
     iDestruct "H" as (hs np nk hl ht) "(Ha & Hk & Hts & Hht & %Hok)".
     pose proof Hok as Hok'.
@@ -1224,7 +1224,7 @@ Section DevLoops.
          uart_out_lb γ (obs_wire iu (open_seg (h ++ [ObsUartIn iu b])%list)) -∗
          ⌜obs_boots (h ++ [ObsUartIn iu b])%list = S gen_id⌝ ==∗
          (∃ hs np nk hl ht, uart_col iu γ u' hs np nk hl ht)).
-  Proof.
+  Proof using .
     iIntros "H Hauth".
     iDestruct "H" as (hs np nk hl ht) "(Ha & Hk & Hts & #Hht & %Hok)".
     (* the top is at or before the machine's current history *)
@@ -1318,7 +1318,7 @@ Section DevLoops.
     u_rx u <> [] ->
     uart_colE iu γ u -∗ uart_rx_tok γ k hl -∗
       uart_colE iu γ u ∗ uart_rx_tok γ k hl ∗ uart_rx_pushed_lb γ (S k).
-  Proof.
+  Proof using .
     iIntros (Hne) "H Htok".
     iDestruct "H" as (hs np nk hl0 ht) "(Ha & Hk & Hts & Hht & %Hok)".
     iDestruct (uart_rx_tok_agree with "Hk Htok") as %[<- <-].
@@ -1364,7 +1364,7 @@ Section DevLoops.
                shift this byte pays for is the CURRENT era's *)
             ⌜obs_boots h = S gen_id⌝ ∗
             uart_rx_tok γ (S k) (Some h)).
-  Proof.
+  Proof using .
     iIntros (Hpop Hw Ho Hacc) "H Htok #Hlb".
     iDestruct "H" as (hs np nk hl0 ht) "(Ha & Hk & Hts & Hht & %Hok)".
     iDestruct (uart_rx_tok_agree with "Hk Htok") as %[<- <-].
@@ -1414,7 +1414,7 @@ Section DevLoops.
     uart_acc u' = uart_acc u ->
     uart_colE iu γ u -∗ uart_rx_tok γ k hl ==∗
       uart_colE iu γ u' ∗ ∃ k' hl', uart_rx_tok γ k' hl'.
-  Proof.
+  Proof using .
     iIntros (Hrx Hlb Hw Ho Hacc) "H Htok".
     iDestruct "H" as (hs np nk hl0 ht) "(Ha & Hk & Hts & #Hht & %Hok)".
     iDestruct (uart_rx_tok_agree with "Hk Htok") as %[<- <-].
@@ -1475,13 +1475,13 @@ Section DevLoops.
        ⌜ plic_ok p ⌝ ∗ ⌜ virtio_isr_ok v ⌝)%I.
 
   Global Instance uart_frag_timeless i u : Timeless (uart_frag i u).
-  Proof. rewrite /uart_frag. apply _. Qed.
+  Proof using . rewrite /uart_frag. apply _. Qed.
   Global Instance plic_frag_timeless p : Timeless (plic_frag p).
-  Proof. rewrite /plic_frag. apply _. Qed.
+  Proof using . rewrite /plic_frag. apply _. Qed.
   Global Instance virtio_frag_timeless v : Timeless (virtio_frag v).
-  Proof. rewrite /virtio_frag. apply _. Qed.
+  Proof using . rewrite /virtio_frag. apply _. Qed.
   Global Instance dev_inv_body_timeless γ γd : Timeless (dev_inv_body γ γd).
-  Proof. rewrite /dev_inv_body. apply _. Qed.
+  Proof using . rewrite /dev_inv_body. apply _. Qed.
 
   (* ------------------------------------------------------------------ *)
   (*  THREE invariants, one per device thread.                           *)
@@ -1629,7 +1629,7 @@ Section DevLoops.
   Lemma plic_slot_to_uslot (γ γ1 : uart_names) (p : plic_state) (j : uart_id) :
     plic_slot γ γ1 p (uart_irq_id j) -∗
     plic_uslot j (plic_unames γ γ1 j) (p_claimed p (uart_irq_id j)).
-  Proof.
+  Proof using .
     rewrite /plic_slot /plic_uslot /plic_preinit /plic_inited /plic_payload
             uart_of_irq_id. iIntros "H". iExact "H".
   Qed.
@@ -1637,7 +1637,7 @@ Section DevLoops.
   Lemma plic_uslot_to_slot (γ γ1 : uart_names) (p : plic_state) (j : uart_id) :
     plic_uslot j (plic_unames γ γ1 j) (p_claimed p (uart_irq_id j)) -∗
     plic_slot γ γ1 p (uart_irq_id j).
-  Proof.
+  Proof using .
     rewrite /plic_slot /plic_uslot /plic_preinit /plic_inited /plic_payload
             uart_of_irq_id. iIntros "H". iExact "H".
   Qed.
@@ -1646,7 +1646,7 @@ Section DevLoops.
      This is what makes the big-op collapse to the two ports' slots. *)
   Lemma plic_slot_other (γ γ1 : uart_names) (p : plic_state) (i : N) :
     uart_of_irq i = None -> ⊢ plic_slot γ γ1 p i.
-  Proof.
+  Proof using .
     intros Hi.
     rewrite /plic_slot /plic_preinit /plic_inited /plic_payload Hi.
     iRight. iSplitR; [done|]. destruct (p_claimed p i); done.
@@ -1657,7 +1657,7 @@ Section DevLoops.
     plic_slots γ γ1 p ⊣⊢
       plic_uslot Uart0 γ  (p_claimed p (uart_irq_id Uart0)) ∗
       plic_uslot Uart1 γ1 (p_claimed p (uart_irq_id Uart1)).
-  Proof.
+  Proof using .
     rewrite /plic_slots /plic_tracked. iSplit.
     - iIntros "(H0 & H1 & _)".
       iSplitL "H0".
@@ -1681,13 +1681,13 @@ Section DevLoops.
     plic_uslot iu γu cl -∗
       uart_preinit γu
       ∨ (uart_inited γu ∗ if cl then emp else plic_payload_uart iu γu).
-  Proof. rewrite /plic_uslot. iIntros "H". iExact "H". Qed.
+  Proof using . rewrite /plic_uslot. iIntros "H". iExact "H". Qed.
 
   Lemma plic_uslot_intro (iu : uart_id) (γu : uart_names) (cl : bool) :
     uart_inited γu -∗
     (if cl then emp else plic_payload_uart iu γu) -∗
     plic_uslot iu γu cl.
-  Proof.
+  Proof using .
     iIntros "#Hin Hpay". rewrite /plic_uslot. iRight.
     iSplitR; [iExact "Hin"|]. iExact "Hpay".
   Qed.
@@ -1695,7 +1695,7 @@ Section DevLoops.
   Lemma plic_uslot_elim (iu : uart_id) (γu : uart_names) (cl : bool) :
     uart_inited γu -∗ plic_uslot iu γu cl -∗
     (if cl then emp else plic_payload_uart iu γu).
-  Proof.
+  Proof using .
     iIntros "#Hin Hu".
     iDestruct (plic_uslot_cases with "Hu") as "[Hpre | [_ Hpay]]".
     - iDestruct (uart_preinit_inited_False with "Hpre Hin") as %[].
@@ -1711,7 +1711,7 @@ Section DevLoops.
   Lemma uart_irq_id_range_at (j : uart_id) :
     (1 <= Z.of_N (uart_irq_id j))%Z /\
     (Z.of_N (uart_irq_id j) < Z.of_nat plic_nsrc)%Z.
-  Proof. destruct j; unfold uart_irq_id, plic_nsrc; cbn; lia. Qed.
+  Proof using . destruct j; unfold uart_irq_id, plic_nsrc; cbn; lia. Qed.
 
   (* ...and the port-generic twin of [PlicPlan.plic_claim_uart_of_ret]: the
      id a claim RETURNS identifies the source it took, at either port. *)
@@ -1719,7 +1719,7 @@ Section DevLoops.
     plic_ok p -> plic_best p c = Some i ->
     Z_to_bv 32 (Z.of_N i) = Z_to_bv 32 (Z.of_N (uart_irq_id j)) ->
     i = uart_irq_id j.
-  Proof.
+  Proof using .
     intros Hok Hbest Heq.
     destruct (plic_best_spec p c i Hbest) as [Hin Hcand].
     assert (Hen : plic_enabled p c i = true).
@@ -1746,7 +1746,7 @@ Section DevLoops.
     p_claimed p' (uart_irq_id Uart0) = p_claimed p (uart_irq_id Uart0) ->
     p_claimed p' (uart_irq_id Uart1) = p_claimed p (uart_irq_id Uart1) ->
     plic_slots γ γ1 p -∗ plic_slots γ γ1 p'.
-  Proof.
+  Proof using .
     intros H0 H1. rewrite !plic_slots_eq H0 H1. iIntros "$".
   Qed.
 
@@ -1762,7 +1762,7 @@ Section DevLoops.
       (∀ j : uart_id,
          ⌜ fst (plic_claim p c) = Z_to_bv 32 (Z.of_N (uart_irq_id j)) ⌝ -∗
          plic_payload_uart j (plic_unames γ γ1 j)).
-  Proof.
+  Proof using .
     intros Hok. iIntros "#Hin0 #Hin1 H".
     rewrite plic_slots_eq. iDestruct "H" as "[H0 H1]".
     destruct (plic_best p c) as [i|] eqn:Hbest; last first.
@@ -1836,7 +1836,7 @@ Section DevLoops.
     (∀ j : uart_id, ⌜ i = uart_irq_id j ⌝ -∗
        plic_payload_uart j (plic_unames γ γ1 j)) -∗
     plic_slots γ γ1 (plic_complete p i).
-  Proof.
+  Proof using .
     iIntros "#Hin0 #Hin1 H Hpay".
     destruct (decide (i = uart_irq_id Uart0)) as [Hi0|Hn0].
     - subst i. rewrite plic_slots_eq. iDestruct "H" as "[H0 H1]".
@@ -1888,20 +1888,20 @@ Section DevLoops.
        virtio_frag v ∗ virtio_proto γd v ∗ ⌜ virtio_isr_ok v ⌝)%I.
 
   Global Instance uart_inv_body_timeless i γ : Timeless (uart_inv_body i γ).
-  Proof. rewrite /uart_inv_body. apply _. Qed.
+  Proof using . rewrite /uart_inv_body. apply _. Qed.
   Global Instance plic_slot_timeless γ γ1 p i : Timeless (plic_slot γ γ1 p i).
-  Proof.
+  Proof using .
     rewrite /plic_slot /plic_preinit /plic_inited /plic_payload
             /uart_preinit /uart_inited.
     destruct (uart_of_irq i) as [j|]; [destruct j|];
       destruct (p_claimed p i); apply _.
   Qed.
   Global Instance plic_slots_timeless γ γ1 p : Timeless (plic_slots γ γ1 p).
-  Proof. rewrite /plic_slots. apply _. Qed.
+  Proof using . rewrite /plic_slots. apply _. Qed.
   Global Instance plic_inv_body_timeless γ γ1 : Timeless (plic_inv_body γ γ1).
-  Proof. rewrite /plic_inv_body. apply _. Qed.
+  Proof using . rewrite /plic_inv_body. apply _. Qed.
   Global Instance disk_inv_body_timeless γd : Timeless (disk_inv_body γd).
-  Proof. rewrite /disk_inv_body. apply _. Qed.
+  Proof using . rewrite /disk_inv_body. apply _. Qed.
 
   Definition uart_inv (i : uart_id) (γ : uart_names) : iProp Σ :=
     inv (uartN i) (uart_inv_body i γ).
@@ -1910,16 +1910,16 @@ Section DevLoops.
   Definition disk_inv (γd : disk_names) : iProp Σ := inv diskN (disk_inv_body γd).
 
   Global Instance uart_inv_persistent i γ : Persistent (uart_inv i γ).
-  Proof. rewrite /uart_inv. apply _. Qed.
+  Proof using . rewrite /uart_inv. apply _. Qed.
   Global Instance plic_inv_persistent γ γ1 : Persistent (plic_inv γ γ1).
-  Proof. rewrite /plic_inv. apply _. Qed.
+  Proof using . rewrite /plic_inv. apply _. Qed.
   Global Instance disk_inv_persistent γd : Persistent (disk_inv γd).
-  Proof. rewrite /disk_inv. apply _. Qed.
+  Proof using . rewrite /disk_inv. apply _. Qed.
 
   Lemma uart_inv_alloc E i γ : uart_inv_body i γ ={E}=∗ uart_inv i γ.
-  Proof. iIntros "Hbody". rewrite /uart_inv. by iApply inv_alloc. Qed.
+  Proof using . iIntros "Hbody". rewrite /uart_inv. by iApply inv_alloc. Qed.
   Lemma plic_inv_alloc E γ γ1 : plic_inv_body γ γ1 ={E}=∗ plic_inv γ γ1.
-  Proof. iIntros "Hbody". rewrite /plic_inv. by iApply inv_alloc. Qed.
+  Proof using . iIntros "Hbody". rewrite /plic_inv. by iApply inv_alloc. Qed.
 
   (* ==================================================================== *)
   (*  §2b  THE WRITER'S VIEW SHIFT (app-echo.md, lane OUT-FUPD).           *)
@@ -1991,7 +1991,7 @@ Section DevLoops.
   Lemma cons_link_mono (i : uart_id) (k : nat) (ev : ConsLog.cons_ev)
       (Φ Φ' : iProp Σ) :
     (Φ -∗ Φ') -∗ cons_link i k ev Φ -∗ cons_link i k ev Φ'.
-  Proof.
+  Proof using .
     iIntros "HΦ H" (o Hh) "Hlb Hres %Hok %Hev".
     iMod ("H" $! o Hh with "Hlb Hres [//] [//]") as (o'') "(Hlb'' & Hres' & HP)".
     iModIntro. iExists o''. iFrame "Hlb'' Hres'". by iApply "HΦ".
@@ -2044,7 +2044,7 @@ Section DevLoops.
         riscv_cons_res k h H ==∗ riscv_cons_res k h (ConsLog.cons_step H ev))%I.
 
   Global Instance cons_licence_persistent : Persistent cons_licence.
-  Proof. rewrite /cons_licence. apply _. Qed.
+  Proof using . rewrite /cons_licence. apply _. Qed.
 
   (* A PROCESS BYTE REACHING THE WIRE (redesign R2).  The name and the
      shape every writer threads are unchanged; what moves underneath is the
@@ -2067,7 +2067,7 @@ Section DevLoops.
      is what keeps every writer's application site unchanged. *)
   Lemma cons_link_of_out_link (i : uart_id) (k : nat) (b : bv 8) (Φ : iProp Σ) :
     out_link i k b Φ -∗ cons_link i k (ConsLog.EvOut b) Φ.
-  Proof. iIntros "H" (o Hh) "Hlb Hres _ _". by iApply ("H" with "Hlb Hres"). Qed.
+  Proof using . iIntros "H" (o Hh) "Hlb Hres _ _". by iApply ("H" with "Hlb Hres"). Qed.
 
   (* THE CHAIN: one link per byte of a run, the payload at the end.  A
      [Fixpoint] and not a big-op, so that [out_chain_app] -- the loop
@@ -2104,7 +2104,7 @@ Section DevLoops.
      out because the input side's run bridge needs it on ONE link *)
   Lemma out_link_mono (i : uart_id) (k : nat) (b : bv 8) (Φ Φ' : iProp Σ) :
     (Φ -∗ Φ') -∗ out_link i k b Φ -∗ out_link i k b Φ'.
-  Proof.
+  Proof using .
     iIntros "HΦ H" (o acc) "Hlb Hres".
     iMod ("H" $! o acc with "Hlb Hres") as (o') "(Hlb' & Hres' & HP)".
     iModIntro. iExists o'. iFrame "Hlb' Hres'". by iApply "HΦ".
@@ -2113,7 +2113,7 @@ Section DevLoops.
   Lemma out_chain_mono (i : uart_id) (k : nat) (bs : list (bv 8))
       (Φ Φ' : iProp Σ) :
     (Φ -∗ Φ') -∗ out_chain i k bs Φ -∗ out_chain i k bs Φ'.
-  Proof.
+  Proof using .
     iIntros "HΦ H". iInduction bs as [| b bs] "IH" forall (Φ Φ'); [by iApply "HΦ"|].
     cbn [out_chain]. iIntros (o acc) "Hlb Hres".
     iMod ("H" $! o acc with "Hlb Hres") as (o') "(Hlb' & Hres' & Hrest)".
@@ -2133,7 +2133,7 @@ Section DevLoops.
      writer moves no witness, because it claims nothing about the input *)
   Lemma out_link_of_licence (k : nat) (b : bv 8) (Φ : iProp Σ) :
     cons_licence -∗ Φ -∗ out_link Uart0 k b Φ.
-  Proof.
+  Proof using .
     iIntros "#Hlic HΦ" (o Hh) "#Hlb Hres".
     iMod ("Hlic" $! k (default [] o) Hh (ConsLog.EvOut b) with "Hres") as "Hres".
     iModIntro. iExists o. by iFrame "Hlb Hres HΦ".
@@ -2141,7 +2141,7 @@ Section DevLoops.
 
   Lemma out_chain_of_licence (k : nat) (bs : list (bv 8)) (Φ : iProp Σ) :
     cons_licence -∗ Φ -∗ out_chain Uart0 k bs Φ.
-  Proof.
+  Proof using .
     iIntros "#Hlic HΦ". iInduction bs as [| b bs] "IH"; [iExact "HΦ"|].
     cbn [out_chain]. iApply (out_link_of_licence k b with "Hlic").
     by iApply "IH".
@@ -2151,7 +2151,7 @@ Section DevLoops.
      generic supply's [write(16)] row needs *)
   Lemma out_run_of_licence (k : nat) (bs : list (bv 8)) :
     cons_licence -∗ out_run Uart0 k bs (fun _ => True%I).
-  Proof.
+  Proof using .
     iIntros "#Hlic". iInduction bs as [| b bs] "IH"; [done|].
     cbn [out_run]. iSplit; [done|].
     iApply (out_link_of_licence k b with "Hlic"). by iApply "IH".
@@ -2163,7 +2163,7 @@ Section DevLoops.
      [⌜cons_ev_ok H ev⌝] argument is dropped on the floor here. *)
   Lemma cons_link_of_licence (k : nat) (ev : ConsLog.cons_ev) (Φ : iProp Σ) :
     cons_licence -∗ Φ -∗ cons_link Uart0 k ev Φ.
-  Proof.
+  Proof using .
     iIntros "#Hlic HΦ" (o H) "#Hlb Hres _ _".
     iMod ("Hlic" $! k (default [] o) H ev with "Hres") as "Hres".
     iModIntro. iExists o. by iFrame "Hlb Hres HΦ".
@@ -2172,7 +2172,7 @@ Section DevLoops.
   (* ...and hence the whole arm, stop or continue, at every byte *)
   Lemma cons_run_of_licence (k : nat) (bs : list (bv 8)) (Φ : iProp Σ) :
     cons_licence -∗ Φ -∗ cons_run k bs Φ.
-  Proof.
+  Proof using .
     iIntros "#Hlic HΦ". iInduction bs as [| b bs] "IH";
       cbn [cons_run].
     - by iApply (cons_link_of_licence with "Hlic").
@@ -2184,7 +2184,7 @@ Section DevLoops.
   (* the trivial application's licence: its claim is [emp], so every event
      is a no-op on nothing *)
   Lemma cons_licence_triv : riscv_cons_res = cons_res_triv -> ⊢ cons_licence.
-  Proof.
+  Proof using .
     intros Hc. rewrite /cons_licence Hc /cons_res_triv.
     iIntros "!>" (????) "_". by iModIntro.
   Qed.
@@ -2193,14 +2193,14 @@ Section DevLoops.
      link is discharged out of the payload and the witness never moves *)
   Lemma out_link_triv (i : uart_id) (k : nat) (b : bv 8) (Φ : iProp Σ) :
     i = Uart1 -> Φ -∗ out_link i k b Φ.
-  Proof.
+  Proof using .
     intros ->. iIntros "HΦ" (o acc) "#Hlb _". iModIntro.
     iExists o. by iFrame "Hlb HΦ".
   Qed.
 
   Lemma out_chain_triv (i : uart_id) (k : nat) (bs : list (bv 8)) (Φ : iProp Σ) :
     i = Uart1 -> Φ -∗ out_chain i k bs Φ.
-  Proof.
+  Proof using .
     intros ->. iIntros "HΦ".
     iInduction bs as [| b bs] "IH"; [iExact "HΦ"|].
     cbn [out_chain]. iApply (out_link_triv Uart1 k b _ eq_refl).
@@ -2211,12 +2211,12 @@ Section DevLoops.
   Lemma out_run_stop (i : uart_id) (k : nat) (bs : list (bv 8))
       (Q : nat -> iProp Σ) :
     out_run i k bs Q -∗ Q 0%nat.
-  Proof. destruct bs; [by iIntros "$"| by iIntros "[$ _]"]. Qed.
+  Proof using . destruct bs; [by iIntros "$"| by iIntros "[$ _]"]. Qed.
 
   Lemma out_run_chain (i : uart_id) (k : nat) (bs : list (bv 8))
       (Q : nat -> iProp Σ) :
     out_run i k bs Q -∗ out_chain i k bs (Q (length bs)).
-  Proof.
+  Proof using .
     iIntros "H". iInduction bs as [| b bs] "IH" forall (Q); [iExact "H"|].
     cbn [out_run out_chain length]. iDestruct "H" as "[_ H]".
     iApply (out_chain_mono i k [b] with "[] H").
@@ -2249,7 +2249,7 @@ Section DevLoops.
 
   Lemma echo_chain_mono (k : nat) (bs : list (bv 8)) (Φ Φ' : iProp Σ) :
     (Φ -∗ Φ') -∗ echo_chain k bs Φ -∗ echo_chain k bs Φ'.
-  Proof.
+  Proof using .
     iIntros "HΦ H". iInduction bs as [| b bs] "IH" forall (Φ Φ');
       [by iApply "HΦ" |].
     cbn [echo_chain]. iApply (cons_link_mono with "[HΦ] H").
@@ -2320,7 +2320,7 @@ Section DevLoops.
      about the window and is told nothing *)
   Lemma cons_read_pay_triv (k : nat) :
     cons_licence -∗ cons_read_pay k (fun _ => True%I).
-  Proof.
+  Proof using .
     iIntros "#Hlic" (ws). iApply (cons_link_of_licence with "Hlic"). done.
   Qed.
 
@@ -2368,7 +2368,7 @@ Section DevLoops.
               so the close hands it back without a second derivation. *)
            ⌜forall e, e ∈ L -> hist_ext (LogEntryDefs.le_hist e) h⌝ ∗
            uart_arm γ (1/2) None ∗ Φ.
-  Proof.
+  Proof using .
     intros Hecho. iIntros "#Hinv Hhi Hlm Hmine HΨ".
     iInv "Hinv" as ">Hbody" "Hclose".
     iDestruct "Hbody" as (u) "(Hu & Hg & Hcol & Hcons)".
@@ -2438,7 +2438,7 @@ Section DevLoops.
     cons_link Uart0 (S gen_id) (ConsLog.EvOpen h c cs) Φ
     ={⊤}=∗ uart_log_hi γ (1/2) hg ∗
            uart_arm γ (1/2) (Some (h, c, cs, 0%nat)) ∗ Φ.
-  Proof.
+  Proof using .
     intros Hx Hends Hecho. iIntros "#Hinv #Hwlb Hhi Hmine HΨ".
     iInv "Hinv" as ">Hbody" "Hclose".
     iDestruct "Hbody" as (u) "(Hu & Hg & Hcol & Hcons)".
@@ -2522,7 +2522,7 @@ Section DevLoops.
     uart_inv Uart0 γ -∗ uart_deliv γ (1/2) dv -∗ uart_logm γ (1/2) L -∗
     cons_link Uart0 (S gen_id) (ConsLog.EvRead ws) Φ
       ={⊤}=∗ uart_deliv γ (1/2) (dv ++ ws) ∗ uart_logm γ (1/2) L ∗ Φ.
-  Proof.
+  Proof using .
     intros Hread. iIntros "#Hinv Hdv Hlm HΨ".
     iInv "Hinv" as ">Hbody" "Hclose".
     iDestruct "Hbody" as (u) "(Hu & Hg & Hcol & Hcons)".
@@ -2561,7 +2561,7 @@ Section DevLoops.
     u_wire u' = u_wire u ->
     u_out u' = u_out u ->
     uart_colE iu γ u -∗ uart_colE iu γ u'.
-  Proof.
+  Proof using .
     iIntros (Hrx Hlb Hw Ho) "H".
     iDestruct "H" as (hs np nk hl ht) "(Ha & Hk & Hts & Hht & %Hok)".
     iExists hs, np, nk, hl, ht. iFrame "Ha Hk Hts Hht". iPureIntro.
@@ -2594,7 +2594,7 @@ Section DevLoops.
     uart_acc u' = (uart_acc u ++ [b])%list ->
     cons_link iu (S gen_id) (ConsLog.EvOut b) Φ -∗ cons_claim_at iu γ u
     ={⊤ ∖ ↑uartN iu}=∗ cons_claim_at iu γ u' ∗ Φ.
-  Proof.
+  Proof using .
     iIntros (Hacc) "HΨ Hcl".
     iDestruct "Hcl" as (o H)
       "(Hlb & Hres & Hhi & Hdv & Hau & Hlm & Harm & %Hacc0 & %Hok)".
@@ -2630,7 +2630,7 @@ Section DevLoops.
   Lemma store_ob_mono (i : uart_id) (γ : uart_names) (b : bv 8)
       (Φ Φ' : iProp Σ) :
     (Φ -∗ Φ') -∗ store_ob i γ b Φ -∗ store_ob i γ b Φ'.
-  Proof.
+  Proof using .
     iIntros "HΦ H" (u u') "%H1 %H2 %H3 %H4 %H5 Hout Hcol Hin".
     iMod ("H" $! u u' with "[//] [//] [//] [//] [//] Hout Hcol Hin")
       as "(Hout & Hcol & Hin & HP)".
@@ -2640,7 +2640,7 @@ Section DevLoops.
   Lemma store_chain_mono (i : uart_id) (γ : uart_names) (bs : list (bv 8))
       (Φ Φ' : iProp Σ) :
     (Φ -∗ Φ') -∗ store_chain i γ bs Φ -∗ store_chain i γ bs Φ'.
-  Proof.
+  Proof using .
     iIntros "HΦ H". iInduction bs as [| b bs] "IH" forall (Φ Φ').
     - cbn [store_chain]. by iApply "HΦ".
     - cbn [store_chain]. iApply (store_ob_mono with "[HΦ] H").
@@ -2652,7 +2652,7 @@ Section DevLoops.
      carries over.  One link where there were two resources to move. *)
   Lemma store_ob_of_cons_link (i : uart_id) (γ : uart_names) (b : bv 8)
       (Φ : iProp Σ) : cons_link i (S gen_id) (ConsLog.EvOut b) Φ -∗ store_ob i γ b Φ.
-  Proof.
+  Proof using .
     iIntros "HΨ" (u u') "%H1 %H2 %H3 %H4 %H5 Hout Hcol Hin".
     iMod (cons_claim_at_store i γ u u' b Φ H5 with "HΨ Hin") as "[Hin HΦ]".
     iDestruct (uart_colE_store i γ u u' b H1 H2 H3 H4 with "Hcol") as "Hcol".
@@ -2663,14 +2663,14 @@ Section DevLoops.
      [True], so the two are one wand with an argument fewer. *)
   Lemma store_ob_of_out_link (i : uart_id) (γ : uart_names) (b : bv 8)
       (Φ : iProp Σ) : out_link i (S gen_id) b Φ -∗ store_ob i γ b Φ.
-  Proof.
+  Proof using .
     iIntros "H". iApply store_ob_of_cons_link. by iApply cons_link_of_out_link.
   Qed.
 
   Lemma store_chain_of_out_chain (i : uart_id) (γ : uart_names)
       (bs : list (bv 8)) (Φ : iProp Σ) :
     out_chain i (S gen_id) bs Φ -∗ store_chain i γ bs Φ.
-  Proof.
+  Proof using .
     iIntros "H". iInduction bs as [| b bs] "IH" forall (Φ); [by iFrame |].
     cbn [out_chain store_chain].
     iApply store_ob_of_cons_link. iApply cons_link_of_out_link.
@@ -2694,7 +2694,7 @@ Section DevLoops.
     uart_arm γ (1/2) (Some (h, c, cs, j)) -∗
     cons_link Uart0 (S gen_id) (ConsLog.EvByte b) Φ -∗
     store_ob Uart0 γ b (uart_arm γ (1/2) (Some (h, c, cs, S j)) ∗ Φ).
-  Proof.
+  Proof using .
     intros Hlk. iIntros "Hmine HΨ" (u u') "%H1 %H2 %H3 %H4 %H5 Hout Hcol Hin".
     iDestruct "Hin" as (o H)
       "(#Hlb & Hres & Hhi0 & Hdv & Hau & Hlm0 & Harm & %Hacc0 & %Hok)".
@@ -2732,7 +2732,7 @@ Section DevLoops.
     echo_chain (S gen_id) bs Φ -∗
     store_chain Uart0 γ bs
       (uart_arm γ (1/2) (Some (h, c, cs, (j + length bs)%nat)) ∗ Φ).
-  Proof.
+  Proof using .
     iIntros (Hbs) "Harm H".
     iInduction bs as [| b bs] "IH" forall (j Hbs Φ).
     - cbn [store_chain length]. rewrite Nat.add_0_r. iFrame "Harm H".
@@ -2760,7 +2760,7 @@ Section DevLoops.
     store_chain Uart0 γ bs
       (uart_arm γ (1/2) (Some (h, c, (pre ++ bs ++ post)%list,
                                (length pre + length bs)%nat)) ∗ Φ).
-  Proof.
+  Proof using .
     iIntros "Harm H".
     iApply (store_chain_of_echo_chain γ h c _ (length pre) bs Φ
               with "Harm H").
@@ -2775,7 +2775,7 @@ Section DevLoops.
   Lemma cons_run_full (bs : list (bv 8)) (Φ : iProp Σ) :
     cons_run (S gen_id) bs Φ -∗
     echo_chain (S gen_id) bs (cons_link Uart0 (S gen_id) ConsLog.EvClose Φ).
-  Proof.
+  Proof using .
     iIntros "H". iInduction bs as [| b bs] "IH" forall (Φ);
       cbn [cons_run echo_chain]; [iExact "H" |].
     iDestruct "H" as "[_ H]".
@@ -2787,7 +2787,7 @@ Section DevLoops.
   Lemma cons_run_step (bs cs : list (bv 8)) (Φ : iProp Σ) :
     cons_run (S gen_id) (bs ++ cs)%list Φ -∗
     echo_chain (S gen_id) bs (cons_run (S gen_id) cs Φ).
-  Proof.
+  Proof using .
     iIntros "H". iInduction bs as [| b bs] "IH";
       cbn [echo_chain]; [iExact "H" |].
     rewrite -app_comm_cons. cbn [cons_run].
@@ -2798,13 +2798,13 @@ Section DevLoops.
   (* the arm may always STOP where it stands *)
   Lemma cons_run_stop (bs : list (bv 8)) (Φ : iProp Σ) :
     cons_run (S gen_id) bs Φ -∗ cons_link Uart0 (S gen_id) ConsLog.EvClose Φ.
-  Proof.
+  Proof using .
     iIntros "H". destruct bs as [| b bs]; [iExact "H" |].
     cbn [cons_run]. by iDestruct "H" as "[H _]".
   Qed.
 
   Lemma disk_inv_alloc E γd : disk_inv_body γd ={E}=∗ disk_inv γd.
-  Proof. iIntros "Hbody". rewrite /disk_inv. by iApply inv_alloc. Qed.
+  Proof using . iIntros "Hbody". rewrite /disk_inv. by iApply inv_alloc. Qed.
 
   (* THE PERMIT CHANNEL IS ERA-LOCAL, so the bundle that carries it names the
      era's generation -- and it names it as the AMBIENT [gen_id], not as an
@@ -2838,32 +2838,32 @@ Section DevLoops.
      disk_inv γd ∗ perm_inv gen_id (dn_perm γd))%I.
 
   Global Instance dev_inv_persistent γ γd : Persistent (dev_inv γ γd).
-  Proof. rewrite /dev_inv. apply _. Qed.
+  Proof using . rewrite /dev_inv. apply _. Qed.
 
   (* the three projections out of the bundle.  A leaf that borrows the fabric
      takes [dev_inv] (unchanged statement) and projects the ONE half it
      touches; the projections are wands out of a persistent premise, so a
      leaf holding [dev_inv] in its intuitionistic context keeps it. *)
   Lemma dev_inv_uart γ γd : dev_inv γ γd -∗ uart_inv Uart0 γ.
-  Proof. iIntros "(#H & _ & _ & _)". iExact "H". Qed.
+  Proof using . iIntros "(#H & _ & _ & _)". iExact "H". Qed.
   Lemma dev_inv_plic γ γd : dev_inv γ γd -∗ ∃ γ1 : uart_names, plic_inv γ γ1.
-  Proof. iIntros "(_ & #H & _ & _)". iExact "H". Qed.
+  Proof using . iIntros "(_ & #H & _ & _)". iExact "H". Qed.
   (* ...and the way IN, for the one construction site that knows [γ1]. *)
   Lemma dev_inv_intro γ γ1 γd :
     uart_inv Uart0 γ -∗ plic_inv γ γ1 -∗ disk_inv γd -∗
     perm_inv gen_id (dn_perm γd) -∗ dev_inv γ γd.
-  Proof.
+  Proof using .
     iIntros "#Hu #Hp #Hd #Hq". rewrite /dev_inv.
     iFrame "Hu Hd Hq". iExists γ1. iExact "Hp".
   Qed.
   Lemma dev_inv_disk γ γd : dev_inv γ γd -∗ disk_inv γd.
-  Proof. iIntros "(_ & _ & #H & _)". iExact "H". Qed.
+  Proof using . iIntros "(_ & _ & #H & _)". iExact "H". Qed.
   (* THE CRASH-PERMIT CHANNEL rides the SAME bundle (PermInv.v), which is why
      no client spec statement changed when it landed: every driver proof that
      already threads [dev_inv] can open [permN] to deposit its permit at
      enqueue and to collect its receipt after the wake. *)
   Lemma dev_inv_perm γ γd : dev_inv γ γd -∗ perm_inv gen_id (dn_perm γd).
-  Proof. iIntros "(_ & _ & _ & #H)". iExact "H". Qed.
+  Proof using . iIntros "(_ & _ & _ & #H)". iExact "H". Qed.
 
   (* ... and the bundle allocation, at the EXISTING signature: the old
      ∃-triple body is split into the three per-device bodies. *)
@@ -2888,7 +2888,7 @@ Section DevLoops.
     perm_inv_body gen_id (dn_perm γd) -∗
     uart_rx_tok γ 0 None ={E}=∗
     dev_inv γ γd ∗ plic_inv γ γ1 ∗ uart_rx_tok γ 0 None.
-  Proof.
+  Proof using .
     iIntros "Hbody Hpre1 Hperm Htok". rewrite /dev_inv_body.
     iDestruct "Hbody" as (u p v)
       "(Hu & Hp & Hv & Hg & Hcol & Hcons & Hpre & Hproto & %Hpok & %Hvok)".
@@ -2939,7 +2939,7 @@ Section DevLoops.
     plic_uslot iu γu cl -∗ uart_rx_tok γu k hl -∗ uart_rx_hi γu (1/2) hh -∗
     uart_log_hi γu (1/2) hg -∗ uart_arm γu (1/2) None
       ==∗ uart_inited γu ∗ plic_uslot iu γu cl.
-  Proof.
+  Proof using .
     iIntros (Hle Hleg) "Hu Htok Hhi Hlg Harm".
     iDestruct (plic_uslot_cases with "Hu") as "[Hpre | [#Hin Hrest]]".
     - iMod (uart_preinit_fire with "Hpre") as "#Hin".
@@ -2968,7 +2968,7 @@ Section DevLoops.
     (* ...the arm's half, at [None] (redesign R2)... *)
     uart_arm (plic_unames γ γ1 j) (1/2) None
       ={E}=∗ uart_inited (plic_unames γ γ1 j).
-  Proof.
+  Proof using .
     iIntros (Hmask Hle Hleg) "#Hpinv Htok Hhi Hlg Harm".
     iInv "Hpinv" as ">Hbody" "Hclose".
     iDestruct "Hbody" as (p) "(Hp & %Hpok & Hslots)".
@@ -3038,7 +3038,7 @@ Section DevLoops.
                    the invariant's half is inside the port's claim above. *)
                 uart_arm γ (1/2) None ∗
                 uart_preinit γ.
-  Proof.
+  Proof using .
     intros Hrx Hlb Hwo Hacc0. iIntros "Hres".
     iMod (own_alloc (●ML (uart_acc u : list (leibnizO (bv 8))))) as (γa) "Ha";
       [apply mono_list_auth_valid|].
@@ -3152,7 +3152,7 @@ Section DevLoops.
     end%I.
 
   Global Instance uart_tag_of_persistent h κ : Persistent (uart_tag_of h κ).
-  Proof.
+  Proof using .
     rewrite /uart_tag_of. destruct κ as [|k κ']; [apply _|].
     destruct k; destruct κ'; apply _.
   Qed.
@@ -3160,7 +3160,7 @@ Section DevLoops.
   (* at the trivial family every arm's tag is free *)
   Lemma uart_tag_of_triv (h κ : list mobs) :
     riscv_rx_tag = rx_tag_triv -> ⊢ uart_tag_of h κ.
-  Proof.
+  Proof using .
     intros Htag. rewrite /uart_tag_of.
     destruct κ as [|k κ']; [done|].
     destruct k; destruct κ'; try done.
@@ -3209,7 +3209,7 @@ Section DevLoops.
        arm owes is [True] and the permit can mint it out of nothing *)
     riscv_rx_tag = rx_tag_triv ->
     obs_inv -∗ uart_obs_permit i γ.
-  Proof.
+  Proof using .
     intros Heq Htag. iIntros "#Hoinv !>" (h κ d u')
       "%Hstep %Hsh %Hwire %Hwo %Hbts Hcl Hg Hauth".
     iInv "Hoinv" as "HP" "Hclose".
@@ -3272,7 +3272,7 @@ Section DevLoops.
                uart_ghosts γ u' ∗ R (h ++ [ObsUartIn i b])%list ∗
                Tg (h ++ [ObsUartIn i b])%list)) :
     obs_inv -∗ uart_obs_permit i γ.
-  Proof.
+  Proof using .
     iIntros "#Hoinv". iPoseProof Htx as "#Htx". iPoseProof Hrx as "#Hrx".
     iIntros "!>" (h κ d u')
       "%Hstep %Hsh %Hwire %Hwo %Hbts Hcl Hg Hauth".
@@ -3359,7 +3359,7 @@ Section DevLoops.
   Lemma wp_uart_loop (i : uart_id) (γ γp γp1 : uart_names) :
     gen_cert -∗ uart_inv i γ -∗ plic_inv γp γp1 -∗ uart_obs_permit i γ -∗
     WP (UartLoop i : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "#Hcert #Huinv #Hpinv #Hperm".
     iLöb as "IH".
     iApply (wp_uart_step with "Hcert").
@@ -3543,7 +3543,7 @@ Section DevLoops.
     gen_cert -∗ crash_inv -∗ perm_inv gen_id (dn_perm γd) -∗ disk_inv γd -∗
     plic_inv γu γu1 -∗
     WP (DiskLoop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Himg.
     iIntros "#Hcert #Hcinv #Hqinv #Hvinv #Hpinv".
     iLöb as "IH".
@@ -4079,7 +4079,7 @@ Section DevLoops.
   Lemma wp_plic_loop (γu γu1 : uart_names) :
     gen_cert -∗ plic_inv γu γu1 -∗ wire_inv -∗
     WP (PlicLoop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "#Hcert #Hpinv #Hwinv".
     iLöb as "IH".
     iApply (wp_plic_step with "Hcert").

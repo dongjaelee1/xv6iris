@@ -133,7 +133,7 @@ Section UkLoadTextExec.
     hreg_frame rsm u_Drw -∗
     hreg_frame_ro (u_Df (uc_dqc C)) rsm u_Dro -∗
     swp (execute (LOAD (imm, Regidx lr1, Regidx lrd, is_unsigned, kk))) Φ.
-  Proof.
+  Proof using .
     intros Hkw Hagm Hrd Hva Hwval Hl Hchk Hcanon Hpg Hal Hb1 Htx Hinj HPhi
       Hpins2 Lpc2 Lhs2 Lcp2 Hms2 Hgag2 Hx0 Lstvec2 Lmie2 Lmdl2 Lmedl2 Lmenv2
       Lmste2 Lsste2 Lsenv2 Lsatp2 Lpcfg2 Lpaddr2 Lmi2 Hagd2 Htok' Hpure.
@@ -265,7 +265,7 @@ Section UkLoadTextExec.
   Qed.
 
   Local Lemma phi_id (P : iProp Σ) : ⊢ P -∗ P.
-  Proof. iIntros "H". iExact "H". Qed.
+  Proof using . iIntros "H". iExact "H". Qed.
 
   (* ------------------------------------------------------------------- *)
   (* THE REDIRECT DISPATCH.  A base load IS the node; a COMPRESSED one     *)
@@ -341,7 +341,7 @@ Section UkLoadTextExec.
     swp (execute i)
       (run_exec_post (fun (r : ExecutionResult) (ib' : mword 32) =>
                         uv_step_post C R rsE (Step_Execute (r, ib'))) ib).
-  Proof.
+  Proof using .
     intros Hkw Hred Hg1 Hexp Hrd Hva Hwval Hl Hchk Hcanon Hpg Hal Hb1 Htx Hinj
       Hpins2 Lpc2 Lhs2 Lcp2 Hms2 Hgag2 Hx0 Lstvec2 Lmie2 Lmdl2 Lmedl2 Lmenv2
       Lmste2 Lsste2 Lsenv2 Lsatp2 Lpcfg2 Lpaddr2 Lmi2 Hagd2 Htok' Hpure.
@@ -453,7 +453,7 @@ Section UkLoadTextObl.
          (fun (xv : mword 64) (e : ExceptionType) =>
             uv_step_post C R rs1 (Step_Fetch_Failure (Virtaddr xv, e)))
          (fun _ : ext_fetch_addr_error => False)).
-  Proof.
+  Proof using .
     intros Hpre Hpure Hdec Hkw Hred Hg1 Hexp Hrd Hva Hwval Hl Hchk Hcanon
       Hpg Hal Hbw Htx.
     pose proof Hpre as (Hinj & Htok & HpinsA & LhsA & LcpA & HmsokA & LpcA &
@@ -581,7 +581,7 @@ Section UkLoadTextObl.
          (fun (xv : mword 64) (e : ExceptionType) =>
             uv_step_post C R rs1 (Step_Fetch_Failure (Virtaddr xv, e)))
          (fun _ : ext_fetch_addr_error => False)).
-  Proof.
+  Proof using .
     intros Hpre Hpure Hdec Hkw Hred Hg1 Hexp Hrd Hva Hwval Hl Hchk Hcanon
       Hpg Hal Hbw Htx.
     pose proof Hpre as (Hinj & Htok & HpinsA & LhsA & LcpA & HmsokA & LpcA &
@@ -728,7 +728,7 @@ Section UkLoadText.
     ▷ ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m)
         (add_vec_int pc (if is_rvc then 2 else 4)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using HRut Hlf0 Hlo Hpm.
     intros Hkw Hui Hred Hg1 Hexp Hrd Hva Hkok Hcanon Hpg Hal HMb Hwval.
     pose proof (Hui pt sz (loop_ok_wf C pt Hlo) Hpm) as Hui0.
     pose proof (ui_al2 _ _ _ _ _ Hui0) as Hal2.
@@ -832,7 +832,7 @@ Section UkLoadText.
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m)
         (add_vec_int pc (if is_rvc then 2 else 4)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using HRut Hlf0 Hlo Hpm.
     intros Hkw Hui Hred Hg1 Hexp Hrd Hva Hkok Hcanon Hpg Hal HMb Hwval.
     iIntros "Hb Hcont".
     iApply (wp_uk_load_text_later M m pc fdv cw gn cs pidv is_rvc i o imm rs1 rd
@@ -858,7 +858,7 @@ Section UkLoadText.
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) (add_vec_int pc 4) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hrd Hva Hkok Hcanon Hbb Hwval.
     iIntros "Hb Hcont".
     iApply (wp_uk_load_text M m pc fdv cw gn cs pidv false
@@ -898,7 +898,7 @@ Section UkLoadText.
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) (add_vec_int pc 2) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hcr1 Hcrd Hrd Hva Hkok Hcanon Hpg Hal Hbw Hwval.
     iIntros "Hb Hcont".
     iApply (wp_uk_load_text M m pc fdv cw gn cs pidv true

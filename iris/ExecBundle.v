@@ -105,7 +105,7 @@ Section ExecBundle.
 
   Global Instance ex_node_id_persistent T Pfin Φo a :
     Persistent (ex_node_id T Pfin Φo a).
-  Proof. rewrite /ex_node_id. apply _. Qed.
+  Proof using . rewrite /ex_node_id. apply _. Qed.
 
   (* ------------------------------------------------------------------ *)
   (*  2.  THE SLOT PIECE, AT ONE ARGUMENT SHAPE                           *)
@@ -130,7 +130,7 @@ Section ExecBundle.
     image_entry_taint T Q X -∗
     Pay -∗
     exec_slot_pre X Q Pfin Φo cw na alen afun sts cs pidv.
-  Proof.
+  Proof using .
     intros Hload. iIntros "#Hid #Hcon #Hgen HPay".
     rewrite /exec_slot_pre /ex_node_id /image_entry_at /image_entry_taint.
     iSplitL "HPay".
@@ -181,7 +181,7 @@ Section ExecBundle.
     Pay -∗
     pf_at (fun S => sys_exec_slot_pre S Q P Φo cw M pv av sts cs pidv)
       (MkPfam X Pay).
-  Proof.
+  Proof using .
     intros Hload Hpath. iIntros "#Hid #Hcon #Hgen HPay".
     rewrite /pf_at. cbn [pf_recv pf_refund]. iSplit; [ | iExact "HPay" ].
     rewrite /sys_exec_slot_pre. iIntros (pl' na alen afun) "%Hpath' %Hargs".
@@ -222,7 +222,7 @@ Section ExecBundle.
     Pay -∗
     sys_exec_au_pre (MkPfam X Pay) (fs_gamma_L γfs) γfs cw Q P Pmiss Fo
       M pv av sts cs pidv.
-  Proof.
+  Proof using .
     intros Hload Hpath. iIntros "Hwalk Hobs #Hid #Hcon #Hgen HPay".
     rewrite /sys_exec_au_pre. iSplitL "Hwalk".
     { iIntros (pl') "%Hpath'".
@@ -254,7 +254,7 @@ Section ExecBundle.
     Pay -∗
     exec_au_pre (MkPfam X Pay) (fs_gamma_L γfs) γfs cw Q P Pmiss Fo
       pl na alen afun sts cs pidv.
-  Proof.
+  Proof using .
     intros Hload. iIntros "Hwalk Hobs #Hid #Hcon #Hgen HPay".
     rewrite /exec_au_pre. iSplitL "Hwalk"; [ iExact "Hwalk" | ].
     iSplitL "Hobs"; [ iExact "Hobs" | ].

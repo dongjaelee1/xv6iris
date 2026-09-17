@@ -115,12 +115,17 @@ proof and is not.
 - **A pull touching `model-xv6iris/` means `make model` first**, or the first
   file whose source also moved dies naming a model field (*"…: Not a
   projection"*).
-- **After any re-dump, run `make check-decode`.** The `iris/` decode layer states
-  each instruction's encoding and immediate, and those go stale in most functions
-  on a bump even where the C did not change. The layer is GENERATED
-  (`tools/gen_code.py`), so `make gen-code` rewrites it and the diff says which
-  functions moved. A changed `ast` — the instruction itself, not its immediate —
-  needs a human. Addresses are symbol-relative and need no attention.
+- **After any re-dump, run `make check-decode` AND `make check-ucode`.** Both
+  layers state each instruction's encoding and immediate, and those go stale in
+  most functions on a bump even where the C did not change. Both are GENERATED
+  — `tools/gen_code.py` for the kernel's `iris/Code*.v`, `tools/gen_ucode.py`
+  for the user programs' `iris/UCode*.v` — so `make gen-code` / `make gen-ucode`
+  rewrite them and the diff says which functions moved. A changed `ast` — the
+  instruction itself, not its immediate — needs a human. Addresses are
+  symbol-relative and need no attention. `check-ucode` shells out to `coqc`
+  (it reads every AST off the model), so it needs a built `iris/`; `gen-code`
+  needs only python. Details of both layers:
+  [`design/code-organization.md`](design/code-organization.md).
 
 ### Staleness, and the ways a check lies
 

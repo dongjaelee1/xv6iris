@@ -483,7 +483,7 @@ Section BfreeDefs.
          ⌜forall k, (k < 1024)%nat -> k <> d -> l' !!! k = l !!! k⌝ -∗
          pa_add (b_data pb) d ↦ₘ (l' !!! d) -∗
          buf_own pb bno dsk l').
-  Proof.
+  Proof using .
     intros Hlen Hd.
     iIntros "(Hb & Hdk & %Hl & Hby)".
     iEval (rewrite (bb_bytes_of_list (b_data pb) l) Hlen) in "Hby".
@@ -591,7 +591,7 @@ Section BfreeTail.
             (log_opSe γ (if cr then S u else u) (Sb ∪ {[bmapstart]}) e0)
             pidv dq dqb j m K b lks Upr -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hbelow HK Hsp Hthr Ha0 Hs2 Hkk Hbno Hcov Hlog Hbirange.
     pose proof HK as HK'.
     iIntros "Hcg Hcnt Hextc Hextm #Htext Hpc #Hbio #Hlctx #Hprocs Hframe Hppid Hsb Hsl #Hcredit Hop #Hbminv Hblk Hheld Hcont".
@@ -1003,7 +1003,7 @@ Section ProofBfreeMain.
     : wp_bfree_gen_body γs j γl γu γd γk pd pav pu bn γ γfs
                         cov logstart bmapstart size dev bno bs u cr Sb e0
                         pidv dq dqb m K eb b lks Upr.
-  Proof.
+  Proof using .
     cbv beta delta [wp_bfree_gen_body].
     intros pcE pj ret_tgt HK Hgeom Hsize Hbm0 Hbmcov Hbmlog
            Hbirange Hbslen Hj Hgl Ha0 Ha1 Hbelow.
@@ -1828,7 +1828,7 @@ Section ProofBfreeMain.
     : wp_bfree_sconf_body γs j γl γu γd γk pd pav pu bn γ γfs
                           cov logstart bmapstart size dev bno bs u
                           pidv dq dqb m K eb b lks Upr.
-  Proof.
+  Proof using .
     cbv beta delta [wp_bfree_sconf_body].
     intros pcE pj ret_tgt HK Hgeom Hsize Hbm0 Hbmcov Hbmlog
            Hbirange Hbslen Hj Hgl Ha0 Ha1 Hbelow.

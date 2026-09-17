@@ -75,45 +75,45 @@ Section ctower.
       [ apply irrelevant_register_set; vm_compute; reflexivity | apply L ].
 
   Lemma mc_rs_priv : register_lookup cur_privilege mc_rs = priv.
-  Proof. apply register_lookup_set. Qed.
+  Proof using . apply register_lookup_set. Qed.
   Lemma mc_rs_PC : register_lookup (R_bitvector_64 PC) mc_rs = pc.
-  Proof. ck mm_rs_PC. Qed.
+  Proof using . ck mm_rs_PC. Qed.
   Lemma mc_rs_nPC : register_lookup (R_bitvector_64 nextPC) mc_rs = npc.
-  Proof. ck mm_rs_nPC. Qed.
+  Proof using . ck mm_rs_nPC. Qed.
   Lemma mc_rs_ms : register_lookup (R_bitvector_64 minstret) mc_rs = ms.
-  Proof. ck mm_rs_ms. Qed.
+  Proof using . ck mm_rs_ms. Qed.
   Lemma mc_rs_mi : register_lookup (R_bool minstret_increment) mc_rs = bmi.
-  Proof. ck mm_rs_mi. Qed.
+  Proof using . ck mm_rs_mi. Qed.
   Lemma mc_rs_cy : register_lookup (R_bitvector_64 mcycle) mc_rs = cy.
-  Proof. ck mm_rs_cy. Qed.
+  Proof using . ck mm_rs_cy. Qed.
   Lemma mc_rs_ti : register_lookup (R_bitvector_64 mtime) mc_rs = ti.
-  Proof. ck mm_rs_ti. Qed.
+  Proof using . ck mm_rs_ti. Qed.
   Lemma mc_rs_ip : register_lookup (R_bitvector_64 mip) mc_rs = ip.
-  Proof. ck mm_rs_ip. Qed.
+  Proof using . ck mm_rs_ip. Qed.
   Lemma mc_rs_mst : register_lookup mstatus mc_rs = mst0.
-  Proof. ck mm_rs_mst. Qed.
+  Proof using . ck mm_rs_mst. Qed.
   Lemma mc_rs_hart : register_lookup hart_state mc_rs = HART_ACTIVE tt.
-  Proof. ck mm_rs_hart. Qed.
+  Proof using . ck mm_rs_hart. Qed.
   Lemma mc_rs_pcfg : register_lookup pmpcfg_n mc_rs = pcfg.
-  Proof. ck mm_rs_pcfg. Qed.
+  Proof using . ck mm_rs_pcfg. Qed.
   Lemma mc_rs_mc :
     register_lookup (R_bitvector_32 mcountinhibit) mc_rs = mc.
-  Proof. ck mm_rs_mc. Qed.
+  Proof using . ck mm_rs_mc. Qed.
   Lemma mc_rs_micfg :
     register_lookup (R_bitvector_64 minstretcfg) mc_rs = micfg.
-  Proof. ck mm_rs_micfg. Qed.
+  Proof using . ck mm_rs_micfg. Qed.
   Lemma mc_rs_misa : register_lookup misa mc_rs = misa0.
-  Proof. ck mm_rs_misa. Qed.
+  Proof using . ck mm_rs_misa. Qed.
   Lemma mc_rs_sec : register_lookup mseccfg mc_rs = mseccfg0.
-  Proof. ck mm_rs_sec. Qed.
+  Proof using . ck mm_rs_sec. Qed.
   Lemma mc_rs_pma : register_lookup pma_regions mc_rs = pmar0.
-  Proof. ck mm_rs_pma. Qed.
+  Proof using . ck mm_rs_pma. Qed.
   Lemma mc_rs_htif : register_lookup htif_tohost_base mc_rs = None.
-  Proof. ck mm_rs_htif. Qed.
+  Proof using . ck mm_rs_htif. Qed.
   Lemma mc_rs_elp : register_lookup elp mc_rs = elp0.
-  Proof. ck mm_rs_elp. Qed.
+  Proof using . ck mm_rs_elp. Qed.
   Lemma mc_rs_senv : register_lookup senvcfg mc_rs = senv0.
-  Proof. ck mm_rs_senv. Qed.
+  Proof using . ck mm_rs_senv. Qed.
 
 End ctower.
 
@@ -165,7 +165,7 @@ Section cagree.
     reg_agree_on (mm_Drw ∪ mm_Dro) rs
       (mc_rs priv pc npc ms bmi cy ti ip mst0 pcfg mc micfg misa0 mseccfg0
          pmar0 elp0 senv0).
-  Proof.
+  Proof using .
     intros H1 H2 H3 H4 H5 H6 H7 H8 H9 H10 H11 H12 H13 H14 H15 H16 H17
       H18 H19.
     intros r Hr. rewrite /mm_Drw /mm_Dro in Hr.
@@ -206,7 +206,7 @@ Section cagree.
     reg_agree_on mm_Dro rs
       (mc_rs priv pc npc ms bmi cy ti ip mst0 pcfg mc micfg misa0 mseccfg0
          pmar0 elp0 senv0).
-  Proof.
+  Proof using .
     intros H1 H2 H3 H4 H5 H6 H7 H8 H9 H10 H11 H12.
     intros r Hr. rewrite /mm_Dro in Hr.
     repeat (apply elem_of_union in Hr as [Hr|Hr]);
@@ -319,7 +319,7 @@ Section WpInstrConfig.
       hreg_frame_ro (mm_Df (DfracOwn 1))
         (mm_rs pc pc ms bmi cy ti ip ms0 pcfg0 mc micfg misa0
            mseccfg0 pmar0 elp0 senv0) mm_Dro.
-  Proof.
+  Proof using .
     iIntros "#Hhw Hhs Hpriv Hmstatus Hpmpc Hpc".
     iDestruct "Hpc" as "(HPC & HnPC & Hmr & Hcr & Hresv)". iFrame "Hresv".
     iDestruct "Hmr" as (ms bmi mc micfg) "(Hms & Hmi & #Hmc & #Hmicfg)".
@@ -362,7 +362,7 @@ Section WpInstrConfig.
          mseccfg0 pmar0 elp0 senv0) mm_Dro -∗
     hart_state ↦ᵣ HART_ACTIVE tt ∗ cur_privilege ↦ᵣ priv1 ∗
     mstatus ↦ᵣ mst1 ∗ pmpcfg_n ↦ᵣ pcfg1 ∗ pc_is npc.
-  Proof.
+  Proof using .
     iIntros "Hresv Hrw Hro".
     rewrite mm_rw_split mm_ro_split.
     rewrite mc_rs_PC mc_rs_nPC mc_rs_ms mc_rs_mi mc_rs_cy mc_rs_ti mc_rs_ip.
@@ -403,7 +403,7 @@ Section WpInstrConfig.
     hreg_frame_ro (mm_Df dq)
       (mc_rs priv1 pc npc ms bmi cy ti ip mst1 pcfg1 mc micfg misa0
          mseccfg0 pmar0 elp0 senv0) mm_Dro.
-  Proof.
+  Proof using .
     rewrite mm_ro_split mc_rs_priv mc_rs_mst mc_rs_hart mc_rs_pcfg mc_rs_mc
       mc_rs_micfg mc_rs_misa mc_rs_sec mc_rs_pma mc_rs_htif mc_rs_elp
       mc_rs_senv. iIntros "H". iExact "H".
@@ -429,7 +429,7 @@ Section WpInstrConfig.
        hreg_frame_ro (mm_Df (DfracOwn 1))
          (mc_rs priv1 pc npc ms bmi cy ti ip mst1 pcfg1 mc micfg misa0
             mseccfg0 pmar0 elp0 senv0) mm_Dro).
-  Proof.
+  Proof using .
     (* BOTH BRIDGES ARE APPLIED, NOT REWRITTEN.  This goal carries the whole
        [mc_rs] tower inside the ∀-closure, and a [rewrite mm_ro_split] fires
        on the entire [envs_entails Δ Q] -- 24.9 s for the first of the two,
@@ -460,7 +460,7 @@ Section WpInstrConfig.
      (R_bitvector_64 mip) ↦ᵣ ip : iProp Σ) -∗
     hreg_frame (mc_rs priv1 pc npc ms bmi cy ti ip mst1 pcfg1 mc micfg
                   misa0 mseccfg0 pmar0 elp0 senv0) mm_Drw.
-  Proof.
+  Proof using .
     rewrite mm_rw_split mc_rs_PC mc_rs_nPC mc_rs_ms mc_rs_mi mc_rs_cy
       mc_rs_ti mc_rs_ip. iIntros "H". iExact "H".
   Qed.
@@ -507,7 +507,7 @@ Section WpInstrConfig.
        mstatus ↦ᵣ mst1 -∗ pmpcfg_n ↦ᵣ pcfg1 -∗ pc_is npc -∗ Psi -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "#Hhw Hfrag Hrw Hro Hbody Hcont".
     iDestruct (hw_config_cert with "Hhw") as "#Hcert".
     iApply (swp_exec_step_decode_execute mm_Drw mm_Dro (mm_Df (DfracOwn 1))
@@ -590,7 +590,7 @@ Section WpInstrConfig.
        gpr_file m' -∗ R -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hpmp HmIE Hstat.
     iIntros "#Hhw _ Hhs Hpriv Hms Hpmpc Hpc Hgpr Hinstr Hex Hcont".
     iDestruct (mc_frames_intro pc ms0 pmpcfg0

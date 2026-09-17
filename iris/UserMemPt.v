@@ -535,7 +535,7 @@ Section UserMemPtGeneric.
     dev_addr addr = false ->
     exec (checked_mem_write (Physaddr addr) k data (Store Data) pbmt User tt false false false) s
       = Some (Ok true, MState s.(sregs) (write_bytes s.(mem) addr (Z.to_N k) data) s.(mdev)).
-  Proof.
+  Proof using Hk Hwrite_plain.
     intros HA Hord Hrange HW Hmatch Halign Hwrite Hc Hsig Hh Hdev.
     assert (Hcp : exec (check_pma_with_pmp_priority (Store Data) pbmt User
                           (Physaddr addr) k false) s = Some (Ok pma_ok_aligned, s)).
@@ -610,7 +610,7 @@ Section UserMemPtGeneric.
     register_lookup cur_privilege s.(sregs) = User ->
     exec (mem_write_value (Physaddr addr) k data (Store Data) pbmt false false false) s
       = Some (Ok true, MState s.(sregs) (write_bytes s.(mem) addr (Z.to_N k) data) s.(mdev)).
-  Proof.
+  Proof using Hk Hwrite_plain.
     intros HA Hord Hrange HW Hmatch Halign Hwrite Hc Hsig Hh Hdev Hmprv Hpriv.
     unfold mem_write_value, mem_write_value_meta.
     rewrite (exec_bind_Some _ _ _ _ _ (exec_read_reg mstatus s)).
@@ -673,7 +673,7 @@ Section GenRead.
     exec (read_ram Read_plain (Physaddr addr) k false) s = Some ((w, default_meta), s).
 
   Lemma gr_mmio : exec (within_mmio_readable (Physaddr addr) k) s = Some (false, s).
-  Proof.
+  Proof using Hc Hh Hsig.
     unfold within_mmio_readable. cbn [get_config_rvfi].
     rewrite (exec_or_boolM_Some _ _ _ _ _ Hc). cbn match.
     rewrite (exec_or_boolM_Some _ _ _ _ _ Hsig). cbn match.
@@ -683,7 +683,7 @@ Section GenRead.
 
   Lemma gr_exec_cp : exec (check_pma_with_pmp_priority (Load Data) pbmt User
                              (Physaddr addr) k false) s = Some (Ok pma_ok_aligned, s).
-  Proof.
+  Proof using Halign Hmatch Hread.
     unfold check_pma_with_pmp_priority.
     rewrite (exec_bind_Some _ _ _ _ _
                (exec_pmaCheck_ram_load_g k addr pbmt region s Hmatch Halign Hread)).
@@ -692,7 +692,7 @@ Section GenRead.
 
   Lemma gr_good_cp : goodmb Dr Dw (check_pma_with_pmp_priority (Load Data) pbmt User
                              (Physaddr addr) k false) s mm = true.
-  Proof.
+  Proof using HDp Halign Hmatch Hread.
     exact (goodmb_check_pma_with_pmp_priority Dr Dw _ _ User _ _ false _ s mm
              (goodmb_pmaCheck_ram_load_g Dr Dw k addr pbmt region s mm
                 HDp Hmatch Halign Hread)
@@ -702,7 +702,7 @@ Section GenRead.
   Lemma goodmb_checked_mem_read_ram_U :
     goodmb Dr Dw (checked_mem_read (Load Data) pbmt User (Physaddr addr) k
                     false false false false) s mm = true.
-  Proof.
+  Proof using HA HDa HDc HDh HDp HR Halign Hc Hdev Hh Hk Hmatch Hord Hown Hrange Hread Hread_plain Hsig.
     unfold checked_mem_read. apply goodmb_cer.
     erewrite gm_liftR_seq; [ | apply gr_good_cp | apply gr_exec_cp ].
     cbn beta. cbn match.
@@ -835,7 +835,7 @@ Section GenRead2.
             false false false false) s = Some (Ok (w, default_meta), s) ->
     goodmb Dr Dw (mem_read (Load Data) pbmt (Physaddr addr) k false false false)
       s mm = true.
-  Proof.
+  Proof using .
     intros HDm HDp Hmprv Hpriv Hchkg Hchke.
     unfold mem_read.
     gmm_rr mstatus HDm.
@@ -891,7 +891,7 @@ Section GenWrite.
     = Some (true, MState s.(sregs) (write_bytes s.(mem) addr (Z.to_N k) d) s.(mdev)).
 
   Lemma gw_mmio : exec (within_mmio_writable (Physaddr addr) k) s = Some (false, s).
-  Proof.
+  Proof using Hc Hh Hsig.
     unfold within_mmio_writable. cbn [get_config_rvfi].
     rewrite (exec_or_boolM_Some _ _ _ _ _ Hc). cbn match.
     rewrite (exec_or_boolM_Some _ _ _ _ _ Hsig). cbn match.
@@ -901,7 +901,7 @@ Section GenWrite.
 
   Lemma gw_exec_cp : exec (check_pma_with_pmp_priority (Store Data) pbmt User
                              (Physaddr addr) k false) s = Some (Ok pma_ok_aligned, s).
-  Proof.
+  Proof using Halign Hmatch Hwrite.
     unfold check_pma_with_pmp_priority.
     rewrite (exec_bind_Some _ _ _ _ _
                (exec_pmaCheck_ram_store_g k addr pbmt region s Hmatch Halign Hwrite)).
@@ -910,7 +910,7 @@ Section GenWrite.
 
   Lemma gw_good_cp : goodmb Dr Dw (check_pma_with_pmp_priority (Store Data) pbmt User
                              (Physaddr addr) k false) s mm = true.
-  Proof.
+  Proof using HDp Halign Hmatch Hwrite.
     exact (goodmb_check_pma_with_pmp_priority Dr Dw _ _ User _ _ false _ s mm
              (goodmb_pmaCheck_ram_store_g Dr Dw k addr pbmt region s mm
                 HDp Hmatch Halign Hwrite)
@@ -920,7 +920,7 @@ Section GenWrite.
   Lemma goodmb_checked_mem_write_ram_U :
     goodmb Dr Dw (checked_mem_write (Physaddr addr) k data (Store Data) pbmt User
                     tt false false false) s mm = true.
-  Proof.
+  Proof using HA HDa HDc HDh HDp HW Halign Hc Hdev Hh Hk Hmatch Hord Hown Hrange Hsig Hwrite Hwrite_plain.
     set (sw := MState s.(sregs) (write_bytes s.(mem) addr (Z.to_N k) data) s.(mdev)).
     unfold checked_mem_write. apply goodmb_cer.
     erewrite gm_liftR_seq; [ | apply gw_good_cp | apply gw_exec_cp ].
@@ -1122,7 +1122,7 @@ Section GenWrite2.
       = Some (Ok true, MState s.(sregs) (write_bytes s.(mem) addr (Z.to_N k) data) s.(mdev)) ->
     goodmb Dr Dw (mem_write_value (Physaddr addr) k data (Store Data) pbmt
                     false false false) s mm = true.
-  Proof.
+  Proof using .
     intros HDm HDp Hmprv Hpriv Hchkg Hchke.
     unfold mem_write_value, mem_write_value_meta.
     gmm_rr mstatus HDm.

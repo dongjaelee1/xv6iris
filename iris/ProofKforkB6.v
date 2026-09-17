@@ -166,7 +166,7 @@ Section KforkPrologue.
        p_trapframe pa ↦₈ page_base (ud_tfp (pv_upt (us_V U))) -∗
        tf_page (ud_tfp (pv_upt (us_V U))) ws' -∗
        proc_priv γf pa pid (upd_usM (upd_usV U (upd_pt (upd_sz (us_V U) szv) P' ws')) M')).
-  Proof.
+  Proof using .
     iIntros "Hpv".
     iDestruct (proc_priv_sz_maxsz with "Hpv") as "#Hszb".
     iDestruct (proc_priv_um_below with "Hpv") as "#Hbel".
@@ -233,7 +233,7 @@ Section KforkPrologue.
        proc_priv_nocwd γf pa pid
          (upd_usM (upd_usV U
                      (upd_lazy (upd_pt (upd_sz (us_V U) szv) P' ws') lz')) M')).
-  Proof.
+  Proof using .
     iIntros "Hpv".
     iDestruct (proc_priv_nocwd_sz_maxsz with "Hpv") as "#Hszb".
     iDestruct (proc_priv_nocwd_um_below with "Hpv") as "#Hbel".
@@ -261,13 +261,13 @@ Section KforkPrologue.
   (* closing [kfk_priv_open]'s wand with NOTHING changed is the identity. *)
   Lemma kfk_priv_close_id (V : pprivate) :
     upd_pt (upd_sz V (pv_sz V)) (pv_upt V) (pv_tf V) = V.
-  Proof. destruct V; reflexivity. Qed.
+  Proof using . destruct V; reflexivity. Qed.
 
   (* ...and the child's, whose wand names the lazy bit as well: closing it
      at the bit the block already carries is the same identity. *)
   Lemma kfk_priv_close_id_lz (V : pprivate) :
     upd_lazy (upd_pt (upd_sz V (pv_sz V)) (pv_upt V) (pv_tf V)) (pv_lazy V) = V.
-  Proof. destruct V; reflexivity. Qed.
+  Proof using . destruct V; reflexivity. Qed.
   (* exit continuation 3 of [kfk_prologue], named: inline it was
      4614 B in Delta at every step of that walk
      (optimization.md, fold block continuations). *)
@@ -625,7 +625,7 @@ Section KforkPrologue.
        ⌜ b = false \/ pme = zero_reg -> (CIDh : CPU) = (CID0 : CPU) ⌝ -∗
        wp_next (CID0 := CIDh) false pme (fun CID : CpuId => kfk_pro_exit3 γw γl γf γs m lvl K eb pme b pid_p Up stsP R lks sp0 ra0 s00 s10 s50 Q CID)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros sp0 ra0 s00 s10 s50 HK Hlvl Hbelow.
     
     iIntros "#HKp Hcg Hcpu #Htext Hpc #Hprocs #Hplock #Hwlock #Hftbl #Hitbl

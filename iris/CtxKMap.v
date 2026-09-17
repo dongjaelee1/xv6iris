@@ -44,7 +44,7 @@ Section CtxKMap.
     kmap_static (svpn_of pa) KP_rw ->
     kmap_static_claims -∗
     ctx_pointsto xi pa dq b -∗ ctx_phys_pointsto xi pa dq b.
-  Proof.
+  Proof using .
     iIntros (Hs) "#Hb H".
     iDestruct (kmap_static_claims_at (svpn_of pa) KP_rw Hs with "Hb") as "#Hk0".
     iEval (rewrite ctx_pointsto_phys) in "H".
@@ -59,7 +59,7 @@ Section CtxKMap.
     kmap_static_claims -∗
     ([∗ list] j ∈ seq 0 4096, ctx_pointsto xi (pa_add p j) dq b) -∗
     ([∗ list] j ∈ seq 0 4096, ctx_phys_pointsto xi (pa_add p j) dq b).
-  Proof.
+  Proof using .
     iIntros (Hstat) "#Hb Hbytes".
     iApply (big_sepL_impl with "Hbytes").
     iIntros "!>" (k x Hk) "H".
@@ -88,7 +88,7 @@ Section CtxKMap.
     (uint a < 274877906944)%Z ->
     kmap_static_claims -∗ mem_pointsto a dq v -∗ ledger_elem0 a dq -∗
     ctx_pointsto xi a dq v.
-  Proof.
+  Proof using .
     iIntros (Hs Hc) "#Hb Hm He".
     iDestruct (kmap_static_claims_at (svpn_of a) KP_rw Hs with "Hb") as "#Hk".
     iApply (ctx_pointsto_of_ro xi a (kpt_leaf_ppn (svpn_of a)) dq v
@@ -106,7 +106,7 @@ Section CtxKMap.
     ([∗ list] j ∈ seq 0 n, mem_pointsto (pa_add a j) dq (f j)) -∗
     ([∗ list] j ∈ seq 0 n, ledger_elem0 (pa_add a j) dq) -∗
     ([∗ list] j ∈ seq 0 n, ctx_pointsto xi (pa_add a j) dq (f j)).
-  Proof.
+  Proof using .
     iIntros (Hs Hc) "#Hb Hm He".
     iDestruct (big_sepL_sep_2 with "Hm He") as "Hme".
     iApply (big_sepL_impl with "Hme").
@@ -126,7 +126,7 @@ Section CtxKMap.
     kmap_static_claims -∗ word_pointsto a dq w -∗
     ([∗ list] j ∈ seq 0 8, ledger_elem0 (pa_add a j) dq) -∗
     ctx_word_pointsto xi a dq w.
-  Proof.
+  Proof using .
     iIntros (Hs Hc) "#Hb Hw He".
     (* main seals [word_pointsto] against TC search; open it by delta *)
     iEval (rewrite /word_pointsto) in "Hw". iDestruct "Hw" as "[%Hal Hm]".
@@ -146,7 +146,7 @@ Section CtxKMap.
     (uint pa < 274877906944)%Z ->
     kmap_static_claims -∗
     ctx_phys_pointsto xi pa dq b -∗ ctx_pointsto xi pa dq b.
-  Proof.
+  Proof using .
     iIntros (Hs Hc) "#Hb Hp".
     iDestruct (kmap_static_claims_at (svpn_of pa) KP_rw Hs with "Hb") as "#Hk".
     iApply (ctx_pointsto_of_phys xi (kpt_leaf_ppn (svpn_of pa)) pa dq b
@@ -163,7 +163,7 @@ Section CtxKMap.
        (uint (pa_add a j : SailStdpp.Values.mword 64) < 274877906944)%Z) ->
     kmap_static_claims -∗
     TsoCtx.ctx_phys_word_pointsto xi a dq w -∗ ctx_word_pointsto xi a dq w.
-  Proof.
+  Proof using .
     iIntros (Hs Hc) "#Hb Hw".
     iDestruct (TsoCtx.ctx_phys_word_pointsto_aligned_p with "Hw") as %Hal.
     iApply (ctx_word_pointsto_intro xi a dq w Hal).

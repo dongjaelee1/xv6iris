@@ -517,7 +517,7 @@ Section Era0Live.
       astate Γ (abs_view (fss_inodes S))
       ∗ ⌜apath_at (abs_view (fss_inodes S)) FsImg.ROOTINO init_path
          = Some INIT_INO⌝.
-  Proof.
+  Proof using .
     intros HS. iIntros "Hst". iFrame "Hst". iPureIntro.
     exact (era0_init_path_pin S HS).
   Qed.
@@ -528,7 +528,7 @@ Section Era0Live.
     snap_ok S era0_D ->
     astate Γ (abs_view (fss_inodes S)) -∗ nview Γ q INIT_INO a -∗
       ⌜a = MkAnode (AFile init_bytes) 1%nat⌝.
-  Proof.
+  Proof using .
     intros HS. iIntros "Hst Hn".
     iDestruct (astate_nview with "Hst Hn") as %Hav.
     iPureIntro.

@@ -285,6 +285,17 @@ does not see it. There is no compile error to find.
   survives. Such a premise can only be inherited, so a caller who supplies it is
   proving from `False`. Corollary: **an assumed `Link` is sometimes what is
   keeping a top-level theorem honest.**
+- **A claim about a program's output over a FAMILY of inputs is falsified
+  at the family's degenerate member, and only the walk finds it.** xv6's
+  `echo` prints nothing at `argc = 1` (its loop starts at 1), while the
+  expected output `wl_line (drop 1 ws)` at the bare line `echo` is a lone
+  newline; every demo and every literal-line proof passed, and the
+  contradiction surfaced where the program's write chain had to refute its
+  own "fewer than two arguments" arm.  When a literal is generalised to a
+  family, enumerate the family's boundary members (empty tail, one element,
+  the length bound) and run the DEGENERATE one through the program's
+  contract before trusting the demos; then state the exclusion as a
+  conjunct of the admissibility predicate, never as a side premise.
 - **State register agreement POSITIVELY.** The exception form (`∀ r, is_cs_idx r
   = true -> r <> Rs1 -> … -> M !!! r = m0 !!! r`) is false the moment the frame
   is pushed, because `is_cs_idx` contains sp and s0 — so the lemma is *easier* to

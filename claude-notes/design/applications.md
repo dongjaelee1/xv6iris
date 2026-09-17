@@ -26,8 +26,9 @@ re-cut the console claim under it has landed).
   8 files / 338 definitions / 2845 lines — it must never drag the ghost
   layer).
 - **The ECHO application** (`AppEcho`): init spawns sh, a user types
-  `echo hello world` at the console, sh forks and execs echo, echo prints
-  the string back.  Its invariant is THE FILE SYSTEM IS UNMODIFIED — the
+  `echo` lines at the console -- a different one each round, any words
+  (`echo hi`, then `echo bye now`, ...) -- sh forks and execs echo, echo
+  prints the arguments back.  Its invariant is THE FILE SYSTEM IS UNMODIFIED — the
   binaries of init, sh and echo are the image's at every reboot — and its
   trace property is "if every byte ever typed on the console follows the
   discipline, the console's output is the expected one and the durable
@@ -276,10 +277,17 @@ history (uart-trace.md ruling 3: input assumptions are antecedents inside
 the trace predicate, never a semantic change), read off the CONSOLE UART
 alone -- the kernel's own UART carries printk and panic and is not the
 theorem's concern: in every power cycle the console's `ObsUartIn` bytes so
-far are a prefix of `(echo hello world\n)*` and each was typed only after
-the expected transcript for the bytes before it had appeared on the
-console wire (`EchoDisc.disc`: the content condition D3 and the positional
-rate bound D1/D2).  The conclusion `good_out` is that the console wire is a
+far are a sequence of ADMISSIBLE LINES and a partial one
+(`EchoDisc.disc_input`, read through the parser `LineWords.bodies_of` /
+`rest_of`: each complete line is `echo` plus alphanumeric words, fewer than
+ten, shorter than sh's buffer -- `EchoDisc.line_ok` -- and the partial one
+is body bytes), and each was typed only after the expected transcript for
+the bytes before it had appeared on the console wire (`EchoDisc.disc`: the
+content condition D3 and the positional rate bound D1/D2).  The transcript
+is a function of the INPUT, not of its length: each round's block is the
+raw body the console echoed, its newline, and the alternative computed from
+that body's words (`EchoDisc.sess`; design of record
+`../projects/echo-any-line.md`).  The conclusion `good_out` is that the console wire is a
 prefix of the expected transcript, the per-line failure alternatives
 admitted.  The rx
 wand keeps the counter at 0 while the byte keeps the discipline and moves

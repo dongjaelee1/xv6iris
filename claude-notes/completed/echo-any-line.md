@@ -1,27 +1,51 @@
-# Project: the echo application at ANY disciplined line
+# echo-any-line -- the echo application at ANY disciplined line, a line PER ROUND
 
-Design of record: [`../design/applications.md`](../design/applications.md) for
-the application seam, [`../completed/app-echo.md`](../completed/app-echo.md) for the theorem this
-generalises.
+**STATUS: COMPLETE, ARCHIVED 2026-09-17.**  Landed on `main` as `ba16dfc56`
+(the parser) and `c84625d6b` (everything else, one commit because no
+intermediate stage compiles on its own).  The whole `iris` tree is green
+with no admits; `make audit-echo-only` prints the same fourteen assumptions
+(md5 `a78bf9a051fb56b084795d782df04045`); `UInitBootAdequacy.echo_adequacy_echoΣ`
+is unchanged in statement -- what changed is `EchoDisc.disc` and
+`EchoDisc.good_out`, which now speak of a session that types a DIFFERENT
+line each round.
 
-The landed theorem is about `echo hello world`, typed over and over.
+Design of record: [`../design/applications.md`](../design/applications.md)
+§0/§5 for the claim; the section "The design" below is the model as built
+and is kept because it is the shape a reader of `EchoDisc.v` needs.
 
-**THE TARGET IS A SESSION IN WHICH EACH ROUND TYPES ITS OWN LINE** —
-`echo foo` answered by `foo`, then `echo bar baz` answered by `bar baz`, and
-so on. NOT `∀ ws, <the theorem at that one line>`: quantifying the whole
-session over a single word list still says the user types the same thing
-every round, which is the hard-coding, only hidden behind a binder.
+## What a caller owes now
 
-The distinction decides the work. Generalising WHICH line is a statement-level
-change and is essentially done (below). Generalising so that each ROUND
-carries its own line is a change to the SESSION MODEL, and that is where the
-remaining cost is.
+A line is admissible (`EchoDisc.line_ok ws`) when it is `echo` followed by
+one to eight alphanumeric words and shorter than sh's hundred-byte buffer
+(`line_max = UkSh.sh_nbuf`).  `echo fork` and `echo exec echo failed` are
+admissible: their outputs coincide byte for byte with sh's own
+continuations, and the proof never needed to tell them apart (byte-level
+determinacy, below).  The partial line is only required to be body bytes
+that still fit.
 
-**The method is IN-PLACE.** A general lemma may be developed in a fresh file
-and then moved in, but the specialised thing it replaces is DELETED: no
-literal definition survives beside the structured one, and no bridge lemma
-exists whose only job is to connect the two. A `vm_compute` at a literal is a
-proof worth exactly one command line.
+**One thing is left, and it is a ruling, not a gap** (found by stage G):
+xv6's `echo` prints NOTHING at `argc = 1` -- its loop runs from 1 -- while
+the good alternative opens with `wl_line (drop 1 ws)`, which for the bare
+line `echo` is a lone newline.  The claim would have been FALSE there, and
+the write chain (`UEchoOut.kecho_pay_of_link`, refuting `kecho_pay_all`'s
+`length args <= 1` arm) is exactly where it surfaced.  `line_ok` requires
+two words.  Admitting `echo` alone means the good alternative becomes
+`(if drop 1 ws = [] then [] else wl_line (drop 1 ws)) ++ "$ "`, which
+COLLIDES with alternative 2 (the child that died silently, also `"$ "`);
+under byte-level determinacy that is one more equal-bytes case in
+`line_alts_of_prefix_bytes`/`alt_cont_prefix_det`, plus the zero-write arm
+of echo's chain and `ewc_post` at length 0.  Modest and self-contained;
+not done.
+
+## Small leftovers (cleanups, not obligations)
+
+- Three one-line cut facts (`bodies_of_app_nonl`, `nlines_app_nonl`,
+  `rest_of_app_nonl`) live in `EchoLinks.v` and belong in `LineWords.v` S7.
+- `EchoDisc.Forall_imap_pair(_intro)` and `EchoOutPure.pro_of_open_no_dollar`
+  are unused.
+- `UConsLine.v` keeps `Require Import LineWords`/`EchoDisc` it no longer
+  needs; `UkShCd.v` binds `Wc/Wb/Pm` at the old types in an abbreviation
+  nobody uses (Rocq does not typecheck it).
 
 ## The vocabulary
 
@@ -42,7 +66,7 @@ The tokenization induction runs on `wl_tail`, whose offset always points AT a
 blank — which is where `UshpTokCons` leaves the scan — so the first word is
 the only case outside it.
 
-## Landed
+## Landed (the intermediate forms, as narrative; names here may no longer exist)
 
 - `EchoDisc.echo_line` IS `wl_line echo_ws`; `echo_line_words` is its one
   sanctioned unfolding and the line is `Opaque` past it. Its byte-level facts
@@ -316,41 +340,12 @@ the length by the input itself, read through a parser:
 - **The method is IN-PLACE** (above): the specialised names are deleted,
   not aliased.
 
-## Stages (each ends green on the VM; one subagent per stage)
+## The swap test is retired
 
-A. `LineWords.v` §7: the cut, the word parser, their laws, `wl_lines_rest_prefix_det`, decidability instances.  Pure; no consumer changes.
-B. `EchoDisc.v`: §1 `line_ok`/`disc_input`/`disc_seg`; §2 bodies-indexed rounds, `sess`, `pending_at`, `pro_pin`; §4/§5 at the new shapes; delete the constants and `star_prefix`; the two-line demos.  Consumers below `EchoOutPure` that named a deleted thing: `UkSh` (`disc_no_ctrl_d`, `ush_star_prefix_elem`) -- restate at `disc_input`.
-C. `EchoOutPure.v`: the byte lemmas at body bytes; `pending_at`/`D`/`proc_before`/`proc_stream`; F1--F4; `alt_seq_prefix_det`/`sess_prefix_det`; `disc_seg'_pt_last`.
-D. `EchoOut.v`: `inp_lb`; `eout_pure` with `E_disc`; `cs_len_ok`/`ps_len_ok`/`rd_stage`/`ecl_pure` at `nlines`/`rest_of`; the steps and links; `read_ret` exporting `inp_lb` and `disc_input`.
-E. `EchoLinks.v`, `EchoLinksLine.v`, `EchoLinksPro.v`, `EchoLinksBan.v`: the shapes over `I`.
-F. The sh walk: `UkSh.v` (families over `I`, `ush_line_is ws`, the `gets` loop, `getcmd`, the loop head), `UkShLoop.v`, `UkShWords.v` (unchanged), `UkShEcho.v` (at `ws`), `UkShDiag.v` (the three constants), `UkShFork.v` (carry `ws`), `UConsLine.v` (delete `ush_disc_line*`, `ush_echo_tokens` at `ws`).
-G. Above the file system: `UShEcho.v`, `UShEchoOut.v`, `UEchoOut.v`, `UShEchoPay.v`, `UShLine.v`, `UShOut.v`, `UShPanic.v`, `UShRest.v`, `UShKernel.v`, `UInitSh.v`, `UInitBanner.v`, `UInitDiag.v`, `UInitBoot.v`; then `make audit-echo-only` (fourteen assumptions, the md5 may change only if `PrimString.length` moves -- it must not).
-
-## The swap test, and what it measured
-
-Point `EchoDisc.echo_ws` at a DIFFERENT word list and rebuild. Run at
-`[echo; hi; there; you]` — four words where the landed line has three, of
-lengths 4/2/5/3 where it has 4/5/5 — the whole echo cone went green except
-for sites that are deliberately AT a literal, plus exactly two real
-findings, both since fixed:
-
-- `UConsLine.ush_echo_tokens` named the token list as `[(0,4);(5,10);(11,16)]`.
-  It names `wl_toks echo_ws`, and `UkShEcho`'s bridging `replace` is gone.
-- `EchoLinksLine`'s block end was `length (line_alts !!! 0) - 2 = 12`. It is
-  `length echo_line_out`, via the new `EchoDisc.line_alts_0_length` — the
-  alternative is the output and then the prompt.
-
-WHAT LEGITIMATELY NEEDS RETARGETING at another line, and is not a defect:
-`echo_line_length`, `echo_line_string`, `echo_line_out_string`/`_length`,
-`echo_ws_length`, `EchoLinksLine.line_alts_len0`, and the anti-vacuity
-demos that embed a literal wire (`EchoOut.pro_choice_round1_live`,
-`EchoLinksPro.wr_owed_ambiguous`, `EchoDisc`'s five `demo_seg*`). Those are
-transcription checks and satisfiability witnesses; at a parameterized line
-they become computations at whatever instance is supplied.
-
-RE-RUN IT after any further structural work — it is the cheapest check
-that the cone has not re-acquired a literal dependence, and it found two
-that reading the code had missed.
+The line is a variable, so "point `echo_ws` at a different list and
+rebuild" has nothing to point.  What replaces it is the two-line demo
+(`EchoDisc.demo_seg2`: `echo hi`, then `echo bye now`) computed through the
+parser, and `line_ok` as the one place the admissible family is stated.
 
 ## The two traps this lane keeps walking into
 

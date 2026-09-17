@@ -24,42 +24,36 @@
 (*   framing -- a failed exec hands /init's child back what pays its      *)
 (*   diagnostic and its exit.                                            *)
 (*                                                                       *)
-(* WHAT THE CREDENTIAL [Cns] IS, AND WHY IT IS THE TAINT.                 *)
+(* WHAT THE CREDENTIAL [Cns] IS, AND WHY IT IS [True] (lane TL-9;         *)
+(* design/user-tree.md section 9.8).                                      *)
 (* [UkInit.init_cons_sup cn T Cns st Cr] is the supply as a WAND from the *)
 (* credential /init's own console dance leaves, beside [box (T -* Cns)].  *)
-(* At this claim the supply is payable at [Cns := T]: the shell's entry   *)
-(* is the generic slot, the generic slot is bought with the taint, and    *)
-(* nothing weaker buys it.  Both halves are then one line each.           *)
+(* The dance is landed at [Cns := True]                                   *)
+(* ([UInitTreeBoot.tree_init_cons_dance_all]) with the era's DEED as its  *)
+(* linear credential, and [UInitKernel.init_boot_con] takes ONE [Cns] for *)
+(* both -- so the supply has to be payable from nothing.                  *)
 (*                                                                       *)
-(* WHY IT IS NOT PAYABLE AT [Cns := True] -- the wall lane TL-7 left, and *)
-(* it is REFUTED rather than open.  At [Cns := True] the node             *)
-(* ([UkInit.init_exec_sup_pos], UkInit.v:1769) must produce the deposit   *)
-(* holding only what it is handed, and on the lend's SECOND arm           *)
-(* ([UkInit.init_lend_cred], UkInit.v:1687) that is the era's UNSPENT     *)
-(* LICENCE ([UInitTree.tree_cc]'s [cc_wb], UInitTree.v:121).  One licence *)
-(* cannot pay, for a reason that is a token count and not a missing       *)
-(* lemma:                                                                *)
+(* WHAT MADE THAT POSSIBLE, AND WHAT IT REPLACES.  Lane TL-8 REFUTED the  *)
+(* statement at the shapes it then had, and the refutation was a token    *)
+(* count: the node ([UkInit.init_exec_sup_pos]) is handed the round's     *)
+(* credential ([UkInit.init_lend_cred]), whose closed row at this record  *)
+(* is the era's UNSPENT LICENCE ([UInitTree.tree_cc]'s [cc_wb]) -- and    *)
+(* with the node's conclusion UPDATE-FREE there was nowhere inside its    *)
+(* own construction where that licence could be minted into the taint,    *)
+(* while outside it the supply is a [box].  The owner's ruling for TL-9   *)
+(* is section 9.4's, one premise over: the node gets an UPDATE DOOR       *)
+(* ([UkInit.init_exec_sup_pos] ends in [|==> UkRunExecRef.                *)
+(* udepw_at_refR_ids ...]), which ECHO discharges with one [iModIntro]    *)
+(* ([UInitSh.init_exec_sup_of_sh_slot]) and which this file discharges by *)
+(* reading the taint off the lend's three arms                            *)
+(* ([UInitTree.tree_lend_taint]) -- minting on the closed row, which is   *)
+(* the row where the banner was never written and the licence is still    *)
+(* unspent.  The lend goes back on its taint arm, so the deposit's REFUND *)
+(* ([UkInit.init_lend_ref]) is untouched.                                 *)
 (*                                                                       *)
-(*   - the conclusion [UkRunExecRef.udepw_at_refR_ids]                    *)
-(*     (UkRunExecRef.v:240) is UPDATE-FREE, and                          *)
-(*     [UkInit.init_exec_sup_lend] (UkInit.v:1806) is a [box], so a       *)
-(*     linear licence can be spent only INSIDE the node's own            *)
-(*     construction, never before it;                                    *)
-(*   - inside, the taint is owed in three [*]-separated places: the two   *)
-(*     slot wands of [SpecKexec.exec_slot_pre] (SpecKexec.v:861 -- the   *)
-(*     bundle carries both arms though one fires), and the deposit's REFUND,    *)
-(*     which must be the lend again.  [PieceFam.pf_at]'s [/\]            *)
-(*     (PieceFam.v:99) covers fire-versus-refund and not the two arms;   *)
-(*     the walk's cursor and the observation's receipt each reach both    *)
-(*     arms but live in conjuncts [*]-separated from the refund           *)
-(*     ([SpecSysExec.sys_exec_au_pre], SpecSysExec.v:265).               *)
-(*                                                                       *)
-(* So [Cns := True] would need TWO licences per era and [App.al_pow]      *)
-(* files one.  The consequence for D4 is recorded in                      *)
-(* design/user-tree.md section 9.7: /init's console dance                 *)
-(* ([UInitTreeBoot.tree_init_cons_dance_all]) is landed at [Cns := True]  *)
-(* and this supply at [Cns := tree_taint c], and                          *)
-(* [UInitKernel.init_boot_con] takes ONE [Cns] for both.                  *)
+(* The wand form from the taint is kept beside it                         *)
+(* ([tree_init_exec_sup_lend]); both are the ONE body of                  *)
+(* [tree_init_exec_sup_pos].                                              *)
 (* ===================================================================== *)
 From Stdlib Require Import ZArith List.
 From stdpp Require Import gmap list bitvector.definitions.
@@ -100,8 +94,12 @@ Require Import UInitBoot.          (* [init_boot_room]: echo's arithmetic *)
 Require Import AppCfg AppInv.
 Require Import FsCfg.
 Require Import FsTree.
+Require Import FsAbsDefs.          (* [absnode] / [ADir] *)
+Require Import TreeView.           (* [ttree] / [tv_nodes] *)
 Require Import AppTree.            (* the licence, the taint and the claim *)
 Require Import UInitTree.          (* [tree_cc] *)
+Require Import UInitTreeBoot.      (* TL-7's dance, at [Cns := True] *)
+Require Import FsConsPin.          (* [fname_console] *)
 Require FsImg.
 Require ElfUser.
 
@@ -193,18 +191,28 @@ Section UInitTreeExec.
   (*  descriptor row the node is handed are not read at all here: they    *)
   (*  are what a VERIFIED entry constructor reads, and there is none.     *)
   (* =================================================================== *)
-  Lemma tree_init_exec_sup_lend (c : tree_fixed) (r : tree_names)
-      (cn : cons_names) (stc : fdstate) :
+  (* ---- 2a.  THE NODE, WITH THE TAINT ALREADY IN HAND ------------------ *)
+  (*  THE WHOLE BODY LIVES HERE, and the two supplies below differ only in *)
+  (*  where they get the taint from: the wand form reads it off the        *)
+  (*  credential the caller hands it, and the CLOSED form mints it out of  *)
+  (*  the round's own lend ([UInitTree.tree_lend_taint]) through the update *)
+  (*  door the node's conclusion now carries ([UkInit.init_exec_sup_pos],  *)
+  (*  lane TL-9).                                                          *)
+  Lemma tree_init_exec_sup_pos (c : tree_fixed) (r : tree_names)
+      (cn : cons_names) (stc : fdstate) (γ : gname) (np : nat) :
     file_app = MkAppcfg tree_names (tree_pred c) r ->
     riscv_cons_res = cons_res_triv ->
     app_taint = kill_cred_triv ->
     tree_taint c -∗
-    UkInit.init_exec_sup_lend cn (tree_taint c) stc (tree_cc c).
+    UkInit.init_exec_sup_pos cn (tree_taint c) stc (tree_cc c) γ np.
   Proof using .
     intros Heq Hcons Hkill. iIntros "#HT".
-    rewrite /UkInit.init_exec_sup_lend.
-    iIntros "!>" (γ np N m pc l)
+    rewrite /UkInit.init_exec_sup_pos.
+    iIntros (N m pc l)
       "%Hpeq %Hhd %Ha0 %Ha1 #Hro #Hargv Hstd Hrow Hcred Hpos Hlease Hchf Hpidf".
+    (* THE DOOR IS FREE HERE: the taint is a premise of this lemma, so
+       nothing is spent to open the update. *)
+    iModIntro.
     iAssert (image_entry_taint (tree_taint c) (ukn_pay N) uslot) as "#Hgen".
     { rewrite Hpeq.
       iApply (tree_image_entry_taint c r cn γ
@@ -243,21 +251,86 @@ Section UInitTreeExec.
     iFrame "Hstd Hpos Hlease Hcred".
   Qed.
 
-  (* ...AND THE SUPPLY AS /INIT'S WALK TAKES IT.  Both halves of
-     [UkInit.init_cons_sup] at [Cns := tree_taint c]: the wand from the
-     credential IS the lemma above, and the law that pays it under the
-     taint is the identity. *)
+  (* ---- 2b.  THE SUPPLY AS A WAND FROM THE TAINT ----------------------- *)
+  Lemma tree_init_exec_sup_lend (c : tree_fixed) (r : tree_names)
+      (cn : cons_names) (stc : fdstate) :
+    file_app = MkAppcfg tree_names (tree_pred c) r ->
+    riscv_cons_res = cons_res_triv ->
+    app_taint = kill_cred_triv ->
+    tree_taint c -∗
+    UkInit.init_exec_sup_lend cn (tree_taint c) stc (tree_cc c).
+  Proof using .
+    intros Heq Hcons Hkill. iIntros "#HT".
+    rewrite /UkInit.init_exec_sup_lend. iIntros "!>" (γ np).
+    iApply (tree_init_exec_sup_pos c r cn stc γ np Heq Hcons Hkill with "HT").
+  Qed.
+
+  (* ---- 2c.  ...AND THE SUPPLY FROM NOTHING, WHICH IS WHAT THE UPDATE
+         DOOR BUYS (lane TL-9; design/user-tree.md 9.8).
+
+     THIS IS THE STATEMENT LANE TL-8 REFUTED, and what changed is not the
+     token count but where the tokens may be spent.  The node is handed
+     the round's credential ([UkInit.init_lend_cred]) and its conclusion
+     is an UPDATE now, so the credential can be turned into the taint
+     INSIDE the node: the console row reads it ([UInitTree.tree_cc_wp]),
+     the closed row MINTS it ([UInitTree.tree_cc_wbn_mint] -- the row where
+     the banner was never written, so the era's licence is still unspent),
+     and the taint arm hands it over.  [UInitTree.tree_lend_taint] is all
+     three, and the lend it gives back is what the deposit's REFUND still
+     needs ([UkInit.init_lend_ref]) -- which is why the mint had to run
+     here and not before the node.
+
+     WHAT IT COSTS THE ERA: nothing that the dance does not already pay.
+     The taint is persistent once minted, so the [box] over this supply
+     re-derives it per round from whatever credential that round carries;
+     and on the rounds where the banner HAS run the credential is already
+     the taint and the mint does not fire at all. *)
+  Lemma tree_init_exec_sup_lend_of_lend (c : tree_fixed) (r : tree_names)
+      (cn : cons_names) (stc : fdstate) :
+    file_app = MkAppcfg tree_names (tree_pred c) r ->
+    riscv_cons_res = cons_res_triv ->
+    app_taint = kill_cred_triv ->
+    ⊢ UkInit.init_exec_sup_lend cn (tree_taint c) stc (tree_cc c).
+  Proof using .
+    intros Heq Hcons Hkill.
+    rewrite /UkInit.init_exec_sup_lend. iIntros "!>" (γ np).
+    rewrite /UkInit.init_exec_sup_pos.
+    iIntros (N m pc l)
+      "%Hpeq %Hhd %Ha0 %Ha1 #Hro #Hargv Hstd Hrow Hcred Hpos Hlease Hchf Hpidf".
+    iMod (tree_lend_taint c stc l np with "Hcred") as "[Hcred #HT]".
+    iDestruct (tree_init_exec_sup_pos c r cn stc γ np Heq Hcons Hkill
+                 with "HT") as "Hnode".
+    rewrite /UkInit.init_exec_sup_pos.
+    iApply ("Hnode" $! N m pc l with "[//] [//] [//] [//] Hro Hargv Hstd Hrow
+                                      Hcred Hpos Hlease Hchf Hpidf").
+  Qed.
+
+  (* ...AND THE SUPPLY AS /INIT'S WALK TAKES IT, AT [Cns := True] (lane
+     TL-9).  Both halves of [UkInit.init_cons_sup] are one line: the wand
+     from the credential asks for nothing, because the supply is closed
+     ([tree_init_exec_sup_lend_of_lend]), and the law that pays the
+     credential under the taint is [True]'s.
+
+     WHY [Cns := True] IS THE ONE THAT MATTERS.  [Cns] is what /init's own
+     console dance has to LEAVE ([UInitKernel.init_boot_pay]'s first
+     conjunct), and TL-7's dance is landed at [True]
+     ([UInitTreeBoot.tree_init_cons_dance_all]) with the era's DEED as its
+     linear credential.  At [Cns := tree_taint c] the dance's leaves would
+     have to mint the taint as well, i.e. spend a second licence in the
+     same [*]-separated payload as [cc_wbn 0] -- and [App.al_pow] files one
+     licence per power-on.  That is TL-8's wall (9.7(4)), and this
+     statement is what retires it. *)
   Lemma tree_init_cons_sup (c : tree_fixed) (r : tree_names)
       (cn : cons_names) (stc : fdstate) :
     file_app = MkAppcfg tree_names (tree_pred c) r ->
     riscv_cons_res = cons_res_triv ->
     app_taint = kill_cred_triv ->
-    ⊢ UkInit.init_cons_sup cn (tree_taint c) (tree_taint c) stc (tree_cc c).
+    ⊢ UkInit.init_cons_sup cn (tree_taint c) True stc (tree_cc c).
   Proof using .
     intros Heq Hcons Hkill. rewrite /UkInit.init_cons_sup. iSplit.
-    - iIntros "!> #HT".
-      iApply (tree_init_exec_sup_lend c r cn stc Heq Hcons Hkill with "HT").
-    - iIntros "!> #HT". iExact "HT".
+    - iIntros "!> _".
+      iApply (tree_init_exec_sup_lend_of_lend c r cn stc Heq Hcons Hkill).
+    - iIntros "!> _". done.
   Qed.
 
   (* =================================================================== *)
@@ -286,12 +359,12 @@ Section UInitTreeExec.
            ⌜uvis_lazy W' = false⌝ -∗
            my_pay (uvis_gen W') (fun _ => True)%I -∗
            UInitKernel.init_boot_pay (PS := uprogSG_free) (tree_taint c)
-             (tree_taint c) fsc_cons init_cons_fd (tree_cc c) -∗
+             True fsc_cons init_cons_fd (tree_cc c) -∗
            uslot W').
   Proof using .
     intros Heq Hcons Hkill.
     iApply (UInitKernel.init_boot_con (PS := uprogSG_free)
-              (tree_taint c) (tree_taint c) init_cons_fd (tree_cc c) fsc_cons
+              (tree_taint c) True%I init_cons_fd (tree_cc c) fsc_cons
               1%nat (fun _ => 5%nat) (fun _ => init_boot_bytes) fdt0 0%nat
               init_cons_fd_ne
               (tree_init_kill_law c init_cons_fd)
@@ -314,28 +387,28 @@ Section UInitTreeExec.
      credential [cc_wbn 0].  The banner law and the two diagnostics are
      [UInitTree]'s, off the deposits, and the read credential is [True].
 
-     BOTH OF THE TWO COST A LICENCE, AND THAT IS D4'S WALL.  With the exec
-     supply at [Cns := tree_taint c] the dance's own leaves must PRODUCE
-     the taint, i.e. spend a licence ([AppTree.tree_taint_mint]); [cc_wbn 0]
-     is the era's licence as well ([UInitTree.tree_cc]'s [cc_wb],
-     UInitTree.v:121, which is what makes the banner the mint, section
-     9.5(3)).  The two are [*]-separated here, and [App.al_pow] files ONE
-     row per power-on ([AppTree.tree_licence_mint], AppTree.v:1401).  So
-     this lemma takes both as premises and D4 is blocked on a ruling about
-     the licence, not on a proof. *)
+     ONLY ONE OF THE TWO COSTS A LICENCE NOW (lane TL-9), and that is what
+     retires TL-8's wall (section 9.7(4)).  The dance is taken AS TL-7
+     LANDED IT, at [Cns := True] ([UInitTreeBoot.tree_init_cons_dance_all]),
+     whose linear credential is the era's DEED and not the taint -- so the
+     era's single licence ([AppTree.tree_licence_mint], one row per
+     power-on) goes where the design always said it goes: into [cc_wbn 0],
+     the banner-owed credential, which is what makes the banner the mint
+     (section 9.5(3)).  [UInitTree.tree_cc_wbn_of_turn] is the one step. *)
   Lemma tree_init_boot_pay (c : tree_fixed) (r : tree_names)
       (cn : cons_names) (stc : fdstate) :
     file_app = MkAppcfg tree_names (tree_pred c) r ->
     riscv_cons_res = cons_res_triv ->
     app_taint = kill_cred_triv ->
     UInitKernel.init_cons_dance_all (PS := uprogSG_free) (tree_taint c)
-      (tree_taint c) stc -∗
+      True%I stc -∗
     ucons_reader cn 0%nat -∗
-    cc_wbn (tree_cc c) 0%nat -∗
+    tree_turn c -∗
     UInitKernel.init_boot_pay (PS := uprogSG_free) (tree_taint c)
-      (tree_taint c) cn stc (tree_cc c).
+      True cn stc (tree_cc c).
   Proof using .
-    intros Heq Hcons Hkill. iIntros "Hdn Hrd Hbn".
+    intros Heq Hcons Hkill. iIntros "Hdn Hrd Htn".
+    iDestruct (tree_cc_wbn_of_turn c 0%nat with "Htn") as "Hbn".
     iDestruct (tree_init_deps c r Heq Hcons Hkill) as "#Hdp".
     rewrite /UInitKernel.init_boot_pay.
     iSplitL "Hdn"; [ iExact "Hdn" | ].
@@ -347,6 +420,77 @@ Section UInitTreeExec.
       iDestruct (tree_kinit_ban_law c stc N' with "Hdp") as "#Hbl".
       iApply ("Hbl" with "Hwb").
     - iApply (tree_kinit_diag_law c stc with "Hdp").
+  Qed.
+
+  (* =================================================================== *)
+  (*  4.  /INIT'S ENTRY SLOT AT THE TREE CLAIM, EVERY PREMISE PAID        *)
+  (*      (lane TL-9; design/user-tree.md section 9.8)                    *)
+  (*                                                                     *)
+  (*  [UInitKernel.init_boot_con] APPLIED, at the payload                 *)
+  (*  [tree_init_boot_pay] builds -- so this is /init's whole walk at the *)
+  (*  tree claim, from the era's own resources and nothing else:          *)
+  (*                                                                     *)
+  (*    the era's first DEED ([AppTree.tree_boot]'s), which pays the      *)
+  (*      console dance (TL-7) -- in LIVE, because the dance's mknod      *)
+  (*      moves it;                                                       *)
+  (*    the era's one LICENCE ([App.app_turn]), which pays [cc_wbn 0] --  *)
+  (*      the banner-owed credential, i.e. the mint at the banner's first *)
+  (*      byte (section 9.5(3));                                          *)
+  (*    the kernel's READER token, born with the console ring at boot;    *)
+  (*    and the claim itself.                                            *)
+  (*                                                                     *)
+  (*  The exec of /sh needs NOTHING further: at [Cns := True] the supply  *)
+  (*  is closed ([tree_init_cons_sup]) and mints the taint out of the     *)
+  (*  round's own credential when the round reaches the exec.             *)
+  (*                                                                     *)
+  (*  WHAT IS STILL BETWEEN THIS AND A BEHAVIOURAL [tree_Hinit_boot], and *)
+  (*  it is not this file's to fix.  [InitBoot.init_boot_bundle] is the   *)
+  (*  PINNED exec of /init itself, and                                    *)
+  (*  [PinnedExec.pinned_exec_bundle_boot] (PinnedExec.v:537) takes its   *)
+  (*  pin law under a [box] -- a walk reads the claim once per hop.  The  *)
+  (*  tree claim pays such a law only from a FROZEN deed                  *)
+  (*  ([TreeExec.exec_walk_of_own], TreeExec.v:89, takes                  *)
+  (*  [AppTree.tree_pin]), and [AppTree.tree_freeze] is one-way -- so     *)
+  (*  freezing the era's one boot deed to pay the boot walk leaves the    *)
+  (*  dance below with no live deed for its mknod.  Independently,        *)
+  (*  [AppTree.tree_boot] (AppTree.v:2546) quantifies the deed's subtree  *)
+  (*  EXISTENTIALLY and [App.al_programs] (App.v:371) hands [Hinit_boot]  *)
+  (*  no image premise, so nothing identifies that subtree with the one   *)
+  (*  that resolves "/init" to [ElfUser.init_elf].  Both are recorded in  *)
+  (*  design/user-tree.md section 9.8.                                    *)
+  (* =================================================================== *)
+  Lemma tree_init_boot_uslot (c : tree_fixed) (r : tree_names) (g : gname)
+      (t : ttree) (e : gmap fname Z) (W' : uvis) :
+    file_app = MkAppcfg tree_names (tree_pred c) r ->
+    riscv_cons_res = cons_res_triv ->
+    app_taint = kill_cred_triv ->
+    (* THE ONE IMAGE FACT /INIT'S SETUP NEEDS, and it is about the deed's
+       own tree: the root is a directory and it has no [console] entry
+       yet, which is the arm TL-7's dance is landed on. *)
+    tv_nodes t !! FsImg.ROOTINO = Some (ADir e) ->
+    e !! fname_console = None ->
+    (* ...and the key the kernel resumes <init> at *)
+    kexec_image_ok ElfUser.init_elf 1%nat (fun _ => 5%nat)
+      (fun _ => init_boot_bytes) fdt0 W' ->
+    uvis_cwd W' = FsImg.ROOTINO ->
+    uvis_lazy W' = false ->
+    app_inv fsc_fs -∗
+    tree_own r g FsImg.ROOTINO t -∗
+    tree_turn c -∗
+    ucons_reader fsc_cons 0%nat -∗
+    my_pay (uvis_gen W') (fun _ => True)%I -∗
+    uslot W'.
+  (* the dance's leaves reach two more of the section's classes than this
+     file's other statements do *)
+  Proof using GEN fileG0 ghost_varG0 riscvGS0 treeG0 uartGhostG0 ufdG0 xv6G0 Σ.
+    intros Heq Hcons Hkill Hd He Hok Hcw Hlz.
+    iIntros "#Hinv Hown Htn Hrd Hmp".
+    iDestruct (tree_init_boot_con c r Heq Hcons Hkill) as "#Hcon".
+    iApply ("Hcon" $! W' with "[%] [%] [%] Hmp [Hown Htn Hrd]");
+      [ exact Hok | exact Hcw | exact Hlz | ].
+    iApply (tree_init_boot_pay c r fsc_cons init_cons_fd Heq Hcons Hkill
+              with "[Hown] Hrd Htn").
+    iApply (tree_init_cons_dance_all c r g t e Heq Hd He with "Hinv Hown").
   Qed.
 
 End UInitTreeExec.

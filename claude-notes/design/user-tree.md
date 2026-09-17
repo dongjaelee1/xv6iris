@@ -1912,3 +1912,71 @@ bar has so far kept untouched.
 - Unlink still waits on §7.10(8)'s two kernel-tier seams, and the create
   side still wants §7.10(6)'s claim-reading `Fex`.  Neither is on
   `Hinit_boot`'s path.
+
+## 9. RULED (2026-09-18, owner: "seam-I and verified init") — the second application, for real
+
+Both of §8.4's questions are ruled YES.  This section is the design of
+record for the two lanes that follow.
+
+### 9.1 SEAM-I is built (in-house), and its consumer is the tree taint's mint
+
+§7.1 is applied verbatim: `AppInv.app_step`'s wand becomes `▷ app_pred
+av ==∗ ▷ app_pred av'`, `app_top_update` `iMod`s it, `app_top_update_step`
+keeps its update-free statement, the ~10 suppliers gain an `iModIntro`.
+Zero semantic change for every consumer; `AppInv.v` is touched, which
+this campaign had avoided as a courtesy to upstream's redesign — that
+redesign has landed, so the courtesy is spent.
+
+THE CONSUMER.  TL-4 wall (a): the tree taint has no mint, so `app_sup`
+is unobtainable and every taint-guarded deposit is dead.  Under SEAM-I
+the mint is the UNPAID MOVER'S OWN STEP: `tree_body` carries the taint
+counter's AUTHORITY (`mono_nat_auth (tc_taint c) 1 n`, moved out of
+`tree_R`/`tree_cl` — the ledger `app_R` becomes a lower bound only), and
+`tree_step_bump : ▷ tree_pred c r av ==∗ ▷ tree_pred c r av' ∗ tree_taint c`
+— open the live arm, bump the counter to 1, close in the taint arm, keep
+a persistent lower bound.  Provable from NOTHING, which is exactly what
+a generic discharger has.  So `app_sup` for the tree application IS the
+taint, obtainable by whoever makes the first unpaid move — and by whoever
+hands a process to the generic tier (§9.2's exec of /sh mints it there,
+by the same lemma).  Design §3's "the first unpaid move is recorded as
+the taint" is now a resource, neither dead nor vacuous.
+
+### 9.2 Verified init on the tree claim — what the theorem says
+
+The same mkfs image, the same /init and /sh binaries.  THE CLAIM: the
+live file system is a well-formed rooted partition owned by the process
+tree, THROUGH /init's setup (`mknod("/console")`, the three opens/dups,
+the fork) AND UNTIL CONTROL PASSES TO AN UNVERIFIED IMAGE — /init's exec
+of /sh mints the taint (sh's `image_entry` demands echo's console lease,
+so under a tree application sh is the taint entry; §8.2's sh finding
+stands).  Honest and meaningful: it is the statement that the tree
+layer's corollaries compose into a booted system, and it reuses init's
+landed code proof at a DIFFERENT application claim.
+
+THE FIRST DEED IS CONCRETE (dissolves wall (b)).  `app_fixed` carries the
+image tree: `tree_fixed := { tc_taint : gname; tc_img : ttree }` with
+`tc_img = subtree av_img ROOTINO` (TL-4's `TreeImg` computes it), and
+`tree_boot c k r := tree_own r g ROOTINO (tc_img c)` — no existential, so
+/init resolves "console" (absent) and "/sh" (a loadable file) by
+computation on `tc_img`.  `tree_xfer_boot_at` mints it at the view the
+transport sees outside the later; `tree_Happ_init` supplies the view's
+facts.
+
+EXEC FROM A LIVE DEED (dissolves wall (c)).  /init moves (mknod) before
+it execs, so its deed is live at the exec.  TL-3K put the walk's resource
+ON THE CURSOR for the parent prefix (`pobs_pwalk_lin`,
+`tree_pwalk_of_own_live`); the full-path twin for exec's `ex_start`
+(`pobs_walk_lin`, `tree_walk_of_own_live` → `exec_walk_of_own_live`) is
+the same construction one list longer.
+
+THE LANE (TL-5): (i) `tree_fixed` with `tc_img`, `tree_boot` concrete,
+`tree_Happ_boot`; (ii) `tree_step_bump` + `tree_sup_of_bump`
+(SEAM-I's consumer); (iii) `exec_walk_of_own_live`; (iv) /init's steps
+re-instantiated on the tree corollaries — `UkInit`'s mknod step on
+`wp_uk_ecall_mknod_own` (device child, prefix 0), its opens on
+`wp_uk_ecall_open_own` (a device node, no create), dup/fork from the
+landed fd rows + `tree_grant` at the fork (the child gets nothing of the
+tree: init keeps `/`), its exec of /sh at `image_entry_taint` with the
+taint minted by (ii) at that instant; (v) `Hinit_boot` at `app_tree`
+from (iv); (vi) `UTreeAdequacy.tree_adequacy_treeΣ`, the closed corollary,
+and `make audit-tree-only` retargeted to it (bar: ≤ echo's fourteen).

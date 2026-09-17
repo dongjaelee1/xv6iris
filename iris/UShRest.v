@@ -166,9 +166,9 @@ Section UShRest.
                   (PS := uprogSG_free) (Hpay := Hc)
                   N γp T Wc Wbn (UShLine.ush_mid γ γp)
                   (fun k H => H) (kexec_sz ElfUser.sh_elf)
-                  ush_line_lexable_holds sh_sz_lo sh_sz_al sh_sz_ok Hwbl
+                  sh_sz_lo sh_sz_al sh_sz_ok Hwbl
                   with "Hkl Hchl Hplaw") as "Hb".
-    rewrite /UkSh.ush_rest_l.
+    rewrite /UkSh.ush_rest_l /UkSh.ush_rest_l_at.
     iDestruct ("Hb" $! l with "[%]") as "Hb'"; [ exact Hc | iExact "Hb'" ].
   Qed.
 

@@ -32,6 +32,9 @@ Require Import UmodeAbi.
 Require Import UCodeShP.
 Require Import LineWords.
 Require Import EchoDisc.
+Require Import FileDisc.   (* [uline] / [line_bytes] / [fname_f] -- the line
+                              the file discipline TYPES, which the redirect
+                              shape below is the positional reading of *)
 Require Import UkSh.
 Require Import UkShParse.
 Require Import UkShParseSym.
@@ -233,4 +236,121 @@ Proof.
     replace (k + (p0 + 3 + length file))%nat
       with (k + p0 + 3 + length file)%nat by lia.
     rewrite Hnl. exact ushs_nl_ws.
+Qed.
+
+
+(* ===================================================================== *)
+(* §4 THE REDIRECT LINE IS THE TYPED LINE [LEchoF] (lane SH-CHILD)        *)
+(*                                                                        *)
+(* [UkSh.ush_rest_line_at]'s payload says the buffer at [k] holds the     *)
+(* bytes of an admissible line of [FileDisc.uline].  At [LEcho ws] that IS *)
+(* [UkSh.ush_line_is] ([UkSh.ush_line_at_echo], by conversion); at         *)
+(* [LEchoF ws] it is the redirect shape at the model's own file name, and  *)
+(* this section is that one step.  It lives HERE, below [UkShFork], because *)
+(* that is where the command loop's three-way case needs it -- the         *)
+(* TOKENS ([UShLexRedir]) are a file above and are not needed to know       *)
+(* which walk the line takes.                                             *)
+(* ===================================================================== *)
+
+(* the file name is one alphanumeric byte, so it is a WORD *)
+Lemma fname_f_word : wl_word fname_f.
+Proof using. apply (bool_decide_unpack _); vm_compute; exact I. Qed.
+
+Lemma fname_f_len : length fname_f = 1%nat.
+Proof using. vm_compute; reflexivity. Qed.
+
+(* the redirect suffix, positionally: ' ' '>' ' ' then the file name *)
+Lemma suf_gtf_0 : suf_gtf !!! 0%nat = wl_sp.
+Proof using. apply bv_eq; vm_compute; reflexivity. Qed.
+
+Lemma suf_gtf_1 : suf_gtf !!! 1%nat = ushs_gt.
+Proof using. apply bv_eq; vm_compute; reflexivity. Qed.
+
+Lemma suf_gtf_2 : suf_gtf !!! 2%nat = wl_sp.
+Proof using. apply bv_eq; vm_compute; reflexivity. Qed.
+
+Lemma suf_gtf_3 : suf_gtf !!! 3%nat = fname_f !!! 0%nat.
+Proof using. apply bv_eq; vm_compute; reflexivity. Qed.
+
+(* THE BRIDGE: the typed line, read positionally. *)
+Lemma ushs_line_is_of_at (ws : list (list (bv 8))) (f : nat -> bv 8)
+    (k len : nat) :
+  UkSh.ush_line_at (LEchoF ws) f k len ->
+  ushs_line_is ws fname_f f k len.
+Proof using.
+  intros (Hok & Hlen & Hby).
+  destruct Hok as [ Hok _ ].
+  (* the line's bytes are [wl_body ws ++ suf_gtf] and then the newline *)
+  assert (Hlb : length (line_bytes (LEchoF ws))
+                = (length (wl_body ws) + 4 + 1)%nat).
+  { unfold line_bytes, line_body.
+    rewrite length_app. rewrite length_app. rewrite suf_gtf_len.
+    cbn [length]. lia. }
+  assert (Hpre : length (wl_body ws ++ suf_gtf)
+                 = (length (wl_body ws) + 4)%nat)
+    by (rewrite length_app; rewrite suf_gtf_len; lia).
+  (* ...so every index below the newline reads out of the two pieces *)
+  assert (Hbody : forall j : nat, (j < length (wl_body ws))%nat ->
+            f (k + j)%nat = wl_body ws !!! j).
+  { intros j Hj. rewrite (Hby j ltac:(lia)).
+    unfold line_bytes, line_body.
+    rewrite (wl_lta_app_l (wl_body ws ++ suf_gtf) [wl_nl] j ltac:(lia)).
+    exact (wl_lta_app_l (wl_body ws) suf_gtf j Hj). }
+  assert (Hsuf : forall i : nat, (i < 4)%nat ->
+            f (k + (length (wl_body ws) + i))%nat = suf_gtf !!! i).
+  { intros i Hi. rewrite (Hby (length (wl_body ws) + i)%nat ltac:(lia)).
+    unfold line_bytes, line_body.
+    rewrite (wl_lta_app_l (wl_body ws ++ suf_gtf) [wl_nl]
+               (length (wl_body ws) + i)%nat ltac:(lia)).
+    exact (wl_lta_app_r (wl_body ws) suf_gtf i). }
+  assert (Hnl : f (k + (length (wl_body ws) + 4))%nat = wl_nl).
+  { rewrite (Hby (length (wl_body ws) + 4)%nat ltac:(lia)).
+    unfold line_bytes, line_body.
+    pose proof (wl_lta_app_r (wl_body ws ++ suf_gtf) [wl_nl] 0%nat) as Hr.
+    rewrite Hpre in Hr. rewrite Nat.add_0_r in Hr. rewrite Hr. reflexivity. }
+  unfold ushs_line_is. split_and!.
+  - exact Hok.
+  - exact fname_f_word.
+  - rewrite Hlen. rewrite Hlb. rewrite fname_f_len. lia.
+  - exact Hbody.
+  - pose proof (Hsuf 0%nat ltac:(lia)) as H0.
+    rewrite Nat.add_0_r in H0. rewrite H0. exact suf_gtf_0.
+  - pose proof (Hsuf 1%nat ltac:(lia)) as H1.
+    replace (k + length (wl_body ws) + 1)%nat
+      with (k + (length (wl_body ws) + 1))%nat by lia.
+    rewrite H1. exact suf_gtf_1.
+  - pose proof (Hsuf 2%nat ltac:(lia)) as H2.
+    replace (k + length (wl_body ws) + 2)%nat
+      with (k + (length (wl_body ws) + 2))%nat by lia.
+    rewrite H2. exact suf_gtf_2.
+  - intros j Hj. rewrite fname_f_len in Hj.
+    replace j with 0%nat by lia. rewrite Nat.add_0_r.
+    pose proof (Hsuf 3%nat ltac:(lia)) as H3.
+    replace (k + length (wl_body ws) + 3)%nat
+      with (k + (length (wl_body ws) + 3))%nat by lia.
+    rewrite H3. exact suf_gtf_3.
+  - rewrite fname_f_len.
+    replace (k + length (wl_body ws) + 3 + 1)%nat
+      with (k + (length (wl_body ws) + 4))%nat by lia.
+    exact Hnl.
+Qed.
+
+(* ...AND ITS FIRST BYTE IS 'e', which is the ONE reading sh's body makes
+   of a line ([UkShFork.wp_kshm_body_at]'s [Hlp0]): the redirect line's
+   command word is echo's, because [ushs_line_is] carries the same
+   [EchoDisc.line_ok]. *)
+Lemma ushs_line_is_byte0 (ws : list (list (bv 8))) (file : list (bv 8))
+    (f : nat -> bv 8) (k len : nat) :
+  ushs_line_is ws file f k len -> bv_unsigned (f k) = 101%Z.
+Proof using.
+  intros (Hok & _ & _ & Hbody & _).
+  assert (Hpos : (0 < length (wl_body ws))%nat).
+  { destruct ws as [| w r ]; [ exfalso; exact (Nat.nlt_0_r 0 (line_ok_pos [] Hok)) | ].
+    destruct (wl_wf_cons w r (line_ok_wf _ Hok)) as [ Hword _ ].
+    rewrite wl_body_cons. rewrite length_app.
+    pose proof (wl_word_pos w Hword). lia. }
+  pose proof (Hbody 0%nat Hpos) as H0. rewrite Nat.add_0_r in H0.
+  rewrite H0.
+  rewrite <- (wl_lta_app_l (wl_body ws) [wl_nl] 0%nat Hpos).
+  exact (line_ok_head_byte0 ws Hok).
 Qed.

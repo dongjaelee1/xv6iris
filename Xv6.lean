@@ -221,3 +221,5 @@ import Xv6.LinkProcPagetable
 import Xv6.UPtAllocLemmas
 import Xv6.ProofGrowproc
 import Xv6.LinkGrowproc
+import Xv6.ProofUvmcopy
+import Xv6.LinkUvmcopy

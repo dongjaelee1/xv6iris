@@ -419,7 +419,7 @@ Section UkCatDeed.
               /\ (fd < NOFILE)%nat⌝ ∗
              ualloc γfd l fd (FdOpen true false (FdInode i γo OffParked)) ∗
              fdq r q1 (Some (i, bs)) ∗ fdq r q2 (Some (i, bs)))
-        ∨ (ustd_any γfd ∗ file_taint c)) -∗
+        ∨ (UkFileOpen.uk_open_taint_fd γfd l ret ∗ file_taint c)) -∗
        urun N h'
          (<[Regidx a0_idx := ret]>
             (<[Regidx a7_idx := (mword_of_int 15 : mword 64)]> m))
@@ -533,7 +533,7 @@ Section UkCatDeed.
     (∀ (h' : CpuId) (ret : mword 64),
        UserCwd.ucwd (ukn_cwd N) cw -∗
        ((⌜ret = (mword_of_int (-1) : mword 64)⌝ ∗ ustd γfd l ∗ fdq r q None)
-        ∨ (ustd_any γfd ∗ file_taint c)) -∗
+        ∨ (UkFileOpen.uk_open_taint_fd γfd l ret ∗ file_taint c)) -∗
        urun N h'
          (<[Regidx a0_idx := ret]>
             (<[Regidx a7_idx := (mword_of_int 15 : mword 64)]> m))
@@ -651,7 +651,7 @@ Section UkCatDeed.
                   ualloc γfd l fd
                     (FdOpen true false (FdInode i γo OffParked)) ∗
                   fdq r q1 (Some (i, bs)) ∗ fdq r q2 (Some (i, bs)))
-             ∨ (ustd_any γfd ∗ file_taint c)))%I).
+             ∨ (UkFileOpen.uk_open_taint_fd γfd l ret ∗ file_taint c)))%I).
   Proof using .
     intros Heq Hpath Hel Hst.
     iIntros "#Hcode #Hdi #Hinv" (h m avail) "%Ha0 %Ha1 _ Hhold Hrun Hcont".
@@ -679,7 +679,7 @@ Section UkCatDeed.
          (UserCwd.ucwd (ukn_cwd N) cw
           ∗ ((⌜ret = (mword_of_int (-1) : mword 64)⌝ ∗ ustd γfd l
               ∗ fdq r q None)
-             ∨ (ustd_any γfd ∗ file_taint c)))%I).
+             ∨ (UkFileOpen.uk_open_taint_fd γfd l ret ∗ file_taint c)))%I).
   Proof using .
     intros Heq Hpath Hel Hst.
     iIntros "#Hcode #Hdi #Hinv" (h m avail) "%Ha0 %Ha1 _ Hhold Hrun Hcont".

@@ -155,6 +155,10 @@ Section TreeExec.
     um_start_of cw pl = root ->
     root ∈ dom (tv_nodes t) ->
     resolves_from t root pl = Some (i, AFile f) ->
+    (* ...and the record answers for its offsets (lane OFF-HAND-5, D1):
+       the exec crossing's taint arm needs the table it execs with
+       all-parked, read off the run ([UkRun.urun_rows_parked]) *)
+    ukn_held N = ∅ ->
     uinstr_is (ukn_t N) pc false (ECALL tt) -∗
     urun N h m pc avail -∗
     UserCwd.ucwd (ukn_cwd N) cw -∗
@@ -181,10 +185,10 @@ Section TreeExec.
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof using .
-    intros Heq Hn Ha0 Ha1 Hal4 Hload Hp Hstart Hd Hres.
+    intros Heq Hn Ha0 Ha1 Hal4 Hload Hp Hstart Hd Hres Hhd.
     iIntros "#Hi Hrun Hcwd #Hpin #Hinv #Hrd #Hcon #Hgen #Hrf HPay Hcont".
     iApply (wp_uk_ecall_exec_run_abs N h m pc avail cw (tree_taint c) pv av
-              pl f Pay R Hn Ha0 Ha1 Hal4 Hload
+              pl f Pay R Hn Ha0 Ha1 Hal4 Hload Hhd
               with "Hi Hrun Hcwd Hrf Hgen [HPay] Hcont").
     rewrite /uexec_sup_run_abs. iIntros (M pm sz fdv cs pidv) "#Hnp Hheap Hufd".
     iDestruct ("Hrd" $! M pm sz with "Hheap") as %Hpath.

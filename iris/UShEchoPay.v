@@ -254,7 +254,7 @@ Section UShEchoPay.
               FsImg.ROOTINO T echo_pl ElfUser.echo_elf 1%nat
               (UserFd.ustd (ukn_fd N') ld
                ∗ EchoLinksLine.ewc_lpr T v I 3%nat)%I
-              _ echo_elf_loadable Ha0 Ha1 with "[] [] [Hstd Hcr]").
+              _ echo_elf_loadable Ha0 Ha1 Hheq with "[] [] [Hstd Hcr]").
     (* THE REFUND IS THE LEND, WHOLE: the fragment and the block credential
        come back to the child whose exec failed *)
     { iIntros "!> [$ Hc]". rewrite /EchoLinksLine.ewc_lcred.

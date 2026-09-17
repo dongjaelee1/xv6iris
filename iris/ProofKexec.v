@@ -651,12 +651,6 @@ Section KexecAUExit.
     (forall j : nat, (j < 64)%nat -> ef j = file_byte datl j) ->
     length (pv_tf (us_V U)) = TFWORDS ->
     (na <= MAXARG)%nat ->
-    (* THE CALLER'S TABLE IS ALL-PARKED (lane OFF-HAND-2), threaded from
-       the contract because nothing in the kexec frame ties [sts] to the
-       block.  It is spent HERE and only here: both slot wands ask the
-       resumed key for it, and [SpecKexec.kexec_image_ok_parked] /
-       [exec_key_ok_parked] carry it from [sts] to [uvis_fd W']. *)
-    fdv_all_parked sts ->
     (* THE PAY FACT, STRAIGHT THROUGH.  The slot piece's two wands are at
        the exec'ing process's own naming of its payload
        ([SpecKexec.exec_slot_pre]), and the key this conversion builds is at
@@ -677,7 +671,7 @@ Section KexecAUExit.
       gf fsc_kalloc pj pidv U m ret_tgt K b eb lks dqb dqs fsc_bmapstart
       na alen plen pv dqpv pfun av dqa avf aslen dqas afun.
   Proof using .
-    intros Hag Htflen Hnamax Hpk.
+    intros Hag Htflen Hnamax.
     iIntros "#Hmp Hret Hrcpt". rewrite /KexecOkQ.kexec_closer.
     iIntros (mf U' entry spv szv') "%Hcs %Hq".
     iIntros "Hcg Hcnt Hextc Hclmc Hpc Hbm Hins Hka Hpriv Hpath Hargv Hargs Hbs Hirs".
@@ -735,7 +729,7 @@ Section KexecAUExit.
         iDestruct (pf_at_au with "Hsl") as "[Hsl _]".
         iApply ("Hsl" $! av0 zi (kxc_fb datl dn) nl
                   (SpecKexec.exec_key U' sts gn cs pidv na)
-                  with "HP HΦ [%] [%] [%] [%] [%] [%] [%] Hmp");
+                  with "HP HΦ [%] [%] [%] [%] [%] [%] Hmp");
           [ exact Hload | exact Himg
           (* THE KEY'S CWD is the caller's: exec does not chdir, so the
              post-exec block's inum is the entry block's
@@ -749,10 +743,7 @@ Section KexecAUExit.
           (* ...AND ITS CHILDREN SET AND PID ARE THE CALLER'S (lane
              EXEC-SEAM): both go straight into the key, by reflexivity *)
           | exact (SpecKexec.exec_key_ch U' sts gn cs pidv na)
-          | exact (SpecKexec.exec_key_pid U' sts gn cs pidv na)
-          (* ...AND THE KEY'S TABLE IS THE CALLER'S, so the discipline
-             crosses the exec unchanged ([kexec_image_ok_parked]). *)
-          | rewrite SpecKexec.exec_key_fd; exact Hpk ].
+          | exact (SpecKexec.exec_key_pid U' sts gn cs pidv na) ].
     - (* NOT A LOADABLE FILE.  Arm (b) on success, [EfNotLoadable] on a
          failure past the lock. *)
       destruct Hq as [(Hr & HV & (_ & _ & HM)) | Hsucc].
@@ -793,7 +784,7 @@ Section KexecAUExit.
         iDestruct (pf_at_au with "Hsl") as "[_ Hsl]".
         iApply ("Hsl" $! av0 zi (abs_row (FsStateEra.era_node dn bm datl))
                   (SpecKexec.exec_key U' sts gn cs pidv na)
-                  with "HP HΦ [%] [%] [%] [%] [%] [%] [%] Hmp").
+                  with "HP HΦ [%] [%] [%] [%] [%] [%] Hmp").
         { exact Hnl. }
         { exact (SpecKexec.kexec_ok_exec_key_ok U U' sts gn cs pidv
                    (mf !!! Regidx Ra0)
@@ -806,9 +797,6 @@ Section KexecAUExit.
         (* ...and the two identity rows, by reflexivity (lane EXEC-SEAM) *)
         { exact (SpecKexec.exec_key_ch U' sts gn cs pidv na). }
         { exact (SpecKexec.exec_key_pid U' sts gn cs pidv na). }
-        (* ...and the all-parked row ([exec_key_ok_parked]'s content at the
-           key exec built) *)
-        { rewrite SpecKexec.exec_key_fd. exact Hpk. }
   Qed.
 
 End KexecAUExit.
@@ -859,7 +847,7 @@ Section KexecAUMain.
       aslen afun pidv U sts gn cs dqb dqs dqa dqpv dqas m K eb b lks Qpay P Pmiss Fo.
   Proof using .
     rewrite /SpecKexec.wp_kexec_sconf_body /SpecKexec.wp_kexec_frame.
-    intros Hpk HK Hroot Hnib0 Hlg Hsz Hbm0 Hbmc Hbml Hins0
+    intros HK Hroot Hnib0 Hlg Hsz Hbm0 Hbmc Hbml Hins0
            Hcovb Hiregb Hcstr Hplen Havf_nz Havf_na Hnamax
            Halen_b Halen_c Halen_4 Hjp Hgs.
     iIntros "Hcg Hcnt Hextc Hclmc #Htext Hpc #Hfab #Hka Hbm Hins Hbits Hpriv
@@ -941,7 +929,7 @@ Section KexecAUMain.
                 datl ef gf (proc_addr jp) pidv U sts gn cs m
                 (ret_pc (m !!! Regidx Rra)) K eb eb ∅ dqb dqs na alen aslen afun
                 plen (m !!! Regidx Ra0) dqpv pfun (m !!! Regidx Ra1) dqa avf dqas
-                Hef Htflen ltac:(lia) Hpk with "Hmp HK HR"). }
+                Hef Htflen ltac:(lia) with "Hmp HK HR"). }
     (* ---- THE FAILURE-SIDE PLUG'S TWO PREMISES (S5).  Both are the SAME
        observation: the cone's tails speak about the header buffer [ef] and
        the loop's [sz], and only a LOADABLE file makes [ef] the file's own

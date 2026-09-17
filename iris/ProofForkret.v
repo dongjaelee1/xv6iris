@@ -1563,7 +1563,7 @@ Proof.
             DfracDiscarded DfracDiscarded (DfracOwn 1) DfracDiscarded DfracDiscarded
             D5 av2 eb eb ∅
             (fun _ => True)%I Pcur Pmiss Fo
-            Hpkboot Hkx Hdev Hnib0 Hlg Hsize Hbm0
+            Hkx Hdev Hnib0 Hlg Hsize Hbm0
             Hbmcov Hbmlog Hist0 Hcovb Hiregb
             fkr_init_path_cstr ltac:(kxarith)
             fkr_argv_nonnull fkr_argv_null ltac:(kxarith)

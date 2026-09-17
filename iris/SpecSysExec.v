@@ -413,13 +413,10 @@ Definition wp_sys_exec_sconf_body
   let pj := proc_addr j in
   let ret_tgt := ret_pc (m !!! Regidx (mword_of_int 1 : mword 5)) in
   let Γfs := fs_gamma_L fsc_fs in
-  (* THE CALLER'S DESCRIPTOR TABLE IS ALL-PARKED (design/user-read.md
-     SS8.1, SS8.3; lane OFF-HAND-2).  The dispatcher holds the process
-     block AND its descriptor bundle, so it is the one tier that can READ
-     this off the machine ([ProcInv.proc_priv_parked]); everything below
-     here only relays it, and it is spent at [SpecKexec.exec_slot_pre]'s
-     two wands, where the new image's generic slot asks its key for it. *)
-  fdv_all_parked sts ->
+  (* NO ALL-PARKED ROW (lane OFF-HAND-5, D1).  [SpecKexec.exec_slot_pre]'s
+     wands no longer ask the key for it, so there is nothing for this
+     contract to relay; the party that knows the table says so where the
+     bundle is built ([ExecBundle.exec_slot_of_entry_at]). *)
   (K_sys_exec <= K)%nat ->
   icfg_dev = ROOTDEV ->
   (0 < icfg_nib)%nat ->

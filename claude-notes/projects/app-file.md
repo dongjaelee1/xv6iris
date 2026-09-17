@@ -3494,3 +3494,220 @@ still describes only the symbol-free shape, and SH-PARSE-2's
 from `UkShFork.ushf_rest_of_body` down to this lemma's `ushs_redir` /
 `ushs_toks` premises before the redirect line can be TYPED at sh's prompt
 rather than assumed at `0x9c0`.
+
+### OFF-HAND-5 (kernel/U tier, 2026-09-17) — THE EXEC ROW LEAVES THE KERNEL AND THE PIN LOSES ITS ONLY CONSUMER; THE DEPOSIT INTO THE VERIFIED ENTRY IS VACUOUS WHILE THE BUILDER ANSWERS A TAINT ARM; D2/D3's CARRIER IS MEASURED AND IS A LANE
+
+**The lane's verdict in one line: D1 landed, in the only shape that is not
+vacuous — the kernel stops saying anything about the exec'ing process's
+descriptors, `ProcInv.proc_priv_parked` has no consumer again, and the
+crossing's all-parked row is now the BUILDER's, about the table it execs
+with.  The ruling's other half (the surrender bundle as a resource the
+kernel spends on one arm and returns on the other) is REFUTED, twice over,
+and the refutation says what would have to change instead.  D2 and D3 were
+attempted end to end, got as far as a measured wall in the PROGRAM tier,
+and were reverted rather than left red; everything the next lane needs is
+below, including the shapes that work.  Everything is checked at the
+statement in the tree.**
+
+**WHAT LANDED** (whole tree green on the lane's remote tree, `make -f
+CoqMakefile -j32 -k`, `EXIT=0`, zero `Error`, `make -n` reports nothing
+left; `make audit-all-only`: echo audit fourteen, system audit thirteen;
+`Proof using` everywhere, no `Admitted`).  One commit.
+
+*`a957fd615` — D1: the exec crossing's all-parked row leaves the kernel*
+
+- `SpecKexec.exec_slot_pre`'s two wands DROP `⌜fdv_all_parked (uvis_fd W')⌝`,
+  and `wp_kexec_sconf_body` drops the pure premise that fed them.
+- **`ProofSyscall`'s exec arm no longer reads `ProcInv.proc_priv_parked`**
+  (`:5299`).  Lane OFF-HAND-2 gave that lemma its first consumer; this lane
+  takes it away again, which is the whole of "the pin comes off the
+  kernel": `proc_priv_parked`'s chain
+  (`FileInvDefs.fdstate_ok_parked` → `file_ref_parked` →
+  `ProcInv.ofile_slot_parked` → `ofile_slots_parked` → `proc_ofiles_parked`
+  → `proc_priv_parked`) is again dead, so relaxing `FileInvDefs.fdstate_ok`
+  costs nothing at the kernel tier.
+- The fact is not lost.  Its ONE consumer is the TAINT arm
+  (`ExecEntry.image_entry_taint`, whose generic family really does need a
+  key with no offset half outside the kernel), so it is stated by the party
+  that BUILDS the bundle, about the table `sts` it execs with:
+  `ExecBundle.exec_slot_of_entry_at` and its four twins take
+  `FdSlots.fdv_all_parked sts` and spend it through
+  `SpecKexec.kexec_image_ok_parked` / `exec_key_ok_parked` (two lemmas that
+  had no consumer until now).  Every U-tier builder reads it off its own run
+  (`UkRun.urun_rows_parked` at `ukn_held N = ∅`, which is why
+  `ExecRun.udepw_at_refR_of_sup` and its two twins take that premise), and
+  the kernel's boot call states it at `FdSlots.fdt0`.
+- The VERIFIED arm takes no row at all (lane OFF-HAND-4, S2), so the two
+  arms now differ in exactly the fact that decides whether a held offset may
+  cross an exec — which is finding 1 below.
+
+**STATEMENTS THAT CHANGED SHAPE** (exhaustive): `SpecKexec.exec_slot_pre`,
+`exec_au_pre_triv_at`, `exec_au_pre_triv`, `wp_kexec_sconf_body` (hence
+`KEXEC`); `SpecSysExec.wp_sys_exec_sconf_body` (hence `SYSEXEC`);
+`ProofSysExec.sx_break_au`; `ProofKexec.kxau_close`;
+`ExecBundle.exec_slot_of_entry_at` / `sys_exec_slot_of_entry` /
+`exec_bundle_of` / `exec_bundle_of_at`;
+`ExecRun.exec_slot_of_entry_at_abs` / `sys_exec_slot_of_entry_abs` /
+`exec_bundle_of_abs` / `sbundle_pay_refR_of_exec` / `_abs` /
+`udepw_at_refR_of_sup` / `_ids_of_sup_ids` / `_of_sup_abs` /
+`wp_uk_ecall_exec_run` / `_ids` / `_abs` / `wp_uk_ecall_exec_pin_test`;
+`PinnedExec.pex_slot_at` / `pex_slot` / `pinned_exec_bundle_at` /
+`pinned_exec_bundle` / `pinned_exec_bundle_boot_at` /
+`pinned_exec_bundle_boot`; `TreeExec.wp_uk_ecall_exec_own_test`.
+`InitBoot.init_boot_bundle` KEEPS its pure row (it is what its two
+producers pay the builders with) and **nothing else moved** — in
+particular nothing in `ProcInv`, `FileInvDefs`, `FileInv`, `FdPark`,
+`UexecSG`, `UexecRet`, `UexecExecInst`, `FsAbsInvFire`, `UkRun`,
+`UkRunSys`, `UkSh`, `UkEcho`, `UkInit`, `UkCat`, and no program-walk
+statement at all.
+
+**REFUTED / BLOCKED, with the evidence.**
+
+1. **THE SURRENDER BUNDLE AS AN EXEC DEPOSIT IS VACUOUS AT THE VERIFIED
+   ARM, AND THE KERNEL CANNOT BE THE PARTY THAT SPENDS IT.**  Two
+   independent reasons, both checked:
+   - **The kernel cannot branch on the taint.**  Verified-vs-tainted is
+     decided by `ExecBundle.ex_node_id`'s disjunct, INSIDE the U-tier proof
+     of `SpecKexec.exec_slot_pre`'s arm (a), long after the ecall; the
+     kernel's exec arm (`ProofSyscall:5299`) and `ProofKexec.kxau_close`
+     (`:637`, the one site that applies either wand) see only `f`.  So "on
+     the TAINT arm the kernel spends it, on the VERIFIED arm it parks
+     nothing" is not a description of anything the kernel can do.  And a
+     kernel that parks UNCONDITIONALLY moves the successor table from `sts`
+     to `fdv_park sts` — which is a change to the exec syscall's own
+     post (`ProofSyscall`'s `sysc_exec_out … sts sts …`,
+     `SpecSyscall.sysc_fd_ok`, `UsysMemOk.usys_fd_ok`'s exec row) and
+     destroys the held row it was meant to carry.
+   - **At the U tier the deposit is derivable from the premise the same
+     builder already needs.**  `ExecEntry.image_entry_at` is `□ (...)`, so
+     an exclusive premise rides it exactly as `Pay` does
+     (`ExecBundle.exec_slot_of_entry_at` hands `Pay` to arm (a) only), and
+     `FdPark.uoff_surr_at sts` COULD be threaded that way with no kernel
+     change at all.  But the builder must also answer the TAINT arm, which
+     needs `⌜fdv_all_parked sts⌝`, and from that the deposit follows by
+     `FdPark.uoff_surr_at_parked`.  A premise that its own sibling premise
+     implies says nothing (durable-notes, "Vacuity"), so the deposit was
+     NOT added.
+   **What the deposit is waiting for is a bundle with no taint arm.**
+   `ExecBundle.exec_slot_of_entry_at` takes `T` as a parameter and
+   `PinnedExec.pex_slot`'s `T` is `Persistent`+`Timeless`, so `T := False`
+   type-checks; the supplier is `ExecRun.exec_walk_of_abs_pin`'s
+   `□ (∀ v, app_pred app_run v -∗ app_pred app_run v ∗ (⌜Pin v⌝ ∨ T))`,
+   i.e. a claim that resolves the pin UNCONDITIONALLY.  That — and not the
+   kernel — is where a held row's exec has to come from.
+
+2. **A HELD ROW CAN NEVER BE HANDED TO AN UNVERIFIED IMAGE, AND THIS IS NOT
+   A PROOF GAP.**  The generic slot is produced from a PERSISTENT family
+   (`UexecExecMint.uslot_mint*` off `□ ssupply`), so it can never hold the
+   exclusive `UserOff.uoff` half a held row's fire would have to pay
+   (`FdPark.uoff_rcpt`); and `FdSlots.foff_row` answers `emp` at
+   `OffHeld`, so the kernel has no supplier either.  Hence
+   `ExecEntry.image_entry_taint` keeps a PURE row forever, and design
+   §3's "under the taint the child PARKS the offset before the ecall" is
+   the only thing that can be true.  What this lane adds: the child cannot
+   discover the taint at the ecall, so it must be a caller that can REFUTE
+   it (finding 1's `T := False`), not one that parks on being told.
+
+3. **D2 AND D3 ARE ONE CHANGE, ITS SHAPE IS NOW KNOWN, AND ITS WALL IS THE
+   PROGRAM TIER'S CARRIER — NOT THE KERNEL'S.**  Attempted end to end and
+   reverted (the tree is green at D1).  Everything below compiled:
+   - `SpecFileread.fileread_in` / `SpecFilewrite.filewrite_in`: the inode
+     arm binds its mode and asserts `⌜om = OffParked⌝` beside the chain.
+     This is the PARKED BRANCH of design §3's split, byte for byte what was
+     there; the point of the row is that the kernel's fire can now READ the
+     mode instead of deriving it from the pin.  `fileread_in_inode`,
+     `fileread_in_inode_of`, `filewrite_in_inode`, `filewrite_extra_neg`,
+     `fileread_extra_neg` adjust by one `iDestruct` each, and NEW
+     `fileread_in_inode_any` / `filewrite_in_inode_any` are what
+     `ProofFileread:2253/2263` and `ProofFilewrite:4935/4947` take in place
+     of the pin.
+   - `FsAbsInvFire.fsabs_fileread_in` / `fsabs_filewrite_in` and
+     `UexecExecMint.filewrite_in_of_sup` gain `fdst_parked st ->`; the
+     inode arm is `destruct om; [| destruct Hpk]`.
+   - `UexecSG.sbundle_of_supply_ne` gains
+     `(n = USYS_read \/ n = USYS_write -> fdv_all_parked (uvis_fd W))`
+     (`UsysMemOk.USYS_write` is the new name for 16) and
+     `sbundle_of_supply` takes the fact outright plus the row on its slot
+     family; `UexecExecInst`'s instances prove both, the exec branch
+     supplying the new image's row off `SpecKexec.kexec_image_ok_parked`
+     — which is exactly what D1's removal of the wand's row costs, and it
+     is free.
+   - `UkRun.udep`'s minting law and `udep_dep` take the same guard;
+     `udep_gen` and `udep_free` relay it for nothing.
+   - **`UkRun.udepw`'s LEFT disjunct is where the guard belongs**, with
+     `urun_rows N fdv` LENT into `udepw`'s binder list (as `udepw_at`
+     already does).  That placement is what keeps all ~50 `UkRunSys`
+     leaves' statements unmoved: the leaf reads the fact off the claim it
+     is handed instead of taking a premise.  It requires moving the
+     `urun_nopipe`/`urun_rows` block above `Definition udep` in `UkRun.v`
+     (a pure relocation).  `udepw_of_psok` / `udepw_law_of_psok` then take
+     `n <> USYS_read -> n <> USYS_write`, free at all nine concrete call
+     sites, and NEW `udepw_law_parked` (the law under
+     `⌜ukn_held N = ∅⌝`) is what a FIRE row's flagged deposit becomes.
+   - **`UexecRet`'s Löb carries `fdv_all_parked (uvis_fd W)` cleanly, and
+     this is the piece OFF-HAND-3 called "the work left".**  It must be the
+     LAST premise of `uslot_of_creds` and a pure IRIS premise, because
+     `iLöb … forall (W)` cannot generalize a Coq hypothesis about `W`
+     introduced before it.  Every successor key keeps the fact: the
+     trap-out key by `user_trap_frame_trapped`'s `Hfdw`, fork's parent arm
+     by `uexec_fork_parent_F`'s own `⌜fdv' = uvis_fd W⌝` (the second binder
+     `uexec_arm_of_all` used to introduce as `_`), fork's child by
+     `bump_at`'s `uvis_fd W`, and the two returning arms by
+     `UsysMemOk.usys_fd_ok_parked` on `uexec_ret_cont_gen`'s SECOND pure row
+     (the second `_`).  `uexec_dep_F_of_supply`, `uexec_arm_of_all`,
+     `uexec_ret_of_all`, `uexec_wp_uslot*`, `UexecCond.cond_entry_slot_pay`
+     and `UexecExecMint.uslot_mint_pay` / `uslot_mint_all` all take it, and
+     the taint arms that spend the last two already carry exactly that row.
+   - **THE WALL: `ukn_held N = ∅` has to reach every spend of a FIRE row's
+     FLAGGED deposit, and no resource carries it across a program's record
+     re-binding.**  write(16) is a flagged deposit for EVERY program
+     (`UkSh.sh_deps`, `UkInit.kinit_wlaw`, `UkCat.cat_deps`,
+     `UkEcho`'s `udepw_law 16`), and read(5) is one for cat; the deposit
+     serves whatever descriptor argument 0 names, so its supplier
+     (`UexecExecMint.udepw_of_sup_write`, `filewrite_in_of_sup`) owes the
+     row's mode and can only get it from the whole table.  A
+     record-indexed law (`udepw_law_at N n`, tried) fails at
+     `UkShRun.v:3478`, where sh's walk recurses at a DIFFERENT record `N'`
+     and nothing relates the two; the parked law
+     (`udepw_law_parked`) puts `ukn_held N = ∅` back at the spend, i.e. on
+     `UkSh.wp_ksh_qstub`, `UkEcho.wp_kecho_write`, `UkCat.wp_kcat_read` /
+     `wp_kcat_write` and everything above them.  `UkInit` and `UkInitMain`
+     already carry `Context {Hpark : !ukn_parked N}` (lane OFF-HAND-4) and
+     cost nothing; `UkSh`, `UkCat` and `UkEcho` do not, and OFF-HAND-4
+     measured what adding it to `UkSh` costs (one `Proof using` error per
+     lemma, over the whole file, plus the instance at every external
+     caller: `UkShRun`, `UkShMain`, `UkShDiag`, `UkShEcho`, `UkShFork`,
+     `UkShCd`, `UkShMalloc`, `UShLine`, `UShKernel`, `UInitSh`).  **That is
+     the whole remaining cost of D2+D3, and it is a lane of its own.**
+   - Two smaller facts from the same attempt: `UkRunSys.wp_uk_ecall_quiet`
+     still admits write(16) and `wp_uk_ecall_window` still admits read(5)
+     (`wp_uk_ecall_read_win` routes through it), so the guard reaches those
+     two leaves whatever placement is chosen; and the twelve
+     `UkRunSys` `udepw_mint` sites must name their number explicitly if the
+     guard is ever a premise rather than part of the claim, because the
+     elaborator checks the premise before unifying `n` from the goal.
+
+4. **D4 WAS NOT ATTEMPTED**, and the ordering is unchanged: the held branch
+   of `fileread_in`/`filewrite_in` is the OTHER branch of the row finding 3
+   landed and reverted, so it costs nothing extra once that row exists;
+   `wp_uk_ecall_open_recv_img_held` still sits behind
+   `UsysMemOk.usys_fd_ok`'s open arm, which OFF-HAND-3's finding 3 says
+   must come last.
+
+**THE ONE THING LANES ECHO-FILE AND CAT-ENTRY NEED FIRST: a ruling on
+whether a held row's exec is to be stated at a TAINT-FREE bundle
+(`T := False`), because that is the only shape finding 1 leaves open.**
+With it, `ExecBundle.exec_slot_of_entry_at` gets a sibling that takes
+`FdPark.uoff_surr_at sts` INSTEAD of `⌜fdv_all_parked sts⌝` and hands it
+to `ExecEntry.image_entry_at` (which already has room for it beside
+`Pay`), the redirect child's `exec /echo` is provable, and nothing in the
+kernel moves — D1 already took the kernel out of the question.  Without
+it the deposit is vacuous at every caller in the tree and must not be
+added.  Independently, the SECOND thing both lanes need is the program
+tier's `ukn_parked` carrier of finding 3: until `UkSh`, `UkCat` and
+`UkEcho` can state their own records' held set, no fire's deposit can say
+its descriptor's offset mode, and `FileInvDefs.fpnames` cannot gain
+`fp_om` — the two kernel fire sites (`ProofFileread:2253/2263`,
+`ProofFilewrite:4935/4947`) are the only things left holding the pin up,
+and they are one `fileread_in_inode_any` / `filewrite_in_inode_any` away
+from letting go.

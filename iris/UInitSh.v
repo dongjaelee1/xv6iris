@@ -1301,7 +1301,7 @@ Section UInitSh.
                     ∗ UkInit.init_lend_cred T
                         (FdOpen true true (FdDevice ConsoleInv.CONSOLE))
                         (cc_wp Cr) (cc_wbn Cr) l np))%I
-              _ sh_elf_loadable Ha0 Ha1
+              _ sh_elf_loadable Ha0 Ha1 Hheq
               with "[] [] [Hstd Hrow Hcred Hpos Hlease Hchf Hpidf]").
     (* ---- THE REFUND IS THE LEND ITSELF (lane KILL-PAY, K4(a), ruling R-A;
        lane M6b): what init's child put into this deposit is the bundle's

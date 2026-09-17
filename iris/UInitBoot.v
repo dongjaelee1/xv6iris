@@ -473,6 +473,7 @@ Section UInitBoot.
                  INIT_INO ElfUser.init_elf 1%nat Pay (fun _ => True)%I
                  1%nat (fun _ => 5%nat) (fun _ => init_boot_bytes) fdt0
                  init_boot_pin_resolves init_elf_loadable
+                 (fdv_all_parked_fdt0)
                  with "Hcl Hinv [] [] HPay") as (P Pmiss Fo R) "Hb".
     - iModIntro. iIntros (W') "%Hok %Hcw %Hlz #Hp HP".
       iApply ("Hcon" $! W' with "[%] [%] [%] Hp HP");

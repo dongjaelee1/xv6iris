@@ -137,8 +137,11 @@ Section InitBoot.
      the block's array and so cannot READ the fact; the bundle's producers
      can -- every one of them states it at [FdSlots.fdt0]
      ([FdSlots.fdv_all_parked_fdt0]), because that is the table userinit
-     built.  It is spent on [SpecKexec.wp_kexec_sconf]'s own premise, i.e.
-     on [SpecKexec.exec_slot_pre]'s two wands. *)
+     built.  It is spent by the BUNDLE'S OWN PRODUCERS (lane OFF-HAND-5,
+     D1): the kexec contract stopped carrying a row, so what the fact pays
+     for is the taint arm of whichever builder inhabits this bundle --
+     [SpecKexec.exec_au_pre_triv_at] for the generic application,
+     [PinnedExec.pinned_exec_bundle_boot] for a constraining one. *)
   Definition init_boot_bundle (cw : Z) (sts : list fdstate) : iProp Σ :=
     (⌜FdSlots.fdv_all_parked sts⌝ ∗
      (cons_reader fsc_cons 0%nat -∗
@@ -170,7 +173,7 @@ Section InitBoot.
     iIntros (cs pidv).
     iApply (exec_au_pre_triv_at uslot (fs_gamma_L fsc_fs) fsc_fs cw
               init_boot_path 1%nat (fun _ => 5%nat) (fun _ => init_boot_bytes)
-              sts cs pidv).
+              sts cs pidv Hpk0).
     iModIntro. iIntros (W) "%Hpk Hp".
     iApply ("HS" $! W with "[%] Hp"). exact Hpk.
   Qed.

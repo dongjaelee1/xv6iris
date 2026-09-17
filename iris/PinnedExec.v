@@ -204,6 +204,16 @@ Section PinnedExec.
       (sts : list fdstate) (cs : gset gname) (pidv : mword 32) :
     pin_resolves Pin cw pl hops ino f nl ->
     kexec_loadable f ->
+    (* ...AND THE BUILDER'S ALL-PARKED ROW (lane OFF-HAND-5, D1).  It is
+       the TAINT arm's, and only the taint arm's: the verified arm dropped
+       it in lane OFF-HAND-4.  It used to ride
+       [SpecKexec.exec_slot_pre]'s wands and be supplied by the KERNEL off
+       [ProcInv.proc_priv_parked]; the pin that made that readable is what
+       this campaign takes off, so the fact is stated by whoever builds
+       the bundle, about the table [sts] it execs with.  A U-tier builder
+       reads it off its own run ([UkRun.urun_rows_parked] at
+       [ukn_held N = empty]). *)
+    FdSlots.fdv_all_parked sts ->
     □ (∀ W' : uvis,
          ⌜kexec_image_ok f na alen afun sts W'⌝ -∗
          ⌜uvis_cwd W' = cw⌝ -∗ ⌜uvis_lazy W' = false⌝ -∗
@@ -225,10 +235,10 @@ Section PinnedExec.
      [ex_node_id]; what is left here is which supplier, and the [□]
      constructor premise is [ExecEntry.image_entry_at] spelled out. *)
   Proof using .
-    intros Hres Hload. iIntros "#Hcon #Hgen HPay".
+    intros Hres Hload Hpk0. iIntros "#Hcon #Hgen HPay".
     iApply (exec_slot_of_entry_at X T (pobs_P T hops (length (path_elems pl)))
               (pobs_recv Pin T) f nl Pay Q cw na alen afun sts cs pidv Hload
-              with "[] [] [] HPay").
+              Hpk0 with "[] [] [] HPay").
     - iApply (pobs_node_id Pin T cw pl hops ino (MkAnode (AFile f) nl) Hres).
     - rewrite /image_entry_at. iExact "Hcon".
     - rewrite /image_entry_taint. iExact "Hgen".
@@ -262,6 +272,16 @@ Section PinnedExec.
     pin_resolves Pin cw pl hops ino f nl ->
     kexec_loadable f ->
     exec_path_of M pv pl ->
+    (* ...AND THE BUILDER'S ALL-PARKED ROW (lane OFF-HAND-5, D1).  It is
+       the TAINT arm's, and only the taint arm's: the verified arm dropped
+       it in lane OFF-HAND-4.  It used to ride
+       [SpecKexec.exec_slot_pre]'s wands and be supplied by the KERNEL off
+       [ProcInv.proc_priv_parked]; the pin that made that readable is what
+       this campaign takes off, so the fact is stated by whoever builds
+       the bundle, about the table [sts] it execs with.  A U-tier builder
+       reads it off its own run ([UkRun.urun_rows_parked] at
+       [ukn_held N = empty]). *)
+    FdSlots.fdv_all_parked sts ->
     □ (∀ (na : nat) (alen : nat -> nat) (afun : nat -> nat -> bv 8)
          (W' : uvis),
          ⌜kexec_image_ok f na alen afun sts W'⌝ -∗
@@ -310,9 +330,9 @@ Section PinnedExec.
      reading's uniqueness, the argument reading's relay into the entry and
      the two arms are all stated there; the pin supplies [ex_node_id]. *)
   Proof using .
-    intros Hres Hload Hpath. iIntros "#Hcon #Hgen HPay".
+    intros Hres Hload Hpath Hpk0. iIntros "#Hcon #Hgen HPay".
     iApply (sys_exec_slot_of_entry X T (pobs_P T hops) (pobs_recv Pin T)
-              f nl Pay Q cw pl M pv av sts cs pidv Hload Hpath
+              f nl Pay Q cw pl M pv av sts cs pidv Hload Hpath Hpk0
               with "[] [] [] HPay").
     - iApply (pobs_node_id Pin T cw pl hops ino (MkAnode (AFile f) nl) Hres).
     - rewrite /image_entry. iExact "Hcon".
@@ -332,6 +352,9 @@ Section PinnedExec.
     pin_resolves Pin cw pl hops ino f nl ->
     kexec_loadable f ->
     exec_path_of M pv pl ->
+    (* the builder's all-parked row, the taint arm's only (lane
+       OFF-HAND-5, D1; see [pex_slot_at]) *)
+    FdSlots.fdv_all_parked sts ->
     (* the pin, as a law over the application's claim *)
     □ (∀ v : aview, app_pred app_run v -∗
                       app_pred app_run v ∗ (⌜Pin v⌝ ∨ T)) -∗
@@ -369,11 +392,11 @@ Section PinnedExec.
      the node identification [pobs_node_id].  Nothing about exec is
      re-stated here -- (L) and (E) go straight through. *)
   Proof using .
-    intros Hres Hload Hpath.
+    intros Hres Hload Hpath Hpk0.
     iIntros "#Hcl #Hinv #Hcon #Hgen HPay".
     iApply (exec_bundle_of γfs X T (pobs_P T hops) (pobs_Pmiss T)
               (pobs_Fo Pin T) cw pl f nl Pay Q M pv av sts cs pidv
-              Hload Hpath with "[] [] [] [] [] HPay").
+              Hload Hpath Hpk0 with "[] [] [] [] [] HPay").
     - iApply (pobs_walk γfs Pin T (pobs_Pmiss T) cw pl hops ino
                 (MkAnode (AFile f) nl) Hres with "[] Hcl Hinv").
       iApply pobs_miss_taint_Pmiss.
@@ -396,6 +419,9 @@ Section PinnedExec.
     pin_resolves Pin cw pl hops ino f nl ->
     kexec_loadable f ->
     exec_path_of M pv pl ->
+    (* the builder's all-parked row, the taint arm's only (lane
+       OFF-HAND-5, D1; see [pex_slot_at]) *)
+    FdSlots.fdv_all_parked sts ->
     □ (∀ v : aview, app_pred app_run v -∗
                       app_pred app_run v ∗ (⌜Pin v⌝ ∨ T)) -∗
     app_inv γfs -∗
@@ -430,10 +456,11 @@ Section PinnedExec.
       sys_exec_au_pre (MkPfam X Pay) (fs_gamma_L γfs) γfs cw Q P Pmiss Fo
         M pv av sts cs pidv.
   Proof using .
-    intros Hres Hload Hpath. iIntros "#Hcl #Hinv #Hcon #Hgen HPay".
+    intros Hres Hload Hpath Hpk0. iIntros "#Hcl #Hinv #Hcon #Hgen HPay".
     iExists (pobs_P T hops), (pobs_Pmiss T), (pobs_Fo Pin T).
     iApply (pinned_exec_bundle_at γfs X Pin T cw pl hops ino f nl Pay Q
-              M pv av sts cs pidv Hres Hload Hpath with "Hcl Hinv Hcon Hgen HPay").
+              M pv av sts cs pidv Hres Hload Hpath Hpk0
+              with "Hcl Hinv Hcon Hgen HPay").
   Qed.
 
   (* ------------------------------------------------------------------ *)
@@ -461,6 +488,9 @@ Section PinnedExec.
       (sts : list fdstate) (cs : gset gname) (pidv : mword 32) :
     pin_resolves Pin cw pl hops ino f nl ->
     kexec_loadable f ->
+    (* the builder's all-parked row, the taint arm's only (lane
+       OFF-HAND-5, D1; see [pex_slot_at]) *)
+    FdSlots.fdv_all_parked sts ->
     □ (∀ v : aview, app_pred app_run v -∗
                       app_pred app_run v ∗ (⌜Pin v⌝ ∨ T)) -∗
     app_inv γfs -∗
@@ -485,10 +515,10 @@ Section PinnedExec.
      argument shape -- and the two identity rows the boot constructor
      does not read are dropped where it is built. *)
   Proof using .
-    intros Hres Hload. iIntros "#Hcl #Hinv #Hcon #Hgen HPay".
+    intros Hres Hload Hpk0. iIntros "#Hcl #Hinv #Hcon #Hgen HPay".
     iApply (exec_bundle_of_at γfs X T (pobs_P T hops) (pobs_Pmiss T)
               (pobs_Fo Pin T) cw pl f nl Pay Q na alen afun sts cs pidv
-              Hload with "[] [] [] [] [] HPay").
+              Hload Hpk0 with "[] [] [] [] [] HPay").
     - iApply (pobs_walk γfs Pin T (pobs_Pmiss T) cw pl hops ino
                 (MkAnode (AFile f) nl) Hres with "[] Hcl Hinv").
       iApply pobs_miss_taint_Pmiss.
@@ -512,6 +542,9 @@ Section PinnedExec.
       (sts : list fdstate) :
     pin_resolves Pin cw pl hops ino f nl ->
     kexec_loadable f ->
+    (* the builder's all-parked row, the taint arm's only (lane
+       OFF-HAND-5, D1; see [pex_slot_at]) *)
+    FdSlots.fdv_all_parked sts ->
     □ (∀ v : aview, app_pred app_run v -∗
                       app_pred app_run v ∗ (⌜Pin v⌝ ∨ T)) -∗
     app_inv γfs -∗
@@ -531,11 +564,12 @@ Section PinnedExec.
         exec_au_pre (MkPfam X R) (fs_gamma_L γfs) γfs cw Q P Pmiss Fo
           pl na alen afun sts cs pidv.
   Proof using .
-    intros Hres Hload. iIntros "#Hcl #Hinv #Hcon #Hgen HPay".
+    intros Hres Hload Hpk0. iIntros "#Hcl #Hinv #Hcon #Hgen HPay".
     iExists (pobs_P T hops), (pobs_Pmiss T), (pobs_Fo Pin T), Pay.
     iIntros (cs pidv).
     iApply (pinned_exec_bundle_boot_at γfs X Pin T cw pl hops ino f nl Pay Q
-              na alen afun sts cs pidv Hres Hload with "Hcl Hinv Hcon Hgen HPay").
+              na alen afun sts cs pidv Hres Hload Hpk0
+              with "Hcl Hinv Hcon Hgen HPay").
   Qed.
 
 End PinnedExec.

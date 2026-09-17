@@ -125,27 +125,43 @@ Section ExecBundle.
       (cw : Z) (na : nat) (alen : nat -> nat) (afun : nat -> nat -> bv 8)
       (sts : list fdstate) (cs : gset gname) (pidv : mword 32) :
     kexec_loadable f ->
+    (* ...AND THE BUILDER SAYS THE TABLE IT EXECS WITH IS ALL-PARKED (lane
+       OFF-HAND-5, D1).  The row used to ride [SpecKexec.exec_slot_pre]'s
+       wands and be supplied BY THE KERNEL off [ProcInv.proc_priv_parked]
+       -- i.e. off the pin this campaign takes off.  Its one consumer is
+       the TAINT arm below, whose generic family may only be handed a key
+       with no offset half outside the kernel
+       ([ExecEntry.image_entry_taint]), so it is stated here, about [sts],
+       by the party that knows: a U-tier builder reads it off its own run
+       ([UkRun.urun_rows_parked] at [ukn_held N = empty]) and the kernel's
+       boot call states it at [FdSlots.fdt0].  THE VERIFIED ARM DOES NOT
+       TAKE IT ([ExecEntry.image_entry_at] dropped it in lane OFF-HAND-4),
+       so the premise is the one thing between a HELD row and an exec --
+       and it is a premise of the BUILDER, which a held caller with no
+       taint arm would not have. *)
+    FdSlots.fdv_all_parked sts ->
     ex_node_id T Pfin Φo (MkAnode (AFile f) nl) -∗
     image_entry_at f na alen afun sts cw cs pidv Q Pay X -∗
     image_entry_taint T Q X -∗
     Pay -∗
     exec_slot_pre X Q Pfin Φo cw na alen afun sts cs pidv.
   Proof using .
-    intros Hload. iIntros "#Hid #Hcon #Hgen HPay".
+    intros Hload Hpk0. iIntros "#Hid #Hcon #Hgen HPay".
     rewrite /exec_slot_pre /ex_node_id /image_entry_at /image_entry_taint.
     iSplitL "HPay".
     - (* ---- ARM (a): the observed node IS the caller's file ---- *)
-      iIntros (av' i f' nl' W') "HP Hrecv %Hload' %Hok %Hcwq %Hlzq %Hchq %Hpiq %Hpk #Hp".
+      iIntros (av' i f' nl' W') "HP Hrecv %Hload' %Hok %Hcwq %Hlzq %Hchq %Hpiq #Hp".
       (* [iPoseProof] first: [Hid] is persistent and its two arguments are
          SPATIAL, so specializing it in place would ask for a persistent
          result.  The copy is spatial and takes them. *)
       iPoseProof ("Hid" $! av' i (MkAnode (AFile f') nl')) as "Hid'".
       iDestruct ("Hid'" with "HP Hrecv") as "[%Hnode | HT]"; last first.
-      { (* the all-parked row stops here (lane OFF-HAND-2): the generic
-                     family the taint arm runs on is not narrowed yet, and
-                     cannot be until the U tier can name its own table --
-                     [ExecEntry.image_entry_taint]'s note. *)
-        iApply ("Hgen" $! W' with "[%] HT Hp"); exact Hpk. }
+      { (* THE BUILDER'S ROW IS SPENT HERE, and only here: the generic
+           family the taint arm runs on needs the key's table all-parked,
+           and [kexec_image_ok_parked] carries this lemma's premise from
+           [sts] to [uvis_fd W']. *)
+        iApply ("Hgen" $! W' with "[%] HT Hp").
+        exact (kexec_image_ok_parked f' na alen afun sts W' Hok Hpk0). }
       (* [subst f' nl'] and not a bare [subst]: the rows introduced just
          above are equations on [cw], on [uvis_lazy W'], on [cs] and on
          [pidv], and a bare [subst] would spend one of those instead. *)
@@ -153,14 +169,12 @@ Section ExecBundle.
       iApply ("Hcon" $! W' with "[%] [%] [%] [%] [%] Hp HPay");
         [ exact Hok | exact Hcwq | exact Hlzq | exact Hchq | exact Hpiq ].
     - (* ---- ARM (b): a loadable file IS loadable, so this arm is dead ---- *)
-      iIntros (av' i a W') "HP Hrecv %Hnload %Hkey %Hcwq %Hlzq %Hchq %Hpiq %Hpk #Hp".
+      iIntros (av' i a W') "HP Hrecv %Hnload %Hkey %Hcwq %Hlzq %Hchq %Hpiq #Hp".
       iPoseProof ("Hid" $! av' i a) as "Hid'".
       iDestruct ("Hid'" with "HP Hrecv") as "[%Hnode | HT]"; last first.
-      { (* the all-parked row stops here (lane OFF-HAND-2): the generic
-                     family the taint arm runs on is not narrowed yet, and
-                     cannot be until the U tier can name its own table --
-                     [ExecEntry.image_entry_taint]'s note. *)
-        iApply ("Hgen" $! W' with "[%] HT Hp"); exact Hpk. }
+      { (* ...and at the other arm, through [exec_key_ok_parked] *)
+        iApply ("Hgen" $! W' with "[%] HT Hp").
+        exact (exec_key_ok_parked na alen sts W' Hkey Hpk0). }
       subst a. exfalso. apply Hnload. exists f, nl.
       split; [ reflexivity | exact Hload ].
   Qed.
@@ -183,6 +197,8 @@ Section ExecBundle.
       (sts : list fdstate) (cs : gset gname) (pidv : mword 32) :
     kexec_loadable f ->
     exec_path_of M pv pl ->
+    (* the builder's all-parked row (lane OFF-HAND-5, D1) *)
+    FdSlots.fdv_all_parked sts ->
     ex_node_id T (P (length (path_elems pl))) Φo (MkAnode (AFile f) nl) -∗
     image_entry f M av sts cw cs pidv Q Pay X -∗
     image_entry_taint T Q X -∗
@@ -190,12 +206,13 @@ Section ExecBundle.
     pf_at (fun S => sys_exec_slot_pre S Q P Φo cw M pv av sts cs pidv)
       (MkPfam X Pay).
   Proof using .
-    intros Hload Hpath. iIntros "#Hid #Hcon #Hgen HPay".
+    intros Hload Hpath Hpk0. iIntros "#Hid #Hcon #Hgen HPay".
     rewrite /pf_at. cbn [pf_recv pf_refund]. iSplit; [ | iExact "HPay" ].
     rewrite /sys_exec_slot_pre. iIntros (pl' na alen afun) "%Hpath' %Hargs".
     rewrite (exec_path_of_uniq M pv pl' pl Hpath' Hpath).
     iApply (exec_slot_of_entry_at X T (P (length (path_elems pl))) Φo f nl
-              Pay Q cw na alen afun sts cs pidv Hload with "Hid [] Hgen HPay").
+              Pay Q cw na alen afun sts cs pidv Hload Hpk0
+              with "Hid [] Hgen HPay").
     iApply (image_entry_at_of f M av sts cw cs pidv Q Pay X na alen afun Hargs
               with "Hcon").
   Qed.
@@ -219,6 +236,8 @@ Section ExecBundle.
     kexec_loadable f ->
     (* the path the caller's own image names, the third pure input *)
     exec_path_of M pv pl ->
+    (* the builder's all-parked row (lane OFF-HAND-5, D1) *)
+    FdSlots.fdv_all_parked sts ->
     (* (W) *)
     ex_start γfs cw P Pmiss pl -∗
     pf_at (aopen_commit_at (fs_gamma_L γfs) appE) Fo -∗
@@ -231,13 +250,13 @@ Section ExecBundle.
     sys_exec_au_pre (MkPfam X Pay) (fs_gamma_L γfs) γfs cw Q P Pmiss Fo
       M pv av sts cs pidv.
   Proof using .
-    intros Hload Hpath. iIntros "Hwalk Hobs #Hid #Hcon #Hgen HPay".
+    intros Hload Hpath Hpk0. iIntros "Hwalk Hobs #Hid #Hcon #Hgen HPay".
     rewrite /sys_exec_au_pre. iSplitL "Hwalk".
     { iIntros (pl') "%Hpath'".
       rewrite (exec_path_of_uniq M pv pl' pl Hpath' Hpath). iExact "Hwalk". }
     iSplitL "Hobs"; [ iExact "Hobs" | ].
     iApply (sys_exec_slot_of_entry X T P Fo.(pf_recv) f nl Pay Q cw pl M pv av
-              sts cs pidv Hload Hpath with "Hid Hcon Hgen HPay").
+              sts cs pidv Hload Hpath Hpk0 with "Hid Hcon Hgen HPay").
   Qed.
 
   (* ...AND THE KERNEL'S OWN CALL, at [SpecKexec.exec_au_pre]: forkret's
@@ -253,6 +272,8 @@ Section ExecBundle.
       (na : nat) (alen : nat -> nat) (afun : nat -> nat -> bv 8)
       (sts : list fdstate) (cs : gset gname) (pidv : mword 32) :
     kexec_loadable f ->
+    (* the builder's all-parked row (lane OFF-HAND-5, D1) *)
+    FdSlots.fdv_all_parked sts ->
     ex_start γfs cw P Pmiss pl -∗
     pf_at (aopen_commit_at (fs_gamma_L γfs) appE) Fo -∗
     ex_node_id T (P (length (path_elems pl))) Fo.(pf_recv)
@@ -263,12 +284,12 @@ Section ExecBundle.
     exec_au_pre (MkPfam X Pay) (fs_gamma_L γfs) γfs cw Q P Pmiss Fo
       pl na alen afun sts cs pidv.
   Proof using .
-    intros Hload. iIntros "Hwalk Hobs #Hid #Hcon #Hgen HPay".
+    intros Hload Hpk0. iIntros "Hwalk Hobs #Hid #Hcon #Hgen HPay".
     rewrite /exec_au_pre. iSplitL "Hwalk"; [ iExact "Hwalk" | ].
     iSplitL "Hobs"; [ iExact "Hobs" | ].
     rewrite /pf_at. cbn [pf_recv pf_refund]. iSplit; [ | iExact "HPay" ].
     iApply (exec_slot_of_entry_at X T (P (length (path_elems pl)))
-              Fo.(pf_recv) f nl Pay Q cw na alen afun sts cs pidv Hload
+              Fo.(pf_recv) f nl Pay Q cw na alen afun sts cs pidv Hload Hpk0
               with "Hid Hcon Hgen HPay").
   Qed.
 

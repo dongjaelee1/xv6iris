@@ -900,16 +900,16 @@ Section UexecExecInst.
     rewrite /exec_slot_pre.
     iDestruct "Hslot" as "[Hsa Hsb]".
     iSplitL "Hsa".
-    - iIntros (av i ff nl W') "HP Ho %Hld %Him %Hcwq %Hlzq %Hchq %Hpiq %Hpk Hpy".
+    - iIntros (av i ff nl W') "HP Ho %Hld %Him %Hcwq %Hlzq %Hchq %Hpiq Hpy".
       iApply "Hup".
-      iApply ("Hsa" $! av i ff nl W' with "HP Ho [%] [%] [%] [%] [%] [%] [%] Hpy");
-        [ exact Hld | exact Him | exact Hcwq | exact Hlzq | exact Hchq | exact Hpiq
-        | exact Hpk ].
-    - iIntros (av i a W') "HP Ho %Hnl %Hkk %Hcwq %Hlzq %Hchq %Hpiq %Hpk Hpy".
+      iApply ("Hsa" $! av i ff nl W' with "HP Ho [%] [%] [%] [%] [%] [%] Hpy");
+        [ exact Hld | exact Him | exact Hcwq | exact Hlzq | exact Hchq
+        | exact Hpiq ].
+    - iIntros (av i a W') "HP Ho %Hnl %Hkk %Hcwq %Hlzq %Hchq %Hpiq Hpy".
       iApply "Hup".
-      iApply ("Hsb" $! av i a W' with "HP Ho [%] [%] [%] [%] [%] [%] [%] Hpy");
-        [ exact Hnl | exact Hkk | exact Hcwq | exact Hlzq | exact Hchq | exact Hpiq
-        | exact Hpk ].
+      iApply ("Hsb" $! av i a W' with "HP Ho [%] [%] [%] [%] [%] [%] Hpy");
+        [ exact Hnl | exact Hkk | exact Hcwq | exact Hlzq | exact Hchq
+        | exact Hpiq ].
   Qed.
 
   (* THE SUPPLY.  Opaque in the class, and at THIS instance it is the
@@ -1057,9 +1057,9 @@ Section UexecExecInst.
          could answer only one of them, and the new image is handed no
          payload by the kernel any more. *)
       rewrite /exec_slot_pre. iSplitR.
-      + iIntros (av' i ff nl W') "_ _ _ _ _ _ _ _ _ Hp".
+      + iIntros (av' i ff nl W') "_ _ _ _ _ _ _ _ Hp".
         iApply ("Hs" with "Hp HR").
-      + iIntros (av' i a W') "_ _ _ _ _ _ _ _ _ Hp".
+      + iIntros (av' i a W') "_ _ _ _ _ _ _ _ Hp".
         iApply ("Hs" with "Hp HR").
     - iApply (xv6_sbundle_of_supply_ne X n W (fun _ => R)%I Hne).
       rewrite /xv6_ssupply. iModIntro.

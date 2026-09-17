@@ -873,18 +873,22 @@ Section KexecAU.
         ⌜uvis_lazy W' = false⌝ -∗
         ⌜uvis_ch W' = cs⌝ -∗
         ⌜uvis_pid W' = pidv⌝ -∗
-        (* ...AND THE RESUMED KEY'S TABLE IS ALL-PARKED (design/user-read.md
-           SS8.1, SS8.3, lane OFF-HAND-2).  THE KERNEL SUPPLIES IT, and that
-           is the whole reason it rides the wand rather than the caller's
-           bundle: a U-tier program's knowledge of its own table is
-           [UserFd.ustd] plus its [UserFd.ufd] handles, which say nothing
-           about the slots it cannot name, while the kernel holds the block
-           and the descriptor bundle at the ecall and reads the fact off
-           them ([ProcInv.proc_priv_parked]).  What CONSUMES it is the
-           generic slot's mint ([UexecExecMint.uslot_mint_all]), whose
-           family may only be handed a key with no offset half outside the
-           kernel -- see [ExecEntry.image_entry_taint]. *)
-        ⌜fdv_all_parked (uvis_fd W')⌝ -∗
+        (* ...AND NO ALL-PARKED ROW (lane OFF-HAND-5, D1; design/app-file.md
+           SS3 fact 4).  Lane OFF-HAND-2 put the row here and made the
+           KERNEL supply it, off [ProcInv.proc_priv_parked] -- i.e. off the
+           pin that [FileInvDefs.fdstate_ok] puts on every live inode row.
+           That is exactly the pin this campaign takes off, and it was the
+           pin's only consumer, so the row cannot stay kernel-supplied.
+           WHO SUPPLIES IT NOW: the party that builds the bundle, about the
+           table it execs with.  The row's one consumer is the TAINT arm
+           ([ExecEntry.image_entry_taint], whose generic family really does
+           need a key with no offset half outside the kernel), and every
+           U-tier builder reads the fact off its own run
+           ([UkRun.urun_rows_parked] at [ukn_held N = empty]) -- see
+           [ExecBundle.exec_slot_of_entry_at]'s premise.  The kernel
+           therefore hands the key over and says nothing about its
+           descriptors, which is also what lets a HELD row cross an exec
+           into a VERIFIED image. *)
         my_pay (uvis_gen W') Q -∗
         S W')
      ∗ (∀ (av : aview) (i : Z) (a : anode) (W' : uvis),
@@ -896,7 +900,7 @@ Section KexecAU.
           ⌜uvis_lazy W' = false⌝ -∗
           ⌜uvis_ch W' = cs⌝ -∗
           ⌜uvis_pid W' = pidv⌝ -∗
-          ⌜fdv_all_parked (uvis_fd W')⌝ -∗
+          (* ...and no all-parked row here either (lane OFF-HAND-5, D1) *)
           my_pay (uvis_gen W') Q -∗
           S W'))%I.
 
@@ -939,17 +943,24 @@ Section KexecAU.
      family is ([UexecRet.uexec_wp_uslot]): what answers both wands is a
      slot at every key GIVEN the trivial payload at that key's generation,
      which is the only payload a generic process ever has. *)
+  (* ...AND THE CALLER SAYS ITS TABLE IS ALL-PARKED (lane OFF-HAND-5, D1).
+     The wands stopped carrying the row, so the family's own narrowing --
+     [UexecExecMint.uslot_mint]'s, which is what this bundle is inhabited
+     from -- is paid HERE, by the party that knows the table exec hands
+     over.  [kexec_image_ok_parked] / [exec_key_ok_parked] are the two
+     steps from [sts] to the resumed key. *)
   Lemma exec_au_pre_triv_at (S : uvis -> iProp Σ) Γ (γfs : fs_names) (cw : Z)
       (pl : list (bv 8))
       (na : nat) (alen : nat -> nat) (afun : nat -> nat -> bv 8)
       (sts : list fdstate) (cs : gset gname) (pidv : mword 32) :
+    fdv_all_parked sts ->
     □ (∀ W : uvis, ⌜fdv_all_parked (uvis_fd W)⌝ -∗
                    my_pay (uvis_gen W) (fun _ => True)%I -∗ S W) -∗
     exec_au_pre (MkPfam S True%I) Γ γfs cw (fun _ => True%I)
       (fun _ _ => True%I) (fun _ _ => True%I) (pfam_triv (fun _ _ _ => True%I))
       pl na alen afun sts cs pidv.
   Proof using .
-    iIntros "#HS". rewrite /exec_au_pre. iSplitR.
+    intros Hpk0. iIntros "#HS". rewrite /exec_au_pre. iSplitR.
     { rewrite /ex_start /ex_hops_from. iIntros (r) "_". iModIntro.
       iSplit; [done |]. iApply ax_hops_triv. }
     iSplitR.
@@ -960,10 +971,12 @@ Section KexecAU.
        [pf_at_triv]. *)
     rewrite /pf_at /=. iSplit; [| done].
     rewrite /exec_slot_pre. iSplitR.
-    - iIntros (av i f nl W') "_ _ _ _ _ _ _ _ %Hpk Hp".
-      iApply ("HS" $! W' with "[%] Hp"). exact Hpk.
-    - iIntros (av i a W') "_ _ _ _ _ _ _ _ %Hpk Hp".
-      iApply ("HS" $! W' with "[%] Hp"). exact Hpk.
+    - iIntros (av i f nl W') "_ _ _ %Hok _ _ _ _ Hp".
+      iApply ("HS" $! W' with "[%] Hp").
+      exact (kexec_image_ok_parked f na alen afun sts W' Hok Hpk0).
+    - iIntros (av i a W') "_ _ _ %Hok _ _ _ _ Hp".
+      iApply ("HS" $! W' with "[%] Hp").
+      exact (exec_key_ok_parked na alen sts W' Hok Hpk0).
   Qed.
 
   (* ...and the one a caller that wants nothing back hands in: the slot
@@ -972,11 +985,14 @@ Section KexecAU.
   Lemma exec_au_pre_triv Γ (γfs : fs_names) (cw : Z) (pl : list (bv 8))
       (na : nat) (alen : nat -> nat) (afun : nat -> nat -> bv 8)
       (sts : list fdstate) (cs : gset gname) (pidv : mword 32) :
+    fdv_all_parked sts ->
     ⊢ exec_au_pre (MkPfam (fun _ => emp%I) True%I) Γ γfs cw (fun _ => True%I)
         (fun _ _ => True%I) (fun _ _ => True%I) (pfam_triv (fun _ _ _ => True%I))
         pl na alen afun sts cs pidv.
   Proof using .
-    iApply (exec_au_pre_triv_at (fun _ => emp%I)).
+    intros Hpk0.
+    iApply (exec_au_pre_triv_at (fun _ => emp%I) Γ γfs cw pl na alen afun
+              sts cs pidv Hpk0).
     iIntros "!>" (W) "_ _". iEmpIntro.
   Qed.
 
@@ -1339,17 +1355,14 @@ Definition wp_kexec_sconf_body
     (P Pmiss : nat -> Z -> iProp Σ)
     (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ)) :=
   let Γfs := fs_gamma_L fsc_fs in
-  (* THE CALLER'S TABLE IS ALL-PARKED (design/user-read.md SS8.3, lane
-     OFF-HAND-2).  kexec never opens the descriptor block and [sts] is
-     otherwise a free binder here, so the fact cannot be READ inside this
-     contract -- it is threaded from the dispatcher, which holds the block
-     and the bundle together ([ProcInv.proc_priv_parked]), and spent on
-     [exec_slot_pre]'s two wands at the key exec resumes
-     ([kexec_image_ok_parked] / [exec_key_ok_parked] are the two steps).
-     A PURE premise and not [FdPark.uoff_surr_at sts]: the resource has
-     nowhere to live across the walk, and what the generic tier's family
-     needs of its key is a FACT, not a disjunction. *)
-  fdv_all_parked sts ->
+  (* NO ALL-PARKED ROW ON THIS CONTRACT (lane OFF-HAND-5, D1).  Lane
+     OFF-HAND-2 threaded one from the dispatcher, which read it off
+     [ProcInv.proc_priv_parked] -- the pin.  kexec never opens the
+     descriptor block and [sts] is a free binder here, so the fact could
+     only ever be relayed; with the row off [exec_slot_pre]'s wands there
+     is nothing to relay it to, and the party that does know the table
+     states it where the bundle is BUILT
+     ([ExecBundle.exec_slot_of_entry_at]). *)
   wp_kexec_frame gs jp gl pd pav pu gf plen pfun na avf alen aslen afun
     pidv U dqb dqs dqa dqpv dqas m K eb b lks
     (* THE PAY FACT RIDES IN WITH THE BUNDLE, and the kernel does one thing

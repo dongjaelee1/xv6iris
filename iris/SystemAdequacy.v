@@ -1034,24 +1034,20 @@ Lemma init_boot_of_sup {Σ}
      carries the price of a kill ([UexecRet.uexec_ret_F]) and the generic
      [write(2)] on the console carries the price of a byte
      ([SpecConsolewrite.cons_out_chain_of_licence]), that supply is the
-     triple.  The CREDENTIAL is the application's and comes in from the
-     boot exactly as the supply does ([xv6_power_adequacy_gen]'s
-     [Hkill_sup]); the LICENCE is a Coq-level premise rather than a
-     resource argument, because the application's supply is what BUYS it
-     ([App]'s [al_sup]) read at the era's fixed-record
-     equation for the output claim ([Houtfix], the twin of [Hinit_boot]'s
-     rx-tag equation) -- so a caller that already hands over [app_sup]
-     hands over nothing new. *)
-  (app_sup ⊢ cons_licence) ->
+     PAIR.  The CREDENTIAL is the application's and comes in from the boot
+     exactly as the supply does ([xv6_power_adequacy_gen]'s [Hkill_sup]).
+     THE LICENCE IS NEITHER (lane SUP-ONE): it was a Coq-level premise
+     here ([app_sup ⊢ cons_licence]) and is now the interface's own law
+     ([RiscvPtsto.ai_lic], read as [WpUart.cons_licence_of_taint]), so the
+     taint below buys it and this theorem states one thing fewer. *)
   (* NO ALL-PARKED FACT (lane OFF-HAND-6, H3): the exec crossing's taint
      arm stopped asking for one, because a held row's half is in the
      descriptor bundle (design/app-file.md SS3 fact 4). *)
   app_sup -∗ app_taint -∗ init_boot_bundle cw sts.
 Proof.
-  intros Hlic. iIntros "#Hsup #Hkc".
-  iAssert cons_licence as "#Hlic"; [by iApply Hlic|].
+  iIntros "#Hsup #Hkc".
   iPoseProof LinkUserinit.UG.uexec_wp_gen as "#Hgen".
-  iDestruct (UexecExecMint.uslot_mint with "Hsup Hkc Hlic Hgen") as "#Hmk".
+  iDestruct (UexecExecMint.uslot_mint with "Hsup Hkc Hgen") as "#Hmk".
   iApply (init_boot_bundle_triv cw sts with "Hmk").
 Qed.
 
@@ -1065,13 +1061,9 @@ Lemma init_boot_of_triv {Σ}
   (* ...and the machine's kill credential is the trivial one, so the
      generic discharge pays it for nothing (lane KILL-PAY, K1) *)
   app_taint = kill_cred_triv ->
-  (* ...and the CONSOLE CLAIM is the trivial one, which is what makes the
-     generic supply's licence free (redesign R2: one claim, one licence) *)
-  @riscv_cons_res Σ _ = cons_res_triv ->
   ⊢ init_boot_bundle cw sts.
 Proof.
-  intros Htriv Hkc Hcons. iApply (init_boot_of_sup cw sts).
-  { iIntros "_". by iApply cons_licence_triv. }
+  intros Htriv Hkc. iApply (init_boot_of_sup cw sts).
   { iApply app_sup_of_triv. exact Htriv. }
   rewrite Hkc /kill_cred_triv. done.
 Qed.
@@ -1663,8 +1655,7 @@ Proof.
                          Heq Hiface Hgeni;
                   iIntros "_ _ _"; iModIntro; iApply init_boot_of_triv;
                   [ rewrite Heq; intros r' av; reflexivity
-                  | rewrite /app_taint Hiface; reflexivity
-                  | rewrite /riscv_cons_res Hiface; reflexivity ])
+                  | rewrite /app_taint Hiface; reflexivity ])
             (* THE ECHO'S JUSTIFICATION, at the TRIVIAL console claim: every
                link is free, so the echo justifies itself. *)
             ltac:(intros HRi ci Hifacei; iIntros (GEN XI);
@@ -1832,7 +1823,10 @@ Proof.
             (fun _ : unit =>
                MkAppIface Tg HTg HTgt kill_cred_triv
                  (@kill_cred_triv_persistent _) (@kill_cred_triv_timeless _)
-                 Cres HCrest)
+                 Cres HCrest
+                 (* the LICENCE law (lane SUP-ONE): the client's own
+                    [Hout_lic], which this theorem already takes *)
+                 ltac:(iIntros "_"; iApply Hout_lic))
             (fun (_ : unit) (_ : nat) => emp%I)
             (* THE TRANSPORT IS THE CLIENT'S at this theorem: it is what
                founds the client's own output claim per era. *)
@@ -1847,9 +1841,7 @@ Proof.
             ltac:(intros HRi GENi HBsi HFdi HIri HPavi HWci HFi ci ri
                          Heq Hiface Hgeni;
                   iIntros "_ _ _"; iModIntro; iApply init_boot_of_sup;
-                  [ rewrite /cons_licence /riscv_cons_res Hiface;
-                    iIntros "_"; iApply Hout_lic
-                  | iApply app_sup_of_triv; rewrite Heq; intros r' av;
+                  [ iApply app_sup_of_triv; rewrite Heq; intros r' av;
                     reflexivity
                   | rewrite /app_taint Hiface /= /kill_cred_triv;
                     done ])
@@ -2303,8 +2295,7 @@ Proof.
                          Heq Hiface Hgeni;
                   iIntros "_ _ _"; iModIntro; iApply init_boot_of_triv;
                   [ rewrite Heq; intros r' av; reflexivity
-                  | rewrite /app_taint Hiface; reflexivity
-                  | rewrite /riscv_cons_res Hiface; reflexivity ])
+                  | rewrite /app_taint Hiface; reflexivity ])
             (* THE ECHO'S JUSTIFICATION, at the TRIVIAL console claim: every
                link is free, so the echo justifies itself. *)
             ltac:(intros HRi ci Hifacei; iIntros (GEN XI);

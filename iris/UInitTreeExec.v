@@ -151,9 +151,8 @@ Section UInitTreeExec.
       iApply (tree_sup_of_taint c r with "Ht"). }
     iAssert (app_taint)%I as "#Hkc";
       [ rewrite Hkill /kill_cred_triv; done | ].
-    iPoseProof (WpUart.cons_licence_triv Hcons) as "#Hlic".
     iPoseProof LinkUserinit.UG.uexec_wp_gen as "#Hwp".
-    iApply (uslot_mint_all with "Hsup Hkc Hlic Hwp").
+    iApply (uslot_mint_all with "Hsup Hkc Hwp").
   Qed.
 
   (* ...AND THE TAINT ARM OF AN ENTRY, which is that mint at the payload

@@ -296,12 +296,12 @@ Section TreeInitWrite.
       iApply (tree_sup_of_taint c r with "Ht"). }
     rewrite /UkInit.init_deps /UkInit.kinit_wlaw.
     iModIntro. iSplit; [ iSplit | iSplit ].
-    - (* 16, the write: the supply, the output licence and the kill
-         credential -- the last two free at this interface *)
+    - (* 16, the write: the supply and the kill credential, the latter
+         free at this interface.  NO OUTPUT LICENCE (lane SUP-ONE): the
+         taint buys it ([WpUart.cons_licence_of_taint]). *)
       iIntros "!> #Ht".
-      iApply (udepw_law_of_sup_write (PSx := uprogSG_free) with "[] [] []").
+      iApply (udepw_law_of_sup_write (PSx := uprogSG_free) with "[] []").
       + iApply ("Hsup" with "Ht").
-      + iApply (WpUart.cons_licence_triv Hcons).
       + rewrite Hkill /kill_cred_triv. done.
     - (* ...and the closed-fd leaf, which needs no claim at all *)
       rewrite /UkInit.kinit_wcl. iIntros "!>" (N0 b).

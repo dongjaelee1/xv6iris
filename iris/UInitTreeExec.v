@@ -92,6 +92,11 @@ Require Import UCodeInit.          (* [init_rodata] / [init_ro] *)
 Require Import UkInit.
 Require Import UInitSh.            (* [init_sh_pl] / [init_sh_path_of] *)
 Require Import LinkUserinit.       (* [UG.uexec_wp_gen]: the generic user WP *)
+Require Import SpecKexec.          (* [kexec_image_ok] / [exec_slot_pre] *)
+Require Import InitBoot.           (* [init_boot_bytes] *)
+Require Import UInitCons.          (* [init_cons_fd] *)
+Require Import UInitKernel.        (* [init_boot_con] / [init_boot_pay] *)
+Require Import UInitBoot.          (* [init_boot_room]: echo's arithmetic *)
 Require Import AppCfg AppInv.
 Require Import FsCfg.
 Require Import FsTree.
@@ -250,6 +255,94 @@ Section UInitTreeExec.
     - iIntros "!> #HT".
       iApply (tree_init_exec_sup_lend c r cn stc Heq Hcons Hkill with "HT").
     - iIntros "!> #HT". iExact "HT".
+  Qed.
+
+  (* =================================================================== *)
+  (*  3.  WHAT THE SUPPLY BUYS: /INIT'S WHOLE ENTRY SLOT AT THE TREE      *)
+  (*                                                                     *)
+  (*  [UInitKernel.init_boot_con] at this claim, with every premise of    *)
+  (*  its list discharged.  Three are the tree's own -- the deposits      *)
+  (*  ([UInitTree.tree_init_deps]), the kill row                          *)
+  (*  ([UInitTree.tree_init_kill_law], section 9.5(2)) and the exec       *)
+  (*  supply above -- and the rest is echo's assembly reused VERBATIM,    *)
+  (*  which is what section 9.5(5) predicted: the room arithmetic         *)
+  (*  ([UInitBoot.init_boot_room]), the ledger's length and its head, the *)
+  (*  nopipe fact and [psok] at the free instance.                        *)
+  (*                                                                     *)
+  (*  So nothing between /init's entry and its boot bundle is echo's any  *)
+  (*  more.  What D4 still owes is recorded at the two lemmas below.      *)
+  (* =================================================================== *)
+  Lemma tree_init_boot_con (c : tree_fixed) (r : tree_names) :
+    file_app = MkAppcfg tree_names (tree_pred c) r ->
+    riscv_cons_res = cons_res_triv ->
+    riscv_kill_cred = kill_cred_triv ->
+    ⊢ □ (∀ W' : uvis,
+           ⌜kexec_image_ok ElfUser.init_elf 1%nat (fun _ => 5%nat)
+              (fun _ => init_boot_bytes) fdt0 W'⌝ -∗
+           ⌜uvis_cwd W' = FsImg.ROOTINO⌝ -∗
+           ⌜uvis_lazy W' = false⌝ -∗
+           my_pay (uvis_gen W') (fun _ => True)%I -∗
+           UInitKernel.init_boot_pay (PS := uprogSG_free) (tree_taint c)
+             (tree_taint c) fsc_cons init_cons_fd (tree_cc c) -∗
+           uslot W').
+  Proof using .
+    intros Heq Hcons Hkill.
+    iApply (UInitKernel.init_boot_con (PS := uprogSG_free)
+              (tree_taint c) (tree_taint c) init_cons_fd (tree_cc c) fsc_cons
+              1%nat (fun _ => 5%nat) (fun _ => init_boot_bytes) fdt0 0%nat
+              init_cons_fd_ne
+              (tree_init_kill_law c init_cons_fd)
+              (init_boot_room 0%nat ltac:(vm_compute; discriminate))
+              fdt0_length eq_refl (fdv_nopipe_closed _) (fun k H => H)
+              with "[] [] []").
+    - iApply (tree_init_deps c r Heq Hcons Hkill).
+    - iApply (udep_free).
+    - iApply (tree_init_cons_sup c r fsc_cons init_cons_fd Heq Hcons Hkill).
+  Qed.
+
+  (* the read family is trivial at this record, so the boot bundle's third
+     conjunct costs nothing *)
+  Lemma tree_cc_rd_triv (c : tree_fixed) (n : nat) : ⊢ cc_rd (tree_cc c) n.
+  Proof using . exact (bi.True_intro _). Qed.
+
+  (* ...AND THE PAYLOAD THE SLOT IS SPENT AT.  Six conjuncts, and only TWO
+     of them cost the era anything: the console dance and the banner-owed
+     credential [cc_wbn 0].  The banner law and the two diagnostics are
+     [UInitTree]'s, off the deposits, and the read credential is [True].
+
+     BOTH OF THE TWO COST A LICENCE, AND THAT IS D4'S WALL.  With the exec
+     supply at [Cns := tree_taint c] the dance's own leaves must PRODUCE
+     the taint, i.e. spend a licence ([AppTree.tree_taint_mint]); [cc_wbn 0]
+     is the era's licence as well ([UInitTree.tree_cc]'s [cc_wb],
+     UInitTree.v:121, which is what makes the banner the mint, section
+     9.5(3)).  The two are [*]-separated here, and [App.al_pow] files ONE
+     row per power-on ([AppTree.tree_licence_mint], AppTree.v:1401).  So
+     this lemma takes both as premises and D4 is blocked on a ruling about
+     the licence, not on a proof. *)
+  Lemma tree_init_boot_pay (c : tree_fixed) (r : tree_names)
+      (cn : cons_names) (stc : fdstate) :
+    file_app = MkAppcfg tree_names (tree_pred c) r ->
+    riscv_cons_res = cons_res_triv ->
+    riscv_kill_cred = kill_cred_triv ->
+    UInitKernel.init_cons_dance_all (PS := uprogSG_free) (tree_taint c)
+      (tree_taint c) stc -∗
+    ucons_reader cn 0%nat -∗
+    cc_wbn (tree_cc c) 0%nat -∗
+    UInitKernel.init_boot_pay (PS := uprogSG_free) (tree_taint c)
+      (tree_taint c) cn stc (tree_cc c).
+  Proof using .
+    intros Heq Hcons Hkill. iIntros "Hdn Hrd Hbn".
+    iDestruct (tree_init_deps c r Heq Hcons Hkill) as "#Hdp".
+    rewrite /UInitKernel.init_boot_pay.
+    iSplitL "Hdn"; [ iExact "Hdn" | ].
+    iSplitL "Hrd"; [ iExact "Hrd" | ].
+    iSplitR; [ iApply tree_cc_rd_triv | ].
+    iSplitL "Hbn"; [ iExact "Hbn" | ].
+    iSplitR.
+    - iIntros "!>" (n N') "Hwb".
+      iDestruct (tree_kinit_ban_law c stc N' with "Hdp") as "#Hbl".
+      iApply ("Hbl" with "Hwb").
+    - iApply (tree_kinit_diag_law c stc with "Hdp").
   Qed.
 
 End UInitTreeExec.

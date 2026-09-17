@@ -359,41 +359,4 @@ theorem umPages_empty [CurCtx] (P : UPtd) (M : Nat → List (BitVec 8)) (h : P.u
 
 end
 
-/-! ## `uvmunmap` at the bare-table altitude
-
-`SpecUvmunmap.wp_uvmunmap_free_body` states the freeing arm over
-`procPtAt P M`, whose tree carries the trampoline and the trapframe leaves.
-`uvmfree` runs AFTER `proc_freepagetable` has unmapped those two (the Rocq
-prototype's `BarePt`/`UVMUNMAP_BARE`), so its table has only the user
-leaves and that contract cannot be applied: `procPtAt` is strictly more
-than `uvmfree` owns, and `ptRep` pins the leaf map to the tree, so no
-choice of `P'` makes `P'.leaves` the bare map.  This is the same proof of
-the same code at the other end of that axis; it is stated here (rather than
-in a `Spec` file, which this proof may not edit) so that both `uvmfree` and
-`uvmunmap`'s proof can see it. -/
-
-def wp_uvmunmap_bare_body {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G GF] [CurCtx]
-    (cpu : CPU) (k : KCtx) (γl : GName) (γk : KmemNames) (P : UPtd) (M : Nat → List (BitVec 8))
-    (n : Nat) (hnoff : k.noff + 1 < 2 ^ 31) (hK : uvmunmapSlots ≤ k.avail)
-    (hlk : "kmem" ∉ k.locks) (hwf : uptWf P) (hroot : k.regs 10#5 = pageAddr P.root)
-    (hal : k.regs 11#5 &&& 0xfff#64 = 0#64) (hn : k.regs 12#5 = BitVec.ofNat 64 n)
-    (hrange : (k.regs 11#5).toNat + 4096 * n ≤ uvmMaxsz) (hfree : k.regs 13#5 ≠ 0#64) : Prop :=
-  kctx cpu k ∗ pcIs cpu uvmunmapAddr ∗ isLock γl kmemLockAddr "kmem" (kmemRes γk) ∗
-  kallocAvail γk none ∗ ptOwnRep P.root P.um ∗ umPages P M ∗
-  wpNext k.sie k.proc cpu (fun cpu' => iprop(∀ spie : Bool, ∀ spp : Bool, ∀ R' : RegMap,
-    ⌜k.sie = false → spie = k.spie ∧ spp = k.spp⌝ -∗
-    kctx cpu' ((k.withSpie spie spp).withRegs R') -∗ pcIs cpu' (jumpPc (k.regs 1#5)) -∗
-    ptOwnRep P.root (delRunL P.um (vpnOf (k.regs 11#5)).toNat n) -∗
-    umPages (P.delRun (vpnOf (k.regs 11#5)).toNat n) M -∗
-    ⌜calleeSaved k.regs R'⌝ -∗ wpLoop cpu'))
-  ⊢ wpLoop (GF := GF) cpu
-
-/-- The freeing arm of `uvmunmap` over a table with only user leaves. -/
-structure UVMUNMAP_BARE : Prop where
-  wp_uvmunmap_bare : ∀ {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G GF] [CurCtx]
-    (cpu : CPU) (k : KCtx) (γl : GName) (γk : KmemNames) (P : UPtd) (M : Nat → List (BitVec 8))
-    (n : Nat) hnoff hK hlk hwf hroot hal hn hrange hfree,
-    wp_uvmunmap_bare_body (hlc := hlc) (GF := GF) cpu k γl γk P M n hnoff hK hlk hwf hroot hal hn
-      hrange hfree
-
 end Xv6.UPtFree

@@ -1116,4 +1116,37 @@ theorem uvmunmap_proof (W : WALK_NOALLOC) (KF : KFREE) : UVMUNMAP where
       intro j hj w hw
       exact (hwf.1 _ w hw).2.2.1
 
+set_option maxHeartbeats 4000000 in
+/-- The bare-table freeing contract (`UVMUNMAP_BARE`, `uvmfree`'s caller
+altitude): the generic body at `df = true` with the leaf map and the page
+map both `P.um`, so no trampoline or trapframe leaf is owned. -/
+theorem uvmunmap_bare_proof (W : WALK_NOALLOC) (KF : KFREE) : UVMUNMAP_BARE where
+  wp_uvmunmap_bare := fun {hlc GF} _ _ _ cpu k γl γk P M n hnoff hK hlk hwf hroot hal hn hrange
+      hfree => by
+    unfold wp_uvmunmap_bare_body
+    iintro ⟨Hk, Hpc, #Hlk, Hav, Htree, Hum, HΦ⟩
+    ihave Hum := umPages_to_umMap P M $$ Hum
+    ihave Hfree : unFree true γl γk $$ [Hav]
+    case' _ =>
+      rw [unFree_true]
+      isplitr [Hav]
+      · iexact Hlk
+      · iexact Hav
+    have hr38 : (k.regs 11#5).toNat + 4096 * n ≤ 2 ^ 38 := by
+      simp only [uvmMaxsz] at hrange; omega
+    iapply (uvmunmap_gen W KF cpu k true γl γk P.root P.um P.um M n
+      (fun _ => hnoff) hK (fun _ => hlk) hroot hal hn hr38 (fun _ => hfree) (by simp)
+      (by intro _ j _; rfl) (by simp) ?hqv) $$ [- $Hk $Hpc $Htree $Hum $Hfree]
+    rotate_right 1
+    · iapply wpNext_mono _ _ _ _ _ $$ HΦ
+      iintro %c' HΦ %spie %spp %R' %hsp Hk Hpc Htree Hum Hfree %hcs
+      ihave Hum := umMap_to_umPages (GF := GF) (P.delRun (vpnOf (k.regs 11#5)).toNat n)
+        (delRunL P.um (vpnOf (k.regs 11#5)).toNat n) rfl M $$ Hum
+      iapply HΦ $$ %spie %spp %R' %(fun h => hsp (Or.inl h)) Hk Hpc Htree Hum
+      ipureintro
+      exact hcs
+    case hqv =>
+      intro j _ w hw
+      exact (hwf.1 _ w hw).2.2.1
+
 end Xv6

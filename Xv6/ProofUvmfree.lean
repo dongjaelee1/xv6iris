@@ -1,9 +1,9 @@
 /-
 Proof of `uvmfree`'s specification (`SpecUvmfree.UVMFREE`), given the
 interfaces of `freewalk` and of `uvmunmap` at the bare-table altitude
-(`Xv6/UPtFreeLemmas.lean`: `UVMUNMAP_BARE`; see its header and the report
-for why `SpecUvmunmap`'s freeing contract, stated over `procPtAt`, cannot
-serve this caller).
+(`Xv6/SpecUvmunmap.lean`: `UVMUNMAP_BARE`; see its header and the report
+for why `SpecUvmunmap`'s `procPtAt` freeing contract cannot serve this
+caller).
 
     void uvmfree(pagetable_t pagetable, uint64 sz)
     { if (sz > 0) uvmunmap(pagetable, 0, PGROUNDUP(sz)/PGSIZE, 1);

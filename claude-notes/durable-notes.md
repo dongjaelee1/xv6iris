@@ -584,6 +584,21 @@ If a change has a way of going wrong that still compiles, that way WILL be taken
     (tell: `Wrong argument name` at a `(X := …)` in the defining file), and **a
     class hypothesis in a section beats a global instance** for every other
     application in the file.
+  - **...and that is how a CONSUMER file makes a landed lemma unapplicable.**
+    Copying a `Context `{!ghost_varG Σ (gset gname)}` from a neighbour file
+    into a file that applies `UkRun.urun`-shaped lemmas makes every `urun` in
+    the new file's goals carry the SECTION VARIABLE where the lemma carries the
+    canonical field instance (`Xv6G.xv6_uch`). Neither is wrong and both print
+    identically; they are simply not convertible. A lemma from a file that ALSO
+    carries the variable still applies — section close generalises it — so the
+    file compiles until the first lemma that does not. **The symptom is a HANG,
+    not an error**: `iFrame` says `cannot frame (urun …)` in 1s, while
+    `iApply (lem … with "Hrun")` disappears into a conversion between two
+    ghost-map instances and does not come back. Diagnose with
+    `Set Printing All. Show.` and diff the two `@urun` argument lists — the
+    mismatched instance is the last one. Rule: **bind only the classes the
+    file's own statements need, and never a class the kernel bundle already
+    provides a field instance for.**
 - **A `Typeclasses Opaque` seal does not travel — import the predicate's home
   file directly.** A file reaching it transitively gets the constant WITHOUT the
   seal, and the first `Persistent ?P` resolution delta-unfolds the whole body per

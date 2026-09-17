@@ -718,6 +718,12 @@ subtree cannot build the step and falls to the taint arm, as §3 says.
   three create-family bundles SUPPLIED from one live deed at a length-zero
   prefix.  What is left for the first create corollary is U-tier assembly
   only; unlink waits on two kernel-tier seams §7.9(8) names.
+- [x] **U-TIER ASSEMBLY** — LANDED as **TL-3U** (branch `tl3u-assembly`),
+  §7.10: the three create corollaries and the extended test
+  (`iris/UkTreeCreate.v`), no landed file touched.  What is left for
+  unlink is exactly §7.9(8)'s two kernel-tier seams, restated at §7.10(8);
+  the one strengthening the create side wants is §7.10(6)'s claim-reading
+  `Fex`.
 
 ### 7.4 TL-3W as landed
 
@@ -1573,3 +1579,149 @@ any of the three.  Beside that:
   - the unlink corollary waits on §7.9(8)'s two kernel-tier seams.
   - `UkTreeWrite.wp_uk_tree_write_moves` is UNCHANGED: no corollary and
     no extended test landed in TL-3R.
+
+### 7.10 TL-3U as landed — the create corollaries, the extended test, and the instance that made the read side unapplicable
+
+**WHAT LANDED** (branch `tl3u-assembly`, ONE new file `iris/UkTreeCreate.v`):
+§7.9(10)'s U-TIER ASSEMBLY in full for all three create-family calls —
+`mknod("/x")`, `mkdir("/d")` and `open("/f", O_CREATE)` at an owner of
+`/` — and the extended test, own `/` → mkdir → open-create → write →
+freeze → read-learns, in one run.  NO LANDED FILE CHANGED AT ALL:
+`AppEcho.v` / `AppInv.v` untouched, every landed TL-* statement
+unchanged, `TreeMove.v` / `UkTreeRead.v` / `UkTreeWrite.v` only
+CONSUMED.  Whole tree green, system audit 13 / echo audit 14, every
+corollary at the standing bar (`resv_matches`, `resv_is_valid`, funext)
+and the two new pure tree lemmas `Closed under the global context`.
+**Deliverable (6) — unlink's two kernel-tier seams — was not reached;
+(8) below records it at the exact shape it wants.**
+
+**(1) THE DEPOSIT IS ONE RECORD FOR THE WHOLE FAMILY.**  A deposit is
+read at ONE number (`UexecExecInst.xv6_sbundle` is a match on it), so the
+three rows the create family uses — 17, 20 and 15 — are filled from one
+argument list and every other row stays inert: `xfam_tree P Farm Fun
+Fdots Fok Q` fills `nf_*`, `df_*` and `of_*` at once.  What differs per
+call is the CHILD KIND inside `Fok` (`TreeMove.tree_acre_fam`'s `cf`)
+and nothing else.
+
+**(2) THERE IS NO `wp_uk_ecall_mknod`, AND NONE IS NEEDED.**  Rows 17 and
+20 pay a post and are not on `UkRunSys.wp_uk_ecall_quiet_recv_img`'s
+exclusion list, so the RECEIPT-KEEPING QUIET leaf is their leaf —
+`UInitCons`'s own mknod step goes through it.  The two key-level rows a
+process needs at each (the deposit's INTRO and the post's ELIM) are
+three lines each off `UexecExecInst`'s match; row 15's pair is
+`UConsOpen`'s, reused.
+
+**(3) THE STOP RULE DID NOT FIRE WHERE THE BRIEF EXPECTED IT.**  The
+predicted wall was "a U-tier leaf whose `spost_at` family cannot hold the
+arm's receipt shape".  Every one of them can: the receipt here is a
+ghost-map half beside a pure `⌜i ∉ dom (tv_nodes t)⌝`, and rows 17 / 20 /
+15 carry their families as `pfam`s of `iProp`s with no restriction at
+all.  Row 20's binder was checked explicitly and takes the tree families
+on the nose.
+
+**(4) THE ONE WEAKNESS, AND IT IS `mkdir_arms`'s AND NOT THE CLAIM'S.**
+`SpecSysMknod.mknod_post_ok` carries `⌜arg_path_of M pv pl⌝` beside its
+walk cursor, so mknod's corollary names the entry the call filed:
+`tree_own r g ROOTINO (top_ins ROOTINO nm i (ADev ma mi) t)` at the
+CALLER'S OWN `nm`.  `SpecSysMkdir.mkdir_arms`'s ok arm carries no such
+conjunct — its `pl` is existentially quantified with nothing tying it to
+argument 0 — so mkdir's corollary names the new directory's NAME
+existentially.  The fix is ONE conjunct in `mkdir_arms`'s ok arm,
+discharged at `ProofSysMkdir` from the `arg_path_of` it already builds;
+additive, and not taken here.
+
+**(5) THE CHILD IS NOT THE PARENT, FOR FREE, AT TWO OF THE THREE.**
+`top_ins d nm i c t` is the insert the caller means only when `i <> d`,
+and `FsAbsDelta.cre_pre_ne` pays it from the child's KIND: the post's own
+`cre_pre` observes both rows at one view and a device / a file is not a
+directory.  So mknod's and open-create's success arms carry
+`⌜i <> ROOTINO⌝` and mkdir's cannot — which is also why the test creates
+its FILE, and not its directory, at the path it later writes.
+
+**(6) open(O_CREATE) HANDS BACK BOTH HALVES AT ONCE.**  The FRESH arm of
+`SpecSysOpen.open_receipt_create` names ONE inum in the create's receipt
+and in `open_fd_rcpt`, so `UkTreeRead.tree_open_fd_tie` ties the
+descriptor the caller's ledger decided to the node the deed records:
+`ualloc … (FdInode i γo OffParked) ∗ tree_own r g ROOTINO (top_ins
+ROOTINO nm i (AFile []) t)`.  The other arms are honest and weaker: an
+open that found the name already there moved nothing (the deed is the
+ARM piece's refund), and an open that created and THEN failed leaves the
+entry standing — `SpecSysOpen`'s own "the fs mutation of a failed open is
+real" — so the failure arm's deed is `t` OR `top_ins … t`.
+**What cannot be refuted from the claim is the EXISTS-OPENS arm**, even
+at an owner whose own tree has no such name: the bundle's `Fex` is
+`pfam_triv` (TL-3R fixes it there), so that observation's view is never
+read against the claim.  A dlookup family that DOES read it —
+`UkTreeRead.tree_read_piece`'s three lines at `dlookup_commit_at` —
+would turn "my tree has no `nm`" into a refutation and collapse the
+corollary to its FRESH arm.  Additive, one lemma, and the only
+strengthening this member is waiting for.
+
+**(7) THE TEST, AND THE ONE THING A PER-ECALL COROLLARY CANNOT SAY.**
+`wp_uk_tree_app_core` runs own `/` → `mkdir("/d")` → `open("/f",
+O_CREATE)` → write → freeze → read-learns with no whole-fs pin anywhere
+and no claim about a row outside the owner's subtree; the final
+continuation gets the FROZEN deed, `⌜resolves_from t3 ROOTINO plf =
+Some (i, AFile bs')⌝` and the bytes the read delivered, which ARE the
+bytes that tree records at the path the program created.
+  - **`ucode_between`** is what a chain of four ecalls costs: a U-tier
+    corollary takes the machine state as a parameter, so a chain must say
+    how the state gets from one ecall to the next.  It is the program's
+    own straight-line block, stated as a RELATION between the resumed
+    state, the answer and the next state (`UInitConsK`'s `wp_uk_cli`
+    chains are what discharges one), and it is what lets the write and
+    the read name the descriptor the open returned without the statement
+    guessing its number.  `ubail` is beside it: the chain continues
+    through a FAILED mkdir and through a failed write — neither costs the
+    deed — but an open that did not create the file has no descriptor to
+    write on, so there the program stops.
+  - The chain is THREE lemmas (`wp_uk_tree_mkdir_then_create`,
+    `wp_uk_tree_write_then_read`, and the composition, which has no leaf
+    of its own), split at the write's ecall because that is where the
+    statement is smallest.  It is a readability choice: the single
+    four-leaf lemma was written first and was not re-tried after (9)'s
+    fix, so whether it also goes through is untested.
+  - **WHERE THE TEST STOPS**: at the read.  `unlink("/f")` joins it the
+    moment (8)'s two restatements land, and nothing else in the chain
+    moves when it does — the deed the read freezes would be kept LIVE and
+    handed to the target leg instead.
+
+**(8) UNLINK'S TWO SEAMS, AT THE SHAPE THEY WANT** (§7.9(8), priced).
+  - **(a) THE TARGET CURSOR.**  `SysUnlinkDefs.utgt_commit_at Γ E Φ` binds
+    its target `t` inside with no cursor, so a supplier owes a step at
+    every row of every view at count ≥ 1 — including a row that IS named,
+    where `delta_unl_tgt` leaves a dangling entry and NO application has a
+    step.  The fix is TL-3K's verbatim: a parameter `Pt : Z -> iProp Σ`
+    and a premise `Pt t` beside `⌜abs_view I !! t = Some a⌝`, read and
+    handed back in phase 1.  `uent_commit_at_mono` / `_cur` are the two
+    movers to copy; `utgt_commit_at_unit` gains a `∀ Pt` and its proof is
+    unchanged but for framing.  `ProofSysUnlinkW5D` / `W5F` hold the
+    target they just resolved and already pass the ENTRY cursor into
+    `uf_uent_fire` and take it back, so the kernel side is a restatement.
+  - **(b) THE RECEIPT CHANNEL.**  create's two child legs share the arm's
+    receipt (`FsAbsCreateFire.cre_arm_fired`, an exclusive one-shot per
+    armed inode); unlink's two legs share NOTHING, so the MOVED deed the
+    entry leg returns cannot reach the target leg's AU.  The fix is
+    `cre_arm_fired`'s trick at the unlink family: `utgt_commit_at` takes
+    the entry leg's own receipt at the target it cut, exactly as
+    `aunarm_of_arm` takes the arm's.  The exclusion argument is already
+    there — the kernel cuts the entry once and only then unlinks the
+    target.
+  - Then `TreeMove.tree_utgt_commit` is `tree_utgt_phases_rooted` under
+    the two (its premise `tg ∉ dom (tv_nodes t)` is what the entry leg's
+    receipt delivers, since the moved tree is `top_unlink d nm t`), the
+    `unlink("/f")` corollary is row 18's assembly on §6a's mould, and the
+    test gains its last step.
+
+**(9) THE LANE'S SHARPEST FINDING IS NOT ABOUT THE TREE AT ALL** — see
+`claude-notes/durable-notes.md`, "A local Context variable for a class
+the kernel already instantiates".  A local
+`Context `{!ghost_varG Σ (gset gname)}` in the consuming file makes
+`UkRun.urun` resolve to THAT variable instead of the canonical
+`Xv6G.xv6_uch`, and then the file's own `urun` no longer matches the
+`urun` of any lemma stated WITHOUT the variable —
+`UkTreeRead.wp_uk_tree_read_learns` is one.  The symptom is not an error
+but a HANG: `iFrame` refuses the hypothesis outright, while the
+`with "H"` path drops into a conversion between two ghost-map instances
+that does not come back.  `UkTreeCreate.v` carries the note at its own
+`Context` block; the cost of not knowing it was most of this lane.

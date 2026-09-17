@@ -244,6 +244,13 @@ theorem ctxMorph_bigSepL {A : Type} (l : List A) (Φ : Nat → A → CtxId → I
       iapply BigSepL.bigSepL_cons.2
       iframe⟩
 
+/-- The map big-op re-indexes elementwise (it IS the list big-op over the
+map's association list: `BigSepM.bigSepM_toList` is `rfl`). -/
+theorem ctxMorph_bigSepM {V : Type} (m : RegMapF V) (Φ : Nat → V → CtxId → IProp GF)
+    (h : ∀ k x, CtxMorph (GF := GF) (Φ k x)) :
+    CtxMorph (GF := GF) (fun ξ => iprop([∗map] k ↦ x ∈ m, Φ k x ξ)) :=
+  ctxMorph_bigSepL _ (fun _ (kv : Nat × V) ξ => Φ kv.1 kv.2 ξ) (fun _ kv => h kv.1 kv.2)
+
 instance instCtxMorphBytes (pa : PAddr) (n : Nat) (dq : DFrac) (w : BitVec (8 * n)) :
     CtxMorph (GF := GF) (fun ξ => ctxBytes ξ pa n dq w) := by
   unfold ctxBytes

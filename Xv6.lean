@@ -174,3 +174,10 @@ import Xv6.SpecVmfault
 import Xv6.UMem
 import Xv6.SpecCopyout
 import Xv6.SpecUvmcopy
+import Xv6.UPtLemmas
+import Xv6.PidLock
+import Xv6.SpecProcPagetable
+import Xv6.SpecFreeproc
+import Xv6.SpecAllocproc
+import Xv6.SpecKilled
+import Xv6.SpecGrowproc

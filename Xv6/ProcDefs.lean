@@ -3,10 +3,13 @@ The process predicates of the xv6 kernel, modelled on the Rocq prototype's
 `ProcGeom.v` / `ProcDefs.v` / `SchedCtx.v` / `ProcInv.v` / `IntrDefs.v`,
 scaled to what the Lean framework has: memory cells (`wordPointsTo`),
 byte buffers, the per-cpu bookkeeping of `MachCSL/KCtx.lean`.  No page
-tables, trapframe pages, files, inodes or locks yet: the places where the
-Rocq predicates own those are named placeholders (like `kptSlot` in
-`KCtx.lean`), so that the shape of every predicate is already the final
-one and only the placeholders will be filled in.
+files, inodes or locks yet: the places where the Rocq predicates own
+those are named placeholders (like `kptSlot` in `KCtx.lean`), so that the
+shape of every predicate is already the final one and only the
+placeholders will be filled in.  The user address space and the trapframe
+page ARE ported: `ProcPriv` carries the table description `upt : UPtd`
+and the trapframe words `tf`, and the private block owns them through
+`procPtAt` / `tfPageAt` (`Xv6/UPtDefs.lean`).
 
 Layout of `struct proc` (kernel/proc.h, spinlock = {locked; name; cpu} =
 24 bytes, NOFILE = 16), corroborated by the compiled image (`myproc`'s
@@ -25,6 +28,7 @@ import MachCSL.KCtx
 import MachCSL.CallConv
 import Xv6.Geom
 import Xv6.KernelText
+import Xv6.UPtDefs
 
 set_option linter.unusedSectionVars false
 
@@ -91,13 +95,16 @@ def ZOMBIE : BitVec 32 := 5#32
 /-- The values of the fields private to the process (Rocq `pprivate`, plus
 `kstack`, `pagetable`, `trapframe` and the saved `context`, which the Rocq
 block reaches through its page-table and scheduler resources).  Left out:
-the user page-table description `pv_upt`, the trapframe page contents
-`pv_tf`, the descriptor ghost name `pv_fdg`, the cwd inum `pv_cwi`. -/
+the descriptor ghost name `pv_fdg`, the cwd inum `pv_cwi`. -/
 structure ProcPriv where
   kstack : BitVec 64
   sz : BitVec 64
   pagetable : BitVec 64
   trapframe : BitVec 64
+  /-- the user address space `p->pagetable` describes (Rocq `pv_upt`) -/
+  upt : UPtd
+  /-- the 36 words of the trapframe page (Rocq `pv_tf`) -/
+  tf : List (BitVec 64)
   /-- the 14 saved words of `p->context` -/
   context : List (BitVec 64)
   /-- the 16 file pointers of `p->ofile` -/
@@ -134,54 +141,66 @@ def procFields (pa : BitVec 64) (dq : DFrac) (V : ProcPriv) : IProp GF := iprop%
   wordPointsTo (pCwd pa) 8 dq V.cwd ∗
   pnameCells pa dq V.name
 
-/-- The process's user page table at `V.pagetable`, `V.sz` bytes mapped
-(Rocq `proc_ptm_at`): not ported yet (placeholder). -/
-def procPt (V : ProcPriv) : IProp GF := iprop(⌜V = V⌝)
-
-/-- The trapframe page at `V.trapframe` (Rocq `tf_page`): not ported yet
-(placeholder). -/
-def tfPage (V : ProcPriv) : IProp GF := iprop(⌜V = V⌝)
-
-/-- The pid cell's fractions: the running thread's half rides in `procPriv`,
-the lock-protected public part has the other half (Rocq: a quarter in
-`proc_pub`, a quarter with `pid_lock`; the lock is not ported, so its
-quarter is merged into the public part here). -/
-def pidHalf : DFrac := DFrac.own (Qp.half 1)
+/-- The pid cell's three fractions (Rocq): a HALF rides in the private
+block, a QUARTER is lock-protected (`procPub`), a QUARTER sits in the
+`pid_lock` payload, which `allocpid`'s scan reads without the proc locks. -/
+def pidPriv : DFrac := DFrac.own (Qp.half 1)
+def pidPub : DFrac := DFrac.own (Qp.half (Qp.half 1))
+def pidLockQ : DFrac := DFrac.own (Qp.half (Qp.half 1))
 
 /-- The private block of a running process (Rocq `proc_priv_bare`, and
 `proc_priv_core` minus the cwd inode reference): the size bounds, half of
-`p->pid`, the private fields, the page table and the trapframe page. -/
-def procPriv (pa : BitVec 64) (pid : BitVec 32) (V : ProcPriv) : IProp GF := iprop%
-  ⌜V.sz.toNat ≤ MAXVA⌝ ∗
-  wordPointsTo (pPid pa) 4 pidHalf pid ∗
+`p->pid`, the private fields, the address space at the view `M` and the
+trapframe page. -/
+def procPriv (pa : BitVec 64) (pid : BitVec 32) (V : ProcPriv) (M : Nat → List (BitVec 8)) :
+    IProp GF := iprop%
+  ⌜V.sz.toNat ≤ uvmMaxsz ∧ umBelow V.sz V.upt ∧
+    V.pagetable = pageAddr V.upt.root ∧ V.trapframe = pageAddr V.upt.tfp⌝ ∗
+  wordPointsTo (pPid pa) 4 pidPriv pid ∗
   procFields pa (DFrac.own 1) V ∗
-  procPt V ∗
-  tfPage V
+  procPtAt V.upt M ∗
+  tfPageAt V.upt.tfp V.tf
 
 /-! ## The public part (Rocq `SchedCtx.proc_pub`, `proc_held`) -/
 
 /-- The fields `p->lock` protects (Rocq `proc_held` minus the lock token
 and the state ghost mirror): `state`, `chan`, `killed`, `xstate` whole and
-the other half of `pid`. -/
+the `pid_lock`-free quarter of `pid`. -/
 def procPub (pa : BitVec 64) (st : BitVec 32) (chan : BitVec 64) (killed xstate pid : BitVec 32) :
     IProp GF := iprop%
   wordPointsTo (pState pa) 4 (DFrac.own 1) st ∗
   wordPointsTo (pChan pa) 8 (DFrac.own 1) chan ∗
   wordPointsTo (pKilled pa) 4 (DFrac.own 1) killed ∗
   wordPointsTo (pXstate pa) 4 (DFrac.own 1) xstate ∗
-  wordPointsTo (pPid pa) 4 pidHalf pid
+  wordPointsTo (pPid pa) 4 pidPub pid
 
 /-! ## Dormant slots (Rocq `proc_dormant`, `proc_slots`) -/
 
+/-- The address space a dormant slot still owns (the tail of Rocq
+`proc_dormant`): at UNUSED nothing -- its `pagetable`, `trapframe`, `sz`
+and `pid` are zero; at ZOMBIE the space and the trapframe page, which
+`wait` reaps. -/
+def dormantSpace (st : BitVec 32) (V : ProcPriv) (pid : BitVec 32) : IProp GF :=
+  if st = UNUSED then
+    iprop(⌜V.pagetable = 0#64 ∧ V.trapframe = 0#64 ∧ V.sz = 0#64 ∧ pid = 0#32⌝)
+  else
+    iprop(∃ M : Nat → List (BitVec 8),
+      ⌜V.pagetable = pageAddr V.upt.root ∧ V.trapframe = pageAddr V.upt.tfp ∧
+        umBelow V.sz V.upt⌝ ∗
+      procPtAt V.upt M ∗ tfPageAt V.upt.tfp V.tf)
+
 /-- A slot nobody runs (UNUSED or ZOMBIE): the private block's cells with
 existential values, no open files, no cwd (Rocq `proc_dormant`; its file
-descriptor / inode / buffer allowances are not ported). -/
+descriptor / inode / buffer allowances are not ported).  A ZOMBIE keeps
+its address space and trapframe page until `wait` reaps it; `freeproc`
+empties them and the slot becomes UNUSED. -/
 def procDormant (pa : BitVec 64) (st : BitVec 32) : IProp GF := iprop%
   ⌜st = UNUSED ∨ st = ZOMBIE⌝ ∗
   ∃ (V : ProcPriv) (pid : BitVec 32),
-    ⌜V.ofile = List.replicate NOFILE 0#64 ∧ V.cwd = 0#64 ∧ V.sz.toNat ≤ MAXVA⌝ ∗
-    wordPointsTo (pPid pa) 4 pidHalf pid ∗
-    procFields pa (DFrac.own 1) V
+    ⌜V.ofile = List.replicate NOFILE 0#64 ∧ V.cwd = 0#64 ∧ V.sz.toNat ≤ uvmMaxsz⌝ ∗
+    wordPointsTo (pPid pa) 4 pidPriv pid ∗
+    procFields pa (DFrac.own 1) V ∗
+    dormantSpace st V pid
 
 /-- What slot `i` owes at state `st` besides the lock-protected part
 (Rocq `proc_slots`): the dormant block at UNUSED/ZOMBIE, nothing else yet

@@ -379,18 +379,32 @@ Section UShRound.
      ∗ (∃ (cs0 : list nat) (s0 : fst) (s : dst),
           fdq r q s ∗ ⌜UCatOut.cat_tie cs0 s0 I s⌝))%I.
 
-  (* WHAT THIS SKELETON CANNOT NAME, and that is the finding: [UCatKernel]
-     has a ROUND ([cat_round_at]) and NO ENTRY, so the image/argv premises
-     cat's entry will carry ([UShEcho.echo_node_img]'s twin) do not exist
-     to be written down.  What CAN be written down is the channel and the
-     payload, which is what CAT-ENTRY-2 has to deliver. *)
+  (* THE ENTRY, AT THE NODE SH BUILT (lane CAT-GEOM-2).  This used to
+     quantify [M] and [av] FREE, and that was WRONG: cat's diagnostic
+     names `f` ([FileDisc.alt_catopen]), so an entry owed at EVERY
+     argument vector is a claim cat cannot make.  The five premises below
+     are the ones [UCatKernel.cat_image_entry] takes, and every one of
+     them is a fact SH HAS -- it built the node ([UkShEcho.echo_cmd] at
+     [t]) and it parsed the line -- so [Hchild_cat] is ONE application of
+     that lemma. *)
   Hypothesis Hchild_cat :
-    forall (I : list (bv 8)) (q : Qp) (M : gmap Z (bv 8)) (av : mword 64)
+    forall (I : list (bv 8)) (q : Qp) (ws : list (list (bv 8)))
+           (M : gmap Z (bv 8)) (sv t : Z) (gn : nat -> bv 8)
            (sts : list fdstate) (cw : Z) (cs : gset gname)
            (pidv : mword 32),
       length sts = NOFILE ->
       cw = FsImg.ROOTINO ->
-      ⊢ image_entry ElfUser.cat_elf M av sts cw cs pidv
+      (* ...and the line is `cat f`, read off sh's own node *)
+      EchoDisc.line_ok ws ->
+      UShEcho.echo_node_img ws M sv t gn ->
+      UkShEcho.echo_argv_bytes ws gn ->
+      length ws = 2%nat ->
+      UkShEcho.echo_alen ws 1%nat = 1%nat ->
+      (forall j : nat, (j < 1)%nat ->
+         LineWords.wl_line ws !!! (UkShEcho.echo_off ws 1%nat + j)%nat
+         = FsImgCheck.fname_f !!! j) ->
+      ⊢ image_entry ElfUser.cat_elf M (mword_of_int (t + 8) : mword 64) sts
+          cw cs pidv
           (fun _ : Z => UkShFork.ushf_wq Wcf I) (cat_pay I q) uslot.
 
   (* ---- HYPOTHESIS: the redirect child's own walk, from 0x9c0 to its

@@ -187,7 +187,6 @@ Section UkShRedirBody.
           (file : list (bv 8)) (fb : nat -> bv 8)
           (sz : Z) (ld : list fdstate) (n : nat) (I : list (bv 8)),
           ⌜ ukn_pay N' = (fun _ : Z => UkShFork.ushf_wq Wc I) ⌝ -∗
-          ⌜ ukn_held N' = ∅ ⌝ -∗
           ⌜ m !!! Regidx s1_idx = (mword_of_int s0 : mword 64) ⌝ -∗
           ⌜ UkShRedirLine.ushs_line_is ws file fb 0%nat len ⌝ -∗
           ⌜ ws = last_ws I ⌝ -∗
@@ -223,14 +222,14 @@ Section UkShRedirBody.
   Proof using .
     iIntros "#Hl". rewrite /UkShFork.ushf_child_law_at.
     iIntros "!>" (N' h m dw dv s0 len ws g sz ld n I)
-      "%Hpeq %Hheq %Hs1 %Hline %Hlws %Hs0 %Hs64 %Hs38 %Hszlo %Hszal %Hszok
+      "%Hpeq %Hs1 %Hline %Hlws %Hs0 %Hs64 %Hs38 %Hszlo %Hszal %Hszok
        %Hrows #Hcode #Hpcode #Hpro #Hjt Hstr Hws Hsy Hstd Hcwd Hch HM Hcr Hrun".
     destruct Hline as [ file Hline ].
     iApply ("Hl" $! N' h m dw dv s0 len ws file g sz ld n I
-              with "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%]
+              with "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%]
                     Hcode Hpcode Hpro Hjt Hstr Hws Hsy Hstd Hcwd Hch HM
                     Hcr Hrun");
-      [ exact Hpeq | exact Hheq | exact Hs1 | exact Hline | exact Hlws
+      [ exact Hpeq | exact Hs1 | exact Hline | exact Hlws
       | exact Hs0 | exact Hs64 | exact Hs38 | exact Hszlo | exact Hszal
       | exact Hszok | exact Hrows ].
   Qed.
@@ -242,13 +241,13 @@ Section UkShRedirBody.
   Proof using .
     iIntros "#Hl". rewrite /sh_redir_child_law.
     iIntros "!>" (N' h m dw dv s0 len ws file g sz ld n I)
-      "%Hpeq %Hheq %Hs1 %Hline %Hlws %Hs0 %Hs64 %Hs38 %Hszlo %Hszal %Hszok
+      "%Hpeq %Hs1 %Hline %Hlws %Hs0 %Hs64 %Hs38 %Hszlo %Hszal %Hszok
        %Hrows #Hcode #Hpcode #Hpro #Hjt Hstr Hws Hsy Hstd Hcwd Hch HM Hcr Hrun".
     iApply ("Hl" $! N' h m dw dv s0 len ws g sz ld n I
-              with "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%]
+              with "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%]
                     Hcode Hpcode Hpro Hjt Hstr Hws Hsy Hstd Hcwd Hch HM
                     Hcr Hrun");
-      [ exact Hpeq | exact Hheq | exact Hs1 | by exists file | exact Hlws
+      [ exact Hpeq | exact Hs1 | by exists file | exact Hlws
       | exact Hs0 | exact Hs64 | exact Hs38 | exact Hszlo | exact Hszal
       | exact Hszok | exact Hrows ].
   Qed.

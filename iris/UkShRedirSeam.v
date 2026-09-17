@@ -392,6 +392,13 @@ Section UkShRedirSeam.
   (* the open, as a CALL ([UkShRedir.ush_open_call]) at the file name the   *)
   (* line itself names.                                                     *)
   (*                                                                       *)
+  (* THE TWO CAPABILITIES ARE BOUNDED (lane SH-MALLOC-3): each is           *)
+  (* [UkShParse.ushp_malloc_ty_le N 168], not [ushp_malloc_ty], because     *)
+  (* two unbounded ones cannot both be discharged from one 64 KiB chunk     *)
+  (* (iris/UkShMalloc.v §7) and 168 is the larger of the two sizes sh's     *)
+  (* constructors ask for.  [wp_kshm_child_alloc_redir] below is this       *)
+  (* lemma with both of them spent out of [UkShMalloc.ushm_fresh].          *)
+  (*                                                                        *)
   (* THE RECEIPT IS NOT DROPPED.  [UkShRedir.wp_kshr_redir_arm] hands its   *)
   (* caller the run back at runcmd's own entry pc with the SUB-TREE, the    *)
   (* ledger the open left and the application's receipt [K ty]; this walk   *)
@@ -400,8 +407,8 @@ Section UkShRedirSeam.
   (* what the application lane fills with its own EXEC walk.                *)
   (* ===================================================================== *)
   Lemma wp_kshm_child_redir (UM0 UM1 UM2 : iProp Σ)
-      (Hm0 : UkShParse.ushp_malloc_ty N UM0 UM1)
-      (Hm1 : UkShParse.ushp_malloc_ty N UM1 UM2)
+      (Hm0 : UkShParse.ushp_malloc_ty_le N 168 UM0 UM1)
+      (Hm1 : UkShParse.ushp_malloc_ty_le N 168 UM1 UM2)
       (h : CpuId) (m : regfile) (dw dv : dfrac)
       (s0 cwdv : Z) (len : nat) (f : nat -> bv 8)
       (args : list (nat * nat)) (gp fe : nat)
@@ -543,6 +550,103 @@ Section UkShRedirSeam.
               with "Hdp Hcode Hjt Htree Hstd Hcwd Hopen Hrun").
     iIntros (hf mf q ty) "%Ha0f Hsub Hstd Hcwd HK Hrun".
     iApply ("Hcont" $! hf mf q ty with "[%//] Hsub Hstd Hcwd HK HM2 Hrun").
+  Qed.
+
+  (* ===================================================================== *)
+  (* §4 THE CHILD AT THE REDIRECT SHAPE, WITH THE ALLOCATOR DISCHARGED.     *)
+  (*                                                                       *)
+  (* [wp_kshm_child_redir] is stated over TWO abstract capabilities because *)
+  (* the redirect line's parse calls [malloc] twice -- [execcmd] and then,  *)
+  (* from [parseredirs], [redircmd].  This is it at the CONCRETE one: the   *)
+  (* heap /init handed sh's child, [UkShMalloc.ushm_fresh sz] -- [freep]    *)
+  (* holding zero, the sixteen bytes of [base], the break where [exec]      *)
+  (* left it.                                                              *)
+  (*                                                                       *)
+  (* WHAT MAKES THE CHAIN CLOSE IS THE BOUND, not a second [morecore].      *)
+  (* The first call runs on an EMPTY free list, so it walks [sbrk] and      *)
+  (* [free] and leaves the 64 KiB chunk [morecore] inserted minus its own   *)
+  (* twelve units: [ushm_one_ge (sz + 65536) 4084].  The second runs on     *)
+  (* THAT list, which is non-empty, so it is the short walk with no back    *)
+  (* edge ([UkShMalloc.wp_kshm_malloc_one]) and it leaves 4072.  Neither    *)
+  (* step is expressible at the unbounded contract, where a call at 65504   *)
+  (* takes 4095 of the 4096 units and nothing is left for the next one --   *)
+  (* see iris/UkShMalloc.v §7 and iris/UkShParse.v at                       *)
+  (* [ushp_malloc_ty_le].                                                   *)
+  (*                                                                       *)
+  (* THE LEFTOVER IS HANDED ON.  Where [wp_kshm_child_redir]'s continuation *)
+  (* has [UM2] this one has [ushm_one_ge (sz + 65536) 4072]: the free list  *)
+  (* the child's own [runcmd] arm inherits, so a later lane that needs sh   *)
+  (* to allocate again inside the redirect has the capability to hand.      *)
+  (* The break is at [sz + 65536] because the allocator asked the kernel    *)
+  (* for sixteen pages on the way through, exactly as in                    *)
+  (* [UkShMain.wp_kshm_child_alloc].                                        *)
+  (* ===================================================================== *)
+  Lemma wp_kshm_child_alloc_redir
+      (h : CpuId) (m : regfile) (dw dv : dfrac)
+      (s0 cwdv : Z) (len : nat) (f : nat -> bv 8)
+      (args : list (nat * nat)) (gp fe : nat)
+      (sz : Z) (ld : list fdstate) (st1 : fdstate) (n : nat)
+      (K : fdtype -> iProp Σ) :
+    m !!! Regidx s1_idx = (mword_of_int s0 : mword 64) ->
+    ushs_redir len f gp fe ->
+    ushs_toks len f gp 0%nat args ->
+    (0 < length args)%nat ->
+    (length args < 10)%nat ->
+    0 < s0 -> s0 + Z.of_nat len + 1 < Z64 -> s0 + Z.of_nat len < 2 ^ 38 ->
+    ld !! 1%nat = Some st1 ->
+    st1 <> FdClosed ->
+    (forall (rb wb : bool) (gn : PipeNames.pipe_names),
+       st1 <> FdOpen rb wb (FdPipe gn)) ->
+    (* the break is above [base] (0x2088, the last sixteen bytes of the
+       image) and page-aligned, which [exec] leaves it -- the same three
+       premises [UkShMain.wp_kshm_child_alloc] carries *)
+    8344 <= sz ->
+    UserPtTree.pgroundup sz = sz ->
+    usz_ok (sz + 65536) ->
+    (⊢ ukn_pay N (-1)) ->
+    UkSh.sh_deps -∗
+    shk_code γt -∗
+    ush_jtab γt -∗
+    shp_code γt -∗ shp_rodata γt -∗
+    ustr γd (DfracOwn 1) s0 len f -∗
+    ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
+    ustr γd dv ushp_symbols 7 ushp_sym_f -∗
+    UserFd.ustd γfd ld -∗
+    UserCwd.ucwd γcwd cwdv -∗
+    UkShMalloc.ushm_fresh N sz -∗
+    UkShRedir.ush_open_call N cwdv (s0 + Z.of_nat (S (S gp))) 1537
+      (<[1%nat := FdClosed]> ld) K -∗
+    urun N h m (mword_of_int 0x9c0)
+      (68 + (8 + (UkShDiag.ush_Dg + n))) -∗
+    (∀ (h' : CpuId) (m' : regfile) (q : Z) (ty : fdtype),
+       ⌜ m' !!! Regidx a0_idx = (mword_of_int q : mword 64) ⌝ -∗
+       ush_cmd γd q
+         (UExec (ush_args s0 (ushs_nulcut args len f fe) args)) -∗
+       UserFd.ustd γfd
+         (<[1%nat := FdOpen false true ty]> (<[1%nat := FdClosed]> ld)) -∗
+       UserCwd.ucwd γcwd cwdv -∗
+       K ty -∗
+       UkShMalloc.ushm_one_ge N (sz + 65536) 4072 -∗
+       urun N h' m' (mword_of_int ShSyms.runcmd)
+         (UkShDiag.ush_Dg + (70 + n)) -∗
+       WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+  Proof using Hpay Hpsok_free.
+    intros Hs1 Hred Htoks Hpos Htlen Hs0 Hs64 Hs38 Hst1 Hne Hnp
+           Hszlo Hszal Hszok Hpx.
+    iIntros "#Hdp #Hcode #Hjt #Hpcode #Hpro Hline Hws Hsy Hstd Hcwd HM Hopen
+             Hrun Hcont".
+    iApply (wp_kshm_child_redir
+              (UkShMalloc.ushm_fresh N sz)
+              (UkShMalloc.ushm_one_ge N (sz + 65536) 4084)
+              (UkShMalloc.ushm_one_ge N (sz + 65536) 4072)
+              (UkShMalloc.ushm_malloc_le_exec N Hpsok_free sz
+                 Hszlo Hszal Hszok)
+              (UkShMalloc.ushm_malloc_le_next N (sz + 65536))
+              h m dw dv s0 cwdv len f args gp fe ld st1 n K
+              Hs1 Hred Htoks Hpos Htlen Hs0 Hs64 Hs38 Hst1 Hne Hnp Hpx
+              with "Hdp Hcode Hjt Hpcode Hpro Hline Hws Hsy Hstd Hcwd HM
+                    Hopen Hrun Hcont").
   Qed.
 
 End UkShRedirSeam.

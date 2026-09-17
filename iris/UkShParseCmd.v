@@ -102,7 +102,7 @@ Section UkShParseCmd.
   Local Notation ushp_frame_join := (UkShParse.ushp_frame_join N).
   Local Notation ushp_frame_split := (UkShParse.ushp_frame_split N).
   Local Notation ushp_lit_str := (UkShParseLex.ushp_lit_str N).
-  Local Notation ushp_malloc_ty := (UkShParse.ushp_malloc_ty N).
+  Local Notation ushp_malloc_ty := (UkShParse.ushp_malloc_ty_le N 168).
   Local Notation ushp_slot := (UkShParse.ushp_slot N).
   Local Notation ushp_tree := (UkShParse.ushp_tree N).
   Local Notation ushp_type_at := (UkShParse.ushp_type_at N).

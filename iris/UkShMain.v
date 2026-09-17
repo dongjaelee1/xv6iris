@@ -656,8 +656,17 @@ Section UkShMain.
     (* the exit resource IS the payload here, and the law the identity *)
     iAssert (□ (ukn_pay N (-1) -∗ ukn_pay N (-1)))%I as "#Hpxw";
       [ iIntros "!> $" | ].
+    (* THE CAPABILITY IS WEAKENED HERE, AND NOWHERE ELSE (lane SH-MALLOC-3).
+       This lemma's [Hmalloc] is the UNBOUNDED contract, unchanged -- it is
+       what [UkShMalloc]'s adapter proves and what every caller supplies --
+       while the parser now asks for [UkShParse.ushp_malloc_ty_le N 168].
+       A capability good for every request up to 65504 is good for every
+       request up to 168, which is the one line below. *)
     iApply (UkShParseCmd.wp_kshp_parser N UMalloc (usz γs szv)
-              Hmalloc
+              (UkShParse.ushp_malloc_ty_le_mono N 65504 168 UMalloc
+                 (usz γs szv) ltac:(lia)
+                 (UkShParse.ushp_malloc_ty_le_top N UMalloc (usz γs szv)
+                    Hmalloc))
               h2 m2 dw dv s0 len f toks
               (8 + (UkShDiag.ush_Dg + n))
               Ha0_2 Hns Htoks Htlen Hs0 Hs64

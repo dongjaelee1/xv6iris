@@ -939,10 +939,14 @@ Section UkShEcho.
        on the arm where the allocation succeeded, for the exec below *)
     iAssert (□ (Cr -∗ ukn_pay N (-1)))%I as "#Hpxw".
     { iIntros "!> Hc". rewrite Hpeq. iApply ("Hcq" with "Hc"). }
+    (* the parser takes the BOUNDED capability (lane SH-MALLOC-3) and the
+       allocator's adapter proves the unbounded one; 168 <= 65504 *)
     iApply (UkShParseCmd.wp_kshp_parser N (UkShMalloc.ushm_fresh N sz)
               (usz (ukn_s N) (sz + 65536))
-              (UkShMalloc.ushm_malloc_ok_holds N Hpsok_free sz
-                 Hszlo Hszal Hszok)
+              (UkShParse.ushp_malloc_ty_le_mono N 65504 168 _ _ ltac:(lia)
+                 (UkShParse.ushp_malloc_ty_le_top N _ _
+                    (UkShMalloc.ushm_malloc_ok_holds N Hpsok_free sz
+                       Hszlo Hszal Hszok)))
               h2 m2 dw dv s0 len f (echo_toks ws)
               (8 + (UkShDiag.ush_Dg + n))
               Ha0_2 Hns Htoks Htlen Hs0 Hs64

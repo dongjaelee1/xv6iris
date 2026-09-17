@@ -117,7 +117,7 @@ Section UkShRedirPc.
   Local Notation ushp_frame_join := (UkShParse.ushp_frame_join N).
   Local Notation ushp_frame_split := (UkShParse.ushp_frame_split N).
   Local Notation ushp_lit_str := (UkShParseLex.ushp_lit_str N).
-  Local Notation ushp_malloc_ty := (UkShParse.ushp_malloc_ty N).
+  Local Notation ushp_malloc_ty := (UkShParse.ushp_malloc_ty_le N 168).
   Local Notation ushp_slots_cap := (UkShParse.ushp_slots_cap N).
   Local Notation ushp_slots_upd := (UkShParse.ushp_slots_upd N).
   Local Notation ushp_type_at := (UkShParse.ushp_type_at N).

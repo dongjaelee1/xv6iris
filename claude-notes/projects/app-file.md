@@ -100,3 +100,84 @@ conclusion `FileDisc.file_phi`.
   `make audit-file{,-only}`; the design page's §0 rewritten as landed.
 
 ## Findings (append as lanes report)
+
+### CAT-PIN — LANDED (2026-09-17, commit `9fb054b3b`)
+
+**cat's inum is 3.**  Read off the image, not chosen: mkfs packs the
+root in `UPROGS` order and `cat` is the first program after `README`
+(inum 2), so the root's record 3 is `(3, "cat")`.  Its record is
+`T_FILE`, `nlink = 1`, `size = 36728` — and those 36,728 bytes ARE
+`user/_cat`, byte for byte (`FsImgCheck.fsimg_cat_bytes_bool`).
+
+**What landed.**
+
+- `iris/FsCatPin.v` — `CAT_INO = 3`, `cat_path`, `cat_bytes :=
+  ElfUser.cat_elf`; `fsimg_cat_size` / `_nlink` / `_nlink_nz` /
+  `_size_bound` / `_type_nz` / `_type_nd` / `_file_bytes` / `_abs`;
+  `era0_cat_path_pin`, `era0_cat_content_pin`, `era0_cat_arun`,
+  `era0_cat_pins`, `era0_cat_pins_of_snap`, `era0_boot_cat_pins`,
+  `era0_recovery_cat_pins`, `era0_reboot_cat_pins`; and the resource
+  forms `fs_snap_era0_cat_pins`, `astate_era0_cat_pins`,
+  `astate_era0_boot_cat_pins`, `nview_era0_cat`, `nview_era0_boot_cat`.
+  `FsEchoPin.v` with `echo` → `cat` throughout and nothing else.
+- `iris/FsFPin.v` — `f_path`, `fsimg_f_path`, the five
+  `fname_f_ne_*`, `f_absent`, `f_absent_apath`, `era0_f_absent`,
+  `era0_boot_f_absent`, `era0_recovery_f_absent`.
+- `iris/FileFsPure.v` — `file_fs_pure av := echo_fs_pure av /\
+  era0_cat_pins av`, `file_fs_pure_echo`, `file_fs_pure_cat`,
+  `file_fs_era0` (the twin of `AppEcho.echo_fs_era0`: same three
+  premises, `file_fs_pure (abs_view (fss_inodes S))`).
+- `iris/FsImgCheck.v` (additive) — `fname_cat`, `fname_f`,
+  `fsimg_cat_path` (`= Some 3`), `fsimg_cat_type`,
+  `fsimg_cat_bytes_bool`, `fsimg_cat_at`, `fsimg_cat_ok`.  Each exactly
+  where echo's twin sits; no landed statement moved.
+- `iris/ElfUser.v` (additive) — `cat_elf` and the fifth copy of the
+  program theorem set, on `echo_elf`'s pattern (pure-bss writable
+  segment: entry 0xf6, loads `(0x0, 0xecc, 0xecc, R-X)` and
+  `(0x1000, 0x0, 0x220, RW-)`, `.bss = [0x1000, 0x1220)`).
+- `user-rocq/_CoqProject` — `CatElfRaw.v` joins the list.  It was
+  DUMPED but deliberately unlisted ("nothing needs it"); now something
+  does.  **The next lane that adds a program must do the same**, and
+  must `rm` the remote `CoqMakefile` afterwards (`run-on-gcp --proofs`
+  regenerates it only when it is ABSENT, so a `_CoqProject` edit is
+  invisible to the remote build until you delete it).
+
+**The `no f` sentence is `FsConsPin`'s, not `TreeImg`'s.**  The brief
+asked for it on `TreeImg.img_root_blk`'s constant reading; it is not
+needed and would have cost an import of `TreeImg` (hence `App` and
+`AppTree`) into an image leaf.  `FsConsPin.fsimg_console_path` already
+pays the identical computation for `console` — a MISS, so the full scan
+— through `FsImgCheck.fsimg_path_root`, which is `FsImg.path_at_disk_dir`'s
+single `dir_first` pass and not `dir_view`.  `fsimg_f_path` is that line
+at `fname_f`, and it is not measurably slower than its neighbours.
+`TreeImg`'s `img_root_blk` / `Global Opaque` machinery exists for
+`dir_view`, which nothing here calls.
+
+**Traps hit (one).**  `FsFPin` is a PURE leaf — no `iris.proofmode` —
+so `rewrite /f_absent` and `rewrite -Hdk` (ssreflect) do not parse
+there: `Syntax error: '*' or [oriented_rewriter] expected after
+'rewrite'`.  Every pin file in this family imports `iris.proofmode` for
+its own `iProp` sections and therefore gets ssr rewriting for free; a
+file that does not must spell `unfold` / `rewrite <-`.  Worth knowing
+for MODEL (`FileDisc.v`), which is Iris-free by charter.
+
+**Assumptions.**  `Print Assumptions` on `era0_cat_path_pin`,
+`era0_cat_content_pin`, `era0_cat_arun`, `era0_cat_pins_of_snap`,
+`era0_boot_cat_pins`, `era0_recovery_cat_pins`, `era0_f_absent`,
+`era0_recovery_f_absent`, `file_fs_era0`, `ElfUser.cat_elf_wf` and
+`FsImgCheck.fsimg_cat_ok`: the eleven `PrimString`/`PrimInt63`
+primitives, nothing else — no `Admitted`, no project axiom, no `Spec*`
+module parameter.  Echo audit still 14, tree audit still the system
+theorem's thirteen (ten Rocq primitives + the two reservation
+`Parameter`s + `functional_extensionality_dep`).  Whole tree green
+(`--proofs -k`, no `Error`).
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  APP-CLAIM: `f_ok av None`
+is `FsFPin.f_absent av` — use that name rather than re-spelling the
+`astep`, because `FsConsPin`'s section 5 delta algebra
+(`cons_absent_arm` / `_create_other` / `_unarm` / `_trunc`, and the
+name-generic `file_pin_*` family beside them) is written against
+exactly this shape and is what carries the claim through the mknod and
+the create legs.  `FsFPin` deliberately stops before those: they need
+`FsAbsDelta` and belong with the claim, and the five `fname_f_ne_*`
+inequalities they take are already proved there.

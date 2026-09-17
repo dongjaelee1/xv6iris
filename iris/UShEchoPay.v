@@ -392,9 +392,27 @@ Section UShEchoPayGen.
               with "Hxlw Hsup").
   Qed.
 
-  (* ...AND ITS ECHO-SIDE DISCHARGE: at an era whose exec-failed
-     diagnostic is [alt_execfail] at every input, the premise above is
-     [UShPanic.ush_execfail_law_hold_at]. *)
+  (* ...AND ITS DISCHARGE, AT THE PARAMETERIZED CARRIER (lane LINK-GEN-4).
+     [UShPanic.ush_execfail_law_hold_at] delivers the law at [lk_exfb L I]
+     and its own index, so at [UkShEcho.ush_execfail_law_wq_at] there is
+     NOTHING to prove -- no equation, at any era.  THIS is what
+     [UShRound.Hexecfail] should be stated at. *)
+  Lemma ush_execfail_law_wq_at_hold (Hold : list (bv 8) -> iProp Σ) :
+    ⊢ lk_links L -∗
+      UkShEcho.ush_execfail_law_wq_at (PS := uprogSG_free)
+        (lk_exfb L) (fun I => (length (lk_exfb L I) - 2)%nat)
+        (fun I p => lk_lcred L (S gen_id) I p ∗ Hold I)%I.
+  Proof using .
+    iIntros "#Hlk". rewrite /UkShEcho.ush_execfail_law_wq_at.
+    iIntros "!>" (I).
+    iApply (UShPanic.ush_execfail_law_hold_at (PS := uprogSG_free) L Hold I
+              with "Hlk").
+  Qed.
+
+  (* ...and the LANDED carrier, which still names the constants: an era
+     whose exec-failed bytes are [alt_execfail] at every input answers it.
+     echo does; the file does NOT (`fexfb LCat = alt_execcat`), which is
+     the lane's open item. *)
   Lemma ush_execfail_law_wq_hold_at (Hold : list (bv 8) -> iProp Σ) :
     (forall I0 : list (bv 8), lk_exfb L I0 = alt_execfail) ->
     ⊢ lk_links L -∗
@@ -402,11 +420,10 @@ Section UShEchoPayGen.
         (fun I p => lk_lcred L (S gen_id) I p ∗ Hold I)%I.
   Proof using .
     intros Hxb. iIntros "#Hlk".
-    rewrite /UkShEcho.ush_execfail_law_wq. iIntros "!>" (I).
-    rewrite /UkShDiag.ush_execfail_law.
-    iPoseProof (UShPanic.ush_execfail_law_hold_at (PS := uprogSG_free) L Hold I
-                  with "Hlk") as "Hx".
-    rewrite (Hxb I). iExact "Hx".
+    iApply (UkShEcho.ush_execfail_law_wq_of_at (PS := uprogSG_free)
+              (lk_exfb L) (fun I => (length (lk_exfb L I) - 2)%nat) _
+              Hxb ltac:(intro I; cbn beta; rewrite (Hxb I) UShPanic.alt_execfail_len; reflexivity)).
+    iApply (ush_execfail_law_wq_at_hold Hold with "Hlk").
   Qed.
 
 End UShEchoPayGen.

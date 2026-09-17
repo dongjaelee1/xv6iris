@@ -1256,4 +1256,4 @@ NI, it is NI's §4 "functional rows" arriving under another name),
 `design/fs-syscall-specs.md` §4 (a piece may not ask a client to move
 a kernel-owned ghost — RD-1 must respect it: the HELD half is the
 process's own, so the fire moves BOTH halves holder-side),
-`projects/app-echo.md` (the echo instances being re-derived).
+`completed/app-echo.md` (the echo instances being re-derived).

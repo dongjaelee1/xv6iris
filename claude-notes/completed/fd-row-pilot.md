@@ -3,7 +3,7 @@
 **RETIRED 2026-09-09.**  The pilot's parallel form (`FsFdMirror.v`,
 `UexecRetFs.v`, `FdRowPilot.v`, `FdRowMint.v`, `UkInitFs.v`, `UkRunSysFs.v`,
 `UkRunFsLeaf.v`, `UkStepGenFs.v`, `UkStepGenSeals.v`, `FsImgConsole.v`) is
-deleted (HYGIENE lane, projects/app-echo.md).  What it prototyped — a
+deleted (HYGIENE lane, `app-echo.md`).  What it prototyped — a
 per-process payload deposited at an ecall and returned stepped — is
 adopted in a different shape: the ARM (design/applications.md §2,
 `UexecSG.sbundle_at`/`spost_at`), where each syscall deposits its own

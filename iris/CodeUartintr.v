@@ -210,9 +210,9 @@ Section CodeUartintr.
   Proof. mk_rvc (KernelSyms.uartintr + 0x6e) (mword_of_int 0x953e : mword 16)
     (mword_of_int (KernelSyms.uartintr + 0x6e) : mword 64) (RTYPE (Regidx (mword_of_int 15), Regidx (mword_of_int 10), Regidx (mword_of_int 10), ADD)) kd_953e exec_execute_C_ADD. Qed.
 
-  Lemma uii2_70 : kernel_text -∗ instr (mword_of_int (KernelSyms.uartintr + 0x70) : mword 64) false (JAL (mword_of_int 5564 : mword 21, Regidx (mword_of_int 1))).
-  Proof. mk_base (KernelSyms.uartintr + 0x70) (mword_of_int 0x5bc010ef : mword 32)
-    (mword_of_int (KernelSyms.uartintr + 0x70) : mword 64) (JAL (mword_of_int 5564 : mword 21, Regidx (mword_of_int 1))) kd_5bc010ef. Qed.
+  Lemma uii2_70 : kernel_text -∗ instr (mword_of_int (KernelSyms.uartintr + 0x70) : mword 64) false (JAL (mword_of_int 5548 : mword 21, Regidx (mword_of_int 1))).
+  Proof. mk_base (KernelSyms.uartintr + 0x70) (mword_of_int 0x5ac010ef : mword 32)
+    (mword_of_int (KernelSyms.uartintr + 0x70) : mword 64) (JAL (mword_of_int 5548 : mword 21, Regidx (mword_of_int 1))) kd_5ac010ef. Qed.
 
   Lemma uii2_74 : kernel_text -∗ instr (mword_of_int (KernelSyms.uartintr + 0x74) : mword 64) true (JAL (sign_extend' 21 (concat_vec (mword_of_int 2013 : mword 11) ('b"0")), zreg)).
   Proof. mk_rvc (KernelSyms.uartintr + 0x74) (mword_of_int 0xbf6d : mword 16)

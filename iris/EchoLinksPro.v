@@ -43,6 +43,7 @@ Require Import SailStdpp.Operators_mwords.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values
         SailStdpp.MachineWord.
 Require Import RiscvLang.
+Require Import LineWords.
 Require Import EchoDisc.
 Require Import EchoOutPure.
 Require Import RiscvPtsto.
@@ -98,12 +99,12 @@ Proof.
 Qed.
 
 (* the round-opening block, spelt with [EchoLinks.wr_pre] *)
-Lemma pending_n_round_wr_pre (ps cs : list nat) (n : nat) :
-  (n `mod` length echo_line)%nat = 0%nat ->
-  (n = 0%nat \/ cs !!! (n `div` length echo_line - 1)%nat = 3%nat) ->
-  pending_n ps cs n
-  = wr_pre cs n ++ pro_of (pro_from (pro_idx cs (n `div` length echo_line)) ps).
-Proof. intros Hm Hr. rewrite /wr_pre. exact (pending_n_round_pre ps cs n Hm Hr). Qed.
+Lemma pending_at_round_wr_pre (ps cs : list nat) (I : list (bv 8)) :
+  rest_of I = [] ->
+  (I = [] \/ cs !!! (nlines I - 1)%nat = 3%nat) ->
+  pending_at ps cs I
+  = wr_pre cs I ++ pro_of (pro_from (pro_idx cs (nlines I)) ps).
+Proof. intros Hm Hr. rewrite /wr_pre. exact (pending_at_round_pre ps cs I Hm Hr). Qed.
 
 (* ===================================================================== *)
 (*  THE ROUND-OPEN SHAPE AFTER A BANNER: [wr_pro] whose open prologue is  *)
@@ -113,16 +114,16 @@ Proof. intros Hm Hr. rewrite /wr_pre. exact (pending_n_round_pre ps cs n Hm Hr).
 (*  word over the continuing letters), which is not enough to place the   *)
 (*  diagnostic's bytes.                                                   *)
 (* ===================================================================== *)
-Definition wr_pban (ps cs : list nat) (n P : nat) : Prop :=
-  wr_pro ps cs n P
+Definition wr_pban (ps cs : list nat) (I : list (bv 8)) (P : nat) : Prop :=
+  wr_pro ps cs I P
   /\ (exists j : nat,
-        pro_from (pro_idx cs (n `div` length echo_line)) ps = pro_fail j ++ [3%nat]).
+        pro_from (pro_idx cs (nlines I)) ps = pro_fail j ++ [3%nat]).
 
-Lemma wr_pban_of_ban (ps cs : list nat) (n P : nat) :
-  wr_ban ps cs n P -> wr_pban (ps ++ [3%nat]) cs n (P + length u_banner)%nat.
+Lemma wr_pban_of_ban (ps cs : list nat) (I : list (bv 8)) (P : nat) :
+  wr_ban ps cs I P -> wr_pban (ps ++ [3%nat]) cs I (P + length u_banner)%nat.
 Proof.
-  intros Hw. split; [exact (wr_ban_done ps cs n P Hw) |].
-  destruct (wr_ban_filed ps cs n P Hw) as (j & Hj & _). by exists j.
+  intros Hw. split; [exact (wr_ban_done ps cs I P Hw) |].
+  destruct (wr_ban_filed ps cs I P Hw) as (j & Hj & _). by exists j.
 Qed.
 
 (* ===================================================================== *)
@@ -131,32 +132,34 @@ Qed.
 (*  [pro_fail j ++ [3; a]] and the cursor past the [j]-th sub-round, the  *)
 (*  banner and [i] bytes of the alternative.                              *)
 (* ===================================================================== *)
-Definition wr_pdiag (ps cs : list nat) (n P a i : nat) : Prop :=
-  pro_pin ps cs n
-  /\ (n `mod` length echo_line)%nat = 0%nat
-  /\ (n `div` length echo_line)%nat = length cs
-  /\ (n = 0%nat \/ cs !!! (n `div` length echo_line - 1)%nat = 3%nat)
+Definition wr_pdiag (ps cs : list nat) (I : list (bv 8)) (P a i : nat)
+  : Prop :=
+  pro_pin ps cs I
+  /\ rest_of I = []
+  /\ nlines I = length cs
+  /\ (I = [] \/ cs !!! (nlines I - 1)%nat = 3%nat)
   /\ (exists j : nat,
-        pro_from (pro_idx cs (n `div` length echo_line)) ps
-        = pro_fail j ++ [3%nat; a]
-        /\ P = (length (proc_upto ps cs n) + length (wr_pre cs n)
+        pro_from (pro_idx cs (nlines I)) ps = pro_fail j ++ [3%nat; a]
+        /\ P = (length (proc_before ps cs I) + length (wr_pre cs I)
                 + pro_round * j + length u_banner + i)%nat).
 
 (* THE BYTE AT THE CURSOR is the alternative's [i]-th. *)
-Lemma wr_pdiag_byte (ps cs : list nat) (n P a i : nat) (b : bv 8) :
-  wr_pdiag ps cs n P a i -> pro_alts !!! a !! i = Some b ->
-  proc_upto ps cs (S n) !! P = Some b.
+Lemma wr_pdiag_byte (ps cs : list nat) (I : list (bv 8)) (P a i : nat)
+      (b : bv 8) :
+  wr_pdiag ps cs I P a i -> pro_alts !!! a !! i = Some b ->
+  proc_stream ps cs I !! P = Some b.
 Proof.
   intros (Hpin & Hm & Hdv & Hr & (j & Hj & HP)) Hb.
-  rewrite proc_upto_snoc (pending_n_round_wr_pre ps cs n Hm Hr) Hj
+  rewrite /proc_stream (pending_at_round_wr_pre ps cs I Hm Hr) Hj
           pro_of_fail_snoc HP.
-  replace (length (proc_upto ps cs n) + length (wr_pre cs n)
+  replace (length (proc_before ps cs I) + length (wr_pre cs I)
            + pro_round * j + length u_banner + i)%nat
-    with (length (proc_upto ps cs n)
-          + (length (wr_pre cs n)
+    with (length (proc_before ps cs I)
+          + (length (wr_pre cs I)
              + (length (pro_of (pro_fail j)) + (length u_banner + i))))%nat
     by (rewrite pro_of_fail_length; lia).
-  rewrite (lookup_app_shift (proc_upto ps cs n)) (lookup_app_shift (wr_pre cs n))
+  rewrite (lookup_app_shift (proc_before ps cs I))
+          (lookup_app_shift (wr_pre cs I))
           (lookup_app_shift (pro_of (pro_fail j))) (lookup_app_shift u_banner).
   exact Hb.
 Qed.
@@ -164,36 +167,37 @@ Qed.
 (* THE CHOICE BYTE: filing [a] at the round-open shape after a banner is
    this shape one byte in.  The same step as [EchoLinks.wr_pro_dollar] at
    [a = 0], for any [a]. *)
-Lemma wr_pdiag_1_of_pro (ps cs : list nat) (n P a : nat) :
-  wr_pban ps cs n P -> wr_pdiag (ps ++ [a]) cs n (S P) a 1%nat.
+Lemma wr_pdiag_1_of_pro (ps cs : list nat) (I : list (bv 8)) (P a : nat) :
+  wr_pban ps cs I P -> wr_pdiag (ps ++ [a]) cs I (S P) a 1%nat.
 Proof.
   intros ((Hpin & Hm & Hdv & Hr & Hnd & HP) & (j & Hj)).
-  assert (Hle : (pro_idx cs (n `div` length echo_line) <= pro_rounds ps)%nat)
-    by exact (pro_pin_idx_le ps cs n Hpin).
+  assert (Hle : (pro_idx cs (nlines I) <= pro_rounds ps)%nat)
+    by exact (pro_pin_idx_le ps cs I Hpin).
   assert (Hpre : ps `prefix_of` (ps ++ [a])) by by eexists.
-  (* the stream below [n] does not read the new choice *)
-  assert (Hlow : proc_upto (ps ++ [a]) cs n = proc_upto ps cs n).
-  { symmetry. rewrite /proc_upto. apply proc_upto_from_ext.
-    intros k _ Hk. apply (pending_n_ps_ext ps (ps ++ [a]) cs k Hpre).
-    apply (pro_pin_at ps cs n k Hpin). lia. }
-  assert (H3 : length (pro_of (pro_fail j ++ [3%nat])) = (pro_round * j + length u_banner)%nat).
+  (* the stream strictly below [I] does not read the new choice *)
+  assert (Hlow : proc_before (ps ++ [a]) cs I = proc_before ps cs I).
+  { symmetry. apply proc_before_ext. intros J HJ Hne.
+    apply (pending_at_ps_ext ps (ps ++ [a]) cs J Hpre).
+    exact (pro_pin_at ps cs I (nlines J) Hpin (nstarted_strict J I HJ Hne)). }
+  assert (H3 : length (pro_of (pro_fail j ++ [3%nat]))
+               = (pro_round * j + length u_banner)%nat).
   { rewrite (pro_of_open_app _ _ (pro_done_fail j)) pro_of_singleton pro_alts_3.
     rewrite length_app pro_of_fail_length. reflexivity. }
   rewrite /wr_pdiag. split_and!.
-  - exact (pro_pin_mono ps (ps ++ [a]) cs n Hpre Hpin).
+  - exact (pro_pin_mono ps (ps ++ [a]) cs I Hpre Hpin).
   - exact Hm.
   - exact Hdv.
   - exact Hr.
   - exists j. split.
     + rewrite (pro_from_snoc_le _ ps a Hle) Hj. by rewrite -app_assoc.
-    + rewrite Hlow HP proc_upto_snoc (length_app (proc_upto ps cs n))
-              (pending_n_round_wr_pre ps cs n Hm Hr) (length_app (wr_pre cs n))
+    + rewrite Hlow HP /proc_stream (length_app (proc_before ps cs I))
+              (pending_at_round_wr_pre ps cs I Hm Hr) (length_app (wr_pre cs I))
               Hj H3. lia.
 Qed.
 
 (* EVERY LATER BYTE moves the cursor by one and nothing else. *)
-Lemma wr_pdiag_S (ps cs : list nat) (n P a i : nat) :
-  wr_pdiag ps cs n P a i -> wr_pdiag ps cs n (S P) a (S i).
+Lemma wr_pdiag_S (ps cs : list nat) (I : list (bv 8)) (P a i : nat) :
+  wr_pdiag ps cs I P a i -> wr_pdiag ps cs I (S P) a (S i).
 Proof.
   intros (Hpin & Hm & Hdv & Hr & (j & Hj & HP)).
   split_and!; try assumption. exists j. split; [exact Hj | lia].
@@ -203,9 +207,9 @@ Qed.
    failed sub-round -- [wr_ban] with [S j] sub-rounds, at the same count.
    [pro_round] is exactly the banner and this diagnostic, which is the
    whole arithmetic. *)
-Lemma wr_pdiag_done_1 (ps cs : list nat) (n P i : nat) :
+Lemma wr_pdiag_done_1 (ps cs : list nat) (I : list (bv 8)) (P i : nat) :
   i = length (pro_alts !!! 1%nat) ->
-  wr_pdiag ps cs n P 1%nat i -> wr_ban ps cs n P.
+  wr_pdiag ps cs I P 1%nat i -> wr_ban ps cs I P.
 Proof.
   intros Hi (Hpin & Hm & Hdv & Hr & (j & Hj & HP)).
   assert (Hb : length u_banner = 18%nat) by (vm_compute; reflexivity).
@@ -220,36 +224,43 @@ Qed.
 
 (* ===================================================================== *)
 (*  WHY [wr_pro] HAS TO BE KEPT AND NOT RECOVERED.  At a round-opening    *)
-(*  boundary the two arms of [wr_owed] are BOTH inhabited, at the same    *)
-(*  count and at prefix-comparable line choices: after one line whose     *)
+(*  boundary the two arms of [wr_owed] are BOTH inhabited, at the SAME    *)
+(*  INPUT and at prefix-comparable line choices: after one line whose     *)
 (*  block was the shell's fork panic, the round is open ([wr_pro] at      *)
 (*  [cs = [3]], nothing of the new round predicted); after one line whose *)
 (*  block is still owed, it is not ([wr_blk] at [cs = []]).  Nothing      *)
-(*  /init holds -- it names no line choice, and the era's two bounds are  *)
+(*  /init holds -- it names no line choice, and the era's bounds are      *)
 (*  persistent lower bounds, so [cs_lb v [3]] and [cs_lb v []] sit side   *)
 (*  by side -- separates them.  So a holder of [ewc_owed] cannot get      *)
 (*  [ewc_pro] back; the credential that /init keeps for its fork's refund *)
 (*  must be [ewc_pro] itself.                                             *)
+(*                                                                       *)
+(*  THE WITNESS IS ONE TYPED LINE, [EchoDisc.demo_ws1] ("echo hi"), and   *)
+(*  the two cursors are computed THROUGH THE PARSER: 20 is the prologue   *)
+(*  [u_prologue] the boot round wrote, and 25 is that plus the five bytes *)
+(*  of the panic line "fork\n" the open arm has already owed.             *)
 (* ===================================================================== *)
 Lemma wr_owed_ambiguous :
-  wr_pro [3%nat; 0%nat] [3%nat] 17%nat 25%nat
-  /\ wr_blk [3%nat; 0%nat] [] 17%nat 20%nat.
+  wr_pro [3%nat; 0%nat] [3%nat] (wl_line demo_ws1) 25%nat
+  /\ wr_blk [3%nat; 0%nat] [] (wl_line demo_ws1) 20%nat.
 Proof.
   split.
   - rewrite /wr_pro. split_and!.
-    + intros q Hq. pose proof echo_line_length as HL. rewrite HL in Hq.
-      assert (Hq0 : q = 0%nat) by lia. subst q. vm_compute. lia.
-    + vm_compute. reflexivity.
-    + vm_compute. reflexivity.
-    + right. vm_compute. reflexivity.
-    + vm_compute. intro H. inversion H.
-    + vm_compute. reflexivity.
+    + intros q Hq. vm_compute (nstarted (wl_line demo_ws1)) in Hq.
+      assert (Hq0 : q = 0%nat) by lia. subst q. by vm_compute.
+    + by vm_compute.
+    + by vm_compute.
+    + right. by vm_compute.
+    + assert (Hz : pro_from (pro_idx [3%nat] (nlines (wl_line demo_ws1)))
+                     [3%nat; 0%nat] = []) by (by vm_compute).
+      rewrite Hz. intros H. by apply Exists_nil in H.
+    + by vm_compute.
   - rewrite /wr_blk. split_and!.
-    + intros q Hq. pose proof echo_line_length as HL. rewrite HL in Hq.
-      assert (Hq0 : q = 0%nat) by lia. subst q. vm_compute. lia.
-    + vm_compute. reflexivity.
-    + vm_compute. reflexivity.
-    + vm_compute. reflexivity.
+    + intros q Hq. vm_compute (nstarted (wl_line demo_ws1)) in Hq.
+      assert (Hq0 : q = 0%nat) by lia. subst q. by vm_compute.
+    + by vm_compute.
+    + by vm_compute.
+    + by vm_compute.
 Qed.
 
 Section echo_links_pro.
@@ -262,19 +273,19 @@ Section echo_links_pro.
   (*  THE ROUND-OPEN CREDENTIAL, EXACTLY: what /init's banner leaves,     *)
   (*  and what its two diagnostics start from.                            *)
   (* =================================================================== *)
-  Definition ewc_pro (v : era_pins) (n : nat) : iProp Σ :=
-    ((∃ ps cs P : _, ⌜wr_pban ps cs n P⌝ ∗ turn v P ∗ ps_lb v ps
-        ∗ cs_lb v cs ∗ E_lb v n) ∨ T)%I.
+  Definition ewc_pro (v : era_pins) (I : list (bv 8)) : iProp Σ :=
+    ((∃ ps cs P : _, ⌜wr_pban ps cs I P⌝ ∗ turn v P ∗ ps_lb v ps
+        ∗ cs_lb v cs ∗ inp_lb v I) ∨ T)%I.
 
-  Global Instance ewc_pro_timeless v n : Timeless (ewc_pro v n).
+  Global Instance ewc_pro_timeless v I : Timeless (ewc_pro v I).
   Proof. rewrite /ewc_pro. apply _. Qed.
 
-  Lemma ewc_pro_taint v n : T -∗ ewc_pro v n.
+  Lemma ewc_pro_taint v I : T -∗ ewc_pro v I.
   Proof. iIntros "HT". rewrite /ewc_pro. by iRight. Qed.
 
   (* ...is one arm of what the shell is lent... *)
-  Lemma ewc_owed_of_pro (v : era_pins) (n : nat) :
-    ewc_pro v n -∗ ewc_owed T v n.
+  Lemma ewc_owed_of_pro (v : era_pins) (I : list (bv 8)) :
+    ewc_pro v I -∗ ewc_owed T v I.
   Proof.
     rewrite /ewc_pro /ewc_owed.
     iIntros "[Hl | #HT]"; last by iRight.
@@ -283,19 +294,20 @@ Section echo_links_pro.
     iPureIntro. left. exact (proj1 Hw).
   Qed.
 
-  (* ...and is EXACTLY what the eighteenth banner byte leaves
+  (* ...and is EXACTLY what the last banner byte leaves
      ([EchoLinks.ewc_ban_done] is this followed by [ewc_owed_of_pro]). *)
-  Lemma ewc_ban_done_pro (v : era_pins) (n : nat) :
-    ewc_ban T v n (length u_banner) -∗ ewc_pro v n.
+  Lemma ewc_ban_done_pro (v : era_pins) (I : list (bv 8)) :
+    ewc_ban T v I (length u_banner) -∗ ewc_pro v I.
   Proof.
     rewrite /EchoLinks.ewc_ban /ewc_pro.
     iIntros "[Hl | #HT]"; last by iRight.
     iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
     assert (H18 : length u_banner = 18%nat) by (vm_compute; reflexivity).
-    rewrite H18 in Hw. cbn [EchoLinks.wr_banp] in Hw. destruct Hw as (ps' & -> & Hw).
+    rewrite H18 in Hw. cbn [EchoLinks.wr_banp] in Hw.
+    destruct Hw as (ps' & -> & Hw).
     iLeft. iExists (ps' ++ [3%nat]), cs, (P + length u_banner)%nat.
     iFrame "Htn Hps Hcs HE". iPureIntro.
-    exact (wr_pban_of_ban ps' cs n P Hw).
+    exact (wr_pban_of_ban ps' cs I P Hw).
   Qed.
 
   (* =================================================================== *)
@@ -304,22 +316,22 @@ Section echo_links_pro.
   (*  itself (nothing filed yet); byte 0 goes through [echo_link_pro],    *)
   (*  which files [ps ++ [a]]; every later byte through [echo_link_w].     *)
   (* =================================================================== *)
-  Definition ewc_pdg (v : era_pins) (n a i : nat) : iProp Σ :=
-    ((∃ ps cs P : _, ⌜wr_pdiag ps cs n P a i⌝ ∗ turn v P ∗ ps_lb v ps
-        ∗ cs_lb v cs ∗ E_lb v n) ∨ T)%I.
+  Definition ewc_pdg (v : era_pins) (I : list (bv 8)) (a i : nat) : iProp Σ :=
+    ((∃ ps cs P : _, ⌜wr_pdiag ps cs I P a i⌝ ∗ turn v P ∗ ps_lb v ps
+        ∗ cs_lb v cs ∗ inp_lb v I) ∨ T)%I.
 
-  Definition ewc_pdiag (v : era_pins) (n a i : nat) : iProp Σ :=
+  Definition ewc_pdiag (v : era_pins) (I : list (bv 8)) (a i : nat) : iProp Σ :=
     match i with
-    | O => ewc_pro v n
-    | S _ => ewc_pdg v n a i
+    | O => ewc_pro v I
+    | S _ => ewc_pdg v I a i
     end.
 
-  Global Instance ewc_pdg_timeless v n a i : Timeless (ewc_pdg v n a i).
+  Global Instance ewc_pdg_timeless v I a i : Timeless (ewc_pdg v I a i).
   Proof. rewrite /ewc_pdg. apply _. Qed.
-  Global Instance ewc_pdiag_timeless v n a i : Timeless (ewc_pdiag v n a i).
+  Global Instance ewc_pdiag_timeless v I a i : Timeless (ewc_pdiag v I a i).
   Proof. rewrite /ewc_pdiag. destruct i; apply _. Qed.
 
-  Lemma ewc_pdiag_taint v n a i : T -∗ ewc_pdiag v n a i.
+  Lemma ewc_pdiag_taint v I a i : T -∗ ewc_pdiag v I a i.
   Proof.
     iIntros "HT". rewrite /ewc_pdiag. destruct i.
     - by iApply ewc_pro_taint.
@@ -327,16 +339,16 @@ Section echo_links_pro.
   Qed.
 
   (* the family's start IS the round-open credential (definitionally) *)
-  Lemma ewc_pdiag_0 (v : era_pins) (n a : nat) :
-    ewc_pro v n -∗ ewc_pdiag v n a 0%nat.
+  Lemma ewc_pdiag_0 (v : era_pins) (I : list (bv 8)) (a : nat) :
+    ewc_pro v I -∗ ewc_pdiag v I a 0%nat.
   Proof. by iIntros "$". Qed.
 
   (* ONE BYTE, at either link. *)
-  Lemma echo_pdiag_step (k : nat) (v : era_pins) (n a i : nat) (b : bv 8)
-      (Φ : iProp Σ) :
+  Lemma echo_pdiag_step (k : nat) (v : era_pins) (I : list (bv 8)) (a i : nat)
+      (b : bv 8) (Φ : iProp Σ) :
     pro_alts !!! a !! i = Some b ->
-    era_pin γ k v -∗ echo_links T γ -∗ ewc_pdiag v n a i -∗
-    (ewc_pdiag v n a (S i) -∗ Φ) -∗
+    era_pin γ k v -∗ echo_links T γ -∗ ewc_pdiag v I a i -∗
+    (ewc_pdiag v I a (S i) -∗ Φ) -∗
     out_link Uart0 k b Φ.
   Proof.
     intros Hb. iIntros "#Hpin #Hlk Hc HΦ".
@@ -351,9 +363,9 @@ Section echo_links_pro.
       { iApply ("Ht" $! k b Φ with "HT [HΦ]").
         iIntros "#HT'". iApply "HΦ". by iRight. }
       iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
-      pose proof (wr_pdiag_1_of_pro ps cs n P a Hw) as Hw'.
+      pose proof (wr_pdiag_1_of_pro ps cs I P a Hw) as Hw'.
       destruct Hw as ((Hpin & Hm & Hdv & Hr & Hnd & HP) & _).
-      iApply ("Hpro" $! k v P n a b ps cs Φ
+      iApply ("Hpro" $! k v P a b ps cs I Φ
                 with "[%] [%] [%] [%] [%] [%] [%] [%] Hpin Htn Hps Hcs HE [HΦ]").
       { exact Hm. }
       { exact Hr. }
@@ -373,10 +385,10 @@ Section echo_links_pro.
       { iApply ("Ht" $! k b Φ with "HT [HΦ]").
         iIntros "#HT'". iApply "HΦ". by iRight. }
       iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
-      pose proof (wr_pdiag_byte ps cs n P a (S i) b Hw Hb) as Hby.
-      pose proof (wr_pdiag_S ps cs n P a (S i) Hw) as Hw'.
+      pose proof (wr_pdiag_byte ps cs I P a (S i) b Hw Hb) as Hby.
+      pose proof (wr_pdiag_S ps cs I P a (S i) Hw) as Hw'.
       destruct Hw as (Hpin & Hm & Hdv & Hr & _).
-      iApply ("Hw" $! k v P n b ps cs Φ
+      iApply ("Hw" $! k v P b ps cs I Φ
                 with "[%] [%] [%] Hpin Htn Hps Hcs HE [HΦ]").
       { lia. }
       { exact Hpin. }
@@ -388,18 +400,18 @@ Section echo_links_pro.
   Qed.
 
   (* THE END SHAPE OF ALTERNATIVE 1: the next sub-round's banner is owed
-     at the SAME count, which is the credential /init's restart head pays
+     at the SAME input, which is the credential /init's restart head pays
      its banner from ([UInitBanner.kinit_ban]).  Alternative 2 has no end
      shape: the round is terminal and the credential is dropped (affine). *)
-  Lemma ewc_pdiag_done_1 (v : era_pins) (n : nat) :
-    ewc_pdiag v n 1%nat (length (pro_alts !!! 1%nat)) -∗ ewc_ban T v n 0%nat.
+  Lemma ewc_pdiag_done_1 (v : era_pins) (I : list (bv 8)) :
+    ewc_pdiag v I 1%nat (length (pro_alts !!! 1%nat)) -∗ ewc_ban T v I 0%nat.
   Proof.
     rewrite pro_alts_1_length /ewc_pdiag /ewc_pdg /EchoLinks.ewc_ban.
     iIntros "[Hl | #HT]"; last by iRight.
     iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
     iLeft. iExists ps, cs, P. rewrite Nat.add_0_r. iFrame "Htn Hps Hcs HE".
     iPureIntro.
-    exact (wr_pdiag_done_1 ps cs n P 21%nat (eq_sym pro_alts_1_length) Hw).
+    exact (wr_pdiag_done_1 ps cs I P 21%nat (eq_sym pro_alts_1_length) Hw).
   Qed.
 
 End echo_links_pro.

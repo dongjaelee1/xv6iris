@@ -740,15 +740,19 @@ Section ProofPipealloc.
                      with "Hextc") as "Hextc".
         iDestruct (cpu_claim_ext_transport CIDt CIDt5 eb p ltac:(ext_chain Hbf)
                      with "Hextm") as "Hextm".
-        iApply (Fileclose.wp_fileclose_sconf γfl γf k1 1%Qp _ inhabitant on U4 n eb p (K - 6)%nat b lks pidv Upr
+        iApply (Fileclose.wp_fileclose_sconf γfl γf k1 1%Qp _ inhabitant on U4 n eb p (K - 6)%nat b lks
+                  (emp%I : iProp Σ) pidv Upr
                   ltac:(lia) Hnoffpos HU4a0 Hbelow
-                  with "Hcg Hcnt Hextc Hextm Htext Hkdata Hpc Hftab Hpe Href1 Hpbare Hiru []").
+                  with "Hcg Hcnt Hextc Hextm Htext Hkdata Hpc Hftab Hpe Href1 Hpbare Hiru [] []").
         all: try lkbelow.
         { iApply fileclose_env_none. }
+        (* an untyped slot names no pipe, so the byte queue's close payment
+           is [emp] here and the post says nothing *)
+        { iApply fileclose_cpay_none. }
         (* fileclose hands back the unit the reference was holding: it is
            the WRITE end's, and together with [Hunit0] it pays the two
            [pipealloc_post]'s failure arm promises. *)
-        iIntros (CIDt6 Hst6 mr) "Hcg Hcnt Hextc Hextm Hpc %Hfcpins Hunit1 Hiru _ Hpbare".
+        iIntros (CIDt6 Hst6 mr) "Hcg Hcnt Hextc Hextm Hpc %Hfcpins Hunit1 Hiru _ _ Hpbare".
         assert (Hpcb6 : ret_pc (U4 !!! Regidx Rra) = mword_of_int (KernelSyms.pipealloc + 0xb6))
           by (rewrite HU4ra; apply bv_eq; vm_compute; reflexivity).
         iEval (rewrite Hpcb6) in "Hpc".
@@ -820,16 +824,18 @@ Section ProofPipealloc.
                    with "Hextc") as "Hextc".
       iDestruct (cpu_claim_ext_transport CIDu CIDu1 eb p ltac:(ext_chain Hbf)
                    with "Hextm") as "Hextm".
-      iApply (Fileclose.wp_fileclose_sconf γfl γf k0 1%Qp _ inhabitant on V1 n eb p (K - 6)%nat b lks pidv Upr
+      iApply (Fileclose.wp_fileclose_sconf γfl γf k0 1%Qp _ inhabitant on V1 n eb p (K - 6)%nat b lks
+                (emp%I : iProp Σ) pidv Upr
                 ltac:(lia) Hnoffpos HV1a0 Hbelow
-                with "Hcg Hcnt Hextc Hextm Htext Hkdata Hpc Hftab Hpe Href0 Hpbare Hiru []").
+                with "Hcg Hcnt Hextc Hextm Htext Hkdata Hpc Hftab Hpe Href0 Hpbare Hiru [] []").
       all: try lkbelow.
       (* an untyped file costs its closer nothing -- no pipe, no inode, so no
          file system.  [inhabitant] above is the ghost bundle the arms this
          file cannot take would have been indexed by. *)
       { iApply fileclose_env_none. }
+      { iApply fileclose_cpay_none. }
       (* the READ end's unit, banked for T8 *)
-      iIntros (CIDu2 Hsu2 mr) "Hcg Hcnt Hextc Hextm Hpc %Hfcpins Hunit0 Hiru _ Hpbare".
+      iIntros (CIDu2 Hsu2 mr) "Hcg Hcnt Hextc Hextm Hpc %Hfcpins Hunit0 Hiru _ _ Hpbare".
       assert (Hpca8 : ret_pc (V1 !!! Regidx Rra) = mword_of_int (KernelSyms.pipealloc + 0xa8))
         by (rewrite HV1ra; apply bv_eq; vm_compute; reflexivity).
       iEval (rewrite Hpca8) in "Hpc".
@@ -1126,7 +1132,7 @@ Section ProofPipealloc.
       by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Hpp2c) in "Hpc".
     (* +0x2c jal ra,kalloc *)
-    iApply (wp_jal_s_sconf (mword_of_int (KernelSyms.pipealloc + 0x2c)) Rra (mword_of_int 0x1fc5fc : mword 21)
+    iApply (wp_jal_s_sconf (mword_of_int (KernelSyms.pipealloc + 0x2c)) Rra (mword_of_int 0x1fc60c : mword 21)
               mD (K - 6)%nat b ltac:(vm_compute; discriminate) ltac:(rdok)
               ltac:(vm_compute; reflexivity) with "Hcg Hpc []").
     { iApply (pai_2c with "Htext"). }
@@ -1134,7 +1140,7 @@ Section ProofPipealloc.
     set (mE := <[Regidx Rra := regval_into_reg
                   (add_vec_int (mword_of_int (KernelSyms.pipealloc + 0x2c) : mword 64) 4)]> mD).
     assert (Htgtka : add_vec (mword_of_int (KernelSyms.pipealloc + 0x2c) : mword 64)
-                       (sign_extend' 64 (mword_of_int 0x1fc5fc : mword 21))
+                       (sign_extend' 64 (mword_of_int 0x1fc60c : mword 21))
                      = mword_of_int KernelSyms.kalloc)
       by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Htgtka) in "Hpc".
@@ -1467,13 +1473,13 @@ Section ProofPipealloc.
     assert (Hpp4c : add_vec_int (mword_of_int (KernelSyms.pipealloc + 0x48) : mword 64) 4 = mword_of_int (KernelSyms.pipealloc + 0x4c))
       by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Hpp4c) in "Hpc".
-    iApply (wp_addi4_s_sconf (mword_of_int (KernelSyms.pipealloc + 0x4c)) Ra1 Ra1 (mword_of_int 0x22 : mword 12)
+    iApply (wp_addi4_s_sconf (mword_of_int (KernelSyms.pipealloc + 0x4c)) Ra1 Ra1 (mword_of_int 0x32 : mword 12)
               G3 (K - 6)%nat b ltac:(vm_compute; discriminate) ltac:(rdok)
               with "Hcg Hpc []").
     { iApply (pai_4c with "Htext"). }
     iIntros (CID31 Hs31) "Hcg Hpc". iEval (rgne) in "Hcg".
     set (G4 := <[Regidx Ra1 := regval_into_reg
-                  (add_vec (G3 !!! Regidx Ra1) (sign_extend' 64 (mword_of_int 34 : mword 12)))]> G3).
+                  (add_vec (G3 !!! Regidx Ra1) (sign_extend' 64 (mword_of_int 50 : mword 12)))]> G3).
     assert (HG4a1 : G4 !!! Regidx Ra1 = (mword_of_int pipe_name_str : mword 64)).
     { rewrite /G4 upd_eq /G3 upd_eq. unfold pipe_name_str.
       apply bv_eq; vm_compute; reflexivity. }
@@ -1504,7 +1510,7 @@ Section ProofPipealloc.
       by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Hpp50) in "Hpc".
     (* +0x50 jal ra,initlock *)
-    iApply (wp_jal_s_sconf (mword_of_int (KernelSyms.pipealloc + 0x50)) Rra (mword_of_int 0x1fc632 : mword 21)
+    iApply (wp_jal_s_sconf (mword_of_int (KernelSyms.pipealloc + 0x50)) Rra (mword_of_int 0x1fc642 : mword 21)
               G4 (K - 6)%nat b ltac:(vm_compute; discriminate) ltac:(rdok)
               ltac:(vm_compute; reflexivity) with "Hcg Hpc []").
     { iApply (pai_50 with "Htext"). }
@@ -1512,7 +1518,7 @@ Section ProofPipealloc.
     set (G5 := <[Regidx Rra := regval_into_reg
                   (add_vec_int (mword_of_int (KernelSyms.pipealloc + 0x50) : mword 64) 4)]> G4).
     assert (Htgtil : add_vec (mword_of_int (KernelSyms.pipealloc + 0x50) : mword 64)
-                       (sign_extend' 64 (mword_of_int 0x1fc632 : mword 21))
+                       (sign_extend' 64 (mword_of_int 0x1fc642 : mword 21))
                      = mword_of_int KernelSyms.initlock)
       by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Htgtil) in "Hpc".
@@ -1545,7 +1551,10 @@ Section ProofPipealloc.
             with "Hlkn Hlkw Hlkc Hnr Hnw Hro Hwo Hdat Hslack Hrun")
       as "[Hrun Hnew]".
     iDestruct ("Hcgb" with "Hrun") as "Hcg".
-    iDestruct "Hnew" as (γpl γp) "(#Hpipe & Hrd & Hwr)".
+    (* ...and the byte queue's FRAGMENT at the birth state, which rides out
+       to sys_pipe beside the two descriptors (design/pipe.md, "The byte
+       queue").  The kernel keeps nothing of it. *)
+    iDestruct "Hnew" as (γpl γp) "(#Hpipe & Hrd & Hwr & Hqf)".
     iModIntro.
 
     (* ---- the eight unlocked stores into the two struct files ---- *)
@@ -1620,18 +1629,20 @@ Section ProofPipealloc.
     iAssert (file_pay_st γf k0 1
                (MkFContent FD_PIPE (mword_of_int 1 : mword 8)
                   (mword_of_int 0 : mword 8) pi
-                  (fc_ip Cf0) (fc_major Cf0)) (FdOpen true false FdPipe))
+                  (fc_ip Cf0) (fc_major Cf0)) (FdOpen true false (FdPipe γp)))
       with "[Hpn0 Hrd Hiru0 Hoffd0]" as "Hpay0".
     { iExists (MkFPNames γpl γp 1%positive 1%Qp 1%positive (fp_inum pn0) (fp_obox pn0) (fp_ooff pn0)).
       (* the retype IS the descriptor's state change: a pipe end reports
-         [FdOpen r w FdPipe] at the flags it stores, and [fp_inum] is
+         [FdOpen r w (FdPipe γp)] at the flags it stores, and [fp_inum] is
          meaningless on this arm *)
       (* NOT [by split]: the goal is three [eq_refl]s between concrete
          mwords, but [done] ends in a no-argument [discriminate], which
          head-normalises every hypothesis type in a whole-function
          context with delta.  Name the term instead -- optimization.md's
          "[iPureIntro. done.] on a goal you can read at a glance". *)
-      iSplitR; [iPureIntro; exact (conj eq_refl (conj eq_refl eq_refl))|].
+      (* four [eq_refl]s now: [fdstate_ok]'s pipe arm also demands that the
+         descriptor's names ARE the payload's ([fp_pipe pn = γp]) *)
+      iSplitR; [iPureIntro; exact (conj eq_refl (conj eq_refl (conj eq_refl eq_refl)))|].
       iFrame "Hpn0".
       rewrite /file_core /file_core_noff /file_core_off /fc_wbool;
         cbn [fc_type fc_pipe fc_writable].
@@ -1646,7 +1657,7 @@ Section ProofPipealloc.
     iAssert (file_pay_st γf k1 1
                (MkFContent FD_PIPE (mword_of_int 0 : mword 8)
                   (mword_of_int 1 : mword 8) pi
-                  (fc_ip Cf1) (fc_major Cf1)) (FdOpen false true FdPipe))
+                  (fc_ip Cf1) (fc_major Cf1)) (FdOpen false true (FdPipe γp)))
       with "[Hpn1 Hwr Hiru1 Hoffd1]" as "Hpay1".
     { iExists (MkFPNames γpl γp 1%positive 1%Qp 1%positive (fp_inum pn1) (fp_obox pn1) (fp_ooff pn1)).
       (* NOT [by split]: the goal is three [eq_refl]s between concrete
@@ -1654,7 +1665,9 @@ Section ProofPipealloc.
          head-normalises every hypothesis type in a whole-function
          context with delta.  Name the term instead -- optimization.md's
          "[iPureIntro. done.] on a goal you can read at a glance". *)
-      iSplitR; [iPureIntro; exact (conj eq_refl (conj eq_refl eq_refl))|].
+      (* four [eq_refl]s now: [fdstate_ok]'s pipe arm also demands that the
+         descriptor's names ARE the payload's ([fp_pipe pn = γp]) *)
+      iSplitR; [iPureIntro; exact (conj eq_refl (conj eq_refl (conj eq_refl eq_refl)))|].
       iFrame "Hpn1".
       rewrite /file_core /file_core_noff /file_core_off /fc_wbool;
         cbn [fc_type fc_pipe fc_writable].
@@ -2142,9 +2155,9 @@ Section ProofPipealloc.
     { iExists (mD !!! Regidx Rs2), (m !!! Regidx Rs3). iFrame "Hr16 Hr8". }
     rewrite /pipealloc_post. iRight.
     iSplitR; [done|]. iFrame "Hav".
-    iExists k0, k1.
+    iExists k0, k1, γp.
     iSplitR; [iPureIntro; split; assumption|].
-    iFrame "Hc0 Hc1".
+    iFrame "Hc0 Hc1 Hqf".
     rewrite /file_ref /file_fields; cbn [fc_type fc_readable fc_writable
                                           fc_pipe fc_ip fc_major].
     iSplitL "Htok0 Hty0 Hrd0 Hwr0 Hpp0 Hip0 Hmaj0 Hpay0 Hlv0".

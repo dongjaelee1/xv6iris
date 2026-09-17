@@ -463,3 +463,1006 @@ Proof.
   intros Hi Hj.
   exact (wl_line_word_pre ws 0 i w j [] Hi Hj eq_refl).
 Qed.
+
+(* ===================================================================== *)
+(*  S5  THE LINE IS PARSEABLE: what was typed is a function of the wire   *)
+(* ===================================================================== *)
+
+(* A claim of the shape "whatever you type, echo prints it back" only says
+   something if the observer can tell WHAT was typed.  The wire carries the
+   console's echo of the line and then whatever ran; the line ends at the
+   first newline, and inside it each word ends at the first blank.  Both
+   readings are the same fact -- a WORD is alphanumeric and a SEPARATOR is
+   not -- so both are this one lemma.
+
+   Stated as a SPLITTING law rather than as injectivity of [wl_line]: the
+   consumer is a wire with a remainder after the line, and it needs the
+   remainder to match too. *)
+Lemma wl_split_pred (P : bv 8 -> Prop) (u1 t1 u2 t2 : list (bv 8)) :
+  Forall P u1 -> Forall P u2 ->
+  (forall b, head t1 = Some b -> ~ P b) ->
+  (forall b, head t2 = Some b -> ~ P b) ->
+  u1 ++ t1 = u2 ++ t2 -> u1 = u2 /\ t1 = t2.
+Proof.
+  revert u2. induction u1 as [| a u1' IH]; intros u2 H1 H2 Ht1 Ht2 Heq.
+  - destruct u2 as [| b u2']; [by split |].
+    exfalso. cbn in Heq.
+    destruct (Forall_cons_1 _ _ _ H2) as [Hb _].
+    exact (Ht1 b ltac:(by rewrite Heq) Hb).
+  - destruct u2 as [| b u2'].
+    + exfalso. cbn in Heq.
+      destruct (Forall_cons_1 _ _ _ H1) as [Ha _].
+      exact (Ht2 a ltac:(by rewrite -Heq) Ha).
+    + cbn in Heq. injection Heq as Hab Hrest. subst b.
+      destruct (Forall_cons_1 _ _ _ H1) as [_ H1'].
+      destruct (Forall_cons_1 _ _ _ H2) as [_ H2'].
+      destruct (IH u2' H1' H2' Ht1 Ht2 Hrest) as [-> ->]. by split.
+Qed.
+
+(* the two bytes that are not word bytes, which is what makes the split
+   land where it does *)
+Lemma wl_alnum_not_sp : ~ wl_alnum wl_sp.
+Proof. rewrite /wl_alnum wl_sp_val. lia. Qed.
+
+Lemma wl_body_byte_not_nl : ~ wl_body_byte wl_nl.
+Proof.
+  rewrite /wl_body_byte /wl_alnum wl_nl_val. intros [H | H]; [lia |].
+  apply (f_equal bv_unsigned) in H. rewrite wl_nl_val wl_sp_val in H. lia.
+Qed.
+
+(* a tail either is empty or opens on the blank [wl_tail] puts there, so
+   it never opens on a word byte *)
+Lemma wl_tail_head_not_alnum (ws : list (list (bv 8))) (b : bv 8) :
+  head (wl_tail ws) = Some b -> ~ wl_alnum b.
+Proof.
+  destruct ws as [| w r]; cbn [wl_tail]; [done |].
+  intros [= <-]. exact wl_alnum_not_sp.
+Qed.
+
+Lemma wl_nl_head_not_body (t : list (bv 8)) (b : bv 8) :
+  head (wl_nl :: t) = Some b -> ~ wl_body_byte b.
+Proof. intros [= <-]. exact wl_body_byte_not_nl. Qed.
+
+Lemma wl_tail_inj (ws1 ws2 : list (list (bv 8))) :
+  wl_wf ws1 -> wl_wf ws2 -> wl_tail ws1 = wl_tail ws2 -> ws1 = ws2.
+Proof.
+  revert ws2. induction ws1 as [| w1 r1 IH]; intros ws2 Hw1 Hw2 Heq.
+  - by destruct ws2 as [| w2 r2]; [| cbn in Heq].
+  - destruct ws2 as [| w2 r2]; [by cbn in Heq |].
+    cbn [wl_tail] in Heq. injection Heq as Heq.
+    destruct (wl_wf_cons w1 r1 Hw1) as [[_ Ha1] Hr1].
+    destruct (wl_wf_cons w2 r2 Hw2) as [[_ Ha2] Hr2].
+    destruct (wl_split_pred wl_alnum w1 (wl_tail r1) w2 (wl_tail r2)
+                Ha1 Ha2 (wl_tail_head_not_alnum r1)
+                (wl_tail_head_not_alnum r2) Heq) as [-> Hr].
+    by rewrite (IH r2 Hr1 Hr2 Hr).
+Qed.
+
+Lemma wl_body_inj (ws1 ws2 : list (list (bv 8))) :
+  wl_wf ws1 -> wl_wf ws2 -> wl_body ws1 = wl_body ws2 -> ws1 = ws2.
+Proof.
+  intros Hw1 Hw2 Heq.
+  destruct ws1 as [| w1 r1]; destruct ws2 as [| w2 r2]; [done | | |].
+  - exfalso. destruct (wl_wf_cons w2 r2 Hw2) as [Hwd2 _].
+    pose proof (wl_word_pos w2 Hwd2).
+    apply (f_equal length) in Heq. rewrite wl_body_cons length_app in Heq.
+    cbn in Heq. lia.
+  - exfalso. destruct (wl_wf_cons w1 r1 Hw1) as [Hwd1 _].
+    pose proof (wl_word_pos w1 Hwd1).
+    apply (f_equal length) in Heq. rewrite wl_body_cons length_app in Heq.
+    cbn in Heq. lia.
+  - rewrite !wl_body_cons in Heq.
+    destruct (wl_wf_cons w1 r1 Hw1) as [[_ Ha1] Hr1].
+    destruct (wl_wf_cons w2 r2 Hw2) as [[_ Ha2] Hr2].
+    destruct (wl_split_pred wl_alnum w1 (wl_tail r1) w2 (wl_tail r2)
+                Ha1 Ha2 (wl_tail_head_not_alnum r1)
+                (wl_tail_head_not_alnum r2) Heq) as [-> Hr].
+    by rewrite (wl_tail_inj r1 r2 Hr1 Hr2 Hr).
+Qed.
+
+(* THE READING THE WIRE GIVES.  Two lines followed by two remainders make
+   the same wire only if they are the same line AND the same remainder --
+   so a session's rounds can each carry their OWN word list and the
+   observer still knows which one each round typed. *)
+Lemma wl_line_det (ws1 ws2 : list (list (bv 8))) (t1 t2 : list (bv 8)) :
+  wl_wf ws1 -> wl_wf ws2 ->
+  wl_line ws1 ++ t1 = wl_line ws2 ++ t2 -> ws1 = ws2 /\ t1 = t2.
+Proof.
+  intros Hw1 Hw2 Heq.
+  rewrite /wl_line -!app_assoc /= in Heq.
+  destruct (wl_split_pred wl_body_byte
+              (wl_body ws1) (wl_nl :: t1) (wl_body ws2) (wl_nl :: t2)
+              (wl_body_bytes ws1 Hw1) (wl_body_bytes ws2 Hw2)
+              (wl_nl_head_not_body t1) (wl_nl_head_not_body t2) Heq)
+    as [Hb Ht].
+  split; [exact (wl_body_inj ws1 ws2 Hw1 Hw2 Hb) | by injection Ht].
+Qed.
+
+(* the plain injectivity, for a consumer that has no remainder *)
+Lemma wl_line_inj (ws1 ws2 : list (list (bv 8))) :
+  wl_wf ws1 -> wl_wf ws2 -> wl_line ws1 = wl_line ws2 -> ws1 = ws2.
+Proof.
+  intros Hw1 Hw2 Heq.
+  destruct (wl_line_det ws1 ws2 [] [] Hw1 Hw2 ltac:(by rewrite !Heq))
+    as [H _].
+  exact H.
+Qed.
+
+(* THE FORM THE DISCIPLINE SPENDS.  A session claim compares what the
+   model says the wire holds against a PREFIX of the real wire, so the
+   reading has to survive a prefix: the line is still determined, and the
+   remainder is still comparable.  It is [wl_line_det] with the prefix's
+   witness folded into the first remainder. *)
+Lemma wl_line_prefix_det (ws1 ws2 : list (list (bv 8)))
+    (t1 t2 : list (bv 8)) :
+  wl_wf ws1 -> wl_wf ws2 ->
+  wl_line ws1 ++ t1 `prefix_of` wl_line ws2 ++ t2 ->
+  ws1 = ws2 /\ t1 `prefix_of` t2.
+Proof.
+  intros Hw1 Hw2 [k Hk]. rewrite -app_assoc in Hk.
+  destruct (wl_line_det ws1 ws2 (t1 ++ k) t2 Hw1 Hw2 (eq_sym Hk))
+    as [-> Ht].
+  split; [reflexivity | by exists k].
+Qed.
+
+(* ...and the bare one: a line that is a prefix of a WIRE opening with a
+   line is that line.  This is what says the observer reads the typed
+   words off the wire without knowing them in advance. *)
+Lemma wl_line_of_wire (ws1 ws2 : list (list (bv 8))) (t : list (bv 8)) :
+  wl_wf ws1 -> wl_wf ws2 ->
+  wl_line ws1 `prefix_of` wl_line ws2 ++ t -> ws1 = ws2.
+Proof.
+  intros Hw1 Hw2 Hp.
+  destruct (wl_line_prefix_det ws1 ws2 [] t Hw1 Hw2
+              ltac:(by rewrite app_nil_r)) as [H _].
+  exact H.
+Qed.
+
+(* ANTI-VACUITY: the encoding is not degenerate -- the blank is load
+   bearing, so one two-letter word and two one-letter words are different
+   lines, and the reading above tells them apart. *)
+Definition wl_demo_a : bv 8 := Z_to_bv 8 97%Z.
+Definition wl_demo_b : bv 8 := Z_to_bv 8 98%Z.
+
+Lemma wl_demo_wf1 : wl_wf [[wl_demo_a; wl_demo_b]].
+Proof. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+Lemma wl_demo_wf2 : wl_wf [[wl_demo_a]; [wl_demo_b]].
+Proof. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+Lemma wl_demo_distinct :
+  wl_line [[wl_demo_a; wl_demo_b]] <> wl_line [[wl_demo_a]; [wl_demo_b]].
+Proof. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+(* ===================================================================== *)
+(*  S6  A SESSION'S INPUT: A SEQUENCE OF LINES, EACH ITS OWN             *)
+(* ===================================================================== *)
+
+(* What a console session types is not one line repeated: it is a SEQUENCE
+   of lines, each with its own words.  [wl_lines] is that input, and the
+   laws below are what a discipline spends instead of dividing the wire by
+   a fixed line length -- which is only meaningful when every round is the
+   same size. *)
+Definition wl_lines (wss : list (list (list (bv 8)))) : list (bv 8) :=
+  concat (wl_line <$> wss).
+
+Definition wl_seq_wf (wss : list (list (list (bv 8)))) : Prop :=
+  Forall wl_wf wss.
+
+Lemma wl_lines_nil : wl_lines [] = [].
+Proof. reflexivity. Qed.
+
+Lemma wl_lines_cons (ws : list (list (bv 8)))
+    (r : list (list (list (bv 8)))) :
+  wl_lines (ws :: r) = wl_line ws ++ wl_lines r.
+Proof. reflexivity. Qed.
+
+Lemma wl_lines_app (u v : list (list (list (bv 8)))) :
+  wl_lines (u ++ v) = wl_lines u ++ wl_lines v.
+Proof. by rewrite /wl_lines fmap_app concat_app. Qed.
+
+Lemma wl_seq_wf_cons (ws : list (list (bv 8)))
+    (r : list (list (list (bv 8)))) :
+  wl_seq_wf (ws :: r) -> wl_wf ws /\ wl_seq_wf r.
+Proof. rewrite /wl_seq_wf. apply Forall_cons_1. Qed.
+
+(* every line carries its newline, so a nonempty sequence is nonempty *)
+Lemma wl_lines_pos (ws : list (list (bv 8)))
+    (r : list (list (list (bv 8)))) :
+  0 < length (wl_lines (ws :: r)).
+Proof.
+  rewrite wl_lines_cons length_app. pose proof (wl_line_pos ws). lia.
+Qed.
+
+(* THE LAW THAT REPLACES THE DIVISION.  With one fixed line, which round a
+   wire position falls in is [position / line length].  With a line per
+   round that quotient is meaningless -- and it does not need replacing by
+   another formula, because the ROUNDS THEMSELVES are already determined:
+   a session whose input is a prefix of another's typed a prefix of the
+   same lines.  So the round decomposition is read off the wire, never
+   computed from a length. *)
+Lemma wl_lines_prefix_det (wss1 wss2 : list (list (list (bv 8)))) :
+  wl_seq_wf wss1 -> wl_seq_wf wss2 ->
+  wl_lines wss1 `prefix_of` wl_lines wss2 -> wss1 `prefix_of` wss2.
+Proof.
+  revert wss2. induction wss1 as [| w1 r1 IH]; intros wss2 H1 H2 Hp.
+  - apply prefix_nil.
+  - destruct wss2 as [| w2 r2].
+    + exfalso. rewrite wl_lines_nil in Hp.
+      pose proof (prefix_length _ _ Hp) as Hl.
+      pose proof (wl_lines_pos w1 r1) as Hpos.
+      change (length (@nil (bv 8))) with 0%nat in Hl. lia.
+    + destruct (wl_seq_wf_cons w1 r1 H1) as [Hw1 Hr1].
+      destruct (wl_seq_wf_cons w2 r2 H2) as [Hw2 Hr2].
+      rewrite !wl_lines_cons in Hp.
+      destruct (wl_line_prefix_det w1 w2 (wl_lines r1) (wl_lines r2)
+                  Hw1 Hw2 Hp) as [-> Hrest].
+      apply prefix_cons, (IH r2 Hr1 Hr2 Hrest).
+Qed.
+
+Lemma wl_lines_inj (wss1 wss2 : list (list (list (bv 8)))) :
+  wl_seq_wf wss1 -> wl_seq_wf wss2 ->
+  wl_lines wss1 = wl_lines wss2 -> wss1 = wss2.
+Proof.
+  intros H1 H2 Heq.
+  apply (anti_symm prefix);
+    [ apply (wl_lines_prefix_det _ _ H1 H2); by rewrite Heq
+    | apply (wl_lines_prefix_det _ _ H2 H1); by rewrite Heq ].
+Qed.
+
+(* ===================================================================== *)
+(*  S7  THE PARSE: WHAT AN ERA'S INPUT SAYS                               *)
+(*                                                                        *)
+(*  S6 reads a sequence of lines FORWARDS -- given the words, it builds   *)
+(*  the wire.  A session claim needs the other direction: the era's input *)
+(*  [I : list (bv 8)] is whatever the console has echoed SO FAR, and it   *)
+(*  ends wherever the user has got to -- mid-line as often as not.  So    *)
+(*  the input is READ, not constructed: [wl_cut] splits it at its         *)
+(*  newlines into the COMPLETE bodies (newline stripped) and the REST     *)
+(*  after the last newline, and [wl_words] splits a body at its blanks.   *)
+(*                                                                        *)
+(*  WHY A PARSER AND NOT A LENGTH.  With one fixed line, the round a wire *)
+(*  position falls in is that position divided by the line length; with a *)
+(*  line per round that quotient is meaningless.  Every such division is  *)
+(*  replaced here by [nlines I], [rest_of I = []] and [nstarted I] -- and *)
+(*  what makes that sound rather than merely different is the DETERMINACY *)
+(*  at the end of this section: the cut of a prefix is a prefix of the    *)
+(*  cut, and a raw line followed by a remainder determines both halves.   *)
+(*  Nothing below computes a position from a length.                      *)
+(*                                                                        *)
+(*  THE CUT IS STRUCTURAL FROM THE LEFT, because that is the direction    *)
+(*  the recursion over the wire runs; but the laws a caller spends are    *)
+(*  the SNOC laws, since one byte arrives at a time.  Those are proved    *)
+(*  once here out of [wl_cut_join] and [wl_cut_of_join], so no proof      *)
+(*  above this file inducts on the fixpoint.                              *)
+(* ===================================================================== *)
+
+(* ---- the join of raw bodies, each closed by the newline --------------- *)
+
+Definition wl_join (bs : list (list (bv 8))) : list (bv 8) :=
+  concat ((fun l => l ++ [wl_nl]) <$> bs).
+
+Lemma wl_join_nil : wl_join [] = [].
+Proof. reflexivity. Qed.
+
+Lemma wl_join_cons (l : list (bv 8)) (bs : list (list (bv 8))) :
+  wl_join (l :: bs) = l ++ wl_nl :: wl_join bs.
+Proof.
+  change (wl_join (l :: bs)) with ((l ++ [wl_nl]) ++ wl_join bs).
+  by rewrite -app_assoc.
+Qed.
+
+Lemma wl_join_app (u v : list (list (bv 8))) :
+  wl_join (u ++ v) = wl_join u ++ wl_join v.
+Proof. by rewrite /wl_join fmap_app concat_app. Qed.
+
+Lemma wl_join_snoc (bs : list (list (bv 8))) (l : list (bv 8)) :
+  wl_join (bs ++ [l]) = wl_join bs ++ l ++ [wl_nl].
+Proof. by rewrite wl_join_app wl_join_cons wl_join_nil. Qed.
+
+(* the shape every cut law below is stated against: one body, the newline
+   that closes it, and everything after *)
+Lemma wl_join_cons_app (l : list (bv 8)) (bs : list (list (bv 8)))
+    (r : list (bv 8)) :
+  wl_join (l :: bs) ++ r = l ++ wl_nl :: (wl_join bs ++ r).
+Proof. by rewrite wl_join_cons -!app_assoc. Qed.
+
+(* ---- small list facts, named so no proof below has to hunt for them --- *)
+
+(* a case split that leaves the scrutinee's equation as an ordinary
+   hypothesis and touches nothing else -- [destruct t eqn:H] on a compound
+   [t] rewrites the induction hypothesis too *)
+Lemma wl_list_cases {A} (u : list A) :
+  u = [] \/ exists (x : A) (r : list A), u = x :: r.
+Proof. destruct u as [| x r]; [by left | right; by exists x, r]. Qed.
+
+Lemma wl_app_inv_head {A} (u v w : list A) : u ++ v = u ++ w -> v = w.
+Proof.
+  induction u as [| a u' IH]; intro H; [exact H |].
+  cbn in H. injection H as H. exact (IH H).
+Qed.
+
+Lemma wl_prefix_app_cancel {A} (u v w : list A) :
+  u ++ v `prefix_of` u ++ w -> v `prefix_of` w.
+Proof.
+  intros [k Hk]. rewrite -app_assoc in Hk.
+  exists k. exact (wl_app_inv_head u w (v ++ k) Hk).
+Qed.
+
+(* the one reassociation the prefix witnesses below need *)
+Lemma wl_reshape {A} (u v m x d : list A) (n : A) :
+  (u ++ ((v ++ m) ++ n :: x)) ++ d = (u ++ v) ++ (m ++ n :: (x ++ d)).
+Proof. by rewrite -!app_assoc. Qed.
+
+Lemma wl_nonl_cons (b : bv 8) (l : list (bv 8)) :
+  wl_nl ∉ b :: l -> b <> wl_nl /\ wl_nl ∉ l.
+Proof.
+  intro H. apply not_elem_of_cons in H as [Hb Hl].
+  split; [| exact Hl]. intro Heq. apply Hb. by rewrite Heq.
+Qed.
+
+Lemma wl_nonl_cons_2 (b : bv 8) (l : list (bv 8)) :
+  b <> wl_nl -> wl_nl ∉ l -> wl_nl ∉ b :: l.
+Proof.
+  intros Hb Hl. apply not_elem_of_cons.
+  split; [| exact Hl]. intro Heq. apply Hb. by rewrite Heq.
+Qed.
+
+Lemma wl_nonl_app (u v : list (bv 8)) :
+  wl_nl ∉ u -> wl_nl ∉ v -> wl_nl ∉ u ++ v.
+Proof.
+  intros Hu Hv Hin.
+  apply elem_of_app in Hin as [H | H]; [exact (Hu H) | exact (Hv H)].
+Qed.
+
+Lemma wl_nonl_Forall (l : list (bv 8)) :
+  wl_nl ∉ l -> Forall (fun b => b <> wl_nl) l.
+Proof.
+  intro H. apply Forall_forall. intros x Hx Heq.
+  rewrite Heq in Hx. exact (H Hx).
+Qed.
+
+(* a body carries no newline, which is why the split lands at the line's
+   end and nowhere else *)
+Lemma wl_nonl_of_body_bytes (l : list (bv 8)) :
+  Forall wl_body_byte l -> wl_nl ∉ l.
+Proof.
+  intros Hl Hin. apply elem_of_list_lookup_1 in Hin as [i Hi].
+  exact (wl_body_byte_not_nl (Forall_lookup_1 _ _ _ _ Hl Hi)).
+Qed.
+
+Lemma wl_body_nonl (ws : list (list (bv 8))) :
+  wl_wf ws -> wl_nl ∉ wl_body ws.
+Proof. intro H. exact (wl_nonl_of_body_bytes _ (wl_body_bytes ws H)). Qed.
+
+Lemma wl_body_fmap_nonl (wss : list (list (list (bv 8)))) :
+  Forall wl_wf wss -> Forall (fun l => wl_nl ∉ l) (wl_body <$> wss).
+Proof.
+  induction wss as [| ws rr IH]; intro Hwf; [constructor |].
+  destruct (Forall_cons_1 _ _ _ Hwf) as [Hws Hrr].
+  rewrite fmap_cons.
+  constructor; [exact (wl_body_nonl ws Hws) | exact (IH Hrr)].
+Qed.
+
+(* ---- THE CUT --------------------------------------------------------- *)
+
+(* Split an input at its newlines into the COMPLETE bodies (newline
+   stripped, in order) and the REST after the last newline.  Structural
+   from the left: a leading newline closes an EMPTY body; any other byte
+   prepends onto the first body if there is a complete line, and onto the
+   rest if there is not. *)
+Fixpoint wl_cut (I : list (bv 8)) : list (list (bv 8)) * list (bv 8) :=
+  match I with
+  | [] => ([], [])
+  | b :: I' =>
+      let p := wl_cut I' in
+      if decide (b = wl_nl) then ([] :: p.1, p.2)
+      else match p.1 with
+           | [] => ([], b :: p.2)
+           | l :: ls => ((b :: l) :: ls, p.2)
+           end
+  end.
+
+Definition bodies_of (I : list (bv 8)) : list (list (bv 8)) := (wl_cut I).1.
+Definition rest_of   (I : list (bv 8)) : list (bv 8)        := (wl_cut I).2.
+Definition nlines    (I : list (bv 8)) : nat := length (bodies_of I).
+Definition nstarted  (I : list (bv 8)) : nat :=
+  nlines I + (if decide (rest_of I = []) then 0%nat else 1%nat).
+
+Lemma wl_cut_nil : wl_cut [] = ([], []).
+Proof. reflexivity. Qed.
+
+Lemma bodies_of_nil : bodies_of [] = [].
+Proof. reflexivity. Qed.
+
+Lemma rest_of_nil : rest_of [] = [].
+Proof. reflexivity. Qed.
+
+(* the three cons steps, spelled out once so nothing below unfolds the
+   fixpoint again *)
+Lemma wl_cut_cons_nl (I : list (bv 8)) :
+  wl_cut (wl_nl :: I) = ([] :: bodies_of I, rest_of I).
+Proof.
+  rewrite /bodies_of /rest_of. cbn [wl_cut].
+  case_decide as Hc; [reflexivity |]. exfalso. by apply Hc.
+Qed.
+
+Lemma wl_cut_cons_other_nil (b : bv 8) (I : list (bv 8)) :
+  b <> wl_nl -> bodies_of I = [] -> wl_cut (b :: I) = ([], b :: rest_of I).
+Proof.
+  rewrite /bodies_of /rest_of. intros Hb Hl. cbn [wl_cut].
+  case_decide as Hc; [exfalso; exact (Hb Hc) |].
+  rewrite Hl. reflexivity.
+Qed.
+
+Lemma wl_cut_cons_other_cons (b : bv 8) (I : list (bv 8))
+    (l : list (bv 8)) (ls : list (list (bv 8))) :
+  b <> wl_nl -> bodies_of I = l :: ls ->
+  wl_cut (b :: I) = ((b :: l) :: ls, rest_of I).
+Proof.
+  rewrite /bodies_of /rest_of. intros Hb Hl. cbn [wl_cut].
+  case_decide as Hc; [exfalso; exact (Hb Hc) |].
+  rewrite Hl. reflexivity.
+Qed.
+
+Lemma bodies_of_cons_nl (I : list (bv 8)) :
+  bodies_of (wl_nl :: I) = [] :: bodies_of I.
+Proof. by rewrite /bodies_of wl_cut_cons_nl. Qed.
+
+Lemma rest_of_cons_nl (I : list (bv 8)) :
+  rest_of (wl_nl :: I) = rest_of I.
+Proof. by rewrite /rest_of wl_cut_cons_nl. Qed.
+
+Lemma bodies_of_cons_other_nil (b : bv 8) (I : list (bv 8)) :
+  b <> wl_nl -> bodies_of I = [] -> bodies_of (b :: I) = [].
+Proof.
+  intros Hb Hl. by rewrite /bodies_of (wl_cut_cons_other_nil b I Hb Hl).
+Qed.
+
+Lemma rest_of_cons_other_nil (b : bv 8) (I : list (bv 8)) :
+  b <> wl_nl -> bodies_of I = [] -> rest_of (b :: I) = b :: rest_of I.
+Proof.
+  intros Hb Hl. by rewrite /rest_of (wl_cut_cons_other_nil b I Hb Hl).
+Qed.
+
+Lemma bodies_of_cons_other_cons (b : bv 8) (I : list (bv 8))
+    (l : list (bv 8)) (ls : list (list (bv 8))) :
+  b <> wl_nl -> bodies_of I = l :: ls -> bodies_of (b :: I) = (b :: l) :: ls.
+Proof.
+  intros Hb Hl.
+  by rewrite /bodies_of (wl_cut_cons_other_cons b I l ls Hb Hl).
+Qed.
+
+Lemma rest_of_cons_other_cons (b : bv 8) (I : list (bv 8))
+    (l : list (bv 8)) (ls : list (list (bv 8))) :
+  b <> wl_nl -> bodies_of I = l :: ls -> rest_of (b :: I) = rest_of I.
+Proof.
+  intros Hb Hl.
+  by rewrite /rest_of (wl_cut_cons_other_cons b I l ls Hb Hl).
+Qed.
+
+(* THE CUT LOSES NOTHING: the input IS the join of its bodies followed by
+   its rest.  Every law after this one is an instance of this equation
+   together with [wl_cut_of_join]. *)
+Lemma wl_cut_join (I : list (bv 8)) : I = wl_join (bodies_of I) ++ rest_of I.
+Proof.
+  induction I as [| b I' IH].
+  - by rewrite bodies_of_nil rest_of_nil wl_join_nil.
+  - destruct (decide (b = wl_nl)) as [-> | Hb].
+    + rewrite bodies_of_cons_nl rest_of_cons_nl
+        (wl_join_cons_app [] (bodies_of I') (rest_of I')) app_nil_l.
+      exact (f_equal (cons wl_nl) IH).
+    + destruct (wl_list_cases (bodies_of I')) as [HB | (l & ls & HB)].
+      * rewrite (bodies_of_cons_other_nil b I' Hb HB)
+                (rest_of_cons_other_nil b I' Hb HB) wl_join_nil app_nil_l.
+        rewrite HB wl_join_nil app_nil_l in IH.
+        exact (f_equal (cons b) IH).
+      * rewrite (bodies_of_cons_other_cons b I' l ls Hb HB)
+                (rest_of_cons_other_cons b I' l ls Hb HB)
+                (wl_join_cons_app (b :: l) ls (rest_of I')).
+        rewrite HB (wl_join_cons_app l ls (rest_of I')) in IH.
+        exact (f_equal (cons b) IH).
+Qed.
+
+(* ...and every piece it produces is newline-free, which is what makes the
+   cut the INVERSE of the join and not merely a left inverse *)
+Lemma wl_cut_bodies_nonl (I : list (bv 8)) :
+  Forall (fun l => wl_nl ∉ l) (bodies_of I).
+Proof.
+  induction I as [| b I' IH].
+  - rewrite bodies_of_nil. constructor.
+  - destruct (decide (b = wl_nl)) as [-> | Hb].
+    + rewrite bodies_of_cons_nl.
+      constructor; [apply not_elem_of_nil | exact IH].
+    + destruct (wl_list_cases (bodies_of I')) as [HB | (l & ls & HB)].
+      * rewrite (bodies_of_cons_other_nil b I' Hb HB). constructor.
+      * rewrite (bodies_of_cons_other_cons b I' l ls Hb HB).
+        rewrite HB in IH.
+        destruct (Forall_cons_1 _ _ _ IH) as [Hl Hls].
+        constructor; [exact (wl_nonl_cons_2 b l Hb Hl) | exact Hls].
+Qed.
+
+Lemma wl_cut_rest_nonl (I : list (bv 8)) : wl_nl ∉ rest_of I.
+Proof.
+  induction I as [| b I' IH].
+  - rewrite rest_of_nil. apply not_elem_of_nil.
+  - destruct (decide (b = wl_nl)) as [-> | Hb].
+    + rewrite rest_of_cons_nl. exact IH.
+    + destruct (wl_list_cases (bodies_of I')) as [HB | (l & ls & HB)].
+      * rewrite (rest_of_cons_other_nil b I' Hb HB).
+        exact (wl_nonl_cons_2 b (rest_of I') Hb IH).
+      * rewrite (rest_of_cons_other_cons b I' l ls Hb HB). exact IH.
+Qed.
+
+(* ---- the cut of a join, and the snoc laws that follow ----------------- *)
+
+Lemma wl_cut_nonl (r : list (bv 8)) : wl_nl ∉ r -> wl_cut r = ([], r).
+Proof.
+  induction r as [| b r' IH]; intro Hr; [reflexivity |].
+  destruct (wl_nonl_cons b r' Hr) as [Hb Hr'].
+  pose proof (IH Hr') as HJ.
+  assert (Hbod : bodies_of r' = []) by (rewrite /bodies_of HJ; reflexivity).
+  assert (Hrst : rest_of r' = r') by (rewrite /rest_of HJ; reflexivity).
+  by rewrite (wl_cut_cons_other_nil b r' Hb Hbod) Hrst.
+Qed.
+
+Lemma wl_cut_app_line (l I : list (bv 8)) :
+  wl_nl ∉ l -> wl_cut (l ++ [wl_nl] ++ I) = (l :: bodies_of I, rest_of I).
+Proof.
+  revert I. induction l as [| b l' IH]; intros I Hl.
+  - exact (wl_cut_cons_nl I).
+  - destruct (wl_nonl_cons b l' Hl) as [Hb Hl'].
+    pose proof (IH I Hl') as HJ.
+    assert (Hbod : bodies_of (l' ++ [wl_nl] ++ I) = l' :: bodies_of I)
+      by (rewrite /bodies_of HJ; reflexivity).
+    assert (Hrst : rest_of (l' ++ [wl_nl] ++ I) = rest_of I)
+      by (rewrite /rest_of HJ; reflexivity).
+    change ((b :: l') ++ [wl_nl] ++ I) with (b :: (l' ++ [wl_nl] ++ I)).
+    by rewrite (wl_cut_cons_other_cons b (l' ++ [wl_nl] ++ I) l'
+                  (bodies_of I) Hb Hbod) Hrst.
+Qed.
+
+(* the same with the newline spelled as a cons, so a rewrite against a
+   join lands without relying on conversion inside the pattern *)
+Lemma wl_cut_app_line_cons (l I : list (bv 8)) :
+  wl_nl ∉ l -> wl_cut (l ++ wl_nl :: I) = (l :: bodies_of I, rest_of I).
+Proof. exact (wl_cut_app_line l I). Qed.
+
+(* THE CUT INVERTS THE JOIN.  This is the law the discipline spends: an
+   input that IS a sequence of newline-free bodies followed by a
+   newline-free remainder parses back to exactly those. *)
+Lemma wl_cut_of_join (bs : list (list (bv 8))) (r : list (bv 8)) :
+  Forall (fun l => wl_nl ∉ l) bs -> wl_nl ∉ r ->
+  wl_cut (wl_join bs ++ r) = (bs, r).
+Proof.
+  induction bs as [| l bs' IH]; intros Hbs Hr.
+  - rewrite wl_join_nil app_nil_l. exact (wl_cut_nonl r Hr).
+  - destruct (Forall_cons_1 _ _ _ Hbs) as [Hl Hbs'].
+    pose proof (IH Hbs' Hr) as HJ.
+    rewrite (wl_join_cons_app l bs' r)
+            (wl_cut_app_line_cons l (wl_join bs' ++ r) Hl).
+    by rewrite /bodies_of /rest_of HJ.
+Qed.
+
+Lemma wl_cut_app_nonl (I r : list (bv 8)) :
+  wl_nl ∉ r -> wl_cut (I ++ r) = (bodies_of I, rest_of I ++ r).
+Proof.
+  intro Hr.
+  assert (Heq : I ++ r = wl_join (bodies_of I) ++ (rest_of I ++ r))
+    by (rewrite app_assoc -(wl_cut_join I); reflexivity).
+  rewrite Heq. apply wl_cut_of_join; [exact (wl_cut_bodies_nonl I) |].
+  exact (wl_nonl_app (rest_of I) r (wl_cut_rest_nonl I) Hr).
+Qed.
+
+Lemma wl_cut_snoc_nl (I : list (bv 8)) :
+  wl_cut (I ++ [wl_nl]) = (bodies_of I ++ [rest_of I], []).
+Proof.
+  assert (Heq : I ++ [wl_nl] = wl_join (bodies_of I ++ [rest_of I]) ++ []).
+  { rewrite wl_join_snoc app_nil_r app_assoc -(wl_cut_join I). reflexivity. }
+  rewrite Heq. apply wl_cut_of_join; [| apply not_elem_of_nil].
+  apply Forall_app. split; [exact (wl_cut_bodies_nonl I) |].
+  constructor; [exact (wl_cut_rest_nonl I) | constructor].
+Qed.
+
+Lemma wl_cut_snoc_other (I : list (bv 8)) (b : bv 8) :
+  b <> wl_nl -> wl_cut (I ++ [b]) = (bodies_of I, rest_of I ++ [b]).
+Proof.
+  intro Hb. apply wl_cut_app_nonl.
+  exact (wl_nonl_cons_2 b [] Hb (not_elem_of_nil wl_nl)).
+Qed.
+
+Lemma bodies_of_snoc_nl (I : list (bv 8)) :
+  bodies_of (I ++ [wl_nl]) = bodies_of I ++ [rest_of I].
+Proof. by rewrite /bodies_of wl_cut_snoc_nl. Qed.
+
+Lemma rest_of_snoc_nl (I : list (bv 8)) : rest_of (I ++ [wl_nl]) = [].
+Proof. by rewrite /rest_of wl_cut_snoc_nl. Qed.
+
+Lemma bodies_of_snoc_other (I : list (bv 8)) (b : bv 8) :
+  b <> wl_nl -> bodies_of (I ++ [b]) = bodies_of I.
+Proof. intro Hb. by rewrite /bodies_of (wl_cut_snoc_other I b Hb). Qed.
+
+Lemma rest_of_snoc_other (I : list (bv 8)) (b : bv 8) :
+  b <> wl_nl -> rest_of (I ++ [b]) = rest_of I ++ [b].
+Proof. intro Hb. by rewrite /rest_of (wl_cut_snoc_other I b Hb). Qed.
+
+(* ONE NEWLINE IS ONE ROUND.  This pair is what every division of the wire
+   by a fixed line length becomes. *)
+Lemma nlines_snoc_nl (I : list (bv 8)) : nlines (I ++ [wl_nl]) = S (nlines I).
+Proof.
+  rewrite /nlines bodies_of_snoc_nl length_app.
+  change (length [rest_of I]) with 1%nat. lia.
+Qed.
+
+Lemma nlines_snoc_other (I : list (bv 8)) (b : bv 8) :
+  b <> wl_nl -> nlines (I ++ [b]) = nlines I.
+Proof. intro Hb. by rewrite /nlines (bodies_of_snoc_other I b Hb). Qed.
+
+(* ---- the cut against S6's sequence of lines --------------------------- *)
+
+Lemma wl_lines_join (wss : list (list (list (bv 8)))) :
+  wl_join (wl_body <$> wss) = wl_lines wss.
+Proof.
+  induction wss as [| ws r IH]; [reflexivity |].
+  rewrite fmap_cons wl_join_cons wl_lines_cons /wl_line -app_assoc IH.
+  reflexivity.
+Qed.
+
+Lemma wl_cut_lines (wss : list (list (list (bv 8)))) (r : list (bv 8)) :
+  Forall wl_wf wss -> wl_nl ∉ r ->
+  wl_cut (wl_lines wss ++ r) = (wl_body <$> wss, r).
+Proof.
+  intros Hwf Hr. rewrite -wl_lines_join.
+  exact (wl_cut_of_join (wl_body <$> wss) r (wl_body_fmap_nonl wss Hwf) Hr).
+Qed.
+
+(* ---- the cut is monotone in the input --------------------------------- *)
+
+Lemma bodies_of_app (I k : list (bv 8)) :
+  bodies_of I `prefix_of` bodies_of (I ++ k).
+Proof.
+  revert I. induction k as [| b k' IH]; intro I.
+  - exists []. by rewrite !app_nil_r.
+  - assert (Hs : I ++ b :: k' = (I ++ [b]) ++ k')
+      by (rewrite -app_assoc; reflexivity).
+    rewrite Hs. destruct (IH (I ++ [b])) as [m Hm].
+    destruct (decide (b = wl_nl)) as [-> | Hb].
+    + rewrite bodies_of_snoc_nl in Hm.
+      exists ([rest_of I] ++ m). by rewrite Hm app_assoc.
+    + rewrite (bodies_of_snoc_other I b Hb) in Hm. by exists m.
+Qed.
+
+Lemma bodies_of_prefix (I I' : list (bv 8)) :
+  I `prefix_of` I' -> bodies_of I `prefix_of` bodies_of I'.
+Proof. intros [k ->]. apply bodies_of_app. Qed.
+
+Lemma nlines_app_le (I k : list (bv 8)) : nlines I <= nlines (I ++ k).
+Proof. rewrite /nlines. apply prefix_length, bodies_of_app. Qed.
+
+Lemma nlines_app_nl_lt (I k : list (bv 8)) :
+  wl_nl ∈ k -> nlines I < nlines (I ++ k).
+Proof.
+  intro Hin. apply elem_of_list_split in Hin as (k1 & k2 & ->).
+  assert (Hs : I ++ k1 ++ wl_nl :: k2 = ((I ++ k1) ++ [wl_nl]) ++ k2)
+    by (rewrite -!app_assoc; reflexivity).
+  rewrite Hs.
+  pose proof (nlines_app_le ((I ++ k1) ++ [wl_nl]) k2) as H1.
+  rewrite nlines_snoc_nl in H1.
+  pose proof (nlines_app_le I k1) as H2. lia.
+Qed.
+
+Lemma rest_of_prefix (I I' : list (bv 8)) :
+  I `prefix_of` I' -> nlines I = nlines I' -> rest_of I `prefix_of` rest_of I'.
+Proof.
+  intros [k ->] Heq.
+  destruct (decide (wl_nl ∈ k)) as [Hin | Hni].
+  - exfalso. pose proof (nlines_app_nl_lt I k Hin). lia.
+  - rewrite /rest_of (wl_cut_app_nonl I k Hni). by exists k.
+Qed.
+
+(* the rest is empty exactly when the input ends at a newline -- the
+   round-is-complete test, stated without arithmetic *)
+Lemma rest_of_last_nl (I : list (bv 8)) :
+  last I = Some wl_nl -> rest_of I = [].
+Proof.
+  induction I as [| b J IH] using rev_ind; intro Hl.
+  - rewrite last_nil in Hl. discriminate.
+  - rewrite last_snoc in Hl. injection Hl as Heq. subst b.
+    exact (rest_of_snoc_nl J).
+Qed.
+
+Lemma rest_of_end (I : list (bv 8)) :
+  rest_of I = [] -> I = [] \/ last I = Some wl_nl.
+Proof.
+  induction I as [| b J IH] using rev_ind; intro H; [by left |].
+  right. rewrite last_snoc.
+  destruct (decide (b = wl_nl)) as [-> | Hb]; [reflexivity |].
+  exfalso. rewrite (rest_of_snoc_other J b Hb) in H.
+  destruct (rest_of J) as [| a u]; discriminate.
+Qed.
+
+(* ===================================================================== *)
+(*  S7.2  THE WORDS OF A BODY                                             *)
+(*                                                                        *)
+(*  Same shape as the cut with [wl_sp] for [wl_nl], except that there is   *)
+(*  no closing blank: a trailing word is a word.  The parser is TOTAL --   *)
+(*  it parses a malformed body too, and what rejects one is [wl_wf] or     *)
+(*  [wl_body (wl_words l) <> l], never the parser.  Two blanks in a row    *)
+(*  parse to an EMPTY word, which [wl_word] refuses; a trailing blank      *)
+(*  parses to the words before it, whose body is then shorter than the     *)
+(*  input.                                                                 *)
+(* ===================================================================== *)
+
+Fixpoint wl_words (l : list (bv 8)) : list (list (bv 8)) :=
+  match l with
+  | [] => []
+  | b :: l' =>
+      let ws := wl_words l' in
+      if decide (b = wl_sp) then [] :: ws
+      else match ws with
+           | [] => [[b]]
+           | w :: r => (b :: w) :: r
+           end
+  end.
+
+Definition last_ws (I : list (bv 8)) : list (list (bv 8)) :=
+  wl_words (default [] (last (bodies_of I))).
+
+Lemma wl_words_nil : wl_words [] = [].
+Proof. reflexivity. Qed.
+
+Lemma wl_words_cons_sp (l : list (bv 8)) :
+  wl_words (wl_sp :: l) = [] :: wl_words l.
+Proof.
+  cbn [wl_words]. case_decide as Hc; [reflexivity |]. exfalso. by apply Hc.
+Qed.
+
+Lemma wl_words_cons_other_nil (b : bv 8) (l : list (bv 8)) :
+  b <> wl_sp -> wl_words l = [] -> wl_words (b :: l) = [[b]].
+Proof.
+  intros Hb Hl. cbn [wl_words].
+  case_decide as Hc; [exfalso; exact (Hb Hc) |]. by rewrite Hl.
+Qed.
+
+Lemma wl_words_cons_other_cons (b : bv 8) (l : list (bv 8))
+    (w : list (bv 8)) (r : list (list (bv 8))) :
+  b <> wl_sp -> wl_words l = w :: r -> wl_words (b :: l) = (b :: w) :: r.
+Proof.
+  intros Hb Hl. cbn [wl_words].
+  case_decide as Hc; [exfalso; exact (Hb Hc) |]. by rewrite Hl.
+Qed.
+
+Lemma wl_alnum_ne_sp (b : bv 8) : wl_alnum b -> b <> wl_sp.
+Proof. intros Hb Heq. rewrite Heq in Hb. exact (wl_alnum_not_sp Hb). Qed.
+
+(* a word's bytes never break a word, so prepending one onto a parse that
+   already has a first word only grows that word *)
+Lemma wl_words_prepend (w : list (bv 8)) :
+  forall (l w0 : list (bv 8)) (r : list (list (bv 8))),
+    Forall wl_alnum w -> wl_words l = w0 :: r ->
+    wl_words (w ++ l) = (w ++ w0) :: r.
+Proof.
+  induction w as [| b w' IH]; intros l w0 r Hw Hl; [exact Hl |].
+  destruct (Forall_cons_1 _ _ _ Hw) as [Hb Hw'].
+  change ((b :: w') ++ l) with (b :: (w' ++ l)).
+  by rewrite (wl_words_cons_other_cons b (w' ++ l) (w' ++ w0) r
+                (wl_alnum_ne_sp b Hb) (IH l w0 r Hw' Hl)).
+Qed.
+
+Lemma wl_words_word (w : list (bv 8)) :
+  Forall wl_alnum w -> w <> [] -> wl_words w = [w].
+Proof.
+  induction w as [| b w' IH]; intros Hw Hne; [by destruct (Hne eq_refl) |].
+  destruct (Forall_cons_1 _ _ _ Hw) as [Hb Hw'].
+  destruct w' as [| b1 w1].
+  - exact (wl_words_cons_other_nil b [] (wl_alnum_ne_sp b Hb) wl_words_nil).
+  - assert (Hne1 : b1 :: w1 <> []) by discriminate.
+    by rewrite (wl_words_cons_other_cons b (b1 :: w1) (b1 :: w1) []
+                  (wl_alnum_ne_sp b Hb) (IH Hw' Hne1)).
+Qed.
+
+(* THE WORD PARSER'S SPEC: on a well-formed body it inverts [wl_body].
+   Everything a round reads off the input goes through this. *)
+Lemma wl_words_body (ws : list (list (bv 8))) :
+  wl_wf ws -> wl_words (wl_body ws) = ws.
+Proof.
+  induction ws as [| w r IH]; intro Hwf; [reflexivity |].
+  destruct (wl_wf_cons w r Hwf) as [[Hne Ha] Hr].
+  rewrite wl_body_cons.
+  destruct r as [| w1 r1].
+  - cbn [wl_tail]. rewrite app_nil_r. exact (wl_words_word w Ha Hne).
+  - rewrite wl_tail_cons.
+    assert (Hsp : wl_words (wl_sp :: wl_body (w1 :: r1)) = [] :: (w1 :: r1))
+      by (rewrite wl_words_cons_sp (IH Hr); reflexivity).
+    rewrite (wl_words_prepend w (wl_sp :: wl_body (w1 :: r1)) [] (w1 :: r1)
+               Ha Hsp).
+    by rewrite app_nil_r.
+Qed.
+
+(* the words the round that just closed typed *)
+Lemma last_ws_snoc_nl (I : list (bv 8)) :
+  last_ws (I ++ [wl_nl]) = wl_words (rest_of I).
+Proof. by rewrite /last_ws bodies_of_snoc_nl last_snoc. Qed.
+
+(* ===================================================================== *)
+(*  S7.3  DETERMINACY: THE LAW THAT REPLACES THE DIVISION                 *)
+(*                                                                        *)
+(*  With one fixed line, which round a wire position falls in is a         *)
+(*  quotient.  Here it is read off the parse instead, and what makes that  *)
+(*  sound is that the parse of a PREFIX is a prefix of the parse: two      *)
+(*  inputs whose wires are nested are themselves nested, body for body,    *)
+(*  with the shorter one's remainder sitting inside the longer one's next   *)
+(*  body.  [wl_cut_prefix_of] is the converse, which is how an input       *)
+(*  prefix is REBUILT from its cut.                                        *)
+(* ===================================================================== *)
+
+Lemma wl_nl_head_not_nonl (t : list (bv 8)) (b : bv 8) :
+  head (wl_nl :: t) = Some b -> ~ (b <> wl_nl).
+Proof. intros [= <-] H. by apply H. Qed.
+
+(* a raw line and its remainder determine each other -- [wl_split_pred]
+   at [P := fun b => b <> wl_nl] *)
+Lemma wl_raw_line_det (l l' t t' : list (bv 8)) :
+  wl_nl ∉ l -> wl_nl ∉ l' ->
+  l ++ wl_nl :: t = l' ++ wl_nl :: t' -> l = l' /\ t = t'.
+Proof.
+  intros Hl Hl' Heq.
+  destruct (wl_split_pred (fun b => b <> wl_nl)
+              l (wl_nl :: t) l' (wl_nl :: t')
+              (wl_nonl_Forall l Hl) (wl_nonl_Forall l' Hl')
+              (wl_nl_head_not_nonl t) (wl_nl_head_not_nonl t') Heq)
+    as [Hb Ht].
+  split; [exact Hb | by injection Ht].
+Qed.
+
+Lemma wl_raw_line_prefix_det (l l' t t' : list (bv 8)) :
+  wl_nl ∉ l -> wl_nl ∉ l' ->
+  l ++ wl_nl :: t `prefix_of` l' ++ wl_nl :: t' ->
+  l = l' /\ t `prefix_of` t'.
+Proof.
+  intros Hl Hl' [k Hk]. rewrite -app_assoc in Hk.
+  destruct (wl_raw_line_det l l' (t ++ k) t' Hl Hl' (eq_sym Hk)) as [-> Ht].
+  split; [reflexivity | by exists k].
+Qed.
+
+(* a newline-free remainder cannot cover a whole line *)
+Lemma wl_raw_line_not_prefix_nonl (l t r : list (bv 8)) :
+  wl_nl ∉ r -> l ++ wl_nl :: t `prefix_of` r -> False.
+Proof.
+  intros Hr [k Hk]. rewrite Hk in Hr. apply Hr.
+  apply elem_of_app. left. apply elem_of_app. right. apply elem_of_list_here.
+Qed.
+
+(* ...so a newline-free prefix of a line stops inside the body *)
+Lemma wl_prefix_nonl_of_line (r l t : list (bv 8)) :
+  wl_nl ∉ r -> r `prefix_of` l ++ wl_nl :: t -> r `prefix_of` l.
+Proof.
+  revert r. induction l as [| a l' IH]; intros r Hr Hp.
+  - rewrite app_nil_l in Hp.
+    destruct r as [| b r']; [apply prefix_nil |].
+    exfalso. apply Hr.
+    assert (Hba : b = wl_nl) by (apply prefix_cons_inv_1 in Hp; exact Hp).
+    rewrite Hba. apply elem_of_list_here.
+  - change ((a :: l') ++ wl_nl :: t) with (a :: (l' ++ wl_nl :: t)) in Hp.
+    destruct r as [| b r']; [apply prefix_nil |].
+    assert (Hba : b = a) by (apply prefix_cons_inv_1 in Hp; exact Hp).
+    assert (Hrest : r' `prefix_of` l' ++ wl_nl :: t)
+      by (apply prefix_cons_inv_2 in Hp; exact Hp).
+    destruct (wl_nonl_cons b r' Hr) as [_ Hr'].
+    subst b. apply prefix_cons, (IH r' Hr' Hrest).
+Qed.
+
+(* THE DETERMINACY, at the join: nested wires are nested body for body,
+   and the shorter remainder lands where the parse says it does. *)
+Lemma wl_join_prefix_det (bs1 bs2 : list (list (bv 8)))
+    (r1 r2 : list (bv 8)) :
+  Forall (fun l => wl_nl ∉ l) bs1 -> Forall (fun l => wl_nl ∉ l) bs2 ->
+  wl_nl ∉ r1 -> wl_nl ∉ r2 ->
+  wl_join bs1 ++ r1 `prefix_of` wl_join bs2 ++ r2 ->
+  bs1 `prefix_of` bs2
+  /\ (length bs1 = length bs2 -> r1 `prefix_of` r2)
+  /\ (length bs1 < length bs2 -> r1 `prefix_of` bs2 !!! length bs1).
+Proof.
+  intros Hb1 Hb2 Hr1 Hr2 Hp.
+  pose proof (wl_cut_of_join bs1 r1 Hb1 Hr1) as Hc1.
+  pose proof (wl_cut_of_join bs2 r2 Hb2 Hr2) as Hc2.
+  assert (Hbo1 : bodies_of (wl_join bs1 ++ r1) = bs1)
+    by (rewrite /bodies_of Hc1; reflexivity).
+  assert (Hbo2 : bodies_of (wl_join bs2 ++ r2) = bs2)
+    by (rewrite /bodies_of Hc2; reflexivity).
+  assert (Hre1 : rest_of (wl_join bs1 ++ r1) = r1)
+    by (rewrite /rest_of Hc1; reflexivity).
+  assert (Hre2 : rest_of (wl_join bs2 ++ r2) = r2)
+    by (rewrite /rest_of Hc2; reflexivity).
+  assert (Hpb : bs1 `prefix_of` bs2).
+  { pose proof (bodies_of_prefix _ _ Hp) as H. by rewrite Hbo1 Hbo2 in H. }
+  split; [exact Hpb |]. split.
+  - intro Hlen.
+    assert (Hn : nlines (wl_join bs1 ++ r1) = nlines (wl_join bs2 ++ r2))
+      by (rewrite /nlines Hbo1 Hbo2; exact Hlen).
+    pose proof (rest_of_prefix _ _ Hp Hn) as H. by rewrite Hre1 Hre2 in H.
+  - intro Hlt. destruct Hpb as [ls Hls]. destruct ls as [| l ls'].
+    { exfalso. rewrite app_nil_r in Hls. rewrite Hls in Hlt. lia. }
+    assert (Hidx : bs2 !!! length bs1 = l).
+    { rewrite Hls list_lookup_total_alt
+        (lookup_app_r bs1 (l :: ls') (length bs1) ltac:(lia)) Nat.sub_diag.
+      reflexivity. }
+    rewrite Hidx.
+    assert (Hsp : wl_join bs2 ++ r2
+                  = wl_join bs1 ++ (l ++ wl_nl :: (wl_join ls' ++ r2))).
+    { rewrite Hls wl_join_app -app_assoc (wl_join_cons_app l ls' r2).
+      reflexivity. }
+    rewrite Hsp in Hp.
+    exact (wl_prefix_nonl_of_line r1 l (wl_join ls' ++ r2) Hr1
+             (wl_prefix_app_cancel _ _ _ Hp)).
+Qed.
+
+(* ...AND ITS CONVERSE: the three clauses below are exactly what
+   [wl_join_prefix_det] hands back, so the two together say that the cut
+   and the input's prefix order determine each other.  The input prefix is
+   rebuilt from the cut via [wl_cut_join]. *)
+Lemma wl_cut_prefix_of (I I' : list (bv 8)) :
+  bodies_of I `prefix_of` bodies_of I' ->
+  (nlines I = nlines I' -> rest_of I `prefix_of` rest_of I') ->
+  (nlines I < nlines I' -> rest_of I `prefix_of` bodies_of I' !!! nlines I) ->
+  I `prefix_of` I'.
+Proof.
+  intros [ls Hls] Heq Hlt. destruct ls as [| l ls'].
+  - rewrite app_nil_r in Hls.
+    assert (Hn : nlines I = nlines I')
+      by (rewrite /nlines Hls; reflexivity).
+    destruct (Heq Hn) as [m Hm].
+    assert (HI' : I' = (wl_join (bodies_of I) ++ rest_of I) ++ m).
+    { transitivity (wl_join (bodies_of I') ++ rest_of I');
+        [exact (wl_cut_join I') |].
+      rewrite Hls Hm. exact (app_assoc _ _ _). }
+    exists m. rewrite (wl_cut_join I). exact HI'.
+  - assert (Hn : nlines I < nlines I').
+    { rewrite /nlines Hls length_app.
+      change (length (l :: ls')) with (S (length ls')). lia. }
+    assert (Hidx : bodies_of I' !!! nlines I = l).
+    { rewrite /nlines Hls list_lookup_total_alt
+        (lookup_app_r (bodies_of I) (l :: ls') (length (bodies_of I))
+           ltac:(lia)) Nat.sub_diag.
+      reflexivity. }
+    destruct (Hlt Hn) as [m Hm]. rewrite Hidx in Hm.
+    assert (HI' : I' = (wl_join (bodies_of I) ++ rest_of I)
+                        ++ (m ++ wl_nl :: (wl_join ls' ++ rest_of I'))).
+    { transitivity (wl_join (bodies_of I') ++ rest_of I');
+        [exact (wl_cut_join I') |].
+      rewrite Hls wl_join_app wl_join_cons Hm.
+      exact (wl_reshape _ _ _ _ _ _). }
+    exists (m ++ wl_nl :: (wl_join ls' ++ rest_of I')).
+    rewrite (wl_cut_join I). exact HI'.
+Qed.
+
+(* ---- decidability: the parser IS the witness, so nothing searches ----- *)
+
+Global Instance wl_body_byte_dec b : Decision (wl_body_byte b).
+Proof. rewrite /wl_body_byte. apply _. Defined.
+
+Global Instance wl_body_bytes_dec l : Decision (Forall wl_body_byte l).
+Proof. apply _. Defined.
+
+(* ===================================================================== *)
+(*  ANTI-VACUITY: the parse of a real input, by computation.  Two         *)
+(*  complete lines -- one of a single two-letter word, one of two         *)
+(*  one-letter words -- and a third line the user has only started.       *)
+(* ===================================================================== *)
+
+Definition wl_demo_in : list (bv 8) :=
+  [wl_demo_a; wl_demo_b; wl_nl;
+   wl_demo_a; wl_sp; wl_demo_b; wl_nl;
+   wl_demo_b].
+
+Lemma wl_demo_bodies :
+  bodies_of wl_demo_in
+  = [[wl_demo_a; wl_demo_b]; [wl_demo_a; wl_sp; wl_demo_b]].
+Proof. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+Lemma wl_demo_rest : rest_of wl_demo_in = [wl_demo_b].
+Proof. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+Lemma wl_demo_words :
+  wl_words [wl_demo_a; wl_sp; wl_demo_b] = [[wl_demo_a]; [wl_demo_b]].
+Proof. apply (bool_decide_unpack _). vm_compute. exact I. Qed.

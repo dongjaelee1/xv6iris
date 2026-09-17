@@ -397,6 +397,58 @@ Record riscvEraGS := RiscvEraGS {
   era_rv_name : CPU -> gname
 }.
 
+(* ====================================================================== *)
+(*  THE APPLICATION'S CONSOLE INTERFACE (post-qed-redesign §3.2, R4).      *)
+(*                                                                        *)
+(*  The three things the KERNEL READS of an application: a per-history     *)
+(*  fact it files beside every received byte, a credential a kill pays     *)
+(*  with, and a claim about the console boundary.  They were three fields  *)
+(*  of [riscvFixedGS] with six companion instance fields, and every boot   *)
+(*  obligation took one EQUATION per field -- five in all, one per         *)
+(*  projection the obligation happened to read.                            *)
+(*                                                                        *)
+(*  ONE FIELD AND ONE EQUATION.  [riscv_rx_tag], [riscv_kill_cred] and     *)
+(*  [riscv_cons_res] are PROJECTIONS of this record now, so the fifty-odd  *)
+(*  kernel files that name them are unchanged; what changes is that an     *)
+(*  obligation takes [riscvF_app_iface = <the application's>] and derives  *)
+(*  whichever of the three it reads.                                       *)
+(*                                                                        *)
+(*  THE INSTANCES ARE FIELDS, not side conditions at every use.  The tag   *)
+(*  is copied out of the UART invariant's column once per queued byte, the *)
+(*  credential at each party a kill touches, so both have to be duplicable *)
+(*  by construction; all three are TIMELESS because they ride invariant    *)
+(*  bodies that the device and lock leaves strip a later off.  A client    *)
+(*  whose claim needs a non-timeless part keeps it outside and hands it    *)
+(*  in.                                                                    *)
+(* ====================================================================== *)
+Record app_iface (Σ : gFunctors) := MkAppIface {
+  (* THE TAG FAMILY: what the kernel files beside a received byte, minted
+     by the rx wand at the moment of the push and copied out again by every
+     reader of the receive FIFO.  The trivial application sets it to
+     [fun _ => True]. *)
+  ai_tag : list mobs -> iProp Σ;
+  ai_tag_persistent : forall h, Persistent (ai_tag h);
+  ai_tag_timeless : forall h, Timeless (ai_tag h);
+  (* THE KILL CREDENTIAL: what a party a kill touched may keep.  An
+     application that claims nothing about a kill pays nothing. *)
+  ai_kill : iProp Σ;
+  ai_kill_persistent : Persistent ai_kill;
+  ai_kill_timeless : Timeless ai_kill;
+  (* THE CONSOLE CLAIM (redesign R2): the application's claim about the
+     whole console boundary, over one console history.  NOT persistent --
+     it holds an authority, and duplicating one would defeat the point. *)
+  ai_cons : nat -> list mobs -> LogEntryDefs.cons_hist -> iProp Σ;
+  ai_cons_timeless :
+    forall (k : nat) (h : list mobs) (H : LogEntryDefs.cons_hist),
+      Timeless (ai_cons k h H);
+}.
+Arguments MkAppIface {Σ} _ _ _ _ _ _ _ _.
+Arguments ai_tag {Σ} _ _. Arguments ai_kill {Σ} _.
+Arguments ai_cons {Σ} _ _ _ _.
+Arguments ai_tag_persistent {Σ} _ _. Arguments ai_tag_timeless {Σ} _ _.
+Arguments ai_kill_persistent {Σ} _. Arguments ai_kill_timeless {Σ} _.
+Arguments ai_cons_timeless {Σ} _ _ _ _.
+
 Class riscvFixedGS (Σ : gFunctors) := RiscvFixedGS {
   riscvF_invGS :: invGS Σ;
   riscvF_regGS :: ghost_mapG Σ register (sigT type_of_register);
@@ -548,232 +600,15 @@ Class riscvFixedGS (Σ : gFunctors) := RiscvFixedGS {
      [riscv_obs_name] for the same reason that one does. *)
   riscvF_obshGS :: inG Σ (mono_listR (leibnizO mobs));
   riscv_obs_hist : gname;
-  (* THE INPUT TAG FAMILY (claude-notes/projects/app-echo.md, lane L5).  The
-     AMBIENT twin of [riscv_obs_pred], and ambient for the same reason: every
-     byte the environment pushes into the UART carries an
-     application-chosen, PERSISTENT claim about the history it arrived at,
-     minted by the rx wand at the moment of the push and copied out again by
-     every reader of the receive FIFO.  A kernel contract that carries a tag
-     therefore names no new parameter -- it reads the family off the record,
-     exactly as it reads the observation predicate.  The adequacy theorem
-     sets it from the application ([App.app_tag] at the run's fixed part);
-     the trivial application sets it to [fun _ => True].
+  (* THE APPLICATION'S CONSOLE INTERFACE, as ONE field (redesign R4).
+     [riscv_rx_tag], [riscv_kill_cred] and [riscv_cons_res] were three
+     fields here with six companion instance fields; they are PROJECTIONS
+     of this one now, so every kernel file that names them is unchanged and
+     every boot obligation takes ONE equation instead of five.
 
-     PERSISTENCE IS A FIELD, not a side condition at every use: the tag is
-     copied out of the UART invariant's column once per queued byte and
-     handed on to the console, so it has to be duplicable by construction.
-     TIMELESS as well as persistent, and for the reason [obs_ledger]'s [R]
-     is: the tags are filed in the UART's own invariant, whose body is
-     stripped of its later at every device leaf.  A client whose claim needs
-     a non-timeless part keeps it outside and hands it in. *)
-  riscv_rx_tag : list mobs -> iProp Σ;
-  riscv_rx_tag_persistent : forall h, Persistent (riscv_rx_tag h);
-  riscv_rx_tag_timeless : forall h, Timeless (riscv_rx_tag h);
-  (* THE KILL CREDENTIAL (claude-notes/projects/app-echo.md, lane KILL-PAY,
-     item K1).  The ambient PRICE OF A KILL: an application-chosen,
-     persistent proposition that every party a kill touches is handed.
-
-     WHY IT IS A FIXED-LAYER FIELD AND NOT A PARAMETER.  A kill reaches the
-     killer (sys_kill), the killed slot's public payload ([SchedCtx.proc_pub]
-     records that [p->killed] is nonzero only against this credential), the
-     trap that observes it ([SpecKilled]'s post), the -1 the process exits
-     with ([UexecRet.uexec_pay_arm]) and the -1 a console read returns.
-     Threading a [Wk] parameter through all of those is a sweep of every
-     occurrence of [procs_inv]; the record field costs none, exactly as
-     [riscv_rx_tag] costs none on the input side.  The adequacy theorem sets
-     it from the application ([App.app_kill] at the run's fixed part) and the
-     generic application sets it to [True] ([kill_cred_triv] below), so a
-     machine that claims nothing about a kill pays nothing.
-
-     PERSISTENT for the reason the tag family is: it is copied out at each
-     of those parties and none of them may spend it.  TIMELESS because it
-     rides invariant bodies ([SchedCtx.proc_pub] under the proc lock) that
-     the device and lock leaves strip a later off. *)
-  riscv_kill_cred : iProp Σ;
-  riscv_kill_cred_persistent : Persistent riscv_kill_cred;
-  riscv_kill_cred_timeless : Timeless riscv_kill_cred;
-  (* THE OUTPUT PREDICATE (claude-notes/projects/app-echo.md, "THE OWNER'S
-     REDESIGN OF THE UART OUTPUT SIDE", lane OUT-FUPD).  The transmit side's
-     twin of [riscv_rx_tag]: the application's claim about the RAW BYTES the
-     CONSOLE UART has ACCEPTED so far, read against an INPUT HISTORY -- a
-     real prefix of the run's observation trace, so every input byte in it
-     is one the environment really pushed.
-
-     WHERE IT LIVES.  The console port's invariant carries it at every
-     state ([WpUart.uart_out_claim], a conjunct of [WpUart.uart_colE], at a
-     witness history the invariant also holds a monotone lower bound on),
-     and the ONE transition that grows the accepted sequence is the store to
-     the transmit register ([DevModel.uart_write_thr_acc]).  Its leaf
-     ([WpSconfUartAccess.wp_uart_thr_write_s_sconf_at]) re-establishes the
-     clause from a VIEW SHIFT ITS CALLER SUPPLIES ([WpUart.out_link]): every
-     byte that ever reaches the wire was justified, at the store, by whoever
-     stored it.
-
-     WHY THIS IS ALL THE INVARIANT CARRIES.  Attribution -- which writer
-     pushed which byte, and what private ledger that writer keeps -- is
-     APPLICATION-PRIVATE knowledge, updated inside the writers' own view
-     shifts; the device invariant carries this one claim and nothing else
-     of the application's.  So the append-only located-prefix receipts the
-     tree used to hand writers ([UartTxInv]'s sublist claim,
-     [UartSentLoc]'s located receipt) are retired rather than generalized:
-     a writer no longer RECEIVES a claim about what came out, it BRINGS the
-     justification for putting it out.
-
-     NOT INDEXED BY THE PORT.  xv6 drives TWO 16550s -- one the kernel's own
-     (printk, panic), one the CONSOLE, entirely under user-process control
-     -- and by the owner's ruling the theorem is about the console's alone.
-     So the INVARIANT does the indexing ([WpUart.out_res_at] is this field
-     at [Uart0] and [emp] at [Uart1]) and this field says only what is
-     claimed of the console: a kernel-port writer owes no justification at
-     all and its link is discharged by [WpUart.out_chain_triv].
-
-     THE INPUT ARGUMENT IS A TRACE PREFIX, NOT THE RECEIVE QUEUE.  The
-     column's queued histories [hs] shrink at a pop and vanish at a flush,
-     and the byte an echo answers has already been popped; the claim is
-     therefore read against a history the invariant holds a MONOTONE LOWER
-     BOUND on ([RiscvPtsto.obs_hist_lb]), which is what makes it a real
-     prefix of the run and lets the trace ledger lift it to the run's own
-     history at a drain.
-
-     A RESOURCE AND NOT A [Prop], and that is forced.  A pure predicate
-     cannot say WHO may write, so for every [(ho, acc)] it holds at, the
-     console echo's shift would have to answer for an [acc] that already
-     contains the byte the transcript expects next -- an "impostor" write by
-     some other process -- after which the real echo is not a prefix of any
-     transcript and the shift is unprovable.  Nothing pure repairs that: the
-     application needs EXCLUSIVE ghost state tied to [acc] (a turn/position
-     authority), and the only place a ghost can be tied to the invariant's
-     [acc] is inside the invariant.  So the slot holds an [iProp].
-     TIMELESS, so [WpUart.uart_inv_body] stays timeless and every device
-     leaf still strips its later; NOT persistent -- it will hold an
-     authority, and duplicating one would defeat the whole point.
-
-     The application sets it at boot, exactly as it sets [riscv_rx_tag]
-     ([App.app_out] at the [boot_fixedGS] literal); the trivial application
-     sets it to [fun _ _ => emp] ([out_res_triv]).
-
-     WHY THE FIXED LAYER AND NOT THE ERA'S, THOUGH THE CLAIM IS PER ERA.
-     Its ghosts are re-allocated with the device at every boot, so the
-     honest home would be the era half -- but there is none available:
-     [riscvEraGS] is stored in a [ghost_map nat riscvEraGS]
-     ([riscv_registry_name], [era_registered] below), so it must stay a
-     small [Σ]-free record of gnames and cannot hold an [iProp Σ]; and
-     [AppCfg.appcfg], which is [Σ]-parametric and built per era, sits above
-     [FsAbsDefs] behind [fileG] and is not reachable from [WpUart] (which
-     binds [riscvGS], not [fileG]) without putting the application's record
-     in front of every device spec.  AND NO REGISTRY IS NEEDED FOR THAT
-     (coordinator's ruling, 2026-09-13): the era-selection lives inside the
-     application's own predicate BY CONSTRUCTION -- [App.app_out] is
-     [∃ γ, <a half of a fresh ghost_var> ∗ <the era's auths at γ> ∗ …], the
-     transport allocates that pair per era and hands the other half to the
-     era's first process, so a process's fragments agree with the
-     invariant's instance by [ghost_var_agree] and the previous era's halves
-     die with its processes.  The FOUNDING is the APPLICATION's, at the
-     POWER-ON STEP ([App.Hpow]'s on-arm; it was the transport's until lane
-     CONS-IO milestone E), which is why there is no [_nil] field here: the
-     kernel carries the yield from the power arm to the boot on
-     [RiscvAdequacy.power_boot_res] and never mints one.
-
-     THE ERA INDEX (lane CONS-IO milestone C, the design review of
-     2026-09-14).  The FIRST argument is the ERA NUMBER [k], and the kernel
-     instantiates it at [S gen_id] -- the generation the claim's era runs
-     at, which is exactly [ObsTrace.obs_boots h] of every history that era
-     hands the application ([ObsTrace.obs_wf]).  WHY IT IS NEEDED: a
-     process of a DEAD era keeps its linear writer's token inside that
-     era's closed invariants, nothing can reclaim it at power-off, and an
-     era-agnostic link would let such a stale writer pay the CURRENT era's
-     claim.  The index excludes it BY CONSTRUCTION, so no reclaim, no
-     one-shot and no per-era registry is needed.  It is the pure GENERATION
-     NUMBER and not a fresh ghost name (owner's ruling, 2026-09-14): the
-     ledger keys its per-era state by [k], and the kernel's STAMP
-     [obs_boots h = S gen_id] makes every same-era fact PURE. *)
-  riscv_out_res : nat -> list mobs -> list (bv 8) -> iProp Σ;
-  riscv_out_res_timeless :
-    forall (k : nat) (h : list mobs) (acc : list (bv 8)),
-      Timeless (riscv_out_res k h acc);
-  (* THE INPUT LOG (claude-notes/projects/app-echo.md, "E5 -- THE CONSOLE
-     I/O CLAIM", lane CONS-IO).  The receive side's twin of
-     [riscv_out_res]: the application's claim about the inputs the CONSOLE
-     UART has ACCEPTED and about which of them a process has been given.
-
-     [pops] is the LOG -- every byte consoleintr took from the receive
-     path, in arrival order, as [(h, c, cs)]: the history it arrived at
-     ([ObsTrace.obs_ends_in Uart0 h c]), the byte, and what the kernel put
-     on the wire for it ([ConsLog.cons_echo c cs]).  EVERY accepted byte is
-     logged, including the ones the ring drops and the ones an erase throws
-     away, which is what makes the log say something about the bytes a
-     reader did NOT get.  [dl] is every input the read path has CONSUMED --
-     delivered to a process OR swallowed by one of consoleread's two
-     byte-losing exits (app-echo.md, lane CONS-SWALLOW), because a byte
-     that left the ring is gone whether or not it reached a buffer, and a
-     log that pretended otherwise would leave the swallowed byte sitting in
-     a gap no kernel fact can excuse.
-
-     A RESOURCE AND NOT A [Prop], for [riscv_out_res]'s reason exactly: a
-     pure predicate cannot say WHOSE delivery a byte was, so the
-     application needs exclusive state tied to the log, and the only place
-     a ghost can be tied to the invariant's [pops] is inside the invariant.
-
-     WHERE IT LIVES: the console port's invariant, at ITS OWN movable
-     witness history ([WpUart.in_claim_at] -- NOT the output claim's, which
-     a writer's [WpUart.out_link] moves and which nothing may move the
-     input claim along with).  [WpUart.in_res_at] does the port indexing
-     ([emp] at [Uart1]).  TIMELESS, so [WpUart.uart_inv_body] stays
-     timeless; NOT persistent.  Founded at [[] [] []] by [App.Hpow]'s
-     power-on arm (lane CONS-IO milestone E), exactly as the output claim
-     is; the trivial application sets it to [in_res_triv].
-
-     ERA-INDEXED, on [riscv_out_res]'s mould and for its reason: the first
-     argument is the era number, [S gen_id] at the kernel. *)
-  riscv_in_res : nat -> list mobs -> list LogEntryDefs.log_entry ->
-                 list (list mobs * bv 8) -> iProp Σ;
-  riscv_in_res_timeless :
-    forall (k : nat) (h : list mobs) (pops : list LogEntryDefs.log_entry)
-           (dl : list (list mobs * bv 8)), Timeless (riscv_in_res k h pops dl);
-  (* THE ECHO WINDOW TOKEN (claude-notes/projects/app-echo.md, "E5 -- THE
-     APPLICATION CLAIM", lane CONS-IO milestone F).  The application's own
-     PER-ERA EXCLUSIVE, lent to the kernel and carried by it to the one
-     place the application cannot reach: consoleintr's echo.
-
-     WHY IT EXISTS.  [SpecConsoleintr.cons_echo_shift] is PERSISTENT and
-     [WpUart.in_run] is split in two ([WpUart.echo_link] stores the byte,
-     [WpUart.in_append] files the log entry), so the application's spec has
-     to be total over interleavings the kernel forbids with cons.lock but
-     never states -- two echoes of one byte, an echo after the append, an
-     append twice.  Nothing pure refutes them and nothing the application
-     owns crosses the gap on its own: [App.app_out]/[App.app_in] are read
-     out of the port invariant and put straight back.  So the kernel LENDS
-     the application one linear thing per era and hands it to the shift:
-     the first firing of a run stores it where the second firing would have
-     to find it, and the append hands it back.
-
-     WHERE IT RIDES: the PLIC payload, beside the receive token and the
-     log's high-water half ([WpUart.uart_rx_writer]) -- the one carrier
-     that reaches consoleintr and comes back at every interrupt, at the
-     CONSOLE port only ([WpUart.win_at] is [emp] at [Uart1]).  It is
-     MINTED by [App.Hpow]'s power-on arm (the application's own ledger
-     step, once per era, [App.app_win]) and carried to the boot's deposit
-     on [RiscvAdequacy.power_boot_res], exactly as the two claims are.
-
-     ERA-INDEXED and TIMELESS for [riscv_out_res]'s reasons; NOT
-     persistent -- it is an exclusive, and duplicating it would defeat the
-     whole point.  The trivial application sets it to [win_res_triv]. *)
-  riscv_win_res : nat -> iProp Σ;
-  riscv_win_res_timeless : forall k : nat, Timeless (riscv_win_res k);
-  (* THE MERGED CONSOLE RESOURCE (redesign R2).  The three fields above --
-     the output claim, the input claim and the lent window token -- become
-     this one, over the whole console history: the bytes the UART has
-     accepted, the accepted-input log, what has been delivered, and the arm
-     in progress.  The window token is unnecessary once the arm is in the
-     history (see [ConsLog.cons_hist] and the redesign plan): the two
-     descriptions the token kept in step are one description here.
-
-     ERA-INDEXED and TIMELESS for the reasons the three are; NOT persistent,
-     for the reason the input claim is not. *)
-  riscv_cons_res : nat -> list mobs -> LogEntryDefs.cons_hist -> iProp Σ;
-  riscv_cons_res_timeless :
-    forall (k : nat) (h : list mobs) (H : LogEntryDefs.cons_hist),
-      Timeless (riscv_cons_res k h H);
+     The application sets it at boot ([App.app_iface_of] at the run's fixed
+     part); the trivial application sets it to [app_iface_triv]. *)
+  riscvF_app_iface : app_iface Σ;
   (* THE APPLICATION'S FIXED PART (claude-notes/projects/app-instances.md
      §6 ruling 1, round D0).  The machine no longer owns a counter: the
      application declares whatever [Type] its fixed part has, and its BIRTH
@@ -787,18 +622,38 @@ Class riscvFixedGS (Σ : gFunctors) := RiscvFixedGS {
   riscv_client   : riscv_client_T;
 }.
 
-(* the tag family's persistence, as an instance -- the field is a plain
-   record component, so resolution needs this line to find it *)
-Global Existing Instance riscv_rx_tag_persistent.
-Global Existing Instance riscv_rx_tag_timeless.
-(* ...and the kill credential's, for the same reason *)
-Global Existing Instance riscv_kill_cred_persistent.
-Global Existing Instance riscv_kill_cred_timeless.
-Global Existing Instance riscv_out_res_timeless.
-Global Existing Instance riscv_in_res_timeless.
-(* ...and the echo window token's (lane CONS-IO milestone F) *)
-Global Existing Instance riscv_win_res_timeless.
-Global Existing Instance riscv_cons_res_timeless.
+(* THE THREE PROJECTIONS (redesign R4).  Every kernel file that reads the
+   application's interface names one of these, exactly as it named the
+   fields they replace; only the SITES THAT SET the interface -- the boot's
+   record literal and the obligations' equations -- see [riscvF_app_iface]
+   itself. *)
+Definition riscv_rx_tag `{!riscvFixedGS Σ} : list mobs -> iProp Σ :=
+  ai_tag riscvF_app_iface.
+Definition riscv_kill_cred `{!riscvFixedGS Σ} : iProp Σ :=
+  ai_kill riscvF_app_iface.
+Definition riscv_cons_res `{!riscvFixedGS Σ} :
+    nat -> list mobs -> LogEntryDefs.cons_hist -> iProp Σ :=
+  ai_cons riscvF_app_iface.
+
+(* ...and their instances, off the interface's own fields.  They are
+   [Global Instance] and not [Existing Instance] because the projections
+   above are definitions, not record components: resolution has to unfold
+   one step to find the field. *)
+Global Instance riscv_rx_tag_persistent `{!riscvFixedGS Σ} h :
+  Persistent (riscv_rx_tag h).
+Proof. rewrite /riscv_rx_tag. apply ai_tag_persistent. Qed.
+Global Instance riscv_rx_tag_timeless `{!riscvFixedGS Σ} h :
+  Timeless (riscv_rx_tag h).
+Proof. rewrite /riscv_rx_tag. apply ai_tag_timeless. Qed.
+Global Instance riscv_kill_cred_persistent `{!riscvFixedGS Σ} :
+  Persistent riscv_kill_cred.
+Proof. rewrite /riscv_kill_cred. apply ai_kill_persistent. Qed.
+Global Instance riscv_kill_cred_timeless `{!riscvFixedGS Σ} :
+  Timeless riscv_kill_cred.
+Proof. rewrite /riscv_kill_cred. apply ai_kill_timeless. Qed.
+Global Instance riscv_cons_res_timeless `{!riscvFixedGS Σ} k h H :
+  Timeless (riscv_cons_res k h H).
+Proof. rewrite /riscv_cons_res. apply ai_cons_timeless. Qed.
 
 Class riscvGS (Σ : gFunctors) := RiscvGS {
   riscv_fixedGS :: riscvFixedGS Σ;
@@ -1082,26 +937,10 @@ Proof. rewrite /kill_cred_triv. apply _. Qed.
 (* THE TRIVIAL OUTPUT CLAIM: an application that claims nothing of the
    console's accepted bytes.  Every writer's view shift is discharged out of
    nothing at it and the founding is [emp].  It is also, by
-   [WpUart.out_res_at]'s [match], what the KERNEL's own port carries under
+   [WpUart.chist_at]'s [match], what the KERNEL's own port carries under
    EVERY application -- the owner's ruling that UART1's output is
    unconstrained, made literal. *)
-Definition out_res_triv {Σ : gFunctors} :
-    nat -> list mobs -> list (bv 8) -> iProp Σ := fun _ _ _ => emp%I.
-
-Global Instance out_res_triv_timeless {Σ : gFunctors} (k : nat) (h : list mobs)
-    (acc : list (bv 8)) : Timeless (out_res_triv (Σ := Σ) k h acc).
-Proof. rewrite /out_res_triv. apply _. Qed.
-
-(* ...and the input log's, on the same mould: the generic application
-   claims nothing about what was typed and nothing about who got it. *)
-Definition in_res_triv {Σ : gFunctors} :
-    nat -> list mobs -> list LogEntryDefs.log_entry ->
-    list (list mobs * bv 8) -> iProp Σ :=
-  fun _ _ _ _ => emp%I.
-Global Instance in_res_triv_timeless {Σ : gFunctors} (k : nat) (h : list mobs)
-    (pops : list LogEntryDefs.log_entry) (dl : list (list mobs * bv 8)) :
-  Timeless (in_res_triv (Σ := Σ) k h pops dl).
-Proof. rewrite /in_res_triv. apply _. Qed.
+(* [out_res_triv] and [in_res_triv] lived here. *)
 
 (* ...and the echo window token's (lane CONS-IO milestone F): the generic
    application has no echo discipline to protect, so it lends the kernel
@@ -1113,10 +952,16 @@ Global Instance cons_res_triv_timeless {Σ : gFunctors} (k : nat)
   Timeless (cons_res_triv (Σ := Σ) k h H).
 Proof. rewrite /cons_res_triv. apply _. Qed.
 
-Definition win_res_triv {Σ : gFunctors} : nat -> iProp Σ := fun _ => emp%I.
-Global Instance win_res_triv_timeless {Σ : gFunctors} (k : nat) :
-  Timeless (win_res_triv (Σ := Σ) k).
-Proof. rewrite /win_res_triv. apply _. Qed.
+(* ...and the three of them AS AN INTERFACE (redesign R4): what the generic
+   application sets [riscvF_app_iface] to.  One value where the trivial
+   theorem used to hand over three predicates and five instances. *)
+Definition app_iface_triv (Σ : gFunctors) : app_iface Σ :=
+  MkAppIface rx_tag_triv (@rx_tag_triv_persistent Σ) (@rx_tag_triv_timeless Σ)
+             kill_cred_triv (@kill_cred_triv_persistent Σ)
+             (@kill_cred_triv_timeless Σ)
+             cons_res_triv (@cons_res_triv_timeless Σ).
+
+(* [win_res_triv] lived here. *)
 
 (* the TRIVIAL trace predicate -- the client's half and nothing about it.
    What a client that states no trace property fills the slot with. *)

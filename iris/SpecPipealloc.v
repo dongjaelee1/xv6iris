@@ -79,6 +79,7 @@ Require Import Xv6G.   (* the ghost-state bundle; see its header *)
 Require Import ProcDefs.  (* [pprivate], [proc_priv_bare] *)
 Local Open Scope Z_scope.
 Require Import TsoCtx.
+Require Import PipeQueue.   (* the pipe's byte-queue ghost: names, links, payments *)
 
 
 (* The address of the string literal "pipe" that pipealloc passes to initlock.
@@ -132,11 +133,18 @@ Section SpecPipealloc.
         same reason [f->ip] cannot name a file across time.  When the pipe's
         identity is wanted it will come from the pipe's own ghost state, not
         from the pointer cell, so nothing here is kept warm for it. *)
-     (∃ (k0 k1 : nat),
+     (* ...AND THEY ARE THE TWO ENDS OF ONE PIPE, whose names both states
+        carry (design/pipe.md, "The byte queue") -- the fact the pointer
+        equation above could not honestly say -- beside the pipe's byte
+        queue FRAGMENT at its birth state: empty, nothing read, both ends
+        open.  The fragment is exact and exclusive; what its holder does
+        with it is the application's business. *)
+     (∃ (k0 k1 : nat) (γp : pipe_names),
         ⌜(k0 < NFILE)%nat /\ (k1 < NFILE)%nat⌝ ∗
         pf0 ↦₈[KT1] fnode k0 ∗ pf1 ↦₈[KT1] fnode k1 ∗
-        file_ref γf k0 1 (FdOpen true false FdPipe) ∗
-        file_ref γf k1 1 (FdOpen false true FdPipe)))%I.
+        file_ref γf k0 1 (FdOpen true false (FdPipe γp)) ∗
+        file_ref γf k1 1 (FdOpen false true (FdPipe γp)) ∗
+        pipe_qfrag (pn_queue γp) pst0))%I.
 
 End SpecPipealloc.
 

@@ -428,19 +428,21 @@ Section ProofFileread.
      on [f->type]; [fdstate_ok] is what makes those the same question, and
      these four bridges are where the two meet. *)
   Local Lemma fr_env_dev (γf' : gname) (fn' : fread_names)
-      (st' : fdstate) (Cf' : fcontent) (inum : mword 32) (γo : gname) :
-    fdstate_ok inum γo Cf' st' -> fc_type Cf' = FD_DEVICE ->
+      (st' : fdstate) (Cf' : fcontent) (inum : mword 32) (γo : gname)
+      (γp : pipe_names) :
+    fdstate_ok inum γo γp Cf' st' -> fc_type Cf' = FD_DEVICE ->
     fileread_env γf' fn' st' -∗ fileread_dev_env fn' (dev_major Cf').
   Proof.
-    intros Hok Ht. destruct (fdstate_ok_device inum γo Cf' st' Hok Ht) as (? & ? & ->). by iIntros "$".
+    intros Hok Ht. destruct (fdstate_ok_device inum γo γp Cf' st' Hok Ht) as (? & ? & ->). by iIntros "$".
   Qed.
 
   Local Lemma fr_env_out_dev (fn' : fread_names)
-      (st' : fdstate) (Cf' : fcontent) (inum : mword 32) (γo : gname) :
-    fdstate_ok inum γo Cf' st' -> fc_type Cf' = FD_DEVICE ->
+      (st' : fdstate) (Cf' : fcontent) (inum : mword 32) (γo : gname)
+      (γp : pipe_names) :
+    fdstate_ok inum γo γp Cf' st' -> fc_type Cf' = FD_DEVICE ->
     fileread_dev_env fn' (dev_major Cf') -∗ fileread_env_out fn' st'.
   Proof.
-    intros Hok Ht. destruct (fdstate_ok_device inum γo Cf' st' Hok Ht) as (? & ? & ->). by iIntros "$".
+    intros Hok Ht. destruct (fdstate_ok_device inum γo γp Cf' st' Hok Ht) as (? & ? & ->). by iIntros "$".
   Qed.
 
   Local Lemma fr_dev_in (fn' : fread_names) (Cf' : fcontent) :
@@ -484,20 +486,22 @@ Section ProofFileread.
   Qed.
 
   Local Lemma fr_env_fs (γf' : gname) (fn' : fread_names)
-      (st' : fdstate) (Cf' : fcontent) (inum : mword 32) (γo : gname) :
-    fdstate_ok inum γo Cf' st' -> fc_type Cf' = FD_INODE ->
+      (st' : fdstate) (Cf' : fcontent) (inum : mword 32) (γo : gname)
+      (γp : pipe_names) :
+    fdstate_ok inum γo γp Cf' st' -> fc_type Cf' = FD_INODE ->
     fileread_env γf' fn' st' -∗ fileread_fs_env γf' fn'.
   Proof.
-    intros Hok Ht. destruct (fdstate_ok_inode inum γo Cf' st' Hok Ht) as (? & ? & ->).
+    intros Hok Ht. destruct (fdstate_ok_inode inum γo γp Cf' st' Hok Ht) as (? & ? & ->).
     by iIntros "$".
   Qed.
 
   Local Lemma fr_env_out_fs (fn' : fread_names)
-      (st' : fdstate) (Cf' : fcontent) (inum : mword 32) (γo : gname) :
-    fdstate_ok inum γo Cf' st' -> fc_type Cf' = FD_INODE ->
+      (st' : fdstate) (Cf' : fcontent) (inum : mword 32) (γo : gname)
+      (γp : pipe_names) :
+    fdstate_ok inum γo γp Cf' st' -> fc_type Cf' = FD_INODE ->
     fileread_fs_out fn' -∗ fileread_env_out fn' st'.
   Proof.
-    intros Hok Ht. destruct (fdstate_ok_inode inum γo Cf' st' Hok Ht) as (? & ? & ->). by iIntros "$".
+    intros Hok Ht. destruct (fdstate_ok_inode inum γo γp Cf' st' Hok Ht) as (? & ? & ->). by iIntros "$".
   Qed.
 
   Lemma wp_fileread_sconf 
@@ -507,9 +511,11 @@ Section ProofFileread.
       (m : regfile) (K : nat) (eb : bool) (n : Z) (b : bool) (lks : gset string)
       (Fr : pfam Σ (aview -> nat -> anode -> nat -> iProp Σ))
       (Rd : nat -> nat -> iProp Σ)
-      (Rin : list (list mobs * bv 8) -> iProp Σ) (P : iProp Σ)
+      (Rin : list (list mobs * bv 8) -> iProp Σ)
+      (Rp : list (bv 8) -> iProp Σ) (Rpe : list (bv 8) -> pipe_st -> iProp Σ)
+      (P : iProp Σ)
     : wp_fileread_sconf_body γf γs j γlp k q st fn pidv U m K eb n b lks Fr
-        Rd Rin P.
+        Rd Rin Rp Rpe P.
   Proof.
     cbv beta delta [wp_fileread_sconf_body].
     intros pcE pj addr ret_tgt HK Hk Hj Hgs Hlens Ha0 Ha2 Hn Heb Hbelow.
@@ -526,7 +532,7 @@ Section ProofFileread.
        are fractions of it, and it is rebuilt unchanged at every exit. *)
     iDestruct "Href" as (Cf) "(Hrtok & Hrfields & Hrpay & Hrlv)".
     iDestruct (file_pay_st_ok with "Hrpay") as "[%Hokx Hrpay]".
-    destruct Hokx as (inumx & γox & Hok).
+    destruct Hokx as (inumx & γox & γpx & Hok).
     iEval (rewrite /file_fields) in "Hrfields".
     iDestruct "Hrfields" as "(Hcty & Hcrd & Hcwr & Hcpp & Hcip & Hcmaj)".
     (* ===================================================================
@@ -775,8 +781,8 @@ Section ProofFileread.
       { cbn [umem_wr]. rewrite HVid. iExact "Hpriv". }
       { by iApply fileread_env_out_of_env. }
       { iSplitR; [iPureIntro; apply fileread_ret_m1 |].
-        iApply (fileread_extra_unreadable _ _ inumx γox Cf st n Fr Rd _
-                  _ _ _ Hok Hrdz0 with "HP"). }
+        iApply (fileread_extra_unreadable _ _ inumx γox _ Cf st n Fr Rd _
+                  _ _ _ _ _ Hok Hrdz0 with "HP"). }
     - (* ===============================================================
          READABLE: spill s1/s3, park the three arguments, dispatch on the
          file's TYPE -- which is read out of the reference's own content
@@ -1073,7 +1079,7 @@ Section ProofFileread.
         (* THE PAYLOAD COMES BACK UNDER A BASIC UPDATE: the console arm's
            [cons_acc] returns it through a bupd ([ConsoleInv.cons_acc]'s
            note), and the goal here is still the WP, so the update is free. *)
-        iMod (fileread_extra_neg _ _ st n Fr Rd _ _ _ _ Hneg with "Hau HP") as "Hex".
+        iMod (fileread_extra_neg _ _ st n Fr Rd _ _ _ _ _ _ Hneg with "Hau HP") as "Hex".
         iApply ("Hcont" $! mf (mword_of_int (-1)) (pv_upt (us_V U)) 0%nat (fun _ => bv_0 8)
                   with "[%] [%] [%] [%] [%] Hcg Hcnt [Hpc] [Hrtok Hcty Hcrd Hcwr Hcpp Hcip Hcmaj Hrpay Hrlv]
                         [Hpriv] [Henv] [Hex]").
@@ -1169,6 +1175,14 @@ Section ProofFileread.
         (* the entry's iref unit rides the pipe arm now ([file_core]); it is
            not piperead's business, so it stays here and goes back below. *)
         iDestruct "Hpl" as "[(#Hpipe & Hpref & Hiru) Hoh]".
+        (* THE BYTE QUEUE'S PAYMENT (design/pipe.md, "The byte queue"): past
+           the [f->readable] test the descriptor is the readable pipe arm of
+           [fileread_in], whose payout is the caller's read chain over THIS
+           pipe's queue -- the one the payload names, since [fdstate_ok] ties
+           the state's [FdPipe] to [fp_pipe pn]. *)
+        iDestruct (fileread_in_of_pipe (fp_inum pn) (fp_ooff pn) (fp_pipe pn) Cf st
+                     n Fr Rd Rin Rp Rpe P Hstp Htyp Hrdnz with "Hau HP")
+          as "[HP Hpay]".
         assert (Htgt6a : add_vec (mword_of_int (FR + 0x24) : mword 64)
                   (sign_extend' 64 (mword_of_int 70 : mword 13))
                   = mword_of_int (FR + 0x6a))
@@ -1250,14 +1264,14 @@ Section ProofFileread.
                      with "Hcnt") as "Hcnt".
         iApply (Piperead.wp_piperead_sconf fsc_kalloc γf γs j γlp (fp_lock pn) (fp_pipe pn)
                   (fc_wbool Cf) q Q2 (K - 6)%nat eb pidv U n b
-                  _ Hj Hgs Hlens HQ2a2 (fr_n_range n Hn) (fr_av_pipe K HK) Heb
-                  with "Hcg Hcnt Htext Hpc [] Hpref Hpriv Hkenv Hprocs").
+                  _ Rp Rpe Hj Hgs Hlens HQ2a2 (fr_n_range n Hn) (fr_av_pipe K HK) Heb
+                  with "Hcg Hcnt Htext Hpc [] Hpref Hpay Hpriv Hkenv Hprocs").
         all: try lkbelow.
         { iEval (rewrite HQ2a0). iExact "Hpipe". }
         (* the pipe's copyout writes user memory, so piperead's post binds a
            fresh image ([SpecPiperead], mirroring [SpecPipewrite]). *)
         iIntros (CIDpr Hspr mf P' dpr bspr)
-          "%Hcspr %Hupt %Hdpr %Hretpr %Htiepr Hcg Hcnt Hpc Hpref Hpriv".
+          "%Hcspr %Hupt %Hdpr %Hretpr %Htiepr Hcg Hcnt Hpc Hpref Hrpost Hpriv".
         (* THE ARM'S WINDOW IS THE DISPATCHER'S: piperead copies to its own
            a1, which is fileread's [addr] carried in s2.  Bringing the two
            to the same term here is the whole of the arm's contribution. *)
@@ -1269,6 +1283,11 @@ Section ProofFileread.
           rewrite /R3 upd_ne; [| regne]. rewrite /R2 upd_ne; [| regne].
           rewrite /R1 upd_ne; [| regne]. reflexivity. }
         iEval (rewrite HQ2a1) in "Hpriv".
+        (* piperead's window IS the dispatcher's run at [addr], so the
+           post reads back at the resume image ([pipe_rpost_img_of], whose
+           step is [UserPtTree.umem_wr_lookup_in]). *)
+        iDestruct (pipe_rpost_img_of _ _ _ _ _ _ _ dpr bspr _ (us_M U)
+                     with "Hrpost") as "Hrpost".
         set (Mpr := umem_wr (us_M U) (m !!! Regidx Ra1) dpr bspr).
         assert (Hpc6a : ret_pc (Q2 !!! Regidx Rra) = mword_of_int (FR + 0x70)).
         { rewrite HQ2ra. apply bv_eq; vm_compute; reflexivity. }
@@ -1351,7 +1370,7 @@ Section ProofFileread.
         iApply ("Hcont" $! mfin (mf !!! Regidx Ra0) P' dpr bspr
                   with "[%] [%] [%] [%] [%] Hcg Hcnt [Hpc]
                         [Hrtok Hcty Hcrd Hcwr Hcpp Hcip Hcmaj Hpn Hpref Hiru Hoh Hrlv]
-                        Hpriv [Henv] [HP]").
+                        Hpriv [Henv] [HP Hrpost]").
         { exact Hcsf. }
         { exact Hupt. }
         { exact Hdpr. }
@@ -1373,8 +1392,8 @@ Section ProofFileread.
           iFrame "Hpipe Hpref Hiru Hoh". }
         { by iApply fileread_env_out_of_env. }
         { iSplitR; [iPureIntro; exact Hretpr |].
-          iApply (fileread_extra_of_pipe _ _ inumx γox Cf st n Fr Rd _ _ _ _ _ Hok
-                    Htyp Hrdnz with "HP"). }
+          iApply (fileread_extra_of_pipe _ _ (fp_inum pn) (fp_ooff pn) (fp_pipe pn)
+                    Cf st n Fr Rd _ _ _ _ _ _ _ Hstp Htyp Hrdnz with "HP Hrpost"). }
       + (* ---- +0x22 c.li a4,3 ; +0x24 beq a5,a4 -> FD_DEVICE ---- *)
         iApply (wp_beq_fall_s_sconf (mword_of_int (FR + 0x24))
                   (mword_of_int 70 : mword 13) Ra4 Ra5 B5 (K - 6)%nat b
@@ -1416,7 +1435,7 @@ Section ProofFileread.
              which is exactly what the environment's guard is about. *)
           assert (Htyd : fc_type Cf = FD_DEVICE)
             by (apply eq_vec_true_iff; exact Hp3).
-          iDestruct (fr_env_dev γf fn st Cf inumx _ Hok Htyd with "Henv") as "Henv".
+          iDestruct (fr_env_dev γf fn st Cf inumx _ _ Hok Htyd with "Henv") as "Henv".
           pose proof (fr_major_range (fc_major Cf : mword 16)) as Hmjr.
           assert (HB6a0 : B6 !!! Regidx Ra0 = fnode k).
           { rewrite /B6 upd_ne; [| vm_compute; discriminate].
@@ -1624,14 +1643,14 @@ Section ProofFileread.
                              = mword_of_int (FR + 0x8e)) by (apply bv_eq; vm_compute; reflexivity).
              iEval (rewrite Hpp8e) in "Hpc".
              iApply (wp_addi4_s_sconf (mword_of_int (FR + 0x8e)) Ra4 Ra4
-                       (mword_of_int 212 : mword 12) D6 (K - 6)%nat b
+                       (mword_of_int 228 : mword 12) D6 (K - 6)%nat b
                        ltac:(vm_compute; discriminate) ltac:(rdok)
                        with "Hcg Hpc []").
              { iApply (fri_8e with "Htext"). }
              iIntros (CID53 Hs53) "Hcg Hpc". iEval (rgne) in "Hcg".
              set (D7 := <[Regidx Ra4 := regval_into_reg
                            (add_vec (D6 !!! Regidx Ra4)
-                              (sign_extend' 64 (mword_of_int 212 : mword 12)))]> D6).
+                              (sign_extend' 64 (mword_of_int 228 : mword 12)))]> D6).
              assert (HD7a4 : D7 !!! Regidx Ra4
                              = (mword_of_int KernelSyms.devsw : mword 64)).
              { rewrite /D7 upd_eq /D6 upd_eq.
@@ -1768,7 +1787,7 @@ Section ProofFileread.
                 (* THE NULL SLOT IS NOT THE CONSOLE'S (lane KILL-PAY,
                    K4(b)(i)): the table's per-cell row is exclusive, so
                    this exit's -1 owes no console receipt. *)
-                iMod (fileread_extra_of_dev_m1 _ _ inumx γox Cf st n Fr Rd _ _ _ _
+                iMod (fileread_extra_of_dev_m1 _ _ inumx γox _ Cf st n Fr Rd _ _ _ _ _ _
                         Hok Htyd Hmjn with "Hau HP") as "Hex".
                 iApply ("Hcont" $! mfin (mword_of_int (-1)) (pv_upt (us_V U)) 0%nat (fun _ => bv_0 8)
                           with "[%] [%] [%] [%] [%] Hcg Hcnt [Hpc]
@@ -1790,7 +1809,7 @@ Section ProofFileread.
                 { rewrite /file_ref /file_fields.
                   iFrame "Hrtok Hcty Hcrd Hcwr Hcpp Hcip Hcmaj Hrpay Hrlv". }
                 { cbn [umem_wr]. rewrite HVid. iExact "Hpriv". }
-                { iApply (fr_env_out_dev fn st Cf inumx _ Hok Htyd).
+                { iApply (fr_env_out_dev fn st Cf inumx _ _ Hok Htyd).
                   iApply (fr_dev_in_back fn Cf Hin with "[%] Hslot Hconslk").
                   left. split; [ exact Hmjn | exact Hrp0 ]. }
                 { iSplitR; [iPureIntro; apply fileread_ret_m1 |]. iExact "Hex". }
@@ -1805,10 +1824,10 @@ Section ProofFileread.
                    disjunct decided) plus the wand that turns consoleread's
                    [cons_out] back into the [Rd] the caller asked for.  The
                    walk below never case-splits on the disjunct. *)
-                destruct (fileread_st_device_rd inumx γox Cf st Hok Htyd Hrdnz)
+                destruct (fileread_st_device_rd inumx γox _ Cf st Hok Htyd Hrdnz)
                   as (wbd & Hstd).
-                iDestruct (fileread_in_dev_console st wbd (dev_major Cf) Fr Rd
-                             Rin _ Hstd Hmjc with "Hau HP") as "[Hacc Hrin]".
+                iDestruct (fileread_in_dev_console st wbd (dev_major Cf) n Fr Rd
+                             Rin _ _ _ Hstd Hmjc with "Hau HP") as "[Hacc Hrin]".
                 iDestruct (ConsoleInv.cons_acc_open with "Hacc")
                   as (ord) "[Hpay Hback]".
                 iApply (wp_cbeqz_fall_s_sconf (mword_of_int (FR + 0x96))
@@ -2003,7 +2022,7 @@ Section ProofFileread.
                 { iEval (rewrite /ret_tgt). iExact "Hpc". }
                 { rewrite /file_ref /file_fields.
                   iFrame "Hrtok Hcty Hcrd Hcwr Hcpp Hcip Hcmaj Hrpay Hrlv". }
-                { iApply (fr_env_out_dev fn st Cf inumx _ Hok Htyd).
+                { iApply (fr_env_out_dev fn st Cf inumx _ _ Hok Htyd).
                   iApply (fr_dev_in_back fn Cf Hin with "[%] Hslot Hconslk").
                   right. split; [exact Hmjc | exact Hrpc]. }
                 { iSplitR; [iPureIntro;
@@ -2020,10 +2039,10 @@ Section ProofFileread.
                      [fileread_extra] is [emp]. *)
                   destruct (decide (bv_unsigned (fc_major Cf) = CONSOLE))
                     as [Emj | Nmj]; last first.
-                  { iApply (fileread_extra_of_dev_other _ _ inumx γox Cf st n Fr
-                              Rd _ _ _ _ _ Hok Htyd Nmj Hrdnz with "HP"). }
-                  iApply (fileread_extra_of_dev_console _ _ inumx γox Cf st n Fr
-                            Rd _ _ _ _ _ Hok Htyd Emj Hrdnz with "HP").
+                  { iApply (fileread_extra_of_dev_other _ _ inumx γox _ Cf st n Fr
+                              Rd _ _ _ _ _ _ _ Hok Htyd Nmj Hrdnz with "HP"). }
+                  iApply (fileread_extra_of_dev_console _ _ inumx γox _ Cf st n Fr
+                            Rd _ _ _ _ _ _ _ Hok Htyd Emj Hrdnz with "HP").
                   destruct (Z.le_gt_cases 0 r) as [H0 | H0]; last first.
                   { assert (Hm1 : r = (-1)%Z) by lia. rewrite Hm1.
                     (* WHY IT IS -1 (lane KILL-PAY, K4(b)(ii)): consoleread
@@ -2126,7 +2145,7 @@ Section ProofFileread.
                 KILL-PAY, K4(b)(i)) *)
              assert (Hmjnc : bv_unsigned (fc_major Cf) <> CONSOLE)
                by (unfold CONSOLE; lia).
-             iMod (fileread_extra_of_dev_m1 _ _ inumx γox Cf st n Fr Rd _ _ _ _
+             iMod (fileread_extra_of_dev_m1 _ _ inumx γox _ Cf st n Fr Rd _ _ _ _ _ _
                      Hok Htyd Hmjnc with "Hau HP") as "Hex".
              iApply ("Hcont" $! mfin (mword_of_int (-1)) (pv_upt (us_V U)) 0%nat (fun _ => bv_0 8)
                        with "[%] [%] [%] [%] [%] Hcg Hcnt [Hpc]
@@ -2148,7 +2167,7 @@ Section ProofFileread.
              { rewrite /file_ref /file_fields.
                iFrame "Hrtok Hcty Hcrd Hcwr Hcpp Hcip Hcmaj Hrpay Hrlv". }
              { cbn [umem_wr]. rewrite HVid. iExact "Hpriv". }
-             { by iApply (fr_env_out_dev fn st Cf inumx _ Hok Htyd). }
+             { by iApply (fr_env_out_dev fn st Cf inumx _ _ Hok Htyd). }
              { iSplitR; [iPureIntro; apply fileread_ret_m1 |]. iExact "Hex". }
         * (* ---- +0x28 c.li a4,2 ; +0x2a bne a5,a4 -> panic ---- *)
           iApply (wp_beq_fall_s_sconf (mword_of_int (FR + 0x2a))
@@ -2190,12 +2209,12 @@ Section ProofFileread.
                 BORROW protocol; iunlock. *)
              assert (Htyi : fc_type Cf = FD_INODE)
                by (apply eq_vec_true_iff; exact Hp2).
-             iDestruct (fr_env_fs γf fn st Cf inumx _ Hok Htyi with "Henv") as "Henv".
+             iDestruct (fr_env_fs γf fn st Cf inumx _ _ Hok Htyi with "Henv") as "Henv".
              (* THE DESCRIPTOR THE WALK IS STANDING ON: open, READABLE, an
                 inode at the payload's own inum and offset shadow -- which is
                 what makes the caller's commit and this arm's row the same
                 [i], with nothing to bridge. *)
-             destruct (fileread_st_inode_rd inumx γox Cf st Hok Htyi Hrdnz)
+             destruct (fileread_st_inode_rd inumx γox _ Cf st Hok Htyi Hrdnz)
                as (wbx & Hst).
              rewrite /fileread_fs_env.
              iDestruct "Henv" as "(%Hlg & %Hist & %Hgeo &
@@ -2213,7 +2232,7 @@ Section ProofFileread.
                 of the off FAMILY by the slot THIS CONTRACT names. ---- *)
              iDestruct (fileread_pay_carve γf k q Cf _ (or_introl Htyi)
                           with "Hrpay")
-               as (ikk inm ssh gsh ty0 losh tlsh γb0 γo0)
+               as (ikk inm ssh gsh ty0 losh tlsh γb0 γo0 γp0)
                   "(%Hokc & %Hipk & %Hik & %Hinlt & %Hnd0 & %Hdv0 & %Hlesh & #Hflsh &
                     #Hshot0 & Hshr0 & Hoh & Hpayback)".
              (* the off output IS the ledger fragment on this arm *)
@@ -2221,13 +2240,13 @@ Section ProofFileread.
              (* the box's shadow IS the one the environment's permit is about:
                 both names are read off one payload record *)
              assert (Hgo : γox = γo0)
-               by exact (proj2 (fdstate_ok_inode_names _ _ _ _ _ _ Hok Hokc Htyi)).
+               by exact (proj2 (fdstate_ok_inode_names _ _ _ _ _ _ _ _ Hok Hokc Htyi)).
              (* THE INUM BRIDGE: the carve's [fdstate_ok] output and the
                 descriptor's own read the SAME payload record, so the [i] the
                 caller's commit is indexed by IS the inum whose row the fire
                 observes. *)
              assert (Hieq : bv_unsigned inumx = bv_unsigned inm)
-               by exact (proj1 (fdstate_ok_inode_names _ _ _ _ _ _ Hok Hokc Htyi)).
+               by exact (proj1 (fdstate_ok_inode_names _ _ _ _ _ _ _ _ Hok Hokc Htyi)).
              (* the descriptor at the CARVE's names, which is where the fire
                 reads the row -- one equation, and the caller's piece is at
                 the same key. *)
@@ -2236,8 +2255,8 @@ Section ProofFileread.
              (* THE CALLER'S ONE PIECE, still paired with its refund: the
                 fire below takes the pair and spends the AU side, since the
                 refund's one arm (the sign guard) is behind us. *)
-             iDestruct (fileread_in_inode_of st wbx (bv_unsigned inm) γo0 Fr Rd
-                          _ _ Hstm with "Hau HP") as "[HP Hau]".
+             iDestruct (fileread_in_inode_of st wbx (bv_unsigned inm) γo0 n Fr Rd
+                          _ _ _ _ Hstm with "Hau HP") as "[HP Hau]".
              (* ...and the descriptor's offset row, which is what the FIRE
                 advances [f->off] out of (the piece-shape rule: the client
                 hands the shadow back unmoved). *)
@@ -3016,7 +3035,7 @@ Section ProofFileread.
                 { iEval (rewrite /ret_tgt). iExact "Hpc". }
                 { rewrite /file_ref /file_fields.
                   iFrame "Hrtok Hcty Hcrd Hcwr Hcpp Hcip Hcmaj Hrpay Hrlv". }
-                { iApply (fr_env_out_fs fn st Cf inumx _ Hok Htyi). rewrite /fileread_fs_out.
+                { iApply (fr_env_out_fs fn st Cf inumx _ _ Hok Htyi). rewrite /fileread_fs_out.
                   iFrame "Hsb Hbslot". }
                 (* THE SKIP COVERS TWO ARMS, and readi's own disjunction is
                    what separates them.  The COPYOUT FAULT lands in
@@ -3026,7 +3045,7 @@ Section ProofFileread.
                    ok arm at the exact count. *)
                 { iSplitR; [iPureIntro; exact Hretok |].
                   iApply (fileread_extra_inode_of _ _ st wbx (bv_unsigned inm) γo0
-                            n Fr Rd _ _ _ _ _ Hstm with "HP").
+                            n Fr Rd _ _ _ _ _ _ _ Hstm with "HP").
                   destruct Hskip as [H1 | [H1 Ht0]].
                   { rewrite /read_arms /read_post_fail. iRight.
                     iSplitR; [iPureIntro; exact H1 |]. iRight.
@@ -3372,13 +3391,13 @@ Section ProofFileread.
                 { iEval (rewrite /ret_tgt). iExact "Hpc". }
                 { rewrite /file_ref /file_fields.
                   iFrame "Hrtok Hcty Hcrd Hcwr Hcpp Hcip Hcmaj Hrpay Hrlv". }
-                { iApply (fr_env_out_fs fn st Cf inumx _ Hok Htyi). rewrite /fileread_fs_out.
+                { iApply (fr_env_out_fs fn st Cf inumx _ _ Hok Htyi). rewrite /fileread_fs_out.
                   iFrame "Hsb Hbslot". }
                 (* THE SUCCESS ARM, at the exact count: [Htoteq] is readi's
                    own equation, carried down by [Hcase]. *)
                 { iSplitR; [iPureIntro; exact Hretok2 |].
                   iApply (fileread_extra_inode_of _ _ st wbx (bv_unsigned inm) γo0
-                            n Fr Rd _ _ _ _ _ Hstm with "HP").
+                            n Fr Rd _ _ _ _ _ _ _ Hstm with "HP").
                   rewrite /read_arms /read_post_ok. iLeft.
                   iExists avf, (Z.to_nat (bv_unsigned v)),
                     (abs_row (era_node dnl bml data)), tot.
@@ -3429,25 +3448,25 @@ Section ProofFileread.
                              = mword_of_int (FR + 0xa8)) by (apply bv_eq; vm_compute; reflexivity).
              iEval (rewrite Hppa8) in "Hpc".
              iApply (wp_addi4_s_sconf (mword_of_int (FR + 0xa8)) Ra0 Ra0
-                       (mword_of_int 434 : mword 12) P1 (K - 6)%nat b
+                       (mword_of_int 450 : mword 12) P1 (K - 6)%nat b
                        ltac:(vm_compute; discriminate) ltac:(rdok)
                        with "Hcg Hpc []").
              { iApply (fri_a8 with "Htext"). }
              iIntros (CID21 Hs21) "Hcg Hpc". iEval (rgne) in "Hcg".
              set (P2 := <[Regidx Ra0 := regval_into_reg
                            (add_vec (P1 !!! Regidx Ra0)
-                              (sign_extend' 64 (mword_of_int 434 : mword 12)))]> P1).
+                              (sign_extend' 64 (mword_of_int 450 : mword 12)))]> P1).
              assert (Hppac : add_vec_int (mword_of_int (FR + 0xa8) : mword 64) 4
                              = mword_of_int (FR + 0xac)) by (apply bv_eq; vm_compute; reflexivity).
              iEval (rewrite Hppac) in "Hpc".
              iApply (wp_jal_s_sconf (mword_of_int (FR + 0xac)) Rra
-                       (mword_of_int 2081858 : mword 21) P2 (K - 6)%nat b
+                       (mword_of_int 2081874 : mword 21) P2 (K - 6)%nat b
                        ltac:(vm_compute; discriminate) ltac:(rdok)
                        ltac:(vm_compute; reflexivity) with "Hcg Hpc []").
              { iApply (fri_ac with "Htext"). }
              iIntros (CID22 Hs22) "Hcg Hpc".
              assert (Htgtpanic : add_vec (mword_of_int (FR + 0xac) : mword 64)
-                       (sign_extend' 64 (mword_of_int 2081858 : mword 21))
+                       (sign_extend' 64 (mword_of_int 2081874 : mword 21))
                        = mword_of_int KernelSyms.panic)
                by (apply bv_eq; vm_compute; reflexivity).
              iEval (rewrite Htgtpanic) in "Hpc".

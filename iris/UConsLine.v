@@ -11,7 +11,7 @@
 (*   §1  the ledger that knows fd 0 is the console          (design S4)    *)
 (*   §2  sh's read leaf, with the receipt kept              (design S5)    *)
 (*   §3  the [gets] loop's line invariant                   (design S5)    *)
-(*   §4  the two PURE facts that discharge lexability       (design S6)    *)
+(*   §4  where the lexability discharge lives now           (design S6)    *)
 (*   §5  init's LINEAR exec supply for the child it lends   (design S3)    *)
 (*                                                                        *)
 (* WHAT PHASE 1 FOUND, and why the rewiring is not in this file:           *)
@@ -70,8 +70,8 @@ Require Import UkSh.           (* [sh_buf] / [sh_nbuf] *)
 Require Import UkShParse.      (* [ushp_no_symbols] / [ushp_tokens] *)
 Require Import UkShLoop.       (* [ush_line_lexable] -- the lowest file that
                                   sees both the LINE and the LEXER *)
-Require Import LineWords.       (* [wl_toks] -- the tokens are the WORDS' *)
-Require Import EchoDisc.        (* [echo_line] / [star_prefix] / [disc_seg] *)
+Require Import LineWords.       (* [wl_line] -- a line IS a list of WORDS *)
+Require Import EchoDisc.        (* [line_ok] / [disc_input] / [disc_seg] *)
 Require Import EchoOut.            (* [echoOutG]: the class [AppEcho]'s claims
                                       and its ledger are stated at (lane
                                       ECHO-OUT part 5).  It CARRIES
@@ -82,163 +82,26 @@ Local Open Scope Z_scope.
 Import Defs.
 
 (* ===================================================================== *)
-(*  §4  THE TWO PURE FACTS THAT DISCHARGE LEXABILITY                      *)
+(*  §4  WHAT DISCHARGES LEXABILITY -- AND WHERE IT LIVES NOW              *)
 (*                                                                        *)
 (*  [UkShFork.ushf_lexable] is "every line the user could type lexes",     *)
-(*  which is false and is the last thing sh rests on.  What replaces it is *)
-(*  these two, applied to the line the RECEIPT says sh read.               *)
+(*  which is false and is the last thing sh rests on.  What replaces it    *)
+(*  is the admissible line's own lexing, applied to the line the RECEIPT   *)
+(*  says sh read.                                                         *)
+(*                                                                        *)
+(*  NOTHING OF IT IS THIS FILE'S ANY MORE.  A line is a list of WORDS      *)
+(*  ([LineWords.wl_line]) and the shape the buffer is in when it is        *)
+(*  disciplined is [UkSh.ush_line_is ws] -- MOVED DOWN to the program      *)
+(*  tier (lane SH-LINE 2b, L3), because [UkSh.ush_rest_l] is what carries  *)
+(*  it and that file is below this one.  The obligation itself is          *)
+(*  [UkShLoop.ush_line_lexable], and what answers it is                    *)
+(*  [UkShEcho.ush_line_tokens_holds] (the words' lexing, at an ARBITRARY   *)
+(*  admissible line) transported to the buffer's byte function by          *)
+(*  [UkShEcho.ush_line_toks_holds].  BOTH NAMES ARE KEPT HERE as           *)
+(*  abbreviations, so that the consumers above this file are unaffected    *)
+(*  by the move down.                                                      *)
 (* ===================================================================== *)
 
-(* (1) THE LINE IS A PREFIX OF [echo_line].  Under the discipline the input
-   of one power cycle is a prefix of [echo_line]*; a window that begins at
-   a LINE BOUNDARY -- which is where sh's previous [gets] stopped, because
-   it stopped at a '\n' -- is therefore a prefix of one [echo_line].
-
-   STATED OVER [ins] ALONE, at [EchoDisc.disc_seg] -- the CONTENT half D3
-   of the discipline, which is all this lane needs (S6).  The discipline
-   itself is stronger since DISC-RATE ([EchoDisc.disc_seg'] adds the owner's
-   rate bound D0/D1/D2, which is what excludes the ring overflow), and a
-   supplier reaches D3 from it in one step ([EchoDisc.disc_seg'_proj], or
-   [disc_proj] to the whole-history [disc_old]).  These statements say
-   nothing about which stored bytes were dropped, and do not have to --
-   contiguity of the STORED sequence is what [ConsoleInv.cons_window] /
-   [cons_chain] carry, and contiguity of the INPUT sequence is E5's
-   overflow argument, not this lane's. *)
-(* LANE SH-STATE PROVED THESE, AND REPAIRED THE FIRST TWO.  As landed they
-   were FALSE: nothing bounded the window to ONE line, and [q = 0] with
-   [bs = echo_line ++ echo_line] satisfies the premise while
-   [take 34 echo_line] is seventeen bytes long.  What is missing is exactly
-   what [gets] guarantees -- it stops at the FIRST '\n', so the only
-   newline in what it delivered is its LAST byte -- and that is the premise
-   added below.  (The third, [ush_line_full], was true as landed and is
-   unchanged.)
-
-   THE PERIODICITY LEMMAS THIS FILE READS -- [mod_sub_self],
-   [concat_replicate_lookup], [star_prefix_lookup] -- are general facts
-   about [EchoDisc.star_prefix] and now live THERE, beside
-   [star_prefix_snoc] (lane ECHO-PURE); they were here only so that proving
-   them cost the line statements' own cone and not the discipline's. *)
-
-(* '\n' occurs in [echo_line] ONLY as its last byte -- the fact both (1)
-   and (2) turn on, decided at the literal *)
-(* [echo_line_nl_at] is [EchoDisc.echo_line_nl_last] -- the only newline
-   is the line's last byte, which is what [gets] stopping at the first one
-   says about the buffer it read. *)
-
-Lemma ush_disc_line :
-  forall (q : nat) (bs : list (bv 8)),
-    star_prefix echo_line (concat (replicate q echo_line) ++ bs) ->
-    (* ...AND THE WINDOW HOLDS AT MOST ONE LINE: the only '\n' in it is its
-       last byte, which is what [gets] stopping at the first one says. *)
-    (forall j : nat, (S j < length bs)%nat -> bs !! j <> Some (Z_to_bv 8 10)) ->
-    bs = take (length bs) echo_line.
-Proof.
-  intros q bs Hsp Hnl.
-  pose proof echo_line_pos as Hpos.
-  assert (HLlen : length (concat (replicate q echo_line))
-                  = (q * length echo_line)%nat)
-    by apply concat_replicate_length.
-  assert (Hpt : forall i : nat, (i < length bs)%nat ->
-            bs !! i = echo_line !! (i `mod` length echo_line)%nat).
-  { intros i Hi.
-    assert (Hi2 : (length (concat (replicate q echo_line)) + i
-                   < length (concat (replicate q echo_line) ++ bs))%nat)
-      by (rewrite length_app; lia).
-    pose proof (star_prefix_lookup echo_line
-                  (concat (replicate q echo_line) ++ bs)
-                  (length (concat (replicate q echo_line)) + i)
-                  Hsp Hpos Hi2) as H.
-    rewrite lookup_app_r in H; [ | lia ].
-    replace (length (concat (replicate q echo_line)) + i
-             - length (concat (replicate q echo_line)))%nat with i in H by lia.
-    rewrite H. f_equal. rewrite HLlen.
-    transitivity ((i + q * length echo_line) `mod` length echo_line)%nat;
-      [ f_equal; lia | apply Nat.Div0.mod_add ]. }
-  assert (Hlen : (length bs <= length echo_line)%nat).
-  { destruct (Nat.le_gt_cases (length bs) (length echo_line))
-      as [Hle | Hgt]; [ exact Hle | exfalso ].
-    assert (H16i : (length echo_line - 1 < length bs)%nat) by lia.
-    assert (H16 : bs !! (length echo_line - 1)%nat = Some (Z_to_bv 8 10)).
-    { rewrite (Hpt (length echo_line - 1)%nat H16i).
-      rewrite (Nat.mod_small (length echo_line - 1)%nat (length echo_line)
-                 ltac:(lia)).
-      exact echo_line_nl_at_end. }
-    assert (H17 : (S (length echo_line - 1) < length bs)%nat) by lia.
-    exact (Hnl (length echo_line - 1)%nat H17 H16). }
-  apply list_eq. intros i.
-  destruct (decide (i < length bs)%nat) as [Hi | Hi].
-  - rewrite (Hpt i Hi). rewrite lookup_take; [ | exact Hi ].
-    rewrite (Nat.mod_small i (length echo_line) ltac:(lia)). reflexivity.
-  - assert (Hn1 : bs !! i = None) by (apply lookup_ge_None_2; lia).
-    assert (Hn2 : take (length bs) echo_line !! i = None)
-      by (apply lookup_ge_None_2; rewrite length_take; lia).
-    rewrite Hn1 Hn2. reflexivity.
-Qed.
-
-(* ...and the same at the shape the call site has it in: the cycle's
-   discipline, at a history whose input ends with the window. *)
-Lemma ush_disc_line_seg :
-  forall (h : list mobs) (q : nat) (bs : list (bv 8)),
-    disc_seg h ->
-    ins h = concat (replicate q echo_line) ++ bs ->
-    (forall j : nat, (S j < length bs)%nat -> bs !! j <> Some (Z_to_bv 8 10)) ->
-    bs = take (length bs) echo_line.
-Proof.
-  intros h q bs Hd Hins Hnl.
-  apply (ush_disc_line q bs); [ | exact Hnl ].
-  rewrite <- Hins. exact Hd.
-Qed.
-
-(* (2) A PREFIX OF [echo_line] THAT ENDS IN '\n' IS [echo_line].  '\n' is
-   [echo_line]'s last byte and occurs nowhere else in it, and '\n' is
-   exactly what [gets] stops at -- so the two together say the line sh has
-   in its buffer IS "echo hello world\n". *)
-Lemma ush_line_full :
-  forall bs0 : list (bv 8),
-    let bs := bs0 ++ [Z_to_bv 8 10] in
-    bs = take (length bs) echo_line ->
-    bs = echo_line.
-Proof.
-  intros bs0. cbv zeta. intro Heq.
-  pose proof echo_line_pos as Hp.
-  pose proof (f_equal length Heq) as HL.
-  rewrite length_take length_app in HL. cbn [length] in HL.
-  assert (Hlast : (bs0 ++ [Z_to_bv 8 10]) !! (length bs0) = Some (Z_to_bv 8 10)).
-  { rewrite lookup_app_r; [ | lia ]. rewrite Nat.sub_diag. reflexivity. }
-  rewrite Heq in Hlast.
-  apply lookup_take_Some in Hlast as [Hlast _].
-  pose proof (echo_line_nl_last (length bs0) Hlast) as H16.
-  rewrite Heq length_app. cbn [length]. rewrite H16.
-  apply take_ge. lia.
-Qed.
-
-(* (3) ...AND THAT LINE LEXES, concretely.  [ushp_no_symbols] keeps
-   [gettoken] in its default arm and [ushp_tokens] names the three tokens
-   of "echo hello world"; both are decidable at the literal, so the proof
-   is [vm_compute]/[reflexivity] and no assumption about user input
-   survives.  The length is [length echo_line] = 17 -- the '\n' is
-   whitespace, not a terminator, and [gets] plants the NUL past it. *)
-Definition ush_echo_tokens : Prop :=
-  ushp_no_symbols (length echo_line) (fun j : nat => echo_line !!! j)
-  /\ ushp_tokens (length echo_line) (fun j : nat => echo_line !!! j) 0%nat
-       (wl_toks echo_ws)
-  /\ (length (wl_toks echo_ws) < 10)%nat.
-
-(* (4) ...AND THE SHAPE THE BUFFER'S LINE IS IN WHEN IT IS DISCIPLINED is
-   [UkSh.ush_line_is] -- MOVED DOWN to the program tier (lane SH-LINE 2b,
-   L3), because [UkSh.ush_rest_l] is what carries it and that file is below
-   this one. *)
-
-(* ...AND THE DISCHARGE ITSELF is [UkShLoop.ush_line_lexable]: it
-   quantifies over the ONE line the receipt says sh read, and
-   [ush_echo_tokens] above is the closed computation that answers it.
-   What stands between the two is that [ushp_no_symbols] and [ushp_tokens]
-   read their bytes through a function, so the instance at
-   [fun j => f (k + j)] is the instance at [fun j => echo_line !!! j] under
-   [UkSh.ush_line_is]'s pointwise equality (E4's
-   [UkShEcho.ush_line_toks_holds] is that transport, with the token list
-   named).  BOTH NAMES ARE KEPT HERE as abbreviations, so that the
-   consumers above this file are unaffected by the move down. *)
 Notation ush_line_is := UkSh.ush_line_is.
 Notation ush_line_lexable := UkShLoop.ush_line_lexable.
 
@@ -451,16 +314,16 @@ Section UConsLine.
   (*  [ushf_lexable] is "every line the user could type lexes", which is   *)
   (*  false.  What the command loop hands its body instead is this: for    *)
   (*  the line in the buffer at [k], either the FIRST NUL at or after [k]  *)
-  (*  ends a line that is exactly [echo_line] ([ush_line_is], hence        *)
-  (*  [ush_line_lexable]), or the taint -- and on the taint the body's     *)
-  (*  continuation is §9's.                                               *)
+  (*  ends a line whose words are an ADMISSIBLE line ([ush_line_is ws],    *)
+  (*  hence [ush_line_lexable]), or the taint -- and on the taint the      *)
+  (*  body's continuation is §9's.                                        *)
   (*                                                                      *)
   (*  STATED OVER THE FIRST NUL rather than over a given [len] because     *)
   (*  that is what [UkShFork.ushf_first_nul] produces: the body derives    *)
   (*  its own [len] from the loop's "some byte at or after [k] is NUL",    *)
   (*  and the line fact has to hold at the [len] it derived.               *)
   (* =================================================================== *)
-  (*  IT IS [UkSh.ush_rest_line T f k] NOW, and it rides as a premise of    *)
+  (*  IT IS [UkSh.ush_rest_line ws f k] NOW, and it rides as a premise of    *)
   (*  [UkSh.ush_rest_l] -- the obligation [UkShFork.ushf_rest_of_body]       *)
   (*  proves.  Moved DOWN because its consumer is the command loop's body.   *)
 

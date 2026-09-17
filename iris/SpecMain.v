@@ -739,14 +739,6 @@ Section SpecMain.
        and this.  Its partner is inside the port's invariant, and it is
        what licenses consoleintr's one log append per accepted byte. *)
     uart_log_hi γd (1/2) None -∗
-    (* ...AND THE ERA'S ECHO WINDOW TOKEN (lane CONS-IO milestone F), parked
-       in the SAME payload: the APPLICATION's per-era exclusive, minted at
-       this era's power-on step and carried here by the boot
-       ([RiscvAdequacy.power_boot_res]).  consoleintr's shift spends it and
-       the arm's append hands it back, once per accepted byte.  Port 1 has
-       no console discipline and carries none ([WpUart.win_at] is [emp]
-       there). *)
-    riscv_win_res (Datatypes.S gen_id) -∗
     (* ...AND THE CONSOLEINTR ARM'S HALF (redesign R2), parked in the same
        payload and at [None]: between interrupts no arm is in progress.  It
        is the KERNEL's own ghost, not the application's, and it is what lets

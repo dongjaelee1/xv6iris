@@ -147,15 +147,17 @@ Section ProofFileclose.
       (k : nat) (q : Qp) (st : fdstate)
       (fn : fclose_names) (on : option nat)
       (m : regfile) (n : nat) (eb : bool) (p : mword 64)
-      (K : nat) (b : bool) (lks : gset string) (pidv : mword 32) (Upr : ustate)
-    : wp_fileclose_sconf_body γfl γf k q st fn on m n eb p K b lks pidv Upr.
+      (K : nat) (b : bool) (lks : gset string) (Φc : iProp Σ)
+      (pidv : mword 32) (Upr : ustate)
+    : wp_fileclose_sconf_body γfl γf k q st fn on m n eb p K b lks Φc pidv Upr.
   Proof.
     cbv beta delta [wp_fileclose_sconf_body].
     intros pcE ret_tgt HK HnZ Ha0 Hbelow.
     pose proof (locks_below_not_elem _ _ Hbelow) as Hfresh.
     
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).
-    iIntros "Hcg Hcnt Hextc Hextm #Htext #Hkd Hpc #Hlock #Hpenv Href Hpbare Hiru Henv Hcont".
+    iIntros "Hcg Hcnt Hextc Hextm #Htext #Hkd Hpc #Hlock #Hpenv Href Hpbare Hiru Henv
+             Hcpay Hcont".
     iDestruct (sie_b_agree m n K eb b p lks with "Hcg Hcnt") as %Houtb.
     (* THE ONE FACT THE COMPLEMENT'S TRANSPORTS NEED (see [ext_chain]): the
        disabled base forces the disabled arm, at any nesting depth. *)
@@ -269,13 +271,13 @@ Section ProofFileclose.
     assert (Hpp10 : add_vec_int (mword_of_int (FC + 0x0c) : mword 64) 4
                     = mword_of_int (FC + 0x10)) by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Hpp10) in "Hpc".
-    iApply (wp_addi4_s_sconf (mword_of_int (FC + 0x10)) Ra0 Ra0 (mword_of_int 794 : mword 12)
+    iApply (wp_addi4_s_sconf (mword_of_int (FC + 0x10)) Ra0 Ra0 (mword_of_int 810 : mword 12)
               R4 (K - 8)%nat b ltac:(vm_compute; discriminate) ltac:(rdok)
               with "Hcg Hpc []").
     { iApply (fci_10 with "Htext"). }
     iIntros (CID8 Hs8) "Hcg Hpc". iEval (rgne) in "Hcg".
     set (R5 := <[Regidx Ra0 := regval_into_reg
-                  (add_vec (R4 !!! Regidx Ra0) (sign_extend' 64 (mword_of_int 794 : mword 12)))]> R4).
+                  (add_vec (R4 !!! Regidx Ra0) (sign_extend' 64 (mword_of_int 810 : mword 12)))]> R4).
     assert (HR5a0 : R5 !!! Regidx Ra0 = ftable_addr).
     { rewrite /R5 upd_eq /R4 upd_eq. rewrite /ftable_addr.
       apply bv_eq; vm_compute; reflexivity. }
@@ -283,7 +285,7 @@ Section ProofFileclose.
                     = mword_of_int (FC + 0x14)) by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Hpp14) in "Hpc".
     (* ===== +0x14 jal ra,acquire ===== *)
-    iApply (wp_jal_s_sconf (mword_of_int (FC + 0x14)) Rra (mword_of_int 2083362 : mword 21)
+    iApply (wp_jal_s_sconf (mword_of_int (FC + 0x14)) Rra (mword_of_int 2083378 : mword 21)
               R5 (K - 8)%nat b ltac:(vm_compute; discriminate) ltac:(rdok)
               ltac:(vm_compute; reflexivity) with "Hcg Hpc []").
     { iApply (fci_14 with "Htext"). }
@@ -291,7 +293,7 @@ Section ProofFileclose.
     set (mA := <[Regidx Rra := regval_into_reg
                   (add_vec_int (mword_of_int (FC + 0x14) : mword 64) 4)]> R5).
     assert (Htgtacq : add_vec (mword_of_int (FC + 0x14) : mword 64)
-                        (sign_extend' 64 (mword_of_int 2083362 : mword 21))
+                        (sign_extend' 64 (mword_of_int 2083378 : mword 21))
                       = mword_of_int KernelSyms.acquire)
       by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Htgtacq) in "Hpc".
@@ -351,7 +353,7 @@ Section ProofFileclose.
     iDestruct "HRres" as (Mg) "(Hauth & Hfdauth & %Hdom & Hslots)".
     iDestruct "Href" as (Cf) "(Hrtok & Hrfields & Hrpay & Hrlv)".
     iDestruct (file_pay_st_ok with "Hrpay") as "[%Hokx Hrpay]".
-    destruct Hokx as (inumx & γox & Hok).
+    destruct Hokx as (inumx & γox & γpx & Hok).
     iDestruct (fref_tok_lookup with "Hauth Hrtok")
       as %(qt & cnt & HMk & Hqt1 & Hn1 & _ & Hqlt).
     assert (Hk : (k < NFILE)%nat) by (apply Hdom; rewrite HMk; eauto).
@@ -466,6 +468,15 @@ Section ProofFileclose.
       { iApply (fci_22 with "Htext"). }
       iApply bi.later_intro. iApply wp_next_off_intro. iIntros "Hcg Hpc".
       iEval (rewrite Htgt82) in "Hpc".
+      (* THE BYTE QUEUE'S PAYMENT COMES BACK UNTOUCHED: this close fires
+         nothing, and it CANNOT have been the whole reference -- the closer's
+         share is strictly below the outstanding total, which is at most one
+         ([fref_tok_lookup]).  That is exactly [fileclose_cpost_of_cpay]'s
+         [q <> 1]. *)
+      assert (Hqne : q <> 1%Qp).
+      { intros Hq1. rewrite Hq1 in Hqlt.
+        exact (proj1 (Qp.lt_nge 1%Qp qt) (Hqlt Hmany) Hqt1). }
+      iDestruct (fileclose_cpost_of_cpay q st Φc Hqne with "Hcpay") as "Hcpost".
       (* ---- the ghost step: the departing share goes home ---- *)
       destruct (proj1 (Qp.lt_sum q qt) (Hqlt Hmany)) as [qr Hqr].
       assert (Hsub : (qt - q)%Qp = Some qr) by (apply Qp.sub_Some; exact Hqr).
@@ -508,14 +519,14 @@ Section ProofFileclose.
                       = mword_of_int (FC + 0x86)) by (apply bv_eq; vm_compute; reflexivity).
       iEval (rewrite Hpp86) in "Hpc".
       iApply (wp_addi4_s_sconf (mword_of_int (FC + 0x86)) Ra0 Ra0
-                (mword_of_int 676 : mword 12) E1 (trap_res b + (K - 8))%nat false
+                (mword_of_int 692 : mword 12) E1 (trap_res b + (K - 8))%nat false
                 ltac:(vm_compute; discriminate) ltac:(rdok)
                 with "Hcg Hpc []").
       { iApply (fci_86 with "Htext"). }
       iApply wp_next_off_intro. iIntros "Hcg Hpc". iEval (rgne) in "Hcg".
       set (E2 := <[Regidx Ra0 := regval_into_reg
                     (add_vec (E1 !!! Regidx Ra0)
-                       (sign_extend' 64 (mword_of_int 676 : mword 12)))]> E1).
+                       (sign_extend' 64 (mword_of_int 692 : mword 12)))]> E1).
       assert (HE2a0 : E2 !!! Regidx Ra0 = ftable_addr).
       { rewrite /E2 upd_eq /E1 upd_eq. rewrite /ftable_addr.
         apply bv_eq; vm_compute; reflexivity. }
@@ -523,7 +534,7 @@ Section ProofFileclose.
                       = mword_of_int (FC + 0x8a)) by (apply bv_eq; vm_compute; reflexivity).
       iEval (rewrite Hpp8a) in "Hpc".
       iApply (wp_jal_s_sconf (mword_of_int (FC + 0x8a)) Rra
-                (mword_of_int 2083380 : mword 21) E2 (trap_res b + (K - 8))%nat false
+                (mword_of_int 2083396 : mword 21) E2 (trap_res b + (K - 8))%nat false
                 ltac:(vm_compute; discriminate) ltac:(rdok)
                 ltac:(vm_compute; reflexivity) with "Hcg Hpc []").
       { iApply (fci_8a with "Htext"). }
@@ -531,7 +542,7 @@ Section ProofFileclose.
       set (E3 := <[Regidx Rra := regval_into_reg
                     (add_vec_int (mword_of_int (FC + 0x8a) : mword 64) 4)]> E2).
       assert (Htgtrel : add_vec (mword_of_int (FC + 0x8a) : mword 64)
-                          (sign_extend' 64 (mword_of_int 2083380 : mword 21))
+                          (sign_extend' 64 (mword_of_int 2083396 : mword 21))
                         = mword_of_int KernelSyms.release)
         by (apply bv_eq; vm_compute; reflexivity).
       iEval (rewrite Htgtrel) in "Hpc".
@@ -608,7 +619,8 @@ Section ProofFileclose.
       iDestruct (cpu_claim_ext_transport CID CIDe eb p ltac:(ext_chain Hebf b)
                    with "Hextm") as "Hextm".
       iSpecialize ("Hcont" $! CIDe with "[]"); [iPureIntro; wp_next_chain|].
-      iApply ("Hcont" $! mf with "Hcg Hcnt Hextc Hextm [Hpc] [%] Hunit Hiru [Henv] Hpbare").
+      iApply ("Hcont" $! mf with
+                "Hcg Hcnt Hextc Hextm [Hpc] [%] Hunit Hiru [Henv] Hcpost Hpbare").
       { iEval (rewrite /ret_tgt). iExact "Hpc". }
       { exact Hcsf. }
       { by iApply fileclose_env_out_of_env. }
@@ -632,10 +644,9 @@ Section ProofFileclose.
              whole OUTSTANDING total; the invariant's leftover makes it the
              whole slot ([file_rest_join]).  Doing it here, before the reads,
              is what puts every content cell at fraction 1. ---- *)
-      iDestruct (file_pay_st_pay with "Hrpay") as "Hrpay".
-      iDestruct (file_rest_join γf k q Cf Hqt1 with "Hrfields Hrpay Hrest")
+      iDestruct (file_rest_join_st γf k q Cf st Hqt1 with "Hrfields Hrpay Hrest")
         as "[Hfl Hpy]".
-      iDestruct "Hpy" as (pn) "[Hpn Hpl]".
+      iDestruct "Hpy" as (pn) "(%Hokpn & Hpn & Hpl)".
       iDestruct "Hpl" as "[Hcore Hoffc]".
       (* ---- r25 item 24: RECLAIM THE CELL.  The payload's off conjunct is
              the fd's whole share of its box (FD_INODE: [off_fd] at 1) or the
@@ -890,14 +901,14 @@ Section ProofFileclose.
                       = mword_of_int (FC + 0x4c)) by (apply bv_eq; vm_compute; reflexivity).
       iEval (rewrite Hpp4c) in "Hpc".
       iApply (wp_addi4_s_sconf (mword_of_int (FC + 0x4c)) Ra0 Ra0
-                (mword_of_int 734 : mword 12) G1 (trap_res b + (K - 8))%nat false
+                (mword_of_int 750 : mword 12) G1 (trap_res b + (K - 8))%nat false
                 ltac:(vm_compute; discriminate) ltac:(rdok)
                 with "Hcg Hpc []").
       { iApply (fci_4c with "Htext"). }
       iApply wp_next_off_intro. iIntros "Hcg Hpc". iEval (rgne) in "Hcg".
       set (G2 := <[Regidx Ra0 := regval_into_reg
                     (add_vec (G1 !!! Regidx Ra0)
-                       (sign_extend' 64 (mword_of_int 734 : mword 12)))]> G1).
+                       (sign_extend' 64 (mword_of_int 750 : mword 12)))]> G1).
       assert (HG2a0 : G2 !!! Regidx Ra0 = ftable_addr).
       { rewrite /G2 upd_eq /G1 upd_eq. rewrite /ftable_addr.
         apply bv_eq; vm_compute; reflexivity. }
@@ -905,7 +916,7 @@ Section ProofFileclose.
                       = mword_of_int (FC + 0x50)) by (apply bv_eq; vm_compute; reflexivity).
       iEval (rewrite Hpp50) in "Hpc".
       iApply (wp_jal_s_sconf (mword_of_int (FC + 0x50)) Rra
-                (mword_of_int 2083438 : mword 21) G2 (trap_res b + (K - 8))%nat false
+                (mword_of_int 2083454 : mword 21) G2 (trap_res b + (K - 8))%nat false
                 ltac:(vm_compute; discriminate) ltac:(rdok)
                 ltac:(vm_compute; reflexivity) with "Hcg Hpc []").
       { iApply (fci_50 with "Htext"). }
@@ -913,7 +924,7 @@ Section ProofFileclose.
       set (G3 := <[Regidx Rra := regval_into_reg
                     (add_vec_int (mword_of_int (FC + 0x50) : mword 64) 4)]> G2).
       assert (Htgtrel2 : add_vec (mword_of_int (FC + 0x50) : mword 64)
-                           (sign_extend' 64 (mword_of_int 2083438 : mword 21))
+                           (sign_extend' 64 (mword_of_int 2083454 : mword 21))
                          = mword_of_int KernelSyms.release)
         by (apply bv_eq; vm_compute; reflexivity).
       iEval (rewrite Htgtrel2) in "Hpc".
@@ -1135,7 +1146,17 @@ Section ProofFileclose.
         iDestruct "Hcore" as "(#Hispipe & Hpref & Hiru)".
         (* the environment is keyed on the descriptor's STATE and the code
            branched on [f->type]; [fdstate_ok] is what makes those one fact *)
-        destruct (fdstate_ok_pipe _ _ _ _ Hok Hpipe) as (bdr & bdw & Hstp).
+        destruct (fdstate_ok_pipe _ _ _ _ _ Hokpn Hpipe) as (bdr & bdw & Hstp).
+        (* THE STATE'S WRITABLE FLAG IS THE WORD pipeclose's argument was
+           read off ([fdstate_ok] ties the bool to the cell), so the close
+           payment is at the very end this call clears. *)
+        assert (Hbw : fc_wbool Cf = bdw).
+        { rewrite Hstp in Hokpn. destruct Hokpn as (_ & Hw & _).
+          rewrite /fc_wbool Hw. destruct bdw; vm_compute; reflexivity. }
+        assert (Hstp' : st = FdOpen bdr (fc_wbool Cf) (FdPipe (fp_pipe pn)))
+          by (rewrite Hbw; exact Hstp).
+        iDestruct (fileclose_cpay_pipe st bdr (fc_wbool Cf) (fp_pipe pn) Φc Hstp'
+                     with "Hcpay") as "Hcpay".
         iEval (rewrite Hstp /fileclose_env) in "Henv".
         rewrite /fileclose_pipe_env.
         iDestruct "Henv" as "(%Hn2 & #Hprocs & #Hkmem & Hav)".
@@ -1155,11 +1176,15 @@ Section ProofFileclose.
                   (mword_of_int KernelSyms.kmem)
                   (mword_of_int (KernelSyms.kmem + 24)) on
                   P3 n eb p (K - 8)%nat b
-                  lks Hw1 Hav22 Hn2 eq_refl eq_refl
+                  lks Φc Hw1 Hav22 Hn2 eq_refl eq_refl
                   ltac:(lkbelow)
-                  with "Hcg Hcnt Htext Hpc Hispipe Hpref Hkmem Hav Hprocs").
+                  with "Hcg Hcnt Htext Hpc Hispipe Hpref Hcpay Hkmem Hav Hprocs").
         all: try lkbelow.
-        iIntros (CIDp5 Hsp5 mp) "Hcg Hcnt Hpc %Hpcs Hav".
+        iIntros (CIDp5 Hsp5 mp) "Hcg Hcnt Hpc %Hpcs Hav Hcpost".
+        (* pipeclose ALWAYS clears its flag word, so the post is the FIRED
+           one; a fired post is [fileclose_cpost] at any [last]. *)
+        iDestruct (fileclose_cpost_of_fired q st Φc bdr (fc_wbool Cf) (fp_pipe pn)
+                     Hstp' with "Hcpost") as "Hcpost".
         pose proof Hpcs as Hpcs_cs.
         assert (Hpca0 : ret_pc (P3 !!! Regidx Rra) = mword_of_int (FC + 0xa0)).
         { rewrite HP3ra. apply bv_eq; vm_compute; reflexivity. }
@@ -1230,12 +1255,17 @@ Section ProofFileclose.
         iDestruct (cpu_claim_ext_transport CID CIDp7 eb p ltac:(ext_chain Hebf b)
                      with "Hextm") as "Hextm".
         iSpecialize ("Hcont" $! CIDp7 with "[]"); [iPureIntro; wp_next_chain|].
-        iApply ("Hcont" $! mf with "Hcg Hcnt Hextc Hextm [Hpc] [%] Hfd Hiru [Hav] Hpbare").
+        iApply ("Hcont" $! mf with
+                  "Hcg Hcnt Hextc Hextm [Hpc] [%] Hfd Hiru [Hav] Hcpost Hpbare").
         { iEval (rewrite /ret_tgt). iExact "Hpc". }
         { exact Hcsf. }
         { rewrite Hstp /fileclose_env_out.
           rewrite /fileclose_pipe_out. iExact "Hav". }
       + (* ============ not a pipe: the inode test at +0x5a ============ *)
+        (* neither exit below touches a pipe, so the close payment -- [emp]
+           off a pipe descriptor -- is the post ([fileclose_cpost_nonpipe]) *)
+        iDestruct (fileclose_cpost_nonpipe _ _ _ Cf st q Φc Hokpn Hnpipe
+                     with "Hcpay") as "Hcpost".
         iApply (wp_beq_fall_s_sconf (mword_of_int (FC + 0x56))
                   (mword_of_int 66 : mword 13) Ra5 Rs2 H1 (K - 8)%nat b
                   ltac:(vm_compute; discriminate) ltac:(vm_compute; discriminate)
@@ -1312,8 +1342,8 @@ Section ProofFileclose.
           iAssert (fileclose_fs_env fn n eb p) with "[Henv]" as "Henv".
           { rewrite /fileclose_env.
             destruct Hinode as [Ht | Ht];
-              [ destruct (fdstate_ok_inode _ _ _ _ Hok Ht) as (? & ? & ->)
-              | destruct (fdstate_ok_device _ _ _ _ Hok Ht) as (? & ? & ->) ]; iExact "Henv". }
+              [ destruct (fdstate_ok_inode _ _ _ _ _ Hok Ht) as (? & ? & ->)
+              | destruct (fdstate_ok_device _ _ _ _ _ Hok Ht) as (? & ? & ->) ]; iExact "Henv". }
           (* THE PAYLOAD IS THE REFERENCE, and this closer holds ALL of it:
              [file_rest_join] gave fraction one, so the cancel token is
              whole and [FileInv.inode_pay_cancel] turns it into the inode
@@ -1641,7 +1671,7 @@ Section ProofFileclose.
              -- SpecFileclose.v recorded that as a leak of one unit of the
              IrefSlots supply per inode file closed; it has a home now. *)
           iApply ("Hcont" $! mf with
-                    "Hcg Hcnt Hextc Hextm [Hpc] [%] Hfd Hislot [Hbsl] Hpbare").
+                    "Hcg Hcnt Hextc Hextm [Hpc] [%] Hfd Hislot [Hbsl] Hcpost Hpbare").
           { iEval (rewrite /ret_tgt). iExact "Hpc". }
           { exact Hcsf. }
           (* THE WHOLE FS POSTCONDITION IS THE THREE SLOTS.  The bitmap said
@@ -1651,8 +1681,8 @@ Section ProofFileclose.
              on [Hislot].) *)
           { rewrite /fileclose_env_out.
             destruct Hinode as [Ht | Ht];
-              [ destruct (fdstate_ok_inode _ _ _ _ Hok Ht) as (? & ? & ->)
-              | destruct (fdstate_ok_device _ _ _ _ Hok Ht) as (? & ? & ->) ];
+              [ destruct (fdstate_ok_inode _ _ _ _ _ Hok Ht) as (? & ? & ->)
+              | destruct (fdstate_ok_device _ _ _ _ _ Hok Ht) as (? & ? & ->) ];
               rewrite /fileclose_fs_out; iExact "Hbsl". }
         * (* ======== FD_NONE (or anything else): nothing to do ========== *)
           iApply (wp_bgeu_fall_s_sconf (mword_of_int (FC + 0x60))
@@ -1728,7 +1758,7 @@ Section ProofFileclose.
                        with "Hextm") as "Hextm".
           iSpecialize ("Hcont" $! CIDz3 with "[]"); [iPureIntro; wp_next_chain|].
           iApply ("Hcont" $! mf with
-                    "Hcg Hcnt Hextc Hextm [Hpc] [%] Hfd [Hcore] [Henv] Hpbare").
+                    "Hcg Hcnt Hextc Hextm [Hpc] [%] Hfd [Hcore] [Henv] Hcpost Hpbare").
           { iEval (rewrite /ret_tgt). iExact "Hpc". }
           { exact Hcsf. }
           (* AN UNTYPED FILE'S PAYLOAD IS ITS IREF UNIT.  [file_core]'s else

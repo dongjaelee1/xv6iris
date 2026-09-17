@@ -279,7 +279,7 @@ Section ParkCap.
      the park and not an assumption: forkret's steady arm reads [first] as
      0 out of [first_done] and the boot rows' [first_addr ↦₄ 1] refutes
      that reading ([FirstTok.first_boot_done_excl]).  The rows rejoin the
-     block at the release store, exactly where the boot arm puts them back
+     block at the [first = 0] store, exactly where the boot arm puts them back
      ([ProofForkret]'s [fkr_boot], which takes them split already). *)
   Definition park_child `{XI : CurCtx} (γs : list gname) (γf : gname) (pa ks : mword 64)
       (rest : list (mword 64)) (pid : mword 32) (U : ustate) (steady : bool) : iProp Σ :=

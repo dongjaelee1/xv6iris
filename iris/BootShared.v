@@ -1431,11 +1431,9 @@ Section BootAlloc.
          console port's invariant clause with them, and no caller sees
          them again. *)
       chist_at Uart0 (S gen_id) [] (LogEntryDefs.MkCH [] [] [] None) ∗
-      (* ...AND THE ERA'S ECHO WINDOW TOKEN AND ITS TURN (lane CONS-IO
-         milestone F), the power-on step's other two yields: the token goes
-         into the console port's PLIC payload at main's deposit, the turn
-         into <init>'s boot bundle. *)
-      Tn ∗ win_at Uart0 (S gen_id) ∗
+      (* ...AND THE ERA'S TURN (lane CONS-IO milestone F), the power-on
+         step's other yield: it goes into <init>'s boot bundle. *)
+      Tn ∗
       crash_inv ∗ gen_cert ∗
       (* A6.131: the era's image is the boot state's memory, as a pure fact *)
       ⌜era_img riscv_eraGS = g.(gimg)⌝.
@@ -1445,7 +1443,7 @@ Section BootAlloc.
        wrappers ([reg_pointsto]'s notation, the strans/sie/spp/spie splits)
        are sealed, so [iFrame] must unify them one at a time. *)
     iIntros "H". rewrite /power_boot_res.
-    iDestruct "H" as "(H0 & H1 & H2 & H3 & H4 & H5 & H6 & H7 & H8 & H9 & H10 & H11 & H12 & H13 & H14 & H15 & H16 & H17 & H18 & H19 & H20 & H21 & H22 & Hores & Htn & Hwin & H23 & H24 & H25 & H26)".
+    iDestruct "H" as "(H0 & H1 & H2 & H3 & H4 & H5 & H6 & H7 & H8 & H9 & H10 & H11 & H12 & H13 & H14 & H15 & H16 & H17 & H18 & H19 & H20 & H21 & H22 & Hores & Htn & H23 & H24 & H25 & H26)".
     rewrite /boot_reg_res /boot_raw_bytes /kmap_auth /kpt_unset /kptb_unset
             /hart_strans /hart_sie /hart_spp /hart_spie /hart_locks /hart_full
             /pstate_full /resv_frag /resv_fragb /uart_frag /plic_frag /virtio_frag
@@ -1485,7 +1483,7 @@ Section BootAlloc.
     iSplitL "H22"; [iExact "H22"|].
     iSplitL "Hores"; [iExact "Hores"|].
     iSplitL "Htn"; [iExact "Htn"|].
-    iSplitL "Hwin"; [iExact "Hwin"|].
+
     iSplitL "H23 H24 H25"; [| iExact "H26"].
     iSplitL "H23"; [iExact "H23"|].
     iSplitL "H24"; [iExact "H24"|].
@@ -1658,7 +1656,7 @@ Section BootAlloc.
        they ride [power_boot_res] itself: [power_boot_res_unpack] above
        hands them out and this fupd feeds them straight to
        [WpUart.uart_ghosts_alloc] at [Uart0].  The kernel's port founds its
-       own out of nothing ([WpUart.out_res_at_uart1]). *)
+       own out of nothing ([WpUart.cons_res_at_uart1]). *)
     (* the transport and the crash seam at the application's guest, both
        straight through to the mint, which parks the one and puts both on
        fsinit's kit (round C) *)
@@ -1776,13 +1774,10 @@ Section BootAlloc.
       (* ...AND THE LOG'S HIGH-WATER HALF (lane CONS-IO), which main parks
          in the SAME payload: [WpUart.uart_rx_writer] is the pop token, the
          ring's mark and this.  Its partner is inside the port's invariant
-         ([WpUart.in_claim_at]), and it is what licenses consoleintr's one
+         ([WpUart.cons_claim_at]), and it is what licenses consoleintr's one
          append per accepted byte. *)
       uart_log_hi γd (1/2) None ∗
-      (* ...AND THE ERA'S ECHO WINDOW TOKEN (lane CONS-IO milestone F),
-         which main parks in that same payload: the application's per-era
-         exclusive, minted at the power-on step and carried here. *)
-      riscv_win_res (Datatypes.S gen_id) ∗
+
       (* ...AND THE CONSOLEINTR ARM'S HALF (redesign R2), which main parks in
          that same payload.  It is the KERNEL's ghost, not the application's;
          the port invariant holds the other half. *)
@@ -1878,7 +1873,7 @@ Section BootAlloc.
     iDestruct (power_boot_res_unpack Rb Tn g ndisk with "H") as
       "(Hregs & Hbytes & Hkauth & Hkfrags & Hkpt & Hkptb & Hstrans & Hsie & Hspp & Hspie &
         Hlkauth & Hpark & Hpst & Hresv & Huf & Hpf & Hvf & Hdimg & Hmir & #Hswlb &
-        HRb & Hled & Hores & Htn & Hwin & #Hcinv & #Hcert & %Hera)".
+        HRb & Hled & Hores & Htn & #Hcinv & #Hcert & %Hera)".
     (* DROPPED HERE: the lent resource this fupd carries is the CALLER's
        copy of the epoch's wrapper, already spent -- the caller split it
        off, unpacked it and handed the contents down as [Hdursnap].  At the
@@ -2212,7 +2207,7 @@ Section BootAlloc.
        receipt, DLAB half and receive pair leave for [uartinit] and for
        main's SECOND deposit, exactly as the console's do. ---- *)
     (* the KERNEL's port claims nothing, so its founding is free:
-       [WpUart.out_res_at Uart1] is [emp] (lane OUT-FUPD) *)
+       [WpUart.chist_at Uart1] is [emp] (redesign R2) *)
     iAssert (chist_at Uart1 (Datatypes.S gen_id) []
                (LogEntryDefs.MkCH [] [] [] None)) as "Hores1"; [done|].
     iMod (uart_ghosts_alloc Uart1 (g.(gdev).(duart) Uart1)
@@ -2393,7 +2388,6 @@ Section BootAlloc.
     iSplitL "Htok"; [iExact "Htok" |].
     iSplitL "Hhi2"; [iExact "Hhi2" |].
     iSplitL "Hlgh"; [iExact "Hlgh" |].
-    iSplitL "Hwin"; [iExact "Hwin" |].
     iSplitL "Harm2"; [iExact "Harm2" |].
     iSplitL "Hdlab";
       [iExists (uart_dlab (g.(gdev).(duart) Uart0)); iExact "Hdlab" |].

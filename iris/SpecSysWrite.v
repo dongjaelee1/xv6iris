@@ -110,6 +110,7 @@ Require Import Xv6G.   (* the ghost-state bundle; see its header *)
 Require Import FsCfg.  (* [fscfg]: the fs configuration is AMBIENT *)
 Import Defs.
 Require Import CtxIdDefs.
+Require Import PipeQueue.   (* the pipe's byte-queue ghost: names, links, payments *)
 
 Local Open Scope Z_scope.
 
@@ -175,8 +176,8 @@ Section SpecSysWrite.
      arbitrary user process can state at its own key. *)
   Definition sys_write_in (V : pprivate) (v : mword 64)
       (sts : list fdstate) (n : Z) (M : gmap Z (bv 8)) (ua : mword 64)
-      (Q : nat -> iProp Σ) : iProp Σ :=
-    filewrite_in (sys_fd_st v (pv_ofile V) sts) n M ua Q.
+      (Q : nat -> iProp Σ) (Qe : nat -> pipe_st -> iProp Σ) : iProp Σ :=
+    filewrite_in (sys_fd_st v (pv_ofile V) sts) n M ua Q Qe.
 
   (* the LANDED return clause, verbatim, plus the arm's extra.  Stating the
      blanket unconditionally is what makes "the unified contract implies the
@@ -184,20 +185,20 @@ Section SpecSysWrite.
      [ProofSyscall] is written against. *)
   Definition sys_write_arms (V : pprivate) (v : mword 64)
       (sts : list fdstate) (n : Z) (M : gmap Z (bv 8)) (ua : mword 64)
-      (Q : nat -> iProp Σ) (r : mword 64) : iProp Σ :=
+      (Q : nat -> iProp Σ) (Qe : nat -> pipe_st -> iProp Σ) (r : mword 64) : iProp Σ :=
     (⌜sys_write_ret V v n r⌝ ∗
-     filewrite_extra (pv_upt V) (sys_fd_st v (pv_ofile V) sts) n M ua Q r)%I.
+     filewrite_extra (pv_gen V) (pv_upt V) (sys_fd_st v (pv_ofile V) sts) n M ua Q Qe r)%I.
 
-  Lemma sys_write_arms_ret V v sts n M ua Q r :
-    sys_write_arms V v sts n M ua Q r -∗ ⌜sys_write_ret V v n r⌝.
+  Lemma sys_write_arms_ret V v sts n M ua Q Qe r :
+    sys_write_arms V v sts n M ua Q Qe r -∗ ⌜sys_write_ret V v n r⌝.
   Proof. iIntros "[%H _]". by iPureIntro. Qed.
 
   (* ...and the other projection -- the arm's payout without the blanket,
      which is what travels back to the process ([SpecSysRead]'s twin says
      why the blanket cannot). *)
-  Lemma sys_write_arms_extra V v sts n M ua Q r :
-    sys_write_arms V v sts n M ua Q r -∗
-    filewrite_extra (pv_upt V) (sys_fd_st v (pv_ofile V) sts) n M ua Q r.
+  Lemma sys_write_arms_extra V v sts n M ua Q Qe r :
+    sys_write_arms V v sts n M ua Q Qe r -∗
+    filewrite_extra (pv_gen V) (pv_upt V) (sys_fd_st v (pv_ofile V) sts) n M ua Q Qe r.
   Proof. iIntros "[_ $]". Qed.
 
   (* ---- the key, read at the two shapes the walk reaches it in --------
@@ -205,10 +206,10 @@ Section SpecSysWrite.
      descriptor whose row the caller's own bundle names. *)
   Lemma sys_write_arms_none (V : pprivate) (v : mword 64)
       (sts : list fdstate) (n : Z) (M : gmap Z (bv 8)) (ua : mword 64)
-      (Q : nat -> iProp Σ) (r : mword 64) :
+      (Q : nat -> iProp Σ) (Qe : nat -> pipe_st -> iProp Σ) (r : mword 64) :
     arg_fd v (pv_ofile V) = None ->
     r = (mword_of_int (-1) : mword 64) ->
-    ⊢ sys_write_arms V v sts n M ua Q r.
+    ⊢ sys_write_arms V v sts n M ua Q Qe r.
   Proof.
     intros Hnone Hr. rewrite /sys_write_arms /sys_fd_st Hnone.
     iSplitR; [| done]. iPureIntro. left. split; [exact Hr | exact Hnone].
@@ -217,10 +218,10 @@ Section SpecSysWrite.
   Lemma sys_write_in_of (V : pprivate) (v : mword 64)
       (sts : list fdstate) (fd : nat) (fv : mword 64) (st : fdstate)
       (n : Z) (M : gmap Z (bv 8)) (ua : mword 64)
-      (Q : nat -> iProp Σ) :
+      (Q : nat -> iProp Σ) (Qe : nat -> pipe_st -> iProp Σ) :
     arg_fd v (pv_ofile V) = Some (fd, fv) ->
     sts !! fd = Some st ->
-    sys_write_in V v sts n M ua Q -∗ filewrite_in st n M ua Q.
+    sys_write_in V v sts n M ua Q Qe -∗ filewrite_in st n M ua Q Qe.
   Proof.
     intros Hsome Hst. rewrite /sys_write_in /sys_fd_st Hsome Hst /=.
     by iIntros "$".
@@ -228,11 +229,11 @@ Section SpecSysWrite.
 
   Lemma sys_write_arms_of (V : pprivate) (v : mword 64) (sts : list fdstate)
       (fd : nat) (fv : mword 64) (st : fdstate) (n : Z)
-      (M : gmap Z (bv 8)) (ua : mword 64) (Q : nat -> iProp Σ)
+      (M : gmap Z (bv 8)) (ua : mword 64) (Q : nat -> iProp Σ) (Qe : nat -> pipe_st -> iProp Σ)
       (r : mword 64) :
     arg_fd v (pv_ofile V) = Some (fd, fv) ->
     sts !! fd = Some st ->
-    filewrite_arms (pv_upt V) st n M ua Q r -∗ sys_write_arms V v sts n M ua Q r.
+    filewrite_arms (pv_gen V) (pv_upt V) st n M ua Q Qe r -∗ sys_write_arms V v sts n M ua Q Qe r.
   Proof.
     intros Hsome Hst. rewrite /sys_write_arms /sys_fd_st Hsome Hst /=.
     iIntros "[%Hret $]". iPureIntro. right. by exists fd, fv.
@@ -254,7 +255,7 @@ Definition wp_sys_write_sconf_body
        both heavy arms (a chunk on the inode arm, a byte on the console
        arm).  The console arm's trace seed went with the receipts (lane
        OUT-FUPD). ---- *)
-    (Q : nat -> iProp Σ) :=
+    (Q : nat -> iProp Σ) (Qe : nat -> pipe_st -> iProp Σ) :=
   let pcE : mword 64 := mword_of_int KernelSyms.sys_write in
   let pj := proc_addr j in
   let ret_tgt := ret_pc (m !!! Regidx (mword_of_int 1 : mword 5)) in
@@ -322,7 +323,7 @@ Definition wp_sys_write_sconf_body
      APPLICATION'S PER-CHUNK STEP RIDES IN IT: the FD_INODE arm's retag pays
      the application's claim out of the chain's own node, so this contract
      asks for no blanket license of its own. *)
-  sys_write_in (us_V U) v sts (sys_rw_count v2) (us_M U) v1 Q -∗
+  sys_write_in (us_V U) v sts (sys_rw_count v2) (us_M U) v1 Q Qe -∗
   (* THE CROSSING IS THE LITERAL [true]: filewrite parks. *)
   wp_next true pj (fun (CID : CpuId) =>
   (* write() does not write user memory -- filewrite only READS the user
@@ -348,7 +349,7 @@ Definition wp_sys_write_sconf_body
       (* ---- THE ARMED OUTPUT ([sys_write_arms]): the blanket
          ⌜sys_write_ret⌝, and beside it what the arm the descriptor selects
          proved. ---- *)
-      sys_write_arms (us_V U) v sts (sys_rw_count v2) (us_M U) v1 Q r -∗
+      sys_write_arms (us_V U) v sts (sys_rw_count v2) (us_M U) v1 Q Qe r -∗
       WP (Loop : expr riscv_lang)) -∗
   WP (Loop : expr riscv_lang).
 
@@ -364,7 +365,7 @@ Module Type SYSWRITE.
       (pidv : mword 32) (U : ustate) (sts : list fdstate)
       (v v1 v2 : mword 64)
       (m : regfile) (av : nat) (eb : bool) (b : bool) (lks : gset string)
-      (Q : nat -> iProp Σ),
+      (Q : nat -> iProp Σ) (Qe : nat -> pipe_st -> iProp Σ),
       wp_sys_write_sconf_body γf γs j γlp fn pidv U sts v v1 v2 m av eb b lks
-        Q.
+        Q Qe.
 End SYSWRITE.

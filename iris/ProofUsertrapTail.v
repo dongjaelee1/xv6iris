@@ -117,6 +117,106 @@ Section ProofUsertrapTail.
 
 
   (* ==================================================================== *)
+  (* THE RESIDUE WITHOUT THE INCARNATION'S MARKER (design/pipe.md, "The    *)
+  (* exit path").  A process that kills ITSELF spends the marker founding  *)
+  (* <p->lock>'s killed row on its SPENT arm ([SpecSetkilled]'s owed       *)
+  (* side), and walks the rest of the trap -- the jump to +0xa6, the       *)
+  (* killed check, kexit -- on the block that is left.  kexit is stated at *)
+  (* that block anyway ([SpecKexit], [ProcInv.proc_priv_unmarked]), so     *)
+  (* every row from setkilled on is stated here and the two shapes differ  *)
+  (* by exactly one conjunct.                                             *)
+  (* ==================================================================== *)
+  Definition ut_own_nm (N : ut_names) (U : ustate) (sts : list fdstate)
+      (cs : gset gname) (pid : mword 32) : iProp Σ :=
+    (bslots 3 ∗
+     (mword_of_int KernelSyms.initproc : mword 64) ↦₈{un_dqi N} (un_ip N) ∗
+     fd_slots FDSPARE ∗
+     iref_slots IREFSPARE ∗
+     proc_priv_unmarked (un_f N) (un_pj N) pid U ∗
+     fd_frags (pv_fdg (us_V U)) sts ∗
+     ch_frag (pv_chg (us_V U)) (un_pj N) cs ∗
+     Rsys (un_f N) (un_pj N) (un_fn N pid))%I.
+
+  Lemma ut_own_unmark (N : ut_names) (U : ustate) (sts : list fdstate)
+      (cs : gset gname) (pid : mword 32) :
+    ut_own Rsys N U sts cs pid ⊣⊢
+    ut_own_nm N U sts cs pid ∗ ChildTok.taken_at (pv_gen (us_V U)).
+  Proof.
+    rewrite /ut_own /ut_own_nm (proc_priv_unmark (un_f N) (un_pj N) pid U).
+    iSplit.
+    - iIntros "(A & B & C & D & [E Ht] & F & G & H)". iFrame.
+    - iIntros "[(A & B & C & D & E & F & G & H) Ht]". iFrame.
+  Qed.
+
+  Definition ut_hold_nm (N : ut_names) (U : ustate) (b : bool)
+      (lks : gset string) (sts : list fdstate) (cs : gset gname)
+      (pid : mword 32) : iProp Σ :=
+    (cpu_own 0%nat b (un_pj N) b lks ∗
+     trap_csrs_ext KT1 b ∗
+     cpu_claim_ext b (un_pj N) ∗
+     (ut_caps N ∗ ut_own_nm N U sts cs pid))%I.
+
+  (* the live slot's pid is nonzero -- the marker-less block still says so,
+     out of the incarnation's two quarters ([SlotGen.gen_halves_at_nz]) *)
+  Lemma ut_pid_nz_nm (γf : gname) (pa : mword 64) (pid : mword 32) (U : ustate) :
+    proc_priv_unmarked γf pa pid U -∗ ⌜bv_unsigned pid <> 0⌝.
+  Proof. iIntros "(_ & _ & _ & _ & _ & Hgh)". iApply (gen_halves_at_nz with "Hgh"). Qed.
+
+  (* ...and the block out of the marker-less residue, [UsertrapRes.ut_own_priv]
+     one conjunct in *)
+  Lemma ut_own_nm_priv (N : ut_names) (U : ustate) (sts : list fdstate)
+      (cs : gset gname) (pid : mword 32) :
+    ut_own_nm N U sts cs pid -∗
+    proc_priv_unmarked (un_f N) (un_pj N) pid U ∗
+    fd_frags (pv_fdg (us_V U)) sts ∗
+    ch_frag (pv_chg (us_V U)) (un_pj N) cs ∗
+    Rsys (un_f N) (un_pj N) (un_fn N pid) ∗
+    (∀ (U' : ustate) (sts' : list fdstate) (cs' : gset gname),
+       proc_priv_unmarked (un_f N) (un_pj N) pid U' -∗
+       fd_frags (pv_fdg (us_V U')) sts' -∗
+       ch_frag (pv_chg (us_V U')) (un_pj N) cs' -∗
+       Rsys (un_f N) (un_pj N) (un_fn N pid) -∗ ut_own_nm N U' sts' cs' pid).
+  Proof.
+    iIntros "(Hb & Hip & Hfd & Hir & Hpv & Hfr & Hch & Hsy)".
+    iFrame "Hpv Hfr Hch Hsy". iIntros (U' sts' cs') "Hpv Hfr Hch Hsy".
+    rewrite /ut_own_nm. iFrame "Hb Hip Hfd Hir Hpv Hfr Hch Hsy".
+  Qed.
+
+  (* the quarter of [p->pid] and the registration eighth, out of the
+     marker-less block at once -- [ProcInv.proc_priv_pid_reg]'s reading one
+     conjunct in.  The two pieces live in different conjuncts (the pid cell
+     in [proc_priv_nocwd], the eighth in the incarnation's two quarters), so
+     both come out with one closer. *)
+  Lemma ut_priv_nm_pid_reg (γf : gname) (pa : mword 64) (pid : mword 32)
+      (U : ustate) :
+    proc_priv_unmarked γf pa pid U -∗
+    p_pid pa ↦₄{DfracOwn (1/4)} pid ∗
+    pid_reg pid (DfracOwn qeighth) (pv_gen (us_V U)) ∗
+    (p_pid pa ↦₄{DfracOwn (1/4)} pid -∗
+     pid_reg pid (DfracOwn qeighth) (pv_gen (us_V U)) -∗
+     proc_priv_unmarked γf pa pid U).
+  Proof.
+    iIntros "(Hn & Hc & Hf & Hgq & Hxs & Hgh)".
+    iDestruct (proc_priv_nocwd_pid with "Hn") as "[Hq Hnb]".
+    iDestruct (gen_halves_at_reg with "Hgh") as "[Hr Hgb]".
+    iFrame "Hq Hr". iIntros "Hq Hr".
+    iDestruct ("Hnb" with "Hq") as "Hn". iDestruct ("Hgb" with "Hr") as "Hgh".
+    rewrite /proc_priv_unmarked. iFrame.
+  Qed.
+
+  Lemma ut_hold_unmark (N : ut_names) (U : ustate) (b : bool)
+      (lks : gset string) (sts : list fdstate) (cs : gset gname)
+      (pid : mword 32) :
+    ut_hold Rsys N U b lks sts cs pid ⊣⊢
+    ut_hold_nm N U b lks sts cs pid ∗ ChildTok.taken_at (pv_gen (us_V U)).
+  Proof.
+    rewrite /ut_hold /ut_hold_nm /ut_env (ut_own_unmark N U sts cs pid).
+    iSplit.
+    - iIntros "(A & B & C & [#D [E Ht]])". iFrame "A B C D E Ht".
+    - iIntros "[(A & B & C & [#D E]) Ht]". iFrame "A B C D E Ht".
+  Qed.
+
+  (* ==================================================================== *)
   (* THE kexit(-1) DEAD END.                                              *)
   (* ==================================================================== *)
   (* usertrap reaches it from three places (+0xca on the syscall arm, +0xf6
@@ -178,12 +278,49 @@ Section ProofUsertrapTail.
        ONE-SHOT, which [killed()] handed back at the nonzero flag that got
        execution here, and which is what refutes the row's zero arm. *)
     my_pay (pv_gen (us_V U)) Q -∗
-    ChildTok.kill_shot (pv_gen (us_V U)) -∗
-    ut_hold Rsys N U b lks sts cs pid -∗
+    (* ...AND WHO PAYS THE TEAR-DOWN (design/pipe.md, "The exit path").
+       kexit closes every descriptor, and a pipe row's LAST close steps that
+       pipe's exact ghost state -- so the closes have a price, and so does
+       the death itself.  Both come from the caller's killed check, and they
+       come together, as one of two packages:
+
+       LEFT, a kill by a THIRD PARTY.  <p->lock>'s killed row's paid arm
+       carries the killer's TAINT, which the check read out of it with the
+       block's own marker ([SchedCtx.kill_paid_shot_tear] -- the marker is
+       what refutes the spent arm, i.e. what says this row was not founded
+       by a self-kill).  The taint pays every close
+       ([SpecFileclose.fileclose_cpays_taint]) and the marker is what kexit
+       TRADES for the row's payload at the park.
+
+       RIGHT, a SELF-KILL.  The process paid for its own death when it
+       trapped: the closes are the exit number's bundle row
+       ([UexecExecInst.sbundle_at_exit_elim] off the deposit) and the
+       payload is [ChildTok.kill_owed]'s, agreed against the block's own
+       [my_pay].  Its marker is already spent -- the fault arm gave it to
+       setkilled, which founded the row on the SPENT arm -- so kexit takes
+       the LEFT side of its own payment and owes no marker at all. *)
+    ((ChildTok.kill_shot (pv_gen (us_V U)) ∗ ChildTok.taken_at (pv_gen (us_V U))
+      ∗ □ riscv_kill_cred)
+     ∨ (fileclose_cpays sts ∗ Q (-1))) -∗
+    ut_hold_nm N U b lks sts cs pid -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hwf Hnx Hst Hbelow. destruct Hwf as (Hj & Hjl & Hlen & Hlg).
-    iIntros "#Htext Hpc Hcg Hcl #Hmyp #Hshot (Hcpu & Hcsrs & Hclm & [#Hcaps Hown])".
+    iIntros "#Htext Hpc Hcg Hcl #Hmyp Htear (Hcpu & Hcsrs & Hclm & [#Hcaps Hown])".
+    (* THE TWO ROWS, OFF THE ONE PACKAGE, and read HERE so both arms of the
+       caller's price are settled in one place: the taint pays the closes
+       and its marker takes kexit's tear-down side; the self-kill's exit row
+       pays the closes and its payload takes kexit's LEFT side, at the
+       status this dead end stores ([Hst], -1 at all three call sites). *)
+    iAssert (fileclose_cpays sts ∗
+             (Q (kexit_status m)
+              ∨ (⌜kexit_status m = -1⌝ ∗ ChildTok.kill_shot (pv_gen (us_V U))
+                 ∗ ChildTok.taken_at (pv_gen (us_V U)))))%I
+      with "[Htear]" as "[Hcpays Hpay]".
+    { iDestruct "Htear" as "[(#Hs & Ht & #Hc) | [Hcp HQ]]".
+      - iSplitR; [ iApply (fileclose_cpays_taint with "Hc") | ].
+        iRight. iSplitR; [ iPureIntro; exact Hst | ]. iFrame "Hs Ht".
+      - iFrame "Hcp". iLeft. rewrite Hst. iExact "HQ". }
     iDestruct "Hcaps" as "(#Hpi & #Hkd & #Hks & #Hdi & #Hpk & #Hw & #Hft
                            & #Hkm & #Hdk & #Hbio & #Hlog & #Hseam & #Hgc & #Hdev
                            & #Hgeom & #Hav & #Hfsr & #Hpw & #Hig & %Hdqi)".
@@ -202,19 +339,10 @@ Section ProofUsertrapTail.
               (un_ip N) (un_dqi N)
 
 
-              None (un_fn N pid) m nx b b _ pid (upd_usM U _) cs Q eq_refl Hj Hjl Hnx Hlg Hbelow
+              None (un_fn N pid) m nx b b _ pid (upd_usM U _) sts cs Q eq_refl Hj Hjl Hnx Hlg Hbelow
               with "Hcg Hcl Hcpu Hcsrs Hclm Htext Hkd Hpc Hpi Hpe Hw Hft Hkm Hav
-                    Hbio Hlog Hseam Hgc Hdev Hgeom Hdk Hbs Hfsr Hip Hid Hfd Hir Hpv [Hufr] Hrow
-                    Hmyp [Hshot]").
-    (* kexit's contract takes the bundle ∃-weakened -- it spends descriptors
-       and does not state a delta -- so the residue's NAMED states are
-       weakened here, at the one call that needs it. *)
-    { rewrite /FdSlots.fd_frags_any. iExists sts. iExact "Hufr". }
-    (* the SECOND payment disjunct: at this dead end the status is the kill
-       status ([c.li a0,-1] is what all three call sites reach it through)
-       and what pays is the killer's deposit, which kexit takes out of
-       <p->lock>'s killed row against the one-shot below. *)
-    { iRight. iSplitR; [ iPureIntro; exact Hst | ]. iExact "Hshot". }
+                    Hbio Hlog Hseam Hgc Hdev Hgeom Hdk Hbs Hfsr Hip Hid Hfd Hir Hpv Hufr Hcpays Hrow
+                    Hmyp Hpay").
     all: try lkbelow.
   Qed.
 
@@ -1196,7 +1324,23 @@ Section UtA6.
     kernel_text -∗
     pc_is (mword_of_int (UT + 0xa6)) -∗
     sie_cap_gpr KT1 m nx b (un_pj N) -∗
-    ut_hold Rsys N U b lks sts cs2 pid -∗
+    (* THE RESIDUE, AND WHO WOULD PAY A TEAR-DOWN AT THIS CHECK
+       (design/pipe.md, "The exit path").  LEFT, the ordinary route: the
+       block still carries the incarnation's marker, which is what lets the
+       check read the KILLER's taint out of <p->lock>'s killed row
+       ([SchedCtx.kill_paid_shot_tear] -- the marker refutes the SPENT arm,
+       i.e. says this row was not founded by a self-kill) and what kexit
+       trades for the row's payload; if the process resumes it simply goes
+       back into the block.  RIGHT, after a SELF-KILL on the way here (the
+       unexpected-cause arm's setkilled, at the deposit's untainted side):
+       the marker is spent, the one-shot is already fired -- which is what
+       refutes the not-killed branch below -- and the closes and the payload
+       are the trap's own deposit (the exit bundle row and
+       [ChildTok.kill_owed]'s payload). *)
+    (ut_hold Rsys N U b lks sts cs2 pid
+     ∨ (ut_hold_nm Rsys N U b lks sts cs2 pid
+        ∗ ChildTok.kill_shot (pv_gen (us_V U)) ∗ fileclose_cpays sts
+        ∗ sexit_pay fdep (-1))) -∗
     ut_frame ksp (m0 !!! Regidx Rra) (m0 !!! Regidx Rs0)
                  (m0 !!! Regidx Rs1) (m0 !!! Regidx Rs2) -∗
     (* THE EXEC CHANNEL'S ANSWER, relayed exactly like the descriptor rows:
@@ -1242,7 +1386,18 @@ Section UtA6.
     pose proof (ut_nx_bound b av nx Hav Hnx) as Hks.
     
     pose proof Hwf as Hwf'. destruct Hwf as (Hj & Hjl & Hlen & Hlg).
-    iIntros "#Htext Hpc Hcg Hhold Hframe Hxo Hfo Hwo Hres Hso #Hmyp Hcont".
+    iIntros "#Htext Hpc Hcg Hhold0 Hframe Hxo Hfo Hwo Hres Hso #Hmyp Hcont".
+    (* the residue and the tear-down's price, split apart once *)
+    iAssert (ut_hold_nm Rsys N U b lks sts cs2 pid ∗
+             (ChildTok.taken_at (pv_gen (us_V U))
+              ∨ (ChildTok.kill_shot (pv_gen (us_V U)) ∗ fileclose_cpays sts
+                 ∗ sexit_pay fdep (-1))))%I
+      with "[Hhold0]" as "[Hhold Htear]".
+    { iDestruct "Hhold0" as "[Hh | (Hh & #Hs & Hcp & HQd)]".
+      - iDestruct (bi.equiv_entails_1_1 _ _
+                     (ut_hold_unmark Rsys N U b lks sts cs2 pid) with "Hh")
+          as "[$ Ht]". iLeft. iExact "Ht".
+      - iFrame "Hh". iRight. iFrame "Hs Hcp HQd". }
     iDestruct "Hhold" as "(Hcpu & Hcsrs & Hclm & [#Hcaps Hown])".
     iAssert (procs_inv (un_s N)) with "[]" as "#Hpi".
     { iDestruct "Hcaps" as "($ & _)". }
@@ -1305,11 +1460,11 @@ Section UtA6.
        cell is this slot's, and the registration eighth says the row's
        generation is this incarnation's ([ProcInv.proc_priv_pid_reg]).
        Both come straight back, because the two agreements are pure. *)
-    iDestruct (ut_own_priv with "Hown") as "(Hpv & Hufr & Hch & Hsy & Hownback)".
+    iDestruct (ut_own_nm_priv with "Hown") as "(Hpv & Hufr & Hch & Hsy & Hownback)".
     (* the live slot's pid is nonzero -- the block says so, and it is what
        keeps [SchedCtx.kill_paid]'s free arm out of the reading (T3) *)
-    iDestruct (ProcInv.proc_priv_pid_nz with "Hpv") as "%Hpidnz".
-    iDestruct (ProcInv.proc_priv_pid_reg with "Hpv") as "(Hqp & Hrg & Hpvback)".
+    iDestruct (ut_pid_nz_nm with "Hpv") as "%Hpidnz".
+    iDestruct (ut_priv_nm_pid_reg with "Hpv") as "(Hqp & Hrg & Hpvback)".
     (* THE ACCESSOR CARRIES THE RESUME ROW INTO THE CRITICAL SECTION (lane
        TRAP-ROWS, T3).  The refutation can only happen HERE: at a zero flag
        the row holds the UNFIRED one-shot, and that is the one moment the
@@ -1429,12 +1584,64 @@ Section UtA6.
                 (⌜klr = (mword_of_int 0 : mword 32)⌝ -∗
                    ⌜ut_live_out scw
                       (<[tf_epc_idx := ret_pc epw]> (pv_tf (us_V U0))) sts0
-                      (pv_tf (us_V U) !!! tf_arg_idx 0) cs2⌝)))%I
-      with "[Hqp Hrg Hres]" as "Hkacc".
+                      (pv_tf (us_V U) !!! tf_arg_idx 0) cs2⌝) ∗
+                  (* ...AND WHO WOULD PAY A TEAR-DOWN, read INSIDE the
+                     critical section because that is where the row is
+                     (design/pipe.md, "The exit path").  LEFT: the block's
+                     own marker went in and came back, and with it the
+                     KILLER's taint out of the row's paid arm -- which is
+                     the package kexit takes, and at a zero flag the marker
+                     simply goes back into the block.  RIGHT: a self-kill
+                     happened on the way here, so there is no marker, the
+                     flag cannot be zero, and the closes and the payload are
+                     the trap's own deposit. *)
+                  (((⌜klr = (mword_of_int 0 : mword 32)⌝
+                     ∨ (ChildTok.kill_shot (pv_gen (us_V U)) ∗ □ riscv_kill_cred))
+                    ∗ ChildTok.taken_at (pv_gen (us_V U)))
+                   ∨ (⌜klr <> (mword_of_int 0 : mword 32)⌝
+                      ∗ ChildTok.kill_shot (pv_gen (us_V U))
+                      ∗ fileclose_cpays sts ∗ sexit_pay fdep (-1)))))%I
+      with "[Hqp Hrg Hres Htear]" as "Hkacc".
     { iIntros (pidr klr) "Hq Hr".
       iDestruct (ctx_word4_pointsto_agree with "Hq Hqp") as %->.
-      iDestruct (SchedCtx.kill_paid_shot pid klr (DfracOwn qeighth)
-                   (pv_gen (us_V U)) with "Hr Hrg") as "(Hr & Hrg & Hs)".
+      (* THE ROW IS READ ONCE, BY WHICHEVER ROUTE GOT HERE.  With the
+         marker, [kill_paid_shot_tear] proves the row was paid by a THIRD
+         PARTY (the marker refutes the spent arm) and hands the taint out;
+         after a self-kill there is no marker, but the one-shot is already
+         in hand and refutes the zero flag outright. *)
+      iAssert (SchedCtx.kill_paid pid klr ∗
+               pid_reg pid (DfracOwn qeighth) (pv_gen (us_V U)) ∗
+               (⌜klr = (mword_of_int 0 : mword 32)⌝
+                ∨ ChildTok.kill_shot (pv_gen (us_V U))) ∗
+                  (* ...AND WHO WOULD PAY A TEAR-DOWN, read INSIDE the
+                     critical section because that is where the row is
+                     (design/pipe.md, "The exit path").  LEFT: the block's
+                     own marker went in and came back, and with it the
+                     KILLER's taint out of the row's paid arm -- which is
+                     the package kexit takes, and at a zero flag the marker
+                     simply goes back into the block.  RIGHT: a self-kill
+                     happened on the way here, so there is no marker, the
+                     flag cannot be zero, and the closes and the payload are
+                     the trap's own deposit. *)
+                  (((⌜klr = (mword_of_int 0 : mword 32)⌝
+                     ∨ (ChildTok.kill_shot (pv_gen (us_V U)) ∗ □ riscv_kill_cred))
+                    ∗ ChildTok.taken_at (pv_gen (us_V U)))
+                   ∨ (⌜klr <> (mword_of_int 0 : mword 32)⌝
+                      ∗ ChildTok.kill_shot (pv_gen (us_V U))
+                      ∗ fileclose_cpays sts ∗ sexit_pay fdep (-1))))%I
+        with "[Hr Hrg Htear]" as "(Hr & Hrg & Hs & Htear)".
+      { iDestruct "Htear" as "[Htk | (#Hsh & Hcp & HQd)]".
+        - iDestruct (SchedCtx.kill_paid_shot_tear pid klr (DfracOwn qeighth)
+                       (pv_gen (us_V U)) with "Hr Hrg Htk")
+            as "(Hr & Hrg & Htk & #Hs)".
+          iFrame "Hr Hrg". iSplitR; [ | iLeft; iFrame "Hs Htk" ].
+          iDestruct "Hs" as "[%Hz | [#Hsh _]]";
+            [ iLeft; by iPureIntro | iRight; iExact "Hsh" ].
+        - iDestruct (SchedCtx.kill_paid_shot_nz pid klr (DfracOwn qeighth)
+                       (pv_gen (us_V U)) Hpidnz with "Hr Hrg Hsh")
+            as "(Hr & Hrg & %Hne)".
+          iFrame "Hr Hrg". iSplitR; [ iRight; iExact "Hsh" | ].
+          iRight. iSplitR; [ by iPureIntro | ]. iFrame "Hsh Hcp HQd". }
       destruct (decide (klr = (mword_of_int 0 : mword 32))) as [Hkz | Hknz].
       - (* the flag is ZERO: the row's own [kill_pend] refutes a shot, so
            what [Hres] is carrying can only be the slot -- AND the read's
@@ -1486,10 +1693,10 @@ Section UtA6.
           - iFrame "Hr Hrg". iPureIntro. intro Hc. exfalso. exact (Hgw Hc). }
         rewrite /ut_resume_in /ut_kill_out.
         destruct (decide (scw = UsysMemOk.uecall_scause)) as [_ | _].
-        + iFrame "Hq Hr Hs Hqp Hrg". iSplitR; [ by iIntros "_" | ].
+        + iFrame "Hq Hr Hs Hqp Hrg Htear". iSplitR; [ by iIntros "_" | ].
           iIntros "_". iPureIntro. exact (ut_live_out_of _ _ _ _ _ Hnr Hnw).
         + iDestruct "Hres" as "[Hslot | #Hsh]".
-          * iFrame "Hq Hr Hs Hqp Hrg". iSplitL "Hslot".
+          * iFrame "Hq Hr Hs Hqp Hrg Htear". iSplitL "Hslot".
             { iIntros "_". iExact "Hslot". }
             iIntros "_". iPureIntro. exact (ut_live_out_of _ _ _ _ _ Hnr Hnw).
           * iDestruct (SchedCtx.kill_paid_shot_nz pid klr (DfracOwn qeighth)
@@ -1497,7 +1704,7 @@ Section UtA6.
               as "(_ & _ & %Hne)". exfalso. exact (Hne Hkz).
       - (* the flag is NONZERO: this call takes the kexit branch and the
            resume row is never read. *)
-        iFrame "Hq Hr Hs Hqp Hrg". iSplitR.
+        iFrame "Hq Hr Hs Hqp Hrg Htear". iSplitR.
         + iIntros "%Hkz". exfalso. exact (Hknz Hkz).
         + iIntros "%Hkz". exfalso. exact (Hknz Hkz). }
     iApply (KI.wp_killed_sconf (CID := CID2) (un_s N) (un_j N) (un_l N)
@@ -1512,13 +1719,19 @@ Section UtA6.
                   (⌜klv = (mword_of_int 0 : mword 32)⌝ -∗
                      ⌜ut_live_out scw
                         (<[tf_epc_idx := ret_pc epw]> (pv_tf (us_V U0))) sts0
-                        (pv_tf (us_V U) !!! tf_arg_idx 0) cs2⌝))%I)
+                        (pv_tf (us_V U) !!! tf_arg_idx 0) cs2⌝) ∗
+                  (((⌜klv = (mword_of_int 0 : mword 32)⌝
+                     ∨ (ChildTok.kill_shot (pv_gen (us_V U)) ∗ □ riscv_kill_cred))
+                    ∗ ChildTok.taken_at (pv_gen (us_V U)))
+                   ∨ (⌜klv <> (mword_of_int 0 : mword 32)⌝
+                      ∗ ChildTok.kill_shot (pv_gen (us_V U))
+                      ∗ fileclose_cpays sts ∗ sexit_pay fdep (-1))))%I)
               HM2a0 Hj Hjl ltac:(vm_compute; reflexivity) ltac:(lia)
               ltac:(lkbelow)
               with "Hkacc Hcg Hcpu Htext Hpc Hpi [-]").
     all: try lkbelow.
     iIntros (CID3 Hk3 mf kl)
-      "[%Hcskl %Hkla0] (#Hkw & Hkores & Hqp & Hrg & Hlvres) Hcg Hcpu Hpc".
+      "[%Hcskl %Hkla0] (#Hkw & Hkores & Hqp & Hrg & Hlvres & Htear) Hcg Hcpu Hpc".
     iDestruct ("Hpvback" with "Hqp Hrg") as "Hpv".
     iDestruct ("Hownback" $! U sts cs2 with "Hpv Hufr Hch Hsy") as "Hown".
     assert (Hretac : ret_pc (M2 !!! Regidx Rra) = mword_of_int (UT + 0xac))
@@ -1657,12 +1870,31 @@ Section UtA6.
                         [ subst K2; apply upd_eq | vm_compute; discriminate ]
                       | vm_compute; reflexivity ])
                 ltac:(lkbelow)
-                with "Htext Hpc Hcg Hkcl4 Hmyp Hshot [-]").
-      rewrite /ut_hold. iSplitL "Hcpu"; [iExact "Hcpu"|].
+                with "Htext Hpc Hcg Hkcl4 Hmyp [Htear] [-]").
+      (* THE TEAR-DOWN'S PRICE, at the flag this branch read (design/pipe.md,
+         "The exit path").  The flag is NONZERO, so the row's zero arm is
+         refuted and what is left is the pair the check brought out: the
+         KILLER's taint beside the block's marker, or -- after a self-kill
+         on the way here -- the trap's own closes and payload. *)
+      { iDestruct "Htear" as "[[Hs Htk] | (_ & #Hsh & Hcp & HQd)]".
+        - iLeft. iDestruct "Hs" as "[%Hz | [#Hsh2 #Hc]]";
+            [ exfalso; exact (Hknz Hz) | ]. iFrame "Hsh2 Htk Hc".
+        - iRight. iFrame "Hcp HQd". }
+      rewrite /ut_hold_nm. iSplitL "Hcpu"; [iExact "Hcpu"|].
       iSplitL "Hcsrs"; [iExact "Hcsrs"|].
       iSplitL "Hclm"; [iExact "Hclm"|].
-      rewrite /ut_env. iSplitR; [iExact "Hcaps" | iExact "Hown"].
+      iSplitR; [iExact "Hcaps" | iExact "Hown"].
     - (* NOT killed: fall through to +0xae. *)
+      (* THE MARKER GOES BACK INTO THE BLOCK.  The flag is zero, so the
+         self-kill arm of the tear-down row is refuted -- a self-kill has
+         already fired the one-shot -- and what is left is the marker this
+         check lent the row and got back (design/pipe.md, "The exit
+         path"). *)
+      iDestruct "Htear" as "[[_ Htk] | (%Hne & _)]";
+        [ | exfalso; exact (Hne (ut_kl_zero_of_branch kl Hnz)) ].
+      iAssert (ut_own Rsys N U sts cs2 pid) with "[Hown Htk]" as "Hown".
+      { iApply (bi.equiv_entails_1_2 _ _ (ut_own_unmark Rsys N U sts cs2 pid)).
+        iFrame "Hown Htk". }
       (* ...AND THE RESUME ROW IS CASHED HERE (lane TRAP-ROWS, T3): the
          flag is zero, which is the guard the accessor's answer is under. *)
       iDestruct ("Hkores" with "[%]") as "Hko";

@@ -520,6 +520,62 @@ End KexitPro.
 Section KexitLoop.
   Context `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ}.
 
+  (* THE DYING PROCESS'S TABLE, NAMED, BESIDE ITS CLOSE PAYMENTS (design/
+     pipe.md, the byte queue).  [SpecKexit] hands kexit the table by name
+     and one close payment per row, because a pipe descriptor's LAST close
+     steps the pipe's exact ghost state and the dying process is the one
+     making it.  The loop peels one row per iteration, so WHICH table the
+     pair is at changes every iteration and nothing outside this row ever
+     names it -- hence the existential, which is what keeps the loop
+     invariant the same shape it had at [fd_frags_any].  The exit forgets
+     the payments: at that point every row is [FdClosed] and every payment
+     is [emp]. *)
+  Definition kx_fdpay (γd : gname) : iProp Σ :=
+    (∃ sts : list fdstate, fd_frags γd sts ∗ fileclose_cpays sts)%I.
+
+  (* THE MARKER-LESS BLOCK'S TWO ACCESSORS (design/pipe.md, "The exit
+     path").  kexit is stated at [ProcInv.proc_priv_unmarked] now -- a
+     self-kill spent the incarnation's marker founding <p->lock>'s killed
+     row -- and the fd loop borrows a descriptor out of that block exactly
+     as it used to out of [proc_priv].  Both are the landed lemmas'
+     readings one conjunct in: the marker sat OUTSIDE everything the loop
+     touches, so removing it changes no step. *)
+  Lemma kx_unmarked_ofile_len `{GEN : GenId} `{XI : CurCtx}
+      (γf : gname) (pa : mword 64) (pid : mword 32)
+      (U : ustate) :
+    proc_priv_unmarked γf pa pid U -∗ ⌜length (pv_ofile (us_V U)) = NOFILE⌝.
+  Proof. iIntros "(Hn & _)". iApply (proc_priv_nocwd_ofile_len with "Hn"). Qed.
+
+  Lemma kx_unmarked_bare_ofile `{GEN : GenId} `{XI : CurCtx}
+      (γf : gname) (pa : mword 64) (pid : mword 32)
+      (U : ustate) (fd : nat) (v : mword 64) :
+    pv_ofile (us_V U) !! fd = Some v ->
+    proc_priv_unmarked γf pa pid U -∗
+    proc_priv_bare pa pid U ∗ ofile_slot γf (pv_fdg (us_V U)) pa fd v ∗
+    (∀ v', proc_priv_bare pa pid U -∗ ofile_slot γf (pv_fdg (us_V U)) pa fd v' -∗
+           proc_priv_unmarked γf pa pid (us_ofile U fd v')).
+  Proof.
+    iIntros (Hfd) "(Hn & Hrest)".
+    iDestruct (proc_priv_nocwd_lazy with "Hn") as %Hlz.
+    rewrite (proc_priv_nocwd_bare γf pa pid U Hlz).
+    iDestruct "Hn" as "[Hb [%Hlen Ho]]".
+    iFrame "Hb".
+    iDestruct (big_sepL_insert_acc with "Ho") as "[$ Hback]"; first exact Hfd.
+    iIntros (v') "Hb Hslot". iDestruct ("Hback" $! v' with "Hslot") as "Ho".
+    rewrite /proc_priv_unmarked.
+    cbn [us_ofile upd_usV us_V upd_ofile pv_sz pv_upt pv_tf pv_ofile pv_cwd
+         pv_name pv_fdg pv_lazy pv_gen pv_cwi pv_chg].
+    iSplitR "Hrest"; [ | iExact "Hrest" ].
+    rewrite (proc_priv_nocwd_bare γf pa pid
+               (us_ofile U fd v')
+               ltac:(cbn [us_ofile upd_usV us_V upd_ofile pv_lazy pv_upt pv_sz];
+                     exact Hlz)).
+    cbn [us_ofile upd_usV us_V upd_ofile pv_sz pv_upt pv_tf pv_ofile pv_cwd
+         pv_name pv_fdg pv_lazy].
+    iSplitL "Hb"; [ iExact "Hb" | ].
+    iFrame "Ho". iPureIntro. rewrite length_insert. exact Hlen.
+  Qed.
+
   Lemma kx_loop `{GEN : GenId} `{CID0 : CpuId} `{XI : CurCtx}
        (γft γf : gname) (fn : fclose_names)
       (j : nat) (pid : mword 32) (sv : mword 64) (gch ggen : gname)
@@ -571,7 +627,7 @@ Section KexitLoop.
         trap_csrs_ext KT1 eb -∗
         cpu_claim_ext eb pj -∗
         pc_is (mword_of_int (KX + 0x4c)) -∗
-        proc_priv γf pj pid Ux -∗
+        proc_priv_unmarked γf pj pid Ux -∗
         fd_frags_any (pv_fdg (us_V Ux)) -∗
         (∃ on', fileclose_pipe_env fn on' 0%nat) -∗
         fileclose_fs_env_nopid fn 0%nat eb pj -∗
@@ -587,8 +643,8 @@ Section KexitLoop.
       trap_csrs_ext KT1 eb -∗
       cpu_claim_ext eb pj -∗
       pc_is (mword_of_int (KX + 0x3e)) -∗
-      proc_priv γf pj pid U -∗
-      fd_frags_any (pv_fdg (us_V U)) -∗
+      proc_priv_unmarked γf pj pid U -∗
+      kx_fdpay (pv_fdg (us_V U)) -∗
       (∃ on', fileclose_pipe_env fn on' 0%nat) -∗
       fileclose_fs_env_nopid fn 0%nat eb pj -∗
        iref_slot -∗
@@ -614,7 +670,7 @@ Section KexitLoop.
                        trap_csrs_ext KT1 eb -∗
                        cpu_claim_ext eb pj -∗
                        pc_is (mword_of_int (KX + 0x4c)) -∗
-                       proc_priv γf pj pid Ux -∗
+                       proc_priv_unmarked γf pj pid Ux -∗
                        fd_frags_any (pv_fdg (us_V Ux)) -∗
                        (∃ on', fileclose_pipe_env fn on' 0%nat) -∗
                        fileclose_fs_env_nopid fn 0%nat eb pj -∗
@@ -625,8 +681,8 @@ Section KexitLoop.
                    trap_csrs_ext KT1 eb -∗
                    cpu_claim_ext eb pj -∗
                    pc_is (mword_of_int (KX + 0x3e)) -∗
-                   proc_priv γf pj pid U -∗
-                   fd_frags_any (pv_fdg (us_V U)) -∗
+                   proc_priv_unmarked γf pj pid U -∗
+                   kx_fdpay (pv_fdg (us_V U)) -∗
                    (∃ on', fileclose_pipe_env fn on' 0%nat) -∗
                    fileclose_fs_env_nopid fn 0%nat eb pj -∗
                     iref_slot -∗
@@ -651,8 +707,8 @@ Section KexitLoop.
                    trap_csrs_ext KT1 eb -∗
                    cpu_claim_ext eb pj -∗
                    pc_is (mword_of_int (KX + 0x38)) -∗
-                   proc_priv γf pj pid Ut -∗
-                   fd_frags_any (pv_fdg (us_V Ut)) -∗
+                   proc_priv_unmarked γf pj pid Ut -∗
+                   kx_fdpay (pv_fdg (us_V Ut)) -∗
                    (∃ on', fileclose_pipe_env fn on' 0%nat) -∗
                    fileclose_fs_env_nopid fn 0%nat eb pj -∗
                    iref_slot -∗
@@ -715,13 +771,18 @@ Section KexitLoop.
           { apply (kx_end_of_eq j fd Hj Hfd).
             apply (proj1 (eq_vec_true_iff (p_ofile pj (S fd)) (p_cwd pj))).
             rewrite -HM9 -HM18. exact Hcmp. }
-          iDestruct (proc_priv_ofile_len with "Hpriv") as "%Hlen".
+          iDestruct (kx_unmarked_ofile_len with "Hpriv") as "%Hlen".
           iDestruct (cpu_own_transport CIDt CIDt2 0 eb pj b ltac:(wp_next_chain)
                        with "Hown") as "Hown".
           iDestruct (trap_csrs_ext_transport CIDt CIDt2 eb pj
                        ltac:(rewrite Hbt; wp_next_chain) with "Htce") as "Htce".
           iDestruct (cpu_claim_ext_transport CIDt CIDt2 eb pj
                        ltac:(rewrite Hbt; wp_next_chain) with "Hcce") as "Hcce".
+          (* the payments are spent: every row is closed now, and the exit
+             only ever needed the table forgetfully *)
+          iDestruct "Hfrag" as (stsq) "[Hfrq _]".
+          iAssert (fd_frags_any (pv_fdg (us_V Ut)))%I with "[Hfrq]" as "Hfrag";
+            [by iExists stsq |].
           iSpecialize ("Hqx" $! CIDt2 with "[%]"); [wp_next_chain|].
           iApply ("Hqx" $! Mt38 Ut with "[%] [%] [%] [%] [%] [%] Hcg Hown Htce Hcce Hpc Hpriv Hfrag Hpenv Hfenv Hiru").
           * split; [exact HM19|]. split; [exact HM20|]. split; [exact HMsp|].
@@ -766,12 +827,12 @@ Section KexitLoop.
             split; [exact HM20|]. split; [exact HMsp|]. exact HMdom.
           * exact Hnt. }
       (* ================= the body at +0x3e .. +0x4a ================= *)
-      iDestruct (proc_priv_ofile_len with "Hpriv") as "%Hlen".
+      iDestruct (kx_unmarked_ofile_len with "Hpriv") as "%Hlen".
       destruct (lookup_lt_is_Some_2 (pv_ofile (us_V U)) fd ltac:(rewrite Hlen; exact Hfd)) as [v Hv].
       (* the process BLOCK and the descriptor come out TOGETHER: fileclose's
          file-system arm threads the block down to bread's acquiresleep, and
          neither one-at-a-time accessor can be open while the other is. *)
-      iDestruct (proc_priv_bare_ofile γf pj pid U fd v Hv with "Hpriv")
+      iDestruct (kx_unmarked_bare_ofile γf pj pid U fd v Hv with "Hpriv")
         as "(Hpbare & Hslot & Hback)".
       iDestruct "Hslot" as "[Hcell Hpay]".
       (* +0x3e c.ld a0,0(s1) : a0 := p->ofile[fd] *)
@@ -885,12 +946,26 @@ Section KexitLoop.
         iDestruct "Hpenv" as (onk) "Hpenv".
         iDestruct (fileclose_loop_open fn onk 0%nat eb pj stf
                      with "Hpenv Hfenv") as "[Hfcenv Hfcback]".
-        iApply (Fileclose.wp_fileclose_sconf (CID := CIDn)  γft γf kf q stf fn onk M42 0 eb pj av b lks pid U
+        (* THIS ROW'S CLOSE PAYMENT, peeled off [fileclose_cpays] (design/
+           pipe.md, the byte queue).  The table is NAMED, so the state the
+           payment is keyed on and the state the array's own authority
+           carries are the same [stf] -- one agreement, taken here, before
+           the call that spends it.  The payload is [emp]: the process is
+           ending and there is nobody to tell anything to. *)
+        iDestruct "Hfrag" as (sts) "[Hfrs Hcpays]".
+        iDestruct (fd_frags_acc_lt (pv_fdg (us_V U)) sts fd
+                     ltac:(unfold NOFILE in *; lia) with "Hfrs")
+          as (stq) "(%Hlkq & Hfr & #Hrowq & Hfrback)".
+        iDestruct (fd_st_agree with "Hst Hfr") as %<-.
+        rewrite /fileclose_cpays.
+        iDestruct (big_sepL_insert_acc _ _ _ _ Hlkq with "Hcpays")
+          as "[Hcpay Hcpback]".
+        iApply (Fileclose.wp_fileclose_sconf (CID := CIDn)  γft γf kf q stf fn onk M42 0 eb pj av b lks (emp%I) pid U
                   ltac:(lia) ltac:(lia) HM42a0 Hfresh
-                  with "Hcg Hown Htce Hcce Htext Hkd Hpc Hft Hpe Href [Hpbare] Hiru Hfcenv").
+                  with "Hcg Hown Htce Hcce Htext Hkd Hpc Hft Hpe Href [Hpbare] Hiru Hfcenv Hcpay").
         all: try lkbelow.
         { iExact "Hpbare". }
-        iIntros (CIDo Hso mr) "Hcg Hown Htce Hcce Hpc %Hcs Hfdslot Hiru Hout Hpbare".
+        iIntros (CIDo Hso mr) "Hcg Hown Htce Hcce Hpc %Hcs Hfdslot Hiru Hout _ Hpbare".
         iDestruct ("Hfcback" with "Hout") as "(Hpenv & Hfenv)".
         assert (Hpc46 : ret_pc (M42 !!! Regidx (mword_of_int 1 : mword 5))
                         = mword_of_int (KX + 0x46))
@@ -932,11 +1007,16 @@ Section KexitLoop.
         (* the retype, out of the bundle kexit was handed: closing a
            descriptor moves its state, and the array holds only the
            authority. *)
-        iDestruct (fd_frags_any_acc (pv_fdg (us_V U)) fd ltac:(unfold NOFILE in *; lia)
-                     with "Hfrag") as (stq) "(Hfr & _ & Hfrback)".
-        iMod (fd_st_move _ fd stf stq FdClosed with "Hst Hfr")
+        iMod (fd_st_move _ fd stf stf FdClosed with "Hst Hfr")
           as "[Hst Hfr]".
-        iDestruct ("Hfrback" with "Hfr []") as "Hfrag"; [iApply foff_row_closed |].
+        iDestruct ("Hfrback" with "Hfr []") as "Hfrs"; [iApply foff_row_closed |].
+        (* ...and the row's payment is [emp] now, which closes the pair back
+           up at the table this iteration leaves behind *)
+        iDestruct ("Hcpback" $! FdClosed with "[]") as "Hcpays";
+          [iApply fileclose_cpay_none |].
+        iAssert (kx_fdpay (pv_fdg (us_V U)))%I with "[Hfrs Hcpays]" as "Hfrag".
+        { iExists (<[fd := FdClosed]> sts). rewrite /fileclose_cpays.
+          iSplitL "Hfrs"; [iExact "Hfrs" | iExact "Hcpays"]. }
         iDestruct ("Hback" $! (zero_reg : mword 64) with "Hpbare [Hcell Hfdslot Hst]") as "Hpriv".
         { rewrite /ofile_slot. iSplitL "Hcell"; [iExact "Hcell"|].
           iLeft. iFrame "Hfdslot Hst". done. }
@@ -1073,14 +1153,18 @@ Section KexitPark.
     (* the two-sided payment ([SpecKexit]): the caller's own [Q] at the
        status, or -- on the kernel's tear-down route -- the incarnation's
        kill one-shot, which the take below trades the MARKER for. *)
+    (* ...AND THE MARKER RIDES THE TEAR-DOWN SIDE (design/pipe.md, "The
+       exit path"): a self-kill spent its own founding <p->lock>'s killed
+       row, so the block does not carry one and only the route that TRADES
+       a marker for the row's payload has to bring one. *)
     (Q (xstate_of sv)
-     ∨ (⌜xstate_of sv = -1⌝ ∗ ChildTok.kill_shot (pv_gen (us_V U)))) -∗
-    ChildTok.taken_at (pv_gen (us_V U)) -∗
+     ∨ (⌜xstate_of sv = -1⌝ ∗ ChildTok.kill_shot (pv_gen (us_V U))
+        ∗ ChildTok.taken_at (pv_gen (us_V U)))) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros pj Hj Hgl Hav Hregs Hof Hcwd Hfresh.
     destruct Hregs as (Hs3 & Hs4 & Hsp0 & Hdom).
-    iIntros "Hcg Hcloser Hown Htce Hcce #Htext Hpc #Hprocs #Hwl Hinit #Hid Hsp Hir Hbs Hpriv Hgq Hrow Hxb Hgh #Hmy HQ Htaken".
+    iIntros "Hcg Hcloser Hown Htce Hcce #Htext Hpc #Hprocs #Hwl Hinit #Hid Hsp Hir Hbs Hpriv Hgq Hrow Hxb Hgh #Hmy HQ".
     (* THE SCHED CROSSING NEEDS THE EXACT SINGLETON: swtch is contracted at
        [{["proc"]}] on both sides (SpecSwtch.v), xv6's own
        [panic("sched locks")] discipline.  [kx_park] enters at depth 0, so the
@@ -1104,7 +1188,7 @@ Section KexitPark.
       by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Hpp64) in "Hpc".
     iApply (wp_addi4_s_sconf (CID := CIDu) (mword_of_int (KX + 0x64))
-              (mword_of_int 10 : mword 5) (mword_of_int 10 : mword 5) (mword_of_int 746 : mword 12)
+              (mword_of_int 10 : mword 5) (mword_of_int 10 : mword 5) (mword_of_int 762 : mword 12)
               P0 av b ltac:(vm_compute; discriminate) ltac:(rdok)
               with "Hcg Hpc []").
     { iApply (kxi_64 with "Htext"). }
@@ -1113,7 +1197,7 @@ Section KexitPark.
                      = P0 !!! Regidx (mword_of_int 10 : mword 5)) by (rgne; reflexivity).
     iEval (rewrite Hrgu10) in "Hcg".
     set (P1 := <[Regidx (mword_of_int 10 : mword 5) := regval_into_reg
-         (add_vec (P0 !!! Regidx (mword_of_int 10 : mword 5)) (sign_extend' 64 (mword_of_int 746 : mword 12)))]> P0).
+         (add_vec (P0 !!! Regidx (mword_of_int 10 : mword 5)) (sign_extend' 64 (mword_of_int 762 : mword 12)))]> P0).
     assert (HP1a0 : P1 !!! Regidx (mword_of_int 10 : mword 5) = wait_lock_addr).
     { rewrite /P1 upd_eq /P0 upd_eq. unfold wait_lock_addr.
       apply bv_eq; vm_compute; reflexivity. }
@@ -1122,7 +1206,7 @@ Section KexitPark.
     iEval (rewrite Hpp68) in "Hpc".
     (* +0x68 jal ra,acquire *)
     iApply (wp_jal_s_sconf (CID := CIDv) (mword_of_int (KX + 0x68))
-              (mword_of_int 1 : mword 5) (mword_of_int 2091762 : mword 21) P1 av b
+              (mword_of_int 1 : mword 5) (mword_of_int 2091778 : mword 21) P1 av b
               ltac:(vm_compute; discriminate) ltac:(rdok) ltac:(vm_compute; reflexivity)
               with "Hcg Hpc []").
     { iApply (kxi_68 with "Htext"). }
@@ -1130,7 +1214,7 @@ Section KexitPark.
     set (P2 := <[Regidx (mword_of_int 1 : mword 5) := regval_into_reg
          (add_vec_int (mword_of_int (KX + 0x68) : mword 64) 4)]> P1).
     assert (Hjaq : add_vec (mword_of_int (KX + 0x68) : mword 64)
-                     (sign_extend' 64 (mword_of_int 2091762 : mword 21)) = mword_of_int KernelSyms.acquire)
+                     (sign_extend' 64 (mword_of_int 2091778 : mword 21)) = mword_of_int KernelSyms.acquire)
       by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Hjaq) in "Hpc".
     assert (HP2ra : P2 !!! Regidx (mword_of_int 1 : mword 5)
@@ -1385,7 +1469,7 @@ Section KexitPark.
       by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Hpp7c) in "Hpc".
     iApply (wp_jal_s_sconf (CID := CIDa) (mword_of_int (KX + 0x7c))
-              (mword_of_int 1 : mword 5) (mword_of_int 2091742 : mword 21) P7 (trap_res b + av)%nat false
+              (mword_of_int 1 : mword 5) (mword_of_int 2091758 : mword 21) P7 (trap_res b + av)%nat false
               ltac:(vm_compute; discriminate) ltac:(rdok) ltac:(vm_compute; reflexivity)
               with "Hcg Hpc []").
     { iApply (kxi_7c with "Htext"). }
@@ -1393,7 +1477,7 @@ Section KexitPark.
     set (P8 := <[Regidx (mword_of_int 1 : mword 5) := regval_into_reg
          (add_vec_int (mword_of_int (KX + 0x7c) : mword 64) 4)]> P7).
     assert (Hjaq2 : add_vec (mword_of_int (KX + 0x7c) : mword 64)
-                      (sign_extend' 64 (mword_of_int 2091742 : mword 21)) = mword_of_int KernelSyms.acquire)
+                      (sign_extend' 64 (mword_of_int 2091758 : mword 21)) = mword_of_int KernelSyms.acquire)
       by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Hjaq2) in "Hpc".
     assert (HP8ra : P8 !!! Regidx (mword_of_int 1 : mword 5)
@@ -1479,8 +1563,8 @@ Section KexitPark.
                 ChildTok.my_pay (pv_gen (us_V U)) Qp ∗ Qp (xstate_of sv)) ∗
              SchedCtx.kill_paid pid kl ∗
              gen_halves_at pj pid (pv_gen (us_V U)))%I
-      with "[HQ Htaken Hkrow Hgh]" as "(Hpay0 & Hkrow & Hgh)".
-    { iDestruct "HQ" as "[HQ | [%Hm1 #Hshot]]".
+      with "[HQ Hkrow Hgh]" as "(Hpay0 & Hkrow & Hgh)".
+    { iDestruct "HQ" as "[HQ | (%Hm1 & #Hshot & Htaken)]".
       - iFrame "Hkrow Hgh". iExists Q. iFrame "Hmy HQ".
       - iDestruct (gen_halves_at_nz with "Hgh") as %Hnz.
         iDestruct (gen_halves_at_reg with "Hgh") as "[Hpr Hback]".
@@ -1581,7 +1665,7 @@ Section KexitPark.
       by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Hpp8e) in "Hpc".
     iApply (wp_addi4_s_sconf (CID := CIDa) (mword_of_int (KX + 0x8e))
-              (mword_of_int 10 : mword 5) (mword_of_int 10 : mword 5) (mword_of_int 704 : mword 12)
+              (mword_of_int 10 : mword 5) (mword_of_int 10 : mword 5) (mword_of_int 720 : mword 12)
               PA (trap_res b + av)%nat false ltac:(vm_compute; discriminate) ltac:(rdok)
               with "Hcg Hpc []").
     { iApply (kxi_8e with "Htext"). }
@@ -1590,7 +1674,7 @@ Section KexitPark.
                      = PA !!! Regidx (mword_of_int 10 : mword 5)) by (rgne; reflexivity).
     iEval (rewrite HrgA10) in "Hcg".
     set (PB := <[Regidx (mword_of_int 10 : mword 5) := regval_into_reg
-         (add_vec (PA !!! Regidx (mword_of_int 10 : mword 5)) (sign_extend' 64 (mword_of_int 704 : mword 12)))]> PA).
+         (add_vec (PA !!! Regidx (mword_of_int 10 : mword 5)) (sign_extend' 64 (mword_of_int 720 : mword 12)))]> PA).
     assert (HPAsp : PA !!! Regidx csp_rs1 = spF)
       by (rewrite /PA upd_ne; [exact HP9sp | vm_compute; discriminate]).
     assert (HPBsp : PB !!! Regidx csp_rs1 = spF)
@@ -1604,7 +1688,7 @@ Section KexitPark.
     (* +0x92 jal ra,release(&wait_lock) : back to level 1, still holding
        p->lock -- which is exactly what sched wants. *)
     iApply (wp_jal_s_sconf (CID := CIDa) (mword_of_int (KX + 0x92))
-              (mword_of_int 1 : mword 5) (mword_of_int 2091856 : mword 21) PB (trap_res b + av)%nat false
+              (mword_of_int 1 : mword 5) (mword_of_int 2091872 : mword 21) PB (trap_res b + av)%nat false
               ltac:(vm_compute; discriminate) ltac:(rdok) ltac:(vm_compute; reflexivity)
               with "Hcg Hpc []").
     { iApply (kxi_92 with "Htext"). }
@@ -1612,7 +1696,7 @@ Section KexitPark.
     set (PC := <[Regidx (mword_of_int 1 : mword 5) := regval_into_reg
          (add_vec_int (mword_of_int (KX + 0x92) : mword 64) 4)]> PB).
     assert (Hjrl : add_vec (mword_of_int (KX + 0x92) : mword 64)
-                     (sign_extend' 64 (mword_of_int 2091856 : mword 21)) = mword_of_int KernelSyms.release)
+                     (sign_extend' 64 (mword_of_int 2091872 : mword 21)) = mword_of_int KernelSyms.release)
       by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Hjrl) in "Hpc".
     assert (HPCra : PC !!! Regidx (mword_of_int 1 : mword 5)
@@ -1806,7 +1890,9 @@ Section KexitRest.
     WaitInv.init_ident ip -∗
     fd_slots FDSPARE -∗
     iref_slots IREFSPARE -∗
-    proc_priv γf pj pid U -∗
+    (* THE MARKER-LESS BLOCK ([ProcInv.proc_priv_unmarked], design/pipe.md
+       "The exit path") *)
+    proc_priv_unmarked γf pj pid U -∗
     fd_frags_any (pv_fdg (us_V U)) -∗
     (* THE SLOT'S CHILDREN ROW, riding through to the park -- see
        [kx_park].  The three log/inode calls below neither read nor move
@@ -1819,7 +1905,8 @@ Section KexitRest.
     my_pay (pv_gen (us_V U)) Q -∗
     (* the two-sided payment, straight through ([SpecKexit]) *)
     (Q (xstate_of sv)
-     ∨ (⌜xstate_of sv = -1⌝ ∗ ChildTok.kill_shot (pv_gen (us_V U)))) -∗
+     ∨ (⌜xstate_of sv = -1⌝ ∗ ChildTok.kill_shot (pv_gen (us_V U))
+        ∗ ChildTok.taken_at (pv_gen (us_V U)))) -∗
     WP (Loop : expr riscv_lang).
   Proof.
     intros pj Hj Hgl Hav Hgeom Hregs Hof
@@ -1844,8 +1931,8 @@ Section KexitRest.
        that dies holding the exclusive boot arm has simply consumed the one
        chance to run it (the logic is affine, so the leak is sound and the
        kernel's own "at most one" is unaffected). *)
-    iDestruct (bi.equiv_entails_1_1 _ _ (proc_priv_split_cwd γf pj pid U)
-                 with "Hpriv") as "[Hpriv [Href [Hfdone [Hgq [Hxb Hgh]]]]]".
+    iEval (rewrite /proc_priv_unmarked) in "Hpriv".
+    iDestruct "Hpriv" as "[Hpriv [Href [Hfdone [Hgq [Hxb Hgh]]]]]".
     iClear "Hfdone".
     (* ...AND THE INCARNATION'S ONE-SHOT MARKER COMES OFF THE BUNDLE HERE
        (lane SELF-KILL, P6).  [SlotGen.gen_halves_priv] is the token-free
@@ -1855,7 +1942,6 @@ Section KexitRest.
        <p->lock>'s killed row is holding ([SchedCtx.kill_paid_take]) -- so
        nothing is dropped and the row's spent arm gets its one and only
        producer. *)
-    iDestruct (gen_halves_priv_split with "Hgh") as "[Hgh Htaken]".
     (* THE BLOCK, NOT A QUARTER OF [p->pid].  begin_op, iput and end_op all
        take [proc_priv_bare] now, and [p->cwd] lives INSIDE it -- so the cell
        is borrowed for the two instructions that touch it (+0x50's load and
@@ -2103,17 +2189,16 @@ Section KexitRest.
               ltac:(cbn [upd_cwd pv_cwd pv_fdg]; reflexivity)
               Hfresh_wl
               with "Hcg Hcloser Hown Htce Hcce Htext Hpc Hprocs Hwl Hinit Hid Hsp Hir Hbsl
-                    Hpriv [Hgq] Hrow Hxb [Hgh] Hmy [HQ] [Htaken]").
+                    Hpriv [Hgq] Hrow Hxb [Hgh] Hmy [HQ]").
     { (* the pair is keyed at the block's generation, which zeroing
          [p->cwd] does not touch *)
       cbn [us_cwd upd_usV us_V upd_cwd pv_gen]. iExact "Hgq". }
     { (* ...and so are the two quarters *)
       cbn [us_cwd upd_usV us_V upd_cwd pv_gen]. iExact "Hgh". }
     { (* the deposit's payload is at this call's status argument, which the
-         block does not name at all *)
-      iExact "HQ". }
-    { (* ...and so is the marker: [upd_cwd] does not touch [pv_gen] *)
-      cbn [us_cwd upd_usV us_V upd_cwd pv_gen]. iExact "Htaken". }
+         block does not name at all -- and so is the marker on its
+         tear-down side: [upd_cwd] touches neither *)
+      cbn [us_cwd upd_usV us_V upd_cwd pv_gen]. iExact "HQ". }
   Qed.
 
 End KexitRest.
@@ -2131,11 +2216,11 @@ Section ProofKexit.
       (ip : mword 64) (dqi : dfrac)
       (on : option nat) (fn : fclose_names)
       (m : regfile) (av : nat) (eb : bool) (b : bool) (lks : gset string)
-      (pid : mword 32) (U : ustate) (cs : gset gname) (Q : Z -> iProp Σ)
+      (pid : mword 32) (U : ustate) (sts : list fdstate) (cs : gset gname) (Q : Z -> iProp Σ)
     : wp_kexit_sconf_body γft γf γw γs j γl pd pav pu
  ip dqi
 
-                          on fn m av eb b lks pid U cs Q.
+                          on fn m av eb b lks pid U sts cs Q.
   Proof.
     cbv beta delta [wp_kexit_sconf_body].
     intros pcE pj Hfn Hj Hgl HK Hgeom Hfresh. subst fn.
@@ -2143,7 +2228,7 @@ Section ProofKexit.
     iIntros "Hcg Hcloser Hown Htce Hcce #Htext #Hkd Hpc #Hprocs #Hpanenv #Hwl #Hft".
     iIntros "#Hkmem Hav0".
     iIntros "#Hbio #Hlog #Hseam #Hgen #Hdev #Hgeo #Hdlk Hbsl #Hrdy".
-    iIntros "Hinit #Hid Hsp Hir Hpriv Hfrag Hrow #Hmy HQ".
+    iIntros "Hinit #Hid Hsp Hir Hpriv Hfrag Hcpays Hrow #Hmy HQ".
     (* ---- THE FILE SYSTEM, AT THE ONLY NAMES THERE ARE ----
        kexit used to take a [fclose_ties] record here and [subst] its twelve
        equations, because every ambient name was also a BINDER of this
@@ -2194,7 +2279,7 @@ Section ProofKexit.
                  with "Hown") as "Hown".
     (* ---- +0x12 jal myproc ---- *)
     iApply (wp_jal_s_sconf (CID := CIDp) (mword_of_int (KX + 0x12))
-              (mword_of_int 1 : mword 5) (mword_of_int 2095224 : mword 21) M (av - 6)%nat b
+              (mword_of_int 1 : mword 5) (mword_of_int 2095240 : mword 21) M (av - 6)%nat b
               ltac:(vm_compute; discriminate) ltac:(rdok) ltac:(vm_compute; reflexivity)
               with "Hcg Hpc []").
     { iApply (kxi_12 with "Htext"). }
@@ -2202,7 +2287,7 @@ Section ProofKexit.
     set (A0 := <[Regidx (mword_of_int 1 : mword 5) := regval_into_reg
          (add_vec_int (mword_of_int (KX + 0x12) : mword 64) 4)]> M).
     assert (Hjmp : add_vec (mword_of_int (KX + 0x12) : mword 64)
-                     (sign_extend' 64 (mword_of_int 2095224 : mword 21)) = mword_of_int KernelSyms.myproc)
+                     (sign_extend' 64 (mword_of_int 2095240 : mword 21)) = mword_of_int KernelSyms.myproc)
       by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Hjmp) in "Hpc".
     assert (HA0ra : A0 !!! Regidx (mword_of_int 1 : mword 5)
@@ -2266,11 +2351,11 @@ Section ProofKexit.
     assert (Hrg4_15 : rget (CID := CID4) A2 (mword_of_int 15 : mword 5)
                       = A2 !!! Regidx (mword_of_int 15 : mword 5)) by (rgne; reflexivity).
     assert (Hipa : add_vec (rget (CID := CID4) A2 (mword_of_int 15 : mword 5))
-                     (sign_extend' 64 (mword_of_int 554 : mword 12))
+                     (sign_extend' 64 (mword_of_int 570 : mword 12))
                    = (mword_of_int KernelSyms.initproc : mword 64)).
     { rewrite Hrg4_15 /A2 upd_eq. apply bv_eq; vm_compute; reflexivity. }
     iApply (wp_ld_s_sconf (CID := CID4) (kt := KT1) (ktd := KT0) (mword_of_int (KX + 0x1c))
-              (mword_of_int 15 : mword 5) (mword_of_int 15 : mword 5) (mword_of_int 554 : mword 12)
+              (mword_of_int 15 : mword 5) (mword_of_int 15 : mword 5) (mword_of_int 570 : mword 12)
               A2 (av - 6)%nat ip b (dqm := DfracDiscarded) ltac:(vm_compute; discriminate) ltac:(rdok)
               with "Hcg Hpc [] [Hinit]").
     { iApply (kxi_1c with "Htext"). }
@@ -2379,24 +2464,24 @@ Section ProofKexit.
         by (apply bv_eq; vm_compute; reflexivity).
       iEval (rewrite Hpp30) in "Hpc".
       iApply (wp_addi4_s_sconf (CID := CID9) (mword_of_int (KX + 0x30))
-                (mword_of_int 10 : mword 5) (mword_of_int 10 : mword 5) (mword_of_int 222 : mword 12)
+                (mword_of_int 10 : mword 5) (mword_of_int 10 : mword 5) (mword_of_int 238 : mword 12)
                 B0 (av - 6)%nat b ltac:(vm_compute; discriminate) ltac:(rdok)
                 with "Hcg Hpc []").
       { iApply (kxi_30 with "Htext"). }
       iIntros (CIDA HsA) "Hcg Hpc".
       set (B1 := <[Regidx (mword_of_int 10 : mword 5) := regval_into_reg
-           (add_vec (rget (CID := CID9) B0 (mword_of_int 10 : mword 5)) (sign_extend' 64 (mword_of_int 222 : mword 12)))]> B0).
+           (add_vec (rget (CID := CID9) B0 (mword_of_int 10 : mword 5)) (sign_extend' 64 (mword_of_int 238 : mword 12)))]> B0).
       assert (Hpp34 : add_vec_int (mword_of_int (KX + 0x30) : mword 64) 4 = mword_of_int (KX + 0x34))
         by (apply bv_eq; vm_compute; reflexivity).
       iEval (rewrite Hpp34) in "Hpc".
       iApply (wp_jal_s_sconf (CID := CIDA) (mword_of_int (KX + 0x34))
-                (mword_of_int 1 : mword 5) (mword_of_int 2090758 : mword 21) B1 (av - 6)%nat b
+                (mword_of_int 1 : mword 5) (mword_of_int 2090774 : mword 21) B1 (av - 6)%nat b
                 ltac:(vm_compute; discriminate) ltac:(rdok) ltac:(vm_compute; reflexivity)
                 with "Hcg Hpc []").
       { iApply (kxi_34 with "Htext"). }
       iIntros (CIDB HsB) "Hcg Hpc".
       assert (Hjpn : add_vec (mword_of_int (KX + 0x34) : mword 64)
-                       (sign_extend' 64 (mword_of_int 2090758 : mword 21)) = mword_of_int KernelSyms.panic)
+                       (sign_extend' 64 (mword_of_int 2090774 : mword 21)) = mword_of_int KernelSyms.panic)
         by (apply bv_eq; vm_compute; reflexivity).
       iEval (rewrite Hjpn) in "Hpc".
       (* ---- panic() AS AN ORDINARY CALL, against SpecPanic ----
@@ -2535,6 +2620,10 @@ Section ProofKexit.
              carries the generation name unchanged, which is what the
              one-shot side of the disjunction is stated at *)
           iEval (rewrite Hxgen). iExact "HQ". } }
+      (* the table and its close payments, as the loop's one row *)
+      iAssert (kx_fdpay (pv_fdg (us_V U)))%I with "[Hfrag Hcpays]" as "Hfrag".
+      { iExists sts. rewrite /fileclose_cpays.
+        iSplitL "Hfrag"; [iExact "Hfrag" | iExact "Hcpays"]. }
       iApply ("Hloop" $! 0%nat A5 U with "[%] [%] [%] Hcg Hown Htce Hcce Hpc Hpriv Hfrag Hpenv Hfenv Hiru0").
       + unfold NOFILE. lia.
       + split; [exact HA5s1|]. split; [exact HA5s2|]. split; [exact HA5s3|].

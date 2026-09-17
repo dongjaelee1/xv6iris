@@ -170,8 +170,11 @@ Section TreeExec.
     app_inv fsc_fs -∗
     uexec_path_reading N pv pl -∗
     (* (E): the exec'd program's own theorem, at the caller's readings *)
+    (* ...at the exec'ing process's table, which the entry may read for
+       whether it holds a pipe row (design/pipe.md, "The exit path") *)
     □ (∀ (M : gmap Z (bv 8)) (fdv : list fdstate) (cs : gset gname)
          (pidv : mword 32),
+         urun_nopipe fdv -∗
          image_entry f M av fdv cw cs pidv (ukn_pay N) Pay uslot) -∗
     image_entry_taint (tree_taint c) (ukn_pay N) uslot -∗
     □ (Pay -∗ R) -∗
@@ -189,10 +192,10 @@ Section TreeExec.
     iApply (wp_uk_ecall_exec_run_abs N h m pc avail cw (tree_taint c) pv av
               pl f Pay R Hn Ha0 Ha1 Hal4 Hload
               with "Hi Hrun Hcwd Hrf Hgen [HPay] Hcont").
-    rewrite /uexec_sup_run_abs. iIntros (M pm sz fdv cs pidv) "Hheap Hufd".
+    rewrite /uexec_sup_run_abs. iIntros (M pm sz fdv cs pidv) "#Hnp Hheap Hufd".
     iDestruct ("Hrd" $! M pm sz with "Hheap") as %Hpath.
     iFrame "Hheap Hufd". iSplitR; [ by iPureIntro | ].
-    iSplitR "HPay"; [ | iSplitR; [ iApply "Hcon" | iExact "HPay" ] ].
+    iSplitR "HPay"; [ | iSplitR; [ iApply ("Hcon" with "Hnp") | iExact "HPay" ] ].
     iApply (exec_walk_of_own c r g root root i t f cw pl Heq Hp Hstart Hd Hres
               with "Hpin Hinv").
   Qed.

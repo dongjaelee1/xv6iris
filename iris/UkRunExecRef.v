@@ -91,6 +91,11 @@ Section UkRunExecRef.
     (∀ (M : gmap Z (bv 8)) (pm : gmap (mword 27) uperm) (sz : Z)
        (fdv : list fdstate) (gn : gname) (cs : gset gname) (pidv : mword 32),
        my_pay gn (ukn_pay N) -∗
+       (* ...and whether the key's table holds a pipe row, lent with them
+          (design/pipe.md, "The exit path"): a pinned exec supply builds
+          the new image's ENTRY, and an entry constructor asks for it.
+          Persistent, so nothing comes back. *)
+       urun_nopipe fdv -∗
        uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗ ufd_auth (ukn_fd N) fdv -∗
        uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗ ufd_auth (ukn_fd N) fdv ∗
        sbundle_pay_refR uslot (ukn_pay N) R
@@ -101,8 +106,8 @@ Section UkRunExecRef.
     udepw_at_refR N m pc c (ukn_pay N (-1)) -∗ udepw_at_ref N m pc c.
   Proof.
     rewrite /udepw_at_refR /udepw_at_ref.
-    iIntros "Hd" (M pm sz fdv gn cs pidv) "Hmp Hh Hf".
-    iDestruct ("Hd" $! M pm sz fdv gn cs pidv with "Hmp Hh Hf")
+    iIntros "Hd" (M pm sz fdv gn cs pidv) "Hmp #Hnpw Hh Hf".
+    iDestruct ("Hd" $! M pm sz fdv gn cs pidv with "Hmp Hnpw Hh Hf")
       as "(Hh & Hf & Hb)".
     iFrame "Hh Hf". iApply (sbundle_pay_ref_of_refR with "Hb").
   Qed.
@@ -132,11 +137,11 @@ Section UkRunExecRef.
   Proof.
     intros Hn Hal4.
     iIntros "#Hi Hrun Hcwd Hsb Hcont".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     (* the whole point of the leaf: the key's cwd IS the one the caller's
        bundle is stated at *)
     iDestruct (ucwd_agree with "Hcwda Hcwd") as %->.
-    iDestruct ("Hsb" $! M pm sz fdv gn cs pidv with "Hmy Hheap Hufd")
+    iDestruct ("Hsb" $! M pm sz fdv gn cs pidv with "Hmy Hnpx Hheap Hufd")
       as "(Hheap & Hufd & Hdepn)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
     iDestruct (uvb_x0 with "Hb") as "[%Hx0 Hb]".
@@ -213,7 +218,7 @@ Section UkRunExecRef.
                (mword_of_int (-1) : mword 64) Hx0 Hal4).
     iApply ukcq_ukc.
     iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
-              ltac:(unfold unot_sp; vm_compute; discriminate) with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
+              ltac:(unfold unot_sp; vm_compute; discriminate) with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep Hnpx").
     iIntros (h') "Hrun".
     iApply ("Hcont" $! h' with "Hcwd Hpayret Hrun").
   Qed.
@@ -237,6 +242,11 @@ Section UkRunExecRef.
     (∀ (M : gmap Z (bv 8)) (pm : gmap (mword 27) uperm) (sz : Z)
        (fdv : list fdstate) (gn : gname) (cs : gset gname) (pidv : mword 32),
        my_pay gn (ukn_pay N) -∗
+       (* ...and whether the key's table holds a pipe row, lent with them
+          (design/pipe.md, "The exit path"): a pinned exec supply builds
+          the new image's ENTRY, and an entry constructor asks for it.
+          Persistent, so nothing comes back. *)
+       urun_nopipe fdv -∗
        uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗ ufd_auth (ukn_fd N) fdv -∗
        urun_ids N cs pidv -∗
        uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗ ufd_auth (ukn_fd N) fdv ∗
@@ -249,8 +259,8 @@ Section UkRunExecRef.
     udepw_at_refR N m pc c R -∗ udepw_at_refR_ids N m pc c R.
   Proof.
     rewrite /udepw_at_refR /udepw_at_refR_ids.
-    iIntros "Hd" (M pm sz fdv gn cs pidv) "Hmp Hh Hf Hids".
-    iDestruct ("Hd" $! M pm sz fdv gn cs pidv with "Hmp Hh Hf")
+    iIntros "Hd" (M pm sz fdv gn cs pidv) "Hmp #Hnpw Hh Hf Hids".
+    iDestruct ("Hd" $! M pm sz fdv gn cs pidv with "Hmp Hnpw Hh Hf")
       as "(Hh & Hf & Hb)".
     iFrame "Hh Hf Hids Hb".
   Qed.
@@ -279,11 +289,11 @@ Section UkRunExecRef.
   Proof.
     intros Hn Hal4.
     iIntros "#Hi Hrun Hcwd Hsb Hcont".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     (* the whole point of the leaf: the key's cwd IS the one the caller's
        bundle is stated at *)
     iDestruct (ucwd_agree with "Hcwda Hcwd") as %->.
-    iDestruct ("Hsb" $! M pm sz fdv gn cs pidv with "Hmy Hheap Hufd Hcha")
+    iDestruct ("Hsb" $! M pm sz fdv gn cs pidv with "Hmy Hnpx Hheap Hufd Hcha")
       as "(Hheap & Hufd & Hcha & Hdepn)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
     iDestruct (uvb_x0 with "Hb") as "[%Hx0 Hb]".
@@ -360,7 +370,7 @@ Section UkRunExecRef.
                (mword_of_int (-1) : mword 64) Hx0 Hal4).
     iApply ukcq_ukc.
     iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
-              ltac:(unfold unot_sp; vm_compute; discriminate) with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
+              ltac:(unfold unot_sp; vm_compute; discriminate) with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep Hnpx").
     iIntros (h') "Hrun".
     iApply ("Hcont" $! h' with "Hcwd Hpayret Hrun").
   Qed.

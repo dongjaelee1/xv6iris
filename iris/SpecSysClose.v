@@ -117,7 +117,11 @@ Definition wp_sys_close_sconf_body
      (γl γf : gname) (fn : fclose_names) (on : option nat)
     (m : regfile) (av : nat) (n : nat) (eb : bool) (p : mword 64)
     (v : mword 64) (pid : mword 32) (U : ustate) (sts : list fdstate)
-    (b : bool) (lks : gset string) :=
+    (b : bool) (lks : gset string)
+    (* THE CLOSER'S PAYLOAD for a pipe descriptor's close link (design/
+       pipe.md, "The byte queue"): what comes back if this close was the
+       end's last *)
+    (Φc : iProp Σ) :=
   let pcE : mword 64 := mword_of_int KernelSyms.sys_close in
   let ret_tgt := ret_pc (m !!! Regidx (mword_of_int 1 : mword 5)) in
   (* sys_close reads syscall argument 0, out of the trapframe page
@@ -185,6 +189,10 @@ Definition wp_sys_close_sconf_body
   iref_slot -∗
   fileclose_pipe_env fn on n -∗
   fileclose_fs_env_nopid fn n eb p -∗
+  (* THE BYTE QUEUE'S CLOSE PAYMENT, keyed on the descriptor argument 0
+     names ([SpecFileclose.fileclose_cpay] at [SpecArgfd.sys_fd_st]): a
+     close link or the taint on a pipe descriptor, nothing on any other. *)
+  fileclose_cpay (sys_fd_st v (pv_ofile (us_V U)) sts) Φc -∗
   (* THE CROSSING IS THE LITERAL [true], NOT [b].  sys_close calls fileclose,
      whose FD_INODE / FD_DEVICE arm parks, so sys_close can return on another
      hart whatever SIE was doing.  The cost is the CALLER's: it must supply
@@ -199,6 +207,9 @@ Definition wp_sys_close_sconf_body
       cpu_claim_ext eb p -∗
       pc_is ret_tgt -∗
       sys_close_post γf p pid U sts v (mf !!! Regidx (mword_of_int 10 : mword 5)) -∗
+      (* ...and the close payment's answer: the link fired (this was the
+         end's last close), or the payment back *)
+      fileclose_cpost_any (sys_fd_st v (pv_ofile (us_V U)) sts) Φc -∗
       (* the whole environment back: the page count may have moved (the
          descriptor may have held a pipe's last end), which is why the pipe
          bundle returns under an existential *)
@@ -215,6 +226,6 @@ Module Type SYSCLOSE.
        (γl γf : gname) (fn : fclose_names) (on : option nat)
       (m : regfile) (av : nat) (n : nat) (eb : bool) (p : mword 64)
       (v : mword 64) (pid : mword 32) (U : ustate) (sts : list fdstate)
-      (b : bool) (lks : gset string),
-      wp_sys_close_sconf_body γl γf fn on m av n eb p v pid U sts b lks.
+      (b : bool) (lks : gset string) (Φc : iProp Σ),
+      wp_sys_close_sconf_body γl γf fn on m av n eb p v pid U sts b lks Φc.
 End SYSCLOSE.

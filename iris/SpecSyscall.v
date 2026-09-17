@@ -380,7 +380,10 @@ Section SyscExec.
       (cs : gset gname) (pid : mword 32) (f : sfam)
       : iProp Σ :=
     (∀ n : Z,
-       ⌜sysc_num (us_V U) = n /\ n <> USYS_exit /\ n <> USYS_fork⌝ -∗
+       (* ...AND EXIT DEPOSITS LIKE ANY RETURNING NUMBER (design/pipe.md,
+          "The exit path"): its row is the table's close payments, which
+          the exit arm hands kexit ([UexecExecInst.sbundle_at_exit_elim]). *)
+       ⌜sysc_num (us_V U) = n /\ n <> USYS_fork⌝ -∗
        sbundle_at uslot n f (uvis_of U sts gn cs pid))%I.
 
   (* ...AND WHAT COMES BACK, at the same key and the SAME families: the
@@ -629,9 +632,12 @@ Section SyscExec.
      own table index by [lia] *)
   (* ...AND exec (7) IS IN THE LIST NOW (lane KILL-PAY, K4(a), ruling
      R-A): its post used to be [emp] and is the failing exec's refund. *)
+  (* ...AND pipe (4) AND close (21) ARE IN IT TOO (design/pipe.md, "The byte
+     queue"): pipe's post hands the process the new pipe's fragment, close's
+     the answer to its close payment. *)
   Definition sysc_num_nofs (k : Z) : Prop :=
     ~ (k = 5 \/ k = 9 \/ k = 15 \/ k = 16 \/ k = 17 \/ k = 18 \/ k = 19
-       \/ k = 20 \/ k = 7).
+       \/ k = 20 \/ k = 7 \/ k = 4 \/ k = 21).
 
   Lemma sysc_sys_out_quiet (U : ustate) (sts : list fdstate) (gn : gname)
       (cs : gset gname) (pid : mword 32) (f : sfam)

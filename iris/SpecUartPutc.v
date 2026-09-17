@@ -281,7 +281,7 @@ Definition wp_uartputc_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID 
      as the STORE OBLIGATION the leaf spends (lane CONS-IO).  A plain writer
      builds it from its own [WpUart.out_link]
      ([WpUart.store_chain_of_out_chain]); the console ECHO builds it from
-     [WpUart.echo_link] plus the log's mark and the byte's wire rider,
+     [WpUart.cons_link] plus the log's mark and the byte's wire rider,
      because its view shift has to READ the UART's input log -- which lives
      inside the port invariant that only the store's device node opens.  ONE
      contract serves both. *)

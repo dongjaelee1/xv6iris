@@ -125,12 +125,14 @@ Require Import SailStdpp.ConcurrencyInterface SailStdpp.ConcurrencyInterfaceBuil
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
 Require Import RiscvModelBytes.
 Require Import RiscvPtsto.
+Require Import RiscvExtras.   (* [moi32_unsigned], for the queue coupling *)
 Require Import KallocInv.
 Require Import WpLock.
 Require Import CtxMorphTac.   (* the lock payload's context axis *)
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import TsoCtx.
 Require Export Xv6Cameras.  (* the cameras this file states its theory over *)
+Require Export PipeQueue.   (* the byte queue: [pipe_qauth] / [pipe_qfrag], the links and chains *)
 Local Open Scope Z_scope.
 
 
@@ -305,6 +307,156 @@ Proof.
   intro Heq. apply Hne. by apply bv_eq.
 Qed.
 
+(* ------------------------------------------------------------------ *)
+(*  THE QUEUE COUPLING PROPER (design/pipe.md, "The byte queue")        *)
+(* ------------------------------------------------------------------ *)
+(* THE PIPE'S IN-MEMORY BUFFER IS EXACTLY THE WRITTEN SEQUENCE MINUS THE
+   READ PREFIX.  [ws] is every byte ever written, [rp] the read pointer:
+   the two free-running counters are the two lengths mod 2^32, at most
+   PIPESIZE bytes are live, and every live byte sits in the ring at its
+   index mod PIPESIZE.  It subsumes [pipe_count_ok] ([pipe_queue_ok_count]);
+   the two guarded steps below are keyed on the same failed full/empty
+   tests as [pipe_count_incr_w] / [pipe_count_decr_r], and they also say
+   which ring index the code's [%PIPESIZE] computes. *)
+Definition pipe_queue_ok (ws : list (bv 8)) (rp : nat) (nr nw : mword 32)
+    (bs : list (bv 8)) : Prop :=
+  (rp <= length ws)%nat /\ (length ws <= rp + PIPESIZE)%nat /\
+  nr = (mword_of_int (Z.of_nat rp) : mword 32) /\
+  nw = (mword_of_int (Z.of_nat (length ws)) : mword 32) /\
+  (forall k : nat, (rp <= k < length ws)%nat ->
+     bs !! (k mod PIPESIZE)%nat = ws !! k).
+
+Lemma pipe_queue_ok_00 (bs : list (bv 8)) :
+  pipe_queue_ok [] 0 (mword_of_int 0 : mword 32) (mword_of_int 0 : mword 32) bs.
+Proof.
+  unfold pipe_queue_ok, PIPESIZE.
+  split_and!; [lia | cbn; lia | reflexivity | reflexivity |].
+  intros k Hk. cbn in Hk. lia.
+Qed.
+
+(* the two moduli nest: 512 divides 2^32 *)
+Local Lemma mod512_of_mod32 (z : Z) : ((z mod 2 ^ 32) mod 512 = z mod 512)%Z.
+Proof.
+  symmetry. apply Znumtheory.Zmod_div_mod; [lia | vm_compute; reflexivity |].
+  exists 8388608%Z. reflexivity.
+Qed.
+
+Local Lemma to_nat_mod512 (m : nat) :
+  Z.to_nat ((Z.of_nat m mod 2 ^ 32) mod 512) = (m mod 512)%nat.
+Proof.
+  rewrite mod512_of_mod32. change 512%Z with (Z.of_nat 512) at 1.
+  rewrite <- Nat2Z.inj_mod. apply Nat2Z.id.
+Qed.
+
+Lemma pipe_queue_ok_count (ws : list (bv 8)) (rp : nat) (nr nw : mword 32)
+    (bs : list (bv 8)) :
+  pipe_queue_ok ws rp nr nw bs -> pipe_count_ok nr nw.
+Proof.
+  intros (H1 & H2 & -> & -> & _). unfold pipe_count_ok, pipe_count, PIPESIZE in *.
+  rewrite !moi32_unsigned !wrap32_mod.
+  rewrite Zminus_mod_idemp_l Zminus_mod_idemp_r.
+  rewrite Z.mod_small; lia.
+Qed.
+
+(* the ring index the code computes ([andi ..,511] on the counter) *)
+Lemma pipe_queue_widx (ws : list (bv 8)) (rp : nat) (nr nw : mword 32)
+    (bs : list (bv 8)) :
+  pipe_queue_ok ws rp nr nw bs ->
+  Z.to_nat (bv_unsigned nw mod 512) = (length ws mod PIPESIZE)%nat.
+Proof.
+  intros (_ & _ & _ & -> & _). rewrite moi32_unsigned wrap32_mod.
+  apply to_nat_mod512.
+Qed.
+
+Lemma pipe_queue_ridx (ws : list (bv 8)) (rp : nat) (nr nw : mword 32)
+    (bs : list (bv 8)) :
+  pipe_queue_ok ws rp nr nw bs ->
+  Z.to_nat (bv_unsigned nr mod 512) = (rp mod PIPESIZE)%nat.
+Proof.
+  intros (_ & _ & -> & _ & _). rewrite moi32_unsigned wrap32_mod.
+  apply to_nat_mod512.
+Qed.
+
+(* two residues mod 512 of indices less than 512 apart agree only at
+   equal indices -- what keeps a push from overwriting a live byte *)
+Local Lemma mod512_apart (k l : nat) :
+  (k < l)%nat -> (l < k + 512)%nat -> (k mod 512)%nat <> (l mod 512)%nat.
+Proof.
+  intros Hkl Hlk Heq.
+  pose proof (Nat.div_mod k 512 ltac:(lia)) as Hk.
+  pose proof (Nat.div_mod l 512 ltac:(lia)) as Hl.
+  lia.
+Qed.
+
+(* pipewrite's step, licensed by the failed full test: the byte goes to the
+   ring at [|ws| mod PIPESIZE] and to the end of the sequence. *)
+Lemma pipe_queue_push (ws : list (bv 8)) (rp : nat) (nr nw : mword 32)
+    (bs : list (bv 8)) (b : bv 8) :
+  length bs = PIPESIZE ->
+  pipe_queue_ok ws rp nr nw bs ->
+  nw <> add_vec nr (mword_of_int 512 : mword 32) ->
+  pipe_queue_ok (ws ++ [b]) rp nr (add_vec nw (mword_of_int 1 : mword 32))
+    (<[(length ws mod PIPESIZE)%nat := b]> bs).
+Proof.
+  intros Hlen (H1 & H2 & Hnr & Hnw & Hbs) Hne.
+  assert (Hlt : (length ws < rp + PIPESIZE)%nat).
+  { destruct (Nat.lt_ge_cases (length ws) (rp + PIPESIZE)) as [Hl | Hge]; [exact Hl |].
+    exfalso. apply Hne. rewrite Hnw Hnr. apply bv_eq.
+    rewrite add_vec32_unsigned !moi32_unsigned !wrap32_mod.
+    assert (Hl : length ws = (rp + PIPESIZE)%nat) by exact (Nat.le_antisymm _ _ H2 Hge).
+    rewrite Hl. unfold PIPESIZE. rewrite Nat2Z.inj_add.
+    change (Z.of_nat 512) with 512%Z. apply Zplus_mod. }
+  (* the constant is unfolded in the GOAL too -- [split_and!] exposes the
+     definition's [PIPESIZE], which [lia] would otherwise treat as opaque --
+     and the bitvector equations leave the context before any [lia] *)
+  unfold pipe_queue_ok, PIPESIZE in *.
+  split_and!.
+  - clear Hnr Hnw Hne Hbs. rewrite length_app. simpl. lia.
+  - clear Hnr Hnw Hne Hbs. rewrite length_app. simpl. lia.
+  - exact Hnr.
+  - rewrite Hnw. apply bv_eq.
+    rewrite add_vec32_unsigned !moi32_unsigned !wrap32_mod length_app.
+    cbn [length]. rewrite Nat2Z.inj_add. change (Z.of_nat 1) with 1%Z.
+    symmetry. apply Zplus_mod.
+  - clear Hnr Hnw Hne. intros k Hk. rewrite length_app in Hk. simpl in Hk.
+    destruct (decide (k = length ws)) as [-> | Hne'].
+    + rewrite list_lookup_insert; [| rewrite Hlen; apply Nat.mod_upper_bound; lia].
+      rewrite lookup_app_r; [| lia]. rewrite Nat.sub_diag. reflexivity.
+    + rewrite list_lookup_insert_ne.
+      * rewrite lookup_app_l; [| lia]. apply Hbs. lia.
+      * apply not_eq_sym. apply mod512_apart; lia.
+Qed.
+
+(* piperead's step, licensed by the failed empty test: the ring holds the
+   next byte at [rp mod PIPESIZE], and dequeuing it moves the pointer. *)
+Lemma pipe_queue_pop (ws : list (bv 8)) (rp : nat) (nr nw : mword 32)
+    (bs : list (bv 8)) :
+  pipe_queue_ok ws rp nr nw bs ->
+  nr <> nw ->
+  exists b : bv 8,
+    ws !! rp = Some b /\
+    bs !! (rp mod PIPESIZE)%nat = Some b /\
+    pipe_queue_ok ws (S rp) (add_vec nr (mword_of_int 1 : mword 32)) nw bs.
+Proof.
+  intros (H1 & H2 & Hnr & Hnw & Hbs) Hne.
+  assert (Hlt : (rp < length ws)%nat).
+  { destruct (Nat.lt_ge_cases rp (length ws)) as [Hl | Hge]; [exact Hl |].
+    exfalso. apply Hne. rewrite Hnr Hnw. f_equal. f_equal.
+    exact (Nat.le_antisymm _ _ H1 Hge). }
+  destruct (lookup_lt_is_Some_2 ws rp Hlt) as [b Hb].
+  exists b. split_and!;
+    [exact Hb | rewrite (Hbs rp ltac:(clear Hnr Hnw Hne; lia)); exact Hb |].
+  unfold pipe_queue_ok, PIPESIZE in *.
+  split_and!.
+  - clear Hnr Hnw Hne. lia.
+  - clear Hnr Hnw Hne. lia.
+  - rewrite Hnr. apply bv_eq.
+    rewrite add_vec32_unsigned !moi32_unsigned !wrap32_mod.
+    rewrite Nat2Z.inj_succ. unfold Z.succ. symmetry. apply Zplus_mod.
+  - exact Hnw.
+  - clear Hnr Hnw Hne. intros k Hk. apply Hbs. lia.
+Qed.
+
 (* the return-value range piperead and pipewrite share: -1, or a count
    between 0 and n (n itself clamped at 0 -- a non-positive request writes
    or reads nothing and returns 0). *)
@@ -321,9 +473,9 @@ Definition pipe_rw_ret (n : Z) (r : mword 64) : Prop :=
 
 (* a pipe's ghost identity: per end, the reference fraction and the
    "still open" marker. *)
-Record pipe_names := MkPipeNames
-  { pn_read : gname; pn_write : gname;
-    pn_mread : gname; pn_mwrite : gname }.
+(* [pipe_names] -- the four end ghosts and the byte queue's ([pn_queue]) --
+   is defined in PipeNames.v, below [FdSlots], so that a descriptor's state
+   can carry it ([FdSlots.FdPipe]). *)
 
 Definition pn_end (γp : pipe_names) (w : bool) : gname :=
   if w then pn_write γp else pn_read γp.
@@ -520,6 +672,38 @@ Section PipeInv.
      ([CtxMorph] along the acquire floor), instead of the constant embedding
      [<{ pipe_res }>], which froze them at whichever context spelled it.
      [pipe_res] stays as the ambient spelling every consumer reads. *)
+  (* ---- THE BYTE QUEUE'S AUTHORITY, COUPLED OR DISCONNECTED (design/
+     pipe.md, "The byte queue") ----
+     The COUPLED arm: the ghost state IS the physical one -- the written
+     sequence minus the read prefix is the ring ([pipe_queue_ok]), and the
+     two open flags are the two flag words ([pflag_bool]).  The TAINT arm:
+     somebody moved the pipe without the fragment (a process holding only
+     the generic supply), which the kernel may do exactly at the price of
+     the application's taint, and from then on the ghost says nothing --
+     the authority is dropped and the arm is permanent.  Every step in the
+     pipe proofs case-splits on this: fire the caller's link in the coupled
+     arm, or stay (or go) tainted. *)
+  Definition pflag_bool (v : mword 32) : bool := bool_decide (pflag_open v).
+
+  Definition pipe_qres (γp : pipe_names) (nr nw ro wo : mword 32)
+      (bs : list (bv 8)) : iProp Σ :=
+    ((∃ (ws : list (bv 8)) (rp : nat),
+        ⌜pipe_queue_ok ws rp nr nw bs⌝ ∗
+        pipe_qauth (pn_queue γp) (MkPipeSt ws rp (pflag_bool ro) (pflag_bool wo)))
+     ∨ pipe_taint_cred)%I.
+
+  Global Instance pipe_qres_timeless γp nr nw ro wo bs : Timeless (pipe_qres γp nr nw ro wo bs).
+  Proof. rewrite /pipe_qres. apply _. Qed.
+
+  (* the disconnect, at the taint's price *)
+  Lemma pipe_qres_taint γp nr nw ro wo bs :
+    pipe_taint_cred -∗ pipe_qres γp nr nw ro wo bs.
+  Proof. iIntros "#H". rewrite /pipe_qres. by iRight. Qed.
+
+  (* ...AND IT IS THE LAST CONJUNCT of the payload, so every older intro
+     pattern binds its last name to [pipe_slack ∗ pipe_qres] and every older
+     reassembly that frames that name is unchanged; the sites that MOVE the
+     queue (the two byte steps, the two flag stores) open it explicitly. *)
   Definition pipe_res_at (γp : pipe_names) (pi : mword 64) (ξ : CtxId) : iProp Σ :=
     (∃ (nr nw ro wo : mword 32) (vname : mword 64) (bs : list (bv 8)),
        ctx_word_pointsto ξ (lock_name_field pi) (DfracOwn 1) vname ∗
@@ -531,7 +715,8 @@ Section PipeInv.
        pipe_endstate γp true wo ∗
        ⌜pipe_count_ok nr nw⌝ ∗
        ⌜length bs = PIPESIZE⌝ ∗ pipe_data_at ξ pi bs ∗
-       pipe_slack pi)%I.
+       pipe_slack pi ∗
+       pipe_qres γp nr nw ro wo bs)%I.
   Definition pipe_res (γp : pipe_names) (pi : mword 64) : iProp Σ :=
     pipe_res_at γp pi cur_ctx.
 
@@ -613,8 +798,10 @@ Section PipeInv.
     pipe_dead γl γp ∗ pipe_bytes pi.
   Proof.
     iIntros "#Hs0 #Hs1 Hfrag Hres".
+    (* the queue's authority is dropped on the floor: no step is possible
+       on a dead pipe, and every snapshot of it stays true *)
     iDestruct "Hres" as (nr nw ro wo vname bs)
-      "(Hnm & Hnr & Hnw & Hro & Hwo & Hst0 & Hst1 & %Hcnt & %Hlen & Hdat & Hslack)".
+      "(Hnm & Hnr & Hnw & Hro & Hwo & Hst0 & Hst1 & %Hcnt & %Hlen & Hdat & Hslack & _)".
     iDestruct (pipe_endstate_shut_elim with "Hs0 Hst0") as "[-> H0]".
     iDestruct (pipe_endstate_shut_elim with "Hs1 Hst1") as "[-> H1]".
     iSplitL "Hfrag H0 H1"; [ by iFrame "Hfrag H0 H1" | ].

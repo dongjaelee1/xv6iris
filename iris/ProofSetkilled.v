@@ -71,8 +71,8 @@ Section ProofSetkilled.
 
   Lemma wp_setkilled_sconf  (γs : list gname) (j : nat) (γl : gname)
       (m : regfile) (av : nat) (n : nat) (eb : bool) (p : mword 64) (b : bool) (lks : gset string)
-      (pidv : mword 32) (gn : gname)
-    : wp_setkilled_sconf_body γs j γl m av n eb p b lks pidv gn.
+      (pidv : mword 32) (gn : gname) (self : bool)
+    : wp_setkilled_sconf_body γs j γl m av n eb p b lks pidv gn self.
   Proof.
     cbv beta delta [wp_setkilled_sconf_body].
     intros pcE ret_tgt Ha0 Hj Hgl Hn Hav Hpidnz Hno.
@@ -173,7 +173,7 @@ Section ProofSetkilled.
       rewrite /A1 upd_ne; [| vm_compute; discriminate].
       rewrite /M1 upd_ne; [| vm_compute; discriminate]. exact Ha0. }
     (* +0x0c: jal ra,acquire *)
-    iApply (wp_jal_s_sconf (mword_of_int (KernelSyms.setkilled + 0x0c)) sk_ra (mword_of_int 2091580 : mword 21)
+    iApply (wp_jal_s_sconf (mword_of_int (KernelSyms.setkilled + 0x0c)) sk_ra (mword_of_int 2091596 : mword 21)
               A2 (av - 4)%nat b
               ltac:(vm_compute; discriminate) ltac:(rdok) ltac:(vm_compute; reflexivity)
               with "Hcg Hpc []").
@@ -181,7 +181,7 @@ Section ProofSetkilled.
     iIntros (CID7 Hs7) "Hcg Hpc".
     set (B1 := <[Regidx sk_ra := regval_into_reg (add_vec_int (mword_of_int (KernelSyms.setkilled + 0x0c) : mword 64) 4)]> A2).
     change (<[Regidx sk_ra := regval_into_reg (add_vec_int (mword_of_int (KernelSyms.setkilled + 0x0c) : mword 64) 4)]> A2) with B1.
-    assert (Hjacq : add_vec (mword_of_int (KernelSyms.setkilled + 0x0c) : mword 64) (sign_extend' 64 (mword_of_int 2091580 : mword 21)) = mword_of_int KernelSyms.acquire)
+    assert (Hjacq : add_vec (mword_of_int (KernelSyms.setkilled + 0x0c) : mword 64) (sign_extend' 64 (mword_of_int 2091596 : mword 21)) = mword_of_int KernelSyms.acquire)
       by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Hjacq) in "Hpc".
     assert (HB1ra : B1 !!! Regidx sk_ra = add_vec_int (mword_of_int (KernelSyms.setkilled + 0x0c) : mword 64) 4) by (rewrite /B1 upd_eq; reflexivity).
@@ -254,7 +254,7 @@ Section ProofSetkilled.
     assert (HC2a0 : C2 !!! Regidx sk_a0 = proc_addr j)
       by (rewrite /C2 upd_eq add_vec_zero_l; exact HC1s1).
     (* +0x16: jal ra,release *)
-    iApply (wp_jal_s_sconf (mword_of_int (KernelSyms.setkilled + 0x16)) sk_ra (mword_of_int 2091706 : mword 21)
+    iApply (wp_jal_s_sconf (mword_of_int (KernelSyms.setkilled + 0x16)) sk_ra (mword_of_int 2091722 : mword 21)
               C2 (trap_res b + (av - 4))%nat false
               ltac:(vm_compute; discriminate) ltac:(rdok) ltac:(vm_compute; reflexivity)
               with "Hcg Hpc []").
@@ -263,7 +263,7 @@ Section ProofSetkilled.
     iIntros "Hcg Hpc".
     set (C3 := <[Regidx sk_ra := regval_into_reg (add_vec_int (mword_of_int (KernelSyms.setkilled + 0x16) : mword 64) 4)]> C2).
     change (<[Regidx sk_ra := regval_into_reg (add_vec_int (mword_of_int (KernelSyms.setkilled + 0x16) : mword 64) 4)]> C2) with C3.
-    assert (Hjrel : add_vec (mword_of_int (KernelSyms.setkilled + 0x16) : mword 64) (sign_extend' 64 (mword_of_int 2091706 : mword 21)) = mword_of_int KernelSyms.release)
+    assert (Hjrel : add_vec (mword_of_int (KernelSyms.setkilled + 0x16) : mword 64) (sign_extend' 64 (mword_of_int 2091722 : mword 21)) = mword_of_int KernelSyms.release)
       by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Hjrel) in "Hpc".
     assert (HC3ra : C3 !!! Regidx sk_ra = add_vec_int (mword_of_int (KernelSyms.setkilled + 0x16) : mword 64) 4) by (rewrite /C3 upd_eq; reflexivity).
@@ -276,10 +276,17 @@ Section ProofSetkilled.
       apply kv_addv_zero. }
     (* reassemble the lock resource: [proc_pub] quantifies [killed], so the
        stored value need never be named. *)
+    (* ...AND THE SIDE THE WRITE DID NOT SPEND COMES OUT WITH THEM
+       (design/pipe.md, "The exit path"): a third-party killer's taint is
+       persistent and simply comes back; a SELF-KILL founded the row on its
+       SPENT arm with the incarnation's marker, so its own death payload
+       never went in and the fault arm still holds it for the kexit two
+       critical sections later. *)
     iAssert (|==> pid_reg pidv (DfracOwn qeighth) gn ∗ ChildTok.kill_shot gn
+                  ∗ (if self then ChildTok.kill_owed gn else □ riscv_kill_cred)
                   ∗ proc_lock_res γs γl (proc_addr j))%I
       with "[Hstate Hpg Hchan Hkilled Hxstate Hpidq Hrow Hslot Hkill Hreg]"
-      as ">(Hreg & #Hshot & HR2)".
+      as ">(Hreg & #Hshot & Hback & HR2)".
     { (* the flag is 1 from here on, so the row must be re-closed on its
          PAID arm -- and what pays is the caller's two-sided price: the
          application's TAINT, which buys the target's payload through the
@@ -292,8 +299,8 @@ Section ProofSetkilled.
          incarnation's kill one-shot, whose persistent half comes back
          here (lane SELF-KILL, P6). *)
       iMod (kill_paid_kill_two pidv kl (trunc32 (rget C1 sk_a5))
-              (DfracOwn qeighth) gn Hpidnz
-              with "[] Hreg Hkill Hrow") as "(Hreg & #Hshot & Hrow)";
+              (DfracOwn qeighth) gn self Hpidnz
+              with "[] Hreg Hkill Hrow") as "(Hreg & #Hshot & Hrow & Hback)";
         [ (* the flag this store just wrote is 1 (lane TRAP-ROWS, T2/T3:
              the row's paid arm is at a nonzero flag) *)
           iPureIntro;
@@ -303,8 +310,9 @@ Section ProofSetkilled.
           vm_compute in Hc; discriminate | ].
       iModIntro.
       iSplitL "Hreg"; [ iExact "Hreg" | ].
-      iSplitR "Hstate Hpg Hchan Hkilled Hxstate Hpidq Hrow Hslot";
+      iSplitR "Hback Hstate Hpg Hchan Hkilled Hxstate Hpidq Hrow Hslot";
         [ iExact "Hshot" | ].
+      iSplitL "Hback"; [ iExact "Hback" | ].
       iApply (proc_lock_res_intro γs γl (proc_addr j) st ch with "Hstate Hpg Hchan [-Hslot] Hslot").
       iExists _, xs, pidv. iFrame "Hkilled Hxstate Hpidq Hrow". }
     (* ===================== release(&p->lock) ===================== *)
@@ -455,7 +463,11 @@ Section ProofSetkilled.
     iDestruct (cpu_own_transport CIDrel CIDe7 n eb p b ltac:(wp_next_chain)
                  with "Hcpu") as "Hcpu".
     iSpecialize ("Hcont" $! CIDe7 with "[%]"); [wp_next_chain|].
-    iApply ("Hcont" $! E3 with "[%] Hcg Hcpu Hpc Hpidv Hreg Hshot").
+    (* ...AND THE SIDE THE WRITE DID NOT SPEND (design/pipe.md, "The exit
+       path"): a third-party killer gets its taint back (persistent), a
+       self-kill its own death payload -- the row it founded is the SPENT
+       one, so the payload never went in. *)
+    iApply ("Hcont" $! E3 with "[%] Hcg Hcpu Hpc Hpidv Hreg Hshot Hback").
     unfold callee_saved.
     split; [exact HE3csp|].
     split; [exact HE3s0|]. split; [exact HE3s1|].

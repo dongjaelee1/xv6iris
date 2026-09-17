@@ -136,6 +136,7 @@ Require Import FsCfg.     (* the ambient fs names [fs_ready] is stated at *)
 Require Import FsReady.   (* [fs_ready], the fs world a closer holds *)
 Local Open Scope Z_scope.
 Require Import CtxIdDefs.
+Require Import PipeQueue.   (* the pipe's byte-queue ghost: names, links, payments *)
 
 
 (* fileclose's own frame is 8 slots ([addi sp,sp,-64]: ra, s0..s5 saved), and
@@ -316,7 +317,7 @@ Section SpecFileclose.
       (on : option nat) (n : nat) (eb : bool) (p : mword 64)
       (st : fdstate) : iProp Σ :=
     (match st with
-     | FdOpen _ _ FdPipe => fileclose_pipe_env fn on n
+     | FdOpen _ _ (FdPipe _) => fileclose_pipe_env fn on n
      | FdOpen _ _ (FdInode _ _ _) | FdOpen _ _ (FdDevice _) => fileclose_fs_env fn n eb p
      | FdClosed => emp
      end)%I.
@@ -324,7 +325,7 @@ Section SpecFileclose.
   Definition fileclose_env_out (fn : fclose_names) (on : option nat)
       (st : fdstate) : iProp Σ :=
     (match st with
-     | FdOpen _ _ FdPipe => fileclose_pipe_out fn on
+     | FdOpen _ _ (FdPipe _) => fileclose_pipe_out fn on
      | FdOpen _ _ (FdInode _ _ _) | FdOpen _ _ (FdDevice _) => fileclose_fs_out fn
      | FdClosed => emp
      end)%I.
@@ -335,6 +336,128 @@ Section SpecFileclose.
   Lemma fileclose_env_none fn on n eb p :
     ⊢ fileclose_env fn on n eb p FdClosed.
   Proof. done. Qed.
+
+  (* ---- THE BYTE QUEUE'S CLOSE PAYMENT, beside the environment (design/
+     pipe.md, "The byte queue").  Clearing a pipe end's flag word is a step
+     of the pipe's EXACT ghost state, so the closer of a pipe descriptor
+     pays a close link (or the taint), keyed on the state's own names and
+     writable flag; every other descriptor pays nothing.  A separate row
+     rather than a conjunct of [fileclose_env], so that the environment's
+     split/frame/reuse laws and every caller that threads the two bundles
+     are untouched.
+
+     THE LINK FIRES EXACTLY AT THE LAST CLOSE OF THE END -- the one that
+     reaches pipeclose -- and the lock invariant's coupling is what forces
+     it (the flag word moves, so the ghost must).  A closer holding the
+     WHOLE reference ([q = 1]) is that closer; any other gets its payment
+     back if the close was not the last ([PipeQueue.pipe_cpost]). ---- *)
+  Definition fileclose_cpay (st : fdstate) (Φc : iProp Σ) : iProp Σ :=
+    match st with
+    | FdOpen _ w (FdPipe γp) => pipe_cpay (pn_queue γp) w Φc
+    | _ => emp
+    end%I.
+
+  Definition fileclose_cpost (q : Qp) (st : fdstate) (Φc : iProp Σ) : iProp Σ :=
+    match st with
+    | FdOpen _ w (FdPipe γp) => pipe_cpost (pn_queue γp) w Φc (bool_decide (q = 1%Qp))
+    | _ => emp
+    end%I.
+
+  (* ...at a fraction the caller does not know: what sys_close and kexit
+     hand their callers *)
+  Definition fileclose_cpost_any (st : fdstate) (Φc : iProp Σ) : iProp Σ :=
+    (∃ q : Qp, fileclose_cpost q st Φc)%I.
+
+  Lemma fileclose_cpay_none Φc : ⊢ fileclose_cpay FdClosed Φc.
+  Proof. done. Qed.
+
+  (* the generic closer pays every row out of the taint *)
+  Lemma fileclose_cpay_taint st Φc : pipe_taint_cred -∗ fileclose_cpay st Φc.
+  Proof.
+    iIntros "#Ht". rewrite /fileclose_cpay.
+    destruct st as [| ? w [? ? ?| γp |?]]; try done.
+    by iApply pipe_cpay_taint.
+  Qed.
+
+  (* the fast path ([--f->ref > 0]) fires nothing, and cannot be the whole
+     reference's close *)
+  Lemma fileclose_cpost_of_cpay q st Φc :
+    q <> 1%Qp -> fileclose_cpay st Φc -∗ fileclose_cpost q st Φc.
+  Proof.
+    intros Hq. rewrite /fileclose_cpay /fileclose_cpost.
+    destruct st as [| ? w [? ? ?| γp |?]]; try (by iIntros "_").
+    rewrite (bool_decide_eq_false_2 _ Hq). iApply pipe_cpost_unfired.
+  Qed.
+
+  Lemma fileclose_cpost_any_of q st Φc :
+    fileclose_cpost q st Φc -∗ fileclose_cpost_any st Φc.
+  Proof. iIntros "H". by iExists q. Qed.
+
+  (* ---- THE TWO STEPS fileclose's LAST close takes, at the key the walk
+     holds after the [ff.type == FD_PIPE] branch: the file's CONTENT, not a
+     state shape it would have to re-derive.  Pure consequences of the two
+     definitions above and [PipeQueue.pipe_cpost]. ----
+
+     The pipe arm: pipeclose ALWAYS clears its flag word, so its post is the
+     FIRED one ([pipe_cpost ... true]) -- and a fired post holds at every
+     [last], in particular at this closer's own [bool_decide (q = 1)]. *)
+  Lemma fileclose_cpost_of_fired (q : Qp) (st : fdstate) (Φc : iProp Σ)
+      (r w : bool) (γp : pipe_names) :
+    st = FdOpen r w (FdPipe γp) ->
+    pipe_cpost (pn_queue γp) w Φc true -∗ fileclose_cpost q st Φc.
+  Proof.
+    intros ->. rewrite /fileclose_cpost.
+    iIntros "[HΦ | [[#Ht Hp] | [%Hf _]]]".
+    - by iApply pipe_cpost_fired.
+    - by iApply (pipe_cpost_taint with "Ht Hp").
+    - discriminate.
+  Qed.
+
+  (* the pipe arm's INPUT, at the same key: what the closer hands pipeclose *)
+  Lemma fileclose_cpay_pipe (st : fdstate) (r w : bool) (γp : pipe_names)
+      (Φc : iProp Σ) :
+    st = FdOpen r w (FdPipe γp) ->
+    fileclose_cpay st Φc -∗ pipe_cpay (pn_queue γp) w Φc.
+  Proof. intros ->. by iIntros "$". Qed.
+
+  (* ...and the arms that are not a pipe at all: both payment and post are
+     [emp] there, but only the file's type says so. *)
+  Lemma fileclose_cpost_nonpipe (inum : mword 32) (γo : gname) (γp : pipe_names)
+      (C : fcontent) (st : fdstate) (q : Qp) (Φc : iProp Σ) :
+    fdstate_ok inum γo γp C st -> fc_type C <> FD_PIPE ->
+    fileclose_cpay st Φc -∗ fileclose_cpost q st Φc.
+  Proof.
+    intros Hok Hne. rewrite /fileclose_cpay /fileclose_cpost.
+    destruct st as [| rb wb [i g om | g | mj]]; try (by iIntros "_").
+    exfalso. apply Hne. by destruct Hok as (_ & _ & Ht & _).
+  Qed.
+
+  (* kexit's: one payment per row of the dying process's table, at the
+     trivial payload -- the process never resumes to be told anything *)
+  Definition fileclose_cpays (sts : list fdstate) : iProp Σ :=
+    ([∗ list] st ∈ sts, fileclose_cpay st emp)%I.
+
+  (* ...and at a table that holds no pipe row, every payment is [emp] *)
+  Lemma fileclose_cpays_nopipe (sts : list fdstate) :
+    (forall st : fdstate, st ∈ sts ->
+       forall (rb wb : bool) (gp : pipe_names), st <> FdOpen rb wb (FdPipe gp)) ->
+    ⊢ fileclose_cpays sts.
+  Proof.
+    intros Hnp. rewrite /fileclose_cpays.
+    induction sts as [| st sts IH]; [ done | ].
+    rewrite big_sepL_cons. iSplitR.
+    - rewrite /fileclose_cpay.
+      destruct st as [| rb wb [i g om | gp | mj]]; try by iEmpIntro.
+      exfalso. exact (Hnp _ (elem_of_list_here _ _) rb wb gp eq_refl).
+    - iApply IH. intros st' Hin. apply Hnp.
+      apply elem_of_list_further. exact Hin.
+  Qed.
+
+  Lemma fileclose_cpays_taint sts : pipe_taint_cred -∗ fileclose_cpays sts.
+  Proof.
+    iIntros "#Ht". rewrite /fileclose_cpays. iApply big_sepL_intro.
+    iIntros "!>" (k st _). by iApply fileclose_cpay_taint.
+  Qed.
 
   (* EACH BUNDLE ALREADY CONTAINS WHAT IT PROMISES BACK.  Two facts, and both
      are checks rather than conveniences: they are what catches a bundle
@@ -500,6 +623,9 @@ Definition wp_fileclose_sconf_body
     (fn : fclose_names) (on : option nat)              (* the arms' ghosts   *)
     (m : regfile) (n : nat) (eb : bool) (p : mword 64)
     (K : nat) (b : bool) (lks : gset string)
+    (* THE CLOSER'S PAYLOAD for a pipe descriptor's close link
+       ([fileclose_cpay]); unread at every other descriptor *)
+    (Φc : iProp Σ)
     (* THE CALLER'S OWN PID, not [fcn_pid fn].  The block row below used to be
        keyed on the names record's field, which no caller can pay: every one
        of them holds [proc_priv_bare] at the pid IT knows, and nothing ties
@@ -555,6 +681,9 @@ Definition wp_fileclose_sconf_body
      close frees nothing and hands the same unit straight back. *)
   iref_slot -∗
   fileclose_env fn on n eb p st -∗
+  (* the byte queue's close payment: a link or the taint on a pipe
+     descriptor, nothing on any other *)
+  fileclose_cpay st Φc -∗
   (* THE CROSSING IS THE LITERAL [true], NOT [b].  The FD_INODE / FD_DEVICE
      arm parks (begin_op / iput / end_op), so fileclose can return on
      another hart whatever SIE was doing.  It used to say [b], which was
@@ -576,6 +705,9 @@ Definition wp_fileclose_sconf_body
     fd_slot -∗
     iref_slot -∗
     fileclose_env_out fn on st -∗
+    (* the link fired if this was the whole reference; otherwise the payment
+       back, or fired anyway if this close happened to be the last *)
+    fileclose_cpost q st Φc -∗
     proc_priv_bare p pidv Upr -∗
     WP (Loop : expr riscv_lang)) -∗
   WP (Loop : expr riscv_lang).
@@ -587,6 +719,6 @@ Module Type FILECLOSE.
       (k : nat) (q : Qp) (st : fdstate)
       (fn : fclose_names) (on : option nat)
       (m : regfile) (n : nat) (eb : bool) (p : mword 64)
-      (K : nat) (b : bool) (lks : gset string) (pidv : mword 32) (Upr : ustate),
-      wp_fileclose_sconf_body γfl γf k q st fn on m n eb p K b lks pidv Upr.
+      (K : nat) (b : bool) (lks : gset string) (Φc : iProp Σ) (pidv : mword 32) (Upr : ustate),
+      wp_fileclose_sconf_body γfl γf k q st fn on m n eb p K b lks Φc pidv Upr.
 End FILECLOSE.

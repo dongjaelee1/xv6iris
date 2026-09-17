@@ -35,6 +35,7 @@ From iris.base_logic.lib Require Import own.
 Require Import ProcGeom.
 Require Import RiscvPtsto Xv6Cameras.   (* [riscvGS] / [offboxG] -- the classes the offset row binds; IMPORTED, or the binder below generalises them silently *)
 Require Import OffGv.   (* [off_user_inv] / [off_permit] -- the fd row's offset shadow *)
+Require Import PipeNames.   (* [pipe_names]: what a pipe descriptor's state carries *)
 Local Open Scope Z_scope.
 
 (* param.h: open files per process.  (NPROC comes from ProcGeom.) *)
@@ -177,9 +178,17 @@ Global Instance offmode_eq_dec : EqDecision offmode.
 Proof. solve_decision. Defined.
 Global Instance offmode_inhabited : Inhabited offmode := populate OffParked.
 
+(* [FdPipe] CARRIES ITS PIPE'S GHOST NAMES (design/pipe.md, "The byte
+   queue"): [pn_queue] is the byte queue whose authority the kernel keeps
+   inside [pi->lock] and whose exact fragment [sys_pipe] hands the process
+   -- what a program's read/write/close links are stated on -- and the four
+   end names beside it.  Tied to the payload's [fp_pipe] by
+   [FileInvDefs.fdstate_ok]'s pipe arm exactly as [FdInode]'s [γo] is tied
+   to the offset shadow.  The two ends of one pipe carry the SAME record,
+   which is how a descriptor table says they are ends of the same pipe. *)
 Inductive fdtype :=
 | FdInode (inum : Z) (γo : gname) (om : offmode)
-| FdPipe
+| FdPipe (γp : pipe_names)
 | FdDevice (major : Z).
 
 (* THE TWO MODE FLAGS RIDE ON [FdOpen], NOT ON THE TYPE.  [f->readable] and
@@ -236,7 +245,7 @@ Definition fdst_parked (st : fdstate) : Prop :=
   end.
 
 Global Instance fdst_parked_dec (st : fdstate) : Decision (fdst_parked st).
-Proof. destruct st as [|? ? [? ? [|]| |?]]; cbn; apply _. Defined.
+Proof. destruct st as [|? ? [? ? [|]|?|?]]; cbn; apply _. Defined.
 
 Definition fdv_all_parked (l : list fdstate) : Prop := Forall fdst_parked l.
 
@@ -255,7 +264,7 @@ Proof. unfold fdv_all_parked. apply _. Defined.
    did not say so). ---- *)
 Lemma fdst_parked_closed : fdst_parked FdClosed.
 Proof. exact I. Qed.
-Lemma fdst_parked_pipe (r w : bool) : fdst_parked (FdOpen r w FdPipe).
+Lemma fdst_parked_pipe (r w : bool) (γp : pipe_names) : fdst_parked (FdOpen r w (FdPipe γp)).
 Proof. exact I. Qed.
 Lemma fdst_parked_dev (r w : bool) (mj : Z) : fdst_parked (FdOpen r w (FdDevice mj)).
 Proof. exact I. Qed.
@@ -296,6 +305,83 @@ Qed.
 
 Lemma fdv_all_parked_closed (n : nat) : fdv_all_parked (replicate n FdClosed).
 Proof. apply fdv_all_parked_replicate, fdst_parked_closed. Qed.
+
+(* ---- AND THE SAME KIT FOR "NOT A PIPE" (design/pipe.md, "The exit
+   path").  A pipe row's last close steps the pipe's exact ghost state, so
+   exit(2)'s deposit at a table that holds one is a link or the taint --
+   and at a table that holds none it is nothing at all
+   ([SpecFileclose.fileclose_cpays_nopipe]).  This predicate is what lets a
+   program SAY its table holds none: open installs an inode or a device
+   ([UsysMemOk.usys_fd_ok]'s open row carries it), close and fork's rows
+   install [FdClosed], dup copies a row the table already had; only
+   pipe(2) breaks it, which is correct. ---- *)
+Definition fdst_nopipe (st : fdstate) : Prop :=
+  match st with
+  | FdOpen _ _ (FdPipe _) => False
+  | _ => True
+  end.
+
+Global Instance fdst_nopipe_dec (st : fdstate) : Decision (fdst_nopipe st).
+Proof. destruct st as [|? ? [? ? [|]|?|?]]; cbn; apply _. Defined.
+
+Definition fdv_nopipe (l : list fdstate) : Prop := Forall fdst_nopipe l.
+
+Global Instance fdv_nopipe_dec (l : list fdstate) : Decision (fdv_nopipe l).
+Proof. unfold fdv_nopipe. apply _. Defined.
+
+Lemma fdst_nopipe_closed : fdst_nopipe FdClosed.
+Proof. exact I. Qed.
+Lemma fdst_nopipe_dev (r w : bool) (mj : Z) : fdst_nopipe (FdOpen r w (FdDevice mj)).
+Proof. exact I. Qed.
+Lemma fdst_nopipe_inode (r w : bool) (i : Z) (γo : gname) (om : offmode) :
+  fdst_nopipe (FdOpen r w (FdInode i γo om)).
+Proof. exact I. Qed.
+
+(* what the predicate says of a row, in the shape the exit row's mint reads *)
+Lemma fdst_nopipe_ne (st : fdstate) :
+  fdst_nopipe st -> forall (rb wb : bool) (gp : pipe_names), st <> FdOpen rb wb (FdPipe gp).
+Proof. intros H rb wb gp ->. exact H. Qed.
+
+Lemma fdv_nopipe_lookup (l : list fdstate) (k : nat) (st : fdstate) :
+  fdv_nopipe l -> l !! k = Some st -> fdst_nopipe st.
+Proof. intros Hl Hk. exact (Forall_lookup_1 _ _ _ _ Hl Hk). Qed.
+
+Lemma fdv_nopipe_lookup_total (l : list fdstate) (k : nat) :
+  fdv_nopipe l -> fdst_nopipe (l !!! k).
+Proof.
+  intros Hl. destruct (l !! k) as [st |] eqn:Hk.
+  - rewrite (list_lookup_total_correct _ _ _ Hk).
+    exact (fdv_nopipe_lookup l k st Hl Hk).
+  - rewrite list_lookup_total_alt Hk. exact I.
+Qed.
+
+Lemma fdv_nopipe_elem (l : list fdstate) :
+  fdv_nopipe l ->
+  forall st : fdstate, st ∈ l ->
+    forall (rb wb : bool) (gp : pipe_names), st <> FdOpen rb wb (FdPipe gp).
+Proof.
+  intros Hl st Hin. apply fdst_nopipe_ne.
+  exact (proj1 (Forall_forall _ _) Hl st Hin).
+Qed.
+
+Lemma fdv_nopipe_insert (l : list fdstate) (k : nat) (st : fdstate) :
+  fdv_nopipe l -> fdst_nopipe st -> fdv_nopipe (<[k := st]> l).
+Proof.
+  intros Hl Hst. unfold fdv_nopipe in *.
+  apply Forall_lookup. intros j y Hy.
+  apply list_lookup_insert_Some in Hy as [(_ & <- & _) | (_ & Hy)];
+    [exact Hst | exact (Forall_lookup_1 _ _ _ _ Hl Hy)].
+Qed.
+
+Lemma fdv_nopipe_replicate (n : nat) (st : fdstate) :
+  fdst_nopipe st -> fdv_nopipe (replicate n st).
+Proof.
+  intros Hst. unfold fdv_nopipe. apply Forall_lookup.
+  intros j y Hy. apply lookup_replicate in Hy as [-> _]. exact Hst.
+Qed.
+
+Lemma fdv_nopipe_closed (n : nat) : fdv_nopipe (replicate n FdClosed).
+Proof. apply fdv_nopipe_replicate, fdst_nopipe_closed. Qed.
 
 Definition fdstElt : cmra := prodR fracR (agreeR (leibnizO fdstate)).
 Definition fdstUR : ucmra := gmapUR nat fdstElt.
@@ -632,11 +718,11 @@ Section FdSlots.
     | _ => True
     end.
   Global Instance foff_row_persistent st : Persistent (foff_row st).
-  Proof. destruct st as [|? ? [? ? [|]| |?]]; apply _. Qed.
+  Proof. destruct st as [|? ? [? ? [|]|?|?]]; apply _. Qed.
 
   Lemma foff_row_closed : ⊢ foff_row FdClosed.
   Proof. done. Qed.
-  Lemma foff_row_pipe (r w : bool) : ⊢ foff_row (FdOpen r w FdPipe).
+  Lemma foff_row_pipe (r w : bool) (γp : pipe_names) : ⊢ foff_row (FdOpen r w (FdPipe γp)).
   Proof. done. Qed.
   Lemma foff_row_dev (r w : bool) (mj : Z) : ⊢ foff_row (FdOpen r w (FdDevice mj)).
   Proof. done. Qed.

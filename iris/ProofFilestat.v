@@ -179,7 +179,7 @@ Section ProofFilestat.
     | _ => False
     end -> filestat_env fn st -∗ filestat_fs_env fn.
   Proof.
-    destruct st as [|? ? [? ? ?| |?]]; cbn; intros H; [contradiction| |contradiction|];
+    destruct st as [|? ? [? ? ?|?|?]]; cbn; intros H; [contradiction| |contradiction|];
       by iIntros "$".
   Qed.
 
@@ -189,7 +189,7 @@ Section ProofFilestat.
     | _ => False
     end -> filestat_fs_out fn -∗ filestat_env_out fn st.
   Proof.
-    destruct st as [|? ? [? ? ?| |?]]; cbn; intros H; [contradiction| |contradiction|];
+    destruct st as [|? ? [? ? ?|?|?]]; cbn; intros H; [contradiction| |contradiction|];
       by iIntros "$".
   Qed.
 
@@ -220,7 +220,7 @@ Section ProofFilestat.
     (* the state the caller keyed its environment on, related to the content
        the code is about to branch on *)
     iDestruct (file_pay_st_ok with "Hrpay") as "[%Hokx Hrpay]".
-    destruct Hokx as (inumx & γox & Hok).
+    destruct Hokx as (inumx & γox & γpx & Hok).
     iEval (rewrite /file_fields) in "Hrfields".
     iDestruct "Hrfields" as "(Hcty & Hcrd & Hcwr & Hcpp & Hcip & Hcmaj)".
     (* =================================================================
@@ -380,7 +380,7 @@ Section ProofFilestat.
        +0x10 jal ra,myproc
        ================================================================= *)
     iApply (wp_jal_s_sconf (mword_of_int (FST + 0x10)) Rra
-              (mword_of_int 2086548 : mword 21) R4 (K - 10)%nat b
+              (mword_of_int 2086564 : mword 21) R4 (K - 10)%nat b
               ltac:(vm_compute; discriminate) ltac:(rdok)
               ltac:(vm_compute; reflexivity) with "Hcg Hpc []").
     { iApply (fsti_10 with "Htext"). }
@@ -390,7 +390,7 @@ Section ProofFilestat.
     change (<[Regidx Rra := regval_into_reg
         (add_vec_int (mword_of_int (FST + 0x10) : mword 64) 4)]> R4) with R5.
     assert (Htgtmp : add_vec (mword_of_int (FST + 0x10) : mword 64)
-                       (sign_extend' 64 (mword_of_int 2086548 : mword 21))
+                       (sign_extend' 64 (mword_of_int 2086564 : mword 21))
                      = mword_of_int KernelSyms.myproc)
       by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Htgtmp) in "Hpc".
@@ -531,8 +531,8 @@ Section ProofFilestat.
                      | FdOpen _ _ (FdInode _ _ _) | FdOpen _ _ (FdDevice _) => True
                      | _ => False end).
       { destruct Hin as [Ht | Ht];
-          [ destruct (fdstate_ok_inode _ _ _ _ Hok Ht) as (? & ? & ->)
-          | destruct (fdstate_ok_device _ _ _ _ Hok Ht) as (? & ? & ->) ]; done. }
+          [ destruct (fdstate_ok_inode _ _ _ _ _ Hok Ht) as (? & ? & ->)
+          | destruct (fdstate_ok_device _ _ _ _ _ Hok Ht) as (? & ? & ->) ]; done. }
       iDestruct (fst_env_in fn st Hin' with "Henv") as "Henv".
       iEval (rewrite /filestat_fs_env) in "Henv".
       iDestruct "Henv" as "(%Hlg & %Hist & %Hgeo &
@@ -1144,7 +1144,7 @@ Section ProofFilestat.
       iEval (rewrite Hpp4a) in "Hpc".
       (* +0x4a jal ra,copyout *)
       iApply (wp_jal_s_sconf (mword_of_int (FST + 0x4a)) Rra
-                (mword_of_int 2085524 : mword 21) U5 (K - 10)%nat b
+                (mword_of_int 2085540 : mword 21) U5 (K - 10)%nat b
                 ltac:(vm_compute; discriminate) ltac:(rdok)
                 ltac:(vm_compute; reflexivity) with "Hcg Hpc []").
       { iApply (fsti_4a with "Htext"). }
@@ -1152,7 +1152,7 @@ Section ProofFilestat.
       set (U6 := <[Regidx Rra := regval_into_reg
                     (add_vec_int (mword_of_int (FST + 0x4a) : mword 64) 4)]> U5).
       assert (Htgtco : add_vec (mword_of_int (FST + 0x4a) : mword 64)
-                         (sign_extend' 64 (mword_of_int 2085524 : mword 21))
+                         (sign_extend' 64 (mword_of_int 2085540 : mword 21))
                        = mword_of_int KernelSyms.copyout)
         by (apply bv_eq; vm_compute; reflexivity).
       iEval (rewrite Htgtco) in "Hpc".

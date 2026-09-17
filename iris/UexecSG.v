@@ -709,9 +709,13 @@ Class uprogSG (Σ : gFunctors) := {
                  deposit.  No verified program calls kill(2), so excluding
                  it here costs nothing; the GENERIC slot pays it out of the
                  application's supply. *)
+(*   21 close -- the PIPE arm is a close link over the byte queue (design/
+                 pipe.md), payable at a pipe key only by a holder of the
+                 fragment or the taint; a program pays its close deposits
+                 explicitly, at the state its handle names. *)
 Definition free_num (n : Z) : Prop :=
   n <> USYS_exec /\ n <> 5 /\ n <> 6 /\ n <> 15 /\ n <> 16 /\ n <> 17 /\
-  n <> 18 /\ n <> 19 /\ n <> 20.
+  n <> 18 /\ n <> 19 /\ n <> 20 /\ n <> 21 /\ n <> USYS_exit.
 
 Global Instance free_num_dec (n : Z) : Decision (free_num n).
 Proof. rewrite /free_num. apply _. Defined.

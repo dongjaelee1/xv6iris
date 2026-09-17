@@ -1,5 +1,27 @@
 # POST-QED REDESIGN: one console I/O invariant, and what an application is
 
+**STATUS: COMPLETE, ARCHIVED 2026-09-16.**  R1-R4 all landed (R1 the pure
+event layer, R2 the kernel's one claim, R3 the application on it, R4 the
+interface record + the laws class + `cons_cred` + the U tier's parameter
+lists; commits `0c1bd10ab`, `fb0f6acbc`, `f7192449c`, `b42809784`, plus the
+legacy-name fold `f9a453556`).  At every landing the full tree was green and
+`Print Assumptions` stayed at 14 (echo) / 13 (system).  §4b records what the
+verification of the delete list found.
+
+**ONLY R5 IS LEFT, and it is deferred to a later project** (owner,
+2026-09-16): taking the application's kill credential off the machine's
+fixed record.  It is gated on a second application wanting a different kill
+price; `AppTree` landed as a second application but runs at the trivial
+price, so nothing forces it.  Since R4 it is already a projection of
+`riscvF_app_iface`, so what is left is about whether the MACHINE should own
+an application proposition at all — see §4's R5 bullet, and
+`SchedCtx.kill_paid`'s header for why the fixed record is how a low-altitude
+file names it without taking an application binder.
+
+---
+
+*The original status line, kept for the record:*
+
 **STATUS (2026-09-14): NOT STARTED, and none of it is owed.** The echo
 theorem closed without it (`UInitBootAdequacy.echo_adequacy_echoΣ`); this is
 a cleanup proposal, not debt. Two of §5's three questions to the owner are
@@ -209,17 +231,24 @@ Theorem echo_adequacy g sb nib cov (Hgen0 …) (Hpow0 …) (Himg …) (Hdk …) 
 ```
 with no `Hsh_owed`: its conjuncts are debt retired by scheduled lanes (`sh_deps` by IO-LEAF M4b/M6, `sh_pay_rest` by SH-LINE R2/R3).
 
-**3.3 The boot hand-off, uniformly.** `echo_Hinit_boot` is bespoke because the program tier's entries take the credential family as SIX routed parameters (`T`, `Rt`, `Rd`, `Pm`, `Hrl`, `Hpm1-3`; UShKernel.v:670-690, UInitKernel.v:424-445). The pair M4a(3) and M5b converged on generalises to ONE record, threaded where `T` is today:
+**3.3 The boot hand-off, uniformly. — LANDED 2026-09-16 (`f7192449c`), in a smaller cut than sketched.**
+
+What the sketch above got wrong is worth keeping: by the time R4 arrived the routed family was not `T`/`Rt`/`Rd`/`Pm`/`Hrl`/`Hpm1-3` but **six predicates plus ten Coq-level laws** — `Rdl`, `Pm`, `Wc`, `Wb`, `Wp` (and `Rsh`, which is the *shell's* state family, not the console's) — and `Rt` had already gone with M6a(2)'s route (A). What actually landed:
+
 ```
-Record cons_cred Σ := MkCC {
-  cc_T     : iProp Σ;                                  (* the taint *)
-  cc_at    : nat -> iProp Σ;                           (* the credential at line boundary n: turn, dl half, bounds *)
-  cc_mid   : nat -> iProp Σ;                           (* its pieces mid-line (today's Pm / ush_mid) *)
-  cc_write : □ (∀ N fd l n b …, ⌜row for fd⌝ -∗ cc_at n -∗ <the per-call write obligation> (… ∗ cc_at' …));
-  cc_read  : □ (∀ N l n, … read leaf at cc_mid …);      (* today's Hrl *)
-  cc_laws  : □ (… cc_at n ⊣⊢ pieces at a boundary; cc_T -∗ cc_at n …) }.  (* today's Hpm1-3, ush_wc_* *)
+Record cons_cred (Σ : gFunctors) := MkConsCred {
+  cc_rd : nat -> iProp Σ;  cc_rd_timeless : forall i, Timeless (cc_rd i);
+  cc_mid : gname -> nat -> iProp Σ;
+  cc_wc : nat -> nat -> iProp Σ;
+  cc_wb : nat -> iProp Σ;  cc_wb_timeless : forall i, Timeless (cc_wb i);
+  cc_wp : nat -> iProp Σ; }.
+Definition cons_cred_holds (cn : cons_names) (T : iProp Σ) (Cr : cons_cred Σ) : Prop := (* the ten laws *)
 ```
-`init_boot_pay T Cns cn stc (Cr : cons_cred Σ) := init_cons_dance_all ∗ ucons_reader cn 0 ∗ cc_at Cr 0` — the credential at boundary 0 IS `eturn`, `kinit_banner0`'s conversion is `cc_write` at fd 1, and `Rt`/`Rt ∨ True` disappear (M6a(2)'s route (A), done once at the interface). The lease is `ucons_pay cn γ T Cr := fun _ => (∃ n, ucons_reader cn n ∗ upos_a γ n ∗ cc_at Cr n) ∨ cc_T Cr`. The application proves ONE lemma `echo_cc_holds : echo_links -∗ cons_cred_holds (echo_cc γ)` from lemmas that exist (`kinit_banner0_holds`, `sh_prompt_pay_of_ushpr`, `ush_read_recv_leaf_holds`, `ush_mid_of_at`), and echo's `al_programs` is `init_slot_of_kexec` at `echo_cc γ`; the generic application's `Cr` is trivial (`init_boot_of_triv`).
+`UInitBoot.init_cons_sup_of_sh_slot` took five predicates and ten `forall … -> ⊢ …` premises; it now takes `(Cr : cons_cred Σ)` and `cons_cred_holds fsc_cons (echo_taint γ) Cr`. The application builds `echo_cc` once and proves `echo_cc_holds` once — the ten `assert`s that used to sit inline in `echo_Hinit_boot`'s proof are that lemma's body, verbatim.
+
+Two things deliberately did NOT become fields. **The taint**: it comes from `app_iface`'s `ai_kill` and is already threaded beside the credential everywhere it goes, so a copy in the record would need an equation between two names for one resource. **The prompt's law**: it is an `iProp` the caller holds (`iAssert … as "#Hplaw"`), not a Coq-level fact, so it stays a separate argument of the seam.
+
+`cons_cred` sits in `UInitBoot.v`, not next to `UShKernel.sh_prompt_law` where it belongs. **The remaining piece** is pushing it down so `sh_slot_of_kexec`, `UInitSh`, `UkInit`, `UkInitMain`, `UkShEcho`, `UkShFork` and the rest take the pair too: measured at **190 sites across 17 files** (`UkInitMain` 48, `UInitSh` 22, `UkInit` 20, `UShKernel` 17, `UInitKernel` 17, `PinnedObs` 12, `UkShEcho` 10, `UShLine` 10, `UInitBoot` 10, `UkShFork` 8, `UkShLoop` 4, `UkSh` 4, `UkShCd` 3, `UkShDiag` 2, `ProofKvmmake` 2, `UInitCons` 1). That is a mechanical rename with no proof content, but it is a tier another lane is live in, so it wants that tier quiet. The collapse at the APPLICATION's boundary — what the redesign is about — is done and contained to one file.
 
 ## 4. THE MIGRATION
 
@@ -227,13 +256,25 @@ Record cons_cred Σ := MkCC {
 
 **Lanes, in order** (build cost from the notes: a WpUart/Spec* statement change rebuilds ~1200 files, ~45 min; the UkSh cone ~2 h; CONS-IO A-F took ~40 builds in all):
 
-- **R1 — pure, `-disc`, EchoOut.v + ConsLog.v only (no trusted statement).** `cons_hist`/`cons_ev`/`cons_step`/`cons_ev_ok`; `ecl` beside `eout`/`ein`; the five step lemmas and the drain re-proved over `H`; nothing wired. Rocq-warm loop; ~8 builds of one file. Can start any time after Qed.
-- **R2 — kernel, `-tlw`.** `riscv_cons_res` and `riscv_app_iface`; WpUart's merged clause, `uart_arm`, links, licence, `store_ob`; `cons_echo_shift`; ProofConsoleintr's `ct_*` re-typed (the token's slot becomes the half; arm statements unchanged); ProofConsoleread/`fileread_in`/`cons_read_pay` at `EvRead`; ProofConsolewrite/`cons_out_chain`/UkWriteLeaf at `EvOut`; `uart_obs_permit`, `Hobs`, `obs_ledger_at_step`, `boot_fixedGS`, `xv6_power_adequacy_gen`, App.v; the boot mint (BootShared/ProofMain/SpecMain/BootChain). CONS-IO A+B+C+F's cone re-cut once (17 + 32 files): statements first with the trivial application green, then proofs; ~30 full builds. The one expensive lane, unsplittable: a fixed-record field cannot half-exist.
-- **R3 — application, `-disc`.** AppEcho at `ecl`; `echo_Happ_echo` re-proved (`ch_arm` replaces five quarters); `echo_Htx`/`echo_Hpow`/`al_sup`; `echo_links_holds` over `cons_link`; the seven `echo_links` dependents recompile. ~10 builds.
-- **R4 — interface, main checkout.** `cons_cred`; `init_boot_pay`/`init_slot_of_kexec`/`wp_kinit_start`/`sh_slot_of_kexec`/`UInitSh`/`UInitBoot`/`UserConsole` at `Cr`; the ~80 `Pm`/`T`/`Rd` mentions in thirteen UkSh files (M4a(2a)'s count) become one parameter; `echo_Hinit_boot` → `echo_cc_holds` + one application; `xv6_app_laws`, `echo_laws`, `echo_adequacy` without `Hsh_owed`. ~12 builds at ~2 h.
-- **R5 — optional.** The taint off the fixed record (38 files name `riscv_kill_cred`; under `riscv_app_iface` it is already a projection, so cosmetic). Skip unless a second application needs a different kill price.
+- **R1 — pure, `-disc`, EchoOut.v + ConsLog.v only (no trusted statement). DONE.** `cons_hist`/`cons_ev`/`cons_step`/`cons_ev_ok`; `ecl` beside `eout`/`ein`; the five step lemmas and the drain re-proved over `H`; nothing wired. Rocq-warm loop; ~8 builds of one file. Can start any time after Qed.
+- **R2 — kernel, `-tlw`. DONE.** `riscv_cons_res` and `riscv_app_iface`; WpUart's merged clause, `uart_arm`, links, licence, `store_ob`; `cons_echo_shift`; ProofConsoleintr's `ct_*` re-typed (the token's slot becomes the half; arm statements unchanged); ProofConsoleread/`fileread_in`/`cons_read_pay` at `EvRead`; ProofConsolewrite/`cons_out_chain`/UkWriteLeaf at `EvOut`; `uart_obs_permit`, `Hobs`, `obs_ledger_at_step`, `boot_fixedGS`, `xv6_power_adequacy_gen`, App.v; the boot mint (BootShared/ProofMain/SpecMain/BootChain). CONS-IO A+B+C+F's cone re-cut once (17 + 32 files): statements first with the trivial application green, then proofs; ~30 full builds. The one expensive lane, unsplittable: a fixed-record field cannot half-exist.
+- **R3 — application, `-disc`. DONE.** AppEcho at `ecl`; `echo_Happ_echo` re-proved (`ch_arm` replaces five quarters); `echo_Htx`/`echo_Hpow`/`al_sup`; `echo_links_holds` over `cons_link`; the seven `echo_links` dependents recompile. ~10 builds.
+- **R4 — interface, main checkout. DONE 2026-09-16** (`0c1bd10ab` interface record, `fb0f6acbc` laws class, `f7192449c` `cons_cred`, `b42809784` the U tier's parameter lists). `cons_cred`; `init_boot_pay`/`init_slot_of_kexec`/`wp_kinit_start`/`sh_slot_of_kexec`/`UInitSh`/`UInitBoot`/`UserConsole` at `Cr`; the ~80 `Pm`/`T`/`Rd` mentions in thirteen UkSh files (M4a(2a)'s count) become one parameter; `echo_Hinit_boot` → `echo_cc_holds` + one application; `xv6_app_laws`, `echo_laws`, `echo_adequacy` without `Hsh_owed`. ~12 builds at ~2 h.
+- **Legacy names — DONE 2026-09-16** (`f9a453556`). `echo_link`, `read_link`, `out_licence`, `in_licence` are gone (the first two were literal aliases of `cons_link` at `EvByte`/`EvRead`; the last two were the same proposition twice), and with the licences went the duplication they hid: `UexecExecInst.xv6_ssupply` is a triple again, `udep_gen`/`uslot_mint`/`uslot_mint_pay`/`uslot_mint_all` take one licence, `SystemAdequacy.init_boot_of_sup` one premise. `echo_chain`/`cons_run_full`/`cons_run_step` lost their dead `h`. **`out_link` deliberately stays**: it is *not* an alias — it is `cons_link` at `EvOut` with the two premises a plain writer never reads dropped, so it is strictly stronger, and collapsing it would mean re-proving ~30 producers at two more arguments for no semantic gain. Its only consumers (`store_ob_of_out_link`, `store_chain_of_out_chain`) already route through `cons_link_of_out_link`.
+- **R5 — optional, still open.** (Note `AppTree` has since landed as a second application, but at the same trivial kill price, so nothing forces this yet.) The taint off the fixed record (38 files name `riscv_kill_cred`; under `riscv_app_iface` it is already a projection, so cosmetic). Skip unless a second application needs a different kill price.
 
 **Landed now that the redesign would have to UNDO at high cost:** (i) the three-claim `Htx` and its carriers — `uart_obs_permit`, `uart_obs_permit_ledger`, `obs_ledger_at_step`, `Hobs`, `xv6_power_adequacy_gen`'s `Ores/Ires/Wres/Tnn`, `boot_fixedGS`, `power_boot_res` — R2's whole cost, accepted by the previous review as the price; (ii) `ein`'s window arm and `wcnt`: `eout_step_echo` (~200 lines) and `ein_step_append` (~110 lines) are rewritten, their pure lemmas surviving; (iii) `store_ob_of_echo_link`'s order-fact derivation (:2767-2780) is reused at `EvOpen`. Nothing in the program tier, the pure layer, the kernel rows or the lease is undone; `Rt` and the routed hypotheses are removed, not rewritten.
+
+## 4b. WHAT IS LEFT (as of 2026-09-16)
+
+One thing, optional, and nothing that blocks anything (R4's tail landed 2026-09-16):
+
+1. ~~R4's tail~~ — **DONE 2026-09-16** (`b42809784`). `cons_cred` lives in `UserConsole.v` (below both `UkInit` and `UkSh`), `cons_cred_holds` in `UInitSh.v`. /init's chain (`UkInit`, `UkInitMain`, `UInitKernel`, 22 declarations) takes `(Cr : cons_cred Σ)` where it took `(Wp Wb Rdl : nat -> iProp Σ)` + two `Timeless` binders; `UInitSh.init_exec_sup_of_sh_slot` and `init_sh_image_entry` take the record + `cons_cred_holds` where they took five predicates and ten premises; `sh_pay` takes one where it took three; `UInitBoot` is a pass-through. The genuine sub-bundles stayed (`init_rd_cred` needs only `Wb`; `init_lend_cred`/`kinit_*_law` only `Wp Wb`), and `UkSh`/`UkShCd`/`UkShLoop`/`UkShDiag` keep their `Context (Pm : nat -> iProp Σ)` — already the right abstraction at an altitude with no position ghost; the caller passes `cc_mid Cr γp`.
+2. **R5** — gated, see below.
+
+Everything in §4's **Deletes** list is gone: no definition remains for `eout`, `ein`, `ewin`, `wcnt`, `ein_pend`, `app_in`, `app_win`, `Hwint`, `out_claim_at`, `in_claim_at`, `win_at`, `Wres`, `HWrest`, `Rt` (the console one; `HartSMemTok`'s `Rt` is a different, live predicate), the three `riscv_*_res` fields, or the five surplus record equations. Remaining textual mentions are history references in comments, and the lane narratives that outlived their lanes (`UShLine.v`'s six `Hsh_owed` blocks, `ConsLog.v`'s "wired to nothing" header and its OPEN QUESTION — settled the first way, as `WpUart.uart_arm`) were corrected in `af2f79873`.
+
+§5's questions below are all answered by what landed: (1) yes, the kernel-owned ghost half; the rest followed it.
 
 ## 5. RISKS AND QUESTIONS FOR THE OWNER
 

@@ -64,7 +64,8 @@ Require Import UserPtTree.   (* [umem_wr] / [umem_grow] / [umem_del] *)
 Require Import ProcPtOwn.    (* [pgroundup] on words *)
 Require Import UserPerm.     (* [uperm] / [uperm_rw] -- the permission view *)
 Require Import RiscvExtras.  (* [trunc32] -- the C [int] reading *)
-Require Import FdSlots.      (* [fdstate] / [fdtype] -- the descriptor view *)
+Require Import FdSlots.
+Require Import PipeNames.   (* [pipe_names]: what a pipe descriptor's state carries *)      (* [fdstate] / [fdtype] -- the descriptor view *)
 Require Import RiscvModelBytes. (* [nth_byte] -- pipe's two stored words *)
 Local Open Scope Z_scope.
 
@@ -529,7 +530,13 @@ Definition usys_fd_ok (n : Z) (tf : list (mword 64)) (r : mword 64)
            proposition the tier threads.  With it here,
            [usys_fd_ok_parked] is a THEOREM rather than a lemma with an
            owed premise. *)
-        fdst_parked (FdOpen rd wr t))
+        fdst_parked (FdOpen rd wr t)
+        (* ...AND NOT A PIPE (design/pipe.md, "The exit path"): open
+           installs an inode or a device, never a pipe end, and this is
+           what lets a program that never calls pipe(2) say its table
+           holds none -- which is what makes exit's close payments free
+           for it ([FdSlots.fdv_nopipe]). *)
+        /\ fdst_nopipe (FdOpen rd wr t))
      (* ...or the call failed, which it reports as -1 -- see dup's row for
         why the failure arm is guarded rather than bare. *)
      \/ (r = (mword_of_int (-1) : mword 64) /\ sts' = sts))
@@ -546,7 +553,7 @@ Definition usys_fd_ok (n : Z) (tf : list (mword 64)) (r : mword 64)
        row's [bs].  The two tables would have to be read together, which is
        the refinement this entry is waiting on. *)
     (if decide (uint r = 0)
-     then (exists a b : nat,
+     then (exists (a b : nat) (γp : pipe_names),
              a <> b /\
              (* ...AND EACH IS THE LOWEST FREE SLOT AT THE MOMENT ITS OWN
                 fdalloc RAN, which is what makes the pair deterministic.
@@ -557,9 +564,9 @@ Definition usys_fd_ok (n : Z) (tf : list (mword 64)) (r : mword 64)
                 written in that same order for the same reason; they
                 commute ([a <> b]), so a caller may read them either way. *)
              fd_least_closed sts a /\
-             fd_least_closed (<[a := FdOpen true false FdPipe]> sts) b /\
-             sts' = <[b := FdOpen false true FdPipe]>
-                      (<[a := FdOpen true false FdPipe]> sts))
+             fd_least_closed (<[a := FdOpen true false (FdPipe γp)]> sts) b /\
+             sts' = <[b := FdOpen false true (FdPipe γp)]>
+                      (<[a := FdOpen true false (FdPipe γp)]> sts))
      else sts' = sts)
   else
     (* EVERY OTHER ENTRY LEAVES THE TABLE ALONE -- but read that carefully
@@ -665,7 +672,7 @@ Definition usys_pipe_ok (n : Z) (tf : list (mword 64)) (r : mword 64)
     (M M' : gmap Z (bv 8)) (sts sts' : list fdstate) : Prop :=
   n = USYS_pipe ->
   uint r = 0 ->
-  exists (a b : nat) (bs : nat -> bv 8),
+  exists (a b : nat) (γp : pipe_names) (bs : nat -> bv 8),
     a <> b /\
     (* THE TWO SLOTS WERE THE LOWEST FREE ONES, restated here rather than
        left to [usys_fd_ok]'s own pipe row.  The two rows bind their
@@ -676,15 +683,15 @@ Definition usys_pipe_ok (n : Z) (tf : list (mword 64)) (r : mword 64)
        allocation order as there: read end first, write end against the
        table the first call left. *)
     fd_least_closed sts a /\
-    fd_least_closed (<[a := FdOpen true false FdPipe]> sts) b /\
+    fd_least_closed (<[a := FdOpen true false (FdPipe γp)]> sts) b /\
     M' = umem_wr M (tf !!! tf_arg_idx 0) 8 bs /\
     (forall i : nat, (i < 8)%nat ->
        bs i = if (i <? 4)%nat
               then nth_byte (trunc32 (mword_of_int (Z.of_nat a) : mword 64)) i
               else nth_byte (trunc32 (mword_of_int (Z.of_nat b) : mword 64))
                      (i - 4)%nat) /\
-    sts' = <[b := FdOpen false true FdPipe]>
-             (<[a := FdOpen true false FdPipe]> sts).
+    sts' = <[b := FdOpen false true (FdPipe γp)]>
+             (<[a := FdOpen true false (FdPipe γp)]> sts).
 
 (* the quiet reading: the other twenty-one entries owe nothing here *)
 Lemma usys_pipe_ok_quiet (n : Z) (tf : list (mword 64)) (r : mword 64)
@@ -756,7 +763,7 @@ Proof.
       [apply length_insert | reflexivity]. }
   destruct (decide (n = USYS_pipe)) as [_ | _].
   { destruct (decide (uint r = 0)) as [_ | _].
-    - destruct H as (a & b & _ & _ & _ & ->).
+    - destruct H as (a & b & γp & _ & _ & _ & ->).
       rewrite length_insert. apply length_insert.
     - subst. reflexivity. }
   subst. reflexivity.
@@ -799,16 +806,46 @@ Proof.
         [ exact Hpk | apply fdv_all_parked_lookup_total; exact Hpk ]
       | exact Hpk ]. }
   destruct (decide (n = USYS_open)) as [_ | _].
-  { destruct H as [(fd & rd & wr & t & _ & _ & He & Hop) | [_ ->]]; [| exact Hpk].
+  { destruct H as [(fd & rd & wr & t & _ & _ & He & Hop & _) | [_ ->]]; [| exact Hpk].
     rewrite He. apply fdv_all_parked_insert; [ exact Hpk | exact Hop ]. }
   destruct (decide (n = USYS_pipe)) as [_ | _].
   { destruct (decide (uint r = 0)) as [_ | _].
-    - destruct H as (a & b & _ & _ & _ & ->).
+    - destruct H as (a & b & γp & _ & _ & _ & ->).
       apply fdv_all_parked_insert;
         [ apply fdv_all_parked_insert;
-          [ exact Hpk | exact (fdst_parked_pipe true false) ]
-        | exact (fdst_parked_pipe false true) ].
+          [ exact Hpk | exact (fdst_parked_pipe true false γp) ]
+        | exact (fdst_parked_pipe false true γp) ].
     - subst. exact Hpk. }
+  subst. exact Hpk.
+Qed.
+
+(* ...AND THE SAME FOR "NO PIPE ROW" (design/pipe.md, "The exit path"),
+   at every number but pipe(2), which is the one call that installs one.
+   This is what lets a program that never calls pipe(2) carry
+   [FdSlots.fdv_nopipe] of its table across every trap and mint exit's
+   close payments from nothing ([UexecExecInst.xv6_sbundle_exit_nopipe]). *)
+Lemma usys_fd_ok_nopipe (n : Z) (tf : list (mword 64)) (r : mword 64)
+    (sts sts' : list fdstate) :
+  n <> USYS_pipe ->
+  usys_fd_ok n tf r sts sts' ->
+  fdv_nopipe sts ->
+  fdv_nopipe sts'.
+Proof.
+  unfold usys_fd_ok. intros Hnp H Hpk.
+  destruct (decide (n = USYS_close)) as [_ | _].
+  { destruct H as [H _].
+    destruct (decide (uint r = 0)); subst;
+      [ apply fdv_nopipe_insert; [exact Hpk | exact fdst_nopipe_closed]
+      | exact Hpk ]. }
+  destruct (decide (n = USYS_dup)) as [_ | _].
+  { destruct H as [(fd1 & _ & _ & _ & ->) | (_ & -> & _)];
+      [ apply fdv_nopipe_insert;
+        [ exact Hpk | apply fdv_nopipe_lookup_total; exact Hpk ]
+      | exact Hpk ]. }
+  destruct (decide (n = USYS_open)) as [_ | _].
+  { destruct H as [(fd & rd & wr & t & _ & _ & He & _ & Hop) | [_ ->]]; [| exact Hpk].
+    rewrite He. apply fdv_nopipe_insert; [ exact Hpk | exact Hop ]. }
+  destruct (decide (n = USYS_pipe)) as [He | _]; [ exfalso; exact (Hnp He) | ].
   subst. exact Hpk.
 Qed.
 

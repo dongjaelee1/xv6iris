@@ -928,7 +928,7 @@ Section UkFork.
     WP (Loop : expr riscv_lang).
   Proof.
     intros Hn Hal4. iIntros "#Hi HRc HP Hsz Hstd HD Hcwd Hchf #Hkw Hrun [Hpar Hchild]".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & Hb)".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     (* the caller's half pins the key's working directory *)
     iDestruct (ucwd_agree with "Hcwda Hcwd") as %->.
     (* ...and its other half pins the key's children set, which is why the
@@ -1048,7 +1048,7 @@ Section UkFork.
       iApply (urun_close_upd N M pm m (mword_of_int 10) r sz fdv c gn
                 cs2 pidv (add_vec_int pc 4) avail
                 ltac:(unfold unot_sp; vm_compute; discriminate)
-                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep").
+                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep Hnpx").
       iIntros (h') "Hrun".
       iApply ("Hpar" $! h' r with "[%] Harm HP Hsz Hstd HD Hcwd Hrun").
       exact Hr.
@@ -1102,7 +1102,7 @@ Section UkFork.
                 (mword_of_int 10)
                 (mword_of_int 0) sz fdv c g' ∅ pidc (add_vec_int pc 4) avail
                 ltac:(unfold unot_sp; vm_compute; discriminate)
-                with "Hheap' Hstk' Hufd' Hcwa' Hcha' Hmp Hdep").
+                with "Hheap' Hstk' Hufd' Hcwa' Hcha' Hmp Hdep Hnpx").
       iIntros (h') "Hrun".
       iApply ("Hchild" $!
                 (MkUkNames γt' γd' γs' γfd' γc' γch' Q γpid') h' g'

@@ -7,7 +7,7 @@
        return wait(p);
      }
 
-   @ KernelSyms.sys_wait = 0x80002924, thirteen instructions / 34 bytes: a
+   @ KernelSyms.sys_wait = 0x80002a26, thirteen instructions / 34 bytes: a
    32-byte ra/s0 frame whose slot 3 is the [uint64 p] local at s0-24 =
    sp+8 -- a WHOLE slot, unlike sys_kill's [int pid], which is the upper
    half of one.

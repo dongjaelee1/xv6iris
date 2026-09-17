@@ -1,6 +1,6 @@
-(* AppEcho.v -- THE ECHO APPLICATION: init spawns sh, the user types
-   [echo hello world], sh forks and execs echo, echo prints the string back;
-   the file system is never modified.
+(* AppEcho.v -- THE ECHO APPLICATION: init spawns sh, the user types an
+   [echo] line -- A DIFFERENT ONE EACH ROUND -- sh forks and execs echo,
+   echo prints the arguments back; the file system is never modified.
 
    Design of record: claude-notes/design/applications.md (§4 for this file's
    trace side, §5 for the lanes); worklist claude-notes/projects/app-echo.md.
@@ -9,9 +9,10 @@
    [App.xv6_app_adequacy] that is provable without any of the lanes:
 
      the DISCIPLINE [disc]      -- every power cycle's input bytes so far
-                                   are a prefix of [echo_line]^*;
-                                   decidable, prefix-closed, and unmoved
-                                   by output bytes and power events;
+                                   parse as admissible lines
+                                   ([EchoDisc.disc_input]); decidable,
+                                   prefix-closed, and unmoved by output
+                                   bytes and power events;
      the FIXED PART [echo_cl]   -- the taint counter's name, born once at
                                    0 by [echo_birth] (app-instances.md
                                    section 6 ruling 1, round D0: what used
@@ -147,7 +148,7 @@ Require Import App.              (* [xv6_app], [MkApp] and the theorem whose
    durable predicate and the record. *)
 Require Import EchoOut.
 (* THE DISCIPLINE AND THE CLAIM, as pure combinatorics.  EXPORTED: the
-   landed names ([echo_line], [star_prefix], [ins], [disc_seg], [disc]) are
+   landed names ([line_ok], [disc_input], [ins], [disc_seg], [disc]) are
    read unqualified by [UConsLine.v], and moving them out must not move
    them for a reader. *)
 Require Export EchoDisc.
@@ -166,15 +167,14 @@ Local Open Scope Z_scope.
 (*  the other port and are not the theorem's concern).  The               *)
 (*  whole of it is pure combinatorics over [list mobs], so it lives in     *)
 (*  [EchoDisc.v] -- EXPORTED here, because everything stated against the   *)
-(*  landed names ([echo_line], [star_prefix], [disc_seg], [disc]) keeps    *)
+(*  landed names ([line_ok], [disc_input], [disc_seg], [disc]) keeps       *)
 (*  naming them unqualified.                                               *)
 (*                                                                        *)
 (*  What this file uses from there: [disc] (the new discipline) and its    *)
 (*  [disc_nil] / [disc_out] / [disc_power] / [disc_in] closure laws, which *)
 (*  hold at the SAME statements they held at before, so the ledger's four  *)
 (*  steps below are unchanged; [disc_dec], which [echo_phase] decides;     *)
-(*  [disc_old] and [disc_proj], the bridge every landed consumer of the    *)
-(*  old predicate reads it through; and [disc_seg'] / [good_out], which    *)
+(*  and [disc_seg'] / [good_out], which                                    *)
 (*  section 5's conclusion is written in.                                  *)
 (* ====================================================================== *)
 (* ====================================================================== *)
@@ -1401,18 +1401,6 @@ Section EchoApp.
      quarter of the window counter -- with the pure account of the accepted
      bytes ([EchoOut.eout_pure]) that [eout_drain] turns into
      [EchoDisc.good_out]. *)
-  Definition echo_out (γ : echo_fixed) :
-      nat -> list mobs -> list (bv 8) -> iProp Σ :=
-    EchoOut.eout (echo_taint γ) γ.
-
-  (* THE INPUT LOG: the taint, the SETTLED arm, or the chain-first WINDOW
-     arm -- the instant between the echo's store and the [WpUart.in_append]
-     that files its entry. *)
-  Definition echo_in (γ : echo_fixed) :
-      nat -> list mobs -> list LogEntryDefs.log_entry ->
-      list (list mobs * bv 8) -> iProp Σ :=
-    EchoOut.ein (echo_taint γ) γ.
-
   (* THE ERA'S TURN: <init>'s console credential, the era's cursor at ZERO
      with the two bounds a write spends -- literally
      [EchoOut.echo_write_link]'s argument list at [P = 0].  It takes no
@@ -1421,36 +1409,40 @@ Section EchoApp.
   Definition echo_turn (γ : echo_fixed) : nat -> iProp Σ :=
     EchoOut.eturn γ.
 
-  (* THE ECHO WINDOW TOKEN: the half-share of the era's window counter the
-     kernel parks on the console port's PLIC payload and hands to
-     consoleintr's shift; the shift's own append gives it back. *)
-  Definition echo_win (γ : echo_fixed) : nat -> iProp Σ :=
-    EchoOut.ewin (echo_taint γ) γ.
+  (* [echo_win] lived here. *)
 
   (* THE MERGED CONSOLE CLAIM (redesign R2/R3): the era's four authorities
      over ONE console history -- what the port's invariant carries, what a
      writer's link moves by [EvOut], what consoleintr's arm moves by
      [EvOpen]/[EvByte]/[EvClose] and what a read moves by [EvRead]. *)
+  (* THE APPLICATION'S CONSOLE INTERFACE (redesign R4), as one value: the
+     tag beside a received byte, the kill credential (which IS the taint --
+     a kill under this discipline is impossible, so what a party a kill
+     touched may keep is the fact the taint already states), and the
+     console claim. *)
   Definition echo_cons (γ : echo_fixed) :
       nat -> list mobs -> LogEntryDefs.cons_hist -> iProp Σ :=
     EchoOut.ecl (echo_taint γ) γ.
 
+  Global Instance echo_cons_timeless γ k h H :
+    Timeless (echo_cons γ k h H).
+  Proof. rewrite /echo_cons. apply _. Qed.
+
+  (* THE APPLICATION'S CONSOLE INTERFACE (redesign R4), as one value: the
+     tag beside a received byte, the kill credential (which IS the taint --
+     a kill under this discipline is impossible, so what a party a kill
+     touched may keep is the fact the taint already states), and the console
+     claim.  The three instances ride with them, where they were five
+     obligations of [App.xv6_app_adequacy]. *)
+  Definition echo_ifc (γ : echo_fixed) : app_iface Σ :=
+    MkAppIface (echo_tag γ) (echo_tag_persistent γ) (echo_tag_timeless γ)
+               (echo_taint γ) (echo_taint_persistent γ)
+               (echo_taint_timeless γ)
+               (echo_cons γ) (echo_cons_timeless γ).
+
   Definition app_echo : xv6_app Σ :=
-    MkApp echo_fixed echo_cl echo_names echo_pred echo_boot echo_R echo_tag
-          (* THE KILL CREDENTIAL IS THE TAINT (app-echo.md, lane KILL-PAY,
-             K1).  The record's [app_kill] slot has to be filled for the
-             literal to typecheck, and there is exactly one honest value:
-             a kill under this application's discipline is impossible, so
-             what a party a kill touched may keep is the fact the taint
-             already states.  [echo_taint_of_sup] is [Happ_kill]. *)
-          echo_taint
-          echo_out echo_in echo_turn echo_win
-          (* THE MERGED CONSOLE CLAIM (redesign R2/R3), and the only one the
-             record's obligations read now: [echo_out], [echo_in] and
-             [echo_win] are inert slots kept so the literal's arity is the
-             one the theorem takes. *)
-          echo_cons
-          echo_phi.
+    MkApp echo_fixed echo_cl echo_names echo_pred echo_boot echo_R
+          echo_ifc echo_turn echo_phi.
 
   (* ---- THE BIRTH STEP ---- *)
   Lemma echo_Hbirth : ⊢ |==> ∃ c : app_fixed app_echo, app_cl app_echo c.
@@ -1461,18 +1453,8 @@ Section EchoApp.
     Timeless (app_R app_echo c h).
   Proof. cbn [app_echo app_fixed app_R] in c |- *. apply _. Qed.
 
-  Lemma echo_Htagp (c : app_fixed app_echo) (h : list mobs) :
-    Persistent (app_tag app_echo c h).
-  Proof. cbn [app_echo app_fixed app_tag] in c |- *. apply _. Qed.
-
-  Lemma echo_Htagt (c : app_fixed app_echo) (h : list mobs) :
-    Timeless (app_tag app_echo c h).
-  Proof. cbn [app_echo app_fixed app_tag] in c |- *. apply _. Qed.
-
-  (* ---- THE KILL CREDENTIAL'S THREE (lane KILL-PAY, K1) ---- *)
-  Lemma echo_Hkillp (c : app_fixed app_echo) :
-    Persistent (app_kill app_echo c).
-  Proof. cbn [app_echo app_fixed app_kill] in c |- *. apply _. Qed.
+  (* [echo_Htagp], [echo_Htagt], [echo_Hkillp] and [echo_Hkillt] lived
+     here: they ride [echo_ifc] now (redesign R4). *)
 
   Lemma echo_Hkillt (c : app_fixed app_echo) :
     Timeless (app_kill app_echo c).
@@ -1480,66 +1462,34 @@ Section EchoApp.
 
   (* the supply buys the credential, and at echo the two are the same
      reading of the counter ([echo_taint_of_sup]) *)
-  Lemma echo_Happ_kill (c : app_fixed app_echo) (r : app_names app_echo) :
+  Lemma echo_al_kill (c : app_fixed app_echo) (r : app_names app_echo) :
     AppInv.app_sup_raw (app_pred app_echo c) r ⊢ □ app_kill app_echo c.
   Proof.
-    cbn [app_echo app_fixed app_names app_pred app_kill] in c, r |- *.
+    rewrite /app_kill.
+    cbn [app_echo app_fixed app_names app_pred app_ifc echo_ifc ai_kill]
+      in c, r |- *.
     iIntros "#Hs". iModIntro. iApply (echo_taint_of_sup c r with "Hs").
   Qed.
 
-  (* ---- THE OUTPUT CLAIM'S THREE, ALL VACUOUS AT THE PLACEHOLDER ---- *)
-  Lemma echo_Houtt (c : app_fixed app_echo) (k : nat) (h : list mobs)
-      (acc : list (bv 8)) : Timeless (app_out app_echo c k h acc).
-  Proof. cbn [app_echo app_fixed app_out echo_out] in c |- *. apply _. Qed.
+  (* [echo_Houtt], [echo_Hinpt], [echo_Hwint] and [echo_Hconst] lived here:
+     the claims' instances, which ride [echo_ifc] now. *)
 
-  Lemma echo_Hinpt (c : app_fixed app_echo) (k : nat) (h : list mobs)
-      (pops : list LogEntryDefs.log_entry) (dl : list (list mobs * bv 8)) :
-    Timeless (app_in app_echo c k h pops dl).
-  Proof. cbn [app_echo app_fixed app_in echo_in] in c |- *. apply _. Qed.
-
-  (* the echo window token's timelessness (lane CONS-IO milestone F),
-     vacuous at the [emp] placeholder *)
-  Lemma echo_Hwint (c : app_fixed app_echo) (k : nat) :
-    Timeless (app_win app_echo c k).
-  Proof. cbn [app_echo app_fixed app_win echo_win] in c |- *. apply _. Qed.
-
-  Lemma echo_Hconst (c : app_fixed app_echo) (k : nat) (h : list mobs)
-      (H : LogEntryDefs.cons_hist) : Timeless (app_cons app_echo c k h H).
-  Proof. cbn [app_echo app_fixed app_cons echo_cons] in c |- *. apply _. Qed.
-
-  Lemma echo_Happ_in_sup (c : app_fixed app_echo) (r : app_names app_echo) :
-    AppInv.app_sup_raw (app_pred app_echo c) r
-      ⊢ □ (∀ (k : nat) (h : list mobs) (pops : list LogEntryDefs.log_entry)
-             (dl : list (list mobs * bv 8)) (e : LogEntryDefs.log_entry),
-             app_in app_echo c k h pops dl ==∗
-             app_in app_echo c k h (pops ++ [e]) dl)
-        ∗ □ (∀ (k : nat) (h : list mobs) (pops : list LogEntryDefs.log_entry)
-               (dl ws : list (list mobs * bv 8)),
-               app_in app_echo c k h pops dl ==∗
-               app_in app_echo c k h pops (dl ++ ws)).
-  Proof.
-    cbn [app_echo app_fixed app_names app_in echo_in] in c, r |- *.
-    iIntros "#Hs".
-    iDestruct (echo_taint_of_sup c r with "Hs") as "#Ht". iSplit.
-    - iIntros "!>" (k h pops dl e) "Hi".
-      iApply (EchoOut.ein_sup_log (echo_taint c) c k h pops dl e with "Ht Hi").
-    - iIntros "!>" (k h pops dl ws) "Hi".
-      iApply (EchoOut.ein_sup_deliv (echo_taint c) c k h pops dl ws
-                with "Ht Hi").
-  Qed.
+  (* [echo_al_sup] lived here: one resource admits one law. *)
 
   (* ONE LICENCE (redesign R2): a holder of the supply is a party the
      discipline has already accounted for, so its claim answers ANY
      boundary event -- out of the taint arm, which is what holding the
      supply buys ([echo_taint_of_sup]). *)
-  Lemma echo_Happ_out_sup (c : app_fixed app_echo) (r : app_names app_echo) :
+  Lemma echo_al_sup (c : app_fixed app_echo) (r : app_names app_echo) :
     AppInv.app_sup_raw (app_pred app_echo c) r
       ⊢ □ (∀ (k : nat) (h : list mobs) (H : LogEntryDefs.cons_hist)
              (ev : ConsLog.cons_ev),
              app_cons app_echo c k h H ==∗
              app_cons app_echo c k h (ConsLog.cons_step H ev)).
   Proof.
-    cbn [app_echo app_fixed app_names app_cons echo_cons] in c, r |- *.
+    rewrite /app_cons.
+    cbn [app_echo app_fixed app_names app_ifc echo_ifc ai_cons echo_cons]
+      in c, r |- *.
     iIntros "#Hs".
     iDestruct (echo_taint_of_sup c r with "Hs") as "#Ht".
     iIntros "!>" (k h H ev) "Ho".
@@ -1554,7 +1504,7 @@ Section EchoApp.
      e5-design REVISION 8; the claims are real since lane ECHO-OUT part 5).
      This is where the era's ghosts are allocated, its pin is minted in the
      ledger's era map, and the four shares are split out:
-     [EchoOut.echo_led_pow] is exactly this obligation's shape. *)
+     [EchoOut.echo_led_pow_cl] is exactly this obligation's shape. *)
   Lemma echo_Hpow (c : app_fixed app_echo) (h : list mobs) (on : bool)
       (dk : Z -> bv 8) :
     trace_shape h on ->
@@ -1564,14 +1514,13 @@ Section EchoApp.
        else app_cons app_echo c (S (obs_boots h)) []
               (LogEntryDefs.MkCH [] [] [] None) ∗
             (* ...and the era's turn beside it: this is where the era's
-               LINEAR seed is minted out of the ledger, one copy for <init>
-               and one -- now inert -- for the kernel's payload. *)
-            app_turn app_echo c (S (obs_boots h)) ∗
-            app_win app_echo c (S (obs_boots h))).
+               LINEAR seed is minted out of the ledger, for <init>. *)
+            app_turn app_echo c (S (obs_boots h))).
   Proof.
     intros _.
-    cbn [app_echo app_fixed app_R echo_R app_cons echo_cons
-         app_turn echo_turn app_win echo_win] in c |- *.
+    rewrite /app_cons.
+    cbn [app_echo app_fixed app_R echo_R app_ifc echo_ifc ai_cons echo_cons
+         app_turn echo_turn] in c |- *.
     iApply (EchoOut.echo_led_pow_cl (echo_taint c) c h on).
   Qed.
 
@@ -1602,7 +1551,9 @@ Section EchoApp.
            uart_ghosts γ u' ∗ app_R app_echo c (h ++ [ObsUartOut i b])%list).
   Proof.
     intros _ _.
-    cbn [app_echo app_fixed app_R echo_R app_cons echo_cons] in c |- *.
+    rewrite /app_cons.
+    cbn [app_echo app_fixed app_R echo_R app_ifc echo_ifc ai_cons echo_cons]
+      in c |- *.
     iIntros "!>" (h b u u' ho H)
       "%Htxp %Hlp %Hsh %Hwi %Hwo %Hbt %Hpo %Hacc Ho Hg Hled".
     (* THE GOODNESS OF THE DRAINED SEGMENT, at the console and nowhere else
@@ -1653,18 +1604,17 @@ Section EchoApp.
      every firing after the discipline has broken.  All this file does is
      hand it the FOUR record equations at the [boot_fixedGS] literal. *)
   Lemma echo_Happ_echo (HR : riscvGS Σ) (c : app_fixed app_echo) :
-    @riscv_cons_res Σ (@riscv_fixedGS Σ HR) = app_cons app_echo c ->
-    @riscv_rx_tag Σ (@riscv_fixedGS Σ HR) = app_tag app_echo c ->
-    (* ...and the window token's (lane CONS-IO milestone F): the shift TAKES
-       the era's token, and the echo's own store is what splits it. *)
-    @riscv_win_res Σ (@riscv_fixedGS Σ HR) = app_win app_echo c ->
+    (* ONE EQUATION (redesign R4): the shift reads the machine's ambient tag
+       family and its ambient console claim, and both are projections of the
+       interface this record sets. *)
+    @riscvF_app_iface Σ (@riscv_fixedGS Σ HR) = app_ifc app_echo c ->
     ⊢ ∀ (GEN : GenId) (XI : CurCtx), @cons_echo_shift Σ HR GEN XI.
   Proof.
-    cbn [app_echo app_fixed app_cons echo_cons
-         app_tag echo_tag app_win echo_win] in c |- *.
-    intros Hcons Htag Hwin.
-    iApply (EchoOut.echo_happ_echo (echo_taint c) c (HRg := HR)
-              Hcons Htag).
+    cbn [app_echo app_fixed app_ifc] in c |- *.
+    intros Hiface.
+    iApply (EchoOut.echo_happ_echo (echo_taint c) c (HRg := HR)).
+    - rewrite /riscv_cons_res Hiface. by cbn [echo_ifc ai_cons echo_cons].
+    - rewrite /riscv_rx_tag Hiface. by cbn [echo_ifc ai_tag].
   Qed.
 
   Lemma echo_Hrx `{!uartGhostG Σ} `{HF : !fileG Σ}

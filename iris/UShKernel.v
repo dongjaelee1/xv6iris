@@ -70,6 +70,7 @@ Require Import FdSlots.
 Require Import ProcGeom.
 Require Import UserFd.
 Require Import UCodeShK UkSh.
+Require Import LineWords.   (* [wl_nl]: the read's law is stated at a line *)
 Require Import UkRun.          (* [udep] / [uslot_of_urun_all] / [urun] *)
 Require Import PageGeom.       (* [PGSIZE] *)
 Require Import UserPtTree.     (* [pgroundup] *)
@@ -376,12 +377,12 @@ Section UShKernel.
   (* sh's "$ " resolves a round of the application's transcript, so what  *)
   (* pays for it is the era's own write link, and neither this file nor    *)
   (* sh's walk may name an era.  What crosses is a CONVERSION ALONE, at    *)
-  (* an abstract credential family [Wc n p] -- the era's write credential  *)
-  (* at line boundary [n] with [p] prompt bytes out -- which the loop      *)
+  (* an abstract credential family [Wc I p] -- the era's write credential  *)
+  (* at the input [I] with [p] prompt bytes out -- which the loop          *)
   (* carries beside its cursor and moves with the read.  Quantified over   *)
   (* the record and given sh's own .rodata, exactly as the pair's law is.  *)
   (* ------------------------------------------------------------------- *)
-  Definition sh_prompt_law (Wc : nat -> nat -> iProp Σ) : iProp Σ :=
+  Definition sh_prompt_law (Wc : list (bv 8) -> nat -> iProp Σ) : iProp Σ :=
     (□ (∀ N : uk_names Σ,
           shk_rodata (ukn_t N) -∗ UkSh.ush_prompt_law N Wc))%I.
 
@@ -416,46 +417,46 @@ Section UShKernel.
          record the kernel minted for THIS program and about no other. *)
       (* ...AT THE LEASE IN THE PIECES A LINE'S MIDDLE LEAVES IT IN (lane
          IO-LEAF, M5(3)).  [Pm] is the shell's cursor, the ring's token and
-         the era's own half of the delivered count, all at ONE number; the
+         the era's own half of the delivered count, all at ONE INPUT; the
          PAYLOAD form of them asserts a LINE BOUNDARY, which is false
          between a line's first byte and its '\n'.  Like the leaf, the
          three laws are Coq-level and guarded by the record's payload
          equation: this file names no era. *)
-      (Pm : nat -> iProp Σ)
+      (Pm : list (bv 8) -> iProp Σ)
       (* ...AND THE ERA'S WRITE CREDENTIAL AS THE LOOP CARRIES IT (lane
-         IO-LEAF, M6a(3)): at line boundary [n] with [p] prompt bytes out,
-         with the ONE law the read owes it -- the credential the prompt
-         left at [n] is the boundary credential at [n + 17] once the line
-         is read, on the pieces the read leaves.  Unguarded: it names no
-         payload. *)
-      (Wc : nat -> nat -> iProp Σ)
+         IO-LEAF, M6a(3)): at the era's input [I] with [p] prompt bytes
+         out, with the ONE law the read owes it -- the credential the
+         prompt left at [I] is the boundary credential at [I ++ l ++ [nl]]
+         once the line [l] is read, on the pieces the read leaves.
+         Unguarded: it names no payload. *)
+      (Wc : list (bv 8) -> nat -> iProp Σ)
       (* ...AND THE BANNER-OWED CREDENTIAL (step 3), the loop's closed
          arm: carried unchanged through the prompt, into the payload at
          the shut-fd-0 exit ([Hpmwb]). *)
-      (Wb : nat -> iProp Σ)
+      (Wb : list (bv 8) -> iProp Σ)
       (Hrl : forall (N : uk_names Σ) (l : list fdstate),
          ukn_pay N = Q -> ⊢ UkSh.ush_read_recv_leaf N γp T Pm cn l)
       (Hpm1 : forall (N : uk_names Σ) (i : nat),
-         ukn_pay N = Q -> ⊢ UkSh.ush_at N γp i -∗ UkSh.ush_lease N γp T Pm i)
-      (Hpm3 : forall (N : uk_names Σ) (i : nat),
-         ukn_pay N = Q -> ⊢ T -∗ Pm i -∗ UkSh.ush_at N γp i)
-      (Hpmwb : forall (N : uk_names Σ) (i : nat),
-         ukn_pay N = Q -> UkSh.ush_bnd i ->
-         ⊢ Pm i -∗ Wb i -∗ UkSh.ush_at N γp i)
-      (Hwc : forall n : nat,
-         ⊢ Pm (n + length EchoDisc.echo_line)%nat -∗ Wc n 2%nat -∗
-           Pm (n + length EchoDisc.echo_line)%nat
-           ∗ Wc (n + length EchoDisc.echo_line)%nat 3%nat)
+         ukn_pay N = Q ->
+         ⊢ UkSh.ush_at N γp i -∗
+           ∃ I : list (bv 8), ⌜length I = i⌝ ∗ UkSh.ush_lease N γp T Pm I)
+      (Hpm3 : forall (N : uk_names Σ) (I : list (bv 8)),
+         ukn_pay N = Q -> ⊢ T -∗ Pm I -∗ UkSh.ush_at N γp (length I))
+      (Hpmwb : forall (N : uk_names Σ) (I : list (bv 8)),
+         ukn_pay N = Q ->
+         ⊢ Pm I -∗ Wb I -∗ UkSh.ush_at N γp (length I))
+      (Hwc : forall I l : list (bv 8), wl_nl ∉ l ->
+         ⊢ Pm (I ++ l ++ [wl_nl]) -∗ Wc I 2%nat -∗
+           Pm (I ++ l ++ [wl_nl]) ∗ Wc (I ++ l ++ [wl_nl]) 3%nat)
       (* ...AND THE THREE CONVERSIONS OF STEP 4, Coq-level like [Hwc]: the
          banner-owed credential is the prompt's once the console reaches
          fd 2 ([UkSh.ush_wb_wc]); a block owed with nothing chosen is a
          boundary credential ([ush_wc_blk_line]); a line read at an
          unwritten prompt is the taint ([ush_wb_read]). *)
-      (Hwbwc : forall n : nat, ⊢ Wb n -∗ Wc n 0%nat)
-      (Hwbl : forall n : nat, ⊢ Wc n 3%nat -∗ Wc n 0%nat)
-      (Hwbr : forall n : nat,
-         ⊢ Pm (n + length EchoDisc.echo_line)%nat -∗ Wb n -∗
-           Pm (n + length EchoDisc.echo_line)%nat ∗ T)
+      (Hwbwc : forall I : list (bv 8), ⊢ Wb I -∗ Wc I 0%nat)
+      (Hwbl : forall I : list (bv 8), ⊢ Wc I 3%nat -∗ Wc I 0%nat)
+      (Hwbr : forall I l : list (bv 8), wl_nl ∉ l ->
+         ⊢ Pm (I ++ l ++ [wl_nl]) -∗ Wb I -∗ Pm (I ++ l ++ [wl_nl]) ∗ T)
       (W : uvis) (n0 n : nat) :
     (* THE ENTRY LAW (lane IO-LEAF, step 3): the raw lend -- the position's
        program half and the lease at the lend family -- and the loop's
@@ -466,7 +467,9 @@ Section UShKernel.
        ([UShLine.ush_posb_of_lend] is the one discharge). *)
     (forall (N : uk_names Σ) (l : list fdstate) (n : nat),
        ukn_pay N = Q ->
-       ⊢ upos γp n -∗ Ql (-1) -∗ (UkSh.ush_wcp Wc Wb l n 0%nat ∨ T) -∗
+       ⊢ upos γp n -∗ Ql (-1) -∗
+         ((∃ I : list (bv 8), ⌜length I = n⌝ ∗ UkSh.ush_wcp Wc Wb l I 0%nat)
+          ∨ T) -∗
          UkSh.ush_posb N γp T Wc Wb Pm l 0%nat) ->
     (forall x y : Z, Q x = Q y) ->
     tf_resume_pc (uvis_tf W) = (mword_of_int ShSyms.start : mword 64) ->
@@ -545,6 +548,13 @@ Section UShKernel.
        There is one tier now, so what is left is the ordinary deposit
        obligation; the exec bundle rides in through [ush_rest], whose
        discharge takes [UkRun.uxsup].) *)
+    (* ...AND WHETHER THE PROCESS'S TABLE HOLDS A PIPE ROW (design/pipe.md,
+       "The exit path").  The run carries this between traps
+       ([UkRun.urun_nopipe]) and the exit leaf mints its bundle row off it,
+       so an entry is where it comes in.  sh's table is the exec'ing
+       process's ([SpecKexec.kexec_image_ok_fd]), and /init's holds no
+       pipe. *)
+    UkRun.urun_nopipe (uvis_fd W) -∗
     udep -∗
     (* ...AND THE THREE DEPOSITS SH OWES BESIDE IT (lane SUPPLY-SPLIT, P4).
        sh calls read(5), open(15) and write(16), and all three are CLAIM
@@ -610,14 +620,15 @@ Section UShKernel.
     (* ...AND THE ERA'S WRITE CREDENTIAL, in the loop's own slot at the
        lent count (step 3): the console arm, the banner-owed closed arm,
        or the affine arm. *)
-    (UkSh.ush_wcp Wc Wb (take NSTD (uvis_fd W)) n 0%nat ∨ T) -∗
+    ((∃ I : list (bv 8), ⌜length I = n⌝
+        ∗ UkSh.ush_wcp Wc Wb (take NSTD (uvis_fd W)) I 0%nat) ∨ T) -∗
     uslot W.
   Proof.
     intros Hbd HQc Hpc Hsub Hx Hal8 Hroom Hstk Hfdlen Hstop Hcwd0 Hlzf Hch0 Hpid1.
-    iIntros "#Hpay #Hdep #Hdp #Htag #Hplaw #Hrest #Hfd0 Hin #Hgen #Hmp Hpos
+    iIntros "#Hpay #Hnpw #Hdep #Hdp #Htag #Hplaw #Hrest #Hfd0 Hin #Hgen #Hmp Hpos
              Hlease Hwcp".
     iApply (uslot_of_urun_all W (2 + (8 + (16 + (ush_Dbody + n0)))) Q
-              Hal8 Hroom Hstk Hfdlen Hstop Hlzf with "Hdep Hmp").
+              Hal8 Hroom Hstk Hfdlen Hstop Hlzf with "Hdep Hnpw Hmp").
     (* sh's own half of its children set travels in [UkSh.ush_pstate]
        beside the ledger and the cwd: fork1 MOVES the set, so the fragment
        goes down the chain index-free ([UserChildren.uch_any]). *)
@@ -647,10 +658,10 @@ Section UShKernel.
     iAssert (shk_rodata (ukn_t N)) as "#Hro".
     { iApply (shk_rodata_of_text (ukn_t N) (uvis_M W) (uvis_perm W)
                 (shk_img_data _ Hsub) Hx with "Ht"). }
-    iApply (wp_ksh_start N γp T Hpsok_free Wc Wb Hwbwc Hwbl Pm
+    iApply (wp_ksh_start N γp T Wc Wb Hwbwc Hwbl Pm
               (fun i => Hpm1 N i Hpayeq)
-              (fun i => Hpm3 N i Hpayeq)
-              (fun i Hb => Hpmwb N i Hpayeq Hb)
+              (fun I => Hpm3 N I Hpayeq)
+              (fun I => Hpmwb N I Hpayeq)
               Hwbr
               Hwc
               cn
@@ -689,45 +700,47 @@ Section UShKernel.
       (Q Ql : Z -> iProp Σ)
       (* the read leaf sh runs on and the lease's three laws, passed
          straight through: see [sh_uexec_slot] *)
-      (Pm : nat -> iProp Σ)
+      (Pm : list (bv 8) -> iProp Σ)
       (* ...AND THE ERA'S WRITE CREDENTIAL AS THE LOOP CARRIES IT (lane
-         IO-LEAF, M6a(3)): at line boundary [n] with [p] prompt bytes out,
-         with the ONE law the read owes it -- the credential the prompt
-         left at [n] is the boundary credential at [n + 17] once the line
-         is read, on the pieces the read leaves.  Unguarded: it names no
-         payload. *)
-      (Wc : nat -> nat -> iProp Σ)
-      (Wb : nat -> iProp Σ)
+         IO-LEAF, M6a(3)): at the era's input [I] with [p] prompt bytes
+         out, with the ONE law the read owes it -- the credential the
+         prompt left at [I] is the boundary credential at [I ++ l ++ [nl]]
+         once the line [l] is read, on the pieces the read leaves.
+         Unguarded: it names no payload. *)
+      (Wc : list (bv 8) -> nat -> iProp Σ)
+      (Wb : list (bv 8) -> iProp Σ)
       (Hrl : forall (N : uk_names Σ) (l : list fdstate),
          ukn_pay N = Q -> ⊢ UkSh.ush_read_recv_leaf N γp T Pm cn l)
       (Hpm1 : forall (N : uk_names Σ) (i : nat),
-         ukn_pay N = Q -> ⊢ UkSh.ush_at N γp i -∗ UkSh.ush_lease N γp T Pm i)
-      (Hpm3 : forall (N : uk_names Σ) (i : nat),
-         ukn_pay N = Q -> ⊢ T -∗ Pm i -∗ UkSh.ush_at N γp i)
-      (Hpmwb : forall (N : uk_names Σ) (i : nat),
-         ukn_pay N = Q -> UkSh.ush_bnd i ->
-         ⊢ Pm i -∗ Wb i -∗ UkSh.ush_at N γp i)
-      (Hwc : forall n : nat,
-         ⊢ Pm (n + length EchoDisc.echo_line)%nat -∗ Wc n 2%nat -∗
-           Pm (n + length EchoDisc.echo_line)%nat
-           ∗ Wc (n + length EchoDisc.echo_line)%nat 3%nat)
+         ukn_pay N = Q ->
+         ⊢ UkSh.ush_at N γp i -∗
+           ∃ I : list (bv 8), ⌜length I = i⌝ ∗ UkSh.ush_lease N γp T Pm I)
+      (Hpm3 : forall (N : uk_names Σ) (I : list (bv 8)),
+         ukn_pay N = Q -> ⊢ T -∗ Pm I -∗ UkSh.ush_at N γp (length I))
+      (Hpmwb : forall (N : uk_names Σ) (I : list (bv 8)),
+         ukn_pay N = Q ->
+         ⊢ Pm I -∗ Wb I -∗ UkSh.ush_at N γp (length I))
+      (Hwc : forall I l : list (bv 8), wl_nl ∉ l ->
+         ⊢ Pm (I ++ l ++ [wl_nl]) -∗ Wc I 2%nat -∗
+           Pm (I ++ l ++ [wl_nl]) ∗ Wc (I ++ l ++ [wl_nl]) 3%nat)
       (* ...AND THE THREE CONVERSIONS OF STEP 4, Coq-level like [Hwc]: the
          banner-owed credential is the prompt's once the console reaches
          fd 2 ([UkSh.ush_wb_wc]); a block owed with nothing chosen is a
          boundary credential ([ush_wc_blk_line]); a line read at an
          unwritten prompt is the taint ([ush_wb_read]). *)
-      (Hwbwc : forall n : nat, ⊢ Wb n -∗ Wc n 0%nat)
-      (Hwbl : forall n : nat, ⊢ Wc n 3%nat -∗ Wc n 0%nat)
-      (Hwbr : forall n : nat,
-         ⊢ Pm (n + length EchoDisc.echo_line)%nat -∗ Wb n -∗
-           Pm (n + length EchoDisc.echo_line)%nat ∗ T)
+      (Hwbwc : forall I : list (bv 8), ⊢ Wb I -∗ Wc I 0%nat)
+      (Hwbl : forall I : list (bv 8), ⊢ Wc I 3%nat -∗ Wc I 0%nat)
+      (Hwbr : forall I l : list (bv 8), wl_nl ∉ l ->
+         ⊢ Pm (I ++ l ++ [wl_nl]) -∗ Wb I -∗ Pm (I ++ l ++ [wl_nl]) ∗ T)
       (na : nat)
       (alen : nat -> nat) (afun : nat -> nat -> bv 8) (sts : list fdstate)
       (W' : uvis) (n0 n : nat) :
     (* the entry law, passed straight through: see [sh_uexec_slot] *)
     (forall (N : uk_names Σ) (l : list fdstate) (n : nat),
        ukn_pay N = Q ->
-       ⊢ upos γp n -∗ Ql (-1) -∗ (UkSh.ush_wcp Wc Wb l n 0%nat ∨ T) -∗
+       ⊢ upos γp n -∗ Ql (-1) -∗
+         ((∃ I : list (bv 8), ⌜length I = n⌝ ∗ UkSh.ush_wcp Wc Wb l I 0%nat)
+          ∨ T) -∗
          UkSh.ush_posb N γp T Wc Wb Pm l 0%nat) ->
     (forall x y : Z, Q x = Q y) ->
     kexec_image_ok sh_elf na alen afun sts W' ->
@@ -768,6 +781,13 @@ Section UShKernel.
         |==> ∃ f : nat -> bv 8, R γt γd γs ∗ ubytes γd sh_buf sh_nbuf f) -∗
     (* the deposit supplier and the three deposits, passed straight
        through: see [sh_uexec_slot] and [UkSh.sh_deps] *)
+    (* ...AND WHETHER THE PROCESS'S TABLE HOLDS A PIPE ROW (design/pipe.md,
+       "The exit path").  The run carries this between traps
+       ([UkRun.urun_nopipe]) and the exit leaf mints its bundle row off it,
+       so an entry is where it comes in.  sh's table is the exec'ing
+       process's ([SpecKexec.kexec_image_ok_fd]), and /init's holds no
+       pipe. *)
+    UkRun.urun_nopipe sts -∗
     udep -∗
     □ (T -∗ UkSh.sh_deps) -∗
     (* the tag's reading, passed straight through: see [sh_uexec_slot] *)
@@ -790,7 +810,8 @@ Section UShKernel.
     upos γp n -∗
     (* the lend, beside the position (lane KILL-PAY, K4(a); step 3) *)
     Ql (-1) -∗
-    (UkSh.ush_wcp Wc Wb (take NSTD sts) n 0%nat ∨ T) -∗
+    ((∃ I : list (bv 8), ⌜length I = n⌝
+        ∗ UkSh.ush_wcp Wc Wb (take NSTD sts) I 0%nat) ∨ T) -∗
     uslot W'.
   Proof.
     intros Hbd HQc Hok Hcwd0 Hroom Hlen Hlzf Hch0 Hpid1.
@@ -931,32 +952,34 @@ Section UShKernel.
   Lemma sh_image_entry_at (R : gname -> gname -> gname -> iProp Σ)
       (γp : gname) (cn : cons_names) (T K : iProp Σ)
       `{!Persistent T} `{!Persistent K}
-      (Q Ql : Z -> iProp Σ) (Pm : nat -> iProp Σ)
-      (Wc : nat -> nat -> iProp Σ) (Wb : nat -> iProp Σ)
+      (Q Ql : Z -> iProp Σ) (Pm : list (bv 8) -> iProp Σ)
+      (Wc : list (bv 8) -> nat -> iProp Σ) (Wb : list (bv 8) -> iProp Σ)
       (Hrl : forall (N : uk_names Σ) (l : list fdstate),
          ukn_pay N = Q -> ⊢ UkSh.ush_read_recv_leaf N γp T Pm cn l)
       (Hpm1 : forall (N : uk_names Σ) (i : nat),
-         ukn_pay N = Q -> ⊢ UkSh.ush_at N γp i -∗ UkSh.ush_lease N γp T Pm i)
-      (Hpm3 : forall (N : uk_names Σ) (i : nat),
-         ukn_pay N = Q -> ⊢ T -∗ Pm i -∗ UkSh.ush_at N γp i)
-      (Hpmwb : forall (N : uk_names Σ) (i : nat),
-         ukn_pay N = Q -> UkSh.ush_bnd i ->
-         ⊢ Pm i -∗ Wb i -∗ UkSh.ush_at N γp i)
-      (Hwc : forall n : nat,
-         ⊢ Pm (n + length EchoDisc.echo_line)%nat -∗ Wc n 2%nat -∗
-           Pm (n + length EchoDisc.echo_line)%nat
-           ∗ Wc (n + length EchoDisc.echo_line)%nat 3%nat)
-      (Hwbwc : forall n : nat, ⊢ Wb n -∗ Wc n 0%nat)
-      (Hwbl : forall n : nat, ⊢ Wc n 3%nat -∗ Wc n 0%nat)
-      (Hwbr : forall n : nat,
-         ⊢ Pm (n + length EchoDisc.echo_line)%nat -∗ Wb n -∗
-           Pm (n + length EchoDisc.echo_line)%nat ∗ T)
+         ukn_pay N = Q ->
+         ⊢ UkSh.ush_at N γp i -∗
+           ∃ I : list (bv 8), ⌜length I = i⌝ ∗ UkSh.ush_lease N γp T Pm I)
+      (Hpm3 : forall (N : uk_names Σ) (I : list (bv 8)),
+         ukn_pay N = Q -> ⊢ T -∗ Pm I -∗ UkSh.ush_at N γp (length I))
+      (Hpmwb : forall (N : uk_names Σ) (I : list (bv 8)),
+         ukn_pay N = Q ->
+         ⊢ Pm I -∗ Wb I -∗ UkSh.ush_at N γp (length I))
+      (Hwc : forall I l : list (bv 8), wl_nl ∉ l ->
+         ⊢ Pm (I ++ l ++ [wl_nl]) -∗ Wc I 2%nat -∗
+           Pm (I ++ l ++ [wl_nl]) ∗ Wc (I ++ l ++ [wl_nl]) 3%nat)
+      (Hwbwc : forall I : list (bv 8), ⊢ Wb I -∗ Wc I 0%nat)
+      (Hwbl : forall I : list (bv 8), ⊢ Wc I 3%nat -∗ Wc I 0%nat)
+      (Hwbr : forall I l : list (bv 8), wl_nl ∉ l ->
+         ⊢ Pm (I ++ l ++ [wl_nl]) -∗ Wb I -∗ Pm (I ++ l ++ [wl_nl]) ∗ T)
       (na : nat) (alen : nat -> nat) (afun : nat -> nat -> bv 8)
       (sts : list fdstate) (n0 n : nat)
       (cs : gset gname) (pidv : mword 32) :
     (forall (N : uk_names Σ) (l : list fdstate) (n : nat),
        ukn_pay N = Q ->
-       ⊢ upos γp n -∗ Ql (-1) -∗ (UkSh.ush_wcp Wc Wb l n 0%nat ∨ T) -∗
+       ⊢ upos γp n -∗ Ql (-1) -∗
+         ((∃ I : list (bv 8), ⌜length I = n⌝ ∗ UkSh.ush_wcp Wc Wb l I 0%nat)
+          ∨ T) -∗
          UkSh.ush_posb N γp T Wc Wb Pm l 0%nat) ->
     (forall x y : Z, Q x = Q y) ->
     kexec_sz sh_elf - PGSIZE + 8 * Z.of_nat (2 + (8 + (16 + (ush_Dbody + n0))))
@@ -976,6 +999,13 @@ Section UShKernel.
               (udata_lo (uvis_M W') (uvis_perm W') (uvis_sz W')),
            ubyte γd k b) -∗
         |==> ∃ f : nat -> bv 8, R γt γd γs ∗ ubytes γd sh_buf sh_nbuf f) -∗
+    (* ...AND WHETHER THE PROCESS'S TABLE HOLDS A PIPE ROW (design/pipe.md,
+       "The exit path").  The run carries this between traps
+       ([UkRun.urun_nopipe]) and the exit leaf mints its bundle row off it,
+       so an entry is where it comes in.  sh's table is the exec'ing
+       process's ([SpecKexec.kexec_image_ok_fd]), and /init's holds no
+       pipe. *)
+    UkRun.urun_nopipe sts -∗
     udep -∗
     □ (T -∗ UkSh.sh_deps) -∗
     UkSh.ush_tag_law T -∗
@@ -989,11 +1019,12 @@ Section UShKernel.
     image_entry_taint T Q uslot -∗
     image_entry_at sh_elf na alen afun sts FsImg.ROOTINO cs pidv Q
       (upos γp n ∗ Ql (-1)
-       ∗ (UkSh.ush_wcp Wc Wb (take NSTD sts) n 0%nat ∨ T))
+       ∗ ((∃ I : list (bv 8), ⌜length I = n⌝
+            ∗ UkSh.ush_wcp Wc Wb (take NSTD sts) I 0%nat) ∨ T))
       uslot.
   Proof.
     intros Hbd HQc Hroom Hlen -> Hpid1.
-    iIntros "#Hpay #Hdep #Hdp #Htag #Hplaw #Hrest #Hfd0 #Hin #Hgen".
+    iIntros "#Hpay #Hnpw #Hdep #Hdp #Htag #Hplaw #Hrest #Hfd0 #Hin #Hgen".
     rewrite /image_entry_at. iIntros "!>" (W')
       "%Hok %Hcwd0 %Hlzf %Hchq %Hpiq Hmp (Hpos & Hlease & Hwcp)".
     assert (Hch0 : uvis_ch W' = ∅) by exact Hchq.
@@ -1002,7 +1033,7 @@ Section UShKernel.
     iApply (sh_slot_of_kexec R γp cn T K Q Ql Pm Wc Wb Hrl Hpm1 Hpm3 Hpmwb
               Hwc Hwbwc Hwbl Hwbr na alen afun sts W' n0 n Hbd HQc Hok Hcwd0
               Hroom Hlen Hlzf Hch0 Hpid1'
-              with "[] Hdep Hdp Htag Hplaw Hrest Hfd0 [] [] Hmp Hpos Hlease
+              with "[] Hnpw Hdep Hdp Htag Hplaw Hrest Hfd0 [] [] Hmp Hpos Hlease
                     Hwcp").
     - (* the payload at THIS key, off the [∀]-over-keys wand *)
       iModIntro. iIntros (γt γd γs) "Hsz Hlo".

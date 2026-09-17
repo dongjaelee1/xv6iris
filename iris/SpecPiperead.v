@@ -44,6 +44,7 @@ Require Import KvmSpec.
 Require Import ProcPtOwn.
 Require Import FdSlots FileInvDefs ProcInv.
 Require Import PipeInvDefs.
+Require Import ChildTok.   (* [kill_shot]: the -1-by-kill exit's evidence *)
 Require Import SchedCtx.
 Require Export SwtchCtx.
 From Kernel Require KernelSyms.
@@ -73,7 +74,14 @@ Definition wp_piperead_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslot
     (γs : list gname) (j : nat) (γlp : gname)
     (γl : gname) (γp : pipe_names) (w : bool) (q : Qp)
     (m : regfile) (av : nat) (eb : bool)
-    (pid : mword 32) (U : ustate) (n : Z) (b : bool) (lks : gset string) :=
+    (pid : mword 32) (U : ustate) (n : Z) (b : bool) (lks : gset string)
+    (* THE CALLER'S CURSOR AND OBSERVATION FAMILIES over the pipe's byte
+       queue (design/pipe.md, "The byte queue"; [PipeQueue.pipe_rchain]):
+       [Q acc] is what the caller knows having taken [acc] out of the pipe,
+       [Qe acc s] what it asks to be told if the loop stops there because
+       the ring ran dry, at the ghost state [s] of that instant -- an
+       end-of-file when nothing was delivered ([pst_eof s]). *)
+    (Q : list (bv 8) -> iProp Σ) (Qe : list (bv 8) -> pipe_st -> iProp Σ) :=
   let pcE : mword 64 := mword_of_int KernelSyms.piperead in
   let pj := proc_addr j in
   let pi := m !!! Regidx (mword_of_int 10 : mword 5) in
@@ -103,6 +111,11 @@ Definition wp_piperead_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslot
   (* the pipe, and a share of one end -- the whole credential *)
   is_pipe γl γp pi -∗
   pipe_ref γp w q -∗
+  (* THE BYTE QUEUE'S PAYMENT: one link per byte the caller may take, each
+     told the byte it dequeues -- or the taint.  A link fires at the [sw]
+     of [nread++]; the observation fires where the copy loop breaks on an
+     empty ring. *)
+  pipe_rpay (pn_queue γp) Q Qe (Z.to_nat n) -∗
   (* the process block (copyout's tier is reached via proc_priv_copy) *)
   proc_priv_core pj pid U -∗
   kalloc_env γa None -∗
@@ -143,6 +156,15 @@ Definition wp_piperead_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslot
       cpu_own 0%nat eb pj b lks -∗
       pc_is ret_tgt -∗
       pipe_ref γp w q -∗
+      (* THE QUEUE'S POST ([PipeQueue.pipe_rpost]): the chain at the
+         dequeued bytes, which the window [bs] holds (a byte is dequeued
+         only once its copy-out succeeded, so the dequeued bytes ARE the
+         delivered ones), and the stop's reason -- request met, ring
+         observed empty (an end-of-file if nothing came), copy-out fault at
+         the entry table, or the kill shot -- or the taint with the payment
+         back. *)
+      pipe_rpost (pv_upt (us_V U)) (pn_queue γp) addr Q Qe (kill_shot (pv_gen (us_V U)))
+        (Z.to_nat n) d bs (mf !!! Regidx (mword_of_int 10 : mword 5)) -∗
       proc_priv_core pj pid
         (upd_usM (us_upt U P') (umem_wr (us_M U) addr d bs)) -∗
       WP (Loop : expr riscv_lang)) -∗
@@ -154,6 +176,7 @@ Module Type PIPEREAD.
       (γa : gname) (γf : gname) (γs : list gname) (j : nat) (γlp : gname)
       (γl : gname) (γp : pipe_names) (w : bool) (q : Qp)
       (m : regfile) (av : nat) (eb : bool)
-      (pid : mword 32) (U : ustate) (n : Z) (b : bool) (lks : gset string),
-      wp_piperead_sconf_body γa γf γs j γlp γl γp w q m av eb pid U n b lks.
+      (pid : mword 32) (U : ustate) (n : Z) (b : bool) (lks : gset string)
+      (Q : list (bv 8) -> iProp Σ) (Qe : list (bv 8) -> pipe_st -> iProp Σ),
+      wp_piperead_sconf_body γa γf γs j γlp γl γp w q m av eb pid U n b lks Q Qe.
 End PIPEREAD.

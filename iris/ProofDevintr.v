@@ -985,7 +985,7 @@ Section ProofDevintr.
         assert (Hpc50 : add_vec_int (mword_of_int (KernelSyms.devintr + 0x4e) : mword 64) 2 = mword_of_int (KernelSyms.devintr + 0x50)) by pcw.
         iEval (rewrite Hpc50) in "Hpc".
         (* +0x50: jal ra,uartintr *)
-        iApply (wp_jal_s_sconf (mword_of_int (KernelSyms.devintr + 0x50)) ra_idx (mword_of_int 2089902 : mword 21)
+        iApply (wp_jal_s_sconf (mword_of_int (KernelSyms.devintr + 0x50)) ra_idx (mword_of_int 2089918 : mword 21)
                   UA (av - 4)%nat false
                   ltac:(vm_compute; discriminate) ltac:(rdok) ltac:(vm_compute; reflexivity)
                   with "Hcg Hpc []").
@@ -996,7 +996,7 @@ Section ProofDevintr.
         change (<[Regidx ra_idx := regval_into_reg
             (add_vec_int (mword_of_int (KernelSyms.devintr + 0x50) : mword 64) 4)]> UA) with U0.
         assert (Hjui : add_vec (mword_of_int (KernelSyms.devintr + 0x50) : mword 64)
-                         (sign_extend' 64 (mword_of_int 2089902 : mword 21))
+                         (sign_extend' 64 (mword_of_int 2089918 : mword 21))
                        = mword_of_int KernelSyms.uartintr) by pcw.
         iEval (rewrite Hjui) in "Hpc".
         assert (HU0ra : U0 !!! Regidx ra_idx
@@ -1107,7 +1107,7 @@ Section ProofDevintr.
         assert (Hpc62 : add_vec_int (mword_of_int (KernelSyms.devintr + 0x60) : mword 64) 2 = mword_of_int (KernelSyms.devintr + 0x62)) by pcw.
         iEval (rewrite Hpc62) in "Hpc".
         (* +0x62: jal ra,uartintr *)
-        iApply (wp_jal_s_sconf (mword_of_int (KernelSyms.devintr + 0x62)) ra_idx (mword_of_int 2089884 : mword 21)
+        iApply (wp_jal_s_sconf (mword_of_int (KernelSyms.devintr + 0x62)) ra_idx (mword_of_int 2089900 : mword 21)
                   W1 (av - 4)%nat false
                   ltac:(vm_compute; discriminate) ltac:(rdok) ltac:(vm_compute; reflexivity)
                   with "Hcg Hpc []").
@@ -1118,7 +1118,7 @@ Section ProofDevintr.
         change (<[Regidx ra_idx := regval_into_reg
             (add_vec_int (mword_of_int (KernelSyms.devintr + 0x62) : mword 64) 4)]> W1) with W2.
         assert (Hjui1 : add_vec (mword_of_int (KernelSyms.devintr + 0x62) : mword 64)
-                          (sign_extend' 64 (mword_of_int 2089884 : mword 21))
+                          (sign_extend' 64 (mword_of_int 2089900 : mword 21))
                         = mword_of_int KernelSyms.uartintr) by pcw.
         iEval (rewrite Hjui1) in "Hpc".
         assert (HW2ra : W2 !!! Regidx ra_idx

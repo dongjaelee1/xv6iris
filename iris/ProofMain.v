@@ -479,13 +479,6 @@ Section ProofMain.
        and this.  Its partner is inside the port's invariant, and it is
        what licenses consoleintr's one log append per accepted byte. *)
     uart_log_hi γd (1/2) None -∗
-    (* ...AND THE ERA'S ECHO WINDOW TOKEN (lane CONS-IO milestone F), parked
-       in the SAME payload: the application minted it at this era's power-on
-       step and [RiscvAdequacy.power_boot_res] carried it here.  It is what
-       consoleintr's shift spends and its append repays, once per accepted
-       byte.  The second port has none: [WpUart.win_at] is [emp] at
-       [Uart1]. *)
-    riscv_win_res (S gen_id) -∗
     (* the consoleintr arm's half, parked in the same payload (redesign R2) *)
     uart_arm γd (1/2) None -∗
     uart_dlab_is γd (DfracOwn (1/2)) b0 -∗
@@ -545,7 +538,7 @@ Section ProofMain.
   Proof.
     intros Hn Hcnu Hconsq.
     iIntros "Hcg #Htext #Hkdata #Hdev Hpc Hfree Hcpu Hlcons Hltx0 Hltx1 Hlpr".
-    iIntros "Hkprintk Hdevsw Hrest Hring Hclean Htx Hsent Hlb Htok Hhi Hlgh Hwin Harm Hdlab".
+    iIntros "Hkprintk Hdevsw Hrest Hring Hclean Htx Hsent Hlb Htok Hhi Hlgh Harm Hdlab".
     iIntros "#Hplic #Hpinned #Huinv1 #Hubw0 #Hurw0 #Hubw1 #Hurw1".
     iIntros "Htx1 Hsent1 Hlb1 Htok1 Hhi1 Hlgh1 Harm1 Hdlab1 #Hecho Hcont".
     iPoseProof (dev_inv_uart with "Hdev") as "#Huinv".
@@ -616,12 +609,10 @@ Section ProofMain.
     iApply fupd_wp.
     iMod (uart_rx_tok_deposit ⊤ γd γd1 Uart0 ktok hltok None None
             ltac:(solve_ndisj) (ohist_le_none hltok) (ohist_le_none hltok)
-            with "Hplic Htok Hhi Hlgh Harm [Hwin]") as "#Hinit".
-    { iApply (win_at_uart0_intro with "Hwin"). }
+            with "Hplic Htok Hhi Hlgh Harm") as "#Hinit".
     iMod (uart_rx_tok_deposit ⊤ γd γd1 Uart1 ktok1 hltok1 None None
             ltac:(solve_ndisj) (ohist_le_none hltok1) (ohist_le_none hltok1)
-            with "Hplic Htok1 Hhi1 Hlgh1 Harm1 []") as "#Hinit1";
-      [ iApply win_at_uart1 |].
+            with "Hplic Htok1 Hhi1 Hlgh1 Harm1") as "#Hinit1".
     (* [plic_unames γd γd1 Uart0] IS [γd] and [... Uart1] IS [γd1], by iota on
        the port; normalising the two one-shots here keeps every later
        [iFrame] a syntactic match rather than a conversion. *)
@@ -1442,7 +1433,7 @@ Section ProofMain.
     iDestruct "Hltick" as (vtl vtn vtc) "(Htw & Htn & Htc)".
     (* ---- +0x7e jal trapinit ---- *)
     iApply (wp_jal_s_sconf (mword_of_int (KernelSyms.main + 0x7e)) (mword_of_int 1 : mword 5)
-              (mword_of_int 5570 : mword 21) m n false
+              (mword_of_int 5554 : mword 21) m n false
               ltac:(vm_compute; discriminate) ltac:(rdok)
               ltac:(vm_compute; reflexivity) with "Hcg Hpc []").
     { iApply (mni_7e with "Htext"). }
@@ -1451,7 +1442,7 @@ Section ProofMain.
     pose (T1 := <[Regidx (mword_of_int 1 : mword 5) := regval_into_reg
         (add_vec_int (mword_of_int (KernelSyms.main + 0x7e) : mword 64) 4)]> m).
     assert (Htgtti : add_vec (mword_of_int (KernelSyms.main + 0x7e) : mword 64)
-              (sign_extend' 64 (mword_of_int 5570 : mword 21))
+              (sign_extend' 64 (mword_of_int 5554 : mword 21))
               = (mword_of_int KernelSyms.trapinit : mword 64))
       by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Htgtti) in "Hpc".
@@ -1482,7 +1473,7 @@ Section ProofMain.
     iEval (rewrite Hretti) in "Hpc".
     (* ---- +0x82 jal trapinithart ---- *)
     iApply (wp_jal_s_sconf (mword_of_int (KernelSyms.main + 0x82)) (mword_of_int 1 : mword 5)
-              (mword_of_int 5602 : mword 21) mt n false
+              (mword_of_int 5586 : mword 21) mt n false
               ltac:(vm_compute; discriminate) ltac:(rdok)
               ltac:(vm_compute; reflexivity) with "Hcg Hpc []").
     { iApply (mni_82 with "Htext"). }
@@ -1491,7 +1482,7 @@ Section ProofMain.
     pose (T2 := <[Regidx (mword_of_int 1 : mword 5) := regval_into_reg
         (add_vec_int (mword_of_int (KernelSyms.main + 0x82) : mword 64) 4)]> mt).
     assert (Htgtth : add_vec (mword_of_int (KernelSyms.main + 0x82) : mword 64)
-              (sign_extend' 64 (mword_of_int 5602 : mword 21))
+              (sign_extend' 64 (mword_of_int 5586 : mword 21))
               = (mword_of_int KernelSyms.trapinithart : mword 64))
       by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Htgtth) in "Hpc".
@@ -1508,7 +1499,7 @@ Section ProofMain.
        contract's credentials are finally all in hand. *)
     (* ---- +0x86 jal plicinit ---- *)
     iApply (wp_jal_s_sconf (mword_of_int (KernelSyms.main + 0x86)) (mword_of_int 1 : mword 5)
-              (mword_of_int 18330 : mword 21) mth n false
+              (mword_of_int 18314 : mword 21) mth n false
               ltac:(vm_compute; discriminate) ltac:(rdok)
               ltac:(vm_compute; reflexivity) with "Hcg Hpc []").
     { iApply (mni_86 with "Htext"). }
@@ -1517,7 +1508,7 @@ Section ProofMain.
     pose (T3 := <[Regidx (mword_of_int 1 : mword 5) := regval_into_reg
         (add_vec_int (mword_of_int (KernelSyms.main + 0x86) : mword 64) 4)]> mth).
     assert (Htgtpl : add_vec (mword_of_int (KernelSyms.main + 0x86) : mword 64)
-              (sign_extend' 64 (mword_of_int 18330 : mword 21))
+              (sign_extend' 64 (mword_of_int 18314 : mword 21))
               = (mword_of_int KernelSyms.plicinit : mword 64))
       by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Htgtpl) in "Hpc".
@@ -1532,7 +1523,7 @@ Section ProofMain.
     iEval (rewrite Hretpl) in "Hpc".
     (* ---- +0x8a jal plicinithart ---- *)
     iApply (wp_jal_s_sconf (mword_of_int (KernelSyms.main + 0x8a)) (mword_of_int 1 : mword 5)
-              (mword_of_int 18354 : mword 21) mpl n false
+              (mword_of_int 18338 : mword 21) mpl n false
               ltac:(vm_compute; discriminate) ltac:(rdok)
               ltac:(vm_compute; reflexivity) with "Hcg Hpc []").
     { iApply (mni_8a with "Htext"). }
@@ -1541,7 +1532,7 @@ Section ProofMain.
     pose (T4 := <[Regidx (mword_of_int 1 : mword 5) := regval_into_reg
         (add_vec_int (mword_of_int (KernelSyms.main + 0x8a) : mword 64) 4)]> mpl).
     assert (Htgtph : add_vec (mword_of_int (KernelSyms.main + 0x8a) : mword 64)
-              (sign_extend' 64 (mword_of_int 18354 : mword 21))
+              (sign_extend' 64 (mword_of_int 18338 : mword 21))
               = (mword_of_int KernelSyms.plicinithart : mword 64))
       by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Htgtph) in "Hpc".
@@ -1792,7 +1783,7 @@ Section ProofMain.
       rewrite !avail_sub_Some. split; [reflexivity | lia]. }
     (* ---- +0x8e jal binit ---- *)
     iApply (wp_jal_s_sconf (mword_of_int (KernelSyms.main + 0x8e)) (mword_of_int 1 : mword 5)
-              (mword_of_int 7300 : mword 21) m n false
+              (mword_of_int 7284 : mword 21) m n false
               ltac:(vm_compute; discriminate) ltac:(rdok)
               ltac:(vm_compute; reflexivity) with "Hcg Hpc []").
     { iApply (mni_8e with "Htext"). }
@@ -1801,7 +1792,7 @@ Section ProofMain.
     pose (F1 := <[Regidx (mword_of_int 1 : mword 5) := regval_into_reg
         (add_vec_int (mword_of_int (KernelSyms.main + 0x8e) : mword 64) 4)]> m).
     assert (Htgtbi : add_vec (mword_of_int (KernelSyms.main + 0x8e) : mword 64)
-              (sign_extend' 64 (mword_of_int 7300 : mword 21))
+              (sign_extend' 64 (mword_of_int 7284 : mword 21))
               = (mword_of_int KernelSyms.binit : mword 64))
       by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Htgtbi) in "Hpc".
@@ -1847,7 +1838,7 @@ Section ProofMain.
     iModIntro.
     (* ---- +0x92 jal iinit ---- *)
     iApply (wp_jal_s_sconf (mword_of_int (KernelSyms.main + 0x92)) (mword_of_int 1 : mword 5)
-              (mword_of_int 8662 : mword 21) mbi n false
+              (mword_of_int 8646 : mword 21) mbi n false
               ltac:(vm_compute; discriminate) ltac:(rdok)
               ltac:(vm_compute; reflexivity) with "Hcg Hpc []").
     { iApply (mni_92 with "Htext"). }
@@ -1856,7 +1847,7 @@ Section ProofMain.
     pose (F2 := <[Regidx (mword_of_int 1 : mword 5) := regval_into_reg
         (add_vec_int (mword_of_int (KernelSyms.main + 0x92) : mword 64) 4)]> mbi).
     assert (Htgtii : add_vec (mword_of_int (KernelSyms.main + 0x92) : mword 64)
-              (sign_extend' 64 (mword_of_int 8662 : mword 21))
+              (sign_extend' 64 (mword_of_int 8646 : mword 21))
               = (mword_of_int KernelSyms.iinit : mword 64))
       by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Htgtii) in "Hpc".
@@ -1918,7 +1909,7 @@ Section ProofMain.
     iModIntro.
     (* ---- +0x96 jal fileinit ---- *)
     iApply (wp_jal_s_sconf (mword_of_int (KernelSyms.main + 0x96)) (mword_of_int 1 : mword 5)
-              (mword_of_int 12790 : mword 21) mii n false
+              (mword_of_int 12774 : mword 21) mii n false
               ltac:(vm_compute; discriminate) ltac:(rdok)
               ltac:(vm_compute; reflexivity) with "Hcg Hpc []").
     { iApply (mni_96 with "Htext"). }
@@ -1927,7 +1918,7 @@ Section ProofMain.
     pose (F3 := <[Regidx (mword_of_int 1 : mword 5) := regval_into_reg
         (add_vec_int (mword_of_int (KernelSyms.main + 0x96) : mword 64) 4)]> mii).
     assert (Htgtfi : add_vec (mword_of_int (KernelSyms.main + 0x96) : mword 64)
-              (sign_extend' 64 (mword_of_int 12790 : mword 21))
+              (sign_extend' 64 (mword_of_int 12774 : mword 21))
               = (mword_of_int KernelSyms.fileinit : mword 64))
       by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Htgtfi) in "Hpc".
@@ -1967,7 +1958,7 @@ Section ProofMain.
     iEval (rewrite Hretfi) in "Hpc".
     (* ---- +0x9a jal virtio_disk_init ---- *)
     iApply (wp_jal_s_sconf (mword_of_int (KernelSyms.main + 0x9a)) (mword_of_int 1 : mword 5)
-              (mword_of_int 18580 : mword 21) mfi n false
+              (mword_of_int 18564 : mword 21) mfi n false
               ltac:(vm_compute; discriminate) ltac:(rdok)
               ltac:(vm_compute; reflexivity) with "Hcg Hpc []").
     { iApply (mni_9a with "Htext"). }
@@ -1976,7 +1967,7 @@ Section ProofMain.
     pose (F4 := <[Regidx (mword_of_int 1 : mword 5) := regval_into_reg
         (add_vec_int (mword_of_int (KernelSyms.main + 0x9a) : mword 64) 4)]> mfi).
     assert (Htgtvd : add_vec (mword_of_int (KernelSyms.main + 0x9a) : mword 64)
-              (sign_extend' 64 (mword_of_int 18580 : mword 21))
+              (sign_extend' 64 (mword_of_int 18564 : mword 21))
               = (mword_of_int KernelSyms.virtio_disk_init : mword 64))
       by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Htgtvd) in "Hpc".
@@ -2052,7 +2043,7 @@ Section ProofMain.
     iModIntro.
     (* ---- +0x9e jal userinit ---- *)
     iApply (wp_jal_s_sconf (mword_of_int (KernelSyms.main + 0x9e)) (mword_of_int 1 : mword 5)
-              (mword_of_int 3362 : mword 21) mvd n false
+              (mword_of_int 3346 : mword 21) mvd n false
               ltac:(vm_compute; discriminate) ltac:(rdok)
               ltac:(vm_compute; reflexivity) with "Hcg Hpc []").
     { iApply (mni_9e with "Htext"). }
@@ -2061,7 +2052,7 @@ Section ProofMain.
     pose (F5 := <[Regidx (mword_of_int 1 : mword 5) := regval_into_reg
         (add_vec_int (mword_of_int (KernelSyms.main + 0x9e) : mword 64) 4)]> mvd).
     assert (Htgtui : add_vec (mword_of_int (KernelSyms.main + 0x9e) : mword 64)
-              (sign_extend' 64 (mword_of_int 3362 : mword 21))
+              (sign_extend' 64 (mword_of_int 3346 : mword 21))
               = (mword_of_int KernelSyms.userinit : mword 64))
       by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Htgtui) in "Hpc".
@@ -2389,7 +2380,7 @@ Section ProofMain.
     iEval (rewrite Htgtj) in "Hpc".
     (* ---- +0x3e jal scheduler : main's exit; scheduler never returns ---- *)
     iApply (wp_jal_s_sconf (mword_of_int (KernelSyms.main + 0x3e)) (mword_of_int 1 : mword 5)
-              (mword_of_int 3886 : mword 21) S3 n false
+              (mword_of_int 3870 : mword 21) S3 n false
               ltac:(vm_compute; discriminate) ltac:(rdok)
               ltac:(vm_compute; reflexivity) with "Hcg Hpc []").
     { iApply (mni_3e with "Htext"). }
@@ -2398,7 +2389,7 @@ Section ProofMain.
     pose (SS := <[Regidx (mword_of_int 1 : mword 5) := regval_into_reg
         (add_vec_int (mword_of_int (KernelSyms.main + 0x3e) : mword 64) 4)]> S3).
     assert (Htgtsc : add_vec (mword_of_int (KernelSyms.main + 0x3e) : mword 64)
-              (sign_extend' 64 (mword_of_int 3886 : mword 21))
+              (sign_extend' 64 (mword_of_int 3870 : mword 21))
               = (mword_of_int KernelSyms.scheduler : mword 64))
       by (apply bv_eq; vm_compute; reflexivity).
     iEval (rewrite Htgtsc) in "Hpc".
@@ -2453,7 +2444,7 @@ Section ProofMain.
        ([mn_grp_kvm]).  Split at the top rather than threaded group to
        group -- [SpecMain.wp_main_sconf_body]'s premise stays one row. *)
     iDestruct (WaitInv.children_boot_split with "Hchb") as "[Hipt Hchb]".
-    iIntros "#Hdev #Hwire Hbundle Htx Hsent Hlb Htok Hhi Hlgh Hwin Harm Hdlab".
+    iIntros "#Hdev #Hwire Hbundle Htx Hsent Hlb Htok Hhi Hlgh Harm Hdlab".
     (* ---- THE SECOND PORT'S THIRTEEN ROWS (bump 163d39b), all of them out
        of [BootShared.boot_shared_alloc] and none derivable below the boot
        chain: UART1's own invariant, the PLIC's at the two CONCRETE bundles
@@ -2554,7 +2545,7 @@ Section ProofMain.
               Hcnu Hconsq
               with "Hcg Htext Hkdata Hdev Hpc Hfree Hcpu Hlcons Hltx0 Hltx1 Hlpr
                     Hkprintk Hdevsw Hdevrest Hring Hclean Htx Hsent Hlb Htok
-                    Hhi Hlgh Hwin Harm Hdlab
+                    Hhi Hlgh Harm Hdlab
                     Hplic Hpinned Huinv1 Hubw0 Hurw0 Hubw1 Hurw1
                     Htx1 Hsent1 Hlb1 Htok1 Hhi1 Hlgh1 Harm1 Hdlab1 Hecho").
     iIntros (m2) "Hcg Hpc Hfree Hcpu #Hpenv #Hccaps #Hu1caps #Hcready".

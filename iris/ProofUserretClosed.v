@@ -477,7 +477,9 @@ Section UserretClosed.
       - iSplitR.
         + (* the bundle row excludes fork by its own guard *)
           iIntros (n) "%Hg". exfalso.
-          destruct Hg as (_ & Hgn & _ & Hgf). apply Hgf. rewrite <- Hgn.
+          (* the guard lost its exit exclusion: exit deposits a bundle row
+             like any returning number now (design/pipe.md, "The exit path") *)
+          destruct Hg as (_ & Hgn & Hgf). apply Hgf. rewrite <- Hgn.
           exact (eq_trans (uvis_run_num W) Hfk).
         + (* THE CHILD'S CONTINUATION.  The deposit's key is the TRAPPED
              frame bumped and the row's is the RUN projection's bumped, and
@@ -487,8 +489,6 @@ Section UserretClosed.
           rewrite /uexec_dep /uexec_dep_F. cbv zeta.
           destruct (decide (sc = uecall_scause)) as [_ | Hc];
             [ | exfalso; exact (Hc (proj1 Hg)) ].
-          destruct (decide (usys_num (uvis_tf W) = USYS_exit)) as [He | _];
-            [ exfalso; rewrite Hfk in He; discriminate He | ].
           destruct (decide (usys_num (uvis_tf W) = USYS_fork)) as [_ | Hc];
             [ | exfalso; exact (Hc Hfk) ].
           (* THE CHILD'S PID IS ∀-BOUND, beside its generation: the process
@@ -536,15 +536,13 @@ Section UserretClosed.
              key, which reads the same image, argument words and descriptor
              view ([UexecApply.uvis_run_arg0] / [_arg1] / [_arg2]) *)
           iIntros (n) "%Hg".
-          destruct Hg as (Hgc & Hgn & Hgx & Hgf).
+          destruct Hg as (Hgc & Hgn & Hgf).
           assert (Hn : usys_num (uvis_tf W) = n)
             by (rewrite <- (uvis_run_num W); exact Hgn).
           rewrite /uexec_dep /uexec_dep_F. cbv zeta.
           destruct (decide (sc = uecall_scause)) as [_ | Hc];
             [ | exfalso; exact (Hc Hgc) ].
           rewrite Hn.
-          destruct (decide (n = USYS_exit)) as [He | _];
-            [ exfalso; exact (Hgx He) | ].
           destruct (decide (n = USYS_fork)) as [He | _];
             [ exfalso; exact (Hgf He) | ].
           match goal with
@@ -582,19 +580,23 @@ Section UserretClosed.
            the arm stays here for the round.  THE KEY IS THE LOOP'S OWN
            ([uvis_run W]): the rows carry it opaque, so nothing has to be
            transported across the save walk. ---- *)
+    (* ...AND THE KEY'S TABLE IS THE ROUND'S (design/pipe.md, "The exit
+       path"): the row is stated at the loop's own key, whose descriptor
+       view IS the [sts] this round runs at, so the new conjunct is
+       [reflexivity] exactly as the generation's is. *)
     iAssert (SpecUsertrap.ut_kill_in fdep sc (uvis_run W)
-               (uvis_gen W) ∗
+               (uvis_gen W) (uvis_fd W) ∗
              (if decide (sc = uecall_scause) then uexec_arm sc W fdep
               else emp))%I with "[Hret]" as "[Hkin Hret]".
     { rewrite /SpecUsertrap.ut_kill_in.
       destruct (decide (sc = uecall_scause)) as [Hec | Hne].
       - iSplitR; [ iSplitR; [ | done ];
-                   iPureIntro; cbn [uvis_run uvis_of_run uvis_gen];
-                   reflexivity
+                   iPureIntro; cbn [uvis_run uvis_of_run uvis_gen uvis_fd];
+                   split; reflexivity
                  | iExact "Hret" ].
       - iSplitL; [ | done ].
-        iSplitR; [ iPureIntro; cbn [uvis_run uvis_of_run uvis_gen];
-                   reflexivity | ].
+        iSplitR; [ iPureIntro; cbn [uvis_run uvis_of_run uvis_gen uvis_fd];
+                   split; reflexivity | ].
         iEval (rewrite (uexec_arm_run sc W fdep Hlen)) in "Hret".
         rewrite (uexec_arm_transparent sc (uvis_run W) fdep Hne).
         iExact "Hret". }

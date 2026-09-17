@@ -445,17 +445,24 @@ Section UEchoKernel.
     udepw_law 16 -∗
     (* THE PAY FACT, at the trivial payload: echo's exit owes its parent
        nothing this lane ([UkRun.ukn_pay] is what the record carries). *)
+    (* ...AND WHETHER THE PROCESS'S TABLE HOLDS A PIPE ROW (design/pipe.md,
+       "The exit path").  The run carries this between traps
+       ([UkRun.urun_nopipe]) and the exit leaf mints its bundle row off it,
+       so an entry is where it comes in.  This program's table is the
+       exec'ing process's ([SpecKexec.kexec_image_ok_fd]) and what says so
+       reaches here from the caller. *)
+    UkRun.urun_nopipe (uvis_fd W) -∗
     udep -∗ my_pay (uvis_gen W) (fun _ => True)%I -∗ uslot W.
   Proof.
     intros Hpc Hsub Hx Hroom Hal8 Hstk Hargs Havd Havs Hfdlen Hstop Hlzf.
-    iIntros "#Hwr #Hdep #Hpay".
+    iIntros "#Hwr #Hnpw #Hdep #Hpay".
     assert (Hsp0 : 0 <= uint (uvis_sp W)) by lia.
     assert (Hargc0 : 0 <= uvis_argc W)
       by exact (proj1 (uka_argc _ _ _ _ _ _ Hargs)).
     iApply (uslot_of_urun_ro W 12 (fun _ => True)%I
               Hal8
               ltac:(unfold uvis_sp in Hroom; lia) Hstk Hfdlen Hstop Hlzf
-              with "Hdep Hpay").
+              with "Hdep Hnpw Hpay").
     (* echo makes no descriptor call, so its ledger is dropped here *)
     (* echo makes no descriptor call, no chdir and no fork, so its ledger,
        its working directory and its children set are all dropped here *)

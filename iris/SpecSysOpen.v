@@ -1109,7 +1109,8 @@ Section SysOpenArms.
                   that can state it about an ARBITRARY open:
                   [UsysMemOk.usys_fd_ok]'s open arm, whence the generic
                   tier's [usys_fd_ok_parked]. *)
-               /\ fdst_parked (FdOpen rb wb t))⌝
+               /\ fdst_parked (FdOpen rb wb t)
+               /\ fdst_nopipe (FdOpen rb wb t))⌝
         ∗ proc_priv γf p pid UW'
         ∗ fd_frags (pv_fdg (us_V UW)) sts'
         ∗ fd_slot
@@ -1133,7 +1134,7 @@ Section SysOpenArms.
         iSplitR; [ iPureIntro; right; exists fd, l, k, (om_readable vom), (om_writable vom), (FdDevice ma);
                    split_and!;
                      [ exact Hr | exact Hfl | reflexivity
-                     | exact Hcl | exact Hins | exact (fdst_parked_dev _ _ ma) ] | ].
+                     | exact Hcl | exact Hins | exact (fdst_parked_dev _ _ ma) | exact (fdst_nopipe_dev _ _ ma) ] | ].
         iFrame "Hpriv Hb Hslot". iRight.
         iExists pl, av, i.
         iSplitR; [ iPureIntro; exact Hpl | ]. iFrame "HP". iLeft.
@@ -1152,7 +1153,7 @@ Section SysOpenArms.
         iSplitR; [ iPureIntro; right; exists fd, l, k, (om_readable vom), (om_writable vom), (FdInode i go OffParked);
                    split_and!;
                      [ exact Hr | exact Hfl | reflexivity
-                     | exact Hcl | exact Hins | exact (fdst_parked_inode _ _ i go) ] | ].
+                     | exact Hcl | exact Hins | exact (fdst_parked_inode _ _ i go) | exact (fdst_nopipe_inode _ _ i go _) ] | ].
         iFrame "Hpriv Hb Hslot". iRight.
         iExists pl, av, i.
         iSplitR; [ iPureIntro; exact Hpl | ]. iFrame "HP". iRight. iLeft.
@@ -1170,7 +1171,7 @@ Section SysOpenArms.
         iSplitR; [ iPureIntro; right; exists fd, l, k, true, false, (FdInode i go OffParked);
                    split_and!;
                      [ exact Hr | exact Hfl | reflexivity
-                     | exact Hcl | exact Hins | exact (fdst_parked_inode _ _ i go) ] | ].
+                     | exact Hcl | exact Hins | exact (fdst_parked_inode _ _ i go) | exact (fdst_nopipe_inode _ _ i go _) ] | ].
         iFrame "Hpriv Hb Hslot". iRight.
         iExists pl, av, i.
         iSplitR; [ iPureIntro; exact Hpl | ]. iFrame "HP". iRight. iRight.
@@ -1218,7 +1219,8 @@ Section SysOpenArms.
                   that can state it about an ARBITRARY open:
                   [UsysMemOk.usys_fd_ok]'s open arm, whence the generic
                   tier's [usys_fd_ok_parked]. *)
-               /\ fdst_parked (FdOpen rb wb t))⌝
+               /\ fdst_parked (FdOpen rb wb t)
+               /\ fdst_nopipe (FdOpen rb wb t))⌝
         ∗ proc_priv γf p pid UW'
         ∗ fd_frags (pv_fdg (us_V UW)) sts'
         ∗ fd_slot
@@ -1245,7 +1247,7 @@ Section SysOpenArms.
         iSplitR; [ iPureIntro; right; exists fd, l, k, (om_readable vom), (om_writable vom), (FdInode i go OffParked);
                    split_and!;
                      [ exact Hr | exact Hfl | reflexivity
-                     | exact Hcl | exact Hins | exact (fdst_parked_inode _ _ i go) ] | ].
+                     | exact Hcl | exact Hins | exact (fdst_parked_inode _ _ i go) | exact (fdst_nopipe_inode _ _ i go _) ] | ].
         iFrame "Hpriv Hb Hslot". iRight.
         iExists pl, d, i, nm.
         iSplitR; [ iPureIntro; exact Hpl | ].
@@ -1272,7 +1274,7 @@ Section SysOpenArms.
           iSplitR; [ iPureIntro; right; exists fd, l, k, (om_readable vom), (om_writable vom), (FdInode i go OffParked);
                      split_and!;
                        [ exact Hr | exact Hfl | reflexivity
-                     | exact Hcl | exact Hins | exact (fdst_parked_inode _ _ i go) ] | ].
+                     | exact Hcl | exact Hins | exact (fdst_parked_inode _ _ i go) | exact (fdst_nopipe_inode _ _ i go _) ] | ].
           iFrame "Hpriv Hb Hslot". iRight.
           iExists pl, d, i, nm.
           iSplitR; [ iPureIntro; exact Hpl | ].
@@ -1296,7 +1298,7 @@ Section SysOpenArms.
           iSplitR; [ iPureIntro; right; exists fd, l, k, (om_readable vom), (om_writable vom), (FdDevice ma);
                      split_and!;
                        [ exact Hr | exact Hfl | reflexivity
-                     | exact Hcl | exact Hins | exact (fdst_parked_dev _ _ ma) ] | ].
+                     | exact Hcl | exact Hins | exact (fdst_parked_dev _ _ ma) | exact (fdst_nopipe_dev _ _ ma) ] | ].
           iFrame "Hpriv Hb Hslot". iRight.
           iExists pl, d, i, nm.
           iSplitR; [ iPureIntro; exact Hpl | ].
@@ -1353,7 +1355,8 @@ Section SysOpenArms.
                   that can state it about an ARBITRARY open:
                   [UsysMemOk.usys_fd_ok]'s open arm, whence the generic
                   tier's [usys_fd_ok_parked]. *)
-               /\ fdst_parked (FdOpen rb wb t))⌝
+               /\ fdst_parked (FdOpen rb wb t)
+               /\ fdst_nopipe (FdOpen rb wb t))⌝
         ∗ proc_priv γf p pid UW'
         ∗ fd_frags (pv_fdg (us_V UW)) sts'
         ∗ fd_slot

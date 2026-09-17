@@ -69,7 +69,7 @@ Require Import SpecFilewrite.      (* [filewrite_in] / [filewrite_extra] *)
 Require Import SpecConsolewrite.   (* [cons_out_chain] *)
 Require Import SpecSysRead.        (* [sys_rw_count] *)
 Require Import PipeInvDefs.        (* [pipe_rw_ret]: what [filewrite_ret] is *)
-Require Import WpUart.             (* [out_licence] / [out_link] *)
+Require Import WpUart.             (* [cons_licence] / [out_link] *)
 Require Import ConsoleInv.         (* [CONSOLE] *)
 Require Import CtxIdDefs.
 Local Open Scope Z_scope.
@@ -142,7 +142,11 @@ Section UkWriteLeaf.
        rf_ret   := fun _ _ => True%I;
        (* the console's input link, at the trivial claim (lane CONS-IO,
           milestone B): this program says nothing about what it read *)
-       rf_in    := fun _ => True%I |}.
+       rf_in    := fun _ => True%I ;
+       rf_pq    := fun _ => True%I;
+       rf_pqe   := fun _ _ => True%I;
+       wf_Qe    := fun _ _ => True%I;
+       cl_P     := True%I |}.
 
   (* the payload row [UkRun.udepwf_std] asks for, by computation *)
   Lemma xfam_wr_pay (Q : nat -> iProp Σ) (Xp : Z -> iProp Σ) :
@@ -175,7 +179,7 @@ Section UkWriteLeaf.
     tf_w (uvis_tf W) (tf_arg_idx 2) = v2 ->
     uvis_fd W = sts ->
     uvis_M W = Mv ->
-    filewrite_in (fd_st_of_key v0 sts) (sys_rw_count v2) Mv v1 (wf_Q f) -∗
+    filewrite_in (fd_st_of_key v0 sts) (sys_rw_count v2) Mv v1 (wf_Q f) (wf_Qe f) -∗
     sbundle_at X 16 f W.
   Proof.
     intros H0 H1 H2 Hfd HM. iIntros "H".
@@ -204,7 +208,8 @@ Section UkWriteLeaf.
       ⌜perm_of (ud_um P) (uvis_sz W) = uvis_perm W⌝ ∗
       ⌜ProcPtOwn.proc_pt_wf P⌝ ∗
       ⌜uvis_lazy W = false -> lazy_free (ud_um P) (uvis_sz W)⌝ ∗
-      filewrite_extra P (fd_st_of_key v0 sts) (sys_rw_count v2) Mv v1 (wf_Q f) r.
+      filewrite_extra (uvis_gen W) P (fd_st_of_key v0 sts) (sys_rw_count v2) Mv v1
+        (wf_Q f) (wf_Qe f) r.
   Proof.
     intros H0 H1 H2 Hfd HM. iIntros "H".
     rewrite -H0 -H1 -H2 -Hfd -HM.
@@ -330,7 +335,7 @@ Section UkWriteLeaf.
   Lemma cons_out_chain_of_licence_bnd (M : gmap Z (bv 8)) (ua : mword 64)
       (Q : nat -> iProp Σ) (k cnt : nat) :
     (forall j : nat, (k <= j <= k + cnt)%nat -> ⊢ Q j) ->
-    out_licence -∗ cons_out_chain (S gen_id) M ua Q k cnt.
+    cons_licence -∗ cons_out_chain (S gen_id) M ua Q k cnt.
   Proof.
     revert k. induction cnt as [| cnt IH]; intros k HQ.
     - iIntros "_". cbn [cons_out_chain].
@@ -350,7 +355,7 @@ Section UkWriteLeaf.
     (i < NSTD)%nat ->
     l !! i = Some (FdOpen rb true (FdDevice mj)) ->
     sys_rw_count (m !!! Regidx a2_idx) = 2 ->
-    out_licence -∗
+    cons_licence -∗
     udepwf_std N m pc 16 (xfam_wr uwr_demo_Q (ukn_pay N)) l.
   Proof.
     intros H0 Hi Hli Hcnt. iIntros "#Hlic".

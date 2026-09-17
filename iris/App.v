@@ -145,80 +145,47 @@ Record xv6_app (Σ : gFunctors) := MkApp {
   app_boot  : app_fixed -> nat -> app_names -> iProp Σ;
   (* the trace ledger, at the fixed part (section 4) *)
   app_R     : app_fixed -> list mobs -> iProp Σ;
-  (* THE INPUT TAG (app-echo.md lane L5): what the application claims of a
-     byte the environment pushed, at the history it arrived at.  Persistent
-     (the obligation [Htagp] below), because the UART's receive column keeps
-     one per queued byte and every reader copies it out.  It is the record's
-     entry for the machine's ambient [RiscvPtsto.riscv_rx_tag]. *)
-  app_tag   : app_fixed -> list mobs -> iProp Σ;
-  (* THE KILL CREDENTIAL (app-echo.md lane KILL-PAY, K1): what the
-     application charges for a kill.  The record's entry for the machine's
-     ambient [RiscvPtsto.riscv_kill_cred]: a kill is legal, and every party
-     it touches -- the killer, the killed slot's public payload, the trap
-     that observes [p->killed], the -1 the process exits with, the -1 a
-     console read returns -- is handed this.  A verified continuation
-     therefore goes GENERIC where a kill could have happened, instead of
-     being refuted.
-     PERSISTENT and TIMELESS (the obligations [Hkillp]/[Hkillt] below), and
-     BOUGHT BY THE SUPPLY ([Happ_kill]): the generic user-execution slot
-     runs on [AppInv.app_sup_raw], so the credential has to be free to
-     anything that already holds the application's supply -- which is what
-     lets the kernel charge the kill price at a trap it cannot rule out
-     without charging any verified program.  For echo it is the TAINT
-     ([AppEcho.echo_taint], bought by [echo_taint_of_sup]); [True] for an
-     application that puts no price on a kill. *)
-  app_kill  : app_fixed -> iProp Σ;
-  (* THE OUTPUT CLAIM (app-echo.md, "THE OWNER'S REDESIGN OF THE UART
-     OUTPUT SIDE", lane OUT-FUPD): what the application claims of the RAW
-     BYTES the CONSOLE UART has ACCEPTED, read against an INPUT HISTORY --
-     a real prefix of the run's observation trace.  A RESOURCE and not a
-     [Prop], because a pure predicate cannot say WHO may write and the
-     console echo's shift is then unprovable against an impostor's byte
-     ([RiscvPtsto.riscv_out_res]'s paragraph is the argument).  It is the
-     record's entry for that field; its FOUNDING is the transport's
-     ([Happ_boot]'s third component) and not an obligation of its own.
+  (* THE APPLICATION'S CONSOLE INTERFACE, as ONE field (redesign R4), and
+     the machine's [RiscvPtsto.riscvF_app_iface] is set from it.  Its three
+     components, spelled as projections below:
 
-     THE CONSOLE'S ONLY.  The board has two 16550s and by the owner's
-     ruling the kernel's own port (printk, panic) is unconstrained, so the
-     UART invariant indexes for us ([WpUart.out_res_at] is this at [Uart0]
-     and [emp] at [Uart1]) and this field says nothing about a port. *)
-  (* HOW AN ERA'S INSTANCE IS PICKED, and why no registry is needed
-     (coordinator's ruling, 2026-09-13).  The claim's ghosts are
-     re-allocated at every boot, but the machine's slot is fixed-layer
-     ([RiscvPtsto.riscv_out_res]'s paragraph says why the era half cannot
-     hold an [iProp]), so the era-selection lives here.  It is by
-     CONSTRUCTION inside the transport's own bupd: [app_out c h acc] is
-     [∃ γ, ghost_var γa (1/2) γ ∗ <the era's auths at γ> ∗ …], the
-     transport allocates a fresh [γa] per era and puts its OTHER half into
-     the boot resource [app_boot c r'] it hands the era's first process, so
-     a process's fragments agree with the invariant's instance by
-     [ghost_var_agree] and the previous era's halves die with its processes
-     and its invariant.  Nothing kernel-side is needed for that. *)
-  (* ...AND IT IS INDEXED BY THE ERA NUMBER (lane CONS-IO milestone C,
-     superseding the paragraph above): the era-selection is NOT by
-     construction inside the predicate after all.  A process of a dead era
-     keeps its linear writer's token inside that era's closed invariants and
-     nothing can reclaim it at power-off, so an era-agnostic link would let
-     a stale writer pay the CURRENT era's claim; the pure index
-     [k = S gen_id] excludes it, and the kernel's STAMP
-     [obs_boots h = S gen_id] on every history it hands over is what makes
-     the era's facts pure. *)
-  (* ...AND ITS FOUNDING IS THE APPLICATION'S OWN, AT THE POWER-ON STEP
-     (lane CONS-IO milestone E, e5-design REVISION 8), not the transport's:
-     see [Hpow] below.  The two paragraphs above describe where the era's
-     ghosts come from; what E changes is WHO produces the era's first copy
-     of the claim, and it has to be a step that runs the ledger, because a
-     transport can be run again. *)
-  app_out   : app_fixed -> nat -> list mobs -> list (bv 8) -> iProp Σ;
-  (* THE INPUT LOG (app-echo.md, lane CONS-IO), the receive side's twin of
-     [app_out] and the SECOND half of the console I/O boundary.  What the
-     application claims of the inputs the console UART accepted -- each with
-     the history it arrived at and what the kernel echoed for it -- and of
-     the ones a process has been given.  Its founding is [Hpow]'s power-on
-     arm (lane CONS-IO milestone E), exactly as [app_out]'s, and its era
-     index is the same generation number. *)
-  app_in    : app_fixed -> nat -> list mobs -> list LogEntryDefs.log_entry ->
-              list (list mobs * bv 8) -> iProp Σ;
+     [app_tag] -- THE INPUT TAG (app-echo.md lane L5): what the application
+     claims of a byte the environment pushed, at the history it arrived at.
+     PERSISTENT, because the UART's receive column keeps one per queued byte
+     and every reader copies it out.
+
+     [app_kill] -- THE KILL CREDENTIAL (lane KILL-PAY, K1): what the
+     application charges for a kill.  A kill is legal, and every party it
+     touches -- the killer, the killed slot's public payload, the trap that
+     observes [p->killed], the -1 the process exits with, the -1 a console
+     read returns -- is handed this, so a verified continuation goes GENERIC
+     where a kill could have happened instead of being refuted.  PERSISTENT
+     and BOUGHT BY THE SUPPLY ([al_kill]), which is what lets the kernel
+     charge the kill price at a trap it cannot rule out without charging any
+     verified program.  For echo it is the TAINT; [True] for an application
+     that puts no price on a kill.
+
+     [app_cons] -- THE CONSOLE CLAIM (redesign R2/R3): what the application
+     claims of the whole console boundary -- the bytes the UART has
+     accepted, the accepted-input log, what a process has been given, and
+     the arm consoleintr has in progress.  Read against an input-history
+     prefix of the run.  A RESOURCE and not a [Prop], because a pure
+     predicate cannot say WHO may write and the console echo's shift is then
+     unprovable against an impostor's byte.  THE CONSOLE'S ONLY: the board
+     has two 16550s and by the owner's ruling the kernel's own port (printk,
+     panic) is unconstrained, so the UART invariant indexes for us
+     ([WpUart.chist_at] is this at [Uart0] and [emp] at [Uart1]).  INDEXED
+     BY THE ERA NUMBER (lane CONS-IO milestone C), because a process of a
+     dead era keeps its linear writer's token inside that era's closed
+     invariants and an era-agnostic link would let such a stale writer pay
+     the CURRENT era's claim.  ITS FOUNDING IS THE APPLICATION'S OWN, AT THE
+     POWER-ON STEP (see [Hpow] below) and not the transport's: a transport
+     is a [□] over a bupd that returns its own input, so a founding
+     derivable from it is derivable unboundedly.
+
+     THE THREE TIMELESSNESS/PERSISTENCE INSTANCES RIDE THE INTERFACE, where
+     they were five obligations of the theorem below. *)
+  app_ifc   : app_fixed -> app_iface Σ;
   (* THE ERA'S CONSOLE TURN (app-echo.md, "E5 -- THE APPLICATION CLAIM",
      lane CONS-IO milestone F): what <init> is handed at the era's boot,
      beside [app_boot].  The kernel neither reads it nor mints it: [Hpow]'s
@@ -229,202 +196,108 @@ Record xv6_app (Σ : gFunctors) := MkApp {
      linear right to speak first on the console -- which is exactly what an
      echo discipline needs and what nothing per-era can say by itself. *)
   app_turn  : app_fixed -> nat -> iProp Σ;
-  (* ...AND THE ERA'S ECHO WINDOW TOKEN (same lane), its twin on the KERNEL
-     side: yielded by the same arm and LENT to the kernel, which parks it on
-     the console port's PLIC payload and hands it to consoleintr's shift
-     ([SpecConsoleintr.cons_echo_shift]); the shift's own append gives it
-     back.  It is what makes a PERSISTENT shift with a SPLIT run provable at
-     an application that claims a transcript: the run's first firing stores
-     the token's own share where a second firing would have to find it.
-     The machine's ambient copy is [RiscvPtsto.riscv_win_res], fixed to this
-     field by [Hinit_boot]'s and [Happ_echo]'s equations. *)
-  app_win   : app_fixed -> nat -> iProp Σ;
-  (* THE MERGED CONSOLE CLAIM (redesign R2/R3).  [app_out], [app_in] and
-     [app_win] become this one, over the whole console history.  It is
-     [emp] for an application that claims nothing of the console. *)
-  app_cons  : app_fixed -> nat -> list mobs -> LogEntryDefs.cons_hist -> iProp Σ;
   (* the conclusion, over the operational state and the run's trace *)
   app_phi   : gstate -> list mobs -> Prop;
 }.
-Arguments MkApp {Σ} _ _ _ _ _ _ _ _ _ _ _ _ _ _.
+Arguments MkApp {Σ} _ _ _ _ _ _ _ _ _.
 Arguments app_fixed {Σ} _. Arguments app_cl {Σ} _ _.
 Arguments app_names {Σ} _. Arguments app_pred {Σ} _ _ _ _.
 Arguments app_boot {Σ} _ _ _ _.
-Arguments app_R {Σ} _ _ _. Arguments app_tag {Σ} _ _ _.
-Arguments app_kill {Σ} _ _.
-Arguments app_out {Σ} _ _ _ _ _.
-Arguments app_in {Σ} _ _ _ _ _ _.
-Arguments app_turn {Σ} _ _ _. Arguments app_win {Σ} _ _ _.
-Arguments app_cons {Σ} _ _ _ _.
+Arguments app_R {Σ} _ _ _. Arguments app_ifc {Σ} _ _.
+Arguments app_turn {Σ} _ _ _.
+
+(* the interface's three components, as projections: every site that named
+   a field still names one, and the record carries ONE thing. *)
+Definition app_tag {Σ} (A : xv6_app Σ) (c : app_fixed A) : list mobs -> iProp Σ :=
+  ai_tag (app_ifc A c).
+Definition app_kill {Σ} (A : xv6_app Σ) (c : app_fixed A) : iProp Σ :=
+  ai_kill (app_ifc A c).
+Definition app_cons {Σ} (A : xv6_app Σ) (c : app_fixed A) :
+    nat -> list mobs -> LogEntryDefs.cons_hist -> iProp Σ :=
+  ai_cons (app_ifc A c).
+
+Global Instance app_tag_persistent {Σ} (A : xv6_app Σ) c h :
+  Persistent (app_tag A c h).
+Proof. rewrite /app_tag. apply ai_tag_persistent. Qed.
+Global Instance app_tag_timeless {Σ} (A : xv6_app Σ) c h :
+  Timeless (app_tag A c h).
+Proof. rewrite /app_tag. apply ai_tag_timeless. Qed.
+Global Instance app_kill_persistent {Σ} (A : xv6_app Σ) c :
+  Persistent (app_kill A c).
+Proof. rewrite /app_kill. apply ai_kill_persistent. Qed.
+Global Instance app_kill_timeless {Σ} (A : xv6_app Σ) c :
+  Timeless (app_kill A c).
+Proof. rewrite /app_kill. apply ai_kill_timeless. Qed.
+Global Instance app_cons_timeless {Σ} (A : xv6_app Σ) c k h H :
+  Timeless (app_cons A c k h H).
+Proof. rewrite /app_cons. apply ai_cons_timeless. Qed.
 Arguments app_phi {Σ} _ _ _.
 
 (* THE GENERIC APPLICATION: no fixed part, nothing claimed, nothing read *)
 Definition app_triv (Σ : gFunctors) : xv6_app Σ :=
+
   MkApp unit (fun _ => True%I) unit (fun _ _ _ => True%I) (fun _ _ _ => emp%I)
-        (fun _ _ => emp%I) (fun _ _ => True%I) (fun _ => True%I)
-        (fun _ _ _ _ => emp%I) (fun _ _ _ _ _ => emp%I)
-        (* the turn and the echo window token: the generic application has
-           no console discipline, so both are [emp] (lane CONS-IO F) *)
-        (fun _ _ => emp%I) (fun _ _ => emp%I)
-        (* the merged console claim: nothing claimed (redesign R2) *)
-        (fun _ _ _ _ => emp%I)
+        (fun _ _ => emp%I)
+        (* the console interface: a tag that says nothing, no price on a
+           kill, nothing claimed of the console (redesign R2/R4) *)
+        (fun _ => app_iface_triv Σ)
+        (* the era's turn: the generic application has no console
+           discipline, so it is [emp] (lane CONS-IO F) *)
+        (fun _ _ => emp%I)
         (fun _ _ => True).
 
-(* ---------------------------------------------------------------------- *)
-(* THE THEOREM.  [xv6_power_adequacy_gen] at the application: the birth    *)
-(* step is [app_cl]'s, the trace slot is the ledger of [app_R] at the fixed *)
-(* part, the lend is the FS's epoch beside [app_lend], the era's predicate  *)
-(* is [app_pred] at the fixed part and the instance the boot obligation     *)
-(* witnesses.                                                               *)
-(* ---------------------------------------------------------------------- *)
-Theorem xv6_app_adequacy Σ
-    `{!xv6G Σ, !riscvGpreS Σ, !fileGpreS Σ, !pavGpreS Σ, !fdslotGpreS Σ,
-      !irefslotGpreS Σ, !bioslotGpreS Σ, !wchGpreS Σ}
-    `{!ufdG Σ}
-    (g : gstate) (sb : fs_sb) (nib : nat) (cov : gset Z)
-    (A : xv6_app Σ)
-    (* ---- THE BIRTH STEP (app-instances.md section 6 ruling 1): one value
-       of the fixed part, with what [app_cl] says of it ---- *)
-    (Hbirth : ⊢ |==> ∃ c : app_fixed A, app_cl A c)
-    (* ---- the trace ledger's obligations ([xv6_trace_adequacy]'s, the
-       birth step's yield received at the ledger's birth) ---- *)
-    (HRt : forall (c : app_fixed A) (h : list mobs), Timeless (app_R A c h))
-    (* the tag is copied out of the UART's receive column once per reader,
-       so it has to be duplicable by construction *)
-    (Htagp : forall (c : app_fixed A) (h : list mobs), Persistent (app_tag A c h))
-    (* ...and timeless, because the receive column that files it lives in the
-       UART invariant, whose body every device leaf strips a later off *)
-    (Htagt : forall (c : app_fixed A) (h : list mobs), Timeless (app_tag A c h))
-    (* THE KILL CREDENTIAL'S THREE (lane KILL-PAY, K1).  Persistent and
-       timeless for the reasons the tag's are -- every party a kill touches
-       keeps a copy, and it rides invariant bodies the lock and device
-       leaves strip a later off -- and BOUGHT BY THE SUPPLY, which is what
-       makes the kernel's kill price payable by the generic slot and by no
-       verified program.  echo's is [AppEcho.echo_taint_of_sup]. *)
-    (Hkillp : forall c : app_fixed A, Persistent (app_kill A c))
-    (Hkillt : forall c : app_fixed A, Timeless (app_kill A c))
-    (Happ_kill : forall (c : app_fixed A) (r : app_names A),
-       AppInv.app_sup_raw (app_pred A c) r ⊢ □ app_kill A c)
-    (* THE OUTPUT CLAIM IS TIMELESS (lane OUT-FUPD), for the reason the
-       tag is: it lives in the console UART's invariant, whose body every
-       device leaf strips a later off.  It is NOT persistent -- it holds the
-       application's own authority over whose turn it is to write and how
-       far the transcript has got, which is exactly what a pure predicate
-       could not express.  Its FOUNDING is [Hpow]'s POWER-ON ARM below
-       (lane CONS-IO milestone E; it was the transport's until e5-design
-       REVISION 8, which is unsound -- see [Hpow]); and NOTHING ELSE IS
-       OWED, because the
-       invariant's own steps preserve the claim without any monotonicity
-       law -- the accepted bytes move only at the store, and the witness
-       history moves only inside a writer's own shift.  An application's
-       input-monotonicity is its private business, used inside the shifts
-       it writes and inside [Htx] below. *)
-    (Houtt : forall (c : app_fixed A) (k : nat) (h : list mobs)
-                    (acc : list (bv 8)),
-       Timeless (app_out A c k h acc))
-    (* WHAT HOLDING THE APPLICATION'S SUPPLY ENTITLES A PROCESS TO (lane
-       OUT-FUPD, the generic write's payment; KILL-ARM's mould).  Since the
-       output claim is a RESOURCE, an arbitrary process's [write(2)] on the
-       console is no longer free: the kernel's GENERIC SUPPLY
-       ([UexecExecInst.xv6_ssupply]) carries an OUTPUT LICENCE
-       ([WpUart.out_licence]) and this is where its price is set.  The
-       trivial application pays it out of [emp]; a constraining one pays it
-       out of the TAINT arm of its own claim -- a process holding the
-       generic supply is one the discipline has already accounted for, so
-       letting it emit an arbitrary byte weakens nothing.  It is the exact
-       twin of KILL-ARM's [Happ_kill], and lands beside it. *)
-    (* QUANTIFIED OVER THE ERA (milestone C): the generic process is any
-       era's, so one licence covers them all. *)
-    (* ONE LICENCE (redesign R2), where there were two: the supply moves
-       the application's console claim by ANY boundary event.  It covers
-       the generic [write(2)]'s byte, the console interrupt's shift and
-       [read(2)] on fd 0 alike, because all three are events on one
-       resource. *)
-    (Happ_out_sup : forall (c : app_fixed A) (r : app_names A),
+(* ====================================================================== *)
+(*  WHAT AN APPLICATION OWES (post-qed-redesign §3.2, R4).                 *)
+(*                                                                        *)
+(*  The record above is DATA -- the predicates and the interface an        *)
+(*  application chooses.  These are the LAWS about that data, and making   *)
+(*  them a class is what turns -- this application pays some obligations   *)
+(*  and not others -- from a fact about a [Theorem]'s argument list into a *)
+(*  DEFINITION: an application with an instance may use the theorem, one   *)
+(*  without cannot, and a partial application ([AppTree], whose first      *)
+(*  process's bundle is still open) simply has no instance yet.            *)
+(*                                                                        *)
+(*  THE TWO LAWS THAT ARE NOT HERE are the two that are about an IMAGE and *)
+(*  not about the application: [Happ_init], the era-0 claim at the boot    *)
+(*  image's own abstract state, and [Hphi], the conclusion read off the    *)
+(*  ledger at the run's coverage set.  Echo's era-0 claim holds at the     *)
+(*  LITERAL image and nowhere else ([AppEcho.echo_Happ_init] takes         *)
+(*  [fs_blocks … = fsimg_P], [sb = fsimg_sb], [cov = fsimg_cov]), so a     *)
+(*  field quantified over every image would be FALSE for it.  They stay    *)
+(*  arguments of the theorem, where the image is in scope.                 *)
+(* ====================================================================== *)
+Section AppLaws.
+Context {Σ : gFunctors}.
+Context `{!xv6G Σ, !riscvGpreS Σ, !fileGpreS Σ, !pavGpreS Σ, !fdslotGpreS Σ,
+          !irefslotGpreS Σ, !bioslotGpreS Σ, !wchGpreS Σ}.
+Context `{!ufdG Σ}.
+
+Class xv6_app_laws (A : xv6_app Σ) := MkAppLaws {
+  al_birth : ⊢ |==> ∃ c : app_fixed A, app_cl A c;
+  al_Rt : forall (c : app_fixed A) (h : list mobs), Timeless (app_R A c h);
+  al_kill : forall (c : app_fixed A) (r : app_names A),
+       AppInv.app_sup_raw (app_pred A c) r ⊢ □ app_kill A c;
+  al_sup : forall (c : app_fixed A) (r : app_names A),
        AppInv.app_sup_raw (app_pred A c) r
          ⊢ □ (∀ (k : nat) (h : list mobs) (H : LogEntryDefs.cons_hist)
                 (ev : ConsLog.cons_ev),
                 app_cons A c k h H ==∗
-                app_cons A c k h (ConsLog.cons_step H ev)))
-    (* THE INPUT LOG IS TIMELESS (lane CONS-IO), for the reason the output
-       claim is: it lives in the console UART's invariant, whose body every
-       device leaf strips a later off.  NOT persistent. *)
-    (Hinpt : forall (c : app_fixed A) (k : nat) (h : list mobs)
-                    (pops : list LogEntryDefs.log_entry)
-                    (dl : list (list mobs * bv 8)),
-       Timeless (app_in A c k h pops dl))
-    (* ...AND THE ECHO WINDOW TOKEN'S TIMELESSNESS (lane CONS-IO milestone
-       F).  The token rides the console port's PLIC payload
-       ([WpUart.uart_rx_writer]), whose slot is opened by a device leaf that
-       strips its later, so the machine's field owes this instance exactly
-       as the two claims do. *)
-    (Hwint : forall (c : app_fixed A) (k : nat), Timeless (app_win A c k))
-    (Hconst : forall (c : app_fixed A) (k : nat) (h : list mobs)
-                     (H : LogEntryDefs.cons_hist), Timeless (app_cons A c k h H))
-    (* [Happ_in_sup] lived here: the input side's twin of the licence
-       above.  It is gone -- one resource, one licence. *)
-    (HR0 : forall c : app_fixed A, app_cl A c ⊢ |==> app_R A c [])
-    (* THE POWER STEP -- AND, SINCE lane CONS-IO milestone E, THE FOUNDING
-       OF THE ERA'S TWO PORT CLAIMS (e5-design REVISION 8).  Until E the
-       claims were founded by the TRANSPORT ([Happ_boot] below yielded them
-       at [[]]), and that was unsound as a discipline: [app_xfer_boot_raw]
-       is a [□] over a bupd whose only input it hands straight back, so
-       [app_out A c k [] []] was derivable UNBOUNDEDLY from nothing and no
-       ledger fact could refute a claim "reset" to the founded arm.  The
-       power-ON arm is the one step of the machine that runs the
-       application's LEDGER and runs ONCE PER ERA, so it is where a LINEAR
-       seed for the era can be minted: the application takes [app_R] at the
-       pre-event history, mints the era's seed inside its own ledger, and
-       yields the two claims for the era the event starts.
-       THE ERA IS [S (obs_boots h)], read off the PRE-event history: the
-       ledger has no [GenId] to state a stamp at, and
-       [ObsTrace.obs_boots_app] gives [obs_boots (h ++ [ObsPowerOn]) =
-       S (obs_boots h)], so this IS the boot count of the post-event
-       history -- the number the kernel's own stamp ([Htx]/[Hrx]'s
-       [⌜obs_boots h = S gen_id⌝]) will read at every history of the new
-       era.  The kernel matches it to the era it boots by
-       [ObsTrace.obs_wf], whose boot count at a powered-OFF machine is
-       [ggen] exactly ([RiscvAdequacy]'s PowerOn arm).
-       NOTHING IS OWED ON THE OFF ARM: a power-off starts no era. *)
-    (Hpow : forall (c : app_fixed A) (h : list mobs) (on : bool) (dk : Z -> bv 8),
+                app_cons A c k h (ConsLog.cons_step H ev));
+  al_R0 : forall c : app_fixed A, app_cl A c ⊢ |==> app_R A c [];
+  al_pow : forall (c : app_fixed A) (h : list mobs) (on : bool) (dk : Z -> bv 8),
        trace_shape h on ->
        ⊢ app_R A c h ==∗
          app_R A c (h ++ [if on then ObsPowerOff else ObsPowerOn])%list ∗
          (if on then emp
           else app_cons A c (S (obs_boots h)) []
                  (LogEntryDefs.MkCH [] [] [] None) ∗
-               (* ...AND THE ERA'S TURN AND ITS ECHO WINDOW TOKEN (lane
-                  CONS-IO milestone F).  The same arm and the same reason:
-                  this is the one step of the machine that runs the
-                  application's ledger exactly once per era, so it is the
-                  only place a per-era LINEAR thing can be minted.  The
-                  kernel carries the turn to <init> and the token to
-                  consoleintr's shift; neither is derivable anywhere else. *)
-               app_turn A c (S (obs_boots h)) ∗
-               app_win A c (S (obs_boots h))))
-    (* the two UART-arm wands, at any value of the fixed part: the era
-       instance's [riscv_client] is the one the boot's record carries, and
-       the record's client type is [app_fixed A] only at that literal *)
-    (* THE ERA IDENTIFICATION (lane APP-IFACE item (c), review-echo-plan
-       finding 3).  These two used to be quantified over an ARBITRARY
-       [γ : uart_names], so the ledger could learn nothing about THE ERA's
-       UART ghosts at an event -- and the whole output side rests on doing
-       exactly that ([SystemUartAccepted.v]'s header, app-echo.md O4).  They
-       are quantified over the ERA's [fileG] instead, with the two equations
-       the boot HAS and hands over: the era's application record, and
-       [fsc_uart] -- the [γ] every kernel-side UART fact of this era is
-       stated at.  This is [Hinit_boot]'s own shape, and it is not a new
-       assumption about the world: it NARROWS the wands' domain from every
-       [γ] to the era's. *)
-    (* THE GENERATION BINDER (lane CONS-IO milestone C).  The two wands had
-       none: they are the LEDGER's steps, and the ledger spans eras, so
-       nothing in them could name the era an event belongs to.  They take
-       one now, because the kernel STAMPS the history it hands over
-       ([⌜obs_boots h = S gen_id⌝], out of [ObsTrace.obs_wf] at a live UART
-       thread) and reads the two port claims at THAT era's index.  It is a
-       [forall], so the application still owes the step at every era; what
-       it buys is that the era is NAMED and the claim's index is pure. *)
-    (Htx : forall (HR : riscvGS Σ) (GEN : GenId) `{HF : !fileG Σ}
+               (* ...AND THE ERA'S TURN (lane CONS-IO milestone F).  The
+                  same arm and the same reason: this is the one step of the
+                  machine that runs the application's ledger exactly once
+                  per era, so it is the only place a per-era LINEAR thing
+                  can be minted, and the kernel carries it to <init>. *)
+               app_turn A c (S (obs_boots h)));
+  al_tx : forall (HR : riscvGS Σ) (GEN : GenId) (HF : fileG Σ)
                   (c : app_fixed A) (r : app_names A)
                   (i : uart_id) (γ : uart_names),
        @file_app Σ HF = MkAppcfg (app_names A) (app_pred A c) r ->
@@ -479,8 +352,8 @@ Theorem xv6_app_adequacy Σ
               uart_ghosts γ u' -∗ app_R A c h
                 ={⊤ ∖ ↑uartN i ∖ ↑obsN}=∗
               (if i is Uart0 then app_cons A c (S gen_id) ho H else emp) ∗
-              uart_ghosts γ u' ∗ app_R A c (h ++ [ObsUartOut i b])%list))
-    (Hrx : forall (HR : riscvGS Σ) (GEN : GenId) `{HF : !fileG Σ}
+              uart_ghosts γ u' ∗ app_R A c (h ++ [ObsUartOut i b])%list);
+  al_rx : forall (HR : riscvGS Σ) (GEN : GenId) (HF : fileG Σ)
                   (c : app_fixed A) (r : app_names A)
                   (i : uart_id) (γ : uart_names),
        @file_app Σ HF = MkAppcfg (app_names A) (app_pred A c) r ->
@@ -492,42 +365,13 @@ Theorem xv6_app_adequacy Σ
               uart_ghosts γ u' -∗ app_R A c h
                 ={⊤ ∖ ↑uartN i ∖ ↑obsN}=∗
               uart_ghosts γ u' ∗ app_R A c (h ++ [ObsUartIn i b])%list ∗
-              app_tag A c (h ++ [ObsUartIn i b])%list))
-    (* ---- the application's three obligations on its predicate
-       (app-instances.md sections 1-3, round C): the TRANSPORT (its one
-       durability obligation -- a copy of the claim at fresh instance names,
-       under the later every crossing hands it over at), the ERA-0 claim
-       at the image's own abstract state, and the supply ---- *)
-    (* ...the TRANSPORT, which since lane APP-IFACE item (a) also hands the
-       clone its own BOOT RESOURCE ([app_xfer_raw_of_boot] is the old
-       obligation, and is what the commit's law and the era mint keep
-       taking).  The transport is the producer because the era's instance is
-       born there: the machine starts powered OFF, so every boot -- era 0's
-       included -- founds its file system from the PowerOn arm's clone, and
-       [Happ_init]'s instance never reaches one. *)
-    (* ...AT EVERY ERA (lane CONS-IO milestone C): the boot resource is
-       era-indexed, so the transport takes the era's NUMBER and yields it
-       at that index.  [app_xfer_boot_raw] itself is unchanged -- the index
-       is applied before it. *)
-    (* ...AND IT FOUNDS NOTHING ELSE (lane CONS-IO milestone E): the two
-       port claims rode here from OUT-FUPD until e5-design REVISION 8, and
-       they are [Hpow]'s yield now. *)
-    (Happ_boot : forall (c : app_fixed A) (k : nat),
-       ⊢ app_xfer_boot_raw (app_pred A c) (app_boot A c k))
-    (Happ_init : forall c : app_fixed A,
-       ⊢ |==> ∃ r : app_names A,
-           app_pred A c r (abs_view (fss_inodes (FsDurImg.img_state
-              (fs_blocks (v_disk (g.(gdev).(dvirtio)))) sb nib))))
-    (* ...and THE FIRST PROCESS'S EXEC BUNDLE (ARM-c): the one thing the
-       application owes the kernel about user execution.  Quantified over
-       the era's ghost classes for the reason
-       [SystemAdequacy.xv6_power_adequacy_gen]'s own [Hinit_boot] gives --
-       they are born by the boot mint -- and its paragraph carries the
-       argument for why it is not the GAP-premise trap. *)
-    (Hinit_boot :
+              app_tag A c (h ++ [ObsUartIn i b])%list);
+  al_xfer : forall (c : app_fixed A) (k : nat),
+       ⊢ app_xfer_boot_raw (app_pred A c) (app_boot A c k);
+  al_programs :
        forall (HR : riscvGS Σ) (GEN : GenId)
-              `{HBs : !bioslotG Σ, HFd : !fdslotG Σ, HIr : !irefslotG Σ,
-                HPav : !pavG Σ, HWc : !wchG Σ, HF : !fileG Σ}
+              (HBs : bioslotG Σ) (HFd : fdslotG Σ) (HIr : irefslotG Σ)
+              (HPav : pavG Σ) (HWc : wchG Σ) (HF : fileG Σ)
               (c : app_fixed A) (r : app_names A),
          @file_app Σ HF = MkAppcfg (app_names A) (app_pred A c) r ->
          (* (b) THE RX-TAG EQUATION (lane APP-IFACE): the machine's ambient
@@ -536,10 +380,12 @@ Theorem xv6_app_adequacy Σ
             below fixes the field to [app_tag A c] -- not an assumption
             about the world, and the premise a pinned <init> discharges
             [UConsLine.ush_tag_law] from. *)
-         riscv_rx_tag = app_tag A c ->
-         (* ...and (K1) THE KILL-CREDENTIAL EQUATION, on the same mould:
-            the machine's ambient kill credential IS this application's. *)
-         riscv_kill_cred = app_kill A c ->
+         (* ...and THE INTERFACE EQUATION (redesign R4): the machine's
+            ambient tag family, kill credential and console claim ARE this
+            application's.  ONE equation where there were three -- a
+            discharge that reads only one of them derives it by unfolding
+            the projection. *)
+         @riscvF_app_iface Σ (@riscv_fixedGS Σ HR) = app_ifc A c ->
          (* ...and (b') THE GENERATION-COUNTER EQUATION (lane APP-IFACE, the
             same pattern as the rx-tag one above).  The era's [A] is FIXED
             before [HR] exists, so the camera [A]'s own predicate carries
@@ -552,17 +398,8 @@ Theorem xv6_app_adequacy Σ
             assumption about the world, and the premise that lets the
             record's predicate meet [AppInv]'s laws. *)
          @riscvF_genGS Σ (@riscv_fixedGS Σ HR) = riscv_pre_genGS ->
-         (* ...and (b'') THE CONSOLE-CLAIM EQUATION (redesign R2), the
-            rx-tag equation's twin and true for the same reason: the
-            [boot_fixedGS] literal below fixes the field to [app_cons A c].
-            It is what lets a pinned <init> turn [Happ_out_sup] into the
-            machine's [WpUart.out_licence] and so build its own generic
-            slot ([SystemAdequacy.init_boot_of_sup]'s premise). *)
-         @riscv_cons_res Σ (@riscv_fixedGS Σ HR) = app_cons A c ->
-         (* ...and (b'''') THE WINDOW-TOKEN EQUATION (lane CONS-IO milestone
-            F), the two claims' twin and true for the same reason: the
-            machine's ambient echo window token IS this record's field. *)
-         @riscv_win_res Σ (@riscv_fixedGS Σ HR) = app_win A c ->
+
+
          (* ...and (a) THE BOOT RESOURCE, LINEARLY, at the instance the
             record equation names *)
          ⊢ AppInv.app_inv FsCfg.fsc_fs -∗ app_boot A c (S gen_id) r -∗
@@ -571,51 +408,53 @@ Theorem xv6_app_adequacy Σ
               power-on step and carried here by the kernel.  <init> holds
               it; lane IO-LEAF spends it at the era's first banner byte. *)
            app_turn A c (S gen_id) -∗
-           |==> init_boot_bundle (bv_unsigned InodeInv.ROOTINO) fdt0)
-    (* THE ECHO'S JUSTIFICATION (lane OUT-FUPD, F3), the SECOND thing this
-       record owes the kernel about the console and [Hinit_boot]'s twin.
-       consoleintr echoes an input byte through consputc at [Uart0] -- the
-       port whose invariant carries THIS application's output claim -- and
-       it runs on the interrupt path, holding nothing it could pay the
-       store's view shift with.  So the payment is the application's:
-       "the accepted bytes extended by the echo of an input byte stay
-       good", once, persistently, minted into
-       [SpecConsoleintr.console_caps] at main and re-used by every byte.
-
-       WHAT IT MAY ASSUME, and it is everything consoleintr holds: the
-       byte's own arrival history [h], the fact that the history ENDS in
-       that byte ([ObsTrace.obs_ends_in Uart0 h c]), this record's tag at
-       [h], the monotone bound [RiscvPtsto.obs_hist_lb h], and the ARM's
-       SHAPE ([SpecConsoleintr.cons_echo]: nothing, the byte itself, or a
-       run of erase triples AND ONLY FOR AN ERASE BYTE).  The two record
-       equations are the ones [Hinit_boot] takes, and for the same reason:
-       the shift reads the machine's AMBIENT tag family and its AMBIENT
-       output claim, and at the [boot_fixedGS] literal below both ARE this
-       record's.  Quantified over the context because nothing in the shift
-       is context-relative and the boot chain runs at the boot hart's own
-       [CtxIdDefs.CtxId]. *)
-    (Happ_echo :
+           |==> init_boot_bundle (bv_unsigned InodeInv.ROOTINO) fdt0;
+  al_echo :
        forall (HR : riscvGS Σ) (c : app_fixed A),
-         (* the shift FILES the accepted byte and justifies its echo out
-            of ONE claim now (redesign R2), so one equation carries it *)
-         @riscv_cons_res Σ (@riscv_fixedGS Σ HR) = app_cons A c ->
-         @riscv_rx_tag Σ (@riscv_fixedGS Σ HR) = app_tag A c ->
-         (* ...AND THE ECHO WINDOW TOKEN'S (lane CONS-IO milestone F): the
-            shift TAKES the era's token, so the machine's ambient one has to
-            be this record's [app_win].  It is what makes the entailment
-            still CLOSED with a persistent shift over a split run: the
-            application answers a firing out of a resource it owns, not out
-            of a handle on the observation. *)
-         @riscv_win_res Σ (@riscv_fixedGS Σ HR) = app_win A c ->
+         (* the shift reads the ambient tag family and the ambient console
+            claim; ONE equation carries both (redesign R4) *)
+         @riscvF_app_iface Σ (@riscv_fixedGS Σ HR) = app_ifc A c ->
+
          (* AT EVERY ERA (milestone C): the shift is era-indexed and takes
             the era stamp on the byte's history, so the obligation is
             quantified over the generation as it is over the context. *)
          ⊢ ∀ (GEN : GenId) (XI : CurCtx),
-             @SpecConsoleintr.cons_echo_shift Σ HR GEN XI)
-    (* ---- the conclusion's proof, at the end of the run: it holds the
-       COMPOSITE crash slot ([SystemAdequacy.xv6_slot]: the file system's
-       record beside the application's durable claim at the same snapshot
-       name) and the ledger side by side ---- *)
+             @SpecConsoleintr.cons_echo_shift Σ HR GEN XI;
+}.
+End AppLaws.
+
+(* ---------------------------------------------------------------------- *)
+(* THE THEOREM.  [xv6_power_adequacy_gen] at the application: the birth    *)
+(* step is [app_cl]'s, the trace slot is the ledger of [app_R] at the fixed *)
+(* part, the lend is the FS's epoch beside [app_lend], the era's predicate  *)
+(* is [app_pred] at the fixed part and the instance the boot obligation     *)
+(* witnesses.                                                               *)
+(* ---------------------------------------------------------------------- *)
+Theorem xv6_app_adequacy Σ
+    `{!xv6G Σ, !riscvGpreS Σ, !fileGpreS Σ, !pavGpreS Σ, !fdslotGpreS Σ,
+      !irefslotGpreS Σ, !bioslotGpreS Σ, !wchGpreS Σ}
+    `{!ufdG Σ}
+    (g : gstate) (sb : fs_sb) (nib : nat) (cov : gset Z)
+    (A : xv6_app Σ)
+    (* ---- THE BIRTH STEP (app-instances.md section 6 ruling 1): one value
+       of the fixed part, with what [app_cl] says of it ---- *)
+    (* ---- THE ELEVEN LAWS, AS ONE CLASS INSTANCE (redesign R4).  They
+       were eleven binders here; an application that has them may use this
+       theorem and one that does not cannot, which is what makes
+       [xv6_app_laws] a definition rather than a reading of an argument
+       list.  The two that are NOT in it are the two about an IMAGE:
+       [Happ_init] and [Hphi] below. ---- *)
+    `{AL : !xv6_app_laws A}
+    (Happ_init : forall c : app_fixed A,
+       ⊢ |==> ∃ r : app_names A,
+           app_pred A c r (abs_view (fss_inodes (FsDurImg.img_state
+              (fs_blocks (v_disk (g.(gdev).(dvirtio)))) sb nib))))
+    (* ...and THE FIRST PROCESS'S EXEC BUNDLE (ARM-c): the one thing the
+       application owes the kernel about user execution.  Quantified over
+       the era's ghost classes for the reason
+       [SystemAdequacy.xv6_power_adequacy_gen]'s own [al_programs] gives --
+       they are born by the boot mint -- and its paragraph carries the
+       argument for why it is not the GAP-premise trap. *)
     (Hphi : forall (Hinv : invGS Σ)
                    (γgen γstart γreg γd γsw γobs γhist : gname) (c : app_fixed A)
                    (T : list mobs) (g' : gstate) (h : list mobs),
@@ -624,11 +463,7 @@ Theorem xv6_app_adequacy Σ
                (xv6_slot (app_names A) (app_pred A) cov (FsImg.sb_logstart sb)
                   γd γsw γreg γstart c)
                γobs T (obs_ledger_at (app_R A c) γobs) γhist
-               (app_tag A c) (Htagp c) (Htagt c)
-               (app_kill A c) (Hkillp c) (Hkillt c)
-               (app_out A c) (Houtt c) (app_in A c) (Hinpt c)
-               (app_win A c) (Hwint c)
-               (app_cons A c) (Hconst c)
+               (app_ifc A c)
                (app_fixed A) c) g' -∗
          ghost_var γobs (1/2) h -∗ ⌜obs_wf h g'⌝ -∗
          ▷ xv6_slot (app_names A) (app_pred A) cov (FsImg.sb_logstart sb)
@@ -654,11 +489,7 @@ Proof.
              (xv6_slot (app_names A) (app_pred A) cov (FsImg.sb_logstart sb)
                 γd γsw γreg γstart c)
              γobs T (obs_ledger_at (app_R A c) γobs) γhist
-             (app_tag A c) (Htagp c) (Htagt c)
-             (app_kill A c) (Hkillp c) (Hkillt c)
-             (app_out A c) (Houtt c) (app_in A c) (Hinpt c)
-             (app_win A c) (Hwint c)
-             (app_cons A c) (Hconst c)
+             (app_ifc A c)
              (app_fixed A) c
          /\ @file_app Σ HF = MkAppcfg (app_names A) (app_pred A c) r
          /\ (i = Uart0 -> FsCfg.fsc_uart = γ)) ->
@@ -666,27 +497,25 @@ Proof.
   { intros HRg GEN HFi ri i γ
       (Hi & Gg & Gs & Gr & Gt & Gsw & Gob & Ghist & Gcl & GT & Heq & Happ & Huart).
     refine (uart_obs_permit_ledger i (app_R A Gcl) (app_tag A Gcl)
-              (app_cons A Gcl) γ (HRt Gcl)
-              _ _ _ (Htx HRg GEN HFi Gcl ri i γ Happ Huart)
-                    (Hrx HRg GEN HFi Gcl ri i γ Happ Huart));
+              (app_cons A Gcl) γ (al_Rt Gcl)
+              _ _ _ (al_tx HRg GEN HFi Gcl ri i γ Happ Huart)
+                    (al_rx HRg GEN HFi Gcl ri i γ Happ Huart));
       rewrite Heq; reflexivity. }
   exact (xv6_power_adequacy_gen Σ g sb nib cov
-           (app_fixed A) (app_cl A) Hbirth
+           (app_fixed A) (app_cl A) al_birth
            (app_names A) (app_pred A) (app_boot A)
-           (app_out A) Houtt (app_in A) Hinpt
-           (app_win A) Hwint (app_cons A) Hconst
-           (app_turn A) Happ_boot Happ_init
-           (app_tag A) Htagp Htagt
-           (app_kill A) Hkillp Hkillt Happ_kill
-           Happ_out_sup Hinit_boot
-           Happ_echo
+           (app_ifc A)
+           (app_turn A) al_xfer Happ_init
+           al_kill
+           al_sup al_programs
+           al_echo
            (fun γobs c => obs_ledger_at (app_R A c) γobs)
            (fun γobs c =>
-              obs_ledger_at_alloc_cl (app_R A c) γobs (app_cl A c) (HR0 c))
+              obs_ledger_at_alloc_cl (app_R A c) γobs (app_cl A c) (al_R0 c))
            (fun γd γobs c =>
-              obs_ledger_at_step XV6_DISK_BYTES (app_R A c) (HRt c)
-                (app_cons A c) (app_turn A c) (app_win A c)
-                (Hpow c) γd γobs)
+              obs_ledger_at_step XV6_DISK_BYTES (app_R A c) (al_Rt c)
+                (app_cons A c) (app_turn A c)
+                (al_pow c) γd γobs)
            Hperm (app_phi A) Hphi Hgen0 Hpow0 Himg).
 Qed.
 
@@ -740,38 +569,75 @@ Section AppTriv.
       (c : app_fixed (app_triv Σ)) (r : app_names (app_triv Σ)) :
     @file_app Σ HF
       = MkAppcfg (app_names (app_triv Σ)) (app_pred (app_triv Σ) c) r ->
-    riscv_rx_tag = app_tag (app_triv Σ) c ->
-    (* ...and the kill-credential equation (lane KILL-PAY, K1): the generic
-       application's credential is [True], which is what pays
-       [init_boot_of_triv]'s new side *)
-    riscv_kill_cred = app_kill (app_triv Σ) c ->
+    (* ...and the interface equation (redesign R4): one where there were
+       three *)
+    @riscvF_app_iface Σ (@riscv_fixedGS Σ HR) = app_ifc (app_triv Σ) c ->
     (* ...and the generation-counter equation (lane APP-IFACE (b')), which
        the generic application takes and does not use *)
     @riscvF_genGS Σ (@riscv_fixedGS Σ HR) = riscv_pre_genGS ->
-    (* ...and the console-claim equation (redesign R2), which pays the
-       other new side: the generic application's claim is [emp] *)
-    @riscv_cons_res Σ (@riscv_fixedGS Σ HR) = app_cons (app_triv Σ) c ->
-    (* ...and the echo window token's (lane CONS-IO milestone F), which the
-       generic application takes and does not use: its token is [emp] *)
-    @riscv_win_res Σ (@riscv_fixedGS Σ HR) = app_win (app_triv Σ) c ->
+
     ⊢ AppInv.app_inv FsCfg.fsc_fs -∗ app_boot (app_triv Σ) c (S gen_id) r -∗
       (* ...and the era's turn, likewise taken and not used *)
       app_turn (app_triv Σ) c (S gen_id) -∗
       |==> init_boot_bundle (bv_unsigned InodeInv.ROOTINO) fdt0.
   Proof.
-    intros Heq _ Hkc _ Hcons _. iIntros "_ _ _". iModIntro.
+    intros Heq Hiface _. iIntros "_ _ _". iModIntro.
     (* the rewrite goes BEFORE the [intros]: [r'] is typed at
        [app_names file_app], so rewriting under it is a dependent rewrite *)
     iApply init_boot_of_triv.
     - rewrite Heq. intros r' av.
       cbn [app_triv app_pred app_names]. reflexivity.
-    - rewrite Hkc. cbn [app_triv app_kill]. reflexivity.
-    - rewrite Hcons. cbn [app_triv app_cons]. reflexivity.
+    - rewrite /riscv_kill_cred Hiface.
+      cbn [app_triv app_ifc app_iface_triv ai_kill]. reflexivity.
+    - rewrite /riscv_cons_res Hiface.
+      cbn [app_triv app_ifc app_iface_triv ai_cons]. reflexivity.
   Qed.
 
   Lemma app_triv_R0 (c : app_fixed (app_triv Σ)) :
     app_cl (app_triv Σ) c ⊢ |==> app_R (app_triv Σ) c [].
   Proof. iIntros "_". by iModIntro. Qed.
+
+  (* ---- THE GENERIC APPLICATION'S LAWS, as the instance (redesign R4).
+         Eleven one-liners where the closed corollary below used to spell
+         eleven [ltac:] blocks inside one [refine]. ---- *)
+  Context `{!xv6G Σ, !fileGpreS Σ, !pavGpreS Σ, !fdslotGpreS Σ,
+            !irefslotGpreS Σ, !bioslotGpreS Σ, !wchGpreS Σ} `{!ufdG Σ}.
+
+  Global Instance app_triv_laws : xv6_app_laws (app_triv Σ).
+  Proof.
+    split.
+    - exact app_triv_birth.
+    - intros c h. cbn [app_triv app_R]. apply _.
+    - intros c r.
+      rewrite /app_kill. cbn [app_triv app_ifc app_iface_triv ai_kill].
+      iIntros "_"; iModIntro; done.
+    - (* ONE LICENCE (redesign R2): the generic claim is [emp], so every
+         event on it is free *)
+      intros c r.
+      rewrite /app_cons. cbn [app_triv app_ifc app_iface_triv ai_cons].
+      rewrite /cons_res_triv.
+      iIntros "_ !>" (k h H ev) "_". by iModIntro.
+    - exact app_triv_R0.
+    - intros c h on dk _.
+      rewrite /app_cons.
+      cbn [app_triv app_R app_ifc app_iface_triv ai_cons app_turn].
+      iIntros "_"; iModIntro; iSplitR; [done |].
+      destruct on; by repeat iSplitR.
+    - intros HR GEN HFi c r i γ _ _. cbn [app_triv app_R].
+      iIntros "!>" (h b u u' ho H) "_ _ _ _ _ _ _ _ Ho Hg _"; iModIntro.
+      iFrame "Ho Hg"; done.
+    - intros HR GEN HFi c r i γ _ _. rewrite /app_tag.
+      cbn [app_triv app_R app_ifc app_iface_triv ai_tag].
+      iIntros "!>" (h b u u') "_ _ _ Hg _"; iModIntro.
+      iFrame "Hg"; auto.
+    - exact app_triv_xfer.
+    - exact app_triv_init_boot.
+    - (* the echo justifies itself at the trivial console claim *)
+      intros HR c Hiface. iIntros (GEN XI).
+      iApply (SpecConsoleintr.cons_echo_shift_triv (XI := XI)).
+      rewrite /riscv_cons_res Hiface.
+      cbn [app_triv app_ifc app_iface_triv ai_cons]. reflexivity.
+  Qed.
 End AppTriv.
 
 (* ---------------------------------------------------------------------- *)
@@ -794,45 +660,10 @@ Corollary xv6_app_adequacy_triv_xv6Σ (g : gstate)
     forall e2, e2 ∈ t2 -> reducible (Λ := riscv_lang) e2 g2.
 Proof.
   intros n κs t2 g2 Hn.
-  refine (proj1 (xv6_app_adequacy xv6Σ g fsimg_sb fsimg_nib fsimg_cov (app_triv xv6Σ)
-           app_triv_birth
-           ltac:(intros c h; cbn [app_triv app_R]; apply _)
-           ltac:(intros c h; cbn [app_triv app_tag]; apply _)
-           ltac:(intros c h; cbn [app_triv app_tag]; apply _)
-           ltac:(intros c; cbn [app_triv app_kill]; apply _)
-           ltac:(intros c; cbn [app_triv app_kill]; apply _)
-           ltac:(intros c r; cbn [app_triv app_kill];
-                 iIntros "_"; iModIntro; done)
-           ltac:(intros c k h acc; cbn [app_triv app_out]; apply _)
-           (* ONE LICENCE (redesign R2): the generic claim is [emp], so every
-              event on it is free *)
-           ltac:(intros c r; cbn [app_triv app_cons];
-                 iIntros "_ !>" (k h H ev) "_"; by iModIntro)
-           ltac:(intros c k h pops dl; cbn [app_triv app_in]; apply _)
-           (* the echo window token's timelessness (lane CONS-IO milestone
-              F), vacuous at the generic application's [emp] *)
-           ltac:(intros c k; cbn [app_triv app_win]; apply _)
-           (* the merged console claim's timelessness (redesign R2) *)
-           ltac:(intros c k h H; cbn [app_triv app_cons]; apply _)
-           app_triv_R0
-           ltac:(intros c h on dk _;
-                 cbn [app_triv app_R app_cons app_turn app_win];
-                 iIntros "_"; iModIntro; iSplitR; [done |];
-                 destruct on; by repeat iSplitR)
-           ltac:(intros HR GEN HFi c r i γ _ _; cbn [app_triv app_R];
-                 iIntros "!>" (h b u u' ho H)
-                   "_ _ _ _ _ _ _ _ Ho Hg _"; iModIntro;
-                 iFrame "Ho Hg"; done)
-           ltac:(intros HR GEN HFi c r i γ _ _; cbn [app_triv app_R app_tag];
-                 iIntros "!>" (h b u u') "_ _ _ Hg _"; iModIntro;
-                 iFrame "Hg"; auto)
-           app_triv_xfer
+  refine (proj1 (xv6_app_adequacy xv6Σ g fsimg_sb fsimg_nib fsimg_cov
+           (app_triv xv6Σ)
+           (* the eleven laws, as the instance (redesign R4) *)
            ltac:(intros c; exact (app_triv_init c _))
-           app_triv_init_boot
-           (* the echo justifies itself at the trivial console claim *)
-           ltac:(intros HR c Hcons _ _; iIntros (GEN XI);
-                 iApply (SpecConsoleintr.cons_echo_shift_triv (XI := XI));
-                 rewrite Hcons; cbn [app_triv app_cons]; reflexivity)
            ltac:(intros Hinv γgen γstart γreg γd γsw γobs γhist c T g' h;
                  iIntros "_ _ _ _ _"; iModIntro; iPureIntro; exact Logic.I)
            Hgen0 Hpow0 _ n κs t2 g2 Hn)).

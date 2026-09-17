@@ -168,7 +168,7 @@ Definition wp_kexit_sconf_body
                (* kmem.lock, kalloc   *)
     (on : option nat) (fn : fclose_names)
     (m : regfile) (av : nat) (eb : bool) (b : bool) (lks : gset string)
-    (pid : mword 32) (U : ustate) (cs : gset gname)
+    (pid : mword 32) (U : ustate) (sts : list fdstate) (cs : gset gname)
     (* the exit deposit's own payload -- see the premise at the foot of the
        list *)
     (Q : Z -> iProp Σ) :=
@@ -282,12 +282,24 @@ Definition wp_kexit_sconf_body
      ([ProcInv.proc_priv_core]), which this function joins with <p->lock>'s
      at [p->xstate = status], re-splits, and parks beside the escrow keyed
      at what the cell then reads ([ProcDefs.proc_dormant]). *)
-  proc_priv γf pj pid U -∗
+  (* ...WITHOUT THE INCARNATION'S MARKER ([ProcInv.proc_priv_unmarked],
+     design/pipe.md "The exit path"): the marker is spent into <p->lock>'s
+     killed row either by the take below (the tear-down route) or by the
+     fault arm that founded the row for a self-kill, so it is a premise of
+     the tear-down route's side of the payment and not of the block. *)
+  proc_priv_unmarked γf pj pid U -∗
   (* THE fd-STATE FRAGMENT BUNDLE.  kexit closes every descriptor, and after
      [ProcInv]'s auth/frag split a close is a retype that needs both halves.
      It is NOT given back: the process is ending, and the bundle dies with
      the incarnation whose name it is keyed on (FdSlots.v). *)
-  fd_frags_any (pv_fdg (us_V U)) -∗
+  fd_frags (pv_fdg (us_V U)) sts -∗
+  (* ...AND THE BYTE-QUEUE CLOSE PAYMENTS, one per row of that table
+     (design/pipe.md, "The byte queue"): every descriptor's close is a
+     [fileclose], and a pipe descriptor's last close steps the pipe's exact
+     ghost state, so the dying process pays a close link (or the taint) for
+     each pipe row it holds.  The table is NAMED here for exactly this row;
+     nothing else reads it and the bundle still dies with the process. *)
+  fileclose_cpays sts -∗
   (* ...AND THE SLOT'S CHILDREN ROW, which does come back -- to the SLOT.
      It rides the trap residue beside the fragment bundle
      ([UsertrapRes.ut_own]), and kexit hands it to the ZOMBIE block it parks
@@ -329,7 +341,8 @@ Definition wp_kexit_sconf_body
      kernel's own tear-down uses; a process exiting with -1 of its own
      accord takes the LEFT side and pays as any other exit does. *)
   (Q (kexit_status m)
-   ∨ (⌜kexit_status m = -1⌝ ∗ ChildTok.kill_shot (pv_gen (us_V U)))) -∗
+   ∨ (⌜kexit_status m = -1⌝ ∗ ChildTok.kill_shot (pv_gen (us_V U))
+      ∗ ChildTok.taken_at (pv_gen (us_V U)))) -∗
   (* NO continuation: kexit does not return.  See the header. *)
   WP (Loop : expr riscv_lang).
 
@@ -418,9 +431,9 @@ Module Type KEXIT.
       (ip : mword 64) (dqi : dfrac)
         (on : option nat) (fn : fclose_names)
       (m : regfile) (av : nat) (eb : bool) (b : bool) (lks : gset string)
-      (pid : mword 32) (U : ustate) (cs : gset gname) (Q : Z -> iProp Σ),
+      (pid : mword 32) (U : ustate) (sts : list fdstate) (cs : gset gname) (Q : Z -> iProp Σ),
       wp_kexit_sconf_body γft γf γw γs j γl pd pav pu
  ip dqi
 
-                          on fn m av eb b lks pid U cs Q.
+                          on fn m av eb b lks pid U sts cs Q.
 End KEXIT.

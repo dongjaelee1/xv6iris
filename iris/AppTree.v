@@ -174,6 +174,8 @@ Require Import TreeView.         (* TL-1: [subtree], [own_wf], the deltas *)
 Require Import AppInv.           (* [app_sup_raw], [app_xfer_raw] *)
 Require ConsLog.               (* [cons_step] / [cons_ev]: the merged console claim's event type *)
 Require Import SystemAdequacy.   (* [app_xfer_boot_raw]: [App.Happ_boot] *)
+Require Import RiscvPtsto.       (* [app_iface_triv]: the interface a
+                                    tree application sets *)
 Require Import App.              (* [xv6_app], [MkApp] *)
 
 Local Open Scope Z_scope.
@@ -2388,15 +2390,11 @@ Section AppTreeRecord.
     MkApp tree_fixed tree_cl tree_names tree_pred
           tree_boot                          (* app_boot *)
           tree_R                             (* app_R *)
-          (fun _ _ => True%I)                (* app_tag *)
-          (fun _ => True%I)                  (* app_kill *)
-          (fun _ _ _ _ => emp%I)             (* app_out *)
-          (fun _ _ _ _ _ => emp%I)           (* app_in *)
+          (* THE CONSOLE INTERFACE (upstream redesign R2/R4): a tree
+             application says nothing about a received byte, puts no price
+             on a kill and claims nothing of the console *)
+          (fun _ => app_iface_triv Σ)        (* app_ifc *)
           (fun _ _ => emp%I)                 (* app_turn *)
-          (fun _ _ => emp%I)                 (* app_win *)
-          (* the merged console claim (upstream redesign R2/R3): a tree
-             application claims nothing of the console *)
-          (fun _ _ _ _ => emp%I)             (* app_cons *)
           (fun _ _ => True).                 (* app_phi *)
 
   (* ---- the obligations of [App.xv6_app_adequacy] that are lemmas ---- *)
@@ -2425,30 +2423,12 @@ Section AppTreeRecord.
   (* A KILL COSTS THIS APPLICATION NOTHING (design section 3) *)
   Lemma app_tree_kill (c : app_fixed app_tree) (r : app_names app_tree) :
     app_sup_raw (app_pred app_tree c) r ⊢ □ app_kill app_tree c.
-  Proof. cbn [app_tree app_kill]. iIntros "_ !>". done. Qed.
-
-  Lemma app_tree_outt (c : app_fixed app_tree) (k : nat) (h : list mobs)
-      (acc : list (bv 8)) : Timeless (app_out app_tree c k h acc).
-  Proof. cbn [app_tree app_out]. apply _. Qed.
-
-  Lemma app_tree_inpt (c : app_fixed app_tree) (k : nat) (h : list mobs)
-      (pops : list LogEntryDefs.log_entry)
-      (dl : list (list mobs * bv 8)) : Timeless (app_in app_tree c k h pops dl).
-  Proof. cbn [app_tree app_in]. apply _. Qed.
-
-  Lemma app_tree_wint (c : app_fixed app_tree) (k : nat) :
-    Timeless (app_win app_tree c k).
-  Proof. cbn [app_tree app_win]. apply _. Qed.
-
-  Lemma app_tree_out_sup (c : app_fixed app_tree) (r : app_names app_tree) :
-    app_sup_raw (app_pred app_tree c) r
-      ⊢ □ (∀ (k : nat) (h : list mobs) (acc : list (bv 8)) (b : bv 8),
-             app_out app_tree c k h acc ==∗ app_out app_tree c k h (acc ++ [b])).
   Proof.
-    cbn [app_tree app_out]. iIntros "_ !>" (k h acc b) "_". by iModIntro.
+    rewrite /app_kill. cbn [app_tree app_ifc app_iface_triv ai_kill].
+    iIntros "_ !>". done.
   Qed.
 
-  (* ONE LICENCE over the merged console claim (redesign R2): the tree
+  (* ONE LICENCE over the console claim (redesign R2): the tree
      application's claim is [emp], so every console event on it is free;
      and its timelessness, vacuous at [emp]. *)
   Lemma app_tree_cons_sup (c : app_fixed app_tree) (r : app_names app_tree) :
@@ -2457,23 +2437,9 @@ Section AppTreeRecord.
              (ev : ConsLog.cons_ev),
              app_cons app_tree c k h H ==∗
              app_cons app_tree c k h (ConsLog.cons_step H ev)).
-  Proof. cbn [app_tree app_cons]. iIntros "_ !>" (k h H ev) "_". by iModIntro. Qed.
-
-  Lemma app_tree_const (c : app_fixed app_tree) (k : nat) (h : list mobs)
-      (H : LogEntryDefs.cons_hist) : Timeless (app_cons app_tree c k h H).
-  Proof. cbn [app_tree app_cons]. apply _. Qed.
-
-  Lemma app_tree_in_sup (c : app_fixed app_tree) (r : app_names app_tree) :
-    app_sup_raw (app_pred app_tree c) r
-      ⊢ □ (∀ (k : nat) (h : list mobs) (pops : list LogEntryDefs.log_entry)
-             (dl : list (list mobs * bv 8)) (e : LogEntryDefs.log_entry),
-             app_in app_tree c k h pops dl ==∗ app_in app_tree c k h (pops ++ [e]) dl)
-        ∗ □ (∀ (k : nat) (h : list mobs) (pops : list LogEntryDefs.log_entry)
-               (dl ws : list (list mobs * bv 8)),
-               app_in app_tree c k h pops dl ==∗ app_in app_tree c k h pops (dl ++ ws)).
   Proof.
-    cbn [app_tree app_in]. iIntros "_". iSplit; iIntros "!>" (?????) "_";
-      by iModIntro.
+    rewrite /app_cons. cbn [app_tree app_ifc app_iface_triv ai_cons].
+    rewrite /cons_res_triv. iIntros "_ !>" (k h H ev) "_". by iModIntro.
   Qed.
 
   Lemma app_tree_R0 (c : app_fixed app_tree) :
@@ -2483,20 +2449,20 @@ Section AppTreeRecord.
     iLeft. iExact "H".
   Qed.
 
-  (* the power step: the ledger rides, and the era's four console
-     resources are all [emp] *)
+  (* the power step: the ledger rides, and the era's console resources are
+     both [emp] *)
   Lemma app_tree_pow (c : app_fixed app_tree) (h : list mobs) (on : bool)
       (dk : Z -> bv 8) :
     trace_shape h on ->
     ⊢ app_R app_tree c h ==∗
       app_R app_tree c (h ++ [if on then ObsPowerOff else ObsPowerOn])%list ∗
       (if on then emp
-       else app_out app_tree c (S (obs_boots h)) [] [] ∗
-            app_in app_tree c (S (obs_boots h)) [] [] [] ∗
-            app_turn app_tree c (S (obs_boots h)) ∗
-            app_win app_tree c (S (obs_boots h))).
+       else app_cons app_tree c (S (obs_boots h)) []
+              (LogEntryDefs.MkCH [] [] [] None) ∗
+            app_turn app_tree c (S (obs_boots h))).
   Proof.
-    intros _. cbn [app_tree app_R app_out app_in app_turn app_win].
+    intros _. rewrite /app_cons.
+    cbn [app_tree app_R app_ifc app_iface_triv ai_cons app_turn].
     iIntros "H". iModIntro. iSplitL "H"; [iExact "H" |].
     destruct on; by repeat iSplitR.
   Qed.
@@ -2514,9 +2480,7 @@ End AppTreeRecord.
 (*  7.  WHAT THE RECORD STILL OWES ([App.xv6_app_adequacy]'s binders)     *)
 (*                                                                       *)
 (*  Discharged above, as lemmas at the record's fields: [Hbirth], [HRt],  *)
-(*  [Htagp], [Htagt], [Hkillp], [Hkillt], [Happ_kill], [Houtt],           *)
-(*  [Happ_out_sup], [Hinpt], [Hwint], [Happ_in_sup], [HR0], [Hpow],       *)
-(*  [Happ_boot].                                                          *)
+(*  [al_kill], [al_sup], [HR0], [Hpow], [Happ_boot].               *)
 (*                                                                       *)
 (*  Trivial at this record's fields and left to the instance site (they   *)
 (*  are [app_triv]'s one-liners at [emp] claims -- see                    *)

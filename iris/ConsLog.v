@@ -146,7 +146,9 @@ Qed.
    exactly what [WpUart.uart_log_hi]'s two halves buy consoleintr's shift:
    the mark IS the log's top, so one comparison against the byte being
    accepted orders it against the WHOLE log -- which is the premise
-   [WpUart.in_append] asks for, and hence why a byte can be logged only
+   the arm's order premise asks for ([arm_ok]'s fourth clause, which
+   [WpUart.in_append] used to carry per byte), and hence why a byte can be
+   logged only
    once and the log is in arrival order. *)
 Lemma cl_log_ok_last_ext (pops : list log_entry) (h : list mobs) :
   log_ok pops ->
@@ -207,22 +209,23 @@ Qed.
 (*                                                                        *)
 (*  PURPOSE.  Today the console boundary is THREE resources -- an output   *)
 (*  claim over the accepted bytes, an input claim over the log and the     *)
-(*  delivered inputs, and a kernel-lent window token whose only job is to  *)
+(*  delivered inputs, and a kernel-lent window token whose only job was to *)
 (*  refute interleavings [cons.lock] already forbids.  The redesign        *)
-(*  replaces them by ONE resource over the record below, and the token by  *)
+(*  replaced them by ONE resource over the record below, and the token by  *)
 (*  the record's own [ch_arm] field -- which consoleintr arm is in         *)
 (*  progress, and how much of its echo has gone out.                      *)
 (*                                                                        *)
-(*  THIS SECTION IS THE PURE HALF, and it is wired to nothing: the three   *)
-(*  claims, their links and the token are untouched, and every definition  *)
-(*  above is unchanged.  It exists so that the expensive kernel lane can   *)
-(*  be attempted against a pure layer that is already proved.              *)
+(*  THIS SECTION IS THE PURE HALF, and it was wired to nothing when it     *)
+(*  landed (lane R1): the three claims, their links and the token were     *)
+(*  untouched, so the expensive kernel lane could be attempted against a   *)
+(*  pure layer that was already proved.  Lane R2 wired it, and the three   *)
+(*  claims and the token are gone.                                        *)
 (*                                                                        *)
-(*  IT IS INDEPENDENT OF THE OPEN QUESTION about the echo obligation       *)
-(*  (persistent-and-split with the arm in a kernel ghost, versus linear    *)
-(*  and justified by [cons.lock]'s own resource).  That question decides   *)
-(*  WHO PROVES [cons_ev_ok] and how; it does not change what the events    *)
-(*  are or what they do to the history.                                    *)
+(*  THE OPEN QUESTION it was independent of -- persistent-and-split with   *)
+(*  the arm in a kernel ghost, versus linear and justified by              *)
+(*  [cons.lock]'s own resource -- was settled the first way                *)
+(*  ([WpUart.uart_arm]).  It decided WHO PROVES [cons_ev_ok] and how; it   *)
+(*  did not change what the events are or what they do to the history.     *)
 (* ====================================================================== *)
 
 (* The consoleintr arm in progress: the byte [c] was accepted at history

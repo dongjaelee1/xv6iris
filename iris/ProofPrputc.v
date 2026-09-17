@@ -123,7 +123,7 @@ Section ProofPrputc.
     iDestruct "Henv" as (γl1 γ1) "(#Huinv & #Htxl & #Hbase)".
     (* NOTHING IS OWED FOR THE KERNEL'S OWN PORT (lane OUT-FUPD).
        uartputc_sync wants a JUSTIFICATION for the byte it stores; at
-       [Uart1] the invariant claims nothing ([WpUart.out_res_at Uart1] is
+       [Uart1] the invariant claims nothing ([WpUart.chist_at Uart1] is
        [emp]) and [out_chain_triv] builds the link out of the payload, so
        this cone has nothing to give and nothing to report -- printk's
        contract keeps its arity, exactly as the owner ruled. *)
@@ -385,7 +385,7 @@ Section PrputcSealed.
     intros HK Ha0 Hn Hbelow.
     iIntros "Hcg Hcpu #Htext Hpc #Huinv #Hbase #Htxl Hcont".
     (* THE KERNEL'S PORT OWES NOTHING (lane OUT-FUPD, the owner's ruling
-       that UART1's output is unconstrained): [WpUart.out_res_at Uart1] is
+       that UART1's output is unconstrained): [WpUart.chist_at Uart1] is
        [emp], so [out_chain_triv] builds the callee's link out of the empty
        payload and printk's path takes no justification at all. *)
     iApply (UartPutc.wp_uartputc_sconf kt Uart1 (CID := CID0) γl1 γ1 m0 K emp%I

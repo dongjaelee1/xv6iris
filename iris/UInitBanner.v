@@ -159,18 +159,18 @@ Section UInitBanner.
      is this at whatever count the shell that died left behind.  The shape
      is [EchoLinks]'s, so nothing about the prologue's arithmetic lives in
      this file any more. *)
-  Definition bnr (v : era_pins) (n : nat) (i : nat) : iProp Σ :=
-    EchoLinks.ewc_ban T v n i.
+  Definition bnr (v : era_pins) (I : list (bv 8)) (i : nat) : iProp Σ :=
+    EchoLinks.ewc_ban T v I i.
 
-  Lemma kinit_w1_of_link (N : uk_names Σ) (v : era_pins) (n : nat)
+  Lemma kinit_w1_of_link (N : uk_names Σ) (v : era_pins) (I : list (bv 8))
       (l : list fdstate) (rb : bool) (i : nat) (b : bv 8) :
     l !! 1%nat = Some (FdOpen rb true (FdDevice CONSOLE)) ->
     u_banner !! i = Some b ->
     era_pin γ (S gen_id) v -∗
     echo_links T γ -∗
     UkInit.kinit_w1 N (mword_of_int 1 : mword 64) b
-      (UserFd.ustd (ukn_fd N) l ∗ bnr v n i)
-      (UserFd.ustd (ukn_fd N) l ∗ bnr v n (S i)).
+      (UserFd.ustd (ukn_fd N) l ∗ bnr v I i)
+      (UserFd.ustd (ukn_fd N) l ∗ bnr v I (S i)).
   Proof.
     intros Hli Hb.
     iIntros "#Hpin #Hlk" (h m avail) "%Ha0 %Ha2 #Hcode Hbuf [Hl Hbnd] Hrun Hcont".
@@ -181,7 +181,7 @@ Section UInitBanner.
        the byte, and the era's cursor before and after this byte *)
     set (Q := (fun k : nat =>
                  ubyteq (ukn_d N) (DfracOwn (1/2)) (uint ua) b
-                 ∗ match k with O => bnr v n i | _ => bnr v n (S i) end)%I).
+                 ∗ match k with O => bnr v I i | _ => bnr v I (S i) end)%I).
     assert (Ham1 : (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m)
                      !!! Regidx a1_idx = ua)
       by exact (upd_ne m (Regidx a7_idx) (Regidx a1_idx) _
@@ -227,7 +227,7 @@ Section UInitBanner.
         { pose proof (HM 0%nat ltac:(lia)) as HM0.
           cbn in HM0. rewrite HM0 in Hb'. by injection Hb'. }
         subst b'.
-        iApply (EchoLinks.echo_banner_step T γ (S gen_id) v n i b (Q 1%nat)
+        iApply (EchoLinks.echo_banner_step T γ (S gen_id) v I i b (Q 1%nat)
                   Hb with "Hpin Hlk Hbnd [Hb1]").
         iIntros "Hres". rewrite /Q. iFrame "Hb1". rewrite /bnr. iExact "Hres". }
     { iApply (ubytesq_of_one with "Hb2"). }
@@ -260,11 +260,20 @@ Section UInitBanner.
      [kinit_ban n] is /init's own loop head -- the round's banner owed --
      and [kinit_own n] is what the eighteenth byte leaves: the PROMPT's
      credential, which is what /init lends the shell it forks. *)
+  (* AT THE ERA'S INPUT, UNDER THE COUNT (project echo-any-line): /init's
+     families stay position-indexed -- the ring's pair holds a number --
+     and the input of that length is existential.  Two lower bounds of one
+     era's echoed list with equal length are equal
+     ([EchoOut.inp_lb_agree]), so the existential costs nothing. *)
   Definition kinit_ban (n : nat) : iProp Σ :=
-    (∃ v : era_pins, era_pin γ (S gen_id) v ∗ EchoLinks.ewc_ban T v n 0%nat)%I.
+    (∃ (v : era_pins) (I : list (bv 8)),
+       ⌜length I = n⌝ ∗ era_pin γ (S gen_id) v
+       ∗ EchoLinks.ewc_ban T v I 0%nat)%I.
 
   Definition kinit_own (n : nat) : iProp Σ :=
-    (∃ v : era_pins, era_pin γ (S gen_id) v ∗ EchoLinks.ewc_owed T v n)%I.
+    (∃ (v : era_pins) (I : list (bv 8)),
+       ⌜length I = n⌝ ∗ era_pin γ (S gen_id) v
+       ∗ EchoLinks.ewc_owed T v I)%I.
 
   Global Instance kinit_ban_timeless n : Timeless (kinit_ban n).
   Proof. rewrite /kinit_ban. apply _. Qed.
@@ -281,7 +290,7 @@ Section UInitBanner.
      puts it where the lease is minted. *)
   Definition kinit_dl0 : iProp Σ :=
     (∃ v : era_pins, era_pin γ (S gen_id) v ∗ dl_cnt v (1/2) 0%nat
-                     ∗ E_lb v 0%nat)%I.
+                     ∗ inp_lb v [])%I.
 
   (* THE ERA'S TURN AT STAGE 0 IS ROUND 0's BANNER-OWED CREDENTIAL.  Both
      halves of [EchoOut.eturn] come apart here: the write half becomes
@@ -293,7 +302,8 @@ Section UInitBanner.
     iIntros "Hturn".
     iDestruct "Hturn" as (v) "(#Hpin & Htn & Hdl & #Hcs & #Hps & #HE)".
     iSplitL "Hdl"; [ rewrite /kinit_dl0; iExists v; iFrame "Hpin Hdl HE" | ].
-    rewrite /kinit_ban. iExists v. iFrame "Hpin".
+    rewrite /kinit_ban. iExists v, []. iSplitR; [ by iPureIntro | ].
+    iFrame "Hpin".
     rewrite /EchoLinks.ewc_ban. iLeft. iExists [], [], 0%nat.
     rewrite Nat.add_0_r. iFrame "Htn Hps Hcs HE".
     iPureIntro. exact EchoLinks.wr_ban_round0.
@@ -311,17 +321,18 @@ Section UInitBanner.
     iIntros "#Hlk !>" (n N) "Hban".
     rewrite /UkInitMain.kinit_banner0 /UkInit.kinit_banner_pay.
     iIntros "Hl".
-    iDestruct "Hban" as (v) "[#Hpin Hbnr]".
-    iExists (fun i => UserFd.ustd (ukn_fd N) (ufd_l3 stc_cons) ∗ bnr v n i)%I.
+    iDestruct "Hban" as (v I) "(%Hlen & #Hpin & Hbnr)".
+    iExists (fun i => UserFd.ustd (ukn_fd N) (ufd_l3 stc_cons) ∗ bnr v I i)%I.
     iSplitR "Hbnr Hl".
     { iIntros "!>" (j) "%Hj".
-      iApply (kinit_w1_of_link N v n (ufd_l3 stc_cons) true j
+      iApply (kinit_w1_of_link N v I (ufd_l3 stc_cons) true j
                 (init_lit LIT_START j)
                 (ufd_l3_row1 stc_cons) (init_banner_bytes j Hj)
                 with "Hpin Hlk"). }
     iSplitL; [ iFrame "Hl Hbnr" | ].
-    iIntros "[$ Hbnd]". rewrite /kinit_own. iExists v. iFrame "Hpin".
-    iApply (EchoLinks.ewc_ban_done T v n with "[Hbnd]").
+    iIntros "[$ Hbnd]". rewrite /kinit_own. iExists v, I.
+    iSplitR; [ by iPureIntro | ]. iFrame "Hpin".
+    iApply (EchoLinks.ewc_ban_done T v I with "[Hbnd]").
     rewrite /bnr.
     by replace (length u_banner) with 18%nat by (vm_compute; reflexivity).
   Qed.
@@ -366,15 +377,26 @@ Section UInitBanner.
      above is [UkInitMain.kinit_ban_law] at [Wb := kinit_ban], with no
      further conversion. *)
   Lemma kinit_own_is_cred (n : nat) :
-    kinit_own n ⊣⊢ EchoLinks.ewc_cred T γ (S gen_id) n 0%nat.
-  Proof. rewrite /kinit_own /EchoLinks.ewc_cred /EchoLinks.ewc_pr. done. Qed.
+    kinit_own n ⊣⊢
+      ∃ I : list (bv 8),
+        ⌜length I = n⌝ ∗ EchoLinks.ewc_cred T γ (S gen_id) I 0%nat.
+  Proof.
+    rewrite /kinit_own /EchoLinks.ewc_cred /EchoLinks.ewc_pr.
+    iSplit.
+    - iIntros "H". iDestruct "H" as (v I) "(%Hl & #Hpin & Ho)".
+      iExists I. iSplitR; [ by iPureIntro | ]. iExists v. iFrame "Hpin Ho".
+    - iIntros "H". iDestruct "H" as (I) "[%Hl H]".
+      iDestruct "H" as (v) "[#Hpin Ho]".
+      iExists v, I. iSplitR; [ by iPureIntro | ]. iFrame "Hpin Ho".
+  Qed.
 
   Lemma kinit_ban_law_holds :
     echo_links T γ -∗
     □ (∀ (n : nat) (N : uk_names Σ),
          kinit_ban n -∗
          UkInitMain.kinit_banner0 N stc_cons
-           (EchoLinks.ewc_cred T γ (S gen_id) n 0%nat)).
+           (∃ I : list (bv 8),
+              ⌜length I = n⌝ ∗ EchoLinks.ewc_cred T γ (S gen_id) I 0%nat)).
   Proof.
     iIntros "#Hlk". iDestruct (kinit_banner_law_holds with "Hlk") as "#Hlaw".
     iIntros "!>" (n N) "Hban".

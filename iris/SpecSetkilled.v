@@ -69,7 +69,7 @@ Import Defs.
 Definition wp_setkilled_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ, !fileG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
      (γs : list gname) (j : nat) (γl : gname)
     (m : regfile) (av : nat) (n : nat) (eb : bool) (p : mword 64) (b : bool) (lks : gset string)
-    (pidv : mword 32) (gn : gname) :=
+    (pidv : mword 32) (gn : gname) (self : bool) :=
   let pcE : mword 64 := mword_of_int KernelSyms.setkilled in
   let ret_tgt := ret_pc (m !!! Regidx (mword_of_int 1 : mword 5)) in
   (* the argument is proc j *)
@@ -108,7 +108,17 @@ Definition wp_setkilled_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslo
          faults ON PURPOSE pays for its own death with no taint at all.
      Keyed at the target's generation, which is what the registration
      eighth below names. *)
-  (□ riscv_kill_cred ∨ ChildTok.kill_owed gn) -∗
+  (* ...AND THE RIGHT SIDE BRINGS THE INCARNATION'S MARKER (design/pipe.md,
+     "The exit path"): a self-kill closes every descriptor the process
+     holds, which its own trap deposit pays, so the row it founds is the
+     SPENT one -- marker in, payload kept (it comes back below, for the
+     kexit two critical sections later).  The taint's side founds the paid
+     arm as any third-party killer does. *)
+  (* KEYED on which party pays ([self]), so the post can say which side it
+     hands back: the owed side's payload is the only thing that can build
+     kexit's payment for a self-kill, since its marker is now in the row. *)
+  (if self then ChildTok.kill_owed gn ∗ ChildTok.taken_at gn
+   else □ riscv_kill_cred) -∗
   (* ...AND THE CALLER'S REGISTRATION EIGHTH, LENT (lane SELF-KILL, P6b):
      what says the [gn] the payment is keyed at IS the generation
      <p->lock>'s row is at ([SlotGen.pid_reg_agree]).  usertrap's fault arm
@@ -148,6 +158,10 @@ Definition wp_setkilled_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslo
          flag will never read zero again, which is what refutes the
          not-killed branch of the killed() check this arm walks into. *)
       ChildTok.kill_shot gn -∗
+      (* ...AND THE SIDE THE WRITE DID NOT SPEND: the taint back (it is
+         persistent), or the process's own death payload, which the fault
+         arm hands its kexit directly ([SpecKexit]'s left side at -1) *)
+      (if self then ChildTok.kill_owed gn else □ riscv_kill_cred) -∗
       WP (Loop : expr riscv_lang)) -∗
   WP (Loop : expr riscv_lang).
 
@@ -156,6 +170,6 @@ Module Type SETKILLED.
     forall `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ, !fileG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
        (γs : list gname) (j : nat) (γl : gname)
       (m : regfile) (av : nat) (n : nat) (eb : bool) (p : mword 64) (b : bool) (lks : gset string)
-      (pidv : mword 32) (gn : gname),
-      wp_setkilled_sconf_body γs j γl m av n eb p b lks pidv gn.
+      (pidv : mword 32) (gn : gname) (self : bool),
+      wp_setkilled_sconf_body γs j γl m av n eb p b lks pidv gn self.
 End SETKILLED.

@@ -2035,6 +2035,60 @@ Section ProcInv.
      whole [proc_priv] through them instead would drag [fileG]/[γf] into the
      sleeplock layer purely to read a pid; the bare fraction is both the
      weaker premise and the honest one. *)
+  (* THE BLOCK WITHOUT THE INCARNATION'S MARKER (design/pipe.md, "The exit
+     path").  A process that kills ITSELF founds <p->lock>'s killed row on
+     the spent arm with its marker ([SchedCtx.kill_paid_kill_two]), and
+     walks on to kexit with the rest of its block -- so kexit is stated at
+     this shape, and every other caller splits the marker off with
+     [proc_priv_unmark] and drops it (the ZOMBIE block never carried it). *)
+  Definition proc_priv_unmarked (γf : gname) (pa : mword 64) (pid : mword 32)
+      (U : ustate) : iProp Σ :=
+    (proc_priv_nocwd γf pa pid U ∗ cwd_ref_at (pv_cwd (us_V U)) (pv_cwi (us_V U)) ∗
+     first_tok ∗
+     (∃ Q : Z -> iProp Σ,
+        gen_kq (pv_gen (us_V U)) pa pid Q ∗ my_pay (pv_gen (us_V U)) Q) ∗
+     (∃ xsv : mword 32, p_xstate pa ↦₄{DfracOwn (1/2)} xsv) ∗
+     gen_halves_at pa pid (pv_gen (us_V U)))%I.
+
+  Lemma proc_priv_unmark (γf : gname) (pa : mword 64) (pid : mword 32)
+      (U : ustate) :
+    proc_priv γf pa pid U ⊣⊢
+    proc_priv_unmarked γf pa pid U ∗ ChildTok.taken_at (pv_gen (us_V U)).
+  Proof.
+    rewrite (proc_priv_split_cwd γf pa pid U) /proc_priv_unmarked
+      /gen_halves_priv.
+    iSplit.
+    - iIntros "(Hn & Hc & Hf & Hgq & Hxs & Hgh & Ht)". iFrame.
+    - iIntros "[(Hn & Hc & Hf & Hgq & Hxs & Hgh) Ht]". iFrame.
+  Qed.
+
+  (* what a killed check on the marker-less block lends killed(): the quarter
+     of [p->pid] and the registration eighth, both off the pieces that are
+     still there *)
+  Lemma proc_priv_unmarked_pid (γf : gname) (pa : mword 64) (pid : mword 32)
+      (U : ustate) :
+    proc_priv_unmarked γf pa pid U -∗
+    p_pid pa ↦₄{DfracOwn (1/4)} pid ∗
+    (p_pid pa ↦₄{DfracOwn (1/4)} pid -∗ proc_priv_unmarked γf pa pid U).
+  Proof.
+    iIntros "(Hn & Hrest)".
+    iDestruct (proc_priv_nocwd_pid with "Hn") as "[Hpid Hback]".
+    iFrame "Hpid". iIntros "Hpid". iDestruct ("Hback" with "Hpid") as "Hn".
+    iFrame.
+  Qed.
+
+  Lemma proc_priv_unmarked_reg (γf : gname) (pa : mword 64) (pid : mword 32)
+      (U : ustate) :
+    proc_priv_unmarked γf pa pid U -∗
+    pid_reg pid (DfracOwn qeighth) (pv_gen (us_V U)) ∗
+    (pid_reg pid (DfracOwn qeighth) (pv_gen (us_V U)) -∗
+       proc_priv_unmarked γf pa pid U).
+  Proof.
+    iIntros "(Hn & Hc & Hf & Hgq & Hxs & Hgh)".
+    iDestruct (gen_halves_at_reg with "Hgh") as "[Hr Hback]".
+    iFrame "Hr". iIntros "Hr". iDestruct ("Hback" with "Hr") as "Hgh". iFrame.
+  Qed.
+
   Lemma proc_priv_pid (γf : gname) (pa : mword 64) (pid : mword 32) (U : ustate) :
     proc_priv γf pa pid U -∗
     p_pid pa ↦₄{DfracOwn (1/4)} pid ∗

@@ -67,6 +67,7 @@ From stdpp Require Import gmap list bitvector.definitions.
 From iris.algebra Require Import excl auth agree csum frac ufrac dfrac gmap gset
      gset gmultiset numbers updates local_updates.
 From iris.algebra.lib Require Import excl_auth dfrac_agree mono_list.
+Require Import PipeNames.   (* [pipe_st]: the byte queue's abstract state, plain data *)
 From iris.proofmode Require Import proofmode.
 From iris.base_logic.lib Require Import own ghost_var ghost_map saved_prop
      mono_nat cancelable_invariants.
@@ -967,10 +968,19 @@ Proof. solve_inG. Qed.
 (*  12.  PIPES  (theory: PipeInvDefs.v, PipeInv.v)                        *)
 (* ===================================================================== *)
 
+(* THE BYTE QUEUE (design/pipe.md, "The byte queue"; theory: PipeQueue.v):
+   the pipe's abstract state [PipeNames.pipe_st] -- every byte written, the
+   read pointer, the two open flags -- as an EXCLUSIVE authority/fragment
+   pair: the kernel's authority inside [pi->lock], the fragment an exact
+   view in its user's hands, neither moving without the other. *)
+Definition pipeqR : cmra := excl_authR (leibnizO pipe_st).
+
 Class pipeG (Σ : gFunctors) := PipeG {
   pipe_inG :: inG Σ fracR;          (* the two end fractions *)
-  pipe_mark_inG :: inG Σ dfracR }.  (* the two "still open" markers *)
-Definition pipeΣ : gFunctors := #[GFunctor fracR; GFunctor dfracR].
+  pipe_mark_inG :: inG Σ dfracR;    (* the two "still open" markers *)
+  pipe_queue_inG :: inG Σ pipeqR }. (* the byte queue *)
+Definition pipeΣ : gFunctors :=
+  #[GFunctor fracR; GFunctor dfracR; GFunctor pipeqR].
 Global Instance subG_pipeΣ {Σ} : subG pipeΣ Σ -> pipeG Σ.
 Proof. solve_inG. Qed.
 

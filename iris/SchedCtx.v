@@ -259,10 +259,22 @@ Section SchedCtx.
      ([kill_paid_shot_nz]) -- which is how usertrap's second killed check
      refutes its resume branch after a [setkilled], and how a console read
      that answered -1 by kill refutes it after the syscall. *)
+  (* ...AND THE PAID ARM CARRIES THE KILLER'S CREDENTIAL (design/pipe.md,
+     "The exit path", 2026-09-16).  A kill closes every descriptor of the
+     victim, and a pipe descriptor's last close steps the pipe's exact
+     ghost state -- a price the KILLER pays, and the only thing a killer can
+     pay it with is the taint ([RiscvPtsto.riscv_kill_cred]), since it
+     cannot name the victim's table.  So the payment arm is the death
+     payload AND the credential.  A process that kills ITSELF pays
+     differently: its own trap deposit carries the closes of the table it
+     holds, so the fault arm founds the row on the SPENT arm directly,
+     with the incarnation's marker -- which is what a live process at a
+     later killed check refutes with the marker still in its block
+     ([kill_paid_shot_tear]). *)
   Definition kill_row (gn : gname) (kl : mword 32) : iProp Σ :=
     ((⌜kl = (mword_of_int 0 : mword 32)⌝ ∗ ChildTok.kill_pend gn)
      ∨ (⌜kl <> (mword_of_int 0 : mword 32)⌝ ∗ ChildTok.kill_shot gn ∗
-        (ChildTok.kill_owed gn ∨ ChildTok.taken_at gn)))%I.
+        ((ChildTok.kill_owed gn ∗ □ riscv_kill_cred) ∨ ChildTok.taken_at gn)))%I.
 
   (* WHOSE ROW IT IS, and the tie that says so: an eighth of the pid's
      registration ([SlotGen.pid_reg]), which is the one resource in the
@@ -308,7 +320,7 @@ Section SchedCtx.
 
      AND [riscv_kill_cred] IS NO LONGER A KILL CREDENTIAL.  It is the
      APPLICATION'S TAINT on the fixed record (echo instantiates it as
-     [AppEcho.echo_taint]; [App.Happ_kill] is where the supply buys it),
+     [AppEcho.echo_taint]; [App.al_kill] is where the supply buys it),
      and after this lane it survives ONLY as the antecedent of this wand.
      Nothing else asks for it: no verified program produces it, no payload
      row carries a -1 wand ([UexecSlot.upay_neg] is gone), and the deposit
@@ -358,10 +370,12 @@ Section SchedCtx.
 
   Lemma kill_row_of_owed (gn : gname) (kl : mword 32) :
     kl <> (mword_of_int 0 : mword 32) ->
-    ChildTok.kill_shot gn -∗ ChildTok.kill_owed gn -∗ kill_row gn kl.
+    ChildTok.kill_shot gn -∗ □ riscv_kill_cred -∗ ChildTok.kill_owed gn -∗
+    kill_row gn kl.
   Proof.
-    intro Hnz. rewrite /kill_row. iIntros "#Hs H". iRight.
-    iSplitR; [ by iPureIntro | ]. iSplitR; [ iExact "Hs" | ]. iLeft. iExact "H".
+    intro Hnz. rewrite /kill_row. iIntros "#Hs #Hc H". iRight.
+    iSplitR; [ by iPureIntro | ]. iSplitR; [ iExact "Hs" | ]. iLeft.
+    iFrame "H". iExact "Hc".
   Qed.
 
   Lemma kill_row_of_taken (gn : gname) (kl : mword 32) :
@@ -423,7 +437,7 @@ Section SchedCtx.
     ChildTok.kill_owed gn ∗ kill_row gn kl.
   Proof.
     iIntros "#Hs Ht Hrow". rewrite /kill_row.
-    iDestruct "Hrow" as "[[_ Hp] | [%Hnz [_ [Ho | Ht2]]]]".
+    iDestruct "Hrow" as "[[_ Hp] | [%Hnz [_ [[Ho _] | Ht2]]]]".
     - iDestruct (ChildTok.kill_pend_shot with "Hp Hs") as %[].
     - iSplitL "Ho"; [ iExact "Ho" | ].
       iRight. iSplitR; [ by iPureIntro | ].
@@ -487,7 +501,7 @@ Section SchedCtx.
       iSplitL "Hr"; [ iExact "Hr" | ].
       iSplitR; [ iExact "Hmy" | ].
       iSplitR; [ iModIntro; iExact "Hw" | ].
-      iApply (kill_row_of_owed _ _ Hknz with "Hs").
+      iApply (kill_row_of_owed _ _ Hknz with "Hs Hsup").
       iApply (ChildTok.kill_owed_of with "Hmy"). iApply "Hw". iExact "Hsup".
   Qed.
 
@@ -503,11 +517,12 @@ Section SchedCtx.
       (gn : gname) :
     bv_unsigned pid <> 0 ->
     ⌜kl' <> (mword_of_int 0 : mword 32)⌝ -∗
-    pid_reg pid dq gn -∗ ChildTok.kill_owed gn -∗ kill_paid pid kl ==∗
+    pid_reg pid dq gn -∗ □ riscv_kill_cred -∗ ChildTok.kill_owed gn -∗
+    kill_paid pid kl ==∗
     pid_reg pid dq gn ∗ kill_paid pid kl'.
   Proof.
     intro Hpnz. rewrite /kill_paid.
-    iIntros "%Hknz Hmine Howed [[%Hz _] | [%Hnz Hr]]".
+    iIntros "%Hknz Hmine #Hsup Howed [[%Hz _] | [%Hnz Hr]]".
     - exfalso. exact (Hpnz Hz).
     - iDestruct "Hr" as (gn' Q) "(Hr & #Hmy & #Hw & Hrow)".
       iDestruct (pid_reg_agree pid pid dq (DfracOwn qeighth) gn gn' eq_refl
@@ -518,7 +533,7 @@ Section SchedCtx.
       iSplitL "Hr"; [ iExact "Hr" | ].
       iSplitR; [ iExact "Hmy" | ].
       iSplitR; [ iModIntro; iExact "Hw" | ].
-      iApply (kill_row_of_owed _ _ Hknz with "Hs Howed").
+      iApply (kill_row_of_owed _ _ Hknz with "Hs Hsup Howed").
   Qed.
 
   (* ...AND THE TWO SIDES AS ONE STEP, which is what a writer that may be
@@ -531,13 +546,20 @@ Section SchedCtx.
      the step hand the ONE-SHOT back: after this write the flag is monotone
      for this incarnation, and [ChildTok.kill_shot] is that fact. *)
   Lemma kill_paid_kill_two (pid : mword 32) (kl kl' : mword 32) (dq : dfrac)
-      (gn : gname) :
+      (gn : gname) (self : bool) :
     bv_unsigned pid <> 0 ->
     ⌜kl' <> (mword_of_int 0 : mword 32)⌝ -∗
     pid_reg pid dq gn -∗
-    (□ riscv_kill_cred ∨ ChildTok.kill_owed gn) -∗
+    (* the taint, or the process's OWN death payload beside the
+       incarnation's marker (design/pipe.md, "The exit path"): a self-kill
+       founds the row on the SPENT arm, keeps its payload in hand for the
+       kexit two critical sections later, and gets it back below.  KEYED
+       on the party, so the caller knows which side comes back. *)
+    (if self then ChildTok.kill_owed gn ∗ ChildTok.taken_at gn
+     else □ riscv_kill_cred) -∗
     kill_paid pid kl ==∗
-    pid_reg pid dq gn ∗ ChildTok.kill_shot gn ∗ kill_paid pid kl'.
+    pid_reg pid dq gn ∗ ChildTok.kill_shot gn ∗ kill_paid pid kl' ∗
+    (if self then ChildTok.kill_owed gn else □ riscv_kill_cred).
   Proof.
     intro Hpnz. rewrite /kill_paid.
     iIntros "%Hknz Hmine Hpay [[%Hz _] | [%Hnz Hr]]".
@@ -546,17 +568,27 @@ Section SchedCtx.
       iDestruct (pid_reg_agree pid pid dq (DfracOwn qeighth) gn gn' eq_refl
                    with "Hmine Hr") as %->.
       iMod (kill_row_fire with "Hrow") as "#Hs".
-      iAssert (ChildTok.kill_owed gn') with "[Hpay]" as "Howed".
-      { iDestruct "Hpay" as "[#Hc | $]".
-        iApply (ChildTok.kill_owed_of with "Hmy"). iApply "Hw". iExact "Hc". }
-      iModIntro. iFrame "Hmine".
-      iSplitR "Hr Howed"; [ iExact "Hs" | ].
-      iRight. iSplitR; [ iPureIntro; exact Hnz | ].
-      iExists gn', Q.
-      iSplitL "Hr"; [ iExact "Hr" | ].
-      iSplitR; [ iExact "Hmy" | ].
-      iSplitR; [ iModIntro; iExact "Hw" | ].
-      iApply (kill_row_of_owed _ _ Hknz with "Hs Howed").
+      iModIntro. iFrame "Hmine". iSplitL ""; [ iExact "Hs" | ].
+      destruct self.
+      + (* the process's own: the marker goes in, the payload comes back *)
+        iDestruct "Hpay" as "[Howed Ht]".
+        iSplitR "Howed"; [ | iExact "Howed" ].
+        iRight. iSplitR; [ iPureIntro; exact Hnz | ].
+        iExists gn', Q.
+        iSplitL "Hr"; [ iExact "Hr" | ].
+        iSplitR; [ iExact "Hmy" | ].
+        iSplitR; [ iModIntro; iExact "Hw" | ].
+        iApply (kill_row_of_taken _ _ Hknz with "Hs Ht").
+      + (* the killer's credential buys the payload through the row's wand *)
+        iDestruct "Hpay" as "#Hc".
+        iSplitL "Hr"; [ | iExact "Hc" ].
+        iRight. iSplitR; [ iPureIntro; exact Hnz | ].
+        iExists gn', Q.
+        iSplitL "Hr"; [ iExact "Hr" | ].
+        iSplitR; [ iExact "Hmy" | ].
+        iSplitR; [ iModIntro; iExact "Hw" | ].
+        iApply (kill_row_of_owed _ _ Hknz with "Hs Hc").
+        iApply (ChildTok.kill_owed_of with "Hmy"). iApply "Hw". iExact "Hc".
   Qed.
 
   (* ...AND WHAT AN UNUSED SLOT'S PAYLOAD SAYS ABOUT THE FLAG: either it
@@ -635,6 +667,41 @@ Section SchedCtx.
         iFrame "Hmine". iSplitL "Hr Hrow".
         * iApply (kill_paid_of_reg pid kl gn Q Hnz with "Hr Hmy Hw Hrow").
         * iRight. iExact "Hs".
+  Qed.
+
+  (* ...AND THE READING A KILLED CHECK THAT WILL TEAR THE PROCESS DOWN
+     NEEDS (design/pipe.md, "The exit path"): the taint, out of the paid
+     arm.  The caller lends the incarnation's marker, which is what refutes
+     the SPENT arm -- a row a self-kill founded is spent, and the process
+     that founded it never traps again, so a live trap's own marker is the
+     proof that the row it reads was paid by a third party. *)
+  Lemma kill_paid_shot_tear (pid kl : mword 32) (dq : dfrac) (gn : gname) :
+    kill_paid pid kl -∗ pid_reg pid dq gn -∗ ChildTok.taken_at gn -∗
+    kill_paid pid kl ∗ pid_reg pid dq gn ∗ ChildTok.taken_at gn ∗
+    (⌜kl = (mword_of_int 0 : mword 32)⌝
+     ∨ (ChildTok.kill_shot gn ∗ □ riscv_kill_cred)).
+  Proof.
+    iIntros "Hkp Hmine Ht".
+    iDestruct (kill_paid_agree pid kl dq gn with "Hkp Hmine")
+      as "[Harm Hmine]".
+    iDestruct "Harm" as "[[%Hz #Hf] | [%Hnz Hlive]]".
+    - rewrite /kill_free. iDestruct "Hf" as %Hkz.
+      iFrame "Hmine Ht". iSplitL.
+      + iApply (kill_paid_zero pid kl Hz Hkz).
+      + iLeft. iPureIntro; exact Hkz.
+    - iDestruct "Hlive" as (Q) "(Hr & #Hmy & #Hw & Hrow)".
+      rewrite /kill_row.
+      iDestruct "Hrow" as "[[%Hk Hp] | [%Hkn [#Hs [[Ho #Hc] | Ht2]]]]".
+      + iFrame "Hmine Ht". iSplitL.
+        * iApply (kill_paid_of_reg pid kl gn Q Hnz with "Hr Hmy Hw").
+          rewrite /kill_row. iLeft. iFrame "Hp". by iPureIntro.
+        * iLeft. by iPureIntro.
+      + iFrame "Hmine Ht". iSplitL.
+        * iApply (kill_paid_of_reg pid kl gn Q Hnz with "Hr Hmy Hw").
+          rewrite /kill_row. iRight. iSplitR; [ by iPureIntro | ].
+          iSplitR; [ iExact "Hs" | ]. iLeft. iFrame "Ho". iExact "Hc".
+        * iRight. iSplitR; [ iExact "Hs" | ]. iExact "Hc".
+      + iDestruct (ChildTok.taken_at_excl with "Ht Ht2") as %[].
   Qed.
 
   (* ...AND THE CONVERSE, WHICH IS WHAT A KILLED CHECK NEEDS (lane

@@ -93,8 +93,14 @@ Section UkCat.
      nothing outside [UkCat*.v] requires this file -- so nobody discharges
      these yet; naming them is what keeps cat off the generic supplier
      ([AppInv.app_sup], the taint) along with init, sh and echo. *)
+  (* ...AND close(21) IS IN THE LIST NOW (design/pipe.md, "The byte
+     queue").  A pipe descriptor's close steps the pipe's exact ghost
+     state, so 21 left [UexecSG.free_num]; cat closes the descriptor its
+     own [open] returned, whose TYPE [UsysMemOk.usys_fd_ok]'s open row
+     leaves existential, so cat cannot take the free route
+     ([UkRun.udepw_cl_nonpipe]) and names the deposit here instead. *)
   Definition cat_deps : iProp Σ :=
-    (udepw_law 5 ∗ udepw_law 15 ∗ udepw_law 16)%I.
+    (udepw_law 5 ∗ udepw_law 15 ∗ udepw_law 16 ∗ udepw_law 21)%I.
 
   Global Instance cat_deps_persistent : Persistent cat_deps.
   Proof. rewrite /cat_deps. apply _. Qed.
@@ -183,7 +189,7 @@ Section UkCat.
     { iApply (uis_cat_3ee with "Hcode"). }
     (* THE FLAGGED DEPOSIT: open(15) (P4) *)
     { iApply (udepw_of_law N m1 (mword_of_int 0x3ee) 15 with "[Hdp]").
-      iDestruct "Hdp" as "(_ & $ & _)". }
+      iDestruct "Hdp" as "(_ & $ & _ & _)". }
     assert (E1open : add_vec_int (mword_of_int 0x3ee : mword 64) 4
                    = mword_of_int 0x3f2)
       by (apply bv_eq; vm_compute; reflexivity).
@@ -230,6 +236,10 @@ Section UkCat.
   Lemma wp_kcat_close (h : CpuId) (m : regfile) (fd : nat) (st : fdstate)
       (avail : nat) :
     bv_signed (trunc32 (m !!! Regidx a0_idx)) = Z.of_nat fd ->
+    (* THE CLOSE DEPOSIT (design/pipe.md): cat's descriptor came from
+       [open], whose U-tier row leaves the type existential, so the row is
+       paid from cat's own named deposits rather than from the free law. *)
+    cat_deps -∗
     cat_code γt -∗
     urun N h m (mword_of_int CatSyms.close) avail -∗
     ufd γfd fd st -∗
@@ -241,7 +251,7 @@ Section UkCat.
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof.
-    intros Harg. iIntros "#Hcode Hrun Hfdh Hcont".
+    intros Harg. iIntros "#Hdp #Hcode Hrun Hfdh Hcont".
     destruct cat_syms_pins
       as (_ & _ & _ & _ & _ & _ & _ & Hwrite & Hopen & Hclose & _).
     rewrite Hclose.
@@ -278,8 +288,9 @@ Section UkCat.
               ltac:(vm_compute; reflexivity)
               with "[] Hrun [] Hfdh").
     { iApply (uis_cat_3d6 with "Hcode"). }
-    { iApply udepw_of_psok; [ apply Hpsok_free; free_lit | ];
-      (discriminate || assumption || (vm_compute; discriminate)). }
+    { iApply (udepw_cl_of_udepw N m1 (mword_of_int 0x3d6) st).
+      iApply (udepw_of_law N m1 (mword_of_int 0x3d6) 21 with "[Hdp]").
+      iDestruct "Hdp" as "(_ & _ & _ & $)". }
     assert (E1close : add_vec_int (mword_of_int 0x3d6 : mword 64) 4
                    = mword_of_int 0x3da)
       by (apply bv_eq; vm_compute; reflexivity).
@@ -357,7 +368,7 @@ Section UkCat.
     { iApply (uis_cat_3ce with "Hcode"). }
     (* THE FLAGGED DEPOSIT: write(16) (P4) *)
     { iApply (udepw_of_law N m1 (mword_of_int 0x3ce) 16 with "[Hdp]").
-      iDestruct "Hdp" as "(_ & _ & $)". }
+      iDestruct "Hdp" as "(_ & _ & $ & _)". }
     assert (E1write : add_vec_int (mword_of_int 0x3ce : mword 64) 4
                    = mword_of_int 0x3d2)
       by (apply bv_eq; vm_compute; reflexivity).
@@ -491,7 +502,7 @@ Section UkCat.
     { iApply (uis_cat_3c6 with "Hcode"). }
     (* THE FLAGGED DEPOSIT: read(5) (P4) *)
     { iApply (udepw_of_law N m1 (mword_of_int 0x3c6) 5 with "[Hdp]").
-      iDestruct "Hdp" as "($ & _ & _)". }
+      iDestruct "Hdp" as "($ & _ & _ & _)". }
     assert (E1r : add_vec_int (mword_of_int 0x3c6 : mword 64) 4
                   = mword_of_int 0x3ca)
       by (apply bv_eq; vm_compute; reflexivity).

@@ -626,13 +626,16 @@ Section ProofSysOpenAlloc.
                 Hist0 Hiblk Hiblog Hinb Hcovb Hiu Hj Hgl Hlkempty Hsp0 HM4sp
                 HM4thr HM4s1 HM4s2 Hal
                 with "Hcg Hown Htce Hcce Htext Hdata Hpc Hpe Hftab Href
-                      [] Hbio Hlog Hseam Hgen
+                      [] [] Hbio Hlog Hseam Hgen
                       Hitab Hitinv Hesck Hireg Hropen Hslkk Hslkd [//] Hfly Hclaimsy Hdep Hoffr Hidev
                       Hiinum Hivalid Hload Hshot Hfrz Hkeep Hru Hsbb Hsbi Hbmres Hpbare
                       Hprocs Hdev Hgeo Hdlk Hbsl Hires Hop Hf1 Hf2 Hf3 Hf4 Hf5 Hf6
                       HbP H23 H24
                       [Hcback Howe Hisl Hfrag HP Hobs Htc Hcont]").
       { iApply fileclose_env_none. }
+      (* the descriptor filealloc handed out is UNTYPED, so its close pays
+         nothing ([SpecFileclose.fileclose_cpay_none]) *)
+      { iApply fileclose_cpay_none. }
       iEval (rewrite /wp_next).
       iIntros (CIDy) "%Hqy". iIntros (mf)
         "%Hcsf %Ha0f Hcg Hown Htce Hcce Hpc Hpbare Hsbb Hsbi

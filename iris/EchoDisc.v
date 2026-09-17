@@ -3,10 +3,11 @@
    [list mobs] goes in and a [Prop] comes out, so the statements here can be
    read -- and refuted -- without opening the logic.
 
-   Design of record: claude-notes/projects/app-echo.md, "E5 -- THE OUTPUT
-   SIDE" (O1-O3 as ruled by the owner; O5's allocation-failure
-   alternatives; "TWO UARTS") and "E3 -- THE INPUT LINE" (R4, the
-   per-character ruling); the pre-mortem review
+   Design of record: claude-notes/projects/echo-any-line.md, "The design
+   (owner's session, 2026-09-16)" for the line-per-round session model;
+   claude-notes/projects/app-echo.md, "E5 -- THE OUTPUT SIDE" (O1-O3 as ruled
+   by the owner; O5's allocation-failure alternatives; "TWO UARTS") and "E3 --
+   THE INPUT LINE" (R4, the per-character ruling); the pre-mortem review
    review-echo-plan-2026-09-12.md, findings 7, 8 and 12.
 
    THE THEOREM IS ABOUT THE CONSOLE UART ONLY.  The board has two 16550s
@@ -21,10 +22,9 @@
    byte, and the discipline had to wait for the last of them before it
    could read anything; all of that is gone.)
 
-   WHY THE DISCIPLINE IS A RATE BOUND.  [AppEcho.disc] used to be
-   [star_prefix echo_line] of the cycle's INPUT BYTES ALONE -- a predicate
-   that says nothing about WHEN a byte was typed.  Review finding 7 is that
-   the theorem is FALSE at that discipline: the console ring holds 128
+   WHY THE DISCIPLINE IS A RATE BOUND.  A discipline on the cycle's INPUT
+   BYTES ALONE says nothing about WHEN a byte was typed.  Review finding 7 is
+   that the theorem is FALSE at such a discipline: the console ring holds 128
    unconsumed bytes and [consoleintr] DROPS the next one silently, so an
    adversary who types a screenful before sh's first read breaks the
    correspondence between the stored sequence and the input sequence, and
@@ -33,18 +33,27 @@
 
      D1  a line's first byte only after the "$ " prompt has appeared.
      D2  every later byte of a line only after the previous byte's echo.
-     D3  the input bytes are a prefix of [echo_line]^* -- the LANDED
-         predicate, kept verbatim as [disc_seg].
+     D3  the input PARSES as a sequence of admissible lines, plus a line
+         the user has only started -- [disc_input] below.
 
-   D1 AND D2 ARE ONE CONDITION, POSITIONAL.  Section 5 states, at every
-   input position i, that the expected transcript for the first i input
-   bytes is already a prefix of the wire ([disc_pt]).  That transcript
-   ENDS in exactly the byte D2 asks for when i is mid-line, and in exactly
-   the "$ " D1 asks for when i is at a line boundary (at i = 0 it is init's
-   banner and sh's first prompt), so the one condition implies both.  It is
-   also the SIMULATION INVARIANT the output proof wants: [good_out] bounds
-   the wire from the other side, and at an input point the two bounds meet
-   and the wire is pinned exactly.
+   D1 AND D2 ARE ONE CONDITION, POSITIONAL.  Section 4 states, at every
+   input position, that the expected transcript for the input typed so far
+   is already a prefix of the wire ([disc_pt]).  That transcript ENDS in
+   exactly the byte D2 asks for mid-line, and in exactly the "$ " D1 asks
+   for at a line boundary (at the empty input it is init's banner and sh's
+   first prompt), so the one condition implies both.  It is also the
+   SIMULATION INVARIANT the output proof wants: [good_out] bounds the wire
+   from the other side, and at an input point the two bounds meet and the
+   wire is pinned exactly.
+
+   EACH ROUND TYPES ITS OWN LINE.  The session is a function of the era's
+   INPUT, not of its length: [sess ps cs I] reads [I] through the parser of
+   [LineWords] section 7 -- the complete bodies [bodies_of I] and the
+   partial line [rest_of I] -- so nothing here divides the wire by a fixed
+   line length, and every round carries whatever words the user typed for
+   it.  What makes that sound is that the parse of a prefix is a prefix of
+   the parse, so the observer reads the rounds off the wire
+   ([EchoOutPure.sess_prefix_det]).
 
    WHAT IS NOT HERE.  [Hphi] -- the theorem's obligation at [echo_phi] --
    is NOT proved by this file, nor by the lane that wrote it; see the note
@@ -74,156 +83,302 @@ Definition sb (s : string) : list (bv 8) := string_bytes s.
 Definition nlb : list (bv 8) := [Z_to_bv 8 10%Z].
 
 (* ====================================================================== *)
-(*  1.  THE INPUT LINE AND D3 (the landed predicate, verbatim)             *)
+(*  1.  THE LINE THE DISCIPLINE ADMITS, AND D3                             *)
 (* ====================================================================== *)
 
-(* THE CONSOLE LINE THE DISCIPLINE ADMITS, as the three WORDS it is --
-   the command name and its two arguments -- joined by single spaces and
-   closed by the newline [gets] stops at and keeps ([LineWords.wl_line]).
-   These are the bytes the user types, and ALSO their echoes, because
-   [consoleintr] echoes a stored byte unchanged and rewrites only '\r'
-   (to '\n'); the line ends in '\n' (byte 10), not '\r', so echo is the
-   IDENTITY on it.
+(* THE CONSOLE LINE THE DISCIPLINE ADMITS is a WORD LINE ([LineWords]):
+   words joined by single spaces and closed by the newline [gets] stops at
+   and keeps.  These are the bytes the user types, and ALSO their echoes,
+   because [consoleintr] echoes a stored byte unchanged and rewrites only
+   '\r' (to '\n'); an admissible line ends in '\n' (byte 10), not '\r', so
+   the echo is the IDENTITY on it.
 
-   IT IS SPELLED AS WORDS AND NOT AS SEVENTEEN BYTES because that is the
-   structure everything above actually reads it through: sh's lexer finds
-   the words ([UkShWords.wl_tokens]), exec pushes them, and echo prints
-   them back.  A fact stated at the byte list is worth one command line;
-   the same fact at [wl_line] is worth every disciplined one. *)
-Definition echo_ws : list (list (bv 8)) :=
-  [ sb "echo"%string; sb "hello"%string; sb "world"%string ].
+   THE FOUR CONDITIONS are the whole of what the claim excludes, and each
+   is owed by a named consumer: the words are words ([wl_wf], so sh's lexer
+   finds them and no byte of the line is a control character); the command
+   run IS /echo, because the theorem is about that program; there are fewer
+   words than sh's MAXARGS; and the line fits [getcmd]'s buffer.  Nothing
+   here excludes [echo fork] or [echo exec echo failed] -- see the note at
+   [line_alts_of_prefix_bytes]. *)
+Definition cmd_echo : list (bv 8) := sb "echo"%string.
 
-Definition echo_line : list (bv 8) := wl_line echo_ws.
+(* sh's [getcmd] buffer ([UkSh.sh_nbuf]), which UkSh proves equal to this.
+   The console ring's 128 follows: at most one line is ever outstanding. *)
+Definition line_max : nat := 100.
 
-(* THE ONE SANCTIONED UNFOLDING.  Past the [Opaque] below the tree reads
-   the line through its lemmas and never through its bytes -- which is
-   both what makes a general line possible and what stops an [rewrite
-   !length_app] from silently turning [length echo_line] into the arity
-   of a join. *)
-Lemma echo_line_words : echo_line = wl_line echo_ws.
-Proof. reflexivity. Qed.
+Definition line_ok (ws : list (list (bv 8))) : Prop :=
+  wl_wf ws
+  /\ ws !! 0%nat = Some cmd_echo
+  /\ (2 <= length ws)%nat
+  /\ (length ws < 10)%nat
+  /\ (length (wl_line ws) < line_max)%nat.
 
-Lemma echo_line_length : length echo_line = 17.
-Proof. vm_compute. reflexivity. Qed.
+Global Instance line_ok_dec ws : Decision (line_ok ws).
+Proof. rewrite /line_ok. apply _. Defined.
 
-(* ...and the ONE thing most of the tree needs of that length: no line is
-   empty, because every line carries its newline.  Not a fact about these
-   three words ([LineWords.wl_line_pos]). *)
-Lemma echo_line_pos : 0 < length echo_line.
-Proof. rewrite echo_line_words. exact (wl_line_pos echo_ws). Qed.
+Lemma line_ok_wf ws : line_ok ws -> wl_wf ws.
+Proof. by intros (H & _ & _ & _ & _). Qed.
 
-(* the same line, read off the string it is: a transcription check *)
-Lemma echo_line_string : echo_line = sb "echo hello world"%string ++ nlb.
-Proof. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+Lemma line_ok_head ws : line_ok ws -> ws !! 0%nat = Some cmd_echo.
+Proof. by intros (_ & H & _ & _ & _). Qed.
 
-(* the words are words: nonempty and alphanumeric.  Decidable, so this is
-   the ONE check that says which line the application is about. *)
-Lemma echo_ws_wf : wl_wf echo_ws.
-Proof. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+(* AT LEAST ONE ARGUMENT.  echo's loop runs from 1 to [argc], so at
+   [argc = 1] it prints NOTHING -- while the line's own tail is the bare
+   newline.  The claim's good alternative IS that tail
+   ([line_alts_of]'s 0), so a line with no argument is a line this claim
+   must not be about, and this is where it says so. *)
+Lemma line_ok_ge2 ws : line_ok ws -> (2 <= length ws)%nat.
+Proof. by intros (_ & _ & H & _ & _). Qed.
 
-Lemma echo_ws_length : length echo_ws = 3%nat.
-Proof. reflexivity. Qed.
+Lemma line_ok_lt10 ws : line_ok ws -> (length ws < 10)%nat.
+Proof. by intros (_ & _ & _ & H & _). Qed.
 
-(* THE TWO BOUNDS A CALLER OWES, named where the word list is: the line
-   has a command name to run, and it has fewer words than sh's MAXARGS.
-   Both are decidable at any given line and become premises once the word
-   list is a parameter. *)
-Lemma echo_ws_pos : (0 < length echo_ws)%nat.
-Proof. rewrite echo_ws_length. lia. Qed.
+Lemma line_ok_len ws : line_ok ws -> (length (wl_line ws) < line_max)%nat.
+Proof. by intros (_ & _ & _ & _ & H). Qed.
 
-Lemma echo_ws_lt10 : (length echo_ws < 10)%nat.
-Proof. rewrite echo_ws_length. lia. Qed.
+Lemma line_ok_pos ws : line_ok ws -> (0 < length ws)%nat.
+Proof.
+  intro Hok. exact (lookup_lt_Some ws 0%nat cmd_echo (line_ok_head ws Hok)).
+Qed.
+
+(* the COMMAND NAME is four bytes and opens with 'e' -- the two readings
+   the shell's own walk spends, and the only numbers any line supplies *)
+Lemma line_ok_head_len ws : line_ok ws -> length (ws !!! 0%nat) = 4%nat.
+Proof.
+  intro Hok.
+  rewrite (list_lookup_total_correct ws 0%nat cmd_echo (line_ok_head ws Hok)).
+  by vm_compute.
+Qed.
+
+Lemma line_ok_head_byte0 ws :
+  line_ok ws -> bv_unsigned (wl_line ws !!! 0%nat) = 101%Z.
+Proof.
+  intro Hok. pose proof (line_ok_head ws Hok) as Hh.
+  assert (Hlt : (0 < length cmd_echo)%nat) by (vm_compute; lia).
+  pose proof (wl_line_word ws 0%nat cmd_echo 0%nat Hh Hlt) as Hw.
+  replace (wl_off 0%nat ws 0%nat + 0)%nat with 0%nat in Hw
+    by (rewrite wl_off_0; lia).
+  rewrite Hw. by vm_compute.
+Qed.
 
 (* a word of the line, read back through [!!] so that [LineWords]' lemmas
    -- every one of which is keyed on [ws !! i = Some w] -- apply *)
-Lemma echo_ws_at (i : nat) :
-  (i < length echo_ws)%nat -> echo_ws !! i = Some (echo_ws !!! i).
+Lemma line_ok_at ws i :
+  line_ok ws -> (i < length ws)%nat -> ws !! i = Some (ws !!! i).
 Proof.
-  intro Hi. destruct (lookup_lt_is_Some_2 echo_ws i Hi) as [w Hw].
+  intros _ Hi. destruct (lookup_lt_is_Some_2 ws i Hi) as [w Hw].
   by rewrite Hw list_lookup_total_alt Hw.
 Qed.
 
-(* ---- EVERY BYTE OF THE LINE, NUMERICALLY ----------------------------- *)
+(* A BODY IS A WELL-FORMED JOIN OF ITS OWN WORDS.  The parser is total, so
+   what rejects a body is this equation (a double blank, a trailing blank)
+   or [line_ok], never the parser. *)
+Definition body_ok (l : list (bv 8)) : Prop :=
+  wl_body (wl_words l) = l /\ line_ok (wl_words l).
+
+Global Instance body_ok_dec l : Decision (body_ok l).
+Proof. rewrite /body_ok. apply _. Defined.
+
+Lemma body_ok_bytes l : body_ok l -> Forall wl_body_byte l.
+Proof.
+  intros [Hbody Hok].
+  pose proof (wl_body_bytes (wl_words l) (line_ok_wf _ Hok)) as Hfb.
+  by rewrite Hbody in Hfb.
+Qed.
+
+Lemma body_ok_short l : body_ok l -> (S (length l) < line_max)%nat.
+Proof.
+  intros [Hbody Hok]. pose proof (line_ok_len _ Hok) as Hlen.
+  rewrite wl_line_length Hbody in Hlen. lia.
+Qed.
+
+(* D3, THE CONTENT HALF OF THE DISCIPLINE, at a line per round: every
+   COMPLETE body of the era's input is an admissible line, and the partial
+   line the user is in the middle of is body bytes, short enough that its
+   newline will still fit the buffer.
+
+   THE PARTIAL LINE IS ONLY ASKED FOR BODY BYTES.  A malformed body stays
+   disciplined until its newline, where [line_ok] fails and the taint
+   fires; that is sound, and it is what keeps prefix closure a one-liner
+   ([disc_input_snoc]). *)
+Definition disc_input (I : list (bv 8)) : Prop :=
+  Forall body_ok (bodies_of I)
+  /\ Forall wl_body_byte (rest_of I)
+  /\ (S (length (rest_of I)) < line_max)%nat.
+
+Global Instance disc_input_dec I : Decision (disc_input I).
+Proof. rewrite /disc_input. apply _. Defined.
+
+Lemma disc_input_nil : disc_input [].
+Proof.
+  rewrite /disc_input bodies_of_nil rest_of_nil /line_max.
+  split; [constructor |]. split; [constructor | cbn [length]; lia].
+Qed.
+
+Lemma disc_input_snoc I b : disc_input (I ++ [b]) -> disc_input I.
+Proof.
+  intros (Hb & Hr & Hs). destruct (decide (b = wl_nl)) as [-> | Hne].
+  - rewrite bodies_of_snoc_nl in Hb.
+    apply Forall_app in Hb as [Hb1 Hb2]. rewrite Forall_singleton in Hb2.
+    split; [exact Hb1 |]. split; [exact (body_ok_bytes _ Hb2) |].
+    exact (body_ok_short _ Hb2).
+  - rewrite (bodies_of_snoc_other I b Hne) in Hb.
+    rewrite (rest_of_snoc_other I b Hne) in Hr, Hs.
+    apply Forall_app in Hr as [Hr1 _].
+    split; [exact Hb |]. split; [exact Hr1 |].
+    rewrite (length_app (rest_of I) [b]) in Hs. cbn [length] in Hs. lia.
+Qed.
+
+Lemma disc_input_prefix I I' :
+  I `prefix_of` I' -> disc_input I' -> disc_input I.
+Proof.
+  intros [k ->]. induction k as [| b k IH] using rev_ind; intro Hd.
+  - by rewrite app_nil_r in Hd.
+  - apply IH. rewrite app_assoc in Hd. exact (disc_input_snoc _ _ Hd).
+Qed.
+
+Lemma disc_input_body I i l :
+  disc_input I -> bodies_of I !! i = Some l -> body_ok l.
+Proof. intros (Hb & _ & _) Hi. exact (Forall_lookup_1 _ _ _ _ Hb Hi). Qed.
+
+Lemma disc_input_line I i l :
+  disc_input I -> bodies_of I !! i = Some l ->
+  l = wl_body (wl_words l) /\ line_ok (wl_words l).
+Proof.
+  intros Hd Hi. destruct (disc_input_body I i l Hd Hi) as [Hbody Hok].
+  split; [by rewrite Hbody | exact Hok].
+Qed.
+
+Lemma disc_input_rest_short I :
+  disc_input I -> (S (length (rest_of I)) < line_max)%nat.
+Proof. by intros (_ & _ & H). Qed.
+
+(* the input IS the lines it parses to, which is how a proof that knows the
+   words rebuilds the wire *)
+Lemma body_ok_words_fmap bs :
+  Forall body_ok bs -> wl_body <$> (wl_words <$> bs) = bs.
+Proof.
+  induction bs as [| l bs IH]; intro HF; [done |].
+  destruct (Forall_cons_1 _ _ _ HF) as [[Hb _] HF'].
+  by rewrite !fmap_cons Hb (IH HF').
+Qed.
+
+Lemma disc_input_join I :
+  disc_input I -> I = wl_lines (wl_words <$> bodies_of I) ++ rest_of I.
+Proof.
+  intros (Hb & _ & _).
+  rewrite -wl_lines_join (body_ok_words_fmap _ Hb). exact (wl_cut_join I).
+Qed.
+
+(* ---- EVERY BYTE OF A DISCIPLINED INPUT, NUMERICALLY ------------------- *)
 (* The console-side proofs each have to refute one byte -- the carriage
    return [consoleintr] rewrites, the three erase characters, the
-   end-of-file byte, the NUL [gets] plants past the line.  Each used to be
-   a case analysis over seventeen literals.  All of them come off this one
-   reading ([LineWords.wl_line_byte_val]) by [lia]. *)
-Lemma echo_line_byte_val (b : bv 8) :
-  b ∈ echo_line ->
+   end-of-file byte, the NUL [gets] plants past the line.  All of them come
+   off this one reading by [lia], at any line. *)
+Lemma join_elem_of (bs : list (list (bv 8))) (b : bv 8) :
+  b ∈ wl_join bs -> b = wl_nl \/ exists l, l ∈ bs /\ b ∈ l.
+Proof.
+  induction bs as [| l bs IH]; intro Hb.
+  { rewrite wl_join_nil in Hb. by apply elem_of_nil in Hb. }
+  rewrite wl_join_cons in Hb. apply elem_of_app in Hb as [Hb | Hb].
+  - right. exists l. split; [apply elem_of_list_here | exact Hb].
+  - apply elem_of_cons in Hb as [-> | Hb]; [by left |].
+    destruct (IH Hb) as [-> | (l' & Hl' & Hb')]; [by left |].
+    right. exists l'. split; [by apply elem_of_list_further | exact Hb'].
+Qed.
+
+Lemma disc_input_byte I b :
+  disc_input I -> b ∈ I -> wl_body_byte b \/ b = wl_nl.
+Proof.
+  intros Hd Hin. pose proof Hd as (Hb & Hr & _).
+  rewrite (wl_cut_join I) in Hin.
+  apply elem_of_app in Hin as [Hin | Hin].
+  - destruct (join_elem_of (bodies_of I) b Hin) as [-> | (l & Hl & Hbl)];
+      [by right | left].
+    apply elem_of_list_lookup in Hl as [k Hk].
+    destruct (disc_input_body I k l Hd Hk) as [Hbody Hok].
+    pose proof (wl_body_bytes (wl_words l) (line_ok_wf _ Hok)) as Hfb.
+    rewrite Hbody in Hfb.
+    exact (proj1 (Forall_forall _ _) Hfb b Hbl).
+  - left. exact (proj1 (Forall_forall _ _) Hr b Hin).
+Qed.
+
+Lemma disc_input_byte_val I b :
+  disc_input I -> b ∈ I ->
   bv_unsigned b = 10%Z \/ bv_unsigned b = 32%Z
   \/ (48 <= bv_unsigned b <= 57)%Z
   \/ (65 <= bv_unsigned b <= 90)%Z
   \/ (97 <= bv_unsigned b <= 122)%Z.
 Proof.
-  rewrite echo_line_words. exact (wl_line_byte_val echo_ws b echo_ws_wf).
+  intros Hd Hin. destruct (disc_input_byte I b Hd Hin) as [[Ha | ->] | ->].
+  - destruct Ha as [H | [H | H]];
+      [ right; right; by left
+      | right; right; right; by left
+      | right; right; right; by right ].
+  - right. left. exact wl_sp_val.
+  - left. exact wl_nl_val.
 Qed.
 
-Lemma echo_line_byte_val_at (j : nat) :
-  (j < length echo_line)%nat ->
-  bv_unsigned (echo_line !!! j) = 10%Z
-  \/ bv_unsigned (echo_line !!! j) = 32%Z
-  \/ (48 <= bv_unsigned (echo_line !!! j) <= 57)%Z
-  \/ (65 <= bv_unsigned (echo_line !!! j) <= 90)%Z
-  \/ (97 <= bv_unsigned (echo_line !!! j) <= 122)%Z.
+Lemma disc_input_byte_val_at I j :
+  disc_input I -> (j < length I)%nat ->
+  bv_unsigned (I !!! j) = 10%Z \/ bv_unsigned (I !!! j) = 32%Z
+  \/ (48 <= bv_unsigned (I !!! j) <= 57)%Z
+  \/ (65 <= bv_unsigned (I !!! j) <= 90)%Z
+  \/ (97 <= bv_unsigned (I !!! j) <= 122)%Z.
 Proof.
-  intro Hj. apply echo_line_byte_val.
-  destruct (lookup_lt_is_Some_2 echo_line j Hj) as [b Hb].
+  intros Hd Hj. apply (disc_input_byte_val I _ Hd).
+  destruct (lookup_lt_is_Some_2 I j Hj) as [b Hb].
   rewrite list_lookup_total_alt Hb. cbn [default from_option].
-  exact (elem_of_list_lookup_2 echo_line j b Hb).
+  exact (elem_of_list_lookup_2 I j b Hb).
 Qed.
 
-(* THE THREE ROWS THE SHELL'S OWN WALK SPENDS, each off the reading above
-   together with the newline's position: the only newline is the LAST
-   byte, no byte is a carriage return, and no byte is the NUL [gets]
-   plants past the line -- which is what turns "the first NUL at or after
-   0" into the line's length. *)
-Lemma echo_line_byte_ncr (j : nat) :
-  (j < length echo_line)%nat -> bv_unsigned (echo_line !!! j) <> 13%Z.
-Proof. intro Hj. pose proof (echo_line_byte_val_at j Hj). lia. Qed.
+Lemma disc_input_byte_ncr I j :
+  disc_input I -> (j < length I)%nat -> bv_unsigned (I !!! j) <> 13%Z.
+Proof. intros Hd Hj. pose proof (disc_input_byte_val_at I j Hd Hj). lia. Qed.
 
-Lemma echo_line_byte_nonzero (j : nat) :
-  (j < length echo_line)%nat -> bv_unsigned (echo_line !!! j) <> 0%Z.
-Proof. intro Hj. pose proof (echo_line_byte_val_at j Hj). lia. Qed.
+Lemma disc_input_byte_nonzero I j :
+  disc_input I -> (j < length I)%nat -> bv_unsigned (I !!! j) <> 0%Z.
+Proof. intros Hd Hj. pose proof (disc_input_byte_val_at I j Hd Hj). lia. Qed.
 
-(* ...AND ITS POSITIONAL HALF: the only newline is the last byte, which is
-   what [gets] stopping at the first one says about the buffer it read. *)
-Lemma echo_line_nl_last (k : nat) :
-  echo_line !! k = Some (Z_to_bv 8 10%Z) -> k = (length echo_line - 1)%nat.
+(* THE NEWLINE CLOSES A LINE: a disciplined input ending in one has an
+   empty rest, and the body it just completed is an admissible line.  This
+   is what the shell's read link hands its caller in place of "the buffer
+   holds THE line". *)
+Lemma disc_input_snoc_nl I : disc_input (I ++ [wl_nl]) -> body_ok (rest_of I).
 Proof.
-  rewrite echo_line_words. intro Hk.
-  rewrite (wl_line_nl_last echo_ws k echo_ws_wf Hk) wl_line_length. lia.
+  intros (Hb & _ & _). rewrite bodies_of_snoc_nl in Hb.
+  apply Forall_app in Hb as [_ Hb2]. by rewrite Forall_singleton in Hb2.
 Qed.
 
-Lemma echo_line_nl_at_end :
-  echo_line !! (length echo_line - 1)%nat = Some (Z_to_bv 8 10%Z).
+Lemma disc_input_last_ws I :
+  disc_input (I ++ [wl_nl]) ->
+  line_ok (last_ws (I ++ [wl_nl]))
+  /\ wl_body (last_ws (I ++ [wl_nl])) = rest_of I.
 Proof.
-  rewrite echo_line_words wl_line_length.
-  replace (length (wl_body echo_ws) + 1 - 1)%nat
-    with (length (wl_body echo_ws)) by lia.
-  exact (wl_line_nl_at echo_ws).
+  intro Hd. destruct (disc_input_snoc_nl I Hd) as [Hbody Hok].
+  rewrite last_ws_snoc_nl. split; [exact Hok | exact Hbody].
 Qed.
 
-Lemma echo_line_byte_nl (j : nat) :
-  (j < length echo_line)%nat ->
-  bv_unsigned (echo_line !!! j) = 10%Z -> j = (length echo_line - 1)%nat.
+(* the round counters at the empty input, and the round-is-complete test
+   without arithmetic: a nonempty input whose rest is empty has closed at
+   least one line *)
+Lemma nlines_nil : nlines [] = 0%nat.
+Proof. rewrite /nlines bodies_of_nil. reflexivity. Qed.
+
+Lemma nstarted_nil : nstarted [] = 0%nat.
 Proof.
-  intros Hj He. apply echo_line_nl_last.
-  destruct (lookup_lt_is_Some_2 echo_line j Hj) as [b Hb].
-  rewrite Hb. f_equal.
-  rewrite <- (list_lookup_total_correct echo_line j b Hb).
-  apply bv_eq. rewrite He. by vm_compute.
+  rewrite /nstarted nlines_nil rest_of_nil. case_decide as H; [done |].
+  by destruct (H eq_refl).
 Qed.
 
-Lemma echo_line_nl_val :
-  bv_unsigned (echo_line !!! (length echo_line - 1)%nat) = 10%Z.
+Lemma nlines_pos_of_rest_nil I :
+  I <> [] -> rest_of I = [] -> (1 <= nlines I)%nat.
 Proof.
-  rewrite (list_lookup_total_correct echo_line (length echo_line - 1)%nat
-             (Z_to_bv 8 10%Z) echo_line_nl_at_end).
-  by vm_compute.
+  intros Hne Hr. destruct (rest_of_end I Hr) as [-> | Hl]; [done |].
+  destruct I as [| b J _] using rev_ind; [done |].
+  rewrite last_snoc in Hl. injection Hl as Hb. subst b.
+  rewrite nlines_snoc_nl. lia.
 Qed.
-
-Global Opaque echo_line.
 
 (* the INPUT bytes of an observation list, in order -- the CONSOLE's; an
    input on the other port is not the user's and is invisible here *)
@@ -238,102 +393,19 @@ Proof. reflexivity. Qed.
 Lemma ins_out (b : bv 8) : ins [ObsUartOut Uart0 b] = [].
 Proof. reflexivity. Qed.
 
-(* [l] IS A PREFIX OF [pat]^*, spelled so that it is decidable by one
-   list equality and prefix-closed by one [take]: the first [length l]
-   letters of [pat] repeated [length l] times are the first [length l]
-   letters of [pat]^w whenever [pat] is nonempty. *)
-Definition star_prefix (pat l : list (bv 8)) : Prop :=
-  l = take (length l) (concat (replicate (length l) pat)).
+Lemma ins_prefix (s1 s2 : list mobs) :
+  s1 `prefix_of` s2 -> ins s1 `prefix_of` ins s2.
+Proof. intros [z ->]. rewrite ins_app. by eexists. Qed.
 
-Global Instance star_prefix_dec pat l : Decision (star_prefix pat l).
-Proof. rewrite /star_prefix. apply _. Defined.
-
-Lemma star_prefix_nil pat : star_prefix pat [].
-Proof. reflexivity. Qed.
-
-Lemma concat_replicate_S {A} (n : nat) (pat : list A) :
-  concat (replicate (S n) pat) = concat (replicate n pat) ++ pat.
-Proof. by rewrite replicate_S_end concat_app /= app_nil_r. Qed.
-
-Lemma concat_replicate_length {A} (n : nat) (pat : list A) :
-  length (concat (replicate n pat)) = n * length pat.
-Proof.
-  induction n as [|n IH]; [reflexivity|].
-  rewrite concat_replicate_S length_app IH. lia.
-Qed.
-
-(* the one law the rx step needs: breaking the discipline is forever. *)
-Lemma star_prefix_snoc pat l b :
-  0 < length pat ->
-  star_prefix pat (l ++ [b]) -> star_prefix pat l.
-Proof.
-  rewrite /star_prefix. intros Hpat Hsnoc.
-  apply (f_equal (take (length l))) in Hsnoc.
-  rewrite take_app_length take_take in Hsnoc.
-  rewrite length_app /= in Hsnoc.
-  rewrite Nat.min_l in Hsnoc; [|lia].
-  rewrite Nat.add_1_r concat_replicate_S in Hsnoc.
-  rewrite take_app_le in Hsnoc; [exact Hsnoc|].
-  rewrite concat_replicate_length. nia.
-Qed.
-
-(* ...and its iterate: [star_prefix] is prefix-closed outright, which is
-   what carries the discipline down to every earlier history. *)
-Lemma star_prefix_prefix (pat l l' : list (bv 8)) :
-  0 < length pat -> l' `prefix_of` l -> star_prefix pat l -> star_prefix pat l'.
-Proof.
-  intros Hp [z ->]. induction z as [|b z IH] using rev_ind; intros Hs.
-  - by rewrite app_nil_r in Hs.
-  - apply IH. rewrite app_assoc in Hs. exact (star_prefix_snoc _ _ _ Hp Hs).
-Qed.
-
-(* THE PERIODICITY OF A STAR PREFIX, byte by byte.  These three were proved
-   in [UConsLine.v] (lane SH-STATE) so that they would cost the line
-   statements' cone and not the discipline's; they are general facts about
-   [star_prefix] and their standing relocation ask is here, beside
-   [star_prefix_snoc], where lane ECHO-PURE put them. *)
-Lemma mod_sub_self (i p : nat) : (p <= i)%nat -> ((i - p) `mod` p = i `mod` p)%nat.
-Proof.
-  intro H. transitivity (((i - p) + 1 * p) `mod` p)%nat.
-  - symmetry. apply Nat.Div0.mod_add.
-  - f_equal. lia.
-Qed.
-
-Lemma concat_replicate_lookup {A} (N : nat) (pat : list A) (i : nat) :
-  (i < N * length pat)%nat ->
-  concat (replicate N pat) !! i = pat !! (i `mod` length pat)%nat.
-Proof.
-  revert i. induction N as [| N IH]; intros i Hi; [ cbn in Hi; lia | ].
-  rewrite replicate_S. cbn [concat].
-  destruct (decide (i < length pat)%nat) as [Hlt | Hge].
-  - rewrite lookup_app_l; [ | exact Hlt ].
-    rewrite (Nat.mod_small i (length pat) Hlt). reflexivity.
-  - rewrite lookup_app_r; [ | lia ].
-    rewrite IH; [ | cbn [Nat.mul] in Hi; lia ].
-    rewrite (mod_sub_self i (length pat) ltac:(lia)). reflexivity.
-Qed.
-
-(* a star prefix IS the periodic word, byte by byte *)
-Lemma star_prefix_lookup (pat l : list (bv 8)) (i : nat) :
-  star_prefix pat l -> (0 < length pat)%nat -> (i < length l)%nat ->
-  l !! i = pat !! (i `mod` length pat)%nat.
-Proof.
-  intros Hs Hp Hi.
-  pose proof (f_equal (fun z : list (bv 8) => z !! i) Hs) as Hl. cbn beta in Hl.
-  rewrite Hl. rewrite lookup_take; [ | exact Hi ].
-  apply concat_replicate_lookup. nia.
-Qed.
-
-(* D3: one power cycle's input keeps the CONTENT discipline.  This is the
-   whole of the LANDED [AppEcho.disc_seg]; [UConsLine]'s line statements
-   are written at it and are unchanged (section 5's projection). *)
-Definition disc_seg (seg : list mobs) : Prop := star_prefix echo_line (ins seg).
+(* D3 OVER ONE POWER CYCLE'S INPUT.  Everything the tree states about the
+   content of what was typed reads off this. *)
+Definition disc_seg (seg : list mobs) : Prop := disc_input (ins seg).
 
 Global Instance disc_seg_dec seg : Decision (disc_seg seg).
 Proof. rewrite /disc_seg. apply _. Defined.
 
 Lemma disc_seg_nil : disc_seg [].
-Proof. exact (star_prefix_nil _). Qed.
+Proof. exact disc_input_nil. Qed.
 
 Lemma disc_seg_out (seg : list mobs) (b : bv 8) :
   disc_seg (seg ++ [ObsUartOut Uart0 b]) <-> disc_seg seg.
@@ -343,16 +415,14 @@ Lemma disc_seg_prefix (seg' seg : list mobs) :
   seg' `prefix_of` seg -> disc_seg seg -> disc_seg seg'.
 Proof.
   intros [k ->] Hd. rewrite /disc_seg ins_app in Hd.
-  eapply star_prefix_prefix; [exact echo_line_pos| |exact Hd]. by eexists.
+  apply (disc_input_prefix _ _ ltac:(by eexists) Hd).
 Qed.
 
-(* THE LANDED WHOLE-HISTORY PREDICATE, kept under its own name: everything
-   already proved against it still means what it meant, and section 5's
-   [disc_proj] is the one step from the new discipline to it. *)
-Definition disc_old (h : list mobs) : Prop := Forall disc_seg (cycles_of h).
-
-Global Instance disc_old_dec h : Decision (disc_old h).
-Proof. rewrite /disc_old. apply _. Qed.
+(* the one generic fact about a repeated pattern still spent below, by the
+   restart loop's [pro_fail] *)
+Lemma concat_replicate_S {A} (n : nat) (pat : list A) :
+  concat (replicate (S n) pat) = concat (replicate n pat) ++ pat.
+Proof. by rewrite replicate_S_end concat_app /= app_nil_r. Qed.
 
 (* ====================================================================== *)
 (*  2.  THE EXPECTED SESSION (R3, with O5's alternatives)                  *)
@@ -410,9 +480,9 @@ Definition u_prologue : list (bv 8) :=
    files when it writes its first banner byte, and nothing is predicted
    before that.
 
-   Their first bytes are '$', 'i', 'i', 'i' -- NOT pairwise distinct, so
-   [line_alts_head_det]'s one-byte reading does not carry over; what they
-   are is PAIRWISE PREFIX-FREE (the three diagnostics part at byte 6,
+   Their first bytes are '$', 'i', 'i', 'i' -- NOT pairwise distinct, so no
+   one-byte reading of the resolution is available; what they are is
+   PAIRWISE PREFIX-FREE (the three diagnostics part at byte 6,
    "init: e" / "init: f" / "init: s"), and that whole-block reading is
    what pins the resolution off the wire ([pro_of_prefix_free]).  A later
    ruling changes this ONE list.
@@ -692,8 +762,8 @@ Proof.
     intros H; exfalso; revert H; apply (bool_decide_unpack _); vm_compute; exact I.
 Qed.
 
-(* THE WHOLE-BLOCK READING that replaces [line_alts_head_det]'s one-byte
-   one: two resolutions below ONE wire have the SAME prologue, and a settled
+(* THE WHOLE-BLOCK READING that a one-byte one cannot give: two
+   resolutions below ONE wire have the SAME prologue, and a settled
    one below any forces the other settled too.  This is the ONE fact the
    reconciliation of the discipline's witness with the claim's spends. *)
 Lemma pro_of_prefix_free (ps ps' : list nat) :
@@ -730,9 +800,9 @@ Proof.
 Qed.
 
 (* AN UNSETTLED PROLOGUE ENDS AT A LETTER BOUNDARY, so the byte any longer
-   prologue has just past it is the first byte of one of the four letters
-   -- and none of those is [echo_line]'s.  This is what refutes "the
-   stage's prologue is still open while a disciplined byte arrives". *)
+   prologue has just past it is the first byte of one of the four letters.
+   Read with [pro_of_open_head] below, this is what refutes "the stage's
+   prologue is still open while the wire shows a prompt". *)
 Lemma lookup_app_shift {A} (u v : list A) (n : nat) :
   (u ++ v) !! (length u + n)%nat = v !! n.
 Proof.
@@ -740,14 +810,6 @@ Proof.
   by replace (length u + n - length u)%nat with n by lia.
 Qed.
 
-Lemma pro_alts_head_ne_echo (a : nat) (b : bv 8) :
-  (a < length pro_alts)%nat -> pro_alts !!! a !! 0%nat = Some b ->
-  echo_line !! 0%nat = Some b -> False.
-Proof.
-  rewrite pro_alts_length. intros Ha Hb Hc.
-  destruct a as [|[|[|[|a]]]]; try lia; vm_compute in Hb; injection Hb as Hb;
-    subst b; vm_compute in Hc; injection Hc as Hc; discriminate.
-Qed.
 
 Lemma pro_of_not_done_next (P P' : list nat) (b : bv 8) :
   Forall (fun a => (a < length pro_alts)%nat) P' ->
@@ -795,12 +857,103 @@ Proof.
     exact Hlk.
 Qed.
 
+(* ---- WHAT A PROLOGUE'S FIRST BYTE CAN BE ---- *)
+
+(* The prompt is the ONLY letter that opens on '$'; the other three are
+   init's diagnostics and its banner, all of which open on 'i'.  That is
+   the whole of what the block-level determinacy needs to tell a settled
+   round from an open one when the wire shows a prompt
+   ([EchoOutPure.alt_cont_prefix_det]). *)
+Lemma u_prompt_head : u_prompt !! 0%nat = Some (Z_to_bv 8 36%Z).
+Proof. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+Lemma u_prompt_pos : (0 < length u_prompt)%nat.
+Proof. vm_compute. lia. Qed.
+
+Lemma pro_alts_head_dollar (a : nat) (b : bv 8) :
+  (a < length pro_alts)%nat -> pro_alts !!! a !! 0%nat = Some b ->
+  bv_unsigned b = 36%Z -> a = 0%nat.
+Proof.
+  rewrite pro_alts_length. intros Ha Hb Hv.
+  (* [lia] also closes the [a = 0] goal, so only the three refutations remain *)
+  destruct a as [|[|[|[|a]]]]; try lia;
+    exfalso; vm_compute in Hb; injection Hb as Hb;
+    rewrite -Hb in Hv; vm_compute in Hv; lia.
+Qed.
+
+(* an OPEN round's first byte is a letter of [init:], never a prompt *)
+Lemma pro_of_open_head (ps : list nat) (b : bv 8) :
+  ~ pro_done ps -> pro_of ps !! 0%nat = Some b -> bv_unsigned b = 105%Z.
+Proof.
+  intros Hnd Hb. destruct ps as [| a ps']; [by cbn in Hb |].
+  destruct (Forall_cons_1 _ _ _ (pro_open_cont _ Hnd)) as [Hc _].
+  assert (Hab : (a < length pro_alts)%nat)
+    by (destruct Hc as [-> | ->]; rewrite pro_alts_length; lia).
+  assert (Hpos : (0 < length (pro_alts !!! a))%nat).
+  { destruct (pro_alts !!! a) as [| z zs] eqn:Hz;
+      [ exfalso; exact (pro_alts_nonnil a Hab Hz) | cbn [length]; lia ]. }
+  rewrite pro_of_cons (lookup_app_l _ _ 0%nat Hpos) in Hb.
+  destruct Hc as [-> | ->];
+    vm_compute in Hb; injection Hb as Hb; rewrite -Hb; by vm_compute.
+Qed.
+
+Lemma pro_of_open_no_dollar (ps : list nat) (b : bv 8) :
+  ~ pro_done ps -> b ∈ pro_of ps -> bv_unsigned b <> 36%Z.
+Proof.
+  intros Hnd Hb. pose proof (pro_open_cont ps Hnd) as HF. clear Hnd.
+  assert (Hlet : forall a : nat, pro_cont a ->
+            Forall (fun c : bv 8 => bv_unsigned c <> 36%Z) (pro_alts !!! a)).
+  { intros a [-> | ->]; apply (bool_decide_unpack _); vm_compute; exact I. }
+  revert b Hb. induction ps as [| a ps IH]; intros b Hb.
+  { by apply elem_of_nil in Hb. }
+  destruct (Forall_cons_1 _ _ _ HF) as [Hc HF'].
+  rewrite pro_of_cons (pro_more_cont a _ Hc) in Hb.
+  apply elem_of_app in Hb as [Hb | Hb].
+  - exact (proj1 (Forall_forall _ _) (Hlet a Hc) b Hb).
+  - exact (IH HF' b Hb).
+Qed.
+
+(* ...so a SETTLED prologue whose first byte is '$' IS the prompt: letter 0
+   ends the round, so nothing follows it *)
+Lemma pro_of_dollar_prompt (P : list nat) :
+  Forall (fun a => (a < length pro_alts)%nat) P -> P <> [] ->
+  (forall b, pro_of P !! 0%nat = Some b -> bv_unsigned b = 36%Z) ->
+  pro_of P = u_prompt.
+Proof.
+  intros HF Hne Hd. destruct P as [| a P']; [done |].
+  destruct (Forall_cons_1 _ _ _ HF) as [Ha _].
+  assert (Hpos : (0 < length (pro_alts !!! a))%nat).
+  { destruct (pro_alts !!! a) as [| z zs] eqn:Hz;
+      [ exfalso; exact (pro_alts_nonnil a Ha Hz) | cbn [length]; lia ]. }
+  destruct (lookup_lt_is_Some_2 (pro_alts !!! a) 0%nat Hpos) as [b Hb].
+  assert (Hlk : pro_of (a :: P') !! 0%nat = Some b)
+    by (rewrite pro_of_cons (lookup_app_l _ _ 0%nat Hpos); exact Hb).
+  assert (Ha0 : a = 0%nat) by (apply (pro_alts_head_dollar a b Ha Hb), Hd, Hlk).
+  subst a. rewrite pro_of_cons (pro_more_ne 0%nat _ ltac:(by intros [H | H])).
+  by rewrite app_nil_r.
+Qed.
+
 (* ---- 2b.  THE LINE ALTERNATIVES AND THE BLOCK ---- *)
+
+(* SH'S TWO DIAGNOSTICS ARE THEMSELVES WORD LINES -- alphanumeric words,
+   single blanks, one closing newline.  That is not a coincidence to be
+   worked around: it is exactly WHY they can collide with echo's output,
+   and stating them in the same vocabulary is what turns the collision
+   into a statement the parse settles. *)
+Definition dg_exec : list (list (bv 8)) :=
+  [ sb "exec"%string; sb "echo"%string; sb "failed"%string ].
+Definition dg_fork : list (list (bv 8)) := [ sb "fork"%string ].
+
+Lemma dg_exec_line : wl_line dg_exec = sb "exec echo failed"%string ++ nlb.
+Proof. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+Lemma dg_fork_line : wl_line dg_fork = sb "fork"%string ++ nlb.
+Proof. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
 
 (* O5, RULED BY THE OWNER (2026-09-12): allocation failure PRINTS, and what
    it prints is valid output.  After a complete line's '\n' echo the
    continuation is ONE OF
-     0  "hello world\n$ "                 the good one: echo ran
+     0  <the line's words, minus the command name>  echo ran
      1  "exec echo failed\n$ "            sh's child could not exec
                                           (user/sh.c:80); it exits 0
      2  "$ "                              the child died before printing
@@ -815,121 +968,296 @@ Qed.
                                           not part of this literal
    Alternatives 0, 1 and 2 end in "$ "; ALTERNATIVE 3 DOES NOT -- the
    prologue [alt_blk] appends after it supplies the prompt, or the fork
-   diagnostic instead.  Their FIRST bytes are 'h', 'e', '$', 'f' --
-   pairwise distinct, which is what makes the LINE choice readable off one
-   byte of the wire ([line_alts_head_det]).  A later ruling changes this
-   ONE list. *)
+   diagnostic instead.  A later ruling changes this ONE list.
+
+   THE THREE CONSTANT ONES GET NAMES so that the files that write them
+   ([UkShDiag], [UShPanic]) never mention a line. *)
+Definition alt_execfail : list (bv 8) := wl_line dg_exec ++ u_prompt.
+Definition alt_prompt   : list (bv 8) := u_prompt.
+Definition alt_panic    : list (bv 8) := wl_line dg_fork.
+
+Lemma alt_execfail_string :
+  alt_execfail = sb "exec echo failed"%string ++ nlb ++ sb "$ "%string.
+Proof. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+Lemma alt_panic_string : alt_panic = sb "fork"%string ++ nlb.
+Proof. exact dg_fork_line. Qed.
+
 (* ECHO'S OUTPUT IS THE LINE MINUS ITS COMMAND NAME.  echo prints its
    arguments joined by single spaces and closed by a newline -- which is
    exactly what [gets] read, with the first word dropped.  So the good
-   alternative is not a second literal transcribed beside [echo_line]: it
-   is [wl_line] of the line's tail, and then the prompt sh writes once it
-   has reaped.  A transcription error here cannot make the two disagree,
-   because there is only one of them. *)
-Definition echo_line_out : list (bv 8) := wl_line (drop 1 echo_ws).
+   alternative is not a literal transcribed beside the line: it is
+   [wl_line] of the line's tail, and then the prompt sh writes once it has
+   reaped.  A transcription error cannot make the two disagree, because
+   there is only one of them. *)
+Definition line_alts_of (ws : list (list (bv 8))) : list (list (bv 8)) :=
+  [ wl_line (drop 1 ws) ++ u_prompt; alt_execfail; alt_prompt; alt_panic ].
 
-Lemma echo_line_out_string : echo_line_out = sb "hello world"%string ++ nlb.
+Lemma line_alts_of_length ws : length (line_alts_of ws) = 4%nat.
+Proof. reflexivity. Qed.
+
+Lemma line_alts_of_0 ws :
+  line_alts_of ws !!! 0%nat = wl_line (drop 1 ws) ++ u_prompt.
+Proof. reflexivity. Qed.
+Lemma line_alts_of_1 ws : line_alts_of ws !!! 1%nat = alt_execfail.
+Proof. reflexivity. Qed.
+Lemma line_alts_of_2 ws : line_alts_of ws !!! 2%nat = alt_prompt.
+Proof. reflexivity. Qed.
+Lemma line_alts_of_3 ws : line_alts_of ws !!! 3%nat = alt_panic.
+Proof. reflexivity. Qed.
+
+Lemma line_alts_of_nonnil ws a :
+  (a < 4)%nat -> line_alts_of ws !!! a <> [].
+Proof.
+  intros Ha Hnil.
+  assert (Hlen : length (line_alts_of ws !!! a) = 0%nat)
+    by (rewrite Hnil; reflexivity).
+  destruct a as [|[|[|[|a]]]]; try lia.
+  - rewrite line_alts_of_0 (length_app (wl_line (drop 1 ws)) u_prompt) in Hlen.
+    pose proof (wl_line_pos (drop 1 ws)) as Hp. lia.
+  - rewrite line_alts_of_1 /alt_execfail
+      (length_app (wl_line dg_exec) u_prompt) in Hlen.
+    pose proof (wl_line_pos dg_exec) as Hp. lia.
+  - rewrite line_alts_of_2 in Hlen. vm_compute in Hlen. lia.
+  - rewrite line_alts_of_3 /alt_panic wl_line_length in Hlen. lia.
+Qed.
+
+(* the two collisions, read off the word list: a line that echoes back
+   exactly one of sh's diagnostics *)
+Lemma line_alts_of_exec ws :
+  drop 1 ws = dg_exec -> line_alts_of ws !!! 0%nat = alt_execfail.
+Proof. intro H. by rewrite line_alts_of_0 H. Qed.
+
+Lemma line_alts_of_fork ws :
+  drop 1 ws = dg_fork -> line_alts_of ws !!! 0%nat = alt_panic ++ u_prompt.
+Proof. intro H. by rewrite line_alts_of_0 H. Qed.
+
+(* '$' is not a byte any line carries, so a bare prompt is never the head
+   of an echoed line -- the one comparison involving the output that needs
+   no side condition at all. *)
+Lemma line_head_not_dollar (ws : list (list (bv 8))) :
+  wl_wf ws -> exists b, wl_line ws !! 0%nat = Some b /\ bv_unsigned b <> 36%Z.
+Proof.
+  intro Hwf.
+  destruct (lookup_lt_is_Some_2 (wl_line ws) 0%nat (wl_line_pos ws)) as [b Hb].
+  exists b. split; [exact Hb |].
+  pose proof (wl_line_byte_val ws b Hwf (elem_of_list_lookup_2 _ _ _ Hb)). lia.
+Qed.
+
+Lemma line_prompt_not_out (ws : list (list (bv 8))) :
+  wl_wf ws -> ~ (u_prompt `prefix_of` wl_line ws ++ u_prompt).
+Proof.
+  intros Hwf Hp.
+  destruct (line_head_not_dollar ws Hwf) as (d & Hd & Hdv). apply Hdv.
+  assert (H1 : (wl_line ws ++ u_prompt) !! 0%nat = Some d)
+    by (rewrite lookup_app_l; [exact Hd | exact (wl_line_pos ws)]).
+  assert (H2 : (wl_line ws ++ u_prompt) !! 0%nat = Some (Z_to_bv 8 36%Z))
+    by (eapply prefix_lookup_Some; [exact u_prompt_head | exact Hp]).
+  rewrite H1 in H2. injection H2 as H2. rewrite H2. by vm_compute.
+Qed.
+
+(* ---- WHICH ALTERNATIVE RAN, AS FAR AS THE BYTES SAY IT --------------- *)
+
+(* The claim used to read the alternative off ONE byte of the wire, and
+   then off PREFIX-FREENESS of the four alternatives under two
+   inequalities on the word list ("you may type anything except echo fork
+   and echo exec echo failed").  The owner's ruling of 2026-09-16 admits
+   those two lines as well, so there is no exclusion left and no index to
+   read: at [echo fork] the output "fork\n$ " IS the panic line followed by
+   a bare prompt, and at [echo exec echo failed] it IS the exec
+   diagnostic.  The observer cannot tell WHICH alternative ran, and does
+   not need to -- the transcript is the same BYTES either way, which is
+   what this table says and what [EchoOutPure]'s determinacy spends. *)
+Local Lemma lab_head_ne (u v X X' : list (bv 8)) (b c : bv 8) :
+  u !! 0%nat = Some b -> v !! 0%nat = Some c ->
+  bv_unsigned b <> bv_unsigned c ->
+  ~ ((u ++ X) `prefix_of` (v ++ X')).
+Proof.
+  intros Hu Hv Hbc Hp.
+  assert (Hlu : (0 < length u)%nat) by (apply lookup_lt_Some in Hu; lia).
+  assert (Hlv : (0 < length v)%nat) by (apply lookup_lt_Some in Hv; lia).
+  assert (H1 : (u ++ X) !! 0%nat = Some b)
+    by (rewrite lookup_app_l; [exact Hu | exact Hlu]).
+  assert (H2 : (v ++ X') !! 0%nat = Some b)
+    by (eapply prefix_lookup_Some; [exact H1 | exact Hp]).
+  rewrite (lookup_app_l v X' 0%nat Hlv) Hv in H2. injection H2 as H2.
+  apply Hbc. by rewrite H2.
+Qed.
+
+Lemma alt_execfail_head : alt_execfail !! 0%nat = Some (Z_to_bv 8 101%Z).
 Proof. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
 
-Lemma echo_line_out_length : length echo_line_out = 12%nat.
-Proof. vm_compute. reflexivity. Qed.
+Lemma alt_prompt_head : alt_prompt !! 0%nat = Some (Z_to_bv 8 36%Z).
+Proof. exact u_prompt_head. Qed.
 
-Definition line_alts : list (list (bv 8)) :=
-  [ echo_line_out ++ sb "$ "%string;
-    sb "exec echo failed"%string ++ nlb ++ sb "$ "%string;
-    sb "$ "%string;
-    sb "fork"%string ++ nlb ].
+Lemma alt_panic_head : alt_panic !! 0%nat = Some (Z_to_bv 8 102%Z).
+Proof. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
 
-Lemma line_alts_0 : line_alts !!! 0%nat = echo_line_out ++ sb "$ "%string.
-Proof. reflexivity. Qed.
+Lemma line_alts_of_prefix_bytes (ws : list (list (bv 8))) (a b : nat)
+    (X X' : list (bv 8)) :
+  wl_wf (drop 1 ws) -> (a < 4)%nat -> (b < 4)%nat ->
+  (line_alts_of ws !!! a ++ X) `prefix_of` (line_alts_of ws !!! b ++ X') ->
+  a = b
+  \/ (a <> 3%nat /\ b <> 3%nat /\ line_alts_of ws !!! a = line_alts_of ws !!! b)
+  \/ (a = 0%nat /\ b = 3%nat /\ drop 1 ws = dg_fork)
+  \/ (a = 3%nat /\ b = 0%nat /\ drop 1 ws = dg_fork).
+Proof.
+  intros Hwf Ha Hb Hp.
+  assert (HE : wl_wf dg_exec)
+    by (apply (bool_decide_unpack _); vm_compute; exact I).
+  assert (HFk : wl_wf dg_fork)
+    by (apply (bool_decide_unpack _); vm_compute; exact I).
+  destruct (line_head_not_dollar (drop 1 ws) Hwf) as (d0 & Hd0 & Hd0v).
+  assert (Hh0 : (wl_line (drop 1 ws) ++ u_prompt) !! 0%nat = Some d0)
+    by (rewrite lookup_app_l; [exact Hd0 | exact (wl_line_pos _)]).
+  assert (Hdz : bv_unsigned (Z_to_bv 8 36%Z) = 36%Z) by (by vm_compute).
+  assert (Hd0d : bv_unsigned d0 <> bv_unsigned (Z_to_bv 8 36%Z))
+    by (rewrite Hdz; exact Hd0v).
+  assert (Hd0d' : bv_unsigned (Z_to_bv 8 36%Z) <> bv_unsigned d0)
+    by (intro Hq; apply Hd0d; by rewrite Hq).
+  destruct a as [|[|[|[|a]]]]; destruct b as [|[|[|[|b]]]]; try lia;
+    try (left; reflexivity); right.
+  (* (0,1) and (1,0): the output would BE the exec diagnostic *)
+  - left.
+    rewrite line_alts_of_0 line_alts_of_1 /alt_execfail
+            -(app_assoc (wl_line (drop 1 ws)) u_prompt X)
+            -(app_assoc (wl_line dg_exec) u_prompt X') in Hp.
+    destruct (wl_line_prefix_det _ _ _ _ Hwf HE Hp) as [Heq _].
+    split; [done |]. split; [done |].
+    by rewrite line_alts_of_0 line_alts_of_1 /alt_execfail Heq.
+  (* (0,2): no line opens on '$' *)
+  - exfalso. rewrite line_alts_of_0 line_alts_of_2 in Hp.
+    exact (lab_head_ne _ _ X X' _ _ Hh0 alt_prompt_head Hd0d Hp).
+  (* (0,3): the output would BE the fork diagnostic *)
+  - right. left.
+    rewrite line_alts_of_0 line_alts_of_3 /alt_panic
+            -(app_assoc (wl_line (drop 1 ws)) u_prompt X) in Hp.
+    destruct (wl_line_prefix_det _ _ _ _ Hwf HFk Hp) as [Heq _].
+    by split; [| split].
+  - left.
+    rewrite line_alts_of_0 line_alts_of_1 /alt_execfail
+            -(app_assoc (wl_line dg_exec) u_prompt X)
+            -(app_assoc (wl_line (drop 1 ws)) u_prompt X') in Hp.
+    destruct (wl_line_prefix_det _ _ _ _ HE Hwf Hp) as [Heq _].
+    split; [done |]. split; [done |].
+    by rewrite line_alts_of_0 line_alts_of_1 /alt_execfail Heq.
+  (* (1,2), (1,3): closed letters, distinct first bytes *)
+  - exfalso. rewrite line_alts_of_1 line_alts_of_2 in Hp.
+    refine (lab_head_ne _ _ X X' _ _ alt_execfail_head alt_prompt_head _ Hp).
+    vm_compute. lia.
+  - exfalso. rewrite line_alts_of_1 line_alts_of_3 in Hp.
+    refine (lab_head_ne _ _ X X' _ _ alt_execfail_head alt_panic_head _ Hp).
+    vm_compute. lia.
+  (* (2,0) *)
+  - exfalso. rewrite line_alts_of_0 line_alts_of_2 in Hp.
+    exact (lab_head_ne _ _ X X' _ _ alt_prompt_head Hh0 Hd0d' Hp).
+  - exfalso. rewrite line_alts_of_1 line_alts_of_2 in Hp.
+    refine (lab_head_ne _ _ X X' _ _ alt_prompt_head alt_execfail_head _ Hp).
+    vm_compute. lia.
+  - exfalso. rewrite line_alts_of_2 line_alts_of_3 in Hp.
+    refine (lab_head_ne _ _ X X' _ _ alt_prompt_head alt_panic_head _ Hp).
+    vm_compute. lia.
+  (* (3,0): the fork diagnostic would BE the output *)
+  - right. right.
+    rewrite line_alts_of_0 line_alts_of_3 /alt_panic
+            -(app_assoc (wl_line (drop 1 ws)) u_prompt X') in Hp.
+    destruct (wl_line_prefix_det _ _ _ _ HFk Hwf Hp) as [Heq _].
+    split; [done |]. split; [done |]. by rewrite Heq.
+  - exfalso. rewrite line_alts_of_1 line_alts_of_3 in Hp.
+    refine (lab_head_ne _ _ X X' _ _ alt_panic_head alt_execfail_head _ Hp).
+    vm_compute. lia.
+  - exfalso. rewrite line_alts_of_2 line_alts_of_3 in Hp.
+    refine (lab_head_ne _ _ X X' _ _ alt_panic_head alt_prompt_head _ Hp).
+    vm_compute. lia.
+Qed.
 
 (* ---- WHERE ECHO'S OUTPUT PUTS EACH WORD ------------------------------ *)
 (* Argument [i] of the line is word [i - 1] of the TAIL, because echo does
-   not print the command name.  These four are the whole of the cursor a
-   write chain over the words walks: where a word starts, what follows it
-   while another word remains, and what follows the last one. *)
-Definition echo_ocur (i : nat) : nat := wl_off 0%nat (drop 1 echo_ws) (i - 1).
+   not print the command name.  These are the whole of the cursor a write
+   chain over the words walks: where a word starts, what follows it while
+   another word remains, and what follows the last one. *)
+Definition out_cur (ws : list (list (bv 8))) (i : nat) : nat :=
+  wl_off 0%nat (drop 1 ws) (i - 1).
 
-Lemma echo_ws_drop (i : nat) :
-  (1 <= i)%nat -> drop 1 echo_ws !! (i - 1)%nat = echo_ws !! i.
-Proof.
-  intro Hi. rewrite lookup_drop. f_equal. lia.
-Qed.
+Lemma ws_drop (ws : list (list (bv 8))) (i : nat) :
+  (1 <= i)%nat -> drop 1 ws !! (i - 1)%nat = ws !! i.
+Proof. intro Hi. rewrite lookup_drop. f_equal. lia. Qed.
 
 (* the alternative opens with the output, and the prompt is past it *)
-Lemma echo_alt0_out (p : nat) :
-  (p < length echo_line_out)%nat ->
-  line_alts !!! 0%nat !! p = echo_line_out !! p.
+Lemma alt0_out ws (p : nat) :
+  (p < length (wl_line (drop 1 ws)))%nat ->
+  line_alts_of ws !!! 0%nat !! p = wl_line (drop 1 ws) !! p.
 Proof.
-  intro Hp. rewrite line_alts_0.
-  exact (lookup_app_l echo_line_out (sb "$ "%string) p Hp).
+  intro Hp. rewrite line_alts_of_0.
+  exact (lookup_app_l (wl_line (drop 1 ws)) u_prompt p Hp).
 Qed.
 
-Lemma echo_ocur_S (i : nat) (w : list (bv 8)) :
-  (1 <= i)%nat -> echo_ws !! i = Some w ->
-  echo_ocur (S i) = S (echo_ocur i + length w)%nat.
+Lemma out_cur_S ws (i : nat) (w : list (bv 8)) :
+  (1 <= i)%nat -> ws !! i = Some w ->
+  out_cur ws (S i) = S (out_cur ws i + length w)%nat.
 Proof.
-  intros Hi Hw. rewrite /echo_ocur.
+  intros Hi Hw. rewrite /out_cur.
   replace (S i - 1)%nat with (S (i - 1)) by lia.
-  exact (wl_off_S_at (drop 1 echo_ws) 0%nat (i - 1)%nat w
-           ltac:(rewrite echo_ws_drop; [exact Hw | exact Hi])).
+  exact (wl_off_S_at (drop 1 ws) 0%nat (i - 1)%nat w
+           ltac:(rewrite ws_drop; [exact Hw | exact Hi])).
 Qed.
 
-Lemma echo_ocur_lt (i : nat) (w : list (bv 8)) (j : nat) :
-  (1 <= i)%nat -> echo_ws !! i = Some w -> (j <= length w)%nat ->
-  (echo_ocur i + j < length echo_line_out)%nat.
+Lemma out_cur_lt ws (i : nat) (w : list (bv 8)) (j : nat) :
+  (1 <= i)%nat -> ws !! i = Some w -> (j <= length w)%nat ->
+  (out_cur ws i + j < length (wl_line (drop 1 ws)))%nat.
 Proof.
-  intros Hi Hw Hj. rewrite /echo_ocur /echo_line_out.
-  exact (wl_off_lt_line (drop 1 echo_ws) (i - 1)%nat w j
-           ltac:(rewrite echo_ws_drop; [exact Hw | exact Hi]) Hj).
+  intros Hi Hw Hj. rewrite /out_cur.
+  exact (wl_off_lt_line (drop 1 ws) (i - 1)%nat w j
+           ltac:(rewrite ws_drop; [exact Hw | exact Hi]) Hj).
 Qed.
 
 (* a separator follows a word while another argument remains... *)
-Lemma echo_out_sep (i : nat) (w : list (bv 8)) :
-  (1 <= i)%nat -> echo_ws !! i = Some w -> (S i < length echo_ws)%nat ->
-  line_alts !!! 0%nat !! (echo_ocur i + length w)%nat = Some wl_sp.
+Lemma out_sep ws (i : nat) (w : list (bv 8)) :
+  (1 <= i)%nat -> ws !! i = Some w -> (S i < length ws)%nat ->
+  line_alts_of ws !!! 0%nat !! (out_cur ws i + length w)%nat = Some wl_sp.
 Proof.
   intros Hi Hw Hlt.
-  assert (Hd : drop 1 echo_ws !! (i - 1)%nat = Some w)
-    by (rewrite echo_ws_drop; [exact Hw | exact Hi]).
-  rewrite (echo_alt0_out (echo_ocur i + length w)%nat
-             (echo_ocur_lt i w (length w) Hi Hw ltac:(lia))).
-  rewrite /echo_line_out /echo_ocur.
-  apply (wl_line_sep (drop 1 echo_ws) (i - 1)%nat w Hd).
+  assert (Hd : drop 1 ws !! (i - 1)%nat = Some w)
+    by (rewrite ws_drop; [exact Hw | exact Hi]).
+  rewrite (alt0_out ws (out_cur ws i + length w)%nat
+             (out_cur_lt ws i w (length w) Hi Hw ltac:(lia))).
+  rewrite /out_cur.
+  apply (wl_line_sep (drop 1 ws) (i - 1)%nat w Hd).
   rewrite length_drop. lia.
 Qed.
 
 (* ...and the closing newline follows the last, which is where the output
    ends *)
-Lemma echo_out_last (i : nat) (w : list (bv 8)) :
-  (1 <= i)%nat -> echo_ws !! i = Some w -> S i = length echo_ws ->
-  S (echo_ocur i + length w)%nat = length echo_line_out
-  /\ line_alts !!! 0%nat !! (echo_ocur i + length w)%nat = Some wl_nl.
+Lemma out_last ws (i : nat) (w : list (bv 8)) :
+  (1 <= i)%nat -> ws !! i = Some w -> S i = length ws ->
+  S (out_cur ws i + length w)%nat = length (wl_line (drop 1 ws))
+  /\ line_alts_of ws !!! 0%nat !! (out_cur ws i + length w)%nat = Some wl_nl.
 Proof.
   intros Hi Hw Hlast.
-  assert (Hd : drop 1 echo_ws !! (i - 1)%nat = Some w)
-    by (rewrite echo_ws_drop; [exact Hw | exact Hi]).
-  assert (Hend : (echo_ocur i + length w)%nat
-                 = length (wl_body (drop 1 echo_ws))).
-  { rewrite /echo_ocur.
-    rewrite (wl_off_last (drop 1 echo_ws) 0%nat (i - 1)%nat w Hd
+  assert (Hd : drop 1 ws !! (i - 1)%nat = Some w)
+    by (rewrite ws_drop; [exact Hw | exact Hi]).
+  assert (Hend : (out_cur ws i + length w)%nat
+                 = length (wl_body (drop 1 ws))).
+  { rewrite /out_cur.
+    rewrite (wl_off_last (drop 1 ws) 0%nat (i - 1)%nat w Hd
                ltac:(rewrite length_drop; lia)).
     lia. }
   split.
-  - rewrite Hend /echo_line_out wl_line_length. lia.
-  - rewrite (echo_alt0_out (echo_ocur i + length w)%nat
-               (echo_ocur_lt i w (length w) Hi Hw ltac:(lia))).
-    rewrite /echo_line_out Hend. exact (wl_line_nl_at (drop 1 echo_ws)).
+  - rewrite Hend wl_line_length. lia.
+  - rewrite (alt0_out ws (out_cur ws i + length w)%nat
+               (out_cur_lt ws i w (length w) Hi Hw ltac:(lia))).
+    rewrite Hend. exact (wl_line_nl_at (drop 1 ws)).
 Qed.
 
 (* the alternative is the output and then the prompt, so its length is
    the output's plus two -- not a number *)
-Lemma line_alts_0_length :
-  length (line_alts !!! 0%nat) = (length echo_line_out + 2)%nat.
-Proof. rewrite line_alts_0 length_app. by vm_compute (length (sb "$ "%string)). Qed.
-
-Lemma line_alts_length : length line_alts = 4.
-Proof. reflexivity. Qed.
+Lemma line_alts_of_0_length ws :
+  length (line_alts_of ws !!! 0%nat)
+  = (length (wl_line (drop 1 ws)) + 2)%nat.
+Proof.
+  rewrite line_alts_of_0 (length_app (wl_line (drop 1 ws)) u_prompt).
+  by vm_compute (length u_prompt).
+Qed.
 
 (* how many shells have already died on their own fork panic BEFORE line
    [i] -- so line [i], if it took alternative 3, opens round
@@ -968,51 +1296,74 @@ Proof.
   rewrite pro_idx_S. case_decide; lia.
 Qed.
 
-(* ONE COMPLETED LINE'S OUTPUT: the echo of its seventeen bytes, the
-   continuation this run took, and -- if that continuation was the shell's
-   own fork panic -- the PROLOGUE of the round init then starts.  [cs]
-   records the continuation per line and [ps] the prologue choices of the
-   whole run, in wire order; out of range both read as alternative 0, which
-   keeps [alt_seq] total and its step law unconditional -- the choices are
-   pinned by the wire wherever the discipline actually looks at them. *)
-Definition alt_cont (ps cs : list nat) (i : nat) : list (bv 8) :=
-  line_alts !!! (cs !!! i)
+(* ONE COMPLETED LINE'S OUTPUT: the echo of the RAW BODY the console put
+   back, the newline that closed it, the continuation this run took, and --
+   if that continuation was the shell's own fork panic -- the PROLOGUE of
+   the round init then starts.  [bs] is the list of complete bodies the
+   era's input parses to ([LineWords.bodies_of]), [cs] records the
+   continuation per line and [ps] the prologue choices of the whole run, in
+   wire order; out of range all three read as their inhabitant, which keeps
+   [alt_seq] total and its step law unconditional -- the choices are pinned
+   by the wire wherever the discipline actually looks at them.
+
+   THE ECHO HALF IS THE RAW BODY and not [wl_line] of its words: the
+   console echoes what was typed, whether or not it parses, so the
+   transcript grows with the input UNCONDITIONALLY ([sess_step]).  The
+   parse feeds only the ALTERNATIVE. *)
+Definition alt_cont (ps cs : list nat) (bs : list (list (bv 8))) (i : nat)
+  : list (bv 8) :=
+  line_alts_of (wl_words (bs !!! i)) !!! (cs !!! i)
   ++ (if decide (cs !!! i = 3%nat)
       then pro_of (pro_from (S (pro_idx cs i)) ps) else []).
 
-Definition alt_blk (ps cs : list nat) (i : nat) : list (bv 8) :=
-  echo_line ++ alt_cont ps cs i.
+Definition alt_blk (ps cs : list nat) (bs : list (list (bv 8))) (i : nat)
+  : list (bv 8) :=
+  bs !!! i ++ wl_nl :: alt_cont ps cs bs i.
 
-Definition alt_seq (ps cs : list nat) (q : nat) : list (bv 8) :=
-  concat (alt_blk ps cs <$> List.seq 0 q).
+Definition alt_seq (ps cs : list nat) (bs : list (list (bv 8))) (q : nat)
+  : list (bv 8) :=
+  concat (alt_blk ps cs bs <$> List.seq 0 q).
 
-Lemma alt_seq_0 ps cs : alt_seq ps cs 0 = [].
+Lemma alt_seq_0 ps cs bs : alt_seq ps cs bs 0 = [].
 Proof. reflexivity. Qed.
 
-Lemma alt_seq_S ps cs q : alt_seq ps cs (S q) = alt_seq ps cs q ++ alt_blk ps cs q.
+Lemma alt_seq_S ps cs bs q :
+  alt_seq ps cs bs (S q) = alt_seq ps cs bs q ++ alt_blk ps cs bs q.
 Proof.
   rewrite /alt_seq List.seq_S fmap_app concat_app Nat.add_0_l /=.
   by rewrite app_nil_r.
 Qed.
 
-(* ---- THE LENGTHS, ONCE ----------------------------------------------- *)
-(* [length echo_line] is what every consumer divides the session by, and
-   an unguarded [rewrite !length_app] unfolds it into the arity of the
-   join the line IS -- leaving [lia] with two different atoms.  So the
-   three decompositions a consumer needs are proved HERE, with the
-   [length_app] instances pinned, and nobody above takes a session apart
-   with [length_app] again. *)
-Lemma alt_blk_length ps cs q :
-  length (alt_blk ps cs q)
-  = (length echo_line + length (alt_cont ps cs q))%nat.
-Proof. rewrite /alt_blk (length_app echo_line _). reflexivity. Qed.
+(* the block reads the body only through [bs !!! i], so two body lists that
+   agree there give the same block *)
+Lemma alt_cont_bs ps cs bs bs' i :
+  bs !!! i = bs' !!! i -> alt_cont ps cs bs i = alt_cont ps cs bs' i.
+Proof. intro H. by rewrite /alt_cont H. Qed.
 
-Lemma alt_seq_S_length ps cs q :
-  length (alt_seq ps cs (S q))
-  = (length (alt_seq ps cs q) + length echo_line
-     + length (alt_cont ps cs q))%nat.
+Lemma alt_blk_bs ps cs bs bs' i :
+  bs !!! i = bs' !!! i -> alt_blk ps cs bs i = alt_blk ps cs bs' i.
+Proof. intro H. by rewrite /alt_blk H (alt_cont_bs ps cs bs bs' i H). Qed.
+
+(* ---- THE LENGTHS, ONCE ----------------------------------------------- *)
+(* A body is a JOIN of its words, and an unguarded [rewrite !length_app]
+   unfolds it into the arity of that join -- leaving [lia] with two
+   different atoms.  So the two decompositions a consumer needs are proved
+   HERE, with the [length_app] instances pinned, and nobody above takes a
+   session apart with [length_app] again. *)
+Lemma alt_blk_length ps cs bs q :
+  length (alt_blk ps cs bs q)
+  = (length (bs !!! q) + 1 + length (alt_cont ps cs bs q))%nat.
 Proof.
-  rewrite alt_seq_S (length_app (alt_seq ps cs q) _) alt_blk_length. lia.
+  rewrite /alt_blk (length_app (bs !!! q) (wl_nl :: alt_cont ps cs bs q)).
+  cbn [length]. lia.
+Qed.
+
+Lemma alt_seq_S_length ps cs bs q :
+  length (alt_seq ps cs bs (S q))
+  = (length (alt_seq ps cs bs q) + length (bs !!! q) + 1
+     + length (alt_cont ps cs bs q))%nat.
+Proof.
+  rewrite alt_seq_S (length_app (alt_seq ps cs bs q) _) alt_blk_length. lia.
 Qed.
 
 (* ---- the two extensionality laws the transcript needs ---- *)
@@ -1207,9 +1558,9 @@ Proof.
   intros j Hj. rewrite !list_lookup_total_alt lookup_app_l; [done | lia].
 Qed.
 
-Lemma alt_seq_ext ps cs1 cs2 q :
+Lemma alt_seq_ext ps cs1 cs2 bs q :
   (forall j, (j < q)%nat -> cs1 !!! j = cs2 !!! j) ->
-  alt_seq ps cs1 q = alt_seq ps cs2 q.
+  alt_seq ps cs1 bs q = alt_seq ps cs2 bs q.
 Proof.
   intros Hj. induction q as [| q IH]; [done |].
   rewrite !alt_seq_S IH; [| intros j Hjq; apply Hj; lia].
@@ -1217,13 +1568,29 @@ Proof.
   by rewrite (pro_idx_ext cs1 cs2 (S q) Hj q ltac:(lia)).
 Qed.
 
+Lemma alt_seq_bs_ext ps cs bs1 bs2 q :
+  (forall j, (j < q)%nat -> bs1 !!! j = bs2 !!! j) ->
+  alt_seq ps cs bs1 q = alt_seq ps cs bs2 q.
+Proof.
+  intros Hj. induction q as [| q IH]; [done |].
+  rewrite !alt_seq_S IH; [| intros j Hjq; apply Hj; lia].
+  by rewrite (alt_blk_bs ps cs bs1 bs2 q (Hj q ltac:(lia))).
+Qed.
+
+Lemma alt_seq_bs_app ps cs bs bs' q :
+  (q <= length bs)%nat -> alt_seq ps cs (bs ++ bs') q = alt_seq ps cs bs q.
+Proof.
+  intro Hq. apply alt_seq_bs_ext. intros j Hj.
+  rewrite !list_lookup_total_alt lookup_app_l; [done | lia].
+Qed.
+
 (* ...and the one for the PROLOGUES: only the rounds the first [q] lines
    enter are read, which is what makes a lower bound of [ps] worth its
    transcript. *)
-Lemma alt_seq_ps_ext ps1 ps2 cs q :
+Lemma alt_seq_ps_ext ps1 ps2 cs bs q :
   (forall r, (r <= pro_idx cs q)%nat ->
      pro_of (pro_from r ps1) = pro_of (pro_from r ps2)) ->
-  alt_seq ps1 cs q = alt_seq ps2 cs q.
+  alt_seq ps1 cs bs q = alt_seq ps2 cs bs q.
 Proof.
   induction q as [| q IH]; intros Hr; [done |].
   assert (Hle : (pro_idx cs q <= pro_idx cs (S q))%nat)
@@ -1236,41 +1603,112 @@ Qed.
 
 (* ---- 2c.  THE SESSION ---- *)
 
-(* THE EXPECTED SESSION TRANSCRIPT for [n] input bytes: the prologue this
-   run opened with, then one block per COMPLETED line, then the echo of the
-   bytes of the line in progress.  It depends on the input only through its
-   LENGTH -- which is what D3 buys: under [disc_seg] the input IS determined
-   by its length. *)
-Definition sess_n (ps cs : list nat) (n : nat) : list (bv 8) :=
-  pro_of ps ++ alt_seq ps cs (n `div` length echo_line)
-            ++ take (n `mod` length echo_line) echo_line.
+(* THE EXPECTED SESSION TRANSCRIPT for the era's input [I]: the prologue
+   this run opened with, then one block per COMPLETED line, then the echo
+   of the line in progress.  It reads the input through the PARSE and never
+   through its length, which is what lets each round carry its own words. *)
+Definition sess (ps cs : list nat) (I : list (bv 8)) : list (bv 8) :=
+  pro_of ps ++ alt_seq ps cs (bodies_of I) (nlines I) ++ rest_of I.
 
-Definition sess (ps cs : list nat) (l : list (bv 8)) : list (bv 8) :=
-  sess_n ps cs (length l).
-
-Lemma sess_n_0 ps cs : sess_n ps cs 0 = pro_of ps.
+Lemma sess_nil ps cs : sess ps cs [] = pro_of ps.
 Proof.
-  rewrite /sess_n Nat.Div0.div_0_l Nat.Div0.mod_0_l alt_seq_0 take_0.
-  by rewrite !app_nil_r.
+  rewrite /sess rest_of_nil nlines_nil alt_seq_0. by rewrite !app_nil_r.
 Qed.
 
-(* ...and the session's own, on the same rule *)
-Lemma sess_n_length ps cs n :
-  length (sess_n ps cs n)
-  = (length (pro_of ps) + length (alt_seq ps cs (n `div` length echo_line))
-     + (n `mod` length echo_line) `min` length echo_line)%nat.
+Lemma sess_length ps cs I :
+  length (sess ps cs I)
+  = (length (pro_of ps) + length (alt_seq ps cs (bodies_of I) (nlines I))
+     + length (rest_of I))%nat.
 Proof.
-  rewrite /sess_n (length_app (pro_of ps) _) (length_app (alt_seq ps cs _) _)
-    length_take. lia.
+  rewrite /sess (length_app (pro_of ps) _)
+    (length_app (alt_seq ps cs (bodies_of I) (nlines I)) (rest_of I)). lia.
 Qed.
 
-Lemma sess_n_ps_ext ps1 ps2 cs n :
-  (forall r, (r <= pro_idx cs (n `div` length echo_line))%nat ->
+Lemma sess_ps_ext ps1 ps2 cs I :
+  (forall r, (r <= pro_idx cs (nlines I))%nat ->
      pro_of (pro_from r ps1) = pro_of (pro_from r ps2)) ->
-  sess_n ps1 cs n = sess_n ps2 cs n.
+  sess ps1 cs I = sess ps2 cs I.
 Proof.
-  intros Hr. rewrite /sess_n (Hr 0%nat ltac:(lia)).
-  by rewrite (alt_seq_ps_ext ps1 ps2 cs _ Hr).
+  intros Hr. rewrite /sess (Hr 0%nat ltac:(lia)).
+  by rewrite (alt_seq_ps_ext ps1 ps2 cs (bodies_of I) (nlines I) Hr).
+Qed.
+
+(* THE SESSION GROWS WITH THE INPUT, UNCONDITIONALLY.  A byte that is not a
+   newline lengthens the line in progress; the newline closes the body --
+   whose RAW bytes are the block's echo half -- and opens the block's
+   continuation.  Neither step asks anything of the parse, which is why the
+   transcript is monotone in the input at any line, admissible or not. *)
+Lemma sess_snoc_other ps cs I b :
+  b <> wl_nl -> sess ps cs (I ++ [b]) = sess ps cs I ++ [b].
+Proof.
+  intro Hb. rewrite /sess (bodies_of_snoc_other I b Hb)
+    (nlines_snoc_other I b Hb) (rest_of_snoc_other I b Hb).
+  by rewrite !app_assoc.
+Qed.
+
+Lemma sess_snoc_nl ps cs I :
+  sess ps cs (I ++ [wl_nl])
+  = sess ps cs I
+    ++ wl_nl :: alt_cont ps cs (bodies_of I ++ [rest_of I]) (nlines I).
+Proof.
+  assert (Hidx : (bodies_of I ++ [rest_of I]) !!! (nlines I) = rest_of I).
+  { rewrite list_lookup_total_alt
+      (lookup_app_r (bodies_of I) [rest_of I] (nlines I)
+         ltac:(rewrite /nlines; lia)).
+    rewrite /nlines Nat.sub_diag. reflexivity. }
+  rewrite {1}/sess bodies_of_snoc_nl nlines_snoc_nl rest_of_snoc_nl.
+  rewrite alt_seq_S (alt_seq_bs_app ps cs (bodies_of I) [rest_of I] (nlines I)
+                       ltac:(rewrite /nlines; lia)).
+  rewrite /alt_blk Hidx app_nil_r /sess.
+  by rewrite !app_assoc.
+Qed.
+
+Lemma sess_step ps cs I b : sess ps cs I `prefix_of` sess ps cs (I ++ [b]).
+Proof.
+  destruct (decide (b = wl_nl)) as [-> | Hb].
+  - rewrite sess_snoc_nl. by eexists.
+  - rewrite (sess_snoc_other ps cs I b Hb). by eexists.
+Qed.
+
+Lemma sess_mono ps cs I I' :
+  I `prefix_of` I' -> sess ps cs I `prefix_of` sess ps cs I'.
+Proof.
+  intros [k ->]. induction k as [| b k IH] using rev_ind.
+  - rewrite app_nil_r. reflexivity.
+  - rewrite app_assoc. etrans; [exact IH | apply sess_step].
+Qed.
+
+Lemma sess_length_step ps cs I b :
+  (length (sess ps cs I) < length (sess ps cs (I ++ [b])))%nat.
+Proof.
+  destruct (decide (b = wl_nl)) as [-> | Hb].
+  - rewrite sess_snoc_nl (length_app (sess ps cs I) _). cbn [length]. lia.
+  - rewrite (sess_snoc_other ps cs I b Hb) (length_app (sess ps cs I) [b]).
+    cbn [length]. lia.
+Qed.
+
+Lemma sess_length_le ps cs I I' :
+  I `prefix_of` I' -> (length (sess ps cs I) <= length (sess ps cs I'))%nat.
+Proof. intro Hp. exact (prefix_length _ _ (sess_mono ps cs I I' Hp)). Qed.
+
+Lemma sess_length_lt ps cs I I' :
+  I `prefix_of` I' -> I <> I' ->
+  (length (sess ps cs I) < length (sess ps cs I'))%nat.
+Proof.
+  intros [k ->] Hne. destruct k as [| b k _] using rev_ind.
+  { exfalso. apply Hne. by rewrite app_nil_r. }
+  rewrite app_assoc.
+  pose proof (sess_length_le ps cs I (I ++ k) ltac:(by eexists)) as H1.
+  pose proof (sess_length_step ps cs (I ++ k) b) as H2. lia.
+Qed.
+
+Lemma sess_take ps cs I q :
+  (nlines I <= q)%nat -> sess ps (take q cs) I = sess ps cs I.
+Proof.
+  intros Hq. rewrite /sess. do 2 f_equal.
+  apply alt_seq_ext. intros j Hj.
+  rewrite list_lookup_total_alt lookup_take; [| lia].
+  by rewrite -list_lookup_total_alt.
 Qed.
 
 (* EVERY PROLOGUE THE FIRST [q] LINES ENTER HAS SETTLED: round 0, and one
@@ -1313,37 +1751,110 @@ Qed.
 Lemma pro_idx_S_le cs i : (pro_idx cs (S i) <= S (pro_idx cs i))%nat.
 Proof. rewrite pro_idx_S. case_decide; lia. Qed.
 
-(* THE STAGE'S side condition: every block STRICTLY BELOW stage [n] reads a
-   round that has settled.  The round the writer is standing in need not
+(* ---- how many rounds the input has STARTED ---- *)
+
+(* [nstarted I] is [nlines I] plus one when a line is in progress: the
+   number of rounds the user has begun.  It replaces "the input length
+   divided by the line length, rounded up" and is the index the stage's
+   side condition quantifies over. *)
+Lemma nstarted_snoc_nl I : nstarted (I ++ [wl_nl]) = S (nlines I).
+Proof.
+  rewrite /nstarted nlines_snoc_nl rest_of_snoc_nl.
+  case_decide as H; [lia | by destruct (H eq_refl)].
+Qed.
+
+Lemma nstarted_snoc_other I b :
+  b <> wl_nl -> nstarted (I ++ [b]) = S (nlines I).
+Proof.
+  intro Hb. rewrite /nstarted (nlines_snoc_other I b Hb)
+    (rest_of_snoc_other I b Hb).
+  case_decide as H; [| lia]. exfalso.
+  apply (f_equal length) in H.
+  rewrite (length_app (rest_of I) [b]) in H. cbn [length] in H. lia.
+Qed.
+
+(* a nonempty input has started a round -- and that is what makes the
+   stage's side condition say something at the head of the transcript *)
+Lemma nstarted_pos I : I <> [] -> (0 < nstarted I)%nat.
+Proof.
+  intro Hne. rewrite /nstarted. case_decide as H; [| lia].
+  destruct (decide (nlines I = 0)%nat) as [Hz | ?]; [| lia].
+  exfalso. apply Hne.
+  assert (Hb : bodies_of I = []) by (apply nil_length_inv; exact Hz).
+  by rewrite (wl_cut_join I) H Hb wl_join_nil app_nil_r.
+Qed.
+
+Lemma nlines_le_nstarted I : (nlines I <= nstarted I)%nat.
+Proof. rewrite /nstarted. case_decide; lia. Qed.
+
+Lemma nstarted_le_S I : (nstarted I <= S (nlines I))%nat.
+Proof. rewrite /nstarted. case_decide; lia. Qed.
+
+Lemma nlines_prefix I I' : I `prefix_of` I' -> (nlines I <= nlines I')%nat.
+Proof. intros [k ->]. apply nlines_app_le. Qed.
+
+Lemma nstarted_prefix I I' :
+  I `prefix_of` I' -> (nstarted I <= nstarted I')%nat.
+Proof.
+  intro Hp. pose proof (nlines_prefix I I' Hp) as Hle.
+  destruct (decide (nlines I = nlines I')) as [Heq | Hne].
+  - pose proof (rest_of_prefix I I' Hp Heq) as Hr.
+    rewrite /nstarted. case_decide as H1; case_decide as H2; try lia.
+    exfalso. apply H1. rewrite H2 in Hr. by apply prefix_nil_inv in Hr.
+  - pose proof (nlines_le_nstarted I') as H2.
+    pose proof (nstarted_le_S I) as H1. lia.
+Qed.
+
+(* A STRICT PREFIX OF THE INPUT HAS FEWER COMPLETE LINES THAN THE INPUT HAS
+   STARTED ROUNDS -- the one step that turns "this stage is not the last"
+   into the stage's side condition. *)
+Lemma nstarted_strict J I :
+  J `prefix_of` I -> J <> I -> (nlines J < nstarted I)%nat.
+Proof.
+  intros [k Hk] Hne. destruct k as [| b k].
+  { exfalso. apply Hne. by rewrite Hk app_nil_r. }
+  assert (Hp : J ++ [b] `prefix_of` I) by (exists k; by rewrite Hk -app_assoc).
+  pose proof (nstarted_prefix (J ++ [b]) I Hp) as Hle.
+  destruct (decide (b = wl_nl)) as [-> | Hb].
+  - rewrite nstarted_snoc_nl in Hle. lia.
+  - rewrite (nstarted_snoc_other J b Hb) in Hle. lia.
+Qed.
+
+(* THE STAGE'S side condition: every round the input has STARTED reads a
+   prologue that has settled.  The round the writer is standing in need not
    have -- it settles at that block's choice byte -- which is exactly the
    difference from [pro_ok]. *)
-Definition pro_pin (ps cs : list nat) (n : nat) : Prop :=
-  forall q, (length echo_line * q < n)%nat -> (pro_idx cs q < pro_rounds ps)%nat.
+Definition pro_pin (ps cs : list nat) (I : list (bv 8)) : Prop :=
+  forall q, (q < nstarted I)%nat -> (pro_idx cs q < pro_rounds ps)%nat.
 
-Lemma pro_pin_at ps cs n k :
-  pro_pin ps cs n -> (k < n)%nat ->
-  (pro_idx cs (k `div` length echo_line) < pro_rounds ps)%nat.
+Lemma pro_pin_nil ps cs : pro_pin ps cs [].
+Proof. intros q Hq. rewrite nstarted_nil in Hq. lia. Qed.
+
+Lemma pro_pin_at ps cs I q :
+  pro_pin ps cs I -> (q < nstarted I)%nat ->
+  (pro_idx cs q < pro_rounds ps)%nat.
+Proof. intros Hp Hq. exact (Hp q Hq). Qed.
+
+Lemma pro_pin_prefix ps cs I I' :
+  I `prefix_of` I' -> pro_pin ps cs I' -> pro_pin ps cs I.
 Proof.
-  intros Hp Hk. apply Hp. pose proof echo_line_pos as HL.
-  pose proof (Nat.div_mod_eq k (length echo_line)). lia.
+  intros Hpre Hp q Hq. apply Hp.
+  pose proof (nstarted_prefix I I' Hpre). lia.
 Qed.
 
-Lemma pro_pin_idx_le ps cs n :
-  pro_pin ps cs n -> (pro_idx cs (n `div` length echo_line) <= pro_rounds ps)%nat.
+Lemma pro_pin_idx_le ps cs I :
+  pro_pin ps cs I -> (pro_idx cs (nlines I) <= pro_rounds ps)%nat.
 Proof.
-  intros Hp. pose proof echo_line_pos as HL.
-  pose proof (Nat.div_mod_eq n (length echo_line)) as Hdm.
-  destruct (decide (length echo_line * (n `div` length echo_line) < n)%nat)
-    as [Hlt | Hge].
-  - pose proof (Hp (n `div` length echo_line)%nat Hlt). lia.
-  - destruct (n `div` length echo_line)%nat as [| m'] eqn:Hm.
-    + cbn [pro_idx]. lia.
-    + assert (Hlt' : (length echo_line * m' < n)%nat) by lia.
-      pose proof (Hp m' Hlt'). pose proof (pro_idx_S_le cs m'). lia.
+  intros Hp. pose proof (nlines_le_nstarted I) as Hn.
+  destruct (decide (nlines I < nstarted I)%nat) as [Hlt | Hge].
+  - pose proof (Hp (nlines I) Hlt). lia.
+  - destruct (nlines I) as [| m] eqn:Hm; [cbn [pro_idx]; lia |].
+    assert (Hlt' : (m < nstarted I)%nat) by lia.
+    pose proof (Hp m Hlt'). pose proof (pro_idx_S_le cs m). lia.
 Qed.
 
-Lemma pro_pin_mono ps ps' cs n :
-  ps `prefix_of` ps' -> pro_pin ps cs n -> pro_pin ps' cs n.
+Lemma pro_pin_mono ps ps' cs I :
+  ps `prefix_of` ps' -> pro_pin ps cs I -> pro_pin ps' cs I.
 Proof.
   intros [z ->] Hp q Hq. pose proof (Hp q Hq).
   rewrite pro_rounds_app. lia.
@@ -1367,48 +1878,59 @@ Qed.
 
 (* the bridge [good_out_of_stage] spends: PADDING the resolution with one
    terminated round turns the stage's condition into the claim's. *)
-Lemma pro_pin_ok ps cs n a :
-  pro_pin ps cs n -> Forall (fun x => (x < length pro_alts)%nat) ps ->
+Lemma pro_pin_ok ps cs I a :
+  pro_pin ps cs I -> Forall (fun x => (x < length pro_alts)%nat) ps ->
   ~ pro_cont a -> (a < length pro_alts)%nat ->
-  pro_ok (ps ++ [a]) cs (n `div` length echo_line).
+  pro_ok (ps ++ [a]) cs (nlines I).
 Proof.
   intros Hp HF Hne Ha. split.
   - apply Forall_app. split; [exact HF | by apply Forall_singleton].
   - rewrite pro_rounds_app.
-    pose proof (pro_pin_idx_le ps cs n Hp).
+    pose proof (pro_pin_idx_le ps cs I Hp).
     assert (Hr : pro_rounds [a] = 1%nat).
     { cbn [pro_rounds]. rewrite decide_False; [lia | exact Hne]. }
     lia.
 Qed.
 
-(* R3's relation: [out] is what the session may have emitted for input [l],
+(* R3's relation: [out] is what the session may have emitted for input [I],
    under SOME resolution of the prologue's and the per-line alternatives. *)
-Definition expected_rel (l out : list (bv 8)) : Prop :=
+Definition expected_rel (I out : list (bv 8)) : Prop :=
   exists ps cs : list nat,
-    pro_ok ps cs (length l `div` length echo_line)
-    /\ Forall (fun c => c < length line_alts) cs
-    /\ out `prefix_of` sess ps cs l.
+    pro_ok ps cs (nlines I)
+    /\ Forall (fun c => (c < 4)%nat) cs
+    /\ out `prefix_of` sess ps cs I.
 
-(* ---- the arithmetic of one more input byte ---- *)
-
-Lemma div_mod_succ (n m : nat) :
-  0 < m ->
-  (S n `mod` m = 0 /\ S n `div` m = S (n `div` m) /\ n `mod` m = m - 1)
-  \/ (S n `mod` m = S (n `mod` m) /\ S n `div` m = n `div` m).
+Lemma expected_rel_out_mono I out out' :
+  out' `prefix_of` out -> expected_rel I out -> expected_rel I out'.
 Proof.
-  intros Hm.
-  pose proof (Nat.div_mod_eq n m) as Hdm.
-  pose proof (Nat.mod_upper_bound n m ltac:(lia)) as Hub.
-  destruct (decide (S (n `mod` m) = m)) as [Heq|Hne].
-  - left.
-    assert (HS : S n = (n `div` m + 1) * m) by nia.
-    rewrite HS Nat.Div0.mod_mul Nat.div_mul; [|lia].
-    split; [done|]. split; [lia|]. lia.
-  - right.
-    assert (HS : S n = S (n `mod` m) + n `div` m * m) by nia.
-    rewrite HS Nat.Div0.mod_add Nat.mod_small; [|lia].
-    split; [done|].
-    rewrite Nat.div_add; [|lia]. rewrite Nat.div_small; [lia|lia].
+  intros Hp (ps & cs & Hok & Hcs & Hout). exists ps, cs.
+  split; [exact Hok|]. split; [exact Hcs|]. by etrans.
+Qed.
+
+(* R3's monotonicity in the INPUT.  The resolution has to be PADDED: a
+   longer input may complete more lines, each of which may be a shell that
+   died on its own fork panic and re-entered the prologue, so [pro_ok] at
+   the longer input asks for more settled rounds than the shorter one
+   supplies.  Padding with terminated rounds changes no round the shorter
+   transcript reads ([pro_of_from_done_ext]). *)
+Lemma expected_rel_ins_prefix I I' out :
+  I `prefix_of` I' -> expected_rel I out -> expected_rel I' out.
+Proof.
+  intros Hpre (ps & cs & [HF Hlt] & Hcs & Hout).
+  set (pad := replicate (S (nlines I')) 0%nat).
+  exists (ps ++ pad), cs. split.
+  { split.
+    - apply Forall_app. split; [exact HF |].
+      apply Forall_forall. intros x Hx. apply elem_of_replicate in Hx as [-> _].
+      rewrite pro_alts_length. lia.
+    - rewrite pro_rounds_app /pad pro_rounds_replicate_0.
+      pose proof (pro_idx_le cs (nlines I')). lia. }
+  split; [exact Hcs |].
+  etrans; [exact Hout |].
+  rewrite (sess_ps_ext ps (ps ++ pad) cs I); last first.
+  { intros r Hr.
+    apply (pro_of_from_done_ext r ps (ps ++ pad)); [by eexists | lia]. }
+  by apply sess_mono.
 Qed.
 
 Lemma prefix_take_le {A} (l : list A) (n m : nat) :
@@ -1418,101 +1940,6 @@ Proof.
   assert (H : take n l = take n (take m l)).
   { rewrite take_take Nat.min_l; [done|lia]. }
   rewrite H. apply prefix_take.
-Qed.
-
-Lemma sess_n_step ps cs n : sess_n ps cs n `prefix_of` sess_n ps cs (S n).
-Proof.
-  rewrite /sess_n.
-  destruct (div_mod_succ n (length echo_line) echo_line_pos)
-    as [(Hm & Hd & Hr)|(Hm & Hd)]; rewrite Hm Hd.
-  - rewrite alt_seq_S take_0 app_nil_r.
-    apply prefix_app, prefix_app.
-    rewrite /alt_blk. apply prefix_app_r, prefix_take.
-  - apply prefix_app, prefix_app, prefix_take_le. lia.
-Qed.
-
-Lemma sess_n_mono ps cs n m : n <= m -> sess_n ps cs n `prefix_of` sess_n ps cs m.
-Proof.
-  intros Hnm. replace m with (n + (m - n)) by lia.
-  generalize (m - n) as d. intros d. clear Hnm m.
-  induction d as [|d IH].
-  - rewrite Nat.add_0_r. reflexivity.
-  - rewrite Nat.add_succ_r. etrans; [exact IH | apply sess_n_step].
-Qed.
-
-(* R3's monotonicity, both ways round.  In the INPUT LENGTH the resolution
-   has to be PADDED: a longer input may complete more lines, each of which
-   may be a shell that died on its own fork panic and re-entered the
-   prologue, so [pro_ok] at the longer length asks for more settled rounds
-   than the shorter one supplies.  Padding with terminated rounds changes no
-   round the shorter transcript reads ([pro_of_from_done_ext]). *)
-Lemma expected_rel_out_mono l out out' :
-  out' `prefix_of` out -> expected_rel l out -> expected_rel l out'.
-Proof.
-  intros Hp (ps & cs & Hok & Hcs & Hout). exists ps, cs.
-  split; [exact Hok|]. split; [exact Hcs|]. by etrans.
-Qed.
-
-Lemma expected_rel_ins_mono l l' out :
-  length l <= length l' -> expected_rel l out -> expected_rel l' out.
-Proof.
-  intros Hlen (ps & cs & [HF Hlt] & Hcs & Hout).
-  set (pad := replicate (length l') 0%nat).
-  assert (Hext : forall r, (r < pro_rounds ps)%nat ->
-            pro_of (pro_from r (ps ++ pad)) = pro_of (pro_from r ps)).
-  { intros r Hr. symmetry.
-    apply (pro_of_from_done_ext r ps (ps ++ pad)); [by eexists | exact Hr]. }
-  exists (ps ++ pad), cs. split.
-  { split.
-    - apply Forall_app. split; [exact HF |].
-      apply Forall_forall. intros x Hx. apply elem_of_replicate in Hx as [-> _].
-      rewrite pro_alts_length. lia.
-    - rewrite pro_rounds_app /pad pro_rounds_replicate_0.
-      pose proof (pro_idx_le cs (length l' `div` length echo_line)) as H1.
-      pose proof (Nat.Div0.div_le_upper_bound (length l') (length echo_line)
-                    (length l') ltac:(pose proof echo_line_pos; nia)) as H2.
-      lia. }
-  split; [exact Hcs |].
-  etrans; [exact Hout |]. rewrite /sess.
-  rewrite (sess_n_ps_ext ps (ps ++ pad) cs (length l)); last first.
-  { intros r Hr. symmetry. apply Hext. lia. }
-  by apply sess_n_mono.
-Qed.
-
-Lemma expected_rel_ins_prefix l l' out :
-  l `prefix_of` l' -> expected_rel l out -> expected_rel l' out.
-Proof. intros Hp. apply expected_rel_ins_mono. by apply prefix_length. Qed.
-
-(* ...and the decomposition D3 gives the session: under [star_prefix] the
-   input really is [q] whole lines and a prefix of the next, which is why
-   [sess_n] may read only the LENGTH of the input. *)
-Lemma star_prefix_decomp (l : list (bv 8)) :
-  star_prefix echo_line l ->
-  l = concat (replicate (length l `div` length echo_line) echo_line)
-      ++ take (length l `mod` length echo_line) echo_line.
-Proof.
-  intros Hsp.
-  pose proof echo_line_pos as HL.
-  pose proof (Nat.div_mod_eq (length l) (length echo_line)) as Hdm.
-  pose proof (Nat.mod_upper_bound (length l) (length echo_line)
-                ltac:(lia)) as Hub.
-  assert (Hqn : length l `div` length echo_line <= length l).
-  { apply Nat.Div0.div_le_upper_bound. nia. }
-  assert (Hsplit : replicate (length l) echo_line
-                 = replicate (length l `div` length echo_line) echo_line
-                   ++ replicate (length l - length l `div` length echo_line)
-                        echo_line).
-  { rewrite -replicate_add. f_equal. lia. }
-  rewrite {1}Hsp Hsplit concat_app take_app.
-  rewrite take_ge; [|rewrite concat_replicate_length; nia].
-  rewrite concat_replicate_length. f_equal.
-  replace (length l - length l `div` length echo_line * length echo_line)
-    with (length l `mod` length echo_line) by nia.
-  destruct (decide (length l `mod` length echo_line = 0)) as [Hr0|Hr0].
-  { by rewrite Hr0 !take_0. }
-  destruct (length l - length l `div` length echo_line) as [|d] eqn:Hd.
-  { exfalso. nia. }
-  rewrite replicate_S concat_cons take_app_le; [done|lia].
 Qed.
 
 (* ====================================================================== *)
@@ -1566,11 +1993,11 @@ Qed.
 (*  4.  THE DISCIPLINE (R4)                                               *)
 (* ====================================================================== *)
 
-(* D1/D2 AT ONE INPUT POSITION.  [p] is the wire before input [i]: the
-   expected transcript for the [i] bytes typed so far is already there.
-   Mid-line that transcript ends in the echo of byte [i-1] (D2); at a line
-   boundary it ends in the "$ " of the previous line's continuation, and at
-   [i = 0] it is init's banner and sh's first prompt (D1).
+(* D1/D2 AT ONE INPUT POSITION.  [p] is the wire before an input byte: the
+   expected transcript for the input typed so far is already there.
+   Mid-line that transcript ends in the echo of the previous byte (D2); at
+   a line boundary it ends in the "$ " of the previous line's continuation,
+   and at the empty input it is init's banner and sh's first prompt (D1).
 
    The wire is the CONSOLE's, and nothing but the session writes it, so the
    transcript is measured from the start of the wire: there is no kernel
@@ -1578,28 +2005,27 @@ Qed.
    NOT CLAIM, as fact: a user who types before the prompt -- or before the
    previous byte's echo -- is outside the discipline, and the theorem says
    nothing about that cycle beyond safety.  Under the discipline at most
-   one line (seventeen bytes) is ever outstanding in the console ring,
-   which holds 128, so [consoleintr] drops nothing. *)
-Definition disc_pt (ps cs : list nat) (i : nat) (p : list mobs) : Prop :=
-  sess_n ps cs i `prefix_of` obs_wire Uart0 p.
+   one line is ever outstanding in the console ring, and [line_max] keeps a
+   line under the ring's 128, so [consoleintr] drops nothing. *)
+Definition disc_pt (ps cs : list nat) (p : list mobs) : Prop :=
+  sess ps cs (ins p) `prefix_of` obs_wire Uart0 p.
 
-Global Instance disc_pt_dec ps cs i p : Decision (disc_pt ps cs i p).
+Global Instance disc_pt_dec ps cs p : Decision (disc_pt ps cs p).
 Proof. rewrite /disc_pt. apply _. Defined.
 
 (* THE PER-CYCLE DISCIPLINE: D3, and at every input byte D1/D2 under ONE
    resolution of the prologue's and the per-line alternatives.  [pro_ok] is
    stated AT THE INPUT and not once for the segment, because that is where
-   it is true: it says every prologue the transcript for THESE [i] bytes
-   enters has settled, and a segment the user never typed into enters none
-   (and must stay disciplined -- [disc_seg'_nil]). *)
+   it is true: it says every prologue the transcript for THAT input enters
+   has settled, and a segment the user never typed into enters none (and
+   must stay disciplined -- [disc_seg'_nil]). *)
 Definition disc_seg' (seg : list mobs) : Prop :=
   disc_seg seg
   /\ exists ps cs : list nat,
-       length cs = length (ins seg) `div` length echo_line
-       /\ Forall (fun c => c < length line_alts) cs
-       /\ forall (i : nat) (p : list mobs),
-            in_pres seg !! i = Some p ->
-            pro_ok ps cs (i `div` length echo_line) /\ disc_pt ps cs i p.
+       length cs = nlines (ins seg)
+       /\ Forall (fun c => (c < 4)%nat) cs
+       /\ forall p : list mobs, p ∈ in_pres seg ->
+            pro_ok ps cs (nlines (ins p)) /\ disc_pt ps cs p.
 
 (* ---- decidability: the choice list is bounded, so the search is finite ---- *)
 
@@ -1647,7 +2073,7 @@ Qed.
    [vm_compute]'s reach.  A settled round IS its letters -- the continuing
    ones, then one ending letter -- and every letter costs at least two wire
    bytes, so both the number of rounds and each round's length are bounded
-   by the segment ([pro_canon], [sess_n_pro_len]), and the search is
+   by the segment ([pro_canon], [sess_pro_len]), and the search is
    finite. *)
 Fixpoint cont_lists (n : nat) : list (list nat) :=
   match n with
@@ -1861,14 +2287,14 @@ Qed.
 
 (* EVERY ROUND THE TRANSCRIPT ENTERS IS ON THE WIRE, so the search space is
    bounded by the segment. *)
-Lemma alt_seq_pro_len ps cs q r :
+Lemma alt_seq_pro_len ps cs bs q r :
   (r <= pro_idx cs q)%nat ->
   (length (pro_of (pro_from r ps))
-   <= length (pro_of ps) + length (alt_seq ps cs q))%nat.
+   <= length (pro_of ps) + length (alt_seq ps cs bs q))%nat.
 Proof.
   revert r. induction q as [| q IH]; intros r Hr.
   - assert (r = 0%nat) by (cbn in Hr; lia). subst r. cbn [pro_from]. lia.
-  - rewrite alt_seq_S length_app.
+  - rewrite alt_seq_S_length.
     destruct (decide (r <= pro_idx cs q)%nat) as [Hle | Hgt].
     + pose proof (IH r Hle). lia.
     + assert (H3 : cs !!! q = 3%nat).
@@ -1876,38 +2302,74 @@ Proof.
         exfalso. rewrite (pro_idx_Sne cs q Hn) in Hr. lia. }
       rewrite (pro_idx_S3 cs q H3) in Hr.
       assert (Hre : r = S (pro_idx cs q)) by lia.
-      rewrite /alt_blk /alt_cont !length_app decide_True; [| exact H3].
+      rewrite /alt_cont (length_app (line_alts_of _ !!! _) _) decide_True;
+        [| exact H3].
       rewrite Hre. lia.
 Qed.
 
-Lemma sess_n_pro_len ps cs n r :
-  (r <= pro_idx cs (n `div` length echo_line))%nat ->
-  (length (pro_of (pro_from r ps)) <= length (sess_n ps cs n))%nat.
+Lemma sess_pro_len ps cs I r :
+  (r <= pro_idx cs (nlines I))%nat ->
+  (length (pro_of (pro_from r ps)) <= length (sess ps cs I))%nat.
 Proof.
-  intros Hr. rewrite /sess_n
-    (length_app (pro_of ps) _) (length_app (alt_seq ps cs _) _).
-  pose proof (alt_seq_pro_len ps cs (n `div` length echo_line) r Hr). lia.
+  intros Hr. rewrite sess_length.
+  pose proof (alt_seq_pro_len ps cs (bodies_of I) (nlines I) r Hr). lia.
+Qed.
+
+(* ...and the ROUND COUNT is bounded by the deepest input point, which is
+   what makes the prologue search finite.  [in_pres] is a list, so the
+   deepest point is a maximum over it and is attained. *)
+Fixpoint nlines_max (l : list (list mobs)) : nat :=
+  match l with
+  | [] => 0%nat
+  | p :: r => Nat.max (nlines (ins p)) (nlines_max r)
+  end.
+
+(* the cons step, named once: [cbn] would also take the tail apart and
+   leave [lia] with two atoms where the hypotheses name one *)
+Lemma nlines_max_cons (p : list mobs) (l : list (list mobs)) :
+  nlines_max (p :: l) = Nat.max (nlines (ins p)) (nlines_max l).
+Proof. reflexivity. Qed.
+
+Lemma nlines_max_ge (l : list (list mobs)) (p : list mobs) :
+  p ∈ l -> (nlines (ins p) <= nlines_max l)%nat.
+Proof.
+  induction l as [| q l IH]; intro Hp; [by apply elem_of_nil in Hp |].
+  rewrite nlines_max_cons.
+  apply elem_of_cons in Hp as [-> | Hp]; [lia |].
+  pose proof (IH Hp). lia.
+Qed.
+
+Lemma nlines_max_mem (l : list (list mobs)) :
+  l <> [] -> exists p, p ∈ l /\ nlines (ins p) = nlines_max l.
+Proof.
+  induction l as [| q l IH]; intro Hne; [done |].
+  rewrite nlines_max_cons. destruct l as [| q1 l1].
+  { exists q. split; [apply elem_of_list_here |]. cbn [nlines_max]. lia. }
+  destruct (IH ltac:(discriminate)) as (p & Hp & Hpe).
+  destruct (decide (nlines (ins q) <= nlines_max (q1 :: l1))%nat) as [Hle | Hgt].
+  - exists p. split; [by apply elem_of_list_further | lia].
+  - exists q. split; [apply elem_of_list_here | lia].
 Qed.
 
 (* ---- the constructor the literals below spend ---- *)
 
 Definition disc_pt_all (ps cs : list nat) (seg : list mobs) : Prop :=
-  Forall (fun ip => pro_ok ps cs (ip.1 `div` length echo_line)
-                    /\ disc_pt ps cs ip.1 ip.2)
-    (imap (fun i x => (i, x)) (in_pres seg)).
+  Forall (fun p => pro_ok ps cs (nlines (ins p)) /\ disc_pt ps cs p)
+    (in_pres seg).
 
 Global Instance disc_pt_all_dec ps cs seg : Decision (disc_pt_all ps cs seg).
 Proof. rewrite /disc_pt_all. apply _. Defined.
 
 Lemma disc_seg'_intro (seg : list mobs) (ps cs : list nat) :
   disc_seg seg ->
-  length cs = (length (ins seg) `div` length echo_line)%nat ->
-  Forall (fun c => (c < length line_alts)%nat) cs ->
+  length cs = nlines (ins seg) ->
+  Forall (fun c => (c < 4)%nat) cs ->
   disc_pt_all ps cs seg ->
   disc_seg' seg.
 Proof.
   intros Hd Hl Hf Hall. split; [exact Hd |]. exists ps, cs.
-  split; [exact Hl |]. split; [exact Hf |]. by apply Forall_imap_pair.
+  split; [exact Hl |]. split; [exact Hf |].
+  intros p Hp. exact (proj1 (Forall_forall _ _) Hall p Hp).
 Qed.
 
 (* the intro direction at an EXPLICIT predicate: [apply]'s higher-order
@@ -1923,11 +2385,9 @@ Proof.
   destruct (decide (Exists (fun cs =>
                       Exists (fun ps => disc_pt_all ps cs seg)
                         (pro_cands
-                           (S (pro_idx cs
-                                 ((length (ins seg) - 1) `div` length echo_line)))
+                           (S (pro_idx cs (nlines_max (in_pres seg))))
                            (length seg)))
-                    (bounded_lists (length line_alts)
-                       (length (ins seg) `div` length echo_line)))) as [HE | HE].
+                    (bounded_lists 4 (nlines (ins seg))))) as [HE | HE].
   - left. apply Exists_exists in HE as (cs & Hcs & HP).
     apply Exists_exists in HP as (ps & _ & Hall).
     apply elem_of_bounded_lists in Hcs as [Hl Hf].
@@ -1935,75 +2395,77 @@ Proof.
   - right. intros [_ (ps & cs & Hl & Hf & Hall)]. apply HE.
     apply Exists_exists. exists cs. split; [by apply elem_of_bounded_lists |].
     apply Exists_exists.
-    destruct (decide (length (ins seg) = 0%nat)) as [Hz | Hz].
+    destruct (decide (in_pres seg = [])) as [Hz | Hz].
     { (* no input at all: the clause is vacuous and any candidate serves *)
       destruct (pro_cands_nonempty
-                  (S (pro_idx cs
-                        ((length (ins seg) - 1) `div` length echo_line)))
-                  (length seg)) as [g Hg].
-      exists g. split; [exact Hg |]. rewrite /disc_pt_all.
-      apply (Forall_imap_pair_intro
-               (fun i p => pro_ok g cs (i `div` length echo_line)
-                           /\ disc_pt g cs i p)).
-      intros i p Hi. exfalso. apply lookup_lt_Some in Hi.
-      rewrite in_pres_length in Hi. lia. }
-    (* the LAST input bounds every round the transcript enters *)
-    destruct (lookup_lt_is_Some_2 (in_pres seg) (length (ins seg) - 1)%nat
-                ltac:(rewrite in_pres_length; lia)) as [pl Hlast].
-    destruct (Hall _ _ Hlast) as [[HFps Hltl] Hptl].
-    destruct (pro_canon
-                (S (pro_idx cs ((length (ins seg) - 1) `div` length echo_line)))
+                  (S (pro_idx cs (nlines_max (in_pres seg)))) (length seg))
+        as [g Hg].
+      exists g. split; [exact Hg |]. rewrite /disc_pt_all Hz. constructor. }
+    (* the DEEPEST input point bounds every round the transcript enters *)
+    destruct (nlines_max_mem (in_pres seg) Hz) as (pl & Hplin & Hpleq).
+    destruct (Hall pl Hplin) as [[HFps Hltl] Hptl].
+    assert (Hplp : pl `prefix_of` seg)
+      by (exact (proj1 (Forall_forall _ _) (in_pres_prefix_all seg) pl Hplin)).
+    destruct (pro_canon (S (pro_idx cs (nlines_max (in_pres seg))))
                 (length seg) ps HFps) as (ps0 & Hin0 & Hrd0 & Hag0).
-    { intros r Hr. split; [lia |].
-      etrans; [apply (sess_n_pro_len ps cs (length (ins seg) - 1)%nat r); lia |].
+    { intros r Hr. rewrite -Hpleq in Hr. split; [lia |].
+      etrans; [apply (sess_pro_len ps cs (ins pl) r); lia |].
       etrans; [apply prefix_length, Hptl |].
       etrans; [apply obs_wire_length |].
-      apply prefix_length, (in_pres_prefix seg _ _ Hlast). }
-    exists ps0. split; [exact Hin0 |]. rewrite /disc_pt_all.
-    apply (Forall_imap_pair_intro
-             (fun i p => pro_ok ps0 cs (i `div` length echo_line)
-                         /\ disc_pt ps0 cs i p)).
-    intros i p Hi.
-    destruct (Hall i p Hi) as [[_ Hlti] Hpti].
-    assert (Hile : (i `div` length echo_line
-                    <= (length (ins seg) - 1) `div` length echo_line)%nat).
-    { apply Nat.Div0.div_le_mono.
-      apply lookup_lt_Some in Hi. rewrite in_pres_length in Hi. lia. }
-    assert (Hidxle : (pro_idx cs (i `div` length echo_line)
-                      <= pro_idx cs
-                           ((length (ins seg) - 1) `div` length echo_line))%nat)
-      by (by apply pro_idx_mono).
-    assert (Hsame : sess_n ps0 cs i = sess_n ps cs i).
-    { apply sess_n_ps_ext. intros r Hr. apply Hag0. lia. }
+      exact (prefix_length _ _ Hplp). }
+    exists ps0. split; [exact Hin0 |].
+    rewrite /disc_pt_all. apply Forall_forall. intros p Hp.
+    destruct (Hall p Hp) as [[_ Hltp] Hptp].
+    assert (Hidxle : (pro_idx cs (nlines (ins p))
+                      <= pro_idx cs (nlines_max (in_pres seg)))%nat)
+      by (apply pro_idx_mono, nlines_max_ge, Hp).
+    assert (Hsame : sess ps0 cs (ins p) = sess ps cs (ins p)).
+    { apply sess_ps_ext. intros r Hr. apply Hag0. lia. }
     split.
-    + rewrite /pro_ok. split; [by eapply pro_cands_Forall |]. lia.
-    + rewrite /disc_pt Hsame. exact Hpti.
+    + rewrite /pro_ok. split; [by eapply pro_cands_Forall | lia].
+    + rewrite /disc_pt Hsame. exact Hptp.
 Defined.
 
 Lemma disc_seg'_nil : disc_seg' [].
 Proof.
-  split; [exact disc_seg_nil|]. exists [], []. split; [done|].
-  split; [constructor|]. intros i p Hi.
-  apply lookup_lt_Some in Hi. cbn in Hi. lia.
+  split; [exact disc_seg_nil |]. exists [], [].
+  split; [change (ins []) with (@nil (bv 8)); rewrite nlines_nil; reflexivity |].
+  split; [constructor |]. intros p Hp. by apply elem_of_nil in Hp.
 Qed.
 
-(* THE PROJECTION.  Everything the tree already proves against the landed
-   discipline reads off the new one in one step. *)
+(* THE PROJECTION.  Everything the tree proves against the content half
+   reads off the whole discipline in one step. *)
 Lemma disc_seg'_proj seg : disc_seg' seg -> disc_seg seg.
 Proof. by intros [? _]. Qed.
 
 (* ANTI-VACUITY AT A LITERAL.  [disc_seg'] is not merely decidable and
-   prefix-closed: it is SATISFIED, by the schedule the design names --
-   init's banner and sh's prompt on the wire, then the first byte of
-   "echo hello world\n".  Everything in it is closed, so [vm_compute]
-   answers it, and it is the check that says D1/D2 did not make the
-   discipline unsatisfiable. *)
-Definition demo_seg : list mobs :=
-  ((fun b => ObsUartOut Uart0 b) <$> u_prologue) ++ [ObsUartIn Uart0 (Z_to_bv 8 101%Z)].
+   prefix-closed: it is SATISFIED, and by a session in which EACH ROUND
+   TYPES ITS OWN LINE -- [echo hi], answered by [hi], then [echo bye now],
+   answered by [bye now].  A one-line witness would leave the whole point
+   of the model untested, because one line is also what a session with the
+   line hard-coded does.  Everything in it is closed, so [vm_compute]
+   answers it through the parser, and it is the check that says D1/D2 and
+   the per-round parse did not make the discipline unsatisfiable. *)
+Definition demo_ws1 : list (list (bv 8)) := [sb "echo"%string; sb "hi"%string].
+Definition demo_ws2 : list (list (bv 8)) :=
+  [sb "echo"%string; sb "bye"%string; sb "now"%string].
 
-Lemma demo_disc_seg' : disc_seg' demo_seg.
+Definition demo_out (l : list (bv 8)) : list mobs :=
+  (fun b => ObsUartOut Uart0 b) <$> l.
+
+Definition demo_typed (l : list (bv 8)) : list mobs :=
+  mjoin ((fun b => [ObsUartIn Uart0 b; ObsUartOut Uart0 b]) <$> l).
+
+Definition demo_seg2 : list mobs :=
+  demo_out u_prologue
+  ++ demo_typed (wl_line demo_ws1)
+  ++ demo_out (line_alts_of demo_ws1 !!! 0%nat)
+  ++ demo_typed (wl_line demo_ws2)
+  ++ demo_out (line_alts_of demo_ws2 !!! 0%nat).
+
+Lemma demo_disc_seg'2 : disc_seg' demo_seg2.
 Proof.
-  eapply (disc_seg'_intro _ [3%nat; 0%nat] []);
+  eapply (disc_seg'_intro _ [3%nat; 0%nat] [0%nat; 0%nat]);
     apply (bool_decide_unpack _); vm_compute; exact I.
 Qed.
 
@@ -2013,7 +2475,7 @@ Qed.
    the shell that died on its own fork panic after a completed line, and
    the shell whose init printed no banner at all. *)
 Definition demo_seg_exec : list mobs :=
-  ((fun b => ObsUartOut Uart0 b) <$> pro_of [3%nat; 1%nat; 3%nat; 0%nat])
+  demo_out (pro_of [3%nat; 1%nat; 3%nat; 0%nat])
   ++ [ObsUartIn Uart0 (Z_to_bv 8 101%Z)].
 
 Lemma demo_disc_seg'_exec : disc_seg' demo_seg_exec.
@@ -2023,8 +2485,7 @@ Proof.
 Qed.
 
 Definition demo_seg_fork : list mobs :=
-  ((fun b => ObsUartOut Uart0 b) <$> pro_of [3%nat; 2%nat])
-  ++ [ObsUartIn Uart0 (Z_to_bv 8 101%Z)].
+  demo_out (pro_of [3%nat; 2%nat]) ++ [ObsUartIn Uart0 (Z_to_bv 8 101%Z)].
 
 Lemma demo_disc_seg'_fork : disc_seg' demo_seg_fork.
 Proof.
@@ -2035,10 +2496,10 @@ Qed.
 (* one whole line typed and echoed, the shell's fork1 panic, and init's
    restart -- the block whose alternative is 3 re-enters the prologue *)
 Definition demo_seg_panic : list mobs :=
-  ((fun b => ObsUartOut Uart0 b) <$> pro_of [3%nat; 0%nat])
-  ++ mjoin ((fun b => [ObsUartIn Uart0 b; ObsUartOut Uart0 b]) <$> echo_line)
-  ++ ((fun b => ObsUartOut Uart0 b) <$> (line_alts !!! 3%nat
-        ++ pro_of (pro_from 1%nat [3%nat; 0%nat; 3%nat; 0%nat]))).
+  demo_out (pro_of [3%nat; 0%nat])
+  ++ demo_typed (wl_line demo_ws1)
+  ++ demo_out (line_alts_of demo_ws1 !!! 3%nat
+               ++ pro_of (pro_from 1%nat [3%nat; 0%nat; 3%nat; 0%nat])).
 
 Lemma demo_disc_seg'_panic : disc_seg' demo_seg_panic.
 Proof.
@@ -2050,7 +2511,7 @@ Qed.
    failed, it printed nothing, and the shell's "$ " is the round's first
    byte *)
 Definition demo_seg_noban : list mobs :=
-  ((fun b => ObsUartOut Uart0 b) <$> u_prompt) ++ [ObsUartIn Uart0 (Z_to_bv 8 101%Z)].
+  demo_out u_prompt ++ [ObsUartIn Uart0 (Z_to_bv 8 101%Z)].
 
 Lemma demo_disc_seg'_noban : disc_seg' demo_seg_noban.
 Proof.
@@ -2070,11 +2531,6 @@ Proof. rewrite /disc. apply _. Qed.
 Lemma disc_nil : disc [].
 Proof. constructor. Qed.
 
-Lemma disc_proj h : disc h -> disc_old h.
-Proof.
-  rewrite /disc /disc_old. intros H. apply Forall_lookup. intros i seg Hi.
-  apply disc_seg'_proj. by eapply Forall_lookup_1.
-Qed.
 
 (* ---- the three closure laws, at the SAME statements they had ---- *)
 
@@ -2123,47 +2579,31 @@ Proof.
     split; [by intros [? _] | intros ?; split; [done | exact disc_seg'_nil]].
 Qed.
 
-(* an input byte can only have BROKEN the discipline: the witness for the
-   shorter history is the longer one's choice list, cut to the lines the
-   shorter input completed. *)
-
-Lemma sess_n_take ps cs n q :
-  (n `div` length echo_line <= q)%nat -> sess_n ps (take q cs) n = sess_n ps cs n.
-Proof.
-  intros Hq. rewrite /sess_n. do 2 f_equal.
-  apply alt_seq_ext. intros j Hj.
-  rewrite list_lookup_total_alt lookup_take; [|lia].
-  by rewrite -list_lookup_total_alt.
-Qed.
 
 Lemma disc_seg'_in (seg : list mobs) (b : bv 8) :
   disc_seg' (seg ++ [ObsUartIn Uart0 b]) -> disc_seg' seg.
 Proof.
   intros [Hd (ps & cs & Hl & Hf & Hall)].
   rewrite /disc_seg ins_app ins_in in Hd.
-  rewrite ins_app ins_in length_app /= in Hl.
-  split; [exact (star_prefix_snoc _ _ _ echo_line_pos Hd)|].
-  exists ps, (take (length (ins seg) `div` length echo_line) cs).
+  rewrite ins_app ins_in in Hl.
+  assert (Hle : (nlines (ins seg) <= nlines (ins seg ++ [b]))%nat)
+    by (apply nlines_prefix; by eexists).
+  split; [exact (disc_input_snoc _ _ Hd) |].
+  exists ps, (take (nlines (ins seg)) cs).
+  split; [rewrite length_take Hl Nat.min_l; [done | exact Hle] |].
+  split; [by apply Forall_take |].
+  intros p Hp.
+  assert (Hpin : p ∈ in_pres (seg ++ [ObsUartIn Uart0 b])).
+  { rewrite in_pres_in. apply elem_of_app. by left. }
+  destruct (Hall p Hpin) as [[HF Hlt] Hpt].
+  assert (Hplt : (nlines (ins p) <= nlines (ins seg))%nat).
+  { apply nlines_prefix.
+    apply ins_prefix.
+    exact (proj1 (Forall_forall _ _) (in_pres_prefix_all seg) p Hp). }
   split.
-  { assert (H1 : (length (ins seg) `div` length echo_line
-                 <= (length (ins seg) + 1) `div` length echo_line)%nat)
-      by (apply Nat.Div0.div_le_mono; lia).
-    rewrite length_take Hl Nat.min_l; [done|exact H1]. }
-  split; [by apply Forall_take|].
-  intros i p Hi.
-  assert (Hlt : (i < length (ins seg))%nat).
-  { apply lookup_lt_Some in Hi. by rewrite in_pres_length in Hi. }
-  assert (Hi' : in_pres (seg ++ [ObsUartIn Uart0 b]) !! i = Some p).
-  { rewrite in_pres_in lookup_app_l; [exact Hi|].
-    rewrite in_pres_length. lia. }
-  destruct (Hall i p Hi') as [Hok Hpt].
-  assert (Hqi : (i `div` length echo_line
-                 <= length (ins seg) `div` length echo_line)%nat)
-    by (apply Nat.Div0.div_le_mono; lia).
-  split.
-  - rewrite /pro_ok. destruct Hok as [HF Hlt2]. split; [exact HF|].
-    by rewrite (pro_idx_take cs _ (i `div` length echo_line) Hqi).
-  - rewrite /disc_pt in Hpt |- *. by rewrite sess_n_take.
+  - rewrite /pro_ok. split; [exact HF |].
+    by rewrite (pro_idx_take cs _ (nlines (ins p)) Hplt).
+  - rewrite /disc_pt (sess_take ps cs (ins p) _ Hplt). exact Hpt.
 Qed.
 
 Lemma disc_in (h : list mobs) (b : bv 8) :
@@ -2232,12 +2672,13 @@ Proof.
 Qed.
 
 (* ...and it is not vacuous either: the five schedules the section above
-   exhibits -- the good run, one exec failure, the fork failure, the shell
-   that died on its own fork panic and was restarted, and the banner-less
-   opening -- satisfy it. *)
-Lemma demo_good_out : good_out demo_seg.
+   exhibits -- the two-line session, one exec failure, the fork failure,
+   the shell that died on its own fork panic and was restarted, and the
+   banner-less opening -- satisfy it. *)
+Lemma demo_good_out2 : good_out demo_seg2.
 Proof.
-  exists [3%nat; 0%nat], []. apply (bool_decide_unpack _). vm_compute. exact I.
+  exists [3%nat; 0%nat], [0%nat; 0%nat].
+  apply (bool_decide_unpack _). vm_compute. exact I.
 Qed.
 
 Lemma demo_good_out_exec : good_out demo_seg_exec.
@@ -2263,17 +2704,13 @@ Proof.
 Qed.
 
 (* AT AN INPUT POINT THE TWO BOUNDS MEET.  The discipline says the expected
-   transcript for the bytes typed so far is a prefix of the wire; the claim
-   says the wire is a prefix of the transcript for the same bytes.  So at
+   transcript for the input typed so far is a prefix of the wire; the claim
+   says the wire is a prefix of the transcript for the same input.  So at
    the moment a disciplined byte is typed the wire IS the transcript --
    which is the simulation invariant E5's proof of [Hphi] carries: sh has
    consumed every previous line, the ring holds at most the line in
    progress, and [consoleintr] drops nothing. *)
-Lemma disc_pt_good_out_pin (ps cs : list nat) (i : nat) (p : list mobs) :
-  length (ins p) = i ->
-  disc_pt ps cs i p -> obs_wire Uart0 p `prefix_of` sess ps cs (ins p) ->
-  obs_wire Uart0 p = sess_n ps cs i.
-Proof.
-  intros Hlen Hd Hg. rewrite /disc_pt in Hd. rewrite /sess Hlen in Hg.
-  by apply (anti_symm prefix).
-Qed.
+Lemma disc_pt_good_out_pin (ps cs : list nat) (p : list mobs) :
+  disc_pt ps cs p -> obs_wire Uart0 p `prefix_of` sess ps cs (ins p) ->
+  obs_wire Uart0 p = sess ps cs (ins p).
+Proof. intros Hd Hg. by apply (anti_symm prefix). Qed.

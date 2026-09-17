@@ -67,7 +67,7 @@ Require Import UkWriteLeaf.        (* row 16's family, supply and post *)
 Require Import SpecConsolewrite.   (* [cons_out_chain] *)
 Require Import SpecSysRead.        (* [sys_rw_count] *)
 Require Import ConsoleInv.         (* [CONSOLE] *)
-Require Import WpUart.             (* [out_link] / [out_licence] *)
+Require Import WpUart.             (* [out_link] / [cons_licence] *)
 Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 Import Defs.
@@ -196,7 +196,7 @@ Section UkWriteCons.
     urun N h m pc avail -∗
     ustd (ukn_fd N) l -∗
     ubytesq (ukn_d N) dq (uint (m !!! Regidx a1_idx)) nb f -∗
-    out_licence -∗
+    cons_licence -∗
     (∀ (h' : CpuId) (r : mword 64),
        ⌜r = (mword_of_int (Z.of_nat nb) : mword 64)⌝ -∗
        ustd (ukn_fd N) l -∗

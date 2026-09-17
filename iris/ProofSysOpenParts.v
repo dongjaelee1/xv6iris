@@ -988,7 +988,7 @@ Section ProofSysOpenPublish.
        output sys_open then installs in the fd's ghost.  [st] is determined
        by [C], [inum] and [γo] ([fdstate_ok_inj]); it is a parameter rather
        than a projection because [fdstate_ok] is a relation -- see its note. *)
-    |={E}=> ∃ st : fdstate, ⌜fdstate_ok inum γo C st⌝ ∗ file_ref gf kf 1 st.
+    |={E}=> ∃ st : fdstate, ⌜fdstate_ok inum γo (fp_pipe pn) C st⌝ ∗ file_ref gf kf 1 st.
   Proof.
     intros Hqs HEi Hkk Hinb Hipos Hip Hty Hwrb Hrdb Hwdb Hdir Hdvw Hle. subst qi.
     iIntros "#Hfl Hkeep Hru Hshr #Hshot Href Hlive Hflds Hnames Hcoff".
@@ -1024,7 +1024,7 @@ Section ProofSysOpenPublish.
     set (stpub := if bool_decide (fc_type C = FD_INODE)
                   then FdOpen rb wb (FdInode (bv_unsigned inum) γo OffParked)
                   else FdOpen rb wb (FdDevice (bv_unsigned (fc_major C)))).
-    assert (Hokpub : fdstate_ok inum γo C stpub).
+    assert (Hokpub : fdstate_ok inum γo (fp_pipe pn) C stpub).
     { rewrite /stpub. destruct Hty as [Ht | Ht].
       - rewrite (bool_decide_true _ Ht). cbn. by repeat split.
       - rewrite bool_decide_false.
@@ -1035,7 +1035,7 @@ Section ProofSysOpenPublish.
     rewrite /file_ref /file_pay_st /file_core /file_core_noff /file_core_off.
     iExists C. iFrame "Href Hflds Hlive".
     iExists (MkFPNames (fp_lock pn) (fp_pipe pn) gx s gy inum γb γo).
-    cbn [fp_inum fp_ooff]. iSplitR; [iPureIntro; exact Hokpub|].
+    cbn [fp_inum fp_ooff fp_pipe]. iSplitR; [iPureIntro; exact Hokpub|].
     iFrame "Hnames". rewrite Hnp Hor.
     cbn [fp_icv fp_iq fp_ig fp_obox fp_ooff].
     rewrite Hip. iFrame "Hpay". iExact "Hcoff".

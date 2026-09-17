@@ -185,6 +185,9 @@ Definition wp_sys_exit_sconf_body
      and then parks the process as a ZOMBIE.  The bundle dies with the
      incarnation whose name it is keyed on (FdSlots.v). *)
   fd_frags (pv_fdg (us_V U)) sts -∗
+  (* ...AND THE BYTE-QUEUE CLOSE PAYMENTS, one per row of the table, relayed
+     to kexit verbatim ([SpecKexit], design/pipe.md "The byte queue") *)
+  fileclose_cpays sts -∗
   (* ...AND THE SLOT'S CHILDREN ROW, relayed to kexit, which parks it in the
      ZOMBIE block ([SpecKexit]).  It rides the trap residue beside the
      fragment bundle ([UsertrapRes.ut_own]) and, like it, does not come back

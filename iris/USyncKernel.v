@@ -174,13 +174,20 @@ Section USyncKernel.
     (* THE PAY FACT, at the trivial payload: sync's exit owes its parent
        nothing this lane, and the entry constructor is what puts it in the
        record ([UkRun.ukn_pay]). *)
+    (* ...AND WHETHER THE PROCESS'S TABLE HOLDS A PIPE ROW (design/pipe.md,
+       "The exit path").  The run carries this between traps
+       ([UkRun.urun_nopipe]) and the exit leaf mints its bundle row off it,
+       so an entry is where it comes in.  This program's table is the
+       exec'ing process's ([SpecKexec.kexec_image_ok_fd]) and what says so
+       reaches here from the caller. *)
+    UkRun.urun_nopipe (uvis_fd W) -∗
     udep -∗ my_pay (uvis_gen W) (fun _ => True)%I -∗ uslot W.
   Proof.
     intros Hpc Hsub Hx Hroom Hal8 Hdata Hfdlen Hstop Hpsok_free Hlzf.
-    iIntros "#Hdep #Hpay".
+    iIntros "#Hnpw #Hdep #Hpay".
     iApply (uslot_of_urun W 4 (fun _ => True)%I
               Hal8 ltac:(lia) Hdata Hfdlen
-              Hstop Hlzf with "Hdep Hpay").
+              Hstop Hlzf with "Hdep Hnpw Hpay").
     (* sync makes no descriptor call, so its ledger is dropped here *)
     (* sync makes no descriptor call and no chdir, so its ledger and its
        working directory are both dropped here *)

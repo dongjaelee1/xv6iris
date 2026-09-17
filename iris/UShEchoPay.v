@@ -5,10 +5,10 @@
 (*  [UShEcho.v] built sh's exec supply at the TRIVIAL payload and the      *)
 (*  FREE write law: the child's exit owed nothing and echo's four writes  *)
 (*  were paid by the flagged deposit.  Here the same assembly is done at  *)
-(*  the payload sh's fork CHOSE ([UkShFork.ushf_wq np]: the era's         *)
+(*  the payload sh's fork CHOSE ([UkShFork.ushf_wq I]: the era's          *)
 (*  credential after echo's block, or the block still owed) and the      *)
-(*  credential sh LENT ([Wc np 3], the line's block owed at boundary      *)
-(*  [np]), so that echo's bytes go through the era's write link          *)
+(*  credential sh LENT ([Wc I 3], the line's block owed at the era's      *)
+(*  input [I]), so that echo's bytes go through the era's write link      *)
 (*  ([UEchoOut.echo_uexec_slot_at]) and what the child hands back through *)
 (*  its exit is the shell's next prompt credential.                      *)
 (*                                                                       *)
@@ -57,6 +57,7 @@ Require Import KexecDefs.
 Require Import UexecExecInst.
 Require Import UCodeEcho.         (* [echo_img_sub] / [echo_data_sub] *)
 Require Import UkSh UkShFork UkShEcho.
+Require Import LineWords.         (* [last_ws] / [wl_line_pos] *)
 Require Import EchoDisc.
 Require Import EchoOut.           (* [era_pin] / [turn] / [ps_lb] *)
 Require Import EchoLinks.         (* [echo_links] / [wr_blk] *)
@@ -111,79 +112,98 @@ Section UShEchoPay.
   (*  asks about the key, the argument vector is the line's two tokens    *)
   (*  ([UShEchoOut.echo_out_argv_of_image]), fd 1 is the console (the     *)
   (*  caller's row, off the table the channel carries verbatim), and the  *)
-  (*  lend -- the block owed at [np], pinned -- is exactly the turn bundle *)
+  (*  lend -- the block owed at [I], pinned -- is exactly the turn bundle  *)
   (*  echo's first byte needs.  A TAINTED lend (the era's discipline       *)
   (*  already broken) buys the generic slot instead.                      *)
   (* =================================================================== *)
   Lemma echo_slot_of_kexec_at (na : nat) (alen : nat -> nat)
       (afun : nat -> nat -> bv 8) (sts : list fdstate) (W' : uvis)
-      (v : era_pins) (np : nat) :
+      (v : era_pins) (I : list (bv 8)) :
+    line_ok (last_ws I) ->
     kexec_image_ok ElfUser.echo_elf na alen afun sts W' ->
     kexec_sz ElfUser.echo_elf - PGSIZE + 96
       <= kxc_sp_final (kexec_sz ElfUser.echo_elf) alen na ->
     length sts = NOFILE ->
     uvis_lazy W' = false ->
-    na = length echo_ws ->
-    (forall i : nat, (i < length echo_ws)%nat ->
-       alen i = UkShEcho.echo_alen i) ->
-    (forall i j : nat, (i < length echo_ws)%nat ->
-       (j < UkShEcho.echo_alen i)%nat ->
-       afun i j = echo_line !!! (UkShEcho.echo_off i + j)%nat) ->
+    na = length (last_ws I) ->
+    (forall i : nat, (i < length (last_ws I))%nat ->
+       alen i = UkShEcho.echo_alen (last_ws I) i) ->
+    (forall i j : nat, (i < length (last_ws I))%nat ->
+       (j < UkShEcho.echo_alen (last_ws I) i)%nat ->
+       afun i j
+       = wl_line (last_ws I)
+           !!! (UkShEcho.echo_off (last_ws I) i + j)%nat) ->
     UkSh.ush_fd1p (take NSTD sts) ->
     (⊢ □ riscv_kill_cred -∗ T) ->
     ⊢ era_pin γ (S gen_id) v -∗
       echo_links T γ -∗
+      (* ...and whether the exec'ing process's table held a pipe row
+         (design/pipe.md, "The exit path"): echo's table IS sh's
+         ([SpecKexec.kexec_image_ok_fd]), echo's run carries the fact, and
+         echo's exit leaf mints the tear-down's bundle row off it. *)
+      UkRun.urun_nopipe sts -∗
       udep (PS := uprogSG_free) -∗
       (* the taint's generic slot, at any constant payload *)
       □ (∀ (R : iProp Σ) (W : uvis),
            T -∗ my_pay (uvis_gen W) (fun _ => R)%I -∗
            □ (riscv_kill_cred -∗ R) -∗ uslot W) -∗
-      my_pay (uvis_gen W') (fun _ : Z => Wq np) -∗
-      EchoLinksLine.ewc_lpr T v np 3%nat -∗
+      my_pay (uvis_gen W') (fun _ : Z => Wq I) -∗
+      EchoLinksLine.ewc_lpr T v I 3%nat -∗
       uslot W'.
   Proof.
-    intros Hok Hroom Hfdl Hlzf Hna Halen Hafun Hfd1 Hkt.
-    iIntros "#Hpin #Hlk #Hdep #Hgen Hmp Hc".
+    intros Hokws Hok Hroom Hfdl Hlzf Hna Halen Hafun Hfd1 Hkt.
+    iIntros "#Hpin #Hlk #Hnpw #Hdep #Hgen Hmp Hc".
     destruct (echo_kexec_pages na alen afun sts W' Hok)
       as (Hpc & Hsub & Hx & Hwr & Hrp).
     destruct (echo_kexec_entry_rows na alen afun sts W' Hok Hroom Hfdl Hwr Hrp)
       as (Hroom96 & Hal8 & Hstkrow & Hargsrow & Havd & Havs
           & Hfdlen & Hstop).
-    pose proof (echo_out_argv_of_image na alen afun sts W' Hok Hna Halen Hafun)
-      as Hargv.
+    pose proof (echo_out_argv_of_image (last_ws I) na alen afun sts W'
+                  Hokws Hok Hna Halen Hafun) as Hargv.
     (* the child's fd 1, off the channel's table *)
     assert (Hfd : uvis_fd W' = sts)
       by (destruct Hok as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & H & _); exact H).
     destruct Hfd1 as [rb Hl1]. rewrite <- Hfd in Hl1.
+    (* ...and the table fact at the RESUMED key, by the same equation *)
+    iAssert (UkRun.urun_nopipe (uvis_fd W')) as "#Hnpw'";
+      [ rewrite Hfd; iExact "Hnpw" | ].
     (* echo's .rodata, off the same image as its text *)
     assert (Hsub2 : echo_data_sub (uvis_M W')).
     { destruct Hok as (_ & _ & _ & _ & _ & Himg & _).
       exact (echo_data_of_elf_image _ Himg). }
     (* THE LEND: the turn bundle at the block's first byte, or the taint *)
     cbn [EchoLinksLine.ewc_lpr].
-    iDestruct (EchoLinksLine.ewc_blk_0_lend T v np 0%nat with "Hc")
+    iDestruct (EchoLinksLine.ewc_blk_0_lend T v I 0%nat with "Hc")
       as "[Hl | #HT]"; last first.
     { (* a tainted lend: the generic slot, and the kill wand from the taint *)
-      iApply ("Hgen" $! (Wq np) W' with "HT Hmp []").
+      iApply ("Hgen" $! (Wq I) W' with "HT Hmp []").
       iIntros "!> #Hk". rewrite /UkShFork.ushf_wq. iRight.
-      iApply (EchoLinksLine.ewc_lcred_taint T γ (S gen_id) np 0%nat v
+      iApply (EchoLinksLine.ewc_lcred_taint T γ (S gen_id) I 0%nat v
                 with "Hpin [Hk]").
       iApply Hkt. iModIntro. iExact "Hk". }
     iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
-    destruct (wr_blk_t_stage ps cs np P Hw) as (Hn0 & HP & Hpin & Htail).
-    assert (Hst : echo_stage ps cs np P) by (split_and!; assumption).
-    iApply (echo_uexec_slot_at (PS := uprogSG_free) T γ W' v ps cs np P rb
-              (fun _ : Z => Wq np)
+    destruct (wr_blk_t_stage ps cs I P Hw)
+      as (Hrest & Hn0 & HP & Hpin & Htail).
+    assert (Hst : echo_stage ps cs I (last_ws I) P)
+      by (rewrite /echo_stage; split_and!;
+          [ exact Hrest | exact Hn0 | reflexivity | exact HP | exact Hpin ]).
+    iApply (echo_uexec_slot_at (PS := uprogSG_free) T γ W' v ps cs I
+              (last_ws I) P rb (fun _ : Z => Wq I)
               ltac:(intros x y; reflexivity)
+              (line_ok_ge2 (last_ws I) Hokws)
               Hst Hargv Hl1 Hpc Hsub Hsub2 Hx Hroom96 Hal8 Hstkrow Hargsrow
               Havd Havs Hfdlen Hstop Hlzf
-              with "[] Hpin Hlk Hdep Hmp [Htn]").
-    - (* THE BLOCK'S END PAYS THE EXIT: twelve bytes on, the choice filed,
-         the credential is the shell's next prompt's *)
+              with "[] Hpin Hlk Hnpw' Hdep Hmp [Htn]").
+    - (* THE BLOCK'S END PAYS THE EXIT: the output's own length on, the
+         choice filed, the credential is the shell's next prompt's *)
       iIntros "!> Hc". rewrite /UkShFork.ushf_wq. iRight.
-      iApply (EchoLinksLine.ewc_lcred_of_post T γ (S gen_id) np v with "Hpin").
-      iApply (EchoLinksLine.ewc_post_of_ech T v ps cs np P Hn0 HP Hpin Htail).
-      iEval (rewrite /ech; cbn [echcs]) in "Hc". iExact "Hc".
+      iApply (EchoLinksLine.ewc_lcred_of_post T γ (S gen_id) I v with "Hpin").
+      iApply (EchoLinksLine.ewc_post_of_ech T v ps cs I (last_ws I) P
+                Hrest Hn0 eq_refl HP Hpin Htail).
+      iEval (rewrite /ech
+               (echcs_pos cs (length (wl_line (drop 1 (last_ws I))))
+                  (wl_line_pos (drop 1 (last_ws I))))) in "Hc".
+      iExact "Hc".
     - (* ...and its first byte is where the lend stands *)
       rewrite /ech. cbn [echcs]. rewrite Nat.add_0_r.
       iLeft. iFrame "Htn Hps Hcs HE".
@@ -206,18 +226,18 @@ Section UShEchoPay.
   Proof.
     intros Hkt.
     iIntros "#Hlk #Hdep (#Hinv & #Hcl & #Hgen)".
-    rewrite /UkShEcho.sh_exec_sup_echo_wq. iIntros "!>" (np).
+    rewrite /UkShEcho.sh_exec_sup_echo_wq. iIntros "!>" (I) "%Hokws".
     rewrite /UkShEcho.sh_exec_sup_echo.
     iIntros "!>" (N' m pc s0 t g ld) "%Hpeq %Ha0 %Ha1 %Hbytes %Hfd1 Hstd #Hcmd Hcr".
     (* the lend, pinned *)
     rewrite /EchoLinksLine.ewc_lcred. iDestruct "Hcr" as (v) "[#Hpin Hcr]".
     (* ---- THE TAINT ARM: the generic slot at the chosen payload.  It names
        no key, so it is built before the deposit's own ∀. ---- *)
-    iAssert (image_entry_taint T (fun _ : Z => Wq np) uslot)%I as "#Hgen'".
+    iAssert (image_entry_taint T (fun _ : Z => Wq I) uslot)%I as "#Hgen'".
     { rewrite /image_entry_taint. iModIntro. iIntros (W') "#HT #Hmp".
-      iApply ("Hgen" $! (Wq np) W' with "HT Hmp []").
+      iApply ("Hgen" $! (Wq I) W' with "HT Hmp []").
       iIntros "!> #Hk". rewrite /UkShFork.ushf_wq. iRight.
-      iApply (EchoLinksLine.ewc_lcred_taint T γ (S gen_id) np 0%nat v
+      iApply (EchoLinksLine.ewc_lcred_taint T γ (S gen_id) I 0%nat v
                 with "Hpin [Hk]").
       iApply Hkt. iModIntro. iExact "Hk". }
     (* ---- ...AND THE REST IS THE U-TIER RULE (lane EX-4).
@@ -229,7 +249,7 @@ Section UShEchoPay.
               (mword_of_int s0) (mword_of_int (t + 8))
               FsImg.ROOTINO T echo_pl ElfUser.echo_elf 1%nat
               (UserFd.ustd (ukn_fd N') ld
-               ∗ EchoLinksLine.ewc_lpr T v np 3%nat)%I
+               ∗ EchoLinksLine.ewc_lpr T v I 3%nat)%I
               _ echo_elf_loadable Ha0 Ha1 with "[] [] [Hstd Hcr]").
     (* THE REFUND IS THE LEND, WHOLE: the fragment and the block credential
        come back to the child whose exec failed *)
@@ -237,10 +257,11 @@ Section UShEchoPay.
       iExists v. iFrame "Hpin Hc". }
     { rewrite Hpeq. iExact "Hgen'". }
     rewrite /uexec_sup_run.
-    iIntros (M pm sz fdv cs pidv) "Hheap Hufd".
+    iIntros (M pm sz fdv cs pidv) "#Hnpw Hheap Hufd".
     (* the node, read ONCE off the lent heap *)
-    iAssert (⌜ echo_node_img M s0 t g ⌝)%I as %Himg.
-    { iApply (echo_node_img_of_cmd with "Hheap Hcmd"). }
+    iAssert (⌜ echo_node_img (last_ws I) M s0 t g ⌝)%I as %Himg.
+    { iApply (echo_node_img_of_cmd (last_ws I) _ _ _ M pm sz s0 t g Hokws
+                with "Hheap Hcmd"). }
     (* ...the table's length, and sh's fd 1 row AT THE TABLE, off the lent
        authority against the fragment *)
     iDestruct (ufd_auth_len with "Hufd") as %Hlen.
@@ -249,7 +270,8 @@ Section UShEchoPay.
     iFrame "Hheap Hufd".
     (* ---- (W)'s PURE INPUT: argv[0]'s string IS the path exec resolves --- *)
     iSplitR "Hstd Hcr".
-    { iPureIntro. exact (sh_echo_path_of_holds M s0 t g Himg Hbytes). }
+    { iPureIntro.
+      exact (sh_echo_path_of_holds (last_ws I) Hokws M s0 t g Himg Hbytes). }
     (* ---- (W) ITSELF, AT THE PIN SUPPLIER ---- *)
     iSplitR "Hstd Hcr".
     { iApply (exec_walk_of_pin FsEchoPin.era0_echo_pins T FsImg.ROOTINO
@@ -261,16 +283,16 @@ Section UShEchoPay.
     iSplitR "Hstd Hcr".
     { rewrite Hpeq. rewrite /image_entry. iModIntro.
       iIntros (na alen afun W') "%Hok %Hcwd0 %Hlzf _ _ %Hargs Hmp [_ Hc]".
-      destruct (echo_args_det_holds M s0 t g na alen afun Himg Hbytes Hargs)
-        as (Hna & Halen & Hafun).
+      destruct (echo_args_det_holds (last_ws I) Hokws M s0 t g na alen afun
+                  Himg Hbytes Hargs) as (Hna & Halen & Hafun).
       (* ECHO'S FRAME FITS: the arguments this line pushed leave the
          twelve words the entry needs.  An INEQUALITY off the push
          geometry, discharged at the lengths the parser pinned -- not the
          vector's address as a number ([UShEcho.echo_room_of_det]). *)
-      iApply (echo_slot_of_kexec_at na alen afun fdv W' v np Hok
-                (echo_room_of_det na alen Hna Halen)
+      iApply (echo_slot_of_kexec_at na alen afun fdv W' v I Hokws Hok
+                (echo_room_of_det (last_ws I) na alen Hokws Hna Halen)
                 Hlen Hlzf Hna Halen Hafun Hfd1' Hkt
-                with "Hpin Hlk Hdep Hgen Hmp Hc"). }
+                with "Hpin Hlk Hnpw Hdep Hgen Hmp Hc"). }
     iFrame "Hstd Hcr".
   Qed.
 
@@ -309,8 +331,8 @@ Section UShEchoPay.
        make the two agree, and never returns *)
     iAssert (UkShEcho.ush_execfail_law_wq (PS := uprogSG_free) Wc) as "Hxlw".
     { (* the exec-failed diagnostic's law, at every boundary (M4b(2)) *)
-      rewrite /UkShEcho.ush_execfail_law_wq. iIntros "!>" (np).
-      iApply (UShPanic.ush_execfail_law_holds (PS := uprogSG_free) T γ np
+      rewrite /UkShEcho.ush_execfail_law_wq. iIntros "!>" (I).
+      iApply (UShPanic.ush_execfail_law_holds (PS := uprogSG_free) T γ I
                 with "Hlk"). }
     iApply (UkShEcho.ushf_child_law_holds (PS := uprogSG_free) (fun k H => H) Wc
               with "Hxlw Hsup").

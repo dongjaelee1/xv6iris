@@ -783,9 +783,9 @@ Section UkCatMain.
         assert (Hh32 : bv_half_modulus 32 = 2147483648%Z)
           by (vm_compute; reflexivity).
         rewrite Hh32. lia. }
-      iApply (wp_kcat_close N Hpsok_free h10 m9 fd (FdOpen rd wr t)
+      iApply (wp_kcat_close N h10 m9 fd (FdOpen rd wr t)
                 (8 + (10 + (12 + (4 + n)))) Ha0_9
-                with "Hcode Hrun Hh").
+                with "Hdp Hcode Hrun Hh").
       iIntros (h11 ret2) "Hrun".
       assert (Eclose : ret_pc (m9 !!! Regidx ra_idx)
                        = (mword_of_int 0xc0 : mword 64))

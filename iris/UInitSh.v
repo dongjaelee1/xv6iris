@@ -67,6 +67,8 @@ Require Import UInitFd.  (* [ufd_head] / [ufd_head_row] -- init's own
                             off it against the lent authority *)
 Require Import UkRun.
 Require Import UCodeInit UkInit.
+Require Import LineWords.       (* [wl_nl]: the credential steps are stated
+                                   at the line the read delivered *)
 Require Import UkSh UShKernel.
 Require Import UkShParse.       (* the two lexer tables' addresses and
                                    content functions, which sh's static
@@ -521,8 +523,66 @@ Section UInitSh.
      below asks for and what [UInitBoot.echo_Hinit_boot] now proves rather
      than assumes. *)
 
-  Definition sh_pay (T : iProp Σ) (Wc : nat -> nat -> iProp Σ)
-      (Wb : nat -> iProp Σ) (Pm : gname -> nat -> iProp Σ)
+  (* =================================================================== *)
+  (*  THE TEN LAWS THE CONSOLE'S SUPPLY ASKS OF THE CREDENTIAL             *)
+  (* =================================================================== *)
+  (*  Gathered VERBATIM from what [init_exec_sup_of_sh_slot] below used to *)
+  (*  take one at a time.  Together with [UserConsole.cons_cred] they are  *)
+  (*  the seam's whole interface to the application: a record and a proof  *)
+  (*  where there were five predicates and ten [forall ... -> ⊢ ...]       *)
+  (*  premises at every lemma of the chain.                                *)
+  (*                                                                       *)
+  (*  This file names no era, so they stay Coq-level -- their one          *)
+  (*  discharge is [UInitBoot.echo_cc_holds], where the record's equations *)
+  (*  are.  The application proves them ONCE.                              *)
+  (* =================================================================== *)
+  Definition cons_cred_holds (cn : cons_names) (T : iProp Σ)
+      (Cr : cons_cred Σ) : Prop :=
+    (* the read leaf sh runs on *)
+    (forall (γp : gname) (N : uk_names Σ) (l : list fdstate),
+       ukn_pay N = ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wbn Cr)) ->
+       ⊢ UkSh.ush_read_recv_leaf (PS := uprogSG_free) N γp T
+           (cc_mid Cr γp) cn l)
+    (* the lease's three laws *)
+    /\ (forall (γp : gname) (N : uk_names Σ) (i : nat),
+          ukn_pay N = ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wbn Cr)) ->
+          ⊢ UkSh.ush_at N γp i -∗
+            ∃ I : list (bv 8), ⌜length I = i⌝
+              ∗ UkSh.ush_lease N γp T (cc_mid Cr γp) I)
+    /\ (forall (γp : gname) (N : uk_names Σ) (I : list (bv 8)),
+          ukn_pay N = ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wbn Cr)) ->
+          ⊢ T -∗ cc_mid Cr γp I -∗ UkSh.ush_at N γp (length I))
+    /\ (forall (γp : gname) (N : uk_names Σ) (I : list (bv 8)),
+          ukn_pay N = ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wbn Cr)) ->
+          ⊢ cc_mid Cr γp I -∗ cc_wb Cr I -∗ UkSh.ush_at N γp (length I))
+    (* the loop's step on the era's write credential, AT THE LINE THE READ
+       DELIVERED (project echo-any-line): the boundary is the era's input
+       and the step is its extension by one body and its newline *)
+    /\ (forall (γp : gname) (I l : list (bv 8)), wl_nl ∉ l ->
+          ⊢ cc_mid Cr γp (I ++ l ++ [wl_nl]) -∗
+            cc_wc Cr I 2%nat -∗
+            cc_mid Cr γp (I ++ l ++ [wl_nl])
+            ∗ cc_wc Cr (I ++ l ++ [wl_nl]) 3%nat)
+    (* the three conversions of step 4 *)
+    /\ (forall I : list (bv 8), ⊢ cc_wb Cr I -∗ cc_wc Cr I 0%nat)
+    /\ (forall I : list (bv 8), ⊢ cc_wc Cr I 3%nat -∗ cc_wc Cr I 0%nat)
+    /\ (forall (γp : gname) (I l : list (bv 8)), wl_nl ∉ l ->
+          ⊢ cc_mid Cr γp (I ++ l ++ [wl_nl]) -∗
+            cc_wb Cr I -∗
+            cc_mid Cr γp (I ++ l ++ [wl_nl]) ∗ T)
+    (* the cursor's boundary *)
+    /\ (forall (γp : gname) (N : uk_names Σ) (l : list fdstate) (i : nat),
+          ukn_pay N = ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wbn Cr)) ->
+          ⊢ upos γp i -∗ ucons_pay cn γp T (cc_rd Cr) (-1) -∗
+            ((∃ I : list (bv 8), ⌜length I = i⌝
+                ∗ UkSh.ush_wcp (cc_wc Cr) (cc_wb Cr) l I 0%nat) ∨ T) -∗
+            UkSh.ush_posb N γp T (cc_wc Cr) (cc_wb Cr) (cc_mid Cr γp) l 0%nat)
+    (* the lend's conversion at the shell's entry (lane M6b) *)
+    /\ (forall n : nat,
+          ⊢ cc_wp Cr n -∗
+            ∃ I : list (bv 8), ⌜length I = n⌝ ∗ cc_wc Cr I 0%nat).
+
+  Definition sh_pay (T : iProp Σ) (Cr : cons_cred Σ)
       (Rsh : gname -> gname -> gname -> iProp Σ)
       (n0 : nat) : iProp Σ :=
     (□ (∀ (W' : uvis) (γt γd γs : gname),
@@ -540,7 +600,7 @@ Section UInitSh.
         per child ([UserConsole.upos_alloc]), so what the application owes
         is sh's body at whichever name this round's pair got. *)
      ∗ (∀ (γp : gname) (N : uk_names Σ),
-          ush_rest_l (PS := uprogSG_free) N γp T Wc Wb (Pm γp)
+          ush_rest_l (PS := uprogSG_free) N γp T (cc_wc Cr) (cc_wb Cr) (cc_mid Cr γp)
             (Rsh (ukn_t N) (ukn_d N) (ukn_s N)))
      (* ...AND THE TAG'S READING (lane SH-LINE 2b, L4).  How a tagged input
         history is READ -- as the discipline or as the taint -- is a fact
@@ -556,22 +616,21 @@ Section UInitSh.
      the tail obligation at THIS era's taint and families, one per
      position ghost.  [UShRest.sh_rest_holds] is what supplies it. *)
   Lemma sh_pay_of_parts (T : iProp Σ) `{!Persistent T}
-      (Wc : nat -> nat -> iProp Σ) (Wb : nat -> iProp Σ)
-      (Pm : gname -> nat -> iProp Σ)
+      (Cr : cons_cred Σ)
       (Rsh : gname -> gname -> gname -> iProp Σ) (n0 : nat) :
     sh_pay_state Rsh n0 -∗
     (∀ (γp : gname) (N : uk_names Σ),
-       ush_rest_l (PS := uprogSG_free) N γp T Wc Wb (Pm γp)
+       ush_rest_l (PS := uprogSG_free) N γp T (cc_wc Cr) (cc_wb Cr) (cc_mid Cr γp)
          (Rsh (ukn_t N) (ukn_d N) (ukn_s N))) -∗
     UkSh.ush_tag_law T -∗
-    sh_pay T Wc Wb Pm Rsh n0.
+    sh_pay T Cr Rsh n0.
   Proof.
     iIntros "#Hst #Hre #Htg". rewrite /sh_pay /sh_pay_state.
     iSplitR; [ iExact "Hst" | ]. iSplitR; [ iExact "Hre" | iExact "Htg" ].
   Qed.
 
-  Global Instance sh_pay_persistent T Wc Wb Pm Rsh n0 :
-    Persistent (sh_pay T Wc Wb Pm Rsh n0).
+  Global Instance sh_pay_persistent T Cr Rsh n0 :
+    Persistent (sh_pay T Cr Rsh n0).
   Proof. rewrite /sh_pay. apply _. Qed.
 
   (* ------------------------------------------------------------------- *)
@@ -975,8 +1034,7 @@ Section UInitSh.
   (* =================================================================== *)
   Lemma init_sh_image_entry (T : iProp Σ) `{!Persistent T}
       (cn : cons_names) (K : iProp Σ) `{!Persistent K}
-      (Rdl : nat -> iProp Σ) (Pm : gname -> nat -> iProp Σ)
-      (Wc : nat -> nat -> iProp Σ) (Wb Wp : nat -> iProp Σ)
+      (Cr : cons_cred Σ)
       (Rsh : gname -> gname -> gname -> iProp Σ) (n0 : nat)
       (γp : gname) (np : nat) (N : uk_names Σ) (l : list fdstate)
       (M : gmap Z (bv 8)) (fdv : list fdstate)
@@ -993,59 +1051,42 @@ Section UInitSh.
     cs = ∅ ->
     bv_unsigned pidv <> 1 ->
     length fdv = NOFILE ->
-    (* the laws, at THIS round's position ghost: see
-       [init_exec_sup_of_sh_slot], which is where they are quantified *)
-    (forall (N : uk_names Σ) (l : list fdstate),
-       ukn_pay N = ucons_pay cn γp T (UkInit.init_rd Rdl Wb) ->
-       ⊢ UkSh.ush_read_recv_leaf (PS := uprogSG_free) N γp T (Pm γp) cn l) ->
-    (forall (N : uk_names Σ) (i : nat),
-       ukn_pay N = ucons_pay cn γp T (UkInit.init_rd Rdl Wb) ->
-       ⊢ UkSh.ush_at N γp i -∗ UkSh.ush_lease N γp T (Pm γp) i) ->
-    (forall (N : uk_names Σ) (i : nat),
-       ukn_pay N = ucons_pay cn γp T (UkInit.init_rd Rdl Wb) ->
-       ⊢ T -∗ Pm γp i -∗ UkSh.ush_at N γp i) ->
-    (forall (N : uk_names Σ) (i : nat),
-       ukn_pay N = ucons_pay cn γp T (UkInit.init_rd Rdl Wb) -> UkSh.ush_bnd i ->
-       ⊢ Pm γp i -∗ Wb i -∗ UkSh.ush_at N γp i) ->
-    (forall n : nat,
-       ⊢ Pm γp (n + length EchoDisc.echo_line)%nat -∗ Wc n 2%nat -∗
-         Pm γp (n + length EchoDisc.echo_line)%nat
-         ∗ Wc (n + length EchoDisc.echo_line)%nat 3%nat) ->
-    (forall n : nat, ⊢ Wb n -∗ Wc n 0%nat) ->
-    (forall n : nat, ⊢ Wc n 3%nat -∗ Wc n 0%nat) ->
-    (forall n : nat,
-       ⊢ Pm γp (n + length EchoDisc.echo_line)%nat -∗ Wb n -∗
-         Pm γp (n + length EchoDisc.echo_line)%nat ∗ T) ->
-    (forall (N : uk_names Σ) (l : list fdstate) (i : nat),
-       ukn_pay N = ucons_pay cn γp T (UkInit.init_rd Rdl Wb) ->
-       ⊢ upos γp i -∗ ucons_pay cn γp T Rdl (-1) -∗
-         (UkSh.ush_wcp Wc Wb l i 0%nat ∨ T) -∗
-         UkSh.ush_posb N γp T Wc Wb (Pm γp) l 0%nat) ->
-    (forall n : nat, ⊢ Wp n -∗ Wc n 0%nat) ->
+    cons_cred_holds cn T Cr ->
+    (* ...and whether /init's own table holds a pipe row (design/pipe.md,
+       "The exit path"): sh's table IS this one
+       ([SpecKexec.kexec_image_ok_fd]), sh's run carries the fact between
+       traps, and sh's exit leaf mints the tear-down's bundle row off it. *)
+    UkRun.urun_nopipe fdv -∗
     udep (PS := uprogSG_free) -∗
     □ (T -∗ UkSh.sh_deps (PS := uprogSG_free)) -∗
-    UShKernel.sh_prompt_law (PS := uprogSG_free) Wc -∗
+    UShKernel.sh_prompt_law (PS := uprogSG_free) (cc_wc Cr) -∗
     (□ (∀ N : uk_names Σ,
           UkSh.ush_open_console_leaf (PS := uprogSG_free) N T)
      ∨ (□ (∀ N : uk_names Σ,
              UkSh.ush_open_absent_leaf (PS := uprogSG_free) N T K) ∗ K)
      ∨ T) -∗
     UkSh.ush_fd0 T (take NSTD fdv) -∗
-    image_entry_taint T (ucons_pay cn γp T (UkInit.init_rd Rdl Wb)) uslot -∗
+    image_entry_taint T (ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wbn Cr))) uslot -∗
     image_entry ElfUser.sh_elf M (mword_of_int 0x1000 : mword 64) fdv
       FsImg.ROOTINO cs pidv
-      (ucons_pay cn γp T (UkInit.init_rd Rdl Wb))
-      (sh_pay T Wc Wb Pm Rsh n0 ∗ upos γp np
-         ∗ ucons_pay cn γp T Rdl (-1)
+      (ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wbn Cr)))
+      (sh_pay T Cr Rsh n0 ∗ upos γp np
+         ∗ ucons_pay cn γp T (cc_rd Cr) (-1)
          ∗ (UserFd.ustd (ukn_fd N) l
             ∗ UkInit.init_lend_cred T
                 (FdOpen true true (FdDevice ConsoleInv.CONSOLE))
-                Wp Wb l np))%I
+                (cc_wp Cr) (cc_wbn Cr) l np))%I
       uslot.
   Proof.
-    intros Hpsok_free Hn0 Hsav Hsro Hl Hcs Hpid Hlen
-           Hrl Hpm1 Hpm3 Hpmwb Hwc Hwbwc Hwbl Hwbr Hbd Hpw.
-    iIntros "#Hdep #Hdp #Hplaw #Hcons #Hfd0 #Hgen'".
+    intros Hpsok_free Hn0 Hsav Hsro Hl Hcs Hpid Hlen HCr.
+    pose proof HCr as (Hrl & Hpm1 & Hpm3 & Hpmwb & Hwc
+                       & Hwbwc & Hwbl & Hwbr & Hbd & Hpw).
+    (* the credential's laws are stated over EVERY position ghost; this
+       lemma runs at the one [γp] its caller minted for the round. *)
+    specialize (Hrl γp). specialize (Hpm1 γp). specialize (Hpm3 γp).
+    specialize (Hpmwb γp). specialize (Hwc γp).
+    specialize (Hwbr γp). specialize (Hbd γp).
+    iIntros "#Hnpw #Hdep #Hdp #Hplaw #Hcons #Hfd0 #Hgen'".
     rewrite /image_entry. iModIntro.
     iIntros (na alen afun W')
       "%Hok %Hcwd0 %Hlzf %Hchq %Hpiq %Hargs #Hmp
@@ -1060,19 +1101,26 @@ Section UInitSh.
        arm (slot 2 of the all-closed ledger); or the affine one.  The old
        record's ledger fragment is dropped: the process that execs is
        replaced. *)
-    iAssert (UkSh.ush_wcp Wc Wb (take NSTD fdv) np 0%nat ∨ T)%I
+    iAssert ((∃ I : list (bv 8), ⌜length I = np⌝
+                ∗ UkSh.ush_wcp (cc_wc Cr) (cc_wb Cr) (take NSTD fdv) I 0%nat)
+             ∨ T)%I
       with "[Hcred]" as "Hwcp".
-    { rewrite Hl /UkInit.init_lend_cred /UkSh.ush_wcp.
+    { rewrite Hl /UkInit.init_lend_cred.
       iDestruct "Hcred" as "[[%Hl3 Hc] | [[%Hl0 Hb] | #HT]]".
-      - iLeft. iLeft. iSplitR.
+      - iPoseProof (Hpw np) as "Hpw'".
+        iDestruct ("Hpw'" with "Hc") as (I) "[%HI Hc]".
+        iLeft. iExists I. iSplitR; [ by iPureIntro | ].
+        rewrite /UkSh.ush_wcp. iLeft. iSplitR.
         + iPureIntro. rewrite Hl3. split_and!.
           * exists true. exact (ufd_l3_row0 _).
           * exists true. exact (ufd_l3_row1 _).
           * exists true. exact (ufd_l3_row2 _).
-        + iPoseProof (Hpw np) as "Hpw'". iApply ("Hpw'" with "Hc").
+        + iExact "Hc".
       - (* the all-closed ledger, with none of the preamble's opens landed
            yet (step 4: [UkSh.ush_lcl] at 0) *)
-        iLeft. iRight. iFrame "Hb". iPureIntro. rewrite Hl0.
+        rewrite /cc_wbn. iDestruct "Hb" as (I) "[%HI Hb]".
+        iLeft. iExists I. iSplitR; [ by iPureIntro | ].
+        rewrite /UkSh.ush_wcp. iRight. iFrame "Hb". iPureIntro. rewrite Hl0.
         split; [ | lia ]. exists 0%nat. split; [ lia | exact ufd_l0_lcl ].
       - (* the taint: a tainted shell runs on the generic slot, and the
            entry law's right arm is where it goes (lane EXEC-SEAM, (C)) *)
@@ -1090,17 +1138,17 @@ Section UInitSh.
        only the resource list to do. *)
     pose proof (UShKernel.sh_slot_of_kexec (SG := uexecSG_xv6)
                   (PS := uprogSG_free)
-                  Hpsok_free Rsh γp cn T K
-                  (ucons_pay cn γp T (UkInit.init_rd Rdl Wb))
-                  (ucons_pay cn γp T Rdl)
-                  (Pm γp) Wc Wb Hrl Hpm1 Hpm3
+                  Rsh γp cn T K
+                  (ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wbn Cr)))
+                  (ucons_pay cn γp T (cc_rd Cr))
+                  ((cc_mid Cr) γp) (cc_wc Cr) (cc_wb Cr) Hrl Hpm1 Hpm3
                   Hpmwb Hwc Hwbwc Hwbl Hwbr
                   1%nat alen afun fdv W' n0 np
                   Hbd
-                  (ucons_pay_const cn γp T (UkInit.init_rd Rdl Wb)) Hok Hcwd0
+                  (ucons_pay_const cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wbn Cr))) Hok Hcwd0
                   (init_sh_room alen n0 Halen Hn0) Hlen Hlzf Hch0 Hpid1) as Hsk.
     idtac "MARK-s4c-pose-ok".
-    iApply (Hsk with "[] Hdep Hdp Htag Hplaw [] [] Hcons Hgen' Hmp Hps
+    iApply (Hsk with "[] Hnpw Hdep Hdp Htag Hplaw [] [] Hcons Hgen' Hmp Hps
                       Hls Hwcp").
     - (* THE KEY'S OWN READING (lane SH-STATE): [sh_pay_state]'s wand
          takes [UShKernel.sh_pay_key], and the two facts it is derived
@@ -1120,30 +1168,11 @@ Section UInitSh.
          under the same existential as the cursor and so round-trips
          through /init's wait.  A parameter for [T]'s reason -- this file
          names no era. *)
-      (* ...AS THE PAIR (step 3): the exit family is [UkInit.init_rd Rdl Wb]
+      (* ...AS THE PAIR (step 3): the exit family is [UkInit.init_rd (cc_rd Cr) (cc_wb Cr)]
          -- the READ side of the lease, which is what the child is handed
-         ([Rdl], the lend family), beside the banner-owed credential the
+         ([(cc_rd Cr)], the lend family), beside the banner-owed credential the
          child's shell assembles where it leaves. *)
-      (Rdl : nat -> iProp Σ) `{HRdl : !forall i : nat, Timeless (Rdl i)}
-      (* ...AND THE SAME CREDENTIAL WITH THE TOKEN AND THE CURSOR BESIDE
-         IT (lane IO-LEAF, M5(3)): what a shell holds in the MIDDLE of a
-         line, where the payload's own boundary row is false.  Indexed by
-         the position ghost for [Rd]'s reason -- init mints a fresh pair
-         per child. *)
-      (Pm : gname -> nat -> iProp Σ)
-      (* ...AND THE ERA'S WRITE CREDENTIAL AS THE COMMAND LOOP CARRIES IT
-         (lane IO-LEAF, M6a(3)): at a line boundary, with [p] prompt bytes
-         out.  Not indexed by the position ghost: the credential is the
-         era's and the pair is the round's. *)
-      (Wc : nat -> nat -> iProp Σ)
-      (* ...AND THE BANNER-OWED CREDENTIAL (step 3): the loop's closed
-         arm, and the exit family's own arm. *)
-      (Wb : nat -> iProp Σ) `{HWb : !forall i : nat, Timeless (Wb i)}
-      (* ...AND THE ROUND-OPEN CREDENTIAL /init lends on the console row
-         (lane M6b): what the banner leaves and what pays init's two
-         diagnostics; the shell's entry converts it to the prompt
-         credential ([Hpw] below). *)
-      (Wp : nat -> iProp Σ)
+      (Cr : cons_cred Σ)
       (Rsh : gname -> gname -> gname -> iProp Σ) (n0 : nat) :
     (* the numbers sh admits -- THE FREE ONES (lane SUPPLY-SPLIT) *)
     (* AT THE FREE INSTANCE, NAMED AND NOT RESOLVED (lane SUPPLY-SPLIT's
@@ -1176,64 +1205,7 @@ Section UInitSh.
        ([UShOut.ksh_w_of_link_prompt]).  It was [exists wr, ...] while only
        fd 0's READABLE bit was read off it. *)
     st = FdOpen true true (FdDevice ConsoleInv.CONSOLE) ->
-    (* ...AND THE READ LEAF SH RUNS ON (lane SH-LINE 2b, R1').  sh's
-       [gets] runs on the RECEIPT-KEEPING console read now, and its supply
-       is the reader lease inside sh's own exit payload -- which is the
-       payload this constructor chooses ([UserConsole.ucons_pay] at the
-       pair minted for the round).  The discharge is
-       [UShLine.ush_read_recv_leaf_holds]; it names [FsCfg.fsc_cons] and
-       the application's two readings of the supply, neither of which this
-       file may name, so it arrives as a Coq-level premise -- quantified
-       over the POSITION GHOST because init mints a fresh pair per child,
-       exactly as [sh_pay]'s tail is. *)
-    (forall (γp : gname) (N : uk_names Σ) (l : list fdstate),
-       ukn_pay N = ucons_pay cn γp T (UkInit.init_rd Rdl Wb) ->
-       ⊢ UkSh.ush_read_recv_leaf (PS := uprogSG_free) N γp T (Pm γp) cn l) ->
-    (* ...AND THE LEASE IN THE PIECES A LINE'S MIDDLE LEAVES IT IN, with
-       its three laws and the boundary the payload carries (lane IO-LEAF,
-       M5(3)).  All four are Coq-level for the leaf's own reason: this file
-       names no era, and the one discharge ([UShLine]'s [ush_mid]) is where
-       the record's equations are. *)
-    (forall (γp : gname) (N : uk_names Σ) (i : nat),
-       ukn_pay N = ucons_pay cn γp T (UkInit.init_rd Rdl Wb) ->
-       ⊢ UkSh.ush_at N γp i -∗
-         UkSh.ush_lease N γp T (Pm γp) i) ->
-    (forall (γp : gname) (N : uk_names Σ) (i : nat),
-       ukn_pay N = ucons_pay cn γp T (UkInit.init_rd Rdl Wb) ->
-       ⊢ T -∗ Pm γp i -∗ UkSh.ush_at N γp i) ->
-    (* ...AND THE PAYLOAD'S OWN ARM (step 3): the pieces and the
-       banner-owed credential, at a boundary. *)
-    (forall (γp : gname) (N : uk_names Σ) (i : nat),
-       ukn_pay N = ucons_pay cn γp T (UkInit.init_rd Rdl Wb) -> UkSh.ush_bnd i ->
-       ⊢ Pm γp i -∗ Wb i -∗ UkSh.ush_at N γp i) ->
-    (* ...AND THE CREDENTIAL'S STEP AT THE READ (lane IO-LEAF, M6a(3)):
-       what the prompt left at boundary [n] is the boundary credential at
-       [n + 17] once the line is read, on the pieces the read leaves.
-       Unguarded -- it names no payload. *)
-    (forall (γp : gname) (n : nat),
-       ⊢ Pm γp (n + length EchoDisc.echo_line)%nat -∗ Wc n 2%nat -∗
-         Pm γp (n + length EchoDisc.echo_line)%nat
-         ∗ Wc (n + length EchoDisc.echo_line)%nat 3%nat) ->
-    (* ...AND THE THREE CONVERSIONS OF STEP 4 ([UShKernel.sh_uexec_slot]'s
-       [Hwbwc] / [Hwbl] / [Hwbr]), passed straight through *)
-    (forall n : nat, ⊢ Wb n -∗ Wc n 0%nat) ->
-    (forall n : nat, ⊢ Wc n 3%nat -∗ Wc n 0%nat) ->
-    (forall (γp : gname) (n : nat),
-       ⊢ Pm γp (n + length EchoDisc.echo_line)%nat -∗ Wb n -∗
-         Pm γp (n + length EchoDisc.echo_line)%nat ∗ T) ->
-    (* ...AND THE ENTRY LAW (step 3): the raw lend and the loop's
-       credential slot make the loop's cursor ([UShLine.ush_posb_of_lend]
-       is the one discharge). *)
-    (forall (γp : gname) (N : uk_names Σ) (l : list fdstate) (i : nat),
-       ukn_pay N = ucons_pay cn γp T (UkInit.init_rd Rdl Wb) ->
-       ⊢ upos γp i -∗ ucons_pay cn γp T Rdl (-1) -∗
-         (UkSh.ush_wcp Wc Wb l i 0%nat ∨ T) -∗
-         UkSh.ush_posb N γp T Wc Wb (Pm γp) l 0%nat) ->
-    (* ...AND THE LEND'S CONVERSION AT THE SHELL'S ENTRY (lane M6b): the
-       round-open credential is the prompt credential at the same count
-       with no prompt byte out (top: [UInitDiag.kinit_own_of_pro] +
-       [UInitBanner.kinit_own_is_cred]).  Coq-level like the entry law. *)
-    (forall n : nat, ⊢ Wp n -∗ Wc n 0%nat) ->
+    cons_cred_holds cn T Cr ->
     udep (PS := uprogSG_free) -∗
     (* ...AND THE THREE DEPOSITS SH OWES: read(5), open(15), write(16), the
        CLAIM numbers sh calls ([UkSh.sh_deps]).  They cross the exec with
@@ -1241,7 +1213,7 @@ Section UInitSh.
     □ (T -∗ UkSh.sh_deps (PS := uprogSG_free)) -∗
     (* ...AND THE PROMPT'S LAW AT EVERY LINE BOUNDARY (lane IO-LEAF,
        M6a(3)): persistent, so it crosses into every shell this [□] builds. *)
-    UShKernel.sh_prompt_law (PS := uprogSG_free) Wc -∗
+    UShKernel.sh_prompt_law (PS := uprogSG_free) (cc_wc Cr) -∗
     (* ...AND WHAT SH'S CONSOLE PREAMBLE IS TOLD (lane SH-OPEN, H3).  sh's
        open of "console" is PINNED, so which of the two pinned leaves it
        makes is decided here.  PERSISTENT, AND THAT IS FORCED: this
@@ -1267,7 +1239,7 @@ Section UInitSh.
      ∨ (□ (∀ N : uk_names Σ,
              UkSh.ush_open_absent_leaf (PS := uprogSG_free) N T K) ∗ K)
      ∨ T) -∗
-    init_sh_slot T (sh_pay T Wc Wb Pm Rsh n0) -∗
+    init_sh_slot T (sh_pay T Cr Rsh n0) -∗
     (* NO [(PS := uprogSG_free)] ANY MORE: the exec supply's conclusion is
        [UkRun.udepw_at_ref] (lane KILL-PAY, K4(a), ruling R-A), whose one
        disjunct is the bundle itself -- it names no [psok], so there is no
@@ -1278,9 +1250,11 @@ Section UInitSh.
        both-console row, banner-owed on the closed one -- which sh's
        entry puts in its loop's own slot ([UkSh.ush_wcp]).  This is the
        ONE place the two ends meet. *)
-    UkInit.init_exec_sup_lend cn T st Wp Wb Rdl.
+    UkInit.init_exec_sup_lend cn T st Cr.
   Proof.
-    intros Hpsok_free Hn0 Hst Hrl Hpm1 Hpm3 Hpmwb Hwc Hwbwc Hwbl Hwbr Hbd Hpw.
+    intros Hpsok_free Hn0 Hst HCr.
+    pose proof HCr as (Hrl & Hpm1 & Hpm3 & Hpmwb & Hwc
+                       & Hwbwc & Hwbl & Hwbr & Hbd & Hpw).
     subst st.
     iIntros "#Hdep #Hdp #Hplaw #Hcons (#Hinv & #Hcl0 & #Hgen & #Hpay)".
     (* E4: what crosses is the WHOLE pins law and each consumer projects *)
@@ -1304,9 +1278,9 @@ Section UInitSh.
        it is already holding ([UserConsole.ucons_pay_taint]) -- which is
        the whole reason a tainted process needs no lease. *)
     iAssert (image_entry_taint T
-               (ucons_pay cn γp T (UkInit.init_rd Rdl Wb)) uslot)%I as "#Hgen'".
+               (ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wbn Cr))) uslot)%I as "#Hgen'".
     { rewrite /image_entry_taint. iModIntro. iIntros (W') "#HT #Hmp".
-      iApply ("Hgen" $! (ucons_pay cn γp T (UkInit.init_rd Rdl Wb) (-1)) W' with "HT [Hmp] []").
+      iApply ("Hgen" $! (ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wbn Cr)) (-1)) W' with "HT [Hmp] []").
       - rewrite ucons_pay_eta. iExact "Hmp".
       - iModIntro. iIntros "_". iApply (ucons_pay_taint with "HT"). }
     (* ---- AND THE WHOLE OF THE REST IS THE U-TIER RULE (lane EX-4).
@@ -1317,12 +1291,12 @@ Section UInitSh.
     iApply (udepw_at_refR_ids_of_sup_ids N m pc
               (mword_of_int 0x9a8) (mword_of_int 0x1000)
               FsImg.ROOTINO T init_sh_pl ElfUser.sh_elf 1%nat
-              (sh_pay T Wc Wb Pm Rsh n0 ∗ upos γp np
-                 ∗ ucons_pay cn γp T Rdl (-1)
+              (sh_pay T Cr Rsh n0 ∗ upos γp np
+                 ∗ ucons_pay cn γp T (cc_rd Cr) (-1)
                  ∗ (UserFd.ustd (ukn_fd N) l
                     ∗ UkInit.init_lend_cred T
                         (FdOpen true true (FdDevice ConsoleInv.CONSOLE))
-                        Wp Wb l np))%I
+                        (cc_wp Cr) (cc_wbn Cr) l np))%I
               _ sh_elf_loadable Ha0 Ha1
               with "[] [] [Hstd Hrow Hcred Hpos Hlease Hchf Hpidf]").
     (* ---- THE REFUND IS THE LEND ITSELF (lane KILL-PAY, K4(a), ruling R-A;
@@ -1337,7 +1311,7 @@ Section UInitSh.
       rewrite /UkInit.init_lend_ref. iFrame "Hstd Hps Hls Hcred". }
     { rewrite Hpeq. iExact "Hgen'". }
     rewrite /uexec_sup_run_ids.
-    iIntros (M pm sz fdv cs pidv) "Hheap Hufd Hids".
+    iIntros (M pm sz fdv cs pidv) "#Hnpw Hheap Hufd Hids".
     (* ---- THE TWO IDENTITY READINGS (lane EXEC-SEAM), off the lent
        authorities against the child's own fragments: the key's children
        set is EMPTY and its pid is not <init>'s.  Both are pure, so the
@@ -1422,12 +1396,10 @@ Section UInitSh.
        four readings as the parameters they are equations against.  It was
        written here inline. *)
     { rewrite Hpeq.
-      iApply (init_sh_image_entry T cn K Rdl Pm Wc Wb Wp Rsh n0 γp np N l
+      iApply (init_sh_image_entry T cn K Cr Rsh n0 γp np N l
                 M fdv cs pidv Hpsok_free Hn0 Hsav Hsro Hl Hcs
-                ltac:(rewrite Hpv; exact Hp1) Hlen
-                (Hrl γp) (Hpm1 γp) (Hpm3 γp) (Hpmwb γp) (Hwc γp)
-                Hwbwc Hwbl (Hwbr γp) (fun N0 l0 n1 => Hbd γp N0 l0 n1) Hpw
-                with "Hdep Hdp Hplaw Hcons Hfd0 Hgen'"). }
+                ltac:(rewrite Hpv; exact Hp1) Hlen HCr
+                with "Hnpw Hdep Hdp Hplaw Hcons Hfd0 Hgen'"). }
     (* ...AND THE LINEAR PAYLOAD, WHOLE: [PinnedExec]'s one [Pay] slot is
        sh's persistent state, the position init minted for this round, the
        lease, and the ledger with its credential. *)

@@ -327,8 +327,8 @@ Section ProofSysClose.
       (fn : fclose_names) (on : option nat)
       (m : regfile) (av : nat) (n : nat) (eb : bool) (p : mword 64)
       (v : mword 64) (pid : mword 32) (U : ustate) (sts : list fdstate)
-      (b : bool) (lks : gset string)
-    : wp_sys_close_sconf_body γl γf fn on m av n eb p v pid U sts b lks.
+      (b : bool) (lks : gset string) (Φc : iProp Σ)
+    : wp_sys_close_sconf_body γl γf fn on m av n eb p v pid U sts b lks Φc.
   Proof.
     cbv beta delta [wp_sys_close_sconf_body].
     intros pcE ret_tgt Harg Hn Hav Hbelow Hfpid Hfdq.
@@ -340,7 +340,7 @@ Section ProofSysClose.
                   (add_vec (m !!! Regidx csp_rs1)
                      (sign_extend' 64 (sign_extend' 12 (mword_of_int 32 : mword 6))))]> m).
     iIntros "Hcg Hcpu Hextc Hextm #Htext #Hdata Hpc #Hftab #Hpe Hpriv Hfrag Hiru Hpenv
-              Hfenv Hcont".
+              Hfenv Hcpay Hcont".
     (* [b] AND [eb] ARE DERIVABLY EQUAL HERE, and the derivation is available
        because fileclose's FS bundle carries [⌜n = 0⌝]: sys_close has no
        acquire of its own, so it runs at push_off level 0 throughout, and at
@@ -629,10 +629,14 @@ Section ProofSysClose.
       iDestruct (cpu_claim_ext_transport CID CID12 eb p
                    ltac:(rewrite Hb; wp_next_chain) with "Hextm") as "Hextm".
       iSpecialize ("Hcont" $! CID12 with "[%]"); [wp_next_chain|].
-      iApply ("Hcont" $! mf with "[%] Hcg Hcpu Hextc Hextm Hpc [Hpriv Hfrag] [Hpenv] Hfenv Hiru");
-        [exact Hcsf| |].
+      iApply ("Hcont" $! mf with "[%] Hcg Hcpu Hextc Hextm Hpc [Hpriv Hfrag] [Hcpay] [Hpenv] Hfenv Hiru");
+        [exact Hcsf| | |].
       { rewrite /sys_close_post. iLeft. iFrame "Hpriv Hfrag". iPureIntro.
         split; [exact Hmfa0 | exact Hnone]. }
+      (* THE CLOSE PAYMENT CAME BACK UNSPENT: argfd answered NONE, so the key
+         is [FdClosed] and both the payment and its answer are [emp]. *)
+      { rewrite /sys_fd_st Hnone.
+        iApply (fileclose_cpost_any_of 1%Qp FdClosed Φc). done. }
       (* no fileclose ran on this path, so both bundles are as they came in *)
       { by iExists on. }
     - (* ================= SUCCESS: fd names a live file ================= *)
@@ -653,7 +657,7 @@ Section ProofSysClose.
       iEval (rewrite Hpp1c) in "Hpc".
       (* ---- +0x1c: jal ra,myproc ---- *)
       iApply (wp_jal_s_sconf (mword_of_int (KernelSyms.sys_close + 0x1c))
-                (mword_of_int 1 : mword 5) (mword_of_int 2083452 : mword 21) A7 (av - 4)%nat b
+                (mword_of_int 1 : mword 5) (mword_of_int 2083468 : mword 21) A7 (av - 4)%nat b
                 ltac:(vm_compute; discriminate) ltac:(rdok) ltac:(vm_compute; reflexivity)
                 with "Hcg Hpc []").
       { iApply (sci_1c with "Htext"). }
@@ -663,7 +667,7 @@ Section ProofSysClose.
       change (<[Regidx (mword_of_int 1 : mword 5) := regval_into_reg
                 (add_vec_int (mword_of_int (KernelSyms.sys_close + 0x1c) : mword 64) 4)]> A7) with B.
       assert (Hjmp : add_vec (mword_of_int (KernelSyms.sys_close + 0x1c) : mword 64)
-                       (sign_extend' 64 (mword_of_int 2083452 : mword 21)) = mword_of_int KernelSyms.myproc)
+                       (sign_extend' 64 (mword_of_int 2083468 : mword 21)) = mword_of_int KernelSyms.myproc)
         by (apply bv_eq; vm_compute; reflexivity).
       iEval (rewrite Hjmp) in "Hpc".
       assert (HBra : B !!! Regidx (mword_of_int 1 : mword 5)
@@ -781,6 +785,23 @@ Section ProofSysClose.
         as "(Hpbare & Hslot & Hback)".
       iDestruct "Hslot" as "[Hcell [[%Hz _] | Href]]"; [by exfalso; apply Hfvnz|].
       iDestruct "Href" as (k q stf) "((%Hfv & %Hklt & %Hty) & Href & Hst)".
+      (* THE CLOSE PAYMENT'S KEY IS THIS DESCRIPTOR'S ROW (design/pipe.md,
+         "The byte queue").  The caller states it at [sys_fd_st], which the
+         argfd answer and the NAMED table compute to the state the array's
+         authority carries -- one peek at the fragment table, put straight
+         back, to make the two the same [stf] before fileclose is called. *)
+      iDestruct (fd_frags_len with "Hfrag") as %Hstslen0.
+      assert (Hstfx : is_Some (sts !! fd))
+        by (apply lookup_lt_is_Some_2; rewrite Hstslen0; unfold NOFILE in *; lia).
+      destruct Hstfx as [stq0 Hstf].
+      iDestruct (fd_frags_acc (pv_fdg (us_V U)) sts fd stq0 Hstf with "Hfrag")
+        as "(Hfr0 & #Hrow0 & Hfrback0)".
+      iDestruct (fd_st_agree with "Hst Hfr0") as %<-.
+      iDestruct ("Hfrback0" with "Hfr0 Hrow0") as "Hfrag".
+      iEval (rewrite (list_insert_id sts fd stf Hstf)) in "Hfrag".
+      assert (Hkey : sys_fd_st v (pv_ofile (us_V U)) sts = stf)
+        by (rewrite /sys_fd_st Hsome Hstf; reflexivity).
+      iEval (rewrite Hkey) in "Hcpay".
       (* ---- +0x2c: sd x0,0(a0) -- p->ofile[fd] = 0 ---- *)
       assert (Haddrof : forall CID' : CpuId,
                 add_vec (rget (CID := CID') C4 (mword_of_int 10 : mword 5))
@@ -858,12 +879,12 @@ Section ProofSysClose.
          remaining tie premise is for *)
       iDestruct (fileclose_loop_open fn on n eb p stf with "Hpenv Hfenv")
         as "[Hfcenv Hfcback]".
-      iApply (Fileclose.wp_fileclose_sconf γl γf k q stf fn on D n eb p (av - 4)%nat b lks pid U
+      iApply (Fileclose.wp_fileclose_sconf γl γf k q stf fn on D n eb p (av - 4)%nat b lks Φc pid U
                 ltac:(lia) Hn HDa0
                 Hbelow
-                with "Hcg Hcpu Hextc Hextm Htext Hdata Hpc Hftab Hpe Href Hpbare Hiru Hfcenv").
+                with "Hcg Hcpu Hextc Hextm Htext Hdata Hpc Hftab Hpe Href Hpbare Hiru Hfcenv Hcpay").
       all: try lkbelow.
-      iIntros (CID21 Hs21 R) "Hcg Hcpu Hextc Hextm Hpc %HcsR Hfdslot Hiru Hout Hpbare".
+      iIntros (CID21 Hs21 R) "Hcg Hcpu Hextc Hextm Hpc %HcsR Hfdslot Hiru Hout Hcpost Hpbare".
       iDestruct ("Hfcback" with "Hout") as "(Hpenv & Hfenv)".
       assert (Hpc38 : ret_pc (D !!! Regidx (mword_of_int 1 : mword 5))
                       = mword_of_int (KernelSyms.sys_close + 0x38))
@@ -955,10 +976,15 @@ Section ProofSysClose.
       iDestruct (cpu_claim_ext_transport CID21 CID23 eb p
                    ltac:(rewrite Hb; wp_next_chain) with "Hextm") as "Hextm".
       iSpecialize ("Hcont" $! CID23 with "[%]"); [wp_next_chain|].
-      iApply ("Hcont" $! mf with "[%] Hcg Hcpu Hextc Hextm Hpc [Hpriv Hfrag] Hpenv Hfenv Hiru");
-        [exact Hcsf|].
-      rewrite /sys_close_post. iRight. iExists fd, fv. iFrame "Hpriv Hfrag". iPureIntro.
-      split; [exact Hmfa0 | exact Hsome].
+      iApply ("Hcont" $! mf with "[%] Hcg Hcpu Hextc Hextm Hpc [Hpriv Hfrag] [Hcpost] Hpenv Hfenv Hiru");
+        [exact Hcsf| |].
+      { rewrite /sys_close_post. iRight. iExists fd, fv. iFrame "Hpriv Hfrag". iPureIntro.
+        split; [exact Hmfa0 | exact Hsome]. }
+      (* THE PAYMENT'S ANSWER, at the caller's own key: fileclose answered at
+         the fraction the slot carried; the caller is told only that there
+         was one ([fileclose_cpost_any]). *)
+      rewrite Hkey.
+      iApply (fileclose_cpost_any_of q stf Φc with "Hcpost").
   Qed.
 
 End ProofSysClose.

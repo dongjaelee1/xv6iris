@@ -17,7 +17,7 @@
        return -1;
      }
 
-   @ KernelSyms.kkill = 0x800021a4, forty-three instructions: the [pid == 0]
+   @ KernelSyms.kkill = 0x80002194, forty-three instructions: the [pid == 0]
    guard at +0x00 branching to its own [c.li a0,-1 ; c.ret] tail at +0x68,
    then a 48-byte ra/s0/s1/s2/s3 frame (slot 0 is padding), s1 the proc[]
    cursor, s2 the [pid] argument, s3 = &proc[NPROC] (which the linker places

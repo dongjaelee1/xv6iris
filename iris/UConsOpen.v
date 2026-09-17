@@ -217,7 +217,11 @@ Section UConsOpen.
        rf_ret   := fun _ _ => True%I;
        (* the console's input link, at the trivial claim (lane CONS-IO,
           milestone B): this program says nothing about what it read *)
-       rf_in    := fun _ => True%I |}.
+       rf_in    := fun _ => True%I ;
+       rf_pq    := fun _ => True%I;
+       rf_pqe   := fun _ _ => True%I;
+       wf_Qe    := fun _ _ => True%I;
+       cl_P     := True%I |}.
 
   (* =================================================================== *)
   (*  S3.  THE TWO ROWS, IN THE PROCESS'S DIRECTION                       *)

@@ -563,6 +563,37 @@ Section FileInv.
       iIntros "$ $ _". done.
   Qed.
 
+  (* ...AND THE SAME JOIN AT THE STATE the departing reference names
+     ([file_pay_st]).  fileclose's last close needs the payload's NAMES and
+     the descriptor's state to be the SAME record's -- the pipe arm hands
+     [pipeclose] the queue [fdstate_ok] ties to [st]'s [FdPipe] -- and
+     [file_rest_join] loses that: its output quantifies the names afresh.
+     The leftover's names ARE this one's ([fpay_tok_agree]), so the tie
+     survives the join; this states it.  Pure consequence of
+     [file_rest_join]'s ingredients, nothing new. *)
+  Lemma file_rest_join_st γ k (qt : Qp) C st :
+    (qt ≤ 1)%Qp ->
+    file_fields k qt C -∗ file_pay_st γ k qt C st -∗ file_rest γ k qt -∗
+    file_fields k 1 C ∗ file_pay_st γ k 1 C st.
+  Proof.
+    intros Hle. rewrite /file_rest.
+    destruct (1 - qt)%Qp as [q'|] eqn:Et.
+    - apply Qp.sub_Some in Et.        (* 1 = qt + q' *)
+      iIntros "Hf Hp (%C' & Hf' & Hp')".
+      iDestruct (file_fields_agree with "Hf Hf'") as %<-.
+      iDestruct "Hp" as (pn) "(%Hok & Hn & Hc)".
+      iDestruct "Hp'" as (pn') "(Hn' & Hc')".
+      iDestruct (fpay_tok_agree with "Hn Hn'") as %<-.
+      rewrite Et file_fields_frac_split. iFrame "Hf Hf'".
+      rewrite /file_pay_st. iExists pn.
+      iSplitR; [iPureIntro; exact Hok |].
+      rewrite fpay_tok_split file_core_split. iFrame "Hn Hn' Hc Hc'".
+    - (* nothing left over: [qt] is already the whole of it *)
+      apply Qp.sub_None in Et.
+      assert (qt = 1%Qp) as -> by (apply (anti_symm (⊑@{Qp})); done).
+      iIntros "$ $ _". done.
+  Qed.
+
   (* ... and the DEPARTING reference's, when it is not the last: its fraction
      goes back into the leftover, which is why [fileUR]'s frac component
      tracks OUTSTANDING fraction rather than being pinned at 1. *)

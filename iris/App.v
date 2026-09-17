@@ -591,6 +591,9 @@ Section AppTriv.
       cbn [app_triv app_ifc app_iface_triv ai_kill]. reflexivity.
     - rewrite /riscv_cons_res Hiface.
       cbn [app_triv app_ifc app_iface_triv ai_cons]. reflexivity.
+    - (* ...and the table the first process boots with is userinit's, all
+         closed and therefore all parked *)
+      apply fdv_all_parked_fdt0.
   Qed.
 
   Lemma app_triv_R0 (c : app_fixed (app_triv Σ)) :

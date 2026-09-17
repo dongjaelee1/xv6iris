@@ -135,13 +135,17 @@ Section ExecBundle.
     rewrite /exec_slot_pre /ex_node_id /image_entry_at /image_entry_taint.
     iSplitL "HPay".
     - (* ---- ARM (a): the observed node IS the caller's file ---- *)
-      iIntros (av' i f' nl' W') "HP Hrecv %Hload' %Hok %Hcwq %Hlzq %Hchq %Hpiq #Hp".
+      iIntros (av' i f' nl' W') "HP Hrecv %Hload' %Hok %Hcwq %Hlzq %Hchq %Hpiq %Hpk #Hp".
       (* [iPoseProof] first: [Hid] is persistent and its two arguments are
          SPATIAL, so specializing it in place would ask for a persistent
          result.  The copy is spatial and takes them. *)
       iPoseProof ("Hid" $! av' i (MkAnode (AFile f') nl')) as "Hid'".
       iDestruct ("Hid'" with "HP Hrecv") as "[%Hnode | HT]"; last first.
-      { iApply ("Hgen" with "HT Hp"). }
+      { (* the all-parked row stops here (lane OFF-HAND-2): the generic
+                     family the taint arm runs on is not narrowed yet, and
+                     cannot be until the U tier can name its own table --
+                     [ExecEntry.image_entry_taint]'s note. *)
+        iApply ("Hgen" $! W' with "HT Hp"). }
       (* [subst f' nl'] and not a bare [subst]: the rows introduced just
          above are equations on [cw], on [uvis_lazy W'], on [cs] and on
          [pidv], and a bare [subst] would spend one of those instead. *)
@@ -149,10 +153,14 @@ Section ExecBundle.
       iApply ("Hcon" $! W' with "[%] [%] [%] [%] [%] Hp HPay");
         [ exact Hok | exact Hcwq | exact Hlzq | exact Hchq | exact Hpiq ].
     - (* ---- ARM (b): a loadable file IS loadable, so this arm is dead ---- *)
-      iIntros (av' i a W') "HP Hrecv %Hnload %Hkey %Hcwq %Hlzq %Hchq %Hpiq #Hp".
+      iIntros (av' i a W') "HP Hrecv %Hnload %Hkey %Hcwq %Hlzq %Hchq %Hpiq %Hpk #Hp".
       iPoseProof ("Hid" $! av' i a) as "Hid'".
       iDestruct ("Hid'" with "HP Hrecv") as "[%Hnode | HT]"; last first.
-      { iApply ("Hgen" with "HT Hp"). }
+      { (* the all-parked row stops here (lane OFF-HAND-2): the generic
+                     family the taint arm runs on is not narrowed yet, and
+                     cannot be until the U tier can name its own table --
+                     [ExecEntry.image_entry_taint]'s note. *)
+        iApply ("Hgen" $! W' with "HT Hp"). }
       subst a. exfalso. apply Hnload. exists f, nl.
       split; [ reflexivity | exact Hload ].
   Qed.

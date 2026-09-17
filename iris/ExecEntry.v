@@ -137,6 +137,18 @@ Section ExecEntry.
   (*  3.  THE TAINT'S ENTRY                                               *)
   (* ------------------------------------------------------------------ *)
 
+  (* WHY THIS ARM DOES *NOT* TAKE THE KEY'S ALL-PARKED ROW, although
+     [SpecKexec.exec_slot_pre]'s wands now carry it (lane OFF-HAND-2).  It
+     would be the natural place -- the taint arm is the one that runs on
+     the GENERIC family ([UexecExecMint.uslot_mint_all]), and that family
+     must eventually be narrowed to keys with no offset half outside the
+     kernel.  But a VERIFIED program's taint arm is built from its own
+     [UkSh.ush_gen_slot]-shaped slot, which is quantified over EVERY key
+     and spent inside [UkRun.urun]'s existential ([UkSh.ush_gen_run]), so
+     narrowing this arm pushes the obligation onto a table the U tier
+     cannot name.  The carrier that closes it is the U-tier held-row
+     counter (design/user-read.md SS8.4); until it exists the row stops at
+     the wand, where the kernel pays it. *)
   Definition image_entry_taint (T : iProp Σ) (Q : Z -> iProp Σ)
       (X : uvis -d> iPropO Σ) : iProp Σ :=
     (□ (∀ W' : uvis, T -∗ my_pay (uvis_gen W') Q -∗ X W'))%I.

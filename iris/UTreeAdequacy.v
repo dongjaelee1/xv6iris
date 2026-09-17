@@ -136,6 +136,9 @@ Section TreeAdequacy.
     iApply (init_boot_of_sup (bv_unsigned InodeInv.ROOTINO) fdt0).
     - (* the output licence, free at the trivial console claim *)
       iIntros "_". by iApply (cons_licence_triv Hcons).
+    - (* ...and the first process's table, which userinit built closed
+         ([FdSlots.fdv_all_parked_fdt0]) *)
+      apply fdv_all_parked_fdt0.
     - (* the supply, at the era's record equation *)
       rewrite /AppInv.app_sup Heq.
       cbn [AppCfg.app_pred AppCfg.app_run AppCfg.app_names

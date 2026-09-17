@@ -241,6 +241,7 @@ Section SysExecBreakAU.
       (Mim : gmap Z (bv 8)) (pvp avp : mword 64) (Qpay : Z -> iProp Σ)
       (Pw Pmiss : nat -> Z -> iProp Σ)
       (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ)) :
+    fdv_all_parked sts ->
     (K_sys_exec <= K)%nat ->
     locks_below lks "kmem" ->
     sp0 = (m !!! Regidx csp_rs1 : mword 64) ->
@@ -319,7 +320,7 @@ Section SysExecBreakAU.
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof using ufdG0.
-    intros HK Hlb Hsp0 Hplen Hpcstr Hpof Hav Him Hnul Halp Hroot Hnib0
+    intros Hpk HK Hlb Hsp0 Hplen Hpcstr Hpof Hav Him Hnul Halp Hroot Hnib0
            Hlg Hsize Hbm0 Hbmc Hbml Hist0 Hcb Hireg Hjp Hgl Hbt Hebt.
     destruct (sx_kb K HK) as (Kkx & Kar & Kaa & Kfa & Kfs & K14 & K2 & K60 & Kpop).
     iIntros "#Htext #Hfab #Hka Hbmp Hisp #Hbmr Hbs Hir #Hmp Hau Hst".
@@ -503,7 +504,7 @@ Section SysExecBreakAU.
               pid (us_upt U P) sts gn cs
               dqb dqs (DfracOwn 1) (DfracOwn 1) (DfracOwn 1)
               N6 (K - 60)%nat eb b lks Qpay Pw Pmiss Fo
-              Kkx Hroot Hnib0 Hlg Hsize Hbm0 Hbmc Hbml Hist0
+              Hpk Kkx Hroot Hnib0 Hlg Hsize Hbm0 Hbmc Hbml Hist0
               Hcb Hireg Hpcstr ltac:(lia)
               ltac:(intros j Hj; rewrite (sx_avf_lt pg i j Hj);
                     exact (proj1 (Hok j Hj)))
@@ -635,7 +636,7 @@ Section SysExecWhole.
         m K eb b lks Qpay P Pmiss Fo.
   Proof using .
     cbv beta zeta delta [wp_sys_exec_sconf_body].
-    intros HK Hroot Hnib0 Hlg Hsize Hbm0 Hbmc Hbml Hist0
+    intros Hpk HK Hroot Hnib0 Hlg Hsize Hbm0 Hbmc Hbml Hist0
            Hcb Hireg Hjp Hgl Hebt Harg0 Harg1.
     subst eb.
     iIntros "Hcg Hcnt Htcx Hccx #Htext #Hdata Hpc #Hfab Hbmp Hisp #Hbmr
@@ -734,7 +735,7 @@ Section SysExecWhole.
       iApply (sx_break_au (CID0 := CID3) Fs gs j gl pd pav pu γf
                 dqb dqs pid U K true true ∅ sp0 m plen pfun rst v1
                 M3 P3 i3 pg3 al3 af3 uv3 sts gn cs (us_M U) v0 v1 Qpay P Pmiss Fo
-                HK Hlb eq_refl Hplen Hpcstr Hpof
+                Hpk HK Hlb eq_refl Hplen Hpcstr Hpof
                 eq_refl eq_refl Hnul3 Halp Hroot Hnib0
                 Hlg Hsize Hbm0 Hbmc Hbml Hist0 Hcb Hireg Hjp Hgl eq_refl eq_refl
                 with "Htext Hfab Hka Hbmp Hisp Hbmr Hbs Hir Hmp Hau Hbrk").

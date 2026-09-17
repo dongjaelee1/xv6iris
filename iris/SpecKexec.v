@@ -873,6 +873,18 @@ Section KexecAU.
         ⌜uvis_lazy W' = false⌝ -∗
         ⌜uvis_ch W' = cs⌝ -∗
         ⌜uvis_pid W' = pidv⌝ -∗
+        (* ...AND THE RESUMED KEY'S TABLE IS ALL-PARKED (design/user-read.md
+           SS8.1, SS8.3, lane OFF-HAND-2).  THE KERNEL SUPPLIES IT, and that
+           is the whole reason it rides the wand rather than the caller's
+           bundle: a U-tier program's knowledge of its own table is
+           [UserFd.ustd] plus its [UserFd.ufd] handles, which say nothing
+           about the slots it cannot name, while the kernel holds the block
+           and the descriptor bundle at the ecall and reads the fact off
+           them ([ProcInv.proc_priv_parked]).  What CONSUMES it is the
+           generic slot's mint ([UexecExecMint.uslot_mint_all]), whose
+           family may only be handed a key with no offset half outside the
+           kernel -- see [ExecEntry.image_entry_taint]. *)
+        ⌜fdv_all_parked (uvis_fd W')⌝ -∗
         my_pay (uvis_gen W') Q -∗
         S W')
      ∗ (∀ (av : aview) (i : Z) (a : anode) (W' : uvis),
@@ -884,6 +896,7 @@ Section KexecAU.
           ⌜uvis_lazy W' = false⌝ -∗
           ⌜uvis_ch W' = cs⌝ -∗
           ⌜uvis_pid W' = pidv⌝ -∗
+          ⌜fdv_all_parked (uvis_fd W')⌝ -∗
           my_pay (uvis_gen W') Q -∗
           S W'))%I.
 
@@ -930,7 +943,8 @@ Section KexecAU.
       (pl : list (bv 8))
       (na : nat) (alen : nat -> nat) (afun : nat -> nat -> bv 8)
       (sts : list fdstate) (cs : gset gname) (pidv : mword 32) :
-    □ (∀ W : uvis, my_pay (uvis_gen W) (fun _ => True)%I -∗ S W) -∗
+    □ (∀ W : uvis, ⌜fdv_all_parked (uvis_fd W)⌝ -∗
+                   my_pay (uvis_gen W) (fun _ => True)%I -∗ S W) -∗
     exec_au_pre (MkPfam S True%I) Γ γfs cw (fun _ => True%I)
       (fun _ _ => True%I) (fun _ _ => True%I) (pfam_triv (fun _ _ _ => True%I))
       pl na alen afun sts cs pidv.
@@ -946,8 +960,10 @@ Section KexecAU.
        [pf_at_triv]. *)
     rewrite /pf_at /=. iSplit; [| done].
     rewrite /exec_slot_pre. iSplitR.
-    - iIntros (av i f nl W') "_ _ _ _ _ _ _ _ Hp". iApply ("HS" with "Hp").
-    - iIntros (av i a W') "_ _ _ _ _ _ _ _ Hp". iApply ("HS" with "Hp").
+    - iIntros (av i f nl W') "_ _ _ _ _ _ _ _ %Hpk Hp".
+      iApply ("HS" $! W' with "[%] Hp"). exact Hpk.
+    - iIntros (av i a W') "_ _ _ _ _ _ _ _ %Hpk Hp".
+      iApply ("HS" $! W' with "[%] Hp"). exact Hpk.
   Qed.
 
   (* ...and the one a caller that wants nothing back hands in: the slot
@@ -961,7 +977,7 @@ Section KexecAU.
         pl na alen afun sts cs pidv.
   Proof using .
     iApply (exec_au_pre_triv_at (fun _ => emp%I)).
-    iIntros "!>" (W) "_". iEmpIntro.
+    iIntros "!>" (W) "_ _". iEmpIntro.
   Qed.
 
   (* non-expansive in the slot predicate: UexecExecInst.v instantiates
@@ -1323,6 +1339,17 @@ Definition wp_kexec_sconf_body
     (P Pmiss : nat -> Z -> iProp Σ)
     (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ)) :=
   let Γfs := fs_gamma_L fsc_fs in
+  (* THE CALLER'S TABLE IS ALL-PARKED (design/user-read.md SS8.3, lane
+     OFF-HAND-2).  kexec never opens the descriptor block and [sts] is
+     otherwise a free binder here, so the fact cannot be READ inside this
+     contract -- it is threaded from the dispatcher, which holds the block
+     and the bundle together ([ProcInv.proc_priv_parked]), and spent on
+     [exec_slot_pre]'s two wands at the key exec resumes
+     ([kexec_image_ok_parked] / [exec_key_ok_parked] are the two steps).
+     A PURE premise and not [FdPark.uoff_surr_at sts]: the resource has
+     nowhere to live across the walk, and what the generic tier's family
+     needs of its key is a FACT, not a disjunction. *)
+  fdv_all_parked sts ->
   wp_kexec_frame gs jp gl pd pav pu gf plen pfun na avf alen aslen afun
     pidv U dqb dqs dqa dqpv dqas m K eb b lks
     (* THE PAY FACT RIDES IN WITH THE BUNDLE, and the kernel does one thing

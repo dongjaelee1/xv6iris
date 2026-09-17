@@ -1513,6 +1513,7 @@ UkRunBr.v
 UkSh.v
 UkShRun.v
 UkShDiag.v
+UkShRedir.v
 
 UCodeShP.v
 UkShParse.v
@@ -1521,6 +1522,8 @@ UkShParseTok.v
 UkShParseRedir.v
 UkShParseExec.v
 UkShParseCmd.v
+UkShRedirLex.v
+UkShRedirTok.v
 
 UCodeShM.v
 UkShMalloc.v

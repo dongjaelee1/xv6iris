@@ -686,3 +686,240 @@ payload-free.  What SH-ROUND must NOT assume is a 0x601 bundle: until
 seam 1's three restatements land, `FileOpen.file_open_create_au` takes the
 truncate piece as a PREMISE, so the redirect child's open is suppliable
 only at `om_trunc = false` (`file_open_create_au_notrunc`).
+
+### F-OPEN-3 (2026-09-17) — THE TRUNCATE'S PERMIT, THE ONE SWEEP, AND THE 0x601 BUNDLE FROM ONE DEED
+
+**The lane's verdict in one line: the permit is exactly the ruling's two
+things — the walk's tie and the `Fok ∨ (Fex ∗ the unfired arm)`
+disjunction — and it works, but the EXISTS disjunct is paid for by a PURE
+reading of the claim at the lookup's own view rather than by the deed
+fraction lane F-OPEN-2 priced, so restatements 2 and 3 were never on the
+critical path and no third kernel seam was needed.  What did NOT land is
+the ruling's `s = None` refutation, and the reason is a VIEW and not a
+fraction (P3 below).**
+
+**WHAT LANDED** (whole tree green on the lane's remote tree; every new
+lemma `Proof using`; `make audit-all-only` and `audit-tree-only`
+unchanged — echo fourteen, system thirteen, tree thirteen).
+
+- **THE SWEEP** (`iris/SysOpenDefs.v` sections 2b'/2b'', `iris/SpecSysOpen.v`
+  section 2g, `iris/FsAbsOpenFire.v`, seven `ProofSysOpen*` files and six
+  consumers).  `open_trunc_piece Γ vom Kt Ft` takes a PERMIT; the plain
+  surface's is `trunc_permit_triv` (nothing rides on its walk's terminal)
+  and the O_CREATE surface's is `trunc_permit_of Γ (tie) Farm Fok Fex` —
+  the tie (`trunc_tie_at pl P` at the one-path tier, `trunc_tie_arg M pv P`
+  under the reading of argument 0, and the two conversions
+  `trunc_tie_arg_of_at` / `trunc_tie_at_of_arg`) beside
+  `cre_acre_fired Fok d nm i (AFile []) ∨ (cre_ex_fired Fex d nm i ∗
+  pf_at (aarm_commit_at Γ appE (AFile [])) Farm)`.  The generic supplier is
+  one line (`open_trunc_piece_of_all`, the permit unread), and
+  `open_trunc_piece_mono` / `open_trunc_piece_{at_to_arg,arg_to_at}` move a
+  piece between the two tiers.
+- **THE PERMIT IS PAID ONCE, WHERE WHAT PAYS IT IS IN HAND**
+  (`iris/ProofSysOpenEntryC.v`, at create's return;
+  `iris/ProofSysOpenCreArm.v` `socr_fresh_key` / `socr_exists_key`).
+  Below that point the piece travels KEYED at the inode the call reached
+  (`SysOpenDefs.open_trunc_at`), which is what `ProofSysOpenJoin`,
+  `ProofSysOpenAlloc`, `ProofSysOpenStores` and `ProofSysOpenShared`'s four
+  arm builders now take, and what `FsAbsOpenFire.opf_atrunc_fire` fires
+  (`atrunc_commit_i` at that inum).  The plain surface keys for nothing
+  (`open_trunc_at_of_triv`).
+- **THE KEYED PIECE KEEPS THE PERMIT ON ITS REFUND SIDE**
+  (`SysOpenDefs.cre_ft_kept`, and this is the one piece of the design the
+  ruling did not name).  `pf_at` is a CONJUNCTION, so paying the permit
+  spends it on the COMMIT side only and the refund may keep it —
+  which is what makes `SpecSysOpen.open_post_fail_create`'s arm (a)
+  survive: `itrunc` runs past `fdalloc`, so a create that fired and an
+  open that then failed hands the caller back exactly what it parked in
+  the permit.  Without it that arm loses the deed and F-OPEN's "third
+  arm" is gone.
+- **THE APPLICATION HALF** (`iris/FileOpen.v` sections 3e', 3f, 3f', 3f'').
+  `fclaim_free` / `file_claim_read_free` (the claim read at a view NOBODY
+  holds a fraction at: `file_pred`'s pins, and the TYPED witness of
+  whatever state the claim is at, whose pure part bounds the content by
+  `EchoDisc.line_max`), `file_dlk_recv` / `file_dlk_fam` /
+  `file_dlk_piece` (the exists observation's family, carrying that pure
+  reading and NOTHING linear), `file_trunc_of_exists` (the EXISTS
+  disjunct: the arm piece's refund is the deed's whole half, the tie says
+  the row is the root's `f`, the pure reading says it is none of the four
+  era-0 binaries, and the move `Some (i, bs) → Some (i, [])` is the
+  two-phase park-and-resync — with the already-empty case split off, since
+  `AppFile.file_resync` wants `s ≠ s'`), and `file_trunc_piece` at the
+  permit.
+- **THE 0x601 BUNDLE, FROM ONE DEED** (`FileOpen.file_open_create_au`).
+  No trunc premise at any mode: the bundle supplies its own piece.  New
+  premise `last (path_elems pl) = Some fname_f` (the tie is what
+  identifies the truncated row, so the lemma must say the path names `f`);
+  `Fex` is `file_dlk_fam c` and `Ft` is `file_trunc_fam c r s`.
+  `file_open_create_au_notrunc` is SUBSUMED — kept as a one-line corollary
+  under `om_trunc vom = false` so a 0x201 caller need not read the guard.
+
+**STATEMENTS THAT CHANGED SHAPE, EXHAUSTIVELY.**  At `om_trunc vom = false`
+every one of them reads exactly as it did — the guards are `if om_trunc vom`
+and the `else` arm is the landed text — so no existing caller's CONTENT
+moved; what moved is the syntax they destruct.
+
+1. `SysOpenDefs.open_trunc_piece` — one more argument (the permit);
+   `open_trunc_piece_{true,false,none}` follow it.  New beside it:
+   `open_trunc_piece_of_all`, `open_trunc_piece_mono`,
+   `open_trunc_piece_{at_to_arg,arg_to_at}`, `open_trunc_at` with
+   `_{true,false,none,of_permit,of_triv}`, `cre_ft_kept`,
+   `trunc_permit_triv`, `trunc_tie_at`, `trunc_tie_arg`,
+   `trunc_tie_{arg_of_at,at_of_arg}`, `trunc_permit_of`,
+   `trunc_permit_of_mono`.  `Typeclasses Opaque` extended to all of them
+   (unsealed, one `iFrame` in `ProofSysOpenCreArm` took twenty minutes).
+2. `SysOpenDefs.open_au_pre_plain` / `open_au_plain_at` — the piece at
+   `trunc_permit_triv`; `open_au_pre_create` / `open_au_create_at` — the
+   piece at `trunc_permit_of` at the matching tie.  No arity change: the
+   permit is built from parameters the bundles already had.
+3. The four `SysOpenDefs.open_au_*_of_all` — their trunc premise names the
+   bundle's permit.
+4. `SpecSysOpen.open_post_ok_plain` / `open_receipt_plain` — the DEVICE and
+   DIRECTORY arms at `open_trunc_at Γ vom i Ft`.
+   `open_post_fail_plain` — arm 3 the same; arms 1 and 2 at the trivial
+   permit.
+5. `SpecSysOpen.open_post_ok_create` / `open_receipt_create` — the walk's
+   terminal cursor at `cre_cur_kept`, the FRESH arm's create receipt and
+   the EXISTS arm's lookup receipt at `cre_rcpt_kept`, the EXISTS arm's
+   child legs at `cre_child_kept`, the EXISTS-DEVICE arm's piece at
+   `cre_trunc_kept`.
+6. `SpecSysOpen.open_post_fail_create` — the cursor at `cre_cur_kept`, and
+   the trunc piece moved OUT of the common prefix INTO the arms: (a) at
+   `cre_trunc_kept` beside `cre_rcpt_kept`, (b) at `cre_fail_kept` (the
+   piece and the child legs TOGETHER, because whether the permit was paid
+   is what decides both), (c) and the walk-dead arm at the unkeyed piece.
+7. `SpecSysOpen.cre_fail_to_open` — its trunc premise is the one-path
+   permit.  New definitions: `cre_permit`, `cre_trunc_kept`,
+   `cre_cur_kept`, `cre_rcpt_kept`, `cre_child_kept`, `cre_fail_kept` and
+   their five intro lemmas.
+8. `FsAbsOpenFire.opf_atrunc_fire` — takes `pf_at (atrunc_commit_i Γ appE i)`.
+9. `FsAbsInvFire.fsabs_trunc_piece` — one more argument (the permit, unread).
+10. `ProofSysOpen{Join,Alloc,Stores}`'s block premise — `open_trunc_at …
+    (bv_unsigned inum) Ft`; `ProofSysOpenShared.so_arm_{fail,dev,dir,notr}`
+    the same at their `i`; `so_arm_dead` at the trivial permit;
+    `ProofSysOpenWalk`'s block at the trivial permit (it keys at the two
+    join calls and at the C-FAIL arm); `ProofSysOpenEntryC`'s block at the
+    one-path permit (it pays it at create's return and runs the tail at
+    `socr_ft`).
+11. `ProofSysOpenCreArm.socr_fresh` / `socr_exists` — one more argument
+    (`vom`) and the three guarded slots; `socr_res_of_fail` returns the
+    KEYED piece; `socr_ok_exists_arm`'s device arm the same;
+    `socr_arms_fresh` / `socr_arms_exists` run the tail at `socr_ft`.  New:
+    `socr_ft`, `socr_ft_recv`, `socr_ft_kept`, `socr_fresh_key`,
+    `socr_exists_key`.
+12. `PinnedOpen.pinned_open_bundle_at` / `pinned_open_bundle` — the trunc
+    premise at the trivial permit; `pinned_open_dev`'s device arm returns
+    `open_trunc_at … ino Ft`.  `UInitCons.init_cons_open_bundle` and
+    `init_cons_recv` the same at the console's inum.
+13. `UkTreeCreate.tree_open_create_fail_recv` — ONE NEW PREMISE,
+    `om_trunc vom = false` (the tree application's own mode; without it the
+    guarded arms cannot be read).  Its two consumers pass the `Htr` they
+    already hold.
+14. `FileOpen.file_trunc_recv` — three arms (`fown r s`,
+    `fown r (Some (i, []))`, the taint), the middle one no longer under
+    `⌜s = None⌝`; `file_trunc_piece` restated at the permit, with the path
+    premises and the line witness; `file_open_create_au` /
+    `_notrunc` as above.
+15. Nothing else.  `AppFile.v` again needed no change.
+
+**WHAT THE RULING SAID AND THE PROOFS CORRECTED.**
+
+1. **The EXISTS disjunct needs NO deed fraction, so F-OPEN-2's
+   restatements 2 and 3 are not needed.**  The ruling took F-OPEN-2's
+   finding 2 (identify `i` with a positive fraction inside `Fex`'s
+   receipt, reassemble the half from the arm's refund) and its finding 3
+   (the split is impossible at `s = None`, so make `Fex` and the arm
+   exclusive).  Neither is required: what the truncate must know about the
+   row is that it is none of the four era-0 binaries, and the CLAIM SAYS
+   THAT AT THE LOOKUP'S VIEW WITHOUT ANY FRACTION — `file_pred`'s
+   non-taint arm carries `⌜file_fs_pure av⌝`, and BOTH arms of `f_state`
+   carry the typed witness of whatever state the claim is at, whose pure
+   part bounds the content by `EchoDisc.line_max`
+   (`FileDeltas.f_bytes_typed_short`), so `f_inum_not_pinned` applies.
+   That is `file_claim_read_free`, it costs nothing linear, and it leaves
+   the deed's WHOLE half in the arm piece where the create leg needs it.
+2. **The permit must keep itself on the refund side.**  The ruling had the
+   permit spent at the fire; it is spent at create's RETURN (that is the
+   only instant where the tie, the cursor and the fired arm are all in
+   hand, and the tail below the join is parametric in nothing else).
+   Spending it there would burn the caller's investment on every arm that
+   does not fire the truncate — arm (a) above all — so the keyed piece
+   carries `Ft.(pf_refund) ∗ Kt i` (`cre_ft_kept`).  The `∧` in `pf_at` is
+   what makes that free.
+3. **The walk's terminal cursor is SPENT, not read.**  The tie needs it
+   (`d = ROOTINO` for this claim is a fact only the cursor carries), `P`
+   is an arbitrary possibly-linear predicate, and the kernel may not
+   duplicate it — so a TRUNCATING create's arms do not report the terminal
+   cursor (`cre_cur_kept`).  For every landed caller this is free: they
+   are at `om_trunc vom = false`, and the file application's cursor is the
+   pure `⌜d = ROOTINO⌝`.
+4. **The fold's "name existed" failure arm has TWO producers** and they
+   differ in whether the permit has been paid (create's own failure fold
+   reaches it with the piece whole; sys_open's later failure past a good
+   found node reaches it keyed).  The arm therefore reports
+   `cre_fail_kept` — the piece and the child legs TOGETHER — rather than
+   the piece alone, because the arm's half is what the permit was paid
+   with.
+
+**REFUTED / BLOCKED (deliverable P3): THE `s = None` EXISTS DISJUNCT IS
+DISCHARGED AND NOT REFUTED, AND THE REASON IS A VIEW.**  The ruling said
+the disjunct is refuted at an absent deed because "`f_ok av None` says the
+root has no `f`, contradicting `Fex`'s found entry at the tie".  The two
+facts are at DIFFERENT VIEWS and no later view carries the entry: `Fex`'s
+receipt is the instant create's `dirlookup` read the parent (`avx`), the
+`itrunc` fires much later, and between them create has `iunlockput`ed the
+parent — so the kernel cannot restate the entry at the truncate's view,
+and it would be dishonest if it did (another process may unlink in the
+window).  Refuting therefore needs the claim's OWN VALUE read at `avx`
+(not the determined one `file_claim_read_free` gives), which needs a
+positive deed fraction inside the `Fex` piece; at `s = None` the create's
+parent leg has already claimed the half in full (`file_step_park` at `f`
+joins it with the claim's to make `fdeed_whole`, and the bundle's pieces
+are `∗`-separated).  So:
+
+- `FileOpen.file_trunc_of_exists` DISCHARGES the disjunct instead: at
+  `s = None` the truncate at that row is a FREE step (the row is not
+  pinned, `f_ok av None` is preserved) and the deed comes back UNMOVED.
+  The lane is green and the bundle is suppliable at every deed value.
+- The price is in `file_trunc_recv`'s first arm (`fown r s`): on a
+  truncating `open(f, 0x601)` the fd arm's payload is
+  `fown r (Some (i, [])) ∨ fown r s` and not `fown r (Some (i, []))`
+  alone.  The second disjunct is unreachable on any RUN and unrefutable in
+  the STATEMENT.
+- TWO WAYS TO CLOSE IT, and neither is this lane's: (i) F-OPEN-2's
+  restatement 3 — `FsAbsCreateFire.acre_commit_at_gen` takes the UNFIRED
+  `Fex` piece beside the arm's receipt, making create's two arms exclusive
+  IN THE LOGIC, at which point `Fex` may hold `q2` and the parent leg
+  reassembles `q1 + q2` (kernel-tier, and it moves create, mknod, unlink
+  and open); or (ii) an APPLICATION-SIDE ESCROW — the deed's half in an
+  invariant of the claim's own with a one-shot in the arm piece saying it
+  has not fired, so the lookup may READ it and the arm may TAKE it
+  (`FileOpen`'s business alone, no kernel restatement).  (ii) is the
+  cheaper of the two and is the concrete counter-scenario the ruling asked
+  for before re-proposing (i).
+- A SECOND, SMALLER HOLE OF THE SAME SHAPE: the EXISTS arm's DEVICE
+  sub-arm (create's F-OK admits a found device) cannot be refuted either,
+  for the same reason — the row's type is reported at the OPEN's
+  observation instant and the claim's tie is at the lookup's.  A caller
+  that wants "the fd is on `f`'s own inode" must close both.
+
+**THE ONE THING LANE SH-ROUND NEEDS FIRST.**  `FileOpen.file_open_create_au`
+is now the redirect child's whole open at `0x601`: one deed in, the bundle
+out, no truncate premise.  What SH-ROUND must instantiate is
+`UkShRedirAns.ush_open_call2` at
+
+    K ty := ∃ i γo, ⌜ty = FdInode i γo OffParked⌝ ∗
+              (fown r (Some (i, [])) ∨ fown r s)
+    Kf   := fown r s ∨ (∃ i, fown r (Some (i, []))) ∨ file_taint c
+
+— `Kf` is exactly what F-OPEN-2 named (arm (a)'s deed comes home through
+the keyed piece's refund, `cre_ft_kept`), and `K` is F-OPEN-2's with the
+second disjunct the paragraph above explains.  THE RECEIPT READER IS NOT
+WRITTEN: a `file_open_create_recv` reading `open_receipt_create` at these
+families into those two payloads is mechanical (five failure shapes, each
+handing the deed back through the arm piece's refund, the create receipt
+or the keyed piece's refund; two success arms through the truncate's
+receipt) but it would today deliver a THREE-shaped fd arm — inode-with-
+`Some (i, [])`, inode-with-`s`, and device — and lane SH-ROUND should
+decide whether to take it at that shape or close (ii) first.  Everything
+else it needs of this lane is landed.

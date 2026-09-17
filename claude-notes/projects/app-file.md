@@ -674,3 +674,179 @@ this side: after the first call the list holds the remainder of the one
 with `freep` non-zero and the search loop turning once — not the
 first-generation induction over a circular list that `UkShMalloc`'s
 header declines.
+
+### SH-MALLOC-2 (2026-09-17) — malloc's SECOND call lands; the CHAIN from `ushm_fresh` is refuted
+
+Branch `app-file/sh-redir`, three commits on top of SH-PARSE-2's.  Whole
+tree green on the lane's remote tree (`--proofs`, `EXIT=0`, zero `Error`);
+`make audit-all-only` unchanged (echo FOURTEEN, system THIRTEEN); `make
+gen-ucode` prints every catalog unchanged (this lane fetched no new
+function); no `Admitted`; every new result carries `Proof using`.  The
+whole diff is `iris/UkShMalloc.v` and **no landed statement moved** —
+`wp_kshm_malloc_first`'s statement is unchanged to the character, which
+matters because `UkShParse.ushp_malloc_ty` is stated at its shape and
+THIRTEEN files carry it as `Hypothesis ushp_malloc_ok`.
+
+**WHAT LANDED**, all in `iris/UkShMalloc.v`.
+
+- `ushm_one sz R` (§4c, `iris/UkShMalloc.v:1257`) — the free list after a
+  call, the twin of `ushm_fresh`:
+
+  ```coq
+  Definition ushm_one (sz R : Z) : iProp Σ :=
+    (∃ c : Z,
+       ⌜ SH_BASE + 16 <= c /\ c mod 16 = 0 /\
+         0 < R /\ R < 2 ^ 31 /\ c + 16 * R <= sz /\ sz < 2 ^ 38 ⌝ ∗
+       uword γd SH_FREEP (mword_of_int SH_BASE) ∗
+       ushm_hdr SH_BASE (mword_of_int c) 0 ∗
+       ushm_hdr c (mword_of_int SH_BASE) R ∗
+       (∃ g : nat -> bv 8, ubytes γd (c + 16) (Z.to_nat (16 * R - 16)) g) ∗
+       usz γs sz)%I.
+  ```
+
+  `freep = &base`, `base = { ptr = c ; size = 0 }`, the one chunk at `c`
+  pointing back with `R` units free and its body owned, the break at `sz`.
+  What was already carved off is not mentioned.
+
+- **`wp_kshm_malloc_first_st`** (`:1561`) and **`wp_kshm_malloc_first`**
+  (`:3637`).  The brief asked for the bridge "first-call POST = `ushm_one`
+  at `R = 4096 - nunits`, as a corollary without restating the first-call
+  theorem".  **That bridge does not exist and cannot**, and this is the
+  lane's first correction to the brief: `wp_kshm_malloc_first`'s post is
+  `usz γs (sz + 65536) ∗ ubytes γd q nbytes g` and NOTHING else — §5's own
+  header says so ("THE ALLOCATOR'S LEFTOVER IS DROPPED, deliberately …
+  handing out a state predicate no lemma consumes would be a promise about
+  the free list this proof does not make").  The free list is dropped by
+  AFFINITY inside the 2050-line walk, so no corollary can recover it.
+  What was done instead keeps every landed statement: the walk is now
+  `wp_kshm_malloc_first_st`, whose success arm reads
+  `ushm_one (sz + 65536) (4096 - ((nbytes + 15) / 16 + 1))` where the old
+  one read `usz γs (sz + 65536)`, and `wp_kshm_malloc_first` is that lemma
+  with the list dropped again, in twenty lines.  The walk itself did not
+  change: the resources were still in the proof context at the return, and
+  the only edits are the final `iApply "Hcont"`'s spec pattern (which had
+  hidden them, `[Hsz Hpay]`) and the success arm's assembly.
+
+- **`wp_kshm_malloc_one`** (`:3725`) — **THE SECOND CALL**:
+
+  ```coq
+  Lemma wp_kshm_malloc_one (h : CpuId) (m : regfile)
+      (nbytes szv R : Z) (avail : nat) :
+    m !!! Regidx a0_idx = (mword_of_int nbytes : mword 64) ->
+    0 < nbytes -> nbytes <= 65504 ->
+    (nbytes + 15) / 16 + 1 < R ->
+    shm_code γt -∗ ushm_one szv R -∗
+    urun N h m (mword_of_int ShSyms.malloc) (10 + avail) -∗
+    (∀ (h' : CpuId) (m' : regfile) (r : mword 64),
+       ⌜ ucallee_saved m m' ⌝ -∗ ⌜ m' !!! Regidx a0_idx = r ⌝ -∗
+       (∃ (q : Z) (g : nat -> bv 8),
+          ⌜ r = (mword_of_int q : mword 64) ⌝ ∗
+          ⌜ 0 < q /\ q mod 16 = 0 /\ q + nbytes < 2 ^ 38 ⌝ ∗
+          ushm_one szv (R - ((nbytes + 15) / 16 + 1)) ∗
+          ubytes γd q (Z.to_nat nbytes) g) -∗
+       urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (10 + avail) -∗
+       WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+  ```
+
+  TWENTY-FOUR instructions and NO failure arm: `0x118c..0x11a8` (frame and
+  `nunits`), `0x11aa/0x11ae` (`prevp = freep`, not zero), `0x11b2`
+  (`c.beqz` NOT taken, the init arm skipped), `0x11b4/0x11b6/0x11b8`
+  (`p = base.s.ptr` IS the chunk, so the search loop's FIRST turn finds
+  it), then `0x1244..0x1264` (exact fit refuted, the TAIL cut, `freep`) and
+  `wp_kshm_malloc_epi` for `0x1268..0x1272`.  No `sbrk`, no `free`, not one
+  back edge.
+  - **the size test at `0x11b8` reads s3 and the one at `0x121a` reads s2.**
+    Same C line, different instruction, so the first call's `bgeu` lemma is
+    not this one's.
+  - **`0x1244..0x1264` was WALKED AGAIN, not factored** (the brief asked
+    which and why).  The first call reaches that block with s1/s4/s5/s6
+    already restored and eleven register-chain facts threaded around it; a
+    shared lemma would take the whole chain as parameters and be longer
+    than either copy.  Eleven instructions, paid once.
+  - `ushm_sext32_moi` (`:230`) is `WpUmodeLoad.sext32_moi` re-proved from
+    `RiscvExtras.sext64_moi32_unsigned`: that file is NOT on `UkShMalloc`'s
+    import path and the `0x11b6` `c.lw` needs the fact at a size that is
+    not a literal.
+
+- **The capability layer** (§7): `ushm_one_cap sz` (`∃ R, 1 <= R <= 4094`),
+  `ushm_one_ge sz R` (`∃ R', R <= R'`) with `ushm_one_ge_mono`;
+  `ushm_malloc_ok_one` — `UkShParse.ushp_malloc_ty N (ushm_fresh sz)
+  (ushm_one_cap (sz + 65536))`, §6's adapter at the landed type with a
+  strictly stronger post, so `UkShMain.wp_kshm_child_alloc` could take it
+  instead and nothing else would move; `ushm_malloc_ty_le B UM UM'` —
+  `ushp_malloc_ty` with `nbytes <= 65504` weakened to `nbytes <= B` — with
+  `ushm_malloc_ty_le_top` (the landed type IS the bound at 65504, by
+  `exact`: the two are convertible) and `ushm_malloc_ty_le_mono`; and the
+  four instances `ushm_malloc_le_fresh`, `ushm_malloc_le_one`,
+  `ushm_malloc_le_exec` (`ushm_malloc_ty_le 168 (ushm_fresh sz)
+  (ushm_one_ge (sz + 65536) 4084)`) and `ushm_malloc_le_redir`
+  (`ushm_malloc_ty_le 40 (ushm_one_ge sz 4084) (ushm_one_ge sz 4080)`).
+
+**REFUTED — `wp_kshm_child_alloc_redir` DOES NOT LAND, and not for want of
+proof effort.**
+
+`UkShParse.ushp_malloc_ty UM UM'` (`iris/UkShParse.v:3552`) quantifies
+`nbytes` UNIVERSALLY over `0 < nbytes <= 65504`, and `UM'` — being one
+`iProp` fixed before `nbytes` is bound — may not mention it.  Chain two of
+them from `ushm_fresh` and the arithmetic closes:
+
+- at `nbytes = 65504`, `nunits = (65504+15)/16 + 1 = 4095`, so ONE call
+  takes 4095 of the 4096 units `morecore` inserted and the strongest `UM1`
+  a first call can promise is **"at least one unit is free"**
+  (`ushm_one_cap`'s `1 <= R <= 4094` is exactly that bound, and it is
+  tight);
+- `ushp_malloc_ty N UM1 UM2` must then serve `nbytes = 65504` too, which
+  needs 4095 free units.
+
+**So no `UM1` satisfies both halves at a free list that is one 64 KiB
+chunk**, and `UkShRedirSeam.wp_kshm_child_redir`'s
+`Hm0 : ushp_malloc_ty N UM0 UM1` / `Hm1 : ushp_malloc_ty N UM1 UM2`
+(`iris/UkShRedirSeam.v:403-404`) cannot both be discharged from
+`ushm_fresh`.  SH-PARSE-2's diagnosis ("what unblocks it is a second-call
+malloc theorem … and nothing else in this lane") is therefore incomplete:
+the second-call theorem lands here and is not enough.
+
+`wp_kshm_malloc_one`'s `nunits < R` is NOT a premise more effort could
+drop:
+
+- dropping it means walking the NO-FIT path — `0x11bc..0x11e0` (spill
+  s1/s4/s5/s6, `nu = max(nunits, 4096)`, `s1 = &freep`, `s5 = -1`) and then
+  the loop's BACK EDGE, `0x121e/0x1220/0x1222` taken to `0x1216`,
+  `0x1216/0x1218/0x121a` at `base` (size 0, not taken), `0x121e..0x1222`
+  again NOT taken, `sbrk` — about 45 instructions;
+- and a **`free` at a TWO-BLOCK circular list**, which is a different walk
+  from `wp_kshm_free_first`: the scan turns once (`0x1126` taken at
+  `base -> chunk`), breaks at the chunk, and neither coalesce test fires,
+  so `chunk->ptr = bp` and `freep = chunk` — about 25 instructions and a
+  three-block list out;
+- **and that walk cannot even reach its `sbrk`.**  `wp_kshm_sbrk`'s
+  precondition is `usz_ok (sz' + 65536)` (`iris/UkShMalloc.v:346`), and
+  all `ushm_one` can carry about the break is where it IS: the first call's
+  own premise is `usz_ok (sz + 65536)`, which says nothing about room for a
+  second 64 KiB.  Making the no-fit path reachable therefore means
+  `ushm_one` carrying `usz_ok (sz + 65536)` AND every caller up to
+  `UkShMain.wp_kshm_child_alloc` / `AppFile` supplying
+  `usz_ok (sz + 131072)` — a premise change across the seam, not a walk.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  **Re-state the thirteen
+`ushp_malloc_ok` hypotheses at `ushm_malloc_ty_le 168`**, and
+`wp_kshm_child_redir`'s two `Hm` parameters with them.  sh's constructors
+call `malloc` at exactly two sizes — `execcmd` at 168
+(`iris/UkShParseLex.v:1896`) and `redircmd` at 40
+(`iris/UkShRedirCmd.v:401`) — so the capability they actually need is the
+BOUNDED one, and at a bound the chain closes: the redirect line's whole
+parse costs SIXTEEN of the chunk's 4096 units (12 + 4), and
+`ushm_malloc_le_exec` / `ushm_malloc_le_redir` are already proved and
+waiting.  The files are `UkShParseLex`, `UkShParseTok`, `UkShParseRedir`,
+`UkShParseExec`, `UkShParseCmd`, `UkShRedirCmd`, `UkShRedirPr`,
+`UkShRedirEx`, `UkShRedirPex`, `UkShRedirNul`, `UkShRedirCm`,
+`UkShRedirPc`, `UkShRedirSeam` — each carries ONE `Local Notation
+ushp_malloc_ty := (UkShParse.ushp_malloc_ty N)` and one or two
+`Hypothesis` lines, so the edit is thirteen notation lines plus the two
+`Hm` binders in `wp_kshm_child_redir`; no proof text moves, because a
+bounded capability is applied at exactly the same call sites with the same
+arguments.  It IS a statement move, which is why this lane did not make it
+— but it is the cheap fix, and the expensive one (the second `morecore`,
+`free` at two blocks, and `usz_ok` room threaded from `AppFile` down) buys
+nothing the shell uses.

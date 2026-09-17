@@ -118,14 +118,22 @@ Record file_names := MkFileNames {
   fn_tkt  : gname;
 }.
 
+(* THE DEED'S STATE: the model's [fst] with the file's INUM beside its bytes.
+   The inum is what lets a holder identify the row its descriptor sits on
+   with [f]'s (lane F-WRITE's finding: at an existential inum the deed says
+   what [f] holds and never which row is [f], and a free step could even
+   relocate it); the model reads the content only ([dst_content]). *)
+Definition dst : Type := option (Z * list (bv 8)).
+Definition dst_content (s : dst) : fst := (fun p => p.2) <$> s.
+
 Class fileAppG (Σ : gFunctors) := FileAppG {
-  fa_deed : ghost_varG Σ fst;
+  fa_deed : ghost_varG Σ dst;
   fa_fl   : inG Σ (mono_listR (leibnizO wordline));
 }.
 #[global] Existing Instances fa_deed fa_fl.
 
 Definition fileAppΣ : gFunctors :=
-  #[ ghost_varΣ fst; GFunctor (mono_listR (leibnizO wordline)) ].
+  #[ ghost_varΣ dst; GFunctor (mono_listR (leibnizO wordline)) ].
 
 Global Instance subG_fileAppΣ {Σ} : subG fileAppΣ Σ -> fileAppG Σ.
 Proof. solve_inG. Qed.
@@ -213,15 +221,15 @@ Section FileClaim.
   (*  2.  THE DEED AND THE TICKET                                       *)
   (* ---------------------------------------------------------------- *)
 
-  Definition fdeed (r : file_names) (s : fst) : iProp Σ :=
+  Definition fdeed (r : file_names) (s : dst) : iProp Σ :=
     ghost_var (fn_deed r) (1/2) s.
-  Definition fdeed_whole (r : file_names) (s : fst) : iProp Σ :=
+  Definition fdeed_whole (r : file_names) (s : dst) : iProp Σ :=
     ghost_var (fn_deed r) 1 s.
-  Definition ftkt (r : file_names) (s : fst) : iProp Σ :=
+  Definition ftkt (r : file_names) (s : dst) : iProp Σ :=
     ghost_var (fn_tkt r) (1/2) s.
 
   (* what a holder normally has: both halves, at one value *)
-  Definition fown (r : file_names) (s : fst) : iProp Σ :=
+  Definition fown (r : file_names) (s : dst) : iProp Σ :=
     (fdeed r s ∗ ftkt r s)%I.
 
   Global Instance fdeed_timeless r s : Timeless (fdeed r s).
@@ -233,14 +241,14 @@ Section FileClaim.
   Global Instance fown_timeless r s : Timeless (fown r s).
   Proof using . rewrite /fown. apply _. Qed.
 
-  Lemma fdeed_agree (r : file_names) (s s' : fst) :
+  Lemma fdeed_agree (r : file_names) (s s' : dst) :
     fdeed r s -∗ fdeed r s' -∗ ⌜s = s'⌝.
   Proof using .
     rewrite /fdeed. iIntros "H1 H2".
     iDestruct (ghost_var_agree with "H1 H2") as %Heq. by iPureIntro.
   Qed.
 
-  Lemma ftkt_agree (r : file_names) (s s' : fst) :
+  Lemma ftkt_agree (r : file_names) (s s' : dst) :
     ftkt r s -∗ ftkt r s' -∗ ⌜s = s'⌝.
   Proof using .
     rewrite /ftkt. iIntros "H1 H2".
@@ -249,7 +257,7 @@ Section FileClaim.
 
   (* a half beside the whole is three halves: the exclusion the reader's
      law and the parking step both run on *)
-  Lemma fdeed_whole_excl (r : file_names) (s s' : fst) :
+  Lemma fdeed_whole_excl (r : file_names) (s s' : dst) :
     fdeed r s -∗ fdeed_whole r s' -∗ False.
   Proof using .
     rewrite /fdeed /fdeed_whole. iIntros "H1 H2".
@@ -257,7 +265,7 @@ Section FileClaim.
     iPureIntro. rewrite Qp.add_comm in Hq. exact (Qp.not_add_le_l _ _ Hq).
   Qed.
 
-  Lemma fdeed_join (r : file_names) (s s' : fst) :
+  Lemma fdeed_join (r : file_names) (s s' : dst) :
     fdeed r s -∗ fdeed r s' -∗ fdeed_whole r s.
   Proof using .
     iIntros "H1 H2". iDestruct (fdeed_agree with "H1 H2") as %<-.
@@ -266,7 +274,7 @@ Section FileClaim.
     rewrite Heq. iCombine "H1 H2" as "H". iExact "H".
   Qed.
 
-  Lemma fdeed_split (r : file_names) (s : fst) :
+  Lemma fdeed_split (r : file_names) (s : dst) :
     fdeed_whole r s -∗ fdeed r s ∗ fdeed r s.
   Proof using .
     rewrite /fdeed /fdeed_whole. iIntros "H".
@@ -275,11 +283,11 @@ Section FileClaim.
     iFrame "H1 H2".
   Qed.
 
-  Lemma fdeed_whole_update (r : file_names) (s s' : fst) :
+  Lemma fdeed_whole_update (r : file_names) (s s' : dst) :
     fdeed_whole r s ==∗ fdeed_whole r s'.
   Proof using . rewrite /fdeed_whole. iApply ghost_var_update. Qed.
 
-  Lemma ftkt_update (r : file_names) (s s' s'' : fst) :
+  Lemma ftkt_update (r : file_names) (s s' s'' : dst) :
     ftkt r s -∗ ftkt r s' ==∗ ftkt r s'' ∗ ftkt r s''.
   Proof using .
     rewrite /ftkt. iIntros "H1 H2".
@@ -289,7 +297,7 @@ Section FileClaim.
 
   (* fresh names, both halves of both ghosts, at any value: what every
      transport and the era-0 mint allocate *)
-  Lemma fnames_alloc (r1 : echo_names) (s : fst) :
+  Lemma fnames_alloc (r1 : echo_names) (s : dst) :
     ⊢ |==> ∃ r : file_names,
         ⌜fn_cons r = r1⌝ ∗ fdeed r s ∗ fdeed r s ∗ ftkt r s ∗ ftkt r s.
   Proof using .
@@ -307,12 +315,12 @@ Section FileClaim.
   (* the content the view holds at [f]: the file's bytes at the inum the
      root's entry [f] names, [None] when there is no such entry -- or when
      the row is not a plain file, which [f_ok] excludes *)
-  Definition fcontent_of (av : aview) : fst :=
+  Definition fcontent_of (av : aview) : dst :=
     match astep av FsImg.ROOTINO fname_f with
     | None => None
     | Some i =>
         match av !! i with
-        | Some (MkAnode (AFile bs) _) => Some bs
+        | Some (MkAnode (AFile bs) _) => Some (i, bs)
         | _ => None
         end
     end.
@@ -322,20 +330,19 @@ Section FileClaim.
      links [f] (a link by an unverified process is an unpaid move: taint),
      and the pinned observation the read runs on wants the row on the
      nose. *)
-  Definition f_ok (av : aview) (s : fst) : Prop :=
+  Definition f_ok (av : aview) (s : dst) : Prop :=
     match s with
     | None => f_absent av
-    | Some bs =>
-        exists i : Z,
-          astep av FsImg.ROOTINO fname_f = Some i
-          /\ av !! i = Some (MkAnode (AFile bs) 1%nat)
+    | Some (i, bs) =>
+        astep av FsImg.ROOTINO fname_f = Some i
+        /\ av !! i = Some (MkAnode (AFile bs) 1%nat)
     end.
 
-  Lemma f_ok_fcontent (av : aview) (s : fst) :
+  Lemma f_ok_fcontent (av : aview) (s : dst) :
     f_ok av s -> fcontent_of av = s.
   Proof using .
-    rewrite /f_ok /fcontent_of. destruct s as [bs |].
-    - intros (i & Hs & Hrow). by rewrite Hs Hrow.
+    rewrite /f_ok /fcontent_of. destruct s as [[i bs] |].
+    - intros (Hs & Hrow). by rewrite Hs Hrow.
     - rewrite /f_absent. intros Hs. by rewrite Hs.
   Qed.
 
@@ -362,25 +369,25 @@ Section FileClaim.
      sits only in the [Some] arm: a lower bound of the fixed-part list is
      not mintable from nothing ([◯ML []] is not a unit), and era 0 has no
      [f]. *)
-  Definition f_typed (c : file_fixed) (s : fst) : iProp Σ :=
+  Definition f_typed (c : file_fixed) (s : dst) : iProp Σ :=
     match s with
     | None => emp
-    | Some bs => (∃ ls : list wordline, fl_lb c ls ∗ ⌜f_bytes_typed ls bs⌝)%I
+    | Some (_, bs) => (∃ ls : list wordline, fl_lb c ls ∗ ⌜f_bytes_typed ls bs⌝)%I
     end.
 
   Global Instance f_typed_persistent c s : Persistent (f_typed c s).
-  Proof using . destruct s; rewrite /f_typed; apply _. Qed.
+  Proof using . destruct s as [[i bs] |]; rewrite /f_typed; apply _. Qed.
   Global Instance f_typed_timeless c s : Timeless (f_typed c s).
-  Proof using . destruct s; rewrite /f_typed; apply _. Qed.
+  Proof using . destruct s as [[i bs] |]; rewrite /f_typed; apply _. Qed.
 
   (* the two ways a process re-proves the typed fact at a new content *)
   Lemma f_typed_none (c : file_fixed) : ⊢ f_typed c None.
   Proof using . by rewrite /f_typed. Qed.
 
   Lemma f_typed_some (c : file_fixed) (ls : list wordline) (ws : wordline)
-      (sel : list nat) :
+      (sel : list nat) (i : Z) :
     ws ∈ ls -> EchoDisc.line_ok ws -> sel_ok (echo_chunks ws) sel ->
-    fl_lb c ls -∗ f_typed c (Some (subseq (echo_chunks ws) sel)).
+    fl_lb c ls -∗ f_typed c (Some (i, subseq (echo_chunks ws) sel)).
   Proof using .
     intros Hin Hok Hsel. iIntros "#Hlb". rewrite /f_typed. iExists ls.
     iFrame "Hlb". iPureIntro. by exists ws, sel.
@@ -394,8 +401,8 @@ Section FileClaim.
      at the OLD value, the ticket's half at the old value, the content at
      the NEW one -- the window between a fire's two phases. *)
   Definition f_state (c : file_fixed) (r : file_names) (av : aview) : iProp Σ :=
-    ((∃ s : fst, fdeed r s ∗ ftkt r s ∗ f_typed c s ∗ ⌜f_ok av s⌝)
-     ∨ (∃ s s' : fst, fdeed_whole r s ∗ ftkt r s ∗ f_typed c s' ∗ ⌜f_ok av s'⌝))%I.
+    ((∃ s : dst, fdeed r s ∗ ftkt r s ∗ f_typed c s ∗ ⌜f_ok av s⌝)
+     ∨ (∃ s s' : dst, fdeed_whole r s ∗ ftkt r s ∗ f_typed c s' ∗ ⌜f_ok av s'⌝))%I.
 
   Global Instance f_state_timeless c r av : Timeless (f_state c r av).
   Proof using . rewrite /f_state. apply _. Qed.
@@ -410,7 +417,7 @@ Section FileClaim.
   Proof using . rewrite /file_pred. apply _. Qed.
 
   (* the exact arm, as the transports and the era mint build it *)
-  Lemma file_pred_exact (c : file_fixed) (r : file_names) (av : aview) (s : fst) :
+  Lemma file_pred_exact (c : file_fixed) (r : file_names) (av : aview) (s : dst) :
     file_fs_pure av -> f_ok av s ->
     cons_state (fn_cons r) av -∗ fdeed r s -∗ ftkt r s -∗ f_typed c s -∗
     file_pred c r av.
@@ -449,7 +456,7 @@ Section FileClaim.
      typed witness -- or the taint.  A holder of a half meets no in-flight
      arm. *)
   Lemma file_deed_law (c : file_fixed) (r : file_names) :
-    ⊢ □ (∀ (v : aview) (s : fst),
+    ⊢ □ (∀ (v : aview) (s : dst),
            fdeed r s -∗ file_pred c r v -∗
            file_pred c r v ∗ fdeed r s ∗
            ((⌜f_ok v s⌝ ∗ f_typed c s) ∨ file_taint c)).
@@ -471,7 +478,7 @@ Section FileClaim.
 
   (* ...and its pure-only reading *)
   Lemma file_deed_law_pure (c : file_fixed) (r : file_names) :
-    ⊢ □ (∀ (v : aview) (s : fst),
+    ⊢ □ (∀ (v : aview) (s : dst),
            fdeed r s -∗ file_pred c r v -∗
            file_pred c r v ∗ fdeed r s ∗ (⌜f_ok v s⌝ ∨ file_taint c)).
   Proof using .
@@ -542,7 +549,7 @@ Section FileClaim.
      exact to in flight at the new content.  Update-free, so it is
      [AppInv.app_step]'s wand verbatim once lifted by [iModIntro]. *)
   Lemma file_step_park (c : file_fixed) (r : file_names) (av av' : aview)
-      (s s' : fst) :
+      (s s' : dst) :
     (file_fs_pure av -> file_fs_pure av') ->
     (cons_absent av -> cons_absent av') ->
     (forall i, cons_present_at i av -> cons_present_at i av') ->
@@ -704,7 +711,7 @@ Section FileClaim.
      it at its first step, everything under it being timeless. *)
   Definition file_boot (c : file_fixed) (k : nat) (r : file_names) : iProp Σ :=
     (echo_boot c.1 k (fn_cons r)
-     ∗ ∃ s : fst, fown r s ∗ ▷ (f_typed c s ∨ file_taint c))%I.
+     ∗ ∃ s : dst, fown r s ∗ ▷ (f_typed c s ∨ file_taint c))%I.
 
   Lemma file_xfer_boot (c : file_fixed) (k : nat) :
     ⊢ □ (∀ (r : file_names) (av : aview),
@@ -807,7 +814,7 @@ Section FileClaimEra.
      carries: the fire hands the mover the node it chose and the mover
      answers with the step.  [tree_app_step_of]'s twin. *)
   Lemma file_app_step_park (c : file_fixed) (r : file_names)
-      (i : Z) (I : gmap Z fs_node) (av' : aview) (s s' : fst) :
+      (i : Z) (I : gmap Z fs_node) (av' : aview) (s s' : dst) :
     file_app = MkAppcfg file_names (file_pred c) r ->
     (file_fs_pure (abs_view I) -> file_fs_pure av') ->
     (cons_absent (abs_view I) -> cons_absent av') ->
@@ -821,11 +828,23 @@ Section FileClaimEra.
     iApply (file_step_park c r _ _ s s' Hpins Hab Hpr Hok with "Hd Hty' Hp").
   Qed.
 
+  (* THE TAINTED STEP at [AppInv.app_step]'s shape ([TreeMove.tree_app_step_taint]'s
+     twin): a holder of the taint answers any move. *)
+  Lemma file_app_step_taint (c : file_fixed) (r : file_names)
+      (i : Z) (I : gmap Z fs_node) (av' : aview) :
+    file_app = MkAppcfg file_names (file_pred c) r ->
+    file_taint c -∗ app_step i I av'.
+  Proof using .
+    intros Heq. iIntros "#Ht". rewrite /app_step.
+    iIntros (n') "%Hav Hp". rewrite Heq. cbn [app_pred app_run app_names].
+    iModIntro. iNext. iApply (file_step_taint with "Ht Hp").
+  Qed.
+
   (* PHASE 2, THE RESYNC: at the era's record, inside the fire's own fupd
      (the mask holds [appN]), the ticket buys both ghosts at the content
      the post view actually has -- or the taint hands the ticket back. *)
   Lemma file_resync (γfs : fs_names) (c : file_fixed)
-      (r : file_names) (s s' : fst) (I' : gmap Z fs_node) (E : coPset) :
+      (r : file_names) (s s' : dst) (I' : gmap Z fs_node) (E : coPset) :
     ↑appN ⊆ E ->
     file_app = MkAppcfg file_names (file_pred c) r ->
     fcontent_of (abs_view I') = s' -> s <> s' ->

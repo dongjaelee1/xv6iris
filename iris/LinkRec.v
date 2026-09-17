@@ -92,8 +92,16 @@ Section linkrec.
     (* ---- the LINE MODEL ---- *)
     lk_ab : list (bv 8) -> nat -> list (bv 8);
     lk_apr : list (bv 8) -> nat -> Prop;
-    lk_pan : nat;
-    lk_exf : nat;
+    (* THE SHELL'S OWN TWO ALTERNATIVES ARE PER-LINE (lane LINK-GEN-2).
+       At the echo application there is one line shape and the fork panic
+       is the constant 3; [FileDisc.ralt_ok] admits [RFFork] only at an
+       [LEchoF] line, [RCFork] only at an [LCat] one and [REcho 3] only at
+       an [LEcho] one.  The panic's BYTES are uniform ([alt_panic] at all
+       three); the exec-failed child's are NOT -- sh prints
+       "exec %s failed" with the command name -- hence [lk_exfb]. *)
+    lk_pan : list (bv 8) -> nat;
+    lk_exf : list (bv 8) -> nat;
+    lk_exfb : list (bv 8) -> list (bv 8);
     lk_noc : nat;
 
     (* ---- the credential families ---- *)
@@ -257,9 +265,9 @@ Section linkrec.
       lk_blk k v (I ++ l ++ [wl_nl]) a 0%nat;
 
     (* ---- the two CONSTANT alternatives, and the panic's banner ---- *)
-    lk_ab_pan : forall I, lk_ab I lk_pan = alt_panic;
-    lk_ab_exf : forall I, lk_ab I lk_exf = alt_execfail;
-    lk_apr_exf : forall I, lk_apr I lk_exf;
+    lk_ab_pan : forall I, lk_ab I (lk_pan I) = alt_panic;
+    lk_ab_exf : forall I, lk_ab I (lk_exf I) = lk_exfb I;
+    lk_apr_exf : forall I, lk_apr I (lk_exf I);
 
     (* ---- the turn comes apart into the read half and round 0's
             banner-owed credential ([UInitBanner.kinit_ban0_of_eturn]) ---- *)
@@ -273,7 +281,8 @@ Section linkrec.
         (∃ v : era_pins, lk_pin k v ∗ dl_cnt v (1/2) 0%nat ∗ inp_lb v [])
         ∗ (∃ v : era_pins, lk_pin k v ∗ lk_ban k v [] 0%nat);
     lk_panic_done : forall k v I,
-      ⊢ lk_blk k v I lk_pan (length (lk_ab I lk_pan)) -∗ lk_ban k v I 0%nat;
+      ⊢ lk_blk k v I (lk_pan I) (length (lk_ab I (lk_pan I))) -∗
+        lk_ban k v I 0%nat;
   }.
 
 End linkrec.
@@ -324,7 +333,7 @@ Section linkgen.
 
   (* the shell's own panic line, [i] of its bytes out *)
   Definition lk_panic (k : nat) (v : era_pins) (I : list (bv 8)) (i : nat)
-    : iProp Σ := lk_blk L k v I (lk_pan L) i.
+    : iProp Σ := lk_blk L k v I (lk_pan L I) i.
 
   (* the two with the era's pin inside, [ewc_cred] / [ewc_lcred] *)
   Definition lk_cred (k : nat) (I : list (bv 8)) (p : nat) : iProp Σ :=
@@ -469,7 +478,7 @@ Section linkgen.
   Proof using .
     rewrite /lk_lcred. iIntros "Hc". iDestruct "Hc" as (v) "[#Hpin Hc]".
     iExists v. iFrame "Hpin". rewrite (lk_lpr_S3 L k v I 0%nat) /lk_panic.
-    iApply (lk_blk_0 L k v I 0%nat (lk_pan L) with "Hc").
+    iApply (lk_blk_0 L k v I 0%nat (lk_pan L I) with "Hc").
   Qed.
 
   (* ---- one byte of the panic line ---- *)
@@ -479,7 +488,7 @@ Section linkgen.
     (lk_panic k v I (S i) -∗ Φ) -∗ out_link Uart0 k b Φ.
   Proof using .
     intros Hb. rewrite /lk_panic.
-    iApply (lk_blk_step L k v I (lk_pan L) i b Φ).
+    iApply (lk_blk_step L k v I (lk_pan L I) i b Φ).
     by rewrite (lk_ab_pan L I).
   Qed.
 
@@ -623,8 +632,9 @@ Section echo_inst.
        lk_links := EchoLinks.echo_links T γ;
        lk_ab := fun I a => line_alts_of (last_ws I) !!! a;
        lk_apr := fun _ a => (a < 3)%nat;
-       lk_pan := 3%nat;
-       lk_exf := 1%nat;
+       lk_pan := fun _ => 3%nat;
+       lk_exf := fun _ => 1%nat;
+       lk_exfb := fun _ => alt_execfail;
        lk_noc := 2%nat;
        lk_ban := fun _ v I i => EchoLinks.ewc_ban T v I i;
        lk_owed := fun _ v I => EchoLinks.ewc_owed T v I;

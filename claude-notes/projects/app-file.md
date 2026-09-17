@@ -8142,3 +8142,227 @@ six further files as PROOF TEXT and nothing else — `destruct Hb as
 sites), `UInitConsK.v` (LINK-GEN's, one), `UShConsK.v`,
 `UInitTreeCons.v`, `UkTreeCreate.v`, `UkTreeRead.v`.  No statement in any
 of those moved.
+
+### CAT-GEOM-2 (2026-09-17) — cat's PAYMENT AT THE CLAIM: BOTH ARMS ASSEMBLED, THE TAINTED OPEN KEEPS ITS LEDGER, AND THE ROUND LOSES A VACUOUS PREMISE
+
+Branch `app-file/cat-entry`, merged with `main` three times more
+(SKELETON's `5894e21dc`, SUP-ONE / OFF-LINK / WRITE-RELAY-2's
+`2b2922598`, and the fix-forward `ba34a9c5f`).  Nothing in this lane's
+files named `riscv_kill_cred`, `pipe_taint_cred` or
+`kcat_cldep_nonpipe`; what SUP-ONE's U2 did change under this lane is
+`UkCatMain.kcat_pay_all_of_law`, which lost its `udepw_law 21` premise
+(the close is FREE at a descriptor whose leaf exports
+`FdSlots.fdst_nopipe`), so `UShCat.cat_uexec_slot` /
+`cat_slot_of_kexec` and `UCatKernel.cat_pay_at_of_law` drop that
+premise too rather than carry it unused.
+
+**THE LANE'S VERDICT IN ONE LINE: all five items land, and two of them
+close residues CAT-ENTRY-2 and CAT-GEOM had left open — lane OFF-LINK's
+count bound makes `cat_round_at`'s `Hw` provable outright
+(`cat_hw_of_link`) and makes the `cat: read error` tail REFUTABLE, so the
+round drops a premise that was UNSATISFIABLE at a claim and therefore
+made it vacuously true.**
+
+**(2) THE TAINTED OPEN KEEPS THE LEDGER.  `iris/UkFileOpen.v`.**
+
+`UkFileOpen.uk_open_taint_fd gf l r` — "either the call failed and the
+ledger is UNTOUCHED, or it allocated and the handle came with it" — is
+`UConsOpen.uk_open_fd_arm` minus the two kernel-side lists the caller
+cannot name.  It replaces `UserFd.ustd_any` on the taint disjunct of
+**exactly six statements**: `wp_uk_ecall_open_read_deed`,
+`wp_uk_ecall_open_miss_deed` and their `_v` and `_d` twins.  The leaf had
+the disjunction in hand and threw it away.  Two readings come with it:
+`uk_open_taint_fd_of_arm` (the leaf's own arm) and
+**`uk_open_taint_fd_std`** — at `fd_lowest_closed l = None` the ledger
+comes home on BOTH sub-arms, because `fdalloc` could not have landed on a
+standard stream (`UserFd.ualloc_hi`).  That is what a tainted cat needs
+and what `ustd_any` could not give: `ustd_any` does not say the program's
+fd 2 is still the console, so `kcat_wb_of_link` could not be run after a
+tainted open.  `UkCatDeed.v` relays it in four places
+(`wp_kcat_open_read_deed`, `wp_kcat_open_miss_deed`, `kcat_o_of_deed`,
+`kcat_o_of_deed_miss`).  The CREATE corollary is untouched.
+
+**(3) `UCatOut.catq_filed` FILES AT CAT'S OWN END CURSOR.**
+
+`UCatOut.cat_out_len cs0 s0 I0 a := length (cont (cat_st cs0 s0 I0) LCat
+(ralt_dec a)) - length u_prompt`, with the two readings
+`cat_out_len_ran_some` (`= length bs` at a present deed) and
+`cat_out_len_ran_none` (`= 19` at an absent one).  Every alternative
+cat's round can take is `<cat's own output> ++ u_prompt`, and **the
+prompt is the SHELL's** — cat exits before it is written.
+`catq_filed_const` is still `reflexivity`, so the `forall x y, Q x = Q y`
+the record wants is unchanged.  **WHAT SH-ROUND THEN FILES at the two
+bytes between `cat_out_len` and the round's length**: its own prompt
+write, through `FileLinks.file_write_link` at the choice list cat's FIRST
+byte already extended — except in the EMPTY-CONTENT case, where cat wrote
+nothing, the prompt's first byte IS the block's, and it goes through
+`file_write_link_blk` (CAT-ENTRY's ruling (b), `UCatOut.cch_empty_unfiled`).
+
+**(5) `UShRound.Hchild_cat` TAKES THE NODE PREMISES.**  `iris/UShRound.v`,
+that hypothesis and nothing else; the file's proofs stay `Admitted`.  It
+now quantifies `ws`, `sv`, `t`, `gn`, takes `line_ok ws`,
+`UShEcho.echo_node_img ws M sv t gn`, `UkShEcho.echo_argv_bytes ws gn`,
+`length ws = 2`, `UkShEcho.echo_alen ws 1 = 1` and the file name's one
+byte, and concludes at `av := mword_of_int (t + 8)`.  Free `M` and `av`
+made it a claim about EVERY argument vector, and cat's diagnostic names
+`f`.  It is now ONE application of `UCatKernel.cat_image_entry`.
+
+**(1) THE ABSENT ARM, WHOLE.**
+
+`UShCat.cat_kexec_argpath` reads `ArgPath.arg_path_of` at `argv[i]` out
+of the PERSISTED area: the block is above the entry sp
+(`cat_kexec_geom`'s `kxc_sp_final < kxc_sp (S i)`), so it is exactly the
+half `cat_entry_run` persists, and `UEchoKernel.echo_area_lookup` is the
+one step back to the image's map.  `cat_pay_at` carries it as a PURE
+premise — a resource cannot serve, because `kcat_o_of_deed_miss`'s
+premise is quantified over the image the KERNEL will read — and
+`cat_image_entry` derives it.  `cat_pay_at` also gained
+`UCodeCat.cat_code` and `UserCwd.ucwd` (the deed open resolves a RELATIVE
+path, which echo's entry drops).
+
+    Lemma cat_pay_absent (W : uvis) (v : era_pins) (vf : file_era)
+        (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (P : nat)
+        (c : file_fixed) (r : file_names) (q : Qp) (rb : bool)
+        (Q : Z -> iProp Σ) (s : dst) :
+      file_app = MkAppcfg file_names (file_pred c) r ->
+      c = fgn_cl g ->
+      UCatOut.cat_stage ps0 cs0 s0 I0 P ->
+      cat_tie cs0 s0 I0 s -> s = None ->
+      uvis_cwd W = FsImg.ROOTINO ->
+      take NSTD (uvis_fd W) !! 2%nat
+        = Some (FdOpen rb true (FdDevice CONSOLE)) ->
+      fd_lowest_closed (take NSTD (uvis_fd W)) = None ->
+      app_inv fsc_fs -∗
+      era_pin (fgn_echo g) (S gen_id) v -∗
+      file_era_pin g (S gen_id) vf -∗
+      □ (UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P 19%nat
+         -∗ Q (-1)) -∗
+      (∀ N' : uk_names Σ,
+         cat_taint_open N' c (take NSTD (uvis_fd W)) (Q (-1))) -∗
+      cat_pay_at W Q
+        (fdq r q None
+         ∗ UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P 0%nat).
+
+`kcat_o_of_deed_miss` with the console cursor framed across the call
+(`kcat_o_frame`, which `UkCat.kcat_o` had no law for), then
+`cat_dg_open_absent` on the `-1` arm AND on the taint arm — the latter
+only because item (2) gave the ledger back.
+
+**(4) THE PRESENT ARM.**
+
+    Lemma cat_pay_present (W : uvis) (v : era_pins) (vf : file_era)
+        (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (P : nat)
+        (c : file_fixed) (r : file_names) (q1 q2 : Qp) (i : Z)
+        (bs : list (bv 8)) (om : offmode) (rb : bool) (Q : Z -> iProp Σ) :
+      c = fgn_cl g ->
+      UCatOut.cat_stage ps0 cs0 s0 I0 P ->
+      cat_tie cs0 s0 I0 (Some (i, bs)) ->
+      take NSTD (uvis_fd W) !! 1%nat
+        = Some (FdOpen rb true (FdDevice CONSOLE)) ->
+      take NSTD (uvis_fd W) !! 2%nat
+        = Some (FdOpen rb true (FdDevice CONSOLE)) ->
+      fd_lowest_closed (take NSTD (uvis_fd W)) = None ->
+      era_pin (fgn_echo g) (S gen_id) v -∗
+      file_era_pin g (S gen_id) vf -∗
+      (∀ (N' : uk_names Σ) (ga : uarg),
+         ⌜UShCat.cat_args W !! 1%nat = Some ga⌝ -∗
+         cat_open_hand N' c r q1 q2 i bs (take NSTD (uvis_fd W)) om
+           (mword_of_int (UserHeap.ua_ptr ga))) -∗
+      (∀ (N' : uk_names Σ) (fd : nat) (gamo : gname),
+         ⌜(fd < NOFILE)%nat⌝ -∗
+         cat_held_read (cat_hold_at N' r q1 i bs om fd gamo) c fd bs) -∗
+      □ (∀ p : nat, ⌜(p <= length bs)%nat⌝ -∗
+           UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P p -∗
+           Q (-1)) -∗
+      □ (UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCNoOpen) P 19%nat
+         -∗ Q (-1)) -∗
+      (∀ N' : uk_names Σ,
+         cat_taint_open N' c (take NSTD (uvis_fd W)) (Q (-1))) -∗
+      cat_pay_at W Q
+        (fdq r q1 (Some (i, bs)) ∗ fdq r q2 (Some (i, bs))
+         ∗ UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P 0%nat).
+
+the open, the ROUND (`cat_round_at` at `cat_hold_at`, with
+`cat_hw_of_link` discharging `Hw`), and the CLOSE (`cat_cl_of_in`, which
+reads the descriptor out of the round's OUTPUT — `UkCat.kcat_cl_of_dep`
+wants it in hand when the obligation is built, and cat's is inside the
+round's invariant until the loop stops; `FdSlots.fdst_nopipe_inode` is
+the close's licence, SUP-ONE's `kcat_cldep_nopipe`).
+
+- **`om : offmode` IS A PARAMETER THROUGHOUT** — never `OffParked`,
+  never `OffHeld` literally — in `cat_hold_at`, `cat_open_hand` and
+  `cat_pay_present`, so whatever shape OFF-LINK's publish lands on plugs
+  in.  `cat_hold_at` is `UShRound.cat_hold` with `wb` pinned to `false`
+  (cat opens `O_RDONLY`, so the open's fd arm is `FdOpen true false`).
+- **The PRESENT file whose open FAILS files `RCNoOpen`** and prints the
+  same nineteen bytes (`cat_dg_open_noopen`).  The alternative is not
+  decided before the first byte (`UCatOut.cch_0_alt`), so a payer holding
+  the cursor at ZERO re-indexes it to whichever the deed turns out to
+  name — which is what makes CAT-ENTRY's ruling (a) implementable at all.
+
+**WHAT REMAINS, AND WHO OWNS EACH.**
+
+1. **`cat_open_hand` — lane OFF-LINK's publish.**  `kcat_o_of_deed`'s fd
+   arm hands `ualloc … (FdInode i γo OffParked)` and NO `UserOff.uoff`;
+   `UserOff.off_pub_hand_0` (in `ProofSysOpenPub`) is the split that
+   gives the program its half.  Everything else in `cat_open_hand` is
+   `kcat_o_of_deed`'s post verbatim, so it is one `iApply` when the
+   publish lands.
+2. **`cat_held_read` at the held row — lane OFF-LINK's held read leaf.**
+   Its COUNT BOUND is no longer owed: OFF-LINK landed it and this lane
+   threaded it through `UkCatDeed.kcat_r_of_deed` / `_at` into
+   `cat_held_read`'s post on BOTH arms.
+3. **`cat_taint_open` — THE TAINT'S DESCRIPTOR SUB-ARM, and it is a real
+   gap, not a proof effort.**  At a tainted era the open may still return
+   a handle, and what cat does next is READ — which the taint does NOT
+   buy back: `UexecExecMint.udepw_law_of_sup` mints 15 and 17 off
+   `AppInv.app_sup`, `_write` mints 16 and `_close`/`_exit` mint 21 and
+   93, but **FIVE is excluded by construction**, and
+   `AppFile.file_sup_of_taint` only runs taint → sup.  So a tainted cat's
+   LOOP needs a supplier of its own.  `cat_taint_open` is EXACTLY the
+   right conjunct of `UkCatMain.kcat_file`'s output, so whoever supplies
+   it plugs in by `iApply`.  **Owner: whoever gives a tainted verified
+   program its generic continuation mid-walk (the entry's
+   `image_entry_taint` is the shape one level up).**
+4. **THE EXIT CURSOR IS NOT PINNED.**  `cat_pay_present`'s payload wand
+   is `∀ p ≤ length bs` and not `length bs`, because
+   `UCatKernel.cat_round_at`'s `Cend` wand takes the console cursor and
+   the handle's position SEPARATELY and the loop's exit condition
+   (`read` returned zero, hence `ard_count 512 p' (length bs) = 0`, hence
+   `p' = length bs`) is not in it.  Pinning it is `ard_count`'s own
+   arithmetic inside `cat_round_at`, and until it is done a caller
+   cannot instantiate `Q := UCatOut.catq_filed …` (which is now at
+   `cat_out_len`, i.e. `length bs`).  **Owner: this lane's next item.**
+
+**TWO RESIDUES CLOSED THAT WERE NOT ON THE LIST.**
+
+- **`cat_round_at`'s `Hw` IS `cat_w_of_link` OUTRIGHT** (`cat_hw_of_link`).
+  CAT-ENTRY-2's stop was that the cap `Z.to_nat (bv_unsigned rv) <= 512`
+  rode only in `Hw`'s CONTENT disjunct.  With OFF-LINK's count bound in
+  `cat_held_read`'s post on both arms, `cat_round_at` hands the cap to
+  `Hw` on both, `Hw`'s taint disjunct becomes
+  `⌜cap⌝ ∗ file_taint c`, and the write payment is discharged for every
+  turn the round can take.
+- **`cat_round_at` LOSES ITS `□ UkCatCat.kcat_dg_cr N` PREMISE, AND THAT
+  IS A VACUITY FIX.**  The `cat: read error` tail is sixteen bytes the
+  model's continuation does not hold at ANY cursor, so no console
+  credential can file them: the premise is UNSATISFIABLE at a
+  claim-bearing era and a round taking it is VACUOUSLY TRUE.  With the
+  count bound the arm is REFUTED instead — the count is at most 512, so
+  the returned word's SIGNED reading is its unsigned one and
+  `bv_signed ret < 0` is a contradiction — on both arms of the read.
+  **This is the defect class durable-notes names: a premise nobody can
+  supply, in a contract that compiles and whose callers apply it.**
+
+**EVERY STATEMENT THAT MOVED, EXHAUSTIVELY.**  `UkFileOpen.v`: the taint
+disjunct of SIX corollaries (read/miss × base/`_v`/`_d`), plus the new
+`uk_open_taint_fd` and its two readings.  `UkCatDeed.v`: the same
+disjunct relayed in four places, and the COUNT BOUND added to
+`kcat_r_of_deed` / `kcat_r_of_deed_at`'s posts (OFF-LINK's row, which its
+proof already had in hand).  `UCatOut.v`: `catq_filed`'s cursor, plus
+`cat_out_len` and its two readings.  `UCatKernel.v`: `cat_pinned_read_at`
+and `cat_held_read`'s posts gain the bound, `cat_round_at`'s `Hw` gains
+the cap on its taint disjunct and LOSES the `kcat_dg_cr` premise, and
+`cat_pay_at` gains `cat_code`, `ucwd` and the path row; everything else
+is additive.  `UShRound.v`: `Hchild_cat` only.  `UShCat.v`: additive
+(`cat_kexec_argpath`).

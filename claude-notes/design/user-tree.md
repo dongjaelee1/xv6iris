@@ -2588,7 +2588,9 @@ echo's boot-bundle lemma.
 Branch `tl9-hinit-boot`. Five files: `UkInit.v`, `UInitSh.v`,
 `UkInitMain.v`, `UInitTree.v`, `UInitTreeExec.v`.
 `UInitBootAdequacy.echo_adequacy_echoΣ` byte-identical; echo audit **14**,
-file audit unmoved, tree audit unmoved.
+file audit **14**, tree audit **13** — all three unmoved, and the tree's
+thirteen are the two reservation `Parameter`s, `functional_extensionality_dep`
+and the ten `PrimInt63`/`PrimString` primitives.
 
 **(1) THE UPDATE DOOR, AND IT IS THE OWNER'S RULING OF §9.4 ONE PREMISE
 OVER.** `UkInit.init_exec_sup_pos` ends in `|==> udepw_at_refR_ids …` now

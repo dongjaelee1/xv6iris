@@ -521,6 +521,25 @@ over a LINK RECORD on TL-7's pattern (`UInitCons` off `echo_names`,
 echo's instance definitional), so those files are instantiated at
 `FileLinks` and the echo audit stays at fourteen.  This is the largest
 single item of the campaign and was unpriced until the review.
+LINK-GEN LANDED (2026-09-17): `LinkRec.v` (a 94-field record of the
+credential FAMILIES and their laws — no pure model leaks; `lk_pr`/`lk_lpr`
+are fields, not a `match`, so echo's instance is definitional by
+`reflexivity`, fourteen checks), `UShPanic`/`UInitBanner` swept with
+echo's names recovered as `Definition`s, `FileLinks.file_links` (item
+20), `UkSh.ush_tag_law_at D` with the ^D consequence as the travelling
+carrier (item 21).  `UInitConsK` is not a link consumer (the file takes
+it verbatim through `file_pred_cons`).  RESIDUE, three lanes: LINK-GEN-2
+the FILE INSTANCE `file_link_inst` — `FileLinksLine.v`, the eleven
+credential families and ~25 pure lemmas at `pro_pin_f`/`proc_before_f`/
+`proc_stream_f`/`pro_idx_f`/`fst_upto` (`UCatOut` section 1 already has
+five), `lk_ab`'s guarded file value (state-dependent `RCRan` sent to
+`[]`), `lk_turn0` from `fturn`, the ^D lemma at `disc_f`; LINK-GEN-3 the
+abstract STAGE (`UEchoOut`/`UShEchoPay` read an explicit stage: a second
+record `StageRec` with `lk_stg`, `lk_cur`, `lk_stage`, `lk_cur_step`,
+`lk_lend_stage`) and `UShLine`'s three read laws (`lk_rr_arms`,
+`lk_rd_res`, `lk_rr_disc`) with the sweep of those three files — which
+delivers `Hchild_echo` and `Hwbr`; and in `UShRound` the one-line change
+to `Hcltaint` (it takes the two era pins).
 
 ### 4.1 What the stage adds: ONE value per era
 

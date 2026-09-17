@@ -215,6 +215,32 @@ premise, the holder's half in hand):
   `astep … = None` off the claim.
 - **truncate** (`f_ok av (Some bs')`, the open's exists arm): the
   trunc piece `delta_trunc i` moves to `Some []`.
+  RULED after F-OPEN-2 (2026-09-17): the redirect's mode is `0x601`
+  (`sh.c:395`, `O_WRONLY|O_CREATE|O_TRUNC`) and the model's `RFRan`
+  assumes the truncation, so the truncate piece must be suppliable.
+  `SysOpenDefs.open_trunc_piece` is restated ONCE, carrying two things
+  (F-OPEN-2's restatements 1 and 2; its 3 is declined): (1) the
+  permit ties the fired inum to the walk's terminal — the same guarded
+  pure facts `SysMknodDefs.npar_cur` carries (the arg path's last
+  element is the name, the parent is the walk's terminal directory),
+  which the kernel holds at the fire and an application knowing its own
+  path reads in one line; (2) the permit is a DISJUNCTION the kernel
+  pays from what fired: the FRESH arm hands `Fok`'s receipt (the row is
+  `AFile []` at nlink 1 — `file_trunc_of_cre`, landed, free at both deed
+  values), the EXISTS arm hands `Fex`'s receipt BESIDE THE UNFIRED ARM
+  PIECE'S REFUND (create's `dirlookup` found the name, so the arm never
+  fires and the kernel still holds it).  The application then identifies
+  the node AT THE TRUNCATE FIRE, with the half the refund returns: the
+  exact arm's `f_ok av (Some (i, bs))` and the tie give the fired inum
+  `= i`, and the move `Some (i, bs) → Some (i, [])` is paid with that
+  same half (park, then resync, inside the fire as `file_cre_fam` does).
+  At `s = None` the EXISTS disjunct is REFUTED the same way (the refund's
+  half reads `f_ok av None`, the root has no `f`, contradicting `Fex`'s
+  found entry at the tie) — so no fraction ever rides inside `Fex`'s
+  receipt, the create's `Fex` piece passes the kernel's own lookup
+  receipt through, and restatement 3 (exclusivity of `Fex` and the arm
+  at `acre_commit_at_gen`) is not needed.  Lane F-OPEN-3 does the one
+  sweep and lands `file_open_create_au` at `om_trunc = true`.
 - **append** (echo's chunk `j`, `awrite_full_at`'s `wri_pre av i off bs
   bs0 nl` with `off = |bs0|` — §3 on why the offset is known): `Some bs0
   → Some (bs0 ++ chunk_j)`; echo's own proof carries the words and the

@@ -854,9 +854,9 @@ Section UkShParse.
 
   (* ---- the symbol pins this file uses, one name each ------------------ *)
   Lemma shpp_strchr : ShSyms.strchr = 0xa82.
-  Proof using . destruct shp_syms_pins as (_&_&_&_&_&_&_&_&_&_&H). exact H. Qed.
+  Proof using . destruct shp_syms_pins as (_&_&_&_&_&_&_&_&_&_&_&H). exact H. Qed.
   Lemma shpp_strlen : ShSyms.strlen = 0xa30.
-  Proof using . destruct shp_syms_pins as (_&_&_&_&_&_&_&_&_&H&_). exact H. Qed.
+  Proof using . destruct shp_syms_pins as (_&_&_&_&_&_&_&_&_&_&H&_). exact H. Qed.
   Lemma shpp_execcmd : ShSyms.execcmd = 0x1d2.
   Proof using . destruct shp_syms_pins as (_&_&_&_&_&_&_&_&H&_&_). exact H. Qed.
   Lemma shpp_gettoken : ShSyms.gettoken = 0x310.

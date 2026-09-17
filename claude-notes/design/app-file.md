@@ -36,6 +36,14 @@ echo line (the round in flight at the cut).  `f` never contains junk.
    not full" is a bitmap fact no application-tier claim can see.  The
    model carries the subset (`sel`).  Refuting it is a kernel-tier lane
    (a capacity conjunct in the abstract view) and is NOT taken.
+   WHAT IS REFUTED, on the other hand, is a PARTIAL chunk: `writei`'s
+   "disturbed region" (a partially copied block committed, kernel defect
+   D1's fix) exists only because `either_copyin` can fail on the user
+   arm, and `SpecCopyin`'s failure arm names an unreadable address — so
+   the held write chain's partial node carries that reason (design §3,
+   RELAY 4) and a caller whose source run is mapped, as every U-tier
+   write's is (`usrc_ok`'s mapped row), meets no partial arm.  A chunk
+   either lands whole or not at all; nothing unnamed ever reaches `f`.
 2. **Across a power cycle the theorem is weaker than reality.**  The
    durable claim is the copy made at the LAST COMMIT, and no syscall's
    post says its transaction committed (durability receipts are the
@@ -323,11 +331,19 @@ member.  FOUR coupled facts, each adopted as a ruling:
    surrendered row keeps its `OffHeld` tag (the tag is the object's) and
    is paid like a parked one, from the surrender.
 
-Lane OFF-HAND-2 is 1–4 at the kernel/spec tier; OFF-HAND-3 is the counter,
-the hand-mode open leaf and the two held file members
-(`wp_uk_ecall_write_file_held` with the exact payment `FdPark.uoff_rcpt`
-and its tie `off' = off`, `wp_uk_ecall_read_file_held`).
-`FdSlots.foff_row` already answers `emp` at `OffHeld`.
+Lane OFF-HAND-2 landed the exec crossing's all-parked row (the kernel pays
+it) and found that facts 1–3 sit BEHIND the counter: the generic
+builders of a read/write chain (`FsAbsInvFire.fsabs_filewrite_in`) serve
+an arbitrary row and need `⌜fdst_parked st⌝`, which only a program that
+can state its own table's parkedness supplies.  So OFF-HAND-3 goes
+counter first (`uheld` inside `urun`, a fact about the whole table, the
+shape of `urun_nopipe`), then the mode in `fpnames`, then the HELD BRANCH
+of `filewrite_in`/`fileread_in`, whose chain nodes RELAY what the claim's
+step cannot otherwise know (lane F-WRITE's findings): the fire's offset
+is the caller's anchor (`off = off0 + p`), the node's run is the whole
+chunk, and the partial node carries `either_copyin`'s reason (RELAY 4,
+§0), so a mapped source refutes it; then the hand-mode open leaf and the
+two held members.  `FdSlots.foff_row` already answers `emp` at `OffHeld`.
 
 ## 4. The console side: the stage carries the era's boot state, the ledger the line list
 

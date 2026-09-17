@@ -1305,6 +1305,9 @@ Section UInitSh.
     { rewrite Hpeq. iExact "Hgen'". }
     rewrite /uexec_sup_run_ids.
     iIntros (M pm sz fdv cs pidv) "#Hnpw Hheap Hufd Hids".
+    (* the run's two table rows come in bundled (lane OFF-HAND-3, R1);
+       what the entry below is stated at is still the pipe half. *)
+    iDestruct (UkRun.urun_rows_nopipe _ _ with "Hnpw") as "#Hnp0".
     (* ---- THE TWO IDENTITY READINGS (lane EXEC-SEAM), off the lent
        authorities against the child's own fragments: the key's children
        set is EMPTY and its pid is not <init>'s.  Both are pure, so the
@@ -1392,7 +1395,7 @@ Section UInitSh.
       iApply (init_sh_image_entry T cn K Cr Rsh n0 γp np N l
                 M fdv cs pidv Hpsok_free Hn0 Hsav Hsro Hl Hcs
                 ltac:(rewrite Hpv; exact Hp1) Hlen HCr
-                with "Hnpw Hdep Hdp Hplaw Hcons Hfd0 Hgen'"). }
+                with "Hnp0 Hdep Hdp Hplaw Hcons Hfd0 Hgen'"). }
     (* ...AND THE LINEAR PAYLOAD, WHOLE: [PinnedExec]'s one [Pay] slot is
        sh's persistent state, the position init minted for this round, the
        lease, and the ledger with its credential. *)

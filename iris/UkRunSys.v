@@ -933,7 +933,7 @@ Section UkRunSys.
     cbn [uvis_M uvis_perm uvis_fd uvis_of_run] in Hfdok |- *.
     iDestruct (ufd_auth_len with "Hufd") as %Hfdlen.
     iApply uslot_bupd.
-    destruct Hfdok as [(fd & rd & wr & t & Hr & Hcl & -> & _ & Hnpo) | [Hrm ->]].
+    destruct Hfdok as [(fd & rd & wr & t & Hr & Hcl & -> & Hpko & Hnpo) | [Hrm ->]].
     - (* A DESCRIPTOR CAME BACK, at the LOWEST free slot -- which is the
          promise [sys_open_post] makes and the row carries, and which the
          caller's ledger turns into a NUMBER. *)
@@ -942,7 +942,7 @@ Section UkRunSys.
       iModIntro.
       (* ...AND THE TABLE STILL HOLDS NO PIPE (design/pipe.md, "The exit
          path"): open installs an inode or a device and the row says so. *)
-      iDestruct (urun_nopipe_insert fdv fd (FdOpen rd wr t) Hnpo
+      iDestruct (urun_rows_insert N fdv fd (FdOpen rd wr t) Hnpo Hpko
                    with "Hnpx") as "#Hnpo".
       rewrite (uslot_bump_run m pc M M pm pm sz sz fdv
                  (<[fd := FdOpen rd wr t]> fdv) cw cw' gn gn cs cs pidv false false r Hx0 Hal4).
@@ -1120,7 +1120,7 @@ Section UkRunSys.
       iModIntro.
       (* ...and dup copies a row the table already had, so it holds no
          pipe either (design/pipe.md, "The exit path") *)
-      iDestruct (urun_nopipe_dup fdv fd0 fd1 st Hsrc with "Hnpx") as "#Hnpo".
+      iDestruct (urun_rows_dup N fdv fd0 fd1 st Hsrc with "Hnpx") as "#Hnpo".
       rewrite (uslot_bump_run m pc M M pm pm sz sz fdv
                  (<[fd1 := st]> fdv) cw cw' gn gn cs cs pidv false false r Hx0 Hal4).
       iApply ukcq_ukc.
@@ -1275,7 +1275,7 @@ Section UkRunSys.
       iDestruct "Hstd" as (l') "Hstd".
       iModIntro.
       (* ...and dup copies a row the table already had *)
-      iDestruct (urun_nopipe_copy fdv (Z.to_nat (usys_argfd (tf_of m pc))) fd1
+      iDestruct (urun_rows_copy N fdv (Z.to_nat (usys_argfd (tf_of m pc))) fd1
                    with "Hnpx") as "#Hnpo".
       rewrite (uslot_bump_run m pc M M pm pm sz sz fdv
                  (<[fd1 := fdv !!! Z.to_nat (usys_argfd (tf_of m pc))]> fdv) cw cw' gn gn cs cs pidv false false
@@ -1608,8 +1608,8 @@ Section UkRunSys.
     rewrite (uslot_bump_run m pc M M pm pm sz sz fdv
                (<[fd := FdClosed]> fdv) cw cw' gn gn cs cs pidv false false r Hx0 Hal4).
     (* ...and close installs [FdClosed], which is not a pipe row *)
-    iDestruct (urun_nopipe_insert fdv fd FdClosed fdst_nopipe_closed
-                 with "Hnpx") as "#Hnpo".
+    iDestruct (urun_rows_insert N fdv fd FdClosed fdst_nopipe_closed
+                 fdst_parked_closed with "Hnpx") as "#Hnpo".
     iApply ukcq_ukc.
     iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
               ltac:(unfold unot_sp; vm_compute; discriminate)
@@ -1722,8 +1722,8 @@ Section UkRunSys.
     rewrite (uslot_bump_run m pc M M pm pm sz sz fdv
                (<[fd := FdClosed]> fdv) cw cw' gn gn cs cs pidv false false r Hx0 Hal4).
     (* ...and close installs [FdClosed], which is not a pipe row *)
-    iDestruct (urun_nopipe_insert fdv fd FdClosed fdst_nopipe_closed
-                 with "Hnpx") as "#Hnpo".
+    iDestruct (urun_rows_insert N fdv fd FdClosed fdst_nopipe_closed
+                 fdst_parked_closed with "Hnpx") as "#Hnpo".
     iApply ukcq_ukc.
     iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
               ltac:(unfold unot_sp; vm_compute; discriminate)
@@ -2959,11 +2959,17 @@ Section UkRunSys.
     intros Hn Hal4.
     set (dst := m !!! Regidx (mword_of_int 10)).
     iIntros "#Hi Hrun Hsb #Hktnt Hstd Hbuf Hcont".
-    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & _ & Hb)".
-    (* the run goes on at the TAINT arm from here: the table it comes back
-       with holds two pipe rows *)
-    iAssert (∀ fdv0 : list fdstate, urun_nopipe fdv0)%I as "#Hnpx";
-      [ iIntros (fdv0); iApply (urun_nopipe_taint fdv0 with "Hktnt") | ].
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hrws & Hb)".
+    iDestruct "Hrws" as "[_ %Hpkr]".
+    (* the run goes on at the TAINT arm from here for the PIPE half: the
+       table it comes back with holds two pipe rows.  The OFFSET half is
+       not tainted-escapable (lane OFF-HAND-3, R1) and comes off the run's
+       own row through [UsysMemOk.usys_fd_ok_parked] instead -- a pipe end
+       is a parked descriptor. *)
+    iAssert (∀ fdv0 : list fdstate,
+               ⌜urun_parked_row N fdv0⌝ -∗ urun_rows N fdv0)%I as "#Hnpx";
+      [ iIntros (fdv0) "%Hpk0";
+        iApply (urun_rows_taint N fdv0 Hpk0 with "Hktnt") | ].
     iMod (udepw_mint N m pc _ M pm _ fdv cw gn cs pidv
                 with "Hdep Hmy Hsb Hheap Hufd") as "(Hheap & Hufd & Hdepn)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -3197,7 +3203,9 @@ Section UkRunSys.
           | exact Hbytes | exact Hca | exact Hcb | exact Hfdv' ].
       - rewrite (Hfail Hr0). iModIntro. iFrame "Hufd".
         iRight. iFrame "Hstd". iPureIntro. exact Hr0. }
-    iDestruct ("Hnpx" $! fdv') as "#Hnpo".
+    iDestruct ("Hnpx" $! fdv' with "[%]") as "#Hnpo";
+      [ intros Hq;
+        exact (usys_fd_ok_parked _ _ _ _ _ Hfdok (Hpkr Hq)) | ].
     iDestruct (urun_close_upd N (umem_write M (uint dst) dd gg) pm m
                  (mword_of_int 10) r sz fdv' cw' gn cs pidv (add_vec_int pc 4) avail
                  ltac:(unfold unot_sp; vm_compute; discriminate)
@@ -3945,14 +3953,14 @@ Section UkRunSys.
     cbn [uvis_M uvis_perm uvis_fd uvis_of_run] in Hfdok |- *.
     iDestruct (ufd_auth_len with "Hufd") as %Hfdlen.
     iApply uslot_bupd.
-    destruct Hfdok as [(fd & rd & wr & t & Hr & Hcl & -> & _ & Hnpo) | [Hrm ->]].
+    destruct Hfdok as [(fd & rd & wr & t & Hr & Hcl & -> & Hpko & Hnpo) | [Hrm ->]].
     - (* A DESCRIPTOR CAME BACK, at the LOWEST free slot, and the RECEIPT
          says at which type *)
       iMod (ufd_alloc_least (ukn_fd N) fdv l fd (FdOpen rd wr t) Hcl
               ltac:(discriminate) with "Hufd Hstd") as "[Hufd Hh]".
       iModIntro.
       (* ...and open installs an inode or a device, never a pipe end *)
-      iDestruct (urun_nopipe_insert fdv fd (FdOpen rd wr t) Hnpo
+      iDestruct (urun_rows_insert N fdv fd (FdOpen rd wr t) Hnpo Hpko
                    with "Hnpx") as "#Hnpi".
       rewrite (uslot_bump_run m pc M M pm pm sz sz fdv
                  (<[fd := FdOpen rd wr t]> fdv) c c gn gn cs cs pidv false false r Hx0 Hal4).
@@ -4814,14 +4822,14 @@ Section UkRunSys.
     cbn [uvis_M uvis_perm uvis_fd uvis_of_run] in Hfdok |- *.
     iDestruct (ufd_auth_len with "Hufd") as %Hfdlen.
     iApply uslot_bupd.
-    destruct Hfdok as [(fd & rd & wr & t & Hr & Hcl & -> & _ & Hnpo) | [Hrm ->]].
+    destruct Hfdok as [(fd & rd & wr & t & Hr & Hcl & -> & Hpko & Hnpo) | [Hrm ->]].
     - (* A DESCRIPTOR CAME BACK, at the LOWEST free slot, and the RECEIPT
          says at which type *)
       iMod (ufd_alloc_least (ukn_fd N) fdv l fd (FdOpen rd wr t) Hcl
               ltac:(discriminate) with "Hufd Hstd") as "[Hufd Hh]".
       iModIntro.
       (* ...and open installs an inode or a device, never a pipe end *)
-      iDestruct (urun_nopipe_insert fdv fd (FdOpen rd wr t) Hnpo
+      iDestruct (urun_rows_insert N fdv fd (FdOpen rd wr t) Hnpo Hpko
                    with "Hnpx") as "#Hnpi".
       rewrite (uslot_bump_run m pc M M pm pm sz sz fdv
                  (<[fd := FdOpen rd wr t]> fdv) c c gn gn cs cs pidv false false r Hx0 Hal4).

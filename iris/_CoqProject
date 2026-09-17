@@ -1486,6 +1486,7 @@ App.v
 LineWords.v
 FileState.v
 EchoDisc.v
+FileDisc.v
 LogEntryDefs.v
 ConsLog.v
 EchoOutPure.v
@@ -1498,6 +1499,9 @@ EchoFsPure.v
 FileFsPure.v
 AppEcho.v
 AppFile.v
+FileOpen.v
+FileDeltas.v
+FileWrite.v
 AppTree.v
 
 FsAbsUnlinkFire.v
@@ -1525,6 +1529,7 @@ UkShRedir.v
 
 UCodeShP.v
 UkShParse.v
+UkShParseSym.v
 UkShParseLex.v
 UkShParseTok.v
 UkShParseRedir.v
@@ -1532,10 +1537,14 @@ UkShParseExec.v
 UkShParseCmd.v
 UkShRedirLex.v
 UkShRedirTok.v
+UkShRedirGtk.v
+UkShRedirCmd.v
+UkShRedirPr.v
 
 UCodeShM.v
 UkShMalloc.v
 
+UkShRedirLine.v
 UkShLoop.v
 UkShCd.v
 UkShMain.v

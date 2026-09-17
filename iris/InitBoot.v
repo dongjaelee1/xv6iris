@@ -131,24 +131,36 @@ Section InitBoot.
      ([ProofForkret.fkr_boot]); the application's constructor reads
      neither, so the bundle is owed at all of them and the arity of this
      predicate -- which [App.Hinit_boot] names -- does not move. *)
+  (* ...AND IT CARRIES THE FIRST PROCESS'S ALL-PARKED ROW (lane
+     OFF-HAND-2).  The one kexec <init> ever gets is spent by
+     [ProofForkret.fkr_boot], which holds neither the descriptor bundle nor
+     the block's array and so cannot READ the fact; the bundle's producers
+     can -- every one of them states it at [FdSlots.fdt0]
+     ([FdSlots.fdv_all_parked_fdt0]), because that is the table userinit
+     built.  It is spent on [SpecKexec.wp_kexec_sconf]'s own premise, i.e.
+     on [SpecKexec.exec_slot_pre]'s two wands. *)
   Definition init_boot_bundle (cw : Z) (sts : list fdstate) : iProp Σ :=
-    (cons_reader fsc_cons 0%nat -∗
+    (⌜FdSlots.fdv_all_parked sts⌝ ∗
+     (cons_reader fsc_cons 0%nat -∗
      ∃ (P Pmiss : nat -> Z -> iProp Σ)
        (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ))
        (R : iProp Σ),
        ∀ (cs : gset gname) (pidv : mword 32),
          exec_au_pre (MkPfam uslot R) (fs_gamma_L fsc_fs) fsc_fs cw
            (fun _ => True%I) P Pmiss Fo init_boot_path
-           1%nat (fun _ => 5%nat) (fun _ => init_boot_bytes) sts cs pidv)%I.
+           1%nat (fun _ => 5%nat) (fun _ => init_boot_bytes) sts cs pidv))%I.
 
   (* THE GENERIC APPLICATION'S: a slot at every key answers both wands and
      tracks nothing.  [App.xv6_app_adequacy_triv_xv6Σ] reaches the family
      through [AppInv.app_sup_raw_triv] and [UexecExecMint.uslot_mint]. *)
   Lemma init_boot_bundle_triv (cw : Z) (sts : list fdstate) :
-    □ (∀ W : uvis, my_pay (uvis_gen W) (fun _ => True)%I -∗ uslot W) -∗
+    fdv_all_parked sts ->
+    □ (∀ W : uvis, ⌜FdSlots.fdv_all_parked (uvis_fd W)⌝ -∗
+                   my_pay (uvis_gen W) (fun _ => True)%I -∗ uslot W) -∗
     init_boot_bundle cw sts.
   Proof using .
-    iIntros "#HS". rewrite /init_boot_bundle.
+    intros Hpk0. iIntros "#HS". rewrite /init_boot_bundle.
+    iSplitR; [iPureIntro; exact Hpk0 |].
     (* THE GENERIC INSTANCE DROPS THE TOKEN: a program that tracks nothing
        reads the console on the persistent credential, not on the token
        ([FsAbsInvFire.fsabs_fileread_in]). *)
@@ -159,8 +171,8 @@ Section InitBoot.
     iApply (exec_au_pre_triv_at uslot (fs_gamma_L fsc_fs) fsc_fs cw
               init_boot_path 1%nat (fun _ => 5%nat) (fun _ => init_boot_bytes)
               sts cs pidv).
-    iModIntro. iIntros (W) "Hp".
-    iApply "HS". iExact "Hp".
+    iModIntro. iIntros (W) "%Hpk Hp".
+    iApply ("HS" $! W with "[%] Hp"). exact Hpk.
   Qed.
 
 End InitBoot.

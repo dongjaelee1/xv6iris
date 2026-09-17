@@ -298,7 +298,7 @@ Section ExecRun.
           bundle row off it.  It is a fact about the EXEC'ING process's
           table ([SpecKexec.kexec_image_ok_fd]), i.e. about this very
           [fdv], and it is persistent, so nothing comes back. *)
-       urun_nopipe fdv -∗
+       urun_rows N fdv -∗
        uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗ ufd_auth (ukn_fd N) fdv -∗
        uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗ ufd_auth (ukn_fd N) fdv ∗
        (* (W)'s pure input: the path the caller's a0 names, off its image *)
@@ -332,7 +332,7 @@ Section ExecRun.
           bundle row off it.  It is a fact about the EXEC'ING process's
           table ([SpecKexec.kexec_image_ok_fd]), i.e. about this very
           [fdv], and it is persistent, so nothing comes back. *)
-       urun_nopipe fdv -∗
+       urun_rows N fdv -∗
        uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗ ufd_auth (ukn_fd N) fdv -∗
        urun_ids N cs pidv -∗
        uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗ ufd_auth (ukn_fd N) fdv ∗
@@ -792,18 +792,26 @@ Section ExecRun.
     rewrite /exec_slot_pre /ex_node_abs /image_entry_at /image_entry_taint.
     iSplitL "HPay".
     - (* ---- ARM (a): the observed content IS the caller's file ---- *)
-      iIntros (av' i f' nl' W') "HP Hrecv %Hload' %Hok %Hcwq %Hlzq %Hchq %Hpiq #Hp".
+      iIntros (av' i f' nl' W') "HP Hrecv %Hload' %Hok %Hcwq %Hlzq %Hchq %Hpiq %Hpk #Hp".
       iPoseProof ("Hid" $! av' i (MkAnode (AFile f') nl')) as "Hid'".
       iDestruct ("Hid'" with "HP Hrecv") as "[%Hnode | HT]"; last first.
-      { iApply ("Hgen" with "HT Hp"). }
+      { (* the all-parked row stops here (lane OFF-HAND-2): the generic
+                     family the taint arm runs on is not narrowed yet, and
+                     cannot be until the U tier can name its own table --
+                     [ExecEntry.image_entry_taint]'s note. *)
+        iApply ("Hgen" $! W' with "HT Hp"). }
       cbn [an_node] in Hnode. injection Hnode as Hf. subst f'.
       iApply ("Hcon" $! W' with "[%] [%] [%] [%] [%] Hp HPay");
         [ exact Hok | exact Hcwq | exact Hlzq | exact Hchq | exact Hpiq ].
     - (* ---- ARM (b): a loadable content IS loadable ---- *)
-      iIntros (av' i a W') "HP Hrecv %Hnload %Hkey %Hcwq %Hlzq %Hchq %Hpiq #Hp".
+      iIntros (av' i a W') "HP Hrecv %Hnload %Hkey %Hcwq %Hlzq %Hchq %Hpiq %Hpk #Hp".
       iPoseProof ("Hid" $! av' i a) as "Hid'".
       iDestruct ("Hid'" with "HP Hrecv") as "[%Hnode | HT]"; last first.
-      { iApply ("Hgen" with "HT Hp"). }
+      { (* the all-parked row stops here (lane OFF-HAND-2): the generic
+                     family the taint arm runs on is not narrowed yet, and
+                     cannot be until the U tier can name its own table --
+                     [ExecEntry.image_entry_taint]'s note. *)
+        iApply ("Hgen" $! W' with "HT Hp"). }
       exfalso. apply Hnload. exists f, (an_nlink a).
       split; [ | exact Hload ].
       destruct a as [nd k]. cbn [an_node an_nlink] in Hnode |- *.
@@ -914,7 +922,7 @@ Section ExecRun.
           bundle row off it.  It is a fact about the EXEC'ING process's
           table ([SpecKexec.kexec_image_ok_fd]), i.e. about this very
           [fdv], and it is persistent, so nothing comes back. *)
-       urun_nopipe fdv -∗
+       urun_rows N fdv -∗
        uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗ ufd_auth (ukn_fd N) fdv -∗
        uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗ ufd_auth (ukn_fd N) fdv ∗
        ⌜exec_path_of M pv pl⌝ ∗

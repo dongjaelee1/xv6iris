@@ -185,13 +185,13 @@ Section USyncKernel.
   Proof using ghost_varG0 ghost_varG1 ufdG0.
     intros Hpc Hsub Hx Hroom Hal8 Hdata Hfdlen Hstop Hpsok_free Hlzf.
     iIntros "#Hnpw #Hdep #Hpay".
-    iApply (uslot_of_urun W 4 (fun _ => True)%I
+    iApply (uslot_of_urun W 4 (fun _ => True)%I false
               Hal8 ltac:(lia) Hdata Hfdlen
-              Hstop Hlzf with "Hdep Hnpw Hpay").
+              Hstop Hlzf ltac:(discriminate) with "Hdep Hnpw Hpay").
     (* sync makes no descriptor call, so its ledger is dropped here *)
     (* sync makes no descriptor call and no chdir, so its ledger and its
        working directory are both dropped here *)
-    iIntros (N h) "%Hpayeq %Hsz Hszf #Ht _ _ _ _ Hrun".
+    iIntros (N h) "%Hpayeq %Hparkeq %Hsz Hszf #Ht _ _ _ _ Hrun".
     pose proof (Hpayeq : UkRun.ukn_triv N) as Hti.
     rewrite Hpc.
     iApply (wp_ksync_start N Hpsok_free h (tf_resume_gpr0 (uvis_tf W))

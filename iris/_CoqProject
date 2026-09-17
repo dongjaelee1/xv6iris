@@ -1568,4 +1568,5 @@ UkTreeWrite.v
 UkTreeCreate.v
 TreeImg.v
 UTreeAdequacy.v
+UInitTree.v
 # TreeAssumptions.v

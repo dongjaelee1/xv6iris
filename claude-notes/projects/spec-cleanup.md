@@ -855,6 +855,55 @@ ten Rocq `PrimString`/`PrimInt63` primitives, the two reservation
    precedes its first output), not at the exec of /sh.  §9.3(6) carries
    the dependency-ordered worklist.
 
+**TL-6 AS LANDED — RULING (b) CUT AT THE ROUND'S CREDENTIAL, AND THE MINT
+MOVED TO /init's BANNER** — branch `tl6-init`; design of record
+`design/user-tree.md` §9.5.  Whole iris tree green on the mirror;
+`AppEcho.v` / `AppInv.v` untouched; `UInitBootAdequacy.echo_adequacy_echoΣ`
+byte-identical; echo audit 14, system audit 13, tree audit 13 — all three
+unmoved.
+
+1. **P2's ONE SPEND, and the ruling's second branch is the one that
+   applies.**  `UkInitMain.wp_kinit_fork` is the whole of it: /init lends
+   the console lease to the shell it forks and a KILLED child cannot hand
+   it back, so `UserConsole.ucons_pay`'s kill arm is the application's
+   `T`.  "What the kernel's row already gives" is refuted by the code, and
+   parameterising by `app_kill` would give `True` and leave the spend
+   unpayable.
+2. **THE CUT: `UkInit.init_kill_law T st Wp Wb` —** `□ (∀ l n,
+   init_lend_cred … ==∗ init_lend_cred … ∗ □ (riscv_kill_cred -∗ T))`: the
+   kill arm is reached WITH THE LEND IN HAND, so the price is the
+   credential the round already carries, and the lend may come back on its
+   TAINT arm.  `init_boot_con`'s P2 is now `(⊢ init_kill_law T stc (cc_wp
+   Cr) (cc_wbn Cr))` at the same position; ten consumers' statements
+   move with it (`UkInitMain` ×7, `UInitKernel` ×3) and nothing else does.
+   Echo's discharge is `init_kill_law_of_taint Hktaint` — one token at
+   `UInitBoot`'s call site.
+3. **`iris/UInitTree.v` (new): the tree claim's console record and the
+   mint at the banner.**  `tree_cc` — five families `True`, `cc_wb`
+   (banner-owed) = the era's LICENCE or the taint, `cc_wp` (round-open) =
+   the taint.  `tree_kinit_ban_law`: the FIRST byte of "init: starting sh"
+   spends the licence, the taint buys the write deposit, the rest of the
+   banner and both diagnostics are paid from it.  New stub lemma
+   `kinit_w1_of_upd` (a byte may MOVE ghost state — `kinit_w1`'s
+   conclusion is a `WP`).  `tree_init_deps`: all three deposits off the
+   taint's supply, the output licence and the kill credential free at this
+   interface.  `tree_init_kill_law` discharges (2) at the tree claim
+   **closed under the global context**.
+4. **`Hinit_boot` NOT re-derived — two walls, both echo-indexed
+   machinery.**  The console DANCE (the setup's four WP leaves, echo's in
+   `UInitConsK.v` off `UInitCons.init_cons_laws_at`'s nine
+   `echo_names`-indexed laws) and the exec supply (`init_cons_sup`, ten
+   more at `UInitSh`).  Order for the next lane: generalise `UInitCons.v`
+   off `echo_names`, then the four leaves against
+   `UkTreeCreate.wp_uk_ecall_mknod_own` / `UkTreeRead.wp_uk_ecall_open_own`,
+   then `init_cons_sup` under the taint.  Everything else of the premise
+   list is reusable verbatim, the reader token included (it is
+   `InitBoot.init_boot_bundle`'s own premise — the kernel's to hand).
+5. **Deliverable 4 (the `Hphi` glue) not attempted, and §9.3(3) is why**:
+   with `app_phi = True` there is no behavioural corollary for
+   `xv6_slot_app_project` to feed, and the right disjunct is a ghost fact
+   `app_phi` does not take.  TL-5's pricing stands.
+
 ## RELAY QUEUE (for upstream, via the owner's push)
 
 1. **The R-a walls + the `uheld` proposal** (`design/user-read.md`

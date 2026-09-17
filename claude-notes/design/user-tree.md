@@ -2244,3 +2244,113 @@ opens, the two dups — with the taint minted at init's BANNER (the first
 row that needs a console claim the tree application does not make).
 The theorem's content then becomes behavioural: the tree claim holds
 THROUGH init's setup.
+
+### 9.5 TL-6 as landed — P2 re-cut at the ROUND's credential, the tree's console record, and the mint at the banner
+
+**(1) WHAT /init ACTUALLY SPENDS A KILL ON — one site, and the ruling's
+second branch is the one that applies.**  §9.4 offered two shapes: "what
+init needs from a kill is what the KERNEL's row already gives", or a
+premise parameterised by the application.  The first is refuted by the
+code.  The whole walk reads P2 exactly once, in
+`UkInitMain.wp_kinit_fork`: /init lends the console lease to the shell it
+forks, and the payload it chooses for that child
+(`UserConsole.ucons_pay cn γ T (init_rd …)`) has kill arm
+`(∃ n, ucons_reader cn n ∗ upos_a γ n ∗ Rd n) ∨ T`.  **A killed child
+cannot hand the lease back**, so the left arm is unreachable and the
+application's `T` is the only payer.  The other seven sites (`_main_loop`,
+`_main_from_1e`, `_main_repair_tail`, `_main_repair`, `_main`, `_start`,
+and `UInitKernel`'s three) only thread it.
+
+**(2) THE CUT, AND IT IS NOT `app_kill`.**  Parameterising by
+`app_kill app_tree` would give `True` and leave the spend unpayable.  What
+IS payable is the observation that the kill arm is reached **with the lend
+in hand** — it is what the parent is about to hand the child — so the
+premise becomes "a kill costs the application no more than the credential
+this round is already carrying":
+
+> `UkInit.init_kill_law T st Wp Wb :=`
+> `□ (∀ l n, init_lend_cred T st Wp Wb l n ==∗`
+> `          init_lend_cred T st Wp Wb l n ∗ □ (riscv_kill_cred -∗ T))`
+
+An UPDATE, and its conclusion may come back on the lend's **taint** arm:
+that is the price.  `UInitKernel.init_boot_con`'s P2 is now
+`(⊢ UkInit.init_kill_law T stc (cc_wp Cr) (cc_wbn Cr))`, at the same
+position, and so are the ten consumers' (list in the commit).  Echo's
+discharge is `UkInit.init_kill_law_of_taint` applied to the same
+`Hktaint` — one token at `UInitBoot`'s call site, nothing else moves, and
+`UInitBootAdequacy.echo_adequacy_echoΣ` is byte-identical.
+
+**(3) THE TREE'S CONSOLE RECORD** (`iris/UInitTree.v`, `tree_cc` — the
+twin of `UInitBoot.echo_cc`).  The claim says nothing about the console,
+so five families are `True` and the two that carry anything are the
+registry's own: `cc_wb` (banner-owed) **is the era's LICENCE, or the
+taint**, and `cc_wp` (round-open, what the banner leaves) is the taint.
+The disjunction in `cc_wb` is not slack — `kinit_diag_law`'s first
+conversion LEAVES a banner-owed credential and a licence cannot be
+re-minted (`tree_bump_free_is_vacuous` again), so "licence or taint" is
+the family that closes under /init's own restart loop.
+
+**(4) THE MINT IS AT THE BANNER** (`tree_kinit_ban_law`).  The chain
+carries the descriptor table and one credential: the **first byte** of
+"init: starting sh" spends the licence (`tree_cc_wbn_mint`), the taint it
+leaves buys the write deposit, and the seventeen bytes after it are paid
+from the same persistent fact; what the last byte leaves is `cc_wp`, the
+taint, which is what the two diagnostics (`tree_kinit_diag_law`) and the
+lend to the shell are stated at.  The one new stub lemma is
+`kinit_w1_of_upd`: `kinit_w1`'s conclusion is a `WP`, so a basic update
+runs inside it — `UkInit.kinit_w1_of_law` and `_frame` cannot move ghost
+state, and the banner's first byte must.  `tree_init_deps` supplies all
+three of /init's deposits off the taint alone: at this interface the
+output licence is free (`cons_licence_triv`) and so is the kill credential
+(`kill_cred_triv`), so `UInitBoot`'s assembly transfers one application
+over.  **Nothing is minted early**: `init_deps` is the conditional
+`□ (taint -∗ …)`, and the licence arrives at /init as `cc_wbn … 0`, which
+is exactly `app_turn app_tree c k` (`tree_cc_wbn_of_turn`).
+
+**(5) `Hinit_boot` IS NOT RE-DERIVED, AND THE TWO REMAINING WALLS ARE
+NAMED.**  With (3)/(4), `init_boot_con`'s premise list is payable at the
+tree claim EXCEPT for two entries, and both are echo-indexed machinery
+rather than tree facts:
+
+- **the console DANCE** (`UInitKernel.init_cons_dance_all` =
+  `UkInit.init_cons_leaves` + `init_cons_hit`): these are the SETUP's own
+  WP rows — `uki_open_absent_leaf`, `uki_mknod_leaf`,
+  `uki_open_console_leaf`, `uki_mknod_hit_leaf` — i.e. init's
+  mknod("/console") and its two opens proved against
+  `UkTreeCreate.wp_uk_ecall_mknod_own` / `UkTreeRead.wp_uk_ecall_open_own`.
+  Echo's are `UInitConsK.v` (975 lines) off `UInitCons.init_cons_laws_at`'s
+  NINE laws, and that definition is `echo_names`-indexed throughout
+  (conjuncts (b)/(e) name `EchoFsPure.echo_fs_pure`, (h)/(i) name
+  `cons_made r i`): the file must be generalised before a tree-side
+  reading can exist.  §9.3(6) already prices the replacements (the deed at
+  `top_ins ROOTINO "console" i (ADev …) t_img`, which
+  `UkTreeCreate.tree_mknod_ok_recv` hands back).
+- **the exec supply** `UkInit.init_cons_sup` (what /init's child spends on
+  `exec("sh", argv)`): echo pays it through
+  `UInitSh.init_cons_sup_of_sh_slot` out of sh's slot and
+  `cons_cred_holds`'s TEN laws.  Under the taint sh runs on the generic
+  slot, so this is the cheaper of the two, but it is still stated at echo's
+  families.
+
+So the order for the next lane is: generalise `UInitCons.v` off
+`echo_names` (a mechanical parameterisation, nine laws), then the four
+leaves at the tree corollaries (the real proof work), then
+`init_cons_sup` under the taint, and `tree_Hinit_boot` follows in
+`UInitTree.v` with `UTreeAdequacy`'s at-boot form kept as the corollary
+for anything that still wants it.  **Everything else of the premise list
+is reusable verbatim, as §9.3(6) said**: the room/length/ledger/nopipe
+arithmetic, `psok`, `udep_free`, and the reader token (which is
+`InitBoot.init_boot_bundle`'s own premise — the kernel's to hand, not the
+application's to mint).
+
+**(6) DELIVERABLE 4 NOT ATTEMPTED, and §9.3(3) is why.**  The glue
+(`xv6_slot_app_project`) has no consumer while `app_phi` is `True`: the
+left disjunct is reachable at `Hphi` and the right one ("the taint has
+been minted") is a ghost fact `app_phi` does not take, so there is no
+behavioural corollary for the glue to feed.  TL-5's pricing stands
+unchanged; land it with the φ it is for, not before.
+
+**AUDITS** (mirror, whole tree green): echo 14, system 13, tree 13 — all
+three unmoved.  `UInitTree.tree_init_kill_law` is **closed under the
+global context**; the four write-side lemmas are at the standing bar (the
+two reservation `Parameter`s + `functional_extensionality_dep`).

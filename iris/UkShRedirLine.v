@@ -1,0 +1,236 @@
+(* ===================================================================== *)
+(* UkShRedirLine.v -- THE REDIRECT LINE AS A LINE, lane SH-PARSE          *)
+(* (design/app-file.md SS5.1, deliverable 5's pure half).                  *)
+(*                                                                        *)
+(* THE BRIEF ASKED FOR [UkShLoop.ush_line_lexable] TO BECOME A             *)
+(* DISJUNCTION -- today's symbol-free shape OR the redirect shape -- and   *)
+(* that shape of edit is REFUTED here, as a theorem rather than a claim.   *)
+(* [ush_line_lexable] is quantified over [UkSh.ush_line_is ws f k len],    *)
+(* and [ush_line_is] carries [EchoDisc.line_ok ws], hence                  *)
+(* [LineWords.wl_wf ws], hence every byte of the buffer is alphanumeric,   *)
+(* a blank or the newline ([LineWords.wl_line_byte_val]).  None of those   *)
+(* is a byte of sh's symbol table, so [ushs_line_is_nosym] below proves    *)
+(* that a line [ush_line_is] describes NEVER has a '>' in it: a right      *)
+(* disjunct for the redirect shape would be vacuous, and a consumer that   *)
+(* case-split on it would be case-splitting on something that cannot       *)
+(* happen.  (durable-notes, Vacuity: the defect class nothing in the       *)
+(* build sees.)                                                              *)
+(*                                                                        *)
+(* WHAT REPLACES IT is a SECOND line predicate, stated positionally the    *)
+(* way [ush_line_is] is: [ushs_line_is ws file f k len] says the buffer at *)
+(* [k] holds the words of [ws], then one blank, the '>', one blank, then   *)
+(* the file name, then the newline.  [ushs_line_is_redir] is the bridge    *)
+(* the parser walks want -- it turns that into                             *)
+(* [UkShParseSym.ushs_redir len (fun j => f (k + j)) p e] at the two       *)
+(* positions the line's own lengths name -- and it is what a widened       *)
+(* [ush_line_lexable] has to be quantified over instead.                   *)
+(* ===================================================================== *)
+From Stdlib Require Import ZArith Bool Lia List.
+From stdpp Require Import gmap bitvector.definitions.
+Require Import RiscvModelBytes.
+Require Import UmodeAbi.
+Require Import UCodeShP.
+Require Import LineWords.
+Require Import EchoDisc.
+Require Import UkSh.
+Require Import UkShParse.
+Require Import UkShParseSym.
+Local Open Scope Z_scope.
+
+
+(* ===================================================================== *)
+(* §1 THE FOUR BYTE CLASSES A LINE CAN CARRY, AGAINST THE LEXER'S TABLES  *)
+(* ===================================================================== *)
+
+(* the two tables, as NUMBERS.  Every byte fact below is then one [lia]
+   between a range and an enumeration, and no proof has to look at a
+   literal bitvector. *)
+Lemma ushs_sym_val (b : bv 8) :
+  ushp_is_sym b = true ->
+  bv_unsigned b = 60 \/ bv_unsigned b = 124 \/ bv_unsigned b = 62
+  \/ bv_unsigned b = 38 \/ bv_unsigned b = 59 \/ bv_unsigned b = 40
+  \/ bv_unsigned b = 41.
+Proof.
+  intro E. unfold ushp_is_sym in E. apply bool_decide_eq_true in E.
+  unfold ushp_sym_bytes in E. cbn [fmap list_fmap] in E.
+  apply elem_of_list_lookup_1 in E as [ i Hi ].
+  destruct i as [| [| [| [| [| [| [| i ]]]]]]]; cbn in Hi;
+    try discriminate Hi;
+    (injection Hi as Hb; rewrite <- Hb; vm_compute; tauto).
+Qed.
+
+Lemma ushs_ws_val (b : bv 8) :
+  ushp_is_ws b = true ->
+  bv_unsigned b = 32 \/ bv_unsigned b = 9 \/ bv_unsigned b = 13
+  \/ bv_unsigned b = 10 \/ bv_unsigned b = 11.
+Proof.
+  intro E. unfold ushp_is_ws in E. apply bool_decide_eq_true in E.
+  unfold ushp_ws_bytes in E. cbn [fmap list_fmap] in E.
+  apply elem_of_list_lookup_1 in E as [ i Hi ].
+  destruct i as [| [| [| [| [| i ]]]]]; cbn in Hi;
+    try discriminate Hi;
+    (injection Hi as Hb; rewrite <- Hb; vm_compute; tauto).
+Qed.
+
+Lemma ushs_alnum_not_sym (b : bv 8) : wl_alnum b -> ushp_is_sym b = false.
+Proof.
+  intro Ha. destruct (ushp_is_sym b) eqn:E; [ exfalso | reflexivity ].
+  pose proof (ushs_sym_val b E) as Hval.
+  unfold wl_alnum in Ha.
+  destruct Ha as [ H1 | [ H1 | H1 ] ];
+    destruct Hval as [ H2 | [ H2 | [ H2 | [ H2 | [ H2 | [ H2 | H2 ]]]]]]; lia.
+Qed.
+
+Lemma ushs_alnum_not_ws (b : bv 8) : wl_alnum b -> ushp_is_ws b = false.
+Proof.
+  intro Ha. destruct (ushp_is_ws b) eqn:E; [ exfalso | reflexivity ].
+  pose proof (ushs_ws_val b E) as Hval.
+  unfold wl_alnum in Ha.
+  destruct Ha as [ H1 | [ H1 | H1 ] ];
+    destruct Hval as [ H2 | [ H2 | [ H2 | [ H2 | H2 ]]]]; lia.
+Qed.
+
+Lemma ushs_sp_ws : ushp_is_ws wl_sp = true.
+Proof. vm_compute. reflexivity. Qed.
+
+Lemma ushs_nl_ws : ushp_is_ws wl_nl = true.
+Proof. vm_compute. reflexivity. Qed.
+
+Lemma ushs_sp_not_sym : ushp_is_sym wl_sp = false.
+Proof. vm_compute. reflexivity. Qed.
+
+Lemma ushs_nl_not_sym : ushp_is_sym wl_nl = false.
+Proof. vm_compute. reflexivity. Qed.
+
+Lemma ushs_body_not_sym (b : bv 8) : wl_body_byte b -> ushp_is_sym b = false.
+Proof.
+  intros [ Ha | -> ]; [ exact (ushs_alnum_not_sym b Ha) | exact ushs_sp_not_sym ].
+Qed.
+
+
+(* ===================================================================== *)
+(* §2 THE REFUTATION: A LINE [ush_line_is] DESCRIBES HAS NO SYMBOL BYTE   *)
+(*                                                                        *)
+(* This is the design fact that decides deliverable 5's shape.  It is     *)
+(* also, on its own, the FIRST HALF of [UkShLoop.ush_line_lexable] --     *)
+(* which is a [Prop] premise today -- so the premise is that much         *)
+(* narrower than it looks.                                                *)
+(* ===================================================================== *)
+
+Lemma ushs_line_is_nosym (ws : list (list (bv 8))) (f : nat -> bv 8)
+    (k len : nat) :
+  ush_line_is ws f k len -> ushp_no_symbols len (fun j : nat => f (k + j)%nat).
+Proof.
+  intros (Hok & Hlen & Hbytes) j Hj.
+  assert (Hjl : (j < length (wl_line ws))%nat) by lia.
+  assert (Hin : wl_line ws !!! j ∈ wl_line ws)
+    by (apply elem_of_list_lookup_2 with j;
+        exact (list_lookup_lookup_total_lt (wl_line ws) j Hjl)).
+  pose proof (wl_line_byte_val ws (wl_line ws !!! j)
+                (line_ok_wf ws Hok) Hin) as Hv.
+  cbn beta. rewrite (Hbytes j Hj).
+  destruct (ushp_is_sym (wl_line ws !!! j)) eqn:E; [ exfalso | reflexivity ].
+  pose proof (ushs_sym_val (wl_line ws !!! j) E) as Hval.
+  destruct Hv as [ H1 | [ H1 | [ H1 | [ H1 | H1 ]]]];
+    destruct Hval as [ H2 | [ H2 | [ H2 | [ H2 | [ H2 | [ H2 | H2 ]]]]]]; lia.
+Qed.
+
+
+(* ===================================================================== *)
+(* §3 THE REDIRECT LINE, STATED POSITIONALLY                              *)
+(*                                                                        *)
+(*   <the words of ws>  ' '  '>'  ' '  <file>  '\n'                       *)
+(*                       ^p0  ^p                                          *)
+(*                                                                        *)
+(* Positional, exactly as [UkSh.ush_line_is] is, so that a walk reads the  *)
+(* bytes it needs off the predicate with no list-append arithmetic.       *)
+(* ===================================================================== *)
+
+Definition ushs_line_is (ws : list (list (bv 8))) (file : list (bv 8))
+    (f : nat -> bv 8) (k len : nat) : Prop :=
+  let p0 := length (wl_body ws) in
+  line_ok ws
+  /\ wl_word file
+  /\ len = (p0 + 3 + length file + 1)%nat
+  /\ (forall j : nat, (j < p0)%nat -> f (k + j)%nat = wl_body ws !!! j)
+  /\ f (k + p0)%nat = wl_sp
+  /\ f (k + p0 + 1)%nat = ushs_gt
+  /\ f (k + p0 + 2)%nat = wl_sp
+  /\ (forall j : nat, (j < length file)%nat ->
+        f (k + p0 + 3 + j)%nat = file !!! j)
+  /\ f (k + p0 + 3 + length file)%nat = wl_nl.
+
+(* ...and it IS the canonical redirect the parser walks are stated over *)
+Lemma ushs_line_is_redir (ws : list (list (bv 8))) (file : list (bv 8))
+    (f : nat -> bv 8) (k len : nat) :
+  ushs_line_is ws file f k len ->
+  ushs_redir len (fun j : nat => f (k + j)%nat)
+    (length (wl_body ws) + 1)%nat
+    (length (wl_body ws) + 3 + length file)%nat.
+Proof.
+  intros (Hok & Hfile & Hlen & Hbody & Hsp1 & Hgt & Hsp2 & Hfb & Hnl).
+  set (p0 := length (wl_body ws)) in *.
+  assert (Hfpos : (0 < length file)%nat)
+    by (destruct Hfile as [ Hne _ ]; destruct file; [ done | cbn; lia ]).
+  (* the three byte classes, at each region of the line *)
+  assert (Hbodycl : forall j : nat, (j < p0)%nat ->
+            ushp_is_sym (f (k + j)%nat) = false).
+  { intros j Hj. rewrite (Hbody j Hj). apply ushs_body_not_sym.
+    refine (Forall_lookup_1 _ _ _ _ (wl_body_bytes ws (line_ok_wf ws Hok)) _).
+    exact (list_lookup_lookup_total_lt (wl_body ws) j Hj). }
+  assert (Hfilecl : forall j : nat, (j < length file)%nat ->
+            wl_alnum (f (k + p0 + 3 + j)%nat)).
+  { intros j Hj. rewrite (Hfb j Hj).
+    destruct Hfile as [ _ Hall ].
+    refine (Forall_lookup_1 _ _ _ _ Hall _).
+    exact (list_lookup_lookup_total_lt file j Hj). }
+  (* every index of the line, classified *)
+  assert (Hclass : forall j : nat, (j < len)%nat ->
+            j <> (p0 + 1)%nat -> ushp_is_sym (f (k + j)%nat) = false).
+  { intros j Hj Hne.
+    destruct (lt_dec j p0) as [ Hlo | Hge ]; [ exact (Hbodycl j Hlo) | ].
+    destruct (Nat.eq_dec j p0) as [ -> | Hn0 ].
+    { rewrite Hsp1. exact ushs_sp_not_sym. }
+    destruct (Nat.eq_dec j (p0 + 2)%nat) as [ -> | Hn2 ].
+    { replace (k + (p0 + 2))%nat with (k + p0 + 2)%nat by lia.
+      rewrite Hsp2. exact ushs_sp_not_sym. }
+    destruct (lt_dec j (p0 + 3 + length file)%nat) as [ Hfi | Hgf ].
+    { assert (Hd : (j - (p0 + 3) < length file)%nat) by lia.
+      replace (k + j)%nat with (k + p0 + 3 + (j - (p0 + 3)))%nat by lia.
+      exact (ushs_alnum_not_sym _ (Hfilecl (j - (p0 + 3))%nat Hd)). }
+    assert (Hj' : j = (p0 + 3 + length file)%nat) by lia. subst j.
+    replace (k + (p0 + 3 + length file))%nat
+      with (k + p0 + 3 + length file)%nat by lia.
+    rewrite Hnl. exact ushs_nl_not_sym. }
+  assert (Hone : ushs_one len (fun j : nat => f (k + j)%nat)
+                   (Some (p0 + 1)%nat)).
+  { split.
+    - intros j Hj Hs.
+      destruct (Nat.eq_dec j (p0 + 1)%nat) as [ -> | Hne ]; [ reflexivity | ].
+      exfalso. rewrite (Hclass j Hj Hne) in Hs. discriminate.
+    - intros q Hq. injection Hq as <-. split; [ lia | ].
+      cbn beta. replace (k + (p0 + 1))%nat with (k + p0 + 1)%nat by lia.
+      exact Hgt. }
+  unfold ushs_redir. split; [ exact Hone | ].
+  repeat split.
+  - lia.
+  - (* a blank before *)
+    replace (k + (p0 + 1 - 1))%nat with (k + p0)%nat by lia.
+    rewrite Hsp1. exact ushs_sp_ws.
+  - (* a blank after *)
+    replace (k + S (p0 + 1))%nat with (k + p0 + 2)%nat by lia.
+    rewrite Hsp2. exact ushs_sp_ws.
+  - lia.
+  - lia.
+  - (* the file name has no blank in it *)
+    intros j Hj.
+    assert (Hd : (j - (p0 + 3) < length file)%nat) by lia.
+    replace (k + j)%nat with (k + p0 + 3 + (j - (p0 + 3)))%nat by lia.
+    exact (ushs_alnum_not_ws _ (Hfilecl (j - (p0 + 3))%nat Hd)).
+  - (* ...and past it there is only the newline *)
+    intros j Hj.
+    assert (Hj' : j = (p0 + 3 + length file)%nat) by lia. subst j.
+    replace (k + (p0 + 3 + length file))%nat
+      with (k + p0 + 3 + length file)%nat by lia.
+    rewrite Hnl. exact ushs_nl_ws.
+Qed.

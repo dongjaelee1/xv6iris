@@ -1526,6 +1526,7 @@ UkShRedir.v
 
 UCodeShP.v
 UkShParse.v
+UkShParseSym.v
 UkShParseLex.v
 UkShParseTok.v
 UkShParseRedir.v
@@ -1533,10 +1534,14 @@ UkShParseExec.v
 UkShParseCmd.v
 UkShRedirLex.v
 UkShRedirTok.v
+UkShRedirGtk.v
+UkShRedirCmd.v
+UkShRedirPr.v
 
 UCodeShM.v
 UkShMalloc.v
 
+UkShRedirLine.v
 UkShLoop.v
 UkShCd.v
 UkShMain.v

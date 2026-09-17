@@ -503,3 +503,138 @@ Proof.
   rewrite (bool_decide_eq_false_2 (len < len)%nat ltac:(lia)).
   reflexivity.
 Qed.
+
+
+(* ===================================================================== *)
+(* §7 WHAT THE ARGUMENT LOOP READS OFF THE MODEL                          *)
+(*                                                                        *)
+(* [UkShParseExec.wp_kshp_pex_loop] turns on three readings of the token   *)
+(* model ([ushp_tokens_nil_inv] / [_cons_inv'] / [_skip]) and three of     *)
+(* gettoken's answer.  At the redirect shape the loop's invariant is       *)
+(* [ushs_toks] and the answers are [ushs_gettok_*], so these are the same  *)
+(* six facts in this file's vocabulary -- pure, so the walk file never     *)
+(* [cbn]s a [Fixpoint] under a proofmode goal.                             *)
+(* ===================================================================== *)
+
+(* a token of positive length starts at a byte that is neither blank nor
+   symbol -- which is what makes the loop's [peek] miss and gettoken's
+   answer 'a' *)
+Lemma ushs_toklen_pos_nosym (n i : nat) (f : nat -> bv 8) :
+  (0 < ushp_toklen n i f)%nat -> ushp_is_sym (f i) = false.
+Proof.
+  intro Hpos. destruct (ushp_is_sym (f i)) eqn:E; [ exfalso | reflexivity ].
+  rewrite (ushp_toklen_stop n i f ltac:(rewrite E; rewrite orb_true_r; reflexivity))
+    in Hpos. lia.
+Qed.
+
+Lemma ushs_toklen_pos_nows (n i : nat) (f : nat -> bv 8) :
+  (0 < ushp_toklen n i f)%nat -> ushp_is_ws (f i) = false.
+Proof.
+  intro Hpos. destruct (ushp_is_ws (f i)) eqn:E; [ exfalso | reflexivity ].
+  rewrite (ushp_toklen_stop n i f ltac:(rewrite E; reflexivity)) in Hpos. lia.
+Qed.
+
+(* ---- the three readings of [ushs_toks] ------------------------------- *)
+
+Lemma ushs_toks_nil' (len stop i : nat) (f : nat -> bv 8) :
+  (i + ushp_skipws (len - i) i f)%nat = stop -> ushs_toks len f stop i [].
+Proof. intro H. exact (UshsTokNil len f stop i H). Qed.
+
+Lemma ushs_toks_cons' (len stop : nat) (f : nat -> bv 8) (i n : nat)
+    (toks : list (nat * nat)) :
+  ushp_skipws (len - i) i f = 0%nat ->
+  ushp_toklen (len - i) i f = n ->
+  (0 < n)%nat ->
+  ushs_toks len f stop (i + n)%nat toks ->
+  ushs_toks len f stop i ((i, (i + n)%nat) :: toks).
+Proof.
+  intros Hk Hn Hpos Ht.
+  assert (E : (i + ushp_skipws (len - i) i f)%nat = i) by (rewrite Hk; lia).
+  assert (C := UshsTokCons len f stop i toks).
+  cbv zeta in C. rewrite E in C. rewrite Hn in C.
+  exact (C Hpos Ht).
+Qed.
+
+Lemma ushs_toks_nil_inv (len stop i : nat) (f : nat -> bv 8) :
+  ushs_toks len f stop i [] -> (i + ushp_skipws (len - i) i f)%nat = stop.
+Proof. inversion 1. assumption. Qed.
+
+Lemma ushs_toks_cons_inv (len stop i : nat) (f : nat -> bv 8)
+    (tk : nat * nat) (rest : list (nat * nat)) :
+  ushs_toks len f stop i (tk :: rest) ->
+  (0 < ushp_toklen (len - (i + ushp_skipws (len - i) i f))
+         (i + ushp_skipws (len - i) i f) f)%nat /\
+  tk = ((i + ushp_skipws (len - i) i f)%nat,
+        (i + ushp_skipws (len - i) i f
+         + ushp_toklen (len - (i + ushp_skipws (len - i) i f))
+             (i + ushp_skipws (len - i) i f) f)%nat) /\
+  ushs_toks len f stop
+    (i + ushp_skipws (len - i) i f
+     + ushp_toklen (len - (i + ushp_skipws (len - i) i f))
+         (i + ushp_skipws (len - i) i f) f)%nat rest.
+Proof.
+  inversion 1 as [ | off toks0 Hn Ht Eoff Etoks ]; subst.
+  cbv zeta in *. split; [ assumption | ].
+  split; [ reflexivity | assumption ].
+Qed.
+
+Lemma ushs_toks_cons_inv' (len stop i j q : nat) (f : nat -> bv 8)
+    (tk : nat * nat) (rest : list (nat * nat)) :
+  j = (i + ushp_skipws (len - i) i f)%nat ->
+  q = ushp_toklen (len - j) j f ->
+  ushs_toks len f stop i (tk :: rest) ->
+  (0 < q)%nat /\ tk = (j, (j + q)%nat) /\ ushs_toks len f stop (j + q)%nat rest.
+Proof. intros -> ->. apply ushs_toks_cons_inv. Qed.
+
+Lemma ushs_toks_skip (len stop : nat) (f : nat -> bv 8) (off : nat)
+    (toks : list (nat * nat)) :
+  (off <= len)%nat ->
+  ushs_toks len f stop off toks ->
+  ushs_toks len f stop (off + ushp_skipws (len - off) off f)%nat toks.
+Proof.
+  intros Hoff H.
+  pose proof (ushp_skipws_idem len off f Hoff) as Hk0.
+  pose proof (ushp_skipws_le (len - off) off f) as Hle.
+  destruct toks as [| tk rest ].
+  - apply ushs_toks_nil'.
+    pose proof (ushs_toks_nil_inv len stop off f H) as Hnil. lia.
+  - destruct (ushs_toks_cons_inv len stop off f tk rest H)
+      as (Hn & Htk & Hrest).
+    subst tk.
+    exact (ushs_toks_cons' len stop f (off + ushp_skipws (len - off) off f)
+             (ushp_toklen (len - (off + ushp_skipws (len - off) off f))
+                (off + ushp_skipws (len - off) off f) f) rest
+             Hk0 eq_refl Hn Hrest).
+Qed.
+
+
+(* ---- and the three readings of gettoken's answer at a WORD ----------- *)
+
+Lemma ushs_gettok_res_word (len : nat) (f : nat -> bv 8) (k : nat) :
+  (k < len)%nat -> ushp_is_sym (f k) = false -> ushs_gettok_res len f k = 97.
+Proof.
+  intros Hk Hs. unfold ushs_gettok_res.
+  rewrite (bool_decide_eq_true_2 _ Hk), Hs. reflexivity.
+Qed.
+
+Lemma ushs_gettok_end_word (len : nat) (f : nat -> bv 8) (k : nat) :
+  (k < len)%nat -> ushp_is_sym (f k) = false ->
+  ushs_gettok_end len f k = (k + ushp_toklen (len - k) k f)%nat.
+Proof.
+  intros Hk Hs. unfold ushs_gettok_end.
+  rewrite (bool_decide_eq_true_2 _ Hk), Hs. reflexivity.
+Qed.
+
+Lemma ushs_gettok_end_stop (len : nat) (f : nat -> bv 8) :
+  ushs_gettok_end len f len = len.
+Proof.
+  unfold ushs_gettok_end.
+  rewrite (bool_decide_eq_false_2 (len < len)%nat ltac:(lia)). reflexivity.
+Qed.
+
+Lemma ushs_gettok_fin_stop (len : nat) (f : nat -> bv 8) :
+  ushs_gettok_fin len f len = len.
+Proof.
+  unfold ushs_gettok_fin. rewrite ushs_gettok_end_stop.
+  rewrite Nat.sub_diag. cbn [ushp_skipws]. lia.
+Qed.

@@ -17,7 +17,7 @@
 (*  cites the echo lemma it copies and the file lemma that replaces it.   *)
 (*                                                                       *)
 (*  (1) THE THREE PROJECTIONS, off the record's interface equation:       *)
-(*      [riscv_rx_tag = ftag c], [riscv_kill_cred = file_taint (fgn_cl    *)
+(*      [riscv_rx_tag = ftag c], [app_taint = file_taint (fgn_cl    *)
 (*      c)], [riscv_cons_res = fecl c].  [AppFileRec.file_ifc] is built   *)
 (*      from exactly those three, so each is [cbn] on the record literal, *)
 (*      as in echo's [Htag] / [Hkill] / [Hcons].                         *)

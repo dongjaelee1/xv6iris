@@ -224,7 +224,7 @@ Section UserOff.
      Stated HERE rather than inside the box so that the box, the fire and
      the supplier all name one proposition. *)
   Definition off_link (γo : gname) (z : Z) : iProp Σ :=
-    (off_gv γo (1/2) z ∨ □ riscv_kill_cred)%I.
+    (off_gv γo (1/2) z ∨ app_taint)%I.
 
   Global Instance off_link_timeless γo z : Timeless (off_link γo z).
   Proof using . rewrite /off_link. apply _. Qed.
@@ -236,9 +236,9 @@ Section UserOff.
   Proof using . iIntros "H". by iLeft. Qed.
 
   (* ...and the disconnect, which is what the GENERIC tier pays with: the
-     taint it already holds ([PipeQueue.pipe_taint_cred],
+     taint it already holds ([PipeQueue.app_taint],
      [UexecExecInst.xv6_ssupply]; the survey's Fact A). *)
-  Lemma off_link_taint γo (z : Z) : □ riscv_kill_cred -∗ off_link γo z.
+  Lemma off_link_taint γo (z : Z) : app_taint -∗ off_link γo z.
   Proof using . iIntros "#H". by iRight. Qed.
 
   (* THE SETTLE: what the FIRE needs when the node hands the kernel's half
@@ -267,10 +267,10 @@ Section UserOff.
   (* PAYER 2 -- THE TAINT, and this is the disconnect: the kernel DROPS its
      half rather than moving it, and the box keeps the cell alone.  Only
      the generic tier can pay this ([Fact B]: a verified program under an
-     untainted discipline cannot mint [riscv_kill_cred], which is what
+     untainted discipline cannot mint [app_taint], which is what
      [vacuity_link_not_taint] below checks). *)
   Lemma off_settle_taint (E : coPset) γo (off d : nat) :
-    □ riscv_kill_cred -∗ off_settle γo E off d True.
+    app_taint -∗ off_settle γo E off d True.
   Proof using .
     rewrite /off_settle. iIntros "#Ht Hk".
     iModIntro. iSplitR; [ by iApply off_link_taint | done ].
@@ -326,8 +326,8 @@ Section UserOff.
      vacuous -- and, read the other way, the generic tier can never take
      the LINK arm of a [link ∨ taint] payment. *)
   Example vacuity_link_not_taint (γo : gname) (off : nat) (z : Z) :
-    (⊢ □ riscv_kill_cred -∗ uoff γo off) ->
-    □ riscv_kill_cred ∗ off_gv γo 1 z ⊢ False.
+    (⊢ app_taint -∗ uoff γo off) ->
+    app_taint ∗ off_gv γo 1 z ⊢ False.
   Proof using .
     intros Hbad. iIntros "[#Ht Hw]".
     iDestruct (Hbad with "Ht") as "Hu". rewrite /uoff.
@@ -343,8 +343,8 @@ Section UserOff.
      has no payer but [AppInv.app_sup], which the taint reaches only
      through the survey's R1 ([al_sup_of_kill], lane SUP-ONE). *)
   Example vacuity_lend_not_taint (γo : gname) (off : nat) (z : Z) :
-    (⊢ □ riscv_kill_cred -∗ off_gv γo (1/2) (Z.of_nat off)) ->
-    □ riscv_kill_cred ∗ off_gv γo 1 z ⊢ False.
+    (⊢ app_taint -∗ off_gv γo (1/2) (Z.of_nat off)) ->
+    app_taint ∗ off_gv γo 1 z ⊢ False.
   Proof using .
     intros Hbad. iIntros "[#Ht Hw]".
     iDestruct (Hbad with "Ht") as "Hk".
@@ -365,8 +365,8 @@ Section UserOff.
   Example vacuity_supply_not_taint (E : coPset) (γo : gname) (off d : nat)
       (R : iProp Σ) :
     (0 < d)%nat ->
-    (⊢ □ riscv_kill_cred -∗ off_supply γo E off d R) ->
-    □ riscv_kill_cred ∗ off_gv γo 1 (Z.of_nat off) ⊢ |={E}=> False.
+    (⊢ app_taint -∗ off_supply γo E off d R) ->
+    app_taint ∗ off_gv γo 1 (Z.of_nat off) ⊢ |={E}=> False.
   Proof using .
     intros Hd Hbad. iIntros "[#Ht Hw]".
     iDestruct (off_gv_halves γo (Z.of_nat off) with "Hw") as "[Hk Hu]".

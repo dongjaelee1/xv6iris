@@ -238,3 +238,5 @@ import Xv6.LinkReparent
 import Xv6.SpecSafestrcpy
 import Xv6.ProofSafestrcpy
 import Xv6.LinkSafestrcpy
+import Xv6.ProofKexit
+import Xv6.LinkKexit

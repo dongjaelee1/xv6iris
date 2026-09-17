@@ -8142,3 +8142,165 @@ six further files as PROOF TEXT and nothing else — `destruct Hb as
 sites), `UInitConsK.v` (LINK-GEN's, one), `UShConsK.v`,
 `UInitTreeCons.v`, `UkTreeCreate.v`, `UkTreeRead.v`.  No statement in any
 of those moved.
+
+### OFF-LINK-2 (kernel/U tier, 2026-09-17) — THE PARKED DISCIPLINE LEAVES THE TREE, AND THE BOX'S TAINT ARM LANDS AS **ONE** CHANGE: THE LEND, THE BOX, THE SUPPLIER AND BOTH FIRE WALKS AT `OffGv.off_link`
+
+**The lane's verdict in one line: L6 landed whole — `ukn_held` (the record
+field), `ukn_parked`, `urun_parked_row`, `fdv_all_parked` and its kit,
+`fdv_held_in`, `usys_fd_ok_parked`, `usys_fd_ok_held`, `ush_gen_slot`'s row,
+`kexec_image_ok_parked`/`exec_key_ok_parked`, `kfk_at_parked` and the four dead
+premises with the three `Hpark` contexts are GONE, and `tools/lemma_diff.py`
+reports exactly that list; then L3 landed as the ONE coupled change
+WRITE-RELAY-2 handed over — the nodes' LEND, the box, the supplier and both
+fire walks are all at `OffGv.off_link γo z := off_gv γo (1/2) z ∨ app_taint`,
+so a file's offset ghost may be DISCONNECTED and the disconnect is permanent;
+L2's `fp_om` is written and REVERTED again, and this time the blocker is named
+at one line — `ProofFilewrite.v:5016` / `ProofFileread.v`'s twin, where the
+fire reads `foff_row_inode_of` at a mode that is no longer pinned and there is
+no contract arm yet to hand it the held row's supplier.**
+
+**WHAT LANDED** (whole tree green on the lane's remote tree, `--proofs -k`,
+`EXIT=0`, zero `Error`, 430 files rebuilt on the confirming run; `make
+audit-all-only` / `audit-tree-only` / `audit-file-only` UNCHANGED — system
+THIRTEEN, echo FOURTEEN, tree THIRTEEN, file FOURTEEN; `Proof using`
+everywhere; no `Admitted` of this lane's.)
+
+*`378b23778` — L6: the parked discipline leaves the tree*
+
+Every deletion below carried the generic tier's PARKED DISCIPLINE — "no
+descriptor in this table has had its offset half handed out" — across a round,
+a fork, an exec or a Löb step, which is the precondition §3.5's principle
+retires.  `tools/lemma_diff.py` reports these and nothing else (its only other
+lines are lane SKELETON's five `Admitted` in `UShRound.v`):
+
+| GONE | file | reason |
+|---|---|---|
+| `ukn_held` (the FIELD; `MkUkNames` loses an argument) | `UkRun.v` | dead data since OFF-HAND-6's H3 deleted its one consumer |
+| `ukn_parked` (Class) | `UkRun.v` | it constrained the deleted field |
+| `urun_parked_row` | `UkRun.v` | `True` since OFF-HAND-6; `urun_rows` is now `urun_nopipe` verbatim |
+| `usys_fd_ok_parked`, `usys_fd_ok_held`, `fdv_held_in`, `_of_parked`, `_empty`, `_mono`, `_insert`, `_closed` | `UsysMemOk.v` | no consumer outside a comment |
+| `fdv_all_parked`, `_dec`, `_lookup`, `_lookup_total`, `_insert`, `_replicate`, `_closed`, `_app`, `_take`, `_drop`, `_fdt0`, `fdst_parked_closed`, `fdst_parked_pipe` | `FdSlots.v` | their last consumers are the rows above |
+| `kfk_at_parked`, `kfk_at_parked_fdt0` | `ProofKforkB3.v` | ditto |
+| `kexec_image_ok_parked`, `exec_key_ok_parked` | `SpecKexec.v` | ditto; the two `_ok_fd` readings they were stated over stand |
+| `ush_gen_slot`'s row, `ush_gen_slot_held` | `UkSh.v` | the slot said sh holds no offset half |
+
+WHAT SURVIVES, and why: `fdst_parked` itself with `fdst_parked_dev` /
+`_inode` — `UsysMemOk.usys_fd_ok`'s OPEN row still carries `fdst_parked (FdOpen
+rd wr t)` as "an open installs an inode or a device", and `SpecSysOpen`'s three
+arms pay it; relaxing THAT to the caller's mode is L4.  `usys_fd_ok_nopipe`
+survives too: a pipe row is still a fact the generic tier carries (exit's close
+payments are free only at a table that holds none) and it has nothing to do
+with offsets.
+
+The sweep's shape, for the next lane that does one like it: the three
+constructors (`uslot_of_urun{,_all,_ro}`) lose their `hs` binder and their
+`⌜ukn_held N = hs⌝` row, `UkFork.wp_uk_ecall_fork{,_argv}` lose `hs` and the
+`ukn_held N ⊆ hs` premise, and the `⌜ukn_held N' = _⌝` rows go from
+`UkShEcho` / `UkShFork` / `UkShRun` / `UkShDiag` / `UkInit` / `UkInitMain` /
+`UShRound` / `UInitSh` / `UInitTreeExec` / `UShEchoPay` / `UShKernel` /
+`UShCat` / `UEchoKernel` / `UEchoOut` / `USyncKernel` / `UInitKernel`.  Every
+one of those is an intro pattern with one fewer `%H` and a specialisation with
+one fewer `[%]`; nothing about any of them is subtle, and the build finds them
+all.
+
+*`0b04eefe6`, `f25530e76` — the merge of main (SUP-ONE's `app_taint`,
+WRITE-RELAY-2's node) and its fix-forward*
+
+Three conflicts, all mechanical: `UkRun.urun_rows_taint` (this lane's premise
+gone, main's taint renamed), `UInitTreeExec` and `UkInitMain` (main restated
+the exec supply as `init_exec_sup_pos` while this lane deleted its
+`⌜ukn_held N' = ∅⌝` argument), plus `UShCat`'s slot mint at the deleted `hs`.
+
+*`4919630d6` — L3: THE BOX'S TAINT ARM, as one coupled change*
+
+  `OffGv.off_link γo z := off_gv γo (1/2) z ∨ app_taint`
+
+is the arm, and it is stated in `OffGv` because everything above is stated at
+it.  What changed shape, exhaustively:
+
+- `OffGv.off_ret` carries it (`∃ v, off_link γo v ∗ ⌜v = off ∨ v = off + d⌝`);
+  `off_ret_keep` / `off_ret_adv` keep their landed statements, NEW
+  `off_ret_taint` and `off_ret_of_link` (the generic node's one-liner) and
+  `off_ret_case` (the fire's split: unmoved → the settle, advanced → the arm).
+- THE LEND: `FsAbsWriteFire.awrite_full_at`, `awrite_part_at` and
+  `FsAbsReadFire.aread_commit_at` are lent `off_link γo (Z.of_nat off)`.  That
+  is the change WRITE-RELAY-2 measured and stopped at: a node at a
+  disconnected object has no half to be lent, and the generic node frames its
+  borrow straight back (`off_ret_of_link`), so it costs the generic tier
+  nothing.  It is also what closes OFF-LINK's REFUTED 2 — the reason the
+  SECOND fire at a disconnected object was unpayable.
+- THE BOX: `FileOffCell.off_resident γo k := ∃ v, a_foff k ↦₄ v ∗ ⌜off_wf v⌝ ∗
+  off_link γo (bv_unsigned v)`.  The CELL is kept in both arms (the store
+  `f->off += r` needs it); only the tie to the shadow is dropped, permanently
+  (a `ghost_var` half cannot be re-minted at an existing name).
+- THE SUPPLIER: `UserOff.off_supply` keeps its name and arity and its OUTPUT
+  widens to the arm — which is what this lane landed as `off_settle` while the
+  lend was still the bare half, so the two are one proposition now and
+  `off_settle`/`off_settle_parked`/`off_settle_taint` are deleted.  Payers:
+  `off_supply_parked` (today's invariant, at BOTH arms of the lend), NEW
+  `off_supply_taint` (the generic tier's, and the disconnect itself), and
+  `off_supply_held`, whose post is now `pipe_wpost`'s shape —
+  `uoff γo (off + d) ∨ (uoff γo off ∗ app_taint)`, "fired, or the taint with
+  the payment back".
+- THE FIRES: `wrf_awrite_fire{,_gen,_held}`, `wrf_apart_fire{,_gen,_held}`,
+  `arf_read_fire{,_gen,_held,_1,_q}` take the arm in and hand the arm back; the
+  `_held` ones' post carries the disjunction above.
+- THE CLIENTS: `FileWrite.file_awrite_full_anchored`'s lend,
+  `UEchoFile.ef_full_adv{,_raw}`'s lend and answer (lane SKELETON's — its
+  `Hoff_link`, addressed to this lane, is now an `iExact`), and
+  `FileOffProtocol` / `TreeMove` / `UkTreeRead` / `FileOpen` /
+  `ProofFilewrite`'s local assertion, which follow the arm and say nothing new.
+- THE VACUITY CHECK stands, restated where the widening moved it:
+  `vacuity_supply_not_taint` is now spelled AT THE OLD OUTPUT (the bare
+  advanced half), so it keeps saying what it said — a supplier that must hand
+  the half back is not payable by the taint, which is why the arm is in the
+  box; `off_supply_taint` is the same fact read forwards.
+  `vacuity_link_not_taint` and `vacuity_lend_not_taint` are unchanged, and the
+  second is exactly what the landed lend answers.
+
+**WHAT DID NOT LAND, and the one line it stops at.**
+
+- **L2 (`fpnames.fp_om` and the pin) — WRITTEN AND REVERTED A SECOND TIME, and
+  the blocker is now a single line rather than a shape.**  The sweep itself is
+  done and mechanical (the recipe in lane OFF-LINK's REFUTED 3 is exact, and
+  the downstream sites are: `SpecFileread.fileread_pay_carve` and
+  `ProofFilewrite.fwau_pay_carve` quantify `om` existentially;
+  `fileread_st_inode_rd`'s conclusion names it; `ProofSysOpenParts` mints
+  `MkFPNames … OffParked` and `ProofSysOpenPub` reads `stpub` at it; the four
+  `destruct Hokx as (inumx & γox & γpx & omx & Hok)` in `ProofFile{read,write,
+  close,stat}`; one extra `_` at every `fdstate_ok_*` application).  Where it
+  stops is `ProofFilewrite.v:5016` and its read twin: with the pin at
+  `fp_om pn` the fire site's `Hstx` names an EXISTENTIAL mode, so
+  `FdSlots.foff_row_inode_of st rx true … Hstx` no longer applies, and at a
+  held row `foff_row st` is `emp` — the supplier has to come from the
+  CONTRACT's held arm, which is the half of L3 this lane did not reach.  The
+  two land together, and with the box's arm in place nothing else blocks them.
+- **L3's contract arms** (`SpecFilewrite.filewrite_in` /
+  `SpecFileread.fileread_in` keyed on the mode, the held arm `(advancing
+  chain) ∨ (today's chain ∗ app_taint)`, the posts at a held row carrying
+  `uoff γo (off + d)` and `⌜off = off0⌝`) — not attempted.  Shape it with the
+  mode's match OUTSIDE the `∀ P`, so WRITE-RELAY-3's deferred
+  `TB : uptd -> Prop` guard fits in front of the chain on both arms.
+- **L4 (the mint)** — `ProofSysOpenPub` is one swap (`off_pub_park` →
+  `off_pub_hand_0`, the receipt carrying `uoff g 0`), and `usys_fd_ok`'s open
+  arm's `fdst_parked` is now free to relax: `usys_fd_ok_parked` is DELETED, so
+  nothing reads the pin any more.  What the generic Löb needs is nothing: the
+  row's successor table does not move at open (only the row's own entry does),
+  and the fact the Löb used to carry about it went with `fdv_all_parked`.
+- **L5's held deposit suppliers** — the parked leaves do not move; what a held
+  descriptor needs is a new `udepwf_st_{read,write}_file_held` beside the
+  landed ones, carrying `uoff γo off` into the contract's held arm.  Blocked
+  on that arm and nothing else.
+
+**WHAT ECHO-FILE / CAT-ENTRY-2 / SH-ROUND HAND IN, as of this lane.**
+- The generic tier is told NOTHING about offsets any more: no record field, no
+  table row, no Löb premise, no exec row, no slot conjunct.  A verified program
+  that opens in hand mode is now invisible to every tier but the one that
+  fires.
+- The box may be DISCONNECTED and the fire may disconnect it: `off_link` is in
+  `OffGv`, the three nodes are lent it, `off_supply_taint` pays it, and
+  `off_resident` is it.  Nothing re-couples: there is no lemma from
+  `app_taint` back to `off_gv`.
+- `UEchoFile.v`'s `Hoff_link` is discharged (an `iExact` over the landed node),
+  and `Hdep1`/`Hwrite1` were discharged by lane OFF-LINK's L5 — so the program
+  tier's write side owes the kernel only the contract's held arm.

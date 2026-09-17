@@ -241,6 +241,25 @@ premise, the holder's half in hand):
   receipt through, and restatement 3 (exclusivity of `Fex` and the arm
   at `acre_commit_at_gen`) is not needed.  Lane F-OPEN-3 does the one
   sweep and lands `file_open_create_au` at `om_trunc = true`.
+  LANDED (F-OPEN-3) with two corrections: the EXISTS disjunct needs no
+  fraction at all — the claim's typed witness bounds the content by
+  `line_max` at ANY view, so the row is none of the four binaries
+  (`file_claim_read_free`) — and the permit is paid at create's RETURN
+  and kept on the keyed piece's refund side (`cre_ft_kept`), which is
+  what keeps `open_post_fail_create`'s arm (a) honest.  What did NOT
+  close is the `s = None` refutation: `Fex`'s found entry is at the
+  LOOKUP's view and the truncate fires at a later one (the parent was
+  unlocked between; another process may unlink), so the fd arm's
+  payload is `fown r (Some (i, [])) ∨ fown r s` with an unreachable,
+  unrefutable second disjunct.  RULED (2026-09-17): close it with the
+  APPLICATION-SIDE ESCROW (F-OPEN-3's way (ii)) — the deed's half sits
+  in an invariant of the claim's own with a one-shot in the arm piece
+  saying the arm has not fired, so the lookup piece READS the value at
+  its own view (refuting the found entry at `None`) and the arm piece
+  TAKES the half when it fires; `FileOpen`'s business alone, no kernel
+  restatement.  The same escrow closes the EXISTS-DEVICE sub-arm.  Lane
+  F-OPEN-4; then the U-tier wrapper `wp_uk_ecall_open_create_deed` over
+  the parked leaf as a visible parameter, so the held twin is one swap.
 - **append** (echo's chunk `j`, `awrite_full_at`'s `wri_pre av i off bs
   bs0 nl` with `off = |bs0|` — §3 on why the offset is known): `Some bs0
   → Some (bs0 ++ chunk_j)`; echo's own proof carries the words and the

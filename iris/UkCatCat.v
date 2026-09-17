@@ -405,13 +405,58 @@ Section UkCatCat.
     exact (Hfr q Hq Hset).
   Qed.
 
+  (* ===================================================================== *)
+  (* WHAT cat's LOOP SPENDS (lane CAT-WALK, W1).                            *)
+  (*                                                                       *)
+  (* The loop is UNBOUNDED and the counts it writes at are its own reads'   *)
+  (* returns, so no finite chain can pay it.  What pays it is a ROUND LAW:  *)
+  (* one persistent obligation that funds a whole turn -- the read, and     *)
+  (* then, at whatever the read returned, the branch the return selects --  *)
+  (* and hands the invariant back for the next turn.  [I] is the payer's    *)
+  (* own cursor (at the file application, [UCatOut.cch] at the position     *)
+  (* the round's output has reached) and the walk reads none of it;         *)
+  (* [Cend] is what the loop's NORMAL exit -- read returned zero -- hands   *)
+  (* to cat's caller.                                                      *)
+  (*                                                                       *)
+  (* THE TWO DIAGNOSTIC TAILS ARE IN IT, because they are exits of the      *)
+  (* loop and each ends in the program's own exit payload: cat's `write     *)
+  (* error` after a short write, and its `read error` after a failed read.  *)
+  (* The read-error arm is the one lane READ-RELAY will refute at the       *)
+  (* kernel; until then it is an ARM of the payment, not a stop -- a payer  *)
+  (* that cannot fund it simply cannot build a round.                      *)
+  (* ===================================================================== *)
+  Definition kcat_dg_cw : iProp Σ :=
+    UkCat.kcat_pay_seq N (mword_of_int 2) (cat_lit 0x9b0) 0%nat 17%nat
+      emp%I (ukn_pay N (-1)).
+
+  Definition kcat_dg_cr : iProp Σ :=
+    UkCat.kcat_pay_seq N (mword_of_int 2) (cat_lit 0x9c8) 0%nat 16%nat
+      emp%I (ukn_pay N (-1)).
+
+  Definition kcat_round (fdv : mword 64) (I Cend : iProp Σ) : iProp Σ :=
+    (□ UkCat.kcat_r N fdv CatSyms.buf 512 I
+         (fun (ret : mword 64) (g : nat -> bv 8) =>
+            ((⌜bv_signed ret < 0⌝ -∗ kcat_dg_cr)
+             ∧ (⌜bv_signed ret = 0⌝ -∗ Cend)
+             ∧ (∀ nb : nat,
+                  ⌜ret = (mword_of_int (Z.of_nat nb) : mword 64)⌝ -∗
+                  ⌜(0 < nb)%nat⌝ -∗
+                  UkCat.kcat_w N (mword_of_int 1)
+                    (mword_of_int CatSyms.buf) nb
+                    (ubytes γd CatSyms.buf 512 g)
+                    ((I ∧ kcat_dg_cw) ∗ ubytes γd CatSyms.buf 512 g)))))%I.
+
+  Global Instance kcat_round_persistent fdv I Cend :
+    Persistent (kcat_round fdv I Cend).
+  Proof using . rewrite /kcat_round. apply _. Qed.
+
   Lemma wp_kcat_cat_die_cw (hcw : CpuId) (mcw0 : regfile) (n : nat) :
-    UkCat.cat_deps -∗
+    kcat_dg_cw -∗
     cat_code γt -∗ cat_rodata γt -∗
     urun N hcw mcw0 (mword_of_int 0x40) (10 + (12 + (4 + n))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
-    iIntros "#Hdp #Hcode #Hro Hrun".
+  Proof using Hpay.
+    iIntros "Hdg #Hcode #Hro Hrun".
     destruct cat_syms_pins
       as (_ & _ & _ & Hfprintf & _ & _ & _ & _ & _ & _ & Hexit).
     assert (Hokcw : cat_lit_ok 0x9b0 17%nat = true)
@@ -495,13 +540,20 @@ Section UkCatCat.
     { rewrite <- Ha1ccw.
       exact (upd_ne cwc (Regidx ra_idx) (Regidx a1_idx) _
                ltac:(vm_compute; discriminate)). }
+    assert (Ha0dcw : cwd !!! Regidx a0_idx = (mword_of_int 2 : mword 64)).
+    { rewrite /cwd (upd_ne cwc (Regidx ra_idx) (Regidx a0_idx) _
+                      ltac:(vm_compute; discriminate)).
+      rewrite /cwc (upd_eq cwb (Regidx a0_idx) (regval_into_reg _)).
+      apply bv_eq; vm_compute; reflexivity. }
     iApply (wp_kcat_fprintf N 0x9b0 17%nat (cat_lit 0x9b0)
-              hcwd cwd n
+              hcwd cwd n emp%I (ukn_pay N (-1))
               ltac:(vm_compute; discriminate)
               ltac:(vm_compute; reflexivity) ltac:(lia)
               (fun j Hj => cat_lit_nopct 0x9b0 17%nat j Hokcw Hj) Ha1dcw
-              with "Hdp Hcode Hstrcw Hrun").
-    iIntros (hcwe cwm) "%Hcscw Hrun".
+              with "[Hdg] Hcode Hstrcw [] Hrun").
+    { rewrite Ha0dcw. iExact "Hdg". }
+    { done. }
+    iIntros (hcwe cwm) "%Hcscw Hpayv Hrun".
     assert (Eretcw : ret_pc (cwd !!! Regidx ra_idx)
                       = (mword_of_int 0x4e : mword 64))
       by (rewrite Hracw; apply bv_eq; vm_compute; reflexivity).
@@ -529,16 +581,17 @@ Section UkCatCat.
               with "[] Hrun").
     { iApply (uis_cat_50 with "Hcode"). }
     iIntros (hcwg) "Hrun".
-    iApply (wp_kcat_exit N hcwg _ (10 + (12 + (4 + n))) with "Hcode Hrun").
+    iApply (wp_kcat_exit N hcwg _ (10 + (12 + (4 + n)))
+              with "Hcode Hpayv Hrun").
   Qed.
 
   Lemma wp_kcat_cat_die_cr (hcr : CpuId) (mcr0 : regfile) (n : nat) :
-    UkCat.cat_deps -∗
+    kcat_dg_cr -∗
     cat_code γt -∗ cat_rodata γt -∗
     urun N hcr mcr0 (mword_of_int 0x6a) (10 + (12 + (4 + n))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
-    iIntros "#Hdp #Hcode #Hro Hrun".
+  Proof using Hpay.
+    iIntros "Hdg #Hcode #Hro Hrun".
     destruct cat_syms_pins
       as (_ & _ & _ & Hfprintf & _ & _ & _ & _ & _ & _ & Hexit).
     assert (Hokcr : cat_lit_ok 0x9c8 16%nat = true)
@@ -622,13 +675,20 @@ Section UkCatCat.
     { rewrite <- Ha1ccr.
       exact (upd_ne crc (Regidx ra_idx) (Regidx a1_idx) _
                ltac:(vm_compute; discriminate)). }
+    assert (Ha0dcr : crd !!! Regidx a0_idx = (mword_of_int 2 : mword 64)).
+    { rewrite /crd (upd_ne crc (Regidx ra_idx) (Regidx a0_idx) _
+                      ltac:(vm_compute; discriminate)).
+      rewrite /crc (upd_eq crb (Regidx a0_idx) (regval_into_reg _)).
+      apply bv_eq; vm_compute; reflexivity. }
     iApply (wp_kcat_fprintf N 0x9c8 16%nat (cat_lit 0x9c8)
-              hcrd crd n
+              hcrd crd n emp%I (ukn_pay N (-1))
               ltac:(vm_compute; discriminate)
               ltac:(vm_compute; reflexivity) ltac:(lia)
               (fun j Hj => cat_lit_nopct 0x9c8 16%nat j Hokcr Hj) Ha1dcr
-              with "Hdp Hcode Hstrcr Hrun").
-    iIntros (hcre crm) "%Hcscr Hrun".
+              with "[Hdg] Hcode Hstrcr [] Hrun").
+    { rewrite Ha0dcr. iExact "Hdg". }
+    { done. }
+    iIntros (hcre crm) "%Hcscr Hpayv Hrun".
     assert (Eretcr : ret_pc (crd !!! Regidx ra_idx)
                       = (mword_of_int 0x78 : mword 64))
       by (rewrite Hracr; apply bv_eq; vm_compute; reflexivity).
@@ -656,7 +716,8 @@ Section UkCatCat.
               with "[] Hrun").
     { iApply (uis_cat_7a with "Hcode"). }
     iIntros (hcrg) "Hrun".
-    iApply (wp_kcat_exit N hcrg _ (10 + (12 + (4 + n))) with "Hcode Hrun").
+    iApply (wp_kcat_exit N hcrg _ (10 + (12 + (4 + n)))
+              with "Hcode Hpayv Hrun").
   Qed.
 
 
@@ -1044,14 +1105,16 @@ Section UkCatCat.
   (* the 512-byte buffer at SOME contents -- read's row does not say which   *)
   (* bytes moved, so neither does the invariant -- and the six registers.    *)
   (* --------------------------------------------------------------------- *)
-  Lemma wp_kcat_cat_loop (m0 : regfile) (sp0 fdv : mword 64) (n : nat) :
+  Lemma wp_kcat_cat_loop (m0 : regfile) (sp0 fdv : mword 64) (n : nat)
+      (I Cend : iProp Σ) :
     m0 !!! Regidx csp_rs1 = sp0 ->
     uint sp0 mod 8 = 0 ->
     64 <= uint sp0 ->
-    UkCat.cat_deps -∗
+    kcat_round fdv I Cend -∗
     cat_code γt -∗ cat_rodata γt -∗
     (∀ (h : CpuId) (m : regfile) (f : nat -> bv 8),
        ⌜ cv_inv m0 m sp0 fdv ⌝ -∗
+       I -∗
        uword γd (uint sp0 - 8) (m0 !!! Regidx ra_idx) -∗
        uword γd (uint sp0 - 16) (m0 !!! Regidx s0_idx) -∗
        uword γd (uint sp0 - 24) (m0 !!! Regidx s1_idx) -∗
@@ -1064,17 +1127,19 @@ Section UkCatCat.
        urun N h m (mword_of_int 0x22) (10 + (12 + (4 + n))) -∗
        (∀ (h' : CpuId) (m' : regfile) (g : nat -> bv 8),
           ⌜ ucallee_saved m0 m' ⌝ -∗
+          Cend -∗
           ubytes γd CatSyms.buf 512 g -∗
           urun N h' m' (ret_pc (m0 !!! Regidx ra_idx))
             (8 + (10 + (12 + (4 + n)))) -∗
           WP (Loop : expr riscv_lang)) -∗
        WP (Loop : expr riscv_lang)).
-  Proof.
-    intros Hsp0 Hal8 Hlo. iIntros "#Hdp #Hcode #Hro".
+  Proof using Hpay.
+    intros Hsp0 Hal8 Hlo. iIntros "#Hround #Hcode #Hro".
     destruct cat_syms_pins
       as (_ & _ & _ & _ & _ & _ & Hread & Hwrite & _ & _ & _).
     iLöb as "IH".
-    iIntros (h m f) "%Hinv Hw1 Hw2 Hw3 Hw4 Hw5 Hw6 Hw7 Hw8 Hbuf Hrun Hcont".
+    iIntros (h m f)
+      "%Hinv HI Hw1 Hw2 Hw3 Hw4 Hw5 Hw6 Hw7 Hw8 Hbuf Hrun Hcont".
     destruct Hinv as (Hsp & Hs0 & Hs2 & Hs3 & Hs4 & Hs5 & Hfr).
     (* ---- 0x22  c.mv a2,s4 -- the count ---- *)
     iApply (wp_uk_cmv N h m (mword_of_int 0x22) a2_idx s4_idx
@@ -1152,10 +1217,20 @@ Section UkCatCat.
                      ltac:(vm_compute; discriminate)).
       rewrite /ma (upd_eq m (Regidx a2_idx) (regval_into_reg _)).
       rewrite Hs4 add_vec_zero_l. vm_compute. reflexivity. }
-    (* ---- read(fd, buf, 512) -- THE ROW THAT MOVES THE IMAGE ---- *)
-    iApply (wp_kcat_read N CatSyms.buf 512 f h4 md
-              (10 + (12 + (4 + n))) Ha1d Ha2d with "Hdp Hcode Hbuf Hrun").
-    iIntros (h5 ret g) "Hbuf Hrun".
+    (* ---- read(fd, buf, 512) -- THE ROUND'S OWN OBLIGATION ---- *)
+    assert (Ha0d : md !!! Regidx a0_idx = fdv).
+    { rewrite /md (upd_ne mc (Regidx ra_idx) (Regidx a0_idx) _
+                     ltac:(vm_compute; discriminate)).
+      rewrite /mc (upd_eq mb (Regidx a0_idx) (regval_into_reg _)).
+      rewrite /mb (upd_ne ma (Regidx a1_idx) (Regidx s3_idx) _
+                     ltac:(vm_compute; discriminate)).
+      rewrite /ma (upd_ne m (Regidx a2_idx) (Regidx s3_idx) _
+                     ltac:(vm_compute; discriminate)).
+      rewrite Hs3. apply add_vec_zero_l. }
+    iApply ("Hround" $! h4 md (10 + (12 + (4 + n)))%nat f
+              with "[%] [%] [%] Hcode HI Hbuf Hrun");
+      [ exact Ha0d | exact Ha1d | exact Ha2d | ].
+    iIntros (h5 ret g) "Hpick Hbuf Hrun".
     assert (Eretr : ret_pc (md !!! Regidx ra_idx)
                     = (mword_of_int 0x2c : mword 64))
       by (rewrite Hrad; apply bv_eq; vm_compute; reflexivity).
@@ -1201,12 +1276,23 @@ Section UkCatCat.
                        (sign_extend' 64 (mword_of_int 38 : mword 13))
                      = mword_of_int 0x54)
       by (apply bv_eq; vm_compute; reflexivity).
-    destruct (uv_btaken BGE zero_reg (mf !!! Regidx a0_idx)) eqn:Hble.
+    (* the two tests, in the payment's spelling *)
+    assert (Hsz : sint (zero_reg : mword 64) = 0)
+      by (vm_compute; reflexivity).
+    assert (Hbge : uv_btaken BGE zero_reg (mf !!! Regidx a0_idx)
+                   = Z.geb 0 (bv_signed ret)).
+    { rewrite Ha0f. cbn [uv_btaken]. unfold zopz0zKzJ_s. rewrite Hsz.
+      reflexivity. }
+    assert (Hbltz : uv_btaken BLT (mf !!! Regidx a0_idx) zero_reg
+                    = Z.ltb (bv_signed ret) 0).
+    { rewrite Ha0f. cbn [uv_btaken]. unfold zopz0zI_s. rewrite Hsz.
+      reflexivity. }
+    destruct (Z.geb 0 (bv_signed ret)) eqn:Hble.
     - (* n <= 0: out of the loop, and 0x54 decides error from end-of-file *)
       iApply (wp_uk_btype0l N h6 mf (mword_of_int 0x2e)
                 (mword_of_int 38 : mword 13) a0_idx BGE true
                 (mword_of_int 0x54) (10 + (12 + (4 + n)))
-                (eq_sym Hble) (eq_sym Etgt2e)
+                (eq_sym Hbge) (eq_sym Etgt2e)
                 ltac:(intros _; vm_compute; reflexivity)
                 with "[] Hrun").
       { iApply (uis_cat_2e with "Hcode"). }
@@ -1216,24 +1302,27 @@ Section UkCatCat.
                          (sign_extend' 64 (mword_of_int 22 : mword 13))
                        = mword_of_int 0x6a)
         by (apply bv_eq; vm_compute; reflexivity).
-      destruct (uv_btaken BLT (mf !!! Regidx a0_idx) zero_reg) eqn:Hblt.
+      destruct (Z.ltb (bv_signed ret) 0) eqn:Hblt.
       + (* n < 0: the read error *)
         iApply (wp_uk_btype0 N h7 mf (mword_of_int 0x54)
                   (mword_of_int 22 : mword 13) a0_idx BLT true
                   (mword_of_int 0x6a) (10 + (12 + (4 + n)))
-                  (eq_sym Hblt) (eq_sym Etgt54)
+                  (eq_sym Hbltz) (eq_sym Etgt54)
                   ltac:(intros _; vm_compute; reflexivity)
                   with "[] Hrun").
         { iApply (uis_cat_54 with "Hcode"). }
         iIntros (h8) "Hrun".
-        iApply (wp_kcat_cat_die_cr h8 mf n with "Hdp Hcode Hro Hrun").
+        assert (Hneg : bv_signed ret < 0) by (apply Z.ltb_lt; exact Hblt).
+        iDestruct "Hpick" as "[Hcr _]".
+        iApply (wp_kcat_cat_die_cr h8 mf n with "[Hcr] Hcode Hro Hrun").
+        iApply "Hcr". iPureIntro. exact Hneg.
       + (* n = 0: end of file, and cat() returns *)
         iApply (wp_uk_btype0 N h7 mf (mword_of_int 0x54)
                   (mword_of_int 22 : mword 13) a0_idx BLT false
                   (add_vec (mword_of_int 0x54 : mword 64)
                      (sign_extend' 64 (mword_of_int 22 : mword 13)))
                   (10 + (12 + (4 + n)))
-                  (eq_sym Hblt) eq_refl ltac:(discriminate)
+                  (eq_sym Hbltz) eq_refl ltac:(discriminate)
                   with "[] Hrun").
         { iApply (uis_cat_54 with "Hcode"). }
         assert (E54 : add_vec_int (mword_of_int 0x54 : mword 64) 4
@@ -1241,10 +1330,16 @@ Section UkCatCat.
           by (apply bv_eq; vm_compute; reflexivity).
         rewrite E54. iIntros (h8) "Hrun".
         destruct Hinvf as (Hspf & _ & _ & _ & _ & _ & Hfrf).
+        assert (Hzero : bv_signed ret = 0).
+        { rewrite Z.geb_leb in Hble. apply Z.leb_le in Hble.
+          apply Z.ltb_ge in Hblt. lia. }
+        iDestruct "Hpick" as "[_ [Hend _]]".
+        iDestruct ("Hend" with "[%]") as "HCend"; [ exact Hzero | ].
         iApply (wp_kcat_cat_epi h8 mf m0 sp0 n Hspf Hsp0 Hal8 Hlo Hfrf
-                  with "Hcode Hw1 Hw2 Hw3 Hw4 Hw5 Hw6 Hw7 Hw8 Hrun [Hbuf Hcont]").
+                  with "Hcode Hw1 Hw2 Hw3 Hw4 Hw5 Hw6 Hw7 Hw8 Hrun
+                        [Hbuf HCend Hcont]").
         iIntros (h9 m') "%Hcs Hrun".
-        iApply ("Hcont" $! h9 m' g with "[] Hbuf Hrun").
+        iApply ("Hcont" $! h9 m' g with "[] HCend Hbuf Hrun").
         iPureIntro. exact Hcs.
     - (* n > 0: write it out *)
       iApply (wp_uk_btype0l N h6 mf (mword_of_int 0x2e)
@@ -1252,7 +1347,7 @@ Section UkCatCat.
                 (add_vec (mword_of_int 0x2e : mword 64)
                    (sign_extend' 64 (mword_of_int 38 : mword 13)))
                 (10 + (12 + (4 + n)))
-                (eq_sym Hble) eq_refl ltac:(discriminate)
+                (eq_sym Hbge) eq_refl ltac:(discriminate)
                 with "[] Hrun").
       { iApply (uis_cat_2e with "Hcode"). }
       assert (E2e : add_vec_int (mword_of_int 0x2e : mword 64) 4
@@ -1314,10 +1409,50 @@ Section UkCatCat.
                    := regval_into_reg (mword_of_int 0x3c : mword 64)]> mi).
       assert (Hraj : mj !!! Regidx ra_idx = (mword_of_int 0x3c : mword 64))
         by exact (upd_eq mi (Regidx ra_idx) (regval_into_reg _)).
-      (* ---- write(1, buf, n) -- the QUIET row ---- *)
-      iApply (wp_kcat_write N h11 mj (10 + (12 + (4 + n)))
-                with "Hdp Hcode Hrun").
-      iIntros (h12 wret) "Hrun".
+      (* ---- write(1, buf, n) -- THE ROUND'S OWN OBLIGATION ---- *)
+      assert (Hpos : 0 < bv_signed ret).
+      { rewrite Z.geb_leb in Hble. apply Z.leb_gt in Hble. lia. }
+      set (nb := Z.to_nat (bv_signed ret)).
+      assert (Hnbz : ret = (mword_of_int (Z.of_nat nb) : mword 64)).
+      { unfold nb. rewrite (Z2Nat.id (bv_signed ret) ltac:(lia)).
+        symmetry. apply UkCat.moi_of_sint. }
+      assert (Hnbpos : (0 < nb)%nat) by (unfold nb; lia).
+      assert (Ha0j : mj !!! Regidx a0_idx = (mword_of_int 1 : mword 64)).
+      { rewrite /mj (upd_ne mi (Regidx ra_idx) (Regidx a0_idx) _
+                       ltac:(vm_compute; discriminate)).
+        rewrite /mi (upd_eq mh (Regidx a0_idx) (regval_into_reg _)).
+        rewrite /mh (upd_ne mg (Regidx a1_idx) (Regidx s5_idx) _
+                       ltac:(vm_compute; discriminate)).
+        rewrite /mg (upd_ne mf (Regidx a2_idx) (Regidx s5_idx) _
+                       ltac:(vm_compute; discriminate)).
+        rewrite Hs5f. apply add_vec_zero_l. }
+      assert (Ha1j : mj !!! Regidx a1_idx
+                     = (mword_of_int CatSyms.buf : mword 64)).
+      { rewrite /mj (upd_ne mi (Regidx ra_idx) (Regidx a1_idx) _
+                       ltac:(vm_compute; discriminate)).
+        rewrite /mi (upd_ne mh (Regidx a0_idx) (Regidx a1_idx) _
+                       ltac:(vm_compute; discriminate)).
+        rewrite /mh (upd_eq mg (Regidx a1_idx) (regval_into_reg _)).
+        rewrite /mg (upd_ne mf (Regidx a2_idx) (Regidx s2_idx) _
+                       ltac:(vm_compute; discriminate)).
+        rewrite Hs2f. apply add_vec_zero_l. }
+      assert (Ha2j : mj !!! Regidx a2_idx
+                     = (mword_of_int (Z.of_nat nb) : mword 64)).
+      { rewrite /mj (upd_ne mi (Regidx ra_idx) (Regidx a2_idx) _
+                       ltac:(vm_compute; discriminate)).
+        rewrite /mi (upd_ne mh (Regidx a0_idx) (Regidx a2_idx) _
+                       ltac:(vm_compute; discriminate)).
+        rewrite /mh (upd_ne mg (Regidx a1_idx) (Regidx a2_idx) _
+                       ltac:(vm_compute; discriminate)).
+        rewrite /mg (upd_eq mf (Regidx a2_idx) (regval_into_reg _)).
+        rewrite Hs1f !add_vec_zero_l. exact Hnbz. }
+      iDestruct "Hpick" as "[_ [_ Hwr]]".
+      iDestruct ("Hwr" $! nb with "[%] [%]") as "Hw";
+        [ exact Hnbz | exact Hnbpos | ].
+      iApply ("Hw" $! h11 mj (10 + (12 + (4 + n)))%nat
+                with "[%] [%] [%] Hcode Hbuf Hrun");
+        [ exact Ha0j | exact Ha1j | exact Ha2j | ].
+      iIntros (h12 wret) "[Hpick Hbuf] Hrun".
       assert (Eretw : ret_pc (mj !!! Regidx ra_idx)
                       = (mword_of_int 0x3c : mword 64))
         by (rewrite Hraj; apply bv_eq; vm_compute; reflexivity).
@@ -1348,7 +1483,8 @@ Section UkCatCat.
                   with "[] Hrun").
         { iApply (uis_cat_3c with "Hcode"). }
         iNext. iIntros (h13) "Hrun".
-        iApply ("IH" $! h13 mk g with "[] Hw1 Hw2 Hw3 Hw4 Hw5 Hw6 Hw7 Hw8
+        iDestruct "Hpick" as "[HI _]".
+        iApply ("IH" $! h13 mk g with "[] HI Hw1 Hw2 Hw3 Hw4 Hw5 Hw6 Hw7 Hw8
                                        Hbuf Hrun Hcont").
         iPureIntro. exact Hinvk.
       + (* it did not: the write error *)
@@ -1364,7 +1500,8 @@ Section UkCatCat.
                       = mword_of_int 0x40)
           by (apply bv_eq; vm_compute; reflexivity).
         iNext. rewrite E3c. iIntros (h13) "Hrun".
-        iApply (wp_kcat_cat_die_cw h13 mk n with "Hdp Hcode Hro Hrun").
+        iDestruct "Hpick" as "[_ Hdg]".
+        iApply (wp_kcat_cat_die_cw h13 mk n with "Hdg Hcode Hro Hrun").
   Qed.
 
 
@@ -1373,21 +1510,23 @@ Section UkCatCat.
   (* four loop constants into callee-saved registers and into the loop.      *)
   (* --------------------------------------------------------------------- *)
   Lemma wp_kcat_cat (fdv : mword 64) (f : nat -> bv 8)
-      (h : CpuId) (m : regfile) (n : nat) :
+      (h : CpuId) (m : regfile) (n : nat) (I Cend : iProp Σ) :
     m !!! Regidx a0_idx = fdv ->
-    UkCat.cat_deps -∗
+    kcat_round fdv I Cend -∗
     cat_code γt -∗ cat_rodata γt -∗
+    I -∗
     ubytes γd CatSyms.buf 512 f -∗
     urun N h m (mword_of_int CatSyms.cat) (8 + (10 + (12 + (4 + n)))) -∗
     (∀ (h' : CpuId) (m' : regfile) (g : nat -> bv 8),
        ⌜ ucallee_saved m m' ⌝ -∗
+       Cend -∗
        ubytes γd CatSyms.buf 512 g -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (8 + (10 + (12 + (4 + n)))) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof using Hpay.
     intros Ha0.
-    iIntros "#Hdp #Hcode #Hro Hbuf Hrun Hcont".
+    iIntros "#Hround #Hcode #Hro HI Hbuf Hrun Hcont".
     destruct cat_syms_pins
       as (_ & _ & Hcat & _ & _ & _ & _ & _ & _ & _ & _).
     rewrite Hcat.
@@ -1753,9 +1892,9 @@ Section UkCatCat.
       rewrite /mp1 (upd_ne m (Regidx csp_rs1) (Regidx r) _
                       (Kne csp_rs1 2 ltac:(vm_compute; reflexivity) ltac:(lia))).
       reflexivity. }
-    iDestruct (wp_kcat_cat_loop m sp0 fdv n Hsp Hal8 Hlo with "Hdp Hcode Hro")
-      as "Hloop".
-    iApply ("Hloop" $! hp13 mp7 f with "[] Hw1 Hw2 Hw3 Hw4 Hw5 Hw6 Hw7 Hw8
+    iDestruct (wp_kcat_cat_loop m sp0 fdv n I Cend Hsp Hal8 Hlo
+                 with "Hround Hcode Hro") as "Hloop".
+    iApply ("Hloop" $! hp13 mp7 f with "[] HI Hw1 Hw2 Hw3 Hw4 Hw5 Hw6 Hw7 Hw8
                                         Hbuf Hrun Hcont").
     iPureIntro. exact Hinv0.
   Qed.

@@ -722,6 +722,20 @@ Section UkCat.
     apply Z.mod_small. clear -Hr. lia.
   Qed.
 
+  (* ...and a word IS its own signed reading put back, which is how a
+     count the kernel returned reaches a syscall argument again. *)
+  Lemma moi_of_sint (r : mword 64) :
+    (mword_of_int (bv_signed r) : mword 64) = r.
+  Proof using .
+    apply bv_eq. rewrite moi64_unsigned.
+    change (bv_signed r) with (bv_swrap 64 (bv_unsigned r)).
+    unfold bv_swrap, bv_wrap.
+    rewrite Zminus_mod_idemp_l.
+    replace (bv_unsigned r + bv_half_modulus 64 - bv_half_modulus 64)
+      with (bv_unsigned r) by lia.
+    apply Z.mod_small. exact (bv_unsigned_in_range 64 r).
+  Qed.
+
   (* ...and the same at a zero-extended byte, which is how a character
      LOADED from memory reaches a1 ([lbu] zero-extends). *)
   Lemma nth_byte0_zext (b : mword 8) :
@@ -911,12 +925,14 @@ Section UkCat.
   (* the row does not say which bytes moved, does not say how many, and     *)
   (* does not tie either to the value returned.                             *)
   (* --------------------------------------------------------------------- *)
+  (* ...AT THE ONE LAW IT SPENDS (lane CAT-WALK, W1), for
+     [wp_kcat_write]'s reason. *)
   Lemma wp_kcat_read (a : Z) (cnt : nat) (f : nat -> bv 8)
       (h : CpuId) (m : regfile) (avail : nat) :
     m !!! Regidx a1_idx = (mword_of_int a : mword 64) ->
     bv_signed (subrange_vec_dec (m !!! Regidx a2_idx) 31 0 : mword 32)
       = Z.of_nat cnt ->
-    cat_deps -∗
+    udepw_law 5 -∗
     cat_code γt -∗
     ubytes γd a cnt f -∗
     urun N h m (mword_of_int CatSyms.read) avail -∗
@@ -971,8 +987,7 @@ Section UkCat.
               with "[] Hbs Hrun []").
     { iApply (uis_cat_3c6 with "Hcode"). }
     (* THE FLAGGED DEPOSIT: read(5) (P4) *)
-    { iApply (udepw_of_law N m1 (mword_of_int 0x3c6) 5 with "[Hdp]").
-      iDestruct "Hdp" as "($ & _ & _ & _)". }
+    { iApply (udepw_of_law N m1 (mword_of_int 0x3c6) 5 with "Hdp"). }
     assert (E1r : add_vec_int (mword_of_int 0x3c6 : mword 64) 4
                   = mword_of_int 0x3ca)
       by (apply bv_eq; vm_compute; reflexivity).
@@ -996,6 +1011,54 @@ Section UkCat.
     { iApply (uis_cat_3ca with "Hcode"). }
     iIntros (h3) "Hrun".
     iApply ("Hcont" $! h3 ret g with "Hbs Hrun").
+  Qed.
+
+  (* ===================================================================== *)
+  (* WHAT THE LOOP SPENDS PER READ (lane CAT-WALK, W1).                     *)
+  (*                                                                       *)
+  (* [kcat_w]'s twin at read(5), and cat's loop needs it for a reason its   *)
+  (* writes do not have: the loop's writes cannot be a FINITE chain -- the  *)
+  (* counts are the read's own returns and the number of rounds is the      *)
+  (* file's length -- and the bytes they write are the bytes the read just  *)
+  (* delivered.  So the read has to be abstract too: what a caller hands    *)
+  (* in is an obligation whose OUTPUT reads the return value and the        *)
+  (* contents, and the deed-aware instance                                  *)
+  (* ([UkFileOpen.wp_uk_read_deed_learns]) is simply one whose output says  *)
+  (* those bytes are the deed's.  The free instance ([kcat_r_of_law])       *)
+  (* says nothing about them, which is exactly what the landed stub said.   *)
+  (* ===================================================================== *)
+  Definition kcat_r (fdv : mword 64) (a : Z) (cnt : nat) (Ri : iProp Σ)
+      (Ro : mword 64 -> (nat -> bv 8) -> iProp Σ) : iProp Σ :=
+    (∀ (h : CpuId) (m : regfile) (avail : nat) (f : nat -> bv 8),
+       ⌜m !!! Regidx a0_idx = fdv⌝ -∗
+       ⌜m !!! Regidx a1_idx = (mword_of_int a : mword 64)⌝ -∗
+       ⌜bv_signed (subrange_vec_dec (m !!! Regidx a2_idx) 31 0 : mword 32)
+        = Z.of_nat cnt⌝ -∗
+       cat_code γt -∗
+       Ri -∗
+       ubytes γd a cnt f -∗
+       urun N h m (mword_of_int CatSyms.read) avail -∗
+       (∀ (h' : CpuId) (ret : mword 64) (g : nat -> bv 8),
+          Ro ret g -∗
+          ubytes γd a cnt g -∗
+          urun N h'
+            (<[Regidx a0_idx := ret]>
+               (<[Regidx a7_idx := (mword_of_int 5 : mword 64)]> m))
+            (ret_pc (m !!! Regidx ra_idx)) avail -∗
+          WP (Loop : expr riscv_lang)) -∗
+       WP (Loop : expr riscv_lang))%I.
+
+  Lemma kcat_r_of_law (fdv : mword 64) (a : Z) (cnt : nat) (Ri : iProp Σ)
+      (Ro : mword 64 -> (nat -> bv 8) -> iProp Σ) :
+    (forall (ret : mword 64) (g : nat -> bv 8), Ri ⊢ Ro ret g) ->
+    udepw_law 5 -∗ kcat_r fdv a cnt Ri Ro.
+  Proof using .
+    intros Hm. iIntros "#Hrd" (h m avail f)
+      "_ %Ha1 %Ha2 #Hcode HRi Hbs Hrun Hcont".
+    iApply (wp_kcat_read a cnt f h m avail Ha1 Ha2
+              with "Hrd Hcode Hbs Hrun").
+    iIntros (h' ret g) "Hbs Hrun".
+    iApply ("Hcont" $! h' ret g with "[HRi] Hbs Hrun"). by iApply Hm.
   Qed.
 
 End UkCat.

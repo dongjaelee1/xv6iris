@@ -1419,8 +1419,8 @@ Qed.
 
 (* ---------------------------------------------------------------------- *)
 (* The kernel-mapping CLAIM (uniform-claims): a persisted fragment of the  *)
-(* kernel-mapping ghost map -- "vpn maps to ppn at class pc, under the     *)
-(* current and all future regimes" (monotone across Bare→Sv39).  It        *)
+(* kernel-mapping ghost map -- “vpn maps to ppn at class pc, under the     *)
+(* current and all future regimes” (monotone across Bare→Sv39).  It        *)
 (* carries BOTH the permission and the va→pa mapping; the points-to facts  *)
 (* below are built on it.  Uniqueness is ghost-map library agreement.      *)
 (* The auth / static-map machinery lives in KMap.v.                        *)

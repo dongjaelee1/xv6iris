@@ -10,9 +10,9 @@
 (*  era 0, because an era's disk is whatever the previous era wrote.       *)
 (*                                                                        *)
 (*  This file replaces the decoding by a READING OF THE DURABLE SNAPSHOT.  *)
-(*  The mint's input becomes [FsDurSnap.snap_ok S D] -- "the committed map *)
+(*  The mint's input becomes [FsDurSnap.snap_ok S D] -- “the committed map *)
 (*  [D] is the encoding of the abstract state [S], every inode of [S] is   *)
-(*  locally well formed, no two share a block" -- which the crash          *)
+(*  locally well formed, no two share a block” -- which the crash          *)
 (*  predicate carries at EVERY era ([FsCrash.P_fs]'s durable snapshot,     *)
 (*  read out as [SystemAdequacy.fs_boot_pure]) and which the IMAGE only    *)
 (*  has to produce ONCE, at era 0 ([FsDurImg.img_snap_ok]).                *)
@@ -220,8 +220,8 @@ Qed.
 (*  [MAXFILE] while [FsDurSnap.fn_slot] spells the same thing at           *)
 (*  [FsImg]'s [FS_MAXFILE].  The two constants are equal by conversion but *)
 (*  not syntactically, and a [rewrite] cannot see through that -- so the   *)
-(*  bridge is named once (durable-notes.md, "rewrite can fail on a subterm *)
-(*  that prints character-for-character").                                 *)
+(*  bridge is named once (durable-notes.md, “rewrite can fail on a subterm *)
+(*  that prints character-for-character”).                                 *)
 Lemma bm_of_slot_fn (n : fs_node) (k : nat) :
   dinode_wf (fn_rec n) -> (k <= MAXFILE)%nat ->
   bv_unsigned (bm_slot (bm_of n) k) = fn_slot n k.
@@ -336,8 +336,8 @@ Section SnapRes.
 
   (*  ONE NODE'S BLOCKS, in the [InodeInv] vocabulary.                      *)
   (*  [InodeInv.inode_blocks_of_blocks] is generic; its four premises come  *)
-  (*  off [FsStateInode.inode_local] ([inl_blk_dom] for "a nonzero slot is  *)
-  (*  owned"), [FsDurSnap.sk_slot] (the slot injectivity) and               *)
+  (*  off [FsStateInode.inode_local] ([inl_blk_dom] for “a nonzero slot is  *)
+  (*  owned”), [FsDurSnap.sk_slot] (the slot injectivity) and               *)
   (*  [sk_blk]/[sk_ind] (the slot's bytes ARE the block's).                 *)
   Lemma snap_inode_blocks_res (γfs : fs_names) (S : fs_state_rec)
       (P : Z -> list (bv 8)) (home : gset Z) (i : Z) (n : fs_node) :

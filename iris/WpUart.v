@@ -2011,8 +2011,8 @@ Section DevLoops.
     end%I.
 
   (* ==================================================================== *)
-  (*  THE LICENCE: "any holder of the supply may move the resource by any  *)
-  (*  event".                                                              *)
+  (*  THE LICENCE: “any holder of the supply may move the resource by any  *)
+  (*  event”.                                                              *)
   (*                                                                       *)
   (*  WHY IT EXISTS.  The kernel's GENERIC SUPPLY -- what an arbitrary,     *)
   (*  unverified process runs its syscalls on ([UexecExecInst.xv6_ssupply])*)

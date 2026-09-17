@@ -8332,9 +8332,9 @@ End ProofPrintk.
       (f : string) (descs : list pk_arg_desc) (b : bool) (p : mword 64) (lks : gset string)
       : wp_printk_sconf_body kt γpr m0 K n eb dqf f descs b p lks :=
     wp_printk_sconf_gen
-      (fun `{CID0 : CpuId} `{XI : CurCtx} m' K' n' eb' b' pcur' lks' =>
+      (fun (CID0 : CpuId) (XI : CurCtx) m' K' n' eb' b' pcur' lks' =>
          Prputc.wp_prputc_sconf kt (CID:=CID0) m' K' n' eb' b' pcur' lks')
-      (fun `{CID0 : CpuId} `{XI : CurCtx} m' K' n' eb' b' pcur' lks' =>
+      (fun (CID0 : CpuId) (XI : CurCtx) m' K' n' eb' b' pcur' lks' =>
          Printint.wp_printint_sconf kt (CID:=CID0) m' K' n' eb' b' pcur' lks')
       γpr m0 K n eb dqf f descs b p lks.
 

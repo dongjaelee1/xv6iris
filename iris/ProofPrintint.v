@@ -1604,7 +1604,7 @@ End ProofPrintint.
       (n : nat) (eb : bool) (b : bool) (pcur : mword 64) (lks : gset string)
       : wp_printint_sconf_body kt m0 K n eb b pcur lks :=
     wp_printint_sconf_gen
-      (fun `{CID0 : CpuId} `{XI : CurCtx} m' K' n' eb' b' pcur' lks' =>
+      (fun (CID0 : CpuId) (XI : CurCtx) m' K' n' eb' b' pcur' lks' =>
          Prputc.wp_prputc_sconf kt (CID:=CID0) m' K' n' eb' b' pcur' lks')
       m0 K n eb b pcur lks.
 

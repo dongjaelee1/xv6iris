@@ -127,6 +127,26 @@ Lemma fdv_all_parked_drop (l : list fdstate) (i : nat) :
   fdv_all_parked l -> fdv_all_parked (drop i l).
 Proof. intros H. unfold fdv_all_parked. by apply Forall_drop. Qed.
 
+(* ---- ...AND THE READING A DEPOSIT IS KEYED AT (lane OFF-HAND).  The
+   discipline is stated of a TABLE ([fdv_all_parked], what a slot's mint
+   is narrowed by) but SPENT at one descriptor: every bundle that reads
+   the offset mode reads it off [FdSlots.fd_st_of_key] at the call's own
+   argument word -- [SpecFileread.fileread_in] and
+   [SpecFilewrite.filewrite_in] at rows 5 and 16, through
+   [UexecExecInst.xv6_sbundle].  This is the one step between the two, and
+   it is what lets the class field take the WEAK (per-call) premise while
+   the mint takes the STRONG (whole-table) one: out of range, and at a
+   slot the table does not have, [fd_st_of_key] answers [FdClosed], which
+   is parked either way. ---- *)
+Lemma fdst_parked_of_key (v : SailStdpp.Values.mword 64) (sts : list fdstate) :
+  fdv_all_parked sts -> fdst_parked (fd_st_of_key v sts).
+Proof.
+  intros H. unfold fd_st_of_key.
+  destruct (decide _) as [_ | _]; [| exact I].
+  destruct (sts !! Z.to_nat _) as [st |] eqn:Hst; cbn [default];
+    [ exact (fdv_all_parked_lookup sts _ st H Hst) | exact I ].
+Qed.
+
 Section FdPark.
   Context `{!riscvGS Σ, !offboxG Σ}.
 
@@ -463,6 +483,85 @@ Section FdPark.
   Proof using .
     intros -> HE. exact (off_supply_of_st E r w i γo m off d HE).
   Qed.
+
+  (* =================================================================== *)
+  (*  7.  THE SAME SUPPLIER AT AN EXACT PAYMENT (lane OFF-HAND)           *)
+  (* =================================================================== *)
+
+  (* WHY THE EXISTENTIAL PAYMENT ABOVE IS NOT ENOUGH FOR A FILE MEMBER.
+     [uoff_surr] names its position under an [∃] -- right for a BOUNDARY,
+     which does not care where the program had got to -- and
+     [off_supply_of_st] therefore hands its receipt back at the KERNEL's
+     offset, the one its own half carried.  A U-tier held member has to
+     promise more than that: design/app-file.md SS3's append step needs
+     [uoff γo off] in and [uoff γo (off + d)] out AT THE CALLER'S OWN
+     [off], because the whole point of mode [hand] is that the program
+     knows the number.  Handing back a receipt at a position the post
+     cannot name would leave the member's own [uoff] unstatable.
+
+     SO THE PAYMENT IS TAKEN AT THE RECEIPT'S OWN SHAPE ([uoff_rcpt],
+     which is exact), and what comes back beside the supplier is THE TIE:
+     the caller's position IS the kernel's.  The kernel learns it the way
+     it learns everything about the user half -- by agreement against its
+     own ([UserOff.uoff_agree_k]) -- so the caller still pays no equation,
+     and the arm still costs a PARKED descriptor exactly nothing (the
+     payment is [True] there, and the tie is guarded by the mode, because
+     at a parked row there is no position to tie).
+
+     IT IS ALSO WHAT MAKES A MULTI-NODE WALK STATABLE.  filewrite's chain
+     fires once per chunk: the receipt of node [k] is the payment of node
+     [k+1] at the exact same shape, so a loop carries [uoff_rcpt st (off0
+     + p)] at its own byte cursor [p] and the tie turns each fire's
+     offset into [off0 + p] -- which is the equation
+     design/user-write.md SS3c's anchored cursor is missing and the file
+     member's post needs.  With [uoff_surr] the cursor could only be
+     re-existentialised at every node.  ([uoff_rcpt_surr] is still the way
+     out to a boundary.) *)
+  Lemma off_supply_of_st_at (E : coPset) (r w : bool) (i : Z) (γo : gname)
+      (m : offmode) (off' off d : nat) :
+    ↑foffN ⊆ E ->
+    foff_row (FdOpen r w (FdInode i γo m)) -∗
+    uoff_rcpt (FdOpen r w (FdInode i γo m)) off' -∗
+    off_gv γo (1/2) (Z.of_nat off) -∗
+      off_gv γo (1/2) (Z.of_nat off)
+      ∗ ⌜m = OffHeld -> off' = off⌝
+      ∗ off_supply γo E off d
+          (uoff_rcpt (FdOpen r w (FdInode i γo m)) (off + d)).
+  Proof using .
+    intros HE. destruct m; cbn [foff_row uoff_rcpt].
+    - iIntros "#Hinv _ $". iSplitR; [ iPureIntro; discriminate | ].
+      iApply (off_supply_parked E γo off d HE with "Hinv").
+    - iIntros "_ Hu Hk".
+      iDestruct (uoff_agree_k γo off' (Z.of_nat off) with "Hu Hk") as %Heq.
+      assert (Ho : off' = off) by lia.
+      subst off'. iFrame "Hk".
+      iSplitR; [ iPureIntro; reflexivity | ].
+      iApply (off_supply_held E γo off d with "Hu").
+  Qed.
+
+  (* ...and at the EQUATION a kernel proof holds its state at
+     ([off_supply_of_st_eq]'s convention). *)
+  Lemma off_supply_of_st_at_eq (E : coPset) (st : fdstate) (r w : bool)
+      (i : Z) (γo : gname) (m : offmode) (off' off d : nat) :
+    st = FdOpen r w (FdInode i γo m) ->
+    ↑foffN ⊆ E ->
+    foff_row st -∗ uoff_rcpt st off' -∗ off_gv γo (1/2) (Z.of_nat off) -∗
+      off_gv γo (1/2) (Z.of_nat off)
+      ∗ ⌜m = OffHeld -> off' = off⌝
+      ∗ off_supply γo E off d (uoff_rcpt st (off + d)).
+  Proof using .
+    intros -> HE. exact (off_supply_of_st_at E r w i γo m off' off d HE).
+  Qed.
+
+  (* THE EXACT PAYMENT IS FREE AT A PARKED ROW, which is the whole reason
+     one member can serve both modes: a caller that never asked for its
+     offset pays [uoff_rcpt]'s unit and reads the guarded tie as nothing.
+     ([uoff_rcpt_parked] is the same fact; this is it at the shape a
+     member's premise list has, an equation on the state.) *)
+  Lemma uoff_rcpt_of_parked (st : fdstate) (o : nat) (r w : bool) (i : Z)
+      (γo : gname) :
+    st = FdOpen r w (FdInode i γo OffParked) -> ⊢ uoff_rcpt st o.
+  Proof using . intros ->. by iIntros. Qed.
 
 End FdPark.
 

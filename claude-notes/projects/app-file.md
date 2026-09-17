@@ -5384,3 +5384,211 @@ SH-ROUND is the kernel-tier device refutation (S3) if the round wants
 leaf (`wp_uk_ecall_open_recv_img_held`), which re-instantiates this
 corollary by the one swap F-OPEN-4 recorded plus `UserOff.uoff γo 0` in
 the fd arms.
+
+### SUP-ONE (2026-09-17) — one name for the taint, one law for the licence; the supply is NOT the taint
+
+Branch `app-file/sup-one`.  Whole tree green on the lane's remote tree
+(`EXIT=0`, zero `Error`); the four audits unchanged (system thirteen, echo
+fourteen, tree thirteen, file fourteen); no `Admitted`; `Proof using`
+everywhere.
+
+#### U0 — `riscv_kill_cred` is `app_taint`, and it is written bare
+
+`RiscvPtsto.app_taint` (was `riscv_kill_cred`, `:632`), with
+`app_taint_persistent` / `app_taint_timeless`.  A textual rename over
+`iris/*.v`, comments included; **50 files, 212 occurrences**, of which
+**98 were `□ app_taint` and lost the box** — the `Persistent` instance
+already said what the box said.  `□ (app_taint -∗ R)`-shaped wands are
+UNCHANGED: that box is the wand's, not the credential's.  Highest counts:
+`UexecRet` 11, `UexecExecMint` 11, `UkInitMain` 7, `SchedCtx` 7,
+`ProofUsertrapArms` 7, `UkRun` 6, `UkStore` 5, `UkLoad` 4,
+`UexecExecInst` 4, `UShEchoPay` 4, `ProofUsertrapTail` 4.
+
+`PipeQueue.pipe_taint_cred` is **DELETED**, not kept as an alias: one
+resource, one name.  Its 31 uses (`PipeQueue`, `PipeInvDefs`,
+`ProofPipewrite`, `ProofPiperead`, `SpecFileclose`, `FsAbsInvFire`,
+`SpecUsertrap`, `UexecExecInst`) name `app_taint`, and
+`pipe_taint_cred_persistent` / `_timeless` went with it — the same two
+instances live one file lower.
+
+Eleven proof sites in six files paid for the box's disappearance, all of
+one shape — a goal that WAS `□ app_taint` and is now `app_taint`, so the
+`iModIntro` that stripped the box goes: `UInitTree:305`,
+`UInitTreeExec:153`, `SystemAdequacy:1076` and `:1855`,
+`UTreeAdequacy:145`, `UInitBoot:852/:891/:972`,
+`UShEchoPay:188/:247/:320`.  Nothing else in the tree noticed.
+
+#### U1 — the licence is a LAW OF THE INTERFACE; the supply is a pair
+
+The licence was a credential in three places and a hand proof in two, and
+all five spell ONE fact: **an application's kill price buys the right to
+move its console claim**.  So it is one field.
+
+- `RiscvPtsto.app_iface` gains a ninth field
+  `ai_lic : ai_kill ⊢ □ (∀ k h H ev, ai_cons k h H ==∗ ai_cons k h
+  (cons_step H ev))`, read at the machine's own ambient interface, so it
+  needs NO record equation and holds at every altitude.  Discharged at all
+  four interface literals: `app_iface_triv` by the new
+  `RiscvPtsto.cons_res_triv_lic` (the trivial claim is `emp`),
+  `AppEcho.echo_ifc` by the new `AppEcho.echo_cons_lic` (which IS
+  `UInitBoot:821`'s hand proof, moved to where the interface is built),
+  `AppFileRec.file_ifc` by the new `AppFileRec.file_cons_lic`, and the
+  client interface in `SystemAdequacy.xv6_power_adequacy_client` by the
+  theorem's own `Hout_lic`.
+- `WpUart.cons_licence_of_taint : app_taint -∗ cons_licence` — the one
+  line that reads it.
+- `UexecExecInst.xv6_ssupply := (app_sup ∗ app_taint)` — the TRIPLE is a
+  PAIR.
+
+STATEMENTS THAT CHANGED SHAPE — exhaustively, 17:
+
+1. `RiscvPtsto.app_iface` — ninth field `ai_lic`; `Arguments MkAppIface`
+   takes nine; `Arguments ai_lic`.
+2. `RiscvPtsto.cons_res_triv_lic` — NEW.
+3. `RiscvPtsto.app_iface_triv` — one more component.
+4. `WpUart.cons_licence_of_taint` — NEW.
+5. `AppEcho.echo_cons_lic` — NEW; `AppEcho.echo_ifc` takes it.
+6. `AppFileRec.file_cons_lic` — NEW; `AppFileRec.file_ifc` takes it.
+7. `UexecExecInst.xv6_ssupply` — `app_sup ∗ app_taint ∗ □ cons_licence`
+   → `app_sup ∗ app_taint`.
+8. `FsAbsInvFire.fsabs_fileread_in` — lost `WpUart.cons_licence -∗`.
+9. `FsAbsInvFire.fsabs_filewrite_in` — lost `cons_licence -∗`.
+10. `UexecExecMint.udep_gen` — lost `cons_licence -∗`.
+11. `UexecExecMint.filewrite_in_of_sup` — lost `cons_licence -∗`.
+12. `UexecExecMint.udepw_of_sup_write` — lost `cons_licence -∗`.
+13. `UexecExecMint.udepw_law_of_sup_write` — lost `cons_licence -∗`.
+14. `UexecExecMint.uslot_mint` — lost `cons_licence -∗`.
+15. `UexecExecMint.uslot_mint_pay` — lost `cons_licence -∗`.
+16. `UexecExecMint.uslot_mint_all` — lost `cons_licence -∗`.
+17. `SystemAdequacy.init_boot_of_sup` — lost the Coq-level premise
+    `(app_sup ⊢ cons_licence)`; and `SystemAdequacy.init_boot_of_triv`
+    lost `riscv_cons_res = cons_res_triv`, which existed only to found the
+    licence.
+
+Call sites adapted (proof text, no statement moved):
+`App.app_triv_init_boot`, `UInitBoot.echo_Hinit_boot` (its hand-made
+`Hlic` and the three uses are gone), `UInitTree.tree_init_deps`,
+`UInitTreeExec.tree_gen_slot`, `UTreeAdequacy.tree_Hinit_boot`,
+`UexecExecInst.xv6_sbundle_of_supply{,_ne}`, `SystemAdequacy`'s three
+`init_boot_of_triv` discharges.
+
+#### WHAT WAS REFUTED, AND WHY
+
+**(a) `xv6_ssupply := app_taint` — the supply is NOT the taint.**  Two
+independent reasons, either one fatal.
+
+- THE ALTITUDE.  `AppInv.app_sup` is `□ ∀ av, app_pred app_run av` at the
+  ambient `AppCfg.appcfg` (reached through `FileInvDefs.fileG`'s
+  `file_app`); `app_taint` is `ai_kill riscvF_app_iface` at the ambient
+  `RiscvPtsto.riscvFixedGS`.  The two records are INDEPENDENT: the
+  equations that tie them — `file_app = MkAppcfg (app_names A)
+  (app_pred A c) r` and `riscvF_app_iface = app_ifc A c` — are PREMISES of
+  each boot obligation and are ambient NOWHERE, so no lemma below the boot
+  (`xv6_sbundle_of_supply_ne` and `udep_gen` included) can derive one
+  credential from the other.  Closing that gap costs either a new ambient
+  class threaded through ~60 section contexts — and hence through the
+  `uexecSG_xv6` GLOBAL INSTANCE, i.e. every consumer of the deposit class
+  — or a new field on `appcfg`, which breaks the ~200
+  `file_app = MkAppcfg …` equations in `FileOpen`, `UkFileOpen`,
+  `UkCatDeed`, `TreeMove`, `UkTreeCreate` and twenty more files, four
+  other lanes' among them.  Neither is a ~20-site change.  **The licence
+  half escapes this only because `ai_lic` lives on the interface record
+  itself** — `cons_licence` is spelled in `riscv_cons_res`, which is the
+  SAME record's projection, so no equation is needed.  There is no such
+  home for `app_sup`.
+- THE SEMANTICS.  Even granted the equation, "the kill price IS the
+  supply" is FALSE at `app_tree`: `AppTree`'s `app_ifc` is
+  `app_iface_triv`, so its kill credential is `kill_cred_triv = True`
+  while its claim `tree_pred c r av = tree_taint c ∨ tree_body r av` is
+  not trivial.  `True ⊢ app_sup_raw (tree_pred c) r` read at `av = ∅`
+  gives `True ⊢ tree_taint c` (the right arm needs
+  `adir_at ∅ ROOTINO`), which `AppTree.tree_taint_needs_a_row` refutes.
+  That is `AppTree.tree_bump_free_is_vacuous`'s own argument one level up.
+
+**(b) `App.xv6_app_laws.al_sup_of_kill` — STOPPED, not added.**  By (a)'s
+second half the field cannot be discharged at `app_tree` as the tree
+application stands, and `xv6_app_laws` has a tree instance
+(`UTreeAdequacy.tree_laws`).  THE RECIPE, for whoever takes it — it is a
+lane of its own and it publishes a NEW fact about the tree application, so
+it wants the owner's say:
+
+  1. give `AppTree` a real interface `tree_ifc c := MkAppIface
+     rx_tag_triv … (tree_taint c) … cons_res_triv … `, so the machine's
+     `app_taint` for a tree run IS `tree_taint c`;
+  2. prove `tree_taint_of_sup : app_sup_raw (tree_pred c) r ⊢ tree_taint c`
+     by `AppEcho.echo_taint_of_sup`'s `∅`-view argument (eight lines:
+     `tree_body r ∅` needs `adir_at ∅ ROOTINO`), and re-prove `al_kill`
+     from it — today it is trivial because the target is `True`;
+  3. discharge `al_sup_of_kill` by the existing `AppTree.tree_sup_of_taint`
+     (and echo's by `echo_sup_of_taint`, the file's by
+     `AppFile.file_sup_of_taint`, `app_triv`'s by
+     `AppInv.app_sup_raw_triv`);
+  4. sweep the premise `app_taint = kill_cred_triv`, which becomes
+     `app_taint = tree_taint c`, through `UInitTree`, `UInitTreeExec` (six
+     occurrences), `UTreeAdequacy` — it is only those three files, plus
+     `SystemAdequacy.init_boot_of_triv`'s own trivial reading.
+
+  The change is a PRICE and not a gift: the kernel never mints
+  `app_taint`, it only ever reads one out of a deposit that already
+  carries it (`ProofSyscall.sysc_dep_kill` reads row 6's).  So it makes a
+  killer under the tree discipline owe the tree's taint; the risk to price
+  before taking it is whether any tree program is killed or calls
+  `kill(2)`.
+
+**(c) Dropping `app_taint` from beside `□ ssupply` — REFUTED; survey R1 is
+internally inconsistent here.**  R1 says "`UexecSG.ssupply` stays opaque
+(the class carries only `ctokG` and cannot name the taint); nothing at the
+class moves" AND "what it removes: the `□ riscv_kill_cred` argument beside
+`□ ssupply` on `uslot_of_creds`, `uexec_wp_uslot{,_mint,_triv}`,
+`uexec_dep_F_of_supply`, `cond_entry_slot`".  Those cannot both hold:
+those five lemmas live in `UexecRet` / `UexecCond`, stated at the ABSTRACT
+class, so `□ ssupply ⊢ app_taint` is not available to them — the second
+credential is the ABSTRACTION BOUNDARY, not a redundancy.  Removing it
+needs `Class uexecSG` to take `` `{!riscvFixedGS Σ} `` and carry a field
+`ssupply_taint : ssupply ⊢ app_taint`; that is a class change, which R1
+forbids in the same paragraph.  Recorded rather than taken.  (The
+`uslot_mint*` family never had the duplication: it takes the supply's two
+COMPONENTS at the instance, and what it lost is the licence, item 14–16
+above.)
+
+#### U2 — the open leaves export `fdst_nopipe`, and cat's close is free
+
+`UsysMemOk.usys_fd_ok`'s open row has pinned `fdst_nopipe (FdOpen rd wr t)`
+since the pipe landing — `ProofSyscall`'s arm 15 proves it and
+`SpecSysOpen.open_arms_split` carries it out — and every
+`UkRunSys.wp_uk_ecall_open*` leaf already DESTRUCTS it (`… & Hpko & Hnpo`)
+and spends `Hnpo` on `UkRun.urun_rows_insert`.  **Where the pure fact comes
+from at the leaf: it is already in hand, off the row; all that changed is
+that it is now exported.**
+
+- The five leaves' fd arms gain the conjunct, inside the pure block they
+  already carry: `wp_uk_ecall_open` (`:834`), `_recv` (`:3861`),
+  `_recv_img` (`:4707`), `_recv_gimg` (`:4953`), `_recv_dimg` (`:5127`,
+  which relays `_recv_gimg`).
+- `UConsOpen.uk_open_fd_arm` gains it too — it is the shape the `_img`
+  leaves' callers rewrite against.
+- `UkRun.udepw_cl_nopipe : fdst_nopipe st -> ⊢ udepw_cl N m pc st` — NEW,
+  the one line from the exported fact to the free left arm.
+  `UkRun.udepw_cl`'s stale paragraph ("a descriptor `open` returned
+  carries an existential type: `usys_fd_ok`'s open row does not pin it")
+  is rewritten: the row pins it; the EXPORT was the gap.
+- `UkCat.cat_deps` is `udepw_law 5 ∗ 15 ∗ 16` — `udepw_law 21` is GONE.
+  It mattered beyond tidiness: the only producer of `udepw_law 21` at a
+  claim-bearing instance is the taint
+  (`UexecExecMint.udepw_law_of_sup_close`), so naming it forced a TAINTED
+  entry on a VERIFIED cat.
+- `UkCat.kcat_cldep_of_law` and `kcat_cldep_nonpipe` are both deleted and
+  replaced by ONE instance `kcat_cldep_nopipe` at the exported spelling;
+  `UkCat.wp_kcat_open` and `kcat_o_of_law` forward the conjunct.
+- `UkCatMain.kcat_file_of_law`, `kcat_pay_of_law`, `kcat_pay_all_of_law`
+  lose `udepw_law 21 -∗` and take the close at the exported fact.
+
+COORDINATION.  `UkCat.v` / `UkCatMain.v` are not CAT-ENTRY-2's files (it
+owns `UkCatCat.v`, `UCatKernel.v`, `UkWriteLeaf.v`; its branch's log
+touches `UkCatMain.v` only at `1d3048750`, in `kcat_round`'s write arm,
+which this lane does not go near).  The leaf's extra pure conjunct reaches
+six further files as PROOF TEXT and nothing else — `destruct Hb as
+(Hr1 & Hlt1 & Hfdv1)` becomes `(… & _)`: `UkFileOpen.v` (F-OPEN-6's, six
+sites), `UInitConsK.v` (LINK-GEN's, one), `UShConsK.v`,
+`UInitTreeCons.v`, `UkTreeCreate.v`, `UkTreeRead.v`.  No statement in any
+of those moved.

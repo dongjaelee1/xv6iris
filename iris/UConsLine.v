@@ -48,7 +48,7 @@ From iris.program_logic Require Import language lifting.
 Require Import SailStdpp.ConcurrencyInterface SailStdpp.ConcurrencyInterfaceBuiltins SailStdpp.ConcurrencyInterfaceTypes SailStdpp.Operators_mwords.
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
-Require Import RiscvLang RiscvPtsto RiscvModelBytes.
+Require Import RiscvLang RiscvPtsto.
 Require Import UserHeap UkRun UkRunSys.
 (* the address-space vocabulary the swallowed byte's FAULT arm is refuted
    in ([ush_swallow_nofault]): the permission projection and the lazy
@@ -67,11 +67,8 @@ Require Import FdSlots UserFd.
 Require Import ConsoleInv.     (* [cons_window] / [cons_chain] / [CONSOLE] *)
 Require Import UserConsole.    (* [upos] / [ucons_stored_lb] / [ucons_pay] *)
 Require Import UkSh.           (* [sh_buf] / [sh_nbuf] *)
-Require Import UkShParse.      (* [ushp_no_symbols] / [ushp_tokens] *)
 Require Import UkShLoop.       (* [ush_line_lexable] -- the lowest file that
                                   sees both the LINE and the LEXER *)
-Require Import LineWords.       (* [wl_line] -- a line IS a list of WORDS *)
-Require Import EchoDisc.        (* [line_ok] / [disc_input] / [disc_seg] *)
 Require Import EchoOut.            (* [echoOutG]: the class [AppEcho]'s claims
                                       and its ledger are stated at (lane
                                       ECHO-OUT part 5).  It CARRIES

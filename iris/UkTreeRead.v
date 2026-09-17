@@ -44,12 +44,8 @@ Require Import ProcAvail.
 Require Import FileInvDefs.
 Require Import UserFd.
 Require Import UserHeap.
-Require Import UserPerm.
 Require Import UserCwd.
-Require Import ProcPtOwn.
-Require Import UserPtTree.
 Require Import ProcGeom.           (* [NOFILE] / [tf_arg_idx] *)
-Require Import VcGen.              (* [trunc32] *)
 Require Import UmodeArith.         (* [moi_small] *)
 Require Import PieceFam.
 Require Import UexecSlot UexecRet UsysMemOk UexecSG.
@@ -62,7 +58,6 @@ Require Import UConsOpen.          (* [xfam_open] and the two key-level rows:
                                       TOP-LEVEL there and ECHO-FREE (the
                                       section's echo classes are not used by
                                       them), so nothing echo rides in here *)
-Require Import SpecArgfd.
 Require Import SpecFileread.
 Require Import SpecSysRead.
 Require Import SysReadDefs.        (* [ard_count] / [ard_pre] *)
@@ -74,7 +69,6 @@ Require Import AppCfg AppInv.
 Require Import FsCfg.
 Require Import FsBlocks.
 Require Import FsBytesGamma.
-Require Import FsImg.
 Require Import PathElems.
 Require Import FsTree.
 Require Import InodeInv.           (* [MAXFILE] *)
@@ -85,9 +79,8 @@ Require Import TreeView.
 Require Import AppTree.
 Require Import TreeObs.
 Require Import PinnedObs.
-Require Import FsAbs.
 Require Import FsAbsDefs.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Import Defs.
 
 Local Open Scope Z_scope.

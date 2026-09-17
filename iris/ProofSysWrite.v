@@ -81,7 +81,7 @@ Require Import SpecArgfd SpecArgint SpecArgaddr SpecFilewrite.
    [sys_rw_count_reg] and [sys_rw_count_lt] all live there. *)
 Require Import SpecSysRead.
 Require Import SpecSysWrite.
-Require Import PipeQueue.   (* the pipe's byte-queue ghost: [pipe_st], the write payment *)
+Require Import PipeNames.   (* the pipe's byte-queue ghost: [pipe_st], the write payment *)
 Require Import CodeSysWrite.
 From Kernel Require KernelInstrs.
 From Kernel Require KernelSyms.

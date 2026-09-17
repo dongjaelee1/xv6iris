@@ -83,7 +83,6 @@ Require Import UkEcho.
 Require Import UEchoKernel.
 Require Import LineWords.   (* [wl_sp] / [wl_nl] / [wl_off] *)
 Require Import EchoDisc.
-Require Import EchoOutPure.
 Require Import EchoOut.
 Require Import EchoLinks.
 Require Import EchoLinksLine.   (* [wr_blk_byte] / [wr_blk_pin_snoc]:

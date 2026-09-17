@@ -46,28 +46,22 @@ Require Import ProcAvail.
 Require Import FileInvDefs.
 Require Import UserFd.
 Require Import UserHeap.
-Require Import UserPerm.
 Require Import UserCwd.
-Require Import ChildTok.
-Require Import UexecSlot UexecRet UsysMemOk UexecSG.
-Require Import UkRun UkRunSys UkRunExecRef UexecExecInst.
+Require Import UexecRet UsysMemOk.
+Require Import UkRun UkRunSys.
 Require Import ElfFile.          (* [elf_bytes] *)
 Require Import PathElems.        (* [path_elems] / [SLASH] *)
 Require Import FsTree.           (* [fname] / [fs_proper] *)
 Require Import FsImg.            (* [ROOTINO] *)
 Require Import SpecKexec.        (* [kexec_loadable] *)
-Require Import SpecSysExec.      (* [exec_path_of] *)
-Require Import PieceFam.
 Require Import AppCfg AppInv.
 Require Import FsCfg.            (* [fsc_fs] *)
 Require Import ExecEntry.        (* [image_entry] / [image_entry_taint] *)
-Require Import ExecBundle.
 Require Import ExecRun.          (* [exec_walk_of_abs], the content-level rule *)
 Require Import FsAbsEra.         (* [um_start_of] *)
 Require Import TreeView.
 Require Import AppTree.
 Require Import TreeObs.
-Require Import PinnedObs.
 Require Import FsAbsDefs.
 Import Defs.
 

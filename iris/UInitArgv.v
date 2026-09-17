@@ -16,7 +16,7 @@ From iris.base_logic.lib Require Import ghost_map.   (* [gname] *)
 Require Import SailStdpp.ConcurrencyInterface SailStdpp.ConcurrencyInterfaceBuiltins SailStdpp.ConcurrencyInterfaceTypes SailStdpp.Operators_mwords.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
 Require Import Riscv.rv64d_types Riscv.rv64d.
-Require Import RiscvPtsto RiscvExtras.
+Require Import RiscvPtsto.
 Require Import UmodeAbi.    (* [uimg_sub] *)
 Require Import UserHeap.    (* [ubyteq] -- the data half of the user heap *)
 Require Import UCodeInit.   (* [init_data_sub], and [init_ro]'s complement *)

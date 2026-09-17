@@ -77,14 +77,11 @@ Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.Mac
 Require Import SailStdpp.Operators_mwords.
 Require Import Riscv.rv64d_types Riscv.rv64d.
 Require Import RiscvModelBytes RiscvPtsto RiscvExtras.
-Require Import UserBits.
 Require Import UmodeArith.      (* [Z64], [uint_moi], [moi_small]        *)
 Require Import UmodeAbi.        (* [ubyte0], [uimg_sub]                  *)
 Require Import ByteBuf.         (* [bb_cstr] / [bb_nonul]                *)
 Require Import SpecCopyin.      (* [uimg_word_at]                        *)
-Require Import SpecCopyinstr.   (* [copyinstr_got]                       *)
 Require Import UImgWordDefs.    (* [img_word_of_bytes], [uimg_word_det]  *)
-Require Import ArgPath.         (* [arg_path_of] / [arg_path_shape]      *)
 Require Import KexecDefs.       (* [MAXARG], [kxc_sp], [kxc_sp_final],
                                    [kxc_stack_ok]                        *)
 Require Import ElfFile.         (* [elf_bytes]                           *)

@@ -110,7 +110,8 @@ Require Import Xv6G.   (* the ghost-state bundle; see its header *)
 Require Import FsCfg.  (* [fscfg]: the fs configuration is AMBIENT *)
 Import Defs.
 Require Import CtxIdDefs.
-Require Import PipeQueue.   (* the pipe's byte-queue ghost: names, links, payments *)
+Require Import PipeNames.   (* the pipe's byte-queue ghost: names, links, payments *)
+Require Import Xv6Cameras.
 
 Local Open Scope Z_scope.
 

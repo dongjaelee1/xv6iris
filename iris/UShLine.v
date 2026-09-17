@@ -87,7 +87,6 @@ Require Import FsCfg.
 Require Import ConsoleInv.         (* [cons_acc] / [cons_out] / [CONSOLE] *)
 Require Import WpUart.             (* [cons_read_pay]: E5's console I/O
                                       boundary (lane CONS-IO) *)
-Require Import UartNames.          (* [cons_names] *)
 Require Import UserConsole.        (* [upos] / [ucons_pay] *)
 Require Import UkSh.               (* [ush_narrow_count_le] *)
 Require UkInit.                    (* [init_rd]: the exit family, the pair *)

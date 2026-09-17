@@ -65,7 +65,8 @@ Require Import LogInv.
 Require Import IrefSlots.
 Require Import SpecArgfd SpecArgint SpecArgaddr SpecFileread.
 Require Import SpecSysRead.
-Require Import PipeQueue.   (* the pipe's byte-queue ghost: [pipe_st], the read payment *)
+Require Import PipeNames.   (* the pipe's byte-queue ghost: [pipe_st], the read payment *)
+Require Import Xv6Cameras.
 Require Import CodeSysRead.
 From Kernel Require KernelInstrs.
 From Kernel Require KernelSyms.

@@ -61,7 +61,7 @@ Require Import FileInvDefs.     (* [fileG], and its [appcfg] / [icfg] fields *)
 Require Import UserFd.
 Require Import UserHeap.
 Require Import ChildTok.  (* [my_pay]: the exec wands' pay fact *)
-Require Import UexecSlot UexecRet UsysMemOk UexecSG.
+Require Import UexecSlot UexecRet UexecSG.
 Require Import UInitFd.  (* [ufd_head] / [ufd_head_row] -- init's own
                             descriptor head, and the row sh's entry reads
                             off it against the lent authority *)
@@ -115,18 +115,11 @@ Require Import ExecArgs.        (* [uargv_img] / [uargv_shape] / [uargv_det]:
                                    the argument reading at ANY layout
                                    (lane EX-3); /init's is this one at a
                                    CONSTANT layout *)
-Require Import PieceFam.           (* [pfam] / [MkPfam] -- the exec deposit's
-                                      one-shot piece, named by the refund
-                                      twin below (lane M6b) *)
-Require Import FsBytesGamma.       (* [fs_gamma_L] -- likewise *)
 Require Import UexecExecInst.      (* [sbundle_exec_intro] -- THE INSTANCE *)
 Require Import Xv6Cameras.         (* [uartGhostG] *)
 Require Import UartNames.          (* [cons_names] *)
 Require Import UserConsole.        (* [ucons_pay] / [upos] *)
 Require Import CtxIdDefs.
-Require Import TsoCtx.
-Require Import UkRunExecRef.    (* [udepw_at_refR] / [sbundle_pay_refR]: EX-4's instances *)
-Require Import SpecCopyin.         (* [uimg_word_at] *)
 Require User.InitData.
 Import Defs.
 

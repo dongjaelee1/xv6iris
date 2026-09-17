@@ -175,7 +175,7 @@ Require Import PieceFam.        (* [pfam]: a one-shot piece's receipt beside its
 Require Import FsAbsDefs.  (* LAST (FsAbs's own rule) *)
 Import Defs.
 Require Import CtxIdDefs.
-Require Import PipeQueue.   (* the pipe's byte-queue ghost: names, links, payments *)
+Require Import PipeNames.   (* the pipe's byte-queue ghost: names, links, payments *)
 
 Local Open Scope Z_scope.
 

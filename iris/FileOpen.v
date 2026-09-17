@@ -1530,7 +1530,8 @@ Section FileOpen.
     rewrite /aread_commit_at. iIntros (I off a d) "%Hpre Hka Hoff".
     iMod (file_claim_read γfs c r jc s q I Heq with "Hinv Hm Hd Hka")
       as "(Hka & Hd & Hc)".
-    iModIntro. iFrame "Hka Hoff".
+    iModIntro. iFrame "Hka".
+    iSplitL "Hoff"; [iApply (off_ret_keep with "Hoff") |].
     iDestruct "Hc" as "[%Hf | #HT]".
     - iLeft. iFrame "Hd". by iPureIntro.
     - iRight. iFrame "Hd". iExact "HT".

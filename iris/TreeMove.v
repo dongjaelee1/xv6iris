@@ -406,7 +406,9 @@ Section TreeMove.
               with "Hinv Hq Hka") as "(Hka & Hstep & Hph2)".
       iModIntro. iFrame "Hka Hstep". iIntros (I') "%Hav Hka'".
       iMod ("Hph2" $! I' with "[//] Hka'") as "[Hka' Hq']".
-      iModIntro. iFrame "Hka' Hoff". iApply (IH (S k) with "Hinv Hq'").
+      iModIntro. iFrame "Hka'".
+      iSplitL "Hoff"; [iApply (off_ret_keep with "Hoff") |].
+      iApply (IH (S k) with "Hinv Hq'").
     - rewrite /awrite_part_at.
       iIntros (I off n bs bs0 nl) "%Hpre %Hn %Hgap %Hshort %Hby Hka Hoff".
       destruct Hpre as (Hrow & _ & _ & _).
@@ -414,7 +416,9 @@ Section TreeMove.
               with "Hinv Hq Hka") as "(Hka & Hstep & Hph2)".
       iModIntro. iFrame "Hka Hstep". iIntros (I') "%Hav Hka'".
       iMod ("Hph2" $! I' with "[//] Hka'") as "[Hka' Hq']".
-      iModIntro. iFrame "Hka' Hoff". iApply (IH (S k) with "Hinv Hq'").
+      iModIntro. iFrame "Hka'".
+      iSplitL "Hoff"; [iApply (off_ret_keep with "Hoff") |].
+      iApply (IH (S k) with "Hinv Hq'").
   Qed.
 
   (* =================================================================== *)

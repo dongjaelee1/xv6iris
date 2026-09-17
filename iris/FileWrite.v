@@ -502,7 +502,11 @@ Section FileWrite.
           ⌜abs_view I' = delta_write i off bs (abs_view I)⌝ -∗
           ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I' ={appE}=∗
           ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I' ∗
-          off_gv γo (1/2) (Z.of_nat off) ∗ REST))%I.
+          (* the node's own answer, verbatim from [awrite_full_at]: the
+             half comes back UNMOVED or ADVANCED BY THE CHUNK, and this
+             cursor proves the first ([OffGv.off_ret_keep]) until it holds
+             a user half to advance. *)
+          off_ret γo off (length bs) ∗ REST))%I.
 
   (* ...AND THE CURSOR PAYS IT.  [TreeMove.tree_awrite_chain]'s per-node
      step, at the deed: the node goes in at [sel] and comes back at
@@ -544,7 +548,12 @@ Section FileWrite.
             with "Hinv Hq Hka") as "(Hka & Hstep & Hph2)".
     iModIntro. iFrame "Hka Hstep". iIntros (I') "%Hav Hka'".
     iMod ("Hph2" $! I' with "[//] Hka'") as "[Hka' Hq']".
-    iModIntro. iFrame "Hka' Hg". rewrite Hbs. iExact "Hq'".
+    iModIntro. iFrame "Hka'".
+    (* the node returns the borrow UNMOVED: this cursor holds no user half
+       yet (that is design/app-file.md section 3's link arm, lane
+       OFF-LINK), so [off_ret_keep] is the arm it can prove. *)
+    iSplitL "Hg"; [iApply (off_ret_keep with "Hg") |].
+    rewrite Hbs. iExact "Hq'".
   Qed.
 
 End FileWrite.

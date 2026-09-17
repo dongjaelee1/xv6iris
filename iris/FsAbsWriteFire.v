@@ -591,7 +591,15 @@ Section WriteFire.
             ⌜abs_view I' = delta_write i off bs (abs_view I)⌝ -∗
             ghost_map_auth (γtop Γ) (1/2) I' ={E}=∗
             ghost_map_auth (γtop Γ) (1/2) I' ∗
-            off_gv γo (1/2) (Z.of_nat off) ∗
+            (* THE HALF COMES BACK AT ONE OF TWO VALUES (lane WRITE-RELAY,
+               for lane SKELETON's [Hoff_link]): UNMOVED, which is all a
+               node with no user half can do, or ADVANCED BY THE CHUNK,
+               which a node whose closure holds [UserOff.uoff] must do --
+               it holds BOTH halves inside this fupd and cannot leave the
+               cursor behind.  [UserOff.off_ret] is that disjunction, and
+               the choice is the NODE's: the generic node proves it with
+               [UserOff.off_ret_keep] and nothing else moved. *)
+            off_ret γo off (length bs) ∗
             REST))%I.
 
   (* THE PARTIAL-CHUNK COMMIT (round E2, lane E2-W; ruling Q-i).  It used
@@ -631,7 +639,10 @@ Section WriteFire.
             ⌜abs_view I' = delta_write i off bs (abs_view I)⌝ -∗
             ghost_map_auth (γtop Γ) (1/2) I' ={E}=∗
             ghost_map_auth (γtop Γ) (1/2) I' ∗
-            off_gv γo (1/2) (Z.of_nat off) ∗
+            (* ...at one of two values, as the full arm's -- and here the
+               advance is by the COUNT the kernel returned, not by the run
+               that landed, exactly as [wrf_apart_fire]'s payout is. *)
+            off_ret γo off r ∗
             REST))%I.
 
   (* THE CHAIN, AT A PREFIX CURSOR.  A bundle of
@@ -708,12 +719,14 @@ Section WriteFire.
       iIntros (I off bs bs0 nl) "%Hpre %Hby %Hlen Ha Hk".
       iDestruct (app_step_acc i I _ with "Hsup") as "Hstep".
       iModIntro. iFrame "Ha Hstep". iIntros (I') "%Heq Ha'". iModIntro.
-      iFrame "Ha' Hk". iApply (IH with "Hsup").
+      iFrame "Ha'". iSplitL "Hk"; [iApply (off_ret_keep with "Hk") |].
+      iApply (IH with "Hsup").
     - rewrite /awrite_part_at.
       iIntros (I off r bs bs0 nl) "%Hpre %Hr %Hgap %Hshort %Hby Ha Hk".
       iDestruct (app_step_acc i I _ with "Hsup") as "Hstep".
       iModIntro. iFrame "Ha Hstep". iIntros (I') "%Heq Ha'". iModIntro.
-      iFrame "Ha' Hk". iApply (IH with "Hsup").
+      iFrame "Ha'". iSplitL "Hk"; [iApply (off_ret_keep with "Hk") |].
+      iApply (IH with "Hsup").
   Qed.
 
   (* =================================================================== *)

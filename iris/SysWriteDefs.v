@@ -135,3 +135,22 @@ Proof. intro H. rewrite /wchunk_at /FW_MAX in H |- *. lia. Qed.
 
 Lemma wchunk_at_le (n : Z) (k : nat) : wchunk_at n k <= FW_MAX.
 Proof. rewrite /wchunk_at. lia. Qed.
+
+(* ONE WRITE OF AT MOST [FW_MAX] BYTES IS ONE NODE (lane SKELETON, finding
+   5).  echo's four chunks are bytes long and each goes out in a [write] of
+   its own, so its chain is exactly one node -- a full arm beside a partial
+   arm -- and that node's chunk IS the whole request. *)
+Lemma wchunks_one (n : Z) : 0 < n -> n <= FW_MAX -> wchunks n = 1%nat.
+Proof.
+  intros H1 H2. rewrite /wchunks /FW_MAX in H2 |- *.
+  assert (Hd : (n + 3072 - 1) / 3072 = 1).
+  { assert (Hlo : 1 <= (n + 3072 - 1) / 3072)
+      by (apply Z.div_le_lower_bound; lia).
+    assert (Hhi : (n + 3072 - 1) / 3072 < 2)
+      by (apply Z.div_lt_upper_bound; lia).
+    lia. }
+  rewrite Hd. reflexivity.
+Qed.
+
+Lemma wchunk_at_0 (n : Z) : n <= FW_MAX -> wchunk_at n 0 = n.
+Proof. intro H. rewrite /wchunk_at /=. lia. Qed.

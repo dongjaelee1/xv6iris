@@ -1601,6 +1601,7 @@ TreeImg.v
 UTreeAdequacy.v
 UkFileOpen.v
 UkShRedirAns.v
+UkCatDeed.v
 UCatOut.v
 UInitTree.v
 # TreeAssumptions.v

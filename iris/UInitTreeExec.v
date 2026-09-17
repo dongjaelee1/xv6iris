@@ -205,7 +205,7 @@ Section UInitTreeExec.
     intros Heq Hcons Hkill. iIntros "#HT".
     rewrite /UkInit.init_exec_sup_lend.
     iIntros "!>" (γ np N m pc l)
-      "%Hpeq %Hhd %Ha0 %Ha1 #Hro #Hargv Hstd Hrow Hcred Hpos Hlease Hchf Hpidf".
+      "%Hpeq %Ha0 %Ha1 #Hro #Hargv Hstd Hrow Hcred Hpos Hlease Hchf Hpidf".
     iAssert (image_entry_taint (tree_taint c) (ukn_pay N) uslot) as "#Hgen".
     { rewrite Hpeq.
       iApply (tree_image_entry_taint c r cn γ

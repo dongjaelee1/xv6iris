@@ -381,7 +381,6 @@ Section UShRound.
           (fb : nat -> bv 8) (sz : Z) (ld : list fdstate) (n : nat)
           (I : list (bv 8)),
           ⌜ ukn_pay N' = (fun _ : Z => UkShFork.ushf_wq Wcf I) ⌝ -∗
-          ⌜ ukn_held N' = ∅ ⌝ -∗
           ⌜ m !!! Regidx (mword_of_int 9 : mword 5)
               = (mword_of_int s0 : mword 64) ⌝ -∗
           (* THE LINE IS THE REDIRECT SHAPE, which is where this law and

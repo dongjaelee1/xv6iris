@@ -233,7 +233,7 @@ Section UShEchoPay.
     iIntros "#Hlk #Hdep (#Hinv & #Hcl & #Hgen)".
     rewrite /UkShEcho.sh_exec_sup_echo_wq. iIntros "!>" (I) "%Hokws".
     rewrite /UkShEcho.sh_exec_sup_echo.
-    iIntros "!>" (N' m pc s0 t g ld) "%Hpeq %Hheq %Ha0 %Ha1 %Hbytes %Hfd1 Hstd #Hcmd Hcr".
+    iIntros "!>" (N' m pc s0 t g ld) "%Hpeq %Ha0 %Ha1 %Hbytes %Hfd1 Hstd #Hcmd Hcr".
     (* the lend, pinned *)
     rewrite /EchoLinksLine.ewc_lcred. iDestruct "Hcr" as (v) "[#Hpin Hcr]".
     (* ---- THE TAINT ARM: the generic slot at the chosen payload.  It names

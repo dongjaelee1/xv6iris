@@ -449,7 +449,6 @@ Section UkShEcho.
              all-parked row, so the SUPPLIER says it about the table it
              execs with -- read off its own run
              ([UkRun.urun_rows_parked]). *)
-          ⌜ ukn_held N' = ∅ ⌝ -∗
           (* argv[0]'s string, which is the PATH exec resolves... *)
           ⌜ m !!! Regidx a0_idx = (mword_of_int s0 : mword 64) ⌝ -∗
           (* ...and [&argv[0]], which is the VECTOR it reads *)
@@ -535,7 +534,6 @@ Section UkShEcho.
       ukn_pay N = Q ->
       (* ...and the record holds no offset half (lane OFF-HAND-4, S2): the
          exec supply below relays it to echo's entry *)
-      ukn_held N = ∅ ->
       m !!! Regidx a0_idx = (mword_of_int t : mword 64) ->
       echo_argv_bytes ws g ->
       UkSh.ush_fd1p ld ->
@@ -614,7 +612,7 @@ Section UkShEcho.
       (Q : Z -> iProp Σ) (Cr Cd : iProp Σ) :
     wp_kshr_exec_echo ws Q Cr Cd.
   Proof using .
-    intros N Hcc h m t szv s0 g ld n Hok Hpeq Hheq Ha0 Hbytes Hfd1 Hfd2.
+    intros N Hcc h m t szv s0 g ld n Hok Hpeq Ha0 Hbytes Hfd1 Hfd2.
     (* THE BUNDLE-INTRO HANG (durable-notes, "iIntros #H on a bundle of
        wands"): [iIntros "#H"] on a bundle of [UkRun.udepw_law]s sends the
        [Persistent] search down [udepw]'s wand chain and it does not return
@@ -747,9 +745,8 @@ Section UkShEcho.
     { iApply ("Hexs" $! N
                 (<[Regidx a7_idx := (mword_of_int 7 : mword 64)]> k3)
                 (mword_of_int 0xcc0) s0 t g ld
-                with "[%] [%] [%] [%] [%] [%] Hstd Htree Hcr").
+                with "[%] [%] [%] [%] [%] Hstd Htree Hcr").
       - exact Hpeq.
-      - exact Hheq.
       - (* [echo_off 0] IS 0; the supply names the token's base, the load
            named its offset from the node, and the two are the same [Z]. *)
         assert (Hoff0 : s0 + Z.of_nat (echo_off ws 0%nat) = s0)
@@ -825,7 +822,6 @@ Section UkShEcho.
            (ld : list fdstate) (n : nat),
       ukn_pay N = Q ->
       (* ...and the record holds no offset half -- [wp_kshr_exec_echo] *)
-      ukn_held N = ∅ ->
       m !!! Regidx s1_idx = (mword_of_int s0 : mword 64) ->
       UConsLine.ush_line_is ws f 0%nat len ->
       0 < s0 -> s0 + Z.of_nat len + 1 < Z64 -> s0 + Z.of_nat len < 2 ^ 38 ->
@@ -862,7 +858,7 @@ Section UkShEcho.
     wp_kshm_child_echo ws Q Cr Cd.
   Proof.
     intros N Hc h m dw dv s0 len f sz ld n
-      Hpeq Hheq Hs1 Hline Hs0 Hs64 Hs38 Hszlo Hszal Hszok Hfd1 Hfd2.
+      Hpeq Hs1 Hline Hs0 Hs64 Hs38 Hszlo Hszal Hszok Hfd1 Hfd2.
     (* the line the discipline admits, as the parser's own premises *)
     pose proof (proj1 Hline) as Hok.
     destruct (ush_line_toks_holds ws f 0%nat len Hline) as (_ & Hns0 & Htoks0).
@@ -987,7 +983,7 @@ Section UkShEcho.
       with (6 + (2 + (UkShDiag.ush_Dg + (60 + n))))%nat by lia.
     iApply (wp_kshr_exec_echo_holds ws Q Cr Cd N _ h4 m4 p (sz + 65536) s0
               (ushp_nulfold (echo_toks ws) (ushp_ext len f)) ld ((60 + n)%nat)
-              Hok Hpeq Hheq Ha0_4 Hbytes Hfd1 Hfd2
+              Hok Hpeq Ha0_4 Hbytes Hfd1 Hfd2
               with "Hcode Hexs Hxl Hcd Hjt Htree Hsz Hstd Hcwd Hch Hcr Hrun").
   Qed.
 
@@ -1037,14 +1033,14 @@ Section UkShEcho.
   Proof.
     iIntros "#Hxl #Hsup". rewrite /UkShFork.ushf_child_law.
     iIntros "!>" (N' h m dw dv s0 len ws g sz ld n I)
-      "%Hpeq %Hheq %Hs1 %Hline %Hlws %Hs0 %Hs64 %Hs38 %Hszlo %Hszal %Hszok %Hrows
+      "%Hpeq %Hs1 %Hline %Hlws %Hs0 %Hs64 %Hs38 %Hszlo %Hszal %Hszok %Hrows
        #Hcode #Hpcode #Hpro #Hjt Hline Hws Hsy Hstd Hcwd Hch HM Hcr Hrun".
     subst ws.
     pose proof (ukn_const_of_eq N' _ Hpeq (fun x y => eq_refl)) as Hc.
     iApply (wp_kshm_child_echo_holds (last_ws I)
               (fun _ : Z => UkShFork.ushf_wq Wc I)
               (Wc I 3%nat) (Wc I 0%nat) N' Hc h m dw dv s0 len g sz ld n
-              Hpeq Hheq Hs1 Hline Hs0 Hs64 Hs38 Hszlo Hszal Hszok
+              Hpeq Hs1 Hline Hs0 Hs64 Hs38 Hszlo Hszal Hszok
               (proj1 (proj2 Hrows)) (proj2 (proj2 Hrows))
               with "Hcode [] [] [] [] Hpcode Hpro Hjt Hline Hws Hsy Hstd Hcwd Hch
                     HM Hcr Hrun").

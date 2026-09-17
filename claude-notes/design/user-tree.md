@@ -2219,3 +2219,28 @@ mint at the literal mkfs disk, the ledger's five laws, the console
 interface's three and the first process's exec bundle.  What it does not
 yet check is a single verified program against that claim; (6) is the
 worklist and its first item is a ruling, not a proof.
+
+### 9.4 RULED (2026-09-19, owner: "go for (b)") — restate init's kill premise; verified init through its setup
+
+TL-5's first wall (§9.3): `UInitKernel.init_boot_con`'s P2, `□ riscv_kill_cred
+-∗ T`, is echo-specific — echo's kill credential IS its taint, so the
+premise was free there; at the tree application (`app_kill := True`, a
+kill orphans a subtree and moves nothing) it reads `True -∗ tree_taint`,
+which §9.1's refutation shows must not be provable.  The owner ruled
+(b): RESTATE P2 rather than bend the tree claim.  Init's own proof does
+not spend "kill ⇒ taint" for anything the tree needs; the premise is
+re-cut so that echo's instantiation discharges it exactly as before and
+the tree's discharges it trivially (the shape: what init needs from a
+kill is what the KERNEL's row already gives — the killed process exits at
+−1 — not the application's price; if the contract genuinely needs an
+application fact at the kill arm, it is parameterised by `app_kill`
+itself, `□ riscv_kill_cred -∗ app_kill …`, which echo instantiates at the
+taint and the tree at `True`).
+
+Then §9.3(6)'s ordered worklist: the console-credential family
+(`UserConsole.cons_cred`, `init_boot_pay`/`cons_cred_holds`) produced at
+the tree claim for what init's SETUP needs — mknod("/console"), the two
+opens, the two dups — with the taint minted at init's BANNER (the first
+row that needs a console claim the tree application does not make).
+The theorem's content then becomes behavioural: the tree claim holds
+THROUGH init's setup.

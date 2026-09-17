@@ -503,12 +503,21 @@ Section ExecRun.
       (av : mword 64) (sts : list fdstate) (cw : Z) (cs : gset gname)
       (pidv : mword 32) (Q : Z -> iProp Σ) (Pay : iProp Σ)
       (T : iProp Σ) (X : uvis -d> iPropO Σ) :
+    (* ...AND THE CALLER'S OWN TABLE IS ALL PARKED (lane OFF-HAND-4, S2).
+       [image_entry] stopped relaying the row when the VERIFIED entries
+       dropped it, and the TAINT arm still needs one -- so a tainted
+       caller has to say it about the table it execs with, which its own
+       run does ([UkRun.urun_rows_parked] at [ukn_held N = empty]).  The
+       step to the resumed key is [SpecKexec.kexec_image_ok_parked],
+       through the image fact the entry already receives. *)
+    FdSlots.fdv_all_parked sts ->
     □ T -∗ image_entry_taint T Q X -∗
     image_entry f M av sts cw cs pidv Q Pay X.
   Proof using .
-    iIntros "#HT #Hgen". rewrite /image_entry /image_entry_taint.
-    iIntros "!>" (na alen afun W') "_ _ _ _ _ %Hpk _ Hmp _".
-    iApply ("Hgen" $! W' with "[%] HT Hmp"); exact Hpk.
+    intros Hpk. iIntros "#HT #Hgen". rewrite /image_entry /image_entry_taint.
+    iIntros "!>" (na alen afun W') "%Hok _ _ _ _ _ Hmp _".
+    iApply ("Hgen" $! W' with "[%] HT Hmp").
+    exact (kexec_image_ok_parked f na alen afun sts W' Hok Hpk).
   Qed.
 
   (* THE PATH READING, as a program actually holds it: the string exec
@@ -645,6 +654,12 @@ Section ExecRun.
     m !!! Regidx a0_idx = pv ->
     is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
     kexec_loadable f ->
+    (* ...AND THE RECORD HOLDS NO OFFSET HALF (lane OFF-HAND-4, S2): a
+       TAINTED caller's verified entry IS its taint arm
+       ([image_entry_of_taint]), and that arm still asks for the key's
+       all-parked row -- which the caller's own run answers at the empty
+       held set ([UkRun.urun_rows_parked]). *)
+    ukn_held N = ∅ ->
     uinstr_is (ukn_t N) pc false (ECALL tt) -∗
     urun N h m pc avail -∗
     UserCwd.ucwd (ukn_cwd N) c -∗
@@ -659,7 +674,7 @@ Section ExecRun.
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof using .
-    intros Hn Ha0 Hal4 Hload.
+    intros Hn Ha0 Hal4 Hload Hhd.
     iIntros "#Hi Hrun Hcwd #HT #Hgen #Hrd Hcont".
     iApply (wp_uk_ecall_exec_run N h m pc avail c T pv
               (m !!! Regidx a1_idx) pl f nl emp emp
@@ -668,10 +683,12 @@ Section ExecRun.
     - iIntros "!> _". done.
     - rewrite /uexec_sup_run. iIntros (M pm sz fdv cs pidv) "#Hnpw Hheap Hufd".
       iDestruct ("Hrd" $! M pm sz with "Hheap") as %Hpath.
+      iDestruct (urun_rows_parked (ukn_parked0 := Hhd) N fdv with "Hnpw")
+        as %Hpkq.
       iFrame "Hheap Hufd". iSplitR; [ by iPureIntro | ].
       iSplitR; [ iApply (exec_walk_of_taint with "HT") | ].
       iSplitR; [ | done ].
-      iApply (image_entry_of_taint with "HT Hgen").
+      iApply (image_entry_of_taint _ _ _ _ _ _ _ _ _ _ _ Hpkq with "HT Hgen").
     - iIntros (h') "Hcwd _ Hrun". iApply ("Hcont" with "Hcwd Hrun").
   Qed.
 
@@ -801,9 +818,8 @@ Section ExecRun.
                      [ExecEntry.image_entry_taint]'s note. *)
         iApply ("Hgen" $! W' with "[%] HT Hp"); exact Hpk. }
       cbn [an_node] in Hnode. injection Hnode as Hf. subst f'.
-      iApply ("Hcon" $! W' with "[%] [%] [%] [%] [%] [%] Hp HPay");
-        [ exact Hok | exact Hcwq | exact Hlzq | exact Hchq | exact Hpiq
-        | exact Hpk ].
+      iApply ("Hcon" $! W' with "[%] [%] [%] [%] [%] Hp HPay");
+        [ exact Hok | exact Hcwq | exact Hlzq | exact Hchq | exact Hpiq ].
     - (* ---- ARM (b): a loadable content IS loadable ---- *)
       iIntros (av' i a W') "HP Hrecv %Hnload %Hkey %Hcwq %Hlzq %Hchq %Hpiq %Hpk #Hp".
       iPoseProof ("Hid" $! av' i a) as "Hid'".

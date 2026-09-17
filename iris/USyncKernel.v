@@ -172,7 +172,7 @@ Section USyncKernel.
        supply it ([SpecKexec.exec_slot_pre], lane LAZY-FLAG's K4). *)
     uvis_lazy W = false ->
     (* ...AND THE KEY'S TABLE IS ALL PARKED (lane OFF-HAND-3, R1): this
-       program answers for its own offsets ([UkRun.ukn_park] at [true]),
+       program answers for its own offsets ([UkRun.ukn_held] at [empty]),
        and a record may claim that only at a key with no offset half
        outside the kernel.  The caller reads it off
        [SpecKexec.exec_slot_pre]'s wands, relayed through
@@ -192,9 +192,10 @@ Section USyncKernel.
   Proof using ghost_varG0 ghost_varG1 ufdG0.
     intros Hpc Hsub Hx Hroom Hal8 Hdata Hfdlen Hstop Hpsok_free Hlzf Hpark.
     iIntros "#Hnpw #Hdep #Hpay".
-    iApply (uslot_of_urun W 4 (fun _ => True)%I true
+    iApply (uslot_of_urun W 4 (fun _ => True)%I ∅
               Hal8 ltac:(lia) Hdata Hfdlen
-              Hstop Hlzf ltac:(intros _; exact Hpark) with "Hdep Hnpw Hpay").
+              Hstop Hlzf ltac:(exact (UsysMemOk.fdv_held_in_of_parked _ _ Hpark))
+              with "Hdep Hnpw Hpay").
     (* sync makes no descriptor call, so its ledger is dropped here *)
     (* sync makes no descriptor call and no chdir, so its ledger and its
        working directory are both dropped here *)

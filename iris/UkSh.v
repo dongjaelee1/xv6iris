@@ -6504,7 +6504,7 @@ Section UkSh.
      ([ExecEntry.image_entry_taint]), and the key a running process is at
      is bound by [UkRun.urun]'s own existential -- so the only thing that
      can pay that row at [ush_gen_run] is the run's own, which is guarded
-     by [UkRun.ukn_park].  THE BIT RIDES HERE, IN THE SLOT, and not as a
+     by [UkRun.ukn_held].  THE SET RIDES HERE, IN THE SLOT, and not as a
      section hypothesis: a section hypothesis would have to be named in the
      [Proof using] of every lemma on sh's walk between the entry and the
      taint, and none of them says anything about it.  The slot is already
@@ -6512,13 +6512,20 @@ Section UkSh.
      producer ([UShKernel.sh_uexec_slot]) holds the equation the entry
      constructor handed over. *)
   Definition ush_gen_slot : iProp Σ :=
-    (⌜ukn_park N = true⌝ ∗
+    (⌜ukn_held N = ∅⌝ ∗
      □ (∀ W : uvis,
           ⌜fdv_all_parked (uvis_fd W)⌝ -∗
           T -∗ my_pay (uvis_gen W) (ukn_pay N) -∗ uslot W))%I.
 
   Global Instance ush_gen_slot_persistent : Persistent ush_gen_slot.
   Proof using . rewrite /ush_gen_slot. apply _. Qed.
+
+  (* ...and the row on its own (lane OFF-HAND-4, S2).  sh's record holds no
+     offset half, and the slot is where that travels; a child sh forks
+     inherits the set ([UkFork.wp_uk_ecall_fork]'s [hs]), so this is what
+     says the forked child may run /echo's verified entry. *)
+  Lemma ush_gen_slot_held : ush_gen_slot -∗ ⌜ukn_held N = ∅⌝.
+  Proof using . iIntros "[$ _]". Qed.
 
   Lemma ush_gen_run (h : CpuId) (m : regfile) (pc : mword 64) (avail : nat) :
     is_aligned_vaddr (Virtaddr pc) 2 = true ->

@@ -272,7 +272,7 @@ Section UexecCond.
     (forall k : Z, free_num k -> @psok Σ PF k) ->
     sync_gate W ->
     (* ...AND THE KEY'S TABLE IS ALL PARKED (lane OFF-HAND-3, R1): the
-       entry constructor mints sync's record at [ukn_park = true], which is
+       entry constructor mints sync's record at [ukn_held = empty], which is
        honest only at such a key.  Unlike the pipe row below, this one has
        NO taint arm -- the fact a narrowed generic family needs is a fact
        about the table, so a credential cannot stand in for it -- and it is
@@ -348,7 +348,7 @@ Section UexecCond.
   Lemma cond_entry_slot (PF : uprogSG Σ) (W : uvis) :
     (forall k : Z, free_num k -> @psok Σ PF k) ->
     (* ...AND THE KEY'S TABLE IS ALL PARKED (lane OFF-HAND-3, R1): the two
-       GATED arms mint a verified program's record at [ukn_park = true].
+       GATED arms mint a verified program's record at [ukn_held = empty].
        The generic tail below needs nothing.  [UexecExecMint.uslot_mint]
        has carried this premise since lane OFF-HAND-2 and dropped it; this
        is its first consumer. *)

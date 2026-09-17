@@ -6846,3 +6846,178 @@ carrier no longer mentions a discipline at all.
   `v` and `I`, so a plain `rewrite (lk_pr_0 L)` inside `∃ v, …` fails with
   "does not match any subterm".  Destructure first (or `setoid_rewrite`);
   `UInitBanner.kinit_own_is_cred_at` is the site.
+
+### SH-LEX-REDIR (2026-09-17) — the redirect line's LEXABILITY is a THEOREM (obligation 13 closes); the token list is ECHO'S OWN; and what is left of the thread is a WALK, not a premise
+
+Branch `app-file/sh-redir`, ONE commit (`64ed76800`) on top of SH-MALLOC-3's.
+`git merge main` was a FAST-FORWARD — SH-MALLOC-3's two commits are already on
+main — so the lane starts at `5894e21dc`.  Whole tree green on the lane's
+remote tree (`--proofs -k`, `EXIT=0`, zero `Error`, one file compiled);
+`make audit-all-only` unchanged (echo FOURTEEN, system THIRTEEN, both lists
+textually identical); `make gen-ucode` prints all seven catalogs unchanged;
+no `Admitted`; every result carries `Proof using`.  **ONE NEW FILE
+(`iris/UShLexRedir.v`, 461 lines) plus one `iris/_CoqProject` line.  NOT ONE
+LANDED STATEMENT CHANGED SHAPE** — see the last section for why that is the
+answer to X2 and not a dodge.
+
+#### 1. WHAT LANDED — `iris/UShLexRedir.v`
+
+- **`ush_line_lexable_redir_holds : UkShLoop.ush_line_lexable_redir`** —
+  SKELETON's obligation 13 is a THEOREM.  **`UShRound.Hlexr` is
+  dischargeable from NOTHING**: delete the hypothesis (`iris/UShRound.v:323`),
+  `Require Import UShLexRedir` (`_CoqProject` 1566, under `UShRound`'s
+  1620), and drop `Hlexr`
+  from the two `Proof using` lines (`:421`, `:446`).  That is the whole
+  consumer-side change and this lane deliberately did not make it, since
+  `UShRound` is SKELETON's file and every proof in it is `Admitted`.
+
+- **`ush_line_toks_redir` / `ush_line_toks_holds_redir`** (X1) —
+  `UkShEcho.ush_line_toks_holds`'s twin, the token list NAMED:
+
+```coq
+  Definition ush_line_toks_redir : Prop :=
+    forall (ws : list (list (bv 8))) (file : list (bv 8)) (f : nat -> bv 8)
+           (k len : nat),
+      ushs_line_is ws file f k len ->
+      ushs_redir len (fun j : nat => f (k + j)%nat)
+        (length (wl_body ws) + 1)%nat
+        (length (wl_body ws) + 3 + length file)%nat
+      /\ ushs_toks len (fun j : nat => f (k + j)%nat)
+           (length (wl_body ws) + 1)%nat 0%nat (wl_toks ws)
+      /\ (0 < length (wl_toks ws))%nat
+      /\ (length (wl_toks ws) < 10)%nat.
+```
+
+  **THE PREMISE IS `ushs_line_is`, not `parse_line`** — the tag yields the
+  parse and §3 below bridges it; stating the twin at the positional predicate
+  is what makes it reusable by a walk, exactly as `UkSh.ush_line_is` is what
+  `ush_line_toks` is stated at.
+
+- **`ushs_toks_tail` / `ushs_toks_line`** — the tokenization AT A
+  TERMINATOR, which is the only new mathematics in the lane.
+  `UkShWords.wl_tokens_tail` / `wl_tokens` with the line's closing byte a
+  PARAMETER (`c`, any blank) and the scan's fuel allowed to run PAST it
+  (`stop <= len`, plus `stop = len \/ ushp_is_ws (f stop) = false`).  The
+  landed `ushp_tokens` statements are the instance at `c := wl_nl`,
+  `stop = len`.
+
+- **`sh_redir_line_of_typed` / `sh_redir_line_lexable`** (X2's bridge) — the
+  chain from the line sh READ, stated in `UkSh.ush_gets_done_line`'s idiom
+  with `EchoDisc.body_ok J` replaced by the file discipline's own reading of
+  the same body:
+
+```coq
+  Lemma sh_redir_line_lexable (J : list (bv 8)) (ws : list (list (bv 8)))
+      (f : nat -> bv 8) (k len : nat) :
+    parse_line J = Some (LEchoF ws) ->
+    len = S (length J) ->
+    (forall j : nat, (j < length J)%nat -> f (k + j)%nat = J !!! j) ->
+    f (k + length J)%nat = wl_nl ->
+    ushs_redir len (fun j : nat => f (k + j)%nat)
+      (length (wl_body ws) + 1)%nat
+      (length (wl_body ws) + 3 + length fname_f)%nat
+    /\ ushs_toks len (fun j : nat => f (k + j)%nat)
+         (length (wl_body ws) + 1)%nat 0%nat (wl_toks ws)
+    /\ (0 < length (wl_toks ws))%nat
+    /\ (length (wl_toks ws) < 10)%nat.
+```
+
+- **`fd_demo_parse` / `fd_demo_toks` / `fd_demo_lexes`** — the model's own
+  `echo hello world > f` (`FileDisc.fd_b0`), parsed and lexed, tokens
+  `[(0,4); (5,10); (11,16)]`.  `UkShWords` §6 is the mould and the reason is
+  vacuity: `ushs_line_is` and `parse_line _ = Some (LEchoF _)` are PREMISES
+  of everything above, so a lane that never instantiates them cannot tell a
+  threaded premise from an unsatisfiable one.
+
+#### 2. THE THREE RULINGS
+
+1. **THE REDIRECT LINE'S ARGUMENT LIST IS ECHO'S OWN — `LineWords.wl_toks ws`,
+   the very list `UkShEcho.echo_toks` names.**  Below the '>' the buffer is
+   echo's line with its newline replaced by the blank that separates the
+   command from the redirect, and NEITHER SCAN CAN TELL THOSE APART: both
+   `ushp_skipws` and `ushp_toklen` stop dead on the byte that closes them and
+   never look at what is behind it.  So the child's `ush_args` at a redirect
+   line is echo's `ush_args`, and `UkShRedirSeam`'s `args` is `wl_toks ws`.
+   That is why one induction (`ushs_toks_tail`) covers both lines and why
+   nothing of `UkShWords` had to be re-proved: what changes between them is
+   the FUEL and the CLOSING BYTE, and both are now parameters.
+2. **WHAT A SUPPLIER OWES IS THE TOKEN COUNT, AND THE COUNT IS FREE.**
+   SH-PARSE-2 predicted this ("the first conjunct is DERIVABLE, what a
+   supplier really owes is the token count") and it is now exact: the first
+   conjunct is `UkShLoop.ush_line_lexable_redir_shape`, the token list comes
+   off the line's shape, and `0 < length args < 10` is `EchoDisc.line_ok`'s
+   own `2 <= length ws < 10` through `LineWords.wl_toks_length`.  So obligation
+   13 costs NO new premise anywhere — `line_ok ws` was already inside
+   `ushs_line_is`.
+3. **THE PROOF CANNOT LIVE BESIDE THE DEFINITION, AND THAT IS THE HOUSE
+   PATTERN.**  `ush_line_lexable_redir` is defined in `UkShLoop` (1558) —
+   the lowest file that sees both halves — but what makes a line lex is
+   `UkShWords`'s general word-list tokenization, which is at 1564.  Echo is
+   in exactly the same position: the definition is `UkShLoop.
+   ush_line_lexable` (1558), the named-token form is `UkShEcho.
+   ush_line_toks_holds` (1565) and the existential form is `UShRest.
+   ush_line_lexable_holds` (1593).  `UShLexRedir` (1566) is those last two
+   files' twin in one, and being a LEAF nothing else in the tree recompiles.
+
+#### 3. WHAT `Hlexr` IS DISCHARGED FROM, EXACTLY
+
+Two readings, and both are now proved:
+
+- **as a closed `Prop`**: from nothing.  `ush_line_lexable_redir_holds` is a
+  theorem; `Hlexr` is deleted, not supplied.
+- **at the application, where the child needs the ARGS NAMED**: from the
+  TYPED LINE.  `FileOut.ftag h` gives `⌜FileDisc.disc_f h⌝ ∨ file_taint`;
+  `disc_f`'s content at one line is `parse_line (body) = Some l`; at
+  `l = LEchoF ws` the body IS `wl_body ws ++ suf_gtf`
+  (`FileDisc.line_body_parse`, `suf_gtf = " > f"`), which is the redirect
+  line positionally with `file := FileDisc.fname_f`.  `sh_redir_line_lexable`
+  is that chain in one step and its conclusion IS
+  `UkShRedirSeam.wp_kshm_child_alloc_redir`'s four parser premises
+  (`ushs_redir`, `ushs_toks`, `0 < length args`, `length args < 10`) at
+  `args := wl_toks ws`, `gp := |wl_body ws| + 1`,
+  `fe := |wl_body ws| + 3 + |fname_f|`.  The byte function is
+  `fun j => f (k + j)` — the same re-basing `ush_line_lexable` and
+  `wp_kshm_body` already use, so it meets the seam without adjustment.
+
+#### 4. WHAT THIS LANE DID NOT DO: `UkShFork.ushf_rest_of_body` DID NOT GAIN A PREMISE, AND SHOULD NOT
+
+The brief asked for one premise there.  It is the wrong edit, for three
+reasons that only became visible once the lexability was proved:
+
+1. **The premise it would gain is DEAD.**  The obvious candidate,
+   `UkShLoop.ush_line_lexable_redir ->` beside the landed
+   `ush_line_lexable ->`, is now a THEOREM; a premise nobody has to supply
+   and nothing consumes is gunk, and it would break the one call site
+   (`UShRest.v:165`) which is LINK-GEN's file.
+2. **Nothing in `ushf_rest_of_body` can spend it.**  The line fact it
+   destructs is `UkSh.ush_rest_line ws f k` — `⌜ush_line_is ws f k len⌝ ∨ T`
+   — and `UkShRedirLine.ushs_line_is_nosym` proves a line `ush_line_is`
+   describes has no '>' in it.  **So today the file application's redirect
+   line forces the TAINT arm at sh's prompt**, and no redirect line can reach
+   the parser at all.  The disjunct has to go inside `ush_rest_line`
+   (`iris/UkSh.v:6880`), i.e. its pure payload becomes
+   `⌜ush_line_is ws f k len \/ ∃ file, ushs_line_is ws file f k len⌝`.
+3. **And that disjunct cannot land before the WALK exists.**
+   `ushf_rest_of_body` answers its line fact by applying `wp_kshm_body`
+   (`iris/UkShFork.v:933`), which is stated at 0x97a with `ushp_no_symbols` /
+   `ushp_tokens` / `length toks < 10` / `ush_line_is` and closes on
+   `UkShMain.wp_kshm_child_alloc`.  What the redirect arm needs is
+   **`wp_kshm_body_redir`: the same statement with those four premises
+   replaced by `ush_line_toks_redir`'s conclusion, closing on
+   `UkShRedirSeam.wp_kshm_child_alloc_redir` instead** — every pure premise
+   of which this lane now supplies.  The two walks share their whole prefix
+   (0x97a to 0x9c0 is fork1 and the diagnostic, and even the `cd` refutation
+   is the same: `EchoDisc.line_ok_head_byte0` holds of the redirect line
+   because `ushs_line_is` carries the same `line_ok ws`), so it is a walk
+   lane's item and a short one — but it IS a walk, and the premise, the
+   disjunct in `UkSh.ush_rest_line` and the three-way case in
+   `ushf_rest_of_body` are ONE coupled change with it.  Adding any part
+   before the walk exists buys a premise no caller can discharge.
+
+**The third line the disjunct will have to admit is `LCat`.**
+`parse_line J = Some LCat` gives `J = cmd_cat_f` — a symbol-free two-word
+line that lexes perfectly well but is NOT `ush_line_is`, because `line_ok`
+demands the command be `echo`.  So the widened line fact is THREE arms
+(echo, redirect, cat), not two; cat's is CAT-ENTRY-2's, and its lexability
+is `UkShWords.wl_tokens` at `wl_words cmd_cat_f` with no new induction —
+`ushs_toks_line` at `c := wl_nl`, `stop = len` is already the shape.

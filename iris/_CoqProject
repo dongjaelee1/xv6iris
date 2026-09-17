@@ -1564,6 +1564,7 @@ UkShFork.v
 UConsLine.v
 UkShWords.v
 UkShEcho.v
+UShLexRedir.v
 UInitCons.v
 UConsOpen.v
 UInitConsK.v

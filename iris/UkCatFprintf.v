@@ -48,10 +48,17 @@ Section UkCatFprintf.
      carries beside the cwd's *)
   Context `{!ghost_varG Σ (gset gname)}.
   Context (N : uk_names Σ).
-  (* THIS PROGRAM'S EXIT OWES ITS PARENT NOTHING at this lane, as a
-     CLASS so that it reaches the exit ecall without an argument at every
-     call site ([UkRun.ukn_triv]). *)
-  Context `{Hpay : !ukn_triv N}.
+  (* THIS PROGRAM'S EXIT PAYLOAD DOES NOT READ ITS STATUS (lane CAT-WALK,
+     W2), as a CLASS so that it reaches the exit ecall without an argument
+     at every call site ([UkRun.ukn_const]).  It used to be [ukn_triv] --
+     "cat owes its parent nothing" -- which pinned the payload at [True]
+     and so made cat's exit incapable of handing the shell the deed
+     fraction, the advanced console credential or the filed alternative
+     ([UCatOut.catq_filed] / [catq_unfiled]).  What cat actually needs of
+     its own payload is only that its two exits -- 0 on the content arm,
+     1 on the diagnostic arm -- owe the SAME thing, which is exactly this
+     class; echo's walk is stated at it for the same reason. *)
+  Context `{Hpay : !ukn_const N}.
   (* the fields, under the names the engine has always used *)
   Local Notation γt := (ukn_t N).
   Local Notation γd := (ukn_d N).
@@ -741,7 +748,15 @@ Section UkCatFprintf.
   (*   sp0-8  a7   sp0-16 a6   sp0-24 a5   sp0-32 a4   sp0-40 a3            *)
   (*   sp0-48 a2   sp0-56 ra   sp0-64 s0   sp0-72 ap   sp0-80 --            *)
   (* --------------------------------------------------------------------- *)
-  Lemma wp_kcat_fprintf_gen (a : Z) (h : CpuId) (m : regfile) (n : nat) :
+  (* ...AND IT CARRIES AN ABSTRACT RESOURCE ACROSS THE CALL (lane
+     CAT-WALK, W1).  [R] is whatever the callee's own contract produces --
+     for cat's two fprintf entries it is the write chain's output cursor
+     -- and fprintf's epilogue, which touches nothing but the frame,
+     hands it straight to the caller.  Without it the block would have to
+     name the callee's postcondition, which is exactly what makes a block
+     lemma unusable by the parallel proof (durable-notes). *)
+  Lemma wp_kcat_fprintf_gen (a : Z) (h : CpuId) (m : regfile) (n : nat)
+      (R : iProp Σ) :
     m !!! Regidx a1_idx = mword_of_int a ->
     cat_code γt -∗
     (* the call at 0x7ee, left to the caller.  fprintf's own instructions
@@ -755,17 +770,23 @@ Section UkCatFprintf.
        ⌜ m' !!! Regidx a2_idx
          = mword_of_int (uint (m !!! Regidx csp_rs1) - 48) ⌝ -∗
        ⌜ m' !!! Regidx ra_idx = (mword_of_int 0x7f2 : mword 64) ⌝ -∗
+       (* ...AND THE DESCRIPTOR GOES STRAIGHT THROUGH (lane CAT-WALK, W1):
+          fprintf's frame spills a2..a7 and touches neither a0 nor a1, so
+          the callee's payment is statable at fprintf's OWN a0. *)
+       ⌜ m' !!! Regidx a0_idx = m !!! Regidx a0_idx ⌝ -∗
        uword γd (uint (m !!! Regidx csp_rs1) - 48) (m !!! Regidx a2_idx) -∗
        urun N h' m' (mword_of_int CatSyms.vprintf) (12 + (4 + n)) -∗
        (∀ (h'' : CpuId) (m'' : regfile),
           ⌜ ucallee_saved m' m'' ⌝ -∗
           uword γd (uint (m !!! Regidx csp_rs1) - 48) (m !!! Regidx a2_idx) -∗
+          R -∗
           urun N h'' m'' (mword_of_int 0x7f2) (12 + (4 + n)) -∗
           WP (Loop : expr riscv_lang)) -∗
        WP (Loop : expr riscv_lang)) -∗
     urun N h m (mword_of_int CatSyms.fprintf) (10 + (12 + (4 + n))) -∗
     (∀ (h' : CpuId) (m' : regfile),
        ⌜ ucallee_saved m m' ⌝ -∗
+       R -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (10 + (12 + (4 + n))) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
@@ -1090,12 +1111,22 @@ Section UkCatFprintf.
       rewrite add_vec_zero_l.
       rewrite <- Hs0q2. symmetry.
       exact (moi_of_uint (mq2 !!! Regidx s0_idx)). }
-    iApply ("Hvp" $! h12 mq4 with "[] [] [] Hu6 Hrun
+    assert (Ha0q4 : mq4 !!! Regidx a0_idx = m !!! Regidx a0_idx).
+    { rewrite /mq4 (upd_ne mq3 (Regidx ra_idx) (Regidx a0_idx) _
+                      ltac:(vm_compute; discriminate)).
+      rewrite /mq3 (upd_ne mq2 (Regidx a2_idx) (Regidx a0_idx) _
+                      ltac:(vm_compute; discriminate)).
+      rewrite /mq2 (upd_ne mq1 (Regidx s0_idx) (Regidx a0_idx) _
+                      ltac:(vm_compute; discriminate)).
+      rewrite /mq1. exact (upd_ne m (Regidx csp_rs1) (Regidx a0_idx) _
+                             ltac:(vm_compute; discriminate)). }
+    iApply ("Hvp" $! h12 mq4 with "[] [] [] [] Hu6 Hrun
               [Hu1 Hu2 Hu3 Hu4 Hu5 Hu7 Hu8 Hu9 Hu10 Hcont]").
     { iPureIntro. exact Ha1q4. }
     { iPureIntro. exact Ha2q4. }
     { iPureIntro. exact Hraq4. }
-    iIntros (h13 mq5) "%Hcs Hu6 Hrun".
+    { iPureIntro. exact Ha0q4. }
+    iIntros (h13 mq5) "%Hcs Hu6 HR Hrun".
     (* ---- 0x7f2  c.ldsp ra,24(sp) ---- *)
     assert (Hspq5 : mq5 !!! Regidx csp_rs1
                     = add_vec_int sp0 (- (8 * Z.of_nat 10))).
@@ -1188,7 +1219,7 @@ Section UkCatFprintf.
               with "[] Hrun").
     { iApply (uis_cat_7f8 with "Hcode"). }
     iIntros (h17) "Hrun".
-    iApply ("Hcont" $! h17 mq8 with "[] Hrun").
+    iApply ("Hcont" $! h17 mq8 with "[] HR Hrun").
     iPureIntro. intros r Hr.
     assert (Kne : forall (q : mword 5) (z : Z),
                uint q = z -> uint r <> z -> Regidx r <> Regidx q).
@@ -1233,38 +1264,42 @@ Section UkCatFprintf.
   (* "read error" -- and for the one that has a '%s'.                       *)
   (* --------------------------------------------------------------------- *)
   Lemma wp_kcat_fprintf (a : Z) (len : nat) (f : nat -> mword 8)
-      (h : CpuId) (m : regfile) (n : nat) :
+      (h : CpuId) (m : regfile) (n : nat) (Ci Co : iProp Σ) :
     0 <= a -> a + Z.of_nat len + 2 < 2 ^ 31 ->
     (0 < len)%nat ->
     (forall j : nat, (j < len)%nat -> bv_unsigned (f j) <> 37) ->
     m !!! Regidx a1_idx = mword_of_int a ->
-    UkCat.cat_deps -∗
+    UkCat.kcat_pay_seq N (m !!! Regidx a0_idx) f 0%nat len Ci Co -∗
     cat_code γt -∗
     utext_str γt a len f -∗
+    Ci -∗
     urun N h m (mword_of_int CatSyms.fprintf) (10 + (12 + (4 + n))) -∗
     (∀ (h' : CpuId) (m' : regfile),
        ⌜ ucallee_saved m m' ⌝ -∗
+       Co -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (10 + (12 + (4 + n))) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Habnd Hlen Hpct Ha1.
-    iIntros "#Hdp #Hcode #Hstr Hrun Hcont".
-    iApply (wp_kcat_fprintf_gen a h m n Ha1 with "Hcode [] Hrun Hcont").
-    iIntros (h' m') "%Ha1' %Ha2' %Hra' Hu6 Hrun Hk".
-    iApply (wp_kcat_vprintf N a len f h' m' n
-              Ha0 Habnd Hlen Hpct Ha1' with "Hdp Hcode Hstr Hrun").
-    iIntros (h'' m'') "%Hcs Hrun".
+    iIntros "Hpay #Hcode #Hstr HCi Hrun Hcont".
+    iApply (wp_kcat_fprintf_gen a h m n Co Ha1
+              with "Hcode [Hpay HCi] Hrun Hcont").
+    iIntros (h' m') "%Ha1' %Ha2' %Hra' %Ha0' Hu6 Hrun Hk".
+    iEval (rewrite <- Ha0') in "Hpay".
+    iApply (wp_kcat_vprintf N a len f h' m' n Ci Co
+              Ha0 Habnd Hlen Hpct Ha1' with "Hpay Hcode Hstr HCi Hrun").
+    iIntros (h'' m'') "%Hcs HCo Hrun".
     assert (Eret : ret_pc (m' !!! Regidx ra_idx)
                    = (mword_of_int 0x7f2 : mword 64))
       by (rewrite Hra'; apply bv_eq; vm_compute; reflexivity).
     rewrite Eret.
-    iApply ("Hk" $! h'' m'' with "[] Hu6 Hrun"). iPureIntro. exact Hcs.
+    iApply ("Hk" $! h'' m'' with "[] Hu6 HCo Hrun"). iPureIntro. exact Hcs.
   Qed.
 
   Lemma wp_kcat_fprintf_s (a : Z) (len q : nat) (f : nat -> mword 8)
       (sa : Z) (slen : nat) (sf : nat -> bv 8)
-      (h : CpuId) (m : regfile) (n : nat) :
+      (h : CpuId) (m : regfile) (n : nat) (Ci Cm1 Cm2 Co : iProp Σ) :
     0 <= a -> a + Z.of_nat len + 2 < 2 ^ 31 ->
     (S (S q) < len)%nat ->
     bv_unsigned (f q) = 37 ->
@@ -1280,36 +1315,47 @@ Section UkCatFprintf.
     sa <> 0 ->
     m !!! Regidx a1_idx = mword_of_int a ->
     m !!! Regidx a2_idx = mword_of_int sa ->
-    UkCat.cat_deps -∗
+    (* the literal prefix, the argument, and the literal tail (lane
+       CAT-WALK, W1) -- [UkCatVprintfS.wp_kcat_vprintf_s]'s three runs *)
+    UkCat.kcat_pay_seq N (m !!! Regidx a0_idx) f 0%nat q Ci Cm1 -∗
+    UkCat.kcat_pay_seq N (m !!! Regidx a0_idx) sf 0%nat slen Cm1 Cm2 -∗
+    UkCat.kcat_pay_seq N (m !!! Regidx a0_idx) f (S (S q))
+      (len - S (S q))%nat Cm2 Co -∗
     cat_code γt -∗
     utext_str γt a len f -∗
     ustr γd DfracDiscarded sa slen sf -∗
+    Ci -∗
     urun N h m (mword_of_int CatSyms.fprintf) (10 + (12 + (4 + n))) -∗
     (∀ (h' : CpuId) (m' : regfile),
        ⌜ ucallee_saved m m' ⌝ -∗
+       Co -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (10 + (12 + (4 + n))) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Habnd Hq2 Hfq Hfsq Hpct Hc1d Hc1u Hc1x Hc2set Hsanz Ha1 Ha2.
-    iIntros "#Hdp #Hcode #Hstr #Hsstr Hrun Hcont".
+    iIntros "Hpay1 Hpay2 Hpay3 #Hcode #Hstr #Hsstr HCi Hrun Hcont".
     iDestruct (urun_stack with "Hrun") as %[Hal8 _].
     assert (Hapal : (uint (m !!! Regidx csp_rs1) - 48) mod 8 = 0)
       by (rewrite Zminus_mod Hal8; reflexivity).
-    iApply (wp_kcat_fprintf_gen a h m n Ha1 with "Hcode [] Hrun Hcont").
-    iIntros (h' m') "%Ha1' %Ha2' %Hra' Hu6 Hrun Hk".
+    iApply (wp_kcat_fprintf_gen a h m n Co Ha1
+              with "Hcode [Hpay1 Hpay2 Hpay3 HCi] Hrun Hcont").
+    iIntros (h' m') "%Ha1' %Ha2' %Hra' %Ha0' Hu6 Hrun Hk".
+    iEval (rewrite <- Ha0') in "Hpay1".
+    iEval (rewrite <- Ha0') in "Hpay2".
+    iEval (rewrite <- Ha0') in "Hpay3".
     rewrite Ha2.
     iApply (wp_kcat_vprintf_s N a len q f
               (uint (m !!! Regidx csp_rs1) - 48) sa (DfracOwn 1) slen sf
-              h' m' n Ha0 Habnd Hq2 Hfq Hfsq Hpct Hc1d Hc1u Hc1x Hc2set
-              Hapal Hsanz Ha1' Ha2'
-              with "Hdp Hcode Hstr Hu6 Hsstr Hrun").
-    iIntros (h'' m'') "Hu6 %Hcs Hrun".
+              h' m' n Ci Cm1 Cm2 Co Ha0 Habnd Hq2 Hfq Hfsq Hpct Hc1d Hc1u
+              Hc1x Hc2set Hapal Hsanz Ha1' Ha2'
+              with "Hpay1 Hpay2 Hpay3 Hcode Hstr Hu6 Hsstr HCi Hrun").
+    iIntros (h'' m'') "Hu6 %Hcs HCo Hrun".
     assert (Eret : ret_pc (m' !!! Regidx ra_idx)
                    = (mword_of_int 0x7f2 : mword 64))
       by (rewrite Hra'; apply bv_eq; vm_compute; reflexivity).
     rewrite Eret.
-    iApply ("Hk" $! h'' m'' with "[] Hu6 Hrun"). iPureIntro. exact Hcs.
+    iApply ("Hk" $! h'' m'' with "[] Hu6 HCo Hrun"). iPureIntro. exact Hcs.
   Qed.
 
 End UkCatFprintf.

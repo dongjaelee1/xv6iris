@@ -3893,3 +3893,643 @@ disciplined line `ws ∈ ls` (era 0's is available: any `ws` with
 Its remaining choice is unchanged from F-OPEN-3's report except that the
 second disjunct of the fd arm and the DEVICE arm are now known to be
 closable only by (i) or (iii).
+
+### CAT-ENTRY (2026-09-17) — C1 LANDS; C2/C3 ARE STOPPED, AND THE BLOCKER IS THAT cat's WALK WAS LANDED CLAIM-FREE
+
+Branch `app-file/cat-entry`.  Whole tree GREEN on the lane's remote tree
+(`run-on-gcp --proofs -k`, `EXIT=0`, zero `Error`); **both audits
+unchanged** (`make audit-all-only`: the echo theorem's FOURTEEN, the
+system theorem's thirteen).  ONE new file, `iris/UCatOut.v`; the diff to
+existing files is ONE LINE of `iris/_CoqProject`.  Nothing is `Admitted`,
+every result carries `Proof using`, and `Print Assumptions` on
+`cat_blk_byte`, `cat_out_of_tie`, `cch_step` and `cch_chain` is *Closed
+under the global context* — no axioms at all, not even PrimString.
+
+**THE LANE'S VERDICT IN ONE LINE: echo's and sh's walks were landed over
+ABSTRACT PER-CALL OBLIGATIONS and a NAMED exit payload, and cat's was
+landed over the FREE deposit laws and the TRIVIAL payload — so cat's
+console bytes, its open, its read and its exit are all claim-free by
+STATEMENT, and no entry constructor can pay them at the file
+application without restating the walk.  C1's payment lands (it is what
+such a restatement will consume); C2 and C3 stop.**
+
+**WHAT LANDED** (`iris/UCatOut.v`, ~450 lines).
+
+- **The stage**: `cat_stage` (`UEchoOut.echo_stage` with the round's line
+  named BY ITS SHAPE — `uline_of (bodies_of I0 !!! (nlines I0 - 1)) =
+  LCat` — instead of by its words), `cat_st` (= `fst_upto cs0 s0
+  (bodies_of I0) (nlines I0 - 1)`, the state cat's round starts at), and
+  the pure tie `cat_tie cs0 s0 I0 s := dst_content s = cat_st cs0 s0 I0`
+  — "the value my deed fraction agrees on IS the model's state at my
+  round".  That, plus `FileOpen.fdq_agree`, is the whole of what the
+  stage needs of the claim.
+- **The block arithmetic**: `cat_stage_nonnil`, `cat_stage_last`,
+  `cat_stage_nstarted`, `cat_stage_pin_snoc`, `cat_blk_low`,
+  `cat_blk_pending`, `cat_blk_byte` — `EchoLinksLine.wr_blk_*`'s twins at
+  the FILE session, which `FileOutPure` does not state (see below).
+- **The alternatives**: `cat_ralt_ok_ran` / `_noopen`,
+  `cat_ralt_panic_ran` / `_noopen`, `cat_cont_ran_some`,
+  `cat_cont_ran_nil`, `cat_cont_ran_none`, `cat_cont_noopen`,
+  `cat_cont_none_eq`, and the two deed readings `cat_out_of_tie` /
+  `cat_out_of_tie_none`.
+- **The cursor family and the links**: `catcs`, `catcs_pos`, `cch`,
+  `cch_0_alt`, `cch_step` (the block-first byte files the alternative
+  through `FileLinks.file_write_link_blk`, every byte after it goes
+  through the plain `file_write_link`, and the taint arm continues the
+  tower on its own), `cch_chain` (`SpecConsolewrite.cons_out_chain` at
+  cat's cursor, `UEchoOut.ech_chain` verbatim).
+- **The two exit payloads**: `catq_filed` / `catq_unfiled`, their
+  status-independence, and `cch_empty_unfiled`.
+
+**WHAT THE DESIGN SAID THAT THE PROOFS CORRECTED — two, both forced by
+`FileDisc.cont` and both in the lane brief.**
+
+1. **AN ABSENT `f` IS `RCRan`, NOT `RCNoOpen`.**  The brief pairs
+   `RCNoOpen` with cat's `-1` return.  `FileDisc.cont` (`FileDisc.v:740`)
+   reads `cont None LCat RCRan = alt_catopen` — at an ABSENT file the
+   round's continuation ALREADY IS the cannot-open diagnostic, so cat's
+   `-1` at `fdq r q None` files `RCRan`, and `RCNoOpen` is reserved for
+   the PRESENT file whose `filealloc`/`fdalloc` failed (design section 1
+   spells it exactly so: *"`RCNoOpen` — `cat: cannot open f\n$ ` (f
+   present…)"*).  The two print the SAME bytes
+   (`cat_cont_none_eq`), so cat cannot tell them apart from its own
+   return value — **THE DEED IS WHAT DECIDES WHICH IS FILED**, exactly as
+   it decides `RFOpenU` vs `RFOpenM` on the redirect side.  A cat that
+   filed `RCNoOpen` at an absent deed would be filing a false
+   alternative: `fsm` at `RCNoOpen` keeps the state, which is right, but
+   `ralt_ok`/`good_out_f` would then admit a resolution the claim's own
+   deed contradicts.
+2. **THE EMPTY CONTENT NEEDS NO SECOND STAGE SHAPE** — the brief's own
+   alternative reading is the true one.  At `s = Some []`,
+   `cont (Some []) LCat RCRan = [] ++ u_prompt = u_prompt`
+   (`cat_cont_ran_nil`), so the BLOCK'S FIRST BYTE IS THE PROMPT'S, which
+   sh writes after it reaps; sh files `RCRan` at it through
+   `FileLinks.file_write_link_blk` with no help from cat.  cat writes
+   nothing, files nothing, and hands the era's credential back exactly as
+   lent (`cch_empty_unfiled`, and `cch_0_alt`: at cursor 0 the family does
+   not mention the alternative at all).  So the stage is unchanged and
+   only CAT's own exit payload has two shapes, `catq_filed` and
+   `catq_unfiled`.
+
+**WHAT `FileOutPure` DOES NOT STATE, and which this lane had to prove.**
+`EchoLinksLine` has the block-byte family (`wr_blk_low`, `wr_blk_pending`,
+`wr_blk_alt`, `wr_blk_byte`, `wr_blk_pin_snoc`) that every echo-stage
+writer applies; the FILE stage has NO twin — lane STAGE landed the
+`pending_at_f` / `proc_before_f` prefix machinery but not the
+snoc-a-choice reading on top of it.  `UCatOut`'s section 1 is that
+family, stated once at a NON-PANIC alternative (which is all `RCRan`,
+`RCNoOpen` and every `RF*` but `RFFork` are) and hence with no prologue
+tail.  **It is not cat-specific and the redirect child and sh's own
+rounds should be stated at it rather than re-proving it** — the only
+cat-shaped premise in it is `uline_of … = LCat`, which is a parameter one
+`destruct` away from being general.
+
+**STOPPED: C2 (`UCatKernel.cat_image_entry`) AND C3 (cat's PAID entry).
+FIVE INDEPENDENT STATEMENT-LEVEL BLOCKERS, ALL IN LANDED FILES, ALL THE
+SAME SHAPE.**
+
+1. **THE CONSOLE WRITE IS PAID BY THE FREE WRITE LAW, AND AT THE FILE
+   APPLICATION THAT LAW IS THE TAINT.**  `UkCat.cat_deps`
+   (`iris/UkCat.v:102`) is `udepw_law 5 ∗ udepw_law 15 ∗ udepw_law 16 ∗
+   udepw_law 21`, and it is a premise of EVERY lemma of cat's walk
+   (`UkCat.wp_kcat_write`, `:320`, routes write(16) through
+   `UkRunSys.wp_uk_ecall_quiet` at `udepw_of_law … 16` and DISCARDS the
+   post — its conclusion names neither the descriptor nor the byte;
+   `UkCatPutc.wp_kcat_putc`, `:118`, is the same one byte at a time, and
+   `UkCatCat.v:1311` is the read/write loop's call).  `UkRun.udepw_law n`
+   (`iris/UkRun.v:565`) is `□ ∀ N m pc, udepw N m pc n` — a PERSISTENT
+   claim at EVERY key — while the era's console obligation is the LINEAR
+   turn.  The only producer at a claim-bearing instance is
+   `UexecExecMint.udepw_law_of_sup_write` (`iris/UexecExecMint.v:289`):
+   `app_sup -∗ cons_licence -∗ □ riscv_kill_cred -∗ udepw_law 16`, and
+   `AppFile.file_taint_of_sup` (`iris/AppFile.v:591`) turns `app_sup` into
+   `file_taint`.  (`WpUart.cons_licence` is independently FALSE at a real
+   console claim — `UShLine.v:25`.)  So a cat entry that supplies
+   `cat_deps` is a TAINTED entry and proves nothing about the wire.
+   **Contrast: echo's and sh's walks take the era's obligation as an
+   ABSTRACT PER-CALL CHAIN** — `UkEcho.kecho_pay_all` (`UkEcho.v:1405`, converted by
+   `UEchoOut.kecho_pay_of_link`, `UEchoOut.v:747`) and `UkSh.ksh_w`
+   (`UkSh.v:1422`) — with the free law reachable only as ONE instance
+   (`UEchoKernel.echo_uexec_slot`, `:400`, at `udepw_law 16`) and sh's
+   free route gated behind `□ (T -∗ sh_deps)` (`UShKernel.v:573`).  cat's
+   walk has no such chain and no such gate.
+2. **cat's EXIT PAYLOAD IS PINNED TRIVIAL BY A CLASS CONSTRAINT.**  Every
+   file of the walk carries ``Context `{Hpay : !ukn_triv N}`` —
+   `UkCat.v:63`, `UkCatPutc.v:43`, `UkCatVprintf.v:46`,
+   `UkCatVprintfS.v:64`, `UkCatFprintf.v:54`, `UkCatCat.v:69`,
+   `UkCatMain.v:74` — i.e. `ukn_pay N = fun _ => True`.
+   `ExecEntry.image_entry` (`iris/ExecEntry.v:132`) hands the program's
+   record at `my_pay (uvis_gen W') Q`, and `UkRun.uslot_of_urun_ro` mints
+   the record with `ukn_pay N = Q`; so instantiating cat's walk forces
+   `Q = fun _ => True`.  **cat therefore cannot return ANYTHING to sh**:
+   not the deed fraction, not the advanced console credential
+   (`catq_filed`), not the filed alternative.  echo's paid entry
+   (`UEchoOut.echo_uexec_slot_at`, `:800`) exists precisely because
+   `UkEcho`'s walk is stated at a STATUS-INDEPENDENT payload instead of
+   the trivial one.
+3. **THE OPEN IS THE GENERIC LEAF.**  `UkCat.wp_kcat_open`
+   (`iris/UkCat.v:134`) calls `UkRunSys.wp_uk_ecall_open` and returns
+   `∃ fd rd wr t, … ∗ ufd γfd fd (FdOpen rd wr t)` — the descriptor's TYPE
+   is existential, so nothing ties it to the deed's inum.  F-OPEN-2's
+   `UkFileOpen.wp_uk_ecall_open_read_deed` (`:152`) and
+   `wp_uk_ecall_open_miss_deed` (`:288`) are the deed-aware leaves and
+   take a DIFFERENT deposit (`file_open_sup` / `file_miss_sup` built from
+   `fdq`), so cat's open stub would have to be re-proved to reach them.
+4. **THE READ IS THE GENERIC LEAF.**  `UkCat.wp_kcat_read`
+   (`iris/UkCat.v:444`) hands the buffer back at an ARBITRARY `g : nat ->
+   bv 8` and ties neither the bytes nor the count to anything.
+   `UkFileOpen.wp_uk_read_deed_learns` (`:356`) is the one that learns
+   `g j = bs !!! (off + j)`, and again it takes a different deposit.  So
+   the bytes cat prints are, through the landed walk, unrelated to the
+   deed by STATEMENT.
+5. **CONSEQUENTLY C3 HAS NOTHING TO CONSTRUCT.**
+   `UShEchoPay.echo_slot_of_kexec_at` (`:119`) is the mould and every
+   premise of it has a cat twin except the last two, which are exactly
+   (1) and (2): it ends `my_pay (uvis_gen W') (fun _ : Z => Wq I) -∗
+   ewc_lpr T v I 3 -∗ uslot W'`, and cat's `uslot` can only be built at
+   `fun _ => True` and only out of the free laws.
+
+**WHAT WOULD UNBLOCK C2/C3, priced.**  ONE lane, and it is a RESTATEMENT
+of cat's walk on echo's mould, not new mathematics: give `UkCat` a
+per-call write obligation `kcat_w fdw ua nb Ci Co` (`UkSh.ksh_w`'s shape,
+`UkSh.v:1422`) and a payment chain `kcat_pay_all` threaded through
+`UkCatPutc` / `UkCatVprintf` / `UkCatVprintfS` / `UkCatFprintf` /
+`UkCatCat` / `UkCatMain`; drop `ukn_triv` for a status-independent
+payload parameter (`UkRun.ukn_const`); and split the open and the read
+stubs into a deed arm (over `UkFileOpen`'s three corollaries) beside the
+free arm.  That is ~10,000 lines of landed walk whose STATEMENTS move —
+which this lane was told not to do ("new files only") and which is
+exactly the shape `durable-notes.md`'s guiding principle says to take
+rather than work around.  Until it lands, `UCatOut.v` is the payment
+waiting for it, and **cat runs on the generic slot**
+(`UexecCond.cond_entry_slot`'s tail, `:348`) — i.e. tainted, which is
+what `FileLinks.file_write_link_taint` already answers.
+
+**THE `cat: read error` TAIL IS NOT REFUTABLE AT THE U TIER, AND THE
+KERNEL RELAY IT NEEDS IS NAMED.**  design section 5.3 hopes to refute it
+("the read's `-1` arm at an inode needs a copyout failure, which the
+mapped row excludes").  It does not: `FsAbsReadFire.read_arms`
+(`iris/FsAbsReadFire.v:398`) is `read_post_ok … ∨ (⌜r = -1⌝ ∗
+read_post_fail …)` and `read_post_fail` (`:390`) is
+`(⌜n < 0⌝ ∗ pf_at …) ∨ (⌜0 <= n⌝ ∗ ∃ av off a, ⌜ard_pre av i off a⌝ ∗
+F.(pf_recv) av off a 0)` — **the failure arm NAMES NO ADDRESS**.  It says
+only "the fire's count was 0", so a caller holding `ubytes` over the whole
+destination buffer has nothing to contradict, and
+`UkFileOpen.wp_uk_read_deed_learns` (`:356`) carries the `-1` disjunct
+into the U tier verbatim (`FileOpen.file_read_arms_learn`,
+`FileOpen.v:760`, hands it back at both fail sub-arms).  The relay that
+would refute it is READ's twin of the write chain's RELAY 4 (design
+section 0 / section 3): `read_post_fail`'s `0 <= n` arm must carry
+`SpecCopyout`'s reason — an address the process's page table does not map
+FOR WRITING — at which point a U-tier caller whose buffer is mapped
+refutes it in one line, exactly as `usrc_ok`'s mapped row refutes the
+partial write node.  Kernel sites: `FsAbsReadFire` (`read_post_fail`,
+`read_arms`), `SpecFileread`'s fold and `SpecSysRead`'s.  **TAKEN AS A
+STOP; NOT WIDENED.**  If it is ever taken honestly instead, the
+alternative section 1 would need is
+`RCReadErr (j : nat)` with
+`cont s LCat (RCReadErr j) := take j (default [] s) ++ dg_readerr ++
+u_prompt` and `fsm` unchanged — the ONLY alternative in the list whose
+output is not a function of the state alone (it carries how much came out
+before the fault), which is why it should be refuted rather than added.
+
+**TWO SMALLER FINDINGS FOR THE DESIGNER.**
+- **`--check` and `--check-proof` are BROKEN on a tree built the ordinary
+  way**, and the lane lost time to it: `run-on-gcp --check FileLinks.v` at
+  a clean HEAD reports *"Compiled library xv6iris.FileDisc … makes
+  inconsistent assumptions over library xv6iris.FileState"*, because the
+  `-vos`/`-vok` modes prefer the EMPTY `.vos` stubs `coqc` writes beside
+  each `.vo` (durable-notes, "Staleness"), and `FileState`'s stub is not
+  the library `FileDisc.vo` was built against.  It is not this lane's file
+  and not this lane's edit.  The working loop is
+  `run-on-gcp --no-sync bash -c 'cd <remote>/iris && coq_makefile -f
+  _CoqProject -o CoqMakefile && make -f CoqMakefile -j8 <F>.vo'`.
+- `FileLinks.v` has no `EchoLinks.echo_links`-style BUNDLE, so every
+  program-side file must re-take `Hcons : riscv_cons_res = fecl g` as a
+  section hypothesis and thread `g` and `Hcons` through every application.
+  One `file_links g` definition with three accessors would make the
+  program files read like `UEchoOut` does.
+
+**THE ONE THING LANE SH-ROUND NEEDS FIRST.**  Not cat's entry — it cannot
+have one yet.  What it needs is `UCatOut.cat_cont_ran_nil` and
+`cat_stage`: **sh must file `RCRan` AT ITS OWN PROMPT BYTE whenever the
+deed's content is empty**, because in that case cat writes nothing and the
+block's first byte is sh's.  So sh's prompt write after `wait` is not
+always the plain `file_write_link`: at an `LCat` round whose deed is
+`Some (i, [])` — and only there — it is `file_write_link_blk` at
+`a := ralt_enc RCRan`, and sh decides which by reading its own deed
+(`FileOpen.fdq_agree`) before it prints.  Getting this wrong is not a
+missing lemma but a WRONG cursor: sh would write the prompt at an
+unopened block and the stage's `cs_len_ok_f` would refuse it.
+
+### CAT-WALK (2026-09-17) — cat's WALK IS RESTATED ON echo's MOULD; W1 AND W2 LAND WHOLE; W3's READ ARM IS WRITTEN BUT ITS LEAF APPLICATION DIVERGES, AND ITS OPEN ARM STOPS ON A ROW THAT ONLY READS THE TEXT HALF
+
+Branch `app-file/cat-entry`, on top of lane CAT-ENTRY's `7355595ef` and
+merged with lane READ-RELAY (`git merge app-file/read-relay`; the only
+conflict was this file's Findings section — both blocks kept — and
+`iris/_CoqProject` auto-merged).
+
+**THE LANE'S VERDICT IN ONE LINE: CAT-ENTRY's five blockers are three
+gone and two moved.  cat's walk now takes a PER-CALL OBLIGATION for
+every claim number it calls and a STATUS-INDEPENDENT payload, so the two
+reasons C2/C3 were impossible BY STATEMENT are gone and the walk names no
+leaf at all; what is left is not about cat — the open's path row
+(`UkRunSys.wp_uk_ecall_open_recv_img`) reads the caller's argument off
+the TEXT half and cat's path is `argv[1]`, which is data, and the deed
+READ's own stub is written but its one leaf application does not
+terminate.**
+
+**W1 — THE WRITE OBLIGATION AND ITS CHAIN: LANDS.**  `UkCat.kcat_w fdw ua
+nb Ci Co` is `UkSh.ksh_w`'s shape verbatim (descriptor, address, count,
+in/out pair), with `kcat_w_mono` / `kcat_w_mono_in` / `kcat_w_frame`.
+Three things it does that `ksh_w` does not have to:
+
+- **`UkCat.kcat_wb fdw b Ci Co`, the ONE-BYTE form ulib's putc spends.**
+  putc's `write` argument is a byte in putc's OWN FRAME (`sb a1,-17(s0)`
+  then `addi a1,s0,-17`), so the ADDRESS is one frame below wherever the
+  caller's sp happens to be and no caller can name it: the obligation
+  quantifies it, and the byte's OWNERSHIP travels through the payment's
+  in/out pair (`kcat_w`'s `Ci`/`Co` carry it), which is exactly what the
+  buffer leaf underneath needs to refute the short arm.  The BYTE VALUE
+  is not quantified -- it is `nth_byte (m !!! a1) 0`, and naming it is
+  the whole point.  `UkCat.nth_byte0_moi` / `nth_byte0_zext` are the two
+  readings every putc caller needs.
+- **`UkCat.kcat_pay_seq fdw fb i k Ci Cend`**, `UkEcho.kecho_pay`'s shape
+  at a run of characters, with `_of_law`, `_mono`, `_in`, `_frame`,
+  `_split`, `_join`, `_ext`.  Its BASE CASE IS A WAND and not a write,
+  which echo's is not: echo's chain always ends with the newline, while
+  cat's ends wherever the format string does -- and a run of length zero
+  has to be satisfiable because `%s` can splice an EMPTY string into the
+  middle of one.
+- **`UkCat.wp_kcat_write_chain`**, the claim-bearing write stub beside
+  `wp_kcat_write`.  **cat needs no text-half twin** (echo has
+  `wp_kecho_write_chain_txt`): every byte cat writes leaves WRITABLE
+  memory it owns -- the read buffer on the content path, putc's own frame
+  byte on the diagnostic path -- because ulib prints a literal ONE BYTE
+  AT A TIME THROUGH THE STACK, so no literal is ever a `write` argument.
+
+**W1 also needed two obligations echo has no analogue for**, and they are
+the interesting part of the lane:
+
+- **`UkCatCat.kcat_round fdv I Cend`, the LOOP's payment.**  cat's loop is
+  UNBOUNDED and the counts it writes at are its own reads' returns, so no
+  finite chain can pay it.  What pays it is ONE PERSISTENT LAW that funds
+  a whole turn: the read, and then, at whatever the read returned, the
+  branch the return selects -- `⌜bv_signed rv < 0⌝ -∗ kcat_dg_cr` (the
+  read-error tail), `⌜bv_signed rv = 0⌝ -∗ Cend` (the normal exit), and
+  `∀ nb, ⌜rv = mword_of_int nb⌝ -∗ ⌜0 < nb⌝ -∗ kcat_w 1 buf nb (the
+  buffer) ((I ∧ kcat_dg_cw) ∗ the buffer)` -- leaving the invariant again
+  for the next turn.  `I` is the payer's own cursor (at the file
+  application, `UCatOut.cch` at the position the round's output has
+  reached) and the walk reads none of it.  THE ADDITIVE `∧` AFTER THE
+  WRITE is what lets the walk take either arm of `beq a0,s1` without the
+  payer knowing which.
+- **`UkCat.kcat_r fdv a cnt Ri Ro`, the READ obligation**, whose OUTPUT
+  reads the return value and the contents.  It exists for the loop's
+  sake: the bytes the loop writes are the bytes the read just delivered,
+  so an abstract write law over a concrete read would be unusable.  The
+  deed-aware instance is simply one whose output says those bytes are the
+  deed's.
+- **`UkCat.kcat_o pv Oi Oo`** (the open) and **`UkCat.kcat_cl fd Ci Co`**
+  (the close), for W3's reason: the free leaf's post leaves the
+  descriptor's TYPE existential while `UkFileOpen`'s names the deed's
+  inum, and the two take different deposits, so no single stub can be
+  both.  **THE LEDGER RIDES IN `kcat_o`'s TWO HALVES** -- the free arm
+  gives `UserFd.ustd` back untouched and the deed arm gives `ualloc` --
+  which is why the walk no longer mentions `ustd` at all.
+- **`UkCatMain.kcat_file g Ci Co`** is one turn of main's loop (the open,
+  and then the additive pair the `bltz` at 0xb2 chooses between: the
+  diagnostic run, or the descriptor with a round and a close);
+  **`kcat_pay`** is the run of turns; **`kcat_pay_all`** is that at
+  main's own entry, with `argc <= 1`'s `cat(0)` as the other conjunct of
+  an ADDITIVE pair (`UkEcho.kecho_pay_all`'s shape).
+
+**THE FREE INSTANCE IS ONE LEMMA PER LEVEL**, `UEchoKernel.echo_uexec_slot`'s
+pattern: `kcat_w_of_law`, `kcat_wb_of_law`, `kcat_pay_seq_of_law`,
+`kcat_r_of_law`, `kcat_o_of_law`, `kcat_cl_of_dep` + `kcat_cldep_of_law`,
+`UkCatCat.kcat_round_of_law`, `UkCatMain.kcat_file_of_law`,
+`kcat_pay_of_law`, `kcat_pay_all_of_law`.  The last rebuilds the whole
+landed, claim-free walk out of the four free laws plus `⊢ ukn_pay N (-1)`,
+so the old statements are corollaries.  **NOTHING OUTSIDE `UkCat*.v`
+REQUIRES CAT'S WALK** (checked: `grep Require.*UkCat` finds no importer
+outside the family), so there is no caller to fix -- but the free chain
+is also the lane's VACUITY GUARD: it witnesses that everything
+`wp_kcat_start` now asks for is satisfiable, and hence that the restated
+walk is not vacuously true.
+
+**W2 — THE PAYLOAD: LANDS.**  Every `UkCat*` file carries
+`` Context `{Hpay : !ukn_const N} `` where it carried `!ukn_triv N`, and
+`UkCat.wp_kcat_exit` takes `ukn_pay N (-1)` as a premise instead of
+getting it free.  The chain's `Cend` IS that payload: `kcat_pay_all args
+Ci (ukn_pay N (-1))` is what `wp_kcat_start` asks for, and every exit in
+the walk -- `exit(0)` after the last file, `exit(0)` after `cat(0)`,
+`exit(1)` after `cat: cannot open`, after `cat: write error`, after
+`cat: read error` -- is paid by the same resource, which is exactly what
+`ukn_const` buys.  So cat's record can now be minted at
+`UCatOut.catq_filed` / `catq_unfiled` (both `*_const`).
+
+**EVERY STATEMENT THAT MOVED, EXHAUSTIVELY.**  All of them are inside
+`UkCat*.v`; **no landed statement outside the family changed**
+(`git diff --stat app-file/read-relay HEAD -- iris/` is exactly
+`UkCat.v`, `UkCatPutc.v`, `UkCatVprintf.v`, `UkCatVprintfS.v`,
+`UkCatFprintf.v`, `UkCatCat.v`, `UkCatMain.v` and CAT-ENTRY's own
+`UCatOut.v`, plus the one `iris/_CoqProject` line CAT-ENTRY added for
+that file.  `_CoqProject` is otherwise back to CAT-ENTRY's: the line this
+lane added was `UkCatDeed.v`'s, and it came out again with the file.)
+
+`UkCat.v`
+  - `wp_kcat_write` takes `udepw_law 16` where it took `cat_deps`;
+    `wp_kcat_read` takes `udepw_law 5`; `wp_kcat_open` takes
+    `udepw_law 15`; `wp_kcat_close` takes the new `kcat_cldep st`.
+  - `wp_kcat_exit` takes `ukn_pay N (-1)`.
+  - the section's payload class is `ukn_const`, not `ukn_triv`.
+  - NEW: `wp_kcat_write_chain`, `kcat_w` (+4 laws), `kcat_wb` (+4),
+    `nth_byte0_moi`, `nth_byte0_zext`, `moi_of_sint`, `kcat_pay_seq` (+7),
+    `kcat_r` (+2), `kcat_cldep` (+2), `kcat_o` (+2), `kcat_cl` (+1).
+  - `cat_deps` still stands as the FREE bundle, and is now a premise of
+    nothing.
+
+`UkCatPutc.v` — `wp_kcat_putc` takes `kcat_wb` at the caller's a0 and the
+  low byte of the caller's a1, plus `Ci`, and hands `Co` back.  The frame
+  word stays OPEN across the write (the byte just stored is lent to the
+  payment) instead of being reassembled before it.
+
+`UkCatVprintf.v` — `wp_kcat_vprintf_step` takes `kcat_wb` at the round's
+  character; `wp_kcat_vprintf_loop` and `wp_kcat_vprintf` take
+  `kcat_pay_seq`; `wp_kcat_vprintf_pro` gains ONE ROW, `fd = m !!! a0`,
+  without which the loop's payment is not statable at the caller's own
+  descriptor.
+
+`UkCatVprintfS.v` — `_seg`, `_sloop`, `_pcs3`, `_pcs2`, `_pcs` take
+  `kcat_pay_seq`; `_sstep` takes `kcat_wb` and, NEW, the row that says
+  WHICH BYTE IS IN a1 (`m !!! a1 = zero_extend' 64 b0`) -- the old
+  statement printed whatever the caller's `lbu` had left there and so
+  named none of the argument's bytes; `_sloop` takes the same row at
+  `sf j`.  `_bump` and `_pct` LOSE `cat_deps` outright: neither writes.
+  `wp_kcat_vprintf_s` takes THE THREE RUNS it prints, in the order the
+  code prints them (the format up to the directive, the argument, the
+  format after it) -- three chains and not one spliced function, because
+  that IS the shape of the walk (`seg`, then `pcs`, then `loop`), and a
+  caller that wants them as one run joins them with `kcat_pay_seq_join`.
+
+`UkCatFprintf.v` — `wp_kcat_fprintf` / `_s` likewise;
+  `wp_kcat_fprintf_gen` gains an abstract `R` carried across the call
+  (durable-notes: a block lemma that names its callee's postcondition
+  cannot be reused) and one row, `a0 goes through`.
+
+`UkCatCat.v` — NEW `kcat_dg_cw`, `kcat_dg_cr`, `kcat_round`,
+  `kcat_round_of_law`.  `wp_kcat_cat_die_cw` / `_die_cr` take their own
+  run; `wp_kcat_cat_loop` and `wp_kcat_cat` take `kcat_round` and hand
+  the loop's normal exit (`Cend`) back.
+
+`UkCatMain.v` — NEW `kcat_dg_open`, `kcat_run0`, `kcat_file`, `kcat_pay`,
+  `kcat_pay_all` and their `_of_law`s.  `wp_kcat_main_die` takes its run;
+  `wp_kcat_main_body` takes `kcat_file`, takes the argument BY NAME
+  (`args !! i = Some g`) and LOSES `l`, `ustd γfd l` and
+  `fd_lowest_closed l = None`; `wp_kcat_main_loop`, `wp_kcat_main` and
+  `wp_kcat_start` take the chain and lose the ledger the same way.
+
+**W3 — THE DEED ARMS: THE READ ARM IS WRITTEN AND STATED, THE OPEN ARM
+STOPS.**
+
+**The read arm is written and committed but is OUT OF THE BUILD.**
+`iris/UkCatDeed.v` (commit `8d692f26c`; removed from `iris/_CoqProject`
+and from the tree by `c02242dff`, so it survives only in this branch's
+history) states and proves everything except that its ONE
+`iApply (UkFileOpen.wp_uk_read_deed_learns_mapped <25 arguments> with
+"…")` DOES NOT TERMINATE: three separate compiles ran to tens of minutes
+with ZERO errors logged and no `.vo`.  That is
+`optimization.md`'s "Inline `ltac:` in argument position" and
+`durable-notes`' "Inline `ltac:` and evar-typed holes" in their slowest
+form, and hoisting the two `ltac:` closers into named `assert`s was NOT
+enough.  The documented next remedy, which this lane ran out of budget to
+try, is the UNSHELVE HOIST: a bare `_` for every Coq premise,
+`unshelve iApply`, and the premises discharged as `{ … }` goals.  **THE
+DIAGNOSTIC WORTH KEEPING** is that the failure of the intermediate
+attempts surfaced as `iSpecialize: cannot instantiate <the remaining
+wands> with <the type of the first hypothesis>` -- a message that points
+at the spec list and not at the argument that caused it, and whose two
+propositions print IDENTICALLY.
+
+WHAT THE FILE SAYS, so the next lane needs no archaeology.  It is a
+SEPARATE file because `UkCat.v` sits below the file system and names no
+application while the deed leaf drags the whole FS tower in -- keeping
+them apart is what stops ten thousand lines of cat's walk from depending
+on `FileOpen`.  Its section Context must be `UkFileOpen`'s EXACTLY, plus
+`{SG : uexecSG}` and `` `{PS : uprogSG} ``: a second `ghost_varG` or
+`ctokG` declared beside `!xv6G Σ` (which carries both, as `xv6_uch` and
+`xv6_ctok`) gives `UkRun.urun` a DIFFERENT instance in the file's own
+statements from the one `UkFileOpen`'s lemmas were proved at -- two
+propositions that print identically and do not unify.  That cost two
+builds before it was read.
+`UkCatDeed.wp_kcat_read_deed` is `UkCat.wp_kcat_read`'s three
+instructions with the ecall taken at lane READ-RELAY's
+`UkFileOpen.wp_uk_read_deed_learns_mapped`; the statement is the landed
+stub's with exactly two changes -- the flagged deposit is replaced by the
+deed's own premises (the handle on the deed's inum, `cons_made`,
+`app_inv`, the fraction), and the buffer comes back with the bytes NAMED.
+`UkCatDeed.kcat_r_of_deed` is `UkCat.kcat_r_of_law`'s twin at it, with
+the handle and the fraction riding in the obligation's two halves
+(they are linear and the loop turns many times) and the persistent
+`cons_made` / `app_inv` outside.
+
+**THE `cat: read error` TAIL IS THREADED AS AN ARM AND IS NOW REFUTABLE
+AT THE PAYER, exactly as the brief asked.**  `kcat_round`'s first arm is
+`⌜bv_signed rv < 0⌝ -∗ kcat_dg_cr`, so the WALK still takes the branch
+and the free chain still funds it; but READ-RELAY's
+`wp_uk_read_deed_learns_mapped` has NO `rv = -1` disjunct at a buffer the
+caller owns, so a DEED payer discharges that arm VACUOUSLY: what it gets
+back is `Z.to_nat (bv_unsigned rv) = ard_count …`, which is not
+negative.  No `RCReadErr` alternative is needed and none was added.
+
+**THE OPEN ARM STOPS, AND THE BLOCKER IS ONE ROW IN ONE LANDED LEAF.**
+`UkFileOpen.wp_uk_ecall_open_read_deed` (and `_miss_deed`, and
+`file_open_sup` / `file_miss_sup` under them) take the path argument
+through
+
+    (forall M : gmap Z (bv 8), uimg_sub Img M -> arg_path_of M pv pl)
+
+against `utext_img (ukn_t N) Img` — and `utext_img` is
+`[∗ map] a ↦ b ∈ Img, utext γt a b` (`UserHeap.v:1397`), the TEXT half.
+The one conversion under it, `UConsOpen.cons_ro_sub` (`:299`), goes
+through `UserHeap.uheap_text`, which is true of exactly the pages that
+are X-and-NOT-W.  The same row comes back out of the leaf
+(`UkRunSys.wp_uk_ecall_open_recv_img`, `:4722`, whose own premise is
+`utext_img`), and `FileOpen.file_open_recv_file` needs it at
+`uvis_M W` to read the receipt.
+
+**cat's PATH IS `argv[1]`.**  sh execs `cat f`, the kernel copies the
+argv strings onto cat's stack, and cat's view of them is
+`UserHeap.uargv γd av args` — `ustr γd DfracDiscarded …`, the DATA half
+under `ukn_d`, never `utext` under `ukn_t`.  So the premise is not
+dischargeable at cat, and `UkCat.kcat_o` has no deed instance.  **This
+is not a proof-effort problem and not something a cat-side file can work
+around: it is a row that only reads one of the two heap halves.**
+
+**WHAT WOULD UNBLOCK IT, priced, and it is small.**  ONE new leaf beside
+`UkRunSys.wp_uk_ecall_open_recv_img` — call it `_recv_dimg` — being that
+lemma's own walk (its proof is ~120 lines and the change is ONE
+`iDestruct`) with `utext_img (ukn_t N) Img` replaced by the persistent
+DATA image `[∗ map] a ↦ b ∈ Img, ubyteq (ukn_d N) DfracDiscarded a b` and
+`uheap_text` replaced by the data reading `UserHeap.uheap_ubyte`'s
+fractional twin — the SAME step `ExecArgs.uargv_img_of_uargv` (`:505`)
+already takes to read the argv layout off the heap.  Then
+`FileOpen.file_open_sup` / `file_miss_sup` get argv twins (their bodies
+are unchanged; only which persistent view supplies `uimg_sub` moves), and
+`UkCatDeed` gets `wp_kcat_open_read_deed` / `wp_kcat_open_miss_deed` the
+way it got the read.  **THE REDIRECT CHILD HAS THE SAME PROBLEM**: sh's
+`> f` path comes out of the line buffer, which is heap data too, so this
+is not cat-specific and is worth doing once.
+
+**W4 — THE PAID ENTRY: STOPPED, on W3's open arm and nothing else.**
+`UCatKernel.cat_image_entry` is `UShEcho.echo_image_entry`'s shape at
+`FsCatPin` and argv `["cat"; "f"]`, and every premise of it now has a cat
+twin: the walk is `UkCatMain.wp_kcat_start` at
+`kcat_pay_all args (ustd γfd l) (ukn_pay N (-1))`, the record is minted
+at `UCatOut.catq_filed` / `catq_unfiled` (both status-independent, which
+is what W2 bought), the content path is a `UkCatCat.kcat_round` built
+from `UkCatDeed.kcat_r_of_deed` and `UCatOut.cch_chain`, and the
+diagnostic path is `UkCatMain.kcat_dg_open` built from
+`UCatOut.cch_step`.  **What is missing is the first call of the turn**:
+`UkCatMain.kcat_file` opens with `UkCat.kcat_o`, and until the argv-path
+row above exists there is no deed instance of it — so an entry could only
+supply `kcat_o_of_law`, which is the FREE open, and then the round's
+`I` cannot be a `cch` cursor (the descriptor is not on the deed's inum
+and the read learns nothing).  C3 (`UShEchoPay.echo_slot_of_kexec_at`'s
+mould) is one step behind C2 for the same reason.
+
+**SO CAT-ENTRY's FIVE BLOCKERS, ONE BY ONE.**
+1. *the console write is paid by the free write law* — **GONE** (W1).
+2. *cat's exit payload is pinned trivial by a class constraint* —
+   **GONE** (W2).
+3. *the open is the generic leaf* — **MOVED**: the walk no longer names a
+   leaf at all (`UkCat.kcat_o`), and what is left is the argv-path row
+   above, which is a fact about `UkRunSys`, not about cat.
+4. *the read is the generic leaf* — **MOVED**: the walk names no read
+   leaf (`UkCat.kcat_r`), the deed instance is written
+   (`UkCatDeed.kcat_r_of_deed`, commit `8d692f26c`), and what is left is
+   one proof-engineering step (the unshelve hoist) and not a statement.
+5. *consequently C3 has nothing to construct* — **MOVED**: C3 now has
+   everything except (3).
+
+**THE OFFSET, AND WHAT THE HELD LEAF MUST DISCHARGE (the designer's
+ruling, taken).**  At a PARKED row the read leaf reports the bytes at
+SOME offset -- `wp_uk_read_deed_learns_mapped`'s `∃ off` -- because
+`FdInode i γo OffParked` records no offset at all: the kernel holds the
+file's `f->off` and the descriptor state says nothing about it.  So "the
+bytes cat writes are the deed's content IN ORDER" is NOT provable from
+the parked leaf, and nothing in this lane tries.
+
+What the ordering needs is ONE premise, and `UkCatDeed.kcat_r_of_deed_at`
+names it exactly:
+
+    □ (∀ rv gb off,
+         ⌜Z.to_nat (bv_unsigned rv) = ard_count cnt off (length bs)⌝ -∗
+         ⌜∀ j, j < Z.to_nat (bv_unsigned rv) → gb j = bs !!! (off + j)⌝ -∗
+         ⌜off = off0⌝)
+
+— every offset the read reports IS the one the caller expected.  At
+`OffParked` that is unprovable and a caller takes the existential
+`kcat_r_of_deed`; at the HELD row (`FdInode i γo (OffHeld off)`, advanced
+by each read) it is the descriptor state's own row and the held leaf
+discharges it.  `kcat_r_of_deed_at`'s conclusion is then the offset-PINNED
+obligation, over `UkCat.kcat_r_mono_out` (new).
+
+**AND WITH IT THE LOOP'S ORDERING CLOSES ENTIRELY PAYER-SIDE, because
+`UkCatCat.kcat_round` says nothing about offsets.**  The payer builds the
+round holding its own cursor `I`; at a turn whose cursor is `p` it
+instantiates `kcat_r_of_deed_at` at `off0 := p`, gets the count back as
+`ard_count cnt p (length bs)`, and funds that turn's write at `cch … p`
+through `UCatOut.cch_chain` — so the next turn's cursor is `p + count`,
+which IS the chaining-from-zero the ordering wants.  **The walk in
+`UkCatCat.v` never sees any of it**, which is the point of stating the
+loop's payment as a round law rather than as a chain: the held leaf costs
+one application and not a second proof of the loop.
+
+**THE PAID ENTRY, AS IT NOW STANDS.**  Everything but the open is in
+hand, so the statement C2/C3 will take is worth writing down exactly.
+The walk it runs is
+
+    UkCatMain.wp_kcat_start N h (tf_resume_gpr0 (uvis_tf W)) (uvis_av W)
+      (cat_args (uvis_M W) (uvis_av W) (Z.to_nat (uvis_argc W))) f 0
+      (UserFd.ustd (ukn_fd N) (take NSTD (uvis_fd W)))
+      Hptr Hargc Hav
+      -∗ ⟨the chain⟩ -∗ cat_code -∗ cat_rodata -∗ uargv -∗ ⟨the ledger⟩
+      -∗ ubytes γd CatSyms.buf 512 f -∗ urun … -∗ WP Loop
+
+with the chain `UkCatMain.kcat_pay_all args (ustd γfd l) (ukn_pay N (-1))`
+and, at the file application,
+
+    Ci   := UserFd.ustd (ukn_fd N) (take NSTD (uvis_fd W))
+            ∗ FileOpen.fdq r q (Some (i, bs))
+            ∗ UCatOut.cch v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P 0
+    Cend := ukn_pay N (-1), minted by [UkRun.uslot_of_urun_ro] at
+            Q := UCatOut.catq_filed v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P
+            (or [catq_unfiled …] on the empty-content round), whose
+            [*_const] is the `forall x y, Q x = Q y` the record wants.
+
+and the two turns of `kcat_file` at `args !!! 1 = "f"` built as:
+the DEED arm of `kcat_o` (MISSING, see above) at
+`UkFileOpen.wp_uk_ecall_open_read_deed` / `_miss_deed`; the round
+`UkCatCat.kcat_round (mword_of_int fd) (cch … p) (cch … (length (cont …)))`
+built from `UkCatDeed.kcat_r_of_deed_at` and `UCatOut.cch_chain`, whose
+`cat: read error` arm is vacuous and whose `cat: write error` arm is
+funded from the same cursor through `UCatOut.cch_step`; and the close
+`UkCat.kcat_cl fd` at `kcat_cldep_nonpipe` — **FREE, because the deed's
+descriptor type is `FdInode i γo _`, which is not a pipe.  That is the
+one law of `cat_deps`'s four the deed arm MOVES: a deed-aware cat entry
+supplies 5, 15 and 16 and not 21.**  The `cat: cannot open f` arm is
+`kcat_dg_open` at `UCatOut.cat_cont_ran_none` / `cat_cont_noopen` — and
+CAT-ENTRY's ruling stands: it is `RCRan` that gets filed at an absent
+deed, not `RCNoOpen`.
+
+**WHAT SH-ROUND HANDS IN, unchanged from CAT-ENTRY's reading and now
+statable.**  sh's fork/exec channel lends cat exactly `Ci` above: its
+half of the console credential at the round's own cursor (`cch … 0`), a
+fraction of the deed, and the low `NSTD` ledger; and it is owed `Cend`
+back, which is `catq_filed` (the alternative in the choice list, the
+cursor at the end of cat's run) or `catq_unfiled` (nothing moved).
+**AND SH-ROUND'S OWN FIRST NEED IS STILL THE ONE CAT-ENTRY NAMED**: at an
+`LCat` round whose deed is `Some (i, [])` cat writes nothing and the
+block's first byte is sh's own prompt, so sh files `RCRan` at its prompt
+write through `FileLinks.file_write_link_blk` and not the plain link.
+Nothing in this lane changes that.
+
+**THE MERGE.**  `git merge app-file/read-relay` (`52b0eb67b`,
+`785b0be0f`).  One conflict, in this file's Findings section; both blocks
+kept, READ-RELAY's first.  `iris/_CoqProject` auto-merged.  Nothing in
+`UkCat*` depended on the kernel statements READ-RELAY moved, so the merge
+cost no proof work; `UkCatDeed.v` is stated at
+`wp_uk_read_deed_learns_mapped`, the lemma READ-RELAY landed for it.
+
+**ONE SMALL FINDING FOR THE DESIGNER.**  `UkCatFprintf.wp_kcat_fprintf_gen`
+had to gain an abstract `R` carried from the inner continuation to the
+outer one before the payment could cross it — the block promised only
+what its own instructions produce, but its two continuations were CLOSED,
+so nothing the callee produced could reach fprintf's caller.  That is
+durable-notes' "a block lemma that names its syscall's postcondition
+cannot be reused by a parallel proof" in a second guise: a block whose
+continuations are closed cannot carry a resource ACROSS a call either.
+Worth checking for at the other `_gen`-shaped blocks in the ulib walks.
+
+**THE BAR.**  WHOLE TREE GREEN on the lane's remote tree: `make -f
+CoqMakefile -j6 -k` over all 1584 files of `iris/_CoqProject` finishes
+`TREE_EXIT=0` with ZERO `Error`, and a second run has *Nothing to be done
+for 'real-all'* (the only `.vo` absent are `TreeAssumptions`/
+`FileAssumptions`, which are commented out of `_CoqProject` on purpose).
+Every file of the restated walk was also built green one at a time as it
+landed.  Nothing is `Admitted`; every result carries `Proof using`
+(`grep -c "^  Proof\.$"` is 0 in all seven `UkCat*` files).  `UCodeCat.v`
+did not move and no new function was fetched, so `make gen-ucode` is
+unchanged --- the lane touched no `UCode*.v` and
+`tools/ucode_manifest.json` is untouched --- and `make gen-ucode` on the VM prints *unchanged* for all
+seven catalogs, `iris/UCodeCat.v` among them (388 instr, 276 words).
+(`make check-ucode` cannot finish on the VM: its last step is
+`git diff --exit-code`, and the remote mirror is not a git worktree.  The
+generator's own *unchanged* per catalog is the same fact.)
+
+`make audit-all-only` from the tree root: `AUDIT_EXIT=0`, the SYSTEM
+theorem's axiom list THIRTEEN and the ECHO theorem's FOURTEEN, both
+unchanged.  `make audit-tree-only` was not run and does not need to be:
+cat's walk is in no theorem's cone --- nothing outside `UkCat*.v`
+requires it --- so the tree theorem cannot have moved.

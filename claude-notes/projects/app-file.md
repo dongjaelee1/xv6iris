@@ -3312,3 +3312,185 @@ first; everything else it needs of this lane is landed, and the U-tier
 wrapper (`wp_uk_ecall_open_create_deed`, `UkTreeCreate`'s mould at this
 claim) is the one piece still unwritten — it wants OFF-HAND-3's held
 offset anyway, exactly as F-OPEN-2's three U-tier corollaries do.
+
+### F-OPEN-4 (2026-09-17) — THE ESCROW IS REFUTED BY THE COMMIT MASK, AND THE 0x601 WRAPPER LANDS OVER THE PARKED LEAF
+
+**The lane's verdict in one line: the ruled application-side ESCROW
+(F-OPEN-3's way (ii)) CANNOT BE BUILT, and the obstruction is not a
+fraction and not a threading problem but the MASK the kernel fires the
+lookup piece at — the refutation needs the claim and the deed's half open
+at one instant, `appE` is `↑appN`, opening `app_inv` leaves the empty
+mask, and no namespace's closure is empty. That argument is now two
+lemmas in the tree (`FileOpen.app_commit_mask_full`,
+`FileOpen.file_escrow_mask_blocked`, `iris/FileOpen.v:1592`/`:1598`), so
+nobody re-proposes (ii). Deliverable E2 landed on the LANDED shape:
+`UkFileOpen.wp_uk_ecall_open_create_deed`, the redirect child's whole
+`open(f, 0x601)` from one deed, over the parked leaf as a visible
+parameter.**
+
+**WHAT LANDED** (whole tree green on the lane's remote tree, `EXIT=0`,
+zero `Error`; `make audit-all-only` and `audit-tree-only` unchanged —
+echo fourteen, system thirteen, tree thirteen; every new lemma
+`Proof using`; no `Admitted`).
+
+- **THE BLOCKER, MACHINE-CHECKED** (`iris/FileOpen.v` section 3h, and
+  section 6 (a)'s STOP record rewritten to match).
+  `app_commit_mask_full : appE ∖ ↑appN = ∅` and
+  `file_escrow_mask_blocked : ∀ N : namespace, ↑N ⊆ appE ∖ ↑appN → False`
+  (`Print Assumptions`: *Closed under the global context*).
+- **THE U-TIER WRAPPER** (`iris/UkFileOpen.v` section 4).
+  `wp_uk_ecall_open_create_deed` (`:671`), with
+  `xfam_fcreate` (`:533`, the deposit family for a create-mode open —
+  `UConsOpen.xfam_open` fills row 15's read-only slots and
+  `UkTreeCreate.xfam_tree` its create legs, and NEITHER reaches `of_Fex`
+  or `of_Ft`: the file claim is the first application that answers at the
+  exists observation and at the truncate), `file_create_fam` (`:589`),
+  `file_open_fd_tie` (`:600`, `UkTreeRead.tree_open_fd_tie` with the
+  descriptor TYPE a parameter — needed because create's F-OK admits a
+  found DEVICE) and `file_create_sup` (`:626`, the deposit).
+
+**WHY THE ESCROW IS REFUTED, EXACTLY.** The ruling asked for an
+invariant of the claim's own holding `fdeed r s` beside a one-shot, so
+that (a) the LOOKUP piece opens it, reads the deed against the claim
+through `AppFile.file_deed_law`, concludes `f_ok avx s` and refutes
+`Fex`'s found entry at `s = None`, and (b) the ARM piece takes the half
+out when it fires. (b) and the refund path are both fine. (a) is
+impossible, and here is the whole argument:
+
+1. The refutation needs TWO resources AT ONE INSTANT: `file_pred c r avx`
+   — which exists ONLY inside `AppInv.app_inv γfs = inv appN (app_body γfs)`
+   (`iris/AppInv.v:266`), since the commit is handed only
+   `ghost_map_auth (γtop Γ) (1/2) I` and the claim sits beside the other
+   half — and the deed's half, which by hypothesis sits in an escrow
+   invariant at some namespace `N`.
+2. The lookup piece is `FsAbsCreateFire.dlookup_commit_at Γ appE`
+   (`iris/FsAbsCreateFire.v:277`), whose body is a fancy update **at the
+   mask `AppInv.appE`**, and the KERNEL fixes that mask:
+   `SysOpenDefs.open_au_create_at` asks the application for
+   `pf_at (dlookup_commit_at Γ appE) Fex` (`iris/SysOpenDefs.v:864`) and
+   for nothing else. The application does not get to choose a wider one.
+3. `AppInv.appE := ↑appN` (`iris/AppInv.v:85`). So reading the claim is
+   `inv_acc appE appN`, which leaves the mask `appE ∖ ↑appN`, and that set
+   is `∅` (`app_commit_mask_full`). A namespace's closure is infinite
+   (`stdpp.namespaces.nclose_infinite`), so `↑N ⊆ ∅` is absurd for every
+   `N` (`file_escrow_mask_blocked`). Opening the escrow FIRST is no
+   better: it leaves `↑appN ∖ ↑N`, which does not contain `↑appN`.
+   `inv_combine` does not help either — it wants `appN ## N` and
+   `↑appN ∪ ↑N ⊆ ↑N'` with `↑N' ⊆ appE = ↑appN`, which forces
+   `↑N ⊆ ↑appN` and contradicts the disjointness.
+4. This is not an accident of the file claim: `AppInv.v:63`'s own mask
+   note says a discharger MAY open its own invariant at a fire point
+   (`OffGv.foffN = nroot.@"app".@"foff"` is the landed example) and that
+   *nothing here is ever open at the same time as one of those*. The
+   escrow needs exactly the thing the note excludes.
+
+**WHAT THE RULING SAID THAT THE PROOFS CORRECTED.**
+
+1. **(ii) is not cheaper than (i); it does not exist.** The ruling ranked
+   the application-side escrow below F-OPEN-2's restatement 3 in cost
+   because it "costs no kernel restatement". It costs no kernel
+   restatement because it cannot be written: at `appE = ↑appN` there is
+   no room for a second invariant beside the claim. The lane's
+   counter-scenario the ruling asked for before re-proposing (i) is
+   therefore vacuous, and (i) is back on the table unopposed.
+2. **THE THIRD WAY, NAMED AND PRICED: (iii) MOVE THE ESCROW INSIDE THE
+   CLAIM.** The mask argument kills a SECOND invariant, not the escrow
+   idea. Give `AppFile.f_state` an arm in which the holder's half is
+   parked beside a one-shot the holder keeps — then ONE invariant
+   (`app_inv`) carries both the claim and the escrowed half, the lookup
+   piece opens it exactly as `file_claim_read` already does, and the
+   refutation goes through. The price is that it restates `file_pred`,
+   so it moves `file_deed_law`, `file_pred_exact`, `file_step_park`,
+   `file_resync`, `file_xfer`/`file_xfer_boot`, `file_init`/`file_init_img`
+   and every landed consumer of the claim (`AppFileRec`,
+   `UFileBootAdequacy`, echo's write path). It is an `AppFile.v` change,
+   not a `FileOpen.v` one — which is what the ruling assumed (ii) was.
+3. **The escrow that WOULD have worked, for the record**, so (iii)'s
+   author does not re-derive it: token `T` exclusive and held by the ARM
+   piece in place of `fdeed r s` (the arm keeps `ftkt r s`), escrow body
+   `fdeed r s ∨ SPENT`, arm fires ⇒ opens, refutes `SPENT` with `T`,
+   takes the half, deposits `T`; lookup fires ⇒ opens, either reads the
+   half against the claim (`⌜f_ok avx s⌝`) or extracts a PERSISTENT
+   witness of `SPENT`; truncate on the EXISTS run holds the arm's refund,
+   so it holds `T`, so it refutes the `SPENT` disjunct of the lookup's
+   receipt and keeps `⌜f_ok avx s⌝`, which at `s = None` contradicts
+   `entsx !! fname_f = Some i` at the tie; the refund path empties the
+   escrow through a closing lemma `escrow ∗ T ={⊤}=∗ fdeed r s`. Every
+   step of that is sound; only step "lookup fires ⇒ opens" is unavailable.
+4. **The EXISTS-DEVICE sub-arm goes with it.** It was to be refuted the
+   same way (the row's type at the lookup's view is `f`'s, an inode, by
+   the claim), so `FileOpen.file_open_create_recv` keeps THREE outcomes
+   and the wrapper below keeps three arms.
+
+**WHAT IS UNCHANGED.** No statement outside `iris/FileOpen.v` and
+`iris/UkFileOpen.v` moved. Inside them, exhaustively:
+
+- `FileOpen.v`: **added** `app_commit_mask_full`,
+  `file_escrow_mask_blocked` (section 3h, both new); section 6 (a)'s
+  paragraph naming the two ways rewritten to record (ii) as REFUTED and
+  to name (iii), and its DEVICE paragraph re-pointed at (i)/(iii).
+  Nothing else in the file changed — `file_trunc_recv`,
+  `file_trunc_of_exists`, `file_open_create_au` and
+  `file_open_create_recv` are F-OPEN-3's, verbatim.
+- `UkFileOpen.v`: **added** `xfam_fcreate`, `file_create_fam`,
+  `file_open_fd_tie`, `file_create_sup`, `wp_uk_ecall_open_create_deed`
+  (section 4, all new). Sections 1-3 (F-OPEN-2's and READ-RELAY's
+  corollaries) are untouched.
+
+**THE WRAPPER, EXACTLY** (`UkFileOpen.wp_uk_ecall_open_create_deed`).
+Premises: `file_app = MkAppcfg file_names (file_pred c) r`,
+`usysno m = USYS_open`, the return alignment, the image/path row
+(`∀ M, uimg_sub Img M → arg_path_of M pv pl`), `m !!! a0 = pv`,
+`om_create (m !!! a1) = true`, **`om_trunc (m !!! a1) = true`**,
+`np_elems pl = []`, `um_start_of cw pl = ROOTINO`,
+`last (path_elems pl) = Some fname_f`, `ws ∈ ls`, `EchoDisc.line_ok ws`.
+Resources in: the ecall instruction, `utext_img`, `urun`, `ucwd`,
+`ustd (ukn_fd N) l`, `app_inv fsc_fs`, `cons_made (fn_cons r) jc`,
+`fl_lb c ls` and **`fown r s` — one deed, no truncate premise**. Post,
+three arms:
+
+    (⌜rv = -1⌝ ∗ ustd (ukn_fd N) l ∗ file_open_pay c r s)
+    ∨ (∃ fd γo i, ⌜rv = fd ∧ fd < NOFILE⌝ ∗
+         ualloc (ukn_fd N) l fd
+           (FdOpen (om_readable vom) (om_writable vom)
+                   (FdInode i γo OffParked)) ∗
+         (fown r (Some (i, [])) ∨ fown r s ∨ file_taint c))
+    ∨ (∃ fd ma, ⌜rv = fd ∧ fd < NOFILE⌝ ∗
+         ualloc (ukn_fd N) l fd
+           (FdOpen (om_readable vom) (om_writable vom) (FdDevice ma)) ∗
+         file_open_pay c r s)
+
+with `file_open_pay c r s = fown r s ∨ (∃ i, fown r (Some (i, []))) ∨
+file_taint c` — F-OPEN-2's `Kf`, landed in F-OPEN-3. `Print Assumptions`
+is the PrimString/PrimInt63 primitives plus exactly what the leaf carries
+(`xv6iris_extras.resv_matches`, `resv_is_valid`,
+`functional_extensionality_dep`) — byte for byte the set
+`wp_uk_ecall_open_read_deed` already had.
+
+**THE LEAF IS A VISIBLE PARAMETER**, as F-OPEN-2's three corollaries are:
+the lemma is stated over `UkRunSys.wp_uk_ecall_open_recv_img` (the
+PARKED-offset member) and is applied in ONE place in the proof, so lane
+OFF-HAND-5's held leaf (`wp_uk_ecall_open_recv_img_held`) re-instantiates
+it by that one swap plus `UserOff.uoff γo 0` in the fd arms.
+
+**WHAT LANE SH-ROUND HANDS IN, AND GETS BACK.** It instantiates
+`UkShRedirAns.ush_open_call2` at
+
+    K ty := (∃ i γo, ⌜ty = FdInode i γo OffParked⌝ ∗
+               (fown r (Some (i, [])) ∨ fown r s ∨ file_taint c))
+            ∨ (∃ ma, ⌜ty = FdDevice ma⌝ ∗ file_open_pay c r s)
+    Kf   := file_open_pay c r s
+          = fown r s ∨ (∃ i, fown r (Some (i, []))) ∨ file_taint c
+
+— `ty` is EXISTENTIAL in `ush_open_ans2`'s fd arm, so the DEVICE outcome
+rides that same arm and no fourth shape is needed; `Kf` is F-OPEN-3's
+list verbatim. The `ualloc` of the wrapper's fd arms specialises to
+`<[1 := FdOpen false true ty]> l` at the redirect child's own ledger
+`[console; closed; console]` (`UserFd.ualloc`), which is where `rv = 1`
+comes from. SH-ROUND hands in: the deed `fown r s`, the console flag
+`cons_made (fn_cons r) jc`, a line lower bound `fl_lb c ls` with one
+disciplined line `ws ∈ ls` (era 0's is available: any `ws` with
+`line_ok ws`), the path row for `f`, and `om_trunc = true` off `0x601`.
+Its remaining choice is unchanged from F-OPEN-3's report except that the
+second disjunct of the fd arm and the DEVICE arm are now known to be
+closable only by (i) or (iii).

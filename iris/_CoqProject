@@ -1613,3 +1613,9 @@ UInitTreeExec.v
 
 UFileBootAdequacy.v
 # FileAssumptions.v
+
+# lane SKELETON: the verified PROGRAM TIER's statements (proofs Admitted).
+# Nothing imports these, so neither audit cone reaches them.
+UEchoFile.v
+UShRound.v
+UInitFile.v

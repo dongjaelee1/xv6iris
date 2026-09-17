@@ -439,6 +439,21 @@ follows it; the file-offset invariant did not.  The review at
 `claude-notes/reviews/app-file-review.md` assesses the campaign against
 it; lanes OFF-HAND-7 (J2/J3) build on it.
 
+The survey's verdicts (`claude-notes/reviews/taint-pattern-survey.md`),
+adopted: R1 the generic supply IS the taint (`al_sup_of_kill` on the app
+laws, `xv6_ssupply := □ riscv_kill_cred`, the duplicated credentials off
+~20 generic-tier statements — lane SUP-ONE); R2 the offset (OFF-LINK,
+with the deletions as its exit criterion); R4 the open leaves export
+`fdst_nopipe` so a close at an opened descriptor needs no free law
+(SUP-ONE); R5 NOT a taint change — `sys_open`'s residues are arm
+EXCLUSIVITY (`acre_commit_at_gen` taking the unfired `Fex`); R3 the
+write chain's copyin-partial arm is REFUTED (WRITE-RELAY), the disk-full
+short write is limit 1's whole-chunk skip, and no kernel taint goes on
+either.  Two facts decide every verdict: the generic tier already holds
+the taint everywhere, and a verified program must never be able to
+taint itself at an arm it dislikes (the vacuity trap) — it closes an
+unreachable arm by arm exclusivity in the kernel contract.
+
 ### 3.6 PROCESS RULES (review §D4–D5, 2026-09-17)
 
 - A ruling is checked at the STATEMENT before it is issued: the mask it
@@ -453,6 +468,17 @@ it; lanes OFF-HAND-7 (J2/J3) build on it.
   refuted ruling wastes one file, not a sweep.
 - The worklist is a DEPENDENCY GRAPH with the program tier priced, not
   a chain of "the one thing the next lane needs first".
+  THE GRAPH IS lane SKELETON's K4 table (worklist, "## Findings",
+  SKELETON): 22 obligations of `UEchoFile.v`/`UShRound.v`/`UInitFile.v`
+  (on branch `app-file/program-tier`, `Admitted`, outside the audited
+  cone), each with its owner — OFF-LINK 2, WRITE-RELAY 2, LINK-GEN 8,
+  CAT-GEOM 1, six small new items (the ledger-slot write leaf and its
+  deposit, the redirect line's lexability threading, the redirect
+  child's law, `ush_tag_law`'s discipline parameter, `init_boot_pay`
+  with the deed), two free.  Two shapes it settled: the deed rides
+  INSIDE sh's credential family (`Wcf I p := Wcl I p ∗ sh_hold I`, no
+  `ushf_wq` twin), and echo's exec crossing costs one `Pay` (`Wq ∗ fown
+  ∗ uoff γo 0`) and one PURE row about the exec'ing table.
 
 ## 4. The console side: the stage carries the era's boot state, the ledger the line list
 

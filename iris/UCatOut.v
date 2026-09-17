@@ -381,6 +381,31 @@ Section UCatOut.
                   ltac:(intros j H1 H2; apply HM; lia) with "Hpin Hfp Hc").
   Qed.
 
+  (* ...AND THE SAME RUN AT A TAINTED ERA, with no row at all (lane
+     CAT-ENTRY-2).  [cch_chain] asks for the model's byte at every
+     position because its non-taint arm files them; at a tainted era the
+     tower continues on its own ([FileLinks.file_write_link_taint]) and
+     the cursor is the right disjunct at EVERY position, so a writer that
+     holds the taint funds a run of ANY length and claims nothing.  This
+     is what lets cat's round be built at a turn whose justification is
+     the taint. *)
+  Lemma cch_chain_taint (k : nat) (v : era_pins) (vf : file_era)
+      (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8))
+      (a P p : nat) (M : gmap Z (bv 8)) (ua : mword 64) :
+    forall (c i : nat),
+    file_taint (fgn_cl g) -∗
+    cons_out_chain k M ua
+      (fun j : nat => cch v vf ps0 cs0 s0 I0 a P (p + j)%nat) i c.
+  Proof using Hcons.
+    intros c. induction c as [| c IH]; intros i.
+    - iIntros "#HT". cbn [cons_out_chain]. rewrite /cch. by iRight.
+    - iIntros "#HT". cbn [cons_out_chain]. iSplit.
+      + rewrite /cch. by iRight.
+      + iIntros (b) "_".
+        iApply (file_write_link_taint g Hcons k b _ with "HT").
+        iIntros "_". iApply (IH (S i) with "HT").
+  Qed.
+
   (* ===================================================================== *)
   (*  4.  cat's TWO EXIT-PAYLOAD SHAPES                                     *)
   (*                                                                       *)

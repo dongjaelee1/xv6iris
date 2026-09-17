@@ -63,6 +63,12 @@ Require Import FileState FileDisc FileOutPure FileOut FileLinks.
 Require Import EchoOut AppEcho.
 Require Import UCatOut.
 Require Import UkCatMain.    (* [cm_lit] / [cm_msg_q] / [kcat_dg_open] *)
+Require Import SpecKexec.    (* [kexec_image_ok] and its readings *)
+Require Import UkAbi.        (* [uk_args_c] / [uka_argc] *)
+Require Import ExecEntry.    (* [image_entry] / [image_entry_of_at] *)
+Require Import UEchoKernel.  (* [uvis_sp] / [uvis_av] / [uvis_argc] and the
+                                argument reading off the key -- none of it
+                                names a program *)
 Require Import UShCat.       (* cat's exec/argv geometry and its entry carve *)
 Require Import CtxIdDefs.
 Import Defs.
@@ -1030,6 +1036,182 @@ Section UCatKernel.
                     exact (cat_dg_lit_high d Hd))
               with "Hpin Hfp [Hend] Hstd Hc").
     rewrite Hlen. iExact "Hend".
+  Qed.
+
+  (* =================================================================== *)
+  (*  7.  cat's ENTRY (lane CAT-GEOM, M3).                                *)
+  (*                                                                     *)
+  (*  [UShEchoPay.echo_slot_of_kexec_at]'s mould at cat, over             *)
+  (*  [ExecEntry.image_entry] as [ExecBundle.exec_bundle_of]'s third      *)
+  (*  premise takes it, and it is [UShRound.v]'s [Hchild_cat] with the    *)
+  (*  node premises added -- sh BUILT the node, so sh can supply them.    *)
+  (*                                                                     *)
+  (*  THE PAYMENT IS A PARAMETER ([cat_pay_at] below), for the reason the *)
+  (*  notes give: a block lemma that names its own postcondition cannot   *)
+  (*  be reused by a parallel proof.  The GEOMETRY -- everything between  *)
+  (*  the exec channel's image fact and [UkCatMain.wp_kcat_start] --      *)
+  (*  is discharged here once, and what remains is a payment stated at    *)
+  (*  the record the entry allocates.                                    *)
+  (*                                                                     *)
+  (*  [cw], [cs] and [pidv] are FREE: cat reads no identity row, so the   *)
+  (*  entry holds at whatever the caller's are.  ([UkCatDeed.             *)
+  (*  kcat_o_of_deed] does read the cwd, and its [um_start_of cw pl =     *)
+  (*  ROOTINO] premise is where [cw] is pinned -- inside the PAYMENT,     *)
+  (*  not here.)                                                         *)
+  (* =================================================================== *)
+  Definition cat_pay_at (W : uvis) (Q : Z -> iProp Σ) (Pay : iProp Σ)
+    : iProp Σ :=
+    (∀ N : uk_names Σ,
+       ⌜ ukn_pay N = Q ⌝ -∗
+       (* WHAT THE PAYER MAY ASSUME ABOUT THE KEY IT IS PAYING AT.  The
+          entry derives all three from the CALLER's reading of the node it
+          built ([UShCat.cat_args_det_holds]) through the key's own
+          ([UShCat.cat_key_args_holds]): the line is `cat f`, so argv has
+          two words and the second is the one-byte file name the claim is
+          about.  Without them a payer cannot run the open's deed
+          corollary at all -- [UkCatDeed.kcat_o_of_deed] resolves
+          [fname_f] and nothing else. *)
+       ⌜ Z.to_nat (uvis_argc W) = 2%nat ⌝ -∗
+       ⌜ forall ga : uarg, UShCat.cat_args W !! 1%nat = Some ga ->
+           UserHeap.ua_len ga = 1%nat
+           /\ forall j : nat, (j < 1)%nat ->
+                UserHeap.ua_bytes ga j = FsImgCheck.fname_f !!! j ⌝ -∗
+       UserFd.ustd (ukn_fd N) (take NSTD (uvis_fd W)) -∗
+       UserCwd.ucwd (ukn_cwd N) (uvis_cwd W) -∗
+       UCodeCat.cat_rodata (ukn_t N) -∗
+       UserHeap.uargv (ukn_d N) (uvis_av W) (UShCat.cat_args W) -∗
+       (* ...and the PERSISTED argument area, which the open's deed
+          corollary resolves its path out of *)
+       ([∗ map] k ↦ b ∈ base.filter
+             (fun kv : Z * bv 8 => ~ (kv.1 < uint (uvis_sp W)))
+             (udata_lo (uvis_M W) (uvis_perm W) (uvis_sz W)),
+          ubyteq (ukn_d N) DfracDiscarded k b) -∗
+       Pay -∗
+       ∃ Ci : iProp Σ,
+         UkCatMain.kcat_pay_all N (UShCat.cat_args W) Ci (ukn_pay N (-1))
+         ∗ Ci)%I.
+
+  Lemma cat_image_entry (ws : list (list (bv 8))) (Mn : gmap Z (bv 8))
+      (sv t : Z) (gn : nat -> bv 8)
+      (sts : list fdstate) (cw : Z) (cs : gset gname) (pidv : mword 32)
+      (Q : Z -> iProp Σ) (Pay : iProp Σ) :
+    (forall x y : Z, Q x = Q y) ->
+    line_ok ws ->
+    UShEcho.echo_node_img ws Mn sv t gn ->
+    UkShEcho.echo_argv_bytes ws gn ->
+    length sts = NOFILE ->
+    (* THE LINE IS `cat f`: two words, the second one byte, and that byte
+       is the name of the file the claim is about. *)
+    length ws = 2%nat ->
+    UkShEcho.echo_alen ws 1%nat = 1%nat ->
+    (forall j : nat, (j < 1)%nat ->
+       wl_line ws !!! (UkShEcho.echo_off ws 1%nat + j)%nat
+       = FsImgCheck.fname_f !!! j) ->
+    □ (∀ W' : uvis, cat_pay_at W' Q Pay) -∗
+    UkRun.urun_nopipe sts -∗ udep -∗
+    image_entry ElfUser.cat_elf Mn (mword_of_int (t + 8) : mword 64) sts
+      cw cs pidv Q Pay uslot.
+  Proof using xv6G0 ufdG0.
+    intros HQc Hok Himg Hbytes Hfdl Hws2 Halen1 Hfname.
+    iIntros "#Hpay #Hnpw #Hdep".
+    iApply image_entry_of_at. iIntros "!>" (na alen afun) "%Hargs".
+    destruct (UShCat.cat_args_det_holds ws Hok Mn sv t gn na alen afun
+                Himg Hbytes Hargs) as (Hna & Halen & Hafun).
+    pose proof (UShCat.cat_room_of_det ws na alen Hok Hna Halen) as Hroom.
+    rewrite /image_entry_at. iIntros "!>" (W') "%Hokk _ %Hlzf _ _ Hmp HPay".
+    destruct (UShCat.cat_kexec_pages na alen afun sts W' Hokk)
+      as (Hpc & Hsub & Hsub2 & Hx & Hdw & Hbufb & Hwr & Hrp).
+    destruct (UShCat.cat_kexec_entry_rows na alen afun sts W' Hokk Hroom
+                Hfdl Hwr Hrp)
+      as (Hroom336 & Hal8 & Hszv & Hstkrow & Hargsrow & Havd & Havs
+          & Hfdlen & Hstop).
+    pose proof (UShCat.cat_kexec_bufrow na alen afun sts W' Hokk Hroom
+                  Hdw Hbufb) as Hbuf.
+    pose proof (UShCat.cat_kexec_argnz na alen afun sts W' Hokk Hroom)
+      as Hnz.
+    pose proof (kexec_image_ok_fd _ na alen afun sts W' Hokk) as Hfd.
+    assert (Hargc0 : 0 <= uvis_argc W')
+      by exact (proj1 (uka_argc _ _ _ _ _ _ Hargsrow)).
+    assert (Hptr : forall (j : nat) (ga : uarg),
+              UShCat.cat_args W' !! j = Some ga -> UserHeap.ua_ptr ga <> 0).
+    { intros j ga Hj.
+      assert (Hlt : (j < Z.to_nat (uvis_argc W'))%nat).
+      { pose proof (lookup_lt_Some _ _ _ Hj) as Hl.
+        rewrite /UShCat.cat_args echo_args_length in Hl. exact Hl. }
+      rewrite /UShCat.cat_args (echo_args_lookup (uvis_M W') (uvis_av W')
+                                  (Z.to_nat (uvis_argc W')) j Hlt) in Hj.
+      injection Hj as <-. cbn [UserHeap.ua_ptr echo_arg].
+      exact (Hnz j Hlt). }
+    (* ---- THE KEY'S OWN READING OF `cat f` ---- *)
+    assert (Hno : forall i j : nat, (i < na)%nat -> (j < alen i)%nat ->
+              afun i j <> ubyte0).
+    { intros i j Hi Hj.
+      rewrite (Hafun i j ltac:(lia)
+                 ltac:(rewrite <- (Halen i ltac:(lia)); exact Hj)).
+      apply (UShEcho.line_nonul ws _ Hok).
+      exact (UkShEcho.echo_off_lt ws i j Hok ltac:(lia)
+               ltac:(rewrite <- (Halen i ltac:(lia)); lia)). }
+    destruct (UShCat.cat_key_args_holds na alen afun sts W' Hokk Hno)
+      as [Hargcna Hkey].
+    assert (Hargc2 : Z.to_nat (uvis_argc W') = 2%nat)
+      by (rewrite Hargcna Hna; exact Hws2).
+    destruct (Hkey 1%nat ltac:(lia)) as [Hkl Hkb].
+    assert (Halenv1 : alen 1%nat = 1%nat)
+      by (rewrite (Halen 1%nat ltac:(lia)); exact Halen1).
+    assert (Harg1f : forall ga : uarg,
+              UShCat.cat_args W' !! 1%nat = Some ga ->
+              UserHeap.ua_len ga = 1%nat
+              /\ forall j : nat, (j < 1)%nat ->
+                   UserHeap.ua_bytes ga j = FsImgCheck.fname_f !!! j).
+    { intros ga Hga.
+      rewrite /UShCat.cat_args
+              (echo_args_lookup (uvis_M W') (uvis_av W')
+                 (Z.to_nat (uvis_argc W')) 1%nat ltac:(lia)) in Hga.
+      injection Hga as <-. split; [ rewrite Hkl; exact Halenv1 | ].
+      intros j Hj.
+      rewrite (Hkb j ltac:(lia)).
+      rewrite (Hafun 1%nat j ltac:(lia) ltac:(lia)).
+      exact (Hfname j Hj). }
+    iAssert (UkRun.urun_nopipe (uvis_fd W')) as "#Hnpw'";
+      [ rewrite Hfd; iExact "Hnpw" | ].
+    iApply (UShCat.cat_entry_run W' Q Hpc Hsub Hsub2 Hx Hroom336 Hal8
+              Hstkrow Hbuf Hargsrow Havd Havs Hfdlen Hstop Hlzf
+              with "Hdep Hnpw' Hmp").
+    iIntros (N' h) "%Hpayeq Hstd Hcwf #Hcode #Hro #Hargv #HA Hbuf' Hrun".
+    pose proof (ukn_const_of_eq N' Q Hpayeq HQc) as Htc.
+    iDestruct ("Hpay" $! W' N' with "[%] [%] [%] Hstd Hcwf Hro Hargv HA HPay")
+      as (Ci) "[Hp HCi]";
+      [ exact Hpayeq | exact Hargc2 | exact Harg1f | ].
+    iApply (wp_kcat_start N' h (tf_resume_gpr0 (uvis_tf W')) (uvis_av W')
+              (UShCat.cat_args W') (fun _ : nat => ubyte0) 0%nat Ci
+              Hptr
+              ltac:(rewrite /UShCat.cat_args echo_args_length;
+                    rewrite (Z2Nat.id (uvis_argc W') Hargc0);
+                    unfold uvis_argc; symmetry; apply moi_of_uint)
+              ltac:(unfold uvis_av; symmetry; apply moi_of_uint)
+              with "Hp Hcode Hro Hargv HCi Hbuf' Hrun").
+  Qed.
+
+  (* ...AND THE PAYMENT IS INHABITED, which is the ANTI-VACUITY WITNESS of
+     the entry above: the four free laws pay [kcat_pay_all] at the trivial
+     payload ([UkCatMain.kcat_pay_all_of_law]), so [cat_image_entry]'s one
+     obligation is not a premise nobody can supply.  (The free open law can
+     only fund an open that FAILS, which is what [fd_lowest_closed] says;
+     the CLAIM-side payment is the one lane OFF-LINK's rows complete.) *)
+  Lemma cat_pay_at_of_law (W : uvis) :
+    fd_lowest_closed (take NSTD (uvis_fd W)) = None ->
+    UkRun.udepw_law 5 -∗ UkRun.udepw_law 15 -∗ UkRun.udepw_law 16 -∗
+    UkRun.udepw_law 21 -∗
+    cat_pay_at W (fun _ => True)%I emp%I.
+  Proof using .
+    intros Hnone. iIntros "#Hrd #Hop #Hwr #Hcl".
+    rewrite /cat_pay_at. iIntros (N') "%Hpayeq %H2 %H3 Hstd _ _ _ _ _".
+    pose proof (Hpayeq : UkRun.ukn_triv N') as Hti.
+    iExists (UserFd.ustd (ukn_fd N') (take NSTD (uvis_fd W))).
+    iFrame "Hstd".
+    iApply (UkCatMain.kcat_pay_all_of_law N' (UShCat.cat_args W)
+              (take NSTD (uvis_fd W)) (ukn_pay_free_of_triv N' Hti) Hnone
+              with "Hrd Hop Hwr Hcl").
   Qed.
 
 End UCatKernel.

@@ -61,7 +61,7 @@ Require Import RegFile.           (* [regfile] *)
 Require Import ProcGeom.          (* [NOFILE] *)
 Require Import UserPerm UexecSlot UexecRet.
 Require Import UserHeap UkRun UkRunLeaf.
-Require Import UserFd.
+Require Import UserFd UserCwd.
 Require Import ChildTok.
 Require Import ElfFile ElfUser ElfLoadable.
 Require Import PathElems.
@@ -95,6 +95,8 @@ Require Import UShEcho.           (* the push's own lemmas, and the node
                                      reading [echo_args_det_holds] *)
 Require User.CatSyms User.CatInstrs.
 Require Import UexecSG.
+Require Import CtxIdDefs.     (* [GenId] / [CurCtx] -- the real classes, so
+                                 the section's binders are not fresh types *)
 Local Open Scope Z_scope.
 Import Defs.
 
@@ -813,7 +815,7 @@ Section UShCat.
     UShEcho.echo_args_det ws.
 
   Lemma cat_args_det_holds (ws : list (list (bv 8))) : cat_args_det ws.
-  Proof using GEN XI. exact (UShEcho.echo_args_det_holds ws). Qed.
+  Proof using GEN. exact (UShEcho.echo_args_det_holds ws). Qed.
 
   (* cat's argument vector, as the KEY spells it ([UEchoKernel.echo_args]
      is a function of the key and names no program). *)
@@ -869,9 +871,22 @@ Section UShCat.
     (∀ (N : uk_names Σ) (h : CpuId),
        ⌜ ukn_pay N = Q ⌝ -∗
        UserFd.ustd (ukn_fd N) (take NSTD (uvis_fd W)) -∗
+       (* ...AND THE PROGRAM'S OWN HALF OF ITS WORKING DIRECTORY, which
+          echo's entry drops and cat's cannot: [UkCatDeed.kcat_o_of_deed]
+          RESOLVES A RELATIVE PATH, so the open spends the cwd and hands
+          it back ([UkCatDeed.kcat_open_hold]). *)
+       UserCwd.ucwd (ukn_cwd N) (uvis_cwd W) -∗
        cat_code (ukn_t N) -∗
        cat_rodata (ukn_t N) -∗
        uargv (ukn_d N) (uvis_av W) (cat_args W) -∗
+       (* ...AND THE PERSISTED ARGUMENT AREA ITSELF, as a map.  [uargv] is
+          the vector READ; the open's deed corollary
+          ([UkCatDeed.kcat_o_of_deed]) wants the AREA, because what it
+          resolves is a path whose bytes live in it. *)
+       ([∗ map] k ↦ b ∈ base.filter
+             (fun kv : Z * bv 8 => ~ (kv.1 < uint (uvis_sp W)))
+             (udata_lo (uvis_M W) (uvis_perm W) (uvis_sz W)),
+          ubyteq (ukn_d N) DfracDiscarded k b) -∗
        ubytes (ukn_d N) CatSyms.buf 512 (fun _ : nat => ubyte0) -∗
        urun N h (tf_resume_gpr0 (uvis_tf W))
          (mword_of_int CatSyms.start) 42 -∗
@@ -887,7 +902,7 @@ Section UShCat.
     iApply (uslot_of_urun_all W 42 Q ∅
               Hal8 ltac:(unfold uvis_sp in Hroom; lia) Hstk Hfdlen Hstop
               Hlzf with "Hdep Hnpw Hmp").
-    iIntros (N h) "%Hpayeq %Hheldeq %Hsz Hszf #Ht Hstd _ _ _ Dlo Dhi Hrun".
+    iIntros (N h) "%Hpayeq %Hheldeq %Hsz Hszf #Ht Hstd Hcwf _ _ Dlo Dhi Hrun".
     (* ---- the buffer, out of the EXCLUSIVE low half ---- *)
     iDestruct (ubytes_of_map (ukn_d N) _ CatSyms.buf 512
                  (fun _ : nat => ubyte0)
@@ -899,8 +914,8 @@ Section UShCat.
     (* ---- the argument area, PERSISTED ---- *)
     iMod (uarea_persist (ukn_d N) _ with "Dhi") as "#HA".
     rewrite Hpc.
-    iApply ("Hprog" $! N h with "[%] Hstd [] [] [] Hbuf Hrun");
-      [ exact Hpayeq | | | ].
+    iApply ("Hprog" $! N h with "[%] Hstd Hcwf [] [] [] [] Hbuf Hrun");
+      [ exact Hpayeq | | | | ].
     - iApply (cat_code_of_text (ukn_t N) (uvis_M W) (uvis_perm W) Hsub Hx
                 with "Ht").
     - iApply (cat_rodata_of_text (ukn_t N) (uvis_M W) (uvis_perm W) Hsub2 Hx
@@ -909,6 +924,7 @@ Section UShCat.
       iApply (echo_uargv_of_area (ukn_d N) (uvis_M W) (uvis_perm W)
                 (uvis_sz W) (uvis_av W) (uint (uvis_sp W)) (uvis_argc W)
                 Hsp0 Hargs Havd Havs with "HA").
+    - iExact "HA".
   Qed.
 
   (* ------------------------------------------------------------------- *)
@@ -979,7 +995,7 @@ Section UShCat.
     iApply (cat_entry_run W (fun _ => True)%I Hpc Hsub Hsub2 Hx Hroom Hal8
               Hstk Hbuf Hargs Havd Havs Hfdlen Hstop Hlzf
               with "Hdep Hnpw Hmp").
-    iIntros (N h) "%Hpayeq Hstd #Hcode #Hro #Hargv Hbuf Hrun".
+    iIntros (N h) "%Hpayeq Hstd _ #Hcode #Hro #Hargv _ Hbuf Hrun".
     pose proof (Hpayeq : UkRun.ukn_triv N) as Hti.
     pose proof (ukn_const_of_triv N Hti) as Htc.
     iApply (wp_kcat_start N h (tf_resume_gpr0 (uvis_tf W)) (uvis_av W)

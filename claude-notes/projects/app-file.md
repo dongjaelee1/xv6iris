@@ -6232,3 +6232,338 @@ NEW 6 (4, 5, 13, 18, 21, 22), free 2 (11, 19).
    it fixed it (durable-notes' probe, `find iris -name '*.vos' -size
    +0c`).  `tools/comment_quote_check.py` caught two quotations wrapped
    across comment lines before any build.
+
+### CAT-GEOM (2026-09-17) — cat's EXEC/ARGV GEOMETRY LANDS WHOLE, THE "cannot open" ARM IS FUNDED AT THE CURSOR, AND `cat_image_entry` IS A THEOREM AT ONE NAMED PAYMENT
+
+Branch `app-file/cat-entry`, worktree `/shared/xv6iris-3-lanes/cat-entry`,
+merged with `main` twice (`7753cbf42`, then SKELETON's `5894e21dc`; the
+only conflicts were `claude-notes/projects/app-file.md`, resolved by
+keeping every findings block).  Commits: `daf938ef3` (M1), `5af1d6f20`
+(M2), and the entry's.
+
+**THE LANE'S VERDICT IN ONE LINE: the two mechanical items CAT-ENTRY-2
+named are DONE — cat has echo's ~1,500 lines of exec/argv geometry at its
+own image (`iris/UShCat.v`, NEW) and its `cat: cannot open %s` arm is
+funded at the console cursor (`iris/UCatKernel.v`) — and
+`UCatKernel.cat_image_entry` is proved from them, with cat's whole
+PAYMENT as ONE named, inhabited obligation `cat_pay_at`.**
+
+**M1 — cat's GEOMETRY: `iris/UShCat.v` (NEW, 1,055 lines), at
+`_CoqProject` line 1606 between `UCatOut.v` and `UCatKernel.v`.**
+
+`UShEcho.v`'s derivation at `ElfUser.cat_elf`, `CatSyms` and
+`UkCatMain.wp_kcat_start`: `cat_kexec_top`/`_sz`, `cat_elf_loadable`,
+`cat_anode_loadable`, `cat_argv_fits`/`cat_room`/`cat_argv_fits_of_ok`,
+`cat_loads`, `cat_start_pc`, `cat_bss_img`, `cat_union_comm_bool`,
+`cat_kexec_geom` (:238), `cat_kexec_pages` (:353), `cat_kexec_argsc`,
+`cat_kexec_avd`/`_avs`, `cat_kexec_stkrow`, `cat_kexec_bufrow`,
+`cat_kexec_argnz`, `cat_kexec_entry_rows` (:634), `cat_room_of_det`
+(:700), `cat_key_args`/`_holds` (:739), and in the section
+`cat_args_det`/`_holds`, `cat_args`, `cat_entry_run` (:836),
+`cat_uexec_slot` (:940), `cat_slot_of_kexec`/`_holds` (:1035).
+
+**CAT'S LITERALS, EXHAUSTIVELY, WHERE THEY DIFFER FROM ECHO'S.**
+
+- **The stack geometry does NOT differ, and that is the finding.**
+  `CatData.catMemEnd` is `0x1220` where `EchoData.echoMemEnd` is
+  `0x1020`, and `pgroundup` of BOTH is `0x2000` — so `kexec_top` is
+  `0x2000` and `kexec_sz` `0x4000` for both, and every closed number
+  `UShEcho.echo_kexec_geom` computes (`0x3000`, `0x4000`, the guard, the
+  stack page) is cat's unchanged.  The whole of `echo_kexec_geom`,
+  `_argsc`, `_avd`, `_avs`, `_stkrow` ports by changing the ELF name and
+  one integer.
+- **The two PT_LOADs.**  cat `(0x0, 0xecc, R-X)` and `(0x1000, 0x220,
+  RW-)`; echo `(0x0, 0xdcc, R-X)` and `(0x1000, 0x20, RW-)`.  Both first
+  segments fit inside page 0, so the X-and-not-W page row is the same
+  proof.  The SECOND load is read here and not in echo's geometry — see
+  the .bss row below.
+- **The entry.**  `CatSyms.start` = `CatData.catEntry` = `0xf6`;
+  `EchoSyms.start` = `EchoData.echoEntry` = `0x7c`.  Both 2-aligned, so
+  `ret_pc` is the identity and `cat_start_pc` is one `vm_compute`.
+- **The frame is FORTY-TWO words, not twelve.**
+  `UkCatMain.wp_kcat_start` runs on `2 + (6 + (8 + (10 + (12 + (4 +
+  n)))))`, so at `n = 0` cat needs **336 bytes** below the entry sp where
+  echo needs 96, `cat_argv_fits` is `PGSIZE - 336` where
+  `echo_argv_fits` is `PGSIZE - 96`, and `cat_kexec_geom` concludes
+  `0x3150 <= kxc_sp_final` where echo's concludes `0x3060`.  An
+  admissible line still earns it with room to spare: fewer than ten
+  words at under `line_max` bytes each is under 1,250 bytes of a
+  4,096-byte page.
+- **cat OWNS STATIC DATA and echo owns none: `CatSyms.buf` = `0x1010`,
+  512 bytes, inside `.bss` (`ElfUser.cat_bss_lo` = `0x1000`,
+  `cat_bss_size` = 544, so `[0x1000, 0x1220)`).**
+- **`CatSyms.freep` = `0x1010`'s neighbour at `0x1000`, `CatSyms.base` =
+  `0x1210`** — both inside the same zero window, neither read.
+- cat's `.rodata` holds the `cat: cannot open %s` literal at
+  `UkCatMain.cm_msg` = `0x9e0`, twenty bytes, `%` at 17.  echo's entry
+  hands over only `echo_code`; cat's hands over `cat_rodata` too.
+
+**THE FOUR PLACES WHERE CAT'S ENTRY IS A DIFFERENT PROOF AND NOT A
+RE-INSTANTIATION.**
+
+1. **`UkRun.uslot_of_urun_ro` CANNOT BUILD IT.**  That carve spends
+   everything below the frame base and persists everything at or above
+   the entry sp; cat needs `ubytes γd CatSyms.buf 512 f` EXCLUSIVELY and
+   `CatSyms.buf` is below the base.  `cat_entry_run` takes
+   `uslot_of_urun_all` instead — the exclusive low half AND the
+   exclusive high half — cuts the 512 bytes out of the low half
+   (`UserHeap.ubytes_of_map` at `umap_filter_lookup_lt`) and PERSISTS the
+   high half itself (`UserHeap.uarea_persist`), after which
+   `UEchoKernel.echo_uargv_of_area` reads the vector off it exactly as
+   echo's entry does.  **The `∅`-vs-nonempty question does not arise:
+   the halves are disjoint by construction and the cut is at
+   `uint sp - 336`, which `cat_kexec_bufrow` proves is above `0x1210`.**
+2. **THE BUFFER'S BYTES ARE THE IMAGE'S ZERO WINDOW.**  `cat_bss_img` is
+   `UInitSh.sh_bss_img` at /cat: `elf_image cat_elf` is
+   `(cat_bytes ∪ cat_data) ∪ map_seqZ 0x1000 (replicate 544 zero)`, the
+   two dumped maps stop at `CatData.cat_data_hi` = `0xecc`, so the union
+   falls through to the zero map on the whole `.bss`.  Its WRITE
+   permission is the SECOND PT_LOAD's (`kexec_seg_perm p1` =
+   `MkUperm false true` at flags 6), which is why `cat_kexec_pages`
+   reads load 1 and `echo_kexec_pages` reads only load 0;
+   `kexec_seg_pages (elf_loads f) 1 p1 0x1000` needs
+   `pgroundup (kexec_sz_after [p0]) <= 0x1000`, i.e.
+   `pgroundup 0xecc = 0x1000`, through `KexecBuilt.kexec_sz_after_snoc_le`.
+3. **cat DEREFERENCES argv[1], so no slot may be NULL.**
+   `wp_kcat_start` takes `forall j g, args !! j = Some g -> ua_ptr g <> 0`
+   and echo's entry has no twin; `cat_kexec_argnz` gets it from
+   `cat_kexec_geom`'s `kxc_sp_final < kxc_sp (S i)` (every string is
+   inside the stack page, and the page does not contain 0).
+4. **cat SPENDS ITS WORKING DIRECTORY and echo drops it.**
+   `UkCatDeed.kcat_o_of_deed` resolves a RELATIVE path
+   (`um_start_of cw pl = ROOTINO`), so `cat_entry_run` hands
+   `UserCwd.ucwd (ukn_cwd N) (uvis_cwd W)` to the payment;
+   `UEchoKernel.echo_uexec_slot` introduces it as `_`.
+
+**WHAT IS NOT DUPLICATED, AND THE REASON IS A FINDING.**
+`UShEcho.uscan_nul`, `uk_slen_nul`, `bv_le8_is_Some`, `kexec_vec_bytes`,
+`uk_argv_p_of_bytes`, `ubyte0_bv0`, `kxc_span_le_line`, `line_nonul` are
+about the PUSH and not about the program, and `UShCat.v` applies them.
+More importantly **`UShEcho.echo_args_det_holds` IS cat's argument
+reading unchanged**: it is a fact about the malloc'd node SH BUILT
+(`UkShEcho.echo_cmd`/`echo_off`/`echo_alen`) and names no image at all.
+`UShCat.cat_args_det`/`_holds` is that statement under cat's name, by
+`exact`.  Likewise `UEchoKernel.echo_arg`/`echo_args`/
+`echo_uargv_of_area` are functions of the KEY and name no program, so
+cat's `cat_args W := echo_args (uvis_M W) (uvis_av W) (Z.to_nat
+(uvis_argc W))` is a definition and not a copy.  Only
+`cat_key_args_holds` is a real copy (it rewrites by `cat_kexec_sz`).
+
+**M2 — THE DIAGNOSTIC AT THE CURSOR: `iris/UCatKernel.v`, ADDITIVE.**
+
+ulib's `fprintf` reaches `write(2, …)` one byte at a time out of putc's
+own frame, so the arm spends `UkCat.kcat_pay_seq` — a chain of
+`UkCat.kcat_wb`s — and not a buffer write.
+
+- **`UCatKernel.kcat_wb_of_link`** — `cat_w_of_link` at count ONE, at
+  **fd 2**, with the byte putc LENDS the payment as the run.  Three
+  things carry over unchanged and one does not: the halving
+  (`UkWriteLeaf.ubytes_halve` at `n = 1`, through the new one-line
+  `cat_ubytes_one : ubytes γd a 1 (fun _ => b) ⊣⊢ ubyte γd a b`), the
+  deposit (`uwrite_chain_sup_ret`), the chain (`UCatOut.cch_chain` at
+  `c = 1`) — and **the no-short equation is needed HERE TOO and is not
+  exported**: `UkWriteLeaf.uwrite_no_short` is what says the one byte
+  actually went out, and without it the chain would have advanced the
+  era's cursor while the write had not.  `kcat_wb`'s `Co` cannot mention
+  the return, so the equation is consumed inside.
+- **`UCatKernel.kcat_pay_seq_of_link`** — one induction over `k`,
+  generalising the chain index `i` and the cursor `p` together at
+  `cont … !! (p + d) = Some (fb (i + d))`.  Ci/Cend are
+  `ustd γfd l ∗ cch … p` / `… (p + k)`.
+- **THE PURE HALF.**  `FileDisc.alt_catopen` is
+  `cat: cannot open f\n$ ` — TWENTY-ONE bytes, of which cat writes the
+  first NINETEEN and the last two are the SHELL's prompt.
+  `cat_dg_lit_low` (`alt_catopen !! d = Some (cm_lit d)` for `d < 17`),
+  `cat_dg_lit_arg` (byte 17 is the argument's), `cat_dg_lit_high`
+  (byte 18 is `cm_lit 19`, the newline) — each a `forallb`-over-`seq`
+  `vm_compute`, which is `UkCatMain.cm_str`'s own shape.
+  **These hold ONLY at a one-byte argument, and that is not a
+  restriction to lift: `FileDisc.alt_catopen` NAMES `f`, so a longer file
+  name is a claim about a different alternative and there is nothing to
+  generalise over.**
+- **`UCatKernel.cat_dg_open_of_link`** builds `UkCatMain.kcat_dg_open`
+  from the three runs spliced at `cm_msg_q`.  `kcat_dg_open`'s own input
+  is `emp`, so the ledger and the cursor are FRAMED IN at the head
+  (`UkCat.kcat_pay_seq_frame` after `kcat_pay_seq_in` at
+  `emp ∗ C -∗ C`).  **`UCatKernel.cat_dg_open_absent`** is it at an
+  ABSENT deed, where all three pure premises are closed:
+  `UCatOut.cat_out_of_tie_none` + `ralt_dec_enc` say the round's
+  continuation IS `alt_catopen` — CAT-ENTRY's ruling that an absent deed
+  files `RCRan` and not `RCNoOpen`, taken literally.  The cursor runs
+  `0 → 19`.
+
+**M3 — `UCatKernel.cat_image_entry`, AND WHAT IT TAKES.**
+
+    Definition cat_pay_at (W : uvis) (Q : Z -> iProp Σ) (Pay : iProp Σ)
+      : iProp Σ :=
+      (∀ N : uk_names Σ,
+         ⌜ ukn_pay N = Q ⌝ -∗
+         ⌜ Z.to_nat (uvis_argc W) = 2%nat ⌝ -∗
+         ⌜ forall ga : uarg, UShCat.cat_args W !! 1%nat = Some ga ->
+             UserHeap.ua_len ga = 1%nat
+             /\ forall j : nat, (j < 1)%nat ->
+                  UserHeap.ua_bytes ga j = FsImgCheck.fname_f !!! j ⌝ -∗
+         UserFd.ustd (ukn_fd N) (take NSTD (uvis_fd W)) -∗
+         UserCwd.ucwd (ukn_cwd N) (uvis_cwd W) -∗
+         UCodeCat.cat_rodata (ukn_t N) -∗
+         UserHeap.uargv (ukn_d N) (uvis_av W) (UShCat.cat_args W) -∗
+         ([∗ map] k ↦ b ∈ base.filter
+               (fun kv : Z * bv 8 => ~ (kv.1 < uint (uvis_sp W)))
+               (udata_lo (uvis_M W) (uvis_perm W) (uvis_sz W)),
+            ubyteq (ukn_d N) DfracDiscarded k b) -∗
+         Pay -∗
+         ∃ Ci : iProp Σ,
+           UkCatMain.kcat_pay_all N (UShCat.cat_args W) Ci (ukn_pay N (-1))
+           ∗ Ci)%I.
+
+    Lemma cat_image_entry (ws : list (list (bv 8))) (Mn : gmap Z (bv 8))
+        (sv t : Z) (gn : nat -> bv 8)
+        (sts : list fdstate) (cw : Z) (cs : gset gname) (pidv : mword 32)
+        (Q : Z -> iProp Σ) (Pay : iProp Σ) :
+      (forall x y : Z, Q x = Q y) ->
+      line_ok ws ->
+      UShEcho.echo_node_img ws Mn sv t gn ->
+      UkShEcho.echo_argv_bytes ws gn ->
+      length sts = NOFILE ->
+      length ws = 2%nat ->
+      UkShEcho.echo_alen ws 1%nat = 1%nat ->
+      (forall j : nat, (j < 1)%nat ->
+         wl_line ws !!! (UkShEcho.echo_off ws 1%nat + j)%nat
+         = FsImgCheck.fname_f !!! j) ->
+      □ (∀ W' : uvis, cat_pay_at W' Q Pay) -∗
+      UkRun.urun_nopipe sts -∗ udep -∗
+      image_entry ElfUser.cat_elf Mn (mword_of_int (t + 8) : mword 64) sts
+        cw cs pidv Q Pay uslot.
+
+Read off it, in the order CAT-ENTRY-2 asked for:
+
+- **`cw`, `cs` and `pidv` ARE FREE**, as echo's are.  (`cw` is pinned
+  INSIDE the payment, where `UkCatDeed.kcat_o_of_deed`'s
+  `um_start_of cw pl = ROOTINO` lives — not on the entry.)
+- **`Q` AND `Pay` ARE PARAMETERS**, which is what makes this ONE lemma
+  and not two.  The UNPAID instance is `Q := fun _ => True`, `Pay := emp`
+  (`cat_pay_at_of_law` below); the PAID one is
+  `Q := fun _ => UCatOut.catq_filed v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P`
+  (or `catq_unfiled …`, both `*_const`, which is the `forall x y, Q x =
+  Q y` the record wants) with `Pay := UShRound.cat_pay I q`.
+- **THE ARGUMENT READING IS CONSUMED HERE**, through
+  `ExecEntry.image_entry_of_at`: the entry is owed at every shape the
+  kernel might build, and what makes it payable is that sh's own node
+  DETERMINES the shape (`UShCat.cat_args_det_holds`), after which
+  `UShCat.cat_key_args_holds` turns `(na, alen, afun)` into the KEY's own
+  reading — which is what the payment is handed as its three `⌜⌝`
+  premises.
+- **THE MODE IS NEVER A LITERAL.**  `cat_pay_at` mentions no `offmode`
+  at all: `UCatKernel.cat_held_read`'s `Hold` — which SKELETON
+  instantiates as `UShRound.cat_hold N fd wb i γo om q bs` at a
+  PARAMETER `om` — lives inside the payer, so OFF-LINK's shape plugs in
+  without the entry moving.
+- **THE PAYMENT IS INHABITED**, which is the anti-vacuity witness:
+  `UCatKernel.cat_pay_at_of_law` builds `cat_pay_at W (fun _ => True) emp`
+  from `udepw_law 5/15/16/21` and `fd_lowest_closed (take NSTD (uvis_fd
+  W)) = None` through `UkCatMain.kcat_pay_all_of_law`.
+  `UShCat.cat_uexec_slot` / `cat_slot_of_kexec_holds` are the same
+  witness one level down, at the exec channel's image fact.
+
+**WHAT REMAINS, AND WHO OWNS EACH.**
+
+1. **`cat_pay_at` AT THE CLAIM — the one thing this lane did not
+   build.**  Its four arms and what each needs:
+   (a) the ABSENT arm is `UkCatDeed.kcat_o_of_deed_miss` then
+   `UCatKernel.cat_dg_open_absent` (BOTH LANDED) — what is missing is
+   only `ArgPath.arg_path_of` at `argv[1]`, i.e. "the one byte at
+   `ua_ptr ga` is `fname_f`" read out of the persisted area the entry now
+   hands over.  Small, and this lane's own next step.
+   (b) the PRESENT arm is `kcat_o_of_deed` then `UCatKernel.cat_round_at`
+   then `UkCat.kcat_cl_of_dep`/`kcat_cldep_nonpipe`.  It is blocked on
+   **the OFFSET PUBLISH**: `kcat_o_of_deed` hands back
+   `ualloc γfd l fd (FdOpen true false (FdInode i γo OffParked))` and
+   `cat_round_at` wants `cat_held_read Hold …` at a HELD row with the
+   program's `uoff γo p`.  **Lane OFF-LINK** (`UserOff.off_pub_hand_0` in
+   `ProofSysOpenPub`, per SKELETON's `Hopen_hand`).
+   (c) `cat_round_at`'s `Hw` — CAT-ENTRY-2's stop, unchanged: the TAINT
+   arm needs "a read of `cnt` bytes returns at most `cnt`" in BOTH arms
+   of the read's post.  **Lane OFF-LINK** (`UkRunSys.
+   wp_uk_ecall_read_file`, relayed through `FileOpen.file_read_arms_learn`
+   into `UkFileOpen`'s two deed leaves).
+   (d) the TAINT disjunct of BOTH open corollaries hands back
+   `ustd_any γfd ∗ file_taint c`, and `ustd_any` does not say fd 2 is the
+   console — so `kcat_wb_of_link` cannot be run there.
+   **THIS IS A REAL GAP AND NOT A PROOF EFFORT**: `AppFile.
+   file_taint_of_sup` runs sup → taint only, so the taint does NOT buy
+   the free write law back.  Either the open's taint disjunct keeps the
+   LEDGER (`ustd γfd l`, which the leaf has in hand and throws away), or
+   a tainted cat needs a generic slot of its own.  **Owner: whoever next
+   touches `UkCatDeed`'s two corollaries; the cheap fix is the first.**
+2. **`UShRound.Hchild_cat` NEEDS THE NODE PREMISES ADDED.**  As written
+   it quantifies `M` and `av` FREE, which would make cat's entry a claim
+   about EVERY argument vector — and cat's diagnostic names `f`, so it is
+   false there.  The five premises `cat_image_entry` takes
+   (`line_ok ws`, `echo_node_img ws M sv t gn`, `echo_argv_bytes ws gn`,
+   `length ws = 2`, and the two about word 1) are all facts sh HAS: it
+   built the node and it parsed the line.  With them
+   `Hchild_cat` is one application, `av := mword_of_int (t + 8)`.
+   **Owner: lane SKELETON / sh's round.**
+3. **`UCatOut.catq_filed` MEASURES THE ROUND AND NOT CAT'S RUN.**  It is
+   `cch … (length (cont (cat_st cs0 s0 I0) LCat (ralt_dec a)))` — at the
+   diagnostic that is 21 and cat writes 19; at the content arm it is
+   `|bs| + 2` and cat writes `|bs|`.  **The two extra bytes are the
+   SHELL's prompt, which cat never writes.**  `UEchoOut.
+   echo_uexec_slot_at` has the right shape and takes
+   `□ (ech … (length (wl_line (drop 1 ws))) -∗ Q (-1))` — the cursor at
+   the PROGRAM's own output length.  `cat_image_entry` sidesteps it by
+   taking `Q` as a parameter, so nothing is wrong today; but a caller
+   that instantiates `Q := catq_filed …` owes two bytes it cannot
+   produce.  **Owner: whoever assembles sh's round; the fix is to file
+   `catq_filed` at cat's own end cursor, as echo's does.**
+
+**EVERY STATEMENT THAT MOVED: NONE.**  `iris/UShCat.v` is new;
+`iris/UCatKernel.v` is ADDITIVE (`cat_ubytes_one`, `kcat_wb_of_link`,
+`kcat_pay_seq_of_link`, `cat_dg_lit_low`/`_high`/`_arg`,
+`cat_dg_open_of_link`, `cat_dg_open_absent`, `cat_pay_at`,
+`cat_image_entry`, `cat_pay_at_of_law`, plus five `Require`s:
+`UkCatMain`, `SpecKexec`, `UkAbi`, `ExecEntry`, `UEchoKernel`,
+`UShCat`); `iris/_CoqProject` gains one line.  Nothing in `UkCat.v`,
+`UkCatCat.v`, `UkCatMain.v`, `UkCatDeed.v`, `UCatOut.v`, `UkWriteLeaf.v`,
+`UShEcho.v`, `UEchoKernel.v` or any file another lane owns was touched.
+
+**THE BAR.**  `./gcp-rocq/run-on-gcp --proofs -k` over the whole tree on
+the lane's remote tree: `EXIT=0`, ZERO `Error`.  Nothing is `Admitted`;
+`grep -c "^ *Proof\.$"` is 0 in both touched files.  `make
+audit-all-only` / `make audit-tree-only` / `make gen-ucode`: see the run
+recorded with this block.  `Print Assumptions
+UCatKernel.cat_image_entry` is **`UShEcho.echo_image_entry`'s list
+EXACTLY** — the eleven `PrimInt63`/`PrimString` primitives plus
+`resv_matches`, `resv_is_valid` and
+`functional_extensionality_dep`, FOURTEEN and nothing else; and
+`UCatKernel.cat_dg_open_absent` is the THREE non-primitive ones alone
+(`resv_matches`, `resv_is_valid`, `functional_extensionality_dep`).
+
+**FOUR SMALLER FINDINGS.**
+
+- **``Context `{XI : CurCtx}`` WITHOUT `CtxIdDefs` IMPORTED SILENTLY
+  BINDS A FRESH `CurCtx : Type`.**  It compiles, every lemma that does
+  not use it is unaffected, and the failure surfaces one file later as
+  `Could not find an instance for ?XI : ?CurCtx` at a `Proof using GEN
+  XI` that forced the bogus one in.  The tell is `CurCtx : Type` in the
+  goal's environment beside `XI : CurCtx`.  Require `CtxIdDefs`
+  explicitly in any file that opens a section with those binders —
+  `Require Import` is NOT transitive for `Import`, so inheriting it
+  through `UkRun`/`UEchoKernel` does not work.
+- **`!!!` ON A `list uarg` HAS NO INSTANCE.**  `UserHeap.uarg` is not
+  `Inhabited`, so a premise spelled `args !!! 1` fails elaboration with
+  "unresolved implicit `?LookupTotal`" pages after the statement.  Spell
+  such a premise `forall ga, args !! 1 = Some ga -> …`; it is the
+  better statement anyway (it says nothing at a short vector).
+- **AN `ltac:(rewrite H; …)` SIDE CONDITION INSIDE AN `iApply`'s
+  ARGUMENT LIST RUNS AGAINST A GOAL THAT IS STILL AN EVAR**, so the
+  rewrite reports "the LHS does not match any subterm" on a goal that
+  visibly contains it.  `lia` with the equation in context works where
+  `rewrite; lia` does not; for anything bigger, `assert` the side
+  condition before the `iApply`.  (Same class as the notes' hoisted
+  `HD'` in `UserHeap.ubytes_of_map`.)
+- **`change (Z.of_nat 1) with 1%Z` IS NOT A NO-OP**: the `1%Z` is
+  elaborated before the scope is known and the tactic reports a failure
+  naming `mword_of_int 1%nat`.  Where a hypothesis already carries
+  `mword_of_int (Z.of_nat nb)`, rewrite BY it and never normalise the
+  literal first.

@@ -73,7 +73,7 @@ for `pipe`'s failure — already walked as a premise).
    the arm as a theorem TODAY, tainted, proving the walk is complete.
 
 ## Bar
-`--proofs` green; `UkShRun.v`'s landed statements unchanged; the arm's
+`ec2-lane.sh <lane> build` (whole tree) green; `UkShRun.v`'s landed statements unchanged; the arm's
 lemma compiles with every non-code obligation a named parameter.
 
 ## STOP rules

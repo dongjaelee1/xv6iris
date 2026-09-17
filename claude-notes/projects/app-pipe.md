@@ -13,12 +13,13 @@ arm is the theorem's one named premise (`pipe_both_law`).
 
 ## Rules for every lane
 
-- Each lane works in ITS OWN clone of this tree (`/shared/xv6iris-pipe-<lane>`,
-  branch `app-pipe/<lane>` off the SHA the brief names) and builds on the
-  VM from that clone: `./gcp-rocq/run-on-gcp --check <file>` while
-  iterating, `--proofs` before landing (`claude-notes/remote-build-gcp.md`).
-  Never a local `make`, never a remote `make`.  Each clone has its own
-  remote tree, so lanes do not race each other.
+- Each lane works in ITS OWN worktree of this tree (`/shared/xv6iris-pipe-<lane>`,
+  branch `app-pipe/<lane>` off the SHA the brief names) and builds ONLY
+  on the EC2 mirror, in a fully built clone of the same name there,
+  through `claude-notes/projects/app-pipe-briefs/ec2-lane.sh <lane>
+  check|build|run` (which syncs first).  Never a local `rocq`/`coqc`/
+  `make` (the standing order; this machine is the owner's, 8 cores/15 GB).
+  Lanes do not share a remote clone, so they do not race each other.
 - No landed statement moves unless the lane's brief says so.  `AppEcho.v`,
   `EchoOut.v`, `EchoDisc.v`, `AppInv.v`, `App.v` and every `AppFile*`/
   `UEchoFile`/`UCat*`/`UShCat`/`UShRedir*` file of upstream's FILE campaign

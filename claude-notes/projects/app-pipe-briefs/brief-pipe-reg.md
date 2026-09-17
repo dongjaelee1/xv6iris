@@ -72,7 +72,7 @@ taint arm.  The exit row is `SpecFileclose.fileclose_cpays sts :=
    PIPE-REG).  `UkReadPipe.v:414`'s comment updated.
 
 ## Bar
-`--proofs` green; statements outside the files above unchanged; the three
+`ec2-lane.sh <lane> build` (whole tree) green; statements outside the files above unchanged; the three
 audits unmoved.
 
 ## STOP rules

@@ -50,7 +50,7 @@ two walks; `wp_uk_ecall_dup*` `:985/:1181/:1337`; `wp_uk_ecall_close_std`
    (lane PIPE-REG lands the registry; you only fix the prose).
 
 ## Bar
-`--proofs` green; the handle-fixed leaves' statements unchanged; audits
+`ec2-lane.sh <lane> build` (whole tree) green; the handle-fixed leaves' statements unchanged; audits
 unmoved.
 
 ## STOP rules

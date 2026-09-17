@@ -42,10 +42,10 @@ holder loses anything.  Do NOT try to prove the converse.
 
 ## Bar
 
-`./gcp-rocq/run-on-gcp --proofs` green on your branch; no statement
+`ec2-lane.sh <lane> build` (whole tree) green on your branch; no statement
 outside `PipeQueue.v`, the pipe `Spec*`/`Proof*` files and the
 holder-side one-liners moves; echo audit 14, tree 10, system 13 unmoved
-(run `--proofs` then the three `make audit-*-only` through `run-on-gcp`
+(run `ec2-lane.sh <lane> build` (whole tree) then the three `make audit-*-only` through `ec2-lane.sh <lane> run`
 if time permits, else say you did not).
 
 ## STOP rules

@@ -37,7 +37,7 @@ the pinned disassembly is what the landed walks quote.
    forked child may see) grows the pipe shape.
 
 ## Bar
-`--proofs` green.  The simple-line and redirect-line theorems UNCHANGED
+`ec2-lane.sh <lane> build` (whole tree) green.  The simple-line and redirect-line theorems UNCHANGED
 (byte-identical statements; you may add lemmas beside them).  Nothing
 under `UkShRun.v` edited (that is lane SH-PIPE's; you only BUILD the node,
 you do not consume it).

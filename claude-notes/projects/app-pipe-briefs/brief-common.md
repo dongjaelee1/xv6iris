@@ -23,15 +23,27 @@ names, and to REPORT — precisely — anything the design got wrong.
 
 ## How you build
 
-- ONLY on the GCP VM, from your clone's directory:
-  `./gcp-rocq/run-on-gcp --check <File.v>` (seconds: elaborates the file,
-  skips opaque proofs — catches a broken STATEMENT), `--check-proof <File.v>`
-  (checks one file's proofs), `--proofs` (the whole tree, minutes; run it
-  before you report "landed").  Read `claude-notes/remote-build-gcp.md`
-  first.  NEVER run `rocq`, `coqc` or `make` locally, NEVER a remote `make`.
-  Each clone has its own remote tree, so you do not race other lanes.
-- If `run-on-gcp` fails to reach the VM (auth, gcloud missing), STOP and
-  report that as your first line; do not try to build any other way.
+- ONLY on the EC2 mirror (a 32-core / 246 GB box; the standing order is
+  NEVER run `rocq`, `coqc` or `make` locally -- this machine has 8 cores
+  and 15 GB and it is the owner's).  Your clone on the mirror is FULLY
+  BUILT at the base SHA, so dependencies never need building.  Use the
+  helper in this directory, from anywhere:
+
+      claude-notes/projects/app-pipe-briefs/ec2-lane.sh <lane> check File.v   # seconds: statement check (make File.vos)
+      claude-notes/projects/app-pipe-briefs/ec2-lane.sh <lane> build File.vo  # this file and its cone, for real
+      claude-notes/projects/app-pipe-briefs/ec2-lane.sh <lane> build          # the whole iris tree (minutes) -- before you report "landed"
+      claude-notes/projects/app-pipe-briefs/ec2-lane.sh <lane> run '<cmd>'    # e.g. run 'make -f CoqMakefile audit-echo-only' if the brief asks
+
+  `<lane>` is the suffix of your worktree (`/shared/xv6iris-pipe-<lane>`).
+  Every call first SYNCS your worktree's modified/new/committed files to
+  the remote clone (mtimes bumped so make rebuilds them) -- you never scp
+  by hand.  `check` catches a broken STATEMENT and not a broken PROOF;
+  `build` prints only errors and ends with `RC=<n>` -- trust ONLY that
+  line (a quiet log with RC=2 is a failure; `Segmentation fault` is a
+  failure).  If you add a file, add it to `iris/_CoqProject` in your
+  worktree; the helper regenerates the remote CoqMakefile.
+- If the helper cannot reach the mirror (ssh timeout), STOP and report
+  that as your first line; do not build any other way.
 
 ## Rules
 
@@ -45,7 +57,7 @@ names, and to REPORT — precisely — anything the design got wrong.
 - Prefer NEW files over editing crowded landed files; when you must edit a
   landed file, keep every existing lemma's statement byte-identical.
 - The audits must not move: `make audit-echo-only` 14, `make audit-tree-only`
-  10, `make audit-only` 13 (run on the VM through `run-on-gcp` if your
+  10, `make audit-only` 13 (run on the mirror through `ec2-lane.sh <lane> run` if your
   brief asks; otherwise just do not touch what they cover).
 - Refuted designs are the most valuable output.  Check a shape at the
   STATEMENT before proving: mask, persistence, timelessness, which side of

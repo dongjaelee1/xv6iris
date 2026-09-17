@@ -2195,3 +2195,163 @@ payload-free.  What SH-ROUND must NOT assume is a 0x601 bundle: until
 seam 1's three restatements land, `FileOpen.file_open_create_au` takes the
 truncate piece as a PREMISE, so the redirect child's open is suppliable
 only at `om_trunc = false` (`file_open_create_au_notrunc`).
+
+### ADEQUACY (2026-09-17) — THE TOP-LEVEL THEOREM IS A THEOREM; NO WALL, ONE PREMISE
+
+Branch `app-file/adequacy`, commit `cd2625d57`.  Whole tree GREEN on the
+lane's remote tree (`run-on-gcp --proofs -k`, `EXIT=0`, zero `Error`; only
+the one new file compiled).  `make audit-file-only` runs and prints
+EXACTLY FOURTEEN — the echo theorem's fourteen, item for item.  `make
+audit-all-only` UNCHANGED (echo fourteen, system thirteen).  Nothing is
+`Admitted`, there is no new `Axiom`, and every `Qed` carries `Proof
+using`.  TWO new files and two edited: `iris/UFileBootAdequacy.v`,
+`iris/FileAssumptions.v`, two rows of `iris/_CoqProject`, and the
+`audit-file`/`audit-file-only` rules in the `Makefile`.  No landed
+statement moves; `AppFileRec.v` is untouched.
+
+**NO WALL.**  Every premise of `App.xv6_app_adequacy` composes at
+`AppFileRec.app_file` as landed: the eleven laws are
+`AppFileRec.file_laws` (ten discharged, `al_programs` its section
+hypothesis), era 0's claim is `AppFileRec.file_Happ_init` at the literal
+mkfs image, and `Hphi` is `RiscvAdequacy.obs_ledger_at_phi` at
+`AppFileRec.file_Hphi_R`.  Nothing about the crash-slot transport
+(`file_xfer_boot`), the kill/taint laws or the UART ledger steps needed
+restating.  `user-tree.md` §8.2's three walls do not recur here, because
+STAGE/STAGE-2/FILE-DEC had already paid what they were about.
+
+**WHICH MOULD, AND WHY.**  `UInitBootAdequacy.v` (ECHO), not
+`UTreeAdequacy.v`.  The two files are the same statement one application
+over, but the tree twin's `app_phi` is `True`, its `Hphi` is `Logic.I`
+and its closed corollary keeps only the reducibility conjunct.  The file
+application has a real trace predicate read off its own ledger, so the
+echo shape is the one that fits: BOTH conjuncts survive into the
+corollary.  What is taken from the tree twin is only its treatment of a
+law that is not proved yet.
+
+**WHAT LANDED, with file:lemma.**
+
+- `iris/UFileBootAdequacy.v:121  file_prog_law` — `App.al_programs` at
+  `app_file`, NAMED, verbatim from `AppFileRec`'s own
+  `Context (Hprog : …)`, so the instance below is that hypothesis applied
+  and not a restatement of it.  Naming it is what makes the premise
+  readable in the corollary's binder list.
+- `iris/UFileBootAdequacy.v:143  file_laws_at` — `#[local] Instance … | 0
+  := @AppFileRec.file_laws Σ _ _ _ _ _ _ _ Hprog`.  The priority is
+  load-bearing: `AppFileRec.file_laws` is itself a `Global Instance` whose
+  trailing `Hprog` argument is NOT a class, so resolution must never reach
+  it.
+- `iris/UFileBootAdequacy.v:154  file_adequacy_at_img` — the Σ-generic
+  theorem at the image's facts, `echo_adequacy_modulo_phi`'s shape: the
+  laws arrive as the instance, era 0's claim is the one argument and
+  `Hphi` goes in as a HOLE (`UInitBootAdequacy`'s measured rule -- handing
+  `xv6_app_adequacy` its obligations at once makes the elaborator unify
+  each against a record field whose type it is still solving).
+- `iris/UFileBootAdequacy.v:228  fileLineΣ` / `:234  fileΣ` — the concrete
+  functor list: `xv6Σ ; bioslotΣ ; echoOutΣ ; fileLineΣ ; fileAppΣ ;
+  fileOutΣ`.  `fileLineΣ` is `UInitBootAdequacy.echoLineΣ` spelled again
+  rather than imported, because importing it would put the whole echo
+  program tier into this file's build cone for one line.
+- `iris/UFileBootAdequacy.v:243  file_adequacy_fileΣ` — THE AUDIT TARGET.
+- `iris/FileAssumptions.v` + `make audit-file` / `audit-file-only` —
+  `EchoAssumptions.v`'s mould.  `audit-all-only` IS LEFT ALONE: the tree
+  rule was never added to it either (it is still `audit-only
+  audit-echo-only` under `-j2`), so a fourth entry there would be a change
+  of policy, not a lane's business.
+
+**THE TOP-LEVEL STATEMENT, VERBATIM.**
+
+```coq
+Corollary file_adequacy_fileΣ
+    (Hprog : file_prog_law (Σ := fileΣ))
+    (g : gstate)
+    (Hgen0 : g.(ggen) = 0%nat) (Hpow0 : g.(gpow) = false)
+    (Hdisk : v_disk (g.(gdev).(dvirtio)) = FsImgDisk.fsimg_dk) :
+  forall (n : nat) (κs : list mobs) t2 g2,
+    language.nsteps n ([PowerLoopE : language.expr riscv_lang], g)
+      κs (t2, g2) ->
+    (forall e2, e2 ∈ t2 -> language.reducible (Λ := riscv_lang) e2 g2)
+    /\ FileDisc.file_phi κs.
+```
+
+The trace predicate is `FileDisc.file_phi` VERBATIM (`iris/FileDisc.v`,
+the `file_phi` STAGE-2 landed): IF the console input kept the FILE
+discipline (`disc_f κs`), THEN there is one boot state per power cycle
+such that the FIRST cycle boots with no `f`, every later cycle boots at a
+chunk subsequence of an `echo … > f` line typed in a STRICTLY EARLIER
+cycle (`fadm_boot (echof_lines_before κs (S k))`), and each cycle's
+console output is a prefix of the transcript its input calls for from
+that state (`good_out_f`).  It is the `echo_phi` twin, spelled at the
+record only through `AppFileRec.file_phi := fun _ h => FileDisc.file_phi h`
+— the corollary names no record, so the ghost layer stays out of the
+STATEMENT's trusted base.
+
+**THE SHAPE THE AUDIT RULE HANDLES, AND IT IS THE PREMISE ONE.**  `Hprog`
+is a section hypothesis in the theorem and therefore an explicit PREMISE
+of the corollary — `Hprog -> …`, not a section variable the audit prints.
+A theorem's premises are part of its statement and NEVER appear in a
+`Print Assumptions` (`EchoAssumptions.v` makes the same point about the
+late `Hsh_owed`), and the measured audit confirms it: the fourteen lines
+below and NO `Hprog`.
+
+```
+PrimInt63.int / .eqb / .sub / .lsl / .lsr / .land / .lor
+PrimString.string / .get / .cat / .length
+xv6iris_extras.resv_matches / resv_is_valid
+FunctionalExtensionality.functional_extensionality_dep
+```
+
+The `Axiom` shape — which WOULD print — was declined and should not be
+re-proposed: it is weight in the tree that `tools/lemma_diff.py` reports
+as a regression, and an audit line nothing ever discharges is worth less
+than a binder nothing hides.  `FileAssumptions.v`'s header carries the
+complementary check in prose, which is where a reader meets it.
+
+**IS `Hprog` SATISFIABLE?** (durable-notes: a premise on the anchor
+theorem is worth a satisfiability witness before it is worth an audit.)
+Its SHAPE is — the same field is proved at two other records,
+`App.app_triv_init_boot` and `UInitBoot.echo_Hinit_boot`, and its three
+equational premises are the ones every record gets.  What is peculiar to
+this claim is which ROUTE is open, and that is the lane's one finding for
+SH-ROUND.
+
+**WHAT SH-ROUND MUST DELIVER, VERBATIM** (`iris/UFileBootAdequacy.v`, and
+identical to `AppFileRec`'s `Context (Hprog : …)`):
+
+```coq
+  Definition file_prog_law : Prop :=
+    forall (HR : riscvGS Σ) (GEN : GenId)
+           (HBs : bioslotG Σ) (HFd : fdslotG Σ) (HIr : irefslotG Σ)
+           (HPav : pavG Σ) (HWc : wchG Σ) (HF : fileG Σ)
+           (c : app_fixed (app_file (Σ := Σ)))
+           (r : app_names (app_file (Σ := Σ))),
+      @file_app Σ HF
+        = MkAppcfg (app_names app_file) (app_pred app_file c) r ->
+      @riscvF_app_iface Σ (@riscv_fixedGS Σ HR) = app_ifc app_file c ->
+      @riscvF_genGS Σ (@riscv_fixedGS Σ HR) = riscv_pre_genGS ->
+      ⊢ AppInv.app_inv FsCfg.fsc_fs -∗ app_boot app_file c (S gen_id) r -∗
+        app_turn app_file c (S gen_id) -∗
+        |==> init_boot_bundle (bv_unsigned InodeInv.ROOTINO) fdt0.
+```
+
+Once it is a lemma, the discharge is `Definition`-level: instantiate
+`Hprog` at it in `file_adequacy_fileΣ` and delete the premise; nothing
+else in either new file moves, and `FileAssumptions.v` keeps its target.
+
+**THE TREE'S DISCHARGE IS NOT AVAILABLE HERE, AND THAT IS A RULING, NOT A
+COST.**  `UTreeAdequacy.tree_Hinit_boot` pays the same field in three
+lines: the era's turn mints the taint (`AppTree.tree_sup_of_bump`), the
+taint IS `AppInv.app_sup` at that claim, and the supply buys
+`SystemAdequacy.init_boot_of_sup` — the honest "the era's first process is
+not verified against the claim, and the claim records it".  At `app_file`
+that route is closed twice over.  (1) There is no turn-to-taint mint and
+there must not be one: `AppTree.tree_sup_of_bump` has no file twin, and
+`FileOut.file_led`'s counter is `if decide (disc_f h) then 0%nat else
+1%nat`, so a `file_taint` held from boot is inconsistent with the ledger
+at every history where the user KEEPS the discipline — the `al_rx` step
+could not be reproved.  (2) Even read as a weakening it would gut the
+conclusion, because `FileOut.file_led_phi` proves `file_phi h` from the
+taint by REFUTING `disc_f h`: a boot-time taint makes the theorem say
+only "the user never kept the discipline".  So SH-ROUND's route is
+`UInitBoot.echo_Hinit_boot`'s — a VERIFIED /init that execs /sh — and the
+tainted-at-boot arm that made the tree application a theorem is not on
+this campaign's menu.  Recorded here so nobody prices it again.

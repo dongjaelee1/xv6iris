@@ -792,6 +792,69 @@ unchanged; echo audit 14, system audit 13, tree audit 10.
    lower bound — §9.1's "`app_R` becomes a lower bound only" was right,
    its ARM was wrong.  Then wall (a) falls as §8.4 wanted.
 
+**TL-5 AS LANDED — THE SECOND APPLICATION IS A CLOSED THEOREM** — branch
+`tl5-init`; design of record `design/user-tree.md` §9.3 (the as-landed
+block, which corrects §9.1's hand-down and three points of §9.2).  Whole
+iris tree green on the mirror; `AppEcho.v` / `AppInv.v` untouched; echo
+audit 14, system audit 13, **tree audit 13 at the CLOSED corollary** (the
+ten Rocq `PrimString`/`PrimInt63` primitives, the two reservation
+`Parameter`s `resv_matches`/`resv_is_valid`, and
+`functional_extensionality_dep` — no `Spec*`/`Link*` module parameter, no
+`Admitted`).
+
+1. **`UTreeAdequacy.tree_adequacy_treeΣ`**: `App.xv6_app_adequacy` at
+   `AppTree.app_tree`, closed — functor list `treeAppΣ = xv6Σ ++ bioslotΣ
+   ++ treeΣ`, disk at the literal mkfs image, nothing left as a premise
+   but the hardware setup.  `iris/TreeAssumptions.v` and `make
+   audit-tree{,-only}` retargeted to it; README's audit paragraph
+   rewritten.
+2. **THE HAND-DOWN, AND §9.1's SHAPE IS UNPAYABLE.**  "`app_turn := the
+   counter`" cannot be discharged: `al_pow` owes a turn at EVERY power-on
+   out of `app_R` alone, and one exclusive counter is handed down once —
+   while the ledger arm §9.1 names (the counter's lower bound) is
+   PERSISTENT, so re-minting from it would make the mint free.  As
+   landed, the fixed part is an ERA-LICENCE REGISTRY (`ghost_mapG Σ nat
+   unit`, `treeG`'s fourth camera): `tree_cl` = the registry's authority
+   (the ledger keeps it), `tree_turn` = a LIVE row (the era's licence,
+   filed fresh by `al_pow`), `tree_taint` = a PERSISTED row.  Every
+   landed statement keeps its shape with `tree_cl` swapped for
+   `tree_turn`; `tree_bump_free_is_vacuous` is unchanged and still bites.
+3. **`Hinit_boot` IN THREE LINES**: the licence mints the taint, the
+   taint IS `AppInv.app_sup` at this claim, the supply buys
+   `SystemAdequacy.init_boot_of_sup`'s generic bundle (its other two
+   premises are free at `app_iface_triv`).  §8.4's honest arm: the era's
+   first process is not verified against the claim and the claim records
+   it at boot.
+4. **`app_phi` IS `True`, AND A VERIFIED `/init` WOULD NOT CHANGE THAT.**
+   The fs half of §9.2's conclusion IS reachable at `Hphi` (one glue
+   lemma: `xv6_slot` carries both halves of the abstract map's authority,
+   so the claim's view is the DURABLE view of `g'`'s own disk); the other
+   half — "the taint has been minted" — is a ghost fact `app_phi` does
+   not take, and §8.2's own finding is that no trace event witnesses an
+   unpaid FS move.  §9.2's theorem is therefore a statement about the
+   DISCHARGE.
+5. **TWO OF §9.2's DELIVERABLES ARE REFUTED AS STATED.**  (a) `tree_boot`
+   cannot name the image tree: its producer is `∀ av` and at a later era
+   only the taint would answer, which the transport cannot mint.  (b) The
+   live-deed EXEC is not "the same construction one list longer":
+   `PinnedObs` §12 lands the full-path linear walk AND the linear open
+   observation (`pobs_aopen_lin`), but `exec_walk_of_abs` needs the claim
+   read in TWO independent pieces and a live owner has ONE deed — the fix
+   is unlink's own kernel-tier seam (§7.9(8)(a)): a cursor on
+   `SysOpenDefs.aopen_commit_at`.
+6. **VERIFIED `/init` (§9.2's real target) — the first wall is not the
+   file system.**  `UInitKernel.init_boot_con`'s P2 is `⊢ □
+   riscv_kill_cred -∗ T`, which at `app_tree`'s generic interface reads
+   `True -∗ tree_taint c` and is FALSE: either `app_kill app_tree :=
+   tree_taint` (design §3 argues against it) or the kernel premise is
+   restated — a RULING, queued.  Second wall: `init_boot_pay` /
+   `cons_cred_holds` want a console credential record the tree claim has
+   no producer for, and `/init`'s BANNER is the first row that needs one
+   — so the achievable next target is the taint minted at the BANNER (all
+   of `/init`'s console SETUP — mknod, the two opens, the two dups —
+   precedes its first output), not at the exec of /sh.  §9.3(6) carries
+   the dependency-ordered worklist.
+
 ## RELAY QUEUE (for upstream, via the owner's push)
 
 1. **The R-a walls + the `uheld` proposal** (`design/user-read.md`

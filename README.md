@@ -39,7 +39,7 @@ inside the project-local opam switch, so you do **not** need to
 make            # == make proofs: build the model, the kernel dump, and all Iris proofs
 make audit      # build, then Print Assumptions on the system theorem (see below)
 make audit-echo # the same, for the echo application theorem
-make audit-tree # the same, for the tree application's era-0 obligation
+make audit-tree # the same, for the tree application's closed theorem
 make audit-all  # the system and echo audits, run concurrently
 make model      # compile only model-xv6iris/ (the Sail-generated Rocq model)
 make kernel     # build the xv6 kernel ELF (xv6-riscv/kernel/kernel)
@@ -69,13 +69,18 @@ rather than the sum. CI runs both on every push and reports each list, plus the
 trusted base of each adequacy statement, in the run's step summary.
 
 `make audit-tree` is the third of the family (`iris/TreeAssumptions.v`, `Print
-Assumptions TreeImg.tree_Happ_init`). The tree application — subtree ownership
-as an application claim, `claude-notes/design/user-tree.md` — has no
-whole-system theorem yet: its `Hinit_boot` is open and §8 of that file says
-why. What this audit covers is the part of that theorem's cone that exists, the
-era-0 claim at the mkfs image, and its cone is walked by neither of the other
-two. When `Hinit_boot` lands, the target moves to the closed corollary and
-nothing else about the file changes.
+Assumptions UTreeAdequacy.tree_adequacy_treeΣ`) and its cone is walked by
+neither of the other two. The tree application — subtree ownership as an
+application claim, `claude-notes/design/user-tree.md` — is a second closed
+instance of the whole-system theorem: same machine, same mkfs image, with the
+file-system claim "the live namespace is a rooted tree partitioned among its
+owners, or the taint records a move nobody paid for". Its conclusion is
+reducibility, because that claim's break is a ghost fact no observable event
+witnesses (§9.3 of that file says why no stronger *pure* conclusion exists);
+what the audit checks is that the claim pays every obligation of the theorem at
+the real image, era 0's included. No program is yet verified against it — the
+era's first process spends the era's licence and the claim records that at
+boot.
 
 Build graph: each ELF is disassembled by `tools/dump_elf.py` — the kernel into
 `kernel-rocq/*.v`, each user program into `user-rocq/*.v`; `iris/` depends on

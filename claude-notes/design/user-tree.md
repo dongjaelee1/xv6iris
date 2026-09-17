@@ -2048,3 +2048,174 @@ tree: init keeps `/`), its exec of /sh at `image_entry_taint` with the
 taint minted by (ii) at that instant; (v) `Hinit_boot` at `app_tree`
 from (iv); (vi) `UTreeAdequacy.tree_adequacy_treeΣ`, the closed corollary,
 and `make audit-tree-only` retargeted to it (bar: ≤ echo's fourteen).
+
+### 9.3 TL-5 as landed — the second application is a THEOREM, the hand-down that pays it, and the three things §9.2 priced wrong
+
+**WHAT LANDED** (branch `tl5-init`, ONE new file `iris/UTreeAdequacy.v`):
+`App.xv6_app_adequacy` at `AppTree.app_tree`, CLOSED —
+`UTreeAdequacy.tree_adequacy_treeΣ`, at a concrete functor list
+(`treeAppΣ = xv6Σ ++ bioslotΣ ++ treeΣ`) and at the literal mkfs image,
+with every obligation of the record discharged: the eleven laws as one
+`xv6_app_laws app_tree` instance, era 0's claim from TL-4
+(`TreeImg.tree_Happ_init`) and `Hinit_boot` from the hand-down below.
+`AppEcho.v` / `AppInv.v` untouched; echo audit 14 and system audit 13
+unmoved; **tree audit retargeted from `tree_Happ_init` to the closed
+corollary and the list is reported in the lane's report**.
+
+**(1) THE HAND-DOWN, AND §9.1'S SHAPE CANNOT BE PAID.**  §9.1 says
+"`app_turn app_tree c k := tree_cl c`, minted by `al_pow`; `tree_R`
+demoted to the counter's lower bound".  **That is unpayable, and not for
+a proof-engineering reason.**  `App.al_pow` must yield `app_turn` at
+EVERY power-on out of `app_R` alone:
+
+- one EXCLUSIVE counter can be handed down ONCE — after era 1's `/init`
+  holds it, era 2's power-on has nothing to hand, and `al_programs` is
+  quantified over every era, so the obligation is simply false;
+- and the ledger arm §9.1 names — the counter's LOWER BOUND — is
+  PERSISTENT, so if it could re-mint the counter the mint would be free
+  and `tree_bump_free_is_vacuous` would apply to the ledger instead of to
+  the claim.
+
+**SO THE LICENCE IS PER ERA AND THE LEDGER KEEPS THE AUTHORITY.**
+`tree_fixed` is now an ERA-LICENCE REGISTRY (`ghost_mapG Σ nat unit`, the
+fourth camera of `treeG`):
+
+| | as landed |
+| --- | --- |
+| `tree_cl c` (= `App.app_cl`) | `∃ M, ghost_map_auth c 1 M` — born by `tree_birth`, kept by the ledger for the whole run |
+| `tree_R c _` | `tree_cl c` — the ledger IS the authority, and it reads no history (there is nothing for it to read: see (3)) |
+| `tree_turn c` (= `App.app_turn c k`) | `∃ k, k ↪[c] tt` — the era's licence, filed fresh by `al_pow` at every power-on (`tree_licence_mint`) |
+| `tree_taint c` | `∃ k, k ↪[c]□ tt` — a SPENT licence: persistent, timeless, and unobtainable without the authority |
+
+`tree_taint_mint : tree_turn c ==∗ tree_taint c` is one
+`ghost_map_elem_persist`; `tree_step_bump`, `tree_sup_of_bump` and
+`TreeMove.tree_app_step_bump` keep their SHAPES with `tree_cl` swapped
+for `tree_turn`, and every other landed statement is untouched.
+`tree_bump_free_is_vacuous` is unchanged and still bites: no arrangement
+inside the claim can mint a licence.
+
+**ONE HAZARD, and it cost a build**: `treeG` now carries TWO
+`ghost_mapG` instances, so a bare `∅` under `ghost_map_auth` no longer
+determines its key/value types — `tree_body_empty`'s statement resolved
+to the WRONG map and its landed proof stopped applying. The fix is the
+annotation (`(∅ : gmap gname (Z * ttree))`), and the rule generalises to
+any class that grows a second instance of a parameterised ghost class.
+
+**(2) `Hinit_boot`, IN THREE LINES, AND WALL (a) IS CLOSED.**
+`UTreeAdequacy.tree_Hinit_boot`: the era's licence mints the taint
+(`tree_sup_of_bump`), the taint IS `AppInv.app_sup` at this claim
+(`tree_sup_of_taint`), and the supply buys the generic bundle
+(`SystemAdequacy.init_boot_of_sup`, whose other two premises — the output
+licence and the kill credential — are free at this record's `app_iface_triv`).
+That is §8.4's honest arm exactly: **the era's first process is not
+verified against the tree claim, and the claim records it at boot.**
+
+**(3) THE CONCLUSION IS `True`, AND NO VERIFIED `/init` WOULD CHANGE
+THAT — §9.2's theorem is a statement about the DISCHARGE, not about
+`app_phi`.**  `App.app_phi` is a `Prop` over `(gstate, list mobs)`.  The
+left disjunct §9.2 wants IS reachable — the route is landed except for
+one glue lemma: `SystemAdequacy.xv6_slot` carries BOTH halves of the
+abstract map's authority (the application's, in `AppDur.app_dur_raw`, and
+the kernel's, inside `FsDurSnap.fs_snap`), so `ghost_map_auth_agree` +
+`fs_snap_read_ok_keep` + `fs_rec_wf` + `RiscvAdequacy.power_interp_disk_auth`
+identify the claim's view with the DURABLE view of `g'`'s own disk, and
+`tree_pred` is timeless, so it strips under `Hphi`'s `◇`.  (The glue is
+`xv6_slot_app_project`, a re-assembly of `FsCrash.P_fs_project`'s body
+with `P_dur_at_tie` replaced by `fs_snap_top_agree`; the live view is NOT
+reachable — `AppInv.app_body` is behind an invariant and `Hphi` has no
+fupd.)  **The right disjunct is the obstruction**: "the taint has been
+minted" is a fact about `c`'s ghost state, which `app_phi` does not take,
+and it cannot be traded for a trace fact — §8.2's own finding is that an
+unpaid FS move is witnessed by NO trace event, which is exactly why the
+taint is a resource and not a ledger reading.  So a tree-shaped `φ` is
+provable only where the taint is REFUTABLE, and the only pure condition
+that refutes it is "no era has started" (`obs_boots h = 0`), whose
+content is TreeImg's, restated.  **A verified `/init` buys a stronger
+discharge — the claim's live arm survives further into the run — and not
+a stronger `φ`.**
+
+**(4) DELIVERABLE 1 IS REFUTED AS STATED: `tree_boot` CANNOT NAME THE
+IMAGE TREE.**  §9.2 asks for `tree_boot c k r := ∃ g, tree_own r g
+ROOTINO (tc_img c)` with `tree_xfer_boot_at` minting it "at the view the
+transport sees".  The transport is `app_xfer_boot_raw`, `□ ∀ r av, ▷ A r
+av ==∗ …`, i.e. quantified over EVERY view: at an era whose root subtree
+is not `tc_img c` the only honest answer is the taint, which the
+transport cannot mint (it holds no licence, by (1)).  `app_boot`'s type
+is av-free for exactly this reason (§7.4).  What serves the same purpose
+is the al_programs side: `app_turn` is in scope there, so a `/init`
+proof may CASE on whether the deed's tree resolves what it needs (a
+decidable computation) and mint the taint where it does not — which is
+what a verified `/init` will do, and where `tc_img` belongs (a parameter
+of the RECORD, not a field of the fixed part; `app_fixed` is universally
+quantified in `al_programs` and `Happ_init`, so a field of it constrains
+nothing).
+
+**(5) DELIVERABLE 3: THE LIVE-DEED WALK LANDS, THE LIVE-DEED EXEC DOES
+NOT, AND §9.2's "the same construction one list longer" IS WRONG.**
+`PinnedObs` §12 lands the full-path twins of §11a — `pobs_hop_w_lin`,
+`pobs_walk_w_lin`, `pobs_node_abs_lin` — and, new, `pobs_aopen_lin`: the
+OPEN OBSERVATION out of a live claim (the deed is spent inside the
+commit's own fupd, where `appN` is open; `PieceFam.pf_at` is a
+conjunction, so the refund branch hands it back).  They do not compose:
+`ExecRun.exec_walk_of_abs` is THREE pieces and TWO of them must read the
+claim — every hop AND the observation — while a live owner has ONE deed,
+and the two are independent pieces the kernel is handed up front.
+Putting the deed on the cursor does not rescue it: the terminal
+identification `ExecRun.ex_node_abs` is a `□` wand into a PURE fact with
+no fupd, so a deed arriving there cannot be cashed, and the receipt it is
+paired with says nothing about the view unless the OBSERVATION read the
+claim.  **The fix is a kernel-tier seam already priced for unlink**
+(§7.9(8)(a), TL-3K's cursor verbatim): `SysOpenDefs.aopen_commit_at`
+takes a cursor `Pd : Z -> iProp Σ` beside its row premise, reads it and
+hands it back, so the walk's terminal cursor reaches the observation.
+Until then a LIVE owner's exec goes through the taint arm
+(`exec_walk_of_abs_taint`), which is free — and is what `Hinit_boot`
+spends.
+
+**(6) DELIVERABLE 4 (VERIFIED `/init`) DID NOT LAND, AND THE FIRST WALL
+IS NOT THE FILE SYSTEM.**  `/init`'s landed walk is claim-generic in `T`
+and in the credential families — `UInitKernel.init_boot_con`,
+`init_boot_pay`, `init_cons_dance_all` and all of `UkInit`/`UkInitMain`
+name no application — so the re-instantiation is a matter of supplying
+its premises at the tree claim.  Two of them are walls:
+
+- **`init_boot_con`'s P2 is `⊢ □ riscv_kill_cred -∗ T`.**  At `app_tree`
+  the kill credential is the GENERIC one (`app_iface_triv`: a kill costs
+  this application nothing, design §3), so P2 reads `True -∗ tree_taint
+  c` and is FALSE.  Either `app_kill app_tree := tree_taint` — which
+  MEANS "any kill taints the tree claim", a design decision §3 argues
+  against — or the kernel-tier premise is restated.  This is the first
+  thing a verified-`/init` lane must rule.
+- **The console credential record has no tree-side producer.**
+  `init_boot_pay` carries `UserConsole.cons_cred Σ` (the `cc_rd/cc_wp/
+  cc_wbn/cc_wc/cc_wb/cc_mid` families) and `init_exec_sup_of_sh_slot`
+  wants `cons_cred_holds` (ten laws); echo pays them out of its console
+  ledger (`UInitBoot.echo_cc_holds`), and the tree claim says nothing
+  about the console.  `/init`'s BANNER is the first row that needs them —
+  which is why the natural next target is not §9.2's "taint at the exec
+  of /sh" but **taint at the BANNER**: xv6's `/init` does its whole
+  console SETUP (`mknod("/console")`, the two opens, the two dups) before
+  it prints anything, so the tree claim's live arm can cover the setup
+  and everything from the first console byte on runs under the taint,
+  where `init_deps`/`cons_cred_holds` are the supply's.
+- What that target still needs, in dependency order (all of it U-tier
+  assembly at the tree claim, on `UInitConsK.v`'s mould):
+  `init_cons_leaves_<tree>` and `init_cons_hit_<tree>`
+  (`UInitConsK.v:908,938`) out of a tree-side reading of
+  `init_cons_laws_at`'s nine laws (`UInitCons.v:995`) — of which
+  conjuncts (b)/(e) name `EchoFsPure.echo_fs_pure` (replace with `True`
+  or with the deed) and (h)/(i) name `cons_made r i` (replace with the
+  deed at `top_ins ROOTINO "console" …`, which is exactly what
+  `UkTreeCreate.tree_mknod_ok_recv` hands back); and a tree-side
+  `app_boot` arm for the dance's two arms.  `init_open_absent_leaf_holds`,
+  the two dispatcher rows and all the path/ledger arithmetic are
+  claim-generic and reusable verbatim.
+
+**(7) WHAT THE SECOND APPLICATION IS WORTH TODAY.**  The theorem checks
+that the claim — "the live namespace is a rooted tree partitioned among
+its owners, or the taint records an unpaid mover" — pays every obligation
+of the whole-system theorem at the real image: the transport, the era-0
+mint at the literal mkfs disk, the ledger's five laws, the console
+interface's three and the first process's exec bundle.  What it does not
+yet check is a single verified program against that claim; (6) is the
+worklist and its first item is a ruling, not a proof.

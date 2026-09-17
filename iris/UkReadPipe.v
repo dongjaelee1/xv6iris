@@ -477,4 +477,146 @@ Section UkReadPipe.
     iFrame "Hha Hhb Hstd Hfrag".
   Qed.
 
+
+  (* =================================================================== *)
+  (*  6.  THE LEDGER SLOT (design/app-pipe.md SS5.4; lane PIPE-STD)        *)
+  (*                                                                      *)
+  (*  cat reads fd 0, which is BELOW [NSTD]: its descriptor knowledge is    *)
+  (*  the whole LEDGER ([UserFd.ustd]) and its deposit is fixed at it       *)
+  (*  ([UkRun.udepwf_std]), while section 4's member is handle-fixed        *)
+  (*  ([UserFd.ufd] carries [NSTD <= fd]).  These two are that member's     *)
+  (*  ledger twins and nothing else: same walk, same family, same payment,  *)
+  (*  same post -- only the descriptor knowledge and the deposit's reading  *)
+  (*  change.  [UkWritePipe.v] section 4 is the write side of the same      *)
+  (*  move, and its header has the two notes that apply here too: the slot  *)
+  (*  is a PARAMETER (not pinned at 0) and the freedom a pipe row has where *)
+  (*  the file leaf had an offset mode is the WRITE flag [wb].               *)
+  (* =================================================================== *)
+
+  (* THE DEPOSIT AT A LEDGER SLOT, [udepwf_st_read_pipe]'s twin: the arm is
+     computed from the caller's own ledger rather than from a handle, and
+     the payment is taken exactly as it stands. *)
+  Lemma udepwf_std_read_pipe (N : uk_names Σ) (m : regfile) (pc : mword 64)
+      (l : list fdstate) (fd : nat) (wb : bool) (γp : pipe_names)
+      (Rp : list (bv 8) -> iProp Σ)
+      (Rpe : list (bv 8) -> pipe_st -> iProp Σ) :
+    bv_signed (trunc32 (m !!! Regidx a0_idx)) = Z.of_nat fd ->
+    (fd < NSTD)%nat ->
+    l !! fd = Some (FdOpen true wb (FdPipe γp)) ->
+    pipe_rpay (pn_queue γp) Rp Rpe
+      (Z.to_nat (sys_rw_count (m !!! Regidx a2_idx))) -∗
+    udepwf_std N m pc USYS_read (read_pipe_fam (ukn_pay N) Rp Rpe) l.
+  Proof using .
+    intros H0 Hlt Hl. iIntros "Hpay".
+    rewrite /udepwf_std. iSplit; [ iPureIntro; reflexivity | ].
+    iIntros (M pm sz fdv cw gn cs pidv) "%Htake _ Hheap Hufd".
+    iFrame "Hheap Hufd".
+    iApply (sbundle_at_read_intro uslot (read_pipe_fam (ukn_pay N) Rp Rpe)
+              (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
+              (m !!! Regidx a0_idx) (m !!! Regidx a2_idx) fdv
+              (tf_of_arg0 m pc) (tf_of_arg2 m pc)
+              (uvis_of_run_fd m pc M pm sz fdv cw gn cs pidv false)).
+    rewrite (std_fd_st_of_key (m !!! Regidx a0_idx) fdv l fd
+               (FdOpen true wb (FdPipe γp)) H0 Hlt Htake Hl).
+    rewrite /fileread_in /=. iIntros "$". iExact "Hpay".
+  Qed.
+
+  (* THE LEDGER-SLOT PIPE READ LEAF, [wp_uk_ecall_read_pipe]'s twin.  The
+     one read walk at [K fdv := take NSTD fdv = l] with [UserFd.ustd] for
+     [UserFd.ufd] and [UkRun.udepwf_std] for [udepwf_st]
+     ([UserFd.ustd_agree] is the reading); EVERYTHING ELSE IS THE HANDLE
+     LEAF'S -- the same [pipe_rpay] goes in, the same five pure rows and
+     the same [pipe_rpost_img] come back, the buffer's tail is pinned
+     above the same WINDOW LENGTH [d] and not above the returned count,
+     and the ledger comes home unmoved (read moves no descriptor). *)
+  Lemma wp_uk_ecall_read_pipe_std (N : uk_names Σ) (h : CpuId) (m : regfile)
+      (pc : mword 64) (k cap : nat) (f : nat -> bv 8) (avail : nat)
+      (l : list fdstate) (fd : nat) (wb : bool) (γp : pipe_names)
+      (Rp : list (bv 8) -> iProp Σ)
+      (Rpe : list (bv 8) -> pipe_st -> iProp Σ) :
+    usysno m = USYS_read ->
+    bv_signed (trunc32 (m !!! Regidx a0_idx)) = Z.of_nat fd ->
+    (* THE DESCRIPTOR IS A LEDGER SLOT, and the ledger says it is this
+       pipe's READ end *)
+    (fd < NSTD)%nat ->
+    l !! fd = Some (FdOpen true wb (FdPipe γp)) ->
+    uint (m !!! Regidx a2_idx) = Z.of_nat cap ->
+    (cap <= k)%nat ->
+    (Z.of_nat cap < 2 ^ 31)%Z ->
+    is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
+    uinstr_is (ukn_t N) pc false (ECALL tt) -∗
+    urun N h m pc avail -∗
+    (* THE LEDGER, in place of the handle-fixed leaf's [UserFd.ufd] *)
+    UserFd.ustd (ukn_fd N) l -∗
+    (* THE PAYMENT: the caller's own read chain over the byte queue, or the
+       taint (design/pipe.md, "The byte queue") *)
+    pipe_rpay (pn_queue γp) Rp Rpe cap -∗
+    ubytes (ukn_d N) (uint (m !!! Regidx a1_idx)) k f -∗
+    (∀ (h' : CpuId) (r : mword 64) (d : nat) (g : nat -> bv 8)
+       (M' : gmap Z (bv 8)) (Pt : uptd) (Rk : iProp Σ),
+       ⌜ (d <= cap)%nat ⌝ -∗
+       ⌜ forall j : nat, (d <= j < k)%nat -> g j = f j ⌝ -∗
+       ⌜ uread_pipe_ans cap r ⌝ -∗
+       ⌜ forall i : nat, (i < k)%nat ->
+           uint (add_vec_int (m !!! Regidx a1_idx) (Z.of_nat i))
+           = (uint (m !!! Regidx a1_idx) + Z.of_nat i)%Z ⌝ -∗
+       ⌜ forall j : nat, (j < k)%nat ->
+           M' !! uint (add_vec_int (m !!! Regidx a1_idx) (Z.of_nat j))
+           = Some (g j) ⌝ -∗
+       pipe_rpost_img Pt (pn_queue γp) Rp Rpe Rk cap r M'
+         (m !!! Regidx a1_idx) -∗
+       UserFd.ustd (ukn_fd N) l -∗
+       urun N h' (<[Regidx a0_idx := r]> m) (add_vec_int pc 4) avail -∗
+       ubytes (ukn_d N) (uint (m !!! Regidx a1_idx)) k g -∗
+       WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+  Proof using .
+    intros Hn Ha0 Hlt Hl Ha2 Hcapk Hcap31 Hal.
+    iIntros "#Hi Hrun Hstd Hpay Hbuf Hcont".
+    assert (Hcnt : sys_rw_count (m !!! Regidx a2_idx) = Z.of_nat cap)
+      by exact (uread_count_is_cap (m !!! Regidx a2_idx) cap Ha2 Hcap31).
+    assert (Hcw : bv_signed (subrange_vec_dec (m !!! Regidx a2_idx) 31 0
+                             : mword 32) = Z.of_nat cap).
+    { rewrite /sys_rw_count trunc32_subrange in Hcnt. exact Hcnt. }
+    iPoseProof (udepwf_std_read_pipe N m pc l fd wb γp Rp Rpe Ha0 Hlt Hl
+                  with "[Hpay]") as "Hsb";
+      [ rewrite Hcnt Nat2Z.id; iExact "Hpay" | ].
+    iApply (wp_uk_ecall_read_at N h m pc (Z.of_nat cap) k f avail
+              (read_pipe_fam (ukn_pay N) Rp Rpe)
+              (UserFd.ustd (ukn_fd N) l)
+              (fun fdv => take NSTD fdv = l)
+              Hn Hcw ltac:(rewrite Nat2Z.id; exact Hcapk) Hal
+              (fun fdv => ustd_agree (ukn_fd N) fdv l)
+              with "Hi Hrun [Hsb] Hstd Hbuf").
+    { iApply (udepwf_K_std N m pc USYS_read
+                (read_pipe_fam (ukn_pay N) Rp Rpe) l with "Hsb"). }
+    iIntros (h' r d g W M' fdv' cw' cs')
+      "%Hd %Hgf %Hlin %Himg %Hnf %H0 %H1 %H2 %Htake %Hlz %Hlive
+       Hstd Hpost Hrun Hbuf".
+    iDestruct (spost_at_read_elim uslot (read_pipe_fam (ukn_pay N) Rp Rpe) W
+                 (m !!! Regidx a0_idx) (m !!! Regidx a1_idx)
+                 (m !!! Regidx a2_idx) (uvis_fd W) r M' fdv' cw' cs'
+                 H0 H1 H2 eq_refl with "Hpost")
+      as "[%Hret Hcore]".
+    iDestruct "Hcore" as (P) "(%Hpmp & %Hwfp & %Hlzp & Hcore)".
+    (* THE ARM, OUT OF THE CALLER'S OWN LEDGER: the key's low [NSTD] slots
+       ARE the ledger ([Htake], the walk's row), so the row at [fd] is the
+       state the call ran on. *)
+    iDestruct (uread_pipe_core (uvis_gen W) P
+                 (fd_st_of_key (m !!! Regidx a0_idx) (uvis_fd W)) wb γp
+                 (sys_rw_count (m !!! Regidx a2_idx))
+                 (read_pipe_fam (ukn_pay N) Rp Rpe)
+                 Rp Rpe r M' (m !!! Regidx a1_idx)
+                 (std_fd_st_of_key (m !!! Regidx a0_idx) (uvis_fd W) l fd
+                    (FdOpen true wb (FdPipe γp)) Ha0 Hlt Htake Hl)
+                 with "Hcore") as "Hrp".
+    rewrite Hcnt in Hret.
+    rewrite Hcnt Nat2Z.id.
+    rewrite Nat2Z.id in Hd.
+    iApply ("Hcont" $! h' r d g M' P (ChildTok.kill_shot (uvis_gen W))
+              with "[%] [%] [%] [%] [%] Hrp Hstd Hrun Hbuf");
+      [ exact Hd | exact Hgf | exact (uread_pipe_ans_of_ret cap r Hret)
+      | exact Hlin | exact Himg ].
+  Qed.
+
 End UkReadPipe.

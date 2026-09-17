@@ -318,4 +318,151 @@ Section UkWritePipe.
               Hn Hfdv Hfdlt Hcnt Hal4 with "Hi Hrun Hufdh Hbuf Hch Hcont").
   Qed.
 
+
+  (* =================================================================== *)
+  (*  4.  THE LEDGER SLOT (design/app-pipe.md SS5.4; lane PIPE-STD)        *)
+  (*                                                                      *)
+  (*  echo writes fd 1 and cat reads fd 0, and both are BELOW [NSTD]:      *)
+  (*  their descriptor knowledge is the whole LEDGER ([UserFd.ustd]) and   *)
+  (*  their deposit is fixed at it ([UkRun.udepwf_std]), while section 3's *)
+  (*  member is handle-fixed ([UserFd.ufd] carries [NSTD <= fd]).  These   *)
+  (*  two are that member's ledger twins and nothing else: same walk, same *)
+  (*  family, same payment, same post -- only the descriptor knowledge and *)
+  (*  the deposit's reading change.  The mould is upstream's file leaf     *)
+  (*  ([UkWriteFile.udepwf_std_write_file] / [wp_uk_ecall_write_std]).     *)
+  (*                                                                      *)
+  (*  THE SLOT IS NOT PINNED AT 1.  The file twin fixes [a0 = 1] because   *)
+  (*  echo is its only caller; there is no reason for it -- the ledger      *)
+  (*  reading is uniform in the slot ([UkReadRows.std_fd_st_of_key]) --     *)
+  (*  and the pipe application needs slot 1 (echo's write end) and slot 0   *)
+  (*  (cat's read end) out of one statement each.  So both leaves take the  *)
+  (*  slot as a parameter with [fd < NSTD] and the ledger's row at it.      *)
+  (*                                                                      *)
+  (*  THERE IS NO OFFSET MODE TO LEAVE FREE.  The file twin's statement     *)
+  (*  quantifies the state's [offmode] because [FdInode] carries one and    *)
+  (*  [SpecFilewrite.filewrite_in]'s inode arm is blind to it; a PIPE row    *)
+  (*  is [FdOpen rb true (FdPipe γp)] and has no offset field at all, so     *)
+  (*  the corresponding freedom here is the READ flag [rb] -- which end's    *)
+  (*  descriptor this is says nothing about whether it may also be read      *)
+  (*  from, and [pipe_wpay] does not look.                                   *)
+  (* =================================================================== *)
+
+  (* THE DEPOSIT AT A LEDGER SLOT, [udepwf_st_write_pipe]'s twin: the chain
+     still enters as a wand over the heap the deposit lends, and the arm is
+     computed from the caller's own ledger rather than from a handle. *)
+  Lemma udepwf_std_write_pipe (N : uk_names Σ) (m : regfile) (pc : mword 64)
+      (l : list fdstate) (fd : nat) (rb : bool) (γp : pipe_names)
+      (Q : nat -> iProp Σ) (Qe : nat -> pipe_st -> iProp Σ) (nb : nat) :
+    bv_signed (trunc32 (m !!! Regidx a0_idx)) = Z.of_nat fd ->
+    (fd < NSTD)%nat ->
+    l !! fd = Some (FdOpen rb true (FdPipe γp)) ->
+    sys_rw_count (m !!! Regidx a2_idx) = Z.of_nat nb ->
+    (∀ (M : gmap Z (bv 8)) (pm : gmap (mword 27) uperm) (sz : Z),
+       uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗
+       uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗
+       pipe_wpay (pn_queue γp) M (m !!! Regidx a1_idx) Q Qe nb) -∗
+    udepwf_std N m pc 16 (write_pipe_fam Q Qe (ukn_pay N)) l.
+  Proof using .
+    intros H0 Hlt Hl Hcnt. iIntros "Hch".
+    rewrite /udepwf_std. iSplitR; [ iPureIntro; reflexivity | ].
+    iIntros (M pm sz fdv cw gn cs pidv) "%Htake _ Hheap Hufd".
+    iDestruct ("Hch" $! M pm sz with "Hheap") as "[Hheap Hpay]".
+    iFrame "Hheap Hufd".
+    iApply (sbundle_at_write_intro_at uslot (write_pipe_fam Q Qe (ukn_pay N))
+              (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
+              (m !!! Regidx a0_idx) (m !!! Regidx a1_idx)
+              (m !!! Regidx a2_idx) fdv M
+              (tf_of_arg0 m pc) (tf_of_arg1 m pc) (tf_of_arg2 m pc)
+              (uvis_of_run_fd m pc M pm sz fdv cw gn cs pidv false)
+              eq_refl).
+    rewrite (std_fd_st_of_key (m !!! Regidx a0_idx) fdv l fd
+               (FdOpen rb true (FdPipe γp)) H0 Hlt Htake Hl).
+    rewrite /filewrite_in /= Hcnt Nat2Z.id. iExact "Hpay".
+  Qed.
+
+  (* THE LEDGER-SLOT PIPE WRITE LEAF, [wp_uk_ecall_write_pipe]'s twin.  The
+     one write walk at [K fdv := take NSTD fdv = l] with [UserFd.ustd] for
+     [UserFd.ufd] and [UkRun.udepwf_std] for [udepwf_st]
+     ([UserFd.ustd_agree] is the reading); EVERYTHING ELSE IS THE HANDLE
+     LEAF'S -- the same [pipe_wpay] goes in, the same [pipe_wpost] and the
+     same source-image row come back, and the ledger comes home unmoved
+     (16 moves no descriptor). *)
+  Lemma wp_uk_ecall_write_pipe_std (N : uk_names Σ) (h : CpuId) (m : regfile)
+      (pc : mword 64) (avail : nat) (l : list fdstate) (fd : nat) (rb : bool)
+      (dq : dfrac) (nb : nat) (f : nat -> bv 8) (γp : pipe_names)
+      (Q : nat -> iProp Σ) (Qe : nat -> pipe_st -> iProp Σ) :
+    usysno m = 16 ->
+    bv_signed (trunc32 (m !!! Regidx a0_idx)) = Z.of_nat fd ->
+    (* THE DESCRIPTOR IS A LEDGER SLOT, and the ledger says it is this
+       pipe's WRITE end *)
+    (fd < NSTD)%nat ->
+    l !! fd = Some (FdOpen rb true (FdPipe γp)) ->
+    (* THE COUNT THE CALLER ASKED FOR IS THE RUN IT OWNS *)
+    sys_rw_count (m !!! Regidx a2_idx) = Z.of_nat nb ->
+    is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
+    uinstr_is (ukn_t N) pc false (ECALL tt) -∗
+    urun N h m pc avail -∗
+    (* THE LEDGER, in place of the handle-fixed leaf's [UserFd.ufd] *)
+    UserFd.ustd (ukn_fd N) l -∗
+    ubytesq (ukn_d N) dq (uint (m !!! Regidx a1_idx)) nb f -∗
+    (* ...AND THE PAYMENT: the caller's write chain over the byte queue at
+       the image the call runs at, or the taint *)
+    (∀ (M : gmap Z (bv 8)) (pm : gmap (mword 27) uperm) (sz : Z),
+       uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗
+       uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗
+       pipe_wpay (pn_queue γp) M (m !!! Regidx a1_idx) Q Qe nb) -∗
+    (∀ (h' : CpuId) (r : mword 64) (Pt : uptd) (Mv : gmap Z (bv 8))
+       (Rk : iProp Σ),
+       (* the chain's nodes were pinned to the caller's OWN bytes *)
+       ⌜ forall j : nat, (j < nb)%nat ->
+           Mv !! uint (add_vec_int (m !!! Regidx a1_idx) (Z.of_nat j))
+           = Some (f j) ⌝ -∗
+       pipe_wpost Pt (pn_queue γp) Mv (m !!! Regidx a1_idx) Q Qe Rk nb r -∗
+       UserFd.ustd (ukn_fd N) l -∗
+       ubytesq (ukn_d N) dq (uint (m !!! Regidx a1_idx)) nb f -∗
+       urun N h' (<[Regidx a0_idx := r]> m) (add_vec_int pc 4) avail -∗
+       WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+  Proof using .
+    intros Hn H0 Hlt Hl Hcnt Hal4.
+    iIntros "#Hi Hrun Hstd Hbuf Hch Hcont".
+    iPoseProof (udepwf_std_write_pipe N m pc l fd rb γp Q Qe nb
+                  H0 Hlt Hl Hcnt with "Hch") as "Hsb".
+    iApply (wp_uk_ecall_write_at N h m pc avail
+              (write_pipe_fam Q Qe (ukn_pay N))
+              (UserFd.ustd (ukn_fd N) l)
+              (ubytesq (ukn_d N) dq (uint (m !!! Regidx a1_idx)) nb f)
+              (fun fdv => take NSTD fdv = l)
+              nb f Hn Hal4
+              (fun fdv => ustd_agree (ukn_fd N) fdv l)
+              (fun M pmv sz =>
+                 usrc_ok_ubytesq (ukn_t N) (ukn_d N) (ukn_s N) M pmv sz dq
+                   (m !!! Regidx a1_idx) nb f)
+              with "Hi Hrun [Hsb] Hstd Hbuf").
+    { iApply (udepwf_K_std N m pc 16 (write_pipe_fam Q Qe (ukn_pay N)) l
+                with "Hsb"). }
+    iIntros (h' r W cw' cs')
+      "%Hk0 %Hk1 %Hk2 %Htake %Hlz %Hsrc Hstd Hbuf Hpost Hrun".
+    iDestruct (spost_at_write_elim_at uslot (write_pipe_fam Q Qe (ukn_pay N)) W
+                 (m !!! Regidx a0_idx) (m !!! Regidx a1_idx)
+                 (m !!! Regidx a2_idx) (uvis_fd W) (uvis_M W)
+                 r (uvis_M W) (uvis_fd W) cw' cs'
+                 Hk0 Hk1 Hk2 eq_refl eq_refl with "Hpost")
+      as (Pt) "(%Hpmp & %Hwfp & %Hlzp & Hextra)".
+    (* THE ARM, OUT OF THE CALLER'S OWN LEDGER: the key's low [NSTD] slots
+       ARE the ledger ([Htake], the walk's row), so the row at [fd] is the
+       state the call ran on. *)
+    iDestruct (uwrite_pipe_extra (uvis_gen W) Pt
+                 (fd_st_of_key (m !!! Regidx a0_idx) (uvis_fd W)) rb γp
+                 (sys_rw_count (m !!! Regidx a2_idx)) (uvis_M W)
+                 (m !!! Regidx a1_idx) Q Qe r
+                 (std_fd_st_of_key (m !!! Regidx a0_idx) (uvis_fd W) l fd
+                    (FdOpen rb true (FdPipe γp)) H0 Hlt Htake Hl)
+                 with "Hextra") as "Hwp".
+    rewrite Hcnt Nat2Z.id.
+    iApply ("Hcont" $! h' r Pt (uvis_M W) (ChildTok.kill_shot (uvis_gen W))
+              with "[%] Hwp Hstd Hbuf Hrun").
+    exact (proj1 Hsrc).
+  Qed.
+
 End UkWritePipe.

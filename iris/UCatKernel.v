@@ -118,6 +118,24 @@ Lemma cat_round_cursor (bs : list (bv 8)) (p nb : nat) :
   (p + nb <= length bs)%nat.
 Proof using . intros Hple ->. unfold ard_count. lia. Qed.
 
+(* ...AND THE READING THAT REFUTES THE `cat: read error` TAIL (lane
+   CAT-GEOM-2).  A word whose UNSIGNED value is at most 512 -- which is
+   what lane OFF-LINK's count bound says of every count cat's read can
+   report -- has the same SIGNED value, so [bv_signed ret < 0] is a
+   contradiction.  [ProofVirtioDiskInit.vdi_bv_signed_small] is the same
+   reading at [2 ^ 32]; it is restated here rather than imported, because
+   that file's cone is the disk driver's. *)
+Lemma cat_signed_small (x : mword 64) :
+  (bv_unsigned x <= 512)%Z -> bv_signed x = bv_unsigned x.
+Proof using .
+  intro H. pose proof (bv_unsigned_in_range _ x) as [Hl _].
+  unfold bv_signed. apply bv_swrap_small.
+  assert (Hhm : bv_half_modulus 64 = 9223372036854775808%Z)
+    by (vm_compute; reflexivity).
+  rewrite Hhm. split; [ lia | ].
+  apply (Z.le_lt_trans _ 512); [ exact H | reflexivity ].
+Qed.
+
 Section UCatKernel.
   Context `{HRg : !riscvGS Σ}.
   Context `{!xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ,
@@ -378,12 +396,8 @@ Section UCatKernel.
         pose proof (bv_unsigned_in_range 64 ret) as [Hr0 _].
         assert (Hu : (bv_unsigned ret <= 512)%Z).
         { rewrite <- (Z2Nat.id (bv_unsigned ret) Hr0). lia. }
-        assert (Hs : bv_signed ret = bv_unsigned ret).
-        { unfold bv_signed. apply bv_swrap_small.
-          assert (Hh : bv_half_modulus 64 = 9223372036854775808%Z)
-            by (vm_compute; reflexivity).
-          rewrite Hh. lia. }
-        lia.
+        rewrite (cat_signed_small ret Hu) in Hneg.
+        exact (Z.lt_irrefl 0 (Z.le_lt_trans 0 (bv_unsigned ret) 0 Hr0 Hneg)).
       - iIntros "_".
         iApply ("Hend" $! p p2 with "[%] [%] Hstd Hhold Hc");
           [ exact Hple | exact Hp2 ].
@@ -420,12 +434,8 @@ Section UCatKernel.
       pose proof (bv_unsigned_in_range 64 ret) as [Hr0 _].
       assert (Hu : (bv_unsigned ret <= 512)%Z).
       { rewrite <- (Z2Nat.id (bv_unsigned ret) Hr0). lia. }
-      assert (Hs : bv_signed ret = bv_unsigned ret).
-      { unfold bv_signed. apply bv_swrap_small.
-        assert (Hh : bv_half_modulus 64 = 9223372036854775808%Z)
-          by (vm_compute; reflexivity).
-        rewrite Hh. lia. }
-      lia.
+      rewrite (cat_signed_small ret Hu) in Hneg.
+      exact (Z.lt_irrefl 0 (Z.le_lt_trans 0 (bv_unsigned ret) 0 Hr0 Hneg)).
     - iIntros "_".
       iApply ("Hend" $! p (p + Z.to_nat (bv_unsigned ret))%nat
                 with "[%] [%] Hstd Hhold Hc");
@@ -1183,6 +1193,32 @@ Section UCatKernel.
     iApply ("Hcont" $! h' ret with "HCo Hrun").
   Qed.
 
+End UCatKernel.
+
+(* ===================================================================== *)
+(*  THE ENTRY TIER: THE RECORD IS NOT FIXED (lane CAT-GEOM-2).            *)
+(*                                                                       *)
+(*  Everything above is stated at ONE [uk_names] record -- the section's  *)
+(*  [N] -- because a walk runs at the record its own [UkRun.urun] was     *)
+(*  minted with.  An ENTRY does not: it ALLOCATES the record, so its      *)
+(*  payment is owed at whatever [UkRun.uslot_of_urun_all] hands out, and  *)
+(*  the obligation has to be quantified over it.  Applying a             *)
+(*  section-[N] lemma under that ∀ is the trap durable-notes names: the   *)
+(*  two records print identically and do not unify, and the [iApply]      *)
+(*  never terminates (2.5 GB of stable RSS and no error).  So the entry   *)
+(*  tier is its own section, and every result above is used at an         *)
+(*  EXPLICIT record.                                                     *)
+(* ===================================================================== *)
+Section UCatEntry.
+  Context `{HRg : !riscvGS Σ}.
+  Context `{!xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ,
+            !irefslotG Σ, !pavG Σ, !wchG Σ, !ufdG Σ}.
+  Context `{GEN : GenId} `{XI : CurCtx}.
+  Context `{!echoOutG Σ, !inG Σ (mono_listR (leibnizO Z)), !fileAppG Σ,
+            !fileOutG Σ}.
+  Context (g : file_gn).
+  Context (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HRg) = fecl g).
+
   (* =================================================================== *)
   (*  7.  cat's ENTRY (lane CAT-GEOM, M3).                                *)
   (*                                                                     *)
@@ -1432,10 +1468,10 @@ Section UCatKernel.
      its own and cat's console cursor has to cross the call: the payer
      holds it and the continuation gets it back beside the open's own
      answer. ---- *)
-  Lemma kcat_o_frame (pv : mword 64) (Oi : iProp Σ)
+  Lemma kcat_o_frame (N' : uk_names Σ) (pv : mword 64) (Oi : iProp Σ)
       (Oo : mword 64 -> iProp Σ) (C : iProp Σ) :
-    C -∗ UkCat.kcat_o N pv Oi Oo -∗
-    UkCat.kcat_o N pv Oi (fun ret : mword 64 => Oo ret ∗ C).
+    C -∗ UkCat.kcat_o N' pv Oi Oo -∗
+    UkCat.kcat_o N' pv Oi (fun ret : mword 64 => Oo ret ∗ C).
   Proof using .
     iIntros "HC Ho" (h m avail) "%Ha0 %Ha1 #Hcode HOi Hrun Hcont".
     iApply ("Ho" $! h m avail with "[%] [%] Hcode HOi Hrun");
@@ -1524,7 +1560,7 @@ Section UCatKernel.
     rewrite /UkCatMain.kcat_file.
     iApply (UkCat.kcat_o_mono N' (mword_of_int (UserHeap.ua_ptr ga)) _ _ _
               with "[] [Hc]"); last first.
-    { iApply (kcat_o_frame (mword_of_int (UserHeap.ua_ptr ga)) _ _ _
+    { iApply (kcat_o_frame N' (mword_of_int (UserHeap.ua_ptr ga)) _ _ _
                 with "Hc").
       iApply (UkCatDeed.kcat_o_of_deed_miss N'
                 (take NSTD (uvis_fd W)) c r q (uvis_cwd W)
@@ -1546,7 +1582,7 @@ Section UCatKernel.
       { iDestruct "Harm" as "[(_ & $ & _) | [Hf _]]".
         iApply (UkFileOpen.uk_open_taint_fd_std (ukn_fd N')
                   (take NSTD (uvis_fd W)) ret Hnone with "Hf"). }
-      iApply (cat_dg_open_absent v vf ps0 cs0 s0 I0 P
+      iApply (cat_dg_open_absent g Hcons N' v vf ps0 cs0 s0 I0 P
                 (take NSTD (uvis_fd W)) rb ga s Hst Htie Hs Hl2 Hglen
                 ltac:(rewrite (Hgb 0%nat ltac:(lia)); vm_compute; reflexivity)
                 with "Hpin Hfp [] Hstd Hc").
@@ -1623,7 +1659,7 @@ Section UCatKernel.
        which is what makes [cat_hw_of_link] discharge [Hw] outright. ---- *)
     (∀ (N' : uk_names Σ) (fd : nat) (gamo : gname),
        ⌜(fd < NOFILE)%nat⌝ -∗
-       cat_held_read (cat_hold_at N' r q1 i bs om fd gamo) c fd bs) -∗
+       cat_held_read N' (cat_hold_at N' r q1 i bs om fd gamo) c fd bs) -∗
     (* the exit payload.  [∀ p] and not [length bs], because the ROUND
        LAW does not pin the cursor the loop stops at: cat exits when the
        read returns zero and [UCatKernel.cat_round_at]'s [Cend] wand
@@ -1642,7 +1678,7 @@ Section UCatKernel.
        ∗ UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P 0%nat).
   Proof using Hcons.
     intros Hgc Hst Htie Hl1 Hl2 Hnone.
-    iIntros "#Hpin #Hfp #Hopen #Hheld #Hqp #Hqn #Htaint".
+    iIntros "#Hpin #Hfp Hopen Hheld #Hqp #Hqn #Htaint".
     rewrite /cat_pay_at.
     iIntros (N') "%Hpayeq %Hargc2 %Harg1 %Hpath Hstd Hcwf #Hcode #Hro
                   #Hargv #HA (Hd1 & Hd2 & Hc)".
@@ -1665,12 +1701,12 @@ Section UCatKernel.
       by (rewrite /UShCat.cat_args echo_args_length; lia).
     cbn [UkCatMain.kcat_pay].
     iExists ga, (ukn_pay N' (-1)). iSplitR; [ by iPureIntro | ].
-    iSplitL "Hc"; last first.
+    iSplitL "Hopen Hheld Hc"; last first.
     { cbn [UkCatMain.kcat_pay]. by iIntros "$". }
     rewrite /UkCatMain.kcat_file.
     iApply (UkCat.kcat_o_mono N' (mword_of_int (UserHeap.ua_ptr ga)) _ _ _
-              with "[] [Hc]"); last first.
-    { iApply (kcat_o_frame (mword_of_int (UserHeap.ua_ptr ga)) _ _ _
+              with "[Hheld] [Hopen Hc]"); last first.
+    { iApply (kcat_o_frame N' (mword_of_int (UserHeap.ua_ptr ga)) _ _ _
                 with "Hc").
       iApply ("Hopen" $! N' ga with "[%]"). exact Hga. }
     iIntros (ret) "[Harm Hc]".
@@ -1683,7 +1719,7 @@ Section UCatKernel.
         { iApply (UkFileOpen.uk_open_taint_fd_std (ukn_fd N')
                     (take NSTD (uvis_fd W)) ret Hnone with "Hf"). }
         iDestruct "Hok" as (fd gamo) "([%Hr1 %Hlt1] & $ & _)". }
-      iApply (cat_dg_open_noopen v vf ps0 cs0 s0 I0 P
+      iApply (cat_dg_open_noopen g Hcons N' v vf ps0 cs0 s0 I0 P
                 (take NSTD (uvis_fd W)) rb ga Hst Hl2 Hglen Hfb
                 with "Hpin Hfp [] Hstd [Hc]").
       + iIntros "[_ Hc]". rewrite Hpayeq. iApply ("Hqn" with "Hc").
@@ -1701,7 +1737,7 @@ Section UCatKernel.
         iSplitR; [ by iPureIntro | ]. iSplitR; [ by iPureIntro | ].
         iSplitR "".
         * rewrite /UkCatMain.kcat_run0.
-          iExists (cat_round_inv (cat_hold_at N' r q1 i bs om fd gamo)
+          iExists (cat_round_inv g N' (cat_hold_at N' r q1 i bs om fd gamo)
                      (take NSTD (uvis_fd W)) bs v vf ps0 cs0 s0 I0 P),
                   ((∃ p : nat, ⌜(p <= length bs)%nat⌝
                      ∗ UCatOut.cch g v vf ps0 cs0 s0 I0
@@ -1709,13 +1745,13 @@ Section UCatKernel.
                    ∗ (∃ p' : nat,
                         cat_hold_at N' r q1 i bs om fd gamo p'))%I.
           iSplitR "Hstd Hhold Hc"; last iSplitL "Hstd Hhold Hc".
-          -- iApply (cat_round_at c i bs fd
+          -- iApply (cat_round_at g N' c i bs fd
                        (cat_hold_at N' r q1 i bs om fd gamo)
                        (take NSTD (uvis_fd W)) v vf ps0 cs0 s0 I0 P _
                        Hgc Htie
-                       with "[] [] [] Hcode").
+                       with "[Hheld] [] [] Hcode").
              ++ iApply ("Hheld" $! N' fd gamo with "[%]"). exact Hlt1.
-             ++ iApply (cat_hw_of_link c v vf ps0 cs0 s0 I0 P
+             ++ iApply (cat_hw_of_link g Hcons N' c v vf ps0 cs0 s0 I0 P
                           (take NSTD (uvis_fd W)) rb Hgc Hst Hl1
                           with "Hpin Hfp").
              ++ iIntros "!>" (p p') "%Hp %Hp' _ Hhold' Hc'".
@@ -1729,7 +1765,7 @@ Section UCatKernel.
              iDestruct "Hhp" as (p') "(Hufdh & _ & _)".
              iFrame "Hufdh". rewrite Hpayeq.
              iApply ("Hqp" $! p with "[%] Hc'"). exact Hp.
-        * iApply (cat_cl_of_in fd
+        * iApply (cat_cl_of_in N' fd
                     (FdOpen true false (FdInode i gamo om)) _ _
                     (fdst_nopipe_inode true false i gamo om)).
           by iIntros "[$ $]".
@@ -1738,4 +1774,4 @@ Section UCatKernel.
         iApply ("Htaint" $! N' ret with "HT Hf [%]"). exact Hpos.
   Qed.
 
-End UCatKernel.
+End UCatEntry.

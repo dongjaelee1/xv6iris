@@ -1074,6 +1074,23 @@ Section UkCat.
           WP (Loop : expr riscv_lang)) -∗
        WP (Loop : expr riscv_lang))%I.
 
+  (* ...and its output side is MONOTONE, which is what lets a caller
+     REFINE what a read told it -- at a held descriptor row, "the bytes at
+     SOME offset" into "the bytes at the offset I expected". *)
+  Lemma kcat_r_mono_out (fdv : mword 64) (a : Z) (cnt : nat) (Ri : iProp Σ)
+      (Ro Ro' : mword 64 -> (nat -> bv 8) -> iProp Σ) :
+    (∀ (ret : mword 64) (g : nat -> bv 8), Ro ret g -∗ Ro' ret g) -∗
+    kcat_r fdv a cnt Ri Ro -∗ kcat_r fdv a cnt Ri Ro'.
+  Proof using .
+    iIntros "Hm Hr" (h m avail f)
+      "%Ha0 %Ha1 %Ha2 #Hcode HRi Hbs Hrun Hcont".
+    iApply ("Hr" $! h m avail f with "[%] [%] [%] Hcode HRi Hbs Hrun");
+      [ exact Ha0 | exact Ha1 | exact Ha2 | ].
+    iIntros (h' ret g) "HRo Hbs Hrun".
+    iApply ("Hcont" $! h' ret g with "[Hm HRo] Hbs Hrun").
+    iApply ("Hm" with "HRo").
+  Qed.
+
   Lemma kcat_r_of_law (fdv : mword 64) (a : Z) (cnt : nat) (Ri : iProp Σ)
       (Ro : mword 64 -> (nat -> bv 8) -> iProp Σ) :
     (forall (ret : mword 64) (g : nat -> bv 8), Ri ⊢ Ro ret g) ->

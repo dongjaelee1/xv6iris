@@ -175,11 +175,12 @@ Section UEchoFile.
   (*  verbatim.                                                           *)
   (* =================================================================== *)
   Definition ef_full_adv (γfs : fs_names) (i : Z) (γo : gname)
-      (M : gmap Z (bv 8)) (ua : mword 64) (k : nat)
+      (M : gmap Z (bv 8)) (ua : mword 64) (n : Z) (k : nat)
       (bsk : list (bv 8)) (REST : iProp Σ) : iProp Σ :=
     (∀ (I : gmap Z fs_node) (off : nat) (bs bs0 : list (bv 8)) (nl : nat),
        ⌜wri_pre (abs_view I) i off bs bs0 nl⌝ -∗
        ⌜ubytes_at M (add_vec_int ua (FW_MAX * Z.of_nat k)) bs⌝ -∗
+       ⌜Z.of_nat (length bs) = wchunk_at n k⌝ -∗
        (* RELAY 3 -- lane WRITE-RELAY owes this: the bytes that land are
           the WHOLE chunk the chain is at, not merely a run of the
           caller's image at the chunk's base. *)
@@ -198,11 +199,12 @@ Section UEchoFile.
 
   (* ...the same without RELAY 3's arrow: what OFF-LINK alone leaves. *)
   Definition ef_full_adv_raw (γfs : fs_names) (i : Z) (γo : gname)
-      (M : gmap Z (bv 8)) (ua : mword 64) (k : nat) (REST : iProp Σ)
+      (M : gmap Z (bv 8)) (ua : mword 64) (n : Z) (k : nat) (REST : iProp Σ)
       : iProp Σ :=
     (∀ (I : gmap Z fs_node) (off : nat) (bs bs0 : list (bv 8)) (nl : nat),
        ⌜wri_pre (abs_view I) i off bs bs0 nl⌝ -∗
        ⌜ubytes_at M (add_vec_int ua (FW_MAX * Z.of_nat k)) bs⌝ -∗
+       ⌜Z.of_nat (length bs) = wchunk_at n k⌝ -∗
        ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I -∗
        off_gv γo (1/2) (Z.of_nat off) ={appE}=∗
        ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I ∗
@@ -222,7 +224,7 @@ Section UEchoFile.
   Hypothesis Hoff_link :
     forall (γfs : fs_names) (i : Z) (γo : gname) (M : gmap Z (bv 8))
            (ua : mword 64) (n : Z) (k : nat) (REST : iProp Σ),
-      ef_full_adv_raw γfs i γo M ua k REST ⊢
+      ef_full_adv_raw γfs i γo M ua n k REST ⊢
       awrite_full_at (fs_gamma_L γfs) appE i γo M ua n k REST.
 
   (* ---- HYPOTHESIS 2 (lane WRITE-RELAY, RELAY 3) ---------------------- *)
@@ -232,9 +234,10 @@ Section UEchoFile.
      the chain's own [n] into the node ([wchunks n]'s [k]-th chunk). *)
   Hypothesis Hrelay3 :
     forall (γfs : fs_names) (i : Z) (γo : gname) (M : gmap Z (bv 8))
-           (ua : mword 64) (k : nat) (bsk : list (bv 8)) (REST : iProp Σ),
-      ef_full_adv γfs i γo M ua k bsk REST ⊢
-      ef_full_adv_raw γfs i γo M ua k REST.
+           (ua : mword 64) (n : Z) (k : nat) (bsk : list (bv 8))
+           (REST : iProp Σ),
+      ef_full_adv γfs i γo M ua n k bsk REST ⊢
+      ef_full_adv_raw γfs i γo M ua n k REST.
 
   (* ---- HYPOTHESIS 3 (lane WRITE-RELAY, RELAY 4) ---------------------- *)
   (* READ-RELAY's shape one syscall over ([FsAbsReadFire.read_arms_mapped],
@@ -275,8 +278,8 @@ Section UEchoFile.
       (∀ (M : gmap Z (bv 8)) (pm : gmap (mword 27) uperm) (sz : Z),
          uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗
          uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗
-         awrite_chain (fs_gamma_L fsc_fs) appE i γo M (m !!! Regidx a1_idx)
-           n Q 0%nat (wchunks n)) -∗
+         awrite_chain (fs_gamma_L fsc_fs) appE i γo M (m !!! Regidx a1_idx) n
+           Q 0%nat (wchunks n)) -∗
       udepwf_std N m pc 16 (write_file_fam Q (ukn_pay N)) l.
 
   (* ---- HYPOTHESIS 5 (NEW; the ledger-slot write leaf) ---------------- *)

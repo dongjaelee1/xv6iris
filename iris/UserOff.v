@@ -158,24 +158,6 @@ Section UserOff.
     iModIntro. by iFrame.
   Qed.
 
-  (* ...AND THE SAME SUPPLIER LEAVING ITS OWN ROW BEHIND, which is what a
-     descriptor bundle's row wants back: [off_user_inv] is persistent, so
-     the parked supplier can hand its input out again for nothing.  This
-     is the parked half of "the row goes in and the row comes back
-     advanced" ([FdPark.off_supply_of_st]); at a parked row the advance is
-     the identity on the state, so the row that comes back is the row that
-     went in. *)
-  Lemma off_supply_parked_keep (E : coPset) γo (off d : nat) :
-    ↑foffN ⊆ E ->
-    off_user_inv γo -∗ off_supply γo E off d (off_user_inv γo).
-  Proof using .
-    intros HE. rewrite /off_supply. iIntros "#Hinv Hk".
-    iDestruct "Hk" as (v) "[Hk _]".
-    iMod (off_user_inv_move E γo v (Z.of_nat (off + d)) HE
-            with "Hinv Hk") as "Hk".
-    iModIntro. by iFrame "Hk Hinv".
-  Qed.
-
   (* SUPPLIER 2 -- HELD: the caller presented its own half at the offset
      the transfer used and takes it back ADVANCED.  Note what is NOT here:
      no invariant is opened, so this supplier is good at EVERY mask. *)
@@ -226,6 +208,173 @@ Section UserOff.
   Lemma off_pub_hand_0 γo :
     off_gv γo 1 0 -∗ off_gv γo (1/2) 0 ∗ uoff γo 0.
   Proof using . exact (off_pub_hand γo 0). Qed.
+
+
+  (* ================================================================== *)
+  (*  4.  THE BOX'S ARM, AND THE SETTLE (lane OFF-LINK, L0/L3)           *)
+  (* ================================================================== *)
+
+  (* THE COUPLING, OR THE TAINT (design/pipe.md, "The coupling, or the
+     taint"; design/app-file.md SS3 "THE OFFSET", SS3.5).  This is the arm
+     [FileOffCell.off_resident] takes when the disconnect lands: the
+     kernel's half at the value the cell holds, or -- once a fire has run
+     at a HELD row with no link -- the application's taint and NO GHOST AT
+     ALL, permanently (a [ghost_var] half cannot be re-minted at an
+     existing name, the pipe's "no fresh authority at an existing name").
+     Stated HERE rather than inside the box so that the box, the fire and
+     the supplier all name one proposition. *)
+  Definition off_link (γo : gname) (z : Z) : iProp Σ :=
+    (off_gv γo (1/2) z ∨ □ riscv_kill_cred)%I.
+
+  Global Instance off_link_timeless γo z : Timeless (off_link γo z).
+  Proof using . rewrite /off_link. apply _. Qed.
+
+  (* the coupled arm, which is what a fire that MOVED the ghost hands back
+     -- and what a node whose closure holds [uoff] leaves behind when it
+     advances both halves itself (design SS3: "THE LINK IS THE NODE") *)
+  Lemma off_link_of γo (z : Z) : off_gv γo (1/2) z -∗ off_link γo z.
+  Proof using . iIntros "H". by iLeft. Qed.
+
+  (* ...and the disconnect, which is what the GENERIC tier pays with: the
+     taint it already holds ([PipeQueue.pipe_taint_cred],
+     [UexecExecInst.xv6_ssupply]; the survey's Fact A). *)
+  Lemma off_link_taint γo (z : Z) : □ riscv_kill_cred -∗ off_link γo z.
+  Proof using . iIntros "#H". by iRight. Qed.
+
+  (* THE SETTLE: what the FIRE needs when the node hands the kernel's half
+     back UNMOVED and the cell is about to move by [d].  It is exactly the
+     old [off_supply] with the box's ARM as its output instead of the bare
+     half -- so a payer that cannot move the ghost may disconnect it
+     instead, which is the whole of the taint arm's content.  [R] is what
+     the payer leaves behind. *)
+  Definition off_settle (γo : gname) (E : coPset) (off d : nat)
+      (R : iProp Σ) : iProp Σ :=
+    (off_gv γo (1/2) (Z.of_nat off) ={E}=∗ off_link γo (Z.of_nat (off + d)) ∗ R)%I.
+
+  (* PAYER 1 -- THE PARKED ROW, verbatim what [off_supply_parked] pays
+     today: the row's own existential invariant holds the user half and the
+     kernel moves both against it. *)
+  Lemma off_settle_parked (E : coPset) γo (off d : nat) :
+    ↑foffN ⊆ E ->
+    off_user_inv γo -∗ off_settle γo E off d True.
+  Proof using .
+    intros HE. rewrite /off_settle. iIntros "#Hinv Hk".
+    iMod (off_user_inv_move E γo (Z.of_nat off) (Z.of_nat (off + d)) HE
+            with "Hinv Hk") as "Hk".
+    iModIntro. iSplitL; [ by iApply off_link_of | done ].
+  Qed.
+
+  (* PAYER 2 -- THE TAINT, and this is the disconnect: the kernel DROPS its
+     half rather than moving it, and the box keeps the cell alone.  Only
+     the generic tier can pay this ([Fact B]: a verified program under an
+     untainted discipline cannot mint [riscv_kill_cred], which is what
+     [vacuity_link_not_taint] below checks). *)
+  Lemma off_settle_taint (E : coPset) γo (off d : nat) :
+    □ riscv_kill_cred -∗ off_settle γo E off d True.
+  Proof using .
+    rewrite /off_settle. iIntros "#Ht Hk".
+    iModIntro. iSplitR; [ by iApply off_link_taint | done ].
+  Qed.
+
+  (* THE FIRE'S CASE SPLIT, against lane WRITE-RELAY's node shape
+     ([OffGv.off_ret]): the node hands the kernel's half back either
+     UNMOVED -- and then the settle above is what carries it to the box's
+     arm -- or ADVANCED BY THE CHUNK, which IS the box's coupled arm and
+     costs nothing.  Two lines, and they are the whole of how the fire
+     consumes [off_ret]: [off_settle] is consulted on the LEFT arm only. *)
+  Lemma off_ret_case γo (off d : nat) :
+    off_ret γo off d -∗
+    off_gv γo (1/2) (Z.of_nat off) ∨ off_link γo (Z.of_nat (off + d)).
+  Proof using .
+    iIntros "H". iDestruct "H" as (v) "[Hk %Hv]".
+    destruct Hv as [-> | ->]; [ by iLeft | ].
+    iRight. by iApply off_link_of.
+  Qed.
+
+  (* ...AND THE THIRD CASE NEEDS NO PAYER AT ALL: a node whose closure held
+     [uoff γo off] advanced BOTH halves inside its own phase 2
+     ([uoff_advance]) and handed the kernel's back at [off + d], which IS
+     the box's coupled arm.  This is why the fire consults the settle only
+     on the UNMOVED branch. *)
+  Lemma off_link_advanced γo (off d : nat) :
+    off_gv γo (1/2) (Z.of_nat (off + d)) -∗ off_link γo (Z.of_nat (off + d)).
+  Proof using . iApply off_link_of. Qed.
+
+  (* ================================================================== *)
+  (*  5.  THE VACUITY CHECK (design/app-file.md SS3.6), written FIRST     *)
+  (* ================================================================== *)
+  (* Three refutations, and together they say where the disconnect may and
+     may not live.  All three are about ONE fact: a half of [off_gv] is not
+     derivable from anything persistent, because the whole ghost refutes a
+     second half. *)
+
+  (* the arithmetic of the shadow: whole plus half is not valid *)
+  Lemma off_gv_whole_half γo (q : Qp) (z z' : Z) :
+    off_gv γo 1 z -∗ off_gv γo q z' -∗ False.
+  Proof using .
+    rewrite /off_gv. iIntros "H1 H2".
+    iDestruct (ghost_var_valid_2 with "H1 H2") as %[Hv _].
+    iPureIntro. exact (Qp.not_add_le_l 1 q Hv).
+  Qed.
+
+  (* (b) THE LINK IS NOT PAYABLE FROM THE TAINT.  A node that holds
+     [uoff γo off] is holding a resource the generic supply cannot conjure:
+     if the taint could hand it out, a publish that still owns the WHOLE
+     shadow (which is exactly [ProofSysOpenPub]'s state before the split,
+     [UserOff.off_pub_hand]) would be inconsistent.  So a chain node stated
+     at the program's own offset is a REAL obligation and its claim is not
+     vacuous -- and, read the other way, the generic tier can never take
+     the LINK arm of a [link ∨ taint] payment. *)
+  Example vacuity_link_not_taint (γo : gname) (off : nat) (z : Z) :
+    (⊢ □ riscv_kill_cred -∗ uoff γo off) ->
+    □ riscv_kill_cred ∗ off_gv γo 1 z ⊢ False.
+  Proof using .
+    intros Hbad. iIntros "[#Ht Hw]".
+    iDestruct (Hbad with "Ht") as "Hu". rewrite /uoff.
+    iApply (off_gv_whole_half γo (1/2) z (Z.of_nat off) with "Hw Hu").
+  Qed.
+
+  (* ...and the same for the LEND: the half [FsAbsWriteFire.awrite_full_at]
+     and [FsAbsReadFire.aread_commit_at] demand at the fire's offset is not
+     payable from the taint either.  THIS IS THE PRICE OF THE BOX'S TAINT
+     ARM, and the reason it has to be paid in the NODE: once an object's
+     box is disconnected there is no half to lend, so a later fire cannot
+     run the node at all -- the node's app step ([AppInv.app_step]) then
+     has no payer but [AppInv.app_sup], which the taint reaches only
+     through the survey's R1 ([al_sup_of_kill], lane SUP-ONE). *)
+  Example vacuity_lend_not_taint (γo : gname) (off : nat) (z : Z) :
+    (⊢ □ riscv_kill_cred -∗ off_gv γo (1/2) (Z.of_nat off)) ->
+    □ riscv_kill_cred ∗ off_gv γo 1 z ⊢ False.
+  Proof using .
+    intros Hbad. iIntros "[#Ht Hw]".
+    iDestruct (Hbad with "Ht") as "Hk".
+    iApply (off_gv_whole_half γo (1/2) z (Z.of_nat off) with "Hw Hk").
+  Qed.
+
+  (* (a) AND THE DISCONNECT CANNOT BE PUSHED INTO THE SUPPLIER, which
+     REFUTES the cheaper of the two shapes the taint-pattern survey offered
+     (reviews/taint-pattern-survey.md R2, "or -- cheaper, and already
+     half-built -- the disconnect is pushed into the abstract supplier
+     [UserOff.off_supply] ... so the pieces do not move.  Recommend the
+     second").  [off_supply] must hand back the kernel's half AT [off + d];
+     that is a MOVE of the shadow, and a move needs the other half, which
+     the taint does not have.  Hence the arm belongs in the BOX (where the
+     half may be dropped) and the supplier's output must be [off_link] --
+     which is what [off_settle] above is.  Checked at the statement, per
+     SS3.6. *)
+  Example vacuity_supply_not_taint (E : coPset) (γo : gname) (off d : nat)
+      (R : iProp Σ) :
+    (0 < d)%nat ->
+    (⊢ □ riscv_kill_cred -∗ off_supply γo E off d R) ->
+    □ riscv_kill_cred ∗ off_gv γo 1 (Z.of_nat off) ⊢ |={E}=> False.
+  Proof using .
+    intros Hd Hbad. iIntros "[#Ht Hw]".
+    iDestruct (off_gv_halves γo (Z.of_nat off) with "Hw") as "[Hk Hu]".
+    iDestruct (Hbad with "Ht") as "Hsup".
+    iMod ("Hsup" with "[Hk]") as "[Hk _]"; [ by iApply off_ret_keep | ].
+    iDestruct (off_gv_agree with "Hk Hu") as %Heq.
+    iModIntro. iPureIntro. lia.
+  Qed.
 
 End UserOff.
 

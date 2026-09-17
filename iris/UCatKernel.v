@@ -242,7 +242,13 @@ Section UCatKernel.
                 ∗ Hold (p + Z.to_nat (bv_unsigned rv))%nat)
                ∨ ((∃ p' : nat, ⌜(p' <= length bs)%nat⌝ ∗ Hold p')
                   ∗ file_taint c))%I)) -∗
-    (* [Hw]: the turn's write, at the cursor *)
+    (* [Hw]: the turn's write, at the cursor -- COUNT-EXACT (RULING (g)).
+       Its output is read at the value [write] RETURNED, and it says that
+       value IS the count: [UkWriteLeaf.uwrite_no_short] gives exactly
+       that at a console destination the caller owns, and it is what
+       refutes cat's `write error` tail inside the walk.  So the round
+       this file builds never funds [UkCatCat.kcat_dg_cw] and does not
+       take it as a premise. *)
     □ (∀ (p nb : nat) (rv : mword 64) (fbb : nat -> bv 8),
          (* THE COUNT IS READ OFF THE RETURNED WORD, not off the walk's
             [nb].  [UkCatCat.kcat_round]'s write arm is quantified over
@@ -261,18 +267,19 @@ Section UCatKernel.
           ∨ file_taint c) -∗
          UserFd.ustd γfd l -∗
          UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P p -∗
-         UkCat.kcat_w N (mword_of_int 1) (mword_of_int CatSyms.buf) nb
+         UkCat.kcat_wr N (mword_of_int 1) (mword_of_int CatSyms.buf) nb
            (ubytes γd CatSyms.buf 512 fbb)
-           (UserFd.ustd γfd l
-            ∗ UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P
-                (p + Z.to_nat (bv_unsigned rv))%nat
-            ∗ ubytes γd CatSyms.buf 512 fbb)) -∗
-    (* the two diagnostic tails, and the loop's normal exit.  [Cend]'s
-       wand takes the cursor and the handle's position SEPARATELY: the
-       loop exits on [read] returning zero, and it is the ENTRY -- which
-       owns the arithmetic of [ard_count] -- that reads off that the two
-       are then the same. *)
-    □ UkCatCat.kcat_dg_cw N -∗
+           (fun wret : mword 64 =>
+              (⌜wret = (mword_of_int (Z.of_nat nb) : mword 64)⌝
+               ∗ UserFd.ustd γfd l
+               ∗ UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P
+                   (p + Z.to_nat (bv_unsigned rv))%nat
+               ∗ ubytes γd CatSyms.buf 512 fbb))) -∗
+    (* the read-error tail, and the loop's normal exit.  [Cend]'s wand
+       takes the cursor and the handle's position SEPARATELY: the loop
+       exits on [read] returning zero, and it is the ENTRY -- which owns
+       the arithmetic of [ard_count] -- that reads off that the two are
+       then the same. *)
     □ UkCatCat.kcat_dg_cr N -∗
     □ (∀ p p' : nat, ⌜(p <= length bs)%nat⌝ -∗ ⌜(p' <= length bs)%nat⌝ -∗
          UserFd.ustd γfd l -∗ Hold p' -∗
@@ -282,7 +289,7 @@ Section UCatKernel.
       (cat_round_inv Hold l bs v vf ps0 cs0 s0 I0 P) Cend.
   Proof using .
     intros Hgc Htie.
-    iIntros "#Hpin #Hw #Hdcw #Hdcr #Hend #Hcode".
+    iIntros "#Hpin #Hw #Hdcr #Hend #Hcode".
     rewrite /UkCatCat.kcat_round. iModIntro.
     iIntros (h m avail f) "%Ha0 %Ha1 %Ha2 _ HI Hbuf Hrun Hcont".
     iDestruct "HI" as "[Hstd Hcur]".
@@ -302,17 +309,19 @@ Section UCatKernel.
         iApply ("Hend" $! p p2 with "[%] [%] Hstd Hhold Hc");
           [ exact Hple | exact Hp2 ].
       - iIntros (nb) "%Hret _".
-        iApply (UkCat.kcat_w_mono N (mword_of_int 1)
+        iApply (UkCat.kcat_wr_mono N (mword_of_int 1)
                   (mword_of_int CatSyms.buf) nb
                   (ubytes γd CatSyms.buf 512 gb)%I
-                  (UserFd.ustd γfd l
-                   ∗ UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P
-                       (p + Z.to_nat (bv_unsigned ret))%nat
-                   ∗ ubytes γd CatSyms.buf 512 gb)%I
+                  (fun wret : mword 64 =>
+                     (⌜wret = (mword_of_int (Z.of_nat nb) : mword 64)⌝
+                      ∗ UserFd.ustd γfd l
+                      ∗ UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P
+                          (p + Z.to_nat (bv_unsigned ret))%nat
+                      ∗ ubytes γd CatSyms.buf 512 gb)%I)
                   _ with "[Hhold] [Hstd Hc]").
-        { iIntros "(Hstd & _ & Hb)".
+        { iIntros (wret) "(%Hws & Hstd & _ & Hb)".
           iSplitR "Hb"; [ | iExact "Hb" ].
-          iSplit; [ | iExact "Hdcw" ].
+          iLeft. iSplitR; [ by iPureIntro | ].
           rewrite /cat_round_inv. iFrame "Hstd".
           iExists p2. iSplitR; [ by iPureIntro | ]. iFrame "Hhold".
           rewrite /UCatOut.cch. iRight. rewrite <- Hgc. iExact "HT". }
@@ -334,17 +343,19 @@ Section UCatKernel.
                 with "[%] [%] Hstd Hhold Hc");
         [ exact Hple | exact Hnext ].
     - iIntros (nb) "%Hret %Hnb0".
-      iApply (UkCat.kcat_w_mono N (mword_of_int 1)
+      iApply (UkCat.kcat_wr_mono N (mword_of_int 1)
                 (mword_of_int CatSyms.buf) nb
                 (ubytes γd CatSyms.buf 512 gb)%I
-                (UserFd.ustd γfd l
-                 ∗ UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P
-                     (p + Z.to_nat (bv_unsigned ret))%nat
-                 ∗ ubytes γd CatSyms.buf 512 gb)%I
+                (fun wret : mword 64 =>
+                   (⌜wret = (mword_of_int (Z.of_nat nb) : mword 64)⌝
+                    ∗ UserFd.ustd γfd l
+                    ∗ UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P
+                        (p + Z.to_nat (bv_unsigned ret))%nat
+                    ∗ ubytes γd CatSyms.buf 512 gb)%I)
                 _ with "[Hhold] [Hstd Hc]").
-      { iIntros "(Hstd & Hc' & Hb)".
+      { iIntros (wret) "(%Hws & Hstd & Hc' & Hb)".
         iSplitR "Hb"; [ | iExact "Hb" ].
-        iSplit; [ | iExact "Hdcw" ].
+        iLeft. iSplitR; [ by iPureIntro | ].
         rewrite /cat_round_inv. iFrame "Hstd".
         iExists (p + Z.to_nat (bv_unsigned ret))%nat.
         iSplitR; [ by iPureIntro | ]. iFrame "Hhold". iExact "Hc'". }

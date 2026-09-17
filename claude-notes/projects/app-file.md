@@ -8365,4 +8365,37 @@ and `cat_held_read`'s posts gain the bound, `cat_round_at`'s `Hw` gains
 the cap on its taint disjunct and LOSES the `kcat_dg_cr` premise, and
 `cat_pay_at` gains `cat_code`, `ucwd` and the path row; everything else
 is additive.  `UShRound.v`: `Hchild_cat` only.  `UShCat.v`: additive
-(`cat_kexec_argpath`).
+(`cat_kexec_argpath`), plus the `udepw_law 21` premise dropped from
+`cat_uexec_slot` / `cat_slot_of_kexec` (SUP-ONE).
+
+**THE ENTRY TIER IS ITS OWN SECTION, AND THAT IS A FINDING.**  Everything
+up to and including [Hw] is stated at ONE `uk_names` record -- the
+section's `N` -- because a walk runs at the record its own
+`UkRun.urun` was minted with.  An ENTRY does not: it ALLOCATES the
+record, so its payment is owed at whatever `UkRun.uslot_of_urun_all`
+hands out and must be quantified over it.  **Applying a section-`N`
+lemma under that `∀` is durable-notes' class-instance trap in its purest
+form**: the two records print identically, do not unify, and the
+`iApply` NEVER TERMINATES -- 2.5 GB of stable RSS, thirty minutes, no
+error, and `coqc -time` streaming is the only thing that localises it
+(the last line printed is the `{` that opens the failing block).  So
+`UCatKernel.v` now closes `Section UCatKernel` after [Hw] and opens
+`Section UCatEntry` without `Context (N)`, and §7-§9 use every result
+above at an EXPLICIT record.  The same discipline applies to any future
+entry-level result in that file.
+
+**THE BAR.**  Whole tree green on the lane's remote tree
+(`./gcp-rocq/run-on-gcp --proofs -k`: `EXIT=0`, ZERO `Error`).  Nothing
+is `Admitted` outside `UShRound.v`'s skeleton; `grep -c "^ *Proof\.$"` is
+0 in every touched file; `tools/comment_quote_check.py iris` reports 0
+sites.  `make audit-all-only`, `make audit-tree-only` and `make
+audit-file-only`: `AUDIT_EXIT=0` / `AUDITTREE_EXIT=0` /
+`AUDITFILE_EXIT=0`, and the four axiom lists are UNCHANGED -- the ECHO
+theorem's FOURTEEN, the SYSTEM theorem's THIRTEEN, the TREE theorem's
+THIRTEEN and the FILE theorem's FOURTEEN.  `make gen-ucode` prints
+*unchanged* for all seven catalogs.  `Print Assumptions`:
+`cat_image_entry` and `cat_pay_absent` are `UShEcho.echo_image_entry`'s
+FOURTEEN exactly; `cat_pay_present` and `cat_hw_of_link` are the three
+non-primitive ones alone (`resv_matches`, `resv_is_valid`,
+`functional_extensionality_dep`); `UkFileOpen.uk_open_taint_fd_std` is
+*Closed under the global context*.

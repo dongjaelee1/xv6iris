@@ -997,3 +997,154 @@ loop's invariant is stated at a terminated token list.  Start by copying
 `parseredirs` call sites to be the only places the proof text really
 changes.  Use `wp_kshp_frame_pro_at`, not `wp_kshp_frame_pro`:
 `parseexec` has four locals.
+
+### MODEL (2026-09-17) — `iris/FileDisc.v`, the pure model and its determinacy
+
+Branch `app-file/model`, commit on that branch.  Whole tree green on the
+lane's remote tree (only the two new files compile; nothing depends on
+them yet).  `Print Assumptions` is **Closed under the global context** —
+no axioms at all, not even PrimString — on `sessf_prefix_det`,
+`file_phi`, `demo_f_bad`, `demo_f1`, `disc_f_disc`, `parse_line_body`,
+`line_body_parse`, `disc_input_f_prefix`, `fcont_ok_subseq` and
+`ralt_dec_enc`.  Every result carries `Proof using`.
+
+**WHAT LANDED.**  `iris/FileState.v` is the claim lane's file copied
+VERBATIM (every statement and every proof went through as written) and
+sits before `EchoDisc.v` in `iris/_CoqProject`; `iris/FileDisc.v` sits
+directly after it.
+
+- lines: `fname_f`, `suf_gtf`, `uline`, `line_body`, `line_bytes`,
+  `uline_ok`(+dec), `strip_gtf`, `parse_line`, `parse_line_ok`,
+  `line_body_parse`, `parse_line_body`, `uline_of`, `lines_of`.
+- D3: `fbody_byte`, `fbody_ok`, `fbody_ok_bytes`, `fbody_ok_short`,
+  `disc_input_f` with `_dec`, `_nil`, `_snoc`, `_prefix`, `_body`, `_at`.
+- contents: `fcont_ok`, `fst_ok`, `fcont_ok_nodollar`, `fcont_ok_nl`,
+  `echo_args_chunks_shape`, `subseq_shape`, `fcont_ok_subseq`.
+- alternatives: `dg_open`, `dg_exec_cat` (with `dg_open_line`,
+  `dg_exec_cat_line`), `dg_catopen`, `alt_openfail`, `alt_execcat`,
+  `alt_catopen` (each with its `_string` byte reading), `ralt`,
+  `ralt_enc`/`ralt_dec`/`ralt_dec_enc`/`ralt_dec_lt4`, `ralt_panic`,
+  `ralt_ok`(+dec), `fsm`, `cont`, `fst_ok_fsm`, `cont_panic`,
+  `cont_shape`.
+- session: `ralt_at`, `pro_idx_f` (+ `_S`, `_Sp`, `_Sn`, `_mono`, `_le`,
+  `_ext`, `_add`), `fst_upto` (+ `_ext`, `_drop`), `alt_cont_f`,
+  `alt_blk_f`, `alt_seq_f` (+ `_S`, `_ext`, `_bs_ext`, `_bs_app`,
+  `_cs_ext`, `_ps_ext`, `_cons`, `_cons_assoc`, `_drop`), `sessf` (+
+  `_nil`, `_snoc_other`, `_snoc_nl`, `_step`, `_mono`, `_take`,
+  `_ps_ext`), `fst_after`, `pro_ok_f`(+dec, `_mono`), `pro_pin_f`,
+  `pro_pin_f_of_ok`.
+- discipline and claim: `disc_seg_f`, `disc_pt_f`, `alts_ok` (+ `_length`,
+  `_at`), `disc_seg_f'` (+ `_intro`, `_nil`), `disc_f`, `good_out_f`,
+  `echof_ws`/`echof_lines_in`/`echof_cyc`/`echof_lines_of`/
+  `echof_lines_before` (+ `echof_lines_in_prefix`,
+  `echof_lines_of_snoc`, `echof_lines_of_prefix`, `echof_lines_in_ok`),
+  `fadm_boot`(+`fadm_boot_fst_ok`), `file_phi`.
+- determinacy: `fd_dollar_split`, `fd_out_eq_panic`, `fd_prompt_of_dollar`
+  (+`_r`), `cont_pair_det`, `alt_seq_f_prefix_det`, **`sessf_prefix_det`**.
+- plain-echo compatibility: `sessf_sess`, `disc_f_disc`, with
+  `alts_ok_lt4`, `alts_ok_of_lt4`, `pro_ok_f_ok`, `pro_idx_f_echo`,
+  `alt_seq_f_sess`, `disc_input_f_of_echo`.
+- demos: `demo_f1` (+ `demo_f1_file`, `demo_f1_disc`), `demo_f2`
+  (+ `demo_f2_adm`), `demo_f3` (+ `demo_f3_adm`), `demo_f4`, `demo_f5`,
+  and the NEGATIVE `demo_f_bad`.
+
+**THE PROOF DOES NOT RUN ON A TABLE OF ALTERNATIVES.**  Twelve
+alternatives at three line shapes would be a 12x12 comparison; what
+replaces it is one observation, `cont_shape`: every non-panic
+alternative's own output is a `'$'`-FREE RUN FOLLOWED BY THE PROMPT —
+echo's line, each diagnostic, cat's, and the file's CONTENT, because a
+content is echo's chunks and a chunk is a word, a blank or a newline.  So
+`fd_dollar_split` settles every non-panic pair at once with no case
+analysis, and only the panic alternative (which re-enters init's prologue
+instead of printing a prompt) needs its own argument, `fd_out_eq_panic`.
+Copy this shape rather than the head-byte table if another alternative is
+ever added.
+
+**WHERE §1 HAD TO BE CORRECTED — each with its counterexample.**
+
+1. **`parse_line` inverts `line_body`, not `line_bytes`.**
+   `parse_line (line_bytes l) = Some l` is FALSE at every `l`:
+   `line_bytes LCat = sb "cat f" ++ [wl_nl]` and the parser sees the
+   bodies `LineWords.bodies_of` cuts, which have their newline stripped,
+   so it answers `None`.  Landed: `line_bytes l = line_body l ++
+   [wl_nl]`, `parse_line_body : uline_ok l -> parse_line (line_body l) =
+   Some l`, `line_body_parse : parse_line b = Some l -> b = line_body l`.
+2. **The partial line is `fbody_byte`, not `wl_body_byte`.**  A user
+   typing `echo hi > f` is mid-line at `echo hi >`, whose last byte '>'
+   (62) is neither alphanumeric nor the blank, so `EchoDisc`'s predicate
+   REFUTES a user halfway through an admissible line — the discipline
+   would exclude the only line shape this application is about.  Landed
+   `fbody_byte b := wl_body_byte b \/ b = wl_gt`; prefix closure,
+   decidability and the length bound are unchanged.
+3. **`file_phi`'s first clause must be GUARDED.**  `cycles_of [] = []`,
+   so at the empty history `length s0s = 0` and `s0s !! 0 = Some FAbs` is
+   unsatisfiable while `disc_f []` holds: `file_phi []` would be FALSE.
+   Landed `forall s, s0s !! 0 = Some s -> s = None`, which says the same
+   thing at every history that has a cycle.
+4. **The brief's head-byte separation for `RCRan` is false.**  A content
+   is a subsequence of an ECHO LINE's chunks, and 'c', 'e' and 'f' are
+   alphanumeric: after `echo exec cat failed > f`, `cat f` prints exactly
+   the bytes of the `RCExec` diagnostic, and after `echo fork > f` it
+   prints `"fork\n"` followed by a prompt — sh's panic line.  Both are
+   HARMLESS, because the conclusion is an equality of BYTES (as
+   `EchoDisc.line_alts_of_prefix_bytes` already found for
+   `echo exec echo failed`), and the fork one is the single collision
+   `fd_out_eq_panic` exists for.  What is true, and what the proof uses,
+   is only that no content, line or diagnostic carries a `'$'`.
+5. **`fsm`'s `RFOpenM` keeps design §1's guard "only at an absent f"**,
+   against the flat `Some []` of the coordinator's note: at a PRESENT f,
+   xv6's `sys_open` truncates only AFTER `filealloc` has succeeded
+   (`kernel/sysfile.c`), so at `Some bs` nothing was truncated and the
+   flat version would ask the claim to step the deed to `Some []` while
+   the abstract view is unchanged — unprovable at F-OPEN.  At `Some bs`
+   this alternative is `RFOpenU`.
+6. **Two dead parameters dropped:** `good_out_f` takes no `Ls` (the
+   admissible-boot condition is `file_phi`'s own conjunct and the
+   per-cycle claim never reads it), and `fst_after` takes no `ps` (the
+   state is a function of `cs`, the bodies and the boot state only).
+7. `FileState.echo_args_chunks [] = []` is the honest reading at a
+   one-word line — xv6's echo loop starts at `argc = 1` and writes
+   NOTHING — where §1's "closed by `["\n"]`" would read as `[["\n"]]`.
+   `uline_ok` excludes the line either way; the difference matters to
+   ECHO-FILE's write chain, which must not owe a newline it never wrote.
+
+**THE NEGATIVE WITNESS IS THE POINT OF THE FILE.**  `demo_f_bad`: the
+wire in which `echo hello world > f` was typed and `cat f` then printed
+`goodbye` is NOT `good_out_f`.  It is refuted by `sessf_prefix_det`
+itself — the honest transcript through the open `cat f` line is on the
+wire, so any resolution must agree with it up to there — plus ONE head
+byte: at the `cat` round the continuation's first byte is `'$'`, `'c'`,
+`'e'`, `'f'`, or one of `hello world\n`'s own bytes (`fd_cat_head`,
+`subseq_head`), never `'g'`.
+
+**WHAT IS NOT THERE.**
+
+- `disc_seg_f'` is NOT decidable here.  `EchoDisc`'s finite search over
+  resolutions needs a bound on `sel`, which is finite (`sel_ok` bounds it
+  by `length (echo_chunks ws)`) but unwritten; the demos use
+  `disc_seg_f'_intro` with the decidable `disc_pt_all_f` instead.  If the
+  adequacy path ever needs `Decision (disc_f h)`, that is the lane.
+- `disc_f` has no snoc/prefix closure laws (`EchoDisc.disc_snoc`'s
+  twins).  `disc_input_f` has its full set, and `echof_lines_of` has its
+  prefix monotonicity.
+- `FileDisc` does NOT import `EchoOutPure` (the handful of helpers it
+  wanted are re-proved locally as `fd_*`), so `EchoOutPure`/`EchoOut` can
+  be grown ON TOP of `FileDisc` without a cycle.
+
+**WHAT THE STAGE LANE NEEDS FIRST.**  `o_fh`'s entry `i` is
+`fst_upto cs s0 (bodies_of I) i` and its step law is `fst_upto`'s own
+definition (`fst_upto cs s bs (S q) = fsm (fst_upto cs s bs q)
+(uline_of (bs !!! q)) (ralt_at cs q)`), with `fst_after cs s0 I` the value
+a prompt link records; the round index the stage keeps equal to
+`length o_fh - 1` is `nlines I`, the same index `alt_seq_f` uses, and
+`sessf_take`/`alt_seq_f_cs_ext` are what let a stage read a resolution it
+has only a lower bound of.  Two shape changes to plan for: the range
+condition that was `Forall (fun c => c < 4) cs` is now `alts_ok I cs`, a
+`Forall2` against `lines_of I` which ALSO pins `length cs = nlines I`
+(`alts_ok_length`, `alts_ok_at`); and the prologue counter is `pro_idx_f`,
+which counts `RFFork` and `RCFork` beside `REcho 3` (`pro_ok_f`,
+`pro_pin_f`, `pro_pin_f_of_ok`).  `sessf_prefix_det` is the twin of
+`EchoOutPure.sess_prefix_det` at those hypotheses plus `fst_ok s` and ONE
+boot state shared by both witnesses; `disc_f_disc` and `sessf_sess` say
+nothing about the echo application's own claim changes at an echo-only
+history.

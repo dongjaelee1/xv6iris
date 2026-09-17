@@ -1,6 +1,6 @@
 # Design: the generic write spec (spec-cleanup RD-6)
 
-Status: DESIGN OF RECORD for `projects/spec-cleanup.md` lane RD-6
+Status: DESIGN OF RECORD for `completed/spec-cleanup.md` (campaign CLOSED 2026-09-17) lane RD-6
 (2026-09-15).  Sibling of [`user-read.md`](user-read.md), which is the
 design of record for the read side (lanes RD-1..RD-5) and whose §1
 principle, §3 arm dispatch and §5 Φ-channel this page reuses rather than

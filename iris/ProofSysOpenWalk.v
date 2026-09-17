@@ -302,7 +302,11 @@ Section ProofSysOpenWalk.
        block is already [FsAbsEra.ex_start] at the one path. *)
     ex_start fsc_fs (pv_cwi (us_V U)) P Pmiss (bview plen bp) -∗
     pf_at (aopen_commit_at (fs_gamma_L fsc_fs) appE) Fo -∗
-    open_trunc_piece (fs_gamma_L fsc_fs) vom Ft -∗
+    (* the piece as the PLAIN bundle carries it: unkeyed, at the trivial
+       permit -- nothing rides on this walk's terminal, and the blocks
+       below the join take it KEYED at the inode namei reached
+       ([SysOpenDefs.open_trunc_at_of_triv]) *)
+    open_trunc_piece (fs_gamma_L fsc_fs) vom trunc_permit_triv Ft -∗
     wp_next true (proc_addr jx)
       (so_cont0_au gf ns
                 dqb dqs dqbs dqn (proc_addr jx) pidv Mim pvv vom U sts
@@ -789,6 +793,10 @@ Section ProofSysOpenWalk.
                   Hsbn Hsbi Hsbs Hsbb Hbsl Hisl Hpost").
         { exact Hcsf. }
         { unfold sys_open_slots, create_slots in *. lia. } }
+      (* THE PERMIT, PAID: the plain surface's is [True], so the piece is
+         keyed at the inode namei reached for nothing. *)
+      iDestruct (open_trunc_at_of_triv (fs_gamma_L fsc_fs) vom
+                   (bv_unsigned inum) Ft with "Htc") as "Htc".
       iApply (Join.so_join_au (CID0 := CID10) gfl gf gs jx gl pd pav pu
                 gil gisl
  kk (qq/2)%Qp (qq/2)%Qp gy loy tly inum dn bm om lo
@@ -881,6 +889,10 @@ Section ProofSysOpenWalk.
         { unfold sys_open_slots, create_slots in *. lia. } }
       (* a DIRECTORY at O_RDONLY, so the device arm is unreachable and the
          major bound is vacuous *)
+      (* THE PERMIT, PAID: the plain surface's is [True], so the piece is
+         keyed at the inode namei reached for nothing. *)
+      iDestruct (open_trunc_at_of_triv (fs_gamma_L fsc_fs) vom
+                   (bv_unsigned inum) Ft with "Htc") as "Htc".
       iApply (Alloc.so_alloc_au (CID0 := CID12) gfl gf gs jx gl pd pav pu
                 gil gisl
  kk (qq/2)%Qp (qq/2)%Qp gy loy tly inum dn bm om lo
@@ -955,6 +967,8 @@ Section ProofSysOpenWalk.
     { unfold sys_open_slots, create_slots in *. lia. }
     { (* ARM C-FAIL: a directory opened for writing.  The observation HAS
          fired -- this refusal is inside the child's lock window. *)
+      iDestruct (open_trunc_at_of_triv (fs_gamma_L fsc_fs) vom
+                   (bv_unsigned inum) Ft with "Htc") as "Htc".
       iApply (so_arm_fail gf (proc_addr jx) pidv Mim pvv vom P Pmiss Fo Ft U sts _
                 (bview plen bp) (bv_unsigned inum) (era_node dn bm data) Hpof Ha0f
                 with "Hpriv Hfrag Hfds HP Hobs Htc"). }

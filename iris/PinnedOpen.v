@@ -94,7 +94,7 @@ Section PinnedOpen.
     □ (∀ v : aview, app_pred app_run v -∗
                       app_pred app_run v ∗ (⌜Pin v⌝ ∨ T)) -∗
     app_inv γfs -∗
-    open_trunc_piece (fs_gamma_L γfs) vom Ft -∗
+    open_trunc_piece (fs_gamma_L γfs) vom trunc_permit_triv Ft -∗
     open_au_plain_at (fs_gamma_L γfs) γfs cw M pv vom
       (pobs_P T hops) (pobs_Pmiss T) (pobs_Fo Pin T) Ft.
   Proof using .
@@ -124,7 +124,7 @@ Section PinnedOpen.
     □ (∀ v : aview, app_pred app_run v -∗
                       app_pred app_run v ∗ (⌜Pin v⌝ ∨ T)) -∗
     app_inv γfs -∗
-    open_trunc_piece (fs_gamma_L γfs) vom Ft -∗
+    open_trunc_piece (fs_gamma_L γfs) vom trunc_permit_triv Ft -∗
     open_in (fs_gamma_L γfs) γfs cw M pv vom
       (pobs_P T hops) (pobs_Pmiss T) Farm Fun Fok Fex (pobs_Fo Pin T) Ft.
   Proof using .
@@ -158,7 +158,7 @@ Section PinnedOpen.
     intros Hcr Htr Hres Hpath. iIntros "#Hcl #Hinv".
     iApply (pinned_open_bundle γfs Pin T cw pl hops ino a M pv vom Ft
               Farm Fun Fok Fex Hcr Hres Hpath with "Hcl Hinv []").
-    iApply (open_trunc_piece_none _ vom Ft Htr).
+    iApply (open_trunc_piece_none _ vom _ Ft Htr).
   Qed.
 
   (* ------------------------------------------------------------------ *)
@@ -191,7 +191,7 @@ Section PinnedOpen.
        (* THE CONSOLE: the descriptor is the PINNED device's *)
        ∨ (⌜open_fd_rcpt (om_readable vom) (om_writable vom) (FdDevice ma)
              sts r fdv'⌝
-          ∗ open_trunc_piece (fs_gamma_L γfs) vom Ft)
+          ∗ open_trunc_at (fs_gamma_L γfs) vom ino Ft)
        (* ...or the application is tainted *)
        ∨ T).
   Proof using .
@@ -210,7 +210,8 @@ Section PinnedOpen.
                    av i (MkAnode (ADev ma' mi') nl') Hres with "HP Hrecv")
         as "[%Hid | #HT]"; last first.
       { iRight. iRight. iExact "HT". }
-      destruct Hid as [_ Hnode]. injection Hnode; intros Hnl Hmi Hma.
+      destruct Hid as [Hino Hnode]. subst i.
+      injection Hnode; intros Hnl Hmi Hma.
       subst ma' mi' nl'.
       iRight. iLeft. iFrame "Ht". iPureIntro. exact Hfdr.
     - (* FILE: refuted at a device pin *)
@@ -273,7 +274,7 @@ Section PinnedOpen.
       iApply (pobs_walk_dead γfs Pin T K Pmiss cw pl d0 Hres
                 with "Hcl Hfree Hinv HK"). }
     iSplitR; [ iApply pobs_aopen_triv | ].
-    iApply (open_trunc_piece_none _ vom Ft Htr).
+    iApply (open_trunc_piece_none _ vom _ Ft Htr).
   Qed.
 
   (* ...AND THE RECEIPT, READ: the call failed and the table did not move,
@@ -343,7 +344,7 @@ Section PinnedOpen.
       iApply (pobs_walk_dead_lin γfs Pin T K Pmiss cw pl d0 Hres
                 with "Hcl Hmt Hmh Hinv HK"). }
     iSplitR; [ iApply pobs_aopen_triv | ].
-    iApply (open_trunc_piece_none _ vom Ft Htr).
+    iApply (open_trunc_piece_none _ vom _ Ft Htr).
   Qed.
 
   (* ...AND THE RECEIPT, READ: the call failed and the table did not move

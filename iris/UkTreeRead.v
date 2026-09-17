@@ -132,7 +132,7 @@ Section UkTreeRead.
     iSplitL "Hw".
     { iIntros (pl') "%Hpath'".
       rewrite (arg_path_of_uniq M pv pl' pl Hpath' Hpath). iExact "Hw". }
-    iApply (open_trunc_piece_none _ vom Ft Htr).
+    iApply (open_trunc_piece_none _ vom _ Ft Htr).
   Qed.
 
   (* =================================================================== *)

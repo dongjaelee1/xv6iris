@@ -813,6 +813,11 @@ Section UkTreeCreate.
   Lemma tree_open_create_fail_recv (c : tree_fixed) (r : tree_names)
       (g : gname) (t : ttree) (cw : Z) (M : gmap Z (bv 8))
       (pv vom : mword 64) (pl : list (bv 8)) (nm : fname) :
+    (* THE MODE IS THE TREE APPLICATION'S OWN (lane F-OPEN-3): with the
+       O_TRUNC bit clear the arms report exactly what they always did
+       ([SpecSysOpen]'s [cre_*_kept] family), and this application's open
+       is [0x201]. *)
+    om_trunc vom = false ->
     arg_path_of M pv pl ->
     list_basics.last (path_elems pl) = Some nm ->
     open_post_fail_create (fs_gamma_L fsc_fs) fsc_fs cw M pv vom
@@ -827,16 +832,16 @@ Section UkTreeCreate.
                    (top_ins FsImg.ROOTINO nm i (AFile []) t))
      ∨ tree_taint c).
   Proof.
-    intros Hpath Hlast.
+    intros Htr Hpath Hlast.
     rewrite /open_post_fail_create /open_au_create_at /cre_child_unfired
-            /cre_child_pair.
+            /cre_child_pair /cre_cur_kept /cre_rcpt_kept /cre_fail_kept Htr.
     iIntros "H". iDestruct "H" as "[Hau | Hf]".
     { iDestruct "Hau" as "(_ & _ & _ & _ & _ & Harm & _)".
       iLeft. iApply (pf_at_refund with "Harm"). }
     iDestruct "Hf" as (pl0) "(%Hpath0 & [Hd | Hc])".
     - iDestruct "Hd" as "(_ & _ & _ & _ & _ & Harm & _)".
       iLeft. iApply (pf_at_refund with "Harm").
-    - iDestruct "Hc" as (d) "(%Hd & _ & [Ha | [Hb | Hc]])".
+    - iDestruct "Hc" as (d) "(%Hd & [Ha | [Hb | Hc]])".
       + (* (a) the create FIRED and the open failed past it *)
         rewrite /tree_root_cur in Hd. subst d.
         iDestruct "Ha" as (av i nm0 ents nl) "(%Hlast0 & _ & _ & Hok & _)".
@@ -855,8 +860,11 @@ Section UkTreeCreate.
           cbn [tree_unarm_fam pf_recv].
           iDestruct "Hk" as "[Hown | HT]";
             [ iLeft; iExact "Hown" | iRight; iRight; iExact "HT" ].
-      + (* (c) nothing was observed at all *)
-        iDestruct "Hc" as "(_ & _ & _ & [Hun | Hpair])".
+      + (* (c) nothing was observed at all.  The trunc piece rides HERE
+             now (lane F-OPEN-3): create never returned a node, so its
+             permit was never paid and the caller's own piece comes home
+             inside the arm. *)
+        iDestruct "Hc" as "(_ & _ & _ & _ & [Hun | Hpair])".
         * iDestruct "Hun" as "(Harm & _)".
           iLeft. iApply (pf_at_refund with "Harm").
         * iDestruct "Hpair" as (ic) "Hu". rewrite /cre_unarm_fired.
@@ -939,13 +947,14 @@ Section UkTreeCreate.
     iEval (rewrite /open_receipt Hcr) in "Hrc".
     iEval (cbn [tree_opencreate_fam xfam_tree of_P of_Pmiss of_Farm of_Fun
                 of_Fok of_Fex of_Fo of_Ft]) in "Hrc".
-    rewrite /open_receipt_create.
+    rewrite /open_receipt_create /cre_cur_kept /cre_rcpt_kept /cre_child_kept
+            Htr.
     iDestruct "Hrc" as "[(%Hr & %Hfdv & Hfail) | Hok]".
     - (* THE CALL FAILED: the ledger is back untouched and the deed comes
          home, moved exactly if the create fired before the failure *)
       iDestruct (tree_open_create_fail_recv c r g t cw (uvis_M W) pv
-                   (m !!! Regidx a1_idx) pl nm (Hpath (uvis_M W) Himg) Hlast
-                   with "Hfail") as "Hd".
+                   (m !!! Regidx a1_idx) pl nm Htr (Hpath (uvis_M W) Himg)
+                   Hlast with "Hfail") as "Hd".
       iApply ("Hcont" $! h' rv with "[Hfd Hd] Hcwd Hrun").
       iRight. iSplitL "Hfd"; [| iExact "Hd" ].
       iApply (init_cons_any_std (ukn_fd N) l (uvis_fd W) fdv' rv with "[Hfd]").

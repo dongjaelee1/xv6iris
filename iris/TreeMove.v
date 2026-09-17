@@ -1077,7 +1077,7 @@ Section TreeMove.
         iApply pf_at_triv. rewrite /aopen_commit_at.
         iIntros (I i a) "%Hrow Hka". iModIntro. by iFrame "Hka". }
       iSplitR.
-      { iApply (open_trunc_piece_none _ vom _ Htr). }
+      { iApply (open_trunc_piece_none _ vom _ _ Htr). }
       rewrite /cre_child_unfired. iSplitL "Hown".
       - rewrite /pf_at /tree_arm_fam /=. iSplit; [| iExact "Hown"].
         iApply (tree_arm_commit γfs c r g t (AFile []) Heq tabs_leaf_file

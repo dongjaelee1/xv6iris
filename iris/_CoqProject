@@ -1605,6 +1605,9 @@ UkCatDeed.v
 UCatOut.v
 UCatKernel.v
 UInitTree.v
+UInitTreeCons.v
+UInitTreeBoot.v
+UInitTreeExec.v
 # TreeAssumptions.v
 
 UFileBootAdequacy.v

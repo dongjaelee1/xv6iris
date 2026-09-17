@@ -904,6 +904,118 @@ unmoved.
    `xv6_slot_app_project` to feed, and the right disjunct is a ghost fact
    `app_phi` does not take.  TL-5's pricing stands.
 
+**TL-7 AS LANDED — `UInitCons.v` OFF `echo_names`, /init's CONSOLE SETUP AT
+THE DEED, AND ONE PREMISE LEFT (a RULING, not a proof)** — branch
+`tl7-init-cons`, two commits; design of record `design/user-tree.md` §9.6.
+Whole iris tree green on the mirror (10 files rebuilt from a forced cone);
+`AppEcho.v` / `AppInv.v` / `UkInit.v` / `UInitKernel.v` / `UInitSh.v` /
+`UInitBoot.v` untouched; `UInitBootAdequacy.echo_adequacy_echoΣ`
+byte-identical; echo audit 14, tree audit unmoved.
+
+1. **D1 LANDED.** `UInitCons.init_cons_laws_at` and everything under it are
+   stated over an abstract `Pure : aview -> Prop` and `Made : Z -> iProp Σ`;
+   the echo instance is DEFINITIONAL (`init_cons_laws T K r :=
+   init_cons_laws_at echo_fs_pure (cons_made r) cons_absent T K`), so every
+   consumer stated at that name is untouched and `UInitConsK.v` took
+   instantiation edits only.  The one real shape change is the one the tree
+   needed: `init_cons_laws_open_console` spends the flag LINEARLY, which is
+   what makes it usable at a claim whose `Made` is a DEED.
+2. **D2 LANDED** (new `iris/UInitTreeCons.v`): `tree_cons_abs_law`,
+   `tree_open_absent_leaf_holds` (which is `UInitConsK`'s leaf VERBATIM),
+   a device-node open corollary for the tree (`tree_open_recv_dev` /
+   `tree_open_sup_dev` / `wp_uk_ecall_open_dev_own`),
+   `tree_open_console_leaf_holds`, `tree_mknod_leaf_holds`,
+   `tree_init_cons_leaves`; and in new `iris/UInitTreeBoot.v`
+   `tree_init_cons_dance_all` = `UInitKernel.init_cons_dance_all` at the
+   tree claim, which CLOSES §9.5(5)'s first entry.  Every arm hands the
+   claim back as the DEED, never the taint.  The moved deed is FROZEN
+   inside the mknod's success arm (a walk needs the `□` law; /init never
+   moves the namespace again).  `Cns := True`.
+3. **A TOOLING WALL WITH A MEASURED SHAPE.** `UkTreeRead.wp_uk_ecall_open_own`
+   (`UkTreeRead.v:294`) and `UkTreeCreate.wp_uk_ecall_mknod_own`
+   (`UkTreeCreate.v:480`) are pinned at `uprogSG_gen` through their `urun`;
+   /init runs at `uprogSG_free`.  Adding `Context `{PS : uprogSG Σ}` to
+   either tree file WEDGES its own compile (measured: `UkTreeRead.v` 6+ min,
+   RSS +32 MB/45 s, killed).  The two ecall walks are re-derived in
+   `UInitTreeCons.v` from the PS-free pieces instead.  `udepwf_at` is
+   SG-indexed and takes no PS; only `urun` and the `wp_uk_*` leaves do.
+4. **D3 WALLED, AND THE WALL IS ONE ENTAILMENT.**  `UkInit.init_cons_sup`
+   has exactly one producer (`UInitSh.init_exec_sup_of_sh_slot`,
+   `UInitSh.v:1157`), whose premise `UInitSh.cons_cred_holds`
+   (`UInitSh.v:532`) has an EIGHTH conjunct (`UInitSh.v:562`) that at
+   `UInitTree.tree_cc` reduces to `⊢ tree_turn c -∗ tree_taint c` — the
+   era's unspent licence becoming the taint UPDATE-FREE.
+   `UInitTreeBoot.tree_cc_wb_conj8_is_turn_to_taint` proves that reduction
+   in both directions and is **closed under the global context**.  It is
+   `AppTree.tree_bump_free_is_vacuous` one premise over, so the fix is
+   §9.4's ruling verbatim: re-cut that conjunct as an UPDATE (echo: one
+   `iModIntro`; the tree: SPEND the licence).  Dropping `cc_wb`'s licence
+   arm is not an option — it is what makes the banner the mint.
+   Two smaller entries owed beside it: `cons_cred_holds`'s FIRST conjunct
+   (sh's read leaf as a closed entailment, `UInitSh.v:535`), and the dance's
+   HIT arm (`UkInit.uki_mknod_hit_leaf`, `UkInit.v:499`) which wants a
+   credential-free `□`-shaped mknod the tree cannot give (it needs the LIVE
+   deed).
+5. **D4 NOT LANDED**, and (4) is why: `UInitKernel.init_boot_con` takes
+   `init_cons_sup` at `UInitKernel.v:720`, so there is no behavioural
+   `tree_Hinit_boot` to re-point `UTreeAdequacy.tree_adequacy_treeΣ` at.
+   The at-boot form stands, unrenamed.  What the lane bought is that
+   /init's premise list at the tree claim is down from TWO open entries to
+   ONE, and that one is an owner ruling.
+
+**TL-8 AS LANDED — THE EXEC SUPPLY IS THE TAINT'S, TL-7's WALL CLOSED, D4 A
+TOKEN COUNT** — branch `tl8-exec-sup`, two commits; design of record
+`design/user-tree.md` §9.7.  ONE new file `iris/UInitTreeExec.v`; whole
+iris tree green on the mirror; `UkInit.v` / `UInitSh.v` / `UInitBoot.v` /
+`UInitKernel.v` / `UInitBootAdequacy.v` untouched; echo audit 14, tree
+audit 13, both unmoved.
+
+1. **D3 LANDED, and §9.6(4)'s owner ruling is WITHDRAWN.**  The tree pays
+   `UkInit.init_cons_sup` tree-natively — `tree_gen_slot`,
+   `tree_image_entry_taint`, `tree_init_exec_sup_lend`,
+   `tree_init_cons_sup` — so echo's producer
+   (`UInitSh.init_exec_sup_of_sh_slot`) and its ten console laws
+   (`UInitSh.cons_cred_holds`) never arise.  The recut of that record's
+   eighth conjunct as an update, and the entry about its first conjunct,
+   are both no longer needed.  `Cns := tree_taint c`.
+2. **The brief's route is REFUTED, not open.**  The supply is NOT payable
+   at `Cns := True`.  `UkRunExecRef.udepw_at_refR_ids` (`:240`) is
+   update-free and `UkInit.init_exec_sup_lend` (`UkInit.v:1806`) is a `□`,
+   so the era licence on the lend's closed row
+   (`UkInit.init_lend_cred`, `UkInit.v:1687`, at `UInitTree.tree_cc`'s
+   `cc_wb`, `UInitTree.v:121`) can only be spent inside the node — where
+   the taint is owed in three `∗`-separated places: both wands of
+   `SpecKexec.exec_slot_pre` (`SpecKexec.v:861`) and the deposit's refund
+   `UkInit.init_lend_ref` (`UkInit.v:1755`).  `PieceFam.pf_at`'s `∧`
+   (`PieceFam.v:99`) covers fire-versus-refund only.
+3. **/init's premise list is otherwise PAID**: `tree_init_boot_con` is
+   `UInitKernel.init_boot_con` (`:679`) with every premise discharged
+   (echo's room/length/head/nopipe/psok arithmetic verbatim), and
+   `tree_init_boot_pay` assembles `init_boot_pay` (`UInitKernel.v:666`)
+   from its only two costly conjuncts.
+4. **D4 WALLED ON A TOKEN COUNT (owner ruling needed).**  Those two
+   conjuncts — the dance at `Cns := tree_taint c` and `(cc_wbn Cr) 0` —
+   each cost the era a licence and are `∗`-separated, while `App.al_pow`
+   files ONE row per power-on (`AppTree.tree_licence_mint`, `:1401`).  The
+   priced fix: make the licence SPLITTABLE
+   (`tree_turn c := ∃ k q, k ↪[c]{#q} tt` + `tree_turn_split`), which costs
+   the claim nothing (after one mint the taint is persistent and
+   `tree_sup_of_taint` makes every later move free anyway).  16 occurrences
+   in four files; the cone is the thirteen tree files under `AppTree.v`.
+5. **A second D4 entry, found while pricing (4).**
+   `UInitBoot.init_boot_bundle_of_pinned` (`UInitBoot.v:442`) wants
+   `era0_pins` — /init's own image pinned at `INIT_INO` — which the tree
+   claim does not give (it pins the PARTITION).  A deed-indexed twin
+   (`init_boot_bundle_of_own`) is owed beside the licence ruling before a
+   behavioural `tree_Hinit_boot` can exist; `UTreeAdequacy`'s at-boot form
+   therefore stands unrenamed.
+6. **Tooling note for the mirror:** `OCAMLRUNPARAM=l=4e9` on a single-file
+   `coqc` makes a `Require` of a deep cone die with a bare
+   `Fatal error: exception Stack_overflow` and no file position; dropping
+   it (keeping `ulimit -s unlimited`) is the fix.  And `make -f CoqMakefile`
+   must be run under `opam exec --switch=/shared/xv6rocq --`, or `rocq`
+   is not on PATH and `ROCQ DEP` fails while make still reports success.
+
 ## RELAY QUEUE (for upstream, via the owner's push)
 
 1. **The R-a walls + the `uheld` proposal** (`design/user-read.md`

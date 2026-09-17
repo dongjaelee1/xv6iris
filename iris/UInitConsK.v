@@ -366,13 +366,15 @@ Section UInitConsK.
     Persistent T -> Timeless T ->
     m !!! Regidx a0_idx = (mword_of_int 0x970 : mword 64) ->
     m !!! Regidx a1_idx = (mword_of_int 2 : mword 64) ->
-    init_cons_laws_at Pv T K r -∗ cons_made r i -∗ app_inv fsc_fs -∗
+    init_cons_laws_at echo_fs_pure (cons_made r) Pv T K -∗
+    cons_made r i -∗ app_inv fsc_fs -∗
     init_rodata (ukn_t N) -∗
     udepwf_at N m pc USYS_open (init_cons_console_fam T i (ukn_pay N))
       FsImg.ROOTINO.
   Proof using .
     intros HPT HTT Ha0 Ha1. iIntros "#Hlaws #Hmade #Hinv #Hro".
-    iApply (cons_sup_console N Pv T K r i UCodeInit.init_ro
+    iApply (cons_sup_console N echo_fs_pure (cons_made r) Pv T K i
+              UCodeInit.init_ro
               (mword_of_int 0x970) m pc HPT HTT
               (fun M H => init_cons_path_of M H) Ha0 Ha1
               with "Hlaws Hmade Hinv [Hro]").
@@ -382,8 +384,8 @@ Section UInitConsK.
   (* ---- the MKNOD ---- *)
   Definition init_cons_mknod_fam (Pv : aview -> Prop) (T K : iProp Σ)
       (r : echo_names) (Q : Z -> iProp Σ) : sfam :=
-    xfam_mknod (init_mk_P T) (init_mk_Farm Pv T K) (init_mk_Fun T K)
-      (init_mk_Fok r T K) Q.
+    xfam_mknod (init_mk_P T) (init_mk_Farm echo_fs_pure Pv T K)
+      (init_mk_Fun T K) (init_mk_Fok (cons_made r) T K) Q.
 
   Lemma init_cons_sup_mknod (N : uk_names Σ) (Pv : aview -> Prop)
       (T K : iProp Σ) (r : echo_names)
@@ -393,7 +395,7 @@ Section UInitConsK.
     m !!! Regidx a0_idx = (mword_of_int 0x970 : mword 64) ->
     m !!! Regidx a1_idx = (mword_of_int 1 : mword 64) ->
     m !!! Regidx a2_idx = (mword_of_int 0 : mword 64) ->
-    init_cons_laws_at Pv T K r -∗ app_inv fsc_fs -∗
+    init_cons_laws_at echo_fs_pure (cons_made r) Pv T K -∗ app_inv fsc_fs -∗
     init_rodata (ukn_t N) -∗ K -∗
     udepwf_at N m pc 17 (init_cons_mknod_fam Pv T K r (ukn_pay N)) FsImg.ROOTINO.
   Proof using .
@@ -417,7 +419,8 @@ Section UInitConsK.
                     exact init_cons_dev_minor)).
     cbn [init_cons_mknod_fam xfam_mknod nf_P nf_Pmiss nf_Farm nf_Fun
          nf_Fok nf_Fex].
-    iApply (init_cons_laws_mknod_bundle fsc_fs r Pv T K M (mword_of_int 0x970)
+    iApply (init_cons_laws_mknod_bundle fsc_fs echo_fs_pure (cons_made r)
+              Pv T K M (mword_of_int 0x970)
               (init_cons_path_of M Hsro) with "Hlaws Hinv HK").
   Qed.
 
@@ -553,7 +556,8 @@ Section UInitConsK.
   Lemma init_open_console_leaf_holds (N : uk_names Σ) (Pv : aview -> Prop)
       (T K : iProp Σ) (r : echo_names) (i : Z) :
     Persistent T -> Timeless T ->
-    init_cons_laws_at Pv T K r -∗ cons_made r i -∗ app_inv fsc_fs -∗
+    init_cons_laws_at echo_fs_pure (cons_made r) Pv T K -∗
+    cons_made r i -∗ app_inv fsc_fs -∗
     □ UkInit.uki_open_console_leaf (PS := uprogSG_free) N T init_cons_fd.
   Proof using .
     intros HPT HTT. iIntros "#Hlaws #Hmade #Hinv !>".
@@ -698,7 +702,7 @@ Section UInitConsK.
       (T K : iProp Σ) (r : echo_names) :
     Persistent T -> Timeless T -> Timeless K ->
     (forall v : aview, Timeless (app_pred app_run v)) ->
-    init_cons_laws_at Pv T K r -∗
+    init_cons_laws_at echo_fs_pure (cons_made r) Pv T K -∗
     (* WHAT A FAILED MKNOD LEAVES, in the caller's own vocabulary.  The
        call can fail at either arm of the dance, and what its credential
        becomes differs: at the KEY arm the key is SPENT into the claim and
@@ -812,7 +816,8 @@ Section UInitConsK.
     { rewrite /mknod_arms.
       iDestruct "Harms" as "[[_ Hok] | [_ Hfail]]".
       - (* THE NODE EXISTS: the flag, and hence the SECOND open's leaf *)
-        iDestruct (init_cons_mknod_recv fsc_fs r Pv T K
+        iDestruct (init_cons_mknod_recv fsc_fs echo_fs_pure (cons_made r)
+                     Pv T K
                      (uvis_M W) (mword_of_int 0x970) Hpath with "Hok") as "Hm".
         iDestruct "Hm" as "[Hm | #HT]"; last first.
         { iModIntro. rewrite /UkInit.uki_mknod_out.
@@ -823,8 +828,8 @@ Section UInitConsK.
         iModIntro. rewrite /UkInit.uki_mknod_out. iLeft. iFrame "Hlf".
         iApply (init_cons_cred_of_made T r i with "Hmade").
       - (* THE MKNOD FAILED: what the credential becomes is the caller's *)
-        iDestruct (init_cons_mknod_fail_recv fsc_fs r Pv T K
-                     (fun _ _ => True%I)
+        iDestruct (init_cons_mknod_fail_recv fsc_fs echo_fs_pure (cons_made r)
+                     Pv T K (fun _ _ => True%I)
                      (uvis_M W) (mword_of_int 0x970) with "Hfail") as "Hk".
         iDestruct "Hk" as "[HK | #HT]"; last first.
         { iModIntro. rewrite /UkInit.uki_mknod_out.

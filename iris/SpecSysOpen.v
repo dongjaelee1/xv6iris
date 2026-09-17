@@ -633,6 +633,41 @@ Section SysOpenArms.
       (i : Z) (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ)) : iProp Σ :=
     open_trunc_at Γ vom i (cre_ft_kept (cre_permit Γ pl P Farm Fok Fex) i Ft).
 
+  (* ...AND THE BRANCH THE EXISTS ARM PAID (lane F-OPEN-6).  Same piece,
+     keyed at the permit's RIGHT disjunct alone: create's [dirlookup]
+     found the name, so the arm never fired and what the kernel handed
+     over is the exists observation's receipt BESIDE the unfired arm
+     piece.  A consumer that does not read the branch weakens with
+     [cre_trunc_kept_of_ex]. *)
+  Definition cre_permit_ex Γ (pl : list (bv 8)) (P : nat -> Z -> iProp Σ)
+      (Farm : pfam Σ (aview -> Z -> iProp Σ))
+      (Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
+      : Z -> iProp Σ :=
+    trunc_permit_ex Γ (trunc_tie_at pl P) Farm Fex.
+
+  Definition cre_trunc_kept_ex Γ (vom : mword 64) (pl : list (bv 8))
+      (P : nat -> Z -> iProp Σ)
+      (Farm : pfam Σ (aview -> Z -> iProp Σ))
+      (Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
+      (i : Z) (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ)) : iProp Σ :=
+    open_trunc_at Γ vom i (cre_ft_kept (cre_permit_ex Γ pl P Farm Fex) i Ft).
+
+  Lemma cre_trunc_kept_of_ex Γ (vom : mword 64) (pl : list (bv 8))
+      (P : nat -> Z -> iProp Σ)
+      (Farm : pfam Σ (aview -> Z -> iProp Σ))
+      (Fok Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
+      (i : Z) (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ)) :
+    cre_trunc_kept_ex Γ vom pl P Farm Fex i Ft -∗
+    cre_trunc_kept Γ vom pl P Farm Fok Fex i Ft.
+  Proof using .
+    iIntros "H". rewrite /cre_trunc_kept_ex /cre_trunc_kept.
+    iApply (open_trunc_at_kept_mono Γ vom
+              (cre_permit Γ pl P Farm Fok Fex)
+              (cre_permit_ex Γ pl P Farm Fex) i Ft with "[] H").
+    rewrite /cre_permit /cre_permit_ex. iIntros "H".
+    iApply (trunc_permit_of_ex with "H").
+  Qed.
+
   Definition cre_cur_kept (vom : mword 64) (P : nat -> Z -> iProp Σ)
       (k : nat) (d : Z) : iProp Σ :=
     (if om_trunc vom then emp else P k d)%I.
@@ -806,7 +841,20 @@ Section SysOpenArms.
                   ⌜arow_at av i (MkAnode (ADev ma mi) nl)⌝ ∗
                   ⌜0 <= ma <= NDEV_max⌝ ∗
                   Fo.(pf_recv) av i (MkAnode (ADev ma mi) nl) ∗
-                  cre_trunc_kept Γ vom pl P Farm Fok Fex i Ft ∗
+                  (* THE PERMIT NAMES ITS BRANCH (lane F-OPEN-6): this arm
+                     is reached on the EXISTS run alone, so the permit the
+                     keyed piece refunds is the EXISTS one -- the lookup's
+                     own receipt beside the arm piece create never fired.
+                     A constraining application reads its claim back AT
+                     THE LOOKUP'S VIEW there and refutes the [ADev]
+                     outright ([FileOpen.file_dev_refute]); at the
+                     disjunctive permit it could not, because the FRESH
+                     disjunct is unreachable here and unrefutable in the
+                     logic.  The FRESH arm above needs no such clause: the
+                     type check runs on the inode [create] returned, still
+                     locked, so its observation IS [AFile []] and the arm
+                     has no device sub-arm to name. *)
+                  cre_trunc_kept_ex Γ vom pl P Farm Fex i Ft ∗
                   open_fd_ok γf p pid UW (om_readable vom)
                     (om_writable vom) (FdDevice ma) sts r))))))%I.
 
@@ -1178,7 +1226,9 @@ Section SysOpenArms.
                        ⌜arow_at av i (MkAnode (ADev ma mi) nl)⌝ ∗
                        ⌜0 <= ma <= NDEV_max⌝ ∗
                        Fo.(pf_recv) av i (MkAnode (ADev ma mi) nl) ∗
-                       cre_trunc_kept Γ vom pl P Farm Fok Fex i Ft ∗
+                       (* the EXISTS branch of the permit, named (lane
+                          F-OPEN-6) -- see [open_post_ok_create] *)
+                       cre_trunc_kept_ex Γ vom pl P Farm Fex i Ft ∗
                        ⌜open_fd_rcpt (om_readable vom) (om_writable vom)
                           (FdDevice ma) sts r fdv'⌝)))))))%I.
 
@@ -1601,8 +1651,8 @@ Global Typeclasses Opaque open_post_ok_plain open_post_fail_plain
   open_receipt_plain open_receipt_create open_receipt
   (* the O_CREATE surface's guarded slots, for the same reason (lane
      F-OPEN-3) *)
-  cre_permit cre_trunc_kept cre_cur_kept cre_rcpt_kept cre_child_kept
-  cre_fail_kept.
+  cre_permit cre_permit_ex cre_trunc_kept cre_trunc_kept_ex cre_cur_kept
+  cre_rcpt_kept cre_child_kept cre_fail_kept.
 
 (* ===================================================================== *)
 (*  THE WHOLE-FUNCTION FRAME, abstracted over the caller's bundle and the *)

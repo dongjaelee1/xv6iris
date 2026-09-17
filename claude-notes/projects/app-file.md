@@ -1708,3 +1708,115 @@ family, which the conclusion's move to `file_phi` retires); on
 `AppFileRec.file_Hphi_R` it is the eleven PrimString/PrimInt63 primitives
 and nothing else.  NOTHING is `Admitted`, and the two section hypotheses
 are unchanged (`al_programs`, `Decision (disc_f h)`).
+
+### FILE-DEC (2026-09-17) — `disc_f` IS DECIDABLE; the boot state canonicalises to the wire
+
+Branch `app-file/file-dec`, commit `efea93703`.  Whole tree GREEN on the
+lane's remote tree (`run-on-gcp --proofs -k`, `EXIT=0`, zero `Error`);
+**both audits unchanged** (`make audit-all-only`: the echo theorem's
+FOURTEEN, the system theorem's thirteen).  `Print Assumptions
+disc_f_dec` is *Closed under the global context* — no axioms at all, not
+even the PrimString/PrimInt63 primitives.  Nothing is `Admitted`.
+
+**WHAT LANDED.**  One new file, `iris/FileDiscDec.v` (643 lines), in
+`iris/_CoqProject` right after `FileDisc.v`, ending in `Global Instance
+disc_f_dec h : Decision (disc_f h)`.  **BLOCKER 1 IS CLOSED**:
+`FileOut.v`'s `Context {Hdf : forall hh, Decision (disc_f hh)}` and
+`AppFileRec.v`'s two copies are deleted and the three files rebuild
+against the instance; the diff to them is those three `Context` lines
+and their header comments, nothing else.  `AppFileRec`'s remaining
+section hypothesis is `al_programs` alone.
+
+- D1 `fcont_ok_iff` / `fcont_ok_dec` / `fst_ok_dec` — the `∃ v, bs = v ++
+  [wl_nl]` arm IS `last bs = Some wl_nl ∧ Forall wl_body_byte (removelast
+  bs)`, as the ruling said.
+- D2 `sel_cands n` (the strictly increasing lists over `seq 0 n`, built by
+  appending the largest index last), `elem_of_sel_cands`, `sel_ok_cands`
+  (`sel_ok cs sel <-> sel ∈ sel_cands (length cs)`, against `FileState`'s
+  actual definition); `ralt_fix_cands`/`ralt_cands` (the codes one line
+  shape admits) with `elem_of_ralt_cands` and `ralt_cands_canon`;
+  `alts_cands`/`elem_of_alts_cands`/`alts_cands_alts_ok`.
+- D3 `alt_seq_f_pro_len`, `sessf_pro_len` — the length bound at
+  `pro_idx_f`'s three panic alternatives.
+- D4 `fst_upto_vs_nil`, `cont_state_ne`, `alt_cont_f_cat`,
+  `alt_blk_f_infix`, `alt_seq_f_split`, `sessf_infix_blk`,
+  `obs_wire_prefix`, `infixed`/`substrings`/`elem_of_substrings`,
+  `scands`, and the design's lemma `disc_seg_f'_canon`.
+- D5 `disc_seg_f'_ex_dec`, then `disc_f_dec`.
+
+**WHAT THE DESIGN SAID THAT THE PROOFS CORRECTED.**
+
+- **`bounded_lists` DOES NOT PORT; `pro_cands`/`pro_canon` port
+  VERBATIM.**  The ruling had it the other way round ("the rest (`∃ ps
+  cs`) ports from `EchoDisc.disc_seg'_dec` (`pro_cands`,
+  `bounded_lists`, plus an enumerator of `sel`s)").  The codes a line
+  admits are not an initial segment of ℕ — `ralt_enc (RFRan sel) = 15 +
+  12 * encode_nat sel` — so `bounded_lists k n` cannot enumerate them and
+  `alts_cands` is a per-line enumerator.  `EchoDisc.pro_canon`, on the
+  other hand, never mentions `cs` at all, so D3's "port `pro_canon` to
+  `pro_idx_f`" was unnecessary work: it is applied unchanged, and only
+  `EchoDisc.alt_seq_pro_len`'s LENGTH bound had to be restated at
+  `pro_idx_f` (three panic alternatives instead of `cs !!! q = 3`).
+- **`ralt_ok l (ralt_dec c) -> c = ralt_enc (ralt_dec c)` IS REFUTED as a
+  route**, which is why the canonicalisation of `cs` is the one that
+  landed.  `ralt_dec` accepts a code `c` with `c mod 12 = 3` and `c ≥ 15`
+  as `RFRan (default [] (decode_nat ((c - 15) / 12)))`, and
+  `ralt_enc (RFRan sel) = 15 + 12 * encode_nat sel` — `encode_nat` need
+  not be onto, so nothing forces `c` to be its own alternative's code,
+  and `alts_ok` (stated at `ralt_dec c`) admits such a `c`.  Taken
+  instead: `cs_canon cs := (ralt_enc ∘ ralt_dec) <$> cs`, sound because
+  EVERY consumer of `cs` reads it only through `ralt_at = ralt_dec ∘
+  (!!!)` — checked one by one and used as `cs_canon_at`,
+  `pro_idx_f_canon`, `fst_upto_canon`, `alt_cont_f_canon`,
+  `alt_seq_f_canon`, `sessf_canon`, `alts_ok_cs_canon`,
+  `disc_pt_all_f_canon`.  The one wrinkle: `!!!` out of range reads `0`,
+  and `ralt_enc (ralt_dec 0) = 0`, so the canonical map fixes the
+  out-of-range reading too (`fdd_lookup_total_fmap`).
+- **`fst_upto_derived` AS WRITTEN IN THE BRIEF IS FALSE; the pointwise
+  PAIR is what is true.**  "the state before a round is either `s` itself
+  or independent of `s`" fails at `RFOpenM`, the only `fsm` arm that
+  READS the state: `fsm None _ RFOpenM = Some []` while `fsm (Some bs) _
+  RFOpenM = Some bs`, so the value is `s` at a present `s` and `Some []`
+  at an absent one — neither `= s` for all `s` nor `s`-independent.  What
+  holds, and what the induction needs, is the two chains TOGETHER
+  (`fst_upto_vs_nil`): for every `i`, either `fst_upto cs s bs i = s` AND
+  `fst_upto cs (Some []) bs i = Some []`, or the two are equal.  The
+  second conjunct of the left arm is exactly what carries `RFOpenM`: at
+  `s = None` the two chains MERGE there, at `s = Some bs` they do not,
+  and either way the disjunction is restored.
+- **THE CASE SPLIT IS NOT AT "THE LAST CHECKED PREFIX", and needs no
+  monotonicity.**  It is the decidable `Exists p ∈ in_pres seg, Exists i
+  < nlines (ins p), alt_cont_f ps cs (Some b0) … i <> alt_cont_f ps cs
+  (Some []) … i`.  Positive: `cont_state_ne` (`cont` reads the state at
+  `RCRan` and at no other alternative) forces that round to be `RCRan` at
+  an `s`-derived state, and the content is then contiguous in that
+  prefix's wire (`alt_blk_f_infix`, `sessf_infix_blk`, two `prefix_of`
+  steps through `obs_wire_prefix`), so `Some b0 ∈ scands seg`.  Negative:
+  every block agrees (`alt_seq_f_cont_ext`) and `Some []` serves.  The
+  shape of "checked prefix" `in_pres` gives is ONE ENTRY PER INPUT BYTE,
+  the segment truncated JUST BEFORE that byte (`EchoDisc.in_pres`); the
+  only property used is `in_pres_prefix_all` (each entry is a prefix of
+  `seg`).
+- **`disc_f_dec` MUST BE `Qed`, not `Defined`.**  With a transparent
+  instance ssreflect's `rewrite /file_led` (unfold AND simplify)
+  iota-reduces `if decide (disc_f []) then 0%nat else 1%nat` at the empty
+  history, and `FileOut.file_led_init`'s `rewrite decide_True` reports
+  "The LHS of decide_True does not match any subterm of the goal".
+  Opaque, exactly as `EchoDisc.disc_dec` is.  (`disc_seg_f'_ex_dec` and
+  the small instances stay `Defined`; nothing evaluates any of them.)
+- **Scope note, not a correction**: `FileDisc.disc_seg_f'`'s comment
+  ("`disc_seg_f'` is NOT claimed decidable: the search over the
+  resolutions that `EchoDisc` can run needs a bound on `sel`, and no
+  consumer asks for it") is superseded for the EXISTENTIAL form, which is
+  what `disc_f` uses and what this lane decides.  `disc_seg_f' s seg` at
+  a GIVEN `s` is still not claimed decidable — nothing asks for it — but
+  it falls out of the same search.
+
+**ONE TACTIC TRAP, worth a durable note.**  `lia` does not see through a
+beta-redex hypothesis.  `Forall (fun j => j < m) l` taken apart by
+`Forall_cons_1` / `Forall_singleton` / `Forall_forall` leaves `(fun j =>
+j < m) x`, and `lia` answers *Cannot find witness* while the goal `x < n`
+sits right there.  `cbn beta in H` first.  (The goal side is fine —
+`apply` beta-reduces what it produces.)  Also: `apply Forall_singleton in
+H` takes stdpp's iff the WRONG WAY (it wraps `H` instead of unwrapping
+it); `rewrite Forall_singleton in H` is the one that works.

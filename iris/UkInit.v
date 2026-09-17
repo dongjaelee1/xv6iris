@@ -101,6 +101,15 @@ Section UkInit.
      reader token ([UserConsole.ucons_pay], constant by
      [UserConsole.ucons_pay_const]). *)
   Context `{Hpay : !ukn_const N}.
+  (* ...AND THAT IT HOLDS NO OFFSET HALF (lane OFF-HAND-4, S1).  dup(2)
+     COPIES its argument's descriptor row onto the slot fdalloc chose, and
+     that slot is not one the record can be said to hold
+     ([UkRun.urun_rows_dup]'s guard, [UsysMemOk.usys_fd_ok_held]'s note),
+     so the two dup leaves ask their caller for the empty held set.  A
+     CLASS, [ukn_const]'s mould: it is named only in the [Proof using] of
+     the lemmas that walk a dup, and the entry constructor that minted the
+     record is what discharges it. *)
+  Context `{Hpark : !ukn_parked N}.
   (* the fields, under the names the engine has always used *)
   Local Notation γt := (ukn_t N).
   Local Notation γd := (ukn_d N).
@@ -762,7 +771,7 @@ Section UkInit.
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof using Hpsok_free.
+  Proof using Hpsok_free Hpark.
     iIntros "#Hcode Hrun Hstd Hcont".
     iDestruct "Hstd" as (l) "Hstd".
     destruct init_syms_pins as (Hstart & Hmain & Hprintf & Hvprintf & Hputc & Hopen & Hmknod & Hdup & Hfork & Hwait & Hexec & Hwrite & Hexit). rewrite Hdup.
@@ -796,6 +805,7 @@ Section UkInit.
                     rewrite (upd_eq m (Regidx a7_idx)
                                (mword_of_int 10 : mword 64));
                     vm_compute; reflexivity)
+              (ukn_parked_eq (N := N))
               ltac:(vm_compute; reflexivity)
               with "[] Hrun [] Hstd").
     { iApply (uis_init_3ec with "Hcode"). }
@@ -901,7 +911,7 @@ Section UkInit.
                     rewrite (upd_eq m (Regidx a7_idx)
                                (mword_of_int 10 : mword 64));
                     vm_compute; reflexivity)
-              Harg1 Hne
+              Harg1 Hne (ukn_parked_eq (N := N))
               ltac:(vm_compute; reflexivity)
               with "[] Hrun [] Hstd []").
     { iApply (uis_init_3ec with "Hcode"). }

@@ -104,6 +104,15 @@ Section UkInitMain.
      at the console reader token instead ([UserConsole.ucons_pay]), and
      these lemmas are walked by both records. *)
   Context `{Hpay : !ukn_const N}.
+  (* ...AND THAT IT HOLDS NO OFFSET HALF (lane OFF-HAND-4, S1).  dup(2)
+     COPIES its argument's descriptor row onto the slot fdalloc chose, and
+     that slot is not one the record can be said to hold
+     ([UkRun.urun_rows_dup]'s guard, [UsysMemOk.usys_fd_ok_held]'s note),
+     so the two dup leaves ask their caller for the empty held set.  A
+     CLASS, [ukn_const]'s mould: it is named only in the [Proof using] of
+     the lemmas that walk a dup, and the entry constructor that minted the
+     record is what discharges it. *)
+  Context `{Hpark : !ukn_parked N}.
   (* the console ring's cameras: init mints the POSITION PAIR it lends each
      child out of them ([UserConsole.upos_alloc]) *)
   Context `{!uartGhostG Σ}.
@@ -963,12 +972,16 @@ Section UkInitMain.
               l ∅ FsImg.ROOTINO Sc (ucons_pay cn γ T (init_rd (cc_rd Cr) (cc_wbn Cr)))
               (upos γ np ∗ ucons_pay cn γ T (cc_rd Cr) (-1)
                ∗ init_lend_cred T stc (cc_wp Cr) (cc_wbn Cr) l np)%I
+              (* THE CHILD'S HELD SET IS /INIT'S OWN (lane OFF-HAND-4, S1):
+                 the child execs sh, which holds no offset half. *)
+              (ukn_held N)
               (fun gt gd _ =>
                  (init_code gt ∗ init_rodata gt ∗ init_argv gd)%I)
               ltac:(unfold mf1, usysno;
                     rewrite (upd_eq m (Regidx a7_idx)
                                (mword_of_int 1 : mword 64));
                     vm_compute; reflexivity)
+              ltac:(reflexivity)
               ltac:(vm_compute; reflexivity)
               with "[] [Hpos HQ Hcred] [] Hsz Hstd [] Hcwd Hch [] Hrun").
     { iApply (uis_init_36c with "Hcode"). }
@@ -1019,7 +1032,7 @@ Section UkInitMain.
          child execs, and nothing before the exec allocates. *)
       (* the child's own children fragment is [∅] and init's child execs
          before it forks, so nothing here reads it *)
-      iIntros (N' hc γ') "%Hpeq _ (Hpos & Hlease & Hcred) Hpay Hsz Hstd _ Hcwd Hch' Hpid' Hrun".
+      iIntros (N' hc γ') "%Hheq %Hpeq _ (Hpos & Hlease & Hcred) Hpay Hsz Hstd _ Hcwd Hch' Hpid' Hrun".
       set (mk := <[Regidx a0_idx := (mword_of_int 0 : mword 64)]> mf1).
       assert (Hrak : mk !!! Regidx ra_idx = m !!! Regidx ra_idx).
       { rewrite /mk (upd_ne mf1 (Regidx a0_idx) (Regidx ra_idx) _
@@ -1889,7 +1902,7 @@ Section UkInitMain.
        (lane IO-LEAF, M1): affine, so every other round is unaffected. *)
     urun N h m (mword_of_int 0x1e) (12 + (12 + (4 + n))) -∗
     WP (Loop : expr riscv_lang).
-  Proof using Hpay Hpayfree Hpsok_free.
+  Proof using Hpay Hpark Hpayfree Hpsok_free.
     intros Hne Hkt.
     iIntros "#(Hwr & Hwl15 & Hwl17) #Hblaw #Hdlaw #Hcode #Hxs #Hro #Hargv Hsz Hstd Hcwd Hch Htk Hrun".
     destruct init_syms_pins
@@ -2094,7 +2107,7 @@ Section UkInitMain.
        (lane IO-LEAF, M1): affine, so every other round is unaffected. *)
     urun N h m (mword_of_int 0x74) (12 + (12 + (4 + n))) -∗
     WP (Loop : expr riscv_lang).
-  Proof using Hpay Hpayfree Hpsok_free.
+  Proof using Hpay Hpark Hpayfree Hpsok_free.
     intros Hne Hkt.
     rewrite /uki_open2.
     iIntros "#(Hwr & Hwl15 & Hwl17) #Hblaw #Hdlaw #Hcode #Hxs #Hro #Hargv Hsz Hop2 Hin Hcwd Hch Htk Hrun".
@@ -2243,7 +2256,7 @@ Section UkInitMain.
        (lane IO-LEAF, M1): affine, so every other round is unaffected. *)
     urun N h m (mword_of_int 0x64) (12 + (12 + (4 + n))) -∗
     WP (Loop : expr riscv_lang).
-  Proof using Hpay Hpayfree Hpsok_free.
+  Proof using Hpay Hpark Hpayfree Hpsok_free.
     intros Hne Hkt.
     iIntros "#(Hwr & Hwl15 & Hwl17) #Hblaw #Hdlaw #Hcode #Hxs Hmkl #Hro #Hargv Hsz Hin Hcwd Hch Htk Hrun".
     destruct init_syms_pins
@@ -2428,7 +2441,7 @@ Section UkInitMain.
     urun N h m (mword_of_int InitSyms.main)
       (4 + (12 + (12 + (4 + n)))) -∗
     WP (Loop : expr riscv_lang).
-  Proof using Hpay Hpayfree Hpsok_free.
+  Proof using Hpay Hpark Hpayfree Hpsok_free.
     intros Hne Hkt.
     iIntros "#(Hwr & Hwl15 & Hwl17) #Hblaw #Hdlaw #Hcode #Hxs Hdance #Hro #Hargv Hsz Hstd Hcwd Hch Htk Hrun".
     iDestruct (uki_open1_of_dance N T Cns stc
@@ -2789,7 +2802,7 @@ Section UkInitMain.
     urun N h m (mword_of_int InitSyms.start)
       (2 + (4 + (12 + (12 + (4 + n))))) -∗
     WP (Loop : expr riscv_lang).
-  Proof using Hpay Hpayfree Hpsok_free.
+  Proof using Hpay Hpark Hpayfree Hpsok_free.
     intros Hne Hkt.
     iIntros "#(Hwr & Hwl15 & Hwl17) #Hblaw #Hdlaw #Hcode #Hxs Hcl #Hro #Hargv Hsz Hstd Hcwd Hch Htk Hrun".
     (* the payment travels to the restart head, where ROUND 0 spends it

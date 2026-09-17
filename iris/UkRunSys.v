@@ -990,6 +990,15 @@ Section UkRunSys.
        way [argfd] reads it -- as a C [int] *)
     bv_signed (trunc32 (m !!! Regidx (mword_of_int 10))) = Z.of_nat fd0 ->
     st <> FdClosed ->
+    (* ...AND THE RECORD HOLDS NO OFFSET HALF (lane OFF-HAND-4, S1).  dup
+       COPIES its argument's row onto the slot fdalloc chose, and that slot
+       is not one the record can be said to hold -- [UkRun.urun_rows_dup]'s
+       guard.  At the empty held set the run's own row says the source is
+       parked and the guard is discharged HERE, so no caller pays anything
+       it does not already know.  (Duplicating a HELD descriptor is the
+       next lane's: design/app-file.md SS3 has dup share the object's
+       surrender.) *)
+    ukn_held N = ∅ ->
     is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
     uinstr_is (ukn_t N) pc false (ECALL tt) -∗
     urun N h m pc avail -∗
@@ -1017,9 +1026,15 @@ Section UkRunSys.
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof using .
-    intros Hn Harg Hstne Hal4.
+    intros Hn Harg Hstne Hhd Hal4.
     iIntros "#Hi Hrun Hsb Hstd Hh0 Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
+    (* THE RUN'S OWN ROW IS WHAT DISCHARGES DUP'S GUARD at the empty held
+       set (lane OFF-HAND-4, S1): every descriptor of the table is parked,
+       so the row the copy carries is too. *)
+    iDestruct (urun_rows_held N fdv with "Hnpx") as %Hheld.
+    assert (Hallpk : fdv_all_parked fdv)
+      by (apply fdv_held_in_empty; rewrite <- Hhd; exact Hheld).
     iMod (udepw_mint N m pc _ M pm _ fdv cw gn cs pidv
                 with "Hdep Hmy Hsb Hheap Hufd") as "(Hheap & Hufd & Hdepn)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -1120,7 +1135,9 @@ Section UkRunSys.
       iModIntro.
       (* ...and dup copies a row the table already had, so it holds no
          pipe either (design/pipe.md, "The exit path") *)
-      iDestruct (urun_rows_dup N fdv fd0 fd1 st Hsrc with "Hnpx") as "#Hnpo".
+      iDestruct (urun_rows_dup N fdv fd0 fd1 st Hsrc
+                   (fdv_all_parked_lookup fdv fd0 st Hallpk Hsrc)
+                   with "Hnpx") as "#Hnpo".
       rewrite (uslot_bump_run m pc M M pm pm sz sz fdv
                  (<[fd1 := st]> fdv) cw cw' gn gn cs cs pidv false false r Hx0 Hal4).
       iApply ukcq_ukc.
@@ -1172,6 +1189,8 @@ Section UkRunSys.
   Lemma wp_uk_ecall_dup_untracked (N : uk_names Σ) (h : CpuId)
       (m : regfile) (pc : mword 64) (l : list fdstate) (avail : nat) :
     usysno m = USYS_dup ->
+    (* ...and the record holds no offset half -- [wp_uk_ecall_dup]'s note *)
+    ukn_held N = ∅ ->
     is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
     uinstr_is (ukn_t N) pc false (ECALL tt) -∗
     urun N h m pc avail -∗
@@ -1184,9 +1203,13 @@ Section UkRunSys.
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof using .
-    intros Hn Hal4.
+    intros Hn Hhd Hal4.
     iIntros "#Hi Hrun Hsb Hstd Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
+    (* the run's own row discharges dup's guard -- [wp_uk_ecall_dup]'s note *)
+    iDestruct (urun_rows_held N fdv with "Hnpx") as %Hheld.
+    assert (Hallpk : fdv_all_parked fdv)
+      by (apply fdv_held_in_empty; rewrite <- Hhd; exact Hheld).
     iMod (udepw_mint N m pc _ M pm _ fdv cw gn cs pidv
                 with "Hdep Hmy Hsb Hheap Hufd") as "(Hheap & Hufd & Hdepn)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -1276,6 +1299,7 @@ Section UkRunSys.
       iModIntro.
       (* ...and dup copies a row the table already had *)
       iDestruct (urun_rows_copy N fdv (Z.to_nat (usys_argfd (tf_of m pc))) fd1
+                   (fdv_all_parked_lookup_total fdv _ Hallpk)
                    with "Hnpx") as "#Hnpo".
       rewrite (uslot_bump_run m pc M M pm pm sz sz fdv
                  (<[fd1 := fdv !!! Z.to_nat (usys_argfd (tf_of m pc))]> fdv) cw cw' gn gn cs cs pidv false false
@@ -3204,8 +3228,8 @@ Section UkRunSys.
       - rewrite (Hfail Hr0). iModIntro. iFrame "Hufd".
         iRight. iFrame "Hstd". iPureIntro. exact Hr0. }
     iDestruct ("Hnpx" $! fdv' with "[%]") as "#Hnpo";
-      [ intros Hq;
-        exact (usys_fd_ok_parked _ _ _ _ _ Hfdok (Hpkr Hq)) | ].
+      [ exact (usys_fd_ok_held (ukn_held N) _ _ _ _ _ Hfdok
+                 ltac:(intro Hd; vm_compute in Hd; discriminate) Hpkr) | ].
     iDestruct (urun_close_upd N (umem_write M (uint dst) dd gg) pm m
                  (mword_of_int 10) r sz fdv' cw' gn cs pidv (add_vec_int pc 4) avail
                  ltac:(unfold unot_sp; vm_compute; discriminate)

@@ -434,7 +434,7 @@ Section UEchoKernel.
        ([SpecKexec.exec_slot_pre], lane LAZY-FLAG's K4). *)
     uvis_lazy W = false ->
     (* ...AND THE KEY'S TABLE IS ALL PARKED (lane OFF-HAND-3, R1): this
-       program answers for its own offsets ([UkRun.ukn_park] at [true]),
+       program answers for its own offsets ([UkRun.ukn_held] at [empty]),
        and a record may claim that only at a key with no offset half
        outside the kernel.  The caller reads it off
        [SpecKexec.exec_slot_pre]'s wands, relayed through
@@ -466,10 +466,11 @@ Section UEchoKernel.
     assert (Hsp0 : 0 <= uint (uvis_sp W)) by lia.
     assert (Hargc0 : 0 <= uvis_argc W)
       by exact (proj1 (uka_argc _ _ _ _ _ _ Hargs)).
-    iApply (uslot_of_urun_ro W 12 (fun _ => True)%I true
+    iApply (uslot_of_urun_ro W 12 (fun _ => True)%I ∅
               Hal8
               ltac:(unfold uvis_sp in Hroom; lia) Hstk Hfdlen Hstop Hlzf
-              ltac:(intros _; exact Hpark) with "Hdep Hnpw Hpay").
+              ltac:(exact (UsysMemOk.fdv_held_in_of_parked _ _ Hpark))
+              with "Hdep Hnpw Hpay").
     (* echo makes no descriptor call, so its ledger is dropped here *)
     (* echo makes no descriptor call, no chdir and no fork, so its ledger,
        its working directory and its children set are all dropped here *)

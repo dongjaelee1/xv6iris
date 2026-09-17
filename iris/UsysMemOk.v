@@ -819,6 +819,114 @@ Proof.
   subst. exact Hpk.
 Qed.
 
+(* ===================================================================== *)
+(* THE SET-VALUED ROW (lane OFF-HAND-4, S1).                              *)
+(*                                                                       *)
+(* [fdv_all_parked] is the row a record that answers for ALL of its       *)
+(* offsets carries; this is its generalisation to a record that answers   *)
+(* for all but a NAMED SET of descriptors.  The set is the carrier        *)
+(* design/app-file.md SS3 fact 4 rules on: a program that means to hold an *)
+(* offset half has to say WHICH slots it may hold, because a boundary     *)
+(* (fork, exec) has to surrender exactly those rows and a COUNT cannot    *)
+(* name them (lane OFF-HAND-3's finding 2).                               *)
+(*                                                                       *)
+(* STATED IN THE CONTRAPOSITIVE -- every UNPARKED row's index is in the   *)
+(* set -- because that is the direction every consumer has it: the set is *)
+(* an OVER-APPROXIMATION, so a record may be minted at a set larger than  *)
+(* what it holds and a fork may widen its child's.  [ukn_held N = empty]  *)
+(* is exactly [fdv_all_parked] ([fdv_held_in_empty]), which is what keeps *)
+(* every landed program at its old row.                                   *)
+(* ===================================================================== *)
+Definition fdv_held_in (H : gset nat) (l : list fdstate) : Prop :=
+  forall (fd : nat) (st : fdstate),
+    l !! fd = Some st -> ~ fdst_parked st -> fd ∈ H.
+
+Lemma fdv_held_in_of_parked (H : gset nat) (l : list fdstate) :
+  fdv_all_parked l -> fdv_held_in H l.
+Proof.
+  intros Hp fd st Hfd Hnp.
+  destruct (Hnp (fdv_all_parked_lookup l fd st Hp Hfd)).
+Qed.
+
+(* ...AND THE CONVERSE AT THE EMPTY SET, which is the reading every
+   landed program spends: a record that may hold nothing has an
+   all-parked table. *)
+Lemma fdv_held_in_empty (l : list fdstate) :
+  fdv_held_in ∅ l -> fdv_all_parked l.
+Proof.
+  intros H. unfold fdv_all_parked. apply Forall_lookup.
+  intros fd st Hfd.
+  destruct (decide (fdst_parked st)) as [Hp | Hnp]; [ exact Hp | ].
+  exfalso. exact (not_elem_of_empty (C := gset nat) fd (H fd st Hfd Hnp)).
+Qed.
+
+(* the set only grows: a record minted at a wider set carries the row of
+   a narrower one.  This is what makes a forking parent able to CHOOSE
+   its child's set ([UkFork]'s child arm). *)
+Lemma fdv_held_in_mono (H H' : gset nat) (l : list fdstate) :
+  H ⊆ H' -> fdv_held_in H l -> fdv_held_in H' l.
+Proof. intros Hsub Hl fd st Hfd Hnp. exact (Hsub _ (Hl fd st Hfd Hnp)). Qed.
+
+(* ...and the row's little kit, the twin of [fdv_all_parked]'s: an insert
+   is honest either because the row it installs is parked, or because the
+   slot it lands on is one the record may hold. *)
+Lemma fdv_held_in_insert (H : gset nat) (l : list fdstate) (k : nat)
+    (st : fdstate) :
+  fdv_held_in H l -> (fdst_parked st \/ k ∈ H) ->
+  fdv_held_in H (<[k := st]> l).
+Proof.
+  intros Hl Hst fd st' Hfd Hnp.
+  apply list_lookup_insert_Some in Hfd as [(-> & <- & _) | (_ & Hfd)].
+  - destruct Hst as [Hp | Hin]; [ destruct (Hnp Hp) | exact Hin ].
+  - exact (Hl fd st' Hfd Hnp).
+Qed.
+
+Lemma fdv_held_in_closed (H : gset nat) (n : nat) :
+  fdv_held_in H (replicate n FdClosed).
+Proof. apply fdv_held_in_of_parked, fdv_all_parked_closed. Qed.
+
+(* ===================================================================== *)
+(* THE ROUND'S EFFECT ON THE SET-VALUED ROW, and the one entry that is    *)
+(* not free.  Four of the five rows install a PARKED descriptor, exactly  *)
+(* as [usys_fd_ok_parked] reads them, so the row survives at ANY set.     *)
+(* DUP is the fifth: it COPIES the argument's row onto a slot fdalloc     *)
+(* chose, and a copy of a HELD row lands on a slot the record may not     *)
+(* hold -- so dup carries a guard, and the guard is free at every         *)
+(* all-parked table.  (Duplicating a held descriptor is the NEXT lane's:  *)
+(* design/app-file.md SS3 has dup share the object's surrender, which      *)
+(* needs the two slots' halves to be one resource.)                       *)
+(* ===================================================================== *)
+Lemma usys_fd_ok_held (H : gset nat) (n : Z) (tf : list (mword 64))
+    (r : mword 64) (sts sts' : list fdstate) :
+  usys_fd_ok n tf r sts sts' ->
+  (n = USYS_dup -> fdst_parked (sts !!! Z.to_nat (usys_argfd tf))) ->
+  fdv_held_in H sts ->
+  fdv_held_in H sts'.
+Proof.
+  unfold usys_fd_ok. intros H0 Hdup Hpk.
+  destruct (decide (n = USYS_close)) as [_ | _].
+  { destruct H0 as [H0 _].
+    destruct (decide (uint r = 0)); subst;
+      [ apply fdv_held_in_insert; [exact Hpk | left; exact fdst_parked_closed]
+      | exact Hpk ]. }
+  destruct (decide (n = USYS_dup)) as [Hd | _].
+  { destruct H0 as [(fd1 & _ & _ & _ & ->) | (_ & -> & _)];
+      [ apply fdv_held_in_insert; [ exact Hpk | left; exact (Hdup Hd) ]
+      | exact Hpk ]. }
+  destruct (decide (n = USYS_open)) as [_ | _].
+  { destruct H0 as [(fd & rd & wr & t & _ & _ & He & Hop & _) | [_ ->]]; [| exact Hpk].
+    rewrite He. apply fdv_held_in_insert; [ exact Hpk | left; exact Hop ]. }
+  destruct (decide (n = USYS_pipe)) as [_ | _].
+  { destruct (decide (uint r = 0)) as [_ | _].
+    - destruct H0 as (a & b & γp & _ & _ & _ & ->).
+      apply fdv_held_in_insert;
+        [ apply fdv_held_in_insert;
+          [ exact Hpk | left; exact (fdst_parked_pipe true false γp) ]
+        | left; exact (fdst_parked_pipe false true γp) ].
+    - subst. exact Hpk. }
+  subst. exact Hpk.
+Qed.
+
 (* ...AND THE SAME FOR "NO PIPE ROW" (design/pipe.md, "The exit path"),
    at every number but pipe(2), which is the one call that installs one.
    This is what lets a program that never calls pipe(2) carry

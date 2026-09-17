@@ -116,7 +116,7 @@ Section ExecEntry.
              since lane OFF-HAND-2, and until now every producer DROPPED
              it.  It is relayed here because the entry is where a program's
              record is minted, and a record that answers for its offsets
-             ([UkRun.ukn_park]) may only be minted at an all-parked key --
+             ([UkRun.ukn_held]) may only be minted at an all-parked key --
              [UkRun.uslot_of_urun*]'s own premise.  A program that does not
              care drops it, exactly as it drops the four identity rows. *)
           ⌜FdSlots.fdv_all_parked (uvis_fd W')⌝ -∗
@@ -156,7 +156,7 @@ Section ExecEntry.
      inside [UkRun.urun]'s existential ([UkSh.ush_gen_run]), so narrowing
      the arm used to push the obligation onto a table the U tier could not
      name.  It can name it now: [UkRun.urun] carries the row
-     ([urun_rows]), guarded by the record's own [ukn_park] bit, and every
+     ([urun_rows]), guarded by the record's own [ukn_held] set, and every
      verified program's entry constructor mints its record at [true].  So
      the row goes all the way to the family the taint runs on, which is
      what lets [UexecExecInst.xv6_sbundle]'s fire rows be narrowed in

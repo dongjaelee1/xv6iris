@@ -6504,7 +6504,7 @@ Section UkSh.
      ([ExecEntry.image_entry_taint]), and the key a running process is at
      is bound by [UkRun.urun]'s own existential -- so the only thing that
      can pay that row at [ush_gen_run] is the run's own, which is guarded
-     by [UkRun.ukn_park].  THE BIT RIDES HERE, IN THE SLOT, and not as a
+     by [UkRun.ukn_held].  THE SET RIDES HERE, IN THE SLOT, and not as a
      section hypothesis: a section hypothesis would have to be named in the
      [Proof using] of every lemma on sh's walk between the entry and the
      taint, and none of them says anything about it.  The slot is already
@@ -6512,7 +6512,7 @@ Section UkSh.
      producer ([UShKernel.sh_uexec_slot]) holds the equation the entry
      constructor handed over. *)
   Definition ush_gen_slot : iProp Σ :=
-    (⌜ukn_park N = true⌝ ∗
+    (⌜ukn_held N = ∅⌝ ∗
      □ (∀ W : uvis,
           ⌜fdv_all_parked (uvis_fd W)⌝ -∗
           T -∗ my_pay (uvis_gen W) (ukn_pay N) -∗ uslot W))%I.

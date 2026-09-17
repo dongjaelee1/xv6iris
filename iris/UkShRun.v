@@ -1140,14 +1140,19 @@ Section UkShRun.
       by (apply bv_eq; vm_compute; reflexivity).
     rewrite E0 Em. iIntros (h1) "Hrun".
     set (m1 := <[Regidx a7_idx := (mword_of_int 1 : mword 64)]> m).
+    (* THE CHILD'S HELD SET IS SH'S OWN (lane OFF-HAND-4, S1): sh holds no
+       offset half, and its runner's child does not yet either -- the
+       REDIR child that does is design/app-file.md SS3's, and giving sh's
+       fork lemma its own [hs] binder is that lane's. *)
     iApply (wp_uk_ecall_fork N h1 m1 (mword_of_int 0xc80) avail szv l D cw
-              Sc Q Rc
+              Sc Q Rc (ukn_held N)
               (fun gt gd gs => (shk_code gt ∗ P gt gd gs)%I)
               (FP := forkable_sep (fun gt _ _ => shk_code gt) P
                        forkable_shk_code FP)
               ltac:(rewrite /m1 /usysno
                       (upd_eq m (Regidx a7_idx) (mword_of_int 1 : mword 64));
                     vm_compute; reflexivity)
+              ltac:(reflexivity)
               ltac:(vm_compute; reflexivity)
               with "[] HRc [HP] Hsz Hstd HD Hcwd Hch Hkw Hrun").
     { iApply (uis_shk_c80 with "Hcode"). }
@@ -1178,7 +1183,7 @@ Section UkShRun.
       iIntros (hp2) "Hrun".
       iApply ("Hpar" $! hp2 r with "[%] Hans HP Hsz Hstd Hcwd HD Hrun").
       exact Hr.
-    - iIntros (N' hc γ') "%Hpeq Hmy HRc [#Hck HP] Hsz Hstd HD Hcwd Hch _ Hrun".
+    - iIntros (N' hc γ') "%Hheq %Hpeq Hmy HRc [#Hck HP] Hsz Hstd HD Hcwd Hch _ Hrun".
       (* the weaker class the rest of sh's walk is stated at: the record
          the arm minted is keyed at [Q], and [Q] does not read the status *)
       pose proof (ukn_const_of_eq N' Q Hpeq HQc) as Hcst'.

@@ -53,6 +53,7 @@ Require Import FsInitPin.          (* [INIT_INO], [init_bytes]            *)
 Require Import FsShPin.            (* [SH_INO], [sh_bytes]                *)
 Require Import FsEchoPin.          (* [ECHO_INO], [echo_bytes]            *)
 Require Import FsCatPin.           (* [CAT_INO], [cat_bytes]              *)
+Require Import ConsoleInv.         (* [CONSOLE]                           *)
 Require Import FsConsPin.          (* [file_pin], [cons_absent/_present]  *)
 Require Import FsFPin.             (* [f_absent], [fname_f_ne_*]          *)
 Require Import EchoFsPure.         (* [echo_fs_pure]                      *)
@@ -141,6 +142,24 @@ Qed.
 Lemma node_pin_of_parts (nm : fname) (ino : Z) (a : anode) (av : aview) :
   astep av ROOTINO nm = Some ino -> av !! ino = Some a -> node_pin nm ino a av.
 Proof using . by split. Qed.
+
+(* the two shape side conditions every leg below asks of a pinned node,
+   hoisted so no proof re-runs [cbn] on the record projection *)
+Lemma file_row_nondir (bs : list (bv 8)) (nl : nat) :
+  forall e : gmap fname Z, an_node (MkAnode (AFile bs) nl) <> ADir e.
+Proof using . intros e Hc. cbn in Hc. discriminate Hc. Qed.
+
+Lemma dir_row_nonfile (ents : gmap fname Z) (nl : nat) :
+  forall bs : list (bv 8), an_node (MkAnode (ADir ents) nl) <> AFile bs.
+Proof using . intros bs Hc. cbn in Hc. discriminate Hc. Qed.
+
+Lemma dev_row_nondir (ma mi : Z) (nl : nat) :
+  forall e : gmap fname Z, an_node (MkAnode (ADev ma mi) nl) <> ADir e.
+Proof using . intros e Hc. cbn in Hc. discriminate Hc. Qed.
+
+Lemma dev_row_nonfile (ma mi : Z) (nl : nat) :
+  forall bs : list (bv 8), an_node (MkAnode (ADev ma mi) nl) <> AFile bs.
+Proof using . intros bs Hc. cbn in Hc. discriminate Hc. Qed.
 
 (* ====================================================================== *)
 (*  2.  THE LEGS                                                           *)
@@ -363,7 +382,7 @@ Proof using .
   apply node_pin_of_parts.
   - rewrite /astep /aents
       (delta_trunc_nonfile av i ROOTINO (ADir rents) rnl Hroot
-         ltac:(intros bs' Hc; discriminate Hc)).
+         (dir_row_nonfile rents rnl)).
     rewrite Hroot /= /anode_ents /=. exact Hnm.
   - rewrite (delta_trunc_lookup_ne av i ino ltac:(congruence)). exact Hrow.
 Qed.
@@ -381,7 +400,7 @@ Proof using .
   apply node_pin_of_parts.
   - rewrite /astep /aents
       (delta_trunc_nonfile av i ROOTINO (ADir rents) rnl Hroot
-         ltac:(intros bs' Hc; discriminate Hc)).
+         (dir_row_nonfile rents rnl)).
     rewrite Hroot /= /anode_ents /=. exact Hnm.
   - rewrite (delta_trunc_nonfile av i ino n nl Hrow Hanf). exact Hrow.
 Qed.
@@ -438,7 +457,7 @@ Proof using .
   apply node_pin_of_parts.
   - rewrite /astep /aents
       (delta_write_nonfile av i ROOTINO off new (ADir rents) rnl Hroot
-         ltac:(intros bs' Hc; discriminate Hc)).
+         (dir_row_nonfile rents rnl)).
     rewrite Hroot /= /anode_ents /=. exact Hnm.
   - rewrite (delta_write_other av i off new ino ltac:(congruence)). exact Hrow.
 Qed.
@@ -454,7 +473,7 @@ Proof using .
   apply node_pin_of_parts.
   - rewrite /astep /aents
       (delta_write_nonfile av i ROOTINO off new (ADir rents) rnl Hroot
-         ltac:(intros bs' Hc; discriminate Hc)).
+         (dir_row_nonfile rents rnl)).
     rewrite Hroot /= /anode_ents /=. exact Hnm.
   - rewrite (delta_write_nonfile av i ino off new n nl Hrow Hanf). exact Hrow.
 Qed.
@@ -463,26 +482,27 @@ Qed.
 (*  3.  [f_ok] UNDER EVERY LEG                                             *)
 (*                                                                        *)
 (*  [AppFile.f_ok av s] is [name_absent fname_f av] at [s = None] and      *)
-(*  [∃ i, node_pin fname_f i (MkAnode (AFile bs) 1) av] at [s = Some bs],  *)
-(*  so each leg below is section 2 read at that name.                      *)
+(*  [node_pin fname_f i (MkAnode (AFile bs) 1) av] at [s = Some (i, bs)] --*)
+(*  THE INUM IS IN THE STATE (lane F-WRITE's relay 1), so every leg below  *)
+(*  is section 2 read at that name and at the state's own inum, and a free *)
+(*  step can no longer relocate `f`.                                       *)
 (* ====================================================================== *)
 
 Lemma f_ok_none (av : aview) : f_ok av None <-> name_absent fname_f av.
 Proof using . reflexivity. Qed.
 
-Lemma f_ok_some_iff (av : aview) (bs : list (bv 8)) :
-  f_ok av (Some bs)
-  <-> exists i : Z, node_pin fname_f i (MkAnode (AFile bs) 1%nat) av.
+Lemma f_ok_some_iff (av : aview) (i : Z) (bs : list (bv 8)) :
+  f_ok av (Some (i, bs)) <-> node_pin fname_f i (MkAnode (AFile bs) 1%nat) av.
 Proof using . reflexivity. Qed.
 
-Lemma f_ok_some (av : aview) (bs : list (bv 8)) (i : Z) :
+Lemma f_ok_some (av : aview) (i : Z) (bs : list (bv 8)) :
   astep av ROOTINO fname_f = Some i ->
-  av !! i = Some (MkAnode (AFile bs) 1%nat) -> f_ok av (Some bs).
-Proof using . intros Hs Hr. by exists i. Qed.
+  av !! i = Some (MkAnode (AFile bs) 1%nat) -> f_ok av (Some (i, bs)).
+Proof using . by split. Qed.
 
-(* THE STATE IS THE CONTENT: one view admits at most one [s]
+(* THE STATE IS THE VIEW'S OWN READING: one view admits at most one [s]
    ([AppFile.f_ok_fcontent] read as determinacy). *)
-Lemma f_ok_det (av : aview) (s s' : fst) : f_ok av s -> f_ok av s' -> s = s'.
+Lemma f_ok_det (av : aview) (s s' : dst) : f_ok av s -> f_ok av s' -> s = s'.
 Proof using .
   intros H H'. rewrite -(f_ok_fcontent av s H) -(f_ok_fcontent av s' H') //.
 Qed.
@@ -498,90 +518,7 @@ Proof using .
   rewrite /f_ok /f_absent /astep /aents Hd /= /anode_ents /=. exact Hfresh.
 Qed.
 
-(* ---- 3a.  THE LEGS THAT LEAVE `f` ALONE ------------------------------ *)
-
-Lemma f_ok_arm (i : Z) (c : absnode) (av : aview) (s : fst) :
-  av !! i = None -> (forall e : gmap fname Z, c <> ADir e) ->
-  f_ok av s -> f_ok (delta_arm i c av) s.
-Proof using .
-  intros Hfree Hnd. destruct s as [bs |]; last first.
-  { apply (name_absent_arm fname_f i c av Hnd). }
-  intros (i0 & Hp). exists i0.
-  exact (node_pin_arm fname_f i0 _ i c av Hfree Hp).
-Qed.
-
-Lemma f_ok_unarm (i : Z) (av : aview) (s : fst) :
-  i <> ROOTINO ->
-  (forall j : Z, astep av ROOTINO fname_f = Some j -> i <> j) ->
-  f_ok av s -> f_ok (delta_unarm i av) s.
-Proof using .
-  intros Hr Hj. destruct s as [bs |]; last first.
-  { apply (name_absent_unarm fname_f i av). }
-  intros (i0 & Hp). exists i0.
-  apply (node_pin_unarm fname_f i0 _ i av Hr); [| exact Hp].
-  exact (Hj i0 (proj1 Hp)).
-Qed.
-
-(* THE ABSENT DEED PAYS NOTHING: a row disappearing cannot make a name
-   appear.  This is the whole unarm leg at [s = None]. *)
-Lemma f_ok_unarm_none (i : Z) (av : aview) :
-  f_ok av None -> f_ok (delta_unarm i av) None.
-Proof using . apply (name_absent_unarm fname_f i av). Qed.
-
-(* ...and at a PRESENT deed, with `f`'s row read at the ARM's own view:
-   an inum the arm's view did not have is neither the root nor `f`'s. *)
-Lemma f_ok_unarm_fresh (i : Z) (av0 av : aview) (bs : list (bv 8)) (i0 : Z) :
-  av0 !! i = None ->
-  node_pin fname_f i0 (MkAnode (AFile bs) 1%nat) av0 ->
-  node_pin fname_f i0 (MkAnode (AFile bs) 1%nat) av ->
-  f_ok (delta_unarm i av) (Some bs).
-Proof using .
-  intros Hfree Hp0 Hp. exists i0.
-  exact (node_pin_unarm_fresh fname_f i0 _ i av0 av Hfree Hp0 Hp).
-Qed.
-
-Lemma f_ok_create_other (d : Z) (nmn : fname) (ents : gmap fname Z)
-    (nl : nat) (i : Z) (c : absnode) (av : aview) (s : fst) :
-  cre_pre av d nmn ents nl i c ->
-  (forall e : gmap fname Z, c <> ADir e) ->
-  (d <> ROOTINO \/ nmn <> fname_f) ->
-  f_ok av s -> f_ok (delta_create d nmn i c av) s.
-Proof using .
-  intros Hpre Hnd Hother. destruct s as [bs |]; last first.
-  { apply (name_absent_create fname_f d nmn ents nl i c av Hpre Hnd Hother). }
-  intros (i0 & Hp). exists i0.
-  apply (node_pin_create fname_f i0 _ d nmn ents nl i c av Hpre Hnd);
-    [ intros e Hc; discriminate Hc | exact Hp ].
-Qed.
-
-Lemma f_ok_dots (i d : Z) (full : bool) (av : aview) (s : fst) :
-  av !! i = Some (MkAnode (ADir ∅) 1%nat) ->
-  f_ok av s -> f_ok (dots_delta full i d av) s.
-Proof using .
-  intros Hi. destruct s as [bs |]; last first.
-  { apply (name_absent_dots fname_f i d full av fname_f_ne_dot
-             fname_f_ne_dotdot Hi). }
-  intros (i0 & Hp). exists i0.
-  apply (node_pin_dots fname_f i0 _ i d full av Hi);
-    [ intros e Hc; discriminate Hc | exact Hp ].
-Qed.
-
-Lemma f_ok_trunc_ne (i : Z) (av : aview) (s : fst) :
-  (forall j : Z, astep av ROOTINO fname_f = Some j -> i <> j) ->
-  f_ok av s -> f_ok (delta_trunc i av) s.
-Proof using .
-  intros Hj. destruct s as [bs |]; last first.
-  { apply (name_absent_trunc fname_f i av). }
-  intros (i0 & Hp). exists i0.
-  apply (node_pin_trunc_ne fname_f i0 _ i av (Hj i0 (proj1 Hp)));
-    [ intros e Hc; discriminate Hc | exact Hp ].
-Qed.
-
-(* TRUNCATING AN EMPTY `f` IS THE IDENTITY, whatever inum the call reached:
-   off `f`'s own row the leg is [f_ok_trunc_ne], and at it the row is
-   already [AFile []].  This is what makes open(O_CREATE|O_TRUNC)'s
-   truncate free on the FRESH arm. *)
-(* the root is a DIRECTORY, so no file row of the view is at [ROOTINO] *)
+(* the root is a DIRECTORY, so `f`'s own row is never at [ROOTINO] *)
 Lemma f_row_ne_root (av : aview) (i : Z) (bs : list (bv 8)) (nl : nat) :
   astep av ROOTINO fname_f = Some i ->
   av !! i = Some (MkAnode (AFile bs) nl) -> ROOTINO <> i.
@@ -590,77 +527,157 @@ Proof using .
   rewrite /astep /aents Hrow /= /anode_ents /= in Hst. discriminate Hst.
 Qed.
 
-Lemma f_ok_trunc_nil (i : Z) (av : aview) :
-  f_ok av (Some []) -> f_ok (delta_trunc i av) (Some []).
+(* ---- 3a.  THE LEGS THAT LEAVE `f` ALONE ------------------------------ *)
+
+Lemma f_ok_arm (i : Z) (c : absnode) (av : aview) (s : dst) :
+  av !! i = None -> (forall e : gmap fname Z, c <> ADir e) ->
+  f_ok av s -> f_ok (delta_arm i c av) s.
 Proof using .
-  intros (i0 & Hp).
+  intros Hfree Hnd. destruct s as [[i0 bs] |]; last first.
+  { apply (name_absent_arm fname_f i c av Hnd). }
+  intros Hp. exact (node_pin_arm fname_f i0 _ i c av Hfree Hp).
+Qed.
+
+Lemma f_ok_unarm (i : Z) (av : aview) (s : dst) :
+  i <> ROOTINO ->
+  (forall (j : Z) (bs : list (bv 8)), s = Some (j, bs) -> i <> j) ->
+  f_ok av s -> f_ok (delta_unarm i av) s.
+Proof using .
+  intros Hr Hj. destruct s as [[i0 bs] |]; last first.
+  { apply (name_absent_unarm fname_f i av). }
+  intros Hp.
+  exact (node_pin_unarm fname_f i0 _ i av Hr (Hj i0 bs eq_refl) Hp).
+Qed.
+
+(* THE ABSENT DEED PAYS NOTHING: a row disappearing cannot make a name
+   appear.  This is the whole unarm leg at [s = None]. *)
+Lemma f_ok_unarm_none (i : Z) (av : aview) :
+  f_ok av None -> f_ok (delta_unarm i av) None.
+Proof using . apply (name_absent_unarm fname_f i av). Qed.
+
+(* ...AND AT A PRESENT DEED THE LEG IS FREE TOO, which is what the INUM in
+   the state buys (lane F-WRITE's relay 1).  The arm's own receipt carries
+   [av0 !! i = None] and the claim read at [av0] carries `f`'s row AT THE
+   DEED'S INUM, so the armed inum is neither the root's nor `f`'s -- and
+   the deed's inum does not move between the two views, because it is the
+   deed's and the deed is in the holder's hand. *)
+Lemma f_ok_unarm_fresh (i : Z) (av0 av : aview) (s : dst) :
+  av0 !! i = None -> f_ok av0 s -> f_ok av s -> f_ok (delta_unarm i av) s.
+Proof using .
+  intros Hfree. destruct s as [[i0 bs] |]; last first.
+  { intros _ H. exact (name_absent_unarm fname_f i av H). }
+  intros Hp0 Hp.
+  exact (node_pin_unarm_fresh fname_f i0 _ i av0 av Hfree Hp0 Hp).
+Qed.
+
+Lemma f_ok_create_other (d : Z) (nmn : fname) (ents : gmap fname Z)
+    (nl : nat) (i : Z) (c : absnode) (av : aview) (s : dst) :
+  cre_pre av d nmn ents nl i c ->
+  (forall e : gmap fname Z, c <> ADir e) ->
+  (d <> ROOTINO \/ nmn <> fname_f) ->
+  f_ok av s -> f_ok (delta_create d nmn i c av) s.
+Proof using .
+  intros Hpre Hnd Hother. destruct s as [[i0 bs] |]; last first.
+  { apply (name_absent_create fname_f d nmn ents nl i c av Hpre Hnd Hother). }
+  intros Hp.
+  exact (node_pin_create fname_f i0 _ d nmn ents nl i c av Hpre Hnd
+           (file_row_nondir _ _) Hp).
+Qed.
+
+Lemma f_ok_dots (i d : Z) (full : bool) (av : aview) (s : dst) :
+  av !! i = Some (MkAnode (ADir ∅) 1%nat) ->
+  f_ok av s -> f_ok (dots_delta full i d av) s.
+Proof using .
+  intros Hi. destruct s as [[i0 bs] |]; last first.
+  { apply (name_absent_dots fname_f i d full av fname_f_ne_dot
+             fname_f_ne_dotdot Hi). }
+  intros Hp.
+  exact (node_pin_dots fname_f i0 _ i d full av Hi
+           (file_row_nondir _ _) Hp).
+Qed.
+
+Lemma f_ok_trunc_ne (i : Z) (av : aview) (s : dst) :
+  (forall (j : Z) (bs : list (bv 8)), s = Some (j, bs) -> i <> j) ->
+  f_ok av s -> f_ok (delta_trunc i av) s.
+Proof using .
+  intros Hj. destruct s as [[i0 bs] |]; last first.
+  { apply (name_absent_trunc fname_f i av). }
+  intros Hp.
+  exact (node_pin_trunc_ne fname_f i0 _ i av (Hj i0 bs eq_refl)
+           (file_row_nondir _ _) Hp).
+Qed.
+
+(* TRUNCATING AN EMPTY `f` IS THE IDENTITY, whatever inum the call reached:
+   off `f`'s own row the leg is [f_ok_trunc_ne], and at it the row is
+   already [AFile []].  This is what makes open(O_CREATE|O_TRUNC)'s
+   truncate free on the FRESH arm. *)
+Lemma f_ok_trunc_nil (i i0 : Z) (av : aview) :
+  f_ok av (Some (i0, [])) -> f_ok (delta_trunc i av) (Some (i0, [])).
+Proof using .
+  intros Hp.
   destruct (decide (i = i0)) as [-> | Hne].
-  - (* at `f`'s own row the truncate is the IDENTITY: it is already empty *)
-    destruct (node_pin_root fname_f i0 (MkAnode (AFile []) 1%nat) av Hp)
+  - destruct (node_pin_root fname_f i0 (MkAnode (AFile []) 1%nat) av Hp)
       as (rents & rnl & Hroot & Hnm).
-    destruct Hp as (Hst & Hrow). exists i0. split.
+    destruct Hp as (Hst & Hrow). split.
     + rewrite /astep /aents
         (delta_trunc_nonfile av i0 ROOTINO (ADir rents) rnl Hroot
-           ltac:(intros bs' Hc; discriminate Hc)).
+           (dir_row_nonfile rents rnl)).
       exact Hst.
     + exact (delta_trunc_lookup av i0 [] 1%nat Hrow).
-  - exists i0.
-    exact (node_pin_trunc_ne fname_f i0 (MkAnode (AFile []) 1%nat) i av
-             ltac:(congruence) ltac:(intros e Hc; discriminate Hc) Hp).
+  - exact (node_pin_trunc_ne fname_f i0 (MkAnode (AFile []) 1%nat) i av
+             ltac:(congruence) (file_row_nondir _ _) Hp).
 Qed.
 
 Lemma f_ok_write_ne (i : Z) (off : nat) (new : list (bv 8)) (av : aview)
-    (s : fst) :
-  (forall j : Z, astep av ROOTINO fname_f = Some j -> i <> j) ->
+    (s : dst) :
+  (forall (j : Z) (bs : list (bv 8)), s = Some (j, bs) -> i <> j) ->
   f_ok av s -> f_ok (delta_write i off new av) s.
 Proof using .
-  intros Hj. destruct s as [bs |]; last first.
+  intros Hj. destruct s as [[i0 bs] |]; last first.
   { apply (name_absent_write fname_f i off new av). }
-  intros (i0 & Hp). exists i0.
-  apply (node_pin_write_ne fname_f i0 _ i off new av (Hj i0 (proj1 Hp)));
-    [ intros e Hc; discriminate Hc | exact Hp ].
+  intros Hp.
+  exact (node_pin_write_ne fname_f i0 _ i off new av (Hj i0 bs eq_refl)
+           (file_row_nondir _ _) Hp).
 Qed.
 
 (* ---- 3b.  `f`'s OWN THREE MOVES -------------------------------------- *)
 
 (* THE CREATE: the root gains `f`, at the child the arm minted -- an empty
-   file at one link, which is exactly [f_ok]'s [Some []]. *)
+   file at one link, and the deed's new inum IS that child. *)
 Lemma f_ok_create_f (ents : gmap fname Z) (nl : nat) (i : Z) (av : aview) :
   cre_pre av ROOTINO fname_f ents nl i (AFile []) ->
-  f_ok av None ->
-  f_ok (delta_create ROOTINO fname_f i (AFile []) av) (Some []).
+  f_ok (delta_create ROOTINO fname_f i (AFile []) av) (Some (i, [])).
 Proof using .
-  intros Hpre _. exists i.
+  intros Hpre.
   exact (node_pin_create_at fname_f ents nl i (AFile []) av Hpre
            ltac:(intros e Hc; discriminate Hc)).
 Qed.
 
-(* THE TRUNCATE, AT `f`'s OWN INUM *)
+(* THE TRUNCATE, AT `f`'s OWN INUM: the deed names it, so the leg needs no
+   walk to identify the row. *)
 Lemma f_ok_trunc_f (i : Z) (bs : list (bv 8)) (av : aview) :
-  astep av ROOTINO fname_f = Some i ->
-  f_ok av (Some bs) -> f_ok (delta_trunc i av) (Some []).
+  f_ok av (Some (i, bs)) -> f_ok (delta_trunc i av) (Some (i, [])).
 Proof using .
-  intros Hst (i0 & Hst0 & Hrow). assert (Hi : i0 = i) by congruence. subst i0.
+  intros (Hst & Hrow).
   pose proof (f_row_ne_root av i bs 1%nat Hst Hrow) as Hr.
-  exists i. split.
+  split.
   - rewrite /astep /aents (delta_trunc_lookup_ne av i ROOTINO Hr). exact Hst.
   - exact (delta_trunc_lookup av i bs 1%nat Hrow).
 Qed.
 
 (* THE WRITE, AT `f`'s OWN INUM *)
 Lemma f_ok_write_f (i : Z) (off : nat) (new bs0 : list (bv 8)) (av : aview) :
-  astep av ROOTINO fname_f = Some i ->
-  f_ok av (Some bs0) ->
-  f_ok (delta_write i off new av) (Some (blk_splice off new bs0)).
+  f_ok av (Some (i, bs0)) ->
+  f_ok (delta_write i off new av) (Some (i, blk_splice off new bs0)).
 Proof using .
-  intros Hst (i0 & Hst0 & Hrow). assert (Hi : i0 = i) by congruence. subst i0.
+  intros (Hst & Hrow).
   pose proof (f_row_ne_root av i bs0 1%nat Hst Hrow) as Hr.
-  exists i. split.
+  split.
   - rewrite /astep /aents (delta_write_other av i off new ROOTINO Hr). exact Hst.
   - exact (delta_write_lookup av i off new bs0 1%nat Hrow).
 Qed.
 
-(* ...and the APPEND is the write at the end: echo's chunk [j] lands at
+(* ...and the APPEND is the write at the end: echo's chunk lands at
    [off = |bs0|] and the content is the concatenation. *)
 Lemma blk_splice_append (off : nat) (new bs0 : list (bv 8)) :
   off = length bs0 -> blk_splice off new bs0 = bs0 ++ new.
@@ -670,15 +687,13 @@ Proof using .
 Qed.
 
 Lemma f_ok_append_f (i : Z) (new bs0 : list (bv 8)) (av : aview) :
-  astep av ROOTINO fname_f = Some i ->
-  f_ok av (Some bs0) ->
-  f_ok (delta_write i (length bs0) new av) (Some (bs0 ++ new)).
+  f_ok av (Some (i, bs0)) ->
+  f_ok (delta_write i (length bs0) new av) (Some (i, bs0 ++ new)).
 Proof using .
-  intros Hst Hok.
+  intros Hok.
   rewrite -(blk_splice_append (length bs0) new bs0 eq_refl).
-  exact (f_ok_write_f i (length bs0) new bs0 av Hst Hok).
+  exact (f_ok_write_f i (length bs0) new bs0 av Hok).
 Qed.
-
 
 (* ====================================================================== *)
 (*  4.  THE PINS AND THE CONSOLE UNDER `f`'s MOVES                         *)
@@ -723,15 +738,15 @@ Qed.
 
 (* the four pinned rows are FILES, which is the side condition every
    [node_pin] leg below asks of the pinned node *)
-Lemma pinned_row_nondir (bs : list (bv 8)) :
-  forall e : gmap fname Z, an_node (MkAnode (AFile bs) 1%nat) <> ADir e.
-Proof using . intros e Hc. discriminate Hc. Qed.
+Definition pinned_row_nondir (bs : list (bv 8))
+  : forall e : gmap fname Z, an_node (MkAnode (AFile bs) 1%nat) <> ADir e
+  := file_row_nondir bs 1%nat.
 
 Lemma cons_dev_nondir : forall e : gmap fname Z, an_node cons_dev <> ADir e.
-Proof using . intros e Hc. discriminate Hc. Qed.
+Proof using . rewrite /cons_dev. exact (dev_row_nondir CONSOLE 0 1%nat). Qed.
 
 Lemma cons_dev_nonfile : forall bs : list (bv 8), an_node cons_dev <> AFile bs.
-Proof using . intros bs Hc. discriminate Hc. Qed.
+Proof using . rewrite /cons_dev. exact (dev_row_nonfile CONSOLE 0 1%nat). Qed.
 
 (* ---- 4a.  THE ARM ---------------------------------------------------- *)
 
@@ -998,11 +1013,18 @@ Qed.
 Lemma wl_line_drop1_le (ws : list (list (bv 8))) :
   (length (wl_line (drop 1 ws)) <= length (wl_line ws))%nat.
 Proof using .
-  destruct ws as [| w r]; [reflexivity |]. cbn [drop].
-  rewrite !wl_line_length wl_body_cons length_app.
-  destruct r as [| w0 r0]; cbn [wl_tail wl_body length]; [lia |].
-  rewrite wl_tail_cons. cbn [length]. rewrite wl_body_cons length_app. lia.
+  destruct ws as [| w r]; [reflexivity |].
+  replace (drop 1 (w :: r)) with r by reflexivity.
+  rewrite !wl_line_length.
+  assert (Hb : (length (wl_body r) <= length (wl_body (w :: r)))%nat).
+  { rewrite wl_body_cons length_app.
+    destruct r as [| w0 r0]; cbn [wl_body wl_tail length]; lia. }
+  lia.
 Qed.
+
+Lemma echo_chunks_concat (ws : list (list (bv 8))) :
+  drop 1 ws <> [] -> concat (echo_chunks ws) = wl_line (drop 1 ws).
+Proof using . rewrite /echo_chunks. apply echo_args_chunks_concat. Qed.
 
 Lemma f_bytes_typed_short (ls : list wordline) (bs : list (bv 8)) :
   f_bytes_typed ls bs -> (length bs < EchoDisc.line_max)%nat.
@@ -1013,41 +1035,54 @@ Proof using .
   { pose proof (line_ok_ge2 ws Hok) as H2. intros Hnil.
     assert (Hz : length (drop 1 ws) = 0%nat) by (rewrite Hnil; reflexivity).
     rewrite length_drop in Hz. lia. }
-  rewrite /echo_chunks in Hle.
-  rewrite (echo_args_chunks_concat (drop 1 ws) Hne) in Hle.
+  rewrite (echo_chunks_concat ws Hne) in Hle.
   pose proof (wl_line_drop1_le ws) as Hd.
   pose proof (line_ok_len ws Hok) as Hm. lia.
 Qed.
 
 (* ---- 5c.  ...SO ITS ROW IS NOT A PINNED BINARY'S --------------------- *)
 
-Lemma init_bytes_length : length init_bytes = 35976%nat.
-Proof using .
-  pose proof ElfUser.init_elf_length as H. rewrite /init_bytes.
-  rewrite /InitElfRaw.init_elf_size in H. lia.
-Qed.
+Lemma init_bytes_length : Z.of_nat (length init_bytes) = 35976.
+Proof using . exact ElfUser.init_elf_length. Qed.
 
-Lemma sh_bytes_length : length sh_bytes = 58312%nat.
-Proof using .
-  pose proof ElfUser.sh_elf_length as H. rewrite /sh_bytes.
-  rewrite /ShElfRaw.sh_elf_size in H. lia.
-Qed.
+Lemma sh_bytes_length : Z.of_nat (length sh_bytes) = 58312.
+Proof using . exact ElfUser.sh_elf_length. Qed.
 
-Lemma echo_bytes_length : length echo_bytes = 35592%nat.
-Proof using .
-  pose proof ElfUser.echo_elf_length as H. rewrite /echo_bytes.
-  rewrite /EchoElfRaw.echo_elf_size in H. lia.
-Qed.
+Lemma echo_bytes_length : Z.of_nat (length echo_bytes) = 35592.
+Proof using . exact ElfUser.echo_elf_length. Qed.
 
-Lemma cat_bytes_length : length cat_bytes = 36728%nat.
+Lemma cat_bytes_length : Z.of_nat (length cat_bytes) = 36728.
+Proof using . exact ElfUser.cat_elf_length. Qed.
+
+(* THE ROW'S CONTENT LENGTH, WITHOUT [injection].  Two rows at one inum
+   are one row, and what section 5c needs of them is the LENGTH -- but
+   [injection] on [Some (MkAnode (AFile bs) 1) = Some (MkAnode (AFile
+   init_bytes) 1)] NORMALISES the 35,976-byte literal and does not come
+   back (durable-notes: a large literal is an opaque [Nat.of_num_uint] and
+   every route through it materialises the list).  The reading below goes
+   through a total projection instead, so the only conversion is a beta and
+   an iota on the constructor. *)
+Definition row_flen (o : option anode) : Z :=
+  match o with
+  | Some (MkAnode (AFile b) _) => Z.of_nat (length b)
+  | _ => 0
+  end.
+
+Lemma row_flen_eq (av : aview) (i : Z) (bs bs' : list (bv 8)) (nl nl' : nat) :
+  av !! i = Some (MkAnode (AFile bs) nl) ->
+  av !! i = Some (MkAnode (AFile bs') nl') ->
+  Z.of_nat (length bs) = Z.of_nat (length bs').
 Proof using .
-  pose proof ElfUser.cat_elf_length as H. rewrite /cat_bytes.
-  rewrite /CatElfRaw.cat_elf_size in H. lia.
+  intros H1 H2. transitivity (row_flen (av !! i)).
+  - rewrite H1. reflexivity.
+  - rewrite H2. reflexivity.
 Qed.
 
 (* THE SEPARATION.  Stated at the ROW rather than at [f_ok] so both the
-   truncate (which knows `f`'s inum off the walk) and the write (which
-   knows it off the descriptor) read the same sentence. *)
+   truncate (which knows `f`'s inum off the deed) and the write (which
+   knows it off the descriptor) read the same sentence.  The comparison is
+   at [Z]: a [nat] literal past Rocq's abstraction threshold is an opaque
+   [Nat.of_num_uint] and [lia] cannot see through it (durable-notes). *)
 Lemma f_inum_not_pinned (av : aview) (i : Z) (bs : list (bv 8)) :
   file_fs_pure av ->
   av !! i = Some (MkAnode (AFile bs) 1%nat) ->
@@ -1058,18 +1093,15 @@ Proof using .
   destruct H1 as (_ & R1). destruct H2 as (_ & R2).
   destruct H3 as (_ & R3). destruct H4 as (_ & R4).
   rewrite /EchoDisc.line_max in Hlen.
+  assert (HlenZ : Z.of_nat (length bs) < 100) by lia.
   split_and!; intros Heq; rewrite Heq in Hrow.
-  - rewrite Hrow in R1. injection R1 as Hb _.
-    assert (Hl : length bs = length init_bytes) by (by rewrite Hb).
+  - pose proof (row_flen_eq av INIT_INO bs init_bytes 1%nat 1%nat Hrow R1) as Hl.
     rewrite init_bytes_length in Hl. lia.
-  - rewrite Hrow in R2. injection R2 as Hb _.
-    assert (Hl : length bs = length sh_bytes) by (by rewrite Hb).
+  - pose proof (row_flen_eq av SH_INO bs sh_bytes 1%nat 1%nat Hrow R2) as Hl.
     rewrite sh_bytes_length in Hl. lia.
-  - rewrite Hrow in R3. injection R3 as Hb _.
-    assert (Hl : length bs = length echo_bytes) by (by rewrite Hb).
+  - pose proof (row_flen_eq av ECHO_INO bs echo_bytes 1%nat 1%nat Hrow R3) as Hl.
     rewrite echo_bytes_length in Hl. lia.
-  - rewrite Hrow in R4. injection R4 as Hb _.
-    assert (Hl : length bs = length cat_bytes) by (by rewrite Hb).
+  - pose proof (row_flen_eq av CAT_INO bs cat_bytes 1%nat 1%nat Hrow R4) as Hl.
     rewrite cat_bytes_length in Hl. lia.
 Qed.
 
@@ -1079,13 +1111,14 @@ Lemma f_inum_ne_cons (av : aview) (i j : Z) (bs : list (bv 8)) :
   av !! i = Some (MkAnode (AFile bs) 1%nat) -> cons_present_at j av -> i <> j.
 Proof using .
   intros Hrow (_ & Hc & _) Heq. rewrite Heq in Hrow. rewrite Hrow in Hc.
-  rewrite /cons_dev in Hc. injection Hc as Hb _. discriminate Hb.
+  rewrite /cons_dev in Hc. discriminate Hc.
 Qed.
 
 (* ---- 5d.  THE THREE COMPOSITE STEPS THE SUPPLIERS SPEND -------------- *)
 
 (* THE CREATE AT `f`: the arm's child is an EMPTY FILE, so the pins and the
-   console are untouched and `f` goes from ABSENT to [Some []]. *)
+   console are untouched and `f` goes from ABSENT to [Some (i, [])] at the
+   inum the arm chose. *)
 Lemma file_create_at_f (av : aview) (ents : gmap fname Z) (nl : nat) (i : Z) :
   cre_pre av ROOTINO fname_f ents nl i (AFile []) ->
   file_fs_pure av ->
@@ -1094,7 +1127,7 @@ Lemma file_create_at_f (av : aview) (ents : gmap fname Z) (nl : nat) (i : Z) :
       cons_absent (delta_create ROOTINO fname_f i (AFile []) av))
   /\ (forall j, cons_present_at j av ->
         cons_present_at j (delta_create ROOTINO fname_f i (AFile []) av))
-  /\ f_ok (delta_create ROOTINO fname_f i (AFile []) av) (Some []).
+  /\ f_ok (delta_create ROOTINO fname_f i (AFile []) av) (Some (i, [])).
 Proof using .
   intros Hpre Hpure.
   assert (Hnd : forall e : gmap fname Z, AFile [] <> ADir e)
@@ -1106,53 +1139,55 @@ Proof using .
              Hpre Hnd). right. exact fname_f_ne_console.
   - intros j. exact (cons_present_create_nd j ROOTINO fname_f ents nl i
                        (AFile []) av Hpre Hnd).
-  - exact (f_ok_create_f ents nl i av Hpre
-             (cre_pre_f_absent av ents nl i (AFile []) Hpre)).
+  - exact (f_ok_create_f ents nl i av Hpre).
 Qed.
 
-(* THE TRUNCATE AT `f` *)
+(* THE TRUNCATE AT `f`, at the deed's own inum *)
 Lemma file_trunc_at_f (av : aview) (i : Z) (bs : list (bv 8))
     (ls : list wordline) :
   file_fs_pure av ->
-  astep av ROOTINO fname_f = Some i ->
-  f_ok av (Some bs) -> f_bytes_typed ls bs ->
+  f_ok av (Some (i, bs)) -> f_bytes_typed ls bs ->
   file_fs_pure (delta_trunc i av)
   /\ (cons_absent av -> cons_absent (delta_trunc i av))
   /\ (forall j, cons_present_at j av -> cons_present_at j (delta_trunc i av))
-  /\ f_ok (delta_trunc i av) (Some []).
+  /\ f_ok (delta_trunc i av) (Some (i, [])).
 Proof using .
-  intros Hpure Hst Hok Hty.
-  pose proof Hok as (i0 & Hst0 & Hrow). assert (Hi : i0 = i) by congruence.
-  rewrite Hi in Hrow.
+  intros Hpure Hok Hty. pose proof Hok as (Hst & Hrow).
   destruct (f_inum_not_pinned av i bs Hpure Hrow
               (f_bytes_typed_short ls bs Hty)) as (N1 & N2 & N3 & N4).
   split_and!.
   - exact (file_fs_pure_trunc_ne i av N1 N2 N3 N4 Hpure).
   - exact (cons_absent_trunc_any i av).
   - intros j. exact (cons_present_trunc_any j i av).
-  - exact (f_ok_trunc_f i bs av Hst Hok).
+  - exact (f_ok_trunc_f i bs av Hok).
 Qed.
 
-(* THE WRITE AT `f` *)
+(* THE WRITE AT `f`, at the deed's own inum *)
 Lemma file_write_at_f (av : aview) (i : Z) (off : nat)
     (new bs0 : list (bv 8)) (ls : list wordline) :
   file_fs_pure av ->
-  astep av ROOTINO fname_f = Some i ->
-  f_ok av (Some bs0) -> f_bytes_typed ls bs0 ->
+  f_ok av (Some (i, bs0)) -> f_bytes_typed ls bs0 ->
   file_fs_pure (delta_write i off new av)
   /\ (cons_absent av -> cons_absent (delta_write i off new av))
   /\ (forall j, cons_present_at j av ->
                 cons_present_at j (delta_write i off new av))
-  /\ f_ok (delta_write i off new av) (Some (blk_splice off new bs0)).
+  /\ f_ok (delta_write i off new av) (Some (i, blk_splice off new bs0)).
 Proof using .
-  intros Hpure Hst Hok Hty.
-  pose proof Hok as (i0 & Hst0 & Hrow). assert (Hi : i0 = i) by congruence.
-  rewrite Hi in Hrow.
+  intros Hpure Hok Hty. pose proof Hok as (Hst & Hrow).
   destruct (f_inum_not_pinned av i bs0 Hpure Hrow
               (f_bytes_typed_short ls bs0 Hty)) as (N1 & N2 & N3 & N4).
   split_and!.
   - exact (file_fs_pure_write_ne i off new av N1 N2 N3 N4 Hpure).
   - exact (cons_absent_write_any i off new av).
   - intros j. exact (cons_present_write_any j i off new av).
-  - exact (f_ok_write_f i off new bs0 av Hst Hok).
+  - exact (f_ok_write_f i off new bs0 av Hok).
+Qed.
+
+(* ...and the deed's inum is not the CONSOLE's either, which is what a
+   move at `f` owes [AppEcho.cons_state]'s two present arms when they are
+   read at a row rather than at a name. *)
+Lemma f_deed_inum_ne_cons (av : aview) (i j : Z) (bs : list (bv 8)) :
+  f_ok av (Some (i, bs)) -> cons_present_at j av -> i <> j.
+Proof using .
+  intros (_ & Hrow) Hc. exact (f_inum_ne_cons av i j bs Hrow Hc).
 Qed.

@@ -826,8 +826,17 @@ moved; what moved is the syntax they destruct.
     `fown r (Some (i, []))`, the taint), the middle one no longer under
     `⌜s = None⌝`; `file_trunc_piece` restated at the permit, with the path
     premises and the line witness; `file_open_create_au` /
-    `_notrunc` as above.
-15. Nothing else.  `AppFile.v` again needed no change.
+    `_notrunc` as above.  New beside them: `fclaim_free`,
+    `file_claim_read_free`, `file_dlk_recv` / `file_dlk_fam` /
+    `file_dlk_piece`, `file_trunc_of_exists`, `file_open_pay`,
+    `file_permit_pay`, `file_kept_pay`, `file_legs_pay`,
+    `file_open_create_fail_pay`, `file_open_create_recv`.  Section 6's
+    STOP record is rewritten (what closed, what the pure reading replaced,
+    and the two holes that remain).
+15. `ProofSysOpenFull`, `TreeMove`, `UConsOpen` and `UkTreeRead` changed at
+    CALL SITES only (one conversion in `Full` between the two tiers, one
+    argument each in the other three).  Nothing else.  `AppFile.v` again
+    needed no change.
 
 **WHAT THE RULING SAID AND THE PROOFS CORRECTED.**
 

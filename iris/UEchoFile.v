@@ -221,9 +221,9 @@ Section UEchoFile.
      resource-home defect the review's SSA1 names. *)
   Hypothesis Hoff_link :
     forall (γfs : fs_names) (i : Z) (γo : gname) (M : gmap Z (bv 8))
-           (ua : mword 64) (k : nat) (REST : iProp Σ),
+           (ua : mword 64) (n : Z) (k : nat) (REST : iProp Σ),
       ef_full_adv_raw γfs i γo M ua k REST ⊢
-      awrite_full_at (fs_gamma_L γfs) appE i γo M ua k REST.
+      awrite_full_at (fs_gamma_L γfs) appE i γo M ua n k REST.
 
   (* ---- HYPOTHESIS 2 (lane WRITE-RELAY, RELAY 3) ---------------------- *)
   (* [SysWriteDefs.wri_pre] bounds [length bs] only by the file's
@@ -249,9 +249,9 @@ Section UEchoFile.
     forall (γfs : fs_names) (i : Z) (γo : gname) (M : gmap Z (bv 8))
            (pmv : gmap (mword 27) uperm) (sz : Z)
            (ua : mword 64) (nb : nat) (f : nat -> bv 8)
-           (k : nat) (REST : iProp Σ),
+           (n : Z) (k : nat) (REST : iProp Σ),
       usrc_ok M pmv sz ua nb f ->
-      ⊢ awrite_part_at (fs_gamma_L γfs) appE i γo M ua k REST.
+      ⊢ awrite_part_at (fs_gamma_L γfs) appE i γo M ua n k REST.
 
   (* =================================================================== *)
   (*  S3  THE TWO LEDGER-SLOT PIECES THE ENGINE OWES (review SSC1.4, D7)   *)
@@ -276,7 +276,7 @@ Section UEchoFile.
          uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗
          uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗
          awrite_chain (fs_gamma_L fsc_fs) appE i γo M (m !!! Regidx a1_idx)
-           Q 0%nat (wchunks n)) -∗
+           n Q 0%nat (wchunks n)) -∗
       udepwf_std N m pc 16 (write_file_fam Q (ukn_pay N)) l.
 
   (* ---- HYPOTHESIS 5 (NEW; the ledger-slot write leaf) ---------------- *)
@@ -325,12 +325,12 @@ Section UEchoFile.
   (*  FRAGMENT: it goes in at [off] and comes out at [off + |chunk|].      *)
   (* =================================================================== *)
   Lemma ef_node (i : Z) (γo : gname) (ws : wordline) (sel : list nat)
-      (jx : nat) (M : gmap Z (bv 8)) (ua : mword 64) (k : nat) :
+      (jx : nat) (M : gmap Z (bv 8)) (ua : mword 64) (n : Z) (k : nat) :
     (jx < length (echo_chunks ws))%nat ->
     Forall (fun q => (q < jx)%nat) sel ->
     i <> INIT_INO -> i <> SH_INO -> i <> ECHO_INO -> i <> CAT_INO ->
     app_inv fsc_fs -∗ efq i γo ws sel -∗
-    awrite_full_at (fs_gamma_L fsc_fs) appE i γo M ua k
+    awrite_full_at (fs_gamma_L fsc_fs) appE i γo M ua n k
       (efq i γo ws (sel ++ [jx])).
   Proof using Heq Hoff_link Hrelay3.
   Admitted.
@@ -348,7 +348,7 @@ Section UEchoFile.
     Forall (fun q => (q < jx)%nat) sel ->
     i <> INIT_INO -> i <> SH_INO -> i <> ECHO_INO -> i <> CAT_INO ->
     app_inv fsc_fs -∗ efq i γo ws sel -∗
-    awrite_chain (fs_gamma_L fsc_fs) appE i γo M ua
+    awrite_chain (fs_gamma_L fsc_fs) appE i γo M ua n
       (efcur i γo ws sel jx) 0%nat (wchunks n).
   Proof using Heq Hoff_link Hrelay3 Hrelay4.
   Admitted.

@@ -207,6 +207,27 @@ Lemma ubytes_at_of_got_len (M : gmap Z (bv 8)) (ua : mword 64) (len : nat)
     (f : nat -> bv 8) : length (f <$> seq 0 len) = len.
 Proof. rewrite length_fmap length_seq //. Qed.
 
+(* TWO RUNS OF THE SAME LENGTH AT THE SAME BASE ARE THE SAME RUN (lane
+   WRITE-RELAY, RELAY 3).  [ubytes_at] is prefix-closed -- it constrains
+   only the indices [bs] itself has -- so it identifies a run ONLY once the
+   length is known beside it.  This is the whole of what the chunk's length
+   conjunct ([SysWriteDefs.wchunk_at]) buys a client that already holds
+   [ubytes_at] for the bytes it MEANT to write: the fire's [bs] is them. *)
+Lemma ubytes_at_inj (M : gmap Z (bv 8)) (ua : mword 64) (bs bs' : list (bv 8)) :
+  ubytes_at M ua bs -> ubytes_at M ua bs' ->
+  length bs = length bs' -> bs = bs'.
+Proof.
+  intros H1 H2 Hlen. apply list_eq. intro d.
+  destruct (decide (d < length bs)%nat) as [Hlt | Hge].
+  - destruct (lookup_lt_is_Some_2 bs d Hlt) as [c Hc].
+    destruct (lookup_lt_is_Some_2 bs' d ltac:(lia)) as [c' Hc'].
+    rewrite Hc Hc'. f_equal.
+    pose proof (H1 d c Hc) as E1. pose proof (H2 d c' Hc') as E2.
+    congruence.
+  - rewrite (lookup_ge_None_2 bs d ltac:(lia)).
+    rewrite (lookup_ge_None_2 bs' d ltac:(lia)). reflexivity.
+Qed.
+
 (* THE BASE COMMUTES with the loop's [add rd,ri,rbase] spelling: gcc emits
    the INDEX first at both of this seam's chunk loops, and the receipt is
    stated at the base.  (Not a lemma about copyin; it lives here because

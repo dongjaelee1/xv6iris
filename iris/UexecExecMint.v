@@ -258,7 +258,7 @@ Section UexecExecMint.
     destruct st as [| rb wb ty]; [ iEmpIntro | ].
     destruct wb; [| iEmpIntro ].
     destruct ty as [i γo om | γp | ma].
-    - iApply (fsabs_awrite_chain _ i γo M ua 0%nat _ with "Hsup").
+    - iApply (fsabs_awrite_chain _ i γo M ua n 0%nat _ with "Hsup").
     - iApply (pipe_wpay_taint with "Hkc").
     - iApply (cons_out_chain_of_licence with "Hlic").
   Qed.

@@ -126,10 +126,20 @@ Section UserOff.
   (* [off_supply γo E off d R]: "the kernel's half goes in at [off] and
      comes back at [off + d], and [R] is what the supplier leaves behind".
      A fire takes ONE of these and returns [R]; which supplier answered is
-     invisible to it. *)
+     invisible to it.
+
+     ITS INPUT IS [off_ret], NOT THE BARE HALF, since lane WRITE-RELAY: the
+     node may have advanced the half itself.  That is not a weakening of
+     either supplier below.  At [v = off + d] the PARKED one moves its
+     existential row to the value that is already there; the HELD one is
+     looking at a CONTRADICTION -- it holds the other half at [off] while
+     the kernel's reads [off + d] -- so that arm is vacuous for it whenever
+     [0 < d].  Which is the honest reading today: only a node holding the
+     user half can advance, and no such node exists until the off box grows
+     its link arm (design/app-file.md section 3, lane OFF-LINK). *)
   Definition off_supply (γo : gname) (E : coPset) (off d : nat)
       (R : iProp Σ) : iProp Σ :=
-    (off_gv γo (1/2) (Z.of_nat off) ={E}=∗
+    (off_ret γo off d ={E}=∗
        off_gv γo (1/2) (Z.of_nat (off + d)) ∗ R)%I.
 
   (* SUPPLIER 1 -- PARKED: the generic-safety path, where the process
@@ -142,7 +152,8 @@ Section UserOff.
     off_user_inv γo -∗ off_supply γo E off d True.
   Proof using .
     intros HE. rewrite /off_supply. iIntros "#Hinv Hk".
-    iMod (off_user_inv_move E γo (Z.of_nat off) (Z.of_nat (off + d)) HE
+    iDestruct "Hk" as (v) "[Hk _]".
+    iMod (off_user_inv_move E γo v (Z.of_nat (off + d)) HE
             with "Hinv Hk") as "Hk".
     iModIntro. by iFrame.
   Qed.
@@ -154,6 +165,10 @@ Section UserOff.
     uoff γo off -∗ off_supply γo E off d (uoff γo (off + d)).
   Proof using .
     rewrite /off_supply. iIntros "Hu Hk".
+    iDestruct "Hk" as (v) "[Hk _]".
+    (* the caller's own half PINS the value: the advanced arm is a
+       contradiction for this supplier whenever [0 < d]. *)
+    iDestruct (uoff_agree_k γo off v with "Hu Hk") as %->.
     iMod (uoff_advance γo off d with "Hu Hk") as "[$ $]". done.
   Qed.
 

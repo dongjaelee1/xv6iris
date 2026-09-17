@@ -80,10 +80,10 @@ Section FilewriteChain.
           is true of every state the loop hands out -- the exhausted exit
           included -- and both exits read it off unchanged. *)
        ⌜ubytes_at M ua (concat bss)⌝ ∗
-       awrite_chain Γ appE i γo M ua Q (p + x) (wchunks n - p - x)%nat)%I.
+       awrite_chain Γ appE i γo M ua n Q (p + x) (wchunks n - p - x)%nat)%I.
 
   Lemma fw_au_raw_init Γ (i : Z) γo (n : Z) M ua Q :
-    awrite_chain Γ appE i γo M ua Q 0%nat (wchunks n) -∗
+    awrite_chain Γ appE i γo M ua n Q 0%nat (wchunks n) -∗
     fw_au_raw Γ i γo n M ua Q 0 0%nat 0%nat.
   Proof using .
     iIntros "Hcm". rewrite /fw_au_raw. iExists [].
@@ -101,11 +101,11 @@ Section FilewriteChain.
   Lemma fw_au_raw_take Γ (i : Z) γo (n : Z) M ua Q (t : Z) (p : nat) :
     (0 <= t)%Z -> (t < n)%Z -> t = FW_MAX * Z.of_nat p ->
     fw_au_raw Γ i γo n M ua Q t p 0%nat -∗
-      awrite_full_at Γ appE i γo M ua p
-        (awrite_chain Γ appE i γo M ua Q (S p) (wchunks n - S p)) ∗
+      awrite_full_at Γ appE i γo M ua n p
+        (awrite_chain Γ appE i γo M ua n Q (S p) (wchunks n - S p)) ∗
       (∀ bs : list (bv 8),
          ⌜ubytes_at M (add_vec_int ua t) bs⌝ -∗
-         awrite_chain Γ appE i γo M ua Q (S p) (wchunks n - S p) -∗
+         awrite_chain Γ appE i γo M ua n Q (S p) (wchunks n - S p) -∗
          fw_au_raw Γ i γo n M ua Q (t + Z.of_nat (length bs)) (S p) 0%nat).
   Proof using .
     intros Ht Htn Htie. iIntros "Hst".
@@ -143,9 +143,9 @@ Section FilewriteChain.
   Lemma fw_au_raw_spend_part Γ (i : Z) γo (n : Z) M ua Q (t : Z) (p : nat) :
     (0 <= t)%Z -> (t < n)%Z -> t = FW_MAX * Z.of_nat p ->
     fw_au_raw Γ i γo n M ua Q t p 0%nat -∗
-      awrite_part_at Γ appE i γo M ua p
-        (awrite_chain Γ appE i γo M ua Q (S p) (wchunks n - S p)) ∗
-      (awrite_chain Γ appE i γo M ua Q (S p) (wchunks n - S p) -∗
+      awrite_part_at Γ appE i γo M ua n p
+        (awrite_chain Γ appE i γo M ua n Q (S p) (wchunks n - S p)) ∗
+      (awrite_chain Γ appE i γo M ua n Q (S p) (wchunks n - S p) -∗
        fw_au_raw Γ i γo n M ua Q t p 1%nat).
   Proof using .
     intros Ht Htn Htie. iIntros "Hst".

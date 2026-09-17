@@ -79,6 +79,33 @@ Section OffGv.
     rewrite /off_gv. iIntros "H1 H2".
     iMod (ghost_var_update_halves z' with "H1 H2") as "[$ $]". done.
   Qed.
+
+  (* WHAT THE COMMIT HANDS BACK (lane WRITE-RELAY, for lane SKELETON's
+     [Hoff_link]).  [FsAbsWriteFire]'s two write nodes and
+     [FsAbsReadFire]'s read node used to return the kernel's half UNMOVED,
+     which is the only thing a node with no user half can do.  A node whose
+     CLOSURE holds the program's half ([uoff] -- design/app-file.md section
+     3, "THE OFFSET") holds BOTH inside the commit and must leave the cursor
+     at [off + d].  So the commit's contract now says WHICH of the two
+     values came back, and the fire closes on either; the GENERIC node is
+     unchanged, because [off_ret_keep] is exactly what it was already
+     proving.  There is no third value: a node that moved the half anywhere
+     else moved a ghost the client does not own at a key it cannot name. *)
+  Definition off_ret (γo : gname) (off d : nat) : iProp Σ :=
+    (∃ v : Z, off_gv γo (1/2) v
+       ∗ ⌜v = Z.of_nat off \/ v = Z.of_nat (off + d)⌝)%I.
+
+  (* the generic node's answer: the borrow, unmoved *)
+  Lemma off_ret_keep γo (off d : nat) :
+    off_gv γo (1/2) (Z.of_nat off) -∗ off_ret γo off d.
+  Proof using . iIntros "H". iExists (Z.of_nat off). iFrame "H". by iLeft. Qed.
+
+  (* ...and the LINKED node's: the cursor, advanced by what the fire moved *)
+  Lemma off_ret_adv γo (off d : nat) :
+    off_gv γo (1/2) (Z.of_nat (off + d)) -∗ off_ret γo off d.
+  Proof using .
+    iIntros "H". iExists (Z.of_nat (off + d)). iFrame "H". by iRight.
+  Qed.
 End OffGv.
 
 (* ==================================================================== *)

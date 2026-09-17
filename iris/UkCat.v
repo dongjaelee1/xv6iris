@@ -666,6 +666,86 @@ Section UkCat.
   Qed.
 
   (* ===================================================================== *)
+  (* ...AND THE SAME WRITE WITH ITS OUTPUT READ AT THE RETURNED WORD        *)
+  (* (lane CAT-ENTRY-2, RULING (g)).                                        *)
+  (*                                                                       *)
+  (* [kcat_w]'s [Co] cannot mention the value [write] returned, and cat's   *)
+  (* loop branches on exactly that: [beq a0,s1] compares the write's return *)
+  (* against the read's.  While the payment says nothing about the return,  *)
+  (* the `cat: write error` tail is an ARM the payer has to fund; once the  *)
+  (* payment may SPEAK about the return, a payer whose destination run it   *)
+  (* owns refutes the tail instead ([UkWriteLeaf.uwrite_no_short] --        *)
+  (* READ-RELAY's move one syscall over).                                   *)
+  (*                                                                       *)
+  (* It is a SECOND definition and not a restatement of [kcat_w]: every     *)
+  (* other write of the walk (putc's byte, every run of [kcat_pay_seq])     *)
+  (* wants the ret-free shape, and a chain whose every node quantified a    *)
+  (* return value it does not read would cost each of them an argument.     *)
+  (* [kcat_wr_of_w] is the inclusion, so a caller with the ret-free         *)
+  (* obligation still has this one.                                        *)
+  (* ===================================================================== *)
+  Definition kcat_wr (fdw ua : mword 64) (nb : nat) (Ci : iProp Σ)
+      (Co : mword 64 -> iProp Σ) : iProp Σ :=
+    (∀ (h : CpuId) (m : regfile) (avail : nat),
+       ⌜m !!! Regidx a0_idx = fdw⌝ -∗
+       ⌜m !!! Regidx a1_idx = ua⌝ -∗
+       ⌜m !!! Regidx a2_idx = (mword_of_int (Z.of_nat nb) : mword 64)⌝ -∗
+       cat_code γt -∗
+       Ci -∗
+       urun N h m (mword_of_int CatSyms.write) avail -∗
+       (∀ (h' : CpuId) (ret : mword 64),
+          Co ret -∗
+          urun N h'
+            (<[Regidx a0_idx := ret]>
+               (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m))
+            (ret_pc (m !!! Regidx ra_idx)) avail -∗
+          WP (Loop : expr riscv_lang)) -∗
+       WP (Loop : expr riscv_lang))%I.
+
+  (* the ret-free obligation IS the constant instance of this one -- which
+     is what lets the FREE chain keep funding cat's loop unchanged *)
+  Lemma kcat_wr_of_w (fdw ua : mword 64) (nb : nat) (Ci Co : iProp Σ) :
+    kcat_w fdw ua nb Ci Co -∗ kcat_wr fdw ua nb Ci (fun _ => Co).
+  Proof using .
+    iIntros "Hw" (h m avail) "%Ha0 %Ha1 %Ha2 #Hcode HCi Hrun Hcont".
+    iApply ("Hw" $! h m avail with "[%] [%] [%] Hcode HCi Hrun Hcont");
+      [ exact Ha0 | exact Ha1 | exact Ha2 ].
+  Qed.
+
+  Lemma kcat_wr_mono (fdw ua : mword 64) (nb : nat) (Ci : iProp Σ)
+      (Co Co' : mword 64 -> iProp Σ) :
+    (∀ r : mword 64, Co r -∗ Co' r) -∗
+    kcat_wr fdw ua nb Ci Co -∗ kcat_wr fdw ua nb Ci Co'.
+  Proof using .
+    iIntros "Hm Hw" (h m avail) "%Ha0 %Ha1 %Ha2 #Hcode HCi Hrun Hcont".
+    iApply ("Hw" $! h m avail with "[%] [%] [%] Hcode HCi Hrun");
+      [ exact Ha0 | exact Ha1 | exact Ha2 | ].
+    iIntros (h' ret) "HCo Hrun".
+    iApply ("Hcont" $! h' ret with "[Hm HCo] Hrun").
+    iApply ("Hm" with "HCo").
+  Qed.
+
+  Lemma kcat_wr_mono_in (fdw ua : mword 64) (nb : nat) (Ci Ci' : iProp Σ)
+      (Co : mword 64 -> iProp Σ) :
+    (Ci' -∗ Ci) -∗ kcat_wr fdw ua nb Ci Co -∗ kcat_wr fdw ua nb Ci' Co.
+  Proof using .
+    iIntros "Hm Hw" (h m avail) "%Ha0 %Ha1 %Ha2 #Hcode HCi Hrun Hcont".
+    iApply ("Hw" $! h m avail
+              with "[%] [%] [%] Hcode [Hm HCi] Hrun Hcont");
+      [ exact Ha0 | exact Ha1 | exact Ha2 | ].
+    iApply ("Hm" with "HCi").
+  Qed.
+
+  Lemma kcat_wr_frame (fdw ua : mword 64) (nb : nat) (Ci C : iProp Σ)
+      (Co : mword 64 -> iProp Σ) :
+    C -∗ kcat_wr fdw ua nb (Ci ∗ C) Co -∗ kcat_wr fdw ua nb Ci Co.
+  Proof using .
+    iIntros "HC Hw" (h m avail) "%Ha0 %Ha1 %Ha2 #Hcode HCi Hrun Hcont".
+    iApply ("Hw" $! h m avail with "[%] [%] [%] Hcode [$HCi $HC] Hrun Hcont");
+      [ exact Ha0 | exact Ha1 | exact Ha2 ].
+  Qed.
+
+  (* ===================================================================== *)
   (* ...AND THE ONE-BYTE FORM ulib's putc SPENDS.                           *)
   (*                                                                       *)
   (* putc's [write] argument is a byte in putc's OWN FRAME ([sb a1,-17(s0)] *)

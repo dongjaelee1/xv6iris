@@ -570,6 +570,48 @@ Section OpenDefs.
   Qed.
 
   (* ------------------------------------------------------------------ *)
+  (*  THE EXISTS BRANCH ALONE (lane F-OPEN-6).                            *)
+  (*                                                                      *)
+  (*  [trunc_permit_of] is a DISJUNCTION, and a piece keyed by it refunds  *)
+  (*  a permit whose branch the arm that paid it does not say.  That is    *)
+  (*  the whole of F-OPEN-5's residue: a found DEVICE is reported on the   *)
+  (*  EXISTS run only, and there create's [dirlookup] found the name and   *)
+  (*  the arm NEVER FIRED -- so what was paid is the right disjunct, and   *)
+  (*  an application that parks a claim in the arm reads it back and       *)
+  (*  contradicts the device.  The left disjunct is unreachable there and  *)
+  (*  unrefutable in the logic, so the ARM SAYS WHICH BRANCH IT PAID.      *)
+  (*                                                                      *)
+  (*  The FRESH run needs no twin: [sys_open] type-checks the inode        *)
+  (*  [create] returned, STILL LOCKED (xv6's [sysfile.c]: [create] returns *)
+  (*  the inode locked and the [ip->type] test runs before [iunlock]), so  *)
+  (*  the observation on that run IS the created child's own type and the  *)
+  (*  arm reports [FdInode] with no device sub-arm at all --               *)
+  (*  [SpecSysOpen.open_post_ok_create]'s FRESH arm carries [cre_pre av d  *)
+  (*  nm ents nl i (AFile [])] and nothing else is needed.                 *)
+  (* ------------------------------------------------------------------ *)
+
+  Definition trunc_permit_ex Γ (T : Z -> fname -> iProp Σ)
+      (Farm : pfam Σ (aview -> Z -> iProp Σ))
+      (Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
+      (i : Z) : iProp Σ :=
+    (∃ (d : Z) (nm : fname),
+       T d nm ∗ cre_ex_fired Fex d nm i
+       ∗ pf_at (aarm_commit_at Γ appE (AFile [])) Farm)%I.
+
+  (* ...and it IS a permit: the branch-specific one answers the piece the
+     caller keyed at the disjunction *)
+  Lemma trunc_permit_of_ex Γ (T : Z -> fname -> iProp Σ)
+      (Farm : pfam Σ (aview -> Z -> iProp Σ))
+      (Fok Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
+      (i : Z) :
+    trunc_permit_ex Γ T Farm Fex i -∗ trunc_permit_of Γ T Farm Fok Fex i.
+  Proof using .
+    iIntros "H". rewrite /trunc_permit_ex /trunc_permit_of.
+    iDestruct "H" as (d nm) "(HT & Hex & Harm)". iExists d, nm.
+    iFrame "HT". iRight. iFrame "Hex Harm".
+  Qed.
+
+  (* ------------------------------------------------------------------ *)
   (*  2b''.  THE TRUNC PIECE IS OWED ONLY WHEN THE CODE TRUNCATES         *)
   (* ------------------------------------------------------------------ *)
 
@@ -759,6 +801,44 @@ Section OpenDefs.
     iSplit.
     - iDestruct "H" as "[H _]". iApply ("H" with "Hk").
     - iDestruct "H" as "[_ H]". iFrame "H Hk".
+  Qed.
+
+  (* ...AND PAYING IT WITH A STRONGER PERMIT, so the piece REFUNDS the
+     stronger one (lane F-OPEN-6).  [pf_at] is a CONJUNCTION, so the
+     payment is available on both sides: the commit spends it through the
+     weakening and the refund keeps it as it was handed in.  This is what
+     lets the EXISTS arm say which branch of [trunc_permit_of] it paid
+     while the caller still hands in one piece keyed at the disjunction. *)
+  Lemma open_trunc_at_of_permit_at Γ (vom : mword 64) (Kt Kt' : Z -> iProp Σ)
+      (i : Z) (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ)) :
+    (Kt' i -∗ Kt i) -∗
+    open_trunc_piece Γ vom Kt Ft -∗
+    (if om_trunc vom then Kt' i else emp) -∗
+    open_trunc_at Γ vom i (cre_ft_kept Kt' i Ft).
+  Proof using .
+    iIntros "Hmv H Hk". rewrite /open_trunc_piece /open_trunc_at.
+    destruct (om_trunc vom); [| done].
+    rewrite /pf_at /atrunc_of_permit /cre_ft_kept. cbn [pf_recv pf_refund].
+    iSplit.
+    - iDestruct "H" as "[H _]". iApply "H". iApply ("Hmv" with "Hk").
+    - iDestruct "H" as "[_ H]". iFrame "H Hk".
+  Qed.
+
+  (* the keyed piece is MONOTONE IN THE PERMIT IT REFUNDS, which is how a
+     consumer that does not care which branch was paid reads the
+     branch-specific piece as the disjunctive one *)
+  Lemma open_trunc_at_kept_mono Γ (vom : mword 64) (Kt Kt' : Z -> iProp Σ)
+      (i : Z) (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ)) :
+    (Kt' i -∗ Kt i) -∗
+    open_trunc_at Γ vom i (cre_ft_kept Kt' i Ft) -∗
+    open_trunc_at Γ vom i (cre_ft_kept Kt i Ft).
+  Proof using .
+    iIntros "Hmv H". rewrite /open_trunc_at.
+    destruct (om_trunc vom); [| done].
+    rewrite /pf_at /cre_ft_kept. cbn [pf_recv pf_refund].
+    iSplit.
+    - iDestruct "H" as "[H _]". iExact "H".
+    - iDestruct "H" as "[_ [$ Hk]]". iApply ("Hmv" with "Hk").
   Qed.
 
   (* ...and its trivial instance, which is what the PLAIN surface pays:
@@ -1175,5 +1255,5 @@ Global Typeclasses Opaque namei_walk_pre_era namei_walk_dead_era
    optimization.md's rule, and the measured cost of not doing it here was
    a twenty-minute [ProofSysOpenCreArm]. *)
 Global Typeclasses Opaque open_trunc_piece open_trunc_at cre_ft_kept
-  trunc_permit_of trunc_tie_at trunc_tie_arg trunc_permit_cre
-  trunc_permit_triv.
+  trunc_permit_of trunc_permit_ex trunc_tie_at trunc_tie_arg
+  trunc_permit_cre trunc_permit_triv.

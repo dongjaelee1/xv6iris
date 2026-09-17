@@ -46,17 +46,19 @@
 (*      [⌜off = off0 + p⌝] at the caller's own anchor, which is           *)
 (*      design/user-write.md section 3c's anchored cursor.                *)
 (*                                                                       *)
-(*  (2) THE CHUNK'S LENGTH.  [SpecCopyin.ubytes_at M ua bs] is a pure     *)
-(*      [∀]-over-[bs]'s-indices and is therefore PREFIX-CLOSED: the node  *)
-(*      says "these bytes are a run of the caller's image at this base"   *)
-(*      and NOT "this is the whole chunk".  Nothing in [wri_pre] or in    *)
-(*      [awrite_full_at] bounds [length bs] by the remaining count (the   *)
-(*      count [n] is not even a parameter of [FsAbsWriteFire.             *)
-(*      awrite_chain] -- only [wchunks n] is), so the client cannot       *)
-(*      identify [bs] with [echo_chunks ws !!! j] AT THE FIRE.  It can    *)
-(*      only do so afterwards, off [SpecFilewrite.write_post_ok_at]'s     *)
-(*      [⌜|concat bss| = n⌝] -- and that is too late, because             *)
-(*      [AppFile.file_step_park] needs [f_typed c s'] BEFORE the delta.   *)
+(*  (2) THE CHUNK'S LENGTH -- LANDED (lane WRITE-RELAY, RELAY 3).         *)
+(*      [SpecCopyin.ubytes_at M ua bs] is a pure [∀]-over-[bs]'s-indices  *)
+(*      and is therefore PREFIX-CLOSED: the node used to promise only a   *)
+(*      run of the caller's image at this base, and NOT the whole chunk.  *)
+(*      [FsAbsWriteFire.awrite_full_at] now carries                       *)
+(*      [⌜|bs| = SysWriteDefs.wchunk_at n k⌝] beside the content tie --   *)
+(*      the count the kernel passed writei at node [k], which is the one  *)
+(*      thing it holds for free at the fire -- and with the two together  *)
+(*      [SpecCopyin.ubytes_at_inj] identifies [bs] with the chunk the     *)
+(*      client MEANT to write, AT THE FIRE.  So [file_awrite_node] no     *)
+(*      longer takes [⌜bs = bsk⌝] as a relay; it takes the chunk's own    *)
+(*      length and content rows, which a writer holds about its own       *)
+(*      buffer, and discharges the equation itself.                       *)
 (*                                                                       *)
 (*  (3) THE PARTIAL ARM'S DISTURBED TAIL, and this one refutes the        *)
 (*      MODEL, not just the proof.  [awrite_part_at]'s delta is           *)
@@ -251,22 +253,32 @@ Qed.
    pure facts [file_awrite_phases] adds to the fire's own [wri_pre] -- the
    NODE equation and the row the fire is at -- are jointly satisfiable, and
    with them the OFFSET equation at [off = length bs0]: the witness is the
-   two-row view in which [f] is the root's only entry. *)
-Lemma file_write_premises_sat (i : Z) (bs0 : list (bv 8)) :
+   two-row view in which [f] is the root's only entry.
+
+   ...AND THE FOURTH CLAUSE IS RELAY 3's (lane WRITE-RELAY): the length the
+   node now carries is satisfiable at exactly echo's own shape -- ONE
+   [write] per chunk, so the node is node 0 of a one-chunk request and
+   [SysWriteDefs.wchunk_at] collapses to the chunk itself.  A chunk longer
+   than [FW_MAX] would be split across nodes and this clause would name the
+   cap instead; echo's four are bytes long. *)
+Lemma file_write_premises_sat (i : Z) (bs0 bsk : list (bv 8)) :
   i <> FsImg.ROOTINO ->
+  (Z.of_nat (length bsk) <= FW_MAX)%Z ->
   let av : aview :=
     <[ FsImg.ROOTINO := MkAnode (ADir {[ fname_f := i ]}) 1%nat ]>
       {[ i := MkAnode (AFile bs0) 1%nat ]} in
   astep av FsImg.ROOTINO fname_f = Some i
   /\ arow_at av i (MkAnode (AFile bs0) 1%nat)
-  /\ (length bs0 <= length bs0)%nat.
+  /\ (length bs0 <= length bs0)%nat
+  /\ Z.of_nat (length bsk) = wchunk_at (Z.of_nat (length bsk)) 0.
 Proof.
-  intros Hne av. split_and!.
+  intros Hne Hcap av. split_and!.
   - rewrite /astep /aents /av lookup_insert /= /anode_ents /=.
     by rewrite lookup_singleton.
   - apply arow_at_of_Some; [ done |].
     rewrite /av lookup_insert_ne; [| exact (not_eq_sym Hne)]. by rewrite lookup_singleton.
   - reflexivity.
+  - rewrite /wchunk_at /=. lia.
 Qed.
 
 (* ===================================================================== *)
@@ -460,11 +472,18 @@ Section FileWrite.
   (*  else.  WHO OWES WHICH is written at each arrow.                      *)
   (* =================================================================== *)
   Definition file_awrite_full_anchored (γfs : fs_names) (i : Z) (γo : gname)
-      (M : gmap Z (bv 8)) (ua : mword 64) (k : nat)
-      (off0 : nat) (bsk : list (bv 8)) (REST : iProp Σ) : iProp Σ :=
+      (M : gmap Z (bv 8)) (ua : mword 64) (nn : Z) (k : nat)
+      (off0 : nat) (REST : iProp Σ) : iProp Σ :=
     (∀ (I : gmap Z fs_node) (off : nat) (bs bs0 : list (bv 8)) (nl : nat),
        ⌜wri_pre (abs_view I) i off bs bs0 nl⌝ -∗
        ⌜ubytes_at M (add_vec_int ua (FW_MAX * Z.of_nat k)) bs⌝ -∗
+       (* RELAY 3 -- LANDED, and it is [FsAbsWriteFire.awrite_full_at]'s
+          OWN third arrow now: the bytes that land are the WHOLE chunk the
+          node was called with, not merely a run of the caller's image at
+          the chunk's base ([SpecCopyin.ubytes_at] is prefix-closed).  It
+          is written here verbatim so that the two remaining arrows are
+          all that separates this definition from the landed node. *)
+       ⌜Z.of_nat (length bs) = wchunk_at nn k⌝ -∗
        (* RELAY 1 -- THE CLAIM OWES THIS ONE ([AppFile.f_ok] must name
           [f]'s INUM; today its [Some] arm quantifies it existentially, so
           a deed holder cannot say that the row its descriptor is on is
@@ -475,10 +494,6 @@ Section FileWrite.
           [SpecFilewrite.filewrite_in] can relay off
           [FdPark.off_supply_of_st_at_eq]'s tie. *)
        ⌜off = off0⌝ -∗
-       (* RELAY 3 -- THE KERNEL OWES THIS ONE TOO: the bytes that land are
-          the WHOLE chunk, not merely a run of the caller's image at the
-          chunk's base ([SpecCopyin.ubytes_at] is prefix-closed). *)
-       ⌜bs = bsk⌝ -∗
        ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I -∗
        off_gv γo (1/2) (Z.of_nat off) ={appE}=∗
        ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I ∗
@@ -487,32 +502,58 @@ Section FileWrite.
           ⌜abs_view I' = delta_write i off bs (abs_view I)⌝ -∗
           ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I' ={appE}=∗
           ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I' ∗
-          off_gv γo (1/2) (Z.of_nat off) ∗ REST))%I.
+          (* the node's own answer, verbatim from [awrite_full_at]: the
+             half comes back UNMOVED or ADVANCED BY THE CHUNK, and this
+             cursor proves the first ([OffGv.off_ret_keep]) until it holds
+             a user half to advance. *)
+          off_ret γo off (length bs) ∗ REST))%I.
 
   (* ...AND THE CURSOR PAYS IT.  [TreeMove.tree_awrite_chain]'s per-node
      step, at the deed: the node goes in at [sel] and comes back at
      [sel ++ [jx]], the offset advanced by the chunk. *)
+  (* THE TWO ROWS THE WRITER HOLDS ABOUT ITS OWN BUFFER.  [Hbsk] is the
+     content tie for the chunk it MEANT to write, at the same base the node
+     states its own at; [Hlenk] is that chunk's length read against the
+     count the call was made with.  For echo's four writes both are trivial:
+     each chunk goes out in a [write] of its own, so [k = 0] and
+     [wchunk_at |chunk| 0 = |chunk|] ([file_write_premises_sat]).  Together
+     with the node's own RELAY 3 they give [bs = echo_chunks ws !!! jx] --
+     which is the premise [file_awrite_phases] takes and the whole of what
+     RELAY 3 was for. *)
   Lemma file_awrite_node (γfs : fs_names) (c : file_fixed) (r : file_names)
       (i : Z) (ws : wordline) (sel : list nat) (jx : nat) (off : nat)
-      (γo : gname) (M : gmap Z (bv 8)) (ua : mword 64) (k : nat) :
+      (γo : gname) (M : gmap Z (bv 8)) (ua : mword 64) (nn : Z) (k : nat) :
     file_app = MkAppcfg file_names (file_pred c) r ->
     (jx < length (echo_chunks ws))%nat ->
     Forall (fun q => (q < jx)%nat) sel ->
     i <> INIT_INO -> i <> SH_INO -> i <> ECHO_INO -> i <> CAT_INO ->
+    ubytes_at M (add_vec_int ua (FW_MAX * Z.of_nat k))
+      (echo_chunks ws !!! jx) ->
+    Z.of_nat (length (echo_chunks ws !!! jx)) = wchunk_at nn k ->
     app_inv γfs -∗ file_wq c r i ws sel off -∗
-    file_awrite_full_anchored γfs i γo M ua k off (echo_chunks ws !!! jx)
+    file_awrite_full_anchored γfs i γo M ua nn k off
       (file_wq c r i ws (sel ++ [jx])
          (off + length (echo_chunks ws !!! jx))).
   Proof using .
-    intros Heq Hjx Hlt Hi1 Hi2 Hi3 Hi4. iIntros "#Hinv Hq".
+    intros Heq Hjx Hlt Hi1 Hi2 Hi3 Hi4 Hbsk Hlenk. iIntros "#Hinv Hq".
     rewrite /file_awrite_full_anchored.
-    iIntros (I off1 bs bs0 nl) "%Hpre %Hby %Hnode %Hoff %Hbs Hka Hg".
+    iIntros (I off1 bs bs0 nl) "%Hpre %Hby %Hlen %Hnode %Hoff Hka Hg".
+    (* RELAY 3, CASHED: two runs of the caller's image at one base and of
+       one length are one run ([SpecCopyin.ubytes_at_inj]). *)
+    assert (Hbs : bs = echo_chunks ws !!! jx).
+    { apply (ubytes_at_inj M (add_vec_int ua (FW_MAX * Z.of_nat k))
+               bs (echo_chunks ws !!! jx) Hby Hbsk). lia. }
     iMod (file_awrite_phases γfs c r i ws sel jx off off1 I bs bs0 nl
             Heq Hpre Hnode Hoff Hbs Hjx Hlt Hi1 Hi2 Hi3 Hi4
             with "Hinv Hq Hka") as "(Hka & Hstep & Hph2)".
     iModIntro. iFrame "Hka Hstep". iIntros (I') "%Hav Hka'".
     iMod ("Hph2" $! I' with "[//] Hka'") as "[Hka' Hq']".
-    iModIntro. iFrame "Hka' Hg". rewrite Hbs. iExact "Hq'".
+    iModIntro. iFrame "Hka'".
+    (* the node returns the borrow UNMOVED: this cursor holds no user half
+       yet (that is design/app-file.md section 3's link arm, lane
+       OFF-LINK), so [off_ret_keep] is the arm it can prove. *)
+    iSplitL "Hg"; [iApply (off_ret_keep with "Hg") |].
+    rewrite Hbs. iExact "Hq'".
   Qed.
 
 End FileWrite.

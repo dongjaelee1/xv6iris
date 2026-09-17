@@ -114,7 +114,7 @@ Section UkTreeWrite.
               (fun _ : nat => tree_wq c r g root i t) n Hcnt with "[Hq]").
     iIntros (M pm sz) "Hheap". iFrame "Hheap".
     iApply (tree_awrite_chain fsc_fs c r g root i t γo M
-              (m !!! Regidx a1_idx) (wchunks n) 0%nat Heq with "Hinv Hq").
+              (m !!! Regidx a1_idx) n (wchunks n) 0%nat Heq with "Hinv Hq").
   Qed.
 
   (* =================================================================== *)

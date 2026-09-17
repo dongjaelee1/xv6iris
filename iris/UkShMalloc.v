@@ -4628,4 +4628,222 @@ Section UkShMalloc.
       iSplitR; [ iPureIntro; exact Ha0' | iPureIntro; exact Hqb ].
   Qed.
 
+  (* ===================================================================== *)
+  (* §7 THE CAPABILITY AT A LIST THAT EXISTS -- AND THE ONE IT CANNOT BE.   *)
+  (*                                                                        *)
+  (* §6's adapter hands stage 4 [usz γs (sz + 65536)] and throws the free   *)
+  (* list away.  [ushm_malloc_ok_one] is the SAME call handing the list     *)
+  (* out instead, at [UkShParse.ushp_malloc_ty]'s own type, so it is a      *)
+  (* drop-in replacement wherever §6's is used and it is what a SECOND call *)
+  (* needs.  Everything below is about why that is still not enough.        *)
+  (*                                                                        *)
+  (* [ushp_malloc_ty UM UM'] QUANTIFIES [nbytes] UNIVERSALLY over           *)
+  (* [0 < nbytes <= 65504] (UkShParse.v, [Definition ushp_malloc_ty]), and  *)
+  (* [UM'] may not mention it.  Chain two of them from [ushm_fresh] and the *)
+  (* arithmetic closes:                                                     *)
+  (*                                                                        *)
+  (*   - the first call at [nbytes = 65504] takes [nunits = 4095] units out *)
+  (*     of the ONE 4096-unit chunk [morecore] inserted, so the strongest   *)
+  (*     [UM1] any first call can promise is "at least ONE unit is free";   *)
+  (*   - the second call at [nbytes = 65504] needs 4095 free units.         *)
+  (*                                                                        *)
+  (* So no [UM1] satisfies both halves at a free list that is one 64 KiB    *)
+  (* chunk, and [wp_kshm_malloc_one]'s [nunits < R] is not a convenience    *)
+  (* premise that could be dropped with more work: DROPPING IT MEANS        *)
+  (* WALKING A SECOND [morecore] (0x11bc..0x11e0, then the loop's back edge *)
+  (* at 0x1216..0x1222) and a [free] at a TWO-BLOCK circular list, which is *)
+  (* not [wp_kshm_free_first].  And that walk cannot even reach its [sbrk]: *)
+  (* the row's precondition is [usz_ok (sz' + 65536)] and all [ushm_one]    *)
+  (* carries about the break is where it IS -- a first call's own premise   *)
+  (* is [usz_ok (sz + 65536)], which says nothing about room for a second.  *)
+  (*                                                                        *)
+  (* WHAT IS TRUE IS THE BOUNDED CAPABILITY.  sh's constructors call        *)
+  (* [malloc] at exactly two sizes -- [execcmd] at 168 and [redircmd] at    *)
+  (* 40 -- so the capability they actually need is [ushm_malloc_ty_le B],   *)
+  (* which is [ushp_malloc_ty] with [nbytes <= 65504] weakened to           *)
+  (* [nbytes <= B].  That one CHAINS, because the output's free count can   *)
+  (* be computed from [B] instead of from the caller's request.  Nothing    *)
+  (* landed consumes it yet: the thirteen files that carry                  *)
+  (* [Hypothesis ushp_malloc_ok : ushp_malloc_ty _ _] would have to carry   *)
+  (* [ushm_malloc_ty_le 168 _ _] instead, and that is a statement move.     *)
+  (* ===================================================================== *)
+
+  (* the free list after ONE call, with the count existential: what a call
+     at an UNKNOWN request size can promise *)
+  Definition ushm_one_cap (sz : Z) : iProp Σ :=
+    (∃ R : Z, ⌜ 1 <= R <= 4094 ⌝ ∗ ushm_one sz R)%I.
+
+  (* ...and with the count bounded BELOW, which is what a call at a KNOWN
+     request size can promise and what the next call can spend *)
+  Definition ushm_one_ge (sz R : Z) : iProp Σ :=
+    (∃ R' : Z, ⌜ R <= R' ⌝ ∗ ushm_one sz R')%I.
+
+  Lemma ushm_one_ge_mono (sz R R' : Z) :
+    R' <= R -> ushm_one_ge sz R -∗ ushm_one_ge sz R'.
+  Proof using .
+    intro HR. rewrite /ushm_one_ge. iIntros "[%R0 [%H0 H]]".
+    iExists R0. iSplitR; [ iPureIntro; lia | iExact "H" ].
+  Qed.
+
+  (* §6'S ADAPTER, HANDING THE LIST OUT.  Same type, strictly stronger
+     post: [UkShMain.wp_kshm_child_alloc] could take this one instead and
+     nothing else would move. *)
+  Theorem ushm_malloc_ok_one (sz : Z) :
+    SH_BASE + 16 <= sz ->
+    UserPtTree.pgroundup sz = sz ->
+    usz_ok (sz + 65536) ->
+    UkShParse.ushp_malloc_ty N (ushm_fresh sz) (ushm_one_cap (sz + 65536)).
+  Proof using Hpsok_free.
+    intros Hszlo Hszal Hszok.
+    unfold UkShParse.ushp_malloc_ty.
+    intros h m nbytes avail Ha0 Hnb0 Hnbhi.
+    iIntros "#Hcode (Hfreep & [%fb Hbase] & Hsz) Hrun Hcont".
+    iDestruct (ushm_code_shp γt with "Hcode") as "#Hmcode".
+    iApply (wp_kshm_malloc_first_st h m nbytes sz fb avail
+              Ha0 Hnb0 Hnbhi Hszlo Hszal Hszok
+              with "Hmcode Hfreep Hbase Hsz Hrun").
+    iIntros (h' m' r) "%Hcs %Ha0' Hans Hrun".
+    iApply ("Hcont" $! h' m' with "[%] [Hans] Hrun"); [ exact Hcs | ].
+    iDestruct "Hans" as "[[-> _] | (%q & %g & -> & %Hqb & Hone & Hbytes)]".
+    - iLeft. iPureIntro. exact Ha0'.
+    - iRight. iExists q, g.
+      iSplitR; [ iPureIntro; exact Ha0' | ].
+      iSplitR; [ iPureIntro; exact Hqb | ].
+      iSplitL "Hbytes"; [ iExact "Hbytes" | ].
+      rewrite /ushm_one_cap.
+      iExists (4096 - ((nbytes + 15) / 16 + 1)).
+      iSplitR; [ | iExact "Hone" ].
+      iPureIntro.
+      assert (Hqr : nbytes + 15
+                    = 16 * ((nbytes + 15) / 16) + (nbytes + 15) mod 16)
+        by (rewrite <- Z.div_mod; lia).
+      assert (Hrb : 0 <= (nbytes + 15) mod 16 < 16)
+        by (apply Z.mod_pos_bound; lia).
+      lia.
+  Qed.
+
+  (* THE BOUNDED CAPABILITY: [ushp_malloc_ty] at a request the CALLER's
+     size is known to be under.  The only difference is the third premise. *)
+  Definition ushm_malloc_ty_le (B : Z) (UM UM' : iProp Σ) : Prop :=
+    forall (h : CpuId) (m : regfile) (nbytes : Z) (avail : nat),
+      m !!! Regidx a0_idx = mword_of_int nbytes ->
+      0 < nbytes -> nbytes <= B ->
+      shp_code γt -∗
+      UM -∗
+      urun N h m (mword_of_int ShSyms.malloc) (10 + avail) -∗
+      (∀ (h' : CpuId) (m' : regfile),
+         ⌜ ucallee_saved m m' ⌝ -∗
+         (⌜ m' !!! Regidx a0_idx = (mword_of_int 0 : mword 64) ⌝
+          ∨ (∃ (p : Z) (g : nat -> bv 8),
+               ⌜ m' !!! Regidx a0_idx = mword_of_int p ⌝ ∗
+               ⌜ 0 < p /\ p mod 16 = 0 /\ p + nbytes < 2 ^ 38 ⌝ ∗
+               ubytes γd p (Z.to_nat nbytes) g ∗ UM')) -∗
+         urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (10 + avail) -∗
+         WP (Loop : expr riscv_lang)) -∗
+      WP (Loop : expr riscv_lang).
+
+  (* the landed type IS the bounded one at the allocator's own ceiling *)
+  Lemma ushm_malloc_ty_le_top (UM UM' : iProp Σ) :
+    UkShParse.ushp_malloc_ty N UM UM' -> ushm_malloc_ty_le 65504 UM UM'.
+  Proof using . intro H. exact H. Qed.
+
+  Lemma ushm_malloc_ty_le_mono (B B' : Z) (UM UM' : iProp Σ) :
+    B' <= B -> ushm_malloc_ty_le B UM UM' -> ushm_malloc_ty_le B' UM UM'.
+  Proof using .
+    intros HB H h m nbytes avail Ha0 Hlo Hhi.
+    exact (H h m nbytes avail Ha0 Hlo ltac:(lia)).
+  Qed.
+
+  (* THE FIRST CALL, BOUNDED: the free count of what it leaves is computed
+     from [B] and not from the request, which is what makes it chain. *)
+  Theorem ushm_malloc_le_fresh (B sz : Z) :
+    0 < B -> B <= 65504 ->
+    SH_BASE + 16 <= sz ->
+    UserPtTree.pgroundup sz = sz ->
+    usz_ok (sz + 65536) ->
+    ushm_malloc_ty_le B (ushm_fresh sz)
+      (ushm_one_ge (sz + 65536) (4096 - ((B + 15) / 16 + 1))).
+  Proof using Hpsok_free.
+    intros HB0 HBhi Hszlo Hszal Hszok.
+    intros h m nbytes avail Ha0 Hnb0 Hnbhi.
+    iIntros "#Hcode (Hfreep & [%fb Hbase] & Hsz) Hrun Hcont".
+    iDestruct (ushm_code_shp γt with "Hcode") as "#Hmcode".
+    iApply (wp_kshm_malloc_first_st h m nbytes sz fb avail
+              Ha0 Hnb0 ltac:(lia) Hszlo Hszal Hszok
+              with "Hmcode Hfreep Hbase Hsz Hrun").
+    iIntros (h' m' r) "%Hcs %Ha0' Hans Hrun".
+    iApply ("Hcont" $! h' m' with "[%] [Hans] Hrun"); [ exact Hcs | ].
+    iDestruct "Hans" as "[[-> _] | (%q & %g & -> & %Hqb & Hone & Hbytes)]".
+    - iLeft. iPureIntro. exact Ha0'.
+    - iRight. iExists q, g.
+      iSplitR; [ iPureIntro; exact Ha0' | ].
+      iSplitR; [ iPureIntro; exact Hqb | ].
+      iSplitL "Hbytes"; [ iExact "Hbytes" | ].
+      rewrite /ushm_one_ge.
+      iExists (4096 - ((nbytes + 15) / 16 + 1)).
+      iSplitR; [ | iExact "Hone" ].
+      iPureIntro.
+      pose proof (Z.div_le_mono (nbytes + 15) (B + 15) 16
+                    ltac:(lia) ltac:(lia)) as Hmono.
+      lia.
+  Qed.
+
+  (* ...AND EVERY CALL AFTER IT, at a list that already holds the chunk *)
+  Theorem ushm_malloc_le_one (B sz R : Z) :
+    0 < B -> B <= 65504 ->
+    (B + 15) / 16 + 1 < R ->
+    ushm_malloc_ty_le B (ushm_one_ge sz R)
+      (ushm_one_ge sz (R - ((B + 15) / 16 + 1))).
+  Proof using .
+    intros HB0 HBhi HfitB.
+    intros h m nbytes avail Ha0 Hnb0 Hnbhi.
+    iIntros "#Hcode [%R0 [%HR0 Hone]] Hrun Hcont".
+    iDestruct (ushm_code_shp γt with "Hcode") as "#Hmcode".
+    pose proof (Z.div_le_mono (nbytes + 15) (B + 15) 16
+                  ltac:(lia) ltac:(lia)) as Hmono.
+    iApply (wp_kshm_malloc_one h m nbytes sz R0 avail
+              Ha0 Hnb0 ltac:(lia) ltac:(lia)
+              with "Hmcode Hone Hrun").
+    iIntros (h' m' r) "%Hcs %Ha0' Hans Hrun".
+    iApply ("Hcont" $! h' m' with "[%] [Hans] Hrun"); [ exact Hcs | ].
+    iDestruct "Hans" as "(%q & %g & -> & %Hqb & Hone & Hbytes)".
+    iRight. iExists q, g.
+    iSplitR; [ iPureIntro; exact Ha0' | ].
+    iSplitR; [ iPureIntro; exact Hqb | ].
+    iSplitL "Hbytes"; [ iExact "Hbytes" | ].
+    rewrite /ushm_one_ge.
+    iExists (R0 - ((nbytes + 15) / 16 + 1)).
+    iSplitR; [ | iExact "Hone" ].
+    iPureIntro. lia.
+  Qed.
+
+  (* THE TWO CALLS THE REDIRECT LINE MAKES, in the order [parseexec] makes
+     them: [execcmd]'s [malloc(168)] (twelve units) and then, from
+     [parseredirs], [redircmd]'s [malloc(40)] (four).  4096 - 12 = 4084 and
+     4084 - 4 = 4080, so the chunk is not remotely close to running out --
+     the redirect line's whole parse costs sixteen of its 4096 units. *)
+  Corollary ushm_malloc_le_exec (sz : Z) :
+    SH_BASE + 16 <= sz ->
+    UserPtTree.pgroundup sz = sz ->
+    usz_ok (sz + 65536) ->
+    ushm_malloc_ty_le 168 (ushm_fresh sz) (ushm_one_ge (sz + 65536) 4084).
+  Proof using Hpsok_free.
+    intros Hszlo Hszal Hszok.
+    assert (E : (4096 - ((168 + 15) / 16 + 1))%Z = 4084%Z)
+      by (vm_compute; reflexivity).
+    rewrite <- E.
+    exact (ushm_malloc_le_fresh 168 sz ltac:(lia) ltac:(lia)
+             Hszlo Hszal Hszok).
+  Qed.
+
+  Corollary ushm_malloc_le_redir (sz : Z) :
+    ushm_malloc_ty_le 40 (ushm_one_ge sz 4084) (ushm_one_ge sz 4080).
+  Proof using .
+    assert (E : (4084 - ((40 + 15) / 16 + 1))%Z = 4080%Z)
+      by (vm_compute; reflexivity).
+    rewrite <- E.
+    exact (ushm_malloc_le_one 40 sz 4084 ltac:(lia) ltac:(lia)
+             ltac:(vm_compute; reflexivity)).
+  Qed.
+
 End UkShMalloc.

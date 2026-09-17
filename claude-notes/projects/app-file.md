@@ -2355,3 +2355,207 @@ only "the user never kept the discipline".  So SH-ROUND's route is
 `UInitBoot.echo_Hinit_boot`'s — a VERIFIED /init that execs /sh — and the
 tainted-at-boot arm that made the tree application a theorem is not on
 this campaign's menu.  Recorded here so nobody prices it again.
+
+### SH-PARSE-2 (2026-09-17) — the parser chain above `parseredirs`, the parser theorem, and the child at the redirect shape
+
+Branch `app-file/sh-redir`, on top of SH-PARSE's.  Whole tree green on the
+lane's remote tree; `make audit-echo-only` still FOURTEEN; `make
+check-ucode` green (the catalog did not move — this lane fetches no new
+function); every landed sh STATEMENT unchanged.
+
+**WHAT LANDED**, in the order the brief named it.
+
+`iris/UkShParseSym.v` §7 (added): the three readings of `ushs_toks` the
+argument loop turns on (`ushs_toks_nil_inv` / `_cons_inv'` / `_skip`,
+plus the two constructors in applied form), gettoken's answer at an
+ordinary word (`ushs_gettok_res_word` / `_end_word`, `_end_stop`,
+`_fin_stop`), and `ushs_toklen_pos_nosym` / `_nows` — a token of positive
+length starts at a byte that is neither blank nor symbol, which is what
+makes every peek in the chain miss.
+
+`iris/UkShRedirEx.v` (new) — **the argument loop**.
+
+- `wp_kshp_pex_end` — the round that finds the line exhausted (peek 0,
+  gettoken 0, `c.beqz` out to 0x662).  It touches NEITHER the node nor
+  s1/s2/s3, so it is stated over none of them, and both arms of the loop
+  reach it.
+- `wp_kshp_pex_loop_gt` — `UkShParseExec.wp_kshp_pex_loop` at
+  `ushs_redir` / `ushs_toks`.  **The turn is the LAST round's
+  `parseredirs`, not a round of its own**: sh calls `parseredirs` after
+  every argument, all of those calls but the last sit on an ordinary word
+  (`wp_kshp_parseredirs_ns`) and the last sits on the '>'
+  (`wp_kshp_parseredirs_gtn`).  So the induction is over a NON-EMPTY
+  token list, the `Nil` goal is refuted from that premise, and the `Cons`
+  goal splits on the tail — the two arms differing only in which
+  `parseredirs` closes the round.
+
+`iris/UkShRedirPex.v` (new) — `wp_kshp_parseexec_gt`.  Three lines of
+`UkShParseExec.wp_kshp_parseexec`'s 1400 differ: the `peek(ps,es,"(")` is
+refuted from the byte AT THE CURSOR rather than from the whole line, the
+`parseredirs` before the loop sits on the first word and does nothing,
+and the loop is the redirect one.
+
+`iris/UkShRedirNul.v` (new) — **nulterminate's REDIR row**.  Four
+instructions (0x832 `c.ld a0,8(a0)`, 0x834 `jal nulterminate`, 0x838
+`c.ld a5,24(s1)`, 0x83a `sb zero,0(a5)`) and then the same 0x83e tail the
+EXEC arm falls into, so `UkShParseCmd.wp_kshp_nul_fin` closes both.
+Everything ABOVE the switch is the same walk at a different type word: 2
+instead of 1, so the jump table is indexed at 0x13b8 rather than 0x13b4
+and the row there sends control to 0x832 rather than 0x81a.
+`ushp_jrow_redir` is those four .rodata bytes, read off the image.
+
+`iris/UkShRedirCm.v` (new) — `wp_kshp_parsepipe_gt`, `wp_kshp_parseline_gt`.
+`iris/UkShRedirPc.v` (new) — `wp_kshp_parsecmd_gt` and **the parser
+theorem `wp_kshp_parser_redir`**.
+`iris/UkShLoop.v` — `ush_line_lexable_redir` (below).
+`iris/UkShRedirSeam.v` (new) — `ushs_toks_below` (the truncation),
+`ush_cmd_of_ushs_redir` (**the seam**) and `wp_kshm_child_redir` (**the
+child walk**).
+
+**THE SHAPE FACT THAT DECIDED THE LANE: the REDIR node's child pointer
+has to be NAMED.**  `ushp_tree`'s REDIR row hides it under an
+existential, which is the right reading of a FINISHED tree and the wrong
+postcondition for a CONSTRUCTOR — because `parseexec` stores the argv
+TERMINATOR through the exec node AFTER `parseredirs` has swallowed it
+into a REDIR node, and an existential pointer cannot address a cell.  So
+`UkShRedirCmd.ushp_redir_node s0 t pc q eq mode fd` is the node's own
+seven fields with the child pointer named and nothing said about what
+lives there, `ushp_redir_close` is the one-way door to `ushp_tree`, and
+`wp_kshp_redircmd` / `wp_kshp_parseredirs_gt` KEEP their landed
+statements as three-line corollaries of the general walks (`_n` / `_gtn`,
+which take the sub-command as an abstract `Sub`).  Everything from
+`parseexec_gt` up to `parsecmd_gt` relays the two nodes SEPARATELY; only
+the theorem closes them.
+
+**TWO MALLOCS, AND THAT IS WHERE THE LANE STOPS.**  `execcmd` allocates
+the exec node and `redircmd` the REDIR node, so the redirect parse chains
+TWO allocator capabilities where the symbol-free parse chains one.  Every
+walk from `wp_kshp_parseexec_gt` up takes them as
+`Context (UM0 UM1 UM2)` with `ushp_malloc_ty UM0 UM1` and
+`ushp_malloc_ty UM1 UM2`.  **`UkShMalloc` proves only the FIRST call** —
+its own header says so: `ushm_fresh` says the free list is EMPTY
+(`freep` is 0, `base` untouched) and "a second call is a different
+theorem, not a weaker one".  So:
+
+- `wp_kshm_child_redir` is stated and proved at TWO ABSTRACT capabilities
+  and LANDS;
+- **`wp_kshm_child_alloc_redir` — the same walk with the allocator
+  DISCHARGED — is BLOCKED**, and blocked on a design fact rather than on
+  effort: there is no `ushp_malloc_ty (usz γs szv) _` to instantiate
+  `UM1 → UM2` with.  What unblocks it is a second-call malloc theorem in
+  `UkShMalloc` (the free list after one `morecore`, with the remainder of
+  the 65536-byte chunk on it), and nothing else in this lane.
+
+**REFUTED.**
+
+- **`UkShLoop.ush_line_lexable` cannot become a disjunction** — SH-PARSE
+  proved it and this lane implements the replacement:
+  `ush_line_lexable_redir`, quantified over
+  `UkShRedirLine.ushs_line_is ws file f k len`, whose first conjunct is
+  `ushs_redir` at `p = |wl_body ws| + 1`, `e = |wl_body ws| + 3 + |file|`
+  and whose second is the token list with `0 < length args < 10`.  The
+  first conjunct is DERIVABLE (`ush_line_lexable_redir_shape`, one line
+  over `ushs_line_is_redir`) and is stated anyway, exactly as
+  `ush_line_lexable`'s first conjunct is; what a supplier really owes is
+  the token count.  A widened premise is the CONJUNCTION of the two
+  predicates, never a disjunction inside one.
+- **The seam could not be reused as it stood.**
+  `UkShMain.ush_cmd_of_ushp` fixes the cut line to
+  `ushp_nulfold toks (ushp_ext len f)`; the redirect cut is one byte
+  longer (nulterminate's REDIR arm zeroes `efile` too) and the file name
+  has to be read out of the same line afterwards.  Both are fixed by
+  generalising in place: `UkShMain.ush_cmd_of_ushp_gen` takes the line
+  ALREADY PERSISTED and three facts about it — each token is inside the
+  line, its END byte is zero, no byte of its BODY is — and the landed
+  `ush_cmd_of_ushp` is that lemma at stage 4's cut, in twenty lines.
+- **`ushp_tokens_gap` did NOT have to be re-proved.**  The argument
+  tokens all end below the '>', and every scan that measures them stops
+  below it too, so they are `ushp_tokens` of the line TRUNCATED at the
+  '>' — whose only symbol byte is the one the truncation cut off.  That
+  is `UkShRedirSeam.ushs_toks_below`, and it puts stage 4's separation
+  fact back in scope unchanged.
+
+**THE EXACT STATEMENT OF `wp_kshm_child_redir`** (`iris/UkShRedirSeam.v`),
+which is what lane SH-ROUND instantiates:
+
+```coq
+  Lemma wp_kshm_child_redir (UM0 UM1 UM2 : iProp Σ)
+      (Hm0 : UkShParse.ushp_malloc_ty N UM0 UM1)
+      (Hm1 : UkShParse.ushp_malloc_ty N UM1 UM2)
+      (h : CpuId) (m : regfile) (dw dv : dfrac)
+      (s0 cwdv : Z) (len : nat) (f : nat -> bv 8)
+      (args : list (nat * nat)) (gp fe : nat)
+      (ld : list fdstate) (st1 : fdstate) (n : nat)
+      (K : fdtype -> iProp Σ) :
+    m !!! Regidx s1_idx = (mword_of_int s0 : mword 64) ->
+    ushs_redir len f gp fe ->
+    ushs_toks len f gp 0%nat args ->
+    (0 < length args)%nat ->
+    (length args < 10)%nat ->
+    0 < s0 -> s0 + Z.of_nat len + 1 < Z64 -> s0 + Z.of_nat len < 2 ^ 38 ->
+    ld !! 1%nat = Some st1 ->
+    st1 <> FdClosed ->
+    (forall (rb wb : bool) (gn : PipeNames.pipe_names),
+       st1 <> FdOpen rb wb (FdPipe gn)) ->
+    (⊢ ukn_pay N (-1)) ->
+    UkSh.sh_deps -∗
+    shk_code γt -∗
+    ush_jtab γt -∗
+    shp_code γt -∗ shp_rodata γt -∗
+    ustr γd (DfracOwn 1) s0 len f -∗
+    ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
+    ustr γd dv ushp_symbols 7 ushp_sym_f -∗
+    UserFd.ustd γfd ld -∗
+    UserCwd.ucwd γcwd cwdv -∗
+    UM0 -∗
+    UkShRedir.ush_open_call N cwdv (s0 + Z.of_nat (S (S gp))) 1537
+      (<[1%nat := FdClosed]> ld) K -∗
+    urun N h m (mword_of_int 0x9c0)
+      (68 + (8 + (UkShDiag.ush_Dg + n))) -∗
+    (∀ (h' : CpuId) (m' : regfile) (q : Z) (ty : fdtype),
+       ⌜ m' !!! Regidx a0_idx = (mword_of_int q : mword 64) ⌝ -∗
+       ush_cmd γd q
+         (UExec (ush_args s0 (ushs_nulcut args len f fe) args)) -∗
+       UserFd.ustd γfd
+         (<[1%nat := FdOpen false true ty]> (<[1%nat := FdClosed]> ld)) -∗
+       UserCwd.ucwd γcwd cwdv -∗
+       K ty -∗
+       UM2 -∗
+       urun N h' m' (mword_of_int ShSyms.runcmd)
+         (UkShDiag.ush_Dg + (70 + n)) -∗
+       WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+```
+
+Read it against `UkShMain.wp_kshm_child`: the two parser premises are
+`ushs_redir` / `ushs_toks` plus `0 < length args` (the redirect parse
+needs at least one argument — with none, `parseexec`'s FIRST
+`parseredirs` would turn and the walk is a different one); the open is a
+CALL PREMISE at the file name the line itself names; `ucwd_any` is a
+CONCRETE `ucwd` because the open's bundle is stated at one; the ledger's
+slot 1 is named because `close(1)` spends it; and `uxsup_at` /
+`riscv_kill_cred` / `uch_any` are GONE, because this walk stops at
+runcmd's REDIR arm and never reaches `wp_kshr_runcmd_final`.
+
+**WHAT SH-ROUND INSTANTIATES.**  `ush_open_call` (SH-REDIR's shape,
+verbatim — the held offset goes inside `K ty` when OFF-HAND lands, so
+neither premise is restated then), the two malloc capabilities, and the
+CONTINUATION: at runcmd's own entry pc, with the EXEC sub-tree
+`ush_cmd γd q (UExec (ush_args s0 (ushs_nulcut args len f fe) args))`,
+the ledger with slot 1 reopened at `ty`, the cwd, `K ty` and `UM2`.
+`ushs_nulcut args len f fe` is `UkShRedirPc.ushs_nulcut`: the line with a
+NUL at every argument's end index AND one at the file name's.  The
+application's own EXEC walk goes in that continuation and `K ty` is in
+hand there, which is the whole point of the shape.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  **malloc's SECOND call.**
+Everything above it is stated and proved; what nothing can discharge is
+`ushp_malloc_ty UM1 UM2`, and until `UkShMalloc` has a theorem for a
+`malloc` that runs on a NON-EMPTY free list, `wp_kshm_child_redir` cannot
+become `wp_kshm_child_alloc_redir` and the redirect line cannot be run
+end to end from `ushm_fresh`.  The shape of that theorem is visible from
+this side: after the first call the list holds the remainder of the one
+65536-byte chunk `morecore` inserted, so the second call is the SAME walk
+with `freep` non-zero and the search loop turning once — not the
+first-generation induction over a circular list that `UkShMalloc`'s
+header declines.

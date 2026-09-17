@@ -126,8 +126,47 @@ Section UkShRedirCmd.
   Lemma shpp_redircmd : ShSyms.redircmd = 0x200.
   Proof using . unfold ShSyms.redircmd. reflexivity. Qed.
 
-  Lemma wp_kshp_redircmd {Pex : iProp Σ} (h : CpuId) (m : regfile)
-      (s0 sub mode fd : Z) (c : ushp_cmd) (q eq : nat) (nn : nat) :
+  (* ===================================================================== *)
+  (* THE REDIR NODE WITH ITS SUB-POINTER NAMED.                             *)
+  (*                                                                       *)
+  (* [ushp_tree]'s REDIR row hides the child pointer under an existential.  *)
+  (* That is the right reading of a FINISHED tree and the wrong             *)
+  (* postcondition for a CONSTRUCTOR, because [parseexec] still has to      *)
+  (* store the argv terminator THROUGH the exec node it has just handed to  *)
+  (* [redircmd] -- and an existential pointer cannot address a cell.  So    *)
+  (* the walk's own answer names the pointer and says nothing at all about  *)
+  (* what lives there; [ushp_redir_close] is the one-way door to the        *)
+  (* published form, and [wp_kshp_redircmd] below is exactly that door      *)
+  (* applied once.                                                          *)
+  (* ===================================================================== *)
+  Definition ushp_redir_node (s0 t pc : Z) (q eq : nat) (mode fd : Z)
+      : iProp Σ :=
+    (⌜ 0 < t ⌝ ∗ ⌜ t mod 8 = 0 ⌝ ∗ ⌜ t + 40 < Z64 ⌝ ∗
+     (ubytes γd t 4 (nth_byte (mword_of_int 2 : mword 32)) ∗
+      (∃ g : nat -> bv 8, ubytes γd (t + 4) 4 g)) ∗
+     uword γd (t + 8) (mword_of_int pc) ∗
+     uword γd (t + 16) (mword_of_int (s0 + Z.of_nat q)) ∗
+     uword γd (t + 24) (mword_of_int (s0 + Z.of_nat eq)) ∗
+     ubytes γd (t + 32) 4 (nth_byte (mword_of_int mode : mword 32)) ∗
+     ubytes γd (t + 36) 4 (nth_byte (mword_of_int fd : mword 32)))%I.
+
+  Lemma ushp_redir_close (s0 t pc : Z) (q eq : nat) (mode fd : Z)
+      (c : ushp_cmd) :
+    ushp_redir_node s0 t pc q eq mode fd -∗ ushp_tree s0 pc c -∗
+    ushp_tree s0 t (UshpRedir c q eq mode fd).
+  Proof using .
+    iIntros "Hn Hsub". rewrite /ushp_redir_node.
+    iDestruct "Hn" as "(%Ht0 & %Ht8 & %Htz & Hty & Hcmd & Hfile & Hefile & Hmode & Hfd)".
+    cbn [ushp_tree ushp_ty]. rewrite /ushp_type_at.
+    iSplitR; [ iPureIntro; exact Ht0 | ].
+    iSplitR; [ iPureIntro; exact Ht8 | ].
+    iSplitL "Hty"; [ iExact "Hty" | ].
+    iSplitL "Hcmd Hsub"; [ iExists pc; iFrame "Hcmd Hsub" | ].
+    iFrame "Hfile Hefile Hmode Hfd".
+  Qed.
+
+  Lemma wp_kshp_redircmd_n {Pex : iProp Σ} (h : CpuId) (m : regfile)
+      (s0 sub mode fd : Z) (Sub : iProp Σ) (q eq : nat) (nn : nat) :
     m !!! Regidx a0_idx = mword_of_int sub ->
     m !!! Regidx a1_idx = mword_of_int (s0 + Z.of_nat q) ->
     m !!! Regidx a2_idx = mword_of_int (s0 + Z.of_nat eq) ->
@@ -138,13 +177,14 @@ Section UkShRedirCmd.
     UMalloc -∗
     □ (Pex -∗ ukn_pay N (-1)) -∗
     Pex -∗
-    ushp_tree s0 sub c -∗
+    Sub -∗
     urun N h m (mword_of_int ShSyms.redircmd) (8 + (10 + nn)) -∗
     (∀ (h' : CpuId) (m' : regfile) (p : Z),
        ⌜ ucallee_saved m m' ⌝ -∗
        ⌜ m' !!! Regidx a0_idx = mword_of_int p ⌝ -∗
        ⌜ 0 < p /\ p mod 16 = 0 /\ p + 40 < 2 ^ 38 ⌝ -∗
-       ushp_tree s0 p (UshpRedir c q eq mode fd) -∗
+       ushp_redir_node s0 p sub q eq mode fd -∗
+       Sub -∗
        UMalloc' -∗
        Pex -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (8 + (10 + nn)) -∗
@@ -833,7 +873,7 @@ Section UkShRedirCmd.
     { iApply (uis_shp_25c with "Hcode"). }
     { iApply (uis_shp_25e with "Hcode"). }
     iIntros (hf) "Hrun".
-    iApply ("Hcont" $! hf _ p with "[] [] [] [Hty Hpad Hcmd Hfile Hefile Hmode Hfd Hsub] HM' Hpay Hrun").
+    iApply ("Hcont" $! hf _ p with "[] [] [] [Hty Hpad Hcmd Hfile Hefile Hmode Hfd] Hsub HM' Hpay Hrun").
     - iPureIntro.
       apply (ushp_frame_cs rs vals m me sp0 eq_refl).
       + intros i r u Hi.
@@ -884,9 +924,13 @@ Section UkShRedirCmd.
           cbn in Hi; try discriminate Hi;
           injection Hi as Hr Hu0; subst; vm_compute in He; discriminate.
     - iPureIntro. exact (conj Hp0 (conj Hp16 Hpsz)).
-    - cbn [ushp_tree]. rewrite /ushp_type_at.
+    - rewrite /ushp_redir_node.
       iSplitR; [ iPureIntro; exact Hp0 | ].
       iSplitR; [ iPureIntro; exact Hp8 | ].
+      iSplitR;
+        [ iPureIntro;
+          assert (H38' : (2:Z) ^ 38 = 274877906944) by (vm_compute; reflexivity);
+          rewrite H38' in Hpsz; unfold Z64; lia | ].
       iSplitL "Hty Hpad".
       + iSplitL "Hty".
         * iApply (ushp_ubytes_ext p 4
@@ -896,9 +940,7 @@ Section UkShRedirCmd.
             [ vm_compute; reflexivity | vm_compute; reflexivity
             | vm_compute; reflexivity | vm_compute; reflexivity | lia ].
         * iExists (fun _ : nat => ubyte0). iExact "Hpad".
-      + iSplitL "Hcmd Hsub".
-        { iExists sub. iFrame "Hcmd Hsub". }
-        iFrame "Hfile Hefile".
+      + iFrame "Hcmd Hfile Hefile".
         iSplitL "Hmode".
         * iApply (ushp_ubytes_ext (p + 32) 4
                     (nth_byte (mword_of_int mode : mword 64))
@@ -908,6 +950,46 @@ Section UkShRedirCmd.
                     (nth_byte (mword_of_int fd : mword 64))
                     (nth_byte (mword_of_int fd : mword 32)) with "Hfd").
           intros j Hj. exact (ushp_nth_byte_32_64 fd j Hfd Hj).
+  Qed.
+
+
+  (* ---- the landed statement, which is that walk at a TREE -------------- *)
+  (* [wp_kshp_redircmd_n] says nothing about the sub-command, so the node it *)
+  (* builds is complete only once a tree is supplied for the pointer it      *)
+  (* names.  That is [ushp_redir_close], and this is the whole derivation.   *)
+  Lemma wp_kshp_redircmd {Pex : iProp Σ} (h : CpuId) (m : regfile)
+      (s0 sub mode fd : Z) (c : ushp_cmd) (q eq : nat) (nn : nat) :
+    m !!! Regidx a0_idx = mword_of_int sub ->
+    m !!! Regidx a1_idx = mword_of_int (s0 + Z.of_nat q) ->
+    m !!! Regidx a2_idx = mword_of_int (s0 + Z.of_nat eq) ->
+    m !!! Regidx a3_idx = mword_of_int mode ->
+    m !!! Regidx a4_idx = mword_of_int fd ->
+    0 <= mode < Z31 -> 0 <= fd < Z31 ->
+    shp_code γt -∗
+    UMalloc -∗
+    □ (Pex -∗ ukn_pay N (-1)) -∗
+    Pex -∗
+    ushp_tree s0 sub c -∗
+    urun N h m (mword_of_int ShSyms.redircmd) (8 + (10 + nn)) -∗
+    (∀ (h' : CpuId) (m' : regfile) (p : Z),
+       ⌜ ucallee_saved m m' ⌝ -∗
+       ⌜ m' !!! Regidx a0_idx = mword_of_int p ⌝ -∗
+       ⌜ 0 < p /\ p mod 16 = 0 /\ p + 40 < 2 ^ 38 ⌝ -∗
+       ushp_tree s0 p (UshpRedir c q eq mode fd) -∗
+       UMalloc' -∗
+       Pex -∗
+       urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (8 + (10 + nn)) -∗
+       WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+  Proof using ushp_malloc_ok.
+    intros Ha0 Ha1 Ha2 Ha3 Ha4 Hmode Hfd.
+    iIntros "#Hcode HM #Hpx Hpay Hsub Hrun Hcont".
+    iApply (wp_kshp_redircmd_n h m s0 sub mode fd (ushp_tree s0 sub c) q eq nn
+              Ha0 Ha1 Ha2 Ha3 Ha4 Hmode Hfd
+              with "Hcode HM Hpx Hpay Hsub Hrun").
+    iIntros (h' m' p) "%Hcs %Ha0' %Hp Hnode Hsub HM' Hpay Hrun".
+    iApply ("Hcont" $! h' m' p with "[%//] [%//] [%//] [Hnode Hsub] HM' Hpay Hrun").
+    iApply (ushp_redir_close s0 p sub q eq mode fd c with "Hnode Hsub").
   Qed.
 
 End UkShRedirCmd.

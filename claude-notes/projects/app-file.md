@@ -3218,8 +3218,10 @@ the walk -- `exit(0)` after the last file, `exit(0)` after `cat(0)`,
 `UkCat*.v`; **no landed statement outside the family changed**
 (`git diff --stat app-file/read-relay HEAD -- iris/` is exactly
 `UkCat.v`, `UkCatPutc.v`, `UkCatVprintf.v`, `UkCatVprintfS.v`,
-`UkCatFprintf.v`, `UkCatCat.v`, `UkCatMain.v`, the new `UkCatDeed.v`,
-CAT-ENTRY's own `UCatOut.v`, and one line of `iris/_CoqProject`).
+`UkCatFprintf.v`, `UkCatCat.v`, `UkCatMain.v` and CAT-ENTRY's own
+`UCatOut.v`.  `iris/_CoqProject` is back to CAT-ENTRY's: the one line
+this lane added was `UkCatDeed.v`'s, and it came out again with the
+file.)
 
 `UkCat.v`
   - `wp_kcat_write` takes `udepw_law 16` where it took `cat_deps`;
@@ -3272,8 +3274,6 @@ CAT-ENTRY's own `UCatOut.v`, and one line of `iris/_CoqProject`).
   (`args !! i = Some g`) and LOSES `l`, `ustd γfd l` and
   `fd_lowest_closed l = None`; `wp_kcat_main_loop`, `wp_kcat_main` and
   `wp_kcat_start` take the chain and lose the ledger the same way.
-
-`UkCatDeed.v` — NEW FILE (one line of `iris/_CoqProject`).
 
 **W3 — THE DEED ARMS: THE READ ARM IS WRITTEN AND STATED, THE OPEN ARM
 STOPS.**

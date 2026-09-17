@@ -223,3 +223,5 @@ import Xv6.ProofGrowproc
 import Xv6.LinkGrowproc
 import Xv6.ProofUvmcopy
 import Xv6.LinkUvmcopy
+import Xv6.ProofVmfault
+import Xv6.LinkVmfault

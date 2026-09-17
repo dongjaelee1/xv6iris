@@ -3277,13 +3277,36 @@ CAT-ENTRY's own `UCatOut.v`, and one line of `iris/_CoqProject`).
 **W3 — THE DEED ARMS: THE READ ARM IS WRITTEN AND STATED, THE OPEN ARM
 STOPS.**
 
-**The read arm is `iris/UkCatDeed.v`** (committed; its `.vo` was still
-compiling when this lane's budget ran out on a VM at load 18 with three
-other lanes on it -- the compile had logged ZERO errors, and the file is
-in `iris/_CoqProject`, so the tree build is what settles it) (a separate file, because
-`UkCat.v` sits below the file system and names no application while the
-deed leaf drags the whole FS tower in -- keeping them apart is what stops
-ten thousand lines of cat's walk from depending on `FileOpen`).
+**The read arm is written and committed but is OUT OF THE BUILD.**
+`iris/UkCatDeed.v` (commit `8d692f26c`; removed from `iris/_CoqProject`
+and from the tree by `c02242dff`, so it survives only in this branch's
+history) states and proves everything except that its ONE
+`iApply (UkFileOpen.wp_uk_read_deed_learns_mapped <25 arguments> with
+"…")` DOES NOT TERMINATE: three separate compiles ran to tens of minutes
+with ZERO errors logged and no `.vo`.  That is
+`optimization.md`'s "Inline `ltac:` in argument position" and
+`durable-notes`' "Inline `ltac:` and evar-typed holes" in their slowest
+form, and hoisting the two `ltac:` closers into named `assert`s was NOT
+enough.  The documented next remedy, which this lane ran out of budget to
+try, is the UNSHELVE HOIST: a bare `_` for every Coq premise,
+`unshelve iApply`, and the premises discharged as `{ … }` goals.  **THE
+DIAGNOSTIC WORTH KEEPING** is that the failure of the intermediate
+attempts surfaced as `iSpecialize: cannot instantiate <the remaining
+wands> with <the type of the first hypothesis>` -- a message that points
+at the spec list and not at the argument that caused it, and whose two
+propositions print IDENTICALLY.
+
+WHAT THE FILE SAYS, so the next lane needs no archaeology.  It is a
+SEPARATE file because `UkCat.v` sits below the file system and names no
+application while the deed leaf drags the whole FS tower in -- keeping
+them apart is what stops ten thousand lines of cat's walk from depending
+on `FileOpen`.  Its section Context must be `UkFileOpen`'s EXACTLY, plus
+`{SG : uexecSG}` and `` `{PS : uprogSG} ``: a second `ghost_varG` or
+`ctokG` declared beside `!xv6G Σ` (which carries both, as `xv6_uch` and
+`xv6_ctok`) gives `UkRun.urun` a DIFFERENT instance in the file's own
+statements from the one `UkFileOpen`'s lemmas were proved at -- two
+propositions that print identically and do not unify.  That cost two
+builds before it was read.
 `UkCatDeed.wp_kcat_read_deed` is `UkCat.wp_kcat_read`'s three
 instructions with the ecall taken at lane READ-RELAY's
 `UkFileOpen.wp_uk_read_deed_learns_mapped`; the statement is the landed
@@ -3471,12 +3494,24 @@ cannot be reused by a parallel proof" in a second guise: a block whose
 continuations are closed cannot carry a resource ACROSS a call either.
 Worth checking for at the other `_gen`-shaped blocks in the ulib walks.
 
-**THE BAR.**  Every file of the restated walk was built green on the
-lane's remote tree, in dependency order, as it landed: `UkCat.vo`,
-`UkCatPutc.vo`, `UkCatVprintf.vo`, `UkCatVprintfS.vo`, `UkCatFprintf.vo`,
-`UkCatCat.vo`, `UkCatMain.vo`, each `EXIT=0` with zero `Error`.  Nothing
-is `Admitted`; every result carries `Proof using` (`grep -c "^  Proof\.$"`
-is 0 in all seven files).  `UCodeCat.v` did not move and no new function
-was fetched, so `make gen-ucode` is unchanged by construction --- the
-lane touched no `UCode*.v` and `tools/ucode_manifest.json` is
-untouched.
+**THE BAR.**  WHOLE TREE GREEN on the lane's remote tree: `make -f
+CoqMakefile -j6 -k` over all 1584 files of `iris/_CoqProject` finishes
+`TREE_EXIT=0` with ZERO `Error`, and a second run has *Nothing to be done
+for 'real-all'* (the only `.vo` absent are `TreeAssumptions`/
+`FileAssumptions`, which are commented out of `_CoqProject` on purpose).
+Every file of the restated walk was also built green one at a time as it
+landed.  Nothing is `Admitted`; every result carries `Proof using`
+(`grep -c "^  Proof\.$"` is 0 in all seven `UkCat*` files).  `UCodeCat.v`
+did not move and no new function was fetched, so `make gen-ucode` is
+unchanged --- the lane touched no `UCode*.v` and
+`tools/ucode_manifest.json` is untouched --- and `make gen-ucode` on the VM prints *unchanged* for all
+seven catalogs, `iris/UCodeCat.v` among them (388 instr, 276 words).
+(`make check-ucode` cannot finish on the VM: its last step is
+`git diff --exit-code`, and the remote mirror is not a git worktree.  The
+generator's own *unchanged* per catalog is the same fact.)
+
+`make audit-all-only` from the tree root: `AUDIT_EXIT=0`, the SYSTEM
+theorem's axiom list THIRTEEN and the ECHO theorem's FOURTEEN, both
+unchanged.  `make audit-tree-only` was not run and does not need to be:
+cat's walk is in no theorem's cone --- nothing outside `UkCat*.v`
+requires it --- so the tree theorem cannot have moved.

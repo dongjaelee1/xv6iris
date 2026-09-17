@@ -1008,7 +1008,7 @@ Section UShCat.
               ltac:(unfold uvis_av; symmetry; apply moi_of_uint)
               with "[] Hcode Hro Hargv Hstd Hbuf Hrun").
     iApply (kcat_pay_all_of_law N (cat_args W) (take NSTD (uvis_fd W))
-              (ukn_pay_free_of_triv N Hti) Hnone with "Hrd Hop Hwr Hcl").
+              (ukn_pay_free_of_triv N Hti) Hnone with "Hrd Hop Hwr").
   Qed.
 
   (* ------------------------------------------------------------------- *)

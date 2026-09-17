@@ -716,6 +716,24 @@ its section 1 — the block-byte family at the FILE stage, `EchoLinksLine.
 wr_blk_*`'s twin — is what the redirect child's and sh's rounds should
 be stated at too.
 
+After CAT-WALK (2026-09-17): the walk is restated (`kcat_w`/`kcat_wb`/
+`kcat_pay_seq`, the loop's ROUND LAW `kcat_round` — one persistent law
+funding a whole turn, the read's return selecting the branch, an
+additive `∧` after the write — `kcat_r`/`kcat_o`/`kcat_cl`, `kcat_pay_all`,
+`ukn_const`), the free chain is one corollary per level (the vacuity
+guard), and the ordering of cat's output closes payer-side once the
+read's offset is pinned (`kcat_r_of_deed_at`'s premise `off = off0`,
+which the HELD leaf discharges from `OffHeld off`).  RULED: (e) the
+deed open's path row reads the TEXT half (`utext_img`) and both cat's
+path (`argv[1]`) and the redirect child's (the line buffer) are heap
+DATA — so `UkRunSys` gets `wp_uk_ecall_open_recv_dimg`, the same walk
+at the persistent data image (`ubyteq … DfracDiscarded`, the step
+`ExecArgs.uargv_img_of_uargv` already takes), and the deed open
+suppliers get argv twins; the held open leaf is stated at the data
+image from the start.  (f) `UkCatDeed.v` (out of the build: a
+25-argument `iApply` that does not terminate) comes back through the
+unshelve hoist.  Lane CAT-WALK-2; `UCatKernel` after OFF-HAND-6.
+
 ### 5.4 sh execs cat, and the dispatch
 
 `UShCat` is `UShEcho` at `FsCatPin`; sh's child branches on the parsed

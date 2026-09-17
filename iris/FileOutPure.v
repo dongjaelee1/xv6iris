@@ -1982,3 +1982,48 @@ Proof using.
   split_and!; [exact Hok | exact Hpin' | exact HD | exact Hw' |].
   rewrite HD. exact (D_f_stage_prefix ps cs' f0 E w HE Hw').
 Qed.
+
+(* past the choice list's end the round pointer stops moving: every entry
+   there reads [REcho 0], which does not panic *)
+Lemma pro_idx_f_ge (cs : list nat) (q q' : nat) :
+  (length cs <= q)%nat -> (q <= q')%nat -> pro_idx_f cs q' = pro_idx_f cs q.
+Proof using.
+  intros Hle Hq. induction q' as [| q' IH].
+  - assert (Hz : q = 0%nat) by lia. by subst q.
+  - destruct (decide (q = S q')) as [-> | Hne]; [reflexivity |].
+    rewrite pro_idx_f_S (IH ltac:(lia)) (ralt_panic_ge cs q' ltac:(lia)). lia.
+Qed.
+
+(* AN EVENT THAT PUTS NOTHING ON THE CONSOLE'S WIRE cannot falsify a cycle
+   that was good -- [EchoOut.good_out_step]'s twin.  It needs one more move
+   than the echo one: the extended input may have one more COMPLETE LINE,
+   and [FileDisc.alts_ok] demands an entry per line, so the resolution is
+   padded.  The padding moves no prologue round ([alts_pad_pro_idx]) and
+   changes no block the shorter input had ([alts_pad_take] through
+   [FileDisc.sessf_take]), so the same [ps] still answers. *)
+Lemma good_out_f_step (s : fst) (seg : list mobs) (e : mobs) :
+  obs_wire Uart0 [e] = [] -> good_out_f s seg -> good_out_f s (seg ++ [e]).
+Proof using.
+  intros He (ps & cs & [Hpsb Hlt] & Hao & Hwire).
+  set (I := ins seg). set (I' := ins (seg ++ [e])).
+  assert (HII : I `prefix_of` I') by (rewrite /I /I' ins_app; by eexists).
+  assert (Hlen : length cs = nlines I) by exact (alts_ok_length _ _ Hao).
+  assert (Hnl : (nlines I <= nlines I')%nat) by (by apply nlines_prefix).
+  set (cs' := alts_pad I' cs).
+  exists ps, cs'. split.
+  { split; [exact Hpsb |].
+    rewrite /cs' (alts_pad_pro_idx I' cs (nlines I') ltac:(lia)).
+    (* the pad is read only past the shorter input's last line, and a
+       default alternative never panics *)
+    rewrite (pro_idx_f_ge cs (nlines I) (nlines I') ltac:(lia) Hnl).
+    exact Hlt. }
+  split.
+  { rewrite /cs'. apply alts_pad_ok.
+    apply (alts_pre_mono I I'); [exact HII | exact (alts_pre_of_alts_ok _ _ Hao)]. }
+  rewrite /I' obs_wire_app He app_nil_r.
+  etrans; [exact Hwire |].
+  assert (Hcut : sessf ps cs s I = sessf ps cs' s I).
+  { rewrite -{1}(alts_pad_take I' cs) -/cs'.
+    apply sessf_take. lia. }
+  rewrite Hcut. by apply sessf_mono.
+Qed.

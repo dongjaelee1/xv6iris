@@ -1588,4 +1588,439 @@ Section file_out.
       + exact Hbytes.
   Qed.
 
+
+  (* ====================================================================== *)
+  (*  5.  THE LEDGER                                                        *)
+  (*                                                                        *)
+  (*  THE ONE HYPOTHESIS THIS FILE TAKES AND DOES NOT DISCHARGE.            *)
+  (*  [EchoOut.echo_led]'s taint counter is at [decide (EchoDisc.disc h)],  *)
+  (*  and the file ledger's must be at [decide (FileDisc.disc_f h)]: the    *)
+  (*  conclusion's antecedent is the FILE discipline, and [disc_f h] does   *)
+  (*  not imply [disc h] (a [cat f] line is not an echo line), so echo's    *)
+  (*  counter proves nothing here.  [FileDisc.disc_f] is NOT decidable as   *)
+  (*  landed -- lane MODEL says so ("[disc_seg_f'] is NOT decidable here")  *)
+  (*  -- and the obstacle is not the finite search over resolutions but the *)
+  (*  PER-CYCLE BOOT STATE: [disc_f] quantifies [exists s, fst_ok s /\ ...] *)
+  (*  over ALL byte lists.  Only [al_rx] needs to DECIDE (every other step  *)
+  (*  needs a [decide_ext] over one of [disc_f]'s closure laws), and there  *)
+  (*  the ledger must hand out the byte's tag, whose left arm IS the        *)
+  (*  discipline.  So the instance is a section hypothesis, named here and  *)
+  (*  reported; every result below is a theorem WITH it, not an axiom.      *)
+  (* ====================================================================== *)
+  Context `{Hdf : forall hh : list mobs, Decision (disc_f hh)}.
+
+  (* the SECOND per-era map, beside [EchoOut.pin_map] *)
+  Definition f0_map (h : list mobs) : iProp Σ :=
+    (∃ Mf : gmap nat file_era,
+       ghost_map_auth (fgn_era g) 1 Mf ∗ ⌜pin_dom Mf (obs_boots h)⌝)%I.
+
+  Global Instance f0_map_timeless h : Timeless (f0_map h).
+  Proof using . rewrite /f0_map. apply _. Qed.
+
+  Lemma f0_map_step (h : list mobs) (e : mobs) :
+    obs_boots [e] = 0%nat -> f0_map h -∗ f0_map (h ++ [e]).
+  Proof using .
+    intros He. rewrite /f0_map obs_boots_app He Nat.add_0_r. by iIntros "$".
+  Qed.
+
+  Lemma f0_map_on (h : list mobs) (vf : file_era) :
+    f0_map h ==∗
+      f0_map (h ++ [ObsPowerOn]) ∗ file_era_pin (S (obs_boots h)) vf.
+  Proof using .
+    rewrite /f0_map /file_era_pin obs_boots_app. cbn [obs_boots].
+    rewrite Nat.add_1_r.
+    iIntros "H". iDestruct "H" as (Mf) "[Hm %Hd]".
+    iMod (ghost_map_insert_persist (S (obs_boots h)) vf
+            (pin_dom_absent _ _ Hd) with "Hm") as "[Hm #Hpin]".
+    iModIntro. iFrame "Hpin". iExists _. iFrame "Hm".
+    iPureIntro. by apply pin_dom_insert.
+  Qed.
+
+  (* ---- the history's own line list moves ---- *)
+
+  Lemma efl_of_io (h : list mobs) (e : mobs) :
+    trace_shape h true -> is_io e = true -> ins [e] = [] ->
+    efl_of (h ++ [e]) = efl_of h.
+  Proof using .
+    intros Hsh Hio Hin.
+    destruct (cycles_of_io h [e] Hsh (io_singleton e Hio)) as (cs & H1 & H2).
+    rewrite /efl_of /echof_lines_of H1 H2 !fmap_app !concat_app.
+    f_equal. cbn [fmap list_fmap concat].
+    rewrite /echof_cyc ins_app Hin (app_nil_r (ins (open_seg h))).
+    reflexivity.
+  Qed.
+
+  Lemma efl_of_out (h : list mobs) (i : uart_id) (b : bv 8) :
+    trace_shape h true -> efl_of (h ++ [ObsUartOut i b]) = efl_of h.
+  Proof using .
+    intros Hsh. apply efl_of_io; [exact Hsh | by destruct i | by destruct i].
+  Qed.
+
+  Lemma efl_of_power (h : list mobs) (on : bool) :
+    efl_of (h ++ [if on then ObsPowerOff else ObsPowerOn]) = efl_of h.
+  Proof using .
+    rewrite /efl_of /echof_lines_of. destruct on.
+    - by rewrite cycles_of_off.
+    - rewrite cycles_of_on fmap_app concat_app.
+      cbn [fmap list_fmap concat]. rewrite /echof_cyc.
+      rewrite (_ : ins [] = []); [| reflexivity].
+      rewrite /echof_lines_in /lines_of bodies_of_nil fmap_nil.
+      by rewrite !app_nil_r.
+  Qed.
+
+  (* ---- THE CONCLUSION'S BODY.
+         [FileDisc.file_phi]'s, with ONE weakening this lane could not
+         avoid: the per-cycle boot state is admissible for the lines typed
+         in the WHOLE history ([FileDisc.echof_lines_of]) and not only for
+         those typed in EARLIER cycles ([echof_lines_before]).  See the
+         note at the head of [file_led_tx]. ---- *)
+  Definition file_good (h : list mobs) : Prop :=
+    exists s0s : list fst,
+      length s0s = length (cycles_of h)
+      /\ (forall j s, s0s !! j = Some s -> fadm_boot (echof_lines_of h) s)
+      /\ Forall2 good_out_f s0s (cycles_of h).
+
+  Lemma file_good_nil : file_good [].
+  Proof using .
+    exists []. rewrite /cycles_of /cycles_rev /=.
+    split; [reflexivity |]. split; [| constructor].
+    intros j s Hs. by rewrite lookup_nil in Hs.
+  Qed.
+
+  Lemma file_good_mono (h h' : list mobs) (s0s : list fst) :
+    echof_lines_of h `prefix_of` echof_lines_of h' ->
+    (forall j s, s0s !! j = Some s -> fadm_boot (echof_lines_of h) s) ->
+    (forall j s, s0s !! j = Some s -> fadm_boot (echof_lines_of h') s).
+  Proof using .
+    intros Hp Hall j s Hs. destruct (Hall j s Hs) as [-> | (ws & sel & Hin & Hsel & ->)];
+      [by left |].
+    right. exists ws, sel. split_and!; [| exact Hsel | reflexivity].
+    eapply elem_of_prefix; [exact Hin | exact Hp].
+  Qed.
+
+  (* an event that puts nothing on the console's wire *)
+  Lemma file_good_step_io (h : list mobs) (e : mobs) :
+    trace_shape h true -> is_io e = true -> obs_wire Uart0 [e] = [] ->
+    file_good h -> file_good (h ++ [e]).
+  Proof using .
+    intros Hsh Hio Hw (s0s & Hlen & Hadm & HF).
+    destruct (cycles_of_io h [e] Hsh (io_singleton e Hio)) as (cs & H1 & H2).
+    exists s0s. rewrite H2. rewrite H1 in Hlen, HF.
+    split; [rewrite Hlen !length_app; reflexivity |]. split.
+    - apply (file_good_mono h (h ++ [e]) s0s);
+        [apply echof_lines_of_snoc | exact Hadm].
+    - apply Forall2_app_inv_r in HF as (u1 & u2 & Hu1 & Hu2 & ->).
+      apply Forall2_app; [exact Hu1 |].
+      apply Forall2_cons_inv_r in Hu2 as (y & u3 & Hy & Hu3 & ->).
+      apply Forall2_nil_inv_r in Hu3 as ->.
+      apply Forall2_cons; [| constructor].
+      exact (good_out_f_step y (open_seg h) e Hw Hy).
+  Qed.
+
+  (* ...and the CONSOLE's own output, which the drain has answered for *)
+  Lemma file_good_step_cons (h : list mobs) (b : bv 8) (s0 : fst) :
+    trace_shape h true ->
+    good_out_f s0 (open_seg h ++ [ObsUartOut Uart0 b]) ->
+    fadm_boot (echof_lines_of h) s0 ->
+    file_good h -> file_good (h ++ [ObsUartOut Uart0 b]).
+  Proof using .
+    intros Hsh Hgo Hadm0 (s0s & Hlen & Hadm & HF).
+    destruct (cycles_of_io h [ObsUartOut Uart0 b] Hsh
+                (io_singleton (ObsUartOut Uart0 b) eq_refl)) as (cs & H1 & H2).
+    rewrite H1 in Hlen, HF.
+    apply Forall2_app_inv_r in HF as (u1 & u2 & Hu1 & Hu2 & Hs0s).
+    apply Forall2_cons_inv_r in Hu2 as (y & u3 & Hy & Hu3 & ->).
+    apply Forall2_nil_inv_r in Hu3 as ->.
+    exists (u1 ++ [s0]). rewrite H2.
+    assert (Hefl : echof_lines_of (h ++ [ObsUartOut Uart0 b])
+                   = echof_lines_of h)
+      by (exact (efl_of_out h Uart0 b Hsh)).
+    split.
+    { rewrite !length_app. cbn [length]. rewrite Hs0s !length_app in Hlen.
+      cbn [length] in Hlen. lia. }
+    split.
+    - rewrite Hefl. intros j s Hs.
+      destruct (decide (j < length u1)%nat) as [Hj | Hj].
+      + rewrite lookup_app_l in Hs; [| lia]. apply (Hadm j s).
+        rewrite Hs0s lookup_app_l; [exact Hs | lia].
+      + rewrite lookup_app_r in Hs; [| lia].
+        assert (Hje : j = length u1).
+        { apply lookup_lt_Some in Hs. cbn [length] in Hs. lia. }
+        subst j. rewrite Nat.sub_diag in Hs. cbn in Hs.
+        injection Hs as <-. exact Hadm0.
+    - apply Forall2_app; [exact Hu1 |]. apply Forall2_cons; [exact Hgo | constructor].
+  Qed.
+
+  (* ...AND THE WHOLE LEDGER, which is what the record's [app_R] becomes. *)
+  Definition file_led (h : list mobs) : iProp Σ :=
+    (mono_nat_auth_own (eg_taint (fgn_echo g)) 1
+       (if decide (disc_f h) then 0%nat else 1%nat)
+     ∗ pin_map (fgn_echo g) h
+     ∗ f0_map h
+     ∗ fl_auth (fgn_cl g) (efl_of h)
+     ∗ (⌜file_good h⌝ ∨ file_taint (fgn_cl g)))%I.
+
+  Global Instance file_led_timeless h : Timeless (file_led h).
+  Proof using . rewrite /file_led. apply _. Qed.
+
+  (* the birth's yield *)
+  Definition file_cl_all : iProp Σ :=
+    (file_cl (fgn_cl g)
+     ∗ ghost_map_auth (fgn_era g) 1 (∅ : gmap nat file_era))%I.
+
+  Lemma file_led_init : file_cl_all -∗ file_led [].
+  Proof using .
+    rewrite /file_cl_all /file_cl /echo_cl /file_led /pin_map /f0_map.
+    iIntros "[[[Ht Hm] Hfl] Hmf]".
+    rewrite decide_True; [| exact disc_f_nil].
+    rewrite (_ : efl_of [] = []); last first.
+    { rewrite /efl_of /echof_lines_of /cycles_of /cycles_rev /=. reflexivity. }
+    iFrame "Ht Hfl".
+    iSplitL "Hm"; [iExists ∅; iFrame "Hm"; iPureIntro; apply pin_dom_empty |].
+    iSplitL "Hmf"; [iExists ∅; iFrame "Hmf"; iPureIntro; apply pin_dom_empty |].
+    iLeft. iPureIntro. exact file_good_nil.
+  Qed.
+
+
+  (* ---- THE FOUNDING, as a resource split: the era's ghosts become the
+         port's claim at the start of their era and init's credential ---- *)
+  Lemma file_era_split (k : nat) (v : era_pins) (vf : file_era) :
+    era_pin (fgn_echo g) k v -∗ file_era_pin k vf -∗
+    era_full v -∗ f0_auth vf [] -∗
+      fecl k [] (LogEntryDefs.MkCH [] [] [] None) ∗ fturn k.
+  Proof using .
+    iIntros "#Hpin #Hfp (Ht & Hcs & Hps & HE & Hdl) Hf0".
+    iEval (rewrite -Qp.half_half) in "Ht".
+    iDestruct "Ht" as "[Ht1 Ht2]".
+    iEval (rewrite -Qp.half_half) in "Hdl".
+    iDestruct (ghost_var_split with "Hdl") as "[Hdl1 Hdl2]".
+    iDestruct (cs_lb_get with "Hcs") as "[Hcs #Hcslb]".
+    iDestruct (ps_lb_get with "Hps") as "[Hps #Hpslb]".
+    iDestruct (Elist_lb_get with "HE") as "[HE #HElb]".
+    iSplitL "Ht1 Hcs Hps HE Hdl1 Hf0".
+    { rewrite /fecl. iRight. iExists v, vf, fostage0.
+      cbn [fo_ps fo_cs fo_E fo_w fo_f0 fostage0 opt_list
+           LogEntryDefs.ch_dl length].
+      rewrite (_ : pcount_f [] [] None [] [] = 0%nat); [| reflexivity].
+      iFrame "Hpin Hfp Ht1 Hcs Hps HE Hdl1 Hf0".
+      rewrite (_ : f0_st None = None); [| reflexivity].
+      iSplitR; [by rewrite /f0_typed |]. iPureIntro.
+      rewrite /fecl_pure.
+      cbn [LogEntryDefs.ch_acc LogEntryDefs.ch_log LogEntryDefs.ch_dl
+           LogEntryDefs.ch_arm].
+      split_and!.
+      - exact (feout_pure_0 k []).
+      - exact cs_len_ok_f_0.
+      - exact ps_len_ok_f_0.
+      - exact (fein_pure_0 k).
+      - by cbn [ch_arm_era_f].
+      - rewrite /ch_E. cbn [LogEntryDefs.ch_log LogEntryDefs.ch_arm ch_arm_E].
+        rewrite app_nil_r echoed_nil /seg_of fmap_nil. reflexivity. }
+    rewrite /fturn. iExists v, vf. iFrame "Hpin Hfp Ht2 Hdl2 Hcslb Hpslb".
+    iApply (inp_lb_of_lb v [] []); [apply prefix_nil | iExact "HElb"].
+  Qed.
+
+  (* THE POWER STEP: the on-arm allocates BOTH per-era records, mints both
+     pins, and splits the ghosts into the era's claim and init's credential. *)
+  Lemma file_led_pow (h : list mobs) (on : bool) :
+    file_led h ==∗
+      file_led (h ++ [if on then ObsPowerOff else ObsPowerOn])
+      ∗ (if on then emp
+         else fecl (S (obs_boots h)) [] (LogEntryDefs.MkCH [] [] [] None)
+              ∗ fturn (S (obs_boots h))).
+  Proof using .
+    iIntros "(Ht & Hpm & Hfm & Hfl & Hphi)". rewrite /file_led.
+    rewrite (decide_ext _ (disc_f h) 0%nat 1%nat (disc_f_power h on)).
+    rewrite (efl_of_power h on).
+    destruct on.
+    - iDestruct (pin_map_step (fgn_echo g) h ObsPowerOff eq_refl with "Hpm")
+        as "Hpm".
+      iDestruct (f0_map_step h ObsPowerOff eq_refl with "Hfm") as "Hfm".
+      iModIntro. iSplitR ""; [| done]. iFrame "Ht Hpm Hfm Hfl".
+      iDestruct "Hphi" as "[%Hg | HT]"; [| by iRight].
+      iLeft. iPureIntro. rewrite /file_good cycles_of_off.
+      destruct Hg as (s0s & Hlen & Hadm & HF). exists s0s.
+      split_and!; [exact Hlen | | exact HF].
+      apply (file_good_mono h (h ++ [ObsPowerOff]) s0s);
+        [apply echof_lines_of_snoc | exact Hadm].
+    - iMod era_full_alloc as (v) "Hfull".
+      iMod f0_alloc as (vf) "Hf0".
+      iMod (pin_map_on (fgn_echo g) h v with "Hpm") as "[Hpm #Hpin]".
+      iMod (f0_map_on h vf with "Hfm") as "[Hfm #Hfp]".
+      iDestruct (file_era_split (S (obs_boots h)) v vf
+                   with "Hpin Hfp Hfull Hf0") as "(Hcl & Hturn)".
+      iModIntro. iSplitR "Hcl Hturn".
+      + iFrame "Ht Hpm Hfm Hfl".
+        iDestruct "Hphi" as "[%Hg | HT]"; [| by iRight].
+        iLeft. iPureIntro. rewrite /file_good cycles_of_on.
+        destruct Hg as (s0s & Hlen & Hadm & HF).
+        exists (s0s ++ [None]).
+        split_and!.
+        * rewrite !length_app Hlen. reflexivity.
+        * intros j s Hs.
+          assert (Hp : echof_lines_of h
+                       `prefix_of` echof_lines_of (h ++ [ObsPowerOn]))
+            by apply echof_lines_of_snoc.
+          destruct (decide (j < length s0s)%nat) as [Hj | Hj].
+          { rewrite lookup_app_l in Hs; [| lia].
+            destruct (Hadm j s Hs) as [-> | (ws & sel & Hin & Hsel & ->)];
+              [by left |].
+            right. exists ws, sel. split_and!; [| exact Hsel | reflexivity].
+            eapply elem_of_prefix; [exact Hin | exact Hp]. }
+          rewrite lookup_app_r in Hs; [| lia].
+          assert (Hje : j = length s0s).
+          { apply lookup_lt_Some in Hs. cbn [length] in Hs. lia. }
+          subst j. rewrite Nat.sub_diag in Hs. cbn in Hs.
+          injection Hs as <-. by left.
+        * apply Forall2_app; [exact HF |].
+          apply Forall2_cons; [exact (good_out_f_nil None) | constructor].
+      + iFrame "Hcl Hturn".
+  Qed.
+
+
+  (* the deed's typed witness, read against the ledger's own line list *)
+  Lemma f0_typed_adm (h : list mobs) (s0 : fst) :
+    fl_auth (fgn_cl g) (efl_of h) -∗ f0_typed s0 -∗
+      fl_auth (fgn_cl g) (efl_of h)
+      ∗ ⌜fadm_boot (echof_lines_of h) s0⌝.
+  Proof using .
+    iIntros "Ha Hty". destruct s0 as [bs |]; last first.
+    { iFrame "Ha". iPureIntro. by left. }
+    rewrite /f0_typed. iDestruct "Hty" as (ls) "[Hlb %Hbt]".
+    iDestruct (fl_lb_prefix with "Ha Hlb") as %Hpre.
+    iFrame "Ha". iPureIntro. right.
+    destruct (f_bytes_typed_mono ls (efl_of h) bs Hpre Hbt)
+      as (ws & sel & Hin & _ & Hsel & ->).
+    by exists ws, sel.
+  Qed.
+
+  (* THE OUTPUT STEP.
+     WHAT THIS LANE COULD NOT REACH, and why it is recorded rather than
+     admitted: [FileDisc.file_phi]'s third clause asks the era's boot state
+     to be a chunk subsequence of a line typed in a STRICTLY EARLIER cycle
+     ([echof_lines_before h (S k)]).  What the drain hands over is
+     [AppFile.f_typed]'s witness, a LOWER BOUND [ls] of the ledger's line
+     list with [f_bytes_typed ls s0] -- and the ledger can only read that
+     bound against its own authority, which gives [ls ⊑ efl_of h], the
+     lines of the WHOLE history.  Nothing in the landed interface records
+     WHEN the bound was taken: [App.app_boot] (which carries the deed's
+     witness) is produced by the TRANSPORT and [App.app_turn] by the
+     LEDGER, and the two never meet, so the era-start bound cannot be
+     attached to the witness.  So [file_good] is stated at
+     [echof_lines_of h]. *)
+  Lemma file_led_tx (h : list mobs) (i : uart_id) (b : bv 8) :
+    trace_shape h true ->
+    (file_taint (fgn_cl g)
+     ∨ (match i with
+        | Uart0 => ∃ s0 : fst,
+                     ⌜good_out_f s0 (open_seg h ++ [ObsUartOut Uart0 b])⌝
+                     ∗ f0_typed s0
+        | _ => True
+        end)) -∗
+    file_led h ==∗ file_led (h ++ [ObsUartOut i b]).
+  Proof using .
+    intros Hsh. iIntros "Hgo (Ht & Hpm & Hfm & Hfl & Hphi)".
+    iDestruct (pin_map_step (fgn_echo g) h (ObsUartOut i b) eq_refl
+                 with "Hpm") as "Hpm".
+    iDestruct (f0_map_step h (ObsUartOut i b) eq_refl with "Hfm") as "Hfm".
+    rewrite /file_led.
+    rewrite (decide_ext _ (disc_f h) 0%nat 1%nat (disc_f_out h i b Hsh)).
+    rewrite (efl_of_out h i b Hsh).
+    iFrame "Ht Hpm Hfm".
+    iDestruct "Hphi" as "[%Hg | HT]"; last first.
+    { iModIntro. iFrame "Hfl". by iRight. }
+    destruct i; last first.
+    { iModIntro. iFrame "Hfl". iLeft. iPureIntro.
+      apply (file_good_step_io h (ObsUartOut Uart1 b) Hsh eq_refl);
+        [reflexivity | exact Hg]. }
+    iDestruct "Hgo" as "[#HT | Hgo]".
+    { iModIntro. iFrame "Hfl". by iRight. }
+    iDestruct "Hgo" as (s0) "[%Hgo #Hty]".
+    iDestruct (f0_typed_adm h s0 with "Hfl Hty") as "[Hfl %Hadm]".
+    iModIntro. iFrame "Hfl". iLeft. iPureIntro.
+    exact (file_good_step_cons h b s0 Hsh Hgo Hadm Hg).
+  Qed.
+
+  (* the line list grows by whatever the new input completed *)
+  Lemma fl_auth_grow_pre (ls ls' : list wordline) :
+    ls `prefix_of` ls' ->
+    fl_auth (fgn_cl g) ls ==∗
+      fl_auth (fgn_cl g) ls' ∗ fl_lb (fgn_cl g) ls'.
+  Proof using .
+    intros Hp. rewrite /fl_auth. iIntros "Ha".
+    iMod (own_update _ _ (●ML (ls' : list (leibnizO wordline))) with "Ha")
+      as "Ha".
+    { apply mono_list_update. by destruct Hp as [z ->]; exists z. }
+    iModIntro. iApply (fl_auth_lb with "Ha").
+  Qed.
+
+  Lemma file_led_rx (h : list mobs) (i : uart_id) (b : bv 8) :
+    trace_shape h true ->
+    file_led h ==∗
+      file_led (h ++ [ObsUartIn i b]) ∗ ftag (h ++ [ObsUartIn i b]).
+  Proof using .
+    intros Hsh. iIntros "(Hcnt & Hpm & Hfm & Hfl & Hphi)".
+    iDestruct (pin_map_step (fgn_echo g) h (ObsUartIn i b) eq_refl
+                 with "Hpm") as "Hpm".
+    iDestruct (f0_map_step h (ObsUartIn i b) eq_refl with "Hfm") as "Hfm".
+    iMod (fl_auth_grow_pre (efl_of h) (efl_of (h ++ [ObsUartIn i b]))
+            (echof_lines_of_snoc h (ObsUartIn i b)) with "Hfl")
+      as "[Hfl #Hfllb]".
+    iAssert (⌜file_good (h ++ [ObsUartIn i b])⌝ ∨ file_taint (fgn_cl g))%I
+      with "[Hphi]" as "Hphi".
+    { iDestruct "Hphi" as "[%Hg | HT]"; [| by iRight].
+      iLeft. iPureIntro.
+      apply (file_good_step_io h (ObsUartIn i b) Hsh eq_refl);
+        [by destruct i | exact Hg]. }
+    assert (Hsh' : trace_shape (h ++ [ObsUartIn i b]) true)
+      by (eapply trace_shape_snoc; [exact Hsh | reflexivity]).
+    rewrite /file_led /ftag.
+    destruct (decide (disc_f (h ++ [ObsUartIn i b]))) as [Hd' | Hd'].
+    - rewrite decide_True; last first.
+      { destruct i;
+          [ exact (disc_f_in h b Hsh Hd')
+          | exact (proj1 (disc_f_other h (ObsUartIn Uart1 b) eq_refl I Hsh)
+                     Hd') ]. }
+      iModIntro. iFrame "Hcnt Hpm Hfm Hfl Hphi Hfllb".
+      iSplitR; [by iPureIntro |]. iLeft. by iPureIntro.
+    - iMod (mono_nat_own_update 1%nat with "Hcnt") as "[Hcnt #Hlb]";
+        [destruct (decide (disc_f h)); lia |].
+      iModIntro. iFrame "Hcnt Hpm Hfm Hfl Hphi Hfllb".
+      iSplitR; [by iPureIntro |]. iRight. rewrite /file_taint /echo_taint.
+      iExact "Hlb".
+  Qed.
+
+  (* PHI's read at the end of the run, in the owner's form: the guard is the
+     WHOLE history's discipline. *)
+  Lemma file_led_phi (h : list mobs) :
+    file_led h -∗ ⌜disc_f h -> file_good h⌝.
+  Proof using .
+    iIntros "(Hcnt & _ & _ & _ & [%Hg | HT'])".
+    { iPureIntro. by intros _. }
+    rewrite /file_taint /echo_taint.
+    iDestruct (mono_nat_lb_own_valid with "Hcnt HT'") as %[_ Hle].
+    iPureIntro. intros Hd. exfalso.
+    rewrite decide_True in Hle; [| exact Hd]. lia.
+  Qed.
+
 End file_out.
+
+(* ====================================================================== *)
+(*  6.  THE BIRTH STEP                                                     *)
+(*                                                                        *)
+(*  [AppFile.file_birth] beside one more [ghost_map_alloc]: the record's   *)
+(*  fixed part is AppFile's paired with the file era map's gname.          *)
+(* ====================================================================== *)
+Section file_birth.
+  Context {Σ : gFunctors}.
+  Context `{!echoOutG Σ, !inG Σ (mono_listR (leibnizO Z)), !fileAppG Σ,
+            !fileOutG Σ}.
+
+  Lemma file_birth_all : ⊢ |==> ∃ g : file_gn, file_cl_all g.
+  Proof using .
+    iMod file_birth as (c) "Hc".
+    iMod (ghost_map_alloc (∅ : gmap nat file_era)) as (ge) "[Hm _]".
+    iModIntro. iExists (MkFileGn c ge). rewrite /file_cl_all /=.
+    iFrame "Hc Hm".
+  Qed.
+End file_birth.

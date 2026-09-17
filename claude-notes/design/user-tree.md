@@ -2257,9 +2257,9 @@ forks, and the payload it chooses for that child
 (`UserConsole.ucons_pay cn γ T (init_rd …)`) has kill arm
 `(∃ n, ucons_reader cn n ∗ upos_a γ n ∗ Rd n) ∨ T`.  **A killed child
 cannot hand the lease back**, so the left arm is unreachable and the
-application's `T` is the only payer.  The other seven sites (`_main_loop`,
-`_main_from_1e`, `_main_repair_tail`, `_main_repair`, `_main`, `_start`,
-and `UInitKernel`'s three) only thread it.
+application's `T` is the only payer.  The other NINE sites (`UkInitMain`'s
+`_main_loop`, `_main_from_1e`, `_main_repair_tail`, `_main_repair`,
+`_main`, `_start` and `UInitKernel`'s three) only thread it.
 
 **(2) THE CUT, AND IT IS NOT `app_kill`.**  Parameterising by
 `app_kill app_tree` would give `True` and leave the spend unpayable.  What
@@ -2282,8 +2282,8 @@ discharge is `UkInit.init_kill_law_of_taint` applied to the same
 
 **(3) THE TREE'S CONSOLE RECORD** (`iris/UInitTree.v`, `tree_cc` — the
 twin of `UInitBoot.echo_cc`).  The claim says nothing about the console,
-so five families are `True` and the two that carry anything are the
-registry's own: `cc_wb` (banner-owed) **is the era's LICENCE, or the
+so three of its five families are `True` and the two that carry anything
+are the registry's own: `cc_wb` (banner-owed) **is the era's LICENCE, or the
 taint**, and `cc_wp` (round-open, what the banner leaves) is the taint.
 The disjunction in `cc_wb` is not slack — `kinit_diag_law`'s first
 conversion LEAVES a banner-owed credential and a licence cannot be

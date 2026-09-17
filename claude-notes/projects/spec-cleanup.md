@@ -879,7 +879,7 @@ unmoved.
    Echo's discharge is `init_kill_law_of_taint Hktaint` — one token at
    `UInitBoot`'s call site.
 3. **`iris/UInitTree.v` (new): the tree claim's console record and the
-   mint at the banner.**  `tree_cc` — five families `True`, `cc_wb`
+   mint at the banner.**  `tree_cc` — three of the five families `True`, `cc_wb`
    (banner-owed) = the era's LICENCE or the taint, `cc_wp` (round-open) =
    the taint.  `tree_kinit_ban_law`: the FIRST byte of "init: starting sh"
    spends the licence, the taint buys the write deposit, the rest of the

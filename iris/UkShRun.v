@@ -1078,7 +1078,7 @@ Section UkShRun.
     ([∗ map] fd ↦ st ∈ D, UserFd.ufd (ukn_fd N) fd st) -∗
     (* WHAT THE PARENT LENDS THE CHILD, and HOW A KILLER PAYS FOR IT *)
     Rc -∗
-    □ (riscv_kill_cred -∗ Q (-1)) -∗
+    □ (app_taint -∗ Q (-1)) -∗
     urun N h m (mword_of_int ShSyms.fork) avail -∗
     ((∀ (h' : CpuId) (r : mword 64),
         ⌜ r <> (mword_of_int 0 : mword 64) ⌝ -∗
@@ -1611,7 +1611,7 @@ Section UkShRun.
     ([∗ map] fd ↦ st ∈ D, UserFd.ufd (ukn_fd N) fd st) -∗
     (* what the caller lends its child, and how a killer pays for it *)
     Rc -∗
-    □ (riscv_kill_cred -∗ Q (-1)) -∗
+    □ (app_taint -∗ Q (-1)) -∗
     (* WHAT THE PANIC SPENDS, BORROWED (lane KILL-PAY, K4(a); M4b(2)):
        fork1's [-1] arm panics, and the panic is the caller's (below).
        The RETURNING arm hands it straight back, on the parent's
@@ -1973,7 +1973,7 @@ Section UkShRun.
        longer free and is a premise: whoever kills the child has to be
        able to answer what its exit owes.  For the echo era the payload's
        right arm IS the taint, so the wand is [iIntros "#HT"; iRight]. *)
-    □ (riscv_kill_cred -∗ ukn_pay N (-1)) -∗
+    □ (app_taint -∗ ukn_pay N (-1)) -∗
     (* THE EXIT PAYLOAD, BORROWED (lane KILL-PAY, K4(a)): fork1's [-1] arm
        panics, and a panic ends in [exit].  The RETURNING arm hands it
        straight back, on the parent's continuation below; the CHILD's tail
@@ -3090,7 +3090,7 @@ Section UkShRun.
       (* ...AND HOW A KILLER PAYS FOR A FORKED CHILD (lane IO-LEAF, M3b):
          forking at a payload that is not [fun _ => True] is what makes
          [UkFork.wp_uk_ecall_fork]'s wand a real obligation. *)
-      □ (riscv_kill_cred -∗ ukn_pay N (-1)) -∗
+      □ (app_taint -∗ ukn_pay N (-1)) -∗
       ush_jtab (ukn_t N) -∗ ush_cmd (ukn_d N) t c -∗ usz (ukn_s N) szv -∗
       UserFd.ustd (ukn_fd N) ld -∗
       UserCwd.ucwd_any (ukn_cwd N) -∗
@@ -3400,7 +3400,7 @@ Section UkShRun.
         pose proof (ukn_const_of_eq N' (ukn_pay N) Hti'
                       (ukn_const_eq (N := N))) as Hcst'.
         assert (Hpx' : ⊢ ukn_pay N' (-1)) by (rewrite Hti'; exact Hpx).
-        iAssert (□ (riscv_kill_cred -∗ ukn_pay N' (-1)))%I as "#Hkw'".
+        iAssert (□ (app_taint -∗ ukn_pay N' (-1)))%I as "#Hkw'".
         { rewrite Hti'. iExact "Hkw". }
         iDestruct (ush_cmd_list with "Ht2") as "[#Hsl2 _]".
         iDestruct "Hsl2" as (ql2) "[#Hqlp2 #Hqlc2]".
@@ -3536,7 +3536,7 @@ Section UkShRun.
         pose proof (ukn_const_of_eq N' (ukn_pay N) Hti'
                       (ukn_const_eq (N := N))) as Hcst'.
         assert (Hpx' : ⊢ ukn_pay N' (-1)) by (rewrite Hti'; exact Hpx).
-        iAssert (□ (riscv_kill_cred -∗ ukn_pay N' (-1)))%I as "#Hkw'".
+        iAssert (□ (app_taint -∗ ukn_pay N' (-1)))%I as "#Hkw'".
         { rewrite Hti'. iExact "Hkw". }
         iDestruct (ush_cmd_back with "Ht2") as (q2) "[#Hqp2 #Hqc2]".
         pose proof (ush_st_cs b1 mA sp0 t Hst_b1 HcsA) as HstA.

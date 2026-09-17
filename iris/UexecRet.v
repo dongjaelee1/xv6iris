@@ -1297,7 +1297,7 @@ Section UexecRet.
   (* ...AND HOW A KILLER PAYS FOR THE CHILD (lane SELF-KILL, §4b'; the
      owner's ruling of 2026-09-13).  The child's killed row
      ([SchedCtx.kill_paid]'s live arm) publishes a wand from the
-     application's TAINT ([RiscvPtsto.riscv_kill_cred]) to the child's exit
+     application's TAINT ([RiscvPtsto.app_taint]) to the child's exit
      payload at -1, and allocproc founds it -- so the FORKING PROCESS is
      the party that must supply it, and it travels down with the child's
      slot.  A generic child's [Q] is [fun _ => True] and the wand is free;
@@ -1319,7 +1319,7 @@ Section UexecRet.
      outcomes payable from a single copy. *)
   Definition uexec_fork_child_F (X : uvis -d> iPropO Σ) (W : uvis)
       (Q : Z -> iProp Σ) (Rc : iProp Σ) : iProp Σ :=
-    (□ (riscv_kill_cred -∗ Q (-1)) ∗
+    (□ (app_taint -∗ Q (-1)) ∗
      Rc ∗
      ∀ (g' : gname) (pidc : mword 32),
        (* THE CHILD IS NOT <INIT> (lane TRAP-ROWS-4, B1b).  <init>'s pid is
@@ -1353,10 +1353,10 @@ Section UexecRet.
     (uexec_fork_parent_F X W (sfork_pay f) (sfork_lend f) ∗
      (* ...AND HOW A KILLER PAYS FOR THE CHILD (lane SELF-KILL, §4b'): the
         child's killed row publishes a wand from the application's TAINT
-        ([RiscvPtsto.riscv_kill_cred]) to the child's exit payload at -1,
+        ([RiscvPtsto.app_taint]) to the child's exit payload at -1,
         allocproc founds it, and the FORKING PROCESS is the only party that
         can supply it.  A child at [fun _ => True] costs nothing. *)
-     □ (riscv_kill_cred -∗ sfork_pay f (-1)) ∗
+     □ (app_taint -∗ sfork_pay f (-1)) ∗
      (* ...AND THE LEND, BESIDE THE CHILD'S LEG (lane FORK-REFUND): the
         kernel takes this copy and either refunds it on the failing arm or
         feeds it to the wand below to build the child. *)
@@ -1395,7 +1395,7 @@ Section UexecRet.
   (* the guarded child conjunct and the one record, each way *)
   Lemma uexec_fork_child_of (X : uvis -d> iPropO Σ) (W : uvis)
       (Q : Z -> iProp Σ) (Rc : iProp Σ) :
-    □ (riscv_kill_cred -∗ Q (-1)) -∗
+    □ (app_taint -∗ Q (-1)) -∗
     Rc -∗
     (∀ (fdv' : list fdstate) (cw' : Z) (g' : gname) (pidc : mword 32),
        ⌜pidc <> (mword_of_int 1 : mword 32)⌝ -∗
@@ -1415,7 +1415,7 @@ Section UexecRet.
   Lemma uexec_fork_child_to (X : uvis -d> iPropO Σ) (W : uvis)
       (Q : Z -> iProp Σ) (Rc : iProp Σ) :
     uexec_fork_child_F X W Q Rc -∗
-    □ (riscv_kill_cred -∗ Q (-1)) ∗
+    □ (app_taint -∗ Q (-1)) ∗
     Rc ∗
     (∀ (fdv' : list fdstate) (cw' : Z) (g' : gname) (pidc : mword 32),
        ⌜pidc <> (mword_of_int 1 : mword 32)⌝ -∗
@@ -1696,7 +1696,7 @@ Section UexecRet.
   (* ...AND IT IS TWO-SIDED (lane SELF-KILL, P6b).  There are two ways a
      process can be entitled to the kill the kernel is about to perform,
      and they are not the same party's:
-       * the LEFT is the application's TAINT ([RiscvPtsto.riscv_kill_cred]),
+       * the LEFT is the application's TAINT ([RiscvPtsto.app_taint]),
          which every GENERIC process holds out of the supply
          ([UexecExecInst.xv6_ssupply]) and which is what an unverified
          program's arbitrary fault is charged;
@@ -1718,7 +1718,7 @@ Section UexecRet.
   Definition ukill_cred_at (X : uvis -d> iPropO Σ) (gn : gname) (sc : mword 64)
       (W : uvis) (f : sfam) : iProp Σ :=
     (if decide (ukill_sc sc)
-     then (□ riscv_kill_cred
+     then (app_taint
            ∨ (ChildTok.kill_owed gn ∗ sbundle_at X USYS_exit f W)) else emp)%I.
 
   (* ...and at any cause the kernel HANDLES the row is [emp] and free: the
@@ -1735,7 +1735,7 @@ Section UexecRet.
      generic route's side *)
   Lemma ukill_cred_at_of_cred (X : uvis -d> iPropO Σ) (gn : gname) (sc : mword 64)
       (W : uvis) (f : sfam) :
-    □ riscv_kill_cred -∗ ukill_cred_at X gn sc W f.
+    app_taint -∗ ukill_cred_at X gn sc W f.
   Proof using .
     rewrite /ukill_cred_at. iIntros "#H".
     destruct (decide (ukill_sc sc)) as [_ | _]; [ iLeft; iExact "H" | done ].
@@ -1800,7 +1800,7 @@ Section UexecRet.
      shape, where the left costs the right nothing. *)
   Lemma uexec_kill_arm_F_of_cred (X : uvis -d> iPropO Σ) (sc : mword 64)
       (W : uvis) (f : sfam) :
-    □ riscv_kill_cred -∗ X W -∗ uexec_kill_arm_F X sc W f.
+    app_taint -∗ X W -∗ uexec_kill_arm_F X sc W f.
   Proof using .
     rewrite /uexec_kill_arm_F. iIntros "#Hkc H". iSplit;
       [ iApply (ukill_cred_at_of_cred X (uvis_gen W) sc W f with "Hkc") | iExact "H" ].
@@ -2288,7 +2288,7 @@ Section UexecRet.
            uslot (bump W r (uvis_M W) (uvis_perm W) (uvis_sz W) fdv' cw'
                     (uvis_gen W) cs' (uvis_lazy W))) ∗
         (* ...AND HOW A KILLER PAYS FOR THE CHILD (lane SELF-KILL, §4b') *)
-        □ (riscv_kill_cred -∗ sfork_pay f (-1)) ∗
+        □ (app_taint -∗ sfork_pay f (-1)) ∗
         (* ...AND THE LEND, BESIDE THE CHILD'S LEG (lane FORK-REFUND) *)
         sfork_lend f ∗
         (∀ (fdv' : list fdstate) (cw' : Z) (g' : gname) (pidc : mword 32),
@@ -2399,7 +2399,7 @@ Section UexecRet.
   Proof using . exact (uexec_kill_arm_F_not uslot sc W f). Qed.
 
   Lemma uexec_kill_arm_of_cred (sc : mword 64) (W : uvis) (f : sfam) :
-    □ riscv_kill_cred -∗ uslot W -∗ uexec_kill_arm sc W f.
+    app_taint -∗ uslot W -∗ uexec_kill_arm sc W f.
   Proof using . exact (uexec_kill_arm_F_of_cred uslot sc W f). Qed.
 
   Lemma uexec_kill_arm_slot (sc : mword 64) (W : uvis) (f : sfam) :
@@ -2506,32 +2506,32 @@ Section UexecRet.
      ([uexec_pay_dep_const]) and the ARM needs it at every other trap to
      build the successor's slot ([uexec_arm_of_all]).  The generic family
      is reachable ONLY tainted (its mint takes
-     [RiscvPtsto.riscv_kill_cred], which is Persistent -- and which this
+     [RiscvPtsto.app_taint], which is Persistent -- and which this
      law holds below), so the resource is carried as the process's own
-     published payment wand [□ (riscv_kill_cred -∗ R)] and each leg helps
+     published payment wand [□ (app_taint -∗ R)] and each leg helps
      itself.  This is [UexecSlot.upay_neg] kept exactly where it is honest:
      under a [□], at the ONE family that is only ever reached with the
      taint in hand. *)
   Lemma uexec_dep_F_of_supply (R : iProp Σ) (X : uvis -d> iPropO Σ)
       (sc : mword 64) (W : uvis) :
     my_pay (uvis_gen W) (fun _ => R)%I -∗
-    □ (riscv_kill_cred -∗ R) -∗
+    □ (app_taint -∗ R) -∗
     □ ssupply -∗
     (* ...AND THE KILL CREDENTIAL BESIDE IT (lane KILL-PAY, K3(b)): the
        generic slot answers at EVERY cause, including the ones usertrap
        cannot handle and therefore kills at, and what the deposit owes
        there is the application's price of a kill.  It comes from the same
        place the supply does ([UexecExecInst.xv6_ssupply] is the pair). *)
-    □ riscv_kill_cred -∗
+    app_taint -∗
     □ (∀ W' : uvis, my_pay (uvis_gen W') (fun _ => R)%I -∗
-                    □ (riscv_kill_cred -∗ R) -∗ X W') -∗
+                    □ (app_taint -∗ R) -∗ X W') -∗
     □ (∀ W' : uvis, my_pay (uvis_gen W') (fun _ => True)%I -∗ X W') ==∗
     ∃ f : sfam, ⌜sexit_pay f = (fun _ => R)%I⌝ ∗ uexec_dep_F X sc W f.
   Proof using .
     rewrite /uexec_dep_F. cbv zeta.
     iIntros "#Hpay #HR #Hsup #Hkc #Hall #Halltriv".
-    (* the carrier CASHED, once: [riscv_kill_cred] is Persistent
-       ([RiscvPtsto.riscv_kill_cred_persistent]) and the taint is in hand
+    (* the carrier CASHED, once: [app_taint] is Persistent
+       ([RiscvPtsto.app_taint_persistent]) and the taint is in hand
        here, so the payload itself is persistent at this family and every
        leg below helps itself to a copy. *)
     iAssert (□ R)%I as "#HRb"; [ iModIntro; iApply ("HR" with "Hkc") | ].
@@ -2598,7 +2598,7 @@ Section UexecRet.
        answers. *)
     (* THE MINT'S OWN SPELLING OF THE CARRIER IS THE CASHED ONE.  The class
        ([UexecSG.uexecSG]) carries [ctokG] and nothing else, so its field
-       cannot name [riscv_kill_cred]; it takes [□ R], which is what the
+       cannot name [app_taint]; it takes [□ R], which is what the
        carrier and the taint make here. *)
     iAssert (□ (∀ W' : uvis, my_pay (uvis_gen W') (fun _ => R)%I -∗
                              □ R -∗ X W'))%I as "#Hallb".
@@ -2622,7 +2622,7 @@ Section UexecRet.
      be handed [R] back by the kernel at the resume; nothing travels now,
      so the slot's own copy goes into the arm's closure at the trap and
      comes out with the successor.  AND IT CARRIES IT AS THE PERSISTENT
-     CARRIER [□ (riscv_kill_cred -∗ R)] (P6b): the deposit at the exit
+     CARRIER [□ (app_taint -∗ R)] (P6b): the deposit at the exit
      ecall needs the same resource, and one LINEAR copy cannot serve both
      legs -- the generic family is only ever reached with the taint in
      hand, so the payload rides as the process's own published payment
@@ -2633,14 +2633,14 @@ Section UexecRet.
   (* ...AND THE TAINT IS A PREMISE NOW (lane TRAP-ROWS, T3): the arm is
      the additive pair, so this route pays its left side too -- for
      nothing, since the generic family is only ever reachable tainted and
-     [riscv_kill_cred] is persistent. *)
+     [app_taint] is persistent. *)
   Lemma uexec_arm_of_all (R : iProp Σ) (sc : mword 64) (W : uvis) (f : sfam) :
     sexit_pay f = (fun _ => R)%I ->
     my_pay (uvis_gen W) (fun _ => R)%I -∗
-    □ (riscv_kill_cred -∗ R) -∗
-    □ riscv_kill_cred -∗
+    □ (app_taint -∗ R) -∗
+    app_taint -∗
     □ (∀ W' : uvis, my_pay (uvis_gen W') (fun _ => R)%I -∗
-                    □ (riscv_kill_cred -∗ R) -∗ uslot W') -∗
+                    □ (app_taint -∗ R) -∗ uslot W') -∗
     uexec_arm sc W f.
   Proof using .
     intros Hf. iIntros "#Hpay #HR #Hkc #H". rewrite /uexec_arm /uexec_arm_F.
@@ -2671,16 +2671,16 @@ Section UexecRet.
   Qed.
 
   (* THE WHOLE RETURN AT A CONSTANT PAYLOAD.  The payload rides as the
-     PERSISTENT carrier [□ (riscv_kill_cred -∗ R)] (lane SELF-KILL, P6b),
+     PERSISTENT carrier [□ (app_taint -∗ R)] (lane SELF-KILL, P6b),
      so both legs help themselves and there is no routing to do: the
      deposit spends it at the exit ecall ([uexec_dep_F_of_supply]) and the
      arm at every other trap ([uexec_arm_of_all]).  The TRIVIAL credential
      beside it is fork's child's, and only fork's child's. *)
   Lemma uexec_ret_of_all (R : iProp Σ) (sc : mword 64) (W : uvis) :
-    my_pay (uvis_gen W) (fun _ => R)%I -∗ □ (riscv_kill_cred -∗ R) -∗
-    □ ssupply -∗ □ riscv_kill_cred -∗
+    my_pay (uvis_gen W) (fun _ => R)%I -∗ □ (app_taint -∗ R) -∗
+    □ ssupply -∗ app_taint -∗
     □ (∀ W' : uvis, my_pay (uvis_gen W') (fun _ => R)%I -∗
-                    □ (riscv_kill_cred -∗ R) -∗ uslot W') -∗
+                    □ (app_taint -∗ R) -∗ uslot W') -∗
     □ (∀ W' : uvis, my_pay (uvis_gen W') (fun _ => True)%I -∗ uslot W') ==∗
     uexec_ret sc W.
   Proof using .
@@ -2746,9 +2746,9 @@ Section UexecRetGen.
      trap's own later -- which is what lets the trivial inhabitant below
      supply its own Löb hypothesis. *)
   Lemma uslot_of_creds (R : iProp Σ) (W : uvis) :
-    □ ssupply -∗ □ riscv_kill_cred -∗ □ uexec_wp -∗
+    □ ssupply -∗ app_taint -∗ □ uexec_wp -∗
     ▷ □ (∀ W' : uvis, my_pay (uvis_gen W') (fun _ => True)%I -∗ uslot W') -∗
-    my_pay (uvis_gen W) (fun _ => R)%I -∗ □ (riscv_kill_cred -∗ R) -∗ uslot W.
+    my_pay (uvis_gen W) (fun _ => R)%I -∗ □ (app_taint -∗ R) -∗ uslot W.
   Proof using .
     iIntros "#Hsup #Hkc #Hwp #Htriv".
     iLöb as "IH" forall (W).
@@ -2799,7 +2799,7 @@ Section UexecRetGen.
      the slot every generic process has had until now, and every existing
      mint site takes it. *)
   Lemma uexec_wp_uslot_mint :
-    □ ssupply -∗ □ riscv_kill_cred -∗ □ uexec_wp -∗
+    □ ssupply -∗ app_taint -∗ □ uexec_wp -∗
     □ (∀ W : uvis, my_pay (uvis_gen W) (fun _ => True)%I -∗ uslot W).
   Proof using .
     iIntros "#Hsup #Hkc #Hwp". iLöb as "IH".
@@ -2814,8 +2814,8 @@ Section UexecRetGen.
      check, and gets it back at every resume.  The child's credential is
      discharged here from the trivial inhabitant. *)
   Lemma uexec_wp_uslot (R : iProp Σ) (W : uvis) :
-    □ ssupply -∗ □ riscv_kill_cred -∗ □ uexec_wp -∗
-    my_pay (uvis_gen W) (fun _ => R)%I -∗ □ (riscv_kill_cred -∗ R) -∗ uslot W.
+    □ ssupply -∗ app_taint -∗ □ uexec_wp -∗
+    my_pay (uvis_gen W) (fun _ => R)%I -∗ □ (app_taint -∗ R) -∗ uslot W.
   Proof using .
     iIntros "#Hsup #Hkc #Hwp #Hpay #HR".
     iDestruct (uexec_wp_uslot_mint with "Hsup Hkc Hwp") as "#Hmk".
@@ -2825,7 +2825,7 @@ Section UexecRetGen.
 
   (* ...and the trivial instance, at the arity every existing caller uses *)
   Lemma uexec_wp_uslot_triv (W : uvis) :
-    □ ssupply -∗ □ riscv_kill_cred -∗ □ uexec_wp -∗
+    □ ssupply -∗ app_taint -∗ □ uexec_wp -∗
     my_pay (uvis_gen W) (fun _ => True)%I -∗ uslot W.
   Proof using .
     iIntros "#Hsup #Hkc #Hwp #Hpay".

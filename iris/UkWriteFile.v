@@ -99,6 +99,7 @@ Require Import SpecFilewrite.      (* [filewrite_in] / [filewrite_extra] *)
 Require Import SpecSysRead.        (* [sys_rw_count] *)
 Require Import SpecCopyin.         (* [ubytes_at] -- the content seam *)
 Require Import SysWriteDefs.       (* [wchunks] *)
+Require Import UserPtTree.         (* [uptd]: the partial arm's table *)
 Require Import AppInv.             (* [appE] / [app_sup] *)
 Require Import FsBytesGamma.       (* [fs_gamma_L] *)
 Require Import FsAbsWriteFire.     (* [awrite_chain] and its cursor *)
@@ -247,12 +248,12 @@ Section UkWriteFile.
      nothing between ([SpecFilewrite]'s decode note 3).  A writer that wants
      the left arm tests [r >= 0], which is what any real loop does. *)
   Lemma write_arms_file_learn (Γ := fs_gamma_L fsc_fs)
-      (i : Z) (γo : gname) (nb : nat) (r : mword 64)
+      (i : Z) (γo : gname) (P : uptd) (nb : nat) (r : mword 64)
       (M : gmap Z (bv 8)) (ua : mword 64) (f : nat -> bv 8)
       (Q : nat -> iProp Σ) :
     (forall j : nat, (j < nb)%nat ->
        M !! uint (add_vec_int ua (Z.of_nat j)) = Some (f j)) ->
-    write_arms_at Γ i γo (Z.of_nat nb) M ua Q r -∗
+    write_arms_at Γ i γo P (Z.of_nat nb) M ua Q r -∗
     ((⌜r = (mword_of_int (Z.of_nat nb) : mword 64)⌝ ∗
       ∃ bss : list (list (bv 8)),
         ⌜length (concat bss) = nb⌝ ∗
@@ -276,7 +277,7 @@ Section UkWriteFile.
         pose proof (ubytes_at_src M ua (concat bss) nb f Hat
                       ltac:(lia) Himg) as Hby.
         intros j Hj. apply Hby. lia. }
-      iApply (awrite_chain_cursor with "Hch").
+      iApply (awrite_chain_at_cursor with "Hch").
     - iRight. iSplitR; [ by iPureIntro | ].
       iDestruct "Hp" as (bss x) "(%Hlt & %Hchk & %Hx & %Hat & Hch)".
       assert (Hlen : (length (concat bss) < nb)%nat) by (destruct Hlt; lia).
@@ -285,7 +286,7 @@ Section UkWriteFile.
       iSplitR.
       { iPureIntro.
         exact (ubytes_at_src M ua (concat bss) nb f Hat ltac:(lia) Himg). }
-      iApply (awrite_chain_cursor with "Hch").
+      iApply (awrite_chain_at_cursor with "Hch").
   Qed.
 
   (* =================================================================== *)
@@ -360,7 +361,7 @@ Section UkWriteFile.
     iEval (rewrite Hkey Hcnt;
            cbn [write_file_fam xfam_wr wf_Q];
            rewrite /filewrite_extra /=) in "Hp".
-    iDestruct (write_arms_file_learn i γo nb r (uvis_M W)
+    iDestruct (write_arms_file_learn i γo P nb r (uvis_M W)
                  (m !!! Regidx a1_idx) f (fun _ => True%I)
                  (proj1 Hsrc) with "Hp") as "Harm".
     iApply ("Hcont" $! h' r with "Hufdh Hbuf [Harm] Hrun").

@@ -754,29 +754,38 @@ Section UkInitMain.
     (* THE DEPOSIT, out of init's own supply: the two argument registers
        are pinned by the four instructions above, and the working
        directory is the one the fragment names. *)
+    (* THE SUPPLY'S UPDATE DOOR, RUN HERE (lane TL-9): the node's
+       conclusion is [|==> udepw_at_refR_ids ...]
+       ([UkInit.init_exec_sup_pos]), so the deposit is BUILT before the
+       leaf is applied rather than in the leaf's own premise slot -- the
+       goal here is a [WP], which is where a basic update runs, and the
+       premise slot is not.  This is the ONE site that applies the node;
+       every other [Hxs] in this file merely threads the [box]. *)
+    iMod ("Hxs" $! γ np N' (<[Regidx a7_idx := (mword_of_int 7 : mword 64)]> mc5)
+            (mword_of_int 0x3ac) l
+            with "[%] [%] [%] [%] Hro Hargv Hstd Hrow Hcred Hpos Hlease Hch Hpid")
+      as "Hdepx".
+    { exact Hpeq. }
+    { exact Hheq. }
+    { rewrite (upd_ne mc5 (Regidx a7_idx) (Regidx a0_idx)
+                 (mword_of_int 7 : mword 64)
+                 ltac:(vm_compute; discriminate)).
+      rewrite /mc5 (upd_ne mc4 (Regidx ra_idx) (Regidx a0_idx) _
+                      ltac:(vm_compute; discriminate)).
+      exact (upd_eq mc3 (Regidx a0_idx) _). }
+    { rewrite (upd_ne mc5 (Regidx a7_idx) (Regidx a1_idx)
+                 (mword_of_int 7 : mword 64)
+                 ltac:(vm_compute; discriminate)).
+      rewrite /mc5 (upd_ne mc4 (Regidx ra_idx) (Regidx a1_idx) _
+                      ltac:(vm_compute; discriminate)).
+      rewrite /mc4 (upd_ne mc3 (Regidx a0_idx) (Regidx a1_idx) _
+                      ltac:(vm_compute; discriminate)).
+      rewrite /mc3 (upd_ne mc2 (Regidx a0_idx) (Regidx a1_idx) _
+                      ltac:(vm_compute; discriminate)).
+      exact (upd_eq mc1 (Regidx a1_idx) _). }
     iApply (wp_kinit_exec N' hc5 mc5 (12 + (12 + (4 + n))) FsImg.ROOTINO
               (init_lend_ref cn T stc Cr (ukn_fd N') l γ np)
-              with "Hcode Hrun Hcwd [Hstd Hcred Hpos Hlease Hch Hpid]").
-    { iApply ("Hxs" $! γ np N' (<[Regidx a7_idx := (mword_of_int 7 : mword 64)]> mc5)
-                (mword_of_int 0x3ac) l
-                with "[%] [%] [%] Hro Hargv Hstd Hrow Hcred Hpos Hlease Hch Hpid").
-      - exact Hpeq.
-      - rewrite (upd_ne mc5 (Regidx a7_idx) (Regidx a0_idx)
-                   (mword_of_int 7 : mword 64)
-                   ltac:(vm_compute; discriminate)).
-        rewrite /mc5 (upd_ne mc4 (Regidx ra_idx) (Regidx a0_idx) _
-                        ltac:(vm_compute; discriminate)).
-        exact (upd_eq mc3 (Regidx a0_idx) _).
-      - rewrite (upd_ne mc5 (Regidx a7_idx) (Regidx a1_idx)
-                   (mword_of_int 7 : mword 64)
-                   ltac:(vm_compute; discriminate)).
-        rewrite /mc5 (upd_ne mc4 (Regidx ra_idx) (Regidx a1_idx) _
-                        ltac:(vm_compute; discriminate)).
-        rewrite /mc4 (upd_ne mc3 (Regidx a0_idx) (Regidx a1_idx) _
-                        ltac:(vm_compute; discriminate)).
-        rewrite /mc3 (upd_ne mc2 (Regidx a0_idx) (Regidx a1_idx) _
-                        ltac:(vm_compute; discriminate)).
-        exact (upd_eq mc1 (Regidx a1_idx) _). }
+              with "Hcode Hrun Hcwd Hdepx").
     (* THE FAILED EXEC IS REFUNDED (lane KILL-PAY, K4(a), ruling R-A; lane
        M6b): the child spent the ledger, the lease, the position and the
        credential into the exec deposit, and all four come back -- which
@@ -841,7 +850,7 @@ Section UkInitMain.
        [T] -- is what pays the payload.  The premise is the ROUND's, not
        the application's (lane TL-6; user-tree §9.4, ruling (b)): the
        lend is in hand here, and [UkInit.init_kill_law] buys the row off
-       it and gives it back.  It REPLACES [⊢ □ riscv_kill_cred -∗ T],
+       it and gives it back.  It REPLACES [⊢ app_taint -∗ T],
        which reads "a kill is free" and is echo's identity alone. *)
     (⊢ init_kill_law T stc (cc_wp Cr) (cc_wbn Cr)) ->
     init_code γt -∗ init_rodata γt -∗ init_argv γd -∗ usz γs szv -∗
@@ -1279,7 +1288,7 @@ Section UkInitMain.
        the application no more than the credential this round already
        carries -- give the lend, get it back and the child's kill arm
        ([UkInit.init_kill_law], whose header is the whole story).  It
-       REPLACES [⊢ □ riscv_kill_cred -∗ T], which was echo's identity
+       REPLACES [⊢ app_taint -∗ T], which was echo's identity
        and false at an application whose kill credential is generic. *)
     (⊢ init_kill_law T stc (cc_wp Cr) (cc_wbn Cr)) ->
     init_deps T -∗
@@ -1880,7 +1889,7 @@ Section UkInitMain.
        the application no more than the credential this round already
        carries -- give the lend, get it back and the child's kill arm
        ([UkInit.init_kill_law], whose header is the whole story).  It
-       REPLACES [⊢ □ riscv_kill_cred -∗ T], which was echo's identity
+       REPLACES [⊢ app_taint -∗ T], which was echo's identity
        and false at an application whose kill credential is generic. *)
     (⊢ init_kill_law T stc (cc_wp Cr) (cc_wbn Cr)) ->
     init_deps T -∗
@@ -2097,7 +2106,7 @@ Section UkInitMain.
        the application no more than the credential this round already
        carries -- give the lend, get it back and the child's kill arm
        ([UkInit.init_kill_law], whose header is the whole story).  It
-       REPLACES [⊢ □ riscv_kill_cred -∗ T], which was echo's identity
+       REPLACES [⊢ app_taint -∗ T], which was echo's identity
        and false at an application whose kill credential is generic. *)
     (⊢ init_kill_law T stc (cc_wp Cr) (cc_wbn Cr)) ->
     init_deps T -∗
@@ -2237,7 +2246,7 @@ Section UkInitMain.
        the application no more than the credential this round already
        carries -- give the lend, get it back and the child's kill arm
        ([UkInit.init_kill_law], whose header is the whole story).  It
-       REPLACES [⊢ □ riscv_kill_cred -∗ T], which was echo's identity
+       REPLACES [⊢ app_taint -∗ T], which was echo's identity
        and false at an application whose kill credential is generic. *)
     (⊢ init_kill_law T stc (cc_wp Cr) (cc_wbn Cr)) ->
     init_deps T -∗
@@ -2415,7 +2424,7 @@ Section UkInitMain.
        the application no more than the credential this round already
        carries -- give the lend, get it back and the child's kill arm
        ([UkInit.init_kill_law], whose header is the whole story).  It
-       REPLACES [⊢ □ riscv_kill_cred -∗ T], which was echo's identity
+       REPLACES [⊢ app_taint -∗ T], which was echo's identity
        and false at an application whose kill credential is generic. *)
     (⊢ init_kill_law T stc (cc_wp Cr) (cc_wbn Cr)) ->
     init_deps T -∗
@@ -2769,7 +2778,7 @@ Section UkInitMain.
        the application no more than the credential this round already
        carries -- give the lend, get it back and the child's kill arm
        ([UkInit.init_kill_law], whose header is the whole story).  It
-       REPLACES [⊢ □ riscv_kill_cred -∗ T], which was echo's identity
+       REPLACES [⊢ app_taint -∗ T], which was echo's identity
        and false at an application whose kill credential is generic. *)
     (⊢ init_kill_law T stc (cc_wp Cr) (cc_wbn Cr)) ->
     init_deps T -∗

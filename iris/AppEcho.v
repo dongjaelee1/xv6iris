@@ -1428,6 +1428,22 @@ Section EchoApp.
     Timeless (echo_cons γ k h H).
   Proof using . rewrite /echo_cons. apply _. Qed.
 
+  (* ...AND THE INTERFACE'S LICENCE LAW ([RiscvPtsto.ai_lic], lane
+     SUP-ONE): the taint IS echo's kill credential, and a tainted
+     application's console claim answers ANY boundary event out of its
+     taint arm.  This is [echo_al_sup]'s conclusion read one step earlier
+     -- at the CREDENTIAL rather than at the supply -- and it is the proof
+     [UInitBoot] used to write out by hand. *)
+  Lemma echo_cons_lic (γ : echo_fixed) :
+    echo_taint γ ⊢
+      □ (∀ (k : nat) (h : list mobs) (H : LogEntryDefs.cons_hist)
+           (ev : ConsLog.cons_ev),
+           echo_cons γ k h H ==∗ echo_cons γ k h (ConsLog.cons_step H ev)).
+  Proof using .
+    rewrite /echo_cons. iIntros "#Ht !>" (k h H ev) "Ho".
+    iApply (EchoOut.ecl_sup (echo_taint γ) γ k h H ev with "Ht Ho").
+  Qed.
+
   (* THE APPLICATION'S CONSOLE INTERFACE (redesign R4), as one value: the
      tag beside a received byte, the kill credential (which IS the taint --
      a kill under this discipline is impossible, so what a party a kill
@@ -1438,7 +1454,8 @@ Section EchoApp.
     MkAppIface (echo_tag γ) (echo_tag_persistent γ) (echo_tag_timeless γ)
                (echo_taint γ) (echo_taint_persistent γ)
                (echo_taint_timeless γ)
-               (echo_cons γ) (echo_cons_timeless γ).
+               (echo_cons γ) (echo_cons_timeless γ)
+               (echo_cons_lic γ).
 
   Definition app_echo : xv6_app Σ :=
     MkApp echo_fixed echo_cl echo_names echo_pred echo_boot echo_R

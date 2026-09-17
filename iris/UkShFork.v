@@ -288,7 +288,7 @@ Section UkShFork.
   Proof. rewrite /ushf_wq. apply _. Qed.
 
   Definition ushf_kill_law : iProp Σ :=
-    (□ (∀ I : list (bv 8), riscv_kill_cred -∗ Wc I 0%nat))%I.
+    (□ (∀ I : list (bv 8), app_taint -∗ Wc I 0%nat))%I.
 
   Global Instance ushf_kill_law_persistent : Persistent ushf_kill_law.
   Proof using . rewrite /ushf_kill_law. apply _. Qed.
@@ -428,7 +428,7 @@ Section UkShFork.
     (* what the parent lends, how a killer pays for it, and what fork1's
        panic spends -- borrowed, and back on the returning arm *)
     Rc -∗
-    □ (riscv_kill_cred -∗ Q (-1)) -∗
+    □ (app_taint -∗ Q (-1)) -∗
     Pex -∗
     (* THE PANIC: fork failed, and sh is at [panic]'s entry with "fork" in
        a0, its ledger, fork's answer and what it borrowed -- see
@@ -813,7 +813,7 @@ Section UkShFork.
          pays "fork\n" from the lend and its exit from the pieces and the
          banner-owed credential the message leaves; a fork that returned
          hands the pieces back to the re-entry. *)
-      iAssert (□ (riscv_kill_cred -∗ ushf_wq np))%I as "#Hkw".
+      iAssert (□ (app_taint -∗ ushf_wq np))%I as "#Hkw".
       { iIntros "!> Hk". rewrite /ushf_wq. iRight. iApply ("Hkl" $! np with "Hk"). }
       iApply (wp_kshf_fork_core h m f k len sz l n (fun _ : Z => ushf_wq np)
                 (Wc np 3%nat) (Pm np) ltac:(intros x y; reflexivity)

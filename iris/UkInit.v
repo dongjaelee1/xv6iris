@@ -1708,7 +1708,7 @@ Section UkInit.
   (*  ([UserConsole.ucons_pay])'s kill arm is the application's [T]       *)
   (*  ([UkInitMain.wp_kinit_fork]).  That is the whole spend.             *)
   (*                                                                     *)
-  (*  IT USED TO BE A CLOSED ENTAILMENT, [⊢ □ riscv_kill_cred -∗ T],      *)
+  (*  IT USED TO BE A CLOSED ENTAILMENT, [⊢ app_taint -∗ T],      *)
   (*  which reads "a kill is free for the application" and is ECHO's      *)
   (*  fact and no one else's (echo's kill credential IS its taint, so     *)
   (*  the premise was an identity there).  At an application whose kill   *)
@@ -1734,7 +1734,7 @@ Section UkInit.
       (Wp Wb : nat -> iProp Σ) : iProp Σ :=
     (□ (∀ (l : list fdstate) (n : nat),
           init_lend_cred T st Wp Wb l n ==∗
-          init_lend_cred T st Wp Wb l n ∗ □ (riscv_kill_cred -∗ T)))%I.
+          init_lend_cred T st Wp Wb l n ∗ □ (app_taint -∗ T)))%I.
 
   Global Instance init_kill_law_persistent T st Wp Wb :
     Persistent (init_kill_law T st Wp Wb).
@@ -1745,7 +1745,7 @@ Section UkInit.
      reading the lend at all.  This is echo's discharge. *)
   Lemma init_kill_law_of_taint (T : iProp Σ) (st : fdstate)
       (Wp Wb : nat -> iProp Σ) :
-    (⊢ □ riscv_kill_cred -∗ T) ->
+    (⊢ app_taint -∗ T) ->
     ⊢ init_kill_law T st Wp Wb.
   Proof using .
     intros Hkt. rewrite /init_kill_law.
@@ -1817,8 +1817,23 @@ Section UkInit.
           which is what the diagnostic and the exit after it are paid
           from.  [UkRun.udepw_at_ref] could only name the record's own
           exit payload, and the credential does not fit in that family. *)
-       udepw_at_refR_ids N' m pc FsImg.ROOTINO
-         (init_lend_ref cn T st Cr (ukn_fd N') l γ n))%I.
+       (* ...BEHIND AN UPDATE DOOR (lane TL-9; design/user-tree.md 9.8).
+          THE NODE IS HANDED THE ROUND'S CREDENTIAL ([init_lend_cred]
+          above) AND THE DEPOSIT IT BUILDS MAY SPEND IT.  The supply is a
+          [box] ([init_exec_sup_lend] below), so a LINEAR credential can
+          only be spent inside the node's own construction -- and with the
+          conclusion update-free there was no place inside it where a
+          ghost move could run, which is what made the supply unpayable at
+          a credential the era holds once (lane TL-8's token count, 9.7(2)).
+          The door is the same shape 9.4's ruling (b) already gave the kill
+          row ([init_kill_law] is an update for exactly this reason): ECHO
+          discharges it with one [iModIntro]
+          ([UInitSh.init_exec_sup_of_sh_slot]), and an application whose
+          credential is a RESOURCE discharges it by reading the taint off
+          the round-open arm or MINTING it on the banner-owed one, where
+          the licence is still unspent. *)
+       |==> udepw_at_refR_ids N' m pc FsImg.ROOTINO
+              (init_lend_ref cn T st Cr (ukn_fd N') l γ n))%I.
 
   Definition init_exec_sup_lend (cn : cons_names) (T : iProp Σ)
       (st : fdstate) (Cr : cons_cred Σ)

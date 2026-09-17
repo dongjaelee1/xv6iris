@@ -240,9 +240,9 @@ Section UInitKernel.
        is the ROUND's and not the application's: the lend is in hand at
        that site, so [UkInit.init_kill_law] buys the row off the
        credential the round already carries and hands the lend back.  It
-       REPLACES [⊢ □ riscv_kill_cred -∗ T] -- "a kill is free for the
+       REPLACES [⊢ app_taint -∗ T] -- "a kill is free for the
        application" -- which is echo's identity ([UInitBoot]'s
-       [riscv_kill_cred = echo_taint]) and is FALSE at an application
+       [app_taint = echo_taint]) and is FALSE at an application
        whose kill credential is the generic one. *)
     (⊢ UkInit.init_kill_law T stc (cc_wp Cr) (cc_wbn Cr)) ->
     tf_resume_pc (uvis_tf W) = (mword_of_int InitSyms.start : mword 64) ->
@@ -475,9 +475,9 @@ Section UInitKernel.
        is the ROUND's and not the application's: the lend is in hand at
        that site, so [UkInit.init_kill_law] buys the row off the
        credential the round already carries and hands the lend back.  It
-       REPLACES [⊢ □ riscv_kill_cred -∗ T] -- "a kill is free for the
+       REPLACES [⊢ app_taint -∗ T] -- "a kill is free for the
        application" -- which is echo's identity ([UInitBoot]'s
-       [riscv_kill_cred = echo_taint]) and is FALSE at an application
+       [app_taint = echo_taint]) and is FALSE at an application
        whose kill credential is the generic one. *)
     (⊢ UkInit.init_kill_law T stc (cc_wp Cr) (cc_wbn Cr)) ->
     kexec_image_ok ElfUser.init_elf na alen afun sts W' ->
@@ -703,9 +703,9 @@ Section UInitKernel.
        is the ROUND's and not the application's: the lend is in hand at
        that site, so [UkInit.init_kill_law] buys the row off the
        credential the round already carries and hands the lend back.  It
-       REPLACES [⊢ □ riscv_kill_cred -∗ T] -- "a kill is free for the
+       REPLACES [⊢ app_taint -∗ T] -- "a kill is free for the
        application" -- which is echo's identity ([UInitBoot]'s
-       [riscv_kill_cred = echo_taint]) and is FALSE at an application
+       [app_taint = echo_taint]) and is FALSE at an application
        whose kill credential is the generic one. *)
     (⊢ UkInit.init_kill_law T stc (cc_wp Cr) (cc_wbn Cr)) ->
     kexec_sz ElfUser.init_elf - PGSIZE

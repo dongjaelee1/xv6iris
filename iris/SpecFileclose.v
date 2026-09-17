@@ -372,7 +372,7 @@ Section SpecFileclose.
   Proof using . done. Qed.
 
   (* the generic closer pays every row out of the taint *)
-  Lemma fileclose_cpay_taint st Φc : pipe_taint_cred -∗ fileclose_cpay st Φc.
+  Lemma fileclose_cpay_taint st Φc : app_taint -∗ fileclose_cpay st Φc.
   Proof using .
     iIntros "#Ht". rewrite /fileclose_cpay.
     destruct st as [| ? w [? ? ?| γp |?]]; try done.
@@ -453,7 +453,7 @@ Section SpecFileclose.
       apply elem_of_list_further. exact Hin.
   Qed.
 
-  Lemma fileclose_cpays_taint sts : pipe_taint_cred -∗ fileclose_cpays sts.
+  Lemma fileclose_cpays_taint sts : app_taint -∗ fileclose_cpays sts.
   Proof using .
     iIntros "#Ht". rewrite /fileclose_cpays. iApply big_sepL_intro.
     iIntros "!>" (k st _). by iApply fileclose_cpay_taint.

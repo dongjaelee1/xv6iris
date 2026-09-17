@@ -841,11 +841,11 @@ Section UkFork.
     UserChildren.uch (ukn_ch N) Sc -∗
     (* ...AND HOW A KILLER PAYS FOR THE CHILD (lane SELF-KILL, §4b'): the
        child's killed row publishes a wand from the application's TAINT
-       ([RiscvPtsto.riscv_kill_cred]) to the child's exit payload at -1 and
+       ([RiscvPtsto.app_taint]) to the child's exit payload at -1 and
        allocproc founds it, so the FORKING PROGRAM supplies it here.  At
        [Q := fun _ => True] -- what a program that wants nothing back
        passes -- it is free. *)
-    □ (riscv_kill_cred -∗ Q (-1)) -∗
+    □ (app_taint -∗ Q (-1)) -∗
     urun N h m pc avail -∗
     ((∀ (h' : CpuId) (r : mword 64),
         ⌜r <> (mword_of_int 0 : mword 64)⌝ -∗
@@ -1188,11 +1188,11 @@ Section UkFork.
     UserChildren.uch (ukn_ch N) Sc -∗
     (* ...AND HOW A KILLER PAYS FOR THE CHILD (lane SELF-KILL, §4b'): the
        child's killed row publishes a wand from the application's TAINT
-       ([RiscvPtsto.riscv_kill_cred]) to the child's exit payload at -1 and
+       ([RiscvPtsto.app_taint]) to the child's exit payload at -1 and
        allocproc founds it, so the FORKING PROGRAM supplies it here.  At
        [Q := fun _ => True] -- what a program that wants nothing back
        passes -- it is free. *)
-    □ (riscv_kill_cred -∗ Q (-1)) -∗
+    □ (app_taint -∗ Q (-1)) -∗
     urun N h m pc avail -∗
     ((∀ (h' : CpuId) (r : mword 64),
         ⌜r <> (mword_of_int 0 : mword 64)⌝ -∗

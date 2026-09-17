@@ -2004,7 +2004,7 @@ Section ProofFilewrite.
     (* ---- AU EDIT (difference 2): the carried commit state, at the
        descriptor's own offset shadow; [x = 0] on every entry (a short
        chunk exits) ---- *)
-    fw_au_raw (fs_gamma_L fsc_fs) nx γx n (us_M U) (m !!! Regidx Ra1) Q t p 0%nat -∗
+    fw_au_raw (fs_gamma_L fsc_fs) nx γx (pv_upt (us_V U)) n (us_M U) (m !!! Regidx Ra1) Q t p 0%nat -∗
     (* ---- and the contract's own continuation ---- *)
     (* [true], verbatim from [SpecFilewrite]: this IS the contract's crossing,
        forwarded, so the two must be spelled the same or [iExact] fails. *)
@@ -2023,7 +2023,8 @@ Section ProofFilewrite.
         file_ref gf kx qx stx -∗
         proc_priv_core pj pidv (us_upt U P') -∗
         filewrite_env_out fn stx -∗
-        write_arms_at (fs_gamma_L fsc_fs) nx γx n (us_M U) (m !!! Regidx Ra1) Q r -∗
+        write_arms_at (fs_gamma_L fsc_fs) nx γx (pv_upt (us_V U)) n (us_M U)
+          (m !!! Regidx Ra1) Q r -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof using .
@@ -2640,7 +2641,7 @@ Section ProofFilewrite.
     { iExact "Hpriv". }
     iIntros (CIDwi Hswi mwi tot bm' data' dn' dn0' n' wrote dist dstb P' Sb')
       "%Hcswi %Hbmwf2 %Hholes2 %Hdaddr2 %Hsz2 %Hbmcov2 %Hcap2 %Hsized2
-       %Hdist %Hdistn %Hdistk %Hrange %Hkbytes %Hubytes %Harms %Hbud
+       %Hdist %Hdistn %Hdistk %Hwhyw %Hrange %Hkbytes %Hubytes %Harms %Hbud
        %HSbsub %Hwi16p %Hwi16sp %Hwi16at %Hupt
        Hcg Hcnt _ _ Hpc Hidev Hinum Hmeta Hmap Hblocks Hsbi Hsbsz Hsbb
        Hdnat Hpriv Hbsl HlogS".
@@ -2852,7 +2853,7 @@ Section ProofFilewrite.
                  ⌜(tf = t /\ pf = p /\ xf = 0%nat /\ (rz < c)%Z)
                   \/ (tf = t /\ pf = p /\ xf = 1%nat /\ (rz < c)%Z)
                   \/ (tf = (t + c)%Z /\ pf = S p /\ xf = 0%nat /\ rz = c)⌝
-                 ∗ fw_au_raw (fs_gamma_L fsc_fs) nx γx n (us_M U) (m !!! Regidx Ra1) Q tf pf xf)%I
+                 ∗ fw_au_raw (fs_gamma_L fsc_fs) nx γx (pv_upt (us_V U)) n (us_M U) (m !!! Regidx Ra1) Q tf pf xf)%I
       with "[Htop Hau Hgv]" as ">(Htop & Hgv & Hst)".
     { rewrite Hnum.
       (* RELAY 3 (lane WRITE-RELAY): THE COUNT THIS NODE WAS CALLED WITH.
@@ -2958,7 +2959,7 @@ Section ProofFilewrite.
            (optimization.md, "Inline [ltac:] in argument position"). *)
         assert (Htge0 : (0 <= t)%Z) by (zlia Htiz Hiz).
         assert (Htltn : (t < n)%Z) by (zlia Htiz Hiz).
-        iDestruct (fw_au_raw_take (fs_gamma_L fsc_fs) (bv_unsigned inum) γx n (us_M U)
+        iDestruct (fw_au_raw_take (fs_gamma_L fsc_fs) (bv_unsigned inum) γx (pv_upt (us_V U)) n (us_M U)
                      (m !!! Regidx Ra1) Q
                      t p Htge0 Htltn Hmul with "Hau")
           as "[Hcm Hback]".
@@ -3087,7 +3088,7 @@ Section ProofFilewrite.
                               (Z.to_nat (bv_unsigned v)) tot dist) <= Z.to_nat rz + BSIZE)%nat)
               by (rewrite Hbslen; zlia Hrztot Hdist).
             iDestruct (fw_au_raw_spend_part (fs_gamma_L fsc_fs)
-                         (bv_unsigned inum) γx n
+                         (bv_unsigned inum) γx (pv_upt (us_V U)) n
                          (us_M U) (m !!! Regidx Ra1) Q t p Htge0 Htltn Hmul
                          with "Hau") as "[Hpart Hback]".
             (* THE COUNTED PREFIX IS THE CALLER'S, AND ONLY IT.  What
@@ -3123,8 +3124,46 @@ Section ProofFilewrite.
                node's chunk -- which is exactly why the loop breaks here. *)
             assert (Hshort : (Z.of_nat (Z.to_nat rz) < wchunk_at n p)%Z)
               by (rewrite -Hcw; zlia Hrzge Hrzr Hnokey).
+            (* RELAY 4's CARRYING HALF, RELAYED (lane WRITE-RELAY-2).  Bytes
+               beyond the count are writei's disturbed tail, and [Hwhyw] is
+               the byte its copy died on -- at the CHUNK's base and count,
+               which [wr_fail_why_shift] moves to the whole request's. *)
+            assert (Htnat : Z.of_nat (Z.to_nat t) = t)
+              by (apply Z2Nat.id; exact Htge0).
+            assert (Hbase : (add_vec_int (m !!! Regidx Ra1)
+                               (Z.of_nat (Z.to_nat t)) : mword 64)
+                            = Q6 !!! Regidx Ra2).
+            { rewrite Htnat Htiz -add_vec_moi_comm. exact (eq_sym HQ6a2). }
+            assert (Hwhyn : (Z.to_nat rz
+                             < length (wrf_landed wrote dstb
+                                 (Z.to_nat (bv_unsigned (di_size dnl)))
+                                 (Z.to_nat (bv_unsigned v)) tot dist))%nat ->
+                            wr_fail_why (pv_upt (us_V U))
+                              (m !!! Regidx Ra1) (Z.to_nat n)).
+            { intros Hlt.
+              assert (Hdpos : (0 < dist)%nat)
+                by (rewrite Hbslen in Hlt; zlia Hlt Hrztot).
+              apply (wr_fail_why_shift (pv_upt (us_V U)) (m !!! Regidx Ra1)
+                       (Z.to_nat t) (Z.to_nat c) (Z.to_nat n)).
+              - zlia Htge0 Htnat Hcrw Hcrange Hiz Htiz.
+              - rewrite Hbase.
+                (* the round's table grew before writei ran, so its verdict
+                   comes back to the ENTRY table the node names
+                   ([SysWriteDefs.wr_fail_why_entry]) *)
+                exact (wr_fail_why_entry (pv_sz (us_V U)) (pv_upt (us_V U)) PI
+                         (Q6 !!! Regidx Ra2) (Z.to_nat c) Hext
+                         (Hwhyw Hdpos)). }
+            (* ...AND THE SINGLE-BLOCK HALF, which is [SpecWritei.wi16_atomic]
+               read at this arm: in one block a short answer counted nothing. *)
+            assert (Hsb1n : wi_blocks (Z.to_nat (bv_unsigned v))
+                              (Z.to_nat (wchunk_at n p)) = 1%nat ->
+                            Z.to_nat rz = 0%nat).
+            { intros Hone. rewrite -Hcw in Hone.
+              destruct (Hwi16at Hone) as [Ht0 | Htc].
+              - zlia Ht0 Hrztot.
+              - exfalso. zlia Htc Hrztot Hcz Hnokey. }
             iMod (wrf_apart_fire fsc_fs ⊤ (bv_unsigned inum) γx (us_M U)
-                    (m !!! Regidx Ra1) n p _
+                    (m !!! Regidx Ra1) (pv_upt (us_V U)) n p _
                     (Z.to_nat (bv_unsigned v)) (Z.to_nat rz)
                     (wrf_landed wrote dstb
                               (Z.to_nat (bv_unsigned (di_size dnl)))
@@ -3133,7 +3172,7 @@ Section ProofFilewrite.
                     (fn_nlink (era_node dnl bml datal))
                     (era_node dnl bml datal) (era_node dn' bm' data')
                     ltac:(solve_ndisj) Hlocw Hbspos Hoffbs Hcapbs Hrle Hgap
-                    Hnzl Hrowl Hnz' Hrow' Htakep Hshort
+                    Hnzl Hrowl Hnz' Hrow' Htakep Hshort Hwhyn Hsb1n
                     with "[] [] Hoinv Hpart Htop [Hgv]")
               as "(Htop & Hgv & Htail)";
               [iApply (ireg_inv_ftop with "Hireg")
@@ -3542,7 +3581,7 @@ Section ProofFilewrite.
           destruct Htfn as [Htfn Hxf0].
           rewrite /write_arms_at. subst tf xf. iLeft.
           iSplitR; [iPureIntro; split; [exact Hrvn | zlia Hn] |].
-          iApply (fw_au_raw_ok (fs_gamma_L fsc_fs) nx γx n (us_M U) (m !!! Regidx Ra1) Q pf with "Hau"). }
+          iApply (fw_au_raw_ok (fs_gamma_L fsc_fs) nx γx (pv_upt (us_V U)) n (us_M U) (m !!! Regidx Ra1) Q pf with "Hau"). }
       + (* ---- NOT EXHAUSTED: the FALL is the back edge to +0xcc ---- *)
         assert (Hlt : (iz + c < n)%Z).
         { destruct (Z.le_gt_cases n (iz + c)) as [Hle | Hgt]; [| exact Hgt].
@@ -3679,7 +3718,7 @@ Section ProofFilewrite.
         iSplitR; [iPureIntro; exact Hrvm1 |].
         assert (Hfailex : (tf < n)%Z \/ (n < 0)%Z /\ pf = 0%nat)
           by (fwclear Htft Htiz Hiz; left; lia).
-        iApply (fw_au_raw_fail (fs_gamma_L fsc_fs) nx γx n (us_M U) (m !!! Regidx Ra1) Q tf pf xf
+        iApply (fw_au_raw_fail (fs_gamma_L fsc_fs) nx γx (pv_upt (us_V U)) n (us_M U) (m !!! Regidx Ra1) Q tf pf xf
                   Hfailex with "Hau"). }
   Qed.
   Lemma wp_filewrite_sconf
@@ -5104,7 +5143,7 @@ Section ProofFilewrite.
                    (* [rewrite] reaches the proofmode context too, so "Hch"
                       arrives at [wchunks 0] with the goal. *)
                    rewrite Hnz0.
-                   iApply (fw_au_raw_ok _ _ _ 0%Z _ _ _ 0%nat).
+                   iApply (fw_au_raw_ok _ _ _ _ 0%Z _ _ _ 0%nat).
                    iApply (fw_au_raw_init with "Hch"). }
                - (* ---- 0 < n: the five late spills, the two 3072s, and
                       the jump to the BOTTOM test at +0xcc ---- *)

@@ -471,6 +471,26 @@ the taint everywhere, and a verified program must never be able to
 taint itself at an arm it dislikes (the vacuity trap) — it closes an
 unreachable arm by arm exclusivity in the kernel contract.
 
+SUP-ONE landed (2026-09-17): `riscv_kill_cred` is `app_taint`, written
+bare (its `Persistent` instance carries what the `□` said; `pipe_taint_
+cred` is deleted); the console licence is a LAW OF THE INTERFACE
+(`ai_lic`, so `cons_licence` follows from `app_taint` at every altitude
+with no record equation); the generic supply is the PAIR `app_sup ∗
+app_taint` — R1's "the supply IS the taint" is REFUTED twice (`app_sup`
+and `app_taint` live at independent ambient records tied only by the
+boot's equations, and at the tree application the kill credential is
+`True` while the claim is not, so `al_sup_of_kill` is false there);
+`al_sup_of_kill` is STOPPED with a four-step recipe that gives the tree
+application a real interface — a new fact about that application, the
+owner's call.  R4 landed: the open leaves export `fdst_nopipe`, and cat's
+close needs no free law.  OFF-LINK's vacuity checks REFUTED the survey's
+"push the disconnect into `off_supply`" (a supplier MOVES the ghost, and a
+move needs the half the taint lacks): the arm belongs in the BOX
+(`UserOff.off_link γo z := off_gv γo (1/2) z ∨ app_taint`), the supplier's
+output is `off_link` (`off_settle`, payers `off_settle_parked` and
+`off_settle_taint`), and the nodes' phase-1 LEND must be `off_link` too so
+a fire at a disconnected object can still run its node (OFF-LINK-2).
+
 ### 3.6 PROCESS RULES (review §D4–D5, 2026-09-17)
 
 - A ruling is checked at the STATEMENT before it is issued: the mask it
@@ -521,6 +541,25 @@ over a LINK RECORD on TL-7's pattern (`UInitCons` off `echo_names`,
 echo's instance definitional), so those files are instantiated at
 `FileLinks` and the echo audit stays at fourteen.  This is the largest
 single item of the campaign and was unpriced until the review.
+LINK-GEN LANDED (2026-09-17): `LinkRec.v` (a 94-field record of the
+credential FAMILIES and their laws — no pure model leaks; `lk_pr`/`lk_lpr`
+are fields, not a `match`, so echo's instance is definitional by
+`reflexivity`, fourteen checks), `UShPanic`/`UInitBanner` swept with
+echo's names recovered as `Definition`s, `FileLinks.file_links` (item
+20), `UkSh.ush_tag_law_at D` with the ^D consequence as the travelling
+carrier (item 21).  `UInitConsK` is not a link consumer (the file takes
+it verbatim through `file_pred_cons`).  RESIDUE, three lanes: LINK-GEN-2
+the FILE INSTANCE `file_link_inst` — `FileLinksLine.v`, the eleven
+credential families and ~25 pure lemmas at `pro_pin_f`/`proc_before_f`/
+`proc_stream_f`/`pro_idx_f`/`fst_upto` (`UCatOut` section 1 already has
+five), `lk_ab`'s guarded file value (state-dependent `RCRan` sent to
+`[]`), `lk_turn0` from `fturn`, the ^D lemma at `disc_f`; LINK-GEN-3 the
+abstract STAGE (`UEchoOut`/`UShEchoPay` read an explicit stage: a second
+record `StageRec` with `lk_stg`, `lk_cur`, `lk_stage`, `lk_cur_step`,
+`lk_lend_stage`) and `UShLine`'s three read laws (`lk_rr_arms`,
+`lk_rd_res`, `lk_rr_disc`) with the sweep of those three files — which
+delivers `Hchild_echo` and `Hwbr`; and in `UShRound` the one-line change
+to `Hcltaint` (it takes the two era pins).
 
 ### 4.1 What the stage adds: ONE value per era
 

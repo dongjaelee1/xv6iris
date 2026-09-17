@@ -91,7 +91,7 @@ Local Open Scope Z_scope.
 (*  1.  THE RECORD, AND THE RULED PREMISE AT IT                          *)
 (*                                                                       *)
 (*  A LIGHT SECTION: everything here is the registry's own vocabulary     *)
-(*  plus [RiscvPtsto.riscv_kill_cred], and [UkInit.init_kill_law] needs   *)
+(*  plus [RiscvPtsto.app_taint], and [UkInit.init_kill_law] needs   *)
 (*  no more than that (it is stated over [UkInit.init_lend_cred], which   *)
 (*  names two fixed descriptor lists and nothing else).                   *)
 (* ===================================================================== *)
@@ -197,29 +197,51 @@ Section TreeConsCred.
   (*  is derivable from the claim, and a spent licence is exactly the     *)
   (*  fact "some move of the file system was paid by nobody".            *)
   (* =================================================================== *)
+  (* THE ROUND'S CREDENTIAL BUYS THE TAINT, AT EVERY ARM OF THE LEND.
+     This is the whole of what the tree claim can read off
+     [UkInit.init_lend_cred], and it is an UPDATE because one of the three
+     arms is the era's LICENCE and minting the taint out of it SPENDS it
+     ([tree_cc_wbn_mint] is one [ghost_map_elem_persist]).  The lend comes
+     back at the arm it can: the round-open arm gives the taint by reading
+     ([tree_cc_wp]), the banner-owed arm by minting -- and then the lend
+     goes back on its own THIRD arm, which is the taint -- and the taint
+     arm costs nothing.
+
+     TWO CONSUMERS, which is why it is named here rather than written
+     inline: the kill row just below (lane TL-6) and /init's EXEC SUPPLY
+     at the tree claim ([UInitTreeExec.tree_init_exec_sup_lend_of_lend],
+     lane TL-9), which is what the exec node's update door
+     ([UkInit.init_exec_sup_pos]) was cut for. *)
+  Lemma tree_lend_taint (c : tree_fixed) (st : fdstate)
+      (l : list fdstate) (n : nat) :
+    UkInit.init_lend_cred (tree_taint c) st
+      (cc_wp (tree_cc c)) (cc_wbn (tree_cc c)) l n ==∗
+    UkInit.init_lend_cred (tree_taint c) st
+      (cc_wp (tree_cc c)) (cc_wbn (tree_cc c)) l n ∗ tree_taint c.
+  Proof using .
+    iIntros "Hl". rewrite /UkInit.init_lend_cred.
+    iDestruct "Hl" as "[[%Hl Hw] | [[%Hl Hw] | #Ht]]".
+    - (* the round-open arm: the taint IS the credential here, so the
+         lend goes back on the arm it came in on *)
+      rewrite tree_cc_wp. iDestruct "Hw" as "#Ht". iModIntro. iSplit.
+      + iLeft. iSplitR; [ done | ]. iExact "Ht".
+      + iExact "Ht".
+    - (* the banner-owed arm: the licence is SPENT, and the lend comes
+         back on the taint arm -- that is the price *)
+      iMod (tree_cc_wbn_mint c n with "Hw") as "#Ht". iModIntro. iSplit.
+      + iRight. iRight. iExact "Ht".
+      + iExact "Ht".
+    - iModIntro. iSplit.
+      + iRight. iRight. iExact "Ht".
+      + iExact "Ht".
+  Qed.
+
   Lemma tree_init_kill_law (c : tree_fixed) (st : fdstate) :
     ⊢ UkInit.init_kill_law (tree_taint c) st
         (cc_wp (tree_cc c)) (cc_wbn (tree_cc c)).
   Proof using .
     rewrite /UkInit.init_kill_law. iIntros "!>" (l n) "Hl".
-    iAssert (|==> UkInit.init_lend_cred (tree_taint c) st
-                    (cc_wp (tree_cc c)) (cc_wbn (tree_cc c)) l n
-                  ∗ tree_taint c)%I with "[Hl]" as ">[Hl #Ht]".
-    { rewrite /UkInit.init_lend_cred.
-      iDestruct "Hl" as "[[%Hl Hw] | [[%Hl Hw] | #Ht]]".
-      - (* the round-open arm: the taint IS the credential here, so the
-           lend goes back on the arm it came in on *)
-        rewrite tree_cc_wp. iDestruct "Hw" as "#Ht". iModIntro. iSplit.
-        + iLeft. iSplitR; [ done | ]. iExact "Ht".
-        + iExact "Ht".
-      - (* the banner-owed arm: the licence is SPENT, and the lend comes
-           back on the taint arm -- that is the price *)
-        iMod (tree_cc_wbn_mint c n with "Hw") as "#Ht". iModIntro. iSplit.
-        + iRight. iRight. iExact "Ht".
-        + iExact "Ht".
-      - iModIntro. iSplit.
-        + iRight. iRight. iExact "Ht".
-        + iExact "Ht". }
+    iMod (tree_lend_taint c st l n with "Hl") as "[Hl #Ht]".
     iModIntro. iFrame "Hl". iIntros "!> _". iExact "Ht".
   Qed.
 
@@ -285,7 +307,7 @@ Section TreeInitWrite.
   Lemma tree_init_deps (c : tree_fixed) (r : tree_names) :
     @file_app Σ _ = MkAppcfg tree_names (tree_pred c) r ->
     riscv_cons_res = cons_res_triv ->
-    riscv_kill_cred = kill_cred_triv ->
+    app_taint = kill_cred_triv ->
     ⊢ □ UkInit.init_deps (PS := uprogSG_free) (tree_taint c).
   Proof using .
     intros Heq Hcons Hkill.
@@ -296,13 +318,13 @@ Section TreeInitWrite.
       iApply (tree_sup_of_taint c r with "Ht"). }
     rewrite /UkInit.init_deps /UkInit.kinit_wlaw.
     iModIntro. iSplit; [ iSplit | iSplit ].
-    - (* 16, the write: the supply, the output licence and the kill
-         credential -- the last two free at this interface *)
+    - (* 16, the write: the supply and the kill credential, the latter
+         free at this interface.  NO OUTPUT LICENCE (lane SUP-ONE): the
+         taint buys it ([WpUart.cons_licence_of_taint]). *)
       iIntros "!> #Ht".
-      iApply (udepw_law_of_sup_write (PSx := uprogSG_free) with "[] [] []").
+      iApply (udepw_law_of_sup_write (PSx := uprogSG_free) with "[] []").
       + iApply ("Hsup" with "Ht").
-      + iApply (WpUart.cons_licence_triv Hcons).
-      + rewrite Hkill /kill_cred_triv. by iModIntro.
+      + rewrite Hkill /kill_cred_triv. done.
     - (* ...and the closed-fd leaf, which needs no claim at all *)
       rewrite /UkInit.kinit_wcl. iIntros "!>" (N0 b).
       iApply (UkWriteClosed.kinit_w1_of_closed_l0 (PS := uprogSG_free) N0 b).

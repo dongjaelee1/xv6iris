@@ -204,7 +204,7 @@ Section UShRound.
       UShLine.ush_mid (fgn_echo g) γp (I ++ l ++ [wl_nl]) ∗ T.
   (* the era's kill credential IS the file taint ([AppFileRec]'s interface
      equation, projected) *)
-  Hypothesis Hktaint : ⊢ □ riscv_kill_cred -∗ T.
+  Hypothesis Hktaint : ⊢ app_taint -∗ T.
 
   (* =================================================================== *)
   (*  S3  THE PROMPT LINK, AT THE DEED (design SS4.2; CAT-ENTRY ruling (b)) *)

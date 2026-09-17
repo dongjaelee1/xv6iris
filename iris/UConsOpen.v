@@ -609,7 +609,9 @@ Section UConsOpen.
     ((∃ (fd : nat) (rd wr : bool) (t : fdtype),
         ⌜r = (mword_of_int (Z.of_nat fd) : mword 64)
          /\ (fd < NOFILE)%nat
-         /\ fdv' = <[fd := FdOpen rd wr t]> sts⌝ ∗
+         /\ fdv' = <[fd := FdOpen rd wr t]> sts
+         (* ...AND IT IS NOT A PIPE (survey R4, lane SUP-ONE) *)
+         /\ fdst_nopipe (FdOpen rd wr t)⌝ ∗
         ualloc γfd l fd (FdOpen rd wr t))
      ∨ (⌜r = (mword_of_int (-1) : mword 64) /\ fdv' = sts⌝ ∗ ustd γfd l))%I.
 

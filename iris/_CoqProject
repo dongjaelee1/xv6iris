@@ -1496,6 +1496,7 @@ EchoLinks.v
 EchoLinksPro.v
 EchoLinksLine.v
 EchoLinksBan.v
+LinkRec.v
 EchoFsPure.v
 FileFsPure.v
 AppEcho.v
@@ -1562,6 +1563,7 @@ UkShFork.v
 UConsLine.v
 UkShWords.v
 UkShEcho.v
+UShLexRedir.v
 UInitCons.v
 UConsOpen.v
 UInitConsK.v
@@ -1602,6 +1604,7 @@ UkFileOpen.v
 UkShRedirAns.v
 UkCatDeed.v
 UCatOut.v
+UShCat.v
 UCatKernel.v
 UInitTree.v
 UInitTreeCons.v

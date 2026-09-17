@@ -387,13 +387,13 @@ Definition wp_allocproc_sconf_body
      the TARGET's exit payload at -1, and a killer holds none of the
      target's resources -- so the killed row publishes this wand
      ([SchedCtx.kill_paid]'s live arm) and a TAINTED process cashes it with
-     [RiscvPtsto.riscv_kill_cred], which is the application's taint on the
+     [RiscvPtsto.app_taint], which is the application's taint on the
      fixed record and the only thing left that names a kill.  The CREATOR
      is the only party that can found it: <init>'s payload is
      [fun _ => True] and the wand is trivial; a forked child's is the
      forking process's choice, whose payload admits the taint on its taint
      arm. *)
-  □ (riscv_kill_cred -∗ Q (-1)) -∗
+  □ (app_taint -∗ Q (-1)) -∗
   sie_cap_gpr KT1 m K b pme -∗
   cpu_own lvl eb pme b lks -∗
   kernel_text -∗ pc_is pcE -∗
@@ -435,13 +435,13 @@ Definition wp_allocproc_core_body
      the TARGET's exit payload at -1, and a killer holds none of the
      target's resources -- so the killed row publishes this wand
      ([SchedCtx.kill_paid]'s live arm) and a TAINTED process cashes it with
-     [RiscvPtsto.riscv_kill_cred], which is the application's taint on the
+     [RiscvPtsto.app_taint], which is the application's taint on the
      fixed record and the only thing left that names a kill.  The CREATOR
      is the only party that can found it: <init>'s payload is
      [fun _ => True] and the wand is trivial; a forked child's is the
      forking process's choice, whose payload admits the taint on its taint
      arm. *)
-  □ (riscv_kill_cred -∗ Q (-1)) -∗
+  □ (app_taint -∗ Q (-1)) -∗
   sie_cap_gpr KT1 m K b pme -∗
   cpu_own lvl eb pme b lks -∗
   kernel_text -∗ pc_is pcE -∗

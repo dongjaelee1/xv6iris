@@ -849,7 +849,7 @@ Section UInitSh.
                          app_pred app_run v ∗ (⌜echo_fs_pure v⌝ ∨ T))
      ∗ □ (∀ (R : iProp Σ) (W : uvis),
             T -∗ my_pay (uvis_gen W) (fun _ => R)%I -∗
-            □ (riscv_kill_cred -∗ R) -∗ uslot W)
+            □ (app_taint -∗ R) -∗ uslot W)
      ∗ Pay)%I.
 
   (* THE CONSOLE CREDENTIAL IS NOT HERE but a premise of the constructor
@@ -1271,7 +1271,7 @@ Section UInitSh.
     (* ...AND THE TAINT ARM IS HANDED NOTHING AT ALL NOW (lane SELF-KILL,
        P6b): the generic family's constant payload is carried
        PERSISTENTLY ([UexecExecMint.uslot_mint_all] at
-       [□ (riscv_kill_cred -∗ R)]), and the arm builds it out of the TAINT
+       [□ (app_taint -∗ R)]), and the arm builds it out of the TAINT
        it is already holding ([UserConsole.ucons_pay_taint]) -- which is
        the whole reason a tainted process needs no lease. *)
     iAssert (image_entry_taint T
@@ -1280,6 +1280,11 @@ Section UInitSh.
       iApply ("Hgen" $! (ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wbn Cr)) (-1)) W' with "HT [Hmp] []").
       - rewrite ucons_pay_eta. iExact "Hmp".
       - iModIntro. iIntros "_". iApply (ucons_pay_taint with "HT"). }
+    (* THE UPDATE DOOR COSTS ECHO ONE TOKEN (lane TL-9): the node's
+       conclusion is [|==> udepw_at_refR_ids ...] now
+       ([UkInit.init_exec_sup_pos]), and echo spends nothing to open it --
+       its credential is the taint, which is persistent. *)
+    iModIntro.
     (* ---- AND THE WHOLE OF THE REST IS THE U-TIER RULE (lane EX-4).
        [ExecRun.udepw_at_refR_ids_of_sup_ids] is the general step from an
        exec bundle to the deposit the leaf consumes; what is left below is

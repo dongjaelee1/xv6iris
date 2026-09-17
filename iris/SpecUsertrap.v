@@ -130,7 +130,7 @@ Require Import UexecSG.        (* [uexecSG]: [sbundle] / [spost] / [skey_eq] *)
 Require Import UexecApply.     (* [uslot_key_cong] -- the slot across the re-key *)
 Require Import UexecExecInst.  (* the class INSTANCE: the process's exec bundle *)
 Require Import SpecSysRead.    (* [sys_rw_count] -- the read's count, for [ut_live_out] *)
-Require Import Xv6Cameras.      (* [pipe_taint_cred] *)
+Require Import Xv6Cameras.
 Require Import ConsoleInv.     (* [CONSOLE] -- the device the read row is about *)
 Require Import StackOwn.       (* [uint_zero_reg] *)
 Require Import FirstTok.       (* [fsabs_env] -- what the loop mints the bundle from *)
@@ -933,11 +933,11 @@ Definition ut_fork_in `{!riscvGS Σ, !xv6G Σ, !fileG Σ} `{GEN : GenId} `{XI : 
         cannot name it ([UexecRet.uexec_fork_child_F]). *)
      (* ...AND HOW A KILLER PAYS FOR THE CHILD (lane SELF-KILL, §4b'): the
         child's killed row publishes a wand from the application's TAINT
-        ([RiscvPtsto.riscv_kill_cred]) to the child's exit payload at -1,
+        ([RiscvPtsto.app_taint]) to the child's exit payload at -1,
         allocproc founds it, and the FORKING PROCESS is the only party that
         can supply it -- so it rides the deposit beside the slot.  A
         generic child's payload is [fun _ => True] and the wand is free. *)
-     □ (riscv_kill_cred -∗ sfork_pay f (-1)) ∗
+     □ (app_taint -∗ sfork_pay f (-1)) ∗
      (* ...AND WHAT THE PARENT LENDS ITS CHILD (lane FORK-REFUND): the
         resource the forking process hands the child to run with
         ([UexecSG.sfork_lend]), carried BESIDE the continuation because

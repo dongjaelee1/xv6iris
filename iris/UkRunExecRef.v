@@ -95,7 +95,7 @@ Section UkRunExecRef.
           (design/pipe.md, "The exit path"): a pinned exec supply builds
           the new image's ENTRY, and an entry constructor asks for it.
           Persistent, so nothing comes back. *)
-       urun_nopipe fdv -∗
+       urun_rows N fdv -∗
        uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗ ufd_auth (ukn_fd N) fdv -∗
        uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗ ufd_auth (ukn_fd N) fdv ∗
        sbundle_pay_refR uslot (ukn_pay N) R
@@ -246,7 +246,7 @@ Section UkRunExecRef.
           (design/pipe.md, "The exit path"): a pinned exec supply builds
           the new image's ENTRY, and an entry constructor asks for it.
           Persistent, so nothing comes back. *)
-       urun_nopipe fdv -∗
+       urun_rows N fdv -∗
        uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗ ufd_auth (ukn_fd N) fdv -∗
        urun_ids N cs pidv -∗
        uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗ ufd_auth (ukn_fd N) fdv ∗

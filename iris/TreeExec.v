@@ -168,7 +168,7 @@ Section TreeExec.
        whether it holds a pipe row (design/pipe.md, "The exit path") *)
     □ (∀ (M : gmap Z (bv 8)) (fdv : list fdstate) (cs : gset gname)
          (pidv : mword 32),
-         urun_nopipe fdv -∗
+         urun_rows N fdv -∗
          image_entry f M av fdv cw cs pidv (ukn_pay N) Pay uslot) -∗
     image_entry_taint (tree_taint c) (ukn_pay N) uslot -∗
     □ (Pay -∗ R) -∗

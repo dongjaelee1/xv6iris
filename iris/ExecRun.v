@@ -298,7 +298,7 @@ Section ExecRun.
           bundle row off it.  It is a fact about the EXEC'ING process's
           table ([SpecKexec.kexec_image_ok_fd]), i.e. about this very
           [fdv], and it is persistent, so nothing comes back. *)
-       urun_nopipe fdv -∗
+       urun_rows N fdv -∗
        uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗ ufd_auth (ukn_fd N) fdv -∗
        uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗ ufd_auth (ukn_fd N) fdv ∗
        (* (W)'s pure input: the path the caller's a0 names, off its image *)
@@ -332,7 +332,7 @@ Section ExecRun.
           bundle row off it.  It is a fact about the EXEC'ING process's
           table ([SpecKexec.kexec_image_ok_fd]), i.e. about this very
           [fdv], and it is persistent, so nothing comes back. *)
-       urun_nopipe fdv -∗
+       urun_rows N fdv -∗
        uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗ ufd_auth (ukn_fd N) fdv -∗
        urun_ids N cs pidv -∗
        uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗ ufd_auth (ukn_fd N) fdv ∗
@@ -922,7 +922,7 @@ Section ExecRun.
           bundle row off it.  It is a fact about the EXEC'ING process's
           table ([SpecKexec.kexec_image_ok_fd]), i.e. about this very
           [fdv], and it is persistent, so nothing comes back. *)
-       urun_nopipe fdv -∗
+       urun_rows N fdv -∗
        uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗ ufd_auth (ukn_fd N) fdv -∗
        uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗ ufd_auth (ukn_fd N) fdv ∗
        ⌜exec_path_of M pv pl⌝ ∗

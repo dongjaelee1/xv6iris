@@ -258,6 +258,9 @@ Section UShEchoPay.
     { rewrite Hpeq. iExact "Hgen'". }
     rewrite /uexec_sup_run.
     iIntros (M pm sz fdv cs pidv) "#Hnpw Hheap Hufd".
+    (* the run's two table rows come in bundled (lane OFF-HAND-3, R1);
+       the entry below is stated at the pipe half. *)
+    iDestruct (UkRun.urun_rows_nopipe _ _ with "Hnpw") as "#Hnp0".
     (* the node, read ONCE off the lent heap *)
     iAssert (⌜ echo_node_img (last_ws I) M s0 t g ⌝)%I as %Himg.
     { iApply (echo_node_img_of_cmd (last_ws I) _ _ _ M pm sz s0 t g Hokws
@@ -292,7 +295,7 @@ Section UShEchoPay.
       iApply (echo_slot_of_kexec_at na alen afun fdv W' v I Hokws Hok
                 (echo_room_of_det (last_ws I) na alen Hokws Hna Halen)
                 Hlen Hlzf Hna Halen Hafun Hfd1' Hkt
-                with "Hpin Hlk Hnpw Hdep Hgen Hmp Hc"). }
+                with "Hpin Hlk Hnp0 Hdep Hgen Hmp Hc"). }
     iFrame "Hstd Hcr".
   Qed.
 

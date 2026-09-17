@@ -390,11 +390,12 @@ Section UInitKernel.
     iAssert (UkRun.urun_nopipe (uvis_fd W)) as "#Hnpw";
       [ iApply (UkRun.urun_nopipe_intro _ Hnpk) | ].
     iApply (uslot_of_urun_all W (2 + (4 + (12 + (12 + (4 + n0))))) (fun _ => True)%I
-              Hal8 Hroom Hstk Hfdlen Hstop Hlzf with "Hdep Hnpw Hmp").
+              false Hal8 Hroom Hstk Hfdlen Hstop Hlzf ltac:(discriminate)
+              with "Hdep Hnpw Hmp").
     (* init's own half of its children set travels with its cwd: nothing
        on init's walk READS it, but fork MOVES it, so the fragment goes
        down the chain index-free ([UserChildren.uch_any]). *)
-    iIntros (N h) "%Hpayeq %Hsz Hszf #Ht Hstd Hcwf Hchf _ Dlo _ Hrun".
+    iIntros (N h) "%Hpayeq %Hparkeq %Hsz Hszf #Ht Hstd Hcwf Hchf _ Dlo _ Hrun".
     pose proof (ukn_const_of_triv N (Hpayeq : UkRun.ukn_triv N)) as Hti.
     (* ---- the argument vector, out of the data below the frame ---- *)
     assert (Hsub16 :

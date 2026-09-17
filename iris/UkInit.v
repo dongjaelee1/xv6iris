@@ -1701,7 +1701,7 @@ Section UkInit.
       (Cr : cons_cred Σ) (γfd' : gname)
       (l : list fdstate) (γ : gname) (n : nat) : iProp Σ :=
     (UserFd.ustd γfd' l ∗ upos γ n ∗ ucons_pay cn γ T (cc_rd Cr) (-1)
-     ∗ init_lend_cred T st (cc_wp Cr) (cc_wb Cr) l n)%I.
+     ∗ init_lend_cred T st (cc_wp Cr) (cc_wbn Cr) l n)%I.
 
   (*  THE DESCRIPTOR ROW IS THE LEDGER AND ITS ARM, not the head as a
       disjunction: sh's entry is told one thing about its table -- fd 0 is
@@ -1715,14 +1715,14 @@ Section UkInit.
       (Cr : cons_cred Σ)
       (γ : gname) (n : nat) : iProp Σ :=
     (∀ (N' : uk_names Σ) (m : regfile) (pc : mword 64) (l : list fdstate),
-       ⌜ ukn_pay N' = ucons_pay cn γ T (init_rd (cc_rd Cr) (cc_wb Cr)) ⌝ -∗
+       ⌜ ukn_pay N' = ucons_pay cn γ T (init_rd (cc_rd Cr) (cc_wbn Cr)) ⌝ -∗
        ⌜ m !!! Regidx a0_idx = (mword_of_int 0x9a8 : mword 64) ⌝ -∗
        ⌜ m !!! Regidx a1_idx = (mword_of_int 0x1000 : mword 64) ⌝ -∗
        init_rodata (ukn_t N') -∗
        init_argv (ukn_d N') -∗
        UserFd.ustd (ukn_fd N') l -∗
        UInitFd.ufd_row T st l -∗
-       init_lend_cred T st (cc_wp Cr) (cc_wb Cr) l n -∗
+       init_lend_cred T st (cc_wp Cr) (cc_wbn Cr) l n -∗
        upos γ n -∗
        (* ...AND THE LEASE ITSELF (lane KILL-PAY, K4(a)), at the READ
           family: the console reader token used to ride in the child's own

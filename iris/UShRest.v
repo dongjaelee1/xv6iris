@@ -9,8 +9,8 @@
 (*  remaining premises are facts about THE ERA -- the paid child's walk,  *)
 (*  a killed child's credential, sh's own fork panic, the timelessness    *)
 (*  of the write credential.  Those are FALSE for an arbitrary family     *)
-(*  (take [Wc := emp] and the child law asks /echo to write "hello        *)
-(*  world" out of nothing), so no [forall T Wc Wb Pm] statement can carry *)
+(*  (take [Wc := emp] and the child law asks /echo to write the line's    *)
+(*  words out of nothing), so no [forall T Wc Wb Pm] statement can carry  *)
 (*  them: the obligation has to be discharged where the era is known.     *)
 (*  This file is that place, and [sh_rest_holds] is the one glue lemma.   *)
 (*  It is what deletes [UInitSh.sh_pay_rest] and, with it, the last       *)
@@ -60,11 +60,11 @@ Require Import UInitSh.           (* [sh_Rsh] *)
 (* ===================================================================== *)
 Lemma ush_line_lexable_holds : UkShLoop.ush_line_lexable.
 Proof.
-  intros f k len Hl.
-  destruct (UkShEcho.ush_line_toks_holds f k len Hl) as (_ & Hns & Htk).
+  intros ws f k len Hl.
+  destruct (UkShEcho.ush_line_toks_holds ws f k len Hl) as (_ & Hns & Htk).
   split; [ exact Hns | ].
-  exists UkShEcho.echo_toks.
-  split; [ exact Htk | exact UkShEcho.echo_toks_lt10 ].
+  exists (UkShEcho.echo_toks ws).
+  split; [ exact Htk | exact (UkShEcho.echo_toks_lt10 ws (proj1 Hl)) ].
 Qed.
 
 (* ===================================================================== *)
@@ -113,8 +113,8 @@ Section UShRest.
      pieces the loop carries in the payload's place. *)
   Local Notation Wc := (EchoLinksLine.ewc_lcred T γ (S gen_id)).
   Local Notation Wbn :=
-    (fun n : nat => ∃ v : era_pins,
-       era_pin γ (S gen_id) v ∗ EchoLinks.ewc_ban T v n 0%nat)%I.
+    (fun I : list (bv 8) => ∃ v : era_pins,
+       era_pin γ (S gen_id) v ∗ EchoLinks.ewc_ban T v I 0%nat)%I.
 
   (* =================================================================== *)
   (*  1.  THE GLUE                                                        *)
@@ -147,10 +147,10 @@ Section UShRest.
     intros Hkt.
     (* the credential's conversion at a fork that failed: the block the
        line owed, read as a boundary credential *)
-    assert (Hwbl : forall i : nat,
-              ⊢ EchoLinksLine.ewc_lcred T γ (S gen_id) i 3%nat -∗
-                EchoLinksLine.ewc_lcred T γ (S gen_id) i 0%nat)
-      by (intro i; exact (EchoLinksLine.ewc_lcred_blk_line T γ (S gen_id) i)).
+    assert (Hwbl : forall I : list (bv 8),
+              ⊢ EchoLinksLine.ewc_lcred T γ (S gen_id) I 3%nat -∗
+                EchoLinksLine.ewc_lcred T γ (S gen_id) I 0%nat)
+      by (intro I; exact (EchoLinksLine.ewc_lcred_blk_line T γ (S gen_id) I)).
     iIntros "#Hlk #Hdep #Hslot #Hpin".
     iDestruct "Hpin" as (v) "#Hp".
     (* ---- the three era laws, as named hypotheses ---- *)

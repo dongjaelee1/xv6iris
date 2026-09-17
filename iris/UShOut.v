@@ -72,6 +72,8 @@ Require Import UkWriteClosed.      (* [ksh_w_of_closed]: the prompt on a
                                       closed fd 2 (step 3) *)
 Require Import UShKernel.          (* [sh_prompt_law]: the conversion of
                                       the loop's credential into this call *)
+Require Import LineWords.          (* [rest_of] / [nlines] *)
+Require Import EchoOutPure.        (* [pending_at] *)
 Require Import EchoDisc.
 Require Import EchoOut.
 Require Import EchoLinks.
@@ -110,26 +112,35 @@ Proof. vm_compute. reflexivity. Qed.
 Lemma pro_alts_len3 : (0 < length pro_alts)%nat.
 Proof. vm_compute. lia. Qed.
 
-(* ROUND 0's stream, before and after the choice: eighteen banner bytes,
-   then -- once alternative 0 is filed -- the prompt's two. *)
-Lemma sh_pro_stage : length (proc_upto [3%nat] [] (S 0%nat)) = 18%nat.
-Proof. vm_compute. reflexivity. Qed.
+(* ROUND 0's stream AT THE EMPTY INPUT, before and after the choice:
+   eighteen banner bytes, then -- once alternative 0 is filed -- the
+   prompt's two.  The round a shell runs in is decided by the INPUT now
+   (project echo-any-line), and round 0's input is [[]]. *)
+Lemma sh_pro_stage : length (proc_stream [3%nat] [] []) = 18%nat.
+Proof.
+  rewrite /proc_stream proc_before_nil pending_at_nil.
+  vm_compute. reflexivity.
+Qed.
 
-Lemma sh_space_stream : proc_upto [3%nat; 0%nat] [] (S 0%nat) !! 19%nat = Some sh_space_b.
-Proof. vm_compute. reflexivity. Qed.
+Lemma sh_space_stream :
+  proc_stream [3%nat; 0%nat] [] [] !! 19%nat = Some sh_space_b.
+Proof.
+  rewrite /proc_stream proc_before_nil pending_at_nil.
+  vm_compute. reflexivity.
+Qed.
 
 Lemma sh_pro_open :
-  ~ pro_done (pro_from (pro_idx [] (0 `div` length echo_line)) []).
+  ~ pro_done (pro_from (pro_idx [] (nlines ([] : list (bv 8)))) []).
 Proof. vm_compute. intro H. inversion H. Qed.
 
-Lemma sh_pro_div : (0 `div` length echo_line <= length ([] : list nat))%nat.
+Lemma sh_pro_lines : (nlines ([] : list (bv 8)) <= length ([] : list nat))%nat.
 Proof. vm_compute. lia. Qed.
 
-Lemma sh_pro_mod : (0 `mod` length echo_line)%nat = 0%nat.
-Proof. vm_compute. reflexivity. Qed.
+Lemma sh_pro_rest : rest_of ([] : list (bv 8)) = [].
+Proof. exact rest_of_nil. Qed.
 
-Lemma sh_pro_pin (ps cs : list nat) : pro_pin ps cs 0%nat.
-Proof. intros q Hq. lia. Qed.
+Lemma sh_pro_pin (ps cs : list nat) : pro_pin ps cs [].
+Proof. exact (pro_pin_nil ps cs). Qed.
 
 (* fd 2, as the kernel narrows it *)
 Lemma sh_fd2_signed : bv_signed (trunc32 (mword_of_int 2 : mword 64)) = Z.of_nat 2.
@@ -196,26 +207,26 @@ Section UShOut.
   (*  arm continues the tower on its own, which is what                   *)
   (*  [EchoLinks.echo_link_taint] is for -- both steps carry it.          *)
   (* =================================================================== *)
-  Lemma ushpr_step (v : era_pins) (n : nat) (p : nat) (b : bv 8)
+  Lemma ushpr_step (v : era_pins) (I : list (bv 8)) (p : nat) (b : bv 8)
       (Φ : iProp Σ) :
     u_prompt !! p = Some b ->
     (p < 2)%nat ->
     era_pin γ (S gen_id) v -∗
     echo_links T γ -∗
-    ushpr v n p -∗
-    (ushpr v n (S p) -∗ Φ) -∗
+    ushpr v I p -∗
+    (ushpr v I (S p) -∗ Φ) -∗
     out_link Uart0 (S gen_id) b Φ.
   Proof.
     intros Hb Hp. destruct p as [| [| p]]; [| | exfalso; lia].
     - assert (Hb0 : b = u_prompt !!! 0%nat).
       { rewrite wr_prompt_head in Hb. by injection Hb. }
       iIntros "#Hpin #Hlk Hc HΦ".
-      iApply (EchoLinks.echo_prompt_dollar T γ (S gen_id) v n b Φ Hb0
+      iApply (EchoLinks.echo_prompt_dollar T γ (S gen_id) v I b Φ Hb0
                 with "Hpin Hlk Hc HΦ").
     - assert (Hb1 : b = u_prompt !!! 1%nat).
       { rewrite wr_prompt_tail in Hb. by injection Hb. }
       iIntros "#Hpin #Hlk Hc HΦ".
-      iApply (EchoLinks.echo_prompt_space T γ (S gen_id) v n b Φ Hb1
+      iApply (EchoLinks.echo_prompt_space T γ (S gen_id) v I b Φ Hb1
                 with "Hpin Hlk Hc HΦ").
   Qed.
 
@@ -227,7 +238,7 @@ Section UShOut.
   (*  bundle answers both, which is what makes a SHORT write survivable   *)
   (*  at the logic level (and refutable at the leaf).                     *)
   (* =================================================================== *)
-  Lemma ushpr_chain (v : era_pins) (n : nat) (M : gmap Z (bv 8))
+  Lemma ushpr_chain (v : era_pins) (I : list (bv 8)) (M : gmap Z (bv 8))
       (ua : mword 64) (fb : nat -> bv 8) :
     forall (c i : nat),
     (i + c <= 2)%nat ->
@@ -237,8 +248,8 @@ Section UShOut.
        M !! uint (add_vec_int ua (Z.of_nat j)) = Some (fb j)) ->
     era_pin γ (S gen_id) v -∗
     echo_links T γ -∗
-    ushpr v n i -∗
-    cons_out_chain (S gen_id) M ua (fun j : nat => ushpr v n j) i c.
+    ushpr v I i -∗
+    cons_out_chain (S gen_id) M ua (fun j : nat => ushpr v I j) i c.
   Proof.
     intros c. induction c as [| c IH]; intros i Hle Hline HM.
     - iIntros "_ _ Hc". cbn [cons_out_chain]. iExact "Hc".
@@ -248,7 +259,7 @@ Section UShOut.
         assert (Hbb : b = fb i).
         { rewrite (HM i ltac:(lia) ltac:(lia)) in Hbm. by injection Hbm. }
         subst b.
-        iApply (ushpr_step v n i (fb i) _
+        iApply (ushpr_step v I i (fb i) _
                   (Hline i ltac:(lia) ltac:(lia)) ltac:(lia)
                   with "Hpin Hlk Hc").
         iIntros "Hc".
@@ -276,16 +287,16 @@ Section UShOut.
      links and answered on the ONE ledger row it asks for -- sh's fd 2 is
      the console, which is /init's pinned table inherited through the exec
      channel.  What comes back is the cursor two bytes on, or the taint. *)
-  Lemma ksh_w_of_link_prompt (N : uk_names Σ) (v : era_pins) (n : nat)
-      (l : list fdstate) (rb : bool) :
+  Lemma ksh_w_of_link_prompt (N : uk_names Σ) (v : era_pins)
+      (I : list (bv 8)) (l : list fdstate) (rb : bool) :
     l !! 2%nat = Some (FdOpen rb true (FdDevice CONSOLE)) ->
     era_pin γ (S gen_id) v -∗
     echo_links T γ -∗
     shk_rodata (ukn_t N) -∗
     UkSh.ksh_w N (mword_of_int 2 : mword 64)
       (mword_of_int sh_prompt_pv) 2%nat
-      (UserFd.ustd (ukn_fd N) l ∗ ushpr v n 0%nat)
-      (UserFd.ustd (ukn_fd N) l ∗ ushpr v n 2%nat).
+      (UserFd.ustd (ukn_fd N) l ∗ ushpr v I 0%nat)
+      (UserFd.ustd (ukn_fd N) l ∗ ushpr v I 2%nat).
   Proof.
     intros Hl2.
     iIntros "#Hpin #Hlk #Hro" (h m avail)
@@ -354,11 +365,11 @@ Section UShOut.
                         !!! Regidx a2_idx)) = 2%nat)
       by (rewrite Ham2 sh_count2; lia).
     iApply (UkSh.wp_ksh_write_chain_txt N h m avail
-              (ksh_fam N (fun j : nat => ushpr v n j)) l
+              (ksh_fam N (fun j : nat => ushpr v I j)) l
               2%nat (fun j : nat => u_prompt !!! j)
               with "Hcode Hrun [Hc] Hstd Hbs").
     { (* THE DEPOSIT: sh's own chain at its own cursor *)
-      iApply (uwrite_chain_sup N (fun j : nat => ushpr v n j)
+      iApply (uwrite_chain_sup N (fun j : nat => ushpr v I j)
                 (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m)
                 (add_vec_int (mword_of_int ShSyms.write : mword 64) 2)
                 l 2%nat rb CONSOLE Hi0 ltac:(unfold NSTD; lia) Hl2).
@@ -371,7 +382,7 @@ Section UShOut.
       iFrame "Hheap".
       (* the two keys the chain is indexed by, as plain addresses *)
       rewrite Ham1 Hcnt.
-      iApply (ushpr_chain v n M (m !!! Regidx a1_idx)
+      iApply (ushpr_chain v I M (m !!! Regidx a1_idx)
                 (fun j : nat => u_prompt !!! j) 2%nat 0%nat ltac:(lia)
                 ltac:(intros j _ Hj;
                       destruct j as [| [| j]];
@@ -386,7 +397,7 @@ Section UShOut.
                 with "Hpin Hlk Hc"). }
     iIntros (h' ret W cw' cs')
       "%Hka0 %Hka1 %Hka2 %Htk %Hlz %Hnf Hstd Hpost Hrun".
-    iDestruct (uwrite_no_short (fun j : nat => ushpr v n j)
+    iDestruct (uwrite_no_short (fun j : nat => ushpr v I j)
                  (ukn_pay N) W ret (uvis_M W) (uvis_fd W)
                  cw' cs' l 2%nat rb 2%nat
                  ltac:(rewrite Hka0 Ha0; vm_compute; reflexivity)
@@ -404,20 +415,20 @@ Section UShOut.
   (*      the command loop names no [v]; the call reads it out and puts   *)
   (*      it back.  This is what [UShKernel.sh_prompt_law] is built from. *)
   (* =================================================================== *)
-  Lemma ksh_w_of_link_cred (N : uk_names Σ) (n : nat) (l : list fdstate)
-      (rb : bool) :
+  Lemma ksh_w_of_link_cred (N : uk_names Σ) (I : list (bv 8))
+      (l : list fdstate) (rb : bool) :
     l !! 2%nat = Some (FdOpen rb true (FdDevice CONSOLE)) ->
     echo_links T γ -∗
     shk_rodata (ukn_t N) -∗
     UkSh.ksh_w N (mword_of_int 2 : mword 64)
       (mword_of_int sh_prompt_pv) 2%nat
-      (UserFd.ustd (ukn_fd N) l ∗ EchoLinks.ewc_cred T γ (S gen_id) n 0%nat)
-      (UserFd.ustd (ukn_fd N) l ∗ EchoLinks.ewc_cred T γ (S gen_id) n 2%nat).
+      (UserFd.ustd (ukn_fd N) l ∗ EchoLinks.ewc_cred T γ (S gen_id) I 0%nat)
+      (UserFd.ustd (ukn_fd N) l ∗ EchoLinks.ewc_cred T γ (S gen_id) I 2%nat).
   Proof.
     intros Hl2. iIntros "#Hlk #Hro" (h m avail)
       "%Ha0 %Ha1 %Ha2 #Hcode [Hstd Hc] Hrun Hcont".
     rewrite /EchoLinks.ewc_cred. iDestruct "Hc" as (v) "[#Hpin Hc]".
-    iApply (ksh_w_of_link_prompt N v n l rb Hl2
+    iApply (ksh_w_of_link_prompt N v I l rb Hl2
               with "Hpin Hlk Hro [%] [%] [%] Hcode [$Hstd $Hc] Hrun [Hcont]");
       [ exact Ha0 | exact Ha1 | exact Ha2 | ].
     iIntros (h' ret) "[Hstd Hc] Hrun".
@@ -435,8 +446,8 @@ Section UShOut.
     iIntros "#Hlk". rewrite /UShKernel.sh_prompt_law.
     iIntros "!>" (N) "#Hro". rewrite /UkSh.ush_prompt_law.
     iModIntro. iSplitL "".
-    - iIntros (n l) "%Hfd2". destruct Hfd2 as [rb Hl2].
-      iApply (ksh_w_of_link_cred N n l rb Hl2 with "Hlk Hro").
+    - iIntros (I l) "%Hfd2". destruct Hfd2 as [rb Hl2].
+      iApply (ksh_w_of_link_cred N I l rb Hl2 with "Hlk Hro").
     - iIntros (l) "%Hcl".
       iApply (UkWriteClosed.ksh_w_of_closed N (mword_of_int 2)
                 (mword_of_int sh_prompt_pv) 2%nat l 2%nat

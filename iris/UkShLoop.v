@@ -53,12 +53,12 @@ Require Import Xv6Cameras.   (* [uartGhostG] -- the console ring's cameras *)
 (* THE DISCIPLINED LINE LEXES (lane SH-LINE 2b, L3).                      *)
 (*                                                                        *)
 (* [UkShFork.ushf_lexable] was "every line the user could type lexes",     *)
-(* which is false.  This is the true replacement: the ONE line the read's  *)
+(* which is false.  This is the true replacement: the line the read's      *)
 (* receipt delivers ([UkSh.ush_line_is] -- the buffer at [k] holds         *)
-(* [EchoDisc.echo_line]) has no symbol byte and tokenises into fewer than  *)
-(* ten tokens.  A CLOSED computation at the literal, so no assumption      *)
-(* about user input survives it; [UConsLine.ush_echo_tokens] is the        *)
-(* computation and E4 ([UkShEcho.ush_line_toks_holds]) is the stronger     *)
+(* [wl_line ws] for an ADMISSIBLE word list) has no symbol byte and        *)
+(* tokenises into fewer than ten tokens.  Not a computation at a literal   *)
+(* any more but a fact about every admissible line, off [EchoDisc.line_ok] *)
+(* and [UkShWords]; E4 ([UkShEcho.ush_line_toks_holds]) is the stronger    *)
 (* form with the token list named.                                        *)
 (*                                                                        *)
 (* IT LIVES HERE because it is the LOWEST file that sees both halves:      *)
@@ -68,8 +68,8 @@ Require Import Xv6Cameras.   (* [uartGhostG] -- the console ring's cameras *)
 (* business in a proofmode-heavy walk file. *)
 (* ===================================================================== *)
 Definition ush_line_lexable : Prop :=
-  forall (f : nat -> bv 8) (k len : nat),
-    UkSh.ush_line_is f k len ->
+  forall (ws : list (list (bv 8))) (f : nat -> bv 8) (k len : nat),
+    UkSh.ush_line_is ws f k len ->
     ushp_no_symbols len (fun j : nat => f (k + j)%nat)
     /\ exists toks : list (nat * nat),
          ushp_tokens len (fun j : nat => f (k + j)%nat) 0 toks
@@ -140,8 +140,8 @@ Section UkShLoop.
      the command loop carries beside its cursor, opaque here for [T]'s
      reason -- and, at step 3, the banner-owed credential [Wb] and the
      lease's pieces [Pm] that the loop holds in its place. *)
-  Definition ushl_head (T : iProp Σ) (Wc : nat -> nat -> iProp Σ)
-      (Wb : nat -> iProp Σ) (Pm : nat -> iProp Σ)
+  Definition ushl_head (T : iProp Σ) (Wc : list (bv 8) -> nat -> iProp Σ)
+      (Wb : list (bv 8) -> iProp Σ) (Pm : list (bv 8) -> iProp Σ)
       (l : list fdstate) (sz : Z) : iProp Σ :=
     (∀ (h : CpuId) (m : regfile) (f : nat -> bv 8) (n : nat),
        ⌜ UkSh.ush_regs m ⌝ -∗
@@ -170,8 +170,8 @@ Section UkShLoop.
      slot beside the cursor, so this shell-level head -- which is what
      every arm of main's body discharges -- names nothing beyond the
      state. *)
-  Lemma ushl_head_of_R (T : iProp Σ) (Wc : nat -> nat -> iProp Σ)
-      (Wb : nat -> iProp Σ) (Pm : nat -> iProp Σ)
+  Lemma ushl_head_of_R (T : iProp Σ) (Wc : list (bv 8) -> nat -> iProp Σ)
+      (Wb : list (bv 8) -> iProp Σ) (Pm : list (bv 8) -> iProp Σ)
       (l : list fdstate) (sz : Z) :
     UkSh.ush_loop_head N γp T Wc Wb Pm (ushl_R sz) l -∗
     ushl_head T Wc Wb Pm l sz.

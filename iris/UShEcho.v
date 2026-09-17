@@ -78,6 +78,7 @@ Require Import KexecDefs.
 Require Import UkAbi.
 Require Import UCodeEcho.
 Require Import UEchoKernel.
+Require Import LineWords.       (* [wl_line]: the admissible line *)
 Require Import UkShRun UkShEcho.
 Require Import EchoDisc.
 Require User.EchoSyms.
@@ -105,25 +106,22 @@ Proof. vm_compute. reflexivity. Qed.
 Lemma echo_pl_len : length echo_pl = 4%nat.
 Proof. reflexivity. Qed.
 
-(* ...and the bytes are the disciplined line's first token, which is what
-   ties the pin to what sh actually passes ([UkShEcho.echo_argv_bytes] at
-   [i = 0]). *)
+(* ...and the bytes are the COMMAND NAME, which is what ties the pin to
+   what sh actually passes: word 0 of every admissible line is "echo"
+   ([EchoDisc.line_ok_head]). *)
 Lemma echo_pl_line (j : nat) :
-  (j < 4)%nat -> echo_pl !!! j = echo_line !!! j.
+  (j < 4)%nat -> echo_pl !!! j = cmd_echo !!! j.
 Proof.
   intro Hj.
   do 4 (destruct j as [| j]; [ vm_compute; reflexivity | ]). lia.
 Qed.
 
-(* ...and no byte of the line is a NUL, which is what pins each argument's
-   LENGTH: a [bb_cstr] that stopped early would have to find one. *)
-Lemma echo_line_nonul (j : nat) :
-  (j < length echo_line)%nat -> echo_line !!! j <> ubyte0.
-Proof.
-  intro Hj. pose proof (echo_line_byte_val_at j Hj) as Hv.
-  intro Hc. apply (f_equal bv_unsigned) in Hc.
-  rewrite (_ : bv_unsigned ubyte0 = 0%Z) in Hc; [lia | by vm_compute].
-Qed.
+(* ...and no byte of an admissible line is a NUL, which is what pins each
+   argument's LENGTH: a [bb_cstr] that stopped early would have to find
+   one. *)
+Lemma line_nonul (ws : list (list (bv 8))) (j : nat) :
+  line_ok ws -> (j < length (wl_line ws))%nat -> wl_line ws !!! j <> ubyte0.
+Proof. intro Hok. exact (UkSh.ush_line_no_nul ws j (line_ok_wf ws Hok)). Qed.
 
 Lemma ubyte0_bv0 : ubyte0 = (bv_0 8 : bv 8).
 Proof. apply bv_eq. vm_compute. reflexivity. Qed.
@@ -227,19 +225,54 @@ Proof. unfold kexec_sz. rewrite echo_kexec_top. reflexivity. Qed.
    long enough to crowd echo's frame off its own stack page is a line the
    claim must not be about.  [UInitSh.init_sh_room] is the same shape for
    sh's frames at init's one argument. *)
-Definition echo_argv_fits (alen : nat -> nat) : Prop :=
-  kxc_span alen (length echo_ws)
-    + (8 * (Z.of_nat (length echo_ws) + 1) + 16)
+Definition echo_argv_fits (ws : list (list (bv 8))) (alen : nat -> nat)
+  : Prop :=
+  kxc_span alen (length ws)
+    + (8 * (Z.of_nat (length ws) + 1) + 16)
   <= PGSIZE - 96.
 
-Lemma echo_room (alen : nat -> nat) :
-  echo_argv_fits alen ->
+Lemma echo_room (ws : list (list (bv 8))) (alen : nat -> nat) :
+  echo_argv_fits ws alen ->
   kexec_sz ElfUser.echo_elf - PGSIZE + 96
-    <= kxc_sp_final (kexec_sz ElfUser.echo_elf) alen (length echo_ws).
+    <= kxc_sp_final (kexec_sz ElfUser.echo_elf) alen (length ws).
 Proof.
   rewrite /echo_argv_fits. intro Hfit. rewrite echo_kexec_sz.
-  pose proof (kxc_sp_final_ge 0x4000 alen (length echo_ws)).
+  pose proof (kxc_sp_final_ge 0x4000 alen (length ws)).
   unfold PGSIZE in *. lia.
+Qed.
+
+(* ...AND EVERY ADMISSIBLE LINE EARNS THE ROOM.  One argument costs its
+   bytes, its NUL and at most fifteen bytes of alignment
+   ([KexecDefs.kxc_span] adds [len i + 16] per word), a word of an
+   admissible line is shorter than [EchoDisc.line_max] = 100 bytes, and
+   [line_ok] allows fewer than ten words -- so the whole push is under
+   1200 bytes of a 4096-byte stack page.  A line long enough to crowd
+   echo's frame off that page is a line the claim must not be about, and
+   [line_ok] is where it is excluded. *)
+Lemma kxc_span_le_line (len : nat -> nat) (n : nat) :
+  (forall i : nat, (i < n)%nat -> (len i < line_max)%nat) ->
+  kxc_span len n <= 115 * Z.of_nat n.       (* 115 = (line_max - 1) + 16 *)
+Proof.
+  unfold line_max.
+  induction n as [| n IH]; cbn [kxc_span]; intro Hb; [ lia | ].
+  assert (Hb' : forall i : nat, (i < n)%nat -> (len i < 100)%nat)
+    by (intros i Hi; apply Hb; lia).
+  pose proof (IH Hb') as Hprev. pose proof (Hb n ltac:(lia)) as Hn. lia.
+Qed.
+
+Lemma echo_argv_fits_of_ok (ws : list (list (bv 8))) :
+  line_ok ws -> echo_argv_fits ws (UkShEcho.echo_alen ws).
+Proof.
+  intro Hok. rewrite /echo_argv_fits.
+  assert (Hb : forall i : nat, (i < length ws)%nat ->
+            (UkShEcho.echo_alen ws i < line_max)%nat).
+  { intros i Hi.
+    pose proof (UkShEcho.echo_off_lt ws i (UkShEcho.echo_alen ws i)
+                  Hok Hi ltac:(lia)) as Hlt.
+    pose proof (line_ok_len ws Hok) as Hlm. lia. }
+  pose proof (kxc_span_le_line (UkShEcho.echo_alen ws) (length ws) Hb) as Hsp.
+  pose proof (line_ok_lt10 ws Hok) as H10.
+  unfold PGSIZE. lia.
 Qed.
 
 (* ===================================================================== *)
@@ -918,52 +951,55 @@ Section UShEcho.
      is read ONCE, here, into the pure summary [echo_node_img] -- exactly
      what [UInitSh] gets for free from [uimg_sub UCodeInit.init_argv_map M]
      at a CONSTANT image and has to be extracted for a malloc'd one. *)
-  Definition echo_node_img (M : gmap Z (bv 8)) (s0 t : Z)
-      (g : nat -> bv 8) : Prop :=
+  Definition echo_node_img (ws : list (list (bv 8))) (M : gmap Z (bv 8))
+      (s0 t : Z) (g : nat -> bv 8) : Prop :=
     0 < t < 2 ^ 38
-    /\ (forall i : nat, (i < length echo_ws)%nat ->
-          0 < s0 + Z.of_nat (UkShEcho.echo_off i) < 2 ^ 38)
-    /\ (forall i : nat, (i < length echo_ws)%nat -> forall k : nat, (k < 8)%nat ->
+    /\ (forall i : nat, (i < length ws)%nat ->
+          0 < s0 + Z.of_nat (UkShEcho.echo_off ws i) < 2 ^ 38)
+    /\ (forall i : nat, (i < length ws)%nat -> forall k : nat, (k < 8)%nat ->
           M !! (t + 8 + 8 * Z.of_nat i + Z.of_nat k)
           = bv_to_little_endian 8 8
-              (s0 + Z.of_nat (UkShEcho.echo_off i)) !! k)
+              (s0 + Z.of_nat (UkShEcho.echo_off ws i)) !! k)
     /\ (forall k : nat, (k < 8)%nat ->
-          M !! (t + 8 + 8 * Z.of_nat (length echo_ws) + Z.of_nat k)
+          M !! (t + 8 + 8 * Z.of_nat (length ws) + Z.of_nat k)
           = bv_to_little_endian 8 8 0 !! k)
-    /\ (forall i : nat, (i < length echo_ws)%nat ->
-          forall j : nat, (j < UkShEcho.echo_alen i)%nat ->
-            M !! (s0 + Z.of_nat (UkShEcho.echo_off i) + Z.of_nat j)
-            = Some (g (UkShEcho.echo_off i + j)%nat))
-    /\ (forall i : nat, (i < length echo_ws)%nat ->
-          M !! (s0 + Z.of_nat (UkShEcho.echo_off i)
-                + Z.of_nat (UkShEcho.echo_alen i)) = Some ubyte0).
+    /\ (forall i : nat, (i < length ws)%nat ->
+          forall j : nat, (j < UkShEcho.echo_alen ws i)%nat ->
+            M !! (s0 + Z.of_nat (UkShEcho.echo_off ws i) + Z.of_nat j)
+            = Some (g (UkShEcho.echo_off ws i + j)%nat))
+    /\ (forall i : nat, (i < length ws)%nat ->
+          M !! (s0 + Z.of_nat (UkShEcho.echo_off ws i)
+                + Z.of_nat (UkShEcho.echo_alen ws i)) = Some ubyte0).
 
   (* ONE ARGUMENT'S FOUR ROWS, at an ARBITRARY index.  [uheap]'s readings
      are pure, so the heap survives all four of them -- which is what lets
      the count be inducted on rather than unrolled. *)
-  Definition echo_node_row (M : gmap Z (bv 8)) (s0 t : Z)
-      (g : nat -> bv 8) (i : nat) : Prop :=
-    0 < s0 + Z.of_nat (UkShEcho.echo_off i) < 2 ^ 38
+  Definition echo_node_row (ws : list (list (bv 8))) (M : gmap Z (bv 8))
+      (s0 t : Z) (g : nat -> bv 8) (i : nat) : Prop :=
+    0 < s0 + Z.of_nat (UkShEcho.echo_off ws i) < 2 ^ 38
     /\ (forall k : nat, (k < 8)%nat ->
           M !! (t + 8 + 8 * Z.of_nat i + Z.of_nat k)
           = bv_to_little_endian 8 8
-              (s0 + Z.of_nat (UkShEcho.echo_off i)) !! k)
-    /\ (forall j : nat, (j < UkShEcho.echo_alen i)%nat ->
-          M !! (s0 + Z.of_nat (UkShEcho.echo_off i) + Z.of_nat j)
-          = Some (g (UkShEcho.echo_off i + j)%nat))
-    /\ M !! (s0 + Z.of_nat (UkShEcho.echo_off i)
-             + Z.of_nat (UkShEcho.echo_alen i)) = Some ubyte0.
+              (s0 + Z.of_nat (UkShEcho.echo_off ws i)) !! k)
+    /\ (forall j : nat, (j < UkShEcho.echo_alen ws i)%nat ->
+          M !! (s0 + Z.of_nat (UkShEcho.echo_off ws i) + Z.of_nat j)
+          = Some (g (UkShEcho.echo_off ws i + j)%nat))
+    /\ M !! (s0 + Z.of_nat (UkShEcho.echo_off ws i)
+             + Z.of_nat (UkShEcho.echo_alen ws i)) = Some ubyte0.
 
-  Lemma echo_node_row_of_cmd (gt gd gs : gname) (M : gmap Z (bv 8))
+  Lemma echo_node_row_of_cmd (ws : list (list (bv 8))) (gt gd gs : gname)
+      (M : gmap Z (bv 8))
       (pm : gmap (mword 27) uperm) (sz s0 t : Z) (g : nat -> bv 8) (i : nat) :
-    (i < length echo_ws)%nat ->
-    uheap gt gd gs M pm sz -∗ ush_cmd gd t (UkShEcho.echo_cmd s0 g) -∗
-    ⌜ echo_node_row M s0 t g i ⌝.
+    line_ok ws ->
+    (i < length ws)%nat ->
+    uheap gt gd gs M pm sz -∗ ush_cmd gd t (UkShEcho.echo_cmd ws s0 g) -∗
+    ⌜ echo_node_row ws M s0 t g i ⌝.
   Proof.
-    intro Hi. iIntros "Hheap #Hc".
-    iDestruct (UkShEcho.echo_cmd_word gd t s0 g i Hi with "Hc") as "#Hw".
+    intros Hok Hi. iIntros "Hheap #Hc".
+    iDestruct (UkShEcho.echo_cmd_word ws gd t s0 g i Hok Hi with "Hc") as "#Hw".
     iDestruct (uheap_uwordq_img with "Hheap Hw") as %Hb.
-    iDestruct (UkShEcho.echo_cmd_str gd t s0 g i Hi with "Hc") as "[%Hr #Hs]".
+    iDestruct (UkShEcho.echo_cmd_str ws gd t s0 g i Hok Hi with "Hc")
+      as "[%Hr #Hs]".
     iDestruct "Hs" as "(_ & _ & Hbs & Hnl)".
     iDestruct (uheap_ubytesq_img with "Hheap Hbs") as %Hg.
     iDestruct (uheap_ubyte with "Hheap Hnl") as %(Hz & _ & _).
@@ -973,16 +1009,19 @@ Section UShEcho.
 
   (* ...AND EVERY ARGUMENT, by induction on the count.  This was twelve
      [iDestruct]s at indices 0, 1 and 2. *)
-  Lemma echo_node_rows_of_cmd (gt gd gs : gname) (M : gmap Z (bv 8))
+  Lemma echo_node_rows_of_cmd (ws : list (list (bv 8))) (gt gd gs : gname)
+      (M : gmap Z (bv 8))
       (pm : gmap (mword 27) uperm) (sz s0 t : Z) (g : nat -> bv 8) (n : nat) :
-    (n <= length echo_ws)%nat ->
-    uheap gt gd gs M pm sz -∗ ush_cmd gd t (UkShEcho.echo_cmd s0 g) -∗
-    ⌜ forall i : nat, (i < n)%nat -> echo_node_row M s0 t g i ⌝.
+    line_ok ws ->
+    (n <= length ws)%nat ->
+    uheap gt gd gs M pm sz -∗ ush_cmd gd t (UkShEcho.echo_cmd ws s0 g) -∗
+    ⌜ forall i : nat, (i < n)%nat -> echo_node_row ws M s0 t g i ⌝.
   Proof.
+    intro Hok.
     induction n as [| n IH]; intro Hn; iIntros "Hheap #Hc".
     - iPureIntro. intros i Hi. exfalso. lia.
     - iDestruct (IH ltac:(lia) with "Hheap Hc") as %Hprev.
-      iDestruct (echo_node_row_of_cmd gt gd gs M pm sz s0 t g n
+      iDestruct (echo_node_row_of_cmd ws gt gd gs M pm sz s0 t g n Hok
                    ltac:(lia) with "Hheap Hc") as %Hnew.
       iPureIntro. intros i Hi.
       destruct (decide (i < n)%nat) as [Hlt | Hge]; [ exact (Hprev i Hlt) | ].
@@ -992,17 +1031,19 @@ Section UShEcho.
   (* ...and the ONE place the heap is touched: the deposit's loan
      ([UkRun.udepw_at] hands the supplier the two authorities and takes
      them back), read against the node's own persistent runs. *)
-  Lemma echo_node_img_of_cmd (gt gd gs : gname) (M : gmap Z (bv 8))
+  Lemma echo_node_img_of_cmd (ws : list (list (bv 8))) (gt gd gs : gname)
+      (M : gmap Z (bv 8))
       (pm : gmap (mword 27) uperm) (sz s0 t : Z) (g : nat -> bv 8) :
-    uheap gt gd gs M pm sz -∗ ush_cmd gd t (UkShEcho.echo_cmd s0 g) -∗
-    ⌜ echo_node_img M s0 t g ⌝.
+    line_ok ws ->
+    uheap gt gd gs M pm sz -∗ ush_cmd gd t (UkShEcho.echo_cmd ws s0 g) -∗
+    ⌜ echo_node_img ws M s0 t g ⌝.
   Proof.
-    iIntros "Hheap #Hc".
-    iDestruct (UkShEcho.echo_cmd_addr with "Hc") as %[Htr _].
-    iDestruct (UkShEcho.echo_cmd_cap gd t s0 g with "Hc") as "#Hwc".
+    intro Hok. iIntros "Hheap #Hc".
+    iDestruct (UkShEcho.echo_cmd_addr ws with "Hc") as %[Htr _].
+    iDestruct (UkShEcho.echo_cmd_cap ws gd t s0 g with "Hc") as "#Hwc".
     iDestruct (uheap_uwordq_img with "Hheap Hwc") as %Hbc.
-    iDestruct (echo_node_rows_of_cmd gt gd gs M pm sz s0 t g
-                 (length echo_ws) ltac:(lia) with "Hheap Hc") as %Hall.
+    iDestruct (echo_node_rows_of_cmd ws gt gd gs M pm sz s0 t g
+                 (length ws) Hok ltac:(lia) with "Hheap Hc") as %Hall.
     iPureIntro. rewrite /echo_node_img. split_and!.
     - lia.
     - lia.
@@ -1014,24 +1055,29 @@ Section UShEcho.
   Qed.
 
   (* THE PATH: argv[0]'s string IS "echo", terminated. *)
-  Definition sh_echo_path_of : Prop :=
+  Definition sh_echo_path_of (ws : list (list (bv 8))) : Prop :=
+    line_ok ws ->
     forall (M : gmap Z (bv 8)) (s0 t : Z) (g : nat -> bv 8),
-      echo_node_img M s0 t g ->
-      UkShEcho.echo_argv_bytes g ->
+      echo_node_img ws M s0 t g ->
+      UkShEcho.echo_argv_bytes ws g ->
       exec_path_of M (mword_of_int s0 : mword 64) echo_pl.
 
-  Lemma sh_echo_path_of_holds : sh_echo_path_of.
+  Lemma sh_echo_path_of_holds (ws : list (list (bv 8))) :
+    sh_echo_path_of ws.
   Proof.
-    intros M s0 t g (_ & Hri & _ & _ & Hgi & Hzi) Hbytes.
-    pose proof (Hri 0%nat ltac:(exact echo_ws_pos)) as Hr.
+    intros Hok M s0 t g (_ & Hri & _ & _ & Hgi & Hzi) Hbytes.
+    pose proof (Hri 0%nat ltac:(exact (line_ok_pos ws Hok))) as Hr.
     rewrite UkShEcho.echo_off_0 in Hr. rewrite Z.add_0_r in Hr.
+    pose proof (line_ok_pos ws Hok) as Hpos.
+    pose proof (UkShEcho.echo_off_0 ws) as Hoff0.
+    pose proof (UkShEcho.echo_alen_0 ws Hok) as Halen0.
     assert (Hn4 : M !! (s0 + 4) = Some (bv_0 8)).
     { rewrite <- ubyte0_bv0.
       replace (s0 + 4)
-        with (s0 + Z.of_nat (UkShEcho.echo_off 0%nat)
-              + Z.of_nat (UkShEcho.echo_alen 0%nat))
-        by (rewrite UkShEcho.echo_off_0 UkShEcho.echo_alen_0; lia).
-      exact (Hzi 0%nat ltac:(exact echo_ws_pos)). }
+        with (s0 + Z.of_nat (UkShEcho.echo_off ws 0%nat)
+              + Z.of_nat (UkShEcho.echo_alen ws 0%nat))
+        by (rewrite Hoff0 Halen0; lia).
+      exact (Hzi 0%nat Hpos). }
     split_and!.
     - exact echo_pl_shape.
     - intros j b Hj.
@@ -1041,15 +1087,15 @@ Section UShEcho.
       rewrite (uint_avi_moi s0 (Z.of_nat j) ltac:(lia) ltac:(lia)
                  ltac:(unfold Z64; lia)).
       replace (s0 + Z.of_nat j)
-        with (s0 + Z.of_nat (UkShEcho.echo_off 0%nat) + Z.of_nat j)
-        by (rewrite UkShEcho.echo_off_0; lia).
-      rewrite (Hgi 0%nat ltac:(exact echo_ws_pos) j
-                 ltac:(rewrite UkShEcho.echo_alen_0; lia)).
+        with (s0 + Z.of_nat (UkShEcho.echo_off ws 0%nat) + Z.of_nat j)
+        by (rewrite Hoff0; lia).
+      rewrite (Hgi 0%nat Hpos j ltac:(rewrite Halen0; lia)).
       f_equal.
       rewrite <- (list_lookup_total_correct _ _ _ Hj).
       rewrite (echo_pl_line j Hjl).
-      exact (proj1 Hbytes 0%nat j ltac:(exact echo_ws_pos)
-               ltac:(rewrite UkShEcho.echo_alen_0; lia)).
+      rewrite (proj1 Hbytes 0%nat j Hpos ltac:(rewrite Halen0; lia)).
+      rewrite Hoff0 Nat.add_0_l.
+      exact (UkShEcho.echo_line_cmd_byte ws j Hok Hjl).
     - rewrite echo_pl_len.
       rewrite (uint_avi_moi s0 (Z.of_nat 4%nat) ltac:(lia) ltac:(lia)
                  ltac:(unfold Z64; lia)).
@@ -1087,44 +1133,46 @@ Section UShEcho.
      ([UkShEcho.echo_argv_bytes]'s second conjunct).  The one thing the
      line cannot say is that no pointer is NULL, and that is the node's own
      base address. *)
-  Lemma echo_uargv_shape (s0 : Z) (g : nat -> bv 8) :
-    0 < s0 -> UkShEcho.echo_argv_bytes g ->
-    uargv_shape (UkShMain.ush_args s0 g UkShEcho.echo_toks).
+  Lemma echo_uargv_shape (ws : list (list (bv 8))) (s0 : Z) (g : nat -> bv 8) :
+    line_ok ws -> 0 < s0 -> UkShEcho.echo_argv_bytes ws g ->
+    uargv_shape (UkShMain.ush_args s0 g (UkShEcho.echo_toks ws)).
   Proof.
-    intros Hs0 Hbytes. split.
+    intros Hok Hs0 Hbytes.
+    pose proof (line_ok_len ws Hok) as Hlm. unfold line_max in Hlm.
+    split.
     - rewrite UkShEcho.echo_cmd_args_length.
-      pose proof echo_ws_lt10. unfold MAXARG. lia.
+      pose proof (line_ok_lt10 ws Hok). unfold MAXARG. lia.
     - intros i x Hi.
-      assert (Hi' : (i < length echo_ws)%nat).
+      assert (Hi' : (i < length ws)%nat).
       { pose proof (lookup_lt_Some _ _ _ Hi) as Hlt.
         rewrite UkShEcho.echo_cmd_args_length in Hlt. exact Hlt. }
-      assert (Hx : x = UArg (s0 + Z.of_nat (UkShEcho.echo_off i))
-                        (UkShEcho.echo_alen i)
-                        (fun j : nat => g (UkShEcho.echo_off i + j)%nat)).
-      { rewrite (UkShEcho.echo_cmd_args_lookup s0 g i Hi') in Hi.
+      assert (Hx : x = UArg (s0 + Z.of_nat (UkShEcho.echo_off ws i))
+                        (UkShEcho.echo_alen ws i)
+                        (fun j : nat => g (UkShEcho.echo_off ws i + j)%nat)).
+      { rewrite (UkShEcho.echo_cmd_args_lookup ws s0 g i Hok Hi') in Hi.
         injection Hi as Hi. exact (eq_sym Hi). }
       rewrite Hx. cbn [UserHeap.ua_ptr UserHeap.ua_len UserHeap.ua_bytes].
       refine (conj _ (conj _ (conj _ _))).
-      + pose proof (Nat2Z.is_nonneg (UkShEcho.echo_off i)). lia.
-      + pose proof (UkShEcho.echo_off_lt i (UkShEcho.echo_alen i) Hi'
-                      ltac:(lia)) as Hb.
-        rewrite echo_line_length in Hb. lia.
+      + pose proof (Nat2Z.is_nonneg (UkShEcho.echo_off ws i)). lia.
+      + pose proof (UkShEcho.echo_off_lt ws i (UkShEcho.echo_alen ws i) Hok Hi'
+                      ltac:(lia)) as Hb. lia.
       + intros j Hj.
         rewrite (proj1 Hbytes i j Hi' Hj).
         rewrite <- ubyte0_moi0.
-        exact (echo_line_nonul (UkShEcho.echo_off i + j)%nat
-                 (UkShEcho.echo_off_lt i j Hi' ltac:(lia))).
+        exact (line_nonul ws (UkShEcho.echo_off ws i + j)%nat Hok
+                 (UkShEcho.echo_off_lt ws i j Hok Hi' ltac:(lia))).
       + rewrite (proj2 Hbytes i Hi'). exact ubyte0_moi0.
   Qed.
 
   (* ...and the node's own base is positive, which is what [echo_cmd_str]
      says at argument 0 ([UkShEcho.echo_off_0]). *)
-  Lemma echo_node_img_s0_pos (M : gmap Z (bv 8)) (s0 t : Z) (g : nat -> bv 8) :
-    echo_node_img M s0 t g -> 0 < s0.
+  Lemma echo_node_img_s0_pos (ws : list (list (bv 8))) (M : gmap Z (bv 8))
+      (s0 t : Z) (g : nat -> bv 8) :
+    line_ok ws -> echo_node_img ws M s0 t g -> 0 < s0.
   Proof.
-    intros (_ & Hri & _ & _ & _ & _).
-    pose proof (Hri 0%nat echo_ws_pos) as Hr.
-    rewrite UkShEcho.echo_off_0 in Hr. cbn in Hr. lia.
+    intros Hok (_ & Hri & _ & _ & _ & _).
+    pose proof (Hri 0%nat (line_ok_pos ws Hok)) as Hr.
+    rewrite (UkShEcho.echo_off_0 ws) in Hr. cbn in Hr. lia.
   Qed.
 
   (* THE LAYOUT.  [echo_node_img] stays this file's own summary -- the PATH
@@ -1135,44 +1183,46 @@ Section UShEcho.
      layout asks for the string's bytes at [j <= len] in ONE clause (which
      is [SpecCopyinstr.copyinstr_got]'s spelling) and the node's summary
      keeps the NUL apart. *)
-  Lemma echo_uargv_img (M : gmap Z (bv 8)) (s0 t : Z) (g : nat -> bv 8) :
-    echo_node_img M s0 t g -> UkShEcho.echo_argv_bytes g ->
-    uargv_img M (t + 8) (UkShMain.ush_args s0 g UkShEcho.echo_toks).
+  Lemma echo_uargv_img (ws : list (list (bv 8))) (M : gmap Z (bv 8))
+      (s0 t : Z) (g : nat -> bv 8) :
+    line_ok ws ->
+    echo_node_img ws M s0 t g -> UkShEcho.echo_argv_bytes ws g ->
+    uargv_img M (t + 8) (UkShMain.ush_args s0 g (UkShEcho.echo_toks ws)).
   Proof.
-    intros Himg Hbytes.
+    intros Hok Himg Hbytes.
+    pose proof (line_ok_len ws Hok) as Hlm. unfold line_max in Hlm.
     pose proof Himg as (Htr & Hri & Hword & Hbc & Hgi & Hzi).
     change (2 ^ 38) with 274877906944 in Htr.
-    assert (Hlen : length (UkShMain.ush_args s0 g UkShEcho.echo_toks)
-                   = length echo_ws)
-      by exact (UkShEcho.echo_cmd_args_length s0 g).
+    assert (Hlen : length (UkShMain.ush_args s0 g (UkShEcho.echo_toks ws))
+                   = length ws)
+      by exact (UkShEcho.echo_cmd_args_length ws s0 g).
     assert (Hel : forall (i : nat) (x : uarg),
-              UkShMain.ush_args s0 g UkShEcho.echo_toks !! i = Some x ->
-              (i < length echo_ws)%nat
-              /\ x = UArg (s0 + Z.of_nat (UkShEcho.echo_off i))
-                       (UkShEcho.echo_alen i)
-                       (fun j : nat => g (UkShEcho.echo_off i + j)%nat)).
+              UkShMain.ush_args s0 g (UkShEcho.echo_toks ws) !! i = Some x ->
+              (i < length ws)%nat
+              /\ x = UArg (s0 + Z.of_nat (UkShEcho.echo_off ws i))
+                       (UkShEcho.echo_alen ws i)
+                       (fun j : nat => g (UkShEcho.echo_off ws i + j)%nat)).
     { intros i x Hi.
-      assert (Hi' : (i < length echo_ws)%nat).
+      assert (Hi' : (i < length ws)%nat).
       { pose proof (lookup_lt_Some _ _ _ Hi) as Hlt.
         rewrite Hlen in Hlt. exact Hlt. }
-      rewrite (UkShEcho.echo_cmd_args_lookup s0 g i Hi') in Hi.
+      rewrite (UkShEcho.echo_cmd_args_lookup ws s0 g i Hok Hi') in Hi.
       injection Hi as Hi. split; [ exact Hi' | exact (eq_sym Hi) ]. }
-    pose proof echo_ws_lt10 as Hws.
+    pose proof (line_ok_lt10 ws Hok) as Hws.
     rewrite /uargv_img Hlen. split_and!.
     - lia.
     - unfold Z64. lia.
     - intros i x Hi. destruct (Hel i x Hi) as [Hi' ->].
       cbn [UserHeap.ua_ptr UserHeap.ua_len].
       pose proof (Hri i Hi') as Hr. change (2 ^ 38) with 274877906944 in Hr.
-      pose proof (UkShEcho.echo_off_lt i (UkShEcho.echo_alen i) Hi'
-                    ltac:(lia)) as Hb.
-      rewrite echo_line_length in Hb. unfold Z64. lia.
+      pose proof (UkShEcho.echo_off_lt ws i (UkShEcho.echo_alen ws i) Hok Hi'
+                    ltac:(lia)) as Hb. unfold Z64. lia.
     - intros i x Hi. destruct (Hel i x Hi) as [Hi' ->].
       cbn [UserHeap.ua_ptr]. intros k Hk. exact (Hword i Hi' k Hk).
     - exact Hbc.
     - intros i x Hi. destruct (Hel i x Hi) as [Hi' ->].
       cbn [UserHeap.ua_ptr UserHeap.ua_len UserHeap.ua_bytes]. intros j Hj.
-      destruct (decide (j = UkShEcho.echo_alen i)) as [-> | Hne].
+      destruct (decide (j = UkShEcho.echo_alen ws i)) as [-> | Hne].
       + rewrite (Hzi i Hi'). f_equal. exact (eq_sym (proj2 Hbytes i Hi')).
       + exact (Hgi i Hi' j ltac:(lia)).
   Qed.
@@ -1181,14 +1231,15 @@ Section UShEcho.
      lends.  This is the route a program with a malloc'd vector takes when
      it has no pure summary of its own to keep: one lemma instead of an
      induction over the word count. *)
-  Lemma echo_uargv_exec_of_cmd (gd : gname) (t s0 : Z) (g : nat -> bv 8) :
-    0 < s0 -> UkShEcho.echo_argv_bytes g ->
-    ush_cmd gd t (UkShEcho.echo_cmd s0 g) -∗
-    uargv_exec gd (t + 8) (UkShMain.ush_args s0 g UkShEcho.echo_toks).
+  Lemma echo_uargv_exec_of_cmd (ws : list (list (bv 8))) (gd : gname)
+      (t s0 : Z) (g : nat -> bv 8) :
+    line_ok ws -> 0 < s0 -> UkShEcho.echo_argv_bytes ws g ->
+    ush_cmd gd t (UkShEcho.echo_cmd ws s0 g) -∗
+    uargv_exec gd (t + 8) (UkShMain.ush_args s0 g (UkShEcho.echo_toks ws)).
   Proof.
-    intros Hs0 Hbytes. iIntros "#Hc".
-    iApply (uargv_exec_of_cmd gd t (UkShMain.ush_args s0 g UkShEcho.echo_toks)
-              (echo_uargv_shape s0 g Hs0 Hbytes)).
+    intros Hok Hs0 Hbytes. iIntros "#Hc".
+    iApply (uargv_exec_of_cmd gd t (UkShMain.ush_args s0 g (UkShEcho.echo_toks ws))
+              (echo_uargv_shape ws s0 g Hok Hs0 Hbytes)).
     rewrite /UkShEcho.echo_cmd. iExact "Hc".
   Qed.
 
@@ -1201,38 +1252,40 @@ Section UShEcho.
      own layout, and what was ninety lines of cornering the count against
      the NULL cap and each length against its terminator is the general
      agreement lemma ([ExecArgs.exec_args_of_agree]). *)
-  Definition echo_args_det : Prop :=
+  Definition echo_args_det (ws : list (list (bv 8))) : Prop :=
+    line_ok ws ->
     forall (M : gmap Z (bv 8)) (s0 t : Z) (g : nat -> bv 8)
            (na : nat) (alen : nat -> nat) (afun : nat -> nat -> bv 8),
-      echo_node_img M s0 t g ->
-      UkShEcho.echo_argv_bytes g ->
+      echo_node_img ws M s0 t g ->
+      UkShEcho.echo_argv_bytes ws g ->
       exec_args_of M (mword_of_int (t + 8) : mword 64) na alen afun ->
-      na = length echo_ws
-      /\ (forall i : nat, (i < length echo_ws)%nat ->
-            alen i = UkShEcho.echo_alen i)
-      /\ (forall i j : nat, (i < length echo_ws)%nat ->
-            (j < UkShEcho.echo_alen i)%nat ->
-            afun i j = echo_line !!! (UkShEcho.echo_off i + j)%nat).
+      na = length ws
+      /\ (forall i : nat, (i < length ws)%nat ->
+            alen i = UkShEcho.echo_alen ws i)
+      /\ (forall i j : nat, (i < length ws)%nat ->
+            (j < UkShEcho.echo_alen ws i)%nat ->
+            afun i j = wl_line ws !!! (UkShEcho.echo_off ws i + j)%nat).
 
-  Lemma echo_args_det_holds : echo_args_det.
+  Lemma echo_args_det_holds (ws : list (list (bv 8))) : echo_args_det ws.
   Proof.
-    intros M s0 t g na alen afun Himg Hbytes Hargs.
+    intros Hok M s0 t g na alen afun Himg Hbytes Hargs.
     (* the [i]th element of the node's vector, named once *)
-    assert (Hnth : forall i : nat, (i < length echo_ws)%nat ->
-              ua_nth (UkShMain.ush_args s0 g UkShEcho.echo_toks) i
-              = UArg (s0 + Z.of_nat (UkShEcho.echo_off i))
-                  (UkShEcho.echo_alen i)
-                  (fun j : nat => g (UkShEcho.echo_off i + j)%nat))
+    assert (Hnth : forall i : nat, (i < length ws)%nat ->
+              ua_nth (UkShMain.ush_args s0 g (UkShEcho.echo_toks ws)) i
+              = UArg (s0 + Z.of_nat (UkShEcho.echo_off ws i))
+                  (UkShEcho.echo_alen ws i)
+                  (fun j : nat => g (UkShEcho.echo_off ws i + j)%nat))
       by (intros i Hi;
-          exact (ua_nth_lookup _ i _ (UkShEcho.echo_cmd_args_lookup s0 g i Hi))).
-    destruct (uargv_det M (t + 8) (UkShMain.ush_args s0 g UkShEcho.echo_toks)
+          exact (ua_nth_lookup _ i _
+                   (UkShEcho.echo_cmd_args_lookup ws s0 g i Hok Hi))).
+    destruct (uargv_det M (t + 8) (UkShMain.ush_args s0 g (UkShEcho.echo_toks ws))
                 na alen afun
-                (echo_uargv_shape s0 g (echo_node_img_s0_pos M s0 t g Himg)
-                   Hbytes)
-                (echo_uargv_img M s0 t g Himg Hbytes) Hargs)
+                (echo_uargv_shape ws s0 g Hok
+                   (echo_node_img_s0_pos ws M s0 t g Hok Himg) Hbytes)
+                (echo_uargv_img ws M s0 t g Hok Himg Hbytes) Hargs)
       as (Hn & Hl & Hb).
-    assert (Hna : na = length echo_ws)
-      by (rewrite Hn; exact (UkShEcho.echo_cmd_args_length s0 g)).
+    assert (Hna : na = length ws)
+      by (rewrite Hn; exact (UkShEcho.echo_cmd_args_length ws s0 g)).
     split_and!.
     - exact Hna.
     - intros i Hi. rewrite (Hl i ltac:(rewrite Hna; lia)).
@@ -1313,30 +1366,33 @@ Section UShEcho.
   (*  which is an inequality about [alen] and [na] -- FALSE for a big      *)
   (*  enough argument vector, and therefore not something echo's entry can *)
   (*  be stated without.  What discharges it is the CALLER's reading of    *)
-  (*  its own argv ([echo_args_det]): this line pushed three words of four *)
-  (*  and five bytes.  Stated as a lemma of its own because the entry      *)
-  (*  below and [UShEchoPay]'s paid one both need it.                      *)
-  Lemma echo_room_of_det (na : nat) (alen : nat -> nat) :
-    na = length echo_ws ->
-    (forall i : nat, (i < length echo_ws)%nat ->
-       alen i = UkShEcho.echo_alen i) ->
+  (*  its own argv ([echo_args_det]) together with the LINE's own bound    *)
+  (*  ([echo_argv_fits_of_ok]): an admissible line has fewer than ten      *)
+  (*  words and is shorter than [line_max] bytes.  Stated as a lemma of    *)
+  (*  its own because the entry below and [UShEchoPay]'s paid one both     *)
+  (*  need it.                                                             *)
+  Lemma echo_room_of_det (ws : list (list (bv 8))) (na : nat)
+      (alen : nat -> nat) :
+    line_ok ws ->
+    na = length ws ->
+    (forall i : nat, (i < length ws)%nat ->
+       alen i = UkShEcho.echo_alen ws i) ->
     kexec_sz ElfUser.echo_elf - PGSIZE + 96
       <= kxc_sp_final (kexec_sz ElfUser.echo_elf) alen na.
   Proof.
-    intros Hna Halen.
-    assert (Hi0 : (0 < length echo_ws)%nat) by (rewrite echo_ws_length; lia).
-    assert (Hi1 : (1 < length echo_ws)%nat) by (rewrite echo_ws_length; lia).
-    assert (Hi2 : (2 < length echo_ws)%nat) by (rewrite echo_ws_length; lia).
-    pose proof (Halen 0%nat Hi0) as E0.
-    pose proof (Halen 1%nat Hi1) as E1.
-    pose proof (Halen 2%nat Hi2) as E2.
-    assert (A0 : UkShEcho.echo_alen 0%nat = 4%nat) by (by vm_compute).
-    assert (A1 : UkShEcho.echo_alen 1%nat = 5%nat) by (by vm_compute).
-    assert (A2 : UkShEcho.echo_alen 2%nat = 5%nat) by (by vm_compute).
-    rewrite A0 in E0. rewrite A1 in E1. rewrite A2 in E2.
-    rewrite Hna. apply echo_room.
-    rewrite /echo_argv_fits echo_ws_length. cbn [kxc_span].
-    rewrite E0 E1 E2. unfold PGSIZE. lia.
+    intros Hok Hna Halen.
+    rewrite Hna. apply (echo_room ws).
+    (* the push's span reads the SAME lengths at every index the vector
+       has, so the line's own bound transports to [alen] *)
+    rewrite /echo_argv_fits.
+    assert (Hsp : kxc_span alen (length ws)
+                  = kxc_span (UkShEcho.echo_alen ws) (length ws)).
+    { assert (Hgen : forall n : nat, (n <= length ws)%nat ->
+                kxc_span alen n = kxc_span (UkShEcho.echo_alen ws) n).
+      { induction n as [| n IH]; intro Hn; cbn [kxc_span]; [ reflexivity | ].
+        rewrite (IH ltac:(lia)) (Halen n ltac:(lia)). reflexivity. }
+      exact (Hgen (length ws) ltac:(lia)). }
+    rewrite Hsp. exact (echo_argv_fits_of_ok ws Hok).
   Qed.
 
   (* ---- ...AND ECHO'S ENTRY AS THE NAMED OBLIGATION (E) --------------- *)
@@ -1359,10 +1415,12 @@ Section UShEcho.
   (*    [ExecEntry.image_entry_of_at]: the entry is owed at every shape    *)
   (*    the kernel might build, and what makes that payable is that the    *)
   (*    caller's own image DETERMINES the shape ([echo_args_det]).         *)
-  Lemma echo_image_entry (M : gmap Z (bv 8)) (s0 t : Z) (g : nat -> bv 8)
+  Lemma echo_image_entry (ws : list (list (bv 8))) (M : gmap Z (bv 8))
+      (s0 t : Z) (g : nat -> bv 8)
       (sts : list fdstate) (cw : Z) (cs : gset gname) (pidv : mword 32) :
-    echo_node_img M s0 t g ->
-    UkShEcho.echo_argv_bytes g ->
+    line_ok ws ->
+    echo_node_img ws M s0 t g ->
+    UkShEcho.echo_argv_bytes ws g ->
     length sts = NOFILE ->
     udepw_law 16 -∗
     (* ...and the exec'ing process's table, pipe-free (design/pipe.md,
@@ -1371,13 +1429,13 @@ Section UShEcho.
     image_entry ElfUser.echo_elf M (mword_of_int (t + 8) : mword 64) sts
       cw cs pidv (fun _ : Z => True)%I emp uslot.
   Proof.
-    intros Himg Hbytes Hfdl. iIntros "#Hwr #Hnpw #Hdep".
+    intros Hok Himg Hbytes Hfdl. iIntros "#Hwr #Hnpw #Hdep".
     iApply image_entry_of_at. iIntros "!>" (na alen afun) "%Hargs".
-    destruct (echo_args_det_holds M s0 t g na alen afun Himg Hbytes Hargs)
-      as (Hna & Halen & _).
-    rewrite /image_entry_at. iIntros "!>" (W') "%Hok _ %Hlzf _ _ Hmp _".
-    iApply (echo_slot_of_kexec_holds na alen afun sts W' Hok
-              (echo_room_of_det na alen Hna Halen) Hfdl Hlzf
+    destruct (echo_args_det_holds ws Hok M s0 t g na alen afun Himg Hbytes
+                Hargs) as (Hna & Halen & _).
+    rewrite /image_entry_at. iIntros "!>" (W') "%Hokk _ %Hlzf _ _ Hmp _".
+    iApply (echo_slot_of_kexec_holds na alen afun sts W' Hokk
+              (echo_room_of_det ws na alen Hok Hna Halen) Hfdl Hlzf
               with "Hwr Hnpw Hdep Hmp").
   Qed.
 
@@ -1402,18 +1460,19 @@ Section UShEcho.
   (*      write(1, argv[i], strlen(argv[i]));                              *)
   (*      write(1, i + 1 < argc ? " " : "\n", 1);                          *)
   (*    }                                                                  *)
-  (*  so at [argc = 3] it writes four buffers, in this order.              *)
+  (*  so at [argc] arguments it writes [2 * (argc - 1)] buffers, in this   *)
+  (*  order.                                                               *)
   (* =================================================================== *)
-  (* ...and those bytes are [EchoDisc.echo_line_out] -- the line's tail.
-     There is no second spelling of them here: the loop's output IS the
-     join, and [EchoDisc] is where the join is named. *)
+  (* ...and those bytes are [wl_line (drop 1 ws)] -- the line minus its
+     command name.  There is no second spelling of them here: the loop's
+     output IS the join, and [LineWords] is where the join is named. *)
 
   (* ---- E4's OWN PART: the argv echo reads off its key ARE the strings -- *)
   (* [UEchoKernel.echo_arg] is a FUNCTION of the key (the pointer is the
      eight image bytes of the slot read as a word, the length is what a
      scan finds, the bytes are the image's), so what has to be shown is
      that [kexec_args_at]'s block, built from the [(na, alen, afun)] that
-     [echo_args_det] pinned, is read back as the same three strings. *)
+     [echo_args_det] pinned, is read back as the same strings. *)
   (* THE KEY'S READING OF ITS ARGUMENT VECTOR IS THE STRINGS exec PUSHED.
      [UEchoKernel.echo_arg] is a FUNCTION of the key -- the pointer is the
      eight image bytes of the slot read as a word, the length is what a
@@ -1506,13 +1565,14 @@ Section UShEcho.
     intros j Hj. rewrite (Hstr i j Hi Hj). reflexivity.
   Qed.
 
-  (* ---- the shape a list of [uarg]s has when it IS echo's three -------- *)
-  Definition echo_argv_is (args : list uarg) : Prop :=
-    length args = length echo_ws
+  (* ---- the shape a list of [uarg]s has when it IS the line's words ---- *)
+  Definition echo_argv_is (ws : list (list (bv 8))) (args : list uarg)
+    : Prop :=
+    length args = length ws
     /\ forall (i : nat) (x : uarg), args !! i = Some x ->
-         ua_len x = UkShEcho.echo_alen i
-         /\ forall j : nat, (j < UkShEcho.echo_alen i)%nat ->
-              ua_bytes x j = echo_line !!! (UkShEcho.echo_off i + j)%nat.
+         ua_len x = UkShEcho.echo_alen ws i
+         /\ forall j : nat, (j < UkShEcho.echo_alen ws i)%nat ->
+              ua_bytes x j = wl_line ws !!! (UkShEcho.echo_off ws i + j)%nat.
 
   (* ---- ECHO'S POST OVER ITS TRANSCRIPT ------------------------------- *)
   (*                                                                       *)
@@ -1525,12 +1585,13 @@ Section UShEcho.
   (*  leaf and [tx N bs] the program-side transcript handle it moves.      *)
   (*                                                                       *)
   (*  WHAT E4 OWES against it is the two things this lane knows and E5     *)
-  (*  does not: the argv bytes ARE "echo", "hello", "world"                *)
+  (*  does not: the argv bytes ARE the words of the line sh parsed         *)
   (*  ([echo_key_args], from [echo_cmd] through the exec channel) and the  *)
   (*  LOOP'S ORDER -- so the transcript at echo's [exit] ecall is the      *)
-  (*  entry's plus [echo_line_out], and nothing else.                      *)
+  (*  entry's plus [wl_line (drop 1 ws)], the line minus its command name, *)
+  (*  and nothing else.                                                    *)
   (* =================================================================== *)
-  Definition echo_writes_out
+  Definition echo_writes_out (ws : list (list (bv 8)))
       (recv : uk_names Σ -> iProp Σ)
       (tx : uk_names Σ -> list (bv 8) -> iProp Σ) : Prop :=
     forall (N : uk_names Σ) (h : CpuId) (m : regfile) (av : Z)
@@ -1538,12 +1599,12 @@ Section UShEcho.
       m !!! Regidx a0_idx
         = (mword_of_int (Z.of_nat (length args)) : mword 64) ->
       m !!! Regidx a1_idx = (mword_of_int av : mword 64) ->
-      echo_argv_is args ->
+      echo_argv_is ws args ->
       ⊢ recv N -∗ udepw_law 16 -∗ echo_code (ukn_t N) -∗
         uargv (ukn_d N) av args -∗ tx N bs -∗
         urun N h m (mword_of_int EchoSyms.start) (2 + (8 + (2 + n))) -∗
         (∀ (h' : CpuId) (m' : regfile),
-           tx N (bs ++ echo_line_out) -∗
+           tx N (bs ++ wl_line (drop 1 ws)) -∗
            urun N h' m' (mword_of_int EchoSyms.exit) n -∗
            WP (Loop : expr riscv_lang)) -∗
         WP (Loop : expr riscv_lang).

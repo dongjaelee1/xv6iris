@@ -1,6 +1,6 @@
-(* AppEcho.v -- THE ECHO APPLICATION: init spawns sh, the user types
-   [echo hello world], sh forks and execs echo, echo prints the string back;
-   the file system is never modified.
+(* AppEcho.v -- THE ECHO APPLICATION: init spawns sh, the user types an
+   [echo] line -- A DIFFERENT ONE EACH ROUND -- sh forks and execs echo,
+   echo prints the arguments back; the file system is never modified.
 
    Design of record: claude-notes/design/applications.md (§4 for this file's
    trace side, §5 for the lanes); worklist claude-notes/projects/app-echo.md.
@@ -9,9 +9,10 @@
    [App.xv6_app_adequacy] that is provable without any of the lanes:
 
      the DISCIPLINE [disc]      -- every power cycle's input bytes so far
-                                   are a prefix of [echo_line]^*;
-                                   decidable, prefix-closed, and unmoved
-                                   by output bytes and power events;
+                                   parse as admissible lines
+                                   ([EchoDisc.disc_input]); decidable,
+                                   prefix-closed, and unmoved by output
+                                   bytes and power events;
      the FIXED PART [echo_cl]   -- the taint counter's name, born once at
                                    0 by [echo_birth] (app-instances.md
                                    section 6 ruling 1, round D0: what used
@@ -147,7 +148,7 @@ Require Import App.              (* [xv6_app], [MkApp] and the theorem whose
    durable predicate and the record. *)
 Require Import EchoOut.
 (* THE DISCIPLINE AND THE CLAIM, as pure combinatorics.  EXPORTED: the
-   landed names ([echo_line], [star_prefix], [ins], [disc_seg], [disc]) are
+   landed names ([line_ok], [disc_input], [ins], [disc_seg], [disc]) are
    read unqualified by [UConsLine.v], and moving them out must not move
    them for a reader. *)
 Require Export EchoDisc.
@@ -166,15 +167,14 @@ Local Open Scope Z_scope.
 (*  the other port and are not the theorem's concern).  The               *)
 (*  whole of it is pure combinatorics over [list mobs], so it lives in     *)
 (*  [EchoDisc.v] -- EXPORTED here, because everything stated against the   *)
-(*  landed names ([echo_line], [star_prefix], [disc_seg], [disc]) keeps    *)
+(*  landed names ([line_ok], [disc_input], [disc_seg], [disc]) keeps       *)
 (*  naming them unqualified.                                               *)
 (*                                                                        *)
 (*  What this file uses from there: [disc] (the new discipline) and its    *)
 (*  [disc_nil] / [disc_out] / [disc_power] / [disc_in] closure laws, which *)
 (*  hold at the SAME statements they held at before, so the ledger's four  *)
 (*  steps below are unchanged; [disc_dec], which [echo_phase] decides;     *)
-(*  [disc_old] and [disc_proj], the bridge every landed consumer of the    *)
-(*  old predicate reads it through; and [disc_seg'] / [good_out], which    *)
+(*  and [disc_seg'] / [good_out], which                                    *)
 (*  section 5's conclusion is written in.                                  *)
 (* ====================================================================== *)
 (* ====================================================================== *)
@@ -1401,8 +1401,6 @@ Section EchoApp.
      quarter of the window counter -- with the pure account of the accepted
      bytes ([EchoOut.eout_pure]) that [eout_drain] turns into
      [EchoDisc.good_out]. *)
-  (* [echo_out] and [echo_in] lived here. *)
-
   (* THE ERA'S TURN: <init>'s console credential, the era's cursor at ZERO
      with the two bounds a write spends -- literally
      [EchoOut.echo_write_link]'s argument list at [P = 0].  It takes no

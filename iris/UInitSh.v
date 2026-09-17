@@ -67,6 +67,8 @@ Require Import UInitFd.  (* [ufd_head] / [ufd_head_row] -- init's own
                             off it against the lent authority *)
 Require Import UkRun.
 Require Import UCodeInit UkInit.
+Require Import LineWords.       (* [wl_nl]: the credential steps are stated
+                                   at the line the read delivered *)
 Require Import UkSh UShKernel.
 Require Import UkShParse.       (* the two lexer tables' addresses and
                                    content functions, which sh's static
@@ -538,41 +540,47 @@ Section UInitSh.
       (Cr : cons_cred Σ) : Prop :=
     (* the read leaf sh runs on *)
     (forall (γp : gname) (N : uk_names Σ) (l : list fdstate),
-       ukn_pay N = ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wb Cr)) ->
+       ukn_pay N = ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wbn Cr)) ->
        ⊢ UkSh.ush_read_recv_leaf (PS := uprogSG_free) N γp T
            (cc_mid Cr γp) cn l)
     (* the lease's three laws *)
     /\ (forall (γp : gname) (N : uk_names Σ) (i : nat),
-          ukn_pay N = ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wb Cr)) ->
-          ⊢ UkSh.ush_at N γp i -∗ UkSh.ush_lease N γp T (cc_mid Cr γp) i)
-    /\ (forall (γp : gname) (N : uk_names Σ) (i : nat),
-          ukn_pay N = ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wb Cr)) ->
-          ⊢ T -∗ cc_mid Cr γp i -∗ UkSh.ush_at N γp i)
-    /\ (forall (γp : gname) (N : uk_names Σ) (i : nat),
-          ukn_pay N = ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wb Cr)) ->
-          UkSh.ush_bnd i ->
-          ⊢ cc_mid Cr γp i -∗ cc_wb Cr i -∗ UkSh.ush_at N γp i)
-    (* the loop's step on the era's write credential *)
-    /\ (forall (γp : gname) (n : nat),
-          ⊢ cc_mid Cr γp (n + length EchoDisc.echo_line)%nat -∗
-            cc_wc Cr n 2%nat -∗
-            cc_mid Cr γp (n + length EchoDisc.echo_line)%nat
-            ∗ cc_wc Cr (n + length EchoDisc.echo_line)%nat 3%nat)
+          ukn_pay N = ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wbn Cr)) ->
+          ⊢ UkSh.ush_at N γp i -∗
+            ∃ I : list (bv 8), ⌜length I = i⌝
+              ∗ UkSh.ush_lease N γp T (cc_mid Cr γp) I)
+    /\ (forall (γp : gname) (N : uk_names Σ) (I : list (bv 8)),
+          ukn_pay N = ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wbn Cr)) ->
+          ⊢ T -∗ cc_mid Cr γp I -∗ UkSh.ush_at N γp (length I))
+    /\ (forall (γp : gname) (N : uk_names Σ) (I : list (bv 8)),
+          ukn_pay N = ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wbn Cr)) ->
+          ⊢ cc_mid Cr γp I -∗ cc_wb Cr I -∗ UkSh.ush_at N γp (length I))
+    (* the loop's step on the era's write credential, AT THE LINE THE READ
+       DELIVERED (project echo-any-line): the boundary is the era's input
+       and the step is its extension by one body and its newline *)
+    /\ (forall (γp : gname) (I l : list (bv 8)), wl_nl ∉ l ->
+          ⊢ cc_mid Cr γp (I ++ l ++ [wl_nl]) -∗
+            cc_wc Cr I 2%nat -∗
+            cc_mid Cr γp (I ++ l ++ [wl_nl])
+            ∗ cc_wc Cr (I ++ l ++ [wl_nl]) 3%nat)
     (* the three conversions of step 4 *)
-    /\ (forall n : nat, ⊢ cc_wb Cr n -∗ cc_wc Cr n 0%nat)
-    /\ (forall n : nat, ⊢ cc_wc Cr n 3%nat -∗ cc_wc Cr n 0%nat)
-    /\ (forall (γp : gname) (n : nat),
-          ⊢ cc_mid Cr γp (n + length EchoDisc.echo_line)%nat -∗
-            cc_wb Cr n -∗
-            cc_mid Cr γp (n + length EchoDisc.echo_line)%nat ∗ T)
+    /\ (forall I : list (bv 8), ⊢ cc_wb Cr I -∗ cc_wc Cr I 0%nat)
+    /\ (forall I : list (bv 8), ⊢ cc_wc Cr I 3%nat -∗ cc_wc Cr I 0%nat)
+    /\ (forall (γp : gname) (I l : list (bv 8)), wl_nl ∉ l ->
+          ⊢ cc_mid Cr γp (I ++ l ++ [wl_nl]) -∗
+            cc_wb Cr I -∗
+            cc_mid Cr γp (I ++ l ++ [wl_nl]) ∗ T)
     (* the cursor's boundary *)
     /\ (forall (γp : gname) (N : uk_names Σ) (l : list fdstate) (i : nat),
-          ukn_pay N = ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wb Cr)) ->
+          ukn_pay N = ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wbn Cr)) ->
           ⊢ upos γp i -∗ ucons_pay cn γp T (cc_rd Cr) (-1) -∗
-            (UkSh.ush_wcp (cc_wc Cr) (cc_wb Cr) l i 0%nat ∨ T) -∗
+            ((∃ I : list (bv 8), ⌜length I = i⌝
+                ∗ UkSh.ush_wcp (cc_wc Cr) (cc_wb Cr) l I 0%nat) ∨ T) -∗
             UkSh.ush_posb N γp T (cc_wc Cr) (cc_wb Cr) (cc_mid Cr γp) l 0%nat)
     (* the lend's conversion at the shell's entry (lane M6b) *)
-    /\ (forall n : nat, ⊢ cc_wp Cr n -∗ cc_wc Cr n 0%nat).
+    /\ (forall n : nat,
+          ⊢ cc_wp Cr n -∗
+            ∃ I : list (bv 8), ⌜length I = n⌝ ∗ cc_wc Cr I 0%nat).
 
   Definition sh_pay (T : iProp Σ) (Cr : cons_cred Σ)
       (Rsh : gname -> gname -> gname -> iProp Σ)
@@ -1058,16 +1066,16 @@ Section UInitSh.
              UkSh.ush_open_absent_leaf (PS := uprogSG_free) N T K) ∗ K)
      ∨ T) -∗
     UkSh.ush_fd0 T (take NSTD fdv) -∗
-    image_entry_taint T (ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wb Cr))) uslot -∗
+    image_entry_taint T (ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wbn Cr))) uslot -∗
     image_entry ElfUser.sh_elf M (mword_of_int 0x1000 : mword 64) fdv
       FsImg.ROOTINO cs pidv
-      (ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wb Cr)))
+      (ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wbn Cr)))
       (sh_pay T Cr Rsh n0 ∗ upos γp np
          ∗ ucons_pay cn γp T (cc_rd Cr) (-1)
          ∗ (UserFd.ustd (ukn_fd N) l
             ∗ UkInit.init_lend_cred T
                 (FdOpen true true (FdDevice ConsoleInv.CONSOLE))
-                (cc_wp Cr) (cc_wb Cr) l np))%I
+                (cc_wp Cr) (cc_wbn Cr) l np))%I
       uslot.
   Proof.
     intros Hpsok_free Hn0 Hsav Hsro Hl Hcs Hpid Hlen HCr.
@@ -1093,19 +1101,26 @@ Section UInitSh.
        arm (slot 2 of the all-closed ledger); or the affine one.  The old
        record's ledger fragment is dropped: the process that execs is
        replaced. *)
-    iAssert (UkSh.ush_wcp (cc_wc Cr) (cc_wb Cr) (take NSTD fdv) np 0%nat ∨ T)%I
+    iAssert ((∃ I : list (bv 8), ⌜length I = np⌝
+                ∗ UkSh.ush_wcp (cc_wc Cr) (cc_wb Cr) (take NSTD fdv) I 0%nat)
+             ∨ T)%I
       with "[Hcred]" as "Hwcp".
-    { rewrite Hl /UkInit.init_lend_cred /UkSh.ush_wcp.
+    { rewrite Hl /UkInit.init_lend_cred.
       iDestruct "Hcred" as "[[%Hl3 Hc] | [[%Hl0 Hb] | #HT]]".
-      - iLeft. iLeft. iSplitR.
+      - iPoseProof (Hpw np) as "Hpw'".
+        iDestruct ("Hpw'" with "Hc") as (I) "[%HI Hc]".
+        iLeft. iExists I. iSplitR; [ by iPureIntro | ].
+        rewrite /UkSh.ush_wcp. iLeft. iSplitR.
         + iPureIntro. rewrite Hl3. split_and!.
           * exists true. exact (ufd_l3_row0 _).
           * exists true. exact (ufd_l3_row1 _).
           * exists true. exact (ufd_l3_row2 _).
-        + iPoseProof (Hpw np) as "Hpw'". iApply ("Hpw'" with "Hc").
+        + iExact "Hc".
       - (* the all-closed ledger, with none of the preamble's opens landed
            yet (step 4: [UkSh.ush_lcl] at 0) *)
-        iLeft. iRight. iFrame "Hb". iPureIntro. rewrite Hl0.
+        rewrite /cc_wbn. iDestruct "Hb" as (I) "[%HI Hb]".
+        iLeft. iExists I. iSplitR; [ by iPureIntro | ].
+        rewrite /UkSh.ush_wcp. iRight. iFrame "Hb". iPureIntro. rewrite Hl0.
         split; [ | lia ]. exists 0%nat. split; [ lia | exact ufd_l0_lcl ].
       - (* the taint: a tainted shell runs on the generic slot, and the
            entry law's right arm is where it goes (lane EXEC-SEAM, (C)) *)
@@ -1124,13 +1139,13 @@ Section UInitSh.
     pose proof (UShKernel.sh_slot_of_kexec (SG := uexecSG_xv6)
                   (PS := uprogSG_free)
                   Rsh γp cn T K
-                  (ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wb Cr)))
+                  (ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wbn Cr)))
                   (ucons_pay cn γp T (cc_rd Cr))
                   ((cc_mid Cr) γp) (cc_wc Cr) (cc_wb Cr) Hrl Hpm1 Hpm3
                   Hpmwb Hwc Hwbwc Hwbl Hwbr
                   1%nat alen afun fdv W' n0 np
                   Hbd
-                  (ucons_pay_const cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wb Cr))) Hok Hcwd0
+                  (ucons_pay_const cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wbn Cr))) Hok Hcwd0
                   (init_sh_room alen n0 Halen Hn0) Hlen Hlzf Hch0 Hpid1) as Hsk.
     idtac "MARK-s4c-pose-ok".
     iApply (Hsk with "[] Hnpw Hdep Hdp Htag Hplaw [] [] Hcons Hgen' Hmp Hps
@@ -1263,9 +1278,9 @@ Section UInitSh.
        it is already holding ([UserConsole.ucons_pay_taint]) -- which is
        the whole reason a tainted process needs no lease. *)
     iAssert (image_entry_taint T
-               (ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wb Cr))) uslot)%I as "#Hgen'".
+               (ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wbn Cr))) uslot)%I as "#Hgen'".
     { rewrite /image_entry_taint. iModIntro. iIntros (W') "#HT #Hmp".
-      iApply ("Hgen" $! (ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wb Cr)) (-1)) W' with "HT [Hmp] []").
+      iApply ("Hgen" $! (ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wbn Cr)) (-1)) W' with "HT [Hmp] []").
       - rewrite ucons_pay_eta. iExact "Hmp".
       - iModIntro. iIntros "_". iApply (ucons_pay_taint with "HT"). }
     (* ---- AND THE WHOLE OF THE REST IS THE U-TIER RULE (lane EX-4).
@@ -1281,7 +1296,7 @@ Section UInitSh.
                  ∗ (UserFd.ustd (ukn_fd N) l
                     ∗ UkInit.init_lend_cred T
                         (FdOpen true true (FdDevice ConsoleInv.CONSOLE))
-                        (cc_wp Cr) (cc_wb Cr) l np))%I
+                        (cc_wp Cr) (cc_wbn Cr) l np))%I
               _ sh_elf_loadable Ha0 Ha1
               with "[] [] [Hstd Hrow Hcred Hpos Hlease Hchf Hpidf]").
     (* ---- THE REFUND IS THE LEND ITSELF (lane KILL-PAY, K4(a), ruling R-A;

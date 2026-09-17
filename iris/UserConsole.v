@@ -87,14 +87,20 @@ Record cons_cred (Σ : gFunctors) := MkConsCred {
   (* the per-position credential on the lease (lane IO-LEAF, M5) *)
   cc_rd : nat -> iProp Σ;
   cc_rd_timeless : forall i : nat, Timeless (cc_rd i);
-  (* ...and the mid-line pieces of the same lease (M5(3)) *)
-  cc_mid : gname -> nat -> iProp Σ;
-  (* ...the era's write credential as the command loop carries it (M6a(3)) *)
-  cc_wc : nat -> nat -> iProp Σ;
+  (* ...and the mid-line pieces of the same lease (M5(3)), AT THE ERA'S
+     INPUT: what the shell reads is a line per round, so the boundary a
+     credential stands at is the input read so far and not a count of it
+     (project echo-any-line, "the INPUT is the stage") *)
+  cc_mid : gname -> list (bv 8) -> iProp Σ;
+  (* ...the era's write credential as the command loop carries it (M6a(3)),
+     at the same boundary *)
+  cc_wc : list (bv 8) -> nat -> iProp Σ;
   (* ...the banner-owed one (step 3) *)
-  cc_wb : nat -> iProp Σ;
-  cc_wb_timeless : forall i : nat, Timeless (cc_wb i);
-  (* ...and the round-open one /init lends on the console row (M6b) *)
+  cc_wb : list (bv 8) -> iProp Σ;
+  cc_wb_timeless : forall I : list (bv 8), Timeless (cc_wb I);
+  (* ...and the round-open one /init lends on the console row (M6b).
+     POSITION-INDEXED: /init never reads a byte, so its own families say
+     how far the reader has got and never which bytes those were. *)
   cc_wp : nat -> iProp Σ;
 }.
 Arguments MkConsCred {Σ} _ _ _ _ _ _ _.
@@ -105,6 +111,19 @@ Arguments cc_wb {Σ} _ _.
 Arguments cc_wp {Σ} _ _.
 Global Existing Instance cc_rd_timeless.
 Global Existing Instance cc_wb_timeless.
+
+(* /INIT'S POSITION-INDEXED VIEW OF THE BANNER-OWED CREDENTIAL: what it
+   carries on the console lease and pays its banner from.  /init reads no
+   byte of the console, so its families are indexed by the reader's
+   POSITION and the input itself is existential here -- which is all that
+   keeps [UkInit]/[UkInitMain]/[UInitKernel] free of the era's bytes while
+   the shell's own families carry them. *)
+Definition cc_wbn {Σ : gFunctors} (Cr : cons_cred Σ) (n : nat) : iProp Σ :=
+  (∃ I : list (bv 8), ⌜length I = n⌝ ∗ cc_wb Cr I)%I.
+
+Global Instance cc_wbn_timeless {Σ : gFunctors} (Cr : cons_cred Σ) (n : nat) :
+  Timeless (cc_wbn Cr n).
+Proof. rewrite /cc_wbn. apply _. Qed.
 
 Section UserConsole.
   (* [Xv6Cameras.uartGhostG] and NOT [Xv6G.xv6G]: this file is meant to be

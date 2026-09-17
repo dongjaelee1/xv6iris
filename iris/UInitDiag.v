@@ -149,20 +149,21 @@ Section UInitDiag.
   (* WHAT THE WALK WOULD CARRY: the round's choice [a] filed with [i] of
      its bytes out, or the taint -- [EchoLinksPro]'s family, as
      [UInitBanner.bnr] is [EchoLinks]'s. *)
-  Definition pdg (v : era_pins) (n a i : nat) : iProp Σ :=
-    EchoLinksPro.ewc_pdiag T v n a i.
+  Definition pdg (v : era_pins) (I : list (bv 8)) (a i : nat) : iProp Σ :=
+    EchoLinksPro.ewc_pdiag T v I a i.
 
   (* [UInitBanner.kinit_w1_of_link]'s exact mould, with the diagnostic's
      step in the banner's place. *)
-  Lemma kinit_w1_of_link_pdiag (N : uk_names Σ) (v : era_pins) (n : nat)
+  Lemma kinit_w1_of_link_pdiag (N : uk_names Σ) (v : era_pins)
+      (I : list (bv 8))
       (l : list fdstate) (rb : bool) (a i : nat) (b : bv 8) :
     l !! 1%nat = Some (FdOpen rb true (FdDevice CONSOLE)) ->
     pro_alts !!! a !! i = Some b ->
     era_pin γ (S gen_id) v -∗
     echo_links T γ -∗
     UkInit.kinit_w1 N (mword_of_int 1 : mword 64) b
-      (UserFd.ustd (ukn_fd N) l ∗ pdg v n a i)
-      (UserFd.ustd (ukn_fd N) l ∗ pdg v n a (S i)).
+      (UserFd.ustd (ukn_fd N) l ∗ pdg v I a i)
+      (UserFd.ustd (ukn_fd N) l ∗ pdg v I a (S i)).
   Proof.
     intros Hli Hb.
     iIntros "#Hpin #Hlk" (h m avail) "%Ha0 %Ha2 #Hcode Hbuf [Hl Hbnd] Hrun Hcont".
@@ -173,7 +174,7 @@ Section UInitDiag.
        the byte, and the era's cursor before and after this byte *)
     set (Q := (fun k : nat =>
                  ubyteq (ukn_d N) (DfracOwn (1/2)) (uint ua) b
-                 ∗ match k with O => pdg v n a i | _ => pdg v n a (S i) end)%I).
+                 ∗ match k with O => pdg v I a i | _ => pdg v I a (S i) end)%I).
     assert (Ham1 : (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m)
                      !!! Regidx a1_idx = ua)
       by exact (upd_ne m (Regidx a7_idx) (Regidx a1_idx) _
@@ -219,7 +220,7 @@ Section UInitDiag.
         { pose proof (HM 0%nat ltac:(lia)) as HM0.
           cbn in HM0. rewrite HM0 in Hb'. by injection Hb'. }
         subst b'.
-        iApply (EchoLinksPro.echo_pdiag_step T γ (S gen_id) v n a i b (Q 1%nat)
+        iApply (EchoLinksPro.echo_pdiag_step T γ (S gen_id) v I a i b (Q 1%nat)
                   Hb with "Hpin Hlk Hbnd [Hb1]").
         iIntros "Hres". rewrite /Q. iFrame "Hb1". rewrite /pdg. iExact "Hres". }
     { iApply (ubytesq_of_one with "Hb2"). }
@@ -247,7 +248,9 @@ Section UInitDiag.
   (* the round's prologue open, the choice byte next, with the era's pin
      beside it: [UInitBanner.kinit_own] without the [wr_blk] arm *)
   Definition kinit_pro (n : nat) : iProp Σ :=
-    (∃ v : era_pins, era_pin γ (S gen_id) v ∗ EchoLinksPro.ewc_pro T v n)%I.
+    (∃ (v : era_pins) (I : list (bv 8)),
+       ⌜length I = n⌝ ∗ era_pin γ (S gen_id) v
+       ∗ EchoLinksPro.ewc_pro T v I)%I.
 
   (* A bare [apply _] here cost 7.4 s of this file's 11 s: the search is on
      the (exists, sep) STRUCTURE, not on the leaves.  Naming the two
@@ -256,6 +259,8 @@ Section UInitDiag.
   Proof.
     rewrite /kinit_pro.
     apply bi.exist_timeless => v.
+    apply bi.exist_timeless => I.
+    apply bi.sep_timeless; [ apply _ | ].
     apply bi.sep_timeless; apply _.
   Qed.
 
@@ -265,9 +270,9 @@ Section UInitDiag.
     kinit_pro n -∗ UInitBanner.kinit_own T γ n.
   Proof.
     rewrite /kinit_pro /UInitBanner.kinit_own.
-    iIntros "H". iDestruct "H" as (v) "[#Hpin Hc]".
-    iExists v. iFrame "Hpin".
-    iApply (EchoLinksPro.ewc_owed_of_pro T v n with "Hc").
+    iIntros "H". iDestruct "H" as (v I) "(%Hl & #Hpin & Hc)".
+    iExists v, I. iSplitR; [ by iPureIntro | ]. iFrame "Hpin".
+    iApply (EchoLinksPro.ewc_owed_of_pro T v I with "Hc").
   Qed.
 
   (* ...and is what the banner's eighteenth byte leaves: the banner law
@@ -282,18 +287,20 @@ Section UInitDiag.
     iIntros "#Hlk !>" (n N) "Hban".
     rewrite /UkInitMain.kinit_banner0 /UkInit.kinit_banner_pay.
     iIntros "Hl".
-    rewrite /UInitBanner.kinit_ban. iDestruct "Hban" as (v) "[#Hpin Hbnr]".
+    rewrite /UInitBanner.kinit_ban.
+    iDestruct "Hban" as (v I) "(%Hlen & #Hpin & Hbnr)".
     iExists (fun i => UserFd.ustd (ukn_fd N) (ufd_l3 stc_cons)
-                      ∗ UInitBanner.bnr T v n i)%I.
+                      ∗ UInitBanner.bnr T v I i)%I.
     iSplitR "Hbnr Hl".
     { iIntros "!>" (j) "%Hj".
-      iApply (UInitBanner.kinit_w1_of_link T γ N v n (ufd_l3 stc_cons) true j
+      iApply (UInitBanner.kinit_w1_of_link T γ N v I (ufd_l3 stc_cons) true j
                 (init_lit LIT_START j)
                 (ufd_l3_row1 stc_cons) (UInitBanner.init_banner_bytes j Hj)
                 with "Hpin Hlk"). }
     iSplitL; [ rewrite /UInitBanner.bnr; iFrame "Hl Hbnr" | ].
-    iIntros "[$ Hbnd]". rewrite /kinit_pro. iExists v. iFrame "Hpin".
-    iApply (EchoLinksPro.ewc_ban_done_pro T v n with "[Hbnd]").
+    iIntros "[$ Hbnd]". rewrite /kinit_pro. iExists v, I.
+    iSplitR; [ by iPureIntro | ]. iFrame "Hpin".
+    iApply (EchoLinksPro.ewc_ban_done_pro T v I with "[Hbnd]").
     rewrite /UInitBanner.bnr.
     by replace (length u_banner) with 18%nat by (vm_compute; reflexivity).
   Qed.
@@ -324,19 +331,21 @@ Section UInitDiag.
   Proof.
     iIntros "#Hlk !>" (n N) "Hpro".
     rewrite /UkInit.kinit_banner_pay. iIntros "Hl".
-    rewrite /kinit_pro. iDestruct "Hpro" as (v) "[#Hpin Hc]".
-    iExists (fun i => UserFd.ustd (ukn_fd N) (ufd_l3 stc_cons) ∗ pdg v n 1%nat i)%I.
+    rewrite /kinit_pro. iDestruct "Hpro" as (v I) "(%Hlen & #Hpin & Hc)".
+    iExists (fun i => UserFd.ustd (ukn_fd N) (ufd_l3 stc_cons)
+                      ∗ pdg v I 1%nat i)%I.
     iSplitR "Hc Hl".
     { iIntros "!>" (j) "%Hj".
-      iApply (kinit_w1_of_link_pdiag N v n (ufd_l3 stc_cons) true 1%nat j
+      iApply (kinit_w1_of_link_pdiag N v I (ufd_l3 stc_cons) true 1%nat j
                 (init_lit LIT_EXEC j)
                 (ufd_l3_row1 stc_cons) (init_execfail_bytes j Hj)
                 with "Hpin Hlk"). }
     iSplitL.
     { iFrame "Hl". rewrite /pdg.
-      iApply (EchoLinksPro.ewc_pdiag_0 T v n 1%nat with "Hc"). }
-    iIntros "[$ Hc]". rewrite /UInitBanner.kinit_ban. iExists v. iFrame "Hpin".
-    iApply (EchoLinksPro.ewc_pdiag_done_1 T v n with "[Hc]").
+      iApply (EchoLinksPro.ewc_pdiag_0 T v I 1%nat with "Hc"). }
+    iIntros "[$ Hc]". rewrite /UInitBanner.kinit_ban. iExists v, I.
+    iSplitR; [ by iPureIntro | ]. iFrame "Hpin".
+    iApply (EchoLinksPro.ewc_pdiag_done_1 T v I with "[Hc]").
     rewrite /pdg.
     by replace (length (pro_alts !!! 1%nat)) with 21%nat
       by (vm_compute; reflexivity).
@@ -353,17 +362,18 @@ Section UInitDiag.
   Proof.
     iIntros "#Hlk !>" (n N) "Hpro".
     rewrite /UkInit.kinit_banner_pay. iIntros "Hl".
-    rewrite /kinit_pro. iDestruct "Hpro" as (v) "[#Hpin Hc]".
-    iExists (fun i => UserFd.ustd (ukn_fd N) (ufd_l3 stc_cons) ∗ pdg v n 2%nat i)%I.
+    rewrite /kinit_pro. iDestruct "Hpro" as (v I) "(%Hlen & #Hpin & Hc)".
+    iExists (fun i => UserFd.ustd (ukn_fd N) (ufd_l3 stc_cons)
+                      ∗ pdg v I 2%nat i)%I.
     iSplitR "Hc Hl".
     { iIntros "!>" (j) "%Hj".
-      iApply (kinit_w1_of_link_pdiag N v n (ufd_l3 stc_cons) true 2%nat j
+      iApply (kinit_w1_of_link_pdiag N v I (ufd_l3 stc_cons) true 2%nat j
                 (init_lit LIT_FORK j)
                 (ufd_l3_row1 stc_cons) (init_forkfail_bytes j Hj)
                 with "Hpin Hlk"). }
     iSplitL.
     { iFrame "Hl". rewrite /pdg.
-      iApply (EchoLinksPro.ewc_pdiag_0 T v n 2%nat with "Hc"). }
+      iApply (EchoLinksPro.ewc_pdiag_0 T v I 2%nat with "Hc"). }
     by iIntros "[$ _]".
   Qed.
 

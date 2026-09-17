@@ -5080,7 +5080,7 @@ Section UkRunSys.
               ltac:(discriminate) with "Hufd Hstd") as "[Hufd Hh]".
       iModIntro.
       (* ...and open installs an inode or a device, never a pipe end *)
-      iDestruct (urun_rows_insert N fdv fd (FdOpen rd wr t) Hnpo Hpko
+      iDestruct (urun_rows_insert N fdv fd (FdOpen rd wr t) Hnpo
                    with "Hnpx") as "#Hnpi".
       rewrite (uslot_bump_run m pc M M pm pm sz sz fdv
                  (<[fd := FdOpen rd wr t]> fdv) c c gn gn cs cs pidv false false r Hx0 Hal4).

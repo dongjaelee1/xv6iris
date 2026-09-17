@@ -5384,3 +5384,257 @@ SH-ROUND is the kernel-tier device refutation (S3) if the round wants
 leaf (`wp_uk_ecall_open_recv_img_held`), which re-instantiates this
 corollary by the one swap F-OPEN-4 recorded plus `UserOff.uoff γo 0` in
 the fd arms.
+
+### F-OPEN-6 (kernel tier, 2026-09-17) — THE EXISTS ARM NAMES THE BRANCH OF THE PERMIT IT PAID AND THE DEVICE SUB-ARM IS REFUTED; THE fd ARM IS ONE ARM, AND WHAT SURVIVES THE REFUTATION IS THE TAINT — WHICH LEAVES THE TYPE EQUATION
+
+**The lane's verdict in one line: V1 landed whole — `open_post_ok_create`'s
+EXISTS-DEVICE sub-arm carries `cre_trunc_kept_ex`, the piece keyed at
+`trunc_permit_ex` (the permit's RIGHT disjunct alone), so `file_dev_refute`
+contradicts the `ADev` on the nose and nothing but the taint is left on that
+arm; V2 landed as far as the logic allows — `file_open_create_recv` is at TWO
+outcomes and the wrapper's fd arm is ONE arm — but the deliverable's
+`K ty := ∃ i γo, ⌜ty = FdInode …⌝ ∗ (fown … ∨ file_taint c)` is REFUTED,
+because a TAINTED claim cannot refute a device fd, so `redir_K` puts the
+taint OUTSIDE the type equation.**
+
+**V1, AND WHY THE FRESH ARM NEEDED NOTHING.**  The residue F-OPEN-5 left is
+that `SysOpenDefs.trunc_permit_of` is a DISJUNCTION and the arm that paid it
+did not say which disjunct it paid, so the DEVICE sub-arm's keyed piece
+refunded a permit the STATEMENT let be create's FRESH receipt.  The fix is
+the permit's right disjunct as a permit of its own,
+
+    SysOpenDefs.trunc_permit_ex Γ T Farm Fex i :=
+      ∃ d nm, T d nm ∗ cre_ex_fired Fex d nm i
+              ∗ pf_at (aarm_commit_at Γ appE (AFile [])) Farm
+
+with `trunc_permit_of_ex` weakening it to `trunc_permit_of`, and
+`open_trunc_at_of_permit_at` paying the caller's piece — keyed at the
+DISJUNCTIVE permit, which is what the caller hands in — with the STRONGER
+one, so the refund keeps the stronger one.  That last step is free because
+`PieceFam.pf_at` is a CONJUNCTION: the payment is available on both sides,
+spent through the weakening on the commit and kept as handed in on the
+refund.  No family, no bundle, no premise and no caller of the create
+surface moved for it.
+
+The FRESH arm needed no restatement and no new fact, and the kernel fact is
+`xv6-riscv/kernel/sysfile.c`'s `sys_open`: on the `omode & O_CREATE` branch
+`ip = create(path, T_FILE, 0, 0)` returns the inode LOCKED, and all three
+`ip->type` reads — the `T_DEVICE` major check, the `FD_DEVICE`/`FD_INODE`
+split and `(omode & O_TRUNC) && ip->type == T_FILE` — run on THAT inode
+before `iunlock(ip)`.  So on the FRESH run the observation IS the created
+child's own type, and `SpecSysOpen.open_post_ok_create`'s FRESH arm already
+says it: `⌜cre_pre av d nm ents nl i (AFile [])⌝`, the descriptor
+`FdInode i γo OffParked`, and the open-observation piece coming home UNFIRED
+(`pf_at (aopen_commit_at Γ appE) Fo`) — that arm has no device sub-arm to
+name.  A found DEVICE is reachable at all only because xv6's `create`
+RETURNS an existing `T_DEVICE` when its `dirlookup` finds the name, which is
+the EXISTS run and nothing else.
+
+**WAY (ii) AS THE RULING PHRASED IT, CORRECTED.**  The ruling said
+"`cre_rcpt_kept` keeps the EXISTS receipt beside the permit instead of
+spending it whole".  `cre_rcpt_kept` DID NOT MOVE, and it cannot: the EXISTS
+receipt IS what pays the permit (`cre_ex_fired Fex d nm i` contains
+`Fex.(pf_recv) av d nm i`), and a linear receipt cannot be in the arm and in
+the permit at once.  What the arm says instead is WHICH DISJUNCT it paid —
+the same information at no resource cost.  The receipt stays inside the
+permit, `cre_trunc_kept_ex` names the branch, and the application reads it
+back off the refund exactly as before.
+
+**STATEMENTS THAT CHANGED SHAPE, EXHAUSTIVELY.**
+
+`iris/SysOpenDefs.v` — nothing existing changed shape; four additions:
+1. NEW `trunc_permit_ex` (above, `:559`).
+2. NEW `trunc_permit_of_ex` — `trunc_permit_ex Γ T Farm Fex i -∗
+   trunc_permit_of Γ T Farm Fok Fex i`.
+3. NEW `open_trunc_at_of_permit_at` — `(Kt' i -∗ Kt i) -∗ open_trunc_piece Γ
+   vom Kt Ft -∗ (if om_trunc vom then Kt' i else emp) -∗ open_trunc_at Γ vom
+   i (cre_ft_kept Kt' i Ft)`; the landed `open_trunc_at_of_permit` is
+   UNCHANGED and is still what the FRESH key uses.
+4. NEW `open_trunc_at_kept_mono` — the keyed piece is monotone in the permit
+   it REFUNDS; and the `Global Typeclasses Opaque` list gains
+   `trunc_permit_ex`.
+   Unchanged: `trunc_permit_of`, `trunc_permit_of_mono`, `trunc_permit_cre`,
+   `trunc_permit_triv`, `trunc_tie_at`/`_arg` and their two conversions,
+   `open_trunc_piece` + `_true`/`_false`/`_none`/`_of_all`, `open_trunc_at` +
+   `_true`/`_false`/`_none`/`_of_triv`, `cre_ft_kept`, `atrunc_of_permit`
+   and everything above them.
+
+`iris/SpecSysOpen.v`:
+5. NEW `cre_permit_ex Γ pl P Farm Fex := trunc_permit_ex Γ (trunc_tie_at pl
+   P) Farm Fex` and NEW `cre_trunc_kept_ex Γ vom pl P Farm Fex i Ft :=
+   open_trunc_at Γ vom i (cre_ft_kept (cre_permit_ex …) i Ft)` (`:640`).
+6. NEW `cre_trunc_kept_of_ex` — the weakening to `cre_trunc_kept`.
+7. CHANGED `open_post_ok_create` — ONE conjunct, in the EXISTS arm's DEVICE
+   sub-arm: `cre_trunc_kept Γ vom pl P Farm Fok Fex i Ft` →
+   `cre_trunc_kept_ex Γ vom pl P Farm Fex i Ft` (`:857`).
+8. CHANGED `open_receipt_create` — the same conjunct in the same sub-arm
+   (`:1229`); the `Global Typeclasses Opaque` list gains both definitions.
+   Unchanged, and this is the point: `cre_permit`, `cre_trunc_kept`,
+   `cre_cur_kept`, `cre_rcpt_kept` (+`_of`), `cre_child_kept` (+`_of`),
+   `cre_fail_kept` (+`_of_piece`/`_of_at`), and `open_post_fail_create` —
+   BOTH its FRESH arm (a) and its "name existed" arm (b) keep the
+   DISJUNCTIVE permit, which is right: (a) is FRESH-paid and (b) has two
+   producers that differ in whether the permit was paid at all.  Also
+   unchanged: `open_arms_create`, `open_in`, `open_receipt`, the whole plain
+   surface, and every statement at `om_trunc vom = false`, where
+   `cre_trunc_kept_ex` is `emp` by `open_trunc_at_false` exactly as
+   `cre_trunc_kept` is — `TreeMove`, `UConsOpen`, `UkTreeRead` and
+   `UInitCons` compile untouched.
+
+`iris/ProofSysOpenCreArm.v`:
+9. NEW `socr_ft_ex` (the EXISTS run's tail family) with `socr_ft_ex_recv` and
+   `socr_ft_ex_kept`, both `reflexivity`, on `socr_ft`'s mould.
+10. CHANGED `socr_exists_key` — its conclusion's trunc piece is at
+    `socr_ft_ex pl P Phiarm Phiex i0 Phit` instead of `socr_ft pl P Phiarm
+    Phiok Phiex i0 Phit`.  Its PREMISE — the caller's `open_trunc_piece` at
+    `trunc_permit_of` — is unchanged.
+11. CHANGED `socr_arms_exists` — the same swap in its premise; the fail side
+    weakens with `cre_trunc_kept_of_ex` before `cre_fail_kept_of_at`.
+    `Global Typeclasses Opaque` gains `socr_ft_ex`.
+    Unchanged: `socr_ft`, `socr_ft_recv`, `socr_ft_kept`, `socr_fresh`,
+    `socr_exists`, `socr_fresh_key`, `socr_arms_fresh`, `socr_res_of_fail`,
+    `socr_ok_fresh_arm`, `socr_ok_exists_arm` (both are generic in `Phit`).
+
+`iris/ProofSysOpenEntryC.v`: NO statement moved.  Three applications on the
+EXISTS path (`:798`, `:813`, `:838`) instantiate `socr_ft_ex`; the FRESH
+path's three stay at `socr_ft`.  `ProofSysOpenJoin`/`Alloc`/`Stores`/
+`Shared`/`Parts`/`Bits`/`Tails`/`Pub`/`Full` compile UNTOUCHED — in
+particular **`ProofSysOpenPub.v` was not edited**, so nothing of lane
+OFF-HAND-7's file moved for this.
+
+`iris/FileOpen.v`:
+12. CHANGED `file_permit_read` (def) — the FRESH disjunct `⌜s = None⌝ ∗ fown
+    r (Some (i, []))` is DELETED; what is left is the lookup-view reading
+    `∨ file_taint c`, two disjuncts (`:1229`).
+13. CHANGED `file_permit_tied` — its permit premise is `trunc_permit_ex Γ
+    (trunc_tie_at pl (fun _ d => ⌜d = ROOTINO⌝)) (file_arm_fam …)
+    (file_dlk_fam …) i`; the `file_cre_fam` argument is GONE from it and the
+    binder order is now `c r n s g jc pl i Γ`.
+14. CHANGED `file_dev_refute` — the conclusion is `file_taint c`, not
+    `fown r (Some (i, [])) ∨ file_taint c` (`:1290`); its premises are
+    unchanged.
+15. CHANGED `file_kept_tied` — its premise is `cre_trunc_kept_ex …` (one
+    family argument fewer).
+16. NEW `file_open_fd_K c r ty := (∃ i γo, ⌜ty = FdInode i γo OffParked⌝ ∗
+    fown r (Some (i, []))) ∨ file_taint c` (`:1426`).
+17. CHANGED `file_open_create_recv` — TWO outcomes.  Every premise is
+    unchanged; the post is
+
+        (⌜rv = -1⌝ ∗ ⌜fdv' = sts⌝ ∗ file_open_pay c r s)
+        ∨ (∃ ty : fdtype,
+             ⌜open_fd_rcpt (om_readable vom) (om_writable vom) ty sts rv fdv'⌝
+             ∗ file_open_fd_K c r ty)
+
+18. `file_permit_read_pay`'s STATEMENT is unchanged (its proof is one case
+    shorter).  Section 6's note (a) is rewritten: the "THREE outcomes and not
+    two" paragraph is gone, and what replaces it is the taint argument below.
+    Unchanged: `file_permit_pay`, `file_kept_pay`, `file_legs_pay`,
+    `file_open_create_fail_pay`, `file_esc_pay`(+`_home`),
+    `file_odlk_recv`/`_fam`/`_piece`, `file_trunc_*`, `file_dlk_*`,
+    `file_arm_fam`, `file_unarm_fam`, `file_cre_*`,
+    `file_open_create_au`(+`_notrunc`), `file_open_pay`,
+    `file_escrow_read_at`, `fesc_res`, and sections 4, 5 and 7 entire.
+
+`iris/UkFileOpen.v`:
+19. NEW `redir_K c r ty := FileOpen.file_open_fd_K c r ty` (`:636`), beside
+    the wrapper — THE NAME SH-ROUND INSTANTIATES.
+20. CHANGED `wp_uk_ecall_open_create_deed` — its two fd arms (the INODE arm
+    and the found-DEVICE arm) are replaced by ONE:
+
+        ∨ (∃ (fd : nat) (ty : fdtype),
+             ⌜rv = mword_of_int (Z.of_nat fd) /\ (fd < NOFILE)%nat⌝ ∗
+             ualloc (ukn_fd N) l fd
+               (FdOpen (om_readable vom) (om_writable vom) ty) ∗
+             redir_K c r ty)
+
+    The `-1` arm (`ustd (ukn_fd N) l ∗ file_open_pay c r s`) and every
+    premise are unchanged.
+21. REBUILT `file_create_sup_v` and `wp_uk_ecall_open_create_deed_v`.  THE
+    MERGE LEFT THEM BROKEN, and this is not a shape choice: CAT-WALK-2 wrote
+    them against F-OPEN-4's five-argument `file_create_fam c r jc s` while
+    F-OPEN-5 made the family seven-argument (`c r jc n s g`) and
+    `file_open_create_recv` a fupd taking `app_inv` and `esc_key`, so the
+    merged `UkFileOpen.v` did not typecheck at all.  Both are now the
+    section-4 members VERBATIM with three substitutions — `uimg_view N Img`
+    for `utext_img (ukn_t N) Img`, `file_create_sup_v` for
+    `file_create_sup`, and `wp_uk_ecall_open_recv_gimg` for
+    `wp_uk_ecall_open_recv_img` — so the escrow park lives inside the
+    wrapper on the data-image side too and nothing of the protocol is
+    visible above it.
+22. CHANGED `wp_uk_ecall_open_create_deed_d` — the same single fd arm; its
+    body is unchanged (one application of `_v` plus `uimg_view_data`).
+    Unchanged: `xfam_fcreate`, `file_create_fam`, `file_create_sup`,
+    `file_open_fd_tie`, and sections 1-3 with all their `_v`/`_d` members.
+
+Nothing outside these six files moved.
+
+**WHAT WAS REFUTED, AND WHY IT IS NOT THE PERMIT'S FAULT.**  The
+deliverable's
+
+    K ty := ∃ i γo, ⌜ty = FdInode i γo OffParked⌝ ∗
+              (fown r (Some (i, [])) ∨ file_taint c)
+
+IS UNPROVABLE, and no kernel-side fact can make it provable.
+`AppFile.file_pred c r av = file_taint c ∨ (⌜file_fs_pure av⌝ ∗ cons_state …
+∗ f_state c r av)` (`iris/AppFile.v:647`): a TAINTED claim carries no
+`f_state` at all, so the application says nothing whatever about `f`'s row,
+and `open(f, 0x601)` at an `f` some unverified process made a device really
+does come back `FdDevice ma`.  Both readings the DEVICE sub-arm runs on
+carry that arm and cannot lose it — the open observation's receipt
+`FileOpen.file_odlk_recv` (`:730`) is `(⌜f_ok av s⌝ ∨ esc_spent g) ∨
+file_taint c`, and the escrow key `AppFile.esc_key` (`:474`) is
+`esc_wit r n s g ∨ file_taint c` — and `AppEcho.echo_taint` is refutable
+only against a discipline witness (`AppEcho.echo_taint_R_refute`, `:267`),
+which neither this wrapper nor the round holds at the call.  So `⌜ty =
+FdInode …⌝` cannot be proved on the taint branch, and the strongest SINGLE
+arm is the one with the taint HOISTED OUT of the type equation.  Nothing is
+lost by the hoist: the INODE reading is intact on every branch a round can
+act on, and a tainted round has no use for the descriptor anyway.  This is
+the same escape every other arm of `FileOpen.v` already carries; it is not a
+new hole, and there is nothing left here for a later lane to close.
+
+**THE EXACT `redir_K` SH-ROUND NAMES** (`UkFileOpen.redir_K`, verbatim, via
+`FileOpen.file_open_fd_K`):
+
+    redir_K c r ty :=
+      (∃ (i : Z) (γo : gname),
+         ⌜ty = FdInode i γo OffParked⌝ ∗ fown r (Some (i, [])))
+      ∨ file_taint c
+
+`UkShRedirAns.ush_open_call2` is instantiated at `K := redir_K c r` and
+`Kf := FileOpen.file_open_pay c r s` (unchanged: `fown r s ∨ (∃ i, fown r
+(Some (i, []))) ∨ file_taint c`).  `ush_open_ans2`'s fd arm already
+existentially quantifies `ty`, so this IS one arm: the round destructs
+`redir_K`, gets `ty = FdInode i γo OffParked` with `fown r (Some (i, []))`
+on the left, and the taint on the right beside every other taint arm it
+already carries.
+
+**THE BAR.**  WHOLE TREE GREEN on the lane's remote tree except ONE file,
+and that file is lane OFF-HAND-7's: `make -f CoqMakefile -j8 -k` over all of
+`iris/_CoqProject` recompiled 165 files and the only `Error` in the log is
+`UInitTreeExec.v:177` (*iIntro: cannot turn (tree_taint c -∗ my_pay … -∗
+uslot W')%I into a universal quantifier*) against OFF-HAND-6's deletions,
+exactly as the merge predicted; NOTHING in the tree requires
+`UInitTreeExec`, so no file is skipped behind it.  A SECOND merge breakage
+in the same lane's files was hit and is patched LOCALLY BUT NOT COMMITTED,
+because that file is not this lane's to move: `iris/UkRunSys.v:5083` passes
+a now-deleted `Hpko` argument to `UkRun.urun_rows_insert`, whose
+`fdst_parked` premise OFF-HAND-6 removed — dropping the one token is the
+whole fix and the other four call sites in that file are already right.
+Without it `UkRunSys.vo` fails and every dependent, `UkFileOpen.v` among
+them, is skipped, so the measurement above was taken with that token
+removed.
+
+Nothing is `Admitted`; every new result carries `Proof using` (the one bare
+`Proof.` in `SysOpenDefs.v` is pre-existing).  `tools/comment_quote_check.py
+iris` reports 0 sites.  `make audit-all-only`, `make audit-tree-only` and
+`make audit-file-only` from the tree root: `AUDIT_EXIT=0`,
+`AUDITTREE_EXIT=0`, `AUDITFILE_EXIT=0`, and the four axiom lists are
+UNCHANGED — the ECHO theorem's FOURTEEN, the SYSTEM theorem's THIRTEEN, the
+TREE theorem's THIRTEEN and the FILE theorem's FOURTEEN.  `Print
+Assumptions`: `FileOpen.file_open_create_recv` is the ELEVEN
+`PrimInt63`/`PrimString` primitives and nothing else (no `resv_*`, no
+funext); `UkFileOpen.wp_uk_ecall_open_create_deed` and its `_v` and `_d`
+twins are those eleven plus `resv_matches`, `resv_is_valid` and
+`functional_extensionality_dep` — F-OPEN-5's lists exactly;
+`FileOpen.file_dev_refute` is *Closed under the global context*.

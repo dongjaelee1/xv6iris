@@ -630,6 +630,83 @@ Proof using .
   destruct (Hsi i Hin) as [Hlo1 _]. lia.
 Qed.
 
+(* ...AND THE PATH argv[i] NAMES, READ OUT OF THE PERSISTED AREA.
+   [UkCatDeed.kcat_o_of_deed]'s
+   [(forall M, uimg_sub Img M -> arg_path_of M pv pl)] at cat's own key.
+   The argument block is ABOVE the entry sp -- that is [cat_kexec_geom]'s
+   [kxc_sp_final < kxc_sp (S i)] -- so it is exactly the half
+   [cat_entry_run] persists, and [UEchoKernel.echo_area_lookup] is the
+   one step from the area's map back to the image's. *)
+Lemma cat_kexec_argpath (na : nat) (alen : nat -> nat)
+    (afun : nat -> nat -> bv 8) (sts : list fdstate) (W' : uvis)
+    (i : nat) (pl : list (bv 8)) :
+  kexec_image_ok ElfUser.cat_elf na alen afun sts W' ->
+  kexec_sz ElfUser.cat_elf - PGSIZE + 336
+    <= kxc_sp_final (kexec_sz ElfUser.cat_elf) alen na ->
+  (forall a : Z, 0x3000 <= a < 0x4000 -> uw_addr (uvis_perm W') a) ->
+  (i < na)%nat ->
+  length pl = alen i ->
+  (forall (j : nat) (b : bv 8), pl !! j = Some b -> b = afun i j) ->
+  arg_path_shape pl ->
+  forall M : gmap Z (bv 8),
+    uimg_sub (base.filter
+                (fun kv : Z * bv 8 => ~ (kv.1 < uint (uvis_sp W')))
+                (udata_lo (uvis_M W') (uvis_perm W') (uvis_sz W'))) M ->
+    arg_path_of M
+      (mword_of_int (uk_argv_p (uvis_M W') (uvis_av W') (Z.of_nat i)))
+      pl.
+Proof using .
+  intros Hok Hroom Hwr Hi Hlen Hbb Hshape M Hsub.
+  destruct (cat_kexec_geom na alen afun sts W' Hok Hroom)
+    as (Hszv & Hlo & Hhi & Hsp' & Hav & Hargc & Hptr & Hsi & Hsb & Hslen
+        & Hvb & Hbelow).
+  pose proof Hok as Hok2.
+  unfold kexec_image_ok in Hok2. cbv zeta in Hok2.
+  rewrite cat_kexec_sz in Hok2.
+  destruct Hok2 as (_ & _ & _ & _ & _ & _ & (Hstr & Hnul & _)
+                    & _ & _ & _ & _ & _).
+  destruct (Hsi i Hi) as [Hlo1 Hhi1].
+  (* the pointer the vector spells *)
+  assert (Hpi : uk_argv_p (uvis_M W') (uvis_av W') (Z.of_nat i)
+                = kxc_sp 0x4000 alen (S i)).
+  { rewrite Hav (Hptr i ltac:(lia)). unfold kexec_ustack.
+    destruct (decide (i < na)%nat) as [Hlt | Hge];
+      [ reflexivity | exfalso; lia ]. }
+  pose proof (kxc_sp_mono 0x4000 alen 0 (S i) ltac:(lia)) as Hmo.
+  assert (Hsp00 : kxc_sp 0x4000 alen 0%nat = 0x4000) by reflexivity.
+  rewrite Hsp00 in Hmo.
+  (* ---- THE ONE STEP: the area's byte at [p + j] IS the image's ---- *)
+  assert (Hread : forall (j : nat) (b : bv 8), (j <= alen i)%nat ->
+            uvis_M W' !! (kxc_sp 0x4000 alen (S i) + Z.of_nat j) = Some b ->
+            M !! uint (add_vec_int
+                   (mword_of_int (uk_argv_p (uvis_M W') (uvis_av W')
+                                    (Z.of_nat i)) : mword 64)
+                   (Z.of_nat j)) = Some b).
+  { intros j b Hj Hbj.
+    rewrite Hpi.
+    rewrite (UShEcho.uint_avi_moi (kxc_sp 0x4000 alen (S i)) (Z.of_nat j)
+               ltac:(lia) ltac:(lia) ltac:(unfold Z64; lia)).
+    apply Hsub.
+    rewrite (echo_area_lookup (uvis_M W') (uvis_perm W') (uvis_sz W')
+               (uint (uvis_sp W'))
+               (kxc_sp 0x4000 alen (S i) + Z.of_nat j)
+               ltac:(rewrite Hsp'; lia)
+               (UShKernel.udata_lo_is_Some (uvis_M W') (uvis_perm W')
+                  (uvis_sz W')
+                  (kxc_sp 0x4000 alen (S i) + Z.of_nat j) b Hbj
+                  ltac:(apply Hwr; lia) ltac:(rewrite Hszv; lia))).
+    exact Hbj. }
+  split_and!.
+  - exact Hshape.
+  - intros j b Hb.
+    assert (Hj : (j < alen i)%nat)
+      by (rewrite <- Hlen; exact (lookup_lt_Some _ _ _ Hb)).
+    rewrite (Hbb j b Hb).
+    exact (Hread j (afun i j) ltac:(lia) (Hstr i j Hi Hj)).
+  - rewrite Hlen.
+    exact (Hread (alen i) (bv_0 8) ltac:(lia) (Hnul i Hi)).
+Qed.
+
 (* ---- THE ROWS cat's ENTRY READS OFF THE KEY, in one statement ------- *)
 Lemma cat_kexec_entry_rows (na : nat) (alen : nat -> nat)
     (afun : nat -> nat -> bv 8) (sts : list fdstate) (W' : uvis) :

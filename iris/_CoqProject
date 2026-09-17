@@ -1452,6 +1452,8 @@ LinkConsolewrite.v
 
 FsShPin.v
 FsEchoPin.v
+FsCatPin.v
+FsFPin.v
 FsConsPin.v
 SpecKexec.v
 InitBoot.v
@@ -1489,6 +1491,7 @@ EchoLinksPro.v
 EchoLinksLine.v
 EchoLinksBan.v
 EchoFsPure.v
+FileFsPure.v
 AppEcho.v
 AppTree.v
 

@@ -9,8 +9,8 @@
    with [bool_decide_eq_true_1]), the [Typeclasses Opaque] discipline, and
    the leaf-by-design rule (NOTHING IMPORTS THIS FILE, and nothing should)
    are all identical here and are not repeated.  This file is the same
-   theorem set four more times, for the four verified user programs:
-   [sync], [echo], [sh], [init].
+   theorem set five more times, for the five verified user programs:
+   [sync], [echo], [sh], [init], [cat].
 
    WHAT IS NEW HERE, AND WHY IT IS WORTH FOUR MORE INSTANCES.  These are
    not just four more binaries: their SHAPES exercise parts of the general
@@ -27,13 +27,15 @@
        The whole .bss comes from the second segment; the [∅ ∪ _] leg of
        the fold is on the critical path of every zero-image theorem.
 
-     - [sync] and [echo] have a PURE-BSS writable segment: [filesz = 0].
-       It contributes NO file bytes at all -- [seg_file_bytes] is an empty
-       [take] -- so their entire file-backed image comes from the text
-       segment, while their .bss comes from a segment with no file window.
+     - [sync], [echo] and [cat] have a PURE-BSS writable segment:
+       [filesz = 0].  It contributes NO file bytes at all --
+       [seg_file_bytes] is an empty [take] -- so their entire file-backed
+       image comes from the text segment, while their .bss comes from a
+       segment with no file window.
 
      - The ENTRY IS NOT THE LOWEST TEXT ADDRESS ([syncEntry] = 0x12,
-       [echoEntry] = 0x7c, [shEntry] = 0x9d0, [initEntry] = 0xbc): xv6
+       [echoEntry] = 0x7c, [shEntry] = 0x9d0, [initEntry] = 0xbc,
+       [catEntry] = 0xf6): xv6
        links `start` ahead of `main`, and [elf_entry] must report the
        header's [e_entry], not [elf_mem_base].
 
@@ -50,7 +52,7 @@
    embed the absolute build directory); the dumper refuses a file that
    embeds its own build directory.
 
-   These files are smaller than the kernel's -- 35-58 kB against 285 kB --
+   These files are smaller than the kernel's -- 34-58 kB against 285 kB --
    so the whole file stays cheap even though every theorem re-decodes its
    program's raw.
 
@@ -68,7 +70,8 @@ From User Require Import
   SyncElfRaw SyncInstrs SyncData
   EchoElfRaw EchoInstrs EchoData
   ShElfRaw   ShInstrs   ShData
-  InitElfRaw InitInstrs InitData.
+  InitElfRaw InitInstrs InitData
+  CatElfRaw  CatInstrs  CatData.
 
 Local Open Scope Z_scope.
 
@@ -502,3 +505,99 @@ Lemma init_elf_image_concrete :
   = (InitInstrs.init_bytes ∪ InitData.init_data)
     ∪ map_seqZ init_bss_lo (replicate (Z.to_nat init_bss_size) elf_zero_byte).
 Proof. rewrite init_elf_image, init_elf_zero_image. reflexivity. Qed.
+
+(* ====================================================================== *)
+(* ====================================================================== *)
+(*  cat                                                                   *)
+(*                                                                        *)
+(*  [sync]/[echo]'s shape at the largest .bss of the five: entry 0xf6;    *)
+(*  loads (0x0, 0xecc, 0xecc, R-X) and (0x1000, 0x0, 0x220, RW-) -- again *)
+(*  a pure-bss writable segment, and 0x220 bytes of it (cat's 512-byte    *)
+(*  read buffer lives there).                                             *)
+(*                                                                        *)
+(*  WHY THE FIFTH PROGRAM IS HERE.  The FILE application execs /cat       *)
+(*  (claude-notes/design/app-file.md), so [iris/FsCatPin.v] needs the      *)
+(*  image's inum-3 bytes named as a tracked raw the way /echo's are --     *)
+(*  which is [FsImgCheck.fsimg_cat_at]'s right-hand side and therefore     *)
+(*  this definition.                                                       *)
+(* ====================================================================== *)
+(* ====================================================================== *)
+
+Definition cat_elf : elf_bytes := pstring_hex_bytes CatElfRaw.cat_elf_hex.
+Global Typeclasses Opaque cat_elf.
+
+Lemma cat_elf_length : Z.of_nat (length cat_elf) = CatElfRaw.cat_elf_size.
+Proof.
+  unfold cat_elf. rewrite pstring_hex_bytes_length. vm_compute. reflexivity.
+Qed.
+
+Lemma cat_elf_wf : elf_wf cat_elf = true.
+Proof. vm_eq. Qed.
+
+Lemma cat_elf_sections_wf : elf_sections_wf cat_elf = true.
+Proof. vm_eq. Qed.
+
+Lemma cat_elf_entry : elf_entry cat_elf = Some CatData.catEntry.
+Proof. vm_eq. Qed.
+
+Lemma cat_elf_segments :
+  elf_segments cat_elf = Some CatData.cat_segments.
+Proof. vm_eq. Qed.
+
+Lemma cat_elf_base : elf_mem_base cat_elf = Some CatData.catMemBase.
+Proof. vm_eq. Qed.
+
+Lemma cat_elf_end : elf_mem_end cat_elf = Some CatData.catMemEnd.
+Proof. vm_eq. Qed.
+
+Lemma cat_elf_rodata_end :
+  elf_rodata_end cat_elf = Some CatData.catRodataEnd.
+Proof. vm_eq. Qed.
+
+Lemma cat_elf_file_image_bool :
+  bool_decide (elf_file_image cat_elf
+               = CatInstrs.cat_bytes ∪ CatData.cat_data) = true.
+Proof. vm_eq. Qed.
+
+Lemma cat_elf_file_image :
+  elf_file_image cat_elf = CatInstrs.cat_bytes ∪ CatData.cat_data.
+Proof.
+  pose proof cat_elf_file_image_bool as H.
+  apply bool_decide_eq_true_1 in H. exact H.
+Qed.
+
+(* Writable segment (vaddr 0x1000, filesz 0x0, memsz 0x220): .bss is
+   [0x1000, 0x1220), and the text segment's zero window is empty. *)
+Definition cat_bss_lo : Z := 0x1000.
+Definition cat_bss_size : Z := 544.   (* 0x220 = memsz - filesz *)
+
+Lemma cat_elf_zero_image_bool :
+  bool_decide (elf_zero_image cat_elf
+               = map_seqZ cat_bss_lo
+                   (replicate (Z.to_nat cat_bss_size) elf_zero_byte)) = true.
+Proof. vm_eq. Qed.
+
+Lemma cat_elf_zero_image :
+  elf_zero_image cat_elf
+  = map_seqZ cat_bss_lo (replicate (Z.to_nat cat_bss_size) elf_zero_byte).
+Proof.
+  pose proof cat_elf_zero_image_bool as H.
+  apply bool_decide_eq_true_1 in H. exact H.
+Qed.
+
+Lemma cat_bss_top : cat_bss_lo + cat_bss_size = CatData.catMemEnd.
+Proof. vm_eq. Qed.
+
+Lemma cat_elf_image :
+  elf_image cat_elf
+  = (CatInstrs.cat_bytes ∪ CatData.cat_data) ∪ elf_zero_image cat_elf.
+Proof.
+  destruct (elf_image_split cat_elf cat_elf_wf) as [Hsplit _].
+  rewrite Hsplit, cat_elf_file_image. reflexivity.
+Qed.
+
+Lemma cat_elf_image_concrete :
+  elf_image cat_elf
+  = (CatInstrs.cat_bytes ∪ CatData.cat_data)
+    ∪ map_seqZ cat_bss_lo (replicate (Z.to_nat cat_bss_size) elf_zero_byte).
+Proof. rewrite cat_elf_image, cat_elf_zero_image. reflexivity. Qed.

@@ -4816,3 +4816,312 @@ theorem's axiom list FOURTEEN, the SYSTEM theorem's THIRTEEN and the TREE
 theorem's THIRTEEN, all unchanged.  `make gen-ucode` prints *unchanged*
 for all seven catalogs; no `UCode*.v` and no `tools/ucode_manifest.json`
 was touched.
+
+### CAT-ENTRY-2 (2026-09-17) — THE WRITE-ERROR TAIL GOES, THE DEPOSIT GIVES THE RUN BACK, AND THE ENTRY STOPS ON GEOMETRY AND ON ONE MISSING KERNEL ROW
+
+Branch `app-file/cat-entry`, merged with `main` (fast-forward to
+`fba6f34ab`; `main` already contained CAT-WALK-2's `73bc00ec4`, nothing in
+`iris/` moved, and the design page needed no conflict resolution).
+
+**THE LANE'S VERDICT IN ONE LINE: RULINGS (g) and (h) both land whole --
+`kcat_round`'s write output is a DISJUNCTION the payer picks and the deed
+payer picks no-short, and `UkWriteLeaf`'s deposit now hands the caller's
+source run back so a run at `DfracOwn 1` funds a write and comes home --
+and `cat_image_entry` does NOT, for two reasons that are worth separating:
+cat has no twin of echo's ~1500 lines of exec/argv GEOMETRY, and, newly
+found, `Hw`'s TAINT arm is unsuppliable because nothing bounds the read's
+return by the count it was given.**
+
+**T1 -- RULING (g): LANDS.**  `iris/UkCat.v`, `iris/UkCatCat.v`,
+`iris/UCatKernel.v` (commit `1d3048750`).
+
+- `UkCat.kcat_wr fdw ua nb Ci Co` (NEW, beside `kcat_w`) -- the same write
+  obligation with `Co : mword 64 -> iProp Σ`, i.e. its output READ AT THE
+  RETURNED WORD.  `kcat_w`'s output cannot mention that word and cat's
+  loop branches on exactly it (`beq a0,s1`), which is the whole reason the
+  `cat: write error` tail used to be an obligation.  `kcat_wr_of_w` (the
+  ret-free obligation IS the constant instance), `_mono`, `_mono_in`,
+  `_frame`.  A SECOND definition and not a restatement: putc's byte and
+  every run of `kcat_pay_seq` want the ret-free shape, and quantifying a
+  return value none of them reads would cost each of them an argument.
+- `UkCatCat.kcat_round`'s write arm is now
+
+      ∀ nb, ⌜ret = mword_of_int (Z.of_nat nb)⌝ -∗ ⌜0 < nb⌝ -∗
+        UkCat.kcat_wr N 1 CatSyms.buf nb
+          (ubytes γd CatSyms.buf 512 g)
+          (fun wret =>
+             (((⌜wret = mword_of_int (Z.of_nat nb)⌝ ∗ I)
+               ∨ (I ∧ kcat_dg_cw))
+              ∗ ubytes γd CatSyms.buf 512 g))
+
+  **THE SHAPE TAKEN IS AN ADDITIVE DISJUNCTION AND THE PAYER PICKS.**  The
+  left arm is the NO-SHORT output (`UkWriteLeaf.uwrite_no_short` at a
+  console destination the caller owns -- READ-RELAY's move one syscall
+  over); the right arm is the OLD additive pair, unchanged.  The free
+  instance cannot discharge the no-short output at all, because the free
+  write law has a short arm and hands back no return value -- so
+  `kcat_round_of_law` picks the DIAGNOSTIC arm (`kcat_wr_of_w` of the old
+  `kcat_w` construction, then `kcat_wr_mono` into the right injection) and
+  the whole claim-free chain (`wp_kcat_cat_loop`, `wp_kcat_cat`,
+  `UkCatMain.kcat_file_of_law` ... `kcat_pay_all_of_law`) is EXACTLY what
+  it was.  A deed payer picks the left arm and never funds the tail.
+- The walk funds both arms, so `kcat_dg_cw` is still a payment of
+  `UkCatCat.v` and the `cat: write error` code is still WALKED.  The back
+  edge takes `I` out of either disjunct (`iAssert I with "[Hpick]"`,
+  `[[_ $] | [$ _]]`); the short branch is REFUTED from the left one, which
+  needed the two registers the branch compares to be named -- `Ha0k`
+  (`mk !!! a0 = wret`, one `upd_eq`) and `Hs1k` (`mk !!! s1 = add_vec
+  zero_reg ret`, six `upd_ne`s through `mg`/`mh`/`mi`/`mj`) -- after which
+  `uv_btaken BEQ` is `eq_vec_refl` and `Hbeq : … = false` is a
+  contradiction.
+- `UCatKernel.cat_round_at` restated at the new `Hw` and **without the
+  `□ kcat_dg_cw` premise**.  It never funds the tail, in either arm.
+
+**T2 -- RULING (h): LANDS.**  `iris/UkWriteLeaf.v`, `iris/UCatOut.v`,
+`iris/UCatKernel.v` (commit `7b7941bfb`).  All ADDITIVE; no landed
+statement in `UkWriteLeaf.v` or `UCatOut.v` moved.
+
+- `UkWriteLeaf.cons_out_chain_frame k M ua Q R j cnt : R -∗ cons_out_chain
+  k M ua Q j cnt -∗ cons_out_chain k M ua (fun i => Q i ∗ R) j cnt`.  The
+  chain carries a frame because its nodes are ADDITIVE -- `iSplit` on `∧`
+  hands both sides the same context -- and `WpUart.out_link_mono` carries
+  it across the step.  **Its home is `SpecConsolewrite.v`**, whose cone is
+  the whole console tower; it is stated here beside its one consumer.
+- `UkWriteLeaf.uwrite_chain_sup_ret N Q R m pc l i rb mj` -- S4's supply
+  whose deposit premise is
+
+      (∀ M pm sz, uheap … M pm sz -∗
+         uheap … M pm sz ∗ R ∗ cons_out_chain (S gen_id) M (m !!! a1) Q 0 cnt)
+
+  concluding `udepwf_std N m pc 16 (xfam_wr (fun j => Q j ∗ R) (ukn_pay N))
+  l`.  **The run comes home through the post's own `Q`**: `uwrite_no_short`
+  at the framed family returns `⌜r = mword_of_int nb⌝ ∗ (Q nb ∗ R)`.  Ten
+  lines over `uwrite_chain_sup`.
+- `UkWriteLeaf.ubytesq_frac` / `ubytes_halve` -- `UserHeap.ubytesq` has no
+  fractional law (`ghost_map_elem_fractional` pointwise, plus
+  `Qp.half_half`).  **Its home is `UserHeap.v`**, whose cone is the whole U
+  tier; stated here beside its one consumer.
+- `UCatOut.cch_chain_taint` -- the same run at a TAINTED era with NO ROW AT
+  ALL, through `FileLinks.file_write_link_taint`, so a turn whose
+  justification is the taint funds a chain of any length.  `cch_chain`
+  cannot serve there: it takes the model's byte at every position as a
+  Coq premise even though its taint branch never reads it.
+- `UCatKernel.cat_w_of_link` -- cat's twin of
+  `UEchoOut.kecho_w_of_link_data`, **and `Hw` of `cat_round_at` verbatim**:
+
+      cat_w_of_link (c : file_fixed) v vf ps0 cs0 s0 I0 P l rb
+                    (p nb : nat) (rv : mword 64) (fbb : nat -> bv 8) :
+        c = fgn_cl g ->
+        UCatOut.cat_stage ps0 cs0 s0 I0 P ->
+        l !! 1%nat = Some (FdOpen rb true (FdDevice CONSOLE)) ->
+        rv = mword_of_int (Z.of_nat nb) ->
+        (Z.to_nat (bv_unsigned rv) <= 512)%nat ->
+        era_pin (fgn_echo g) (S gen_id) v -∗
+        file_era_pin g (S gen_id) vf -∗
+        (⌜(Z.to_nat (bv_unsigned rv) <= 512)%nat
+          /\ ∀ j < Z.to_nat (bv_unsigned rv),
+               cont (cat_st cs0 s0 I0) LCat (ralt_dec (ralt_enc RCRan))
+                 !! (p + j) = Some (fbb j)⌝ ∨ file_taint c) -∗
+        UserFd.ustd γfd l -∗
+        UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P p -∗
+        UkCat.kcat_wr N 1 CatSyms.buf nb (ubytes γd CatSyms.buf 512 fbb)
+          (fun wret => ⌜wret = mword_of_int (Z.of_nat nb)⌝
+                       ∗ UserFd.ustd γfd l
+                       ∗ UCatOut.cch g v vf … P (p + Z.to_nat (bv_unsigned rv))
+                       ∗ ubytes γd CatSyms.buf 512 fbb)
+
+  THREE differences from echo's twin, all of them the point:
+  1. **The source run is OWNED, not persistent.**  The run is HALVED
+     (`ubytes_halve`): one half to `UkCat.wp_kcat_write_chain`, which
+     returns it, one half into the deposit's wand, which returns it through
+     the chain's payload -- and the two rejoin, so the buffer is whole for
+     the next turn.  (The wand's `uheap_ubytes_wat` reading is non-
+     destructive -- a pure conclusion -- but the copy has to be IN the
+     deposit goal's context, which is the whole reason a second half is
+     needed.)
+  2. **The count is the read's return**, so the bytes written are a PREFIX
+     of the 512-byte buffer: split with `UserHeap.ubytes_app` and framed
+     across the call.  The suffix's length is `pose`d (`nr`) before the
+     split, because a `replace 512%nat with (nb + (512 - nb))%nat` rewrites
+     inside the Iris context too and mangles the suffix's own count.
+  3. **The no-short fact is KEPT.**  echo's twin reads `uwrite_no_short`
+     and DROPS its equation; cat's loop branches on that word.  It holds
+     whether or not the era is tainted, because it is a fact about the
+     LEAF -- a console write of a run the caller owns returns the full
+     count -- and not about the claim.
+
+  **THE COUNT IS READ OFF THE WORD THROUGHOUT** (CAT-WALK-2's smaller
+  finding, taken seriously): `cnt := Z.to_nat (bv_unsigned rv)` is the
+  leaf's count, the chain's length and the cursor's advance, and the walk's
+  `nb` appears only where the register rows demand it.  `cat_count_is`
+  (`sys_rw_count (mword_of_int n) = n` for `n < 2^31` -- the THIRD copy of
+  this, after `UEchoOut.echo_count_is` and `UShOut`'s; its home is
+  `SpecSysRead.v`) and `cat_moi_uint` (`mword_of_int (bv_unsigned v) = v`,
+  one line over `UmodeArith.moi_of_uint`) are the two readings that bridge
+  them.
+
+**THE EXACT `Hheld`.**  `UCatKernel.cat_held_read Hold c fd bs`, which is
+what `cat_round_at` now takes by name, and which is CAT-WALK-2's boxed
+obligation verbatim:
+
+    Definition cat_held_read (Hold : nat -> iProp Σ) (c : file_fixed)
+        (fd : nat) (bs : list (bv 8)) : iProp Σ :=
+      (□ (∀ p : nat, ⌜(p <= length bs)%nat⌝ -∗
+            UkCat.kcat_r N (mword_of_int (Z.of_nat fd)) CatSyms.buf 512%nat
+              (Hold p)
+              (fun (rv : mword 64) (gb : nat -> bv 8) =>
+                 ((⌜Z.to_nat (bv_unsigned rv) = ard_count 512 p (length bs)⌝
+                   ∗ ⌜forall j : nat, (j < Z.to_nat (bv_unsigned rv))%nat ->
+                        gb j = bs !!! (p + j)%nat⌝
+                   ∗ Hold (p + Z.to_nat (bv_unsigned rv))%nat)
+                  ∨ ((∃ p' : nat, ⌜(p' <= length bs)%nat⌝ ∗ Hold p')
+                     ∗ file_taint c))%I)))%I.
+
+`Hold` is ABSTRACT on purpose: OFF-HAND-6's design records the offset VALUE
+in the descriptor state (`OffHeld off`) and lets the half ride the kernel's
+bundle, so `Hold p` may end up being just `UserFd.ufd γfd fd (FdOpen true
+wb (FdInode i γo (OffHeld p)))` plus the deed fraction, with no user-side
+`uoff` at all.  Either shape instantiates it.  The two VACUOUS shapes
+CAT-WALK-2 rejected are recorded at the definition.
+
+**THE NEW STOP, AND IT IS A KERNEL ROW AND NOT A PROOF EFFORT: `Hw`'s
+TAINT ARM IS UNSUPPLIABLE, BECAUSE NOTHING BOUNDS THE READ'S RETURN.**
+`cat_w_of_link` takes `(Z.to_nat (bv_unsigned rv) <= 512)%nat` as a
+premise, and it MUST: the no-short refutation is a fact about bytes the
+CALLER OWNS, cat owns 512 of them, and a write of more than 512 from a
+512-byte buffer is not fundable by this payment at all (nor by any other:
+the free write law at a claim-bearing era is the taint, and `file_taint` is
+a ghost fact, not a licence).  In `cat_round_at`'s CONTENT arm the cap
+rides in `Hw`'s own left disjunct (`ard_count 512 p _ <= 512`).  In its
+TAINT arm NOTHING gives it: `UkFileOpen.wp_uk_read_deed_learns_mapped`'s
+taint disjunct is `fdq r q (Some (i, bs)) ∗ file_taint c` and says nothing
+about `rv`, and `UkCatDeed.kcat_r_of_deed`/`_at` relay it verbatim.  **THE
+MISSING ROW IS "a read of `cnt` bytes returns at most `cnt`", in BOTH arms
+of the read's post.**  Its home is `UkRunSys.wp_uk_ecall_read_file`'s post
+(lane OFF-HAND-6's file, so this lane did not touch it), relayed through
+`FileOpen.file_read_arms_learn` into `UkFileOpen`'s two deed leaves --
+after which it belongs in `cat_held_read`'s taint disjunct, and
+`cat_w_of_link` discharges `Hw` outright.  Until then `cat_round_at` is
+supplied only at turns whose read returned at most 512, which is every turn
+the kernel can actually produce and none the logic can yet prove.
+
+**T3 -- `cat_image_entry` AND C3: STOPPED, AND THE REASON IS GEOMETRY.**
+Every CLAIM-SIDE piece the entry needs is now in hand:
+`UkCatDeed.kcat_o_of_deed` / `_miss` for the open (CAT-WALK-2),
+`UCatKernel.cat_round_at` with `cat_w_of_link` for the content (this lane),
+`UkCat.kcat_cldep_nonpipe` for the close, `UCatOut.catq_filed` /
+`catq_unfiled` for the payload (`*_const`, minted by
+`UkRun.uslot_of_urun_ro` at `ukn_const`).  What is missing is NOT about
+cat's claim:
+
+1. **cat HAS NO TWIN OF echo's EXEC/ARGV GEOMETRY, and it is ~1500 lines.**
+   `UShEcho.echo_image_entry` (`UShEcho.v:1427`) is six lines, and it rests
+   on `echo_args_det_holds` (`:1269`), `echo_kexec_pages` (`:589`),
+   `echo_kexec_entry_rows` (`:819`), `echo_room_of_det` (`:1387`),
+   `echo_key_args_holds` (`:1508`) and `UEchoKernel.echo_uexec_slot`
+   (`UEchoKernel.v:400`, the key->slot bridge with its thirteen premises
+   about the stack page, the argv block, the break and the lazy bit).
+   Each is stated at `ElfUser.echo_elf` and at `EchoSyms`; cat's twin is
+   the same proof at `ElfUser.cat_elf`, `CatSyms` and
+   `UkCatMain.wp_kcat_start`.  Mechanical, large, and independent of
+   everything this lane did -- **it is a lane, and it is the one to run
+   next.**
+2. **`UkCatMain.kcat_dg_open` AT THE CURSOR IS NOT BUILT.**  The
+   `cat: cannot open %s` arm is three `UkCat.kcat_pay_seq` runs at fd 2,
+   each a chain of `kcat_wb`s, and ulib's putc writes one byte at a time
+   out of its OWN FRAME.  Funding them from `UCatOut.cch_step` needs
+   (a) `kcat_wb_of_link` -- the one-byte console write at the cursor, which
+   is `cat_w_of_link` at count 1 with the lent frame byte as the run (the
+   same halving; the no-short equation is needed here too, or a short write
+   leaves the cursor unmoved while the chain has advanced), (b)
+   `kcat_pay_seq_of_link`, one induction over it, and (c) the PURE half:
+   that `cm_lit`'s twenty bytes with `ua_bytes g` spliced at `cm_msg_q` ARE
+   `FileDisc.cont … LCat RCRan` at the cursor, through
+   `UCatOut.cat_cont_ran_none` / `cat_cont_noopen`.  (a) and (b) are
+   sibling proofs of what landed here; (c) is new pure work.  CAT-ENTRY's
+   ruling stands throughout: an ABSENT deed files `RCRan`, not `RCNoOpen`.
+
+**WHAT C3 WILL SAY, exactly.**  `UShEchoPay.echo_slot_of_kexec_at`'s mould
+(`UShEchoPay.v:119`) at cat: given `kexec_image_ok ElfUser.cat_elf na alen
+afun sts W'`, the room bound at `kxc_sp_final (kexec_sz ElfUser.cat_elf)
+alen na`, `length sts = NOFILE`, `fdv_all_parked sts`, `uvis_lazy W' =
+false`, the argv reading `na = 2 /\ alen/afun = ["cat"; "f"]` off sh's
+node, and `l !! 1 = Some (FdOpen rb true (FdDevice CONSOLE))` --
+
+    era_pin (fgn_echo g) (S gen_id) v -∗ file_era_pin g (S gen_id) vf -∗
+    UkRun.urun_nopipe sts -∗ udep -∗
+    cat_held_read Hold c fd bs -∗
+    my_pay (uvis_gen W') (fun _ : Z => UCatOut.catq_filed v vf ps0 cs0 s0 I0
+                                         (ralt_enc RCRan) P) -∗
+    (UserFd.ustd γfd (take NSTD (uvis_fd W'))
+     ∗ FileOpen.fdq r q (Some (i, bs))
+     ∗ UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P 0) -∗
+    uslot W'
+
+and `cat_image_entry` is that under `ExecEntry.image_entry
+ElfUser.cat_elf M av sts cw cs pidv Q Pay uslot` through
+`ExecEntry.image_entry_of_at`, at `FsCatPin`'s inum 3 and with `cw`, `cs`,
+`pidv` FREE (cat reads no identity row, as echo does not).
+
+**WHAT SH-ROUND HANDS IN, unchanged from CAT-WALK and now fully statable.**
+sh's fork/exec channel lends cat exactly the triple above -- its half of the
+console credential AT THE ROUND'S OWN CURSOR (`UCatOut.cch … 0`), a
+FRACTION of the deed (`fdq r q (Some (i, bs))`, which `cat_tie` ties to the
+model's state at cat's round), and the low `NSTD` ledger with fd 1 the
+console -- and it is owed back `UCatOut.catq_filed …` (the alternative in
+the choice list, the cursor at the end of cat's run) or `catq_unfiled …`
+(nothing moved, the empty-content round).  Both are `*_const`, which is the
+`forall x y, Q x = Q y` the record wants.  **AND SH-ROUND'S OWN FIRST NEED
+IS STILL THE ONE CAT-ENTRY NAMED**: at an `LCat` round whose deed is
+`Some (i, [])` cat writes nothing and the block's first byte is sh's own
+prompt, so sh files `RCRan` at its prompt write through
+`FileLinks.file_write_link_blk` and not the plain link.
+
+**EVERY STATEMENT THAT MOVED, EXHAUSTIVELY.**  TWO: `UkCatCat.kcat_round`
+(the write arm) and `UCatKernel.cat_round_at` (the new `Hw`, the named
+`Hheld`, and the `kcat_dg_cw` premise gone).  Its only consumers are
+`UkCatCat.kcat_round_of_law`, `wp_kcat_cat_loop`, `wp_kcat_cat` (proofs
+adjusted, STATEMENTS unchanged), `UkCatMain.kcat_run0`/`kcat_file`/
+`kcat_pay`/`kcat_pay_all` and their `_of_law`s (which mention
+`kcat_round N fdv I Cend` abstractly and did not move at all), and
+`UCatKernel.cat_round_at` itself.  Everything else is ADDITIVE:
+`iris/UkCat.v` gains five results after `kcat_w_frame`'s `Qed.`
+(`kcat_wr`, `_of_w`, `_mono`, `_mono_in`, `_frame`); `iris/UkWriteLeaf.v`
+gains four after `uwrite_chain_sup`'s `Qed.` (`cons_out_chain_frame`,
+`uwrite_chain_sup_ret`, `ubytesq_frac`, `ubytes_halve`) -- ADDITIVE by
+construction, since lane OFF-HAND-6 is editing beside it;
+`iris/UCatOut.v` gains `cch_chain_taint`; `iris/UCatKernel.v` gains
+`cat_count_is`, `cat_moi_uint`, `cat_fam`, `cat_w_of_link` and the
+`cat_held_read` definition, plus four `Local Notation`s for the argument
+registers (a7 is `UmodeCap`'s and the rest `UmodeAbi`'s; both are the
+literals `UkCat.v` uses).  `iris/_CoqProject` did not move.
+`UkRunSys.v`, `UkReadFile.v`, `UkWriteFile.v`, `FdSlots.v`,
+`UsysMemOk.v` (lane OFF-HAND-6) and `FileOpen.v`, `AppFile.v` (lane
+F-OPEN-5) were NOT touched.
+
+**THE BAR.**  WHOLE TREE GREEN on the lane's remote tree: `make -f
+CoqMakefile -j8 -k` over all of `iris/_CoqProject` finishes `TREE_EXIT=0`
+with ZERO `Error`, and a re-run is *Nothing to be done for 'real-all'*.
+Nothing is `Admitted`; every new result carries `Proof using` (`grep -c
+"^  Proof\.$"` is 0 in all five touched files).  `make audit-all-only` and
+`make audit-tree-only`: `AUDIT_EXIT=0` / `AUDITTREE_EXIT=0`, the SYSTEM
+theorem's axiom list THIRTEEN, the ECHO theorem's FOURTEEN and the TREE
+theorem's THIRTEEN, all unchanged.  `make gen-ucode` prints *unchanged* for
+all seven catalogs (`UCodeCat.v` 388 instr, 276 words); no `UCode*.v` and
+no `tools/ucode_manifest.json` was touched.
+
+**TWO SMALLER FINDINGS.**
+- **`iDestruct (… ) as %H` on a lemma with a PURE conclusion does not
+  consume its spatial hypotheses.**  `UEchoOut.kecho_w_of_link_data` relies
+  on it (`uheap_ubytes_wat` then `iFrame "Hheap"`) and so does
+  `cat_w_of_link`.  It is why the deposit's wand can read the image row off
+  the caller's run and still hand the run back -- and it is NOT why a
+  second copy is needed: the copy has to be IN the deposit goal's spatial
+  context, which is what the halving buys.
+- **`replace 512%nat with (nb + (512 - nb))%nat by lia` inside a proofmode
+  goal rewrites the IRIS CONTEXT too**, because `envs_entails Δ P` has `Δ`
+  in the goal -- a hypothesis of count `512 - nb` becomes `nb + (512 - nb)
+  - nb` and stops matching.  `pose` the residue and carry the equation
+  (`Hsz : (cnt + nr)%nat = 512%nat`) instead.  Same class as the notes'
+  "`rewrite <- t1 t2` is not two rewrites" (it parses as one `<-` and a
+  stray term).

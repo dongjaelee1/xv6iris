@@ -8816,12 +8816,22 @@ not re-discover them.
       UkShEcho.sh_exec_sup_echo_wq Wc.
 
   (* ...and at the ONE family the campaign uses, the four [Wc] laws are the
-     RECORD's own and only [Hold]'s two properties are owed: *)
+     RECORD's own and only [Hold]'s two properties are owed -- plus the
+     exec-failed diagnostic's law, which is a PREMISE for section 6.0's
+     reason: *)
   Lemma ushf_child_law_hold_at (Hold : list (bv 8) -> iProp Σ) :
     (forall I0, Timeless (Hold I0)) -> (forall I0, ⊢ lk_T L -∗ Hold I0) ->
     (⊢ app_taint -∗ lk_T L) ->
     ⊢ lk_links L -∗ udep (PS := uprogSG_free) -∗ sh_echo_slot (lk_T L) -∗
+      UkShEcho.ush_execfail_law_wq (PS := uprogSG_free)
+        (fun I p => lk_lcred L (S gen_id) I p ∗ Hold I)%I -∗
       UkShFork.ushf_child_law (PS := uprogSG_free)
+        (fun I p => lk_lcred L (S gen_id) I p ∗ Hold I)%I.
+
+  Lemma ush_execfail_law_wq_hold_at (Hold : list (bv 8) -> iProp Σ) :
+    (forall I0, lk_exfb L I0 = alt_execfail) ->
+    ⊢ lk_links L -∗
+      UkShEcho.ush_execfail_law_wq (PS := uprogSG_free)
         (fun I p => lk_lcred L (S gen_id) I p ∗ Hold I)%I.
 
   (* UShLine -- [Hwc] and [Hwbr] *)
@@ -8846,7 +8856,10 @@ not re-discover them.
     (forall I0, Timeless (Hold I0)) -> (forall I0, ⊢ lk_T L -∗ Hold I0) ->
     (⊢ app_taint -∗ lk_T L) ->
     ⊢ lk_links L -∗ udep (PS := uprogSG_free) -∗
-      UShEcho.sh_echo_slot (lk_T L) -∗ (∃ v, lk_pin L (S gen_id) v) -∗
+      UShEcho.sh_echo_slot (lk_T L) -∗
+      UkShEcho.ush_execfail_law_wq (PS := uprogSG_free)
+        (fun I p => lk_lcred L (S gen_id) I p ∗ Hold I)%I -∗
+      (∃ v, lk_pin L (S gen_id) v) -∗
       UkSh.ush_rest_l (PS := uprogSG_free) N γp (lk_T L)
         (fun I p => lk_lcred L (S gen_id) I p ∗ Hold I)%I
         (fun I => (∃ v, lk_pin L (S gen_id) v

@@ -445,7 +445,7 @@ Section IupdateRes.
     a = c -> (forall j, (j < n)%nat -> f j = g j) ->
     ([∗ list] j ∈ seq 0 n, pa_add a j ↦ₘ f j)
     ⊣⊢ ([∗ list] j ∈ seq 0 n, pa_add c j ↦ₘ g j).
-  Proof.
+  Proof using .
     intros -> Hfg. apply big_sepL_proper. intros i jj Hj.
     apply lookup_seq in Hj as [-> Hlt]. rewrite Nat.add_0_l Hfg;
       [reflexivity | lia].
@@ -459,7 +459,7 @@ Section IupdateRes.
       ∗ ([∗ list] j ∈ seq 0 2, pa_add (pa_add a 6) j ↦ₘ f (6 + j)%nat)
       ∗ ([∗ list] j ∈ seq 0 4, pa_add (pa_add a 8) j ↦ₘ f (8 + j)%nat)
       ∗ ([∗ list] j ∈ seq 0 52, pa_add (pa_add a 12) j ↦ₘ f (12 + j)%nat).
-  Proof.
+  Proof using .
     (* type@0 and major@2 *)
     rewrite (bb_split3 a 2 2 60 64 f (DfracOwn 1) ltac:(lia)).
     apply bi.sep_proper; [reflexivity |].
@@ -493,7 +493,7 @@ Section IupdateRes.
     is_aligned_paddr (Physaddr a) 2 = true ->
     (forall j, (j < 2)%nat -> f j = nth_byte w j) ->
     ([∗ list] j ∈ seq 0 2, pa_add a j ↦ₘ f j) ⊣⊢ a ↦₂ w.
-  Proof.
+  Proof using .
     intros Hal Hf.
     rewrite /ctx_word2_pointsto (bi.pure_True _ Hal) bi.True_sep.
     apply big_sepL_proper. intros i jj Hj.
@@ -505,7 +505,7 @@ Section IupdateRes.
     is_aligned_paddr (Physaddr a) 4 = true ->
     (forall j, (j < 4)%nat -> f j = nth_byte w j) ->
     ([∗ list] j ∈ seq 0 4, pa_add a j ↦ₘ f j) ⊣⊢ a ↦₄ w.
-  Proof.
+  Proof using .
     intros Hal Hf.
     rewrite /ctx_word4_pointsto (bi.pure_True _ Hal) bi.True_sep.
     apply big_sepL_proper. intros i jj Hj.
@@ -524,7 +524,7 @@ Section IupdateRes.
       (∀ (d' : dinode) (g : nat -> bv 8),
          ⌜forall j, (j < 64)%nat -> g j = dinode_bytes d' !!! j⌝ -∗
          dislot a d' -∗ ([∗ list] j ∈ seq 0 64, pa_add a j ↦ₘ g j)).
-  Proof.
+  Proof using .
     intros (Ha0 & Ha2 & Ha4 & Ha6 & Ha8) Hf.
     (* the six pointwise readings, for an arbitrary record *)
     assert (Hp0 : forall (dd : dinode) (h : nat -> bv 8),
@@ -602,7 +602,7 @@ Section IupdateRes.
       dislot (pa_add a (64 * k)%nat) (ds !!! k) ∗
       (∀ d : dinode, ⌜dinode_wf d⌝ -∗ dislot (pa_add a (64 * k)%nat) d -∗
          bb_bytes a 1024 (fun j => diblk_bytes (<[k := d]> ds) !!! j)).
-  Proof.
+  Proof using .
     intros [Hlen Hall] Hk Hal.
     assert (Hklen : (k < length ds)%nat) by (rewrite Hlen; exact Hk).
     iIntros "H". rewrite /bb_bytes.
@@ -643,7 +643,7 @@ Section IupdateRes.
   Lemma iu_held_k (bn : bio_names) (V : bio_view Σ) (k : nat)
       (pidv dev bno : mword 32) (bs bsl bsd : list (bv 8)) (d : bool) :
     bio_held bn V k pidv dev bno bs bsl bsd d -∗ ⌜(k < NBUF)%nat⌝.
-  Proof. rewrite /bio_held. iIntros "(%A & _)". done. Qed.
+  Proof using . rewrite /bio_held. iIntros "(%A & _)". done. Qed.
 
   (* THE traveling-bytes swap: the whole of what iupdate does to the buffer *)
   Lemma iu_held_swap (bn : bio_names) (V : bio_view Σ) (k : nat)
@@ -653,7 +653,7 @@ Section IupdateRes.
       (∀ bs' : list (bv 8),
          buf_own (bpa k) bno (mword_of_int 0 : mword 32) bs' -∗
          bio_held bn V k pidv dev bno bs' bsl bsd d).
-  Proof.
+  Proof using .
     rewrite /bio_held.
     iIntros "(%A & %B & %C & H1 & H3 & H4 & H5 & H6 & H7)".
     iSplitL "H5"; [iExact "H5" |].
@@ -684,7 +684,7 @@ Section IupdateRes.
     bio_held bn (fs_view γfs γd dev cov) k pidv dv bno bs bsl bsd d ={E}=∗
     ⌜bsl = bs0⌝ ∗ fsblock (fs_bytes γfs) (uint bno) bs0 ∗
     bio_held bn (fs_view γfs γd dev cov) k pidv dv bno bs bsl bsd d.
-  Proof.
+  Proof using .
     iIntros (HE) "#Hbinv Hc Hheld".
     iEval (rewrite /bio_held /bio_pay /fs_view /=) in "Hheld".
     iDestruct "Hheld" as "(%A & %B & %C & H1 & H3 & H4 & H5 & H6 & Hpay)".
@@ -718,7 +718,7 @@ Section IupdateRes.
       (∀ ds' : list dinode, ⌜diblk_wf ds'⌝ -∗
          bb_bytes (b_data p) 1024 (fun j => diblk_bytes ds' !!! j) -∗
          buf_own p bno dsk (diblk_bytes ds')).
-  Proof.
+  Proof using .
     intros Hwf.
     iIntros "(Hb & Hd & %Hlen & Hby)".
     iEval (rewrite (bb_bytes_of_list (b_data p) (diblk_bytes ds))
@@ -736,11 +736,11 @@ Section IupdateRes.
   (* slot-unit bookkeeping *)
   Lemma iu_slots_split (a c : nat) :
     bslots (a + c) -∗ bslots a ∗ bslots c.
-  Proof. rewrite bslots_op. iIntros "$". Qed.
+  Proof using . rewrite bslots_op. iIntros "$". Qed.
 
   Lemma iu_slots_join (a c : nat) :
     bslots a -∗ bslots c -∗ bslots (a + c).
-  Proof.
+  Proof using .
     iIntros "H1 H2". rewrite bslots_op. iSplitL "H1"; [iExact "H1" | iExact "H2"].
   Qed.
 
@@ -761,7 +761,7 @@ Section IupdateRes.
       (uint bno ↪[fs_cache γfs]{#(1/2)} bsl) ∗
       ((uint bno ↪[fs_cache γfs]{#(1/2)} bsl) -∗
        bio_held bn (fs_view γfs γd dev cov) k pidv dv bno bs bsl bsd d).
-  Proof.
+  Proof using .
     rewrite /bio_held /bio_pay /fs_view /=.
     iIntros "(%A & %B & %C & H1 & H3 & H4 & H5 & H6 & Hpay)".
     destruct d.

@@ -222,7 +222,7 @@ Section memrun.
     read_bytes mm pa n = Some w ->
     bytes_own mm -∗ gen_heap_interp (hG:=riscv_memGS) mem -∗
     ⌜read_bytes mem pa n = Some w⌝.
-  Proof.
+  Proof using .
     intros Hrb. iIntros "Hown Hi".
     iAssert (⌜forall j : nat, (N.of_nat j < n)%N ->
                mem !! pa_add pa j = Some (nth_byte w j)⌝)%I
@@ -250,7 +250,7 @@ Section memrun.
     bytes_own mm -∗
     ⌜forall tv' : nat, (g.(gtv) cpu_id <= tv')%nat ->
        tso_read_bytes g.(gimg) g.(glog) (hart_agent cpu_id) tv' pa n w⌝.
-  Proof.
+  Proof using .
     intros Hrb. iIntros "Hgh Hint Hrun Hown".
     iAssert (⌜forall j : nat, (N.of_nat j < n)%N ->
                forall tv' : nat, (g.(gtv) cpu_id <= tv')%nat ->
@@ -278,7 +278,7 @@ Section memrun.
     bytes_own mm -∗
     ⌜forall tv' : nat, (V (hart_agent cpu_id) <= tv')%nat ->
        tso_read_bytes img log (hart_agent cpu_id) tv' pa n w⌝.
-  Proof.
+  Proof using .
     intros Hrb. iIntros "Hgh Htso Hrun Hown".
     iDestruct (tso_interp_of_pin with "Htso") as %Hpin.
     rewrite (tso_interp_of_at_gs riscv_eraGS img mem log V rs d Hpin).
@@ -328,7 +328,7 @@ Section memrun.
     TsoCtx.own_context XI ∗
     bytes_own (write_bytes mm (Interface.WriteReq.pa req) n
                  (Interface.WriteReq.value req)).
-  Proof.
+  Proof using .
     intros Htv Hfp. iIntros "Hgh Htso Hrun Hown".
     iDestruct (tso_interp_of_pin with "Htso") as %Hpin.
     iDestruct (tso_interp_of_bound with "Htso") as %Hb.
@@ -413,7 +413,7 @@ Section memrun.
     hreg_frame_ro Df rs Dro -∗
     (hreg_frame rs1 Drw -∗ hreg_frame_ro Df rs1 Dro -∗ swp (k v) Phi) -∗
     swp (Interface.Next oc k) Phi.
-  Proof.
+  Proof using .
     intros Hdisj Hf. iIntros "#Hcert Hrw Hro Hcont".
     assert (Heq : Defs.bind (Interface.Next oc (fun t : T => Interface.Ret t)) k
                   = Interface.Next oc k) by reflexivity.
@@ -441,7 +441,7 @@ Section memrun.
     swp m (fun v => ⌜v = x⌝ ∗ hreg_frame rs' Drw ∗ hreg_frame_ro Df rs' Dro ∗
                     TsoCtx.own_context XI ∗
                     bytes_own mm' ∗ resv_any cpu_id).
-  Proof.
+  Proof using .
     intros Hdisj. revert rs mm m x rs' mm'.
     induction n as [|n IH]; intros rs mm m x rs' mm' Hf; [discriminate Hf|].
     destruct m as [y|T oc k].
@@ -1826,7 +1826,7 @@ Section memrun_exec.
                hreg_frame rs' Drw ∗ hreg_frame_ro Df rs' Dro ∗
                TsoCtx.own_context XI ∗
                bytes_own mm' ∗ resv_any cpu_id).
-  Proof.
+  Proof using .
     intros Hdisj Hdr Hdw Hag Hsub Hg He.
     destruct (hmrun_of_exec_after Dr Dw (Drw ∪ Dro) Drw m s s' x mm
                 Hdr Hdw Hsub Hg He) as (n & Hw & Hsub' & Hdom').
@@ -1978,7 +1978,7 @@ Section memrun_reg.
                ⌜reg_agree_on (Drw ∪ Dro) rs' s'.(sregs)⌝ ∗
                hreg_frame rs' Drw ∗ hreg_frame_ro Df rs' Dro ∗
                resv_any cpu_id).
-  Proof.
+  Proof using .
     intros Hdisj Hdr Hdw Hag Hsub Hg He.
     iIntros "#Hcert Hany Hrw Hro".
     (* the throwaway identity: minted, used, dropped -- it never escapes *)

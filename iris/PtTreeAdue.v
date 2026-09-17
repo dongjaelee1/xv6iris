@@ -578,7 +578,7 @@ Section SPmpSwp.
     swp (pmpCheck (Physaddr addr) wd acc Supervisor)
       (fun r => ⌜r = None⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDcfg HDaddr Hpcfg Hpaddr HA Hord Hrange Hrwx.
     exact (swp_span Drw Dro Df rs rs _ None Hdisj
              (spmp_hval_grant (Drw ∪ Dro) Drw pcfg paddr addr rs wd acc
@@ -607,7 +607,7 @@ Section SPmpSwp.
     swp (pmpCheck (Physaddr addr) wd acc User)
       (fun r => ⌜r = None⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDcfg HDaddr Hpcfg Hpaddr HA Hord Hrange Hrwx.
     exact (swp_span Drw Dro Df rs rs _ None Hdisj
              (upmp_hval_grant (Drw ∪ Dro) Drw pcfg paddr addr rs wd acc
@@ -675,7 +675,7 @@ Section pteread.
            (Physaddr pa) 8 false false false false)
       (fun r => ⌜r = Values.Ok (bytes, tt)⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HD HDcfg HDaddr HDhtif Hhtif Hpma Hpcfg Hpaddr
       HA Hord Hrange HR Hpallow Hacc Hram Hpa.
     iIntros "#Hcert Hrw Hro Hmem".
@@ -783,7 +783,7 @@ Section pteread.
       (fun r => ⌜r = Values.Ok (bytes, tt)⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro ∗
                 resv_fragb cpu_id (Some (snap_of pa 8 bytes)) false).
-  Proof.
+  Proof using .
     intros Hdisj HD HDcfg HDaddr HDhtif Hhtif Hpma Hpcfg Hpaddr
       HA Hord Hrange HR Hpallow Hacc Hram Hpa.
     iIntros "#Hcert Hfrag Hrw Hro Hmem".
@@ -874,7 +874,7 @@ Section pteread.
     swp (read_pte (Physaddr pa) 8)
       (fun r => ⌜r = Values.Ok w⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     iIntros "#Hcert Hrw Hro Hcmr".
     unfold read_pte, mem_read_priv, mem_read_priv_meta.
     cbn [orb andb].
@@ -945,7 +945,7 @@ Section pteread.
            (Physaddr pa) 8 false false false false)
       (fun r => ∃ w, ⌜r = Values.Ok (w, tt)⌝ ∗ ⌜P w⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HD HDcfg HDaddr HDhtif Hhtif Hpma Hpcfg Hpaddr
       HA Hord Hrange HR Hpallow Hacc Hram Hpa.
     iIntros "#Hcert Hrw Hro Hmem".
@@ -1052,7 +1052,7 @@ Section pteread.
       (fun r => ∃ w, ⌜r = Values.Ok (w, tt)⌝ ∗ ⌜P w⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro ∗
                 resv_fragb cpu_id (Some (snap_of pa 8 w)) false).
-  Proof.
+  Proof using .
     intros Hdisj HD HDcfg HDaddr HDhtif Hhtif Hpma Hpcfg Hpaddr
       HA Hord Hrange HR Hpallow Hacc Hram Hpa.
     iIntros "#Hcert Hfrag Hrw Hro Hmem".
@@ -1135,7 +1135,7 @@ Section pteread.
     swp (read_pte (Physaddr pa) 8)
       (fun r => ∃ w, ⌜r = Values.Ok w⌝ ∗ ⌜P w⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     iIntros "#Hcert Hrw Hro Hcmr".
     unfold read_pte, mem_read_priv, mem_read_priv_meta.
     cbn [orb andb].
@@ -1280,7 +1280,7 @@ Section ptewrite.
       (fun r => ⌜r = Values.Ok true⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro ∗ R ∗
                 resv_frag cpu_id None).
-  Proof.
+  Proof using .
     intros Hdisj HDpma HDcfg HDaddr HDhtif Hpma Hpcfg Hpaddr Hhtif
       HA Hord Hrange HW Hpallow Hacc Hram Hpa.
     iIntros "#Hcert Hfrag Hrw Hro Hmem".
@@ -1360,7 +1360,7 @@ Section ptewrite.
     swp (write_pte_conditional (Physaddr pa) 8 (w : mword 64))
       (fun r => ⌜r = Values.Ok true⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro ∗ R).
-  Proof.
+  Proof using .
     iIntros "#Hcert Hrw Hro Hcmw".
     unfold write_pte_conditional, mem_write_value_priv, mem_write_value_priv_meta.
     cbn [orb andb Riscv.rv64d.not negb].
@@ -1400,7 +1400,7 @@ Section ptewrite.
       (fun r => ⌜r = Values.Ok w⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro ∗
                 resv_fragb cpu_id (Some (snap_of pa 8 w)) false).
-  Proof.
+  Proof using .
     iIntros "#Hcert Hrw Hro Hcmr".
     unfold read_pte_exclusive, mem_read_priv, mem_read_priv_meta.
     cbn [orb andb].
@@ -1422,7 +1422,7 @@ Section ptewrite.
 
   (* the extension probe, as a monad term: [returnM true] *)
   Local Lemma cE_Svadu_ret : currentlyEnabled Ext_Svadu = returnM true.
-  Proof.
+  Proof using .
     unfold currentlyEnabled. destruct (Defs.Zwf_guarded _).
     vm_compute. reflexivity.
   Qed.
@@ -1442,7 +1442,7 @@ Section ptewrite.
             (Defs.bind (currentlyEnabled Ext_Svadu) (fun w => returnM (negb w)))
             (Defs.bind (currentlyEnabled Ext_Svade) (fun w => returnM (negb w)))))
     = Some (true, rs).
-  Proof.
+  Proof using .
     intros HD Hmenv HADUE.
     unfold or_boolM, and_boolM. rewrite cE_Svadu_ret.
     cbn beta iota zeta delta [Defs.bind Interface.iMon_bind Defs.read_reg
@@ -1521,7 +1521,7 @@ Section ptewrite.
       (fun r => ⌜r = Values.Ok (Some (autocast (T := mword) m0'), tt)⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro ∗ R ∗
                 resv_frag cpu_id None).
-  Proof.
+  Proof using .
     intros H0i H0nl Hchk0 H0N H0ig Hchk0g Hdisj HDlc Hag Hmisa Hmenv HPBMTE
       HADUE Hupd0 Hupd HDpma HDcfg HDaddr HDhtif Hhtif Hpma Hpcfg Hpaddr
       HA Hord Hrange HR HW Hpallow Hacc Hram Hpa.
@@ -1599,7 +1599,7 @@ Section ptewrite.
       (fun r => ∃ w, ⌜r = Values.Ok w⌝ ∗ ⌜P w⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro ∗
                 resv_fragb cpu_id (Some (snap_of pa 8 w)) false).
-  Proof.
+  Proof using .
     iIntros "#Hcert Hrw Hro Hcmr".
     unfold read_pte_exclusive, mem_read_priv, mem_read_priv_meta.
     cbn [orb andb].
@@ -1725,7 +1725,7 @@ Section ptewrite.
                 resv_any cpu_id ∗
                 (⌜update_PTE_Bits (autocast (T := mword) w : mword 64) acc = None⌝
                  ∨ R)).
-  Proof.
+  Proof using .
     intros H0i H0nl Hchk0 H0N H0ig Hchk0g Hdisj HDlc Hag Hmisa Hmenv HPBMTE
       HADUE Hupd0 HDpma HDcfg HDaddr HDhtif Hhtif Hpma Hpcfg Hpaddr
       HA Hord Hrange HR HW Hpallow Hacc Hram Hpa.
@@ -1900,7 +1900,7 @@ Section PtUpd.
             set_reg sw tlb (vec_update_dec (register_lookup tlb s.(sregs))
                               (tlb_hash (__id 39) vpn)
                               (Some (u_walk_entry vpn p2 p1 p0' asid)))).
-  Proof.
+  Proof using .
     intros Hv2 Hn2 Hv1 Hn1 Hv0 Hl0 Hnap Hchk Hupd
            Hrd2 Hrd1 Hrd0 Hrdx Hmisa Hmenv HPBMTE HADUE Hwrite Hswregs.
     unfold translate_TLB_miss. cbn zeta.
@@ -2047,7 +2047,7 @@ Section PtUpdHit.
     = Some (Ok (autocast (T := mword) ((autocast (T := mword) (PPN_of_PTE (q0 : mword 64))) : mword 44), PBMT_PMA, tt),
             set_reg sw tlb (vec_update_dec (register_lookup tlb s.(sregs)) idx
                               (Some (u_walk_entry vpn q2 q1 m0' asid)))).
-  Proof.
+  Proof using .
     intros Hchk Hgate Hpb Hmenv HADUE Hrdx Hv0 Hl0 Hnap Hchkm Hmisa HPBMTE Hvar Hupd Hwrite Hswregs.
     unfold translate_TLB_hit. cbn zeta.
     match goal with |- context[tlb_get_pte ?sz ?e] => change sz with 8 end.
@@ -2143,7 +2143,7 @@ Section PtUpdHit.
     = Some (Ok (autocast (T := mword) ((autocast (T := mword) (PPN_of_PTE (q0 : mword 64))) : mword 44), PBMT_PMA, tt),
             set_reg s tlb (vec_update_dec (register_lookup tlb s.(sregs)) idx
                              (Some (u_walk_entry vpn q2 q1 m0 asid)))).
-  Proof.
+  Proof using .
     intros Hchk Hgate Hpb Hmenv HADUE Hrdx Hv0 Hl0 Hnap Hchkm Hmisa HPBMTE Hvar Hupd.
     unfold translate_TLB_hit. cbn zeta.
     match goal with |- context[tlb_get_pte ?sz ?e] => change sz with 8 end.
@@ -2248,7 +2248,7 @@ Section PtFront.
       (subrange_vec_dec (bits_of_virtaddr (Virtaddr va)) (Z.sub pagesize_bits 1) 0)) = pa ->
     exec (translateAddr (Virtaddr va) acc) s
     = Some (Ok (Physaddr pa, PBMT_PMA, init_ext_ptw), s').
-  Proof.
+  Proof using .
     intros Heff Hss Hcp Htm Hsatp Hppn Hasid Hcanon Hvpn_def Htr Hident.
     unfold translateAddr.
     rewrite exec_catch_early_return.
@@ -2360,7 +2360,7 @@ Section PtFront.
          (fun r => ⌜r = Values.Ok (ppnv, PBMT_PMA, tt)⌝ ∗ Psi)) -∗
     swp (translateAddr (Virtaddr va) acc)
       (fun r => ⌜r = Values.Ok (Physaddr pa, PBMT_PMA, init_ext_ptw)⌝ ∗ Psi).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv HDsatp HDb Hag Hcp Hsatp Hmstag
       Heff Heffg Hss Hssg Htm Htmg Hppn Hasid Hcanon Hvpn_def Hident.
     iIntros "#Hcert Hrw Hro Htr".
@@ -2477,7 +2477,7 @@ Section PtFront.
     exec (translationException acc f) s = Some (e, s) ->
     exec (translateAddr (Virtaddr va) acc) s
     = Some (Err (e, tt), s).
-  Proof.
+  Proof using .
     intros Heff Hss Hcp Htm Hsatp Hppn Hasid Hcanon Hvpn_def Htr Hte.
     unfold translateAddr.
     rewrite exec_catch_early_return.
@@ -2540,7 +2540,7 @@ Section PtFront.
     exec (translationException acc (PTW_Invalid_Addr tt)) s = Some (e, s) ->
     exec (translateAddr (Virtaddr va) acc) s
     = Some (Err (e, tt), s).
-  Proof.
+  Proof using .
     intros Heff Hss Hcp Htm Hsatp Hcanon Hte.
     unfold translateAddr.
     rewrite exec_catch_early_return.

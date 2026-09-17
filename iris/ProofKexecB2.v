@@ -204,7 +204,7 @@ Section KexecMsg.
 
   Lemma kxc_msg_str :
     (kernel_data : iProp Σ) -∗ (mword_of_int kxc_msg_a : mword 64) ↦ₛ□ kxc_msg.
-  Proof.
+  Proof using .
     iIntros "#Hd".
     iApply (kernel_data_string kxc_msg_a kxc_msg _ eq_refl
               ltac:(unfold text_end, kxc_msg_a; lia)
@@ -313,7 +313,7 @@ Section KexecB2Body.
       kf qf sf gyf loyf tlyf inumf dnf bmf datl n2 plen pfun na avf alen aslen afun
       pidv U dqb dqs dqa dqpv dqas m Mt K sp0 ra0 s00 s10 s20 pv av w63 w67
       ef P Mi szf eb lks.
-  Proof.
+  Proof using .
     cbv beta delta [kxc_bad324_body].
     intros Hqf HK Hk Hlg Hsz Hbm0 Hbmc Hbml Hins0 Hcovb Hiregb Hib Hn2 Hjp Hgs
            Hsp Hra Hs0 Hs1 Hs2 HMtsp HMts0 HMts4 HMts6 Hal Hbelow Hcov.
@@ -805,7 +805,7 @@ Section KexecB2Loops.
       kf qf sf gyf loyf tlyf inumf dnf bmf datl n2 plen pfun na avf alen aslen afun
       pidv U dqb dqs dqa dqpv dqas m K sp0 ra0 s00 s10 s20 pv av w63 w65 w67
       ef P Mi Mb ip va fz po eb lks.
-  Proof.
+  Proof using .
     cbv beta delta [kxc_ls_body].
     intros Hqfnm HK Hk Hlg Hsz Hbm0 Hbmc Hbml Hins0 Hcovb Hiregb Hib Hn2 Hjp Hgs
  Hsp Hra Hs0 Hs1 Hs2 Hal Hbelow Hcovp Hfzr Hpor Hvaal Hvatop.

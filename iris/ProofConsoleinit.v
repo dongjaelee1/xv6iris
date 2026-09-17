@@ -112,7 +112,7 @@ Section ConsoleinitBody.
       (dread0 dwrite0 : mword 64) (p : mword 64) :
     wp_consoleinit_sconf_body γd m K l b0 k hl γd1 l1 b1 k1 hl1
       vclock vcname vccpu dread0 dwrite0 p.
-  Proof.
+  Proof using wp_initlock wp_uartinit.
     cbv beta delta [wp_consoleinit_sconf_body].
     intros pcE ret_tgt clk c_cname c_ccpu HK.
     pose proof (cni_cap_bounds K HK) as (Hc2 & HK4).

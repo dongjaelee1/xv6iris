@@ -70,7 +70,7 @@ Section csrw.
     cw_fresh r ->
     (misa : register) <> r /\ (mseccfg : register) <> r /\
     (cur_privilege : register) <> r.
-  Proof.
+  Proof using .
     intros (H1 & H2 & H3). split_and!; intro Heq; rewrite -Heq in H1, H2, H3;
       first [ vm_compute in H1; discriminate
             | vm_compute in H2; discriminate
@@ -79,11 +79,11 @@ Section csrw.
 
   Lemma cw_rs_r (r : register) (v0 : type_of_register r) :
     register_lookup r (cw_rs r v0) = v0.
-  Proof. rewrite /cw_rs. apply register_lookup_set. Qed.
+  Proof using . rewrite /cw_rs. apply register_lookup_set. Qed.
 
   Lemma cw_rs_misa (r : register) (v0 : type_of_register r) :
     cw_fresh r -> register_lookup misa (cw_rs r v0) = MISA_C.
-  Proof.
+  Proof using .
     intros (H1 & _ & _). rewrite /cw_rs.
     etransitivity; [apply irrelevant_register_set; exact H1|].
     apply register_lookup_set.
@@ -91,7 +91,7 @@ Section csrw.
 
   Lemma cw_rs_sec (r : register) (v0 : type_of_register r) :
     cw_fresh r -> register_lookup mseccfg (cw_rs r v0) = Values.mword_of_int 0.
-  Proof.
+  Proof using .
     intros (_ & H2 & _). rewrite /cw_rs.
     etransitivity; [apply irrelevant_register_set; exact H2|].
     etransitivity; [apply irrelevant_register_set; vm_compute; reflexivity|].
@@ -100,7 +100,7 @@ Section csrw.
 
   Lemma cw_rs_priv (r : register) (v0 : type_of_register r) :
     cw_fresh r -> register_lookup cur_privilege (cw_rs r v0) = Machine.
-  Proof.
+  Proof using .
     intros (_ & _ & H3). rewrite /cw_rs.
     etransitivity; [apply irrelevant_register_set; exact H3|].
     etransitivity; [apply irrelevant_register_set; vm_compute; reflexivity|].
@@ -120,14 +120,14 @@ Section csrw.
     reflexivity.
 
   Lemma cw_Df_misa dq : cw_Df dq misa = DfracDiscarded.
-  Proof. cwdf. Qed.
+  Proof using . cwdf. Qed.
   Lemma cw_Df_sec dq : cw_Df dq mseccfg = DfracDiscarded.
-  Proof. cwdf. Qed.
+  Proof using . cwdf. Qed.
   Lemma cw_Df_priv dq : cw_Df dq cur_privilege = dq.
-  Proof. cwdf. Qed.
+  Proof using . cwdf. Qed.
 
   Lemma cw_disj (r : register) : cw_fresh r -> cw_Drw r ## cw_Dro.
-  Proof.
+  Proof using .
     intros (H1 & H2 & H3). rewrite /cw_Drw /cw_Dro.
     apply disjoint_singleton_l. intro Hin.
     repeat (apply elem_of_union in Hin as [Hin|Hin]);
@@ -138,15 +138,15 @@ Section csrw.
   Qed.
 
   Lemma cw_w_r (r : register) : r ∈ cw_Drw r.
-  Proof. rewrite /cw_Drw. set_solver. Qed.
+  Proof using . rewrite /cw_Drw. set_solver. Qed.
   Lemma cw_in_r (r : register) : r ∈ cw_Drw r ∪ cw_Dro.
-  Proof. rewrite /cw_Drw. set_solver. Qed.
+  Proof using . rewrite /cw_Drw. set_solver. Qed.
   Lemma cw_in_priv (r : register) : (cur_privilege : register) ∈ cw_Drw r ∪ cw_Dro.
-  Proof. rewrite /cw_Dro. set_solver. Qed.
+  Proof using . rewrite /cw_Dro. set_solver. Qed.
   Lemma cw_in_sec (r : register) : (mseccfg : register) ∈ cw_Drw r ∪ cw_Dro.
-  Proof. rewrite /cw_Dro. set_solver. Qed.
+  Proof using . rewrite /cw_Dro. set_solver. Qed.
   Lemma cw_in_misa (r : register) : (misa : register) ∈ cw_Drw r ∪ cw_Dro.
-  Proof. rewrite /cw_Dro. set_solver. Qed.
+  Proof using . rewrite /cw_Dro. set_solver. Qed.
 
   (* cells <-> the four-cell frame *)
   Lemma cw_frames (dq : dfrac) (r : register) (v0 : type_of_register r) :
@@ -157,7 +157,7 @@ Section csrw.
         reg_pointsto cur_privilege dq Machine ∗
         reg_pointsto mseccfg DfracDiscarded (Values.mword_of_int 0) ∗
         reg_pointsto misa DfracDiscarded MISA_C).
-  Proof.
+  Proof using .
     intros Hfr.
     rewrite /hreg_frame /hreg_frame_ro /cw_Drw /cw_Dro.
     repeat (rewrite big_sepS_union; last set_solver).
@@ -194,7 +194,7 @@ Section csrw.
 
   Lemma cw2_disj (r r2 : register) :
     cw2_ok r r2 -> cw_Drw r ## cw2_Dro r2.
-  Proof.
+  Proof using .
     intros (Hfr & Hfr2 & Hne). rewrite /cw_Drw /cw2_Dro /cw_Dro.
     apply disjoint_singleton_l. intro Hin.
     apply elem_of_union in Hin as [Hin|Hin].
@@ -208,20 +208,20 @@ Section csrw.
   Qed.
 
   Lemma cw2_w_r (r r2 : register) : r ∈ cw_Drw r.
-  Proof. rewrite /cw_Drw. set_solver. Qed.
+  Proof using . rewrite /cw_Drw. set_solver. Qed.
   Lemma cw2_in_r (r r2 : register) : r ∈ cw_Drw r ∪ cw2_Dro r2.
-  Proof. rewrite /cw_Drw. set_solver. Qed.
+  Proof using . rewrite /cw_Drw. set_solver. Qed.
   Lemma cw2_in_r2 (r r2 : register) : r2 ∈ cw_Drw r ∪ cw2_Dro r2.
-  Proof. rewrite /cw2_Dro. set_solver. Qed.
+  Proof using . rewrite /cw2_Dro. set_solver. Qed.
   Lemma cw2_in_priv (r r2 : register) :
     (cur_privilege : register) ∈ cw_Drw r ∪ cw2_Dro r2.
-  Proof. rewrite /cw2_Dro /cw_Dro. set_solver. Qed.
+  Proof using . rewrite /cw2_Dro /cw_Dro. set_solver. Qed.
   Lemma cw2_in_sec (r r2 : register) :
     (mseccfg : register) ∈ cw_Drw r ∪ cw2_Dro r2.
-  Proof. rewrite /cw2_Dro /cw_Dro. set_solver. Qed.
+  Proof using . rewrite /cw2_Dro /cw_Dro. set_solver. Qed.
   Lemma cw2_in_misa (r r2 : register) :
     (misa : register) ∈ cw_Drw r ∪ cw2_Dro r2.
-  Proof. rewrite /cw2_Dro /cw_Dro. set_solver. Qed.
+  Proof using . rewrite /cw2_Dro /cw_Dro. set_solver. Qed.
 
   Local Ltac c2lk := rewrite /cw2_rs;
     etransitivity; [ apply irrelevant_register_set; vm_compute; reflexivity |].
@@ -229,11 +229,11 @@ Section csrw.
   Lemma cw2_rs_r2 (r : register) (v0 : type_of_register r)
       (r2 : register) (v2 : type_of_register r2) :
     register_lookup r2 (cw2_rs r v0 r2 v2) = v2.
-  Proof. rewrite /cw2_rs. apply register_lookup_set. Qed.
+  Proof using . rewrite /cw2_rs. apply register_lookup_set. Qed.
   Lemma cw2_rs_r (r : register) (v0 : type_of_register r)
       (r2 : register) (v2 : type_of_register r2) :
     cw2_ok r r2 -> register_lookup r (cw2_rs r v0 r2 v2) = v0.
-  Proof.
+  Proof using .
     intros (_ & _ & Hne). rewrite /cw2_rs.
     etransitivity;
       [apply irrelevant_register_set; exact (register_beq_false r r2 Hne)|].
@@ -242,7 +242,7 @@ Section csrw.
   Lemma cw2_rs_priv (r : register) (v0 : type_of_register r)
       (r2 : register) (v2 : type_of_register r2) :
     cw2_ok r r2 -> register_lookup cur_privilege (cw2_rs r v0 r2 v2) = Machine.
-  Proof.
+  Proof using .
     intros (Hfr & (_ & _ & H3) & _). rewrite /cw2_rs.
     etransitivity; [apply irrelevant_register_set; exact H3|].
     apply (cw_rs_priv r v0 Hfr).
@@ -251,7 +251,7 @@ Section csrw.
       (r2 : register) (v2 : type_of_register r2) :
     cw2_ok r r2 ->
     register_lookup mseccfg (cw2_rs r v0 r2 v2) = Values.mword_of_int 0.
-  Proof.
+  Proof using .
     intros (Hfr & (_ & H2 & _) & _). rewrite /cw2_rs.
     etransitivity; [apply irrelevant_register_set; exact H2|].
     apply (cw_rs_sec r v0 Hfr).
@@ -259,31 +259,31 @@ Section csrw.
   Lemma cw2_rs_misa (r : register) (v0 : type_of_register r)
       (r2 : register) (v2 : type_of_register r2) :
     cw2_ok r r2 -> register_lookup misa (cw2_rs r v0 r2 v2) = MISA_C.
-  Proof.
+  Proof using .
     intros (Hfr & (H1 & _ & _) & _). rewrite /cw2_rs.
     etransitivity; [apply irrelevant_register_set; exact H1|].
     apply (cw_rs_misa r v0 Hfr).
   Qed.
 
   Lemma cw2_Df_misa dq dq2 r2 : cw2_Df dq dq2 r2 misa = DfracDiscarded.
-  Proof. rewrite /cw2_Df. repeat case_decide; congruence. Qed.
+  Proof using . rewrite /cw2_Df. repeat case_decide; congruence. Qed.
   Lemma cw2_Df_sec dq dq2 r2 : cw2_Df dq dq2 r2 mseccfg = DfracDiscarded.
-  Proof. rewrite /cw2_Df. repeat case_decide; congruence. Qed.
+  Proof using . rewrite /cw2_Df. repeat case_decide; congruence. Qed.
   Lemma cw2_Df_r2 dq dq2 (r2 : register) :
     cw_fresh r2 -> cw2_Df dq dq2 r2 r2 = dq2.
-  Proof.
+  Proof using .
     intros Hfr2. pose proof (cw_fresh_ne r2 Hfr2) as (Nmisa & Nsec & _).
     rewrite /cw2_Df. repeat case_decide; congruence.
   Qed.
   Lemma cw2_Df_r dq dq2 (r r2 : register) :
     cw2_ok r r2 -> cw2_Df dq dq2 r2 r = dq.
-  Proof.
+  Proof using .
     intros (Hfr & _ & Nr2). pose proof (cw_fresh_ne r Hfr) as (Nmisa & Nsec & _).
     rewrite /cw2_Df. repeat case_decide; congruence.
   Qed.
   Lemma cw2_Df_priv dq dq2 (r2 : register) :
     cw_fresh r2 -> cw2_Df dq dq2 r2 cur_privilege = dq.
-  Proof.
+  Proof using .
     intros Hfr2. pose proof (cw_fresh_ne r2 Hfr2) as (_ & _ & Npriv).
     rewrite /cw2_Df. repeat case_decide; congruence.
   Qed.
@@ -299,7 +299,7 @@ Section csrw.
         reg_pointsto cur_privilege dq Machine ∗
         reg_pointsto mseccfg DfracDiscarded (Values.mword_of_int 0) ∗
         reg_pointsto misa DfracDiscarded MISA_C).
-  Proof.
+  Proof using .
     intros Hok. pose proof Hok as (Hfr & Hfr2 & _).
     rewrite /hreg_frame /hreg_frame_ro /cw_Drw /cw2_Dro.
     rewrite (big_sepS_union _ ({[r2]} : gset register) cw_Dro).
@@ -331,7 +331,7 @@ Section csrw.
     (hreg_frame (cw2_rs r v0 r2 v2) (cw_Drw r) ∗
      hreg_frame_ro (cw2_Df dq dq2 r2) (cw2_rs r v0 r2 v2) (cw2_Dro r2)
      : iProp Σ).
-  Proof.
+  Proof using .
     intros Hok. iIntros "H1 H2 H3 H4 H5".
     rewrite (cw2_frames dq dq2 r v0 r2 v2 Hok). iFrame.
   Qed.
@@ -347,7 +347,7 @@ Section csrw.
      reg_pointsto cur_privilege dq Machine ∗
      reg_pointsto mseccfg DfracDiscarded (Values.mword_of_int 0) ∗
      reg_pointsto misa DfracDiscarded MISA_C).
-  Proof.
+  Proof using .
     intros Hok. rewrite (cw2_frames dq dq2 r v0 r2 v2 Hok).
     iIntros "H". iExact "H".
   Qed.
@@ -358,7 +358,7 @@ Section csrw.
     cw2_ok r r2 ->
     reg_agree_on (cw_Drw r ∪ cw2_Dro r2)
       (register_set r vnew (cw2_rs r v0 r2 v2)) (cw2_rs r vnew r2 v2).
-  Proof.
+  Proof using .
     intros Hok. pose proof Hok as (Hfr & Hfr2 & Hne).
     pose proof Hfr as (H1 & H2 & H3).
     destruct (cw_fresh_ne r2 Hfr2) as (N1 & N2 & N3).
@@ -386,7 +386,7 @@ Section csrw.
   Lemma cw2_rw_ext (r : register) (rs rs' : regstate) :
     reg_agree_on (cw_Drw r) rs rs' ->
     hreg_frame rs (cw_Drw r) -∗ (hreg_frame rs' (cw_Drw r) : iProp Σ).
-  Proof.
+  Proof using .
     intros Hag. rewrite (hreg_frame_ext _ _ (cw_Drw r) Hag).
     iIntros "H". iExact "H".
   Qed.
@@ -395,7 +395,7 @@ Section csrw.
     reg_agree_on (cw2_Dro r2) rs rs' ->
     hreg_frame_ro (cw2_Df dq dq2 r2) rs (cw2_Dro r2) -∗
     (hreg_frame_ro (cw2_Df dq dq2 r2) rs' (cw2_Dro r2) : iProp Σ).
-  Proof.
+  Proof using .
     intros Hag.
     rewrite (hreg_frame_ro_ext (cw2_Df dq dq2 r2) _ _ (cw2_Dro r2) Hag).
     iIntros "H". iExact "H".
@@ -416,7 +416,7 @@ Section csrw.
       = Some (CSR_Check_OK tt, dstateM) ->
     hval D Drw rs (check_CSR_result csr Machine at_)
       (CSR_Check_OK tt) rs.
-  Proof.
+  Proof using .
     intros HD1 HD2 HD3 Hp Hs Hm Hgb Hex.
     exact (hval_of_goodb D_m D Drw _ dstateM rs (CSR_Check_OK tt)
              (dm_sub D HD1 HD2 HD3)
@@ -473,7 +473,7 @@ Section csrw.
     swp (doCSR csr v zreg CSRRW CSRWrite)
       (fun e => ⌜e = RETIRE_SUCCESS⌝ ∗
                 hreg_frame rs' Drw ∗ hreg_frame_ro Df rs' Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv HDsec HDmisa Hpriv Hsec Hmisa Hext Hgb Hex Hmip Hcb.
     iIntros "#Hcert Hrw Hro Hwr".
     unfold doCSR.
@@ -566,7 +566,7 @@ Section csrw.
     swp (execute_CSRReg csr (Regidx rs1) zreg CSRRW)
       (fun e => ⌜e = RETIRE_SUCCESS⌝ ∗ gpr_file m ∗
                 hreg_frame rs' Drw ∗ hreg_frame_ro Df rs' Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv HDsec HDmisa Hpriv Hsec Hmisa Hext Hgb Hex Hmip Hcb.
     iIntros "#Hcert Hf Hrw Hro Hwr".
     unfold execute_CSRReg.
@@ -605,37 +605,37 @@ Section csrw.
       else if decide (r' = r) then dqc else dqp.
 
   Lemma cr_disj (r : register) : (∅ : gset register) ## cr_Dro r.
-  Proof. set_solver. Qed.
+  Proof using . set_solver. Qed.
 
   Lemma cr_in_r (r : register) : r ∈ (∅ : gset register) ∪ cr_Dro r.
-  Proof. rewrite /cr_Dro /cw_Drw. set_solver. Qed.
+  Proof using . rewrite /cr_Dro /cw_Drw. set_solver. Qed.
   Lemma cr_in_priv (r : register) :
     (cur_privilege : register) ∈ (∅ : gset register) ∪ cr_Dro r.
-  Proof. rewrite /cr_Dro /cw_Dro. set_solver. Qed.
+  Proof using . rewrite /cr_Dro /cw_Dro. set_solver. Qed.
   Lemma cr_in_sec (r : register) :
     (mseccfg : register) ∈ (∅ : gset register) ∪ cr_Dro r.
-  Proof. rewrite /cr_Dro /cw_Dro. set_solver. Qed.
+  Proof using . rewrite /cr_Dro /cw_Dro. set_solver. Qed.
   Lemma cr_in_misa (r : register) :
     (misa : register) ∈ (∅ : gset register) ∪ cr_Dro r.
-  Proof. rewrite /cr_Dro /cw_Dro. set_solver. Qed.
+  Proof using . rewrite /cr_Dro /cw_Dro. set_solver. Qed.
 
   (* the empty writable frame, which is what "writes nothing" costs *)
   Lemma hreg_frame_empty (rs : regstate) :
     ⊢ (hreg_frame rs ∅ : iProp Σ).
-  Proof. rewrite /hreg_frame big_sepS_empty. auto. Qed.
+  Proof using . rewrite /hreg_frame big_sepS_empty. auto. Qed.
 
   Lemma cr_Df_misa dqp dqc r : cr_Df dqp dqc r misa = DfracDiscarded.
-  Proof. rewrite /cr_Df. repeat case_decide; congruence. Qed.
+  Proof using . rewrite /cr_Df. repeat case_decide; congruence. Qed.
   Lemma cr_Df_sec dqp dqc r : cr_Df dqp dqc r mseccfg = DfracDiscarded.
-  Proof. rewrite /cr_Df. repeat case_decide; congruence. Qed.
+  Proof using . rewrite /cr_Df. repeat case_decide; congruence. Qed.
   Lemma cr_Df_priv dqp dqc r :
     cw_fresh r -> cr_Df dqp dqc r cur_privilege = dqp.
-  Proof.
+  Proof using .
     intros Hfr. pose proof (cw_fresh_ne r Hfr) as (_ & _ & Npriv).
     rewrite /cr_Df. repeat case_decide; congruence.
   Qed.
   Lemma cr_Df_r dqp dqc r : cw_fresh r -> cr_Df dqp dqc r r = dqc.
-  Proof.
+  Proof using .
     intros Hfr. pose proof (cw_fresh_ne r Hfr) as (Nmisa & Nsec & _).
     rewrite /cr_Df. repeat case_decide; congruence.
   Qed.
@@ -647,7 +647,7 @@ Section csrw.
         reg_pointsto cur_privilege dqp Machine ∗
         reg_pointsto mseccfg DfracDiscarded (Values.mword_of_int 0) ∗
         reg_pointsto misa DfracDiscarded MISA_C).
-  Proof.
+  Proof using .
     intros Hfr.
     rewrite /hreg_frame_ro /cr_Dro.
     rewrite (big_sepS_union _ (cw_Drw r) cw_Dro (cw_disj r Hfr)).
@@ -672,15 +672,15 @@ Section csrw.
          (register_set cur_privilege Machine init_regstate)).
 
   Lemma cr0_rs_misa : register_lookup misa cr0_rs = MISA_C.
-  Proof. rewrite /cr0_rs. apply register_lookup_set. Qed.
+  Proof using . rewrite /cr0_rs. apply register_lookup_set. Qed.
   Lemma cr0_rs_sec : register_lookup mseccfg cr0_rs = Values.mword_of_int 0.
-  Proof.
+  Proof using .
     rewrite /cr0_rs.
     etransitivity; [apply irrelevant_register_set; vm_compute; reflexivity|].
     apply register_lookup_set.
   Qed.
   Lemma cr0_rs_priv : register_lookup cur_privilege cr0_rs = Machine.
-  Proof.
+  Proof using .
     rewrite /cr0_rs.
     etransitivity; [apply irrelevant_register_set; vm_compute; reflexivity|].
     etransitivity; [apply irrelevant_register_set; vm_compute; reflexivity|].
@@ -688,20 +688,20 @@ Section csrw.
   Qed.
 
   Lemma cr0_disj : (∅ : gset register) ## cw_Dro.
-  Proof. set_solver. Qed.
+  Proof using . set_solver. Qed.
   Lemma cr0_in_priv : (cur_privilege : register) ∈ (∅ : gset register) ∪ cw_Dro.
-  Proof. rewrite /cw_Dro. set_solver. Qed.
+  Proof using . rewrite /cw_Dro. set_solver. Qed.
   Lemma cr0_in_sec : (mseccfg : register) ∈ (∅ : gset register) ∪ cw_Dro.
-  Proof. rewrite /cw_Dro. set_solver. Qed.
+  Proof using . rewrite /cw_Dro. set_solver. Qed.
   Lemma cr0_in_misa : (misa : register) ∈ (∅ : gset register) ∪ cw_Dro.
-  Proof. rewrite /cw_Dro. set_solver. Qed.
+  Proof using . rewrite /cw_Dro. set_solver. Qed.
 
   Lemma cr0_frames (dqp : dfrac) :
     (hreg_frame_ro (cw_Df dqp) cr0_rs cw_Dro : iProp Σ)
     ⊣⊢ (reg_pointsto cur_privilege dqp Machine ∗
         reg_pointsto mseccfg DfracDiscarded (Values.mword_of_int 0) ∗
         reg_pointsto misa DfracDiscarded MISA_C).
-  Proof.
+  Proof using .
     rewrite /hreg_frame_ro /cw_Dro.
     repeat (rewrite big_sepS_union; last set_solver).
     rewrite !big_sepS_singleton.
@@ -716,7 +716,7 @@ Section csrw.
     reg_pointsto misa DfracDiscarded MISA_C -∗
     (hreg_frame cr0_rs ∅ ∗
      hreg_frame_ro (cw_Df dqp) cr0_rs cw_Dro : iProp Σ).
-  Proof.
+  Proof using .
     iIntros "H1 H2 H3". iSplitR; [iApply hreg_frame_empty|].
     rewrite (cr0_frames dqp). iFrame.
   Qed.
@@ -726,7 +726,7 @@ Section csrw.
     (reg_pointsto cur_privilege dqp Machine ∗
      reg_pointsto mseccfg DfracDiscarded (Values.mword_of_int 0) ∗
      reg_pointsto misa DfracDiscarded MISA_C).
-  Proof. rewrite (cr0_frames dqp). iIntros "H". iExact "H". Qed.
+  Proof using . rewrite (cr0_frames dqp). iIntros "H". iExact "H". Qed.
 
   Lemma cr_frames_in (dqp dqc : dfrac) (r : register)
       (v0 : type_of_register r) :
@@ -737,7 +737,7 @@ Section csrw.
     reg_pointsto misa DfracDiscarded MISA_C -∗
     (hreg_frame (cw_rs r v0) ∅ ∗
      hreg_frame_ro (cr_Df dqp dqc r) (cw_rs r v0) (cr_Dro r) : iProp Σ).
-  Proof.
+  Proof using .
     intros Hfr. iIntros "H1 H2 H3 H4".
     iSplitR; [iApply hreg_frame_empty|].
     rewrite (cr_frames dqp dqc r v0 Hfr). iFrame.
@@ -751,7 +751,7 @@ Section csrw.
      reg_pointsto cur_privilege dqp Machine ∗
      reg_pointsto mseccfg DfracDiscarded (Values.mword_of_int 0) ∗
      reg_pointsto misa DfracDiscarded MISA_C).
-  Proof.
+  Proof using .
     intros Hfr. rewrite (cr_frames dqp dqc r v0 Hfr). iIntros "H". iExact "H".
   Qed.
 
@@ -767,7 +767,7 @@ Section csrw.
   (* ------------------------------------------------------------------ *)
   Lemma hval_ret {X : Type} (D Drw : gset register) (rs : regstate) (x : X) :
     hval D Drw rs (Interface.Ret x) x rs.
-  Proof.
+  Proof using .
     intros rs0 l Hag Hchain Hstop.
     rewrite (hspan_stop_refl D Drw (Interface.Ret x) rs0 l
                (eq_refl : hspan_stops Drw (Interface.Ret x) = true) Hchain).
@@ -781,7 +781,7 @@ Section csrw.
     (forall v : type_of_register r,
        hval D Drw rs (hregread_resume r v m) x rs') ->
     hval D Drw rs m x rs'.
-  Proof.
+  Proof using .
     intros Hat Hrest rs0 l Hag Hchain Hstop.
     assert (Hns : hspan_stops Drw m = false).
     { destruct (hregread_at_inv r m Hat) as (ak & K & -> & _). reflexivity. }
@@ -841,7 +841,7 @@ Section csrw.
                 ∃ x : SailStdpp.Values.mword 64, Q x ∗
                 gpr_file (<[Regidx rd := regval_into_reg x]> m) ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv Hpriv Hrd Hext Hchk H344 H144 Hcb.
     iIntros "#Hcert Hf Hrw Hro Hrdcsr".
     unfold doCSR.
@@ -931,7 +931,7 @@ Section csrw.
                 ∃ x : SailStdpp.Values.mword 64, Q x ∗
                 gpr_file (<[Regidx rd := regval_into_reg x]> m) ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv Hpriv Hrd Hext Hchk H344 H144 Hcb.
     iIntros "#Hcert Hf Hrw Hro Hrdcsr".
     unfold execute_CSRReg.
@@ -987,7 +987,7 @@ Section csrw.
       (fun e => ⌜e = RETIRE_SUCCESS⌝ ∗
                 gpr_file (<[Regidx rd := regval_into_reg readval]> m) ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv Hpriv Hrd Hext Hchk H344 H144 Hcb.
     iIntros "#Hcert Hf Hrw Hro Hrdcsr".
     iApply (swp_mono with "[] [-]");
@@ -1010,7 +1010,7 @@ Section csrw.
   (* ------------------------------------------------------------------ *)
   Lemma swp_read_reg_any (r : register) (Φ : type_of_register r -> iProp Σ) :
     gen_cert -∗ (∀ v : type_of_register r, Φ v) -∗ swp (Defs.read_reg r) Φ.
-  Proof.
+  Proof using .
     iIntros "#Hcert HΦ".
     iApply (swp_hart_regread with "Hcert").
     { cbn [hregread_at]. apply bool_decide_eq_true_2. reflexivity. }
@@ -1027,7 +1027,7 @@ Section csrw.
     cw_fresh r ->
     reg_agree_on (cw_Drw r ∪ cw_Dro)
       (register_set r vnew (cw_rs r v0)) (cw_rs r vnew).
-  Proof.
+  Proof using .
     intros Hfr r' Hr'.
     pose proof Hfr as Hfr2. destruct Hfr2 as (H1 & H2 & H3).
     rewrite /cw_Drw /cw_Dro in Hr'.
@@ -1053,7 +1053,7 @@ Section csrw.
     reg_pointsto misa DfracDiscarded MISA_C -∗
     (hreg_frame (cw_rs r v0) (cw_Drw r) ∗
      hreg_frame_ro (cw_Df dq) (cw_rs r v0) cw_Dro : iProp Σ).
-  Proof. intros Hfr. iIntros "H1 H2 H3 H4". rewrite (cw_frames dq r v0 Hfr). iFrame. Qed.
+  Proof using . intros Hfr. iIntros "H1 H2 H3 H4". rewrite (cw_frames dq r v0 Hfr). iFrame. Qed.
 
   Lemma cw_frames_out (dq : dfrac) (r : register) (v0 : type_of_register r) :
     cw_fresh r ->
@@ -1063,12 +1063,12 @@ Section csrw.
      reg_pointsto cur_privilege dq Machine ∗
      reg_pointsto mseccfg DfracDiscarded (Values.mword_of_int 0) ∗
      reg_pointsto misa DfracDiscarded MISA_C).
-  Proof. intros Hfr. rewrite (cw_frames dq r v0 Hfr). iIntros "H". iExact "H". Qed.
+  Proof using . intros Hfr. rewrite (cw_frames dq r v0 Hfr). iIntros "H". iExact "H". Qed.
 
   Lemma cw_rw_ext (r : register) (rs rs' : regstate) :
     reg_agree_on (cw_Drw r) rs rs' ->
     hreg_frame rs (cw_Drw r) -∗ (hreg_frame rs' (cw_Drw r) : iProp Σ).
-  Proof.
+  Proof using .
     intros Hag. rewrite (hreg_frame_ext _ _ (cw_Drw r) Hag).
     iIntros "H". iExact "H".
   Qed.
@@ -1077,7 +1077,7 @@ Section csrw.
     reg_agree_on cw_Dro rs rs' ->
     hreg_frame_ro (cw_Df dq) rs cw_Dro -∗
     (hreg_frame_ro (cw_Df dq) rs' cw_Dro : iProp Σ).
-  Proof.
+  Proof using .
     intros Hag. rewrite (hreg_frame_ro_ext (cw_Df dq) _ _ cw_Dro Hag).
     iIntros "H". iExact "H".
   Qed.

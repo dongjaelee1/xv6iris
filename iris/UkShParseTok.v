@@ -163,7 +163,7 @@ Section UkShParseTok.
   Lemma ushp_sext32_unsigned (w : mword 32) :
     bv_unsigned (sign_extend' 64 w : mword 64)
     = (((bv_unsigned w + Z31) mod Z32) - Z31) mod Z64.
-  Proof.
+  Proof using .
     cbv [sign_extend' Operators_mwords.sign_extend Operators_mwords.exts_vec
          to_word get_word MachineWord.MachineWord.sign_extend].
     rewrite bv_sign_extend_unsigned.
@@ -177,7 +177,7 @@ Section UkShParseTok.
   Lemma ushp_and255_sext (w : mword 32) :
     and_vec (sign_extend' 64 w : mword 64) (mword_of_int 255)
     = mword_of_int (bv_unsigned w mod 256).
-  Proof.
+  Proof using .
     apply bv_eq. rewrite and_vec64_unsigned.
     assert (H255 : bv_unsigned (mword_of_int 255 : mword 64) = 255)
       by (vm_compute; reflexivity).
@@ -212,7 +212,7 @@ Section UkShParseTok.
              (sign_extend' 64 (mword_of_int 0 : mword 12))) 31 0 : mword 32)
      : mword 64)
     = mword_of_int v.
-  Proof.
+  Proof using .
     intro Hv.
     assert (E0 : (sign_extend' 64 (mword_of_int 0 : mword 12) : mword 64)
                  = mword_of_int 0)
@@ -235,7 +235,7 @@ Section UkShParseTok.
           : mword 32) : mword 64)
       (sign_extend' 64 (mword_of_int 255 : mword 12))
     = mword_of_int ((v - 40) mod 256).
-  Proof.
+  Proof using .
     intro Hv.
     assert (Ei : (sign_extend' 64 (mword_of_int 4056 : mword 12) : mword 64)
                  = mword_of_int (-40))
@@ -314,7 +314,7 @@ Section UkShParseTok.
          urun N h' mc' (mword_of_int (p + 20)) (2 + nn) -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hjt Hjr Hal20 Halp.
     assert (Ebz : (mword_of_int (p + 20) : mword 64)
                   = add_vec (mword_of_int (p + 10))
@@ -608,7 +608,7 @@ Section UkShParseTok.
          urun N h' mc' (mword_of_int (q + 24)) (2 + nn) -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hjt Hjr Hal24 Hal4 Hjle Hs0 Hs64 Hs1 Hs2 Hs3 Hre.
     iIntros "#Hib #Hi0 #Hi1 #Hi2 #Hi3 #Hi4 #Hi5 #Hi6 #Hcode Hstr Hws Hrun Hcont".
     assert (Ebg : (mword_of_int (q + 24) : mword 64)
@@ -720,7 +720,7 @@ Section UkShParseTok.
            (mword_of_int (ushp_tok_exit len f j)) (2 + nn) -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros r. induction r as [| r IH ];
       intros j h mc Hr Hj Hs0 Hs64 Hs1 Hs2 Hs3 Hs5;
       iIntros "#Hcode Hstr Hws Hsy Hrun Hcont"; [ lia | ].
@@ -1227,7 +1227,7 @@ Section UkShParseTok.
          urun N h' mc' (mword_of_int 0x3b0) (2 + nn) -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hjle Hs0 Hs64 Hs1 Hs2.
     iIntros "#Hcode Hstr Hws Hrun Hcont".
     (* ---- 0x390  auipc s3,0x2 ---- *)
@@ -1327,7 +1327,7 @@ Section UkShParseTok.
          urun N h' mc' (mword_of_int 0x3b0) (2 + nn) -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hjle Hs0 Hs64 Heq0 Heq8 Heqsz Hs1 Hs2 Hs6.
     iIntros "#Hcode Hcell Hstr Hws Hrun Hcont".
     (* ---- 0x38c  sd s1,0(s6)  --  *eq = s ---- *)
@@ -1374,7 +1374,7 @@ Section UkShParseTok.
          urun N h' mc' (mword_of_int 0x3b0) (2 + nn) -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hjle Hs0 Hs64 Hs1 Hs2 Hs6.
     iIntros "#Hcode Hcell Hstr Hws Hrun Hcont".
     iDestruct (urun_x0 with "Hrun") as "[%Hx0 Hrun]".
@@ -1454,7 +1454,7 @@ Section UkShParseTok.
          urun N h' mc' (mword_of_int 0x3b0) (2 + nn) -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hs0 Hs64 Hs1 Hs2 Hs6.
     iIntros "#Hcode Hcell Hstr Hws Hrun Hcont".
     iDestruct (urun_x0 with "Hrun") as "[%Hx0 Hrun]".
@@ -1553,7 +1553,7 @@ Section UkShParseTok.
          (ret_pc (vals 0%nat)) (8 + (2 + nn)) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros h me Hal8 Hlo Hhi Hsplu Hsp.
     iIntros "#Hcode Hsl Hloc Hrun Hcont".
     set (spn := add_vec_int sp0 (- (8 * Z.of_nat 8))).
@@ -1708,7 +1708,7 @@ Section UkShParseTok.
          urun N h' mc (mword_of_int 0x356) (2 + nn) -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hs0 Hs64 Hs1 Hs5.
     iIntros "#Hcode Hcell Hrun Hcont".
     iDestruct (urun_x0 with "Hrun") as "[%Hx0 Hrun]".
@@ -1794,7 +1794,7 @@ Section UkShParseTok.
            (2 + nn) -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hkle Hnosym Hs0 Hs64 Hs1.
     iIntros "#Hcode Hstr Hrun Hcont".
     iDestruct (ustr_nonul with "Hstr") as %Hnonul.
@@ -2292,7 +2292,7 @@ Section UkShParseTok.
            (8 + (2 + nn)) -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hal8 Hlo Hhi Hsplu Hps0 Hps8 Hpssz Hvals Hsp0 Hsp Hs4 Hs1 Hs5
            Hkeep.
     iIntros "#Hcode Hcur Hsl Hloc Hrun Hcont".
@@ -2492,7 +2492,7 @@ Section UkShParseTok.
            (8 + (2 + nn)) -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Ha0 Ha1 Ha2 Ha3 Hoffle Hw0 Hnosym Hs0 Hs64 Hps0 Hps8 Hpssz.
     iIntros "#Hcode Hcur Hq Heq Hstr Hws Hsy Hrun Hcont".
     rewrite shpp_gettoken.

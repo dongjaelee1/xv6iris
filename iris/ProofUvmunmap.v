@@ -230,7 +230,7 @@ Section ProofUvmunmap.
       ⌜callee_saved mm mf⌝ -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros spr HK Hmmsp Hjsp Hjthr.
     iIntros "Hcg #Htext Hpc Hk1 Hk2 Hk3 Hk4 Hk5 Hk6 Hk7 Hk8 Hcont".
     iDestruct "Hk3" as (u3) "Hk3".
@@ -541,7 +541,7 @@ Section ProofUvmunmap.
       Own npages -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hilvl Hrange Hwf Hfx Hside.
     intro rem.
     revert CID0.
@@ -1266,7 +1266,7 @@ Section ProofUvmunmap.
       Own npages -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pcE va vpn0 ret_tgt HK Hilvl Hroot Hval Hnpr Hdf Hrange Hside Hbelow.
     pose (sp0 := (mm !!! Regidx csp_rs1 : mword 64)).
     set (spr := add_vec sp0 (sign_extend' 64 (caddi16sp_imm (mword_of_int 60 : mword 6)))).
@@ -1894,7 +1894,7 @@ Section SealUvmunmap.
       (npages : nat) (K : nat) (eb : bool) (p : mword 64)
       (ilvl : nat) (b : bool) (lks : gset string)
     : wp_uvmunmap_mem_sconf_body γa mm P sz szn M npages K eb p ilvl b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_uvmunmap_mem_sconf_body].
     intros pcE va vpn0 ret_tgt HK Hilvl Hroot Hval Hnpr Hdf Hrange Hlive Hbelow.
     iIntros "Hcg Hcnt #Htext Hpc Hpt Henv Hcont".
@@ -1994,7 +1994,7 @@ Section SealUvmunmap.
       (npages : nat) (K : nat) (eb : bool) (p : mword 64)
       (ilvl : nat) (b : bool) (lks : gset string)
     : wp_uvmunmap_live_sconf_body γa mm P sz M npages K eb p ilvl b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_uvmunmap_live_sconf_body].
     intros pcE va vpn0 ret_tgt HK Hilvl Hroot Hval Hnpr Hdf Hrange Hlive Hbelow.
     iIntros "Hcg Hcnt #Htext Hpc Hpt Henv Hcont".
@@ -2142,7 +2142,7 @@ Section SealUvmunmapBare.
       (npages : nat) (K : nat) (eb : bool) (p : mword 64)
       (ilvl : nat) (b : bool) (lks : gset string)
     : wp_uvmunmap_bare_sconf_body γa mm uroot um npages K eb p ilvl b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_uvmunmap_bare_sconf_body].
     intros pcE va vpn0 ret_tgt HK Hilvl Hroot Hval Hnpr Hdf Hrange Hbelow.
     iIntros "Hcg Hcnt #Htext Hpc Hpt Henv Hcont".
@@ -2198,7 +2198,7 @@ Section SealUvmunmapFixed.
       (K : nat) (eb : bool) (p : mword 64)
       (ilvl : nat) (b : bool) (lks : gset string)
     : wp_uvmunmap_fixed_sconf_body γa mm fx uroot um v K eb p ilvl b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_uvmunmap_fixed_sconf_body].
     intros pcE va ret_tgt HK Hilvl Hroot Hval Hnpr Hdf Hv Hfixed Hrange.
     iIntros "Hcg Hcnt #Htext Hpc Hpt Henv Hcont".

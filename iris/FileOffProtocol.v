@@ -67,7 +67,7 @@ Section FileOffProtocol.
     a_fref k ↦₄ (mword_of_int 0 : mword 32) ∗
     ∃ C pn, ⌜fc_type C = FD_NONE⌝ ∗ file_fields k 1 C ∗
             fpay_tok γ k 1 pn ∗ file_core_noff 1 pn C ∗ off_free k 1.
-  Proof.
+  Proof using .
     intros HM. rewrite /fslot HM.
     iIntros "[Href (%C & %Hty & Hflds & Hpay)]". iFrame "Href".
     iDestruct "Hpay" as (pn) "[Hpn Hcore]". rewrite /file_core.
@@ -80,7 +80,7 @@ Section FileOffProtocol.
     M !! k = None -> fc_type C = FD_NONE ->
     ftable_auth γ M -∗ file_fields k 1 C -∗ file_pay γ k 1 C ==∗
     ftable_auth γ (<[k := (1%Qp, 1%positive)]> M) ∗ file_ref γ k 1 FdClosed.
-  Proof. intros HM Hty. exact (file_alloc_step γ M k C HM Hty). Qed.
+  Proof using . intros HM Hty. exact (file_alloc_step γ M k C HM Hty). Qed.
 
   (* ---- the opener's slot: the word comes out FREE ---- *)
   Lemma proto_open_slot (E : coPset) (γ : gname) (k : nat) :
@@ -89,7 +89,7 @@ Section FileOffProtocol.
       ⌜fc_type C = FD_NONE⌝ ∗
       fref_tok γ k 1 ∗ flive_tok k ∗ fpay_tok γ k 1 pn ∗
       file_fields k 1 C ∗ file_core_noff 1 pn C ∗ off_free k 1.
-  Proof.
+  Proof using .
     iIntros "(%Cf & Href & Hflds & (%pn & %Hok & Hnames & Hcore) & Hlive)".
     cbn in Hok. set (Ht := Hok : fc_type Cf = FD_NONE).
     rewrite /file_core. iDestruct "Hcore" as "[Hnoff Hoff]".
@@ -102,13 +102,13 @@ Section FileOffProtocol.
           leaf's result IS the resident cell at the storer's context ---- *)
   Lemma proto_store_free (k : nat) :
     off_free k 1 ⊣⊢ wordw_free 4 (a_foff k).
-  Proof.
+  Proof using .
     rewrite /off_free /wordw_free. change (Z.to_nat 4) with 4%nat. reflexivity.
   Qed.
   Lemma proto_store_remint (k : nat) :
     wordw_pointsto 4 (a_foff k) (DfracOwn 1) (mword_of_int 0 : mword 32) ==∗
     ∃ γo : gname, off_resident γo k ∗ off_gv γo (1/2) (bv_unsigned (mword_of_int 0 : mword 32)).
-  Proof.
+  Proof using .
     iIntros "H".
     iMod (off_gv_alloc (bv_unsigned (mword_of_int 0 : mword 32))) as (γo) "Hg".
     iDestruct (off_gv_halves with "Hg") as "[Hk Hu]".
@@ -127,7 +127,7 @@ Section FileOffProtocol.
     own_context cur_ctx -∗ off_resident γo k -∗ off_rows off_cfg i cur_ctx ={E}=∗
     own_context cur_ctx ∗ off_rows off_cfg i cur_ctx ∗
     ∃ γb : box_names, off_fd k 1 γb γo C.
-  Proof.
+  Proof using .
     iIntros (HE Hi Hip Hty) "Hctx Hres Hrows".
     iMod (own_alloc (● (∅ : gmap (nat * nat) ufrac))) as (γs) "Hst".
     { apply auth_auth_valid. exact (ucmra_unit_valid (A := gmapUR (nat * nat) ufracR)). }
@@ -149,7 +149,7 @@ Section FileOffProtocol.
   (* ---- dup: a pure split of the share by fraction ---- *)
   Lemma proto_dup (k : nat) (q1 q2 : Qp) (γb : box_names) (γo : gname) (C : fcontent) :
     off_fd k (q1 + q2) γb γo C ⊣⊢ off_fd k q1 γb γo C ∗ off_fd k q2 γb γo C.
-  Proof. apply off_fd_split. Qed.
+  Proof using . apply off_fd_split. Qed.
 
   (* ---- read, step 0: name the share's stamps fragment and present its
           llb at the ilock acquire; R1 returns a floor at least that high
@@ -157,7 +157,7 @@ Section FileOffProtocol.
   Lemma proto_read_llb (k : nat) (q : Qp) (γb : box_names) (γo : gname) (C : fcontent) :
     off_fd k q γb γo C -∗
     ∃ m : gmap (nat * nat) ufrac, off_fd_at k q γb γo C m ∗ llb loglen_name (max_stamp m).
-  Proof.
+  Proof using .
     rewrite /off_fd /off_fd_at /off_ref_stamps.
     iIntros "(%i & %T0 & %Hip & %Hi & #Hbox & #Hmem & Hd & Hc & (%m & %Hq & Href))".
     rewrite /CtxBox.reference. iDestruct "Href" as "(%Hne & %Hk & Hfrag & #Hllb)".
@@ -187,7 +187,7 @@ Section FileOffProtocol.
       ghost_var (bx_slotd γb) (q / 2) (SlotReg T0 false k None : slot_reg nat unit) ∗
       ghost_var (ghost_varG0 := kalloc_count_inG) (bx_cnt γb) (q / 2) 1%nat ∗
       (∃ T : nat, off_rows_dep_but off_cfg i γb T).
-  Proof.
+  Proof using .
     iIntros (HE Hip Hi HKt) "Hctx #Hflt Hat Hrows".
     rewrite /off_fd_at.
     iDestruct "Hat" as (i' T0) "(%Hip' & %Hi' & #Hbox & #Hmem & Hd & Hc & %Hq & Href)".
@@ -218,7 +218,7 @@ Section FileOffProtocol.
     off_rows_dep_but off_cfg i γb Tr ={E}=∗
     own_context ξ ∗ off_fd k q γb γo C ∗
     ∃ T' : nat, off_rows_dep off_cfg i T'.
-  Proof.
+  Proof using .
     iIntros (HE Hip Hi Hq) "Hctx Hres Hhold Hd Hc #Hbox #Hmem Hrest".
     iMod (off_read_park k γb γo ξ m E HE with "Hbox Hctx Hres Hhold")
       as "(Hctx & %T' & %q' & %Hq' & Hrp & Href & #Hllb)".
@@ -236,14 +236,14 @@ Section FileOffProtocol.
   (* ---- close, non-last: a pure join ---- *)
   Lemma proto_close_join (k : nat) (q1 q2 : Qp) (γb : box_names) (γo : gname) (C : fcontent) :
     off_fd k q1 γb γo C ∗ off_fd k q2 γb γo C ⊢ off_fd k (q1 + q2) γb γo C.
-  Proof. rewrite (off_fd_split k q1 q2). done. Qed.
+  Proof using . rewrite (off_fd_split k q1 q2). done. Qed.
 
   (* ---- close, last: the whole share in hand; the free-tier withdraw; the
           retype puts the free word into the FD_NONE payload ---- *)
   Lemma proto_last_close (E : coPset) (k : nat) (γb : box_names) (γo : gname) (C : fcontent) :
     ↑(offBoxN .@ k) ⊆ E ->
     off_fd k 1 γb γo C ={E}=∗ off_free k 1.
-  Proof.
+  Proof using .
     iIntros (HE) "Hfd". rewrite /off_fd.
     iDestruct "Hfd" as (i T0) "(%Hip & %Hi & Hbox & _ & Hregd & Hcnt & Hst)".
     rewrite /off_ref_stamps. iDestruct "Hst" as (m) "[%Hq Href]".
@@ -253,7 +253,7 @@ Section FileOffProtocol.
   Lemma proto_retype_none (k : nat) (pn : fpnames) (C' : fcontent) :
     fc_type C' = FD_NONE ->
     off_free k 1 ⊢ file_core_off k 1 pn C'.
-  Proof. intros Ht. by rewrite (file_core_off_none k 1 pn C' Ht). Qed.
+  Proof using . intros Ht. by rewrite (file_core_off_none k 1 pn C' Ht). Qed.
 
   (* ---- realloc: the same slot, freed, is allocated again -- the row's word
           is the free one the last close left ---- *)
@@ -261,7 +261,7 @@ Section FileOffProtocol.
     M !! k = None -> fc_type C = FD_NONE ->
     ftable_auth γ M -∗ file_fields k 1 C -∗ file_pay γ k 1 C ==∗
     ftable_auth γ (<[k := (1%Qp, 1%positive)]> M) ∗ file_ref γ k 1 FdClosed.
-  Proof. intros HM Hty. exact (file_alloc_step γ M k C HM Hty). Qed.
+  Proof using . intros HM Hty. exact (file_alloc_step γ M k C HM Hty). Qed.
 
   (* ---- fork: the parent dups (a pure split) and KEEPS one half; the child
           reads at ITS context ξ' with the other: the share is context-free,
@@ -285,7 +285,7 @@ Section FileOffProtocol.
            ghost_var (bx_slotd γb) (q / 2 / 2) (SlotReg T0 false k None : slot_reg nat unit) ∗
            ghost_var (ghost_varG0 := kalloc_count_inG) (bx_cnt γb) (q / 2 / 2) 1%nat ∗
            (∃ T : nat, off_rows_dep_but off_cfg i γb T)).
-  Proof.
+  Proof using .
     iIntros (HE Hip Hi) "Hfd".
     rewrite -{1}(Qp.div_2 q) off_fd_split. iDestruct "Hfd" as "[$ $]".
     iModIntro. iIntros (m Kt HKt) "Hctx Hfl Hat Hrows".
@@ -300,7 +300,7 @@ Section FileOffProtocol.
   Lemma proto_retype_other (k : nat) (q : Qp) (pn : fpnames) (C : fcontent) :
     fc_type C = FD_PIPE \/ fc_type C = FD_DEVICE ->
     off_free k q ⊢ file_core_off k q pn C.
-  Proof.
+  Proof using .
     intros Hty. rewrite /file_core_off.
     rewrite bool_decide_eq_false_2; [done|].
     destruct Hty as [Ht | Ht]; rewrite Ht; intro Hc;
@@ -310,7 +310,7 @@ Section FileOffProtocol.
     M !! k = Some (1%Qp, 1%positive) -> fc_type C = FD_NONE ->
     ftable_auth γ M -∗ file_ref γ k 1 FdClosed ==∗
     ftable_auth γ (delete k M) ∗ ∃ C' : fcontent, file_fields k 1 C' ∗ file_pay γ k 1 C'.
-  Proof.
+  Proof using .
     iIntros (HM Hty) "Ha (%C' & Href & Hflds & Hpay & Hlive)".
     iMod (file_close_last_ghost γ M k 1 HM with "Ha Href Hlive") as "Ha".
     iModIntro. iFrame "Ha". iExists C'. iFrame "Hflds".

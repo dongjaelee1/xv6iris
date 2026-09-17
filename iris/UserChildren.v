@@ -67,9 +67,9 @@ Section UserChildren.
     ghost_var γs (1/2) S.
 
   Global Instance uch_auth_timeless γs S : Timeless (uch_auth γs S).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance uch_timeless γs S : Timeless (uch γs S).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* the fragment READS the engine's half: this is the lemma the whole
      resource exists for, and it is why the authority sits INSIDE [urun]
@@ -77,14 +77,14 @@ Section UserChildren.
      a program learns it only by agreement. *)
   Lemma uch_agree (γs : gname) (S S' : gset gname) :
     uch_auth γs S -∗ uch γs S' -∗ ⌜ S = S' ⌝.
-  Proof.
+  Proof using .
     iIntros "H1 H2". iDestruct (ghost_var_agree with "H1 H2") as %->. done.
   Qed.
 
   (* ...and BOTH halves move it, which is what fork, wait and exit spend. *)
   Lemma uch_update (γs : gname) (S S' S'' : gset gname) :
     uch_auth γs S -∗ uch γs S' ==∗ uch_auth γs S'' ∗ uch γs S''.
-  Proof.
+  Proof using .
     iIntros "H1 H2".
     iDestruct (ghost_var_agree with "H1 H2") as %->.
     iMod (ghost_var_update_2 S'' with "H1 H2") as "[$ $]"; [ | done ].
@@ -96,7 +96,7 @@ Section UserChildren.
      program. *)
   Lemma uch_alloc (S : gset gname) :
     ⊢ |==> ∃ γs : gname, uch_auth γs S ∗ uch γs S.
-  Proof.
+  Proof using .
     iMod (ghost_var_alloc S) as (γs) "Hc".
     iEval (rewrite -Qp.half_half) in "Hc".
     iDestruct (ghost_var_split with "Hc") as "[HA HF]".
@@ -113,10 +113,10 @@ Section UserChildren.
     (∃ S : gset gname, uch γs S)%I.
 
   Global Instance uch_any_timeless γs : Timeless (uch_any γs).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma uch_any_of (γs : gname) (S : gset gname) : uch γs S -∗ uch_any γs.
-  Proof. iIntros "H". iExists S. iExact "H". Qed.
+  Proof using . iIntros "H". iExists S. iExact "H". Qed.
 
 End UserChildren.
 
@@ -148,15 +148,15 @@ Section UserPid.
     ghost_var γp (1/2) p.
 
   Global Instance upid_auth_timeless γp p : Timeless (upid_auth γp p).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance upid_timeless γp p : Timeless (upid γp p).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* the fragment READS the engine's half -- the lemma the resource exists
      for, and why the authority sits INSIDE [urun]. *)
   Lemma upid_agree (γp : gname) (p p' : Z) :
     upid_auth γp p -∗ upid γp p' -∗ ⌜ p = p' ⌝.
-  Proof.
+  Proof using .
     iIntros "H1 H2". iDestruct (ghost_var_agree with "H1 H2") as %->. done.
   Qed.
 
@@ -169,7 +169,7 @@ Section UserPid.
      authority in the [urun] it is building and hands the fragment over. *)
   Lemma upid_alloc (p : Z) :
     ⊢ |==> ∃ γp : gname, upid_auth γp p ∗ upid γp p.
-  Proof.
+  Proof using .
     iMod (ghost_var_alloc p) as (γp) "Hc".
     iEval (rewrite -Qp.half_half) in "Hc".
     iDestruct (ghost_var_split with "Hc") as "[HA HF]".
@@ -179,10 +179,10 @@ Section UserPid.
   Definition upid_any (γp : gname) : iProp Σ := (∃ p : Z, upid γp p)%I.
 
   Global Instance upid_any_timeless γp : Timeless (upid_any γp).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma upid_any_of (γp : gname) (p : Z) : upid γp p -∗ upid_any γp.
-  Proof. iIntros "H". iExists p. iExact "H". Qed.
+  Proof using . iIntros "H". iExists p. iExact "H". Qed.
 
 End UserPid.
 
@@ -297,13 +297,13 @@ Section GenIsInit.
     (∃ p0 : mword 32, init_pid_is p0 ∗ gen_pid g p0)%I.
 
   Global Instance gen_is_init_persistent g : Persistent (gen_is_init g).
-  Proof. rewrite /gen_is_init. apply _. Qed.
+  Proof using . rewrite /gen_is_init. apply _. Qed.
 
   (* the pid form, for a caller that can name its own pid *)
   Lemma gen_is_init_pid (g : gname) (pidv : mword 32) :
     gen_is_init g -∗ gen_pid g pidv -∗ ∃ p0 : mword 32,
       init_pid_is p0 ∗ ⌜pidv = p0⌝.
-  Proof.
+  Proof using .
     iIntros "(%p0 & #Hi & #Hp0) Hp".
     iDestruct (gen_pid_agree with "Hp Hp0") as %->.
     iExists p0. iFrame "Hi". done.
@@ -316,7 +316,7 @@ Section GenIsInit.
   Lemma gen_is_init_ne (g : gname) (pidv p0 : mword 32) :
     pidv <> p0 ->
     init_pid_is p0 -∗ gen_pid g pidv -∗ gen_is_init g -∗ False.
-  Proof.
+  Proof using .
     intro Hne. iIntros "#Hi Hp Hg".
     iDestruct (gen_is_init_pid with "Hg Hp") as (p1) "[#Hi1 %Heq]".
     iDestruct (init_pid_is_agree with "Hi Hi1") as %<-.
@@ -351,7 +351,7 @@ Section WaitAns.
 
   Global Instance wait_why_persistent (cs : gset gname) (gn : gname) (b : bool) :
     Persistent (wait_why cs gn b).
-  Proof. rewrite /wait_why. apply _. Qed.
+  Proof using . rewrite /wait_why. apply _. Qed.
 
   (* ...AND THE REAPING ARM SAYS THE RETURNED PID IS A REAL PID (lane
      TRAP-ROWS-3, T4(c)).  [rv] is the ZOMBIE's [p->pid], read off its own
@@ -398,7 +398,7 @@ Section WaitAns.
   Lemma wait_ans_reaped (rv : mword 32) (xs : Z) (cs cs' : gset gname)
       (gn : gname) (nullst : bool) (pidv : mword 32) :
     wait_ans rv xs cs cs' gn nullst pidv -∗ ⌜ch_reaped cs cs'⌝.
-  Proof.
+  Proof using .
     iIntros "[[[_ %He] _] | (%γ' & [%He _] & _ & _ & _)]"; iPureIntro.
     - left. exact He.
     - right. exists γ'. exact He.
@@ -419,7 +419,7 @@ Section WaitAns.
     (sign_extend' 64 rv : mword 64) = (mword_of_int (-1) : mword 64) ->
     wait_ans rv xs cs cs' gn nullst pidv -∗
     ⌜rv = (mword_of_int (-1) : mword 32) /\ cs' = cs⌝ ∗ wait_why cs gn nullst.
-  Proof.
+  Proof using .
     intro Hm1. iIntros "[[%Hf #Hwhy] | (%γ' & [_ %Hrng] & _ & _ & _)]".
     - iSplitR; [ iPureIntro; exact Hf | ]. iExact "Hwhy".
     - exfalso. exact (sext32_rng_not_neg1 rv Hrng Hm1).
@@ -432,7 +432,7 @@ Section WaitAns.
       (pidv : mword 32) :
     wait_why cs gn nullst -∗
     wait_ans (mword_of_int (-1) : mword 32) xs cs cs gn nullst pidv.
-  Proof.
+  Proof using .
     iIntros "Hwhy". iLeft. iSplitR; [ iPureIntro; split; reflexivity | ].
     iExact "Hwhy".
   Qed.
@@ -440,15 +440,15 @@ Section WaitAns.
   (* ...and the three ways to build that reason *)
   Lemma wait_why_notnull (cs : gset gname) (gn : gname) (nullst : bool) :
     nullst = false -> ⊢ wait_why cs gn nullst.
-  Proof. intros ->. rewrite /wait_why. by iLeft. Qed.
+  Proof using . intros ->. rewrite /wait_why. by iLeft. Qed.
 
   Lemma wait_why_empty (cs : gset gname) (gn : gname) (nullst : bool) :
     cs = (∅ : gset gname) -> ⊢ wait_why cs gn nullst.
-  Proof. intro He. rewrite /wait_why. iRight. by iLeft. Qed.
+  Proof using . intro He. rewrite /wait_why. iRight. by iLeft. Qed.
 
   Lemma wait_why_shot (cs : gset gname) (gn : gname) (nullst : bool) :
     kill_shot gn -∗ wait_why cs gn nullst.
-  Proof. iIntros "H". rewrite /wait_why. iRight. iRight. iExact "H". Qed.
+  Proof using . iIntros "H". rewrite /wait_why. iRight. iRight. iExact "H". Qed.
 
 End WaitAns.
 
@@ -483,7 +483,7 @@ Section WaitAnsGen.
       (nullst : bool) :
     wait_why cs gn nullst -∗
     wait_ans_gen (mword_of_int (-1) : mword 32) xs cs cs gn nullst.
-  Proof.
+  Proof using .
     iIntros "Hwhy". iLeft. iSplitR; [ iPureIntro; split; reflexivity | ].
     iExact "Hwhy".
   Qed.
@@ -496,7 +496,7 @@ Section WaitAnsGen.
     gen_pid gn pidme -∗ init_pid_is (mword_of_int 1 : mword 32) -∗
     wait_ans_gen rv xs cs cs' gn nullst -∗
     wait_ans rv xs cs cs' gn nullst pidme.
-  Proof.
+  Proof using .
     iIntros "#Hgp #Hi [Hneg | (%γ' & %Hrng & Hoci & Hesc & Huniq)]".
     - iLeft. iExact "Hneg".
     - iRight. iExists γ'. iSplitR; [ iPureIntro; exact Hrng | ].

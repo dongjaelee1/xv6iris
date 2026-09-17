@@ -110,7 +110,7 @@ Section UEchoKernel.
   (* ------------------------------------------------------------------- *)
   Lemma udata_lo_sub (M : gmap Z (bv 8)) (π : gmap (mword 27) uperm) (sz : Z) :
     udata_lo M π sz ⊆ M.
-  Proof.
+  Proof using .
     unfold udata_lo, udata_part.
     etransitivity; apply map_filter_subseteq.
   Qed.
@@ -118,7 +118,7 @@ Section UEchoKernel.
   (* [Z.rem] is what [UkAbi.uk_args] states its alignment with; [ustack] and
      [uargv] speak [mod].  At a nonnegative address they agree. *)
   Lemma zrem_mod_8 (a : Z) : 0 <= a -> Z.rem a 8 = 0 -> a mod 8 = 0.
-  Proof.
+  Proof using .
     intros H0 Hr.
     rewrite (Z.mod_eq a 8 ltac:(lia)).
     rewrite <- (Z.quot_div_nonneg a 8 H0 ltac:(lia)).
@@ -132,7 +132,7 @@ Section UEchoKernel.
     lo <= a -> is_Some (udata_lo M π sz !! a) ->
     base.filter (fun kv : Z * bv 8 => ~ (kv.1 < lo)) (udata_lo M π sz) !! a
     = M !! a.
-  Proof.
+  Proof using .
     intros Hla [b Hb].
     rewrite (umap_filter_lookup_ge (udata_lo M π sz) lo a b ltac:(lia) Hb).
     symmetry.
@@ -150,7 +150,7 @@ Section UEchoKernel.
     ([∗ map] k ↦ b ∈ (base.filter (fun kv : Z * bv 8 => ~ (kv.1 < lo)) (udata_lo M π sz)), ubyteq γd DfracDiscarded k b) -∗
       uwordq γd DfracDiscarded (av + 8 * Z.of_nat i)
         (mword_of_int (ua_ptr (echo_arg M av i))).
-  Proof.
+  Proof using .
     intros Hlo Hi Hrd Havd. iIntros "#HA".
     assert (Hex : forall j : nat, (j < Z.to_nat 8)%nat ->
               exists b : bv 8,
@@ -197,7 +197,7 @@ Section UEchoKernel.
     ([∗ map] k ↦ b ∈ (base.filter (fun kv : Z * bv 8 => ~ (kv.1 < lo)) (udata_lo M π sz)), ubyteq γd DfracDiscarded k b) -∗
       ustr γd DfracDiscarded (ua_ptr (echo_arg M av i))
         (ua_len (echo_arg M av i)) (ua_bytes (echo_arg M av i)).
-  Proof.
+  Proof using .
     intros Hpl Hll Hcs Havs. iIntros "#HA".
     cbn [ua_ptr ua_len ua_bytes echo_arg].
     assert (Hlen : Z.of_nat
@@ -251,7 +251,7 @@ Section UEchoKernel.
         (mword_of_int (ua_ptr (echo_arg M av i))) ∗
       ustr γd DfracDiscarded (ua_ptr (echo_arg M av i))
         (ua_len (echo_arg M av i)) (ua_bytes (echo_arg M av i)).
-  Proof.
+  Proof using .
     intros Hlo Hi Hrd Hpl Hll Hcs Havd Havs. iIntros "#HA".
     iSplit.
     - iApply (echo_argv_word_of_area γd M π sz av lo argc i Hlo Hi Hrd Havd
@@ -280,7 +280,7 @@ Section UEchoKernel.
                  !! (uk_argv_p M av (Z.of_nat i) + Z.of_nat j)%Z)) ->
     ([∗ map] k ↦ b ∈ (base.filter (fun kv : Z * bv 8 => ~ (kv.1 < lo)) (udata_lo M π sz)), ubyteq γd DfracDiscarded k b) -∗
       uargv γd av (echo_args M av (Z.to_nat argc)).
-  Proof.
+  Proof using .
     intros Hlo0 Hargs Havd Havs. iIntros "#HA".
     pose proof Hargs as Hargs'.
     destruct Hargs' as [Hal Hlo Hargc Hrd Hptr].
@@ -325,7 +325,7 @@ Section UEchoKernel.
     forall j : nat, (j < 8 * 12)%nat ->
       is_Some (udata_lo (uvis_M W) (uvis_perm W) (uvis_sz W)
                 !! (uint (uvis_sp W) - 8 * Z.of_nat 12 + Z.of_nat j)%Z).
-  Proof.
+  Proof using .
     unfold echo_stkdata. rewrite Forall_forall. intros HF j Hj.
     apply HF. apply in_seq. lia.
   Qed.
@@ -352,7 +352,7 @@ Section UEchoKernel.
     forall j : nat, (j < 8 * Z.to_nat (uvis_argc W))%nat ->
       is_Some (udata_lo (uvis_M W) (uvis_perm W) (uvis_sz W)
                 !! (uvis_av W + Z.of_nat j)%Z).
-  Proof.
+  Proof using .
     unfold echo_avd_arr. rewrite Forall_forall. intros HF j Hj.
     apply HF. apply in_seq. lia.
   Qed.
@@ -386,7 +386,7 @@ Section UEchoKernel.
       is_Some (udata_lo (uvis_M W) (uvis_perm W) (uvis_sz W)
                 !! (uk_argv_p (uvis_M W) (uvis_av W) (Z.of_nat i)
                     + Z.of_nat j)%Z).
-  Proof.
+  Proof using .
     unfold echo_avd_str. rewrite Forall_forall. intros HF i j Hi Hj.
     assert (Hin : In i (seq 0 (Z.to_nat (uvis_argc W))))
       by (apply in_seq; lia).
@@ -453,7 +453,7 @@ Section UEchoKernel.
        reaches here from the caller. *)
     UkRun.urun_nopipe (uvis_fd W) -∗
     udep -∗ my_pay (uvis_gen W) (fun _ => True)%I -∗ uslot W.
-  Proof.
+  Proof using ghost_varG1.
     intros Hpc Hsub Hx Hroom Hal8 Hstk Hargs Havd Havs Hfdlen Hstop Hlzf.
     iIntros "#Hwr #Hnpw #Hdep #Hpay".
     assert (Hsp0 : 0 <= uint (uvis_sp W)) by lia.

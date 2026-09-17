@@ -88,7 +88,7 @@ Section ProofArgint.
       (i : nat) (tfp : mword 44) (ws : list (mword 64)) (v : mword 64)
       (old : mword 32) (dqt : dfrac) (b : bool) (lks : gset string)
     : wp_argint_sconf_body m av n eb p i tfp ws v old dqt b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_argint_sconf_body].
     intros pcE ip ret_tgt Hi Ha0 Hargs Hn Hav Hpv.
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).

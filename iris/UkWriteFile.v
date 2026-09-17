@@ -146,7 +146,7 @@ Section UkWriteFile.
          Q 0%nat (wchunks n)) -∗
     udepwf_st N m pc 16 (write_file_fam Q (ukn_pay N))
       (FdOpen rb true (FdInode i γo OffParked)).
-  Proof.
+  Proof using .
     intros Hcnt. iIntros "Hch". rewrite /udepwf_st.
     iSplitR; [ iPureIntro; reflexivity | ].
     iIntros (M pm sz fdv cw gn cs pidv) "%Hkey _ Hheap Hufd".
@@ -200,7 +200,7 @@ Section UkWriteFile.
        urun N h' (<[Regidx a0_idx := r]> m) (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hfdv Hfdlt Hal4 Hsrc.
     iIntros "#Hi Hrun Hsb Hufdh Hbuf Hcont".
     iApply (wp_uk_ecall_write_at N h m pc avail fdep
@@ -228,7 +228,7 @@ Section UkWriteFile.
     (forall j : nat, (j < nb)%nat ->
        M !! uint (add_vec_int ua (Z.of_nat j)) = Some (f j)) ->
     forall j : nat, (j < length bs)%nat -> bs !!! j = f j.
-  Proof.
+  Proof using .
     intros Hat Hlen Himg j Hj.
     destruct (lookup_lt_is_Some_2 bs j Hj) as [c Hc].
     pose proof (Hat j c Hc) as HM.
@@ -265,7 +265,7 @@ Section UkWriteFile.
           ⌜forall j : nat, (j < length (concat bss))%nat ->
              concat bss !!! j = f j⌝ ∗
           Q p)).
-  Proof.
+  Proof using .
     intros Himg. rewrite /write_arms_at /write_post_ok_at /write_post_fail_at.
     iIntros "[[%Hok Hp] | [%Hm1 Hp]]".
     - destruct Hok as [Hr _]. iLeft. iSplitR; [ by iPureIntro | ].
@@ -332,7 +332,7 @@ Section UkWriteFile.
        urun N h' (<[Regidx a0_idx := r]> m) (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hfdv Hfdlt Hcnt Hal4.
     iIntros "#Hi Hrun Hufdh Hbuf #Hsup Hcont".
     iDestruct (udepwf_st_write_file N m pc rb i γo (fun _ => True%I)

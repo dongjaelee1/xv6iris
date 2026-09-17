@@ -413,7 +413,7 @@ Section KexecBFrame.
        is_aligned_paddr (Physaddr (pa_stk sp0 (54 - i))) 8 = true⌝ ∗
     ∃ f : nat -> bv 8,
       [∗ list] j ∈ seq 0 64, pa_add (pa_stk sp0 54) j ↦ₘ[KT1] f j.
-  Proof.
+  Proof using .
     iIntros "H".
     iDestruct (kxc_elf_slots_of_stack with "H") as "H".
     iDestruct (kxc_slots_elf sp0 with "H") as "[%Hal Hb]".
@@ -427,7 +427,7 @@ Section KexecBFrame.
        is_aligned_paddr (Physaddr (pa_stk sp0 (54 - i))) 8 = true) ->
     ([∗ list] j ∈ seq 0 64, pa_add (pa_stk sp0 54) j ↦ₘ[KT1] g j)
     ⊢ stack_own (KTR := KT1) (pa_stk sp0 46) 8.
-  Proof.
+  Proof using .
     intro Hal. iIntros "Hg".
     iApply kxc_stack_of_elf_slots. iApply (kxc_bytes_elf sp0 Hal).
     rewrite /bytes_own. iApply (bb_named_any with "Hg").
@@ -443,7 +443,7 @@ Section KexecBFrame.
     (pa_add a o ↦₂[KT1] (Z_to_bv 16 (le_at f o 2) : mword 16)) ∗
     ((pa_add a o ↦₂[KT1] (Z_to_bv 16 (le_at f o 2) : mword 16)) -∗
        [∗ list] j ∈ seq 0 n, pa_add a j ↦ₘ[KT1] f j).
-  Proof.
+  Proof using .
     intros Hn Hal.
     rewrite (bb_split3 (KTR := KT1) a o 2 r n f (DfracOwn 1) Hn).
     iIntros "(Hpre & Hmid & Hsuf)".
@@ -470,7 +470,7 @@ Section KexecBFrame.
     (pa_add a o ↦₄[KT1] (Z_to_bv 32 (le_at f o 4) : mword 32)) ∗
     ((pa_add a o ↦₄[KT1] (Z_to_bv 32 (le_at f o 4) : mword 32)) -∗
        [∗ list] j ∈ seq 0 n, pa_add a j ↦ₘ[KT1] f j).
-  Proof.
+  Proof using .
     intros Hn Hal.
     rewrite (bb_split3 a o 4 r n f (DfracOwn 1) Hn).
     iIntros "(Hpre & Hmid & Hsuf)".

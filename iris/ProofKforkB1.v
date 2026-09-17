@@ -204,7 +204,7 @@ Section KforkB1Proof.
         kalloc_env_at γa γk None -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hlvl Hj Hb Hsp0 Hra0 Hs00 Hs10 Hs50 Hmtsp Hmts4 Hthr Hfresh.
     iIntros "Hcg Hcpu Hpay #Htext Hpc Hb1 Hb2 Hb3 Hb4 Hb5 Hb6 Hb7 Hb8
               Hheld Hhaa #Hislock #Hpidlk #Henv Hfprest Hfprow Hfpxb Hfpsg Hfppr Hfppt Hfptf Hcont".

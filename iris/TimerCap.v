@@ -56,13 +56,13 @@ Section TimerCap.
        mcounteren ↦ᵣ□ mcen ∗ ⌜ eq_vec (_get_Counteren_TM mcen) ('b"1") = true ⌝)%I.
 
   Global Instance sstc_enabled_persistent : Persistent sstc_enabled.
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* the deadline cell, contents existential. *)
   Definition stimecmp_free : iProp Σ := (∃ d : mword 64, stimecmp ↦ᵣ d)%I.
 
   Lemma stimecmp_free_intro (d : mword 64) : stimecmp ↦ᵣ d -∗ stimecmp_free.
-  Proof. iIntros "H". iExists d. iFrame "H". Qed.
+  Proof using . iIntros "H". iExists d. iFrame "H". Qed.
 
   (* ---- the deadline cell, in an INVARIANT.  Nothing in the logic depends on
      the deadline's value (see the header), so the cell has nothing to gain
@@ -83,7 +83,7 @@ Section TimerCap.
   Definition timer_cap : iProp Σ := (sstc_enabled ∗ stimecmp_inv)%I.
 
   Global Instance timer_cap_persistent : Persistent timer_cap.
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* construction (the "freeze" ghost step): what a caller does with
      timerinit's postcondition -- the written mcounteren cell, at any
@@ -91,7 +91,7 @@ Section TimerCap.
   Lemma sstc_enabled_intro (dq : dfrac) (mcen : mword 32) :
     eq_vec (_get_Counteren_TM mcen) ('b"1") = true ->
     reg_pointsto mcounteren dq mcen ==∗ sstc_enabled.
-  Proof.
+  Proof using .
     iIntros (HTM) "Hmcen".
     iMod (reg_pointsto_persist with "Hmcen") as "Hmcen".
     iModIntro. iExists mcen. iFrame "Hmcen". iPureIntro. exact HTM.
@@ -102,7 +102,7 @@ Section TimerCap.
   Lemma timer_cap_intro E (dq : dfrac) (mcen : mword 32) (d : mword 64) :
     eq_vec (_get_Counteren_TM mcen) ('b"1") = true ->
     reg_pointsto mcounteren dq mcen -∗ stimecmp ↦ᵣ d ={E}=∗ timer_cap.
-  Proof.
+  Proof using .
     iIntros (HTM) "Hmcen Hstc".
     iMod (sstc_enabled_intro dq mcen HTM with "Hmcen") as "#Hen".
     iMod (inv_alloc timerN E stimecmp_free with "[Hstc]") as "#Hinv".

@@ -359,55 +359,55 @@ Section STower.
       | rewrite irrelevant_register_set; [ | vm_compute; reflexivity ] ].
 
   Lemma s_rs_PC : register_lookup (R_bitvector_64 PC) s_rs = pc.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
   Lemma s_rs_nPC : register_lookup (R_bitvector_64 nextPC) s_rs = npc.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
   Lemma s_rs_ms : register_lookup (R_bitvector_64 minstret) s_rs = ms.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
   Lemma s_rs_mi : register_lookup (R_bool minstret_increment) s_rs = bmi.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
   Lemma s_rs_cy : register_lookup (R_bitvector_64 mcycle) s_rs = cy.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
   Lemma s_rs_ti : register_lookup (R_bitvector_64 mtime) s_rs = ti.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
   Lemma s_rs_ip : register_lookup (R_bitvector_64 mip) s_rs = ip.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
   Lemma s_rs_tlb : register_lookup tlb s_rs = tlbv.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
   Lemma s_rs_priv : register_lookup cur_privilege s_rs = Supervisor.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
   Lemma s_rs_mst : register_lookup mstatus s_rs = mst0.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
   Lemma s_rs_hart : register_lookup hart_state s_rs = HART_ACTIVE tt.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
   Lemma s_rs_pcfg : register_lookup pmpcfg_n s_rs = pcfg.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
   Lemma s_rs_paddr : register_lookup pmpaddr_n s_rs = paddr.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
   Lemma s_rs_mc : register_lookup (R_bitvector_32 mcountinhibit) s_rs = mc.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
   Lemma s_rs_micfg : register_lookup (R_bitvector_64 minstretcfg) s_rs = micfg.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
   Lemma s_rs_misa : register_lookup misa s_rs = misa0.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
   Lemma s_rs_sec : register_lookup mseccfg s_rs = mseccfg0.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
   Lemma s_rs_pma : register_lookup pma_regions s_rs = pmar0.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
   Lemma s_rs_htif : register_lookup htif_tohost_base s_rs = None.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
   Lemma s_rs_elp : register_lookup elp s_rs = elp0.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
   Lemma s_rs_senv : register_lookup senvcfg s_rs = senv0.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
   Lemma s_rs_satp : register_lookup satp s_rs = satp0.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
   Lemma s_rs_mie : register_lookup mie s_rs = mie0.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
   Lemma s_rs_mdl : register_lookup mideleg s_rs = mdv0.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
   Lemma s_rs_menv : register_lookup menvcfg s_rs = menv0.
-  Proof. lk. Qed.
+  Proof using . lk. Qed.
 
 
   (* the tower transport the cycle rule needs: a file that AGREES with the
@@ -440,7 +440,7 @@ Section STower.
     register_lookup mideleg rs = mdv0 ->
     register_lookup menvcfg rs = menv0 ->
     reg_agree_on (s_Drw ∪ s_Dro) rs s_rs.
-  Proof.
+  Proof using .
     intros H1 H2 H3 H4 H5 H6 H7 H8 H9 H10 H11 H12 H13 H14 H15 H16 H17
       H18 H19 H20 H21 H22 H23 H24 H25.
     intros r Hr. rewrite /s_Drw /s_Dro in Hr.
@@ -494,23 +494,23 @@ Section SFrames.
     else dq.
 
   Lemma s_Df_misa (dq : dfrac) : s_Df dq misa = DfracDiscarded.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
   Lemma s_Df_sec (dq : dfrac) : s_Df dq mseccfg = DfracDiscarded.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
   Lemma s_Df_pma (dq : dfrac) : s_Df dq pma_regions = DfracDiscarded.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
   Lemma s_Df_htif (dq : dfrac) : s_Df dq htif_tohost_base = DfracDiscarded.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
   Lemma s_Df_elp (dq : dfrac) : s_Df dq elp = DfracDiscarded.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
   Lemma s_Df_senv (dq : dfrac) : s_Df dq senvcfg = DfracDiscarded.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
   Lemma s_Df_mc (dq : dfrac) :
     s_Df dq (R_bitvector_32 mcountinhibit) = DfracDiscarded.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
   Lemma s_Df_micfg (dq : dfrac) :
     s_Df dq (R_bitvector_64 minstretcfg) = DfracDiscarded.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma s_rw_split (rs : regstate) :
     (hreg_frame rs s_Drw : iProp Σ) ⊣⊢
@@ -524,7 +524,7 @@ Section SFrames.
      (R_bitvector_64 mtime) ↦ᵣ register_lookup (R_bitvector_64 mtime) rs ∗
      (R_bitvector_64 mip) ↦ᵣ register_lookup (R_bitvector_64 mip) rs ∗
      tlb ↦ᵣ register_lookup tlb rs)%I.
-  Proof.
+  Proof using .
     rewrite /hreg_frame /s_Drw.
     repeat (rewrite big_sepS_union; last set_solver).
     rewrite !big_sepS_singleton.
@@ -554,7 +554,7 @@ Section SFrames.
      reg_pointsto mie dq (register_lookup mie rs) ∗
      reg_pointsto mideleg dq (register_lookup mideleg rs) ∗
      reg_pointsto menvcfg dq (register_lookup menvcfg rs))%I.
-  Proof.
+  Proof using .
     rewrite /hreg_frame_ro /s_Dro.
     repeat (rewrite big_sepS_union; last set_solver).
     rewrite !big_sepS_singleton.
@@ -571,16 +571,16 @@ Section SFrames.
      two lines long; call sites become [iDestruct]. *)
   Lemma s_agree_rw (rs rs' : regstate) :
     reg_agree_on (s_Drw ∪ s_Dro) rs rs' -> reg_agree_on s_Drw rs rs'.
-  Proof. intros Hag r Hr. apply Hag. set_solver. Qed.
+  Proof using . intros Hag r Hr. apply Hag. set_solver. Qed.
 
   Lemma s_agree_ro (rs rs' : regstate) :
     reg_agree_on (s_Drw ∪ s_Dro) rs rs' -> reg_agree_on s_Dro rs rs'.
-  Proof. intros Hag r Hr. apply Hag. set_solver. Qed.
+  Proof using . intros Hag r Hr. apply Hag. set_solver. Qed.
 
   Lemma s_rw_ext (rs rs' : regstate) :
     reg_agree_on (s_Drw ∪ s_Dro) rs rs' ->
     hreg_frame rs s_Drw -∗ (hreg_frame rs' s_Drw : iProp Σ).
-  Proof.
+  Proof using .
     intros Hag. rewrite (hreg_frame_ext _ _ s_Drw (s_agree_rw _ _ Hag)).
     iIntros "H". iExact "H".
   Qed.
@@ -589,7 +589,7 @@ Section SFrames.
     reg_agree_on (s_Drw ∪ s_Dro) rs rs' ->
     hreg_frame_ro (s_Df dq) rs s_Dro -∗
     (hreg_frame_ro (s_Df dq) rs' s_Dro : iProp Σ).
-  Proof.
+  Proof using .
     intros Hag. rewrite (hreg_frame_ro_ext _ _ _ s_Dro (s_agree_ro _ _ Hag)).
     iIntros "H". iExact "H".
   Qed.
@@ -602,7 +602,7 @@ Section SFrames.
       (rs rs' : regstate) :
     reg_agree_on (s_Drw ∪ s_Dro) rs rs' ->
     hreg_frame rs D -∗ (hreg_frame rs' D : iProp Σ).
-  Proof.
+  Proof using .
     intros Hag.
     rewrite (hreg_frame_ext _ _ D
       (fun r Hr => Hag r (elem_of_union_l r s_Drw s_Dro (sf_sub D HD r Hr)))).
@@ -621,7 +621,7 @@ Section SFrames.
      (R_bitvector_64 mcycle) ↦ᵣ register_lookup (R_bitvector_64 mcycle) rs ∗
      (R_bitvector_64 mtime) ↦ᵣ register_lookup (R_bitvector_64 mtime) rs ∗
      (R_bitvector_64 mip) ↦ᵣ register_lookup (R_bitvector_64 mip) rs)%I.
-  Proof.
+  Proof using .
     rewrite /hreg_frame /s_Drwb.
     repeat (rewrite big_sepS_union; last set_solver).
     rewrite !big_sepS_singleton.
@@ -630,16 +630,16 @@ Section SFrames.
 
   Lemma s_agree_rw_b (rs rs' : regstate) :
     reg_agree_on (s_Drwb ∪ s_Dro) rs rs' -> reg_agree_on s_Drwb rs rs'.
-  Proof. intros Hag r Hr. apply Hag. set_solver. Qed.
+  Proof using . intros Hag r Hr. apply Hag. set_solver. Qed.
 
   Lemma s_agree_ro_b (rs rs' : regstate) :
     reg_agree_on (s_Drwb ∪ s_Dro) rs rs' -> reg_agree_on s_Dro rs rs'.
-  Proof. intros Hag r Hr. apply Hag. set_solver. Qed.
+  Proof using . intros Hag r Hr. apply Hag. set_solver. Qed.
 
   Lemma s_rw_ext_b (rs rs' : regstate) :
     reg_agree_on (s_Drwb ∪ s_Dro) rs rs' ->
     hreg_frame rs s_Drwb -∗ (hreg_frame rs' s_Drwb : iProp Σ).
-  Proof.
+  Proof using .
     intros Hag. rewrite (hreg_frame_ext _ _ s_Drwb (s_agree_rw_b _ _ Hag)).
     iIntros "H". iExact "H".
   Qed.
@@ -648,7 +648,7 @@ Section SFrames.
     reg_agree_on (s_Drwb ∪ s_Dro) rs rs' ->
     hreg_frame_ro (s_Df dq) rs s_Dro -∗
     (hreg_frame_ro (s_Df dq) rs' s_Dro : iProp Σ).
-  Proof.
+  Proof using .
     intros Hag. rewrite (hreg_frame_ro_ext _ _ _ s_Dro (s_agree_ro_b _ _ Hag)).
     iIntros "H". iExact "H".
   Qed.
@@ -700,7 +700,7 @@ Section SFrames.
      reg_pointsto mie dq (register_lookup mie rs) ∗
      reg_pointsto mideleg dq (register_lookup mideleg rs) ∗
      reg_pointsto menvcfg dq (register_lookup menvcfg rs))%I.
-  Proof.
+  Proof using .
     rewrite /hreg_frame_ro /s_Dro.
     repeat (rewrite big_sepS_union; last set_solver).
     rewrite !big_sepS_singleton.

@@ -276,7 +276,7 @@ Section NameiEraCursor.
 
   Lemma nxe_hop_c (γw : gname) (k : nat) (s : fname) :
     ⊢ ex_hop fsc_fs (nxe_P γw) (nxe_Pmiss γw) k s.
-  Proof.
+  Proof using .
     rewrite /ex_hop /FsAbs.ax_hop.
     iIntros (d ents dqv) "HP Hdv".
     destruct (ents !! s) as [c|] eqn:Hs.
@@ -286,7 +286,7 @@ Section NameiEraCursor.
 
   Lemma nxe_hops_c (γw : gname) (pl : list (bv 8)) (n : nat) :
     ⊢ ex_hops_from fsc_fs (nxe_P γw) (nxe_Pmiss γw) pl n.
-  Proof.
+  Proof using .
     rewrite /ex_hops_from /FsAbs.ax_hops_from. iApply big_sepL_intro.
     iIntros "!>" (j s _). iApply nxe_hop_c.
   Qed.

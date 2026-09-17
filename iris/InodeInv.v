@@ -798,31 +798,31 @@ Section InodeRes.
 
   Lemma ind_blk_1 (γfs : fs_names) (bm : blkmap) :
     ind_blk γfs bm = ind_blk_q γfs (DfracOwn 1) bm.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma ind_res_1 (γfs : fs_names) (bm : blkmap) :
     ind_res γfs bm = ind_res_q γfs (DfracOwn 1) bm.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma ind_blk_q_1_of (γfs : fs_names) (dq : dfrac) (bm : blkmap) :
     dq = DfracOwn 1 -> ind_blk_q γfs dq bm -∗ ind_blk γfs bm.
-  Proof. intros ->. rewrite ind_blk_1. iIntros "H". iExact "H". Qed.
+  Proof using . intros ->. rewrite ind_blk_1. iIntros "H". iExact "H". Qed.
 
   Lemma ind_blk_q_1_to (γfs : fs_names) (dq : dfrac) (bm : blkmap) :
     dq = DfracOwn 1 -> ind_blk γfs bm -∗ ind_blk_q γfs dq bm.
-  Proof. intros ->. rewrite ind_blk_1. iIntros "H". iExact "H". Qed.
+  Proof using . intros ->. rewrite ind_blk_1. iIntros "H". iExact "H". Qed.
 
   Lemma ind_blk_q_run (γfs : fs_names) (dq : dfrac) (bm : blkmap) (bi : Z) :
     bv_unsigned (bm_ind bm) <> 0 -> bi = bv_unsigned (bm_ind bm) ->
     fsblock_q (fs_bytes γfs) dq bi (ind_bytes (bm_ent bm)) ⊣⊢ ind_blk_q γfs dq bm.
-  Proof.
+  Proof using .
     intros Hnz ->. rewrite /ind_blk_q (decide_False _ _ Hnz) gamma_blk_owned_q //.
   Qed.
 
   Lemma ind_blk_q_split (γfs : fs_names) (q1 q2 : Qp) (bm : blkmap) :
     ind_blk_q γfs (DfracOwn (q1 + q2)) bm
     ⊣⊢ ind_blk_q γfs (DfracOwn q1) bm ∗ ind_blk_q γfs (DfracOwn q2) bm.
-  Proof.
+  Proof using .
     rewrite /ind_blk_q. case_decide.
     - rewrite bi.True_emp left_id //.
     - apply (FsStateDefs.blk_owned_q_split _ (fs_gamma_L_frac γfs)).
@@ -834,7 +834,7 @@ Section InodeRes.
   Lemma ind_blk_run (γfs : fs_names) (bm : blkmap) (bi : Z) :
     bv_unsigned (bm_ind bm) <> 0 -> bi = bv_unsigned (bm_ind bm) ->
     fsblock (fs_bytes γfs) bi (ind_bytes (bm_ent bm)) ⊣⊢ ind_blk γfs bm.
-  Proof. intros Hnz ->. rewrite /ind_blk (decide_False _ _ Hnz) //. Qed.
+  Proof using . intros Hnz ->. rewrite /ind_blk (decide_False _ _ Hnz) //. Qed.
 
   Definition inode_map (γfs : fs_names) (ip : mword 64) (bm : blkmap) : iProp Σ :=
     (inode_addrs ip (bm_cells bm) ∗ ind_res γfs bm)%I.
@@ -848,17 +848,17 @@ Section InodeRes.
 
   Lemma inode_map_1 (γfs : fs_names) (ip : mword 64) (bm : blkmap) :
     inode_map γfs ip bm = inode_map_q γfs (DfracOwn 1) ip bm.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma inode_map_q_1_of (γfs : fs_names) (dq : dfrac) (ip : mword 64)
       (bm : blkmap) :
     dq = DfracOwn 1 -> inode_map_q γfs dq ip bm -∗ inode_map γfs ip bm.
-  Proof. intros ->. rewrite inode_map_1. iIntros "H". iExact "H". Qed.
+  Proof using . intros ->. rewrite inode_map_1. iIntros "H". iExact "H". Qed.
 
   Lemma inode_map_q_1_to (γfs : fs_names) (dq : dfrac) (ip : mword 64)
       (bm : blkmap) :
     dq = DfracOwn 1 -> inode_map γfs ip bm -∗ inode_map_q γfs dq ip bm.
-  Proof. intros ->. rewrite inode_map_1. iIntros "H". iExact "H". Qed.
+  Proof using . intros ->. rewrite inode_map_1. iIntros "H". iExact "H". Qed.
 
   (* --- inode_blocks: one fs_chalf per allocated file index ------------- *)
 
@@ -881,12 +881,12 @@ Section InodeRes.
 
   Lemma blk_res_1 (γfs : fs_names) (w : bv 32) (bs : list (bv 8)) :
     blk_res γfs w bs = blk_res_q γfs (DfracOwn 1) w bs.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma inode_blocks_1 (γfs : fs_names) (bm : blkmap)
       (data : nat -> list (bv 8)) :
     inode_blocks γfs bm data = inode_blocks_q γfs (DfracOwn 1) bm data.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* ---- THE VOCABULARY CROSSING, IN FOUR LEMMAS AND NOWHERE ELSE ------ *)
 
@@ -903,7 +903,7 @@ Section InodeRes.
   Lemma blk_res_run (γfs : fs_names) (w : bv 32) (bs : list (bv 8)) :
     bv_unsigned w <> 0 ->
     blk_res γfs w bs ⊣⊢ fsblock (fs_bytes γfs) (bv_unsigned w) bs.
-  Proof.
+  Proof using .
     intros Hnz. rewrite /blk_res (decide_False _ _ Hnz) gamma_blk_owned //.
   Qed.
 
@@ -911,7 +911,7 @@ Section InodeRes.
       (bs : list (bv 8)) :
     bv_unsigned w <> 0 ->
     blk_res_q γfs dq w bs ⊣⊢ fsblock_q (fs_bytes γfs) dq (bv_unsigned w) bs.
-  Proof.
+  Proof using .
     intros Hnz. rewrite /blk_res_q (decide_False _ _ Hnz) gamma_blk_owned_q //.
   Qed.
 
@@ -919,7 +919,7 @@ Section InodeRes.
     bv_unsigned (bm_ind bm) <> 0 ->
     ind_blk γfs bm
     ⊣⊢ fsblock (fs_bytes γfs) (bv_unsigned (bm_ind bm)) (ind_bytes (bm_ent bm)).
-  Proof.
+  Proof using .
     intros Hnz. rewrite /ind_blk (decide_False _ _ Hnz) gamma_blk_owned //.
   Qed.
 
@@ -928,7 +928,7 @@ Section InodeRes.
     ind_blk_q γfs dq bm
     ⊣⊢ fsblock_q (fs_bytes γfs) dq (bv_unsigned (bm_ind bm))
           (ind_bytes (bm_ent bm)).
-  Proof.
+  Proof using .
     intros Hnz. rewrite /ind_blk_q (decide_False _ _ Hnz) gamma_blk_owned_q //.
   Qed.
 
@@ -940,19 +940,19 @@ Section InodeRes.
       (data : nat -> list (bv 8)) :
     dq = DfracOwn 1 ->
     inode_blocks_q γfs dq bm data -∗ inode_blocks γfs bm data.
-  Proof. intros ->. rewrite inode_blocks_1. iIntros "H". iExact "H". Qed.
+  Proof using . intros ->. rewrite inode_blocks_1. iIntros "H". iExact "H". Qed.
 
   Lemma inode_blocks_q_1_to (γfs : fs_names) (dq : dfrac) (bm : blkmap)
       (data : nat -> list (bv 8)) :
     dq = DfracOwn 1 ->
     inode_blocks γfs bm data -∗ inode_blocks_q γfs dq bm data.
-  Proof. intros ->. rewrite inode_blocks_1. iIntros "H". iExact "H". Qed.
+  Proof using . intros ->. rewrite inode_blocks_1. iIntros "H". iExact "H". Qed.
 
   Lemma blk_res_q_split (γfs : fs_names) (q1 q2 : Qp) (w : bv 32)
       (bs : list (bv 8)) :
     blk_res_q γfs (DfracOwn (q1 + q2)) w bs
     ⊣⊢ blk_res_q γfs (DfracOwn q1) w bs ∗ blk_res_q γfs (DfracOwn q2) w bs.
-  Proof.
+  Proof using .
     rewrite /blk_res_q. case_decide.
     - rewrite bi.True_emp left_id //.
     - apply (FsStateDefs.blk_owned_q_split _ (fs_gamma_L_frac γfs)).
@@ -963,7 +963,7 @@ Section InodeRes.
     inode_blocks_q γfs (DfracOwn (q1 + q2)) bm data
     ⊣⊢ inode_blocks_q γfs (DfracOwn q1) bm data
         ∗ inode_blocks_q γfs (DfracOwn q2) bm data.
-  Proof.
+  Proof using .
     rewrite /inode_blocks_q -big_sepL_sep.
     apply big_sepL_proper. intros k i _. apply blk_res_q_split.
   Qed.
@@ -1010,7 +1010,7 @@ Section InodeRes.
     (forall i : nat, i ∈ l -> f i = 0 -> True ⊢ Psi i) ->
     (forall i : nat, i ∈ l -> f i <> 0 -> Phi (f i) ⊢ Psi i) ->
     ([∗ set] b ∈ U, Phi b) -∗ ([∗ list] i ∈ l, Psi i).
-  Proof.
+  Proof using .
     revert U. induction l as [|i l IH];
       intros U Hnd Hmem Hinj Hhole Hstep.
     { iIntros "_". done. }
@@ -1067,7 +1067,7 @@ Section InodeRes.
        data i = ct (bv_unsigned (blkmap_get bm i))) ->
     ([∗ set] b ∈ V, fsblock (fs_bytes γfs) b (ct b)) -∗
     inode_blocks γfs bm data.
-  Proof.
+  Proof using .
     intros Hinj Hmem Hdata. rewrite /inode_blocks.
     apply (big_sepS_reindex
              (fun b => fsblock (fs_bytes γfs) b (ct b))%I
@@ -1114,7 +1114,7 @@ Section InodeRes.
        ind_bytes (bm_ent bm) = ct (bv_unsigned (bm_ind bm))) ->
     ([∗ set] b ∈ U, fsblock (fs_bytes γfs) b (ct b)) -∗
     inode_blocks γfs bm data ∗ ind_res γfs bm.
-  Proof.
+  Proof using .
     intros Hinj Hmem Hdata Hib.
     (* the two slot-level premises, restated on the data slots *)
     assert (Hinj2 : forall i j : nat, (i < MAXFILE)%nat -> (j < MAXFILE)%nat ->
@@ -1169,7 +1169,7 @@ Section InodeRes.
     inode_addrs ip l -∗
       (i_addr ip j ↦₄ w) ∗
       (∀ v : bv 32, i_addr ip j ↦₄ v -∗ inode_addrs ip (<[j := v]> l)).
-  Proof.
+  Proof using .
     intros Hj. rewrite /inode_addrs.
     iApply (big_sepL_insert_acc
               (fun (k : nat) (a : bv 32) => (i_addr ip k ↦₄ a)%I) l j w Hj).
@@ -1178,7 +1178,7 @@ Section InodeRes.
   Lemma bm_cells_dir (bm : blkmap) (j : nat) :
     length (bm_dir bm) = NDIRECT -> (j < NDIRECT)%nat ->
     bm_cells bm !! j = Some (blkmap_get bm j).
-  Proof.
+  Proof using .
     intros Hlen Hj. rewrite /bm_cells.
     rewrite lookup_app_l; [|lia].
     rewrite (blkmap_get_dir bm j Hj).
@@ -1187,7 +1187,7 @@ Section InodeRes.
 
   Lemma bm_cells_ind (bm : blkmap) :
     length (bm_dir bm) = NDIRECT -> bm_cells bm !! NDIRECT = Some (bm_ind bm).
-  Proof.
+  Proof using .
     intros Hlen. rewrite /bm_cells.
     rewrite lookup_app_r; [|lia]. rewrite Hlen Nat.sub_diag. reflexivity.
   Qed.
@@ -1199,7 +1199,7 @@ Section InodeRes.
       (i_addr ip j ↦₄ blkmap_get bm j) ∗
       (∀ w : bv 32, i_addr ip j ↦₄ w -∗
          inode_map γfs ip (MkBlkmap (<[j := w]> (bm_dir bm)) (bm_ind bm) (bm_ent bm))).
-  Proof.
+  Proof using .
     intros Hlen Hj.
     iIntros "[Ha Hi]".
     iDestruct (inode_addrs_acc ip (bm_cells bm) j (blkmap_get bm j)
@@ -1221,7 +1221,7 @@ Section InodeRes.
       (∀ (w : bv 32) (e : list (bv 32)),
          i_addr ip NDIRECT ↦₄ w -∗ ind_res γfs (MkBlkmap (bm_dir bm) w e) -∗
          inode_map γfs ip (MkBlkmap (bm_dir bm) w e)).
-  Proof.
+  Proof using .
     intros Hlen.
     iIntros "[Ha Hi]".
     iDestruct (inode_addrs_acc ip (bm_cells bm) NDIRECT (bm_ind bm)
@@ -1243,7 +1243,7 @@ Section InodeRes.
       (∀ w : bv 32, i_addr ip j ↦₄ w -∗
          inode_map_q γfs dq ip
            (MkBlkmap (<[j := w]> (bm_dir bm)) (bm_ind bm) (bm_ent bm))).
-  Proof.
+  Proof using .
     intros Hlen Hj.
     iIntros "[Ha Hi]".
     iDestruct (inode_addrs_acc ip (bm_cells bm) j (blkmap_get bm j)
@@ -1264,7 +1264,7 @@ Section InodeRes.
          i_addr ip NDIRECT ↦₄ w -∗
          ind_res_q γfs dq (MkBlkmap (bm_dir bm) w e) -∗
          inode_map_q γfs dq ip (MkBlkmap (bm_dir bm) w e)).
-  Proof.
+  Proof using .
     intros Hlen.
     iIntros "[Ha Hi]".
     iDestruct (inode_addrs_acc ip (bm_cells bm) NDIRECT (bm_ind bm)
@@ -1282,7 +1282,7 @@ Section InodeRes.
 
   Local Lemma seq_maxfile_lookup (i : nat) :
     (i < MAXFILE)%nat -> seq 0 MAXFILE !! i = Some i.
-  Proof. intros Hi. apply lookup_seq. split; [lia|exact Hi]. Qed.
+  Proof using . intros Hi. apply lookup_seq. split; [lia|exact Hi]. Qed.
 
   (* the frame lemma: the bundle only ever looks at indices below MAXFILE *)
   Lemma inode_blocks_frame (γfs : fs_names) (bm bm' : blkmap)
@@ -1290,7 +1290,7 @@ Section InodeRes.
     (forall i : nat, (i < MAXFILE)%nat ->
        blkmap_get bm' i = blkmap_get bm i /\ data' i = data i) ->
     inode_blocks γfs bm data -∗ inode_blocks γfs bm' data'.
-  Proof.
+  Proof using .
     intros Hag. rewrite /inode_blocks.
     iIntros "H". iApply (big_sepL_mono with "H").
     intros k y Hky.
@@ -1308,7 +1308,7 @@ Section InodeRes.
       (∀ bs : list (bv 8),
          fsblock (fs_bytes γfs) (bv_unsigned (blkmap_get bm i)) bs -∗
          inode_blocks γfs bm (<[i := bs]> data)).
-  Proof.
+  Proof using .
     intros Hi Hnz.
     pose proof (seq_maxfile_lookup i Hi) as Hlk.
     rewrite /inode_blocks.
@@ -1349,7 +1349,7 @@ Section InodeRes.
     inode_blocks γfs bm data -∗
     fsblock (fs_bytes γfs) (bv_unsigned b) bs -∗
     inode_blocks γfs bm' (<[bn := bs]> data).
-  Proof.
+  Proof using .
     intros Hbn Hz Hb Hag.
     pose proof (seq_maxfile_lookup bn Hbn) as Hlk.
     rewrite /inode_blocks.
@@ -1383,7 +1383,7 @@ Section InodeRes.
     (forall i : nat, (i < MAXFILE)%nat ->
        blkmap_get bm' i = blkmap_get bm i /\ data' i = data i) ->
     inode_blocks_q γfs dq bm data -∗ inode_blocks_q γfs dq bm' data'.
-  Proof.
+  Proof using .
     intros Hag. rewrite /inode_blocks_q.
     iIntros "H". iApply (big_sepL_mono with "H").
     intros k y Hky.
@@ -1400,7 +1400,7 @@ Section InodeRes.
       (∀ bs : list (bv 8),
          fsblock_q (fs_bytes γfs) dq (bv_unsigned (blkmap_get bm i)) bs -∗
          inode_blocks_q γfs dq bm (<[i := bs]> data)).
-  Proof.
+  Proof using .
     intros Hi Hnz.
     pose proof (seq_maxfile_lookup i Hi) as Hlk.
     rewrite /inode_blocks_q.
@@ -1436,7 +1436,7 @@ Section InodeRes.
     inode_blocks_q γfs dq bm data -∗
     fsblock_q (fs_bytes γfs) dq (bv_unsigned b) bs -∗
     inode_blocks_q γfs dq bm' (<[bn := bs]> data).
-  Proof.
+  Proof using .
     intros Hbn Hz Hb Hag.
     pose proof (seq_maxfile_lookup bn Hbn) as Hlk.
     rewrite /inode_blocks_q.
@@ -1486,7 +1486,7 @@ Section InodeRes.
     fsblock (fs_bytes γfs) b bsb -∗ ind_blk γfs bm -∗
     inode_blocks γfs bm data -∗
     ⌜bv_unsigned (bm_slot bm i) <> b⌝.
-  Proof.
+  Proof using .
     intros Hi Hnz. iIntros "Ho Ht Hd".
     destruct (decide (i = MAXFILE)) as [->|Hne].
     - rewrite bm_slot_top. rewrite bm_slot_top in Hnz.
@@ -1517,7 +1517,7 @@ Section InodeRes.
     fsblock (fs_bytes γfs) b bsb -∗ ind_blk_q γfs dq bm -∗
     inode_blocks_q γfs dq bm data -∗
     ⌜bv_unsigned (bm_slot bm i) <> b⌝.
-  Proof.
+  Proof using .
     intros Hi Hnz. iIntros "Ho Ht Hd".
     destruct (decide (i = MAXFILE)) as [->|Hne].
     - rewrite bm_slot_top. rewrite bm_slot_top in Hnz.
@@ -1543,7 +1543,7 @@ Section InodeRes.
     inode_blocks_q γfs dq bm data -∗
     ⌜forall i : nat, (i <= MAXFILE)%nat -> bv_unsigned (bm_slot bm i) <> 0 ->
         bv_unsigned (bm_slot bm i) <> b⌝.
-  Proof.
+  Proof using .
     iIntros "Ho Ht Hd". rewrite bi.pure_forall. iIntros (i).
     destruct (decide ((i <= MAXFILE)%nat)) as [Hi|Hi];
       [| iPureIntro; intros Hc; exfalso; exact (Hi Hc)].
@@ -1561,7 +1561,7 @@ Section InodeRes.
     inode_blocks γfs bm data -∗
     ⌜forall i : nat, (i <= MAXFILE)%nat -> bv_unsigned (bm_slot bm i) <> 0 ->
         bv_unsigned (bm_slot bm i) <> b⌝.
-  Proof.
+  Proof using .
     iIntros "Ho Ht Hd". rewrite bi.pure_forall. iIntros (i).
     destruct (decide ((i <= MAXFILE)%nat)) as [Hi|Hi];
       [| iPureIntro; intros Hc; exfalso; exact (Hi Hc)].
@@ -1614,7 +1614,7 @@ Section InodeRes.
 
   Local Lemma ia_shift (a : mword 64) (j : nat) :
     pa_add a (4 * S j)%nat = pa_add (pa_add a 4%nat) (4 * j)%nat.
-  Proof. rewrite pa_add_add. f_equal. lia. Qed.
+  Proof using . rewrite pa_add_add. f_equal. lia. Qed.
 
   (* the run of cells, at an arbitrary base: the induction's shape *)
   Local Lemma ia_cells_bytes (l : list (bv 32)) :
@@ -1623,7 +1623,7 @@ Section InodeRes.
        is_aligned_paddr (Physaddr (pa_add a (4 * j)%nat)) 4 = true) ->
     ([∗ list] j ↦ w ∈ l, pa_add a (4 * j)%nat ↦₄ w)
     ⊣⊢ ([∗ list] j ∈ seq 0 (4 * length l)%nat, pa_add a j ↦ₘ (ind_bytes l !!! j)).
-  Proof.
+  Proof using .
     induction l as [|w l IH]; intros a Hal.
     - rewrite Nat.mul_0_r /=. reflexivity.
     - simpl length.
@@ -1659,7 +1659,7 @@ Section InodeRes.
   Lemma inode_addrs_aligned (ip : mword 64) (l : list (bv 32)) (j : nat) :
     (j < length l)%nat ->
     inode_addrs ip l -∗ ⌜is_aligned_paddr (Physaddr (i_addr ip j)) 4 = true⌝.
-  Proof.
+  Proof using .
     intros Hj. rewrite /inode_addrs.
     iIntros "H".
     iDestruct (big_sepL_lookup
@@ -1672,7 +1672,7 @@ Section InodeRes.
     inode_addrs ip l -∗
     ⌜forall j, (j < length l)%nat ->
        is_aligned_paddr (Physaddr (pa_add (i_addr ip 0) (4 * j)%nat)) 4 = true⌝.
-  Proof.
+  Proof using .
     iIntros "H". rewrite bi.pure_forall. iIntros (j).
     destruct (decide ((j < length l)%nat)) as [Hj|Hj];
       [| iPureIntro; intros Hc; exfalso; exact (Hj Hc)].
@@ -1685,7 +1685,7 @@ Section InodeRes.
        is_aligned_paddr (Physaddr (pa_add (i_addr ip 0) (4 * j)%nat)) 4 = true) ->
     inode_addrs ip l
     ⊣⊢ bb_bytes (i_addr ip 0) (4 * length l)%nat (fun j => ind_bytes l !!! j).
-  Proof.
+  Proof using .
     intros Hal. rewrite /inode_addrs /bb_bytes.
     rewrite -(ia_cells_bytes l (i_addr ip 0) Hal).
     apply big_sepL_proper. intros i w _. rewrite i_addr_from_0. reflexivity.
@@ -1697,7 +1697,7 @@ Section InodeRes.
       bb_bytes (i_addr ip 0) (4 * length l)%nat (fun j => ind_bytes l !!! j) ∗
       (bb_bytes (i_addr ip 0) (4 * length l)%nat (fun j => ind_bytes l !!! j) -∗
        inode_addrs ip l).
-  Proof.
+  Proof using .
     iIntros "H".
     iDestruct (inode_addrs_aligned_all with "H") as %Hal.
     (* the bare rewrite hits the WHOLE [envs_entails] -- hypothesis and both
@@ -1715,7 +1715,7 @@ Section InodeResMorph.
 
   Global Instance inode_meta_morph (ip : mword 64) (d : dinode) :
     CtxMorph (λ ξ : CtxId, inode_meta (XI := ξ) ip d).
-  Proof.
+  Proof using .
     iIntros (ξ ξ') "Hd (Ht & Hmj & Hmi & Hnl & Hsz)". rewrite /inode_meta.
     iMod (ctx_morph_word2 _ _ _ _ ξ ξ' with "Hd Ht") as "[Hd Ht]".
     iMod (ctx_morph_word2 _ _ _ _ ξ ξ' with "Hd Hmj") as "[Hd Hmj]".
@@ -1727,7 +1727,7 @@ Section InodeResMorph.
 
   Global Instance inode_addrs_morph (ip : mword 64) (l : list (bv 32)) :
     CtxMorph (λ ξ : CtxId, inode_addrs (XI := ξ) ip l).
-  Proof.
+  Proof using .
     iIntros (ξ ξ') "Hd H". rewrite /inode_addrs.
     iApply (ctx_morph_big_sepL l
               (λ (j : nat) (a : bv 32) (ξ0 : CtxId),

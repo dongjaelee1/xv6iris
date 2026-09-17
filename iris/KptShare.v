@@ -92,13 +92,13 @@ Section KptShare.
        ⌜ kpt_tree_spec_gen root_ppn M t ⌝)%I.
 
   Global Instance kpt_body_timeless root_ppn : Timeless (kpt_body root_ppn).
-  Proof. rewrite /kpt_body. apply _. Qed.
+  Proof using . rewrite /kpt_body. apply _. Qed.
 
   Definition kpt_inv (root_ppn : mword 44) : iProp Σ :=
     inv kptN (kpt_body root_ppn).
 
   Global Instance kpt_inv_persistent root_ppn : Persistent (kpt_inv root_ppn).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* the PUBLICATION, and it is where the pin's bound is fixed (A6.53
      ruling 2 / pin-memo §5.6(b)): the table arrives ALREADY pinned at [B]
@@ -116,7 +116,7 @@ Section KptShare.
     llb loglen_name B -∗
     kpt_unset -∗ kptb_unset ={E}=∗
     kpt_inv root_ppn ∗ kpt_lb t ∗ kpt_bound B.
-  Proof.
+  Proof using .
     intros Hspec. iIntros "Ht HM #Hllb Hunset Hbunset".
     iMod (kpt_shoot t with "Hunset") as "#Hlb".
     iMod (kptb_shoot B with "Hllb Hbunset") as "#Hbd".
@@ -136,7 +136,7 @@ Section KptShare.
   Lemma kpt_inv_snapshot (E : coPset) (root_ppn : mword 44) :
     ↑kptN ⊆ E ->
     kpt_inv root_ppn ={E}=∗ ∃ t : ptree, kpt_lb t.
-  Proof.
+  Proof using .
     iIntros (HE) "#Hinv".
     iMod (inv_acc E kptN with "Hinv") as "[>Hbody Hclose]"; [ exact HE | ].
     iDestruct "Hbody" as (t M B) "(Ht & #Hlb & #Hbd & HM & %Hspec)".
@@ -160,17 +160,17 @@ Section KptShare.
     (∃ B : nat, kpt_bound B ∗ CtxValues.cv_boot_cred B)%I.
 
   Global Instance kpt_creds_persistent : Persistent kpt_creds.
-  Proof. rewrite /kpt_creds. apply _. Qed.
+  Proof using . rewrite /kpt_creds. apply _. Qed.
 
   Lemma kpt_creds_intro (B : nat) :
     kpt_bound B -∗ CtxValues.cv_boot_cred B -∗ kpt_creds.
-  Proof. iIntros "H1 H2". iExists B. iFrame. Qed.
+  Proof using . iIntros "H1 H2". iExists B. iFrame. Qed.
 
   (* the boot hart's arm: no view receipt anywhere (A6.135) *)
   Lemma kpt_creds_intro_boot (B : nat) :
     hart_agent cpu_id = 0%nat ->
     kpt_bound B -∗ TsoGhost.llb loglen_name B -∗ kpt_creds.
-  Proof.
+  Proof using .
     intros H0. iIntros "H1 Hl". iExists B. iFrame "H1".
     iApply (CtxValues.cv_boot_cred_boot B H0 with "Hl").
   Qed.
@@ -200,7 +200,7 @@ Section KptShare.
     CtxValues.cv_boot_cred B0 -∗
     pmp_config root_ppn -∗ kpt_inv root_ppn -∗
     tlb_res_pt root_ppn.
-  Proof.
+  Proof using .
     intros Hmode Hasid Hppn Hok. iIntros "Hsatp Htlb Hlb Hbd Hvlb Hpmp Hinv".
     iExists satp0, tlbvec. iFrame "Hsatp Htlb Hpmp Hinv".
     iSplitR; [iPureIntro; exact Hmode |].
@@ -219,7 +219,7 @@ Section KptShare.
       ⌜ autocast (T := mword) (satp_to_ppn (autocast (T := mword) satp0 : mword 64)) = root_ppn ⌝ ∗
       tlb ↦ᵣ tlbvec ∗ tlb_snap_ok tlbvec ∗
       pmp_config root_ppn ∗ kpt_inv root_ppn ∗ kpt_creds.
-  Proof. iIntros "H". iExact "H". Qed.
+  Proof using . iIntros "H". iExact "H". Qed.
 
   (* THE satp CELL, BORROWED.  [tlb_res_pt_open] hands the whole residue out
      and obliges the caller to rebuild it with [tlb_res_pt_intro]; a reader of
@@ -235,7 +235,7 @@ Section KptShare.
   (* the shared invariant, read off the slot (persistent, so it is a copy) *)
   Lemma tlb_res_pt_kpt_inv (root_ppn : mword 44) :
     tlb_res_pt root_ppn -∗ kpt_inv root_ppn.
-  Proof. iIntros "H". iDestruct "H" as (s t) "(_ & _ & _ & _ & _ & _ & _ & #$ & _)". Qed.
+  Proof using . iIntros "H". iDestruct "H" as (s t) "(_ & _ & _ & _ & _ & _ & _ & #$ & _)". Qed.
 
   Lemma tlb_res_pt_satp_acc (root_ppn : mword 44) :
     tlb_res_pt root_ppn -∗
@@ -245,7 +245,7 @@ Section KptShare.
       ⌜ zero_extend' 16 (satp_to_asid (autocast (T := mword) satp0 : mword 64)) = (mword_of_int 0 : mword 16) ⌝ ∗
       ⌜ autocast (T := mword) (satp_to_ppn (autocast (T := mword) satp0 : mword 64)) = root_ppn ⌝ ∗
       (satp ↦ᵣ satp0 -∗ tlb_res_pt root_ppn).
-  Proof.
+  Proof using .
     iIntros "H".
     iDestruct "H" as (satp0 tlbvec)
       "(Hsatp & %Hmode & %Hasid & %Hppn & Htlb & Hsnap & Hpmp & Hinv)".
@@ -266,7 +266,7 @@ Section KptShare.
       eq_vec (_get_Pmpcfg_ent_W (vec_access_dec (register_lookup pmpcfg_n σ.(sregs)) 0)) ('b"1") = true /\
       eq_vec (_get_Pmpcfg_ent_R (vec_access_dec (register_lookup pmpcfg_n σ.(sregs)) 0)) ('b"1") = true /\
       (ram_base + ram_size <= uint (vec_access_dec (register_lookup pmpaddr_n σ.(sregs)) 0) * 4)%Z ⌝.
-  Proof.
+  Proof using .
     iIntros "Hri Hres".
     iDestruct (tlb_res_pt_open with "Hres") as (satp0 tlbvec)
       "(_ & _ & _ & _ & _ & _ & Hpmp & _)".
@@ -292,7 +292,7 @@ Section KptShare.
      explicit instead of assumed. *)
   Lemma tlb_inv_pt_share (root_ppn : mword 44) (E : coPset) :
     tlb_inv_pt root_ppn -∗ kpt_unset -∗ kptb_unset ={E}=∗ tlb_res_pt root_ppn.
-  Proof.
+  Proof using .
     iIntros "Hinv Hnone Hbnone".
     iDestruct (tlb_inv_pt_open with "Hinv") as (satp0 tlbvec t M B)
       "(Hsatp & %Hmode & %Hasid & %Hppn & Htlb & %Hok & %Hspec & HM & Ht & #Hvlb & Hpmp)".
@@ -360,7 +360,7 @@ Section KptShareTranslate.
          exists tv, σ'.(sregs) = register_set tlb tv σ.(sregs))%type ⌝ ∗
       S σ'.(mem) ∗
       reg_interp σ'.(sregs) ∗ gen_heap_interp σ'.(mem) ∗ tlb_res_pt root_ppn.
-  Proof.
+  Proof using .
     intros HE Hchk Hcanon Hid4k Hmisa Hmenv Hhtif Hcp HSXL Heff Hss Hall.
     iIntros "#Hpay Hsto Hat Hri Hgh Hres".
     iDestruct (tlb_res_pt_open with "Hres") as (satp0 tlbvec)

@@ -252,7 +252,7 @@ Section swp_hfrun.
     hreg_frame rs Drw -∗
     hreg_frame_ro Df rs Dro -∗
     swp m (fun v => ⌜v = x⌝ ∗ hreg_frame rs' Drw ∗ hreg_frame_ro Df rs' Dro).
-  Proof.
+  Proof using .
     intros Hdisj Hf.
     exact (swp_span Drw Dro Df rs rs' m x Hdisj
              (hfrun_hval n (Drw ∪ Dro) Drw rs m x rs' Hf)).
@@ -271,7 +271,7 @@ Section swp_hfrun.
     swp (Defs.read_reg r)
       (fun v => ⌜v = register_lookup r rs⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj Hin.
     apply (swp_hfrun 2 Drw Dro Df rs rs (Defs.read_reg r)
              (register_lookup r rs) Hdisj).
@@ -289,7 +289,7 @@ Section swp_hfrun.
     swp (Defs.write_reg r v)
       (fun _ => hreg_frame (register_set r v rs) Drw ∗
                 hreg_frame_ro Df (register_set r v rs) Dro).
-  Proof.
+  Proof using .
     intros Hdisj Hin.
     iIntros "#Hcert Hrw Hro".
     iApply (swp_mono with "[] [-]"); [|iApply (swp_hfrun 2 Drw Dro Df rs

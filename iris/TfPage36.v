@@ -95,7 +95,7 @@ Section TfPage36.
      tf_pa tfp 264 ↦ₚ₈c w33 ∗
      tf_pa tfp 272 ↦ₚ₈c w34 ∗
      tf_pa tfp 280 ↦ₚ₈c w35)%I.
-  Proof. rewrite /tf_words /= bi.sep_emp. reflexivity. Qed.
+  Proof using . rewrite /tf_words /= bi.sep_emp. reflexivity. Qed.
 
   Lemma tf_page_open36 (tfp : mword 44) (ws : list (mword 64)) :
     length ws = TFWORDS ->
@@ -139,7 +139,7 @@ Section TfPage36.
     tf_pa tfp 272 ↦ₚ₈c w34 ∗
     tf_pa tfp 280 ↦ₚ₈c w35 ∗
       tf_tail tfp.
-  Proof.
+  Proof using .
     intro Hlen. rewrite /tf_page. iIntros "(_ & Hws & Htail)".
     destruct ws as [|w0 ws]; [discriminate Hlen|].
     destruct ws as [|w1 ws]; [discriminate Hlen|].
@@ -235,7 +235,7 @@ Section TfPage36.
     tf_pa tfp 280 ↦ₚ₈c w35 -∗
     tf_tail tfp -∗
     tf_page tfp [w0;w1;w2;w3;w4;w5;w6;w7;w8;w9;w10;w11;w12;w13;w14;w15;w16;w17;w18;w19;w20;w21;w22;w23;w24;w25;w26;w27;w28;w29;w30;w31;w32;w33;w34;w35].
-  Proof.
+  Proof using .
     iIntros "Hw0 Hw1 Hw2 Hw3 Hw4 Hw5 Hw6 Hw7 Hw8 Hw9 Hw10 Hw11 Hw12 Hw13 Hw14 Hw15 Hw16 Hw17 Hw18 Hw19 Hw20 Hw21 Hw22 Hw23 Hw24 Hw25 Hw26 Hw27 Hw28 Hw29 Hw30 Hw31 Hw32 Hw33 Hw34 Hw35 Htail".
     rewrite /tf_page. iSplitR; [done|].
     (* NAMED framing, in the goal's own order: a bare [iFrame] searches the

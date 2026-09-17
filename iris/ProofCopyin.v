@@ -237,7 +237,7 @@ Section ProofCopyin.
      without an intervening [rgne]. *)
   Local Lemma tp_pin_ne `{CIDx : CpuId} (m : regfile) (k : mword 5) :
     Regidx k <> Regidx Rtp -> tp_pin m !!! Regidx k = m !!! Regidx k.
-  Proof. exact (rget_ne m k). Qed.
+  Proof using . exact (rget_ne m k). Qed.
 
   (* copyin's own map is threaded GENERICALLY (SpecCopyin states no raw-tp
      premise on it: "delete a meaningless tp statement", durable-notes), but
@@ -250,7 +250,7 @@ Section ProofCopyin.
      [tp_pin] image, for which the raw fact is now true BY CONSTRUCTION. *)
   Local Lemma sie_cap_gpr_tp_pin `{CIDx : CpuId} (m : regfile) (n : nat) (b : bool) (pcur : mword 64) :
     sie_cap_gpr KT1 m n b pcur -∗ sie_cap_gpr KT1 (tp_pin m) n b pcur.
-  Proof.
+  Proof using .
     rewrite /sie_cap_gpr /sie_cap (tp_pin_sp m).
     assert (Htp2 : tp_pin (tp_pin m) = tp_pin m) by (apply tp_pin_id; exact (rget_tp m)).
     rewrite Htp2. iIntros "$".
@@ -295,7 +295,7 @@ Section ProofCopyin.
       ⌜mf !!! Regidx Ra0 = res⌝ -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros spr HK Hmmsp Hjsp Hja0 Hjs11.
     iIntros "Hcg Hcnt #Htext Hpc Hk1 Hk2 Hk3 Hk4 Hk5 Hk6 Hk7 Hk8 Hk9 Hk10 Hk11 Hk12 Hcont".
     (* the twelve slot addresses, in the [c.ldsp] displacement spelling *)
@@ -547,18 +547,18 @@ Section ProofCopyin.
 
   Lemma ci_merge_lo (fd : nat -> bv 8) (done n : nat) (g : nat -> bv 8) (j : nat) :
     (j < done)%nat -> ci_merge fd done n g j = fd j.
-  Proof. intros Hj. rewrite /ci_merge decide_True; [reflexivity | lia]. Qed.
+  Proof using . intros Hj. rewrite /ci_merge decide_True; [reflexivity | lia]. Qed.
 
   Lemma ci_merge_mid (fd : nat -> bv 8) (done n : nat) (g : nat -> bv 8) (i : nat) :
     (i < n)%nat -> ci_merge fd done n g (done + i)%nat = g i.
-  Proof.
+  Proof using .
     intros Hi. rewrite /ci_merge decide_False; [| lia].
     rewrite decide_True; [| lia]. f_equal. lia.
   Qed.
 
   Lemma ci_merge_hi (fd : nat -> bv 8) (done n : nat) (g : nat -> bv 8) (i : nat) :
     ci_merge fd done n g (done + (n + i))%nat = fd (done + (n + i))%nat.
-  Proof.
+  Proof using .
     rewrite /ci_merge decide_False; [| lia]. rewrite decide_False; [reflexivity | lia].
   Qed.
 
@@ -645,7 +645,7 @@ Section ProofCopyin.
     exists w : mword 64,
       Pc.(ud_um) !! svpn_of va0 = Some w
       /\ pte_vu w /\ (uint va0 < 2 ^ 38)%Z.
-  Proof.
+  Proof using .
     intros -> Hext Hwf Hrm.
     destruct Hext as ((_ & _ & Hsub) & _).
     pose proof (uva_rmapped_mono P Pc (uint srcva) Hsub Hrm) as Hrc.
@@ -677,7 +677,7 @@ Section ProofCopyin.
      \/ m_ad !! svpn_of va0 = None
      \/ (exists w, m_ad !! svpn_of va0 = Some w /\ ~ pte_vu w)) ->
     ~ uva_rmapped P (uint srcva).
-  Proof.
+  Proof using .
     intros Hva0 Hext Hwf Hview Hwhy Hrm.
     destruct (ci_fault_vpn P Pc szv srcva va0 Hva0 Hext Hwf Hrm)
       as (w0 & Hl & Hvu & Hbel).
@@ -749,7 +749,7 @@ Section ProofCopyin.
       ([∗ list] j ∈ seq 0 len, (pa_add dst j) ↦ₘ[ktb] g j) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using KtierLe0.
     intros HK Hlen64 Hszb Hlvl.
     change (2 ^ 64)%Z with 18446744073709551616%Z in Hlen64.
     intro fuel.
@@ -1642,7 +1642,7 @@ Section ProofCopyin.
       (dst_olds : nat -> bv 8)
       (K lvl : nat) (eb : bool) (p : mword 64) (b : bool) (lks : gset string)
     : wp_copyin_sconf_mem_body ktb γa mm P M szv len dst_olds K lvl eb p b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_copyin_sconf_mem_body].
     intros pcE dst srcva ret_tgt HK Hroot Hsza1 Hlenr Hlen64 Hszb Hlvl Hlkbelow.
     pose (sp0 := (mm !!! Regidx csp_rs1 : mword 64)).

@@ -119,7 +119,7 @@ Section Pt2Translate.
             written and the entry is merely refreshed *)
          \/ σ' = set_reg σ tlb (vec_update_dec tlbvec (tlb_hash (__id 39) vpn)
                                   (Some (u_walk_entry vpn pp2 pp1 p0p (mword_of_int 0))))).
-  Proof.
+  Proof using .
     intros vpn p0p p0c Hchk Hcanon Hout Hvarp Hbase Hmaps_p Hmaps_c Htlbok
            Hsm2 Hsm1 Hsm0 Hsm0p
            Hmisa Hmenv Hhtif Hcp HSXL Heff Hss Hsatp Hmode Hppn Hasid Htlb
@@ -443,7 +443,7 @@ Section Pt2Inv.
      index); re-index it across the switch by conversion *)
   Lemma pmp_config_reindex (r1 r2 : mword 44) :
     pmp_config r1 -∗ pmp_config r2.
-  Proof. iIntros "H". iExact "H". Qed.
+  Proof using . iIntros "H". iExact "H". Qed.
 
   Definition tlb_inv_pt2 (rc : mword 44) (Sp Sc : ptree -> Prop) : iProp Σ :=
     (∃ (satp0 : mword 64) (tlbvec : vec (option TLB_Entry) (2 ^ 6)) (tp tc : ptree),
@@ -469,7 +469,7 @@ Section Pt2Inv.
     ptree_own 2 (DfracOwn 1) tp -∗ ptree_own 2 (DfracOwn 1) tc -∗
     pmp_config rc -∗
     tlb_inv_pt2 rc Sp Sc.
-  Proof.
+  Proof using .
     intros Hmode Hasid Hppn Hok HSp HSc Hpmaw. iIntros "Hsatp Htlb Htp Htc Hpmp".
     iExists satp0, tlbvec, tp, tc. iFrame "Hsatp Htlb Htp Htc Hpmp".
     iPureIntro. tauto.
@@ -487,7 +487,7 @@ Section Pt2Inv.
       ⌜ forall pmar0, pma_allows_all pmar0 -> pma_allows_pte_write pmar0 ⌝ ∗
       ptree_own 2 (DfracOwn 1) tp ∗ ptree_own 2 (DfracOwn 1) tc ∗
       pmp_config rc.
-  Proof. iIntros "H". iExact "H". Qed.
+  Proof using . iIntros "H". iExact "H". Qed.
 
   (* ---- the WINDOW BOUNDARY conversions ------------------------------ *)
 
@@ -507,7 +507,7 @@ Section Pt2Inv.
     satp ↦ᵣ satp0 -∗ tlb ↦ᵣ tlbvec -∗ ptree_own 2 (DfracOwn 1) tp -∗
     pt_frame Sc -∗ pmp_config rc -∗
     tlb_inv_pt2 rc Sp Sc.
-  Proof.
+  Proof using .
     intros Hmode Hasid Hppn Hok HSp Hpmaw.
     iIntros "Hsatp Htlb Htp Hfr Hpmp".
     iDestruct "Hfr" as (tc) "[%HSc Htc]".
@@ -531,7 +531,7 @@ Section Pt2Inv.
       ⌜ forall pmar0, pma_allows_all pmar0 -> pma_allows_pte_write pmar0 ⌝ ∗
       ptree_own 2 (DfracOwn 1) tc ∗ pmp_config rc ∗
       pt_frame Sp.
-  Proof.
+  Proof using .
     iIntros "Hinv".
     iDestruct (tlb_inv_pt2_open with "Hinv") as (satp0 tlbvec tp tc)
       "(Hsatp & %Hmode & %Hasid & %Hppn & Htlb & %Hok & %HSp & %HSc & %Hpmaw & Htp & Htc & Hpmp)".
@@ -586,7 +586,7 @@ Section Pt2InvKcur.
     satp ↦ᵣ satp0 -∗ tlb ↦ᵣ tlbvec -∗
     ptree_own 2 (DfracOwn 1) tp -∗ pmp_config rc -∗ kpt_lb tc0 -∗ kpt_inv rc -∗
     tlb_inv_pt2_kcur rc Sp.
-  Proof.
+  Proof using .
     intros Hmode Hasid Hppn Hok HSp Hpmaw.
     iIntros "Hsatp Htlb Htp Hpmp Hlb0 Hkinv".
     iExists satp0, tlbvec, tp, tc0. iFrame "Hsatp Htlb Htp Hpmp Hlb0 Hkinv".
@@ -605,7 +605,7 @@ Section Pt2InvKcur.
       ⌜ forall pmar0, pma_allows_all pmar0 -> pma_allows_pte_write pmar0 ⌝ ∗
       ptree_own 2 (DfracOwn 1) tp ∗
       pmp_config rc ∗ kpt_lb tc0 ∗ kpt_inv rc.
-  Proof. iIntros "H". iExact "H". Qed.
+  Proof using . iIntros "H". iExact "H". Qed.
 
   (* ENTER: right after [csrw satp] installs [rc].  The previous table
      [Sp] arrives PARKED as [pt_frame Sp] (a per-process user table
@@ -623,7 +623,7 @@ Section Pt2InvKcur.
     pmp_config rc -∗ kpt_inv rc
     ={E}=∗
     tlb_inv_pt2_kcur rc Sp.
-  Proof.
+  Proof using .
     intros HE Hmode Hasid Hppn Hok HSp Hpmaw.
     iIntros "Hsatp Htlb Htp Hpmp #Hkinv".
     iMod (kpt_inv_snapshot E rc HE with "Hkinv") as (tc0) "#Hlb0".
@@ -648,7 +648,7 @@ Section Pt2InvKcur.
       tlb ↦ᵣ tlbvec ∗
       pmp_config rc ∗ kpt_lb tc0 ∗ kpt_inv rc ∗
       pt_frame Sp.
-  Proof.
+  Proof using .
     iIntros "Hinv".
     iDestruct (tlb_inv_pt2_kcur_open with "Hinv") as (satp0 tlbvec tp tc0)
       "(Hsatp & %Hmode & %Hasid & %Hppn & Htlb & %Hok & %HSp & %Hpmaw & Htp & Hpmp & Hlb0 & Hkinv)".
@@ -696,7 +696,7 @@ Section Pt2InvKprev.
     satp ↦ᵣ satp0 -∗ tlb ↦ᵣ tlbvec -∗
     ptree_own 2 (DfracOwn 1) tc -∗ pmp_config rc -∗ kpt_lb tp0 -∗ kpt_inv kroot -∗
     tlb_inv_pt2_kprev rc kroot Sc.
-  Proof.
+  Proof using .
     intros Hmode Hasid Hppn Hok HSc Hpmaw.
     iIntros "Hsatp Htlb Htc Hpmp Hlb0 Hkinv".
     iExists satp0, tlbvec, tp0, tc. iFrame "Hsatp Htlb Htc Hpmp Hlb0 Hkinv".
@@ -715,7 +715,7 @@ Section Pt2InvKprev.
       ⌜ forall pmar0, pma_allows_all pmar0 -> pma_allows_pte_write pmar0 ⌝ ∗
       ptree_own 2 (DfracOwn 1) tc ∗
       pmp_config rc ∗ kpt_lb tp0 ∗ kpt_inv kroot.
-  Proof. iIntros "H". iExact "H". Qed.
+  Proof using . iIntros "H". iExact "H". Qed.
 
   (* ENTER: right after [csrw satp] installs [rc] (the USER root).  The
      caller already holds a fresh kernel-side snapshot from whatever left
@@ -732,7 +732,7 @@ Section Pt2InvKprev.
     satp ↦ᵣ satp0 -∗ tlb ↦ᵣ tlbvec -∗ tlb_snap_ok tlbvec -∗
     pt_frame Sc -∗ pmp_config rc -∗ kpt_inv kroot -∗
     tlb_inv_pt2_kprev rc kroot Sc.
-  Proof.
+  Proof using .
     intros Hmode Hasid Hppn Hpmaw.
     iIntros "Hsatp Htlb Hsnap Hfr Hpmp #Hkinv".
     iDestruct "Hsnap" as (tp0) "[%Htlbok0 #Hlb0]".
@@ -755,7 +755,7 @@ Section Pt2InvKprev.
       tlb ↦ᵣ tlbvec ∗ ⌜ Sc tc ⌝ ∗
       ⌜ forall pmar0, pma_allows_all pmar0 -> pma_allows_pte_write pmar0 ⌝ ∗
       ptree_own 2 (DfracOwn 1) tc ∗ pmp_config rc.
-  Proof.
+  Proof using .
     iIntros "Hinv".
     iDestruct (tlb_inv_pt2_kprev_open with "Hinv") as (satp0 tlbvec tp0 tc)
       "(Hsatp & %Hmode & %Hasid & %Hppn & Htlb & %Hok & %HSc & %Hpmaw & Htc & Hpmp & _ & _)".
@@ -833,7 +833,7 @@ Section Pt2TranslateIris.
          exists tv, σ'.(sregs) = register_set tlb tv σ.(sregs))%type ⌝ ∗
       S σ'.(mem) ∗
       reg_interp σ'.(sregs) ∗ gen_heap_interp σ'.(mem) ∗ tlb_inv_pt2 rc Sp Sc.
-  Proof.
+  Proof using .
     intros Hchk Hvar Hcanon Hout Hsel_p Hsel_c Hbase_c Hpres_p Hpres_c
            Hmisa Hmenv Hhtif Hcp HSXL Heff Hss Hall.
     iIntros "#Hpay Hsto Hri Hgh Hinv".
@@ -1068,7 +1068,7 @@ Section Pt2TrampInst.
       ⌜ eq_vec (_get_Pmpcfg_ent_X (vec_access_dec (register_lookup pmpcfg_n σ'.(sregs)) 0)) ('b"1") = true ⌝ ∗
       ⌜ (ram_base + ram_size <= uint (vec_access_dec (register_lookup pmpaddr_n σ'.(sregs)) 0) * 4)%Z ⌝ ∗
       reg_interp σ'.(sregs) ∗ gen_heap_interp σ'.(mem) ∗ tlb_inv_pt2 rc Sp Sc.
-  Proof.
+  Proof using .
     intros (Hsel_p & Hpres_p) (Hsel_c & Hpres_c) Hbase_c
            va pa σ S Hcanon Hvpn Hid Lmisa Lmenv Lhtif Lpriv LSXL Lpma.
     iIntros "#Hpay Hsto Hri Hgh Hinv".
@@ -1188,7 +1188,7 @@ Section Pt2TrampInstKcur.
       S σ'.(mem) ∗
       reg_interp σ'.(sregs) ∗ gen_heap_interp σ'.(mem) ∗
       (kmap_at tramp_vpn tramp_ppn KP_rx ∗ tlb_inv_pt2_kcur rc Sp).
-  Proof.
+  Proof using .
     intros (Hsel_p & Hpres_p) va pa σ S Hcanon Hvpn Hid Lmisa Lmenv Lhtif Lpriv LSXL Lpma.
     iIntros "#Hpay #Hpayk Hsto Hri Hgh [#Hclaim Hinv]".
     iAssert (kmap_at (svpn_of va) tramp_ppn KP_rx) as "#Hclaimva".
@@ -1496,7 +1496,7 @@ Section Pt2TrampInstKprev.
       S σ'.(mem) ∗
       reg_interp σ'.(sregs) ∗ gen_heap_interp σ'.(mem) ∗
       (kmap_at tramp_vpn tramp_ppn KP_rx ∗ tlb_inv_pt2_kprev rc kroot Sc).
-  Proof.
+  Proof using .
     intros (Hsel_c & Hpres_c) Hbc va pa σ S Hcanon Hvpn Hid Lmisa Lmenv Lhtif Lpriv LSXL Lpma.
     iIntros "#Hpay #Hpayk Hsto Hri Hgh [#Hclaim Hinv]".
     iAssert (kmap_at (svpn_of va) tramp_ppn KP_rx) as "#Hclaimva".

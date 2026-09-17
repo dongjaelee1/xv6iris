@@ -226,7 +226,7 @@ Section UShLine.
     take NSTD fdv = l ->
     l !! 0%nat = Some (FdOpen true wr (FdDevice CONSOLE)) ->
     fd_st_of_key v0 fdv = FdOpen true wr (FdDevice CONSOLE).
-  Proof.
+  Proof using .
     intros H0 Htake Hl0.
     exact (std_fd_st_of_key v0 fdv l 0%nat _ H0 ltac:(unfold NSTD; lia)
              Htake Hl0).
@@ -282,7 +282,7 @@ Section UShLine.
   Lemma ush_count_is_cap (w : mword 64) (cap : nat) :
     uint w = Z.of_nat cap -> (Z.of_nat cap < 2 ^ 31)%Z ->
     sys_rw_count w = Z.of_nat cap.
-  Proof. exact (uread_count_is_cap w cap). Qed.
+  Proof using . exact (uread_count_is_cap w cap). Qed.
   (* THE DESCRIPTOR THE CALL RAN ON, at the row's OTHER arm: a SHUT fd 0.
      [SpecFileread.fileread_in]'s [FdClosed] arm asks for nothing and
      [fileread_extra_core]'s says [r = -1] (lane CLOSED-READ) -- so the
@@ -293,7 +293,7 @@ Section UShLine.
     take NSTD fdv = l ->
     l !! 0%nat = Some FdClosed ->
     fd_st_of_key v0 fdv = FdClosed.
-  Proof.
+  Proof using .
     intros H0 Htake Hl0.
     exact (std_fd_st_of_key v0 fdv l 0%nat _ H0 ltac:(unfold NSTD; lia)
              Htake Hl0).
@@ -313,7 +313,7 @@ Section UShLine.
     l !! 0%nat = Some FdClosed ->
     ⊢ udepwf_std N m pc USYS_read
         (ush_read_fam_at γp T n Rin (ukn_pay N)) l.
-  Proof.
+  Proof using .
     intros Ha0 Hl0.
     rewrite /udepwf_std. iSplitR; [ iPureIntro; reflexivity | ].
     iIntros (M pm sz fdv cw gn cs pidv) "%Htake #Hmpay Hheap Hufd".
@@ -378,9 +378,9 @@ Section UShLine.
        ∗ ps_lb v ps0 ∗ cs_lb v cs0)%I.
 
   Global Instance rd_res_persistent v I : Persistent (rd_res v I).
-  Proof. rewrite /rd_res. apply _. Qed.
+  Proof using . rewrite /rd_res. apply _. Qed.
   Global Instance rd_res_timeless v I : Timeless (rd_res v I).
-  Proof. rewrite /rd_res. apply _. Qed.
+  Proof using . rewrite /rd_res. apply _. Qed.
 
   (* THE PAYLOAD IS AT A COUNT AND ITS CONTENT IS AN INPUT (project
      echo-any-line).  /init's side of the lease is position-indexed -- the
@@ -395,7 +395,7 @@ Section UShLine.
        ∗ inp_lb v I ∗ rd_res v I)%I.
 
   Global Instance ush_rd_pin_timeless γ n : Timeless (ush_rd_pin γ n).
-  Proof. rewrite /ush_rd_pin. apply _. Qed.
+  Proof using . rewrite /ush_rd_pin. apply _. Qed.
 
   (* ...AND THE EXIT FAMILY (lane IO-LEAF, step 3): what sh's exit payload
      carries per count is the read side above AND the BANNER-OWED
@@ -412,7 +412,7 @@ Section UShLine.
   Global Instance ush_rd_x_timeless γ Wb n
       `{!forall I : list (bv 8), Timeless (Wb I)} :
     Timeless (ush_rd_x γ Wb n).
-  Proof. rewrite /ush_rd_x /UkInit.init_rd /UkInit.init_rd_cred. apply _. Qed.
+  Proof using . rewrite /ush_rd_x /UkInit.init_rd /UkInit.init_rd_cred. apply _. Qed.
 
   (* =================================================================== *)
   (*  THE LEASE, UNBUNDLED (lane IO-LEAF, M5(3); [UkSh]'s [Pm]).          *)
@@ -469,7 +469,7 @@ Section UShLine.
      [EchoLinksLine]'s and this is the file that already names them. *)
   Lemma ush_wc_inp_lcred (γ : echo_gn) (T : iProp Σ) `{!Persistent T} :
     ush_wc_inp γ T (EchoLinksLine.ewc_lcred T γ (S gen_id)).
-  Proof.
+  Proof using .
     intros I p. iIntros "H".
     rewrite /EchoLinksLine.ewc_lcred.
     iDestruct "H" as (v) "[#Hpin Hc]".
@@ -526,7 +526,7 @@ Section UShLine.
     ush_wb_inp γ T
       (fun I : list (bv 8) => ∃ v : era_pins,
          era_pin γ (S gen_id) v ∗ EchoLinks.ewc_ban T v I 0%nat)%I.
-  Proof.
+  Proof using .
     intros I. iIntros "H". iDestruct "H" as (v) "[#Hpin Hc]".
     rewrite /EchoLinks.ewc_ban.
     iDestruct "Hc" as "[Hl | #HT]"; last first.
@@ -549,7 +549,7 @@ Section UShLine.
     ⊢ UkSh.ush_at N γp n -∗
       ∃ I : list (bv 8), ⌜length I = n⌝
         ∗ UkSh.ush_lease N γp T (ush_mid γ γp) I.
-  Proof.
+  Proof using .
     intro Hpay. rewrite /UkSh.ush_at /UkSh.ush_lease.
     iIntros "[Hpos Hlease]". iEval (rewrite Hpay /ucons_pay) in "Hlease".
     iDestruct "Hlease" as "[Hl | #HT]"; last first.
@@ -578,7 +578,7 @@ Section UShLine.
       (I : list (bv 8)) :
     ukn_pay N = ucons_pay fsc_cons γp T (ush_rd_x γ Wb) ->
     ⊢ T -∗ ush_mid γ γp I -∗ UkSh.ush_at N γp (length I).
-  Proof.
+  Proof using .
     intro Hpay. rewrite /ush_mid /UkSh.ush_at.
     iIntros "#HT (Hpos & _ & _ & _)". iFrame "Hpos". rewrite Hpay.
     iApply (ucons_pay_taint with "HT").
@@ -590,7 +590,7 @@ Section UShLine.
     ukn_pay N = ucons_pay fsc_cons γp T (ush_rd_x γ Wb) ->
     ush_wb_inp γ T Wb ->
     ⊢ ush_mid γ γp I -∗ Wb I -∗ UkSh.ush_at N γp (length I).
-  Proof.
+  Proof using .
     intros Hpay Hwbi. iIntros "Hmid Hb".
     iDestruct (Hwbi I with "Hb") as "[Hb Hrd]".
     iDestruct "Hrd" as "[[_ %Hrest] | #HT]"; last first.
@@ -622,7 +622,7 @@ Section UShLine.
     EchoLinks.ewc_cred T γ (S gen_id) I 2%nat -∗
     ush_mid γ γp (I ++ l ++ [wl_nl])
     ∗ EchoLinks.ewc_cred T γ (S gen_id) (I ++ l ++ [wl_nl]) 0%nat.
-  Proof.
+  Proof using .
     intro Hnl. iIntros "(Hpos & Hpa & Hrd0 & Hcred) Hc".
     iDestruct "Hcred" as (v) "(#Hpin & Hdl & #HE & #Hres)".
     rewrite /EchoLinks.ewc_cred. iDestruct "Hc" as (v') "[#Hpin' Hc]".
@@ -645,7 +645,7 @@ Section UShLine.
     EchoLinksLine.ewc_lcred T γ (S gen_id) I 2%nat -∗
     ush_mid γ γp (I ++ l ++ [wl_nl])
     ∗ EchoLinksLine.ewc_lcred T γ (S gen_id) (I ++ l ++ [wl_nl]) 3%nat.
-  Proof.
+  Proof using .
     intro Hnl. iIntros "(Hpos & Hpa & Hrd0 & Hcred) Hc".
     iDestruct "Hcred" as (v) "(#Hpin & Hdl & #HE & #Hres)".
     iSplitR "Hc".
@@ -670,7 +670,7 @@ Section UShLine.
     ush_mid γ γp (I ++ l ++ [wl_nl]) -∗
     (∃ v : era_pins, era_pin γ (S gen_id) v ∗ EchoLinks.ewc_ban T v I 0%nat) -∗
     ush_mid γ γp (I ++ l ++ [wl_nl]) ∗ T.
-  Proof.
+  Proof using .
     intro Hnl. iIntros "(Hpos & Hpa & Hrd0 & Hcred) Hb".
     iDestruct "Hcred" as (v) "(#Hpin & Hdl & #HE & #Hres)".
     iDestruct "Hb" as (v') "[#Hpin' Hb]".
@@ -723,7 +723,7 @@ Section UShLine.
       ((∃ I : list (bv 8), ⌜length I = n⌝ ∗ UkSh.ush_wcp Wc Wb l I 0%nat)
        ∨ T) -∗
       UkSh.ush_posb N γp T Wc Wb (ush_mid γ γp) l 0%nat.
-  Proof.
+  Proof using .
     intros Hpay Hwci Hwbi. rewrite /ucons_pay.
     iAssert (□ (T -∗ upos γp n -∗
                UkSh.ush_posb N γp T Wc Wb (ush_mid γ γp) l 0%nat))%I
@@ -827,7 +827,7 @@ Section UShLine.
     UkSh.ush_lease N γp T (ush_mid γ γp) I -∗
     cons_acc fsc_cons app_sup (ush_rd_ret γp T (length I))
     ∗ cons_read_pay (S gen_id) (ush_rd_in T γ I).
-  Proof.
+  Proof using .
     intros Hst Hts.
     iIntros "#Hlk HP". set (n := length I).
     iDestruct (echo_links_rd with "Hlk") as "#Hrdl".
@@ -896,7 +896,7 @@ Section UShLine.
     echo_links T γ -∗
     UkSh.ush_lease N γp T (ush_mid γ γp) I -∗
     udepwf_std N m pc USYS_read (ush_read_fam_era T γ γp I (ukn_pay N)) l.
-  Proof.
+  Proof using .
     intros Ha0 Hl0 Hst Hts.
     iIntros "#Hlk HP".
     iDestruct (ush_read_pay_era γ T N γp I Hst Hts with "Hlk HP")
@@ -940,7 +940,7 @@ Section UShLine.
     disc_input (I ++ J) ->
     (0 < length J)%nat ->
     g 0%nat = J !!! 0%nat.
-  Proof.
+  Proof using .
     intros Hdd Hdc Hwin Hpre Hws Hpr Hdl Hcat Hdisc HJ.
     destruct Hwin as (_ & _ & Hwj).
     destruct (Hwj 0%nat Hdd) as (hh & b & Hsl & _ & _ & Hg).
@@ -1011,7 +1011,7 @@ Section UShLine.
          (<[Regidx a0_idx := r]> m) (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hpay Hst Hts Hn Ha0 Ha1 Ha2 Hcapk Hcap31 Hfd0 Hal.
     iIntros "#Hlk #Hi Hbuf Hstd Hpos Hrun Hcont".
     subst a. set (n := length I).
@@ -1224,7 +1224,7 @@ Section UShLine.
        find [uprogSG_gen].  The two are not convertible. *)
     ⊢ UkSh.ush_read_recv_leaf (PS := uprogSG_free) N γp T
         (ush_mid γ γp) fsc_cons l.
-  Proof.
+  Proof using .
     intros Hpay Hst Hts Hlk.
     iAssert (echo_links T γ) as "#Hlk"; [ iApply Hlk | ].
     rewrite /UkSh.ush_read_recv_leaf.

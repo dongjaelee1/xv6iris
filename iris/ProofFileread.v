@@ -303,7 +303,7 @@ Section FilereadMsg.
 
   Lemma fr_msg_str :
     (kernel_data : iProp Σ) -∗ (mword_of_int fr_msg_a : mword 64) ↦ₛ□ fr_msg.
-  Proof.
+  Proof using .
     iIntros "#Hd".
     iApply (kernel_data_string fr_msg_a fr_msg _ eq_refl
               ltac:(unfold text_end, fr_msg_a; lia)
@@ -432,7 +432,7 @@ Section ProofFileread.
       (γp : pipe_names) :
     fdstate_ok inum γo γp Cf' st' -> fc_type Cf' = FD_DEVICE ->
     fileread_env γf' fn' st' -∗ fileread_dev_env fn' (dev_major Cf').
-  Proof.
+  Proof using .
     intros Hok Ht. destruct (fdstate_ok_device inum γo γp Cf' st' Hok Ht) as (? & ? & ->). by iIntros "$".
   Qed.
 
@@ -441,7 +441,7 @@ Section ProofFileread.
       (γp : pipe_names) :
     fdstate_ok inum γo γp Cf' st' -> fc_type Cf' = FD_DEVICE ->
     fileread_dev_env fn' (dev_major Cf') -∗ fileread_env_out fn' st'.
-  Proof.
+  Proof using .
     intros Hok Ht. destruct (fdstate_ok_device inum γo γp Cf' st' Hok Ht) as (? & ? & ->). by iIntros "$".
   Qed.
 
@@ -456,7 +456,7 @@ Section ProofFileread.
     a_devsw_read (dev_major Cf') ↦₈{frn_dqv fn' (dev_major Cf')}
       frn_rp fn' (dev_major Cf') ∗
     fileread_dev_caps fn'.
-  Proof.
+  Proof using .
     intro H. rewrite /fileread_dev_env.
     case_decide as H'; [by iIntros "$"|].
     (* the major is a [bv_unsigned], hence non-negative: the lower half of
@@ -476,7 +476,7 @@ Section ProofFileread.
       frn_rp fn' (dev_major Cf') -∗
     fileread_dev_caps fn' -∗
     fileread_dev_env fn' (dev_major Cf').
-  Proof.
+  Proof using .
     intro H. rewrite /fileread_dev_env.
     case_decide as H'; last first.
     { exfalso. apply H'. split; [| exact H]. rewrite /dev_major.
@@ -490,7 +490,7 @@ Section ProofFileread.
       (γp : pipe_names) :
     fdstate_ok inum γo γp Cf' st' -> fc_type Cf' = FD_INODE ->
     fileread_env γf' fn' st' -∗ fileread_fs_env γf' fn'.
-  Proof.
+  Proof using .
     intros Hok Ht. destruct (fdstate_ok_inode inum γo γp Cf' st' Hok Ht) as (? & ? & ->).
     by iIntros "$".
   Qed.
@@ -500,7 +500,7 @@ Section ProofFileread.
       (γp : pipe_names) :
     fdstate_ok inum γo γp Cf' st' -> fc_type Cf' = FD_INODE ->
     fileread_fs_out fn' -∗ fileread_env_out fn' st'.
-  Proof.
+  Proof using .
     intros Hok Ht. destruct (fdstate_ok_inode inum γo γp Cf' st' Hok Ht) as (? & ? & ->). by iIntros "$".
   Qed.
 
@@ -516,7 +516,7 @@ Section ProofFileread.
       (P : iProp Σ)
     : wp_fileread_sconf_body γf γs j γlp k q st fn pidv U m K eb n b lks Fr
         Rd Rin Rp Rpe P.
-  Proof.
+  Proof using .
     cbv beta delta [wp_fileread_sconf_body].
     intros pcE pj addr ret_tgt HK Hk Hj Hgs Hlens Ha0 Ha2 Hn Heb Hbelow.
     

@@ -721,7 +721,7 @@ Section ProofSysLinkBody.
     (k < NINODE)%nat ->
     (ic_escrows fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst -∗ ic_escrow fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k
      : iProp Σ).
-  Proof.
+  Proof using .
     iIntros (Hk) "H". rewrite /ic_escrows /ic_boxes_all /ic_escrow.
     assert (Hl : seq 0 NINODE !! k = Some k) by (rewrite lookup_seq; lia).
     iDestruct (big_sepL_lookup _ _ k k Hl with "H") as "$".
@@ -729,13 +729,13 @@ Section ProofSysLinkBody.
 
     Lemma sl_bs3 `{XI : CurCtx} :
     (bslots 3 : iProp Σ) ⊣⊢ bslot ∗ bslots 2.
-  Proof. rewrite /bslot. change 3%nat with (1 + 2)%nat. apply bslots_op. Qed.
+  Proof using . rewrite /bslot. change 3%nat with (1 + 2)%nat. apply bslots_op. Qed.
 
   (* the reference allowance, split for the FIRST walk: namei takes two and
      hands one back, and the third is [ip]'s own -- held out here so that
      [nameiparent] can be handed a full two while [ip] is still live. *)
   Lemma sl_ir3 `{XI : CurCtx} : (iref_slots 3 : iProp Σ) ⊣⊢ iref_slots 2 ∗ iref_slots 1.
-  Proof. change 3%nat with (2 + 1)%nat. apply iref_slots_op. Qed.
+  Proof using . change 3%nat with (2 + 1)%nat. apply iref_slots_op. Qed.
 
   (* THE GENERATION-NAMED SHED.  [IcacheRef.inode_ref_shed] loses the
      generation, and nameiparent's [inode_held_ty] payout is exactly the
@@ -747,13 +747,13 @@ Section ProofSysLinkBody.
   Lemma sl_carve_gen `{XI : CurCtx} (k : nat) (q s : Qp) (inum : mword 32) (g : gname) :
     inode_ref_gen k (q + s)%Qp icfg_dev inum g ⊣⊢
     inode_ref_short_gen k (q + s)%Qp q icfg_dev inum g ∗ inode_shr_gen k s icfg_dev inum g.
-  Proof. apply inode_ref_carve_gen. Qed.
+  Proof using . apply inode_ref_carve_gen. Qed.
 
   Lemma sl_shed_gen `{XI : CurCtx} (k : nat) (q : Qp) (inum : mword 32) (g : gname) :
     inode_ref_gen k q icfg_dev inum g ⊣⊢
     inode_ref_short_gen k (q/2 + q/2)%Qp (q/2)%Qp icfg_dev inum g ∗
     inode_shr_gen k (q/2)%Qp icfg_dev inum g.
-  Proof.
+  Proof using .
     pose proof (sl_carve_gen k (q/2)%Qp (q/2)%Qp inum g) as Hc.
     by rewrite {1}(Qp.div_2 q) in Hc.
   Qed.
@@ -774,7 +774,7 @@ Section ProofSysLinkBody.
 
  dqb dqs dqbs v0 v1 pid U
                            m K eb b lks Ftgt Fent Funtgt.
-  Proof.
+  Proof using .
     cbv beta delta [wp_sys_link_sconf_body].
     intros pcE pj ret_tgt HK HdevR Hnib0 Hgeom Hsize
            Hbm0 Hbmcov Hbmlog Hist0 Hcovb Hbmgeo Hiregb Hnib16 Hj Hgl

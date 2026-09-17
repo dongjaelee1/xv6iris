@@ -141,7 +141,7 @@ Section ProofUsertrapTail.
       (cs : gset gname) (pid : mword 32) :
     ut_own Rsys N U sts cs pid ⊣⊢
     ut_own_nm N U sts cs pid ∗ ChildTok.taken_at (pv_gen (us_V U)).
-  Proof.
+  Proof using .
     rewrite /ut_own /ut_own_nm (proc_priv_unmark (un_f N) (un_pj N) pid U).
     iSplit.
     - iIntros "(A & B & C & D & [E Ht] & F & G & H)". iFrame.
@@ -160,7 +160,7 @@ Section ProofUsertrapTail.
      out of the incarnation's two quarters ([SlotGen.gen_halves_at_nz]) *)
   Lemma ut_pid_nz_nm (γf : gname) (pa : mword 64) (pid : mword 32) (U : ustate) :
     proc_priv_unmarked γf pa pid U -∗ ⌜bv_unsigned pid <> 0⌝.
-  Proof. iIntros "(_ & _ & _ & _ & _ & Hgh)". iApply (gen_halves_at_nz with "Hgh"). Qed.
+  Proof using . iIntros "(_ & _ & _ & _ & _ & Hgh)". iApply (gen_halves_at_nz with "Hgh"). Qed.
 
   (* ...and the block out of the marker-less residue, [UsertrapRes.ut_own_priv]
      one conjunct in *)
@@ -176,7 +176,7 @@ Section ProofUsertrapTail.
        fd_frags (pv_fdg (us_V U')) sts' -∗
        ch_frag (pv_chg (us_V U')) (un_pj N) cs' -∗
        Rsys (un_f N) (un_pj N) (un_fn N pid) -∗ ut_own_nm N U' sts' cs' pid).
-  Proof.
+  Proof using .
     iIntros "(Hb & Hip & Hfd & Hir & Hpv & Hfr & Hch & Hsy)".
     iFrame "Hpv Hfr Hch Hsy". iIntros (U' sts' cs') "Hpv Hfr Hch Hsy".
     rewrite /ut_own_nm. iFrame "Hb Hip Hfd Hir Hpv Hfr Hch Hsy".
@@ -195,7 +195,7 @@ Section ProofUsertrapTail.
     (p_pid pa ↦₄{DfracOwn (1/4)} pid -∗
      pid_reg pid (DfracOwn qeighth) (pv_gen (us_V U)) -∗
      proc_priv_unmarked γf pa pid U).
-  Proof.
+  Proof using .
     iIntros "(Hn & Hc & Hf & Hgq & Hxs & Hgh)".
     iDestruct (proc_priv_nocwd_pid with "Hn") as "[Hq Hnb]".
     iDestruct (gen_halves_at_reg with "Hgh") as "[Hr Hgb]".
@@ -209,7 +209,7 @@ Section ProofUsertrapTail.
       (pid : mword 32) :
     ut_hold Rsys N U b lks sts cs pid ⊣⊢
     ut_hold_nm N U b lks sts cs pid ∗ ChildTok.taken_at (pv_gen (us_V U)).
-  Proof.
+  Proof using .
     rewrite /ut_hold /ut_hold_nm /ut_env (ut_own_unmark N U sts cs pid).
     iSplit.
     - iIntros "(A & B & C & [#D [E Ht]])". iFrame "A B C D E Ht".
@@ -236,7 +236,7 @@ Section ProofUsertrapTail.
     m !!! Regidx (mword_of_int 10 : mword 5) = v ->
     xstate_of v = -1 ->
     kexit_status m = -1.
-  Proof. intros H1 H2. unfold kexit_status. rewrite H1. exact H2. Qed.
+  Proof using . intros H1 H2. unfold kexit_status. rewrite H1. exact H2. Qed.
 
   Lemma ut_kexit (N : ut_names) (U : ustate) (m : regfile) (nx : nat)
       (b : bool) (lks : gset string) (sts : list fdstate) (cs : gset gname) (pid : mword 32)
@@ -304,7 +304,7 @@ Section ProofUsertrapTail.
      ∨ (fileclose_cpays sts ∗ Q (-1))) -∗
     ut_hold_nm N U b lks sts cs pid -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hwf Hnx Hst Hbelow. destruct Hwf as (Hj & Hjl & Hlen & Hlg).
     iIntros "#Htext Hpc Hcg Hcl #Hmyp Htear (Hcpu & Hcsrs & Hclm & [#Hcaps Hown])".
     (* THE TWO ROWS, OFF THE ONE PACKAGE, and read HERE so both arms of the
@@ -494,7 +494,7 @@ Section UtRet2.
       (fun CID' => usertrap_post (CID := CID') (ut_res (CID := CID') Rsys) pt ksp m0
                      mie_v menvcfg0 U0 sts0 gn cs pid epw scw fdep Wk) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hwf Hgenk Hfdk Hchk Hfde Hpipe Hpidr Hav Hnx Htfpe Hksp Hm0sp Hmfsp Hmfs1 Hcs Hmiev Hmenvv Hrd Hepcw Hlive.
     (* the budget, in numbers [lia] can see -- every one of these is a
        [Definition] and the index arithmetic below is what needs them *)
@@ -1048,7 +1048,7 @@ Section UtRet.
       (fun CID' => usertrap_post (CID := CID') (ut_res (CID := CID') Rsys) pt ksp m0
                      mie_v menvcfg0 U0 sts0 gn cs pid epw scw fdep Wk) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hwf Hgenk Hfdk Hchk Hfde Hpipe Hpidr Hav Hnx Htfpe Hksp Hm0sp Hmsp Hms1 Hcs Hmiev Hmenvv Hrd Hlive.
     pose proof (ut_nx_bound b av nx Hav Hnx) as Hks.
     
@@ -1243,7 +1243,7 @@ Section UtA6.
   Local Lemma ut_kl_zero_of_branch (kl : mword 32) :
     neq_vec (sign_extend' 64 kl) (zero_reg : mword 64) = false ->
     kl = (mword_of_int 0 : mword 32).
-  Proof.
+  Proof using .
     unfold neq_vec. rewrite negb_false_iff. intro H.
     apply eq_vec_true_iff in H.
     apply (f_equal trunc32) in H. rewrite trunc32_sext64 in H.
@@ -1381,7 +1381,7 @@ Section UtA6.
       (fun CID' => usertrap_post (CID := CID') (ut_res (CID := CID') Rsys) pt ksp m0
                      mie_v menvcfg0 U0 sts0 gn cs pid epw scw fdep Wk) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hwf Hgenk Hfdk Hchk Hfde Hpipe Hpidr Hav Hnx Htfpe Hksp Hm0sp Hmsp Hms1 Hcs Hmiev Hmenvv Hrd Hgna Hbelow.
     pose proof (ut_nx_bound b av nx Hav Hnx) as Hks.
     
@@ -2051,7 +2051,7 @@ Section UtFa.
       (fun CID' => usertrap_post (CID := CID') (ut_res (CID := CID') Rsys) pt ksp m0
                      mie_v menvcfg0 U0 sts0 gn cs pid epw scw fdep Wk) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hwf Hgenk Hfdk Hchk Hfde Hpipe Hpidr Hav Hnx Htfpe Hksp Hm0sp Hmsp Hms1 Hcs Hmiev Hmenvv Hrd Hlive.
     pose proof (ut_nx_bound b av nx Hav Hnx) as Hks.
     

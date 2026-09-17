@@ -91,7 +91,7 @@ Section SyscParkEnv.
 
   Global Instance sysc_park_extra_persistent γtk :
     Persistent (sysc_park_extra γtk).
-  Proof. rewrite /sysc_park_extra. apply _. Qed.
+  Proof using . rewrite /sysc_park_extra. apply _. Qed.
 
 End SyscParkEnv.
 
@@ -163,6 +163,6 @@ Section ParkWorld.
           uart_dlab_off γu1))%I.
 
   Global Instance park_world_persistent γs : Persistent (park_world γs).
-  Proof. rewrite /park_world. apply _. Qed.
+  Proof using . rewrite /park_world. apply _. Qed.
 
 End ParkWorld.

@@ -90,7 +90,7 @@ Section UmodeFetchX.
            (Physaddr pa) 4 false false false false)
       (fun r => ⌜r = Values.Ok (bytes, tt)⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro ∗ R).
-  Proof.
+  Proof using .
     intros Hdisj HD HDcfg HDaddr HDhtif Hhtif Hpma Hpcfg Hpaddr
       HA Hord HX Hcov Hpallow Hram Hram3 Hpa.
     pose proof (ram_fetch_pmp pa (vec_access_dec paddr 0) 4 3
@@ -201,7 +201,7 @@ Section UmodeFetchX.
            (Physaddr pa) 2 false false false false)
       (fun r => ⌜r = Values.Ok (bytes, tt)⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro ∗ R).
-  Proof.
+  Proof using .
     intros Hdisj HD HDcfg HDaddr HDhtif Hhtif Hpma Hpcfg Hpaddr
       HA Hord HX Hcov Hpallow Hram Hram1 Hpa.
     pose proof (ram_fetch_pmp pa (vec_access_dec paddr 0) 2 1
@@ -292,7 +292,7 @@ Section UmodeFetchX.
     swp (mem_read (InstructionFetch tt) PBMT_PMA pa 4 false false false)
       (fun r => ⌜r = Values.Ok w⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro ∗ R).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv Hpriv.
     iIntros "#Hcert Hrw Hro Hcmr".
     unfold mem_read.
@@ -344,7 +344,7 @@ Section UmodeFetchX.
     swp (mem_read (InstructionFetch tt) PBMT_PMA pa 2 false false false)
       (fun r => ⌜r = Values.Ok w⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro ∗ R).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv Hpriv.
     iIntros "#Hcert Hrw Hro Hcmr".
     unfold mem_read.
@@ -408,7 +408,7 @@ Section UmodeFetchX.
       (fun r => ⌜r = @FetchBytes_Success 4 w⌝ ∗
                 ∃ rsf : regstate, ⌜Qf rsf⌝ ∗ Rf rsf ∗
                 hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv Hpriv.
     iIntros "#Hcert Hrw Hro Htr Hcmr".
     rewrite /swp. iIntros (C) "%HC Hcont".
@@ -457,7 +457,7 @@ Section UmodeFetchX.
       (fun r => ⌜r = @FetchBytes_Success 2 h⌝ ∗
                 ∃ rsf : regstate, ⌜Qf rsf⌝ ∗ Rf rsf ∗
                 hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv Hpriv.
     iIntros "#Hcert Hrw Hro Htr Hcmr".
     rewrite /swp. iIntros (C) "%HC Hcont".
@@ -517,7 +517,7 @@ Section UmodeFetchX.
                       else F_Base w)⌝ ∗
                 ∃ rsf : regstate, ⌜Qf rsf⌝ ∗ Rf rsf ∗
                 hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDpc HDmst HDpriv Hpc Hpriv Hb0 Hb1 Hal.
     iIntros "#Hcert Hrw Hro Htr Hcmr".
     iApply (spt_fetch_P Drw Dro Df rs pc w _ Hdisj HDpc Hpc Hb0 Hb1 Hal
@@ -561,7 +561,7 @@ Section UmodeFetchX.
       (fun r => ⌜r = F_RVC h⌝ ∗
                 ∃ rsf : regstate, ⌜Qf rsf⌝ ∗ Rf rsf ∗
                 hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDpc HDmisa HDmst HDpriv Hpc Hpriv HmisaC Hb0 Hb1 Hal4 Hrvc.
     iIntros "#Hcert Hrw Hro Htr Hcmr".
     iApply (spt_fetch_rvc2_P Drw Dro Df rs pc h _ Hdisj HDpc HDmisa Hpc Hb0
@@ -620,7 +620,7 @@ Section UmodeFetchX.
       (fun r => ⌜r = F_Base (concat_vec ihi ilo)⌝ ∗
                 ∃ rs2 : regstate, ⌜Qf2 rs2⌝ ∗ Rf2 rs2 ∗
                 hreg_frame rs2 Drw ∗ hreg_frame_ro Df rs2 Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDpc HDmisa HDmst HDpriv Hpc Hpc1 Hpriv1 Hpriv2 HmisaC
       Hb0 Hb1 Hal4 Hnrvc.
     iIntros "#Hcert Hrw Hro Htr1 Hcmr1 Htr2 Hcmr2".

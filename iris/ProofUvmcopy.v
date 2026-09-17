@@ -433,7 +433,7 @@ Section ProofUvmcopy.
     (forall v, v ∉ vpn_run vpn0 j -> Pj.(ud_um) !! v = Pnew.(ud_um) !! v) ->
     (forall i, (i < j)%nat -> Pnew.(ud_um) !! vpn_at vpn0 i = None) ->
     proc_pt_any (uptd_del_run Pj vpn0 j) ⊢ proc_pt_any Pnew.
-  Proof.
+  Proof using .
     intros (Hr & Ht & Hsub) Hout Hfr.
     assert (Hum : um_del_run Pj.(ud_um) vpn0 j = Pnew.(ud_um))
       by exact (um_del_run_restore_sub Pnew.(ud_um) Pj.(ud_um) vpn0 j Hsub
@@ -458,7 +458,7 @@ Section ProofUvmcopy.
     proc_ptm (uptd_del_run Pj vpn0 j) sznew
       (umem_write Mj 0%Z (4096 * j)%nat (fun _ => bv_0 8))
     ⊢ proc_ptm Pnew sznew Mnew.
-  Proof.
+  Proof using .
     intros (Hr & Ht & Hsub) Hout Hfr Hmeq.
     assert (Hum : um_del_run Pj.(ud_um) vpn0 j = Pnew.(ud_um))
       by exact (um_del_run_restore_sub Pnew.(ud_um) Pj.(ud_um) vpn0 j Hsub
@@ -512,7 +512,7 @@ Section ProofUvmcopy.
     kalloc_env γa None -∗
     uc_exit mm Pold Pnew szold sznew Mold Mnew vpn0 n K eb p spr ilvl b lks -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using bioslotG0.
     intros HK Hilvl Hvpn0 Hiv Hjb Hext Hout Hfr Hlvj Hmeq Hsp Hs1 Hs7 Hthr Hbelow.
     assert (HKuu : (22 <= K - 10)%nat) by (clear -HK; lia).
     iIntros "Hcg Hcnt #Htext Hpc Hpo Hpt #Henv Hexit".
@@ -747,7 +747,7 @@ Section ProofUvmcopy.
     kalloc_env γa None -∗
     uc_exit mm Pold Pnew szold sznew Mold Mnew vpn0 n K eb p spr ilvl b lks -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using bioslotG0.
     intros HK Hilvl Hvpn0 Hsz Hszb Hnchar Hnb Hfresh Hlive HzOld HzNew.
     assert (HKka : (14 <= K - 10)%nat) by (clear -HK; lia).
     assert (HKmm : (2 <= K - 10)%nat) by (clear -HK; lia).
@@ -1880,7 +1880,7 @@ Section ProofUvmcopy.
       (ilvl : nat) (b : bool) (lks : gset string)
     : wp_uvmcopy_mem_sconf_body γa mm Pold Pnew szold sznew Mold Mnew
         K eb p ilvl b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_uvmcopy_mem_sconf_body].
     intros pcE sz vpn0 n ret_tgt HK Hilvl Htp Hroot Hrootn Hszb Hfresh
            Hlive Hbelow.

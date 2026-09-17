@@ -114,12 +114,12 @@ Section AppCredsRaw.
 
   Global Instance app_sup_raw_persistent {N} (A : N -> aview -> iProp Σ) r :
     Persistent (app_sup_raw A r).
-  Proof. rewrite /app_sup_raw. apply _. Qed.
+  Proof using . rewrite /app_sup_raw. apply _. Qed.
 
   (* the generic application's: its predicate IS [True] *)
   Lemma app_sup_raw_triv {N} (A : N -> aview -> iProp Σ) (r : N) :
     (forall r av, A r av ⊣⊢ True) -> ⊢ app_sup_raw A r.
-  Proof.
+  Proof using .
     intros Htriv. rewrite /app_sup_raw. iIntros "!>" (av).
     iApply (bi.equiv_entails_1_2 _ _ (Htriv r av)). iPureIntro. exact Logic.I.
   Qed.
@@ -144,13 +144,13 @@ Section AppCredsRaw.
 
   Global Instance app_xfer_raw_persistent {N} (A : N -> aview -> iProp Σ) :
     Persistent (app_xfer_raw A).
-  Proof. rewrite /app_xfer_raw. apply _. Qed.
+  Proof using . rewrite /app_xfer_raw. apply _. Qed.
 
   (* the generic application's: a predicate that holds of every view is its
      own copy (at the instance handed in, so no inhabitant is needed) *)
   Lemma app_xfer_raw_triv {N} (A : N -> aview -> iProp Σ) :
     (forall r av, A r av ⊣⊢ True) -> ⊢ app_xfer_raw A.
-  Proof.
+  Proof using .
     intros Htriv. rewrite /app_xfer_raw. iIntros "!>" (r av) "H".
     iModIntro. iSplitL "H"; [iExact "H" |]. iExists r. iNext.
     iApply (bi.equiv_entails_1_2 _ _ (Htriv r av)). iPureIntro. exact Logic.I.
@@ -159,7 +159,7 @@ Section AppCredsRaw.
   (* a PURE claim duplicates outright *)
   Lemma app_xfer_raw_pure {N} (P : aview -> Prop) :
     ⊢ app_xfer_raw (fun (_ : N) (av : aview) => ⌜P av⌝%I).
-  Proof.
+  Proof using .
     rewrite /app_xfer_raw. iIntros "!>" (r av) "#H".
     iModIntro. iSplitR; [iExact "H" |]. iExists r. iExact "H".
   Qed.
@@ -175,7 +175,7 @@ Section AppCredsRaw.
   Lemma app_xfer_raw_pers_or_pure {N} (A : N -> aview -> iProp Σ) :
     (forall (r : N) (av : aview), Persistent (A r av)) ->
     ⊢ app_xfer_raw A.
-  Proof.
+  Proof using .
     intros HP. rewrite /app_xfer_raw. iIntros "!>" (r av) "#H".
     iModIntro. iSplitR; [iExact "H" |]. iExists r. iExact "H".
   Qed.
@@ -206,18 +206,18 @@ Section AppInv.
   Definition app_sup : iProp Σ := app_sup_raw app_pred app_run.
 
   Global Instance app_sup_persistent : Persistent app_sup.
-  Proof. rewrite /app_sup. apply _. Qed.
+  Proof using . rewrite /app_sup. apply _. Qed.
 
   Lemma app_sup_of_triv :
     (forall r av, app_pred r av ⊣⊢ True) -> ⊢ app_sup.
-  Proof. intros Htriv. rewrite /app_sup. by apply app_sup_raw_triv. Qed.
+  Proof using . intros Htriv. rewrite /app_sup. by apply app_sup_raw_triv. Qed.
 
   (* THE TRANSPORT, PINNED (round C): parked in the body so the era owns
      it, and the one application-side premise of the era mint. *)
   Definition app_xfer : iProp Σ := app_xfer_raw app_pred.
 
   Global Instance app_xfer_persistent : Persistent app_xfer.
-  Proof. rewrite /app_xfer. apply _. Qed.
+  Proof using . rewrite /app_xfer. apply _. Qed.
 
   (* THE DOMAIN ROW (round C).  The abstract map names EXACTLY the region's
      inums.  [InodeRegion.ftop_body] carries no such row, so the commit's
@@ -236,7 +236,7 @@ Section AppInv.
 
   Lemma app_dom_insert (I : gmap Z fs_node) (i : Z) (n n' : fs_node) :
     I !! i = Some n -> app_dom I -> app_dom (<[i := n']> I).
-  Proof.
+  Proof using .
     intros Hi Hd z. rewrite lookup_insert_is_Some'. rewrite -(Hd z).
     split; [| by right]. intros [-> | H]; [by eexists | exact H].
   Qed.
@@ -255,7 +255,7 @@ Section AppInv.
   Definition app_inv (γfs : fs_names) : iProp Σ := inv appN (app_body γfs).
 
   Global Instance app_inv_persistent γfs : Persistent (app_inv γfs).
-  Proof. rewrite /app_inv. apply _. Qed.
+  Proof using . rewrite /app_inv. apply _. Qed.
 
   (* ALLOCATION, at the era mint: the guest half of the authority the boot
      founded, the claim at the founded map -- LATER-SHAPED, because it
@@ -266,7 +266,7 @@ Section AppInv.
     ghost_map_auth (fs_top γfs) (1/2) I -∗
     ▷ app_pred app_run (abs_view I) -∗
     app_xfer -∗ |={E}=> app_inv γfs.
-  Proof.
+  Proof using .
     iIntros (Hd) "Hh Hp #Hx". rewrite /app_inv.
     iApply (inv_alloc appN E with "[Hh Hp]").
     iNext. rewrite /app_body. iExists I. iFrame "Hh Hp Hx".
@@ -294,7 +294,7 @@ Section AppInv.
        ▷ app_pred app_run (abs_view (<[i := n']> I))) -∗
     ghost_map_auth (fs_top γfs) (1/2) I -∗ i ↪[fs_top γfs] n ={E}=∗
       ghost_map_auth (fs_top γfs) (1/2) (<[i := n']> I) ∗ i ↪[fs_top γfs] n'.
-  Proof.
+  Proof using .
     iIntros (HE) "#Hinv Hstep Hk Hf".
     iMod (inv_acc E appN with "Hinv") as "[Hbody Hclose]"; [exact HE |].
     iEval (rewrite /app_body) in "Hbody".
@@ -320,7 +320,7 @@ Section AppInv.
     app_inv γfs -∗
     ghost_map_auth (fs_top γfs) (1/2) I -∗ i ↪[fs_top γfs] n ={E}=∗
       ghost_map_auth (fs_top γfs) (1/2) (<[i := n']> I) ∗ i ↪[fs_top γfs] n'.
-  Proof.
+  Proof using .
     iIntros (HE Habs) "#Hinv Hk Hf".
     iApply (app_top_update E γfs I i n n' HE with "Hinv [] Hk Hf").
     iIntros (Hi) "Hp". rewrite (abs_view_insert_same I i n n' Hi Habs). iExact "Hp".
@@ -335,7 +335,7 @@ Section AppInv.
        app_pred app_run (abs_view (<[i := n']> I))) -∗
     ghost_map_auth (fs_top γfs) (1/2) I -∗ i ↪[fs_top γfs] n ={E}=∗
       ghost_map_auth (fs_top γfs) (1/2) (<[i := n']> I) ∗ i ↪[fs_top γfs] n'.
-  Proof.
+  Proof using .
     iIntros (HE) "#Hinv Hstep Hk Hf".
     iApply (app_top_update E γfs I i n n' HE with "Hinv [Hstep] Hk Hf").
     iIntros (Hi) "Hp". iNext. iApply ("Hstep" with "Hp").
@@ -366,7 +366,7 @@ Section AppInv.
     app_step i I av' -∗
     ▷ app_pred app_run (abs_view I) -∗
     ▷ app_pred app_run (abs_view (<[i := n']> I)).
-  Proof.
+  Proof using .
     intros Heq. iIntros "Hstep Hp". rewrite /app_step.
     iApply ("Hstep" $! n' with "[//] Hp").
   Qed.
@@ -378,7 +378,7 @@ Section AppInv.
      the reading is the same map. *)
   Lemma app_step_id (i : Z) (I : gmap Z fs_node) :
     ⊢ app_step i I (abs_view I).
-  Proof.
+  Proof using .
     rewrite /app_step. iIntros (n' Heq) "Hp". rewrite Heq. iExact "Hp".
   Qed.
 
@@ -391,7 +391,7 @@ Section AppInv.
   Lemma app_xfer_acc (E : coPset) (γfs : fs_names) :
     ↑appN ⊆ E ->
     app_inv γfs ={E}=∗ ▷ app_xfer.
-  Proof.
+  Proof using .
     iIntros (HE) "#Hinv".
     iMod (inv_acc E appN with "Hinv") as "[Hbody Hclose]"; [exact HE |].
     iEval (rewrite /app_body) in "Hbody".
@@ -418,7 +418,7 @@ Section AppInv.
     □ (∀ av : aview, R -∗ ▷ app_pred app_run av ={E ∖ ↑appN}=∗
          ▷ app_pred app_run av ∗ Q) -∗
     R ={E}=∗ Q.
-  Proof.
+  Proof using .
     iIntros (HE) "#Hinv #Hstep HR".
     iMod (inv_acc E appN with "Hinv") as "[Hbody Hclose]"; [exact HE |].
     iEval (rewrite /app_body) in "Hbody".
@@ -440,7 +440,7 @@ Section AppInv.
      the view does not have.  The supply needs neither. *)
   Lemma app_step_acc (i : Z) (I : gmap Z fs_node) (av' : aview) :
     app_sup -∗ app_step i I av'.
-  Proof.
+  Proof using .
     iIntros "#Hs". rewrite /app_step. iIntros (n' Heq) "_". iNext.
     rewrite /app_sup /app_sup_raw. iApply "Hs".
   Qed.

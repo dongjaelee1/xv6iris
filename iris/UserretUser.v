@@ -303,7 +303,7 @@ Section UserretUser.
            [uexec_wp] (defect F1/F2, design/user-wp-slot.md). ---- *)
     ▷ ukb C pt Rfd Rut sz (perm_of (ud_um pt) sz) fdv cw gn cs pidv lz -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HSIE HMPRV HSXL HTVM HMXR Hmm Hwf HTSR Hsup Ha0 HuMode Huasid Huppn
       HFS HVS HXS HSD HMPP HSPIE Hdqc Hinj Hacc Hlok Hszok Hlzf.
     iIntros "#Hkt #Hhw #Hmi #Hwi Hhs Hpriv Hms Hmie Hmdl Hmenv Hsenv Hsepc

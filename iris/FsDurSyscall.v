@@ -656,7 +656,7 @@ Section commit.
       ∃ D : gmap Z (list (bv 8)),
         ⌜fs_recovery (fs_blocks dk) D cov ls⌝ ∗ ⌜snap_holds D⌝ ∗
         P_fs γs cov ls dk.
-  Proof.
+  Proof using .
     iIntros "Hp".
     iDestruct (fs_commit_receipt with "Hp") as (D S) "(%Hrec & %Hok & Hp)".
     iExists D. iSplitR; [iPureIntro; exact Hrec |].

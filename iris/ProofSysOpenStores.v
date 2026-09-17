@@ -331,7 +331,7 @@ Section ProofSysOpenStores.
       (so_cont_au gf nsj
                dqb dqs (proc_addr jx) pidv Mim pvv vom U sts P Pmiss Fo Ft m K eb b lks) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hqs HKiu HKeo HKit HK24 Kpop Hkk Hinb Hipos Hgeom Hsize Hbm0
            Hbmcov Hbmlog Hist0 Hiblk Hiblog Hcovb Hu2 Hj Hgl Hlkempty Hkf
            Hfdlt Hlen Hfrees Htyor Hdir Hwf Hpof Hom Htd Hti Hal23 Hsp0 HNsp HNthr

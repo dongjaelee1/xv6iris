@@ -122,7 +122,7 @@ Section ProofNameiRoot.
       (b : bool) (lks : gset string) (Vpr : pprivate)
     : wp_namei_root_body dqp
                          m n K eb p b lks Vpr.
-  Proof.
+  Proof using .
     cbv beta delta [wp_namei_root_body].
     intros pcE pv ret_tgt HK Hn Hroot Hnib0 Hbelow.
     destruct (nmr_kb K HK) as (Knx & K4 & Kpop).

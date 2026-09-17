@@ -497,7 +497,7 @@ Section UexecExecInst.
 
   Lemma exec_sbundle_ne (n : nat) :
     Proper (dist n ==> eq ==> eq ==> dist n) exec_sbundle.
-  Proof.
+  Proof using .
     intros X Y HXY f ? <- W ? <-. rewrite /exec_sbundle.
     (* the pay row does not mention the slot predicate, so it is untouched
        by the distance; only the AU half moves *)
@@ -524,7 +524,7 @@ Section UexecExecInst.
     uvis_ch W = uvis_ch W' ->
     uvis_pid W = uvis_pid W' ->
     exec_sbundle X f W ⊣⊢ exec_sbundle X f W'.
-  Proof.
+  Proof using .
     intros HM Hpv Hav Hfd Hcw Hgn Hch Hpi.
     rewrite /exec_sbundle HM Hpv Hav Hfd Hcw Hgn Hch Hpi. reflexivity.
   Qed.
@@ -817,7 +817,7 @@ Section UexecExecInst.
 
   Lemma xv6_sbundle_ne (k : nat) :
     Proper (dist k ==> eq ==> eq ==> eq ==> dist k) xv6_sbundle.
-  Proof.
+  Proof using .
     intros X Y HXY n ? <- f ? <- W ? <-. rewrite /xv6_sbundle.
     destruct (decide (n = USYS_exec)) as [_ | _];
       [ exact (exec_sbundle_ne k X Y HXY f f eq_refl W W eq_refl) | ].
@@ -827,7 +827,7 @@ Section UexecExecInst.
   Lemma xv6_spost_ne (k : nat) :
     Proper (dist k ==> eq ==> eq ==> eq ==> eq ==> eq ==> eq ==> eq ==> eq ==> dist k)
       xv6_spost.
-  Proof.
+  Proof using .
     intros X Y _ n ? <- f ? <- W ? <- r ? <- M' ? <- fdv' ? <- cw' ? <- cs' ? <-.
     reflexivity.
   Qed.
@@ -838,7 +838,7 @@ Section UexecExecInst.
   Lemma xv6_sbundle_cong (X : uvis -d> iPropO Σ) (n : Z) (f : xfam)
       (W W' : uvis) :
     skey_eq W W' -> xv6_sbundle X n f W ⊣⊢ xv6_sbundle X n f W'.
-  Proof.
+  Proof using .
     intros Hk.
     pose proof Hk as (HM & Ha0 & Ha1 & Ha2 & Hfd & Hcw & Hgn & Hch & Hpi & _ & _).
     rewrite /xv6_sbundle.
@@ -856,7 +856,7 @@ Section UexecExecInst.
       (fdv' : list fdstate) (cw' : Z) (cs' : gset gname) :
     skey_eq W W' ->
     xv6_spost X n f W r M' fdv' cw' cs' ⊣⊢ xv6_spost X n f W' r M' fdv' cw' cs'.
-  Proof.
+  Proof using .
     intros Hk.
     pose proof Hk as (HM & Ha0 & Ha1 & Ha2 & Hfd & Hcw & Hgn & _ & _ & Hpi & Hsz
                       & Hlz).
@@ -873,7 +873,7 @@ Section UexecExecInst.
       (W : uvis) :
     ⊢ □ (∀ W' : uvis, X W' -∗ Y W') -∗
       xv6_sbundle X n f W -∗ xv6_sbundle Y n f W.
-  Proof.
+  Proof using .
     iIntros "#Hup Hb". rewrite /xv6_sbundle.
     destruct (decide (n = USYS_exec)) as [_ | _];
       [ | xv6_num_cases; iExact "Hb" ].
@@ -952,7 +952,7 @@ Section UexecExecInst.
       (Q : Z -> iProp Σ) :
     n <> USYS_exec ->
     ⊢ □ xv6_ssupply ==∗ ∃ f : xfam, ⌜kf_xpay f = Q⌝ ∗ xv6_sbundle X n f W.
-  Proof.
+  Proof using .
     intros Hne. rewrite /xv6_ssupply. iIntros "#(Hsup & Hkc & Hlic)".
     iAssert (|==> xv6_sbundle X n (xfam_at Q xfam_pt) W)%I with "[]" as "Hb";
       [ | iMod "Hb" as "Hb"; iModIntro; iExists (xfam_at Q xfam_pt);
@@ -1015,7 +1015,7 @@ Section UexecExecInst.
     ⊢ my_pay (uvis_gen W) (fun _ => R)%I -∗ □ xv6_ssupply -∗ □ R -∗
       □ (∀ W' : uvis, my_pay (uvis_gen W') (fun _ => R)%I -∗ □ R -∗ X W') ==∗
       ∃ f : xfam, ⌜kf_xpay f = (fun _ => R)%I⌝ ∗ xv6_sbundle X n f W.
-  Proof.
+  Proof using .
     rewrite /xv6_ssupply.
     iIntros "#Hpay #(Hsup & Hkc & Hlic) #HR #Hs".
     destruct (decide (n = USYS_exec)) as [He | Hne].
@@ -1070,7 +1070,7 @@ Section UexecExecInst.
       (f : xfam) (W : uvis) :
     n <> USYS_read -> n <> USYS_exec ->
     xv6_sbundle X n (xfam_at Q f) W = xv6_sbundle X n f W.
-  Proof.
+  Proof using .
     intros Hne Hnx. rewrite /xv6_sbundle. destruct f.
     destruct (decide (n = USYS_exec)) as [He | _]; [exfalso; exact (Hnx He) |].
     destruct (decide (n = 5)) as [He | _]; [exfalso; exact (Hne He) |].
@@ -1080,7 +1080,7 @@ Section UexecExecInst.
   Lemma xfam_at_spost (X : uvis -d> iPropO Σ) (n : Z) (Q : Z -> iProp Σ)
       (f : xfam) (W : uvis) :
     xv6_spost X n (xfam_at Q f) W = xv6_spost X n f W.
-  Proof. destruct f; reflexivity. Qed.
+  Proof using . destruct f; reflexivity. Qed.
 
   (* ...AND THE POST AT exec IS THE REFUND (lane KILL-PAY, K4(a), R-A) *)
   Lemma xv6_spost_exec (X : uvis -d> iPropO Σ) (f : xfam) (W : uvis)
@@ -1088,7 +1088,7 @@ Section UexecExecInst.
       (cs' : gset gname) :
     xv6_spost X USYS_exec f W r M' fdv' cw' cs'
       = (⌜r = (mword_of_int (-1) : mword 64)⌝ -∗ xf_Rs f)%I.
-  Proof.
+  Proof using .
     rewrite /xv6_spost.
     destruct (decide (USYS_exec = USYS_exec)) as [_ | Hc];
       [ reflexivity | exfalso; exact (Hc eq_refl) ].
@@ -1178,7 +1178,7 @@ Section UexecExecInst.
       (Q : Z -> iProp Σ) :
     xv6_free n ->
     ⊢ |==> ∃ f : xfam, ⌜kf_xpay f = Q⌝ ∗ xv6_sbundle X n f W.
-  Proof.
+  Proof using .
     intros (Hx & H5 & H6 & H15 & H16 & H17 & H18 & H19 & H20 & H21 & H2).
     iAssert (|==> xv6_sbundle X n (xfam_at Q xfam_pt) W)%I with "[]" as "Hb";
       [ | iMod "Hb" as "Hb"; iModIntro; iExists (xfam_at Q xfam_pt);
@@ -1213,7 +1213,7 @@ Section UexecExecInst.
     (forall (rb wb : bool) (gp : pipe_names),
        fd_st_of_key (xk_a W 0) (uvis_fd W) <> FdOpen rb wb (FdPipe gp)) ->
     ⊢ |==> ∃ f : xfam, ⌜kf_xpay f = Q⌝ ∗ xv6_sbundle X 21 f W.
-  Proof.
+  Proof using .
     intros Hnp.
     iAssert (|==> xv6_sbundle X 21 (xfam_at Q xfam_pt) W)%I with "[]" as "Hb";
       [ | iMod "Hb" as "Hb"; iModIntro; iExists (xfam_at Q xfam_pt);
@@ -1251,7 +1251,7 @@ Section UexecExecInst.
     (forall st : fdstate, st ∈ uvis_fd W ->
        forall (rb wb : bool) (gp : pipe_names), st <> FdOpen rb wb (FdPipe gp)) ->
     ⊢ |==> ∃ f : xfam, ⌜kf_xpay f = Q⌝ ∗ xv6_sbundle X USYS_exit f W.
-  Proof.
+  Proof using .
     intros Hnp.
     iAssert (|==> xv6_sbundle X USYS_exit (xfam_at Q xfam_pt) W)%I with "[]" as "Hb";
       [ | iMod "Hb" as "Hb"; iModIntro; iExists (xfam_at Q xfam_pt);
@@ -1283,7 +1283,7 @@ Section UexecExecInst.
       (Q : Z -> iProp Σ) :
     □ riscv_kill_cred -∗
     |==> ∃ f : xfam, ⌜kf_xpay f = Q⌝ ∗ xv6_sbundle X USYS_exit f W.
-  Proof.
+  Proof using .
     iIntros "#Ht".
     iAssert (|==> xv6_sbundle X USYS_exit (xfam_at Q xfam_pt) W)%I with "[]" as "Hb";
       [ | iMod "Hb" as "Hb"; iModIntro; iExists (xfam_at Q xfam_pt);
@@ -1342,7 +1342,7 @@ Section UexecExecInst.
     fileread_in (fd_st_of_key (tf_w (uvis_tf W) (tf_arg_idx 0)) (uvis_fd W))
       (sys_rw_count (tf_w (uvis_tf W) (tf_arg_idx 2)))
       (rf_F f) (rf_ret f) (rf_in f) (rf_pq f) (rf_pqe f) True%I.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /sbundle_at /= /xv6_sbundle /xk_a.
     xv6_skip. xv6_take. iExact "H".
   Qed.
@@ -1351,7 +1351,7 @@ Section UexecExecInst.
   Lemma sbundle_at_close_elim (X : uvis -d> iPropO Σ) (f : xfam) (W : uvis) :
     sbundle_at X 21 f W -∗
     fileclose_cpay (fd_st_of_key (tf_w (uvis_tf W) (tf_arg_idx 0)) (uvis_fd W)) (cl_P f).
-  Proof.
+  Proof using .
     iIntros "H". rewrite /sbundle_at /= /xv6_sbundle /xk_a.
     do 10 xv6_skip. xv6_take. iExact "H".
   Qed.
@@ -1359,7 +1359,7 @@ Section UexecExecInst.
   (* exit's row: the table's close payments, which kexit spends *)
   Lemma sbundle_at_exit_elim (X : uvis -d> iPropO Σ) (f : xfam) (W : uvis) :
     sbundle_at X USYS_exit f W -∗ fileclose_cpays (uvis_fd W).
-  Proof.
+  Proof using .
     iIntros "H". rewrite /sbundle_at /= /xv6_sbundle /xk_a.
     do 11 xv6_skip. xv6_take. iExact "H".
   Qed.
@@ -1368,7 +1368,7 @@ Section UexecExecInst.
     sbundle_at X 9 f W -∗
     chdir_au_pre (fs_gamma_L fsc_fs) fsc_fs (uvis_cwd W)
       (cf_P f) (cf_Pmiss f) (cf_Fo f).
-  Proof.
+  Proof using .
     iIntros "H". rewrite /sbundle_at /= /xv6_sbundle /xk_a.
     xv6_skip. xv6_skip. xv6_take. iExact "H".
   Qed.
@@ -1380,7 +1380,7 @@ Section UexecExecInst.
       (tf_w (uvis_tf W) (tf_arg_idx 1))
       (of_P f) (of_Pmiss f) (of_Farm f) (of_Fun f) (of_Fok f) (of_Fex f)
       (of_Fo f) (of_Ft f).
-  Proof.
+  Proof using .
     iIntros "H". rewrite /sbundle_at /= /xv6_sbundle /xk_a.
     xv6_skip. xv6_skip. xv6_skip. xv6_take. iExact "H".
   Qed.
@@ -1390,7 +1390,7 @@ Section UexecExecInst.
     filewrite_in (fd_st_of_key (tf_w (uvis_tf W) (tf_arg_idx 0)) (uvis_fd W))
       (sys_rw_count (tf_w (uvis_tf W) (tf_arg_idx 2))) (uvis_M W)
       (tf_w (uvis_tf W) (tf_arg_idx 1)) (wf_Q f) (wf_Qe f).
-  Proof.
+  Proof using .
     iIntros "H". rewrite /sbundle_at /= /xv6_sbundle /xk_a.
     xv6_skip. xv6_skip. xv6_skip. xv6_skip. xv6_take. iExact "H".
   Qed.
@@ -1402,7 +1402,7 @@ Section UexecExecInst.
       (dev_arg (tf_w (uvis_tf W) (tf_arg_idx 1)))
       (dev_arg (tf_w (uvis_tf W) (tf_arg_idx 2)))
       (nf_P f) (nf_Pmiss f) (nf_Farm f) (nf_Fun f) (nf_Fok f) (nf_Fex f).
-  Proof.
+  Proof using .
     iIntros "H". rewrite /sbundle_at /= /xv6_sbundle /xk_a.
     xv6_skip. xv6_skip. xv6_skip. xv6_skip. xv6_skip. xv6_take. iExact "H".
   Qed.
@@ -1411,7 +1411,7 @@ Section UexecExecInst.
     sbundle_at X 18 f W -∗
     unlink_au_pre (fs_gamma_L fsc_fs) fsc_fs (uvis_cwd W)
       (uf_P f) (uf_Pmiss f) (uf_Fent f) (uf_Ftgt f) (uf_Fex f) (uf_Fmiss f).
-  Proof.
+  Proof using .
     iIntros "H". rewrite /sbundle_at /= /xv6_sbundle /xk_a.
     xv6_skip. xv6_skip. xv6_skip. xv6_skip. xv6_skip. xv6_skip.
     xv6_take. iExact "H".
@@ -1420,7 +1420,7 @@ Section UexecExecInst.
   Lemma sbundle_at_link_elim (X : uvis -d> iPropO Σ) (f : xfam) (W : uvis) :
     sbundle_at X 19 f W -∗
     link_commits (fs_gamma_L fsc_fs) (lf_Ftgt f) (lf_Fent f) (lf_Funt f).
-  Proof.
+  Proof using .
     iIntros "H". rewrite /sbundle_at /= /xv6_sbundle /xk_a.
     xv6_skip. xv6_skip. xv6_skip. xv6_skip. xv6_skip. xv6_skip. xv6_skip.
     xv6_take. iExact "H".
@@ -1431,7 +1431,7 @@ Section UexecExecInst.
     mkdir_au_pre (fs_gamma_L fsc_fs) fsc_fs (uvis_cwd W)
       (df_P f) (df_Pmiss f) (df_Farm f) (df_Fdots f) (df_Fun f)
       (df_Fok f) (df_Fex f).
-  Proof.
+  Proof using .
     iIntros "H". rewrite /sbundle_at /= /xv6_sbundle /xk_a.
     xv6_skip. xv6_skip. xv6_skip. xv6_skip. xv6_skip. xv6_skip. xv6_skip.
     xv6_skip. xv6_take. iExact "H".
@@ -1444,7 +1444,7 @@ Section UexecExecInst.
      [SchedCtx.proc_pub]'s killed row. *)
   Lemma sbundle_at_kill_elim (X : uvis -d> iPropO Σ) (f : xfam) (W : uvis) :
     sbundle_at X 6 f W -∗ □ riscv_kill_cred.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /sbundle_at /= /xv6_sbundle /xk_a.
     xv6_skip. xv6_skip. xv6_skip. xv6_skip. xv6_skip. xv6_skip. xv6_skip.
     xv6_skip. xv6_skip. xv6_take. iExact "H".
@@ -1465,7 +1465,7 @@ Section UexecExecInst.
       (uvis_M W) (tf_w (uvis_tf W) (tf_arg_idx 0))
       (tf_w (uvis_tf W) (tf_arg_idx 1)) (uvis_fd W) (uvis_ch W) (uvis_pid W) -∗
     sbundle_at X USYS_exec (xfam_exec P Pmiss Fo Rs) W.
-  Proof.
+  Proof using .
     iIntros "Hmp H". rewrite /sbundle_at /= /xv6_sbundle.
     destruct (decide (USYS_exec = USYS_exec)) as [_ | Hc];
       [ | exfalso; exact (Hc eq_refl) ].
@@ -1481,7 +1481,7 @@ Section UexecExecInst.
       (uvis_M W) (tf_w (uvis_tf W) (tf_arg_idx 0))
       (tf_w (uvis_tf W) (tf_arg_idx 1)) (uvis_fd W) (uvis_ch W) (uvis_pid W) -∗
     sbundle X USYS_exec W.
-  Proof.
+  Proof using .
     iIntros "Hmp H". rewrite /sbundle. iExists (xfam_exec P Pmiss Fo Rs).
     iApply (sbundle_at_exec_intro X W P Pmiss Fo Rs with "Hmp H").
   Qed.
@@ -1503,7 +1503,7 @@ Section UexecExecInst.
       (uvis_M W) (tf_w (uvis_tf W) (tf_arg_idx 0))
       (tf_w (uvis_tf W) (tf_arg_idx 1)) (uvis_fd W) (uvis_ch W) (uvis_pid W) -∗
     sbundle_pay X USYS_exec Q W.
-  Proof.
+  Proof using .
     iIntros "Hmp H". rewrite /sbundle_pay.
     iExists (xfam_at Q (xfam_exec P Pmiss Fo Rs)).
     iSplitR; [ done | ].
@@ -1528,7 +1528,7 @@ Section UexecExecInst.
       (uvis_M W) (tf_w (uvis_tf W) (tf_arg_idx 0))
       (tf_w (uvis_tf W) (tf_arg_idx 1)) (uvis_fd W) (uvis_ch W) (uvis_pid W) -∗
     sbundle_pay_ref X Q W.
-  Proof.
+  Proof using .
     iIntros "#Hrf Hmp H". rewrite /sbundle_pay_ref.
     iExists (xfam_at Q (xfam_exec P Pmiss Fo Rs)).
     iSplitR; [ done | ].
@@ -1546,7 +1546,7 @@ Section UexecExecInst.
       (uvis_cwd W) (kf_xpay f) (xf_P f) (xf_Pmiss f) (xf_Fo f)
       (uvis_M W) (tf_w (uvis_tf W) (tf_arg_idx 0))
       (tf_w (uvis_tf W) (tf_arg_idx 1)) (uvis_fd W) (uvis_ch W) (uvis_pid W).
-  Proof.
+  Proof using .
     iIntros "H". rewrite /sbundle_at /= /xv6_sbundle.
     destruct (decide (USYS_exec = USYS_exec)) as [_ | Hc];
       [ | exfalso; exact (Hc eq_refl) ].
@@ -1562,7 +1562,7 @@ Section UexecExecInst.
         Q P Pmiss Fo
         (uvis_M W) (tf_w (uvis_tf W) (tf_arg_idx 0))
         (tf_w (uvis_tf W) (tf_arg_idx 1)) (uvis_fd W) (uvis_ch W) (uvis_pid W).
-  Proof.
+  Proof using .
     iIntros "H". rewrite /sbundle. iDestruct "H" as (f) "H".
     iDestruct (sbundle_at_exec_elim X f W with "H") as "H".
     iExists (kf_xpay f), (xf_P f), (xf_Pmiss f), (xf_Fo f), (xf_Rs f).
@@ -1586,7 +1586,7 @@ Section UexecExecInst.
       (sys_rw_count (tf_w (uvis_tf W) (tf_arg_idx 2))) (rf_F f) (rf_ret f)
       (rf_in f) (rf_pq f) (rf_pqe f) r M' (tf_w (uvis_tf W) (tf_arg_idx 1)) -∗
     spost_at X 5 f W r M' fdv' cw' cs'.
-  Proof.
+  Proof using .
     intros Hret Hpm Hwf Hlz. iIntros "H". rewrite /spost_at /= /xv6_spost /xk_a.
     xv6_take. iSplitR; [by iPureIntro |]. iExists P.
     iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
@@ -1608,7 +1608,7 @@ Section UexecExecInst.
     (⌜(sys_rw_count (tf_w (uvis_tf W) (tf_arg_idx 2)) < 0)%Z⌝
      ∨ ChildTok.kill_shot (uvis_gen W)) ∗
     spost_at X 5 f W r M' fdv' cw' cs'.
-  Proof.
+  Proof using .
     intros Hfd Hr.
     pose proof (sys_rw_count_lt (tf_w (uvis_tf W) (tf_arg_idx 2))) as Hlt.
     iIntros "H". rewrite /spost_at /= /xv6_spost /xk_a.
@@ -1634,7 +1634,7 @@ Section UexecExecInst.
     chdir_receipt (fs_gamma_L fsc_fs) fsc_fs (uvis_cwd W)
       (cf_P f) (cf_Pmiss f) (cf_Fo f) r cw' -∗
     spost_at X 9 f W r M' fdv' cw' cs'.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /spost_at /= /xv6_spost /xk_a.
     xv6_skip. xv6_take. iExact "H".
   Qed.
@@ -1649,7 +1649,7 @@ Section UexecExecInst.
       (of_P f) (of_Pmiss f) (of_Farm f) (of_Fun f) (of_Fok f) (of_Fex f)
       (of_Fo f) (of_Ft f) (uvis_fd W) r fdv' -∗
     spost_at X 15 f W r M' fdv' cw' cs'.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /spost_at /= /xv6_spost /xk_a.
     xv6_skip. xv6_skip. xv6_take. iExact "H".
   Qed.
@@ -1664,7 +1664,7 @@ Section UexecExecInst.
       (sys_rw_count (tf_w (uvis_tf W) (tf_arg_idx 2))) (uvis_M W)
       (tf_w (uvis_tf W) (tf_arg_idx 1)) (wf_Q f) (wf_Qe f) r -∗
     spost_at X 16 f W r M' fdv' cw' cs'.
-  Proof.
+  Proof using .
     intros Hpm Hwf Hlz. iIntros "H". rewrite /spost_at /= /xv6_spost /xk_a.
     xv6_skip. xv6_skip. xv6_skip. xv6_take. iExists P.
     iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
@@ -1679,7 +1679,7 @@ Section UexecExecInst.
       (dev_arg (tf_w (uvis_tf W) (tf_arg_idx 2)))
       (nf_P f) (nf_Pmiss f) (nf_Farm f) (nf_Fun f) (nf_Fok f) (nf_Fex f) r -∗
     spost_at X 17 f W r M' fdv' cw' cs'.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /spost_at /= /xv6_spost /xk_a.
     xv6_skip. xv6_skip. xv6_skip. xv6_skip. xv6_take. iExact "H".
   Qed.
@@ -1689,7 +1689,7 @@ Section UexecExecInst.
     unlink_arms (fs_gamma_L fsc_fs) fsc_fs (uvis_cwd W)
       (uf_P f) (uf_Pmiss f) (uf_Fent f) (uf_Ftgt f) (uf_Fex f) (uf_Fmiss f) r -∗
     spost_at X 18 f W r M' fdv' cw' cs'.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /spost_at /= /xv6_spost /xk_a.
     xv6_skip. xv6_skip. xv6_skip. xv6_skip. xv6_skip. xv6_take. iExact "H".
   Qed.
@@ -1698,7 +1698,7 @@ Section UexecExecInst.
       (r : mword 64) (M' : gmap Z (bv 8)) (fdv' : list fdstate) (cw' : Z) (cs' : gset gname) :
     link_arms (fs_gamma_L fsc_fs) (lf_Ftgt f) (lf_Fent f) (lf_Funt f) r -∗
     spost_at X 19 f W r M' fdv' cw' cs'.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /spost_at /= /xv6_spost /xk_a.
     xv6_skip. xv6_skip. xv6_skip. xv6_skip. xv6_skip. xv6_skip.
     xv6_take. iExact "H".
@@ -1710,7 +1710,7 @@ Section UexecExecInst.
       (df_P f) (df_Pmiss f) (df_Farm f) (df_Fdots f) (df_Fun f)
       (df_Fok f) (df_Fex f) r -∗
     spost_at X 20 f W r M' fdv' cw' cs'.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /spost_at /= /xv6_spost /xk_a.
     xv6_skip. xv6_skip. xv6_skip. xv6_skip. xv6_skip. xv6_skip. xv6_skip.
     xv6_take. iExact "H".
@@ -1725,7 +1725,7 @@ Section UexecExecInst.
     ~ (n = 5 \/ n = 9 \/ n = 15 \/ n = 16 \/ n = 17 \/ n = 18 \/ n = 19
        \/ n = 20 \/ n = 7 \/ n = 4 \/ n = 21) ->
     ⊢ spost_at X n f W r M' fdv' cw' cs'.
-  Proof.
+  Proof using .
     intros Hne. rewrite /spost_at /= /xv6_spost.
     destruct (decide (n = USYS_exec)) as [He | _];
       [ exfalso; apply Hne; unfold USYS_exec in He; tauto |].
@@ -1755,7 +1755,7 @@ Section UexecExecInst.
                      (<[a := FdOpen true false (FdPipe γp)]> (uvis_fd W))⌝ ∗
        pipe_qfrag (pn_queue γp) pst0) -∗
     spost_at X USYS_pipe f W r M' fdv' cw' cs'.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /spost_at /= /xv6_spost /xk_a.
     do 9 xv6_skip. xv6_take. iExact "H".
   Qed.
@@ -1774,7 +1774,7 @@ Section UexecExecInst.
         /\ fdv' = <[b := FdOpen false true (FdPipe γp)]>
                      (<[a := FdOpen true false (FdPipe γp)]> (uvis_fd W))⌝ ∗
        pipe_qfrag (pn_queue γp) pst0).
-  Proof.
+  Proof using .
     iIntros "H". rewrite /spost_at /= /xv6_spost /xk_a.
     do 9 xv6_skip. xv6_take. iExact "H".
   Qed.
@@ -1783,7 +1783,7 @@ Section UexecExecInst.
       (r : mword 64) (M' : gmap Z (bv 8)) (fdv' : list fdstate) (cw' : Z) (cs' : gset gname) :
     fileclose_cpost_any (fd_st_of_key (tf_w (uvis_tf W) (tf_arg_idx 0)) (uvis_fd W)) (cl_P f) -∗
     spost_at X 21 f W r M' fdv' cw' cs'.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /spost_at /= /xv6_spost /xk_a.
     do 10 xv6_skip. xv6_take. iExact "H".
   Qed.

@@ -92,7 +92,7 @@ Section ProofArgstr.
       (i : nat) (v : mword 64)
       (pid : mword 32) (U : ustate) (maxn : nat) (buf_olds : nat -> bv 8) (b : bool) (lks : gset string)
     : wp_argstr_sconf_body γa γf m av n eb p i v pid U maxn buf_olds b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_argstr_sconf_body].
     intros pcE buf ret_tgt Hi Ha0 Hargs Hn Hav Hmax Hmax31 Hlkbelow.
     

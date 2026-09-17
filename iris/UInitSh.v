@@ -617,14 +617,14 @@ Section UInitSh.
          (Rsh (ukn_t N) (ukn_d N) (ukn_s N))) -∗
     UkSh.ush_tag_law T -∗
     sh_pay T Cr Rsh n0.
-  Proof.
+  Proof using .
     iIntros "#Hst #Hre #Htg". rewrite /sh_pay /sh_pay_state.
     iSplitR; [ iExact "Hst" | ]. iSplitR; [ iExact "Hre" | iExact "Htg" ].
   Qed.
 
   Global Instance sh_pay_persistent T Cr Rsh n0 :
     Persistent (sh_pay T Cr Rsh n0).
-  Proof. rewrite /sh_pay. apply _. Qed.
+  Proof using . rewrite /sh_pay. apply _. Qed.
 
   (* ------------------------------------------------------------------- *)
   (* THE CARVE (lane SH-STATE): sh's static state and its line buffer,    *)
@@ -636,7 +636,7 @@ Section UInitSh.
          ubyte g k b)
       ∗ ([∗ map] k ↦ b ∈ base.filter (fun kv : Z * bv 8 => ~ (lo <= kv.1 < hi)) D,
            ubyte g k b).
-  Proof.
+  Proof using .
     iIntros "H".
     rewrite -(big_sepM_union (fun k b => ubyte g k b)
                 (base.filter (fun kv : Z * bv 8 => lo <= kv.1 < hi) D)
@@ -652,7 +652,7 @@ Section UInitSh.
     (forall j : nat, (j < n)%nat -> D !! (a + Z.of_nat j) = Some (f j)) ->
     ([∗ map] k ↦ b ∈ base.filter (fun kv : Z * bv 8 => lo <= kv.1 < hi) D,
        ubyte g k b) -∗ ubytes g a n f.
-  Proof.
+  Proof using .
     intros Hr HD. iIntros "H".
     assert (Hlk : forall j : nat, (j < n)%nat ->
               base.filter (fun kv : Z * bv 8 => lo <= kv.1 < hi) D
@@ -672,7 +672,7 @@ Section UInitSh.
     D !! (a + Z.of_nat len) = Some ubyte0 ->
     ([∗ map] k ↦ b ∈ base.filter (fun kv : Z * bv 8 => lo <= kv.1 < hi) D,
        ubyteq g DfracDiscarded k b) -∗ ustr g DfracDiscarded a len f.
-  Proof.
+  Proof using .
     intros Hne Hlen Hr HD Hnul. iIntros "#H".
     assert (Hlk : forall j : nat, (j < len)%nat ->
               base.filter (fun kv : Z * bv 8 => lo <= kv.1 < hi) D
@@ -696,7 +696,7 @@ Section UInitSh.
     fun _ γd γs => (UkShLoop.ushl_dat γd ∗ usz γs (kexec_sz ElfUser.sh_elf))%I.
 
   Lemma sh_pay_state_holds : ⊢ sh_pay_state sh_Rsh 0%nat.
-  Proof.
+  Proof using .
     rewrite /sh_pay_state /sh_Rsh.
     destruct sh_tbl_parts as (Hsy & Hws & Hsy0 & Hws0).
     iModIntro. iIntros (W' γt γd γs) "%Hkey Hszf HD".
@@ -869,11 +869,11 @@ Section UInitSh.
 
   Global Instance init_sh_slot_core_persistent T Pay `{!Persistent Pay} :
     Persistent (init_sh_slot_core T Pay).
-  Proof. rewrite /init_sh_slot_core. apply _. Qed.
+  Proof using . rewrite /init_sh_slot_core. apply _. Qed.
 
   Global Instance init_sh_slot_persistent T Pay `{!Persistent Pay} :
     Persistent (init_sh_slot T Pay).
-  Proof. rewrite /init_sh_slot /init_sh_slot_core. apply _. Qed.
+  Proof using . rewrite /init_sh_slot /init_sh_slot_core. apply _. Qed.
 
   (* the projection /sh's own pinned exec wants *)
   Lemma sh_pins_of_fs_pure (T : iProp Σ) :
@@ -881,7 +881,7 @@ Section UInitSh.
          app_pred app_run v ∗ (⌜echo_fs_pure v⌝ ∨ T)) -∗
     □ (∀ v : aview, app_pred app_run v -∗
          app_pred app_run v ∗ (⌜FsShPin.era0_sh_pins v⌝ ∨ T)).
-  Proof.
+  Proof using .
     iIntros "#Hl !>" (v) "Hp".
     iDestruct ("Hl" $! v with "Hp") as "[Hp [%Hf | HT]]";
       [ iFrame "Hp"; iLeft; iPureIntro; exact (proj1 (proj2 Hf))
@@ -894,7 +894,7 @@ Section UInitSh.
          app_pred app_run v ∗ (⌜echo_fs_pure v⌝ ∨ T)) -∗
     □ (∀ v : aview, app_pred app_run v -∗
          app_pred app_run v ∗ (⌜FsEchoPin.era0_echo_pins v⌝ ∨ T)).
-  Proof.
+  Proof using .
     iIntros "#Hl !>" (v) "Hp".
     iDestruct ("Hl" $! v with "Hp") as "[Hp [%Hf | HT]]";
       [ iFrame "Hp"; iLeft; iPureIntro; exact (proj2 (proj2 Hf))
@@ -911,7 +911,7 @@ Section UInitSh.
   (* ------------------------------------------------------------------- *)
   Lemma init_sh_sp_final (alen : nat -> nat) :
     alen 0%nat = 2%nat -> kxc_sp_final 0x5000 alen 1%nat = 0x4FE0.
-  Proof.
+  Proof using .
     intro Ha. unfold kxc_sp_final. cbn [kxc_sp]. rewrite Ha.
     vm_compute. reflexivity.
   Qed.
@@ -922,7 +922,7 @@ Section UInitSh.
     kexec_sz ElfUser.sh_elf - PGSIZE
       + 8 * Z.of_nat (2 + (8 + (16 + (ush_Dbody + n0))))
       <= kxc_sp_final (kexec_sz ElfUser.sh_elf) alen 1%nat.
-  Proof.
+  Proof using .
     intros Ha Hn0. rewrite sh_kexec_sz. rewrite (init_sh_sp_final alen Ha).
     unfold PGSIZE. lia.
   Qed.
@@ -933,7 +933,7 @@ Section UInitSh.
   Lemma init_sh_path_of (M : gmap Z (bv 8)) :
     uimg_sub UCodeInit.init_ro M ->
     exec_path_of M (mword_of_int 0x9a8 : mword 64) init_sh_pl.
-  Proof.
+  Proof using .
     intro Hro.
     pose proof (bool_decide_eq_true_1 _ init_ro_sh_bool) as (Hb0 & Hb1 & Hb2).
     split_and!.
@@ -963,7 +963,7 @@ Section UInitSh.
     ufd_auth γfd fdv ∗
     ((⌜take NSTD fdv !! 0%nat = Some st⌝ ∗ ⌜take NSTD fdv !! 2%nat = Some st⌝)
      ∨ ⌜take NSTD fdv !! 0%nat = Some FdClosed⌝ ∨ T).
-  Proof.
+  Proof using .
     rewrite /ufd_head /ufd_headL.
     iIntros "Ha [H | [H | [_ HT]]]".
     - iDestruct (ustd_agree with "Ha H") as %->.
@@ -987,7 +987,7 @@ Section UInitSh.
   (* /init's all-closed ledger is the closed-arm shape at zero opens
      (step 4) *)
   Lemma ufd_l0_lcl : UkSh.ush_lcl UInitFd.ufd_l0 0%nat.
-  Proof.
+  Proof using .
     split; [ intros i Hi; lia | ].
     intros i [_ Hi]. unfold NSTD in Hi.
     destruct i as [| [| [| i]]];
@@ -1070,7 +1070,7 @@ Section UInitSh.
                 (FdOpen true true (FdDevice ConsoleInv.CONSOLE))
                 (cc_wp Cr) (cc_wbn Cr) l np))%I
       uslot.
-  Proof.
+  Proof using .
     intros Hpsok_free Hn0 Hsav Hsro Hl Hcs Hpid Hlen HCr.
     pose proof HCr as (Hrl & Hpm1 & Hpm3 & Hpmwb & Hwc
                        & Hwbwc & Hwbl & Hwbr & Hbd & Hpw).
@@ -1244,7 +1244,7 @@ Section UInitSh.
        entry puts in its loop's own slot ([UkSh.ush_wcp]).  This is the
        ONE place the two ends meet. *)
     UkInit.init_exec_sup_lend cn T st Cr.
-  Proof.
+  Proof using .
     intros Hpsok_free Hn0 Hst HCr.
     pose proof HCr as (Hrl & Hpm1 & Hpm3 & Hpmwb & Hwc
                        & Hwbwc & Hwbl & Hwbr & Hbd & Hpw).

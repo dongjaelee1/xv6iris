@@ -276,7 +276,7 @@ Section ProcdumpData.
   Lemma pd_nl_bytes :
     forall j b, cstring_bytes pd_nl !! j = Some b ->
       KernelData.kernel_data !! (pd_nl_a + Z.of_nat j)%Z = Some b.
-  Proof.
+  Proof using .
     intros j b Hj.
     destruct j as [|[|j]]; [ vm_compute in Hj |- *; congruence
                            | vm_compute in Hj |- *; congruence
@@ -286,7 +286,7 @@ Section ProcdumpData.
   Lemma pd_qqq_bytes :
     forall j b, cstring_bytes pd_qqq !! j = Some b ->
       KernelData.kernel_data !! (pd_qqq_a + Z.of_nat j)%Z = Some b.
-  Proof.
+  Proof using .
     intros j b Hj.
     do 4 (destruct j as [|j]; [ vm_compute in Hj |- *; congruence | ]).
     vm_compute in Hj; discriminate.
@@ -295,14 +295,14 @@ Section ProcdumpData.
   Lemma pd_fmt_bytes :
     forall j b, cstring_bytes pd_fmt !! j = Some b ->
       KernelData.kernel_data !! (pd_fmt_a + Z.of_nat j)%Z = Some b.
-  Proof.
+  Proof using .
     intros j b Hj.
     do 9 (destruct j as [|j]; [ vm_compute in Hj |- *; congruence | ]).
     vm_compute in Hj; discriminate.
   Qed.
 
   Lemma pd_nl_str : (kernel_data : iProp Σ) -∗ (mword_of_int pd_nl_a : mword 64) ↦ₛ□ pd_nl.
-  Proof.
+  Proof using .
     iIntros "#Hd".
     iApply (kernel_data_string pd_nl_a pd_nl _ eq_refl
               ltac:(unfold text_end, pd_nl_a; lia)
@@ -310,7 +310,7 @@ Section ProcdumpData.
   Qed.
 
   Lemma pd_qqq_str : (kernel_data : iProp Σ) -∗ (mword_of_int pd_qqq_a : mword 64) ↦ₛ□ pd_qqq.
-  Proof.
+  Proof using .
     iIntros "#Hd".
     iApply (kernel_data_string pd_qqq_a pd_qqq _ eq_refl
               ltac:(unfold text_end, pd_qqq_a; lia)
@@ -318,7 +318,7 @@ Section ProcdumpData.
   Qed.
 
   Lemma pd_fmt_str : (kernel_data : iProp Σ) -∗ (mword_of_int pd_fmt_a : mword 64) ↦ₛ□ pd_fmt.
-  Proof.
+  Proof using .
     iIntros "#Hd".
     iApply (kernel_data_string pd_fmt_a pd_fmt _ eq_refl
               ltac:(unfold text_end, pd_fmt_a; lia)
@@ -329,7 +329,7 @@ Section ProcdumpData.
   Lemma pd_state_bytes (k : nat) : (k < 6)%nat ->
     forall j b, cstring_bytes (pd_state_name k) !! j = Some b ->
       KernelData.kernel_data !! (pd_state_a k + Z.of_nat j)%Z = Some b.
-  Proof.
+  Proof using .
     intros Hk j b Hj.
     unfold pd_state_a, pd_state_s0.
     destruct k as [|[|[|[|[|[|k']]]]]]; try lia;
@@ -339,7 +339,7 @@ Section ProcdumpData.
 
   Lemma pd_state_str (k : nat) : (k < 6)%nat ->
     (kernel_data : iProp Σ) -∗ pd_state_p k ↦ₛ□ pd_state_name k.
-  Proof.
+  Proof using .
     intro Hk.
     assert (Hle : text_end <= pd_state_a k)
       by (unfold text_end, pd_state_a, pd_state_s0; lia).
@@ -358,7 +358,7 @@ Section ProcdumpData.
     forall j, (j < 8)%nat ->
       KernelData.kernel_data !! (pd_states_a + 8 * Z.of_nat k + Z.of_nat j)%Z
         = Some (nth_byte (pd_state_p k) j).
-  Proof.
+  Proof using .
     intros Hk j Hj.
     unfold pd_states_a, pd_state_p, pd_state_a, pd_state_s0, KernelSyms.states_0.
     destruct k as [|[|[|[|[|[|k']]]]]]; try lia;
@@ -369,7 +369,7 @@ Section ProcdumpData.
   Lemma pd_states_word (k : nat) : (k < 6)%nat ->
     (kernel_data : iProp Σ) -∗
     (mword_of_int (pd_states_a + 8 * Z.of_nat k) : mword 64) ↦₈□ pd_state_p k.
-  Proof.
+  Proof using .
     intro Hk.
     assert (Hle : text_end <= pd_states_a + 8 * Z.of_nat k)
       by (unfold text_end, pd_states_a, KernelSyms.states_0; lia).

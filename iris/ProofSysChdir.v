@@ -387,7 +387,7 @@ Section ProofSysChdirFrame.
     (∃ w : mword 64, (pa_stk sp0 3) ↦₈[KT1] w) ∗
     (∃ w : mword 64, (pa_stk sp0 4) ↦₈[KT1] w) ∗
     bytes_own (KTR := KT1) (DfracOwn 1) (pa_stk sp0 20) 128.
-  Proof.
+  Proof using .
     iIntros "H". rewrite (stack_own_slots (KTR := KT1)). cbn [seq].
     iDestruct "H" as "(H1 & H2 & H3 & H4 & H5 & H6 & H7 & H8 & H9 & H10 &
                        H11 & H12 & H13 & H14 & H15 & H16 & H17 & H18 & H19 &
@@ -416,7 +416,7 @@ Section ProofSysChdirFrame.
     (pa_stk sp0 3) ↦₈[KT1] w3 -∗ (pa_stk sp0 4) ↦₈[KT1] w4 -∗
     bytes_own (KTR := KT1) (DfracOwn 1) (pa_stk sp0 20) 128 -∗
     stack_own (KTR := KT1) sp0 20.
-  Proof.
+  Proof using .
     intro Hal. iIntros "H1 H2 H3 H4 Hb".
     change 128%nat with (8 * 16)%nat.
     iDestruct (bytes_own_slotsn (KTR := KT1) sp0 20 16 ltac:(lia) Hal with "Hb") as "Hs".
@@ -444,11 +444,11 @@ Section ProofSysChdirFrame.
   Lemma sc_bytes_name `{XI : CurCtx} (a : mword 64) (N : nat) :
     bytes_own (KTR := KT1) (DfracOwn 1) a N ⊢
     ∃ f : nat -> bv 8, [∗ list] j ∈ seq 0 N, pa_add a j ↦ₘ[KT1] f j.
-  Proof. rewrite /bytes_own. exact (bb_any_named (KTR := KT1) a N). Qed.
+  Proof using . rewrite /bytes_own. exact (bb_any_named (KTR := KT1) a N). Qed.
 
   Lemma sc_name_bytes `{XI : CurCtx} (a : mword 64) (N : nat) (f : nat -> bv 8) :
     ([∗ list] j ∈ seq 0 N, pa_add a j ↦ₘ[KT1] f j) ⊢ bytes_own (KTR := KT1) (DfracOwn 1) a N.
-  Proof. rewrite /bytes_own. exact (bb_named_any (KTR := KT1) a N f). Qed.
+  Proof using . rewrite /bytes_own. exact (bb_named_any (KTR := KT1) a N f). Qed.
 
   (* 128 = (k+1) + (127-k): namei reads the NUL-terminated prefix, the rest
      rides through untouched *)
@@ -458,7 +458,7 @@ Section ProofSysChdirFrame.
     ([∗ list] j ∈ seq 0 (S k), pa_add a j ↦ₘ[KT1] f j)
     ∗ ([∗ list] j ∈ seq 0 (127 - k)%nat,
          pa_add (pa_add a (S k)) j ↦ₘ[KT1] f (S k + j)%nat).
-  Proof.
+  Proof using .
     intro Hk.
     replace 128%nat with (S k + (127 - k))%nat by lia.
     rewrite (bb_split a (S k) (127 - k)%nat f). iIntros "[$ $]".
@@ -470,7 +470,7 @@ Section ProofSysChdirFrame.
     ([∗ list] j ∈ seq 0 (127 - k)%nat,
        pa_add (pa_add a (S k)) j ↦ₘ[KT1] f (S k + j)%nat) -∗
     bytes_own (KTR := KT1) (DfracOwn 1) a 128.
-  Proof.
+  Proof using .
     intro Hk. iIntros "H1 H2".
     iDestruct (sc_name_bytes a (S k) f with "H1") as "B1".
     iDestruct (sc_name_bytes (pa_add a (S k)) (127 - k)%nat
@@ -541,7 +541,7 @@ Section ProofSysChdirEpilogue.
         pc_is (ret_pc (m !!! Regidx Rra : mword 64)) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK20 Kpop Hsp0 HMsp HMthr HMs1 Hal.
     iIntros "Hcg #Htext Hpc Hf1 Hf2 Hf3 Hf4 Hbuf Hcont".
     (* the three slot addresses, at THIS register file's sp *)
@@ -777,7 +777,7 @@ Section ProofSysChdirM1Tail.
         proc_priv_bare (proc_addr jx) pidv Upr -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HKeo HK20 Kpop Hgeom Hj Hgl Hlkempty Hsp0 HMsp HMthr HMs1 Hal.
     iIntros "Hcg Hown Htce Hcce #Htext #Hkd Hpc #Hpenv #Hbio #Hlog Hseam Hgen
               Hpid #Hprocs #Hdev #Hgeo #Hdlk Hop Hf1 Hf2 Hf3 Hf4 Hbuf Hcont".
@@ -915,7 +915,7 @@ Section ProofSysChdirBody.
     (k < NINODE)%nat ->
     (ic_escrows fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst -∗ ic_escrow fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k
      : iProp Σ).
-  Proof.
+  Proof using .
     iIntros (Hk) "H".
     iApply (ic_escrows_lookup fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k Hk with "H").
   Qed.
@@ -926,7 +926,7 @@ Section ProofSysChdirBody.
      ∃ gil gisl : gname,
        is_sleeplock_genl gil gisl (i_lock (ientry k)) "inode"%string (ic_slp fsc_ic k) (slh_tok (icfg_isl k))
      : iProp Σ).
-  Proof.
+  Proof using .
     iIntros (Hk) "H". rewrite /ic_sleeplocks.
     assert (Hl : seq 0 NINODE !! k = Some k) by (rewrite lookup_seq; lia).
     iDestruct (big_sepL_lookup _ _ k k Hl with "H") as "$".
@@ -935,7 +935,7 @@ Section ProofSysChdirBody.
   (* the three-slot pool, split for ilock's single [bslot] and rejoined *)
   Lemma sc_bs3 `{XI : CurCtx} :
     (bslots 3 : iProp Σ) ⊣⊢ bslot ∗ bslots 2.
-  Proof. rewrite /bslot. change 3%nat with (1 + 2)%nat. apply bslots_op. Qed.
+  Proof using . rewrite /bslot. change 3%nat with (1 + 2)%nat. apply bslots_op. Qed.
 
   Lemma wp_sys_chdir `{GEN : GenId} `{CID0 : CpuId} `{XI : CurCtx}
       (gf : gname)
@@ -950,7 +950,7 @@ Section ProofSysChdirBody.
       (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ)) :
     wp_sys_chdir_body gf gs j gl pd pav pu dqb dqs v pid U m K eb b lks
       P Pmiss Fo.
-  Proof.
+  Proof using .
     cbv beta delta [wp_sys_chdir_body wp_sys_chdir_frame].
     intros Γfs pcE pj ret_tgt HK HdevR Hnib0 Hgeom
            Hsize Hbm0 Hbmcov Hbmlog Hist0 Hcovb Hiregb Hj Hgl Heb Hargv.

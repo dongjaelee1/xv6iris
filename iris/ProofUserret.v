@@ -49,7 +49,7 @@ Section UserretAllPt.
       vra vsp vgp vtp vt0 vt1 vt2 vs0 vs1 va1 va2 va3 va4 va5 va6 va7
       vs2 vs3 vs4 vs5 vs6 vs7 vs8 vs9 vs10 vs11 vt3 vt4 vt5 vt6 va0f dqm
       Pimg Qimg.
-  Proof.
+  Proof using .
     cbv beta delta [wp_userret_pt_body].
     (* [tf_pa] deliberately NOT unfolded here — see the twin note in
        ProofUservec.v: folded it is ~12 term nodes per trapframe cell instead

@@ -400,7 +400,7 @@ Section UserStepWaiting.
     r ∈ u_Drw ∪ u_Dro -> r ∉ tk_clock3 ->
     register_beq r (R_bool minstret_increment) = false ->
     register_lookup r rs3 = register_lookup r rs.
-  Proof.
+  Proof using .
     intros Hp Hag Hin Hnc Hne.
     rewrite (Hag r ltac:(apply elem_of_difference; split; assumption)).
     rewrite (Hp r Hin). exact (wrap_pre_other r rs Hne).
@@ -416,7 +416,7 @@ Section UserStepWaiting.
     register_beq r hart_state = false ->
     register_beq r (R_bool minstret_increment) = false ->
     register_lookup r rs3 = register_lookup r rs.
-  Proof.
+  Proof using .
     intros Hp Hag Hin Hnc Hms Hpc Hhs Hmi.
     rewrite (Hag r ltac:(apply elem_of_difference; split; assumption)).
     rewrite (wrap_post_other r rs' mi2 Hms Hpc).
@@ -430,7 +430,7 @@ Section UserStepWaiting.
       (register_set hart_state (HART_ACTIVE tt) (wrap_pre rs)) ->
     reg_agree_on ((u_Drw ∪ u_Dro) ∖ tk_clock3) rs3 (wrap_post rs' mi2) ->
     register_lookup hart_state rs3 = HART_ACTIVE tt.
-  Proof.
+  Proof using .
     intros Hp Hag.
     rewrite (Hag hart_state ltac:(apply elem_of_difference; split;
               [ exact u_in_hart | u_notin_clock ])).
@@ -444,7 +444,7 @@ Section UserStepWaiting.
     reg_agree_on ((u_Drw ∪ u_Dro) ∖ tk_clock3) rs3 (wrap_post rs' mi2) ->
     register_lookup (R_bitvector_64 PC) rs3
       = register_lookup (R_bitvector_64 nextPC) rs.
-  Proof.
+  Proof using .
     intros Hp Hag.
     rewrite (Hag (R_bitvector_64 PC) ltac:(apply elem_of_difference; split;
               [ exact u_in_PC | u_notin_clock ])).
@@ -518,7 +518,7 @@ Section UserWaitClose.
        upt_regs pt usatp tlbvec' -∗ bytes_own mm' -∗ user_pt_any pt) -∗
     Rut pt -∗
     user_inv C pt Rut.
-  Proof.
+  Proof using .
     intros Hhok Hmsok Hlock Lhs Lpriv Lms Lpc Lnpc Lstvec Lmie Lmdl Lmenv
       Lsatp Lpcfg Lpaddr Ltlb Htlbok Hwf.
     iIntros "Hpmp #Hmedl #Hsenv #Hmste #Hsste #Hmcen #Hscen #Hhpm
@@ -612,7 +612,7 @@ Section UserStepWaitArm.
     user_pt_any pt -∗ user_cfg C -∗ Rut pt -∗
     ▷ (user_inv C pt Rut -∗ WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hwr Hmsok.
     iIntros "#Hhw Hregs Hupt Hcfg Hrut Hcont".
     (* ---- take the three bundles apart ---- *)
@@ -751,7 +751,7 @@ Section UserStepObligation.
     hw_config -∗
     user_step_obligation_active C pt Rut -∗
     user_step_obligation C pt Rut.
-  Proof.
+  Proof using .
     iIntros "#Hhw #Hactive".
     iIntros "!> Hinv Hk".
     iDestruct "Hinv" as (hs ms_v sc_v stval_v sepc_v va va' g)
@@ -776,7 +776,7 @@ Section UserStepObligation.
     user_inv C pt Rut -∗
     ▷ stvec_handler_wp C pt Rut -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "#Hhw #Hactive Hinv Htrap".
     iApply (wp_user_exec with "[] Hinv Htrap").
     iApply (user_step_obligation_holds with "Hhw Hactive").

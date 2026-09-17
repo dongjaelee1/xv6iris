@@ -137,15 +137,15 @@ Section DiskPtsto.
     disk_cfg_is γ DfracDiscarded c.
 
   Global Instance disk_cfg_persistent γ c : Persistent (disk_cfg γ c).
-  Proof. rewrite /disk_cfg /disk_cfg_is. apply _. Qed.
+  Proof using . rewrite /disk_cfg /disk_cfg_is. apply _. Qed.
   Global Instance disk_cfg_timeless γ c : Timeless (disk_cfg γ c).
-  Proof. rewrite /disk_cfg /disk_cfg_is. apply _. Qed.
+  Proof using . rewrite /disk_cfg /disk_cfg_is. apply _. Qed.
   Global Instance disk_cfg_is_timeless γ dq c : Timeless (disk_cfg_is γ dq c).
-  Proof. rewrite /disk_cfg_is. apply _. Qed.
+  Proof using . rewrite /disk_cfg_is. apply _. Qed.
 
   Lemma disk_cfg_agree (γ : disk_names) (c c' : virtio_cfg) :
     disk_cfg γ c -∗ disk_cfg γ c' -∗ ⌜c = c'⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Hb". rewrite /disk_cfg /disk_cfg_is.
     by iDestruct (own_valid_2 with "Ha Hb") as %[_ ?]%dfrac_agree_op_valid_L.
   Qed.
@@ -156,7 +156,7 @@ Section DiskPtsto.
      was handed with the one the invariant currently holds. *)
   Lemma disk_cfg_is_agree (γ : disk_names) (dq dq' : dfrac) (c c' : virtio_cfg) :
     disk_cfg_is γ dq c -∗ disk_cfg_is γ dq' c' -∗ ⌜c = c'⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Hb". rewrite /disk_cfg_is.
     by iDestruct (own_valid_2 with "Ha Hb") as %[_ ?]%dfrac_agree_op_valid_L.
   Qed.
@@ -166,7 +166,7 @@ Section DiskPtsto.
   Lemma disk_cfg_is_split (γ : disk_names) (c : virtio_cfg) :
     disk_cfg_is γ (DfracOwn 1) c -∗
     disk_cfg_is γ (DfracOwn (1/2)) c ∗ disk_cfg_is γ (DfracOwn (1/2)) c.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /disk_cfg_is.
     iEval (rewrite -Qp.half_half -dfrac_op_own dfrac_agree_op own_op) in "H".
     iDestruct "H" as "[$ $]".
@@ -175,7 +175,7 @@ Section DiskPtsto.
   Lemma disk_cfg_is_join (γ : disk_names) (c c' : virtio_cfg) :
     disk_cfg_is γ (DfracOwn (1/2)) c -∗ disk_cfg_is γ (DfracOwn (1/2)) c' -∗
     disk_cfg_is γ (DfracOwn 1) c.
-  Proof.
+  Proof using .
     iIntros "Ha Hb".
     iDestruct (disk_cfg_is_agree with "Ha Hb") as %<-.
     rewrite /disk_cfg_is.
@@ -185,12 +185,12 @@ Section DiskPtsto.
 
   Lemma disk_cfg_alloc (c : virtio_cfg) :
     ⊢ |==> ∃ g : gname, own g (to_dfrac_agree (DfracOwn 1) (c : leibnizO virtio_cfg)).
-  Proof. iApply own_alloc. done. Qed.
+  Proof using . iApply own_alloc. done. Qed.
 
   (* set the value (full fraction is exclusive) and then freeze it *)
   Lemma disk_cfg_set (γ : disk_names) (c c' : virtio_cfg) :
     disk_cfg_is γ (DfracOwn 1) c ==∗ disk_cfg γ c'.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /disk_cfg_is /disk_cfg /disk_cfg_is.
     iMod (own_update _ _ (to_dfrac_agree (DfracOwn 1) (c' : leibnizO virtio_cfg))
             with "H") as "H".
@@ -206,7 +206,7 @@ Section DiskPtsto.
      [disk_inv].  The freeze happens exactly once, at the live flip. *)
   Lemma disk_cfg_is_move (γ : disk_names) (c c' : virtio_cfg) :
     disk_cfg_is γ (DfracOwn 1) c ==∗ disk_cfg_is γ (DfracOwn 1) c'.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /disk_cfg_is.
     iApply (own_update with "H"). apply cmra_update_exclusive. done.
   Qed.
@@ -229,17 +229,17 @@ Section DiskPtsto.
     (⌜length bs = 1024%nat⌝ ∗ disk_bytes γ (1024 * bno) bs)%I.
 
   Global Instance disk_byte_timeless γ o b : Timeless (disk_byte γ o b).
-  Proof. rewrite /disk_byte. apply _. Qed.
+  Proof using . rewrite /disk_byte. apply _. Qed.
   Global Instance disk_bytes_timeless γ o bs : Timeless (disk_bytes γ o bs).
-  Proof. rewrite /disk_bytes. apply _. Qed.
+  Proof using . rewrite /disk_bytes. apply _. Qed.
   Global Instance disk_block_timeless γ bno bs : Timeless (disk_block γ bno bs).
-  Proof. rewrite /disk_block /disk_bytes. apply _. Qed.
+  Proof using . rewrite /disk_block /disk_bytes. apply _. Qed.
 
   (* -- structural peeling ----------------------------------------------- *)
 
   Lemma disk_bytes_cons (γ : disk_names) (o : Z) (b : bv 8) (bs : list (bv 8)) :
     disk_bytes γ o (b :: bs) ⊣⊢ disk_byte γ o b ∗ disk_bytes γ (o + 1) bs.
-  Proof. exact (disk_img_bytes_cons (dn_img γ) o b bs). Qed.
+  Proof using . exact (disk_img_bytes_cons (dn_img γ) o b bs). Qed.
 
   (* -- agreement: fragments read the image ------------------------------ *)
 
@@ -248,7 +248,7 @@ Section DiskPtsto.
     disk_view dmap dk ->
     ghost_map_auth (dn_img γ) 1 dmap -∗ disk_bytes γ o bs -∗
     ⌜disk_read dk o (length bs) = bs⌝.
-  Proof. exact (disk_img_bytes_read (dn_img γ) dmap dk o bs). Qed.
+  Proof using . exact (disk_img_bytes_read (dn_img γ) dmap dk o bs). Qed.
 
   (* -- update: an OUT completion rewrites a range ----------------------- *)
 
@@ -264,7 +264,7 @@ Section DiskPtsto.
       ghost_map_auth (dn_img γ) 1 dmap' ∗ disk_bytes γ o bs' ∗
       ⌜forall dk : Z -> bv 8,
          disk_view dmap dk -> disk_view dmap' (disk_write dk o bs')⌝.
-  Proof. exact (disk_img_bytes_update (dn_img γ) dmap o bs bs'). Qed.
+  Proof using . exact (disk_img_bytes_update (dn_img γ) dmap o bs bs'). Qed.
 
   (* ...and the GENERAL form, exposing the two pointwise clauses instead of
      the [disk_view] transfer -- what the A6.126 §6 completion needs, since
@@ -280,7 +280,7 @@ Section DiskPtsto.
       ⌜forall x : Z,
          (forall j : nat, (j < length bs')%nat -> (x ≠ o + Z.of_nat j)%Z) ->
          dmap' !! x = dmap !! x⌝.
-  Proof. exact (disk_img_bytes_update_gen (dn_img γ) dmap o bs bs'). Qed.
+  Proof using . exact (disk_img_bytes_update_gen (dn_img γ) dmap o bs bs'). Qed.
 
   (* -- minting: fragments for untouched offsets ------------------------- *)
 
@@ -293,6 +293,6 @@ Section DiskPtsto.
       ghost_map_auth (dn_img γ) 1 dmap' ∗
       disk_bytes γ o (disk_read dk o n) ∗
       ⌜disk_view dmap' dk⌝.
-  Proof. exact (disk_img_bytes_mint (dn_img γ) dmap dk o n). Qed.
+  Proof using . exact (disk_img_bytes_mint (dn_img γ) dmap dk o n). Qed.
 
 End DiskPtsto.

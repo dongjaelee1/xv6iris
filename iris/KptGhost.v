@@ -43,15 +43,15 @@ Section KptGhost.
     own kpt_name (Cinr (to_agree (ptree_canon t : leibnizO ptree)) : kptR).
 
   Global Instance kpt_unset_timeless : Timeless kpt_unset.
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance kpt_lb_timeless t : Timeless (kpt_lb t).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance kpt_lb_persistent t : Persistent (kpt_lb t).
-  Proof. rewrite /kpt_lb. apply own_core_persistent, Cinr_core_id, _. Qed.
+  Proof using . rewrite /kpt_lb. apply own_core_persistent, Cinr_core_id, _. Qed.
 
   (* THE ONE SHOT: fix the canonical table, once *)
   Lemma kpt_shoot (t : ptree) : kpt_unset ==∗ kpt_lb t.
-  Proof.
+  Proof using .
     iIntros "H". iApply (own_update with "H").
     apply cmra_update_exclusive. done.
   Qed.
@@ -59,7 +59,7 @@ Section KptGhost.
   (* THE AGREEMENT: two snapshots have the same canonical table *)
   Lemma kpt_lb_agree (t t' : ptree) :
     kpt_lb t -∗ kpt_lb t' -∗ ⌜ ptree_canon t = ptree_canon t' ⌝.
-  Proof.
+  Proof using .
     iIntros "H1 H2".
     iDestruct (own_valid_2 with "H1 H2") as %Hv.
     rewrite -Cinr_op Cinr_valid in Hv.
@@ -71,7 +71,7 @@ Section KptGhost.
      so there is no ghost update at all) *)
   Lemma kpt_lb_canon (t t' : ptree) :
     ptree_canon t = ptree_canon t' -> kpt_lb t -∗ kpt_lb t'.
-  Proof. intros He. rewrite /kpt_lb He. iIntros "H". iExact "H". Qed.
+  Proof using . intros He. rewrite /kpt_lb He. iIntros "H". iExact "H". Qed.
   (* ---------------------------------------------------------------- *)
   (* THE CANON PIN'S PUBLICATION BOUND (tso-pin-memo.md §5.4; A6.53      *)
   (* ruling 2).  [kpt_lb]'s shape, one payload over: shot once, at the   *)
@@ -98,11 +98,11 @@ Section KptGhost.
      llb loglen_name B)%I.
 
   Global Instance kptb_unset_timeless : Timeless kptb_unset.
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance kpt_bound_timeless B : Timeless (kpt_bound B).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance kpt_bound_persistent B : Persistent (kpt_bound B).
-  Proof.
+  Proof using .
     rewrite /kpt_bound. apply bi.sep_persistent; [|apply _].
     apply own_core_persistent, Cinr_core_id, _.
   Qed.
@@ -111,18 +111,18 @@ Section KptGhost.
      publisher's own view has reached, so [llb loglen_name B] is what it
      already holds ([KptPublish.kptree_publish] hands both out together). *)
   Lemma kptb_shoot (B : nat) : llb loglen_name B -∗ kptb_unset ==∗ kpt_bound B.
-  Proof.
+  Proof using .
     iIntros "#Hllb H".
     iMod (own_update with "H") as "$";
       [apply cmra_update_exclusive; done | by iFrame "Hllb"].
   Qed.
 
   Lemma kpt_bound_llb (B : nat) : kpt_bound B -∗ llb loglen_name B.
-  Proof. by iIntros "[_ $]". Qed.
+  Proof using . by iIntros "[_ $]". Qed.
 
   Lemma kpt_bound_agree (B B' : nat) :
     kpt_bound B -∗ kpt_bound B' -∗ ⌜ B = B' ⌝.
-  Proof.
+  Proof using .
     iIntros "[H1 _] [H2 _]".
     iDestruct (own_valid_2 with "H1 H2") as %Hv.
     rewrite -Cinr_op Cinr_valid to_agree_op_valid_L in Hv.

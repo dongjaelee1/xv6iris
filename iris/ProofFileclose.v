@@ -132,7 +132,7 @@ Section ProofFileclose.
       (p : mword 64) (lks : gset string) :
     sie_cap_gpr KT1 m K0 b p -∗ cpu_own n eb p b lks -∗
     ⌜ b = match n with O => eb | S _ => false end ⌝.
-  Proof.
+  Proof using .
     iIntros "Hcg Hcnt". destruct b.
     - iDestruct "Hcnt" as "%Hb". destruct Hb as (-> & -> & _). done.
     - destruct n as [|n']; [ | done ].
@@ -150,7 +150,7 @@ Section ProofFileclose.
       (K : nat) (b : bool) (lks : gset string) (Φc : iProp Σ)
       (pidv : mword 32) (Upr : ustate)
     : wp_fileclose_sconf_body γfl γf k q st fn on m n eb p K b lks Φc pidv Upr.
-  Proof.
+  Proof using .
     cbv beta delta [wp_fileclose_sconf_body].
     intros pcE ret_tgt HK HnZ Ha0 Hbelow.
     pose proof (locks_below_not_elem _ _ Hbelow) as Hfresh.

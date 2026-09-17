@@ -450,13 +450,13 @@ Section PrLeaves.
   (* copyin/copyout's one-byte buffer, in and out of the [seq 0 1] big-sep *)
   Lemma pr_buf1_intro (a : mword 64) (b : bv 8) :
     a ↦ₘ[KT1] b ⊢ [∗ list] j ∈ seq 0 1, (pa_add a j) ↦ₘ[KT1] b.
-  Proof.
+  Proof using .
     iIntros "H". cbn [seq]. rewrite big_sepL_singleton pr_pa_add0. iExact "H".
   Qed.
 
   Lemma pr_buf1_elim (a : mword 64) (b : bv 8) :
     ([∗ list] j ∈ seq 0 1, (pa_add a j) ↦ₘ[KT1] b) ⊢ a ↦ₘ[KT1] b.
-  Proof.
+  Proof using .
     iIntros "H". cbn [seq] in *. rewrite big_sepL_singleton pr_pa_add0. iExact "H".
   Qed.
 
@@ -465,7 +465,7 @@ Section PrLeaves.
     bs !! k = Some b ->
     pipe_data p bs ⊢ (pa_add p (pipe_data_off + k)%nat ↦ₘ b) ∗
                      ((pa_add p (pipe_data_off + k)%nat ↦ₘ b) -∗ pipe_data p bs).
-  Proof.
+  Proof using .
     intro Hk. rewrite /pipe_data. iIntros "H".
     iDestruct (big_sepL_lookup_acc
                  (fun j c => ((pa_add p (pipe_data_off + j)%nat) ↦ₘ c)%I) bs k b Hk
@@ -569,7 +569,7 @@ Section ProofPiperead.
 
   Lemma pr_pay_0 (γp : pipe_names) Q Qe n :
     pipe_rpay (pn_queue γp) Q Qe n -∗ pr_pay γp Q Qe [] n.
-  Proof.
+  Proof using .
     rewrite /pipe_rpay /pr_pay. cbn [length]. rewrite Nat.sub_0_r. by iIntros "$".
   Qed.
 
@@ -583,12 +583,12 @@ Section ProofPiperead.
   (* the links are [Typeclasses Opaque]: their eliminations *)
   Lemma pr_olink_apply (γ : gname) (Φ : pipe_st -> iProp Σ) (s : pipe_st) :
     pipe_olink γ Φ -∗ pipe_qauth γ s ={⊤}=∗ pipe_qauth γ s ∗ Φ s.
-  Proof. rewrite /pipe_olink. iIntros "H". iApply "H". Qed.
+  Proof using . rewrite /pipe_olink. iIntros "H". iApply "H". Qed.
 
   Lemma pr_rlink_apply (γ : gname) (Φ : bv 8 -> iProp Σ) (s : pipe_st) (b : bv 8) :
     pst_next s = Some b ->
     pipe_rlink γ Φ -∗ pipe_qauth γ s ={⊤}=∗ pipe_qauth γ (pst_read s) ∗ Φ b.
-  Proof.
+  Proof using .
     intro Hb. rewrite /pipe_rlink. iIntros "H". iApply ("H" $! s b). iPureIntro. exact Hb.
   Qed.
 
@@ -598,7 +598,7 @@ Section ProofPiperead.
   Lemma pr_chain_olink (γ : gname) Q Qe (acc : list (bv 8)) (nn : nat) :
     (length acc < nn)%nat ->
     pipe_rchain γ Q Qe acc (nn - length acc) -∗ pipe_olink γ (Qe acc).
-  Proof.
+  Proof using .
     intro Hk. assert (E : (nn - length acc)%nat = S (nn - S (length acc))%nat) by lia.
     rewrite E. by iIntros "[_ [$ _]]".
   Qed.
@@ -608,7 +608,7 @@ Section ProofPiperead.
     pipe_rchain γ Q Qe acc (nn - length acc) -∗
     pipe_rlink γ (fun b : bv 8 =>
                     pipe_rchain γ Q Qe ((acc ++ [b])%list) (nn - S (length acc))).
-  Proof.
+  Proof using .
     intro Hk. assert (E : (nn - length acc)%nat = S (nn - S (length acc))%nat) by lia.
     rewrite E. by iIntros "[_ [_ $]]".
   Qed.
@@ -617,7 +617,7 @@ Section ProofPiperead.
   Lemma pr_noobs_met (P : uptd) (addrv : mword 64) (Rk : iProp Σ) (nn d : nat) :
     d = nn ->
     ⊢ pipe_rstop_noobs P addrv Rk nn d (mword_of_int (Z.of_nat d) : mword 64).
-  Proof. intro Hd. rewrite /pipe_rstop_noobs. iLeft. by iPureIntro. Qed.
+  Proof using . intro Hd. rewrite /pipe_rstop_noobs. iLeft. by iPureIntro. Qed.
 
   Lemma pr_noobs_fault (P : uptd) (addrv : mword 64) (Rk : iProp Σ)
       (nn d : nat) (r : mword 64) :
@@ -626,11 +626,11 @@ Section ProofPiperead.
     ((0 < d)%nat /\ r = (mword_of_int (Z.of_nat d) : mword 64)
      \/ d = 0%nat /\ r = (mword_of_int (-1) : mword 64)) ->
     ⊢ pipe_rstop_noobs P addrv Rk nn d r.
-  Proof. intros H1 H2 H3. rewrite /pipe_rstop_noobs. iRight. iLeft. by iPureIntro. Qed.
+  Proof using . intros H1 H2 H3. rewrite /pipe_rstop_noobs. iRight. iLeft. by iPureIntro. Qed.
 
   Lemma pr_noobs_kill (P : uptd) (addrv : mword 64) (Rk : iProp Σ) (nn : nat) :
     Rk -∗ pipe_rstop_noobs P addrv Rk nn 0%nat (mword_of_int (-1) : mword 64).
-  Proof.
+  Proof using .
     iIntros "HR". rewrite /pipe_rstop_noobs. iRight. iRight. iLeft.
     iSplitR; [by iPureIntro |]. iExact "HR".
   Qed.
@@ -643,7 +643,7 @@ Section ProofPiperead.
     pipe_rstop_noobs (pv_upt (us_V U)) addrv
       (ChildTok.kill_shot (pv_gen (us_V U))) (Z.to_nat n) d r -∗
     pr_pay γp Q Qe acc (Z.to_nat n) -∗ pr_post γp U addrv Q Qe n d bsw r.
-  Proof.
+  Proof using .
     intros Hle Hd Hbs. rewrite /pr_pay /pr_post /pipe_rpost.
     iIntros "Hst [Hch | #Ht]".
     - iLeft. iExists acc. iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
@@ -667,7 +667,7 @@ Section ProofPiperead.
     pipe_qres γp nr nw ro wo bs
     ={⊤}=∗ pipe_qres γp nr nw ro wo bs ∗
            pr_post γp U addrv Q Qe n d bsw (mword_of_int (Z.of_nat d) : mword 64).
-  Proof.
+  Proof using .
     intros Hle Hd Hdn Hbs Hwo Hnrw. rewrite /pr_pay /pr_post /pipe_rpost.
     iIntros "[Hch | #Ht] Hq".
     2:{ iModIntro. iFrame "Hq". iRight. iSplitR; [iExact "Ht" |].
@@ -707,7 +707,7 @@ Section ProofPiperead.
     pipe_qres γp nr nw ro wo bs
     ={⊤}=∗ pipe_qres γp (add_vec nr (mword_of_int 1 : mword 32)) nw ro wo bs
            ∗ pr_pay γp Q Qe ((acc ++ [db])%list) nn.
-  Proof.
+  Proof using .
     intros Hk Hne Hlk Hidx. rewrite /pr_pay. iIntros "[Hch | #Ht] Hq".
     2:{ iModIntro. iSplitR; [by iApply pipe_qres_taint |]. by iRight. }
     iDestruct "Hq" as "[Hc | #Ht]".
@@ -729,7 +729,7 @@ Section ProofPiperead.
   (* a copyout reason, from the round's table to the ENTRY one *)
   Lemma pr_nwmapped_entry (szv : mword 64) (P Pc : uptd) (va : Z) :
     uptd_ext_sz szv P Pc -> ~ uva_wmapped Pc va -> ~ uva_wmapped P va.
-  Proof.
+  Proof using .
     intros Hext Hn Hc. apply Hn.
     destruct (uptd_ext_sz_ext szv P Pc Hext) as (_ & _ & Hsub).
     exact (uva_wmapped_mono P Pc va Hsub Hc).
@@ -753,7 +753,7 @@ Section ProofPiperead.
 
   Lemma pr_res_i_res (γp : pipe_names) (pi : mword 64) (i : nat) :
     pr_res_i γp pi i -∗ pipe_res γp pi.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as (nr nw ro wo vname bs)
       "(_ & Hnm & Hnr & Hnw & Hro & Hwo & Hst0 & Hst1 & %Hc & %Hl & Hdat & Hslack & Hq)".
     iExists nr, nw, ro, wo, vname, bs.
@@ -765,7 +765,7 @@ Section ProofPiperead.
   (* past the first round the fact is free *)
   Lemma pr_res_i_S (γp : pipe_names) (pi : mword 64) (i : nat) :
     pipe_res γp pi -∗ pr_res_i γp pi (S i).
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as (nr nw ro wo vname bs)
       "(Hnm & Hnr & Hnw & Hro & Hwo & Hst0 & Hst1 & %Hc & %Hl & Hdat & Hslack & Hq)".
     iExists nr, nw, ro, wo, vname, bs.
@@ -804,11 +804,11 @@ Section ProofPiperead.
 
   Lemma pr_win_neg1 (U : ustate) (addrv : mword 64) (n : Z) :
     pr_win U (us_M U) addrv n (mword_of_int (-1)).
-  Proof. left. split; reflexivity. Qed.
+  Proof using . left. split; reflexivity. Qed.
 
   Lemma pr_win_zero (U : ustate) (addrv : mword 64) (n : Z) :
     pr_win U (us_M U) addrv n (mword_of_int 0).
-  Proof.
+  Proof using .
     right. exists 0%nat. split; [reflexivity |].
     split; [rewrite Z.max_le_iff; left; reflexivity | apply umem_wrote_0].
   Qed.
@@ -956,7 +956,7 @@ Section ProofPiperead.
       (pid : mword 32) (U : ustate) (n : Z) (b : bool) (lks : gset string)
       (Q : list (bv 8) -> iProp Σ) (Qe : list (bv 8) -> pipe_st -> iProp Σ)
     : wp_piperead_sconf_body γa γf γs j γlp γl γp w q m av eb pid U n b lks Q Qe.
-  Proof.
+  Proof using .
     cbv beta delta [wp_piperead_sconf_body].
     intros pcE pj pi addr ret_tgt Hj Hjl Hlen Ha2 Hnrng Hav Heb Hbelow. subst eb.
     

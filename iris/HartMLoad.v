@@ -326,7 +326,7 @@ Section load.
     ([∗ list] j ∈ seq 0 8,
        TsoCtx.ctx_phys_pointsto xi (pa_add pa j) dq (nth_byte w j)) -∗
     ⌜robl_ram img log tv pa w⌝.
-  Proof.
+  Proof using .
     intros Htv. iIntros "Hgh Htso Hrun Hb".
     iDestruct (tso_interp_of_pin with "Htso") as %Hpin.
     rewrite (tso_interp_of_at_gs riscv_eraGS img sg.(mem) log V
@@ -369,7 +369,7 @@ Section load.
            (Physaddr pa) 8 false false false false)
       (fun r => ⌜r = Values.Ok (bytes, tt)⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro ∗ R).
-  Proof.
+  Proof using .
     intros Hdisj HD HDhtif Hhtif Hpma Hpallow Hram Hpa.
     iIntros "#Hcert Hrw Hro Hpmp Hmem".
     rewrite /swp. iIntros (C) "%HC Hcont".
@@ -458,7 +458,7 @@ Section load.
     swp (mem_read (Load Data) PBMT_PMA pa 8 false false false)
       (fun r => ⌜r = Values.Ok w⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro ∗ R).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv Hpriv Hmprv.
     iIntros "#Hcert Hrw Hro Hcmr".
     unfold mem_read.
@@ -530,7 +530,7 @@ Section load.
     swp (translate_and_read_value (Virtaddr pa) 8 (Load Data) false false false)
       (fun r => ⌜r = Values.Ok (Physaddr pa, bytes)⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro ∗ R).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv HDpma HDhtif Hpriv Hpma Hhtif
       Hmprv Hpallow Hram Hpa.
     iIntros "#Hcert Hrw Hro Hpmp Hmem".
@@ -596,7 +596,7 @@ Section load.
     swp (vmem_read_addr (Virtaddr pa) 8 (Load Data) false false false)
       (fun r => ⌜r = Values.Ok bytes⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro ∗ R).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv HDpma HDhtif Hpriv Hpma Hhtif
       Hmprv Hpallow Hram Hva Hpa.
     iIntros "#Hcert Hrw Hro Hpmp Hmem".
@@ -670,7 +670,7 @@ Section load.
                        (Virtaddr (add_vec (m !!! Regidx i) offset))⌝ ∗
                 gpr_file m ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv HDsec Hpriv Hmprv Hpmm.
     iIntros "#Hcert Hf Hrw Hro".
     unfold get_transformed_data_addr, ext_data_get_addr.
@@ -734,7 +734,7 @@ Section load.
     swp (vmem_read (Regidx i) offset 8 (Load Data) false false false)
       (fun r => ⌜r = Values.Ok bytes⌝ ∗ gpr_file m ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro ∗ R).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv HDsec HDpma HDhtif Hpriv Hpma Hhtif
       Hmprv Hpmm Hpallow Hram Hpa.
     iIntros "#Hcert Hf Hrw Hro Hpmp Hmem".
@@ -808,7 +808,7 @@ Section load.
       (fun e => ⌜e = RETIRE_SUCCESS⌝ ∗
                 gpr_file (<[Regidx rd := regval_into_reg bytes]> m) ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro ∗ R).
-  Proof.
+  Proof using .
     intros ea Hdisj HDmst HDpriv HDsec HDpma HDhtif Hpriv Hpma
       Hhtif Hmprv Hpmm Hpallow Hram Hpa Hrd.
     iIntros "#Hcert Hf Hrw Hro Hpmp Hmem".

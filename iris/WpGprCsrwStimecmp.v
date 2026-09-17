@@ -90,7 +90,7 @@ Section WpCsrwStimecmp.
     register_lookup mseccfg rs = Values.mword_of_int 0 ->
     register_lookup misa rs = MISA_C ->
     hval D Drw rs (currentlyEnabled Ext_Sstc) true rs.
-  Proof.
+  Proof using .
     intros HD1 HD2 HD3 Hp Hs Hm.
     apply (hval_of_goodb D_m D Drw _ dstateM rs true
              (dm_sub D HD1 HD2 HD3)
@@ -106,7 +106,7 @@ Section WpCsrwStimecmp.
     register_lookup mseccfg rs = Values.mword_of_int 0 ->
     register_lookup misa rs = MISA_C ->
     hval D Drw rs (currentlyEnabled Ext_S) true rs.
-  Proof.
+  Proof using .
     intros HD1 HD2 HD3 Hp Hs Hm.
     apply (hval_of_goodb D_m D Drw _ dstateM rs true
              (dm_sub D HD1 HD2 HD3)
@@ -126,7 +126,7 @@ Section WpCsrwStimecmp.
     register_lookup mseccfg rs = Values.mword_of_int 0 ->
     register_lookup misa rs = MISA_C ->
     hval D Drw rs (csr_name_write_callback "mip" V) tt rs.
-  Proof.
+  Proof using .
     intros HD1 HD2 HD3 Hp Hs Hm.
     apply (hval_of_goodb D_m D Drw _ dstateM rs tt
              (dm_sub D HD1 HD2 HD3)
@@ -164,7 +164,7 @@ Section WpCsrwStimecmp.
     swp (clint_dispatch false)
       (fun _ => (∃ z : mword 64, (R_bitvector_64 mip) ↦ᵣ z) ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv HDsec HDmisa Hpriv Hsec Hmisa.
     iIntros "#Hcert Hip Hrw Hro".
     unfold clint_dispatch.
@@ -313,7 +313,7 @@ Section WpCsrwStimecmp.
          hreg_frame_ro (cw_Df dq)
            (cw_rs stimecmp (stimecmp_legalized stimecmp0 v)) cw_Dro ∗
          ∃ z : mword 64, (R_bitvector_64 mip) ↦ᵣ z).
-  Proof.
+  Proof using .
     intros Hfresh. iIntros "#Hcert Hip Hrw Hro".
     rewrite write_CSR_stimecmp_red.
     (* the old value *)
@@ -435,7 +435,7 @@ Section WpCsrwStimecmp.
     swp (doCSR csr v zreg CSRRW CSRWrite)
       (fun e => ⌜e = RETIRE_SUCCESS⌝ ∗
                 hreg_frame rs' Drw ∗ hreg_frame_ro Df rs' Dro ∗ Rr).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv HDsec HDmisa Hpriv Hsec Hmisa Hext Hgb Hex Hmip Hcb.
     iIntros "#Hcert Hrw Hro Hwr".
     unfold doCSR.
@@ -526,7 +526,7 @@ Section WpCsrwStimecmp.
     swp (execute_CSRReg csr (Regidx rs1) zreg CSRRW)
       (fun e => ⌜e = RETIRE_SUCCESS⌝ ∗ gpr_file m ∗
                 hreg_frame rs' Drw ∗ hreg_frame_ro Df rs' Dro ∗ Rr).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv HDsec HDmisa Hpriv Hsec Hmisa Hext Hgb Hex Hmip Hcb.
     iIntros "#Hcert Hf Hrw Hro Hwr".
     unfold execute_CSRReg.
@@ -565,7 +565,7 @@ Section WpCsrwStimecmp.
       stimecmp ↦ᵣ stimecmp_legalized stimecmp0 (m !!! Regidx rs1) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hpmp Hstat Hrs1) "Hmm Hpmpc Hpc Hf Hcsr Hinstr Hcont".
     assert (Hfresh : cw_fresh stimecmp)
       by (rewrite /cw_fresh; split_and!; vm_compute; reflexivity).

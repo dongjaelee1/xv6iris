@@ -789,7 +789,7 @@ Section FwSlots.
 
   Lemma fw_bslots3 `{XI : CurCtx} :
     bslots 3 ⊣⊢ bslot ∗ bslots 2.
-  Proof.
+  Proof using .
     rewrite /bslot. change 3%nat with (1 + 2)%nat. apply bslots_op.
   Qed.
 End FwSlots.
@@ -840,7 +840,7 @@ Section FwWriteiSrc.
      else ([∗ list] i ∈ seq 0 n, pa_add src i ↦ₘ src_bytes i) ∗
           p_pid (proc_addr j) ↦₄{dq} pidv)
     ⊣⊢ proc_priv_core (proc_addr j) pidv U.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 End FwWriteiSrc.
 
 (* ====================================================================== *)
@@ -1104,7 +1104,7 @@ Section ProofFilewrite.
       (IcacheRef.inode_shr_genlo ik s icfg_dev inum g lo -∗
          SpecFileread.carve_off (fc_type Cf') kk qq γb γo Cf' -∗
          file_pay_st γf' kk qq Cf' st').
-  Proof.
+  Proof using .
     intros Hty. iIntros "(%pn & %Hst & Hpn & Hpl)".
     assert (Hnp : bool_decide (fc_type Cf' = FD_PIPE) = false).
     { apply bool_decide_eq_false_2.
@@ -1218,7 +1218,7 @@ Section ProofFilewrite.
         InstrBytes.pc_is (ret_pc ra0) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hnz Hiz Hsp0 Hra0 Hs00 Hcs1 Hs20 Hcs3 Hs40 Hs50 Hs60 Hcs7 Hcs8 Hcs9
            Hmtsp Hmts5 Hmts4 Hthr.
     iIntros "Hcg #Htext Hpc Hb1 Hb2 Hb3 Hb4 Hb5 Hb6 Hb7 Hb8 Hb9 Hb10 Hb11 Hb12 Hcont".
@@ -1401,7 +1401,7 @@ Section ProofFilewrite.
       (γp : pipe_names) :
     fdstate_ok inum γo γp Cf' st' -> fc_type Cf' = FD_DEVICE ->
     filewrite_env γf' fn' st' -∗ filewrite_dev_env fn' (dev_major Cf').
-  Proof.
+  Proof using .
     intros Hok Ht. destruct (fdstate_ok_device inum γo γp Cf' st' Hok Ht) as (? & ? & ->). by iIntros "$".
   Qed.
 
@@ -1410,7 +1410,7 @@ Section ProofFilewrite.
       (γp : pipe_names) :
     fdstate_ok inum γo γp Cf' st' -> fc_type Cf' = FD_DEVICE ->
     filewrite_dev_env fn' (dev_major Cf') -∗ filewrite_env_out fn' st'.
-  Proof.
+  Proof using .
     intros Hok Ht. destruct (fdstate_ok_device inum γo γp Cf' st' Hok Ht) as (? & ? & ->). by iIntros "$".
   Qed.
 
@@ -1429,7 +1429,7 @@ Section ProofFilewrite.
        member of [SpecFilewrite.filewrite_dev_caps], persistent like the
        other two. *)
     SpecUartPutc.uart_base_word Uart0.
-  Proof.
+  Proof using .
     intro H. rewrite /filewrite_dev_env /filewrite_dev_caps.
     case_decide as H'; [by iIntros "$"|].
     (* the major is a [bv_unsigned], hence non-negative: the lower half of
@@ -1449,7 +1449,7 @@ Section ProofFilewrite.
     is_txlock (fwn_txlock fn') (fsc_uart) -∗
     SpecUartPutc.uart_base_word Uart0 -∗
     filewrite_dev_env fn' (dev_major Cf').
-  Proof.
+  Proof using .
     intro H. rewrite /filewrite_dev_env /filewrite_dev_caps.
     case_decide as H'; last first.
     { exfalso. apply H'. split; [| exact H]. rewrite /dev_major.
@@ -1468,7 +1468,7 @@ Section ProofFilewrite.
       (γp : pipe_names) :
     fdstate_ok inum γo γp Cf' st' -> fc_type Cf' = FD_INODE ->
     filewrite_env gf' fn' st' -∗ filewrite_fs_env gf' fn'.
-  Proof.
+  Proof using .
     intros Hok Ht. destruct (fdstate_ok_inode inum γo γp Cf' st' Hok Ht) as (? & ? & ->).
     by iIntros "$".
   Qed.
@@ -1478,7 +1478,7 @@ Section ProofFilewrite.
       (γp : pipe_names) :
     fdstate_ok inum γo γp Cf' st' -> fc_type Cf' = FD_INODE ->
     filewrite_fs_out fn' -∗ filewrite_env_out fn' st'.
-  Proof.
+  Proof using .
     intros Hok Ht. destruct (fdstate_ok_inode inum γo γp Cf' st' Hok Ht) as (? & ? & ->). by iIntros "$".
   Qed.
 
@@ -1531,7 +1531,7 @@ Section ProofFilewrite.
         InstrBytes.pc_is (mword_of_int (FW + 0x8a) : mword 64) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hiz Hnz HMs4 HMs5 HMs7 HMs9.
     iIntros "Hcg #Htext Hpc Hcont".
     (* ---- +0xcc subw a5,s5,s4 : a5 := n - i ---- *)
@@ -1718,7 +1718,7 @@ Section ProofFilewrite.
         a_foff kx ↦₄ v' -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Ha0 Hs2 Hrz Hwf Hadv.
     iIntros "Hcg #Htext Hpc Hcell Hcont".
     pose proof (bv_unsigned_in_range _ v) as Hvr.
@@ -2026,7 +2026,7 @@ Section ProofFilewrite.
         write_arms_at (fs_gamma_L fsc_fs) nx γx n (us_M U) (m !!! Regidx Ra1) Q r -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hkf Hjp Hgsj Hlens Hfnj Hfnps Hn Heb Hstx Hspm Hpjeq.
     intros P1 P2 P3q P4q P6.
     (* [pj] is the CALLER's let-bound local and every callee contract below
@@ -3662,7 +3662,7 @@ Section ProofFilewrite.
       (lks : gset string) (Q : nat -> iProp Σ)
       (Qe : nat -> pipe_st -> iProp Σ)
     : wp_filewrite_sconf_body γf γs j γlp k q st fn pidv U m K eb n b lks Q Qe.
-  Proof.
+  Proof using .
     cbv beta delta [wp_filewrite_sconf_body].
     intros pcE pj ret_tgt uaddr HK Hk Hj Hgs Hlens Hfnj Hfnps Hconw
            Ha0 Ha2 Hn Heb Hbelow.

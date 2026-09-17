@@ -1685,7 +1685,7 @@ Section DurImgAlloc.
            (app-instances.md round C): what the application's era-0 claim
            ([SystemAdequacy]'s [Happ_init]) is packed against *)
         ∗ snap_guest gt (fss_inodes (img_state (fs_blocks dk) sb nib)).
-  Proof.
+  Proof using .
     intros Himg.
     exact (P_dur_alloc (img_state (fs_blocks dk) sb nib)
              (fs_restrict (fs_blocks dk)

@@ -52,7 +52,7 @@ Section RvcRet.
       gpr_file m -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hpmp Hstat Hra) "Hmm Hpmpc Hpc Hf Hinstr Hcont".
     (* keep HALF the config bundle: the jump's [update_elp_state] and
        [jump_to] read cur_privilege / mseccfg / misa, and wp_instr is about to

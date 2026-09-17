@@ -130,7 +130,7 @@ Section run.
       (fun st => ⌜st = Step_Execute (RETIRE_SUCCESS, zero_extend' 32 w)⌝ ∗
                  ∃ rs2 : regstate, ⌜Q rs2⌝ ∗
                  hreg_frame rs2 Drw ∗ hreg_frame_ro Df rs2 Dro ∗ R).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv HDmisa HDmst HDpc HDnpc HDpma HDcfg HDhtif
       Hpriv Hpc Hpma Hpcfg Hhtif HmisaS HmIE Hunlock Hpallow Hram
       Hb0 Hb1 Hva Hpa Hrvc Hdec Hlpad.
@@ -219,7 +219,7 @@ Section run.
     swp (run_hart_active 0)
       (fun st => ⌜st = Step_Execute (RETIRE_SUCCESS, zero_extend' 32 w)⌝ ∗
                  hreg_frame rs2 Drw ∗ hreg_frame_ro Df rs2 Dro ∗ R).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv HDmisa HDmst HDpc HDnpc HDpma HDcfg HDhtif
       Hpriv Hpc Hpma Hpcfg Hhtif HmisaS HmIE Hunlock Hpallow Hram
       Hb0 Hb1 Hva Hpa Hrvc Hdec Hlpad.
@@ -317,7 +317,7 @@ Section run.
       (fun st => ⌜st = Step_Execute (RETIRE_SUCCESS, zero_extend' 32 (concat_vec ihi ilo))⌝ ∗
                  ∃ rs2 : regstate, ⌜Q rs2⌝ ∗
                  hreg_frame rs2 Drw ∗ hreg_frame_ro Df rs2 Dro ∗ R).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv HDmisa HDmst HDpc HDnpc HDpma HDcfg HDhtif
       Hpriv Hpc Hpma Hpcfg Hhtif HmisaS HmIE Hunlock Hpallow Hram
       Hb0 Hb1 Hal4 Hpa Hram2 Hpa2 HmisaC Hnrvc Hdec Hlpad.
@@ -420,7 +420,7 @@ Section run.
     swp (run_hart_active 0)
       (fun st => ⌜st = Step_Execute (RETIRE_SUCCESS, zero_extend' 32 (concat_vec ihi ilo))⌝ ∗
                  hreg_frame rs2 Drw ∗ hreg_frame_ro Df rs2 Dro ∗ R).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv HDmisa HDmst HDpc HDnpc HDpma HDcfg HDhtif
       Hpriv Hpc Hpma Hpcfg Hhtif HmisaS HmIE Hunlock Hpallow Hram
       Hb0 Hb1 Hal4 Hpa Hram2 Hpa2 HmisaC Hnrvc Hdec Hlpad.
@@ -515,7 +515,7 @@ Section run.
                          zero_extend' 32 (subrange_vec_dec w 15 0))⌝ ∗
                  ∃ rs2 : regstate, ⌜Q rs2⌝ ∗
                  hreg_frame rs2 Drw ∗ hreg_frame_ro Df rs2 Dro ∗ R).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv HDmisa HDmst HDpc HDnpc HDpma HDcfg HDhtif
       Hpriv Hpc Hpma Hpcfg Hhtif HmisaS HmIE HmisaC Hunlock Hpallow Hram
       Hb0 Hb1 Hva Hpa Hrvc Hdec Hlpad.
@@ -607,7 +607,7 @@ Section run.
       (fun st => ⌜st = Step_Execute (RETIRE_SUCCESS,
                          zero_extend' 32 (subrange_vec_dec w 15 0))⌝ ∗
                  hreg_frame rs2 Drw ∗ hreg_frame_ro Df rs2 Dro ∗ R).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv HDmisa HDmst HDpc HDnpc HDpma HDcfg HDhtif
       Hpriv Hpc Hpma Hpcfg Hhtif HmisaS HmIE HmisaC Hunlock Hpallow Hram
       Hb0 Hb1 Hva Hpa Hrvc Hdec Hlpad.
@@ -696,7 +696,7 @@ Section run.
                          zero_extend' 32 h)⌝ ∗
                  ∃ rs2 : regstate, ⌜Q rs2⌝ ∗
                  hreg_frame rs2 Drw ∗ hreg_frame_ro Df rs2 Dro ∗ R).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv HDmisa HDmst HDpc HDnpc HDpma HDcfg HDhtif
       Hpriv Hpc Hpma Hpcfg Hhtif HmisaS HmIE HmisaC Hunlock Hpallow Hram
       Hb0 Hb1 Hal4 Hpa Hrvc Hdec Hlpad.
@@ -789,7 +789,7 @@ Section run.
       (fun st => ⌜st = Step_Execute (RETIRE_SUCCESS,
                          zero_extend' 32 h)⌝ ∗
                  hreg_frame rs2 Drw ∗ hreg_frame_ro Df rs2 Dro ∗ R).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv HDmisa HDmst HDpc HDnpc HDpma HDcfg HDhtif
       Hpriv Hpc Hpma Hpcfg Hhtif HmisaS HmIE HmisaC Hunlock Hpallow Hram
       Hb0 Hb1 Hal4 Hpa Hrvc Hdec Hlpad.

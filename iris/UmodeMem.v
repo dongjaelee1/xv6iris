@@ -81,7 +81,7 @@ Section UmodeMem.
     (TsoCtx.ctx_phys_pointsto XI (uva_pa pt va : Arch.pa) (DfracOwn 1) b ∗
      (TsoCtx.ctx_phys_pointsto XI (uva_pa pt va : Arch.pa) (DfracOwn 1) b -∗
       umem pt M)).
-  Proof.
+  Proof using .
     iIntros (Hl) "HM".
     iApply (big_sepM_lookup_acc with "HM"). exact Hl.
   Qed.
@@ -95,7 +95,7 @@ Section UmodeMem.
      (∀ b' : bv 8,
         TsoCtx.ctx_phys_pointsto XI (uva_pa pt va : Arch.pa) (DfracOwn 1) b' -∗
         umem pt (<[va := b']> M))).
-  Proof.
+  Proof using .
     iIntros (Hl) "HM".
     iDestruct (big_sepM_insert_acc with "HM") as "[Hb Hrest]"; [exact Hl |].
     iFrame "Hb". iIntros (b') "Hb". iApply ("Hrest" with "Hb").
@@ -336,7 +336,7 @@ Section UmodeMemBridge.
     umem pt M ⊢ ⌜forall va1 va2 : Z,
         va1 ∈ dom M -> va2 ∈ dom M ->
         uva_pa pt va1 = uva_pa pt va2 -> va1 = va2⌝.
-  Proof.
+  Proof using .
     rewrite /umem. iIntros "HM".
     rewrite bi.pure_forall. iIntros (va1).
     rewrite bi.pure_forall. iIntros (va2).
@@ -354,13 +354,13 @@ Section UmodeMemBridge.
   (* the same fact, folded *)
   Lemma umem_uva_inj (pt : uptd) (M : gmap Z (bv 8)) :
     umem pt M ⊢ ⌜uva_inj pt M⌝.
-  Proof. apply umem_inj. Qed.
+  Proof using . apply umem_inj. Qed.
 
   (* THE VIEW LEMMA: with the re-keying injective, the two big-ops are the
      same list of cells. *)
   Lemma umem_bytes_own (pt : uptd) (M : gmap Z (bv 8)) :
     uva_inj pt M -> umem pt M ⊣⊢ bytes_own (upa_map pt M).
-  Proof.
+  Proof using .
     intros Hinj. rewrite /umem /bytes_own /upa_map.
     rewrite big_sepM_list_to_map; [| by apply upa_list_nodup].
     rewrite /upa_list big_sepL_fmap big_sepM_map_to_list. reflexivity.
@@ -370,7 +370,7 @@ Section UmodeMemBridge.
      resource being handed over *)
   Lemma umem_to_bytes (pt : uptd) (M : gmap Z (bv 8)) :
     umem pt M ⊢ bytes_own (upa_map pt M).
-  Proof.
+  Proof using .
     apply (bi.pure_elim (uva_inj pt M)); [ apply umem_uva_inj |].
     intros Hinj. by rewrite (umem_bytes_own pt M Hinj).
   Qed.
@@ -379,6 +379,6 @@ Section UmodeMemBridge.
      must be carried, since there is no [umem] left to derive it from *)
   Lemma bytes_to_umem (pt : uptd) (M : gmap Z (bv 8)) :
     uva_inj pt M -> bytes_own (upa_map pt M) ⊢ umem pt M.
-  Proof. intros Hinj. by rewrite (umem_bytes_own pt M Hinj). Qed.
+  Proof using . intros Hinj. by rewrite (umem_bytes_own pt M Hinj). Qed.
 
 End UmodeMemBridge.

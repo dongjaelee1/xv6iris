@@ -65,7 +65,7 @@ Import Defs.
   Lemma exec_vmem_write_addr_1_S_walk_dev_pt :
     exec (vmem_write_addr (Virtaddr a) 1 data (Store Data) false false false) s
       = Some (Ok true, MState s'.(sregs) s'.(mem) d').
-  Proof.
+  Proof using HA HW Halign Hc Hcp Hcps Hdev Hh Hmatch Hmprv Hmprvs Hord Hrange Hsig Htm Htr Hwr Hwrite.
     assert (Heff : exec (effectivePrivilege (Store Data) (register_lookup mstatus s.(sregs))
                            (register_lookup cur_privilege s.(sregs))) s = Some (Supervisor, s)).
     { rewrite Hcps. apply exec_effectivePrivilege_store_S. exact Hmprvs. }
@@ -132,7 +132,7 @@ Import Defs.
   Lemma exec_vmem_write_1_gpr_S_walk_dev_pt :
     exec (vmem_write (Regidx rs1) offset 1 data (Store Data) false false false) s
       = Some (Ok true, MState s'.(sregs) s'.(mem) d').
-  Proof.
+  Proof using HA HW Halign Hc Hcp' Hcps Hdev Hh Hmatch Hmprv' Hmprvs Hord Hrange Hsig Htea Htm Htr Hwr Hwrite.
     unfold vmem_write. rewrite exec_catch_early_return.
     assert (Ha8ea : a8 = ea) by (unfold a8; rewrite subrange_id; apply sign_extend'_id).
     assert (Hgta : exec (get_transformed_data_addr (Regidx rs1) offset (Store Data) 1) s
@@ -196,7 +196,7 @@ Import Defs.
     exec (execute (STORE (imm, Regidx rs2, Regidx rs1, 1))) s
       = Some (RETIRE_SUCCESS,
               MState s'.(sregs) s'.(mem) d').
-  Proof.
+  Proof using HA HW Halign Hc Hcp' Hcps Hdev Hh Hmatch Hmprv' Hmprvs Hord Hrange Hsig Htea Htm Htr Hwr Hwrite.
     change (execute (STORE (imm, Regidx rs2, Regidx rs1, 1)))
       with (execute_STORE imm (Regidx rs2) (Regidx rs1) 1).
     unfold execute_STORE.

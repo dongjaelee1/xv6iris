@@ -168,7 +168,7 @@ Section UConsLine.
      [UkSh.ush_std] is this one weakened. *)
   Lemma ush_std_cons_ledger (γfd : gname) (l : list fdstate) :
     ush_std_cons γfd l -∗ ustd γfd l.
-  Proof. iIntros "[$ _]". Qed.
+  Proof using . iIntros "[$ _]". Qed.
 
   (* =================================================================== *)
   (*  §2  SH'S READ LEAF, WITH THE RECEIPT KEPT                           *)
@@ -256,7 +256,7 @@ Section UConsLine.
       (~ UserPtTree.uva_wmapped P (uint (add_vec_int dst (Z.of_nat d))))
       sl d dc -∗
     ucons_swallow cn False sl d dc.
-  Proof.
+  Proof using .
     intros Hdk Hwf Hpm Hlf. iIntros "Hheap Hbs Hsw".
     iDestruct (uk_read_nofault (ukn_t N) (ukn_d N) (ukn_s N) M pmv sz
                  (DfracOwn 1) dst k d f P Hdk Hwf Hpm Hlf

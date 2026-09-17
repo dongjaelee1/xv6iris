@@ -198,7 +198,7 @@ Section ProofSysOpenTails.
         proc_priv_bare (proc_addr jx) pidv Upr -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HKeo HK24 Kpop Hgeom Hj Hgl Hlkempty Hsp0 HMsp HMthr HMs2 HMs3 Hal.
     iIntros "Hcg Hown Htce Hcce #Htext #Hkd Hpc #Hpenv #Hbio #Hlog Hseam Hgen
               Hpid #Hprocs #Hdev #Hgeo #Hdlk Hop Hf1 Hf2 Hf3 Hf4 Hf5 Hf6
@@ -406,7 +406,7 @@ Section ProofSysOpenTails.
         proc_priv_bare (proc_addr jx) pidv Upr -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HKeo HK24 Kpop Hgeom Hj Hgl Hlkempty Hsp0 HMsp HMthr HMs2 HMs3 Hal.
     iIntros "Hcg Hown Htce Hcce #Htext #Hkd Hpc #Hpenv #Hbio #Hlog Hseam Hgen
               Hpid #Hprocs #Hdev #Hgeo #Hdlk Hop Hf1 Hf2 Hf3 Hf4 Hf5 Hf6
@@ -674,7 +674,7 @@ Section ProofSysOpenTails.
         iref_slot -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HKup HKeo HK24 Kpop Hkk Hgeom Hsize Hbm0 Hbmcov Hbmlog Hist0
            Hiblk Hiblog Hinb Hcovb Hiu Hj Hgl Hlkempty Hsp0 HMsp HMthr HMs1
            HMs2 HMs3 Hal.
@@ -1025,7 +1025,7 @@ Section ProofSysOpenTails.
         iref_slot -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HKup HKeo HK24 Kpop Hkk Hgeom Hsize Hbm0 Hbmcov Hbmlog Hist0
            Hiblk Hiblog Hinb Hcovb Hiu Hj Hgl Hlkempty Hsp0 HMsp HMthr HMs1
            HMs2 HMs3 Hal.
@@ -1375,7 +1375,7 @@ Section ProofSysOpenTails.
         iref_slot -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HKup HKeo HK24 Kpop Hkk Hgeom Hsize Hbm0 Hbmcov Hbmlog Hist0
            Hiblk Hiblog Hinb Hcovb Hiu Hj Hgl Hlkempty Hsp0 HMsp HMthr HMs1
            HMs3 Hal.
@@ -1667,7 +1667,7 @@ Section ProofSysOpenTails.
   (* ================================================================== *)
   (* the two units [so_tail_f] returns, joined at its exit *)
   Local Lemma so_iref_two : iref_slot -∗ iref_slot -∗ iref_slots 2.
-  Proof.
+  Proof using .
     rewrite /iref_slot. iIntros "H1 H2".
     iApply (iref_slots_combine 1 1 with "H1 H2").
   Qed.
@@ -1795,7 +1795,7 @@ Section ProofSysOpenTails.
         fileclose_env_out fn on stf -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HKup HKeo HKfc HK24 Kpop Hkk Hgeom Hsize Hbm0 Hbmcov Hbmlog Hist0
            Hiblk Hiblog Hinb Hcovb Hiu Hj Hgl Hlkempty Hsp0 HMsp HMthr HMs1
            HMs2 Hal.
@@ -2045,7 +2045,7 @@ Section ProofSysOpenTails.
         inode_shr kk s icfg_dev inum -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HKiu HKeo HK24 Kpop Hkk Hgeom Hj Hgl Hlkempty Hsp0 HMsp HMthr HMs1
            HMs3 Hal.
     iIntros "Hcg Hown Htce Hcce #Htext #Hkd Hpc #Hpenv #Hbio #Hlog Hseam Hgen

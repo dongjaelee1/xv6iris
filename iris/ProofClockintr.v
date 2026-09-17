@@ -99,7 +99,7 @@ Section ProofClockintr.
       (p : mword 64) (lks : gset string) :
     sie_cap_gpr KT1 M av false p -∗ cpu_own n eb p false lks -∗
     ⌜ (match n with O => eb | S _ => false end) = false ⌝.
-  Proof.
+  Proof using .
     iIntros "Hcg Hcnt".
     iDestruct "Hcnt" as "[_ Hic]".
     destruct n as [|n'].
@@ -135,7 +135,7 @@ Section ProofClockintr.
         pc_is (ret_pc ra0) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intro HMsp.
     iIntros "#Htcap Hcg #Htext Hpc Hbra Hbs0 Hcont".
     (* ---- +0x0e: rdtime a5 ---- *)
@@ -309,7 +309,7 @@ Section ProofClockintr.
   Lemma wp_clockintr_sconf  (γl : gname) (γs : list gname)
       (m : regfile) (n : nat) (eb : bool) (p : mword 64) (av : nat) (lks : gset string)
     : wp_clockintr_sconf_body γl γs m n eb p av lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_clockintr_sconf_body].
     intros pcE ret_tgt Hn Hav Hbelow.
     pose proof (locks_below_not_elem _ _ Hbelow) as Hfresh.

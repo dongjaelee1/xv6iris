@@ -211,7 +211,7 @@ Section UkReadFile.
        ubytes (ukn_d N) (uint (m !!! Regidx a1_idx)) k g -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hcnt Hcapk Hfdv Hfdlt Hal4.
     iIntros "#Hi Hrun Hsb Hufdh Hbuf Hcont".
     iApply (wp_uk_ecall_read_at N h m pc cnt k f avail fdep
@@ -239,7 +239,7 @@ Section UkReadFile.
     pf_at (aread_commit_at (fs_gamma_L fsc_fs) appE i γo) F -∗
     udepwf_st N m pc USYS_read (read_file_fam (ukn_pay N) F)
       (FdOpen true wb (FdInode i γo OffParked)).
-  Proof.
+  Proof using .
     iIntros "Hau". rewrite /udepwf_st.
     iSplitR; [ iPureIntro; reflexivity | ].
     iIntros (M pm sz fdv cw gn cs pidv) "%Hkey _ Hheap Hufd".
@@ -287,7 +287,7 @@ Section UkReadFile.
           (* ...AND THE BYTES THE PROGRAM HOLDS ARE THE FILE'S *)
           ⌜forall j : nat, (j < Z.to_nat (bv_unsigned r))%nat ->
              g j = bs0 !!! (off + j)%nat⌝)).
-  Proof.
+  Proof using .
     intros Hlin Himg Hnk. rewrite /read_arms /read_post_ok /read_post_fail.
     iIntros "[Hok | [%Hm1 Hfail]]".
     - iDestruct "Hok" as (av off a d) "(%Hpre & %Hn & %Htie & %Hdr & %Hbytes & [%Hav Hn2])".
@@ -362,7 +362,7 @@ Section UkReadFile.
       (nl : nat) :
     nview Γ q i (MkAnode (AFile cat_file) nl) -∗
     pf_at (aread_commit_at Γ appE i γo) (cat_recv Γ q i nl).
-  Proof.
+  Proof using .
     iIntros "Hn". rewrite /pf_at /cat_recv /=. iSplit; [ | iExact "Hn" ].
     iApply (aread_commit_at_pinned_self Γ appE i γo q
               (MkAnode (AFile cat_file) nl) with "Hn").
@@ -400,7 +400,7 @@ Section UkReadFile.
        ubytes (ukn_d N) (uint (m !!! Regidx a1_idx)) k g -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hcnt Hcapk Hfdv Hfdlt Hal4.
     iIntros "#Hi Hrun Hufdh Hpin Hbuf Hcont".
     iDestruct (cat_piece q i γo nl with "Hpin") as "Hau".

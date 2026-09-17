@@ -173,7 +173,7 @@ Section WpUldPt.
       TsoCtx.ctx_phys_word_pointsto XI tfpa dqm v -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros va pa imm iva tfpa Hrd HSIE HMPRV HSXL Hmm HMXR Hpmm HPBMTE Hmenvval0 Ha0
       Hcanon Hvpn Hident Hcanon2 Hvpn2 Hident2 Hva2 Hpa4va4 Hpa2al Hpa2al2 Hpa4al
       Heva Hcanond Hvpnd Halignd Hmod8.
@@ -739,7 +739,7 @@ Section UsretSwp.
     register_lookup menvcfg rs = MENVCFG_S ->
     register_lookup senvcfg rs = mword_of_int 0 ->
     hval D Drw rs (get_xLPE User) false rs.
-  Proof.
+  Proof using .
     intros HDm HDe HDs Hmisa Hmenv Hsenv.
     apply (hval_of_goodb uD_lpe D Drw _ dstateS rs false).
     - intros r Hr. unfold uD_lpe in Hr.
@@ -769,7 +769,7 @@ Section UsretSwp.
         reg_pointsto menvcfg (DfracOwn 1) menv ∗
         reg_pointsto sepc (DfracOwn 1) sep ∗
         reg_pointsto senvcfg DfracDiscarded senv).
-  Proof.
+  Proof using .
     rewrite /hreg_frame /hreg_frame_ro /usret_Drw /usret_Dro.
     repeat (rewrite big_sepS_union; last set_solver).
     rewrite !big_sepS_singleton.
@@ -791,7 +791,7 @@ Section UsretSwp.
     (hreg_frame (usret_rs ms p npc menv sep senv) usret_Drw ∗
      hreg_frame_ro usret_Df (usret_rs ms p npc menv sep senv) usret_Dro
      : iProp Σ).
-  Proof.
+  Proof using .
     iIntros "H1 H2 H3 H4 H5 H6 H7". rewrite usret_frames. iFrame.
   Qed.
 
@@ -807,12 +807,12 @@ Section UsretSwp.
      reg_pointsto menvcfg (DfracOwn 1) menv ∗
      reg_pointsto sepc (DfracOwn 1) sep ∗
      reg_pointsto senvcfg DfracDiscarded senv).
-  Proof. rewrite usret_frames. iIntros "H". iExact "H". Qed.
+  Proof using . rewrite usret_frames. iIntros "H". iExact "H". Qed.
 
   Lemma usret_rw_ext (rs rs' : regstate) :
     reg_agree_on (usret_Drw ∪ usret_Dro) rs rs' ->
     hreg_frame rs usret_Drw -∗ (hreg_frame rs' usret_Drw : iProp Σ).
-  Proof.
+  Proof using .
     intros Hag. rewrite (hreg_frame_ext _ _ usret_Drw
       (reg_agree_mono (usret_Drw ∪ usret_Dro) usret_Drw _ _
          ltac:(set_solver) Hag)).
@@ -823,7 +823,7 @@ Section UsretSwp.
     reg_agree_on (usret_Drw ∪ usret_Dro) rs rs' ->
     hreg_frame_ro usret_Df rs usret_Dro -∗
     (hreg_frame_ro usret_Df rs' usret_Dro : iProp Σ).
-  Proof.
+  Proof using .
     intros Hag. rewrite (hreg_frame_ro_ext usret_Df _ _ usret_Dro
       (reg_agree_mono (usret_Drw ∪ usret_Dro) usret_Dro _ _
          ltac:(set_solver) Hag)).
@@ -846,7 +846,7 @@ Section UsretSwp.
                 hreg_frame_ro usret_Df
                   (usret_rs (sret_elpclr ms) p npc MENVCFG_S sep
                      (mword_of_int 0)) usret_Dro).
-  Proof.
+  Proof using .
     iIntros "#Hcert #Help Hrw Hro".
     unfold zicfilp_restore_elp_on_xret. cbn match.
     iApply (swp_bind_use _ _
@@ -925,7 +925,7 @@ Section UsretSwp.
         hreg_frame_ro usret_Df
           (usret_rs (sret_ms5 ms_cur) User (ret_pc sepc0) MENVCFG_S sepc0
              (mword_of_int 0)) usret_Dro).
-  Proof.
+  Proof using .
     intros HTSR Hsup.
     assert (Hnpm : generic_neq User Machine = true)
       by (vm_compute; reflexivity).
@@ -1224,7 +1224,7 @@ Section WpUaluUsretPt.
       gpr_file (<[Regidx (mword_of_int 10) := regval_into_reg vnew]> m) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros va pa HSIE HMPRV HSXL Hmm HPBMTE Hmenvval0
       Hcanon Hvpn Hident Hcanon2 Hvpn2 Hident2 Hva2 Hpa4va4.
     iIntros "Hex #Hhw #Hminv Hhs Hpriv Hms Hmie Hmdl Hmenv Hutlb Htok Hpc
@@ -1308,7 +1308,7 @@ Section WpUaluUsretPt.
       gpr_file m -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros va pa HSIE HMPRV HSXL Hmm HPBMTE Hmenvval0 Hsenvval0 HTSR Hsup.
     subst menvcfg0.
     iIntros "#Hhw #Hminv Hhs Hpriv Hms Hmie Hmdl Hmenv Hsenvc Hsepc Hutlb

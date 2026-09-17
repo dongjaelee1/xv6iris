@@ -238,7 +238,7 @@ Section UserMemArmsC.
     tlb_ok_pt (mword_of_int 0) t' (register_lookup tlb rs') ->
     u_mem_step pt t t' mm mm' ->
     rvc_post pt t mm rsf va h.
-  Proof.
+  Proof using .
     intros Hdec Hhv Hzca Hfwd Hfwdg Hwok Hvr Hvg Hland Htlb Hst.
     apply (finish_mem_rvc pt t t' mm rsf va ci
              (LOAD (imm, Regidx rs1, Regidx rd, us, width)) RETIRE_SUCCESS h
@@ -280,7 +280,7 @@ Section UserMemArmsC.
     tlb_ok_pt (mword_of_int 0) t' (register_lookup tlb rs') ->
     u_mem_step pt t t' mm mm' ->
     rvc_post pt t mm rsf va h.
-  Proof.
+  Proof using .
     intros Hdec Hhv Hzca Hfwd Hfwdg Hwok Hue Hvr Hvg Hland Htlb Hst.
     apply (finish_mem_rvc pt t t' mm rsf va ci
              (LOAD (imm, Regidx rs1, Regidx rd, us, width))
@@ -329,7 +329,7 @@ Section UserMemArmsC.
     tlb_ok_pt (mword_of_int 0) t' (register_lookup tlb rs') ->
     u_mem_step pt t t' mm mm' ->
     rvc_post pt t mm rsf va h.
-  Proof.
+  Proof using .
     intros Hdec Hhv Hzca Hfwd Hfwdg Hwok Hvw Hvg Hland Htlb Hst.
     apply (finish_mem_rvc pt t t' mm rsf va ci
              (STORE (imm, Regidx rs2, Regidx rs1, width)) RETIRE_SUCCESS h
@@ -381,7 +381,7 @@ Section UserMemArmsC.
     tlb_ok_pt (mword_of_int 0) t' (register_lookup tlb rs') ->
     u_mem_step pt t t' mm mm' ->
     rvc_post pt t mm rsf va h.
-  Proof.
+  Proof using .
     intros Hdec Hhv Hzca Hfwd Hfwdg Hwok Hue Hvw Hvg Hland Htlb Hst.
     apply (finish_mem_rvc pt t t' mm rsf va ci
              (STORE (imm, Regidx rs2, Regidx rs1, width))
@@ -423,7 +423,7 @@ Section UserMemArmsC.
     hval (u_Drw ∪ u_Dro) u_Drw rsf (ext_decode_compressed h) ci rsf ->
     u_exec_pins pt t rsf -> u_mem_wf pt t mm ->
     rvc_post pt t mm rsf va h.
-  Proof.
+  Proof using .
     intros Hk Hk8 Hwok Hfwd Hfwdg Hpfc Hag Hdec Hhv Hpins Hwf.
     (* the [Ext_Zca] gate rides [u_exec_pins]' misa pin, not [post_fetch_cfg]
        (which does not carry misa at all) *)
@@ -498,7 +498,7 @@ Section UserMemArmsC.
     hval (u_Drw ∪ u_Dro) u_Drw rsf (ext_decode_compressed h) ci rsf ->
     u_exec_pins pt t rsf -> u_mem_wf pt t mm ->
     rvc_post pt t mm rsf va h.
-  Proof.
+  Proof using .
     intros Hk Hk8 Hwok Hfwd Hfwdg Hpfc Hag Hdec Hhv Hpins Hwf.
     (* the [Ext_Zca] gate rides [u_exec_pins]' misa pin, not [post_fetch_cfg]
        (which does not carry misa at all) *)
@@ -584,7 +584,7 @@ Section UserMemArmsC.
     hval (u_Drw ∪ u_Dro) u_Drw rsf (ext_decode_compressed h) (C_LBU p) rsf ->
     u_exec_pins pt t rsf -> u_mem_wf pt t mm ->
     rvc_post pt t mm rsf va h.
-  Proof.
+  Proof using .
     intros Hpfc Hag Hdec Hhv Hpins Hwf.
     destruct p as [[uimm rdc] rsc1]. destruct rdc as [i0]. destruct rsc1 as [i1].
     exact (arm_c_load_u t mm rsf va mi h (C_LBU (uimm, Cregidx i0, Cregidx i1))
@@ -606,7 +606,7 @@ Section UserMemArmsC.
     hval (u_Drw ∪ u_Dro) u_Drw rsf (ext_decode_compressed h) (C_LH p) rsf ->
     u_exec_pins pt t rsf -> u_mem_wf pt t mm ->
     rvc_post pt t mm rsf va h.
-  Proof.
+  Proof using .
     intros Hpfc Hag Hdec Hhv Hpins Hwf.
     destruct p as [[uimm rdc] rsc1]. destruct rdc as [i0]. destruct rsc1 as [i1].
     exact (arm_c_load_u t mm rsf va mi h (C_LH (uimm, Cregidx i0, Cregidx i1))
@@ -628,7 +628,7 @@ Section UserMemArmsC.
     hval (u_Drw ∪ u_Dro) u_Drw rsf (ext_decode_compressed h) (C_LHU p) rsf ->
     u_exec_pins pt t rsf -> u_mem_wf pt t mm ->
     rvc_post pt t mm rsf va h.
-  Proof.
+  Proof using .
     intros Hpfc Hag Hdec Hhv Hpins Hwf.
     destruct p as [[uimm a] b]. destruct a as [i0]. destruct b as [i1].
     exact (arm_c_load_u t mm rsf va mi h (C_LHU (uimm, Cregidx i0, Cregidx i1))
@@ -650,7 +650,7 @@ Section UserMemArmsC.
     hval (u_Drw ∪ u_Dro) u_Drw rsf (ext_decode_compressed h) (C_LW p) rsf ->
     u_exec_pins pt t rsf -> u_mem_wf pt t mm ->
     rvc_post pt t mm rsf va h.
-  Proof.
+  Proof using .
     intros Hpfc Hag Hdec Hhv Hpins Hwf.
     destruct p as [[uimm a] b]. destruct a as [i0]. destruct b as [i1].
     exact (arm_c_load_u t mm rsf va mi h (C_LW (uimm, Cregidx i0, Cregidx i1))
@@ -672,7 +672,7 @@ Section UserMemArmsC.
     hval (u_Drw ∪ u_Dro) u_Drw rsf (ext_decode_compressed h) (C_LD p) rsf ->
     u_exec_pins pt t rsf -> u_mem_wf pt t mm ->
     rvc_post pt t mm rsf va h.
-  Proof.
+  Proof using .
     intros Hpfc Hag Hdec Hhv Hpins Hwf.
     destruct p as [[uimm a] b]. destruct a as [i0]. destruct b as [i1].
     exact (arm_c_load_u t mm rsf va mi h (C_LD (uimm, Cregidx i0, Cregidx i1))
@@ -694,7 +694,7 @@ Section UserMemArmsC.
     hval (u_Drw ∪ u_Dro) u_Drw rsf (ext_decode_compressed h) (C_LWSP p) rsf ->
     u_exec_pins pt t rsf -> u_mem_wf pt t mm ->
     rvc_post pt t mm rsf va h.
-  Proof.
+  Proof using .
     intros Hpfc Hag Hdec Hhv Hpins Hwf.
     destruct p as [uimm rdr]. destruct rdr as [r].
     exact (arm_c_load_u t mm rsf va mi h (C_LWSP (uimm, Regidx r))
@@ -716,7 +716,7 @@ Section UserMemArmsC.
     hval (u_Drw ∪ u_Dro) u_Drw rsf (ext_decode_compressed h) (C_LDSP p) rsf ->
     u_exec_pins pt t rsf -> u_mem_wf pt t mm ->
     rvc_post pt t mm rsf va h.
-  Proof.
+  Proof using .
     intros Hpfc Hag Hdec Hhv Hpins Hwf.
     destruct p as [uimm rdr]. destruct rdr as [r].
     exact (arm_c_load_u t mm rsf va mi h (C_LDSP (uimm, Regidx r))
@@ -738,7 +738,7 @@ Section UserMemArmsC.
     hval (u_Drw ∪ u_Dro) u_Drw rsf (ext_decode_compressed h) (C_SB p) rsf ->
     u_exec_pins pt t rsf -> u_mem_wf pt t mm ->
     rvc_post pt t mm rsf va h.
-  Proof.
+  Proof using .
     intros Hpfc Hag Hdec Hhv Hpins Hwf.
     destruct p as [[uimm rsc1] rsc2]. destruct rsc1 as [i0]. destruct rsc2 as [i1].
     exact (arm_c_store_u t mm rsf va mi h (C_SB (uimm, Cregidx i0, Cregidx i1))
@@ -760,7 +760,7 @@ Section UserMemArmsC.
     hval (u_Drw ∪ u_Dro) u_Drw rsf (ext_decode_compressed h) (C_SH p) rsf ->
     u_exec_pins pt t rsf -> u_mem_wf pt t mm ->
     rvc_post pt t mm rsf va h.
-  Proof.
+  Proof using .
     intros Hpfc Hag Hdec Hhv Hpins Hwf.
     destruct p as [[uimm a] b]. destruct a as [i0]. destruct b as [i1].
     exact (arm_c_store_u t mm rsf va mi h (C_SH (uimm, Cregidx i0, Cregidx i1))
@@ -782,7 +782,7 @@ Section UserMemArmsC.
     hval (u_Drw ∪ u_Dro) u_Drw rsf (ext_decode_compressed h) (C_SW p) rsf ->
     u_exec_pins pt t rsf -> u_mem_wf pt t mm ->
     rvc_post pt t mm rsf va h.
-  Proof.
+  Proof using .
     intros Hpfc Hag Hdec Hhv Hpins Hwf.
     destruct p as [[uimm a] b]. destruct a as [i0]. destruct b as [i1].
     exact (arm_c_store_u t mm rsf va mi h (C_SW (uimm, Cregidx i0, Cregidx i1))
@@ -804,7 +804,7 @@ Section UserMemArmsC.
     hval (u_Drw ∪ u_Dro) u_Drw rsf (ext_decode_compressed h) (C_SD p) rsf ->
     u_exec_pins pt t rsf -> u_mem_wf pt t mm ->
     rvc_post pt t mm rsf va h.
-  Proof.
+  Proof using .
     intros Hpfc Hag Hdec Hhv Hpins Hwf.
     destruct p as [[uimm a] b]. destruct a as [i0]. destruct b as [i1].
     exact (arm_c_store_u t mm rsf va mi h (C_SD (uimm, Cregidx i0, Cregidx i1))
@@ -826,7 +826,7 @@ Section UserMemArmsC.
     hval (u_Drw ∪ u_Dro) u_Drw rsf (ext_decode_compressed h) (C_SWSP p) rsf ->
     u_exec_pins pt t rsf -> u_mem_wf pt t mm ->
     rvc_post pt t mm rsf va h.
-  Proof.
+  Proof using .
     intros Hpfc Hag Hdec Hhv Hpins Hwf.
     destruct p as [uimm r2]. destruct r2 as [r].
     exact (arm_c_store_u t mm rsf va mi h (C_SWSP (uimm, Regidx r))
@@ -848,7 +848,7 @@ Section UserMemArmsC.
     hval (u_Drw ∪ u_Dro) u_Drw rsf (ext_decode_compressed h) (C_SDSP p) rsf ->
     u_exec_pins pt t rsf -> u_mem_wf pt t mm ->
     rvc_post pt t mm rsf va h.
-  Proof.
+  Proof using .
     intros Hpfc Hag Hdec Hhv Hpins Hwf.
     destruct p as [uimm r2]. destruct r2 as [r].
     exact (arm_c_store_u t mm rsf va mi h (C_SDSP (uimm, Regidx r))

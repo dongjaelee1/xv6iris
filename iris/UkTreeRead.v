@@ -121,7 +121,7 @@ Section UkTreeRead.
     app_inv γfs -∗
     open_in (fs_gamma_L γfs) γfs cw M pv vom
       (pobs_P T hops) (pobs_Pmiss T) Farm Fun Fok Fex (pobs_Fo Pin T) Ft.
-  Proof.
+  Proof using .
     intros Hcr Htr Hres Hpath. iIntros "#Hcl #Hinv".
     iDestruct (pinned_obs_abs γfs Pin T (pobs_Pmiss T) cw pl hops ino nd Hres
                  with "[] Hcl Hinv") as "(Hw & Ho & _)";
@@ -161,7 +161,7 @@ Section UkTreeRead.
                (FdInode ino γo OffParked) sts r fdv'⌝)
        (* ...or the application is tainted *)
        ∨ T).
-  Proof.
+  Proof using .
     intros Hres Hpath. iIntros "Hrc". rewrite /open_receipt_plain.
     iDestruct "Hrc" as "[(%Hr & %Hfd & _) | Hok]".
     { iLeft. iPureIntro. exact (conj Hr Hfd). }
@@ -224,7 +224,7 @@ Section UkTreeRead.
     udepwf_at N m pc USYS_open
       (tree_open_fam (tree_taint c) (fun v => subtree v root = Some t)
          (resolve_hops t d pl) (ukn_pay N)) cw.
-  Proof.
+  Proof using .
     intros Heq Hpath Ha0 Hcr Htr Hp Hstart Hd Hres.
     iIntros "#Hpin #Hinv #Hro".
     iDestruct (tree_pin_claim_law c r g root t Heq with "Hpin") as "#Hcl".
@@ -265,7 +265,7 @@ Section UkTreeRead.
     fdv' = <[fd := FdOpen rd wr ty]> sts ->
     open_fd_rcpt rb wb (FdInode i γo OffParked) sts rv fdv' ->
     FdOpen rd wr ty = FdOpen rb wb (FdInode i γo OffParked).
-  Proof.
+  Proof using .
     intros Hlen Hrv Hlt Hfdv (fd0 & Hr0 & Hcl0 & Hfdv0).
     assert (Hlt0 : (fd0 < NOFILE)%nat).
     { rewrite <- Hlen. exact (lookup_lt_Some _ _ _ Hcl0). }
@@ -330,7 +330,7 @@ Section UkTreeRead.
        urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Heq Hn Hal4 Hpath Ha0 Hcr Htr Hp Hstart Hd Hres.
     iIntros "#Hi #Hro Hrun Hcwd Hstd #Hpin #Hinv Hcont".
     iDestruct (tree_open_sup N c r g root d i t bs Img pv m pc pl cw Heq Hpath
@@ -412,7 +412,7 @@ Section UkTreeRead.
                       app_pred app_run v ∗ (⌜Pin v⌝ ∨ T)) -∗
     app_inv γfs -∗
     pf_at (aread_commit_at (fs_gamma_L γfs) appE i γo) (tree_read_recv Pin T).
-  Proof.
+  Proof using .
     iIntros "#Hcl #Hinv". rewrite /tree_read_recv. iApply pf_at_triv.
     rewrite /aread_commit_at. iIntros (I off a d) "%Hpre Hka Hoff".
     iMod (inv_acc appE appN with "Hinv") as "[Hbody Hclose]"; [ set_solver | ].
@@ -453,7 +453,7 @@ Section UkTreeRead.
            ⌜forall j : nat, (j < Z.to_nat (bv_unsigned r))%nat ->
               g j = bs0 !!! (off + j)%nat⌝))
      ∨ T).
-  Proof.
+  Proof using .
     intros Hpin Hlin Himg Hnk.
     rewrite /read_arms /read_post_ok /read_post_fail.
     iIntros "[Hok | [%Hm1 _]]"; last first.
@@ -536,7 +536,7 @@ Section UkTreeRead.
        ubytes (ukn_d N) (uint (m !!! Regidx a1_idx)) k gb -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Heq Hn Hcnt Hcapk Hfdv Hfdlt Hal4 Hp Hstart Hd Hres.
     iIntros "#Hi Hrun Hufdh #Hpin #Hinv Hbuf Hcont".
     iDestruct (tree_pin_claim_law c r gn root t Heq with "Hpin") as "#Hcl".

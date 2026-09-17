@@ -231,7 +231,7 @@ Section UkShCd.
       ubytes γd (a + Z.of_nat k) L (fun j => f (k + j)%nat) ∗
       (ubytes γd (a + Z.of_nat k) L (fun j => f (k + j)%nat) -∗
          ubytes γd a Nb f).
-  Proof.
+  Proof using .
     intros Hkl.
     remember (Nb - k - L)%nat as q eqn:Hq.
     assert (HN : Nb = (k + (L + q))%nat) by lia.
@@ -245,7 +245,7 @@ Section UkShCd.
   (* one byte, as its own run *)
   Lemma ushc_bytes1 (x : Z) (g : nat -> bv 8) :
     ubytes γd x 1 g ⊣⊢ ubyte γd x (g 0%nat).
-  Proof.
+  Proof using .
     rewrite /ubytes /ubytesq /= Z.add_0_r right_id. reflexivity.
   Qed.
 
@@ -255,7 +255,7 @@ Section UkShCd.
       ubyte γd (a + Z.of_nat j) (f j) ∗
       (∀ b : bv 8, ubyte γd (a + Z.of_nat j) b -∗
          ubytes γd a Nb (ush_set f j b)).
-  Proof.
+  Proof using .
     intros Hj.
     remember (Nb - j - 1)%nat as q eqn:Hq.
     assert (HN : Nb = (j + (1 + q))%nat) by lia.
@@ -287,7 +287,7 @@ Section UkShCd.
     Z.of_nat L < 2 ^ 31 ->
     g L = ubyte0 ->
     ubytes γd a (S L) g -∗ ustr γd (DfracOwn 1) a L g.
-  Proof.
+  Proof using .
     intros Hnn Hlen Hz.
     assert (E : S L = (L + 1)%nat) by lia. rewrite E.
     iIntros "H". rewrite ubytes_app.
@@ -301,7 +301,7 @@ Section UkShCd.
   Lemma ushc_bytes_of_ustr (a : Z) (L : nat) (g : nat -> bv 8) :
     g L = ubyte0 ->
     ustr γd (DfracOwn 1) a L g -∗ ubytes γd a (S L) g.
-  Proof.
+  Proof using .
     intros Hz.
     assert (E : S L = (L + 1)%nat) by lia. rewrite E.
     iIntros "(_ & _ & Hlo & Hhi)". rewrite ubytes_app. iFrame "Hlo".
@@ -337,7 +337,7 @@ Section UkShCd.
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using Hpsok_free.
     iIntros "#Hcode Hcwd Hrun Hcont".
     assert (Hpin : ShSyms.chdir = 0xcf6)
       by (destruct shk_syms_pins as (_&_&_&_&_&_&_&_&_&_&_&_&_&_&_&_&_&H&_);

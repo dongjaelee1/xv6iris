@@ -411,7 +411,7 @@ Section VdiLeaves.
       disk_cfg_is γv (DfracOwn (1/2)) c' -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hrs1tp Hrs2tp Hea Hg Hoff Hsw Hl0 Hl1 Hcw0.
     destruct Hcw0 as [Hcwce Hcw].
     destruct Hg as (Hr & Hal & Hcan & Hdv).
@@ -471,7 +471,7 @@ Section VdiLeaves.
       disk_cfg_is γv (DfracOwn (1/2)) virtio_cfg0 -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hrs1tp Hrs2tp Hea Hg Hoff Hsw Hl0. destruct Hg as (Hr & Hal & Hcan & Hdv).
     assert (Hsw' : (autocast (T := mword)
                       (subrange_vec_dec (rget m rs2) (Z.sub (Z.mul 4 8) 1) 0) : mword 32)
@@ -559,7 +559,7 @@ Section VdiLeaves.
       disk_fl γv t0 t1 -∗ disk_flr γv 0%nat -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hrs1tp Hrs2tp Hea Hg Hoff Hsw Hl0 Hcw0 Hpal Hdisj Hdring.
     destruct Hcw0 as [Hcwce Hcw].
     destruct Hg as (Hr & Hal & Hcan & Hdv).
@@ -610,7 +610,7 @@ Section VdiLeaves.
 
   Lemma vdi_ldval (w : mword (8*4)) :
     extend_value false w = sign_extend' 64 w.
-  Proof. exact (data2_ext_4 w). Qed.
+  Proof using . exact (data2_ext_4 w). Qed.
 
   (* -- a read whose value is determined by the tracked configuration -- *)
   Lemma wp_vdi_lw (γv : disk_names)
@@ -631,7 +631,7 @@ Section VdiLeaves.
       disk_cfg_is γv (DfracOwn (1/2)) c -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hrs1tp Hea Hg Hoff Hrd Hrdok Hcr. destruct Hg as (Hr & Hal & Hcan & Hdv).
     assert (Ha8 : sign_extend' 64 (subrange_vec_dec
                     (add_vec (rget m rs1) (sign_extend' 64 imm)) (xlen - 0 - 1) 0) = a).
@@ -677,7 +677,7 @@ Section VdiLease.
   Lemma vdi_page_static (p : mword 64) :
     page_valid p ->
     forall j, (j < 4096)%nat -> kmap_static (svpn_of (pa_add p j)) KP_rw.
-  Proof.
+  Proof using .
     intros Hpv j Hj. apply kdata_svpn_class.
     exact (page_in_range_addr_is_kdata p j Hpv Hj).
   Qed.
@@ -695,7 +695,7 @@ Section VdiLease.
          phys_ledger_at (pa_add (used_idx_pa (virtio_init_cfg pd pav pu)) j)
            (DfracOwn 1) byte_zero (tf2 t0 t1 j)) ∗
       lk_floor cur_ctx t0 ∗ lk_floor cur_ctx t1.
-  Proof.
+  Proof using .
     iIntros (Hpv) "#Hkm H".
     iApply (used_split_init pd pav pu (vdi_page_static pu Hpv) with "Hkm H").
   Qed.
@@ -708,7 +708,7 @@ Section VdiLease.
     ⊢ ([∗ list] j ∈ seq 0 2, (pa_add (pa_add pav 2%nat) j) ↦ₘ nth_byte (wrap16 0%nat) j)
       ∗ ([∗ list] j ∈ seq 0 16, (pa_add (pa_add pav 4%nat) j) ↦ₘ byte_zero)
       ∗ ([∗ list] j ∈ seq 20 4076, (pa_add pav j) ↦ₘ byte_zero).
-  Proof.
+  Proof using .
     iIntros "H".
     iEval (rewrite (bb_split3 pav 2 2 4092 4096 (fun _ : nat => byte_zero)
                       (DfracOwn 1) ltac:(lia))) in "H".
@@ -750,7 +750,7 @@ Section VdiLease.
     ([∗ list] j ∈ seq 0 16, (pa_add (pa_add pav 4%nat) j) ↦ₘ byte_zero) -∗
     half_map (ring_bytes (virtio_init_cfg pd pav pu) (fun _ : nat => zero16)) ∗
     ring_hcells cur_ctx pav.
-  Proof.
+  Proof using .
     iIntros (Hpv) "#Hkm H".
     rewrite (ring_bytes_zero_range (virtio_init_cfg pd pav pu)).
     assert (Hrb : ring_slot_pa (virtio_init_cfg pd pav pu) 0 = pa_add pav 4%nat)
@@ -770,7 +770,7 @@ Section VdiLease.
     ([∗ list] j ∈ seq 0 4096, (pa_add pu j) ↦ₘ byte_zero) -∗
     ⌜ ring_cells_dom (virtio_init_cfg pd pav pu)
         ## used_page_pas (virtio_init_cfg pd pav pu) ⌝.
-  Proof.
+  Proof using .
     iIntros "Hring Hpu".
     (* [mem_bytes_notin] is a RAW law; the conclusion is pure, so the
        crossing is one-way ([ctx_buf_forget]) *)
@@ -804,7 +804,7 @@ Section VdiLease.
     ([∗ list] j ∈ seq 0 4096, (pa_add pu j) ↦ₘ byte_zero) -∗
     ⌜ avail_idx_dom (virtio_init_cfg pd pav pu)
         ## used_page_pas (virtio_init_cfg pd pav pu) ⌝.
-  Proof.
+  Proof using .
     iIntros "Hidx Hpu".
     iEval (cbn [seq]) in "Hidx".
     iDestruct "Hidx" as "(Hi0 & Hi1 & _)".
@@ -883,7 +883,7 @@ Section ProofVirtioDiskInit.
       (pd0 pav0 pu0 : mword 64) (free0 : nat -> bv 8) (lks : gset string)
     : wp_virtio_disk_init_sconf_body γv γa γk m K eb pp on c0 vlock vname vcpu
                                      pd0 pav0 pu0 free0 lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_virtio_disk_init_sconf_body].
     intros pcE ret_tgt c_name c_cpu HK Hex Hcid Hlive0 Hkmem.
     destruct Hex as (nb & Hon & Hnb). subst on.

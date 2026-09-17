@@ -417,7 +417,7 @@ Section BootBundles.
     kmap_static_claims -∗
     gen_cert ==∗
     hw_config.
-  Proof.
+  Proof using .
     iIntros "Hmisa Hsec Hpma Hhtif Help Hsenv Hscen Hhpm #Hb #Hcert".
     iMod (reg_pointsto_persist with "Hmisa") as "#Hmisa'".
     iMod (reg_pointsto_persist with "Hsec")  as "#Hsec'".
@@ -461,7 +461,7 @@ Section BootBundles.
     cur_privilege ↦ᵣ{ dq } Machine -∗
     mstatus ↦ᵣ{ dq } boot_w64 0xA00000000 -∗
     mmode_config dq.
-  Proof.
+  Proof using .
     iIntros "#Hhw Hhs Hpriv Hms".
     iApply (mmode_config_rebuild dq (boot_w64 0xA00000000)
               ltac:(vm_compute; reflexivity)
@@ -549,7 +549,7 @@ Section BootRegs.
   Local Lemma boot_reg_list (rs : regstate) :
     boot_reg_res rs
     ⊣⊢ [∗ list] r ∈ boot_D_list, r ↦ᵣ register_lookup r rs.
-  Proof.
+  Proof using .
     rewrite /boot_reg_res /boot_D.
     apply big_sepS_list_to_set; exact boot_D_nodup.
   Qed.
@@ -600,7 +600,7 @@ Section BootRegs.
       (R_bitvector_64 minstretcfg)
         ↦ᵣ register_lookup (R_bitvector_64 minstretcfg) rs ∗
       ([∗ list] r ∈ boot_gpr_list, r ↦ᵣ register_lookup r rs).
-  Proof.
+  Proof using .
     rewrite boot_reg_list /boot_D_list big_sepL_app.
     iIntros "[Hn $]". rewrite /boot_D_named.
     iDestruct "Hn" as "(H1 & H2 & H3 & H4 & H5 & H6 & H7 & H8 & H9 & H10 &
@@ -628,7 +628,7 @@ Section BootRegs.
      RegFile's own ([rf_to_gmap_lookup]'s first bullet, verbatim). *)
   Lemma gpr_file_of_enum (f : regfile) :
     ([∗ list] r ∈ enum regidx, gpr_pt r (f r)) ⊢ gpr_file f.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /gpr_file.
     iSplitR; [iPureIntro; apply rf_to_gmap_dom |].
     rewrite /rf_to_gmap big_sepM_list_to_map; last first.
@@ -641,7 +641,7 @@ Section BootRegs.
   Lemma boot_gpr_file (rs : regstate) :
     ([∗ list] r ∈ boot_gpr_list, r ↦ᵣ register_lookup r rs)
     ⊢ gpr_file (boot_regfile rs).
-  Proof.
+  Proof using .
     iIntros "H". iApply gpr_file_of_enum.
     rewrite enum_regidx_eq.
     replace (seqZ 0 32) with (([0] ++ seqZ 1 31)%list)

@@ -970,7 +970,7 @@ Section Own.
     own_wf av own -> g <> g' ->
     own !! g = Some (r, t) -> own !! g' = Some (r', t') ->
     dom (subtree_nodes av r) ## dom (subtree_nodes av r').
-  Proof.
+  Proof using .
     intros ((Hu & _) & _ & Hnn) Hne Hg Hg' i Hi Hi'.
     apply elem_of_dom_subtree_nodes in Hi as (_ & Hr).
     apply elem_of_dom_subtree_nodes in Hi' as (_ & Hr').
@@ -986,7 +986,7 @@ Section Own.
     own !! g = Some (r, t) -> own !! g' = Some (r', t') ->
     subtree av r = Some t -> subtree av r' = Some t' ->
     dom (tv_nodes t) ## dom (tv_nodes t').
-  Proof.
+  Proof using .
     intros Hwf Hne Hg Hg' Ht Ht'.
     rewrite (subtree_nodes_eq av r t Ht) (subtree_nodes_eq av r' t' Ht').
     exact (subtree_disjoint av own g g' r r' t t' Hwf Hne Hg Hg').
@@ -2437,7 +2437,7 @@ Section OwnPres.
       (off : nat) (new bs0 : list (bv 8)) (nl : nat) :
     av !! i = Some (MkAnode (AFile bs0) nl) ->
     own_wf av own -> own_wf (delta_write i off new av) own.
-  Proof.
+  Proof using .
     intros Hi (Hwf & Hroots & Hnn).
     assert (Hti : tview av !! i = Some (AFile bs0))
       by (rewrite (tview_lookup_Some av i _ Hi) //).
@@ -2470,7 +2470,7 @@ Section OwnPres.
       (bs0 : list (bv 8)) (nl : nat) :
     av !! i = Some (MkAnode (AFile bs0) nl) ->
     own_wf av own -> own_wf (delta_trunc i av) own.
-  Proof.
+  Proof using .
     intros Hi (Hwf & Hroots & Hnn).
     assert (Hti : tview av !! i = Some (AFile bs0))
       by (rewrite (tview_lookup_Some av i _ Hi) //).
@@ -2501,7 +2501,7 @@ Section OwnPres.
     fs_pname nm -> av !! d = Some (MkAnode (ADir e) nl) -> av !! i = None ->
     tabs_leaf (tabs_of c) ->
     own_wf av own -> own_wf (delta_create d nm i c av) own.
-  Proof.
+  Proof using .
     intros Hnm Hd Hi Hleaf (Hwf & Hroots & Hnn).
     destruct Hwf as [Hu Hcl].
     assert (Htd : tview av !! d = Some (ADir (hide_dots e)))
@@ -2538,7 +2538,7 @@ Section OwnPres.
       (c : absnode) :
     av !! i = None -> tabs_leaf (tabs_of c) ->
     own_wf av own -> own_wf (delta_arm i c av) own.
-  Proof.
+  Proof using .
     intros Hi Hleaf (Hwf & Hroots & Hnn).
     assert (Hti : tview av !! i = None) by (rewrite tview_lookup Hi //).
     destruct Hwf as [Hu Hcl].
@@ -2567,7 +2567,7 @@ Section OwnPres.
       (nm : fname) (dec : nat) (e : gmap fname Z) (nl : nat) :
     av !! d = Some (MkAnode (ADir e) nl) ->
     own_wf av own -> own_wf (delta_unl_ent d nm dec av) own.
-  Proof.
+  Proof using .
     intros Hd (Hwf & Hroots & Hnn).
     pose proof (tview_delta_unl_ent av d nm dec e nl Hd) as Hview.
     split; [exact (aview_tree_wf_unl_ent av d nm dec e nl Hd Hwf) |].
@@ -2593,7 +2593,7 @@ Section OwnPres.
     av !! tg = Some a -> an_nlink a = 1%nat -> aview_no_edge_to av tg ->
     (forall g r t, own !! g = Some (r, t) -> r <> tg) ->
     own_wf av own -> own_wf (delta_unl_tgt tg av) own.
-  Proof.
+  Proof using .
     intros Ha Hnl Hno Hnotroot (Hwf & Hroots & Hnn).
     pose proof (tview_delta_unl_tgt_last av tg a Ha Hnl) as Hview.
     split; [exact (aview_tree_wf_unl_tgt av tg a Ha Hnl Hno Hwf) |].

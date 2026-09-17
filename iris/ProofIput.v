@@ -242,7 +242,7 @@ Lemma ip_pred_sub (z : Z) : (1 <= z)%Z -> (z < 2 ^ 31)%Z ->
      (add_vec (sign_extend' 64 (mword_of_int z : mword 32))
               (sign_extend' 64 (sign_extend' 12 (mword_of_int 63 : mword 6)))) 31 0
   = (mword_of_int (z - 1) : mword 32).
-Proof.
+Proof using .
   intros Hz1 Hb.
   rewrite <- trunc32_subrange. rewrite trunc32_add. rewrite trunc32_sext.
   assert (HK : trunc32 (sign_extend' 64 (sign_extend' 12 (mword_of_int 63 : mword 6)))
@@ -271,7 +271,7 @@ Lemma ip_storeval_pred (z : Z) : (1 <= z)%Z -> (z < 2 ^ 31)%Z ->
      (add_vec (sign_extend' 64 (mword_of_int z : mword 32))
               (sign_extend' 64 (sign_extend' 12 (mword_of_int 63 : mword 6)))) 31 0))
   = (mword_of_int (z - 1) : mword 32).
-Proof. intros H1 H2. rewrite trunc32_sext. exact (ip_pred_sub z H1 H2). Qed.
+Proof using . intros H1 H2. rewrite trunc32_sext. exact (ip_pred_sub z H1 H2). Qed.
 
 Lemma ip_moi_inum (w : mword 32) : (mword_of_int (bv_unsigned w) : mword 32) = w.
 Proof.
@@ -280,7 +280,7 @@ Proof.
 Qed.
 
 Lemma ip_trunc32_zero : trunc32 (zero_reg : mword 64) = (mword_of_int 0 : mword 32).
-Proof. apply bv_eq. vm_compute. reflexivity. Qed.
+Proof using . apply bv_eq. vm_compute. reflexivity. Qed.
 
 Lemma ip_trunc16_zero : trunc16 (zero_reg : mword 64) = (mword_of_int 0 : mword 16).
 Proof. apply bv_eq. vm_compute. reflexivity. Qed.
@@ -460,7 +460,7 @@ Section IputCommon.
       `{GEN : GenId} `{CID : CpuId} (p : mword 64) (lks : gset string) :
     sie_cap_gpr KT1 m K0 b p -∗ cpu_own n eb p b lks -∗
     ⌜ b = match n with O => eb | S _ => false end ⌝.
-  Proof.
+  Proof using .
     iIntros "Hcg Hcnt". destruct b.
     - iDestruct "Hcnt" as "%Hb". destruct Hb as (-> & -> & _). done.
     - destruct n as [|n']; [ | done ].
@@ -481,7 +481,7 @@ Section IputCommon.
     itable_half M -∗ iref_tok k q -∗
     ⌜∃ (qt : Qp) (nn : positive), M !! k = Some (qt, nn) /\
        (nn = 1%positive \/ ∃ qr : Qp, (qt - q)%Qp = Some qr)⌝.
-  Proof.
+  Proof using .
     rewrite /itable_half /iref_tok /iref_frag. iIntros "Ha (Hf & _ & _)".
     iDestruct (own_valid_2 with "Ha Hf")
       as %[_ [Hincl _]]%auth_both_dfrac_valid_discrete.
@@ -503,7 +503,7 @@ Section IputCommon.
     itable_half M -∗ IcacheInv.iref_tok_genlo k q g lo -∗
     ⌜∃ (qt : Qp) (nn : positive), M !! k = Some (qt, nn) /\
        (nn = 1%positive \/ ∃ qr : Qp, (qt - q)%Qp = Some qr)⌝.
-  Proof.
+  Proof using .
     iIntros "Ha (Hf & Hl & Hs)".
     iApply (ip_ref_sub with "Ha [Hf Hl Hs]").
     rewrite /iref_tok. iFrame "Hf Hs".
@@ -516,7 +516,7 @@ Section IputCommon.
      cell assemblable. *)
   Lemma ip_rest_sum (k : nat) (qt : Qp) (inum : mword 32) :
     islot_rest_at k qt icfg_dev inum -∗ ⌜∃ qr : Qp, (1/2)%Qp = (qt + qr)%Qp⌝.
-  Proof.
+  Proof using .
     rewrite /islot_rest_at. destruct (1/2 - qt)%Qp as [q'|] eqn:Et.
     - iIntros "_". iPureIntro. exists q'. by apply Qp.sub_Some in Et.
     - iIntros "[]".
@@ -616,7 +616,7 @@ Section IputTail.
      inode_ident k (DfracOwn q) dev inum) ∗
     (ip_window cn γfs γi cov logstart k Mt ci q dev inum ∗
      ip_row_open cn k Mt ci q dev inum ∗ ip_pin k tid qtx).
-  Proof. intros H. rewrite /ip_rows H. case_decide; [reflexivity | congruence]. Qed.
+  Proof using . intros H. rewrite /ip_rows H. case_decide; [reflexivity | congruence]. Qed.
   Lemma ip_rows_ne cn γfs γi cov logstart k Mt ci q dev inum tid qtx (q1 : Qp) (cnt : positive) :
     Mt !! k = Some (q1, cnt) -> cnt <> 1%positive ->
     ip_rows cn γfs γi cov logstart k Mt ci q dev inum tid qtx ⊣⊢
@@ -626,7 +626,7 @@ Section IputTail.
      IcacheRef.ic_ref_stamps k dev inum 1%Qp ∗
      ([∗ list] i0 ∈ seq 0 NINODE, islot2 cur_ctx cn Mt ci i0) ∗
      tid ↪[ln_tx icfg_log]{#qtx} ()).
-  Proof. intros H Hne. rewrite /ip_rows H. case_decide; [congruence | reflexivity]. Qed.
+  Proof using . intros H Hne. rewrite /ip_rows H. case_decide; [congruence | reflexivity]. Qed.
 
   Notation Rra  := (mword_of_int 1 : mword 5).
   Notation Rs0  := (mword_of_int 8 : mword 5).
@@ -691,7 +691,7 @@ Section IputTail.
         pc_is (CID := CIDf) (ret_pc v1) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pj spd HK Hsp.
     iIntros "#Htext Hpc Hcg Hr24 Hr16 Hr8 Hg4 Hg5 Hg6 Hcont".
     (* the six saved-slot addresses, in the [c.ldsp] leaf's spelling *)
@@ -901,7 +901,7 @@ Section IputTail.
         ireg_regime rg -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pj ret_tgt spd HK Hanch Hsp0 Hregs Hlo Hhi Hssub Hwm Hwc Hfresh.
     
     destruct Hregs as (HDs1 & HDsp & H18 & H19 & H20 & H21 & H22 & H23 & H24 & H25 & H26 & H27).
@@ -1130,7 +1130,7 @@ Section IputTail.
         ireg_regime rg -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pj ret_tgt spd HK Hk Hanch Hsp0 Hregs HMa5 Hwf Hciwf Hlo Hhi Hssub Hwm Hwc Hfresh.
     pose proof HK as HK'. 
     pose proof Hregs as Hregs0.
@@ -1728,7 +1728,7 @@ Section IputFreePath.
       (uint bno ↪[fs_cache fsc_fs]{#(1/2)} bsl) ∗
       ((uint bno ↪[fs_cache fsc_fs]{#(1/2)} bsl) -∗
        bio_held fsc_bio (fs_view fsc_fs fsc_disk icfg_dev fsc_cov) k pidv dv bno bs bsl bsd d).
-  Proof.
+  Proof using .
     rewrite /bio_held /bio_pay /fs_view /=.
     iIntros "(%A & %B & %C & H1 & H3 & H4 & H5 & H6 & Hpay)".
     destruct d.
@@ -1907,7 +1907,7 @@ Section IputFreePath.
         add_vec sp0 (zero_extend' 64 (concat_vec (mword_of_int 0 : mword 6) ('b"000"))) ↦₈[KT1] vs4 -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pj bno dn' HKbr HKlw HKbl Hgeom Hst Hcov Hlog Hnib Hdnwf Hnl0
            Hbare Hj Hgl Hsp0 Ha0 Ha1 Hs2v Hbelow.
     assert (Hdn'bare : InodeRegion.ireg_bare dn').
@@ -2436,17 +2436,17 @@ Section IputFreePath.
   (* ProofIput.v's pure set/word helpers at the LAST CLOSE, inlined here
      (they are top-level in ProofIput.v, which this file does not import). *)
   Lemma fl_moi_inum (w : mword 32) : (mword_of_int (bv_unsigned w) : mword 32) = w.
-  Proof.
+  Proof using .
     apply bv_eq. rewrite moi32_unsigned.
     apply bv_wrap_small. apply bv_unsigned_in_range.
   Qed.
 
   Lemma fl_notin_diff (P S : gset Z) (z : Z) : z ∈ S -> z ∉ P ∖ S.
-  Proof. set_solver. Qed.
+  Proof using . set_solver. Qed.
 
   Lemma fl_pool_set (P S : gset Z) (z : Z) :
     z ∈ P -> z ∈ S -> P ∖ (S ∖ {[z]}) = {[z]} ∪ (P ∖ S).
-  Proof.
+  Proof using .
     intros Hp Hs. apply set_eq. intros x. set_unfold.
     destruct (decide (x = z)) as [->|Hne]; naive_solver.
   Qed.
@@ -2458,7 +2458,7 @@ Section IputFreePath.
        ci !! k1 = Some p1 -> ci !! k2 = Some p2 ->
        bv_unsigned (snd p1) = bv_unsigned (snd p2) -> k1 = k2) ->
     ci_inums (delete kk ci) = ci_inums ci ∖ {[ bv_unsigned i ]}.
-  Proof.
+  Proof using .
     intros Hk Hinj. apply set_eq. intros z.
     rewrite elem_of_difference elem_of_singleton !ci_inums_spec. split.
     - intros (k2 & p & Hk2 & ->).
@@ -2811,7 +2811,7 @@ Section IputFreePath.
     (* THE CALLER'S CONTINUATION at 0x30 (iput's real post; ip_tail's shape) *)
     wp_next (CID0 := CID0) true pj (fun CID : CpuId => ip_locked_exit1 u Sb crb cru crz tid qtx pidv dqb dqs sp0 vra vs0 vs1 vs2 vs3 vs4 m K eb b lks Upr rg pj CID) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros ip pj HK HKit Hk Hu2 Hcrb Hgeom Hsize Hbmpos Hbmcov Hbmlog Histpos Hicov Hilog
            Hnib Hdtnz Hnl0 Hdnwf Hbmwf Hbelow Hdlen Hadr HMwf Hciwf HMk1 Hj Hgl
            Hsp0 Ha0 Hs1v Hs2v Hs3v Hs4v Hlkbelow Hitnotin.
@@ -4014,12 +4014,12 @@ Section IputFreePath.
      0x4e falls through exactly on a zero nlink halfword. *)
   Lemma fe_sext64_16_inj (a c : mword 16) :
     (sign_extend' 64 a : mword 64) = sign_extend' 64 c -> a = c.
-  Proof. intro H. rewrite -(trunc16_sext64 a) -(trunc16_sext64 c) H. reflexivity. Qed.
+  Proof using . intro H. rewrite -(trunc16_sext64 a) -(trunc16_sext64 c) H. reflexivity. Qed.
 
   Lemma fe_nlink_zero (w : mword 16) :
     neq_vec (sign_extend' 64 w : mword 64) (zero_reg : mword 64) = false ->
     bv_unsigned w = 0.
-  Proof.
+  Proof using .
     intro H. unfold neq_vec in H. apply negb_false_iff in H.
     apply eq_vec_true_iff in H.
     assert (Hz : (zero_reg : mword 64) = sign_extend' 64 (mword_of_int 0 : mword 16))
@@ -4031,12 +4031,12 @@ Section IputFreePath.
   (* ProofIput.ip_valid_beqz (:270) *)
   Lemma fe_valid_beqz (v : bool) :
     eq_vec (sign_extend' 64 (valid_word v) : mword 64) (zero_reg : mword 64) = negb v.
-  Proof. exact (valid_word_eqz v). Qed.
+  Proof using . exact (valid_word_eqz v). Qed.
 
   (* ProofIput.ip_rest_sum / IputFreeLockedDev.ip_rest_sum *)
   Lemma fe_rest_sum (kk : nat) (qt : Qp) (dv nu : mword 32) :
     islot_rest_at kk qt dv nu -∗ ⌜∃ qr : Qp, (1/2)%Qp = (qt + qr)%Qp⌝.
-  Proof.
+  Proof using .
     rewrite /islot_rest_at. destruct (1/2 - qt)%Qp as [q'|] eqn:Et.
     - iIntros "_". iPureIntro. exists q'. by apply Qp.sub_Some in Et.
     - iIntros "[]".
@@ -4047,7 +4047,7 @@ Section IputFreePath.
      direct-cell count.  Same derivation as IcacheEscrow.v:1519. *)
   Lemma fe_dinode_wf (dn : dinode) (bm : blkmap) :
     blkmap_wf fsc_cov fsc_logst bm -> di_addrs dn = bm_cells bm -> dinode_wf dn.
-  Proof.
+  Proof using .
     intros Hwf Hda. rewrite /dinode_wf Hda /bm_cells length_app.
     rewrite (blkmap_wf_dir_len _ _ _ Hwf). reflexivity.
   Qed.
@@ -4318,7 +4318,7 @@ Section IputFreePath.
        (data : nat -> list (bv 8)) (td T0 Kw : nat),
        ip_entry_exit2 (CIDa := CID0) k q inum Mt ci u Sb cru e0 v tid qtx pidv dqb dqs m K eb lks Upr rg ip pj sp0 spd M5 g1 g2 dn bm data td T0 Kw)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros ip pj sp0 spd HK HKit Hk Hu3 Hcrb Hgeom Hsize Hbmpos Hbmcov Hbmlog
            Histpos Hicov Hilog Hnib Hbelow HMwf Hciwf HMk1 Hj Hgl Hregs Ha5
            Hlkbelow Hitnotin.
@@ -5064,10 +5064,10 @@ Section ProofIput.
              (bv_0 32) (bm_cells bm_empty).
 
   Lemma di_free_type (d : dinode) : bv_unsigned (di_type (di_free d)) = 0.
-  Proof. vm_compute. reflexivity. Qed.
+  Proof using . vm_compute. reflexivity. Qed.
 
   Lemma di_free_addrs (d : dinode) : di_addrs (di_free d) = bm_cells bm_empty.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* THE WALK IS THE GEN FORM (GR-2a finding 1, same argument as itrunc's):
      [log_opS] has no auth-monotone shadow, so the set-form contract cannot
@@ -5086,7 +5086,7 @@ Section ProofIput.
     : wp_iput_gen_body gs j gl pd pav pu gil gisl
 
                        k q inum n Sb crb cru crz e0 tid qtx pidv dq dqb dqs m K eb b lks Upr rg.
-  Proof.
+  Proof using .
     cbv beta delta [wp_iput_gen_body].
     intros pcE ip pj ret_tgt HK Hk Hcrb Hcru Hgeom Hsz Hbm0 Hbmcov Hbmlog Hist Hicov Hilog
            Hnib Hcovb Hn Hj Hgsj Ha0 Hfresh.
@@ -5665,7 +5665,7 @@ Section ProofIput.
     : wp_iput_sconf_body gs j gl pd pav pu gil gisl
 
                           k q inum n pidv dq dqb dqs m K eb b lks Upr.
-  Proof.
+  Proof using .
     cbv beta delta [wp_iput_sconf_body].
     intros pcE ip pj ret_tgt HK Hk Hgeom Hsz Hbm0 Hbmcov Hbmlog Hist Hicov Hilog
            Hnib Hcovb Hn Hj Hgsj Ha0 Hfresh.

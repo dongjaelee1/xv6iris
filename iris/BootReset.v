@@ -117,27 +117,27 @@ Lemma px_rr (Q : regstate -> Prop) (r : register) (ak : _)
       (k : type_of_register r -> M unit) rs :
   pfin Q (k (register_lookup r rs)) rs ->
   pfin Q (Interface.Next (Interface.RegRead r ak) k) rs.
-Proof. intros [rs' H HQ]. refine (Pfin _ _ _ rs' _ HQ). exact H. Qed.
+Proof using . intros [rs' H HQ]. refine (Pfin _ _ _ rs' _ HQ). exact H. Qed.
 
 Lemma px_rw (Q : regstate -> Prop) (r : register) (ak : _) (v : type_of_register r)
       (k : unit -> M unit) rs :
   pfin Q (k tt) (register_set r v rs) ->
   pfin Q (Interface.Next (Interface.RegWrite r ak v) k) rs.
-Proof. intros [rs' H HQ]. refine (Pfin _ _ _ rs' _ HQ). exact H. Qed.
+Proof using . intros [rs' H HQ]. refine (Pfin _ _ _ rs' _ HQ). exact H. Qed.
 
 Lemma px_msg (Q : regstate -> Prop) (msg : string) (k : unit -> M unit) rs :
   pfin Q (k tt) rs -> pfin Q (Interface.Next (Interface.Message msg) k) rs.
-Proof. intros [rs' H HQ]. refine (Pfin _ _ _ rs' _ HQ). exact H. Qed.
+Proof using . intros [rs' H HQ]. refine (Pfin _ _ _ rs' _ HQ). exact H. Qed.
 
 Lemma px_ret {X} (Q : regstate -> Prop) (v : X) (f : X -> M unit) (rs : regstate) :
   pfin Q (f v) rs -> pfin Q (Defs.bind (Interface.Ret v) f) rs.
-Proof. intros [rs' H HQ]. refine (Pfin _ _ _ rs' _ HQ). exact H. Qed.
+Proof using . intros [rs' H HQ]. refine (Pfin _ _ _ rs' _ HQ). exact H. Qed.
 
 Lemma px_assoc {X Y} (Q : regstate -> Prop) (m : M X) (f : X -> M Y)
       (g : Y -> M unit) (rs : regstate) :
   pfin Q (Defs.bind m (fun x => Defs.bind (f x) g)) rs ->
   pfin Q (Defs.bind (Defs.bind m f) g) rs.
-Proof.
+Proof using .
   intros [rs' H HQ]. refine (Pfin _ _ _ rs' _ HQ).
   rewrite exec_assoc. exact H.
 Qed.
@@ -147,14 +147,14 @@ Lemma px_step {X} (Q : regstate -> Prop) (P : M X) (v : X) (rs rs1 : regstate)
       (k : X -> M unit) :
   exec P (MState rs s0.(mem) s0.(mdev)) = Some (v, MState rs1 s0.(mem) s0.(mdev)) ->
   pfin Q (k v) rs1 -> pfin Q (Defs.bind P k) rs.
-Proof.
+Proof using .
   intros H1 [rs' H2 HQ]. refine (Pfin _ _ _ rs' _ HQ).
   rewrite (exec_bind_Some _ _ _ _ _ H1). exact H2.
 Qed.
 
 Lemma px_done (Q : regstate -> Prop) (rs : regstate) :
   Q rs -> pfin Q (Interface.Ret tt) rs.
-Proof. intro H. refine (Pfin _ _ _ rs _ H). reflexivity. Qed.
+Proof using . intro H. refine (Pfin _ _ _ rs _ H). reflexivity. Qed.
 
 End Kit.
 

@@ -276,12 +276,12 @@ Section PrrSstatus.
 
 
   Lemma prr_w_sie : _get_Sstatus_SIE (prr_sst (sstatus_read ms)) = ('b"0" : mword 1).
-  Proof.
+  Proof using Hsie.
     rewrite prr_sst_sie /sstatus_read subrange_full sSIE_lower. exact Hsie.
   Qed.
 
   Lemma prr_w_mxr : _get_Sstatus_MXR (prr_sst (sstatus_read ms)) = ('b"0" : mword 1).
-  Proof.
+  Proof using Hmsf.
     destruct Hmsf as (_ & _ & HMXR & _).
     apply eq_vec_true_iff in HMXR.
     rewrite prr_sst_mxr /sstatus_read subrange_full sMXR_lower. exact HMXR.
@@ -289,21 +289,21 @@ Section PrrSstatus.
 
   Lemma prr_w_fs :
     _get_Sstatus_FS (prr_sst (sstatus_read ms)) = extStatus_map_forwards Off.
-  Proof.
+  Proof using Hmsf.
     destruct Hmsf as (_ & _ & _ & _ & _ & HFS & _).
     rewrite prr_sst_fs /sstatus_read subrange_full sFS_lower. exact HFS.
   Qed.
 
   Lemma prr_w_vs :
     _get_Sstatus_VS (prr_sst (sstatus_read ms)) = extStatus_map_forwards Off.
-  Proof.
+  Proof using Hmsf.
     destruct Hmsf as (_ & _ & _ & _ & _ & _ & HVS & _).
     rewrite prr_sst_vs /sstatus_read subrange_full sVS_lower. exact HVS.
   Qed.
 
   Lemma prr_w_xs :
     _get_Sstatus_XS (prr_sst (sstatus_read ms)) = extStatus_map_forwards Off.
-  Proof.
+  Proof using Hmsf.
     destruct Hmsf as (_ & _ & _ & _ & HXS & _).
     rewrite prr_sst_xs /sstatus_read subrange_full sXS_lower. exact HXS.
   Qed.

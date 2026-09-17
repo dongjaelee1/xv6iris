@@ -55,7 +55,7 @@ Section ProofKfree.
 
       (on : option nat) (n : nat) (eb : bool) (pcur : mword 64) (K : nat) (b : bool) (lks : gset string)
     : wp_kfree_sconf_body kt γl γk lk fl m on n eb pcur K b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_kfree_sconf_body].
     intros pcE p ret_tgt HK Hlk Hfl Hnoffpos Hfresh.
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).

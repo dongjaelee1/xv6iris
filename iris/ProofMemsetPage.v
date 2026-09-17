@@ -39,7 +39,7 @@ Section ProofMemsetPage.
   Lemma wp_memset_page_val_sconf
       (m0 : regfile) (n : nat) (cval : mword 64) (b : bool) (pcur : mword 64)
     : wp_memset_page_val_sconf_body kt m0 n cval b pcur.
-  Proof.
+  Proof using .
     cbv beta delta [wp_memset_page_val_sconf_body].
     intros a0_idx a1_idx a2_idx pcE ra0 p ret_tgt cbyte Hn Hpv Hcval Ha2.
     iIntros "Hcg #Htext Hpc Hpage Hcont".
@@ -63,7 +63,7 @@ Section ProofMemsetPage.
   Lemma wp_memset_page_sconf
       (m0 : regfile) (n : nat) (cval : mword 64) (b : bool) (pcur : mword 64)
     : wp_memset_page_sconf_body kt m0 n cval b pcur.
-  Proof.
+  Proof using .
     cbv beta delta [wp_memset_page_sconf_body].
     intros a0_idx a1_idx a2_idx pcE ra0 p ret_tgt Hn Hpv Hcval Ha2.
     iIntros "Hcg #Htext Hpc Hpage Hcont".

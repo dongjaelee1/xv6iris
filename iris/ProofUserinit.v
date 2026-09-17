@@ -218,7 +218,7 @@ Section PstateRunnableHelper.
      two [UexecRet.uslot]s print identically -- the unifier does not stop. *)
   Lemma uin_pwhole_runnable (pa : mword 64) :
     pstate_whole pa RUNNABLE ⊣⊢ pstate_lock pa RUNNABLE.
-  Proof.
+  Proof using .
     rewrite pstate_whole_split unclaimed_RUNNABLE. apply bi.sep_emp.
   Qed.
 End PstateRunnableHelper.

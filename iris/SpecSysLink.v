@@ -332,7 +332,7 @@ Section SysLinkAbs.
 
   Lemma ltgt_commit_at_unit (γfs : fs_names) E :
     app_sup -∗ ltgt_commit_at (fs_gamma_L γfs) E (fun _ _ _ => True%I).
-  Proof.
+  Proof using .
     iIntros "#Hsup". rewrite /ltgt_commit_at.
     iIntros (I t a) "%Hrow %Hok %Hsome Ha".
     iDestruct (app_step_acc t I _ with "Hsup") as "Hstep".
@@ -342,7 +342,7 @@ Section SysLinkAbs.
 
   Lemma lent_commit_at_unit (γfs : fs_names) E :
     app_sup -∗ lent_commit_at (fs_gamma_L γfs) E (fun _ _ _ _ => True%I).
-  Proof.
+  Proof using .
     iIntros "#Hsup". rewrite /lent_commit_at.
     iIntros (I d t nm ents nl) "%Hd %Hnm Ha".
     iDestruct (app_step_acc d I _ with "Hsup") as "Hstep".
@@ -366,7 +366,7 @@ Section SysLinkAbs.
   Lemma link_commits_unit (γfs : fs_names) :
     app_sup -∗
     link_commits (fs_gamma_L γfs) (pfam_triv (fun _ _ _ => True%I)) (pfam_triv (fun _ _ _ _ => True%I)) (pfam_triv (fun _ _ => True%I)).
-  Proof.
+  Proof using .
     iIntros "#Hsup". rewrite /link_commits.
     iSplitR.
     { iApply pf_at_triv.
@@ -435,7 +435,7 @@ Section SysLinkAbs.
   Lemma link_arms_none Γ Ftgt Fent Funt (r : mword 64) :
     r = (mword_of_int (-1) : mword 64) ->
     link_commits Γ Ftgt Fent Funt -∗ link_arms Γ Ftgt Fent Funt r.
-  Proof.
+  Proof using .
     intros ->. rewrite /link_arms. iIntros "H". iRight.
     iSplitR; [done |]. by iLeft.
   Qed.
@@ -444,7 +444,7 @@ Section SysLinkAbs.
     r = (mword_of_int (-1) : mword 64) ->
     ltgt_fired Ftgt t -∗ luntgt_fired Funt t -∗
     pf_at (lent_commit_at Γ appE) Fent -∗ link_arms Γ Ftgt Fent Funt r.
-  Proof.
+  Proof using .
     intros ->. rewrite /link_arms. iIntros "H1 H2 H3". iRight.
     iSplitR; [done |]. iRight. iExists t. iFrame "H1 H2 H3".
   Qed.
@@ -454,7 +454,7 @@ Section SysLinkAbs.
     r = (zero_reg : mword 64) ->
     ltgt_fired Ftgt t -∗ lent_fired Fent d nm t -∗
     pf_at (utgt_commit_at Γ appE) Funt -∗ link_arms Γ Ftgt Fent Funt r.
-  Proof.
+  Proof using .
     intros ->. rewrite /link_arms. iIntros "H1 H2 H3". iLeft.
     iSplitR; [done |]. iExists t, d, nm. iFrame "H1 H2 H3".
   Qed.
@@ -463,7 +463,7 @@ Section SysLinkAbs.
      what lets the dispatcher keep reading the old fact *)
   Lemma link_arms_ret Γ Ftgt Fent Funt (r : mword 64) :
     link_arms Γ Ftgt Fent Funt r -∗ ⌜sys_link_ret r⌝.
-  Proof.
+  Proof using .
     rewrite /link_arms /sys_link_ret.
     iIntros "[[-> _] | [-> _]]"; iPureIntro; [by right | by left].
   Qed.

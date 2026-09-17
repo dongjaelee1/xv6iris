@@ -65,7 +65,7 @@ Section AppDurRaw.
     ▷ app_dur_raw A gt -∗
       ◇ ∃ (r : N) (I : gmap Z fs_node),
           ghost_map_auth gt (1/2) I ∗ ▷ A r (abs_view I).
-  Proof.
+  Proof using .
     iIntros "H". rewrite /app_dur_raw.
     iPoseProof (bi.later_exist_except_0 with "H") as "H".
     iMod "H" as (r) "H".
@@ -80,7 +80,7 @@ Section AppDurRaw.
     ghost_map_auth gt (1/2) I -∗
     (∃ r : N, ▷ A r (abs_view I)) -∗
     ▷ app_dur_raw A gt.
-  Proof.
+  Proof using .
     iIntros "Hh Hp". iDestruct "Hp" as (r) "Hp".
     iNext. rewrite /app_dur_raw. iExists r, I. iFrame "Hh Hp".
   Qed.
@@ -94,7 +94,7 @@ Section AppDurRaw.
     ghost_map_auth gt (1/2) I -∗
     ▷ A r (abs_view I) ==∗
       ▷ A r (abs_view I) ∗ ▷ app_dur_raw A gt.
-  Proof.
+  Proof using .
     iIntros "#Hx Hh Hp". rewrite /app_xfer_raw.
     iMod ("Hx" with "Hp") as "[Hp Hnew]".
     iModIntro. iFrame "Hp". iApply (app_dur_raw_pack with "Hh Hnew").
@@ -109,7 +109,7 @@ Section AppDurRaw.
     ▷ app_dur_raw A gt -∗
       ◇ (ghost_map_auth gt q I ∗ ghost_map_auth gt (1/2) I ∗
          ∃ r : N, ▷ A r (abs_view I)).
-  Proof.
+  Proof using .
     iIntros "Hk Hg".
     iMod (app_dur_raw_open with "Hg") as (r I') "[Hh Hp]".
     iDestruct (ghost_map_auth_agree with "Hk Hh") as %<-.

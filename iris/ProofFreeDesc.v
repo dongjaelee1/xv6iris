@@ -241,7 +241,7 @@ Section ProofFreeDesc.
         pa_add pd (16 * i + 14)%nat ↦₂ (mword_of_int 0 : mword 16) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hi8 HMa0.
     iIntros "Hcg #Htext Hpc #Hdp Hfree Hva Hvl Hvf Hvn Hcont".
     (* ---- +0x1e: slli a3,a0,4 ---- *)
@@ -516,7 +516,7 @@ Section ProofFreeDesc.
       (m : regfile) (K lvl : nat) (eb : bool) (pme : mword 64)
       (va : mword 64) (vl : mword 32) (vf vn : mword 16) (b : bool) (lks : gset string)
     : wp_free_desc_sconf_body γs pd i m K lvl eb pme va vl vf vn b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_free_desc_sconf_body].
     intros pcE ret_tgt HK Hi8 Ha0 Hdom Hlen Hlvl Hbelow.
     

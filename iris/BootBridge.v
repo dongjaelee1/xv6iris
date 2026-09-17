@@ -177,7 +177,7 @@ Section BootStack.
     (forall j : nat, (j < 8)%nat -> addr_is_kdata (pa_add a j)) ->
     kmap_static_claims -∗
     TsoCtx.ctx_phys_word_pointsto XI a dq w -∗ a ↦₈{dq} w.
-  Proof.
+  Proof using .
     iIntros (Hkd) "#Hcl Hw".
     iApply (ctx_phys_word_ident_mem XI a dq w
               (fun j Hj => kdata_svpn_class _ (Hkd j Hj))
@@ -191,7 +191,7 @@ Section BootStack.
     (forall k : nat, (0 < k)%nat -> (k <= n)%nat ->
        forall j : nat, (j < 8)%nat -> addr_is_kdata (pa_add (pa_stk sp k) j)) ->
     kmap_static_claims -∗ stack_own_phys sp n -∗ stack_own (KTR := KT0) sp n.
-  Proof.
+  Proof using .
     iIntros (Hkd) "#Hcl H".
     rewrite /stack_own_phys /stack_own.
     iDestruct "H" as (ws) "[%Hlen H]".
@@ -272,7 +272,7 @@ Section BootBridge.
      [minstret_inv] inputs. *)
   Lemma mmode_config_persist (dq : dfrac) :
     mmode_config dq -∗ (hw_config ∗ minstret_inv) ∗ mmode_config dq.
-  Proof.
+  Proof using .
     (* [minstret_inv] is [emp] now (MinstretInv.v): the counter facts moved
        into [pc_is]'s [minstret_res], and the bundle no longer carries it *)
     rewrite /mmode_config /minstret_inv. iIntros "(#Hhw & Hrest)".
@@ -305,7 +305,7 @@ Section BootBridge.
     sret_tie ms -∗
     mie ↦ᵣ mie_v -∗ mideleg ↦ᵣ mdv0 -∗ menvcfg ↦ᵣ menvcfg0 -∗
     sconf.
-  Proof.
+  Proof using .
     iIntros (Hms Hmie -> ->) "#Hhw #Hmin Hpriv Hmst Hg Hspp Hmie Hmdl Hmenv".
     rewrite /sconf. iFrame "Hhw Hmin Hpriv".
     iSplitL "Hmst Hg Hspp".
@@ -439,7 +439,7 @@ Section BootBridge.
       cpu_own 0 false p0 false ∅ ∗
       ghost_var sie_gname (1/4) ('b"0" : mword 1) ∗
       main_hart_raw tlbvec0.
-  Proof.
+  Proof using .
     iIntros (Hsp Htpf Hsie Hmsf Hmenv Hmiez Hmieval Hsatpm Hpmp Htp Hn Hlo Hhi Hnv)
             "#Hhw #Hmin #Htimc Hhs Hpriv Hmst Hpcf Hpad Hfile Hsatp Hmdl Hmie Hmenv
              Hstk Hthr Hbit Hbit2 Hg2 Hg4a Hg4b Htlb Hsepc Hscause Hstval

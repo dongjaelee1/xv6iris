@@ -83,37 +83,37 @@ Section SfenceFrames.
          (register_set cur_privilege Supervisor init_regstate)).
 
   Lemma sf_disj : sf_Drw ## sf_Dro.
-  Proof. rewrite /sf_Drw /sf_Dro. set_solver. Qed.
+  Proof using . rewrite /sf_Drw /sf_Dro. set_solver. Qed.
 
   Lemma sf_Dr_in : forall r, sf_Dr r = true -> r ∈ sf_Drw ∪ sf_Dro.
-  Proof. intros r Hr. by apply bool_decide_eq_true_1 in Hr. Qed.
+  Proof using . intros r Hr. by apply bool_decide_eq_true_1 in Hr. Qed.
 
   Lemma sf_Dw_in : forall r, sf_Dw r = true -> r ∈ sf_Drw.
-  Proof. intros r Hr. by apply bool_decide_eq_true_1 in Hr. Qed.
+  Proof using . intros r Hr. by apply bool_decide_eq_true_1 in Hr. Qed.
 
   Lemma sf_Dr_priv : sf_Dr (cur_privilege : register) = true.
-  Proof. rewrite /sf_Dr /sf_Drw /sf_Dro. apply bool_decide_eq_true_2. set_solver. Qed.
+  Proof using . rewrite /sf_Dr /sf_Drw /sf_Dro. apply bool_decide_eq_true_2. set_solver. Qed.
   Lemma sf_Dr_ms : sf_Dr (mstatus : register) = true.
-  Proof. rewrite /sf_Dr /sf_Drw /sf_Dro. apply bool_decide_eq_true_2. set_solver. Qed.
+  Proof using . rewrite /sf_Dr /sf_Drw /sf_Dro. apply bool_decide_eq_true_2. set_solver. Qed.
   Lemma sf_Dr_tlb : sf_Dr (tlb : register) = true.
-  Proof. rewrite /sf_Dr /sf_Drw /sf_Dro. apply bool_decide_eq_true_2. set_solver. Qed.
+  Proof using . rewrite /sf_Dr /sf_Drw /sf_Dro. apply bool_decide_eq_true_2. set_solver. Qed.
   Lemma sf_Dw_tlb : sf_Dw (tlb : register) = true.
-  Proof. rewrite /sf_Dw /sf_Drw. apply bool_decide_eq_true_2. set_solver. Qed.
+  Proof using . rewrite /sf_Dw /sf_Drw. apply bool_decide_eq_true_2. set_solver. Qed.
 
   Lemma sf_rs_tlb (ms : mword 64) (tv : type_of_register tlb) :
     register_lookup tlb (sf_rs ms tv) = tv.
-  Proof. apply register_lookup_set. Qed.
+  Proof using . apply register_lookup_set. Qed.
 
   Lemma sf_rs_ms (ms : mword 64) (tv : type_of_register tlb) :
     register_lookup mstatus (sf_rs ms tv) = ms.
-  Proof.
+  Proof using .
     rewrite /sf_rs (irrelevant_register_set (R_bitvector_64 mstatus) tlb);
       [ apply register_lookup_set | vm_compute; reflexivity ].
   Qed.
 
   Lemma sf_rs_priv (ms : mword 64) (tv : type_of_register tlb) :
     register_lookup cur_privilege (sf_rs ms tv) = Supervisor.
-  Proof.
+  Proof using .
     rewrite /sf_rs (irrelevant_register_set cur_privilege tlb);
       [| vm_compute; reflexivity ].
     rewrite (irrelevant_register_set cur_privilege (R_bitvector_64 mstatus));
@@ -126,7 +126,7 @@ Section SfenceFrames.
     ⊣⊢ (reg_pointsto tlb (DfracOwn 1) tv ∗
         reg_pointsto cur_privilege (DfracOwn 1) Supervisor ∗
         reg_pointsto mstatus (DfracOwn 1) ms).
-  Proof.
+  Proof using .
     rewrite /hreg_frame /hreg_frame_ro /sf_Drw /sf_Dro.
     rewrite big_sepS_singleton.
     rewrite big_sepS_union; last set_solver.
@@ -140,7 +140,7 @@ Section SfenceFrames.
     reg_pointsto mstatus (DfracOwn 1) ms -∗
     (hreg_frame (sf_rs ms tv) sf_Drw ∗
      hreg_frame_ro sf_Df (sf_rs ms tv) sf_Dro : iProp Σ).
-  Proof. iIntros "H1 H2 H3". rewrite (sf_frames ms tv). iFrame. Qed.
+  Proof using . iIntros "H1 H2 H3". rewrite (sf_frames ms tv). iFrame. Qed.
 
   Lemma sf_frames_out (ms : mword 64) (tv : type_of_register tlb) :
     (hreg_frame (sf_rs ms tv) sf_Drw ∗
@@ -148,7 +148,7 @@ Section SfenceFrames.
     (reg_pointsto tlb (DfracOwn 1) tv ∗
      reg_pointsto cur_privilege (DfracOwn 1) Supervisor ∗
      reg_pointsto mstatus (DfracOwn 1) ms).
-  Proof. rewrite (sf_frames ms tv). iIntros "H". iExact "H". Qed.
+  Proof using . rewrite (sf_frames ms tv). iIntros "H". iExact "H". Qed.
 
   (* the flush's landing file, back in canonical form: the composer's [rs']
      only AGREES with the post state on the footprint, and the post state is
@@ -156,7 +156,7 @@ Section SfenceFrames.
   Lemma sf_rs_after (ms : mword 64) (tv0 tv : type_of_register tlb) :
     reg_agree_on (sf_Drw ∪ sf_Dro) (register_set tlb tv (sf_rs ms tv0))
       (sf_rs ms tv).
-  Proof.
+  Proof using .
     intros r Hr. rewrite /sf_Drw /sf_Dro in Hr.
     apply elem_of_union in Hr as [Hr | Hr].
     - apply elem_of_singleton in Hr; subst r.
@@ -207,7 +207,7 @@ Section SfenceLeaf.
           ⌜forall i, 0 <= i < 64 -> vec_access_dec tv i = None⌝ ∗
           hreg_frame rs' Drw ∗ hreg_frame_ro Df rs' Dro ∗
           resv_any cpu_id).
-  Proof.
+  Proof using .
     intros Hdisj Hpriv_in Hms_in Htlb_in Hpriv HTVM.
     pose (Dr := fun r : register => bool_decide (r ∈ Drw ∪ Dro)).
     pose (Dw := fun r : register => bool_decide (r ∈ Drw)).
@@ -254,7 +254,7 @@ Section SfenceLeaf.
           ⌜forall i, 0 <= i < 64 -> vec_access_dec tv i = None⌝ ∗
           hreg_frame rs' sf_Drw ∗ hreg_frame_ro sf_Df rs' sf_Dro ∗
           resv_any cpu_id).
-  Proof.
+  Proof using .
     intros Hpriv HTVM.
     assert (Hp : (cur_privilege : register) ∈ sf_Drw ∪ sf_Dro)
       by (rewrite /sf_Drw /sf_Dro; set_solver).
@@ -286,7 +286,7 @@ Section SfenceLeaf.
       pc_is (add_vec_int pc 4) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "Hcg Htlb Hpc Hinstr Hcont".
     iApply (wp_instr_s_sconf m n false false pc false
               (SFENCE_VMA (zreg, zreg))
@@ -378,7 +378,7 @@ Section SfenceLeaf.
       pc_is (add_vec_int pc 4) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "Hcg #Hkptr Hpc Hinstr Hcont".
     iApply (wp_instr_s_sconf m n false false pc false
               (SFENCE_VMA (zreg, zreg))

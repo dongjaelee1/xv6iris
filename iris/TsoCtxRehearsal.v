@@ -108,7 +108,7 @@ Section rehearsal.
      thread ON THIS HART" out of nothing. *)
   Lemma no_own_context_alloc (h : agent) :
     (⊢ |==> ∃ ξ : CtxId, ownc ξ h) → False.
-  Proof.
+  Proof using .
     intros Halloc. apply (bupd_absurd Σ).
     iMod Halloc as (ξ1) "H1". iMod Halloc as (ξ2) "H2".
     rewrite /own_context.
@@ -125,7 +125,7 @@ Section rehearsal.
      clause -- ANY holder of the park authority refutes the law. *)
   Lemma no_ctx_parked_alloc (T : nat) :
     (∀ γp : gname, ⊢ |==> ∃ ξ : CtxId, ctx_parked γp ξ T) → False.
-  Proof.
+  Proof using .
     intros Halloc. apply (bupd_absurd Σ).
     iMod (ghost_map_alloc (∅ : gmap CtxId nat)) as (γp) "[Hauth _]".
     iMod (Halloc γp) as (ξ) "Hfrag".
@@ -149,7 +149,7 @@ Section rehearsal.
     parked !! ξ = None →
     interp img log tvs run parked ==∗
     interp img log tvs (<[h := ξ]> run) parked ∗ ownc ξ h.
-  Proof.
+  Proof using .
     iIntros (Hh Hnr Hnp) "Hint".
     iDestruct "Hint" as (HM LL) "(Hhp & Hl & Hr & Hp & %Hwf)".
     rewrite /own_context.
@@ -195,7 +195,7 @@ Section rehearsal.
 
   Lemma ctx_used_run run parked h ξ :
     run !! h = Some ξ → ξ ∈ ctx_used run parked.
-  Proof.
+  Proof using .
     move => Hh. rewrite /ctx_used elem_of_union. left.
     rewrite elem_of_list_to_set elem_of_list_fmap.
     exists (h, ξ). split; first done. by apply elem_of_map_to_list.
@@ -203,14 +203,14 @@ Section rehearsal.
 
   Lemma ctx_used_parked run parked ξ T :
     parked !! ξ = Some T → ξ ∈ ctx_used run parked.
-  Proof.
+  Proof using .
     move => HT. rewrite /ctx_used elem_of_union. right.
     by eapply elem_of_dom_2.
   Qed.
 
   Lemma twin_ctx_fresh (run : gmap agent CtxId) (parked : gmap CtxId nat) :
     ∃ ξ : CtxId, (∀ h0, run !! h0 ≠ Some ξ) ∧ parked !! ξ = None.
-  Proof.
+  Proof using .
     exists (fresh (ctx_used run parked)).
     have Hfr : fresh (ctx_used run parked) ∉ ctx_used run parked
       by apply is_fresh.
@@ -224,7 +224,7 @@ Section rehearsal.
     run !! h = None →
     interp img log tvs run parked ==∗
     ∃ ξ : CtxId, interp img log tvs (<[h := ξ]> run) parked ∗ ownc ξ h.
-  Proof.
+  Proof using .
     iIntros (Hh) "Hint".
     destruct (twin_ctx_fresh run parked) as (ξ & Hnr & Hnp).
     iMod (twin_ctx_mint _ _ _ _ _ ξ h Hh Hnr Hnp with "Hint") as "[Hint Hrun]".
@@ -257,7 +257,7 @@ Section rehearsal.
     interp img log tvs run parked ==∗
     interp img log tvs run (<[ξc := length log]> parked) ∗
     parkc ξc (length log).
-  Proof.
+  Proof using .
     iIntros (Hnr Hnp) "Hint".
     iDestruct "Hint" as (HM LL) "(Hhp & Hl & Hr & Hp & %Hwf)".
     rewrite /ctx_parked.
@@ -297,7 +297,7 @@ Section rehearsal.
     ∃ ξc : CtxId,
       interp img log tvs run (<[ξc := length log]> parked) ∗
       parkc ξc (length log).
-  Proof.
+  Proof using .
     iIntros "Hint".
     destruct (twin_ctx_fresh run parked) as (ξc & Hnr & Hnp).
     iMod (twin_ctx_birth _ _ _ _ _ ξc Hnr Hnp with "Hint") as "[Hint Hpk]".
@@ -328,7 +328,7 @@ Section rehearsal.
     ξp ≠ ξc →
     interp img log tvs run parked -∗ parkc ξc (length log) -∗ ptc ξp a v ==∗
     interp img log tvs run parked ∗ parkc ξc (length log) ∗ ptc ξc a v.
-  Proof.
+  Proof using .
     iIntros (Hne) "Hint Hpk Hpt".
     iDestruct "Hint" as (HM LL) "(Hhp & Hl & Hr & Hp & %Hwf)".
     rewrite /ctx_parked /ctx_pointsto.
@@ -392,7 +392,7 @@ Section rehearsal.
   Lemma twin_pt_live img log tvs run parked ξ a v :
     interp img log tvs run parked -∗ ptc ξ a v -∗
     ⌜(∃ h, run !! h = Some ξ) ∨ (∃ T, parked !! ξ = Some T)⌝.
-  Proof.
+  Proof using .
     iIntros "Hint Hpt".
     iDestruct "Hint" as (HM LL) "(_ & Hl & _ & _ & %Hwf)".
     rewrite /ctx_pointsto. iDestruct "Hpt" as (t) "[_ Hreg]".
@@ -411,7 +411,7 @@ Section rehearsal.
     ∃ ξc : CtxId,
       interp img log tvs run (<[ξc := length log]> parked) ∗
       parkc ξc (length log) ∗ ptc ξc a v.
-  Proof.
+  Proof using .
     iIntros "Hint Hpt".
     destruct (twin_ctx_fresh run parked) as (ξc & Hnr & Hnp).
     iDestruct (twin_pt_live with "Hint Hpt") as %Hlive.
@@ -435,7 +435,7 @@ Section rehearsal.
      the surface's [own_context_excl].) *)
   Lemma twin_own_context_excl (ξ : CtxId) (h : agent) :
     ownc ξ h -∗ ownc ξ h -∗ False.
-  Proof.
+  Proof using .
     rewrite /own_context. iIntros "H1 H2".
     by iDestruct (ghost_map_elem_ne with "H1 H2") as %Hne.
   Qed.
@@ -444,10 +444,10 @@ Section rehearsal.
      [ProofSwtch] strips a [▷] off the target record's token with a [>]
      pattern. *)
   Global Instance twin_own_context_timeless ξ h : Timeless (ownc ξ h).
-  Proof. rewrite /own_context. apply _. Qed.
+  Proof using . rewrite /own_context. apply _. Qed.
 
   Global Instance twin_ctx_parked_timeless ξ T : Timeless (parkc ξ T).
-  Proof. rewrite /ctx_parked. apply _. Qed.
+  Proof using . rewrite /ctx_parked. apply _. Qed.
 
   (* CROSS HART: NOT free.  Two harts claiming one context are ghost-map
      elements at DIFFERENT keys -- perfectly consistent as resources.
@@ -455,7 +455,7 @@ Section rehearsal.
      the interp. *)
   Lemma twin_own_context_run_inj img log tvs run parked ξ h1 h2 :
     interp img log tvs run parked -∗ ownc ξ h1 -∗ ownc ξ h2 -∗ ⌜h1 = h2⌝.
-  Proof.
+  Proof using .
     iIntros "Hint H1 H2".
     iDestruct "Hint" as (HM LL) "(_ & _ & Hr & _ & %Hwf)".
     rewrite /own_context.
@@ -475,7 +475,7 @@ Section rehearsal.
     run !! h' = None → (length log ≤ tvs h')%nat →
     interp img log tvs run parked -∗ ownc ξ h ==∗
     interp img log tvs (<[h' := ξ]> (delete h run)) parked ∗ ownc ξ h'.
-  Proof.
+  Proof using .
     iIntros (Hfresh Htop) "Hint Hrun".
     iDestruct "Hint" as (HM LL) "(Hhp & Hl & Hr & Hp & %Hwf)".
     rewrite /own_context.
@@ -552,7 +552,7 @@ Section rehearsal.
       (<[h := ξp]> (delete h run))
       (delete ξp (<[ξr := length log]> parked)) ∗
     parkc ξr (length log) ∗ ownc ξp h.
-  Proof.
+  Proof using .
     iIntros (Hcov) "Hint Hrun Hpark".
     iMod (twin_park with "Hint Hrun") as "[Hint Hparkr]".
     iMod (twin_resume _ _ _ _ _ _ _ _ _ ξp T h with "Hint Hpark")
@@ -576,7 +576,7 @@ Section rehearsal.
       (<[h := ξp]> (delete h run))
       (delete ξp (<[ξr := length log]> parked)) ∗
     parkc ξr (length log) ∗ ownc ξp h.
-  Proof.
+  Proof using .
     iIntros (Htop) "Hint Hrun Hpark".
     iAssert (⌜(T ≤ length log)%nat⌝)%I as %HTle.
     { iDestruct "Hint" as (HM LL) "(_ & _ & _ & Hp & %Hwf)".
@@ -609,7 +609,7 @@ Section rehearsal.
                  {[(0%nat, a) := 0%nat]}⌝ ∗
         ctx_pointsto γh γl 0%nat a v ∗
         own_context γr 1%nat h.
-  Proof.
+  Proof using .
     iMod (ghost_map_alloc {[a := (0%nat, v)]}) as (γh) "[Hh Hhf]".
     iMod (ghost_map_alloc {[(0%nat, a) := 0%nat]}) as (γl) "[Hl Hlf]".
     iMod (ghost_map_alloc ({[h := 1%nat]} : gmap agent CtxId))
@@ -665,7 +665,7 @@ Section rehearsal.
        (ξ ξ' : CtxId) (a0 : Z) (v0 : bv 8),
        ⊢ ctx_dom γr log tvs ξ ξ' -∗ ctx_pointsto γh γl ξ a0 v0 ==∗
          ctx_dom γr log tvs ξ ξ' ∗ ctx_pointsto γh γl ξ' a0 v0) → False.
-  Proof.
+  Proof using .
     intros Hmorph. apply (bupd_absurd Σ).
     iMod (twin_populated a v (λ _, 0%nat) 0%nat)
       as (γh γl γr γp) "(_ & Hl & _ & _ & _ & Hpt & Hrun)".
@@ -688,18 +688,18 @@ Section rehearsal.
       interp img log tvs run parked ∗ domc log tvs ξ ξ' ∗ R ξ'.
 
   #[local] Instance ctx_morph_i_const (P : iProp Σ) : CtxMorphI (λ _, P).
-  Proof. iIntros (img log tvs run parked ξ ξ') "Hi Hd HP !>". iFrame. Qed.
+  Proof using . iIntros (img log tvs run parked ξ ξ') "Hi Hd HP !>". iFrame. Qed.
 
   #[local] Instance ctx_morph_i_pointsto (a : Z) (v : bv 8) :
     CtxMorphI (λ ξ, ptc ξ a v).
-  Proof.
+  Proof using .
     iIntros (img log tvs run parked ξ ξ') "Hi Hd HP".
     iApply (twin_transport with "Hi Hd HP").
   Qed.
 
   #[local] Instance ctx_morph_i_sep (R1 R2 : CtxId → iProp Σ) :
     CtxMorphI R1 → CtxMorphI R2 → CtxMorphI (λ ξ, R1 ξ ∗ R2 ξ)%I.
-  Proof.
+  Proof using .
     iIntros (H1 H2 img log tvs run parked ξ ξ') "Hi Hd [HR1 HR2]".
     iMod (ctx_morph_i with "Hi Hd HR1") as "(Hi & Hd & HR1)".
     iMod (ctx_morph_i with "Hi Hd HR2") as "(Hi & Hd & HR2)".
@@ -708,7 +708,7 @@ Section rehearsal.
 
   #[local] Instance ctx_morph_i_exist {A} (Φ : A → CtxId → iProp Σ) :
     (∀ x, CtxMorphI (Φ x)) → CtxMorphI (λ ξ, ∃ x, Φ x ξ)%I.
-  Proof.
+  Proof using .
     iIntros (HΦ img log tvs run parked ξ ξ') "Hi Hd [%x HR]".
     iMod (ctx_morph_i with "Hi Hd HR") as "(Hi & Hd & HR)".
     iModIntro. iFrame "Hi Hd". iExists x. iExact "HR".
@@ -718,7 +718,7 @@ Section rehearsal.
       (Φ : nat → A → CtxId → iProp Σ) :
     (∀ i x, CtxMorphI (Φ i x)) →
     CtxMorphI (λ ξ, [∗ list] i ↦ x ∈ l, Φ i x ξ)%I.
-  Proof.
+  Proof using .
     revert Φ. induction l as [|x l IH] => Φ HΦ.
     - iIntros (img log tvs run parked ξ ξ') "Hi Hd _ !>". by iFrame.
     - iIntros (img log tvs run parked ξ ξ') "Hi Hd [HR HRs]".
@@ -732,7 +732,7 @@ Section rehearsal.
   Lemma ctx_morph_i_demo (a1 a2 : Z) (v1 : bv 8) (P : iProp Σ) :
     CtxMorphI (λ ξ, ptc ξ a1 v1 ∗
                     (∃ v2 : bv 8, ⌜v2 ≠ v1⌝ ∗ ptc ξ a2 v2) ∗ P)%I.
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* ---------------------------------------------------------------- *)
   (** ** 1.6  The dfrac generalization of the twin's points-to         *)
@@ -749,21 +749,21 @@ Section rehearsal.
 
   Lemma reh_pt_dq_full ξ a v :
     ctx_pointsto_dq ξ a (DfracOwn 1) v ⊣⊢ ptc ξ a v.
-  Proof. rewrite /ctx_pointsto_dq /ctx_pointsto //. Qed.
+  Proof using . rewrite /ctx_pointsto_dq /ctx_pointsto //. Qed.
 
   Global Instance reh_pt_dq_timeless ξ a dq v :
     Timeless (ctx_pointsto_dq ξ a dq v).
-  Proof. rewrite /ctx_pointsto_dq. apply _. Qed.
+  Proof using . rewrite /ctx_pointsto_dq. apply _. Qed.
 
   Global Instance reh_pt_dq_discarded_persistent ξ a v :
     Persistent (ctx_pointsto_dq ξ a DfracDiscarded v).
-  Proof. rewrite /ctx_pointsto_dq. apply _. Qed.
+  Proof using . rewrite /ctx_pointsto_dq. apply _. Qed.
 
   (* CROSS-CONTEXT AGREEMENT: satisfiable, and it needs no interp -- the
      heap component is keyed by the BYTE, not by the context. *)
   Lemma reh_pt_dq_agree ξ1 ξ2 a dq1 v1 dq2 v2 :
     ctx_pointsto_dq ξ1 a dq1 v1 -∗ ctx_pointsto_dq ξ2 a dq2 v2 -∗ ⌜v1 = v2⌝.
-  Proof.
+  Proof using .
     rewrite /ctx_pointsto_dq.
     iIntros "[%t1 [H1 _]] [%t2 [H2 _]]".
     iDestruct (ghost_map_elem_agree with "H1 H2") as %Heq.
@@ -773,7 +773,7 @@ Section rehearsal.
   Lemma reh_pt_dq_ne ξ1 ξ2 a1 a2 dq v1 v2 :
     ctx_pointsto_dq ξ1 a1 (DfracOwn 1) v1 -∗
     ctx_pointsto_dq ξ2 a2 dq v2 -∗ ⌜a1 ≠ a2⌝.
-  Proof.
+  Proof using .
     rewrite /ctx_pointsto_dq.
     iIntros "[%t1 [H1 _]] [%t2 [H2 _]]".
     by iDestruct (ghost_map_elem_ne with "H1 H2") as %Hne.
@@ -782,7 +782,7 @@ Section rehearsal.
   Lemma reh_pt_dq_frac_split ξ a q1 q2 v :
     ctx_pointsto_dq ξ a (DfracOwn (q1 + q2)) v ⊣⊢
     ctx_pointsto_dq ξ a (DfracOwn q1) v ∗ ctx_pointsto_dq ξ a (DfracOwn q2) v.
-  Proof.
+  Proof using .
     rewrite /ctx_pointsto_dq. iSplit.
     - iIntros "(%t & [Hh1 Hh2] & [Hl1 Hl2])".
       iSplitL "Hh1 Hl1"; iExists t; iFrame.
@@ -794,7 +794,7 @@ Section rehearsal.
 
   Lemma reh_pt_dq_persist ξ a dq v :
     ctx_pointsto_dq ξ a dq v ==∗ ctx_pointsto_dq ξ a DfracDiscarded v.
-  Proof.
+  Proof using .
     rewrite /ctx_pointsto_dq. iIntros "(%t & Hh & Hl)".
     iMod (ghost_map_elem_persist with "Hh") as "Hh".
     iMod (ghost_map_elem_persist with "Hl") as "Hl".
@@ -808,7 +808,7 @@ Section rehearsal.
     interp img log tvs run parked ∗ ownc ξ h ∗ ctx_pointsto_dq ξ a dq v ⊢
     ⌜∀ tv', (tvs h ≤ tv')%nat →
        tso_read (img_fun img) log h tv' a = Some v⌝.
-  Proof.
+  Proof using .
     iIntros "(Hint & Hrun & Hpt)".
     iDestruct "Hint" as (HM LL) "(Hh & Hl & Hr & Hp & %Hwf)".
     rewrite /own_context /ctx_pointsto_dq.
@@ -841,7 +841,7 @@ Section rehearsal.
     interp img log tvs run parked -∗
     ctx_pointsto_dq ξ1 a dq1 v1 -∗ ctx_pointsto_dq ξ2 a dq2 v2 -∗
     ⌜ξ1 = ξ2⌝.
-  Proof.
+  Proof using .
     iIntros "Hint H1 H2".
     iDestruct "Hint" as (HM LL) "(_ & Hl & _ & _ & %Hwf)".
     rewrite /ctx_pointsto_dq.
@@ -893,7 +893,7 @@ Section roster.
      the shape a fork mint wants: fork creates an identity, and the child
      does not get [own_context] yet. *)
   Lemma ctx_unstarted_alloc : ⊢ |==> ∃ ξ : CtxG, ctx_unstarted ξ.
-  Proof.
+  Proof using .
     iMod (ghost_var_alloc ()) as (γ) "H". iModIntro. by iExists γ.
   Qed.
 
@@ -903,7 +903,7 @@ Section roster.
      premises would be unobtainable. *)
   Lemma roster_fresh (S : gset CtxG) (ξ : CtxG) :
     roster S -∗ ctx_unstarted ξ -∗ ⌜ξ ∉ S⌝.
-  Proof.
+  Proof using .
     iIntros "HS Hξ".
     destruct (decide (ξ ∈ S)) as [Hin|Hnin]; last by iPureIntro.
     rewrite /roster (big_sepS_delete _ S ξ) //.
@@ -918,7 +918,7 @@ Section roster.
      index of the live contexts. *)
   Lemma roster_enroll (S : gset CtxG) (ξ : CtxG) :
     roster S -∗ ctx_unstarted ξ ==∗ roster ({[ξ]} ∪ S) ∗ ctx_live ξ.
-  Proof.
+  Proof using .
     iIntros "HS Hξ".
     iDestruct (roster_fresh with "HS Hξ") as %Hnin.
     rewrite /ctx_unstarted /ctx_live.

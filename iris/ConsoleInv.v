@@ -1485,7 +1485,7 @@ Section ConsoleInv.
     ([∗ list] j ↦ b ∈ bs, pa_add a_cons (cons_buf_off + j) ↦ₘ b)%I.
 
   Global Instance cons_data_timeless bs : Timeless (cons_data bs).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* THE TAG COLUMN, one slot per ring byte.  [None] is a slot no live
      offset names -- the boot ring is all [None] -- and a [Some h] is the
@@ -1498,17 +1498,17 @@ Section ConsoleInv.
        match ot with Some h => riscv_rx_tag h | None => emp end)%I.
 
   Global Instance cons_tags_persistent ts : Persistent (cons_tags ts).
-  Proof.
+  Proof using .
     rewrite /cons_tags. apply big_sepL_persistent. intros ? [h|]; apply _.
   Qed.
   Global Instance cons_tags_timeless ts : Timeless (cons_tags ts).
-  Proof.
+  Proof using .
     rewrite /cons_tags. apply big_sepL_timeless. intros ? [h|]; apply _.
   Qed.
 
   (* the column at the boot ring: [n] empty slots, and nothing owed *)
   Lemma cons_tags_none (n : nat) : ⊢ cons_tags (replicate n None).
-  Proof.
+  Proof using .
     rewrite /cons_tags. iInduction n as [| k IH] "IH"; [done |].
     rewrite replicate_S big_sepL_cons. iSplitR; [done |]. iApply "IH".
   Qed.
@@ -1519,7 +1519,7 @@ Section ConsoleInv.
   Lemma cons_tags_upd (ts : list (option (list mobs))) (i : nat)
       (h : list mobs) :
     riscv_rx_tag h -∗ cons_tags ts -∗ cons_tags (<[i := Some h]> ts).
-  Proof.
+  Proof using .
     iIntros "#Ht Hts". rewrite /cons_tags.
     destruct (decide (i < length ts)%nat) as [Hlt | Hge]; last first.
     { rewrite list_insert_ge; [iExact "Hts" | lia]. }
@@ -1536,7 +1536,7 @@ Section ConsoleInv.
   Lemma cons_tags_get (ts : list (option (list mobs))) (i : nat)
       (h : list mobs) :
     ts !! i = Some (Some h) -> cons_tags ts -∗ riscv_rx_tag h.
-  Proof.
+  Proof using .
     intro Hi. rewrite /cons_tags. iIntros "Hts".
     iDestruct (big_sepL_lookup
                  (fun (_ : nat) (o : option (list mobs)) =>
@@ -1612,16 +1612,16 @@ Section ConsoleInv.
 
   Global Instance cons_stored_lb_persistent cn st :
     Persistent (cons_stored_lb cn st).
-  Proof. rewrite /cons_stored_lb. apply _. Qed.
+  Proof using . rewrite /cons_stored_lb. apply _. Qed.
   Global Instance cons_stored_lb_timeless cn st :
     Timeless (cons_stored_lb cn st).
-  Proof. rewrite /cons_stored_lb. apply _. Qed.
+  Proof using . rewrite /cons_stored_lb. apply _. Qed.
   Global Instance cons_rdtok_timeless cn n : Timeless (cons_rdtok cn n).
-  Proof. rewrite /cons_rdtok. apply _. Qed.
+  Proof using . rewrite /cons_rdtok. apply _. Qed.
   Global Instance cons_deliv_timeless cn dv : Timeless (cons_deliv cn dv).
-  Proof. rewrite /cons_deliv. apply _. Qed.
+  Proof using . rewrite /cons_deliv. apply _. Qed.
   Global Instance cons_logm_timeless cn L : Timeless (cons_logm cn L).
-  Proof. rewrite /cons_logm. apply _. Qed.
+  Proof using . rewrite /cons_logm. apply _. Qed.
 
   (* THE CURSOR PAIR MOVES ALONE (ruling F1).  Its two halves are the ring's
      and the lease's POSITION; the lease's other half -- the consumed
@@ -1629,28 +1629,28 @@ Section ConsoleInv.
      nothing about it. *)
   Lemma cons_cursor_agree cn n n' :
     cons_cursor cn n -∗ cons_rdtok cn n' -∗ ⌜n = n'⌝.
-  Proof.
+  Proof using .
     iIntros "H1 H2". by iDestruct (ghost_var_agree with "H1 H2") as %->.
   Qed.
   Lemma cons_cursor_update cn n n' :
     cons_cursor cn n -∗ cons_rdtok cn n ==∗
       cons_cursor cn n' ∗ cons_rdtok cn n'.
-  Proof. iIntros "H1 H2". iApply (ghost_var_update_halves with "H1 H2"). Qed.
+  Proof using . iIntros "H1 H2". iApply (ghost_var_update_halves with "H1 H2"). Qed.
 
   Lemma cons_deliv_agree cn dv dv' :
     cons_deliv cn dv -∗ cons_deliv cn dv' -∗ ⌜dv = dv'⌝.
-  Proof.
+  Proof using .
     iIntros "H1 H2". by iDestruct (ghost_var_agree with "H1 H2") as %->.
   Qed.
   Lemma cons_logm_agree cn L L' :
     cons_logm cn L -∗ cons_logm cn L' -∗ ⌜L = L'⌝.
-  Proof.
+  Proof using .
     iIntros "H1 H2". by iDestruct (ghost_var_agree with "H1 H2") as %->.
   Qed.
 
   Lemma cons_stored_lb_get cn st :
     cons_stored_auth cn st -∗ cons_stored_auth cn st ∗ cons_stored_lb cn st.
-  Proof.
+  Proof using .
     iIntros "Ha". rewrite /cons_stored_auth /cons_stored_lb.
     iEval (rewrite {1}mono_list_auth_lb_op) in "Ha".
     iDestruct "Ha" as "[Ha Hlb]".
@@ -1659,7 +1659,7 @@ Section ConsoleInv.
 
   Lemma cons_stored_lb_prefix cn st l :
     cons_stored_auth cn st -∗ cons_stored_lb cn l -∗ ⌜l `prefix_of` st⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Hl". rewrite /cons_stored_auth /cons_stored_lb.
     by iDestruct (own_valid_2 with "Ha Hl") as %?%mono_list_both_valid_L.
   Qed.
@@ -1671,7 +1671,7 @@ Section ConsoleInv.
   Lemma cons_stored_lb_agree cn l1 l2 :
     cons_stored_lb cn l1 -∗ cons_stored_lb cn l2 -∗
       ⌜l1 `prefix_of` l2 \/ l2 `prefix_of` l1⌝.
-  Proof.
+  Proof using .
     iIntros "H1 H2". rewrite /cons_stored_lb.
     by iDestruct (own_valid_2 with "H1 H2")
       as %?%mono_list_lb_op_valid_L.
@@ -1681,7 +1681,7 @@ Section ConsoleInv.
      run is still growing is kept exactly as long as the run *)
   Lemma cons_stored_lb_weaken cn l l' :
     l' `prefix_of` l -> cons_stored_lb cn l -∗ cons_stored_lb cn l'.
-  Proof.
+  Proof using .
     intro Hp. rewrite /cons_stored_lb. iIntros "H".
     iApply (own_mono with "H"). by apply mono_list_lb_mono.
   Qed.
@@ -1720,7 +1720,7 @@ Section ConsoleInv.
 
   Global Instance cons_swallow_persistent cn fault sl d dc :
     Persistent (cons_swallow cn fault sl d dc).
-  Proof. rewrite /cons_swallow. apply _. Qed.
+  Proof using . rewrite /cons_swallow. apply _. Qed.
 
   (* THE REASON WEAKENS.  [fault] is a statement about the reader's own
      address space, and the table it is read at only GROWS while the call
@@ -1731,7 +1731,7 @@ Section ConsoleInv.
       (sl : list (list mobs * bv 8)) (d dc : nat) :
     (f1 -> f2) ->
     cons_swallow cn f1 sl d dc -∗ cons_swallow cn f2 sl d dc.
-  Proof.
+  Proof using .
     intros Himp. rewrite /cons_swallow.
     iIntros "[%He | [%He H]]"; [iLeft; by iPureIntro |].
     iRight. iSplitR; [by iPureIntro |].
@@ -1746,20 +1746,20 @@ Section ConsoleInv.
   Lemma cons_swallow_eq (cn : cons_names) (fault : Prop)
       (sl : list (list mobs * bv 8)) (d : nat) :
     ⊢ cons_swallow cn fault sl d d.
-  Proof. rewrite /cons_swallow. iLeft. by iPureIntro. Qed.
+  Proof using . rewrite /cons_swallow. iLeft. by iPureIntro. Qed.
 
   (* ...and the bound it carries: [d] or one more, which is what the landed
      callers read off it *)
   Lemma cons_swallow_range (cn : cons_names) (fault : Prop)
       (sl : list (list mobs * bv 8)) (d dc : nat) :
     cons_swallow cn fault sl d dc -∗ ⌜(d <= dc <= d + 1)%nat⌝.
-  Proof.
+  Proof using .
     rewrite /cons_swallow. iIntros "[%He | [%He _]]"; iPureIntro; lia.
   Qed.
 
   Lemma cons_stored_append cn st st' :
     cons_stored_auth cn st ==∗ cons_stored_auth cn (st ++ st').
-  Proof.
+  Proof using .
     rewrite /cons_stored_auth. iIntros "Ha".
     iMod (own_update _ _
             (●ML ((st ++ st') : list (leibnizO (list mobs * bv 8))))
@@ -1813,7 +1813,7 @@ Section ConsoleInv.
 
   Global Instance cons_dirty_cred_persistent Wd :
     Persistent (cons_dirty_cred Wd).
-  Proof. rewrite /cons_dirty_cred. apply _. Qed.
+  Proof using . rewrite /cons_dirty_cred. apply _. Qed.
 
   (* THE RING'S MARKER and the CLEAN TOKEN it is made from.  One [mono_nat]
      at [cn_dirty]: the authority at 0 is the exclusive clean token, minted
@@ -1827,15 +1827,15 @@ Section ConsoleInv.
     mono_nat_lb_own cn.(cn_dirty) 1%nat.
 
   Global Instance cons_dirty_lb_persistent cn : Persistent (cons_dirty_lb cn).
-  Proof. rewrite /cons_dirty_lb. apply _. Qed.
+  Proof using . rewrite /cons_dirty_lb. apply _. Qed.
   Global Instance cons_dirty_lb_timeless cn : Timeless (cons_dirty_lb cn).
-  Proof. rewrite /cons_dirty_lb. apply _. Qed.
+  Proof using . rewrite /cons_dirty_lb. apply _. Qed.
   Global Instance cons_clean_tok_timeless cn : Timeless (cons_clean_tok cn).
-  Proof. rewrite /cons_clean_tok. apply _. Qed.
+  Proof using . rewrite /cons_clean_tok. apply _. Qed.
 
   Lemma cons_dirty_lb_clean cn :
     cons_clean_tok cn -∗ cons_dirty_lb cn -∗ False.
-  Proof.
+  Proof using .
     rewrite /cons_clean_tok /cons_dirty_lb. iIntros "Ha Hlb".
     iDestruct (mono_nat_lb_own_valid with "Ha Hlb") as %[_ Hle]. lia.
   Qed.
@@ -1872,26 +1872,26 @@ Section ConsoleInv.
     (cons_rdtok cn n ∗ cons_dl cn n)%I.
 
   Global Instance cons_dl_timeless cn n : Timeless (cons_dl cn n).
-  Proof. rewrite /cons_dl /cons_deliv /cons_stored_lb /cons_dirty_lb. apply _. Qed.
+  Proof using . rewrite /cons_dl /cons_deliv /cons_stored_lb /cons_dirty_lb. apply _. Qed.
   Global Instance cons_reader_timeless cn n : Timeless (cons_reader cn n).
-  Proof. rewrite /cons_reader. apply _. Qed.
+  Proof using . rewrite /cons_reader. apply _. Qed.
 
   (* the two halves come apart at the first pop and go back together at the
      final release, which is the whole of what [ProofConsoleread] does with
      them *)
   Lemma cons_reader_split (cn : cons_names) (n : nat) :
     cons_reader cn n -∗ cons_rdtok cn n ∗ cons_dl cn n.
-  Proof. by iIntros "[$ $]". Qed.
+  Proof using . by iIntros "[$ $]". Qed.
   Lemma cons_reader_join (cn : cons_names) (n : nat) :
     cons_rdtok cn n -∗ cons_dl cn n -∗ cons_reader cn n.
-  Proof. iIntros "H1 H2". iFrame "H1 H2". Qed.
+  Proof using . iIntros "H1 H2". iFrame "H1 H2". Qed.
 
   (* ...and the arm a read that found the ring MARKED rejoins on: it fired
      nothing, so its [dl] is at whatever it was, and the marker is what
      says so *)
   Lemma cons_dl_dirty (cn : cons_names) (n m : nat) :
     cons_dirty_lb cn -∗ cons_dl cn n -∗ cons_dl cn m.
-  Proof.
+  Proof using .
     iIntros "#Hdt Hdl". iDestruct "Hdl" as (dv) "(Hdv & #Hlb & _)".
     iExists dv. iFrame "Hdv Hlb". iRight. iExact "Hdt".
   Qed.
@@ -1900,7 +1900,7 @@ Section ConsoleInv.
     cons_clean_tok cn -∗ cons_dl cn n -∗
       cons_clean_tok cn ∗ ∃ dv : list (list mobs * bv 8),
         cons_deliv cn dv ∗ cons_stored_lb cn dv ∗ ⌜length dv = n⌝.
-  Proof.
+  Proof using .
     iIntros "Htok Hdl". iDestruct "Hdl" as (dv) "(Hdv & #Hlb & [%Hl | #Hdt])".
     - iFrame "Htok". iExists dv. iFrame "Hdv Hlb". by iPureIntro.
     - iDestruct (cons_dirty_lb_clean cn with "Htok Hdt") as "[]".
@@ -1922,12 +1922,12 @@ Section ConsoleInv.
 
   Global Instance cons_cred_inv_persistent cn Wd :
     Persistent (cons_cred_inv cn Wd).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* the boot allocation: the clean token buys the escrow *)
   Lemma cons_cred_inv_alloc (cn : cons_names) (Wd : iProp Σ) (E : coPset) :
     cons_clean_tok cn ={E}=∗ cons_cred_inv cn Wd.
-  Proof.
+  Proof using .
     iIntros "Hcl". rewrite /cons_cred_inv.
     iApply (inv_alloc consN E (cons_cred_body cn Wd)).
     iNext. rewrite /cons_cred_body. iLeft. iExact "Hcl".
@@ -1942,7 +1942,7 @@ Section ConsoleInv.
   Lemma cons_cred_pay (cn : cons_names) (Wd : iProp Σ) (E : coPset) :
     ↑consN ⊆ E ->
     cons_cred_inv cn Wd -∗ cons_dirty_cred Wd ={E}=∗ cons_dirty_lb cn.
-  Proof.
+  Proof using .
     intro HE. rewrite /cons_dirty_cred /cons_dirty_lb /cons_cred_inv.
     iIntros "#Hinv #Hcred".
     iInv "Hinv" as "Hbody" "Hclose".
@@ -1969,7 +1969,7 @@ Section ConsoleInv.
   Lemma cons_cred_read (cn : cons_names) (Wd : iProp Σ) (E : coPset) :
     ↑consN ⊆ E ->
     cons_cred_inv cn Wd -∗ cons_dirty_lb cn ={E}=∗ ▷ cons_dirty_cred Wd.
-  Proof.
+  Proof using .
     intro HE. rewrite /cons_dirty_cred /cons_dirty_lb /cons_cred_inv.
     iIntros "#Hinv #Hlb".
     iInv "Hinv" as "Hbody" "Hclose".
@@ -2077,7 +2077,7 @@ Section ConsoleInv.
   Lemma cons_acc_cred (cn : cons_names) (Wd : iProp Σ)
       (Rd : nat -> nat -> iProp Σ) :
     cons_dirty_cred Wd -∗ (∀ cur dc : nat, |==> Rd cur dc) -∗ cons_acc cn Wd Rd.
-  Proof. iIntros "#Hc HR". rewrite /cons_acc. iRight. by iFrame "Hc HR". Qed.
+  Proof using . iIntros "#Hc HR". rewrite /cons_acc. iRight. by iFrame "Hc HR". Qed.
 
   (* ...and the lease holder's *)
   Lemma cons_acc_reader (cn : cons_names) (Wd : iProp Σ) (n : nat)
@@ -2085,7 +2085,7 @@ Section ConsoleInv.
     cons_reader cn n -∗
     (∀ cur dc : nat, cons_out cn Wd (Some n) cur dc ==∗ Rd cur dc) -∗
     cons_acc cn Wd Rd.
-  Proof.
+  Proof using .
     iIntros "Hrd Hw". rewrite /cons_acc. iLeft. iExists n. iFrame "Hrd Hw".
   Qed.
 
@@ -2102,7 +2102,7 @@ Section ConsoleInv.
     ∃ ord : option nat,
       cons_pay cn Wd ord ∗
       (∀ cur dc : nat, cons_out cn Wd ord cur dc ==∗ Rd cur dc).
-  Proof.
+  Proof using .
     rewrite /cons_acc. iIntros "[Hl | [#Hc Hr]]".
     - iDestruct "Hl" as (n) "[Hrd Hw]".
       iExists (Some n). rewrite /cons_pay. iFrame "Hrd Hw".
@@ -2119,7 +2119,7 @@ Section ConsoleInv.
   Lemma cons_acc_ret (cn : cons_names) (Wd : iProp Σ)
       (Rd : nat -> nat -> iProp Σ) :
     cons_acc cn Wd Rd ==∗ ∃ cur dc : nat, Rd cur dc.
-  Proof.
+  Proof using .
     rewrite /cons_acc. iIntros "[Hl | [_ Hr]]".
     - iDestruct "Hl" as (n) "[Hrd Hw]".
       iMod ("Hw" $! n 0%nat with "[Hrd]") as "Hrd".
@@ -2130,7 +2130,7 @@ Section ConsoleInv.
   Qed.
 
   Global Instance cons_res_timeless cn : Timeless (cons_res cn).
-  Proof.
+  Proof using .
     rewrite /cons_res /cons_stored_auth /cons_cursor /cons_hi /cons_logm
             /cons_dirty_lb.
     apply _.
@@ -2173,7 +2173,7 @@ Section ConsoleInv.
     ghost_var (un_deliv γu) (1/2) (@nil (list mobs * bv 8)) -∗
     ghost_var (un_logm γu) (1/2) (@nil LogEntryDefs.log_entry) ==∗
       ∃ cn : cons_names, ⌜cn_uart cn = γu⌝ ∗ cons_ghosts_boot cn.
-  Proof.
+  Proof using .
     iIntros "Hhi Hdv Hlm".
     iMod (own_alloc (●ML ([] : list (leibnizO (list mobs * bv 8)))))
       as (γl) "Hl"; [apply mono_list_auth_valid |].
@@ -2241,10 +2241,10 @@ Section ConsoleCtx.
        (⌜cur = nrd⌝ ∨ cons_dirty_lb cn))%I.
   Lemma cons_res_at_cur (cn : cons_names) :
     cons_res_at cn cur_ctx = cons_res cn.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
   Global Instance cons_res_at_morph (cn : cons_names) :
     CtxMorph (cons_res_at cn).
-  Proof.
+  Proof using .
     rewrite /cons_res_at /cons_data_at /cons_logm /cons_dirty_lb.
     ctx_morph_solve.
   Qed.
@@ -2266,20 +2266,20 @@ Section ConsoleCtx.
 
   Lemma is_conslock_lock (cn : cons_names) (Wd : iProp Σ) (γ : gname) :
     is_conslock cn Wd γ -∗ is_lock γ a_cons "cons"%string (cons_res_at cn).
-  Proof. rewrite /is_conslock. by iIntros "[$ _]". Qed.
+  Proof using . rewrite /is_conslock. by iIntros "[$ _]". Qed.
 
   Lemma is_conslock_cred (cn : cons_names) (Wd : iProp Σ) (γ : gname) :
     is_conslock cn Wd γ -∗ cons_cred_inv cn Wd.
-  Proof. rewrite /is_conslock. by iIntros "[_ $]". Qed.
+  Proof using . rewrite /is_conslock. by iIntros "[_ $]". Qed.
 
   Lemma is_conslock_intro (cn : cons_names) (Wd : iProp Σ) (γ : gname) :
     is_lock γ a_cons "cons"%string (cons_res_at cn) -∗
     cons_cred_inv cn Wd -∗ is_conslock cn Wd γ.
-  Proof. rewrite /is_conslock. iIntros "#H1 #H2". by iFrame "H1 H2". Qed.
+  Proof using . rewrite /is_conslock. iIntros "#H1 #H2". by iFrame "H1 H2". Qed.
 
   Global Instance is_conslock_persistent cn Wd γ :
     Persistent (is_conslock cn Wd γ).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* =================================================================== *)
   (*  THE CONSOLE INVARIANT                                               *)
@@ -2304,7 +2304,7 @@ Section ConsoleCtx.
        a_devsw_write (Z.of_nat i) ↦₈□ devsw_write_val (Z.of_nat i))%I.
 
   Global Instance devsw_table_persistent : Persistent devsw_table.
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Definition console_inv (cn : cons_names) (Wd : iProp Σ)
       (γ : gname) : iProp Σ :=
@@ -2312,7 +2312,7 @@ Section ConsoleCtx.
 
   Global Instance console_inv_persistent cn Wd γ :
     Persistent (console_inv cn Wd γ).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* THE GNAME-FREE FORM IS GONE (app-echo.md, lane CONS-CURSOR, C3).  It
      hid the ring's NAMES and the credential as well as the lock's gname,
@@ -2325,17 +2325,17 @@ Section ConsoleCtx.
      syscall environment all reach the read arm. *)
   Lemma console_inv_conslock (cn : cons_names) (Wd : iProp Σ) (γ : gname) :
     console_inv cn Wd γ -∗ is_conslock cn Wd γ.
-  Proof. by iIntros "[$ _]". Qed.
+  Proof using . by iIntros "[$ _]". Qed.
 
   Lemma console_inv_devsw (cn : cons_names) (Wd : iProp Σ) (γ : gname) :
     console_inv cn Wd γ -∗ devsw_table.
-  Proof. by iIntros "[_ $]". Qed.
+  Proof using . by iIntros "[_ $]". Qed.
 
   (* ---- ONE ENTRY, at a major the caller has already bounded ---------- *)
   Local Lemma devsw_seq_lookup (mj : Z) :
     (0 <= mj <= NDEV_max)%Z ->
     seq 0 (Z.to_nat NDEV_max + 1) !! Z.to_nat mj = Some (Z.to_nat mj).
-  Proof.
+  Proof using .
     intro H. apply lookup_seq. split; [reflexivity |].
     rewrite /NDEV_max in H |- *. lia.
   Qed.
@@ -2345,7 +2345,7 @@ Section ConsoleCtx.
     devsw_table -∗
     a_devsw_read mj ↦₈□ devsw_read_val mj ∗
     a_devsw_write mj ↦₈□ devsw_write_val mj.
-  Proof.
+  Proof using .
     intro H. rewrite /devsw_table.
     iIntros "Ht".
     iDestruct (big_sepL_lookup _ _ (Z.to_nat mj) (Z.to_nat mj)
@@ -2386,13 +2386,13 @@ Section ConsoleCtx.
         a_devsw_write (Z.of_nat i) ↦₈ (zero_reg : mword 64)))%I
     = (a_devsw_read (Z.of_nat i) ↦₈ (zero_reg : mword 64) ∗
        a_devsw_write (Z.of_nat i) ↦₈ (zero_reg : mword 64))%I.
-  Proof. intro H. case_decide; [contradiction | reflexivity]. Qed.
+  Proof using . intro H. case_decide; [contradiction | reflexivity]. Qed.
 
   Local Lemma devsw_rest_body_eq :
     (if decide (Z.of_nat 1 = CONSOLE) then emp else
        (a_devsw_read (Z.of_nat 1) ↦₈ (zero_reg : mword 64) ∗
         a_devsw_write (Z.of_nat 1) ↦₈ (zero_reg : mword 64)))%I = emp%I.
-  Proof. case_decide; [reflexivity | done]. Qed.
+  Proof using . case_decide; [reflexivity | done]. Qed.
 
   (* ---- THE EIGHTEEN, AS THE CARVE HANDS THEM OVER --------------------
      The boot carve produces named cells, one per [bss_cut]; this is the one
@@ -2420,7 +2420,7 @@ Section ConsoleCtx.
     a_devsw_read (Z.of_nat 9) ↦₈ (zero_reg : mword 64) -∗
     a_devsw_write (Z.of_nat 9) ↦₈ (zero_reg : mword 64) -∗
     devsw_rest.
-  Proof.
+  Proof using .
     iIntros "H0r H0w H2r H2w H3r H3w H4r H4w H5r H5w H6r H6w H7r H7w H8r H8w H9r H9w".
     rewrite /devsw_rest.
     change (Z.to_nat NDEV_max + 1)%nat with 10%nat.
@@ -2452,7 +2452,7 @@ Section ConsoleCtx.
     a_devsw_read CONSOLE ↦₈ (mword_of_int KernelSyms.consoleread : mword 64) -∗
     a_devsw_write CONSOLE ↦₈ (mword_of_int KernelSyms.consolewrite : mword 64) ==∗
     devsw_table.
-  Proof.
+  Proof using .
     iIntros "Hrest Hr Hw".
     iMod (ctx_word_pointsto_persist with "Hr") as "#Hr".
     iMod (ctx_word_pointsto_persist with "Hw") as "#Hw".
@@ -2488,7 +2488,7 @@ Section ConsoleCtx.
        a_devsw_read (Z.of_nat i) ↦₈ devsw_read_val (Z.of_nat i) ∗
        a_devsw_write (Z.of_nat i) ↦₈ devsw_write_val (Z.of_nat i))
     ==∗ devsw_table.
-  Proof.
+  Proof using .
     rewrite /devsw_table.
     iIntros "H".
     iApply big_sepL_bupd.
@@ -2512,7 +2512,7 @@ Section ConsoleCtx.
     cons_data bs -∗
     pa_add a_cons (cons_buf_off + i) ↦ₘ b ∗
     (pa_add a_cons (cons_buf_off + i) ↦ₘ b -∗ cons_data bs).
-  Proof.
+  Proof using .
     intros Hlk. rewrite /cons_data.
     iApply (big_sepL_lookup_acc
               (fun (j : nat) (c : bv 8) =>
@@ -2529,7 +2529,7 @@ Section ConsoleCtx.
     cons_data bs -∗
     pa_add a_cons (cons_buf_off + i) ↦ₘ b ∗
     (pa_add a_cons (cons_buf_off + i) ↦ₘ b' -∗ cons_data (<[i := b']> bs)).
-  Proof.
+  Proof using .
     intro Hlk. rewrite /cons_data. iIntros "H".
     iDestruct (big_sepL_insert_acc
                  (fun (j : nat) (c : bv 8) =>
@@ -2549,7 +2549,7 @@ Section ConsoleCtx.
     (forall j : nat, pa_add base j = pa_add a_cons (cons_buf_off + j)) ->
     ([∗ list] j ∈ seq 0 INPUT_BUF_SIZE, pa_add base j ↦ₘ f j)
     -∗ ∃ bs : list (bv 8), ⌜length bs = INPUT_BUF_SIZE⌝ ∗ cons_data bs.
-  Proof.
+  Proof using .
     intro Hbase. iIntros "H". iExists (f <$> seq 0 INPUT_BUF_SIZE).
     iSplit; [iPureIntro; rewrite length_fmap length_seq; reflexivity |].
     rewrite /cons_data big_sepL_fmap.
@@ -2561,7 +2561,7 @@ Section ConsoleCtx.
   Lemma cons_data_lookup_lt (bs : list (bv 8)) (i : nat) :
     length bs = INPUT_BUF_SIZE -> (i < INPUT_BUF_SIZE)%nat ->
     exists b, bs !! i = Some b.
-  Proof.
+  Proof using .
     intros Hlen Hlt. apply lookup_lt_is_Some_2. rewrite Hlen. exact Hlt.
   Qed.
 
@@ -2588,7 +2588,7 @@ Section ConsoleMorph.
 
   Global Instance devsw_table_morph :
     CtxMorph (λ ξ0 : CtxId, devsw_table (XI := ξ0)).
-  Proof.
+  Proof using .
     iIntros (ξ ξ') "Hd H". rewrite /devsw_table.
     iMod (ctx_morph_big_sepL (seq 0 (Z.to_nat NDEV_max + 1))
                  (λ (_ : nat) (i : nat) (ξ0 : CtxId),
@@ -2609,7 +2609,7 @@ Section ConsoleMorph.
   Local Instance is_lock_morph_local (γ : gname) (lk : mword 64) (s : string)
       (R : CtxIdDefs.CtxId → iProp Σ) :
     CtxMorph (λ ξ0 : CtxIdDefs.CtxId, is_lock (XI := ξ0) γ lk s R).
-  Proof. rewrite /is_lock. ctx_morph_solve. Qed.
+  Proof using . rewrite /is_lock. ctx_morph_solve. Qed.
 
   (* [console_inv] at another context (tso-port M2: a forkret park carries
      [SpecFileread.console_ready_app] in [UsertrapRes.park_globals], whose
@@ -2619,7 +2619,7 @@ Section ConsoleMorph.
   Global Instance console_inv_morph (cn : cons_names) (Wd : iProp Σ)
       (γ : gname) :
     CtxMorph (λ ξ0 : CtxId, console_inv (XI := ξ0) cn Wd γ).
-  Proof.
+  Proof using .
     iIntros (ξ ξ') "Hd H". rewrite /console_inv /is_conslock.
     iDestruct "H" as "[[#Hlk #Hcr] Ht]".
     iMod (devsw_table_morph ξ ξ' with "Hd Ht") as "[Hd Ht]".

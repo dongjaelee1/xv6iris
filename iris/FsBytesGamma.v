@@ -58,13 +58,13 @@ Section Bridge.
 
   Lemma fs_gamma_L_phi (γfs : fs_names) (dq : dfrac) (a : Z) (v : bv 8) :
     fsΦ (fs_gamma_L γfs) dq a v = (a ↪[fs_bytes γfs]{dq} v)%I.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* two owners of one byte is [False] -- the concrete instance of
      [FsStateDefs.phi_excl], and the only exclusivity law the design ever
      invokes (fs-state.md section 0). *)
   Lemma fs_gamma_L_excl (γfs : fs_names) : phi_excl (fs_gamma_L γfs).
-  Proof.
+  Proof using .
     intros a v w dq1 dq2. rewrite /fs_gamma_L /=.
     iIntros "[H1 H2]".
     iDestruct (ghost_map_elem_valid_2 with "H1 H2") as %[Hv _].
@@ -73,28 +73,28 @@ Section Bridge.
 
   (* ...and it SPLITS, which is what hands a read-locker its quarter *)
   Lemma fs_gamma_L_frac (γfs : fs_names) : phi_frac (fs_gamma_L γfs).
-  Proof.
+  Proof using .
     intros a v q1 q2. rewrite /fs_gamma_L /=.
     apply (ghost_map_elem_fractional a (fs_bytes γfs) v q1 q2).
   Qed.
 
   Global Instance fs_gamma_L_timeless (γfs : fs_names) :
     GTimeless (fs_gamma_L γfs).
-  Proof. intros dq a v. rewrite /fs_gamma_L /=. apply _. Qed.
+  Proof using . intros dq a v. rewrite /fs_gamma_L /=. apply _. Qed.
 
   (* ---- the two equations ------------------------------------------- *)
 
   Lemma gamma_byte_range (γfs : fs_names) (b off : Z) (bs : list (bv 8)) :
     FsStateDefs.byte_range (fs_gamma_L γfs) b off bs
     ⊣⊢ FsBlocks.byte_range (fs_bytes γfs) b off bs.
-  Proof.
+  Proof using .
     rewrite /FsStateDefs.byte_range /FsBlocks.byte_range /fs_gamma_L /=.
     reflexivity.
   Qed.
 
   Lemma gamma_blk_owned (γfs : fs_names) (b : Z) (bs : list (bv 8)) :
     blk_owned (fs_gamma_L γfs) b bs ⊣⊢ fsblock (fs_bytes γfs) b bs.
-  Proof.
+  Proof using .
     rewrite /blk_owned /fsblock gamma_byte_range. reflexivity.
   Qed.
 
@@ -112,7 +112,7 @@ Section Bridge.
       (bs : list (bv 8)) :
     FsStateDefs.byte_range_q (fs_gamma_L γfs) dq b off bs
     ⊣⊢ FsBlocks.byte_range_q (fs_bytes γfs) dq b off bs.
-  Proof.
+  Proof using .
     rewrite /FsStateDefs.byte_range_q /FsBlocks.byte_range_q /fs_gamma_L /=.
     reflexivity.
   Qed.
@@ -120,7 +120,7 @@ Section Bridge.
   Lemma gamma_blk_owned_q (γfs : fs_names) (dq : dfrac) (b : Z)
       (bs : list (bv 8)) :
     blk_owned_q (fs_gamma_L γfs) dq b bs ⊣⊢ fsblock_q (fs_bytes γfs) dq b bs.
-  Proof.
+  Proof using .
     rewrite /blk_owned_q /fsblock_q gamma_byte_range_q. reflexivity.
   Qed.
 

@@ -212,7 +212,7 @@ Section CreateParts.
   Lemma cr_dot_window (a : mword 64) :
     a = mword_of_int cr_dot_addr ->
     kernel_data -∗ ([∗ list] j ∈ seq 0 14, (pa_add a j) ↦ₘ□ cr_dot_f j).
-  Proof.
+  Proof using .
     intros ->. iApply (kernel_data_bytes cr_dot_addr 14 cr_dot_f _ eq_refl
                          ltac:(unfold text_end, cr_dot_addr; lia)
                          ltac:(vm_compute; discriminate)).
@@ -224,7 +224,7 @@ Section CreateParts.
   Lemma cr_dotdot_window (a : mword 64) :
     a = mword_of_int cr_dotdot_addr ->
     kernel_data -∗ ([∗ list] j ∈ seq 0 14, (pa_add a j) ↦ₘ□ cr_dotdot_f j).
-  Proof.
+  Proof using .
     intros ->. iApply (kernel_data_bytes cr_dotdot_addr 14 cr_dotdot_f _ eq_refl
                          ltac:(unfold text_end, cr_dotdot_addr; lia)
                          ltac:(vm_compute; discriminate)).
@@ -240,7 +240,7 @@ Section CreateParts.
   Lemma cr_dot_window_kt1 (a : mword 64) :
     a = mword_of_int cr_dot_addr ->
     kernel_data -∗ ([∗ list] j ∈ seq 0 14, (pa_add a j) ↦ₘ[KT1]□ cr_dot_f j).
-  Proof.
+  Proof using .
     intros ->. iIntros "Hkd".
     iDestruct (cr_dot_window _ eq_refl with "Hkd") as "H".
     iApply (big_sepL_mono with "H"). iIntros (k j _) "H".
@@ -253,7 +253,7 @@ Section CreateParts.
   Lemma cr_dotdot_window_kt1 (a : mword 64) :
     a = mword_of_int cr_dotdot_addr ->
     kernel_data -∗ ([∗ list] j ∈ seq 0 14, (pa_add a j) ↦ₘ[KT1]□ cr_dotdot_f j).
-  Proof.
+  Proof using .
     intros ->. iIntros "Hkd".
     iDestruct (cr_dotdot_window _ eq_refl with "Hkd") as "H".
     iApply (big_sepL_mono with "H"). iIntros (k j _) "H".

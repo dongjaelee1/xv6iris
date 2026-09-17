@@ -25,15 +25,15 @@ Section CpuOwnMorph.
   Context `{GEN : GenId} `{CID : CpuId}.
 
   Global Instance cur_proc_morph (p : mword 64) : CtxMorph (λ ξ, cur_proc (XI := ξ) p).
-  Proof. rewrite /cur_proc. ctx_morph_solve. Qed.
+  Proof using . rewrite /cur_proc. ctx_morph_solve. Qed.
 
   Global Instance cpu_cells_morph (n : nat) (eb : bool) (p : mword 64) :
     CtxMorph (λ ξ, cpu_cells (XI := ξ) n eb p).
-  Proof. rewrite /cpu_cells. destruct n; ctx_morph_solve; apply cur_proc_morph. Qed.
+  Proof using . rewrite /cpu_cells. destruct n; ctx_morph_solve; apply cur_proc_morph. Qed.
 
   Global Instance cpu_priv_morph (n : nat) (eb : bool) (p : mword 64) (lks : gset string) :
     CtxMorph (λ ξ, cpu_priv (XI := ξ) n eb p lks).
-  Proof.
+  Proof using .
     rewrite /cpu_priv.
     apply ctx_morph_sep; [apply cpu_cells_morph |].
     apply ctx_morph_sep; apply ctx_morph_const.
@@ -41,11 +41,11 @@ Section CpuOwnMorph.
 
   Global Instance cpu_hart_morph (n : nat) (eb : bool) (p : mword 64) (lks : gset string) :
     CtxMorph (λ ξ, cpu_hart (XI := ξ) n eb p lks).
-  Proof. rewrite /cpu_hart. apply ctx_morph_sep; [apply cpu_priv_morph | apply ctx_morph_const]. Qed.
+  Proof using . rewrite /cpu_hart. apply ctx_morph_sep; [apply cpu_priv_morph | apply ctx_morph_const]. Qed.
 
   Global Instance cpu_own_morph (n : nat) (eb : bool) (p : mword 64)
       (b : bool) (lks : gset string) :
     CtxMorph (λ ξ, cpu_own (XI := ξ) n eb p b lks).
-  Proof. rewrite /cpu_own. apply ctx_morph_if; [apply ctx_morph_const | apply cpu_hart_morph]. Qed.
+  Proof using . rewrite /cpu_own. apply ctx_morph_if; [apply ctx_morph_const | apply cpu_hart_morph]. Qed.
 
 End CpuOwnMorph.

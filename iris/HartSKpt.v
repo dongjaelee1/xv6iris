@@ -103,7 +103,7 @@ Section kptnode.
     ptree_canon t0 = ptree_canon t' ->
     ptree_maps t0 vpn p2 p1 p0 ->
     exists q0, ptree_maps t' vpn p2 p1 q0 /\ pte_canon q0 = pte_canon p0.
-  Proof.
+  Proof using .
     intros Hcan Hmaps.
     pose proof (ptree_maps_canon t0 vpn p2 p1 p0 Hmaps) as Hc0.
     rewrite Hcan in Hc0.
@@ -134,7 +134,7 @@ Section kptnode.
                  /\ b ∈ pte_slot_set w j⌝ ∗
     tso_interp_of riscv_eraGS img mem log V ∗
     pt_slot_own (KTier B) a (DfracOwn 1) w.
-  Proof.
+  Proof using .
     intros Htv. iIntros "Htso #Hlb Hs".
     iDestruct (tso_interp_of_pin with "Htso") as %Hpin.
     iEval (rewrite (pt_slot_own_None B) /kpt_slot_pin) in "Hs".
@@ -169,7 +169,7 @@ Section kptnode.
                  /\ b ∈ pte_slot_set w j) ->
     pte_nonleafb w = true ->
     fobl_ram img log tv a 8 w.
-  Proof.
+  Proof using .
     intros Hok Hnl tv' Hlo _ j Hj.
     destruct (Hok tv' Hlo j ltac:(lia)) as (b & Hr & Hs).
     rewrite (pte_slot_set_nonleaf_sing w j Hnl) in Hs.
@@ -183,7 +183,7 @@ Section kptnode.
                  /\ b ∈ pte_slot_set w j) ->
     fobl_ram_ex img log tv a 8
       (fun w' : mword 64 => pte_canon w' = pte_canon w).
-  Proof.
+  Proof using .
     intros Hok tv' Hlo _.
     destruct (Hok tv' Hlo 0%nat ltac:(lia)) as (b0 & Hr0 & Hs0).
     destruct (Hok tv' Hlo 1%nat ltac:(lia)) as (b1 & Hr1 & Hs1).
@@ -223,7 +223,7 @@ Section kptnode.
            pt_slot_mem σ (pt_addr0 p1 vpn) q0 /\
            pte_canon q0 = pte_canon p0 ⌝) ∗
       gen_heap_interp σ.(mem).
-  Proof.
+  Proof using .
     intros HE Hmaps. iIntros "#Hlb0 #Hkinv Hgh".
     iMod (inv_acc E kptN with "Hkinv") as "[>Hbody Hclose]"; [ exact HE | ].
     iEval (rewrite /kpt_body) in "Hbody".
@@ -247,7 +247,7 @@ Section kptnode.
   (* [pt_slot_mem] is exactly the per-byte form [read_bytes_of_bytes] wants. *)
   Lemma read_bytes_of_slot (σ : mstate) (a w : mword 64) :
     pt_slot_mem σ a w -> read_bytes σ.(mem) a 8 = Some w.
-  Proof.
+  Proof using .
     intros (Hbytes & _ & _ & _). exact (read_bytes_of_bytes σ.(mem) a 8 w Hbytes).
   Qed.
 
@@ -270,7 +270,7 @@ Section kptnode.
       ⌜fobl_ram_ex img log tv (pt_addr0 p1 vpn) 8
          (fun w => pte_canon w = pte_canon p0)⌝ ∗
       tso_interp_of riscv_eraGS img mem log V.
-  Proof.
+  Proof using .
     intros HE Htv Hmaps. iIntros "#Hbd #Hvlb #Hlb0 #Hkinv Htso".
     iMod (inv_acc E kptN with "Hkinv") as "[>Hbody Hclose]"; [ exact HE | ].
     iEval (rewrite /kpt_body) in "Hbody".
@@ -330,7 +330,7 @@ Section kptnode.
     kpt_bound B -∗
     CtxValues.cv_boot_cred B -∗
     kpt_lb t0 -∗ kpt_inv root_ppn -∗ kpt_obl (pt_addr2 t0 vpn) p2.
-  Proof.
+  Proof using .
     intros Hmaps. rewrite /kpt_obl.
     iIntros "#Hbd #Hvlb #Hlb0 #Hkinv" (σ img log tv V) "%Htv Hσ Htso".
     iMod (kpt_path_obl root_ppn t0 vpn p2 p1 p0 B img σ.(mem) log V tv
@@ -347,7 +347,7 @@ Section kptnode.
     kpt_bound B -∗
     CtxValues.cv_boot_cred B -∗
     kpt_lb t0 -∗ kpt_inv root_ppn -∗ kpt_obl (pt_addr1 p2 vpn) p1.
-  Proof.
+  Proof using .
     intros Hmaps. rewrite /kpt_obl.
     iIntros "#Hbd #Hvlb #Hlb0 #Hkinv" (σ img log tv V) "%Htv Hσ Htso".
     iMod (kpt_path_obl root_ppn t0 vpn p2 p1 p0 B img σ.(mem) log V tv
@@ -365,7 +365,7 @@ Section kptnode.
     CtxValues.cv_boot_cred B -∗
     kpt_lb t0 -∗ kpt_inv root_ppn -∗
     kpt_obl_ex (pt_addr0 p1 vpn) (fun w => pte_canon w = pte_canon leaf0).
-  Proof.
+  Proof using .
     intros Hmaps. rewrite /kpt_obl_ex.
     iIntros "#Hbd #Hvlb #Hlb0 #Hkinv" (σ img log tv V) "%Htv Hσ Htso".
     iMod (kpt_path_obl root_ppn t0 vpn p2 p1 _ B img σ.(mem) log V tv
@@ -394,7 +394,7 @@ Section kptnode.
     (∀ σ, mstate_interp σ ={⊤,∅}=∗
         ⌜read_bytes σ.(mem) a 8 = Some w⌝ ∗
         ▷ (|={∅,⊤}=> mstate_interp σ)).
-  Proof.
+  Proof using .
     intros Hmaps Hsel. iIntros "#Hlb0 #Hkinv" (σ) "(Hreg & Hgh & Hdev)".
     iMod (kpt_open_slots root_ppn t0 vpn p2 p1 p0 σ ⊤ ltac:(solve_ndisj) Hmaps
             with "Hlb0 Hkinv Hgh") as "[%Hslots Hgh]".
@@ -414,7 +414,7 @@ Section kptnode.
     (∀ σ, mstate_interp σ ={⊤,∅}=∗
         ⌜read_bytes σ.(mem) (pt_addr2 t0 vpn) 8 = Some p2⌝ ∗
         ▷ (|={∅,⊤}=> mstate_interp σ)).
-  Proof.
+  Proof using .
     intros Hmaps.
     exact (kpt_slot_node root_ppn t0 vpn p2 p1 p0 _ _ Hmaps
              (fun _ _ H2 _ _ _ => H2)).
@@ -427,7 +427,7 @@ Section kptnode.
     (∀ σ, mstate_interp σ ={⊤,∅}=∗
         ⌜read_bytes σ.(mem) (pt_addr1 p2 vpn) 8 = Some p1⌝ ∗
         ▷ (|={∅,⊤}=> mstate_interp σ)).
-  Proof.
+  Proof using .
     intros Hmaps.
     exact (kpt_slot_node root_ppn t0 vpn p2 p1 p0 _ _ Hmaps
              (fun _ _ _ H1 _ _ => H1)).
@@ -454,7 +454,7 @@ Section kptnode.
            ⌜read_bytes σ.(mem) (pt_addr0 p1 vpn) 8 = Some q0⌝ ∗
            ⌜pte_canon q0 = pte_canon p0⌝) ∗
         ▷ (|={∅,⊤}=> mstate_interp σ)).
-  Proof.
+  Proof using .
     intros Hmaps. iIntros "#Hlb0 #Hkinv" (σ) "(Hreg & Hgh & Hdev)".
     iMod (kpt_open_slots root_ppn t0 vpn p2 p1 p0 σ ⊤ ltac:(solve_ndisj) Hmaps
             with "Hlb0 Hkinv Hgh") as "[%Hslots Hgh]".
@@ -489,7 +489,7 @@ Section kptnode.
 
   Lemma kpt_addr_ok_of_slot (σ : mstate) (a w : mword 64) :
     pt_slot_mem σ a w -> kpt_addr_ok a.
-  Proof. intros (_ & H1 & H2 & H3). exact (conj H1 (conj H2 H3)). Qed.
+  Proof using . intros (_ & H1 & H2 & H3). exact (conj H1 (conj H2 H3)). Qed.
 
   (* STATE-FREE: the slot's own points-to already carries both ends'
      RAM-ness and the alignment ([slot_mem_of_own] takes the heap only for
@@ -500,7 +500,7 @@ Section kptnode.
      ever wanted of a slot. *)
   Lemma kpt_addr_ok_own (B : nat) (dq : dfrac) (a w : mword 64) :
     pt_slot_own (KTier B) a dq w -∗ ⌜kpt_addr_ok a⌝.
-  Proof.
+  Proof using .
     iIntros "Hw". iDestruct (pt_slot_own_forget with "Hw") as "Hw".
     iDestruct (phys_word_pointsto_aligned_p with "Hw") as %Hal.
     iDestruct (phys_word_pointsto_bytes with "Hw") as "Hb".
@@ -526,7 +526,7 @@ Section kptnode.
         kpt_addr_ok (pt_addr2 t0 vpn) /\
         kpt_addr_ok (pt_addr1 p2 vpn) /\
         kpt_addr_ok (pt_addr0 p1 vpn) ⌝.
-  Proof.
+  Proof using .
     intros HE. iIntros "#Hat #Hlb0 #Hkinv".
     iMod (inv_acc E kptN with "Hkinv") as "[>Hbody Hclose]"; [ exact HE | ].
     iEval (rewrite /kpt_body) in "Hbody".
@@ -574,7 +574,7 @@ Section kptnode.
   (* ================================================================== *)
 
   Lemma kpt_addr_ok_ram (a : mword 64) : kpt_addr_ok a -> pma_ram_access a 8.
-  Proof.
+  Proof using .
     intros (Hlo & Hhi & _).
     exact (pma_access_ram a 8 7 Hlo Hhi (pma_width_ok 8 eq_refl eq_refl)
              eq_refl eq_refl).
@@ -585,7 +585,7 @@ Section kptnode.
     (ram_base + ram_size <= uint paddr0 * 4)%Z ->
     pmpRangeMatch (Z.mul (uint (zeros' 64 : mword 64)) 4) (Z.mul (uint paddr0) 4)
       (uint a) (uint (to_bits 64 8)) = PMP_Match.
-  Proof.
+  Proof using .
     intros (Hram & Hram7 & _) Hcov.
     assert (Hnw : (uint a + Z.of_nat 7 < 18446744073709551616)%Z).
     { destruct Hram as [_ Hh]. unfold ram_base, ram_size in Hh.
@@ -630,7 +630,7 @@ Section kptnode.
     swp (read_pte (Physaddr a) 8)
       (fun r => ⌜r = Values.Ok w⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDpma HDcfg HDaddr HDhtif Hhtif Hpma Hpcfg Hpaddr HA Hord HR
       Hcov Hallow Hok.
     iIntros "#Hcert Hrw Hro Hmem".
@@ -648,7 +648,7 @@ Section kptnode.
      idempotence/collapse laws) and which the landing snapshot needs *)
   Lemma register_lookup_set_tlb (rs : regstate) (v : type_of_register tlb) :
     register_lookup tlb (register_set tlb v rs) = v.
-  Proof.
+  Proof using .
     destruct rs. unfold register_set, register_lookup. cbn. reflexivity.
   Qed.
 
@@ -664,7 +664,7 @@ Section kptnode.
         (∃ w : mword 64, ⌜read_bytes σ.(mem) (pt_addr0 p1 vpn) 8 = Some w⌝ ∗
                          ⌜pte_canon w = pte_canon leaf0⌝) ∗
         ▷ (|={∅,⊤}=> mstate_interp σ)).
-  Proof.
+  Proof using .
     intros Hmaps. iIntros "#Hlb0 #Hkinv" (σ) "Hσ".
     iPoseProof (kpt_leaf_node root_ppn t0 vpn p2 p1 _ Hmaps with "Hlb0 Hkinv")
       as "H".
@@ -686,7 +686,7 @@ Section kptnode.
     ptree_maps t0 vpn p2 p1 (pte_set_ad leaf0 a0 d0) ->
     kpt_lb t0 -∗ kpt_inv root_ppn -∗
     xread_obl_ex (pt_addr0 p1 vpn) (fun w => pte_canon w = pte_canon leaf0).
-  Proof.
+  Proof using .
     intros Hmaps. rewrite /xread_obl_ex.
     iIntros "#Hlb0 #Hkinv" (σ img log tv V) "%Htv Hσ Htso".
     iPoseProof (kpt_leaf_node_canon root_ppn t0 vpn p2 p1 leaf0 a0 d0 Hmaps
@@ -725,7 +725,7 @@ Section kptnode.
     swp (read_pte (Physaddr a) 8)
       (fun r => ∃ w, ⌜r = Values.Ok w⌝ ∗ ⌜P w⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDpma HDcfg HDaddr HDhtif Hhtif Hpma Hpcfg Hpaddr HA Hord HR
       Hcov Hallow Hok.
     iIntros "#Hcert Hrw Hro Hmem".
@@ -773,7 +773,7 @@ Section kptnode.
        above them ever holds the bundle. *)
     wpte_obl_at (pt_addr0 p1 vpn) m0
       (mwrite_req8_con (pt_addr0 p1 vpn) (autocast (T := mword) m0')) True.
-  Proof.
+  Proof using .
     intros Hmaps Hvar.
     rewrite /wpte_obl_at.
     iIntros "#Hat #Hlb0 #Hkinv" (σ img log V) "%Hrb (Hreg & Hgh & Hdev) Htso".
@@ -1012,7 +1012,7 @@ Section kptnode.
                   hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro ∗
                   tlb_snap_ok (register_lookup tlb rsf) ∗
                   resv_any cpu_id).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv HDsatp HWtlb HDpma HDcfg HDaddr HDhtif
       HDb Hag HDlc Haglc Hcp Hsatp Htlb Hhtif Hpma Hpcfg Hpaddr Hmstag
       Hmisa Hmenv HPBMTE HADUE Heff Heffg Hss Hssg Htm Htmg Hppn Hasid

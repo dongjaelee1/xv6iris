@@ -257,7 +257,7 @@ Section ReadFire.
      -- which is what makes read's bundle payable at every key. *)
   Lemma aread_commit_at_unit Γ E i γo :
     ⊢ aread_commit_at Γ E i γo (fun _ _ _ _ => True%I).
-  Proof.
+  Proof using .
     rewrite /aread_commit_at. iIntros (I off a d) "%Hpre Ha Hk".
     iModIntro. by iFrame "Ha Hk".
   Qed.
@@ -270,7 +270,7 @@ Section ReadFire.
   Lemma arf_auth_nview Γ (qa : Qp) (I : gmap Z fs_node) (q : Qp) (i : Z) (a : anode) :
     ghost_map_auth (γtop Γ) qa I -∗ nview Γ q i a -∗
     ⌜abs_view I !! i = Some a⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Hn".
     iAssert (astate Γ (abs_view I)) with "[Ha]" as "Hst".
     { iApply astate_intro. iExact "Ha". }
@@ -287,7 +287,7 @@ Section ReadFire.
     (∀ (av : aview) (off : nat) (a : anode) (d : nat),
        ⌜av !! jpin = Some b⌝ -∗ nview Γ q jpin b -∗ Φ av off a d) -∗
     aread_commit_at Γ E i γo Φ.
-  Proof.
+  Proof using .
     iIntros "Hn HΦ". rewrite /aread_commit_at.
     iIntros (I off a d) "%Hpre Ha Hk".
     iDestruct (arf_auth_nview with "Ha Hn") as %Hav.
@@ -305,7 +305,7 @@ Section ReadFire.
     (∀ (av : aview) (off : nat) (d : nat),
        ⌜av !! i = Some b⌝ -∗ nview Γ q i b -∗ Φ av off b d) -∗
     aread_commit_at Γ E i γo Φ.
-  Proof.
+  Proof using .
     iIntros "Hn HΦ". rewrite /aread_commit_at.
     iIntros (I off a d) "%Hpre Ha Hk".
     iDestruct (arf_auth_nview with "Ha Hn") as %Hav.
@@ -409,7 +409,7 @@ Section ReadFire.
   Lemma read_arms_ret Γ (i : Z) γo (n : Z) F (r : mword 64)
       (M' : gmap Z (bv 8)) (addr : mword 64) :
     read_arms Γ i γo n F r M' addr -∗ ⌜pipe_rw_ret n r⌝.
-  Proof.
+  Proof using .
     rewrite /read_arms /read_post_ok. iIntros "[Hok | [%Hm1 _]]".
     - iDestruct "Hok" as (av off a d) "(_ & %Hn & %Htie & _ & _ & _)".
       iPureIntro. exact (ard_ret_tie_ret n a off r Hn Htie).
@@ -426,7 +426,7 @@ Section ReadFire.
     (n < 0)%Z ->
     pf_at (aread_commit_at Γ appE i γo) F -∗
     read_arms Γ i γo n F (mword_of_int (-1) : mword 64) M' addr.
-  Proof.
+  Proof using .
     intros Hn. iIntros "Hc". rewrite /read_arms. iRight.
     iSplitR; [done |]. rewrite /read_post_fail. iLeft.
     iSplitR; [by iPureIntro |]. iExact "Hc".
@@ -498,7 +498,7 @@ Section ReadFire.
       ∗ R
       ∗ ∃ av : aview,
           ⌜arow_at av i (abs_row n)⌝ ∗ F.(pf_recv) av off (abs_row n) d.
-  Proof.
+  Proof using .
     intros HE Hoff Hsz Hnz. iIntros "#Hi Hsup Hcm Hf Hg".
     (* THE PIECE IS SPENT: the fire eliminates to the AU side. *)
     iDestruct (pf_at_au with "Hcm") as "Hcm".
@@ -546,7 +546,7 @@ Section ReadFire.
       ∗ off_gv γo (1/2) (Z.of_nat (off + d))
       ∗ ∃ av : aview,
           ⌜arow_at av i (abs_row n)⌝ ∗ F.(pf_recv) av off (abs_row n) d.
-  Proof.
+  Proof using .
     intros HE Hoff Hsz Hnz. iIntros "#Hi #Hoinv Hcm Hf Hg".
     assert (Hfoff : ↑foffN ⊆ E).
     { etrans; [| exact HE]. rewrite /foffN /appN. solve_ndisj. }
@@ -578,7 +578,7 @@ Section ReadFire.
       ∗ uoff γo (off + d)
       ∗ ∃ av : aview,
           ⌜arow_at av i (abs_row n)⌝ ∗ F.(pf_recv) av off (abs_row n) d.
-  Proof.
+  Proof using .
     intros HE Hoff Hsz Hnz. iIntros "#Hi Hu Hcm Hf Hg".
     iApply (arf_read_fire_gen γfs E dq (uoff γo (off + d)) F i γo off d n
               HE Hoff Hsz Hnz with "Hi [Hu] Hcm Hf Hg").
@@ -602,7 +602,7 @@ Section ReadFire.
       ∗ off_gv γo (1/2) (Z.of_nat (off + d))
       ∗ ∃ av : aview,
           ⌜arow_at av i (abs_row n)⌝ ∗ F.(pf_recv) av off (abs_row n) d.
-  Proof.
+  Proof using .
     intros HE Hoff Hsz Hnz. rewrite top_frag_1.
     exact (arf_read_fire γfs E _ F i γo off d n HE Hoff Hsz Hnz).
   Qed.
@@ -626,7 +626,7 @@ Section ReadFire.
       ∗ uoff γo (off + d)
       ∗ ∃ av : aview,
           ⌜arow_at av i (abs_row n)⌝ ∗ F.(pf_recv) av off (abs_row n) d.
-  Proof.
+  Proof using .
     intros HE Hoff Hsz Hnz. rewrite top_frag_1.
     exact (arf_read_fire_held γfs E _ F i γo off d n HE Hoff Hsz Hnz).
   Qed.
@@ -654,7 +654,7 @@ Section ReadFire.
     nview Γ q i b -∗
     aread_commit_at Γ E i γo Φr -∗
     aread_commit_at Γ E i γo (arf_pin_recv Γ i q b Φr).
-  Proof.
+  Proof using .
     iIntros "Hn Hcm". rewrite /aread_commit_at.
     iIntros (I off a d) "%Hpre Ha Hg".
     iDestruct (arf_auth_nview with "Ha Hn") as %Hav.
@@ -698,7 +698,7 @@ Section ReadFire.
     read_post_ok Γ i nz
       (arf_pin_fam Γ i q (MkAnode (AFile bs0) nl) F) r M' addr
     ⊢ read_stable_arms Γ i nz q bs0 nl F.(pf_recv) r.
-  Proof.
+  Proof using .
     rewrite /read_post_ok /read_stable_arms /arf_pin_fam.
     cbn [pf_recv pf_refund]. rewrite /arf_pin_recv.
     iIntros "Hok".
@@ -738,7 +738,7 @@ Section ReadFire.
     read_post_fail Γ i γo nz
       (arf_pin_fam Γ i q (MkAnode (AFile bs0) nl) F)
     ⊢ read_stable_arms Γ i nz q bs0 nl F.(pf_recv) r.
-  Proof.
+  Proof using .
     intros Hnz Hr.
     rewrite /read_post_fail /read_stable_arms /arf_pin_fam.
     cbn [pf_recv pf_refund]. rewrite /arf_pin_recv.
@@ -763,7 +763,7 @@ Section ReadFire.
     read_arms Γ i γo nz
       (arf_pin_fam Γ i q (MkAnode (AFile bs0) nl) F) r M' addr
     ⊢ read_stable_arms Γ i nz q bs0 nl F.(pf_recv) r.
-  Proof.
+  Proof using .
     intros Hnz. rewrite /read_arms.
     iIntros "[Hok | [%Hr Hfail]]".
     - iApply (arf_stable_ok_arm with "Hok").

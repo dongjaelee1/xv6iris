@@ -116,7 +116,7 @@ Section UkWaitCons.
        ubytes (ukn_d N) (uint dst) 4 g -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hdst Hnz Hp1 Hal4.
     iIntros "#Hi Hrun Hsb Hch Hbuf Hpid Htok Hreap Hfail".
     iApply (wp_uk_ecall_wait_status N h m pc dst 4 f avail {[γc]} p

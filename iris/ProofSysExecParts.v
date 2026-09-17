@@ -371,7 +371,7 @@ Section SysExecZeros.
     (forall j, (j < 8)%nat -> nth_byte (mword_of_int 0 : mword 64) j = zb) ->
     is_aligned_paddr (Physaddr a) 8 = true ->
     ([∗ list] j ∈ seq 0 8, pa_add a j ↦ₘ[KT1] zb) ⊢ a ↦₈[KT1] (mword_of_int 0 : mword 64).
-  Proof.
+  Proof using .
     intros Hzb Hal. iIntros "H".
     iApply (ctx_word_pointsto_intro cur_ctx (KTR := KT1) _ _ _ Hal).
     iApply (big_sepL_mono with "H"). intros i j Hj.
@@ -385,7 +385,7 @@ Section SysExecZeros.
        is_aligned_paddr (Physaddr (pa_stk sp (k - i))) 8 = true) ->
     ([∗ list] j ∈ seq 0 (8 * n), pa_add (pa_stk sp k) j ↦ₘ[KT1] zb) ⊢
     [∗ list] i ∈ seq 0 n, pa_stk sp (k - i) ↦₈[KT1] (mword_of_int 0 : mword 64).
-  Proof.
+  Proof using .
     intro Hzb. revert k. induction n as [| n IH]; intros k Hk Hal.
     - iIntros "_". by rewrite big_sepL_nil.
     - rewrite seq_S big_sepL_app big_sepL_singleton.
@@ -432,7 +432,7 @@ Section SysExecFrame.
     (∃ w : mword 64, (pa_stk sp0 60) ↦₈[KT1] w) ∗
     bytes_own (KTR := KT1) (DfracOwn 1) (pa_stk sp0 26) 128 ∗
     bytes_own (KTR := KT1) (DfracOwn 1) (pa_stk sp0 58) 256.
-  Proof.
+  Proof using .
     iIntros "H". rewrite (stack_own_slots (KTR := KT1)). cbn [seq].
     iDestruct "H" as "(S1 & S2 & S3 & S4 & S5 & S6 & S7 & S8 & S9 & S10 & S11 & S12 & S13 & S14 & S15 & S16 & S17 & S18 & S19 & S20 & S21 & S22 & S23 & S24 & S25 & S26 & S27 & S28 & S29 & S30 & S31 & S32 & S33 & S34 & S35 & S36 & S37 & S38 & S39 & S40 & S41 & S42 & S43 & S44 & S45 & S46 & S47 & S48 & S49 & S50 & S51 & S52 & S53 & S54 & S55 & S56 & S57 & S58 & S59 & S60 & _)".
     change 128%nat with (8 * 16)%nat. change 256%nat with (8 * 32)%nat.
@@ -526,7 +526,7 @@ Section SysExecFrame.
     bytes_own (KTR := KT1) (DfracOwn 1) (pa_stk sp0 26) 128 -∗
     bytes_own (KTR := KT1) (DfracOwn 1) (pa_stk sp0 58) 256 -∗
     stack_own (KTR := KT1) sp0 60.
-  Proof.
+  Proof using .
     intros Halp Hala. iIntros "S1 S2 S3 S4 S5 S6 S7 S8 S9 S10 S59 S60 Hpb Hab".
     change 128%nat with (8 * 16)%nat. change 256%nat with (8 * 32)%nat.
     iDestruct (bytes_own_slotsn (KTR := KT1) sp0 26 16 ltac:(lia) Halp with "Hpb") as "Hp".
@@ -603,11 +603,11 @@ Section SysExecFrame.
   Lemma sx_bytes_name `{XI : CurCtx} (a : mword 64) (N : nat) :
     bytes_own (KTR := KT1) (DfracOwn 1) a N ⊢
     ∃ f : nat -> bv 8, [∗ list] j ∈ seq 0 N, pa_add a j ↦ₘ[KT1] f j.
-  Proof. rewrite /bytes_own. exact (bb_any_named (KTR := KT1) a N). Qed.
+  Proof using . rewrite /bytes_own. exact (bb_any_named (KTR := KT1) a N). Qed.
 
   Lemma sx_name_bytes `{XI : CurCtx} (a : mword 64) (N : nat) (f : nat -> bv 8) :
     ([∗ list] j ∈ seq 0 N, pa_add a j ↦ₘ[KT1] f j) ⊢ bytes_own (KTR := KT1) (DfracOwn 1) a N.
-  Proof. rewrite /bytes_own. exact (bb_named_any (KTR := KT1) a N f). Qed.
+  Proof using . rewrite /bytes_own. exact (bb_named_any (KTR := KT1) a N f). Qed.
 
   Lemma sx_buf_split `{XI : CurCtx} (a : mword 64) (f : nat -> bv 8) (k : nat) :
     (k < 128)%nat ->
@@ -615,7 +615,7 @@ Section SysExecFrame.
     ([∗ list] j ∈ seq 0 (S k), pa_add a j ↦ₘ[KT1] f j)
     ∗ ([∗ list] j ∈ seq 0 (127 - k)%nat,
          pa_add (pa_add a (S k)) j ↦ₘ[KT1] f (S k + j)%nat).
-  Proof.
+  Proof using .
     intro Hk.
     replace 128%nat with (S k + (127 - k))%nat by lia.
     rewrite (bb_split a (S k) (127 - k)%nat f). iIntros "[$ $]".
@@ -629,7 +629,7 @@ Section SysExecFrame.
     ([∗ list] j ∈ seq 0 (S k), pa_add a j ↦ₘ[KT1] f j) -∗
     ([∗ list] j ∈ seq 0 (127 - k)%nat, pa_add (pa_add a (S k)) j ↦ₘ[KT1] g j) -∗
     bytes_own (KTR := KT1) (DfracOwn 1) a 128.
-  Proof.
+  Proof using .
     intro Hk. iIntros "H1 H2".
     iDestruct (sx_name_bytes a (S k) f with "H1") as "B1".
     iDestruct (sx_name_bytes (pa_add a (S k)) (127 - k)%nat g with "H2") as "B2".
@@ -678,7 +678,7 @@ Section SysExecEpilogue.
     sx_alp sp0 -> sx_ala sp0 ->
     (pa_stk sp0 1) ↦₈[KT1] v1 -∗ (pa_stk sp0 2) ↦₈[KT1] v2 -∗ sx_rest sp0 -∗
     stack_own (KTR := KT1) sp0 60.
-  Proof.
+  Proof using .
     intros Halp Hala. iIntros "S1 S2 Hr". rewrite /sx_rest.
     iDestruct "Hr" as "(E3 & E4 & E5 & E6 & E7 & E8 & E9 & E10 & E59 & E60 & Hpb & Hab)".
     iDestruct "E3" as (v3) "S3".
@@ -730,7 +730,7 @@ Section SysExecEpilogue.
         pc_is (ret_pc (m !!! Regidx Rra : mword 64)) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK60 Kpop Hsp0 HMsp HMthr HMs1 HMs2 HMs3 HMs4 HMs5 HMs6 HMs7 Halp Hala.
     iIntros "Hcg #Htext Hpc Hf1 Hf2 Hrest Hcont".
     (* ===== +0x104 c.ldsp ra,472(sp) ===== *)
@@ -1011,7 +1011,7 @@ Section SysExecHead.
           (pa_stk (m !!! Regidx csp_rs1) 60) ↦₈[KT1] v60)) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Harg0 Harg1 Hlb.
     destruct (sx_kb K HK) as (Kkx & Kar & Kaa & Kfa & Kfs & K14 & K2 & K60 & Kpop).
     set (sp0 := m !!! Regidx csp_rs1).
@@ -1545,7 +1545,7 @@ Section SysExecSetup.
            (pa_stk sp0 (58 - i)) ↦₈[KT1] (mword_of_int 0 : mword 64)) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hsp0 HMsp HMs0 HMthr Hala.
     destruct (sx_kb K HK) as (Kkx & Kar & Kaa & Kfa & Kfs & K14 & K2 & K60 & Kpop).
     iIntros "Hcg #Htext Hpc F3 F4 F5 F6 F7 F8 F9 Hab Hout".
@@ -2010,7 +2010,7 @@ Section SysExecFree.
      may take. *)
   Local Lemma sx_avi `{XI : CurCtx} (z k : Z) :
     add_vec_int (mword_of_int z : mword 64) k = (mword_of_int (z + k) : mword 64).
-  Proof.
+  Proof using .
     change (add_vec_int (mword_of_int z : mword 64) k)
       with (add_vec (mword_of_int z : mword 64) (mword_of_int k : mword 64)).
     apply bv_eq. rewrite add_vec64_unsigned !moi64_unsigned.
@@ -2022,14 +2022,14 @@ Section SysExecFree.
      names its kexec, uses both of these. *)
   Lemma sx_off0 `{XI : CurCtx} (x : mword 64) :
     add_vec x (sign_extend' 64 (mword_of_int 0 : mword 12)) = x.
-  Proof.
+  Proof using .
     assert (Hz : (mword_of_int 0 : mword 12) = zeros' 12)
       by (apply bv_eq; vm_compute; reflexivity).
     rewrite Hz. apply add_vec_zeros_r.
   Qed.
 
   Lemma sx_zreg0 `{XI : CurCtx} : (zero_reg : mword 64) = mword_of_int 0.
-  Proof. apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . apply bv_eq; vm_compute; reflexivity. Qed.
 
   (* AN INSTRUCTION FACT IS NOT PERSISTENT -- [kernel_text] IS.  Every WP leaf
      CONSUMES its [instr], so a loop body cannot be handed one: it has to mint
@@ -2046,7 +2046,7 @@ Section SysExecFree.
      so no pair of slots can alias however [sp] is placed. *)
   Local Lemma sx_stk_ne `{XI : CurCtx} (sp : mword 64) (a c : nat) :
     (a <= 60)%nat -> (c <= 60)%nat -> a <> c -> pa_stk sp a <> pa_stk sp c.
-  Proof.
+  Proof using .
     intros Ha Hc Hne Heq.
     apply (f_equal bv_unsigned) in Heq.
     unfold pa_stk, add_vec_int in Heq.
@@ -2073,7 +2073,7 @@ Section SysExecFree.
     add_vec (pa_stk sp0 (58 - k))
       (sign_extend' 64 (sign_extend' 12 (mword_of_int 8 : mword 6)))
     = pa_stk sp0 (58 - S k).
-  Proof.
+  Proof using .
     intro Hk.
     assert (Him : (sign_extend' 64 (sign_extend' 12 (mword_of_int 8 : mword 6))
                    : mword 64) = mword_of_int 8)
@@ -2088,7 +2088,7 @@ Section SysExecFree.
   (* the end pointer: [argv + 256] is slot 26, one past argv[31]. *)
   Lemma sx_argv_end `{XI : CurCtx} (sp0 : mword 64) :
     pa_stk sp0 (58 - 32)%nat = pa_stk sp0 26.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* ---- the loop's own view of the argv array ---- *)
 
@@ -2122,13 +2122,13 @@ Section SysExecFree.
     ([∗ list] j ∈ seq 0 t, ∃ w : mword 64, (pa_stk sp0 (58 - j)) ↦₈[KT1] w) -∗
     ([∗ list] j ∈ seq t n, ∃ w : mword 64, (pa_stk sp0 (58 - j)) ↦₈[KT1] w) -∗
     ([∗ list] j ∈ seq 0 (t + n), ∃ w : mword 64, (pa_stk sp0 (58 - j)) ↦₈[KT1] w).
-  Proof. rewrite seq_app big_sepL_app. iIntros "A B". iSplitL "A"; done. Qed.
+  Proof using . rewrite seq_app big_sepL_app. iIntros "A B". iSplitL "A"; done. Qed.
 
   (* both exits leave the cursor AT the first NULL -- the early one because
      that is what it tested, the fall-through because [t = 32] there. *)
   Lemma sx_argv_done `{XI : CurCtx} (sp0 : mword 64) (t : nat) (pg : nat -> mword 64) :
     (t <= 32)%nat -> sx_argv_at sp0 t t pg ⊢ sx_argv_free sp0.
-  Proof.
+  Proof using .
     intro Ht. rewrite /sx_argv_at /sx_argv_free Nat.sub_diag.
     iIntros "(H1 & _ & H3)".
     iAssert ([∗ list] j ∈ seq t (32 - t),
@@ -2154,7 +2154,7 @@ Section SysExecFree.
     sx_argv_at sp0 k t pg -∗
     (pa_stk sp0 (58 - k)) ↦₈[KT1] pg k ∗
     ((∃ w : mword 64, (pa_stk sp0 (58 - k)) ↦₈[KT1] w) -∗ sx_argv_at sp0 (S k) t pg).
-  Proof.
+  Proof using .
     intro Hk. rewrite /sx_argv_at.
     rewrite (_ : (t - k)%nat = S (t - S k)%nat); [| lia].
     rewrite -cons_seq big_sepL_cons.
@@ -2170,7 +2170,7 @@ Section SysExecFree.
     sx_argv_at sp0 t t pg -∗
     (pa_stk sp0 (58 - t)) ↦₈[KT1] (mword_of_int 0 : mword 64) ∗
     ((pa_stk sp0 (58 - t)) ↦₈[KT1] (mword_of_int 0 : mword 64) -∗ sx_argv_free sp0).
-  Proof.
+  Proof using .
     intro Ht. iIntros "H". rewrite /sx_argv_at.
     rewrite (_ : (32 - t)%nat = S (32 - S t)%nat); [| lia].
     rewrite -cons_seq big_sepL_cons.
@@ -2192,7 +2192,7 @@ Section SysExecFree.
     sx_pages pg afun k t -∗
     ([∗ list] i ∈ seq 0 4096, pa_add (pg k) i ↦ₘ afun k i) ∗
     sx_pages pg afun (S k) t.
-  Proof.
+  Proof using .
     intro Hk. rewrite /sx_pages.
     rewrite (_ : (t - k)%nat = S (t - S k)%nat); [| lia].
     rewrite -cons_seq big_sepL_cons. iIntros "[Hp Hr]".
@@ -2241,7 +2241,7 @@ Section SysExecFree.
         sx_argv_free sp0 -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Ht Hbeq Hbeqal HMs1 Hx0 Hx2.
     iIntros "#Htext Hpc Hcg Hcnt Harr Hout".
     iDestruct (sx_argv_null sp0 t pg ltac:(lia) with "Harr") as "[Hcell Hback]".
@@ -2354,7 +2354,7 @@ Section SysExecFree.
         sx_argv_free sp0 -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Ht Hpg Hlb Hret Hbeq Hbeqal Hkf Hbk Hbkal Hx0 Hx2 Hx4 Hx8 Hx10.
     destruct (sx_kb K HK) as (Kkx & Kar & Kaa & Kfa & Kfs & K14 & K2 & K60 & Kpop).
     intro W. revert CID0.
@@ -2599,7 +2599,7 @@ Section SysExecLoop.
   Lemma sx_ok_pgok `{XI : CurCtx} (pg : nat -> mword 64) (alen : nat -> nat)
       (afun : nat -> nat -> bv 8) (n : nat) :
     sx_ok pg alen afun n -> sx_pgok pg n.
-  Proof.
+  Proof using .
     intros H j Hj. destruct (H j Hj) as (A & B & _ & _). split; assumption.
   Qed.
 
@@ -2610,11 +2610,11 @@ Section SysExecLoop.
 
   Lemma sx_upd_eq `{XI : CurCtx} {A : Type} (f : nat -> A) (i : nat) (v : A) :
     sx_upd f i v i = v.
-  Proof. rewrite /sx_upd. destruct (Nat.eq_dec i i); [reflexivity | lia]. Qed.
+  Proof using . rewrite /sx_upd. destruct (Nat.eq_dec i i); [reflexivity | lia]. Qed.
 
   Lemma sx_upd_lt `{XI : CurCtx} {A : Type} (f : nat -> A) (i : nat) (v : A) (j : nat) :
     (j < i)%nat -> sx_upd f i v j = f j.
-  Proof.
+  Proof using .
     intro Hj. rewrite /sx_upd. destruct (Nat.eq_dec j i); [lia | reflexivity].
   Qed.
 
@@ -2625,7 +2625,7 @@ Section SysExecLoop.
     p <> (mword_of_int 0 : mword 64) -> page_valid p ->
     (k < 4096)%nat -> bb_cstr f k ->
     sx_ok (sx_upd pg i p) (sx_upd alen i k) (sx_upd afun i f) (S i).
-  Proof.
+  Proof using .
     intros Hok Hnz Hpv Hk Hcs j Hj.
     destruct (Nat.eq_dec j i) as [Heq | Hne].
     - subst j. rewrite !sx_upd_eq. split_and!; assumption.
@@ -2637,7 +2637,7 @@ Section SysExecLoop.
   Lemma sx_pgok_push `{XI : CurCtx} (pg : nat -> mword 64) (i : nat) (p : mword 64) :
     sx_pgok pg i -> p <> (mword_of_int 0 : mword 64) -> page_valid p ->
     sx_pgok (sx_upd pg i p) (S i).
-  Proof.
+  Proof using .
     intros Hok Hnz Hpv j Hj.
     destruct (Nat.eq_dec j i) as [Heq | Hne].
     - subst j. rewrite sx_upd_eq. split; assumption.
@@ -2667,7 +2667,7 @@ Section SysExecLoop.
     u <> (mword_of_int 0 : mword 64) ->
     copyinstr_got M u f k ->
     sx_avok M av (sx_upd uvf i u) (sx_upd alen i k) (sx_upd afun i f) (S i).
-  Proof.
+  Proof using .
     intros Hok Hrd Hnz Hstr j Hj.
     destruct (Nat.eq_dec j i) as [Heq | Hne].
     - subst j. rewrite !sx_upd_eq. split_and!; assumption.
@@ -2682,7 +2682,7 @@ Section SysExecLoop.
       (afun : nat -> nat -> bv 8) (n : nat) :
     (forall j, (j < n)%nat -> alen' j = alen j) ->
     sx_avok M av uvf alen afun n -> sx_avok M av uvf alen' afun n.
-  Proof.
+  Proof using .
     intros Hag Hok j Hj. rewrite (Hag j Hj). exact (Hok j Hj).
   Qed.
 
@@ -2702,13 +2702,13 @@ Section SysExecLoop.
         (pa_stk sp0 (58 - j)) ↦₈[KT1] (mword_of_int 0 : mword 64)))%I.
 
   Lemma sx_seq00 `{XI : CurCtx} : seq 0 0 = @nil nat.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* the fill loop's view and the free loop's view are one predicate -- the
      free loop just starts with an empty freed prefix. *)
   Lemma sx_argv0_at `{XI : CurCtx} (sp0 : mword 64) (t : nat) (pg : nat -> mword 64) :
     sx_argv0 sp0 t pg ⊢ sx_argv_at sp0 0 t pg.
-  Proof.
+  Proof using .
     rewrite /sx_argv0 /sx_argv_at Nat.sub_0_r sx_seq00 big_sepL_nil.
     iIntros "[A B]". iSplitR; [done |].
     iSplitL "A"; [iExact "A" | iExact "B"].
@@ -2719,7 +2719,7 @@ Section SysExecLoop.
     sx_argv0 sp0 t pg ⊢
     (pa_stk sp0 (58 - t)) ↦₈[KT1] (mword_of_int 0 : mword 64) ∗
     sx_argv_rest sp0 t pg.
-  Proof.
+  Proof using .
     intro Ht. rewrite /sx_argv0 /sx_argv_rest.
     rewrite (_ : (32 - t)%nat = S (31 - t)%nat); [| lia].
     rewrite -cons_seq big_sepL_cons.
@@ -2731,7 +2731,7 @@ Section SysExecLoop.
     (t < 32)%nat ->
     (pa_stk sp0 (58 - t)) ↦₈[KT1] (mword_of_int 0 : mword 64) -∗
     sx_argv_rest sp0 t pg -∗ sx_argv0 sp0 t pg.
-  Proof.
+  Proof using .
     intro Ht. iIntros "Hcell [Hmid Hhi]". rewrite /sx_argv0.
     rewrite (_ : (32 - t)%nat = S (31 - t)%nat); [| lia].
     rewrite -cons_seq big_sepL_cons.
@@ -2743,7 +2743,7 @@ Section SysExecLoop.
     (t < 32)%nat -> (forall j, (j < t)%nat -> pg' j = pg j) ->
     (pa_stk sp0 (58 - t)) ↦₈[KT1] pg' t -∗ sx_argv_rest sp0 t pg -∗
     sx_argv0 sp0 (S t) pg'.
-  Proof.
+  Proof using .
     intros Ht Hag. iIntros "Hcell [Hmid Hhi]". rewrite /sx_argv0.
     iSplitR "Hhi".
     - rewrite seq_S big_sepL_app big_sepL_singleton.
@@ -2761,7 +2761,7 @@ Section SysExecLoop.
     sx_pages pg afun 0 t -∗
     ([∗ list] i ∈ seq 0 4096, pa_add (pg' t) i ↦ₘ afun' t i) -∗
     sx_pages pg' afun' 0 (S t).
-  Proof.
+  Proof using .
     intros Hp Ha. iIntros "Hold Hnew". rewrite /sx_pages !Nat.sub_0_r.
     (* [seq_S] must be aimed: a bare rewrite unifies with the INNER
        [seq 0 4096] first and peels the page's last byte instead. *)
@@ -2804,44 +2804,44 @@ Section SysExecLoop.
 
   Lemma sxr_sp `{XI : CurCtx} {sp0 : mword 64} {m M : regfile} {i : nat} :
     sx_regs sp0 m M i -> sx_sp sp0 M.
-  Proof. intros (H&_&_&_&_&_&_&_&_&_). exact H. Qed.
+  Proof using . intros (H&_&_&_&_&_&_&_&_&_). exact H. Qed.
   Lemma sxr_thr `{XI : CurCtx} {sp0 : mword 64} {m M : regfile} {i : nat} :
     sx_regs sp0 m M i -> sx_thr m M.
-  Proof. intros (_&H&_&_&_&_&_&_&_&_). exact H. Qed.
+  Proof using . intros (_&H&_&_&_&_&_&_&_&_). exact H. Qed.
   Lemma sxr_s0 `{XI : CurCtx} {sp0 : mword 64} {m M : regfile} {i : nat} :
     sx_regs sp0 m M i -> (M !!! Regidx Rs0 : mword 64) = sp0.
-  Proof. intros (_&_&H&_&_&_&_&_&_&_). exact H. Qed.
+  Proof using . intros (_&_&H&_&_&_&_&_&_&_). exact H. Qed.
   Lemma sxr_s1 `{XI : CurCtx} {sp0 : mword 64} {m M : regfile} {i : nat} :
     sx_regs sp0 m M i -> (M !!! Regidx Rs1 : mword 64) = pa_stk sp0 58.
-  Proof. intros (_&_&_&H&_&_&_&_&_&_). exact H. Qed.
+  Proof using . intros (_&_&_&H&_&_&_&_&_&_). exact H. Qed.
   Lemma sxr_s2 `{XI : CurCtx} {sp0 : mword 64} {m M : regfile} {i : nat} :
     sx_regs sp0 m M i ->
     (M !!! Regidx Rs2 : mword 64) = (mword_of_int (Z.of_nat i) : mword 64).
-  Proof. intros (_&_&_&_&H&_&_&_&_&_). exact H. Qed.
+  Proof using . intros (_&_&_&_&H&_&_&_&_&_). exact H. Qed.
   Lemma sxr_s3 `{XI : CurCtx} {sp0 : mword 64} {m M : regfile} {i : nat} :
     sx_regs sp0 m M i -> (M !!! Regidx Rs3 : mword 64) = pa_stk sp0 (58 - i)%nat.
-  Proof. intros (_&_&_&_&_&H&_&_&_&_). exact H. Qed.
+  Proof using . intros (_&_&_&_&_&H&_&_&_&_). exact H. Qed.
   Lemma sxr_s4 `{XI : CurCtx} {sp0 : mword 64} {m M : regfile} {i : nat} :
     sx_regs sp0 m M i -> (M !!! Regidx Rs4 : mword 64) = pa_stk sp0 58.
-  Proof. intros (_&_&_&_&_&_&H&_&_&_). exact H. Qed.
+  Proof using . intros (_&_&_&_&_&_&H&_&_&_). exact H. Qed.
   Lemma sxr_s5 `{XI : CurCtx} {sp0 : mword 64} {m M : regfile} {i : nat} :
     sx_regs sp0 m M i -> (M !!! Regidx Rs5 : mword 64) = pa_stk sp0 60.
-  Proof. intros (_&_&_&_&_&_&_&H&_&_). exact H. Qed.
+  Proof using . intros (_&_&_&_&_&_&_&H&_&_). exact H. Qed.
   Lemma sxr_s6 `{XI : CurCtx} {sp0 : mword 64} {m M : regfile} {i : nat} :
     sx_regs sp0 m M i ->
     (M !!! Regidx Rs6 : mword 64) = (mword_of_int 4096 : mword 64).
-  Proof. intros (_&_&_&_&_&_&_&_&H&_). exact H. Qed.
+  Proof using . intros (_&_&_&_&_&_&_&_&H&_). exact H. Qed.
   Lemma sxr_s7 `{XI : CurCtx} {sp0 : mword 64} {m M : regfile} {i : nat} :
     sx_regs sp0 m M i ->
     (M !!! Regidx Rs7 : mword 64) = (mword_of_int 32 : mword 64).
-  Proof. intros (_&_&_&_&_&_&_&_&_&H). exact H. Qed.
+  Proof using . intros (_&_&_&_&_&_&_&_&_&H). exact H. Qed.
 
   (* an instruction that writes a CALLER-saved register moves nothing here *)
   Lemma sx_regs_tmp `{XI : CurCtx} (sp0 : mword 64) (m M : regfile) (i : nat)
       (r : mword 5) (v : mword 64) :
     is_cs_idx r = false ->
     sx_regs sp0 m M i -> sx_regs sp0 m (<[Regidx r := v]> M) i.
-  Proof.
+  Proof using .
     intros Hr (Hsp & Hthr & H0 & H1 & H2 & H3 & H4 & H5 & H6 & H7).
     assert (Hne : forall c : mword 5, is_cs_idx c = true -> Regidx r <> Regidx c)
       by (intros c Hc; exact (is_cs_idx_true_neq r c Hr Hc)).
@@ -2863,7 +2863,7 @@ Section SysExecLoop.
   (* ...and a CALL moves nothing here either *)
   Lemma sx_regs_call `{XI : CurCtx} (sp0 : mword 64) (m M M' : regfile) (i : nat) :
     callee_saved M M' -> sx_regs sp0 m M i -> sx_regs sp0 m M' i.
-  Proof.
+  Proof using .
     intros Hcs (Hsp & Hthr & H0 & H1 & H2 & H3 & H4 & H5 & H6 & H7).
     split_and!.
     - rewrite /sx_sp (callee_saved_lookup Hcs csp_rs1 ltac:(csf)). exact Hsp.
@@ -2889,7 +2889,7 @@ Section SysExecLoop.
 
   Lemma sx_regs_bregs `{XI : CurCtx} (sp0 : mword 64) (m M : regfile) (i : nat) :
     sx_regs sp0 m M i -> sx_bregs sp0 m M.
-  Proof.
+  Proof using .
     intros H. split_and!;
       [ exact (sxr_sp H) | exact (sxr_thr H) | exact (sxr_s0 H)
       | exact (sxr_s1 H) | exact (sxr_s4 H) ].
@@ -2990,7 +2990,7 @@ Section SysExecState.
     sx_pages pg afun 0 i -∗
     sx_body γf jp pid U K eb b lks sp0 m plen pfun rest uav
             M P i pg alen afun uvf pcv.
-  Proof.
+  Proof using .
     intros H1 H2 H3 H4 H5.
     iIntros "Hpc Hcg Hcnt Hpriv Hcarry F59 F60 Harr Hpgs". rewrite /sx_body.
     iSplitR; [iPureIntro; split_and!; assumption |].
@@ -3018,7 +3018,7 @@ Section SysExecState.
     sx_argv0 sp0 t pg -∗
     sx_pages pg afun 0 t -∗
     sx_bad γf jp pid U K eb b lks sp0 m plen pfun rest uav M P t pg afun.
-  Proof.
+  Proof using .
     intros H1 H2 H3 H4.
     iIntros "Hpc Hcg Hcnt Hpriv Hcarry F59 F60 Harr Hpgs". rewrite /sx_bad.
     iSplitR; [iPureIntro; split_and!; assumption |].
@@ -3065,7 +3065,7 @@ Section SysExecStep.
     add_vec (mword_of_int (Z.of_nat i) : mword 64)
       (sign_extend' 64 (sign_extend' 12 (mword_of_int 1 : mword 6)))
     = (mword_of_int (Z.of_nat (S i)) : mword 64).
-  Proof.
+  Proof using .
     assert (Him : (sign_extend' 64 (sign_extend' 12 (mword_of_int 1 : mword 6))
                    : mword 64) = mword_of_int 1)
       by (apply bv_eq; vm_compute; reflexivity).
@@ -3077,7 +3077,7 @@ Section SysExecStep.
   Lemma sx_moi_inj `{XI : CurCtx} (a c : Z) :
     (0 <= a < 2 ^ 64)%Z -> (0 <= c < 2 ^ 64)%Z ->
     (mword_of_int a : mword 64) = (mword_of_int c : mword 64) -> a = c.
-  Proof.
+  Proof using .
     intros Ha Hc Heq. apply (f_equal bv_unsigned) in Heq.
     rewrite !moi64_unsigned in Heq.
     assert (HM : (2 ^ 64)%Z = 18446744073709551616%Z) by (vm_compute; reflexivity).
@@ -3085,12 +3085,12 @@ Section SysExecStep.
   Qed.
 
   Lemma sx_m32 `{XI : CurCtx} : (mword_of_int 32 : mword 64) = mword_of_int (Z.of_nat 32).
-  Proof. apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . apply bv_eq; vm_compute; reflexivity. Qed.
 
   Lemma sx_moi_nat_inj `{XI : CurCtx} (a c : nat) : (a <= 32)%nat -> (c <= 32)%nat ->
     (mword_of_int (Z.of_nat a) : mword 64) = (mword_of_int (Z.of_nat c) : mword 64) ->
     a = c.
-  Proof.
+  Proof using .
     intros Ha Hc Heq.
     assert (Hz : Z.of_nat a = Z.of_nat c).
     { apply (sx_moi_inj (Z.of_nat a) (Z.of_nat c));
@@ -3140,7 +3140,7 @@ Section SysExecStep.
                   M' P' i' pg' afun') -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hlb.
     destruct (sx_kb K HK) as (Kkx & Kar & Kaa & Kfa & Kfs & K14 & K2 & K60 & Kpop).
     iIntros "#Htext #Hka Hst Hout".
@@ -3851,7 +3851,7 @@ Section SysExecStep.
                   M' P' i' pg' afun') -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hlb.
     intro W. revert CID0.
     induction W as [| W IH]; intros CID0 M P i pg alen afun uvf Hfuel.
@@ -3934,7 +3934,7 @@ Section SysExecReload.
       (v : mword 64) :
     (r = Rs1 \/ r = Rs2 \/ r = Rs3 \/ r = Rs4 \/ r = Rs5 \/ r = Rs6 \/ r = Rs7) ->
     sx_rlp sp0 m M N -> sx_rlp sp0 m M (<[Regidx r := v]> N).
-  Proof.
+  Proof using .
     intros Hr (Hsp & Hthr & H0 & Ha).
     split_and!.
     - rewrite /sx_sp upd_ne; [exact Hsp | destruct Hr as [-> | [-> | [-> | [-> | [-> | [-> | ->]]]]]]; nz].
@@ -3990,7 +3990,7 @@ Section SysExecReload.
         sx_spill sp0 m -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hsp Hthr Hx0 Hx2 Hx4 Hx6 Hx8 Hx10 Hx12.
     iIntros "#Htext Hpc Hcg Hsp Hout".
     rewrite /sx_spill.
@@ -4187,7 +4187,7 @@ Section SysExecReload.
     ([∗ list] j ∈ seq 0 (S plen), pa_add (pa_stk sp0 26) j ↦ₘ[KT1] pfun j) ∗
     ([∗ list] j ∈ seq 0 (127 - plen)%nat,
        pa_add (pa_add (pa_stk sp0 26) (S plen)) j ↦ₘ[KT1] rest j).
-  Proof.
+  Proof using .
     rewrite /sx_carry /sx_spill.
     iIntros "(H1 & H2 & H3 & H4 & H5 & H6 & H7 & H8 & H9 & H10 & Hp & Hs)".
     iSplitL "H1"; [iExact "H1" |]. iSplitL "H2"; [iExact "H2" |].
@@ -4211,7 +4211,7 @@ Section SysExecReload.
     (∃ w : mword 64, (pa_stk sp0 60) ↦₈[KT1] w) -∗
     sx_argv_free sp0 -∗
     sx_rest sp0.
-  Proof.
+  Proof using .
     intro Hplen. rewrite /sx_spill /sx_rest /sx_argv_free.
     iIntros "(H3 & H4 & H5 & H6 & H7 & H8 & H9) H10 Hp Hs F59 F60 Ha".
     iDestruct (sx_buf_join (pa_stk sp0 26) pfun rest plen Hplen with "Hp Hs") as "Hpb".
@@ -4236,7 +4236,7 @@ Section SysExecReload.
      makes the extraction non-consuming. *)
   Lemma sx_argv_ala `{XI : CurCtx} (sp0 : mword 64) :
     sx_argv_free sp0 ⊢ ⌜sx_ala sp0⌝ ∗ sx_argv_free sp0.
-  Proof.
+  Proof using .
     rewrite /sx_argv_free. iIntros "H".
     iDestruct (slotsn_bytes_own (KTR := KT1) sp0 58 32 ltac:(lia) with "H") as "[%Hal Hb]".
     iSplitR; [iPureIntro; exact Hal |].
@@ -4277,7 +4277,7 @@ Section SysExecBadTail.
   Lemma sx_argv_end2 `{XI : CurCtx} (sp0 : mword 64) :
     add_vec (pa_stk sp0 58) (sign_extend' 64 (mword_of_int 256 : mword 12))
     = pa_stk sp0 26.
-  Proof.
+  Proof using .
     assert (Him : (sign_extend' 64 (mword_of_int 256 : mword 12) : mword 64)
                   = mword_of_int 256) by (apply bv_eq; vm_compute; reflexivity).
     rewrite Him. unfold pa_stk, add_vec_int. apply bv_eq.
@@ -4310,7 +4310,7 @@ Section SysExecBadTail.
         proc_priv γf (proc_addr jp) pid (us_upt U P) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hlb Hsp0 Hplen Halp.
     destruct (sx_kb K HK) as (Kkx & Kar & Kaa & Kfa & Kfs & K14 & K2 & K60 & Kpop).
     iIntros "#Htext #Hka Hst Hout".
@@ -4528,7 +4528,7 @@ Section SysExecSuccTail.
         proc_priv γf (proc_addr jp) pid UW -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hlb Hsp0 Hplen Halp Ht32 Hpgok Hsp Hthr Hs0 Hs1 Hs4 Ha0.
     destruct (sx_kb K HK) as (Kkx & Kar & Kaa & Kfa & Kfs & K14 & K2 & K60 & Kpop).
     iIntros "#Htext #Hka Hpc Hcg Hcnt Hpriv Hcarry F59 F60 Harr Hpgs Hout".
@@ -4704,11 +4704,11 @@ Section SysExecBreakParts.
 
   Lemma sx_avf_lt `{XI : CurCtx} (pg : nat -> mword 64) (i j : nat) :
     (j < i)%nat -> sx_avf pg i j = pg j.
-  Proof. intro Hj. rewrite /sx_avf. apply sx_upd_lt. exact Hj. Qed.
+  Proof using . intro Hj. rewrite /sx_avf. apply sx_upd_lt. exact Hj. Qed.
 
   Lemma sx_avf_eq `{XI : CurCtx} (pg : nat -> mword 64) (i : nat) :
     sx_avf pg i i = (mword_of_int 0 : mword 64).
-  Proof. rewrite /sx_avf. apply sx_upd_eq. Qed.
+  Proof using . rewrite /sx_avf. apply sx_upd_eq. Qed.
 
   (* THE CHANGE OF VIEW.  Both sides own the same 32 cells; the loop counts
      them from the array's base and kexec counts them from its argument
@@ -4720,7 +4720,7 @@ Section SysExecBreakParts.
         pa_add (pa_stk sp0 58) (8 * j) ↦₈[KT1] sx_avf pg i j) ∗
      ([∗ list] j ∈ seq (S i) (31 - i),
         (pa_stk sp0 (58 - j)) ↦₈[KT1] (mword_of_int 0 : mword 64)))%I.
-  Proof.
+  Proof using .
     intro Hi.
     assert (Haddr : forall f : nat -> mword 64,
       ([∗ list] j ∈ seq 0 (S i), pa_add (pa_stk sp0 58) (8 * j) ↦₈[KT1] f j)
@@ -4751,7 +4751,7 @@ Section SysExecBreakParts.
       (t : nat) :
     (forall j, (j < t)%nat -> pg' j = pg j) ->
     sx_pages pg afun 0 t ⊣⊢ sx_pages pg' afun 0 t.
-  Proof.
+  Proof using .
     intro Hag. rewrite /sx_pages !Nat.sub_0_r.
     apply big_sepL_proper. intros n j Hj.
     apply lookup_seq in Hj as [Hj0 Hlt]. subst j.
@@ -4765,12 +4765,12 @@ Section SysExecBreakParts.
      direct route leaves behind cannot be flattened once the OUTER
      [bv_wrap_add_idemp_r] has consumed its context. *)
   Lemma sx_addv_comm `{XI : CurCtx} (x y : mword 64) : add_vec x y = add_vec y x.
-  Proof. apply bv_eq. rewrite !add_vec64_unsigned. f_equal. lia. Qed.
+  Proof using . apply bv_eq. rewrite !add_vec64_unsigned. f_equal. lia. Qed.
 
   Lemma sx_scaled `{XI : CurCtx} (sp0 : mword 64) (i : nat) : (i < 32)%nat ->
     add_vec (mword_of_int (Z.of_nat i * 8) : mword 64) (pa_stk sp0 58)
     = pa_stk sp0 (58 - i)%nat.
-  Proof.
+  Proof using .
     intro Hi.
     assert (He : (mword_of_int (Z.of_nat i * 8) : mword 64)
                  = mword_of_int (Z.of_nat (8 * i))) by (f_equal; lia).

@@ -241,7 +241,7 @@ Section ProofCopyout.
       Pc.(ud_um) !! svpn_of va0 = Some w
       /\ pte_vu w /\ pte_w w
       /\ (uint va0 < 2 ^ 38)%Z.
-  Proof.
+  Proof using .
     intros -> Hext Hwf Hwm.
     destruct Hext as ((_ & _ & Hsub) & _).
     pose proof (uva_wmapped_mono P Pc (uint dstva) Hsub Hwm) as Hwc.
@@ -270,7 +270,7 @@ Section ProofCopyout.
     uptd_ext_sz szv P Pc -> proc_pt_wf Pc ->
     (2 ^ 38 <= uint va0)%Z ->
     ~ uva_wmapped P (uint dstva).
-  Proof.
+  Proof using .
     intros Hva0 Hext Hwf Hmax Hwm.
     destruct (co_fault_vpn P Pc szv dstva va0 Hva0 Hext Hwf Hwm)
       as (w & _ & _ & _ & Hlt).
@@ -286,7 +286,7 @@ Section ProofCopyout.
     (forall w : mword 64,
        m_ad !! svpn_of va0 = Some w -> ~ pte_vu w \/ ~ pte_w w) ->
     ~ uva_wmapped P (uint dstva).
-  Proof.
+  Proof using .
     intros Hva0 Hext Hwf Hview Hverd Hwm.
     destruct (co_fault_vpn P Pc szv dstva va0 Hva0 Hext Hwf Hwm)
       as (w0 & Hl & Hvu & Hw & _).
@@ -336,7 +336,7 @@ Section ProofCopyout.
         ptree_own 2 (DfracOwn 1) t -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hs1 Hs7 Hva0b Hrep Hsome.
     iIntros "Hcg #Htext Hpc Hptree Hcont".
     (* +0x78 c.li a2,0 *)
@@ -531,7 +531,7 @@ Section ProofCopyout.
   (* ------------------------------------------------------------------ *)
   Local Lemma co_pin_sie_cap_gpr `{CID0 : CpuId} (M : regfile) (avail : nat) (bb : bool) (pp : mword 64) :
     sie_cap_gpr KT1 (tp_pin M) avail bb pp = sie_cap_gpr KT1 M avail bb pp.
-  Proof.
+  Proof using .
     unfold sie_cap_gpr, sie_cap.
     rewrite (tp_pin_id (tp_pin M) (rget_tp M)).
     rewrite (tp_pin_sp M).
@@ -540,7 +540,7 @@ Section ProofCopyout.
 
   Local Lemma co_pin_callee_saved (M Mf : regfile) :
     callee_saved (tp_pin M) Mf -> callee_saved M Mf.
-  Proof.
+  Proof using .
     intro Hcs. apply (callee_saved_trans M (tp_pin M) Mf); [| exact Hcs].
     unfold callee_saved, tp_pin.
     repeat split; (rewrite upd_ne; [reflexivity | vm_compute; discriminate]).
@@ -706,7 +706,7 @@ Section ProofCopyout.
         ([∗ list] j ∈ seq 0 len, (pa_add src j) ↦ₘ[ktb]{dqsrc} src_bytes j) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using CID KtierLe0.
     intros HK Hlen64 Hszb Hlvl fuel.
     change (2 ^ 64)%Z with 18446744073709551616%Z in Hlen64.
     induction fuel as [| fuel IH];
@@ -1986,7 +1986,7 @@ Section ProofCopyout.
       (src_bytes : nat -> bv 8) (dqsrc : dfrac)
       (K lvl : nat) (eb : bool) (p : mword 64) (b : bool) (lks : gset string)
     : wp_copyout_sconf_mem_body ktb γa mm P Mu szv len src_bytes dqsrc K lvl eb p b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_copyout_sconf_mem_body].
     intros pcE dstva src ret_tgt HK Hroot Hsza1 Hlenr Hlen64 Hszb Hlvl Hlkbelow.
     change (2 ^ 64)%Z with 18446744073709551616%Z in Hlen64.

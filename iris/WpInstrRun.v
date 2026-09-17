@@ -52,7 +52,7 @@ Section WpInstrRun.
      updated file. *)
   Lemma decode_ok_set_nPC (D : gset register) (rs : regstate) (v : mword 64) :
     decode_ok D rs -> decode_ok D (register_set (R_bitvector_64 nextPC) v rs).
-  Proof.
+  Proof using .
     rewrite /decode_ok.
     rewrite (irrelevant_register_set cur_privilege (R_bitvector_64 nextPC)
                _ _ eq_refl).
@@ -75,7 +75,7 @@ Section WpInstrRun.
     ([∗ list] j ∈ seq 0 2,
        (pa_add (add_vec_int pc 2) j) ↦ₓ□
          nth_byte (subrange_vec_dec w 31 16 : mword 16) j).
-  Proof.
+  Proof using .
     assert (Hoff : forall j : nat,
               pa_add (add_vec_int pc 2) j = pa_add pc (2 + j)).
     { intros j. unfold pa_add. rewrite avi_assoc. f_equal. lia. }
@@ -106,7 +106,7 @@ Section WpInstrRun.
                  ⌜st = Step_Execute (RETIRE_SUCCESS, w')⌝ ∗
                  ∃ rs2 : regstate, ⌜Q rs2⌝ ∗
                  hreg_frame rs2 Drw ∗ hreg_frame_ro Df rs2 Dro ∗ Psi).
-  Proof.
+  Proof using .
     iIntros "H". iApply (swp_mono with "[] H").
     iIntros (st) "(-> & HEx)". iExists w. by iFrame.
   Qed.
@@ -170,7 +170,7 @@ Section WpInstrRun.
                  ⌜st = Step_Execute (RETIRE_SUCCESS, w)⌝ ∗
                  ∃ rs2 : regstate, ⌜Q rs2⌝ ∗
                  hreg_frame rs2 Drw ∗ hreg_frame_ro Df rs2 Dro ∗ R).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv HDmisa HDmst HDpc HWnpc HDpma HDcfg HDhtif
       Lpriv Lpc Lpma Lpcfg Lhtif HmS HmC HmIE Hpmp Hpmaall Hstat Hdok Hlp.
     iIntros "#Hcert #Hkm Hinstr Hrw Hro Hex".
@@ -328,7 +328,7 @@ Section WpInstrRun.
       (fun st => ∃ w : mword 32,
                  ⌜st = Step_Execute (RETIRE_SUCCESS, w)⌝ ∗
                  hreg_frame rs2 Drw ∗ hreg_frame_ro Df rs2 Dro ∗ R).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv HDmisa HDmst HDpc HWnpc HDpma HDcfg HDhtif
       Lpriv Lpc Lpma Lpcfg Lhtif HmS HmC HmIE Hpmp Hpmaall Hstat Hdok Hlp.
     iIntros "#Hcert #Hkm Hinstr Hrw Hro Hex".

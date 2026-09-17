@@ -313,7 +313,7 @@ Section ProofKforkParts.
         pc_is (ret_pc ra0) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hsp0 Hra0 Hs00 Hs10 Hs50 Hmtsp Hmts1 Hthr.
     iIntros "Hcg #Htext Hpc Hb1 Hb2 Hb3 Hb4 Hb5 Hb6 Hb7 Hb8 Hcont".
     (* ---- +0xfc: c.mv a0,s1 ---- *)
@@ -519,7 +519,7 @@ Section KforkRes.
        p_trapframe pa ↦₈ page_base (ud_tfp (pv_upt (us_V U))) -∗
        tf_page (ud_tfp (pv_upt (us_V U))) ws' -∗
        proc_priv_nocwd γf pa pid (us_pt U (pv_upt (us_V U)) ws')).
-  Proof.
+  Proof using .
     iIntros "(%Hszb & %Hbel & Hpid & Hf & Hpt & Htfp & Ho)".
     rewrite /proc_ptm_at. iDestruct "Hpt" as "(Hpg & Htfc & Hptt)".
     iFrame "Htfc Htfp".
@@ -534,7 +534,7 @@ Section KforkRes.
   Lemma proc_priv_nocwd_tfp_valid (γf : gname) (pa : mword 64) (pid : mword 32)
       (U : ustate) :
     proc_priv_nocwd γf pa pid U -∗ ⌜page_valid (page_base (ud_tfp (pv_upt (us_V U))))⌝.
-  Proof.
+  Proof using .
     iIntros "(_ & _ & _ & _ & Hpt & _)".
     rewrite /proc_ptm_at. iDestruct "Hpt" as "(_ & _ & Hptt)".
     iDestruct (proc_ptm_wf with "Hptt") as "%Hwf".
@@ -546,7 +546,7 @@ Section KforkRes.
      changed nothing. *)
   Lemma upd_pt_id (V : pprivate) :
     upd_pt V (pv_upt V) (pv_tf V) = V.
-  Proof. by destruct V. Qed.
+  Proof using . by destruct V. Qed.
 
   (* The trapframe page is a kalloc page, and the fact is a projection of the
      block rather than a premise on it: [ProcPtOwn.proc_pt_wf]'s last
@@ -555,7 +555,7 @@ Section KforkRes.
   Lemma proc_priv_tfp_valid (γf : gname) (pa : mword 64) (pid : mword 32)
       (U : ustate) :
     proc_priv γf pa pid U -∗ ⌜page_valid (page_base (ud_tfp (pv_upt (us_V U))))⌝.
-  Proof.
+  Proof using .
     iIntros "[(_ & _ & _ & _ & Hpt & _) _]".
     rewrite /proc_ptm_at. iDestruct "Hpt" as "(_ & _ & Hptt)".
     iDestruct (proc_ptm_wf with "Hptt") as "%Hwf".
@@ -568,7 +568,7 @@ Section KforkRes.
 
   Lemma kfk_name_addr (pa : mword 64) (i : nat) :
     pa_add (kfk_name_base pa) i = p_name pa i.
-  Proof.
+  Proof using .
     rewrite /kfk_name_base /p_name /pa_add.
     change (add_vec pa (mword_of_int 344)) with (add_vec_int pa 344).
     rewrite avi_assoc.
@@ -581,7 +581,7 @@ Section KforkRes.
   Lemma kfk_list_of_fn {A : Type} (l : list A) (f : nat -> A) :
     (forall i, (i < length l)%nat -> l !! i = Some (f i)) ->
     l = f <$> seq 0 (length l).
-  Proof.
+  Proof using .
     intro Hf. apply list_eq. intro i.
     rewrite list_lookup_fmap.
     destruct (decide (i < length l)%nat) as [Hi | Hi].
@@ -599,7 +599,7 @@ Section KforkRes.
     (forall i, (i < length bs)%nat -> bs !! i = Some (f i)) ->
     pname_bytes pa dq bs ⊣⊢
     ([∗ list] j ∈ seq 0 (length bs), pa_add (kfk_name_base pa) j ↦ₘ{dq} f j).
-  Proof.
+  Proof using .
     intro Hf. rewrite /pname_bytes.
     rewrite {1}(kfk_list_of_fn bs f Hf).
     rewrite big_sepL_fmap.
@@ -611,7 +611,7 @@ Section KforkRes.
   Lemma kfk_bytes_pname (pa : mword 64) (dq : dfrac) (n : nat) (h : nat -> bv 8) :
     ([∗ list] j ∈ seq 0 n, pa_add (kfk_name_base pa) j ↦ₘ{dq} h j) -∗
     pname_bytes pa dq (h <$> seq 0 n).
-  Proof.
+  Proof using .
     iIntros "H". rewrite /pname_bytes big_sepL_fmap.
     iApply (big_sepL_impl with "H"). iIntros "!>" (k x Hkx) "Hc".
     apply lookup_seq in Hkx as [-> _]. by rewrite kfk_name_addr.
@@ -630,7 +630,7 @@ Section KforkRes.
      (0 < n)%nat /\ exists k, SpecSafestrcpy.ssc_stop f n k
                           /\ SpecSafestrcpy.ssc_post f g h n k) ->
     pname_wf (h <$> seq 0 n).
-  Proof.
+  Proof using .
     intros Hn [[H0 _] | (_ & k & Hstop & Hpost)]; [lia |].
     assert (Hk : (k < n)%nat)
       by (destruct Hstop as [[Hlt _] | [-> _]]; lia).
@@ -641,7 +641,7 @@ Section KforkRes.
 
   Lemma kfk_name_len (n : nat) (h : nat -> bv 8) :
     length (h <$> seq 0 n) = n.
-  Proof. by rewrite length_fmap length_seq. Qed.
+  Proof using . by rewrite length_fmap length_seq. Qed.
 
   (* =================================================================== *)
   (* THE ARRAY -> STRING BORROW AT safestrcpy'S *SOURCE* ARGUMENT         *)
@@ -682,7 +682,7 @@ Section KforkRes.
     p_name pa 0 ↦ₛ{dq} nm -∗ pname_pad pa dq nm pad -∗
     ([∗ list] j ∈ seq 0 (length (cstring_bytes nm ++ pad)),
        pa_add (kfk_name_base pa) j ↦ₘ{dq} f j).
-  Proof.
+  Proof using .
     intro Hf. iIntros "Hs Hp".
     iApply (kfk_pname_bytes pa dq _ f Hf).
     iApply pname_bytes_split. iFrame "Hs Hp".
@@ -694,7 +694,7 @@ Section KforkRes.
     (forall i, (i < length (cstring_bytes nm ++ pad))%nat ->
        (cstring_bytes nm ++ pad) !! i = Some (f i)) ->
     SpecSafestrcpy.ssc_src_ok f n (length (cstring_bytes nm ++ pad)).
-  Proof.
+  Proof using .
     intro Hf. right.
     destruct (pname_wf_cstring nm pad) as (k & Hk & Hb).
     exists k. split; [exact Hk |].
@@ -746,7 +746,7 @@ Section KforkFreeproc.
     SpecFreeproc.fp_rest pa (us_V U) pid ∗
     SpecFreeproc.fp_pt pa (pv_sz (us_V U)) (Some (pv_upt (us_V U))) ∗
     SpecFreeproc.fp_tf pa (Some (ud_tfp (pv_upt (us_V U)), pv_tf (us_V U))).
-  Proof.
+  Proof using .
     intros Hof Hcwd.
     iIntros "Hpv Hsp Hir Hbs Hctx Hkst".
     iDestruct (proc_priv_nocwd_tfp_valid with "Hpv") as "%Hpv".

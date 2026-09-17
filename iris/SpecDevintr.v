@@ -182,7 +182,7 @@ Section DevintrCaps.
        uart_dlab_off γ1)%I.
 
   Global Instance uart1_caps_persistent γu : Persistent (uart1_caps γu).
-  Proof. rewrite /uart1_caps. apply _. Qed.
+  Proof using . rewrite /uart1_caps. apply _. Qed.
 
   (* Everything the five handlers ask of a caller, in the order the branches
      reach them:
@@ -226,7 +226,7 @@ Section DevintrCaps.
 
   Global Instance devintr_caps_persistent γu γv γdk γtl γs pd pav pu :
     Persistent (devintr_caps γu γv γdk γtl γs pd pav pu).
-  Proof. rewrite /devintr_caps. apply _. Qed.
+  Proof using . rewrite /devintr_caps. apply _. Qed.
 
 End DevintrCaps.
 
@@ -246,11 +246,11 @@ Section DevintrCapsMorph.
 
   Global Instance tick_keeper_morph (CIDc : CpuId) γtl γs :
     CtxMorph (λ ξ, tick_keeper (XI := ξ) (CID := CIDc) γtl γs).
-  Proof. rewrite /tick_keeper /TicksInv.is_tickslock. ctx_morph_solve. Qed.
+  Proof using . rewrite /tick_keeper /TicksInv.is_tickslock. ctx_morph_solve. Qed.
   Global Instance devintr_caps_morph (CIDc : CpuId) γu γv γdk γtl γs pd pav pu :
     CtxMorph (λ ξ, devintr_caps (XI := ξ) (CID := CIDc)
                      γu γv γdk γtl γs pd pav pu).
-  Proof. rewrite /devintr_caps. ctx_morph_solve. Qed.
+  Proof using . rewrite /devintr_caps. ctx_morph_solve. Qed.
 End DevintrCapsMorph.
 
 (* devintr's own frame is 4 slots; the deepest callee is uartintr at

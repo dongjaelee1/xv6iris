@@ -155,7 +155,7 @@ Section BreadLru.
   Lemma bcache_lru_head_next_acc (h : mword 64) (l : list (mword 64)) :
     bcache_lru h l -∗
     (bnext h) ↦₈ (List.hd h l) ∗ ((bnext h) ↦₈ (List.hd h l) -∗ bcache_lru h l).
-  Proof.
+  Proof using .
     rewrite /bcache_lru. iIntros "(Hhn & Hhp & Hseg)".
     iFrame "Hhn". iIntros "Hhn". iFrame "Hhn Hhp Hseg".
   Qed.
@@ -163,7 +163,7 @@ Section BreadLru.
   Lemma bcache_lru_head_prev_acc (h : mword 64) (l : list (mword 64)) :
     bcache_lru h l -∗
     (bprev h) ↦₈ (List.last l h) ∗ ((bprev h) ↦₈ (List.last l h) -∗ bcache_lru h l).
-  Proof.
+  Proof using .
     rewrite /bcache_lru. iIntros "(Hhn & Hhp & Hseg)".
     iFrame "Hhp". iIntros "Hhp". iFrame "Hhn Hhp Hseg".
   Qed.
@@ -175,7 +175,7 @@ Section BreadLru.
     bcache_lru h (l1 ++ a :: l2)%list -∗
     (bnext a) ↦₈ (List.hd h l2) ∗
     ((bnext a) ↦₈ (List.hd h l2) -∗ bcache_lru h (l1 ++ a :: l2)%list).
-  Proof.
+  Proof using .
     rewrite /bcache_lru. iIntros "(Hhn & Hhp & Hseg)".
     iDestruct (bseg_app_split h h l1 (a :: l2) with "Hseg") as "[Hs1 Hs2]".
     iEval (rewrite (bseg_cons h (List.last l1 h) a l2)) in "Hs2".
@@ -192,7 +192,7 @@ Section BreadLru.
     bcache_lru h (l1 ++ a :: l2)%list -∗
     (bprev a) ↦₈ (List.last l1 h) ∗
     ((bprev a) ↦₈ (List.last l1 h) -∗ bcache_lru h (l1 ++ a :: l2)%list).
-  Proof.
+  Proof using .
     rewrite /bcache_lru. iIntros "(Hhn & Hhp & Hseg)".
     iDestruct (bseg_app_split h h l1 (a :: l2) with "Hseg") as "[Hs1 Hs2]".
     iEval (rewrite (bseg_cons h (List.last l1 h) a l2)) in "Hs2".

@@ -149,10 +149,10 @@ Section UkShMalloc.
   (* image up, and this is the one line that says so.                        *)
   (* ===================================================================== *)
   Lemma ushm_code_shp (g : gname) : shp_code g -∗ shm_code g.
-  Proof. rewrite /shp_code /shm_code. iIntros "#H". iExact "H". Qed.
+  Proof using . rewrite /shp_code /shm_code. iIntros "#H". iExact "H". Qed.
 
   Lemma ushp_code_shm (g : gname) : shm_code g -∗ shp_code g.
-  Proof. rewrite /shp_code /shm_code. iIntros "#H". iExact "H". Qed.
+  Proof using . rewrite /shp_code /shm_code. iIntros "#H". iExact "H". Qed.
 
   (* ===================================================================== *)
   (* §1b TWO BYTE FACTS THE ALLOCATOR'S 32-BIT FIELD NEEDS.                 *)
@@ -167,7 +167,7 @@ Section UkShMalloc.
   Lemma ushm_bytes_congr (a : Z) (n : nat) (f g : nat -> bv 8) :
     (forall j : nat, (j < n)%nat -> f j = g j) ->
     ubytes γd a n f -∗ ubytes γd a n g.
-  Proof.
+  Proof using .
     intros Hfg. rewrite /ubytes /ubytesq. iIntros "H".
     iApply (big_sepL_impl with "H"). iIntros "!>" (i j Hij) "Hb".
     apply lookup_seq in Hij as [Hje Hlt].
@@ -179,7 +179,7 @@ Section UkShMalloc.
     (j < 4)%nat ->
     nth_byte (mword_of_int v : mword 64) j
     = nth_byte (mword_of_int v : mword 32) j.
-  Proof.
+  Proof using .
     intros Hj. apply bv_eq. rewrite !nth_byte_unsigned.
     assert (H64 : bv_unsigned (mword_of_int v : mword 64) = v `mod` 2 ^ 64).
     { unfold mword_of_int, MachineWord.MachineWord.Z_to_word.
@@ -210,7 +210,7 @@ Section UkShMalloc.
   Lemma ushm_sz_to64 (a v : Z) :
     ubytes γd a 4 (nth_byte (mword_of_int v : mword 32)) -∗
     ubytes γd a 4 (nth_byte (mword_of_int v : mword 64)).
-  Proof.
+  Proof using .
     apply ushm_bytes_congr. intros j Hj. symmetry.
     exact (ushm_nth_byte_lo32 v j Hj).
   Qed.
@@ -218,7 +218,7 @@ Section UkShMalloc.
   Lemma ushm_sz_to32 (a v : Z) :
     ubytes γd a 4 (nth_byte (mword_of_int v : mword 64)) -∗
     ubytes γd a 4 (nth_byte (mword_of_int v : mword 32)).
-  Proof.
+  Proof using .
     apply ushm_bytes_congr. intros j Hj. exact (ushm_nth_byte_lo32 v j Hj).
   Qed.
 
@@ -356,7 +356,7 @@ Section UkShMalloc.
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (2 + nn) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using Hpsok_free.
     intros Harg Hn0 Hsz0 Hszok Hal.
     iIntros "#Hcode Hrun Hsz Hcont".
     unfold ShSyms.sbrk.
@@ -537,7 +537,7 @@ Section UkShMalloc.
     Regidx a0_idx <> Regidx r -> Regidx a3_idx <> Regidx r ->
     Regidx a5_idx <> Regidx r ->
     ushm_free_live p (<[Regidx r := v]> mm).
-  Proof.
+  Proof using .
     intros (H0 & H3 & H5) N0 N3 N5. split_and!.
     - rewrite (upd_ne mm (Regidx r) (Regidx a0_idx) v N0). exact H0.
     - rewrite (upd_ne mm (Regidx r) (Regidx a3_idx) v N3). exact H3.
@@ -562,7 +562,7 @@ Section UkShMalloc.
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (2 + nn) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Ha0 Hplo Hp16 Hnu0 Hnu31 Hphi.
     iIntros "#Hcode Hfreep (Hbnx & Hbsz & Hbpad) (Hnx & Hsz & Hpad) Hrun Hcont".
     unfold ShSyms.free.
@@ -1257,7 +1257,7 @@ Section UkShMalloc.
     urun N h m pc avail -∗
     ⌜ m !!! Regidx (mword_of_int 0 : mword 5) = zero_reg ⌝ ∗
     urun N h m pc avail.
-  Proof.
+  Proof using .
     iIntros "Hrun".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv)
       "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -1272,7 +1272,7 @@ Section UkShMalloc.
      header field is stored and loaded at *)
   Lemma ushm_w32_of_ubytes (a : Z) (f : nat -> bv 8) :
     ubytes γd a 4 f -∗ ∃ w : mword 32, ubytes γd a 4 (nth_byte w).
-  Proof.
+  Proof using .
     iIntros "Hb".
     iExists (Z_to_bv 32 (assemble_bytes
                [f 0%nat; f 1%nat; f 2%nat; f 3%nat]) : mword 32).
@@ -1293,7 +1293,7 @@ Section UkShMalloc.
      something the allocator's own vocabulary can talk about. *)
   Lemma ushm_moi32_of_unsigned (w : mword 32) :
     (mword_of_int (bv_unsigned w) : mword 32) = w.
-  Proof.
+  Proof using .
     apply bv_eq.
     unfold mword_of_int, MachineWord.MachineWord.Z_to_word.
     rewrite Z_to_bv_unsigned. unfold bv_wrap.
@@ -1302,7 +1302,7 @@ Section UkShMalloc.
 
   Lemma ushm_hdr_of_ubytes (a : Z) (f : nat -> bv 8) :
     ubytes γd a 16 f -∗ ∃ (nxt : mword 64) (nu : Z), ushm_hdr a nxt nu.
-  Proof.
+  Proof using .
     assert (E : (16 = 8 + (4 + 4))%nat) by lia.
     rewrite E !ubytes_app.
     assert (E8 : (a + Z.of_nat 8) = a + 8) by lia.
@@ -1352,7 +1352,7 @@ Section UkShMalloc.
        urun N h' m' (ret_pc vra) (8 + n) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hal8 Hlo Hbsp Hup Hsp.
     iIntros "#Hcode Hw1 Hw2 Hw3 Hw4 Hw5 Hw6 Hw7 Hw8 Hrun Hcont".
     assert (Hsp64 : uint (add_vec_int sp0 (- (8 * Z.of_nat 8)))

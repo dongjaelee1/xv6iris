@@ -138,86 +138,86 @@ Section WpTimerinit.
   (* 32-bit F_Base at any 2-aligned pc. *)
   Lemma ti_instr9 :
     kernel_text -∗ instr ti_pc9 true (ITYPE (sign_extend' 12 i9, Regidx csp_rs1, Regidx csp_rs1, ADDI)).
-  Proof. exact tmi_00. Qed.
+  Proof using . exact tmi_00. Qed.
 
   Lemma ti_instr10 :
     kernel_text -∗ instr ti_pc10 true (STORE (zero_extend' 12 (concat_vec u10 ('b"000")), Regidx ti_ra, Regidx csp_rs1, 8)).
-  Proof. exact tmi_02. Qed.
+  Proof using . exact tmi_02. Qed.
 
   Lemma ti_instr11 :
     kernel_text -∗ instr ti_pc11 true (STORE (zero_extend' 12 (concat_vec u11 ('b"000")), Regidx ti_s0, Regidx csp_rs1, 8)).
-  Proof. exact tmi_04. Qed.
+  Proof using . exact tmi_04. Qed.
 
   Lemma ti_instr12 :
     kernel_text -∗ instr ti_pc12 true (ITYPE (caddi4spn_imm nz12, Regidx csp_rs1, Regidx ti_s0, ADDI)).
-  Proof. exact tmi_06. Qed.
+  Proof using . exact tmi_06. Qed.
 
   Lemma ti_instr13 :
     kernel_text -∗ instr ti_pc13 false (CSRReg (WpGprCsrrB.csr_menvcfg, zreg, Regidx ti_a5, CSRRS)).
-  Proof. exact tmi_08. Qed.
+  Proof using . exact tmi_08. Qed.
 
   Lemma ti_instr14 :
     kernel_text -∗ instr ti_pc14 true (ITYPE (sign_extend' 12 i14, Regidx cli_rs1, Regidx ti_a4, ADDI)).
-  Proof. exact tmi_0c. Qed.
+  Proof using . exact tmi_0c. Qed.
 
   Lemma ti_instr15 :
     kernel_text -∗ instr ti_pc15 true (SHIFTIOP (sh15, Regidx ti_a4, Regidx ti_a4, SLLI)).
-  Proof. exact tmi_0e. Qed.
+  Proof using . exact tmi_0e. Qed.
 
   Lemma ti_instr16 :
     kernel_text -∗ instr ti_pc16 true (RTYPE (Regidx ti_a4, Regidx ti_a5, Regidx ti_a5, OR)).
-  Proof. exact tmi_10. Qed.
+  Proof using . exact tmi_10. Qed.
 
   Lemma ti_instr17 :
     kernel_text -∗ instr ti_pc17 false (CSRReg (WpGprCsrwA.csr_menvcfg, Regidx ti_a5, zreg, CSRRW)).
-  Proof. exact tmi_12. Qed.
+  Proof using . exact tmi_12. Qed.
 
   Lemma ti_instr18 :
     kernel_text -∗ instr ti_pc18 false (CSRReg (WpGprCsrrA.csr_mcounteren, zreg, Regidx ti_a5, CSRRS)).
-  Proof. exact tmi_16. Qed.
+  Proof using . exact tmi_16. Qed.
 
   Lemma ti_instr19 :
     kernel_text -∗ instr ti_pc19 false (ITYPE (i19, Regidx ti_a5, Regidx ti_a5, ORI)).
-  Proof. exact tmi_1a. Qed.
+  Proof using . exact tmi_1a. Qed.
 
   Lemma ti_instr20 :
     kernel_text -∗ instr ti_pc20 false (CSRReg (WpGprCsrwA.csr_mcounteren, Regidx ti_a5, zreg, CSRRW)).
-  Proof. exact tmi_1e. Qed.
+  Proof using . exact tmi_1e. Qed.
 
   Lemma ti_instr21 :
     kernel_text -∗ instr ti_pc21 false (CSRReg (WpGprCsrrB.csr_time, zreg, Regidx ti_a5, CSRRS)).
-  Proof. exact tmi_22. Qed.
+  Proof using . exact tmi_22. Qed.
 
   Lemma ti_instr22 :
     kernel_text -∗ instr ti_pc22 false (UTYPE (i22, Regidx ti_a4, LUI)).
-  Proof. exact tmi_26. Qed.
+  Proof using . exact tmi_26. Qed.
 
   Lemma ti_instr23 :
     kernel_text -∗ instr ti_pc23 false (ITYPE (i23, Regidx ti_a4, Regidx ti_a4, ADDI)).
-  Proof. exact tmi_2a. Qed.
+  Proof using . exact tmi_2a. Qed.
 
   Lemma ti_instr24 :
     kernel_text -∗ instr ti_pc24 true (RTYPE (Regidx ti_a4, Regidx ti_a5, Regidx ti_a5, ADD)).
-  Proof. exact tmi_2e. Qed.
+  Proof using . exact tmi_2e. Qed.
 
   Lemma ti_instr25 :
     kernel_text -∗ instr ti_pc25 false (CSRReg (WpGprCsrwB.csr_stimecmp, Regidx ti_a5, zreg, CSRRW)).
-  Proof. exact tmi_30. Qed.
+  Proof using . exact tmi_30. Qed.
 
   Lemma ti_instr26 :
     kernel_text -∗ instr ti_pc26 true (LOAD (zero_extend' 12 (concat_vec u10 ('b"000")), Regidx csp_rs1, Regidx ti_ra, false, 8)).
-  Proof. exact tmi_34. Qed.
+  Proof using . exact tmi_34. Qed.
 
   Lemma ti_instr27 :
     kernel_text -∗ instr ti_pc27 true (LOAD (zero_extend' 12 (concat_vec u11 ('b"000")), Regidx csp_rs1, Regidx ti_s0, false, 8)).
-  Proof. exact tmi_36. Qed.
+  Proof using . exact tmi_36. Qed.
 
   Lemma ti_instr28 :
     kernel_text -∗ instr ti_pc28 true (ITYPE (sign_extend' 12 i28, Regidx csp_rs1, Regidx csp_rs1, ADDI)).
-  Proof. exact tmi_38. Qed.
+  Proof using . exact tmi_38. Qed.
 
   Lemma ti_instr29 :
     kernel_text -∗ instr ti_pc29 true (JALR (zeros' 12, Regidx ti_ra, zreg)).
-  Proof. exact tmi_3a. Qed.
+  Proof using . exact tmi_3a. Qed.
 
 End WpTimerinit.

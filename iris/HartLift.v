@@ -485,14 +485,14 @@ Section batch.
 
   Lemma hreg_frame_ext rs rs' D :
     reg_agree_on D rs rs' -> hreg_frame rs D ⊣⊢ hreg_frame rs' D.
-  Proof.
+  Proof using .
     intros Hag. rewrite /hreg_frame. apply big_sepS_proper.
     intros r Hr. by rewrite (Hag r Hr).
   Qed.
 
   Lemma hreg_frame_agree rs D (rs0 : regstate) :
     reg_interp rs0 -∗ hreg_frame rs D -∗ ⌜reg_agree_on D rs rs0⌝.
-  Proof.
+  Proof using .
     rewrite /hreg_frame. iIntros "Hi Hf".
     rewrite bi.pure_forall. iIntros (r). rewrite bi.pure_impl. iIntros (Hr).
     iDestruct (big_sepS_elem_of _ _ r Hr with "Hf") as "Hr".
@@ -504,7 +504,7 @@ Section batch.
     r ∈ D ->
     reg_interp rs0 -∗ hreg_frame rs D ==∗
     reg_interp (register_set r v rs0) ∗ hreg_frame (register_set r v rs) D.
-  Proof.
+  Proof using .
     intros HrD. rewrite /hreg_frame. iIntros "Hi Hf".
     iDestruct (big_sepS_delete _ _ r HrD with "Hf") as "[Hr Hrest]".
     iMod (reg_update rs0 r (register_lookup r rs) v with "Hi Hr")
@@ -526,7 +526,7 @@ Section batch.
   Lemma hsil_node_agree {X : Type} D rs1 rs2 (m m1 : M X) rs1' :
     reg_agree_on D rs1 rs2 -> hsil_node D rs1 m = Some (rs1', m1) ->
     exists rs2', hsil_node D rs2 m = Some (rs2', m1) /\ reg_agree_on D rs1' rs2'.
-  Proof.
+  Proof using .
     intros Hag Hnode. destruct m as [y|T oc k]; [by simpl in Hnode|].
     destruct oc; simpl in Hnode |- *; try discriminate Hnode;
       first
@@ -555,7 +555,7 @@ Section batch.
     hreg_frame rs D -∗
     ▷ (hreg_frame rs1 D -∗ WP (HartE gen_id cpu_id m1 : expr riscv_lang)) -∗
     WP (HartE gen_id cpu_id m : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hnode) "#Hcert Hrf H".
     iApply (wp_hart_step with "Hcert").
     { intros oth0 h0 img0 σ0 log0 tv0 itv0 hr0 r0 m'0 σ'0 log'0 tv'0 itv'0 hr'0 r'0 Hs.
@@ -639,7 +639,7 @@ Section batch.
     hreg_frame x.2 D -∗
     (hreg_frame y.2 D -∗ WP (HartE gen_id cpu_id y.1 : expr riscv_lang)) -∗
     WP (HartE gen_id cpu_id x.1 : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hrtc. induction Hrtc as [x|x y0 z Hxy _ IH].
     - iIntros "#Hcert Hrf H". by iApply "H".
     - destruct x as [m0 rs0], y0 as [m1 rs1]. simpl in Hxy |- *.
@@ -658,7 +658,7 @@ Section batch.
     (hreg_frame (hsil n D x).1 D -∗
        WP (HartE gen_id cpu_id (hsil n D x).2 : expr riscv_lang)) -∗
     WP (HartE gen_id cpu_id x.2 : expr riscv_lang).
-  Proof.
+  Proof using .
     exact (wp_hsil_rtc D (x.2, x.1) ((hsil n D x).2, (hsil n D x).1)
              (hrun_silent_sound n D x.1 x.2 (hsil n D x).1 (hsil n D x).2
                 (surjective_pairing (hrun_silent n D x.1 x.2)))).

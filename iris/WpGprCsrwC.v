@@ -806,7 +806,7 @@ Section WpCsrwGprNewC.
             (cw_Drw mstatus) ∗
           hreg_frame_ro (cw_Df dq)
             (cw_rs mstatus (mstatus_legalized ms0 v)) cw_Dro)).
-  Proof.
+  Proof using .
     intros Hfresh. iIntros "#Hcert Hrw Hro".
     rewrite write_CSR_mstatus_red.
     iApply (swp_bind_use (Defs.read_reg mstatus) _
@@ -910,7 +910,7 @@ Section WpCsrwGprNewC.
       gpr_file m -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hpmp Hstat HmIE) "#Hhw #Hinv Hhs Hpriv Hms Hpmpc Hpc Hf Hinstr Hcont".
     assert (Hfresh : cw_fresh mstatus)
       by (rewrite /cw_fresh; split_and!; vm_compute; reflexivity).
@@ -986,7 +986,7 @@ Section WpCsrwGprNewC.
       gpr_file m -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hpmp Hstat HmIE) "#Hhw #Hinv Hhs Hpriv Hms Hpmpc Hpc Hf Hinstr Hcont".
     assert (Hfresh : cw_fresh pmpcfg_n)
       by (rewrite /cw_fresh; split_and!; vm_compute; reflexivity).

@@ -393,7 +393,7 @@ Section ItruncDefs.
       inode_map γfs ip (bm_dir_zeroed bm k) ∗
       inode_blocks γfs (bm_dir_zeroed bm k) data ∗
       bm_paidS crb w Sb e0.
-  Proof. iIntros "H". iExact "H". Qed.
+  Proof using . iIntros "H". iExact "H". Qed.
 
   Lemma it_dir_state_close (γfs : fs_names)
       (ip : mword 64) (bm : blkmap) (data : nat -> list (bv 8))
@@ -404,7 +404,7 @@ Section ItruncDefs.
     inode_blocks γfs (bm_dir_zeroed bm k) data -∗
     bm_paidS crb w Sb e0 -∗
     it_dir_state γfs ip bm data cov logstart crb Sb e0 w k.
-  Proof. iIntros "A B D". rewrite /it_dir_state. iFrame "A B D". Qed.
+  Proof using . iIntros "A B D". rewrite /it_dir_state. iFrame "A B D". Qed.
 
   (* ------------------------------------------------------------------ *)
   (*  THE INDIRECT LOOP'S STATE, at cursor q                             *)
@@ -450,7 +450,7 @@ Section ItruncDefs.
       ⌜(if cr then S u' else u') = S u⌝ ∗
       log_opS icfg_log (S u') Sb ∗
       (log_opS icfg_log (S u) (Sb ∪ {[fsc_bmapstart]}) -∗ bm_paid u).
-  Proof.
+  Proof using .
     rewrite /bm_paid. iIntros "[H|H]".
     - (* already paid: present the credit, keep the unit *)
       iDestruct "H" as (Sb) "(%Hin & Hop)".
@@ -487,7 +487,7 @@ Section ItruncDefs.
       ⌜Sb ⊆ Sb0⌝ ∗
       log_opSe icfg_log (S u') Sb0 e0 ∗
       (log_opSe icfg_log (S u) (Sb0 ∪ {[fsc_bmapstart]}) e0 -∗ bm_paidS crb u Sb e0).
-  Proof.
+  Proof using .
     rewrite /bm_paidS. iIntros "[H|[%Hc H]]".
     - (* already paid: present the credit, keep the unit *)
       iDestruct "H" as (Sb0) "(%Hsub & %Hin & Hop)".
@@ -525,7 +525,7 @@ Section ItruncDefs.
     inode_blocks γfs bm data -∗
       fsblock (fs_bytes γfs) (bv_unsigned (blkmap_get bm i)) (data i) ∗
       inode_blocks γfs bm' data.
-  Proof.
+  Proof using .
     intros Hi Hnz Hz Hag.
     assert (Hlk : seq 0 MAXFILE !! i = Some i)
       by (apply lookup_seq; split; [lia | exact Hi]).
@@ -556,7 +556,7 @@ Section ItruncDefs.
      to transport the [data] it actually carried. *)
   Lemma inode_blocks_empty_any (γfs : fs_names) (data : nat -> list (bv 8)) :
     ⊢ inode_blocks γfs bm_empty data.
-  Proof.
+  Proof using .
     rewrite /inode_blocks.
     iApply big_sepL_intro. iIntros "!>" (t x Hx).
     rewrite /blk_res bm_empty_get.
@@ -569,7 +569,7 @@ Section ItruncDefs.
   Lemma blk_res_nz (γfs : fs_names) (w : bv 32) (bs : list (bv 8)) :
     bv_unsigned w <> 0 ->
     blk_res γfs w bs -∗ fsblock (fs_bytes γfs) (bv_unsigned w) bs.
-  Proof.
+  Proof using .
     intros Hnz. rewrite (blk_res_run γfs w bs Hnz). iIntros "$".
   Qed.
 
@@ -580,7 +580,7 @@ Section ItruncDefs.
       (pidv bno : mword 32) (bs bsd : list (bv 8)) (d : bool) :
     bio_locked fsc_bio V k pidv icfg_dev bno bs bsd d -∗
       ⌜(k < NBUF)%nat⌝ ∗ bio_locked fsc_bio V k pidv icfg_dev bno bs bsd d.
-  Proof.
+  Proof using .
     rewrite /bio_locked /bio_held.
     iIntros "(%Hk & %Hc & %Hd & Hr)".
     iSplitR; [done|].
@@ -592,7 +592,7 @@ Section ItruncDefs.
     bv_unsigned (bm_ind bmx) <> 0 ->
     ind_res γfs bmx -∗
       fsblock (fs_bytes γfs) (bv_unsigned (bm_ind bmx)) (ind_bytes (bm_ent bmx)).
-  Proof.
+  Proof using .
     intros Hnz. rewrite /ind_res (ind_blk_nz γfs bmx Hnz). iIntros "$".
   Qed.
 
@@ -605,7 +605,7 @@ Section ItruncDefs.
     it_ent_state γfs bm data cov logstart crb Sb e0 w q -∗
       it_ent_res γfs bm data q ∗
       bm_paidS crb w Sb e0.
-  Proof. iIntros "H". iExact "H". Qed.
+  Proof using . iIntros "H". iExact "H". Qed.
 
   Lemma it_ent_state_close (γfs : fs_names) (bm : blkmap)
       (data : nat -> list (bv 8)) (cov : gset Z)
@@ -614,7 +614,7 @@ Section ItruncDefs.
     it_ent_res γfs bm data q -∗
     bm_paidS crb w Sb e0 -∗
     it_ent_state γfs bm data cov logstart crb Sb e0 w q.
-  Proof. iIntros "A C". rewrite /it_ent_state. iFrame "A C". Qed.
+  Proof using . iIntros "A C". rewrite /it_ent_state. iFrame "A C". Qed.
 
   (* THE HANDOFF from the direct loop to the indirect one.  After the direct
      loop every direct slot of the map is zero, so [inode_blocks] at that
@@ -626,7 +626,7 @@ Section ItruncDefs.
     length (bm_dir bm) = NDIRECT -> length (bm_ent bm) = NINDIRECT ->
     inode_blocks γfs (bm_dir_zeroed bm NDIRECT) data -∗
       it_ent_res γfs bm data 0.
-  Proof.
+  Proof using .
     intros Hd He. rewrite /inode_blocks /it_ent_res Nat.sub_0_r.
     (* MAXFILE = NDIRECT + NINDIRECT, and the first NDIRECT entries are all
        [True]: [bm_dir_zeroed] at the top has an all-zero direct part *)
@@ -655,7 +655,7 @@ Section ItruncDefs.
     it_ent_res γfs bm data q -∗
       blk_res γfs (bm_ent bm !!! q) (data (NDIRECT + q)%nat) ∗
       it_ent_res γfs bm data (S q).
-  Proof.
+  Proof using .
     intros Hq. rewrite /it_ent_res.
     replace (NINDIRECT - q)%nat with (S (NINDIRECT - S q))%nat by lia.
     rewrite -cons_seq big_sepL_cons. iIntros "[$ $]".
@@ -664,7 +664,7 @@ Section ItruncDefs.
   Lemma it_ent_res_done (γfs : fs_names) (bm : blkmap)
       (data : nat -> list (bv 8)) :
     it_ent_res γfs bm data NINDIRECT ⊣⊢ emp.
-  Proof.
+  Proof using .
     rewrite /it_ent_res Nat.sub_diag /=. reflexivity.
   Qed.
 

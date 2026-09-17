@@ -147,14 +147,14 @@ Section dset.
     own γ (◯ ({[k]} : gset (nat * Arch.pa))).
 
   Global Instance dset_in_persistent γ k : Persistent (dset_in γ k).
-  Proof. rewrite /dset_in. apply _. Qed.
+  Proof using . rewrite /dset_in. apply _. Qed.
   Global Instance dset_in_timeless γ k : Timeless (dset_in γ k).
-  Proof. rewrite /dset_in. apply _. Qed.
+  Proof using . rewrite /dset_in. apply _. Qed.
   Global Instance dset_auth_timeless γ q S : Timeless (dset_auth γ q S).
-  Proof. rewrite /dset_auth. apply _. Qed.
+  Proof using . rewrite /dset_auth. apply _. Qed.
 
   Lemma dset_alloc : ⊢ |==> ∃ γ : gname, dset_auth γ 1 ∅.
-  Proof.
+  Proof using .
     iMod (own_alloc (● (∅ : gset (nat * Arch.pa)))) as (γ) "H".
     { apply auth_auth_valid. done. }
     iModIntro. iExists γ. iExact "H".
@@ -162,14 +162,14 @@ Section dset.
 
   Lemma dset_halves γ S :
     dset_auth γ 1 S ⊣⊢ dset_auth γ (1/2) S ∗ dset_auth γ (1/2) S.
-  Proof.
+  Proof using .
     rewrite /dset_auth -own_op -auth_auth_dfrac_op dfrac_op_own Qp.half_half.
     done.
   Qed.
 
   Lemma dset_agree γ q1 q2 S1 S2 :
     dset_auth γ q1 S1 -∗ dset_auth γ q2 S2 -∗ ⌜S1 = S2⌝.
-  Proof.
+  Proof using .
     iIntros "H1 H2". iCombine "H1 H2" as "H".
     iDestruct (own_valid with "H") as %Hv. iPureIntro.
     exact (auth_auth_dfrac_op_inv_L _ _ _ _ Hv).
@@ -177,7 +177,7 @@ Section dset.
 
   Lemma dset_lookup γ q S k :
     dset_auth γ q S -∗ dset_in γ k -∗ ⌜k ∈ S⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Hk". iCombine "Ha Hk" as "H".
     iDestruct (own_valid with "H") as %Hv. iPureIntro.
     apply auth_both_dfrac_valid_discrete in Hv as (_ & Hincl & _).
@@ -186,7 +186,7 @@ Section dset.
 
   Lemma dset_get γ q S k :
     k ∈ S -> dset_auth γ q S ==∗ dset_auth γ q S ∗ dset_in γ k.
-  Proof.
+  Proof using .
     iIntros (Hk) "H". rewrite /dset_auth /dset_in -own_op.
     iApply (own_update with "H").
     apply auth_update_dfrac_alloc; [apply _ |]. apply gset_included. set_solver.
@@ -194,7 +194,7 @@ Section dset.
 
   Lemma dset_insert γ S k :
     dset_auth γ 1 S ==∗ dset_auth γ 1 (S ∪ {[k]}) ∗ dset_in γ k.
-  Proof.
+  Proof using .
     iIntros "H".
     iMod (own_update _ _ (● (S ∪ {[k]}) ⋅ ◯ (S ∪ {[k]})) with "H") as "[H _]".
     { apply auth_update_alloc. apply gset_local_update. set_solver. }
@@ -216,22 +216,22 @@ Section ghosts.
     (mono_nat_lb_own γll K ∨ ⌜K = 0%nat⌝)%I.
 
   Global Instance llb_persistent γll K : Persistent (llb γll K).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance llb_timeless γll K : Timeless (llb γll K).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma llb_0 γll : ⊢ llb γll 0.
-  Proof. by iRight. Qed.
+  Proof using . by iRight. Qed.
 
   Lemma llb_le γll K K' : (K' ≤ K)%nat → llb γll K -∗ llb γll K'.
-  Proof.
+  Proof using .
     iIntros (Hle) "[Hlb|%Hz]".
     - iLeft. by iApply mono_nat_lb_own_le.
     - iRight. iPureIntro. lia.
   Qed.
 
   Lemma llb_max γll K1 K2 : llb γll K1 -∗ llb γll K2 -∗ llb γll (Nat.max K1 K2).
-  Proof.
+  Proof using .
     iIntros "H1 H2". destruct (decide (K1 ≤ K2)%nat) as [Hle|Hgt].
     - iClear "H1". iApply (llb_le with "H2"). lia.
     - iClear "H2". iApply (llb_le with "H1"). lia.
@@ -247,7 +247,7 @@ Section ghosts.
      floor is bought by the READER instead of the writer. <<< *)
   Lemma llb_get γll n :
     mono_nat_auth_own γll 1 n -∗ mono_nat_auth_own γll 1 n ∗ llb γll n.
-  Proof.
+  Proof using .
     iIntros "Ha".
     iDestruct (mono_nat_lb_own_get with "Ha") as "#Hlb".
     iFrame "Ha". by iLeft.
@@ -255,7 +255,7 @@ Section ghosts.
 
   Lemma llb_valid γll n K :
     mono_nat_auth_own γll 1 n -∗ llb γll K -∗ ⌜(K ≤ n)%nat⌝.
-  Proof.
+  Proof using .
     iIntros "Ha [Hlb|%Hz]".
     - by iDestruct (mono_nat_lb_own_valid with "Ha Hlb") as %[_ ?].
     - iPureIntro. lia.
@@ -275,22 +275,22 @@ Section ghosts.
 
   Global Instance view_lb_persistent γv γll h K :
     Persistent (view_lb γv γll h K).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance view_lb_timeless γv γll h K :
     Timeless (view_lb γv γll h K).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma view_lb_0 γv γll h : ⊢ view_lb γv γll h 0.
-  Proof. by iRight. Qed.
+  Proof using . by iRight. Qed.
 
   Lemma view_lb_llb γv γll h K : view_lb γv γll h K -∗ llb γll K.
-  Proof.
+  Proof using .
     iIntros "[[_ Hlb]|%Hz]"; [by iLeft | by iRight].
   Qed.
 
   Lemma vone_le_incl h K K' :
     (K' ≤ K)%nat → vone h K' ≼ vone h K.
-  Proof.
+  Proof using .
     intros Hle. exists (vone h K). intros h'.
     rewrite discrete_fun_lookup_op /vone max_nat_op.
     destruct (decide (h' = h)); f_equal; lia.
@@ -298,7 +298,7 @@ Section ghosts.
 
   Lemma view_lb_le γv γll h K K' :
     (K' ≤ K)%nat → view_lb γv γll h K -∗ view_lb γv γll h K'.
-  Proof.
+  Proof using .
     iIntros (Hle) "[[Hv Hll]|%Hz]".
     - iLeft. iSplitL "Hv".
       + iApply (own_mono with "Hv").
@@ -322,21 +322,21 @@ Section ghosts.
       the view its predecessor left. *)
   Lemma view_auth_alloc (tvs : agent → nat) :
     ⊢ |==> ∃ γv : gname, view_auth γv tvs.
-  Proof.
+  Proof using .
     iApply own_alloc. apply auth_both_valid_discrete.
     split; [reflexivity | intros h; done].
   Qed.
 
   Lemma view_auth_frag γv tvs h K :
     (K ≤ tvs h)%nat → view_auth γv tvs -∗ own γv (◯ vone h K).
-  Proof.
+  Proof using .
     iIntros (HK) "Hv". iApply (own_mono with "Hv").
     etrans; [apply auth_frag_mono, vone_incl_vf, HK | apply cmra_included_r].
   Qed.
 
   Lemma view_auth_valid γv γll tvs h K :
     view_auth γv tvs -∗ view_lb γv γll h K -∗ ⌜(K ≤ tvs h)%nat⌝.
-  Proof.
+  Proof using .
     iIntros "Ha [[Hf _]|%Hz]"; last (iPureIntro; lia).
     iDestruct (own_valid_2 with "Ha Hf") as %Hv. iPureIntro.
     move: Hv. rewrite -assoc -auth_frag_op.
@@ -349,7 +349,7 @@ Section ghosts.
 
   Lemma view_auth_update γv tvs tvs' :
     (∀ h, tvs h ≤ tvs' h)%nat → view_auth γv tvs ==∗ view_auth γv tvs'.
-  Proof.
+  Proof using .
     iIntros (Hle). iApply own_update.
     by apply auth_update, vf_local_update.
   Qed.
@@ -362,7 +362,7 @@ Section ghosts.
     view_auth γv tvs -∗ mono_nat_auth_own γll 1 n -∗
     view_auth γv tvs ∗ mono_nat_auth_own γll 1 n ∗
     view_lb γv γll h (tvs h).
-  Proof.
+  Proof using .
     iIntros (Htop) "Hv Hll".
     iDestruct (view_auth_frag γv tvs h (tvs h) with "Hv") as "#Hf"; first done.
     iDestruct (mono_nat_lb_own_get with "Hll") as "#Hlb".
@@ -388,11 +388,11 @@ Section ghosts.
 
   Global Instance dirty_ok_persistent γlogm h B k :
     Persistent (dirty_ok γlogm h B k).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma dirty_ok_mono γlogm h B B' k :
     (B ≤ B')%nat → dirty_ok γlogm h B k -∗ dirty_ok γlogm h B' k.
-  Proof.
+  Proof using .
     iIntros (Hle) "[%Hb|H]"; [iLeft; iPureIntro; lia | by iRight].
   Qed.
 End ghosts.

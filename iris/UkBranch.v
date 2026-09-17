@@ -80,7 +80,7 @@ Section UkBranch.
      not rebuild the leaf tower. *)
   Local Lemma uk_next_bool (b : bool) (t d : mword 64) :
     uv_next (if b then Some t else None) d = (if b then t else d).
-  Proof. destruct b; reflexivity. Qed.
+  Proof using . destruct b; reflexivity. Qed.
 
   (* the x0 read, at an ARBITRARY zero index -- [UkStep.uvb_x0] pins it at
      the literal [mword_of_int 0] and the compressed branches need it at
@@ -90,7 +90,7 @@ Section UkBranch.
     uint r = 0 ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ⌜m !!! Regidx r = zero_reg⌝ ∗ uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc.
-  Proof.
+  Proof using .
     intros Hr.
     rewrite /uvb /uvb_F.
     iIntros "(Hamb & Hur & %Hsz & Hpt & Hfrag & Hcfg & Hg & Hpc & Hrut & Hk)".
@@ -131,7 +131,7 @@ Section UkBranch.
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ▷ ukcq Qp π M sz fdv cw gn cs pidv m (if taken then tgt else add_vec_int pc (if is_rvc then 2 else 4)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hred Hlpad Hg1 Hexp Htaken Htgt Halign.
     iIntros "Hb Hcont".
     (* re-shape the continuation into the funnel's [uv_upd]/[uv_next] form *)
@@ -185,7 +185,7 @@ Section UkBranch.
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv m (if taken then tgt else add_vec_int pc (if is_rvc then 2 else 4)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hred Hlpad Hg1 Hexp Htaken Htgt Halign.
     iIntros "Hb Hcont".
     iApply (wp_uk_btype_gen_later M m pc fdv cw gn cs pidv is_rvc i o imm rs2 rs1 op taken tgt
@@ -207,7 +207,7 @@ Section UkBranch.
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv m (if taken then tgt else add_vec_int pc 4) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Htaken Htgt Halign.
     exact (wp_uk_btype_gen M m pc fdv cw gn cs pidv false
              (BTYPE (imm, Regidx rs2, Regidx rs1, op)) None
@@ -230,7 +230,7 @@ Section UkBranch.
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ▷ ukcq Qp π M sz fdv cw gn cs pidv m (if taken then tgt else add_vec_int pc 4) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Htaken Htgt Halign.
     exact (wp_uk_btype_gen_later M m pc fdv cw gn cs pidv false
              (BTYPE (imm, Regidx rs2, Regidx rs1, op)) None
@@ -259,7 +259,7 @@ Section UkBranch.
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ▷ ukcq Qp π M sz fdv cw gn cs pidv m (if taken then tgt else add_vec_int pc 4) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Htaken Htgt Halign.
     iIntros "Hb Hcont".
     iDestruct (uvb_x0 with "Hb") as "[%Hz Hb]".
@@ -279,7 +279,7 @@ Section UkBranch.
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv m (if taken then tgt else add_vec_int pc 4) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Htaken Htgt Halign.
     iIntros "Hb Hcont".
     iApply (wp_uk_btype0_later M m pc fdv cw gn cs pidv imm rs1 op taken tgt
@@ -305,7 +305,7 @@ Section UkBranch.
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv m (if taken then tgt else add_vec_int pc 2) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hcr Htaken Htgt Halign.
     iIntros "Hb Hcont".
     iDestruct (uvb_zero_at cli_rs1 M m pc fdv cw gn cs pidv ltac:(vm_compute; reflexivity)
@@ -342,7 +342,7 @@ Section UkBranch.
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv m (if taken then tgt else add_vec_int pc 2) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hcr Htaken Htgt Halign.
     iIntros "Hb Hcont".
     iDestruct (uvb_zero_at cli_rs1 M m pc fdv cw gn cs pidv ltac:(vm_compute; reflexivity)

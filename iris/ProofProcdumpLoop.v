@@ -275,7 +275,7 @@ Section ProcdumpLoopRes.
     nonul nm = true ->
     p_state pa ↦₄{dqs} st -∗ p_pid pa ↦₄{dqp} pid -∗
     p_name pa 0 ↦ₛ{dqn} nm -∗ proc_dump_slot pa.
-  Proof.
+  Proof using .
     intro Hnm. iIntros "H1 H2 H3". rewrite /proc_dump_slot.
     iExists dqs, dqp, dqn, st, pid, nm.
     iSplit; [iPureIntro; exact Hnm|]. iFrame.
@@ -285,7 +285,7 @@ Section ProcdumpLoopRes.
     ([∗ list] k ∈ seq 0 j, proc_dump_slot (proc_addr k)) -∗
     proc_dump_slot (proc_addr j) -∗
     ([∗ list] k ∈ seq 0 (S j), proc_dump_slot (proc_addr k)).
-  Proof.
+  Proof using .
     iIntros "Hp Hs".
     rewrite (pdl_seq_prefix j) big_sepL_app big_sepL_singleton.
     iSplitL "Hp"; [iExact "Hp" | iExact "Hs"].
@@ -296,7 +296,7 @@ Section ProcdumpLoopRes.
   Lemma pdl_pkastr (CIDx : CpuId) (v : mword 64) (dq : dfrac) (s : string) :
     nonul s = true -> eq_vec v (zero_reg : mword 64) = false ->
     v ↦ₛ{dq} s -∗ pk_desc_res v (PkAStr dq s).
-  Proof.
+  Proof using .
     intros H1 H2. iIntros "H". unfold pk_desc_res; cbn match.
     iSplit; [iPureIntro; exact H1|].
     iSplit; [iPureIntro; exact H2|]. iExact "H".
@@ -310,7 +310,7 @@ Section ProcdumpLoopRes.
     sptr ↦ₛ□ ss -∗ nmp ↦ₛ{dqn} nm -∗
     ([∗ list] i ↦ d ∈ [PkANum; PkAStr DfracDiscarded ss; PkAStr dqn nm],
        pk_desc_res (pk_vararg m i) d).
-  Proof.
+  Proof using .
     intros H1 H2 Hss Hsz Hnm Hnz. iIntros "#Hs Hn".
     rewrite !big_sepL_cons big_sepL_nil H1 H2.
     iSplitR.
@@ -327,7 +327,7 @@ Section ProcdumpLoopRes.
     ([∗ list] i ↦ d ∈ [PkANum; PkAStr DfracDiscarded ss; PkAStr dqn nm],
        pk_desc_res (pk_vararg m i) d) -∗
     nmp ↦ₛ{dqn} nm.
-  Proof.
+  Proof using .
     intros H1 H2. iIntros "H".
     rewrite !big_sepL_cons big_sepL_nil H1 H2.
     unfold pk_desc_res; cbn match.
@@ -479,7 +479,7 @@ Section ProofProcdumpLoop.
       ([∗ list] k ∈ seq 0 j, proc_dump_slot (proc_addr k)) -∗
       ([∗ list] k ∈ seq j (NPROC - j), proc_dump_slot (proc_addr k)) -∗
       WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hfresh.
     iIntros "#Hkt #Hkd #Hpenv Hqexit".
     iAssert (∀ (fuel : nat),

@@ -74,7 +74,7 @@ Section ProofHoldingsleep.
       (H : Qp -> iProp Σ) (q : Qp)
       (m : regfile) (p : mword 64) (pidv : mword 32) (av : nat) (eb : bool) (b : bool) (lks : gset string) (Upr : ustate)
     : wp_holdingsleep_genl_sconf_body γl γsl s R H q m p pidv av eb b lks Upr.
-  Proof.
+  Proof using .
     cbv beta delta [wp_holdingsleep_genl_sconf_body].
     intros pcE slk ret_tgt Hav Hfresh.
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).
@@ -734,7 +734,7 @@ Section ProofHoldingsleep.
       (γl γsl : gname) (s : string) (R : iProp Σ) (H : Qp -> iProp Σ) (q : Qp)
       (m : regfile) (p : mword 64) (pidv : mword 32) (av : nat) (eb : bool) (b : bool) (lks : gset string) (Upr : ustate)
     : wp_holdingsleep_gen_sconf_body γl γsl s R H q m p pidv av eb b lks Upr.
-  Proof.
+  Proof using .
     pose proof (wp_holdingsleep_genl_sconf γl γsl s (fun _ => R) H q m p pidv av eb b lks Upr) as HK.
     cbv beta zeta delta [wp_holdingsleep_genl_sconf_body] in HK.
     cbv beta zeta delta [wp_holdingsleep_gen_sconf_body].
@@ -748,7 +748,7 @@ Section ProofHoldingsleep.
       (γl γsl : gname) (s : string) (R : iProp Σ)
       (m : regfile) (p : mword 64) (pidv : mword 32) (av : nat) (eb : bool) (b : bool) (lks : gset string) (Upr : ustate)
     : wp_holdingsleep_sconf_body γl γsl s R m p pidv av eb b lks Upr.
-  Proof.
+  Proof using .
     cbv beta delta [wp_holdingsleep_sconf_body].
     intros pcE slk ret_tgt Hav Hbelow.
     iIntros "Hcg Hcnt #Htext Hpc #Hslk Hsl Hpidproc Hcont".

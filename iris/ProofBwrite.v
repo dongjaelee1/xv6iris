@@ -134,7 +134,7 @@ Section ProofBwrite.
       (Q : iProp Σ) (lks : gset string) (Upr : ustate)
     : wp_bwrite_sconf_body γs j γl γu γd γk pd pav pu bn V k
                            pidv dev bno dq m K eb bs bsd b Q lks Upr.
-  Proof.
+  Proof using .
     cbv beta delta [wp_bwrite_sconf_body].
     intros pcE pj ret_tgt HK Hbno HgdV Hj Hgl Hk Ha0 Hbelow.
     

@@ -54,7 +54,7 @@ Section UInitArgv.
     ([∗ map] a ↦ b ∈ init_argv_map, ubyteq g DfracDiscarded a b)%I.
 
   Global Instance init_argv_persistent g : Persistent (init_argv g).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Global Typeclasses Opaque init_argv.
 
@@ -62,7 +62,7 @@ Section UInitArgv.
      and its bytes are the image's *)
   Lemma init_argv_map_range (a : Z) (b : bv 8) :
     init_argv_map !! a = Some b -> (4096 <= a < 4112)%Z.
-  Proof.
+  Proof using .
     intro Hb. apply map_lookup_filter_Some in Hb as [Hb Hge].
     pose proof (InitData.init_data_range a b Hb) as Hr.
     cbn [fst] in Hge.
@@ -71,11 +71,11 @@ Section UInitArgv.
 
   Lemma init_argv_map_data (a : Z) (b : bv 8) :
     init_argv_map !! a = Some b -> InitData.init_data !! a = Some b.
-  Proof. intro Hb. by apply map_lookup_filter_Some in Hb as [Hb _]. Qed.
+  Proof using . intro Hb. by apply map_lookup_filter_Some in Hb as [Hb _]. Qed.
 
   (* ...so an image that contains init's data half contains them *)
   Lemma init_argv_map_sub (M' : gmap Z (bv 8)) :
     init_data_sub M' -> uimg_sub init_argv_map M'.
-  Proof. intros Hd a b Hb. exact (Hd a b (init_argv_map_data a b Hb)). Qed.
+  Proof using . intros Hd a b Hb. exact (Hd a b (init_argv_map_data a b Hb)). Qed.
 
 End UInitArgv.

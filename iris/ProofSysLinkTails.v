@@ -145,7 +145,7 @@ Section ProofSysLinkTails.
   (* the three-slot pool, split for ilock's / iupdate's needs and rejoined *)
   Lemma sl_bs3 :
     (bslots 3 : iProp Σ) ⊣⊢ bslot ∗ bslots 2.
-  Proof. rewrite /bslot. change 3%nat with (1 + 2)%nat. apply bslots_op. Qed.
+  Proof using . rewrite /bslot. change 3%nat with (1 + 2)%nat. apply bslots_op. Qed.
 
   (* ================================================================== *)
   (*  ARM B: +0xbc end_op ; +0xc0 a5 = -1 ; +0xc2 restore s1 ; +0xc4 j   *)
@@ -200,7 +200,7 @@ Section ProofSysLinkTails.
         proc_priv_bare (proc_addr jx) pidv Upr -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HKeo HK38 Kpop Hgeom Hj Hgl Hlkempty Hsp0 HMsp HMthr HMs2 Hal.
     iIntros "Hcg Hown Htce Hcce #Htext #Hkd Hpc #Hpenv #Hbio #Hlog Hseam Hgen
               Hpid #Hprocs #Hdev #Hgeo #Hdlk Hop Hf1 Hf2 Hf3 Hf4 HbN HbW HbO
@@ -456,7 +456,7 @@ Section ProofSysLinkTails.
         iref_slot -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HKup HKeo HK38 Kpop Hkk Hgeom Hsize Hbm0 Hbmcov Hbmlog Hist0
            Hiblk Hiblog Hinb Hcovb Hiu Hj Hgl Hlkempty Hsp0 HMsp HMthr HMs1
            HMs2 Hal.
@@ -782,7 +782,7 @@ Section ProofSysLinkTails.
         iref_slot -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HKup HKeo HK38 Kpop Hkk Hgeom Hsize Hbm0 Hbmcov Hbmlog Hist0
            Hiblk Hiblog Hinb Hcovb Hiu Hj Hgl Hlkempty Hsp0 HMsp HMthr HMs1
            HMs2 Hal.
@@ -1149,7 +1149,7 @@ Section ProofSysLinkTails.
         luntgt_fired Funtgt (bv_unsigned inum) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HKil HKiup HKup HKeo HK38 Kpop Hkk Hgeom Hsize Hbm0
            Hbmcov Hbmlog Hist0 Hiblk Hiblog Hinb Hcovb Hmem Hiu Hj Hgl
            Hlkempty Heb Hsp0 HMsp HMthr HMs1 Hal Hncd.
@@ -1879,7 +1879,7 @@ Section ProofSysLinkTails.
         luntgt_fired Funtgt (bv_unsigned inum) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HKil HKiup HKup HKeo HK38 Kpop Hkk Hkd Hgeom Hsize Hbm0
            Hbmcov Hbmlog Hist0 Hiblk Hiblog Hinb Hdblk Hdblog Hdnb Hcovb
            Hcrb Hcru Hmem Hiu Hclose Hj Hgl Hlkempty Heb Hsp0 HMsp HMthr
@@ -2165,7 +2165,7 @@ Section ProofSysLinkTails.
         luntgt_fired Funtgt (bv_unsigned inum) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HKil HKiup HKup HKeo HK38 Kpop Hkk Hkd Hgeom Hsize Hbm0
            Hbmcov Hbmlog Hist0 Hiblk Hiblog Hinb Hdblk Hdblog Hdnb Hcovb
            Hmem Hiu Hclose Hj Hgl Hlkempty Heb Hsp0 HMsp HMthr

@@ -150,7 +150,7 @@ Section UShEchoPay.
       my_pay (uvis_gen W') (fun _ : Z => Wq I) -∗
       EchoLinksLine.ewc_lpr T v I 3%nat -∗
       uslot W'.
-  Proof.
+  Proof using HPT ghost_varG0 ghost_varG1 ufdG0.
     intros Hokws Hok Hroom Hfdl Hlzf Hna Halen Hafun Hfd1 Hkt.
     iIntros "#Hpin #Hlk #Hnpw #Hdep #Hgen Hmp Hc".
     destruct (echo_kexec_pages na alen afun sts W' Hok)
@@ -223,7 +223,7 @@ Section UShEchoPay.
     (⊢ □ riscv_kill_cred -∗ T) ->
     ⊢ echo_links T γ -∗ udep (PS := uprogSG_free) -∗ sh_echo_slot T -∗
       UkShEcho.sh_exec_sup_echo_wq Wc.
-  Proof.
+  Proof using HPT HTT ghost_varG1.
     intros Hkt.
     iIntros "#Hlk #Hdep (#Hinv & #Hcl & #Hgen)".
     rewrite /UkShEcho.sh_exec_sup_echo_wq. iIntros "!>" (I) "%Hokws".

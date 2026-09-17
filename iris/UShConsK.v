@@ -188,7 +188,7 @@ Section UShConsK.
   (* sh's rodata, at the shape the [_img] leaf takes it *)
   Lemma shk_rodata_img (g : gname) :
     UCodeShK.shk_rodata g -∗ utext_img g UCodeShK.shk_ro.
-  Proof. rewrite /UCodeShK.shk_rodata. iIntros "#H". iExact "H". Qed.
+  Proof using . rewrite /UCodeShK.shk_rodata. iIntros "#H". iExact "H". Qed.
 
   (* =================================================================== *)
   (*  S2.  THE PERSISTENT ABSENCE LAW (ruling (A)), and the two           *)
@@ -214,12 +214,12 @@ Section UShConsK.
 
   Global Instance sh_cons_never_law_persistent T K :
     Persistent (sh_cons_never_law T K).
-  Proof. rewrite /sh_cons_never_law. apply _. Qed.
+  Proof using . rewrite /sh_cons_never_law. apply _. Qed.
 
   Lemma sh_cons_abs_law_of_never (T K : iProp Σ) :
     Persistent K ->
     sh_cons_never_law T K -∗ init_cons_abs_law T K.
-  Proof.
+  Proof using .
     intros HPK. iIntros "#Hn". rewrite /init_cons_abs_law.
     iIntros "!>" (v) "#HK Hp".
     iDestruct ("Hn" with "HK") as "#Hl".
@@ -243,7 +243,7 @@ Section UShConsK.
     Persistent T -> Timeless T ->
     init_cons_laws T K r -∗ cons_made r i -∗ app_inv fsc_fs -∗
     □ UkSh.ush_open_console_leaf (PS := uprogSG_free) N T.
-  Proof.
+  Proof using .
     intros HPT HTT. iIntros "#Hlaws #Hmade #Hinv !>".
     iIntros (h m l avail) "#Hcode #Hro %Hargs Hrun Hcwd Hstd Hcont".
     destruct Hargs as [Ha0 Ha1].
@@ -383,7 +383,7 @@ Section UShConsK.
     Persistent T -> Timeless T -> Persistent K -> Timeless K ->
     sh_cons_never_law T K -∗ app_inv fsc_fs -∗
     □ UkSh.ush_open_absent_leaf (PS := uprogSG_free) N T K.
-  Proof.
+  Proof using .
     intros HPT HTT HPK HTK. iIntros "#Hlaw #Hinv !>".
     iIntros (h m l avail) "#Hcode #Hro %Hargs Hrun Hcwd Hstd HK Hcont".
     destruct Hargs as [Ha0 Ha1].
@@ -503,7 +503,7 @@ Section UShConsK.
     cons_made r i -∗ app_inv fsc_fs -∗
     □ (∀ N : uk_names Σ,
          UkSh.ush_open_console_leaf (PS := uprogSG_free) N (echo_taint γ)).
-  Proof.
+  Proof using .
     intros Heq. iIntros "#Hmade #Hinv".
     iDestruct (init_cons_laws_echo γ r Heq) as "#Hlaws".
     iIntros "!>" (N).
@@ -521,7 +521,7 @@ Section UShConsK.
     sh_cons_never_law (echo_taint γ) K -∗ app_inv fsc_fs -∗
     □ (∀ N : uk_names Σ,
          UkSh.ush_open_absent_leaf (PS := uprogSG_free) N (echo_taint γ) K).
-  Proof.
+  Proof using .
     intros HPK HTK Heq. iIntros "#Hlaw #Hinv". iIntros "!>" (N).
     iDestruct (sh_open_absent_leaf_holds N (echo_taint γ) K _ _ HPK HTK
                  with "Hlaw Hinv") as "#H".

@@ -247,11 +247,11 @@ Section ProcDefs.
 
   Lemma pname_cells_open (pa : mword 64) (dq : dfrac) (bs : list (bv 8)) :
     pname_cells pa dq bs -∗ ⌜pname_wf bs⌝ ∗ pname_bytes pa dq bs.
-  Proof. by iIntros "[$ $]". Qed.
+  Proof using . by iIntros "[$ $]". Qed.
 
   Lemma pname_cells_intro (pa : mword 64) (dq : dfrac) (bs : list (bv 8)) :
     pname_wf bs -> pname_bytes pa dq bs -∗ pname_cells pa dq bs.
-  Proof. intro H. iIntros "H". by iFrame. Qed.
+  Proof using . intro H. iIntros "H". by iFrame. Qed.
 
   (* ===================================================================== *)
   (* THE ARRAY -> STRING ACCESSOR (tso-port.md §0.21′ amendment).           *)
@@ -283,7 +283,7 @@ Section ProcDefs.
      [ctx_string_pointsto]'s. *)
   Lemma pname_addr (pa : mword 64) (i : nat) :
     pa_add (p_name pa 0) i = p_name pa i.
-  Proof.
+  Proof using .
     unfold pa_add, p_name.
     change (add_vec pa (mword_of_int (344 + Z.of_nat 0))) with (add_vec_int pa 344).
     rewrite avi_assoc. reflexivity.
@@ -294,7 +294,7 @@ Section ProcDefs.
       (pad : list (bv 8)) :
     pname_bytes pa dq (cstring_bytes nm ++ pad) ⊣⊢
     p_name pa 0 ↦ₛ{dq} nm ∗ pname_pad pa dq nm pad.
-  Proof.
+  Proof using .
     rewrite /pname_bytes /pname_pad big_sepL_app
             ctx_string_pointsto_unfold.
     apply bi.sep_proper; [| reflexivity].
@@ -305,7 +305,7 @@ Section ProcDefs.
      terminator is the NUL [pname_wf] asks for. *)
   Lemma pname_wf_cstring (nm : string) (pad : list (bv 8)) :
     pname_wf (cstring_bytes nm ++ pad).
-  Proof.
+  Proof using .
     rewrite /pname_wf /cstring_bytes -app_assoc.
     exists (length (string_bytes nm)). split.
     - rewrite length_app. cbn [length app]. lia.
@@ -322,7 +322,7 @@ Section ProcDefs.
     ∃ (nm : string) (pad : list (bv 8)),
       ⌜bs = (cstring_bytes nm ++ pad)%list⌝ ∗ ⌜PrintkFmt.nonul nm = true⌝ ∗
       p_name pa 0 ↦ₛ{dq} nm ∗ pname_pad pa dq nm pad.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct (pname_cells_open with "H") as "[%Hwf H]".
     destruct (bytes_string_split bs Hwf) as (pad & Hsplit).
     iExists (bytes_string bs), pad.
@@ -337,7 +337,7 @@ Section ProcDefs.
       (pad : list (bv 8)) :
     p_name pa 0 ↦ₛ{dq} nm -∗ pname_pad pa dq nm pad -∗
     pname_cells pa dq (cstring_bytes nm ++ pad).
-  Proof.
+  Proof using .
     iIntros "Hs Hp".
     iApply (pname_cells_intro _ _ _ (pname_wf_cstring nm pad)).
     iApply pname_bytes_split. iFrame "Hs Hp".
@@ -392,7 +392,7 @@ Section ProcDefs.
     p_kstack pa ↦₈□ ks.
 
   Global Instance is_kstack_persistent pa ks : Persistent (is_kstack pa ks).
-  Proof. rewrite /is_kstack /word_pointsto /mem_pointsto. apply _. Qed.
+  Proof using . rewrite /is_kstack /word_pointsto /mem_pointsto. apply _. Qed.
 
   (* ------------------------------------------------------------------ *)
   (* THE SLOT'S KERNEL STACK, FREE.                                       *)
@@ -453,7 +453,7 @@ Section ProcDefs.
     is_kstack pa ks -∗
     stack_own (KTR := KT1) (add_vec ks (mword_of_int 4096)) KSTACK_AV -∗
     kstack_free pa.
-  Proof. iIntros "#Hks Hstk". iExists ks. by iFrame "Hks Hstk". Qed.
+  Proof using . iIntros "#Hks Hstk". iExists ks. by iFrame "Hks Hstk". Qed.
 
   (* WHAT A DIVERGING CALL CHAIN CARRIES DOWN.  A thread that is about to
      die owns its page in pieces -- one frame per never-returning call, plus
@@ -474,7 +474,7 @@ Section ProcDefs.
     (f <= av)%nat ->
     kstack_closer pa sp av -∗ stack_own (KTR := KT1) sp f -∗
     kstack_closer pa (pa_stk sp f) (av - f).
-  Proof.
+  Proof using .
     iIntros (Hf) "Hc Hfr Hrest". iApply "Hc".
     assert (Hsplit : av = (f + (av - f))%nat) by lia.
     iEval (rewrite {1}Hsplit (stack_own_app (KTR := KT1) sp f (av - f))).
@@ -499,7 +499,7 @@ Section ProcDefs.
     (KSTACK_AV <= n)%nat ->
     is_kstack pa ks -∗
     kstack_closer pa (add_vec ks (mword_of_int 4096)) n.
-  Proof.
+  Proof using .
     iIntros (Hn) "#Hks Hstk".
     iDestruct (stack_own_split_1 (KTR := KT1) _ KSTACK_AV n Hn with "Hstk")
       as "[Hstk _]".
@@ -509,7 +509,7 @@ Section ProcDefs.
   Lemma kstack_free_at (pa ks : mword 64) :
     is_kstack pa ks -∗ kstack_free pa -∗
     stack_own (KTR := KT1) (add_vec ks (mword_of_int 4096)) KSTACK_AV.
-  Proof.
+  Proof using .
     iIntros "#Hks (%ks' & #Hks' & Hstk)".
     iDestruct (ctx_word_pointsto_agree with "Hks Hks'") as %<-.
     iExact "Hstk".
@@ -582,7 +582,7 @@ Section ProcDefs.
     proc_priv_bare pa pid U -∗
     p_pid pa ↦₄{DfracOwn (1/4)} pid ∗
     (p_pid pa ↦₄{DfracOwn (1/4)} pid -∗ proc_priv_bare pa pid U).
-  Proof.
+  Proof using .
     iIntros "(%Hszb & %Hbel & Hpid & Hf & Hpt & Htfp)".
     assert (Hq : (1/2)%Qp = (1/4 + 1/4)%Qp) by compute_done.
     rewrite Hq ctx_word4_pointsto_frac_split.
@@ -603,7 +603,7 @@ Section ProcDefs.
     p_cwd pa ↦₈ pv_cwd (us_V U) ∗
     (∀ v' : mword 64,
        p_cwd pa ↦₈ v' -∗ proc_priv_bare pa pid (us_cwd U v')).
-  Proof.
+  Proof using .
     iIntros "(%Hszb & %Hbel & Hpid & Hf & Hpt & Htfp)".
     rewrite /proc_fields. iDestruct "Hf" as "(Hsz & Hcwd & %Hnl & Hnm)".
     iFrame "Hcwd". iIntros (v') "Hcwd".
@@ -618,7 +618,7 @@ Section ProcDefs.
 
   Lemma proc_priv_bare_sz (pa : mword 64) (pid : mword 32) (U : ustate) :
     proc_priv_bare pa pid U -∗ ⌜uint (pv_sz (us_V U)) <= uvm_maxsz⌝.
-  Proof. iIntros "($ & _)". Qed.
+  Proof using . iIntros "($ & _)". Qed.
 
   Definition proc_dormant (pa : mword 64) (st : mword 32) : iProp Σ :=
     (∃ (V : pprivate) (pid : mword 32),
@@ -797,7 +797,7 @@ Section ProcDefs.
 
   Lemma proc_dormant_split (pa : mword 64) (st : mword 32) :
     proc_dormant pa st ⊣⊢ proc_dormant_noctx pa st ∗ own_ctx (p_context pa).
-  Proof.
+  Proof using .
     iSplit.
     - iIntros "(%V & %pid & %Hfacts & Hpid & Hf & Ho & Hs & Hsp & Hir & Hbs & Hkst & Hch & Hgh & Hxs & Hctx & Haddr)".
       iFrame "Hctx". iExists V, pid. iFrame "Hpid Hf Ho Hs Hsp Hir Hbs Hkst Hch Hgh Hxs Haddr".
@@ -827,7 +827,7 @@ Section ProcDefsMorph.
 
   Global Instance pname_cells_morph (pa : mword 64) (dq : dfrac) (bs : list (bv 8)) :
     CtxMorph (fun xi : CtxId => pname_cells (XI := xi) pa dq bs).
-  Proof.
+  Proof using .
     iIntros (ξ ξ') "Hd H". rewrite /pname_cells.
     iDestruct "H" as "[%Hwf H]".
     iMod (ctx_morph_big_sepL bs
@@ -838,7 +838,7 @@ Qed.
 
   Global Instance proc_fields_morph (pa : mword 64) (dq : dfrac) (V : pprivate) :
     CtxMorph (fun xi : CtxId => proc_fields (XI := xi) pa dq V).
-  Proof.
+  Proof using .
     iIntros (ξ ξ') "Hd H". rewrite /proc_fields.
     iDestruct "H" as "(H1 & H2 & %Hl & H3)".
     iMod (ctx_morph_word _ _ _ _ ξ ξ' with "Hd H1") as "[Hd H1]".
@@ -849,7 +849,7 @@ Qed.
 
   Global Instance ofile_cells_morph (pa : mword 64) (fs : list (mword 64)) :
     CtxMorph (fun xi : CtxId => ofile_cells (XI := xi) pa fs).
-  Proof.
+  Proof using .
     iIntros (ξ ξ') "Hd H". rewrite /ofile_cells.
     iMod (ctx_morph_big_sepL fs
         (fun fd v xi => ctx_word_pointsto xi (p_ofile pa fd) (DfracOwn 1) v)
@@ -861,17 +861,17 @@ Qed.
      predicates owe transport too (tso-flip SchedCtx.v's instances). *)
   Global Instance tf_words_morph (tfp : mword 44) (ws : list (mword 64)) :
     CtxMorph (fun xi : CtxId => tf_words (XI := xi) tfp ws).
-  Proof. rewrite /tf_words. ctx_morph_solve. Qed.
+  Proof using . rewrite /tf_words. ctx_morph_solve. Qed.
   Global Instance tf_tail_morph (tfp : mword 44) :
     CtxMorph (fun xi : CtxId => tf_tail (XI := xi) tfp).
-  Proof. rewrite /tf_tail. ctx_morph_solve. Qed.
+  Proof using . rewrite /tf_tail. ctx_morph_solve. Qed.
   Global Instance tf_page_morph (tfp : mword 44) (ws : list (mword 64)) :
     CtxMorph (fun xi : CtxId => tf_page (XI := xi) tfp ws).
-  Proof. rewrite /tf_page. ctx_morph_solve. Qed.
+  Proof using . rewrite /tf_page. ctx_morph_solve. Qed.
 
   Global Instance is_kstack_morph (pa ks : mword 64) :
     CtxMorph (fun xi : CtxId => is_kstack (XI := xi) pa ks).
-  Proof.
+  Proof using .
     iIntros (ξ ξ') "Hd H". rewrite /is_kstack.
     iMod (ctx_morph_word _ _ _ _ ξ ξ' with "Hd H") as "[Hd H]". by iFrame.
   Qed.
@@ -882,7 +882,7 @@ Qed.
 
   Global Instance kstack_free_morph (pa : mword 64) :
     CtxMorph (fun xi : CtxId => kstack_free (XI := xi) pa).
-  Proof.
+  Proof using .
     iIntros (ξ ξ') "Hd H". rewrite /kstack_free.
     iDestruct "H" as (ks) "[H1 H2]".
     iMod (is_kstack_morph pa ks ξ ξ' with "Hd H1") as "[Hd H1]".
@@ -892,7 +892,7 @@ Qed.
 
   Global Instance proc_dormant_noctx_morph (pa : mword 64) (st : mword 32) :
     CtxMorph (fun xi : CtxId => proc_dormant_noctx (XI := xi) pa st).
-  Proof.
+  Proof using .
     iIntros (ξ ξ') "Hd H". rewrite /proc_dormant_noctx.
     iDestruct "H" as (V pid)
       "(%Hf & Hpid & Hfl & Ho & Hs & Hsp & Hir & Hbs & Hkst & Hch & Hgh & Hxs & Haddr)".
@@ -940,7 +940,7 @@ Qed.
 
   Global Instance proc_dormant_morph (pa : mword 64) (st : mword 32) :
     CtxMorph (fun xi : CtxId => proc_dormant (XI := xi) pa st).
-  Proof.
+  Proof using .
     iIntros (ξ ξ') "Hd H". rewrite proc_dormant_split.
     iDestruct "H" as "[Hn Hc]".
     iMod (proc_dormant_noctx_morph pa st ξ ξ' with "Hd Hn") as "[Hd Hn]".

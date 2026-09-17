@@ -173,13 +173,13 @@ Section UmodeCap.
     (uv_intr_wp ∗ uv_sys_wp Ψ)%I.
 
   Global Instance uv_intr_wp_persistent : Persistent uv_intr_wp.
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance uv_sys_wp_persistent (Ψ : usys_protocol Σ) :
     Persistent (uv_sys_wp Ψ).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance uv_cap_persistent (Ψ : usys_protocol Σ) :
     Persistent (uv_cap Ψ).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
 End UmodeCap.
 
@@ -201,7 +201,7 @@ Section UmodeCapGpr.
       (M : gmap Z (bv 8)) (g : regfile) (va : mword 64) :
     uv_cap C pt Ψ -∗ uv_run C pt M g va -∗
     uv_cap_gpr Ψ M g ∗ pc_is va.
-  Proof.
+  Proof using .
     iIntros "#Hcap (Hlin & Hgpr & Hpc)".
     iFrame "Hcap Hlin Hgpr Hpc".
   Qed.
@@ -210,7 +210,7 @@ Section UmodeCapGpr.
       (M : gmap Z (bv 8)) (g : regfile) (va : mword 64) :
     uv_cap_gpr Ψ M g -∗ pc_is va -∗
     uv_cap C pt Ψ ∗ uv_run C pt M g va.
-  Proof.
+  Proof using .
     iIntros "(#Hcap & Hlin & Hgpr) Hpc".
     iFrame "Hcap Hlin Hgpr Hpc".
   Qed.

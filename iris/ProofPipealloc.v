@@ -136,7 +136,7 @@ Section ProofPipealloc.
       (n : nat) (eb : bool) (p : mword 64) (K : nat) (b : bool)
       (lks : gset string) (pidv : mword 32) (Upr : ustate)
     : wp_pipealloc_sconf_body γfl γf γkl γk fl m v0 v1 on n eb p K b lks pidv Upr.
-  Proof.
+  Proof using .
     cbv beta delta [wp_pipealloc_sconf_body].
     (* [Hbelow] is the ORDER premise pipealloc's whole cone needs: the LOWEST
        rank it touches is "ftable" (1), via filealloc/fileclose -- kalloc's

@@ -410,7 +410,7 @@ Section IcacheBootRegion.
       (dss : list (list dinode)) (nib : nat) :
     ([∗ map] z ↦ dn ∈ ireg_M0 dss nib, Phi z dn)
       ⊢ [∗ set] z ∈ region_inums nib, Phi z (image_dinode dss z).
-  Proof.
+  Proof using .
     etrans.
     { apply (big_sepM_mono _ (fun z (_ : dinode) => Phi z (image_dinode dss z))).
       intros z dn Hz.
@@ -426,7 +426,7 @@ Section IcacheBootRegion.
   Local Lemma seq16_flatten (n : nat) (Phi : nat -> iProp Σ) :
     ([∗ list] j ∈ seq 0 (16 * n), Phi j)
     ⊢ [∗ list] bi ∈ seq 0 n, [∗ list] i ∈ seq 0 16, Phi (16 * bi + i)%nat.
-  Proof.
+  Proof using .
     revert Phi. induction n as [|n IH]; intros Phi.
     { cbn [seq]. iIntros "_". done. }
     replace (16 * S n)%nat with (16 + 16 * n)%nat by lia.
@@ -455,7 +455,7 @@ Section IcacheBootRegion.
   Lemma imark_of_marks (γi : gname) (nib : nat) :
     ([∗ map] y ↦ d ∈ ireg_MK nib, y ↪[γi] d)
     ⊢ [∗ set] z ∈ region_inums nib, imark γi z.
-  Proof.
+  Proof using .
     rewrite /ireg_MK big_sepM_gset_to_gmap.
     rewrite /mark_inums (big_sepS_list_to_set _ _ (mark_list_nodup nib)).
     rewrite big_sepL_fmap.
@@ -471,7 +471,7 @@ Section IcacheBootRegion.
     ⊢ [∗ list] bi ∈ seq 0 nib,
         [∗ list] i ∈ seq 0 16,
           ireg_slot γfs γi (16 * Z.of_nat bi + Z.of_nat i)%Z ((dss !!! bi) !!! i).
-  Proof.
+  Proof using .
     rewrite /region_inums (big_sepS_list_to_set _ _ (region_list_nodup nib)).
     rewrite big_sepL_fmap.
     iIntros "H".
@@ -596,14 +596,14 @@ Section IcacheBootRegion.
 
   Lemma dummy_reg_cov (nib : nat) (z : Z) :
     (0 <= z < 16 * Z.of_nat nib)%Z -> is_Some (dummy_reg nib !! z).
-  Proof.
+  Proof using .
     intros Hz. rewrite /dummy_reg. eexists.
     apply lookup_gset_to_gmap_Some. split; [apply region_inums_spec; lia | reflexivity].
   Qed.
 
   Lemma dummy_reg_key (nib : nat) (k : Z) (v : gname * gname) :
     dummy_reg nib !! k = Some v -> (0 <= k)%Z.
-  Proof.
+  Proof using .
     rewrite /dummy_reg. intros Hk.
     apply lookup_gset_to_gmap_Some in Hk as [Hin _].
     apply region_inums_spec in Hin. lia.
@@ -639,7 +639,7 @@ Section IcacheBootRegion.
 
   Lemma ireg_top_boot_live (γfs : fs_names) (D : Z -> dinode) (z : Z) :
     bv_unsigned (di_type (D z)) <> 0 -> ⊢ ireg_top_boot γfs D z.
-  Proof.
+  Proof using .
     intros Hnz. rewrite /ireg_top_boot decide_False; [| exact Hnz]. done.
   Qed.
 
@@ -733,7 +733,7 @@ Section IcacheBootRegion.
       ireg_boot ∗
       ([∗ set] z ∈ region_inums nib,
          ireg_out γi (mword_of_int z : mword 32) (image_dinode dss z)).
-  Proof.
+  Proof using .
     intros Hnib Hnibc Hlen Himg.
     destruct (image_decode nib bss Hlen) as (dss & Hl & Hwf & He).
     destruct (Himg dss Hl Hwf He)
@@ -910,7 +910,7 @@ Section IcacheBootPool.
     16 * Z.of_nat nib <= 2 ^ 32 ->
     ([∗ set] z ∈ region_inums nib, Phi z) -∗
     ([∗ set] z ∈ region_inums nib, Phi (bv_unsigned (mword_of_int z : mword 32))).
-  Proof.
+  Proof using .
     iIntros (Hnib) "H". iApply (big_sepS_mono with "H"). intros z Hz.
     rewrite (region_inum_faithful nib z Hnib Hz) //.
   Qed.
@@ -944,7 +944,7 @@ Section IcacheBootPool.
        no inum is in transition before userspace exists -- so this builds
        [ipool_ord], which is what the pool INVARIANT holds. *)
     imark γi (bv_unsigned inum) -∗ ipool_ord γfs γi cov logstart inum.
-  Proof.
+  Proof using .
     iIntros "Hcnt Hmir Hoff Hmk".
     rewrite /ipool_ord /ipool_shape_np.
     iSplitL "Hcnt"; [iExact "Hcnt" |].
@@ -992,7 +992,7 @@ Section IcacheBootPool.
        fourth piece. *)
     top_frag (fs_gamma_L γfs) (bv_unsigned inum) (era_node dn bm data) -∗
     ipool_ord γfs γi cov logstart inum.
-  Proof.
+  Proof using .
     iIntros (Hok Hrl Hdok Hddix Hdoc Hduq)
             "Hcnt Hmir Hoff Hdlk Hdn Hind Hblk Htop".
     pose proof (node_shape_ok_of_inode_ok cov logstart dn bm data Hok) as Hsh.
@@ -1023,7 +1023,7 @@ Section IcacheBootPool.
     A ⊆ R ->
     ipool_rows γfs γi cov logstart A ∗ ipool_rows γfs γi cov logstart (R ∖ A)
       ⊢ ipool_rows γfs γi cov logstart R.
-  Proof.
+  Proof using .
     intros Hsub. rewrite /ipool_rows -big_sepS_union; [| set_solver].
     rewrite -(union_difference_L A R Hsub) //.
   Qed.
@@ -1062,7 +1062,7 @@ Section IcacheBootPool.
     ([∗ set] z ∈ R ∖ A,
        imark γi (bv_unsigned (mword_of_int z : mword 32))) -∗
     ipool_rows γfs γi cov logstart R.
-  Proof.
+  Proof using .
     iIntros (Hsub) "Hcnts Hmirs Hoffs Ha Hf".
     (* the ledger pair splits along the same subset the pool does *)
     rewrite (union_difference_L A R Hsub) !big_sepS_union; [| set_solver ..].
@@ -1111,7 +1111,7 @@ Section IcacheBootPool.
     ([∗ set] z ∈ region_inums nib,
        ireg_out γi (mword_of_int z : mword 32) (image_dinode dss z)) -∗
     ipool_rows γfs γi cov logstart (region_inums nib).
-  Proof.
+  Proof using .
     iIntros (Hnib H0) "Hcnts Hmirs Hoffs H". rewrite /ipool_rows.
     iDestruct (region_key_shift nib (fun z => icnt_half z 0%nat) Hnib
                 with "Hcnts") as "Hcnts".
@@ -1203,7 +1203,7 @@ Section IcacheBootTable.
       (n j : nat) :
     ([∗ list] k ∈ seq j n, ∃ a : A, Phi k a) -∗
     ∃ f : nat -> A, [∗ list] k ∈ seq j n, Phi k (f k).
-  Proof.
+  Proof using .
     iInduction n as [|n IH] forall (j).
     { iIntros "_". iExists (fun _ => inhabitant). cbn [seq]. done. }
     iIntros "H".
@@ -1223,7 +1223,7 @@ Section IcacheBootTable.
   Local Lemma ic_id_split_half (cn : ic_names) (k : nat) (v : bool)
       (d n : mword 32) :
     ic_id cn k 1 v d n -∗ ic_id cn k (1/2) v d n ∗ ic_id cn k (1/2) v d n.
-  Proof.
+  Proof using .
     rewrite /ic_id. iIntros "H".
     iApply (ghost_var_split (icn_id cn k) (v, d, n) (1/2) (1/2)).
     rewrite Qp.half_half. iExact "H".
@@ -1241,7 +1241,7 @@ Section IcacheBootTable.
          i_ref (ientry k) ↦₄ (mword_of_int 0 : mword 32)) ∗
       ([∗ list] k ∈ seq 0 NINODE, ∃ w : mword 32, i_valid (ientry k) ↦₄ w) ∗
       ([∗ list] k ∈ seq 0 NINODE, inode_raw (ientry k)).
-  Proof.
+  Proof using .
     rewrite /ientry_raw /ientry_raw_at.
     rewrite big_sepL_sep. apply bi.sep_mono_r.
     rewrite big_sepL_sep. apply bi.sep_mono_r.
@@ -1253,7 +1253,7 @@ Section IcacheBootTable.
     ([∗ list] k ∈ seq 0 NINODE,
        i_ref (ientry k) ↦₄ (mword_of_int 0 : mword 32))
       ⊢ iref_cells ∅.
-  Proof.
+  Proof using .
     rewrite /iref_cells. apply big_sepL_mono. intros idx k _.
     rewrite /iref_word lookup_empty //.
   Qed.
@@ -1280,7 +1280,7 @@ Section IcacheBootTable.
   Local Lemma ic_id_set (cn : ic_names) (k : nat) (v : bool) (d n : mword 32)
       (v' : bool) (d' n' : mword 32) :
     ic_id cn k 1 v d n ==∗ ic_id cn k 1 v' d' n'.
-  Proof.
+  Proof using .
     rewrite /ic_id. iIntros "H".
     iApply (ghost_var_update (v', d', n') with "H").
   Qed.
@@ -1293,7 +1293,7 @@ Section IcacheBootTable.
     ([∗ list] k ∈ seq 0 NINODE, ic_id cn k 1 v (dvs k).1 (dvs k).2)
     ⊢ ([∗ list] k ∈ seq 0 NINODE,
          ∃ (v' : bool) (d' n' : mword 32), ic_id cn k 1 v' d' n').
-  Proof.
+  Proof using .
     apply big_sepL_mono. intros idx k _. iIntros "H".
     iExists v, (dvs k).1, (dvs k).2. iExact "H".
   Qed.
@@ -1336,7 +1336,7 @@ Section IcacheBootTable.
   Local Lemma pinw_slots_boot :
     ([∗ list] k ∈ seq 0 (NINODE + NINODE), live_frac0 k 1%Qp) ==∗
     ([∗ list] k ∈ seq 0 NINODE, IcacheInv.pinw_slot ∅ k).
-  Proof.
+  Proof using .
     iIntros "H".
     rewrite seq_app big_sepL_app. iDestruct "H" as "[Hl Hr]".
     rewrite -(fmap_add_seq NINODE 0 NINODE) big_sepL_fmap.
@@ -1430,7 +1430,7 @@ Section IcacheBootTable.
          ∃ γil γisl : gname,
            is_sleeplock_genl γil γisl (i_lock (ientry k)) "inode"%string
                              (ic_slp cn k) (slh_tok (icfg_isl k))).
-  Proof.
+  Proof using .
     iIntros "Hauth Hlive Hislg Hlkw #Hnm Hcpu Hsl Hraw Hsupply Hstamps Hrows Hkey".
     iIntros "Hxkey Hfree Htok Hdep Hgid Hhpn Htkey Hckey Hbox Hoffa Hrun".
     (* only the ZEROS are used: they are what [itable_body] parks for a free
@@ -1655,7 +1655,7 @@ Section IcacheBootTable.
          ∃ γil γisl : gname,
            is_sleeplock_genl γil γisl (i_lock (ientry k)) "inode"%string
                              (ic_slp cn k) (slh_tok (icfg_isl k))).
-  Proof.
+  Proof using .
     iIntros "Hauth Hlive Hislg Hlkw #Hnm Hcpu Hsl Hraw Hsupply Hstamps Hrows Hkey Hxkey Hhpn Htkey Hckey Hbox Hoffa Hrun".
     iMod lock_ghost_alloc as (γl) "Hfree".
     iMod (ic_names_alloc ic_dv_dummy) as (cn) "(Htok & Hdep & Hgid)".

@@ -190,7 +190,7 @@ Section UkReadPipe.
       (Z.to_nat (sys_rw_count (m !!! Regidx a2_idx))) -∗
     udepwf_st N m pc USYS_read (read_pipe_fam (ukn_pay N) Rp Rpe)
       (FdOpen true wb (FdPipe γp)).
-  Proof.
+  Proof using .
     iIntros "Hpay".
     rewrite /udepwf_st. iSplit; [ iPureIntro; reflexivity | ].
     iIntros (M pm sz fdv cw gn cs pidv) "%Hkey _ Hheap Hufd".
@@ -219,7 +219,7 @@ Section UkReadPipe.
       Rp Rpe r M' addr -∗
     pipe_rpost_img pt (pn_queue γp) Rp Rpe (ChildTok.kill_shot gn)
       (Z.to_nat n) r M' addr.
-  Proof. intros ->. by iIntros "$". Qed.
+  Proof using . intros ->. by iIntros "$". Qed.
 
   (* =================================================================== *)
   (*  3.  THE CONTENT POST                                                *)
@@ -237,7 +237,7 @@ Section UkReadPipe.
 
   Lemma uread_pipe_ans_of_ret (cap : nat) (r : mword 64) :
     fileread_ret (Z.of_nat cap) r -> uread_pipe_ans cap r.
-  Proof.
+  Proof using .
     rewrite /fileread_ret /pipe_rw_ret /uread_pipe_ans.
     intros [Hm1 | (i & Hi & Hb)]; [ by left | right ].
     assert (Hmax : Z.max 0 (Z.of_nat cap) = Z.of_nat cap) by lia.
@@ -307,7 +307,7 @@ Section UkReadPipe.
        ubytes (ukn_d N) (uint (m !!! Regidx a1_idx)) k g -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Ha0 Hfdlt Ha2 Hcapk Hcap31 Hal.
     iIntros "#Hi Hrun Hufdh Hpay Hbuf Hcont".
     assert (Hcnt : sys_rw_count (m !!! Regidx a2_idx) = Z.of_nat cap)
@@ -381,7 +381,7 @@ Section UkReadPipe.
      identity. *)
   Lemma ustd_after_none (l : list fdstate) (st : fdstate) :
     fd_lowest_closed l = None -> ustd_after l st = l.
-  Proof. intros H. rewrite /ustd_after H. reflexivity. Qed.
+  Proof using . intros H. rewrite /ustd_after H. reflexivity. Qed.
 
   (* the join's U-tier reading, at a ledger with no free standard slot --
      which is where any program that has not just closed a standard stream
@@ -395,7 +395,7 @@ Section UkReadPipe.
       (FdOpen false true (FdPipe γp)) -∗
     UserFd.ufd (ukn_fd N) a (FdOpen true false (FdPipe γp)) ∗
     UserFd.ufd (ukn_fd N) b (FdOpen false true (FdPipe γp)).
-  Proof.
+  Proof using .
     intros Hnone.
     rewrite (ustd_after_none l (FdOpen true false (FdPipe γp)) Hnone).
     rewrite /ualloc_at Hnone.
@@ -445,7 +445,7 @@ Section UkReadPipe.
        ubytes (ukn_d N) (uint (m !!! Regidx a0_idx)) 8 g -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hal Hnone.
     iIntros "#Hi Hrun Hsb #Hkt Hstd Hbuf Hcont".
     iApply (wp_uk_ecall_pipe N h m pc l f avail Hn Hal

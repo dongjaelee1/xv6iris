@@ -60,9 +60,9 @@ Section CtxValues.
        ⌜TsoMemPa.msg_byte m a = Some b⌝ ∗ ⌜b ∈ Sv⌝)%I.
 
   Global Instance cv_touch_persistent a B Sv : Persistent (cv_touch a B Sv).
-  Proof. rewrite /cv_touch. apply _. Qed.
+  Proof using . rewrite /cv_touch. apply _. Qed.
   Global Instance cv_touch_timeless a B Sv : Timeless (cv_touch a B Sv).
-  Proof. rewrite /cv_touch. apply _. Qed.
+  Proof using . rewrite /cv_touch. apply _. Qed.
 
   Definition ctx_values (ξ : CtxId) (a : Arch.pa) (dq : dfrac)
       (Sv : gset (bv 8)) : iProp Σ :=
@@ -72,7 +72,7 @@ Section CtxValues.
 
   Global Instance ctx_values_timeless ξ a dq Sv :
     Timeless (ctx_values ξ a dq Sv).
-  Proof. rewrite /ctx_values. apply _. Qed.
+  Proof using . rewrite /ctx_values. apply _. Qed.
 
   (* ------------------------------------------------------------------ *)
   (* interp extractions (pure outputs; callers use them under a pure     *)
@@ -82,7 +82,7 @@ Section CtxValues.
   Lemma cv_msg_lookup (g : gstate) (i : nat) (m : TsoMemPa.pwmsg) :
     tso_interp_at riscv_eraGS g -∗ ledger_msg_at i m -∗
     ⌜g.(glog) !! i = Some m⌝.
-  Proof.
+  Proof using .
     iIntros "Hint #Hm".
     iDestruct "Hint"
       as "(%TM & %LM & Hts & %Hdom & %Htie & Hlm & %HLM & Hlen & Hv & %Hmm)".
@@ -94,7 +94,7 @@ Section CtxValues.
       (v : bv 8) (t B : nat) (Sv : gset (bv 8)) :
     tso_interp_at riscv_eraGS g -∗ phys_ledger_pin a dq v t B Sv -∗
     ⌜TsoMemPa.pin_ok g.(gimg) g.(glog) a B Sv⌝.
-  Proof.
+  Proof using .
     iIntros "Hint [Hp Hts]".
     iDestruct "Hint"
       as "(%TM & %LM & Hauth & %Hdom & %Htie & Hlm & %HLM & Hlen & Hv & %Hmm)".
@@ -110,7 +110,7 @@ Section CtxValues.
     phys_pointsto a dq v -∗
     (a ↪[ts_name]{dq} ((t, TsoMemPa.ts_pay_none) : TsoMemPa.ts_elem)) -∗
     ⌜TsoMemPa.latest g.(gimg) g.(glog) a t v⌝.
-  Proof.
+  Proof using .
     iIntros "Hint Hgh Hp Hts".
     iDestruct "Hint"
       as "(%TM & %LM & Hauth & %Hdom & %Htie & Hlm & %HLM & Hlen & Hv & %Hmm)".
@@ -142,7 +142,7 @@ Section CtxValues.
     tso_interp_at riscv_eraGS g ∗
     own_context ξ ∗
     ctx_values ξ a (DfracOwn 1) Sv.
-  Proof.
+  Proof using .
     iIntros (Hv) "Hgh Hint Hrun Hc".
     rewrite ctx_phys_pointsto_unseal /ctx_phys_pointsto_def.
     iDestruct "Hc" as (t) "(Hp & Hts & Harm)".
@@ -221,7 +221,7 @@ Section CtxValues.
     ⌜forall tv, (g.(gtv) cpu_id <= tv)%nat ->
        exists b, TsoMemPa.tso_read g.(gimg) g.(glog) (hart_agent cpu_id) tv a
                  = Some b /\ b ∈ Sv⌝.
-  Proof.
+  Proof using .
     iIntros "Hint Hrun Hc".
     iDestruct "Hc" as (B t v) "(Hpin & Harm)".
     iAssert (⌜TsoMemPa.pin_ok g.(gimg) g.(glog) a B Sv⌝)%I as %Hpin.
@@ -298,9 +298,9 @@ Section CtxValues.
        ⌜TsoMemPa.msg_byte m a = Some b⌝ ∗ ⌜TsoMemPa.pm_tid m = h⌝)%I.
 
   Global Instance cv_own_persistent h a p : Persistent (cv_own h a p).
-  Proof. rewrite /cv_own. apply _. Qed.
+  Proof using . rewrite /cv_own. apply _. Qed.
   Global Instance cv_own_timeless h a p : Timeless (cv_own h a p).
-  Proof. rewrite /cv_own. apply _. Qed.
+  Proof using . rewrite /cv_own. apply _. Qed.
 
   Definition cv_cred `{CID : CpuId} (a : Arch.pa) (B : nat) : iProp Σ :=
     (TsoGhost.view_lb view_name loglen_name (hart_agent cpu_id) B ∨
@@ -308,11 +308,11 @@ Section CtxValues.
 
   Global Instance cv_cred_persistent `{CID : CpuId} a B :
     Persistent (cv_cred a B).
-  Proof. rewrite /cv_cred. apply _. Qed.
+  Proof using . rewrite /cv_cred. apply _. Qed.
 
   Lemma cv_cred_le `{CID : CpuId} (a : Arch.pa) (B B' : nat) :
     (B <= B')%nat -> cv_cred a B' -∗ cv_cred a B.
-  Proof.
+  Proof using .
     iIntros (Hle) "[#Hv | (%p & %Hp & #Ho)]".
     - iLeft. iApply (TsoGhost.view_lb_le with "Hv"). lia.
     - iRight. iExists p. iSplit; [iPureIntro; lia | iExact "Ho"].
@@ -328,7 +328,7 @@ Section CtxValues.
     cv_own h a p -∗
     ⌜forall tv, exists b,
        TsoMemPa.tso_read g.(gimg) g.(glog) h tv a = Some b /\ b ∈ Sv⌝.
-  Proof.
+  Proof using .
     iIntros (HBp) "Hint Hpin #Hown".
     iAssert (⌜TsoMemPa.pin_ok g.(gimg) g.(glog) a B Sv⌝)%I as %Hpin.
     { iApply (cv_pin_ok with "Hint Hpin"). }
@@ -352,7 +352,7 @@ Section CtxValues.
     ⌜forall tv, (g.(gtv) cpu_id <= tv)%nat ->
        exists b, TsoMemPa.tso_read g.(gimg) g.(glog) (hart_agent cpu_id) tv a
                  = Some b /\ b ∈ Sv⌝.
-  Proof.
+  Proof using .
     iIntros "Hint Hpin [#Hv | (%p & %Hp & #Ho)]".
     - iDestruct (ledger_read_pin_ok g a dq v t B Sv with "Hint Hv Hpin")
         as %Hrd.
@@ -378,27 +378,27 @@ Section CtxValues.
 
   Global Instance cv_boot_cred_persistent `{CID : CpuId} B :
     Persistent (cv_boot_cred B).
-  Proof. rewrite /cv_boot_cred. apply _. Qed.
+  Proof using . rewrite /cv_boot_cred. apply _. Qed.
   Global Instance cv_boot_cred_timeless `{CID : CpuId} B :
     Timeless (cv_boot_cred B).
-  Proof. rewrite /cv_boot_cred. apply _. Qed.
+  Proof using . rewrite /cv_boot_cred. apply _. Qed.
 
   Lemma cv_boot_cred_view `{CID : CpuId} (B : nat) :
     TsoGhost.view_lb view_name loglen_name (hart_agent cpu_id) B -∗
     cv_boot_cred B.
-  Proof. iIntros "H". iLeft. iExact "H". Qed.
+  Proof using . iIntros "H". iLeft. iExact "H". Qed.
 
   Lemma cv_boot_cred_boot `{CID : CpuId} (B : nat) :
     hart_agent cpu_id = 0%nat ->
     TsoGhost.llb loglen_name B -∗ cv_boot_cred B.
-  Proof.
+  Proof using .
     intros H0. iIntros "Hl". iRight.
     iSplitR; [by iPureIntro | iExact "Hl"].
   Qed.
 
   Lemma cv_boot_cred_llb `{CID : CpuId} (B : nat) :
     cv_boot_cred B -∗ TsoGhost.llb loglen_name B.
-  Proof.
+  Proof using .
     iIntros "[Hv | [_ Hl]]";
       [iApply (TsoGhost.view_lb_llb with "Hv") | iExact "Hl"].
   Qed.
@@ -407,7 +407,7 @@ Section CtxValues.
   Lemma big_sepL_seq_exist (n : nat) (Φ : nat -> nat -> iProp Σ) :
     ([∗ list] j ∈ seq 0 n, ∃ Bx : nat, Φ j Bx) -∗
     ∃ Bf : nat -> nat, [∗ list] j ∈ seq 0 n, Φ j (Bf j).
-  Proof.
+  Proof using .
     iInduction n as [|n] "IH".
     - iIntros "_". iExists (fun _ => 0%nat). done.
     - rewrite !seq_S !big_sepL_app /=.
@@ -436,7 +436,7 @@ Section CtxValues.
        forall j : nat, (j < n)%nat ->
          exists b, TsoMemPa.tso_read g.(gimg) g.(glog) (hart_agent cpu_id)
                      tv' (pa_add a j) = Some b /\ b ∈ Sf j⌝.
-  Proof.
+  Proof using .
     iIntros "Hint #Hcred Hb". iEval (rewrite /cv_boot_cred) in "Hcred".
     iAssert (⌜forall j : nat, (j < n)%nat ->
                forall tv' : nat, (g.(gtv) cpu_id <= tv')%nat ->

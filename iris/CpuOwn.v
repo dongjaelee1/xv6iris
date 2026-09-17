@@ -70,7 +70,7 @@ Section CpuOwn.
   (* at the disabled index the bundle IS the cells + the token *)
   Lemma cpu_own_off (n : nat) (eb : bool) (p : mword 64) (lks : gset string) :
     cpu_own n eb p false lks ⊣⊢ cpu_hart n eb p lks.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* ... and at the enabled index it is just the pure fact: the payload is
      inside [sie_arm true p].  This is not a weakening -- a caller could not
@@ -80,29 +80,29 @@ Section CpuOwn.
      a hart with interrupts ENABLED holds no spinlock. *)
   Lemma cpu_own_on (n : nat) (eb : bool) (p : mword 64) (lks : gset string) :
     cpu_own n eb p true lks ⊣⊢ ⌜ n = 0%nat /\ eb = true /\ lks = ∅ ⌝.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma cpu_own_on_intro (p : mword 64) :
     ⊢ cpu_own 0 true p true ∅.
-  Proof. iPureIntro. done. Qed.
+  Proof using . iPureIntro. done. Qed.
 
   (* THE MOVE push_off makes at the enabled arm, and pop_off's inverse. *)
   Lemma cpu_own_of_arm (n : nat) (eb : bool) (p : mword 64) (lks : gset string) :
     cpu_own n eb p true lks -∗
     cpu_hart 0 true p ∅ -∗
     cpu_own 0 true p false ∅.
-  Proof. iIntros "_ Hh". iFrame "Hh". Qed.
+  Proof using . iIntros "_ Hh". iFrame "Hh". Qed.
 
   Lemma cpu_own_to_arm (p : mword 64) :
     cpu_own 0 true p false ∅ -∗
     cpu_hart 0 true p ∅ ∗ cpu_own 0 true p true ∅.
-  Proof. iIntros "Hh". iFrame "Hh". iPureIntro. done. Qed.
+  Proof using . iIntros "Hh". iFrame "Hh". iPureIntro. done. Qed.
 
   (* the cells are EXCLUSIVE, so nobody holds them beside the enabled arm *)
   Lemma cpu_hart_excl (n n' : nat) (eb eb' : bool) (p p' : mword 64)
       (lks lks' : gset string) :
     cpu_hart n eb p lks -∗ cpu_hart n' eb' p' lks' -∗ False.
-  Proof.
+  Proof using .
     iIntros "(((_ & Hn & _ & _) & _) & _) (((_ & Hn' & _ & _) & _) & _)".
     iDestruct (ctx_word4_pointsto_bytes with "Hn") as "Hb".
     iDestruct (ctx_word4_pointsto_bytes with "Hn'") as "Hb'".
@@ -113,7 +113,7 @@ Section CpuOwn.
   Lemma cpu_own_arm_excl (n n' : nat) (eb eb' : bool) (p p' : mword 64)
       (lks : gset string) :
     sie_arm kt true p -∗ cpu_own n' eb' p' false lks -∗ False.
-  Proof.
+  Proof using .
     iIntros "(_ & _ & _ & _ & _ & _ & _ & _ & Hh) Hh'".
     iApply (cpu_hart_excl with "Hh Hh'").
   Qed.
@@ -147,7 +147,7 @@ Section CpuOwn.
       (p : mword 64) (b : bool) {lks : gset string} :
     sie_cap_gpr kt m K b p -∗ cpu_own n eb p b lks -∗
     ⌜ match n with O => eb | S _ => false end = b ⌝.
-  Proof.
+  Proof using .
     iIntros "Hcg Hown". destruct b.
     - iDestruct "Hown" as "%Hpure". iPureIntro. destruct Hpure as (-> & -> & _). done.
     - iDestruct "Hown" as "[_ Hic]".
@@ -168,7 +168,7 @@ Section CpuOwn.
   Lemma cpu_own_forces_on (m : regfile) (K : nat) (p : mword 64)
       (b : bool) {lks : gset string} :
     sie_cap_gpr kt m K b p -∗ cpu_own 0 true p b lks -∗ ⌜ b = true ⌝.
-  Proof.
+  Proof using .
     destruct b; [ by iIntros "_ _" |].
     iIntros "Hcg Hown".
     iDestruct (cpu_own_eb_agree with "Hcg Hown") as %Hbad.
@@ -180,7 +180,7 @@ Section CpuOwn.
   Lemma cpu_own_forces_off (n : nat) (eb : bool) (p : mword 64)
       (lks : gset string) :
     cpu_own (S n) eb p true lks -∗ False.
-  Proof.
+  Proof using .
     iIntros "%Hpure". destruct Hpure as [Hn _]. discriminate Hn.
   Qed.
 
@@ -203,7 +203,7 @@ Section CpuOwn.
     mstateen0 ↦ᵣ□ (mword_of_int 0 : mword 64) -∗
     sstateen0 ↦ᵣ□ (mword_of_int 0 : mword 32) -∗
     cpu_own 0 false p false ∅.
-  Proof.
+  Proof using .
     intros -> ->. iIntros "Hnoff Hint Htok Hproc Hlk Hssc Hmdl Hmse Hsse".
     iSplitR "Htok"; [| iApply (intr_count_init_off with "Htok") ].
     iSplitR "Hlk Hssc Hmdl Hmse Hsse".
@@ -228,7 +228,7 @@ Section CpuOwn.
       (lks : gset string) :
     cpu_own n eb p false lks -∗
     hart_csrs ∗ (hart_csrs -∗ cpu_own n eb p false lks).
-  Proof.
+  Proof using .
     iIntros "Hh".
     iEval (rewrite /cpu_own /cpu_hart /cpu_priv) in "Hh".
     iDestruct "Hh" as "((Hcells & Hlks & Hcsrs) & Hcnt)".
@@ -258,7 +258,7 @@ Section CpuOwn.
   Lemma cpu_own_size_le (n : nat) (eb : bool) (p : mword 64)
       (b : bool) (lks : gset string) :
     cpu_own n eb p b lks -∗ ⌜(size lks <= n)%nat⌝ ∗ cpu_own n eb p b lks.
-  Proof.
+  Proof using .
     destruct b.
     - iIntros "%Hp". destruct Hp as (Hn & Heb & Hl).
       iSplitR. { iPureIntro. subst lks. rewrite size_empty. lia. }
@@ -282,7 +282,7 @@ Section CpuOwn.
   Lemma cpu_own_zero_empty (eb : bool) (p : mword 64)
       (b : bool) (lks : gset string) :
     cpu_own 0%nat eb p b lks -∗ ⌜lks = ∅⌝ ∗ cpu_own 0%nat eb p b lks.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct (cpu_own_size_le with "H") as "[%Hsz H]".
     iFrame "H". iPureIntro. exact (size_le_zero_empty lks Hsz).
   Qed.
@@ -293,7 +293,7 @@ Section CpuOwn.
     cpu_locks lks ∗ ⌜(size lks <= n)%nat⌝ ∗
     (∀ lks' : gset string,
        ⌜(size lks' <= n)%nat⌝ -∗ cpu_locks lks' -∗ cpu_own n eb p false lks').
-  Proof.
+  Proof using .
     iIntros "Hh".
     iEval (rewrite /cpu_hart /cpu_priv) in "Hh".
     iDestruct "Hh" as "((Hcells & Hlvl & Hcsrs) & Hcnt)".
@@ -317,7 +317,7 @@ Section CpuOwn.
     cpu_own n eb p false lks -∗
     (cur_proc p ∗
      (cur_proc p' -∗ cpu_own n eb p' false lks)).
-  Proof.
+  Proof using .
     iIntros "(((%Hbound & Hnoff & Hint & Hproc) & Hlks) & Hcnt)".
     iFrame "Hproc". iIntros "Hproc". iFrame "Hnoff Hint Hlks Hcnt Hproc".
     iPureIntro. exact Hbound.

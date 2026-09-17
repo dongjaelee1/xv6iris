@@ -157,7 +157,7 @@ Section ProofSysUnlinkW2.
      ([su_offcell]'s warning); compose the shifts symbolically first. *)
   Lemma su_offcell_sp `{XI : CurCtx} `{GEN : GenId} (X : mword 64) :
     pa_add (pa_stk X 27) 4 = pa_add (pa_stk X 30) 28.
-  Proof.
+  Proof using .
     unfold pa_add, pa_stk. rewrite !avi_assoc. unfold add_vec_int.
     f_equal; try (apply bv_eq; vm_compute; reflexivity).
   Qed.
@@ -170,7 +170,7 @@ Section ProofSysUnlinkW2.
     (0 < k)%nat ->
     sie_cap_gpr KT1 M k b pp -∗
     ⌜(8 <= uint (M !!! Regidx csp_rs1) < 274877906944 + 8)%Z⌝.
-  Proof.
+  Proof using .
     iIntros (Hk) "(_ & _ & (Hstk & _ & _) & _)".
     iApply (stack_own_sp_bounds (KTR := KT1) _ (trap_res b + k)%nat with "Hstk").
     destruct b; unfold trap_res; lia.
@@ -299,7 +299,7 @@ Section ProofSysUnlinkW2.
         dqb dqs dqbs (unlink_arms (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) P Pmiss
                         Phient Phitgt Phiex Phimiss)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HKup HKeo HK30 Kpop Hkk Hgeom Hsize Hbm0 Hbmcov Hbmlog Hist0 Hiblk
            Hiblog Hinb Hcovb Hiu Hj Hgl Hlkempty Hsp0 HMsp HMthr HMs1 HMs2
            HMs3 Hal Heb Hupt1.
@@ -608,7 +608,7 @@ Section ProofSysUnlinkW2.
         dqb dqs dqbs (unlink_arms (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) P Pmiss
                         Phient Phitgt Phiex Phimiss)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hnib0 Hgeom Hsize Hbm0 Hbmcov Hbmlog Hist0
            Hcovb Hiregb Hj Hgl Heb Hsp0 Hal Hregs Hma0 Hn1 Hupt1.
     destruct (su_kb K HK) as (Knp & Kdl & Kre & Kwr & Kar & Kbo & Keo & Kil

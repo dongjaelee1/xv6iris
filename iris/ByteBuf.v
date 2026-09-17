@@ -298,7 +298,7 @@ Section ByteBuf.
   (* ------------------------------------------------------------------ *)
   Lemma bb_seq_shift (P : nat -> iProp Σ) (o n : nat) :
     ([∗ list] j ∈ seq o n, P j) ⊣⊢ ([∗ list] j ∈ seq 0 n, P ((o + j)%nat)).
-  Proof.
+  Proof using .
     assert (Hf : seq o n = (Nat.add o) <$> seq 0 n).
     { rewrite fmap_add_seq. by rewrite Nat.add_0_r. }
     rewrite Hf big_sepL_fmap. reflexivity.
@@ -319,7 +319,7 @@ Section ByteBuf.
     ([∗ list] j ∈ seq 0 (k + n), pa_add p j ↦ₘ{dq} f j)
     ⊣⊢ ([∗ list] j ∈ seq 0 k, pa_add p j ↦ₘ{dq} f j) ∗
        ([∗ list] j ∈ seq 0 n, pa_add (pa_add p k) j ↦ₘ{dq} f (k + j)%nat).
-  Proof.
+  Proof using .
     rewrite seq_app big_sepL_app.
     rewrite (bb_seq_shift (fun j => pa_add p j ↦ₘ{dq} f j)%I (0 + k)%nat n).
     apply bi.sep_proper; [reflexivity |].
@@ -336,7 +336,7 @@ Section ByteBuf.
     ⊣⊢ ([∗ list] j ∈ seq 0 a, pa_add p j ↦ₘ{dq} f j)
       ∗ ([∗ list] j ∈ seq 0 b, pa_add (pa_add p a) j ↦ₘ{dq} f (a + j)%nat)
       ∗ ([∗ list] j ∈ seq 0 c, pa_add (pa_add (pa_add p a) b) j ↦ₘ{dq} f (a + (b + j))%nat).
-  Proof.
+  Proof using .
     intros <-.
     replace (a + b + c)%nat with (a + (b + c))%nat by lia.
     rewrite (bb_cut p a (b + c) f dq).
@@ -350,7 +350,7 @@ Section ByteBuf.
     ([∗ list] j ∈ seq 0 (k + n), pa_add p j ↦ₘ f j)
     ⊣⊢ ([∗ list] j ∈ seq 0 k, pa_add p j ↦ₘ f j) ∗
        ([∗ list] j ∈ seq 0 n, pa_add (pa_add p k) j ↦ₘ f (k + j)%nat).
-  Proof.
+  Proof using .
     rewrite (bb_split3 p k n 0 (k + n) f (DfracOwn 1) ltac:(lia)).
     rewrite big_sepL_nil bi.sep_emp. reflexivity.
   Qed.
@@ -368,7 +368,7 @@ Section ByteBuf.
     ([∗ list] j ∈ seq 0 (k * n), pa_add p j ↦ₘ f j)
     ⊢ [∗ list] i ∈ seq 0 k,
         [∗ list] j ∈ seq 0 n, pa_add (pa_add p (i * n)) j ↦ₘ f (i * n + j)%nat.
-  Proof.
+  Proof using .
     induction k as [| k IH]; intros p f.
     - iIntros "_". done.
     - replace (S k * n)%nat with (n + k * n)%nat by lia.
@@ -412,7 +412,7 @@ Section ByteBuf.
        ⌜forall j, (j < n)%nat -> j <> d -> g j = f j⌝ -∗
        pa_add p d ↦ₘ{dq} g d -∗
        [∗ list] j ∈ seq 0 n, pa_add p j ↦ₘ{dq} g j).
-  Proof.
+  Proof using .
     intro Hd.
     assert (Hlk : seq 0 n !! d = Some d)
       by (apply lookup_seq; split; [lia | exact Hd]).
@@ -434,7 +434,7 @@ Section ByteBuf.
     (forall j, (j < n)%nat -> f j = g j) ->
     ([∗ list] j ∈ seq 0 n, pa_add p j ↦ₘ f j)
     ⊣⊢ ([∗ list] j ∈ seq 0 n, pa_add p j ↦ₘ g j).
-  Proof.
+  Proof using .
     intros Hfg. apply big_sepL_proper. intros i j Hj.
     apply lookup_seq in Hj as [-> Hlt]. rewrite Hfg; [reflexivity | lia].
   Qed.
@@ -458,7 +458,7 @@ Section ByteBuf.
     ([∗ list] j ∈ seq 0 b, pa_add (pa_add p a) j ↦ₘ g j) -∗
     ([∗ list] j ∈ seq 0 c, pa_add (pa_add (pa_add p a) b) j ↦ₘ h j) -∗
     [∗ list] j ∈ seq 0 L, pa_add p j ↦ₘ u j.
-  Proof.
+  Proof using .
     intros <- Hf Hg Hh. iIntros "HA HB HC".
     rewrite (bb_split3 p a b c (a + b + c) u (DfracOwn 1) ltac:(lia)).
     iSplitL "HA"; [| iSplitL "HB"].
@@ -476,7 +476,7 @@ Section ByteBuf.
     ([∗ list] j ∈ seq 0 b, pa_add (pa_add p a) j ↦ₘ g j) -∗
     ([∗ list] j ∈ seq 0 c, pa_add (pa_add (pa_add p a) b) j ↦ₘ h j) -∗
     ∃ u : nat -> bv 8, [∗ list] j ∈ seq 0 L, pa_add p j ↦ₘ u j.
-  Proof.
+  Proof using .
     intros <-. iIntros "HA HB HC".
     iExists (fun j => if decide (j < a)%nat then f j
                       else if decide (j < a + b)%nat then g (j - a)%nat
@@ -501,7 +501,7 @@ Section ByteBuf.
     ([∗ list] j ∈ seq 0 k, pa_add p j ↦ₘ f j) -∗
     ([∗ list] j ∈ seq 0 n, pa_add (pa_add p k) j ↦ₘ g j) -∗
     ∃ h : nat -> bv 8, [∗ list] j ∈ seq 0 (k + n), pa_add p j ↦ₘ h j.
-  Proof.
+  Proof using .
     iIntros "Hlo Hhi".
     iApply (bb_join3 p k n 0 (k + n) f g (fun _ => bv_0 8) ltac:(lia)
               with "Hlo Hhi []").
@@ -514,7 +514,7 @@ Section ByteBuf.
   Lemma bb_named_any (p : mword 64) (n : nat) (f : nat -> bv 8) :
     ([∗ list] j ∈ seq 0 n, pa_add p j ↦ₘ f j)
     ⊢ [∗ list] j ∈ seq 0 n, ∃ b : bv 8, pa_add p j ↦ₘ b.
-  Proof.
+  Proof using .
     iIntros "H". iApply (big_sepL_impl with "H").
     iIntros "!>" (i j _) "Hb". iExists (f j). iExact "Hb".
   Qed.
@@ -526,7 +526,7 @@ Section ByteBuf.
     forall (start : nat) (P : nat -> bv 8 -> iProp Σ),
       ([∗ list] k ∈ seq start n, ∃ b : bv 8, P k b)
       ⊢ ∃ f : nat -> bv 8, [∗ list] k ∈ seq start n, P k (f k).
-  Proof.
+  Proof using .
     induction n as [| n IH]; intros start P.
     - iIntros "_". iExists (fun _ => bv_0 8). done.
     - cbn [seq]. rewrite big_sepL_cons.
@@ -544,7 +544,7 @@ Section ByteBuf.
   Lemma bb_any_named (p : mword 64) (n : nat) :
     ([∗ list] j ∈ seq 0 n, ∃ b : bv 8, pa_add p j ↦ₘ b)
     ⊢ ∃ f : nat -> bv 8, [∗ list] j ∈ seq 0 n, pa_add p j ↦ₘ f j.
-  Proof. exact (bb_choose n 0 (fun k b => pa_add p k ↦ₘ b)%I). Qed.
+  Proof using . exact (bb_choose n 0 (fun k b => pa_add p k ↦ₘ b)%I). Qed.
 
 
   (* ------------------------------------------------------------------ *)
@@ -574,7 +574,7 @@ Section ByteBuf.
        ([∗ list] j ∈ seq 0 8, pa_add a j ↦ₘ f j) -∗
        ∃ w' : mword 64,
          ⌜forall j : nat, (j < 8)%nat -> nth_byte w' j = f j⌝ ∗ a ↦₈ w').
-  Proof.
+  Proof using .
     iIntros "Hw".
     iDestruct (ctx_word_pointsto_aligned_p with "Hw") as %Hal.
     iDestruct (ctx_word_pointsto_bytes with "Hw") as "$".
@@ -620,7 +620,7 @@ Section ByteBuf.
   Lemma bb_bytes_of_list (a : mword 64) (l : list (bv 8)) :
     ([∗ list] j ↦ x ∈ l, pa_add a j ↦ₘ x)
     ⊣⊢ bb_bytes a (length l) (fun j => l !!! j).
-  Proof.
+  Proof using .
     rewrite /bb_bytes.
     rewrite -{1}(bb_list_id l) big_sepL_fmap.
     apply big_sepL_proper. intros i jj Hj.
@@ -629,7 +629,7 @@ Section ByteBuf.
 
   Lemma bb_bytes_to_list (a : mword 64) (n : nat) (f : nat -> bv 8) :
     bb_bytes a n f ⊣⊢ ([∗ list] j ↦ x ∈ (f <$> seq 0 n), pa_add a j ↦ₘ x).
-  Proof.
+  Proof using .
     rewrite /bb_bytes big_sepL_fmap.
     apply big_sepL_proper. intros i jj Hj.
     apply lookup_seq in Hj as [-> _]. reflexivity.
@@ -642,7 +642,7 @@ Section ByteBuf.
     pa_add a o ↦₄ bb_mk f o ∗
     (∀ w : mword 32,
        pa_add a o ↦₄ w -∗ bb_bytes a n (bb_set f o w)).
-  Proof.
+  Proof using .
     intros Hn Hal.
     rewrite /bb_bytes (bb_split3 a o 4 r n f (DfracOwn 1) Hn).
     iIntros "(Hpre & Hmid & Hsuf)".
@@ -686,11 +686,11 @@ Section ByteBufPage.
      [page_filled_named] hands them. *)
   Lemma page_filled_named (q : mword 64) (c : bv 8) :
     page_filled q c ⊢ ∃ f : nat -> bv 8, [∗ list] j ∈ seq 0 4096, pa_add q j ↦ₘ f j.
-  Proof. rewrite /page_filled. iIntros "H". by iExists (fun _ => c). Qed.
+  Proof using . rewrite /page_filled. iIntros "H". by iExists (fun _ => c). Qed.
 
   Lemma bb_page_of_named (q : mword 64) (f : nat -> bv 8) :
     ([∗ list] j ∈ seq 0 4096, pa_add q j ↦ₘ f j) ⊢ page_own q.
-  Proof. apply page_own_of_named. Qed.
+  Proof using . apply page_own_of_named. Qed.
 End ByteBufPage.
 
 
@@ -733,7 +733,7 @@ Section CtxWordHalves.
      section and the statement is three lines. *)
   Local Lemma cbb_seq_shift (P : nat -> iProp Σ) (o n : nat) :
     ([∗ list] j ∈ seq o n, P j) ⊣⊢ ([∗ list] j ∈ seq 0 n, P ((o + j)%nat)).
-  Proof.
+  Proof using .
     assert (Hf : seq o n = (Nat.add o) <$> seq 0 n).
     { rewrite fmap_add_seq. by rewrite Nat.add_0_r. }
     rewrite Hf big_sepL_fmap. reflexivity.
@@ -744,7 +744,7 @@ Section CtxWordHalves.
     TsoCtx.ctx_word_pointsto ξ a dq w ⊢
     TsoCtx.ctx_word4_pointsto ξ a dq (word_lo w) ∗
     TsoCtx.ctx_word4_pointsto ξ (pa_add a 4) dq (word_hi w).
-  Proof.
+  Proof using .
     iIntros "[%Hal Hbs]".
     assert (Hs : seq 0 8 = (seq 0 4 ++ seq 4 4)%list) by reflexivity.
     rewrite Hs big_sepL_app.
@@ -767,7 +767,7 @@ Section CtxWordHalves.
     TsoCtx.ctx_word4_pointsto ξ a dq lo -∗
     TsoCtx.ctx_word4_pointsto ξ (pa_add a 4) dq hi -∗
     TsoCtx.ctx_word_pointsto ξ a dq (word_of_words lo hi).
-  Proof.
+  Proof using .
     iIntros (Hal) "[_ Hlo] [_ Hhi]".
     iSplit; [done|].
     assert (Hs : seq 0 8 = (seq 0 4 ++ seq 4 4)%list) by reflexivity.
@@ -792,7 +792,7 @@ Section CtxWordHalves.
        TsoCtx.ctx_pointsto ξ (pa_add p j) dq (f j))
     -∗
     ([∗ list] j ∈ seq 0 len, mem_pointsto (pa_add p j) dq (f j)).
-  Proof.
+  Proof using .
     iIntros "H". iApply (big_sepL_impl with "H").
     iIntros "!>" (k j Hj) "Hb". by iApply TsoCtx.ctx_pointsto_forget.
   Qed.

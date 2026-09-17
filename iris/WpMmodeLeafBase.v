@@ -393,7 +393,7 @@ Hypothesis Hbytes : forall j : nat, (N.of_nat j < 8)%N -> s.(mem) !! (pa_add pa 
 
 Lemma exec_vmem_read_8_gpr :
   exec (vmem_read (Regidx rs1) offset 8 (Load Data) false false false) s = Some (Ok data2, s).
-Proof.
+Proof using Halign Hbytes Hc Hcp Hdev Hh Hmatch Hmprv Hpalign Hpmm Hpmp Hread Hsig.
   unfold vmem_read. rewrite exec_catch_early_return.
   assert (Hgta : exec (get_transformed_data_addr (Regidx rs1) offset (Load Data) 8) s
                  = Some (Ext_DataAddr_OK (Virtaddr a8), s)).
@@ -448,7 +448,7 @@ Lemma exec_execute_LOAD_8_gpr :
   exec (execute (LOAD (imm, Regidx rs1, Regidx rd, false, 8))) s
     = Some (RETIRE_SUCCESS,
             set_reg s (R_bitvector_64 (gpr_of_Z (uint rd))) (regval_into_reg (extend_value false data2))).
-Proof.
+Proof using Halign Hbytes Hc Hcp Hdev Hh Hmatch Hmprv Hpalign Hpmm Hpmp Hrd Hread Hsig.
   change (execute (LOAD (imm, Regidx rs1, Regidx rd, false, 8)))
     with (execute_LOAD imm (Regidx rs1) (Regidx rd) false 8).
   unfold execute_LOAD.
@@ -768,7 +768,7 @@ Hypothesis Hdev : dev_addr pa = false.
 Lemma exec_vmem_write_addr_8 :
   exec (vmem_write_addr (Virtaddr a) 8 data (Store Data) false false false) s
     = Some (Ok true, MState s.(sregs) (write_bytes s.(mem) pa 8 data) s.(mdev)).
-Proof.
+Proof using Halign Hc Hdev Hh Hmatch Hmprv Hpalign Hpmp Hpriv Hsig Hwrite.
   set (sw := MState s.(sregs) (write_bytes s.(mem) pa 8 data) s.(mdev)).
   unfold vmem_write_addr.
   rewrite exec_catch_early_return.
@@ -932,7 +932,7 @@ Hypothesis Hdev : dev_addr pa = false.
 Lemma exec_vmem_write_8_gpr :
   exec (vmem_write (Regidx rs1) offset 8 data (Store Data) false false false) s
     = Some (Ok true, MState s.(sregs) (write_bytes s.(mem) pa 8 data) s.(mdev)).
-Proof.
+Proof using Halign Hc Hcp Hdev Hh Hmatch Hmprv Hpalign Hpmm Hpmp Hsig Hwrite.
   unfold vmem_write. rewrite exec_catch_early_return.
   assert (Hgta : exec (get_transformed_data_addr (Regidx rs1) offset (Store Data) 8) s
                  = Some (Ext_DataAddr_OK (Virtaddr a8), s)).
@@ -997,7 +997,7 @@ Hypothesis Hdev : dev_addr pa = false.
 Lemma exec_execute_STORE_8_gpr :
   exec (execute (STORE (imm, Regidx rs2, Regidx rs1, 8))) s
     = Some (RETIRE_SUCCESS, MState s.(sregs) (write_bytes s.(mem) pa 8 vrs2) s.(mdev)).
-Proof.
+Proof using Halign Hc Hcp Hdev Hh Hmatch Hmprv Hpalign Hpmm Hpmp Hsig Hwrite.
   change (execute (STORE (imm, Regidx rs2, Regidx rs1, 8)))
     with (execute_STORE imm (Regidx rs2) (Regidx rs1) 8).
   unfold execute_STORE.
@@ -1030,7 +1030,7 @@ Section MemUpdate.
     gen_heap_interp (hG:=riscv_memGS) mm -∗ ([∗ list] j ∈ l, (pa_add pa j) ↦ₚ nth_byte vold j) ==∗
     gen_heap_interp (hG:=riscv_memGS) (foldr (fun j acc => <[pa_add pa j := nth_byte vnew j]> acc) mm l)
       ∗ ([∗ list] j ∈ l, (pa_add pa j) ↦ₚ nth_byte vnew j).
-  Proof.
+  Proof using .
     iInduction l as [|x xs IH] "IH"; simpl.
     - iIntros "Hm _". iModIntro. iFrame.
     - iIntros "Hm [Ha Hrest]".
@@ -1043,7 +1043,7 @@ Section MemUpdate.
     gen_heap_interp (hG:=riscv_memGS) mm -∗ ([∗ list] j ∈ seq 0 8, (pa_add pa j) ↦ₚ nth_byte vold j) ==∗
     gen_heap_interp (hG:=riscv_memGS) (write_bytes mm pa 8 vnew)
       ∗ ([∗ list] j ∈ seq 0 8, (pa_add pa j) ↦ₚ nth_byte vnew j).
-  Proof. unfold write_bytes. change (N.to_nat 8) with 8%nat. apply upd_window. Qed.
+  Proof using . unfold write_bytes. change (N.to_nat 8) with 8%nat. apply upd_window. Qed.
 End MemUpdate.
 
 (* WpGprAuipc.v : exec_execute_UTYPE_AUIPC_gpr *)
@@ -1598,7 +1598,7 @@ Section GprFileX0.
   Lemma gpr_file_x0 (m : regfile) (i : mword 5) :
     uint i = 0 ->
     gpr_file m -∗ ⌜ m !!! Regidx i = zero_reg ⌝ ∗ gpr_file m.
-  Proof.
+  Proof using .
     iIntros (Hi) "[%Hdom Hmap]".
     iDestruct (big_sepM_lookup_acc _ _ _ _ (rf_to_gmap_lookup m (Regidx i)) with "Hmap")
       as "[Hpt Hcl]".
@@ -1952,7 +1952,7 @@ Hypothesis Hdev : dev_addr pa = false.
 Lemma exec_vmem_write_addr_8_chk :
   exec (vmem_write_addr (Virtaddr a) 8 data (Store Data) false false false) s
     = Some (Ok true, MState s.(sregs) (write_bytes s.(mem) pa 8 data) s.(mdev)).
-Proof.
+Proof using Halign Hc Hdev Hh Hmatch Hmprv Hpalign Hpmpchk Hpriv Hsig Hwrite.
   set (sw := MState s.(sregs) (write_bytes s.(mem) pa 8 data) s.(mdev)).
   unfold vmem_write_addr.
   rewrite exec_catch_early_return.
@@ -2054,7 +2054,7 @@ Hypothesis Hdev : dev_addr pa = false.
 Lemma exec_vmem_write_8_gpr_chk :
   exec (vmem_write (Regidx rs1) offset 8 data (Store Data) false false false) s
     = Some (Ok true, MState s.(sregs) (write_bytes s.(mem) pa 8 data) s.(mdev)).
-Proof.
+Proof using Halign Hc Hcp Hdev Hh Hmatch Hmprv Hpalign Hpmm Hpmpchk Hsig Hwrite.
   unfold vmem_write. rewrite exec_catch_early_return.
   assert (Hgta : exec (get_transformed_data_addr (Regidx rs1) offset (Store Data) 8) s
                  = Some (Ext_DataAddr_OK (Virtaddr a8), s)).
@@ -2100,7 +2100,7 @@ Hypothesis Hdev : dev_addr pa = false.
 Lemma exec_execute_STORE_8_gpr_chk :
   exec (execute (STORE (imm, Regidx rs2, Regidx rs1, 8))) s
     = Some (RETIRE_SUCCESS, MState s.(sregs) (write_bytes s.(mem) pa 8 vrs2) s.(mdev)).
-Proof.
+Proof using Halign Hc Hcp Hdev Hh Hmatch Hmprv Hpalign Hpmm Hpmpchk Hsig Hwrite.
   change (execute (STORE (imm, Regidx rs2, Regidx rs1, 8)))
     with (execute_STORE imm (Regidx rs2) (Regidx rs1) 8).
   unfold execute_STORE.
@@ -2246,7 +2246,7 @@ Let data2 : mword (8*1*8) :=
 Lemma exec_vmem_read_addr_8_chk :
   exec (vmem_read_addr (Virtaddr a) 8 (Load Data) false false false) s
     = Some (Ok data2, s).
-Proof.
+Proof using Halign Hbytes Hc Hdev Hh Hmatch Hmprv Hpalign Hpmpchk Hpriv Hread Hsig.
   unfold vmem_read_addr.
   rewrite exec_catch_early_return.
   rewrite Halign. cbn [Riscv.rv64d.not negb].
@@ -2327,7 +2327,7 @@ Hypothesis Hbytes : forall j : nat, (N.of_nat j < 8)%N -> s.(mem) !! (pa_add pa 
 
 Lemma exec_vmem_read_8_gpr_chk :
   exec (vmem_read (Regidx rs1) offset 8 (Load Data) false false false) s = Some (Ok data2, s).
-Proof.
+Proof using Halign Hbytes Hc Hcp Hdev Hh Hmatch Hmprv Hpalign Hpmm Hpmpchk Hread Hsig.
   unfold vmem_read. rewrite exec_catch_early_return.
   assert (Hgta : exec (get_transformed_data_addr (Regidx rs1) offset (Load Data) 8) s
                  = Some (Ext_DataAddr_OK (Virtaddr a8), s)).
@@ -2377,7 +2377,7 @@ Lemma exec_execute_LOAD_8_gpr_chk :
   exec (execute (LOAD (imm, Regidx rs1, Regidx rd, false, 8))) s
     = Some (RETIRE_SUCCESS,
             set_reg s (R_bitvector_64 (gpr_of_Z (uint rd))) (regval_into_reg (extend_value false data2))).
-Proof.
+Proof using Halign Hbytes Hc Hcp Hdev Hh Hmatch Hmprv Hpalign Hpmm Hpmpchk Hrd Hread Hsig.
   change (execute (LOAD (imm, Regidx rs1, Regidx rd, false, 8)))
     with (execute_LOAD imm (Regidx rs1) (Regidx rd) false 8).
   unfold execute_LOAD.

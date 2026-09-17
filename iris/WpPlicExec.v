@@ -222,7 +222,7 @@ Hypothesis Hwr : dev_write s'.(mdev) pa 4 wv = Some d'.
 Lemma exec_vmem_write_addr_4_S_walk_dev_pt :
   exec (vmem_write_addr (Virtaddr a) 4 dat (Store Data) false false false) s
     = Some (Ok true, MState s'.(sregs) s'.(mem) d').
-Proof.
+Proof using HA HW Halign Hc Hcp Hcps Hdev Hh Hmatch Hmprv Hmprvs Hord Hpalign Hrange Hsig Htm Htr Hwr Hwrite.
   assert (Heff : exec (effectivePrivilege (Store Data) (register_lookup mstatus s.(sregs))
                          (register_lookup cur_privilege s.(sregs))) s = Some (Supervisor, s)).
   { rewrite Hcps. apply exec_effectivePrivilege_store_S. exact Hmprvs. }
@@ -287,7 +287,7 @@ Hypothesis Hwr : dev_write s'.(mdev) pa 4 wv = Some d'.
 Lemma exec_vmem_write_4_gpr_S_walk_dev_pt :
   exec (vmem_write (Regidx rs1) offset 4 dat (Store Data) false false false) s
     = Some (Ok true, MState s'.(sregs) s'.(mem) d').
-Proof.
+Proof using HA HW Halign Hc Hcp' Hcps Hdev Hh Hmatch Hmprv' Hmprvs Hord Hpalign Hrange Hsig Htea Htm Htr Hwr Hwrite.
   unfold vmem_write. rewrite exec_catch_early_return.
   assert (Ha8ea : a8 = ea) by (unfold a8; rewrite subrange_id; apply sign_extend'_id).
   assert (Hgta : exec (get_transformed_data_addr (Regidx rs1) offset (Store Data) 4) s
@@ -354,7 +354,7 @@ Hypothesis Hwr : dev_write s'.(mdev) pa 4 wv = Some d'.
 Lemma exec_execute_STORE_4_gpr_S_walk_dev :
   exec (execute (STORE (imm, Regidx rs2, Regidx rs1, 4))) s
     = Some (RETIRE_SUCCESS, MState s'.(sregs) s'.(mem) d').
-Proof.
+Proof using HA HW Halign Hc Hcp' Hcps Hdev Hh Hmatch Hmprv' Hmprvs Hord Hpalign Hrange Hsig Htea Htm Htr Hwr Hwrite.
   change (execute (STORE (imm, Regidx rs2, Regidx rs1, 4)))
     with (execute_STORE imm (Regidx rs2) (Regidx rs1) 4).
   unfold execute_STORE.
@@ -650,7 +650,7 @@ Hypothesis Hdrd : dev_read s'.(mdev) pa 4 = Some (v, d').
 Lemma exec_vmem_read_addr_4_S_walk_dev :
   exec (vmem_read_addr (Virtaddr a) 4 (Load Data) false false false) s
     = Some (Ok v, MState s'.(sregs) s'.(mem) d').
-Proof.
+Proof using HA HR Halign Hc Hcp' Hcps Hdev Hdrd Hh Hmatch Hmprv' Hmprvs Hord Hpalign Hrange Hread Hsig Htm Htr.
   assert (Heff : exec (effectivePrivilege (Load Data) (register_lookup mstatus s.(sregs))
                          (register_lookup cur_privilege s.(sregs))) s = Some (Supervisor, s)).
   { rewrite Hcps. apply exec_effectivePrivilege_load_S. exact Hmprvs. }
@@ -706,7 +706,7 @@ Hypothesis Hdrd : dev_read s'.(mdev) pa 4 = Some (v, d').
 Lemma exec_vmem_read_4_gpr_S_walk_dev :
   exec (vmem_read (Regidx rs1) offset 4 (Load Data) false false false) s
     = Some (Ok v, MState s'.(sregs) s'.(mem) d').
-Proof.
+Proof using HA HR Halign Hc Hcp' Hcps Hdev Hdrd Hh Hmatch Hmprv' Hmprvs Hord Hpalign Hrange Hread Hsig Htea Htm Htr.
   unfold vmem_read. rewrite exec_catch_early_return.
   assert (Ha8ea : a8 = ea) by (unfold a8; rewrite subrange_id; apply sign_extend'_id).
   assert (Hgta : exec (get_transformed_data_addr (Regidx rs1) offset (Load Data) 4) s
@@ -772,7 +772,7 @@ Lemma exec_execute_LOAD_4_gpr_S_walk_dev :
   exec (execute (LOAD (imm, Regidx rs1, Regidx rd, is_unsigned, 4))) s
     = Some (RETIRE_SUCCESS,
             set_reg (MState s'.(sregs) s'.(mem) d') (R_bitvector_64 (gpr_of_Z (uint rd))) (regval_into_reg (extend_value is_unsigned v))).
-Proof.
+Proof using HA HR Halign Hc Hcp' Hcps Hdev Hdrd Hh Hmatch Hmprv' Hmprvs Hord Hpalign Hrange Hrd Hread Hsig Htea Htm Htr.
   change (execute (LOAD (imm, Regidx rs1, Regidx rd, is_unsigned, 4)))
     with (execute_LOAD imm (Regidx rs1) (Regidx rd) is_unsigned 4).
   unfold execute_LOAD.

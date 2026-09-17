@@ -269,7 +269,7 @@ Section jump.
         reg_pointsto cur_privilege dq Machine ∗
         reg_pointsto mseccfg DfracDiscarded (Values.mword_of_int 0) ∗
         reg_pointsto misa DfracDiscarded MISA_C).
-  Proof.
+  Proof using .
     rewrite /hreg_frame /hreg_frame_ro /jr_Drw /jr_Dro /cw_Drw /cw_Dro.
     repeat (rewrite big_sepS_union; last set_solver).
     rewrite !big_sepS_singleton.
@@ -285,7 +285,7 @@ Section jump.
     reg_pointsto misa DfracDiscarded MISA_C -∗
     (hreg_frame (jr_rs npc0) jr_Drw ∗
      hreg_frame_ro (jr_Df dq) (jr_rs npc0) jr_Dro : iProp Σ).
-  Proof.
+  Proof using .
     iIntros "H1 H2 H3 H4". rewrite jr_frames. iFrame.
   Qed.
 
@@ -296,12 +296,12 @@ Section jump.
      reg_pointsto cur_privilege dq Machine ∗
      reg_pointsto mseccfg DfracDiscarded (Values.mword_of_int 0) ∗
      reg_pointsto misa DfracDiscarded MISA_C).
-  Proof. rewrite jr_frames. iIntros "H". iExact "H". Qed.
+  Proof using . rewrite jr_frames. iIntros "H". iExact "H". Qed.
 
   Lemma jr_rw_ext (rs rs' : regstate) :
     reg_agree_on jr_Drw rs rs' ->
     hreg_frame rs jr_Drw -∗ (hreg_frame rs' jr_Drw : iProp Σ).
-  Proof.
+  Proof using .
     intros Hag. rewrite (hreg_frame_ext _ _ jr_Drw Hag).
     iIntros "H". iExact "H".
   Qed.
@@ -310,7 +310,7 @@ Section jump.
     reg_agree_on jr_Dro rs rs' ->
     hreg_frame_ro (jr_Df dq) rs jr_Dro -∗
     (hreg_frame_ro (jr_Df dq) rs' jr_Dro : iProp Σ).
-  Proof.
+  Proof using .
     intros Hag. rewrite (hreg_frame_ro_ext (jr_Df dq) _ _ jr_Dro Hag).
     iIntros "H". iExact "H".
   Qed.
@@ -331,7 +331,7 @@ Section jump.
                 reg_pointsto cur_privilege dq Machine ∗
                 reg_pointsto mseccfg DfracDiscarded (Values.mword_of_int 0) ∗
                 reg_pointsto misa DfracDiscarded MISA_C).
-  Proof.
+  Proof using .
     intros Halign. iIntros "#Hcert HnPC Hpriv Hsec Hmisa".
     iDestruct (jr_frames_in dq npc0 with "HnPC Hpriv Hsec Hmisa")
       as "[Hrw Hro]".
@@ -367,7 +367,7 @@ Section jump.
                 reg_pointsto cur_privilege dq Machine ∗
                 reg_pointsto mseccfg DfracDiscarded (Values.mword_of_int 0) ∗
                 reg_pointsto misa DfracDiscarded MISA_C).
-  Proof.
+  Proof using .
     iIntros "#Hcert HnPC Hpriv Hsec Hmisa".
     iDestruct (jr_frames_in dq npc0 with "HnPC Hpriv Hsec Hmisa")
       as "[Hrw Hro]".
@@ -389,7 +389,7 @@ Section jump.
   Lemma swp_wX_zero (i : SailStdpp.Values.mword 5)
       (v : SailStdpp.Values.mword 64) (P : iProp Σ) :
     uint i = 0 -> P -∗ swp (wX_bits (Regidx i) v) (fun _ => P).
-  Proof.
+  Proof using .
     intros Hz. iIntros "HP". unfold wX_bits, wX. rewrite Hz. cbn match.
     iApply swp_ret. iExact "HP".
   Qed.
@@ -423,7 +423,7 @@ Section jump.
                 reg_pointsto cur_privilege dq Machine ∗
                 reg_pointsto mseccfg DfracDiscarded (Values.mword_of_int 0) ∗
                 reg_pointsto misa DfracDiscarded MISA_C).
-  Proof.
+  Proof using .
     intros Hrdz Halign. iIntros "#Hcert Hf HnPC Hpriv Hsec Hmisa".
     unfold execute_JALR. cbn match.
     (* [m >> n >>= f] parses as [(m >> n) >>= f], so the elp gate and the link
@@ -484,7 +484,7 @@ Section jump.
                 reg_pointsto cur_privilege dq Machine ∗
                 reg_pointsto mseccfg DfracDiscarded (Values.mword_of_int 0) ∗
                 reg_pointsto misa DfracDiscarded MISA_C).
-  Proof.
+  Proof using .
     intros Hrdz. iIntros "#Hcert Hf HnPC Hpriv Hsec Hmisa".
     iApply (swp_mono with "[] [-]");
       [| iApply (swp_execute_JALR_ret_zca dq (zeros' 12) ra rdz m npc0 Hrdz
@@ -520,7 +520,7 @@ Section jump.
                 reg_pointsto cur_privilege dq Machine ∗
                 reg_pointsto mseccfg DfracDiscarded (Values.mword_of_int 0) ∗
                 reg_pointsto misa DfracDiscarded MISA_C).
-  Proof.
+  Proof using .
     intros Hrd Halign. iIntros "#Hcert Hf HPC HnPC Hpriv Hsec Hmisa".
     unfold execute_JAL. cbn match.
     (* 1. the link address *)
@@ -571,7 +571,7 @@ Section jump.
                 reg_pointsto cur_privilege dq Machine ∗
                 reg_pointsto mseccfg DfracDiscarded (Values.mword_of_int 0) ∗
                 reg_pointsto misa DfracDiscarded MISA_C).
-  Proof.
+  Proof using .
     intros Hrdz Halign. iIntros "#Hcert Hf HPC HnPC Hpriv Hsec Hmisa".
     unfold execute_JAL. cbn match.
     iApply (swp_bind_use (get_next_pc tt) _

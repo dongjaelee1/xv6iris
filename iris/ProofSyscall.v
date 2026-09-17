@@ -671,7 +671,7 @@ Section SyscallVocab.
      the right ones anyway: the instance is only ever looked up after [End]
      discharges them. *)
   Global Instance sysc_fs_env_persistent pj fn : Persistent (sysc_fs_env pj fn).
-  Proof. rewrite /sysc_fs_env. apply _. Qed.
+  Proof using . rewrite /sysc_fs_env. apply _. Qed.
 
   (* [sysc_fclose_ties] IS GONE with [SpecFileclose.fclose_ties] (rank 1d):
      that record's eight equations said a [fclose_names]' device/allocator
@@ -713,7 +713,7 @@ Section SyscallVocab.
      InodeRegion.ireg_inv fsc_ireg fsc_fs icfg_ist icfg_nib ∗
      ireg_open ∗
      IcacheEscrow.ic_sleeplocks fsc_ic)%I.
-  Proof.
+  Proof using .
     (* the three rows between the ties and [fs_ready] -- [procs_inv] and the
        two disk rows -- are nothing this bundle is about. *)
     iIntros "(%T & _ & _ & _ & _ & #Hrdy)".
@@ -768,7 +768,7 @@ Section SyscallVocab.
      free; none of them could have been stated at [fn]'s fields at all. *)
   Lemma sysc_fs_env_ties (pj : mword 64) (fn : fclose_names) :
     sysc_fs_env pj fn -∗ ⌜sysc_proc_ties pj fn⌝.
-  Proof. rewrite /sysc_fs_env. by iIntros "($ & _)". Qed.
+  Proof using . rewrite /sysc_fs_env. by iIntros "($ & _)". Qed.
 
   Lemma sysc_fs_env_all
       (pj : mword 64) (fn : fclose_names) :
@@ -810,7 +810,7 @@ Section SyscallVocab.
        [printk_env] to a callee that takes ONE uart parameter for both
        (every create-family entry does). *)
     printk_env fsc_printk (fsc_uart) (fsc_disk).
-  Proof.
+  Proof using .
     (* [Hgeom]/[Hdlock] come out of the BUNDLE now, at [fn]'s own three ring
        pages, and [fs_ready]'s own disk conjunct -- which quantifies them
        (R1) -- is dropped ([_] at slot 10 below). *)
@@ -971,7 +971,7 @@ Section SyscallVocab.
     fcn_procs fn !! fcn_j fn = Some (fcn_plock fn) ->
     fcn_dq fn = DfracOwn (1/4) ->
     sysc_proc_ties (proc_addr (fcn_j fn)) fn.
-  Proof.
+  Proof using .
     intros Hj Hplock Hdq.
     (* [sct_pj] is [reflexivity] because the index was READ OFF [fn];
        everything else is one of the three hypotheses. *)
@@ -992,7 +992,7 @@ Section SyscallVocab.
     park_world (fcn_procs fn) -∗
     park_token (fcn_procs fn) -∗
     syscall_env γf (proc_addr (fcn_j fn)) fn.
-  Proof.
+  Proof using .
     iIntros (Hj Hplock Hdq) "#Hextra #Hwl #Hft #Hprocs #Hdg #Hpr #Hdone #Hworld #Htok".
     iDestruct "Hextra" as "(#Hnextpid & #Hpav & #Htick & #Hcons)".
     iDestruct "Hdone" as "(#Hcell & #Hrdy & #Habs)".
@@ -1040,7 +1040,7 @@ Section SyscallVocab.
   Lemma syscall_env_console (γf : gname) (pj : mword 64)
  (fn : fclose_names) :
     syscall_env γf pj fn -∗ SpecFileread.console_ready_app.
-  Proof. by iIntros "(_ & $ & _)". Qed.
+  Proof using . by iIntros "(_ & $ & _)". Qed.
 
   (* ...and the fork row, on its own for the same reason the console is:
      ONE arm wants it, and adding it to [syscall_env_all]'s output would
@@ -1048,17 +1048,17 @@ Section SyscallVocab.
   Lemma syscall_env_first (γf : gname) (pj : mword 64)
  (fn : fclose_names) :
     syscall_env γf pj fn -∗ FirstTok.first_done.
-  Proof. by iIntros "(_ & _ & _ & $ & _)". Qed.
+  Proof using . by iIntros "(_ & _ & _ & $ & _)". Qed.
 
   Lemma syscall_env_world (γf : gname) (pj : mword 64)
  (fn : fclose_names) :
     syscall_env γf pj fn -∗ park_world (fcn_procs fn).
-  Proof. by iIntros "(_ & _ & _ & _ & $ & _)". Qed.
+  Proof using . by iIntros "(_ & _ & _ & _ & $ & _)". Qed.
 
   Lemma syscall_env_token (γf : gname) (pj : mword 64)
  (fn : fclose_names) :
     syscall_env γf pj fn -∗ park_token (fcn_procs fn).
-  Proof. by iIntros "(_ & _ & _ & _ & _ & $)". Qed.
+  Proof using . by iIntros "(_ & _ & _ & _ & _ & $)". Qed.
 
   (* ...and the `.data` SNAPSHOT OF `uarts[0].base`, off that same world.
      Since 163d39b the console driver LOADS its MMIO base out of
@@ -1078,7 +1078,7 @@ Section SyscallVocab.
   Lemma syscall_env_uart_base0 (γf : gname) (pj : mword 64)
  (fn : fclose_names) :
     syscall_env γf pj fn -∗ SpecUartPutc.uart_base_word Uart0.
-  Proof.
+  Proof using .
     iIntros "Henv".
     iDestruct (syscall_env_world with "Henv") as (γtl pd pav pu) "(_ & #Hcc & _)".
     iDestruct "Hcc" as (γtx γc cn) "(_ & _ & _ & _ & _ & #Hwords)".
@@ -1097,7 +1097,7 @@ Section SyscallVocab.
   Lemma syscall_env_txlock (γf : gname) (pj : mword 64)
  (fn : fclose_names) :
     syscall_env γf pj fn -∗ ∃ γtx : gname, is_txlock γtx (fsc_uart).
-  Proof.
+  Proof using .
     iIntros "Henv".
     iDestruct (syscall_env_world with "Henv") as (γtl pd pav pu) "(_ & #Hcc & _)".
     iDestruct "Hcc" as (γtx γc cn) "(#Htx & _)".
@@ -1114,7 +1114,7 @@ Section SyscallVocab.
      moves. *)
   Lemma syscall_env_fsabs (γf : gname) (pj : mword 64) (fn : fclose_names) :
     syscall_env γf pj fn -∗ FirstTok.fsabs_env.
-  Proof.
+  Proof using .
     rewrite /syscall_env. iIntros "(_ & _ & _ & Hdone & _ & _)".
     iApply (FirstTok.first_done_fsabs with "Hdone").
   Qed.
@@ -1124,7 +1124,7 @@ Section SyscallVocab.
      bundle goes back whole *)
   Lemma syscall_env_fsabs_keep (γf : gname) (pj : mword 64) (fn : fclose_names) :
     syscall_env γf pj fn -∗ FirstTok.fsabs_env ∗ syscall_env γf pj fn.
-  Proof.
+  Proof using .
     rewrite /syscall_env. iIntros "(H1 & H2 & H3 & #Hdone & H5 & H6)".
     iSplitR; [iApply (FirstTok.first_done_fsabs with "Hdone") |].
     iSplitL "H1"; [iExact "H1" |]. iSplitL "H2"; [iExact "H2" |].
@@ -1150,7 +1150,7 @@ Section SyscallVocab.
       is_tickslock γtk ∗
       printk_env fsc_printk fsc_uart fsc_disk ∗
       sysc_fs_env pj fn.
-  Proof.
+  Proof using .
     iIntros "(#Hproc & _ & #Hfs & _)".
     iDestruct "Hproc" as (γp γw γft γtk)
       "(#Hnextpid & #Hpav & #Hwaitlk & #Hftable & #Htick)".
@@ -1189,7 +1189,7 @@ Section SyscallVocab.
       (fcn_pd fn) (fcn_pav fn) (fcn_pu fn)
 
 .
-  Proof.
+  Proof using .
     iIntros "#Hdata #Hprocs #Henv".
     iDestruct "Henv" as "(_ & _ & #Hfs & _)".
     iDestruct "Hfs" as "(_ & _ & #Hgeom & #Hdlock & #Hpr & #Hrdy)".
@@ -1223,7 +1223,7 @@ Section SyscallVocab.
     InodeInv.sb_inodestart ↦₄□ (mword_of_int icfg_ist : mword 32) ∗
     bitmap_inv fsc_fs (fsc_bmapstart) fsc_cov fsc_logst
                (fsc_size).
-  Proof.
+  Proof using .
     iIntros "#Hfs".
     iDestruct "Hfs" as "(_ & _ & _ & _ & _ & #Hrdy)".
     iDestruct (FsReady.fs_ready_sb_four with "Hrdy") as "(_ & #Hisp & _ & #Hbmp)".
@@ -1244,26 +1244,26 @@ Section SyscallVocab.
     fn = MkFCloseNames (fcn_procs fn) (fcn_j fn) (fcn_plock fn)
            (fcn_pd fn) (fcn_pav fn) (fcn_pu fn)
            pid (DfracOwn (1/4)).
-  Proof. intros <- <-. destruct fn; reflexivity. Qed.
+  Proof using . intros <- <-. destruct fn; reflexivity. Qed.
 
   (* the dispatch carries [IREFSPARE] = 4 units of the inode-reference
      allowance; kexec's walk wants 2 and gives them back. *)
   Lemma sysc_iref_split : iref_slots IREFSPARE -∗ iref_slots 2 ∗ iref_slots 2.
-  Proof. rewrite /IREFSPARE. iIntros "H". iApply (iref_slots_split 2 2 with "H"). Qed.
+  Proof using . rewrite /IREFSPARE. iIntros "H". iApply (iref_slots_split 2 2 with "H"). Qed.
 
   (* ...and the 3/1 split sys_link's walk wants (it holds [ip] and [dp] at
      once, plus one in flight). *)
   Lemma sysc_iref_split3 : iref_slots IREFSPARE -∗ iref_slots 3 ∗ iref_slots 1.
-  Proof. rewrite /IREFSPARE. iIntros "H". iApply (iref_slots_split 3 1 with "H"). Qed.
+  Proof using . rewrite /IREFSPARE. iIntros "H". iApply (iref_slots_split 3 1 with "H"). Qed.
 
   Lemma sysc_iref_join3 : iref_slots 3 -∗ iref_slots 1 -∗ iref_slots IREFSPARE.
-  Proof.
+  Proof using .
     rewrite /IREFSPARE. iIntros "H1 H2".
     iApply (iref_slots_combine 3 1 with "H1 H2").
   Qed.
 
   Lemma sysc_iref_join : iref_slots 2 -∗ iref_slots 2 -∗ iref_slots IREFSPARE.
-  Proof.
+  Proof using .
     rewrite /IREFSPARE. iIntros "H1 H2".
     iApply (iref_slots_combine 2 2 with "H1 H2").
   Qed.
@@ -1272,10 +1272,10 @@ Section SyscallVocab.
      are [emp] at [eb = true], so an arm mints them rather than threading
      them (IntrDefs.v's own [trap_csrs_ext]/[cpu_claim_ext]). *)
   Lemma sysc_trap_ext_true : ⊢ trap_csrs_ext KT1 true.
-  Proof. rewrite /trap_csrs_ext. done. Qed.
+  Proof using . rewrite /trap_csrs_ext. done. Qed.
 
   Lemma sysc_claim_ext_true (p : mword 64) : ⊢ cpu_claim_ext true p.
-  Proof. rewrite /cpu_claim_ext. done. Qed.
+  Proof using . rewrite /cpu_claim_ext. done. Qed.
 
   (* ===================================================================== *)
   (* THE DISPATCH TABLE.  syscalls[k], k = 1..22, straight out of KernelSyms
@@ -1315,7 +1315,7 @@ Section SyscallVocab.
     forall j, (j < 8)%nat ->
       KernelData.kernel_data !! (KernelSyms.syscalls + 8 * Z.of_nat k + Z.of_nat j)%Z
         = Some (nth_byte (mword_of_int (sysc_target k) : mword 64) j).
-  Proof.
+  Proof using .
     intros Hk j Hj.
     destruct k as [|[|[|[|[|[|[|[|[|[|[|[|[|[|[|[|[|[|[|[|[|[|[|k']]]]]]]]]]]]]]]]]]]]]]]; try lia;
       (destruct j as [|[|[|[|[|[|[|[|j']]]]]]]]; try lia;
@@ -1326,7 +1326,7 @@ Section SyscallVocab.
     kernel_data -∗
     (mword_of_int (KernelSyms.syscalls + 8 * Z.of_nat k) : mword 64)
       ↦₈□ (mword_of_int (sysc_target k) : mword 64).
-  Proof.
+  Proof using .
     intro Hk.
     assert (Hle : text_end <= KernelSyms.syscalls + 8 * Z.of_nat k)
       by (unfold text_end, KernelSyms.syscalls; lia).
@@ -1345,7 +1345,7 @@ Section SyscallVocab.
   (* every table entry is nonzero *)
   Lemma sysc_target_nz (k : nat) : (1 <= k <= 22)%nat ->
     (mword_of_int (sysc_target k) : mword 64) <> zero_reg.
-  Proof.
+  Proof using .
     intro Hk.
     destruct k as [|[|[|[|[|[|[|[|[|[|[|[|[|[|[|[|[|[|[|[|[|[|[|k']]]]]]]]]]]]]]]]]]]]]]]; try lia;
       (intro Hc; apply (f_equal (@bv_unsigned _)) in Hc; vm_compute in Hc; discriminate).
@@ -1362,7 +1362,7 @@ Section SyscallVocab.
      ([bv_signed w := bv_swrap n (bv_unsigned w)]) plus [bv_swrap_wrap]. *)
   Local Lemma sysc_subrange31_0_unsigned (Y : mword 64) :
     bv_unsigned (subrange_vec_dec Y 31 0 : mword 32) = bv_wrap 32 (bv_unsigned Y).
-  Proof.
+  Proof using .
     unfold subrange_vec_dec. rewrite autocast_id.
     unfold to_word_idx. rewrite MachineWord.MachineWord.cast_idx_refl.
     unfold get_word, MachineWord.MachineWord.slice, Values.to_word.
@@ -1375,7 +1375,7 @@ Section SyscallVocab.
 
   Local Lemma sysc_subrange31_0_signed (Y : mword 64) :
     bv_signed (subrange_vec_dec Y 31 0 : mword 32) = bv_swrap 32 (bv_unsigned Y).
-  Proof.
+  Proof using .
     unfold bv_signed. rewrite sysc_subrange31_0_unsigned. apply bv_swrap_wrap.
   Qed.
 
@@ -1386,7 +1386,7 @@ Section SyscallVocab.
     bv_signed (subrange_vec_dec (add_vec num (sign_extend' 64 (sign_extend' 12
                  (mword_of_int 63 : mword 6)))) 31 0 : mword 32)
     = bv_swrap 32 (bv_wrap 64 (bv_unsigned num + 18446744073709551615)).
-  Proof.
+  Proof using .
     rewrite sysc_subrange31_0_signed bv_add_unsigned.
     assert (HC : bv_unsigned (sign_extend' 64 (sign_extend' 12
                    (mword_of_int 63 : mword 6)) : mword 64) = 18446744073709551615)
@@ -1400,7 +1400,7 @@ Section SyscallVocab.
      value is the identity. *)
   Local Lemma sysc_unsigned_of_signed (num : mword 64) :
     bv_unsigned num = bv_wrap 64 (bv_signed num).
-  Proof.
+  Proof using .
     unfold bv_signed. rewrite bv_wrap_swrap.
     symmetry. apply bv_wrap_bv_unsigned.
   Qed.
@@ -1412,7 +1412,7 @@ Section SyscallVocab.
      which the inner 64-wrap does not disturb ([bv_wrap_bv_wrap]). *)
   Local Lemma sysc_mod32_wrap64_add (W Ceff : Z) :
     (bv_wrap 64 W + Ceff) mod (bv_modulus 32) = (W + Ceff) mod (bv_modulus 32).
-  Proof.
+  Proof using .
     rewrite (Zplus_mod (bv_wrap 64 W) Ceff) (Zplus_mod W Ceff).
     change (bv_wrap 64 W mod bv_modulus 32) with (bv_wrap 32 (bv_wrap 64 W)).
     change (W mod bv_modulus 32) with (bv_wrap 32 W).
@@ -1425,14 +1425,14 @@ Section SyscallVocab.
      [sysc_swrap32_wrap64_add] can peel the INNER wrap. *)
   Local Lemma sysc_swrap32_wrap64 (W : Z) :
     bv_swrap 32 (bv_wrap 64 W) = bv_swrap 32 W.
-  Proof.
+  Proof using .
     unfold bv_swrap. f_equal.
     exact (sysc_mod32_wrap64_add W (bv_half_modulus 32)).
   Qed.
 
   Local Lemma sysc_swrap32_wrap64_add (W C : Z) :
     bv_swrap 32 (bv_wrap 64 W + C) = bv_swrap 32 (W + C).
-  Proof.
+  Proof using .
     unfold bv_swrap.
     replace (bv_wrap 64 W + C + bv_half_modulus 32)%Z
       with (bv_wrap 64 W + (C + bv_half_modulus 32))%Z by ring.
@@ -1447,7 +1447,7 @@ Section SyscallVocab.
      [bv_swrap 32 _] -- the [bv_swrap] analogue of [bv_wrap_add_modulus]. *)
   Local Lemma sysc_swrap32_add_modulus (c z : Z) :
     bv_swrap 32 (z + c * bv_modulus 32) = bv_swrap 32 z.
-  Proof.
+  Proof using .
     unfold bv_swrap.
     replace (z + c * bv_modulus 32 + bv_half_modulus 32)%Z
       with (z + bv_half_modulus 32 + c * bv_modulus 32)%Z by ring.
@@ -1461,7 +1461,7 @@ Section SyscallVocab.
     bv_signed (subrange_vec_dec (add_vec num (sign_extend' 64 (sign_extend' 12
                  (mword_of_int 63 : mword 6)))) 31 0 : mword 32)
     = bv_swrap 32 (bv_signed num - 1).
-  Proof.
+  Proof using .
     rewrite sysc_addiw_signed (sysc_unsigned_of_signed num) sysc_swrap32_wrap64
             sysc_swrap32_wrap64_add.
     replace (bv_signed num + 18446744073709551615)%Z
@@ -1474,14 +1474,14 @@ Section SyscallVocab.
      variable name. *)
   Local Lemma sysc_sext_uint (w : mword 32) :
     uint (sign_extend' 64 w : mword 64) = bv_wrap 64 (bv_signed w).
-  Proof. rewrite uint_unsigned sext32_64_moi. apply moi64_unsigned. Qed.
+  Proof using . rewrite uint_unsigned sext32_64_moi. apply moi64_unsigned. Qed.
 
   Lemma sysc_bltu_fall (num : mword 64) :
     (1 <= bv_signed num <= 22)%Z ->
     zopz0zI_u (mword_of_int 21 : mword 64)
       (sign_extend' 64 (subrange_vec_dec (add_vec num (sign_extend' 64 (sign_extend' 12
          (mword_of_int 63 : mword 6)))) 31 0)) = false.
-  Proof.
+  Proof using .
     intro Hr. unfold zopz0zI_u. apply Z.ltb_ge.
     rewrite (sysc_sext_uint (subrange_vec_dec (add_vec num (sign_extend' 64 (sign_extend' 12
       (mword_of_int 63 : mword 6)))) 31 0)).
@@ -1500,7 +1500,7 @@ Section SyscallVocab.
     zopz0zI_u (mword_of_int 21 : mword 64)
       (sign_extend' 64 (subrange_vec_dec (add_vec num (sign_extend' 64 (sign_extend' 12
          (mword_of_int 63 : mword 6)))) 31 0)) = true.
-  Proof.
+  Proof using .
     intros Hr Hrange. unfold zopz0zI_u. apply Z.ltb_lt.
     rewrite (sysc_sext_uint (subrange_vec_dec (add_vec num (sign_extend' 64 (sign_extend' 12
       (mword_of_int 63 : mword 6)))) 31 0)).
@@ -1552,12 +1552,12 @@ Section SyscallVocab.
   Local Lemma sysc_wrap32_add_indep (x y C : Z) :
     bv_wrap 32 x = bv_wrap 32 y ->
     bv_wrap 32 (x + C) = bv_wrap 32 (y + C).
-  Proof. intro Heq. unfold bv_wrap in *. rewrite (Zplus_mod x C) (Zplus_mod y C) Heq. reflexivity. Qed.
+  Proof using . intro Heq. unfold bv_wrap in *. rewrite (Zplus_mod x C) (Zplus_mod y C) Heq. reflexivity. Qed.
 
   Lemma sysc_a3_bltu_bridge (RAWNUM C : mword 64) :
     subrange_vec_dec (add_vec (sign_extend' 64 (subrange_vec_dec RAWNUM 31 0 : mword 32)) C) 31 0
     = subrange_vec_dec (add_vec RAWNUM C) 31 0.
-  Proof.
+  Proof using .
     apply bv_eq.
     rewrite (sysc_subrange31_0_unsigned (add_vec (sign_extend' 64 (subrange_vec_dec RAWNUM 31 0 : mword 32)) C))
             (sysc_subrange31_0_unsigned (add_vec RAWNUM C))
@@ -1575,7 +1575,7 @@ Section SyscallVocab.
   Lemma sysc_a3_val (a3num : mword 64) :
     (1 <= bv_signed a3num <= 22)%Z ->
     a3num = mword_of_int (bv_signed a3num).
-  Proof. intro Hr. apply bv_eq. rewrite moi64_unsigned. apply sysc_unsigned_of_signed. Qed.
+  Proof using . intro Hr. apply bv_eq. rewrite moi64_unsigned. apply sysc_unsigned_of_signed. Qed.
 
   (* NOTE: a helper bounding a3's signed value into 32-bit range (needed
      to apply [sysc_bltu_taken] on the out-of-range dispatch path) was
@@ -1597,7 +1597,7 @@ Section SyscallVocab.
       (shift_bits_left (mword_of_int (Z.of_nat k) : mword 64)
          (subrange_vec_dec (mword_of_int 3 : mword 6) (Z.sub log2_xlen 1) 0))
     = mword_of_int (KernelSyms.syscalls + 8 * Z.of_nat k).
-  Proof.
+  Proof using .
     intro Hk.
     destruct k as [|[|[|[|[|[|[|[|[|[|[|[|[|[|[|[|[|[|[|[|[|[|[|k']]]]]]]]]]]]]]]]]]]]]]]; try lia;
       apply bv_eq; vm_compute; reflexivity.
@@ -1608,7 +1608,7 @@ Section SyscallVocab.
      re-derived here rather than imported). *)
   Lemma sysc_tfp_valid (γf : gname) (pa : mword 64) (pid : mword 32) (U : ustate) :
     proc_priv γf pa pid U -∗ ⌜page_valid (page_base (ud_tfp (pv_upt (us_V U))))⌝.
-  Proof.
+  Proof using .
     iIntros "[(_ & _ & _ & _ & Hpt & _) _]".
     rewrite /proc_ptm_at. iDestruct "Hpt" as "(_ & _ & Hptt)".
     iDestruct (proc_ptm_wf with "Hptt") as "%Hwf".
@@ -1695,7 +1695,7 @@ Section SyscallVocab.
     ch_frag (pv_chg (us_V U)) pj cs -∗
     is_lock γw wait_lock_addr "wait_lock"%string (wait_res_at) -∗
     sysc_arm_pre γf γw pj γs fn dqi ip pid U sts cs lks av M tgt.
-  Proof.
+  Proof using .
     iIntros "Hpc Hcg Hcpu Htext Hprocs HR Hbs Hip Hfd Hir Hpriv Hufrag Hrow #Hwl".
     rewrite /sysc_arm_pre.
     iSplitL "Hpc"; [iExact "Hpc" |].
@@ -1877,7 +1877,7 @@ Section SyscallVocab.
     (true = false \/ pj = zero_reg -> (CID1 : CPU) = (CID0 : CPU)) ->
     sysc_exit_ty (CIDh := CID0) γf pj fn dqi ip pid U sts gn cs lks av m ret_tgt f -∗
     sysc_exit_ty (CIDh := CID1) γf pj fn dqi ip pid U sts gn cs lks av m ret_tgt f.
-  Proof.
+  Proof using .
     intro Hcr. iIntros "H". rewrite /sysc_exit_ty. iSplit.
     - iDestruct "H" as "[H _]".
       iApply (wp_next_retarget CID0 CID1 true pj _ Hcr with "H").
@@ -1891,7 +1891,7 @@ Section SyscallVocab.
   Lemma sysc_stk (sp0 : mword 64) (j u : nat) :
     (j + u = 4)%nat -> (u < 4)%nat ->
     pa_stk sp0 j = add_vec (pa_stk sp0 4) (zero_extend' 64 (concat_vec (mword_of_int (Z.of_nat u) : mword 6) ('b"000"))).
-  Proof.
+  Proof using .
     intros Hju Hu.
     destruct u as [|[|[|[|]]]]; try lia; destruct j as [|[|[|[|[|]]]]]; try lia;
       unfold pa_stk, add_vec_int; rewrite add_vec_off2;
@@ -2115,7 +2115,7 @@ Section SyscallVocab.
     sysc_sys_out U sts gn cs pid f (pv_tf (us_V U') !!! tf_arg_idx 0)
       (us_M U') sts' (pv_cwi (us_V U')) cs' -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HEsp Hrest Hav4 Hmem Hfdrow Hpiperow Ha0 Hupte Hszv Hlzv Hud Hfg Hcwi Hsbr Hfk Hchrow Hne2 Hchg Hgeng Hpidrow.
     set (sp0 := m !!! Regidx csp_rs1).
     iIntros "Hcg Hcpu #Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir HR Hpriv Hufrag Hrow Hpc Hcont Hfo Hwo Hxo Hso".
@@ -2308,7 +2308,7 @@ Section SyscallVocab.
      destruct. *)
   Lemma sysc_target_ret_pc (k : nat) : (1 <= k <= 22)%nat ->
     ret_pc (mword_of_int (sysc_target k) : mword 64) = mword_of_int (sysc_target k).
-  Proof.
+  Proof using .
     intro Hk.
     destruct k as [|[|[|[|[|[|[|[|[|[|[|[|[|[|[|[|[|[|[|[|[|[|[|k']]]]]]]]]]]]]]]]]]]]]]]; try lia;
       apply bv_eq; vm_compute; reflexivity.
@@ -2322,7 +2322,7 @@ Section SyscallVocab.
   Lemma sysc_tf_addr_112 (tfp : mword 44) :
     add_vec (page_base tfp) (sign_extend' 64 (mword_of_int 112 : mword 12))
     = tf_pa tfp (8 * Z.of_nat (tf_arg_idx 0)).
-  Proof.
+  Proof using .
     assert (Hse : (sign_extend' 64 (mword_of_int 112 : mword 12) : mword 64)
                   = (mword_of_int 112 : mword 64)) by (apply bv_eq; vm_compute; reflexivity).
     rewrite Hse.
@@ -2335,7 +2335,7 @@ Section SyscallVocab.
 
   Lemma sysc_fmt_str :
     (kernel_data : iProp Σ) -∗ (mword_of_int sysc_fmt_a : mword 64) ↦ₛ□ sysc_fmt.
-  Proof.
+  Proof using .
     iIntros "#Hd".
     iApply (kernel_data_string sysc_fmt_a sysc_fmt _ eq_refl
               ltac:(unfold text_end, sysc_fmt_a; lia)
@@ -2348,7 +2348,7 @@ Section SyscallVocab.
      [kfk_name_addr], re-derived here rather than importing a proof file. *)
   Lemma sysc_name_addr (pa : mword 64) (i : nat) :
     pa_add (p_name pa 0) i = p_name pa i.
-  Proof.
+  Proof using .
     unfold pa_add, p_name.
     change (add_vec pa (mword_of_int (344 + Z.of_nat 0))) with (add_vec_int pa 344).
     rewrite avi_assoc. reflexivity.
@@ -2362,7 +2362,7 @@ Section SyscallVocab.
     pname_bytes pa dq (List.app (cstring_bytes nm) pad) ⊣⊢
     (p_name pa 0 ↦ₛ{dq} nm ∗
      [∗ list] i ↦ b ∈ pad, p_name pa (length (cstring_bytes nm) + i) ↦ₘ{dq} b).
-  Proof.
+  Proof using .
     rewrite /pname_bytes big_sepL_app /string_pointsto.
     apply bi.sep_proper; [| reflexivity].
     apply big_sepL_proper. intros k x Hk. by rewrite sysc_name_addr.
@@ -2373,7 +2373,7 @@ Section SyscallVocab.
   Lemma sysc_name_unsigned (i : nat) : (i < NPROC)%nat ->
     bv_unsigned (p_name (proc_addr i) 0)
     = KernelSyms.proc + proc_size * Z.of_nat i + 344.
-  Proof.
+  Proof using .
     intro Hi. assert (Hi' := Hi). unfold NPROC in Hi'.
     unfold p_name.
     rewrite add_vec64_unsigned (proc_addr_unsigned i Hi) moi64_unsigned.
@@ -2384,7 +2384,7 @@ Section SyscallVocab.
 
   Lemma sysc_name_nonzero (i : nat) : (i < NPROC)%nat ->
     eq_vec (p_name (proc_addr i) 0) (zero_reg : mword 64) = false.
-  Proof.
+  Proof using .
     intro Hi. apply eq_vec_false_iff. intro Hc.
     assert (Hz : bv_unsigned (p_name (proc_addr i) 0) = 0)
       by (rewrite Hc; vm_compute; reflexivity).
@@ -2396,14 +2396,14 @@ Section SyscallVocab.
      hands the sixteen bytes straight back gets [V] itself, not
      [upd_name V (pv_name V)]. *)
   Lemma sysc_upd_name_id (V : pprivate) : upd_name V (pv_name V) = V.
-  Proof. by destruct V. Qed.
+  Proof using . by destruct V. Qed.
 
   Lemma sysc_priv_name (γf : gname) (pa : mword 64) (pid : mword 32) (U : ustate) :
     proc_priv γf pa pid U -∗
     ⌜length (pv_name (us_V U)) = PNAMELEN⌝ ∗
     pname_cells pa (DfracOwn 1) (pv_name (us_V U)) ∗
     (pname_cells pa (DfracOwn 1) (pv_name (us_V U)) -∗ proc_priv γf pa pid U).
-  Proof.
+  Proof using .
     iIntros "Hp".
     iDestruct (proc_priv_name with "Hp") as "(%Hl & Hnm & Hb)".
     iSplitR; [iPureIntro; exact Hl|].
@@ -2422,7 +2422,7 @@ Section SyscallVocab.
     PrintkFmt.nonul nm = true -> eq_vec nmp (zero_reg : mword 64) = false ->
     nmp ↦ₛ{dqn} nm -∗
     ([∗ list] i ↦ d ∈ [PkANum; PkAStr dqn nm; PkANum], pk_desc_res (pk_vararg M i) d).
-  Proof.
+  Proof using .
     intros H1 Hnm Hnz. iIntros "Hn".
     rewrite !big_sepL_cons big_sepL_nil H1.
     iSplitR. { unfold pk_desc_res; cbn match. done. }
@@ -2437,7 +2437,7 @@ Section SyscallVocab.
     pk_vararg M 1%nat = nmp ->
     ([∗ list] i ↦ d ∈ [PkANum; PkAStr dqn nm; PkANum], pk_desc_res (pk_vararg M i) d) -∗
     nmp ↦ₛ{dqn} nm.
-  Proof.
+  Proof using .
     intros H1. iIntros "H".
     rewrite !big_sepL_cons big_sepL_nil H1.
     unfold pk_desc_res; cbn match.
@@ -2452,13 +2452,13 @@ Section SyscallVocab.
      [bslot], because ilock's bread takes it and brelse gives it back) take
      it out of the three and put it back. *)
   Lemma sysc_bslot_split : bslots 3 -∗ bslot ∗ bslots 2.
-  Proof.
+  Proof using .
     assert (H3 : 3%nat = (1 + 2)%nat) by lia.
     rewrite /bslot H3 bslots_op. iIntros "$".
   Qed.
 
   Lemma sysc_bslot_join : bslot -∗ bslots 2 -∗ bslots 3.
-  Proof.
+  Proof using .
     assert (H3 : 3%nat = (1 + 2)%nat) by lia.
     rewrite /bslot H3 bslots_op. iIntros "H1 H2". iFrame "H1 H2".
   Qed.
@@ -2512,7 +2512,7 @@ Section SyscallVocab.
     sysc_fs_env pj fn -∗ bslot -∗
     SpecFileread.fileread_fs_env γf (sysc_fread_names γcon fn) ∗
     (SpecFileread.fileread_fs_out (sysc_fread_names γcon fn) -∗ bslot).
-  Proof.
+  Proof using .
     iIntros "#Hfs Hsl".
     iDestruct (sysc_fs_env_all with "Hfs") as
       "(_ & _ & _ & _ & _ & _ & %Hlg & _ & _ & #Hbio & _ & _ & _ & #Hdevi &
@@ -2555,7 +2555,7 @@ Section SyscallVocab.
     sysc_fs_env pj fn -∗ bslot -∗
     SpecFilestat.filestat_fs_env (sysc_fstat_names fn) ∗
     (SpecFilestat.filestat_fs_out (sysc_fstat_names fn) -∗ bslot).
-  Proof.
+  Proof using .
     iIntros "#Hfs Hsl".
     iDestruct (sysc_fs_env_all with "Hfs") as
       "(_ & _ & _ & _ & _ & _ & %Hlg & _ & _ & #Hbio & _ & _ & _ & #Hdevi &
@@ -2611,7 +2611,7 @@ Section SyscallVocab.
      pairing). *)
   Lemma sysc_fclose_pipe_env (pj : mword 64) (fn : fclose_names) :
     sysc_fs_env pj fn -∗ fileclose_pipe_env fn None 0%nat.
-  Proof.
+  Proof using .
     iIntros "#Hfs".
     iDestruct (sysc_fs_env_all with "Hfs") as
       "(_ & _ & _ & _ & _ & _ & _ & #Hpi & _ & _ & _ & _ & _ & _ & _ & _ & #Hkm
@@ -2632,7 +2632,7 @@ Section SyscallVocab.
       (eb : bool) :
     sysc_fs_env pj fn -∗ bslots 3 -∗
     fileclose_fs_env_nopid fn 0%nat eb pj.
-  Proof.
+  Proof using .
     iIntros "#Hfs Hbs".
     iDestruct (sysc_fs_env_ties with "Hfs") as "%T".
     iDestruct "Hfs" as "(_ & #Hpi & _ & _ & _ & #Hrdy)".
@@ -2694,7 +2694,7 @@ Section SyscallVocab.
     kernel_data -∗ is_txlock γl (fsc_uart) -∗
     sysc_fs_env pj fn -∗ bslots 3 -∗
     SpecFilewrite.filewrite_fs_env γf (sysc_fwrite_names γl γs j γlp fn).
-  Proof.
+  Proof using .
     iIntros "#Hkd #Htx #Hfs Hbs".
     iDestruct (sysc_fs_env_all with "Hfs") as
       "(_ & _ & _ & _ & _ & _ & %Hlg & _ & _ & #Hbio & #Hlog & #Hseam & #Hgen &
@@ -2746,7 +2746,7 @@ Section SyscallVocab.
   Lemma sysc_fclose_fs_out (fn : fclose_names)
       (n : nat) (eb : bool) (pj : mword 64) :
     fileclose_fs_env_nopid fn n eb pj -∗ bslots 3.
-  Proof.
+  Proof using .
     rewrite /fileclose_fs_env_nopid.
     by iIntros "(_ & _ & _ & _ & _ & _ & $)".
   Qed.
@@ -2903,7 +2903,7 @@ Section SyscallRet.
     sysc_sys_out U sts gn cs pid f (E !!! Regidx Ra0) (us_M U') sts'
       (pv_cwi (us_V U')) cs' -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HEsp HEs2 Hrest Hav4 Hmem Hfdrow Hpiperow Ha0 Hupte Hszv Hlzv Hud Hfg Hcwi Hsbr Hfk Hchrow Hne2 Hchg Hgeng Hpidrow.
     iIntros "Hcg Hcpu #Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir HR Hpriv Hufrag Hrow Hpc Hcont Hfo Hwo Hxo Hso".
     (* the stored word, as the store lemma spells it *)
@@ -3085,7 +3085,7 @@ Section SyscallArms.
      would be handed still has [V] as an evar at elaboration time. *)
   Lemma sysc_num_ne12 (V : pprivate) (k : nat) :
     sysc_num V = Z.of_nat k -> Nat.eqb k 12 = false -> sysc_num V <> 12.
-  Proof.
+  Proof using .
     intros Hk Hne Hc. rewrite Hk in Hc.
     change 12%Z with (Z.of_nat 12) in Hc.
     apply Nat2Z.inj in Hc. rewrite Hc in Hne. discriminate Hne.
@@ -3093,7 +3093,7 @@ Section SyscallArms.
 
   Lemma sysc_num_ne12_range (V : pprivate) :
     ~ (1 <= sysc_num V <= 22)%Z -> sysc_num V <> 12.
-  Proof.
+  Proof using .
     intros Hr Hc. apply Hr. rewrite Hc.
     split; discriminate.
   Qed.
@@ -3104,7 +3104,7 @@ Section SyscallArms.
      fallback off [Hrange]. *)
   Lemma sysc_num_ne2 (V : pprivate) (k : nat) :
     sysc_num V = Z.of_nat k -> Nat.eqb k 2 = false -> sysc_num V <> 2.
-  Proof.
+  Proof using .
     intros Hk Hne Hc. rewrite Hk in Hc.
     change 2%Z with (Z.of_nat 2) in Hc.
     apply Nat2Z.inj in Hc. rewrite Hc in Hne. discriminate Hne.
@@ -3112,7 +3112,7 @@ Section SyscallArms.
 
   Lemma sysc_num_ne2_range (V : pprivate) :
     ~ (1 <= sysc_num V <= 22)%Z -> sysc_num V <> 2.
-  Proof.
+  Proof using .
     intros Hr Hc. apply Hr. rewrite Hc.
     split; discriminate.
   Qed.
@@ -3124,7 +3124,7 @@ Section SyscallArms.
   Lemma sysc_num_ne1 (V : pprivate) (k : nat) :
     sysc_num V = Z.of_nat k -> Nat.eqb k 1 = false ->
     sysc_num V <> UsysMemOk.USYS_fork.
-  Proof.
+  Proof using .
     intros Hk Hne Hc. rewrite Hk in Hc. unfold UsysMemOk.USYS_fork in Hc.
     change 1%Z with (Z.of_nat 1) in Hc.
     apply Nat2Z.inj in Hc. rewrite Hc in Hne. discriminate Hne.
@@ -3137,7 +3137,7 @@ Section SyscallArms.
   Lemma sysc_sext_pid (w : mword 32) :
     (1 <= bv_unsigned w <= PIDMAX)%Z ->
     (1 <= sint (sign_extend' 64 w : mword 64) <= PIDMAX)%Z.
-  Proof.
+  Proof using .
     intros Hw. unfold PIDMAX in Hw |- *.
     assert (H31 : (2 ^ 31)%Z = 2147483648) by (vm_compute; reflexivity).
     assert (Hz : (0 <= bv_unsigned w < 2 ^ 31)%Z) by (rewrite H31; lia).
@@ -3157,7 +3157,7 @@ Section SyscallArms.
      of these. *)
   Lemma sysc_num_ne7 (V : pprivate) (k : nat) :
     sysc_num V = Z.of_nat k -> Nat.eqb k 7 = false -> sysc_num V <> 7.
-  Proof.
+  Proof using .
     intros Hk Hne Hc. rewrite Hk in Hc.
     change 7%Z with (Z.of_nat 7) in Hc.
     apply Nat2Z.inj in Hc. rewrite Hc in Hne. discriminate Hne.
@@ -3165,7 +3165,7 @@ Section SyscallArms.
 
   Lemma sysc_num_ne7_range (V : pprivate) :
     ~ (1 <= sysc_num V <= 22)%Z -> sysc_num V <> 7.
-  Proof.
+  Proof using .
     intros Hr Hc. apply Hr. rewrite Hc.
     split; discriminate.
   Qed.
@@ -3184,7 +3184,7 @@ Section SyscallArms.
     sysc_num (us_V U) = k -> k <> USYS_fork ->
     sysc_sys_in U sts gn cs pid f -∗
     sbundle_at uslot k f (uvis_of U sts gn cs pid).
-  Proof.
+  Proof using .
     intros Hn H2. rewrite /sysc_sys_in. iIntros "H".
     iApply ("H" $! k with "[%]"). split_and!; assumption.
   Qed.
@@ -3205,7 +3205,7 @@ Section SyscallArms.
       (U : ustate) (sts : list fdstate) (v : mword 64) :
     proc_priv γf pa pid U -∗ fd_frags (pv_fdg (us_V U)) sts -∗
     ⌜sys_fd_st v (pv_ofile (us_V U)) sts = fd_st_of_key v sts⌝.
-  Proof.
+  Proof using .
     iIntros "Hpriv Hfr".
     iDestruct (proc_priv_ofile_len with "Hpriv") as %Hlen.
     iDestruct (fd_frags_len with "Hfr") as %Hslen.
@@ -3229,7 +3229,7 @@ Section SyscallArms.
     sysc_sys_in U sts gn cs pid f -∗
     fileread_in (fd_st_of_key v0 sts) (sys_rw_count v2) (rf_F f) (rf_ret f)
       (rf_in f) (rf_pq f) (rf_pqe f) True%I.
-  Proof.
+  Proof using .
     intros Hn Hv0 Hv2. iIntros "H".
     iDestruct (sysc_sys_in_at U sts gn cs pid f 5 Hn ltac:(vm_compute; discriminate) with "H") as "H".
     iDestruct (sbundle_at_read_elim uslot f _ with "H") as "H".
@@ -3245,7 +3245,7 @@ Section SyscallArms.
       (cs : gset gname) (pid : mword 32) (f : sfam) :
     sysc_num (us_V U) = 6 ->
     sysc_sys_in U sts gn cs pid f -∗ □ riscv_kill_cred.
-  Proof.
+  Proof using .
     intros Hn. iIntros "H".
     iDestruct (sysc_sys_in_at U sts gn cs pid f 6 Hn ltac:(vm_compute; discriminate) with "H") as "H".
     iApply (sbundle_at_kill_elim uslot f _ with "H").
@@ -3261,7 +3261,7 @@ Section SyscallArms.
     sysc_sys_in U sts gn cs pid f -∗
     filewrite_in (fd_st_of_key v0 sts) (sys_rw_count v2) (us_M U) v1
       (wf_Q f) (wf_Qe f).
-  Proof.
+  Proof using .
     intros Hn Hv0 Hv1 Hv2. iIntros "H".
     iDestruct (sysc_sys_in_at U sts gn cs pid f 16 Hn ltac:(vm_compute; discriminate) with "H") as "H".
     iDestruct (sbundle_at_write_elim uslot f _ with "H") as "H".
@@ -3278,7 +3278,7 @@ Section SyscallArms.
       (pid : mword 32) (f : sfam) :
     sysc_num (us_V U) = UsysMemOk.USYS_exit ->
     sysc_sys_in U sts gn cs pid f -∗ fileclose_cpays sts.
-  Proof.
+  Proof using .
     intros Hn. iIntros "H".
     iDestruct (sysc_sys_in_at U sts gn cs pid f UsysMemOk.USYS_exit Hn
                  ltac:(vm_compute; discriminate) with "H") as "H".
@@ -3295,7 +3295,7 @@ Section SyscallArms.
     pv_tf (us_V U) !! tf_arg_idx 0 = Some v0 ->
     sysc_sys_in U sts gn cs pid f -∗
     fileclose_cpay (fd_st_of_key v0 sts) (cl_P f).
-  Proof.
+  Proof using .
     intros Hn Hv0. iIntros "H".
     iDestruct (sysc_sys_in_at U sts gn cs pid f 21 Hn ltac:(vm_compute; discriminate) with "H") as "H".
     iDestruct (sbundle_at_close_elim uslot f _ with "H") as "H".
@@ -3309,7 +3309,7 @@ Section SyscallArms.
     sysc_sys_in U sts gn cs pid f -∗
     chdir_au_pre (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U))
       (cf_P f) (cf_Pmiss f) (cf_Fo f).
-  Proof.
+  Proof using .
     intros Hn. iIntros "H".
     iDestruct (sysc_sys_in_at U sts gn cs pid f 9 Hn ltac:(vm_compute; discriminate) with "H") as "H".
     iDestruct (sbundle_at_chdir_elim uslot f _ with "H") as "H".
@@ -3326,7 +3326,7 @@ Section SyscallArms.
     open_in (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) (us_M U) v0 v1
       (of_P f) (of_Pmiss f) (of_Farm f) (of_Fun f) (of_Fok f) (of_Fex f)
       (of_Fo f) (of_Ft f).
-  Proof.
+  Proof using .
     intros Hn Hv0 Hv1. iIntros "H".
     iDestruct (sysc_sys_in_at U sts gn cs pid f 15 Hn ltac:(vm_compute; discriminate) with "H") as "H".
     iDestruct (sbundle_at_open_elim uslot f _ with "H") as "H".
@@ -3346,7 +3346,7 @@ Section SyscallArms.
     mknod_au_at (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) (us_M U) v0
       (dev_arg v1) (dev_arg v2)
       (nf_P f) (nf_Pmiss f) (nf_Farm f) (nf_Fun f) (nf_Fok f) (nf_Fex f).
-  Proof.
+  Proof using .
     intros Hn Hv0 Hv1 Hv2. iIntros "H".
     iDestruct (sysc_sys_in_at U sts gn cs pid f 17 Hn ltac:(vm_compute; discriminate) with "H") as "H".
     iDestruct (sbundle_at_mknod_elim uslot f _ with "H") as "H".
@@ -3362,7 +3362,7 @@ Section SyscallArms.
     sysc_sys_in U sts gn cs pid f -∗
     unlink_au_pre (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U))
       (uf_P f) (uf_Pmiss f) (uf_Fent f) (uf_Ftgt f) (uf_Fex f) (uf_Fmiss f).
-  Proof.
+  Proof using .
     intros Hn. iIntros "H".
     iDestruct (sysc_sys_in_at U sts gn cs pid f 18 Hn ltac:(vm_compute; discriminate) with "H") as "H".
     iDestruct (sbundle_at_unlink_elim uslot f _ with "H") as "H".
@@ -3374,7 +3374,7 @@ Section SyscallArms.
     sysc_num (us_V U) = 19 ->
     sysc_sys_in U sts gn cs pid f -∗
     link_commits (fs_gamma_L fsc_fs) (lf_Ftgt f) (lf_Fent f) (lf_Funt f).
-  Proof.
+  Proof using .
     intros Hn. iIntros "H".
     iDestruct (sysc_sys_in_at U sts gn cs pid f 19 Hn ltac:(vm_compute; discriminate) with "H") as "H".
     iApply (sbundle_at_link_elim uslot f _ with "H").
@@ -3387,7 +3387,7 @@ Section SyscallArms.
     mkdir_au_pre (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U))
       (df_P f) (df_Pmiss f) (df_Farm f) (df_Fdots f) (df_Fun f)
       (df_Fok f) (df_Fex f).
-  Proof.
+  Proof using .
     intros Hn. iIntros "H".
     iDestruct (sysc_sys_in_at U sts gn cs pid f 20 Hn ltac:(vm_compute; discriminate) with "H") as "H".
     iDestruct (sbundle_at_mkdir_elim uslot f _ with "H") as "H".
@@ -3409,7 +3409,7 @@ Section SyscallArms.
     sysc_num (us_V U) = k -> k <> USYS_exit -> k <> USYS_fork ->
     spost_at uslot k f (uvis_of U sts gn cs pid) r M' sts' cw' cs' -∗
     sysc_sys_out U sts gn cs pid f r M' sts' cw' cs'.
-  Proof.
+  Proof using .
     intros Hn H1 H2. rewrite /sysc_sys_out. iIntros "H" (n) "%Hg".
     assert (Hk : n = k) by (rewrite <- (proj1 Hg); exact Hn).
     subst n. iExact "H".
@@ -3457,7 +3457,7 @@ Section SyscallArms.
       (sys_rw_count v2) (rf_F f)
       (rf_ret f) (rf_in f) (rf_pq f) (rf_pqe f) r M' v1 -∗
     sysc_sys_out U sts gn cs pid f r M' sts' cw' cs'.
-  Proof.
+  Proof using .
     intros Hn Hv0 Hv1 Hv2 Hgnq Hwf Hlzp Hret. iIntros "H".
     iApply (sysc_sys_out_at U sts gn cs pid f r M' sts' cw' cs' 5 Hn
               ltac:(vm_compute; discriminate)
@@ -3490,7 +3490,7 @@ Section SyscallArms.
     chdir_receipt (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U))
       (cf_P f) (cf_Pmiss f) (cf_Fo f) r cw' -∗
     sysc_sys_out U sts gn cs pid f r M' sts' cw' cs'.
-  Proof.
+  Proof using .
     intros Hn. iIntros "H".
     iApply (sysc_sys_out_at U sts gn cs pid f r M' sts' cw' cs' 9 Hn
               ltac:(vm_compute; discriminate)
@@ -3512,7 +3512,7 @@ Section SyscallArms.
       (of_P f) (of_Pmiss f) (of_Farm f) (of_Fun f) (of_Fok f) (of_Fex f)
       (of_Fo f) (of_Ft f) sts r sts' -∗
     sysc_sys_out U sts gn cs pid f r M' sts' cw' cs'.
-  Proof.
+  Proof using .
     intros Hn Hv0 Hv1. iIntros "H".
     iApply (sysc_sys_out_at U sts gn cs pid f r M' sts' cw' cs' 15 Hn
               ltac:(vm_compute; discriminate)
@@ -3541,7 +3541,7 @@ Section SyscallArms.
     filewrite_extra gn (pv_upt (us_V U)) (fd_st_of_key v0 sts) (sys_rw_count v2)
       (us_M U) v1 (wf_Q f) (wf_Qe f) r -∗
     sysc_sys_out U sts gn cs pid f r M' sts' cw' cs'.
-  Proof.
+  Proof using .
     intros Hn Hv0 Hv1 Hv2 Hwf Hlz. iIntros "H".
     iApply (sysc_sys_out_at U sts gn cs pid f r M' sts' cw' cs' 16 Hn
               ltac:(vm_compute; discriminate)
@@ -3566,7 +3566,7 @@ Section SyscallArms.
     pv_tf (us_V U) !! tf_arg_idx 0 = Some v0 ->
     fileclose_cpost_any (fd_st_of_key v0 sts) (cl_P f) -∗
     sysc_sys_out U sts gn cs pid f r M' sts' cw' cs'.
-  Proof.
+  Proof using .
     intros Hn Hv0. iIntros "H".
     iApply (sysc_sys_out_at U sts gn cs pid f r M' sts' cw' cs' 21 Hn
               ltac:(vm_compute; discriminate)
@@ -3588,7 +3588,7 @@ Section SyscallArms.
                      (<[a := FdOpen true false (FdPipe γp)]> sts)⌝ ∗
        pipe_qfrag (pn_queue γp) pst0) -∗
     sysc_sys_out U sts gn cs pid f r M' sts' cw' cs'.
-  Proof.
+  Proof using .
     intros Hn. iIntros "H".
     iApply (sysc_sys_out_at U sts gn cs pid f r M' sts' cw' cs' 4 Hn
               ltac:(vm_compute; discriminate)
@@ -3609,7 +3609,7 @@ Section SyscallArms.
       (dev_arg v1) (dev_arg v2)
       (nf_P f) (nf_Pmiss f) (nf_Farm f) (nf_Fun f) (nf_Fok f) (nf_Fex f) r -∗
     sysc_sys_out U sts gn cs pid f r M' sts' cw' cs'.
-  Proof.
+  Proof using .
     intros Hn Hv0 Hv1 Hv2. iIntros "H".
     iApply (sysc_sys_out_at U sts gn cs pid f r M' sts' cw' cs' 17 Hn
               ltac:(vm_compute; discriminate)
@@ -3628,7 +3628,7 @@ Section SyscallArms.
     unlink_arms (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U))
       (uf_P f) (uf_Pmiss f) (uf_Fent f) (uf_Ftgt f) (uf_Fex f) (uf_Fmiss f) r -∗
     sysc_sys_out U sts gn cs pid f r M' sts' cw' cs'.
-  Proof.
+  Proof using .
     intros Hn. iIntros "H".
     iApply (sysc_sys_out_at U sts gn cs pid f r M' sts' cw' cs' 18 Hn
               ltac:(vm_compute; discriminate)
@@ -3643,7 +3643,7 @@ Section SyscallArms.
     sysc_num (us_V U) = 19 ->
     link_arms (fs_gamma_L fsc_fs) (lf_Ftgt f) (lf_Fent f) (lf_Funt f) r -∗
     sysc_sys_out U sts gn cs pid f r M' sts' cw' cs'.
-  Proof.
+  Proof using .
     intros Hn. iIntros "H".
     iApply (sysc_sys_out_at U sts gn cs pid f r M' sts' cw' cs' 19 Hn
               ltac:(vm_compute; discriminate)
@@ -3659,7 +3659,7 @@ Section SyscallArms.
       (df_P f) (df_Pmiss f) (df_Farm f) (df_Fdots f) (df_Fun f)
       (df_Fok f) (df_Fex f) r -∗
     sysc_sys_out U sts gn cs pid f r M' sts' cw' cs'.
-  Proof.
+  Proof using .
     intros Hn. iIntros "H".
     iApply (sysc_sys_out_at U sts gn cs pid f r M' sts' cw' cs' 20 Hn
               ltac:(vm_compute; discriminate)
@@ -3691,7 +3691,7 @@ Section SyscallArms.
       (Fo : pfam Σ (gmap Z FsAbsDefs.anode -> Z -> FsAbsDefs.anode -> iProp Σ)),
       sys_exec_au_pre (MkPfam uslot (sexec_refund f)) (fs_gamma_L fsc_fs) fsc_fs
         (pv_cwi (us_V U)) (kf_xpay f) P Pmiss Fo (us_M U) v0 v1 sts cs pid.
-  Proof.
+  Proof using .
     intros Hn Hv0 Hv1. iIntros "H".
     iDestruct (sysc_sys_in_at U sts gn cs pid f 7 Hn ltac:(vm_compute; discriminate) with "H") as "H".
     iDestruct (sbundle_at_exec_elim uslot f _ with "H") as "[Hmp H]".
@@ -3710,7 +3710,7 @@ Section SyscallArms.
      its own [Hnum] (or, at the out-of-range fallback, out of [Hrange]). *)
   Lemma sysc_mem_ok_quiet (V V' : pprivate) (M M' : gmap Z (bv 8)) :
     M' = M -> sysc_num V <> 12 -> sysc_mem_ok V V' M M'.
-  Proof.
+  Proof using .
     intros -> H12. unfold sysc_mem_ok.
     destruct (decide (sysc_num V = 7)) as [_ | _]; [done |].
     destruct (decide (sysc_num V = 12)) as [Hc | _]; [contradiction (H12 Hc) |].
@@ -3731,7 +3731,7 @@ Section SyscallArms.
      predicate's, so no fact about [M]/[M'] is needed at all. *)
   Lemma sysc_mem_ok_exec (V V' : pprivate) (M M' : gmap Z (bv 8)) :
     sysc_num V = Z.of_nat 7 -> sysc_mem_ok V V' M M'.
-  Proof.
+  Proof using .
     intro Hn. unfold sysc_mem_ok. rewrite Hn.
     destruct (decide (Z.of_nat 7 = 7)) as [_ | Hf]; [done | exfalso; lia].
   Qed.
@@ -3750,7 +3750,7 @@ Section SyscallArms.
     (pv_tf V !!! tf_arg_idx 0 = (zero_reg : mword 64) -> d = 0%nat) ->
     M' = umem_wr M (pv_tf V !!! tf_arg_idx 0) d bs ->
     sysc_mem_ok V V' M M'.
-  Proof.
+  Proof using .
     intros Hn H3 Hd Hz Hm. unfold sysc_mem_ok. rewrite Hn H3.
     destruct (decide (3 = 7)) as [Hc | _]; [ discriminate Hc | ].
     destruct (decide (3 = 12)) as [Hc | _]; [ discriminate Hc | ].
@@ -3763,7 +3763,7 @@ Section SyscallArms.
     sysc_num V = n -> n = 4 -> (d <= 8)%nat ->
     M' = umem_wr M (pv_tf V !!! tf_arg_idx 0) d bs ->
     sysc_mem_ok V V' M M'.
-  Proof.
+  Proof using .
     intros Hn H4 Hd Hm. unfold sysc_mem_ok. rewrite Hn H4.
     destruct (decide (4 = 7)) as [Hc | _]; [ discriminate Hc | ].
     destruct (decide (4 = 12)) as [Hc | _]; [ discriminate Hc | ].
@@ -3778,7 +3778,7 @@ Section SyscallArms.
     (Z.of_nat d <= Z.max 0 (sysc_rdcount V))%Z ->
     M' = umem_wr M (pv_tf V !!! tf_arg_idx 1) d bs ->
     sysc_mem_ok V V' M M'.
-  Proof.
+  Proof using .
     intros Hn H5 Hd Hm. unfold sysc_mem_ok. rewrite Hn H5.
     destruct (decide (5 = 7)) as [Hc | _]; [ discriminate Hc | ].
     destruct (decide (5 = 12)) as [Hc | _]; [ discriminate Hc | ].
@@ -3793,7 +3793,7 @@ Section SyscallArms.
     sysc_num V = n -> n = 8 -> (d <= 24)%nat ->
     M' = umem_wr M (pv_tf V !!! tf_arg_idx 1) d bs ->
     sysc_mem_ok V V' M M'.
-  Proof.
+  Proof using .
     intros Hn H8 Hd Hm. unfold sysc_mem_ok. rewrite Hn H8.
     destruct (decide (8 = 7)) as [Hc | _]; [ discriminate Hc | ].
     destruct (decide (8 = 12)) as [Hc | _]; [ discriminate Hc | ].
@@ -3816,7 +3816,7 @@ Section SyscallArms.
     usys_sbrk_lazy (pv_lazy V) (pv_lazy V') (pv_tf V)
                    (uint (pv_sz V)) (uint (pv_sz V')) ->
     sysc_mem_ok V V' M M'.
-  Proof.
+  Proof using .
     intros Hn Him Hlz. unfold sysc_mem_ok. rewrite Hn.
     destruct (decide (Z.of_nat 12 = 7)) as [Hc | _]; [exfalso; lia |].
     destruct (decide (Z.of_nat 12 = 12)) as [_ | Hc];
@@ -3836,7 +3836,7 @@ Section SyscallArms.
       (cs : gset gname) (lks : gset string) (av : nat)
       (m M : regfile) (fdep : sfam) :
     sysc_arm_goal 11 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
-  Proof.
+  Proof using .
     rewrite /sysc_arm_goal /sysc_arm_pre.
     intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     assert (Hav82 : (82 <= av)%nat)
@@ -3927,7 +3927,7 @@ Section SyscallArms.
   Lemma sysc_sbrk_tfp (V : pprivate) (v0 v1 : mword 64)
       (P' : uptd) (szv' r : mword 64) (lz' : bool) (M M' : gmap Z (bv 8)) :
     sys_sbrk_ok V v0 v1 P' szv' r lz' M M' -> ud_tfp P' = ud_tfp (pv_upt V).
-  Proof.
+  Proof using .
     intro Hok.
     destruct Hok as [ (_ & HP & _) | (_ & [ (_ & Hg & _) | (_ & _ & HP & _ & _) ]) ].
     - rewrite HP. reflexivity.
@@ -3952,7 +3952,7 @@ Section SyscallArms.
     ⌜forall va : Z, is_Some (us_M U !! va)
        <-> (uva_mapped (pv_upt (us_V U)) va
             \/ uva_live (uint (pv_sz (us_V U))) va)⌝.
-  Proof.
+  Proof using .
     rewrite proc_priv_split_pt. iIntros "[_ Hptm]".
     iApply (proc_ptm_dom with "Hptm").
   Qed.
@@ -3963,7 +3963,7 @@ Section SyscallArms.
   Lemma sbrk_ok_still (V : pprivate) (M : gmap Z (bv 8)) :
     (forall a : Z, uva_live (uint (pv_sz V)) a -> is_Some (M !! a)) ->
     sysc_sbrk_ok (pv_upt V) (pv_upt V) (pv_sz V) (pv_sz V) M M.
-  Proof.
+  Proof using .
     intros Hdom. unfold sysc_sbrk_ok.
     destruct (decide (uint (pv_sz V) <= uint (pv_sz V))%Z) as [_ | Hc];
       [ | exfalso; exact (Hc (Z.le_refl _)) ].
@@ -3981,7 +3981,7 @@ Section SyscallArms.
   Lemma addv_sint_of_le (a b : mword 64) :
     (0 <= sint b)%Z -> (uint a <= uint (add_vec a b))%Z ->
     uint (add_vec a b) = (uint a + sint b)%Z.
-  Proof.
+  Proof using .
     intros Hb Hle.
     pose proof (sint64_range b) as Hrb.
     pose proof (bv_unsigned_in_range _ a) as Ha.
@@ -4023,7 +4023,7 @@ Section SyscallArms.
     \/ (r = pv_sz V /\
         ((0 <= sint (usys_sbrk_arg (pv_tf V)))%Z ->
            uint szv' = (uint (pv_sz V) + sint (usys_sbrk_arg (pv_tf V)))%Z)).
-  Proof.
+  Proof using .
     intros Hv0 Hok.
     assert (Harg : usys_sbrk_arg (pv_tf V) = sbrk_arg v0)
       by (unfold usys_sbrk_arg, sbrk_arg; rewrite Hv0; reflexivity).
@@ -4062,7 +4062,7 @@ Section SyscallArms.
     (forall a : Z, uva_live (uint (pv_sz V)) a -> is_Some (M !! a)) ->
     sys_sbrk_ok V v0 v1 P' szv' r lz' M M' ->
     sysc_sbrk_ok (pv_upt V) P' (pv_sz V) szv' M M'.
-  Proof.
+  Proof using .
     intros Hdom Hok.
     destruct Hok as [ (_ & HP & Hs & Hm & _) | (_ & [ (_ & Hg & _) | Hlz ]) ].
     - subst. exact (sbrk_ok_still V M Hdom).
@@ -4120,7 +4120,7 @@ Section SyscallArms.
     pv_tf V !!! tf_arg_idx 1 = v1 ->
     sys_sbrk_ok V v0 v1 P' szv' r lz' M M' ->
     usys_sbrk_lazy (pv_lazy V) lz' (pv_tf V) (uint (pv_sz V)) (uint szv').
-  Proof.
+  Proof using .
     intros Hv1 Hok Hguard.
     assert (Heq : UsysMemOk.usys_sbrk_eager (pv_tf V) = sbrk_eager v1).
     { unfold UsysMemOk.usys_sbrk_eager, sbrk_eager, sbrk_arg.
@@ -4140,7 +4140,7 @@ Section SyscallArms.
       (cs : gset gname) (lks : gset string) (av : nat)
       (m M : regfile) (fdep : sfam) :
     sysc_arm_goal 12 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
-  Proof.
+  Proof using .
     rewrite /sysc_arm_goal /sysc_arm_pre.
     intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     assert (Hav82 : (82 <= av)%nat)
@@ -4274,7 +4274,7 @@ Section SyscallArms.
       (cs : gset gname) (lks : gset string) (av : nat)
       (m M : regfile) (fdep : sfam) :
     sysc_arm_goal 3 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
-  Proof.
+  Proof using .
     rewrite /sysc_arm_goal /sysc_arm_pre.
     intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     assert (Hav82 : (82 <= av)%nat)
@@ -4417,10 +4417,10 @@ Section SyscallArms.
      usertrap's cone; SpecSysLink.v's header documents the same derivation at
      its own altitude. *)
   Local Lemma sysc_noff0 : (Z.of_nat 0 + 1 < 2 ^ 31)%Z.
-  Proof. vm_compute; reflexivity. Qed.
+  Proof using . vm_compute; reflexivity. Qed.
 
   Local Lemma sysc_noff0b : (Z.of_nat 0 + 2 < 2 ^ 31)%Z.
-  Proof. vm_compute; reflexivity. Qed.
+  Proof using . vm_compute; reflexivity. Qed.
 
   (* THE FOURTH ARM: k = 14, [sys_uptime].  After getpid the entry that asks
      for the least: it is niladic, touches no per-process state at all (no
@@ -4433,7 +4433,7 @@ Section SyscallArms.
       (cs : gset gname) (lks : gset string) (av : nat)
       (m M : regfile) (fdep : sfam) :
     sysc_arm_goal 14 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
-  Proof.
+  Proof using .
     rewrite /sysc_arm_goal /sysc_arm_pre.
     intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     assert (Hav82 : (82 <= av)%nat)
@@ -4524,7 +4524,7 @@ Section SyscallArms.
       (cs : gset gname) (lks : gset string) (av : nat)
       (m M : regfile) (fdep : sfam) :
     sysc_arm_goal 6 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
-  Proof.
+  Proof using .
     rewrite /sysc_arm_goal /sysc_arm_pre.
     intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     assert (Hav82 : (82 <= av)%nat)
@@ -4623,7 +4623,7 @@ Section SyscallArms.
       (cs : gset gname) (lks : gset string) (av : nat)
       (m M : regfile) (fdep : sfam) :
     sysc_arm_goal 13 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
-  Proof.
+  Proof using .
     rewrite /sysc_arm_goal /sysc_arm_pre.
     intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     assert (Hav82 : (82 <= av)%nat)
@@ -4759,7 +4759,7 @@ Section SyscallArms.
       ⌜sysc_fd_ok (us_V U) r sts sts'⌝ ∗
       proc_priv γf p pid (MkUstate V' ((us_M U))) ∗
       fd_frags (pv_fdg (us_V U)) sts'.
-  Proof.
+  Proof using .
     intros Hnum Harg Hoflen.
     rewrite /sys_dup_post /sysc_fd_ok /usys_fd_ok Hnum.
     destruct (decide (10 = USYS_close)) as [Hcc | _]; [discriminate Hcc |].
@@ -4892,7 +4892,7 @@ Section SyscallArms.
       (cs : gset gname) (lks : gset string) (av : nat)
       (m M : regfile) (fdep : sfam) :
     sysc_arm_goal 10 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
-  Proof.
+  Proof using .
     rewrite /sysc_arm_goal /sysc_arm_pre.
     intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     assert (Hav82 : (82 <= av)%nat)
@@ -4994,7 +4994,7 @@ Section SyscallArms.
       (cs : gset gname) (lks : gset string) (av : nat)
       (m M : regfile) (fdep : sfam) :
     sysc_arm_goal 1 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
-  Proof.
+  Proof using ufdG0.
     rewrite /sysc_arm_goal /sysc_arm_pre.
     intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     assert (Hav82 : (82 <= av)%nat)
@@ -5224,7 +5224,7 @@ Section SyscallArms.
       (cs : gset gname) (lks : gset string) (av : nat)
       (m M : regfile) (fdep : sfam) :
     sysc_arm_goal 7 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
-  Proof.
+  Proof using ufdG0.
     rewrite /sysc_arm_goal /sysc_arm_pre.
     intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     assert (Hav82 : (82 <= av)%nat)
@@ -5471,7 +5471,7 @@ Section SyscallArms.
       (cs : gset gname) (lks : gset string) (av : nat)
       (m M : regfile) (fdep : sfam) :
     sysc_arm_goal 2 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
-  Proof.
+  Proof using .
     rewrite /sysc_arm_goal /sysc_arm_pre.
     intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     iIntros "(Hpc & Hcg & Hcpu & #Htext & #Hprocs & #Henv & Hbs & Hip & Hfd & Hir & Hpriv & Hufrag & Hrow & #Hwl)".
@@ -5581,7 +5581,7 @@ Section SyscallArms.
       (cs : gset gname) (lks : gset string) (av : nat)
       (m M : regfile) (fdep : sfam) :
     sysc_arm_goal 22 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
-  Proof.
+  Proof using .
     rewrite /sysc_arm_goal /sysc_arm_pre.
     intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     subst pj.
@@ -5686,7 +5686,7 @@ Section SyscallArms.
       (cs : gset gname) (lks : gset string) (av : nat)
       (m M : regfile) (fdep : sfam) :
     sysc_arm_goal 16 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
-  Proof.
+  Proof using .
     rewrite /sysc_arm_goal /sysc_arm_pre.
     intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     subst pj.
@@ -5861,7 +5861,7 @@ Section SyscallArms.
       (cs : gset gname) (lks : gset string) (av : nat)
       (m M : regfile) (fdep : sfam) :
     sysc_arm_goal 5 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
-  Proof.
+  Proof using .
     rewrite /sysc_arm_goal /sysc_arm_pre.
     intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     subst pj.
@@ -6038,7 +6038,7 @@ Section SyscallArms.
       (cs : gset gname) (lks : gset string) (av : nat)
       (m M : regfile) (fdep : sfam) :
     sysc_arm_goal 8 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
-  Proof.
+  Proof using .
     rewrite /sysc_arm_goal /sysc_arm_pre.
     intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     subst pj.
@@ -6158,7 +6158,7 @@ Section SyscallArms.
       (cs : gset gname) (lks : gset string) (av : nat)
       (m M : regfile) (fdep : sfam) :
     sysc_arm_goal 9 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
-  Proof.
+  Proof using .
     rewrite /sysc_arm_goal /sysc_arm_pre.
     intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     subst pj.
@@ -6341,7 +6341,7 @@ Section SyscallArms.
       (cs : gset gname) (lks : gset string) (av : nat)
       (m M : regfile) (fdep : sfam) :
     sysc_arm_goal 18 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
-  Proof.
+  Proof using .
     rewrite /sysc_arm_goal /sysc_arm_pre.
     intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     subst pj.
@@ -6461,7 +6461,7 @@ Section SyscallArms.
       (cs : gset gname) (lks : gset string) (av : nat)
       (m M : regfile) (fdep : sfam) :
     sysc_arm_goal 19 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
-  Proof.
+  Proof using .
     rewrite /sysc_arm_goal /sysc_arm_pre.
     intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     subst pj.
@@ -6594,7 +6594,7 @@ Section SyscallArms.
       (cs : gset gname) (lks : gset string) (av : nat)
       (m M : regfile) (fdep : sfam) :
     sysc_arm_goal 21 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
-  Proof.
+  Proof using .
     rewrite /sysc_arm_goal /sysc_arm_pre.
     intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     subst pj.
@@ -6807,7 +6807,7 @@ Section SyscallArms.
       (cs : gset gname) (lks : gset string) (av : nat)
       (m M : regfile) (fdep : sfam) :
     sysc_arm_goal 4 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
-  Proof.
+  Proof using .
     rewrite /sysc_arm_goal /sysc_arm_pre.
     intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     subst pj.
@@ -7141,7 +7141,7 @@ Section SyscallArms.
       (cs : gset gname) (lks : gset string) (av : nat)
       (m M : regfile) (fdep : sfam) :
     sysc_arm_goal 20 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
-  Proof.
+  Proof using .
     rewrite /sysc_arm_goal /sysc_arm_pre.
     intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     subst pj.
@@ -7282,7 +7282,7 @@ Section SyscallArms.
       (cs : gset gname) (lks : gset string) (av : nat)
       (m M : regfile) (fdep : sfam) :
     sysc_arm_goal 17 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
-  Proof.
+  Proof using .
     rewrite /sysc_arm_goal /sysc_arm_pre.
     intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     subst pj.
@@ -7432,7 +7432,7 @@ Section SyscallArms.
       (cs : gset gname) (lks : gset string) (av : nat)
       (m M : regfile) (fdep : sfam) :
     sysc_arm_goal 15 γf γw pj γs j γl fn dqi ip pid U sts gn cs lks av m M fdep.
-  Proof.
+  Proof using .
     rewrite /sysc_arm_goal /sysc_arm_pre.
     intros Hj Hgamma Hpj HMsp HMs2 HMra HMother Hav Hgnq Hpidt Hnum.
     subst pj.
@@ -7824,7 +7824,7 @@ Section SyscallArms.
     sysc_fork_in fdep U sts -∗
     sysc_pay_in fdep U -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hj Hpj HMsp HMs1 HMother Hav Hrange.
     assert (Hav82 : (82 <= av)%nat)
       by (lia).
@@ -8162,7 +8162,7 @@ Section SyscallMain.
       (fdep : sfam)
     : wp_syscall_sconf_body syscall_env γf γs j γl γw fn ip dqi m av pid U sts
         gn cs lks fdep.
-  Proof.
+  Proof using .
     cbv beta delta [wp_syscall_sconf_body].
     intros pcE pj ret_tgt Hj Hgamma Hav Hgnq Hpidt.
     assert (Hav82 : (82 <= av)%nat)

@@ -483,7 +483,7 @@ Section AslBodies.
         proc_priv_bare pj pidv Upr -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using bioslotG0.
     intros pj Hav Hanch Hspd Hsp0 Hasl Hbelow.
     pose proof (locks_below_not_elem _ _ Hbelow) as Hfresh.
     destruct Hasl as (Hs1 & Hs2 & Hsp & H19 & H20 & H21 & H22 & H23 & H24 & H25 & H26 & H27).
@@ -844,7 +844,7 @@ Section AslBodies.
     sie_cap_gpr KT1 M (trap_res eb + (av - 4))%nat false pj -∗
     pc_is (mword_of_int (KernelSyms.acquiresleep + 0x32)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     (* NB: [eb] is deliberately NOT substituted here.  This body runs [iNext]
        over [cpu_own], and with [eb] literal [intr_count]'s [if eb] reduces,
        [iNext] descends into [IntrDefs.intr_res] and strips ITS later, after
@@ -949,7 +949,7 @@ Section AslBodies.
     pc_is (mword_of_int (KernelSyms.acquiresleep + 0x1c)) -∗
     asl_exit CID0 γs j γl γsl R H q m pidv av Upr slk spd sp0 eb lks -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pj Hav Hj Hjpl Hanch Hasl Hbelow.
     pose proof (locks_below_not_elem _ _ Hbelow) as Hfresh.
     iIntros "#Htext #Hslk #Hpinv IH Hr24 Hr16 Hr8 Hr0 Htok Hheld Hdep HHq Hpid Hown Htc Hclm Hcg Hpc Hexit".
@@ -1189,7 +1189,7 @@ Section ProofAcquiresleep.
       (m : regfile) (pidv : mword 32) (Upr : ustate) (av : nat) (eb : bool)
       (b : bool) (lks : gset string) (Tl : nat)
     : wp_acquiresleep_genl_llb_sconf_body γs j γl γsl s R H q m pidv Upr av eb b lks Tl.
-  Proof.
+  Proof using .
     cbv beta delta [wp_acquiresleep_genl_llb_sconf_body].
     intros pcE slk pj ret_tgt Hj Hav Hbelow.
     set (sp0 := (m !!! Regidx csp_rs1 : mword 64)).
@@ -1493,7 +1493,7 @@ Section ProofAcquiresleep.
       (m : regfile) (pidv : mword 32) (Upr : ustate) (av : nat) (eb : bool)
       (b : bool) (lks : gset string) (Tl : nat)
     : wp_acquiresleep_gen_llb_sconf_body γs j γl γsl s R H q m pidv Upr av eb b lks Tl.
-  Proof.
+  Proof using .
     pose proof (wp_acquiresleep_genl_llb_sconf γs j γl γsl s (fun _ => R) H q m pidv
                   Upr av eb b lks Tl) as HK.
     cbv beta zeta delta [wp_acquiresleep_genl_llb_sconf_body] in HK.
@@ -1585,7 +1585,7 @@ Section ProofAcquiresleep.
         proc_priv_bare pj pidv Upr -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pcE slk pj ret_tgt Hav Hb31 Hfresh.
     set (sp0 := (m !!! Regidx csp_rs1 : mword 64)).
     set (spd := add_vec sp0 (sign_extend' 64 (sign_extend' 12 (mword_of_int 32 : mword 6)))).
@@ -2198,7 +2198,7 @@ Section ProofAcquiresleep.
         proc_priv_bare pj pidv Upr -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pcE slk pj ret_tgt Hav Hb31 Hfresh.
     set (sp0 := (m !!! Regidx csp_rs1 : mword 64)).
     set (spd := add_vec sp0 (sign_extend' 64 (sign_extend' 12 (mword_of_int 32 : mword 6)))).
@@ -2789,7 +2789,7 @@ Section ProofAcquiresleep.
       (m : regfile) (pidv : mword 32) (Upr : ustate) (av : nat) (eb : bool)
       (b : bool) (lks : gset string)
     : wp_acquiresleep_gen_sconf_body γs j γl γsl s R H q m pidv Upr av eb b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_acquiresleep_gen_sconf_body].
     intros pcE slk pj ret_tgt Hj Hav Hbelow.
     iIntros "Hcg Hown Hextc Hextm #Htext Hpc #Hslk HHq Hpid #Hpinv Hcont".
@@ -2810,7 +2810,7 @@ Section ProofAcquiresleep.
       (m : regfile) (pidv : mword 32) (Upr : ustate) (av : nat) (eb : bool)
       (b : bool) (lks : gset string)
     : wp_acquiresleep_sconf_body γs j γl γsl s R m pidv Upr av eb b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_acquiresleep_sconf_body].
     intros pcE slk pj ret_tgt Hj Hav Hbelow.
     iIntros "Hcg Hown Hextc Hextm #Htext Hpc #Hslk Hpid #Hpinv Hcont".
@@ -2835,7 +2835,7 @@ Section ProofAcquiresleep.
       (m : regfile) (pidv : mword 32) (Upr : ustate) (av : nat) (eb : bool)
       (n : nat) (lks : gset string)
     : wp_acquiresleep_nb_body j γl γsl s R γt q m pidv Upr av eb n lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_acquiresleep_nb_body].
     intros pcE slk pj ret_tgt Hav Hb31 Hfresh.
     iIntros "Hcg Hown #Htext Hpc #Hslk Hauth Hpid Hcont".
@@ -2864,7 +2864,7 @@ Section ProofAcquiresleep.
       (m : regfile) (pidv : mword 32) (Upr : ustate) (av : nat) (eb : bool)
       (n : nat) (lks : gset string) (Tl : nat)
     : wp_acquiresleep_nb_genl_llb_body j γl γsl s R γt q m pidv Upr av eb n lks Tl.
-  Proof.
+  Proof using .
     cbv beta delta [wp_acquiresleep_nb_genl_llb_body].
     intros pcE slk pj ret_tgt Hav Hb31 Hfresh.
     iIntros "Hcg Hown #Htext Hpc #Hslk #Hllb Hauth Hpid Hcont".

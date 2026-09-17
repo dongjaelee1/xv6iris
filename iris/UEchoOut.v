@@ -244,7 +244,7 @@ Section UEchoOut.
      end is one of these. *)
   Lemma echcs_pos (cs0 : list nat) (p : nat) :
     (0 < p)%nat -> echcs cs0 p = cs0 ++ [0%nat].
-  Proof. intro Hp. destruct p as [| p']; [ lia | reflexivity ]. Qed.
+  Proof using . intro Hp. destruct p as [| p']; [ lia | reflexivity ]. Qed.
 
   Definition ech (v : era_pins) (ps0 cs0 : list nat) (I0 : list (bv 8))
       (P p : nat) : iProp Σ :=
@@ -253,7 +253,7 @@ Section UEchoOut.
 
   Global Instance ech_timeless v ps0 cs0 I0 P p :
     Timeless (ech v ps0 cs0 I0 P p).
-  Proof. rewrite /ech. apply _. Qed.
+  Proof using Timeless0. rewrite /ech. apply _. Qed.
 
   (* ...AND ECHO'S EXIT PAYLOAD, which is that family at its END and is
      STATUS-INDEPENDENT ([UkRun.ukn_const]): echo exits with 0 and its
@@ -278,7 +278,7 @@ Section UEchoOut.
     ech v ps0 cs0 I0 P p -∗
     (ech v ps0 cs0 I0 P (S p) -∗ Φ) -∗
     out_link Uart0 (S gen_id) b Φ.
-  Proof.
+  Proof using Persistent0.
     intros Hst Hb.
     iIntros "#Hpin #Hlk Hc HΦ".
     iDestruct (echo_links_w with "Hlk") as "#Hw".
@@ -341,7 +341,7 @@ Section UEchoOut.
     ech v ps0 cs0 I0 P (p + i)%nat -∗
     cons_out_chain (S gen_id) M ua
       (fun j : nat => ech v ps0 cs0 I0 P (p + j)%nat) i c.
-  Proof.
+  Proof using Persistent0.
     intros Hst c. induction c as [| c IH]; intros i Hline HM.
     - iIntros "_ _ Hc". cbn [cons_out_chain]. iExact "Hc".
     - iIntros "#Hpin #Hlk Hc". cbn [cons_out_chain]. iSplit.
@@ -512,7 +512,7 @@ Section UEchoOut.
   (* ...AND IT IS DISCHARGED (lane TXT-ROW).  One [iApply]: echo's write
      stub over the engine's text leaf IS this statement. *)
   Lemma echo_wtxt_holds : echo_wtxt.
-  Proof.
+  Proof using .
     intros N h m avail fdep l nb fb.
     iApply (UkEcho.wp_kecho_write_chain_txt N h m avail fdep l nb fb).
   Qed.
@@ -628,7 +628,7 @@ Section UEchoOut.
 
   Lemma echo_rodata_byte (g : gname) (a : Z) (b : bv 8) :
     echo_ro !! a = Some b -> echo_rodata g -∗ utext g a b.
-  Proof.
+  Proof using .
     intros Ha. rewrite /echo_rodata /utext_img. iIntros "#H".
     iApply (big_sepM_lookup _ _ a b with "H"). exact Ha.
   Qed.
@@ -848,7 +848,7 @@ Section UEchoOut.
     my_pay (uvis_gen W) Q -∗
     ech v ps0 cs0 I0 P 0%nat -∗
     uslot W.
-  Proof.
+  Proof using Persistent0 ghost_varG0 ghost_varG1 ufdG0.
     intros HQc Hws2 Hst Hargv1 Hl1 Hpc Hsub Hsub2 Hx Hroom Hal8 Hstk Hargs
            Havd Havs Hfdlen Hstop Hlzf.
     iIntros "#Hq #Hpin #Hlk #Hnpw #Hdep Hpay Hc".

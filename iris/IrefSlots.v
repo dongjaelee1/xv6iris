@@ -147,19 +147,19 @@ Section IrefSlots.
   Definition iref_slot : iProp Σ := iref_slots 1.
 
   Lemma iref_slot_frac : iref_slot ⊣⊢ iref_frac 1.
-  Proof. rewrite /iref_slot /iref_slots /iref_frac nat_ufrac_1. reflexivity. Qed.
+  Proof using . rewrite /iref_slot /iref_slots /iref_frac nat_ufrac_1. reflexivity. Qed.
 
   (* the fixed supply, held by the itable lock's resource *)
   Definition iref_slots_auth : iProp Σ :=
     own irefslot_name (● nat_ufrac IREFSLOTS).
 
   Global Instance iref_slots_timeless n : Timeless (iref_slots n).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* units split and merge freely: this is what lets a slot's [n] tokens sit
      in the table as one [◯ n] and still hand one back on iput. *)
   Lemma iref_slots_op a b : iref_slots (a + b) ⊣⊢ iref_slots a ∗ iref_slots b.
-  Proof.
+  Proof using .
     rewrite /iref_slots nat_ufrac_op.
     assert (Hop : (◯ (nat_ufrac a ⋅ nat_ufrac b) : irefslotUR)
                   = ◯ nat_ufrac a ⋅ ◯ nat_ufrac b)
@@ -170,7 +170,7 @@ Section IrefSlots.
   (* ---- and the same at an arbitrary share, which is what
      [FileInvDefs.file_core_split] needs ---- *)
   Lemma iref_frac_op q1 q2 : iref_frac (q1 + q2) ⊣⊢ iref_frac q1 ∗ iref_frac q2.
-  Proof.
+  Proof using .
     rewrite /iref_frac.
     assert (Hop : (◯ (Some (q1 + q2)%Qp : optionUR ufracR) : irefslotUR)
                   = ◯ (Some q1 : optionUR ufracR) ⋅ ◯ (Some q2 : optionUR ufracR))
@@ -179,29 +179,29 @@ Section IrefSlots.
   Qed.
 
   Lemma iref_frac_split q1 q2 : iref_frac (q1 + q2) -∗ iref_frac q1 ∗ iref_frac q2.
-  Proof. rewrite iref_frac_op. iIntros "$". Qed.
+  Proof using . rewrite iref_frac_op. iIntros "$". Qed.
   Lemma iref_frac_combine q1 q2 : iref_frac q1 -∗ iref_frac q2 -∗ iref_frac (q1 + q2).
-  Proof. iIntros "H1 H2". rewrite iref_frac_op. iFrame. Qed.
+  Proof using . iIntros "H1 H2". rewrite iref_frac_op. iFrame. Qed.
 
   Global Instance iref_frac_fractional : Fractional iref_frac.
-  Proof. intros q1 q2. apply iref_frac_op. Qed.
+  Proof using . intros q1 q2. apply iref_frac_op. Qed.
   Global Instance iref_frac_as_fractional q :
     AsFractional (iref_frac q) iref_frac q.
-  Proof. split; [reflexivity | apply _]. Qed.
+  Proof using . split; [reflexivity | apply _]. Qed.
 
   Global Instance iref_frac_timeless q : Timeless (iref_frac q).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma iref_slots_split a b : iref_slots (a + b) -∗ iref_slots a ∗ iref_slots b.
-  Proof. rewrite iref_slots_op. iIntros "$". Qed.
+  Proof using . rewrite iref_slots_op. iIntros "$". Qed.
   Lemma iref_slots_combine a b : iref_slots a -∗ iref_slots b -∗ iref_slots (a + b).
-  Proof. iIntros "Ha Hb". rewrite iref_slots_op. iFrame. Qed.
+  Proof using . iIntros "Ha Hb". rewrite iref_slots_op. iFrame. Qed.
 
   (* THE bound.  No update, no arithmetic: auth validity says the fragments
      in circulation cannot exceed the supply. *)
   Lemma iref_slots_bound n :
     iref_slots_auth -∗ iref_slots n -∗ ⌜(n <= IREFSLOTS)%nat⌝.
-  Proof.
+  Proof using .
     rewrite /iref_slots_auth /iref_slots. iIntros "Ha Hf".
     iDestruct (own_valid_2 with "Ha Hf") as %[Hincl _]%auth_both_valid_discrete.
     iPureIntro. by apply nat_ufrac_incl in Hincl.
@@ -221,7 +221,7 @@ Section IrefSlots.
   Lemma iref_slots_supply (n : positive) :
     iref_slots_auth -∗ iref_slots (Pos.to_nat n) -∗
     ⌜(Z.pos n <= Z.of_nat IREFSLOTS)%Z⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Hf".
     iDestruct (iref_slots_bound with "Ha Hf") as %Hle.
     iPureIntro. rewrite -positive_nat_Z. lia.
@@ -230,7 +230,7 @@ Section IrefSlots.
   Lemma iref_slots_no_overflow (n : positive) :
     iref_slots_auth -∗ iref_slots (Pos.to_nat n) -∗
     ⌜(Z.pos n < 2 ^ 31)%Z /\ (Z.pos (Pos.succ n) < 2 ^ 31)%Z⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Hf".
     iDestruct (iref_slots_bound with "Ha Hf") as %Hle.
     iPureIntro.
@@ -248,7 +248,7 @@ Section IrefSlots.
      and both want the parcelled-out form. *)
   Lemma iref_slots_split_n (n m : nat) :
     iref_slots (n * m) -∗ [∗ list] _ ∈ seq 0 n, iref_slots m.
-  Proof.
+  Proof using .
     induction n as [|n IH]; iIntros "H"; [done|].
     rewrite seq_S big_sepL_app /=.
     replace (S n * m)%nat with (m + n * m)%nat by lia.
@@ -258,7 +258,7 @@ Section IrefSlots.
 
   Lemma iref_slots_to_any {A} (l : list A) :
     iref_slots (length l) -∗ [∗ list] _ ∈ l, iref_slot.
-  Proof.
+  Proof using .
     induction l as [|x l IH]; iIntros "H"; [done|].
     cbn [length big_opL].
     replace (S (length l)) with (length l + 1)%nat by lia.
@@ -268,7 +268,7 @@ Section IrefSlots.
 
   Lemma iref_slots_to_list n :
     iref_slots n -∗ [∗ list] _ ∈ seq 0 n, iref_slot.
-  Proof.
+  Proof using .
     induction n as [|n IH]; iIntros "H".
     - done.
     - rewrite seq_S big_sepL_app /=.

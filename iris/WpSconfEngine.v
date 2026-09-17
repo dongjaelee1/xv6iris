@@ -132,7 +132,7 @@ Section HwMisa.
 
   (* the ONE cell a jump needs out of the persistent config bundle *)
   Lemma hw_config_misa : hw_config -∗ misa ↦ᵣ□ MISA_C.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as (misa0 mseccfg0 pmar0 elp0)
       "(Hmisa & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & %Hv & _)".
     rewrite Hv. iExact "Hmisa".
@@ -147,7 +147,7 @@ Section WpSconfBranch.
     (hreg_frame (sj_rs npc0) sj_Drw ∗
      hreg_frame_ro sj_Df (sj_rs npc0) sj_Dro : iProp Σ)
     ⊣⊢ ((R_bitvector_64 nextPC) ↦ᵣ npc0 ∗ misa ↦ᵣ□ MISA_C).
-  Proof.
+  Proof using .
     rewrite /hreg_frame /hreg_frame_ro /sj_Drw /sj_Dro.
     rewrite !big_sepS_singleton.
     by rewrite sj_rs_nPC sj_rs_misa.
@@ -162,7 +162,7 @@ Section WpSconfBranch.
     swp (jump_to target)
       (fun r => ⌜r = RETIRE_SUCCESS⌝ ∗
                 (R_bitvector_64 nextPC) ↦ᵣ target ∗ misa ↦ᵣ□ MISA_C).
-  Proof.
+  Proof using .
     intros Halign. iIntros "#Hcert HnPC Hmisa".
     iAssert (hreg_frame (sj_rs npc0) sj_Drw ∗
              hreg_frame_ro sj_Df (sj_rs npc0) sj_Dro)%I with "[HnPC Hmisa]"
@@ -193,7 +193,7 @@ Section WpSconfBranch.
            (fun a => Defs.bind (rX_bits (Regidx rs2))
                        (fun c => returnM (cmp a c))))
       (fun v => ⌜v = cmp (m !!! Regidx rs1) (m !!! Regidx rs2)⌝ ∗ gpr_file m).
-  Proof.
+  Proof using .
     iIntros "#Hcert Hf".
     iApply (swp_bind_use (rX_bits (Regidx rs1)) _ _ _ with "[Hf] [-]").
     { iApply (swp_rX_file rs1 m with "Hcert Hf"). }
@@ -214,7 +214,7 @@ Section WpSconfBranch.
     cmp (m !!! Regidx rs1) (m !!! Regidx rs2) = false ->
     gen_cert -∗ gpr_file m -∗
     swp mo (fun e => ⌜e = RETIRE_SUCCESS⌝ ∗ gpr_file m).
-  Proof.
+  Proof using .
     intros Hred Hcmp. iIntros "#Hcert Hf". rewrite Hred.
     iApply (swp_bind_use _ _
               (fun v => ⌜v = cmp (m !!! Regidx rs1) (m !!! Regidx rs2)⌝ ∗
@@ -240,7 +240,7 @@ Section WpSconfBranch.
               (R_bitvector_64 PC) ↦ᵣ pc ∗
               (R_bitvector_64 nextPC) ↦ᵣ (add_vec pc (sign_extend' 64 imm)) ∗
               misa ↦ᵣ□ MISA_C).
-  Proof.
+  Proof using .
     intros Hred Hcmp Halign. iIntros "#Hcert Hf HPC HnPC Hmisa". rewrite Hred.
     iApply (swp_bind_use _ _
               (fun v => ⌜v = cmp (m !!! Regidx rs1) (m !!! Regidx rs2)⌝ ∗
@@ -361,7 +361,7 @@ Section WpSconfCtlEng.
     ⊣⊢ ((R_bitvector_64 nextPC) ↦ᵣ npc0 ∗
         cur_privilege ↦ᵣ Supervisor ∗ menvcfg ↦ᵣ MENVCFG_S ∗
         misa ↦ᵣ□ MISA_C).
-  Proof.
+  Proof using .
     rewrite /hreg_frame /hreg_frame_ro /sje_Drw /sje_Dro.
     repeat (rewrite big_sepS_union; last set_solver).
     rewrite !big_sepS_singleton.
@@ -381,7 +381,7 @@ Section WpSconfCtlEng.
       (fun _ => (R_bitvector_64 nextPC) ↦ᵣ npc0 ∗
                 cur_privilege ↦ᵣ Supervisor ∗ menvcfg ↦ᵣ MENVCFG_S ∗
                 misa ↦ᵣ□ MISA_C).
-  Proof.
+  Proof using .
     iIntros "#Hcert HnPC Hpriv Hmenv Hmisa".
     iAssert (hreg_frame (sje_rs npc0) sje_Drw ∗
              hreg_frame_ro sje_Df (sje_rs npc0) sje_Dro)%I
@@ -407,7 +407,7 @@ Section WpSconfCtlEng.
     gen_cert -∗
     swp (Defs.bind0 (sail_barrier bk) (returnM RETIRE_SUCCESS))
       (fun e => ⌜e = RETIRE_SUCCESS⌝).
-  Proof.
+  Proof using .
     iIntros "#Hcert".
     iAssert (hreg_frame init_regstate ∅) as "Hrw".
     { rewrite /hreg_frame. by rewrite big_sepS_empty. }
@@ -425,7 +425,7 @@ Section WpSconfCtlEng.
   Lemma swp_execute_FENCEI_s (imm : SailStdpp.Values.mword 12) (rs rd : regidx) :
     gen_cert -∗
     swp (execute (FENCEI (imm, rs, rd))) (fun e => ⌜e = RETIRE_SUCCESS⌝).
-  Proof. exact (swp_barrier_ret Barrier_RISCV_i). Qed.
+  Proof using . exact (swp_barrier_ret Barrier_RISCV_i). Qed.
 
   (* THE FENCE.I LEAF THAT MINTS.  [swp_execute_FENCEI_s] above is the
      identity; [userret] STEP 0 instead runs a ghost step at the barrier
@@ -435,7 +435,7 @@ Section WpSconfCtlEng.
       (rs rd : regidx) (P Q : iProp Σ) :
     gen_cert -∗ ifence_step P Q -∗ P -∗
     swp (execute (FENCEI (imm, rs, rd))) (fun e => ⌜e = RETIRE_SUCCESS⌝ ∗ Q).
-  Proof.
+  Proof using .
     iIntros "#Hcert Hstep HP".
     iApply (swp_hart_fence_i (execute (FENCEI (imm, rs, rd))) _ P Q
               ltac:(reflexivity) with "Hcert Hstep HP").
@@ -447,7 +447,7 @@ Section WpSconfCtlEng.
     swp (is_fiom_active tt)
       (fun v => ⌜v = eq_vec (_get_MEnvcfg_FIOM menv) ('b"1")⌝ ∗
                 cur_privilege ↦ᵣ Supervisor ∗ menvcfg ↦ᵣ menv).
-  Proof.
+  Proof using .
     iIntros "#Hcert Hpriv Hmenv". unfold is_fiom_active.
     iApply (swp_bind_use (Defs.read_reg cur_privilege) _
               (fun w => ⌜w = Supervisor⌝ ∗ cur_privilege ↦ᵣ Supervisor)%I _
@@ -470,7 +470,7 @@ Section WpSconfCtlEng.
     swp (execute (FENCE (fm, pred, succ, rs, rd)))
       (fun e => ⌜e = RETIRE_SUCCESS⌝ ∗
                 cur_privilege ↦ᵣ Supervisor ∗ menvcfg ↦ᵣ menv).
-  Proof.
+  Proof using .
     iIntros "#Hcert Hpriv Hmenv".
     change (execute (FENCE (fm, pred, succ, rs, rd)))
       with (execute_FENCE fm pred succ rs rd).
@@ -514,7 +514,7 @@ Section WpSconfCtlEng.
                 (R_bitvector_64 PC) ↦ᵣ pc ∗
                 (R_bitvector_64 nextPC) ↦ᵣ (add_vec pc (sign_extend' 64 imm)) ∗
                 misa ↦ᵣ□ MISA_C).
-  Proof.
+  Proof using .
     intros Hrd Halign. iIntros "#Hcert Hf HPC HnPC Hmisa".
     change (execute (JAL (imm, Regidx rd))) with (execute_JAL imm (Regidx rd)).
     unfold execute_JAL. cbn match.
@@ -551,7 +551,7 @@ Section WpSconfCtlEng.
                 (R_bitvector_64 PC) ↦ᵣ pc ∗
                 (R_bitvector_64 nextPC) ↦ᵣ (add_vec pc (sign_extend' 64 imm)) ∗
                 misa ↦ᵣ□ MISA_C).
-  Proof.
+  Proof using .
     intros Hrdz Halign. iIntros "#Hcert Hf HPC HnPC Hmisa".
     change (execute (JAL (imm, Regidx rdz))) with (execute_JAL imm (Regidx rdz)).
     unfold execute_JAL. cbn match.
@@ -597,7 +597,7 @@ Section WpSconfCtlEng.
                      (add_vec (m !!! Regidx rs1) (sign_extend' 64 imm)) 0 zerobit) ∗
                 cur_privilege ↦ᵣ Supervisor ∗ menvcfg ↦ᵣ MENVCFG_S ∗
                 misa ↦ᵣ□ MISA_C).
-  Proof.
+  Proof using .
     intros Hrd Halign. iIntros "#Hcert Hf HnPC Hpriv Hmenv Hmisa".
     change (execute (JALR (imm, Regidx rs1, Regidx rd)))
       with (execute_JALR imm (Regidx rs1) (Regidx rd)).
@@ -648,7 +648,7 @@ Section WpSconfCtlEng.
                 (R_bitvector_64 nextPC) ↦ᵣ (ret_pc (m !!! Regidx ra)) ∗
                 cur_privilege ↦ᵣ Supervisor ∗ menvcfg ↦ᵣ MENVCFG_S ∗
                 misa ↦ᵣ□ MISA_C).
-  Proof.
+  Proof using .
     intros Hrdz.
     (* the alignment side condition is [ret_pc]'s own construction, and it has
        to be POSED rather than passed as an [ltac:] inside the application:
@@ -709,7 +709,7 @@ Section WpSconfEngine.
      leaf whose source is the concrete sp states its value at the plain map
      lookup.  The two are convertible; [rewrite] is syntactic. *)
   Lemma rget_sp (m : regfile) : rget m csp_rs1 = m !!! Regidx csp_rs1.
-  Proof. exact (tp_pin_sp m). Qed.
+  Proof using . exact (tp_pin_sp m). Qed.
 
   (* =================================================================== *)
   (* THE MASTER.  Encoding width [c] is a parameter; the capability moves  *)
@@ -749,7 +749,7 @@ Section WpSconfEngine.
       pc_is (add_vec_int pc (if c then 2 else 4)) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hrd Hops Hwval) "Hex Hcg Hpc Hinstr Hrecap Hcont".
     pose proof (ops_ok_sp_rd _ _ _ _ Hops) as Hrdtp.
     iApply (wp_instr_s_sconf m n b b pc c base
@@ -833,7 +833,7 @@ Section WpSconfEngine.
       pc_is (add_vec_int pc (if c then 2 else 4)) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hrd Hops Hwval) "Hex Hcg Hpc Hinstr Hrecap Hcont".
     iApply (wp_gpr_write_s_sconf_gen pc c rd rsa rsb base f wval m n n' P b
               Hrd Hops Hwval with "[Hex] Hcg Hpc Hinstr Hrecap Hcont").
@@ -869,7 +869,7 @@ Section WpSconfEngine.
       pc_is (add_vec_int pc (if c then 2 else 4)) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hrd Hops Hwval) "Hex Hcg Hpc Hinstr Hcont".
     pose proof (rd_ok_sp _ (ops_ok_rd _ _ _ _ Hops)) as Hrdsp.
     assert (Hsp : m !!! Regidx csp_rs1
@@ -908,7 +908,7 @@ Section WpSconfEngine.
       pc_is (add_vec_int pc 2) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof. exact (wp_gpr_write_s_sconf_val_w pc true rd rsa rsb base f wval m n b). Qed.
+  Proof using . exact (wp_gpr_write_s_sconf_val_w pc true rd rsa rsb base f wval m n b). Qed.
 
   Lemma wp_gpr_write_s_sconf_val_base
       (pc : mword 64) (rd rsa rsb : mword 5) (base : instruction)
@@ -932,7 +932,7 @@ Section WpSconfEngine.
       pc_is (add_vec_int pc 4) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof. exact (wp_gpr_write_s_sconf_val_w pc false rd rsa rsb base f wval m n b). Qed.
+  Proof using . exact (wp_gpr_write_s_sconf_val_w pc false rd rsa rsb base f wval m n b). Qed.
 
   (* the COMPRESSED cap engine -- the shape every sp-mover is built over *)
   Lemma wp_gpr_write_s_sconf_cap_val
@@ -961,7 +961,7 @@ Section WpSconfEngine.
       pc_is (add_vec_int pc 2) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     exact (wp_gpr_write_s_sconf_cap_val_w pc true rd rsa rsb base f wval m n n' P b).
   Qed.
 
@@ -992,7 +992,7 @@ Section WpSconfEngine.
       pc_is (add_vec_int pc 4) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hrd Hops Hwval) "Hex Hcg Hpc Hinstr Hcont".
     pose proof (rd_ok_sp _ (ops_ok_rd _ _ _ _ Hops)) as Hrdsp.
     assert (Hsp : m !!! Regidx csp_rs1
@@ -1039,7 +1039,7 @@ Section WpSconfEngine.
       pc_is (add_vec_int pc (if c then 2 else 4)) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hred) "Hcmp Hcg Hpc Hinstr Hcont".
     iApply (wp_instr_s_sconf m n b b pc c i
               (fun _ npc ms' m2 n2 =>
@@ -1086,7 +1086,7 @@ Section WpSconfEngine.
       pc_is (add_vec pc (sign_extend' 64 imm)) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hred Hal0) "Hcmp Hcg Hpc Hinstr Hcont".
     iApply (wp_instr_s_sconf m n b b pc c i
               (fun _ npc ms' m2 n2 => ⌜npc = add_vec pc (sign_extend' 64 imm)⌝ ∗
@@ -1143,7 +1143,7 @@ Section WpSconfEngine.
       sie_cap_gpr kt m' n' b p -∗ P -∗ pc_is npc -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "Hex Hrecap Hcg Hpc Hinstr Hcont".
     iApply (wp_instr_s_sconf m n b b pc c i
               (fun _ npc2 ms' m2 n2 =>
@@ -1172,7 +1172,7 @@ Section WpSconfEngine.
     sconf -∗ gen_cert ∗ misa ↦ᵣ□ MISA_C ∗
       cur_privilege ↦ᵣ Supervisor ∗ menvcfg ↦ᵣ MENVCFG_S ∗
       (cur_privilege ↦ᵣ Supervisor -∗ menvcfg ↦ᵣ MENVCFG_S -∗ sconf).
-  Proof.
+  Proof using .
     iIntros "(#Hhw & #Hminv & Hpriv & Hms & Hmie & Hmenvx)".
     iDestruct (hw_config_cert with "Hhw") as "#Hcert".
     iDestruct (hw_config_misa with "Hhw") as "#Hmisa".
@@ -1195,7 +1195,7 @@ Section WpSconfEngine.
      commutes with that wand too. *)
   Lemma wp_next_later (b : bool) (pv : mword 64) (K : CpuId -> iProp Σ) :
     wp_next b pv (fun CIDx => ▷ K CIDx) -∗ ▷ wp_next b pv K.
-  Proof.
+  Proof using .
     rewrite /wp_next. iIntros "H".
     rewrite bi.later_forall. iIntros (CIDx). iSpecialize ("H" $! CIDx).
     rewrite !bi.pure_wand_forall bi.later_forall. iExact "H".

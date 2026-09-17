@@ -526,7 +526,7 @@ Section KexecB3Ph.
     ([∗ list] i ∈ seq 0 7,
        ∃ w : mword 64, ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 (61 - i)) (DfracOwn 1) w) ∗
     (∃ w : mword 64, ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 62) (DfracOwn 1) w).
-  Proof.
+  Proof using .
     rewrite (kxc_slots_asc sp0 8 54). cbn [seq big_opL].
     iIntros "(H1 & H2 & H3 & H4 & H5 & H6 & H7 & H8 & _)".
     cbn [Nat.add Nat.sub].
@@ -539,7 +539,7 @@ Section KexecB3Ph.
        ∃ w : mword 64, ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 (61 - i)) (DfracOwn 1) w) -∗
     ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 62) (DfracOwn 1) w62 -∗
     stack_own (KTR := KT1) (pa_stk sp0 54) 8.
-  Proof.
+  Proof using .
     iIntros "H A".
     rewrite (kxc_slots_asc sp0 8 54). cbn [seq big_opL Nat.add Nat.sub].
     iDestruct "H" as "(H1 & H2 & H3 & H4 & H5 & H6 & H7 & _)".
@@ -574,7 +574,7 @@ Section KexecB3Ph.
     ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 68) (DfracOwn 1) w68 -∗
     kxc_frameBpin sp0 ra0 s00 s10 s20 pv av
                   w5 w6 w7 w8 w9 w10 w11 w12 w13 w63 w65 w67.
-  Proof.
+  Proof using .
     rewrite /kxc_frameBpin.
     iIntros "A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13 Aust Aph A63 A64 A65
              A66 A67 A68".
@@ -766,7 +766,7 @@ Section KexecB3Incr.
                        w5 w6 w7 w8 w9 w10 w11 w12 w13 w67 ef P Mi szv w13 ) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "#Htext Hst Hout".
     rewrite /kxc_at_11a.
     iDestruct "Hst" as "((%HMsp & %HMs0 & %HMs2 & %HMs4 & %HMs5 & %HMs6 &
@@ -1251,7 +1251,7 @@ Section KexecB3Body.
                pfun av dqa avf aslen dqas afun) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hqfnl Hqfnm HK Hk Hlg Hsz Hbm0 Hbmc Hbml Hins0 Hcovb Hiregb Hjp Hgs
            Hsp Hra Hs0 Hs1 Hs2.
     pose proof HK as HK'. 
@@ -3847,7 +3847,7 @@ Section KexecB3Loop.
                pfun av dqa avf aslen dqas afun) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hqfnl Hqfnm HK Hk Hlg Hsz Hbm0 Hbmc Hbml Hins0 Hcovb Hiregb Hjp Hgs
            Hsp Hra Hs0 Hs1 Hs2.
     intro W. revert CID0.
@@ -3951,7 +3951,7 @@ Section KexecB3Close.
                    (mword_of_int 0 : mword 64) (m !!! Regidx Rs11) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "#Htext Hst Hout".
     rewrite /kxc_at_1a2.
     iDestruct "Hst" as "((%HMsp & %HMs0 & %HMs1 & %HMs2 & %HMs4 & %HMs6 &
@@ -4087,7 +4087,7 @@ Section KexecB3Close.
                    (kxc_fb datl dnf) ef P Mi szv sv11 -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hlg Hsz Hbm0 Hbmc Hbml Hins0 Hcovb Hiregb Hjp Hgs.
     pose proof HK as HK'. 
     iIntros "#Htext #Hfab Hst Hout".
@@ -4345,7 +4345,7 @@ Section KexecB3Main.
       kf qf sf gyf loyf tlyf inumf dnf bmf datl n2 plen pfun na avf alen aslen afun
       pidv U eb dqb dqs dqa dqpv dqas m M K sp0 ra0 s00 s10 s20 pv av w67
       ef P Mi i szv.
-  Proof.
+  Proof using .
     cbv beta delta [kxc_b2_body].
     intros Hqfnl Hqfnm HK Hk Hlg Hsz Hbm0 Hbmc Hbml Hins0 Hcovb Hiregb Hjp Hgs
            Hsp Hra Hs0 Hs1 Hs2.
@@ -4403,7 +4403,7 @@ Section KexecB3Main.
  gf
       kf qf sf gyf loyf tlyf inumf dnf bmf datl n2 plen pfun na avf alen aslen afun
       pidv U eb dqb dqs dqa dqpv dqas m M K sp0 ra0 s00 s10 s20 pv av w13 w67 ef P Mi.
-  Proof.
+  Proof using .
     cbv beta delta [kxc_b2z_body].
     intros HK Hk Hlg Hsz Hbm0 Hbmc Hbml Hins0 Hcovb Hiregb Hjp Hgs.
     iIntros "#Htext #Hfab Hst Hc1ae".

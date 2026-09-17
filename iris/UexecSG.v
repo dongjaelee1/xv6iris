@@ -592,7 +592,7 @@ Section SBundle.
   Lemma sbundle_of_pay (X : uvis -d> iPropO Σ) (n : Z) (Q : Z -> iProp Σ)
       (W : uvis) :
     sbundle_pay X n Q W -∗ sbundle X n W.
-  Proof. iIntros "H". iDestruct "H" as (f) "[_ Hb]". iExists f. iExact "Hb". Qed.
+  Proof using . iIntros "H". iDestruct "H" as (f) "[_ Hb]". iExists f. iExact "Hb". Qed.
 
   (* ...AND THE exec DEPOSIT WITH ITS REFUND'S ONE CONSEQUENCE (app-echo.md,
      lane KILL-PAY, K4(a), ruling R-A).  A FAILED exec hands the family's
@@ -612,7 +612,7 @@ Section SBundle.
   Lemma sbundle_pay_of_ref (X : uvis -d> iPropO Σ) (Q : Z -> iProp Σ)
       (W : uvis) :
     sbundle_pay_ref X Q W -∗ sbundle_pay X USYS_exec Q W.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as (f) "(%Hp & _ & Hb)".
     iExists f. iSplitR; [ done | iExact "Hb" ].
   Qed.
@@ -624,7 +624,7 @@ Section SBundle.
       (Q : Z -> iProp Σ) (W : uvis) :
     n <> USYS_read -> n <> USYS_exec ->
     sbundle X n W -∗ sbundle_pay X n Q W.
-  Proof.
+  Proof using .
     intros Hne Hnx. iIntros "H". iDestruct "H" as (f) "Hb".
     iExists (sfam_at Q f). rewrite (sbundle_at_at X n Q f W Hne Hnx).
     iSplitR; [ iPureIntro; apply sexit_pay_at | iExact "Hb" ].
@@ -632,7 +632,7 @@ Section SBundle.
 
   Global Instance sbundle_ne (k : nat) :
     Proper (dist k ==> eq ==> eq ==> dist k) sbundle.
-  Proof.
+  Proof using .
     intros X Y HXY n ? <- W ? <-. rewrite /sbundle.
     apply bi.exist_ne; intros f. exact (sbundle_at_ne k X Y HXY n n eq_refl
                                           f f eq_refl W W eq_refl).
@@ -640,14 +640,14 @@ Section SBundle.
 
   Lemma sbundle_cong (X : uvis -d> iPropO Σ) (n : Z) (W W' : uvis) :
     skey_eq W W' -> sbundle X n W ⊣⊢ sbundle X n W'.
-  Proof.
+  Proof using .
     intros Hk. rewrite /sbundle. apply bi.exist_proper; intros f.
     exact (sbundle_at_cong X n f W W' Hk).
   Qed.
 
   Lemma sbundle_mono (X Y : uvis -d> iPropO Σ) (n : Z) (W : uvis) :
     ⊢ □ (∀ W' : uvis, X W' -∗ Y W') -∗ sbundle X n W -∗ sbundle Y n W.
-  Proof.
+  Proof using .
     iIntros "#Hup Hb". rewrite /sbundle. iDestruct "Hb" as (f) "Hb".
     iExists f. iApply (sbundle_at_mono X Y n f W with "Hup Hb").
   Qed.

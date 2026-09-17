@@ -906,7 +906,7 @@ Section UShEcho.
             □ (riscv_kill_cred -∗ R) -∗ uslot W))%I.
 
   Global Instance sh_echo_slot_persistent T : Persistent (sh_echo_slot T).
-  Proof. rewrite /sh_echo_slot. apply _. Qed.
+  Proof using . rewrite /sh_echo_slot. apply _. Qed.
 
   (* ...AND E2'S SEAM, AS ONE APPLICATION (the coordinator's ruling (c)).
      [UInitSh.init_sh_slot] will hand sh ONE claim law, at the whole of
@@ -926,7 +926,7 @@ Section UShEcho.
 
   Lemma sh_echo_slot_of_fs_pure_holds (T : iProp Σ) :
     sh_echo_slot_of_fs_pure T -∗ sh_echo_slot T.
-  Proof.
+  Proof using .
     iIntros "(#Hinv & #Hcl & #Hgen)".
     rewrite /sh_echo_slot. iFrame "Hinv Hgen".
     iModIntro. iIntros (v) "Hp".
@@ -994,7 +994,7 @@ Section UShEcho.
     (i < length ws)%nat ->
     uheap gt gd gs M pm sz -∗ ush_cmd gd t (UkShEcho.echo_cmd ws s0 g) -∗
     ⌜ echo_node_row ws M s0 t g i ⌝.
-  Proof.
+  Proof using .
     intros Hok Hi. iIntros "Hheap #Hc".
     iDestruct (UkShEcho.echo_cmd_word ws gd t s0 g i Hok Hi with "Hc") as "#Hw".
     iDestruct (uheap_uwordq_img with "Hheap Hw") as %Hb.
@@ -1016,7 +1016,7 @@ Section UShEcho.
     (n <= length ws)%nat ->
     uheap gt gd gs M pm sz -∗ ush_cmd gd t (UkShEcho.echo_cmd ws s0 g) -∗
     ⌜ forall i : nat, (i < n)%nat -> echo_node_row ws M s0 t g i ⌝.
-  Proof.
+  Proof using .
     intro Hok.
     induction n as [| n IH]; intro Hn; iIntros "Hheap #Hc".
     - iPureIntro. intros i Hi. exfalso. lia.
@@ -1064,7 +1064,7 @@ Section UShEcho.
 
   Lemma sh_echo_path_of_holds (ws : list (list (bv 8))) :
     sh_echo_path_of ws.
-  Proof.
+  Proof using .
     intros Hok M s0 t g (_ & Hri & _ & _ & Hgi & Hzi) Hbytes.
     pose proof (Hri 0%nat ltac:(exact (line_ok_pos ws Hok))) as Hr.
     rewrite UkShEcho.echo_off_0 in Hr. rewrite Z.add_0_r in Hr.
@@ -1121,7 +1121,7 @@ Section UShEcho.
   Lemma uargv_exec_of_cmd (gd : gname) (t : Z) (args : list uarg) :
     uargv_shape args ->
     ush_cmd gd t (UExec args) -∗ uargv_exec gd (t + 8) args.
-  Proof.
+  Proof using .
     intro Hsh. iIntros "#Hc".
     iDestruct (ush_cmd_exec with "Hc") as "(#Hv & #Hn & _)".
     rewrite /uargv_exec /ush_ptr.
@@ -1188,7 +1188,7 @@ Section UShEcho.
     line_ok ws ->
     echo_node_img ws M s0 t g -> UkShEcho.echo_argv_bytes ws g ->
     uargv_img M (t + 8) (UkShMain.ush_args s0 g (UkShEcho.echo_toks ws)).
-  Proof.
+  Proof using .
     intros Hok Himg Hbytes.
     pose proof (line_ok_len ws Hok) as Hlm. unfold line_max in Hlm.
     pose proof Himg as (Htr & Hri & Hword & Hbc & Hgi & Hzi).
@@ -1379,7 +1379,7 @@ Section UShEcho.
        alen i = UkShEcho.echo_alen ws i) ->
     kexec_sz ElfUser.echo_elf - PGSIZE + 96
       <= kxc_sp_final (kexec_sz ElfUser.echo_elf) alen na.
-  Proof.
+  Proof using .
     intros Hok Hna Halen.
     rewrite Hna. apply (echo_room ws).
     (* the push's span reads the SAME lengths at every index the vector
@@ -1505,7 +1505,7 @@ Section UShEcho.
                  = afun i j).
 
   Lemma echo_key_args_holds : echo_key_args.
-  Proof.
+  Proof using .
     intros na alen afun sts W' Hok Hno.
     pose proof echo_kexec_sz as Hsz.
     unfold kexec_image_ok in Hok. cbv zeta in Hok. rewrite Hsz in Hok.

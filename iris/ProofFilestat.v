@@ -178,7 +178,7 @@ Section ProofFilestat.
     | FdOpen _ _ (FdInode _ _ _) | FdOpen _ _ (FdDevice _) => True
     | _ => False
     end -> filestat_env fn st -∗ filestat_fs_env fn.
-  Proof.
+  Proof using .
     destruct st as [|? ? [? ? ?|?|?]]; cbn; intros H; [contradiction| |contradiction|];
       by iIntros "$".
   Qed.
@@ -188,7 +188,7 @@ Section ProofFilestat.
     | FdOpen _ _ (FdInode _ _ _) | FdOpen _ _ (FdDevice _) => True
     | _ => False
     end -> filestat_fs_out fn -∗ filestat_env_out fn st.
-  Proof.
+  Proof using .
     destruct st as [|? ? [? ? ?|?|?]]; cbn; intros H; [contradiction| |contradiction|];
       by iIntros "$".
   Qed.
@@ -201,7 +201,7 @@ Section ProofFilestat.
       (pidv : mword 32) (U : ustate)
       (m : regfile) (K : nat) (eb : bool) (b : bool) (lks : gset string)
     : wp_filestat_sconf_body γf γs j γlp k q st fn pidv U m K eb b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_filestat_sconf_body].
     intros pcE pj addr ret_tgt HK Hk Hj Hgs Hlens Ha0 Heb Hbelow.
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).

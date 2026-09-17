@@ -61,14 +61,14 @@ Section WpNext.
      pinning conditions.) *)
   Lemma wp_next_intro `{GEN : GenId} `{CID0 : CpuId} (b : bool) (p : mword 64) K :
     (∀ CID : CpuId, K CID) -∗ wp_next b p K.
-  Proof. iIntros "H" (CID _). iApply "H". Qed.
+  Proof using . iIntros "H" (CID _). iApply "H". Qed.
 
   (* Interrupts off: the hart is the one we started with (and hence so is its
      canonical SIE ghost), so the continuation is stated with no binder --
      today's spelling exactly. *)
   Lemma wp_next_off `{GEN : GenId} `{CID0 : CpuId} (p : mword 64) K :
     wp_next false p K ⊣⊢ K CID0.
-  Proof.
+  Proof using .
     iSplit.
     - iIntros "H". iApply ("H" $! CID0). iPureIntro. intros _. reflexivity.
     - iIntros "H" (CID Hs). pose proof (Hs (or_introl eq_refl)) as Hc.
@@ -85,13 +85,13 @@ Section WpNext.
      the same continuation. *)
   Lemma wp_next_off_intro `{GEN : GenId} `{CID0 : CpuId} (p : mword 64) K :
     K CID0 -∗ wp_next false p K.
-  Proof. iIntros "H". by iApply wp_next_off. Qed.
+  Proof using . iIntros "H". by iApply wp_next_off. Qed.
 
   (* NO CURRENT PROC: the thread cannot be yielded, so the hart is pinned even
      at [b = true].  Same collapse as [wp_next_off], from the other hatch. *)
   Lemma wp_next_idle `{GEN : GenId} `{CID0 : CpuId} (b : bool) (p : mword 64) K :
     p = zero_reg -> wp_next b p K ⊣⊢ K CID0.
-  Proof.
+  Proof using .
     intros Hp.
     iSplit.
     - iIntros "H". iApply ("H" $! CID0). iPureIntro. intros _. reflexivity.
@@ -114,7 +114,7 @@ Section WpNext.
       (CIDn : CpuId) :
     (b = false \/ p = zero_reg -> (CIDn : CPU) = (CID0 : CPU)) ->
     wp_next (CID0 := CID0) b p K -∗ K CIDn.
-  Proof. iIntros (Hs) "H". iApply ("H" $! CIDn). iPureIntro. exact Hs. Qed.
+  Proof using . iIntros (Hs) "H". iApply ("H" $! CIDn). iPureIntro. exact Hs. Qed.
 
   (* ... and the SAME-HART instance of it: an engine that provably returns to
      the hart it started on (STAGE 1 -- the absorbing Löb is at a fixed hart,
@@ -139,7 +139,7 @@ Section WpNext.
      [intr_frame], not here. *)
   Lemma wp_next_here `{GEN : GenId} `{CID0 : CpuId} (b : bool) (p : mword 64) K :
     wp_next b p K -∗ K CID0.
-  Proof. iApply (wp_next_at b p K CID0). intros _. reflexivity. Qed.
+  Proof using . iApply (wp_next_at b p K CID0). intros _. reflexivity. Qed.
 
   (* RE-ANCHORING A CALLER'S OBLIGATION AT ANOTHER HART.  A layer whose own
      step MOVED the hart -- a parking function whose [swtch] resumed
@@ -170,7 +170,7 @@ Section WpNext.
       (p : mword 64) K :
     (b = false \/ p = zero_reg -> (CID1 : CPU) = (CID0 : CPU)) ->
     wp_next (CID0 := CID0) b p K -∗ wp_next (CID0 := CID1) b p K.
-  Proof.
+  Proof using .
     intros Heq. iIntros "H" (CID Hs). iApply "H".
     iPureIntro. intros Hb. rewrite (Hs Hb). exact (Heq Hb).
   Qed.
@@ -182,7 +182,7 @@ Section WpNext.
       {p : mword 64} {CIDa CIDb : CpuId}
       (Hs : b = false \/ p = zero_reg -> (CIDb : CPU) = (CIDa : CPU)) :
     wp_next (CID0 := CIDa) b p K -∗ wp_next (CID0 := CIDb) b p K.
-  Proof. exact (wp_next_retarget CIDa CIDb b p K Hs). Qed.
+  Proof using . exact (wp_next_retarget CIDa CIDb b p K Hs). Qed.
 
   (* Chaining: the conditional equalities compose, which is what lets a
      [b]-GENERIC whole-function proof thread one implication per instruction
@@ -193,7 +193,7 @@ Section WpNext.
     (b = false \/ p = zero_reg -> (CID1 : CPU) = (CID0 : CPU)) ->
     (b = false \/ p = zero_reg -> (CID2 : CPU) = (CID1 : CPU)) ->
     (b = false \/ p = zero_reg -> (CID2 : CPU) = (CID0 : CPU)).
-  Proof.
+  Proof using .
     intros H1 H2 Hb. pose proof (H1 Hb) as Ha. pose proof (H2 Hb) as Hc.
     by rewrite Hc.
   Qed.

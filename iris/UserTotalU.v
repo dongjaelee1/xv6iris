@@ -520,7 +520,7 @@ Section UserTotalU.
   (* state [dstateU] the catalogue is computed at.                         *)
   (* ------------------------------------------------------------------- *)
   Lemma u_D_u_sub (r : register) : D_u r = true -> r ∈ u_Drw ∪ u_Dro.
-  Proof.
+  Proof using .
     unfold D_u. intro Hr.
     repeat (apply orb_prop in Hr; destruct Hr as [Hr | Hr]);
       apply register_beq_true in Hr; subst r;
@@ -534,7 +534,7 @@ Section UserTotalU.
     register_lookup menvcfg rsf = MENVCFG_S ->
     u_hw_pins rsf -> u_cfg_pins rsf ->
     agree_on D_u (u_state rsf mm) dstateU.
-  Proof.
+  Proof using .
     intros Lcp Lmenv (Hmisa & _ & Hsenv & _) (Hmste & Hsste).
     exact (agree_u (u_state rsf mm) Lcp Lmenv Hsenv Hmste Hsste Hmisa).
   Qed.
@@ -544,7 +544,7 @@ Section UserTotalU.
     agree_on D_u (u_state rsf mm) dstateU ->
     exec (ext_decode w) dstateU = Some (i, dstateU) ->
     hval (u_Drw ∪ u_Dro) u_Drw rsf (ext_decode w) i rsf.
-  Proof.
+  Proof using .
     intros Hag Hd.
     exact (hval_of_goodb D_u (u_Drw ∪ u_Dro) u_Drw (ext_decode w) dstateU rsf i
              u_D_u_sub Hag (goodbP_goodb D_u decodable_u _ _ (goodbP_encdec_u w))
@@ -556,7 +556,7 @@ Section UserTotalU.
     agree_on D_u (u_state rsf mm) dstateU ->
     exec (ext_decode_compressed h) dstateU = Some (i, dstateU) ->
     hval (u_Drw ∪ u_Dro) u_Drw rsf (ext_decode_compressed h) i rsf.
-  Proof.
+  Proof using .
     intros Hag Hd.
     exact (hval_of_goodb D_u (u_Drw ∪ u_Dro) u_Drw (ext_decode_compressed h)
              dstateU rsf i u_D_u_sub Hag
@@ -584,26 +584,26 @@ Section UserTotalU.
   Lemma u_tlb_irr (r : register) (v : type_of_register r) (rs : regstate) :
     register_beq tlb r = false ->
     register_lookup tlb (register_set r v rs) = register_lookup tlb rs.
-  Proof. apply irrelevant_register_set. Qed.
+  Proof using . apply irrelevant_register_set. Qed.
 
   Lemma u_tlb_gpr (ird : mword 5) (v : mword 64) (s : mstate) :
     register_lookup tlb (gpr_write_state ird v s).(sregs)
       = register_lookup tlb s.(sregs).
-  Proof.
+  Proof using .
     unfold gpr_write_state. destruct (Z.eqb (uint ird) 0); [reflexivity|].
     rewrite sregs_set_reg. apply u_tlb_irr. reflexivity.
   Qed.
 
   Lemma u_mem_gpr (ird : mword 5) (v : mword 64) (s : mstate) :
     (gpr_write_state ird v s).(mem) = s.(mem).
-  Proof.
+  Proof using .
     unfold gpr_write_state. destruct (Z.eqb (uint ird) 0); [reflexivity|].
     apply mem_set_reg.
   Qed.
 
   Lemma u_fix_gpr_state (ird : mword 5) (v : mword 64) (s : mstate) :
     reg_agree_on u_Dfix (gpr_write_state ird v s).(sregs) s.(sregs).
-  Proof.
+  Proof using .
     unfold gpr_write_state. destruct (Z.eqb (uint ird) 0) eqn:H0;
       [ apply u_fix_refl |].
     rewrite sregs_set_reg. apply u_fix_gpr, Z.eqb_neq, H0.
@@ -613,7 +613,7 @@ Section UserTotalU.
   Lemma u_post_id (t : ptree) (mm : PtBytes.pamap) (rsx : regstate) :
     u_exec_pins pt t rsx -> u_mem_wf pt t mm ->
     u_post_reg t mm (u_state rsx mm) rsx.
-  Proof.
+  Proof using .
     intros (_ & _ & _ & Htlb) Hwf. split_and!.
     - apply u_fix_refl.
     - exact Htlb.
@@ -624,7 +624,7 @@ Section UserTotalU.
       (ird : mword 5) (v : mword 64) :
     u_exec_pins pt t rsx -> u_mem_wf pt t mm ->
     u_post_reg t mm (gpr_write_state ird v (u_state rsx mm)) rsx.
-  Proof.
+  Proof using .
     intros (_ & _ & _ & Htlb) Hwf. split_and!.
     - apply u_fix_gpr_state.
     - rewrite u_tlb_gpr. exact Htlb.
@@ -635,7 +635,7 @@ Section UserTotalU.
       (tgt : mword 64) :
     u_exec_pins pt t rsx -> u_mem_wf pt t mm ->
     u_post_reg t mm (set_reg (u_state rsx mm) nextPC tgt) rsx.
-  Proof.
+  Proof using .
     intros (_ & _ & _ & Htlb) Hwf. split_and!.
     - rewrite sregs_set_reg. apply u_fix_npc.
     - rewrite sregs_set_reg u_tlb_irr; [ exact Htlb | reflexivity ].
@@ -647,7 +647,7 @@ Section UserTotalU.
     u_exec_pins pt t rsx -> u_mem_wf pt t mm ->
     u_post_reg t mm
       (gpr_write_state ird v (set_reg (u_state rsx mm) nextPC tgt)) rsx.
-  Proof.
+  Proof using .
     intros Hp Hwf.
     destruct (u_post_npc t mm rsx tgt Hp Hwf) as (Hag & Htlb & Hst).
     split_and!.
@@ -679,7 +679,7 @@ Section UserTotalU.
   (* ------------------------------------------------------------------- *)
   Lemma u_gm_lift0 {X : Type} (m : M X) (st : mstate) (mmx : PtBytes.pamap) :
     goodmb Du_r Du_w m st ∅ = true -> goodmb Du_r Du_w m st mmx = true.
-  Proof.
+  Proof using .
     intro H. apply (goodmb_map_mono Du_r Du_w m st ∅ mmx);
       [ rewrite dom_empty_L; apply empty_subseteq | exact H ].
   Qed.
@@ -936,12 +936,12 @@ Section UserTotalU.
     register_beq r nextPC = false ->
     register_lookup r (register_set nextPC (add_vec_int va n) rs)
       = register_lookup r rs.
-  Proof. apply irrelevant_register_set. Qed.
+  Proof using . apply irrelevant_register_set. Qed.
 
   Lemma u_pins_tick (t : ptree) (rsf : regstate) (va : mword 64) (n : Z) :
     u_exec_pins pt t rsf ->
     u_exec_pins pt t (register_set nextPC (add_vec_int va n) rsf).
-  Proof.
+  Proof using .
     intros Hp.
     rewrite /u_exec_pins /u_hw_pins /u_cfg_pins /u_pt_pins in Hp |- *.
     rewrite (u_tick_reg (R_bitvector_64 misa) rsf va n eq_refl)
@@ -980,7 +980,7 @@ Section UserTotalU.
     match r with ExecuteAs _ => False | _ => True end ->
     u_post_reg t mm s_x (s0r rsf va) ->
     base_post pt t mm rsf va w.
-  Proof.
+  Proof using .
     intros Hdec Hhv Hlpad Hex Hok Hnex (Hag & Htlb & Hst).
     exists i, r, s_x, t. split_and!; assumption.
   Qed.
@@ -1002,13 +1002,13 @@ Section UserTotalU.
     match r with ExecuteAs _ => False | _ => True end ->
     u_post_reg t mm s_x (s2r rsf va) ->
     rvc_post pt t mm rsf va h.
-  Proof.
+  Proof using .
     intros Hdec Hhv Hzca Hex Hok Hnex (Hag & Htlb & Hst).
     exists i, r, s_x, t. split_and!; assumption.
   Qed.
 
   Lemma u_result_ok_retire : u_result_ok RETIRE_SUCCESS.
-  Proof. unfold u_result_ok. left. reflexivity. Qed.
+  Proof using . unfold u_result_ok. left. reflexivity. Qed.
 
   (* ------------------------------------------------------------------- *)
   (* GLUE (a): state-unchanged retire / illegal / trap / enter-wait / nop.  *)
@@ -1024,7 +1024,7 @@ Section UserTotalU.
     u_exec_pins pt t rsf -> u_mem_wf pt t mm ->
     goodmb Du_r Du_w (execute i) (s0 rsf mm va) mm = true ->
     base_post pt t mm rsf va w.
-  Proof.
+  Proof using .
     intros Hhv Hdec Hlpad Hexec Hok Hnex Hpins Hwf Hgm.
     apply (base_post_intro t mm rsf va w i r (s0 rsf mm va)
              Hdec Hhv Hlpad (or_introl (conj Hexec Hgm)) Hok Hnex).
@@ -1046,7 +1046,7 @@ Section UserTotalU.
     goodmb Du_r Du_w (execute i) (s0 rsf mm va) mm = true ->
     goodmb Du_r Du_w (execute other) (s0 rsf mm va) mm = true ->
     base_post pt t mm rsf va w.
-  Proof.
+  Proof using .
     intros Hhv Hdec Hlpad Hex1 Hex2 Hok Hnex Hpins Hwf Hg1 Hg2.
     apply (base_post_intro t mm rsf va w i r (s0 rsf mm va)
              Hdec Hhv Hlpad
@@ -1067,7 +1067,7 @@ Section UserTotalU.
     u_exec_pins pt t rsf -> u_mem_wf pt t mm ->
     goodmb Du_r Du_w (execute i) (s0 rsf mm va) mm = true ->
     base_post pt t mm rsf va w.
-  Proof.
+  Proof using .
     intros Hhv Hdec Hlpad Hexec Hpins Hwf Hgm.
     apply (base_post_intro t mm rsf va w i RETIRE_SUCCESS
              (gpr_write_state ird v (s0 rsf mm va))
@@ -1086,7 +1086,7 @@ Section UserTotalU.
     u_exec_pins pt t rsf -> u_mem_wf pt t mm ->
     goodmb Du_r Du_w (execute i) (s0 rsf mm va) mm = true ->
     base_post pt t mm rsf va w.
-  Proof.
+  Proof using .
     intros Hhv Hdec Hlpad Hexec Hpins Hwf Hgm.
     apply (base_post_intro t mm rsf va w i RETIRE_SUCCESS
              (set_reg (s0 rsf mm va) nextPC tgt)
@@ -1106,7 +1106,7 @@ Section UserTotalU.
     u_exec_pins pt t rsf -> u_mem_wf pt t mm ->
     goodmb Du_r Du_w (execute i) (s0 rsf mm va) mm = true ->
     base_post pt t mm rsf va w.
-  Proof.
+  Proof using .
     intros Hhv Hdec Hlpad Hexec Hpins Hwf Hgm.
     apply (base_post_intro t mm rsf va w i RETIRE_SUCCESS
              (gpr_write_state ird v (set_reg (s0 rsf mm va) nextPC tgt))
@@ -1125,7 +1125,7 @@ Section UserTotalU.
     u_exec_pins pt t rsf -> u_mem_wf pt t mm ->
     goodmb Du_r Du_w (execute i) (s0 rsf mm va) mm = true ->
     base_post pt t mm rsf va w.
-  Proof.
+  Proof using .
     intros Hhv Hdec Hlpad Htot Hpins Hwf Hgm.
     destruct (Htot (s0 rsf mm va)) as (v & Hexec).
     exact (finish_gprwrite t mm rsf va i ird v w Hhv Hdec Hlpad Hexec
@@ -1139,12 +1139,12 @@ Section UserTotalU.
   Lemma s0_cur_privilege (rsf : regstate) (va : mword 64) :
     register_lookup cur_privilege rsf = User ->
     register_lookup cur_privilege (s0r rsf va) = User.
-  Proof. intro H. rewrite (u_tick_reg cur_privilege rsf va 4 eq_refl). exact H. Qed.
+  Proof using . intro H. rewrite (u_tick_reg cur_privilege rsf va 4 eq_refl). exact H. Qed.
 
   Lemma s0_PC (rsf : regstate) (va : mword 64) :
     register_lookup PC rsf = va ->
     register_lookup PC (s0r rsf va) = va.
-  Proof.
+  Proof using .
     intro H. rewrite (u_tick_reg (R_bitvector_64 PC) rsf va 4 eq_refl). exact H.
   Qed.
 
@@ -1153,14 +1153,14 @@ Section UserTotalU.
     register_beq r nextPC = false ->
     register_lookup r rsf = v ->
     register_lookup r (s0r rsf va) = v.
-  Proof. intros Hne H. rewrite (u_tick_reg r rsf va 4 Hne). exact H. Qed.
+  Proof using . intros Hne H. rewrite (u_tick_reg r rsf va 4 Hne). exact H. Qed.
 
   Lemma s2_reg (r : register) (v : type_of_register r) (rsf : regstate)
       (va : mword 64) :
     register_beq r nextPC = false ->
     register_lookup r rsf = v ->
     register_lookup r (s2r rsf va) = v.
-  Proof. intros Hne H. rewrite (u_tick_reg r rsf va 2 Hne). exact H. Qed.
+  Proof using . intros Hne H. rewrite (u_tick_reg r rsf va 2 Hne). exact H. Qed.
 
   (* the decode agreement rides across the tick: no cell of [D_u] is nextPC *)
   Lemma u_agree_tick (rsf : regstate) (mm : PtBytes.pamap) (va : mword 64)
@@ -1168,7 +1168,7 @@ Section UserTotalU.
     agree_on D_u (u_state rsf mm) dstateU ->
     agree_on D_u (u_state (register_set nextPC (add_vec_int va n) rsf) mm)
       dstateU.
-  Proof.
+  Proof using .
     intros Hag r Hr.
     rewrite (u_tick_reg r rsf va n (u_D_u_not_nextPC r Hr)). exact (Hag r Hr).
   Qed.
@@ -1177,7 +1177,7 @@ Section UserTotalU.
   Lemma s0_ext_S (s : mstate) :
     register_lookup misa s.(sregs) = MISA_C ->
     exec (currentlyEnabled Ext_S) s = Some (true, s).
-  Proof.
+  Proof using .
     intro H. rewrite exec_currentlyEnabled_S H.
     replace (eq_vec (_get_Misa_S MISA_C) ('b"1")) with true by (vm_compute; reflexivity).
     reflexivity.
@@ -1186,7 +1186,7 @@ Section UserTotalU.
   Lemma s0_zca (s : mstate) :
     register_lookup misa s.(sregs) = MISA_C ->
     exec (currentlyEnabled Ext_Zca) s = Some (true, s).
-  Proof.
+  Proof using .
     intro H. apply exec_currentlyEnabled_Zca. rewrite H. vm_compute; reflexivity.
   Qed.
 
@@ -1203,7 +1203,7 @@ Section UserTotalU.
     register_lookup menvcfg s.(sregs) = MENVCFG_S ->
     register_lookup senvcfg s.(sregs) = (mword_of_int 0 : mword 64) ->
     exec (currentlyEnabled Ext_Zicfilp) s = Some (false, s).
-  Proof.
+  Proof using .
     intros Hpriv Hmisa Hmenv Hsenv.
     unfold currentlyEnabled. destruct (Defs.Zwf_guarded _).
     cbn [_rec_currentlyEnabled]. unfold Defs.assert_exp'.
@@ -1235,12 +1235,12 @@ Section UserTotalU.
   Qed.
 
   Lemma u_result_ok_illegal : u_result_ok (Illegal_Instruction tt).
-  Proof. unfold u_result_ok. right; right; left; reflexivity. Qed.
+  Proof using . unfold u_result_ok. right; right; left; reflexivity. Qed.
 
   Lemma u_result_ok_ebreak (v : mword 64) :
     u_result_ok (rv64d_types.Trap
       (User, make_sync_exception (E_Breakpoint Brk_Software) v, v)).
-  Proof.
+  Proof using .
     unfold u_result_ok. right; left.
     exists (E_Breakpoint Brk_Software), v, v. split; [reflexivity | vm_compute; reflexivity].
   Qed.
@@ -1251,7 +1251,7 @@ Section UserTotalU.
   (* discharges jump_to's target-bit0 assert.                                   *)
   Lemma access0_unsigned_gen (n : Z) (w : mword n) :
     bv_unsigned (access_vec_dec w 0) = bv_unsigned w mod 2.
-  Proof.
+  Proof using .
     unfold access_vec_dec, access_mword_dec.
     unfold MachineWord.MachineWord.slice. cbv [get_word].
     rewrite bv_extract_unsigned. rewrite Z.shiftr_0_r.
@@ -1264,7 +1264,7 @@ Section UserTotalU.
      concat bit-0 fact is proved at the two widths the C-jumps use (11, 8). *)
   Lemma bit0_concat0_11 (x : mword 11) :
     eq_vec (access_vec_dec (concat_vec x ('b"0" : mword 1)) 0) ('b"0") = true.
-  Proof.
+  Proof using .
     apply eq_vec_true_iff. apply bv_eq.
     unfold access_vec_dec, access_mword_dec, concat_vec.
     cbv [to_word get_word autocast]. cbn.
@@ -1284,7 +1284,7 @@ Section UserTotalU.
 
   Lemma bit0_concat0_8 (x : mword 8) :
     eq_vec (access_vec_dec (concat_vec x ('b"0" : mword 1)) 0) ('b"0") = true.
-  Proof.
+  Proof using .
     apply eq_vec_true_iff. apply bv_eq.
     unfold access_vec_dec, access_mword_dec, concat_vec.
     cbv [to_word get_word autocast]. cbn.
@@ -1304,7 +1304,7 @@ Section UserTotalU.
 
   Lemma concat0_even_11 (x : mword 11) :
     bv_unsigned (concat_vec x ('b"0" : mword 1)) mod 2 = 0.
-  Proof.
+  Proof using .
     pose proof (bit0_concat0_11 x) as H.
     apply eq_vec_true_iff in H. apply (f_equal bv_unsigned) in H.
     rewrite access0_unsigned_gen in H. rewrite H. vm_compute; reflexivity.
@@ -1312,7 +1312,7 @@ Section UserTotalU.
 
   Lemma concat0_even_8 (x : mword 8) :
     bv_unsigned (concat_vec x ('b"0" : mword 1)) mod 2 = 0.
-  Proof.
+  Proof using .
     pose proof (bit0_concat0_8 x) as H.
     apply eq_vec_true_iff in H. apply (f_equal bv_unsigned) in H.
     rewrite access0_unsigned_gen in H. rewrite H. vm_compute; reflexivity.
@@ -1320,7 +1320,7 @@ Section UserTotalU.
 
   Lemma even_jimm_21 (imm : mword 11) :
     bv_unsigned (sign_extend' 21 (concat_vec imm ('b"0" : mword 1))) mod 2 = 0.
-  Proof.
+  Proof using .
     cbv [sign_extend' Operators_mwords.sign_extend Operators_mwords.exts_vec to_word get_word
          MachineWord.MachineWord.sign_extend].
     rewrite bv_sign_extend_unsigned.
@@ -1330,7 +1330,7 @@ Section UserTotalU.
 
   Lemma even_jimm_13 (imm : mword 8) :
     bv_unsigned (sign_extend' 13 (concat_vec imm ('b"0" : mword 1))) mod 2 = 0.
-  Proof.
+  Proof using .
     cbv [sign_extend' Operators_mwords.sign_extend Operators_mwords.exts_vec to_word get_word
          MachineWord.MachineWord.sign_extend].
     rewrite bv_sign_extend_unsigned.
@@ -1362,7 +1362,7 @@ Section UserTotalU.
     goodmb Du_r Du_w (execute instr) (s2 rsf mm va) mm = true ->
     goodmb Du_r Du_w (execute other) (s2 rsf mm va) mm = true ->
     rvc_post pt t mm rsf va h.
-  Proof.
+  Proof using .
     intros Hhv Hdecc Hzca Hex1 Hex2 Hok Hnex Hpins Hwf Hg1 Hg2.
     apply (rvc_post_intro t mm rsf va h instr r (s2 rsf mm va)
              Hdecc Hhv Hzca
@@ -1385,7 +1385,7 @@ Section UserTotalU.
     goodmb Du_r Du_w (execute instr) (s2 rsf mm va) mm = true ->
     goodmb Du_r Du_w (execute other) (s2 rsf mm va) mm = true ->
     rvc_post pt t mm rsf va h.
-  Proof.
+  Proof using .
     intros Hhv Hdecc Hzca Hex1 Hex2 Hpins Hwf Hg1 Hg2.
     apply (rvc_post_intro t mm rsf va h instr RETIRE_SUCCESS
              (gpr_write_state ird v (s2 rsf mm va))
@@ -1409,7 +1409,7 @@ Section UserTotalU.
     goodmb Du_r Du_w (execute instr) (s2 rsf mm va) mm = true ->
     goodmb Du_r Du_w (execute other) (s2 rsf mm va) mm = true ->
     rvc_post pt t mm rsf va h.
-  Proof.
+  Proof using .
     intros Hhv Hdecc Hzca Hex1 Hex2 Hpins Hwf Hg1 Hg2.
     apply (rvc_post_intro t mm rsf va h instr RETIRE_SUCCESS
              (set_reg (s2 rsf mm va) nextPC tgt)
@@ -1434,7 +1434,7 @@ Section UserTotalU.
     goodmb Du_r Du_w (execute instr) (s2 rsf mm va) mm = true ->
     goodmb Du_r Du_w (execute other) (s2 rsf mm va) mm = true ->
     rvc_post pt t mm rsf va h.
-  Proof.
+  Proof using .
     intros Hhv Hdecc Hzca Hex1 Hex2 Hpins Hwf Hg1 Hg2.
     apply (rvc_post_intro t mm rsf va h instr RETIRE_SUCCESS
              (gpr_write_state ird v (set_reg (s2 rsf mm va) nextPC tgt))
@@ -1457,7 +1457,7 @@ Section UserTotalU.
     u_exec_pins pt t rsf -> u_mem_wf pt t mm ->
     goodmb Du_r Du_w (execute instr) (s2 rsf mm va) mm = true ->
     rvc_post pt t mm rsf va h.
-  Proof.
+  Proof using .
     intros Hhv Hdecc Hzca Hexec Hok Hnex Hpins Hwf Hgm.
     apply (rvc_post_intro t mm rsf va h instr r (s2 rsf mm va)
              Hdecc Hhv Hzca (or_introl (conj Hexec Hgm)) Hok Hnex).
@@ -1476,7 +1476,7 @@ Section UserTotalU.
     u_exec_pins pt t rsf -> u_mem_wf pt t mm ->
     goodmb Du_r Du_w (execute instr) (s2 rsf mm va) mm = true ->
     rvc_post pt t mm rsf va h.
-  Proof.
+  Proof using .
     intros Hhv Hdecc Hzca Hexec Hpins Hwf Hgm.
     apply (rvc_post_intro t mm rsf va h instr RETIRE_SUCCESS
              (gpr_write_state ird v (s2 rsf mm va))
@@ -1499,7 +1499,7 @@ Section UserTotalU.
     goodmb Du_r Du_w (execute instr) (s2 rsf mm va) mm = true ->
     goodmb Du_r Du_w (execute other) (s2 rsf mm va) mm = true ->
     rvc_post pt t mm rsf va h.
-  Proof.
+  Proof using .
     intros Hhv Hdecc Hzca Hex1 Htot Hpins Hwf Hg1 Hg2.
     destruct (Htot (s2 rsf mm va)) as (v & Hex2).
     exact (finish_rvc_gprwrite t mm rsf va instr other ird v h Hhv Hdecc Hzca
@@ -1520,7 +1520,7 @@ Section UserTotalU.
     exec (ext_decode w) (u_state rsf mm) = Some (ILLEGAL wi, u_state rsf mm) ->
     u_exec_pins pt t rsf -> u_mem_wf pt t mm ->
     base_post pt t mm rsf va w.
-  Proof.
+  Proof using .
     intros Hhv Hdec Hpins Hwf.
     apply (finish_unchanged t mm rsf va (ILLEGAL wi) (Illegal_Instruction tt) w
              Hhv Hdec eq_refl (exec_execute_ILLEGAL_U wi _)
@@ -1537,7 +1537,7 @@ Section UserTotalU.
     exec (ext_decode w) (u_state rsf mm) = Some (ECALL tt, u_state rsf mm) ->
     u_exec_pins pt t rsf -> u_mem_wf pt t mm ->
     base_post pt t mm rsf va w.
-  Proof.
+  Proof using .
     intros Hhv Lcp Lpc Hdec Hpins Hwf.
     pose proof (s0_cur_privilege rsf va Lcp) as Lcp0.
     pose proof (s0_PC rsf va Lpc) as Lpc0.
@@ -1563,7 +1563,7 @@ Section UserTotalU.
     exec (ext_decode w) (u_state rsf mm) = Some (WRS op, u_state rsf mm) ->
     u_exec_pins pt t rsf -> u_mem_wf pt t mm ->
     base_post pt t mm rsf va w.
-  Proof.
+  Proof using .
     intros Hhv Hdec Hpins Hwf.
     assert (Hok : u_result_ok (Enter_Wait (match op with
                         | WRS_STO => WAIT_WRS_STO | WRS_NTO => WAIT_WRS_NTO end))).
@@ -1576,7 +1576,7 @@ Section UserTotalU.
 
   Lemma s2_PC (rsf : regstate) (va : mword 64) :
     register_lookup PC rsf = va -> register_lookup PC (s2r rsf va) = va.
-  Proof.
+  Proof using .
     intro H. rewrite (u_tick_reg (R_bitvector_64 PC) rsf va 2 eq_refl). exact H.
   Qed.
 
@@ -1595,7 +1595,7 @@ Section UserTotalU.
       = Some (JAL (imm, Regidx ird), u_state rsf mm) ->
     u_exec_pins pt t rsf -> u_mem_wf pt t mm ->
     base_post pt t mm rsf va w.
-  Proof.
+  Proof using .
     intros Hhv Hag Lpc Lmisa Hva2 Halign Hdec Hpins Hwf.
     pose proof (u_agree_tick rsf mm va 4 Hag) as Hag0.
     assert (Halign2 : eq_vec (access_vec_dec
@@ -1630,7 +1630,7 @@ Section UserTotalU.
       = Some (JALR (imm, Regidx i1, Regidx ird), u_state rsf mm) ->
     u_exec_pins pt t rsf -> u_mem_wf pt t mm ->
     base_post pt t mm rsf va w.
-  Proof.
+  Proof using .
     intros Hhv Hag Lcp Lmisa Lmenv Lsenv Hdec Hpins Hwf.
     pose proof (u_agree_tick rsf mm va 4 Hag) as Hag0.
     pose proof (s0_cur_privilege rsf va Lcp) as Lcp0.
@@ -1662,7 +1662,7 @@ Section UserTotalU.
       = Some (BTYPE (imm, Regidx i2, Regidx i1, op), u_state rsf mm) ->
     u_exec_pins pt t rsf -> u_mem_wf pt t mm ->
     base_post pt t mm rsf va w.
-  Proof.
+  Proof using .
     intros Hhv Hag Lpc Lmisa Hva2 Halign Hdec Hpins Hwf.
     pose proof (u_agree_tick rsf mm va 4 Hag) as Hag0.
     assert (Hgb : goodmb Du_r Du_w
@@ -1716,7 +1716,7 @@ Section UserTotalU.
       = Some (CSRReg (csr, Regidx i1, Regidx rd, op), u_state rsf mm) ->
     u_exec_pins pt t rsf -> u_mem_wf pt t mm ->
     base_post pt t mm rsf va w.
-  Proof.
+  Proof using .
     intros Hhv Hag Lcp Hmsok Lmisa Lmenv Hdec Hpins Hwf.
     pose proof (u_agree_tick rsf mm va 4 Hag) as Hag0.
     destruct Hmsok as (_ & _ & _ & Hfs & Hvs & _ & _).
@@ -1759,7 +1759,7 @@ Section UserTotalU.
       = Some (CSRImm (csr, imm, Regidx rd, op), u_state rsf mm) ->
     u_exec_pins pt t rsf -> u_mem_wf pt t mm ->
     base_post pt t mm rsf va w.
-  Proof.
+  Proof using .
     intros Hhv Hag Lcp Hmsok Lmisa Lmenv Hdec Hpins Hwf.
     pose proof (u_agree_tick rsf mm va 4 Hag) as Hag0.
     destruct Hmsok as (_ & _ & _ & Hfs & Hvs & _ & _).
@@ -1802,7 +1802,7 @@ Section UserTotalU.
     exec (ext_decode_compressed h) (u_state rsf mm) = Some (C_J imm, u_state rsf mm) ->
     u_exec_pins pt t rsf -> u_mem_wf pt t mm ->
     rvc_post pt t mm rsf va h.
-  Proof.
+  Proof using .
     intros Hhv Hag Lpc Lmisa Hva2 Hzcaf Hdec Hpins Hwf.
     pose proof (u_agree_tick rsf mm va 2 Hag) as Hag2.
     assert (Halign : eq_vec (access_vec_dec
@@ -1847,7 +1847,7 @@ Section UserTotalU.
       = Some (C_JR (Regidx r1), u_state rsf mm) ->
     u_exec_pins pt t rsf -> u_mem_wf pt t mm ->
     rvc_post pt t mm rsf va h.
-  Proof.
+  Proof using .
     intros Hhv Hag Lcp Lmisa Lmenv Lsenv Hzcaf Hdec Hpins Hwf.
     pose proof (u_agree_tick rsf mm va 2 Hag) as Hag2.
     destruct (exec_execute_JALR_total (zeros' 12) r1 (zero_extend' 5 ('b"00"))
@@ -1882,7 +1882,7 @@ Section UserTotalU.
       = Some (C_JALR (Regidx r1), u_state rsf mm) ->
     u_exec_pins pt t rsf -> u_mem_wf pt t mm ->
     rvc_post pt t mm rsf va h.
-  Proof.
+  Proof using .
     intros Hhv Hag Lcp Lmisa Lmenv Lsenv Hzcaf Hdec Hpins Hwf.
     pose proof (u_agree_tick rsf mm va 2 Hag) as Hag2.
     destruct (exec_execute_JALR_total (zeros' 12) r1 (zero_extend' 5 ('b"01"))
@@ -1920,7 +1920,7 @@ Section UserTotalU.
     goodmb Du_r Du_w (execute instr) (s2 rsf mm va) ∅ = true ->
     u_exec_pins pt t rsf -> u_mem_wf pt t mm ->
     rvc_post pt t mm rsf va h.
-  Proof.
+  Proof using .
     intros Hhv Hag Lpc Lmisa Hva2 Hzcaf Hdec Hex1 Hg10 Hpins Hwf.
     pose proof (u_agree_tick rsf mm va 2 Hag) as Hag2.
     assert (Hg1 : goodmb Du_r Du_w (execute instr) (s2 rsf mm va) mm = true)
@@ -2199,7 +2199,7 @@ Section UserTotalU.
 
   Lemma base_exec_total_u_holds (va : mword 64) (mi : bool) :
     base_exec_total_u pt va mi.
-  Proof.
+  Proof using arm_AMO_u arm_LOADRES_u arm_LOAD_u arm_STORECON_u arm_STORE_u arm_ZICBOP_u.
     unfold base_exec_total_u.
     intros w rsf t mm Hcfg Hpins Hwf.
     pose proof Hcfg as Hcfg_full.
@@ -2486,7 +2486,7 @@ Section UserTotalU.
 
   Lemma rvc_exec_total_u_holds (va : mword 64) (mi : bool) :
     rvc_exec_total_u pt va mi.
-  Proof.
+  Proof using arm_C_LBU_u arm_C_LDSP_u arm_C_LD_u arm_C_LHU_u arm_C_LH_u arm_C_LWSP_u arm_C_LW_u arm_C_SB_u arm_C_SDSP_u arm_C_SD_u arm_C_SH_u arm_C_SWSP_u arm_C_SW_u.
     unfold rvc_exec_total_u.
     intros h rsf t mm Hcfg Hpins Hwf.
     pose proof Hcfg as Hcfg_full.

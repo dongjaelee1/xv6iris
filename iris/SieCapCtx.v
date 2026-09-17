@@ -45,7 +45,7 @@ Section SieCapCtx.
       (m : regfile) (avail : nat) (b : bool) (p : mword 64) :
     sie_cap_gpr kt m avail b p -∗
     own_context cur_ctx ∗ (own_context cur_ctx -∗ sie_cap_gpr kt m avail b p).
-  Proof.
+  Proof using .
     iIntros "Hcg".
     iDestruct (sie_cap_gpr_split with "Hcg") as "(Hhs & Hsc & Hcap & Hfile)".
     iDestruct "Hcap" as "(Hstk & Htr & Harm & Hctx & #Htc & #Hwit)".

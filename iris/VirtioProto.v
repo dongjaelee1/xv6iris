@@ -1741,13 +1741,13 @@ Section VirtioProto.
 
   Lemma dma_own_phys_map (dma : gmap Arch.pa (bv 8)) :
     dma_own dma ⊣⊢ phys_map dma.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma phys_map_idx_list (a : Arch.pa) (l : list nat) (f : nat -> bv 8) :
     NoDup l -> (forall j, j ∈ l -> Z.of_nat j < 18446744073709551616) ->
     phys_map (foldr (fun j acc => <[ pa_add a j := f j ]> acc) ∅ l)
     ⊣⊢ ([∗ list] j ∈ l, phys_ledger (pa_add a j) (DfracOwn 1) (f j)).
-  Proof.
+  Proof using .
     induction l as [|i l IH]; intros Hnd Hb.
     - rewrite /phys_map big_sepM_empty big_sepL_nil. reflexivity.
     - apply NoDup_cons in Hnd as [Hi Hnd].
@@ -1772,20 +1772,20 @@ Section VirtioProto.
     Z.of_nat n < 18446744073709551616 ->
     phys_map (range_map a n f)
     ⊣⊢ ([∗ list] j ∈ seq 0 n, phys_ledger (pa_add a j) (DfracOwn 1) (f j)).
-  Proof.
+  Proof using .
     intro Hn. apply phys_map_idx_list; [ apply NoDup_seq | ].
     intros j Hj. apply elem_of_seq in Hj. lia.
   Qed.
 
   Lemma phys_word2_map (a : Arch.pa) (w : bv 16) :
     phys_word2 a w ⊣⊢ phys_map (range_map a 2 (nth_byte w)).
-  Proof.
+  Proof using .
     rewrite /phys_word2. symmetry. apply (phys_map_range a 2 (nth_byte w)). lia.
   Qed.
 
   Lemma phys_word4_map (a : Arch.pa) (w : bv 32) :
     phys_word4 a w ⊣⊢ phys_map (range_map a 4 (nth_byte w)).
-  Proof.
+  Proof using .
     rewrite /phys_word4. symmetry. apply (phys_map_range a 4 (nth_byte w)). lia.
   Qed.
 
@@ -1794,7 +1794,7 @@ Section VirtioProto.
     bs = g <$> seq 0 n ->
     phys_list a bs
     ⊣⊢ ([∗ list] j ∈ seq 0 n, phys_ledger (pa_add a j) (DfracOwn 1) (g j)).
-  Proof.
+  Proof using .
     intros ->. rewrite /phys_list big_sepL_fmap.
     apply big_sepL_proper. intros k y Hk.
     apply lookup_seq in Hk as [Hy _].
@@ -1804,7 +1804,7 @@ Section VirtioProto.
   Lemma phys_list_replicate (a : Arch.pa) (n : nat) (b : bv 8) :
     Z.of_nat n < 18446744073709551616 ->
     phys_list a (replicate n b) ⊣⊢ phys_map (range_map a n (fun _ => b)).
-  Proof.
+  Proof using .
     intro Hn.
     rewrite (phys_list_of_fun a n (fun _ : nat => b) (replicate n b)
                (replicate_fmap_seq n b)).
@@ -1814,7 +1814,7 @@ Section VirtioProto.
   Lemma phys_list_map (a : Arch.pa) (bs : list (bv 8)) :
     Z.of_nat (length bs) < 18446744073709551616 ->
     phys_list a bs ⊣⊢ phys_map (range_map a (length bs) (fun j => bs !!! j)).
-  Proof.
+  Proof using .
     intro Hn.
     rewrite (phys_list_of_fun a (length bs) (fun j : nat => bs !!! j) bs
                (list_eq_total bs)).
@@ -1825,7 +1825,7 @@ Section VirtioProto.
 
   Lemma phys_map_disj (m1 m2 : gmap Arch.pa (bv 8)) :
     phys_map m1 -∗ phys_map m2 -∗ ⌜m1 ##ₘ m2⌝.
-  Proof.
+  Proof using .
     induction m1 as [|a b m1' Hnew IH] using map_ind; iIntros "H1 H2".
     { iPureIntro. apply map_disjoint_empty_l. }
     rewrite /phys_map big_sepM_insert; [| exact Hnew ].
@@ -1840,7 +1840,7 @@ Section VirtioProto.
 
   Lemma dma_own_disj (dma mm : gmap Arch.pa (bv 8)) :
     dma_own dma -∗ phys_map mm -∗ ⌜dom mm ## dom dma⌝.
-  Proof.
+  Proof using .
     iIntros "Hd Hm".
     iDestruct (phys_map_disj with "Hm Hd") as %Hdisj.
     iPureIntro. by apply map_disjoint_dom.
@@ -1850,7 +1850,7 @@ Section VirtioProto.
 
   Lemma dma_own_split (mm dma : gmap Arch.pa (bv 8)) :
     mm ⊆ dma -> dma_own dma ⊣⊢ phys_map mm ∗ dma_own (dma ∖ mm).
-  Proof.
+  Proof using .
     intro Hsub.
     assert (Hd : mm ∪ (dma ∖ mm) = dma) by (apply map_difference_union; exact Hsub).
     assert (Hdj : mm ##ₘ dma ∖ mm)
@@ -1866,7 +1866,7 @@ Section VirtioProto.
   Lemma dma_own_acc (mm mm' dma : gmap Arch.pa (bv 8)) :
     mm ⊆ dma -> dom mm' = dom mm ->
     dma_own dma -∗ phys_map mm ∗ (phys_map mm' -∗ dma_own (mm' ∪ dma)).
-  Proof.
+  Proof using .
     intros Hsub Hdom.
     assert (Hdj : mm ##ₘ dma ∖ mm)
       by (apply (map_disjoint_difference_r dma mm mm); reflexivity).
@@ -1892,7 +1892,7 @@ Section VirtioProto.
   Lemma dma_own_acc_same (mm dma : gmap Arch.pa (bv 8)) :
     mm ⊆ dma ->
     dma_own dma -∗ phys_map mm ∗ (phys_map mm -∗ dma_own dma).
-  Proof.
+  Proof using .
     intro Hsub.
     assert (Hun : mm ∪ dma = dma) by (apply map_subseteq_union; exact Hsub).
     iIntros "Hd".
@@ -1922,7 +1922,7 @@ Section VirtioProto.
   Lemma phys_ledger_at_halves (a : Arch.pa) (v : bv 8) (t : nat) :
     phys_ledger_at a (DfracOwn 1) v t ⊣⊢
     phys_ledger_at a (DfracOwn (1/2)) v t ∗ phys_ledger_at a (DfracOwn (1/2)) v t.
-  Proof.
+  Proof using .
     rewrite /phys_ledger_at /phys_pointsto.
     rewrite (fractional_half (pointsto (L := Arch.pa) (V := bv 8) a (DfracOwn 1) v)).
     rewrite (fractional_half (a ↪[ts_name] (t, TsoMemPa.ts_pay_none))).
@@ -1936,7 +1936,7 @@ Section VirtioProto.
       (t1 t2 : nat) :
     phys_ledger_at a dq1 v1 t1 -∗ phys_ledger_at a dq2 v2 t2 -∗
     ⌜v1 = v2 ∧ t1 = t2⌝.
-  Proof.
+  Proof using .
     rewrite /phys_ledger_at /phys_pointsto.
     iIntros "([Hp1 _] & Ht1) ([Hp2 _] & Ht2)".
     iDestruct (pointsto_agree with "Hp1 Hp2") as %Hv.
@@ -1948,7 +1948,7 @@ Section VirtioProto.
   Lemma phys_ledger_at_join_sealed (a : Arch.pa) (v v' : bv 8) (t : nat) :
     phys_ledger_at a (DfracOwn (1/2)) v t -∗ phys_ledger a (DfracOwn (1/2)) v' -∗
     ⌜v' = v⌝ ∗ phys_ledger_at a (DfracOwn 1) v t.
-  Proof.
+  Proof using .
     iIntros "H1 H2". rewrite phys_ledger_unseal /phys_ledger_def.
     iDestruct "H2" as (t') "H2".
     iAssert (phys_ledger_at a (DfracOwn (1/2)) v' t') with "[H2]" as "H2".
@@ -1962,7 +1962,7 @@ Section VirtioProto.
   Lemma map_filter_sub_of_disj (mm dma : gmap Arch.pa (bv 8)) (D : gset Arch.pa) :
     mm ⊆ dma -> dom mm ## D ->
     mm ⊆ filter (fun p : Arch.pa * bv 8 => p.1 ∉ D) dma.
-  Proof.
+  Proof using .
     intros Hsub Hd. rewrite elem_of_disjoint in Hd.
     rewrite map_subseteq_spec in Hsub. apply map_subseteq_spec.
     intros a b Hab.
@@ -1974,7 +1974,7 @@ Section VirtioProto.
     dom mm ## D ->
     filter (fun p : Arch.pa * bv 8 => p.1 ∉ D) (mm ∪ dma)
     = mm ∪ filter (fun p : Arch.pa * bv 8 => p.1 ∉ D) dma.
-  Proof.
+  Proof using .
     intro Hd. rewrite elem_of_disjoint in Hd. apply map_eq. intro a.
     destruct (mm !! a) as [b|] eqn:Hm.
     - assert (Ha : a ∉ D).
@@ -1998,7 +1998,7 @@ Section VirtioProto.
     dom rm ⊆ D ->
     filter (fun p : Arch.pa * bv 8 => p.1 ∉ D) (rm ∪ dma)
     = filter (fun p : Arch.pa * bv 8 => p.1 ∉ D) dma.
-  Proof.
+  Proof using .
     intro Hsub. apply map_eq. intro a.
     destruct (rm !! a) as [b|] eqn:Hr.
     - assert (Ha : a ∈ D) by (apply Hsub, elem_of_dom; by exists b).
@@ -2013,7 +2013,7 @@ Section VirtioProto.
   Lemma map_filter_difference_l (m n : gmap Arch.pa (bv 8)) (D : gset Arch.pa) :
     filter (fun p : Arch.pa * bv 8 => p.1 ∉ D) (m ∖ n)
     = filter (fun p : Arch.pa * bv 8 => p.1 ∉ D) m ∖ n.
-  Proof.
+  Proof using .
     apply map_eq. intro a.
     destruct (n !! a) as [c|] eqn:Hn.
     - assert (HL : filter (fun p : Arch.pa * bv 8 => p.1 ∉ D) (m ∖ n) !! a = None).
@@ -2045,7 +2045,7 @@ Section VirtioProto.
 
   Lemma dom_filter_notin (dma : gmap Arch.pa (bv 8)) (D : gset Arch.pa) :
     dom (filter (fun p : Arch.pa * bv 8 => p.1 ∉ D) dma) = dom dma ∖ D.
-  Proof.
+  Proof using .
     apply set_eq. intro a. rewrite elem_of_difference !elem_of_dom. split.
     - intros [b Hb]. apply map_lookup_filter_Some in Hb as [Hb Ha].
       split; [by exists b | exact Ha].
@@ -2054,7 +2054,7 @@ Section VirtioProto.
 
   Lemma map_filter_id_notin (dma : gmap Arch.pa (bv 8)) (D : gset Arch.pa) :
     dom dma ## D -> filter (fun p : Arch.pa * bv 8 => p.1 ∉ D) dma = dma.
-  Proof.
+  Proof using .
     intro Hd. rewrite elem_of_disjoint in Hd. apply map_filter_id.
     intros a b Hab. cbn. intro Hc. apply (Hd a); [|exact Hc]. apply elem_of_dom. by exists b.
   Qed.
@@ -2065,11 +2065,11 @@ Section VirtioProto.
 
   Lemma dma_own_x_of_own (dma : gmap Arch.pa (bv 8)) (D : gset Arch.pa) :
     dom dma ## D -> dma_own dma -∗ dma_own_x dma D.
-  Proof. intro Hd. rewrite /dma_own_x (map_filter_id_notin dma D Hd). iIntros "$". Qed.
+  Proof using . intro Hd. rewrite /dma_own_x (map_filter_id_notin dma D Hd). iIntros "$". Qed.
 
   Lemma dma_own_x_extend (rm dma : gmap Arch.pa (bv 8)) (D : gset Arch.pa) :
     dom rm ⊆ D -> dma_own_x dma D -∗ dma_own_x (rm ∪ dma) D.
-  Proof. intro H. rewrite /dma_own_x (map_filter_union_in rm dma D H). iIntros "$". Qed.
+  Proof using . intro H. rewrite /dma_own_x (map_filter_union_in rm dma D H). iIntros "$". Qed.
 
   (* THE RECLAIM'S LEASE MOVE, in one lemma: the hole shrinks to [D'], the
      [old] cells (the payoff) leave the lease entirely, and the [elem] cells
@@ -2080,7 +2080,7 @@ Section VirtioProto.
     dom old ## D' -> dom elem ## D' -> dom old ## dom elem ->
     elem ⊆ dma ->
     dma_own_x dma D -∗ dma_own elem -∗ dma_own_x (dma ∖ old) D'.
-  Proof.
+  Proof using .
     intros Hiff Hod He'd Hoe Hsub. iIntros "Hd He".
     rewrite /dma_own_x.
     assert (Hfeq : filter (fun x : Arch.pa * bv 8 => x.1 ∉ D') (dma ∖ old)
@@ -2143,7 +2143,7 @@ Section VirtioProto.
   Lemma dma_own_x_acc_same (mm dma : gmap Arch.pa (bv 8)) (D : gset Arch.pa) :
     mm ⊆ dma -> dom mm ## D ->
     dma_own_x dma D -∗ phys_map mm ∗ (phys_map mm -∗ dma_own_x dma D).
-  Proof.
+  Proof using .
     intros Hsub Hd. rewrite /dma_own_x. apply dma_own_acc_same.
     exact (map_filter_sub_of_disj _ _ _ Hsub Hd).
   Qed.
@@ -2151,7 +2151,7 @@ Section VirtioProto.
   Lemma dma_own_x_acc (mm mm' dma : gmap Arch.pa (bv 8)) (D : gset Arch.pa) :
     mm ⊆ dma -> dom mm' = dom mm -> dom mm ## D ->
     dma_own_x dma D -∗ phys_map mm ∗ (phys_map mm' -∗ dma_own_x (mm' ∪ dma) D).
-  Proof.
+  Proof using .
     intros Hsub Hdom Hd. rewrite /dma_own_x. iIntros "Hd".
     iDestruct (dma_own_acc mm mm' _ (map_filter_sub_of_disj _ _ _ Hsub Hd) Hdom
                  with "Hd") as "[$ Hback]".
@@ -2162,7 +2162,7 @@ Section VirtioProto.
   Lemma dma_own_x_shrink (mm dma : gmap Arch.pa (bv 8)) (D : gset Arch.pa) :
     mm ⊆ dma -> dom mm ## D ->
     dma_own_x dma D -∗ phys_map mm ∗ dma_own_x (dma ∖ mm) D.
-  Proof.
+  Proof using .
     intros Hsub Hd. rewrite /dma_own_x.
     rewrite (dma_own_split mm _ (map_filter_sub_of_disj _ _ _ Hsub Hd)).
     rewrite (map_filter_difference_l dma mm D). iIntros "$".
@@ -2171,7 +2171,7 @@ Section VirtioProto.
   Lemma dma_own_x_disj (dma : gmap Arch.pa (bv 8)) (D : gset Arch.pa)
       (mm : gmap Arch.pa (bv 8)) :
     dma_own_x dma D -∗ phys_map mm -∗ ⌜dom mm ## dom dma ∖ D⌝.
-  Proof.
+  Proof using .
     rewrite /dma_own_x. iIntros "Hd Hm".
     iDestruct (dma_own_disj with "Hd Hm") as %H.
     rewrite dom_filter_notin in H. by iPureIntro.
@@ -2183,7 +2183,7 @@ Section VirtioProto.
     ∃ old : gmap Arch.pa (bv 8), ⌜dom old = dom w⌝ ∗ ⌜old ⊆ dma⌝ ∗
       ([∗ map] a ↦ b ∈ old, phys_ledger a (DfracOwn 1) b) ∗
       (([∗ map] a ↦ b ∈ w, phys_ledger a (DfracOwn 1) b) -∗ dma_own_x (w ∪ dma) D).
-  Proof.
+  Proof using .
     intros Hdom Hd. rewrite /dma_own_x. iIntros "Hd".
     assert (Hdom' : dom w ⊆ dom (filter (fun p : Arch.pa * bv 8 => p.1 ∉ D) dma)).
     { rewrite dom_filter_notin. intros a Ha. apply elem_of_difference.
@@ -2199,7 +2199,7 @@ Section VirtioProto.
   Lemma dma_agree_x (m dma : gmap Arch.pa (bv 8)) (D : gset Arch.pa) :
     gen_heap_interp m -∗ dma_own_x dma D -∗
     ⌜filter (fun p : Arch.pa * bv 8 => p.1 ∉ D) dma ⊆ m⌝.
-  Proof. rewrite /dma_own_x. apply dma_agree. Qed.
+  Proof using . rewrite /dma_own_x. apply dma_agree. Qed.
 
   (* ---- the avail word's lease half ------------------------------------ *)
   Definition avail_lease_half (c : virtio_cfg) (np : nat) : iProp Σ :=
@@ -2209,7 +2209,7 @@ Section VirtioProto.
 
   Lemma avail_half_agree (m : gmap Arch.pa (bv 8)) (c : virtio_cfg) (np : nat) :
     gen_heap_interp m -∗ avail_lease_half c np -∗ ⌜avail_idx_bytes c np ⊆ m⌝.
-  Proof.
+  Proof using .
     iIntros "Hm H". rewrite /avail_lease_half avail_idx_bytes_range.
     iAssert (⌜forall j, (j < 2)%nat ->
                m !! pa_add (avail_idx_pa c) j = Some (nth_byte (wrap16 np) j)⌝)%I
@@ -2228,7 +2228,7 @@ Section VirtioProto.
     avail_idx_bytes c np ⊆ dma ->
     gen_heap_interp m -∗ dma_own_x dma (avail_idx_dom c) -∗ avail_lease_half c np -∗
     ⌜dma ⊆ m⌝.
-  Proof.
+  Proof using .
     intro Hab. iIntros "Hm Hd Hh".
     iDestruct (dma_agree_x with "Hm Hd") as %Hx.
     iDestruct (avail_half_agree with "Hm Hh") as %Ha.
@@ -2245,7 +2245,7 @@ Section VirtioProto.
   (* a full window and the half cells do not overlap *)
   Lemma phys_map_half_disj (mm : gmap Arch.pa (bv 8)) (c : virtio_cfg) (np : nat) :
     phys_map mm -∗ avail_lease_half c np -∗ ⌜dom mm ## avail_idx_dom c⌝.
-  Proof.
+  Proof using .
     iIntros "Hm H". rewrite /phys_map /avail_lease_half.
     iAssert (⌜forall a, a ∈ dom mm -> a ∈ avail_idx_dom c -> False⌝)%I
       with "[Hm H]" as %HH.
@@ -2269,7 +2269,7 @@ Section VirtioProto.
     (forall j, (j < n)%nat -> pa_add a j ∈ used_page_pas c) ->
     avail_idx_dom c ## used_page_pas c ->
     dom (range_map a n f) ## avail_idx_dom c.
-  Proof.
+  Proof using .
     intros Hin Hd. rewrite range_map_dom. apply gset_disj_sym.
     apply (gset_disj_sub_r _ _ (used_page_pas c)); [| exact Hd].
     intros x Hx. apply pa_range_elim in Hx as (j & Hj & ->). exact (Hin j Hj).
@@ -2277,7 +2277,7 @@ Section VirtioProto.
 
   Lemma ctl_avail_sub (c : virtio_cfg) (pr : vproto) (dma : gmap Arch.pa (bv 8)) :
     vproto_ctl c pr ⊆ dma -> avail_idx_bytes c (vp_np pr) ⊆ dma.
-  Proof.
+  Proof using .
     intro H. unfold vproto_ctl in H.
     (* pop-era [vproto_ctl] carries the RING bytes too: (avail ∪ ring) ∪ pins *)
     etransitivity; [| exact H ].
@@ -2289,7 +2289,7 @@ Section VirtioProto.
   Lemma lease_disj (dma mm : gmap Arch.pa (bv 8)) (c : virtio_cfg) (np : nat) :
     dma_own_x dma (avail_idx_dom c) -∗ avail_lease_half c np -∗ phys_map mm -∗
     ⌜dom mm ## dom dma⌝.
-  Proof.
+  Proof using .
     iIntros "Hd Hh Hm".
     iDestruct (dma_own_x_disj with "Hd Hm") as %H1.
     iDestruct (phys_map_half_disj with "Hm Hh") as %H2.
@@ -2311,10 +2311,10 @@ Section VirtioProto.
 
   Lemma half_map_union (m1 m2 : gmap Arch.pa (bv 8)) :
     m1 ##ₘ m2 -> half_map (m1 ∪ m2) ⊣⊢ half_map m1 ∗ half_map m2.
-  Proof. intro H. rewrite /half_map. by apply big_sepM_union. Qed.
+  Proof using . intro H. rewrite /half_map. by apply big_sepM_union. Qed.
 
   Lemma half_map_empty : half_map ∅ ⊣⊢ emp.
-  Proof. rewrite /half_map. apply big_sepM_empty. Qed.
+  Proof using . rewrite /half_map. apply big_sepM_empty. Qed.
 
 
   (* the dq-generic form of [phys_map_idx_list] *)
@@ -2323,7 +2323,7 @@ Section VirtioProto.
     ([∗ map] x ↦ b ∈ (foldr (fun j acc => <[ pa_add a j := f j ]> acc) ∅ l),
        phys_ledger x dq b)
     ⊣⊢ ([∗ list] j ∈ l, phys_ledger (pa_add a j) dq (f j)).
-  Proof.
+  Proof using .
     induction l as [|i l IH]; intros Hnd Hb.
     - rewrite big_sepM_empty big_sepL_nil. reflexivity.
     - apply NoDup_cons in Hnd as [Hi Hnd].
@@ -2350,7 +2350,7 @@ Section VirtioProto.
     Z.of_nat n < 18446744073709551616 ->
     ([∗ map] x ↦ b ∈ range_map a n f, Φ x b)
     ⊣⊢ ([∗ list] j ∈ seq 0 n, Φ (pa_add a j) (f j)).
-  Proof.
+  Proof using .
     intro Hn. rewrite /range_map.
     assert (Hnd : NoDup (seq 0 n)) by apply NoDup_seq.
     assert (Hb : forall j, j ∈ seq 0 n -> Z.of_nat j < 18446744073709551616)
@@ -2380,14 +2380,14 @@ Section VirtioProto.
     Z.of_nat n < 18446744073709551616 ->
     half_map (range_map a n f)
     ⊣⊢ ([∗ list] j ∈ seq 0 n, phys_ledger (pa_add a j) (DfracOwn (1/2)) (f j)).
-  Proof.
+  Proof using .
     intro Hn. rewrite /half_map. apply ledger_map_idx_list; [ apply NoDup_seq | ].
     intros j Hj. apply elem_of_seq in Hj. lia.
   Qed.
 
   Lemma avail_lease_half_eq (c : virtio_cfg) (np : nat) :
     avail_lease_half c np ⊣⊢ half_map (avail_idx_bytes c np).
-  Proof.
+  Proof using .
     rewrite /avail_lease_half avail_idx_bytes_range. symmetry.
     apply half_map_range. lia.
   Qed.
@@ -2396,7 +2396,7 @@ Section VirtioProto.
   Lemma phys_ledger_split_half (a : Arch.pa) (v : bv 8) :
     phys_ledger a (DfracOwn 1) v ⊢
     phys_ledger a (DfracOwn (1/2)) v ∗ phys_ledger a (DfracOwn (1/2)) v.
-  Proof.
+  Proof using .
     rewrite !phys_ledger_unseal /phys_ledger_def. iIntros "(%t & H)".
     iAssert (phys_ledger_at a (DfracOwn 1) v t) with "[H]" as "H"; [iExact "H"|].
     iEval (rewrite phys_ledger_at_halves) in "H".
@@ -2406,7 +2406,7 @@ Section VirtioProto.
   Lemma phys_ledger_join_half (a : Arch.pa) (v v' : bv 8) :
     phys_ledger a (DfracOwn (1/2)) v -∗ phys_ledger a (DfracOwn (1/2)) v' -∗
     ⌜v' = v⌝ ∗ phys_ledger a (DfracOwn 1) v.
-  Proof.
+  Proof using .
     iIntros "H1 H2". rewrite {1}phys_ledger_unseal /phys_ledger_def.
     iDestruct "H1" as "(%t & H1)".
     iDestruct (phys_ledger_at_join_sealed with "H1 H2") as "[$ H]".
@@ -2415,14 +2415,14 @@ Section VirtioProto.
 
   Lemma phys_map_split_half (m : gmap Arch.pa (bv 8)) :
     phys_map m ⊢ half_map m ∗ half_map m.
-  Proof.
+  Proof using .
     rewrite /phys_map /half_map -big_sepM_sep.
     apply big_sepM_mono. intros a b _. apply phys_ledger_split_half.
   Qed.
 
   Lemma half_map_agree (m ctl : gmap Arch.pa (bv 8)) :
     gen_heap_interp m -∗ half_map ctl -∗ ⌜ctl ⊆ m⌝.
-  Proof.
+  Proof using .
     iIntros "Hm H". rewrite /half_map.
     iAssert (⌜forall a b, ctl !! a = Some b -> m !! a = Some b⌝)%I with "[Hm H]" as %HH.
     { rewrite bi.pure_forall. iIntros (a). rewrite bi.pure_forall. iIntros (b).
@@ -2436,7 +2436,7 @@ Section VirtioProto.
   Lemma lease_agree_ctl (m dma ctl : gmap Arch.pa (bv 8)) :
     ctl ⊆ dma ->
     gen_heap_interp m -∗ dma_own_x dma (dom ctl) -∗ half_map ctl -∗ ⌜dma ⊆ m⌝.
-  Proof.
+  Proof using .
     intro Hab. iIntros "Hm Hd Hh".
     iDestruct (dma_agree_x with "Hm Hd") as %Hx.
     iDestruct (half_map_agree with "Hm Hh") as %Ha.
@@ -2453,7 +2453,7 @@ Section VirtioProto.
   (* a full window and any half cells do not overlap *)
   Lemma phys_map_half_map_disj (mm ctl : gmap Arch.pa (bv 8)) :
     phys_map mm -∗ half_map ctl -∗ ⌜dom mm ## dom ctl⌝.
-  Proof.
+  Proof using .
     iIntros "Hm H". rewrite /phys_map /half_map.
     iAssert (⌜forall a, a ∈ dom mm -> a ∈ dom ctl -> False⌝)%I
       with "[Hm H]" as %HH.
@@ -2474,7 +2474,7 @@ Section VirtioProto.
   Lemma lease_disj_ctl (dma mm ctl : gmap Arch.pa (bv 8)) :
     dma_own_x dma (dom ctl) -∗ half_map ctl -∗ phys_map mm -∗
     ⌜dom mm ## dom dma⌝.
-  Proof.
+  Proof using .
     iIntros "Hd Hh Hm".
     iDestruct (dma_own_x_disj with "Hd Hm") as %H1.
     iDestruct (phys_map_half_map_disj with "Hm Hh") as %H2.
@@ -2490,7 +2490,7 @@ Section VirtioProto.
     (forall a, a ∈ dom m -> (a ∈ D <-> a ∈ D')) ->
     filter (fun p : Arch.pa * bv 8 => p.1 ∉ D) m
     = filter (fun p : Arch.pa * bv 8 => p.1 ∉ D') m.
-  Proof.
+  Proof using .
     intro H. apply map_filter_ext. intros a b Hab. cbn.
     assert (Ha : a ∈ dom m) by (apply elem_of_dom; by exists b).
     rewrite (H a Ha). reflexivity.
@@ -2503,7 +2503,7 @@ Section VirtioProto.
     dma_own_x dma D -∗
     ∃ old : gmap Arch.pa (bv 8),
       ⌜dom old = S⌝ ∗ ⌜old ⊆ dma⌝ ∗ phys_map old ∗ dma_own_x dma (D ∪ S).
-  Proof.
+  Proof using .
     intros Hsub Hd. iIntros "Hd".
     set (old := filter (fun p : Arch.pa * bv 8 => p.1 ∈ S) dma).
     assert (Hos : old ⊆ dma) by apply map_filter_subseteq.
@@ -2559,7 +2559,7 @@ Section VirtioProto.
   Lemma dma_own_x_fill (em dma : gmap Arch.pa (bv 8)) (D : gset Arch.pa) :
     em ⊆ dma -> dom em ⊆ D ->
     dma_own_x dma D -∗ phys_map em -∗ dma_own_x dma (D ∖ dom em).
-  Proof.
+  Proof using .
     intros Hsub HD. rewrite /dma_own_x /dma_own /phys_map. iIntros "Hd Hem".
     assert (Heq : filter (fun p : Arch.pa * bv 8 => p.1 ∉ D ∖ dom em) dma
                   = em ∪ filter (fun p : Arch.pa * bv 8 => p.1 ∉ D) dma).
@@ -2600,14 +2600,14 @@ Section VirtioProto.
   Lemma dma_own_x_hole_ext (m : gmap Arch.pa (bv 8)) (D D' : gset Arch.pa) :
     (forall a, a ∈ dom m -> (a ∈ D <-> a ∈ D')) ->
     dma_own_x m D ⊣⊢ dma_own_x m D'.
-  Proof. intro H. rewrite /dma_own_x (map_filter_hole_ext m D D' H). reflexivity. Qed.
+  Proof using . intro H. rewrite /dma_own_x (map_filter_hole_ext m D D' H). reflexivity. Qed.
 
   (* dropping a leased region out of the hole AND out of the map *)
   Lemma map_filter_drop_hole (m pin : gmap Arch.pa (bv 8)) (D : gset Arch.pa) :
     dom pin ⊆ D ->
     filter (fun p : Arch.pa * bv 8 => p.1 ∉ D ∖ dom pin) (m ∖ pin)
     = filter (fun p : Arch.pa * bv 8 => p.1 ∉ D) m.
-  Proof.
+  Proof using .
     intro HsubD. apply map_eq. intro a.
     destruct (filter (fun p : Arch.pa * bv 8 => p.1 ∉ D) m !! a) as [b|] eqn:HR.
     - apply map_lookup_filter_Some in HR as [Hm HnD]. cbn in HnD.
@@ -2631,7 +2631,7 @@ Section VirtioProto.
   Lemma dma_own_x_drop_hole (m pin : gmap Arch.pa (bv 8)) (D : gset Arch.pa) :
     dom pin ⊆ D ->
     dma_own_x m D ⊣⊢ dma_own_x (m ∖ pin) (D ∖ dom pin).
-  Proof. intro H. rewrite /dma_own_x (map_filter_drop_hole m pin D H). reflexivity. Qed.
+  Proof using . intro H. rewrite /dma_own_x (map_filter_drop_hole m pin D H). reflexivity. Qed.
 
   (* the used page is off the whole control set *)
   Lemma range_disj_ctl (c : virtio_cfg) (pr : vproto) (D : gset Arch.pa)
@@ -2639,7 +2639,7 @@ Section VirtioProto.
     (forall j, (j < n)%nat -> pa_add a j ∈ used_page_pas c) ->
     vproto_ok c pr D ->
     dom (range_map a n f) ## dom (vproto_ctl c pr).
-  Proof.
+  Proof using .
     intros Hin Hok. rewrite range_map_dom. apply elem_of_disjoint.
     intros x Hx Hc. apply pa_range_elim in Hx as (j & Hj & ->).
     (* pop-era [vproto_ctl] = (avail ∪ ring) ∪ pins *)
@@ -2658,7 +2658,7 @@ Section VirtioProto.
   Lemma ctl_split_disj (c : virtio_cfg) (pr : vproto) (D : gset Arch.pa) :
     vproto_ok c pr D ->
     avail_idx_bytes c (vp_np pr) ##ₘ pins_union (vp_pin pr).
-  Proof.
+  Proof using .
     intro Hok. apply map_disjoint_dom. rewrite avail_idx_bytes_dom. apply gset_disj_sym.
     apply (gset_disj_sub_r _ _ (avail_idx_dom c ∪ ring_cells_dom c ∪ used_page_pas c));
       [ etransitivity; apply union_subseteq_l
@@ -2668,7 +2668,7 @@ Section VirtioProto.
   Lemma ctl_split_ring_pins (c : virtio_cfg) (pr : vproto) (D : gset Arch.pa) :
     vproto_ok c pr D ->
     ring_bytes c (vp_ring pr) ##ₘ pins_union (vp_pin pr).
-  Proof.
+  Proof using .
     intro Hok. apply map_disjoint_dom. apply gset_disj_sym.
     apply (gset_disj_sub_r _ _ (avail_idx_dom c ∪ ring_cells_dom c ∪ used_page_pas c));
       [| exact (pins_union_off_standing _ _ _ Hok) ].
@@ -2681,7 +2681,7 @@ Section VirtioProto.
     half_map (vproto_ctl c pr)
     ⊣⊢ avail_lease_half c (vp_np pr) ∗ half_map (ring_bytes c (vp_ring pr))
        ∗ half_map (pins_union (vp_pin pr)).
-  Proof.
+  Proof using .
     intro Hok.
     assert (Hd1 : avail_idx_bytes c (vp_np pr) ##ₘ ring_bytes c (vp_ring pr))
       by exact (idx_ring_bytes_disj c (vp_np pr) (vp_ring pr)
@@ -2710,14 +2710,14 @@ Section VirtioProto.
 
   Lemma pin_offer_split (m : gmap Arch.pa (bv 8)) :
     pin_offer m ⊢ half_map m ∗ pin_back m.
-  Proof.
+  Proof using .
     rewrite /pin_offer /half_map /pin_back -big_sepM_sep.
     apply big_sepM_mono. intros a b _. iIntros "[Hp Hl]". iFrame.
   Qed.
 
   (* the interim caller (sealed full cells) offers by dropping half a stamp *)
   Lemma phys_map_offer (m : gmap Arch.pa (bv 8)) : phys_map m ⊢ pin_offer m.
-  Proof.
+  Proof using .
     rewrite /phys_map /pin_offer. apply big_sepM_mono. intros a b _.
     iIntros "H". iDestruct (phys_ledger_split_half with "H") as "[H1 H2]".
     iDestruct (phys_ledger_forget with "H1") as "H1". iFrame.
@@ -2725,16 +2725,16 @@ Section VirtioProto.
 
   Lemma pin_offer_union (m1 m2 : gmap Arch.pa (bv 8)) :
     m1 ##ₘ m2 -> pin_offer (m1 ∪ m2) ⊣⊢ pin_offer m1 ∗ pin_offer m2.
-  Proof. intro H. rewrite /pin_offer. by apply big_sepM_union. Qed.
+  Proof using . intro H. rewrite /pin_offer. by apply big_sepM_union. Qed.
 
   Lemma pin_offer_empty : pin_offer ∅ ⊣⊢ emp.
-  Proof. rewrite /pin_offer. apply big_sepM_empty. Qed.
+  Proof using . rewrite /pin_offer. apply big_sepM_empty. Qed.
 
   (* an offered cell is a full memory owner: two offers never overlap *)
   Lemma pin_offer_full (a : Arch.pa) (b : bv 8) :
     phys_pointsto a (DfracOwn (1/2)) b ∗ phys_ledger a (DfracOwn (1/2)) b ⊢
     pointsto (L := Arch.pa) (V := bv 8) a (DfracOwn 1) b.
-  Proof.
+  Proof using .
     iIntros "[Hp Hl]". iDestruct (phys_ledger_forget with "Hl") as "Hp'".
     iEval (rewrite /phys_pointsto) in "Hp". iEval (rewrite /phys_pointsto) in "Hp'".
     iDestruct "Hp" as "[Hp _]". iDestruct "Hp'" as "[Hp' _]".
@@ -2744,7 +2744,7 @@ Section VirtioProto.
 
   Lemma pin_offer_disj (m1 m2 : gmap Arch.pa (bv 8)) :
     pin_offer m1 -∗ pin_offer m2 -∗ ⌜m1 ##ₘ m2⌝.
-  Proof.
+  Proof using .
     iIntros "H1 H2". rewrite /pin_offer.
     iAssert (⌜forall a, a ∈ dom m1 -> a ∈ dom m2 -> False⌝)%I with "[H1 H2]" as %HH.
     { rewrite bi.pure_forall. iIntros (a). rewrite !bi.pure_impl. iIntros (Ha Hb).
@@ -2761,7 +2761,7 @@ Section VirtioProto.
 
   Lemma pin_offer_full_disj (mm pin : gmap Arch.pa (bv 8)) :
     phys_map mm -∗ pin_offer pin -∗ ⌜dom pin ## dom mm⌝.
-  Proof.
+  Proof using .
     iIntros "Hm H". rewrite /phys_map /pin_offer.
     iAssert (⌜forall a, a ∈ dom pin -> a ∈ dom mm -> False⌝)%I with "[Hm H]" as %HH.
     { rewrite bi.pure_forall. iIntros (a). rewrite !bi.pure_impl. iIntros (Ha Hb).
@@ -2779,7 +2779,7 @@ Section VirtioProto.
 
   Lemma pin_offer_half_disj (ctl pin : gmap Arch.pa (bv 8)) :
     half_map ctl -∗ pin_offer pin -∗ ⌜dom pin ## dom ctl⌝.
-  Proof.
+  Proof using .
     iIntros "Hm H". rewrite /half_map /pin_offer.
     iAssert (⌜forall a, a ∈ dom pin -> a ∈ dom ctl -> False⌝)%I with "[Hm H]" as %HH.
     { rewrite bi.pure_forall. iIntros (a). rewrite !bi.pure_impl. iIntros (Ha Hb).
@@ -2805,7 +2805,7 @@ Section VirtioProto.
   Lemma pin_offer_lease_disj (dma ctl pin : gmap Arch.pa (bv 8)) :
     dma_own_x dma (dom ctl) -∗ half_map ctl -∗ pin_offer pin -∗
     ⌜dom pin ## dom dma⌝.
-  Proof.
+  Proof using .
     iIntros "Hd Hh Hp".
     rewrite /dma_own_x dma_own_phys_map.
     iDestruct (pin_offer_full_disj with "Hd Hp") as %H1.
@@ -2841,13 +2841,13 @@ Section VirtioProto.
     p ↪[dn_ord γ]□ u.
 
   Global Instance disk_ord_persistent γ p u : Persistent (disk_ord γ p u).
-  Proof. rewrite /disk_ord. apply _. Qed.
+  Proof using . rewrite /disk_ord. apply _. Qed.
   Global Instance disk_ord_timeless γ p u : Timeless (disk_ord γ p u).
-  Proof. rewrite /disk_ord. apply _. Qed.
+  Proof using . rewrite /disk_ord. apply _. Qed.
 
   Lemma disk_ord_agree (γ : disk_names) (p u1 u2 : nat) :
     disk_ord γ p u1 -∗ disk_ord γ p u2 -∗ ⌜u1 = u2⌝.
-  Proof.
+  Proof using .
     iIntros "H1 H2". rewrite /disk_ord.
     by iDestruct (ghost_map_elem_agree with "H1 H2") as %->.
   Qed.
@@ -2864,7 +2864,7 @@ Section VirtioProto.
 
   Lemma disk_read_at_agree (γ : disk_names) (n1 n2 : nat) :
     disk_read_at γ n1 -∗ disk_read_at γ n2 -∗ ⌜n1 = n2⌝.
-  Proof.
+  Proof using .
     iIntros "H1 H2". rewrite /disk_read_at.
     by iDestruct (ghost_var_agree with "H1 H2") as %->.
   Qed.
@@ -2879,7 +2879,7 @@ Section VirtioProto.
 
   Lemma disk_stage_agree (γ : disk_names) (s1 s2 : option (bv 16)) :
     disk_stage γ s1 -∗ disk_stage γ s2 -∗ ⌜s1 = s2⌝.
-  Proof.
+  Proof using .
     iIntros "H1 H2". rewrite /disk_stage.
     by iDestruct (ghost_var_agree with "H1 H2") as %->.
   Qed.
@@ -2947,7 +2947,7 @@ Section VirtioProto.
     perm_done (dn_perm γ) (vs_perm sl) (vs_wr sl).
 
   Global Instance slot_perms_done_timeless γ sl : Timeless (slot_perms_done γ sl).
-  Proof. rewrite /slot_perms_done. apply _. Qed.
+  Proof using . rewrite /slot_perms_done. apply _. Qed.
 
   Definition used_rel_res (c : virtio_cfg) (nc lo : nat) (tf : nat -> nat)
       (hist : list (nat * (nat -> bv 8))) : iProp Σ :=
@@ -2959,17 +2959,17 @@ Section VirtioProto.
           (nth_byte (wrap16 0)) (nth_byte (wrap16 nc)) hist))%I.
   Global Instance used_rel_res_timeless c nc lo tf hist :
     Timeless (used_rel_res c nc lo tf hist).
-  Proof. rewrite /used_rel_res. apply _. Qed.
+  Proof using . rewrite /used_rel_res. apply _. Qed.
 
   Definition disk_done_pos (γ : disk_names) (p q : nat) : iProp Σ :=
     (p ↪[dn_pos γ]□ q)%I.
   Global Instance disk_done_pos_persistent γ p q : Persistent (disk_done_pos γ p q).
-  Proof. rewrite /disk_done_pos. apply _. Qed.
+  Proof using . rewrite /disk_done_pos. apply _. Qed.
   Global Instance disk_done_pos_timeless γ p q : Timeless (disk_done_pos γ p q).
-  Proof. rewrite /disk_done_pos. apply _. Qed.
+  Proof using . rewrite /disk_done_pos. apply _. Qed.
   Lemma disk_done_pos_agree γ p q q' :
     disk_done_pos γ p q -∗ disk_done_pos γ p q' -∗ ⌜q = q'⌝.
-  Proof.
+  Proof using .
     rewrite /disk_done_pos. iIntros "H1 H2".
     by iDestruct (ghost_map_elem_agree with "H1 H2") as %->.
   Qed.
@@ -2996,27 +2996,27 @@ Section VirtioProto.
   Definition ledger_le (a : Arch.pa) (b : bv 8) (q : nat) : iProp Σ :=
     (∃ t : nat, ⌜(t <= q)%nat⌝ ∗ phys_ledger_at a (DfracOwn 1) b t)%I.
   Global Instance ledger_le_timeless a b q : Timeless (ledger_le a b q).
-  Proof. rewrite /ledger_le. apply _. Qed.
+  Proof using . rewrite /ledger_le. apply _. Qed.
   Lemma ledger_le_of_at (a : Arch.pa) (b : bv 8) (q : nat) :
     phys_ledger_at a (DfracOwn 1) b q ⊢ ledger_le a b q.
-  Proof. iIntros "H". iExists q. iFrame "H". iPureIntro. lia. Qed.
+  Proof using . iIntros "H". iExists q. iFrame "H". iPureIntro. lia. Qed.
   Lemma ledger_le_mono (a : Arch.pa) (b : bv 8) (q q' : nat) :
     (q <= q')%nat -> ledger_le a b q ⊢ ledger_le a b q'.
-  Proof.
+  Proof using .
     intro H. iIntros "(%t & %Ht & H)". iExists t. iFrame "H". iPureIntro. lia.
   Qed.
   Lemma ledger_le_ledger (a : Arch.pa) (b : bv 8) (q : nat) :
     ledger_le a b q ⊢ phys_ledger a (DfracOwn 1) b.
-  Proof. iIntros "(%t & _ & H)". iApply phys_ledger_at_ledger. iExact "H". Qed.
+  Proof using . iIntros "(%t & _ & H)". iApply phys_ledger_at_ledger. iExact "H". Qed.
   Lemma ledger_le_forget (a : Arch.pa) (b : bv 8) (q : nat) :
     ledger_le a b q ⊢ phys_pointsto a (DfracOwn 1) b.
-  Proof. iIntros "(%t & _ & H)". iApply TsoCtx.phys_ledger_at_forget. iExact "H". Qed.
+  Proof using . iIntros "(%t & _ & H)". iApply TsoCtx.phys_ledger_at_forget. iExact "H". Qed.
   (* a sealed cell is a stamped cell with its stamp hidden; anything that
      bounds every stamp bounds it *)
   Lemma ledger_le_of_ledger (a : Arch.pa) (b : bv 8) (q : nat) :
     (∀ t : nat, phys_ledger_at a (DfracOwn 1) b t -∗ ⌜(t <= q)%nat⌝) -∗
     phys_ledger a (DfracOwn 1) b -∗ ledger_le a b q.
-  Proof.
+  Proof using .
     iIntros "Hb Hc". iDestruct (TsoCtx.phys_ledger_of_at with "Hc") as (t) "Hc".
     iDestruct ("Hb" with "Hc") as %Ht. iExists t. by iFrame "Hc".
   Qed.
@@ -3034,7 +3034,7 @@ Section VirtioProto.
              ledger_le (pa_add (vr_buf (vs_req sl)) j) (bs !!! j) q))%I.
   Global Instance slot_done_cells_timeless c p sl bs q :
     Timeless (slot_done_cells c p sl bs q).
-  Proof. rewrite /slot_done_cells. destruct (vs_is_out sl); apply _. Qed.
+  Proof using . rewrite /slot_done_cells. destruct (vs_is_out sl); apply _. Qed.
 
   (* the cells are the write set's stamped map, in pieces *)
   Lemma slot_done_cells_of_map (c : virtio_cfg) (p : nat) (sl : vslot)
@@ -3044,7 +3044,7 @@ Section VirtioProto.
     slot_wr sl ## used_page_pas c ->
     ([∗ map] a ↦ b ∈ slot_done_map c p sl bs, ledger_le a b q)
     ⊣⊢ slot_done_cells c p sl bs q.
-  Proof.
+  Proof using .
     intros Hsb Hwp.
     assert (H4 : Z.of_nat 4 < 18446744073709551616) by lia.
     assert (Hlenb : Z.of_nat (vs_len sl) < 18446744073709551616) by apply vs_len_bound.
@@ -3139,7 +3139,7 @@ Section VirtioProto.
        slot_perms_done γ sl)%I.
   Global Instance slot_done_res_timeless γ c dma hist p sl :
     Timeless (slot_done_res γ c dma hist p sl).
-  Proof. rewrite /slot_done_res. apply _. Qed.
+  Proof using . rewrite /slot_done_res. apply _. Qed.
 
   Lemma slot_done_res_mono (γ : disk_names) (c : virtio_cfg)
       (dma dma' : gmap Arch.pa (bv 8)) (hist hist' : list (nat * (nat -> bv 8)))
@@ -3147,7 +3147,7 @@ Section VirtioProto.
     (forall a, a ∈ slot_done_dom c p sl -> dma' !! a = dma !! a) ->
     hist' !! p = hist !! p ->
     slot_done_res γ c dma hist p sl -∗ slot_done_res γ c dma' hist' p sl.
-  Proof.
+  Proof using .
     intros Hsame Hh. iIntros "H".
     iDestruct "H" as (bs q)
       "(%Hlen & Hbs & %Hout & %Hre & %Hrl & %Hst & %Hbl & %Hq & Hcells & Hperm)".
@@ -3184,7 +3184,7 @@ Section VirtioProto.
     slot_done_res γ c dma hist p sl -∗
     ∃ (b : bv 8) (q : nat), ⌜dma !! a = Some b⌝ ∗
       (ledger_le a b q ∗ (ledger_le a b q -∗ slot_done_res γ c dma hist p sl)).
-  Proof.
+  Proof using .
     intro Ha. iIntros "H".
     iDestruct "H" as (bs q)
       "(%Hlen & Hbs & %Hout & %Hre & %Hrl & %Hst & %Hbl & %Hq & Hcells & Hperm)".
@@ -3237,7 +3237,7 @@ Section VirtioProto.
     ([∗ map] p ↦ sl ∈ vp_done pr,
        ∃ u : nat, ⌜vp_uix pr !! p = Some u⌝ ∗ slot_done_res γ c dma hist u sl) -∗
     ⌜dma ⊆ m⌝.
-  Proof.
+  Proof using .
     intros Hctl Hridx. iIntros "Hm Hd Hh Hrel Hdone".
     iDestruct (dma_agree_x with "Hm Hd") as %Hx.
     iDestruct (half_map_agree with "Hm Hh") as %Ha.
@@ -3304,7 +3304,7 @@ Section VirtioProto.
        ∃ u : nat, ⌜vp_uix pr !! p = Some u⌝ ∗ slot_done_res γ c dma hist u sl) -∗
     ([∗ map] a ↦ b ∈ mm, pointsto (L := Arch.pa) (V := bv 8) a (DfracOwn 1) b) -∗
     ⌜dom mm ## dom dma⌝.
-  Proof.
+  Proof using .
     iIntros "Hd Hh Hrel Hdone Hm".
     iAssert (⌜forall a, a ∈ dom mm -> a ∈ dom dma -> False⌝)%I as %HH;
       last (iPureIntro; rewrite elem_of_disjoint; exact HH).
@@ -3463,13 +3463,13 @@ Section VirtioProto.
     end.
 
   Global Instance chain_back_at_timeless γ sl pin q bs : Timeless (chain_back_at γ sl pin q bs).
-  Proof. rewrite /chain_back_at. destruct (vs_is_out sl); apply _. Qed.
+  Proof using . rewrite /chain_back_at. destruct (vs_is_out sl); apply _. Qed.
   Global Instance chain_back_timeless γ p sl pin : Timeless (chain_back γ p sl pin).
-  Proof. rewrite /chain_back. apply _. Qed.
+  Proof using . rewrite /chain_back. apply _. Qed.
 
   (* [apply _] cannot see through the match on the receipt state *)
   Global Instance head_res_timeless γ i st : Timeless (head_res γ i st).
-  Proof. destruct st; rewrite /head_res; apply _. Qed.
+  Proof using . destruct st; rewrite /head_res; apply _. Qed.
 
   (* the receipts, as they ride in the invariant: total over the eight
      descriptors, exactly like [disk.info[NUM]] and [disk.free[NUM]] in the
@@ -3504,7 +3504,7 @@ Section VirtioProto.
        ([∗ map] i ↦ st ∈ hs, head_res γ i st))%I.
 
   Global Instance heads_res_timeless γ : Timeless (heads_res γ).
-  Proof. rewrite /heads_res. apply _. Qed.
+  Proof using . rewrite /heads_res. apply _. Qed.
 
   (* THE RECEIPTS AT THE LIVE FLIP.  The authority has been carried since
      power-on with every entry INACTIVE, and an INACTIVE entry owns nothing,
@@ -3515,7 +3515,7 @@ Section VirtioProto.
     (forall i st, hs !! i = Some st -> st = HInactive) ->
     ghost_map_auth (dn_head γ) 1 hs -∗
     heads_res_at γ (vp_spins vproto0).
-  Proof.
+  Proof using .
     intros Hdom Hinact. iIntros "Hauth".
     rewrite /heads_res_at. iExists hs. iFrame "Hauth".
     iSplitR; [by iPureIntro|].
@@ -3538,7 +3538,7 @@ Section VirtioProto.
       (s1 s2 : gmap nat (vslot * gmap Arch.pa (bv 8))) :
     (forall q x, s2 !! q = Some x -> s1 !! q = Some x) ->
     heads_res_at γ s1 -∗ heads_res_at γ s2.
-  Proof.
+  Proof using .
     intro Hsub. rewrite /heads_res_at.
     iIntros "H". iDestruct "H" as (hs) "(%Hdom & %Hcoup & Hauth & Hbig)".
     iExists hs. iFrame "Hauth Hbig". iSplitR; [by iPureIntro|].
@@ -3547,7 +3547,7 @@ Section VirtioProto.
   Qed.
 
   Global Instance heads_res_at_timeless γ slots : Timeless (heads_res_at γ slots).
-  Proof. rewrite /heads_res_at. apply _. Qed.
+  Proof using . rewrite /heads_res_at. apply _. Qed.
 
   (* THE RING WINDOW, OFF THE RECEIPTS (VirtioQueue.nat_inj_below8).  The
      unpopped positions [vp_lo, vp_np) are pending, their heads are pairwise
@@ -3565,7 +3565,7 @@ Section VirtioProto.
                  /\ dc_slot w = sl /\ dc_pin w = pin /\ dc_pos w = q) ->
     hs !! i = Some HInactive ->
     (vp_np pr - vp_lo pr < 8)%nat.
-  Proof.
+  Proof using .
     intros Hok Hdom Hcoup Hi.
     set (f := fun q => match vp_pend pr !! q with
                        | Some sl => Z.to_nat (bv_unsigned (vr_head (vs_req sl)))
@@ -3616,7 +3616,7 @@ Section VirtioProto.
     vproto_ok c pr D ->
     heads_res_at γ (vp_spins pr) -∗ i ↪[dn_head γ] HInactive -∗
     ⌜(vp_np pr - vp_lo pr < 8)%nat⌝.
-  Proof.
+  Proof using .
     intro Hok. iIntros "H Hfrag". rewrite /heads_res_at.
     iDestruct "H" as (hs) "(%Hdom & %Hcoup & Hauth & _)".
     iDestruct (ghost_map_lookup with "Hauth Hfrag") as %Hi.
@@ -3632,18 +3632,18 @@ Section VirtioProto.
   Lemma pend_todo_other (pr : vproto) (ca : gmap Z (list (bv 8)))
       (p : nat) (sl : vslot) :
     vp_tk pr <> Some p -> pend_todo pr ca p sl = vs_all sl.
-  Proof. intro H. rewrite /pend_todo bool_decide_eq_false_2 //. Qed.
+  Proof using . intro H. rewrite /pend_todo bool_decide_eq_false_2 //. Qed.
 
   Lemma pend_todo_head (pr : vproto) (ca : gmap Z (list (bv 8)))
       (p : nat) (sl : vslot) :
     vp_tk pr = Some p -> pend_todo pr ca p sl = vs_todo sl (dom ca).
-  Proof. intro H. rewrite /pend_todo bool_decide_eq_true_2 //. Qed.
+  Proof using . intro H. rewrite /pend_todo bool_decide_eq_true_2 //. Qed.
 
   (* nothing captured: EVERY pending slot owes its whole write *)
   Lemma pend_todo_untaken (pr : vproto) (ca : gmap Z (list (bv 8)))
       (p : nat) (sl : vslot) :
     vp_tk pr = None -> pend_todo pr ca p sl = vs_all sl.
-  Proof. intro H. rewrite /pend_todo H bool_decide_eq_false_2 //. Qed.
+  Proof using . intro H. rewrite /pend_todo H bool_decide_eq_false_2 //. Qed.
 
   (* THE WRITETHROUGH DISCIPLINE AT THE PROTOCOL
      ([VirtioModel.virtio_wt_inv] section 6c, in the queue's vocabulary).
@@ -3663,16 +3663,16 @@ Section VirtioProto.
   (* an idle device satisfies it whatever is queued *)
   Lemma vp_wt_idle (pr : vproto) (ca : gmap Z (list (bv 8))) :
     ca = ∅ -> vp_tk pr = None -> vp_wt pr ca.
-  Proof. intros -> Htk. by rewrite /vp_wt Htk. Qed.
+  Proof using . intros -> Htk. by rewrite /vp_wt Htk. Qed.
 
   Lemma vp_wt_head (pr : vproto) (ca : gmap Z (list (bv 8))) (p : nat) :
     vp_tk pr = Some p -> vp_wt pr ca ->
     exists sl, vp_pend pr !! p = Some sl /\ ca ⊆ vslot_cache sl.
-  Proof. intros Htk H. rewrite /vp_wt Htk in H. exact H. Qed.
+  Proof using . intros Htk H. rewrite /vp_wt Htk in H. exact H. Qed.
 
   Lemma vp_wt_none (pr : vproto) (ca : gmap Z (list (bv 8))) :
     vp_tk pr = None -> vp_wt pr ca -> ca = ∅.
-  Proof. intros Htk H. rewrite /vp_wt Htk in H. exact H. Qed.
+  Proof using . intros Htk H. rewrite /vp_wt Htk in H. exact H. Qed.
 
   (* ...and it IS the model's state-only invariant, at the head request's
      sector set -- which is the form the completion's payoff needs. *)
@@ -3682,7 +3682,7 @@ Section VirtioProto.
     vp_tk pr = Some q -> vp_pend pr !! q = Some sl ->
     v_taken v = wrap16 <$> vp_tk pr -> vp_wt pr (v_cache v) ->
     virtio_wt_inv v (vs_sectors sl).
-  Proof.
+  Proof using .
     intros Hslot Htk Hsl Hcoup Hwt.
     destruct (vp_wt_head pr (v_cache v) q Htk Hwt) as (sl' & Hsl' & Hsub).
     rewrite Hsl in Hsl'. injection Hsl' as <-.
@@ -3856,7 +3856,7 @@ Section VirtioProto.
            ghost_map_auth (dn_head γ) 1 hs))%I.
 
   Global Instance virtio_proto_timeless γ v : Timeless (virtio_proto γ v).
-  Proof. rewrite /virtio_proto. destruct (virtio_live (v_cfg v)); apply _. Qed.
+  Proof using . rewrite /virtio_proto. destruct (virtio_live (v_cfg v)); apply _. Qed.
 
   (* ==================================================================== *)
   (* allocation and construction                                          *)
@@ -3905,7 +3905,7 @@ Section VirtioProto.
            [disk_inv].  [gd] is the ERA's generation: the channel only ever
            holds permits its own era authored (PermInv.v). *)
         perm_inv_body gd (dn_perm γ).
-  Proof.
+  Proof using .
     intros Hlive Hsn Hui Hca Htk Hah Hwce.
     iMod (ghost_map_alloc_empty (K:=nat)
             (V:=(vslot * gmap Arch.pa (bv 8))%type)) as (gslot) "Hslot".
@@ -3963,7 +3963,7 @@ Section VirtioProto.
     avail_idx_dom c ## used_page_pas c ->
     ring_cells_dom c ## used_page_pas c ->
     dma_own_x (vinit_dma c) (lease_hole c vproto0) ⊣⊢ phys_map (used_page_rest c).
-  Proof.
+  Proof using .
     intros Hdisj Hdring.
     assert (Hz : map_zip (vp_uix vproto0) (vp_done vproto0)
                  = (∅ : gmap nat (nat * vslot))).
@@ -4044,7 +4044,7 @@ Section VirtioProto.
     disk_fl γ t0 t1 -∗ disk_flr γ 0 -∗
     ghost_map_auth (dn_pos γ) 1 (∅ : gmap nat nat) -∗
     virtio_proto γ v1.
-  Proof.
+  Proof using .
     intros Hcfg Hlive Hqnum Hal Hdisj Hdring Hseen Hui Hwce Hca Htk Hah.
     iIntros "#Hcfgp Hslot Hord Hnc Hnp Hnr Hstage Hheads Hidx Hring Hpage
              Hcells Hfl Hflr Hpos".
@@ -4110,7 +4110,7 @@ Section VirtioProto.
   (* [zero16] and [wrap16 0] are the same halfword; the not-live arm speaks the
      model's vocabulary and the live arm the queue protocol's. *)
   Lemma zero16_wrap16 : zero16 = wrap16 0%nat.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* THE LIVE FLIP.  This is the transition [virtio_disk_init] performs at its
      LAST MMIO write (STATUS |= DRIVER_OK -- the write that makes
@@ -4159,7 +4159,7 @@ Section VirtioProto.
          disk_stage γ None ∗
          disk_cfg γ (virtio_init_cfg pd pav pu) ∗
          disk_fl γ t0 t1 ∗ disk_flr γ 0.
-  Proof.
+  Proof using .
     intros Hlive0 Hc1 Hsn Hui Hcae Htke Hahe Hal Hdisj Hdring.
     iIntros "Hp Hmine Hidx Hring Hpage Hcells".
     rewrite {1}/virtio_proto.
@@ -4228,7 +4228,7 @@ Section VirtioProto.
     virtio_wce c' = false ->
     virtio_proto γ v -∗ disk_cfg_is γ (DfracOwn (1/2)) (v_cfg v) ==∗
     virtio_proto γ v' ∗ disk_cfg_is γ (DfracOwn (1/2)) c'.
-  Proof.
+  Proof using .
     intros Hlive0 Hlive1 Hc1 Hsn Hui Hca Htk Hah Hwce. iIntros "Hp Hmine".
     rewrite {1}/virtio_proto.
     rewrite Hlive0.
@@ -4260,7 +4260,7 @@ Section VirtioProto.
   Lemma virtio_proto_cfg_agree (γ : disk_names) (v : virtio_state)
       (c : virtio_cfg) :
     virtio_proto γ v -∗ disk_cfg_is γ (DfracOwn (1/2)) c -∗ ⌜v_cfg v = c⌝.
-  Proof.
+  Proof using .
     iIntros "Hp Hmine". rewrite /virtio_proto.
     destruct (virtio_live (v_cfg v)).
     - iDestruct "Hp" as (pr dma t0 t1 lw F hist pm) "(#Hcfg & _)".
@@ -4285,7 +4285,7 @@ Section VirtioProto.
     virtio_proto γ v -∗ disk_cfg_is γ (DfracOwn (1/2)) c -∗
     ⌜v_cfg v = c /\ v_seen v = zero16 /\ v_used_idx v = zero16
      /\ v_cache v = ∅ /\ v_taken v = None /\ v_inflight v = ∅⌝.
-  Proof.
+  Proof using .
     iIntros (Hlive) "Hp Hmine". rewrite /virtio_proto.
     destruct (virtio_live (v_cfg v)) eqn:Hl.
     - iDestruct "Hp" as (pr dma t0 t1 lw F hist pm) "(#Hcfg & _)".
@@ -4314,7 +4314,7 @@ Section VirtioProto.
     v_used_idx v' = v_used_idx v ->
     v_cache v' = v_cache v -> v_taken v' = v_taken v ->
     virtio_proto γ v -∗ virtio_proto γ v'.
-  Proof.
+  Proof using .
     intros Hc Hs Hah Hu Hca Htk.
     rewrite /virtio_proto Hc Hs Hah Hu Hca Htk. iIntros "$".
   Qed.
@@ -4334,7 +4334,7 @@ Section VirtioProto.
      different permit discipline (async-disk.md §4). *)
   Lemma virtio_proto_writethrough (γ : disk_names) (v : virtio_state) :
     virtio_proto γ v -∗ ⌜virtio_wce (v_cfg v) = false⌝.
-  Proof.
+  Proof using .
     iIntros "Hp". rewrite /virtio_proto.
     destruct (virtio_live (v_cfg v)).
     - iDestruct "Hp" as (pr dma t0 t1 lw F hist pm)
@@ -4353,7 +4353,7 @@ Section VirtioProto.
       (p : nat) (sl : vslot) (pin : gmap Arch.pa (bv 8)) :
     vproto_ok c pr D -> vp_pend pr !! p = Some sl -> vp_pin pr !! p = Some pin ->
     slot_done_dom c (vp_nc pr) sl ## lease_hole c pr.
-  Proof.
+  Proof using .
     intros Hok Hsl Hpin.
     pose proof (vproto_pend_slot pr _ _ Hsl) as Hs.
     pose proof (vpo_standing _ _ _ Hok _ sl pin Hs Hpin) as Hstand.
@@ -4414,7 +4414,7 @@ Section VirtioProto.
     vp_done pr !! k = Some x -> vp_uix pr !! k = Some u ->
     slot_wr sl ## slot_wr x /\ slot_wr x ## used_page_pas c
     /\ Z.of_nat (vp_nc pr) `mod` 8 ≠ Z.of_nat u `mod` 8.
-  Proof.
+  Proof using .
     intros Hok Hsl Hpin Hk Hu.
     pose proof (vproto_pend_slot pr _ _ Hsl) as Hs.
     pose proof (vproto_done_slot c pr D k x Hok Hk) as Hks.
@@ -4454,7 +4454,7 @@ Section VirtioProto.
     ((4 <= match ph with None => 0%nat | Some ph => vphase_rank ph end)%nat ->
        forall a, a ∈ elem_dom c nc -> w !! a = None) ->
     slot_stage_ok c dma nc ph sl -> slot_stage_ok c (w ∪ dma) nc ph sl.
-  Proof.
+  Proof using .
     intros Hown Helem (Hb & Hs & He & Hl). split_and!.
     - intros Hk Hin. apply (read_byte_list_transfer dma (w ∪ dma)); [| exact (Hb Hk Hin) ].
       intros j Hj. apply lookup_union_r. apply Hown.
@@ -4485,7 +4485,7 @@ Section VirtioProto.
     ⊢ ([∗ map] p ↦ sl ∈ vp_pend pr,
          ⌜slot_stage_ok c dma' (vp_nc pr) (vp_fl pr !! vs_hd sl) sl⌝ ∗
          slot_pend_res γ (pend_todo pr ca p sl) sl).
-  Proof.
+  Proof using .
     intros Hok Hpage Hown. apply big_sepM_mono. intros p sl Hsl.
     iIntros "[%Hst $]". iPureIntro.
     assert (Hpd : exists pin, vp_pin pr !! p = Some pin).
@@ -4509,7 +4509,7 @@ Section VirtioProto.
       (mv : vmem) (γ : disk_names) :
     mem_view m mv ->
     gen_heap_interp m -∗ virtio_proto γ v -∗ ⌜virtio_stalled v mv = false⌝.
-  Proof.
+  Proof using .
     iIntros (Hview) "Hm Hp".
     rewrite /virtio_proto.
     destruct (virtio_live (v_cfg v)) eqn:Hlive.
@@ -4581,7 +4581,7 @@ Section VirtioProto.
              (nth_byte (wrap16 0)) (nth_byte (wrap16 (S nc)))
              (hist ++ [(q, nth_byte (wrap16 (S nc)))]) ==∗
            virtio_proto γ v').
-  Proof.
+  Proof using .
     iIntros (Hstep) "Hp".
     rewrite {1}/virtio_proto.
     destruct (virtio_live (v_cfg v)) eqn:Hlive; last first.
@@ -5025,7 +5025,7 @@ Section VirtioProto.
     virtio_pop_step v mv = Some v' ->
     gen_heap_interp m -∗ virtio_proto γ v -∗
       gen_heap_interp m ∗ virtio_proto γ v'.
-  Proof.
+  Proof using .
     iIntros (Hview Hstep) "Hm Hp".
     rewrite {1}/virtio_proto.
     destruct (virtio_live (v_cfg v)) eqn:Hlive; last first.
@@ -5130,7 +5130,7 @@ Section VirtioProto.
     virtio_fetch_step v mv h = Some v' ->
     gen_heap_interp m -∗ virtio_proto γ v -∗
       gen_heap_interp m ∗ virtio_proto γ v'.
-  Proof.
+  Proof using .
     iIntros (Hview Hstep) "Hm Hp".
     rewrite {1}/virtio_proto.
     destruct (virtio_live (v_cfg v)) eqn:Hlive; last first.
@@ -5222,7 +5222,7 @@ Section VirtioProto.
     virtio_capture_step v mv h = Some v' ->
     gen_heap_interp m -∗ virtio_proto γ v -∗
       gen_heap_interp m ∗ virtio_proto γ v'.
-  Proof.
+  Proof using .
     iIntros (Hview Hstep) "Hm Hp".
     rewrite {1}/virtio_proto.
     destruct (virtio_live (v_cfg v)) eqn:Hlive; last first.
@@ -5351,7 +5351,7 @@ Section VirtioProto.
         ⌜dom old = dom w⌝ ∗
         phys_map old ∗
         (phys_map w -∗ disk_img_auth (dn_img γ) (v_disk v) ∗ virtio_proto γ v').
-  Proof.
+  Proof using .
     iIntros (Hstep) "Hauth Hp".
     rewrite {1}/virtio_proto.
     destruct (virtio_live (v_cfg v)) eqn:Hlive; last first.
@@ -5593,7 +5593,7 @@ Section VirtioProto.
         perm_pend (dn_perm γ) kq wr todo ∗
         (perm_pend (dn_perm γ) kq wr (todo ∖ {[ i ]}) -∗
            disk_img_auth (dn_img γ) (v_disk v') ∗ virtio_proto γ v').
-  Proof.
+  Proof using .
     iIntros (Hstep) "Hauth Hp".
     iDestruct "Hauth" as (dmap) "[Hauth %Hdv]".
     rewrite {1}/virtio_proto.
@@ -5764,7 +5764,7 @@ Section VirtioProto.
     avail_lease_half (v_cfg v) np ∗
     (avail_lease_half (v_cfg v) np -∗
        virtio_proto γ v ∗ disk_pub γ np).
-  Proof.
+  Proof using .
     iIntros "Hp Hpub". rewrite /virtio_proto /disk_pub.
     destruct (virtio_live (v_cfg v)) eqn:Hlive; last first.
     { iDestruct "Hp" as "(Hcfg & _ & _ & _ & _ & _ & _ & Hslot & Hord & Hnc & Hnp & Hnr & Hstage & Hheads)".
@@ -5810,7 +5810,7 @@ Section VirtioProto.
        half_map (range_map (ring_slot_pa (v_cfg v) j) 2 (nth_byte w)) ∗
        (half_map (range_map (ring_slot_pa (v_cfg v) j) 2 (nth_byte w)) -∗
           virtio_proto γ v ∗ disk_pub γ np)).
-  Proof.
+  Proof using .
     intro Hj.
     iIntros "Hp Hpub". rewrite /virtio_proto /disk_pub.
     destruct (virtio_live (v_cfg v)) eqn:Hlive; last first.
@@ -5885,7 +5885,7 @@ Section VirtioProto.
     p ↪[dn_claim γ] dc ∗
     (∃ (q : nat) (bs : list (bv 8)),
        ⌜(q <= Fl)%nat⌝ ∗ chain_back_at γ (dc_slot dc) (dc_pin dc) q bs).
-  Proof.
+  Proof using .
     intros Hhd Hdcp Hunr.
     iIntros "Hp Hpub Hrd Hflr0 #Hordp Hfrag". rewrite /virtio_proto /disk_pub.
     destruct (virtio_live (v_cfg v)) eqn:Hlive; last first.
@@ -6024,7 +6024,7 @@ Section VirtioProto.
     virtio_proto γ v -∗ i ↪[dn_head γ] HActive dc -∗
     ghost_map_auth (dn_claim γ) 1 cm -∗
     ⌜cm !! dc_pos dc = Some dc⌝.
-  Proof.
+  Proof using .
     iIntros "Hp Hfrag Hcm". rewrite /virtio_proto.
     destruct (virtio_live (v_cfg v)) eqn:Hlive.
     - iDestruct "Hp" as (pr dma t0 t1 lw F hist pm)
@@ -6050,7 +6050,7 @@ Section VirtioProto.
      repeated here rather than inverting the layering. *)
   Lemma vp_word4_excl (a : Arch.pa) (w1 w2 : SailStdpp.Values.mword 32) :
     a ↦₄ w1 -∗ a ↦₄ w2 -∗ False.
-  Proof.
+  Proof using .
     iIntros "H1 H2".
     iDestruct (word4_pointsto_bytes with "H1") as "H1".
     iDestruct (word4_pointsto_bytes with "H2") as "H2".
@@ -6098,7 +6098,7 @@ Section VirtioProto.
        virtio_proto γ v ∗ disk_pub γ np ∗
        disk_stage γ (Some h) ∗
        (Z.to_nat (bv_unsigned h)) ↪[dn_head γ] HInactive).
-  Proof.
+  Proof using .
     iIntros "Hp Hpub Hstg Hfrag". rewrite /virtio_proto /disk_pub.
     destruct (virtio_live (v_cfg v)) eqn:Hlive; last first.
     { iDestruct "Hp" as "(Hcfg & _ & _ & _ & _ & _ & _ & Hslot & Hord & Hnc & Hnp & Hnr & Hstage & Hheads)".
@@ -6428,7 +6428,7 @@ Section VirtioProto.
           interrupt handler takes it from there to retire the slot.  What the
           caller keeps is this token, which it holds across [sleep()]. *)
        (Z.to_nat (bv_unsigned (vr_head (vs_req sl)))) ↪[dn_head γ] HActive dc).
-  Proof.
+  Proof using .
     intros Hslotok Hdcsl Hdcpos Hdcpin Hwrbdom Hwrpin.
     iIntros "Hp Hpub Hstg Hfrag Hclaim Hpin Hwrb Hpres".
     rewrite {1}/virtio_proto /disk_pub.
@@ -6901,7 +6901,7 @@ Section VirtioProto.
       disk_cfg γ (v_cfg v) ∗
       ⌜virtio_pages_aligned (v_cfg v)⌝ ∗
       disk_done_lb γ nc ∗ (virtio_proto γ v ∗ disk_pub γ np).
-  Proof.
+  Proof using .
     iIntros "Hp Hpub Hlb0". rewrite /virtio_proto /disk_pub /disk_done_lb.
     destruct (virtio_live (v_cfg v)) eqn:Hlive; last first.
     { iDestruct "Hp" as "(Hcfg & _ & _ & _ & _ & _ & _ & Hslot & Hord & Hnc & Hnp & Hnr & Hstage & Hheads)".
@@ -6952,7 +6952,7 @@ Section VirtioProto.
             (tf2 t0 t1) (nth_byte (wrap16 0)) (nth_byte (wrap16 nc)) hist) -∗
          virtio_proto γ v ∗ disk_pub γ np ∗ disk_nr γ nr ∗ disk_flr γ F ∗
          disk_fl γ t0 t1).
-  Proof.
+  Proof using .
     iIntros "Hp Hpub Hnr0 Hflr0 Hfl0". rewrite /virtio_proto /disk_pub.
     destruct (virtio_live (v_cfg v)) eqn:Hlive; last first.
     { iDestruct "Hp" as "(Hcfg & _ & _ & _ & _ & _ & _ & Hslot & Hord & Hnc & Hnp & Hnr & Hstage & Hheads)".
@@ -7013,7 +7013,7 @@ Section VirtioProto.
     gen_heap_interp (hG := riscv_memGS) g.(gmem) -∗ tso_interp_at riscv_eraGS g -∗ phys_map old -∗
     gen_heap_interp (hG := riscv_memGS) g.(gmem) ∗ tso_interp_at riscv_eraGS g ∗
     ([∗ map] a ↦ b ∈ old, ledger_le a b (length g.(glog))).
-  Proof.
+  Proof using .
     iIntros "Hgh Hint Hold". rewrite /phys_map.
     iRevert "Hgh Hint Hold".
     iInduction old as [|a b old Hnone] "IH" using map_ind; iIntros "Hgh Hint Hold".
@@ -7052,7 +7052,7 @@ Section VirtioProto.
                = Some (nth_byte (wrap16 k) j))
          /\ (forall p, (p < k)%nat ->
                exists q g0, hist !! p = Some (q, g0) /\ (q <= tv)%nat)⌝.
-  Proof.
+  Proof using .
     intros Hho HF Hnrnc HFK. iIntros "Hgh Hint #HK #Hfv Hcells".
     iDestruct (TsoCtx.view_lb_le_view with "Hint HK") as %HKtv.
     pose proof Hho as (Hlen & Hval & Hsort).
@@ -7159,7 +7159,7 @@ Section VirtioProto.
        ⌜cm !! p = Some dc⌝ ∗ ⌜dc_pos dc = p⌝ ∗ disk_ord γ p u) ∗
     virtio_proto γ v ∗ disk_pub γ np ∗ disk_done_lb γ (S u) ∗
     disk_read_at γ u ∗ ghost_map_auth (dn_claim γ) 1 cm.
-  Proof.
+  Proof using .
     iIntros "Hp Hpub Hlb Hrd Hcm".
     rewrite /virtio_proto /disk_pub /disk_done_lb.
     destruct (virtio_live (v_cfg v)) eqn:Hlive; last first.
@@ -7283,7 +7283,7 @@ Section VirtioProto.
                 j) q) -∗
           virtio_proto γ v ∗ disk_pub γ np ∗ disk_read_at γ u ∗
           ghost_map_auth (dn_claim γ) 1 cm)).
-  Proof.
+  Proof using .
     intro Hcm.
     iIntros "Hp Hpub #Hordp Hrd Hcm".
     rewrite /virtio_proto /disk_pub.
@@ -7418,7 +7418,7 @@ Section VirtioProto.
        (ledger_le (vr_status (vs_req (dc_slot dc))) byte_zero q -∗
           virtio_proto γ v ∗ disk_pub γ np ∗ disk_read_at γ u ∗
           ghost_map_auth (dn_claim γ) 1 cm)).
-  Proof.
+  Proof using .
     intro Hcm.
     iIntros "Hp Hpub #Hordp Hrd Hcm".
     rewrite /virtio_proto /disk_pub.
@@ -7571,7 +7571,7 @@ Section VirtioProto.
     virtio_proto γ v ∗ disk_pub γ np ∗ disk_done_lb γ (S u) ∗
     disk_read_at γ (S u) ∗ disk_flr γ (Nat.max F0 V0) ∗
     ghost_map_auth (dn_claim γ) 1 cm.
-  Proof.
+  Proof using .
     intro Hcm.
     iIntros "Hp Hpub #Hordp Hrd Hcm Hflr0 #Hqv %HqV".
     rewrite {1}/virtio_proto /disk_pub /disk_done_lb.

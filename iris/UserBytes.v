@@ -121,7 +121,7 @@ Section UserBytesTree.
     end.
 
   Lemma pt_claims_O (t : ptree) : pt_claims 0 t = pt_node_claim (pt_base t).
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma pt_claims_S (lvl : nat) (t : ptree) :
     pt_claims (S lvl) t =
@@ -131,10 +131,10 @@ Section UserBytesTree.
        | Some c => pt_claims lvl c
        | None => emp
        end)%I.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Global Instance pt_claims_persistent lvl t : Persistent (pt_claims lvl t).
-  Proof.
+  Proof using .
     revert t. induction lvl as [| lvl IH]; intros t.
     - rewrite pt_claims_O. apply _.
     - rewrite pt_claims_S. apply bi.sep_persistent; [apply _ |].
@@ -146,7 +146,7 @@ Section UserBytesTree.
   Lemma pt_page_own_maps (t : ptree) :
     pt_page_own (DfracOwn 1) t ⊣⊢
     pt_node_claim (pt_base t) ∗ [∗ list] m ∈ pt_page_maps t, bytes_own m.
-  Proof.
+  Proof using .
     rewrite /pt_page_own /pt_page_maps big_sepL_fmap.
     apply bi.sep_proper; [reflexivity |].
     apply big_sepL_proper. intros k i _.
@@ -162,7 +162,7 @@ Section UserBytesTree.
   Lemma big_sepL_bytes_concat (ls : list (list pamap)) :
     ([∗ list] m ∈ concat ls, bytes_own m) ⊣⊢
     [∗ list] l ∈ ls, [∗ list] m ∈ l, bytes_own m.
-  Proof.
+  Proof using .
     induction ls as [| l ls IH]; [reflexivity |].
     rewrite concat_cons big_sepL_app big_sepL_cons IH. reflexivity.
   Qed.
@@ -182,14 +182,14 @@ Section UserBytesTree.
           [∗ list] m ∈ (match pt_kids t (mword_of_int i) with
                         | Some c => f c
                         | None => @nil pamap end), bytes_own m.
-  Proof. by rewrite big_sepL_bytes_concat big_sepL_fmap. Qed.
+  Proof using . by rewrite big_sepL_bytes_concat big_sepL_fmap. Qed.
 
   (* THE STRUCTURAL EQUIVALENCE.  [ptree_own] IS the claims plus the slot
      maps; nothing is lost and nothing is assumed. *)
   Lemma ptree_own_maps (lvl : nat) (t : ptree) :
     ptree_own lvl (DfracOwn 1) t ⊣⊢
     pt_claims lvl t ∗ [∗ list] m ∈ pt_maps lvl t, bytes_own m.
-  Proof.
+  Proof using .
     revert t. induction lvl as [| lvl IH]; intros t.
     - rewrite /ptree_own pt_page_own_maps pt_maps_O pt_claims_O.
       apply bi.sep_emp.
@@ -226,7 +226,7 @@ Section UserBytesTree.
   Lemma ptree_own_bytes (lvl : nat) (t : ptree) :
     ptree_own lvl (DfracOwn 1) t ⊢
     pt_claims lvl t ∗ ⌜maps_disj (pt_maps lvl t)⌝ ∗ bytes_own (ptree_bytes lvl t).
-  Proof.
+  Proof using .
     rewrite ptree_own_maps. iIntros "[#Hc Hm]".
     iDestruct (bytes_own_list_disj with "Hm") as %Hd.
     iFrame "Hc". iSplitR; [done |].
@@ -237,7 +237,7 @@ Section UserBytesTree.
     maps_disj (pt_maps lvl t) ->
     pt_claims lvl t -∗ bytes_own (ptree_bytes lvl t) -∗
     ptree_own lvl (DfracOwn 1) t.
-  Proof.
+  Proof using .
     intros Hd. iIntros "Hc Hb". rewrite ptree_own_maps /ptree_bytes.
     rewrite (bytes_own_list_union _ Hd). iFrame.
   Qed.
@@ -346,7 +346,7 @@ Section UserBytesShape.
      claims back with the new tree *)
   Lemma pt_claims_shape (lvl : nat) (t t' : ptree) :
     pt_same_shape lvl t t' -> pt_claims lvl t ⊣⊢ pt_claims lvl t'.
-  Proof.
+  Proof using .
     revert t t'. induction lvl as [| lvl IH]; intros t t' [Hb Hk].
     - rewrite !pt_claims_O. by rewrite Hb.
     - rewrite !pt_claims_S Hb. apply bi.sep_proper; [reflexivity |].
@@ -772,7 +772,7 @@ Section UserBytesData.
     umem_any P -∗
     ∃ md : pamap, ⌜forall a : Arch.pa, u_data_pa P a <-> is_Some (md !! a)⌝ ∗
                   bytes_own md.
-  Proof.
+  Proof using .
     intros Hinj. iIntros "H".
     rewrite umem_any_set.
     rewrite (bigset_gather_reindex (uva_pa P) (uva_dom P) (u_data_pa P)
@@ -787,7 +787,7 @@ Section UserBytesData.
     uva_pa_inj P ->
     (forall a : Arch.pa, u_data_pa P a <-> is_Some (md !! a)) ->
     bytes_own md -∗ umem_any P.
-  Proof.
+  Proof using .
     intros Hinj Hdom. iIntros "Hmd".
     rewrite umem_any_set.
     rewrite (bigset_gather_reindex (uva_pa P) (uva_dom P) (u_data_pa P)
@@ -861,7 +861,7 @@ Section UserPtInvBytes.
          ⌜u_mem_step P t t' mm mm'⌝ -∗
          ⌜tlb_ok_pt (mword_of_int 0) t' tlbvec'⌝ -∗
          upt_regs P usatp tlbvec' -∗ bytes_own mm' -∗ user_pt_any P).
-  Proof.
+  Proof using .
     (* [iEval … in], not a bare [rewrite]: [user_pt_any P] occurs TWICE in
        this statement (premise and closing wand), and the wand's occurrence
        must stay folded. *)

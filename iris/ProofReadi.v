@@ -281,7 +281,7 @@ Section ReadiDefs.
       proc_priv_bare (proc_addr j) pidv (if user then Uc else Uk) ∗
       (proc_priv_bare (proc_addr j) pidv (if user then Uc else Uk) -∗
          rd_dst γf j pidv dq user Uc Uk dstb n bytes).
-  Proof.
+  Proof using .
     rewrite /rd_dst. destruct user.
     - rewrite proc_priv_core_bare. iIntros "[Hb Hcwd]".
       iSplitL "Hb"; [iExact "Hb"|]. iIntros "Hb". iFrame.
@@ -385,7 +385,7 @@ Section ReadiRet.
     rd_cont (ktb := ktb) (CID0 := CID0) γf ip bm data dn user off n dst_olds U
             pidv dq dqd j m K eb b lks -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hsp Hs2 Hs3 Hs8 Hs9 Hs10 Hs11 Hext Htotle Harm.
     pose proof HK as HK'. 
     iIntros "Hcg Hcnt Hextc Hextm #Htext Hpc Hframe Hidev
@@ -708,7 +708,7 @@ Section ReadiJoin.
     rd_cont (ktb := ktb) (CID0 := CID0) γf ip bm data dn user off n dst_olds U
             pidv dq dqd j m K eb b lks -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hsp Hs3v Hs2 Hs8 Hs9 Hs10 Hs11 Hext Htotle Harm.
     pose proof HK as HK'. 
     iIntros "Hcg Hcnt Hextc Hextm #Htext Hpc Hframe Hidev
@@ -879,7 +879,7 @@ Section ReadiExit.
     rd_cont (ktb := ktb) (CID0 := CID0) γf ip bm data dn user off n dst_olds U
             pidv dq dqd j m K eb b lks -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hsp Hs3v Hext Htotle Harm Hab Hbc Hcd Hde Hef Htgt Hal.
     pose proof HK as HK'. 
     iIntros "Hcg Hcnt Hextc Hextm #Htext Hpc Hia Hib Hic Hid Hie Hif Hframe
@@ -1170,7 +1170,7 @@ Section ReadiLoop.
     rd_cont (ktb := ktb) (CID0 := CID0) γf ip bm data dn user off n dst_olds U
             pidv dq dqd j m K eb b lks -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using KtierLe0.
     intros HK Hgeom Hwf Hcov Hszmax Hsum Hncn Hoffnc Hncdef Husv Hj Hgl Hbelow.
     pose proof HK as HK'. 
     change (2 ^ 32)%Z with 4294967296%Z in Hsum.
@@ -2535,7 +2535,7 @@ Section ReadiMain.
     : wp_readi_sconf_body ktb γs j γl pd pav pu γf
  ip bm data dn
                           user off n dst_olds U pidv dq dqd m K eb b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_readi_sconf_body].
     intros pcE pj dst ret_tgt HK Hgeom Hwf Hcov Hszmax Hoff32 Hsumg Hj Hgl
            Ha0 Ha1 Ha3 Ha4 Hbelow.

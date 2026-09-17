@@ -413,7 +413,7 @@ Section KexitSeals.
        the deposit the parent's entry carries. *)
     gen_halves_at (proc_addr j) pid (pv_gen (us_V U)) -∗
     park_pay (proc_addr j) ZOMBIE.
-  Proof.
+  Proof using .
     intros Hof Hcwd. rewrite /park_pay inv_dormant_ZOMBIE.
     iIntros "Hpriv Hgq Hsp Hir Hbs Hkst Hrow Hxs Hmy HQ Hgh".
     iApply (proc_priv_to_dormant_zombie γf (proc_addr j) pid U Q xsv Hof Hcwd

@@ -102,7 +102,7 @@ Section ProofUartinitone.
      provably divisor-latch writes rather than THR pushes. *)
   Lemma ui_dlab_of_ghosts (gd : uart_names) (u : uart_state) (dq : dfrac) (b : bool) :
     uart_ghosts gd u -∗ uart_dlab_is gd dq b -∗ ⌜ uart_dlab u = b ⌝.
-  Proof.
+  Proof using .
     iIntros "(_ & _ & _ & Hdl) Hb".
     iApply (uart_dlab_agree with "Hdl Hb").
   Qed.
@@ -111,7 +111,7 @@ Section ProofUartinitone.
      [l]) plus the carried lower bound (all of [l] has been transmitted). *)
   Lemma ui_tx_empty (gd : uart_names) (u : uart_state) (l : list (bv 8)) :
     uart_ghosts gd u -∗ uart_tx_own gd l -∗ uart_out_lb gd l -∗ ⌜ u_tx u = [] ⌝.
-  Proof.
+  Proof using .
     iIntros "(_ & Ho & Ht & _) Hown Hlb".
     iDestruct (uart_tx_own_agree with "Ht Hown") as %Hacc.
     iDestruct (uart_out_prefix with "Ho Hlb") as %Hpre.
@@ -124,7 +124,7 @@ Section ProofUartinitone.
     uart_acc u' = uart_acc u -> u_out u' = u_out u ->
     uart_ghosts gd u -∗ uart_dlab_is gd (DfracOwn (1/2)) b ==∗
     uart_ghosts gd u' ∗ uart_dlab_is gd (DfracOwn (1/2)) (uart_dlab u').
-  Proof.
+  Proof using .
     iIntros (Ha Ho) "(Hs & Hout & Ht & Hdl) Hb".
     iMod (uart_dlab_update gd u u' b with "Hdl Hb") as "[Hdl' Hb']".
     iModIntro. iSplitL "Hs Hout Ht Hdl'"; [| iExact "Hb'"].
@@ -140,7 +140,7 @@ Section ProofUartinitone.
       (m : regfile) (K : nat) (l : list (bv 8)) (b0 : bool) (k : nat)
       (hl : option (list mobs)) (p : mword 64)
     : wp_uartinitone_sconf_body i γd nm nm_addr m K l b0 k hl p.
-  Proof.
+  Proof using .
     cbv beta delta [wp_uartinitone_sconf_body].
     intros pcE ret_tgt HK Ha0 Ha1.
     set (sp0 := m !!! Regidx csp_rs1).

@@ -164,7 +164,7 @@ Section CtBodies.
 
   Lemma ct_frame_back `{XI : CurCtx} (sp0 : mword 64) (m0 : regfile) :
     ct_saved sp0 m0 -∗ ct_rest sp0 -∗ stack_own (KTR := KT1) sp0 6.
-  Proof.
+  Proof using .
     iIntros "(H1 & H2 & H3) (H4 & H5 & H6)".
     rewrite (stack_own_slots (KTR := KT1)). cbn [seq].
     iSplitL "H1"; [by iExists _|]. iSplitL "H2"; [by iExists _|].
@@ -206,7 +206,7 @@ Section CtBodies.
     /\ M !!! Regidx Rs11 = m0 !!! Regidx Rs11.
 
   Lemma ct_cs_hi_top (M m0 : regfile) : ct_cs_hi M m0 -> ct_cs_top M m0.
-  Proof.
+  Proof using .
     intros (_ & _ & Q4 & Q5 & Q6 & Q7 & Q8 & Q9 & Q10 & Q11).
     unfold ct_cs_top. split_and!; assumption.
   Qed.
@@ -217,7 +217,7 @@ Section CtBodies.
   Lemma ct_cs_hi_thr (M1 M m0 : regfile) :
     (forall r : mword 5, is_cs_idx r = true -> M1 !!! Regidx r = M !!! Regidx r) ->
     ct_cs_hi M m0 -> ct_cs_hi M1 m0.
-  Proof.
+  Proof using .
     intros Hthr (Q2 & Q3 & Q4 & Q5 & Q6 & Q7 & Q8 & Q9 & Q10 & Q11).
     unfold ct_cs_hi. split_and!;
       [ rewrite (Hthr Rs2  ltac:(vm_compute; reflexivity)); exact Q2
@@ -235,7 +235,7 @@ Section CtBodies.
   Lemma ct_cs_top_thr (M1 M m0 : regfile) :
     (forall r : mword 5, is_cs_idx r = true -> M1 !!! Regidx r = M !!! Regidx r) ->
     ct_cs_top M m0 -> ct_cs_top M1 m0.
-  Proof.
+  Proof using .
     intros Hthr (Q4 & Q5 & Q6 & Q7 & Q8 & Q9 & Q10 & Q11).
     unfold ct_cs_top. split_and!;
       [ rewrite (Hthr Rs4  ltac:(vm_compute; reflexivity)); exact Q4
@@ -255,7 +255,7 @@ Section CtBodies.
     (forall r : mword 5, is_cs_idx r = true -> r <> Rs1 ->
        M1 !!! Regidx r = M !!! Regidx r) ->
     ct_cs_hi M m0 -> ct_cs_hi M1 m0.
-  Proof.
+  Proof using .
     intros Hthr (Q2 & Q3 & Q4 & Q5 & Q6 & Q7 & Q8 & Q9 & Q10 & Q11).
     unfold ct_cs_hi. split_and!;
       [ rewrite (Hthr Rs2  ltac:(vm_compute; reflexivity) ltac:(reg_neq)); exact Q2
@@ -271,13 +271,13 @@ Section CtBodies.
   Qed.
 
   Lemma ct_cs_hi_refl (M : regfile) : ct_cs_hi M M.
-  Proof. unfold ct_cs_hi. split_and!; reflexivity. Qed.
+  Proof using . unfold ct_cs_hi. split_and!; reflexivity. Qed.
 
   Lemma ct_cs_hi_thr3 (M1 M m0 : regfile) :
     (forall r : mword 5, is_cs_idx r = true ->
        r <> csp_rs1 -> r <> Rs0 -> r <> Rs1 -> M1 !!! Regidx r = M !!! Regidx r) ->
     ct_cs_hi M m0 -> ct_cs_hi M1 m0.
-  Proof.
+  Proof using .
     intros Hthr (Q2 & Q3 & Q4 & Q5 & Q6 & Q7 & Q8 & Q9 & Q10 & Q11).
     unfold ct_cs_hi. split_and!;
       [ rewrite (Hthr Rs2  ltac:(vm_compute; reflexivity) ltac:(reg_neq) ltac:(reg_neq) ltac:(reg_neq)); exact Q2
@@ -296,7 +296,7 @@ Section CtBodies.
     (forall r : mword 5, r <> Rs1 -> r <> Rs2 -> r <> Rs3 -> r <> Ra4 -> r <> Ra5 ->
        M1 !!! Regidx r = M !!! Regidx r) ->
     ct_cs_top M m0 -> ct_cs_top M1 m0.
-  Proof.
+  Proof using .
     intros Hthr (Q4 & Q5 & Q6 & Q7 & Q8 & Q9 & Q10 & Q11).
     unfold ct_cs_top. split_and!;
       [ rewrite (Hthr Rs4  ltac:(reg_neq) ltac:(reg_neq) ltac:(reg_neq) ltac:(reg_neq) ltac:(reg_neq)); exact Q4
@@ -318,7 +318,7 @@ Section CtBodies.
        (add_vec (sign_extend' 64 e)
                 (sign_extend' 64 (sign_extend' 12 (mword_of_int 63 : mword 6)))) 31 0)
     = sign_extend' 64 (add_vec e (mword_of_int (-1) : mword 32)).
-  Proof.
+  Proof using .
     rewrite <- trunc32_subrange. rewrite trunc32_add !trunc32_sext.
     assert (HK : trunc32 (sign_extend' 64 (sign_extend' 12 (mword_of_int 63 : mword 6)))
                  = (mword_of_int (-1) : mword 32))
@@ -331,7 +331,7 @@ Section CtBodies.
     sign_extend' 64 (subrange_vec_dec
        (add_vec (sign_extend' 64 e) (sign_extend' 64 (mword_of_int 1 : mword 12))) 31 0)
     = sign_extend' 64 (add_vec e (mword_of_int 1 : mword 32)).
-  Proof.
+  Proof using .
     rewrite <- trunc32_subrange. rewrite trunc32_add !trunc32_sext.
     assert (HK : trunc32 (sign_extend' 64 (mword_of_int 1 : mword 12))
                  = (mword_of_int 1 : mword 32))
@@ -345,7 +345,7 @@ Section CtBodies.
       (sub_vec (subrange_vec_dec (sign_extend' 64 x : mword 64) 31 0 : mword 32)
                (subrange_vec_dec (sign_extend' 64 y : mword 64) 31 0 : mword 32))
     = sign_extend' 64 (sub_vec x y).
-  Proof. rewrite <- !trunc32_subrange. rewrite !trunc32_sext. reflexivity. Qed.
+  Proof using . rewrite <- !trunc32_subrange. rewrite !trunc32_sext. reflexivity. Qed.
 
   (* [% INPUT_BUF_SIZE], compiled as [andi …,127]: the index is a nat below
      128 for EVERY value of the word, which is the whole reason
@@ -356,7 +356,7 @@ Section CtBodies.
       (i < INPUT_BUF_SIZE)%nat /\
       and_vec (sign_extend' 64 e : mword 64) (sign_extend' 64 (mword_of_int 127 : mword 12))
       = (mword_of_int (Z.of_nat i) : mword 64).
-  Proof.
+  Proof using .
     set (idxw := and_vec (sign_extend' 64 e : mword 64)
                    (sign_extend' 64 (mword_of_int 127 : mword 12))).
     assert (Hb : (0 <= bv_unsigned idxw < 128)%Z)
@@ -376,23 +376,23 @@ Section CtBodies.
   Lemma ct_arg_zext (c : bv 8) :
     (extend_value (n := 8) true (c : mword 8) : mword 64)
     = (zero_extend' 64 (c : mword 8) : mword 64).
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma ct_arg_trunc8 (c : bv 8) :
     trunc8 (extend_value (n := 8) true (c : mword 8) : mword 64) = c.
-  Proof. rewrite ct_arg_zext. apply trunc8_zext8. Qed.
+  Proof using . rewrite ct_arg_zext. apply trunc8_zext8. Qed.
 
   Lemma ct_arg_ne13 (c : bv 8) :
     eq_vec (extend_value (n := 8) true (c : mword 8) : mword 64)
            (mword_of_int 13 : mword 64) = false ->
     c <> (mword_of_int 13 : mword 8).
-  Proof. intros Hne Heq. rewrite Heq in Hne. vm_compute in Hne. discriminate. Qed.
+  Proof using . intros Hne Heq. rewrite Heq in Hne. vm_compute in Hne. discriminate. Qed.
 
   Lemma ct_arg_eq13 (c : bv 8) :
     eq_vec (extend_value (n := 8) true (c : mword 8) : mword 64)
            (mword_of_int 13 : mword 64) = true ->
     c = (mword_of_int 13 : mword 8).
-  Proof.
+  Proof using .
     intro H. apply eq_vec_true_iff in H.
     apply (f_equal (fun w : mword 64 => trunc8 w)) in H.
     rewrite ct_arg_trunc8 in H. rewrite H.
@@ -408,7 +408,7 @@ Section CtBodies.
     eq_vec (extend_value (n := 8) true (c : mword 8) : mword 64)
            (mword_of_int z : mword 64) = true ->
     c = trunc8 (mword_of_int z : mword 64).
-  Proof.
+  Proof using .
     intro H. apply eq_vec_true_iff in H.
     apply (f_equal (fun w : mword 64 => trunc8 w)) in H.
     rewrite ct_arg_trunc8 in H. exact H.
@@ -417,13 +417,13 @@ Section CtBodies.
   (* the byte the '\r' arm stores, at the translation's own spelling *)
   Lemma ct_trunc8_10 :
     trunc8 (mword_of_int 10 : mword 64) = (mword_of_int 10 : mword 8).
-  Proof. apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . apply bv_eq; vm_compute; reflexivity. Qed.
 
   (* ---- WHICH BYTE CONSPUTC PUSHED ---------------------------------
      [SpecConsputc.cp_byte] is spelled exactly as [trunc8], so the three
      bridges above apply to it unchanged. *)
   Lemma ct_cp_trunc (w : mword 64) : cp_byte w = trunc8 w.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* a ZERO-EXTENDED BYTE IS NOT [BACKSPACE].  BACKSPACE is 0x100, which no
      byte reaches, so the store arms take consputc's ordinary arm and the
@@ -431,7 +431,7 @@ Section CtBodies.
   Lemma ct_arg_ne256 (c : bv 8) :
     eq_vec (extend_value (n := 8) true (c : mword 8) : mword 64)
            (mword_of_int 256 : mword 64) = false.
-  Proof.
+  Proof using .
     destruct (eq_vec (extend_value (n := 8) true (c : mword 8) : mword 64)
                      (mword_of_int 256 : mword 64)) eqn:He; [| reflexivity].
     exfalso. apply eq_vec_true_iff in He.
@@ -446,7 +446,7 @@ Section CtBodies.
 
   (* the translation, at the two arms' own spellings *)
   Lemma ct_echo_of_13 : echo_of (mword_of_int 13 : mword 8) = (mword_of_int 10 : mword 8).
-  Proof.
+  Proof using .
     unfold echo_of.
     assert (E : eq_vec (mword_of_int 13 : mword 8) (mword_of_int 13 : mword 8) = true)
       by (vm_compute; reflexivity).
@@ -455,7 +455,7 @@ Section CtBodies.
 
   Lemma ct_echo_of_ne (c : bv 8) :
     c <> (mword_of_int 13 : mword 8) -> echo_of c = c.
-  Proof.
+  Proof using .
     intros Hne. unfold echo_of.
     destruct (eq_vec (c : mword 8) (mword_of_int 13 : mword 8)) eqn:E;
       [| reflexivity].
@@ -471,7 +471,7 @@ Section CtBodies.
             (sign_extend' 64 (mword_of_int 127 : mword 12))
       = (mword_of_int (Z.of_nat i) : mword 64) ->
     i = cons_slot x 0.
-  Proof.
+  Proof using .
     intros Hlt Hw. rewrite <- (cons_slot_of_and x).
     rewrite Hw moi64_unsigned.
     assert (Hb : (0 <= Z.of_nat i < 2 ^ 64)%Z).
@@ -488,7 +488,7 @@ Section CtBodies.
   Lemma ct_ne32 (x y : mword 32) :
     neq_vec (sign_extend' 64 x : mword 64) (sign_extend' 64 y : mword 64) = true ->
     x <> y.
-  Proof.
+  Proof using .
     intros Hn Heq. subst y. unfold neq_vec in Hn.
     rewrite eq_vec_refl in Hn. discriminate.
   Qed.
@@ -496,7 +496,7 @@ Section CtBodies.
   Lemma ct_eqf32 (x y : mword 32) :
     eq_vec (sign_extend' 64 x : mword 64) (sign_extend' 64 y : mword 64) = false ->
     x <> y.
-  Proof. intros Hn Heq. subst y. rewrite eq_vec_refl in Hn. discriminate. Qed.
+  Proof using . intros Hn Heq. subst y. rewrite eq_vec_refl in Hn. discriminate. Qed.
 
   (* the ring-room guard at +0x044: [bltu a4,a5] NOT taken is
      [cons.e - cons.r <= 127], read off the 32-bit difference the [c.subw]
@@ -505,7 +505,7 @@ Section CtBodies.
   Lemma ct_room (x : mword 32) :
     zopz0zI_u (mword_of_int 127 : mword 64) (sign_extend' 64 x : mword 64) = false ->
     (bv_unsigned x < Z.of_nat INPUT_BUF_SIZE)%Z.
-  Proof.
+  Proof using .
     intro H. rewrite cons_bufz.
     unfold zopz0zI_u in H. apply Z.ltb_ge in H. rewrite !uint_unsigned in H.
     assert (H127 : bv_unsigned (mword_of_int 127 : mword 64) = 127%Z)
@@ -563,7 +563,7 @@ Section CtBodies.
     cons_ok rr ww ee -> cons_row rr ee bs ts ->
     a_cons_r ↦₄ rr -∗ a_cons_w ↦₄ ww -∗ a_cons_e ↦₄ ee -∗
     cons_data bs -∗ cons_tags ts -∗ ct_gh cn None rr ww ee bs ts -∗ cons_res cn.
-  Proof.
+  Proof using .
     intros Hlb Hlt Hok Hrow.
     iIntros "Hrc Hwc Hec Hdat Hts Hgh".
     iDestruct "Hgh" as (cur nrd st pd hh L0 gp)
@@ -584,7 +584,7 @@ Section CtBodies.
       ⌜ cons_ok rr ww ee ⌝ ∗ ⌜ cons_row rr ee bs ts ⌝ ∗
       a_cons_r ↦₄ rr ∗ a_cons_w ↦₄ ww ∗ a_cons_e ↦₄ ee ∗
       cons_data bs ∗ cons_tags ts ∗ ct_gh cn None rr ww ee bs ts.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /cons_res.
     iDestruct "H" as (rr ww ee bs ts cur nrd st pd hh L0 gp)
       "(Hrc & Hwc & Hec & %Hlb & %Hlt & %Hok & %Hrow & %Hst & %Hpd & %Hch &
@@ -616,7 +616,7 @@ Section CtBodies.
     ct_gh cn (Some (hb, cb)) rr ww ee bs ts -∗
     ct_gh cn (Some (hb, cb)) rr ww
       (add_vec ee (mword_of_int (-1) : mword 32)) bs ts.
-  Proof.
+  Proof using .
     intro Hne. iIntros "Hgh".
     iDestruct "Hgh" as (cur nrd st pd hh L0 gp)
       "(%Hst & %Hpd & %Hch & %Hbl & Ha & Hcur & Hhi & Hlm & %Hlog & Hmk)".
@@ -656,7 +656,7 @@ Section CtBodies.
       (bs : list (bv 8)) (ts : list (option (list mobs))) :
     cons_ok rr ww ee ->
     ct_gh cn pe rr ww ee bs ts ==∗ ct_gh cn pe rr ee ee bs ts.
-  Proof.
+  Proof using .
     intro Hok. iIntros "Hgh".
     iDestruct "Hgh" as (cur nrd st pd hh L0 gp)
       "(%Hst & %Hpd & %Hch & %Hbl & Ha & Hcur & Hhi & Hlm & %Hlog & Hmk)".
@@ -730,7 +730,7 @@ Section CtBodies.
       uart_arm γu (1/2) None ∗ Φ ∗
       ct_gh cn None rr ww (add_vec ee (mword_of_int 1 : mword 32))
         (<[i := cons_xlate c]> bs) (<[i := Some h]> ts).
-  Proof.
+  Proof using .
     intros <- Hlb Hlt Hok Hroom Hi Hends Hx Hxg Hes.
     iIntros "#Hinv Hhi0 Hlgh [Harm Hap] Hgh".
     iDestruct "Hgh" as (cur nrd st pd hh1 L0 gp)
@@ -782,7 +782,7 @@ Section CtBodies.
     ct_gh cn None rr ww ee bs ts ={⊤}=∗
       uart_log_hi γu (1/2) (Some h) ∗ uart_arm γu (1/2) None ∗ Φ ∗
       ct_gh cn None rr ww ee bs ts.
-  Proof.
+  Proof using .
     intros <- Hends Hxg Hes. iIntros "#Hinv Hlgh [Harm Hap] Hgh".
     iDestruct "Hgh" as (cur nrd st pd hh L0 gp)
       "(%Hst & %Hpd & %Hch & %Hbl & Ha & Hcur & Hhi & Hlm & %Hlog & Hmk)".
@@ -816,7 +816,7 @@ Section CtBodies.
     cons_res cn ={⊤}=∗
       uart_log_hi γu (1/2) (Some h) ∗ uart_arm γu (1/2) None ∗ Φ ∗
       cons_res cn.
-  Proof.
+  Proof using .
     intros <- Hends Hxg Hes. iIntros "#Hinv Hlgh Hap Hres".
     iDestruct (ct_res_gh cn with "Hres") as (rr ww ee bs ts)
       "(%Hlb & %Hlt & %Hok & %Hrow & Hrc & Hwc & Hec & Hdat & Hts & Hgh)".
@@ -845,7 +845,7 @@ Section CtBodies.
     uart_rx_hi γu (1/2) hh -∗
     ct_gh cn None rr ww ee bs ts -∗
     uart_rx_hi γu (1/2) hh ∗ ct_gh cn (Some (h, c)) rr ww ee bs ts.
-  Proof.
+  Proof using .
     intros <- Her Hends Hx. iIntros "Hhi0 Hgh".
     iDestruct "Hgh" as (cur nrd st pd hh1 L0 gp)
       "(%Hst & %Hpd & %Hch & %Hbl & Ha & Hcur & Hhi & Hlm & %Hlog & Hmk)".
@@ -880,7 +880,7 @@ Section CtBodies.
     ct_gh cn (Some (h, c)) rr ww ee bs ts ={⊤}=∗
       uart_log_hi γu (1/2) (Some h) ∗ uart_arm γu (1/2) None ∗ Φ ∗
       ct_gh cn None rr ww ee bs ts.
-  Proof.
+  Proof using .
     intros <- Hends Hxg Hecho Hes. iIntros "#Hinv Hlgh [Harm Hap] Hgh".
     iDestruct "Hgh" as (cur nrd st pd hh L0 gp)
       "(%Hst & %Hpd & %Hch & %Hbl & Ha & Hcur & Hhi & Hlm & %Hlog & Hmk)".
@@ -923,7 +923,7 @@ Section CtBodies.
 
   Lemma ct_hi_kill_out (γu : uart_names) (hb : list mobs) (cb : bv 8) :
     ct_hi_kill γu hb -∗ ct_hi_out γu hb cb.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as (hh') "(Hhi & %Hx)".
     iExists hh'. iFrame "Hhi".
     iPureIntro. exact (ohist_le_of_ext hh' hb Hx).
@@ -971,7 +971,7 @@ Section CtBodies.
     uart_log_hi γu (1/2) (Some hb) -∗ uart_arm γu (1/2) None -∗
     ct_ret (CID0 := CID0) γu hb cb pme m0 K lvl eb b lks -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hm0sp HMsp HMcs HK Hcr.
     iIntros "#Ht Hcg Hcnt Hpc (K1 & K2 & K3) Hrest Hhiout Hlgh Hwin Hcont".
     assert (Hb1 : add_vec (pa_stk sp0 6%nat)
@@ -1136,7 +1136,7 @@ Section ProofConsoleintr.
                   (cons_run (S gen_id) cs Φ))%I.
 
   Global Instance ct_pay_persistent γu hb cb : Persistent (ct_pay γu hb cb).
-  Proof. rewrite /ct_pay. apply _. Qed.
+  Proof using . rewrite /ct_pay. apply _. Qed.
 
   (* ...AND THE ERA STAMP IS SPENT HERE, ONCE (lane CONS-IO milestone C).
      [cons_echo_shift] is era-indexed and asks for [obs_boots hb = S gen_id];
@@ -1148,7 +1148,7 @@ Section ProofConsoleintr.
     obs_boots hb = S gen_id ->
     cons_echo_shift -∗ riscv_rx_tag hb -∗ obs_hist_lb hb -∗
     uart_out_lb γu (obs_wire Uart0 (open_seg hb)) -∗ ct_pay γu hb cb.
-  Proof.
+  Proof using .
     intros Hends Hbts. iIntros "#Hsh #Htg #Hlb #Hwlb".
     iSplitR; [iExact "Hwlb" |].
     iIntros "!>" (cs Φ) "%Hcs HΦ".
@@ -1196,7 +1196,7 @@ Section ProofConsoleintr.
     uart_inv Uart0 γu -∗ ct_pay γu hb cb -∗
     uart_log_hi γu (1/2) hg -∗ uart_arm γu (1/2) None
     ={⊤}=∗ uart_log_hi γu (1/2) hg ∗ ct_append γu hb cb [] 0%nat True.
-  Proof.
+  Proof using .
     intros Hx Hends. iIntros "#Hinv [#Hwlb #Hp] Hlgh Harm".
     iMod (uart_inv_cons_open γu hb cb [] hg
             (cons_run (S gen_id) [] True%I) Hx Hends ltac:(by left)
@@ -1221,7 +1221,7 @@ Section ProofConsoleintr.
     ct_gh cn (Some (hb, cb)) rr ww ee bs ts
       ={⊤}=∗ uart_log_hi γu (1/2) (Some hb) ∗ uart_arm γu (1/2) None ∗
              ct_gh cn None rr ww ee bs ts.
-  Proof.
+  Proof using .
     intros <- Hends. iIntros "#Hinv Howed Hgh".
     iDestruct "Howed" as (es cs j hg) "(%Hecho & %Hes & %Hxg & Hlgh & Hap)".
     iMod (ct_gh_pay cn (cn_uart cn) rr ww ee bs ts hb cb es cs j hg True%I
@@ -1234,7 +1234,7 @@ Section ProofConsoleintr.
     obs_ends_in Uart0 hb cb ->
     uart_inv Uart0 γu -∗ ct_pay γu hb cb -∗ ct_mark γu hb
     ={⊤}=∗ ct_owed γu hb cb.
-  Proof.
+  Proof using .
     intros Hends. iIntros "#Hinv #Hpy Hm".
     iDestruct "Hm" as (hg) "(%Hx & Hlgh & Harm)".
     iMod (ct_append_nil γu hb cb hg Hx Hends with "Hinv Hpy Hlgh Harm")
@@ -1261,7 +1261,7 @@ Section ProofConsoleintr.
     uart_log_hi γu (1/2) hg -∗ uart_arm γu (1/2) None -∗ Φ
     ={⊤}=∗ store_chain Uart0 γu cs
       (uart_log_hi γu (1/2) hg ∗ ct_append γu hb cb cs (length cs) Φ).
-  Proof.
+  Proof using .
     intros Hx Hends Hecho. iIntros "#Hinv [#Hwlb #Hp] Hlgh Harm HΦ".
     iMod (uart_inv_cons_open γu hb cb cs hg
             (cons_run (S gen_id) cs Φ) Hx Hends Hecho
@@ -1291,7 +1291,7 @@ Section ProofConsoleintr.
        uart_arm γu (1/2) (Some (hb, cb, (pre ++ consputc_bs ++ bs)%list,
                                 (length pre + length consputc_bs)%nat)) ∗
        cons_run (S gen_id) bs Φ).
-  Proof.
+  Proof using .
     iIntros "Hlgh Harm Hrun".
     iDestruct (cons_run_step consputc_bs bs Φ with "Hrun") as "Hch".
     iDestruct (store_chain_of_echo_split γu hb cb pre consputc_bs bs
@@ -1308,22 +1308,22 @@ Section ProofConsoleintr.
 
   Global Instance ct_pay_erase_persistent γu hb cb :
     Persistent (ct_pay_erase γu hb cb).
-  Proof. rewrite /ct_pay_erase. apply _. Qed.
+  Proof using . rewrite /ct_pay_erase. apply _. Qed.
 
   Lemma ct_mk_pay_erase (γu : uart_names) (hb : list mobs) (cb : bv 8) :
     cons_erase cb = true -> ct_pay γu hb cb -∗ ct_pay_erase γu hb cb.
-  Proof. intros Her. iIntros "#Hp". by iFrame "Hp". Qed.
+  Proof using . intros Her. iIntros "#Hp". by iFrame "Hp". Qed.
 
   (* the two shapes of a run over erase triples *)
   Lemma ct_bs_cons (n : nat) :
     mjoin (replicate (S n) consputc_bs)
     = (consputc_bs ++ mjoin (replicate n consputc_bs))%list.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma ct_bs_snoc (i : nat) :
     ((mjoin (replicate i consputc_bs)) ++ consputc_bs)%list
     = mjoin (replicate (S i) consputc_bs).
-  Proof.
+  Proof using .
     induction i as [| i IH]; [by rewrite /= ?app_nil_r |].
     rewrite (ct_bs_cons i) -app_assoc IH (ct_bs_cons (S i)). reflexivity.
   Qed.
@@ -1357,7 +1357,7 @@ Section ProofConsoleintr.
     obs_ends_in Uart0 hb cb ->
     uart_inv Uart0 γu -∗
     ct_pay_erase γu hb cb -∗ ct_mark γu hb ={⊤}=∗ ct_kill_run γu hb cb nrem.
-  Proof.
+  Proof using .
     intros Hn Hends. iIntros "#Hinv [%Her #Hpy] Hm".
     iDestruct "Hm" as (hg) "(%Hx & Hlgh & Harm)".
     iDestruct "Hpy" as "[#Hwlb #Hp]".
@@ -1379,7 +1379,7 @@ Section ProofConsoleintr.
       (nrem : Z) :
     cons_erase cb = true ->
     ct_kill_run γu hb cb nrem -∗ ct_owed γu hb cb.
-  Proof.
+  Proof using .
     intros Her. iIntros "H".
     iDestruct "H" as (hg i n) "(%Hx & %Hle & Hlgh & Harm & Hrun)".
     iDestruct (cons_run_stop with "Hrun") as "Hcl".
@@ -1447,7 +1447,7 @@ Section ProofConsoleintr.
     is_lock γc a_cons "cons"%string (cons_res_at cn) -∗ ct_saved sp0 m0 -∗
     ct_ret (CID0 := CID) γu hb cb pme m0 K lvl eb b lks -∗
     ct_exit_prop (CID0 := CID) γu hb cb cn γc pme m0 K lvl eb b sp0 lks.
-  Proof.
+  Proof using .
     intros Hends Hm0sp HK Hb Hbelow. subst b.
     pose proof (locks_below_not_elem _ _ Hbelow) as Hfresh.
     iIntros "#Ht #Hlk Hsaved Hcont".
@@ -1593,7 +1593,7 @@ Section ProofConsoleintr.
     locks_below lks "cons" ->
     kernel_text -∗ procs_inv γs -∗
     ct_wake_prop (CID0 := CID) γu hb cb cn γc pme m0 K lvl eb b sp0 lks.
-  Proof.
+  Proof using .
     intros HK Hlen Hlvl Hb Hbelow. subst b.
     assert (Hbelow_proc : locks_below ({["cons"]} ∪ lks) "proc").
     { apply locks_below_union_singleton; [vm_compute; lia |].
@@ -1754,7 +1754,7 @@ Section ProofConsoleintr.
     (∃ w : mword 64, pa_stk sp0 6 ↦₈[KT1] w) -∗
     ct_exit_prop (CID0 := CID) γu hb cb cn γc pme m0 K lvl eb b sp0 lks -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hsp Hthr Hq1 Hq2 Hjt Hal Hchain Hbelow.
     destruct Hthr as (T4 & T5 & T6 & T7 & T8 & T9 & T10 & T11).
     iIntros "Hi1 Hi2 Hi3 Hcg Hpc Hcnt Hpay Hlocked Hres Hhiout Howed Hwin
@@ -1889,7 +1889,7 @@ Section ProofConsoleintr.
        paid per call out of the application's boot-fixed echo shift. *)
     ct_pay_erase γu hb cb -∗
     ct_kill_prop (CID0 := CID) γu hb cb cn γc pme m0 K lvl eb b sp0 lks.
-  Proof.
+  Proof using .
     intros Hcnu Hends HK Hlvl Hb Hbelow. subst b.
     iIntros "#Ht #Hdev #Hbw #Htxl #Hep".
     iPoseProof (dev_inv_uart with "Hdev") as "#Huinv".
@@ -2352,7 +2352,7 @@ Section ProofConsoleintr.
     ct_wake_prop (CID0 := CID) γu h c cn γc pme m0 K lvl eb b sp0 lks -∗
     ct_exit_prop (CID0 := CID) γu h c cn γc pme m0 K lvl eb b sp0 lks -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hcnu Hx Hsp Hcs HK Hlvl Hchain Hbelow Hlenb Hlent Hok Hrow Hroom
            Hends Hc13.
     iIntros "#Ht #Hdev #Hbw #Htxl #Hp1 #Htg Hcg Hpc Hcnt Hpay Hlocked
@@ -2671,7 +2671,7 @@ Section ProofConsoleintr.
     ct_mark γu hb -∗
     ct_exit_prop (CID0 := CID) γu hb cb cn γc pme m0 K lvl eb b sp0 lks -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hcnu Hends Hsp Hcs HK Hlvl Hchain Hbelow.
     iIntros "#Ht #Hdev #Hbw #Htxl #Hep Hcg Hpc Hcnt Hpay Hlocked Hres Hrest
              Hhiout Hmark EXIT".
@@ -2991,7 +2991,7 @@ Section ProofConsoleintr.
     ct_kill_prop (CID0 := CID) γu hb cb cn γc pme m0 K lvl eb b sp0 lks -∗
     ct_exit_prop (CID0 := CID) γu hb cb cn γc pme m0 K lvl eb b sp0 lks -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hcnu Hends Hsp Hcs Hchain Hbelow.
     pose proof (ct_cs_hi_top M m0 Hcs) as Htop.
     destruct Hcs as (HS2 & HS3 & _ & _ & _ & _ & _ & _ & _ & _).
@@ -3282,7 +3282,7 @@ Section ProofConsoleintr.
     ct_wake_prop (CID0 := CID) γu h c cn γc pme m0 K lvl eb b sp0 lks -∗
     ct_exit_prop (CID0 := CID) γu h c cn γc pme m0 K lvl eb b sp0 lks -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hcnu Hx Hsp Hs1 Hcs HK Hlvl Hchain Hbelow Hlenb Hlent Hok Hrow Hroom
            Hends Hcv Hc13.
     iIntros "#Ht #Hdev #Hbw #Htxl #Hp1 #Htg Hcg Hpc Hcnt Hpay Hlocked
@@ -3838,7 +3838,7 @@ Section ProofConsoleintr.
     ct_wake_prop (CID0 := CID) γu h c cn γc pme m0 K lvl eb b sp0 lks -∗
     ct_exit_prop (CID0 := CID) γu h c cn γc pme m0 K lvl eb b sp0 lks -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hcnu Hx Hsp Hs1 Hcs HK Hlvl Hchain Hbelow Hends Hcv.
     iIntros "#Ht #Hdev #Hbw #Htxl #Hp1 #Htg Hcg Hpc Hcnt Hpay Hlocked
              Hres Hhi Hmark Hrest WAKE EXIT".
@@ -4096,7 +4096,7 @@ Section ProofConsoleintr.
       (pme : mword 64) (lvl K : nat) (eb : bool) (b : bool) (lks : gset string)
       (hb : list mobs) (cb : bv 8) (hh hg : option (list mobs))
     : wp_consoleintr_sconf_body γu γv m γs pme lvl K eb b lks hb cb hh hg.
-  Proof.
+  Proof using .
     cbv beta delta [wp_consoleintr_sconf_body].
     intros rettgt HK Hcva Hends Hbts Hx Hxg Hlen Hlvl Hbelow.
     iIntros "Hcg Hcnt #Ht Hpc #Hpinv #Hdev #Hcaps #Htg #Hlbh #Hwlb Hhi Hlgh

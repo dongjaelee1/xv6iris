@@ -161,7 +161,7 @@ Section ProofNamecmpMain.
       (mm : regfile) (f g : nat -> bv 8) (K : nat) (dq1 dq2 : dfrac)
       (b : bool) (p : mword 64)
     : wp_namecmp_sconf_body ktf ktg mm f g K dq1 dq2 b p.
-  Proof.
+  Proof using .
     cbv beta delta [wp_namecmp_sconf_body].
     intros pcE s1 s2 ret_tgt HK.
     pose proof HK as HK'. 

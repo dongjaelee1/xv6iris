@@ -314,7 +314,7 @@ Hypothesis Hdrd : dev_read s'.(mdev) pa 1 = Some (v, d').
 Lemma exec_vmem_read_addr_1_S_walk_dev :
   exec (vmem_read_addr (Virtaddr a) 1 (Load Data) false false false) s
     = Some (Ok v, MState s'.(sregs) s'.(mem) d').
-Proof.
+Proof using HA HR Halign Hc Hcp' Hcps Hdev Hdrd Hh Hmatch Hmprv' Hmprvs Hord Hrange Hread Hsig Htm Htr.
   assert (Heff : exec (effectivePrivilege (Load Data) (register_lookup mstatus s.(sregs))
                          (register_lookup cur_privilege s.(sregs))) s = Some (Supervisor, s)).
   { rewrite Hcps. apply exec_effectivePrivilege_load_S. exact Hmprvs. }
@@ -367,7 +367,7 @@ Hypothesis Hdrd : dev_read s'.(mdev) pa 1 = Some (v, d').
 
 Lemma exec_vmem_read_1_gpr_S_walk_dev :
   exec (vmem_read (Regidx rs1) offset 1 (Load Data) false false false) s = Some (Ok v, MState s'.(sregs) s'.(mem) d').
-Proof.
+Proof using HA HR Halign Hc Hcp' Hcps Hdev Hdrd Hh Hmatch Hmprv' Hmprvs Hord Hrange Hread Hsig Htea Htm Htr.
   unfold vmem_read. rewrite exec_catch_early_return.
   assert (Ha8ea : a8 = ea) by (unfold a8; rewrite subrange_id; apply sign_extend'_id).
   assert (Hgta : exec (get_transformed_data_addr (Regidx rs1) offset (Load Data) 1) s
@@ -431,7 +431,7 @@ Lemma exec_execute_LOAD_1_gpr_S_walk_dev :
   exec (execute (LOAD (imm, Regidx rs1, Regidx rd, is_unsigned, 1))) s
     = Some (RETIRE_SUCCESS,
             set_reg (MState s'.(sregs) s'.(mem) d') (R_bitvector_64 (gpr_of_Z (uint rd))) (regval_into_reg (extend_value is_unsigned v))).
-Proof.
+Proof using HA HR Halign Hc Hcp' Hcps Hdev Hdrd Hh Hmatch Hmprv' Hmprvs Hord Hrange Hrd Hread Hsig Htea Htm Htr.
   change (execute (LOAD (imm, Regidx rs1, Regidx rd, is_unsigned, 1)))
     with (execute_LOAD imm (Regidx rs1) (Regidx rd) is_unsigned 1).
   unfold execute_LOAD.

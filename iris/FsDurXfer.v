@@ -256,20 +256,20 @@ Section Runs.
 
   Lemma phi_map_of_range Γ (r : xrun) :
     byte_range Γ (xr_blk r) (xr_off r) (xr_bs r) ⊣⊢ phi_map Γ (xr_map r).
-  Proof.
+  Proof using .
     rewrite /phi_map /xr_map big_sepM_map_seqZ_gen /byte_range /byte_range_q //.
   Qed.
 
   Lemma phi_runs_nil Γ : phi_runs Γ [] ⊣⊢ emp.
-  Proof. rewrite /phi_runs big_sepL_nil //. Qed.
+  Proof using . rewrite /phi_runs big_sepL_nil //. Qed.
 
   Lemma phi_runs_cons Γ r l :
     phi_runs Γ (r :: l) ⊣⊢ phi_map Γ (xr_map r) ∗ phi_runs Γ l.
-  Proof. rewrite /phi_runs big_sepL_cons phi_map_of_range //. Qed.
+  Proof using . rewrite /phi_runs big_sepL_cons phi_map_of_range //. Qed.
 
   Lemma phi_runs_app Γ l1 l2 :
     phi_runs Γ (l1 ++ l2) ⊣⊢ phi_runs Γ l1 ∗ phi_runs Γ l2.
-  Proof. rewrite /phi_runs big_sepL_app //. Qed.
+  Proof using . rewrite /phi_runs big_sepL_app //. Qed.
 
   (* ---------------------------------------------------------------- *)
   (*  2a.  DISJOINTNESS IS READ OFF EXCLUSIVITY                        *)
@@ -277,7 +277,7 @@ Section Runs.
 
   Lemma phi_map_disj Γ (Hex : phi_excl Γ) M1 M2 :
     phi_map Γ M1 -∗ phi_map Γ M2 -∗ ⌜M1 ##ₘ M2⌝.
-  Proof.
+  Proof using .
     revert M2. induction M1 as [| a v M1 Ha IH] using map_ind; intros M2.
     - iIntros "_ _". iPureIntro. apply map_disjoint_empty_l.
     - rewrite /phi_map big_sepM_insert; [| exact Ha].
@@ -293,7 +293,7 @@ Section Runs.
 
   Lemma phi_runs_disj Γ (Hex : phi_excl Γ) l :
     phi_runs Γ l -∗ ⌜xr_disj l⌝.
-  Proof.
+  Proof using .
     induction l as [| r l IH].
     - iIntros "_". iPureIntro.
       intros k j r1 r2 _ Hk. rewrite lookup_nil in Hk. discriminate.
@@ -319,7 +319,7 @@ Section Runs.
 
   Lemma phi_runs_union Γ l :
     xr_disj l -> phi_runs Γ l ⊣⊢ phi_map Γ (xr_union l).
-  Proof.
+  Proof using .
     induction l as [| r l IH]; intros Hd.
     - rewrite phi_runs_nil xr_union_nil /phi_map big_sepM_empty //.
     - destruct (xr_disj_cons r l Hd) as [Hdl _].
@@ -350,7 +350,7 @@ Section Runs.
   Lemma phi_map_in Γ (A : iProp Σ) (M : gmap Z (bv 8))
       (Hag : phi_agree Γ A M) (N : gmap Z (bv 8)) :
     A -∗ phi_map Γ N -∗ ⌜N ⊆ M⌝.
-  Proof.
+  Proof using .
     iIntros "HA HN". rewrite /phi_map.
     iAssert (⌜forall (a : Z) (v : bv 8), N !! a = Some v ->
                M !! a = Some v⌝)%I with "[HA HN]" as %Hpt.
@@ -365,7 +365,7 @@ Section Runs.
   Lemma phi_runs_in Γ (A : iProp Σ) (M : gmap Z (bv 8))
       (Hag : phi_agree Γ A M) (l : list xrun) :
     xr_disj l -> A -∗ phi_runs Γ l -∗ ⌜xr_union l ⊆ M⌝.
-  Proof.
+  Proof using .
     intros Hd. rewrite (phi_runs_union Γ l Hd).
     iApply (phi_map_in Γ A M Hag).
   Qed.
@@ -456,7 +456,7 @@ Section RunsQ.
   Lemma phi_map_q_of_range Γ dq (r : xrun) :
     byte_range_q Γ dq (xr_blk r) (xr_off r) (xr_bs r)
     ⊣⊢ phi_map_q Γ dq (xr_map r).
-  Proof.
+  Proof using .
     rewrite /phi_map_q /xr_map big_sepM_map_seqZ_gen /byte_range_q //.
   Qed.
 
@@ -464,12 +464,12 @@ Section RunsQ.
     phi_runs_q Γ (r :: l)
     ⊣⊢ byte_range_q Γ r.1 (xr_blk r.2) (xr_off r.2) (xr_bs r.2)
         ∗ phi_runs_q Γ l.
-  Proof. rewrite /phi_runs_q big_sepL_cons //. Qed.
+  Proof using . rewrite /phi_runs_q big_sepL_cons //. Qed.
 
   (* THE ONE-SHARE LIST IS THE CONSTANT-SHARE VIEW'S OWN RUN LIST. *)
   Lemma phi_runs_q_at Γ dq l :
     phi_runs_q Γ (xq_at dq l) ⊣⊢ phi_runs (gamma_q Γ dq) l.
-  Proof.
+  Proof using .
     rewrite /phi_runs_q /xq_at big_sepL_fmap /phi_runs.
     apply big_opL_proper. intros k r _.
     rewrite gamma_q_byte_range //.
@@ -480,7 +480,7 @@ Section RunsQ.
   Lemma phi_map_disj_q Γ (Hex : phi_excl Γ) (dq1 dq2 : dfrac) M1 M2 :
     ~ ✓ (dq1 ⋅ dq2) ->
     phi_map_q Γ dq1 M1 -∗ phi_map_q Γ dq2 M2 -∗ ⌜M1 ##ₘ M2⌝.
-  Proof.
+  Proof using .
     intros Hnv. revert M2. induction M1 as [| a v M1 Ha IH] using map_ind;
       intros M2.
     - iIntros "_ _". iPureIntro. apply map_disjoint_empty_l.
@@ -496,7 +496,7 @@ Section RunsQ.
 
   Lemma phi_runs_q_disj Γ (Hex : phi_excl Γ) l :
     xq_ok l -> phi_runs_q Γ l -∗ ⌜xr_disj (xq_strip l)⌝.
-  Proof.
+  Proof using .
     induction l as [| r l IH]; intros Hok.
     - iIntros "_". iPureIntro.
       intros k j r1 r2 _ Hk. rewrite lookup_nil in Hk. discriminate.
@@ -527,7 +527,7 @@ Section RunsQ.
   Lemma phi_map_q_in Γ (A : iProp Σ) (M : gmap Z (bv 8))
       (Hag : phi_agree Γ A M) (dq : dfrac) (N : gmap Z (bv 8)) :
     A -∗ phi_map_q Γ dq N -∗ ⌜N ⊆ M⌝.
-  Proof.
+  Proof using .
     iIntros "HA HN". rewrite /phi_map_q.
     iAssert (⌜forall (a : Z) (v : bv 8), N !! a = Some v ->
                M !! a = Some v⌝)%I with "[HA HN]" as %Hpt.
@@ -544,7 +544,7 @@ Section RunsQ.
   Lemma phi_runs_q_in Γ (A : iProp Σ) (M : gmap Z (bv 8))
       (Hag : phi_agree Γ A M) (l : list xqrun) :
     A -∗ phi_runs_q Γ l -∗ ⌜xr_union (xq_strip l) ⊆ M⌝.
-  Proof.
+  Proof using .
     induction l as [| r l IH].
     - iIntros "_ _". iPureIntro. rewrite /xq_strip /= xr_union_nil.
       apply map_empty_subseteq.
@@ -642,7 +642,7 @@ Section FsRuns.
      [FsStateInode.rec_owned]'s block, offset and bytes. *)
   Lemma rec_owned_run Γ (sb : fs_sb) (i : Z) (n : fs_node) :
     rec_owned Γ sb i (fn_rec n) ⊣⊢ phi_runs Γ [xr_rec sb i n].
-  Proof.
+  Proof using .
     rewrite /phi_runs big_sepL_singleton
             /rec_owned /xr_rec /xr_blk /xr_off /xr_bs //=.
   Qed.
@@ -654,7 +654,7 @@ Section FsRuns.
     (([∗ map] k ↦ bs ∈ fn_blk n, blk_owned Γ (fn_naddr n k) bs)
      ∗ ind_owned Γ n)
     ⊢ ⌜node_lens n⌝ ∗ phi_runs Γ (xr_dats n).
-  Proof.
+  Proof using .
     rewrite /xr_dats phi_runs_app. iIntros "(Hd & Hi)".
     iAssert (⌜forall k bs, fn_blk n !! k = Some bs -> length bs = BSIZE⌝)%I
       with "[Hd]" as %Hlen.
@@ -682,7 +682,7 @@ Section FsRuns.
     phi_runs Γ (xr_dats n)
     ⊢ ([∗ map] k ↦ bs ∈ fn_blk n, blk_owned Γ (fn_naddr n k) bs)
       ∗ ind_owned Γ n.
-  Proof.
+  Proof using .
     intros [Hlen Hind]. rewrite /xr_dats phi_runs_app.
     iIntros "(Hd & Hi)". iSplitL "Hd".
     - rewrite big_sepM_map_to_list.
@@ -699,7 +699,7 @@ Section FsRuns.
 
   Lemma inode_phi_runs Γ (sb : fs_sb) (i : Z) (n : fs_node) :
     inode_phi Γ sb i n ⊢ ⌜node_lens n⌝ ∗ phi_runs Γ (xr_inode sb i n).
-  Proof.
+  Proof using .
     rewrite /inode_phi /xr_inode phi_runs_cons.
     iIntros "(Hr & Hd & Hi)".
     iDestruct (inode_dats_runs Γ n with "[$Hd $Hi]") as "[%Hlens Hdats]".
@@ -709,7 +709,7 @@ Section FsRuns.
 
   Lemma inode_phi_of_runs Γ (sb : fs_sb) (i : Z) (n : fs_node) :
     node_lens n -> phi_runs Γ (xr_inode sb i n) ⊢ inode_phi Γ sb i n.
-  Proof.
+  Proof using .
     intros Hlens. rewrite /inode_phi /xr_inode phi_runs_cons.
     iIntros "(Hr & Hdats)".
     iDestruct (inode_dats_of_runs Γ n Hlens with "Hdats") as "[Hd Hi]".
@@ -731,7 +731,7 @@ Section FsRuns.
 
   Lemma phi_runs_concat Γ (ls : list (list xrun)) :
     phi_runs Γ (concat ls) ⊣⊢ [∗ list] l ∈ ls, phi_runs Γ l.
-  Proof.
+  Proof using .
     induction ls as [| l ls IH].
     - rewrite /phi_runs //=.
     - assert (Hc : concat (l :: ls) = l ++ concat ls) by reflexivity.
@@ -742,7 +742,7 @@ Section FsRuns.
     ([∗ map] i ↦ n ∈ I, inode_phi Γ sb i n)
     ⊢ ⌜forall i n, I !! i = Some n -> node_lens n⌝
       ∗ phi_runs Γ (xr_inodes sb I).
-  Proof.
+  Proof using .
     iIntros "H".
     iAssert (⌜forall i n, I !! i = Some n -> node_lens n⌝)%I
       with "[H]" as %Hlens.
@@ -758,7 +758,7 @@ Section FsRuns.
   Lemma fs_inodes_phi_of_runs Γ (sb : fs_sb) (I : gmap Z fs_node) :
     (forall i n, I !! i = Some n -> node_lens n) ->
     phi_runs Γ (xr_inodes sb I) ⊢ [∗ map] i ↦ n ∈ I, inode_phi Γ sb i n.
-  Proof.
+  Proof using .
     intros Hlens.
     rewrite big_sepM_map_to_list.
     rewrite /xr_inodes phi_runs_concat big_sepL_fmap.
@@ -787,7 +787,7 @@ Section FsPool.
     base.NoDup l ->
     ([∗ list] b ∈ l, pool_elt Γ u b)
     ⊢ ∃ PM, ⌜pool_pm l u PM⌝ ∗ ([∗ map] b ↦ bs ∈ PM, blk_owned Γ b bs).
-  Proof.
+  Proof using .
     induction l as [| b l IH]; intros Hnd.
     - iIntros "_". iExists ∅. rewrite big_sepM_empty. iSplitL; [| done].
       iPureIntro. split.
@@ -835,7 +835,7 @@ Section FsPool.
   Lemma free_pool_list_of_pm Γ (u : gset Z) (l : list Z) PM :
     base.NoDup l -> pool_pm l u PM ->
     ([∗ map] b ↦ bs ∈ PM, blk_owned Γ b bs) ⊢ [∗ list] b ∈ l, pool_elt Γ u b.
-  Proof.
+  Proof using .
     revert PM. induction l as [| b l IH]; intros PM Hnd [Hdom Hlens].
     - iIntros "_". rewrite big_sepL_nil //.
     - apply NoDup_cons in Hnd as [Hb Hnd].
@@ -871,7 +871,7 @@ Section FsPool.
   Lemma pool_pm_runs Γ PM :
     (forall b bs, PM !! b = Some bs -> length bs = BSIZE) ->
     ([∗ map] b ↦ bs ∈ PM, blk_owned Γ b bs) ⊣⊢ phi_runs Γ (xr_pool PM).
-  Proof.
+  Proof using .
     intros Hlens.
     rewrite big_sepM_map_to_list /xr_pool /phi_runs big_sepL_fmap.
     apply big_sepL_proper. intros k p Hp.
@@ -885,7 +885,7 @@ Section FsPool.
   Lemma free_pool_runs Γ (nb : Z) (u : gset Z) :
     free_pool Γ nb u
     ⊢ ∃ PM, ⌜pool_pm (seqZ 0 nb) u PM⌝ ∗ phi_runs Γ (xr_pool PM).
-  Proof.
+  Proof using .
     rewrite /free_pool. iIntros "H".
     iDestruct (free_pool_list_pm Γ u (seqZ 0 nb) (NoDup_seqZ 0 nb) with "H")
       as (PM) "[%Hpm HPM]".
@@ -896,7 +896,7 @@ Section FsPool.
   Lemma free_pool_of_runs Γ (nb : Z) (u : gset Z) PM :
     pool_pm (seqZ 0 nb) u PM ->
     phi_runs Γ (xr_pool PM) ⊢ free_pool Γ nb u.
-  Proof.
+  Proof using .
     intros Hpm. rewrite -(pool_pm_runs Γ PM (proj2 Hpm)) /free_pool.
     iApply (free_pool_list_of_pm Γ u (seqZ 0 nb) PM (NoDup_seqZ 0 nb) Hpm).
   Qed.
@@ -914,12 +914,12 @@ Section FsFoot.
   Lemma phi_runs_cons_range Γ r l :
     phi_runs Γ (r :: l)
     ⊣⊢ byte_range Γ (xr_blk r) (xr_off r) (xr_bs r) ∗ phi_runs Γ l.
-  Proof. rewrite /phi_runs big_sepL_cons //. Qed.
+  Proof using . rewrite /phi_runs big_sepL_cons //. Qed.
 
   Lemma fs_footprint_runs Γ S :
     fs_footprint Γ (DfracOwn 1) S
     ⊢ ∃ PM, ⌜xf_shape S PM⌝ ∗ phi_runs Γ (xr_fs S PM).
-  Proof.
+  Proof using .
     rewrite fs_footprint_1. iIntros "(Hsb & Hin & Hbm & Hpool)".
     iDestruct (fs_inodes_phi_runs with "Hin") as "[%Hlens Hin]".
     iDestruct (free_pool_runs with "Hpool") as (PM) "[%Hpm Hpool]".
@@ -935,7 +935,7 @@ Section FsFoot.
 
   Lemma fs_footprint_of_runs Γ S PM :
     xf_shape S PM -> phi_runs Γ (xr_fs S PM) ⊢ fs_footprint Γ (DfracOwn 1) S.
-  Proof.
+  Proof using .
     intros (Hsbl & Hlens & Hpm).
     rewrite /xr_fs !phi_runs_cons_range phi_runs_app.
     rewrite /xr_blk /xr_off /xr_bs /=.
@@ -961,7 +961,7 @@ Section FsFoot.
   Lemma fs_footprint_runs_q Γ (dq : dfrac) S :
     fs_footprint Γ dq S
     ⊢ ∃ PM, ⌜xf_shape S PM⌝ ∗ phi_runs_q Γ (xq_at dq (xr_fs S PM)).
-  Proof.
+  Proof using .
     rewrite fs_footprint_gq. iIntros "H".
     iDestruct (fs_footprint_runs (gamma_q Γ dq) S with "H") as (PM) "[%Hs Hr]".
     iExists PM. iSplitR; [by iPureIntro |].
@@ -971,7 +971,7 @@ Section FsFoot.
   Lemma fs_footprint_of_runs_q Γ (dq : dfrac) S PM :
     xf_shape S PM ->
     phi_runs_q Γ (xq_at dq (xr_fs S PM)) ⊢ fs_footprint Γ dq S.
-  Proof.
+  Proof using .
     intros Hs. rewrite phi_runs_q_at fs_footprint_gq.
     iApply (fs_footprint_of_runs (gamma_q Γ dq) S PM Hs).
   Qed.
@@ -1006,7 +1006,7 @@ Section FsFoot.
      this is [map_difference_union] and nothing else. *)
   Lemma phi_map_install Γ (M Mh : gmap Z (bv 8)) :
     M ⊆ Mh -> phi_map Γ Mh ⊣⊢ phi_map Γ M ∗ phi_map Γ (Mh ∖ M).
-  Proof.
+  Proof using .
     intros Hsub.
     assert (Hd : M ##ₘ Mh ∖ M).
     { apply map_disjoint_difference_r. reflexivity. }
@@ -1021,7 +1021,7 @@ Section FsFoot.
     phi_map Γ Mh
     ⊢ fs_footprint Γ (DfracOwn 1) S
       ∗ phi_map Γ (Mh ∖ xr_union (xr_fs S PM)).
-  Proof.
+  Proof using .
     intros Hshape Hdisj Hsub.
     rewrite (phi_map_install Γ (xr_union (xr_fs S PM)) Mh Hsub).
     rewrite -(phi_runs_union Γ (xr_fs S PM) Hdisj).
@@ -1041,7 +1041,7 @@ Section FsFoot.
                  /\ xr_union (xr_fs S PM) ⊆ Mh
                  /\ Mh ∖ xr_union (xr_fs S PM) = ∅⌝
                ∗ phi_map Γ Mh.
-  Proof.
+  Proof using .
     iIntros "Hf".
     iDestruct (fs_footprint_runs with "Hf") as (PM) "[%Hshape Hr]".
     iAssert (⌜xr_disj (xr_fs S PM)⌝ ∧ phi_runs Γ (xr_fs S PM))%I
@@ -1062,7 +1062,7 @@ Section FsFoot.
     (forall b, b ∈ home -> length (Pb b) = BSIZE) ->
     phi_map Γ (fs_dbytes (fs_restrict Pb home))
     ⊣⊢ ([∗ set] b ∈ home, blk_owned Γ b (Pb b)).
-  Proof.
+  Proof using .
     intros Hlen. rewrite /phi_map.
     exact (fs_dbytes_set_blocks Γ Pb home Hlen).
   Qed.
@@ -1079,7 +1079,7 @@ Section FsFoot.
     ⊢ fs_footprint Γ (DfracOwn 1) S
       ∗ phi_map Γ (fs_dbytes (fs_restrict Pb home)
                    ∖ xr_union (xr_fs S PM)).
-  Proof.
+  Proof using .
     intros Hlen Hshape Hdisj Hsub.
     rewrite -(phi_map_set_blocks Γ Pb home Hlen).
     exact (fs_footprint_install Γ S PM _ Hshape Hdisj Hsub).
@@ -1122,7 +1122,7 @@ Section Xfer.
      here when the record itself moved down. *)
   Lemma snap_gamma_agree (g gl gt : gname) (B : gmap Z (bv 8)) :
     phi_agree (snap_gamma g gl gt) (ghost_map_auth g 1 B) B.
-  Proof.
+  Proof using .
     intros dq a v. rewrite /snap_gamma /=.
     iIntros "[Ha Hv]". iApply (ghost_map_lookup with "Ha Hv").
   Qed.
@@ -1148,7 +1148,7 @@ Section Xfer.
     fs_footprint (snap_gamma g gl gt) (DfracOwn 1) S -∗
     ∃ PM, ⌜xf_shape S PM /\ xr_disj (xr_fs S PM)
            /\ xr_union (xr_fs S PM) ⊆ B⌝.
-  Proof.
+  Proof using .
     iIntros "Hba Hf".
     iDestruct (fs_footprint_runs with "Hf") as (PM) "[%Hshape Hr]".
     iAssert (⌜xr_disj (xr_fs S PM)⌝
@@ -1176,7 +1176,7 @@ Section Xfer.
     xr_union (xr_fs S PM) ⊆ Mh ->
     phi_map Γ Mh ∗ fs_ghost Γ S
     ⊢ fs_state Γ (DfracOwn 1) S ∗ phi_map Γ (Mh ∖ xr_union (xr_fs S PM)).
-  Proof.
+  Proof using .
     intros Hshape Hdisj Hsub. iIntros "[HM Hg]".
     iDestruct (fs_footprint_install Γ S PM Mh Hshape Hdisj Hsub with "HM")
       as "[Hf Hr]".
@@ -1211,7 +1211,7 @@ Section Xfer.
     ⊢ |==> ∃ g : gname,
         ghost_map_auth g 1 (xr_union (xr_fs S PM))
         ∗ fs_footprint (snap_gamma g gl gt) (DfracOwn 1) S.
-  Proof.
+  Proof using .
     intros Hshape Hdisj.
     iMod (ghost_map_alloc (xr_union (xr_fs S PM))) as (g) "[Hba Hbe]".
     iModIntro. iExists g. iFrame "Hba".
@@ -1238,7 +1238,7 @@ Section Xfer.
       ∃ (g : gname) (B : gmap Z (bv 8)),
         ⌜B ⊆ M⌝ ∗ A ∗ fs_footprint Γ dq S ∗ ghost_map_auth g 1 B
         ∗ fs_footprint (snap_gamma g gl gt) (DfracOwn 1) S.
-  Proof.
+  Proof using .
     intros Hdq. iIntros "HA Hf".
     iDestruct (fs_footprint_runs_q with "Hf") as (PM) "[%Hshape Hr]".
     assert (Hok : xq_ok (xq_at dq (xr_fs S PM)))
@@ -1281,7 +1281,7 @@ Section Xfer.
         ∗ ghost_map_auth gt 1 (fss_inodes S)
         ∗ ([∗ map] i ↦ n ∈ fss_inodes S, top_frag (snap_gamma g gl gt) i n)
         ∗ fs_state (snap_gamma g gl gt) (DfracOwn 1) S.
-  Proof.
+  Proof using .
     intros Hq. iIntros "HA HS".
     iEval (rewrite fs_state_split fs_ghost_split) in "HS".
     iDestruct "HS" as "(Hf & Hl & #Hp)".
@@ -1326,7 +1326,7 @@ Section Xfer.
         ∗ ([∗ map] i ↦ n ∈ fss_inodes S, top_frag (snap_gamma g gl gt) i n)
         ∗ fs_state (snap_gamma g gl gt) (DfracOwn 1) S
         ∗ own gl (link_tok_elem r v).
-  Proof.
+  Proof using .
     intros Hq. iIntros "HA HS Ht".
     iEval (rewrite fs_state_split fs_ghost_split) in "HS".
     iDestruct "HS" as "(Hf & Hl & #Hp)".

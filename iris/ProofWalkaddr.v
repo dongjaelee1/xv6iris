@@ -178,7 +178,7 @@ Section ProofWalkaddr.
   Lemma wp_walkaddr_sconf (mm : regfile) (t : ptree)
       (m : gmap (mword 27) (mword 64)) (K : nat) (dq : dfrac) (b : bool) (p : mword 64)
     : wp_walkaddr_sconf_body mm t m K dq b p.
-  Proof.
+  Proof using .
     cbv beta delta [wp_walkaddr_sconf_body].
     intros pcE va vpn ret_tgt HK Hroot Hrep.
     iIntros "Hcg #Htext Hpc Hptree Hcont".

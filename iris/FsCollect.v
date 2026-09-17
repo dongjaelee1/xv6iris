@@ -414,7 +414,7 @@ Section Collect.
     col_auth γfs Lb C home -∗
     blk_owned_q (fs_gamma_L γfs) dq b bs -∗
     ⌜b ∈ home /\ col_view C home !! b = Some bs⌝.
-  Proof.
+  Proof using .
     iIntros "(Ha & %Hdom & %Hlens & %Htie & %Hdm) Hb".
     rewrite gamma_blk_owned_q.
     iDestruct (fsblock_q_home (fs_bytes γfs) dq Lb home b bs Hdm with "Ha Hb")
@@ -455,7 +455,7 @@ Section Collect.
     ([∗ list] b ∈ l, pool_elt (gamma_q (fs_gamma_L γfs) (DfracOwn (1/4))) u b) -∗
       col_auth γfs Lb C home
       ∗ [∗ list] b ∈ l, pool_elt (fs_gamma_L γfs) u b.
-  Proof.
+  Proof using .
     induction l as [| b l IH]; iIntros "Hau H1 H2".
     - iFrame "Hau". done.
     - rewrite !big_sepL_cons.
@@ -484,7 +484,7 @@ Section Collect.
     blk_owned (gamma_q Γ (DfracOwn (3/4))) b bs -∗
     blk_owned (gamma_q Γ (DfracOwn (1/4))) b bs -∗
     blk_owned Γ b bs.
-  Proof.
+  Proof using .
     rewrite !gamma_q_blk_owned (blk_owned_split_34 Γ Hfr b bs).
     iIntros "H1 H2". iFrame "H1 H2".
   Qed.
@@ -494,7 +494,7 @@ Section Collect.
     free_pool (gamma_q (fs_gamma_L γfs) (DfracOwn (3/4))) nb u -∗
     free_pool (gamma_q (fs_gamma_L γfs) (DfracOwn (1/4))) nb u -∗
       col_auth γfs Lb C home ∗ free_pool (fs_gamma_L γfs) nb u.
-  Proof.
+  Proof using .
     rewrite /free_pool.
     iApply (col_pool_join_list γfs Lb C home u (seqZ 0 nb)).
   Qed.
@@ -626,7 +626,7 @@ Section Collect.
   (* the bundle's own local clause, and its record proxy *)
   Lemma col_bundle_local γfs γi (i : Z) (n : fs_node) :
     col_bundle γfs γi i n -∗ ⌜inode_local i n⌝.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as (inum Hbv) "H".
     pose (dq := DfracOwn (3/4)).
     assert (Hnv : ~ ✓ (dq ⋅ dq)) by exact FsStateDefs.dfrac_34_nvalid.
@@ -638,7 +638,7 @@ Section Collect.
   Lemma col_bundle_rec γfs γi (i : Z) (n : fs_node) (m : gmap Z dinode) :
     ghost_map_auth γi 1 m -∗ col_bundle γfs γi i n -∗
     ⌜m !! i = Some (fn_rec n)⌝.
-  Proof.
+  Proof using .
     iIntros "Ha H". iDestruct "H" as (inum Hbv) "H".
     pose (dq := DfracOwn (3/4)).
     assert (Hnv : ~ ✓ (dq ⋅ dq)) by exact FsStateDefs.dfrac_34_nvalid.
@@ -654,7 +654,7 @@ Section Collect.
   Lemma col_bundle_top γfs γi (i : Z) (n : fs_node) (I : gmap Z fs_node) :
     ghost_map_auth (fs_top γfs) (1/2) I -∗ col_bundle γfs γi i n -∗
     ⌜I !! i = Some n⌝.
-  Proof.
+  Proof using .
     iIntros "Ha H". iDestruct "H" as (inum Hbv) "H".
     pose (dq := DfracOwn (3/4)).
     assert (Hnv : ~ ✓ (dq ⋅ dq)) by exact FsStateDefs.dfrac_34_nvalid.
@@ -682,7 +682,7 @@ Section Collect.
   Lemma col_bundles_local γfs γi (I : gmap Z fs_node) :
     ([∗ map] i ↦ n ∈ I, col_bundle γfs γi i n) -∗
     ⌜forall i n, I !! i = Some n -> inode_local i n⌝.
-  Proof.
+  Proof using .
     iIntros "Hb".
     rewrite bi.pure_forall. iIntros (i).
     rewrite bi.pure_forall. iIntros (n).
@@ -728,7 +728,7 @@ Section Collect.
     (forall b bs, C !! b = Some bs -> length bs = BSIZE) ->
     bytes_tie Lb C -> bytes_dom Lb home ->
     Lb ⊆ fs_dbytes (col_view C home).
-  Proof.
+  Proof using .
     intros HdomC Hlens Htie Hdm.
     pose proof dbytes_stride as Hstr.
     assert (Hok : dbytes_ok (col_view C home)).
@@ -765,7 +765,7 @@ Section Collect.
 
   Lemma col_auth_dbytes γfs Lb C home :
     col_auth γfs Lb C home -∗ ⌜Lb ⊆ fs_dbytes (col_view C home)⌝.
-  Proof.
+  Proof using .
     iIntros "(_ & %Hdom & %Hlens & %Htie & %Hdm)".
     iPureIntro. exact (bytes_le_dbytes Lb C home Hdom Hlens Htie Hdm).
   Qed.
@@ -776,7 +776,7 @@ Section Collect.
      (durable-notes.md, "one bundle per ghost class"). *)
   Lemma col_agree γfs Lb C home :
     phi_agree (fs_gamma_L γfs) (col_auth γfs Lb C home) Lb.
-  Proof.
+  Proof using .
     intros dq a v. rewrite /col_auth /fs_gamma_L /=.
     iIntros "[(Ha & _ & _ & _ & _) Hv]".
     iApply (ghost_map_lookup with "Ha Hv").
@@ -794,7 +794,7 @@ Section Collect.
       (C : gmap Z (list (bv 8))) (home : gset Z) :
     col_hand γfs γi ist nib sb sbb used I m Lb C home -∗
     ⌜snap_shape (col_state sb sbb I used) (col_view C home)⌝.
-  Proof.
+  Proof using .
     iIntros "(%Hg & _ & _ & _ & _ & _ & _ & _ & _ & _)".
     iPureIntro. split; rewrite /col_state /=.
     intros b [bs Hbs]. rewrite /col_view in Hbs.
@@ -814,7 +814,7 @@ Section Collect.
       (C : gmap Z (list (bv 8))) (home : gset Z) :
     col_hand γfs γi ist nib sb sbb used I m Lb C home -∗
     ⌜fs_geom (col_state sb sbb I used)⌝.
-  Proof.
+  Proof using .
     iIntros "(%Hg & %Hdi & _ & _ & _ & _ & _ & _ & _ & %Hdirloc)".
     iPureIntro. split; rewrite /col_state /=.
     - exact (cg_sbok Hg).
@@ -849,7 +849,7 @@ Section Collect.
      factors through ONE call of it. *)
   Lemma col_bundle_inum γfs γi (i : Z) (n : fs_node) :
     col_bundle γfs γi i n -∗ ⌜0 <= i < 2 ^ 32⌝.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as (inum Hbv) "_".
     pose (dq := DfracOwn (3/4)).
     assert (Hnv : ~ ✓ (dq ⋅ dq)) by exact FsStateDefs.dfrac_34_nvalid.
@@ -874,7 +874,7 @@ Section Collect.
       ∗ (inode_phi (gamma_q (fs_gamma_L γfs) (DfracOwn (3/4))) sb i n -∗
            rec_owned_at (fs_gamma_L γfs) (sb_inodestart sb) i (fn_rec n)
            ∗ col_bundle γfs γi i n).
-  Proof.
+  Proof using .
     iIntros "Hrec Hb".
     iAssert (⌜0 <= i < 2 ^ 32⌝ ∧ col_bundle γfs γi i n)%I
       with "[Hb]" as "[%Hi Hb]".
@@ -912,7 +912,7 @@ Section Collect.
      THE SHARE IS 1, which is what [col_bundle]'s [~ ✓ (dq ⋅ dq)] wants: a
      free inum is never locked, so nothing splits its bundle. *)
   Lemma dfrac_full_nvalid : ~ ✓ (DfracOwn 1 ⋅ DfracOwn 1).
-  Proof.
+  Proof using .
     intros Hv. exact (exclusive_l (DfracOwn 1) (DfracOwn 1) Hv).
   Qed.
 
@@ -923,7 +923,7 @@ Section Collect.
     dinode_at γi inum d -∗
     top_frag (fs_gamma_L γfs) (bv_unsigned inum) (free_node d) -∗
     inode_owned_era γfs γi inum (free_node d).
-  Proof.
+  Proof using .
     intros Hb Hnl Ht0. iIntros "Hdn Htop".
     rewrite /inode_owned_era /inode_dat /free_node /=.
     iSplitL "Hdn"; [iExact "Hdn" |].
@@ -945,7 +945,7 @@ Section Collect.
     dinode_at γi inum d -∗
     ireg_top_park γfs (bv_unsigned inum) d -∗
     col_bundle γfs γi (bv_unsigned inum) (free_node d).
-  Proof.
+  Proof using .
     intros Hb Hnl Ht0. iIntros "Hdn Hpk".
     iDestruct (ireg_top_park_open γfs (bv_unsigned inum) d Ht0 with "Hpk")
       as "[_ Htop]".
@@ -963,7 +963,7 @@ Section Collect.
      [fn_nlink (free_node d)]. *)
   Lemma free_node_nlink (d : dinode) :
     bv_unsigned (di_nlink d) = 0 -> fn_nlink (free_node d) = 0%nat.
-  Proof. intros Hnl. rewrite /fn_nlink /free_node /= Hnl //. Qed.
+  Proof using . intros Hnl. rewrite /fn_nlink /free_node /= Hnl //. Qed.
 
   (* ==================================================================== *)
   (*  THE ACCESSOR SUPPLIER (D) IS: one region slot, lent and taken back   *)
@@ -1030,7 +1030,7 @@ Section Collect.
             ∗ inode_owned_era γfs γi inum (free_node d)
             ∗ (inode_owned_era γfs γi inum (free_node d)
                -∗ ireg_slot γfs γi (bv_unsigned inum) d))).
-  Proof.
+  Proof using .
     iIntros "Hauth Hslot".
     iDestruct "Hslot" as "[(%rl & %cl & %fz & %cn & Hla & %Hlok &
                             #Hdisj & Hcnt & %Hclm & %Hfrz & Hfdisj & Hfrcp &
@@ -1104,7 +1104,7 @@ Section Collect.
       ∗ inode_owned_era γfs γi inum (free_node d)
       ∗ (inode_owned_era γfs γi inum (free_node d) -∗
            ireg_slot γfs γi (bv_unsigned inum) d).
-  Proof.
+  Proof using .
     iIntros "Hauth Hmk Hslot".
     iDestruct (col_region_slot_acc γfs γi inum d with "Hauth Hslot")
       as "[Hauth Harm]".
@@ -1140,7 +1140,7 @@ Section Collect.
             ∗ (inode_owned_era γfs γi inum (free_node d)
                -∗ ireg_lnk γfs (bv_unsigned inum) d
                -∗ ireg_slot γfs γi (bv_unsigned inum) d))).
-  Proof.
+  Proof using .
     iIntros "Hauth Hslot".
     iDestruct "Hslot" as "[(%rl & %cl & %fz & %cn & Hla & %Hlok &
                             #Hdisj & Hcnt & %Hclm & %Hfrz & Hfdisj & Hfrcp &
@@ -1208,7 +1208,7 @@ Section Collect.
       ∗ (inode_owned_era γfs γi inum (free_node d)
          -∗ ireg_lnk γfs (bv_unsigned inum) d
          -∗ ireg_slot γfs γi (bv_unsigned inum) d).
-  Proof.
+  Proof using .
     iIntros "Hauth Hmk Hslot".
     iDestruct (col_region_slot_lnk_acc γfs γi inum d with "Hauth Hslot")
       as "(Hauth & Hlnk & Harm)".
@@ -1306,7 +1306,7 @@ Section Collect.
     ghost_map_auth (ln_tx icfg_log) 1 (∅ : gmap nat unit) -∗
     ireg_slot γfs γi (bv_unsigned inum) d -∗
     col_side γfs γi inum -∗ col_side γfs γi inum -∗ False.
-  Proof.
+  Proof using .
     iIntros "Hauth Hslot Hs1 Hs2".
     rewrite /col_side.
     iDestruct "Hs1" as "[Hmk1 | (%n1 & _ & Hleg1)]";
@@ -1343,7 +1343,7 @@ Section Collect.
   Lemma col_free_ent_toks γfs (i : Z) (d : dinode) :
     bv_unsigned (di_type d) = 0 ->
     ⊢ ent_toks_x (fs_gamma_L γfs) i (free_node d).
-  Proof.
+  Proof using .
     intros Ht0. iApply ent_toks_x_not_dir.
     rewrite /fn_is_dir /fn_type /free_node /= Ht0.
     apply bool_decide_eq_false_2. rewrite /DirView.T_DIR_z. lia.
@@ -1354,7 +1354,7 @@ Section Collect.
   Lemma col_slot_lnk_acc γfs (γi : gname) (z : Z) (d : dinode) :
     ireg_slot γfs γi z d -∗
       ireg_lnk γfs z d ∗ (ireg_lnk γfs z d -∗ ireg_slot γfs γi z d).
-  Proof.
+  Proof using .
     rewrite /ireg_slot. iIntros "(Harm & Hep & Hlnk)".
     iFrame "Hlnk". iIntros "Hlnk". iFrame "Harm Hep Hlnk".
   Qed.
@@ -1375,7 +1375,7 @@ Section Collect.
       ∗ (∃ kv : ity, ireg_keep γfs i kv)
       ∗ (fs_link_node (fs_link γfs) i n -∗ (∃ kv : ity, ireg_keep γfs i kv) -∗
            ireg_lnk γfs i d ∗ ent_toks_x (fs_gamma_L γfs) i n).
-  Proof.
+  Proof using .
     intros Hrec.
     iIntros "Hlnk Hte".
     iDestruct "Hlnk" as (v) "(%Hok & Hla & Hkp)".
@@ -1418,7 +1418,7 @@ Section Collect.
   Lemma col_bundle_of_side γfs (γi : gname) (inum : bv 32) (n : fs_node) :
     inode_owned_era_q γfs (DfracOwn (3/4)) γi inum n -∗
     col_bundle γfs γi (bv_unsigned inum) n.
-  Proof.
+  Proof using .
     iIntros "H". iExists inum. iSplitR; [done |]. iExact "H".
   Qed.
   (* ==================================================================== *)
@@ -1462,7 +1462,7 @@ Section Collect.
      a slot's cover) is built out of the arm that carries the bundle. *)
   Lemma col_row_frame γfs (γi : gname) (inum : bv 32) (Q R : iProp Σ) :
     col_row γfs γi inum Q -∗ R -∗ col_row γfs γi inum (Q ∗ R).
-  Proof.
+  Proof using .
     rewrite /col_row.
     iIntros "[(%F & Hmk & HF & Hw) | (%n & %F & %Hdl & Hleg & HF & Hw)] HR".
     - iLeft. iExists (F ∗ R)%I. iFrame "Hmk HF HR".
@@ -1474,7 +1474,7 @@ Section Collect.
 
   Lemma col_row_mono γfs (γi : gname) (inum : bv 32) (Q Q' : iProp Σ) :
     (Q -∗ Q') -∗ col_row γfs γi inum Q -∗ col_row γfs γi inum Q'.
-  Proof.
+  Proof using .
     rewrite /col_row.
     iIntros "Himp [(%F & Hmk & HF & Hw) | (%n & %F & %Hdl & Hleg & HF & Hw)]".
     - iLeft. iExists (F ∗ (Q -∗ Q'))%I. iFrame "Hmk HF Himp".
@@ -1488,7 +1488,7 @@ Section Collect.
      takes ([col_side_slot_excl]) *)
   Lemma col_row_side γfs (γi : gname) (inum : bv 32) (Q : iProp Σ) :
     col_row γfs γi inum Q -∗ col_side γfs γi inum.
-  Proof.
+  Proof using .
     rewrite /col_row /col_side.
     iIntros "[(%F & Hmk & _) | (%n & %F & %Hdl & Hleg & _)]".
     - iLeft. iExact "Hmk".
@@ -1500,7 +1500,7 @@ Section Collect.
   Lemma col_row_mark γfs (γi : gname) (inum : bv 32) :
     imark γi (bv_unsigned inum) -∗
     col_row γfs γi inum (imark γi (bv_unsigned inum)).
-  Proof.
+  Proof using .
     iIntros "Hmk". rewrite /col_row. iLeft. iExists emp%I.
     iFrame "Hmk". iSplitR; [done |]. iIntros "H _". iExact "H".
   Qed.
@@ -1536,7 +1536,7 @@ Section Collect.
           ∗ (ic_inode_leg γfs (DfracOwn (3/4)) γi inum n
              -∗ ireg_lnk γfs (bv_unsigned inum) d
              -∗ Q ∗ ireg_slot γfs γi (bv_unsigned inum) d).
-  Proof.
+  Proof using .
     iIntros "Hauth Hrow Hslot".
     rewrite /col_row.
     iDestruct "Hrow"
@@ -1590,7 +1590,7 @@ Section Collect.
          -∗ (∃ kv : ity, ireg_keep γfs (bv_unsigned inum) kv)
          -∗ ireg_lnk γfs (bv_unsigned inum) d
             ∗ ic_inode_leg γfs (DfracOwn (3/4)) γi inum n).
-  Proof.
+  Proof using .
     intros Hmd. iIntros "Hma Hia Hlnk Hleg".
     iDestruct (ic_inode_leg_open with "Hleg") as "[Hte Hown]".
     iDestruct (col_bundle_of_side γfs γi inum n with "Hown") as "Hb".
@@ -1617,7 +1617,7 @@ Section Collect.
      quarter and dropping it (durable-disk EV-X). *)
   Lemma col_bundle_of_owned γfs (γi : gname) (inum : bv 32) (n : fs_node) :
     inode_owned_era γfs γi inum n -∗ col_bundle γfs γi (bv_unsigned inum) n.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct (inode_owned_era_shed_to with "H") as "[H _]".
     iExists inum. iSplitR; [done |]. iExact "H".
   Qed.
@@ -1656,7 +1656,7 @@ Section Collect.
     fresh_shape d ->
     fn_nlink n = 0%nat ->
     top_frag (fs_gamma_L γfs) z n -∗ ireg_top_park γfs z d.
-  Proof.
+  Proof using .
     intros Hfr Hcnt. iIntros "Hf".
     iApply (ireg_top_park_nz γfs z d n (proj1 Hfr) (fun _ => Hcnt) with "Hf").
   Qed.
@@ -1672,7 +1672,7 @@ Section Collect.
     ghost_map_auth (ln_tx icfg_log) 1 (∅ : gmap nat unit) -∗
     imark γi (bv_unsigned inum) -∗
     ireg_slot γfs γi (bv_unsigned inum) d -∗ False.
-  Proof.
+  Proof using .
     intros Hnz. iIntros "Hauth Hmk Hslot".
     iDestruct (col_free_slot_acc γfs γi inum d with "Hauth Hmk Hslot")
       as "(_ & %Ht0 & _)".
@@ -1737,7 +1737,7 @@ Section Collect.
     ghost_map_auth (ln_tx icfg_log) 1 (∅ : gmap nat unit) -∗
     ifreeze ph (bv_unsigned inum) -∗
     ireg_slot gfs gi (bv_unsigned inum) d -∗ False.
-  Proof.
+  Proof using .
     intros Hph. iIntros "Hauth Hfz Hslot".
     iDestruct "Hslot" as "[(%rl & %cl & %fz & %cn & Hla & %Hlok &
                             #Hdisj & Hcnt & %Hclm & %Hfrz & Hfdisj & Hfrcp &
@@ -1762,7 +1762,7 @@ Section Collect.
       ∗ ghost_map_auth (ln_tx icfg_log) 1 (∅ : gmap nat unit)
       ∗ ireg_slot gfs gi (bv_unsigned inum) d
       ∗ ifreeze ph (bv_unsigned inum).
-  Proof.
+  Proof using .
     iIntros "Hauth Hslot Hfz".
     destruct ph as [| rg | rg]; [by iFrame | |].
     - assert (Hne : frz_reg (FrzPre rg) <> None) by discriminate.
@@ -1831,7 +1831,7 @@ Section Collect.
   Lemma reg_full_no_pool_half gfs (gi : gname) (z : Z) (d : dinode)
       (ge gr : gname) :
     ireg_slot gfs gi z d -∗ reg_half z ge gr -∗ False.
-  Proof.
+  Proof using .
     iIntros "Hslot Hrh".
     iDestruct "Hslot" as "[(%rl & %cl & %fz & %cn & Hla & %Hlok &
                             #Hdisj & Hcnt & %Hclm & %Hfrz & Hfdisj & Hfrcp &

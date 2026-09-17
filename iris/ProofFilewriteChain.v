@@ -85,7 +85,7 @@ Section FilewriteChain.
   Lemma fw_au_raw_init Γ (i : Z) γo (n : Z) M ua Q :
     awrite_chain Γ appE i γo M ua Q 0%nat (wchunks n) -∗
     fw_au_raw Γ i γo n M ua Q 0 0%nat 0%nat.
-  Proof.
+  Proof using .
     iIntros "Hcm". rewrite /fw_au_raw. iExists [].
     iSplitR; [done |]. iSplitR; [done |]. iSplitR; [iPureIntro; lia |].
     iSplitR; [iPureIntro; lia |].
@@ -107,7 +107,7 @@ Section FilewriteChain.
          ⌜ubytes_at M (add_vec_int ua t) bs⌝ -∗
          awrite_chain Γ appE i γo M ua Q (S p) (wchunks n - S p) -∗
          fw_au_raw Γ i γo n M ua Q (t + Z.of_nat (length bs)) (S p) 0%nat).
-  Proof.
+  Proof using .
     intros Ht Htn Htie. iIntros "Hst".
     assert (Hsp : (S p <= wchunks n)%nat)
       by exact (wri_count_step n t p Ht Htn Htie).
@@ -147,7 +147,7 @@ Section FilewriteChain.
         (awrite_chain Γ appE i γo M ua Q (S p) (wchunks n - S p)) ∗
       (awrite_chain Γ appE i γo M ua Q (S p) (wchunks n - S p) -∗
        fw_au_raw Γ i γo n M ua Q t p 1%nat).
-  Proof.
+  Proof using .
     intros Ht Htn Htie. iIntros "Hst".
     assert (Hsp : (S p <= wchunks n)%nat)
       by exact (wri_count_step n t p Ht Htn Htie).
@@ -168,7 +168,7 @@ Section FilewriteChain.
   (* THE EXITS *)
   Lemma fw_au_raw_ok Γ (i : Z) γo (n : Z) M ua Q (p : nat) :
     fw_au_raw Γ i γo n M ua Q n p 0%nat -∗ write_post_ok_at Γ i γo n M ua Q.
-  Proof.
+  Proof using .
     iIntros "Hst". rewrite /fw_au_raw /write_post_ok_at.
     iDestruct "Hst" as (bss) "(%Hlen & %Htot & %Hp & %Hx & %Hby & Hcm)".
     iExists bss. iSplitR; [by iPureIntro |].
@@ -183,7 +183,7 @@ Section FilewriteChain.
   Lemma fw_au_raw_fail Γ (i : Z) γo (n : Z) M ua Q (t : Z) (p x : nat) :
     (t < n)%Z \/ (n < 0)%Z /\ p = 0%nat ->
     fw_au_raw Γ i γo n M ua Q t p x -∗ write_post_fail_at Γ i γo n M ua Q.
-  Proof.
+  Proof using .
     intros Hex. iIntros "Hst". rewrite /fw_au_raw /write_post_fail_at.
     iDestruct "Hst" as (bss) "(%Hlen & %Htot & %Hp & %Hx & %Hby & Hcm)".
     iExists bss, x. iSplitR.

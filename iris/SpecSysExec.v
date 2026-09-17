@@ -283,7 +283,7 @@ Section SysExecAU.
     S ≡{n}≡ S' ->
     sys_exec_slot_pre S Q P Φo cw M pv av sts cs pidv
     ≡{n}≡ sys_exec_slot_pre S' Q P Φo cw M pv av sts cs pidv.
-  Proof.
+  Proof using .
     intros HS. rewrite /sys_exec_slot_pre.
     apply bi.forall_ne; intros pl.
     apply bi.forall_ne; intros na. apply bi.forall_ne; intros alen.
@@ -302,7 +302,7 @@ Section SysExecAU.
     S ≡{n}≡ S' ->
     sys_exec_au_pre (MkPfam S Rs) Γ γfs cw Q P Pmiss Fo M pv av sts cs pidv
     ≡{n}≡ sys_exec_au_pre (MkPfam S' Rs) Γ γfs cw Q P Pmiss Fo M pv av sts cs pidv.
-  Proof.
+  Proof using .
     intros HS. rewrite /sys_exec_au_pre /pf_at. cbn [pf_recv pf_refund].
     by rewrite (sys_exec_slot_pre_ne n S S' Q P Fo.(pf_recv) cw M pv av sts
                   cs pidv HS).
@@ -333,7 +333,7 @@ Section SysExecAU.
       (cs : gset gname) (pidv : mword 32) :
     sys_exec_post_fail Fs Γ γfs cw Q P Pmiss Fo M pv av sts cs pidv
       ⊢ Fs.(pf_refund).
-  Proof.
+  Proof using .
     rewrite /sys_exec_post_fail /sys_exec_au_pre.
     iIntros "[(_ & _ & Hs) | Hf]".
     - iApply (pf_at_refund with "Hs").
@@ -372,7 +372,7 @@ Section SysExecAU.
       (V : pprivate) (r : mword 64) :
     sys_exec_arms Fs Γ γfs cw γf pj pid Q P Pmiss Fo M pv av sts gn cs V r ⊢
       sys_exec_post γf pj pid V r.
-  Proof.
+  Proof using .
     rewrite /sys_exec_arms /sys_exec_post.
     iIntros "H". iDestruct "H" as (U') "[Hp [[(%Hr & %HV & _) _] | H]]".
     - iExists U', 0%nat, (fun _ => 0%nat),

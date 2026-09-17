@@ -276,7 +276,7 @@ Section UnlinkFire.
           ⌜arow_at av d (MkAnode (ADir (dir_entries n)) (fn_nlink n))⌝
           ∗ ⌜dir_entries n !! nm = None⌝
           ∗ Fmiss.(pf_recv) av d nm.
-  Proof.
+  Proof using .
     intros HE Hdir Hnm. iIntros "#Hi Hcm Hf".
     (* THE PIECE IS SPENT: the fire eliminates to the AU side. *)
     iDestruct (pf_at_au with "Hcm") as "Hcm".
@@ -333,7 +333,7 @@ Section UnlinkFire.
           ∗ ⌜av !! t = Some (MkAnode (ADir (dir_entries nt)) (fn_nlink nt))⌝
           ∗ ⌜~ dots_only (dir_entries nt)⌝
           ∗ Fex.(pf_recv) av d nm t.
-  Proof.
+  Proof using .
     intros HE Hdird Hnld Hnm Hdirt Hnlt Hne. iIntros "#Hi Hcm Hfd Hft".
     iDestruct (pf_at_au with "Hcm") as "Hcm".
     rewrite /top_frag_q /fs_gamma_L /=.
@@ -398,7 +398,7 @@ Section UnlinkFire.
       ∗ ∃ av : aview,
           ⌜unl_pre av d nm (dir_entries np) (fn_nlink np) t (abs_row nt)⌝
           ∗ Fent.(pf_recv) av d nm t.
-  Proof.
+  Proof using .
     intros HE Hloc Hdir Hnm HnD HnDD Hnlp Hnlt Hdots Hdec Habsp' Hnzt.
     iIntros "#Hi #Hai Hcm Hfp Hft".
     iDestruct (pf_at_au with "Hcm") as "Hcm".
@@ -472,7 +472,7 @@ Section UnlinkFire.
      three times, that was seconds per site.  The fact is CLOSED, so it
      belongs in a lemma proved where the context is empty. *)
   Lemma uf_nd_top : (↑ftopN ∪ ↑appN : coPset) ⊆ ⊤.
-  Proof. solve_ndisj. Qed.
+  Proof using . solve_ndisj. Qed.
 
   Lemma uf_utgt_fire (γfs : fs_names) (E : coPset)
       (Ftgt : pfam Σ (aview -> Z -> iProp Σ)) (t : Z) (nt nt' : fs_node) :
@@ -487,7 +487,7 @@ Section UnlinkFire.
     top_frag (fs_gamma_L γfs) t nt ={E}=∗
       top_frag (fs_gamma_L γfs) t nt'
       ∗ ∃ av : aview, ⌜av !! t = Some (abs_row nt)⌝ ∗ Ftgt.(pf_recv) av t.
-  Proof.
+  Proof using .
     intros HE Hloc Hnl Habs' Hnzt. iIntros "#Hi #Hai Hcm Hf".
     iDestruct (pf_at_au with "Hcm") as "Hcm".
     rewrite /top_frag /fs_gamma_L /=.

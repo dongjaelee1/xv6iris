@@ -149,9 +149,9 @@ Section UmodeTextLoad.
   Hypothesis Huintw : uint (to_bits 64 width) = width.
 
   Local Lemma wtl_pos : 0 < width.
-  Proof. exact (vmem_width_pos width Hvw). Qed.
+  Proof using Hvw. exact (vmem_width_pos width Hvw). Qed.
   Local Lemma wtl_le8 : width <= 8.
-  Proof. exact (vmem_width_le width Hvw). Qed.
+  Proof using Hvw. exact (vmem_width_le width Hvw). Qed.
 
   (* =================================================================== *)
   (* 2. THE STAMPED BYTE AS A PLAIN-LOAD PAYER.                            *)
@@ -171,7 +171,7 @@ Section UmodeTextLoad.
     bytes_own_p F mm -∗
     ⌜forall tv' : nat, (V (hart_agent cpu_id) <= tv')%nat ->
        tso_read_bytes img log (hart_agent cpu_id) tv' pa n w⌝.
-  Proof.
+  Proof using .
     intros Hwin. iIntros "Hgh Htso Hrun Hown".
     iDestruct (tso_interp_of_pin with "Htso") as %Hpin.
     rewrite (tso_interp_of_at_gs riscv_eraGS img mem log V rs d Hpin).
@@ -213,7 +213,7 @@ Section UmodeTextLoad.
       (TsoCtx.own_context XI ∗
        bytes_own_p (uv_F pt M IK) (uv_mm t (upa_map pt M)) ∗
        resv_any cpu_id).
-  Proof.
+  Proof using Hvw.
     intros Hinj Htok Hl Hnc Hb Htx.
     pose proof wtl_pos as Hw0.
     assert (Hwin : forall j : nat, (N.of_nat j < Z.to_N width)%N ->
@@ -278,7 +278,7 @@ Section UmodeTextLoad.
            (Physaddr pa) width false false false false)
       (fun r => ⌜r = Values.Ok (wb, tt)⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro ∗ R).
-  Proof.
+  Proof using Hdvd Huintw Hvw.
     intros Hdisj HDpma HDcfg HDaddr HDhtif Hhtif Hpma Hpcfg Hpaddr
       HA Hord HR Hcov Hpallow Hram Hpa.
     pose proof wtl_pos as Hw0. pose proof wtl_le8 as Hw8.
@@ -371,7 +371,7 @@ Section UmodeTextLoad.
     swp (mem_read (Load Data) PBMT_PMA pa width false false false)
       (fun r => ⌜r = Values.Ok wb⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro ∗ R).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv Hpriv Hep.
     iIntros "#Hcert Hrw Hro Hcmr".
     unfold mem_read.
@@ -437,7 +437,7 @@ Section UmodeTextLoad.
     swp (translateAddr (Virtaddr va) (Load Data))
       (uv_ld_post dq pt M rsA t
          (Values.Ok (Physaddr (u_walk_pa w_leaf va), PBMT_PMA, init_ext_ptw))).
-  Proof.
+  Proof using .
     intros Hinj Hl Hlok Hcanon Hcfg Hpins Htok Hag.
     pose proof (uv_tree_ok_data pt M t Hinj Htok) as Htokd.
     destruct (uv_walk_data (Load Data) pt t (upa_map pt (uM_data pt M)) rsA
@@ -483,7 +483,7 @@ Section UmodeTextLoad.
       (fun r => ⌜r = Values.Ok wb⌝ ∗
                 hreg_frame rs u_Drw ∗ hreg_frame_ro (u_Df dq) rs u_Dro ∗
                 (TsoCtx.own_context XI ∗ uv_bytes pt M t ∗ resv_any cpu_id)).
-  Proof.
+  Proof using Hdvd Huintw Hvw.
     intros Hinj Htok Hl Hpg Hal Hb Htx Hhw Hpt Lcp Hmprv Hmv.
     pose proof wtl_pos as Hw0. pose proof wtl_le8 as Hw8.
     destruct Hhw as (_ & _ & _ & Hhtif & Hall & _).
@@ -558,7 +558,7 @@ Section UmodeTextLoad.
     TsoCtx.own_context XI -∗ uv_bytes pt M t -∗
     swp (translate_and_read_value (Virtaddr va) width (Load Data) false false false)
       (uv_ld_post dq pt M rsA t (Values.Ok (Physaddr (u_walk_pa w_leaf va), wb))).
-  Proof.
+  Proof using Hdvd Huintw Hvw.
     intros Hinj Hl Hlok Hcanon Hpg Hal Hb Htx Hcfg Hpins Htok Hag.
     pose proof Hcfg as (Lcp & Hms & _).
     pose proof Hpins as (Hhw & _ & Hpt & _).
@@ -610,7 +610,7 @@ Section UmodeTextLoad.
     TsoCtx.own_context XI -∗ uv_bytes pt M t -∗
     swp (vmem_read_addr (Virtaddr va) width (Load Data) false false false)
       (uv_ld_post dq pt M rsA t (Values.Ok wb)).
-  Proof.
+  Proof using Hdvd Huintw Hvw.
     intros Hinj Hl Hlok Hcanon Hpg Hal Hb Htx Hcfg Hpins Htok Hag.
     pose proof wtl_pos as Hw0. pose proof wtl_le8 as Hw8.
     pose proof Hcfg as (Lcp & Hms & _).
@@ -713,7 +713,7 @@ Section UmodeTextLoad.
     swp (vmem_read (Regidx rs1) (sign_extend' 64 imm) width (Load Data)
            false false false)
       (uv_ld_post dq pt M rsA t (Values.Ok wb)).
-  Proof.
+  Proof using Hdvd Huintw Hvw.
     intros Hva Hinj Hl Hlok Hcanon Hpg Hal Hb Htx Hcfg Hpins Htok Hag.
     pose proof Hcfg as (Lcp & Hms & Lmenv).
     pose proof Hpins as (Hhw & _ & _ & _).
@@ -864,7 +864,7 @@ Section UmodeTextLoad.
     TsoCtx.own_context XI -∗ uv_bytes pt M t -∗
     swp (execute (LOAD (imm, Regidx rs1, Regidx rd, is_unsigned, width)))
       (uv_lbu_post dq pt M rsA t rd (extend_value is_unsigned wb)).
-  Proof.
+  Proof using Hdvd Huintw Hvw.
     intros Hag Hrd Hva Hinj Hl Hlok Hcanon Hpg Hal Hb Htx Hcfg Hpins Htok.
     pose proof wtl_pos as Hw0. pose proof wtl_le8 as Hw8.
     iIntros "#Hcert Hany Hrw Hro Hrun Hown".

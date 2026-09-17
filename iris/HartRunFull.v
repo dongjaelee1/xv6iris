@@ -120,7 +120,7 @@ Section rundisp.
                                  Supervisor)
                       else None)⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDmip HDmie HDmdl Hmip Hmie Hmdl Hmm HDb Hag HES HESg.
     iIntros "#Hcert Hrw Hro".
     unfold getPendingSet.
@@ -256,7 +256,7 @@ Section rundisp.
                 ⌜r = dispatch_of_pending
                        (s_pending mip_v meip seip mie_v mdv_v)⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDmip HDmie HDmdl Hmip Hmie Hmdl Hmm HDb Hag HES HESg.
     iIntros "#Hcert Hrw Hro".
     unfold dispatchInterrupt.
@@ -304,7 +304,7 @@ Section runfull.
       (ib : mword 32) (e : ExecutionResult) :
     (match e with ExecuteAs _ => False | _ => True end) ->
     Pe e ib -∗ run_exec_post Pe ib e.
-  Proof.
+  Proof using .
     intros He. destruct e; try (iIntros "H"; iApply "H"). destruct He.
   Qed.
 
@@ -312,7 +312,7 @@ Section runfull.
       (ib : mword 32) (other : instruction) :
     swp (execute other) (fun e' => Pe e' ib) -∗
     run_exec_post Pe ib (ExecuteAs other).
-  Proof. iIntros "H". iApply "H". Qed.
+  Proof using . iIntros "H". iApply "H". Qed.
 
   (* THE BASE FETCH'S TAIL.  [rsf] is existential because a fetch that fills
      the TLB or updates A/D does not land on the file it started from; the
@@ -400,7 +400,7 @@ Section runfull.
                  | Step_Ext_Fetch_Failure x        => Px x
                  | Step_Waiting _                  => False
                  end).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv HDpc HDnpc Hpriv.
     iIntros "#Hcert Hrw Hro Hdisp Hfet".
     unfold run_hart_active.
@@ -564,7 +564,7 @@ Section runfull.
     swp (run_hart_active 0)
       (fun st => (∃ ii pr, ⌜st = Step_Pending_Interrupt (ii, pr)⌝ ∗ Qi ii pr)
                  ∨ (⌜st = Step_Execute (resf, zero_extend' 32 w)⌝ ∗ R)).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv HDpc HDnpc Hpriv Hpcf Hdec Hlpad Hnr.
     iIntros "#Hcert Hrw Hro Hdisp Hfet Hex".
     iApply (swp_mono with "[] [-]");
@@ -632,7 +632,7 @@ Section runfull.
     swp (run_hart_active 0)
       (fun st => (∃ ii pr, ⌜st = Step_Pending_Interrupt (ii, pr)⌝ ∗ Qi ii pr)
                  ∨ (⌜st = Step_Execute (resf, zero_extend' 32 w)⌝ ∗ R)).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv HDpc HDnpc Hpriv Hpcf Hdec Hlpad.
     iIntros "#Hcert Hrw Hro Hdisp Hfet Hex".
     iApply (swp_mono with "[] [-]");
@@ -704,7 +704,7 @@ Section runfull.
     swp (run_hart_active 0)
       (fun st => (∃ ii pr, ⌜st = Step_Pending_Interrupt (ii, pr)⌝ ∗ Qi ii pr)
                  ∨ (⌜st = Step_Execute (resf, zero_extend' 32 h)⌝ ∗ R)).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv HDmisa HDpc HDnpc Hpriv Hpcf HmisaC Hdec Hlpad.
     iIntros "#Hcert Hrw Hro Hdisp Hfet Hex".
     iApply (swp_mono with "[] [-]");
@@ -778,7 +778,7 @@ Section runfull.
     swp (run_hart_active 0)
       (fun st => (∃ ii pr, ⌜st = Step_Pending_Interrupt (ii, pr)⌝ ∗ Qi ii pr)
                  ∨ (⌜st = Step_Execute (resf, zero_extend' 32 h)⌝ ∗ R)).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv HDmisa HDpc HDnpc Hpriv Hpcf HmisaC Hdec Hlpad Hnr.
     iIntros "#Hcert Hrw Hro Hdisp Hfet Hex".
     iApply (swp_mono with "[] [-]");
@@ -837,7 +837,7 @@ Section runfull.
     swp (run_hart_active 0)
       (fun st => (∃ ii pr, ⌜st = Step_Pending_Interrupt (ii, pr)⌝ ∗ Qi ii pr)
                  ∨ (⌜st = Step_Fetch_Failure (Virtaddr xv, e)⌝ ∗ R)).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv HDpc HDnpc Hpriv.
     iIntros "#Hcert Hrw Hro Hdisp Hfet".
     iApply (swp_mono with "[] [-]");
@@ -906,7 +906,7 @@ Section runfull.
                  | Step_Ext_Fetch_Failure x        => Px x
                  | Step_Waiting _                  => False
                  end).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv HDmip HDmie HDmdl HDpc HDnpc Hpriv Hmip Hmie Hmdl Hmm
       HDb Hag HES HESg.
     iIntros "#Hcert Hrw Hro Hfet".
@@ -995,7 +995,7 @@ Section runfull.
                  | Step_Ext_Fetch_Failure x        => Px x
                  | Step_Waiting _                  => False
                  end).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv HDpc HDnpc Hpriv.
     iIntros "#Hcert Hrw Hro HWd Hdisp Hfet".
     unfold run_hart_active.

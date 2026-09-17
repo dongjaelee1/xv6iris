@@ -95,7 +95,7 @@ Section ProofHolding.
       (γl : gname) (lka : mword 64) (s : string) (R : CtxId → iProp Σ) (Tc Dc : iProp Σ)
       (m : regfile) (n : nat) (p : mword 64) (lks : gset string)
     : wp_holding_lockinv_s_sconf_body kt γl lka s R Tc Dc m n p lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_holding_lockinv_s_sconf_body].
     intros pcE lk ret_tgt Hlka Hn Hfresh Href.
     assert (Hlkeq : lk = lka).
@@ -512,7 +512,7 @@ Section ProofHolding.
       (γl : gname) (lka : mword 64) (s : string) (R : CtxId → iProp Σ) (Dc : iProp Σ)
       (m : regfile) (n : nat) (p : mword 64)
     : wp_holding_lockinv_locked_s_sconf_body kt γl lka s R Dc m n p.
-  Proof.
+  Proof using .
     cbv beta delta [wp_holding_lockinv_locked_s_sconf_body].
     intros pcE lk ret_tgt held_cpu Hlka Hn Href.
     assert (Hlkeq : lk = lka).

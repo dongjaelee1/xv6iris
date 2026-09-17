@@ -153,7 +153,7 @@ Section stack_own.
        [∗ list] i ↦ w ∈ ws, ctx_word_pointsto cur_ctx (pa_stk sp (S i)) (DfracOwn 1) w)%I.
 
   Lemma stack_own_0 (sp : Arch.pa) : stack_own sp 0 ⊣⊢ emp.
-  Proof.
+  Proof using .
     rewrite /stack_own. iSplit.
     - iIntros "H". done.
     - iIntros "_". iExists []. by iSplit.
@@ -163,7 +163,7 @@ Section stack_own.
      (adjacent to [sp]) and the deeper [n2] slots (anchored at [sp-8*n1]). *)
   Lemma stack_own_app (sp : Arch.pa) (n1 n2 : nat) :
     stack_own sp (n1 + n2) ⊣⊢ stack_own sp n1 ∗ stack_own (pa_stk sp n1) n2.
-  Proof.
+  Proof using .
     rewrite /stack_own. iSplit.
     - iIntros "H". iDestruct "H" as (ws) "[%Hlen H]".
       rewrite -(take_drop n1 ws) big_sepL_app.
@@ -193,7 +193,7 @@ Section stack_own.
   Lemma stack_own_split (sp : Arch.pa) (a n : nat) :
     (a ≤ n)%nat ->
     stack_own sp n ⊣⊢ stack_own sp a ∗ stack_own (pa_stk sp a) (n - a).
-  Proof.
+  Proof using .
     intro Hle. replace n with (a + (n - a))%nat at 1 by lia.
     apply stack_own_app.
   Qed.
@@ -201,7 +201,7 @@ Section stack_own.
   (* a single slot is exactly one existential word points-to at [sp-8]. *)
   Lemma stack_own_1 (sp : Arch.pa) :
     stack_own sp 1 ⊣⊢ ∃ w : bv 64, ctx_word_pointsto cur_ctx (pa_stk sp 1) (DfracOwn 1) w.
-  Proof.
+  Proof using .
     rewrite /stack_own. iSplit.
     - iIntros "H". iDestruct "H" as (ws) "[%Hlen H]".
       destruct ws as [| w [| ??]]; simpl in Hlen; try lia.
@@ -212,7 +212,7 @@ Section stack_own.
 
   Lemma stack_own_1_intro (sp : Arch.pa) (w : bv 64) :
     ctx_word_pointsto cur_ctx (pa_stk sp 1) (DfracOwn 1) w ⊢ stack_own sp 1.
-  Proof. rewrite stack_own_1. iIntros "H". by iExists w. Qed.
+  Proof using . rewrite stack_own_1. iIntros "H". by iExists w. Qed.
 
   (* Expose the whole region as [n] cleanly-addressed slots (slot [k] at
      [pa_stk sp k], k = 1..n).  With [cbn [seq]] the [big_sepL] over a concrete
@@ -221,7 +221,7 @@ Section stack_own.
   Lemma stack_own_slots (sp : Arch.pa) (n : nat) :
     stack_own sp n ⊣⊢
     [∗ list] k ∈ seq 1 n, ∃ w : bv 64, ctx_word_pointsto cur_ctx (pa_stk sp k) (DfracOwn 1) w.
-  Proof.
+  Proof using .
     revert sp. induction n as [|n IH]; intro sp.
     - rewrite stack_own_0. by rewrite big_sepL_nil.
     - replace (S n) with (1 + n)%nat by lia.
@@ -242,13 +242,13 @@ Section stack_own.
   Lemma pa_stk_base_S (sp : Arch.pa) (n j : nat) :
     add_vec_int (pa_stk sp (S n)) (8 * Z.of_nat (S j))
     = add_vec_int (pa_stk sp n) (8 * Z.of_nat j).
-  Proof. unfold pa_stk. rewrite !avi_assoc. f_equal. lia. Qed.
+  Proof using . unfold pa_stk. rewrite !avi_assoc. f_equal. lia. Qed.
 
   Lemma stack_own_base (sp : Arch.pa) (n : nat) :
     stack_own sp n ⊣⊢
     [∗ list] j ∈ seq 0 n, ∃ w : bv 64,
       ctx_word_pointsto cur_ctx (add_vec_int (pa_stk sp n) (8 * Z.of_nat j)) (DfracOwn 1) w.
-  Proof.
+  Proof using .
     induction n as [|n IH].
     - rewrite stack_own_0. by rewrite big_sepL_nil.
     - replace (S n) with (n + 1)%nat at 1 by lia.
@@ -271,12 +271,12 @@ Section stack_own.
   Lemma stack_own_split_1 (sp : Arch.pa) (a n : nat) :
     (a ≤ n)%nat ->
     stack_own sp n ⊢ stack_own sp a ∗ stack_own (pa_stk sp a) (n - a).
-  Proof. intro Hle. by rewrite (stack_own_split sp a n Hle). Qed.
+  Proof using . intro Hle. by rewrite (stack_own_split sp a n Hle). Qed.
 
   Lemma stack_own_split_2 (sp : Arch.pa) (a n : nat) :
     (a ≤ n)%nat ->
     stack_own sp a ∗ stack_own (pa_stk sp a) (n - a) ⊢ stack_own sp n.
-  Proof. intro Hle. by rewrite (stack_own_split sp a n Hle). Qed.
+  Proof using . intro Hle. by rewrite (stack_own_split sp a n Hle). Qed.
 
   (* ---- the common two-slot frame (e.g. saving ra + s0), spelled with the
      clean [pa_stk sp 1] / [pa_stk sp 2] addresses. ---- *)
@@ -284,7 +284,7 @@ Section stack_own.
     stack_own sp 2 ⊢ ∃ w1 w2 : bv 64,
       ctx_word_pointsto cur_ctx (pa_stk sp 1) (DfracOwn 1) w1 ∗
       ctx_word_pointsto cur_ctx (pa_stk sp 2) (DfracOwn 1) w2.
-  Proof.
+  Proof using .
     rewrite (stack_own_app sp 1 1) stack_own_1.
     iIntros "[H1 H2]". iDestruct "H1" as (w1) "H1".
     rewrite stack_own_1 (pa_stk_assoc sp 1 1).
@@ -295,7 +295,7 @@ Section stack_own.
     ctx_word_pointsto cur_ctx (pa_stk sp 1) (DfracOwn 1) w1 -∗
     ctx_word_pointsto cur_ctx (pa_stk sp 2) (DfracOwn 1) w2 -∗
     stack_own sp 2.
-  Proof.
+  Proof using .
     iIntros "H1 H2". rewrite (stack_own_app sp 1 1). iSplitL "H1".
     - by iApply stack_own_1_intro.
     - rewrite -(pa_stk_assoc sp 1 1). by iApply stack_own_1_intro.
@@ -310,7 +310,7 @@ Section stack_own.
       ctx_word_pointsto cur_ctx (pa_stk sp 2) (DfracOwn 1) w2 ∗
       ctx_word_pointsto cur_ctx (pa_stk sp 3) (DfracOwn 1) w3 ∗
       ctx_word_pointsto cur_ctx (pa_stk sp 4) (DfracOwn 1) w4.
-  Proof.
+  Proof using .
     assert (E3 : pa_stk (pa_stk sp 2) 1 = pa_stk sp 3) by (rewrite pa_stk_assoc; reflexivity).
     assert (E4 : pa_stk (pa_stk sp 2) 2 = pa_stk sp 4) by (rewrite pa_stk_assoc; reflexivity).
     rewrite (stack_own_split sp 2 4 ltac:(lia)).
@@ -328,7 +328,7 @@ Section stack_own.
     ctx_word_pointsto cur_ctx (pa_stk sp 3) (DfracOwn 1) w3 -∗
     ctx_word_pointsto cur_ctx (pa_stk sp 4) (DfracOwn 1) w4 -∗
     stack_own sp 4.
-  Proof.
+  Proof using .
     assert (E3 : pa_stk (pa_stk sp 2) 1 = pa_stk sp 3) by (rewrite pa_stk_assoc; reflexivity).
     assert (E4 : pa_stk (pa_stk sp 2) 2 = pa_stk sp 4) by (rewrite pa_stk_assoc; reflexivity).
     iIntros "H1 H2 H3 H4".
@@ -357,7 +357,7 @@ Section stack_own.
     v = bv_wrap 64 (u - 8) ->
     (v < 274877906944)%Z ->
     (8 <= u < 274877906944 + 8)%Z.
-  Proof.
+  Proof using .
     intros Hu Hv Hlt. unfold bv_wrap, bv_modulus in Hv.
     change (2 ^ Z.of_N 64)%Z with 18446744073709551616%Z in Hv.
     destruct (Z_lt_le_dec u 8) as [Hsm | Hge].
@@ -373,7 +373,7 @@ Section stack_own.
 
   Lemma stack_own_sp_bounds (sp : Arch.pa) (n : nat) :
     (0 < n)%nat -> stack_own sp n ⊢ ⌜(8 <= uint sp < 274877906944 + 8)%Z⌝.
-  Proof.
+  Proof using .
     intro Hn. rewrite (stack_own_split_1 sp 1 n ltac:(lia)).
     iIntros "[H1 _]". rewrite stack_own_1. iDestruct "H1" as (w) "H1".
     rewrite ctx_word_pointsto_unfold. iDestruct "H1" as "[_ Hbs]".
@@ -549,7 +549,7 @@ Section stack_own_phys.
        [∗ list] i ↦ w ∈ ws, ctx_phys_word_pointsto XI (pa_stk sp (S i)) (DfracOwn 1) w)%I.
 
   Lemma stack_own_phys_0 (sp : Arch.pa) : stack_own_phys sp 0 ⊣⊢ emp.
-  Proof.
+  Proof using .
     rewrite /stack_own_phys. iSplit.
     - iIntros "H". done.
     - iIntros "_". iExists []. by iSplit.
@@ -557,7 +557,7 @@ Section stack_own_phys.
 
   Lemma stack_own_phys_app (sp : Arch.pa) (n1 n2 : nat) :
     stack_own_phys sp (n1 + n2) ⊣⊢ stack_own_phys sp n1 ∗ stack_own_phys (pa_stk sp n1) n2.
-  Proof.
+  Proof using .
     rewrite /stack_own_phys. iSplit.
     - iIntros "H". iDestruct "H" as (ws) "[%Hlen H]".
       rewrite -(take_drop n1 ws) big_sepL_app.
@@ -585,14 +585,14 @@ Section stack_own_phys.
   Lemma stack_own_phys_split (sp : Arch.pa) (a n : nat) :
     (a ≤ n)%nat ->
     stack_own_phys sp n ⊣⊢ stack_own_phys sp a ∗ stack_own_phys (pa_stk sp a) (n - a).
-  Proof.
+  Proof using .
     intro Hle. replace n with (a + (n - a))%nat at 1 by lia.
     apply stack_own_phys_app.
   Qed.
 
   Lemma stack_own_phys_1 (sp : Arch.pa) :
     stack_own_phys sp 1 ⊣⊢ ∃ w : bv 64, ctx_phys_word_pointsto XI (pa_stk sp 1) (DfracOwn 1) w.
-  Proof.
+  Proof using .
     rewrite /stack_own_phys. iSplit.
     - iIntros "H". iDestruct "H" as (ws) "[%Hlen H]".
       destruct ws as [| w [| ??]]; simpl in Hlen; try lia.
@@ -603,23 +603,23 @@ Section stack_own_phys.
 
   Lemma stack_own_phys_1_intro (sp : Arch.pa) (w : bv 64) :
     ctx_phys_word_pointsto XI (pa_stk sp 1) (DfracOwn 1) w ⊢ stack_own_phys sp 1.
-  Proof. rewrite stack_own_phys_1. iIntros "H". by iExists w. Qed.
+  Proof using . rewrite stack_own_phys_1. iIntros "H". by iExists w. Qed.
 
   Lemma stack_own_phys_split_1 (sp : Arch.pa) (a n : nat) :
     (a ≤ n)%nat ->
     stack_own_phys sp n ⊢ stack_own_phys sp a ∗ stack_own_phys (pa_stk sp a) (n - a).
-  Proof. intro Hle. by rewrite (stack_own_phys_split sp a n Hle). Qed.
+  Proof using . intro Hle. by rewrite (stack_own_phys_split sp a n Hle). Qed.
 
   Lemma stack_own_phys_split_2 (sp : Arch.pa) (a n : nat) :
     (a ≤ n)%nat ->
     stack_own_phys sp a ∗ stack_own_phys (pa_stk sp a) (n - a) ⊢ stack_own_phys sp n.
-  Proof. intro Hle. by rewrite (stack_own_phys_split sp a n Hle). Qed.
+  Proof using . intro Hle. by rewrite (stack_own_phys_split sp a n Hle). Qed.
 
   Lemma stack_own_phys_2_elim (sp : Arch.pa) :
     stack_own_phys sp 2 ⊢ ∃ w1 w2 : bv 64,
       ctx_phys_word_pointsto XI (pa_stk sp 1) (DfracOwn 1) w1 ∗
       ctx_phys_word_pointsto XI (pa_stk sp 2) (DfracOwn 1) w2.
-  Proof.
+  Proof using .
     rewrite (stack_own_phys_app sp 1 1) stack_own_phys_1.
     iIntros "[H1 H2]". iDestruct "H1" as (w1) "H1".
     rewrite stack_own_phys_1 (pa_stk_assoc sp 1 1).
@@ -630,7 +630,7 @@ Section stack_own_phys.
     ctx_phys_word_pointsto XI (pa_stk sp 1) (DfracOwn 1) w1 -∗
     ctx_phys_word_pointsto XI (pa_stk sp 2) (DfracOwn 1) w2 -∗
     stack_own_phys sp 2.
-  Proof.
+  Proof using .
     iIntros "H1 H2". rewrite (stack_own_phys_app sp 1 1). iSplitL "H1".
     - by iApply stack_own_phys_1_intro.
     - rewrite -(pa_stk_assoc sp 1 1). by iApply stack_own_phys_1_intro.

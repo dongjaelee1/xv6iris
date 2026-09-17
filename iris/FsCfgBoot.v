@@ -416,14 +416,14 @@ Section FsCfgBootPool.
   Lemma big_sepS_of_elements {A0 : Type} `{Countable A0}
       (Φ : A0 -> iProp Σ) (X : gset A0) :
     ([∗ list] x ∈ elements X, Φ x) ⊢ [∗ set] x ∈ X, Φ x.
-  Proof.
+  Proof using .
     rewrite -(big_sepS_list_to_set Φ (elements X) (NoDup_elements X)).
     rewrite list_to_set_elements_L //.
   Qed.
 
   Lemma big_sepL_to_set (Φ : Z -> iProp Σ) (l : list Z) :
     base.NoDup l -> ([∗ list] x ∈ l, Φ x) ⊢ [∗ set] x ∈ list_to_set l, Φ x.
-  Proof. intros Hnd. rewrite -(big_sepS_list_to_set Φ l Hnd) //. Qed.
+  Proof using . intros Hnd. rewrite -(big_sepS_list_to_set Φ l Hnd) //. Qed.
 
   (* [omap]'s big-op, back at the SOURCE list's indices.  Stated with the
      TARGET predicate abstract and two pointwise premises rather than with a
@@ -435,7 +435,7 @@ Section FsCfgBootPool.
     (forall (a : A) (b : B), f a = Some b -> Φ b ⊢ Ψ a) ->
     (forall a : A, f a = None -> ⊢ Ψ a) ->
     ([∗ list] x ∈ omap f l, Φ x) ⊢ [∗ list] a ∈ l, Ψ a.
-  Proof.
+  Proof using .
     intros HS HN. induction l as [| a l IH]; [iIntros "_"; done |].
     rewrite big_sepL_cons.
     destruct (f a) as [b |] eqn:Hf.
@@ -453,7 +453,7 @@ Section FsCfgBootPool.
   (* a pile's size is all that matters, not where its index list starts *)
   Lemma big_sepL_seq_shift (Ψ : iProp Σ) (n j k : nat) :
     ([∗ list] _ ∈ seq j n, Ψ) ⊢ [∗ list] _ ∈ seq k n, Ψ.
-  Proof.
+  Proof using .
     revert j k. induction n as [| n IH]; intros j k; [iIntros "_"; done |].
     replace (seq j (S n)) with (j :: seq (S j) n) by (reflexivity).
     replace (seq k (S n)) with (k :: seq (S k) n) by (reflexivity).
@@ -514,7 +514,7 @@ Section FsCfgBootEra.
   Lemma ireg_blk_of_set (Phi : Z -> iProp Σ) (ist : Z) (nib : nat) :
     ([∗ set] b ∈ ireg_blk_set ist nib, Phi b)
     ⊢ [∗ list] bi ∈ seq 0 nib, Phi (ist + Z.of_nat bi).
-  Proof.
+  Proof using .
     rewrite /ireg_blk_set
             (big_sepS_list_to_set Phi _ (ireg_blk_list_nodup ist nib)).
     rewrite big_sepL_fmap //.
@@ -523,7 +523,7 @@ Section FsCfgBootEra.
   Lemma region_of_seq (Phi : Z -> iProp Σ) (nib : nat) :
     ([∗ list] k ∈ seq 0 (16 * nib), Phi (Z.of_nat k))
     ⊢ [∗ set] z ∈ region_inums nib, Phi z.
-  Proof.
+  Proof using .
     rewrite /region_inums
             (big_sepS_list_to_set Phi _ (region_list_nodup nib)).
     rewrite big_sepL_fmap //.
@@ -537,7 +537,7 @@ Section FsCfgBootEra.
       (P : Z -> list (bv 8)) (sb : fs_sb) (nib : nat) :
     ([∗ map] i ↦ n ∈ img_nodes P sb nib, Φ i n)
     ⊣⊢ ([∗ set] z ∈ region_inums nib, Φ z (img_node P sb z)).
-  Proof.
+  Proof using .
     rewrite /img_nodes.
     rewrite (big_sepM_list_to_map Φ _ (img_nodes_nodup P sb nib)).
     rewrite big_sepL_fmap /=.

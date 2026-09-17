@@ -737,7 +737,7 @@ Section SWrites.
       (legalize_tvec o v plat_stvec_direct_mode_supported 2
          plat_stvec_vectored_mode_supported
          plat_stvec_vectored_base_alignment_exp) v rs.
-  Proof.
+  Proof using .
     intro Hm.
     apply (hval_of_goodb (fun _ => false) D Drw _ dstateS rs v
              ltac:(intros r Hr; discriminate)
@@ -759,7 +759,7 @@ Section SWrites.
   Local Lemma hval_legalize_xepc (D Drw : gset register) (rs : regstate)
       (v : mword 64) :
     hval D Drw rs (legalize_xepc v) (mepc_val v) rs.
-  Proof.
+  Proof using .
     apply (hval_of_goodb (fun _ => false) D Drw _ dstateS rs (mepc_val v)
              ltac:(intros r Hr; discriminate)
              ltac:(intros r Hr; discriminate)).
@@ -781,7 +781,7 @@ Section SWrites.
            (cw_Drw (R_bitvector_64 stvec)) ∗
          hreg_frame_ro (cw_Df dq) (pw_rs Supervisor (R_bitvector_64 stvec) v)
            cw_Dro).
-  Proof.
+  Proof using .
     intros Hmode.
     assert (Hfresh : cw_fresh (R_bitvector_64 stvec))
       by (split_and!; vm_compute; reflexivity).
@@ -871,7 +871,7 @@ Section SWrites.
            (cw_Drw (R_bitvector_64 sepc)) ∗
          hreg_frame_ro (cw_Df dq)
            (pw_rs Supervisor (R_bitvector_64 sepc) (mepc_val v)) cw_Dro).
-  Proof.
+  Proof using .
     assert (Hfresh : cw_fresh (R_bitvector_64 sepc))
       by (split_and!; vm_compute; reflexivity).
     iIntros "#Hcert Hrw Hro".
@@ -937,7 +937,7 @@ Section SWrites.
   (* ------------------------------------------------------------------ *)
   Local Lemma goodb_have_nominal_privLevel_S (pp : mword 2) :
     goodb D_m (have_nominal_privLevel pp) dstateS = true.
-  Proof.
+  Proof using .
     unfold have_nominal_privLevel. cbn zeta.
     destruct (eq_vec pp ('b"00")); [cbn match; vm_compute; reflexivity|].
     cbn match.
@@ -947,7 +947,7 @@ Section SWrites.
 
   Local Lemma goodb_legalize_mstatus_S (o v : mword 64) :
     goodb D_m (legalize_mstatus o v) dstateS = true.
-  Proof.
+  Proof using .
     unfold legalize_mstatus.
     repeat goodb_step.
     erewrite goodb_bind.
@@ -967,7 +967,7 @@ Section SWrites.
     register_lookup mseccfg rs = mword_of_int 0 ->
     register_lookup misa rs = MISA_C ->
     hval D Drw rs (legalize_sstatus o v) (legalize_sstatus_val o v) rs.
-  Proof.
+  Proof using .
     intros HD1 HD2 HD3 Hp Hs Hm.
     apply (hval_of_goodb D_m D Drw _ dstateS rs (legalize_sstatus_val o v)
              (dm_sub D HD1 HD2 HD3) (agree_dm_S rs Hp Hs Hm)).
@@ -992,7 +992,7 @@ Section SWrites.
          hreg_frame_ro (cw_Df dq)
            (pw_rs Supervisor (R_bitvector_64 mstatus)
               (legalize_sstatus_val ms0 v)) cw_Dro).
-  Proof.
+  Proof using .
     assert (Hfresh : cw_fresh (R_bitvector_64 mstatus))
       by (split_and!; vm_compute; reflexivity).
     iIntros "#Hcert Hrw Hro".
@@ -1104,7 +1104,7 @@ Section SWrites.
     (cur_privilege : register) ∈ D -> (mseccfg : register) ∈ D ->
     (misa : register) ∈ D -> (mstatus : register) ∈ D ->
     forall r : register, D_ms r = true -> r ∈ D.
-  Proof.
+  Proof using .
     intros H1 H2 H3 H4 r Hr. unfold D_ms in Hr.
     apply orb_prop in Hr as [Hr|Hr]; [ exact (dm_sub D H1 H2 H3 r Hr) |].
     apply register_beq_eq in Hr. subst r. exact H4.
@@ -1116,7 +1116,7 @@ Section SWrites.
     eq_vec (_get_Mstatus_TVM (register_lookup mstatus st.(sregs))) ('b"1")
       = false ->
     goodb D_ms (check_CSR csr_satp Supervisor CSRRead) st = true.
-  Proof.
+  Proof using .
     intro HTVM. unfold check_CSR, Defs.and_boolM.
     erewrite goodb_bind; [ | vm_compute; reflexivity | vm_compute; reflexivity ].
     cbn match.
@@ -1133,7 +1133,7 @@ Section SWrites.
     eq_vec (_get_Mstatus_TVM (register_lookup mstatus st.(sregs))) ('b"1")
       = false ->
     goodb D_ms (check_CSR_result csr_satp Supervisor CSRRead) st = true.
-  Proof.
+  Proof using .
     intro HTVM. unfold check_CSR_result.
     erewrite goodb_bind;
       [ | exact (goodb_check_CSR_satp_S st HTVM)
@@ -1156,7 +1156,7 @@ Section SWrites.
     eq_vec (_get_Mstatus_TVM (register_lookup mstatus rs)) ('b"1") = false ->
     hval D Drw rs (check_CSR_result csr_satp Supervisor CSRRead)
       (CSR_Check_OK tt) rs.
-  Proof.
+  Proof using .
     intros HD1 HD2 HD3 HD4 HTVM.
     apply (hval_of_goodb D_ms D Drw _ (MState rs ∅ dev0_state) rs
              (CSR_Check_OK tt) (dms_sub D HD1 HD2 HD3 HD4)
@@ -1178,7 +1178,7 @@ Section SWrites.
     eq_vec (_get_Mstatus_TVM (register_lookup mstatus st.(sregs))) ('b"1")
       = false ->
     exec (check_CSR csr_satp Supervisor CSRWrite) st = Some (true, st).
-  Proof.
+  Proof using .
     intro HTVM. unfold check_CSR.
     assert (Hpriv : exec (check_CSR_priv csr_satp Supervisor) st
                     = Some (true, st)) by (vm_compute; reflexivity).
@@ -1197,7 +1197,7 @@ Section SWrites.
     eq_vec (_get_Mstatus_TVM (register_lookup mstatus st.(sregs))) ('b"1")
       = false ->
     goodb D_ms (check_CSR csr_satp Supervisor CSRWrite) st = true.
-  Proof.
+  Proof using .
     intro HTVM. unfold check_CSR, Defs.and_boolM.
     erewrite goodb_bind; [ | vm_compute; reflexivity | vm_compute; reflexivity ].
     cbn match.
@@ -1214,7 +1214,7 @@ Section SWrites.
     eq_vec (_get_Mstatus_TVM (register_lookup mstatus st.(sregs))) ('b"1")
       = false ->
     goodb D_ms (check_CSR_result csr_satp Supervisor CSRWrite) st = true.
-  Proof.
+  Proof using .
     intro HTVM. unfold check_CSR_result.
     erewrite goodb_bind;
       [ | exact (goodb_check_CSR_satp_S_w st HTVM)
@@ -1227,7 +1227,7 @@ Section SWrites.
       = false ->
     exec (check_CSR_result csr_satp Supervisor CSRWrite) st
       = Some (CSR_Check_OK tt, st).
-  Proof.
+  Proof using .
     intro HTVM. unfold check_CSR_result.
     rewrite (exec_bind_Some _ _ _ _ _ (exec_check_CSR_satp_S_w st HTVM)).
     cbn match. apply exec_returnm.
@@ -1245,7 +1245,7 @@ Section SWrites.
     eq_vec (_get_Mstatus_TVM (register_lookup mstatus rs)) ('b"1") = false ->
     hval D Drw rs (check_CSR_result csr_satp Supervisor CSRWrite)
       (CSR_Check_OK tt) rs.
-  Proof.
+  Proof using .
     intros HD1 HD2 HD3 HD4 HTVM.
     apply (hval_of_goodb D_ms D Drw _ (MState rs ∅ dev0_state) rs
              (CSR_Check_OK tt) (dms_sub D HD1 HD2 HD3 HD4)
@@ -1260,7 +1260,7 @@ Section SWrites.
      reference state.  Both compute. *)
   Local Lemma goodb_legalize_satp_rv64_S (prev value : mword 64) :
     goodb D_m (legalize_satp RV64 prev value) dstateS = true.
-  Proof.
+  Proof using .
     unfold legalize_satp. cbn zeta. rewrite satp_ppn_mask_id.
     destruct (satpMode_of_bits RV64 (_get_Satp64_Mode (Mk_Satp64 value)))
       as [sv|]; [destruct sv|]; vm_compute; reflexivity.
@@ -1277,7 +1277,7 @@ Section SWrites.
     register_lookup mseccfg rs = Values.mword_of_int 0 ->
     register_lookup misa rs = MISA_C ->
     hval D Drw rs (legalize_satp RV64 o v) (satp_legalized o v) rs.
-  Proof.
+  Proof using .
     intros HD1 HD2 HD3 Hp Hs Hm.
     exact (hval_legalize_satp_p D_m dstateS D Drw rs o v
              (dm_sub D HD1 HD2 HD3) (agree_dm_S rs Hp Hs Hm)
@@ -1297,7 +1297,7 @@ Section SWrites.
     cw2_ok r r2 ->
     reg_agree_on (cw_Drw r ∪ cw2_Dro r2)
       (register_set r vnew (pw2_rs pr r v0 r2 v2)) (pw2_rs pr r vnew r2 v2).
-  Proof.
+  Proof using .
     intros Hok. pose proof Hok as (Hfr & Hfr2 & Hne).
     pose proof Hfr as (H1 & H2 & H3).
     destruct (cw_fresh_ne r2 Hfr2) as (N1 & N2 & N3).
@@ -1354,7 +1354,7 @@ Section SWrites.
     swp (Defs.write_reg r v)
       (fun _ => Q ∗ hreg_frame (register_set r v rs) Drw ∗
                 hreg_frame_ro Df (register_set r v rs) Dro).
-  Proof.
+  Proof using .
     intros Hdisj Hin.
     iIntros "#Hcert Hhook HP Hrw Hro".
     iApply (HartRegNode.swp_hart_regwrite_gs r v (Defs.write_reg r v) _ P Q
@@ -1400,7 +1400,7 @@ Section SWrites.
           hreg_frame_ro (cw2_Df dq dq2 mstatus)
             (pw2_rs Supervisor satp (satp_legalized satp0 v) mstatus ms0)
             (cw2_Dro mstatus))).
-  Proof.
+  Proof using .
     intros Hok HSXL. iIntros "#Hcert Hhook HP Hrw Hro".
     rewrite write_CSR_satp_red.
     (* 1. the architecture read, walked *)
@@ -1513,7 +1513,7 @@ Section SWrites.
           hreg_frame_ro (cw2_Df dq dq2 mstatus)
             (pw2_rs Supervisor satp (satp_legalized satp0 v) mstatus ms0)
             (cw2_Dro mstatus))).
-  Proof.
+  Proof using .
     intros Hok HSXL. iIntros "#Hcert Hrw Hro".
     rewrite write_CSR_satp_red.
     (* 1. the architecture read, walked *)
@@ -1641,7 +1641,7 @@ Section WpSconfCsr.
               set_reg (set_reg s mstatus (legalize_sstatus_val m (sstatus_write_val m imm5)))
                       (R_bitvector_64 (gpr_of_Z (uint rd)))
                       (regval_into_reg (sstatus_read m))).
-  Proof.
+  Proof using .
     intros Hpriv Hm HS HU Himm Hrd.
     change (execute (CSRImm (csr_sstatus, imm5, Regidx rd, CSRRC)))
       with (execute_CSRImm csr_sstatus imm5 (Regidx rd) CSRRC).
@@ -1756,7 +1756,7 @@ Section WpSconfCsr.
      '1'-armed capability would both own sepc). *)
   Local Lemma reg_pointsto_excl (r : register) (v w : type_of_register r) :
     r ↦ᵣ v -∗ r ↦ᵣ w -∗ False.
-  Proof.
+  Proof using .
     iIntros "H1 H2".
     iDestruct (ghost_map_elem_valid_2 with "H1 H2") as %[Hv _].
     exfalso. apply dfrac_valid_own_r in Hv.
@@ -1772,7 +1772,7 @@ Section WpSconfCsr.
     exec (execute (CSRImm (csr_sstatus, imm5, Regidx (mword_of_int 0), CSRRS))) s
       = Some (RETIRE_SUCCESS,
               set_reg s mstatus (legalize_sstatus_val m (sstatus_write_set_val m imm5))).
-  Proof.
+  Proof using .
     intros Hpriv Hm HS HU Himm.
     change (execute (CSRImm (csr_sstatus, imm5, Regidx (mword_of_int 0), CSRRS)))
       with (execute_CSRImm csr_sstatus imm5 (Regidx (mword_of_int 0)) CSRRS).
@@ -1851,7 +1851,7 @@ Section WpSconfCsr.
     exec (execute (CSRImm (csr_sstatus, imm5, Regidx (mword_of_int 0), CSRRC))) s
       = Some (RETIRE_SUCCESS,
               set_reg s mstatus (legalize_sstatus_val m (sstatus_write_val m imm5))).
-  Proof.
+  Proof using .
     intros Hpriv Hm HS HU Himm.
     change (execute (CSRImm (csr_sstatus, imm5, Regidx (mword_of_int 0), CSRRC)))
       with (execute_CSRImm csr_sstatus imm5 (Regidx (mword_of_int 0)) CSRRC).
@@ -2079,7 +2079,7 @@ Section WpSconfCsr.
       pc_is (add_vec_int pc 4) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hrs1 Hwval Hmode) "Hcg Hstv Hpc Hinstr Hcont".
     assert (Hfresh : cw_fresh (R_bitvector_64 stvec))
       by (split_and!; vm_compute; reflexivity).
@@ -2220,7 +2220,7 @@ Section WpSconfCsr.
       pc_is (add_vec_int pc 4) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hrs1 Hwval) "Hcg Hbit Hhook HP Hslot Hpc Hinstr Hcont".
     assert (Hok : cw2_ok satp mstatus).
     { rewrite /cw2_ok /cw_fresh. split_and!;
@@ -2356,7 +2356,7 @@ Section WpSconfCsr.
       pc_is (add_vec_int pc 4) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hrs1 Hwval) "Hcg Hbit Hslot Hpc Hinstr Hcont".
     assert (Hok : cw2_ok satp mstatus).
     { rewrite /cw2_ok /cw_fresh. split_and!;
@@ -2531,7 +2531,7 @@ Section WpSconfCsr.
       pc_is (add_vec_int pc 4) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hrs1 Hwval) "Hcg Hsepc Hpc Hinstr Hcont".
     assert (Hfresh : cw_fresh (R_bitvector_64 sepc))
       by (split_and!; vm_compute; reflexivity).
@@ -2698,7 +2698,7 @@ Section WpSconfCsr.
       pc_is (add_vec_int pc 4) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hrd Hrdok Hne Hfresh Hext Hgb Hex H344 H144 Hcb)
             "Hrdcsr Hcg Hcell Hpc Hinstr Hcont".
     pose proof (rd_ok_sp rd Hrdok) as Hrdsp.
@@ -2812,7 +2812,7 @@ Section WpSconfCsr.
       pc_is (add_vec_int pc 4) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hrd Hrdok) "Hcg Hcell Hpc Hinstr Hcont".
     assert (Hfresh : cw_fresh (R_bitvector_64 scause))
       by (split_and!; vm_compute; reflexivity).
@@ -2853,7 +2853,7 @@ Section WpSconfCsr.
       pc_is (add_vec_int pc 4) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hrd Hrdok) "Hcg Hcell Hpc Hinstr Hcont".
     assert (Hfresh : cw_fresh (R_bitvector_64 stval))
       by (split_and!; vm_compute; reflexivity).
@@ -2892,7 +2892,7 @@ Section WpSconfCsr.
       pc_is (add_vec_int pc 4) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hrd Hrdok) "Hcg Hcell Hpc Hinstr Hcont".
     assert (Hfresh : cw_fresh (R_bitvector_64 sepc))
       by (split_and!; vm_compute; reflexivity).
@@ -2964,7 +2964,7 @@ Section WpSconfCsr.
       pc_is (add_vec_int pc 4) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "Hcg Hpc Hinstr Hcont".
     assert (Hfresh : cw_fresh (R_bitvector_64 mstatus))
       by (split_and!; vm_compute; reflexivity).
@@ -3099,7 +3099,7 @@ Section WpSconfCsr.
       pc_is (add_vec_int pc 4) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "Hcg Hpc Hinstr Hcont".
     assert (Hfresh : cw_fresh (R_bitvector_64 mstatus))
       by (split_and!; vm_compute; reflexivity).
@@ -3269,7 +3269,7 @@ Section WpSconfCsr.
       pc_is (add_vec_int pc 4) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hrs1 Hwval HWsie HWmxr0 HWfs0 HWvs0 HWxs0)
             "Hcg Hsppc Hpc Hinstr Hcont".
     assert (Hfresh : cw_fresh (R_bitvector_64 mstatus))
@@ -3421,7 +3421,7 @@ Section WpSconfCsr.
       pc_is (add_vec_int pc 4) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hrs1 Hwval Hms0f Hsie0) "Hcg Hsppc Hpc Hinstr Hcont".
     pose proof Hms0f as (_ & _ & HMXR0 & _ & HXS0 & HFS0 & HVS0 & _ & _ & _).
     apply eq_vec_true_iff in HMXR0.
@@ -3477,7 +3477,7 @@ Section WpSconfCsr.
       pc_is (add_vec_int pc 4) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hrd Hrdok) "Hcg #Hkptr Hpc Hinstr Hcont".
     pose proof (rd_ok_sp rd Hrdok) as Hrdsp.
     pose proof (rd_ok_tp rd Hrdok) as Hrdtp.
@@ -3616,7 +3616,7 @@ Section WpSconfCsr.
       pc_is (add_vec_int pc 4) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "Hcg Htok Hcsrs Hcells Hclm Hpc Hinstr Hcont".
     assert (Hfresh : cw_fresh (R_bitvector_64 mstatus))
       by (split_and!; vm_compute; reflexivity).
@@ -3796,7 +3796,7 @@ Section WpSconfCsr.
       pc_is (add_vec_int pc 4) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     destruct eb.
     2:{ (* ---- base state DISABLED: the real flip, via the restore leaf ---- *)
         iIntros "Hcg Hcnt Hcsrs Hcells Hclm Hpc Hinstr Hcont".
@@ -3872,7 +3872,7 @@ Section WpSconfCsr.
         sr_ktier_wit strans_regime kt ) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hrd Hrdok) "Hcg Hpc Hinstr Hcont".
     pose proof (rd_ok_sp rd Hrdok) as Hrdsp.
     pose proof (rd_ok_tp rd Hrdok) as Hrdtp.
@@ -4036,7 +4036,7 @@ Section WpSconfCsr.
       pc_is (add_vec_int pc 4) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "Hcg Hcnt Hpc Hinstr Hcont".
     assert (Hfresh : cw_fresh (R_bitvector_64 mstatus))
       by (split_and!; vm_compute; reflexivity).
@@ -4241,7 +4241,7 @@ Section WpSconfCsr.
       pc_is (add_vec_int pc 4) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hrd Hrdok) "Hcg Hcnt Hpc Hinstr Hcont".
     pose proof (rd_ok_sp rd Hrdok) as Hrdsp.
     pose proof (rd_ok_tp rd Hrdok) as Hrdtp.

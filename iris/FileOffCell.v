@@ -112,7 +112,7 @@ Section FileOffCell.
   Lemma off_resident_of γo (k : nat) (v : mword 32) :
     off_wf v ->
     a_foff k ↦₄ v -∗ off_gv γo (1/2) (bv_unsigned v) -∗ off_resident γo k.
-  Proof. iIntros (Hwf) "Hc Hg". iExists v. iFrame "Hc Hg". iPureIntro. exact Hwf. Qed.
+  Proof using . iIntros (Hwf) "Hc Hg". iExists v. iFrame "Hc Hg". iPureIntro. exact Hwf. Qed.
 
   (* THE CHECKIN WITH THE PROCESS'S PERMIT -- the landed paths: a wf word,
      the kernel's half at WHATEVER value it left with, and the permit
@@ -120,7 +120,7 @@ Section FileOffCell.
   Lemma off_resident_intro γo (k : nat) (v : mword 32) (z : Z) :
     off_wf v ->
     a_foff k ↦₄ v -∗ off_gv γo (1/2) z -∗ off_permit γo ={⊤}=∗ off_resident γo k.
-  Proof.
+  Proof using .
     iIntros (Hwf) "Hc Hg #Hperm".
     iMod ("Hperm" $! z (bv_unsigned v) with "Hg") as "Hg".
     iModIntro. iExists v. iFrame "Hc Hg". iPureIntro. exact Hwf.

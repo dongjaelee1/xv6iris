@@ -133,7 +133,7 @@ Section echo_links_ban.
      shell's loop expects its credential. *)
   Lemma ewc_ban_line (v : era_pins) (I : list (bv 8)) :
     EchoLinks.ewc_ban T v I 0%nat -∗ EchoLinksLine.ewc_line T v I.
-  Proof.
+  Proof using Persistent0.
     iIntros "Hc". iApply EchoLinksLine.ewc_line_of_pro.
     rewrite /EchoLinksLine.ewc_pro. iApply (EchoLinks.ewc_ban_pro with "Hc").
   Qed.

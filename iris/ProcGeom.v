@@ -974,7 +974,7 @@ Section CurProc.
     a_cpu_proc cid_word ↦₈ p.
 
   Global Instance cur_proc_timeless p : Timeless (cur_proc p).
-  Proof. rewrite /cur_proc /word_pointsto /mem_pointsto. apply _. Qed.
+  Proof using . rewrite /cur_proc /word_pointsto /mem_pointsto. apply _. Qed.
 End CurProc.
 
 (* the field's transport (tso-port M3): one word cell, and the only
@@ -1036,21 +1036,21 @@ Section ParkGhost.
   Definition hart_full (j : nat) (h : CPU) : iProp Σ := hart_own j 1 h.
 
   Global Instance hart_own_timeless j q h : Timeless (hart_own j q h).
-  Proof. rewrite /hart_own. apply _. Qed.
+  Proof using . rewrite /hart_own. apply _. Qed.
 
   (* THE COLLAPSE.  This is the whole point of the tag: it turns the lock's
      existential hart into the ambient one, and it is a [ghost_var]
      agreement, hence timeless. *)
   Lemma hart_own_agree (j : nat) (q1 q2 : Qp) (h1 h2 : CPU) :
     hart_own j q1 h1 -∗ hart_own j q2 h2 -∗ ⌜h1 = h2⌝.
-  Proof.
+  Proof using .
     iIntros "Hg1 Hg2".
     by iDestruct (ghost_var_agree with "Hg1 Hg2") as %->.
   Qed.
 
   Local Lemma ghost_var_halve {A : Type} `{!ghost_varG Σ A} (γ : gname) (r : A) :
     ghost_var γ 1 r ⊣⊢ ghost_var γ (1/2) r ∗ ghost_var γ (1/2) r.
-  Proof.
+  Proof using .
     iSplit.
     - iIntros "H". iApply (ghost_var_split γ r (1/2) (1/2)).
       rewrite Qp.half_half. iExact "H".
@@ -1060,14 +1060,14 @@ Section ParkGhost.
 
   Lemma hart_split (j : nat) (h : CPU) :
     hart_full j h ⊣⊢ hart_hlf j h ∗ hart_hlf j h.
-  Proof. rewrite /hart_full /hart_hlf /hart_own ghost_var_halve //. Qed.
+  Proof using . rewrite /hart_full /hart_hlf /hart_own ghost_var_halve //. Qed.
 
   (* RETAGGING, at dispatch: the scheduler holds the whole tag (it came out of
      the lock's not-running guard, where the value is meaningless) and stamps
      its own hart on it before splitting. *)
   Lemma hart_update (j : nat) (h h' : CPU) :
     hart_full j h ==∗ hart_full j h'.
-  Proof.
+  Proof using .
     rewrite /hart_full /hart_own. iIntros "Hg".
     by iMod (ghost_var_update h' with "Hg") as "$".
   Qed.
@@ -1087,11 +1087,11 @@ Section ParkGhost.
 
   Lemma hart_at_intro (j : nat) (q : Qp) (h : CPU) :
     (j < NPROC)%nat -> hart_own j q h -∗ hart_at (proc_addr j) q h.
-  Proof. iIntros (Hj) "Hg". iExists j. iFrame "Hg". done. Qed.
+  Proof using . iIntros (Hj) "Hg". iExists j. iFrame "Hg". done. Qed.
 
   Lemma hart_at_elim (j : nat) (q : Qp) (h : CPU) :
     (j < NPROC)%nat -> hart_at (proc_addr j) q h -∗ hart_own j q h.
-  Proof.
+  Proof using .
     iIntros (Hj) "(%j' & [%Hpa %Hj'] & Hg)".
     rewrite (_ : j' = j); [iExact "Hg"|].
     exact (proc_addr_inj j' j Hj' Hj (eq_sym Hpa)).
@@ -1099,11 +1099,11 @@ Section ParkGhost.
 
   Lemma hart_at_any_intro (j : nat) (h : CPU) :
     (j < NPROC)%nat -> hart_full j h -∗ hart_at_any (proc_addr j).
-  Proof. iIntros (Hj) "Hg". iExists h. by iApply (hart_at_intro j 1 h). Qed.
+  Proof using . iIntros (Hj) "Hg". iExists h. by iApply (hart_at_intro j 1 h). Qed.
 
   Lemma hart_at_any_elim (j : nat) :
     (j < NPROC)%nat -> hart_at_any (proc_addr j) -∗ ∃ h : CPU, hart_full j h.
-  Proof.
+  Proof using .
     iIntros (Hj) "(%h & Hg)". iExists h.
     by iApply (hart_at_elim j 1 h).
   Qed.
@@ -1129,24 +1129,24 @@ Section ParkGhost.
   Definition pstate_full (j : nat) (st : mword 32) : iProp Σ := pstate_own j 1 st.
 
   Global Instance pstate_own_timeless j q st : Timeless (pstate_own j q st).
-  Proof. rewrite /pstate_own. apply _. Qed.
+  Proof using . rewrite /pstate_own. apply _. Qed.
 
   Lemma pstate_own_agree (j : nat) (q1 q2 : Qp) (st1 st2 : mword 32) :
     pstate_own j q1 st1 -∗ pstate_own j q2 st2 -∗ ⌜st1 = st2⌝.
-  Proof.
+  Proof using .
     iIntros "Hg1 Hg2".
     by iDestruct (ghost_var_agree with "Hg1 Hg2") as %->.
   Qed.
 
   Lemma pstate_split (j : nat) (st : mword 32) :
     pstate_full j st ⊣⊢ pstate_hlf j st ∗ pstate_hlf j st.
-  Proof. rewrite /pstate_full /pstate_hlf /pstate_own ghost_var_halve //. Qed.
+  Proof using . rewrite /pstate_full /pstate_hlf /pstate_own ghost_var_halve //. Qed.
 
   (* THE WRITE.  Both halves, which is the whole point: no lock holder can
      move [p->state] without the claimant's half. *)
   Lemma pstate_update (j : nat) (st st' : mword 32) :
     pstate_hlf j st -∗ pstate_hlf j st ==∗ pstate_hlf j st' ∗ pstate_hlf j st'.
-  Proof.
+  Proof using .
     rewrite /pstate_hlf /pstate_own. iIntros "Hg1 Hg2".
     iMod (ghost_var_update_halves st' with "Hg1 Hg2") as "[$ $]". done.
   Qed.
@@ -1161,11 +1161,11 @@ Section ParkGhost.
 
   Lemma pstate_at_intro (j : nat) (q : Qp) (st : mword 32) :
     (j < NPROC)%nat -> pstate_own j q st -∗ pstate_at (proc_addr j) q st.
-  Proof. iIntros (Hj) "Hg". iExists j. iFrame "Hg". done. Qed.
+  Proof using . iIntros (Hj) "Hg". iExists j. iFrame "Hg". done. Qed.
 
   Lemma pstate_at_elim (j : nat) (q : Qp) (st : mword 32) :
     (j < NPROC)%nat -> pstate_at (proc_addr j) q st -∗ pstate_own j q st.
-  Proof.
+  Proof using .
     iIntros (Hj) "(%j' & [%Hpa %Hj'] & Hg)".
     rewrite (_ : j' = j); [iExact "Hg"|].
     exact (proc_addr_inj j' j Hj' Hj (eq_sym Hpa)).
@@ -1185,13 +1185,13 @@ Section ParkGhost.
   Local Lemma pstate_lock_whole (pa : mword 64) (st : mword 32) :
     unclaimed st = true ->
     pstate_lock pa st ⊣⊢ pstate_at_hlf pa st ∗ pstate_at_hlf pa st.
-  Proof. intros Hu. rewrite /pstate_lock Hu //. Qed.
+  Proof using . intros Hu. rewrite /pstate_lock Hu //. Qed.
 
   (* the address-keyed update, once: both halves in, both halves out. *)
   Local Lemma pstate_at_update (pa : mword 64) (st st' : mword 32) :
     pstate_at_hlf pa st -∗ pstate_at_hlf pa st ==∗
     pstate_at_hlf pa st' ∗ pstate_at_hlf pa st'.
-  Proof.
+  Proof using .
     iIntros "(%j & [%Hpa %Hj] & Hg1) (%j' & [%Hpa' %Hj'] & Hg2)".
     assert (Hjj : j' = j)
       by exact (proc_addr_inj j' j Hj' Hj (eq_trans (eq_sym Hpa') Hpa)).
@@ -1226,7 +1226,7 @@ Section ParkGhost.
   Lemma pstate_whole_split (pa : mword 64) (st : mword 32) :
     pstate_whole pa st ⊣⊢
     pstate_lock pa st ∗ (if unclaimed st then emp else pstate_at_hlf pa st).
-  Proof.
+  Proof using .
     rewrite /pstate_whole /pstate_lock /pstate_at_hlf /pstate_at.
     destruct (unclaimed st).
     - iSplit.
@@ -1254,7 +1254,7 @@ Section ParkGhost.
      up where the lock is released. *)
   Lemma pstate_whole_update (pa : mword 64) (st st' : mword 32) :
     pstate_whole pa st ==∗ pstate_whole pa st'.
-  Proof.
+  Proof using .
     iIntros "(%j & [%Hpa %Hj] & Hg)".
     rewrite /pstate_own. iMod (ghost_var_update st' with "Hg") as "Hg".
     iModIntro. iExists j. by iFrame.
@@ -1266,7 +1266,7 @@ Section ParkGhost.
   Lemma pstate_lock_write (pa : mword 64) (st st' : mword 32) :
     unclaimed st = true -> unclaimed st' = true ->
     pstate_lock pa st ==∗ pstate_lock pa st'.
-  Proof.
+  Proof using .
     intros Hu Hu'. rewrite (pstate_lock_whole pa st Hu) /pstate_lock Hu'.
     iIntros "[H1 H2]". by iApply (pstate_at_update with "H1 H2").
   Qed.
@@ -1277,7 +1277,7 @@ Section ParkGhost.
   Lemma pstate_lock_claim (pa : mword 64) (st st' : mword 32) :
     unclaimed st = true -> unclaimed st' = false ->
     pstate_lock pa st ==∗ pstate_lock pa st' ∗ pstate_at_hlf pa st'.
-  Proof.
+  Proof using .
     intros Hu Hu'. rewrite (pstate_lock_whole pa st Hu) /pstate_lock Hu'.
     iIntros "[H1 H2]".
     iMod (pstate_at_update with "H1 H2") as "[$ $]". by iFrame.
@@ -1290,7 +1290,7 @@ Section ParkGhost.
   Lemma pstate_lock_release (pa : mword 64) (st st' : mword 32) :
     unclaimed st = false -> unclaimed st' = true ->
     pstate_lock pa st -∗ pstate_at_hlf pa st ==∗ pstate_lock pa st'.
-  Proof.
+  Proof using .
     intros Hu Hu'. rewrite /pstate_lock Hu Hu'.
     iIntros "[H1 _] H2". by iApply (pstate_at_update with "H1 H2").
   Qed.
@@ -1302,7 +1302,7 @@ Section ParkGhost.
     unclaimed st = false -> unclaimed st' = false ->
     pstate_lock pa st -∗ pstate_at_hlf pa st ==∗
     pstate_lock pa st' ∗ pstate_at_hlf pa st'.
-  Proof.
+  Proof using .
     intros Hu Hu'. rewrite /pstate_lock Hu Hu'.
     iIntros "[H1 _] H2".
     iMod (pstate_at_update with "H1 H2") as "[$ $]". by iFrame.
@@ -1316,7 +1316,7 @@ Section ParkGhost.
   Lemma pstate_lock_claimed (pa : mword 64) (st st' : mword 32) :
     pstate_lock pa st -∗ pstate_at_hlf pa st' -∗
     ⌜ st = st' /\ unclaimed st = false ⌝.
-  Proof.
+  Proof using .
     iIntros "Hl Hh".
     destruct (unclaimed st) eqn:Hu.
     - rewrite (pstate_lock_whole pa st Hu).

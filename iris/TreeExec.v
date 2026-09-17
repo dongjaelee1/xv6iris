@@ -97,7 +97,7 @@ Section TreeExec.
     tree_pin r g root t -∗
     app_inv fsc_fs -∗
     exec_walk_of_abs cw (tree_taint c) pl (AFile f).
-  Proof.
+  Proof using .
     intros Heq Hp Hstart Hd Hres. iIntros "#Hpin #Hinv".
     iDestruct (tree_pin_claim_law c r g root t Heq with "Hpin") as "#Hcl".
     iApply (exec_walk_of_abs_pin (fun v => subtree v root = Some t)
@@ -119,7 +119,7 @@ Section TreeExec.
     tree_pin r g FsImg.ROOTINO t -∗
     app_inv fsc_fs -∗
     exec_walk_of_abs cw (tree_taint c) pl (AFile f).
-  Proof.
+  Proof using .
     intros Heq Hp Hsl Hd Hres.
     exact (exec_walk_of_own c r g FsImg.ROOTINO FsImg.ROOTINO i t f cw pl Heq
              Hp (um_start_of_slash cw pl Hsl) Hd Hres).
@@ -180,7 +180,7 @@ Section TreeExec.
          (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Heq Hn Ha0 Ha1 Hal4 Hload Hp Hstart Hd Hres.
     iIntros "#Hi Hrun Hcwd #Hpin #Hinv #Hrd #Hcon #Hgen #Hrf HPay Hcont".
     iApply (wp_uk_ecall_exec_run_abs N h m pc avail cw (tree_taint c) pv av

@@ -281,7 +281,7 @@ Section IreclaimDefs.
     (k < NINODE)%nat ->
     (ic_escrows fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst -∗ ic_escrow fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k
      : iProp Σ).
-  Proof.
+  Proof using .
     iIntros (Hk) "H".
     iApply (ic_escrows_lookup fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k Hk with "H").
   Qed.
@@ -319,7 +319,7 @@ Section IreclaimEpilogue.
     irc_cont (CID0 := CID0)
              pidv dq dqb dqs dqn j m K eb b lks Upr -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hsp Hthr.
     pose proof HK as HK'. 
     iIntros "Hcg Hcnt Hextc Hclmc #Htext Hpc Hframe Hppid Hsbn Hsbi Hsbb Hsl Hiref Hboot Hcont".
@@ -708,7 +708,7 @@ Section IreclaimStep.
     irc_cont (CID0 := CID0)
              pidv dq dqb dqs dqn j m K eb b lks Upr -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hn31 Hfuel Hinum Hsp Hthr Hs1 Hs4 Hs5 Hs6.
     (* THE BOUND AS A NAMED HYPOTHESIS, not an inline [ltac:] argument, and
        rank 1d is why.  [fsc_ninodes] is a CLASS FIELD now, so writing it in
@@ -1015,7 +1015,7 @@ Section IreclaimOrphan.
     irc_cont (CID0 := CID0)
              pidv dq dqb dqs dqn j m K eb b lks Upr -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hgeom Hst Hblk Hsize Hbm0 Hbmcov Hbmlog Hcovb Hnnib Hn31
            Hj Hgl Hfuel Hinum Hkk Hbseq Hdswf Htnz Hbnoeq
            Hsp Hthr Hs1 Hs2 Hs3 Hs4 Hs5 Hs6 Hbelow.
@@ -2136,7 +2136,7 @@ Section IreclaimRelease.
     irc_cont (CID0 := CID0)
              pidv dq dqb dqs dqn j m K eb b lks Upr -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hn31 Hfuel Hinum Hkk Hsp Hthr Hs1 Hs2 Hs4 Hs5 Hs6 Hbelow.
     pose proof HK as HK'. 
     iIntros "Hcg Hcnt Hextc Hclmc #Htext Hpc #Hbio #Hprocs Hframe Hppid Hsbn Hsbi
@@ -2324,7 +2324,7 @@ Section IreclaimScan.
     ∀ fuel : nat,
       irc_loop
                pidv dq dqb dqs dqn j m K eb b lks Upr fuel.
-  Proof.
+  Proof using .
     intros HK Hgeom Hst Hblk Hsize Hbm0 Hbmcov Hbmlog Hcovb Hn1 Hnnib Hn31
  Hj Hgl Hbelow.
     pose proof HK as HK'. 
@@ -3089,7 +3089,7 @@ Section IreclaimMain.
       wp_ireclaim_sconf_body γs j γl pd pav pu
 
  pidv dq dqb dqs dqn m K eb b lks Upr.
-  Proof.
+  Proof using .
     cbv beta delta [wp_ireclaim_sconf_body].
     intros pcE pj ret_tgt HK Hgeom Hst Hblk Hsize Hbm0 Hbmcov Hbmlog Hcovb
            Hn1 Hnnib Hn31 Hj Hgl Ha0 Hbelow.

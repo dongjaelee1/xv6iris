@@ -496,7 +496,7 @@ Section UwProps.
 
   Lemma uw_frame_stack_own `{XI : CurCtx} sp0 m0 :
     uw_saved sp0 m0 -∗ stack_own (KTR := KT1) sp0 8.
-  Proof.
+  Proof using .
     iIntros "(H1 & H2 & H3 & H4 & H5 & H6 & H7 & H8)".
     rewrite (stack_own_slots (KTR := KT1)). cbn [seq].
     iSplitL "H1"; [by iExists _|]. iSplitL "H2"; [by iExists _|].
@@ -657,7 +657,7 @@ Section UwBodies.
     Rbuf -∗
     uw_ret (CID0 := CID0) γu j m0 av eb Φ Rbuf pidv dqp lks -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pj Hregs Hsp0 Hav Heb Hanch. subst eb.
     destruct Hregs as (Hsp & H23 & H24 & H25 & H26 & H27).
     iIntros "#Ht Hcg Hcnt Hpc Hpid Hch Hsv Hbuf Hcont".
@@ -919,7 +919,7 @@ Section UwBodies.
     ( uw_next_cont (CID0 := CID0) prt γu j m0 av eb sp0 buf n f dq pidv dqp Φ i lks
       ∧ uw_exit_cont (CID0 := CID0) prt γu j m0 av eb sp0 buf n f dq pidv dqp Φ lks ) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pj Hin Hn31 Hj Hjlp Hav Heb Hanch Hregs Hfresh. subst eb.
     assert (H231 : (2 ^ 31 = 2147483648)%Z) by (vm_compute; reflexivity).
     assert (H263 : (2 ^ 63 = 9223372036854775808)%Z) by (vm_compute; reflexivity).
@@ -1465,7 +1465,7 @@ Section UwBodies.
     ⊢ kernel_text -∗ uart_inv prt γu -∗ uart_base_word prt -∗
       is_txlock_at prt γl γu -∗ procs_inv γs -∗
       uw_head (CID0 := CID0) prt γu j m0 av eb sp0 buf n f dq pidv dqp Φ i lks.
-  Proof.
+  Proof using .
     intros Hn31 Hj Hjlp Hav Heb Hfresh.
     induction k as [|k IH].
     - intros i Hik. iIntros "#Ht #Huinv #Hbw #Htxl #Hpinv".
@@ -1514,7 +1514,7 @@ Section ProofUartwrite.
       (n : nat) (f : nat -> bv 8) (dq : dfrac) (b : bool)
       (pidv : mword 32) (dqp : dfrac) (Φ : iProp Σ) (lks : gset string)
     : wp_uartwrite_sconf_body prt γu γs j γlp γl m av eb n f dq b pidv dqp Φ lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_uartwrite_sconf_body].
     intros pcE pj buf ret_tgt Hj Hjlp Ha0 Ha2 Hn31 Hav Heb Hfresh.
     iIntros "Hcg Hcnt #Ht Hpc #Hbw #Huinv #Htxl Hpid Hbuf Hch #Hpinv Hcont".

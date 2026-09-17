@@ -114,7 +114,7 @@ Section ProofBunpin.
   Local Lemma sie_b_agree (m : regfile) (n K0 : nat) (eb b : bool) (p : mword 64) (lks : gset string) :
     sie_cap_gpr KT1 m K0 b p -∗ cpu_own n eb p b lks -∗
     ⌜ b = match n with O => eb | S _ => false end ⌝.
-  Proof.
+  Proof using .
     iIntros "Hcg Hcnt". destruct b.
     - iDestruct "Hcnt" as "%Hb". destruct Hb as (-> & -> & _). done.
     - destruct n as [|n']; [ | done ].
@@ -137,7 +137,7 @@ Section ProofBunpin.
   Local Lemma decr32_pos (cnt : positive) :
     (Z.pos cnt < 2 ^ 31)%Z ->
     decr32 (mword_of_int (Z.pos cnt) : mword 32) = (mword_of_int (Z.pos cnt - 1) : mword 32).
-  Proof.
+  Proof using .
     intro Hb.
     pose (j := (Pos.to_nat cnt - 1)%nat).
     assert (Hj : Pos.to_nat cnt = S j)
@@ -156,7 +156,7 @@ Section ProofBunpin.
       (q : Qp) (dev bno : mword 32)
       (m : regfile) (n : nat) (eb : bool) (p : mword 64) (K : nat) (b : bool) (lks : gset string)
     : wp_bunpin_sconf_body bn V k q dev bno m n eb p K b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_bunpin_sconf_body].
     intros pcE ret_tgt HK HnZ Hk Ha0 Hbelow.
     pose proof (locks_below_not_elem _ _ Hbelow) as Hfresh.

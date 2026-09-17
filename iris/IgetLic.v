@@ -241,7 +241,7 @@ Section IgetLic.
      beside the itable spinlock's resource without a later. *)
   Global Instance iname_timeless γi γfs ist inum l :
     Timeless (iname γi γfs ist inum l).
-  Proof. destruct l; rewrite /iname; apply _. Qed.
+  Proof using . destruct l; rewrite /iname; apply _. Qed.
 
   (* ------------------------------------------------------------------ *)
   (*  THE READINGS, AND THE SHAPE THEY MUST TAKE                          *)
@@ -282,7 +282,7 @@ Section IgetLic.
     iname γi γfs inodestart inum (LinkedL ty) ={E}=∗
     ⌜bv_unsigned (di_type dn) <> 0⌝ ∗
     dinode_at γi inum dn ∗ iname γi γfs inodestart inum (LinkedL ty).
-  Proof.
+  Proof using .
     iIntros (HE Hin) "#Hinv Hdn Hfrag". rewrite /iname.
     pose proof (islot_lt inum) as Hsl.
     assert (Hkey : (16 * Z.of_nat (ireg_bi inum) + Z.of_nat (islot inum))%Z
@@ -346,7 +346,7 @@ Section IgetLic.
     iname γi γfs inodestart inum (HeldL d) -∗
     ⌜bv_unsigned (di_type d) <> 0⌝ ∗ ⌜bv_unsigned (di_nlink d) <> 0⌝
     ∗ dinode_at γi inum d.
-  Proof.
+  Proof using .
     rewrite /iname. iIntros "(Hd & %Hnz & %Hnl)". by iFrame "Hd".
   Qed.
 
@@ -358,7 +358,7 @@ Section IgetLic.
     bv_unsigned (di_type d) <> 0 ->
     bv_unsigned (di_nlink d) <> 0 ->
     dinode_at γi inum d -∗ iname γi γfs inodestart inum (HeldL d).
-  Proof. intros Hnz Hnl. rewrite /iname. iIntros "Hd". by iFrame "Hd". Qed.
+  Proof using . intros Hnz Hnl. rewrite /iname. iIntros "Hd". by iFrame "Hd". Qed.
 
   (* ---- (f) [RootL] ⇒ allocated --------------------------------------- *)
 
@@ -379,7 +379,7 @@ Section IgetLic.
     iname γi γfs inodestart inum RootL ={E}=∗
     ⌜bv_unsigned (di_type dn) <> 0⌝ ∗
     dinode_at γi inum dn ∗ iname γi γfs inodestart inum RootL.
-  Proof.
+  Proof using .
     iIntros (HE Hin) "#Hinv Hdn %Hroot". rewrite /iname.
     pose proof (islot_lt inum) as Hsl.
     assert (Hkey : (16 * Z.of_nat (ireg_bi inum) + Z.of_nat (islot inum))%Z
@@ -447,7 +447,7 @@ Section IgetLic.
     iname γi γfs inodestart inum (BufL bno ds) ={E}=∗
     ⌜bv_unsigned (di_type dn) <> 0⌝ ∗
     dinode_at γi inum dn ∗ iname γi γfs inodestart inum (BufL bno ds).
-  Proof.
+  Proof using .
     iIntros (HE HEl Hin) "#Hinv Hdn Hbuf". rewrite /iname.
     iDestruct "Hbuf" as "(Hhalf & %Hb & %Hwf & %Hnz & Hboot & #Hseal)".
     rewrite /fs_chalf.
@@ -537,7 +537,7 @@ Section IgetLic.
     ireg_shp c f -∗
     iname γi γfs inodestart inum l -∗
     ⌜f = Some (Excl FrzOff)⌝.
-  Proof.
+  Proof using .
     intros Hlok Hclm Hfrz Hmd.
     (* the shared step of rows (a), (c) and (f): a NAMED record is not
        mid-transition *)
@@ -624,7 +624,7 @@ Section IgetLic.
     ⌜forall (bno : Z) (ds0 : list dinode), l = BufL bno ds0 -> ds0 = ds⌝ ∗
     fsblock (fs_bytes γfs) (IBLOCK inum inodestart) (diblk_bytes ds) ∗
     iname γi γfs inodestart inum l.
-  Proof.
+  Proof using .
     iIntros (HE Hwf) "#Hbinv Hfsb Hl".
     destruct l as [| d' | tyc tc qc | bno ds0 |];
       [ iModIntro; iFrame "Hfsb Hl"; iPureIntro; intros ? ? Hc; discriminate
@@ -665,7 +665,7 @@ Section IgetLic.
     iname γi γfs inodestart inum l -∗
     ⌜bv_unsigned (di_type (ds !!! islot inum)) <> 0
      /\ (is_claim l = false -> c = None)⌝.
-  Proof.
+  Proof using .
     intros Hwf Hlok Hclm Hmd Hbuf.
     (* bridge (a): a named record is neither free nor a claim box *)
     assert (Hnzb : bv_unsigned (di_nlink (ds !!! islot inum)) <> 0 ->
@@ -739,7 +739,7 @@ Section IgetLic.
     iname γi γfs inodestart inum l -∗
     ifreeze ph (bv_unsigned inum) ={E}=∗
     ⌜ph = FrzOff⌝ ∗ iname γi γfs inodestart inum l ∗ ifreeze ph (bv_unsigned inum).
-  Proof.
+  Proof using .
     iIntros (HE Hin) "#Hinv Hl Hfz".
     pose proof (islot_lt inum) as Hsl.
     assert (Hkey : (16 * Z.of_nat (ireg_bi inum) + Z.of_nat (islot inum))%Z

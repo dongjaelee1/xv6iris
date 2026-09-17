@@ -97,25 +97,25 @@ Section gset_tools.
 
   Lemma gset_disj_mono (X X' Y Y' : gset A) :
     X ⊆ X' -> Y ⊆ Y' -> X' ## Y' -> X ## Y.
-  Proof.
+  Proof using .
     intros HX HY Hd. apply elem_of_disjoint. intros a Ha Hb.
     exact (proj1 (elem_of_disjoint _ _) Hd a (HX a Ha) (HY a Hb)).
   Qed.
 
   Lemma gset_disj_sub_l (X X' Y : gset A) : X ⊆ X' -> X' ## Y -> X ## Y.
-  Proof. intro HX. apply gset_disj_mono; [exact HX | reflexivity]. Qed.
+  Proof using . intro HX. apply gset_disj_mono; [exact HX | reflexivity]. Qed.
 
   Lemma gset_disj_sub_r (X Y Y' : gset A) : Y ⊆ Y' -> X ## Y' -> X ## Y.
-  Proof. intro HY. apply gset_disj_mono; [reflexivity | exact HY]. Qed.
+  Proof using . intro HY. apply gset_disj_mono; [reflexivity | exact HY]. Qed.
 
   Lemma gset_disj_sym (X Y : gset A) : X ## Y -> Y ## X.
-  Proof.
+  Proof using .
     intro Hd. apply elem_of_disjoint. intros a Ha Hb.
     exact (proj1 (elem_of_disjoint _ _) Hd a Hb Ha).
   Qed.
 
   Lemma gset_disj_union_l (X Y Z : gset A) : X ## Z -> Y ## Z -> (X ∪ Y) ## Z.
-  Proof.
+  Proof using .
     intros H1 H2. apply elem_of_disjoint. intros a Ha Hb.
     apply elem_of_union in Ha as [Ha|Ha].
     - exact (proj1 (elem_of_disjoint _ _) H1 a Ha Hb).
@@ -123,22 +123,22 @@ Section gset_tools.
   Qed.
 
   Lemma gset_disj_union_r (X Y Z : gset A) : X ## Y -> X ## Z -> X ## (Y ∪ Z).
-  Proof.
+  Proof using .
     intros H1 H2. apply gset_disj_sym, gset_disj_union_l; apply gset_disj_sym;
       [exact H1 | exact H2].
   Qed.
 
   Lemma gset_eq_of_elem (X Y : gset A) : (forall x, x ∈ X <-> x ∈ Y) -> X = Y.
-  Proof. intro Hx. apply set_eq_subseteq. split; intros x Hin; apply Hx; exact Hin. Qed.
+  Proof using . intro Hx. apply set_eq_subseteq. split; intros x Hin; apply Hx; exact Hin. Qed.
 
   Lemma gset_union_assoc (X Y Z : gset A) : X ∪ (Y ∪ Z) = (X ∪ Y) ∪ Z.
-  Proof. apply gset_eq_of_elem. intro x. rewrite !elem_of_union. tauto. Qed.
+  Proof using . apply gset_eq_of_elem. intro x. rewrite !elem_of_union. tauto. Qed.
 
   (* pulling one element out of the left summand (used by the step's domain
      bookkeeping; [set_solver] cannot do this one here) *)
   Lemma gset_union_split (X Y : gset A) (a : A) :
     a ∈ X -> X ∪ Y = (X ∖ {[a]}) ∪ ({[a]} ∪ Y).
-  Proof.
+  Proof using .
     intro Ha. apply set_eq_subseteq. split; intros x Hx.
     - apply elem_of_union in Hx as [Hx|Hx].
       + destruct (decide (x = a)) as [->|Hne].
@@ -155,7 +155,7 @@ Section gset_tools.
 
   Lemma gset_diff_union_notin (X Y : gset A) (a : A) :
     a ∉ X -> (X ∪ Y) ∖ {[a]} = X ∪ (Y ∖ {[a]}).
-  Proof.
+  Proof using .
     intro Ha. apply gset_eq_of_elem. intro x.
     rewrite elem_of_difference, !elem_of_union, elem_of_difference,
             elem_of_singleton.
@@ -167,7 +167,7 @@ Section gset_tools.
   Qed.
 
   Lemma gset_sub_diff (X D Y : gset A) : X ⊆ D -> X ## Y -> X ⊆ D ∖ Y.
-  Proof.
+  Proof using .
     intros HD Hd a Ha. apply elem_of_difference. split; [exact (HD a Ha)|].
     intro Hb. exact (proj1 (elem_of_disjoint _ _) Hd a Ha Hb).
   Qed.

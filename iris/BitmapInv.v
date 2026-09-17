@@ -180,11 +180,11 @@ Section BitmapRes.
   Definition bitmap_bytes (used : gset Z) : list (bv 8) := bm_bytes BSIZE used.
 
   Lemma bitmap_bytes_length (u : gset Z) : length (bitmap_bytes u) = BSIZE.
-  Proof. apply bm_bytes_length. Qed.
+  Proof using . apply bm_bytes_length. Qed.
 
   Lemma bitmap_bytes_lookup (u : gset Z) (j : nat) :
     (j < BSIZE)%nat -> bitmap_bytes u !! j = Some (bm_byte u (Z.of_nat j)).
-  Proof. apply bm_bytes_lookup. Qed.
+  Proof using . apply bm_bytes_lookup. Qed.
 
   (* storing the one byte the code stores turns the image of [used] into
      the image of the updated set -- both directions of the allocator *)
@@ -192,7 +192,7 @@ Section BitmapRes.
     0 <= bi < BPB ->
     <[Z.to_nat (bi `div` 8) := bm_byte (u ∪ {[bi]}) (bi `div` 8)]> (bitmap_bytes u)
     = bitmap_bytes (u ∪ {[bi]}).
-  Proof.
+  Proof using .
     intros Hbi. apply bm_bytes_set; [lia|]. apply bit_byte_lt. exact Hbi.
   Qed.
 
@@ -200,7 +200,7 @@ Section BitmapRes.
     0 <= bi < BPB ->
     <[Z.to_nat (bi `div` 8) := bm_byte (u ∖ {[bi]}) (bi `div` 8)]> (bitmap_bytes u)
     = bitmap_bytes (u ∖ {[bi]}).
-  Proof.
+  Proof using .
     intros Hbi. apply bm_bytes_clear; [lia|]. apply bit_byte_lt. exact Hbi.
   Qed.
 
@@ -216,11 +216,11 @@ Section BitmapRes.
 
   Lemma free_blk_intro (γfs : fs_names) (b : Z) (bs : list (bv 8)) :
     fsblock (fs_bytes γfs) b bs -∗ free_blk γfs b.
-  Proof. iIntros "H". rewrite /free_blk. by iExists bs. Qed.
+  Proof using . iIntros "H". rewrite /free_blk. by iExists bs. Qed.
 
   Lemma free_blk_of_owned (γfs : fs_names) (b : Z) :
     (∃ bs, blk_owned (fs_gamma_L γfs) b bs) ⊣⊢ free_blk γfs b.
-  Proof.
+  Proof using .
     rewrite /free_blk. iSplit.
     - iIntros "H". iDestruct "H" as (bs) "H". iExists bs.
       rewrite -gamma_blk_owned. iExact "H".
@@ -240,13 +240,13 @@ Section BitmapRes.
     bitmap_res γfs bms size used ⊣⊢
       fsblock (fs_bytes γfs) bms (bitmap_bytes used)
       ∗ free_pool (fs_gamma_L γfs) size used.
-  Proof.
+  Proof using .
     rewrite /bitmap_res /free_bitmap_at /bitmap_bytes gamma_blk_owned //.
   Qed.
 
   Global Instance bitmap_res_timeless γfs bms size used :
     Timeless (bitmap_res γfs bms size used).
-  Proof. rewrite /bitmap_res. apply _. Qed.
+  Proof using . rewrite /bitmap_res. apply _. Qed.
 
   (* ================================================================== *)
   (*  What a CALLER of balloc has to hold                                *)
@@ -305,7 +305,7 @@ Section BitmapRes.
 
   Global Instance bitmap_body_timeless γfs bms size :
     Timeless (bitmap_body γfs bms size).
-  Proof. rewrite /bitmap_body. apply _. Qed.
+  Proof using . rewrite /bitmap_body. apply _. Qed.
 
   (* THE BYTE VIEW'S ROW RIDES HERE (durable-disk 1c-flip step 3).  The
      bitmap block and every free block are HOME blocks and are owned as
@@ -332,20 +332,20 @@ Section BitmapRes.
 
   Global Instance bitmap_reg_persistent γfs bms cov ls size :
     Persistent (bitmap_reg γfs bms cov ls size).
-  Proof. rewrite /bitmap_reg. apply _. Qed.
+  Proof using . rewrite /bitmap_reg. apply _. Qed.
 
   Global Instance bitmap_inv_persistent γfs bms cov ls size :
     Persistent (bitmap_inv γfs bms cov ls size).
-  Proof. rewrite /bitmap_inv. apply _. Qed.
+  Proof using . rewrite /bitmap_inv. apply _. Qed.
 
   Lemma bitmap_inv_reg γfs bms cov ls size :
     bitmap_inv γfs bms cov ls size -∗ bitmap_reg γfs bms cov ls size.
-  Proof. iIntros "($ & $ & _)". Qed.
+  Proof using . iIntros "($ & $ & _)". Qed.
 
   Lemma bitmap_inv_of γfs bms cov ls size :
     bitmap_reg γfs bms cov ls size -∗ exc_sealed (fs_exc γfs) -∗
     bitmap_inv γfs bms cov ls size.
-  Proof. iIntros "($ & $) $". Qed.
+  Proof using . iIntros "($ & $) $". Qed.
 
   (* boot's one step: the image's bitmap, as built by
      [FsCfgBoot.bitmap_res_of_image], goes in and the set is forgotten *)
@@ -354,7 +354,7 @@ Section BitmapRes.
     fs_bytes_at γfs (fs_home_set cov ls) -∗
     bitmap_res γfs bms size used ={E}=∗
     bitmap_reg γfs bms cov ls size.
-  Proof.
+  Proof using .
     iIntros "#Hbinv H".
     iMod (inv_alloc bitmapN E (bitmap_body γfs bms size)
             with "[H]") as "#Hi".
@@ -368,18 +368,18 @@ Section BitmapRes.
       (ls size : Z) :
     bitmap_reg γfs bms cov ls size -∗
     fs_bytes_at γfs (fs_home_set cov ls).
-  Proof. iIntros "(_ & $)". Qed.
+  Proof using . iIntros "(_ & $)". Qed.
 
   Lemma bitmap_inv_bytes (γfs : fs_names) (bms : Z) (cov : gset Z)
       (ls size : Z) :
     bitmap_inv γfs bms cov ls size -∗ fs_bytes_any γfs.
-  Proof.
+  Proof using .
     iIntros "(_ & Hb)". iApply (fs_bytes_any_at_any with "Hb").
   Qed.
 
   (* [logN] and [bitmapN] are distinct namespaces *)
   Lemma logN_bitmapN_disj : (↑logN : coPset) ## ↑bitmapN.
-  Proof. solve_ndisj. Qed.
+  Proof using . solve_ndisj. Qed.
 
   (* ---- [bitmap_ok], READ OFF THE POOL ------------------------------- *)
 
@@ -394,7 +394,7 @@ Section BitmapRes.
     ghost_map_auth (fs_bytes γfs) 1 L -∗
     free_pool (fs_gamma_L γfs) size u -∗
     ⌜forall x : Z, 0 <= x < size -> x ∉ u -> x ∈ home⌝.
-  Proof.
+  Proof using .
     intros Hdm. iIntros "Ha Hpool".
     rewrite bi.pure_forall. iIntros (x).
     destruct (decide (0 <= x < size)) as [Hx|Hx];
@@ -419,7 +419,7 @@ Section BitmapRes.
     free_pool (fs_gamma_L γfs) size u ={E}=∗
       ⌜forall x : Z, 0 <= x < size -> x ∉ u -> x ∈ home⌝
       ∗ free_pool (fs_gamma_L γfs) size u.
-  Proof.
+  Proof using .
     iIntros (HE) "#Hinv Hpool".
     iMod (inv_acc E fsbN with "Hinv") as "[Hbody Hclose]"; [exact (fsbN_sub E HE) |].
     iDestruct "Hbody" as (L C X)
@@ -433,7 +433,7 @@ Section BitmapRes.
   Lemma bitmap_ok_of_home (cov : gset Z) (ls size : Z) (u : gset Z) :
     (forall x : Z, 0 <= x < size -> x ∉ u -> x ∈ fs_home_set cov ls) ->
     bitmap_ok cov ls size u.
-  Proof.
+  Proof using .
     intros H x Hx Hnu. specialize (H x Hx Hnu).
     rewrite /fs_home_set elem_of_difference in H. exact H.
   Qed.
@@ -443,7 +443,7 @@ Section BitmapRes.
   Lemma bitmap_bytes_ext (u u' : gset Z) :
     (forall x : Z, 0 <= x < BPB -> (x ∈ u <-> x ∈ u')) ->
     bitmap_bytes u = bitmap_bytes u'.
-  Proof.
+  Proof using .
     intros H. unfold bitmap_bytes, bm_bytes. apply list_eq. intros i.
     rewrite !list_lookup_fmap.
     destruct (seq 0 BSIZE !! i) as [j|] eqn:Hs; [|reflexivity].
@@ -455,7 +455,7 @@ Section BitmapRes.
     0 <= bi < BPB ->
     bitmap_bytes u = bitmap_bytes u' ->
     (bi ∈ u <-> bi ∈ u').
-  Proof.
+  Proof using .
     intros Hbi Heq.
     assert (Hlt : (Z.to_nat (bi `div` 8) < BSIZE)%nat).
     { apply bit_byte_lt. unfold BPB in Hbi. lia. }
@@ -479,7 +479,7 @@ Section BitmapRes.
   Lemma bitmap_bytes_eq_union (u u' : gset Z) (bi : Z) :
     bitmap_bytes u = bitmap_bytes u' ->
     bitmap_bytes (u ∪ {[bi]}) = bitmap_bytes (u' ∪ {[bi]}).
-  Proof.
+  Proof using .
     intros Heq. apply bitmap_bytes_ext. intros x Hx.
     pose proof (bitmap_bytes_eq_bit u u' x Hx Heq) as Hb.
     rewrite !elem_of_union. tauto.
@@ -488,7 +488,7 @@ Section BitmapRes.
   Lemma bitmap_bytes_eq_diff (u u' : gset Z) (bi : Z) :
     bitmap_bytes u = bitmap_bytes u' ->
     bitmap_bytes (u ∖ {[bi]}) = bitmap_bytes (u' ∖ {[bi]}).
-  Proof.
+  Proof using .
     intros Heq. apply bitmap_bytes_ext. intros x Hx.
     pose proof (bitmap_bytes_eq_bit u u' x Hx Heq) as Hb.
     rewrite !elem_of_difference. tauto.
@@ -508,7 +508,7 @@ Section BitmapRes.
     ⌜exists used : gset Z,
        bsl = bitmap_bytes used /\ bitmap_ok cov ls size used⌝ ∗
     (bms ↪[fs_cache γfs]{#(1/2)} bsl).
-  Proof.
+  Proof using .
     iIntros (HE HEl) "#Hinv Hhalf".
     iDestruct "Hinv" as "(#Hbi & #Hrow0 & #Hseal)".
     iDestruct "Hrow0" as (Xv) "#Hbinv".
@@ -544,7 +544,7 @@ Section BitmapRes.
        bsl = bitmap_bytes used /\ bitmap_ok cov ls size used /\ b ∈ used⌝ ∗
     fsblock (fs_bytes γfs) b bs ∗
     (bms ↪[fs_cache γfs]{#(1/2)} bsl).
-  Proof.
+  Proof using .
     iIntros (HE HEl Hb) "#Hinv Hown Hhalf".
     iDestruct "Hinv" as "(#Hbi & #Hrow0 & #Hseal)".
     iDestruct "Hrow0" as (Xv) "#Hbinv".
@@ -593,7 +593,7 @@ Section BitmapRes.
       (⌜bsl' = bitmap_bytes u0⌝ -∗
        fsblock (fs_bytes γfs) bms (bitmap_bytes (u0 ∪ {[bi]})) ={E ∖ ↑bitmapN, E}=∗
        free_blk γfs bi).
-  Proof.
+  Proof using .
     iIntros (HE Hsz Hbi Hnu) "#Hinv".
     iDestruct "Hinv" as "(#Hbmi & #Hbinv)".
     iMod (inv_acc E bitmapN with "Hbmi") as "[Hbody Hclose]"; [exact HE |].
@@ -630,7 +630,7 @@ Section BitmapRes.
       fsblock (fs_bytes γfs) bms bsl' ∗
       (⌜bsl' = bitmap_bytes u0⌝ -∗
        fsblock (fs_bytes γfs) bms (bitmap_bytes (u0 ∖ {[b]})) ={E ∖ ↑bitmapN, E}=∗ emp).
-  Proof.
+  Proof using .
     iIntros (HE Hb) "#Hinv Hblk".
     iDestruct "Hinv" as "(#Hbmi & #Hbinv)".
     iMod (inv_acc E bitmapN with "Hbmi") as "[Hbody Hclose]"; [exact HE |].

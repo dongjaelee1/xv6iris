@@ -176,7 +176,7 @@ Section ProofBrelse.
       Ψ -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intro HkptEm.
     (* the class, consumed at [rs2] -- see [IntrDefs.SrcOk].  This wrapper
        applies a converted leaf at a VARIABLE register and carries no tp fact
@@ -228,14 +228,14 @@ Section ProofBrelse.
       (add_vec (sign_extend' 64 cw)
                (sign_extend' 64 (sign_extend' 12 (mword_of_int 63 : mword 6)))) 31 0)
     = sign_extend' 64 (decr32 cw).
-  Proof. rewrite /decr32 trunc32_sext. reflexivity. Qed.
+  Proof using . rewrite /decr32 trunc32_sext. reflexivity. Qed.
 
   (* on a POSITIVE count the borrow never happens: the stored word is the
      literal predecessor (pop_off's [c->noff--] arithmetic, at a [positive]). *)
   Local Lemma decr32_pos (cnt : positive) :
     (Z.pos cnt < 2 ^ 31)%Z ->
     decr32 (mword_of_int (Z.pos cnt) : mword 32) = (mword_of_int (Z.pos cnt - 1) : mword 32).
-  Proof.
+  Proof using .
     intro Hb.
     pose (j := (Pos.to_nat cnt - 1)%nat).
     assert (Hj : Pos.to_nat cnt = S j)
@@ -301,7 +301,7 @@ Section ProofBrelse.
         pc_is (ret_pc (m !!! Regidx Rra)) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK HMsp HMthr Hbelow0.
     pose proof (locks_below_not_elem _ _ Hbelow0) as Hfresh0.
     assert (HK26 : (26 <= K)%nat) by (exact HK).
@@ -559,7 +559,7 @@ Section ProofBrelse.
       (m : regfile) (K : nat) (eb : bool) (p : mword 64)
       (bs bsd : list (bv 8)) (d : bool) (b : bool) (lks : gset string) (Upr : ustate)
     : wp_brelse_sconf_body γs bn V k pidv dev bno dq m K eb p bs bsd d b lks Upr.
-  Proof.
+  Proof using .
     cbv beta delta [wp_brelse_sconf_body].
     intros pcE ret_tgt HK Hk Ha0 Hbelow.
     pose proof (locks_below_not_elem _ _ Hbelow) as Hfresh.

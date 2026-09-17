@@ -138,13 +138,13 @@ Section bytes_own_p_facts.
 
   Lemma bytes_own_p_none (mm : gmap Arch.pa (bv 8)) :
     bytes_own_p (fun _ => None) mm ⊣⊢ bytes_own mm.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* every key unstamped: the plain map *)
   Lemma bytes_own_p_of_none (F : Arch.pa -> option nat) (mm : gmap Arch.pa (bv 8)) :
     (forall a, a ∈ dom mm -> F a = None) ->
     bytes_own_p F mm ⊣⊢ bytes_own mm.
-  Proof.
+  Proof using .
     intros HF. rewrite /bytes_own_p /bytes_own.
     apply big_sepM_proper. intros a b Hb.
     rewrite (HF a); [reflexivity |]. by apply elem_of_dom.
@@ -153,7 +153,7 @@ Section bytes_own_p_facts.
   (* the payload function matters pointwise only *)
   Lemma bytes_own_p_ext (F F' : Arch.pa -> option nat) (mm : gmap Arch.pa (bv 8)) :
     (forall a, F a = F' a) -> bytes_own_p F mm ⊣⊢ bytes_own_p F' mm.
-  Proof.
+  Proof using .
     intros HF. rewrite /bytes_own_p. apply big_sepM_proper. intros a b _.
     rewrite (HF a). reflexivity.
   Qed.
@@ -161,13 +161,13 @@ Section bytes_own_p_facts.
   Lemma bytes_own_p_union (F : Arch.pa -> option nat) (m1 m2 : gmap Arch.pa (bv 8)) :
     m1 ##ₘ m2 ->
     bytes_own_p F (m1 ∪ m2) ⊣⊢ bytes_own_p F m1 ∗ bytes_own_p F m2.
-  Proof. intros Hd. rewrite /bytes_own_p. by apply big_sepM_union. Qed.
+  Proof using . intros Hd. rewrite /bytes_own_p. by apply big_sepM_union. Qed.
 
   (* THE SPLIT: the unstamped submap as a plain [bytes_own], the stamped
      one framed *)
   Lemma bytes_own_p_split (F : Arch.pa -> option nat) (mm : gmap Arch.pa (bv 8)) :
     bytes_own_p F mm ⊣⊢ bytes_own (uf_none F mm) ∗ bytes_own_p F (uf_some F mm).
-  Proof.
+  Proof using .
     rewrite -{1}(uf_union F mm) (bytes_own_p_union F _ _ (uf_disj F mm)).
     rewrite (bytes_own_p_of_none F (uf_none F mm)); [reflexivity |].
     intros a Ha. by apply uf_none_dom in Ha as [_ HF].
@@ -180,7 +180,7 @@ Section bytes_own_p_facts.
     (dom mm1 : gset Arch.pa) = dom (uf_none F mm) ->
     bytes_own mm1 -∗ bytes_own_p F (uf_some F mm) -∗
     bytes_own_p F (mm1 ∪ uf_some F mm).
-  Proof.
+  Proof using .
     intros Hdom. iIntros "H1 H2".
     assert (Hd : mm1 ##ₘ uf_some F mm).
     { apply map_disjoint_dom. rewrite Hdom. apply map_disjoint_dom.
@@ -193,7 +193,7 @@ Section bytes_own_p_facts.
 
   Lemma bytes_own_p_forget (F : Arch.pa -> option nat) (mm : gmap Arch.pa (bv 8)) :
     bytes_own_p F mm ⊢ bytes_own mm.
-  Proof.
+  Proof using .
     rewrite /bytes_own_p /bytes_own. apply big_sepM_mono. intros a b _.
     rewrite /xbyte. destruct (F a) as [IK|]; [apply ctx_phys_xpointsto_forget | done].
   Qed.
@@ -203,7 +203,7 @@ Section bytes_own_p_facts.
     (forall a IK, F a = Some IK -> exists IK', F' a = Some IK' /\ (IK <= IK')%nat) ->
     (forall a, F a = None -> F' a = None) ->
     bytes_own_p F mm ⊢ bytes_own_p F' mm.
-  Proof.
+  Proof using .
     intros Hs Hn. rewrite /bytes_own_p. apply big_sepM_mono. intros a b _.
     rewrite /xbyte. destruct (F a) as [IK|] eqn:HF.
     - destruct (Hs a IK HF) as (IK' & -> & Hle). by apply ctx_phys_xpointsto_mono.
@@ -226,7 +226,7 @@ Section bytes_own_p_facts.
     bytes_own_p F mm -∗
     ⌜forall itv tv' : nat, (IK <= itv)%nat -> (itv <= tv')%nat ->
        tso_read_bytes img log (ifetch_agent (hart_agent cpu_id)) tv' pa n w⌝.
-  Proof.
+  Proof using .
     intros Hwin. iIntros "Hgh Htso Hown".
     iDestruct (tso_interp_of_pin with "Htso") as %Hpin.
     rewrite (tso_interp_of_at_gs riscv_eraGS img mem log V rs d Hpin).
@@ -285,7 +285,7 @@ Section memrun_exec_p.
                hreg_frame rs' Drw ∗ hreg_frame_ro Df rs' Dro ∗
                TsoCtx.own_context XI ∗
                bytes_own_p F (mm1 ∪ uf_some F mm) ∗ resv_any cpu_id).
-  Proof.
+  Proof using .
     intros Hdisj Hdr Hdw Hag Hsub Hg He.
     iIntros "#Hcert Hany Hrw Hro Hrun Hown".
     rewrite bytes_own_p_split. iDestruct "Hown" as "[Hown Hx]".
@@ -307,6 +307,6 @@ Section memrun_exec_p.
   Lemma uf_join_dom (F : Arch.pa -> option nat) (mm mm1 : gmap Arch.pa (bv 8)) :
     (dom mm1 : gset Arch.pa) = dom (uf_none F mm) ->
     (dom (mm1 ∪ uf_some F mm) : gset Arch.pa) = dom mm.
-  Proof. intros Hd. rewrite dom_union_L Hd -dom_union_L uf_union. reflexivity. Qed.
+  Proof using . intros Hd. rewrite dom_union_L Hd -dom_union_L uf_union. reflexivity. Qed.
 
 End memrun_exec_p.

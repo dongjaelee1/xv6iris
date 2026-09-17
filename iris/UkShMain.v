@@ -145,7 +145,7 @@ Section UkShMain.
   (* ===================================================================== *)
   Lemma ubytes_persist (g : gname) (a : Z) (n : nat) (f : nat -> bv 8) :
     ubytes g a n f ==∗ ubytesq g DfracDiscarded a n f.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /ubytes /ubytesq.
     iApply big_sepL_bupd. iApply (big_sepL_impl with "H").
     iIntros "!>" (i j _) "Hb". rewrite /ubyteq /ubyte.
@@ -154,14 +154,14 @@ Section UkShMain.
 
   Lemma uword_persist (g : gname) (a : Z) (w : mword 64) :
     uword g a w ==∗ uwordq g DfracDiscarded a w.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /uword /uwordq.
     iApply (ubytes_persist g a 8 (nth_byte w) with "H").
   Qed.
 
   Lemma ustr_persist (g : gname) (a : Z) (n : nat) (f : nat -> bv 8) :
     ustr g (DfracOwn 1) a n f ==∗ ustr g DfracDiscarded a n f.
-  Proof.
+  Proof using .
     iIntros "(%Hne & %Hlen & Hbs & Hnul)".
     iMod (ubytes_persist g a n f with "Hbs") as "#Hbs".
     iMod (ghost_map_elem_persist with "Hnul") as "#Hnul".
@@ -187,7 +187,7 @@ Section UkShMain.
     (ushp_toklen n i f < n)%nat ->
     ushp_is_ws (f (i + ushp_toklen n i f)%nat)
     || ushp_is_sym (f (i + ushp_toklen n i f)%nat) = true.
-  Proof.
+  Proof using .
     revert i. induction n as [| n IH ]; intros i H.
     - cbn [ushp_toklen] in H. lia.
     - cbn [ushp_toklen] in H |- *.
@@ -202,7 +202,7 @@ Section UkShMain.
   Lemma ushp_nulfold_miss (toks : list (nat * nat)) (g : nat -> bv 8) (j : nat) :
     (forall (i : nat) (tk : nat * nat), toks !! i = Some tk -> j <> snd tk) ->
     ushp_nulfold toks g j = g j.
-  Proof.
+  Proof using .
     revert g. induction toks as [| tk r IH ]; intros g Hmiss;
       cbn [ushp_nulfold]; [ reflexivity | ].
     rewrite (IH (ushp_setb g (snd tk) ubyte0)).
@@ -224,7 +224,7 @@ Section UkShMain.
     forall (i : nat) (tk : nat * nat), toks !! i = Some tk ->
     forall (j : nat) (tk' : nat * nat), toks !! j = Some tk' ->
     forall x : nat, (fst tk <= x < snd tk)%nat -> x <> snd tk'.
-  Proof.
+  Proof using .
     intros Hns Htoks. revert Hns.
     induction Htoks as [ off Hnil | off toks k n Hn Htoks IH ];
       intros Hns Hoff i tk Hi j tk' Hj x Hx.
@@ -296,7 +296,7 @@ Section UkShMain.
     (i + m <= n)%nat ->
     ubytesq g DfracDiscarded a n f -∗
     ubytesq g DfracDiscarded (a + Z.of_nat i) m (fun j => f (i + j)%nat).
-  Proof.
+  Proof using .
     intros Hle. iIntros "#H". rewrite {2}/ubytesq.
     iApply big_sepL_intro. iIntros "!>" (k j Hkj).
     apply lookup_seq in Hkj as [-> Hlt].
@@ -312,7 +312,7 @@ Section UkShMain.
     (i < n)%nat ->
     ubytesq g DfracDiscarded a n f -∗
     ubyteq g DfracDiscarded (a + Z.of_nat i) (f i).
-  Proof.
+  Proof using .
     intros Hi. iIntros "#H".
     iDestruct (big_sepL_lookup _ (seq 0 n) i i with "H") as "Hb";
       [ apply lookup_seq; lia | ]. iExact "Hb".
@@ -330,7 +330,7 @@ Section UkShMain.
 
   Lemma ush_args_length (s0 : Z) (g : nat -> bv 8) (toks : list (nat * nat)) :
     length (ush_args s0 g toks) = length toks.
-  Proof. unfold ush_args. rewrite length_map. reflexivity. Qed.
+  Proof using . unfold ush_args. rewrite length_map. reflexivity. Qed.
 
   Lemma ush_args_lookup (s0 : Z) (g : nat -> bv 8) (toks : list (nat * nat))
       (i : nat) (tk : nat * nat) :
@@ -338,7 +338,7 @@ Section UkShMain.
     ush_args s0 g toks !! i
     = Some (UArg (s0 + Z.of_nat (fst tk)) (snd tk - fst tk)%nat
                  (fun j : nat => g (fst tk + j)%nat)).
-  Proof. intro Hi. unfold ush_args. rewrite list_lookup_fmap Hi. reflexivity. Qed.
+  Proof using . intro Hi. unfold ush_args. rewrite list_lookup_fmap Hi. reflexivity. Qed.
 
   (* every byte a program owns is inside the user region -- read off the
      run's own heap, and the run survives because the conclusion is pure *)
@@ -346,7 +346,7 @@ Section UkShMain.
       (avail : nat) (a : Z) (nb : nat) (fb : nat -> bv 8) :
     urun N h m pc avail -∗ ubytes γd a nb fb -∗
     ⌜ forall j : nat, (j < nb)%nat -> 0 <= a + Z.of_nat j < 2 ^ 38 ⌝.
-  Proof.
+  Proof using .
     iIntros "Hrun Hbs".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv)
       "(_ & _ & _ & _ & Hheap & _)".
@@ -373,7 +373,7 @@ Section UkShMain.
     ubytes γd s0 (S len) (ushp_nulfold toks (ushp_ext len f)) ==∗
     urun N h m pc avail ∗
     ush_cmd γd p (UExec (ush_args s0 (ushp_nulfold toks (ushp_ext len f)) toks)).
-  Proof.
+  Proof using .
     intros Htoks Hns Hnn Hlen31 Hs0 Hs0hi.
     set (g := ushp_nulfold toks (ushp_ext len f)).
     iIntros "Hrun Hnode Hline".
@@ -551,7 +551,7 @@ Section UkShMain.
     urun N h m (mword_of_int 0x9c0)
       (60 + (8 + (UkShDiag.ush_Dg + n))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using Hpay Hpsok_free.
     intros Hs1 Hns Htoks Htlen Hs0 Hs64 Hs38 Hpx.
     iIntros "#Hdp #Hcode #Hxs #Hkw #Hpcode #Hpro #Hjt Hline Hws Hsy Hstd Hcwd
              Hch HM Hrun".
@@ -725,7 +725,7 @@ Section UkShMain.
     urun N h m (mword_of_int 0x9c0)
       (60 + (8 + (UkShDiag.ush_Dg + n))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using Hpay Hpsok_free.
     intros Hs1 Hns Htoks Htlen Hs0 Hs64 Hs38 Hszlo Hszal Hszok Hpx.
     iIntros "#Hdp #Hcode #Hxs #Hkw #Hpcode #Hpro #Hjt Hline Hws Hsy Hstd Hcwd
              Hch HM Hrun".

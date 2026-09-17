@@ -732,7 +732,7 @@ Section fetch.
            (Physaddr pa) 4 false false false false)
       (fun r => ⌜r = Values.Ok (bytes, tt)⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HD HDcfg HDhtif Hhtif Hpma Hpcfg Hunlock Hpallow Hram Hpa.
     iIntros "#Hcert Hrw Hro Hmem".
     rewrite /swp. iIntros (C) "%HC Hcont".
@@ -836,7 +836,7 @@ Section fetch.
            (Physaddr pa) 2 false false false false)
       (fun r => ⌜r = Values.Ok (bytes, tt)⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HD HDcfg HDhtif Hhtif Hpma Hpcfg Hunlock Hpallow Hram Hpa.
     iIntros "#Hcert Hrw Hro Hmem".
     rewrite /swp. iIntros (C) "%HC Hcont".
@@ -916,7 +916,7 @@ Section fetch.
     swp (translateAddr (Virtaddr pc) (InstructionFetch tt))
       (fun r => ⌜r = Values.Ok (Physaddr pc, PBMT_PMA, init_ext_ptw)⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv Hpriv.
     apply (swp_hfrun 8 Drw Dro Df rs rs _ _ Hdisj).
     exact (hfrun_translateAddr_M_ifetch (Drw ∪ Dro) Drw rs pc
@@ -941,7 +941,7 @@ Section fetch.
     swp (mem_read (InstructionFetch tt) PBMT_PMA pa 4 false false false)
       (fun r => ⌜r = Values.Ok w⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv Hpriv.
     iIntros "#Hcert Hrw Hro Hcmr".
     unfold mem_read.
@@ -994,7 +994,7 @@ Section fetch.
     swp (mem_read (InstructionFetch tt) PBMT_PMA pa 2 false false false)
       (fun r => ⌜r = Values.Ok w⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv Hpriv.
     iIntros "#Hcert Hrw Hro Hcmr".
     unfold mem_read.
@@ -1046,7 +1046,7 @@ Section fetch.
     swp (fetch_bytes pc pc 4)
       (fun r => ⌜r = @FetchBytes_Success 4 w⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv Hpriv.
     iIntros "#Hcert Hrw Hro Hcmr".
     rewrite /swp. iIntros (C) "%HC Hcont".
@@ -1091,7 +1091,7 @@ Section fetch.
     swp (fetch_bytes fs gs 2)
       (fun r => ⌜r = @FetchBytes_Success 2 w⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv Hpriv.
     iIntros "#Hcert Hrw Hro Hcmr".
     rewrite /swp. iIntros (C) "%HC Hcont".
@@ -1140,7 +1140,7 @@ Section fetch.
                       then F_RVC (subrange_vec_dec w 15 0)
                       else F_Base w)⌝ ∗
                 hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDpc Hpc Hb0 Hb1 Hal.
     iIntros "#Hcert Hrw Hro Hfb".
     rewrite /swp. iIntros (C) "%HC Hcont".
@@ -1244,7 +1244,7 @@ Section fetch.
     swp (fetch tt)
       (fun r => ⌜r = F_RVC h⌝ ∗
                 hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDpc HDmisa Hpc Hb0 Hb1 Hal4 HmisaC Hrvc.
     iIntros "#Hcert Hrw Hro Hfb".
     rewrite /swp. iIntros (C) "%HC Hcont".
@@ -1355,7 +1355,7 @@ Section fetch.
     swp (fetch tt)
       (fun r => ⌜r = F_Base (concat_vec ihi ilo)⌝ ∗
                 hreg_frame rsf2 Drw ∗ hreg_frame_ro Df rsf2 Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDpc HDmisa Hpc Hb0 Hb1 Hal4 HmisaC Hnrvc Hpc1.
     iIntros "#Hcert Hrw Hro Hlo Hhi".
     rewrite /swp. iIntros (C) "%HC Hcont".
@@ -1467,7 +1467,7 @@ Section fetch.
                       then F_RVC (subrange_vec_dec w 15 0)
                       else F_Base w)⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDpc HDmst HDpriv Hpc Hpriv Hb0 Hb1 Hal.
     iIntros "#Hcert Hrw Hro Hcmr".
     iApply (swp_fetch Drw Dro Df rs rs pc w Hdisj HDpc Hpc Hb0 Hb1 Hal
@@ -1519,7 +1519,7 @@ Section fetch.
                       then F_RVC (subrange_vec_dec w 15 0)
                       else F_Base w)⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDpc HDmst HDpriv HDpma HDcfg HDhtif
       Hpc Hpriv Hpma Hpcfg Hhtif Hunlock Hpallow Hram Hb0 Hb1 Hva Hpa.
     iIntros "#Hcert Hrw Hro Hmem".
@@ -1578,7 +1578,7 @@ Section fetch.
     swp (fetch tt)
       (fun r => ⌜r = F_RVC h⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDpc HDmst HDpriv HDmisa HDpma HDcfg HDhtif
       Hpc Hpriv Hpma Hpcfg Hhtif HmisaC Hunlock Hpallow Hram Hb0 Hb1 Hal4
       Hpa Hrvc.
@@ -1654,7 +1654,7 @@ Section fetch.
     swp (fetch tt)
       (fun r => ⌜r = F_Base (concat_vec ihi ilo)⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDpc HDmst HDpriv HDmisa HDpma HDcfg HDhtif
       Hpc Hpriv Hpma Hpcfg Hhtif HmisaC Hunlock Hpallow Hram Hram2
       Hb0 Hb1 Hal4 Hpa Hpa2 Hnrvc.

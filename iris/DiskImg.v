@@ -96,17 +96,17 @@ Section DiskImgPtsto.
 
   Global Instance disk_img_byte_timeless γi o b :
     Timeless (disk_img_byte γi o b).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance disk_img_bytes_timeless γi o bs :
     Timeless (disk_img_bytes γi o bs).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* -- structural peeling ----------------------------------------------- *)
 
   Lemma disk_img_bytes_cons (γi : gname) (o : Z) (b : bv 8) (bs : list (bv 8)) :
     disk_img_bytes γi o (b :: bs)
       ⊣⊢ disk_img_byte γi o b ∗ disk_img_bytes γi (o + 1) bs.
-  Proof.
+  Proof using .
     rewrite /disk_img_bytes big_sepL_cons. cbv beta.
     assert (Hz : o + Z.of_nat 0%nat = o) by lia. rewrite Hz.
     apply bi.sep_proper; [reflexivity|].
@@ -122,7 +122,7 @@ Section DiskImgPtsto.
     disk_view dmap dk ->
     ghost_map_auth γi 1 dmap -∗ disk_img_bytes γi o bs -∗
     ⌜disk_read dk o (length bs) = bs⌝.
-  Proof.
+  Proof using .
     iIntros (Hview) "Hauth Hbs".
     iAssert (⌜forall (j : nat) (b : bv 8),
                bs !! j = Some b -> dmap !! (o + Z.of_nat j)%Z = Some b⌝)%I
@@ -161,7 +161,7 @@ Section DiskImgPtsto.
       ⌜forall x : Z,
          (forall j : nat, (j < length bs')%nat -> (x ≠ o + Z.of_nat j)%Z) ->
          dmap' !! x = dmap !! x⌝.
-  Proof.
+  Proof using .
     revert o bs dmap.
     induction bs' as [|b' bs'' IH]; intros o bs dmap Hlen.
     - iIntros "Hauth Hbs". iModIntro. iExists dmap. iFrame "Hauth".
@@ -205,7 +205,7 @@ Section DiskImgPtsto.
       ghost_map_auth γi 1 dmap' ∗ disk_img_bytes γi o bs' ∗
       ⌜forall dk : Z -> bv 8,
          disk_view dmap dk -> disk_view dmap' (disk_write dk o bs')⌝.
-  Proof.
+  Proof using .
     iIntros (Hlen) "Hauth Hbs".
     iMod (disk_img_bytes_update_gen γi dmap o bs bs' Hlen with "Hauth Hbs")
       as (dmap') "(Hauth & Hbs & %Ha & %Hc)".
@@ -242,7 +242,7 @@ Section DiskImgPtsto.
       ghost_map_auth γi 1 dmap' ∗
       disk_img_bytes γi o (disk_read dk o n) ∗
       ⌜disk_view dmap' dk⌝.
-  Proof.
+  Proof using .
     revert o dmap. induction n as [|n IH]; intros o dmap Hview Hfresh.
     - iIntros "Hauth". iModIntro. iExists dmap. iFrame "Hauth".
       iSplitR; [| iPureIntro; exact Hview ].
@@ -284,7 +284,7 @@ Section DiskImgPtsto.
       ⌜disk_view dmap' dk⌝ ∗
       ⌜forall (x : Z) (b : bv 8), dmap' !! x = Some b ->
          dmap !! x = Some b \/ (o <= x < o + Z.of_nat n)⌝.
-  Proof.
+  Proof using .
     revert o dmap. induction n as [|n IH]; intros o dmap Hview Hfresh _.
     - iIntros "Hauth". iModIntro. iExists dmap. iFrame "Hauth".
       iSplitR; [| iPureIntro; split; [exact Hview | intros x b Hx; by left]].
@@ -328,7 +328,7 @@ Section DiskImgPtsto.
   Lemma disk_img_alloc (dk : Z -> bv 8) (n : nat) :
     ⊢ |==> ∃ γi : gname,
         disk_img_auth γi dk ∗ disk_img_bytes γi 0 (disk_read dk 0 n).
-  Proof.
+  Proof using .
     iMod (ghost_map_alloc_empty (K := Z) (V := bv 8)) as (γi) "Hauth".
     iMod (disk_img_bytes_mint γi ∅ dk 0 n with "Hauth")
       as (dmap') "(Hauth & Hbs & %Hv)".
@@ -360,15 +360,15 @@ Section DiskImgPtsto.
 
   Global Instance disk_img_auth_sized_timeless γi N dk :
     Timeless (disk_img_auth_sized γi N dk).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma disk_read_length (dk : Z -> bv 8) (o : Z) (n : nat) :
     length (disk_read dk o n) = n.
-  Proof. rewrite /disk_read length_fmap length_seq. reflexivity. Qed.
+  Proof using . rewrite /disk_read length_fmap length_seq. reflexivity. Qed.
 
   Lemma disk_read_lookup (dk : Z -> bv 8) (o : Z) (n j : nat) :
     (j < n)%nat -> disk_read dk o n !! j = Some (dk (o + Z.of_nat j)).
-  Proof.
+  Proof using .
     intro Hj. rewrite /disk_read list_lookup_fmap lookup_seq_lt; [| exact Hj].
     reflexivity.
   Qed.
@@ -377,7 +377,7 @@ Section DiskImgPtsto.
   Lemma disk_read_agree (dk dk' : Z -> bv 8) (N : nat) :
     disk_read dk 0 N = disk_read dk' 0 N ->
     forall x : Z, 0 <= x < Z.of_nat N -> dk x = dk' x.
-  Proof.
+  Proof using .
     intros Heq x Hx.
     assert (Hj : (Z.to_nat x < N)%nat) by lia.
     pose proof (disk_read_lookup dk 0 N (Z.to_nat x) Hj) as H1.
@@ -389,7 +389,7 @@ Section DiskImgPtsto.
   Lemma disk_img_sized_alloc (dk : Z -> bv 8) (N : nat) :
     ⊢ |==> ∃ γi : gname,
         disk_img_auth_sized γi N dk ∗ disk_img_bytes γi 0 (disk_read dk 0 N).
-  Proof.
+  Proof using .
     iMod (ghost_map_alloc_empty (K := Z) (V := bv 8)) as (γi) "Hauth".
     iMod (disk_img_bytes_mint_dom γi ∅ dk 0 N with "Hauth")
       as (dmap') "(Hauth & Hbs & %Hv & %Hdom)".
@@ -407,7 +407,7 @@ Section DiskImgPtsto.
       (o : Z) (bs : list (bv 8)) :
     disk_img_auth_sized γi N dk -∗ disk_img_bytes γi o bs -∗
     ⌜disk_read dk o (length bs) = bs⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Hbs". iDestruct "Ha" as (dmap) "(Hauth & %Hv & _)".
     iApply (disk_img_bytes_read with "Hauth Hbs"). exact Hv.
   Qed.
@@ -416,7 +416,7 @@ Section DiskImgPtsto.
   Lemma disk_img_sized_write (γi : gname) (N : nat) (dk dk' : Z -> bv 8) :
     disk_img_auth_sized γi N dk -∗ disk_img_bytes γi 0 (disk_read dk 0 N) ==∗
     disk_img_auth_sized γi N dk' ∗ disk_img_bytes γi 0 (disk_read dk' 0 N).
-  Proof.
+  Proof using .
     iIntros "Ha Hbs". iDestruct "Ha" as (dmap) "(Hauth & %Hv & %Hdom)".
     iMod (disk_img_bytes_update_gen γi dmap 0 (disk_read dk 0 N) (disk_read dk' 0 N)
             with "Hauth Hbs") as (dmap') "(Hauth & Hbs & %Hin & %Hout)".

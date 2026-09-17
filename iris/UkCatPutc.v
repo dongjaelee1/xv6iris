@@ -124,7 +124,7 @@ Section UkCatPutc.
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (4 + n) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "#Hdp #Hcode Hrun Hcont".
     destruct cat_syms_pins
       as (_ & _ & _ & _ & _ & Hputc & _ & Hwrite & _ & _ & _).

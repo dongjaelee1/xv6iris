@@ -168,7 +168,7 @@ Section KexecAFrame.
     stack_own (KTR := KT1) (pa_stk sp0 j) n ⊣⊢
     ([∗ list] i ∈ seq 1 n,
        ∃ w : mword 64, ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 (j + i)) (DfracOwn 1) w)%I.
-  Proof.
+  Proof using .
     rewrite (stack_own_slots (KTR := KT1)).
     apply big_sepL_proper. intros k i _.
     by rewrite pa_stk_assoc.
@@ -181,7 +181,7 @@ Section KexecAFrame.
   Lemma kxc_elf_slots_of_stack (sp0 : mword 64) :
     stack_own (KTR := KT1) (pa_stk sp0 46) 8 ⊢
     [∗ list] i ∈ seq 0 8, ∃ w : mword 64, ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 (54 - i)) (DfracOwn 1) w.
-  Proof.
+  Proof using .
     rewrite (kxc_slots_asc sp0 8 46). cbn [seq big_opL].
     iIntros "(H1 & H2 & H3 & H4 & H5 & H6 & H7 & H8 & _)".
     cbn [Nat.add Nat.sub].
@@ -191,7 +191,7 @@ Section KexecAFrame.
   Lemma kxc_stack_of_elf_slots (sp0 : mword 64) :
     ([∗ list] i ∈ seq 0 8, ∃ w : mword 64, ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 (54 - i)) (DfracOwn 1) w)
     ⊢ stack_own (KTR := KT1) (pa_stk sp0 46) 8.
-  Proof.
+  Proof using .
     rewrite (kxc_slots_asc sp0 8 46). cbn [seq big_opL Nat.add Nat.sub].
     iIntros "(H1 & H2 & H3 & H4 & H5 & H6 & H7 & H8 & _)".
     iFrame "H8 H7 H6 H5 H4 H3 H2 H1".
@@ -205,7 +205,7 @@ Section KexecAFrame.
     (∃ w : mword 64, ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 66) (DfracOwn 1) w) ∗
     (∃ w : mword 64, ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 67) (DfracOwn 1) w) ∗
     (∃ w : mword 64, ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 68) (DfracOwn 1) w).
-  Proof.
+  Proof using .
     rewrite (kxc_slots_asc sp0 5 63). cbn [seq big_opL Nat.add].
     iIntros "(H1 & H2 & H3 & H4 & H5 & _)". iFrame.
   Qed.
@@ -217,7 +217,7 @@ Section KexecAFrame.
     ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 67) (DfracOwn 1) w67 -∗
     ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 68) (DfracOwn 1) w68 -∗
     stack_own (KTR := KT1) (pa_stk sp0 63) 5.
-  Proof.
+  Proof using .
     iIntros "H1 H2 H3 H4 H5".
     rewrite (kxc_slots_asc sp0 5 63). cbn [seq big_opL Nat.add].
     iSplitL "H1"; [by iExists w64 |].
@@ -244,7 +244,7 @@ Section KexecAFrame.
     (∃ w : mword 64, ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 11) (DfracOwn 1) w) ∗
     (∃ w : mword 64, ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 12) (DfracOwn 1) w) ∗
     (∃ w : mword 64, ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 13) (DfracOwn 1) w).
-  Proof.
+  Proof using .
     rewrite (stack_own_slots (KTR := KT1)). cbn [seq big_opL].
     iIntros "(H1 & H2 & H3 & H4 & H5 & H6 & H7 & H8 & H9 & H10 & H11 & H12
               & H13 & _)".
@@ -273,7 +273,7 @@ Section KexecAFrame.
     add_vec (pa_stk X 68)
       (zero_extend' 64 (concat_vec (mword_of_int 62 : mword 6) ('b"000")))
     = pa_stk X 6.
-  Proof.
+  Proof using .
     change 68%nat with (6 + 62)%nat.
     rewrite -(pa_stk_assoc X 6 62).
     apply stk_pop. apply bv_eq; vm_compute; reflexivity.
@@ -287,7 +287,7 @@ Section KexecAFrame.
     add_vec (pa_stk X 68)
       (zero_extend' 64 (concat_vec (mword_of_int 63 : mword 6) ('b"000")))
     = pa_stk X 5.
-  Proof.
+  Proof using .
     change 68%nat with (5 + 63)%nat.
     rewrite -(pa_stk_assoc X 5 63).
     apply stk_pop. apply bv_eq; vm_compute; reflexivity.
@@ -297,7 +297,7 @@ Section KexecAFrame.
     add_vec (pa_stk X 68)
       (zero_extend' 64 (concat_vec (mword_of_int 61 : mword 6) ('b"000")))
     = pa_stk X 7.
-  Proof.
+  Proof using .
     change 68%nat with (7 + 61)%nat.
     rewrite -(pa_stk_assoc X 7 61).
     apply stk_pop. apply bv_eq; vm_compute; reflexivity.
@@ -307,7 +307,7 @@ Section KexecAFrame.
     add_vec (pa_stk X 68)
       (zero_extend' 64 (concat_vec (mword_of_int 60 : mword 6) ('b"000")))
     = pa_stk X 8.
-  Proof.
+  Proof using .
     change 68%nat with (8 + 60)%nat.
     rewrite -(pa_stk_assoc X 8 60).
     apply stk_pop. apply bv_eq; vm_compute; reflexivity.
@@ -317,7 +317,7 @@ Section KexecAFrame.
     add_vec (pa_stk X 68)
       (zero_extend' 64 (concat_vec (mword_of_int 59 : mword 6) ('b"000")))
     = pa_stk X 9.
-  Proof.
+  Proof using .
     change 68%nat with (9 + 59)%nat.
     rewrite -(pa_stk_assoc X 9 59).
     apply stk_pop. apply bv_eq; vm_compute; reflexivity.
@@ -327,7 +327,7 @@ Section KexecAFrame.
     add_vec (pa_stk X 68)
       (zero_extend' 64 (concat_vec (mword_of_int 58 : mword 6) ('b"000")))
     = pa_stk X 10.
-  Proof.
+  Proof using .
     change 68%nat with (10 + 58)%nat.
     rewrite -(pa_stk_assoc X 10 58).
     apply stk_pop. apply bv_eq; vm_compute; reflexivity.
@@ -337,7 +337,7 @@ Section KexecAFrame.
     add_vec (pa_stk X 68)
       (zero_extend' 64 (concat_vec (mword_of_int 57 : mword 6) ('b"000")))
     = pa_stk X 11.
-  Proof.
+  Proof using .
     change 68%nat with (11 + 57)%nat.
     rewrite -(pa_stk_assoc X 11 57).
     apply stk_pop. apply bv_eq; vm_compute; reflexivity.
@@ -347,7 +347,7 @@ Section KexecAFrame.
     add_vec (pa_stk X 68)
       (zero_extend' 64 (concat_vec (mword_of_int 56 : mword 6) ('b"000")))
     = pa_stk X 12.
-  Proof.
+  Proof using .
     change 68%nat with (12 + 56)%nat.
     rewrite -(pa_stk_assoc X 12 56).
     apply stk_pop. apply bv_eq; vm_compute; reflexivity.
@@ -357,7 +357,7 @@ Section KexecAFrame.
     add_vec (pa_stk X 68)
       (zero_extend' 64 (concat_vec (mword_of_int 55 : mword 6) ('b"000")))
     = pa_stk X 13.
-  Proof.
+  Proof using .
     change 68%nat with (13 + 55)%nat.
     rewrite -(pa_stk_assoc X 13 55).
     apply stk_pop. apply bv_eq; vm_compute; reflexivity.
@@ -376,7 +376,7 @@ Section KexecAFrame.
     (∀ g : nat -> bv 8,
        ([∗ list] j ∈ seq 0 64, pa_add (pa_stk sp0 54) j ↦ₘ[KT1] g j) -∗
        stack_own (KTR := KT1) (pa_stk sp0 46) 8).
-  Proof.
+  Proof using .
     iIntros "H".
     iDestruct (kxc_elf_slots_of_stack with "H") as "H".
     iDestruct (kxc_slots_elf sp0 with "H") as "[%Hal Hb]".
@@ -394,7 +394,7 @@ Section KexecAFrame.
          [ElfEnc.le_at_nth_byte] at m := 32 is the whole content; the
          alignment comes off the elf buffer's own slot (slot 54). ---- *)
   Lemma kxc_seq_split_4 (N : nat) : (4 <= N)%nat -> seq 0 N = seq 0 4 ++ seq 4 (N - 4).
-  Proof.
+  Proof using .
     intro H. rewrite -(seq_app 4 (N - 4) 0). f_equal. lia.
   Qed.
 
@@ -402,7 +402,7 @@ Section KexecAFrame.
     is_aligned_paddr (Physaddr a) 4 = true ->
     ([∗ list] j ∈ seq 0 4, pa_add a j ↦ₘ[KT1] g j) ⊢
     ctx_word4_pointsto (KTR := KT1) cur_ctx a (DfracOwn 1) (Z_to_bv 32 (le_at g 0 4)).
-  Proof.
+  Proof using .
     intro Hal. iIntros "H".
     iApply (ctx_word4_pointsto_intro (KTR := KT1) cur_ctx a (DfracOwn 1) _ Hal).
     iApply (big_sepL_impl with "H"). iIntros "!>" (i j Hij) "Hb".
@@ -415,7 +415,7 @@ Section KexecAFrame.
   Lemma kxc_named_of_word4 (a : Arch.pa) (g : nat -> bv 8) :
     ctx_word4_pointsto (KTR := KT1) cur_ctx a (DfracOwn 1) (Z_to_bv 32 (le_at g 0 4)) ⊢
     [∗ list] j ∈ seq 0 4, pa_add a j ↦ₘ[KT1] g j.
-  Proof.
+  Proof using .
     rewrite (ctx_word4_pointsto_unfold (KTR := KT1)). iIntros "[_ H]".
     iApply (big_sepL_impl with "H"). iIntros "!>" (i j Hij) "Hb".
     assert (Hj : (j < 4)%nat).
@@ -430,7 +430,7 @@ Section KexecAFrame.
     stack_own (KTR := KT1) (pa_stk sp0 13) 50 ⊢
     stack_own (KTR := KT1) (pa_stk sp0 13) 33 ∗ stack_own (KTR := KT1) (pa_stk sp0 46) 8 ∗
     stack_own (KTR := KT1) (pa_stk sp0 54) 9.
-  Proof.
+  Proof using .
     iIntros "H".
     iEval (change 50%nat with (33 + 17)%nat;
            rewrite (stack_own_app (KTR := KT1)) (pa_stk_assoc sp0 13 33)) in "H".
@@ -443,7 +443,7 @@ Section KexecAFrame.
   Lemma kxc_mid_join (sp0 : mword 64) :
     stack_own (KTR := KT1) (pa_stk sp0 13) 33 -∗ stack_own (KTR := KT1) (pa_stk sp0 46) 8 -∗
     stack_own (KTR := KT1) (pa_stk sp0 54) 9 -∗ stack_own (KTR := KT1) (pa_stk sp0 13) 50.
-  Proof.
+  Proof using .
     iIntros "A B C".
     iEval (change 50%nat with (33 + 17)%nat;
            rewrite (stack_own_app (KTR := KT1)) (pa_stk_assoc sp0 13 33)).
@@ -461,7 +461,7 @@ Section KexecAFrame.
     ([∗ list] j ∈ seq 0 N, pa_add a j ↦ₘ[KT1] g j) ⊢
     ([∗ list] j ∈ seq 0 4, pa_add a j ↦ₘ[KT1] g j) ∗
     ([∗ list] j ∈ seq 4 (N - 4), pa_add a j ↦ₘ[KT1] g j).
-  Proof.
+  Proof using .
     intro H. rewrite (kxc_seq_split_4 N H) big_sepL_app. iIntros "[$ $]".
   Qed.
 
@@ -470,7 +470,7 @@ Section KexecAFrame.
     ([∗ list] j ∈ seq 0 4, pa_add a j ↦ₘ[KT1] g j) -∗
     ([∗ list] j ∈ seq 4 (N - 4), pa_add a j ↦ₘ[KT1] g j) -∗
     ([∗ list] j ∈ seq 0 N, pa_add a j ↦ₘ[KT1] g j).
-  Proof.
+  Proof using .
     intro H. iIntros "A B".
     rewrite (kxc_seq_split_4 N H) big_sepL_app. iSplitL "A"; [iExact "A" | iExact "B"].
   Qed.
@@ -571,7 +571,7 @@ Section KexecA.
   Lemma kxc_frameA6_weaken (sp0 ra0 s00 s10 s20 pv av w6 : mword 64) :
     kxc_frameA6 sp0 ra0 s00 s10 s20 pv av w6 -∗
     kxc_frameA sp0 ra0 s00 s10 s20 pv av.
-  Proof.
+  Proof using .
     rewrite /kxc_frameA6 /kxc_frameA.
     iIntros "(A1 & A2 & A3 & A4 & A5 & A6 & A7 & A8 & A9 & A10 & A11 & A12 &
               A13 & Arest & A64 & A65 & A66 & A67 & A68)".
@@ -627,7 +627,7 @@ Section KexecA.
       (ef : nat -> bv 8) :
     kxc_frameA6x sp0 ra0 s00 s10 s20 pv av w6 ef -∗
     kxc_frameA6 sp0 ra0 s00 s10 s20 pv av w6.
-  Proof.
+  Proof using .
     rewrite /kxc_frameA6x /kxc_frameA6.
     iIntros "(%Hal & A1 & A2 & A3 & A4 & A5 & A6 & A7 & A8 & A9 & A10 & A11 &
               A12 & A13 & Aust & Aelf & Aph & A64 & A65 & A66 & A67 & A68)".
@@ -645,7 +645,7 @@ Section KexecA.
   Lemma kxc_frameA_epi (sp0 ra0 s00 s10 s20 pv av : mword 64) :
     kxc_frameA sp0 ra0 s00 s10 s20 pv av -∗
     kxc_frame sp0 ra0 s00 s10 s20.
-  Proof.
+  Proof using .
     rewrite /kxc_frameA /kxc_frame.
     iIntros "(A1 & A2 & A3 & A4 & A5 & A6 & A7 & A8 & A9 & A10 & A11 & A12 &
               A13 & Arest & A64 & (%w65 & A65) & A66 & (%w67 & A67) &
@@ -670,7 +670,7 @@ Section KexecA.
       (p : mword 64) (lks : gset string) :
     sie_cap_gpr KT1 m K0 b p -∗ cpu_own n eb p b lks -∗
     ⌜ b = match n with O => eb | S _ => false end ⌝.
-  Proof.
+  Proof using .
     iIntros "Hcg Hcnt". destruct b.
     - iDestruct "Hcnt" as "%Hb". destruct Hb as (-> & -> & _). done.
     - destruct n as [|n']; [ | done ].
@@ -716,7 +716,7 @@ Section KexecA.
         kxc_frameA sp0 ra0 s00 s10 s20 pv av -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hsp Hra Hs0 Hs1 Hs2 Ha0 Ha1.
     iIntros "Hcg #Htext Hpc Hcont".
     (* ---- +0x000: addi sp,sp,-544 (BASE-encoded) ---- *)
@@ -1094,7 +1094,7 @@ Section KexecLdat.
       (kf : nat) (inumf : mword 32) (dnf : dinode) (bmf : blkmap) :
     ic_loaded fsc_fs fsc_ireg fsc_cov fsc_logst kf inumf dnf bmf ⊢
     ∃ datl : nat -> list (bv 8), kxc_ldat kf inumf dnf bmf datl.
-  Proof.
+  Proof using .
     rewrite /kxc_ldat /inode_map. iIntros "H".
     iDestruct (ic_loaded_open with "H") as (datl)
       "(%Hok & %Hrl & %Hdok & %Hddix & %Hdoc & %Hduq & Hdlk & Hdiat & Hmeta &
@@ -1118,7 +1118,7 @@ Section KexecLdat.
       (datl : nat -> list (bv 8)) :
     kxc_ldat kf inumf dnf bmf datl ⊢
     ic_loaded fsc_fs fsc_ireg fsc_cov fsc_logst kf inumf dnf bmf.
-  Proof.
+  Proof using .
     rewrite /kxc_ldat /inode_map.
     iIntros "(%Hok & %Hrl & %Hdok & %Hddix & %Hdoc & %Hduq & Hdlk & Hdiat &
               Hmeta & [Haddrs Hind] & Hbl & Htop)".
@@ -1188,7 +1188,7 @@ Section KexecExitQ.
       KexecOkQ.kexec_closer Q QF gf fsc_kalloc pj pidv U m (ret_pc ra0) K b eb lks dqb
            dqs fsc_bmapstart na alen plen pv dqpv pfun av dqa avf
            aslen dqas afun).
-  Proof.
+  Proof using .
     rewrite /wp_next. iIntros "H" (CID Hcr).
     iSpecialize ("H" $! CID with "[%]"); [exact Hcr |].
     iIntros (mf U' entry spv szv')
@@ -1210,7 +1210,7 @@ Section KexecExitQ.
     □ (∀ CX : CpuId, KEX CX -∗ E CX) -∗
     wp_next (CID0 := CIDx) true pj KEX -∗
     wp_next (CID0 := CIDx) true pj E.
-  Proof.
+  Proof using .
     rewrite /wp_next. iIntros "#Hw H" (CID Hcr).
     iSpecialize ("H" $! CID with "[%]"); [exact Hcr |]. by iApply "Hw".
   Qed.
@@ -1257,21 +1257,21 @@ Section KexecAExit.
       (k : nat) : (k < NINODE)%nat ->
     (ic_escrows fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst -∗ ic_escrow fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k
      : iProp Σ).
-  Proof.
+  Proof using .
     iIntros (Hk) "H".
     iApply (IcacheEscrow.ic_escrows_lookup fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k Hk with "H").
   Qed.
 
   Lemma kxa_bs3_split :
     (bslots 3 : iProp Σ) -∗ bslot ∗ bslots 2.
-  Proof.
+  Proof using .
     rewrite /bslot. change 3%nat with (1 + 2)%nat. rewrite bslots_op.
     iIntros "$".
   Qed.
 
   Lemma kxa_bs3_join :
     (bslot : iProp Σ) -∗ bslots 2 -∗ bslots 3.
-  Proof.
+  Proof using .
     iIntros "A B". rewrite /bslot. change 3%nat with (1 + 2)%nat.
     rewrite bslots_op. iFrame.
   Qed.
@@ -1339,7 +1339,7 @@ Section KexecAExit.
            dqs fsc_bmapstart na alen plen pv dqpv pfun av dqa avf
            aslen dqas afun) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hqf HK Hsp Hra Hs0 Hs1 Hs2 Hmtsp Hmta0 Hthr.
     iIntros "Hcg Hcnt Hextc Hclmc #Htext Hpc Hframe Hbm Hins #Hka Hpriv Hpath Hargv
              Hargs Hbs Hirs Hcont".
@@ -1503,7 +1503,7 @@ Section KexecABad.
            eb eb lks dqb dqs fsc_bmapstart na alen plen pv dqpv
            pfun av dqa avf aslen dqas afun) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hqf HK Hk Hlg Hsz Hbm0 Hbmc Hbml Hins0 Hibc Hibl Hib Hcovb Hn2
            Hjp Hgs Hsp Hra Hs0 Hs1 Hs2 Hmtsp Hmts4 Hthr.
     
@@ -1786,7 +1786,7 @@ Section KexecCBad.
     r = csp_rs1 \/ r = Rs0 \/ r = Rs1 \/ r = Rs2 \/
     r = Rs3 \/ r = Rs4 \/ r = Rs5 \/ r = Rs6 \/
     r = Rs7 \/ r = Rs8 \/ r = Rs9 \/ r = Rs10 \/ r = Rs11.
-  Proof.
+  Proof using .
     assert (Hsp : (mword_of_int 2 : mword 5) = csp_rs1)
       by (apply bv_eq; vm_compute; reflexivity).
     unfold is_cs_idx. cbn [existsb]. intro H.
@@ -1871,7 +1871,7 @@ Section KexecCBad.
            eb eb lks dqb dqs fsc_bmapstart na alen plen pv dqpv
            pfun av dqa avf aslen dqas afun) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hqf HK Hsp Hra Hs0 Hs1 Hs2 Hmtsp Hmts3 Hmts6 Hmts11 Hbelow Hcov.
     
     iIntros "Hcg Hcnt Hextc Hclmc #Htext Hpc Hpt #Hka Hbm Hins Hpriv Hpath Hargv

@@ -609,7 +609,7 @@ Section mcycle.
                        (register_lookup (R_bitvector_32 mcountinhibit) rs)
                        (register_lookup (R_bitvector_64 minstretcfg) rs) p⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDmc HDcfg.
     apply (swp_hfrun 6 Drw Dro Df rs rs (should_inc_minstret p) _ Hdisj).
     exact (hfrun_should_inc_minstret (Drw ∪ Dro) Drw rs p HDmc HDcfg).
@@ -631,7 +631,7 @@ Section mcycle.
                 hreg_frame_ro Df
                   (register_set (R_bitvector_64 PC)
                      (register_lookup (R_bitvector_64 nextPC) rs) rs) Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDn HWpc HDpc.
     iIntros "#Hcert Hrw Hro".
     iApply (swp_mono with "[] [-]");
@@ -672,7 +672,7 @@ Section mcycle.
     swp (tick_clock tt)
       (fun _ => hreg_frame (tick_clock_file rs) Drw ∗
                 hreg_frame_ro Df (tick_clock_file rs) Dro).
-  Proof.
+  Proof using .
     intros Hdisj HD HDmc HDcfg HDcy HWcy HDti HWti HDip HWip HDtc HDenv
       Hpriv Hstce Hsame Hflag.
     iIntros "#Hcert Hrw Hro".
@@ -703,7 +703,7 @@ Section mcycle.
       (fun _ => ∃ rs' : regstate,
                   ⌜reg_agree_on ((Drw ∪ Dro) ∖ tk_clock3) rs' rs⌝ ∗
                   hreg_frame rs' Drw ∗ hreg_frame_ro Df rs' Dro).
-  Proof.
+  Proof using .
     intros Hdisj HWcy HWti HWip. iIntros "#Hcert Hrw Hro".
     iApply (swp_mono with "[] [-]");
       [|iApply (swp_spanE Drw Dro Df rs (tick_clock tt) _ Hdisj
@@ -771,7 +771,7 @@ Section mcycle.
       (fun _ => ∃ mi : SailStdpp.Values.mword 64,
                   hreg_frame (wrap_post rs2 mi) Drw ∗
                   hreg_frame_ro Df (wrap_post rs2 mi) Dro ∗ R)%I.
-  Proof.
+  Proof using .
     intros Hdisj HDpriv HDhart HDmc HDcfg HWmi HDmi HWms HDms
       HWpc HDpc HDnpc Hhart Hhart2 Hmi2.
     iIntros "#Hcert Hrw Hro Hinstr".
@@ -895,7 +895,7 @@ Section mcycle.
                   ⌜∃ rs1 : regstate, P rs1 /\
                      reg_agree_on ((Drw ∪ Dro) ∖ tk_clock3) rs2 rs1⌝ ∗
                   hreg_frame rs2 Drw ∗ hreg_frame_ro Df rs2 Dro ∗ Ψ).
-  Proof.
+  Proof using .
     intros Hdisj HWcy HWti HWip. iIntros "#Hcert Hbody".
     rewrite /riscv_step.
     iApply (swp_bind_use (try_step 0 false) _ _ _ with "Hbody [-]").
@@ -929,7 +929,7 @@ Section mcycle.
       (fun _ => ∃ (rs2 rs1 : regstate),
                   ⌜P rs1 /\ reg_agree_on ((Drw ∪ Dro) ∖ tk_clock3) rs2 rs1⌝ ∗
                   hreg_frame rs2 Drw ∗ hreg_frame_ro Df rs2 Dro ∗ Ψ rs1).
-  Proof.
+  Proof using .
     intros Hdisj HWcy HWti HWip. iIntros "#Hcert Hbody".
     rewrite /riscv_step.
     iApply (swp_bind_use (try_step 0 false) _ _ _ with "Hbody [-]").
@@ -978,7 +978,7 @@ Section mcycle.
          hreg_frame rs2 Drw -∗ hreg_frame_ro Df rs2 Dro -∗ Ψ -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hdisj HWcy HWti HWip.
     iIntros "#Hcert Hfrag Hbody Hcont".
     iDestruct "Hfrag" as (rr) "Hfrag".
@@ -1010,7 +1010,7 @@ Section mcycle.
          hreg_frame rs2 Drw -∗ hreg_frame_ro Df rs2 Dro -∗ Ψ rs1 -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hdisj HWcy HWti HWip.
     iIntros "#Hcert Hfrag Hbody Hcont".
     iDestruct "Hfrag" as (rr) "Hfrag".
@@ -1027,11 +1027,11 @@ Section mcycle.
   (* the two footprint weakenings every frame client needs *)
   Lemma reg_agree_l (D1 D2 : gset register) (rs rs' : regstate) :
     reg_agree_on (D1 ∪ D2) rs rs' -> reg_agree_on D1 rs rs'.
-  Proof. intros H r Hr. apply H. set_solver. Qed.
+  Proof using . intros H r Hr. apply H. set_solver. Qed.
 
   Lemma reg_agree_r (D1 D2 : gset register) (rs rs' : regstate) :
     reg_agree_on (D1 ∪ D2) rs rs' -> reg_agree_on D2 rs rs'.
-  Proof. intros H r Hr. apply H. set_solver. Qed.
+  Proof using . intros H r Hr. apply H. set_solver. Qed.
 
   (* the fetched-word existential, introduced at the point where the arm's
      own [swp_run_hart_active_*] has just produced its concrete word *)
@@ -1044,7 +1044,7 @@ Section mcycle.
       (fun st => ∃ w' : SailStdpp.Values.mword 32,
                  ⌜st = Step_Execute (RETIRE_SUCCESS, w')⌝ ∗
                  hreg_frame rsB Drw ∗ hreg_frame_ro Df rsB Dro ∗ Psi).
-  Proof.
+  Proof using .
     iIntros "H". iApply (swp_mono with "[] H").
     iIntros (st) "(-> & Hrw & Hro & HPsi)". iExists w. by iFrame.
   Qed.
@@ -1129,7 +1129,7 @@ Section mcycle.
          hreg_frame rs3 Drw -∗ hreg_frame_ro Df rs3 Dro -∗ Psi -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hdisj HWcy HWti HWip HDpriv HDhart HDmc HDcfg HWmi HDmi HWms HDms
       HWpc HDpc HDnpc Hhart Hhart2 Hmi2 Hpre.
     iIntros "#Hcert Hfrag Hrw Hro Hbody Hcont".

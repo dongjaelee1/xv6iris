@@ -493,19 +493,19 @@ Section IcacheGhost.
     ([∗ list] k ∈ seq 0 NINODE, live_slot M k)%I.
 
   Global Instance live_norm_timeless M k : Timeless (live_norm M k).
-  Proof.
+  Proof using .
     rewrite /live_norm. destruct (M !! k) as [[qt n]|];
       [destruct (1/2 - qt)%Qp|]; apply _.
   Qed.
   Global Instance live_frzn_timeless M k : Timeless (live_frzn M k).
-  Proof.
+  Proof using .
     rewrite /live_frzn. destruct (M !! k) as [[qt n]|];
       [destruct (1/2 - qt)%Qp|]; apply _.
   Qed.
   Global Instance live_slot_timeless M k : Timeless (live_slot M k).
-  Proof. rewrite /live_slot. apply _. Qed.
+  Proof using . rewrite /live_slot. apply _. Qed.
   Global Instance live_pool_timeless M : Timeless (live_pool M).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* A6.145 interim (zero-epoch regime): EVERY arm of [live_slot] carries a
      [live_frac0] piece, so any outstanding slice of the slot agrees with the
@@ -513,7 +513,7 @@ Section IcacheGhost.
   Lemma live_slot_pin M k s g lo :
     live_slot M k -∗ live_genlo k s g lo -∗
     ⌜lo = 0%nat⌝ ∗ live_slot M k ∗ live_genlo k s g lo.
-  Proof.
+  Proof using .
     iIntros "Hsl Hlv". rewrite /live_slot /live_norm /live_frzn.
     destruct (M !! k) as [[qt n]|] eqn:HMk.
     - destruct (1/2 - qt)%Qp as [c|] eqn:Hc.
@@ -531,33 +531,33 @@ Section IcacheGhost.
   (* the shapes, as equations, so every move below is a rewrite *)
   Lemma live_norm_none M k :
     M !! k = None -> live_norm M k = (live_frac0 k 1%Qp ∗ frzsel k 1%Qp false)%I.
-  Proof. intros H. by rewrite /live_norm H. Qed.
+  Proof using . intros H. by rewrite /live_norm H. Qed.
 
   Lemma live_norm_some M k qt n c :
     M !! k = Some (qt, n) -> (1/2 - qt)%Qp = Some c ->
     live_norm M k = (live_frac0 k c ∗ frzsel k (1/2)%Qp false)%I.
-  Proof. intros H1 H2. by rewrite /live_norm H1 /= H2. Qed.
+  Proof using . intros H1 H2. by rewrite /live_norm H1 /= H2. Qed.
 
   Lemma live_frzn_none M k : M !! k = None -> live_frzn M k = False%I.
-  Proof. intros H. by rewrite /live_frzn H. Qed.
+  Proof using . intros H. by rewrite /live_frzn H. Qed.
 
   Lemma live_frzn_some M k qt n c :
     M !! k = Some (qt, n) -> (1/2 - qt)%Qp = Some c ->
     live_frzn M k = (live_frac0 k 1%Qp ∗ frzsel k (1/2)%Qp true)%I.
-  Proof. intros H1 H2. by rewrite /live_frzn H1 /= H2. Qed.
+  Proof using . intros H1 H2. by rewrite /live_frzn H1 /= H2. Qed.
 
   Lemma live_slot_of_norm M k : live_norm M k -∗ live_slot M k.
-  Proof. iIntros "H". by iLeft. Qed.
+  Proof using . iIntros "H". by iLeft. Qed.
 
   Lemma live_slot_of_frzn M k : live_frzn M k -∗ live_slot M k.
-  Proof. iIntros "H". by iRight. Qed.
+  Proof using . iIntros "H". by iRight. Qed.
 
   (* a move that changes only the COUNT leaves the arm literally where it is:
      both alternatives are stated over [M !! k]'s FRACTION alone. *)
   Lemma live_slot_recount M k qt (n n' : positive) :
     M !! k = Some (qt, n) ->
     live_slot M k = live_slot (<[k := (qt, n')]> M) k.
-  Proof.
+  Proof using .
     intros HM. rewrite /live_slot /live_norm /live_frzn HM.
     by rewrite (lookup_insert M k (qt, n')).
   Qed.
@@ -569,7 +569,7 @@ Section IcacheGhost.
      every AU return a credential-rebuildable slice with no new binders. *)
   Lemma live_slot_norm_of_lv M k s :
     live_frac k s -∗ live_slot M k -∗ live_frac0 k s ∗ live_norm M k.
-  Proof.
+  Proof using .
     iIntros "Hs Hsl".
     iDestruct "Hsl" as "[Hn | Hf]"; last first.
     { rewrite /live_frzn. destruct (M !! k) as [[qt n]|];
@@ -593,7 +593,7 @@ Section IcacheGhost.
   (* WEAPON (ii): the selector's OFF half, for the mover that holds no slice *)
   Lemma live_slot_norm_of_sel M k q :
     frzsel k q false -∗ live_slot M k -∗ frzsel k q false ∗ live_norm M k.
-  Proof.
+  Proof using .
     iIntros "Hsel [Hn | Hf]"; [by iFrame |].
     rewrite /live_frzn. destruct (M !! k) as [[qt n]|];
       [| iDestruct "Hf" as "[]"].
@@ -605,7 +605,7 @@ Section IcacheGhost.
   (* ...and its mirror, for the freezer's own reclaim *)
   Lemma live_slot_frzn_of_sel M k q :
     frzsel k q true -∗ live_slot M k -∗ frzsel k q true ∗ live_frzn M k.
-  Proof.
+  Proof using .
     iIntros "Hsel [Hn | Hf]"; [| by iFrame].
     rewrite /live_norm. destruct (M !! k) as [[qt n]|].
     - destruct (1/2 - qt)%Qp; [| iDestruct "Hn" as "[]"].
@@ -617,14 +617,14 @@ Section IcacheGhost.
 
   Lemma live_slot_none M k :
     M !! k = None -> live_slot M k -∗ live_frac0 k 1%Qp ∗ frzsel k 1%Qp false.
-  Proof.
+  Proof using .
     intros H. rewrite /live_slot (live_frzn_none M k H) (live_norm_none M k H).
     iIntros "[$ | []]".
   Qed.
 
   Lemma live_slot_none_intro M k :
     M !! k = None -> live_frac0 k 1%Qp -∗ frzsel k 1%Qp false -∗ live_slot M k.
-  Proof.
+  Proof using .
     intros H. iIntros "Hone Hsel". iApply live_slot_of_norm.
     rewrite (live_norm_none M k H). iFrame.
   Qed.
@@ -633,7 +633,7 @@ Section IcacheGhost.
     M !! k = Some (qt, n) ->
     live_norm M k -∗
       ∃ c : Qp, ⌜(1/2 - qt)%Qp = Some c⌝ ∗ live_frac0 k c ∗ frzsel k (1/2)%Qp false.
-  Proof.
+  Proof using .
     intros HM. rewrite /live_norm HM /=.
     destruct (1/2 - qt)%Qp as [c|] eqn:E; [| iIntros "[]"].
     iIntros "H". iExists c. by iFrame.
@@ -646,7 +646,7 @@ Section IcacheGhost.
     live_slot M k -∗ live_frac k s -∗
       ∃ c : Qp, ⌜(1/2 - qt)%Qp = Some c⌝ ∗
         live_frac0 k c ∗ frzsel k (1/2)%Qp false ∗ live_frac0 k s.
-  Proof.
+  Proof using .
     intros HM. iIntros "Hsl Hs".
     iDestruct (live_slot_norm_of_lv with "Hs Hsl") as "[Hs Hn]".
     iDestruct (live_norm_some_inv M k qt n HM with "Hn") as (c) "[%Ec [Hc Hsel]]".
@@ -657,7 +657,7 @@ Section IcacheGhost.
      proves the slot is LIVE, because a free one's unit is entire. *)
   Lemma live_slot_live M k s :
     live_frac k s -∗ live_slot M k -∗ ⌜is_Some (M !! k)⌝.
-  Proof.
+  Proof using .
     iIntros "Hs Hsl".
     iDestruct (live_slot_norm_of_lv with "Hs Hsl") as "[Hs Hsl]".
     rewrite /live_norm.
@@ -674,7 +674,7 @@ Section IcacheGhost.
      its identity across the look. *)
   Lemma live_slot_live_genlo M k s g lo :
     live_genlo k s g lo -∗ live_slot M k -∗ ⌜is_Some (M !! k)⌝.
-  Proof.
+  Proof using .
     iIntros "Hs Hsl".
     destruct (M !! k) as [e|] eqn:E; [iPureIntro; by eexists|].
     iDestruct "Hsl" as "[Hn | Hf]".
@@ -690,7 +690,7 @@ Section IcacheGhost.
 
   Lemma live_slot_live_gen M k s g :
     live_gen k s g -∗ live_slot M k -∗ ⌜is_Some (M !! k)⌝.
-  Proof.
+  Proof using .
     iIntros "Hs Hsl".
     iAssert (live_frac k s) with "[Hs]" as "Hsf"; [by iExists g |].
     iDestruct (live_slot_norm_of_lv with "Hsf Hsl") as "[Hsf Hsl]".
@@ -703,7 +703,7 @@ Section IcacheGhost.
   Lemma live_pool_live_gen M k s g :
     (k < NINODE)%nat ->
     live_gen k s g -∗ live_pool M -∗ ⌜is_Some (M !! k)⌝.
-  Proof.
+  Proof using .
     intros Hk. iIntros "Hs Hp".
     iDestruct (big_sepL_lookup (fun (_ : nat) (j : nat) => live_slot M j)
                  (seq 0 NINODE) k k (seq_ninode_lookup k Hk) with "Hp") as "Hsl".
@@ -713,7 +713,7 @@ Section IcacheGhost.
   Lemma live_pool_live M k s :
     (k < NINODE)%nat ->
     live_frac k s -∗ live_pool M -∗ ⌜is_Some (M !! k)⌝.
-  Proof.
+  Proof using .
     intros Hk. iIntros "Hs Hp".
     iDestruct (big_sepL_lookup (fun (_ : nat) (j : nat) => live_slot M j)
                  (seq 0 NINODE) k k (seq_ninode_lookup k Hk) with "Hp") as "Hsl".
@@ -731,7 +731,7 @@ Section IcacheGhost.
       (∀ M' : gmap nat (Qp * positive),
          ⌜forall j, j <> k -> M' !! j = M !! j⌝ -∗
          live_slot M' k -∗ live_pool M').
-  Proof.
+  Proof using .
     intros Hk. rewrite /live_pool. iIntros "Hs".
     iDestruct (big_sepL_delete _ (seq 0 NINODE) k k (seq_ninode_lookup k Hk)
                 with "Hs") as "[Hslot Hrest]".
@@ -752,7 +752,7 @@ Section IcacheGhost.
      [false] literal here -- which is the ONLY reason this is a fupd. *)
   Lemma live_pool_empty :
     ([∗ list] k ∈ seq 0 (NINODE + NINODE), live_frac0 k 1%Qp) ==∗ live_pool ∅.
-  Proof.
+  Proof using .
     rewrite /live_pool. iIntros "H".
     rewrite seq_app big_sepL_app. iDestruct "H" as "[Hl Hr]".
     rewrite -(fmap_add_seq NINODE 0 NINODE) big_sepL_fmap.
@@ -789,14 +789,14 @@ Section IcacheGhost.
     ([∗ list] k ∈ seq 0 NINODE, isl_slot M k)%I.
 
   Global Instance isl_slot_timeless M k : Timeless (isl_slot M k).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma isl_slot_none M k : M !! k = None -> isl_slot M k = slh_auth (icfg_isl k) None.
-  Proof. intros HM. by rewrite /isl_slot HM. Qed.
+  Proof using . intros HM. by rewrite /isl_slot HM. Qed.
 
   Lemma isl_slot_some M k qt n :
     M !! k = Some (qt, n) -> isl_slot M k = slh_auth (icfg_isl k) (Some qt).
-  Proof. intros HM. by rewrite /isl_slot HM. Qed.
+  Proof using . intros HM. by rewrite /isl_slot HM. Qed.
 
   (* the accessor, [live_pool_acc_upd] verbatim *)
   Lemma isl_pool_acc_upd (M : gmap nat (Qp * positive)) (k : nat) :
@@ -806,7 +806,7 @@ Section IcacheGhost.
       (∀ M' : gmap nat (Qp * positive),
          ⌜forall j, j <> k -> M' !! j = M !! j⌝ -∗
          isl_slot M' k -∗ isl_pool M').
-  Proof.
+  Proof using .
     intros Hk. rewrite /isl_pool. iIntros "Hs".
     iDestruct (big_sepL_delete _ (seq 0 NINODE) k k (seq_ninode_lookup k Hk)
                 with "Hs") as "[Hslot Hrest]".
@@ -824,7 +824,7 @@ Section IcacheGhost.
 
   Lemma isl_pool_empty :
     ([∗ list] k ∈ seq 0 NINODE, slh_auth (icfg_isl k) None) ⊢ isl_pool ∅.
-  Proof.
+  Proof using .
     rewrite /isl_pool. iIntros "H". iApply (big_sepL_mono with "H").
     intros idx k _. by rewrite (isl_slot_none ∅ k (lookup_empty k)).
   Qed.
@@ -857,7 +857,7 @@ Section IcacheGhost.
       live_genlo k q g 0%nat ∗ live_genlo k (1/2)%Qp g 0%nat ∗ ity_pending g ∗
       frzsel k (1/2)%Qp false ∗
       live_slot (<[k := (q, 1%positive)]> M) k.
-  Proof.
+  Proof using .
     intros HM Hq.
     apply Qp.lt_sum in Hq as [c Hc].          (* 1/2 = q + c *)
     assert (Hsum : (q + ((1/2)%Qp + c))%Qp = 1%Qp).
@@ -893,7 +893,7 @@ Section IcacheGhost.
     frzsel k (1/2)%Qp false -∗ live_slot M k -∗
       frzsel k (1/2)%Qp false ∗ live_frac0 k qn ∗
       live_slot (<[k := ((qt + qn)%Qp, Pos.succ n)]> M) k.
-  Proof.
+  Proof using .
     intros HM Hlt.
     apply Qp.lt_sum in Hlt as [c Hc].
     assert (Hpre : ((1/2)%Qp - qt)%Qp = Some (qn + c)%Qp).
@@ -919,7 +919,7 @@ Section IcacheGhost.
     live_frac k s -∗ live_slot M k -∗
       live_frac0 k s ∗ live_frac0 k qn ∗
       live_slot (<[k := ((qt + qn)%Qp, Pos.succ n)]> M) k.
-  Proof.
+  Proof using .
     intros HM Hlt.
     apply Qp.lt_sum in Hlt as [c Hc].
     assert (Hpre : ((1/2)%Qp - qt)%Qp = Some (qn + c)%Qp).
@@ -943,7 +943,7 @@ Section IcacheGhost.
   Lemma live_slot_close M k q qt qr (n : positive) :
     M !! k = Some (qt, Pos.succ n) -> (qt - q)%Qp = Some qr ->
     live_slot M k -∗ live_frac k q -∗ live_slot (<[k := (qr, n)]> M) k.
-  Proof.
+  Proof using .
     intros HM Hsub. iIntros "Hsl Hq".
     iDestruct (live_slot_some_inv M k qt (Pos.succ n) q HM with "Hsl Hq")
       as (c) "(%Epre & Hc & Harm & Hq)".
@@ -969,7 +969,7 @@ Section IcacheGhost.
     live_slot M k -∗ frzsel k (1/2)%Qp false -∗
     live_frac k qt -∗ live_frac k (1/2)%Qp -∗
     live_slot (delete k M) k.
-  Proof.
+  Proof using .
     intros HM. iIntros "Hsl Hsel Hq Hh".
     iDestruct (live_slot_some_inv M k qt 1%positive qt HM with "Hsl Hq")
       as (c) "(%Epre & Hc & Harm & Hq)".
@@ -995,7 +995,7 @@ Section IcacheGhost.
   Lemma live_slot_close_last_frz M k (qt : Qp) :
     M !! k = Some (qt, 1%positive) ->
     live_slot M k -∗ frzsel k (1/2)%Qp true ==∗ live_slot (delete k M) k.
-  Proof.
+  Proof using .
     intros HM. iIntros "Hsl Hsel".
     iDestruct (live_slot_frzn_of_sel with "Hsel Hsl") as "[Hsel Hf]".
     rewrite /live_frzn HM.
@@ -1011,7 +1011,7 @@ Section IcacheGhost.
 
   Lemma itable_half_agree M1 M2 :
     itable_half M1 -∗ itable_half M2 -∗ ⌜M1 = M2⌝.
-  Proof.
+  Proof using .
     rewrite /itable_half. iIntros "H1 H2".
     iDestruct (own_valid_2 with "H1 H2") as %Hv.
     iPureIntro.
@@ -1023,20 +1023,20 @@ Section IcacheGhost.
      opened the [ref]-word invariant gets the right to update. *)
   Lemma itable_half_op M :
     itable_half M ∗ itable_half M ⊣⊢ own icfg_iref (● M).
-  Proof.
+  Proof using .
     rewrite /itable_half -own_op -auth_auth_dfrac_op dfrac_op_own Qp.half_half.
     done.
   Qed.
 
   Lemma itable_half_join M :
     itable_half M -∗ itable_half M -∗ own icfg_iref (● M).
-  Proof.
+  Proof using .
     iIntros "H1 H2". iApply itable_half_op. iFrame.
   Qed.
 
   Lemma itable_half_split M :
     own icfg_iref (● M) -∗ itable_half M ∗ itable_half M.
-  Proof. iIntros "H". by iApply itable_half_op. Qed.
+  Proof using . iIntros "H". by iApply itable_half_op. Qed.
 
   (* ------------------------------------------------------------------ *)
   (*  REF-1 EXCLUSIVITY -- the algebraic half of iput's theorem           *)
@@ -1052,7 +1052,7 @@ Section IcacheGhost.
     itable_half M -∗ iref_tok k q -∗
     ⌜∃ (qt : Qp) (n : positive), M !! k = Some (qt, n) /\ (qt ≤ 1)%Qp /\
        (n = 1%positive -> q = qt) /\ (q = qt -> n = 1%positive)⌝.
-  Proof.
+  Proof using .
     rewrite /itable_half /iref_tok /iref_frag. iIntros "Ha (Hf & _ & _)".
     iDestruct (own_valid_2 with "Ha Hf")
       as %[_ [Hincl Hval]]%auth_both_dfrac_valid_discrete.
@@ -1103,7 +1103,7 @@ Section IcacheGhost.
     itable_half M -∗ iref_frag k q -∗
     ⌜∃ (qt : Qp) (n : positive), M !! k = Some (qt, n) /\ (qt ≤ 1)%Qp /\
        (n = 1%positive -> q = qt) /\ (q = qt -> n = 1%positive)⌝.
-  Proof.
+  Proof using .
     rewrite /itable_half /iref_frag. iIntros "Ha Hf".
     iDestruct (own_valid_2 with "Ha Hf")
       as %[_ [Hincl Hval]]%auth_both_dfrac_valid_discrete.
@@ -1127,7 +1127,7 @@ Section IcacheGhost.
   Lemma iref_frag_two_lookup M k q1 q2 :
     itable_half M -∗ iref_frag k q1 -∗ iref_frag k q2 -∗
     ⌜∃ (qt : Qp) (n : positive), M !! k = Some (qt, n) /\ (2 <= Pos.to_nat n)%nat⌝.
-  Proof.
+  Proof using .
     rewrite /itable_half /iref_frag. iIntros "Ha H1 H2".
     assert (Hop : (◯ {[ k := (q1, 1%positive) ]} ⋅ ◯ {[ k := (q2, 1%positive) ]}
                    : icacheUR)
@@ -1181,7 +1181,7 @@ Section IcacheGhost.
     live_slot (<[k := (q, 1%positive)]> M) k ∗
     isl_slot (<[k := (q, 1%positive)]> M) k ∗ iref_tok0 k q ∗
     live_gen k (1/2)%Qp g ∗ ity_pending g ∗ frzsel k (1/2)%Qp false.
-  Proof.
+  Proof using .
     iIntros (HM Hq) "Ha Hsl Hisl".
     (* the slot is FREE, so its share authority is the zero; the first
        reference mints the whole outstanding share out of it. *)
@@ -1214,7 +1214,7 @@ Section IcacheGhost.
     frzsel k (1/2)%Qp false ∗
     live_slot (<[k := ((qt + qn)%Qp, Pos.succ n)]> M) k ∗
     isl_slot (<[k := ((qt + qn)%Qp, Pos.succ n)]> M) k ∗ iref_tok0 k qn.
-  Proof.
+  Proof using .
     iIntros (HM Hlt) "Ha Hsel Hsl Hisl".
     rewrite (isl_slot_some M k qt n HM).
     iMod (slh_mint (icfg_isl k) qt qn with "Hisl") as "[Hisl Hshare]".
@@ -1243,7 +1243,7 @@ Section IcacheGhost.
     live_frac0 k s ∗
     live_slot (<[k := ((qt + qn)%Qp, Pos.succ n)]> M) k ∗
     isl_slot (<[k := ((qt + qn)%Qp, Pos.succ n)]> M) k ∗ iref_tok0 k qn.
-  Proof.
+  Proof using .
     iIntros (HM Hlt) "Ha Hs Hsl Hisl".
     rewrite (isl_slot_some M k qt n HM).
     iMod (slh_mint (icfg_isl k) qt qn with "Hisl") as "[Hisl Hshare]".
@@ -1271,7 +1271,7 @@ Section IcacheGhost.
     own icfg_iref (● (<[k := (qt, Pos.succ n)]> M)) ∗
     isl_slot (<[k := (qt, Pos.succ n)]> M) k ∗
     iref_tok k (q/2)%Qp ∗ iref_tok k (q/2)%Qp.
-  Proof.
+  Proof using .
     iIntros (HM) "Ha (Hf & Hlv & Hsh) Hisl".
     (* the TOTAL is unchanged -- nothing is minted, the caller's own share
        halves along with its count fragment -- so the authority only has to
@@ -1314,7 +1314,7 @@ Section IcacheGhost.
     own icfg_iref (● M) -∗ iref_tok k q -∗ live_slot M k -∗ isl_slot M k ==∗
     own icfg_iref (● (<[k := (qr, n)]> M)) ∗ live_slot (<[k := (qr, n)]> M) k ∗
     isl_slot (<[k := (qr, n)]> M) k.
-  Proof.
+  Proof using .
     iIntros (HM Hsub) "Ha (Hf & Hlv & Hsh) Hsl Hisl".
     iDestruct (live_slot_close M k q qt qr n HM Hsub with "Hsl Hlv") as "Hsl".
     iFrame "Hsl".
@@ -1372,7 +1372,7 @@ Section IcacheGhost.
     live_slot M k -∗ isl_slot M k ==∗
     own icfg_iref (● (delete k M)) ∗ live_slot (delete k M) k ∗
     isl_slot (delete k M) k.
-  Proof.
+  Proof using .
     iIntros (HM) "Ha (Hf & Hlv & Hsh) Hh Hsel Hsl Hisl".
     iDestruct (live_slot_close_last M k qt HM with "Hsl Hsel Hlv Hh") as "Hsl".
     iFrame "Hsl".
@@ -1418,7 +1418,7 @@ Section IcacheGhost.
     live_slot M k -∗ isl_slot M k ==∗
     own icfg_iref (● (delete k M)) ∗ live_slot (delete k M) k ∗
     isl_slot (delete k M) k.
-  Proof.
+  Proof using .
     iIntros (HM) "Ha Hf Hsh Hsel Hsl Hisl".
     iMod (live_slot_close_last_frz M k qt HM with "Hsl Hsel") as "Hsl".
     iFrame "Hsl".
@@ -1471,12 +1471,12 @@ Section IcacheRefInv.
        wordw_claim (KTR := KT0) 4 (i_ref (ientry k)))%I.
 
   Global Instance iref_claims_persistent : Persistent iref_claims.
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma iref_claims_at (k : nat) :
     (k < NINODE)%nat ->
     iref_claims -∗ wordw_claim (KTR := KT0) 4 (i_ref (ientry k)).
-  Proof.
+  Proof using .
     intros Hk. rewrite /iref_claims.
     iIntros "Hc".
     iApply (big_sepL_lookup
@@ -1534,7 +1534,7 @@ Section IcacheRefInv.
   Definition itable_inv : iProp Σ := inv icacheN itable_body.
 
   Global Instance itable_inv_persistent : Persistent itable_inv.
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* ================================================================== *)
   (* A6.145 4b-iii: THE PINNED SLOT, v2 -- the ratified (g, lo) design.   *)
@@ -1556,14 +1556,14 @@ Section IcacheRefInv.
   Definition itable_inv_pinw : iProp Σ := itable_inv.
 
   Global Instance itable_inv_pinw_persistent : Persistent itable_inv_pinw.
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma pinw_slot_acc (M : gmap nat (Qp * positive)) (k : nat) :
     (k < NINODE)%nat ->
     ([∗ list] j ∈ seq 0 NINODE, pinw_slot M j) -∗
       pinw_slot M k ∗
       (pinw_slot M k -∗ [∗ list] j ∈ seq 0 NINODE, pinw_slot M j).
-  Proof.
+  Proof using .
     intros Hk.
     iApply (big_sepL_lookup_acc (fun (_ : nat) (j : nat) => pinw_slot M j)
               (seq 0 NINODE) k k (seq_ninode_lookup k Hk)).
@@ -1578,7 +1578,7 @@ Section IcacheRefInv.
       (∀ M' : gmap nat (Qp * positive),
          ⌜forall j, j <> k -> M' !! j = M !! j⌝ -∗
          pinw_slot M' k -∗ [∗ list] j ∈ seq 0 NINODE, pinw_slot M' j).
-  Proof.
+  Proof using .
     intros Hk. iIntros "Hs".
     iDestruct (big_sepL_delete _ (seq 0 NINODE) k k
                  ltac:(apply lookup_seq; split; [lia|exact Hk]) with "Hs")
@@ -1611,7 +1611,7 @@ Section IcacheRefInv.
       iref_pin_rows k (iref_word M k) lo tst ∗
       IcacheRef.live_genlo k c g lo ∗ frzsel k (1/2)%Qp false ∗
       IcacheRef.live_genlo k s g lo.
-  Proof.
+  Proof using .
     iIntros "Hslot Hlv". rewrite /pinw_slot.
     destruct (M !! k) as [[qt n]|] eqn:HMk.
     - iDestruct "Hslot" as (g0 lo0 tst) "(%Hlot & Hst & Hrows & Harm)".
@@ -1642,7 +1642,7 @@ Section IcacheRefInv.
       iref_pin_rows k w lo tst ∗
       (iref_pin_rows k w lo tst ={Eo ∖ ↑icacheN, Eo}=∗
          IcacheRef.live_genlo k s g lo).
-  Proof.
+  Proof using .
     iIntros (HE Hk) "#Hinv Hlv".
     iMod (inv_acc Eo icacheN with "Hinv") as "[Hbody Hclose]"; [exact HE|].
     iDestruct "Hbody" as (M) "(>Ha & >%Hwf & >Hrows)".
@@ -1676,7 +1676,7 @@ Section IcacheRefInv.
       (iref_pin_rows k (iref_word M k) lo tstp
          ={Eo ∖ ↑icacheN, Eo}=∗
          itable_half M ∗ mono_nat_auth_own (icfg_istmp k) (1/2) tstp).
-  Proof.
+  Proof using .
     iIntros (HE Hk His) "#Hinv Hhalf Hstp".
     iMod (inv_acc Eo icacheN with "Hinv") as "[Hbody Hclose]"; [exact HE|].
     iDestruct "Hbody" as (M') "(>Ha & >%Hwf & >Hrows)".
@@ -1705,7 +1705,7 @@ Section IcacheRefInv.
     itable_inv_pinw -∗ itable_half M -∗ IcacheRef.live_genlo k s g lo
     ={Eo}=∗ ⌜is_Some (M !! k)⌝ ∗ itable_half M ∗
             IcacheRef.live_genlo k s g lo.
-  Proof.
+  Proof using .
     iIntros (HE Hk) "#Hinv Hhalf Hlv".
     iMod (inv_acc Eo icacheN with "Hinv") as "[Hbody Hclose]"; [exact HE|].
     iDestruct "Hbody" as (M') "(>Ha & >%Hwf & >Hrows)".
@@ -1730,7 +1730,7 @@ Section IcacheRefInv.
     ↑icacheN ⊆ Eo -> (k < NINODE)%nat ->
     itable_inv_pinw -∗ frzsel k qs true -∗ IcacheRef.live_genlo k s' g lo
     ={Eo}=∗ False.
-  Proof.
+  Proof using .
     iIntros (HE Hk) "#Hinv Hsel Hlv".
     iMod (inv_acc Eo icacheN with "Hinv") as "[Hbody _]"; [exact HE|].
     iDestruct "Hbody" as (M) "(>Ha & >%Hwf & >Hrows)".
@@ -1763,7 +1763,7 @@ Section IcacheRefInv.
     frzsel k (1/2)%Qp false
     ={Eo}=∗ itable_half M ∗
             frzsel k ((1/2)/2)%Qp true ∗ frzsel k ((1/2)/2)%Qp true.
-  Proof.
+  Proof using .
     iIntros (HE HMk) "#Hinv Hhalf Hq Hh Hsel".
     iMod (inv_acc Eo icacheN with "Hinv") as "[Hbody Hclose]"; [exact HE|].
     iDestruct "Hbody" as (M') "(>Ha & >%Hwf & >Hrows)".
@@ -1815,7 +1815,7 @@ Section IcacheRefInv.
       IcacheRef.live_genlo k qt g' lo ∗
       IcacheRef.live_genlo k (1/2)%Qp g' lo ∗
       IcacheRefDefs.ity_pending g'.
-  Proof.
+  Proof using .
     iIntros (HE HMk) "#Hinv Hhalf Hq Hh".
     iMod (inv_acc Eo icacheN with "Hinv") as "[Hbody Hclose]"; [exact HE|].
     iDestruct "Hbody" as (M') "(>Ha & >%Hwf & >Hrows)".
@@ -1867,7 +1867,7 @@ Section IcacheRefInv.
     itable_half M -∗ iref_tok_genlo k q g lo -∗
     ⌜∃ (qt : Qp) (n : positive), M !! k = Some (qt, n) /\ (qt ≤ 1)%Qp /\
        (n = 1%positive -> q = qt) /\ (q = qt -> n = 1%positive)⌝.
-  Proof.
+  Proof using .
     iIntros "Ha (Hf & Hl & Hs)".
     iApply (iref_lookup with "Ha [Hf Hl Hs]").
     rewrite /IcacheRef.iref_tok. iFrame "Hf Hs".
@@ -1887,7 +1887,7 @@ Section IcacheRefInv.
     IcacheRef.live_genlo k c g lo -∗
     ∃ c' : Qp, ⌜(1/2 - (qt + qn))%Qp = Some c'⌝ ∗
       IcacheRef.live_genlo k qn g lo ∗ IcacheRef.live_genlo k c' g lo.
-  Proof.
+  Proof using .
     intros Hlt Hc.
     apply Qp.lt_sum in Hlt as [c' Hc'].
     assert (Hqc : c = (qn + c')%Qp).
@@ -1907,7 +1907,7 @@ Section IcacheRefInv.
     iref_cells M -∗
       i_ref (ientry k) ↦₄ iref_word M k ∗
       (i_ref (ientry k) ↦₄ iref_word M k -∗ iref_cells M).
-  Proof.
+  Proof using .
     intros Hk. rewrite /iref_cells.
     iApply (big_sepL_lookup_acc
               (fun (_ : nat) (j : nat) => (i_ref (ientry j) ↦₄ iref_word M j)%I)
@@ -1928,7 +1928,7 @@ Section IcacheRefInv.
       (∀ e : Qp * positive,
          i_ref (ientry k) ↦₄ iref_word (<[k := e]> M) k -∗
          iref_cells (<[k := e]> M)).
-  Proof.
+  Proof using .
     intros Hk. rewrite /iref_cells. iIntros "Hc".
     iDestruct (big_sepL_delete _ (seq 0 NINODE) k k (seq_ninode_lookup k Hk)
                 with "Hc") as "[Hcell Hrest]".
@@ -1993,7 +1993,7 @@ Section IcacheRefInv.
       i_ref (ientry k) ↦₄ iref_word M k ∗
       (i_ref (ientry k) ↦₄ (mword_of_int 0 : mword 32) -∗
        iref_cells (delete k M)).
-  Proof.
+  Proof using .
     intros Hk. rewrite /iref_cells. iIntros "Hc".
     iDestruct (big_sepL_delete _ (seq 0 NINODE) k k (seq_ninode_lookup k Hk)
                 with "Hc") as "[Hcell Hrest]".
@@ -2060,7 +2060,7 @@ Section IcacheRefInv.
     M !! k = Some (qt, n) ->
     itable_inv -∗ itable_half M -∗ live_frac k qt -∗ live_frac k (1/2)%Qp -∗
     live_frac k s ={Eo}=∗ False.
-  Proof.
+  Proof using .
     iIntros (HE HMk) "#Hinv Hhalf Hq Hh Hs".
     iMod (inv_acc Eo icacheN with "Hinv") as "[Hbody _]"; [exact HE|].
     iDestruct "Hbody" as (M') "(>Ha & >%Hwf & >Hrows)".
@@ -2205,7 +2205,7 @@ Section IcacheRefInv.
      ∨ (frzm_h z true ∗ frzsel k ((1/2)/2)%Qp true))%I.
 
   Global Instance frz_park_timeless k z : Timeless (frz_park k z).
-  Proof. rewrite /frz_park. apply _. Qed.
+  Proof using . rewrite /frz_park. apply _. Qed.
 
   (* a slice at [s] contains one at any [q <= s] *)
 
@@ -2254,11 +2254,11 @@ Section IcacheRefInv.
 
   Lemma frz_park_intro_on (k : nat) (z : Z) :
     frzm_h z true -∗ frzsel k ((1/2)/2)%Qp true -∗ frz_park k z.
-  Proof. rewrite /frz_park. iIntros "Hb Hs". iRight. iFrame. Qed.
+  Proof using . rewrite /frz_park. iIntros "Hb Hs". iRight. iFrame. Qed.
 
   Lemma frz_park_intro_off (k : nat) (z : Z) :
     frzm_h z false -∗ frzsel k (1/2)%Qp false -∗ IcacheRef.hpn_full k None -∗ frz_park k z.
-  Proof. rewrite /frz_park. iIntros "Hb Hs Hp". iLeft. iFrame. Qed.
+  Proof using . rewrite /frz_park. iIntros "Hb Hs Hp". iLeft. iFrame. Qed.
 
   (* THE WINDOW-ENTERING DECIDER AT REF-1 (iput+0x3a) and THE FOREIGN SHARE
      HOLDER's (idup's OPEN(2.6b)) ARE NOW ONE LEMMA, and that is R-e's whole
@@ -2275,7 +2275,7 @@ Section IcacheRefInv.
     itable_inv -∗ IcacheRef.live_genlo k s g lo -∗ frz_park k z ={Eo}=∗
       IcacheRef.live_genlo k s g lo ∗ frzm_h z false ∗ frzsel k (1/2)%Qp false ∗
       IcacheRef.hpn_full k None.
-  Proof.
+  Proof using .
     iIntros (HE Hk) "#Hinv Hs Hpark".
     rewrite /frz_park.
     iDestruct "Hpark" as "[(Hoff & Hsel & Hp) | [_ Hq]]".
@@ -2290,7 +2290,7 @@ Section IcacheRefInv.
     itable_inv -∗ IcacheRef.live_genlo k qt g lo -∗ frz_park k z ={Eo}=∗
       IcacheRef.live_genlo k qt g lo ∗ frzm_h z false ∗ frzsel k (1/2)%Qp false ∗
       IcacheRef.hpn_full k None.
-  Proof.
+  Proof using .
     iIntros (HE Hk) "#Hinv Hq Hpark".
     iApply (frz_park_shr_off Eo k z qt g lo HE Hk with "Hinv Hq Hpark").
   Qed.
@@ -2373,7 +2373,7 @@ Section IcacheRefInvReg.
      at the same record. *)
   Local Lemma ireg_frz_ok_ge2_any (f : frzUR) (a b : nat) (d : dinode) :
     (2 <= a)%nat -> ireg_frz_ok f a d -> ireg_frz_ok f b d.
-  Proof.
+  Proof using .
     intros Ha Hok.
     exact (ireg_frz_ok_of_off f b d (ireg_frz_ok_ge2 f a d Ha Hok)).
   Qed.
@@ -2391,7 +2391,7 @@ Section IcacheRefInvReg.
      the regime index exactly where it found it, which is what lets the slot's
      boot-shelter arm ride through the step ([InodeRegion.ireg_fsh_step]). *)
   Lemma frz_close_reg (ph : frz) : frz_reg (frz_close ph) = frz_reg ph.
-  Proof. destruct ph; reflexivity. Qed.
+  Proof using . destruct ph; reflexivity. Qed.
 
   (* ---- THE FREEZE MIRROR, PHASE-INDEXED (iclaim-ledger.md §3.16, A⁗) ---
 
@@ -2420,10 +2420,10 @@ Section IcacheRefInvReg.
     match ph with FrzPre _ => frzm_h z (frz_bit ph') | _ => emp end.
 
   Global Instance frz_mir_timeless ph z : Timeless (frz_mir ph z).
-  Proof. rewrite /frz_mir. destruct ph; apply _. Qed.
+  Proof using . rewrite /frz_mir. destruct ph; apply _. Qed.
   Global Instance frz_mir_back_timeless ph ph' z :
     Timeless (frz_mir_back ph ph' z).
-  Proof. rewrite /frz_mir_back. destruct ph; apply _. Qed.
+  Proof using . rewrite /frz_mir_back. destruct ph; apply _. Qed.
 
   (* the region's half at the old phase + the caller's trade = the region's
      half at the new phase + the caller's trade back.  ZZProbeFrz P6, at the
@@ -2432,7 +2432,7 @@ Section IcacheRefInvReg.
     (frz_bit ph' = true -> frz_bit ph = true) ->
     frzm_h z (frz_bit ph) -∗ frz_mir ph z ==∗
     frzm_h z (frz_bit ph') ∗ frz_mir_back ph ph' z.
-  Proof.
+  Proof using .
     intros Hmint.
     assert (Hoff : frz_bit ph = false -> frz_bit ph' = false).
     { intros Hne. destruct ph'; cbn [frz_bit]; [reflexivity | | reflexivity].
@@ -2448,7 +2448,7 @@ Section IcacheRefInvReg.
      phase IS "[b] is [frz_bit ph]" *)
   Lemma ireg_frzm_ok_bit (b : bool) (ph : frz) :
     ireg_frzm_ok b (Some (Excl ph)) -> b = frz_bit ph.
-  Proof. intros ->. destruct ph; reflexivity. Qed.
+  Proof using . intros ->. destruct ph; reflexivity. Qed.
 
   (* ------------------------------------------------------------------ *)
   (*  THE REGION's SIDE OF A COUNT MOVE, AS AN ACCESSOR                   *)
@@ -2491,7 +2491,7 @@ Section IcacheRefInvReg.
         (∀ (m : nat) (bfl : bool), ⌜ireg_frz_ok f m d⌝ -∗ ⌜S m = n⌝ -∗
            runit bfl (bv_unsigned inum) -∗
            |={E ∖ ↑iregN, E}=> icnt_half (bv_unsigned inum) m).
-  Proof.
+  Proof using .
     iIntros (HE Hin) "#Hinv Hhalf".
     pose proof (islot_lt inum) as Hsl.
     assert (Hkey : (16 * Z.of_nat (ireg_bi inum) + Z.of_nat (islot inum))%Z
@@ -2589,7 +2589,7 @@ Section IcacheRefInvReg.
          |={E ∖ ↑iregN, E}=>
            ifreeze ph' (bv_unsigned inum) ∗ icnt_half (bv_unsigned inum) m ∗
            frz_mir_back ph ph' (bv_unsigned inum)).
-  Proof.
+  Proof using .
     iIntros (HE Hin) "#Hinv Hfz Hhalf Hmir".
     pose proof (islot_lt inum) as Hsl.
     assert (Hkey : (16 * Z.of_nat (ireg_bi inum) + Z.of_nat (islot inum))%Z
@@ -2718,7 +2718,7 @@ Section IcacheRefInvReg.
          |={E ∖ ↑iregN, E}=>
            icnt_half (bv_unsigned inum) m ∗
            runit (is_claim l) (bv_unsigned inum)).
-  Proof.
+  Proof using .
     iIntros (HE HEl Hin) "#Hinv Hl Hhalf".
     pose proof (islot_lt inum) as Hsl.
     assert (Hkey : (16 * Z.of_nat (ireg_bi inum) + Z.of_nat (islot inum))%Z
@@ -2815,7 +2815,7 @@ Section IcacheRefInvReg.
     icnt_half (bv_unsigned inum) n ={E}=∗
       ⌜n = 1%nat⌝ ∗ ifreeze_pre rg (bv_unsigned inum) ∗
       icnt_half (bv_unsigned inum) n.
-  Proof.
+  Proof using .
     iIntros (HE Hin) "#Hinv Hpre Hcnt". rewrite /ifreeze_pre.
     iMod (ireg_frz_pin_read E γi γfs inodestart nib inum (FrzPre rg) n HE Hin
             with "Hinv Hpre Hcnt") as "((%d & %Hpin) & Hpre & Hcnt)".
@@ -2844,7 +2844,7 @@ Section IcacheRefInvReg.
          what comes home here is the park's QUARTER of the selector -- to be
          joined with the escrow tail's at the +0x8a retirement. *)
       frzsel k ((1/2)/2)%Qp true.
-  Proof.
+  Proof using .
     iIntros (HE Hin) "#Hinv Hpre Hpark". rewrite /frz_park.
     iDestruct "Hpark" as "[[Hbf _] | [Hbt Hs]]".
     - rewrite /ifreeze_pre.
@@ -2877,7 +2877,7 @@ Section IcacheRefInvReg.
       frzsel k (1/2)%Qp false ∗
       (* F42′: the resting pin comes out with the OFF arm, to be re-parked *)
       IcacheRef.hpn_full k None.
-  Proof.
+  Proof using .
     iIntros (HE Hin) "#Hinv Hl Hpark".
     pose proof (islot_lt inum) as Hsl.
     assert (Hkey : (16 * Z.of_nat (ireg_bi inum) + Z.of_nat (islot inum))%Z
@@ -2972,7 +2972,7 @@ Section IcacheRefInvReg.
          |={E ∖ ↑iregN, E}=>
            icnt_half (bv_unsigned inum) m ∗
            runit bfl (bv_unsigned inum) ∗ runit bfl (bv_unsigned inum)).
-  Proof.
+  Proof using .
     iIntros (HE Hin Hn) "#Hinv Hmir Hhalf".
     pose proof (islot_lt inum) as Hsl.
     assert (Hkey : (16 * Z.of_nat (ireg_bi inum) + Z.of_nat (islot inum))%Z
@@ -3108,7 +3108,7 @@ Section IcacheRefInvReg.
          (∃ tstn : nat, ⌜(lo <= tstn)%nat⌝ ∗
             mono_nat_auth_own (icfg_istmp k) (1/2) tstn ∗
             TsoGhost.llb loglen_name tstn)).
-  Proof.
+  Proof using .
     iIntros (HE HER HEL Hin HMk Hq Hno)
       "#Hinv #Hrinv Hhalf Hislot Hsel Hoff Hcnt Hstp #Hllbp".
     iMod (inv_acc Eo icacheN with "Hinv") as "[Hbody Hclose]"; [exact HE|].
@@ -3202,7 +3202,7 @@ Section IcacheRefInvReg.
     own icfg_iref (● M) -∗ iref_frag k q -∗ slh_tok (icfg_isl k) q -∗
     isl_slot M k ==∗
     own icfg_iref (● (<[k := (qr, n)]> M)) ∗ isl_slot (<[k := (qr, n)]> M) k.
-  Proof.
+  Proof using .
     iIntros (HM Hsub) "Ha Hf Hsh Hisl".
     apply Qp.sub_Some in Hsub.       (* qt = q + qr *)
     (* the departing reference's share goes back into the outstanding total,
@@ -3252,7 +3252,7 @@ Section IcacheRefInvReg.
     own icfg_iref (● (<[k := (qt, Pos.succ n)]> M)) ∗
     isl_slot (<[k := (qt, Pos.succ n)]> M) k ∗
     iref_tok_genlo k (q/2)%Qp g lo ∗ iref_tok_genlo k (q/2)%Qp g lo.
-  Proof.
+  Proof using .
     iIntros (HM) "Ha (Hf & Hlv & Hsh) Hisl".
     (* the TOTAL is unchanged -- nothing is minted, the caller's own share
        halves along with its count fragment -- so the authority only has to
@@ -3296,7 +3296,7 @@ Section IcacheRefInvReg.
     (1/2 - qt)%Qp = Some c ->
     IcacheRef.live_genlo k c g lo -∗ IcacheRef.live_genlo k q g lo -∗
     ∃ c' : Qp, ⌜(1/2 - qr)%Qp = Some c'⌝ ∗ IcacheRef.live_genlo k c' g lo.
-  Proof.
+  Proof using .
     intros Hsub Hc.
     apply Qp.sub_Some in Hsub. apply Qp.sub_Some in Hc.
     iIntros "Hc Hq".
@@ -3339,7 +3339,7 @@ Section IcacheRefInvReg.
          (∃ tstn : nat, ⌜(lo <= tstn)%nat⌝ ∗
             mono_nat_auth_own (icfg_istmp k) (1/2) tstn ∗
             TsoGhost.llb loglen_name tstn)).
-  Proof.
+  Proof using .
     iIntros (HE HER Hin HMk Hsub)
       "#Hinv #Hrinv Hhalf Htok Hislot Hu Hcnt Hstp #Hllbp".
     assert (Hge2 : (2 <= Pos.to_nat (Pos.succ n))%nat).
@@ -3446,7 +3446,7 @@ Section IcacheRefInvReg.
          (∃ tstn : nat, ⌜(lo <= tstn)%nat⌝ ∗
             mono_nat_auth_own (icfg_istmp k) (1/2) tstn ∗
             TsoGhost.llb loglen_name tstn)).
-  Proof.
+  Proof using .
     iIntros (HE HER HEL Hin HMk Hno)
       "#Hinv #Hrinv Hhalf Htok Hislot Hoff Hcnt Hstp #Hllbp".
     iMod (inv_acc Eo icacheN with "Hinv") as "[Hbody Hclose]"; [exact HE|].
@@ -3554,7 +3554,7 @@ Section IcacheRefInvReg.
          (∃ tstn : nat, ⌜(lo <= tstn)%nat⌝ ∗
             mono_nat_auth_own (icfg_istmp k) (1/2) tstn ∗
             TsoGhost.llb loglen_name tstn)).
-  Proof.
+  Proof using .
     iIntros (HE HER Hin HMk Hq Hno)
       "#Hinv #Hrinv Hhalf Hlv Hislot Hmir Hu Hcnt Hstp #Hllbp".
     iMod (inv_acc Eo icacheN with "Hinv") as "[Hbody Hclose]"; [exact HE|].
@@ -3784,7 +3784,7 @@ Section IcacheRefInvReg.
     own icfg_iref (● (<[k := (q, 1%positive)]> M)) ∗
     isl_slot (<[k := (q, 1%positive)]> M) k ∗
     iref_frag k q ∗ slh_tok (icfg_isl k) q.
-  Proof.
+  Proof using .
     iIntros (HM Hq) "Ha Hisl".
     rewrite (isl_slot_none M k HM).
     iMod (slh_mint_none (icfg_isl k) q with "Hisl") as "[Hisl Hshare]".
@@ -3806,7 +3806,7 @@ Section IcacheRefInvReg.
       IcacheRef.live_genlo k (1/2)%Qp g' loA ∗
       IcacheRef.live_genlo k c g' loA ∗
       IcacheRefDefs.ity_pending g'.
-  Proof.
+  Proof using .
     iIntros (Hq) "Hfull".
     iMod (IcacheRef.live_genlo_bump k g0 lo0 loA with "Hfull")
       as (g') "[Hfull Hpend]".
@@ -3854,7 +3854,7 @@ Section IcacheRefInvReg.
       (∃ tstn : nat, ⌜(loA <= tstn)%nat⌝ ∗
          mono_nat_auth_own (icfg_istmp k) (1/2) tstn ∗
          TsoGhost.llb loglen_name tstn).
-  Proof.
+  Proof using .
     iIntros (HE HER HEL Hin Hk HMk Hq)
       "#Hinv #Hrinv Hhalf Hislot Hl Hoff Hcnt Hstf #Hllbtp #HllbA Hpin".
     iMod (inv_acc Eo icacheN with "Hinv") as "[Hbody Hclose]"; [exact HE|].
@@ -3928,7 +3928,7 @@ Section IcacheRefInvReg.
     own icfg_iref (● M) -∗ iref_frag k qt -∗ slh_tok (icfg_isl k) qt -∗
     isl_slot M k ==∗
     own icfg_iref (● (delete k M)) ∗ isl_slot (delete k M) k.
-  Proof.
+  Proof using .
     iIntros (HM) "Ha Hf Hsh Hisl".
     (* THE LAST reference's share returns and leaves the AUTHORITATIVE ZERO,
        which is what a free slot's [isl_slot] is -- and what iput needs. *)
@@ -3993,7 +3993,7 @@ Section IcacheRefInvReg.
          frz_mir_back ph (frz_close ph) (bv_unsigned inum) ∗
          mono_nat_auth_own (icfg_istmp k) 1 tstp ∗
          P).
-  Proof.
+  Proof using .
     iIntros (HE HER Hin HMk)
       "#Hinv #Hrinv Hhalf Htok Hesc Hsel Hislot Hu Hfz Hcnt Hmir Hstp".
     iMod (inv_acc Eo icacheN with "Hinv") as "[Hbody Hclose]"; [exact HE|].
@@ -4097,7 +4097,7 @@ Section IcacheRefInvReg.
          frzm_h (bv_unsigned inum) false ∗
          mono_nat_auth_own (icfg_istmp k) 1 tstp ∗
          P).
-  Proof.
+  Proof using .
     iIntros (HE HER Hin HMk)
       "#Hinv #Hrinv Hhalf Hf Hsh Hsel Hislot Hu Hfz Hcnt Hmir Hstp".
     iMod (inv_acc Eo icacheN with "Hinv") as "[Hbody Hclose]"; [exact HE|].
@@ -4187,7 +4187,7 @@ Section IcacheTable.
      matches the goal only. *)
   Local Lemma word4_frac_join (a : Arch.pa) (q1 q2 : Qp) (w : bv 32) :
     a ↦₄{DfracOwn q1} w -∗ a ↦₄{DfracOwn q2} w -∗ a ↦₄{DfracOwn (q1 + q2)} w.
-  Proof. iIntros "H1 H2". rewrite ctx_word4_pointsto_frac_split. iFrame. Qed.
+  Proof using . iIntros "H1 H2". rewrite ctx_word4_pointsto_frac_split. iFrame. Qed.
 
   (* ---- THE IDENTITY BUDGET (design §13.1b, as corrected by §13.1e) ----
 
@@ -4275,7 +4275,7 @@ Section IcacheTable.
       (∀ M' : gmap nat (Qp * positive),
          ⌜forall j, j <> k -> M' !! j = M !! j⌝ -∗
          islot M' k -∗ [∗ list] j ∈ seq 0 NINODE, islot M' j).
-  Proof.
+  Proof using .
     intros Hk. iIntros "Hs".
     iDestruct (big_sepL_delete _ (seq 0 NINODE) k k
                  ltac:(apply lookup_seq; split; [lia|exact Hk]) with "Hs")
@@ -4306,7 +4306,7 @@ Section IcacheTable.
     (qt ≤ 1/2)%Qp ->
     inode_ident k (DfracOwn qt) dev inum -∗ islot_rest k qt -∗
     islot_free_at k dev inum.
-  Proof.
+  Proof using .
     intros Hle. rewrite /islot_rest /islot_rest_at /islot_free_at /inode_ident.
     destruct (1/2 - qt)%Qp as [q'|] eqn:Et.
     - apply Qp.sub_Some in Et.        (* 1/2 = qt + q' *)

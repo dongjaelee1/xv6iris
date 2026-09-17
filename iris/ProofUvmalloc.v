@@ -382,7 +382,7 @@ Section ProofUvmalloc.
     dom Pi.(ud_um) = dom P.(ud_um) ∪ vpn_run vpn0 i ->
     (forall j : nat, (j < i)%nat -> P.(ud_um) !! vpn_at vpn0 j = None) ->
     proc_pt_any (uptd_del_run Pi vpn0 i) ⊢ proc_pt_any P.
-  Proof.
+  Proof using .
     intros (Hr & Ht & Hsub) Hdom Hfr.
     assert (Hum : um_del_run Pi.(ud_um) vpn0 i = P.(ud_um))
       by exact (um_del_run_restore P.(ud_um) Pi.(ud_um) vpn0 i Hsub Hdom Hfr).
@@ -402,7 +402,7 @@ Section ProofUvmalloc.
     (forall j : nat, (j < i)%nat -> P.(ud_um) !! vpn_at vpn0 j = None) ->
     (forall a : Z, uva_live sz a <-> uva_live sz' a) ->
     proc_ptm (uptd_del_run Pi vpn0 i) sz Mv ⊢ proc_ptm P sz' Mv.
-  Proof.
+  Proof using .
     intros (Hr & Ht & Hsub) Hdom Hfr Hlv.
     assert (Hum : um_del_run Pi.(ud_um) vpn0 i = P.(ud_um))
       by exact (um_del_run_restore P.(ud_um) Pi.(ud_um) vpn0 i Hsub Hdom Hfr).
@@ -495,7 +495,7 @@ Section ProofUvmalloc.
     pa_stk sp0 8 ↦₈[KT1] (mm !!! Regidx Rs6) -∗
     ua_exit (CID0 := CID0) mm P Mv (svpn_of (pgroundup oldsz)) n xperm K eb p b lks sp0 spr oldsz newsz -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using bioslotG0.
     intros HK Hxrng Hperm Hb3 Hb5 Hb8 Hpu Hnz Hpumod Hpu0 Hab Hoin
            HMdom Hpgo Hnchar Hfresh Hbelow.
     assert (HKka : (14 <= K - 10)%nat) by (clear -HK; lia).
@@ -1820,7 +1820,7 @@ Section ProofUvmalloc.
       (P : uptd) (Mv : gmap Z (bv 8)) (xperm : Z) (K : nat) (eb : bool)
       (p : mword 64) (b : bool) (lks : gset string)
     : wp_uvmalloc_mem_sconf_body γa mm P Mv xperm K eb p b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_uvmalloc_mem_sconf_body].
     intros pcE oldsz newsz vpn0 n ret_tgt HK Htp Hroot Hxp Hxrng Hperm Hobd Hnbd Hfr Hbelow.
     assert (Hnd : n = uvma_np oldsz newsz) by reflexivity.

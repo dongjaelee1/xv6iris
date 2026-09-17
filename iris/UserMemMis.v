@@ -776,7 +776,7 @@ Section GmCheckedMemReadSplit.
              acc aq rl res) s = Some (inr rk, s) ->
     goodmb Dr Dw (checked_mem_read acc pbmt priv (Physaddr pa) width aq rl res meta)
       s mm = true.
-  Proof.
+  Proof using HN Hmmio Hmmiog Hpmp Hpmpg Hram Hramg.
     intros Hpacg Hpac Hsplitg Hsplit Hrkg Hrk.
     unfold checked_mem_read. apply goodmb_cer.
     gmm_lift Hpacg Hpac. cbn beta. cbn match.
@@ -950,7 +950,7 @@ Section GmCheckedMemWriteSplit.
     exec (write_kind_of_flags aq rl con) (sw 0%nat) = Some (wk, sw 0%nat) ->
     goodmb Dr Dw (checked_mem_write (Physaddr pa) width dat acc pbmt priv meta aq rl con)
       (sw 0%nat) mm = true.
-  Proof.
+  Proof using HN Hmmio Hmmiog Hpmp Hpmpg Hwram Hwramg.
     intros Hpacg Hpac Hsplitg Hsplit Hwkfg Hwkf.
     unfold checked_mem_write. apply goodmb_cer.
     gmm_lift Hpacg Hpac. cbn beta. cbn match.
@@ -1336,7 +1336,7 @@ Section MisPhys.
   Local Lemma chunk_off (bytes : Z) (N k j : nat) :
     0 < bytes -> Z.of_nat N * bytes = W -> (k < N)%nat -> (j < Z.to_nat bytes)%nat ->
     (k * Z.to_nat bytes + j < Z.to_nat W)%nat.
-  Proof.
+  Proof using HWle HWpos.
     intros Hb Hw Hk Hj.
     assert (HbN : Z.to_nat W = (N * Z.to_nat bytes)%nat).
     { rewrite <- Hw. rewrite Z2Nat.inj_mul; [| lia | lia]. rewrite Nat2Z.id. reflexivity. }
@@ -1346,7 +1346,7 @@ Section MisPhys.
   Local Lemma chunk_ram (bytes : Z) (N k j : nat) :
     0 < bytes -> Z.of_nat N * bytes = W -> (k < N)%nat -> (j < Z.to_nat bytes)%nat ->
     addr_is_ram (pa_add (add_vec_int pa (Z.of_nat k * bytes)) j).
-  Proof.
+  Proof using HWle HWpos Hwin.
     intros Hb Hw Hk Hj.
     rewrite (pa_add_chunk pa k bytes ltac:(lia)).
     rewrite pa_add_bump2.
@@ -1363,7 +1363,7 @@ Section MisPhys.
     Z.of_nat N * bytes = W -> (k < N)%nat ->
     exec (pmpCheck (Physaddr (add_vec_int pa (Z.of_nat k * bytes))) bytes acc User) s
       = Some (None, s).
-  Proof.
+  Proof using HA HWle HWpos Hcovp Hord Hwin.
     intros Hacc Hb Hb8 Hbu Hw Hk.
     assert (Hlast : (Z.to_nat bytes - 1 < Z.to_nat bytes)%nat) by lia.
     assert (Hr0 : addr_is_ram (add_vec_int pa (Z.of_nat k * bytes))).
@@ -1386,7 +1386,7 @@ Section MisPhys.
     0 < bytes -> Z.of_nat N * bytes = W -> (k < N)%nat ->
     exec (within_mmio_readable (Physaddr (add_vec_int pa (Z.of_nat k * bytes))) bytes) s
       = Some (false, s).
-  Proof.
+  Proof using HWle HWpos Hhtif Hwin.
     intros Hb Hw Hk.
     assert (Hr0 : addr_is_ram (add_vec_int pa (Z.of_nat k * bytes))).
     { rewrite <- (pa_add_0 (add_vec_int pa (Z.of_nat k * bytes))).
@@ -1404,7 +1404,7 @@ Section MisPhys.
     0 < bytes -> Z.of_nat N * bytes = W -> (k < N)%nat ->
     exec (within_mmio_writable (Physaddr (add_vec_int pa (Z.of_nat k * bytes))) bytes) s
       = Some (false, s).
-  Proof.
+  Proof using HWle HWpos Hhtif Hwin.
     intros Hb Hw Hk.
     assert (Hr0 : addr_is_ram (add_vec_int pa (Z.of_nat k * bytes))).
     { rewrite <- (pa_add_0 (add_vec_int pa (Z.of_nat k * bytes))).
@@ -1424,7 +1424,7 @@ Section MisPhys.
     pmpRangeMatch (Z.mul (uint (zeros' 64 : mword 64)) 4)
       (Z.mul (uint (vec_access_dec (register_lookup pmpaddr_n s.(sregs)) 0)) 4)
       (uint (add_vec_int pa (Z.of_nat k * bytes))) (uint (to_bits 64 bytes)) = PMP_Match.
-  Proof.
+  Proof using HWle HWpos Hcovp Hwin.
     intros Hb Hb8 Hbu Hw Hk.
     assert (Hlast : (Z.to_nat bytes - 1 < Z.to_nat bytes)%nat) by lia.
     assert (Hr0 : addr_is_ram (add_vec_int pa (Z.of_nat k * bytes))).
@@ -1441,7 +1441,7 @@ Section MisPhys.
     0 < bytes -> Z.of_nat N * bytes = W -> (k < N)%nat -> forall (t : mstate),
     exec (within_clint (Physaddr (add_vec_int pa (Z.of_nat k * bytes))) bytes) t
       = Some (false, t).
-  Proof.
+  Proof using HWle HWpos Hwin.
     intros Hb Hw Hk t.
     assert (Hr0 : addr_is_ram (add_vec_int pa (Z.of_nat k * bytes))).
     { rewrite <- (pa_add_0 (add_vec_int pa (Z.of_nat k * bytes))).
@@ -1453,7 +1453,7 @@ Section MisPhys.
     0 < bytes -> Z.of_nat N * bytes = W -> (k < N)%nat -> forall (t : mstate),
     exec (within_sig (Physaddr (add_vec_int pa (Z.of_nat k * bytes))) bytes) t
       = Some (false, t).
-  Proof.
+  Proof using HWle HWpos Hwin.
     intros Hb Hw Hk t.
     assert (Hr0 : addr_is_ram (add_vec_int pa (Z.of_nat k * bytes))).
     { rewrite <- (pa_add_0 (add_vec_int pa (Z.of_nat k * bytes))).
@@ -1472,7 +1472,7 @@ Section MisPhys.
     exists dv : mword (8 * W),
       exec (mem_read (Load Data) PBMT_PMA (Physaddr pa) W false false false) s
         = Some (Ok dv, s).
-  Proof.
+  Proof using HA HWle HWpos Hall Hcovp Hhtif Hord Hwin.
     intros Hmprv Hcp HRp Hpres.
     pose proof HWpos as Hpos. pose proof HWle as Hle.
     assert (Hr0 : addr_is_ram pa).
@@ -1542,7 +1542,7 @@ Section MisPhys.
     bytes_owned mm pa (Z.to_N W) = true ->
     goodmb Dr Dw (mem_read (Load Data) PBMT_PMA (Physaddr pa) W false false false)
       s mm = true.
-  Proof.
+  Proof using HA HWle HWpos Hall Hcovp Hhtif Hord Hwin.
     intros HDm HDcp HDc HDa HDp HDh Hmprv Hcp HRp Hpres Hown.
     pose proof HWpos as Hpos. pose proof HWle as Hle.
     assert (Hr0 : addr_is_ram pa).
@@ -1660,7 +1660,7 @@ Section MisPhys.
               (vec_access_dec (register_lookup pmpcfg_n s.(sregs)) 0)) ('b"1") = true ->
     exec (mem_write_ea (Physaddr pa) W (Store Data) PBMT_PMA false false false) s
       = Some (Ok tt, s).
-  Proof.
+  Proof using HA HWle HWpos Hall Hcovp Hord Hwin.
     intros Hmprv Hcp HWp.
     pose proof HWpos as Hpos. pose proof HWle as Hle.
     assert (Hr0 : addr_is_ram pa).
@@ -1705,7 +1705,7 @@ Section MisPhys.
               (vec_access_dec (register_lookup pmpcfg_n s.(sregs)) 0)) ('b"1") = true ->
     goodmb Dr Dw (mem_write_ea (Physaddr pa) W (Store Data) PBMT_PMA false false false)
       s mm = true.
-  Proof.
+  Proof using HA HWle HWpos Hall Hcovp Hord Hwin.
     intros HDm HDcp HDc HDa HDp Hmprv Hcp HWp.
     pose proof HWpos as Hpos. pose proof HWle as Hle.
     assert (Hr0 : addr_is_ram pa).
@@ -1798,7 +1798,7 @@ Section MisPhys.
               (write_bytes (wchain bytes dat k).(mem)
                  (add_vec_int pa (Z.of_nat k * bytes)) (Z.to_N bytes) v)
               (wchain bytes dat k).(mdev)).
-  Proof.
+  Proof using HWle HWpos Hwin.
     intros Hb Hw Hk.
     assert (Hdev : dev_addr (add_vec_int pa (Z.of_nat k * bytes)) = false).
     { apply addr_is_ram_not_dev.
@@ -1815,7 +1815,7 @@ Section MisPhys.
     0 < bytes -> Z.of_nat N * bytes = W ->
     forall k, (k <= N)%nat ->
       (wchain bytes dat k).(sregs) = s.(sregs) /\ (wchain bytes dat k).(mdev) = s.(mdev).
-  Proof.
+  Proof using HWle HWpos Hwin.
     intros Hb Hw k. induction k as [|k IH]; intro Hk.
     - split; reflexivity.
     - destruct (proj2 (wchain_step bytes N k dat Hb Hw ltac:(lia))) as (nn & v & Heq).
@@ -1832,7 +1832,7 @@ Section MisPhys.
       0 < bytes /\ Z.of_nat N * bytes = W /\ (1 <= N)%nat /\
       exec (mem_write_value (Physaddr pa) W dat (Store Data) PBMT_PMA false false false) s
         = Some (Ok true, wchain bytes dat N).
-  Proof.
+  Proof using HA HWle HWpos Hall Hcovp Hhtif Hord Hwin.
     intros Hmprv Hcp HWp.
     pose proof HWpos as Hpos. pose proof HWle as Hle.
     assert (Hr0 : addr_is_ram pa).
@@ -1929,7 +1929,7 @@ Section MisPhys.
     bytes_owned mm pa (Z.to_N W) = true ->
     goodmb Dr Dw (mem_write_value (Physaddr pa) W dat (Store Data) PBMT_PMA
                     false false false) s mm = true.
-  Proof.
+  Proof using HA HWle HWpos Hall Hcovp Hhtif Hord Hwin.
     intros HDm HDcp HDc HDa HDp HDh Hmprv Hcp HWp Hown.
     pose proof HWpos as Hpos. pose proof HWle as Hle.
     assert (Hr0 : addr_is_ram pa).
@@ -2628,7 +2628,7 @@ Section StraddleWrite.
             (Store Data) false false false) s2 = Some (Ok b, s3) ->
     exec (vmem_write_addr (Virtaddr va) W dat (Store Data) false false false) s
       = Some (Ok b, s3).
-  Proof.
+  Proof using Hbare Heff Hpme Hpq Hsplit Htm.
     intros Htr Hea Hwv Htwv. destruct Hpq as [Hp Hq].
     unfold vmem_write_addr. rewrite exec_catch_early_return.
     match goal with |- context[Defs.bind0 ?G ?k] =>
@@ -2726,7 +2726,7 @@ Section StraddleWrite.
             (Store Data) false false false) s2 = Some (Ok b, s3) ->
     goodmb Dr Dw (vmem_write_addr (Virtaddr va) W dat (Store Data) false false false) s mm
       = true.
-  Proof.
+  Proof using Hbare Heff Hpme Hpq Hsplit Htm.
     intros HDm HDc Hsplitg Heffg Htmg Htrg Htr Heag Hea Hwvg Hwv Htwvg Htwv.
     destruct Hpq as [Hp Hq].
     assert (Hmst : goodmb Dr Dw (Defs.read_reg mstatus : M _) s mm = true)
@@ -2849,7 +2849,7 @@ Section StraddleWrite.
     exec (memory_exception (Virtaddr va) e) s1 = Some (er, s1) ->
     exec (vmem_write_addr (Virtaddr va) W dat (Store Data) false false false) s
       = Some (Err er, s1).
-  Proof.
+  Proof using Hbare Heff Hpme Hpq Hsplit Htm.
     intros Htr Hme. destruct Hpq as [Hp Hq].
     unfold vmem_write_addr. rewrite exec_catch_early_return.
     match goal with |- context[Defs.bind0 ?G ?k] =>
@@ -2899,7 +2899,7 @@ Section StraddleWrite.
     exec (memory_exception (Virtaddr va) e) s1 = Some (er, s1) ->
     goodmb Dr Dw (vmem_write_addr (Virtaddr va) W dat (Store Data) false false false) s mm
       = true.
-  Proof.
+  Proof using Hbare Heff Hpme Hpq Hsplit Htm.
     intros HDm HDc Hsplitg Heffg Htmg Htrg Htr Hmeg Hme.
     destruct Hpq as [Hp Hq].
     assert (Hmst : goodmb Dr Dw (Defs.read_reg mstatus : M _) s mm = true)
@@ -2968,7 +2968,7 @@ Section StraddleWrite.
             (Store Data) false false false) s2 = Some (Err er, s3) ->
     exec (vmem_write_addr (Virtaddr va) W dat (Store Data) false false false) s
       = Some (Err er, s3).
-  Proof.
+  Proof using Hbare Heff Hpme Hpq Hsplit Htm.
     intros Htr Hea Hwv Htwv. destruct Hpq as [Hp Hq].
     unfold vmem_write_addr. rewrite exec_catch_early_return.
     match goal with |- context[Defs.bind0 ?G ?k] =>
@@ -3063,7 +3063,7 @@ Section StraddleWrite.
             (Store Data) false false false) s2 = Some (Err er, s3) ->
     goodmb Dr Dw (vmem_write_addr (Virtaddr va) W dat (Store Data) false false false) s mm
       = true.
-  Proof.
+  Proof using Hbare Heff Hpme Hpq Hsplit Htm.
     intros HDm HDc Hsplitg Heffg Htmg Htrg Htr Heag Hea Hwvg Hwv Htwvg Htwv.
     destruct Hpq as [Hp Hq].
     assert (Hmst : goodmb Dr Dw (Defs.read_reg mstatus : M _) s mm = true)

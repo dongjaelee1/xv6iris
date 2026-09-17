@@ -621,7 +621,7 @@ Section InstallTransDefs.
       (w : mword 32) :
     W !! t = Some w ->
     it_exc_rest Xexc W (S t) = it_exc_rest Xexc W t ∖ {[uint w]}.
-  Proof.
+  Proof using .
     intros Hw. rewrite /it_exc_rest (take_S_r W t w Hw) map_app.
     rewrite list_to_set_app_L. cbn [map list_to_set]. set_solver.
   Qed.
@@ -630,7 +630,7 @@ Section InstallTransDefs.
       (w : mword 32) :
     NoDup (map uint W) -> W !! t = Some w -> uint w ∈ Xexc ->
     uint w ∈ it_exc_rest Xexc W t.
-  Proof.
+  Proof using .
     intros Hnd Hw Hin. rewrite /it_exc_rest elem_of_difference.
     split; [exact Hin |]. rewrite elem_of_list_to_set.
     exact (it_nodup_take W t w Hnd Hw).
@@ -639,7 +639,7 @@ Section InstallTransDefs.
   Lemma it_exc_rest_all (Xexc : gset Z) (W : list (mword 32)) (n : nat) :
     n = length W ->
     it_exc_rest Xexc W n = Xexc ∖ list_to_set (map uint W).
-  Proof. intros ->. rewrite /it_exc_rest take_ge; [done | lia]. Qed.
+  Proof using . intros ->. rewrite /it_exc_rest take_ge; [done | lia]. Qed.
 
   Definition it_cont `{GEN : GenId} `{CID0 : CpuId}
       (j : nat) (bn : bio_names) (γfs : fs_names) (logstart : Z)
@@ -690,7 +690,7 @@ Section InstallTransDefs.
     (true = false \/ proc_addr j = zero_reg -> (CIDb : CPU) = (CIDa : CPU)) ->
     it_cont (CID0 := CIDa)  j bn γfs logstart recovering n W Lw Xexc L D pidv dq m K eb b R lks Upr -∗
     it_cont (CID0 := CIDb)  j bn γfs logstart recovering n W Lw Xexc L D pidv dq m K eb b R lks Upr.
-  Proof.
+  Proof using .
     intros Hs. rewrite /it_cont /wp_next.
     iIntros "H" (CID2 Hs2). iApply "H". iPureIntro.
     intro Hb. specialize (Hs2 Hb). specialize (Hs Hb). congruence.
@@ -737,7 +737,7 @@ Section InstallTransDefs.
       (bsl bsd bs0 : list (bv 8)) (d : bool) :
     fs_chalf γfs (uint bno) bs0 -∗
     bio_pay bn (fs_view γfs γd dev cov) k dv bno bsl bsd d -∗ ⌜bsl = bs0⌝.
-  Proof.
+  Proof using .
     rewrite /bio_pay /fs_view /=. destruct d.
     - rewrite /fs_mdirty. iIntros "Hc [[Hm _] _]".
       iDestruct (ghost_map_elem_agree with "Hm Hc") as %Heq. done.
@@ -755,7 +755,7 @@ Section InstallTransDefs.
     ghost_map_auth (fs_cache γfs) 1 L -∗
     bio_pay bn (fs_view γfs γd dev cov) k dv bno bsl bsd d -∗
     ⌜L !! uint bno = Some bsl⌝.
-  Proof.
+  Proof using .
     rewrite /bio_pay /fs_view /=. destruct d.
     - rewrite /fs_mdirty. iIntros "Ha [[Hm _] _]".
       iDestruct (ghost_map_lookup with "Ha Hm") as %Hlk. done.
@@ -768,7 +768,7 @@ Section InstallTransDefs.
       (bsl bsd : list (bv 8)) (d db : bool) :
     (uint bno) ↪[fs_dirty γfs]{#(1/2)} db -∗
     bio_pay bn (fs_view γfs γd dev cov) k dv bno bsl bsd d -∗ ⌜d = db⌝.
-  Proof.
+  Proof using .
     rewrite /bio_pay /fs_view /=. destruct d.
     - rewrite /fs_mdirty. iIntros "Hc [[_ Hm] _]".
       iDestruct (ghost_map_elem_agree with "Hm Hc") as %Heq. done.
@@ -784,7 +784,7 @@ Section InstallTransDefs.
     ((uint bno) ↪[fs_cache γfs]{#(1/2)} bsl ∗
      (uint bno) ↪[fs_dirty γfs]{#(1/2)} true ∗
      (∃ q : Qp, bref bn k q dv bno)).
-  Proof. rewrite /bio_pay /fs_view /= /fs_mdirty. iIntros "[[$ $] $]". Qed.
+  Proof using . rewrite /bio_pay /fs_view /= /fs_mdirty. iIntros "[[$ $] $]". Qed.
 
   (* ... and re-formed CLEAN, once the write has made disk = bytes *)
   Lemma it_pay_clean (bn : bio_names) (γfs : fs_names) (γd : disk_names)
@@ -793,7 +793,7 @@ Section InstallTransDefs.
     (uint bno) ↪[fs_cache γfs]{#(1/2)} bsl -∗
     (uint bno) ↪[fs_dirty γfs]{#(1/2)} false -∗
     bio_pay bn (fs_view γfs γd dev cov) k dv bno bsl bsl false.
-  Proof.
+  Proof using .
     rewrite /bio_pay /fs_view /= /fs_mclean.
     iIntros "H1 H2". iFrame. done.
   Qed.
@@ -807,7 +807,7 @@ Section InstallTransDefs.
     ghost_map_auth (fs_dirty γfs) 1 D -∗
     bio_pay bn (fs_view γfs γd dev cov) k dv bno bsl bsd d -∗
     ⌜D !! uint bno = Some d⌝.
-  Proof.
+  Proof using .
     rewrite /bio_pay /fs_view /=. destruct d.
     - rewrite /fs_mdirty. iIntros "Ha [[_ Hm] _]".
       iDestruct (ghost_map_lookup with "Ha Hm") as %Hlk. done.
@@ -822,7 +822,7 @@ Section InstallTransDefs.
     bio_pay bn (fs_view γfs γd dev cov) k dv bno bsl bsd false -∗
     ((uint bno) ↪[fs_cache γfs]{#(1/2)} bsl ∗
      (uint bno) ↪[fs_dirty γfs]{#(1/2)} false).
-  Proof. rewrite /bio_pay /fs_view /= /fs_mclean. iIntros "[[$ $] _]". Qed.
+  Proof using . rewrite /bio_pay /fs_view /= /fs_mclean. iIntros "[[$ $] _]". Qed.
 
   (* ================================================================== *)
   (* THE PER-ENTRY GHOST STEP, both arms (durable-disk stage D2): what    *)
@@ -874,7 +874,7 @@ Section InstallTransDefs.
     (if recovering then emp
      else (uint w) ↪[fs_dirty γfs]{#(1/2)} false) ∗
     (if recovering then emp else ∃ q : Qp, bref bn k2 q dev w).
-  Proof.
+  Proof using .
     intros Hnd Hw HLw HD Hlen Hexc.
     iIntros "#Hbinv HauthL HauthD Hxo Hsnd Hpay".
     destruct recovering; cbv iota.
@@ -927,7 +927,7 @@ Section InstallTransDefs.
   Lemma it_seq_index (P : nat -> bv 8 -> iProp Σ) (bs : list (bv 8)) :
     ([∗ list] j ↦ x ∈ bs, P j x) ⊣⊢
     ([∗ list] j ∈ seq 0 (length bs), P j (bs !!! j)).
-  Proof.
+  Proof using .
     revert P. induction bs as [|x bs IH]; intro P.
     - by rewrite !big_sepL_nil.
     - cbn [length].
@@ -951,7 +951,7 @@ Section InstallTransDefs.
        fs_chalf γfs (log_slot_bno logstart ((S t + i)%nat)) (Lw ((S t + i)%nat)) ∗
        (if recovering then emp
         else (uint v) ↪[fs_dirty γfs]{#(1/2)} true)).
-  Proof.
+  Proof using .
     apply big_sepL_mono. intros k y _.
     assert (Hk : (t + S k)%nat = (S t + k)%nat) by lia.
     rewrite Hk. done.
@@ -964,7 +964,7 @@ Section InstallTransDefs.
     length bs = len ->
     ([∗ list] j ↦ x ∈ bs, pa_add q j ↦ₘ x) ⊢
     ([∗ list] j ∈ seq 0 len, (pa_add q j) ↦ₘ (bs !!! j)).
-  Proof.
+  Proof using .
     intros <-. rewrite (it_seq_index (fun i x => (pa_add q i ↦ₘ x)%I) bs).
     iIntros "$".
   Qed.
@@ -973,7 +973,7 @@ Section InstallTransDefs.
     length bs = len ->
     ([∗ list] j ∈ seq 0 len, (pa_add q j) ↦ₘ (bs !!! j)) ⊢
     ([∗ list] j ↦ x ∈ bs, pa_add q j ↦ₘ x).
-  Proof.
+  Proof using .
     intros <-. rewrite (it_seq_index (fun i x => (pa_add q i ↦ₘ x)%I) bs).
     iIntros "$".
   Qed.
@@ -1020,7 +1020,7 @@ Section InstallTransBlocks.
         lh_block t ↦₄ w -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hbelow Hregs.
     pose proof Hregs as (Hsp & Hs3 & Hs4 & Hs5 & Hs6 & Hs7 & Hs8 & _ & _ & _).
     iIntros "Hcg Hcnt #Htext #Hkd Hpc Hpenvpk Hblk Hcont".
@@ -1217,7 +1217,7 @@ Section InstallTransBlocks.
         (if recovering then emp else bslot) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hbelow Hregs Hk2 Hs1v.
     pose proof Hregs as (Hsp & Hs3 & Hs4 & Hs5 & Hs6 & Hs7 & Hs8 & _ & _ & _).
     iIntros "Hcg Hcnt #Htext Hpc #Hbio Hbref Hcont".
@@ -1369,7 +1369,7 @@ Section InstallTransBlocks.
     ▷ R -∗
     it_cont (CID0 := CID0)  j bn γfs logstart recovering n W Lw Xexc L D pidv dq m K eb eb R lks Upr -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hsp Hs9 Hs10 Hs11.
     iIntros "Hcg #Htext Hpc Hframe Hcnt Hextc Hextm Hppid Hout HR Hcont".
     rewrite /it_frame.
@@ -1847,7 +1847,7 @@ Section InstallTransBlocks.
     ▷ R t -∗
     it_cont (CID0 := CID0)  j bn γfs logstart recovering n W Lw Xexc L D pidv dq m K eb eb (R n) lks Upr -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hgeom Hj Hgl Hshape Hnd Hwok HLw HD Hexc.
     destruct Hshape as [HnW Hn30].
     destruct Hgeom as [Hcovok Hlogsub].
@@ -2722,7 +2722,7 @@ Section ProofInstallTrans.
                                   cov logstart dev recovering n W Lw
                                   home Xv Xexc L D
                                   pidv dq m K eb b R lks Upr.
-  Proof.
+  Proof using .
     cbv beta delta [wp_install_trans_sconf_body].
     intros pcE pj ret_tgt HK Hgeom Hj Hgl Ha0 Hshape Hnd Hwok HLw HD Hexc Hbelow.
     destruct Hshape as [HnW Hn30].

@@ -448,12 +448,12 @@ Section FdSlots.
   Definition fd_slots_auth : iProp Σ := own fdslot_name (● FDSLOTS).
 
   Global Instance fd_slots_timeless n : Timeless (fd_slots n).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* units split and merge freely: this is what lets a slot's [n] tokens sit
      in the table as one [◯ n] and still hand one back on close. *)
   Lemma fd_slots_op a b : fd_slots (a + b) ⊣⊢ fd_slots a ∗ fd_slots b.
-  Proof.
+  Proof using .
     rewrite /fd_slots.
     assert (Hop : (◯ (a + b)%nat : fdslotUR) = ◯ a ⋅ ◯ b)
       by (rewrite -auth_frag_op; reflexivity).
@@ -461,15 +461,15 @@ Section FdSlots.
   Qed.
 
   Lemma fd_slots_split a b : fd_slots (a + b) -∗ fd_slots a ∗ fd_slots b.
-  Proof. rewrite fd_slots_op. iIntros "$". Qed.
+  Proof using . rewrite fd_slots_op. iIntros "$". Qed.
   Lemma fd_slots_combine a b : fd_slots a -∗ fd_slots b -∗ fd_slots (a + b).
-  Proof. iIntros "Ha Hb". rewrite fd_slots_op. iFrame. Qed.
+  Proof using . iIntros "Ha Hb". rewrite fd_slots_op. iFrame. Qed.
 
   (* THE bound.  No update, no arithmetic: auth validity says the fragments
      in circulation cannot exceed the supply. *)
   Lemma fd_slots_bound n :
     fd_slots_auth -∗ fd_slots n -∗ ⌜(n <= FDSLOTS)%nat⌝.
-  Proof.
+  Proof using .
     rewrite /fd_slots_auth /fd_slots. iIntros "Ha Hf".
     iDestruct (own_valid_2 with "Ha Hf") as %[Hincl _]%auth_both_valid_discrete.
     iPureIntro. by apply nat_included in Hincl.
@@ -482,7 +482,7 @@ Section FdSlots.
   Lemma fd_slots_no_overflow (n : positive) :
     fd_slots_auth -∗ fd_slots (Pos.to_nat n) -∗
     ⌜(Z.pos n < 2 ^ 31)%Z /\ (Z.pos (Pos.succ n) < 2 ^ 31)%Z⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Hf".
     iDestruct (fd_slots_bound with "Ha Hf") as %Hle.
     iPureIntro.
@@ -502,7 +502,7 @@ Section FdSlots.
      irrelevant -- only its length is. *)
   Lemma fd_slots_split_n (n m : nat) :
     fd_slots (n * m) -∗ [∗ list] _ ∈ seq 0 n, fd_slots m.
-  Proof.
+  Proof using .
     induction n as [|n IH]; iIntros "H"; [done|].
     rewrite seq_S big_sepL_app /=.
     replace (S n * m)%nat with (m + n * m)%nat by lia.
@@ -512,7 +512,7 @@ Section FdSlots.
 
   Lemma fd_slots_to_any {A} (l : list A) :
     fd_slots (length l) -∗ [∗ list] _ ∈ l, fd_slot.
-  Proof.
+  Proof using .
     induction l as [|x l IH]; iIntros "H"; [done|].
     cbn [length big_opL].
     replace (S (length l)) with (length l + 1)%nat by lia.
@@ -523,7 +523,7 @@ Section FdSlots.
   (* the parcelled-out form the proc layer wants *)
   Lemma fd_slots_to_list n :
     fd_slots n -∗ [∗ list] _ ∈ seq 0 n, fd_slot.
-  Proof.
+  Proof using .
     induction n as [|n IH]; iIntros "H".
     - done.
     - rewrite seq_S big_sepL_app /=.
@@ -557,11 +557,11 @@ Section FdSlots.
     (fd_st_auth γ fd st ∗ fd_st γ fd st)%I.
 
   Global Instance fd_st_at_timeless γ fd q st : Timeless (fd_st_at γ fd q st).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma fd_st_at_split γ fd q1 q2 st :
     fd_st_at γ fd (q1 + q2) st ⊣⊢ fd_st_at γ fd q1 st ∗ fd_st_at γ fd q2 st.
-  Proof.
+  Proof using .
     rewrite /fd_st_at -own_op.
     assert (H : (({[ fd := (q1, to_agree (st : leibnizO fdstate)) ]} : fdstUR)
                  ⋅ {[ fd := (q2, to_agree (st : leibnizO fdstate)) ]})
@@ -574,7 +574,7 @@ Section FdSlots.
      whatever the kernel's authority says, it says the same thing. *)
   Lemma fd_st_at_agree γ fd q1 st1 q2 st2 :
     fd_st_at γ fd q1 st1 -∗ fd_st_at γ fd q2 st2 -∗ ⌜st1 = st2⌝.
-  Proof.
+  Proof using .
     rewrite /fd_st_at. iIntros "H1 H2".
     iDestruct (own_valid_2 with "H1 H2") as %Hv. iPureIntro.
     rewrite singleton_op in Hv. apply singleton_valid in Hv.
@@ -583,13 +583,13 @@ Section FdSlots.
 
   Lemma fd_st_at_update γ fd st st' :
     fd_st_at γ fd 1 st ==∗ fd_st_at γ fd 1 st'.
-  Proof.
+  Proof using .
     rewrite /fd_st_at. iIntros "H". iApply (own_update with "H").
     apply singleton_update, cmra_update_exclusive. done.
   Qed.
 
   Lemma fd_st_both_full γ fd st : fd_st_both γ fd st ⊣⊢ fd_st_at γ fd 1 st.
-  Proof.
+  Proof using .
     rewrite /fd_st_both /fd_st /fd_st_auth.
     assert (Hq : (1/2 + 1/2)%Qp = 1%Qp) by compute_done.
     rewrite -{3}Hq fd_st_at_split. reflexivity.
@@ -597,18 +597,18 @@ Section FdSlots.
 
   Lemma fd_st_agree γ fd st st' :
     fd_st_auth γ fd st -∗ fd_st γ fd st' -∗ ⌜st = st'⌝.
-  Proof. apply fd_st_at_agree. Qed.
+  Proof using . apply fd_st_at_agree. Qed.
 
   Lemma fd_st_both_agree γ fd st st' :
     fd_st_both γ fd st -∗ fd_st γ fd st' -∗ ⌜st = st'⌝.
-  Proof. iIntros "[Ha _]". iApply fd_st_agree. iExact "Ha". Qed.
+  Proof using . iIntros "[Ha _]". iApply fd_st_agree. iExact "Ha". Qed.
 
   (* THE UPDATE TAKES BOTH HALVES, which is the whole point of the shape:
      neither the kernel's authority nor a client's fragment moves a
      descriptor on its own. *)
   Lemma fd_st_both_update γ fd st st' :
     fd_st_both γ fd st ==∗ fd_st_both γ fd st'.
-  Proof. rewrite !fd_st_both_full. apply fd_st_at_update. Qed.
+  Proof using . rewrite !fd_st_both_full. apply fd_st_at_update. Qed.
 
   (* THE UPDATE IN THE FORM EVERY CALLER ACTUALLY HAS IT: an authority and a
      fragment, held separately and at states the caller may not know are
@@ -618,7 +618,7 @@ Section FdSlots.
   Lemma fd_st_move (γ : gname) (fd : nat) (st st' new : fdstate) :
     fd_st_auth γ fd st -∗ fd_st γ fd st' ==∗
     fd_st_auth γ fd new ∗ fd_st γ fd new.
-  Proof.
+  Proof using .
     iIntros "Ha Hf".
     iDestruct (fd_st_agree with "Ha Hf") as %Heq. subst st'.
     iAssert (fd_st_both γ fd st) with "[Ha Hf]" as "H"; [by iFrame "Ha Hf"|].
@@ -627,7 +627,7 @@ Section FdSlots.
 
   Lemma fdst_map0_split (γ : gname) (n : nat) :
     own γ (fdst_map0 n) ⊢ [∗ list] fd ∈ seq 0 n, fd_st_both γ fd FdClosed.
-  Proof.
+  Proof using .
     induction n as [|n IH]; [by iIntros "_"|].
     rewrite seq_S big_sepL_app big_sepL_singleton. cbn [fdst_map0].
     rewrite (insert_singleton_op (fdst_map0 n) n (fdst_v FdClosed));
@@ -641,7 +641,7 @@ Section FdSlots.
      nothing gives it back, and nothing has to. *)
   Lemma fd_st_alloc (n : nat) :
     ⊢ |==> ∃ γ, [∗ list] fd ∈ seq 0 n, fd_st_both γ fd FdClosed.
-  Proof.
+  Proof using .
     iMod (own_alloc (fdst_map0 n : fdstUR)) as (γ) "H"; [apply fdst_map0_valid|].
     iModIntro. iExists γ. iApply (fdst_map0_split with "H").
   Qed.
@@ -718,22 +718,22 @@ Section FdSlots.
     | _ => True
     end.
   Global Instance foff_row_persistent st : Persistent (foff_row st).
-  Proof. destruct st as [|? ? [? ? [|]|?|?]]; apply _. Qed.
+  Proof using . destruct st as [|? ? [? ? [|]|?|?]]; apply _. Qed.
 
   Lemma foff_row_closed : ⊢ foff_row FdClosed.
-  Proof. done. Qed.
+  Proof using . done. Qed.
   Lemma foff_row_pipe (r w : bool) (γp : pipe_names) : ⊢ foff_row (FdOpen r w (FdPipe γp)).
-  Proof. done. Qed.
+  Proof using . done. Qed.
   Lemma foff_row_dev (r w : bool) (mj : Z) : ⊢ foff_row (FdOpen r w (FdDevice mj)).
-  Proof. done. Qed.
+  Proof using . done. Qed.
   Lemma foff_row_inode (r w : bool) (i : Z) (γo : gname) :
     off_user_inv γo -∗ foff_row (FdOpen r w (FdInode i γo OffParked)).
-  Proof. iIntros "$". Qed.
+  Proof using . iIntros "$". Qed.
   (* ...and the held row, which is free: a handed-out half leaves the row
      with nothing to say. *)
   Lemma foff_row_inode_held (r w : bool) (i : Z) (γo : gname) :
     ⊢ foff_row (FdOpen r w (FdInode i γo OffHeld)).
-  Proof. done. Qed.
+  Proof using . done. Qed.
 
   (* ...and the reading a walk needs, at a state it holds only through an
      EQUATION: a descriptor's shape is derived from its content, never
@@ -742,7 +742,7 @@ Section FdSlots.
      offset out of. *)
   Lemma foff_row_inode_of (st : fdstate) (r w : bool) (i : Z) (γo : gname) :
     st = FdOpen r w (FdInode i γo OffParked) -> foff_row st -∗ off_user_inv γo.
-  Proof. intros ->. iIntros "$". Qed.
+  Proof using . intros ->. iIntros "$". Qed.
 
   (* NO PERMIT ROW.  fileread and filewrite take the INVARIANT itself --
      [foff_row] beside their caller-supplied input -- and advance the
@@ -753,24 +753,24 @@ Section FdSlots.
   Definition foff_rows (sts : list fdstate) : iProp Σ :=
     ([∗ list] st ∈ sts, foff_row st)%I.
   Global Instance foff_rows_persistent sts : Persistent (foff_rows sts).
-  Proof. rewrite /foff_rows. apply _. Qed.
+  Proof using . rewrite /foff_rows. apply _. Qed.
 
   Lemma foff_rows_closed (n : nat) : ⊢ foff_rows (replicate n FdClosed).
-  Proof.
+  Proof using .
     rewrite /foff_rows. iApply big_sepL_intro. iIntros "!>" (k st Hk).
     apply lookup_replicate in Hk as [-> _]. iApply foff_row_closed.
   Qed.
 
   Lemma foff_rows_lookup (sts : list fdstate) (fd : nat) (st : fdstate) :
     sts !! fd = Some st -> foff_rows sts -∗ foff_row st.
-  Proof.
+  Proof using .
     iIntros (Hfd) "#H". iDestruct (big_sepL_lookup _ _ _ _ Hfd with "H") as "$".
   Qed.
 
   Lemma foff_rows_insert (sts : list fdstate) (fd : nat) (st st' : fdstate) :
     sts !! fd = Some st ->
     foff_rows sts -∗ foff_row st' -∗ foff_rows (<[fd := st']> sts).
-  Proof.
+  Proof using .
     iIntros (Hfd) "#H Hst'". rewrite /foff_rows.
     iDestruct (big_sepL_insert_acc _ _ _ _ Hfd with "H") as "[_ Hback]".
     iApply ("Hback" with "Hst'").
@@ -843,7 +843,7 @@ Section FdSlots.
   (* ...and the slot it names really is closed. *)
   Lemma fd_lowest_closed_is_closed (l : list fdstate) (fd : nat) :
     fd_lowest_closed l = Some fd -> l !! fd = Some FdClosed.
-  Proof.
+  Proof using .
     revert fd. induction l as [| st l IH]; intros fd H; [discriminate H |].
     cbn in H. destruct st.
     - injection H as <-. reflexivity.
@@ -853,7 +853,7 @@ Section FdSlots.
 
   Lemma fd_lowest_closed_bound (l : list fdstate) (fd : nat) :
     fd_lowest_closed l = Some fd -> (fd < length l)%nat.
-  Proof.
+  Proof using .
     revert fd. induction l as [| st l IH]; intros fd H; [discriminate H |].
     cbn in H. destruct st.
     - injection H as <-. cbn. lia.
@@ -866,7 +866,7 @@ Section FdSlots.
   Lemma fd_lowest_closed_below (l : list fdstate) (fd : nat) :
     fd_lowest_closed l = Some fd ->
     forall j : nat, (j < fd)%nat -> l !! j <> Some FdClosed.
-  Proof.
+  Proof using .
     revert fd. induction l as [| st l IH]; intros fd H j Hj; [discriminate H |].
     cbn in H. destruct st.
     - injection H as <-. lia.
@@ -883,7 +883,7 @@ Section FdSlots.
     l !! fd = Some FdClosed ->
     (forall j : nat, (j < fd)%nat -> l !! j <> Some FdClosed) ->
     fd_least_closed l fd.
-  Proof.
+  Proof using .
     revert fd. induction l as [| st l IH]; intros fd Hc Hb;
       [ rewrite lookup_nil in Hc; discriminate Hc |].
     unfold fd_least_closed. cbn. destruct st.
@@ -899,16 +899,16 @@ Section FdSlots.
 
   Lemma fd_least_closed_free (sts : list fdstate) (fd : nat) :
     fd_least_closed sts fd -> sts !! fd = Some FdClosed.
-  Proof. exact (fd_lowest_closed_is_closed sts fd). Qed.
+  Proof using . exact (fd_lowest_closed_is_closed sts fd). Qed.
 
   Lemma fd_least_closed_lt (sts : list fdstate) (fd : nat) :
     fd_least_closed sts fd -> (fd < length sts)%nat.
-  Proof. exact (fd_lowest_closed_bound sts fd). Qed.
+  Proof using . exact (fd_lowest_closed_bound sts fd). Qed.
 
   Lemma fd_least_closed_below (sts : list fdstate) (fd : nat) :
     fd_least_closed sts fd ->
     forall j : nat, (j < fd)%nat -> sts !! j <> Some FdClosed.
-  Proof. exact (fd_lowest_closed_below sts fd). Qed.
+  Proof using . exact (fd_lowest_closed_below sts fd). Qed.
 
   (* ------------------------------------------------------------------ *)
   (* THE SCAN SPLITS AT A PREFIX, and that is the whole reason a user      *)
@@ -924,7 +924,7 @@ Section FdSlots.
       | Some k => Some k
       | None => (fun j => (length l1 + j)%nat) <$> fd_lowest_closed l2
       end.
-  Proof.
+  Proof using .
     induction l1 as [| st l1 IH].
     - cbn [app length fd_lowest_closed].
       destruct (fd_lowest_closed l2) as [j |]; reflexivity.
@@ -941,7 +941,7 @@ Section FdSlots.
     fd_least_closed sts fd ->
     fd_lowest_closed (take n sts) = Some k ->
     fd = k.
-  Proof.
+  Proof using .
     unfold fd_least_closed. intros Hl Hk.
     rewrite <- (take_drop n sts) in Hl.
     rewrite fd_lowest_closed_app Hk in Hl. by injection Hl.
@@ -951,7 +951,7 @@ Section FdSlots.
     fd_least_closed sts fd ->
     fd_lowest_closed (take n sts) = None ->
     (n <= fd)%nat.
-  Proof.
+  Proof using .
     unfold fd_least_closed. intros Hl Hk.
     rewrite <- (take_drop n sts) in Hl.
     rewrite fd_lowest_closed_app Hk in Hl.
@@ -968,7 +968,7 @@ Section FdSlots.
      point: a caller that knows the table knows which descriptor it got. *)
   Lemma fd_least_closed_unique (sts : list fdstate) (a b : nat) :
     fd_least_closed sts a -> fd_least_closed sts b -> a = b.
-  Proof.
+  Proof using .
     unfold fd_least_closed. intros Ha Hb.
     rewrite Ha in Hb. by injection Hb.
   Qed.
@@ -976,7 +976,7 @@ Section FdSlots.
   Definition fdt0 : list fdstate := replicate NOFILE FdClosed.
 
   Lemma fdt0_length : length fdt0 = NOFILE.
-  Proof. apply length_replicate. Qed.
+  Proof using . apply length_replicate. Qed.
 
   (* ...AND IT IS THE ROOT OF THE ALL-PARKED DISCIPLINE (design/user-read.md
      SS8.1).  Every table in the system descends from this one -- a process
@@ -988,13 +988,13 @@ Section FdSlots.
      than assumed, and it is the fact the generic tier's narrowed slot
      mints will be discharged from.  (* RA-2: held case here *) *)
   Lemma fdv_all_parked_fdt0 : fdv_all_parked fdt0.
-  Proof. apply fdv_all_parked_closed. Qed.
+  Proof using . apply fdv_all_parked_closed. Qed.
 
   (* ...and the scan on it answers 0: a fresh process's first open lands on
      descriptor 0, which is how init gets the console there.  Stated here
      rather than beside the scan because it needs [fdt0]. *)
   Lemma fd_lowest_closed_fdt0 : fd_lowest_closed fdt0 = Some 0%nat.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
 
   Definition fd_frags_any (γ : gname) : iProp Σ := (∃ sts, fd_frags γ sts)%I.
@@ -1003,10 +1003,10 @@ Section FdSlots.
      the tree stripped a later off the bundle. *)
 
   Lemma fd_frags_len γ sts : fd_frags γ sts -∗ ⌜length sts = NOFILE⌝.
-  Proof. iIntros "($ & _ & _)". Qed.
+  Proof using . iIntros "($ & _ & _)". Qed.
 
   Lemma fd_frags_rows γ sts : fd_frags γ sts -∗ foff_rows sts.
-  Proof. iIntros "(_ & _ & $)". Qed.
+  Proof using . iIntros "(_ & _ & $)". Qed.
 
   (* open one descriptor's fragment and close it back at a new state -- the
      only thing an fd operation ever does to the bundle.  The row's offset
@@ -1017,7 +1017,7 @@ Section FdSlots.
     fd_frags γ sts -∗
     fd_st γ fd st ∗ foff_row st ∗
     (∀ st', fd_st γ fd st' -∗ foff_row st' -∗ fd_frags γ (<[fd := st']> sts)).
-  Proof.
+  Proof using .
     iIntros (Hfd) "(%Hlen & Hs & #Hrows)".
     iDestruct (foff_rows_lookup _ _ _ Hfd with "Hrows") as "#Hrow".
     iDestruct (big_sepL_insert_acc _ _ _ _ Hfd with "Hs") as "[Hst Hback]".
@@ -1044,7 +1044,7 @@ Section FdSlots.
     ∃ st : fdstate,
       ⌜sts !! fd = Some st⌝ ∗ fd_st γ fd st ∗ foff_row st ∗
       (∀ st', fd_st γ fd st' -∗ foff_row st' -∗ fd_frags γ (<[fd := st']> sts)).
-  Proof.
+  Proof using .
     iIntros (Hfd) "Hb".
     iDestruct (fd_frags_len with "Hb") as %Hlen.
     assert (Hlk : is_Some (sts !! fd)) by (apply lookup_lt_is_Some_2; lia).
@@ -1058,7 +1058,7 @@ Section FdSlots.
     fd_frags_any γ -∗
     ∃ st : fdstate, fd_st γ fd st ∗ foff_row st ∗
       (∀ st', fd_st γ fd st' -∗ foff_row st' -∗ fd_frags_any γ).
-  Proof.
+  Proof using .
     iIntros (Hfd) "(%sts & Hb)".
     iDestruct (fd_frags_len with "Hb") as %Hlen.
     assert (Hlk : is_Some (sts !! fd)) by (apply lookup_lt_is_Some_2; lia).
@@ -1075,13 +1075,13 @@ Section FdSlots.
     ([∗ list] fd ∈ seq 0 n, fd_st_both γ fd FdClosed) -∗
     ([∗ list] fd ∈ seq 0 n, fd_st_auth γ fd FdClosed) ∗
     ([∗ list] fd ∈ seq 0 n, fd_st γ fd FdClosed).
-  Proof. rewrite -big_sepL_sep. iIntros "$". Qed.
+  Proof using . rewrite -big_sepL_sep. iIntros "$". Qed.
 
   (* the fragment side, in the bundle's own shape *)
   Lemma fd_frags_of_closed_at (γ : gname) (n o : nat) :
     ([∗ list] fd ∈ seq o n, fd_st γ fd FdClosed) -∗
     [∗ list] i ↦ st ∈ replicate n FdClosed, fd_st γ (o + i) st.
-  Proof.
+  Proof using .
     revert o. induction n as [|n IH]; iIntros (o) "H"; [done|].
     cbn [seq replicate big_opL]. rewrite Nat.add_0_r.
     iDestruct "H" as "[$ H]".
@@ -1093,7 +1093,7 @@ Section FdSlots.
   Lemma fd_frags_of_closed (γ : gname) :
     ([∗ list] fd ∈ seq 0 NOFILE, fd_st γ fd FdClosed) -∗
     fd_frags γ (replicate NOFILE FdClosed).
-  Proof.
+  Proof using .
     iIntros "H". iSplitR; [iPureIntro; apply length_replicate|].
     iSplitL; [iApply (fd_frags_of_closed_at γ NOFILE 0 with "H") |].
     iApply foff_rows_closed.
@@ -1104,7 +1104,7 @@ Section FdSlots.
   Lemma fd_st_closed_to_any_at {A} (γ : gname) (l : list A) (o : nat) :
     ([∗ list] fd ∈ seq o (length l), fd_st_auth γ fd FdClosed) -∗
     [∗ list] i ↦ _ ∈ l, fd_st_auth γ (o + i) FdClosed.
-  Proof.
+  Proof using .
     revert o. induction l as [|x l IH]; iIntros (o) "H"; [done|].
     cbn [length seq big_opL]. rewrite Nat.add_0_r.
     iDestruct "H" as "[$ H]".
@@ -1116,7 +1116,7 @@ Section FdSlots.
   Lemma fd_st_closed_to_any {A} (γ : gname) (l : list A) :
     ([∗ list] fd ∈ seq 0 (length l), fd_st_auth γ fd FdClosed) -∗
     [∗ list] fd ↦ _ ∈ l, fd_st_auth γ fd FdClosed.
-  Proof. iApply (fd_st_closed_to_any_at γ l 0). Qed.
+  Proof using . iApply (fd_st_closed_to_any_at γ l 0). Qed.
 
 End FdSlots.
 

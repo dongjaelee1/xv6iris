@@ -361,7 +361,7 @@ Section ProofSysUnlinkW5F.
         dqb dqs dqbs (unlink_arms (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) P Pmiss
                         Phient Phitgt Phiex Phimiss)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hnib0 Hgeom Hsize Hbm0 Hbmcov
            Hbmlog Hist0 Hcovb Hiregb Hj Hgl Heb Hsp0 Hal Hn1 Hupt1 Hkd Hks
            Hdinb Htydir Hiok Hrl_datd Hdok Hddix Hdoc Hduq Hnotdot Hnotdd

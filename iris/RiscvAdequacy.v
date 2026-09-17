@@ -214,7 +214,7 @@ Section reg_alloc.
     ([∗ map] r ↦ dv ∈ reg_init_map rs D, ghost_map_elem γ r (DfracOwn 1) dv) ⊢
     [∗ set] r ∈ D,
       ghost_map_elem γ r (DfracOwn 1) (existT r (register_lookup r rs)).
-  Proof.
+  Proof using .
     trans ([∗ map] r ↦ _ ∈ reg_init_map rs D,
              ghost_map_elem γ r (DfracOwn 1)
                (existT r (register_lookup r rs)))%I.
@@ -228,7 +228,7 @@ Section reg_alloc.
         (∃ m, ghost_map_auth γ 1 m ∗ ⌜reg_agree m rs⌝) ∗
         [∗ set] r ∈ D,
           ghost_map_elem γ r (DfracOwn 1) (existT r (register_lookup r rs)).
-  Proof.
+  Proof using .
     iMod (ghost_map_alloc (reg_init_map rs D)) as (γ) "[Hauth Helems]".
     iModIntro. iExists γ. iSplitL "Hauth".
     { iExists _. iFrame "Hauth". iPureIntro. apply reg_init_map_agree. }
@@ -244,7 +244,7 @@ Section reg_alloc.
         ([∗ set] r ∈ D c,
            ghost_map_elem (f c) r (DfracOwn 1)
              (existT r (register_lookup r (gr c)))).
-  Proof.
+  Proof using .
     induction cs as [|c cs' IH]; intros Hnd.
     - iModIntro. iExists (fun _ => 1%positive). done.
     - apply NoDup_cons in Hnd as [Hc Hnd'].
@@ -270,7 +270,7 @@ Section reg_alloc.
     ⊢ |==> ∃ f : CPU -> gname,
       [∗ list] c ∈ cs,
         (mono_nat_auth_own (f c) (1/2)%Qp n ∗ mono_nat_auth_own (f c) (1/2)%Qp n).
-  Proof.
+  Proof using .
     induction cs as [|c cs' IH]; intros Hnd.
     - iModIntro. iExists (fun _ => 1%positive). done.
     - apply NoDup_cons in Hnd as [Hc Hnd'].
@@ -294,7 +294,7 @@ Section reg_alloc.
     ⊢ |==> ∃ f : CPU -> gname,
       [∗ list] c ∈ cs,
         (ghost_var (f c) (1/2)%Qp a ∗ ghost_var (f c) (1/2)%Qp a).
-  Proof.
+  Proof using .
     induction cs as [|c cs' IH]; intros Hnd.
     - iModIntro. iExists (fun _ => 1%positive). done.
     - apply NoDup_cons in Hnd as [Hc Hnd'].
@@ -323,7 +323,7 @@ Section reg_alloc.
       [∗ list] c ∈ cs,
         (ghost_var (f c) (1/2)%Qp a ∗ ghost_var (f c) (1/4)%Qp a ∗
          ghost_var (f c) (1/4)%Qp a).
-  Proof.
+  Proof using .
     induction cs as [|c cs' IH]; intros Hnd.
     - iModIntro. iExists (fun _ => 1%positive). done.
     - apply NoDup_cons in Hnd as [Hc Hnd'].
@@ -351,7 +351,7 @@ Section reg_alloc.
     NoDup cs ->
     ⊢ |==> ∃ f : CPU -> gname,
       [∗ list] c ∈ cs, own (f c) ((● (GSet ∅)) : lockSetR).
-  Proof.
+  Proof using .
     induction cs as [|c cs' IH]; intros Hnd.
     - iModIntro. iExists (fun _ => 1%positive). done.
     - apply NoDup_cons in Hnd as [Hc Hnd'].
@@ -373,7 +373,7 @@ Section reg_alloc.
      hart enumeration -- what [park_name : nat -> gname] needs. *)
   Lemma ghost_var_alloc_nats {A : Type} `{!ghost_varG Σ A} (a : A) (n : nat) :
     ⊢ |==> ∃ f : nat -> gname, [∗ list] j ∈ seq 0 n, ghost_var (f j) 1 a.
-  Proof.
+  Proof using .
     induction n as [|n IH].
     - iModIntro. iExists (fun _ => 1%positive). done.
     - iMod IH as (fr) "Hrest".
@@ -643,7 +643,7 @@ Section power.
     power_boot_res HE gen D nproc ndisk Mof Rb Tn g' ⊢
       Rb (v_disk (g'.(gdev).(dvirtio))) ∗
       power_boot_res HE gen D nproc ndisk Mof (fun _ => emp)%I Tn g'.
-  Proof.
+  Proof using .
     rewrite /power_boot_res.
     iIntros "(H1 & H2 & H3 & H4 & H5 & H6 & H7 & H8 & H9 & H10 & H11 & H12 &
               H13 & H14 & H15 & H16 & H17 & H18 & H19 & H20 & HRb & H22 &
@@ -811,7 +811,7 @@ Section power.
             WP (DiskLoopE gen : expr riscv_lang) @ ⊤ ∗
             WP (PlicLoopE gen : expr riscv_lang) @ ⊤) :
     crash_inv -∗ obs_inv -∗ WP (PowerLoopE : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "#Hcinv #Hoinv".
     iLöb as "IH".
     iApply wp_lift_step; first done.

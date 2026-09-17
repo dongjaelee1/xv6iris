@@ -200,7 +200,7 @@ Section EitherCopyEpilogue.
         pc_is (ret_pc ra0) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hav H2c H2e H30 H32 H34 H36 H38
            Hsp0 Hra0 Hs00 Hs10 Hs20 Hs30 Hs40 Hmtsp Hmta0 Hthr.
     iIntros "Hcg Hi2c Hi2e Hi30 Hi32 Hi34 Hi36 Hi38 Hi3a Hpc Hb1 Hb2 Hb3 Hb4 Hb5 Hb6 Hcont".
@@ -438,7 +438,7 @@ Section ProofEitherCopyout.
       (src_bytes dst_olds : nat -> bv 8) (b : bool) (lks : gset string)
     : wp_either_copyout_sconf_body ktb kts γa γf m av lvl eb p pid U user len
         src_bytes dst_olds b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_either_copyout_sconf_body].
     intros pcE dst src ret_tgt Hav Hflag Hlenw Hlen Hlvl Hlkbelow.
     
@@ -1193,7 +1193,7 @@ Section ProofEitherCopyin.
       (src_bytes dst_olds : nat -> bv 8) (b : bool) (lks : gset string)
     : wp_either_copyin_sconf_body ktb kts γa γf m av lvl eb p pid U user len
         src_bytes dst_olds b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_either_copyin_sconf_body].
     intros pcE dst src ret_tgt Hav Hflag Hlenw Hlen Hlvl Hlkbelow.
     

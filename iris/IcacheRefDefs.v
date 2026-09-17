@@ -1189,14 +1189,14 @@ Section IcacheIty.
     own g (Cinr (to_agree (ty : leibnizO (bv 16))) : ityR).
 
   Global Instance ity_pending_timeless g : Timeless (ity_pending g).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance ity_shot_timeless g ty : Timeless (ity_shot g ty).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance ity_shot_persistent g ty : Persistent (ity_shot g ty).
-  Proof. rewrite /ity_shot. apply own_core_persistent, Cinr_core_id, _. Qed.
+  Proof using . rewrite /ity_shot. apply own_core_persistent, Cinr_core_id, _. Qed.
 
   Lemma ity_shoot (g : gname) (ty : bv 16) : ity_pending g ==∗ ity_shot g ty.
-  Proof.
+  Proof using .
     iIntros "H". iApply (own_update with "H").
     apply cmra_update_exclusive. done.
   Qed.
@@ -1205,7 +1205,7 @@ Section IcacheIty.
      type and a [FileInv.inode_pay]'s are the same type. *)
   Lemma ity_shot_agree (g : gname) (ty ty' : bv 16) :
     ity_shot g ty -∗ ity_shot g ty' -∗ ⌜ty = ty'⌝.
-  Proof.
+  Proof using .
     iIntros "H1 H2".
     iDestruct (own_valid_2 with "H1 H2") as %Hv.
     rewrite -Cinr_op Cinr_valid in Hv.
@@ -1213,13 +1213,13 @@ Section IcacheIty.
   Qed.
 
   Lemma ity_pending_excl (g : gname) : ity_pending g -∗ ity_pending g -∗ False.
-  Proof.
+  Proof using .
     iIntros "H1 H2". by iDestruct (own_valid_2 with "H1 H2") as %[].
   Qed.
 
   Lemma ity_pending_shot_excl (g : gname) (ty : bv 16) :
     ity_pending g -∗ ity_shot g ty -∗ False.
-  Proof.
+  Proof using .
     iIntros "H1 H2". by iDestruct (own_valid_2 with "H1 H2") as %[].
   Qed.
 End IcacheIty.
@@ -1253,16 +1253,16 @@ Section IcacheRegime.
   Definition ireg_open : iProp Σ := ∃ ty : bv 16, ity_shot icfg_boot ty.
 
   Global Instance ireg_open_persistent : Persistent ireg_open.
-  Proof. rewrite /ireg_open. apply _. Qed.
+  Proof using . rewrite /ireg_open. apply _. Qed.
   Global Instance ireg_open_timeless : Timeless ireg_open.
-  Proof. rewrite /ireg_open. apply _. Qed.
+  Proof using . rewrite /ireg_open. apply _. Qed.
   Global Instance ireg_boot_timeless : Timeless ireg_boot.
-  Proof. rewrite /ireg_boot. apply _. Qed.
+  Proof using . rewrite /ireg_boot. apply _. Qed.
 
   (* the whole point: the boot token refutes the sealed regime, hence a
      claimed slot, hence a mid-window claim box on ireclaim's trace. *)
   Lemma ireg_boot_open_excl : ireg_boot -∗ ireg_open -∗ False.
-  Proof.
+  Proof using .
     rewrite /ireg_boot /ireg_open. iIntros "Hp (%ty & Hs)".
     iApply (ity_pending_shot_excl with "Hp Hs").
   Qed.
@@ -1278,16 +1278,16 @@ Section IcacheRegime.
     if rg then ireg_open else ireg_boot.
 
   Global Instance ireg_regime_timeless rg : Timeless (ireg_regime rg).
-  Proof. rewrite /ireg_regime. destruct rg; apply _. Qed.
+  Proof using . rewrite /ireg_regime. destruct rg; apply _. Qed.
 
   Lemma ireg_regime_true : ireg_regime true = ireg_open.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* the two refutations the old un-indexed disjunction gave, at the index:
      a holder of the exclusive boot token refutes EITHER arm. *)
   Lemma ireg_regime_boot_excl (rg : bool) :
     ireg_regime rg -∗ ireg_boot -∗ False.
-  Proof.
+  Proof using .
     rewrite /ireg_regime. destruct rg.
     - iIntros "Ho Hb". iApply (ireg_boot_open_excl with "Hb Ho").
     - rewrite /ireg_boot. iIntros "H1 H2".

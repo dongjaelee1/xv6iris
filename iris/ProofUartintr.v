@@ -322,7 +322,7 @@ Section UiCont.
     (b = false \/ pme = zero_reg -> (CIDb : CPU) = (CIDa : CPU)) ->
     ui_ret_cont (CID0 := CIDa) i γu m0 av lvl eb pme b lks -∗
     ui_ret_cont (CID0 := CIDb) i γu m0 av lvl eb pme b lks.
-  Proof. intros Hs. rewrite /ui_ret_cont. exact (wp_next_shift Hs). Qed.
+  Proof using . intros Hs. rewrite /ui_ret_cont. exact (wp_next_shift Hs). Qed.
 
 End UiCont.
 
@@ -359,7 +359,7 @@ Section ProofUartintr.
     (∃ (k' : nat) (hl' : option (list mobs)), uart_rx_writer i γu k' hl') -∗
     ui_ret_cont i γu m0 av lvl eb pme b lks -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hregs Hsp0 Hav.
     destruct Hregs as (Hsp & H18 & H19 & H20 & H21 & H22 & H23 & H24 & H25 & H26 & H27).
     iIntros "#Ht Hcg Hcnt Hpc Hfr Htok Hcont".
@@ -517,7 +517,7 @@ Section ProofUartintr.
       (∃ (k : nat) (hl : option (list mobs)), uart_rx_writer i γu k hl) -∗
       ui_ret_cont (CID0 := CIDe) i γu m0 av lvl eb pme b lks -∗
       WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hsp0 Hlen Hlvl Hav Hbelow.
     iIntros (CIDe M) "%Hregs %Hs1 %Ha4 %Ha3 #Ht #Huinv #Hpinv #Hdlab #Hbw #Hrw #Hcaps".
     iIntros "Hcg Hcnt Hpc Hfr Htok Hcont".
@@ -865,7 +865,7 @@ Section ProofUartintr.
     (∃ (k : nat) (hl : option (list mobs)), uart_rx_writer i γu k hl) -∗
     ui_ret_cont i γu m0 av lvl eb pme b lks -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hregs Hidx Hsp0 Hlen Hlvl Hav Hbelow.
     iIntros "#Ht #Huinv #Hpinv #Hdlab #Hbw #Hrw #Hcaps Hcg Hcnt Hpc Hfr Htok Hcont".
     assert (P32 : add_vec_int (mword_of_int (KernelSyms.uartintr + 0x2e) : mword 64) 4 = mword_of_int (KernelSyms.uartintr + 0x32)) by pcw.
@@ -1005,7 +1005,7 @@ Section ProofUartintr.
       (m : regfile) (av lvl : nat) (eb : bool) (pme : mword 64) (b : bool)
       (k : nat) (hl : option (list mobs)) (lks : gset string)
     : wp_uartintr_sconf_body i γu γv γs m av lvl eb pme b k hl lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_uartintr_sconf_body].
     intros pcE ret_tgt Ha0 Hlen Hlvl Hav Hbelow.
     iIntros "Hcg Hcnt #Ht Hpc #Hbw #Hrw #Hdlab #Huinv #Hpinv #Hcaps Htok Hcont".

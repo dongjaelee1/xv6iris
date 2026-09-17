@@ -191,7 +191,7 @@ Section UInitKernel.
   Lemma ubyte_map_sub (γd : gname) (A B : gmap Z (bv 8)) :
     A ⊆ B ->
     ([∗ map] k ↦ b ∈ B, ubyte γd k b) -∗ ([∗ map] k ↦ b ∈ A, ubyte γd k b).
-  Proof.
+  Proof using .
     intros Hsub. iIntros "H".
     iApply (big_sepM_subseteq _ _ _ Hsub with "H").
   Qed.
@@ -218,7 +218,7 @@ Section UInitKernel.
   Lemma init_cons_dance_at (N : uk_names Σ) (T Cns : iProp Σ)
       (stc : fdstate) :
     init_cons_dance_all T Cns stc -∗ UkInit.init_cons_dance N T Cns stc.
-  Proof.
+  Proof using .
     iIntros "[[%K [#Hl HK]] | [#Hh HC]]".
     - iApply (UkInit.init_cons_dance_miss N T K Cns stc with "[] HK").
       iApply "Hl".
@@ -377,7 +377,7 @@ Section UInitKernel.
        payload, which is the only place a kill gives it back. *)
     my_pay (uvis_gen W) (fun _ => True)%I -∗
     uslot W.
-  Proof.
+  Proof using .
     intros Hne Hkt Hpc Hsub Hx Hwd Hszd Hbase Hal8 Hroom Hstk Hfdlen Hl0 Hnpk
            Hstop Hcw Hpsok_free Hlzf.
     (* [Hdp] LINEARLY, and that is not a style choice: [UkInit.init_deps]
@@ -510,7 +510,7 @@ Section UInitKernel.
     (* ...and the two diagnostics' conversions (lane M6b), likewise *)
     UkInitMain.kinit_diag_law stc (cc_wp Cr) (cc_wbn Cr) -∗
     my_pay (uvis_gen W') (fun _ => True)%I -∗ uslot W'.
-  Proof.
+  Proof using .
     intros Hne Hkt Hok Hroom Hlen Hl0 Hnpk Hcw Hpsok_free Hlzf.
     (* THE MAP STOPS AT THE BREAK, off the image fact's own row --
        [UShKernel.sh_slot_of_kexec]'s note is the reasoning. *)
@@ -705,7 +705,7 @@ Section UInitKernel.
          ⌜uvis_lazy W' = false⌝ -∗
          my_pay (uvis_gen W') (fun _ => True)%I -∗
          init_boot_pay T Cns cn stc Cr -∗ uslot W').
-  Proof.
+  Proof using .
     (* THE BUNDLE IS NEVER TAKEN APART: it goes in through the box and
        straight out into [init_slot_of_kexec]'s own linear premise.  No
        [Persistent] search, no [iFrame] against a [□]-wand -- see the
@@ -725,7 +725,7 @@ Section UInitKernel.
   Lemma init_cons_dance_all_miss (T Cns K : iProp Σ) (stc : fdstate) :
     □ (∀ N : uk_names Σ, UkInit.init_cons_leaves N T K Cns stc) -∗ K -∗
     init_cons_dance_all T Cns stc.
-  Proof.
+  Proof using .
     iIntros "#Hl HK". rewrite /init_cons_dance_all. iLeft.
     iExists K. iSplitR "HK"; [ iExact "Hl" | iExact "HK" ].
   Qed.
@@ -735,7 +735,7 @@ Section UInitKernel.
          □ UkInit.uki_open_console_leaf N T stc
          ∗ □ UkInit.uki_mknod_hit_leaf N T Cns stc) -∗ Cns -∗
     init_cons_dance_all T Cns stc.
-  Proof.
+  Proof using .
     iIntros "#Hh HC". rewrite /init_cons_dance_all. iRight.
     iSplitR "HC"; [ iExact "Hh" | iExact "HC" ].
   Qed.

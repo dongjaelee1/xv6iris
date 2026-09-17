@@ -119,7 +119,7 @@ Section ProofAcquire.
       locked_pre γl cpu_id -∗ lock_pay_won R -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros a4one HM0a4 HM0s1 Href.
     assert (Ha4any : forall w : mword 64,
         (<[Regidx (mword_of_int 15 : mword 5) := regval_into_reg w]> M0) !!! Regidx (mword_of_int 14 : mword 5) = a4one).
@@ -240,7 +240,7 @@ Section ProofAcquire.
       (n : nat) (eb : bool) (p : mword 64) (av : nat) (b : bool) (lks : gset string)
       (Tl : nat)
     : wp_acquire_gen_llb_pre_body kt γl s R Tc Dc m n eb p av b lks Tl (s ∉ lks).
-  Proof.
+  Proof using .
     cbv beta delta [wp_acquire_gen_llb_pre_body].
     intros pcE lk0 ret_tgt Hpos Hav Hfresh Href Hrefpre.
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).
@@ -837,7 +837,7 @@ Section ProofAcquire.
       (m : regfile)
       (n : nat) (eb : bool) (p : mword 64) (av : nat) (b : bool) (lks : gset string)
     : wp_acquire_gen_fresh_sconf_body kt γl s R Tc Dc m n eb p av b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_acquire_gen_fresh_sconf_body wp_acquire_gen_pre_body].
     intros pcE lk0 ret_tgt Hpos Hav Hfresh Href Hrefpre.
     iIntros "Hcg Hown #Htext Hpc #Hlock HTc Hcont".
@@ -859,7 +859,7 @@ Section ProofAcquire.
       (n : nat) (eb : bool) (p : mword 64) (av : nat) (b : bool) (lks : gset string)
       (Tl : nat)
     : wp_acquire_gen_llb_sconf_body kt γl s R Tc Dc m n eb p av b lks Tl.
-  Proof.
+  Proof using .
     exact (wp_acquire_gen_llb_pre_weaken γl s R Tc Dc m n eb p av b lks Tl
              (s ∉ lks) (locks_below lks s) (locks_below_not_elem lks s)
              (wp_acquire_gen_llb_fresh_sconf γl s R Tc Dc m n eb p av b lks Tl)).
@@ -872,7 +872,7 @@ Section ProofAcquire.
       (m : regfile)
       (n : nat) (eb : bool) (p : mword 64) (av : nat) (b : bool) (lks : gset string)
     : wp_acquire_gen_sconf_body kt γl s R Tc Dc m n eb p av b lks.
-  Proof.
+  Proof using .
     exact (wp_acquire_gen_pre_weaken γl s R Tc Dc m n eb p av b lks
              (s ∉ lks) (locks_below lks s) (locks_below_not_elem lks s)
              (wp_acquire_gen_fresh_sconf γl s R Tc Dc m n eb p av b lks)).
@@ -901,7 +901,7 @@ Section OfGen.
       (n : nat) (eb : bool) (p : mword 64) (av : nat) (b : bool)
       (lks : gset string)
     : wp_acquire_fresh_sconf_body kt γl s R m n eb p av b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_acquire_fresh_sconf_body wp_acquire_pre_body].
     intros pcE lk0 ret_tgt Hpos Hav Hfresh.
     iIntros "Hcg Hown #Htext Hpc #Hlock Hcont".
@@ -922,7 +922,7 @@ Section OfGen.
       (n : nat) (eb : bool) (p : mword 64) (av : nat) (b : bool)
       (lks : gset string) (Tl : nat)
     : wp_acquire_llb_fresh_sconf_body kt γl s R m n eb p av b lks Tl.
-  Proof.
+  Proof using .
     cbv beta delta [wp_acquire_llb_fresh_sconf_body wp_acquire_llb_pre_body].
     intros pcE lk0 ret_tgt Hpos Hav Hfresh.
     iIntros "Hcg Hown #Htext Hpc #Hlock #Hllb Hcont".
@@ -942,7 +942,7 @@ Section OfGen.
       (n : nat) (eb : bool) (p : mword 64) (av : nat) (b : bool)
       (lks : gset string) (Tl : nat)
     : wp_acquire_llb_sconf_body kt γl s R m n eb p av b lks Tl.
-  Proof.
+  Proof using .
     exact (wp_acquire_llb_pre_weaken γl s R m n eb p av b lks Tl
              (s ∉ lks) (locks_below lks s) (locks_below_not_elem lks s)
              (wp_acquire_llb_fresh_sconf γl s R m n eb p av b lks Tl)).
@@ -954,7 +954,7 @@ Section OfGen.
       (n : nat) (eb : bool) (p : mword 64) (av : nat) (b : bool)
       (lks : gset string)
     : wp_acquire_sconf_body kt γl s R m n eb p av b lks.
-  Proof.
+  Proof using .
     exact (wp_acquire_pre_weaken γl s R m n eb p av b lks
              (s ∉ lks) (locks_below lks s) (locks_below_not_elem lks s)
              (wp_acquire_fresh_sconf γl s R m n eb p av b lks)).

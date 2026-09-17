@@ -128,7 +128,7 @@ Section UkInitPutc.
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (4 + n) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hfd Hb.
     iIntros "Hw1 #Hcode HCi Hrun Hcont".
     destruct init_syms_pins

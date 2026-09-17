@@ -145,7 +145,7 @@ Section UkWriteCons.
        urun N h' (<[Regidx a0_idx := r]> m) (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Ha0 Hilt Hli Hcnt Hal4.
     iIntros "#Hi Hrun Hstd Hbuf Hch Hcont".
     (* THE DEPOSIT, at the caller's own cursor *)
@@ -204,7 +204,7 @@ Section UkWriteCons.
        urun N h' (<[Regidx a0_idx := r]> m) (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Ha0 Hilt Hli Hcnt Hal4.
     iIntros "#Hi Hrun Hstd Hbuf #Hlic Hcont".
     iApply (wp_uk_ecall_write_cons N h m pc avail l i rb dq nb f

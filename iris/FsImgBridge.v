@@ -445,7 +445,7 @@ Section ImageRes.
        fsblock (fs_bytes γfs) b (P b)) -∗
     inode_blocks γfs (img_blkmap P dn) (fs_data_of P dn)
       ∗ ind_res γfs (img_blkmap P dn).
-  Proof.
+  Proof using .
     intros Hwf Hfull Hok Hinj.
     apply (inode_blocks_of_blocks γfs (img_blkmap P dn)
              (list_to_set (fs_inode_blocks P dn)) P (fs_data_of P dn)).

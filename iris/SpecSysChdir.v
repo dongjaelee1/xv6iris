@@ -353,7 +353,7 @@ Section SysChdirArms.
              /\ exists (ipv : mword 64) (i : Z), U' = us_cwi (us_cwd U ipv) i)⌝
         ∗ proc_priv γf pj pid U'
         ∗ chdir_receipt Γ γfs cw P Pmiss Fo r (pv_cwi (us_V U')).
-  Proof.
+  Proof using .
     intros Hcw. rewrite /chdir_arms /chdir_post_ok /chdir_receipt.
     iIntros "[(%Hr & Hpriv & Hfail) | (%Hr & H)]".
     - iExists U.
@@ -384,7 +384,7 @@ Section SysChdirArms.
       (U : ustate) (r : mword 64) :
     chdir_arms Γ γfs γf pj pid cw P Pmiss Fo U r ⊢
       sys_chdir_post γf pj pid U r.
-  Proof.
+  Proof using .
     rewrite /chdir_arms /chdir_post_ok /sys_chdir_post.
     iIntros "[(%Hr & Hpriv & _) | (%Hr & H)]".
     - iLeft. iFrame "Hpriv". by iPureIntro.

@@ -157,7 +157,7 @@ Section DirlookupMsg.
 
   Lemma dlk_msg_str :
     (kernel_data : iProp Σ) -∗ (mword_of_int dlk_msg_a : mword 64) ↦ₛ□ dlk_msg.
-  Proof.
+  Proof using .
     iIntros "#Hd".
     iApply (kernel_data_string dlk_msg_a dlk_msg _ eq_refl
               ltac:(unfold text_end, dlk_msg_a; lia)
@@ -257,7 +257,7 @@ Section ProofDirlookupMain.
     ([∗ list] jj ∈ seq 0 16, pa_add a jj ↦ₘ[KT1] file_byte data (16 * i + jj)%nat)
     ⊣⊢ a ↦₂[KT1] dir_inum data i
        ∗ ([∗ list] jj ∈ seq 0 14, pa_add (pa_add a 2) jj ↦ₘ[KT1] dir_name data i jj).
-  Proof.
+  Proof using .
     intro Hal.
     rewrite -(dlk_half_acc (KTR := KT1) data i a Hal).
     rewrite -(dlk_name_acc (KTR := KT1) data i (pa_add a 2)).
@@ -473,7 +473,7 @@ Section ProofDirlookupMain.
     : wp_dirlookup_sconf_body gs j gl pd pav pu
  gf ip dinum bm data dn dr
                               fn hasp pofv pidv dq dqd dqn m K eb b lks Upr.
-  Proof.
+  Proof using .
     cbv beta delta [wp_dirlookup_sconf_body].
     intros pcE pj nb pf ret_tgt nrec s HK Htype Hlg Hbmwf Hbmcov Hszb
            Hholes Hinums Hdisj Horph Hdrnz Hdrnl Hj Hgs Ha0 Hposs Hbelow.

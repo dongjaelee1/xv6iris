@@ -216,16 +216,16 @@ Section swp.
 
   Global Instance swp_ne {X} (m : M X) n :
     Proper (pointwise_relation X (dist n) ==> dist n) (swp m).
-  Proof. rewrite /swp. solve_proper. Qed.
+  Proof using . rewrite /swp. solve_proper. Qed.
   Global Instance swp_proper {X} (m : M X) :
     Proper (pointwise_relation X (≡) ==> (≡)) (swp m).
-  Proof. rewrite /swp. solve_proper. Qed.
+  Proof using . rewrite /swp. solve_proper. Qed.
 
   (* ---- the laws ---- *)
 
   (* left unit: definitional, since [C (Ret x)] is literally the goal *)
   Lemma swp_ret {X} (x : X) (Φ : X -> iProp Σ) : Φ x -∗ swp (Interface.Ret x) Φ.
-  Proof. iIntros "HΦ" (C) "_ H". by iApply "H". Qed.
+  Proof using . iIntros "HΦ" (C) "_ H". by iApply "H". Qed.
 
   (* THE ELIMINATION FORM.  Every consumer goes through this rather than
      through [swp]'s ∀ directly, so no proof outside this file has to know
@@ -236,18 +236,18 @@ Section swp.
     (∀ v : X, Φ v -∗ WP (HartE gen_id cpu_id (C (Interface.Ret v))
                          : expr riscv_lang)) -∗
     WP (HartE gen_id cpu_id (C m) : expr riscv_lang).
-  Proof. iIntros (HC) "Hswp H". by iApply ("Hswp" $! C with "[%//]"). Qed.
+  Proof using . iIntros (HC) "Hswp H". by iApply ("Hswp" $! C with "[%//]"). Qed.
 
   Lemma swp_mono {X} (m : M X) (Φ Ψ : X -> iProp Σ) :
     (∀ v, Φ v -∗ Ψ v) -∗ swp m Φ -∗ swp m Ψ.
-  Proof.
+  Proof using .
     iIntros "HΦΨ Hswp" (C) "%HC H". iApply ("Hswp" $! C with "[%//] [-]").
     iIntros (v) "HΦ". iApply "H". by iApply "HΦΨ".
   Qed.
 
   Lemma swp_frame_l {X} (m : M X) (Φ : X -> iProp Σ) (R : iProp Σ) :
     R -∗ swp m Φ -∗ swp m (fun v => R ∗ Φ v).
-  Proof.
+  Proof using .
     iIntros "HR Hswp". iApply (swp_mono with "[HR] Hswp").
     iIntros (v) "HΦ". iFrame.
   Qed.
@@ -257,7 +257,7 @@ Section swp.
      the goal is [C (bind (Ret v) f)], which IS [C (f v)]. *)
   Lemma swp_bind {X Y} (m : M X) (f : X -> M Y) (Φ : Y -> iProp Σ) :
     swp m (fun v => swp (f v) Φ) -∗ swp (Defs.bind m f) Φ.
-  Proof.
+  Proof using .
     iIntros "Hswp" (C) "%HC H".
     iApply ("Hswp" $! (fun m' => C (Defs.bind m' f))
               with "[%] [H]"); [by apply mctx_bind|].
@@ -267,7 +267,7 @@ Section swp.
   (* the [>>] form, so a call site need not unfold [bind0] *)
   Lemma swp_bind0 {Y} (m : M unit) (n : M Y) (Φ : Y -> iProp Σ) :
     swp m (fun _ => swp n Φ) -∗ swp (Defs.bind0 m n) Φ.
-  Proof. rewrite /Defs.bind0. iApply swp_bind. Qed.
+  Proof using . rewrite /Defs.bind0. iApply swp_bind. Qed.
 
   (* RIGHT UNIT / the close into a real WP.  [LoopE] IS [HartE _ _ (Ret tt)],
      so the boundary side is definitional: a whole cycle's [swp] whose
@@ -276,7 +276,7 @@ Section swp.
     swp m Φ -∗
     (∀ v : unit, Φ v -∗ WP (Loop : expr riscv_lang)) -∗
     WP (HartE gen_id cpu_id m : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "Hswp H".
     iApply ("Hswp" $! (fun m' : M unit => m') with "[%] [H]");
       [exact mctx_id|].
@@ -287,7 +287,7 @@ Section swp.
   Lemma swp_wp_loop (m : M unit) :
     swp m (fun _ => WP (Loop : expr riscv_lang)) -∗
     WP (HartE gen_id cpu_id m : expr riscv_lang).
-  Proof. iIntros "Hswp". iApply (swp_wp with "Hswp"). by iIntros (v) "H". Qed.
+  Proof using . iIntros "Hswp". iApply (swp_wp with "Hswp"). by iIntros (v) "H". Qed.
 
   (* THE BOUNDARY, as the leaves see it: [wp_hart_restart] composed with
      [swp_wp_loop].  A leaf that proves [swp (riscv_step tick) (fun _ =>
@@ -302,7 +302,7 @@ Section swp.
          resv_frag cpu_id None -∗
          swp (riscv_step tick) (fun _ => WP (Loop : expr riscv_lang))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "#Hcert Hfrag H". iApply (wp_hart_restart rr with "Hcert Hfrag").
     iNext. iIntros (tick) "Hfrag". iApply swp_wp_loop. iApply ("H" with "Hfrag").
   Qed.
@@ -311,14 +311,14 @@ Section swp.
 
   Lemma swp_fupd {X} (m : M X) (Φ : X -> iProp Σ) :
     (|={⊤}=> swp m Φ) -∗ swp m Φ.
-  Proof.
+  Proof using .
     iIntros "Hswp" (C) "%HC H". iApply fupd_wp. iMod "Hswp".
     iModIntro. by iApply ("Hswp" $! C with "[%//]").
   Qed.
 
   Lemma swp_fupd_post {X} (m : M X) (Φ : X -> iProp Σ) :
     swp m (fun v => |={⊤}=> Φ v) -∗ swp m Φ.
-  Proof.
+  Proof using .
     iIntros "Hswp" (C) "%HC H". iApply ("Hswp" $! C with "[%//] [H]").
     iIntros (v) "HΦ". iApply fupd_wp. iMod "HΦ". iModIntro. by iApply "H".
   Qed.
@@ -343,7 +343,7 @@ Section swp.
     WP (HartE gen_id cpu_id
           (C (Defs.catch_early_return (Defs.bind (Defs.liftR (R := R) m) K)))
         : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (HC) "Hswp H".
     iApply (swp_use m Φ _ (mctx_cer_liftR K C HC) with "Hswp H").
   Qed.
@@ -360,7 +360,7 @@ Section swp.
     WP (HartE gen_id cpu_id
           (C (Defs.catch_early_return (Defs.liftR (R := R) m)))
         : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (HC) "Hswp H".
     iApply (swp_use m Φ _
               (mctx_cer_F (fun h => h) C HC mctxE_id) with "Hswp H").
@@ -384,7 +384,7 @@ Section swp.
           (C (Defs.catch_early_return
                 (Defs.bind (Defs.bind (Defs.liftR (R := R) m) K0) K1)))
         : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (HC) "Hswp H".
     iApply (swp_use m Φ _
               (mctx_cer_F (fun h => Defs.bind (Defs.bind h K0) K1) C HC
@@ -407,7 +407,7 @@ Section swp.
                 (Defs.bind (Defs.bind (Defs.bind (Defs.liftR (R := R) m) K0)
                               K1) K2)))
         : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (HC) "Hswp H".
     iApply (swp_use m Φ _
               (mctx_cer_F
@@ -421,7 +421,7 @@ Section swp.
   Lemma swp_bind0_use {Y : Type} (m : M unit) (n : M Y)
       (Φ : unit -> iProp Σ) (Ψ : Y -> iProp Σ) :
     swp m Φ -∗ (∀ v : unit, Φ v -∗ swp n Ψ) -∗ swp (Defs.bind0 m n) Ψ.
-  Proof.
+  Proof using .
     iIntros "H1 H2". iApply swp_bind0.
     iApply (swp_mono with "[H2] H1"). iIntros (v) "HΦ". by iApply "H2".
   Qed.
@@ -429,7 +429,7 @@ Section swp.
   Lemma swp_bind_use {X Y : Type} (m : M X) (f : X -> M Y)
       (Φ : X -> iProp Σ) (Ψ : Y -> iProp Σ) :
     swp m Φ -∗ (∀ v : X, Φ v -∗ swp (f v) Ψ) -∗ swp (Defs.bind m f) Ψ.
-  Proof.
+  Proof using .
     iIntros "H1 H2". iApply swp_bind.
     iApply (swp_mono with "[H2] H1"). iIntros (v) "HΦ". by iApply "H2".
   Qed.
@@ -449,7 +449,7 @@ Section swp.
                 (Defs.bind (Defs.bind (Defs.bind
                    (Defs.bind (Defs.liftR (R := R) m) K0) K1) K2) K3)))
         : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (HC) "Hswp H".
     iApply (swp_use m Φ _
               (mctx_cer_F

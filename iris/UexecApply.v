@@ -400,7 +400,7 @@ Section Apply.
        [⊣⊢] notation cannot elaborate [uslot]'s implicit [Σ] before it
        has to unify against [bi_car]. *)
     (uslot W : iProp Σ) ⊣⊢ uslot W'.
-  Proof.
+  Proof using .
     intros Hg Hp HM Hpi Hsz Hfd Hcw Hgn Hch Hpid Hlz.
     rewrite (uslot_ukc W) (uslot_ukc W').
     rewrite Hg Hp HM Hpi Hsz Hfd Hcw Hgn Hch Hpid Hlz. reflexivity.
@@ -446,7 +446,7 @@ Section Apply.
     uvis_pid W = uvis_pid W' ->
     uvis_lazy W = uvis_lazy W' ->
     (uexec_arm_F S sc W f : iProp Σ) ⊣⊢ uexec_arm_F S sc W' f.
-  Proof.
+  Proof using .
     intros HlW HlW' Hn Ha0 Ha1 Ha2 Hg Hp HM Hpi Hsz Hfd Hcw Hgn Hch Hpid Hlz.
     assert (Hsk : skey_eq W W')
       by (rewrite /skey_eq; split_and!;
@@ -633,7 +633,7 @@ Section Apply.
     uvis_pid W = uvis_pid W' ->
     uvis_lazy W = uvis_lazy W' ->
     (uexec_arm sc W f : iProp Σ) ⊣⊢ uexec_arm sc W' f.
-  Proof. exact (uexec_arm_F_key_cong uslot uslot_key_cong sc W W' f). Qed.
+  Proof using . exact (uexec_arm_F_key_cong uslot uslot_key_cong sc W W' f). Qed.
 
   (* THE INSTANCE THE LOOP USES: the key the kernel trapped with and the
      key its own resume projection describes are the same key, so a
@@ -656,7 +656,7 @@ Section Apply.
       (sc : mword 64) (W : uvis) (f : sfam) :
     length (uvis_tf W) = TFWORDS ->
     (uexec_arm_F S sc W f : iProp Σ) ⊣⊢ uexec_arm_F S sc (uvis_run W) f.
-  Proof.
+  Proof using .
     intros Hl.
     apply (uexec_arm_F_key_cong S HS sc W (uvis_run W) f Hl (uvis_run_length W)
              (eq_sym (uvis_run_num W)) (eq_sym (uvis_run_arg0 W))
@@ -669,7 +669,7 @@ Section Apply.
   Lemma uexec_arm_run (sc : mword 64) (W : uvis) (f : sfam) :
     length (uvis_tf W) = TFWORDS ->
     (uexec_arm sc W f : iProp Σ) ⊣⊢ uexec_arm sc (uvis_run W) f.
-  Proof. exact (uexec_arm_F_run uslot uslot_key_cong sc W f). Qed.
+  Proof using . exact (uexec_arm_F_run uslot uslot_key_cong sc W f). Qed.
 
   (* ...AND THE SLOT ALONE ACROSS THE SAME STEP (lane TRAP-ROWS, T3): the
      additive pair travels to usertrap and the untaken side comes back at
@@ -678,7 +678,7 @@ Section Apply.
   Lemma uslot_run_cong (W : uvis) :
     length (uvis_tf W) = TFWORDS ->
     (uslot W : iProp Σ) ⊣⊢ uslot (uvis_run W).
-  Proof.
+  Proof using .
     intro Hl.
     apply (uslot_key_cong W (uvis_run W)
              (eq_sym (uvis_run_gpr W)) (eq_sym (uvis_run_pc W))
@@ -709,7 +709,7 @@ Section Frame.
       ⌜trap_mstatus_ok ms_v⌝ ∗
       user_trap_frame_at C pt Rut ms_v sc stv
         (tf_w (uvis_tf W) tf_epc_idx) (tf_resume_gpr0 (uvis_tf W)).
-  Proof.
+  Proof using .
     (* post-S3 [trapped_machine] IS [user_trap_frame_atm] plus the K3 length
        conjunct, so the only row that moves is the image. *)
     rewrite /trapped_machine /user_trap_frame_atm /user_trap_frame_at.
@@ -836,7 +836,7 @@ Section LoopApply.
      OUTERMOST, which is what makes this one [upd_eq]. *)
   Lemma tf_resume_gpr_a0 (b : regfile) (tf : list (mword 64)) :
     tf_resume_gpr b tf !!! Regidx (mword_of_int 10) = tf !!! tf_arg_idx 0.
-  Proof. unfold tf_resume_gpr, userret_gpr. rewrite upd_eq. reflexivity. Qed.
+  Proof using . unfold tf_resume_gpr, userret_gpr. rewrite upd_eq. reflexivity. Qed.
 
   (* THE RETURNING ARM, FACTORED: the generic returning wand of
      [UexecRet.uexec_ret_F] at an arbitrary slot family [S], instantiated
@@ -932,7 +932,7 @@ Section LoopApply.
          M' fdv' cw' cs' -∗
        S (bump (uvis_run W) r' M' π' szv' fdv' cw' gn' cs' lz')) -∗
     S W'.
-  Proof.
+  Proof using .
     intros Hl Hgn [Hb1 Hb2] Hm Hfdrow Hpiperow Hcwrow Hpidrow Hliverow Hpidk.
     iIntros "Hch Hsp Hret".
     (* the two length side conditions the bump's readers take *)
@@ -1123,7 +1123,7 @@ Section LoopApply.
        what the round transports to the resumed key. *)
     (if decide (sc = uecall_scause) then uexec_arm sc W f
      else uslot (uvis_run W)) -∗ uslot W'.
-  Proof.
+  Proof using .
     intros Hl Hgn Hpidk Hch Hfd Hfdrow Hpiperow Hpidrow Hliverow Hr.
     iIntros "Hxo Hfo Hwo Hsp Hret".
     destruct (decide (sc = uecall_scause)) as [Hec | Hne].
@@ -1432,7 +1432,7 @@ Section LoopApply.
     (if decide (sc = uecall_scause) then uexec_arm sc W f
      else uslot (uvis_run W)) -∗
     uslot (uvis_of U' fdv' (uvis_gen W) cs' (uvis_pid W)).
-  Proof.
+  Proof using .
     intros Hl -> -> Hfd Hchrow Hfdrow Hpiperow Hpidrow Hliverow Hr.
     (* THE RESUME KEY IS BUILT AT THE TRAPPED KEY'S OWN GENERATION -- no
        entry re-incarnates its caller -- AND AT ITS OWN PID, for the same
@@ -1477,7 +1477,7 @@ Section LoopApply.
     Rut pt -∗
     ▷ ukb C pt Rfd Rut sz (perm_of (ud_um pt) sz) fdv cw gn cs pidv lz -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hlo Hsz Hms Hlz.
     iIntros "Hkc Hhw Hmi Hwi Hregs Hupt Hfrag Hcfg Hrut Hk".
     (* the cell bundle splits into the U-mode residue, the file and the pc *)
@@ -1540,7 +1540,7 @@ Section LoopApply.
     Rut pt -∗
     ▷ ukb C pt Rfd Rut sz (perm_of (ud_um pt) sz) fdv cw gn cs pidv lz -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hlo Hsz Hms Hpi HM Hsw Hfd Hcw Hgn Hch Hpid Hlz Hlf Hg Hpc.
     iIntros "Hs".
     (* the seal comes off the HYPOTHESIS only *)

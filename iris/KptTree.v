@@ -410,7 +410,7 @@ Section PtSlotBridge.
     bv_unsigned x = bv_unsigned b * 4096 + r ->
     (uint x < 274877906944)%Z ->
     bv_unsigned (svpn_of x) = bv_unsigned b.
-  Proof.
+  Proof using .
     intros Hr Hx Hcan.
     rewrite (svpn_of_unsigned_lo x Hcan). rewrite uint_unsigned Hx.
     rewrite Z.shiftr_div_pow2; [| lia]. change (2 ^ 12) with 4096.
@@ -427,7 +427,7 @@ Section PtSlotBridge.
     addr_is_ram (pa_add (u_pte_addr b idx) j) /\
     (uint (pa_add (u_pte_addr b idx) j) < 274877906944)%Z /\
     svpn_of (pa_add (u_pte_addr b idx) j) = pt_page_vpn b.
-  Proof.
+  Proof using .
     intros [Hklo Hkhi] Hj.
     assert (Ha : bv_unsigned (u_pte_addr b idx) = bv_unsigned b * 4096 + bv_unsigned idx * 8)
       by exact (pte_addr_at_unsigned b idx).
@@ -498,7 +498,7 @@ Section PtSlotBridge.
     pt_node_claim b -∗
     TsoCtx.ctx_phys_word_pointsto cur_ctx (u_pte_addr b idx) dq w -∗
     u_pte_addr b idx ↦₈{dq} w.
-  Proof.
+  Proof using .
     iIntros "(%Hkd & %Hpv & #Hk) Hw".
     iApply ctx_word_pointsto_intro; [exact (pte_addr_at_aligned8 b idx) |].
     iDestruct (TsoCtx.ctx_phys_word_pointsto_bytes with "Hw") as "Hbs".
@@ -520,7 +520,7 @@ Section PtSlotBridge.
     pt_node_claim b -∗
     u_pte_addr b idx ↦₈{dq} w -∗
     TsoCtx.ctx_phys_word_pointsto cur_ctx (u_pte_addr b idx) dq w.
-  Proof.
+  Proof using .
     iIntros "(%Hkd & %Hpv & #Hk) Hw".
     iApply TsoCtx.ctx_phys_word_pointsto_intro;
       [exact (pte_addr_at_aligned8 b idx) |].
@@ -548,7 +548,7 @@ Section PtSlotBridge.
   Lemma pt_node_claim_from_static (b : mword 44) :
     page_valid (page_base b) ->
     kmap_static_claims -∗ pt_node_claim b.
-  Proof.
+  Proof using .
     intros Hpv. iIntros "#Hb".
     destruct (page_valid_node_kdata b Hpv) as (Hkd & Hkda).
     pose proof Hkd as [Hlo Hhi].
@@ -634,7 +634,7 @@ Section KptTreeInv.
     CtxValues.cv_boot_cred B -∗
     pmp_config root_ppn -∗
     tlb_inv_pt root_ppn.
-  Proof.
+  Proof using .
     intros Hmode Hasid Hppn Hok Hspec. iIntros "Hsatp Htlb HM Ht Hvlb Hpmp".
     iExists satp0, tlbvec, t, M, B. iFrame "Hsatp Htlb HM Ht Hvlb Hpmp".
     iPureIntro. tauto.
@@ -654,7 +654,7 @@ Section KptTreeInv.
       kptree_own B 2 (DfracOwn 1) t ∗
       CtxValues.cv_boot_cred B ∗
       pmp_config root_ppn.
-  Proof. iIntros "H". iExact "H". Qed.
+  Proof using . iIntros "H". iExact "H". Qed.
 
 End KptTreeInv.
 
@@ -737,7 +737,7 @@ Section KptTranslate.
                               σ.(mdev))
                      tlb (vec_update_dec tlbvec (tlb_hash (__id 39) vpn)
                             (Some (u_walk_entry vpn p2 p1 (pte_set_ad p0 a1 d1) (mword_of_int 0)))))).
-  Proof.
+  Proof using .
     intros vpn p0 Hchk Hv2 Hn2 Hv1 Hn1 Hv0 Hl0 Hnap Hsm0
            Hrd2 Hrd1 Hrd0 Hrdx Hmisa Hmenv Hhtif Htlb Hlk
            HA Hord HW Hcov Hpmaw.
@@ -843,7 +843,7 @@ Section KptTranslateAddr.
                               σ.(mdev))
                      tlb (vec_update_dec tlbvec (tlb_hash (__id 39) vpn)
                             (Some (u_walk_entry vpn p2 p1 (pte_set_ad p0 a1 d1) (mword_of_int 0)))))).
-  Proof.
+  Proof using .
     intros vpn p0 Hchk Hcanon Hout Hvarp Hbase Hmaps Htlbok Hsm2 Hsm1 Hsm0
            Hmisa Hmenv Hhtif Hcp Htm Heff Hss Hsatp Hppn Hasid Htlb
            HA Hord HR HW Hcov Hpmar Hpmaw.
@@ -1153,7 +1153,7 @@ Section PtTranslateOwn.
       S σ'.(mem) ∗
       reg_interp σ'.(sregs) ∗ gen_heap_interp σ'.(mem) ∗
       tlb ↦ᵣ tlbvec' ∗ ptree_own_at PTT 2 (DfracOwn 1) t'.
-  Proof.
+  Proof using .
     intros Hchk Hvar Hcanon Hout Hbase Hmaps Htlbok
            Hmisa Hmenv Hhtif Hcp Htm Heff Hss Hsatpv Hppn Hasid Htlbv
            HA' Hord' HR' HW' Hcov' Hpmar Hpmaw.
@@ -1301,7 +1301,7 @@ Section KptTranslateIris.
          exists tv, σ'.(sregs) = register_set tlb tv σ.(sregs))%type ⌝ ∗
       S σ'.(mem) ∗
       reg_interp σ'.(sregs) ∗ gen_heap_interp σ'.(mem) ∗ tlb_inv_pt root_ppn.
-  Proof.
+  Proof using .
     intros Hchk Hcanon Hid4k Hmisa Hmenv Hhtif Hcp HSXL Heff Hss Hall.
     iIntros "#Hpay Hsto Hat Hri Hgh Hinv".
     iDestruct "Hinv" as (satp0 tlbvec t M B)

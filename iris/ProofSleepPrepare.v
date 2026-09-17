@@ -81,7 +81,7 @@ Section ProofSleepPrepare.
       (m : regfile) (av : nat) (n : nat) (eb : bool) (b : bool)
       (lks : gset string)
     : wp_sleep_prepare_sconf_body γs j γl m av n eb b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_sleep_prepare_sconf_body].
     intros pcE pj chan ret_tgt Hj Hgl Hchan Hn Hav Hno.
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).

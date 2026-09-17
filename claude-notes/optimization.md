@@ -588,9 +588,12 @@ per-file TIMED `real`, never from per-file time sums.
 - **Where ΣCPU goes tree-wide:** `Require`/`From` ~17 %, `iApply` ~16 %, `Qed`
   ~15 %, `iIntros` ~8 %, `iDestruct` ~4 %. The import line is a floor.
 - **Negative results — do not redo these.** `_CoqProject` order does not matter.
-  Oversubscribing `-j` costs exactly what it buys. `Proof using` tree-wide is a
-  fraction of a percent, and the non-minimal forms change a lemma's ARGUMENT
-  LIST. `vm_cast_no_check` in the generated decode band only moves cost from
+  Oversubscribing `-j` costs exactly what it buys. `Proof using` is a fraction of
+  a percent OF THE `.vo` BUILD — but that was the wrong metric to judge it by: it
+  is what lets `-vos` skip a proof at all, which is the whole edit-check loop
+  (`run-on-gcp --check`, see [`remote-build-gcp.md`](remote-build-gcp.md)). The
+  MINIMAL form is free, since it declares what Rocq already computes; it is the
+  non-minimal forms that change a lemma's ARGUMENT LIST. `vm_cast_no_check` in the generated decode band only moves cost from
   `Qed` to elaboration.
 - **The generated decode band's cost is the PROOFMODE, not the `vm_compute`s.**
   State the whole `instr` introduction as ONE lemma so the proofmode work happens

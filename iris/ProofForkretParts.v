@@ -336,7 +336,7 @@ Section ForkretRodata.
     (kernel_data : iProp Σ) -∗
     ([∗ list] i ∈ seq 0 6,
        pa_add (mword_of_int fkr_init_path : mword 64) i ↦ₘ[KT0]□ init_boot_bytes i).
-  Proof.
+  Proof using .
     iIntros "Hkd".
     iApply (kernel_data_bytes fkr_init_path 6 init_boot_bytes _ eq_refl
               ltac:(unfold text_end, fkr_init_path; lia)
@@ -352,7 +352,7 @@ Section ForkretRodata.
     (kernel_data : iProp Σ) -∗
     ([∗ list] i ∈ seq 0 6,
        pa_add (mword_of_int fkr_init_path : mword 64) i ↦ₘ[KT1]□ init_boot_bytes i).
-  Proof.
+  Proof using .
     iIntros "Hkd".
     iDestruct (fkr_init_path_run0 with "Hkd") as "H".
     iApply (big_sepL_mono with "H"). iIntros (k j _) "H".
@@ -372,7 +372,7 @@ Section ForkretRodata.
     (kernel_data : iProp Σ) -∗
     pk_desc_res (mword_of_int fkr_exec_msg : mword 64)
                 (PkAStr DfracDiscarded "exec"%string).
-  Proof.
+  Proof using .
     iIntros "Hkd".
     pose proof fkr_exec_msg_fmt as (_ & Hnon & Hnz).
     rewrite /pk_desc_res.

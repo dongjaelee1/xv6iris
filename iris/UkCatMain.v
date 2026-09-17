@@ -133,7 +133,7 @@ Section UkCatMain.
 
   Lemma cm_writable_ne (r : mword 5) (z : Z) :
     cm_writable r = true -> (z = 2 \/ z = 18 \/ z = 19) -> uint r <> z.
-  Proof.
+  Proof using .
     unfold cm_writable. intro H. apply negb_true_iff in H.
     rewrite !orb_false_iff in H. destruct H as [[H1 H2] H3].
     apply Z.eqb_neq in H1. apply Z.eqb_neq in H2. apply Z.eqb_neq in H3.
@@ -145,7 +145,7 @@ Section UkCatMain.
     cm_writable r = true ->
     cm_inv sp0 av nargs i m ->
     cm_inv sp0 av nargs i (<[Regidx r := regval_into_reg v]> m).
-  Proof.
+  Proof using .
     intros Hw (Hsp & Hs2 & Hs3). unfold cm_inv.
     rewrite (upd_ne m (Regidx r) (Regidx csp_rs1) (regval_into_reg v)
                ltac:(apply not_eq_sym; apply uidx_ne;
@@ -168,7 +168,7 @@ Section UkCatMain.
   Lemma cm_inv_call (sp0 : mword 64) (av : Z) (nargs i : nat) (m m' : regfile) :
     ucallee_saved m m' ->
     cm_inv sp0 av nargs i m -> cm_inv sp0 av nargs i m'.
-  Proof.
+  Proof using .
     intros Hcs (Hsp & Hs2 & Hs3). unfold cm_inv.
     rewrite (Hcs csp_rs1 ltac:(vm_compute; reflexivity)).
     rewrite (Hcs s2_idx ltac:(vm_compute; reflexivity)).
@@ -201,7 +201,7 @@ Section UkCatMain.
 
   Lemma cm_nopct_ok (j : nat) :
     (j < cm_msg_len)%nat -> j <> cm_msg_q -> bv_unsigned (cm_lit j) <> 37.
-  Proof.
+  Proof using .
     intros Hj Hne.
     assert (H : cm_nopct = true) by (vm_compute; reflexivity).
     unfold cm_nopct in H. rewrite forallb_forall in H.
@@ -212,7 +212,7 @@ Section UkCatMain.
   Qed.
 
   Lemma cm_str : cat_rodata γt -∗ utext_str γt cm_msg cm_msg_len cm_lit.
-  Proof.
+  Proof using .
     assert (Hok : cm_ok = true) by (vm_compute; reflexivity).
     unfold cm_ok in Hok. apply andb_true_iff in Hok as [Hbody Hnul].
     rewrite forallb_forall in Hbody.
@@ -245,7 +245,7 @@ Section UkCatMain.
   Local Lemma urun_ubyte_bnd (h : CpuId) (m : regfile) (pc : mword 64)
       (avail : nat) (dq : dfrac) (a : Z) (b : bv 8) :
     urun N h m pc avail -∗ ubyteq γd dq a b -∗ ⌜ 0 <= a < 2 ^ 38 ⌝.
-  Proof.
+  Proof using .
     iIntros "Hrun Hb".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(_ & _ & _ & _ & Hh & _ & _ & _ & _)".
     iDestruct (uheap_ubyte with "Hh Hb") as %(_ & _ & Hbnd).
@@ -256,7 +256,7 @@ Section UkCatMain.
       (avail : nat) (dq : dfrac) (a : Z) (w : mword 64) :
     urun N h m pc avail -∗ uwordq γd dq a w -∗
     ⌜ 0 <= a /\ a + 8 <= 2 ^ 38 ⌝.
-  Proof.
+  Proof using .
     iIntros "Hrun Hw". rewrite /uwordq /ubytesq.
     iDestruct (big_sepL_lookup_acc _ (seq 0 8) 0%nat 0%nat ltac:(reflexivity)
                  with "Hw") as "[H0 Hcl]".
@@ -970,7 +970,7 @@ Section UkCatMain.
     urun N h m (mword_of_int CatSyms.main)
       (6 + (8 + (10 + (12 + (4 + n))))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using Hpay.
     intros Hptr Ha0 Ha1 Hnone.
     iIntros "#Hdp #Hcode #Hro #Hargv Hbuf Hstd Hrun".
     iDestruct (uargv_align with "Hargv") as %[Hal Hargc].
@@ -1528,7 +1528,7 @@ Section UkCatMain.
     urun N h m (mword_of_int CatSyms.start)
       (2 + (6 + (8 + (10 + (12 + (4 + n)))))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using Hpay.
     intros Hptr Ha0 Ha1 Hnone.
     iIntros "#Hdp #Hcode #Hro #Hargv Hbuf Hstd Hrun".
     destruct cat_syms_pins

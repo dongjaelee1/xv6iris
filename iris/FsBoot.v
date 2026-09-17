@@ -283,7 +283,7 @@ Section FsBoot.
   Lemma disk_bytes_app (γ : disk_names) (o : Z) (bs1 bs2 : list (bv 8)) :
     disk_bytes γ o ((bs1 ++ bs2)%list)
       ⊣⊢ disk_bytes γ o bs1 ∗ disk_bytes γ (o + Z.of_nat (length bs1)) bs2.
-  Proof.
+  Proof using .
     revert o. induction bs1 as [|b bs1 IH]; intros o.
     - assert (Hz : o + Z.of_nat (length (@nil (bv 8))) = o) by (cbn; lia).
       rewrite Hz. cbn [app].
@@ -298,7 +298,7 @@ Section FsBoot.
   (* one block's worth of the mint IS a [disk_block] *)
   Lemma disk_bytes_block (γ : disk_names) (dk : Z -> bv 8) (b : Z) :
     disk_bytes γ (1024 * b) (fs_blocks dk b) -∗ disk_block γ b (fs_blocks dk b).
-  Proof.
+  Proof using .
     iIntros "H". rewrite /disk_block. iSplitR; [| iExact "H"].
     iPureIntro. rewrite fs_blocks_length //.
   Qed.
@@ -308,7 +308,7 @@ Section FsBoot.
       (b0 : Z) (nb : nat) :
     disk_bytes γ (1024 * b0) (disk_read dk (1024 * b0) (1024 * nb)%nat) -∗
     [∗ list] b ∈ seqZ b0 (Z.of_nat nb), disk_block γ b (fs_blocks dk b).
-  Proof.
+  Proof using .
     revert b0. induction nb as [|nb IH]; intros b0.
     - iIntros "_". rewrite seqZ_nil; [| lia]. done.
     - iIntros "H". rewrite seqZ_cons_nat.
@@ -334,7 +334,7 @@ Section FsBoot.
     fs_cov_in cov ndisk ->
     disk_bytes γ 0 (disk_read dk 0 ndisk) -∗
     [∗ set] b ∈ cov, disk_block γ b (fs_blocks dk b).
-  Proof.
+  Proof using .
     intros Hcov.
     destruct (fs_cov_blocks cov ndisk Hcov) as (nb & Hle & Hin).
     assert (Hsub : cov ⊆ list_to_set (seqZ 0 (Z.of_nat nb))).
@@ -363,7 +363,7 @@ Section FsBoot.
       (cov : gset Z) :
     ([∗ map] b ↦ bs ∈ fs_C0 dk cov, Φ b bs)
       ⊢ [∗ set] b ∈ cov, Φ b (fs_blocks dk b).
-  Proof.
+  Proof using .
     etrans.
     { apply (big_sepM_mono _ (fun b (_ : list (bv 8)) => Φ b (fs_blocks dk b))).
       intros b bs Hb.
@@ -412,7 +412,7 @@ Section FsBoot.
       ([∗ set] b ∈ cov, b ↪[fs_dirty γfs]{#(1/2)} false) ∗
       ([∗ set] b ∈ home, fsblock (fs_bytes γfs) b (Dv b)) ∗
       ([∗ set] b ∈ cov ∖ home, fs_chalf γfs b (fs_blocks dk b)).
-  Proof.
+  Proof using .
     iIntros (Hcov Hsub HlD HXsub Hagr) "Hm".
     iDestruct (fs_boot_carve γv dk ndisk cov Hcov with "Hm") as "Hblk".
     iMod (fs_alloc E γlk γtp (fs_C0 dk cov) home Dv X (fs_C0_lengths dk cov)
@@ -449,7 +449,7 @@ Section FsBoot.
       (Φ : A -> iProp Σ) (X Y : gset A) :
     Y ⊆ X ->
     ([∗ set] x ∈ X, Φ x) ⊢ ([∗ set] x ∈ Y, Φ x) ∗ ([∗ set] x ∈ X ∖ Y, Φ x).
-  Proof.
+  Proof using .
     intros Hsub. rewrite {1}(union_difference_L Y X Hsub).
     rewrite big_sepS_union; [done | set_solver].
   Qed.
@@ -475,7 +475,7 @@ Section FsBoot.
     ([∗ set] b ∈ X, Φ b) -∗
     ([∗ list] i ∈ l, [∗ set] b ∈ f i, Φ b)
       ∗ ([∗ set] b ∈ X ∖ ⋃ (f <$> l), Φ b).
-  Proof.
+  Proof using .
     revert X. induction l as [|i l IH]; intros X Hnd Hsub Hdisj.
     { rewrite fmap_nil union_list_nil difference_empty_L.
       iIntros "H". iSplitR "H"; [done | iExact "H"]. }
@@ -512,7 +512,7 @@ Section FsBoot.
                 (fs_blocks dk (log_hdr_bno logstart)) ∗
         ([∗ list] i ∈ seq 0 LOGBLOCKS,
            ∃ bs : list (bv 8), fs_chalf γfs (log_slot_bno logstart i) bs).
-  Proof.
+  Proof using .
     rewrite /log_region_set.
     rewrite big_sepS_union;
       [| apply disjoint_singleton_r;

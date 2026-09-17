@@ -396,7 +396,7 @@ Section span.
   Lemma hreg_frame_ro_agree Df rs Dro (rs0 : regstate) :
     reg_interp rs0 -∗ hreg_frame_ro Df rs Dro -∗
     ⌜reg_agree_on Dro rs rs0⌝.
-  Proof.
+  Proof using .
     (* TODO(agent): as HartLift.hreg_frame_agree, with [reg_valid_dq]. *)
     rewrite /hreg_frame_ro. iIntros "Hi Hf".
     rewrite bi.pure_forall. iIntros (r). rewrite bi.pure_impl. iIntros (Hr).
@@ -414,7 +414,7 @@ Section span.
   Lemma hreg_frame_ro_ext Df rs rs' Dro :
     reg_agree_on Dro rs rs' ->
     hreg_frame_ro Df rs Dro ⊣⊢ hreg_frame_ro Df rs' Dro.
-  Proof.
+  Proof using .
     intros Hag. rewrite /hreg_frame_ro. apply big_sepS_proper.
     intros r Hr. by rewrite (Hag r Hr).
   Qed.
@@ -447,7 +447,7 @@ Section span.
            hreg_frame_ro Df rs2 Dro -∗
            WP (HartE gen_id cpu_id (C m2) : expr riscv_lang)) -∗
       WP (HartE gen_id cpu_id (C m) : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (HC Hdisj Hns) "#Hcert Hrf Hro H".
     destruct m as [y|T oc k]; [discriminate Hns|].
     assert (Hoc : is_extra oc = false)
@@ -554,7 +554,7 @@ Section span.
       (rsA rsB : regstate) (m : M X) (c' : M X * regstate) :
     reg_agree_on D rsA rsB ->
     hspani D Drw (m, rsA) c' -> hspani D Drw (m, rsB) c'.
-  Proof.
+  Proof using .
     intros Hag (rs1 & Hag1 & Hnode). exists rs1. split; [|exact Hnode].
     intros r Hr. etrans; [exact (Hag1 r Hr)|exact (Hag r Hr)].
   Qed.
@@ -580,7 +580,7 @@ Section span.
            hreg_frame_ro Df rs' Dro -∗
            WP (HartE gen_id cpu_id m' : expr riscv_lang)) -∗
       WP (HartE gen_id cpu_id m : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hdisj m HAcc. induction HAcc as [m _ IH]. intros rs Hns.
     iIntros "#Hcert Hrf Hro Hcont".
     iApply (wp_hspan_node_local (fun m' : M unit => m') Drw Dro Df rs m
@@ -645,7 +645,7 @@ Section span.
          hreg_frame_ro Df rs' Dro -∗
          WP (HartE gen_id cpu_id m' : expr riscv_lang)) -∗
     WP (HartE gen_id cpu_id m : expr riscv_lang).
-  Proof.
+  Proof using .
     (* TODO(agent): by well-founded induction on [mchild_wf m] (e.g. [induction (macc m)]).
        Per step: [wp_hart_step]; the callback's σ gives the machine file;
        [hreg_frame_agree]/[hreg_frame_ro_agree] pin agreement on Drw/Dro;
@@ -697,11 +697,11 @@ Section span.
 
   Local Lemma reg_agree_refl_local (D : gset register) (rs : regstate) :
     reg_agree_on D rs rs.
-  Proof. intros r _. reflexivity. Qed.
+  Proof using . intros r _. reflexivity. Qed.
 
   Local Lemma reg_agree_mono_local (D D' : gset register) (rs rs' : regstate) :
     D' ⊆ D -> reg_agree_on D rs rs' -> reg_agree_on D' rs rs'.
-  Proof. intros Hsub Hag r Hr. by apply Hag, Hsub. Qed.
+  Proof using . intros Hsub Hag r Hr. by apply Hag, Hsub. Qed.
 
   Local Lemma swp_span_acc_local {X : Type} (Drw Dro : gset register)
       (Df : register -> dfrac) :
@@ -714,7 +714,7 @@ Section span.
     hreg_frame_ro Df rs Dro -∗
     swp m (fun v => ∃ rs', ⌜Q v rs'⌝ ∗
                     hreg_frame rs' Drw ∗ hreg_frame_ro Df rs' Dro).
-  Proof.
+  Proof using .
     intros Hdisj m HAcc. induction HAcc as [m _ IH]. intros rs Q Hval.
     iIntros "#Hcert Hrf Hro". rewrite /swp. iIntros (C) "%HC Hcont".
     destruct (hspan_stops Drw m) eqn:Hs.
@@ -780,7 +780,7 @@ Section span.
     hreg_frame_ro Df rs Dro -∗
     swp m (fun v => ∃ rs', ⌜Q v rs'⌝ ∗
                     hreg_frame rs' Drw ∗ hreg_frame_ro Df rs' Dro).
-  Proof.
+  Proof using .
     intros Hdisj Hval.
     exact (swp_span_acc_local Drw Dro Df Hdisj m (macc m) rs Q Hval).
   Qed.
@@ -793,7 +793,7 @@ Section span.
     hreg_frame rs Drw -∗
     hreg_frame_ro Df rs Dro -∗
     swp m (fun v => ⌜v = x⌝ ∗ hreg_frame rs' Drw ∗ hreg_frame_ro Df rs' Dro).
-  Proof.
+  Proof using .
     intros Hdisj Hval. iIntros "#Hcert Hrf Hro".
     iApply (swp_mono with "[] [-]");
       [|iApply (swp_spanE Drw Dro Df rs m _ Hdisj (hval_hvalE _ _ _ _ _ _ Hval)

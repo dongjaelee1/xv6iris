@@ -125,7 +125,7 @@ Section WpSmodeIntr.
     ▷ wp_next true p (fun (CID : CpuId) =>
         intr_cb_clock kt m n p pc is_rvc i b' R (CID := CID)) -∗
     WP (Loop : expr riscv_lang).
-  Proof. exact (wp_exec_step_intr_clock pc m n p is_rvc i b' R). Qed.
+  Proof using . exact (wp_exec_step_intr_clock pc m n p is_rvc i b' R). Qed.
 
 
   (* =================================================================== *)
@@ -267,7 +267,7 @@ Section WpSmodeIntr.
     instr pc is_rvc i -∗
     ▷ wp_next false p (sconf_step_obl_clock m n false b' pc is_rvc i R) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "Hcg Hpc #Hinstr Hbody".
     (* ---- the bundle, into the 25 cells ---- *)
     iDestruct (sie_cap_gpr_split with "Hcg") as "(Hhs & Hsc & Hcap & Hfile)".
@@ -832,7 +832,7 @@ Section WpSmodeIntr.
     instr pc is_rvc i -∗
     ▷ wp_next b p (sconf_step_obl_clock m n b b' pc is_rvc i R) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "Hcg Hpc Hinstr H".
     destruct b.
     - (* ---- b = true: the interrupt-absorbing engine.  The whole bundle goes
@@ -864,7 +864,7 @@ Section WpSmodeIntr.
     instr pc is_rvc i -∗
     ▷ wp_next b p (sconf_step_obl m n b b' pc is_rvc i R) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "Hcg Hpc Hinstr H".
     iApply (wp_instr_s_sconf_clock m n b b' pc is_rvc i R
               with "Hcg Hpc Hinstr [H]").
@@ -946,7 +946,7 @@ Section WpSmodeIntr.
       pc_is (add_vec_int pc 2) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hrd Hops) "Hex Hcg Hpc Hinstr Hcont".
     pose proof (ops_ok_rd _ _ _ _ Hops) as Hrdok.
     pose proof (rd_ok_sp rd Hrdok) as Hrdsp.
@@ -1019,7 +1019,7 @@ Section WpSmodeIntr.
       pc_is (add_vec_int pc 2) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hrd Hrdok Hwval) "Hcg Hpc Hinstr Hcont".
     (* c.li reads x0 and nothing else, so the engine's source guard is
        DERIVED here rather than demanded of the caller: this leaf keeps its

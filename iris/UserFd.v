@@ -232,7 +232,7 @@ Section UserFd.
 
   Lemma ufd_auth_len (γf : gname) (fdv : list fdstate) :
     ufd_auth γf fdv -∗ ⌜length fdv = NOFILE⌝.
-  Proof. iIntros "[_ $]". Qed.
+  Proof using . iIntros "[_ $]". Qed.
 
   (* THE FRAGMENT is [fd ↪[γf] st], the raw claim on one slot at one state,
      and the two predicates below are it, READ.
@@ -258,9 +258,9 @@ Section UserFd.
     (fd ↪[γf] FdClosed)%I.
 
   Global Instance ufd_timeless γf fd st : Timeless (ufd γf fd st).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance ufd_shut_timeless γf fd : Timeless (ufd_shut γf fd).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* THE LEDGER: the whole of the standard streams, as a list of states.
      This is what a program that means to redirect carries, and it is the
@@ -273,18 +273,18 @@ Section UserFd.
      [∗ map] k ↦ st ∈ (map_seq 0 l : gmap nat fdstate), k ↪[γf] st)%I.
 
   Global Instance ustd_timeless γf l : Timeless (ustd γf l).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma ustd_len (γf : gname) (l : list fdstate) :
     ustd γf l -∗ ⌜length l = NSTD⌝.
-  Proof. iIntros "[$ _]". Qed.
+  Proof using . iIntros "[$ _]". Qed.
 
   (* a handle READS the view: this is the lemma that makes a fragment worth
      carrying, and it is why the authority has to sit inside [urun] rather
      than beside it. *)
   Lemma ufd_slot_agree (γf : gname) (fdv : list fdstate) (fd : nat) (st : fdstate) :
     ufd_auth γf fdv -∗ fd ↪[γf] st -∗ ⌜fdv !! fd = Some st⌝.
-  Proof.
+  Proof using .
     iIntros "[Ha _] Hf".
     iDestruct (ghost_map_lookup with "Ha Hf") as %He.
     iPureIntro. exact (ufd_map_lookup_1 fdv fd st He).
@@ -292,21 +292,21 @@ Section UserFd.
 
   Lemma ufd_agree (γf : gname) (fdv : list fdstate) (fd : nat) (st : fdstate) :
     ufd_auth γf fdv -∗ ufd γf fd st -∗ ⌜fdv !! fd = Some st⌝.
-  Proof. iIntros "Ha [Hf _]". iApply (ufd_slot_agree with "Ha Hf"). Qed.
+  Proof using . iIntros "Ha [Hf _]". iApply (ufd_slot_agree with "Ha Hf"). Qed.
 
   (* the two facts the handle carries: the descriptor is OPEN, and it is
      never a standard stream *)
   Lemma ufd_ne (γf : gname) (fd : nat) (st : fdstate) :
     ufd γf fd st -∗ ⌜st <> FdClosed⌝.
-  Proof. iIntros "[_ %H]". iPureIntro. exact (proj1 H). Qed.
+  Proof using . iIntros "[_ %H]". iPureIntro. exact (proj1 H). Qed.
 
   Lemma ufd_ge (γf : gname) (fd : nat) (st : fdstate) :
     ufd γf fd st -∗ ⌜(NSTD <= fd)%nat⌝.
-  Proof. iIntros "[_ %H]". iPureIntro. exact (proj2 H). Qed.
+  Proof using . iIntros "[_ %H]". iPureIntro. exact (proj2 H). Qed.
 
   Lemma ufd_shut_agree (γf : gname) (fdv : list fdstate) (fd : nat) :
     ufd_auth γf fdv -∗ ufd_shut γf fd -∗ ⌜fdv !! fd = Some FdClosed⌝.
-  Proof. iIntros "Ha Hf". iApply (ufd_slot_agree with "Ha Hf"). Qed.
+  Proof using . iIntros "Ha Hf". iApply (ufd_slot_agree with "Ha Hf"). Qed.
 
   (* two fragments for the same descriptor cannot both exist -- the map is
      at the full fraction, so a fragment is exclusive.  Read at [ufd] and
@@ -314,7 +314,7 @@ Section UserFd.
      closed" at once, which is what makes the ledger's reading sound. *)
   Lemma ufd_slot_excl (γf : gname) (fd : nat) (st st' : fdstate) :
     fd ↪[γf] st -∗ fd ↪[γf] st' -∗ False.
-  Proof.
+  Proof using .
     iIntros "H1 H2".
     iDestruct (ghost_map_elem_ne with "H1 H2") as %Hne.
     destruct (Hne eq_refl).
@@ -322,7 +322,7 @@ Section UserFd.
 
   Lemma ufd_excl (γf : gname) (fd : nat) (st st' : fdstate) :
     ufd γf fd st -∗ ufd γf fd st' -∗ False.
-  Proof. iIntros "[H1 _] [H2 _]". iApply (ufd_slot_excl with "H1 H2"). Qed.
+  Proof using . iIntros "[H1 _] [H2 _]". iApply (ufd_slot_excl with "H1 H2"). Qed.
 
   (* ------------------------------------------------------------------ *)
   (* §2½  READING AND WRITING ONE SLOT OF THE LEDGER.                     *)
@@ -332,7 +332,7 @@ Section UserFd.
     ustd γf l -∗
     k ↪[γf] st ∗
     (∀ st' : fdstate, k ↪[γf] st' -∗ ustd γf (<[k := st']> l)).
-  Proof.
+  Proof using .
     iIntros (Hk) "[%Hlen Hm]".
     assert (Hm : (map_seq 0 l : gmap nat fdstate) !! k = Some st)
       by (by rewrite lookup_map_seq_0).
@@ -347,7 +347,7 @@ Section UserFd.
      lowest-descriptor argument starts from. *)
   Lemma ustd_agree (γf : gname) (fdv l : list fdstate) :
     ufd_auth γf fdv -∗ ustd γf l -∗ ⌜take NSTD fdv = l⌝.
-  Proof.
+  Proof using .
     iIntros "[Ha %Hlen] [%Hl Hm]".
     iDestruct (ghost_map_lookup_big with "Ha Hm") as %Hsub.
     iPureIntro.
@@ -367,7 +367,7 @@ Section UserFd.
   (* the std fragments live IN the ledger, so nobody else can hold one *)
   Lemma ustd_ufd_excl (γf : gname) (l : list fdstate) (k : nat) (st : fdstate) :
     (k < NSTD)%nat -> ustd γf l -∗ ufd γf k st -∗ False.
-  Proof.
+  Proof using .
     iIntros (Hk) "Hl [Hs _]".
     iDestruct (ustd_len with "Hl") as %Hlen.
     destruct (l !! k) as [st' |] eqn:Hi;
@@ -380,7 +380,7 @@ Section UserFd.
      argument-register premise is proved from. *)
   Lemma ufd_slot_bound (γf : gname) (fdv : list fdstate) (fd : nat) (st : fdstate) :
     ufd_auth γf fdv -∗ fd ↪[γf] st -∗ ⌜(fd < NOFILE)%nat⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Hh". iDestruct (ufd_auth_len with "Ha") as %Hlen.
     iDestruct (ufd_slot_agree with "Ha Hh") as %Hl.
     iPureIntro. rewrite <- Hlen. exact (lookup_lt_Some _ _ _ Hl).
@@ -388,7 +388,7 @@ Section UserFd.
 
   Lemma ufd_bound (γf : gname) (fdv : list fdstate) (fd : nat) (st : fdstate) :
     ufd_auth γf fdv -∗ ufd γf fd st -∗ ⌜(fd < NOFILE)%nat⌝.
-  Proof. iIntros "Ha [Hh _]". iApply (ufd_slot_bound with "Ha Hh"). Qed.
+  Proof using . iIntros "Ha [Hh _]". iApply (ufd_slot_bound with "Ha Hh"). Qed.
 
   (* ------------------------------------------------------------------- *)
   (* §3  A PROGRAM'S CLAIM ON ONE DESCRIPTOR, WHEREVER IT LIVES.           *)
@@ -404,17 +404,17 @@ Section UserFd.
 
   Lemma ufd_own_std (γf : gname) (l : list fdstate) (fd : nat) (st : fdstate) :
     (fd < NSTD)%nat -> l !! fd = Some st -> ⊢ ufd_own γf l fd st.
-  Proof. intros H1 H2. iLeft. iPureIntro. by split. Qed.
+  Proof using . intros H1 H2. iLeft. iPureIntro. by split. Qed.
 
   Lemma ufd_own_hi (γf : gname) (l : list fdstate) (fd : nat) (st : fdstate) :
     ufd γf fd st -∗ ufd_own γf l fd st.
-  Proof. iIntros "H". by iRight. Qed.
+  Proof using . iIntros "H". by iRight. Qed.
 
   (* a claim survives an update to a DIFFERENT slot of the ledger *)
   Lemma ufd_own_insert_ne (γf : gname) (l : list fdstate) (fd k : nat)
       (st v : fdstate) :
     k <> fd -> ufd_own γf l fd st -∗ ufd_own γf (<[k := v]> l) fd st.
-  Proof.
+  Proof using .
     iIntros (Hne) "[[%Hlt %Hl] | H]"; [| by iRight].
     iLeft. iPureIntro. split; [exact Hlt |].
     rewrite list_lookup_insert_ne; [exact Hl | exact Hne].
@@ -426,7 +426,7 @@ Section UserFd.
   Lemma ufd_own_agree (γf : gname) (fdv l : list fdstate) (fd : nat) (st : fdstate) :
     ufd_auth γf fdv -∗ ustd γf l -∗ ufd_own γf l fd st -∗
     ⌜fdv !! fd = Some st /\ (fd < NOFILE)%nat⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Hl Ho".
     iDestruct (ufd_auth_len with "Ha") as %Hlen.
     iDestruct (ustd_agree with "Ha Hl") as %Hst.
@@ -442,7 +442,7 @@ Section UserFd.
 
   Lemma ufd_own_hi_ge (γf : gname) (l : list fdstate) (fd : nat) (st : fdstate) :
     ustd γf l -∗ ufd γf fd st -∗ ⌜(NSTD <= fd)%nat⌝.
-  Proof. iIntros "_ Hh". iApply (ufd_ge with "Hh"). Qed.
+  Proof using . iIntros "_ Hh". iApply (ufd_ge with "Hh"). Qed.
 
   (* ------------------------------------------------------------------- *)
   (* §3½  WHAT AN ALLOCATION HANDS BACK.                                   *)
@@ -485,7 +485,7 @@ Section UserFd.
   Lemma ualloc_std (γf : gname) (l : list fdstate) (fd k : nat) (st : fdstate) :
     fd_lowest_closed l = Some k ->
     ualloc γf l fd st -∗ ⌜fd = k⌝ ∗ ustd γf (<[k := st]> l).
-  Proof.
+  Proof using .
     intros Hk. rewrite /ualloc /ualloc_at /ustd_after Hk.
     iIntros "[Hl %H]". iSplitR; [ by iPureIntro | iExact "Hl" ].
   Qed.
@@ -493,7 +493,7 @@ Section UserFd.
   Lemma ualloc_hi (γf : gname) (l : list fdstate) (fd : nat) (st : fdstate) :
     fd_lowest_closed l = None ->
     ualloc γf l fd st -∗ ⌜(NSTD <= fd)%nat⌝ ∗ ustd γf l ∗ ufd γf fd st.
-  Proof.
+  Proof using .
     intros Hk. rewrite /ualloc /ualloc_at /ustd_after Hk.
     iIntros "[Hl [%H Hh]]". iSplitR; [ by iPureIntro | iFrame "Hl Hh" ].
   Qed.
@@ -502,7 +502,7 @@ Section UserFd.
      passing the allocation through needs *)
   Lemma ualloc_ledger (γf : gname) (l : list fdstate) (fd : nat) (st : fdstate) :
     ualloc γf l fd st -∗ ustd γf (ustd_after l st).
-  Proof. iIntros "[$ _]". Qed.
+  Proof using . iIntros "[$ _]". Qed.
 
   (* a claim on an OPEN descriptor is never a claim on the slot an
      allocation lands in, which is what lets dup hand its source back at the
@@ -511,7 +511,7 @@ Section UserFd.
       (st : fdstate) :
     st <> FdClosed -> l !! k = Some FdClosed ->
     ustd γf l -∗ ufd_own γf l fd st -∗ ⌜k <> fd⌝.
-  Proof.
+  Proof using .
     iIntros (Hne Hk) "Hl Ho".
     iDestruct (ustd_len with "Hl") as %Hlen.
     iDestruct "Ho" as "[[%Hlt %Hl] | Hh]".
@@ -527,7 +527,7 @@ Section UserFd.
     st <> FdClosed ->
     ustd γf l -∗ ufd_own γf l fd0 st -∗
     ⌜forall k : nat, fd_lowest_closed l = Some k -> k <> fd0⌝.
-  Proof.
+  Proof using .
     iIntros (Hne) "Hl Ho".
     destruct (fd_lowest_closed l) as [k0 |] eqn:Hk0;
       [| iPureIntro; intros k Hk; discriminate ].
@@ -540,7 +540,7 @@ Section UserFd.
       (st st' : fdstate) :
     (forall k : nat, fd_lowest_closed l = Some k -> k <> fd0) ->
     ufd_own γf l fd0 st -∗ ufd_own γf (ustd_after l st') fd0 st.
-  Proof.
+  Proof using .
     intros Hne. rewrite /ustd_after.
     destruct (fd_lowest_closed l) as [k |] eqn:Hk; [| iIntros "$"].
     iApply (ufd_own_insert_ne γf l fd0 k st st' (Hne k eq_refl)).
@@ -563,7 +563,7 @@ Section UserFd.
     fd_least_closed fdv fd -> st <> FdClosed ->
     ufd_auth γf fdv -∗ ustd γf l ==∗
     ufd_auth γf (<[fd := st]> fdv) ∗ ualloc γf l fd st.
-  Proof.
+  Proof using .
     intros Hle Hne. iIntros "Ha Hl".
     iDestruct (ufd_auth_len with "Ha") as %Hlen.
     iDestruct (ustd_len with "Hl") as %Hll.
@@ -612,7 +612,7 @@ Section UserFd.
   Lemma ufd_close_hi (γf : gname) (fdv : list fdstate) (fd : nat)
       (st : fdstate) :
     ufd_auth γf fdv -∗ ufd γf fd st ==∗ ufd_auth γf (<[fd := FdClosed]> fdv).
-  Proof.
+  Proof using .
     iIntros "Ha Hh".
     iDestruct (ufd_agree with "Ha Hh") as %Hl.
     iDestruct (ufd_ge with "Hh") as %Hge.
@@ -628,7 +628,7 @@ Section UserFd.
     (fd < NSTD)%nat -> l !! fd = Some st ->
     ufd_auth γf fdv -∗ ustd γf l ==∗
     ufd_auth γf (<[fd := FdClosed]> fdv) ∗ ustd γf (<[fd := FdClosed]> l).
-  Proof.
+  Proof using .
     intros Hs Hkl. iIntros "Ha Hl".
     iDestruct (ufd_auth_len with "Ha") as %Hlen.
     iDestruct (ustd_len with "Hl") as %Hll.
@@ -653,7 +653,7 @@ Section UserFd.
   Lemma ufd_alloc_least_closed (γf : gname) (fdv : list fdstate) (fd : nat) :
     fd_least_closed fdv fd ->
     ufd_auth γf fdv -∗ ufd_auth γf (<[fd := FdClosed]> fdv).
-  Proof.
+  Proof using .
     intros Hle. rewrite (list_insert_id _ _ _ (fd_least_closed_free _ _ Hle)).
     iIntros "$".
   Qed.
@@ -677,12 +677,12 @@ Section UserFd.
 
   Lemma ufd_state_len (γf : gname) (fdv : list fdstate) :
     ufd_state γf fdv -∗ ⌜length fdv = NOFILE⌝.
-  Proof. iIntros "[Ha _]". iApply (ufd_auth_len with "Ha"). Qed.
+  Proof using . iIntros "[Ha _]". iApply (ufd_auth_len with "Ha"). Qed.
 
   (* ---- THE QUIET ROWS: the view did not move, so neither does anything. ---- *)
   Lemma ufd_auth_quiet (γf : gname) (fdv fdv' : list fdstate) :
     fdv' = fdv -> ufd_auth γf fdv -∗ ufd_auth γf fdv'.
-  Proof. intros ->. iIntros "$". Qed.
+  Proof using . intros ->. iIntros "$". Qed.
 
   (* ---- AN ALLOCATION NOBODY IS WATCHING. ----
      A caller on a channel whose rows include open and dup, but which is not
@@ -697,7 +697,7 @@ Section UserFd.
     fd_least_closed fdv fd -> st <> FdClosed ->
     ufd_auth γf fdv -∗ ustd γf l ==∗
     ufd_auth γf (<[fd := st]> fdv) ∗ ∃ l' : list fdstate, ustd γf l'.
-  Proof.
+  Proof using .
     intros Hle Hne. iIntros "Ha Hl".
     iMod (ufd_alloc_least γf fdv l fd st Hle Hne with "Ha Hl") as "[$ Hr]".
     iDestruct (ualloc_ledger with "Hr") as "Hl".
@@ -728,7 +728,7 @@ Section UserFd.
     ([∗ map] k ↦ v ∈ ufd_map fdv, k ↪[γf] v) -∗
     ([∗ map] k ↦ v ∈ (map_seq 0 (take NSTD fdv) : gmap nat fdstate), k ↪[γf] v) ∗
     ([∗ map] k ↦ v ∈ ufd_map_hi fdv, k ↪[γf] v).
-  Proof.
+  Proof using .
     intros Hn.
     rewrite (ufd_map_split fdv Hn)
             (big_sepM_union _ _ _ (ufd_map_split_disj fdv)).
@@ -740,7 +740,7 @@ Section UserFd.
     ⊢ |==> ∃ γf : gname,
         ufd_auth γf fdv ∗ ustd γf (take NSTD fdv) ∗
         ([∗ map] fd ↦ st ∈ D, ufd γf fd st).
-  Proof.
+  Proof using .
     intros Hlen Hsub.
     assert (Hn : (NSTD <= length fdv)%nat)
       by (rewrite Hlen; exact NSTD_le_NOFILE).
@@ -762,7 +762,7 @@ Section UserFd.
      [open] land on descriptor 0. *)
   Lemma ufd_alloc_fdt0 :
     ⊢ |==> ∃ γf : gname, ufd_auth γf fdt0 ∗ ustd γf (take NSTD fdt0).
-  Proof.
+  Proof using .
     iMod (ufd_alloc_std fdt0 ∅ fdt0_length (map_empty_subseteq _))
       as (γf) "(Ha & Hl & _)".
     iModIntro. iExists γf. by iFrame.
@@ -777,7 +777,7 @@ Section UserFd.
     ufd_auth γf fdv -∗
     ([∗ map] fd ↦ st ∈ D, ufd γf fd st) -∗
     ⌜D ⊆ ufd_map fdv⌝.
-  Proof.
+  Proof using .
     iIntros "[Ha _] HD".
     iDestruct (big_sepM_mono (fun fd st => ufd γf fd st)
                  (fun fd st => (fd ↪[γf] st)%I) with "HD") as "HD";
@@ -794,7 +794,7 @@ Section UserFd.
     ufd_auth γf fdv -∗
     ([∗ map] fd ↦ st ∈ D, ufd γf fd st) -∗
     ⌜D ⊆ ufd_map_hi fdv⌝.
-  Proof.
+  Proof using .
     iIntros "Ha HD".
     iAssert (⌜map_Forall (fun k (_ : fdstate) => (NSTD <= k)%nat) D⌝)%I as %Hlo.
     { rewrite <- big_sepM_pure. iApply (big_sepM_mono with "HD").
@@ -810,7 +810,7 @@ Section UserFd.
     D !! fd = Some st ->
     ([∗ map] k ↦ v ∈ D, ufd γf k v) -∗
     ufd γf fd st ∗ ([∗ map] k ↦ v ∈ delete fd D, ufd γf k v).
-  Proof.
+  Proof using .
     intros Hl. iIntros "Hfr".
     iDestruct (big_sepM_delete _ _ fd st Hl with "Hfr") as "[$ $]".
   Qed.

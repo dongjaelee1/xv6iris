@@ -247,7 +247,7 @@ Section PrintkGen.
      prputc_env)%I.
 
   Global Instance printk_env_persistent γpr γd γv : Persistent (printk_env γpr γd γv).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* printk_env IS panic_env, with γpr concrete: pr.lock's resource is [emp]
      on both sides ([pr_res] is [emp]) and the address is the same
@@ -258,7 +258,7 @@ Section PrintkGen.
      across both the 06ea57f emptying and the 163d39b refill. *)
   Lemma printk_env_panic γpr γd γv :
     printk_env γpr γd γv -∗ SpecPanic.panic_env.
-  Proof.
+  Proof using .
     iIntros "(#Hlk & #Hpre)".
     iApply (SpecPanic.panic_env_of γpr with "[] Hpre").
     rewrite /pr_res /pr_lock /PrintkArgs.pk_pr_lock. iExact "Hlk".

@@ -993,7 +993,7 @@ Section SmodeCoreIris.
      tier bridges outside a leaf.  Use it instead of destructing [hw_config]'s
      eighteen conjuncts by position. *)
   Lemma hw_config_kmap_claims : hw_config -∗ kmap_static_claims.
-  Proof.
+  Proof using .
     iIntros "H".
     iDestruct "H" as (misa0 mseccfg0 pmar0 elp0)
       "(_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ &
@@ -1007,7 +1007,7 @@ Section SmodeCoreIris.
      destructuring [hw_config]'s eighteen conjuncts by position, and without
      losing its own copy of [hw_config] in the process (both persistent). *)
   Lemma hw_config_senvcfg : hw_config -∗ senvcfg ↦ᵣ□ (mword_of_int 0 : mword 64).
-  Proof.
+  Proof using .
     iIntros "H".
     iDestruct "H" as (misa0 mseccfg0 pmar0 elp0)
       "(_ & _ & _ & _ & _ & Hs & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _)".
@@ -1066,7 +1066,7 @@ Section SmodeCoreIris.
        ⌜ bool_bit_backwards (_get_MEnvcfg_LPE menvcfg0) = false ⌝ ∗
        ⌜ eq_vec (_get_MEnvcfg_FIOM menvcfg0) ('b"1") = false ⌝ ∗
        ⌜ menvcfg0 = MENVCFG_S ⌝).
-  Proof. iIntros "H". iExact "H". Qed.
+  Proof using . iIntros "H". iExact "H". Qed.
 
   (* rebuild from raw cells + the ghost half + the pure facts (inverse). *)
   Lemma smode_config_rebuild (γ : gname) (dq : dfrac) (mstatus0 mie_v mdv0 menvcfg0 : mword 64) :
@@ -1091,7 +1091,7 @@ Section SmodeCoreIris.
     mideleg ↦ᵣ{ dq } mdv0 -∗
     menvcfg ↦ᵣ{ dq } menvcfg0 -∗
     smode_config γ dq.
-  Proof.
+  Proof using .
     iIntros (HSIE HMPRV HSXL HMXR Hleg Hmie HPBMTE Hpmm Hlpe Hfiom Hmenvval)
             "#Hhw #Hinv Hhs Hpriv Hms Hsie Hmie Hmdl Hmenv".
     iFrame "Hhw Hinv Hhs Hpriv".
@@ -1135,7 +1135,7 @@ Section SmodeCoreIris.
     mie ↦ᵣ{DfracOwn (1/2)} mie_v ∗
     mideleg ↦ᵣ{DfracOwn (1/2)} mdv0 ∗
     menvcfg ↦ᵣ{DfracOwn (1/2)} menvcfg0.
-  Proof.
+  Proof using .
     iIntros (HSIE HMPRV HSXL HMXR Hleg Hmm HPBMTE Hpmm Hlpe Hfiom Hmenvval0)
       "#Hhw #Hinv Hhs Hpriv Hms Hsie Hmie Hmdl Hmenv".
     iDestruct "Hhs" as "[Hhs1 Hhs2]".
@@ -1166,7 +1166,7 @@ Section SmodeCoreIris.
      mie ↦ᵣ mie_v ∗
      mideleg ↦ᵣ mdv0 ∗
      menvcfg ↦ᵣ menvcfg0).
-  Proof.
+  Proof using .
     iIntros "Hsm Hhs2 Hpriv2 Hms2 Hmie2 Hmdl2 Hmenv2".
     iDestruct (smode_config_unbundle with "Hsm")
       as "(_ & _ & Hhs1 & Hpriv1 & Hmst & Hmieb & Hmenvb)".
@@ -1203,7 +1203,7 @@ Section SmodeCoreIris.
     mie ↦ᵣ{ dqi } mie_v -∗
     mideleg ↦ᵣ{ dqd } mdv0 -∗
     ⌜ exec (dispatchInterrupt Supervisor) σ = Some (None, σ) ⌝.
-  Proof.
+  Proof using .
     iIntros (HmisaS Hmm HSIE) "[Hreg Hmem] Hmisa Hms Hmie Hmdl".
     iDestruct (reg_valid_dq with "Hreg Hmisa") as %Lmisa.
     iDestruct (reg_valid_dq with "Hreg Hms")   as %Lms.
@@ -1307,7 +1307,7 @@ Section SmodeDemo.
      [wp_instr_s] instead of [instr_lift] / [wp_instr]. *)
   Lemma kv_instr1 :
     kernel_text -∗ instr kv_pc1 true (ITYPE (caddi16sp_imm kv_imm1, sp, sp, ADDI)).
-  Proof.
+  Proof using .
     mk_rvc KernelSyms.kernelvec kv_h1 kv_pc1
       (ITYPE (caddi16sp_imm kv_imm1, sp, sp, ADDI))
       kv_decode1 exec_execute_C_ADDI16SP.

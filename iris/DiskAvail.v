@@ -51,7 +51,7 @@ Section DiskAvail.
 
   Lemma avail_half_ram (pav : SailStdpp.Values.mword 64) (np : nat) :
     avail_half pav np -∗ ⌜addr_is_ram (pa_add pav 2%nat)⌝.
-  Proof.
+  Proof using .
     rewrite /avail_half. iEval (cbn [seq]). iIntros "((%t & Hc & _) & _)".
     rewrite /phys_ledger_at /phys_pointsto pa_add_0.
     iDestruct "Hc" as "[[_ %Hr] _]". by iPureIntro.
@@ -68,7 +68,7 @@ Section DiskAvail.
     ⌜forall tvr : nat, (g.(gtv) cpu_id <= tvr)%nat ->
        tso_read_bytes g.(gimg) g.(glog) (hart_agent cpu_id) tvr
          (pa_add pav 2%nat) 2 (wrap16 np)⌝.
-  Proof.
+  Proof using .
     iIntros "Hgh Hint Hrun H".
     iAssert (⌜forall j, (j < 2)%nat -> forall tvr, (g.(gtv) cpu_id <= tvr)%nat ->
                tso_read g.(gimg) g.(glog) (hart_agent cpu_id) tvr
@@ -90,7 +90,7 @@ Section DiskAvail.
     ([∗ list] j ∈ seq 0 2,
        (pa_add (pa_add pav 2%nat) j) ↦ₘ nth_byte (wrap16 0%nat) j) ==∗
     avail_lease_half (virtio_init_cfg pd pav pu) 0 ∗ avail_half pav 0.
-  Proof.
+  Proof using .
     iIntros (Hs) "#Hkm H".
     assert (Havi : avail_idx_pa (virtio_init_cfg pd pav pu) = pa_add pav 2%nat)
       by reflexivity.
@@ -134,7 +134,7 @@ Section DiskAvail.
     kmap_static_claims -∗
     ([∗ list] j ∈ seq 0 n, mem_pointsto (pa_add p j) dq (f j)) -∗
     ([∗ list] j ∈ seq 0 n, phys_pointsto (pa_add p j) dq (f j)).
-  Proof.
+  Proof using .
     iIntros (Hstat) "#Hb Hbytes".
     iApply (big_sepL_impl with "Hbytes").
     iIntros "!>" (k x Hk) "H".
@@ -155,7 +155,7 @@ Section DiskAvail.
   Lemma ctx_ident_ledger (a : Arch.pa) (dq : dfrac) (b : bv 8) :
     kmap_static (svpn_of a) KP_rw ->
     kmap_static_claims -∗ a ↦ₘ{dq} b -∗ phys_ledger a dq b.
-  Proof.
+  Proof using .
     iIntros (Hs) "#Hcl H".
     iDestruct (ctx_pointsto_canonical with "H") as %Hc.
     iDestruct (kmap_static_claims_at (svpn_of a) KP_rw Hs with "Hcl") as "#Hk0".
@@ -169,7 +169,7 @@ Section DiskAvail.
     kmap_static_claims -∗
     ([∗ list] j ∈ seq 0 n, (pa_add p j) ↦ₘ{dq} f j) -∗
     ([∗ list] j ∈ seq 0 n, phys_ledger (pa_add p j) dq (f j)).
-  Proof.
+  Proof using .
     iIntros (Hstat) "#Hb Hbytes".
     iApply (big_sepL_impl with "Hbytes").
     iIntros "!>" (k x Hk) "H".
@@ -188,7 +188,7 @@ Section DiskAvail.
          phys_ledger_at (pa_add (used_idx_pa (virtio_init_cfg pd pav pu)) j)
            (DfracOwn 1) byte_zero (tf2 t0 t1 j)) ∗
       lk_floor cur_ctx t0 ∗ lk_floor cur_ctx t1.
-  Proof.
+  Proof using .
     iIntros (Hs) "#Hkm H".
     assert (Hvu : vc_used (virtio_init_cfg pd pav pu) = pu) by reflexivity.
     assert (Hidx : forall j, pa_add (used_idx_pa (virtio_init_cfg pd pav pu)) j = pa_add pu (2 + j)).
@@ -274,14 +274,14 @@ Section DiskAvail.
 
   Lemma keep_map_union (ξ : CtxId) (m1 m2 : gmap Arch.pa (bv 8)) :
     m1 ##ₘ m2 -> keep_map ξ (m1 ∪ m2) ⊣⊢ keep_map ξ m1 ∗ keep_map ξ m2.
-  Proof. intro H. rewrite /keep_map. by apply big_sepM_union. Qed.
+  Proof using . intro H. rewrite /keep_map. by apply big_sepM_union. Qed.
 
   Lemma keep_map_empty (ξ : CtxId) : keep_map ξ ∅ ⊣⊢ emp.
-  Proof. rewrite /keep_map. apply big_sepM_empty. Qed.
+  Proof using . rewrite /keep_map. apply big_sepM_empty. Qed.
 
   Lemma keep_map_back (ξ : CtxId) (m : gmap Arch.pa (bv 8)) :
     keep_map ξ m -∗ pin_back m -∗ hcell_map ξ m.
-  Proof.
+  Proof using .
     rewrite /keep_map /pin_back /hcell_map. iIntros "Hk Hb".
     iDestruct (big_sepM_sep_2 with "Hk Hb") as "H".
     iApply (big_sepM_mono with "H"). intros a b _. iIntros "[Hk Hb]".
@@ -290,7 +290,7 @@ Section DiskAvail.
 
   Lemma hcell_map_union (ξ : CtxId) (m1 m2 : gmap Arch.pa (bv 8)) :
     m1 ##ₘ m2 -> hcell_map ξ (m1 ∪ m2) ⊣⊢ hcell_map ξ m1 ∗ hcell_map ξ m2.
-  Proof. intro H. rewrite /hcell_map. by apply big_sepM_union. Qed.
+  Proof using . intro H. rewrite /hcell_map. by apply big_sepM_union. Qed.
 
   (* carve a 2-byte window out of a half-cell map by its own read (the ring
      entry out of the pin, A6.126 §6.7); one clone per tier *)
@@ -300,7 +300,7 @@ Section DiskAvail.
     hcell_map ξ pin -∗
     hcell_map ξ (range_map A 2 (nth_byte w)) ∗
     hcell_map ξ (pin ∖ range_map A 2 (nth_byte w)).
-  Proof.
+  Proof using .
     intro Hr.
     set (rm := range_map A 2 (nth_byte w)).
     assert (Hsub : rm ⊆ pin).
@@ -319,7 +319,7 @@ Section DiskAvail.
     half_map pin -∗
     half_map (range_map A 2 (nth_byte w)) ∗
     half_map (pin ∖ range_map A 2 (nth_byte w)).
-  Proof.
+  Proof using .
     intro Hr.
     set (rm := range_map A 2 (nth_byte w)).
     assert (Hsub : rm ⊆ pin).
@@ -336,7 +336,7 @@ Section DiskAvail.
   (* a half-cell window's RAM fact, off its first byte *)
   Lemma hcell_map_ram (ξ : CtxId) (A : Arch.pa) (w : bv 16) :
     hcell_map ξ (range_map A 2 (nth_byte w)) -∗ ⌜addr_is_ram A⌝.
-  Proof.
+  Proof using .
     rewrite /hcell_map (range_map_big_sepM _ _ 2 _ ltac:(lia)).
     iEval (cbn [seq big_opL]). iIntros "(Hc & _)".
     rewrite /TsoCtx.ctx_phys_pointsto_h /phys_pointsto pa_add_0.
@@ -348,7 +348,7 @@ Section DiskAvail.
   Lemma hcell_half_agree (ξ : CtxId) (A : Arch.pa) (w0 w1 : bv 16) :
     hcell_map ξ (range_map A 2 (nth_byte w0)) -∗
     half_map (range_map A 2 (nth_byte w1)) -∗ ⌜w0 = w1⌝.
-  Proof.
+  Proof using .
     rewrite /hcell_map /half_map !(range_map_big_sepM _ _ 2 _ ltac:(lia)).
     iEval (cbn [seq big_opL]). iIntros "(H0 & H1 & _) (G0 & G1 & _)".
     iAssert (⌜nth_byte w0 0 = nth_byte w1 0⌝)%I as %E0.
@@ -375,7 +375,7 @@ Section DiskAvail.
 
   Lemma hcell_map_join (ξ : CtxId) (m : gmap Arch.pa (bv 8)) :
     hcell_map ξ m -∗ half_map m -∗ ccell_map ξ m.
-  Proof.
+  Proof using .
     rewrite /hcell_map /half_map /ccell_map. iIntros "Hh Hl".
     iDestruct (big_sepM_sep_2 with "Hh Hl") as "H".
     iApply (big_sepM_mono with "H"). intros a b _. iIntros "[Hh Hl]".
@@ -387,7 +387,7 @@ Section DiskAvail.
   Lemma ctx_ident_phys (a : Arch.pa) (dq : dfrac) (b : bv 8) :
     kmap_static (svpn_of a) KP_rw ->
     kmap_static_claims -∗ a ↦ₘ{dq} b -∗ ctx_phys_pointsto cur_ctx a dq b.
-  Proof.
+  Proof using .
     iIntros (Hs) "#Hcl H".
     iDestruct (ctx_pointsto_canonical with "H") as %Hc.
     iDestruct (kmap_static_claims_at (svpn_of a) KP_rw Hs with "Hcl") as "#Hk0".
@@ -402,7 +402,7 @@ Section DiskAvail.
     kmap_static_claims -∗
     ([∗ list] j ∈ seq 0 n, (pa_add a j) ↦ₘ f j) -∗
     pin_offer (range_map a n f) ∗ keep_map cur_ctx (range_map a n f).
-  Proof.
+  Proof using .
     iIntros (Hn Hs) "#Hkm H".
     rewrite /pin_offer /keep_map
             (range_map_big_sepM (fun x b => (phys_pointsto x (DfracOwn (1/2)) b ∗
@@ -425,7 +425,7 @@ Section DiskAvail.
     kmap_static_claims -∗
     ccell_map cur_ctx (range_map a n f) -∗
     ([∗ list] j ∈ seq 0 n, (pa_add a j) ↦ₘ f j).
-  Proof.
+  Proof using .
     iIntros (Hn Hs Hc) "#Hkm H".
     rewrite /ccell_map
             (range_map_big_sepM (fun x b => ctx_phys_pointsto cur_ctx x (DfracOwn 1) b) a n f Hn).
@@ -453,7 +453,7 @@ Section DiskAvail.
     kmap_static_claims -∗
     ccell_map cur_ctx (range_map a 2 (nth_byte w)) -∗
     TsoCtx.ctx_word2_pointsto cur_ctx a (DfracOwn 1) w.
-  Proof.
+  Proof using .
     iIntros (Hal Hs Hc) "#Hkm H".
     iDestruct (ctx_win_of_ccell a 2 (nth_byte w) ltac:(lia) Hs Hc with "Hkm H") as "Hm".
     rewrite /TsoCtx.ctx_word2_pointsto. iFrame "Hm". iPureIntro. exact Hal.
@@ -464,7 +464,7 @@ Section DiskAvail.
     (uint (a : SailStdpp.Values.mword 64) < 274877906944)%Z ->
     kmap_static_claims -∗ TsoCtx.ctx_floor cur_ctx q -∗
     phys_ledger_at a (DfracOwn 1) v q -∗ a ↦ₘ v.
-  Proof.
+  Proof using .
     iIntros (Hs Hc) "#Hkm #Hfl Hat".
     iDestruct (ctx_phys_pointsto_of_at_floor cur_ctx a v q with "Hat Hfl") as "Hb".
     iDestruct (kmap_static_claims_at (svpn_of a) KP_rw Hs with "Hkm") as "#Hk0".
@@ -479,7 +479,7 @@ Section DiskAvail.
     kmap_static_claims -∗ TsoCtx.ctx_floor cur_ctx q -∗
     ([∗ list] j ∈ seq 0 n, phys_ledger_at (pa_add a j) (DfracOwn 1) (f j) q) -∗
     ([∗ list] j ∈ seq 0 n, (pa_add a j) ↦ₘ f j).
-  Proof.
+  Proof using .
     iIntros (Hs Hc) "#Hkm #Hfl H".
     iApply (big_sepL_impl with "H"). iIntros "!>" (k j Hk) "Hb".
     apply lookup_seq in Hk. destruct Hk as [-> Hlt].
@@ -497,7 +497,7 @@ Section DiskAvail.
     kmap_static_claims -∗ TsoCtx.ctx_floor cur_ctx q -∗
     ([∗ list] j ∈ seq 0 n, ledger_le (pa_add a j) (f j) q) -∗
     ([∗ list] j ∈ seq 0 n, (pa_add a j) ↦ₘ f j).
-  Proof.
+  Proof using .
     iIntros (Hs Hc) "#Hkm #Hfl H".
     iApply (big_sepL_impl with "H"). iIntros "!>" (k j Hk) "(%t & %Ht & Hb)".
     apply lookup_seq in Hk. destruct Hk as [-> Hlt].
@@ -511,18 +511,18 @@ Section DiskAvailMorph.
   Context `{!riscvGS Σ}.
   Global Instance avail_half_morph (pav : SailStdpp.Values.mword 64) (np : nat) :
     CtxMorph (λ ξ, avail_half (XI := ξ) pav np).
-  Proof. rewrite /avail_half. ctx_morph_solve. all: apply lk_floor_morph. Qed.
+  Proof using . rewrite /avail_half. ctx_morph_solve. all: apply lk_floor_morph. Qed.
 
   (* NB not [ctx_morph_solve]: [apply] would unfold the leaves' own ∃ *)
   Global Instance keep_map_morph (m : gmap Arch.pa (bv 8)) :
     CtxMorph (λ ξ, keep_map ξ m).
-  Proof.
+  Proof using .
     rewrite /keep_map. apply ctx_morph_big_sepM. intros a b. apply ctx_morph_cell_keep.
   Qed.
 
   Global Instance hcell_map_morph (m : gmap Arch.pa (bv 8)) :
     CtxMorph (λ ξ, hcell_map ξ m).
-  Proof.
+  Proof using .
     rewrite /hcell_map. apply ctx_morph_big_sepM. intros a b.
     apply ctx_morph_phys_pointsto_h.
   Qed.
@@ -544,13 +544,13 @@ Section DiskAvailMorph.
 
   Global Instance ring_hcells_morph (pav : SailStdpp.Values.mword 64) :
     CtxMorph (λ ξ, ring_hcells ξ pav).
-  Proof. rewrite /ring_hcells. ctx_morph_solve. all: apply hcell_map_morph. Qed.
+  Proof using . rewrite /ring_hcells. ctx_morph_solve. all: apply hcell_map_morph. Qed.
 
   (* a byte run regrouped into pairs *)
   Lemma big_sepL_seq_pairs (Φ : nat -> iProp Σ) (n : nat) :
     ([∗ list] j ∈ seq 0 (2 * n)%nat, Φ j)
     ⊣⊢ ([∗ list] k ∈ seq 0 n, Φ (2 * k)%nat ∗ Φ (2 * k + 1)%nat).
-  Proof.
+  Proof using .
     induction n as [|n IH].
     - done.
     - replace (2 * S n)%nat with (S (S (2 * n)))%nat by lia.
@@ -572,7 +572,7 @@ Section DiskAvailMorph.
     ([∗ list] j ∈ seq 0 16, (pa_add (pa_add pav 4%nat) j) ↦ₘ byte_zero) -∗
     half_map (range_map (pa_add pav 4%nat) 16 (fun _ : nat => byte_zero)) ∗
     ring_hcells cur_ctx pav.
-  Proof.
+  Proof using .
     iIntros (Hs) "#Hkm H".
     iDestruct (ctx_win_offer (pa_add pav 4%nat) 16 (fun _ : nat => byte_zero)
                  ltac:(lia) Hs with "Hkm H") as "[Hoff Hkeep]".

@@ -124,7 +124,7 @@ Section UsertrapData.
   Context `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}.
 
   Lemma ut_fmt1_str : (kernel_data : iProp Σ) -∗ ut_fmt1_p ↦ₛ□ ut_fmt1.
-  Proof.
+  Proof using .
     iIntros "#Hd".
     iApply (kernel_data_string ut_fmt1_a ut_fmt1 _ eq_refl
               ltac:(unfold text_end, ut_fmt1_a; lia)
@@ -132,7 +132,7 @@ Section UsertrapData.
   Qed.
 
   Lemma ut_fmt2_str : (kernel_data : iProp Σ) -∗ ut_fmt2_p ↦ₛ□ ut_fmt2.
-  Proof.
+  Proof using .
     iIntros "#Hd".
     iApply (kernel_data_string ut_fmt2_a ut_fmt2 _ eq_refl
               ltac:(unfold text_end, ut_fmt2_a; lia)
@@ -145,10 +145,10 @@ Section UsertrapData.
      instead of procdump's descriptor kit. *)
   Lemma ut_fmt1_descs_res (m : regfile) :
     ⊢ ([∗ list] j ↦ d ∈ ut_fmt1_descs, pk_desc_res (pk_vararg m j) d).
-  Proof. rewrite /ut_fmt1_descs /pk_desc_res. cbn [big_opL]. auto. Qed.
+  Proof using . rewrite /ut_fmt1_descs /pk_desc_res. cbn [big_opL]. auto. Qed.
 
   Lemma ut_fmt2_descs_res (m : regfile) :
     ⊢ ([∗ list] j ↦ d ∈ ut_fmt2_descs, pk_desc_res (pk_vararg m j) d).
-  Proof. rewrite /ut_fmt2_descs /pk_desc_res. cbn [big_opL]. auto. Qed.
+  Proof using . rewrite /ut_fmt2_descs /pk_desc_res. cbn [big_opL]. auto. Qed.
 
 End UsertrapData.

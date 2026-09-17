@@ -64,7 +64,7 @@ Section IregClean.
         ⌜forall S : fs_state_rec, fss_inodes S = I -> snap_local S⌝ ∗
         ghost_map_auth (ln_tx icfg_log) 1 (∅ : gmap nat unit) ∗
         (ghost_map_auth (fs_top γfs) (1/2) I ={E ∖ ↑ftopN, E}=∗ True).
-  Proof.
+  Proof using .
     iIntros (HE) "#Hi Htxa".
     iMod (ireg_clean_acc E γfs HE with "Hi Htxa")
       as (I) "(Hta & %Hloc & Htxa & Hclose)".
@@ -92,7 +92,7 @@ Section IregClean.
         ⌜forall S : fs_state_rec, fss_inodes S = I -> snap_local S⌝ ∗
         ghost_map_auth (ln_tx icfg_log) 1 T ∗
         (ghost_map_auth (fs_top γfs) (1/2) I ={E ∖ ↑ftopN, E}=∗ True).
-  Proof.
+  Proof using .
     iIntros (HE Hsz Hom) "#Hi Htxa".
     rewrite (log_tx_empty_of_ops om T Hsz Hom).
     iMod (ireg_snap_local_acc E γfs HE with "Hi Htxa") as (I) "H".

@@ -44,7 +44,7 @@ Section AbsorbLb.
      persistent, so nothing has to be combined. *)
   Lemma view_lb_max (gv gl : gname) (h : nat) (K1 K2 : nat) :
     view_lb gv gl h K1 -∗ view_lb gv gl h K2 -∗ view_lb gv gl h (Nat.max K1 K2).
-  Proof.
+  Proof using .
     iIntros "H1 H2".
     destruct (Nat.le_ge_cases K1 K2) as [Hle|Hle].
     - rewrite (Nat.max_r _ _ Hle). iExact "H2".
@@ -53,7 +53,7 @@ Section AbsorbLb.
 
   Lemma hart_view_lb_max `{CID : CpuId} (K1 K2 : nat) :
     hart_view_lb K1 -∗ hart_view_lb K2 -∗ hart_view_lb (Nat.max K1 K2).
-  Proof.
+  Proof using .
     rewrite !hart_view_lb_unseal /hart_view_lb_def. apply view_lb_max.
   Qed.
 
@@ -66,7 +66,7 @@ Section AbsorbLb.
     (T <= K)%nat ->
     hart_view_lb K -∗ own_context xi' -∗ ctx_stamped xi T ==∗
     own_context xi' ∗ ctx_dom xi xi' ∗ (ctx_dom xi xi' -∗ ctx_stamped xi T).
-  Proof.
+  Proof using .
     iIntros (HTK) "#HK Hrun Hpk".
     iEval (rewrite own_context_unseal /own_context_def) in "Hrun".
     iEval (rewrite ctx_stamped_unseal /ctx_stamped_def) in "Hpk".
@@ -112,7 +112,7 @@ Section AbsorbLb.
     (T <= K)%nat ->
     own_context xi' -∗ hart_view_lb K -∗ ctx_stamped xi T -∗ R xi ==∗
     own_context xi' ∗ ctx_stamped xi T ∗ R xi'.
-  Proof.
+  Proof using .
     iIntros (HTK) "Hrun #HK Hpk HR".
     iMod (ctx_dom_of_stamped_lb xi xi' T K HTK with "HK Hrun Hpk")
       as "(Hrun & Hdom & Hback)".

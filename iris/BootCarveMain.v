@@ -511,7 +511,7 @@ Section BootCarveMain.
        g.(gmem) !! pa_of_z x = Some (boot_byte x)) ->
     text_end <= A -> A + 24 <= ram_hi -> A mod 8 = 0 ->
     kmap_static_claims -∗ boot_cran g A (A + 24) -∗ lk_raw (pa_of_z A).
-  Proof.
+  Proof using .
     intros Hmem Hlo Hhi Hal. iIntros "#Hcl H".
     assert (E8 : (sign_extend' 64 (mword_of_int 8 : mword 12) : mword 64)
                  = mword_of_int 8) by (apply bv_eq; vm_compute; reflexivity).
@@ -582,7 +582,7 @@ Section BootCarveMain.
        nothing has been typed. *)
     cons_logm cn [] -∗
     cons_res cn.
-  Proof.
+  Proof using .
     intros Hmem Hlo Hbss Hhi Hal. iIntros "#Hcl H Hsa Hcu Hhi Hlm".
     assert (Hal4 : forall k : Z, k mod 4 = 0 -> (KernelSyms.cons + k) mod 4 = 0)
       by (intros k Hk; rewrite Z.add_mod; [| lia]; rewrite Hal Hk; reflexivity).
@@ -703,7 +703,7 @@ Section BootCarveMain.
        g.(gmem) !! pa_of_z x = Some (boot_byte x)) ->
     text_end <= A -> A + 44 <= ram_hi -> A mod 8 = 0 ->
     kmap_static_claims -∗ boot_cran g A (A + 44) -∗ sl_raw (pa_of_z A).
-  Proof.
+  Proof using .
     intros Hmem Hlo Hhi Hal. iIntros "#Hcl H".
     assert (E8 : (sign_extend' 64 (mword_of_int 8 : mword 12) : mword 64)
                  = mword_of_int 8) by (apply bv_eq; vm_compute; reflexivity).
@@ -775,7 +775,7 @@ Section BootCarveMain.
     text_end <= A -> A + 88 <= ram_hi -> A mod 8 = 0 ->
     kmap_static_claims -∗ boot_cran g (A + 72) (A + 88)
     -∗ blink_raw (pa_of_z A).
-  Proof.
+  Proof using .
     intros Hmem Hlo Hhi Hal. iIntros "#Hcl H".
     assert (E72 : (sign_extend' 64 (mword_of_int 72 : mword 12) : mword 64)
                   = mword_of_int 72) by (apply bv_eq; vm_compute; reflexivity).
@@ -826,7 +826,7 @@ Section BootCarveMain.
        g.(gmem) !! pa_of_z x = Some (boot_byte x)) ->
     text_end <= A -> A + 16 <= ram_hi -> A mod 8 = 0 ->
     kmap_static_claims -∗ boot_cran g A (A + 16) -∗ dinfo_raw (pa_of_z A).
-  Proof.
+  Proof using .
     intros Hmem Hlo Hhi Hal. iIntros "#Hcl H".
     iDestruct (boot_cran_split g A (A + 8) (A + 16) ltac:(lia) ltac:(lia)
                  with "H") as "[H0 H]".
@@ -846,7 +846,7 @@ Section BootCarveMain.
        g.(gmem) !! pa_of_z x = Some (boot_byte x)) ->
     text_end <= A -> A + 16 <= ram_hi -> A mod 8 = 0 ->
     kmap_static_claims -∗ boot_cran g A (A + 16) -∗ dops_raw (pa_of_z A).
-  Proof.
+  Proof using .
     intros Hmem Hlo Hhi Hal. iIntros "#Hcl H".
     assert (Hal4 : A mod 4 = 0) by exact (z_mod8_mod4 A Hal).
     iDestruct (boot_cran_split g A (A + 4) (A + 16) ltac:(lia) ltac:(lia)
@@ -881,7 +881,7 @@ Section BootCarveMain.
     boot_cran g (KernelSyms.disk + 168)
                    (KernelSyms.disk + 168 + 16 * Z.of_nat 8%nat)
     -∗ ([∗ list] i ∈ seq 0 8, disk_slot_raw i).
-  Proof.
+  Proof using .
     intro Hmem. iIntros "#Hcl Hi Ho".
     iDestruct (boot_cran_stride_family_seq g dinfo_raw (KernelSyms.disk + 40) 16 8%nat
                  ltac:(lia)
@@ -982,7 +982,7 @@ Section BootCarveMain.
        g.(gmem) !! pa_of_z x = Some (boot_byte x)) ->
     img_end <= A -> A + 1112 <= ram_hi -> A mod 8 = 0 ->
     kmap_static_claims -∗ boot_cran g A (A + 1112) -∗ bnode_raw (pa_of_z A).
-  Proof.
+  Proof using .
     intros Hmem Hbss Hhi Hal. iIntros "#Hcl H".
     assert (Hlo : text_end <= A)
       by exact (z_lo_trans text_end img_end A ltac:(vm_compute; discriminate) Hbss).
@@ -1086,7 +1086,7 @@ Section BootCarveMain.
      the [k]th record of the carve's stride family is the [k]th buffer. *)
   Lemma bpay_raw_buf_raw `{XI : CtxIdDefs.CurCtx} (k : nat) :
     bpay_raw (pa_of_z (buf_base + buf_stride * Z.of_nat k)) ⊢ buf_raw k.
-  Proof. rewrite /bpay_raw /buf_raw. iIntros "$". Qed.
+  Proof using . rewrite /bpay_raw /buf_raw. iIntros "$". Qed.
 
   Lemma boot_bcache_nodes `{XI : CtxIdDefs.CurCtx} (g : gstate) :
     (forall x : Z, ram_lo <= x < ram_hi ->
@@ -1096,7 +1096,7 @@ Section BootCarveMain.
     -∗ ([∗ list] k ∈ seq 0 NBUF, sl_raw (buf_lock (bnode k))) ∗
        ([∗ list] k ∈ seq 0 NBUF, blink_raw (bnode k)) ∗
        ([∗ list] k ∈ seq 0 NBUF, buf_raw k).
-  Proof.
+  Proof using .
     intro Hmem. iIntros "#Hcl H".
     iDestruct (boot_cran_stride_family_seq g bnode_raw
                  buf_base buf_stride NBUF
@@ -1152,7 +1152,7 @@ Section BootCarveMain.
             TsoCtx.ctx_word4_pointsto XI
               (add_vec (pa_of_z C) (mword_of_int (off + 4 * Z.of_nat j)))
               (DfracOwn 1) a).
-  Proof.
+  Proof using .
     intro Hmem. revert off. induction n as [|k IH]; intros off Hlo Hhi Hal.
     - iIntros "_ _". iExists []. iSplitR; [done |]. done.
     - iIntros "#Hcl H".
@@ -1215,7 +1215,7 @@ Section BootCarveMain.
     img_end <= A -> A + 136 <= ram_hi -> A mod 8 = 0 ->
     kmap_static_claims -∗ boot_cran g A (A + 136)
     -∗ inode_node_raw (pa_of_z A).
-  Proof.
+  Proof using .
     intros Hmem Hbss Hhi Hal. iIntros "#Hcl H".
     assert (Hlo : text_end <= A)
       by exact (z_lo_trans text_end img_end A ltac:(vm_compute; discriminate) Hbss).
@@ -1355,7 +1355,7 @@ Section BootCarveMain.
                    (inode_entry_base + inode_stride * Z.of_nat NINODE)
     -∗ ([∗ list] i ∈ seq 0 NINODE, sl_raw (inode_lock i)) ∗
        ([∗ list] k ∈ seq 0 NINODE, ientry_raw k).
-  Proof.
+  Proof using .
     intro Hmem. iIntros "#Hcl H".
     iDestruct (boot_cran_stride_family_seq g inode_node_raw
                  inode_entry_base inode_stride NINODE
@@ -1429,7 +1429,7 @@ Section BootCarveMain.
     img_end <= A -> A + 40 <= ram_hi -> A mod 8 = 0 ->
     kmap_static_claims -∗ boot_cran g A (A + 40)
     -∗ file_node_raw (pa_of_z A).
-  Proof.
+  Proof using .
     intros Hmem Hbss Hhi Hal. iIntros "#Hcl H".
     assert (Hlo : text_end <= A)
       by exact (z_lo_trans text_end img_end A ltac:(vm_compute; discriminate) Hbss).
@@ -1534,7 +1534,7 @@ Section BootCarveMain.
   Lemma file_node_raw_fentry `{XI : CtxIdDefs.CurCtx} (k : nat) :
     file_node_raw (pa_of_z (file_base + file_stride * Z.of_nat k))
     ⊢ fentry_raw k.
-  Proof. rewrite /file_node_raw /fentry_raw. iIntros "$". Qed.
+  Proof using . rewrite /file_node_raw /fentry_raw. iIntros "$". Qed.
 
   (* the NFILE entries, as [FileInv.ftable_res_boot] takes them. *)
   Lemma boot_file_entries `{XI : CtxIdDefs.CurCtx} (g : gstate) :
@@ -1543,7 +1543,7 @@ Section BootCarveMain.
     kmap_static_claims -∗
     boot_cran g file_base (file_base + file_stride * Z.of_nat NFILE)
     -∗ ([∗ list] k ∈ seq 0 NFILE, fentry_raw k).
-  Proof.
+  Proof using .
     intro Hmem. iIntros "#Hcl H".
     iDestruct (boot_cran_stride_family_seq g file_node_raw
                  file_base file_stride NFILE
@@ -1592,27 +1592,27 @@ Section BootCarveMain.
   (* below an [iFrame] instead of nine conversions.                     *)
   (* ------------------------------------------------------------------ *)
   Lemma log_nm_of_z : lock_name_field log_addr = pa_of_z (KernelSyms.log + 8).
-  Proof. apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . apply bv_eq; vm_compute; reflexivity. Qed.
   Lemma log_cpu_of_z : lock_cpu log_addr = pa_of_z (KernelSyms.log + 16).
-  Proof. apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . apply bv_eq; vm_compute; reflexivity. Qed.
   Lemma l_start_of_z : l_start = pa_of_z (KernelSyms.log + 24).
-  Proof. apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . apply bv_eq; vm_compute; reflexivity. Qed.
   Lemma l_out_of_z : l_out = pa_of_z (KernelSyms.log + 28).
-  Proof. apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . apply bv_eq; vm_compute; reflexivity. Qed.
   Lemma l_cmt_of_z : l_cmt = pa_of_z (KernelSyms.log + 32).
-  Proof. apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . apply bv_eq; vm_compute; reflexivity. Qed.
   Lemma l_dev_of_z : l_dev = pa_of_z (KernelSyms.log + 36).
-  Proof. apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . apply bv_eq; vm_compute; reflexivity. Qed.
   Lemma l_ncommit_of_z : l_ncommit = pa_of_z (KernelSyms.log + 40).
-  Proof. apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . apply bv_eq; vm_compute; reflexivity. Qed.
   Lemma lh_n_of_z : lh_n_pa = pa_of_z (KernelSyms.log + 44).
-  Proof. apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . apply bv_eq; vm_compute; reflexivity. Qed.
   Lemma log_lk_of_z : log_addr = pa_of_z KernelSyms.log.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma lh_block_of_z (i : nat) :
     lh_block i = pa_of_z (KernelSyms.log + 48 + 4 * Z.of_nat i).
-  Proof.
+  Proof using .
     rewrite /lh_block /log_pa /log_addr.
     change (mword_of_int KernelSyms.log : Arch.pa) with (pa_of_z KernelSyms.log).
     rewrite pa_add_of_z. f_equal. lia.
@@ -1623,7 +1623,7 @@ Section BootCarveMain.
        g.(gmem) !! pa_of_z x = Some (boot_byte x)) ->
     kmap_static_claims -∗
     boot_cran g KernelSyms.log (KernelSyms.log + 168) -∗ main_log_raw.
-  Proof.
+  Proof using .
     intro Hmem. iIntros "#Hcl H".
     assert (Hflo : text_end <= KernelSyms.log + 48)
       by (vm_compute; discriminate).
@@ -1757,7 +1757,7 @@ Section BootCarveMain.
     boot_cran g KernelSyms.ftable (KernelSyms.ftable + 24) -∗
     boot_cran g (KernelSyms.disk + 296) (KernelSyms.disk + 296 + 24)
     -∗ main_locks_raw.
-  Proof.
+  Proof using .
     intro Hmem. iIntros "#Hcl Hu0 Hu1 H1 H2 H4 H5 H6 H7 H8 H9 H10 H11".
     iDestruct (boot_lk_raw g (uart_f_lock Uart0) Hmem
                  ltac:(vm_compute; discriminate) ltac:(vm_compute; discriminate)
@@ -1827,7 +1827,7 @@ Section BootCarveMain.
     (C + off) mod 8 = 0 ->
     kmap_static_claims -∗ boot_cran g (C + off) (C + off + 8 * Z.of_nat n)
     -∗ (∃ vs : list (mword 64), ⌜length vs = n⌝ ∗ ctx_cells_at (pa_of_z C) off vs).
-  Proof.
+  Proof using .
     intro Hmem. revert off. induction n as [|k IH]; intros off Hlo Hhi Hal.
     - iIntros "_ _". iExists []. iSplitR; [done |]. cbn [ctx_cells_at]. done.
     - iIntros "#Hcl H".
@@ -1861,7 +1861,7 @@ Section BootCarveMain.
        g.(gmem) !! pa_of_z x = Some (boot_byte x)) ->
     text_end <= C -> C + 112 <= ram_hi -> C mod 8 = 0 ->
     kmap_static_claims -∗ boot_cran g C (C + 112) -∗ own_ctx (pa_of_z C).
-  Proof.
+  Proof using .
     intros Hmem Hlo Hhi Hal. iIntros "#Hcl H".
     iDestruct (boot_cran_eq g C (C + 112) (C + 0) (C + 0 + 8 * Z.of_nat 14%nat)
                  ltac:(lia) ltac:(lia) with "H") as "H".
@@ -1882,7 +1882,7 @@ Section BootCarveMain.
           TsoCtx.ctx_word_pointsto XI
             (add_vec (pa_of_z C) (mword_of_int (off + 8 * Z.of_nat fd)))
             (DfracOwn 1) v).
-  Proof.
+  Proof using .
     intro Hmem. revert off. induction n as [|k IH]; intros off Hlo Hbss Hhi Hal.
     - iIntros "_ _". done.
     - iIntros "#Hcl H".
@@ -1928,7 +1928,7 @@ Section BootCarveMain.
           TsoCtx.ctx_pointsto XI
             (add_vec (pa_of_z C) (mword_of_int (off + Z.of_nat i)))
             (DfracOwn 1) b).
-  Proof.
+  Proof using .
     intros Hmem Hlo Hbss Hhi. iIntros "#Hcl H".
     iDestruct (boot_cran_bytes_zero g (C + off) n Hmem Hlo Hbss Hhi with "Hcl H")
       as "Hbs".
@@ -1946,7 +1946,7 @@ Section BootCarveMain.
     kmap_static_claims -∗
     boot_cran g (A + 208) (A + 208 + 8 * Z.of_nat NOFILE)
     -∗ ofile_cells (pa_of_z A) (replicate NOFILE (zero_reg : mword 64)).
-  Proof.
+  Proof using .
     intros Hmem Hbss Hhi Hal.
     assert (Hlo : text_end <= A)
       by exact (z_lo_trans text_end img_end A ltac:(vm_compute; discriminate) Hbss).
@@ -1969,7 +1969,7 @@ Section BootCarveMain.
     boot_cran g (A + 344) (A + 344 + Z.of_nat PNAMELEN)
     -∗ (∃ bs : list (bv 8), ⌜length bs = PNAMELEN⌝ ∗
           pname_cells (pa_of_z A) (DfracOwn 1) bs).
-  Proof.
+  Proof using .
     intros Hmem Hlo Hbss Hhi. iIntros "#Hcl H".
     iExists (replicate PNAMELEN DevModel.byte0).
     iSplitR; [iPureIntro; apply length_replicate |].
@@ -2033,7 +2033,7 @@ Section BootCarveMain.
     img_end <= A -> A + 360 <= ram_hi -> A mod 8 = 0 ->
     kmap_static_claims -∗ boot_cran g A (A + 360)
     -∗ proc_slot_raw (pa_of_z A).
-  Proof.
+  Proof using .
     intros Hmem Hbss Hhi Hal. iIntros "#Hcl H".
     assert (Hlo : text_end <= A)
       by exact (z_lo_trans text_end img_end A ltac:(vm_compute; discriminate) Hbss).
@@ -2273,7 +2273,7 @@ Section BootCarveMain.
        (* ...and <pid_lock>'s quarter of every pid cell, which is that lock's *)
        ([∗ list] i ∈ seq 0 NPROC,
           pid_lock_share (proc_addr i) (mword_of_int 0 : mword 32)).
-  Proof.
+  Proof using .
     intro Hmem. iIntros "#Hcl H".
     iDestruct (boot_cran_stride_family_seq g proc_slot_raw
                  KernelSyms.proc proc_size NPROC
@@ -2322,7 +2322,7 @@ Section BootCarveMain.
     text_end <= lo -> lo + 4096 <= ram_hi ->
     kmap_static_claims -∗ boot_cran g lo (lo + 4096)
     -∗ page_own (pa_of_z lo).
-  Proof.
+  Proof using .
     intros Hmem Hlo Hhi. iIntros "#Hcl H".
     assert (E : lo + 4096 = lo + Z.of_nat 4096%nat)
       by (rewrite z_of_nat_4096; reflexivity).
@@ -2346,7 +2346,7 @@ Section BootCarveMain.
     kmap_static_claims -∗
     boot_cran g (uint s1 - 4096) (uint s1 - 4096 + 4096 * Z.of_nat n)
     -∗ ([∗ list] p ∈ pg_run s1 n, page_own p).
-  Proof.
+  Proof using .
     intro Hmem. revert s1. induction n as [|k IH]; intros s1 Hlo Hhi.
     - iIntros "_ _". done.
     - assert (Hk0 : 0 <= Z.of_nat k) by apply Nat2Z.is_nonneg.
@@ -2408,7 +2408,7 @@ Section BootCarveMain.
     -∗ ⌜prun phystop s1 (pg_run s1 n)⌝ ∗
        ⌜length (pg_run s1 n) = n⌝ ∗
        ([∗ list] p ∈ pg_run s1 n, page_own p).
-  Proof.
+  Proof using .
     intros Hmem Heq Hlo Hklo Hal Hpt Hnw. iIntros "#Hcl H".
     assert (Hend : uint s1 - 4096 + 4096 * Z.of_nat n = uint phystop)
       by exact (z_run_end _ _ _ Heq).

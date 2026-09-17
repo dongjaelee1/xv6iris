@@ -133,7 +133,7 @@ Section ProofWalk.
              mr !!! Regidx (mword_of_int 10) = pt_addr0 p1 vpn) ⌝ -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros va vpn sp0 spr ret_tgt HK Hsp Hx23 Hx24 Hx25 Hx26 Hx27 Hsame Hoff Hpres Hnodes Hmiss Hpay.
     iIntros "Hcg Hcnt #Htext Hpc
              Hc56 Hc48 Hc40 Hc32 Hc24 Hc16 Hc08 Hc00
@@ -421,7 +421,7 @@ Section ProofWalk.
              mr !!! Regidx (mword_of_int 10) = pt_addr0 p1 vpn) ⌝ -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros va vpn sp0 spr ret_tgt HK Hva' Hsp Hs3 Hs1 Hx23 Hx24 Hx25 Hx26 Hx27 Hsame Hoff Hpres Hnodes Hmiss Hlvl.
     iIntros "Hcg Hcnt #Htext Hpc
              Hc56 Hc48 Hc40 Hc32 Hc24 Hc16 Hc08 Hc00
@@ -552,7 +552,7 @@ Section ProofWalk.
       slotaddr ↦₈{dqm} pte -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hs3 Hs4 Hslot.
     iIntros "Hcg #Htext Hpc Hown Hcont".
     (* +0x26 srl s2,s3,s4 *)
@@ -676,7 +676,7 @@ Section ProofWalk.
       ⌜ callee_saved m0 mfin ⌝ -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros a0_idx a1_idx a2_idx pcE sp0 ra0 p ret_tgt cbyte Hcval Ha2 Hret0 Hn.
     iIntros "Hcg #Htext Hpc Hpage Hcont".
     (* bridge [page_own p] to memset's per-byte buffer, then hand it to the
@@ -787,7 +787,7 @@ Section ProofWalk.
       F -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros va vpn sp0 spr ret_tgt Hlvl HK Hsp Hs2c Hs6 Hx23 Hx24 Hx25 Hx26 Hx27 Hacc Hbelow.
     iIntros "Hcg Hcnt #Htext Hpc
              Hc56 Hc48 Hc40 Hc32 Hc24 Hc16 Hc08 Hc00
@@ -1129,7 +1129,7 @@ Section ProofWalk.
       (add_vec (mword_of_int (12 + 9 * Z.of_nat (S L')) : mword 64)
                (sign_extend' 64 (sign_extend' 12 (mword_of_int 55 : mword 6)))) 31 0)
     = mword_of_int (12 + 9 * Z.of_nat L').
-  Proof.
+  Proof using .
     intros HL. destruct L' as [| [| k]].
     - apply bv_eq; vm_compute; reflexivity.
     - apply bv_eq; vm_compute; reflexivity.
@@ -1283,7 +1283,7 @@ Section ProofWalk.
              mr !!! Regidx (mword_of_int 10) = pt_addr0 p1 vpn) ⌝ -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros va vpn sp0 spr ret_tgt Hlvl HK Hva.
     revert CID g Mf cur w.
     induction L as [| L' IH]; intros CID g Mf cur w HL Hsp Hs3 Hs4 Hs5 Hs1 Hs6 Hx23 Hx24 Hx25 Hx26 Hx27 Hverdict Hgrafts Hbelow.
@@ -1695,7 +1695,7 @@ Section ProofWalk.
       (m : gmap (mword 27) (mword 64)) (K : nat) (lvl : nat)
       (eb : bool) (p : mword 64) (on : option nat) (b : bool) (lks : gset string)
     : wp_walk_sconf_body kt γa γk mm t m K lvl eb p on b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_walk_sconf_body].
     intros va vpn ret_tgt Hlvl HK Ha0 Ha2 Hva Hrep Hcid Hbelow.
     pose (sp0 := (mm !!! Regidx csp_rs1 : mword 64)).

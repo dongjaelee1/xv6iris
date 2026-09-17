@@ -117,7 +117,7 @@ Section ProofDevintr.
     mf !!! Regidx s0_idx = m0 !!! Regidx s0_idx ->
     di_thr m0 mf ->
     callee_saved m0 mf.
-  Proof.
+  Proof using .
     intros Hsp Hs0 Hthr. unfold callee_saved.
     split_and!;
       first [ exact Hsp | exact Hs0
@@ -129,7 +129,7 @@ Section ProofDevintr.
      rather than an assumption ([tp] is pinned to the hart). *)
   Local Lemma di_tp_bound (M : regfile) :
     bv_unsigned (rget M tp_idx) < Z.of_nat dev_ncpu.
-  Proof.
+  Proof using .
     rewrite rget_tp. destruct (tp_ok_cid_of cpu_id) as [_ H8].
     rewrite uint_unsigned in H8. change (Z.of_nat dev_ncpu) with 8%Z. exact H8.
   Qed.
@@ -164,7 +164,7 @@ Section ProofDevintr.
         pc_is (ret_pc ra0) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hm0sp Hm0ra Hm0s0 HMsp HMa0 Hthr.
     iIntros "Hcg Hcnt #Htext Hpc Hsc Hb1 Hb2 Hb3 Hb4 Hcont".
     (* the three frame addresses, as offsets off the pushed sp *)
@@ -317,7 +317,7 @@ Section ProofDevintr.
         pc_is (ret_pc ra0) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hk Hm0sp Hm0ra Hm0s0 Hm0s1 HMsp HMs1 Ha0ok Hthr Hret.
     iIntros "Hcg Hcnt #Htext Hpc Hsc #Hdev #Hplic1 #Hinit #Hinit1 Htok Htok1 Hb1 Hb2 Hb3 Hb4 Hcont".
     (* ---- +0x54: c.mv a0,s1 ---- *)
@@ -441,7 +441,7 @@ Section ProofDevintr.
       (m : regfile) (av lvl : nat) (eb : bool) (p : mword 64)
       (dq : dfrac) (sc : mword 64) (lks : gset string)
     : wp_devintr_sconf_body γu γv γdk γtl γs pd pav pu m av lvl eb p dq sc lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_devintr_sconf_body].
     intros pcE ret_tgt Hlen Hlvl Hav Hbelow.
     set (sp0 := (m !!! Regidx csp_rs1 : mword 64)).

@@ -402,7 +402,7 @@ Section WriteHeadDefs.
       (pidv dev bno : mword 32) (bs bsd : list (bv 8)) :
     bio_hold0 bn V k pidv dev bno bs bsd -∗
     wh_hold bn V k pidv dev bno (fun j => bs !!! j) bsd.
-  Proof.
+  Proof using .
     rewrite /bio_hold0 /wh_hold /buf_own /bpa.
     iIntros "(%A & %B & %C & H1 & H3 & H4 & (Hb & Hd & %Hlen & Hby) & H6)".
     iEval (rewrite (bb_bytes_of_list (b_data (bnode k)) bs) Hlen) in "Hby".
@@ -419,7 +419,7 @@ Section WriteHeadDefs.
       (pidv dev bno : mword 32) (f : nat -> bv 8) (bsd : list (bv 8)) :
     wh_hold bn V k pidv dev bno f bsd -∗
     bio_hold0 bn V k pidv dev bno (f <$> seq 0 1024) bsd.
-  Proof.
+  Proof using .
     rewrite /bio_hold0 /wh_hold /buf_own /bpa.
     iIntros "(%A & %B & %C & H1 & H3 & H4 & Hb & Hd & Hby & H6)".
     iEval (rewrite bb_bytes_to_list) in "Hby".
@@ -442,7 +442,7 @@ Section WriteHeadDefs.
     (uint bno ↪[fs_cache γfs]{#(1/2)} bsl ∗
      uint bno ↪[fs_dirty γfs]{#(1/2)} d ∗
      (if d then ∃ q : Qp, bref bn k q dv bno else True)).
-  Proof.
+  Proof using .
     rewrite /bio_pay /fs_view /=. destruct d.
     - rewrite /fs_mdirty. iIntros "[[$ $] $]".
     - rewrite /fs_mclean. iIntros "[[$ $] _]"; try done.
@@ -455,7 +455,7 @@ Section WriteHeadDefs.
     (uint bno ↪[fs_dirty γfs]{#(1/2)} d) -∗
     (if d then ∃ q : Qp, bref bn k q dv bno else True) -∗
     bio_pay bn (fs_view γfs γd dev cov) k dv bno bs bs d.
-  Proof.
+  Proof using .
     rewrite /bio_pay /fs_view /=. destruct d.
     - rewrite /fs_mdirty. iIntros "H1 H2 H3". iFrame.
     - rewrite /fs_mclean. iIntros "H1 H2 _". iFrame; try done.
@@ -576,7 +576,7 @@ Section WriteHeadBlocks.
        disk_seq_permit gen_id (Some ((1024 * log_hdr_bno logstart)%Z, bs')) (Q bs')) -∗
     wh_cont (CID0 := CID0)  γfs bn logstart n W L pidv dq j m K eb b lks Upr Q -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hbnolt Hbnou Hj Hgl HnW HnB Hk Hf4 Henc Hregs HMs1 Hbelow.
     pose proof Hregs as (Hsp & Hthr).
     iIntros "Hcg Hcnt Hextc Hextm #Htext Hpc #Hbio Hppid #Hprocs
@@ -1087,7 +1087,7 @@ Section WriteHeadBlocks.
        disk_seq_permit gen_id (Some ((1024 * log_hdr_bno logstart)%Z, bs')) (Q bs')) -∗
     wh_cont (CID0 := CID0)  γfs bn logstart n W L pidv dq j m K eb b lks Upr Q -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hbnolt Hbnou Hj Hgl HnW HnB Hk Hbelow.
     (* CID0 is GENERALIZED: the loop body crosses [wp_next]s, so the hart the
        back-edge re-enters at is not the one the block was entered at. *)
@@ -1337,7 +1337,7 @@ Section ProofWriteHead.
       (b : bool) (Q : list (bv 8) -> iProp Σ) (lks : gset string) (Upr : ustate)
     : wp_write_head_sconf_body γs j γl γu γd γk pd pav pu bn γfs
                                cov logstart dev n W L pidv dq m K eb b Q lks Upr.
-  Proof.
+  Proof using .
     cbv beta delta [wp_write_head_sconf_body].
     intros pcE pj ret_tgt HK Hgeom Hj Hgl Hbatch Hbelow.
     destruct Hgeom as [Hcovok Hlogsub].

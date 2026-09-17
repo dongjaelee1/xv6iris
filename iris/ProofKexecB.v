@@ -338,7 +338,7 @@ Section KexecBBody.
                pfun av dqa avf aslen dqas afun) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hqfnm HK Hlg Hsz Hbm0 Hbmc Hbml Hins0 Hcovb Hiregb Hjp Hgs
            Hk Hib Hn2 Hsp Hra Hs0 Hs1 Hs2
            HM90sp HM90s0 HM90s1 HM90s2 HM90s4 HM90thr.

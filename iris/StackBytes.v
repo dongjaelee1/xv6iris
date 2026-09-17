@@ -91,14 +91,14 @@ Section StackBytes.
     ([∗ list] j ∈ seq 0 n, ∃ b : bv 8, (pa_add base j) ↦ₘ{dq} b)%I.
 
   Lemma bytes_own_0 dq base : bytes_own dq base 0 ⊣⊢ emp.
-  Proof. rewrite /bytes_own. by rewrite big_sepL_nil. Qed.
+  Proof using . rewrite /bytes_own. by rewrite big_sepL_nil. Qed.
 
   (* split a run at any point; the tail is indexed from the shifted base, which
      is what lets a caller name a sub-array (printint's [buf] inside the three
      slots it borrowed) without re-indexing. *)
   Lemma bytes_own_app dq base (n1 n2 : nat) :
     bytes_own dq base (n1 + n2) ⊣⊢ bytes_own dq base n1 ∗ bytes_own dq (pa_add base n1) n2.
-  Proof.
+  Proof using .
     rewrite /bytes_own seq_app big_sepL_app.
     replace (seq (0 + n1) n2) with ((Nat.add n1) <$> seq 0 n2)
       by (rewrite fmap_add_seq; f_equal; lia).
@@ -114,7 +114,7 @@ Section StackBytes.
     bytes_own dq base n ⊢
     (∃ b : bv 8, (pa_add base i) ↦ₘ{dq} b) ∗
     (∀ b : bv 8, (pa_add base i) ↦ₘ{dq} b -∗ bytes_own dq base n).
-  Proof.
+  Proof using .
     intro Hi. rewrite /bytes_own.
     iIntros "H".
     iDestruct (big_sepL_lookup_acc _ _ i i with "H") as "[Hb Hcl]".
@@ -138,7 +138,7 @@ Section StackBytes.
   Lemma bytes_own_name (n : nat) (a : Arch.pa) :
     bytes_own (DfracOwn 1) a n ⊢
     ∃ f : nat -> bv 8, ([∗ list] j ∈ seq 0 n, (pa_add a j) ↦ₘ f j).
-  Proof.
+  Proof using .
     revert a. induction n as [| n IH]; intro a.
     - iIntros "_". iExists (fun _ => bv_0 8). by rewrite big_sepL_nil.
     - rewrite /bytes_own seq_S big_sepL_app big_sepL_singleton Nat.add_0_l.
@@ -156,7 +156,7 @@ Section StackBytes.
   (* the other direction is not a choice, only a forgetting *)
   Lemma bytes_own_of_name (n : nat) (a : Arch.pa) (f : nat -> bv 8) :
     ([∗ list] j ∈ seq 0 n, (pa_add a j) ↦ₘ f j) ⊢ bytes_own (DfracOwn 1) a n.
-  Proof.
+  Proof using .
     rewrite /bytes_own. iIntros "H".
     iApply (big_sepL_impl with "H"). iIntros "!>" (k jj Hk) "H".
     by iExists (f jj).
@@ -164,7 +164,7 @@ Section StackBytes.
 
   Lemma slot_bytes_own (a : Arch.pa) (w : bv 64) :
     a ↦₈ w ⊢ ⌜ is_aligned_paddr (Physaddr a) 8 = true ⌝ ∗ bytes_own (DfracOwn 1) a 8.
-  Proof.
+  Proof using .
     iIntros "Hw".
     iDestruct (ctx_word_pointsto_aligned_p with "Hw") as %Hal.
     iSplitR; [done | ].
@@ -176,7 +176,7 @@ Section StackBytes.
   Lemma bytes_own_slot (a : Arch.pa) :
     is_aligned_paddr (Physaddr a) 8 = true ->
     bytes_own (DfracOwn 1) a 8 ⊢ ∃ w : bv 64, a ↦₈ w.
-  Proof.
+  Proof using .
     intro Hal. rewrite /bytes_own.
     (* name the eight bytes, then reassemble them into the word whose
        [nth_byte]s they are *)
@@ -227,7 +227,7 @@ Section StackBytes.
      [k-j]'s base.  [pa_stk_next] is the [j = 1] case. *)
   Lemma pa_stk_addn (sp : Arch.pa) (k j : nat) :
     (j <= k)%nat -> pa_add (pa_stk sp k) (8 * j) = pa_stk sp (k - j).
-  Proof.
+  Proof using .
     intro Hj. unfold pa_add, pa_stk, add_vec_int. apply bv_eq.
     rewrite !add_vec64_unsigned !moi64_unsigned.
     rewrite !bv_wrap_add_idemp_r. rewrite !bv_wrap_add_idemp_l.
@@ -236,7 +236,7 @@ Section StackBytes.
 
   Lemma pa_stk_next (sp : Arch.pa) (k : nat) :
     (1 <= k)%nat -> pa_add (pa_stk sp k) 8 = pa_stk sp (k - 1).
-  Proof. exact (pa_stk_addn sp k 1). Qed.
+  Proof using . exact (pa_stk_addn sp k 1). Qed.
 
   (* [n] frame slots, based at slot [k], ARE [8*n] bytes at slot [k]'s base.
      The alignment facts travel out separately (see this file's header): a word
@@ -247,7 +247,7 @@ Section StackBytes.
     ⌜forall i, (i < n)%nat ->
        is_aligned_paddr (Physaddr (pa_stk sp (k - i))) 8 = true⌝ ∗
     bytes_own (DfracOwn 1) (pa_stk sp k) (8 * n).
-  Proof.
+  Proof using .
     revert k. induction n as [| n IH]; intros k Hk.
     - iIntros "_". rewrite Nat.mul_0_r bytes_own_0.
       iSplitR; [iPureIntro; intros i Hi; lia | done].
@@ -281,7 +281,7 @@ Section StackBytes.
        is_aligned_paddr (Physaddr (pa_stk sp (k - i))) 8 = true⌝ ∗
     ([∗ list] j ∈ seq 0 (8 * n),
        (pa_add (pa_stk sp k) j) ↦ₘ nth_byte (wf (j / 8)%nat) (j `mod` 8)%nat).
-  Proof.
+  Proof using .
     revert k. induction n as [| n IH]; intros k Hk.
     - iIntros "_". rewrite Nat.mul_0_r big_sepL_nil.
       iSplitR; [iPureIntro; intros i Hi; lia | done].
@@ -328,7 +328,7 @@ Section StackBytes.
     ⌜forall i, (i < n)%nat ->
        is_aligned_paddr (Physaddr (pa_stk sp (k - i))) 8 = true⌝ ∗
     ([∗ list] j ∈ seq 0 (8 * n), (pa_add (pa_stk sp k) j) ↦ₘ bf j).
-  Proof.
+  Proof using .
     intros Hn Hbf. iIntros "H".
     iDestruct (slotsn_bytes_named sp k n wf Hn with "H") as "[%Hal Hb]".
     iSplitR; [done |].
@@ -344,7 +344,7 @@ Section StackBytes.
        is_aligned_paddr (Physaddr (pa_stk sp (k - i))) 8 = true) ->
     bytes_own (DfracOwn 1) (pa_stk sp k) (8 * n) ⊢
     [∗ list] i ∈ seq 0 n, ∃ w : mword 64, pa_stk sp (k - i) ↦₈ w.
-  Proof.
+  Proof using .
     revert k. induction n as [| n IH]; intros k Hk Hal.
     - iIntros "_". by rewrite big_sepL_nil.
     - rewrite seq_S big_sepL_app big_sepL_singleton.
@@ -363,7 +363,7 @@ Section StackBytes.
       is_aligned_paddr (Physaddr (pa_stk sp (k - 1))) 8 = true /\
       is_aligned_paddr (Physaddr (pa_stk sp (k - 2))) 8 = true ⌝ ∗
     bytes_own (DfracOwn 1) (pa_stk sp k) 24.
-  Proof.
+  Proof using .
     intro Hk. change 24%nat with (8 * 3)%nat.
     iIntros "H1 H2 H3".
     iDestruct (slotsn_bytes_own sp k 3 ltac:(lia) with "[H1 H2 H3]") as "[%Hal Hb]".
@@ -384,7 +384,7 @@ Section StackBytes.
     bytes_own (DfracOwn 1) (pa_stk sp k) 24 ⊢
     ∃ w1 w2 w3 : bv 64,
       (pa_stk sp k) ↦₈ w1 ∗ (pa_stk sp (k - 1)) ↦₈ w2 ∗ (pa_stk sp (k - 2)) ↦₈ w3.
-  Proof.
+  Proof using .
     intros Hk Ha1 Ha2 Ha3.
     assert (Hal : forall i, (i < 3)%nat ->
               is_aligned_paddr (Physaddr (pa_stk sp (k - i))) 8 = true).

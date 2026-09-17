@@ -75,7 +75,7 @@ Section HartSCsr.
     goodb Db (check_CSR_result csr pr at_) dst = true ->
     exec (check_CSR_result csr pr at_) dst = Some (CSR_Check_OK tt, dst) ->
     hval D Drw rs (check_CSR_result csr pr at_) (CSR_Check_OK tt) rs.
-  Proof.
+  Proof using .
     intros HD Hag Hgb Hex.
     exact (hval_of_goodb Db D Drw _ dst rs (CSR_Check_OK tt) HD Hag Hgb Hex).
   Qed.
@@ -124,7 +124,7 @@ Section HartSCsr.
                 ∃ x : SailStdpp.Values.mword 64, Q x ∗
                 gpr_file (<[Regidx rd := regval_into_reg x]> m) ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv Hpriv Hrd Hext H344 H144 Hcb.
     iIntros "#Hcert Hf Hrw Hro Hchk Hrdcsr".
     unfold doCSR.
@@ -204,7 +204,7 @@ Section HartSCsr.
                 ∃ x : SailStdpp.Values.mword 64, Q x ∗
                 gpr_file (<[Regidx rd := regval_into_reg x]> m) ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv Hpriv Hrd Hext Hchk H344 H144 Hcb.
     iIntros "#Hcert Hf Hrw Hro Hrdcsr".
     iApply (swp_doCSR_r_obl_p Drw Dro Df rs m csr pr rd op rs1_val Q
@@ -244,7 +244,7 @@ Section HartSCsr.
       (fun e => ⌜e = RETIRE_SUCCESS⌝ ∗
                 gpr_file (<[Regidx rd := regval_into_reg readval]> m) ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv Hpriv Hrd Hext Hchk H344 H144 Hcb.
     iIntros "#Hcert Hf Hrw Hro Hrdcsr".
     iApply (swp_mono with "[] [-]");
@@ -288,7 +288,7 @@ Section HartSCsr.
     swp (doCSR csr rs1_val zreg op CSRWrite)
       (fun e => ⌜e = RETIRE_SUCCESS⌝ ∗
                 hreg_frame rs' Drw ∗ hreg_frame_ro Df rs' Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv Hpriv Hext Hchk H344 H144 Hwv Hcb.
     iIntros "#Hcert Hrw Hro Hwr".
     unfold doCSR.
@@ -375,7 +375,7 @@ Section HartSCsr.
     swp (doCSR csr rs1_val zreg op CSRWrite)
       (fun e => ⌜e = RETIRE_SUCCESS⌝ ∗
                 Q ∗ hreg_frame rs' Drw ∗ hreg_frame_ro Df rs' Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv Hpriv Hext H344 H144 Hwv Hcb.
     iIntros "#Hcert Hrw Hro Hchk Hwr".
     unfold doCSR.
@@ -454,7 +454,7 @@ Section HartSCsr.
     swp (execute_CSRReg csr (Regidx rs1) zreg CSRRW)
       (fun e => ⌜e = RETIRE_SUCCESS⌝ ∗ gpr_file m ∗ Q ∗
                 hreg_frame rs' Drw ∗ hreg_frame_ro Df rs' Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv Hpriv Hext H344 H144 Hcb.
     iIntros "#Hcert Hf Hrw Hro Hchk Hwr".
     unfold execute_CSRReg.
@@ -521,7 +521,7 @@ Section HartSCsr.
     swp (doCSR csr rs1_val (Regidx rd) op CSRReadWrite)
       (fun e => ⌜e = RETIRE_SUCCESS⌝ ∗ gpr_file m' ∗
                 hreg_frame rs' Drw ∗ hreg_frame_ro Df rs' Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv Hpriv Hext Hchk H344 H144 Hwv Hcb.
     iIntros "#Hcert Hf Hrw Hro Hrdcsr Hwr Hwx".
     unfold doCSR.
@@ -609,7 +609,7 @@ Section HartSCsr.
       (fun e => ⌜e = RETIRE_SUCCESS⌝ ∗
                 gpr_file (<[Regidx rd := regval_into_reg readval]> m) ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv Hpriv Hrd Hext Hchk H344 H144 Hcb.
     iIntros "#Hcert Hf Hrw Hro Hrdcsr".
     unfold execute_CSRReg.
@@ -659,7 +659,7 @@ Section HartSCsr.
                 ∃ x : SailStdpp.Values.mword 64, Q x ∗
                 gpr_file (<[Regidx rd := regval_into_reg x]> m) ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv Hpriv Hrd Hext Hchk H344 H144 Hcb.
     iIntros "#Hcert Hf Hrw Hro Hrdcsr".
     unfold execute_CSRReg.
@@ -711,7 +711,7 @@ Section HartSCsr.
                 ∃ x : SailStdpp.Values.mword 64, Q x ∗
                 gpr_file (<[Regidx rd := regval_into_reg x]> m) ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv Hpriv Hrd Hext H344 H144 Hcb.
     iIntros "#Hcert Hf Hrw Hro Hchk Hrdcsr".
     unfold execute_CSRReg.
@@ -756,7 +756,7 @@ Section HartSCsr.
     swp (execute_CSRReg csr (Regidx rs1) zreg CSRRW)
       (fun e => ⌜e = RETIRE_SUCCESS⌝ ∗ gpr_file m ∗
                 hreg_frame rs' Drw ∗ hreg_frame_ro Df rs' Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv Hpriv Hext Hchk H344 H144 Hcb.
     iIntros "#Hcert Hf Hrw Hro Hwr".
     unfold execute_CSRReg.
@@ -817,7 +817,7 @@ Section HartSCsr.
     swp (execute_CSRImm csr imm (Regidx rd) op)
       (fun e => ⌜e = RETIRE_SUCCESS⌝ ∗ gpr_file m' ∗
                 hreg_frame rs' Drw ∗ hreg_frame_ro Df rs' Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv Hpriv Himm Hat Hext Hchk H344 H144 Hwv Hcb.
     iIntros "#Hcert Hf Hrw Hro Hrdcsr Hwr Hwx".
     unfold execute_CSRImm. rewrite Himm (Hat _).
@@ -852,11 +852,11 @@ Section HartSCsr.
 
   Lemma pw_rs_r (pr : Privilege) (r : register) (v0 : type_of_register r) :
     register_lookup r (pw_rs pr r v0) = v0.
-  Proof. rewrite /pw_rs. apply register_lookup_set. Qed.
+  Proof using . rewrite /pw_rs. apply register_lookup_set. Qed.
 
   Lemma pw_rs_misa (pr : Privilege) (r : register) (v0 : type_of_register r) :
     cw_fresh r -> register_lookup misa (pw_rs pr r v0) = MISA_C.
-  Proof.
+  Proof using .
     intros (H1 & _ & _). rewrite /pw_rs.
     etransitivity; [apply irrelevant_register_set; exact H1|].
     apply register_lookup_set.
@@ -865,7 +865,7 @@ Section HartSCsr.
   Lemma pw_rs_sec (pr : Privilege) (r : register) (v0 : type_of_register r) :
     cw_fresh r ->
     register_lookup mseccfg (pw_rs pr r v0) = Values.mword_of_int 0.
-  Proof.
+  Proof using .
     intros (_ & H2 & _). rewrite /pw_rs.
     etransitivity; [apply irrelevant_register_set; exact H2|].
     etransitivity; [apply irrelevant_register_set; vm_compute; reflexivity|].
@@ -874,7 +874,7 @@ Section HartSCsr.
 
   Lemma pw_rs_priv (pr : Privilege) (r : register) (v0 : type_of_register r) :
     cw_fresh r -> register_lookup cur_privilege (pw_rs pr r v0) = pr.
-  Proof.
+  Proof using .
     intros (_ & _ & H3). rewrite /pw_rs.
     etransitivity; [apply irrelevant_register_set; exact H3|].
     etransitivity; [apply irrelevant_register_set; vm_compute; reflexivity|].
@@ -883,17 +883,17 @@ Section HartSCsr.
   Qed.
 
   Lemma pw0_rs_misa (pr : Privilege) : register_lookup misa (pw0_rs pr) = MISA_C.
-  Proof. rewrite /pw0_rs. apply register_lookup_set. Qed.
+  Proof using . rewrite /pw0_rs. apply register_lookup_set. Qed.
   Lemma pw0_rs_sec (pr : Privilege) :
     register_lookup mseccfg (pw0_rs pr) = Values.mword_of_int 0.
-  Proof.
+  Proof using .
     rewrite /pw0_rs.
     etransitivity; [apply irrelevant_register_set; vm_compute; reflexivity|].
     apply register_lookup_set.
   Qed.
   Lemma pw0_rs_priv (pr : Privilege) :
     register_lookup cur_privilege (pw0_rs pr) = pr.
-  Proof.
+  Proof using .
     rewrite /pw0_rs.
     etransitivity; [apply irrelevant_register_set; vm_compute; reflexivity|].
     etransitivity; [apply irrelevant_register_set; vm_compute; reflexivity|].
@@ -910,7 +910,7 @@ Section HartSCsr.
         reg_pointsto cur_privilege dq pr ∗
         reg_pointsto mseccfg DfracDiscarded (Values.mword_of_int 0) ∗
         reg_pointsto misa DfracDiscarded MISA_C).
-  Proof.
+  Proof using .
     intros Hfr.
     rewrite /hreg_frame /hreg_frame_ro /cw_Drw /cw_Dro.
     repeat (rewrite big_sepS_union; last set_solver).
@@ -930,7 +930,7 @@ Section HartSCsr.
         reg_pointsto cur_privilege dqp pr ∗
         reg_pointsto mseccfg DfracDiscarded (Values.mword_of_int 0) ∗
         reg_pointsto misa DfracDiscarded MISA_C).
-  Proof.
+  Proof using .
     intros Hfr.
     rewrite /hreg_frame_ro /cr_Dro.
     rewrite (big_sepS_union _ (cw_Drw r) cw_Dro (cw_disj r Hfr)).
@@ -952,7 +952,7 @@ Section HartSCsr.
     ⊣⊢ (reg_pointsto cur_privilege dqp pr ∗
         reg_pointsto mseccfg DfracDiscarded (Values.mword_of_int 0) ∗
         reg_pointsto misa DfracDiscarded MISA_C).
-  Proof.
+  Proof using .
     rewrite /hreg_frame_ro /cw_Dro.
     repeat (rewrite big_sepS_union; last set_solver).
     rewrite !big_sepS_singleton.
@@ -968,7 +968,7 @@ Section HartSCsr.
     cw_fresh r ->
     reg_agree_on (cw_Drw r ∪ cw_Dro)
       (register_set r vnew (pw_rs pr r v0)) (pw_rs pr r vnew).
-  Proof.
+  Proof using .
     intros Hfr r' Hr'.
     pose proof Hfr as Hfr2. destruct Hfr2 as (H1 & H2 & H3).
     rewrite /cw_Drw /cw_Dro in Hr'.
@@ -997,7 +997,7 @@ Section HartSCsr.
     reg_pointsto misa DfracDiscarded MISA_C -∗
     (hreg_frame (pw_rs pr r v0) (cw_Drw r) ∗
      hreg_frame_ro (cw_Df dq) (pw_rs pr r v0) cw_Dro : iProp Σ).
-  Proof.
+  Proof using .
     intros Hfr. iIntros "H1 H2 H3 H4".
     rewrite (pw_frames pr dq r v0 Hfr). iFrame.
   Qed.
@@ -1011,7 +1011,7 @@ Section HartSCsr.
      reg_pointsto cur_privilege dq pr ∗
      reg_pointsto mseccfg DfracDiscarded (Values.mword_of_int 0) ∗
      reg_pointsto misa DfracDiscarded MISA_C).
-  Proof.
+  Proof using .
     intros Hfr. rewrite (pw_frames pr dq r v0 Hfr). iIntros "H". iExact "H".
   Qed.
 
@@ -1024,7 +1024,7 @@ Section HartSCsr.
     reg_pointsto misa DfracDiscarded MISA_C -∗
     (hreg_frame (pw_rs pr r v0) ∅ ∗
      hreg_frame_ro (cr_Df dqp dqc r) (pw_rs pr r v0) (cr_Dro r) : iProp Σ).
-  Proof.
+  Proof using .
     intros Hfr. iIntros "H1 H2 H3 H4".
     iSplitR; [iApply hreg_frame_empty|].
     rewrite (pr_frames pr dqp dqc r v0 Hfr). iFrame.
@@ -1038,7 +1038,7 @@ Section HartSCsr.
      reg_pointsto cur_privilege dqp pr ∗
      reg_pointsto mseccfg DfracDiscarded (Values.mword_of_int 0) ∗
      reg_pointsto misa DfracDiscarded MISA_C).
-  Proof.
+  Proof using .
     intros Hfr. rewrite (pr_frames pr dqp dqc r v0 Hfr). iIntros "H". iExact "H".
   Qed.
 
@@ -1048,7 +1048,7 @@ Section HartSCsr.
     reg_pointsto misa DfracDiscarded MISA_C -∗
     (hreg_frame (pw0_rs pr) ∅ ∗
      hreg_frame_ro (cw_Df dqp) (pw0_rs pr) cw_Dro : iProp Σ).
-  Proof.
+  Proof using .
     iIntros "H1 H2 H3". iSplitR; [iApply hreg_frame_empty|].
     rewrite (pr0_frames pr dqp). iFrame.
   Qed.
@@ -1058,7 +1058,7 @@ Section HartSCsr.
     (reg_pointsto cur_privilege dqp pr ∗
      reg_pointsto mseccfg DfracDiscarded (Values.mword_of_int 0) ∗
      reg_pointsto misa DfracDiscarded MISA_C).
-  Proof. rewrite (pr0_frames pr dqp). iIntros "H". iExact "H". Qed.
+  Proof using . rewrite (pr0_frames pr dqp). iIntros "H". iExact "H". Qed.
 
   (* ONE EXTRA READ CELL, at a parametric privilege.  [WpMmodeCsrSwp]'s
      [cw2_*] family with the tower's privilege a parameter: everything but
@@ -1072,12 +1072,12 @@ Section HartSCsr.
   Lemma pw2_rs_r2 (pr : Privilege) (r : register) (v0 : type_of_register r)
       (r2 : register) (v2 : type_of_register r2) :
     register_lookup r2 (pw2_rs pr r v0 r2 v2) = v2.
-  Proof. rewrite /pw2_rs. apply register_lookup_set. Qed.
+  Proof using . rewrite /pw2_rs. apply register_lookup_set. Qed.
 
   Lemma pw2_rs_r (pr : Privilege) (r : register) (v0 : type_of_register r)
       (r2 : register) (v2 : type_of_register r2) :
     cw2_ok r r2 -> register_lookup r (pw2_rs pr r v0 r2 v2) = v0.
-  Proof.
+  Proof using .
     intros (_ & _ & Hne). rewrite /pw2_rs.
     etransitivity;
       [apply irrelevant_register_set; exact (register_beq_false r r2 Hne)|].
@@ -1087,7 +1087,7 @@ Section HartSCsr.
   Lemma pw2_rs_priv (pr : Privilege) (r : register) (v0 : type_of_register r)
       (r2 : register) (v2 : type_of_register r2) :
     cw2_ok r r2 -> register_lookup cur_privilege (pw2_rs pr r v0 r2 v2) = pr.
-  Proof.
+  Proof using .
     intros (Hfr & (_ & _ & H3) & _). rewrite /pw2_rs.
     etransitivity; [apply irrelevant_register_set; exact H3|].
     apply (pw_rs_priv pr r v0 Hfr).
@@ -1097,7 +1097,7 @@ Section HartSCsr.
       (r2 : register) (v2 : type_of_register r2) :
     cw2_ok r r2 ->
     register_lookup mseccfg (pw2_rs pr r v0 r2 v2) = Values.mword_of_int 0.
-  Proof.
+  Proof using .
     intros (Hfr & (_ & H2 & _) & _). rewrite /pw2_rs.
     etransitivity; [apply irrelevant_register_set; exact H2|].
     apply (pw_rs_sec pr r v0 Hfr).
@@ -1106,7 +1106,7 @@ Section HartSCsr.
   Lemma pw2_rs_misa (pr : Privilege) (r : register) (v0 : type_of_register r)
       (r2 : register) (v2 : type_of_register r2) :
     cw2_ok r r2 -> register_lookup misa (pw2_rs pr r v0 r2 v2) = MISA_C.
-  Proof.
+  Proof using .
     intros (Hfr & (H1 & _ & _) & _). rewrite /pw2_rs.
     etransitivity; [apply irrelevant_register_set; exact H1|].
     apply (pw_rs_misa pr r v0 Hfr).
@@ -1123,7 +1123,7 @@ Section HartSCsr.
         reg_pointsto cur_privilege dq pr ∗
         reg_pointsto mseccfg DfracDiscarded (Values.mword_of_int 0) ∗
         reg_pointsto misa DfracDiscarded MISA_C).
-  Proof.
+  Proof using .
     intros Hok. pose proof Hok as (Hfr & Hfr2 & _).
     rewrite /hreg_frame /hreg_frame_ro /cw_Drw /cw2_Dro.
     rewrite (big_sepS_union _ ({[r2]} : gset register) cw_Dro).
@@ -1154,7 +1154,7 @@ Section HartSCsr.
     (hreg_frame (pw2_rs pr r v0 r2 v2) (cw_Drw r) ∗
      hreg_frame_ro (cw2_Df dq dq2 r2) (pw2_rs pr r v0 r2 v2) (cw2_Dro r2)
      : iProp Σ).
-  Proof.
+  Proof using .
     intros Hok. iIntros "H1 H2 H3 H4 H5".
     rewrite (pw2_frames pr dq dq2 r v0 r2 v2 Hok). iFrame.
   Qed.
@@ -1169,7 +1169,7 @@ Section HartSCsr.
      reg_pointsto cur_privilege dq pr ∗
      reg_pointsto mseccfg DfracDiscarded (Values.mword_of_int 0) ∗
      reg_pointsto misa DfracDiscarded MISA_C).
-  Proof.
+  Proof using .
     intros Hok. rewrite (pw2_frames pr dq dq2 r v0 r2 v2 Hok).
     iIntros "H". iExact "H".
   Qed.
@@ -1194,7 +1194,7 @@ Section HartSCsr.
     register_lookup misa rs = MISA_C ->
     forall r : register, D_m r = true ->
       register_lookup r rs = register_lookup r dstateS.(sregs).
-  Proof.
+  Proof using .
     intros Hp Hs Hm r Hr. unfold D_m in Hr.
     apply orb_prop in Hr as [Hr|Hr]; [apply orb_prop in Hr as [Hr|Hr]|];
       apply register_beq_eq in Hr; subst r; [rewrite Hp|rewrite Hs|rewrite Hm];
@@ -1212,7 +1212,7 @@ Section HartSCsr.
     exec (check_CSR_result csr Supervisor at_) dstateS
       = Some (CSR_Check_OK tt, dstateS) ->
     hval D Drw rs (check_CSR_result csr Supervisor at_) (CSR_Check_OK tt) rs.
-  Proof.
+  Proof using .
     intros HD1 HD2 HD3 Hp Hs Hm Hgb Hex.
     exact (hval_check_CSR_result_p D_m D Drw rs dstateS csr Supervisor at_
              (dm_sub D HD1 HD2 HD3) (agree_dm_S rs Hp Hs Hm) Hgb Hex).
@@ -1237,7 +1237,7 @@ Section HartSCsr.
     exists rs1 : regstate,
       reg_agree_on D rs1 rs /\
       c = (hregread_resume r (register_lookup r rs1) m, rs1).
-  Proof.
+  Proof using .
     intros Hat (rs1 & Hag & Hnode).
     destruct (hregread_at_inv r m Hat) as (ak & K & -> & Hres).
     cbn [hspan_node fst snd] in Hnode.
@@ -1250,7 +1250,7 @@ Section HartSCsr.
     hregread_at r m = true ->
     hval D Drw rs (hregread_resume r (register_lookup r rs) m) x rs' ->
     hval D Drw rs m x rs'.
-  Proof.
+  Proof using .
     intros Hin Hat Hrest rs0 l Hag Hchain Hstop.
     assert (Hns : hspan_stops Drw m = false).
     { destruct (hregread_at_inv r m Hat) as (ak & K & -> & _). reflexivity. }
@@ -1283,7 +1283,7 @@ Section HartSCsr.
         reg_pointsto r (DfracOwn 1) v0 ∗
         (reg_pointsto r (DfracOwn 1) v0 ={E,⊤}=∗ Φ v0)) -∗
     swp (Defs.read_reg r) Φ.
-  Proof.
+  Proof using .
     iIntros "#Hcert Hacc".
     iApply (swp_hart_regread with "Hcert").
     { cbn [hregread_at]. apply bool_decide_eq_true_2. reflexivity. }
@@ -1310,7 +1310,7 @@ Section HartSCsr.
       (w : type_of_register r) (Φ : unit -> iProp Σ) :
     inv N (∃ d : type_of_register r, reg_pointsto r (DfracOwn 1) d) -∗
     gen_cert -∗ Φ tt -∗ swp (Defs.write_reg r w) Φ.
-  Proof.
+  Proof using .
     iIntros "#Hinv #Hcert HΦ".
     iApply (swp_hart_regwrite r w with "Hcert").
     { cbn [hregwrite_val_at Defs.write_reg].
@@ -1338,7 +1338,7 @@ Section HartSCsr.
         reg_pointsto r (DfracOwn 1) v0 ∗
         (reg_pointsto r (DfracOwn 1) w ={E,⊤}=∗ Φ tt)) -∗
     swp (Defs.write_reg r w) Φ.
-  Proof.
+  Proof using .
     iIntros "#Hcert Hacc".
     iApply (swp_hart_regwrite r w with "Hcert").
     { cbn [hregwrite_val_at Defs.write_reg].

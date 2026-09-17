@@ -766,33 +766,33 @@ Section echo_links.
      ∗ echo_link_rd ∗ echo_link_rd_taint)%I.
 
   Global Instance echo_link_w_persistent : Persistent echo_link_w.
-  Proof. rewrite /echo_link_w. apply _. Qed.
+  Proof using . rewrite /echo_link_w. apply _. Qed.
   Global Instance echo_link_blk_persistent : Persistent echo_link_blk.
-  Proof. rewrite /echo_link_blk. apply _. Qed.
+  Proof using . rewrite /echo_link_blk. apply _. Qed.
   Global Instance echo_link_pro_persistent : Persistent echo_link_pro.
-  Proof. rewrite /echo_link_pro. apply _. Qed.
+  Proof using . rewrite /echo_link_pro. apply _. Qed.
   Global Instance echo_link_taint_persistent : Persistent echo_link_taint.
-  Proof. rewrite /echo_link_taint. apply _. Qed.
+  Proof using . rewrite /echo_link_taint. apply _. Qed.
   Global Instance echo_link_rd_persistent : Persistent echo_link_rd.
-  Proof. rewrite /echo_link_rd. apply _. Qed.
+  Proof using . rewrite /echo_link_rd. apply _. Qed.
   Global Instance echo_link_rd_taint_persistent : Persistent echo_link_rd_taint.
-  Proof. rewrite /echo_link_rd_taint. apply _. Qed.
+  Proof using . rewrite /echo_link_rd_taint. apply _. Qed.
   Global Instance echo_links_persistent : Persistent echo_links.
-  Proof. rewrite /echo_links. apply _. Qed.
+  Proof using . rewrite /echo_links. apply _. Qed.
 
   (* ---- the six projections, which is all a consumer ever uses ---- *)
   Lemma echo_links_w : echo_links -∗ echo_link_w.
-  Proof. by iIntros "($ & _ & _ & _ & _ & _)". Qed.
+  Proof using . by iIntros "($ & _ & _ & _ & _ & _)". Qed.
   Lemma echo_links_blk : echo_links -∗ echo_link_blk.
-  Proof. by iIntros "(_ & $ & _ & _ & _ & _)". Qed.
+  Proof using . by iIntros "(_ & $ & _ & _ & _ & _)". Qed.
   Lemma echo_links_pro : echo_links -∗ echo_link_pro.
-  Proof. by iIntros "(_ & _ & $ & _ & _ & _)". Qed.
+  Proof using . by iIntros "(_ & _ & $ & _ & _ & _)". Qed.
   Lemma echo_links_taint : echo_links -∗ echo_link_taint.
-  Proof. by iIntros "(_ & _ & _ & $ & _ & _)". Qed.
+  Proof using . by iIntros "(_ & _ & _ & $ & _ & _)". Qed.
   Lemma echo_links_rd : echo_links -∗ echo_link_rd.
-  Proof. by iIntros "(_ & _ & _ & _ & $ & _)". Qed.
+  Proof using . by iIntros "(_ & _ & _ & _ & $ & _)". Qed.
   Lemma echo_links_rd_taint : echo_links -∗ echo_link_rd_taint.
-  Proof. by iIntros "(_ & _ & _ & _ & _ & $)". Qed.
+  Proof using . by iIntros "(_ & _ & _ & _ & _ & $)". Qed.
 
   (* =================================================================== *)
   (*  THE ERA'S WRITE CREDENTIAL AT A LINE BOUNDARY (lane IO-LEAF, M6a)   *)
@@ -820,14 +820,14 @@ Section echo_links.
   Global Instance ewc_owed_timeless v I : Timeless (ewc_owed v I).
   Proof. rewrite /ewc_owed. apply _. Qed.
   Global Instance ewc_sp_timeless v I : Timeless (ewc_sp v I).
-  Proof. rewrite /ewc_sp. apply _. Qed.
+  Proof using Timeless0. rewrite /ewc_sp. apply _. Qed.
   Global Instance ewc_open_timeless v I : Timeless (ewc_open v I).
   Proof. rewrite /ewc_open. apply _. Qed.
 
   Lemma ewc_owed_taint v I : T -∗ ewc_owed v I.
-  Proof. iIntros "HT". rewrite /ewc_owed. by iRight. Qed.
+  Proof using . iIntros "HT". rewrite /ewc_owed. by iRight. Qed.
   Lemma ewc_open_taint v I : T -∗ ewc_open v I.
-  Proof. iIntros "HT". rewrite /ewc_open. by iRight. Qed.
+  Proof using . iIntros "HT". rewrite /ewc_open. by iRight. Qed.
 
   (* ...AND THE THREE AS ONE FAMILY, indexed by how many of the shell's two
      prompt bytes are out (lane IO-LEAF, M6a(1)/M6a(3)): [0] the boundary
@@ -843,7 +843,7 @@ Section echo_links.
     end.
 
   Global Instance ewc_pr_timeless v I p : Timeless (ewc_pr v I p).
-  Proof. rewrite /ewc_pr. destruct p as [| [| p]]; apply _. Qed.
+  Proof using Timeless0. rewrite /ewc_pr. destruct p as [| [| p]]; apply _. Qed.
 
   (* ...WITH THE ERA'S PIN BESIDE IT, which is the shape a program below
      the application holds: the shell's loop names no [v], so the pin
@@ -859,7 +859,7 @@ Section echo_links.
      eighteen banner bytes in.  [UInitBanner] is what supplies it, from
      [wr_ban_round0]. *)
   Lemma wr_owed_round0 : wr_owed [3%nat] [] [] 18%nat.
-  Proof.
+  Proof using .
     left. rewrite /wr_pro. split_and!.
     - apply pro_pin_nil.
     - exact rest_of_nil.
@@ -901,7 +901,7 @@ Section echo_links.
   Proof. rewrite /ewc_ban. apply _. Qed.
 
   Lemma ewc_ban_taint v I i : T -∗ ewc_ban v I i.
-  Proof. iIntros "HT". rewrite /ewc_ban. by iRight. Qed.
+  Proof using . iIntros "HT". rewrite /ewc_ban. by iRight. Qed.
 
   Lemma echo_banner_step (k : nat) (v : era_pins) (I : list (bv 8)) (i : nat)
       (b : bv 8) (Φ : iProp Σ) :
@@ -960,7 +960,7 @@ Section echo_links.
      at the same input, which is what /init lends the shell. *)
   Lemma ewc_ban_done (v : era_pins) (I : list (bv 8)) :
     ewc_ban v I (length u_banner) -∗ ewc_owed v I.
-  Proof.
+  Proof using Persistent0.
     rewrite /ewc_ban /ewc_owed.
     iIntros "[Hl | #HT]"; last by iRight.
     iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
@@ -979,7 +979,7 @@ Section echo_links.
     ewc_ban v I 0%nat -∗
     ((∃ ps cs P : _, ⌜wr_pro ps cs I P⌝ ∗ turn v P ∗ ps_lb v ps
         ∗ cs_lb v cs ∗ inp_lb v I) ∨ T).
-  Proof.
+  Proof using Persistent0.
     rewrite /ewc_ban.
     iIntros "[Hl | #HT]"; last by iRight.
     iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
@@ -990,7 +990,7 @@ Section echo_links.
 
   Lemma ewc_ban_owed (v : era_pins) (I : list (bv 8)) :
     ewc_ban v I 0%nat -∗ ewc_owed v I.
-  Proof.
+  Proof using Persistent0.
     iIntros "Hc". iDestruct (ewc_ban_pro with "Hc") as "[Hl | #HT]";
       rewrite /ewc_owed; last by iRight.
     iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
@@ -1116,7 +1116,7 @@ Section echo_links.
     wl_nl ∉ l ->
     inp_lb v (I ++ l ++ [wl_nl]) -∗ ewc_open v I -∗
     ewc_owed v (I ++ l ++ [wl_nl]).
-  Proof.
+  Proof using Persistent0.
     intros Hl. iIntros "#HE' Hc". rewrite /ewc_open /ewc_owed.
     iDestruct "Hc" as "[Hl | #HT]"; last by iRight.
     iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
@@ -1193,7 +1193,7 @@ Section echo_links.
     Context (Htag : @riscv_rx_tag Σ (@riscv_fixedGS Σ HRg) = etag T).
 
     Lemma echo_links_holds : ⊢ echo_links.
-    Proof.
+    Proof using Hcons Persistent0.
       rewrite /echo_links /echo_link_w /echo_link_blk /echo_link_pro
               /echo_link_taint /echo_link_rd /echo_link_rd_taint.
       iSplit; [| iSplit; [| iSplit; [| iSplit; [| iSplit]]]].

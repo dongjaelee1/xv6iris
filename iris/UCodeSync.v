@@ -132,9 +132,9 @@ Definition sync_img_sub (M : gmap Z (bv 8)) : Prop :=
   sync_text_sub M /\ sync_data_sub M.
 
 Lemma sync_img_text (M : gmap Z (bv 8)) : sync_img_sub M -> sync_text_sub M.
-Proof. intros [ H _ ]. exact H. Qed.
+Proof using . intros [ H _ ]. exact H. Qed.
 Lemma sync_img_data (M : gmap Z (bv 8)) : sync_img_sub M -> sync_data_sub M.
-Proof. intros [ _ H ]. exact H. Qed.
+Proof using . intros [ _ H ]. exact H. Qed.
 
 (* ---- the KEY RANGE of each dumped map ------------------------------- *)
 (* The bounds are COMPUTED from the dump (text keys stop at 0x8c1, data keys
@@ -145,7 +145,7 @@ Proof. intros [ _ H ]. exact H. Qed.
 
 Lemma list_key_lt {A : Type} (L : list (Z * A)) (B k : Z) (b : A) :
   forallb (fun kv => Z.ltb (fst kv) B) L = true -> In (k, b) L -> k < B.
-Proof.
+Proof using .
   induction L as [ | x xs IH ]; cbn [forallb In]; [ tauto | ].
   intros HF [ Hx | Hin ].
   - apply andb_prop in HF as [ H1 _ ]. subst x. cbn in H1.
@@ -158,7 +158,7 @@ Qed.
    only bounds above leaves [0 <= k] for [lia] to invent out of nothing. *)
 Lemma list_key_nonneg {A : Type} (L : list (Z * A)) (k : Z) (b : A) :
   forallb (fun kv => Z.leb 0 (fst kv)) L = true -> In (k, b) L -> 0 <= k.
-Proof.
+Proof using .
   induction L as [ | x xs IH ]; cbn [forallb In]; [ tauto | ].
   intros HF [ Hx | Hin ].
   - apply andb_prop in HF as [ H1 _ ]. subst x. cbn in H1.
@@ -168,7 +168,7 @@ Qed.
 
 Lemma sync_bytes_key_lt (k : Z) (b : bv 8) :
   SyncInstrs.sync_bytes !! k = Some b -> k < 4096.
-Proof.
+Proof using .
   intro Hk.
   apply elem_of_list_to_map_2 in Hk.
   apply elem_of_list_In in Hk.
@@ -178,7 +178,7 @@ Qed.
 
 Lemma sync_bytes_key_nonneg (k : Z) (b : bv 8) :
   SyncInstrs.sync_bytes !! k = Some b -> 0 <= k.
-Proof.
+Proof using .
   intro Hk.
   apply elem_of_list_to_map_2 in Hk.
   apply elem_of_list_In in Hk.
@@ -188,7 +188,7 @@ Qed.
 
 Lemma sync_data_key_lt (k : Z) (b : bv 8) :
   SyncData.sync_data !! k = Some b -> k < 4096.
-Proof.
+Proof using .
   intro Hk.
   apply elem_of_list_to_map_2 in Hk.
   apply elem_of_list_In in Hk.
@@ -198,7 +198,7 @@ Qed.
 
 Lemma sync_data_key_nonneg (k : Z) (b : bv 8) :
   SyncData.sync_data !! k = Some b -> 0 <= k.
-Proof.
+Proof using .
   intro Hk.
   apply elem_of_list_to_map_2 in Hk.
   apply elem_of_list_In in Hk.
@@ -215,7 +215,7 @@ Lemma sync_svpn_page (a : Z) :
   0 <= a < 274877906944 ->
   svpn_of (mword_of_int a : mword 64)
     = svpn_of (mword_of_int (4096 * (a / 4096)) : mword 64).
-Proof.
+Proof using .
   intros [ Hlo Hhi ].
   assert (Hq : 0 <= 4096 * (a / 4096) <= a).
   { split.
@@ -251,7 +251,7 @@ Record sync_text_layout (pt : uptd) : Prop := SyncTextLayout {
 Lemma sync_text_layout_fetch (pt : uptd) (off : Z) :
   sync_text_layout pt -> 0 <= off < 4096 ->
   uva_fetch_leaf pt (mword_of_int off).
-Proof.
+Proof using .
   intros [ Hpg ] Hoff.
   destruct (Hpg (off / 4096)
               ltac:(split; [ apply Z.div_pos; lia
@@ -266,7 +266,7 @@ Lemma sync_text_layout_load (pt : uptd) (a : Z) :
   exists w : mword 64,
     ud_um pt !! svpn_of (mword_of_int a : mword 64) = Some w /\
     uleaf_ok (Load Data) w.
-Proof.
+Proof using .
   intros [ Hpg ] Ha.
   destruct (Hpg (a / 4096)
               ltac:(split; [ apply Z.div_pos; lia
@@ -283,7 +283,7 @@ Lemma sync_rodata_rd1 (pt : uptd) (M : gmap Z (bv 8)) (a : Z) (b : bv 8) :
   0 <= a < 4096 ->
   SyncData.sync_data !! a = Some b ->
   uv_rd pt M a 1.
-Proof.
+Proof using .
   intros Hl Hsub Ha Hb. constructor.
   - lia.
   - lia.
@@ -300,7 +300,7 @@ Lemma sync_syms_pins :
   SyncSyms.start = 0x12 /\
   SyncSyms.exit = 0x2c8 /\
   SyncSyms.sync = 0x368.
-Proof.
+Proof using .
   unfold SyncSyms.main,
          SyncSyms.start,
          SyncSyms.exit,
@@ -339,68 +339,68 @@ Ltac udec_rvc_oneshot :=
 (* 1141  c.addi *)
 Lemma udec_1141 :
   udecode_rvc (mword_of_int 0x1141) (C_ADDI (mword_of_int 48 : mword 6, Regidx (mword_of_int 2))).
-Proof. udec_rvc_oneshot. Qed.
+Proof using . udec_rvc_oneshot. Qed.
 
 (* 0800  c.addi4spn s0,sp,16 *)
 Lemma udec_0800 :
   udecode_rvc (mword_of_int 0x0800) (C_ADDI4SPN (Cregidx (mword_of_int 0), mword_of_int 4 : mword 8)).
-Proof. udec_rvc_oneshot. Qed.
+Proof using . udec_rvc_oneshot. Qed.
 
 (* 8082  c.jr *)
 Lemma udec_8082 :
   udecode_rvc (mword_of_int 0x8082) (C_JR (Regidx (mword_of_int 1))).
-Proof. udec_rvc_oneshot. Qed.
+Proof using . udec_rvc_oneshot. Qed.
 
 (* 4501  c.li a0,0 *)
 Lemma udec_4501 :
   udecode_rvc (mword_of_int 0x4501) (C_LI (mword_of_int 0 : mword 6, Regidx (mword_of_int 10))).
-Proof. udec_rvc_oneshot. Qed.
+Proof using . udec_rvc_oneshot. Qed.
 
 (* 4889  c.li *)
 Lemma udec_4889 :
   udecode_rvc (mword_of_int 0x4889) (C_LI (mword_of_int 2 : mword 6, Regidx (mword_of_int 17))).
-Proof. udec_rvc_oneshot. Qed.
+Proof using . udec_rvc_oneshot. Qed.
 
 (* 48d9  c.li *)
 Lemma udec_48d9 :
   udecode_rvc (mword_of_int 0x48d9) (C_LI (mword_of_int 22 : mword 6, Regidx (mword_of_int 17))).
-Proof. udec_rvc_oneshot. Qed.
+Proof using . udec_rvc_oneshot. Qed.
 
 (* e022  c.sdsp s0,0(sp) *)
 Lemma udec_e022 :
   udecode_rvc (mword_of_int 0xe022) (C_SDSP (mword_of_int 0 : mword 6, Regidx (mword_of_int 8))).
-Proof. udec_rvc_oneshot. Qed.
+Proof using . udec_rvc_oneshot. Qed.
 
 (* e406  c.sdsp ra,8(sp) *)
 Lemma udec_e406 :
   udecode_rvc (mword_of_int 0xe406) (C_SDSP (mword_of_int 1 : mword 6, Regidx (mword_of_int 1))).
-Proof. udec_rvc_oneshot. Qed.
+Proof using . udec_rvc_oneshot. Qed.
 
 (* ---- base ---- *)
 (* 00000073  ecall *)
 Lemma udec_00000073 :
   udecode_base (mword_of_int 0x00000073) (ECALL tt).
-Proof. udec_base_bridge. Qed.
+Proof using . udec_base_bridge. Qed.
 
 (* 2aa000ef  jal 2c8 <exit> *)
 Lemma udec_2aa000ef :
   udecode_base (mword_of_int 0x2aa000ef) (JAL (mword_of_int 682 : mword 21, Regidx (mword_of_int 1))).
-Proof. udec_base_bridge. Qed.
+Proof using . udec_base_bridge. Qed.
 
 (* 2ba000ef  jal 2c8 <exit> *)
 Lemma udec_2ba000ef :
   udecode_base (mword_of_int 0x2ba000ef) (JAL (mword_of_int 698 : mword 21, Regidx (mword_of_int 1))).
-Proof. udec_base_bridge. Qed.
+Proof using . udec_base_bridge. Qed.
 
 (* 360000ef  jal 368 <sync> *)
 Lemma udec_360000ef :
   udecode_base (mword_of_int 0x360000ef) (JAL (mword_of_int 864 : mword 21, Regidx (mword_of_int 1))).
-Proof. udec_base_bridge. Qed.
+Proof using . udec_base_bridge. Qed.
 
 (* fe7ff0ef  jal 0 <main> *)
 Lemma udec_fe7ff0ef :
   udecode_base (mword_of_int 0xfe7ff0ef) (JAL (mword_of_int 2097126 : mword 21, Regidx (mword_of_int 1))).
-Proof. udec_base_bridge. Qed.
+Proof using . udec_base_bridge. Qed.
 
 (* ===================================================================== *)
 (* §2 Per-PC [uinstr_is] resources.                                       *)
@@ -461,7 +461,7 @@ Section UCodeSync.
     utext_img g SyncInstrs.sync_bytes.
 
   Global Instance sync_code_persistent g : Persistent (sync_code g).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* Keep typeclass resolution from unfolding this into its 2242-entry
      [big_sepM]; cf. [KernelText.kernel_text], which learned it the hard
@@ -471,7 +471,7 @@ Section UCodeSync.
 
   Lemma sync_code_img (g : gname) :
     sync_code g -∗ utext_img g SyncInstrs.sync_bytes.
-  Proof. rewrite /sync_code. iIntros "#H". iExact "H". Qed.
+  Proof using . rewrite /sync_code. iIntros "#H". iExact "H". Qed.
 
   (* The tactics take the gname as an ARGUMENT: unlike the old [M]/[pm]
      pair they are not section variables, so an Ltac body could not name
@@ -536,7 +536,7 @@ Section UCodeSync.
     sync_code g -∗
     uinstr_is g (mword_of_int 0x0) true
       (C_ADDI (mword_of_int 48 : mword 6, Regidx (mword_of_int 2))).
-  Proof.
+  Proof using .
     iIntros "#Ht".
     uis_rvc4 g 0x0 (mword_of_int 0x1141 : mword 16) udec_1141
       (mword_of_int 0xe4061141 : mword 32).
@@ -547,7 +547,7 @@ Section UCodeSync.
     sync_code g -∗
     uinstr_is g (mword_of_int 0x2) true
       (C_SDSP (mword_of_int 1 : mword 6, Regidx (mword_of_int 1))).
-  Proof.
+  Proof using .
     iIntros "#Ht".
     uis_rvc2 g 0x2 (mword_of_int 0xe406 : mword 16) udec_e406.
   Qed.
@@ -557,7 +557,7 @@ Section UCodeSync.
     sync_code g -∗
     uinstr_is g (mword_of_int 0x4) true
       (C_SDSP (mword_of_int 0 : mword 6, Regidx (mword_of_int 8))).
-  Proof.
+  Proof using .
     iIntros "#Ht".
     uis_rvc4 g 0x4 (mword_of_int 0xe022 : mword 16) udec_e022
       (mword_of_int 0x0800e022 : mword 32).
@@ -568,7 +568,7 @@ Section UCodeSync.
     sync_code g -∗
     uinstr_is g (mword_of_int 0x6) true
       (C_ADDI4SPN (Cregidx (mword_of_int 0), mword_of_int 4 : mword 8)).
-  Proof.
+  Proof using .
     iIntros "#Ht".
     uis_rvc2 g 0x6 (mword_of_int 0x0800 : mword 16) udec_0800.
   Qed.
@@ -578,7 +578,7 @@ Section UCodeSync.
     sync_code g -∗
     uinstr_is g (mword_of_int 0x8) false
       (JAL (mword_of_int 864 : mword 21, Regidx (mword_of_int 1))).
-  Proof.
+  Proof using .
     iIntros "#Ht".
     uis_base g 0x8 (mword_of_int 0x360000ef : mword 32) udec_360000ef.
   Qed.
@@ -588,7 +588,7 @@ Section UCodeSync.
     sync_code g -∗
     uinstr_is g (mword_of_int 0xc) true
       (C_LI (mword_of_int 0 : mword 6, Regidx (mword_of_int 10))).
-  Proof.
+  Proof using .
     iIntros "#Ht".
     uis_rvc4 g 0xc (mword_of_int 0x4501 : mword 16) udec_4501
       (mword_of_int 0x00ef4501 : mword 32).
@@ -599,7 +599,7 @@ Section UCodeSync.
     sync_code g -∗
     uinstr_is g (mword_of_int 0xe) false
       (JAL (mword_of_int 698 : mword 21, Regidx (mword_of_int 1))).
-  Proof.
+  Proof using .
     iIntros "#Ht".
     uis_base g 0xe (mword_of_int 0x2ba000ef : mword 32) udec_2ba000ef.
   Qed.
@@ -611,7 +611,7 @@ Section UCodeSync.
     sync_code g -∗
     uinstr_is g (mword_of_int 0x12) true
       (C_ADDI (mword_of_int 48 : mword 6, Regidx (mword_of_int 2))).
-  Proof.
+  Proof using .
     iIntros "#Ht".
     uis_rvc2 g 0x12 (mword_of_int 0x1141 : mword 16) udec_1141.
   Qed.
@@ -621,7 +621,7 @@ Section UCodeSync.
     sync_code g -∗
     uinstr_is g (mword_of_int 0x14) true
       (C_SDSP (mword_of_int 1 : mword 6, Regidx (mword_of_int 1))).
-  Proof.
+  Proof using .
     iIntros "#Ht".
     uis_rvc4 g 0x14 (mword_of_int 0xe406 : mword 16) udec_e406
       (mword_of_int 0xe022e406 : mword 32).
@@ -632,7 +632,7 @@ Section UCodeSync.
     sync_code g -∗
     uinstr_is g (mword_of_int 0x16) true
       (C_SDSP (mword_of_int 0 : mword 6, Regidx (mword_of_int 8))).
-  Proof.
+  Proof using .
     iIntros "#Ht".
     uis_rvc2 g 0x16 (mword_of_int 0xe022 : mword 16) udec_e022.
   Qed.
@@ -642,7 +642,7 @@ Section UCodeSync.
     sync_code g -∗
     uinstr_is g (mword_of_int 0x18) true
       (C_ADDI4SPN (Cregidx (mword_of_int 0), mword_of_int 4 : mword 8)).
-  Proof.
+  Proof using .
     iIntros "#Ht".
     uis_rvc4 g 0x18 (mword_of_int 0x0800 : mword 16) udec_0800
       (mword_of_int 0xf0ef0800 : mword 32).
@@ -653,7 +653,7 @@ Section UCodeSync.
     sync_code g -∗
     uinstr_is g (mword_of_int 0x1a) false
       (JAL (mword_of_int 2097126 : mword 21, Regidx (mword_of_int 1))).
-  Proof.
+  Proof using .
     iIntros "#Ht".
     uis_base g 0x1a (mword_of_int 0xfe7ff0ef : mword 32) udec_fe7ff0ef.
   Qed.
@@ -663,7 +663,7 @@ Section UCodeSync.
     sync_code g -∗
     uinstr_is g (mword_of_int 0x1e) false
       (JAL (mword_of_int 682 : mword 21, Regidx (mword_of_int 1))).
-  Proof.
+  Proof using .
     iIntros "#Ht".
     uis_base g 0x1e (mword_of_int 0x2aa000ef : mword 32) udec_2aa000ef.
   Qed.
@@ -675,7 +675,7 @@ Section UCodeSync.
     sync_code g -∗
     uinstr_is g (mword_of_int 0x2c8) true
       (C_LI (mword_of_int 2 : mword 6, Regidx (mword_of_int 17))).
-  Proof.
+  Proof using .
     iIntros "#Ht".
     uis_rvc4 g 0x2c8 (mword_of_int 0x4889 : mword 16) udec_4889
       (mword_of_int 0x00734889 : mword 32).
@@ -686,7 +686,7 @@ Section UCodeSync.
     sync_code g -∗
     uinstr_is g (mword_of_int 0x2ca) false
       (ECALL tt).
-  Proof.
+  Proof using .
     iIntros "#Ht".
     uis_base g 0x2ca (mword_of_int 0x00000073 : mword 32) udec_00000073.
   Qed.
@@ -698,7 +698,7 @@ Section UCodeSync.
     sync_code g -∗
     uinstr_is g (mword_of_int 0x368) true
       (C_LI (mword_of_int 22 : mword 6, Regidx (mword_of_int 17))).
-  Proof.
+  Proof using .
     iIntros "#Ht".
     uis_rvc4 g 0x368 (mword_of_int 0x48d9 : mword 16) udec_48d9
       (mword_of_int 0x007348d9 : mword 32).
@@ -709,7 +709,7 @@ Section UCodeSync.
     sync_code g -∗
     uinstr_is g (mword_of_int 0x36a) false
       (ECALL tt).
-  Proof.
+  Proof using .
     iIntros "#Ht".
     uis_base g 0x36a (mword_of_int 0x00000073 : mword 32) udec_00000073.
   Qed.
@@ -719,7 +719,7 @@ Section UCodeSync.
     sync_code g -∗
     uinstr_is g (mword_of_int 0x36e) true
       (C_JR (Regidx (mword_of_int 1))).
-  Proof.
+  Proof using .
     iIntros "#Ht".
     uis_rvc2 g 0x36e (mword_of_int 0x8082 : mword 16) udec_8082.
   Qed.
@@ -753,7 +753,7 @@ Section UCodeSync.
   Definition sync_rodata (g : gname) : iProp Σ := utext_img g sync_ro.
 
   Global Instance sync_rodata_persistent g : Persistent (sync_rodata g).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Global Typeclasses Opaque sync_rodata.
 

@@ -174,7 +174,7 @@ Section sieframes.
         reg_pointsto cur_privilege dqp Machine ∗
         reg_pointsto mseccfg DfracDiscarded (mword_of_int 0) ∗
         reg_pointsto misa DfracDiscarded MISA_C).
-  Proof.
+  Proof using .
     rewrite /hreg_frame_ro /sie_Dro /cr_Dro /cw_Drw /cw_Dro.
     repeat (rewrite big_sepS_union; last set_solver).
     rewrite !big_sepS_singleton.
@@ -191,7 +191,7 @@ Section sieframes.
     reg_pointsto misa DfracDiscarded MISA_C -∗
     (hreg_frame (sie_rs mie_in mideleg_in) ∅ ∗
      hreg_frame_ro (sie_Df dqp) (sie_rs mie_in mideleg_in) sie_Dro : iProp Σ).
-  Proof.
+  Proof using .
     iIntros "H1 H2 H3 H4 H5".
     iSplitR; [iApply hreg_frame_empty|].
     rewrite (sie_frames dqp mie_in mideleg_in). iFrame.
@@ -203,7 +203,7 @@ Section sieframes.
      reg_pointsto cur_privilege dqp Machine ∗
      reg_pointsto mseccfg DfracDiscarded (mword_of_int 0) ∗
      reg_pointsto misa DfracDiscarded MISA_C).
-  Proof.
+  Proof using .
     rewrite (sie_frames dqp mie_in mideleg_in). iIntros "H". iExact "H".
   Qed.
 End sieframes.
@@ -341,7 +341,7 @@ Section timecheck.
   Lemma hval_check_CSR_result_time (D Drw : gset register) (rs : regstate) :
     hval D Drw rs (check_CSR_result csr_time Machine CSRRead)
       (CSR_Check_OK tt) rs.
-  Proof.
+  Proof using .
     rewrite check_CSR_result_time_red.
     apply (hval_read_any D Drw (R_bitvector_32 mcounteren));
       [cbn [hregread_at]; apply bool_decide_eq_true_2; reflexivity|].
@@ -556,7 +556,7 @@ Section WpCsrrGprB.
       gpr_file (<[Regidx rd := regval_into_reg tv]> m) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hpmp Hstat Hrd) "Hmm Hpmpc Hpc Hfmap Hinstr Hcont".
     iDestruct (mmode_config_split with "Hmm") as "[Hmm_wp Hmm_k]".
     iDestruct "Hpmpc" as "[Hpmpc_wp Hpmpc_k]".
@@ -642,7 +642,7 @@ Section WpCsrrGprB.
       menvcfg ↦ᵣ menvcfg_in -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hpmp Hstat Hrd) "Hmm Hpmpc Hpc Hfmap Hcsr Hinstr Hcont".
     assert (Hfresh : cw_fresh (R_bitvector_64 menvcfg))
       by (rewrite /cw_fresh; split_and!; vm_compute; reflexivity).
@@ -746,7 +746,7 @@ Section WpCsrrGprB.
       mideleg ↦ᵣ mideleg_in -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hpmp Hstat Hrd) "Hmm Hpmpc Hpc Hfmap Hmie Hmdl Hinstr Hcont".
     assert (Hchk : exec (check_CSR_result csr_sie Machine CSRRead) dstateM
                    = Some (CSR_Check_OK tt, dstateM))

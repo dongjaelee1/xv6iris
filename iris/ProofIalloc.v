@@ -339,7 +339,7 @@ Section IallocBytes.
          ([∗ list] j ∈ seq 0 64,
             pa_add (pa_add a (64 * k)%nat) j ↦ₘ (dinode_bytes d !!! j)) -∗
          bb_bytes a 1024 (fun j => diblk_bytes (<[k := d]> ds) !!! j)).
-  Proof.
+  Proof using .
     intros [Hlen Hall] Hk.
     assert (Hklen : (k < length ds)%nat) by (rewrite Hlen; exact Hk).
     iIntros "H". rewrite /bb_bytes.
@@ -384,7 +384,7 @@ Section IallocBytes.
       (uint bno ↪[fs_cache γfs]{#(1/2)} bsl) ∗
       ((uint bno ↪[fs_cache γfs]{#(1/2)} bsl) -∗
        bio_held fsc_bio (fs_view γfs fsc_disk icfg_dev fsc_cov) k pidv dv bno bs bsl bsd d).
-  Proof.
+  Proof using .
     rewrite /bio_held /bio_pay /fs_view /=.
     iIntros "(%A & %B & %C & H1 & H3 & H4 & H5 & H6 & Hpay)".
     destruct d.
@@ -576,7 +576,7 @@ Section IallocEpilogue.
     ia_cont (CID0 := CID0) ty u Sb
             pidv dq dqs dqn j m K b lks Upr t qt -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hty Htyk Hsp Hthr.
     pose proof HK as HK'. 
     iIntros "Hcg Hcnt #Htext Hpc Hframe Hppid Hsbn Hsbi Hsl Harms Hcont".
@@ -803,7 +803,7 @@ Section IallocOut.
     ia_cont (CID0 := CID0) ty u Sb
             pidv dq dqs dqn j m K b lks Upr t qt -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hty Htyk Hsp Hthr.
     pose proof HK as HK'. 
     pose proof ia_msg_fmt as (Hkmsg & Hnmsg & Hlmsg).
@@ -1182,7 +1182,7 @@ Section IallocClaim.
     ia_cont (CID0 := CID0) ty u Sb
             pidv dq dqs dqn j m K b lks Upr t qt -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hgeom Hsp Hthr Hs1 Hs3 Hs5 Hs6 Hs2 Hkk Hbno Hcov Hlog
            Hnib Hdswf Ht0 Hty Htyk Hinum Halign Hbelow.
     pose proof HK as HK'. 
@@ -2052,7 +2052,7 @@ Section IallocScan.
          ia_cont (CID0 := CIDc) ty u Sb
                  pidv dq dqs dqn j m K b lks Upr t qt -∗
          WP (Loop : expr riscv_lang))).
-  Proof.
+  Proof using .
     intros HK Hgeom Hst Hblk Hn1 Hnnib Hn31 Hty Htyk Hj Hgl Hbelow.
     (* THE BOUND AS A NAMED HYPOTHESIS, not an inline [ltac:] argument, and
        rank 1d is why.  [fsc_ninodes] is a CLASS FIELD now, so writing it in
@@ -2872,7 +2872,7 @@ Section IallocMain.
       wp_ialloc_gen_body γs j γl pd pav pu
  ty u Sb
                          pidv dq dqs dqn m K eb b lks Upr t qt.
-  Proof.
+  Proof using .
     cbv beta delta [wp_ialloc_gen_body].
     intros pcE pj ret_tgt HK Hgeom Hst Hblk Hn1 Hnnib Hn31 Hty Htyk Hj Hgl
            Ha0 Ha1 Heb Hbelow.
@@ -3364,7 +3364,7 @@ Section IallocMain.
       wp_ialloc_sconf_body γs j γl pd pav pu
  ty u
                            pidv dq dqs dqn m K eb b lks Upr t qt.
-  Proof.
+  Proof using .
     cbv beta delta [wp_ialloc_sconf_body].
     intros pcE pj ret_tgt HK Hgeom Hst Hblk Hn1 Hnnib Hn31 Hty Htyk Hj Hgl
            Ha0 Ha1 Heb Hbelow.

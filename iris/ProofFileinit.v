@@ -38,7 +38,7 @@ Section CodeFileinitBundle.
   Lemma fii_code :
     kernel_text -∗ ilw_code KernelSyms.fileinit (mword_of_int 3) (mword_of_int 30)
                             (mword_of_int 1070) (mword_of_int 1006) (mword_of_int 2083446).
-  Proof.
+  Proof using .
     iIntros "#Ht". rewrite /ilw_code.
     iSplitR; [iApply (fii_00 with "Ht")|].
     iSplitR; [iApply (fii_02 with "Ht")|].
@@ -69,7 +69,7 @@ Section ProofFileinit.
   Lemma wp_fileinit_sconf
       (m : regfile) (K : nat) (vlock : bv 32) (vname vcpu : bv 64) (b : bool) (p : mword 64)
     : wp_fileinit_sconf_body m K vlock vname vcpu b p.
-  Proof.
+  Proof using .
     cbv beta delta [wp_fileinit_sconf_body].
     intros pcE ret_tgt lk c_name c_cpu HK.
     (* &"ftable" is proof-local: the spec speaks of the lock's NAME, not of the

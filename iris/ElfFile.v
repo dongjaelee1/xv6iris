@@ -593,7 +593,7 @@ Section segs.
 
   Lemma segs_union_lookup_inv g (ps : list A) (a : Z) (b : bv 8) :
     segs_union g ps !! a = Some b -> exists p, p ∈ ps /\ g p !! a = Some b.
-  Proof.
+  Proof using .
     induction ps as [|c ps IH]; simpl.
     { rewrite lookup_empty. discriminate. }
     intros H. apply lookup_union_Some_raw in H as [H|[_ H]].
@@ -604,7 +604,7 @@ Section segs.
 
   Lemma segs_union_disjoint_l g1 g2 (p : A) (qs : list A) :
     (forall q, q ∈ qs -> g1 p ##ₘ g2 q) -> g1 p ##ₘ segs_union g2 qs.
-  Proof.
+  Proof using .
     induction qs as [|c qs IH]; simpl; intros H.
     { apply map_disjoint_empty_r. }
     apply map_disjoint_union_r_2.
@@ -615,7 +615,7 @@ Section segs.
   Lemma segs_union_disjoint g1 g2 (ps qs : list A) :
     (forall p q, p ∈ ps -> q ∈ qs -> g1 p ##ₘ g2 q) ->
     segs_union g1 ps ##ₘ segs_union g2 qs.
-  Proof.
+  Proof using .
     induction ps as [|c ps IH]; simpl; intros H.
     { apply map_disjoint_empty_l. }
     apply map_disjoint_union_l_2.
@@ -628,7 +628,7 @@ Section segs.
   Lemma segs_union_lookup g (ps : list A) (a : Z) (b : bv 8) :
     (forall p q, p ∈ ps -> q ∈ ps -> p <> q -> g p ##ₘ g q) ->
     (segs_union g ps !! a = Some b <-> exists p, p ∈ ps /\ g p !! a = Some b).
-  Proof.
+  Proof using EqDecision0.
     intros Hdisj. split; [apply segs_union_lookup_inv|].
     revert Hdisj. induction ps as [|c ps IH]; simpl; intros Hdisj [p [Hp Hg]].
     { inversion Hp. }
@@ -649,7 +649,7 @@ Section segs.
 
   Lemma segs_union_elem_of_dom g (ps : list A) (a : Z) :
     a ∈ dom (segs_union g ps) <-> exists p, p ∈ ps /\ a ∈ dom (g p).
-  Proof.
+  Proof using .
     induction ps as [|c ps IH]; simpl.
     { rewrite dom_empty_L, elem_of_empty. split; [contradiction|].
       intros [p [Hp _]]. inversion Hp. }
@@ -664,7 +664,7 @@ Section segs.
   Lemma segs_union_split g1 g2 (ps : list A) :
     (forall p q, p ∈ ps -> q ∈ ps -> g1 p ##ₘ g2 q) ->
     segs_union (fun p => g1 p ∪ g2 p) ps = segs_union g1 ps ∪ segs_union g2 ps.
-  Proof.
+  Proof using .
     induction ps as [|c ps IH]; simpl; intros H.
     { rewrite (left_id_L ∅ (∪)). reflexivity. }
     rewrite IH by (intros p q Hp Hq;

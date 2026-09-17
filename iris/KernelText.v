@@ -68,7 +68,7 @@ Section KernelText.
     ([∗ map] a↦b ∈ KernelInstrs.kernel_bytes, (mword_of_int a : Arch.pa) ↦ₓ□ b)%I.
 
   Global Instance kernel_text_persistent : Persistent kernel_text.
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* Keep typeclass resolution (Frame/IntoWand/... in iApply/iIntros/iFrame)
      from unfolding [kernel_text] into its 23K-entry [big_sepM] over
@@ -82,7 +82,7 @@ Section KernelText.
      address; virtual = physical in M-mode). *)
   Lemma pa_add_mword (A : Z) (j : nat) :
     pa_add (mword_of_int A : Arch.pa) j = mword_of_int (A + Z.of_nat j).
-  Proof. unfold pa_add. apply avi_mword. Qed.
+  Proof using . unfold pa_add. apply avi_mword. Qed.
 
   (* [kernel_window] in [instr_bytes]' address form: the [W]-byte window of
      the word [w] at the literal byte address [A] = [pc], as [pa_add pc j]. *)
@@ -92,7 +92,7 @@ Section KernelText.
        KernelInstrs.kernel_bytes !! (A + Z.of_nat j)%Z = Some (nth_byte w j)) ->
     kernel_text -∗
     ([∗ list] j ∈ seq 0 W, (pa_add pc j) ↦ₓ□ nth_byte w j).
-  Proof.
+  Proof using .
     iIntros (-> Hbytes) "#Ht". iApply big_sepL_intro. iIntros "!>" (k j Hk).
     apply lookup_seq in Hk. destruct Hk as [-> Hlt]. simpl.
     rewrite pa_add_mword.
@@ -111,7 +111,7 @@ Section KernelText.
     isRVC (subrange_vec_dec w 15 0) = false ->
     ([∗ list] j ∈ seq 0 4, (pa_add pc j) ↦ₓ□ nth_byte w j) -∗
     instr_bytes pc (F_Base w).
-  Proof.
+  Proof using .
     iIntros (H2 Hn) "Hw". rewrite /instr_bytes. iEval (cbv beta iota).
     iSplitR; [iPureIntro; exact H2|].
     iSplitR; [iPureIntro; exact Hn|].
@@ -138,7 +138,7 @@ Section KernelText.
     subrange_vec_dec w 15 0 = h ->
     ([∗ list] j ∈ seq 0 4, (pa_add pc j) ↦ₓ□ nth_byte w j) -∗
     instr_bytes pc (F_RVC h).
-  Proof.
+  Proof using .
     iIntros (H2 Hr Hs) "#Hw". rewrite /instr_bytes. iEval (cbv beta iota).
     iSplitR; [iPureIntro; exact H2|].
     iSplitR; [iPureIntro; exact Hr|].
@@ -176,7 +176,7 @@ Section KernelText.
     (cur_privilege : register) ∈ D -> (mseccfg : register) ∈ D ->
     (misa : register) ∈ D ->
     forall r : register, D_m r = true -> r ∈ D.
-  Proof.
+  Proof using .
     intros H1 H2 H3 r Hr. unfold D_m in Hr.
     apply orb_prop in Hr as [Hr|Hr];
       [apply orb_prop in Hr as [Hr|Hr]|];
@@ -187,7 +187,7 @@ Section KernelText.
     (cur_privilege : register) ∈ D -> (R_bitvector_64 menvcfg : register) ∈ D ->
     (misa : register) ∈ D ->
     forall r : register, D_s r = true -> r ∈ D.
-  Proof.
+  Proof using .
     intros H1 H2 H3 r Hr. unfold D_s in Hr.
     apply orb_prop in Hr as [Hr|Hr];
       [apply orb_prop in Hr as [Hr|Hr]|];
@@ -200,7 +200,7 @@ Section KernelText.
     register_lookup misa rs = MISA_C ->
     forall r : register, D_m r = true ->
       register_lookup r rs = register_lookup r dstateM.(sregs).
-  Proof.
+  Proof using .
     intros Hp Hs Hm.
     exact (agree_m (MState rs ∅ dev0_state) Hp Hs Hm).
   Qed.
@@ -211,7 +211,7 @@ Section KernelText.
     register_lookup misa rs = MISA_C ->
     forall r : register, D_s r = true ->
       register_lookup r rs = register_lookup r dstateS.(sregs).
-  Proof.
+  Proof using .
     intros Hp Hs Hm.
     exact (agree_s (MState rs ∅ dev0_state) Hp Hs Hm).
   Qed.
@@ -242,7 +242,7 @@ Section KernelText.
        certificate is at the empty read set *)
     goodb (fun _ => false) (execute i0) dstateM = true ->
     kernel_text -∗ instr pc true i.
-  Proof.
+  Proof using .
     intros Hlpad Hpc H2al Hrvc Hsub Hbytes Hem Hgm Hes Hgs Hlp0 Hex Hgex.
     iIntros "#Ht". rewrite /instr.
     iSplitR; [iPureIntro; exact Hlpad|].
@@ -282,7 +282,7 @@ Section KernelText.
     exec (ext_decode w) dstateS = Some (i, dstateS) ->
     goodb D_s (ext_decode w) dstateS = true ->
     kernel_text -∗ instr pc false i.
-  Proof.
+  Proof using .
     intros Hlpad Hpc H2al Hnrvc Hbytes Hem Hgm Hes Hgs.
     iIntros "#Ht". rewrite /instr.
     iSplitR; [iPureIntro; exact Hlpad|].

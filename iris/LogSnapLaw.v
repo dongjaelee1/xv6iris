@@ -126,18 +126,18 @@ Section SnapLaw.
 
   Global Instance snap_law_at_persistent γ γfs cov logstart N G :
     Persistent (snap_law_at γ γfs cov logstart N G).
-  Proof. rewrite /snap_law_at. apply _. Qed.
+  Proof using . rewrite /snap_law_at. apply _. Qed.
 
   Global Instance snap_law_persistent γ γfs cov logstart :
     Persistent (snap_law γ γfs cov logstart).
-  Proof. rewrite /snap_law. apply _. Qed.
+  Proof using . rewrite /snap_law. apply _. Qed.
 
   Lemma snap_law_intro (γ : log_names) (γfs : fs_names)
       (cov : gset Z) (logstart : Z) (N : coPset) (G : gname -> iProp Σ) :
     (↑fsbN : coPset) ## N ->
     fs_crash_seam_at G cov logstart -∗
     snap_law_at γ γfs cov logstart N G -∗ snap_law γ γfs cov logstart.
-  Proof.
+  Proof using .
     intros Hdj. iIntros "#Hseam #H". rewrite /snap_law. iExists N, G.
     iSplitR; [iPureIntro; exact Hdj |]. iFrame "Hseam". iExact "H".
   Qed.
@@ -166,7 +166,7 @@ Section SnapLaw.
          snap_law_out G C (fs_home_set cov logstart))
       ∗ ghost_map_auth (fs_bytes γfs) 1 Lb
       ∗ ghost_map_auth (ln_tx γ) 1 (∅ : gmap nat unit).
-  Proof.
+  Proof using .
     intros Hdom Hlens Htie Hdm. iIntros "#Hlaw Hb Ht".
     iDestruct "Hlaw" as (N G Hdj) "[#Hseam #Hbody]".
     iMod ("Hbody" $! (⊤ ∖ ↑fsbN) Lb C with "[%] [%] [%] [%] [%] Hb Ht")

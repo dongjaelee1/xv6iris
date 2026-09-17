@@ -55,7 +55,7 @@ Section ProofStrncmp.
 
   Local Lemma cs_ne (k r : mword 5) :
     is_cs_idx k = false -> is_cs_idx r = true -> Regidx r <> Regidx k.
-  Proof. intros Hk Hr He. symmetry in He. exact (is_cs_idx_true_neq k r Hk Hr He). Qed.
+  Proof using . intros Hk Hr He. symmetry in He. exact (is_cs_idx_true_neq k r Hk Hr He). Qed.
 
   Local Ltac peel_sym :=
     rewrite upd_ne;
@@ -65,18 +65,18 @@ Section ProofStrncmp.
 
   Local Lemma snc_push (X : mword 64) :
     add_vec X (sign_extend' 64 (sign_extend' 12 (mword_of_int 48 : mword 6))) = pa_stk X 2.
-  Proof. unfold pa_stk, add_vec_int. apply f_equal. apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . unfold pa_stk, add_vec_int. apply f_equal. apply bv_eq; vm_compute; reflexivity. Qed.
 
   Local Lemma snc_step (s : mword 64) (j : nat) :
     add_vec (pa_add s j) (sign_extend' 64 (sign_extend' 12 (mword_of_int 1 : mword 6))) = pa_add s (S j).
-  Proof. apply pa_add_step. apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . apply pa_add_step. apply bv_eq; vm_compute; reflexivity. Qed.
 
   Lemma snc_subw_diff (b1 b2 : bv 8) :
     sign_extend' 64
       (sub_vec (subrange_vec_dec (zero_extend' 64 (b1 : mword 8) : mword 64) 31 0 : mword 32)
                (subrange_vec_dec (zero_extend' 64 (b2 : mword 8) : mword 64) 31 0 : mword 32))
     = (mword_of_int (bv_unsigned b1 - bv_unsigned b2) : mword 64).
-  Proof.
+  Proof using .
     apply bv_eq.
     rewrite moi64_unsigned.
     assert (Hze1 : (8 <= 64)%N) by (vm_compute; intro Hc; discriminate Hc).
@@ -131,7 +131,7 @@ Section ProofStrncmp.
     add_vec (mword_of_int (Z.of_nat (n - t)) : mword 64)
       (sign_extend' 64 (sign_extend' 12 (mword_of_int 63 : mword 6)))
     = (mword_of_int (Z.of_nat (n - S t)) : mword 64).
-  Proof.
+  Proof using .
     intros Htn Hn. apply bv_eq.
     rewrite add_vec64_unsigned !moi64_unsigned.
     unfold bv_wrap.
@@ -165,7 +165,7 @@ Section ProofStrncmp.
         pc_is (ret_pc ra0) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hsp0 Hra0 Hs00 Hmtsp Hmta0 Hthr.
     iIntros "Hcg #Htext Hpc Hb1 Hb2 Hcont".
     (* ---- +0x32: c.ldsp ra,8(sp) ---- *)
@@ -312,7 +312,7 @@ Section ProofStrncmp.
         ([∗ list] j ∈ seq 0 n, (pa_add s2 j) ↦ₘ[ktg]{dq2} g j) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hnpos Hn31 rem.
     induction rem as [| rem IH]; intros t M CID0 Hchain Hsum Hnn Heq Hsp Ha0 Ha1 Ha2 Hthr;
       iIntros "Hcg #Htext Hpc Hbuf1 Hbuf2 Hcont".
@@ -1199,7 +1199,7 @@ Section ProofStrncmp.
   Lemma wp_strncmp_sconf (mm : regfile)
       (n : nat) (f g : nat -> bv 8) (K : nat) (dq1 dq2 : dfrac) (b : bool) (p : mword 64)
     : wp_strncmp_sconf_body ktf ktg mm n f g K dq1 dq2 b p.
-  Proof.
+  Proof using .
     cbv beta delta [wp_strncmp_sconf_body].
     intros pcE s1 s2 ret_tgt HK Ha2 Hn31.
     pose (sp0 := (mm !!! Regidx csp_rs1 : mword 64)).

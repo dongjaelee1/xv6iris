@@ -438,7 +438,7 @@ Section swp_dispatch.
     hreg_frame_ro Df rs Dro -∗
     swp (dispatchInterrupt Machine)
       (fun r => ⌜r = None⌝ ∗ hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDmisa HDmst HmisaS HmIE Hmisa Hmst.
     exact (swp_span Drw Dro Df rs rs (dispatchInterrupt Machine) None Hdisj
              (mdispatch_hval (Drw ∪ Dro) Drw misa0 mstatus0 rs

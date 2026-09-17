@@ -135,7 +135,7 @@ Section WpSconfSret.
       pc_is (ret_pc sepc0) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "Hcg Hmir Htok Hsepc Hscausex Hstvalx Hhx Hkptr Hcells Hclm Hpc
              Hinstr Hcont".
     (* THE ARM MOVES, [false] in and [true] out -- the generalized obligation's

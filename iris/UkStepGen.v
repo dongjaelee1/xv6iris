@@ -207,7 +207,7 @@ Section UkGen.
     m !!! Regidx (mword_of_int 0) = zero_reg ->
     is_aligned_vaddr (Virtaddr pc) 2 = true ->
     X (uvis_of_run m pc M π szv fdv cw gn cs pidv false) ⊣⊢ ukc' π M szv fdv cw gn cs pidv m pc.
-  Proof.
+  Proof using X_unfold.
     intros Hx0 Hal.
     rewrite (X_unfold (uvis_of_run m pc M π szv fdv cw gn cs pidv false)
                eq_refl).
@@ -237,7 +237,7 @@ Section UkGenBundle.
        as it threads [umem] *)
     Rfd fdv ∗
     user_cfg C ∗ gpr_file m ∗ pc_is pc ∗ Rut pt ∗ ▷ ukb_F' C pt Rfd Rut sz π fdv cw gn cs pidv.
-  Proof.
+  Proof using .
     rewrite /uvb_F' /user_ptm_inv_x /umem_lazy_x /umem_own_x.
     iIntros "(Hamb & Hur & %Hsz & Hpt & Hfrag & Hcfg & Hg & Hpc & Hrut & Hk)".
     iDestruct "Hpt" as "(Htlb & Hlz & %Hinj & %Hacc)".
@@ -257,7 +257,7 @@ Section UkGenBundle.
     Rfd fdv -∗
     user_cfg C -∗ gpr_file m -∗ pc_is pc -∗ Rut pt -∗ ukb_F' C pt Rfd Rut sz π fdv cw gn cs pidv -∗
     uvb_F' C pt Rfd Rut sz π fdv cw gn cs pidv M m pc.
-  Proof.
+  Proof using .
     intros (Hsub & Himg & Hz & Hdom & Hinj & Hacc & Hsz).
     iIntros "Hamb Hur Htlb Hmem Hfrag Hcfg Hg Hpc Hrut Hk".
     rewrite /uvb_F' /user_ptm_inv_x.
@@ -419,7 +419,7 @@ Section UkGenArms.
     (R -∗ (TsoCtx.own_context XI -∗ Rut pt) ∗ Rfd fdv ∗ ukb_F' C pt Rfd Rut sz π fdv cw gn cs pidv ∗
           (uvb_F' C pt Rfd Rut sz π fdv cw gn cs pidv M m' npc -∗ WP (Loop : expr riscv_lang))) -∗
     uv_psi C R rs2.
-  Proof.
+  Proof using .
     intros Lhs Lpriv Hmsok Lnpc Hgag Hx0 Lstvec Lmie Lmdl Lmedl Lmenv Lmste
       Lsste Lsenv Lsatp Lpcfg Lpaddr Htok Htlbok Hpure.
     iIntros "#Hamb Hresv Hmm Hres Hctx Hk".
@@ -468,7 +468,7 @@ Section UkGenArms.
     uv_res pt Mp t usatp pcfg paddr -∗
     uv_step_post C (uk_payload' sz π fdv cw gn cs pidv Kc Qp M m pc C pt Rfd Rut) rs1
       (Step_Pending_Interrupt (i, Supervisor)).
-  Proof.
+  Proof using Ret_transparent X_unfold.
     intros Hpre Hpure Hal2 Hi.
     pose proof Hpre as (Hinj & Htok & Hpins & Lhs & Lpriv & Hmsok & Lpc & Hgag & Lstvec &
             Lmie & Lmdl & Lmedl & Lmenv & Lsatp & Lpcfg & Lpaddr & Lmi & Hx0).
@@ -595,7 +595,7 @@ Section UkGenStepEngine.
       (M : gmap Z (bv 8)) (m : regfile) (pc : mword 64) (fdv : list fdstate) (cw : Z) (gn : gname) (cs : gset gname) (pidv : mword 32) :
     is_aligned_vaddr (Virtaddr pc) 2 = true ->
     ⊢ uk_ih' π Kc Qp fdv cw gn cs pidv M m pc.
-  Proof.
+  Proof using Ret_transparent X_unfold.
     intros Hal2.
     rewrite /uk_ih'.
     iLöb as "IH".
@@ -846,7 +846,7 @@ Section UkGenFunnel.
     is_aligned_vaddr (Virtaddr pc) 2 = true ->
     uvb_F' C pt Rfd Rut sz π fdv cw gn cs pidv M m pc -∗ □ uk_step_obl' π Kc Qp sz fdv cw gn cs pidv M m pc -∗
     ▷ (my_pay gn Qp ∗ Kc) -∗ WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using HQ0 HRut Hlf0 Hlo Hpm Ret_transparent X_unfold.
     intros Hal2.
     iIntros "Hb #Hobl Hpay3".
     iPoseProof (wp_uk_step_gen' π Kc Qp M m pc fdv cw gn cs pidv Hal2) as "H". rewrite /uk_ih'.
@@ -913,7 +913,7 @@ Section UkGenEcallPost.
     swp (execute (ECALL tt))
       (run_exec_post (fun (r : ExecutionResult) (ib' : mword 32) =>
                         uv_step_post C R rs1 (Step_Execute (r, ib'))) ib).
-  Proof.
+  Proof using .
     intros Hg Lpc2 Lhs2 Lcp2 Hms2 Hgag2 Hx0 Lstvec2 Lmie2 Lmdl2 Lmedl2 Lmenv2
       Lmste2 Lsste2 Lsenv2 Lsatp2 Lpcfg2 Lpaddr2 Lmisa2 Helpne2 Lmi2
       Htlbok2 Htok' Hpure.
@@ -1133,7 +1133,7 @@ Section UkGenEcall.
     my_pay gn Qp -∗
     RetF X uecall_scause (uvis_of_run m pc M π sz fdv cw gn cs pidv false) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using HQ0 HRut Hlf0 Hlo Hpm Ret_transparent X_unfold.
     intros Hui Hg.
     pose proof (Hui pt sz (loop_ok_wf C pt Hlo) Hpm) as Hui0.
     pose proof (ui_al2 _ _ _ _ _ Hui0) as Hal2.
@@ -1326,7 +1326,7 @@ Section UkGenPostFetch.
     swp (execute i)
       (run_exec_post (fun (r : ExecutionResult) (ib' : mword 32) =>
                         uv_step_post C R rs1 (Step_Execute (r, ib'))) ib).
-  Proof.
+  Proof using .
     intros Hwrok Hred Hg1 Hg2 Hexec Lpc2 Lhs2 Lcp2 Hms2 Hgag2 Hx0 Lstvec2
       Lmie2 Lmdl2 Lmedl2 Lmenv2 Lmste2 Lsste2 Lsenv2 Lsatp2 Lpcfg2 Lpaddr2
       Lmi2 Htlbok2 Hagd2 Htok' Hpure.
@@ -1492,7 +1492,7 @@ Section UkGenObligation.
          (fun (xv : mword 64) (e : ExceptionType) =>
             uv_step_post C R rs1 (Step_Fetch_Failure (Virtaddr xv, e)))
          (fun _ : ext_fetch_addr_error => False)).
-  Proof.
+  Proof using .
     intros Hpre Hpure Hdec Hwrok Hred Hg1 Hg2 Hexec.
     pose proof Hpre as (Hinj & Htok & HpinsA & LhsA & LcpA & HmsokA & LpcA &
                         HgagA & LstvecA & LmieA & LmdlA & LmedlA & LmenvA &
@@ -1625,7 +1625,7 @@ Section UkGenObligation.
          (fun (xv : mword 64) (e : ExceptionType) =>
             uv_step_post C R rs1 (Step_Fetch_Failure (Virtaddr xv, e)))
          (fun _ : ext_fetch_addr_error => False)).
-  Proof.
+  Proof using .
     intros Hpre Hpure Hdec Hwrok Hred Hg1 Hg2 Hexec.
     pose proof Hpre as (Hinj & Htok & HpinsA & LhsA & LcpA & HmsokA & LpcA &
                         HgagA & LstvecA & LmieA & LmdlA & LmedlA & LmenvA &
@@ -1773,7 +1773,7 @@ Section UkGenRetire.
     uvb_F' C pt Rfd Rut sz π fdv cw gn cs pidv M m pc -∗
     ▷ ukcq' Qp π M sz fdv cw gn cs pidv (uv_upd m wr) (uv_next jt (add_vec_int pc (if is_rvc then 2 else 4))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using HQ0 HRut Hlf0 Hlo Hpm Ret_transparent X_unfold.
     intros Hui Hred Hlpad Hwrok Hg1 Hg2 Hexec.
     pose proof (Hui pt sz (loop_ok_wf C pt Hlo) Hpm) as Hui0.
     pose proof (ui_al2 _ _ _ _ _ Hui0) as Hal2.
@@ -1871,7 +1871,7 @@ Section UkGenRetire.
     uvb_F' C pt Rfd Rut sz π fdv cw gn cs pidv M m pc -∗
     ukcq' Qp π M sz fdv cw gn cs pidv (uv_upd m wr) (uv_next jt (add_vec_int pc (if is_rvc then 2 else 4))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using HQ0 HRut Hlf0 Hlo Hpm Ret_transparent X_unfold.
     intros Hui Hred Hlpad Hwrok Hg1 Hg2 Hexec.
     iIntros "Hb Hcont".
     iApply (wp_uk_retire_later' M m pc fdv cw gn cs pidv is_rvc i o jt wr
@@ -1913,7 +1913,7 @@ Section UkGenPlain.
       (uvis_sz W) (uvis_fd W) (uvis_cwd W) (uvis_gen W) (uvis_ch W)
       (uvis_pid W)
       (tf_resume_gpr0 (uvis_tf W)) (tf_resume_pc (uvis_tf W)).
-  Proof.
+  Proof using .
     intros Hlz. rewrite (uslot_unfold W) /ukc' /uvb_F' /ukont_F' /ukb_F' Hlz.
     iSplit.
     - iIntros "H" (h xi C pt Rfd Rut HRut) "_ %Hlo %Hpm %Hlf Hb".
@@ -1929,7 +1929,7 @@ Section UkGenPlain.
     sc <> uecall_scause ->
     uexec_ret_F uslot sc W ⊣⊢
     (∃ f : sfam, uexec_pay_dep sc W f ∗ uexec_kill_arm_F uslot sc W f).
-  Proof. exact (uexec_ret_transparent sc W). Qed.
+  Proof using . exact (uexec_ret_transparent sc W). Qed.
 
   (* UkStep.v's exported ecall-driver type, spelled out once *)
   Definition uk_ecall_ty `{CID : CpuId} `{XI : CurCtx}
@@ -1967,7 +1967,7 @@ Section UkGenPlain.
       (Hlf : lazy_free (ud_um pt) sz)
       (Qp : Z -> iProp Σ) :
     uk_ecall_ty C pt Rfd Rut π sz Hlo Hpm HRut Hlf Qp.
-  Proof.
+  Proof using .
     exact (UkStep.wp_uk_ecall (Qp := Qp) C pt Rfd Rut π sz Hlo Hpm HRut Hlf).
   Qed.
 
@@ -1982,7 +1982,7 @@ Section UkGenPlain.
       (Hlf : lazy_free (ud_um pt) sz)
       (Qp : Z -> iProp Σ) :
     uk_ecall_ty C pt Rfd Rut π sz Hlo Hpm HRut Hlf Qp.
-  Proof.
+  Proof using .
     exact (wp_uk_ecall' uexec_ret_F uslot (fun _ : CtxIdDefs.CurCtx => Logic.True)
              uslot_unfold_gen uexec_ret_transparent_gen
              C pt Rfd Rut π sz Hlo Hpm HRut I Hlf (Qp := Qp)).

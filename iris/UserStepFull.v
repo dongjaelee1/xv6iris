@@ -218,7 +218,7 @@ Section UserStepFull.
     wire_inv -∗
     active_class (⊤ ∖ ↑minstretN ∖ ↑wireN ∖ ↑clockN) -∗
     user_step_obligation_active C pt Rut.
-  Proof.
+  Proof using .
     iIntros "#Hhw #Hmin #Hwinv #Hclass".
     iIntros "!>" (ms_v sc_v stval_v sepc_v va g) "%Hmsok Hregs Hupt Hcfg Hrut Hk".
     (* ---- take the three bundles apart ---- *)

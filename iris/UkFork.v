@@ -170,7 +170,7 @@ Section UkFork.
       (f : nat -> bv 8) :
     ([∗ map] k ↦ b ∈ useq_map a n f, Φ k b)
     ⊣⊢ ([∗ list] j ∈ seq 0 n, Φ (a + Z.of_nat j)%Z (f j)).
-  Proof.
+  Proof using .
     induction n as [| k IH].
     - cbn. rewrite big_sepM_empty. reflexivity.
     - cbn [useq_map].
@@ -189,7 +189,7 @@ Section UkFork.
   Local Lemma ghost_frags_sub (γ : gname) (q : Qp) (Md T : gmap Z (bv 8))
       (dq : dfrac) :
     ghost_map_auth γ q Md -∗ ([∗ map] a ↦ b ∈ T, a ↪[γ]{dq} b) -∗ ⌜ T ⊆ Md ⌝.
-  Proof.
+  Proof using .
     induction T as [| a b T Ha IH] using map_ind.
     - iIntros "_ _". iPureIntro. apply map_empty_subseteq.
     - iIntros "Hauth HT".
@@ -206,7 +206,7 @@ Section UkFork.
       (dq : dfrac) :
     ([∗ map] a ↦ b ∈ F, a ↪[γ] b) -∗
     ([∗ map] a ↦ b ∈ G, a ↪[γ]{dq} b) -∗ ⌜ F ##ₘ G ⌝.
-  Proof.
+  Proof using .
     induction F as [| a b F Ha IH] using map_ind.
     - iIntros "_ _". iPureIntro. apply map_disjoint_empty_l.
     - iIntros "HF HG".
@@ -227,7 +227,7 @@ Section UkFork.
     ([∗ map] a ↦ b ∈ T2, a ↪[γ]{dq2} b) -∗
     ⌜ forall (a : Z) (b1 b2 : bv 8),
         T1 !! a = Some b1 -> T2 !! a = Some b2 -> b1 = b2 ⌝.
-  Proof.
+  Proof using .
     induction T2 as [| a b T2 Ha IH] using map_ind.
     - iIntros "_ _". iPureIntro. intros a b1 b2 _ Hb2.
       rewrite lookup_empty in Hb2. discriminate Hb2.
@@ -256,7 +256,7 @@ Section UkFork.
       `{!forall a b, Persistent (Φ a b)} (T1 T2 : gmap Z (bv 8)) :
     ([∗ map] a ↦ b ∈ T1, Φ a b) -∗ ([∗ map] a ↦ b ∈ T2, Φ a b) -∗
     ([∗ map] a ↦ b ∈ T1 ∪ T2, Φ a b).
-  Proof.
+  Proof using .
     iIntros "#H1 #H2". iApply big_sepM_intro.
     iIntros "!>" (k x Hk).
     apply lookup_union_Some_raw in Hk.
@@ -291,7 +291,7 @@ Section UkFork.
            ([∗ map] a ↦ b ∈ Ft, utext γt' a b) ∗
            ([∗ map] a ↦ b ∈ Fp, ubyteq γd' DfracDiscarded a b) ∗
            ([∗ map] a ↦ b ∈ F, ubyte γd' a b).
-  Proof.
+  Proof using .
     iIntros "Hheap #Htf Hpf Hdf".
     iDestruct "Hheap" as (Mt Md Mslack)
       "(%Hst & %Hsd & %Hdisj & %Hcan & %Hx & %Hxw & %Hw & Ht & Hd & Hszg & %Hsl & %Hstop & Hslack)".
@@ -420,7 +420,7 @@ Section UkFork.
   Lemma Forkable_ext (P Q : gname -> gname -> gname -> iProp Σ) :
     (forall γt γd γs, P γt γd γs ⊣⊢ Q γt γd γs) ->
     Forkable P -> Forkable Q.
-  Proof.
+  Proof using .
     intros Heq HP γt γd γs.
     iIntros "HQ".
     iAssert (P γt γd γs) with "[HQ]" as "HP".
@@ -435,7 +435,7 @@ Section UkFork.
   Qed.
 
   Global Instance forkable_emp : Forkable (fun _ _ _ => emp%I).
-  Proof.
+  Proof using .
     intros γt γd γs. iIntros "_".
     iExists ∅, ∅, ∅. rewrite !big_sepM_empty.
     iSplitR; [ done | ]. iSplitR; [ done | ]. iSplitR; [ done | ].
@@ -444,7 +444,7 @@ Section UkFork.
   Qed.
 
   Global Instance forkable_pure (φ : Prop) : Forkable (fun _ _ _ => ⌜φ⌝%I).
-  Proof.
+  Proof using .
     intros γt γd γs. iIntros "%Hφ".
     iExists ∅, ∅, ∅. rewrite !big_sepM_empty.
     iSplitR; [ done | ]. iSplitR; [ done | ]. iSplitR; [ done | ].
@@ -456,7 +456,7 @@ Section UkFork.
   Global Instance forkable_sep (P Q : gname -> gname -> gname -> iProp Σ) :
     Forkable P -> Forkable Q ->
     Forkable (fun γt γd γs => (P γt γd γs ∗ Q γt γd γs)%I).
-  Proof.
+  Proof using .
     intros HP HQ γt γd γs. iIntros "[HP HQ]".
     iDestruct (HP γt γd γs with "HP")
       as (Ft1 Fp1 F1) "(#HT1 & #HD1 & HF1 & HR1 & #HB1)".
@@ -509,7 +509,7 @@ Section UkFork.
       (Φ : A -> gname -> gname -> gname -> iProp Σ) :
     (forall x : A, Forkable (Φ x)) ->
     Forkable (fun γt γd γs => (∃ x : A, Φ x γt γd γs)%I).
-  Proof.
+  Proof using .
     intros HΦ γt γd γs. iIntros "HP".
     iDestruct "HP" as (x) "HP".
     iDestruct (HΦ x γt γd γs with "HP")
@@ -525,7 +525,7 @@ Section UkFork.
       (Φ : nat -> A -> gname -> gname -> gname -> iProp Σ) :
     (forall (i : nat) (x : A), Forkable (Φ i x)) ->
     Forkable (fun γt γd γs => ([∗ list] i ↦ x ∈ l, Φ i x γt γd γs)%I).
-  Proof.
+  Proof using .
     revert Φ. induction l as [| y l IH]; intros Φ HΦ.
     - eapply Forkable_ext; [ | exact forkable_emp ].
       intros γt γd γs. rewrite big_sepL_nil. reflexivity.
@@ -539,7 +539,7 @@ Section UkFork.
 
   Global Instance forkable_ubyte (a : Z) (b : bv 8) :
     Forkable (fun _ γd _ => ubyte γd a b).
-  Proof.
+  Proof using .
     intros γt γd γs. iIntros "Hb".
     iExists ∅, ∅, {[ a := b ]}.
     rewrite !big_sepM_empty !big_sepM_singleton.
@@ -552,7 +552,7 @@ Section UkFork.
 
   Global Instance forkable_ubyteq_disc (a : Z) (b : bv 8) :
     Forkable (fun _ γd _ => ubyteq γd DfracDiscarded a b).
-  Proof.
+  Proof using .
     intros γt γd γs. iIntros "#Hb".
     iExists ∅, {[ a := b ]}, ∅.
     rewrite !big_sepM_empty !big_sepM_singleton.
@@ -564,7 +564,7 @@ Section UkFork.
 
   Global Instance forkable_utext (a : Z) (b : bv 8) :
     Forkable (fun γt _ _ => utext γt a b).
-  Proof.
+  Proof using .
     intros γt γd γs. iIntros "#Hb".
     iExists {[ a := b ]}, ∅, ∅.
     rewrite !big_sepM_empty !big_sepM_singleton.
@@ -578,7 +578,7 @@ Section UkFork.
      hands the child the parent's entire text vocabulary *)
   Global Instance forkable_utext_map (T : gmap Z (bv 8)) :
     Forkable (fun γt _ _ => ([∗ map] a ↦ b ∈ T, utext γt a b)%I).
-  Proof.
+  Proof using .
     intros γt γd γs. iIntros "#Hm".
     iExists T, ∅, ∅.
     rewrite !big_sepM_empty.
@@ -593,7 +593,7 @@ Section UkFork.
      inherits. *)
   Global Instance forkable_ubyteq_map (D : gmap Z (bv 8)) :
     Forkable (fun _ γd _ => ([∗ map] a ↦ b ∈ D, ubyteq γd DfracDiscarded a b)%I).
-  Proof.
+  Proof using .
     intros γt γd γs. iIntros "#Hm".
     iExists ∅, D, ∅.
     rewrite !big_sepM_empty.
@@ -605,7 +605,7 @@ Section UkFork.
   Global Instance forkable_utext_all (M : gmap Z (bv 8))
       (pm : gmap (mword 27) uperm) :
     Forkable (fun γt _ _ => utext_all γt M pm).
-  Proof.
+  Proof using .
     eapply Forkable_ext; [ | exact (forkable_utext_map (utext_part M pm)) ].
     intros γt γd γs. rewrite /utext_all. reflexivity.
   Qed.
@@ -614,7 +614,7 @@ Section UkFork.
 
   Global Instance forkable_ubytes (a : Z) (n : nat) (f : nat -> bv 8) :
     Forkable (fun _ γd _ => ubytes γd a n f).
-  Proof.
+  Proof using .
     intros γt γd γs. iIntros "Hb".
     iExists ∅, ∅, (useq_map a n f).
     rewrite !big_sepM_empty.
@@ -633,7 +633,7 @@ Section UkFork.
 
   Global Instance forkable_ubytesq_disc (a : Z) (n : nat) (f : nat -> bv 8) :
     Forkable (fun _ γd _ => ubytesq γd DfracDiscarded a n f).
-  Proof.
+  Proof using .
     intros γt γd γs. iIntros "#Hb".
     iExists ∅, (useq_map a n f), ∅.
     rewrite !big_sepM_empty.
@@ -652,7 +652,7 @@ Section UkFork.
   Global Instance forkable_utext_run (a : Z) (n : nat) (f : nat -> bv 8) :
     Forkable (fun γt _ _ =>
                 ([∗ list] j ∈ seq 0 n, utext γt (a + Z.of_nat j)%Z (f j))%I).
-  Proof.
+  Proof using .
     intros γt γd γs. iIntros "#Hb".
     iExists (useq_map a n f), ∅, ∅.
     rewrite !big_sepM_empty.
@@ -668,14 +668,14 @@ Section UkFork.
 
   Global Instance forkable_uword (a : Z) (w : mword 64) :
     Forkable (fun _ γd _ => uword γd a w).
-  Proof.
+  Proof using .
     eapply Forkable_ext; [ | exact (forkable_ubytes a 8 (nth_byte w)) ].
     intros γt γd γs. rewrite /uword /uwordq. reflexivity.
   Qed.
 
   Global Instance forkable_uwordq_disc (a : Z) (w : mword 64) :
     Forkable (fun _ γd _ => uwordq γd DfracDiscarded a w).
-  Proof.
+  Proof using .
     eapply Forkable_ext; [ | exact (forkable_ubytesq_disc a 8 (nth_byte w)) ].
     intros γt γd γs. rewrite /uwordq. reflexivity.
   Qed.
@@ -687,7 +687,7 @@ Section UkFork.
      the stack. *)
   Global Instance forkable_ustack (sp : mword 64) (n : nat) :
     Forkable (fun _ γd _ => ustack γd sp n).
-  Proof.
+  Proof using .
     eapply Forkable_ext.
     2: {
       apply forkable_sep; [ apply forkable_pure | ].
@@ -704,7 +704,7 @@ Section UkFork.
 
   Global Instance forkable_ustr (a : Z) (len : nat) (f : nat -> bv 8) :
     Forkable (fun _ γd _ => ustr γd (DfracOwn 1) a len f).
-  Proof.
+  Proof using .
     eapply Forkable_ext.
     2: {
       apply forkable_sep; [ apply forkable_pure | ].
@@ -722,7 +722,7 @@ Section UkFork.
 
   Global Instance forkable_ustr_disc (a : Z) (len : nat) (f : nat -> bv 8) :
     Forkable (fun _ γd _ => ustr γd DfracDiscarded a len f).
-  Proof.
+  Proof using .
     eapply Forkable_ext.
     2: {
       apply forkable_sep; [ apply forkable_pure | ].
@@ -737,7 +737,7 @@ Section UkFork.
 
   Global Instance forkable_uargv (av : Z) (args : list uarg) :
     Forkable (fun _ γd _ => uargv γd av args).
-  Proof.
+  Proof using .
     eapply Forkable_ext.
     2: {
       apply forkable_sep; [ apply forkable_pure | ].
@@ -926,7 +926,7 @@ Section UkFork.
           (add_vec_int pc 4) avail -∗
         WP (Loop : expr riscv_lang))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hal4. iIntros "#Hi HRc HP Hsz Hstd HD Hcwd Hchf #Hkw Hrun [Hpar Hchild]".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     (* the caller's half pins the key's working directory *)
@@ -1227,7 +1227,7 @@ Section UkFork.
           (add_vec_int pc 4) avail -∗
         WP (Loop : expr riscv_lang))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hal4.
     iIntros "#Hi HRc #Htext #Hargv Hsz Hstd HD Hcwd Hchf #Hkw Hrun [Hpar Hchild]".
     iApply (wp_uk_ecall_fork N h m pc avail szv l D c Sc Q Rc

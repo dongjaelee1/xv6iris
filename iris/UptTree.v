@@ -647,7 +647,7 @@ Section UptTreeInv.
     _get_Mstatus_SXL (register_lookup mstatus σ.(sregs)) = 'b"10" ->
     reg_interp σ.(sregs) -∗ utlb_inv_pt uroot tfp um -∗
     ⌜ exec (translationMode User) σ = Some (Sv39, σ) ⌝.
-  Proof.
+  Proof using .
     intros HSXL.
     iIntros "Hri Hinv".
     iDestruct "Hinv" as (usatp tlbvec t)
@@ -669,7 +669,7 @@ Section UptTreeInv.
     satp ↦ᵣ usatp -∗ tlb ↦ᵣ tlbvec -∗ ptree_own 2 (DfracOwn 1) t -∗
     pmp_config uroot -∗
     utlb_inv_pt uroot tfp um.
-  Proof.
+  Proof using .
     intros Hmode Hasid Hppn Hok Hspec Hwf Hpmaw. iIntros "Hsatp Htlb Ht Hpmp".
     iExists usatp, tlbvec, t. iFrame "Hsatp Htlb Ht Hpmp". iPureIntro. tauto.
   Qed.
@@ -736,7 +736,7 @@ Section UptTranslateIris.
          exists tv, σ'.(sregs) = register_set tlb tv σ.(sregs))%type ⌝ ∗
       S σ'.(mem) ∗
       reg_interp σ'.(sregs) ∗ gen_heap_interp σ'.(mem) ∗ utlb_inv_pt uroot tfp um.
-  Proof.
+  Proof using .
     intros Hchk Hleaf Hcanon Hout Hmisa Hmenv Hhtif Hcp Htmk Heff Hss Hall.
     iIntros "#Hpay Hsto Hri Hgh Hinv".
     iDestruct "Hinv" as (usatp tlbvec t)
@@ -850,7 +850,7 @@ Section UptTranslateIrisAcc.
          exists tv, σ'.(sregs) = register_set tlb tv σ.(sregs))%type ⌝ ∗
       S σ'.(mem) ∗
       reg_interp σ'.(sregs) ∗ gen_heap_interp σ'.(mem) ∗ utlb_inv_pt uroot tfp um.
-  Proof.
+  Proof using .
     intros Hvpn Hcanon Hid Hmisa Hmenv Hhtif Hcp HSXL Heff Hss Hall.
     assert (Hout : zero_extend' 64 (concat_vec
         ((autocast (T := mword) ((autocast (T := mword)
@@ -901,7 +901,7 @@ Section UptTranslateIrisAcc.
          exists tv, σ'.(sregs) = register_set tlb tv σ.(sregs))%type ⌝ ∗
       S σ'.(mem) ∗
       reg_interp σ'.(sregs) ∗ gen_heap_interp σ'.(mem) ∗ utlb_inv_pt uroot tfp um.
-  Proof.
+  Proof using .
     intros Hvpn Hcanon Hid Hmisa Hmenv Hhtif Hcp HSXL Heff Hss Hall.
     assert (Hout : zero_extend' 64 (concat_vec
         ((autocast (T := mword) ((autocast (T := mword)

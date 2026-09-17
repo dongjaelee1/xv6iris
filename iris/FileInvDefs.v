@@ -942,7 +942,7 @@ Section FileInv.
     own γ ((a, ε) : fileUR).
 
   Lemma fref_own_op γ a b : fref_own γ (a ⋅ b) ⊣⊢ fref_own γ a ∗ fref_own γ b.
-  Proof.
+  Proof using .
     rewrite /fref_own -own_op.
     assert (H : (((a, ε) : fileUR) ⋅ (b, ε)) ≡ ((a ⋅ b, ε) : fileUR)).
     { rewrite -pair_op left_id. reflexivity. }
@@ -950,14 +950,14 @@ Section FileInv.
   Qed.
 
   Lemma fref_own_update γ a b : (a ~~> b) -> fref_own γ a ==∗ fref_own γ b.
-  Proof.
+  Proof using .
     intros Hup. rewrite /fref_own. iApply own_update.
     apply prod_update; [exact Hup | done].
   Qed.
 
   Lemma fref_own_update_2' γ a b c :
     (a ⋅ b ~~> c) -> fref_own γ a -∗ fref_own γ b ==∗ fref_own γ c.
-  Proof.
+  Proof using .
     intros Hup. iIntros "Ha Hb".
     iDestruct (fref_own_op γ a b with "[$Ha $Hb]") as "H".
     by iApply (fref_own_update with "H").
@@ -966,7 +966,7 @@ Section FileInv.
   Lemma fref_own_update_2 γ a b a' b' :
     (a ⋅ b ~~> a' ⋅ b') ->
     fref_own γ a -∗ fref_own γ b ==∗ fref_own γ a' ∗ fref_own γ b'.
-  Proof.
+  Proof using .
     intros Hup. iIntros "Ha Hb".
     iDestruct (fref_own_op γ a b with "[$Ha $Hb]") as "H".
     iMod (fref_own_update _ _ (a' ⋅ b') Hup with "H") as "H".
@@ -975,7 +975,7 @@ Section FileInv.
 
   Lemma fref_own_valid_2 γ a b :
     fref_own γ a -∗ fref_own γ b -∗ ⌜✓ (a ⋅ b)⌝.
-  Proof.
+  Proof using .
     rewrite /fref_own. iIntros "Ha Hb".
     iDestruct (own_valid_2 with "Ha Hb") as %[Hv _]. done.
   Qed.
@@ -993,15 +993,15 @@ Section FileInv.
   Definition flive_own (a : fliveUR) : iProp Σ := own fsc_fol a.
 
   Lemma flive_own_op a b : flive_own (a ⋅ b) ⊣⊢ flive_own a ∗ flive_own b.
-  Proof. rewrite /flive_own own_op //. Qed.
+  Proof using . rewrite /flive_own own_op //. Qed.
 
   Lemma flive_own_update a b : (a ~~> b) -> flive_own a ==∗ flive_own b.
-  Proof. intros Hup. rewrite /flive_own. by iApply own_update. Qed.
+  Proof using . intros Hup. rewrite /flive_own. by iApply own_update. Qed.
 
   Lemma flive_own_update_2 a b a' b' :
     (a ⋅ b ~~> a' ⋅ b') ->
     flive_own a -∗ flive_own b ==∗ flive_own a' ∗ flive_own b'.
-  Proof.
+  Proof using .
     intros Hup. iIntros "Ha Hb".
     iDestruct (flive_own_op a b with "[$Ha $Hb]") as "H".
     iMod (flive_own_update _ (a' ⋅ b') Hup with "H") as "H".
@@ -1010,7 +1010,7 @@ Section FileInv.
 
   Lemma flive_own_update_2' a b c :
     (a ⋅ b ~~> c) -> flive_own a -∗ flive_own b ==∗ flive_own c.
-  Proof.
+  Proof using .
     intros Hup. iIntros "Ha Hb".
     iDestruct (flive_own_op a b with "[$Ha $Hb]") as "H".
     by iApply (flive_own_update with "H").
@@ -1018,7 +1018,7 @@ Section FileInv.
 
   Lemma flive_own_valid_2 a b :
     flive_own a -∗ flive_own b -∗ ⌜✓ (a ⋅ b)⌝.
-  Proof.
+  Proof using .
     rewrite /flive_own. iIntros "Ha Hb".
     by iDestruct (own_valid_2 with "Ha Hb") as %Hv.
   Qed.
@@ -1177,7 +1177,7 @@ Section FileInv.
   Lemma inode_ref_side_split (v : mword 64) (s1 s2 : Qp) (g : gname) (inum : mword 32) :
     inode_ref_side v (s1 + s2)%Qp g inum ⊣⊢
     inode_ref_side v s1 g inum ∗ inode_ref_side v s2 g inum.
-  Proof.
+  Proof using .
     rewrite /inode_ref_side. iSplit.
     - iIntros "(%k & %lo & %Hv & %Hk & Hid & Hl & Hs)".
       rewrite inode_ident_split live_genlo_split SleepLock.slh_tok_split.
@@ -1195,7 +1195,7 @@ Section FileInv.
   Lemma inode_pay_split γx Q g inum v fdty wr q1 q2 :
     inode_pay γx Q g inum v fdty wr (q1 + q2) ⊣⊢
     inode_pay γx Q g inum v fdty wr q1 ∗ inode_pay γx Q g inum v fdty wr q2.
-  Proof.
+  Proof using .
     rewrite /inode_pay cinv_own_fractional Qp.mul_add_distr_r
             inode_ref_side_split inode_shr_held_gen_split.
     iSplit.
@@ -1211,7 +1211,7 @@ Section FileInv.
   Lemma inode_pay_cancel (E : coPset) (γx : gname) (Q : Qp) (g : gname)
       (inum : mword 32) (v : mword 64) (fdty : mword 32) (wr : bool) :
     ↑fileipN ⊆ E -> inode_pay γx Q g inum v fdty wr 1 ={E}=∗ inode_held v.
-  Proof.
+  Proof using .
     iIntros (HE) "(#Hi & Hown & Hside & Hs & _)".
     iMod (cinv_cancel with "Hi Hown") as "H"; [exact HE|].
     iMod "H". iModIntro. rewrite !Qp.mul_1_l.
@@ -1244,7 +1244,7 @@ Section FileInv.
   Local Lemma inode_shr_held_gen_intro (v : mword 64) (s : Qp) :
     inode_shr_held v s -∗ ∃ (g : gname) (inum : mword 32),
       inode_shr_held_gen v s g inum.
-  Proof.
+  Proof using .
     rewrite /inode_shr_held /inode_shr_held_gen.
     iIntros "(%k & %inum & %Hv & %Hk & %Hb & Hs)".
     rewrite inode_shr_gen_intro.
@@ -1292,7 +1292,7 @@ Section FileInv.
     runit_any (bv_unsigned inum) -∗
     inode_shr_held_gen (ientry k) Q g inum -∗ ity_shot g ty
     ={E}=∗ ∃ γx : gname, inode_pay γx Q g inum (ientry k) fdty wr 1.
-  Proof.
+  Proof using .
     iIntros (Hk Hb Hp Hwr Hdv) "Hshort Hru Hs #Hty".
     rewrite /inode_ref_short_genlo. iDestruct "Hshort" as "(Hf & Hl & Hid & Hslh & Hlent)".
     iMod (cinv_alloc E fileipN (inode_core (ientry k) Q inum) with "[Hf Hlent Hru]")
@@ -1326,7 +1326,7 @@ Section FileInv.
       (v : mword 64) (wr : bool) (q : Qp) (ty : bv 16) :
     inode_pay γx Q g inum v FD_INODE wr q -∗ ity_shot g ty -∗
     ⌜bv_unsigned ty <> FsImg.T_DEVICE_z⌝.
-  Proof.
+  Proof using .
     iIntros "(_ & _ & _ & _ & Hwt) #Hshot".
     iDestruct "Hwt" as (ty') "(#Hs & _ & %Hdv)".
     iDestruct (ity_shot_agree with "Hs Hshot") as %<-.
@@ -1340,7 +1340,7 @@ Section FileInv.
 
   Lemma fpay_tok_split γ k q1 q2 pn :
     fpay_tok γ k (q1 + q2) pn ⊣⊢ fpay_tok γ k q1 pn ∗ fpay_tok γ k q2 pn.
-  Proof.
+  Proof using .
     rewrite /fpay_tok -own_op.
     assert (H : (((ε, {[ k := (q1, to_agree (pn : leibnizO fpnames)) ]}) : fileUR)
                  ⋅ (ε, {[ k := (q2, to_agree (pn : leibnizO fpnames)) ]}))
@@ -1353,7 +1353,7 @@ Section FileInv.
 
   Lemma fpay_tok_agree γ k q1 pn1 q2 pn2 :
     fpay_tok γ k q1 pn1 -∗ fpay_tok γ k q2 pn2 -∗ ⌜pn1 = pn2⌝.
-  Proof.
+  Proof using .
     rewrite /fpay_tok. iIntros "H1 H2".
     iDestruct (own_valid_2 with "H1 H2") as %[_ Hv]. iPureIntro.
     simpl in Hv. rewrite singleton_op in Hv. apply singleton_valid in Hv.
@@ -1366,7 +1366,7 @@ Section FileInv.
      step, and it happens at the [sd] that writes [f->pipe]. *)
   Lemma fpay_tok_update γ k pn pn' :
     fpay_tok γ k 1 pn ==∗ fpay_tok γ k 1 pn'.
-  Proof.
+  Proof using .
     rewrite /fpay_tok. iIntros "H". iApply (own_update with "H").
     apply prod_update; [done|]. cbn [fst snd].
     apply singleton_update, cmra_update_exclusive. done.
@@ -1381,7 +1381,7 @@ Section FileInv.
      is, and it is what refutes a stale marker / a stale resident cell. *)
   Lemma word4_pointsto_excl (a : Arch.pa) (dq : dfrac) (w1 w2 : bv 32) :
     a ↦₄ w1 -∗ a ↦₄{dq} w2 -∗ False.
-  Proof.
+  Proof using .
     iIntros "H1 H2".
     rewrite !ctx_word4_pointsto_unfold.
     iDestruct "H1" as "[_ H1]". iDestruct "H2" as "[_ H2]".
@@ -1474,7 +1474,7 @@ Section FileInv.
      visibility (r25 item 24, [TsoCtx.ctx_pointsto_free]). *)
   Lemma off_free_of_word (k : nat) (q : Qp) (v : mword 32) :
     a_foff k ↦₄{DfracOwn q} v ⊢ off_free k q.
-  Proof.
+  Proof using .
     rewrite TsoCtx.ctx_word4_pointsto_unfold /off_free.
     iIntros "[$ Hb]". iApply (big_sepL_mono with "Hb").
     intros ? j _. iApply TsoCtx.ctx_pointsto_free.
@@ -1482,7 +1482,7 @@ Section FileInv.
 
   Lemma off_free_split (k : nat) (q1 q2 : Qp) :
     off_free k (q1 + q2) ⊣⊢ off_free k q1 ∗ off_free k q2.
-  Proof.
+  Proof using .
     rewrite /off_free. iSplit.
     - iIntros "[#Hal H]".
       iAssert ([∗ list] j ∈ seq 0 4,
@@ -1540,7 +1540,7 @@ Section FileInv.
   Lemma off_fd_at_qsum (k : nat) (q : Qp) (γb : box_names) (γo : gname) (C : fcontent)
       (m : gmap (nat * nat) ufrac) :
     off_fd_at k q γb γo C m ⊢ ⌜qsum m = Qp_to_Qc q⌝ ∗ off_fd_at k q γb γo C m.
-  Proof.
+  Proof using .
     rewrite /off_fd_at.
     iIntros "(%i & %T0 & %Hip & %Hi & #Hbox & #Hmem & Hd & Hc & %Hq & Href)".
     iSplitR; [iPureIntro; exact Hq|]. iExists i, T0. iFrame "Hbox Hmem Hd Hc Href".
@@ -1549,7 +1549,7 @@ Section FileInv.
 
   Lemma off_fd_split (k : nat) (q1 q2 : Qp) (γb : box_names) (γo : gname) (C : fcontent) :
     off_fd k (q1 + q2) γb γo C ⊣⊢ off_fd k q1 γb γo C ∗ off_fd k q2 γb γo C.
-  Proof.
+  Proof using .
     rewrite /off_fd. iSplit.
     - iIntros "(%i & %T0 & %Hip & %Hi & #Hbox & #Hmem & Hd & Hc & Hst)".
       rewrite Qp.div_add_distr.
@@ -1589,7 +1589,7 @@ Section FileInv.
      hands it over by definition. *)
   Lemma file_core_noff_none q pn C :
     fc_type C = FD_NONE -> file_core_noff q pn C ⊣⊢ iref_frac q.
-  Proof.
+  Proof using .
     intro Ht. rewrite /file_core_noff Ht.
     rewrite bool_decide_eq_false_2; [|by vm_compute].
     rewrite bool_decide_eq_false_2; [|by vm_compute].
@@ -1599,14 +1599,14 @@ Section FileInv.
 
   Lemma file_core_off_none k q pn C :
     fc_type C = FD_NONE -> file_core_off k q pn C ⊣⊢ off_free k q.
-  Proof.
+  Proof using .
     intro Ht. rewrite /file_core_off Ht.
     rewrite bool_decide_eq_false_2; [|by vm_compute]. reflexivity.
   Qed.
 
   Lemma file_core_none k q pn C :
     fc_type C = FD_NONE -> file_core k q pn C ⊣⊢ iref_frac q ∗ off_free k q.
-  Proof.
+  Proof using .
     intro Ht.
     by rewrite /file_core (file_core_noff_none _ _ _ Ht)
                (file_core_off_none _ _ _ _ Ht).
@@ -1615,7 +1615,7 @@ Section FileInv.
   Lemma file_core_noff_split q1 q2 pn C :
     file_core_noff (q1 + q2) pn C ⊣⊢
     file_core_noff q1 pn C ∗ file_core_noff q2 pn C.
-  Proof.
+  Proof using .
     rewrite /file_core_noff.
     case_bool_decide as Hp; [|case_match].
     - rewrite pipe_ref_split iref_frac_op. iSplit.
@@ -1630,14 +1630,14 @@ Section FileInv.
   Lemma file_core_off_split k q1 q2 pn C :
     file_core_off k (q1 + q2) pn C ⊣⊢
     file_core_off k q1 pn C ∗ file_core_off k q2 pn C.
-  Proof.
+  Proof using .
     rewrite /file_core_off.
     case_bool_decide; [apply off_fd_split | apply off_free_split].
   Qed.
 
   Lemma file_core_split k q1 q2 pn C :
     file_core k (q1 + q2) pn C ⊣⊢ file_core k q1 pn C ∗ file_core k q2 pn C.
-  Proof.
+  Proof using .
     rewrite /file_core file_core_noff_split file_core_off_split.
     iSplit.
     - iIntros "[[H1 H2] [O1 O2]]". iFrame.
@@ -1654,7 +1654,7 @@ Section FileInv.
 
   Lemma file_pay_split γ k q1 q2 C :
     file_pay γ k (q1 + q2) C ⊣⊢ file_pay γ k q1 C ∗ file_pay γ k q2 C.
-  Proof.
+  Proof using .
     rewrite /file_pay. iSplit.
     - iIntros "(%pn & Hn & Hp)".
       rewrite fpay_tok_split file_core_split.
@@ -1690,7 +1690,7 @@ Section FileInv.
      [file_pay_st_none], which is filealloc's. *)
   Lemma file_pay_st_pay γ k q C st :
     file_pay_st γ k q C st -∗ file_pay γ k q C.
-  Proof. iIntros "(%pn & _ & Hn & Hp)". iExists pn. iFrame. Qed.
+  Proof using . iIntros "(%pn & _ & Hn & Hp)". iExists pn. iFrame. Qed.
 
 
   (* an UNTYPED payload gives [FdClosed] and there is nothing to choose:
@@ -1698,7 +1698,7 @@ Section FileInv.
   Lemma file_pay_st_none γ k q C :
     fc_type C = FD_NONE ->
     file_pay γ k q C -∗ file_pay_st γ k q C FdClosed.
-  Proof.
+  Proof using .
     iIntros (Hty) "(%pn & Hn & Hp)". iExists pn. iFrame.
     iPureIntro. exact Hty.
   Qed.
@@ -1709,7 +1709,7 @@ Section FileInv.
   Lemma file_pay_st_split γ k q1 q2 C st :
     file_pay_st γ k (q1 + q2) C st ⊣⊢
     file_pay_st γ k q1 C st ∗ file_pay_st γ k q2 C st.
-  Proof.
+  Proof using .
     rewrite /file_pay_st. iSplit.
     - iIntros "(%pn & %Hi & Hn & Hp)".
       rewrite fpay_tok_split file_core_split.
@@ -1728,14 +1728,14 @@ Section FileInv.
   Lemma file_pay_st_ok γ k q C st :
     file_pay_st γ k q C st -∗
     ⌜∃ (inum : mword 32) (γo : gname) (γp : pipe_names), fdstate_ok inum γo γp C st⌝ ∧ file_pay_st γ k q C st.
-  Proof.
+  Proof using .
     iIntros "H". iSplit; [| iExact "H"].
     iDestruct "H" as (pn) "(%Hok & _)". iPureIntro. by exists (fp_inum pn), (fp_ooff pn), (fp_pipe pn).
   Qed.
 
   Lemma file_pay_st_agree γ k q1 st1 q2 st2 C :
     file_pay_st γ k q1 C st1 -∗ file_pay_st γ k q2 C st2 -∗ ⌜st1 = st2⌝.
-  Proof.
+  Proof using .
     iIntros "(%pn1 & %H1 & Hn1 & _) (%pn2 & %H2 & Hn2 & _)".
     iDestruct (fpay_tok_agree with "Hn1 Hn2") as %<-.
     iPureIntro. exact (fdstate_ok_inj _ _ _ _ _ _ H1 H2).
@@ -1801,7 +1801,7 @@ Section FileInv.
      This is the one step [ProcInv]'s array export is made of. *)
   Lemma file_ref_parked (γ : gname) (k : nat) (q : Qp) (st : fdstate) :
     file_ref γ k q st -∗ ⌜fdst_parked st⌝.
-  Proof.
+  Proof using .
     iIntros "(%C & _ & _ & (%pn & %Hok & _ & _) & _)". iPureIntro.
     exact (fdstate_ok_parked _ _ _ C st Hok).
   Qed.
@@ -1825,7 +1825,7 @@ Section FileInv.
 
   (* q = 1 -- every share is out, so the invariant keeps nothing. *)
   Lemma file_rest_full (γ : gname) (k : nat) : file_rest γ k 1 ⊣⊢ emp.
-  Proof.
+  Proof using .
     rewrite /file_rest.
     assert (Hs : (1 - 1)%Qp = None) by (apply Qp.sub_None; done).
     rewrite Hs. reflexivity.
@@ -1875,13 +1875,13 @@ Section FilePayloadMorph.
 
   Global Instance file_fields_morph k q C :
     CtxMorph (λ ξ : CtxId, file_fields (XI := ξ) k q C).
-  Proof. rewrite /file_fields. ctx_morph_solve. Qed.
+  Proof using . rewrite /file_fields. ctx_morph_solve. Qed.
   Global Instance inode_ref_side_morph v s g inum :
     CtxMorph (λ ξ : CtxId, inode_ref_side (XI := ξ) v s g inum).
-  Proof. rewrite /inode_ref_side /inode_ident. ctx_morph_solve. Qed.
+  Proof using . rewrite /inode_ref_side /inode_ident. ctx_morph_solve. Qed.
   Global Instance inode_pay_morph γx Q g inum v fdty wr q :
     CtxMorph (λ ξ : CtxId, inode_pay (XI := ξ) γx Q g inum v fdty wr q).
-  Proof.
+  Proof using .
     rewrite /inode_pay.
     apply ctx_morph_sep; [apply ctx_morph_const |].
     apply ctx_morph_sep; [apply ctx_morph_const |].
@@ -1890,7 +1890,7 @@ Section FilePayloadMorph.
   Qed.
   Global Instance file_core_noff_morph q pn C :
     CtxMorph (λ ξ : CtxId, file_core_noff (XI := ξ) q pn C).
-  Proof.
+  Proof using .
     rewrite /file_core_noff.
     apply ctx_morph_if.
     - apply ctx_morph_sep; [apply is_pipe_morph |]. apply ctx_morph_const.
@@ -1902,25 +1902,25 @@ Section FilePayloadMorph.
      crosses as a constant ([ctx_morph_const]); no instance. *)
   Global Instance file_core_morph k q pn C :
     CtxMorph (λ ξ : CtxId, file_core (XI := ξ) k q pn C).
-  Proof.
+  Proof using .
     rewrite /file_core. apply ctx_morph_sep; [apply file_core_noff_morph | apply ctx_morph_const].
   Qed.
   Global Instance file_pay_morph γ k q C :
     CtxMorph (λ ξ : CtxId, file_pay (XI := ξ) γ k q C).
-  Proof.
+  Proof using .
     rewrite /file_pay. apply ctx_morph_exist => pn.
     apply ctx_morph_sep; [apply ctx_morph_const | apply file_core_morph].
   Qed.
   Global Instance file_pay_st_morph γ k q C st :
     CtxMorph (λ ξ : CtxId, file_pay_st (XI := ξ) γ k q C st).
-  Proof.
+  Proof using .
     rewrite /file_pay_st. apply ctx_morph_exist => pn.
     apply ctx_morph_sep; [apply ctx_morph_const |].
     apply ctx_morph_sep; [apply ctx_morph_const | apply file_core_morph].
   Qed.
   Global Instance file_ref_morph γ k q st :
     CtxMorph (λ ξ : CtxId, file_ref (XI := ξ) γ k q st).
-  Proof.
+  Proof using .
     rewrite /file_ref. apply ctx_morph_exist => C.
     apply ctx_morph_sep; [apply ctx_morph_const |].
     apply ctx_morph_sep; [apply file_fields_morph |].
@@ -1928,14 +1928,14 @@ Section FilePayloadMorph.
   Qed.
   Global Instance file_rest_morph γ k q :
     CtxMorph (λ ξ : CtxId, file_rest (XI := ξ) γ k q).
-  Proof.
+  Proof using .
     rewrite /file_rest. destruct ((1 - q)%Qp) as [q'|]; [| apply ctx_morph_const].
     apply ctx_morph_exist => C.
     apply ctx_morph_sep; [apply file_fields_morph | apply file_pay_morph].
   Qed.
   Global Instance fslot_morph γ M k :
     CtxMorph (λ ξ : CtxId, fslot (XI := ξ) γ M k).
-  Proof.
+  Proof using .
     rewrite /fslot. destruct (M !! k) as [[q n]|].
     - apply ctx_morph_sep; [apply ctx_morph_const |].
       apply ctx_morph_sep; [apply ctx_morph_word4 |].
@@ -1967,7 +1967,7 @@ Section FileLiveAt.
 
   Lemma flive_auth_at_alloc :
     ⊢@{iPropI Σ} |==> ∃ γfol : gname, flive_auth_at γfol.
-  Proof.
+  Proof using .
     iMod (own_alloc (● (∅ : gmap nat positive) : fliveUR)) as (γfol) "H".
     { apply auth_auth_valid. intros i. rewrite lookup_empty. done. }
     iModIntro. iExists γfol. iExact "H".
@@ -1983,7 +1983,7 @@ Section FileLiveEq.
 
   Lemma flive_auth_at_eq :
     flive_auth_at fsc_fol = flive_own (● (∅ : gmap nat positive)).
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 End FileLiveEq.
 
 (* ==================================================================== *)
@@ -2001,7 +2001,7 @@ Section FoffRow.
     fdstate_ok inum γo γp C st ->
     (if bool_decide (fc_type C = FD_INODE) then off_user_inv γo else True) -∗
     foff_row st.
-  Proof.
+  Proof using .
     intros Hok. destruct st as [|r w [n g m|g'|mj]]; cbn;
       [by iIntros "_" | | by iIntros "_" | by iIntros "_"].
     destruct Hok as (_ & _ & Ht & _ & -> & ->).

@@ -281,12 +281,12 @@ Section echo_links_pro.
   Proof. rewrite /ewc_pro. apply _. Qed.
 
   Lemma ewc_pro_taint v I : T -∗ ewc_pro v I.
-  Proof. iIntros "HT". rewrite /ewc_pro. by iRight. Qed.
+  Proof using . iIntros "HT". rewrite /ewc_pro. by iRight. Qed.
 
   (* ...is one arm of what the shell is lent... *)
   Lemma ewc_owed_of_pro (v : era_pins) (I : list (bv 8)) :
     ewc_pro v I -∗ ewc_owed T v I.
-  Proof.
+  Proof using Persistent0.
     rewrite /ewc_pro /ewc_owed.
     iIntros "[Hl | #HT]"; last by iRight.
     iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
@@ -332,7 +332,7 @@ Section echo_links_pro.
   Proof. rewrite /ewc_pdiag. destruct i; apply _. Qed.
 
   Lemma ewc_pdiag_taint v I a i : T -∗ ewc_pdiag v I a i.
-  Proof.
+  Proof using .
     iIntros "HT". rewrite /ewc_pdiag. destruct i.
     - by iApply ewc_pro_taint.
     - rewrite /ewc_pdg. by iRight.
@@ -341,7 +341,7 @@ Section echo_links_pro.
   (* the family's start IS the round-open credential (definitionally) *)
   Lemma ewc_pdiag_0 (v : era_pins) (I : list (bv 8)) (a : nat) :
     ewc_pro v I -∗ ewc_pdiag v I a 0%nat.
-  Proof. by iIntros "$". Qed.
+  Proof using . by iIntros "$". Qed.
 
   (* ONE BYTE, at either link. *)
   Lemma echo_pdiag_step (k : nat) (v : era_pins) (I : list (bv 8)) (a i : nat)
@@ -350,7 +350,7 @@ Section echo_links_pro.
     era_pin γ k v -∗ echo_links T γ -∗ ewc_pdiag v I a i -∗
     (ewc_pdiag v I a (S i) -∗ Φ) -∗
     out_link Uart0 k b Φ.
-  Proof.
+  Proof using Persistent0.
     intros Hb. iIntros "#Hpin #Hlk Hc HΦ".
     iDestruct (echo_links_w with "Hlk") as "#Hw".
     iDestruct (echo_links_pro with "Hlk") as "#Hpro".

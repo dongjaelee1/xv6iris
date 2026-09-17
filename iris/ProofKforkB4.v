@@ -158,7 +158,7 @@ Section KforkB4Res.
     ⌜length (pv_name (us_V U)) = PNAMELEN⌝ ∗
     (∀ ns : list (bv 8), ⌜length ns = PNAMELEN⌝ -∗ pname_cells pa (DfracOwn 1) ns -∗
        proc_priv γf pa pid (upd_usV U (MkPPriv (pv_sz (us_V U)) (pv_upt (us_V U)) (pv_tf (us_V U)) (pv_ofile (us_V U)) (pv_fdg (us_V U)) (pv_cwd (us_V U)) ns (pv_cwi (us_V U)) (pv_gen (us_V U)) (pv_chg (us_V U)) (pv_lazy (us_V U))))).
-  Proof.
+  Proof using .
     iIntros "[(%Hszb & %Hbel & Hpid & Hf & Hpt & Htfp & Hc & Hft & Hgq & Hxs & Hgh) Ho]".
     rewrite /proc_fields. iDestruct "Hf" as "(Hsz & Hcwd & %Hnl & Hnm)".
     iSplitL "Hnm"; [iExact "Hnm" |].
@@ -319,7 +319,7 @@ Section KforkB4Proof.
         iref_slots IREFSPARE -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hlvl Hms5 Hms4 Hfresh.
     iIntros "Hcg Hown #Htext Hpc #Hitb #Hitinv #Hireg Hir Hparent #Hfdone
              Hchild Hgq Hxb Hgh Hcont".

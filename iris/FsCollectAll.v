@@ -99,7 +99,7 @@ Section BigOps.
      index sets composable at all *)
   Lemma big_sepS_of_list `{Countable A} (l : list A) (Φ : A -> iProp Σ) :
     ([∗ list] x ∈ l, Φ x) ⊢ [∗ set] z ∈ (list_to_set l : gset A), Φ z.
-  Proof.
+  Proof using .
     induction l as [| x l IH]; simpl.
     - iIntros "_". rewrite big_sepS_empty. done.
     - iIntros "[Hx Hl]". iDestruct (IH with "Hl") as "Hs".
@@ -116,7 +116,7 @@ Section BigOps.
   Lemma big_sepS_of_list_nodup `{Countable A} (l : list A) (Φ : A -> iProp Σ) :
     base.NoDup l ->
     ([∗ set] z ∈ (list_to_set l : gset A), Φ z) ⊢ [∗ list] x ∈ l, Φ x.
-  Proof. intros Hnd. rewrite (big_sepS_list_to_set Φ l Hnd) //. Qed.
+  Proof using . intros Hnd. rewrite (big_sepS_list_to_set Φ l Hnd) //. Qed.
 
   (* [big_sepS_union_weak] IS DELETED (durable-disk EV-Y).  It covered a
      UNION by dropping the overlap, which is what the pool/marker/live
@@ -169,7 +169,7 @@ Section BigOpsRegion.
     ([∗ list] bi ∈ seq 0%nat nib,
        [∗ list] i ∈ seq 0%nat 16%nat, Ψ (16 * Z.of_nat bi + Z.of_nat i))
     ⊢ [∗ set] z ∈ region_inums nib, Ψ z.
-  Proof.
+  Proof using .
     induction nib as [| n IH].
     - iIntros "_". rewrite /region_inums /=. rewrite big_sepS_empty. done.
     - rewrite (seq_S n 0).
@@ -197,7 +197,7 @@ Section BigOpsRegion.
   Lemma blk_inums_nodup (bi : nat) :
     base.NoDup
       ((fun i : nat => 16 * Z.of_nat bi + Z.of_nat i) <$> seq 0%nat 16%nat).
-  Proof.
+  Proof using .
     apply NoDup_fmap_2; [intros x y Hxy; lia | apply NoDup_seq].
   Qed.
 
@@ -205,7 +205,7 @@ Section BigOpsRegion.
     ([∗ set] z ∈ region_inums nib, Ψ z)
     ⊢ [∗ list] bi ∈ seq 0%nat nib,
         [∗ list] i ∈ seq 0%nat 16%nat, Ψ (16 * Z.of_nat bi + Z.of_nat i).
-  Proof.
+  Proof using .
     induction nib as [| n IH].
     - iIntros "_". done.
     - rewrite (seq_S n 0).
@@ -289,7 +289,7 @@ Section CollectAll.
 
   Lemma moi_unsigned_z (z : Z) :
     0 <= z < 2 ^ 32 -> bv_unsigned (mword_of_int z : mword 32) = z.
-  Proof.
+  Proof using .
     intros Hr. rewrite moi32_unsigned. apply bv_wrap_small. exact Hr.
   Qed.
 
@@ -312,7 +312,7 @@ Section CollectAll.
     ghost_map_auth (ln_tx icfg_log) 1 (∅ : gmap nat unit) -∗
     ireg_slot γfs γi z d -∗
     col_side γfs γi w -∗ col_side γfs γi w -∗ False.
-  Proof.
+  Proof using .
     intros <-. iIntros "Ht Hslot Hs1 Hs2".
     iApply (col_side_slot_excl γfs γi w d with "Ht Hslot Hs1 Hs2").
   Qed.
@@ -326,7 +326,7 @@ Section CollectAll.
                                    ∗ ireg_slot γfs γi z d) -∗
     ([∗ set] z ∈ A, col_sidez γfs γi z) -∗
     ([∗ set] z ∈ B, col_sidez γfs γi z) -∗ ⌜A ## B⌝.
-  Proof.
+  Proof using .
     intros HA HB Hw. iIntros "Ht Hslots HA HB".
     iAssert (⌜forall z : Z, z ∈ A -> z ∈ B -> False⌝)%I
       with "[Ht Hslots HA HB]" as %Hd.
@@ -353,7 +353,7 @@ Section CollectAll.
            ⌜diblk_wf ds⌝ ∗ ⌜ireg_couple m bi ds⌝ ∗ ireg_recs γfs ist bi ds)
       ∗ ([∗ set] z ∈ region_inums nib,
            ∃ d : dinode, ⌜m !! z = Some d⌝ ∗ ireg_slot γfs γi z d).
-  Proof.
+  Proof using .
     iIntros "H".
     iAssert ([∗ list] bi ∈ seq 0%nat nib,
                ((∃ ds : list dinode,
@@ -390,7 +390,7 @@ Section CollectAll.
     ([∗ set] z ∈ region_inums nib,
        ∃ d : dinode, ⌜m !! z = Some d⌝ ∗ ireg_slot γfs γi z d) -∗
     [∗ list] bi ∈ seq 0%nat nib, ireg_blk γi γfs ist m bi.
-  Proof.
+  Proof using .
     iIntros "Hrecs Hslots".
     iDestruct (nested_of_set with "Hslots") as "Hslots".
     iCombine "Hrecs Hslots" as "H". rewrite -big_sepL_sep.
@@ -411,7 +411,7 @@ Section CollectAll.
   Lemma ipool_shape_np_side (γfs : fs_names) (γi : gname) (cov : gset Z)
       (ls : Z) (w : mword 32) :
     ipool_shape_np γfs γi cov ls w ⊢ col_side γfs γi w.
-  Proof.
+  Proof using .
     rewrite /ipool_shape_np /col_side.
     iIntros "[Halloc | Hmk]".
     - rewrite /ipool_alloc.
@@ -444,7 +444,7 @@ Section CollectAll.
 
   Lemma col_rowz_side (γfs : fs_names) (γi : gname) (z : Z) (Q : iProp Σ) :
     col_rowz γfs γi z Q -∗ col_sidez γfs γi z.
-  Proof.
+  Proof using .
     rewrite /col_rowz /col_sidez. iApply col_row_side.
   Qed.
 
@@ -457,7 +457,7 @@ Section CollectAll.
       (ls : Z) (w : mword 32) :
     ipool_shape_np γfs γi cov ls w -∗
     col_row γfs γi w (ipool_shape_np γfs γi cov ls w).
-  Proof.
+  Proof using .
     rewrite /ipool_shape_np.
     iIntros "[Halloc | Hmk]".
     - rewrite /ipool_alloc.
@@ -489,7 +489,7 @@ Section CollectAll.
       (ls : Z) (w : mword 32) :
     ipool_ord γfs γi cov ls w -∗
     col_row γfs γi w (ipool_ord γfs γi cov ls w).
-  Proof.
+  Proof using .
     rewrite {1}/ipool_ord. iIntros "(Hcnt & Hfrz & Hnp & Hifz)".
     iDestruct (ipool_shape_np_row with "Hnp") as "Hrow".
     iDestruct (col_row_frame γfs γi w _
@@ -506,7 +506,7 @@ Section CollectAll.
       (ls : Z) (O : gset Z) :
     ipool_rows γfs γi cov ls O ⊢
     [∗ set] z ∈ O, col_rowz γfs γi z (ipool_ord γfs γi cov ls (mword_of_int z)).
-  Proof.
+  Proof using .
     rewrite /ipool_rows. iIntros "H".
     iApply (big_sepS_impl with "H"). iIntros "!>" (z Hz) "Hr".
     rewrite /col_rowz. iApply (ipool_ord_row with "Hr").
@@ -516,14 +516,14 @@ Section CollectAll.
       (ls : Z) (O : gset Z) :
     ([∗ set] z ∈ O, ipool_ord γfs γi cov ls (mword_of_int z))
     ⊢ ipool_rows γfs γi cov ls O.
-  Proof. rewrite /ipool_rows //. Qed.
+  Proof using . rewrite /ipool_rows //. Qed.
 
   (* ---- the corpse ledger's markers ----------------------------------- *)
 
   Lemma col_row_mark_z (γfs : fs_names) (γi : gname) (z : Z) (w : mword 32) :
     bv_unsigned w = z ->
     imark γi z -∗ col_row γfs γi w (imark γi z).
-  Proof. intros <-. iApply col_row_mark. Qed.
+  Proof using . intros <-. iApply col_row_mark. Qed.
 
   (* the corpse ledger's markers, as rows: nothing is kept and the way back
      is the identity, so the [X] column closes with what it opened *)
@@ -531,7 +531,7 @@ Section CollectAll.
     (forall z : Z, z ∈ X -> 0 <= z < 2 ^ 32) ->
     ([∗ set] z ∈ X, imark γi z)
     ⊢ [∗ set] z ∈ X, col_rowz γfs γi z (imark γi z).
-  Proof.
+  Proof using .
     intros Hr. iIntros "H".
     iApply (big_sepS_impl with "H"). iIntros "!>" (z Hz) "Hm".
     rewrite /col_rowz.
@@ -556,7 +556,7 @@ Section CollectAll.
     ic_id cn k (1/4) true dev inum -∗
     ic_slot_cover cn γfs γi cov ls k -∗
     col_side γfs γi inum.
-  Proof.
+  Proof using .
     iIntros "Hq Hc".
     iDestruct "Hc" as (dev' inum') "[Ha | [Hb | Hc]]".
     - rewrite /ic_lend. iDestruct "Ha" as "[Hid _]".
@@ -587,7 +587,7 @@ Section CollectAll.
     ic_slot_cover cn γfs γi cov ls k -∗
     col_row γfs γi inum
       (ic_id cn k (1/4) true dev inum ∗ ic_slot_cover cn γfs γi cov ls k).
-  Proof.
+  Proof using .
     iIntros "Hq Hc".
     iDestruct "Hc" as (dev' inum') "[Ha | [Hb | Hc]]".
     - rewrite /ic_lend. iDestruct "Ha" as "[Hid _]".
@@ -629,7 +629,7 @@ Section CollectAll.
   Lemma ic_slot_cover_body (cn : ic_names) (γfs : fs_names) (γi : gname)
       (cov : gset Z) (ls : Z) (k : nat) :
     ic_slot_cover cn γfs γi cov ls k ⊢ ic_escrow_body cn γfs γi cov ls k.
-  Proof.
+  Proof using .
     iIntros "Hc". iDestruct "Hc" as (dev inum) "[Ha | [Hb | Hc]]".
     - rewrite /ic_lend. iDestruct "Ha" as "[HQ (%R & HR & Hw)]".
       iApply ("Hw" with "HQ HR").
@@ -644,7 +644,7 @@ Section CollectAll.
       (cov : gset Z) (ls : Z) (l : list nat) :
     ([∗ list] k ∈ l, ic_slot_cover cn γfs γi cov ls k)
     ⊢ [∗ list] k ∈ l, ic_escrow_body cn γfs γi cov ls k.
-  Proof.
+  Proof using .
     iIntros "H". iApply (big_sepL_impl with "H").
     iIntros "!>" (j k Hj) "Hc". iApply (ic_slot_cover_body with "Hc").
   Qed.
@@ -653,12 +653,12 @@ Section CollectAll.
       (ids : list (bool * mword 32 * mword 32)) :
     ic_live_inums ((true, dev, inum) :: ids)
     = {[ bv_unsigned inum ]} ∪ ic_live_inums ids.
-  Proof. rewrite /ic_live_inums /=. done. Qed.
+  Proof using . rewrite /ic_live_inums /=. done. Qed.
 
   Lemma ic_live_inums_cons_false (dev inum : mword 32)
       (ids : list (bool * mword 32 * mword 32)) :
     ic_live_inums ((false, dev, inum) :: ids) = ic_live_inums ids.
-  Proof. rewrite /ic_live_inums /=. done. Qed.
+  Proof using . rewrite /ic_live_inums /=. done. Qed.
 
   (* ...AND OVER THE FIFTY, reindexed onto the INUMS the pool's partition
      names.  The offset [o] is generalized because the induction walks the
@@ -670,7 +670,7 @@ Section CollectAll.
        (ic_id cn (o + k) (1/4) p.1.1 p.1.2 p.2
         ∗ ic_slot_cover cn γfs γi cov ls (o + k)))
     ⊢ [∗ set] z ∈ ic_live_inums ids, col_sidez γfs γi z.
-  Proof.
+  Proof using .
     revert o. induction ids as [| p ids IH]; intros o.
     - iIntros "_". rewrite /ic_live_inums /=. rewrite big_sepS_empty. done.
     - rewrite big_sepL_cons. iIntros "[Hhd Htl]".
@@ -734,7 +734,7 @@ Section CollectAll.
       ∗ ghost_map_auth (fs_top γfs) (1/2) I
       ∗ col_got γfs γi I z
       ∗ (col_got γfs γi I z -∗ Q ∗ ireg_slot γfs γi z d).
-  Proof.
+  Proof using .
     intros <- Hmd. iIntros "Ht Hm Hi Hrow Hslot".
     iDestruct (col_row_slot_acc γfs γi w d Q with "Ht Hrow Hslot")
       as "(Ht & Hlnk & %n & %Hdl & Hleg & Hback)".
@@ -774,7 +774,7 @@ Section CollectAll.
          -∗ ([∗ set] z ∈ Rs, Ψ z)
             ∗ ([∗ set] z ∈ Rs, ∃ d : dinode, ⌜m !! z = Some d⌝
                                              ∗ ireg_slot γfs γi z d)).
-  Proof.
+  Proof using .
     induction Rs as [| z Rs Hnz IH] using set_ind_L; intros Hw.
     - iIntros "Ht Hm Hi _ _". iFrame "Ht Hm Hi".
       rewrite !big_sepS_empty. iSplitR; [done |].
@@ -838,7 +838,7 @@ Section CollectAll.
                  ∗ ic_slot_cover cn γfs γi cov ls (o + k)))
             ∗ ([∗ set] z ∈ ic_live_inums ids,
                  ∃ d : dinode, ⌜m !! z = Some d⌝ ∗ ireg_slot γfs γi z d)).
-  Proof.
+  Proof using .
     revert o. induction ids as [| p ids IH]; intros o Hw.
     - iIntros "Ht Hm Hi _ _". iFrame "Ht Hm Hi".
       rewrite /ic_live_inums /=. rewrite !big_sepS_empty.
@@ -921,7 +921,7 @@ Section CollectAll.
     ([∗ list] k ∈ l, ic_escrow_body cn γfs γi cov ls k) -∗
     ghost_map_auth (ln_tx icfg_log) 1 (∅ : gmap nat unit)
     ∗ ([∗ list] k ∈ l, ic_slot_cover cn γfs γi cov ls k).
-  Proof.
+  Proof using .
     induction l as [| k l IH].
     - iIntros "Ha _". iFrame "Ha". done.
     - iIntros "Ha Hl". rewrite !big_sepL_cons.
@@ -935,7 +935,7 @@ Section CollectAll.
   Lemma big_sepL_seq_of_list {A : Type} (l : list A) (P : nat -> iProp Σ)
       (o : nat) :
     ([∗ list] k ∈ seq o (length l), P k) ⊢ [∗ list] k ↦ _ ∈ l, P (o + k)%nat.
-  Proof.
+  Proof using .
     revert o. induction l as [| x l IH]; intros o.
     - iIntros "_". done.
     - cbn [length seq].
@@ -950,7 +950,7 @@ Section CollectAll.
   Lemma big_sepL_seq_of_list_of {A : Type} (l : list A) (P : nat -> iProp Σ)
       (o : nat) :
     ([∗ list] k ↦ _ ∈ l, P (o + k)%nat) ⊢ [∗ list] k ∈ seq o (length l), P k.
-  Proof.
+  Proof using .
     revert o. induction l as [| x l IH]; intros o.
     - iIntros "_". done.
     - cbn [length seq].
@@ -977,12 +977,12 @@ Section CollectAll.
       (n : fs_node) :
     col_reg_map nib I !! z = Some n <->
     (I !! z = Some n /\ z ∈ region_inums nib).
-  Proof. rewrite /col_reg_map map_lookup_filter_Some. done. Qed.
+  Proof using . rewrite /col_reg_map map_lookup_filter_Some. done. Qed.
 
   Lemma col_reg_map_dom (nib : nat) (I : gmap Z fs_node) :
     region_inums nib ⊆ dom I ->
     dom (col_reg_map nib I) = region_inums nib.
-  Proof.
+  Proof using .
     intros Hsub. apply set_eq. intros z. rewrite elem_of_dom.
     split.
     - intros [n Hn]. apply col_reg_map_lookup in Hn as [_ Hz]. exact Hz.
@@ -995,7 +995,7 @@ Section CollectAll.
       (Ψ : Z -> iProp Σ) :
     ([∗ set] z ∈ Rs, col_rowz γfs γi z (Ψ z))
     ⊢ [∗ set] z ∈ Rs, col_sidez γfs γi z.
-  Proof.
+  Proof using .
     iIntros "H". iApply (big_sepS_impl with "H").
     iIntros "!>" (z Hz) "Hr". iApply (col_rowz_side with "Hr").
   Qed.
@@ -1012,7 +1012,7 @@ Section CollectAll.
          ∗ col_bundle γfs γi z n
          ∗ fs_link_node (fs_link γfs) z n)
     ⊢ ⌜Rs ⊆ dom I⌝.
-  Proof.
+  Proof using .
     induction Rs as [| z Rs Hnz IH] using set_ind_L.
     - iIntros "_". iPureIntro. set_solver.
     - rewrite big_sepS_insert; [| exact Hnz].
@@ -1038,7 +1038,7 @@ Section CollectAll.
          ∗ fs_link_node (fs_link γfs) z n)
     ⊢ ⌜forall (i : Z) (n : fs_node),
          i ∈ Rs -> I !! i = Some n -> node_dir_local i icfg_nib n⌝.
-  Proof.
+  Proof using .
     induction Rs as [| z Rs Hnz IH] using set_ind_L.
     - iIntros "_". iPureIntro. intros i n Hi. set_solver.
     - rewrite big_sepS_insert; [| exact Hnz].
@@ -1067,7 +1067,7 @@ Section CollectAll.
          ∗ fs_link_node (fs_link γfs) z n)
     ⊢ ([∗ map] i ↦ n ∈ col_reg_map nib I, col_bundle γfs γi i n)
       ∗ fs_links (fs_link γfs) (col_reg_map nib I).
-  Proof.
+  Proof using .
     intros Hdom. iIntros "HB".
     assert (HdomIq : dom (col_reg_map nib I) = region_inums nib)
       by exact (col_reg_map_dom nib I Hdom).
@@ -1092,7 +1092,7 @@ Section CollectAll.
           ⌜I !! z = Some n⌝ ∗ ⌜node_dir_local z icfg_nib n⌝
           ∗ col_bundle γfs γi z n
           ∗ fs_link_node (fs_link γfs) z n.
-  Proof.
+  Proof using .
     intros Hdom Hdl. iIntros "[Hb Hl]".
     assert (HdomIq : dom (col_reg_map nib I) = region_inums nib)
       by exact (col_reg_map_dom nib I Hdom).
@@ -1133,7 +1133,7 @@ Section CollectAll.
     ⊢ [∗ set] z ∈ region_inums nib,
         ∃ d : dinode, ⌜m !! z = Some d⌝
                       ∗ rec_owned_at (fs_gamma_L γfs) ist z d.
-  Proof.
+  Proof using .
     iIntros "H".
     iAssert ([∗ list] bi ∈ seq 0%nat nib,
                [∗ list] i ∈ seq 0%nat 16%nat,
@@ -1164,7 +1164,7 @@ Section CollectAll.
          ⌜diblk_wf ds⌝ ∗ ⌜ireg_couple m bi ds⌝ ∗ ireg_recs γfs ist bi ds)
     ⊢ ⌜forall bi : nat, (bi < nib)%nat ->
          exists ds : list dinode, diblk_wf ds /\ ireg_couple m bi ds⌝.
-  Proof.
+  Proof using .
     iIntros "H".
     rewrite bi.pure_forall. iIntros (bi).
     rewrite bi.pure_impl. iIntros (Hlt).
@@ -1183,7 +1183,7 @@ Section CollectAll.
     ⊢ [∗ list] bi ∈ seq 0%nat nib,
         ∃ ds : list dinode,
           ⌜diblk_wf ds⌝ ∗ ⌜ireg_couple m bi ds⌝ ∗ ireg_recs γfs ist bi ds.
-  Proof.
+  Proof using .
     intros Hds. iIntros "H".
     iDestruct (nested_of_set with "H") as "H".
     iApply (big_sepL_impl with "H"). iIntros "!>" (j bi Hj) "Hb".
@@ -1234,7 +1234,7 @@ Section CollectAll.
               (col_state sb sbb I used)
          -∗ col_hand γfs γi (FsImg.sb_inodestart sb) nib sb sbb used I m
               Lb C home).
-  Proof.
+  Proof using .
     iIntros "Hhand".
     iDestruct "Hhand" as "(%Hg & %Hdi & Hau & Hsb & Hbm & Hrec & Hb & Hlk
                            & Hkeep & %Hdirloc)".
@@ -1363,7 +1363,7 @@ Section CollectAll.
               (col_state sb sbb I used)
          -∗ col_hand γfs γi (FsImg.sb_inodestart sb) nib sb sbb used I m
               Lb C home).
-  Proof.
+  Proof using .
     iIntros "Hhand".
     iAssert (⌜fs_geom (col_state sb sbb I used)⌝
              ∧ col_hand γfs γi (FsImg.sb_inodestart sb) nib sb sbb used I m
@@ -1443,7 +1443,7 @@ Section CollectAll.
                ∗ ic_ids cn ids
                ∗ ([∗ list] k ∈ seq 0%nat NINODE,
                     ic_escrow_body cn γfs γi cov ls k))).
-  Proof.
+  Proof using .
     intros Hgeom Hrow Hlen Hparse.
     assert (Hwide : forall z : Z, z ∈ region_inums nib -> 0 <= z < 2 ^ 32).
     { intros z Hz. apply region_inums_spec in Hz.
@@ -1687,7 +1687,7 @@ Section CollectAll.
     ⋃ ((fun k : nat => (↑(icEscN .@ k) : coPset)) <$> ks).
 
   Lemma esc_ns_sub (ks : list nat) : esc_ns ks ⊆ (↑icEscN : coPset).
-  Proof.
+  Proof using .
     induction ks as [| k ks IH]; rewrite /esc_ns /=.
     - apply empty_subseteq.
     - apply union_least; [apply ic_escrow_ns_sub | exact IH].
@@ -1695,11 +1695,11 @@ Section CollectAll.
 
   Lemma esc_ns_cons (k : nat) (ks : list nat) :
     esc_ns (k :: ks) = (↑(icEscN .@ k) : coPset) ∪ esc_ns ks.
-  Proof. rewrite /esc_ns /=. done. Qed.
+  Proof using . rewrite /esc_ns /=. done. Qed.
 
   Lemma esc_ns_still (k : nat) (ks : list nat) (E : coPset) :
     k ∉ ks -> esc_ns ks ⊆ E -> esc_ns ks ⊆ E ∖ ↑(icEscN .@ k).
-  Proof.
+  Proof using .
     intros Hk. revert E. induction ks as [| j ks IH]; intros E Hsub.
     - rewrite /esc_ns /=. apply empty_subseteq.
     - rewrite esc_ns_cons in Hsub. rewrite esc_ns_cons.
@@ -1721,7 +1721,7 @@ Section CollectAll.
     end.
 
   Lemma ks_ok_seq (n o : nat) : ks_ok (seq o n).
-  Proof.
+  Proof using .
     revert o. induction n as [| n IH]; intros o; [exact I |].
     cbn [seq ks_ok]. split; [| exact (IH (S o))].
     intros Hin. apply elem_of_seq in Hin. lia.
@@ -1736,7 +1736,7 @@ Section CollectAll.
       ([∗ list] k ∈ ks, ic_escrow_body cn γfs γi cov ls k)
       ∗ (([∗ list] k ∈ ks, ic_escrow_body cn γfs γi cov ls k)
            ={E ∖ esc_ns ks, E}=∗ True).
-  Proof.
+  Proof using .
     revert E. induction ks as [| k ks IH]; intros E Hnd Hsub.
     - iIntros "_". rewrite /esc_ns /= difference_empty_L.
       iApply fupd_mask_intro; [set_solver |]. iIntros "Hcl".
@@ -1772,7 +1772,7 @@ Section CollectAll.
      restriction is the snapshot of the running map itself. *)
   Lemma col_reg_map_id (I : gmap Z fs_node) :
     app_dom I -> col_reg_map icfg_nib I = I.
-  Proof.
+  Proof using .
     intros Hd. rewrite /col_reg_map. apply map_filter_id.
     intros z n Hz. cbn. apply region_inums_spec. apply (Hd z). by eexists.
   Qed.
@@ -1815,7 +1815,7 @@ Section CollectAll.
       dur_pair app_guest (col_view C (fs_home_set cov ls))
       ∗ col_auth γfs Lb C (fs_home_set cov ls)
       ∗ ghost_map_auth (ln_tx icfg_log) 1 (∅ : gmap nat unit).
-  Proof.
+  Proof using .
     intros Hgeom Hap Hft Hir Hbmn Hsbn Hipn Hien.
     iIntros "#Hxfer #Hireg #Hbmi #Hesc #Hpool #Hpark Hauth Htx".
     iDestruct "Hireg" as "(#Hiregi & _ & #Hftop & #Happ)".
@@ -1960,7 +1960,7 @@ Section CollectAll.
     ipool_inv cn γfs γi cov ls nib -∗
     sb_park γfs sb -∗
     snap_law γ γfs cov ls.
-  Proof.
+  Proof using .
     intros -> -> Hgeom.
     iIntros "#Hseam #Hxfer #Hireg #Hbm #Hesc #Hpool #Hpark".
     iApply (snap_law_intro icfg_log γfs cov ls

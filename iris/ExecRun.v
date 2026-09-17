@@ -136,7 +136,7 @@ Section ExecRun.
                       app_pred app_run v ∗ (⌜Pin v⌝ ∨ T)) -∗
     app_inv fsc_fs -∗
     exec_walk_of cw T pl a.
-  Proof.
+  Proof using .
     intros Hres. iIntros "#Hcl #Hinv". rewrite /exec_walk_of.
     iExists (pobs_P T hops), (pobs_Pmiss T), (pobs_Fo Pin T).
     iSplitL.
@@ -153,7 +153,7 @@ Section ExecRun.
      nothing below needed it; the two are the same three lines. *)
   Lemma ex_start_triv (γfs : fs_names) (cw : Z) (pl : list (bv 8)) :
     ⊢ ex_start γfs cw (fun _ _ => True%I) (fun _ _ => True%I) pl.
-  Proof.
+  Proof using .
     rewrite /ex_start. iIntros (r) "_". iModIntro.
     iSplit; [done |]. rewrite /ex_hops_from. iApply ax_hops_triv.
   Qed.
@@ -166,7 +166,7 @@ Section ExecRun.
   Lemma exec_walk_of_taint (T : iProp Σ) (cw : Z) (pl : list (bv 8))
       (a : anode) :
     □ T -∗ exec_walk_of cw T pl a.
-  Proof.
+  Proof using .
     iIntros "#HT". rewrite /exec_walk_of.
     iExists (fun _ _ => True%I), (fun _ _ => True%I),
             (pfam_triv (fun _ _ _ => True%I)).
@@ -199,7 +199,7 @@ Section ExecRun.
       (uvis_M W) (tf_w (uvis_tf W) (tf_arg_idx 0))
       (tf_w (uvis_tf W) (tf_arg_idx 1)) (uvis_fd W) (uvis_ch W) (uvis_pid W) -∗
     sbundle_pay_refR X Q R W.
-  Proof.
+  Proof using .
     iIntros "#Hrf Hmp H". rewrite /sbundle_pay_refR.
     iExists (xfam_at Q (xfam_exec P Pmiss Fo Rs)).
     iSplitR; [ done | ].
@@ -242,7 +242,7 @@ Section ExecRun.
     Pay -∗
     sbundle_pay_refR X (ukn_pay N) R
       (uvis_of_run m pc M pm sz fdv c gn cs pidv false).
-  Proof.
+  Proof using .
     intros Hload Ha0 Ha1 Hpath.
     iIntros "#Hrf Hmp Hw #Hcon #Hgen HPay".
     iDestruct "Hw" as (P Pmiss Fo) "(Hst & Hobs & #Hid)".
@@ -350,7 +350,7 @@ Section ExecRun.
       (f : elf_bytes) (nl : nat) (Pay : iProp Σ) :
     uexec_sup_run N pv av c T pl f nl Pay -∗
     uexec_sup_run_ids N pv av c T pl f nl Pay.
-  Proof.
+  Proof using .
     rewrite /uexec_sup_run /uexec_sup_run_ids.
     iIntros "H" (M pm sz fdv cs pidv) "#Hnpw Hh Hf Hids".
     iDestruct ("H" $! M pm sz fdv cs pidv with "Hnpw Hh Hf") as "(Hh & Hf & Hr)".
@@ -369,7 +369,7 @@ Section ExecRun.
     image_entry_taint T (ukn_pay N) uslot -∗
     uexec_sup_run N pv av c T pl f nl Pay -∗
     udepw_at_refR N m pc c R.
-  Proof.
+  Proof using .
     intros Hload Ha0 Ha1. iIntros "#Hrf #Hgen Hsup".
     rewrite /udepw_at_refR. iIntros (M pm sz fdv gn cs pidv) "Hmp #Hnpw Hh Hf".
     rewrite /uexec_sup_run.
@@ -392,7 +392,7 @@ Section ExecRun.
     image_entry_taint T (ukn_pay N) uslot -∗
     uexec_sup_run_ids N pv av c T pl f nl Pay -∗
     udepw_at_refR_ids N m pc c R.
-  Proof.
+  Proof using .
     intros Hload Ha0 Ha1. iIntros "#Hrf #Hgen Hsup".
     rewrite /udepw_at_refR_ids. iIntros (M pm sz fdv gn cs pidv) "Hmp #Hnpw Hh Hf Hids".
     rewrite /uexec_sup_run_ids.
@@ -448,7 +448,7 @@ Section ExecRun.
          (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Ha0 Ha1 Hal4 Hload.
     iIntros "#Hi Hrun Hcwd #Hrf #Hgen Hsup Hcont".
     iApply (wp_uk_ecall_exec_at_cwd_refR N h m pc avail c R Hn Hal4
@@ -481,7 +481,7 @@ Section ExecRun.
          (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Ha0 Ha1 Hal4 Hload.
     iIntros "#Hi Hrun Hcwd #Hrf #Hgen Hsup Hcont".
     iApply (wp_uk_ecall_exec_at_cwd_refR_ids N h m pc avail c R Hn Hal4
@@ -505,7 +505,7 @@ Section ExecRun.
       (T : iProp Σ) (X : uvis -d> iPropO Σ) :
     □ T -∗ image_entry_taint T Q X -∗
     image_entry f M av sts cw cs pidv Q Pay X.
-  Proof.
+  Proof using .
     iIntros "#HT #Hgen". rewrite /image_entry /image_entry_taint.
     iIntros "!>" (na alen afun W') "_ _ _ _ _ _ Hmp _".
     iApply ("Hgen" $! W' with "HT Hmp").
@@ -561,7 +561,7 @@ Section ExecRun.
          image_entry_at f na alen afun fdv c cs pidv (ukn_pay N) Pay uslot) -∗
     Pay -∗
     uexec_sup_run N pv av c T pl f nl Pay.
-  Proof.
+  Proof using .
     iIntros "#Hrd #Hra Hw #Hcon HPay".
     rewrite /uexec_sup_run. iIntros (M pm sz fdv cs pidv) "#Hnpw Hheap Hufd".
     iDestruct ("Hrd" $! M pm sz with "Hheap") as %Hpath.
@@ -615,7 +615,7 @@ Section ExecRun.
          (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Ha0 Ha1 Hal4 Hload Hres.
     iIntros "#Hi Hrun Hcwd #Hcl #Hinv #Hrd #Hcon #Hgen #Hrf HPay Hcont".
     iApply (wp_uk_ecall_exec_run N h m pc avail c T pv av pl f nl Pay R
@@ -658,7 +658,7 @@ Section ExecRun.
          (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Ha0 Hal4 Hload.
     iIntros "#Hi Hrun Hcwd #HT #Hgen #Hrd Hcont".
     iApply (wp_uk_ecall_exec_run N h m pc avail c T pv
@@ -709,12 +709,12 @@ Section ExecRun.
 
   Global Instance ex_node_abs_persistent T Pfin Φo nd :
     Persistent (ex_node_abs T Pfin Φo nd).
-  Proof. rewrite /ex_node_abs. apply _. Qed.
+  Proof using . rewrite /ex_node_abs. apply _. Qed.
 
   Lemma ex_node_abs_of_id (T : iProp Σ) (Pfin : Z -> iProp Σ)
       (Φo : aview -> Z -> anode -> iProp Σ) (a : anode) :
     ex_node_id T Pfin Φo a -∗ ex_node_abs T Pfin Φo (an_node a).
-  Proof.
+  Proof using .
     rewrite /ex_node_id /ex_node_abs. iIntros "#Hid !>" (v i b) "HP Hr".
     iDestruct ("Hid" $! v i b with "HP Hr") as "[%Hb | HT]";
       [ iLeft; iPureIntro; by rewrite Hb | iRight; iExact "HT" ].
@@ -732,7 +732,7 @@ Section ExecRun.
   Lemma exec_walk_of_abs_of_walk (cw : Z) (T : iProp Σ) (pl : list (bv 8))
       (a : anode) :
     exec_walk_of cw T pl a -∗ exec_walk_of_abs cw T pl (an_node a).
-  Proof.
+  Proof using .
     rewrite /exec_walk_of /exec_walk_of_abs.
     iIntros "H". iDestruct "H" as (P Pmiss Fo) "(Hst & Hobs & #Hid)".
     iExists P, Pmiss, Fo. iFrame "Hst Hobs".
@@ -750,7 +750,7 @@ Section ExecRun.
                       app_pred app_run v ∗ (⌜Pin v⌝ ∨ T)) -∗
     app_inv fsc_fs -∗
     exec_walk_of_abs cw T pl nd.
-  Proof.
+  Proof using .
     intros Hres. iIntros "#Hcl #Hinv". rewrite /exec_walk_of_abs.
     iExists (pobs_P T hops), (pobs_Pmiss T), (pobs_Fo Pin T).
     iDestruct (pinned_obs_abs fsc_fs Pin T (pobs_Pmiss T) cw pl hops ino nd
@@ -765,7 +765,7 @@ Section ExecRun.
   Lemma exec_walk_of_abs_taint (T : iProp Σ) (cw : Z) (pl : list (bv 8))
       (nd : absnode) :
     □ T -∗ exec_walk_of_abs cw T pl nd.
-  Proof.
+  Proof using .
     iIntros "#HT".
     iPoseProof (exec_walk_of_taint T cw pl (MkAnode nd 0%nat) with "HT") as "Hw".
     iApply (exec_walk_of_abs_of_walk cw T pl (MkAnode nd 0%nat) with "Hw").
@@ -787,7 +787,7 @@ Section ExecRun.
     image_entry_taint T Q X -∗
     Pay -∗
     exec_slot_pre X Q Pfin Φo cw na alen afun sts cs pidv.
-  Proof.
+  Proof using .
     intros Hload. iIntros "#Hid #Hcon #Hgen HPay".
     rewrite /exec_slot_pre /ex_node_abs /image_entry_at /image_entry_taint.
     iSplitL "HPay".
@@ -823,7 +823,7 @@ Section ExecRun.
     Pay -∗
     pf_at (fun S => sys_exec_slot_pre S Q P Φo cw M pv av sts cs pidv)
       (MkPfam X Pay).
-  Proof.
+  Proof using .
     intros Hload Hpath. iIntros "#Hid #Hcon #Hgen HPay".
     rewrite /pf_at. cbn [pf_recv pf_refund]. iSplit; [ | iExact "HPay" ].
     rewrite /sys_exec_slot_pre. iIntros (pl' na alen afun) "%Hpath' %Hargs".
@@ -851,7 +851,7 @@ Section ExecRun.
     Pay -∗
     sys_exec_au_pre (MkPfam X Pay) (fs_gamma_L fsc_fs) fsc_fs cw Q P Pmiss Fo
       M pv av sts cs pidv.
-  Proof.
+  Proof using .
     intros Hload Hpath. iIntros "Hwalk Hobs #Hid #Hcon #Hgen HPay".
     rewrite /sys_exec_au_pre. iSplitL "Hwalk".
     { iIntros (pl') "%Hpath'".
@@ -881,7 +881,7 @@ Section ExecRun.
     Pay -∗
     sbundle_pay_refR X (ukn_pay N) R
       (uvis_of_run m pc M pm sz fdv c gn cs pidv false).
-  Proof.
+  Proof using .
     intros Hload Ha0 Ha1 Hpath.
     iIntros "#Hrf Hmp Hw #Hcon #Hgen HPay".
     iDestruct "Hw" as (P Pmiss Fo) "(Hst & Hobs & #Hid)".
@@ -933,7 +933,7 @@ Section ExecRun.
     image_entry_taint T (ukn_pay N) uslot -∗
     uexec_sup_run_abs N pv av c T pl f Pay -∗
     udepw_at_refR N m pc c R.
-  Proof.
+  Proof using .
     intros Hload Ha0 Ha1. iIntros "#Hrf #Hgen Hsup".
     rewrite /udepw_at_refR. iIntros (M pm sz fdv gn cs pidv) "Hmp #Hnpw Hh Hf".
     rewrite /uexec_sup_run_abs.
@@ -972,7 +972,7 @@ Section ExecRun.
          (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Ha0 Ha1 Hal4 Hload.
     iIntros "#Hi Hrun Hcwd #Hrf #Hgen Hsup Hcont".
     iApply (wp_uk_ecall_exec_at_cwd_refR N h m pc avail c R Hn Hal4

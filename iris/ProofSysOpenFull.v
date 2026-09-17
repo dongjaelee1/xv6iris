@@ -180,7 +180,7 @@ Section ProofSysOpenFullBody.
 
  ns dqb dqs dqbs dqn v vom
                            pid U sts m K eb b lks P Pmiss Farm Fun Fok Fex Fo Ft.
-  Proof.
+  Proof using .
     cbv beta zeta delta [wp_sys_open_create_body wp_sys_open_frame].
     intros Hcr HK HdevR Hnib0 Hgeom Hsize
            Hbm0 Hbmcov Hbmlog Hist0 Hcovb Hbmgeo Hiregb Hni1 Hni2 Hni3 Hush
@@ -913,7 +913,7 @@ Section ProofSysOpenFullBody.
       (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ)) :
     wp_sys_open_body gfl gf gs j gl pd pav pu ns dqb dqs dqbs dqn v vom
                      pid U sts m K eb b lks P Pmiss Farm Fun Fok Fex Fo Ft.
-  Proof.
+  Proof using .
     rewrite /wp_sys_open_body /open_in /open_arms.
     destruct (om_create vom) eqn:Hcr.
     - exact (wp_sys_open_create gfl gf gs j gl pd pav pu ns dqb dqs dqbs dqn

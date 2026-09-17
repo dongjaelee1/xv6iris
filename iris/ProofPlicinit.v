@@ -104,7 +104,7 @@ Section ProofPlicinit.
   Lemma wp_plicinit_sconf
       (γd γd1 : uart_names) (m0 : regfile) (n : nat) (p : mword 64)
     : wp_plicinit_sconf_body γd γd1 m0 n p.
-  Proof.
+  Proof using .
     cbv beta delta [wp_plicinit_sconf_body].
     intros ra_idx pcE ra0 ret_tgt Hn.
     set (s0_idx := (mword_of_int 8 : mword 5)).

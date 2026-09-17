@@ -106,7 +106,7 @@ Section UkWriteClosed.
     take NSTD fdv = l ->
     l !! i = Some FdClosed ->
     fd_st_of_key v0 fdv = FdClosed.
-  Proof.
+  Proof using .
     intros H0 Hi Htake Hli. rewrite /fd_st_of_key H0.
     destruct (decide (0 <= Z.of_nat i < Z.of_nat NOFILE)) as [_ | Hc];
       [ | exfalso; apply Hc; unfold NOFILE, NSTD in *; lia ].
@@ -130,7 +130,7 @@ Section UkWriteClosed.
     (i < NSTD)%nat ->
     l !! i = Some FdClosed ->
     ⊢ udepwf_std N m pc 16 (xfam_wr Q (ukn_pay N)) l.
-  Proof.
+  Proof using .
     intros H0 Hi Hli.
     rewrite /udepwf_std. iSplitR; [ iPureIntro; reflexivity | ].
     iIntros (M pm sz fdv cw gn cs pidv) "%Htake _ Hheap Hufd".
@@ -163,7 +163,7 @@ Section UkWriteClosed.
     bv_signed (trunc32
       ((<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m)
          !!! Regidx a0_idx)) = Z.of_nat i.
-  Proof.
+  Proof using .
     intros Ha0 Hfd.
     rewrite (upd_ne m (Regidx a7_idx) (Regidx a0_idx) _
                ltac:(vm_compute; discriminate)).
@@ -182,7 +182,7 @@ Section UkWriteClosed.
     l !! i = Some FdClosed ->
     ⊢ UkSh.ksh_w N fdw ua nb
         (UserFd.ustd (ukn_fd N) l) (UserFd.ustd (ukn_fd N) l).
-  Proof.
+  Proof using .
     intros Hfd Hi Hli.
     iIntros (h m avail) "%Ha0 %Ha1 %Ha2 #Hcode Hstd Hrun Hcont".
     iApply (UkSh.wp_ksh_write_chain N h m avail
@@ -202,15 +202,15 @@ Section UkWriteClosed.
      above the application and this one does not) *)
   Local Lemma ubyte_run_one (γd : gname) (a : Z) (b : bv 8) :
     ubyte γd a b ⊣⊢ ubytesq γd (DfracOwn 1) a 1%nat (fun _ => b).
-  Proof. by rewrite /ubyte /ubytesq /= Z.add_0_r right_id. Qed.
+  Proof using . by rewrite /ubyte /ubytesq /= Z.add_0_r right_id. Qed.
 
   Local Lemma ubyte_to_run (γd : gname) (a : Z) (b : bv 8) :
     ubyte γd a b -∗ ubytesq γd (DfracOwn 1) a 1%nat (fun _ => b).
-  Proof. rewrite (ubyte_run_one γd a b). by iIntros "$". Qed.
+  Proof using . rewrite (ubyte_run_one γd a b). by iIntros "$". Qed.
 
   Local Lemma ubyte_of_run (γd : gname) (a : Z) (b : bv 8) :
     ubytesq γd (DfracOwn 1) a 1%nat (fun _ => b) -∗ ubyte γd a b.
-  Proof. rewrite (ubyte_run_one γd a b). by iIntros "$". Qed.
+  Proof using . rewrite (ubyte_run_one γd a b). by iIntros "$". Qed.
 
   (* INIT'S, per byte: putc's [write(fdw, &c, 1)] at a ledger whose slot
      [i] is closed.  The byte comes back with the ledger, as [kinit_w1]
@@ -222,7 +222,7 @@ Section UkWriteClosed.
     l !! i = Some FdClosed ->
     ⊢ UkInit.kinit_w1 N fdw b
         (UserFd.ustd (ukn_fd N) l) (UserFd.ustd (ukn_fd N) l).
-  Proof.
+  Proof using .
     intros Hfd Hi Hli.
     iIntros (h m avail) "%Ha0 %Ha2 #Hcode Hbuf Hstd Hrun Hcont".
     iApply (UkInit.wp_kinit_write_chain N h m avail
@@ -250,7 +250,7 @@ Section UkWriteClosed.
   Lemma ksh_w_of_closed_l0 (N : uk_names Σ) (ua : mword 64) (nb : nat) :
     ⊢ UkSh.ksh_w N (mword_of_int 2 : mword 64) ua nb
         (UserFd.ustd (ukn_fd N) ufd_l0) (UserFd.ustd (ukn_fd N) ufd_l0).
-  Proof.
+  Proof using .
     apply (ksh_w_of_closed N (mword_of_int 2) ua nb ufd_l0 2%nat
              ltac:(vm_compute; reflexivity)
              ltac:(unfold NSTD; lia)
@@ -260,7 +260,7 @@ Section UkWriteClosed.
   Lemma kinit_w1_of_closed_l0 (N : uk_names Σ) (b : bv 8) :
     ⊢ UkInit.kinit_w1 N (mword_of_int 1 : mword 64) b
         (UserFd.ustd (ukn_fd N) ufd_l0) (UserFd.ustd (ukn_fd N) ufd_l0).
-  Proof.
+  Proof using .
     apply (kinit_w1_of_closed N (mword_of_int 1) b ufd_l0 1%nat
              ltac:(vm_compute; reflexivity)
              ltac:(unfold NSTD; lia)

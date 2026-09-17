@@ -82,7 +82,7 @@ Section UkRunBr.
          (if taken then tgt else add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros H1 H2 H3. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -110,7 +110,7 @@ Section UkRunBr.
            (if taken then tgt else add_vec_int pc 4) avail -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros H1 H2 H3. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -137,7 +137,7 @@ Section UkRunBr.
          (if taken then tgt else add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros H1 H2 H3. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.

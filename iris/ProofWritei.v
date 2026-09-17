@@ -454,7 +454,7 @@ Section WriteiDefs.
      (∃ v : mword 64, pa_stk (m !!! Regidx csp_rs1 : mword 64) 14 ↦₈[KT1] v))%I.
 
   Lemma wi_fr7_of8 `{XI : CurCtx} (m : regfile) : wi_fr8 m -∗ wi_fr7 m.
-  Proof.
+  Proof using .
     rewrite /wi_fr8 /wi_fr7.
     iIntros "(H1 & H2 & H3 & H4 & H5 & H6 & H7 & H8 & H9 & HA & HB & HC & HD & HE)".
     iSplitL "H1"; [iExact "H1"|]. iSplitL "H2"; [iExact "H2"|].
@@ -499,7 +499,7 @@ Section WriteiDefs.
         then proc_priv_core (proc_addr j) pidv Uc
         else ([∗ list] i ∈ seq 0 n, pa_add srcb i ↦ₘ[ktb] bytes i) ∗
              proc_priv_bare (proc_addr j) pidv Uk)).
-  Proof.
+  Proof using .
     destruct user.
     - rewrite proc_priv_core_bare. iIntros "[Hb Hcwd]".
       iSplitL "Hb"; [iExact "Hb"|]. iIntros "Hb". iFrame.
@@ -698,7 +698,7 @@ Section WriteiRet.
             pidv dq dqd dqn dqs A j
             m K eb b lks -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hsp Hs1 Hs3 Hs8 Hs9 Hs10 Hs11
            Hwf' Hhz' Hadr' Hsz' Hcov' Hcap' Hsized' Hdb Hd0 Hdk Hrange Hker Husr Harm
            Hlo Hhi Hsbsub Hwi16 Hwiany Hwiat Hext.
@@ -1111,7 +1111,7 @@ Section WriteiJoin.
             pidv dq dqd dqn dqs A j
             m K eb b lks -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hgeom Hist Hicov Hilog Hnib Hdtnz Hstab Hnlk Hadr Hwf' Hhz' Hsz' Hcov'
            Hrngt Hsized' Hoffle
            Hj Hgl Hsp Hs5 Hs3 Hs1 Hs8 Hs9 Hs10 Hs11 Hdb Hd0 Hdk Hrange Hker Husr Htotn Hdneq
@@ -1502,7 +1502,7 @@ Section WriteiSize.
             pidv dq dqd dqn dqs A j
             m K eb b lks -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hgeom Hist Hicov Hilog Hnib Hdtnz Hstab Hnlk Hwf' Hhz' HcovS HcovT Hszlt Hofflt
            Hrngt Hsized' Hoffle
            Hj Hgl Hsp Hs5 Hs2 Hs3 Hdb Hd0 Hdk Hrange Hker Husr Htotn Hlo Hhi Hhi1 Hsbsub
@@ -2165,7 +2165,7 @@ Section WriteiLoop.
             pidv dq dqd dqn dqs A j
             m K eb b lks -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using KtierLe0.
     intros HK Hgeom Hist Hicov Hilog Hnib Hdtnz Hstab Hnlk Hszdn Hofflt Hnlt Hrng Hoffle
            Husv Hj Hgl.
     pose proof HK as HK'. 
@@ -4086,7 +4086,7 @@ Section WriteiMain.
                          ip inum bm data dn dn0
                          user off n src_bytes U ncount Sb
                          pidv dq dqd dqn dqs dqb dqbs m K eb b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_writei_gen_body].
     intros pcE pj src ret_tgt HK Hcost Hgeom Hist Hicov Hilog Hnib Hadr Hdtnz Hstab Hnlk
            Hwf Hhz Hcovin Hsum Hszdn Hgok Hj Hgl Ha0 Ha1 Ha3 Ha4 Hbelow.
@@ -5091,7 +5091,7 @@ Section WriteiMain.
                            ip inum bm data dn dn0
                            user off n src_bytes U ncount
                            pidv dq dqd dqn dqs dqb dqbs m K eb b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_writei_sconf_body].
     intros pcE pj src ret_tgt HK Hcost Hgeom Hist Hicov Hilog Hnib Hadr Hdtnz Hstab Hnlk
            Hwf Hhz Hcovin Hsum Hszdn Hgok Hj Hgl Ha0 Ha1 Ha3 Ha4 Hbelow.

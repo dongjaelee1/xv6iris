@@ -61,7 +61,7 @@ Section ProofRelease.
       (m : regfile)
       (n : nat) (eb : bool) (p : mword 64) (av : nat) (lks : gset string)
     : wp_release_gen_pay_sconf_body kt γl lka s R Dc Out m n eb p av lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_release_gen_pay_sconf_body].
     intros pcE lk0 ret_tgt. cbv zeta. intros Hlka Hav Href Hrefpre.
     (* [cbv zeta] just inlined the body's [outb]; give it a name again, because
@@ -518,7 +518,7 @@ Section ProofRelease.
       (m : regfile)
       (n : nat) (eb : bool) (p : mword 64) (av : nat) (lks : gset string)
     : wp_release_gen_sconf_body kt γl lka s R Dc Out m n eb p av lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_release_gen_sconf_body].
     intros pcE lk0 ret_tgt. cbv zeta. intros Hlka Hav Href Hrefpre.
     iIntros "Hcg #Htext Hpc #Hlock Htoken HR Hfin Hown Hpay Hcont".
@@ -548,7 +548,7 @@ Section OfGen.
       (n : nat) (eb : bool) (p : mword 64) (av : nat)
       (lks : gset string)
     : wp_release_sconf_body kt γl lka s R m n eb p av lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_release_sconf_body].
     intros pcE lk0 ret_tgt. cbv zeta. intros Hlka Hav.
     iIntros "Hcg #Htext Hpc #Hlock Htoken HR Hown Hpay Hcont".
@@ -571,7 +571,7 @@ Section OfGen.
       (n : nat) (eb : bool) (p : mword 64) (av : nat)
       (lks : gset string)
     : wp_release_hook_sconf_body kt γl lka s Rin R m n eb p av lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_release_hook_sconf_body].
     intros pcE lk0 ret_tgt. cbv zeta. intros Hlka Hav.
     iIntros "Hcg #Htext Hpc #Hlock Htoken HR Hhook Hown Hpay Hcont".
@@ -607,7 +607,7 @@ Section CancelOfGen.
       (n : nat) (eb : bool) (p : mword 64) (av : nat)
       (lks : gset string)
     : wp_release_cancel_sconf_body kt γl lka s R D Out m n eb p av lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_release_cancel_sconf_body].
     intros pcE lk0 ret_tgt. cbv zeta. intros Hlka Hav Href Hrefpre.
     iIntros "Hcg #Htext Hpc #Hlock Htoken HR Hbuild Hown Hpay Hcont".

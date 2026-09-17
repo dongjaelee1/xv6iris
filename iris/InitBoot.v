@@ -147,7 +147,7 @@ Section InitBoot.
   Lemma init_boot_bundle_triv (cw : Z) (sts : list fdstate) :
     □ (∀ W : uvis, my_pay (uvis_gen W) (fun _ => True)%I -∗ uslot W) -∗
     init_boot_bundle cw sts.
-  Proof.
+  Proof using .
     iIntros "#HS". rewrite /init_boot_bundle.
     (* THE GENERIC INSTANCE DROPS THE TOKEN: a program that tracks nothing
        reads the console on the persistent credential, not on the token

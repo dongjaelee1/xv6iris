@@ -273,13 +273,13 @@ def _decode_lemmas(w, width, exp, cast, op, L):
         L.append('Lemma kd_%04x s : eq_vec (_get_Misa_C (register_lookup misa s.(sregs))) (\'b"1") = true ->' % w)
         L.append('  exec (ext_decode_compressed (mword_of_int 0x%04x : mword 16)) s' % w)
         L.append('  = Some (%s, s).' % cast)
-        L.append('Proof. intro H. rvc_oneshot s H. Qed.')
+        L.append('Proof using . intro H. rvc_oneshot s H. Qed.')
         if op in LEAF_OPS:
             L.append('')
             L.append('Lemma ke_%04x s :' % w)
             L.append('  exec (execute (%s)) s' % cast)
             L.append('  = Some (ExecuteAs (%s), s).' % exp)
-            L.append('Proof. apply exec_execute_%s_leaf; first [ apply bv_eq; vm_compute; reflexivity | vm_compute; reflexivity ]. Qed.' % op)
+            L.append('Proof using . apply exec_execute_%s_leaf; first [ apply bv_eq; vm_compute; reflexivity | vm_compute; reflexivity ]. Qed.' % op)
     else:
         L.append('Lemma kd_%08x s : register_lookup misa (sregs s) = MISA_C -> cfg_ok s ->' % w)
         L.append('  exec (ext_decode (mword_of_int 0x%08x : mword 32) : M instruction) s' % w)
@@ -290,7 +290,7 @@ def _decode_lemmas(w, width, exp, cast, op, L):
         bridge = ('decode_bridge_ms_bv'
                   if exp.startswith(('FENCE (', 'FENCEI (', 'CSRReg (', 'CSRImm (', 'SHIFTIWOP ('))
                   else 'decode_bridge_ms')
-        L.append('Proof. %s. Qed.' % bridge)
+        L.append('Proof using . %s. Qed.' % bridge)
     L.append('')
 
 
@@ -379,11 +379,11 @@ def emit_code_file(path, fams, syms, by, decoded):
                      % (pre, wid, off, pc, rvc, astt))
             if width == 16:
                 ex = 'ke_%04x' % w if op in LEAF_OPS else 'exec_execute_%s' % op
-                L.append('  Proof. mk_rvc %s (mword_of_int 0x%04x : mword 16)' % (pc, w))
+                L.append('  Proof using . mk_rvc %s (mword_of_int 0x%04x : mword 16)' % (pc, w))
                 L.append('    (mword_of_int %s : mword 64) %s kd_%04x %s. Qed.' % (pc, astt, w, ex))
             else:
                 dec = OVERRIDES[(w, 32)][1] if (w, 32) in OVERRIDES else 'kd_%08x' % w
-                L.append('  Proof. mk_base %s (mword_of_int 0x%08x : mword 32)' % (pc, w))
+                L.append('  Proof using . mk_base %s (mword_of_int 0x%08x : mword 32)' % (pc, w))
                 L.append('    (mword_of_int %s : mword 64) %s %s. Qed.' % (pc, astt, dec))
             L.append('')
             n += 1

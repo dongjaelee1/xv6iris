@@ -213,7 +213,7 @@ Section ProofMain.
      bundle -- what [Kernelvec.kernelvec_handler_spec] consumes. *)
   Local Lemma mn_dup_hw {kt : ktier} m avail b p :
     sie_cap_gpr kt m avail b p -∗ hw_config ∗ minstret_inv ∗ sie_cap_gpr kt m avail b p.
-  Proof.
+  Proof using .
     iIntros "Hcg".
     iDestruct (sie_cap_gpr_split with "Hcg") as "(Hhs & Hsc & Hsie & Hgpr)".
     iEval (rewrite /sconf) in "Hsc".
@@ -237,7 +237,7 @@ Section ProofMain.
   Local Lemma mn_pin_sie_cap_gpr {kt : ktier} (M : regfile) (avail : nat) (bb : bool)
       (pp : mword 64) :
     sie_cap_gpr kt M avail bb pp -∗ sie_cap_gpr kt (tp_pin M) avail bb pp.
-  Proof.
+  Proof using .
     rewrite /sie_cap_gpr /sie_cap (tp_pin_sp M).
     assert (Htp2 : tp_pin (tp_pin M) = tp_pin M)
       by (apply tp_pin_id; exact (rget_tp M)).
@@ -246,7 +246,7 @@ Section ProofMain.
 
   Local Lemma mn_tp_pin_ne (M : regfile) (k : mword 5) :
     Regidx k <> Regidx Rtp -> tp_pin M !!! Regidx k = M !!! Regidx k.
-  Proof. exact (rget_ne M k). Qed.
+  Proof using . exact (rget_ne M k). Qed.
 
   (* =================================================================== *)
   (* 0x00 .. 0x14 -- the frame push, [jal cpuid], and the [beqz a0] that  *)
@@ -263,7 +263,7 @@ Section ProofMain.
         pc_is (mword_of_int (KernelSyms.main + 0x42) : mword 64) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hcid HK.
     pose proof (mn_bounds K HK) as (Hc2 & Hn50 & Hnsched).
     iIntros "Hcg #Htext Hpc Hcont".
@@ -535,7 +535,7 @@ Section ProofMain.
         SpecFileread.console_ready_app -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hcnu Hconsq.
     iIntros "Hcg #Htext #Hkdata #Hdev Hpc Hfree Hcpu Hlcons Hltx0 Hltx1 Hlpr".
     iIntros "Hkprintk Hdevsw Hrest Hring Hclean Htx Hsent Hlb Htok Hhi Hlgh Harm Hdlab".
@@ -1104,7 +1104,7 @@ Section ProofMain.
         ([∗ list] i ∈ seq 0 64, kmap_at (kstack_vpn i) (pas i) KP_rw) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hphystop Hs1 Hprun Hlen H0cid.
     subst phystop s1entry.
     iIntros "Hcg #Htext #Hkdata Hpc Hfree Hcpu Hlkmem Hkkalloc Hkmem24 Hpages Hkpt".
@@ -1419,7 +1419,7 @@ Section ProofMain.
         ghost_var sie_gname (1/4) ('b"0" : mword 1) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hcid.
     (* [cid_word] is a [Definition] over [cpu_id]; naming the delta-expanded
        form once is what lets [rget_tp]'s output be rewritten below. *)
@@ -1748,7 +1748,7 @@ Section ProofMain.
         (∃ γft γf : gname, is_ftable γft γf) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using ufdG0.
     intros Hn Hlen Hlive Hdevq Hnibq Hcov0 Hnibeq Hpures
            Huartq Hdiskq Hgeomok.
     iIntros "Hcg #Htext #Hkdata #Hdev #Hwire Hbundle Hrdtok #Htramp #Hccaps #Hu1caps #Hcready #Htl #Hwaitlk
@@ -2244,7 +2244,7 @@ Section ProofMain.
     kmap_at tramp_vpn tramp_ppn KP_rx -∗
     ([∗ list] i ∈ seq 0 64, kmap_at (kstack_vpn i) (pas i) KP_rw) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn Hp0 Hcid.
     iIntros "Hcg #Htext Hpc Hfree Hcpu Htcsr #Hsinv Hprim #Hwand #Hcreds".
     iIntros "#Hpenv #Hpinv #Hccaps #Hu1caps #Hdlock #Hgeom #Hkinv #Hkptp #Htramp #Hkstx".

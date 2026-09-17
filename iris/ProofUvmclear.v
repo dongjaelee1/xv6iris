@@ -106,13 +106,13 @@ Section ProofUvmclear.
   (* read the node claim's [page_valid] without consuming it (persistent) *)
   Local Lemma ucl_claim_pv (b : mword 44) :
     pt_node_claim b ⊢ ⌜page_valid (page_base b)⌝.
-  Proof. iIntros "(_ & Hpv & _)". iExact "Hpv". Qed.
+  Proof using . iIntros "(_ & Hpv & _)". iExact "Hpv". Qed.
 
   Lemma wp_uvmclear_mem_sconf (mm : regfile)
       (P : uptd) (sz : Z) (M : gmap Z (bv 8))
       (w : mword 64) (K : nat) (b : bool) (p : mword 64)
     : wp_uvmclear_mem_sconf_body mm P sz M w K b p.
-  Proof.
+  Proof using .
     cbv beta delta [wp_uvmclear_mem_sconf_body].
     intros pcE va vpn ret_tgt HK Hroot Hvab Hum Hperm.
     pose (sp0 := (mm !!! Regidx csp_rs1 : mword 64)).

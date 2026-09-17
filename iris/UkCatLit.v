@@ -80,7 +80,7 @@ Section UkCatLit.
     cat_lit_ok base len = true ->
     Z.of_nat len < 2 ^ 31 ->
     cat_rodata γt -∗ utext_str γt base len (cat_lit base).
-  Proof.
+  Proof using .
     intros Hok Hlen. iIntros "#Hro". rewrite /cat_rodata.
     iApply (utext_str_of_img γt cat_ro base len (cat_lit base)).
     - intros j Hj. intro He.
@@ -95,7 +95,7 @@ Section UkCatLit.
   Lemma cat_lit_nopct (base : Z) (len : nat) (j : nat) :
     cat_lit_ok base len = true -> (j < len)%nat ->
     bv_unsigned (cat_lit base j) <> 37.
-  Proof.
+  Proof using .
     intros Hok Hj.
     exact (proj2 (proj2 (cat_lit_ok_body base len j Hok Hj))).
   Qed.

@@ -129,7 +129,7 @@ Section ProofVirtioDiskRwC.
         pa_add disk_base (168 + 16 * h + 8) ↦₈ sector -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hh8 Hs0 Hs6 Hs7.
     iIntros "Hcg #Htext Hpc Hidx Hty Hres Hsec Hcont".
     (* ---- +0x0c4  lw a0,-96(s0) ---- *)
@@ -390,7 +390,7 @@ Section ProofVirtioDiskRwC.
         pa_add pd (16 * h + 12) ↦₂ Z_to_bv 16 1 -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Ha3 Ha5.
     iIntros "Hcg #Htext Hpc #Hdp Hda Hdl Hdf Hcont".
     assert (Hdpa : add_vec (M !!! Regidx Ra5)
@@ -652,7 +652,7 @@ Section ProofVirtioDiskRwC.
         pa_add pd (16 * m2 + 12) ↦₂ vdrw_flags wr -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hm8 Hs0 Hs3 Hs6 Ha1 Ha2 Ha5 Ha6.
     iIntros "Hcg #Htext Hpc #Hdp Hidx Hdn Hda Hdl Hdf Hcont".
     (* ---- +0x10a  lw a4,-92(s0) ---- *)
@@ -978,7 +978,7 @@ Section ProofVirtioDiskRwC.
         d_desc pd t ↦₈ (d_info_status h : SailStdpp.Values.mword 64) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hh8 Ht8 Hs0 Ha0 Ha3 Ha4 Ha5 Ha7.
     iIntros "Hcg #Htext Hpc Hidx Hdn Hst Hda Hcont".
     (* ---- +0x138  lw a2,-88(s0) ---- *)
@@ -1268,7 +1268,7 @@ Section ProofVirtioDiskRwC.
         d_info_b h ↦₈ (b : SailStdpp.Values.mword 64) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hs3 Ha1 Ha2 Ha5 Ha6.
     iIntros "Hcg #Htext Hpc #Hdp Hdl Hdf Hdn Hbd Hib Hcont".
     (* ---- +0x15e / +0x160  a4 := &desc[t] ---- *)
@@ -1455,7 +1455,7 @@ Section ProofVirtioDiskRwC.
         vdrw_chain pd b h m2 t wr sector -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hh8 Hm8 Ht8 Hregs.
     destruct Hregs as (Hsp & Hs0 & Hs3 & Hs6 & Hs7).
     iIntros "Hcg #Htext Hpc #Hdp Hidx Hbh Hbm Hbt Hbd Hcont".

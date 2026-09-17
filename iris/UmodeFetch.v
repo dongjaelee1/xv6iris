@@ -495,7 +495,7 @@ Section UmodeFetchWord.
     gen_heap_interp σ'.(mem) -∗ umem pt M -∗
     ⌜σ'.(mem) !! pa_add (u_walk_pa w_leaf pc) j = Some b /\
      addr_is_ram (pa_add (u_walk_pa w_leaf pc) j)⌝.
-  Proof.
+  Proof using .
     iIntros (Hl Hnc HM) "Hmem HM".
     iDestruct (umem_lookup_acc pt M (uint pc + Z.of_nat j) b HM with "HM")
       as "[Hb Hback]".
@@ -560,7 +560,7 @@ Section UmodeFetchOk.
       S σ'.(mem) ∗
       reg_interp σ'.(sregs) ∗ gen_heap_interp σ'.(mem) ∗
       utlb_inv_pt (ud_root pt) (ud_tfp pt) (ud_um pt) ∗ umem pt M.
-  Proof.
+  Proof using .
     intros Hl Hchk Hcanon Hpg Hal Hbytes HnRVC Lpc Hmisa Hmenv Hhtif Hcp HSXL Hall.
     iIntros "#Hpay HS Hri Hgh Hinv HM".
     iDestruct (utlb_inv_pt_pmp_facts (ud_root pt) (ud_tfp pt) (ud_um pt) σ with "Hri Hinv")
@@ -691,7 +691,7 @@ Section UmodeFetchRvc4.
       S σ'.(mem) ∗
       reg_interp σ'.(sregs) ∗ gen_heap_interp σ'.(mem) ∗
       utlb_inv_pt (ud_root pt) (ud_tfp pt) (ud_um pt) ∗ umem pt M.
-  Proof.
+  Proof using .
     intros Hl Hchk Hcanon Hpg Hal Hbytes Hb2 Hb3 HisRVC
            Lpc Hmisa Hmenv Hhtif Hcp HSXL Hall.
     iIntros "#Hpay HS Hri Hgh Hinv HM".
@@ -807,7 +807,7 @@ Section UmodeFetchSplit.
       S σ'.(mem) ∗
       reg_interp σ'.(sregs) ∗ gen_heap_interp σ'.(mem) ∗
       utlb_inv_pt (ud_root pt) (ud_tfp pt) (ud_um pt) ∗ umem pt M.
-  Proof.
+  Proof using .
     intros Hl Hchk Hcanon Hpg Hal2 Hnal4 Hbytes HisRVC
            Lpc Hmisa Hmenv Hhtif Hcp HSXL Hall.
     assert (HmisaC : eq_vec (_get_Misa_C (register_lookup misa σ.(sregs))) ('b"1") = true)
@@ -909,7 +909,7 @@ Section UmodeFetchSplitBase.
       S σ'.(mem) ∗
       reg_interp σ'.(sregs) ∗ gen_heap_interp σ'.(mem) ∗
       utlb_inv_pt (ud_root pt) (ud_tfp pt) (ud_um pt) ∗ umem pt M.
-  Proof.
+  Proof using .
     intros Hl Hchk Hcanon Hpg Hal2 Hnal4 Hbytes HnRVC
            Lpc Hmisa Hmenv Hhtif Hcp HSXL Hall.
     assert (HmisaC : eq_vec (_get_Misa_C (register_lookup misa σ.(sregs))) ('b"1") = true)

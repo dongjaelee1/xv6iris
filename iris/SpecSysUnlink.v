@@ -525,7 +525,7 @@ Section SysUnlinkArms.
       (Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
       (Fmiss : pfam Σ (aview -> Z -> fname -> iProp Σ)) (r : mword 64) :
     unlink_arms Γ γfs cw P Pmiss Fent Ftgt Fex Fmiss r ⊢ ⌜sys_unlink_ret r⌝.
-  Proof.
+  Proof using .
     rewrite /unlink_arms /sys_unlink_ret.
     iIntros "[[%Hr _] | [%Hr _]]"; iPureIntro; [right | left]; exact Hr.
   Qed.

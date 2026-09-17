@@ -472,7 +472,7 @@ Section SpecSysOpen.
            fd_frees (pv_ofile (us_V UW)) = fd :: l⌝ ∗
           proc_priv γf p pid (us_ofile UW fd (fnode k)))
      ∗ fd_frags_any (pv_fdg (us_V UW)) ∗ fd_slot).
-  Proof.
+  Proof using .
     rewrite /sys_open_post /fd_frags_any.
     iIntros "[[(%Hr & Hp & Hb) | (%fd & %l & %k & %t & %Hpu & Hp & Hb)] Hfd]".
     - iFrame "Hfd". iSplitR "Hb"; [| by iExists sts].
@@ -770,7 +770,7 @@ Section SysOpenArms.
      off [om_arg vom].  One lemma says they are one function. *)
   Lemma om_arg_trunc32 `{XI : CurCtx} (v : mword 64) :
     bv_unsigned (trunc32 v) = om_arg v.
-  Proof.
+  Proof using .
     rewrite trunc32_unsigned /om_arg /bv_wrap /bv_modulus.
     change (Z.of_N (MachineWord.MachineWord.Z_idx 32)) with 32. reflexivity.
   Qed.
@@ -778,7 +778,7 @@ Section SysOpenArms.
   Lemma om_modes_landed `{XI : CurCtx} (v : mword 64) :
     so_rd_of (trunc32 v) = om_readable v
     /\ so_wr_of (trunc32 v) = om_writable v.
-  Proof.
+  Proof using .
     rewrite /so_rd_of /so_wr_of /om_readable /om_writable /om_wronly /om_rdwr
       om_arg_trunc32.
     set (x := om_arg v).
@@ -818,7 +818,7 @@ Section SysOpenArms.
          proc_priv γf p pid (us_ofile UW fd (fnode k)) ∗
          fd_frags (pv_fdg (us_V UW))
            (<[fd := FdOpen (so_rd_of om) (so_wr_of om) t]> sts)).
-  Proof.
+  Proof using .
     intros -> ->. rewrite /open_fd_ok.
     iIntros "H". iDestruct "H" as (fd l k) "(%Hpu & Hp & Hb)".
     iExists fd, l, k, t. iFrame "Hp Hb". iPureIntro. exact Hpu.
@@ -832,7 +832,7 @@ Section SysOpenArms.
       (sts : list fdstate) (UW : ustate) (r : mword 64) :
     open_arms_plain Γ γfs cw γf p pid M pv vom P Pmiss Fo Ft sts UW r ⊢
       sys_open_post γf p pid UW sts (trunc32 vom) r.
-  Proof.
+  Proof using .
     destruct (om_modes_landed vom) as [Hrd Hwr].
     rewrite /open_arms_plain /open_post_ok_plain /sys_open_post.
     iIntros "[[(%Hr & Hp & Hb & _) | H] $]".
@@ -861,7 +861,7 @@ Section SysOpenArms.
       (sts : list fdstate) (UW : ustate) (r : mword 64) :
     open_arms_create Γ γfs cw γf p pid M pv vom P Pmiss Farm Fun Fok Fex Fo Ft sts UW r ⊢
       sys_open_post γf p pid UW sts (trunc32 vom) r.
-  Proof.
+  Proof using .
     destruct (om_modes_landed vom) as [Hrd Hwr].
     rewrite /open_arms_create /open_post_ok_create /sys_open_post.
     iIntros "[[(%Hr & Hp & Hb & _) | H] $]".
@@ -1110,7 +1110,7 @@ Section SysOpenArms.
         ∗ fd_frags (pv_fdg (us_V UW)) sts'
         ∗ fd_slot
         ∗ open_receipt_plain Γ γfs cw M pv vom P Pmiss Fo Ft sts r sts'.
-  Proof.
+  Proof using .
     rewrite /open_arms_plain /open_post_ok_plain /open_receipt_plain.
     iIntros "[[(%Hr & Hpriv & Hb & Hfail) | H] Hslot]".
     - iExists UW, sts.
@@ -1221,7 +1221,7 @@ Section SysOpenArms.
         ∗ fd_slot
         ∗ open_receipt_create Γ γfs cw M pv vom P Pmiss Farm Fun Fok Fex Fo Ft
             sts r sts'.
-  Proof.
+  Proof using .
     rewrite /open_arms_create /open_post_ok_create /open_receipt_create.
     iIntros "[[(%Hr & Hpriv & Hb & Hfail) | H] Hslot]".
     - iExists UW, sts.
@@ -1356,7 +1356,7 @@ Section SysOpenArms.
         ∗ fd_frags (pv_fdg (us_V UW)) sts'
         ∗ fd_slot
         ∗ open_receipt Γ γfs cw M pv vom P Pmiss Farm Fun Fok Fex Fo Ft sts r sts'.
-  Proof.
+  Proof using .
     rewrite /open_arms /open_receipt. destruct (om_create vom).
     - apply open_arms_create_split.
     - apply open_arms_plain_split.
@@ -1379,7 +1379,7 @@ Section SysOpenArms.
       (sts : list fdstate) (UW : ustate) (r : mword 64) :
     open_arms Γ γfs cw γf p pid M pv vom P Pmiss Farm Fun Fok Fex Fo Ft sts UW r
     ⊢ sys_open_post γf p pid UW sts (trunc32 vom) r.
-  Proof.
+  Proof using .
     rewrite /open_arms. destruct (om_create vom).
     - apply open_arms_create_landed.
     - apply open_arms_plain_landed.
@@ -1422,7 +1422,7 @@ Section SysOpenArms.
     pf_at (aopen_commit_at Γ appE) Fo -∗
     open_trunc_piece Γ vom Ft -∗
     open_post_fail_create Γ γfs cw M pv vom P Pmiss Farm Fun Fok Fex Fo Ft.
-  Proof.
+  Proof using .
     intros Hpl. iIntros "Hcf Ho Ht".
     iDestruct (cre_fail_arms_file with "Hcf") as "Hcf".
     rewrite /open_post_fail_create.

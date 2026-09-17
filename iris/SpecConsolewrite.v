@@ -166,13 +166,13 @@ Section ConsSentCnt.
     end.
 
   Lemma cons_out_chain_0 k M ua Q j : cons_out_chain k M ua Q j 0 ⊣⊢ Q j.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* the caller reads its cursor off at any stop position: the node IS the
      cursor ([FsAbsWriteFire.awrite_chain_cursor]'s twin) *)
   Lemma cons_out_chain_cursor k M ua Q j cnt :
     cons_out_chain k M ua Q j cnt -∗ Q j.
-  Proof. destruct cnt; [by iIntros "$" | by iIntros "[$ _]"]. Qed.
+  Proof using . destruct cnt; [by iIntros "$" | by iIntros "[$ _]"]. Qed.
 
   (* THE CHUNK BRIDGE, and the only reason this is a [Fixpoint] over a
      COUNT rather than a list: consolewrite pushes its bytes 32 at a time
@@ -189,7 +189,7 @@ Section ConsSentCnt.
     cons_out_chain k M ua Q j cnt -∗
     out_chain Uart0 k bs
       (cons_out_chain k M ua Q (j + length bs) (cnt - length bs)).
-  Proof.
+  Proof using .
     revert j cnt. induction bs as [| b bs IH]; intros j cnt Hlen Hat.
     - cbn [out_chain length]. rewrite Nat.add_0_r Nat.sub_0_r. by iIntros "$".
     - cbn [length] in Hlen. destruct cnt as [| cnt]; [lia |].
@@ -214,7 +214,7 @@ Section ConsSentCnt.
   Lemma cons_out_chain_of_licence (k : nat) (M : gmap Z (bv 8)) (ua : mword 64)
       (j cnt : nat) :
     cons_licence -∗ cons_out_chain k M ua (fun _ => True%I) j cnt.
-  Proof.
+  Proof using .
     iIntros "#Hlic". iInduction cnt as [| cnt] "IH" forall (j); [done|].
     cbn [cons_out_chain]. iSplit; [done|].
     iIntros (b) "_". iApply (out_link_of_licence k b with "Hlic").

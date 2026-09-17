@@ -94,7 +94,7 @@ Section KexecPtImage.
 
   Lemma proc_pt_dom (P : uptd) (M : gmap Z (bv 8)) :
     proc_pt P M -∗ ⌜dom M = uva_dom P⌝.
-  Proof.
+  Proof using .
     rewrite /proc_pt. iIntros "(_ & _ & Hm)".
     iApply (umem_own_dom with "Hm").
   Qed.
@@ -109,7 +109,7 @@ Section KexecPtImage.
     bv_unsigned szv `mod` 4096 = 0 ->
     um_below szv P.(ud_um) ->
     proc_pt P M -∗ ⌜forall a : Z, (bv_unsigned szv <= a)%Z -> M !! a = None⌝.
-  Proof.
+  Proof using .
     intros Halign Hbel. iIntros "Hpt".
     iDestruct (proc_pt_dom with "Hpt") as %Hdom.
     iPureIntro. intros a Ha.
@@ -135,7 +135,7 @@ Section KexecPtImage.
     ⌜forall bnd : Z, (bnd `mod` 4096 = 0)%Z ->
        (bv_unsigned szv <= bnd)%Z ->
        forall a : Z, (bnd <= a)%Z -> M !! a = None⌝.
-  Proof.
+  Proof using .
     intros Hbel. iIntros "Hpt".
     iDestruct (proc_pt_dom with "Hpt") as %Hdom.
     iPureIntro. intros bnd Halign Hge a Ha.
@@ -159,7 +159,7 @@ Section KexecPtImage.
     ⌜forall j, (j < 4096)%nat ->
        M !! (bv_unsigned vpn * 4096 + Z.of_nat j)%Z
        = Some (M !!! (bv_unsigned vpn * 4096 + Z.of_nat j)%Z)⌝.
-  Proof.
+  Proof using .
     intros Hl. iIntros "Hpt".
     iDestruct (proc_pt_dom with "Hpt") as %Hdom.
     iPureIntro. intros j Hj.
@@ -183,7 +183,7 @@ Section KexecPtImage.
          ([∗ list] j ∈ seq 0 n,
             (pa_add (pa_add (page_base (pte_ppn w)) off) j : Arch.pa) ↦ₘ bs j) -∗
          proc_pt P (umem_write M (bv_unsigned vpn * 4096 + Z.of_nat off)%Z n bs)).
-  Proof.
+  Proof using .
     intros Hwf Hl Hn. iIntros "#Hb Hpt".
     iDestruct (proc_pt_dom with "Hpt") as %Hdom.
     (* the page's bytes are all in [M] -- used for the window's [is_Some]
@@ -236,7 +236,7 @@ Section KexecPtImage.
          ([∗ list] j ∈ seq 0 4096,
             (pa_add (page_base (pte_ppn w)) j : Arch.pa) ↦ₘ g j) -∗
          proc_pt P (umem_write M base 4096 g)).
-  Proof.
+  Proof using .
     intros Hwf Hl ->. iIntros "#Hb Hpt".
     assert (Hb0 : (bv_unsigned vpn * 4096 + Z.of_nat 0)%Z
                   = (bv_unsigned vpn * 4096)%Z) by lia.
@@ -267,7 +267,7 @@ Section KexecPtImage.
               ↦ₘ (if decide (j < nn)%nat
                   then new j else M !!! (base + Z.of_nat j)%Z)) -∗
          proc_pt P (umem_write M base nn new)).
-  Proof.
+  Proof using .
     intros Hwf Hl Hbase Hnn. iIntros "#Hb Hpt".
     iDestruct (proc_pt_page_bytes P M vpn w Hl with "Hpt") as %Hbytes.
     rewrite <- Hbase in Hbytes.
@@ -319,7 +319,7 @@ Section KexecPtImage.
             (pa_add (pa_add (page_base (pte_ppn w)) nn) j : Arch.pa)
               ↦ₘ (M !!! (base + Z.of_nat (nn + j)%nat)%Z)) -∗
          proc_pt P (umem_write M base nn new)).
-  Proof.
+  Proof using .
     intros Hwf Hl Hbase Hnn. iIntros "#Hb Hpt".
     iDestruct (proc_pt_page_load P M vpn w base nn Hwf Hl Hbase Hnn
                  with "Hb Hpt") as "[Hpg Hback]".
@@ -367,7 +367,7 @@ Section KexecPtImage.
             (pa_add (pa_add (page_base (pte_ppn w)) nn) j : Arch.pa)
               ↦ₘ f (nn + j)%nat) -∗
          proc_pt P (umem_write M base nn new)).
-  Proof.
+  Proof using .
     intros Hwf Hl Hbase Hnn Hf. iIntros "#Hb Hpt".
     iDestruct (proc_pt_page_load_split P M vpn w base nn Hwf Hl Hbase Hnn
                  with "Hb Hpt") as "(HA & HB & Hback)".
@@ -400,14 +400,14 @@ Section KexecPtImage.
      -- ProcPtOwn has the [proc_pt_any] one only. *)
   Lemma proc_ptm_wf_get (P : uptd) (sz : Z) (M : gmap Z (bv 8)) :
     proc_ptm P sz M ⊢ ⌜proc_pt_wf P⌝.
-  Proof. rewrite /proc_ptm. iIntros "(%Hwf & _)". iPureIntro. exact Hwf. Qed.
+  Proof using . rewrite /proc_ptm. iIntros "(%Hwf & _)". iPureIntro. exact Hwf. Qed.
 
   Lemma proc_pt_acc_rep0_m (P : uptd) (M : gmap Z (bv 8)) :
     proc_pt P M ⊢ ∃ t m_ad, ⌜pt_rep0 t m_ad⌝ ∗
       ⌜upt_ad_view P.(ud_tfp) P.(ud_um) m_ad⌝ ∗
       ⌜pt_base t = P.(ud_root)⌝ ∗ ⌜proc_pt_wf P⌝ ∗
       ptree_own 2 (DfracOwn 1) t ∗ umem_own P M.
-  Proof.
+  Proof using .
     rewrite /proc_pt. iIntros "(%Hwf & Ht & Hm)".
     iDestruct "Ht" as (t) "(%Hspec & Ht)".
     destruct (upt_spec_rep0 P.(ud_root) P.(ud_tfp) P.(ud_um) t Hspec)
@@ -425,7 +425,7 @@ Section KexecPtImage.
     proc_pt_wf P -> upt_ad_view P.(ud_tfp) P.(ud_um) m_ad ->
     pt_rep0 t' m_ad -> pt_base t' = P.(ud_root) ->
     ptree_own 2 (DfracOwn 1) t' -∗ umem_own P M -∗ proc_pt P M.
-  Proof.
+  Proof using .
     intros Hwf Hview Hrep Hbase. iIntros "Ht Hm".
     rewrite /proc_pt. iSplitR; [iPureIntro; exact Hwf |].
     iSplitL "Ht"; [| iFrame "Hm"].
@@ -454,7 +454,7 @@ Section KexecPtImage.
   Lemma uva_live_mapped_covered (P : uptd) (sz : Z) :
     (sz <= 274877906944)%Z -> um_covered_z sz P.(ud_um) ->
     forall va : Z, uva_live sz va -> uva_mapped P va.
-  Proof.
+  Proof using .
     intros Hsz Hcov va Hlv. unfold uva_live, UserPtTree.pgroundup in Hlv.
     pose proof (Z.div_mod va 4096 ltac:(lia)) as Hdm.
     pose proof (Z.mod_pos_bound va 4096 ltac:(lia)) as Hmb.
@@ -480,7 +480,7 @@ Section KexecPtImage.
   Lemma proc_pt_ptm_live (P : uptd) (sz : Z) (M : gmap Z (bv 8)) :
     (forall va : Z, uva_live sz va -> uva_mapped P va) ->
     proc_pt P M ⊣⊢ proc_ptm P sz M.
-  Proof.
+  Proof using .
     intros Hlm. rewrite /proc_pt /proc_ptm. iSplit.
     - iIntros "(%Hwf & Ht & Hm)". iSplitR; [done |]. iFrame "Ht".
       iDestruct "Hm" as "[%Hdom Hm]". iExists M.
@@ -502,7 +502,7 @@ Section KexecPtImage.
   Lemma proc_pt_ptm_covered (P : uptd) (szv : mword 64) (M : gmap Z (bv 8)) :
     (bv_unsigned szv <= 274877906944)%Z -> um_covered szv P.(ud_um) ->
     proc_pt P M ⊣⊢ proc_ptm P (uint szv) M.
-  Proof.
+  Proof using .
     intros Hsz Hcov. rewrite uint_unsigned.
     apply (proc_pt_ptm_live P (bv_unsigned szv) M).
     exact (uva_live_mapped_covered P (bv_unsigned szv) Hsz Hcov).
@@ -516,7 +516,7 @@ Section KexecPtImage.
   Lemma proc_pt_ptm_cov (P : uptd) (szv : mword 64) (M : gmap Z (bv 8)) :
     proc_pt_wf P -> um_covered szv P.(ud_um) ->
     proc_pt P M ⊣⊢ proc_ptm P (uint szv) M.
-  Proof.
+  Proof using .
     intros Hwf Hcov.
     assert (Hb : (bv_unsigned szv <= uvm_maxsz)%Z)
       by exact (proc_pt_covered_maxsz P szv Hwf Hcov).
@@ -531,11 +531,11 @@ Section KexecPtImage.
   Lemma proc_pt_to_ptm_cov (P : uptd) (szv : mword 64) (M : gmap Z (bv 8)) :
     proc_pt_wf P -> um_covered szv P.(ud_um) ->
     proc_pt P M -∗ proc_ptm P (uint szv) M.
-  Proof. intros Hwf Hcov. rewrite (proc_pt_ptm_cov P szv M Hwf Hcov). auto. Qed.
+  Proof using . intros Hwf Hcov. rewrite (proc_pt_ptm_cov P szv M Hwf Hcov). auto. Qed.
 
   Lemma proc_ptm_to_pt_cov (P : uptd) (szv : mword 64) (M : gmap Z (bv 8)) :
     proc_pt_wf P -> um_covered szv P.(ud_um) ->
     proc_ptm P (uint szv) M -∗ proc_pt P M.
-  Proof. intros Hwf Hcov. rewrite (proc_pt_ptm_cov P szv M Hwf Hcov). auto. Qed.
+  Proof using . intros Hwf Hcov. rewrite (proc_pt_ptm_cov P szv M Hwf Hcov). auto. Qed.
 
 End KexecPtImage.

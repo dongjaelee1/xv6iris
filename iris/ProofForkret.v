@@ -179,7 +179,7 @@ Section Res.
      in forkret names the kernel root; see SpecForkret.v's header). *)
   Lemma fkr_kpt_of_res (r : mword 44) :
     tlb_res_pt r -∗ kpt_inv r ∗ tlb_res_pt r.
-  Proof.
+  Proof using .
     iIntros "H".
     (* A6.91: the residue grew a NINTH conjunct -- [KptShare.kpt_creds],
        A6.70's canon-pin credential (the bound plus THIS hart's receipt that

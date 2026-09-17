@@ -166,7 +166,7 @@ Section UkShParseRedir.
            (14 + (8 + (2 + nn))) -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Ha0 Ha1 Ha2 Hoffle Hw0 Hnosym Hs0 Hs64 Hps0 Hps8 Hpssz.
     iIntros "#Hcode #Hro Hcur Hstr Hws Hrun Hcont".
     rewrite shpp_parseredirs.

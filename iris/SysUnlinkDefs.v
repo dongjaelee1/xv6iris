@@ -328,7 +328,7 @@ Section UnlinkDefs.
      SUPPLY ([AppInv.app_step_acc]) at the live Γ *)
   Lemma uent_commit_at_unit (γfs : fs_names) E :
     app_sup -∗ uent_commit_at (fs_gamma_L γfs) E (fun _ _ _ _ => True%I).
-  Proof.
+  Proof using .
     iIntros "#Hsup". rewrite /uent_commit_at.
     iIntros (I d t nm ents nl a) "%Hpre Ha".
     iDestruct (app_step_acc d I _ with "Hsup") as "Hstep".
@@ -338,7 +338,7 @@ Section UnlinkDefs.
 
   Lemma utgt_commit_at_unit (γfs : fs_names) E :
     app_sup -∗ utgt_commit_at (fs_gamma_L γfs) E (fun _ _ => True%I).
-  Proof.
+  Proof using .
     iIntros "#Hsup". rewrite /utgt_commit_at. iIntros (I t a) "%Ht %Hnl Ha".
     iDestruct (app_step_acc t I _ with "Hsup") as "Hstep".
     iModIntro. iFrame "Ha Hstep". iIntros (I') "%Heq Ha'". iModIntro.
@@ -347,7 +347,7 @@ Section UnlinkDefs.
 
   Lemma dmiss_commit_at_unit Γ E :
     ⊢ dmiss_commit_at Γ E (fun _ _ _ => True%I).
-  Proof.
+  Proof using .
     rewrite /dmiss_commit_at. iIntros (I d nm ents nl) "%Hd %Hnm Ha".
     iModIntro. by iFrame "Ha".
   Qed.

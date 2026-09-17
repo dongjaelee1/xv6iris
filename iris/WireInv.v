@@ -37,10 +37,10 @@ Section WireInv.
   Definition wire_inv : iProp Σ := inv wireN wire_inv_body.
 
   Global Instance wire_inv_persistent : Persistent wire_inv.
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Global Instance wire_inv_body_timeless : Timeless wire_inv_body.
-  Proof. rewrite /wire_inv_body. apply _. Qed.
+  Proof using . rewrite /wire_inv_body. apply _. Qed.
 
   (* allocate the invariant from the owned pin cells (any initial values) *)
   Lemma wire_inv_alloc E (seip meip : CPU -> mword 1) :
@@ -48,7 +48,7 @@ Section WireInv.
        reg_pointsto_at c sig_seip (DfracOwn 1) (seip c) ∗
        reg_pointsto_at c sig_meip (DfracOwn 1) (meip c))
     ={E}=∗ wire_inv.
-  Proof.
+  Proof using .
     iIntros "Hwires".
     iApply inv_alloc. iApply bi.later_intro. rewrite /wire_inv_body.
     iExists seip, meip. iFrame.

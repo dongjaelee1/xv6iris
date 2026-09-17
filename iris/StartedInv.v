@@ -137,7 +137,7 @@ Section StartedInv.
   Definition started_idx (γi : gname) (i : nat) : iProp Σ :=
     dset_in γi (S i, started_addr).
   Global Instance started_idx_persistent γi i : Persistent (started_idx γi i).
-  Proof. rewrite /started_idx. apply _. Qed.
+  Proof using . rewrite /started_idx. apply _. Qed.
 
   (* THE PRIMARY'S TOKEN: half the (empty) set authority.  It refutes the
      right arm at the store (the arms' authorities disagree) and is spent
@@ -171,7 +171,7 @@ Section StartedInv.
     inv startedN (started_body γi ξd P).
 
   Global Instance started_inv_persistent γi ξd P : Persistent (started_inv γi ξd P).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* ------------------------------------------------------------------- *)
   (* Allocation, by the client that assembles the machine: the plain      *)
@@ -184,7 +184,7 @@ Section StartedInv.
     wordw_claim (KTR := KT0) 4 started_addr -∗
     started_win_plain -∗ ctx_stamped ξd 0 ={E}=∗
     ∃ γi : gname, started_inv γi ξd P ∗ started_prim γi.
-  Proof.
+  Proof using .
     iIntros (Himg) "#Hcl Hw Hpk".
     iMod dset_alloc as (γi) "Hauth".
     iDestruct (dset_halves with "Hauth") as "[Ha1 Ha2]".
@@ -205,7 +205,7 @@ Section StartedInv.
     addr_is_ram (pa_of ppn started_addr) ->
     ktier_pin KT0 ppn started_addr ->
     kmap_at (svpn_of started_addr) ppn KP_rw -∗ started_claim.
-  Proof.
+  Proof using .
     iIntros (Hal Hc Hr Hpin) "#Hk". rewrite /started_claim /wordw_claim /mem_claim.
     iSplitR; [iPureIntro; exact Hal |]. iExists ppn. iFrame "Hk".
     iPureIntro. split; [exact Hc | split; [exact Hr | exact Hpin]].
@@ -213,7 +213,7 @@ Section StartedInv.
 
   Local Lemma dset_auth_excl (γ : gname) D :
     dset_auth γ 1 D -∗ dset_auth γ (1/2) ∅ -∗ False.
-  Proof.
+  Proof using .
     iIntros "H1 H2". rewrite /dset_auth.
     iDestruct (own_valid_2 with "H1 H2") as %Hv.
     apply auth_auth_dfrac_op_valid in Hv. destruct Hv as (Hq & _ & _).
@@ -238,7 +238,7 @@ Section StartedInv.
         (llb loglen_name B0 ∗
          □ (∀ pos : nat, ⌜(B0 <= pos)%nat⌝ -∗ P pos cur_ctx))) ∗
        (started_right γi ξd P ={Em ∖ ↑startedN, Em}=∗ True)).
-  Proof.
+  Proof using .
     iIntros (HE) "#Hinv Hprim HP".
     iMod (inv_acc Em startedN with "Hinv") as "[Hbody Hclose]"; [exact HE|].
     iDestruct "Hbody" as "(>#Hcl & >%Himg & [(>Hw & >Hda & >Hpk) | Hr])".
@@ -253,7 +253,7 @@ Section StartedInv.
       (P : nat -> CtxId -> iProp Σ) :
     ↑startedN ⊆ E ->
     started_inv γi ξd P ={E}=∗ wordw_claim (KTR := KT0) 4 started_addr.
-  Proof.
+  Proof using .
     iIntros (HE) "#Hinv".
     iMod (inv_acc E startedN with "Hinv") as "[Hbody Hclose]"; [exact HE|].
     iDestruct "Hbody" as "(>#Hcl & Hrest)".
@@ -265,14 +265,14 @@ Section StartedInv.
   (* agent 0 IS the hart with the zero cid word, both ways *)
   Lemma agent_zero_cid (c : CPU) :
     hart_agent c = 0%nat -> cid_word_of c = zero_reg.
-  Proof.
+  Proof using .
     intros H. unfold hart_agent in H. unfold cid_word_of. rewrite H.
     apply bv_eq. vm_compute. reflexivity.
   Qed.
 
   Lemma cid_zero_agent (c : CPU) :
     cid_word_of c = zero_reg -> hart_agent c = 0%nat.
-  Proof.
+  Proof using .
     intros Hc. unfold cid_word_of in Hc. unfold hart_agent.
     pose proof (fin_to_nat_lt c) as Hlt.
     revert Hc Hlt. generalize (fin_to_nat c) as k. intros k Hc Hlt.
@@ -284,7 +284,7 @@ Section StartedInv.
   Qed.
 
   Lemma started_set_clear_ne : nth_byte started_set 0 <> nth_byte started_clear 0.
-  Proof. vm_compute. discriminate. Qed.
+  Proof using . vm_compute. discriminate. Qed.
 
   (* ------------------------------------------------------------------- *)
   (* THE READ, a secondary's.  The client opens the invariant and hands   *)
@@ -296,7 +296,7 @@ Section StartedInv.
   (* ------------------------------------------------------------------- *)
   Local Lemma dset_auth_split (γ : gname) (q1 q2 : Qp) S :
     dset_auth γ (q1 + q2) S ⊣⊢ dset_auth γ q1 S ∗ dset_auth γ q2 S.
-  Proof. rewrite /dset_auth -own_op -auth_auth_dfrac_op dfrac_op_own. done. Qed.
+  Proof using . rewrite /dset_auth -own_op -auth_auth_dfrac_op dfrac_op_own. done. Qed.
 
   Definition started_res (γi : gname) (ξd : CtxId)
       (P : nat -> CtxId -> iProp Σ) : iProp Σ :=
@@ -318,7 +318,7 @@ Section StartedInv.
     started_inv γi ξd P -∗
     (|={Em, Em ∖ ↑startedN}=> started_res γi ξd P ∗
        (started_res γi ξd P ={Em ∖ ↑startedN, Em}=∗ True)).
-  Proof.
+  Proof using .
     iIntros (HE) "#Hinv".
     iMod (inv_acc Em startedN with "Hinv") as "[Hbody Hclose]"; [exact HE|].
     iDestruct "Hbody" as "(>#Hcl & >%Himg & [Hl | Hr])".
@@ -385,7 +385,7 @@ Section StartedInv.
          ⌜tso_read_bytes img log (hart_agent (@cpu_id CIDw)) tvr
             (pa_of ppn started_addr) (Z.to_N 4) v⌝ -∗
          started_W γi ξd P v tvr).
-  Proof.
+  Proof using .
     intros Hnz CIDw img sigma log V ppn Hcan Hoff Hid Hmig.
     rewrite (ktier_pin_id ppn started_addr Hid).
     pose proof (Hmig (or_introl eq_refl)) as HCw.
@@ -500,7 +500,7 @@ Section StartedInv.
     started_inv γi ξd P -∗ started_idx γi i -∗ hart_view_lb V0 -∗
     own_context cur_ctx -∗ P (S i) ξd ={E}=∗
     own_context cur_ctx ∗ P (S i) cur_ctx.
-  Proof.
+  Proof using .
     iIntros (HE HiV) "#Hinv #Hidx #HK Hrun HP".
     iMod (inv_acc E startedN with "Hinv") as "[Hbody Hclose]"; [exact HE|].
     iDestruct "Hbody" as "(>#Hcl & >%Himg & [Hl | Hr])".
@@ -526,7 +526,7 @@ Section StartedInv.
   (* ------------------------------------------------------------------- *)
   Local Lemma started_parked_llb (ξ : CtxId) (T : nat) :
     ctx_stamped ξ T -∗ ctx_stamped ξ T ∗ llb loglen_name T.
-  Proof.
+  Proof using .
     rewrite ctx_stamped_unseal /ctx_stamped_def.
     iIntros "(%D & Hat & #Hllb & %HD)". iSplitL; [| iExact "Hllb"].
     iExists D. iFrame "Hat Hllb". by iPureIntro.
@@ -560,7 +560,7 @@ Section StartedInv.
                       (hart_agent (@cpu_id CIDw))])%list V) ∗
       TsoCtx.own_context (CID := CIDw) CtxIdDefs.cur_ctx ∗
       started_right γi ξd P.
-  Proof.
+  Proof using .
     intros Hz CIDw img sigma log V ppn Hcan Hoff Hid Hmig.
     rewrite (ktier_pin_id ppn started_addr Hid).
     pose proof (Hmig (or_introl eq_refl)) as HCw.

@@ -107,9 +107,9 @@ Section FsBlocks.
     (bno ↪[fs_cache γ]{#(1/2)} bs ∗ bno ↪[fs_dirty γ]{#(1/2)} true)%I.
 
   Global Instance fs_mclean_timeless γ b bs : Timeless (fs_mclean γ b bs).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance fs_mdirty_timeless γ b bs : Timeless (fs_mdirty γ b bs).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* the bio_view the log layer runs the buffer cache at *)
   Definition fs_view (γ : fs_names) (gd : disk_names)
@@ -123,14 +123,14 @@ Section FsBlocks.
      payload polarities. *)
   Lemma fs_chalf_mclean_agree γ bno bs bs' :
     fs_chalf γ bno bs -∗ fs_mclean γ bno bs' -∗ ⌜bs' = bs⌝.
-  Proof.
+  Proof using .
     iIntros "Hc [Hm _]".
     iDestruct (ghost_map_elem_agree with "Hm Hc") as %Heq. done.
   Qed.
 
   Lemma fs_chalf_mdirty_agree γ bno bs bs' :
     fs_chalf γ bno bs -∗ fs_mdirty γ bno bs' -∗ ⌜bs' = bs⌝.
-  Proof.
+  Proof using .
     iIntros "Hc [Hm _]".
     iDestruct (ghost_map_elem_agree with "Hm Hc") as %Heq. done.
   Qed.
@@ -145,7 +145,7 @@ Section FsBlocks.
     ghost_map_auth (fs_cache γ) 1 (<[bno := bs_new]> L) ∗
     fs_chalf γ bno bs_new ∗
     (bno ↪[fs_cache γ]{#(1/2)} bs_new).
-  Proof.
+  Proof using .
     iIntros "Ha Hc Hm".
     iDestruct (ghost_map_elem_agree with "Hc Hm") as %->.
     iCombine "Hc Hm" as "He".
@@ -165,7 +165,7 @@ Section FsBlocks.
     ghost_map_auth (fs_dirty γ) 1 (<[bno := bnew]> D) ∗
     (bno ↪[fs_dirty γ]{#(1/2)} bnew) ∗
     (bno ↪[fs_dirty γ]{#(1/2)} bnew).
-  Proof.
+  Proof using .
     iIntros "Ha Hc Hm".
     iDestruct (ghost_map_elem_agree with "Hc Hm") as %->.
     iCombine "Hc Hm" as "He".
@@ -368,10 +368,10 @@ Section FsBytes.
 
   Lemma byte_range_1 gL b off bs :
     byte_range gL b off bs = byte_range_q gL (DfracOwn 1) b off bs.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma fsblock_1 gL b bs : fsblock gL b bs = fsblock_q gL (DfracOwn 1) b bs.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* THE CROSSING AS A WAND, WHICH IS WHAT A PROOF NEEDS.  The equation
      above holds by conversion, but both heads are [Typeclasses Opaque]
@@ -382,32 +382,32 @@ Section FsBytes.
      over a full run -- crosses with one [iDestruct]. *)
   Lemma fsblock_q_1_of gL dq b bs :
     dq = DfracOwn 1 -> fsblock_q gL dq b bs -∗ fsblock gL b bs.
-  Proof. intros ->. rewrite fsblock_1. iIntros "H". iExact "H". Qed.
+  Proof using . intros ->. rewrite fsblock_1. iIntros "H". iExact "H". Qed.
 
   Lemma fsblock_q_1_to gL dq b bs :
     dq = DfracOwn 1 -> fsblock gL b bs -∗ fsblock_q gL dq b bs.
-  Proof. intros ->. rewrite fsblock_1. iIntros "H". iExact "H". Qed.
+  Proof using . intros ->. rewrite fsblock_1. iIntros "H". iExact "H". Qed.
 
   Global Instance byte_range_timeless gL b off bs :
     Timeless (byte_range gL b off bs).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance fsblock_timeless gL b bs : Timeless (fsblock gL b bs).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance byte_range_q_timeless gL dq b off bs :
     Timeless (byte_range_q gL dq b off bs).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance fsblock_q_timeless gL dq b bs : Timeless (fsblock_q gL dq b bs).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma fsblock_length gL b bs : fsblock gL b bs -∗ ⌜length bs = BSIZE⌝.
-  Proof. iIntros "[% _]". done. Qed.
+  Proof using . iIntros "[% _]". done. Qed.
 
   Lemma fsblock_q_length gL dq b bs :
     fsblock_q gL dq b bs -∗ ⌜length bs = BSIZE⌝.
-  Proof. iIntros "[% _]". done. Qed.
+  Proof using . iIntros "[% _]". done. Qed.
 
   Lemma BSIZE_pos : (0 < BSIZE)%nat.
-  Proof. apply Nat2Z.inj_lt. rewrite BSZ_BSIZE. unfold BSZ. lia. Qed.
+  Proof using . apply Nat2Z.inj_lt. rewrite BSZ_BSIZE. unfold BSZ. lia. Qed.
 
   (* THE POINT OF THE RE-KEYING.  Two owners of one block's bytes is a
      contradiction -- the old block-keyed HALF was consistent with itself,
@@ -417,7 +417,7 @@ Section FsBytes.
      different objects (fs-state.md section 0). *)
   Lemma fsblock_excl gL b bs bs' :
     fsblock gL b bs -∗ fsblock gL b bs' -∗ False.
-  Proof.
+  Proof using .
     iIntros "[%Hl Hr] [%Hl' Hr']".
     assert (Hs : is_Some (bs !! 0%nat)).
     { apply lookup_lt_is_Some. rewrite Hl. exact BSIZE_pos. }
@@ -440,7 +440,7 @@ Section FsBytes.
     (0 < length bs)%nat -> (0 < length bs')%nat ->
     byte_range_q gL dq1 b off bs -∗ byte_range_q gL dq2 b off bs' -∗
     ⌜✓ (dq1 ⋅ dq2)⌝.
-  Proof.
+  Proof using .
     intros Hl Hl'. iIntros "H H'".
     destruct (lookup_lt_is_Some_2 bs 0%nat Hl) as [v Hv].
     destruct (lookup_lt_is_Some_2 bs' 0%nat Hl') as [v' Hv'].
@@ -454,7 +454,7 @@ Section FsBytes.
   Lemma fsblock_q_excl gL dq1 dq2 b bs bs' :
     ~ ✓ (dq1 ⋅ dq2) ->
     fsblock_q gL dq1 b bs -∗ fsblock_q gL dq2 b bs' -∗ False.
-  Proof.
+  Proof using .
     intros Hnv. iIntros "[%Hl H] [%Hl' H']".
     iDestruct (byte_range_q_valid gL dq1 dq2 b 0 bs bs'
                  ltac:(rewrite Hl; exact BSIZE_pos)
@@ -465,7 +465,7 @@ Section FsBytes.
   Lemma fsblock_q_ne gL dq1 dq2 b1 b2 bs1 bs2 :
     ~ ✓ (dq1 ⋅ dq2) ->
     fsblock_q gL dq1 b1 bs1 -∗ fsblock_q gL dq2 b2 bs2 -∗ ⌜b1 <> b2⌝.
-  Proof.
+  Proof using .
     intros Hnv. iIntros "H1 H2".
     destruct (decide (b1 = b2)) as [->|Hne]; [| done].
     iExFalso. iApply (fsblock_q_excl gL dq1 dq2 _ _ _ Hnv with "H1 H2").
@@ -480,10 +480,10 @@ Section FsBytes.
      BELOW [FsStateDefs] and must not import it (its twins there are
      [FsStateDefs.dfrac_full_nvalid] / [dfrac_34_nvalid]). *)
   Lemma blk_dfrac_full_nvalid (dq : dfrac) : ~ ✓ (DfracOwn 1 ⋅ dq).
-  Proof. intros Hv. exact (exclusive_l (DfracOwn 1) dq Hv). Qed.
+  Proof using . intros Hv. exact (exclusive_l (DfracOwn 1) dq Hv). Qed.
 
   Lemma blk_dfrac_34_nvalid : ~ ✓ (DfracOwn (3/4) ⋅ DfracOwn (3/4)).
-  Proof.
+  Proof using .
     rewrite dfrac_op_own. intros Hv%dfrac_valid_own.
     apply (Qp.lt_nge 1 (3/4 + 3/4)%Qp); [| exact Hv].
     apply Qp.lt_sum. exists (1/2)%Qp. compute_done.
@@ -491,7 +491,7 @@ Section FsBytes.
 
   Lemma fsblock_ne_full gL dq b1 b2 bs1 bs2 :
     fsblock gL b1 bs1 -∗ fsblock_q gL dq b2 bs2 -∗ ⌜b1 <> b2⌝.
-  Proof.
+  Proof using .
     rewrite fsblock_1.
     iApply (fsblock_q_ne gL (DfracOwn 1) dq b1 b2 bs1 bs2
               (blk_dfrac_full_nvalid _)).
@@ -508,7 +508,7 @@ Section FsBytes.
       (bs sub : list (bv 8)) :
     (off < BSIZE)%nat -> (0 < length sub)%nat ->
     fsblock gL b1 bs -∗ byte_range gL b2 (Z.of_nat off) sub -∗ ⌜b1 <> b2⌝.
-  Proof.
+  Proof using .
     intros Hoff Hpos. iIntros "[%Hlen Hr1] Hr2".
     destruct (decide (b1 = b2)) as [->|Hne]; [| done].
     destruct (lookup_lt_is_Some_2 bs off ltac:(rewrite Hlen; exact Hoff))
@@ -527,7 +527,7 @@ Section FsBytes.
   Lemma fsblock_ne_34 gL b1 b2 bs1 bs2 :
     fsblock_q gL (DfracOwn (3/4)) b1 bs1 -∗
     fsblock_q gL (DfracOwn (3/4)) b2 bs2 -∗ ⌜b1 <> b2⌝.
-  Proof.
+  Proof using .
     iApply (fsblock_q_ne gL (DfracOwn (3/4)) (DfracOwn (3/4)) b1 b2 bs1 bs2
               blk_dfrac_34_nvalid).
   Qed.
@@ -538,7 +538,7 @@ Section FsBytes.
     byte_range_q gL (DfracOwn (q1 + q2)) b off bs
     ⊣⊢ byte_range_q gL (DfracOwn q1) b off bs
         ∗ byte_range_q gL (DfracOwn q2) b off bs.
-  Proof.
+  Proof using .
     rewrite /byte_range_q -big_sepL_sep.
     apply big_sepL_proper. intros k v _.
     apply (ghost_map_elem_fractional _ gL v q1 q2).
@@ -547,7 +547,7 @@ Section FsBytes.
   Lemma fsblock_q_split gL (q1 q2 : Qp) b bs :
     fsblock_q gL (DfracOwn (q1 + q2)) b bs
     ⊣⊢ fsblock_q gL (DfracOwn q1) b bs ∗ fsblock_q gL (DfracOwn q2) b bs.
-  Proof.
+  Proof using .
     rewrite /fsblock_q byte_range_q_split.
     iSplit.
     - iIntros "[%Hl [H1 H2]]". iSplitL "H1"; by iFrame.
@@ -557,7 +557,7 @@ Section FsBytes.
   Lemma fsblock_split_34 gL b bs :
     fsblock gL b bs
     ⊣⊢ fsblock_q gL (DfracOwn (3/4)) b bs ∗ fsblock_q gL (DfracOwn (1/4)) b bs.
-  Proof.
+  Proof using .
     rewrite fsblock_1 -(fsblock_q_split gL (3/4) (1/4)).
     rewrite Qp.three_quarter_quarter //.
   Qed.
@@ -570,7 +570,7 @@ Section FsBytes.
       (xs : list (bv 8)) :
     ([∗ map] a ↦ v ∈ (map_seqZ start xs : gmap Z (bv 8)), Phi a v)
     ⊣⊢ ([∗ list] k ↦ v ∈ xs, Phi (start + Z.of_nat k) v).
-  Proof.
+  Proof using .
     revert start. induction xs as [|x xs IH]; intros start.
     - simpl. rewrite big_sepM_empty //.
     - rewrite map_seqZ_cons big_sepM_insert; [| apply map_seqZ_cons_disjoint].
@@ -585,7 +585,7 @@ Section FsBytes.
     byte_range gL b off bs ⊣⊢
       ([∗ map] a ↦ v ∈ (map_seqZ (b * BSZ + off) bs : gmap Z (bv 8)),
          a ↪[gL] v).
-  Proof. rewrite /byte_range big_sepM_map_seqZ //. Qed.
+  Proof using . rewrite /byte_range big_sepM_map_seqZ //. Qed.
 
   (* two runs pinned to the same authority at the same start and length
      are the same run *)
@@ -594,7 +594,7 @@ Section FsBytes.
     (map_seqZ start xs : gmap Z (bv 8)) ⊆ L ->
     (map_seqZ start ys : gmap Z (bv 8)) ⊆ L ->
     xs = ys.
-  Proof.
+  Proof using .
     intros Hlen H1 H2. apply list_eq. intros k.
     destruct (xs !! k) as [x|] eqn:Hx.
     - assert (Hy : is_Some (ys !! k)).
@@ -622,7 +622,7 @@ Section FsBytes.
     (map_seqZ start xs : gmap Z (bv 8)) ⊆ L ->
     (map_seqZ (start + Z.of_nat o) ys : gmap Z (bv 8)) ⊆ L ->
     ys = take (length ys) (drop o xs).
-  Proof.
+  Proof using .
     intros Hle H1 H2. apply list_eq. intros k.
     destruct (decide (k < length ys)%nat) as [Hk|Hk].
     - destruct (lookup_lt_is_Some_2 ys k Hk) as [y Hy].
@@ -648,13 +648,13 @@ Section FsBytes.
     byte_range_q gL dq b off bs ⊣⊢
       ([∗ map] a ↦ v ∈ (map_seqZ (b * BSZ + off) bs : gmap Z (bv 8)),
          a ↪[gL]{dq} v).
-  Proof. rewrite /byte_range_q big_sepM_map_seqZ //. Qed.
+  Proof using . rewrite /byte_range_q big_sepM_map_seqZ //. Qed.
 
   (* what the auth says about an owned run *)
   Lemma byte_range_lookup gL (L : gmap Z (bv 8)) b off bs :
     ghost_map_auth gL 1 L -∗ byte_range gL b off bs -∗
     ⌜(map_seqZ (b * BSZ + off) bs : gmap Z (bv 8)) ⊆ L⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Hr". rewrite byte_range_map.
     iApply (ghost_map_lookup_big with "Ha Hr").
   Qed.
@@ -669,7 +669,7 @@ Section FsBytes.
   Lemma byte_range_q_lookup gL dq (L : gmap Z (bv 8)) b off bs :
     ghost_map_auth gL 1 L -∗ byte_range_q gL dq b off bs -∗
     ⌜(map_seqZ (b * BSZ + off) bs : gmap Z (bv 8)) ⊆ L⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Hr". rewrite byte_range_q_map.
     rewrite map_subseteq_spec. iIntros (k v Hk).
     iDestruct (ghost_map_lookup with "Ha [Hr]") as %->; [| done].
@@ -692,7 +692,7 @@ Section FsBytes.
     ([∗ list] k ↦ v ∈ bs, (start + Z.of_nat k) ↪[gL] v) ==∗
     ghost_map_auth gL 1 ((map_seqZ start bs' : gmap Z (bv 8)) ∪ L) ∗
     ([∗ list] k ↦ v ∈ bs', (start + Z.of_nat k) ↪[gL] v).
-  Proof.
+  Proof using .
     revert bs' start L. induction bs as [|x bs IH]; intros bs' start L Hlen.
     - destruct bs'; [| simpl in Hlen; lia].
       iIntros "Ha _". simpl. rewrite left_id_L. by iFrame.
@@ -727,7 +727,7 @@ Section FsBytes.
     ghost_map_auth gL 1 L -∗ byte_range gL b off bs ==∗
     ghost_map_auth gL 1 ((map_seqZ (b * BSZ + off) bs' : gmap Z (bv 8)) ∪ L) ∗
     byte_range gL b off bs'.
-  Proof.
+  Proof using .
     intros Hlen. rewrite /byte_range.
     iIntros "Ha Hr".
     iApply (byte_range_update_at gL L (b * BSZ + off) bs bs' Hlen with "Ha Hr").
@@ -785,17 +785,17 @@ Section FsBytes.
     (tt ↪[gX]□ (∅ : gset Z))%I.
 
   Global Instance exc_auth_timeless gX X : Timeless (exc_auth gX X).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance exc_own_timeless gX X : Timeless (exc_own gX X).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance exc_sealed_persistent gX : Persistent (exc_sealed gX).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance exc_sealed_timeless gX : Timeless (exc_sealed gX).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma exc_alloc (X : gset Z) :
     ⊢ |==> ∃ gX : gname, exc_auth gX X ∗ exc_own gX X.
-  Proof.
+  Proof using .
     iMod (ghost_map_alloc ({[ tt := X ]} : gmap unit (gset Z)))
       as (gX) "[Ha Hf]".
     rewrite big_sepM_singleton. iModIntro. iExists gX. iFrame.
@@ -803,7 +803,7 @@ Section FsBytes.
 
   Lemma exc_agree gX X X' :
     exc_auth gX X -∗ exc_own gX X' -∗ ⌜X = X'⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Hf".
     iDestruct (ghost_map_lookup with "Ha Hf") as %Hlk.
     rewrite lookup_singleton in Hlk. iPureIntro. congruence.
@@ -812,7 +812,7 @@ Section FsBytes.
   (* THE SEAL, READ: a discarded element at [∅] against the authority. *)
   Lemma exc_sealed_empty gX X :
     exc_auth gX X -∗ exc_sealed gX -∗ ⌜X = ∅⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Hs".
     iDestruct (ghost_map_lookup with "Ha Hs") as %Hlk.
     rewrite lookup_singleton in Hlk. iPureIntro. congruence.
@@ -820,7 +820,7 @@ Section FsBytes.
 
   Lemma exc_update gX X X' :
     exc_auth gX X -∗ exc_own gX X ==∗ exc_auth gX X' ∗ exc_own gX X'.
-  Proof.
+  Proof using .
     iIntros "Ha Hf".
     iMod (ghost_map_update X' with "Ha Hf") as "[Ha Hf]".
     rewrite insert_singleton. by iFrame.
@@ -829,7 +829,7 @@ Section FsBytes.
   (* ...AND THE SEAL, MADE.  Spending the handle at [∅] persists it. *)
   Lemma exc_seal gX :
     exc_own gX ∅ ==∗ exc_sealed gX.
-  Proof. iIntros "Hf". by iMod (ghost_map_elem_persist with "Hf") as "$". Qed.
+  Proof using . iIntros "Hf". by iMod (ghost_map_elem_persist with "Hf") as "$". Qed.
 
   (* ------------------------------------------------------------------ *)
   (*  4.  THE LOG-LAYER INVARIANT: the cache map against the byte view   *)
@@ -853,7 +853,7 @@ Section FsBytes.
                  (map_seqZ (b * BSZ) bs : gmap Z (bv 8)) ⊆ L.
 
   Lemma bytes_tie_exc_empty L C : bytes_tie_exc L C ∅ <-> bytes_tie L C.
-  Proof.
+  Proof using .
     split.
     - intros H b bs Hb. apply (H b bs Hb). set_solver.
     - intros H b bs Hb _. exact (H b bs Hb).
@@ -895,7 +895,7 @@ Section FsBytes.
 
   Global Instance fs_bytes_body_timeless gL gc gX home Xv :
     Timeless (fs_bytes_body gL gc gX home Xv).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Definition fs_bytes_inv (gL gc gX : gname) (home : gset Z)
       (Xv : Z -> list (bv 8)) : iProp Σ :=
@@ -903,7 +903,7 @@ Section FsBytes.
 
   Global Instance fs_bytes_inv_persistent gL gc gX home Xv :
     Persistent (fs_bytes_inv gL gc gX home Xv).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* ------------------------------------------------------------------ *)
   (*  5.  What a bread client gets: C(b) IS L's bytes at b               *)
@@ -922,7 +922,7 @@ Section FsBytes.
      section 0 rules -- never a maintained clause. *)
   Lemma fsblock_ne gL b1 b2 bs1 bs2 :
     fsblock gL b1 bs1 -∗ fsblock gL b2 bs2 -∗ ⌜b1 <> b2⌝.
-  Proof.
+  Proof using .
     iIntros "H1 H2". destruct (decide (b1 = b2)) as [->|Hne]; [| done].
     iExFalso. iApply (fsblock_excl with "H1 H2").
   Qed.
@@ -935,7 +935,7 @@ Section FsBytes.
     bytes_dom L home ->
     (off < BSIZE)%nat -> (0 < length bs)%nat ->
     ghost_map_auth gL 1 L -∗ byte_range gL b (Z.of_nat off) bs -∗ ⌜b ∈ home⌝.
-  Proof.
+  Proof using .
     iIntros (Hdm Hoff Hpos) "Ha Hr".
     iDestruct (byte_range_lookup with "Ha Hr") as %Hsub.
     assert (Hfst : is_Some ((map_seqZ (b * BSZ + Z.of_nat off) bs
@@ -957,7 +957,7 @@ Section FsBytes.
       (b : Z) (bs : list (bv 8)) :
     bytes_dom L home ->
     ghost_map_auth gL 1 L -∗ fsblock gL b bs -∗ ⌜b ∈ home⌝.
-  Proof.
+  Proof using .
     iIntros (Hdm) "Ha [%Hlb Hr]".
     iApply (byte_range_home gL L home b 0%nat bs Hdm
               BSIZE_pos ltac:(rewrite Hlb; exact BSIZE_pos) with "Ha Hr").
@@ -973,7 +973,7 @@ Section FsBytes.
     ↑logN ⊆ E ->
     fs_bytes_inv gL gc gX home Xv -∗
     fsblock gL b bs ={E}=∗ ⌜b ∈ home⌝ ∗ fsblock gL b bs.
-  Proof.
+  Proof using .
     iIntros (HE) "#Hinv Hfb".
     iMod (inv_acc E fsbN with "Hinv") as "[Hbody Hclose]"; [exact (fsbN_sub E HE) |].
     iDestruct "Hbody" as (L C X)
@@ -998,7 +998,7 @@ Section FsBytes.
     fsblock gL b bs -∗
     (b ↪[gc]{#(1/2)} bsm) ={E}=∗
       ⌜bsm = bs⌝ ∗ fsblock gL b bs ∗ (b ↪[gc]{#(1/2)} bsm).
-  Proof.
+  Proof using .
     iIntros (HE) "#Hinv #Hseal Hfb Hm".
     iMod (inv_acc E fsbN with "Hinv") as "[Hbody Hclose]"; [exact (fsbN_sub E HE) |].
     iDestruct "Hbody" as (L C X)
@@ -1035,7 +1035,7 @@ Section FsBytes.
     fsblock gL b bs -∗
     (b ↪[gc]{#(1/2)} bsm) ={E}=∗
       ⌜bsm = bs⌝ ∗ exc_own gX X ∗ fsblock gL b bs ∗ (b ↪[gc]{#(1/2)} bsm).
-  Proof.
+  Proof using .
     iIntros (HE Hnin) "#Hinv Hxo Hfb Hm".
     iMod (inv_acc E fsbN with "Hinv") as "[Hbody Hclose]"; [exact (fsbN_sub E HE) |].
     iDestruct "Hbody" as (L C X0)
@@ -1073,7 +1073,7 @@ Section FsBytes.
     (off < BSIZE)%nat -> (0 < length bs)%nat ->
     ghost_map_auth gL 1 L -∗ byte_range_q gL dq b (Z.of_nat off) bs -∗
     ⌜b ∈ home⌝.
-  Proof.
+  Proof using .
     iIntros (Hdm Hoff Hpos) "Ha Hr".
     iDestruct (byte_range_q_lookup with "Ha Hr") as %Hsub.
     assert (Hfst : is_Some ((map_seqZ (b * BSZ + Z.of_nat off) bs
@@ -1095,7 +1095,7 @@ Section FsBytes.
       (home : gset Z) (b : Z) (bs : list (bv 8)) :
     bytes_dom L home ->
     ghost_map_auth gL 1 L -∗ fsblock_q gL dq b bs -∗ ⌜b ∈ home⌝.
-  Proof.
+  Proof using .
     iIntros (Hdm) "Ha [%Hlb Hr]".
     iApply (byte_range_q_home gL dq L home b 0%nat bs Hdm
               BSIZE_pos ltac:(rewrite Hlb; exact BSIZE_pos) with "Ha Hr").
@@ -1105,7 +1105,7 @@ Section FsBytes.
     ↑logN ⊆ E ->
     fs_bytes_inv gL gc gX home Xv -∗
     fsblock_q gL dq b bs ={E}=∗ ⌜b ∈ home⌝ ∗ fsblock_q gL dq b bs.
-  Proof.
+  Proof using .
     iIntros (HE) "#Hinv Hfb".
     iMod (inv_acc E fsbN with "Hinv") as "[Hbody Hclose]"; [exact (fsbN_sub E HE) |].
     iDestruct "Hbody" as (L C X)
@@ -1127,7 +1127,7 @@ Section FsBytes.
     fsblock_q gL dq b bs -∗
     (b ↪[gc]{#(1/2)} bsm) ={E}=∗
       ⌜bsm = bs⌝ ∗ fsblock_q gL dq b bs ∗ (b ↪[gc]{#(1/2)} bsm).
-  Proof.
+  Proof using .
     iIntros (HE) "#Hinv #Hseal Hfb Hm".
     iMod (inv_acc E fsbN with "Hinv") as "[Hbody Hclose]"; [exact (fsbN_sub E HE) |].
     iDestruct "Hbody" as (L C X)
@@ -1191,7 +1191,7 @@ Section FsBytes.
       ghost_map_auth gc 1 (<[b := blk_splice off sub_new bs_old]> C) ∗
       byte_range gL b (Z.of_nat off) sub_new ∗
       (b ↪[gc]{#(1/2)} blk_splice off sub_new bs_old).
-  Proof.
+  Proof using .
     iIntros (HE Hoff Hpos Hshape) "#Hinv #Hseal Hca Hr Hm".
     iMod (inv_acc E fsbN with "Hinv") as "[Hbody Hclose]"; [exact (fsbN_sub E HE) |].
     iDestruct "Hbody" as (L C0 X)
@@ -1329,7 +1329,7 @@ Section FsBytes.
       ghost_map_auth gc 1 (<[b := bs_new]> C) ∗
       fsblock gL b bs_new ∗
       (b ↪[gc]{#(1/2)} bs_new).
-  Proof.
+  Proof using .
     iIntros (HE Hlnew) "#Hinv #Hseal Hca Hfb Hm".
     iDestruct "Hfb" as "[%Hlb Hr]".
     iMod (byte_range_log_update E gL gc gX home Xv C b 0%nat bs bs_new bsm HE
@@ -1372,7 +1372,7 @@ Section FsBytes.
       exc_own gX (X ∖ {[b]}) ∗
       ghost_map_auth gc 1 (<[b := Xv b]> C) ∗
       (b ↪[gc]{#(1/2)} Xv b).
-  Proof.
+  Proof using .
     iIntros (HE Hb HlXv) "#Hinv Hxo Hca Hm".
     iMod (inv_acc E fsbN with "Hinv") as "[Hbody Hclose]"; [exact (fsbN_sub E HE) |].
     iDestruct "Hbody" as (L C0 X0)
@@ -1430,7 +1430,7 @@ Section FsBytes.
     ∃ L : gmap Z (bv 8),
       ⌜bytes_dom L (h0 ∪ dom C)⌝ ∗ ⌜bytes_tie L C⌝ ∗
       ghost_map_auth gL 1 L ∗ ([∗ map] b ↦ bs ∈ C, fsblock gL b bs).
-  Proof.
+  Proof using .
     revert L0 h0.
     induction C as [|b bs C' Hb IH] using map_ind;
       intros L0 h0 Hlen Hfresh Hdm.
@@ -1522,7 +1522,7 @@ Section FsBytes.
         fs_bytes_inv gL gc gX (dom C) Bv ∗
         exc_own gX X ∗
         ([∗ map] b ↦ bs ∈ C, fsblock gL b (Bv b)).
-  Proof.
+  Proof using .
     iIntros (Hlen HlB HXsub Hagr) "HC".
     (* the byte view's own value map: [C]'s domain, [Bv]'s values *)
     set (B := map_imap (fun (k : Z) (_ : list (bv 8)) => Some (Bv k)) C).
@@ -1621,7 +1621,7 @@ Section FsMint.
 
   Global Instance fs_bytes_at_persistent γ home :
     Persistent (fs_bytes_at γ home).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* THE ROW ITSELF, minted at PowerOn: it says only that SOME byte-view
      invariant over [γ] exists.  The three carriers hand this out. *)
@@ -1629,7 +1629,7 @@ Section FsMint.
     (∃ home : gset Z, fs_bytes_at γ home)%I.
 
   Global Instance fs_bytes_row_persistent γ : Persistent (fs_bytes_row γ).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* ...AND THE ROW A RUNTIME READER NEEDS (lane E-except): the row plus
      the SEAL.  It is what [LogInv.log_ctx] carries, so every client of
@@ -1642,17 +1642,17 @@ Section FsMint.
     (fs_bytes_row γ ∗ exc_sealed (fs_exc γ))%I.
 
   Global Instance fs_bytes_any_persistent γ : Persistent (fs_bytes_any γ).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma fs_bytes_any_row γ : fs_bytes_any γ -∗ fs_bytes_row γ.
-  Proof. iIntros "[$ _]". Qed.
+  Proof using . iIntros "[$ _]". Qed.
 
   Lemma fs_bytes_any_seal γ : fs_bytes_any γ -∗ exc_sealed (fs_exc γ).
-  Proof. iIntros "[_ $]". Qed.
+  Proof using . iIntros "[_ $]". Qed.
 
   Lemma fs_bytes_any_of γ :
     fs_bytes_row γ -∗ exc_sealed (fs_exc γ) -∗ fs_bytes_any γ.
-  Proof. iIntros "H1 H2". iFrame. Qed.
+  Proof using . iIntros "H1 H2". iFrame. Qed.
 
   (* ...and the same pair at a NAMED home set, which is what
      [BitmapInv.bitmap_inv] carries (it already names [cov]/[logstart]). *)
@@ -1661,11 +1661,11 @@ Section FsMint.
 
   Global Instance fs_bytes_any_at_persistent γ home :
     Persistent (fs_bytes_any_at γ home).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma fs_bytes_any_at_any γ home :
     fs_bytes_any_at γ home -∗ fs_bytes_any γ.
-  Proof.
+  Proof using .
     iIntros "[Hat $]". rewrite /fs_bytes_row. iExists home. iExact "Hat".
   Qed.
 
@@ -1679,7 +1679,7 @@ Section FsMint.
     (b ↪[fs_cache γ]{#(1/2)} bsm) ={E}=∗
       ⌜bsm = bs⌝ ∗ fsblock (fs_bytes γ) b bs ∗
       (b ↪[fs_cache γ]{#(1/2)} bsm).
-  Proof.
+  Proof using .
     iIntros (HE) "[Hrow #Hseal] Hfb Hm".
     iDestruct "Hrow" as (home Xv) "#Hinv".
     iApply (fs_bytes_agree E (fs_bytes γ) (fs_cache γ) (fs_exc γ) home Xv
@@ -1698,7 +1698,7 @@ Section FsMint.
     (b ↪[fs_cache γ]{#(1/2)} bsm) ={E}=∗
       ⌜bsm = bs⌝ ∗ fsblock_q (fs_bytes γ) dq b bs ∗
       (b ↪[fs_cache γ]{#(1/2)} bsm).
-  Proof.
+  Proof using .
     iIntros (HE) "[Hrow #Hseal] Hfb Hm".
     iDestruct "Hrow" as (home Xv) "#Hinv".
     iApply (fs_bytes_agree_q E (fs_bytes γ) dq (fs_cache γ) (fs_exc γ) home Xv
@@ -1711,14 +1711,14 @@ Section FsMint.
     ([∗ map] k ↦ v ∈ m, Phi k v)
       ⊢ ([∗ map] k ↦ v ∈ filter (fun kv => kv.1 ∈ S) m, Phi k v)
         ∗ ([∗ map] k ↦ v ∈ filter (fun kv => kv.1 ∉ S) m, Phi k v).
-  Proof.
+  Proof using .
     rewrite -big_sepM_union; [| apply map_disjoint_filter_complement].
     rewrite map_filter_union_complement //.
   Qed.
 
   Lemma fs_filter_dom {V : Type} (m : gmap Z V) (S : gset Z) :
     S ⊆ dom m -> dom (filter (fun kv => kv.1 ∈ S) m) = S.
-  Proof.
+  Proof using .
     intros Hsub. apply set_eq. intros b. rewrite elem_of_dom. split.
     - intros [v Hv]. apply map_lookup_filter_Some in Hv as [_ Hin]. exact Hin.
     - intros Hin. destruct (proj1 (elem_of_dom m b) (Hsub b Hin)) as [v Hv].
@@ -1756,7 +1756,7 @@ Section FsMint.
          fsblock (fs_bytes γ) bno (Dv bno)) ∗
       ([∗ map] bno ↦ bs ∈ filter (fun kv => kv.1 ∉ home) L0,
          fs_chalf γ bno bs).
-  Proof.
+  Proof using .
     iIntros (Hlen Hsub HlD HXsub Hagr).
     iMod (ghost_map_alloc L0) as (γC) "[HaC HC]".
     iMod (ghost_map_alloc ((fun _ => false) <$> L0)) as (γD) "[HaD HD]".

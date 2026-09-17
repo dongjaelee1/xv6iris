@@ -97,7 +97,7 @@ Section ProofSysSbrk.
   (* the two [int] locals, as offsets from the frame pointer [s0 = sp0] *)
   Lemma ss_addr_n (X : mword 64) :
     add_vec X (sign_extend' 64 (mword_of_int 0xfd8 : mword 12)) = pa_stk X 5.
-  Proof.
+  Proof using .
     unfold pa_stk, add_vec_int. apply f_equal.
     apply bv_eq; vm_compute; reflexivity.
   Qed.
@@ -105,7 +105,7 @@ Section ProofSysSbrk.
 
   Lemma ss_addr_t (X : mword 64) :
     add_vec X (sign_extend' 64 (mword_of_int 0xfdc : mword 12)) = pa_add (pa_stk X 5) 4.
-  Proof.
+  Proof using .
     unfold pa_add, pa_stk, add_vec_int. rewrite pa_stk_off2.
     apply f_equal. apply bv_eq; vm_compute; reflexivity.
   Qed.
@@ -144,7 +144,7 @@ Section ProofSysSbrk.
         pc_is (ret_pc ra0) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hav Hsp0 Hra0 Hs00 Hs10 Hmtsp Hmts1 Hthr.
     iIntros "Hcg #Htext Hpc Hb1 Hb2 Hb3 Hb4 Hb5 Hb6 Hcont".
     (* ---- +0x64: c.mv a0,s1 ---- *)
@@ -349,7 +349,7 @@ Section ProofSysSbrk.
         ctx_word4_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 5) (DfracOwn 1) nw -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hav Hesp Hes0 Hes1 Hethr.
     iIntros "Hcg Hcpu #Htext Hpc Hpriv #Henv Hnw Hcont".
     (* ---- +0x58: lw a0,-40(s0) -- a0 := n ---- *)
@@ -505,7 +505,7 @@ Section ProofSysSbrk.
       (m : regfile) (av : nat) (eb : bool) (p : mword 64)
       (pid : mword 32) (U : ustate) (v0 v1 : mword 64) (b : bool) (lks : gset string)
     : wp_sys_sbrk_sconf_body γa γf m av eb p pid U v0 v1 b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_sys_sbrk_sconf_body].
     intros pcE ret_tgt Harg0 Harg1 Hav.
     

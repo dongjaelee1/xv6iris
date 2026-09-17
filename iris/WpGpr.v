@@ -115,12 +115,12 @@ Section GprFile.
      [∗ map] r ↦ v ∈ rf_to_gmap f, gpr_pt r v)%I.
 
   Lemma gpr_file_dom (f : regfile) : ⊢@{iPropI Σ} ⌜ ∀ r : regidx, r ∈ dom (rf_to_gmap f) ⌝.
-  Proof. iPureIntro. apply rf_to_gmap_dom. Qed.
+  Proof using . iPureIntro. apply rf_to_gmap_dom. Qed.
 
   (* Read/write accessors over the function rep (the interface leaves use). *)
   Lemma gpr_file_lookup_acc (f : regfile) (i : regidx) :
     gpr_file f ⊢ gpr_pt i (f i) ∗ (gpr_pt i (f i) -∗ gpr_file f).
-  Proof.
+  Proof using .
     unfold gpr_file. iIntros "[$ Hm]".
     iDestruct (big_sepM_lookup_acc _ _ _ _ (rf_to_gmap_lookup f i) with "Hm") as "[$ Hcl]".
     iIntros "Hpt". iApply "Hcl". done.
@@ -128,7 +128,7 @@ Section GprFile.
 
   Lemma gpr_file_insert_acc (f : regfile) (i : regidx) (w : mword 64) :
     gpr_file f ⊢ gpr_pt i (f i) ∗ (gpr_pt i w -∗ gpr_file (<[i := w]> f)).
-  Proof.
+  Proof using .
     unfold gpr_file. iIntros "[_ Hm]".
     iDestruct (big_sepM_insert_acc _ _ _ _ (rf_to_gmap_lookup f i) with "Hm") as "[$ Hcl]".
     iIntros "Hpt". iSplitR; [iApply gpr_file_dom |].
@@ -142,7 +142,7 @@ Section GprFile.
     reg_interp σ.(sregs) -∗ gpr_pt (Regidx i) v -∗
     ⌜ (if Z.eqb (uint i) 0 then zero_reg
        else register_lookup (R_bitvector_64 (gpr_of_Z (uint i))) σ.(sregs)) = v ⌝.
-  Proof.
+  Proof using .
     iIntros "Hreg Hpt". unfold gpr_pt; cbn match.
     destruct (Z.eqb (uint i) 0) eqn:Hz.
     - iDestruct "Hpt" as %Hv. iPureIntro. symmetry; exact Hv.
@@ -156,7 +156,7 @@ Section GprFile.
      so a whole-function proof can read the slot mid-stream. *)
   Lemma gpr_file_x0 (f : regfile) (i : mword 5) :
     uint i = 0 -> gpr_file f -∗ ⌜ f !!! Regidx i = zero_reg ⌝ ∗ gpr_file f.
-  Proof.
+  Proof using .
     intro Hi. iIntros "Hf".
     iDestruct (gpr_file_lookup_acc f (Regidx i) with "Hf") as "[Hpt Hclose]".
     unfold gpr_pt; cbn match.
@@ -170,7 +170,7 @@ Section GprFile.
   Lemma gpr_pt_nz (i : mword 5) (v : mword 64) :
     uint i <> 0 ->
     gpr_pt (Regidx i) v = (R_bitvector_64 (gpr_of_Z (uint i)) ↦ᵣ v)%I.
-  Proof.
+  Proof using .
     intro H. unfold gpr_pt; cbn match.
     replace (Z.eqb (uint i) 0) with false by (symmetry; apply Z.eqb_neq; exact H).
     reflexivity.

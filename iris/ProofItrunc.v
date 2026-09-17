@@ -250,7 +250,7 @@ Section ItruncTail.
             (Sb0 ∪ {[IBLOCK inum icfg_ist]})
             pidv dq dqd dqn dqb dqs j m K b eb lks Upr -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hgeom Hist Hicov Hilog Hnib Hdtnz Hstab Hnlk Hj Hgl Hsp Hthr Hs3 Hlkbelow.
     pose proof HK as HK'. 
     iIntros "Hcg Hcnt Hextc Hextm #Htext #Hkd Hpc #Hpenv #Hbio #Hlctx #Hprocs Hframe Hppid Hidev Hinum Hsbb Hsbi Hmeta Hmap Hblks
@@ -746,7 +746,7 @@ Section ItruncDLoop.
     it_dexit (CID0 := CID0)
              ip bm data pidv dq dqd dqb jx crb Sb e0 w m K b eb lks Upr -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hgeom Hsize Hbm0 Hbmcov Hbmlog Hwf Hrange Hblen Hj Hgl.
     (* REVERT CID0 BEFORE THE INDUCTION (the ProofWritei.wi_loop idiom).
        At generic [b] the instruction chain really does advance the CID, so
@@ -1317,7 +1317,7 @@ Section ItruncELoop.
     it_eexit (CID0 := CID0)
              ip bm data kk dsk pidv dq dqd dqb jx crb Sb e0 w m K b eb lks Upr -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hgeom Hsize Hbm0 Hbmcov Hbmlog Hwf Hrange Hblen Hkk Hj Hgl.
     revert CID0.
     induction fuel as [|fuel IH];
@@ -1846,7 +1846,7 @@ Section ItruncIArm.
     it_armexit (CID0 := CID0)
                ip bm pidv dq dqd dqb jx crb Sb e0 w m K b eb lks Upr -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hgeom Hsize Hbm0 Hbmcov Hbmlog Hwf Hrange Hblen Hindnz Hj Hgl
            Hsp Hthr Hs3 Ha1 Hlkbelow.
     pose proof HK as HK'. 
@@ -2506,7 +2506,7 @@ Section ItruncMain.
 
                          ip inum dn dn0 bm data u Sb crb cru e0
                          pidv dq dqd dqn dqb dqs m K eb b lks Upr.
-  Proof.
+  Proof using .
     cbv beta delta [wp_itrunc_gen_body].
     intros pcE pj ret_tgt HK Hcrb Hgeom Hsize Hbm0 Hbmcov Hbmlog Hist Hicov Hilog
            Hnib Hdtnz Hstab Hnlk Hwf Hbelow Hblen Hadr Hj Hgl Ha0 Hlkbelow.
@@ -3016,7 +3016,7 @@ Section ItruncMain.
 
                            ip inum dn dn0 bm data u
                            pidv dq dqd dqn dqb dqs m K eb b lks Upr.
-  Proof.
+  Proof using .
     cbv beta delta [wp_itrunc_sconf_body].
     intros pcE pj ret_tgt HK Hgeom Hsize Hbm0 Hbmcov Hbmlog Hist Hicov Hilog
            Hnib Hdtnz Hstab Hnlk Hwf Hbelow Hblen Hadr Hj Hgl Ha0 Hlkbelow.

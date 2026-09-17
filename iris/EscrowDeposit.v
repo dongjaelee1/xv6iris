@@ -157,7 +157,7 @@ Section EscrowDeposit.
           freeze index's own. *)
        ={E ∖ ↑iregN, E}=∗ committedA ge ∗ ireg_regime rg.1 ∗ ireg_fpin rg
                           ∗ t ↪[ln_tx icfg_log]{#q} tt).
-  Proof.
+  Proof using .
     iIntros (HE Hesc_mask Hpool_mask Hftop_mask Hin Hdn' Hz Hbare Hnl)
       "#Hinv #Hesc #Hpinv Hel Hdn Hdep".
     pose proof (islot_lt inum) as Hsl.

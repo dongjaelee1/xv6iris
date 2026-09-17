@@ -92,18 +92,18 @@ Section LockSet.
     lk_auth i S.
 
   Global Instance lk_auth_timeless i S : Timeless (lk_auth i S).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance lk_in_timeless i r : Timeless (lk_in i r).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance cpu_locks_at_timeless i S : Timeless (cpu_locks_at i S).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* ---- the laws ------------------------------------------------------ *)
 
   (* THE TIE: the fragment a held lock keeps pins its rank into the set. *)
   Lemma lk_in_agree (i : CPU) (S : gset string) (r : string) :
     lk_auth i S -∗ lk_in i r -∗ ⌜r ∈ S⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Hf".
     iDestruct (own_valid_2 with "Ha Hf") as %Hv.
     iPureIntro.
@@ -114,7 +114,7 @@ Section LockSet.
 
   Lemma cpu_locks_in (i : CPU) (S : gset string) (r : string) :
     cpu_locks_at i S -∗ lk_in i r -∗ ⌜r ∈ S⌝.
-  Proof. iIntros "Ha Hf". iApply (lk_in_agree with "Ha Hf"). Qed.
+  Proof using . iIntros "Ha Hf". iApply (lk_in_agree with "Ha Hf"). Qed.
 
   (* THE FORM ACQUIRE USES, contrapositively: a rank this hart does not hold
      cannot belong to a lock whose invariant is in the [Some (i, true)] state,
@@ -127,7 +127,7 @@ Section LockSet.
   Lemma cpu_locks_not_in (i : CPU) (S : gset string) (r : string) :
     r ∉ S ->
     cpu_locks_at i S -∗ lk_in i r -∗ False.
-  Proof.
+  Proof using .
     iIntros (Hnin) "Ha Hf".
     iDestruct (cpu_locks_in with "Ha Hf") as %Hin.
     iPureIntro. exact (Hnin Hin).
@@ -136,14 +136,14 @@ Section LockSet.
   Lemma cpu_locks_not_in_below (i : CPU) (S : gset string) (r : string) :
     locks_below S r ->
     cpu_locks_at i S -∗ lk_in i r -∗ False.
-  Proof. intros Hb. apply cpu_locks_not_in, locks_below_not_elem, Hb. Qed.
+  Proof using . intros Hb. apply cpu_locks_not_in, locks_below_not_elem, Hb. Qed.
 
   (* the fragment is EXCLUSIVE -- one hart cannot hold two locks of the same
      rank, i.e. two of the same FAMILY.  xv6 never does (LockRank.v), and
      acquire's order premise forbids it independently. *)
   Lemma lk_in_excl (i : CPU) (r : string) :
     lk_in i r -∗ lk_in i r -∗ False.
-  Proof.
+  Proof using .
     iIntros "H1 H2".
     iDestruct (own_valid_2 with "H1 H2") as %Hv.
     rewrite -auth_frag_op auth_frag_valid gset_disj_valid_op in Hv.
@@ -155,7 +155,7 @@ Section LockSet.
   Lemma cpu_locks_insert (i : CPU) (S : gset string) (r : string) :
     r ∉ S ->
     cpu_locks_at i S ==∗ cpu_locks_at i ({[r]} ∪ S) ∗ lk_in i r.
-  Proof.
+  Proof using .
     iIntros (Hnin) "Ha".
     assert (Hdisj : {[r]} ## S) by set_solver.
     iMod (own_update _ _ ((● (GSet ({[r]} ∪ S)) ⋅ ◯ (GSet {[r]})) : lockSetR)
@@ -169,7 +169,7 @@ Section LockSet.
   Lemma cpu_locks_insert_below (i : CPU) (S : gset string) (r : string) :
     locks_below S r ->
     cpu_locks_at i S ==∗ cpu_locks_at i ({[r]} ∪ S) ∗ lk_in i r.
-  Proof.
+  Proof using .
     intros Hb. apply cpu_locks_insert, locks_below_not_elem, Hb.
   Qed.
 
@@ -177,7 +177,7 @@ Section LockSet.
   Lemma cpu_locks_delete (i : CPU) (S : gset string) (r : string) :
     cpu_locks_at i S -∗ lk_in i r ==∗
     ⌜r ∈ S⌝ ∗ cpu_locks_at i (S ∖ {[r]}).
-  Proof.
+  Proof using .
     iIntros "Ha Hf".
     iDestruct (cpu_locks_in with "Ha Hf") as %Hin.
     iMod (own_update_2 _ _ _ ((● (GSet (S ∖ {[r]}))) : lockSetR) with "Ha Hf")
@@ -189,7 +189,7 @@ Section LockSet.
   (* boot: the authority arrives from adequacy at the empty set. *)
   Lemma cpu_locks_intro_empty (i : CPU) :
     lk_auth i ∅ -∗ cpu_locks_at i ∅.
-  Proof. iIntros "Ha". iFrame "Ha". Qed.
+  Proof using . iIntros "Ha". iFrame "Ha". Qed.
 
   (* ---- THE LEVEL/SET COUPLING -------------------------------------------
 
@@ -223,16 +223,16 @@ Section LockSet.
 
   Lemma cpu_locks_lvl_at_elim (i : CPU) (n : nat) (lks : gset string) :
     cpu_locks_lvl_at i n lks -∗ cpu_locks_at i lks ∗ ⌜(size lks <= n)%nat⌝.
-  Proof. iIntros "[$ $]". Qed.
+  Proof using . iIntros "[$ $]". Qed.
 
   Lemma cpu_locks_lvl_at_intro (i : CPU) (n : nat) (lks : gset string) :
     (size lks <= n)%nat -> cpu_locks_at i lks -∗ cpu_locks_lvl_at i n lks.
-  Proof. iIntros (Hsz) "H". iFrame "H". iPureIntro. exact Hsz. Qed.
+  Proof using . iIntros (Hsz) "H". iFrame "H". iPureIntro. exact Hsz. Qed.
 
   (* the level only ever needs WEAKENING upward (a push_off) *)
   Lemma cpu_locks_lvl_at_weaken (i : CPU) (n n' : nat) (lks : gset string) :
     (n <= n')%nat -> cpu_locks_lvl_at i n lks -∗ cpu_locks_lvl_at i n' lks.
-  Proof. iIntros (Hle) "[H %Hsz]". iFrame "H". iPureIntro. lia. Qed.
+  Proof using . iIntros (Hle) "[H %Hsz]". iFrame "H". iPureIntro. lia. Qed.
 
 End LockSet.
 
@@ -246,7 +246,7 @@ Section LockSetAmbient.
 
   Lemma cpu_locks_unfold (S : gset string) :
     cpu_locks S ⊣⊢ cpu_locks_at cpu_id S.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* the ambient-hart spelling of the level/set coupling *)
   Definition cpu_locks_lvl (n : nat) (S : gset string) : iProp Σ :=
@@ -254,23 +254,23 @@ Section LockSetAmbient.
 
   Lemma cpu_locks_lvl_elim (n : nat) (S : gset string) :
     cpu_locks_lvl n S -∗ cpu_locks S ∗ ⌜(size S <= n)%nat⌝.
-  Proof. iApply cpu_locks_lvl_at_elim. Qed.
+  Proof using . iApply cpu_locks_lvl_at_elim. Qed.
 
   Lemma cpu_locks_lvl_intro (n : nat) (S : gset string) :
     (size S <= n)%nat -> cpu_locks S -∗ cpu_locks_lvl n S.
-  Proof. iIntros (H). iApply cpu_locks_lvl_at_intro. exact H. Qed.
+  Proof using . iIntros (H). iApply cpu_locks_lvl_at_intro. exact H. Qed.
 
   (* push_off raises the level; the coupling only ever needs WEAKENING *)
   Lemma cpu_locks_lvl_weaken (n n' : nat) (S : gset string) :
     (n <= n')%nat -> cpu_locks_lvl n S -∗ cpu_locks_lvl n' S.
-  Proof. iIntros (Hle). iApply cpu_locks_lvl_at_weaken. exact Hle. Qed.
+  Proof using . iIntros (Hle). iApply cpu_locks_lvl_at_weaken. exact Hle. Qed.
 
   (* RE-LEVEL the coupling: the only thing that ever changes is the level, and
      the new bound is supplied by whoever is moving it (push_off weakens for
      free, pop_off's caller states it).  Subsumes [cpu_locks_lvl_weaken]. *)
   Lemma cpu_locks_lvl_relevel (n n' : nat) (S : gset string) :
     (size S <= n')%nat -> cpu_locks_lvl n S -∗ cpu_locks_lvl n' S.
-  Proof.
+  Proof using .
     iIntros (H) "H". iDestruct (cpu_locks_lvl_elim with "H") as "[H _]".
     iApply (cpu_locks_lvl_intro n' S H with "H").
   Qed.
@@ -279,7 +279,7 @@ Section LockSetAmbient.
      [cpu_own]'s [b = true] arm both want. *)
   Lemma cpu_locks_lvl_zero (S : gset string) :
     cpu_locks_lvl 0 S -∗ cpu_locks S ∗ ⌜S = ∅⌝.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct (cpu_locks_lvl_elim with "H") as "[$ %Hsz]".
     iPureIntro. apply leibniz_equiv, size_empty_inv. lia.
   Qed.

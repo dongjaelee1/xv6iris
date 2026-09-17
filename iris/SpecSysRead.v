@@ -247,7 +247,7 @@ Section SpecSysRead.
     fileread_fs_env γf fn -∗ fileread_devsw fn -∗
     fileread_env γf fn st ∗
     (fileread_env_out fn st -∗ fileread_fs_out fn ∗ fileread_devsw fn).
-  Proof.
+  Proof using .
     iIntros "Hfs Hdev". rewrite /fileread_env /fileread_env_out.
     destruct st as [|? ? [? ? ?| |mj]].
     { (* CLOSED -- the panic arm; argfd never hands one over, but the
@@ -300,7 +300,7 @@ Section SpecSysRead.
 
   Lemma sys_read_arms_ret V v sts n F Rd Rin Rp Rpe P r M' addr :
     sys_read_arms V v sts n F Rd Rin Rp Rpe P r M' addr -∗ ⌜sys_read_ret V v n r⌝.
-  Proof. iIntros "[%H _]". by iPureIntro. Qed.
+  Proof using . iIntros "[%H _]". by iPureIntro. Qed.
 
   (* ...and the other projection, which is what the process gets back: the
      arm's own payout WITHOUT the blanket.  The blanket reads [pv_ofile V],
@@ -310,7 +310,7 @@ Section SpecSysRead.
   Lemma sys_read_arms_extra V v sts n F Rd Rin Rp Rpe P r M' addr :
     sys_read_arms V v sts n F Rd Rin Rp Rpe P r M' addr -∗
     fileread_extra (pv_gen V) (pv_upt V) (sys_fd_st v (pv_ofile V) sts) n F Rd Rin Rp Rpe P r M' addr.
-  Proof. iIntros "[_ $]". Qed.
+  Proof using . iIntros "[_ $]". Qed.
 
   (* ...AND THE PAYLOAD OFF IT, which is what the dispatcher's read arm
      hands [SpecSyscall.sysc_pay_out]: the arm's own payout for the
@@ -318,7 +318,7 @@ Section SpecSysRead.
   Lemma sys_read_arms_pay V v sts n F Rd Rin Rp Rpe P r M' addr :
     sys_read_arms V v sts n F Rd Rin Rp Rpe P r M' addr -∗
     P ∗ fileread_extra_core (pv_gen V) (pv_upt V) (sys_fd_st v (pv_ofile V) sts) n F Rd Rin Rp Rpe r M' addr.
-  Proof. iIntros "[_ H]". iApply (fileread_extra_pay with "H"). Qed.
+  Proof using . iIntros "[_ H]". iApply (fileread_extra_pay with "H"). Qed.
 
   (* ---- the key, read at the two shapes the walk reaches it in --------
      argfd answered NONE (the -1 above the branch), or it answered a
@@ -333,7 +333,7 @@ Section SpecSysRead.
     arg_fd v (pv_ofile V) = None ->
     r = (mword_of_int (-1) : mword 64) ->
     P -∗ sys_read_arms V v sts n F Rd Rin Rp Rpe P r M' addr.
-  Proof.
+  Proof using .
     intros Hnone Hr. rewrite /sys_read_arms /sys_fd_st Hnone. iIntros "HP".
     iSplitR; [| rewrite Hr; iApply (fileread_extra_closed with "HP")].
     iPureIntro. left. split; [exact Hr | exact Hnone].
@@ -348,7 +348,7 @@ Section SpecSysRead.
     arg_fd v (pv_ofile V) = Some (fd, fv) ->
     sts !! fd = Some st ->
     sys_read_in V v sts n F Rd Rin Rp Rpe P -∗ fileread_in st n F Rd Rin Rp Rpe P.
-  Proof.
+  Proof using .
     intros Hsome Hst. rewrite /sys_read_in /sys_fd_st Hsome Hst /=.
     by iIntros "$".
   Qed.
@@ -364,7 +364,7 @@ Section SpecSysRead.
     sts !! fd = Some st ->
     fileread_arms (pv_gen V) (pv_upt V) st n F Rd Rin Rp Rpe P r M' addr -∗
     sys_read_arms V v sts n F Rd Rin Rp Rpe P r M' addr.
-  Proof.
+  Proof using .
     intros Hsome Hst. rewrite /sys_read_arms /sys_fd_st Hsome Hst /=.
     iIntros "[%Hret $]". iPureIntro. right. by exists fd, fv.
   Qed.

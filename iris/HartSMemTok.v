@@ -121,7 +121,7 @@ Section smem_tok.
                   ⌜ rsf = rs \/ exists tv, rsf = register_set tlb tv rs ⌝ ∗
                   hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro ∗
                   Rt rsf ∗ resv_any cpu_id ∗ R).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv HDpma HDcfg HDaddr HDhtif Hpriv Hhtif Hpma
       Hpcfg Hpaddr Hep HA Hord HR Hcov Hpallow Hram Hpa.
     iIntros "#Hcert Hfrag Hres Htok Hrw Hro Htr Hmem".
@@ -218,7 +218,7 @@ Section smem_tok.
                   ⌜ rsf = rs \/ exists tv, rsf = register_set tlb tv rs ⌝ ∗
                   hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro ∗
                   Rt rsf ∗ resv_any cpu_id ∗ R).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv HDsatp HDpma HDcfg HDaddr HDhtif Hpriv Hhtif
       Hpma Hpcfg Hpaddr HSXL Hmode Hep HA Hord HR Hcov Hpallow Hram Hva Hpa.
     iIntros "#Hcert Hfrag Hres Htok Hrw Hro Htr Hmem".
@@ -338,7 +338,7 @@ Section smem_tok.
                   ⌜ rsf = rs \/ exists tv, rsf = register_set tlb tv rs ⌝ ∗
                   hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro ∗
                   Rt rsf ∗ resv_any cpu_id ∗ R).
-  Proof.
+  Proof using .
     intros ea Hdisj HDmst HDpriv HDmenv HDsatp HDpma HDcfg HDaddr HDhtif
       Hpriv Hhtif Hpma Hpcfg Hpaddr Hmxr Hpmm HSXL Htf Hmode Hep HA Hord HR
       Hcov Hpallow Hram Hva Hpa.
@@ -435,7 +435,7 @@ Section smem_tok.
                   ⌜ rsf = rs \/ exists tv, rsf = register_set tlb tv rs ⌝ ∗
                   hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro ∗
                   Rt rsf ∗ resv_any cpu_id ∗ R).
-  Proof.
+  Proof using .
     intros ea Hdisj HDmst HDpriv HDmenv HDsatp HDpma HDcfg HDaddr HDhtif
       Hpriv Hhtif Hpma Hpcfg Hpaddr Hmxr Hpmm HSXL Htf Hmode Hep HA Hord HR
       Hcov Hpallow Hram Hva Hpa Hrd.
@@ -524,7 +524,7 @@ Section smem_tok.
                   ⌜ rsf = rs \/ exists tv, rsf = register_set tlb tv rs ⌝ ∗
                   hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro ∗
                   Rt rsf ∗ R ∗ resv_frag cpu_id None).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv HDsatp HDpma HDcfg HDaddr HDhtif Hpriv Hpma
       Hpcfg Hpaddr Hhtif HSXL Hmode Hep HA Hord HW Hcov Hpallow Hram Hva Hpa.
     iIntros "#Hcert Hfrag Hres Htok Hrw Hro Htr Hmem".
@@ -680,7 +680,7 @@ Section smem_tok.
                   ⌜ rsf = rs \/ exists tv, rsf = register_set tlb tv rs ⌝ ∗
                   hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro ∗
                   Rt rsf ∗ R ∗ resv_frag cpu_id None).
-  Proof.
+  Proof using .
     intros ea Hdisj HDmst HDpriv HDmenv HDsatp HDpma HDcfg HDaddr HDhtif
       Hpriv Hpma Hpcfg Hpaddr Hhtif Hmxr Hpmm HSXL Htf Hmode Hep HA Hord HW
       Hcov Hpallow Hram Hva Hpa.
@@ -777,7 +777,7 @@ Section smem_tok.
                   ⌜ rsf = rs \/ exists tv, rsf = register_set tlb tv rs ⌝ ∗
                   hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro ∗
                   Rt rsf ∗ R ∗ resv_frag cpu_id None).
-  Proof.
+  Proof using .
     intros ea Hdata Hdisj HDmst HDpriv HDmenv HDsatp HDpma HDcfg HDaddr
       HDhtif Hpriv Hpma Hpcfg Hpaddr Hhtif Hmxr Hpmm HSXL Htf Hmode Hep HA Hord
       HW Hcov Hpallow Hram Hva Hpa.

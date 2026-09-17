@@ -554,7 +554,7 @@ Section UvOpen.
      level, where every step is an [apply] against the head.
      (claude-notes/optimization.md, "in a [first [ ... ]] alternation, the
      cost of a tactic that FAILS grows with the proof term".) *)
-  Proof.
+  Proof using .
     rewrite /uv_bytes. apply bi.exist_elim. intros IK.
     rewrite bi.sep_elim_r. apply bytes_own_p_forget.
   Qed.
@@ -563,14 +563,14 @@ Section UvOpen.
     uv_bytes pt M t ⊢
     ⌜forall a : Arch.pa, a ∈ (dom (uv_mm t (upa_map pt M)) : gset Arch.pa) ->
        addr_is_ram a⌝.
-  Proof. rewrite uv_bytes_forget. apply bytes_own_ram. Qed.
+  Proof using . rewrite uv_bytes_forget. apply bytes_own_ram. Qed.
 
   (* the stamped image plus the tree's bytes IS the currency, and back *)
   Lemma uv_bytes_of_umem_x (pt : uptd) (M : gmap Z (bv 8)) (t : ptree) :
     uva_inj pt M ->
     ptree_bytes 2 t ##ₘ upa_map pt M ->
     umem_x pt M -∗ bytes_own (ptree_bytes 2 t) -∗ uv_bytes pt M t.
-  Proof.
+  Proof using .
     intros Hinj Hdj. iIntros "Hx Ht".
     iDestruct "Hx" as (IK) "(#Hlb & Htext & Hdata)".
     iDestruct (umem_x_to_bytes pt M IK Hinj with "[$Htext $Hdata]") as "Hm".
@@ -584,7 +584,7 @@ Section UvOpen.
     uva_inj pt M ->
     ptree_bytes 2 t ##ₘ upa_map pt M ->
     uv_bytes pt M t -∗ umem_x pt M ∗ bytes_own (ptree_bytes 2 t).
-  Proof.
+  Proof using .
     intros Hinj Hdj. iIntros "(%IK & #Hlb & Hm)".
     rewrite /uv_mm (bytes_own_p_union _ _ _ Hdj). iDestruct "Hm" as "[Ht Hm]".
     rewrite (bytes_own_p_of_none (uv_F pt M IK) (ptree_bytes 2 t));
@@ -598,7 +598,7 @@ Section UvOpen.
     uva_inj pt M ->
     bytes_own (ptree_bytes 2 t) -∗ umem_text pt M IK ∗ umem pt (uM_data pt M) -∗
     ⌜ptree_bytes 2 t ##ₘ upa_map pt M⌝.
-  Proof.
+  Proof using .
     intros Hinj. iIntros "Ht Hm".
     iDestruct (umem_x_to_bytes pt M IK Hinj with "Hm") as "Hm".
     iApply (bytes_own_p_disj with "Ht Hm").
@@ -622,7 +622,7 @@ Section UvOpen.
          pmpcfg_n ↦ᵣ pcfg -∗ pmpaddr_n ↦ᵣ paddr -∗
          uv_bytes pt M t' -∗
          utlb_inv_pt (ud_root pt) (ud_tfp pt) (ud_um pt) ∗ umem_x pt M).
-  Proof.
+  Proof using .
     iIntros "Hinv HM".
     iDestruct (umem_x_uva_inj pt M with "HM") as %Hinj.
     iDestruct (upt_swp_open (ud_root pt) (ud_tfp pt) (ud_um pt) with "Hinv")
@@ -679,7 +679,7 @@ Section UvOpen.
        hreg_frame rs2 u_Drw -∗ hreg_frame_ro (u_Df dq) rs2 u_Dro -∗
        TsoCtx.own_context XI -∗ uv_bytes pt M' t' -∗ resv_any cpu_id -∗ Φ x) -∗
     swp m Φ.
-  Proof.
+  Proof using .
     intros Hinj Hinj' Htext Htok Htok' Hdom' Hag He Hg.
     pose proof (proj1 (proj2 Htok)) as Hdj.
     iIntros "#Hcert Hany Hrw Hro Hrun Hown Hk".
@@ -732,7 +732,7 @@ Section UvOpen.
         ▷ (|={∅,⊤}=> mstate_interp σ ∗ hart_iview_auth cpu_id itv ∗
              tso_interp_of riscv_eraGS img σ.(mem) log V ∗
              bytes_own_p (uv_F pt M IK) (uv_mm t (upa_map pt M)))).
-  Proof.
+  Proof using .
     intros Hkn Hinj Htok Hl Hnc Hb Htx. subst n.
     assert (Hwin : forall j : nat, (N.of_nat j < N.of_nat k)%N ->
               uv_mm t (upa_map pt M) !! pa_add (u_walk_pa w_leaf pc) j
@@ -791,7 +791,7 @@ Section UvOpen.
       ('b"1") = true /\
     (ram_base + ram_size <= uint (vec_access_dec (register_lookup pmpaddr_n rsA) 0) * 4)%Z /\
     pma_allows_ram (register_lookup pma_regions rsA).
-  Proof.
+  Proof using .
     intros Hpins Hmv.
     pose proof Hpins as (Hhw & _ & Hpt & _).
     destruct Hhw as (_ & _ & _ & Hhtif & Hall & _).
@@ -831,7 +831,7 @@ Section UvOpen.
       (uv_fetch_post dq pt M rsA t
          (if isRVC (subrange_vec_dec iw 15 0)
           then F_RVC (subrange_vec_dec iw 15 0) else F_Base iw)).
-  Proof.
+  Proof using .
     intros Hinj Hl Hlok Hcanon Hal4 Hb Htx Lpc Lcp Lsxl Lmenv Hpins Htok.
     destruct (align4_low_bits pc Hal4) as (Hb0 & Hb1).
     assert (Hnc : forall j : nat, (j < 4)%nat ->
@@ -925,7 +925,7 @@ Section UvOpen.
     hreg_frame rsA u_Drw -∗ hreg_frame_ro (u_Df dq) rsA u_Dro -∗
     TsoCtx.own_context XI -∗ uv_bytes pt M t -∗
     swp (fetch tt) (uv_fetch_post dq pt M rsA t (F_RVC h)).
-  Proof.
+  Proof using .
     intros Hinj Hl Hlok Hcanon Hal2 Hnal4 Hb Hrvc Htx Lpc Lcp Lsxl Lmenv Hpins Htok.
     pose proof Hpins as ((Hmisa & _ & _ & _ & _ & _) & _).
     assert (HmisaC : eq_vec (_get_Misa_C (register_lookup misa rsA))
@@ -1027,7 +1027,7 @@ Section UvOpen.
     hreg_frame rsA u_Drw -∗ hreg_frame_ro (u_Df dq) rsA u_Dro -∗
     TsoCtx.own_context XI -∗ uv_bytes pt M t -∗
     swp (fetch tt) (uv_fetch_post dq pt M rsA t (F_Base iw)).
-  Proof.
+  Proof using .
     intros Hinj Hl Hlok Hcanon Hpg Hal2 Hnal4 Hb HnRVC Htx Lpc Lcp Lsxl Lmenv
       Hpins Htok.
     pose proof Hpins as ((Hmisa & _ & _ & _ & _ & _) & _).
@@ -1237,7 +1237,7 @@ Section UvOpen.
        else ∃ w : mword 32,
               ⌜isRVC (subrange_vec_dec w 15 0) = false /\ udecode_base w i⌝ ∗
               uv_fetch_bridge dq pt M rsA t (F_Base w)).
-  Proof.
+  Proof using .
     intros Hinj Hui Lpc Lcp Lsxl Lmenv Hpins Htok.
     destruct Hui as [Hal2 Hcanon Hleaf Hinpage Hcode Htext].
     destruct Hleaf as (w_leaf & Hum & Hlok).

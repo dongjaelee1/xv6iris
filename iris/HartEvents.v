@@ -175,7 +175,7 @@ Section events.
                WP (HartE gen_id cpu_id (C (hread_resume (bv_unsigned w) m))
                    : expr riscv_lang)))) -∗
     WP (HartE gen_id cpu_id (C m) : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (HC Hproj Hdev Hif Hexcl) "#Hcert H".
     destruct (hread_req_at_inv _ _ _ Hproj) as (K & Hm & Hres).
     assert (Hg : C m = Interface.Next (Interface.MemRead n req)
@@ -291,7 +291,7 @@ Section events.
                  WP (HartE gen_id cpu_id (C (hread_resume (bv_unsigned w) m))
                      : expr riscv_lang)))) -∗
     WP (HartE gen_id cpu_id (C m) : expr riscv_lang).
-  Proof.
+  Proof using .
     (* RE-DERIVED from the value-after-view rule (tso-pin-memo.md §0): the
        existential moves outside by the byte-wise determinism step that used
        to sit here, and the eleven call sites do not notice. *)
@@ -346,7 +346,7 @@ Section events.
               WP (HartE gen_id cpu_id (C (hread_resume (bv_unsigned w) m))
                   : expr riscv_lang))) -∗
     WP (HartE gen_id cpu_id (C m) : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (HC Hproj Hdev Hif) "#Hcert H".
     destruct (hread_req_at_inv _ _ _ Hproj) as (K & Hm & Hres).
     assert (Hg : C m = Interface.Next (Interface.MemRead n req)
@@ -440,7 +440,7 @@ Section events.
                (wstore_tv (Interface.WriteReq.access_kind req) b log tv) -∗
              WP (HartE gen_id cpu_id (C (hwrite_resume m)) : expr riscv_lang)))) -∗
     WP (HartE gen_id cpu_id (C m) : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (HC Hproj Hdev) "#Hcert Hfrag H".
     destruct (hwrite_req_at_inv _ _ _ Hproj) as (K & Hm & Hres).
     assert (Hg : C m = Interface.Next (Interface.MemWrite n req)
@@ -548,7 +548,7 @@ Section events.
                WP (HartE gen_id cpu_id (C (hread_resume (bv_unsigned w) m))
                    : expr riscv_lang)))) -∗
     WP (HartE gen_id cpu_id (C m) : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (HC Hproj Hdev Hexcl) "#Hcert Hfrag H".
     destruct (hread_req_at_inv _ _ _ Hproj) as (K & Hm & Hres).
     assert (Hg : C m = Interface.Next (Interface.MemRead n req)
@@ -676,7 +676,7 @@ Section events.
                (wstore_tv (Interface.WriteReq.access_kind req) b log tv) -∗
              WP (HartE gen_id cpu_id (C (hwrite_resume m)) : expr riscv_lang)))) -∗
     WP (HartE gen_id cpu_id (C m) : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (HC Hproj Hdev Hn) "#Hcert Hfrag H".
     destruct (hwrite_req_at_inv _ _ _ Hproj) as (K & Hm & Hres).
     assert (Hg : C m = Interface.Next (Interface.MemWrite n req)
@@ -758,7 +758,7 @@ Section events.
               WP (HartE gen_id cpu_id (C (hread_resume (bv_unsigned w) m))
                   : expr riscv_lang))) -∗
     WP (HartE gen_id cpu_id (C m) : expr riscv_lang).
-  Proof.
+  Proof using .
     (* Proof plan: via wp_hart_step; [dev_read] is a function, so the
        arm's ∃ (w, d') is pinned by the witness equation. *)
     iIntros (HC Hproj Hdev) "#Hcert H".
@@ -811,7 +811,7 @@ Section events.
               (resv_frag cpu_id None -∗
                WP (HartE gen_id cpu_id (C (hwrite_resume m)) : expr riscv_lang)))) -∗
     WP (HartE gen_id cpu_id (C m) : expr riscv_lang).
-  Proof.
+  Proof using .
     (* Proof plan: as wp_hart_dev_read, in the frag form (an MMIO write is a
        [MemWrite] event and clears the reservation). *)
     iIntros (HC Hproj Hdev) "#Hcert Hfrag H".
@@ -870,7 +870,7 @@ Section events.
                  hart_rview_lb_at cpu_id tvn -∗
                  swp (hread_resume (bv_unsigned w) m) Φ))) -∗
     swp m Φ.
-  Proof.
+  Proof using .
     iIntros (Hproj Hdev Hif Hexcl) "#Hcert H".
     rewrite /swp. iIntros (C) "%HC Hcont".
     iApply (wp_hart_ram_read_plain C n req m HC Hproj Hdev Hif Hexcl
@@ -913,7 +913,7 @@ Section events.
                hart_rview_lb_at cpu_id tvn -∗
                swp (hread_resume (bv_unsigned w) m) Φ))) -∗
     swp m Φ.
-  Proof.
+  Proof using .
     iIntros (Hproj Hdev Hif Hexcl) "#Hcert H".
     rewrite /swp. iIntros (C) "%HC Hcont".
     iApply (wp_hart_ram_read_plain_ex C n req m P HC Hproj Hdev Hif Hexcl
@@ -948,7 +948,7 @@ Section events.
               tso_interp_of riscv_eraGS img σ.(mem) log V ∗
               swp (hread_resume (bv_unsigned w) m) Φ)) -∗
     swp m Φ.
-  Proof.
+  Proof using .
     iIntros (Hproj Hdev Hif) "#Hcert H".
     rewrite /swp. iIntros (C) "%HC Hcont".
     iApply (wp_hart_ram_read_ifetch C n req m HC Hproj Hdev Hif
@@ -985,7 +985,7 @@ Section events.
                  (ak_acq (Interface.ReadReq.access_kind req)) -∗
                swp (hread_resume (bv_unsigned w) m) Φ))) -∗
     swp m Φ.
-  Proof.
+  Proof using .
     iIntros (Hproj Hdev Hexcl) "#Hcert Hfrag H".
     rewrite /swp. iIntros (C) "%HC Hcont".
     iApply (wp_hart_ram_read_excl C n req m rr HC Hproj Hdev Hexcl
@@ -1028,7 +1028,7 @@ Section events.
                (wstore_tv (Interface.WriteReq.access_kind req) b log tv) -∗
              swp (hwrite_resume m) Φ))) -∗
     swp m Φ.
-  Proof.
+  Proof using .
     iIntros (Hproj Hdev) "#Hcert Hfrag H".
     rewrite /swp. iIntros (C) "%HC Hcont".
     iApply (wp_hart_ram_write C n req m rr HC Hproj Hdev
@@ -1074,7 +1074,7 @@ Section events.
                (wstore_tv (Interface.WriteReq.access_kind req) b log tv) -∗
              swp (hwrite_resume m) Φ))) -∗
     swp m Φ.
-  Proof.
+  Proof using .
     iIntros (Hproj Hdev Hn) "#Hcert Hfrag H".
     rewrite /swp. iIntros (C) "%HC Hcont".
     iApply (wp_hart_ram_write_cond C n req m w b HC Hproj Hdev Hn
@@ -1099,7 +1099,7 @@ Section events.
          ▷ (|={∅,⊤}=> mstate_interp (MState σ.(sregs) σ.(mem) d') ∗
               swp (hread_resume (bv_unsigned w) m) Φ)) -∗
     swp m Φ.
-  Proof.
+  Proof using .
     iIntros (Hproj Hdev) "#Hcert H".
     rewrite /swp. iIntros (C) "%HC Hcont".
     iApply (wp_hart_dev_read C n req m HC Hproj Hdev with "Hcert [H Hcont]").
@@ -1122,7 +1122,7 @@ Section events.
          ▷ (|={∅,⊤}=> mstate_interp (MState σ.(sregs) σ.(mem) d') ∗
               (resv_frag cpu_id None -∗ swp (hwrite_resume m) Φ))) -∗
     swp m Φ.
-  Proof.
+  Proof using .
     iIntros (Hproj Hdev) "#Hcert Hfrag H".
     rewrite /swp. iIntros (C) "%HC Hcont".
     iApply (wp_hart_dev_write C n req m rr HC Hproj Hdev

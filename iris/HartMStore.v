@@ -560,7 +560,7 @@ Section store.
     ([∗ list] j ∈ seq 0 (N.to_nat n), ∃ t : nat,
        TsoCtx.phys_ledger_pin (pa_add (Interface.WriteReq.pa req) j)
          (DfracOwn 1) (nth_byte (Interface.WriteReq.value req) j) t (Bf j) (Sf j)).
-  Proof.
+  Proof using .
     intros Hex Hn HS HBg Hin. iIntros "Hgh Htso Hb".
     iDestruct (tso_interp_of_pin with "Htso") as %Hpin.
     set (pa := Interface.WriteReq.pa req).
@@ -635,7 +635,7 @@ Section store.
     ([∗ list] j ∈ seq 0 (N.to_nat n),
        TsoCtx.ctx_phys_pointsto xi (pa_add (Interface.WriteReq.pa req) j)
          (DfracOwn 1) (nth_byte (Interface.WriteReq.value req) j)).
-  Proof.
+  Proof using .
     intros Hex Hn. iIntros "Hgh Htso Hrun Hb".
     iDestruct (tso_interp_of_pin with "Htso") as %Hpin.
     (* the view function after the store: the author's own entry does NOT
@@ -705,7 +705,7 @@ Section store.
     swp (mem_write_ea (Physaddr pa) 4 (Store Data) PBMT_PMA false false false)
       (fun r => ⌜r = Values.Ok tt⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv HDpma HDcfg Hpriv Hpma Hpcfg Hmprv Hunlock
       Hpallow Hram Hpa.
     iIntros "#Hcert Hrw Hro".
@@ -784,7 +784,7 @@ Section store.
     swp (mem_write_ea (Physaddr pa) 8 (Store Data) PBMT_PMA false false false)
       (fun r => ⌜r = Values.Ok tt⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv HDpma Hpriv Hpma Hmprv Hpmp
       Hpallow Hram Hpa.
     iIntros "#Hcert Hrw Hro".
@@ -871,7 +871,7 @@ Section store.
       (fun r => ⌜r = Values.Ok true⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro ∗ R ∗
                 resv_frag cpu_id None).
-  Proof.
+  Proof using .
     intros Hdisj HDpma HDcfg HDhtif Hpma Hpcfg Hhtif Hunlock Hpallow Hram Hpa.
     iIntros "#Hcert Hfrag Hrw Hro Hmem".
     rewrite /swp. iIntros (C) "%HC Hcont".
@@ -968,7 +968,7 @@ Section store.
       (fun r => ⌜r = Values.Ok true⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro ∗ R ∗
                 resv_frag cpu_id None).
-  Proof.
+  Proof using .
     intros Hdisj HDpma HDhtif Hpma Hhtif Hpmp Hpallow Hram Hpa.
     iIntros "#Hcert Hfrag Hrw Hro Hmem".
     rewrite /swp. iIntros (C) "%HC Hcont".
@@ -1074,7 +1074,7 @@ Section store.
       (fun r => ⌜r = Values.Ok true⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro ∗ R ∗
                 resv_frag cpu_id None).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv HDpma HDcfg HDhtif Hpriv Hpma Hpcfg Hhtif
       Hmprv Hunlock Hpallow Hram Hpa.
     iIntros "#Hcert Hfrag Hrw Hro Hmem".
@@ -1145,7 +1145,7 @@ Section store.
       (fun r => ⌜r = Values.Ok true⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro ∗ R ∗
                 resv_frag cpu_id None).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv HDpma HDhtif Hpriv Hpma Hhtif
       Hmprv Hpmp Hpallow Hram Hpa.
     iIntros "#Hcert Hfrag Hrw Hro Hmem".
@@ -1222,7 +1222,7 @@ Section store.
       (fun r => ⌜r = Values.Ok true⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro ∗ R ∗
                 resv_frag cpu_id None).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv HDpma HDcfg HDhtif Hpriv Hpma Hpcfg Hhtif
       Hmprv Hunlock Hpallow Hram Hva Hpa Hsplit.
     iIntros "#Hcert Hfrag Hrw Hro Hmem".
@@ -1324,7 +1324,7 @@ Section store.
       (fun r => ⌜r = Values.Ok true⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro ∗ R ∗
                 resv_frag cpu_id None).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv HDpma HDhtif Hpriv Hpma Hhtif
       Hmprv Hpmp Hpallow Hram Hva Hpa.
     iIntros "#Hcert Hfrag Hrw Hro Hmem".
@@ -1453,7 +1453,7 @@ Section store.
       (fun r => ⌜r = Values.Ok true⌝ ∗ Q ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro ∗ R ∗
                 resv_frag cpu_id None).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv HDpma HDcfg HDhtif Hpriv Hpma Hpcfg Hhtif
       Hmprv Hunlock Hpallow Hram Hva Hpa Hsplit.
     iIntros "#Hcert Hfrag Hrw Hro HQ Hgta Hmem".
@@ -1523,7 +1523,7 @@ Section store.
       (fun r => ⌜r = Values.Ok true⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro ∗ R ∗
                 resv_frag cpu_id None).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv HDpma HDcfg HDhtif Hpriv Hpma Hpcfg Hhtif
       Hmprv Hunlock Hpallow Hram Hva Hpa Hsplit Hgta.
     iIntros "#Hcert Hfrag Hrw Hro Hmem".
@@ -1590,7 +1590,7 @@ Section store.
       (fun r => ⌜r = Values.Ok true⌝ ∗ Q ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro ∗ R ∗
                 resv_frag cpu_id None).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv HDpma HDhtif Hpriv Hpma Hhtif
       Hmprv Hpmp Hpallow Hram Hva Hpa.
     iIntros "#Hcert Hfrag Hrw Hro HQ Hgta Hmem".
@@ -1654,7 +1654,7 @@ Section store.
       (fun r => ⌜r = Values.Ok true⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro ∗ R ∗
                 resv_frag cpu_id None).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv HDpma HDhtif Hpriv Hpma Hhtif
       Hmprv Hpmp Hpallow Hram Hva Hpa Hgta.
     iIntros "#Hcert Hfrag Hrw Hro Hmem".

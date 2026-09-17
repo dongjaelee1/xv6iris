@@ -84,7 +84,7 @@ Section WpUartgetc.
 
   (* a5's compressed-register index *)
   Lemma ug_cr7 : creg2reg_idx (Cregidx (mword_of_int 7)) = Regidx Ra5.
-  Proof. vm_compute. reflexivity. Qed.
+  Proof using . vm_compute. reflexivity. Qed.
 
   (* -------------------------------------------------------------------- *)
   (*  The [zext.b] the block absorbs.                                       *)
@@ -98,7 +98,7 @@ Section WpUartgetc.
      (durable-notes, "vm_compute on a goal containing a variable hangs"). *)
   Lemma ug_imm0 (x : mword 64) :
     add_vec x (sign_extend' 64 (mword_of_int 0 : mword 12)) = x.
-  Proof.
+  Proof using .
     replace (sign_extend' 64 (mword_of_int 0 : mword 12) : mword 64)
       with (mword_of_int 0 : mword 64) by (apply bv_eq; vm_compute; reflexivity).
     apply kv_addv_zero.
@@ -106,7 +106,7 @@ Section WpUartgetc.
 
   Lemma ug_ldval_unsigned (c : bv 8) :
     bv_unsigned (lsr_ldval_of c : mword 64) = bv_unsigned c.
-  Proof.
+  Proof using .
     unfold lsr_ldval_of, extend_value.
     cbv [zero_extend' Operators_mwords.zero_extend Operators_mwords.extz_vec
          to_word get_word MachineWord.MachineWord.zero_extend].
@@ -117,7 +117,7 @@ Section WpUartgetc.
   Lemma ug_and255 (c : bv 8) :
     and_vec (lsr_ldval_of c) (sign_extend' 64 (mword_of_int 255 : mword 12))
     = lsr_ldval_of c.
-  Proof.
+  Proof using .
     apply bv_eq. rewrite and_vec64_unsigned.
     assert (H255 : bv_unsigned (sign_extend' 64 (mword_of_int 255 : mword 12) : mword 64)
                    = 255%Z) by (vm_compute; reflexivity).
@@ -223,7 +223,7 @@ Section WpUartgetc.
                uart_rx_tok γd (S k) (Some h)) -∗
             WP (Loop : expr riscv_lang)) )) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hlsr Hrhr Hne Hne0 Hrtp HA HB HR HZ HK HNo Hal)
       "Hcg Hpc HiL HiA HiB HiR HiZ #Huinv #Hdlab Htok Hk".
     (* the class, consumed at [rs_lsr]: the LSR address is the same word at

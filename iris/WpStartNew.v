@@ -906,7 +906,7 @@ Section WpStartThm.
   (* two halves of a register cell rejoin to the full cell. *)
   Lemma reg_half_join (r : register) (v : type_of_register r) :
     r ↦ᵣ{DfracOwn (1/2)} v -∗ r ↦ᵣ{DfracOwn (1/2)} v -∗ r ↦ᵣ v.
-  Proof.
+  Proof using .
     rewrite /reg_pointsto. iIntros "H1 H2".
     iDestruct (ghost_map_elem_combine with "H1 H2") as "[H _]".
     rewrite dfrac_op_own Qp.half_half. iExact "H".
@@ -989,7 +989,7 @@ Section WpStartThm.
       own_context cur_ctx -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hn4 Hpmp HlpeE Hsp Hra Hs0 Hbnd_ra Hbnd_s0.
     iIntros "Hmm Hpcf Hpaddr Hpc Hfile Hmh Hmepc Hsatp Hmede Hmdl Hmie Hmenv Hmcen Hstc Hstk Hrun #Htext Hcont".
     iDestruct (stack_own_phys_split_1 sp0 4 n ltac:(lia) with "Hstk") as "[Htop Hdeep]".

@@ -327,16 +327,16 @@ Section UserHeap.
     ubyteq γd (DfracOwn 1) a b.
 
   Global Instance ubyteq_timeless γd dq a b : Timeless (ubyteq γd dq a b).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance ubyteq_persistent γd a b :
     Persistent (ubyteq γd DfracDiscarded a b).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Global Instance utext_persistent γt a b : Persistent (utext γt a b).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Global Instance ubyte_timeless γd a b : Timeless (ubyte γd a b).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* ===================================================================== *)
   (* §2b WORDS AND STRINGS, over [ubyte].                                  *)
@@ -364,10 +364,10 @@ Section UserHeap.
 
   Global Instance ubytesq_persistent γd a n f :
     Persistent (ubytesq γd DfracDiscarded a n f).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance uwordq_persistent γd a w :
     Persistent (uwordq γd DfracDiscarded a w).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* A NUL-TERMINATED C STRING of length [len] at [a]: [len] bytes NONE of
      which is NUL, then the terminator.  The no-interior-NUL clause is part
@@ -386,15 +386,15 @@ Section UserHeap.
 
   Global Instance ustr_persistent γd a len f :
     Persistent (ustr γd DfracDiscarded a len f).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma ustr_len (γd : gname) (dq : dfrac) (a : Z) (len : nat) (f : nat -> bv 8) :
     ustr γd dq a len f -∗ ⌜ Z.of_nat len < 2 ^ 31 ⌝.
-  Proof. iIntros "(_ & %H & _ & _)". iPureIntro. exact H. Qed.
+  Proof using . iIntros "(_ & %H & _ & _)". iPureIntro. exact H. Qed.
 
   Lemma ustr_nonul (γd : gname) (dq : dfrac) (a : Z) (len : nat) (f : nat -> bv 8) :
     ustr γd dq a len f -∗ ⌜ forall j : nat, (j < len)%nat -> f j <> ubyte0 ⌝.
-  Proof. iIntros "(%H & _ & _ & _)". iPureIntro. exact H. Qed.
+  Proof using . iIntros "(%H & _ & _ & _)". iPureIntro. exact H. Qed.
 
   (* one body byte, out and back *)
   Lemma ustr_byte (γd : gname) (dq : dfrac) (a : Z) (len : nat)
@@ -403,7 +403,7 @@ Section UserHeap.
     ustr γd dq a len f -∗
       ubyteq γd dq (a + Z.of_nat j)%Z (f j) ∗
       (ubyteq γd dq (a + Z.of_nat j)%Z (f j) -∗ ustr γd dq a len f).
-  Proof.
+  Proof using .
     intros Hj. iIntros "(#Hne & #Hlen & Hbs & Hnul)".
     rewrite /ustr /ubytesq.
     iDestruct (big_sepL_lookup_acc _ _ j j with "Hbs") as "[Hb Hcl]";
@@ -417,7 +417,7 @@ Section UserHeap.
     ustr γd dq a len f -∗
       ubyteq γd dq (a + Z.of_nat len)%Z ubyte0 ∗
       (ubyteq γd dq (a + Z.of_nat len)%Z ubyte0 -∗ ustr γd dq a len f).
-  Proof.
+  Proof using .
     iIntros "(#Hne & #Hlen & Hbs & Hnul)". iFrame "Hnul". iIntros "Hnul".
     rewrite /ustr. iFrame "Hne Hlen Hbs Hnul".
   Qed.
@@ -443,22 +443,22 @@ Section UserHeap.
 
   Global Instance utext_str_persistent γt a len f :
     Persistent (utext_str γt a len f).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma utext_str_len (γt : gname) (a : Z) (len : nat) (f : nat -> bv 8) :
     utext_str γt a len f -∗ ⌜ Z.of_nat len < 2 ^ 31 ⌝.
-  Proof. iIntros "(_ & %H & _ & _)". iPureIntro. exact H. Qed.
+  Proof using . iIntros "(_ & %H & _ & _)". iPureIntro. exact H. Qed.
 
   Lemma utext_str_nonul (γt : gname) (a : Z) (len : nat) (f : nat -> bv 8) :
     utext_str γt a len f -∗ ⌜ forall j : nat, (j < len)%nat -> f j <> ubyte0 ⌝.
-  Proof. iIntros "(%H & _ & _ & _)". iPureIntro. exact H. Qed.
+  Proof using . iIntros "(%H & _ & _ & _)". iPureIntro. exact H. Qed.
 
   (* one body byte -- no give-back, the resource is persistent *)
   Lemma utext_str_byte (γt : gname) (a : Z) (len : nat)
       (f : nat -> bv 8) (j : nat) :
     (j < len)%nat ->
     utext_str γt a len f -∗ utext γt (a + Z.of_nat j)%Z (f j).
-  Proof.
+  Proof using .
     intros Hj. iIntros "(_ & _ & #Hbs & _)".
     iApply (big_sepL_lookup _ _ j j with "Hbs").
     apply lookup_seq. split; [ lia | exact Hj ].
@@ -466,7 +466,7 @@ Section UserHeap.
 
   Lemma utext_str_nul (γt : gname) (a : Z) (len : nat) (f : nat -> bv 8) :
     utext_str γt a len f -∗ utext γt (a + Z.of_nat len)%Z ubyte0.
-  Proof. iIntros "(_ & _ & _ & #H)". iExact "H". Qed.
+  Proof using . iIntros "(_ & _ & _ & #H)". iExact "H". Qed.
 
   (* NOTE: the SPLIT of a run at an arbitrary point -- which is what a
      syscall footprint hand-over is -- is deliberately not here yet.  It is
@@ -483,12 +483,12 @@ Section UserHeap.
   (* ===================================================================== *)
   Lemma ubyte_persist (γd : gname) (a : Z) (b : bv 8) :
     ubyte γd a b ==∗ ubyteq γd DfracDiscarded a b.
-  Proof. iIntros "H". iApply (ghost_map_elem_persist with "H"). Qed.
+  Proof using . iIntros "H". iApply (ghost_map_elem_persist with "H"). Qed.
 
   Lemma uarea_persist (γd : gname) (A : gmap Z (bv 8)) :
     ([∗ map] k ↦ b ∈ A, ubyte γd k b) ==∗
     ([∗ map] k ↦ b ∈ A, ubyteq γd DfracDiscarded k b).
-  Proof.
+  Proof using .
     iIntros "H". iApply big_sepM_bupd.
     iApply (big_sepM_impl with "H"). iIntros "!>" (k b _) "Hb".
     iApply (ghost_map_elem_persist with "Hb").
@@ -499,7 +499,7 @@ Section UserHeap.
     (forall j : nat, (j < n)%nat -> A !! (a + Z.of_nat j)%Z = Some (f j)) ->
     ([∗ map] k ↦ b ∈ A, ubyteq γd DfracDiscarded k b) -∗
       ubytesq γd DfracDiscarded a n f.
-  Proof.
+  Proof using .
     intros HA. iIntros "#HA". rewrite /ubytesq.
     iApply big_sepL_intro. iIntros "!>" (i j Hij).
     apply lookup_seq in Hij as [Hj Hlt].
@@ -512,7 +512,7 @@ Section UserHeap.
        A !! (a + Z.of_nat j)%Z = Some (nth_byte w j)) ->
     ([∗ map] k ↦ b ∈ A, ubyteq γd DfracDiscarded k b) -∗
       uwordq γd DfracDiscarded a w.
-  Proof.
+  Proof using .
     intros HA. rewrite /uwordq.
     exact (ubytesq_of_pmap γd A a 8 (nth_byte w) HA).
   Qed.
@@ -525,7 +525,7 @@ Section UserHeap.
     A !! (a + Z.of_nat len)%Z = Some ubyte0 ->
     ([∗ map] k ↦ b ∈ A, ubyteq γd DfracDiscarded k b) -∗
       ustr γd DfracDiscarded a len f.
-  Proof.
+  Proof using .
     intros Hne Hlen HA Hnul. iIntros "#HA". rewrite /ustr.
     iSplit; [ iPureIntro; exact Hne | ].
     iSplit; [ iPureIntro; exact Hlen | ].
@@ -545,7 +545,7 @@ Section UserHeap.
          ubyte γd k b) ∗
       ([∗ map] k ↦ b ∈ base.filter (fun kv : Z * bv 8 => ~ (kv.1 < c)) D,
          ubyte γd k b).
-  Proof.
+  Proof using .
     iIntros "H".
     rewrite -(big_sepM_union (fun k b => ubyte γd k b)
                 (base.filter (fun kv : Z * bv 8 => kv.1 < c) D)
@@ -558,7 +558,7 @@ Section UserHeap.
   Lemma umap_filter_lookup_lt (D : gmap Z (bv 8)) (c a : Z) (b : bv 8) :
     a < c -> D !! a = Some b ->
     base.filter (fun kv : Z * bv 8 => kv.1 < c) D !! a = Some b.
-  Proof.
+  Proof using .
     intros Hlt Hb. apply map_lookup_filter_Some. split; [ exact Hb | ].
     cbn [fst]. exact Hlt.
   Qed.
@@ -566,7 +566,7 @@ Section UserHeap.
   Lemma umap_filter_lookup_ge (D : gmap Z (bv 8)) (c a : Z) (b : bv 8) :
     ~ (a < c) -> D !! a = Some b ->
     base.filter (fun kv : Z * bv 8 => ~ (kv.1 < c)) D !! a = Some b.
-  Proof.
+  Proof using .
     intros Hge Hb. apply map_lookup_filter_Some. split; [ exact Hb | ].
     cbn [fst]. exact Hge.
   Qed.
@@ -598,12 +598,12 @@ Section UserHeap.
         ustr γd DfracDiscarded (ua_ptr g) (ua_len g) (ua_bytes g))%I.
 
   Global Instance uargv_persistent γd av args : Persistent (uargv γd av args).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma uargv_align (γd : gname) (av : Z) (args : list uarg) :
     uargv γd av args -∗
     ⌜ av mod 8 = 0 /\ Z.of_nat (length args) < 2 ^ 31 ⌝.
-  Proof. iIntros "(%H & %H2 & _)". iPureIntro. split; assumption. Qed.
+  Proof using . iIntros "(%H & %H2 & _)". iPureIntro. split; assumption. Qed.
 
   (* one element, out and back *)
   Lemma uargv_acc (γd : gname) (av : Z) (args : list uarg) (i : nat) (g : uarg) :
@@ -616,7 +616,7 @@ Section UserHeap.
           (mword_of_int (ua_ptr g)) ∗
         ustr γd DfracDiscarded (ua_ptr g) (ua_len g) (ua_bytes g)) -∗
          uargv γd av args).
-  Proof.
+  Proof using .
     intros Hi. iIntros "(#Hal & #Hn & Hl)".
     iDestruct (big_sepL_lookup_acc _ _ i g Hi with "Hl") as "[Hg Hcl]".
     iFrame "Hg". iIntros "Hg". iFrame "Hal Hn". iApply "Hcl". iExact "Hg".
@@ -635,13 +635,13 @@ Section UserHeap.
 
   Lemma usz_agree (γs : gname) (sz sz' : Z) :
     usz γs sz -∗ usz γs sz' -∗ ⌜ sz = sz' ⌝.
-  Proof.
+  Proof using .
     iIntros "H1 H2". iDestruct (ghost_var_agree with "H1 H2") as %->. done.
   Qed.
 
   Lemma usz_update (γs : gname) (sz sz' sz'' : Z) :
     usz γs sz -∗ usz γs sz' ==∗ usz γs sz'' ∗ usz γs sz''.
-  Proof.
+  Proof using .
     iIntros "H1 H2".
     iDestruct (ghost_var_agree with "H1 H2") as %->.
     iMod (ghost_var_update_2 sz'' with "H1 H2") as "[$ $]"; [ | done ].
@@ -717,7 +717,7 @@ Section UserHeap.
   Lemma ucanon_of_bound (a : Z) :
     0 <= a < 2 ^ 38 ->
     uint (mword_of_int a : mword 64) = a /\ uva_canon (mword_of_int a : mword 64).
-  Proof.
+  Proof using .
     intros Hb. change (2 ^ 38) with 274877906944 in Hb.
     assert (Hu : uint (mword_of_int a : mword 64) = a)
       by (apply uint_moi; unfold Z64; lia).
@@ -732,7 +732,7 @@ Section UserHeap.
       (pm : gmap (mword 27) uperm) (sz : Z) (a : Z) (b : bv 8) :
     uheap γt γd γs M pm sz -∗ utext γt a b -∗
     ⌜ M !! a = Some b /\ ux_addr (pm) a /\ 0 <= a < 2 ^ 38 ⌝.
-  Proof.
+  Proof using .
     iIntros "Hrun Hb".
     iDestruct "Hrun" as (Mt Md Mslack)
       "(%Hst & %Hsd & %Hdisj & %Hcan & %Hx & %Hxw & %Hw & Ht & Hd & Hszg & %Hsl & %Hstop & Hslack)".
@@ -748,7 +748,7 @@ Section UserHeap.
   Lemma uheap_text_nw (γt γd γs : gname) (M : gmap Z (bv 8))
       (pm : gmap (mword 27) uperm) (sz : Z) (a : Z) (b : bv 8) :
     uheap γt γd γs M pm sz -∗ utext γt a b -∗ ⌜ ~ uw_addr (pm) a ⌝.
-  Proof.
+  Proof using .
     iIntros "Hrun Hb".
     iDestruct "Hrun" as (Mt Md Mslack)
       "(%Hst & %Hsd & %Hdisj & %Hcan & %Hx & %Hxw & %Hw & Ht & Hd & Hszg & %Hsl & %Hstop & Hslack)".
@@ -761,7 +761,7 @@ Section UserHeap.
       (pm : gmap (mword 27) uperm) (sz : Z) (dq : dfrac) (a : Z) (b : bv 8) :
     uheap γt γd γs M pm sz -∗ ubyteq γd dq a b -∗
     ⌜ M !! a = Some b /\ uw_addr (pm) a /\ 0 <= a < 2 ^ 38 ⌝.
-  Proof.
+  Proof using .
     iIntros "Hrun Hb".
     iDestruct "Hrun" as (Mt Md Mslack)
       "(%Hst & %Hsd & %Hdisj & %Hcan & %Hx & %Hxw & %Hw & Ht & Hd & Hszg & %Hsl & %Hstop & Hslack)".
@@ -783,7 +783,7 @@ Section UserHeap.
     ⌜ forall k : nat, (k < n)%nat ->
         M !! (a + Z.of_nat k)%Z = Some (f k)
         /\ 0 <= (a + Z.of_nat k)%Z < 2 ^ 38 ⌝.
-  Proof.
+  Proof using .
     iIntros "Hheap Hbs".
     iInduction n as [ | k IH ] "IH" forall (f).
     { iPureIntro. intros j Hj. exfalso. lia. }
@@ -804,7 +804,7 @@ Section UserHeap.
       (pm : gmap (mword 27) uperm) (sz : Z) (a : Z) (b b' : bv 8) :
     uheap γt γd γs M pm sz -∗ ubyte γd a b ==∗
       uheap γt γd γs (<[a := b']> M) pm sz ∗ ubyte γd a b'.
-  Proof.
+  Proof using .
     iIntros "Hrun Hb".
     iDestruct "Hrun" as (Mt Md Mslack)
       "(%Hst & %Hsd & %Hdisj & %Hcan & %Hx & %Hxw & %Hw & Ht & Hd & Hszg & %Hsl & %Hstop & Hslack)".
@@ -869,7 +869,7 @@ Section UserHeap.
         uheap γt γd γs M pm sz ∗ usz γs sz ∗
         ([∗ map] a ↦ b ∈ utext_part M pm, utext γt a b) ∗
         ([∗ map] a ↦ b ∈ udata_lo M pm sz, ubyte γd a b).
-  Proof.
+  Proof using .
     intros Hcan Hstop.
     iMod (ghost_map_alloc (utext_part M pm)) as (γt) "[Htauth Htfrag]".
     iMod (ghost_map_alloc (udata_part M pm)) as (γd) "[Hdauth Hdfrag]".
@@ -916,7 +916,7 @@ Section UserHeap.
       (f : nat -> bv 8) :
     (forall j : nat, (j < n)%nat -> D !! (a + Z.of_nat j)%Z = Some (f j)) ->
     ([∗ map] k ↦ b ∈ D, ubyte γd k b) -∗ ubytes γd a n f.
-  Proof.
+  Proof using .
     revert D. induction n as [| n IH]; intros D HD; iIntros "HD".
     - rewrite /ubytes /ubytesq /=. done.
     - iDestruct (big_sepM_delete _ D (a + Z.of_nat n)%Z (f n) with "HD")
@@ -938,7 +938,7 @@ Section UserHeap.
   Lemma uheap_usz (γt γd γs : gname) (M : gmap Z (bv 8))
       (pm : gmap (mword 27) uperm) (sz sz' : Z) :
     uheap γt γd γs M pm sz -∗ usz γs sz' -∗ ⌜ sz = sz' ⌝.
-  Proof.
+  Proof using .
     iIntros "Hheap Hsz".
     iDestruct "Hheap" as (Mt Md Mslack)
       "(_ & _ & _ & _ & _ & _ & _ & _ & _ & Hszg & _)".
@@ -952,7 +952,7 @@ Section UserHeap.
       (pm : gmap (mword 27) uperm) (sz : Z) :
     uheap γt γd γs M pm sz -∗
     ⌜ forall a : Z, is_Some (M !! a) -> 0 <= a < 2 ^ 38 ⌝.
-  Proof.
+  Proof using .
     iIntros "Hheap".
     iDestruct "Hheap" as (Mt Md Mslack)
       "(_ & _ & _ & %Hcan & _)".
@@ -967,7 +967,7 @@ Section UserHeap.
     uheap γt γd γs M pm sz -∗
     ⌜ forall (p : mword 27) (q : uperm), pm !! p = Some q ->
         bv_unsigned p * 4096 < pgroundup sz ⌝.
-  Proof.
+  Proof using .
     iIntros "Hheap".
     iDestruct "Hheap" as (Mt Md Mslack)
       "(_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & %Hstop & _)".
@@ -1017,7 +1017,7 @@ Section UserHeap.
     uheap γt γd γs M pm sz -∗ usz γs sz ==∗
       uheap γt γd γs (umem_grow M (sz + n)) pm' (sz + n) ∗ usz γs (sz + n) ∗
       ∃ g : nat -> bv 8, ubytes γd sz (Z.to_nat n) g.
-  Proof.
+  Proof using .
     intros Hsz0 Hn0 Hnew Hext Hcan' Hstop'.
     (* the three class transports, off the one extension premise *)
     assert (Hwkeep : forall a : Z, uw_addr pm a -> uw_addr pm' a).
@@ -1218,7 +1218,7 @@ Section UserHeap.
       (pm : gmap (mword 27) uperm) (sz : Z) (a : Z) (n : nat) (f g : nat -> bv 8) :
     uheap γt γd γs M pm sz -∗ ubytes γd a n f ==∗
       uheap γt γd γs (umem_write M a n g) pm sz ∗ ubytes γd a n g.
-  Proof.
+  Proof using .
     iInduction n as [ | k IH ] "IH" forall (M).
     { iIntros "Hrun _". iModIntro. iFrame "Hrun". rewrite /ubytes /ubytesq /=. done. }
     iIntros "Hrun Hbs".
@@ -1308,7 +1308,7 @@ Section UserHeap.
     uheap γt γd γs M pm sz -∗
     ([∗ list] j ∈ seq 0 n, utext γt (a + Z.of_nat j) (nth_byte w j)) -∗
     ⌜ uM_bytes M a n w ⌝.
-  Proof.
+  Proof using .
     iIntros "Hheap #Hbs".
     iInduction n as [ | k' IH ] "IH".
     { iPureIntro. intros j Hj. lia. }
@@ -1325,7 +1325,7 @@ Section UserHeap.
 
   Global Instance uinstr_is_persistent γt pc is_rvc i :
     Persistent (uinstr_is γt pc is_rvc i).
-  Proof. rewrite /uinstr_is. destruct is_rvc; [ destruct (is_aligned_vaddr _ _) | ];
+  Proof using . rewrite /uinstr_is. destruct is_rvc; [ destruct (is_aligned_vaddr _ _) | ];
            apply _. Qed.
 
 
@@ -1350,13 +1350,13 @@ Section UserHeap.
     ([∗ map] a ↦ b ∈ utext_part M pm, utext γt a b)%I.
 
   Global Instance utext_all_persistent γt M pm : Persistent (utext_all γt M pm).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma utext_frag (γt : gname) (M : gmap Z (bv 8)) (pm : gmap (mword 27) uperm)
       (a : Z) (b : bv 8) :
     M !! a = Some b -> ux_addr pm a -> ~ uw_addr pm a ->
     utext_all γt M pm -∗ utext γt a b.
-  Proof.
+  Proof using .
     intros HM Hx Hw. iIntros "Ht". rewrite /utext_all.
     iApply (big_sepM_lookup _ _ a b with "Ht").
     apply map_lookup_filter_Some. exact (conj HM (conj Hx Hw)).
@@ -1369,7 +1369,7 @@ Section UserHeap.
        ux_addr pm (a + Z.of_nat j)%Z /\ ~ uw_addr pm (a + Z.of_nat j)%Z) ->
     utext_all γt M pm -∗
     ([∗ list] j ∈ seq 0 n, utext γt (a + Z.of_nat j) (nth_byte w j)).
-  Proof.
+  Proof using .
     intros HM Hperm. iIntros "#Ht".
     iApply big_sepL_intro. iIntros "!>" (idx j Hj).
     apply lookup_seq in Hj as [-> Hlt]. rewrite Nat.add_0_l in Hlt |- *.
@@ -1398,7 +1398,7 @@ Section UserHeap.
     ([∗ map] a ↦ b ∈ T, utext γt a b)%I.
 
   Global Instance utext_img_persistent γt T : Persistent (utext_img γt T).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* the ONE conversion: the process's text heap covers the program's bytes,
      and every one of them is X-and-not-W (i.e. lands in the TEXT half) *)
@@ -1407,7 +1407,7 @@ Section UserHeap.
     (forall (a : Z) (b : bv 8), T !! a = Some b -> M !! a = Some b) ->
     (forall a : Z, is_Some (T !! a) -> ux_addr pm a /\ ~ uw_addr pm a) ->
     utext_all γt M pm -∗ utext_img γt T.
-  Proof.
+  Proof using .
     intros HM Hperm. iIntros "#Ht". rewrite /utext_img.
     iApply big_sepM_intro. iIntros "!>" (a b Hab).
     destruct (Hperm a (mk_is_Some _ _ Hab)) as [Hx Hw].
@@ -1421,7 +1421,7 @@ Section UserHeap.
     (forall j : nat, (j < n)%nat -> T !! (a + Z.of_nat j)%Z = Some (nth_byte w j)) ->
     utext_img γt T -∗
     ([∗ list] j ∈ seq 0 n, utext γt (a + Z.of_nat j) (nth_byte w j)).
-  Proof.
+  Proof using .
     intros HT. iIntros "#Ht". iApply big_sepL_intro. iIntros "!>" (idx j Hj).
     apply lookup_seq in Hj as [-> Hlt]. rewrite Nat.add_0_l in Hlt |- *.
     rewrite /utext_img.
@@ -1439,7 +1439,7 @@ Section UserHeap.
     (forall j : nat, (j < len)%nat -> T !! (a + Z.of_nat j)%Z = Some (f j)) ->
     T !! (a + Z.of_nat len)%Z = Some ubyte0 ->
     utext_img γt T -∗ utext_str γt a len f.
-  Proof.
+  Proof using .
     intros Hne Hlen Hbs Hnul. iIntros "#HT". rewrite /utext_str /utext_img.
     iSplit; [ iPureIntro; exact Hne | ]. iSplit; [ iPureIntro; exact Hlen | ].
     iSplitR.
@@ -1458,7 +1458,7 @@ Section UserHeap.
   Lemma ualign4_al2 (pc : mword 64) :
     is_aligned_vaddr (Virtaddr pc) 4 = true ->
     is_aligned_vaddr (Virtaddr pc) 2 = true.
-  Proof.
+  Proof using .
     unfold is_aligned_vaddr. intros H%Z.eqb_eq. apply Z.eqb_eq.
     pose proof (proj1 (bv_unsigned_in_range _ pc)) as Hlo.
     rewrite uint_unsigned in H |- *.
@@ -1477,7 +1477,7 @@ Section UserHeap.
     udecode_base w i ->
     ([∗ list] j ∈ seq 0 4, utext γt (uint pc + Z.of_nat j) (nth_byte w j)) -∗
     uinstr_is γt pc false i.
-  Proof.
+  Proof using .
     intros Hal Hpg Hn Hdec. iIntros "#Hbs".
     rewrite /uinstr_is. iSplit; [ done | ]. iSplit; [ done | ].
     iExists w. iSplit; [ done | ]. iSplit; [ done | ]. iExact "Hbs".
@@ -1492,7 +1492,7 @@ Section UserHeap.
     isRVC h = true -> udecode_rvc h i -> subrange_vec_dec w 15 0 = h ->
     ([∗ list] j ∈ seq 0 4, utext γt (uint pc + Z.of_nat j) (nth_byte w j)) -∗
     uinstr_is γt pc true i.
-  Proof.
+  Proof using .
     intros Hal4 Hpg Hrvc Hdec Hlow. iIntros "#Hbs".
     rewrite /uinstr_is.
     iSplit; [ iPureIntro; exact (ualign4_al2 pc Hal4) | ].
@@ -1510,7 +1510,7 @@ Section UserHeap.
     isRVC h = true -> udecode_rvc h i ->
     ([∗ list] j ∈ seq 0 2, utext γt (uint pc + Z.of_nat j) (nth_byte h j)) -∗
     uinstr_is γt pc true i.
-  Proof.
+  Proof using .
     intros Hal2 Hne Hpg Hrvc Hdec. iIntros "#Hbs".
     rewrite /uinstr_is. iSplit; [ done | ]. iSplit; [ done | ].
     iExists h. iSplit; [ done | ]. iSplit; [ done | ].
@@ -1536,7 +1536,7 @@ Section UserHeap.
        ux_addr pm (uint pc + Z.of_nat j)%Z /\
        ~ uw_addr pm (uint pc + Z.of_nat j)%Z) ->
     ([∗ map] a ↦ b ∈ utext_part M pm, utext γt a b) -∗ uinstr_is γt pc rvc i.
-  Proof.
+  Proof using .
     intros Hui Hperm. iIntros "#Ht".
     destruct Hui as [Hal2 Hcan Hleaf Hpg Hcode _].
     destruct rvc.
@@ -1587,11 +1587,11 @@ Section UserHeap.
 
   Lemma ustack_align (γd : gname) (sp : mword 64) (n : nat) :
     ustack γd sp n -∗ ⌜ uint sp mod 8 = 0 ⌝.
-  Proof. iIntros "[%H _]". iPureIntro. exact H. Qed.
+  Proof using . iIntros "[%H _]". iPureIntro. exact H. Qed.
 
   Lemma ustack_0 (γd : gname) (sp : mword 64) :
     ustack γd sp 0 ⊣⊢ ⌜ uint sp mod 8 = 0 ⌝.
-  Proof.
+  Proof using .
     rewrite /ustack /ustack_body /=.
     iSplit; [ iIntros "[$ _]" | iIntros "$"; done ].
   Qed.
@@ -1602,7 +1602,7 @@ Section UserHeap.
     uint sp' = uint sp - 8 ->
     ustack_body γd sp (S n)
     ⊣⊢ (∃ w : mword 64, uword γd (uint sp - 8) w) ∗ ustack_body γd sp' n.
-  Proof.
+  Proof using .
     intros Hsp. rewrite /ustack_body.
     change (seq 0 (S n)) with (0%nat :: seq 1 n).
     rewrite big_sepL_cons.
@@ -1619,7 +1619,7 @@ Section UserHeap.
   Lemma ustack_body_app (γd : gname) (sp sp' : mword 64) (k n : nat) :
     uint sp' = uint sp - 8 * Z.of_nat k ->
     ustack_body γd sp (k + n) ⊣⊢ ustack_body γd sp k ∗ ustack_body γd sp' n.
-  Proof.
+  Proof using .
     revert sp sp'. induction k as [| k IH]; intros sp sp' Hsp.
     - assert (Hs : sp' = sp) by (apply bv_eq; rewrite <- !uint_unsigned; lia).
       (* [/=] already reduced [0 + n]; a following [Nat.add_0_l]
@@ -1646,7 +1646,7 @@ Section UserHeap.
   Lemma ustack_app (γd : gname) (sp sp' : mword 64) (k n : nat) :
     uint sp' = uint sp - 8 * Z.of_nat k ->
     ustack γd sp (k + n) ⊣⊢ ustack γd sp k ∗ ustack γd sp' n.
-  Proof.
+  Proof using .
     intros Hsp. rewrite /ustack (ustack_body_app γd sp sp' k n Hsp).
     (* lia does not do the mod-8 iff on its own *)
     assert (H8k : (8 * Z.of_nat k) mod 8 = 0)
@@ -1668,7 +1668,7 @@ Section UserHeap.
     ustack γd sp 2 ⊣⊢ ⌜ uint sp mod 8 = 0 ⌝ ∗
                       (∃ w : mword 64, uword γd (uint sp - 8) w) ∗
                       (∃ w : mword 64, uword γd (uint sp - 16) w).
-  Proof.
+  Proof using .
     rewrite /ustack /ustack_body /=.
     assert (E0 : uint sp - 8 * (Z.of_nat 0 + 1) = uint sp - 8) by lia.
     assert (E1 : uint sp - 8 * (Z.of_nat 1 + 1) = uint sp - 16) by lia.
@@ -1692,7 +1692,7 @@ Section UserHeap.
       (∃ w : mword 64, uword γd (uint sp - 48) w) ∗
       (∃ w : mword 64, uword γd (uint sp - 56) w) ∗
       (∃ w : mword 64, uword γd (uint sp - 64) w).
-  Proof.
+  Proof using .
     rewrite /ustack /ustack_body /=.
     assert (E0 : uint sp - 8 * (Z.of_nat 0 + 1) = uint sp - 8) by lia.
     assert (E1 : uint sp - 8 * (Z.of_nat 1 + 1) = uint sp - 16) by lia.
@@ -1712,7 +1712,7 @@ Section UserHeap.
       (∃ w : mword 64, uword γd (uint sp - 16) w) ∗
       (∃ w : mword 64, uword γd (uint sp - 24) w) ∗
       (∃ w : mword 64, uword γd (uint sp - 32) w).
-  Proof.
+  Proof using .
     rewrite /ustack /ustack_body /=.
     assert (E0 : uint sp - 8 * (Z.of_nat 0 + 1) = uint sp - 8) by lia.
     assert (E1 : uint sp - 8 * (Z.of_nat 1 + 1) = uint sp - 16) by lia.
@@ -1737,7 +1737,7 @@ Section UserHeap.
       (∃ w : mword 64, uword γd (uint sp - 80) w) ∗
       (∃ w : mword 64, uword γd (uint sp - 88) w) ∗
       (∃ w : mword 64, uword γd (uint sp - 96) w).
-  Proof.
+  Proof using .
     rewrite /ustack /ustack_body /=.
     assert (E0 : uint sp - 8 * (Z.of_nat 0 + 1) = uint sp - 8) by lia.
     assert (E1 : uint sp - 8 * (Z.of_nat 1 + 1) = uint sp - 16) by lia.
@@ -1770,7 +1770,7 @@ Section UserHeap.
       ⌜ uint sp mod 8 = 0 ⌝ ∗
       (∃ w : mword 64, uword γd (uint sp - 8) w) ∗
       (∃ w : mword 64, uword γd (uint sp - 16) w).
-  Proof. rewrite ustack_2. iIntros "H". iExact "H". Qed.
+  Proof using . rewrite ustack_2. iIntros "H". iExact "H". Qed.
 
   Lemma ustack_4_open (γd : gname) (sp : mword 64) :
     ustack γd sp 4 -∗
@@ -1779,7 +1779,7 @@ Section UserHeap.
       (∃ w : mword 64, uword γd (uint sp - 16) w) ∗
       (∃ w : mword 64, uword γd (uint sp - 24) w) ∗
       (∃ w : mword 64, uword γd (uint sp - 32) w).
-  Proof. rewrite ustack_4. iIntros "H". iExact "H". Qed.
+  Proof using . rewrite ustack_4. iIntros "H". iExact "H". Qed.
 
   Lemma ustack_4_close (γd : gname) (sp : mword 64) :
     uint sp mod 8 = 0 ->
@@ -1788,7 +1788,7 @@ Section UserHeap.
     (∃ w : mword 64, uword γd (uint sp - 24) w) -∗
     (∃ w : mword 64, uword γd (uint sp - 32) w) -∗
     ustack γd sp 4.
-  Proof.
+  Proof using .
     intros Hal. iIntros "H0 H1 H2 H3". rewrite ustack_4.
     iSplit; [ iPureIntro; exact Hal | ]. iFrame.
   Qed.
@@ -1803,7 +1803,7 @@ Section UserHeap.
       (∃ w : mword 64, uword γd (uint sp - 32) w) ∗
       (∃ w : mword 64, uword γd (uint sp - 40) w) ∗
       (∃ w : mword 64, uword γd (uint sp - 48) w).
-  Proof.
+  Proof using .
     rewrite /ustack /ustack_body /=.
     assert (E0 : uint sp - 8 * (Z.of_nat 0 + 1) = uint sp - 8) by lia.
     assert (E1 : uint sp - 8 * (Z.of_nat 1 + 1) = uint sp - 16) by lia.
@@ -1827,7 +1827,7 @@ Section UserHeap.
       (∃ w : mword 64, uword γd (uint sp - 64) w) ∗
       (∃ w : mword 64, uword γd (uint sp - 72) w) ∗
       (∃ w : mword 64, uword γd (uint sp - 80) w).
-  Proof.
+  Proof using .
     rewrite /ustack /ustack_body /=.
     assert (E0 : uint sp - 8 * (Z.of_nat 0 + 1) = uint sp - 8) by lia.
     assert (E1 : uint sp - 8 * (Z.of_nat 1 + 1) = uint sp - 16) by lia.
@@ -1851,7 +1851,7 @@ Section UserHeap.
       (∃ w : mword 64, uword γd (uint sp - 32) w) ∗
       (∃ w : mword 64, uword γd (uint sp - 40) w) ∗
       (∃ w : mword 64, uword γd (uint sp - 48) w).
-  Proof. rewrite ustack_6. iIntros "H". iExact "H". Qed.
+  Proof using . rewrite ustack_6. iIntros "H". iExact "H". Qed.
 
   Lemma ustack_6_close (γd : gname) (sp : mword 64) :
     uint sp mod 8 = 0 ->
@@ -1862,7 +1862,7 @@ Section UserHeap.
     (∃ w : mword 64, uword γd (uint sp - 40) w) -∗
     (∃ w : mword 64, uword γd (uint sp - 48) w) -∗
     ustack γd sp 6.
-  Proof.
+  Proof using .
     intros Hal. iIntros "H0 H1 H2 H3 H4 H5".
     rewrite ustack_6. iSplit; [ iPureIntro; exact Hal | ].
     (* built, not framed -- see [ustack_intro_12]'s note *)
@@ -1887,7 +1887,7 @@ Section UserHeap.
       (∃ w : mword 64, uword γd (uint sp - 64) w) ∗
       (∃ w : mword 64, uword γd (uint sp - 72) w) ∗
       (∃ w : mword 64, uword γd (uint sp - 80) w).
-  Proof. rewrite ustack_10. iIntros "H". iExact "H". Qed.
+  Proof using . rewrite ustack_10. iIntros "H". iExact "H". Qed.
 
   Lemma ustack_10_close (γd : gname) (sp : mword 64) :
     uint sp mod 8 = 0 ->
@@ -1902,7 +1902,7 @@ Section UserHeap.
     (∃ w : mword 64, uword γd (uint sp - 72) w) -∗
     (∃ w : mword 64, uword γd (uint sp - 80) w) -∗
     ustack γd sp 10.
-  Proof.
+  Proof using .
     intros Hal. iIntros "H0 H1 H2 H3 H4 H5 H6 H7 H8 H9".
     rewrite ustack_10. iSplit; [ iPureIntro; exact Hal | ].
     (* built, not framed -- see [ustack_intro_12]'s note *)
@@ -1930,7 +1930,7 @@ Section UserHeap.
       (∃ w : mword 64, uword γd (uint sp - 48) w) ∗
       (∃ w : mword 64, uword γd (uint sp - 56) w) ∗
       (∃ w : mword 64, uword γd (uint sp - 64) w).
-  Proof. rewrite ustack_8. iIntros "H". iExact "H". Qed.
+  Proof using . rewrite ustack_8. iIntros "H". iExact "H". Qed.
 
   Lemma ustack_8_close (γd : gname) (sp : mword 64) :
     uint sp mod 8 = 0 ->
@@ -1943,7 +1943,7 @@ Section UserHeap.
     (∃ w : mword 64, uword γd (uint sp - 56) w) -∗
     (∃ w : mword 64, uword γd (uint sp - 64) w) -∗
     ustack γd sp 8.
-  Proof.
+  Proof using .
     intros Hal. iIntros "H0 H1 H2 H3 H4 H5 H6 H7".
     rewrite ustack_8. iSplit; [ iPureIntro; exact Hal | ].
     (* built, not framed -- see [ustack_intro_12]'s note *)
@@ -1973,7 +1973,7 @@ Section UserHeap.
       (∃ w : mword 64, uword γd (uint sp - 80) w) ∗
       (∃ w : mword 64, uword γd (uint sp - 88) w) ∗
       (∃ w : mword 64, uword γd (uint sp - 96) w).
-  Proof. rewrite ustack_12. iIntros "H". iExact "H". Qed.
+  Proof using . rewrite ustack_12. iIntros "H". iExact "H". Qed.
 
   Lemma ustack_12_close (γd : gname) (sp : mword 64) :
     uint sp mod 8 = 0 ->
@@ -1990,7 +1990,7 @@ Section UserHeap.
     (∃ w : mword 64, uword γd (uint sp - 88) w) -∗
     (∃ w : mword 64, uword γd (uint sp - 96) w) -∗
     ustack γd sp 12.
-  Proof.
+  Proof using .
     intros Hal. iIntros "H0 H1 H2 H3 H4 H5 H6 H7 H8 H9 H10 H11".
     rewrite ustack_12. iSplit; [ iPureIntro; exact Hal | ].
     (* built, not framed -- see [UkSh.ush_stack_12]'s note *)
@@ -2014,7 +2014,7 @@ Section UserHeap.
       (∃ w : mword 64, uword γd (uint sp - 8 * (Z.of_nat i + 1)) w) ∗
       ((∃ w : mword 64, uword γd (uint sp - 8 * (Z.of_nat i + 1)) w) -∗
          ustack γd sp n).
-  Proof.
+  Proof using .
     intros Hi. iIntros "(%Hal & Hb)". rewrite /ustack /ustack_body.
     iDestruct (big_sepL_lookup_acc _ _ i i with "Hb") as "[Hw Hcl]";
       [ apply lookup_seq; split; [ lia | exact Hi ] | ].
@@ -2042,7 +2042,7 @@ Section UserHeap.
   Lemma ubytes_app (γd : gname) (a : Z) (k n : nat) (f : nat -> bv 8) :
     ubytes γd a (k + n) f ⊣⊢
     ubytes γd a k f ∗ ubytes γd (a + Z.of_nat k) n (fun j => f (k + j)%nat).
-  Proof.
+  Proof using .
     rewrite /ubytes /ubytesq seq_app big_sepL_app.
     apply bi.sep_proper; [ reflexivity | ].
     replace (seq (0 + k) n) with (Nat.add k <$> seq 0 n)
@@ -2058,7 +2058,7 @@ Section UserHeap.
      caller. *)
   Lemma uword_of_ubytes (γd : gname) (a : Z) (f : nat -> bv 8) :
     ubytes γd a 8 f -∗ ∃ w : mword 64, uword γd a w.
-  Proof.
+  Proof using .
     iIntros "Hb".
     iExists (Z_to_bv 64 (assemble_bytes
                [f 0%nat; f 1%nat; f 2%nat; f 3%nat;
@@ -2085,7 +2085,7 @@ Section UserHeap.
       ubyte γd (a + 2) (f 2%nat) ∗ ubyte γd (a + 3) (f 3%nat) ∗
       ubyte γd (a + 4) (f 4%nat) ∗ ubyte γd (a + 5) (f 5%nat) ∗
       ubyte γd (a + 6) (f 6%nat) ∗ ubyte γd (a + 7) (f 7%nat).
-  Proof.
+  Proof using .
     rewrite /ubytes /ubytesq /=.
     assert (E0 : (a + Z.of_nat 0)%Z = a) by lia.
     assert (E1 : (a + Z.of_nat 1)%Z = (a + 1)%Z) by lia.
@@ -2106,7 +2106,7 @@ Section UserHeap.
       ubyte γd (a + 2) (nth_byte w 2%nat) ∗ ubyte γd (a + 3) (nth_byte w 3%nat) ∗
       ubyte γd (a + 4) (nth_byte w 4%nat) ∗ ubyte γd (a + 5) (nth_byte w 5%nat) ∗
       ubyte γd (a + 6) (nth_byte w 6%nat) ∗ ubyte γd (a + 7) (nth_byte w 7%nat).
-  Proof. exact (ubytes_8 γd a (nth_byte w)). Qed.
+  Proof using . exact (ubytes_8 γd a (nth_byte w)). Qed.
 
   (* the shape a one-byte store into a stack slot actually uses: hand the
      eight bytes over with the [i]th one REPLACED, get SOME word back.  The
@@ -2116,7 +2116,7 @@ Section UserHeap.
     ubyte γd (a + 3) b3 -∗ ubyte γd (a + 4) b4 -∗ ubyte γd (a + 5) b5 -∗
     ubyte γd (a + 6) b6 -∗ ubyte γd (a + 7) b7 -∗
     ∃ w : mword 64, uword γd a w.
-  Proof.
+  Proof using .
     iIntros "H0 H1 H2 H3 H4 H5 H6 H7".
     iApply (uword_of_ubytes γd a
               (fun j => match j with
@@ -2135,7 +2135,7 @@ Section UserHeap.
     uword γd a w -∗
       ubyte γd b (nth_byte w 7%nat) ∗
       (∀ c : bv 8, ubyte γd b c -∗ ∃ w' : mword 64, uword γd a w').
-  Proof.
+  Proof using .
     intros ->. rewrite uword_8.
     iIntros "(H0 & H1 & H2 & H3 & H4 & H5 & H6 & H7)".
     iFrame "H7". iIntros (c) "H7".
@@ -2147,7 +2147,7 @@ Section UserHeap.
       (f : nat -> bv 8) :
     8 * Z.of_nat n <= uint sp ->
     ubytes γd (uint sp - 8 * Z.of_nat n) (8 * n) f -∗ ustack_body γd sp n.
-  Proof.
+  Proof using .
     revert sp f. induction n as [| n IH]; intros sp f Hn.
     - iIntros "_". rewrite /ustack_body /=. done.
     - iIntros "Hb".
@@ -2178,7 +2178,7 @@ Section UserHeap.
     uint sp mod 8 = 0 ->
     8 * Z.of_nat n <= uint sp ->
     ubytes γd (uint sp - 8 * Z.of_nat n) (8 * n) f -∗ ustack γd sp n.
-  Proof.
+  Proof using .
     intros Hal Hn. iIntros "Hb". rewrite /ustack.
     iSplitR; [ iPureIntro; exact Hal | ].
     iApply (ustack_body_of_ubytes γd sp n f Hn with "Hb").

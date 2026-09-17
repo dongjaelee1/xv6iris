@@ -48,7 +48,7 @@ Section ProofKvmmap.
       (m : gmap (mword 27) (mword 64)) (npages : nat) (perm : Z) (lvl K : nat)
       (eb : bool) (p : mword 64) (on : option nat) (b : bool) (lks : gset string)
     : wp_kvmmap_sconf_body γa γk mm t m npages perm lvl K eb p on b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_kvmmap_sconf_body].
     intros va pa vpn0 ppn0 ret_tgt
       Hlvl HK Hroot Hvaal Hpaal Hsz Hnp Hpermreg Hpok Hvab Hpab Hrep Hnone Hex Hlkbelow.

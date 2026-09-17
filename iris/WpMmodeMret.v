@@ -300,7 +300,7 @@ Section MretSwp.
         reg_pointsto misa DfracDiscarded MISA_C ∗
         reg_pointsto menvcfg (DfracOwn 1) menv ∗
         reg_pointsto mepc (DfracOwn 1) mep).
-  Proof.
+  Proof using .
     rewrite /hreg_frame /hreg_frame_ro /mr_Drw /mr_Dro.
     repeat (rewrite big_sepS_union; last set_solver).
     rewrite !big_sepS_singleton.
@@ -318,7 +318,7 @@ Section MretSwp.
     reg_pointsto mepc (DfracOwn 1) mep -∗
     (hreg_frame (mr_rs ms p npc menv mep) mr_Drw ∗
      hreg_frame_ro mr_Df (mr_rs ms p npc menv mep) mr_Dro : iProp Σ).
-  Proof. iIntros "H1 H2 H3 H4 H5 H6". rewrite mr_frames. iFrame. Qed.
+  Proof using . iIntros "H1 H2 H3 H4 H5 H6". rewrite mr_frames. iFrame. Qed.
 
   Lemma mr_frames_out (ms : mword 64) (p : Privilege) (npc menv mep : mword 64) :
     (hreg_frame (mr_rs ms p npc menv mep) mr_Drw ∗
@@ -329,12 +329,12 @@ Section MretSwp.
      reg_pointsto misa DfracDiscarded MISA_C ∗
      reg_pointsto menvcfg (DfracOwn 1) menv ∗
      reg_pointsto mepc (DfracOwn 1) mep).
-  Proof. rewrite mr_frames. iIntros "H". iExact "H". Qed.
+  Proof using . rewrite mr_frames. iIntros "H". iExact "H". Qed.
 
   Lemma mr_rw_ext (rs rs' : regstate) :
     reg_agree_on (mr_Drw ∪ mr_Dro) rs rs' ->
     hreg_frame rs mr_Drw -∗ (hreg_frame rs' mr_Drw : iProp Σ).
-  Proof.
+  Proof using .
     intros Hag. rewrite (hreg_frame_ext _ _ mr_Drw
       (reg_agree_mono (mr_Drw ∪ mr_Dro) mr_Drw _ _ ltac:(set_solver) Hag)).
     iIntros "H". iExact "H".
@@ -343,7 +343,7 @@ Section MretSwp.
   Lemma mr_ro_ext (rs rs' : regstate) :
     reg_agree_on (mr_Drw ∪ mr_Dro) rs rs' ->
     hreg_frame_ro mr_Df rs mr_Dro -∗ (hreg_frame_ro mr_Df rs' mr_Dro : iProp Σ).
-  Proof.
+  Proof using .
     intros Hag. rewrite (hreg_frame_ro_ext mr_Df _ _ mr_Dro
       (reg_agree_mono (mr_Drw ∪ mr_Dro) mr_Dro _ _ ltac:(set_solver) Hag)).
     iIntros "H". iExact "H".
@@ -367,7 +367,7 @@ Section MretSwp.
     swp (zicfilp_restore_elp_on_xret mRET Supervisor)
       (fun _ => hreg_frame (mr_rs (mr_elp ms) p npc menv mep) mr_Drw ∗
                 hreg_frame_ro mr_Df (mr_rs (mr_elp ms) p npc menv mep) mr_Dro).
-  Proof.
+  Proof using .
     intros HL. iIntros "#Hcert #Help Hrw Hro".
     unfold zicfilp_restore_elp_on_xret. cbn match.
     iApply (swp_bind_use _ _
@@ -427,7 +427,7 @@ Section MretSwp.
           mr_Drw ∗
         hreg_frame_ro mr_Df
           (mr_rs (cms5 ms_cur) newpriv (ret_pc mepc0) menvcfg1 mepc0) mr_Dro).
-  Proof.
+  Proof using .
     intros Hnp Hsup HL. subst newpriv.
     assert (Hnpm : generic_neq Supervisor Machine = true)
       by (vm_compute; reflexivity).
@@ -664,7 +664,7 @@ Section WpMretGpr.
       mepc ↦ᵣ mepc0 -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hpmp Hstat HmIE Hnp Hsup Hlpe0)
       "#Hhw #Hinv Hhs Hpriv Hms Hpmpc Hmenv Hpc Hfile Hmepc Hinstr Hcont".
     iDestruct (hw_config_cert with "Hhw") as "#Hcert".

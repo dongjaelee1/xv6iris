@@ -311,7 +311,7 @@ Section SnapRes.
     ([∗ set] b ∈ snap_bitmap_spent S, fsblock (fs_bytes γfs) b (P b)) -∗
     bitmap_res γfs (sb_bmapstart (fss_sb S)) (sb_size (fss_sb S))
       (fss_used S).
-  Proof.
+  Proof using .
     intros Hb. iIntros "H".
     (* the bitmap block is IN USE, so it is not in the free pool *)
     assert (Hdj : ({[ sb_bmapstart (fss_sb S) ]} : gset Z)
@@ -346,7 +346,7 @@ Section SnapRes.
     fss_inodes S !! i = Some n ->
     ([∗ set] b ∈ snap_blk_set n, fsblock (fs_bytes γfs) b (P b)) -∗
     inode_blocks γfs (bm_of n) (fn_data n) ∗ ind_res γfs (bm_of n).
-  Proof.
+  Proof using .
     intros Hb Hl Hi.
     pose proof (inl_rec_wf Hl) as Hwf.
     (* the two spellings of 268 are equal by conversion and opaque to
@@ -488,7 +488,7 @@ Section SnapLinks.
   Lemma big_sepM_as_set {A : Type} `{Inhabited A}
       (m : gmap Z A) (Phi : Z -> A -> iProp Σ) :
     ([∗ map] i ↦ x ∈ m, Phi i x) ⊣⊢ ([∗ set] z ∈ dom m, Phi z (m !!! z)).
-  Proof.
+  Proof using .
     induction m as [| k v m Hk IH] using map_ind.
     { rewrite dom_empty_L big_sepM_empty big_sepS_empty //. }
     assert (Hkd : k ∉ dom m) by (apply not_elem_of_dom; exact Hk).
@@ -510,7 +510,7 @@ Section SnapLinks.
     fs_links (fs_link γfs) (fss_inodes S) -∗
     [∗ set] z ∈ region_inums nib,
       fs_link_node (fs_link γfs) z (snap_node S z).
-  Proof.
+  Proof using .
     intros Hb Hw.
     assert (Hsub : region_inums nib ⊆ dom (fss_inodes S)).
     { apply elem_of_subseteq. intros z Hz.
@@ -538,7 +538,7 @@ Section SnapLinks.
                      (fn_type (snap_node S z)))
       ∗ ([∗ set] z ∈ region_inums nib,
            ent_toks_x (fs_gamma_L γfs) z (snap_node S z)).
-  Proof.
+  Proof using .
     intros Hb Hw Hnib.
     assert (Hroot : ireg_root ∈ region_inums nib).
     { apply region_inums_spec. rewrite /ireg_root. lia. }
@@ -636,7 +636,7 @@ Section SnapPool.
     ipool_rows γfs γi cov (sb_logstart (fss_sb S)) (region_inums icfg_nib)
       ∗ ([∗ set] b ∈ C ∖ snap_live_blocks S A,
            fsblock (fs_bytes γfs) b (P b)).
-  Proof.
+  Proof using .
     intros Hok Hw Hnib HA HC.
     iIntros "Hcnt Hmir Hoff Htop Hout Hdlk Hblk".
     pose proof (sk_bytes Hok) as Hb.
@@ -916,7 +916,7 @@ Section SnapMint.
          so the row leaves in this lemma's own postcondition rather than
          inside the kit; its consumer threads it to [icache_boot_at]. *)
       ([∗ list] k ∈ seq 0 NINODE, off_set_auth off_cfg k ∅).
-  Proof.
+  Proof using .
     intros HlPb HXsub HX1 Hagr Hnibeq Hnib32 Hcovin Hcovmeta.
     (* the WAL's own row (b) at the boot's ledger: every block of the
        committed view is a whole block, which here is [HlPb] read through

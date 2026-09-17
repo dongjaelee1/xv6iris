@@ -148,12 +148,12 @@ Section UexecWp.
        WP (Loop : expr riscv_lang))%I.
 
   Local Instance uexec_F_contractive : Contractive uexec_F.
-  Proof. rewrite /uexec_F. solve_contractive. Qed.
+  Proof using . rewrite /uexec_F. solve_contractive. Qed.
 
   Definition uexec_wp : iProp Σ := fixpoint uexec_F.
 
   Lemma uexec_wp_unfold : uexec_wp ⊣⊢ uexec_F uexec_wp.
-  Proof. apply (fixpoint_unfold uexec_F). Qed.
+  Proof using . apply (fixpoint_unfold uexec_F). Qed.
 
 End UexecWp.
 

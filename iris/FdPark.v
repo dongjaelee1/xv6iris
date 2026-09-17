@@ -163,14 +163,14 @@ Section FdPark.
      all-parked table the surrender is [emp], so every caller that exists
      today pays it by [emp]-introduction and no existing proof moves. *)
   Lemma uoff_surr_parked (st : fdstate) : fdst_parked st -> ⊢ uoff_surr st.
-  Proof.
+  Proof using .
     intros H. destruct st as [| r w [i g [|] | | mj]]; try (iEmpIntro).
     destruct H.
   Qed.
 
   Lemma uoff_surrs_parked (sts : list fdstate) :
     fdv_all_parked sts -> ⊢ uoff_surrs sts.
-  Proof.
+  Proof using .
     intros H. rewrite /uoff_surrs. iApply big_sepL_intro.
     iIntros "!>" (k st Hk). iApply uoff_surr_parked.
     exact (fdv_all_parked_lookup sts k st H Hk).
@@ -178,7 +178,7 @@ Section FdPark.
 
   Lemma uoff_surrs_map_parked (D : gmap nat fdstate) :
     map_Forall (fun _ st => fdst_parked st) D -> ⊢ uoff_surrs_map D.
-  Proof.
+  Proof using .
     intros H. rewrite /uoff_surrs_map. iApply big_sepM_intro.
     iIntros "!>" (fd st Hfd). iApply uoff_surr_parked. exact (H fd st Hfd).
   Qed.
@@ -188,7 +188,7 @@ Section FdPark.
      what first makes this inhabited. *)
   Lemma uoff_surr_held (r w : bool) (i : Z) (γo : gname) (off : nat) :
     uoff γo off -∗ uoff_surr (FdOpen r w (FdInode i γo OffHeld)).
-  Proof. iIntros "H". by iExists off. Qed.
+  Proof using . iIntros "H". by iExists off. Qed.
 
   (* =================================================================== *)
   (*  3.  THE KERNEL'S STEP: the row family, rebuilt                      *)
@@ -202,7 +202,7 @@ Section FdPark.
      condition, so a boundary may run this at whatever mask it holds. *)
   Lemma foff_row_park (E : coPset) (st : fdstate) :
     foff_row st -∗ uoff_surr st ={E}=∗ foff_row (fdst_park st).
-  Proof.
+  Proof using .
     destruct st as [| r w [i g [|] | | mj]]; cbn [fdst_park uoff_surr].
     - iIntros "$ _". done.
     - iIntros "$ _". done.
@@ -219,7 +219,7 @@ Section FdPark.
      as rows at all. *)
   Lemma foff_rows_park (E : coPset) (sts : list fdstate) :
     foff_rows sts -∗ uoff_surrs sts ={E}=∗ foff_rows (fdv_park sts).
-  Proof.
+  Proof using .
     iIntros "#Hrows Hsurr".
     rewrite /foff_rows /uoff_surrs /fdv_park big_sepL_fmap.
     iApply big_sepL_fupd.
@@ -244,7 +244,7 @@ Section FdPark.
 
   Lemma fd_auths_parked_id (γ : gname) (sts : list fdstate) :
     fdv_all_parked sts -> fd_auths γ (fdv_park sts) ⊣⊢ fd_auths γ sts.
-  Proof. intros H. by rewrite (fdv_park_id sts H). Qed.
+  Proof using . intros H. by rewrite (fdv_park_id sts H). Qed.
 
   (* THE BOUNDARY PARK, ASSEMBLED: the surrendered halves in, a table
      every one of whose rows is parked out, with the bundle and the
@@ -261,7 +261,7 @@ Section FdPark.
   Lemma fd_frags_park (E : coPset) (γ : gname) (sts : list fdstate) :
     fd_auths γ sts -∗ fd_frags γ sts -∗ uoff_surrs sts ={E}=∗
       fd_auths γ (fdv_park sts) ∗ fd_frags γ (fdv_park sts).
-  Proof.
+  Proof using .
     iIntros "Ha Hb Hs".
     iDestruct "Hb" as "(%Hlen & Hfr & #Hrows)".
     iMod (foff_rows_park E sts with "Hrows Hs") as "#Hrows'".
@@ -289,7 +289,7 @@ Section FdPark.
     fdv_all_parked sts ->
     fd_auths γ sts -∗ fd_frags γ sts ={E}=∗
       fd_auths γ sts ∗ fd_frags γ sts.
-  Proof.
+  Proof using .
     iIntros (Hpk) "Ha Hb". iModIntro. iFrame "Ha Hb".
   Qed.
 
@@ -331,12 +331,12 @@ Section FdPark.
      field will hand over: a pure fact, free and persistent. *)
   Lemma uoff_surr_at_parked (sts : list fdstate) :
     fdv_all_parked sts -> ⊢ uoff_surr_at sts.
-  Proof. intros H. iLeft. iPureIntro. exact H. Qed.
+  Proof using . intros H. iLeft. iPureIntro. exact H. Qed.
 
   (* SUPPLIER 2 -- an owner's: the halves, one per held row. *)
   Lemma uoff_surr_at_held (sts : list fdstate) :
     uoff_surrs sts -∗ uoff_surr_at sts.
-  Proof. iIntros "H". by iRight. Qed.
+  Proof using . iIntros "H". by iRight. Qed.
 
   (* THE STEP, TOTAL: whichever disjunct answered, the table that comes
      out is all-parked and its bundle and authorities agree on it.  This
@@ -348,7 +348,7 @@ Section FdPark.
       ∃ sts' : list fdstate,
         ⌜sts' = fdv_park sts⌝ ∗ ⌜fdv_all_parked sts'⌝ ∗
         fd_auths γ sts' ∗ fd_frags γ sts'.
-  Proof.
+  Proof using .
     iIntros "Ha Hb [%Hpk | Hs]".
     - (* the generic tier: the table is already parked, so the park is the
          identity and not one ghost moves ([fdv_park_id]). *)
@@ -387,13 +387,13 @@ Section FdPark.
 
   Lemma uoff_rcpt_parked (st : fdstate) (o : nat) :
     fdst_parked st -> ⊢ uoff_rcpt st o.
-  Proof.
+  Proof using .
     intros H. destruct st as [| r w [i g [|] | | mj]]; done.
   Qed.
 
   Lemma uoff_rcpt_held (r w : bool) (i : Z) (γo : gname) (o : nat) :
     uoff γo o -∗ uoff_rcpt (FdOpen r w (FdInode i γo OffHeld)) o.
-  Proof. by iIntros "$". Qed.
+  Proof using . by iIntros "$". Qed.
 
   (* ...AND THE RECEIPT IS A PAYMENT AGAIN.  This is the one step that
      makes a held descriptor USABLE rather than merely servable: what
@@ -402,7 +402,7 @@ Section FdPark.
      [fd_frags_park_at] once. *)
   Lemma uoff_rcpt_surr (st : fdstate) (o : nat) :
     uoff_rcpt st o -∗ uoff_surr st.
-  Proof.
+  Proof using .
     destruct st as [| r w [i g [|] | | mj]]; cbn;
       try (iIntros "_"; by iEmpIntro).
     iIntros "H". by iExists o.
@@ -440,7 +440,7 @@ Section FdPark.
       off_gv γo (1/2) (Z.of_nat off)
       ∗ off_supply γo E off d
           (uoff_rcpt (FdOpen r w (FdInode i γo m)) (off + d)).
-  Proof.
+  Proof using .
     intros HE. destruct m; cbn [foff_row uoff_surr uoff_rcpt].
     - iIntros "#Hinv _ $". iApply (off_supply_parked E γo off d HE with "Hinv").
     - iIntros "_ Hs Hk". iDestruct "Hs" as (o) "Hu".
@@ -460,7 +460,7 @@ Section FdPark.
     foff_row st -∗ uoff_surr st -∗ off_gv γo (1/2) (Z.of_nat off) -∗
       off_gv γo (1/2) (Z.of_nat off)
       ∗ off_supply γo E off d (uoff_rcpt st (off + d)).
-  Proof.
+  Proof using .
     intros -> HE. exact (off_supply_of_st E r w i γo m off d HE).
   Qed.
 

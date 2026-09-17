@@ -216,7 +216,7 @@ Section WPDead.
   Lemma wp_dead (e : mexpr) (gen : nat) :
     thread_gen e = Some gen ->
     gen_dead gen ⊢ WP (e : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hg.
     iIntros "#Hdead". iLöb as "IH".
     iApply wp_lift_step; first by destruct e.
@@ -420,7 +420,7 @@ Section TsoBundle.
 
   Lemma tso_interp_of_img (E : riscvEraGS) img mem log (V : agent -> nat) :
     tso_interp_of E img mem log V -∗ ⌜img = era_img E⌝.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as (TM LM) "(_&_&_&_&_&_&_&_&_&_&_&%Hi)".
     by iPureIntro.
   Qed.
@@ -432,7 +432,7 @@ Section TsoBundle.
       (img mem : gmap Arch.pa (bv 8)) (log : list pwmsg) (V : agent -> nat) :
     tso_interp_of E img mem log V -∗
     tso_interp_of E img mem log V ∗ llb (era_loglen_name E) (length log).
-  Proof.
+  Proof using .
     iIntros "(%TM & %LM & Hts & %Hd & %Htie & Hm & %HLM & Hlen & Hv & Hpure)".
     iDestruct (llb_get with "Hlen") as "[Hlen #Hlb]".
     iFrame "Hlb". iExists TM, LM. iFrame "Hts Hm Hlen Hv Hpure". by iPureIntro.
@@ -443,7 +443,7 @@ Section TsoBundle.
      function without functional extensionality. *)
   Lemma view_auth_ext (γ : gname) (V V' : agent -> nat) :
     (∀ h, V h = V' h) -> view_auth γ V ⊣⊢ view_auth γ V'.
-  Proof.
+  Proof using .
     intros HV. rewrite /view_auth.
     assert (vf V ≡ vf V') as Heq by (intros h; by rewrite /vf HV).
     by rewrite Heq.
@@ -452,7 +452,7 @@ Section TsoBundle.
   Lemma tso_interp_of_ext E img mem log (V V' : agent -> nat) :
     (∀ h, V h = V' h) ->
     tso_interp_of E img mem log V ⊣⊢ tso_interp_of E img mem log V'.
-  Proof.
+  Proof using .
     intros HV. rewrite /tso_interp_of. iSplit.
     - iIntros "H". iDestruct "H" as (TM LM)
         "(Hts & %H1 & %H2 & Hlm & %H3 & Hll & Hv & %H4 & %H5 & %H6 & %H7 & %H8)".
@@ -475,7 +475,7 @@ Section TsoBundle.
   Lemma tso_interp_at_of (E : riscvEraGS) (g : gstate) :
     tso_interp_at E g ⊣⊢
     tso_interp_of E g.(gimg) g.(gmem) g.(glog) (avf g).
-  Proof.
+  Proof using .
     rewrite /tso_interp_at /tso_interp_of. iSplit.
     - iIntros "H". iDestruct "H" as (TM LM)
         "(Hts & %Hdom & %Hlat & Hlm & %Hlm2 & Hll & Hv & %Hmm)".
@@ -503,7 +503,7 @@ Section TsoBundle.
     ⌜∀ a : Arch.pa,
        (ram_lo <= SailStdpp.Operators_mwords.uint a < ram_hi)%Z ->
        is_Some (img !! a)⌝.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as (TM LM) "(_&_&_&_&_&_&_&_&_&_&%Hc & _)".
     iPureIntro. exact Hc.
   Qed.
@@ -511,7 +511,7 @@ Section TsoBundle.
   Lemma tso_interp_of_mono E img mem log (V V' : agent -> nat) :
     (∀ h, V h = V' h) ->
     tso_interp_of E img mem log V -∗ tso_interp_of E img mem log V'.
-  Proof.
+  Proof using .
     intros HV. rewrite (tso_interp_of_ext _ _ _ _ V V' HV). iIntros "$".
   Qed.
 
@@ -521,7 +521,7 @@ Section TsoBundle.
   Lemma tso_interp_of_idle E img mem log (V : agent -> nat) (h : agent) :
     tso_interp_of E img mem log V -∗
     tso_interp_of E img mem log (vstep h (V h) log V).
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as (TM LM)
       "(Hts & %H1 & %H2 & Hlm & %H3 & Hll & Hv & %H4 & %H5 & %H6 & %H7 & %H8)".
     iApply (tso_interp_of_mono E img mem log V (vstep h (V h) log V)
@@ -534,7 +534,7 @@ Section TsoBundle.
      move its own view *)
   Lemma tso_interp_of_bound E img mem log (V : agent -> nat) :
     tso_interp_of E img mem log V -∗ ⌜∀ h, (V h ≤ length log)%nat⌝.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as (TM LM) "(_&_&_&_&_&_&_&_&%Hb&_)".
     iPureIntro. exact Hb.
   Qed.
@@ -550,7 +550,7 @@ Section TsoBundle.
     tso_interp_of E img mem log V -∗
     tso_interp_of E img mem log V ∗
     view_lb (era_view_name E) (era_loglen_name E) h (V h).
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as (TM LM)
       "(Hts & %H1 & %H2 & Hlm & %H3 & Hll & Hv & %H4 & %H5 & %H6 & %H7 & %H8)".
     iDestruct (view_lb_get (era_view_name E) (era_loglen_name E) V
@@ -567,14 +567,14 @@ Section TsoBundle.
     tso_interp_of E img mem log V -∗
     tso_interp_of E img mem log V ∗
     view_lb (era_view_name E) (era_loglen_name E) h K.
-  Proof. intros <-. apply tso_interp_of_receipt. Qed.
+  Proof using . intros <-. apply tso_interp_of_receipt. Qed.
 
   (* the bus-master pinning tie, read off the bundle -- the half of the
      [avf] reconstruction that [mm_ok] does not carry *)
   Lemma tso_interp_of_pin E img mem log (V : agent -> nat) :
     tso_interp_of E img mem log V -∗
     ⌜∀ h, (NCPU ≤ h)%nat -> V h = length log⌝.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as (TM LM) "(_&_&_&_&_&_&_&_&_&%Hp&_)".
     iPureIntro. exact Hp.
   Qed.
@@ -589,7 +589,7 @@ Section TsoBundle.
   Lemma tso_interp_of_disk_idle E img mem log (V : agent -> nat) :
     tso_interp_of E img mem log V -∗
     tso_interp_of E img mem log (vstep disk_agent (length log) log V).
-  Proof.
+  Proof using .
     iIntros "H". iDestruct (tso_interp_of_pin with "H") as %Hp.
     rewrite -(Hp disk_agent (Nat.le_refl NCPU)).
     iApply (tso_interp_of_idle with "H").
@@ -604,7 +604,7 @@ Section TsoBundle.
     (∀ h, (NCPU ≤ h)%nat -> V h = length log) ->
     tso_interp_of E img mem log V ⊣⊢
     tso_interp_at E (gs_of img mem log V rs d).
-  Proof.
+  Proof using .
     intros Hpin. rewrite tso_interp_at_of. cbn [gimg gmem glog].
     apply tso_interp_of_ext. intros h. symmetry. by apply avf_gs_of.
   Qed.
@@ -620,7 +620,7 @@ Section TsoBundle.
     (h < NCPU)%nat -> (V h ≤ t)%nat -> (t ≤ length log)%nat ->
     tso_interp_of E img mem log V ==∗
     tso_interp_of E img mem log (vstep h t log V).
-  Proof.
+  Proof using .
     iIntros (Hh Hle Htop) "H". iDestruct "H" as (TM LM)
       "(Hts & %H1 & %H2 & Hlm & %H3 & Hll & Hv & %H4 & %H5 & %H6 & %H7 & %H8)".
     assert (Hmono : ∀ h', (V h' ≤ vstep h t log V h')%nat).
@@ -646,7 +646,7 @@ Section TsoBundle.
     tso_interp_of E img mem log V ==∗
     tso_interp_of E img mem log (vstep h (length log) log V) ∗
     view_lb (era_view_name E) (era_loglen_name E) h (length log).
-  Proof.
+  Proof using .
     iIntros (Hh) "H".
     iDestruct (tso_interp_of_bound with "H") as %Hb.
     iMod (tso_interp_of_advance _ _ _ _ _ h (length log) Hh (Hb h)
@@ -669,7 +669,7 @@ Section TsoBundle.
                           g.(gpow) (<[cpu := r']> g.(gresv)) g.(gimg) log'
                           (<[cpu := tv']> g.(gtv)) (<[cpu := itv']> g.(gitv))
                           (<[cpu := hr']> g.(ghr))).
-  Proof.
+  Proof using .
     iIntros "H". rewrite tso_interp_at_of.
     rewrite (tso_interp_of_ext _ _ _ _ _ _
                (avf_hart_node g cpu rs' mem' d' r' log' tv' itv' hr')).
@@ -684,7 +684,7 @@ Section TsoBundle.
       (vstep disk_agent (length log') log' (avf g))
     -∗ tso_interp_at E (GState g.(gregs) mem' d' g.(ggen) g.(gpow) g.(gresv)
                           g.(gimg) log' g.(gtv) g.(gitv) g.(ghr)).
-  Proof.
+  Proof using .
     iIntros "H". rewrite tso_interp_at_of.
     rewrite (tso_interp_of_ext _ _ _ _ _ _ (avf_disk_node g mem' d' log')).
     iExact "H".
@@ -774,7 +774,7 @@ Section WPExec.
                  (vstep (hart_agent cpu_id) tv' log' V) ∗
                WP (HartE gen_id cpu_id m' : expr riscv_lang))) -∗
     WP (HartE gen_id cpu_id m : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hpres.
     iIntros "#(Hborn & Hstarted & Hrege) H".
     iApply wp_lift_step; first done.
@@ -926,7 +926,7 @@ Section WPExec.
                (resv_fragb cpu_id r' (hr_acq hr') -∗
                 WP (HartE gen_id cpu_id m' : expr riscv_lang)))) -∗
     WP (HartE gen_id cpu_id m : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "#(Hborn & Hstarted & Hrege) Hfrag H".
     iApply wp_lift_step; first done.
     iIntros (g ns κ κs nt) "((Hgauth & Hsauth & Htie & HR) & Hobs)".
@@ -1059,7 +1059,7 @@ Section WPExec.
          resv_frag cpu_id None -∗
          WP (HartE gen_id cpu_id (riscv_step tick) : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "#Hcert Hfrag H". rewrite /LoopE.
     iDestruct "Hfrag" as (b) "Hfrag".
     iApply (wp_hart_step_resv _ rr b with "Hcert Hfrag").
@@ -1121,7 +1121,7 @@ Section WPDev.
             obs_auth (h ++ κ)%list ∗
             WP (UartLoop i : expr riscv_lang))) -∗
     WP (UartLoop i : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "#(Hborn & Hstarted & Hrege) H".
     iApply wp_lift_step; first done.
     iIntros (g ns κ κs nt) "((Hgauth & Hsauth & Htie & HR) & Hobs)".
@@ -1264,7 +1264,7 @@ Section WPDev.
               (vstep disk_agent (length log') log' V) ∗
             WP (DiskLoop : expr riscv_lang))) -∗
     WP (DiskLoop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "#(Hborn & Hstarted & Hrege) H".
     iApply wp_lift_step; first done.
     iIntros (g ns κ κs nt) "((Hgauth & Hsauth & Htie & HR) & Hobs)".
@@ -1358,7 +1358,7 @@ Section WPDev.
             gregs_interp gr' ∗ gen_heap_interp m ∗ dev_interp d ∗
             WP (PlicLoop : expr riscv_lang))) -∗
     WP (PlicLoop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "#(Hborn & Hstarted & Hrege) H".
     iApply wp_lift_step; first done.
     iIntros (g ns κ κs nt) "((Hgauth & Hsauth & Htie & HR) & Hobs)".

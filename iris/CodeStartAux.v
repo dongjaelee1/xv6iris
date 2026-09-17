@@ -206,159 +206,159 @@ Section WpStartInstr.
   (* ---- constructor templates (copied from WpTimerinit; file-local) ---- *)
   Lemma st_instr30 :
     kernel_text -∗ instr st_pc30 true (ITYPE (sign_extend' 12 i9, Regidx csp_rs1, Regidx csp_rs1, ADDI)).
-  Proof. exact sti_00. Qed.
+  Proof using . exact sti_00. Qed.
 
   Lemma st_instr31 :
     kernel_text -∗ instr st_pc31 true (STORE (zero_extend' 12 (concat_vec u10 ('b"000")), Regidx ti_ra, Regidx csp_rs1, 8)).
-  Proof. exact sti_02. Qed.
+  Proof using . exact sti_02. Qed.
 
   Lemma st_instr32 :
     kernel_text -∗ instr st_pc32 true (STORE (zero_extend' 12 (concat_vec u11 ('b"000")), Regidx ti_s0, Regidx csp_rs1, 8)).
-  Proof. exact sti_04. Qed.
+  Proof using . exact sti_04. Qed.
 
   Lemma st_instr33 :
     kernel_text -∗ instr st_pc33 true (ITYPE (caddi4spn_imm nz12, Regidx csp_rs1, Regidx ti_s0, ADDI)).
-  Proof. exact sti_06. Qed.
+  Proof using . exact sti_06. Qed.
 
   Lemma st_instr34 :
     kernel_text -∗ instr st_pc34 false (CSRReg (WpGprCsrrA.csr_mstatus, zreg, Regidx ti_a5, CSRRS)).
-  Proof. exact sti_08. Qed.
+  Proof using . exact sti_08. Qed.
 
   Lemma st_instr35 :
     kernel_text -∗ instr st_pc35 true (UTYPE (sign_extend' 20 si35, Regidx ti_a4, LUI)).
-  Proof. exact sti_0c. Qed.
+  Proof using . exact sti_0c. Qed.
 
   Lemma st_instr36 :
     kernel_text -∗ instr st_pc36 false (ITYPE (si36, Regidx ti_a4, Regidx ti_a4, ADDI)).
-  Proof. exact sti_0e. Qed.
+  Proof using . exact sti_0e. Qed.
 
   Lemma st_instr37 :
     kernel_text -∗ instr st_pc37 true (RTYPE (Regidx ti_a4, Regidx ti_a5, Regidx ti_a5, AND)).
-  Proof. exact sti_12. Qed.
+  Proof using . exact sti_12. Qed.
 
   Lemma st_instr38 :
     kernel_text -∗ instr st_pc38 true (UTYPE (sign_extend' 20 si38, Regidx ti_a4, LUI)).
-  Proof. exact sti_14. Qed.
+  Proof using . exact sti_14. Qed.
 
   Lemma st_instr39 :
     kernel_text -∗ instr st_pc39 false (ITYPE (si39, Regidx ti_a4, Regidx ti_a4, ADDI)).
-  Proof. exact sti_16. Qed.
+  Proof using . exact sti_16. Qed.
 
   Lemma st_instr40 :
     kernel_text -∗ instr st_pc40 true (RTYPE (Regidx ti_a4, Regidx ti_a5, Regidx ti_a5, OR)).
-  Proof. exact sti_1a. Qed.
+  Proof using . exact sti_1a. Qed.
 
   Lemma st_instr41 :
     kernel_text -∗ instr st_pc41 false (CSRReg (WpGprCsrwA.csr_mstatus, Regidx ti_a5, zreg, CSRRW)).
-  Proof. exact sti_1c. Qed.
+  Proof using . exact sti_1c. Qed.
 
   Lemma st_instr42 :
     kernel_text -∗ instr st_pc42 false (UTYPE (si42, Regidx ti_a5, AUIPC)).
-  Proof. exact sti_20. Qed.
+  Proof using . exact sti_20. Qed.
 
   Lemma st_instr43 :
     kernel_text -∗ instr st_pc43 false (ITYPE (si43, Regidx ti_a5, Regidx ti_a5, ADDI)).
-  Proof. exact sti_24. Qed.
+  Proof using . exact sti_24. Qed.
 
   Lemma st_instr44 :
     kernel_text -∗ instr st_pc44 false (CSRReg (WpGprCsrwA.csr_mepc, Regidx ti_a5, zreg, CSRRW)).
-  Proof. exact sti_28. Qed.
+  Proof using . exact sti_28. Qed.
 
   Lemma st_instr45 :
     kernel_text -∗ instr st_pc45 true (ITYPE (sign_extend' 12 si45, Regidx cli_rs1, Regidx ti_a5, ADDI)).
-  Proof. exact sti_2c. Qed.
+  Proof using . exact sti_2c. Qed.
 
   Lemma st_instr46 :
     kernel_text -∗ instr st_pc46 false (CSRReg (WpGprCsrwB.csr_satp, Regidx ti_a5, zreg, CSRRW)).
-  Proof. exact sti_2e. Qed.
+  Proof using . exact sti_2e. Qed.
 
   Lemma st_instr47 :
     kernel_text -∗ instr st_pc47 true (UTYPE (sign_extend' 20 si47, Regidx ti_a5, LUI)).
-  Proof. exact sti_32. Qed.
+  Proof using . exact sti_32. Qed.
 
   Lemma st_instr48 :
     kernel_text -∗ instr st_pc48 true (ITYPE (sign_extend' 12 si48, Regidx ti_a5, Regidx ti_a5, ADDI)).
-  Proof. exact sti_34. Qed.
+  Proof using . exact sti_34. Qed.
 
   Lemma st_instr49 :
     kernel_text -∗ instr st_pc49 false (CSRReg (WpGprCsrwA.csr_medeleg, Regidx ti_a5, zreg, CSRRW)).
-  Proof. exact sti_36. Qed.
+  Proof using . exact sti_36. Qed.
 
   Lemma st_instr50 :
     kernel_text -∗ instr st_pc50 false (CSRReg (WpGprCsrwB.csr_mideleg, Regidx ti_a5, zreg, CSRRW)).
-  Proof. exact sti_3a. Qed.
+  Proof using . exact sti_3a. Qed.
 
   Lemma st_instr51 :
     kernel_text -∗ instr st_pc51 false (CSRReg (WpGprCsrrB.csr_sie, zreg, Regidx ti_a5, CSRRS)).
-  Proof. exact sti_3e. Qed.
+  Proof using . exact sti_3e. Qed.
 
   Lemma st_instr52 :
     kernel_text -∗ instr st_pc52 false (ITYPE (si52, Regidx ti_a5, Regidx ti_a5, ORI)).
-  Proof. exact sti_42. Qed.
+  Proof using . exact sti_42. Qed.
 
   Lemma st_instr53 :
     kernel_text -∗ instr st_pc53 false (CSRReg (WpGprCsrwB.csr_sie, Regidx ti_a5, zreg, CSRRW)).
-  Proof. exact sti_46. Qed.
+  Proof using . exact sti_46. Qed.
 
   Lemma st_instr54 :
     kernel_text -∗ instr st_pc54 true (ITYPE (sign_extend' 12 si54, Regidx cli_rs1, Regidx ti_a5, ADDI)).
-  Proof. exact sti_4a. Qed.
+  Proof using . exact sti_4a. Qed.
 
   Lemma st_instr55 :
     kernel_text -∗ instr st_pc55 true (SHIFTIOP (ssh55, Regidx ti_a5, Regidx ti_a5, SRLI)).
-  Proof. exact sti_4c. Qed.
+  Proof using . exact sti_4c. Qed.
 
   Lemma st_instr56 :
     kernel_text -∗ instr st_pc56 false (CSRReg (WpGprCsrwB.csr_pmpaddr0, Regidx ti_a5, zreg, CSRRW)).
-  Proof. exact sti_4e. Qed.
+  Proof using . exact sti_4e. Qed.
 
   Lemma st_instr57 :
     kernel_text -∗ instr st_pc57 true (ITYPE (sign_extend' 12 si57, Regidx cli_rs1, Regidx ti_a5, ADDI)).
-  Proof. exact sti_52. Qed.
+  Proof using . exact sti_52. Qed.
 
   Lemma st_instr58 :
     kernel_text -∗ instr st_pc58 false (CSRReg (WpGprCsrwA.csr_pmpcfg0, Regidx ti_a5, zreg, CSRRW)).
-  Proof. exact sti_54. Qed.
+  Proof using . exact sti_54. Qed.
 
   (* ADUE menvcfg-write block: csrr/csrw menvcfg reuse WpTimerinit's decodes. *)
   Lemma st_instr_ae0 :
     kernel_text -∗ instr st_pc_ae0 false (CSRReg (WpGprCsrrB.csr_menvcfg, zreg, Regidx ti_a5, CSRRS)).
-  Proof. exact sti_58. Qed.
+  Proof using . exact sti_58. Qed.
 
   Lemma st_instr_ae1 :
     kernel_text -∗ instr st_pc_ae1 true (ITYPE (sign_extend' 12 sae_li, Regidx cli_rs1, Regidx ti_a4, ADDI)).
-  Proof. exact sti_5c. Qed.
+  Proof using . exact sti_5c. Qed.
 
   Lemma st_instr_ae2 :
     kernel_text -∗ instr st_pc_ae2 true (SHIFTIOP (sae_slli, Regidx ti_a4, Regidx ti_a4, SLLI)).
-  Proof. exact sti_5e. Qed.
+  Proof using . exact sti_5e. Qed.
 
   Lemma st_instr_ae3 :
     kernel_text -∗ instr st_pc_ae3 true (RTYPE (Regidx ti_a4, Regidx ti_a5, Regidx ti_a5, OR)).
-  Proof. exact sti_60. Qed.
+  Proof using . exact sti_60. Qed.
 
   Lemma st_instr_ae4 :
     kernel_text -∗ instr st_pc_ae4 false (CSRReg (WpGprCsrwA.csr_menvcfg, Regidx ti_a5, zreg, CSRRW)).
-  Proof. exact sti_62. Qed.
+  Proof using . exact sti_62. Qed.
 
   Lemma st_instr59 :
     kernel_text -∗ instr st_pc59 false (JAL (sjimm59, Regidx ti_ra)).
-  Proof. exact sti_66. Qed.
+  Proof using . exact sti_66. Qed.
 
   Lemma st_instr60 :
     kernel_text -∗ instr st_pc60 false (CSRReg (ExecCommon.csr_csrr, zreg, Regidx ti_a5, CSRRS)).
-  Proof. exact sti_6a. Qed.
+  Proof using . exact sti_6a. Qed.
 
   Lemma st_instr61 :
     kernel_text -∗ instr st_pc61 true (ADDIW (sign_extend' 12 si61, Regidx ti_a5, Regidx ti_a5)).
-  Proof. exact sti_6e. Qed.
+  Proof using . exact sti_6e. Qed.
 
   Lemma st_instr62 :
     kernel_text -∗ instr st_pc62 true (RTYPE (Regidx ti_a5, Regidx cli_rs1, Regidx st_tp, ADD)).
-  Proof. exact sti_70. Qed.
+  Proof using . exact sti_70. Qed.
 
   Lemma st_instr63 :
     kernel_text -∗ instr st_pc63 false (MRET tt).
-  Proof. exact sti_72. Qed.
+  Proof using . exact sti_72. Qed.
 
 End WpStartInstr.

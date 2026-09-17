@@ -152,7 +152,7 @@ Section ProofReparentEnds.
                      (m !!! Regidx (mword_of_int 19)) (m !!! Regidx (mword_of_int 20)) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros sp0 spF HK6 Hdom.
     iIntros "Hcg #Htext Hpc Hcont".
     (* +0x00 c.addi16sp sp,-48 : trade 6 slots out of the capability *)
@@ -452,7 +452,7 @@ Section ProofReparentEnds.
         pc_is (ret_pc vra) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros spF sp0 HK6 Hdom.
     iIntros "Hcg #Htext Hpc Hframe Hcont".
     iDestruct "Hframe" as "(Hf5 & Hf4 & Hf3 & Hf2 & Hf1 & Hf0)".
@@ -637,7 +637,7 @@ Section ProofReparentLoop.
       (mword_of_int KernelSyms.initproc : mword 64) ↦₈{dqi} ip -∗
       parents_own (rp_upto pv ip k ps) -∗
       WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hlen Hpslen Hlvl Hav Hno.
     iIntros "#Hpinv Hqexit".
     iAssert (∀ (fuel : nat),
@@ -1053,7 +1053,7 @@ Section ProofReparent.
        (m : regfile) (γs : list gname) (pme ip : mword 64)
       (ps : list (mword 64)) (dqi : dfrac) (lvl K : nat) (eb : bool) (b : bool) (lks : gset string)
     : wp_reparent_sconf_body m γs pme ip ps dqi lvl K eb b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_reparent_sconf_body].
     intros pcE pv rettgt HK Hdom Hlen Hlvl Hno.
     iIntros "Hcg Hown #Htext Hpc #Hpinv Hinit Hpar".

@@ -817,7 +817,7 @@ Section ProofSysOpenPublish.
      reference's half being exactly this shape. *)
   Local Lemma so_word_half_join `{XI : CurCtx} (a : mword 64) (w : mword 64) :
     a ↦₈{DfracOwn (1/2)} w -∗ a ↦₈{DfracOwn (1/2)} w -∗ a ↦₈ w.
-  Proof.
+  Proof using .
     iIntros "H1 H2".
     iDestruct (bi.equiv_entails_1_2 _ _
                  (ctx_word_pointsto_frac_split _ a (1/2) (1/2) w) with "[H1 H2]")
@@ -860,7 +860,7 @@ Section ProofSysOpenPublish.
       a_fmajor kf    ↦₂ fc_major Cf ∗
       a_fip kf       ↦₈ fc_ip Cf ∗
       off_free kf 1.
-  Proof.
+  Proof using .
     iIntros "(%Cf & Href & Hflds & (%pn & %Hok & Hnames & Hcore) & Hlive)".
     cbn in Hok. set (Ht := Hok : fc_type Cf = FD_NONE).
     iEval (rewrite (file_core_none kf 1 pn Cf Ht)) in "Hcore".
@@ -876,7 +876,7 @@ Section ProofSysOpenPublish.
      arm, so the conditional [off_wf] premise costs it nothing *)
   Lemma so_wf_dev `{XI : CurCtx} (v : mword 32) :
     FD_DEVICE = FD_INODE -> off_wf v.
-  Proof.
+  Proof using .
     intro Hc. exfalso. apply (f_equal bv_unsigned) in Hc. by vm_compute in Hc.
   Qed.
 
@@ -907,7 +907,7 @@ Section ProofSysOpenPublish.
     off_rows off_cfg kk cur_ctx ={E}=∗
     own_context cur_ctx ∗ off_rows off_cfg kk cur_ctx ∗
     ∃ γb : box_names, off_fd kf 1 γb γo C.
-  Proof.
+  Proof using .
     iIntros (HE Hkk Hip Hty) "Hctx Hres Hrows".
     (* the fd's box: four fresh ghosts, then the birth (OffBox.off_publish_park) *)
     iMod (own_alloc (● (∅ : gmap (nat * nat) ufrac))) as (γs) "Hst".
@@ -989,7 +989,7 @@ Section ProofSysOpenPublish.
        by [C], [inum] and [γo] ([fdstate_ok_inj]); it is a parameter rather
        than a projection because [fdstate_ok] is a relation -- see its note. *)
     |={E}=> ∃ st : fdstate, ⌜fdstate_ok inum γo (fp_pipe pn) C st⌝ ∗ file_ref gf kf 1 st.
-  Proof.
+  Proof using .
     intros Hqs HEi Hkk Hinb Hipos Hip Hty Hwrb Hrdb Hwdb Hdir Hdvw Hle. subst qi.
     iIntros "#Hfl Hkeep Hru Hshr #Hshot Href Hlive Hflds Hnames Hcoff".
     rewrite inode_shr_gen_intro.
@@ -1056,7 +1056,7 @@ Section ProofSysOpenPublish.
     bv_unsigned (di_type dn) <> 0 ->
     inode_ok fsc_cov fsc_logst (di_trunc dn) bm_empty
              (fun _ => replicate BSIZE (bv_0 8)).
-  Proof.
+  Proof using .
     intro Hty. rewrite /inode_ok /di_trunc. cbn [di_type di_size di_addrs].
     split_and!.
     - apply bm_empty_wf.
@@ -1078,7 +1078,7 @@ Section ProofSysOpenPublish.
      granularity vacuously at size 0. *)
   Lemma so_trunc_rec_local `{XI : CurCtx} (dn : dinode) :
     inode_rec_local dn -> inode_rec_local (di_trunc dn).
-  Proof.
+  Proof using .
     intros Hrl. apply (inode_rec_local_same_type dn (di_trunc dn) Hrl eq_refl).
     - exact (proj1 (proj2 Hrl)).
     - intros _. change (di_size (di_trunc dn)) with (bv_0 32).
@@ -1102,7 +1102,7 @@ Section ProofSysOpenPublish.
          MOVES the record, so the walk retags it between this peel and the
          seal below ([InodeRegion.ireg_top_retag_*]). *)
       top_frag (fs_gamma_L fsc_fs) (bv_unsigned inum) (era_node dn bm data).
-  Proof.
+  Proof using .
     iIntros "H".
     iDestruct (ic_loaded_open with "H") as (data)
       "(%Hok & %Hrl & %Hdir & %Hddix & %Hdoc & %Hduq & Hlnk & Hat & Hmeta &
@@ -1140,7 +1140,7 @@ Section ProofSysOpenPublish.
              (era_node (di_trunc dn) bm_empty
                        (fun _ => replicate BSIZE (bv_0 8))) -∗
     ic_loaded fsc_fs fsc_ireg fsc_cov fsc_logst k inum (di_trunc dn) bm_empty.
-  Proof.
+  Proof using .
     intros Hnz Hnd Hrl. iIntros "Hat Hmeta [Haddr Hind] Hblk Htop".
     assert (Hty : di_type (di_trunc dn) = di_type dn) by reflexivity.
     iApply (ic_mk_loaded fsc_fs fsc_ireg fsc_cov fsc_logst k inum (di_trunc dn) bm_empty
@@ -1189,7 +1189,7 @@ Section ProofSysOpenFrame.
     bytes_own (KTR := KT1) (DfracOwn 1) (pa_stk sp0 22) 128 ∗
     (∃ w : mword 64, (pa_stk sp0 23) ↦₈[KT1] w) ∗
     (∃ w : mword 64, (pa_stk sp0 24) ↦₈[KT1] w).
-  Proof.
+  Proof using .
     iIntros "H". rewrite (stack_own_slots (KTR := KT1)). cbn [seq].
     iDestruct "H" as "(H1 & H2 & H3 & H4 & H5 & H6 & H7 & H8 & H9 & H10 &
                        H11 & H12 & H13 & H14 & H15 & H16 & H17 & H18 & H19 &
@@ -1220,7 +1220,7 @@ Section ProofSysOpenFrame.
     bytes_own (KTR := KT1) (DfracOwn 1) (pa_stk sp0 22) 128 -∗
     (pa_stk sp0 23) ↦₈[KT1] w23 -∗ (pa_stk sp0 24) ↦₈[KT1] w24 -∗
     stack_own (KTR := KT1) sp0 24.
-  Proof.
+  Proof using .
     intro HalP. iIntros "H1 H2 H3 H4 H5 H6 HbP H23 H24".
     (* the [8 * n] conversion is done INSIDE the framing braces, never on the
        goal: a goal-level [change] survives into the [cbn [seq]] below, which
@@ -1257,7 +1257,7 @@ Section ProofSysOpenFrame.
   Lemma so_omode_split `{XI : CurCtx} (sp0 : mword 64) (w : mword 64) :
     (pa_stk sp0 23) ↦₈[KT1] w ⊢
     (pa_stk sp0 23) ↦₄[KT1] word_lo w ∗ (pa_add (pa_stk sp0 23) 4) ↦₄[KT1] word_hi w.
-  Proof.
+  Proof using .
     (* A6.58: [↦₄]/[↦₂] ARE the context towers; the halving stays in tier. *)
     iIntros "H".    iDestruct (ctx_word_pointsto_split4 with "H") as "[Hlo Hhi]".
     iFrame "Hlo Hhi".
@@ -1267,7 +1267,7 @@ Section ProofSysOpenFrame.
     is_aligned_paddr (Physaddr (pa_stk sp0 23)) 8 = true ->
     (pa_stk sp0 23) ↦₄[KT1] lo -∗ (pa_add (pa_stk sp0 23) 4) ↦₄[KT1] hi -∗
     (pa_stk sp0 23) ↦₈[KT1] word_of_words lo hi.
-  Proof.
+  Proof using .
     intro Hal. iIntros "Hlo Hhi".
     iApply (ctx_word_pointsto_join4 _ _ _ _ _ Hal with "Hlo Hhi").
   Qed.
@@ -1277,11 +1277,11 @@ Section ProofSysOpenFrame.
   Lemma so_bytes_name `{XI : CurCtx} (a : mword 64) (N : nat) :
     bytes_own (KTR := KT1) (DfracOwn 1) a N ⊢
     ∃ f : nat -> bv 8, [∗ list] j ∈ seq 0 N, pa_add a j ↦ₘ[KT1] f j.
-  Proof. rewrite /bytes_own. exact (bb_any_named (KTR := KT1) a N). Qed.
+  Proof using . rewrite /bytes_own. exact (bb_any_named (KTR := KT1) a N). Qed.
 
   Lemma so_name_bytes `{XI : CurCtx} (a : mword 64) (N : nat) (f : nat -> bv 8) :
     ([∗ list] j ∈ seq 0 N, pa_add a j ↦ₘ[KT1] f j) ⊢ bytes_own (KTR := KT1) (DfracOwn 1) a N.
-  Proof. rewrite /bytes_own. exact (bb_named_any (KTR := KT1) a N f). Qed.
+  Proof using . rewrite /bytes_own. exact (bb_named_any (KTR := KT1) a N f). Qed.
 
   (* 128 = (k+1) + (127-k): the walkers read the NUL-terminated prefix, the
      rest rides through untouched *)
@@ -1291,7 +1291,7 @@ Section ProofSysOpenFrame.
     ([∗ list] j ∈ seq 0 (S k), pa_add a j ↦ₘ[KT1] f j)
     ∗ ([∗ list] j ∈ seq 0 (127 - k)%nat,
          pa_add (pa_add a (S k)) j ↦ₘ[KT1] f (S k + j)%nat).
-  Proof.
+  Proof using .
     intro Hk.
     replace 128%nat with (S k + (127 - k))%nat by lia.
     rewrite (bb_split a (S k) (127 - k)%nat f). iIntros "[$ $]".
@@ -1303,7 +1303,7 @@ Section ProofSysOpenFrame.
     ([∗ list] j ∈ seq 0 (127 - k)%nat,
        pa_add (pa_add a (S k)) j ↦ₘ[KT1] f (S k + j)%nat) -∗
     bytes_own (KTR := KT1) (DfracOwn 1) a 128.
-  Proof.
+  Proof using .
     intro Hk. iIntros "H1 H2".
     iDestruct (so_name_bytes a (S k) f with "H1") as "B1".
     iDestruct (so_name_bytes (pa_add a (S k)) (127 - k)%nat
@@ -1382,7 +1382,7 @@ Section ProofSysOpenEpilogue.
         pc_is (ret_pc (m !!! Regidx Rra : mword 64)) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK24 Kpop Hsp0 HMsp HMthr HMs1 HMs2 HMs3 Hal.
     iIntros "Hcg #Htext Hpc Hf1 Hf2 Hf3 Hf4 Hf5 Hf6 HbP H23 H24 Hcont".
     assert (Hc1 : add_vec (M !!! Regidx csp_rs1 : mword 64)

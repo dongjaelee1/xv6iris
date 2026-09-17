@@ -376,10 +376,10 @@ Section WaitInv.
   Definition parents_own (ps : list (mword 64)) : iProp Σ := parents_own_at cur_ctx ps.
 
   Global Instance parents_own_at_morph ps : CtxMorph (λ ξ, parents_own_at ξ ps).
-  Proof. rewrite /parents_own_at. ctx_morph_solve. Qed.
+  Proof using . rewrite /parents_own_at. ctx_morph_solve. Qed.
 
   Lemma parents_own_length ps : parents_own ps -∗ ⌜length ps = NPROC⌝.
-  Proof. iIntros "[% _]". done. Qed.
+  Proof using . iIntros "[% _]". done. Qed.
 
 
   (* ------------------------------------------------------------------ *)
@@ -423,7 +423,7 @@ Section WaitInv.
   Lemma gen_halves_zeros (ps : list (mword 64)) (gs : list gname) :
     (forall (k : nat) (v : mword 64), ps !! k = Some v -> v = (zero_reg : mword 64)) ->
     ⊢ gen_halves ps gs.
-  Proof.
+  Proof using .
     intro Hz. rewrite /gen_halves.
     iApply big_sepL_intro. iIntros "!>" (k v Hv).
     rewrite (bool_decide_eq_true_2 (v = (zero_reg : mword 64)) (Hz k v Hv)).
@@ -441,7 +441,7 @@ Section WaitInv.
     (j < length ps)%nat ->
     gen_halves ps gs -∗ slot_gen (proc_addr j) (DfracOwn (3/4)) g -∗
     ⌜ps !! j = Some (zero_reg : mword 64)⌝.
-  Proof.
+  Proof using .
     intro Hj. iIntros "Hgh Hsg".
     destruct (lookup_lt_is_Some_2 ps j Hj) as [v Hv].
     rewrite /gen_halves.
@@ -473,7 +473,7 @@ Section WaitInv.
                pid_reg pid (DfracOwn (3/4)) g ∗
                gen_slot g (proc_addr k) ∗ gen_pid g pid) -∗
        gen_halves (<[k := v']> ps) gs).
-  Proof.
+  Proof using .
     intro Hk. rewrite /gen_halves.
     iIntros "H". iApply (big_sepL_insert_acc _ _ k v Hk with "H").
   Qed.
@@ -493,7 +493,7 @@ Section WaitInv.
             pid_reg pid (DfracOwn (3/4)) g ∗
             gen_slot g (proc_addr k) ∗ gen_pid g pid) ∗
     gen_halves (<[k := (zero_reg : mword 64)]> ps) gs.
-  Proof.
+  Proof using .
     intro Hk. rewrite /gen_halves. iIntros "H".
     iDestruct (big_sepL_insert_acc _ _ k v Hk with "H") as "[$ Hback]".
     iApply ("Hback" $! (zero_reg : mword 64)).
@@ -510,7 +510,7 @@ Section WaitInv.
     ⌜forall (k : nat) (v : mword 64),
        ps !! k = Some v -> v <> (zero_reg : mword 64) ->
        gs !! k = Some g -> proc_addr k = pa⌝.
-  Proof.
+  Proof using .
     iIntros "Hgh #Hg". rewrite /gen_halves.
     iDestruct (big_sepL_impl _
                  (fun (k : nat) (v : mword 64) =>
@@ -545,7 +545,7 @@ Section WaitInv.
       (gs : list gname) :
     p <> (zero_reg : mword 64) ->
     gen_halves ps gs -∗ gen_halves (rp_map p ip ps) gs.
-  Proof.
+  Proof using .
     intro Hp. rewrite /gen_halves /rp_map big_sepL_fmap.
     iIntros "H". iApply (big_sepL_mono with "H").
     iIntros (k v _) "H". rewrite /rp_slot.
@@ -566,7 +566,7 @@ Section WaitInv.
       (j : nat) (g : gname) :
     ps !! j = Some (zero_reg : mword 64) ->
     gen_halves ps gs -∗ gen_halves ps (<[j := g]> gs).
-  Proof.
+  Proof using .
     intro Hj. rewrite /gen_halves.
     iIntros "H". iApply (big_sepL_impl with "H").
     iIntros "!>" (k v Hv) "He".
@@ -647,14 +647,14 @@ Section WaitInv.
     (γ ↪[wch_name] (pa, S))%I.
 
   Global Instance ch_frag_timeless γ pa S : Timeless (ch_frag γ pa S).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* A ROW READS THE AUTHORITY -- the lemma the map shape exists for: a
      lock holder that also holds a row learns WHICH entry is its own, and
      that is what a per-slot pair of [ghost_var] halves could not say. *)
   Lemma children_own_lookup m γ pa S :
     children_own_at m -∗ ch_frag γ pa S -∗ ⌜m !! γ = Some (pa, S)⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Hf". rewrite /children_own_at /ch_frag.
     by iDestruct (ghost_map_lookup with "Ha Hf") as %Hm.
   Qed.
@@ -667,7 +667,7 @@ Section WaitInv.
   Lemma children_own_upd m γ pa S S' :
     children_own_at m -∗ ch_frag γ pa S ==∗
     children_own_at (<[γ := (pa, S')]> m) ∗ ch_frag γ pa S'.
-  Proof.
+  Proof using .
     iIntros "Ha Hf". rewrite /children_own_at /ch_frag.
     by iMod (ghost_map_update (pa, S') with "Ha Hf") as "[$ $]".
   Qed.
@@ -744,18 +744,18 @@ Section WaitInv.
        pid_reg p0 DfracDiscarded g)%I.
 
   Global Instance init_gen_persistent ip p0 : Persistent (init_gen ip p0).
-  Proof. rewrite /init_gen. apply _. Qed.
+  Proof using . rewrite /init_gen. apply _. Qed.
 
   Lemma init_gen_pid_is (ip : mword 64) (p0 : mword 32) :
     init_gen ip p0 -∗ init_pid_is p0.
-  Proof. iIntros "(%g & _ & _ & $ & _)". Qed.
+  Proof using . iIntros "(%g & _ & _ & $ & _)". Qed.
 
   (* ...AND WHAT A FRESH PID IS REFUTED AGAINST: <init>'s pid IS in the
      register, so a key the scan proved absent is not it. *)
   Lemma init_gen_reg_ne (R : gmap Z gname) (ip : mword 64) (p0 pidc : mword 32) :
     R !! bv_unsigned pidc = None ->
     pid_reg_auth R -∗ init_gen ip p0 -∗ ⌜pidc <> p0⌝.
-  Proof.
+  Proof using .
     intro Hfree. iIntros "Ha (%g & _ & _ & _ & #Hreg)".
     iDestruct (pid_reg_lookup with "Ha Hreg") as %Hl.
     iPureIntro. intro He. subst pidc. rewrite Hl in Hfree. discriminate.
@@ -789,7 +789,7 @@ Section WaitInv.
     ctx_word_pointsto ξ (mword_of_int KernelSyms.initproc : mword 64)
       DfracDiscarded ip -∗
     init_gen ip (mword_of_int 1 : mword 32) -∗ init_ident_at ξ ip.
-  Proof.
+  Proof using .
     iIntros "#Hc (%g & #Hsg & #Hgp & #Hi & _)". rewrite /init_ident_at.
     iFrame "Hc". iExists g. iFrame "Hsg Hgp Hi".
   Qed.
@@ -801,18 +801,18 @@ Section WaitInv.
      it without gaining a premise. *)
   Lemma init_gen_reg (ip : mword 64) :
     init_gen ip (mword_of_int 1 : mword 32) -∗ SlotGen.init_reg.
-  Proof. iIntros "(%g & _ & _ & _ & #Hreg)". iExists g. iExact "Hreg". Qed.
+  Proof using . iIntros "(%g & _ & _ & _ & #Hreg)". iExists g. iExact "Hreg". Qed.
 
   (* the reading the syscall layer relays to kwait's contract *)
   Lemma init_ident_pid_is (ξ : CtxId) (ip : mword 64) :
     init_ident_at ξ ip -∗ init_pid_is (mword_of_int 1 : mword 32).
-  Proof. iIntros "[_ (%g & _ & _ & $)]". Qed.
+  Proof using . iIntros "[_ (%g & _ & _ & $)]". Qed.
 
   Global Instance init_ident_at_persistent ξ ip : Persistent (init_ident_at ξ ip).
-  Proof. rewrite /init_ident_at. apply _. Qed.
+  Proof using . rewrite /init_ident_at. apply _. Qed.
 
   Global Instance init_ident_at_morph ip : CtxMorph (λ ξ, init_ident_at ξ ip).
-  Proof. rewrite /init_ident_at. ctx_morph_solve. Qed.
+  Proof using . rewrite /init_ident_at. ctx_morph_solve. Qed.
 
   (* WHAT A PROCESS AT <INIT>'S ADDRESS READS OFF IT: its own block's
      quarter of the slot generation meets the sealed one, so the
@@ -823,7 +823,7 @@ Section WaitInv.
     init_ident_at ξ pme -∗
     slot_gen pme (DfracOwn (1/4)) gn -∗
     slot_gen pme (DfracOwn (1/4)) gn ∗ gen_is_init gn.
-  Proof.
+  Proof using .
     iIntros "[#Hip (%g & #Hsg & #Hgp & #Hi)] Hsgq".
     iDestruct (slot_gen_agree with "Hsg Hsgq") as %<-.
     iFrame "Hsgq". iExists (mword_of_int 1 : mword 32). iFrame "Hi Hgp".
@@ -843,21 +843,21 @@ Section WaitInv.
   Definition orph_at_init (O : orph_map) : iProp Σ := orph_at_init_at cur_ctx O.
 
   Global Instance orph_at_init_at_persistent ξ O : Persistent (orph_at_init_at ξ O).
-  Proof. rewrite /orph_at_init_at. apply _. Qed.
+  Proof using . rewrite /orph_at_init_at. apply _. Qed.
 
   Global Instance orph_at_init_at_morph O : CtxMorph (λ ξ, orph_at_init_at ξ O).
-  Proof. rewrite /orph_at_init_at. ctx_morph_solve. Qed.
+  Proof using . rewrite /orph_at_init_at. ctx_morph_solve. Qed.
 
   (* it is free at an empty column, which is where the boot founds it *)
   Lemma orph_at_init_empty (ξ : CtxId) :
     ⊢ orph_at_init_at ξ (∅ : orph_map).
-  Proof. rewrite /orph_at_init_at. by rewrite big_sepM_empty. Qed.
+  Proof using . rewrite /orph_at_init_at. by rewrite big_sepM_empty. Qed.
 
   (* ...and what a reader takes out of it *)
   Lemma orph_at_init_read (ξ : CtxId) (O : orph_map) (pa : mword 64) (g : gname) :
     g ∈ orph_row O pa ->
     orph_at_init_at ξ O -∗ init_ident_at ξ pa.
-  Proof.
+  Proof using .
     intro Hin. rewrite /orph_at_init_at.
     destruct (O !! pa) as [S |] eqn:Ho;
       [| exfalso; rewrite /orph_row Ho in Hin; cbn in Hin; set_solver ].
@@ -876,7 +876,7 @@ Section WaitInv.
       (Sr : gset gname) :
     Sr ⊆ orph_row O pa ->
     orph_at_init_at ξ O -∗ orph_at_init_at ξ (<[pa := Sr]> O).
-  Proof.
+  Proof using .
     intro Hsub. rewrite /orph_at_init_at. iIntros "H".
     rewrite big_sepM_insert_delete.
     destruct (O !! pa) as [S0 |] eqn:Ho.
@@ -897,7 +897,7 @@ Section WaitInv.
       (Sr : gset gname) :
     (⌜Sr = (∅ : gset gname)⌝ ∨ init_ident_at ξ pa) -∗
     orph_at_init_at ξ O -∗ orph_at_init_at ξ (<[pa := Sr]> O).
-  Proof.
+  Proof using .
     rewrite /orph_at_init_at. iIntros "#Hpa H".
     rewrite big_sepM_insert_delete.
     iSplitR; [ iExact "Hpa" | ].
@@ -919,7 +919,7 @@ Section WaitInv.
     orph_at_init_at ξ O -∗
     slot_gen pme (DfracOwn (1/4)) gn -∗
     slot_gen pme (DfracOwn (1/4)) gn ∗ (⌜g ∈ cs⌝ ∨ gen_is_init gn).
-  Proof.
+  Proof using .
     intro HW2. iIntros "#Hoi Hsgq".
     destruct HW2 as [Hin | Horph]; [ iFrame "Hsgq"; by iLeft | ].
     iDestruct (orph_at_init_read ξ O pme g Horph with "Hoi") as "#Hid".
@@ -937,13 +937,13 @@ Section WaitInv.
 
   Global Instance children_inv_at_morph ps gs m O :
     CtxMorph (λ ξ, children_inv_at ξ ps gs m O).
-  Proof. rewrite /children_inv_at. ctx_morph_solve. Qed.
+  Proof using . rewrite /children_inv_at. ctx_morph_solve. Qed.
 
   (* the persistent half of the invariant, read off without spending it *)
   Lemma children_inv_orph_all (ps : list (mword 64)) (gs : list gname)
       (m : gmap gname (mword 64 * gset gname)) (O : orph_map) :
     children_inv ps gs m O -∗ orph_at_init O ∗ children_inv ps gs m O.
-  Proof.
+  Proof using .
     rewrite /children_inv /children_inv_at /orph_at_init.
     iIntros "(Hgh & %Hp & #Hoi)". iFrame "Hoi Hgh". by iPureIntro.
   Qed.
@@ -956,7 +956,7 @@ Section WaitInv.
       (pa : mword 64) (g : gname) :
     g ∈ orph_row O pa ->
     children_inv ps gs m O -∗ init_ident pa.
-  Proof.
+  Proof using .
     intro Hin. rewrite /children_inv /children_inv_at.
     iIntros "(_ & _ & #Hoi)".
     iApply (orph_at_init_read cur_ctx O pa g Hin with "Hoi").
@@ -1004,12 +1004,12 @@ Section WaitInv.
     ghost_var worph_name 1 O.
 
   Global Instance orphans_own_timeless O : Timeless (orphans_own O).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* the move: what reparent does to this column -- see [op_map]. *)
   Lemma orphans_add (O : orph_map) (pa ip : mword 64) (S : gset gname) :
     orphans_own O ==∗ orphans_own (op_map pa ip O S).
-  Proof.
+  Proof using .
     iIntros "H". rewrite /orphans_own.
     by iMod (ghost_var_update (op_map pa ip O S) with "H") as "$".
   Qed.
@@ -1017,7 +1017,7 @@ Section WaitInv.
   (* ...and the reap's, at one key *)
   Lemma orphans_del (O : orph_map) (pa : mword 64) (g : gname) :
     orphans_own O ==∗ orphans_own (<[pa := orph_row O pa ∖ {[g]}]> O).
-  Proof.
+  Proof using .
     iIntros "H". rewrite /orphans_own.
     by iMod (ghost_var_update (<[pa := orph_row O pa ∖ {[g]}]> O) with "H") as "$".
   Qed.
@@ -1041,7 +1041,7 @@ Section WaitInv.
     (j < length ps)%nat ->
     children_inv ps gs m O -∗ slot_gen (proc_addr j) (DfracOwn (3/4)) g -∗
     ⌜ps !! j = Some (zero_reg : mword 64)⌝.
-  Proof.
+  Proof using .
     intro Hj. rewrite /children_inv /children_inv_at. iIntros "(Hgh & _ & _) Hsg".
     iApply (gen_halves_no_entry ps gs j g Hj with "Hgh Hsg").
   Qed.
@@ -1065,7 +1065,7 @@ Section WaitInv.
     gen_slot g (proc_addr j) -∗ gen_pid g pid -∗
     children_inv (<[j := pa]> ps) (<[j := g]> gs)
                  (<[γ0 := (pa, cs ∪ {[g]})]> m) O.
-  Proof.
+  Proof using .
     intros Hj Hm. rewrite /children_inv /children_inv_at.
     iIntros "(Hgh & %Hp & #Hoi) Hsg Hpr #Hgs #Hgp".
     destruct Hp as (Hlps & Hlgs & Hru & Hig & Hir & Hio & Hisl).
@@ -1192,7 +1192,7 @@ Section WaitInv.
     children_inv ps gs m O -∗
     children_inv (rp_map pa ip ps) gs
                  (<[γ0 := (pa, (∅ : gset gname))]> m) (op_map pa ip O S).
-  Proof.
+  Proof using .
     intros Hpa Hm. rewrite /children_inv /children_inv_at.
     iIntros "#Hid (Hgh & %Hp & #Hoi)".
     destruct Hp as (Hlps & Hlgs & Hru & Hig & Hir & Hio & Hisl).
@@ -1326,7 +1326,7 @@ Section WaitInv.
     children_inv (<[k := (zero_reg : mword 64)]> ps) gs
                  (<[γ0 := (pj, cs ∖ {[g]})]> m)
                  (<[pj := orph_row O pj ∖ {[g]}]> O).
-  Proof.
+  Proof using .
     intros Hpj Hk Hm. rewrite /children_inv /children_inv_at.
     iIntros "(Hgh & %Hp & #Hoi) Hsg".
     destruct Hp as (Hlps & Hlgs & Hru & Hig & Hir & Hio & Hisl).
@@ -1464,7 +1464,7 @@ Section WaitInv.
     m !! γ0 = Some (pj, cs) ->
     g ∈ cs ->
     children_inv ps gs m O -∗ gen_pid g pid -∗ pid_reg pid dq g' -∗ ⌜g = g'⌝.
-  Proof.
+  Proof using .
     intros Hpj Hm Hin. rewrite /children_inv /children_inv_at.
     iIntros "(Hgh & %Hp & _) #Hgp Hpr".
     destruct Hp as (Hlps & Hlgs & Hru & Hig & Hir & Hio & Hisl).
@@ -1495,7 +1495,7 @@ Section WaitInv.
     children_inv ps gs m O -∗ pid_reg pid dq g' -∗
     (∃ pidg : mword 32, gen_pid g pidg ∗ ⌜pidg = pid -> g = g'⌝) ∗
     children_inv ps gs m O ∗ pid_reg pid dq g'.
-  Proof.
+  Proof using .
     intros Hpj Hm Hin. rewrite /children_inv /children_inv_at.
     iIntros "(Hgh & %Hp & #Hoi) Hpr".
     pose proof Hp as Hp'.
@@ -1536,7 +1536,7 @@ Section WaitInv.
     ([∗ set] g ∈ X, ∃ pidg : mword 32,
        gen_pid g pidg ∗ ⌜pidg = pid -> g = g'⌝) ∗
     children_inv ps gs m O ∗ pid_reg pid dq g'.
-  Proof.
+  Proof using .
     intros Hpj Hm.
     induction X as [| g X Hnotin IH] using set_ind_L; intro Hsub.
     - iIntros "Hci Hpr". rewrite big_sepS_empty. iFrame "Hci Hpr".
@@ -1561,7 +1561,7 @@ Section WaitInv.
     m !! γ0 = Some (pj, cs) ->
     children_inv ps gs m O -∗ pid_reg pid dq g' -∗
     gen_uniq cs pid g' ∗ children_inv ps gs m O ∗ pid_reg pid dq g'.
-  Proof.
+  Proof using .
     intros Hpj Hm. rewrite /gen_uniq. iIntros "Hci Hpr".
     iApply (children_inv_pid_sub ps gs m O γ0 pj cs g' pid dq cs Hpj Hm
               ltac:(reflexivity) with "Hci Hpr").
@@ -1580,7 +1580,7 @@ Section WaitInv.
     m !! γ0 = Some (pj, cs) ->
     children_inv ps gs m O -∗
     ⌜cs = (∅ : gset gname) /\ orph_row O pj = (∅ : gset gname)⌝.
-  Proof.
+  Proof using .
     intros Hpj Hscan Hm. rewrite /children_inv /children_inv_at. iIntros "(_ & %Hp & _)".
     destruct Hp as (Hlps & Hlgs & Hru & Hig & Hir & Hio & Hisl).
     iPureIntro. split.
@@ -1632,7 +1632,7 @@ Section WaitInv.
   Lemma children_boot_split :
     children_boot -∗
     init_pid_tok (mword_of_int 0 : mword 32) ∗ children_boot_rows.
-  Proof. iIntros "H". iExact "H". Qed.
+  Proof using . iIntros "H". iExact "H". Qed.
 
   (* WHAT [wait_lock] PROTECTS, IN ONE EXISTENTIAL: the parent cells, the
      children rows, the orphan rows, and the invariant that ties the four
@@ -1649,9 +1649,9 @@ Section WaitInv.
   Definition wait_res : iProp Σ := wait_res_at cur_ctx.
 
   Global Instance parents_res_at_morph : CtxMorph parents_res_at.
-  Proof. rewrite /parents_res_at. ctx_morph_solve. Qed.
+  Proof using . rewrite /parents_res_at. ctx_morph_solve. Qed.
   Global Instance wait_res_at_morph : CtxMorph wait_res_at.
-  Proof. rewrite /wait_res_at. ctx_morph_solve. Qed.
+  Proof using . rewrite /wait_res_at. ctx_morph_solve. Qed.
 
   (* THE BOOT CARVE'S SHAPE, GATHERED.  [BootCarveMain.boot_procs_raw] hands
      the parent cells out one per slot; [parents_own] wants ONE
@@ -1669,7 +1669,7 @@ Section WaitInv.
     ([∗ list] i ∈ seq k n, p_parent (proc_addr i) ↦₈ (zero_reg : mword 64))
     -∗ [∗ list] j ↦ v ∈ replicate n (zero_reg : mword 64),
          p_parent (proc_addr (k + j)) ↦₈ v.
-  Proof.
+  Proof using .
     revert k. induction n as [|n IH]; intros k.
     - iIntros "_". done.
     - cbn [seq replicate]. rewrite !big_sepL_cons.
@@ -1691,7 +1691,7 @@ Section WaitInv.
   Lemma parents_res_of_cells :
     ([∗ list] i ∈ seq 0 NPROC, p_parent (proc_addr i) ↦₈ (zero_reg : mword 64))
     -∗ parents_res.
-  Proof.
+  Proof using .
     iIntros "H".
     iDestruct (parents_cells_gather NPROC 0 with "H") as "H".
     rewrite /parents_res /parents_res_at.
@@ -1711,7 +1711,7 @@ Section WaitInv.
      arbitrary -- nothing reads a name at an unoccupied slot. *)
   Lemma wait_res_alloc :
     parents_res -∗ children_res_boot -∗ orphans_own (∅ : orph_map) -∗ wait_res.
-  Proof.
+  Proof using .
     iIntros "Hp Hc Ho".
     iDestruct "Hp" as (ps) "[Hps %Hz]".
     iDestruct "Hc" as (m) "[Hm %Hm0]".
@@ -1750,7 +1750,7 @@ Section WaitInv.
     parents_own ps -∗
     p_parent (proc_addr j) ↦₈ v ∗
     (∀ v' : mword 64, p_parent (proc_addr j) ↦₈ v' -∗ parents_own (<[j := v']> ps)).
-  Proof.
+  Proof using .
     intro Hj. iIntros "[%Hlen Hcells]".
     iDestruct (big_sepL_insert_acc _ _ j v Hj with "Hcells") as "[Hc Hback]".
     iFrame "Hc". iIntros (v') "Hc".
@@ -1764,7 +1764,7 @@ Section WaitInv.
     ps !! j = Some v ->
     parents_own ps -∗
     p_parent (proc_addr j) ↦₈ v ∗ (p_parent (proc_addr j) ↦₈ v -∗ parents_own ps).
-  Proof.
+  Proof using .
     intro Hj. iIntros "H".
     iDestruct (parents_own_acc ps j v Hj with "H") as "[Hc Hback]".
     iFrame "Hc". iIntros "Hc".
@@ -1818,7 +1818,7 @@ Section WaitInvBoot.
        forall (γ0 : gname) (pa : mword 64) (S : gset gname),
          m' !! γ0 = Some (pa, S) -> S = (∅ : gset gname)⌝ ∗
       [∗ list] i ∈ seq k n, ∃ γ0 : gname, γ0 ↪[γ] (proc_addr i, (∅ : gset gname)).
-  Proof.
+  Proof using .
     revert k m. induction n as [|n IH]; intros k m Hle Hm Hru.
     - iIntros "Ha". iModIntro. iExists m. iFrame "Ha".
       iSplitR; [| done]. iPureIntro. split; [exact Hru |].

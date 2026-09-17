@@ -309,7 +309,7 @@ Section SysMknod.
     arg_path_of M pv pl ->
     mknod_au_at Γ γfs cw M pv ma mi P Pmiss Farm Fun Fok Fex -∗
     mknod_au_pre Γ γfs cw pl ma mi P Pmiss Farm Fun Fok Fex.
-  Proof.
+  Proof using .
     iIntros (Hpl) "(Hw & Hok & Hex & Hch)". rewrite /mknod_au_pre.
     iFrame "Hok Hex Hch". iApply ("Hw" $! pl with "[%]"). exact Hpl.
   Qed.
@@ -327,7 +327,7 @@ Section SysMknod.
     pf_at (dlookup_commit_at Γ appE) Fex -∗
     cre_child_unfired Γ (ADev ma mi) Farm Fun -∗
     mknod_au_at Γ γfs cw M pv ma mi P Pmiss Farm Fun Fok Fex.
-  Proof.
+  Proof using .
     iIntros "Hw Hok Hex Hch". rewrite /mknod_au_at. iFrame "Hok Hex Hch".
     iIntros (pl) "_". iApply (np_start_of_mknod γfs cw P Pmiss pl with "Hw").
   Qed.
@@ -342,7 +342,7 @@ Section SysMknod.
     pf_at (dlookup_commit_at Γ appE) Fex -∗
     cre_child_unfired Γ (ADev ma mi) Farm Fun -∗
     mknod_au_pre Γ γfs cw pl ma mi P Pmiss Farm Fun Fok Fex.
-  Proof.
+  Proof using .
     iIntros "Hw Hok Hex Hch". rewrite /mknod_au_pre. iFrame "Hok Hex Hch".
     iApply (np_start_of_mknod γfs cw P Pmiss pl with "Hw").
   Qed.
@@ -432,7 +432,7 @@ Section SysMknod.
       (Farm Fun : pfam Σ (aview -> Z -> iProp Σ))
       (Fok Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ)) (r : mword 64) :
     mknod_arms Γ γfs cw M pv ma mi P Pmiss Farm Fun Fok Fex r ⊢ ⌜sys_mknod_ret r⌝.
-  Proof.
+  Proof using .
     rewrite /mknod_arms /sys_mknod_ret.
     iIntros "[[%Hr _] | [%Hr _]]"; iPureIntro; [left | right]; exact Hr.
   Qed.
@@ -466,11 +466,11 @@ Section SysMknod.
     ([∗ list] j ↦ _ ∈ ps, mkr_pin Γ avc (ds !!! j))%I.
 
   Global Instance mkr_pin_persistent Γ avc d : Persistent (mkr_pin Γ avc d).
-  Proof. rewrite /mkr_pin /nview_dq /top_frag_q. apply _. Qed.
+  Proof using . rewrite /mkr_pin /nview_dq /top_frag_q. apply _. Qed.
 
   Global Instance mkr_chain_persistent Γ avc ds ps :
     Persistent (mkr_chain Γ avc ds ps).
-  Proof. rewrite /mkr_chain. apply _. Qed.
+  Proof using . rewrite /mkr_chain. apply _. Qed.
 
   (* THE ENRICHED RECEIPT, and it is the whole of what the pins buy: at the
      instant the receipt fires, the client's run is a run OF THE LIVE VIEW

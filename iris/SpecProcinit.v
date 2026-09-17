@@ -164,7 +164,7 @@ Section SpecProcinit.
     kstack_bank ⊢
     [∗ list] i ∈ seq 0 NPROC,
       stack_own (KTR := KT1) (add_vec (kstack_va i) (mword_of_int 4096)) KSTACK_AV.
-  Proof.
+  Proof using .
     rewrite /kstack_bank /NPROC.
     iIntros "H". iApply (big_sepL_mono with "H").
     iIntros (k i _) "Hs".
@@ -212,7 +212,7 @@ Section ProcinitSeals.
     lk_fresh (proc_addr i) "proc"%string ∗
     p_kstack (proc_addr i) ↦₈ kstack_va i ∗
     proc_lock_res γs γl (proc_addr i).
-  Proof.
+  Proof using .
     iIntros "(Hlk & Hst & Hks & Hdorm) Hch Hpub Hpark Hg Hkst Hrow Hsg".
     iFrame "Hlk Hks".
     rewrite /proc_lock_res /proc_lock_res_at.
@@ -255,7 +255,7 @@ Section ProcinitProcsInv.
     lk_fresh lk s -∗
     lock_name lk s ∗ lk ↦₄ (mword_of_int 0 : mword 32) ∗
     WpLock.lk_cpu_ready lk.
-  Proof. rewrite /lk_fresh /lk_cpu /lock_cpu. iIntros "($ & $ & $)". Qed.
+  Proof using . rewrite /lk_fresh /lk_cpu /lock_cpu. iIntros "($ & $ & $)". Qed.
 
   (* what is left of one process once its lock word and name have gone into
      the (delayed) allocation: exactly the cells [proc_lock_res] at UNUSED
@@ -287,7 +287,7 @@ Section ProcinitProcsInv.
     stack_own (KTR := KT1) (add_vec (kstack_va i) (mword_of_int 4096)) KSTACK_AV -∗
     ch_frag γ0 (proc_addr i) ∅ -∗ slot_gen (proc_addr i) (DfracOwn 1) g -∗
     lk_fresh (proc_addr i) "proc"%string ∗ proc_res i.
-  Proof.
+  Proof using .
     rewrite /proc_ready /proc_res.
     iIntros "($ & Hst & Hks & Hdorm) Hch Hpub Hpark Hg Hstk Hrow Hsg".
     iFrame "Hks Hst Hpub Hdorm Hpark Hg Hstk".
@@ -306,7 +306,7 @@ Section ProcinitProcsInv.
         ([∗ list] i ↦ g ∈ γl,
            (∀ R : CtxId → iProp Σ, ⌜CtxMorph R⌝ -∗ own_context cur_ctx -∗
               R cur_ctx ={E}=∗ own_context cur_ctx ∗ is_lock g (addr i) nm R) ∗ Q i).
-  Proof.
+  Proof using .
     induction n as [|n IH].
     { iIntros "_". iModIntro. iExists []. iSplit; [done|]. done. }
     rewrite seq_S Nat.add_0_l.
@@ -357,7 +357,7 @@ Section ProcinitProcsInv.
     kstack_bank -∗
     own_context cur_ctx
     ={E}=∗ own_context cur_ctx ∗ ∃ γs : list gname, procs_inv γs.
-  Proof.
+  Proof using .
     iIntros "Hin Hrows Hbank Hrun".
     iDestruct (kstack_bank_carve with "Hbank") as "Hstk".
     (* pair each slot's stack AND its row with its resources, so one

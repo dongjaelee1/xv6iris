@@ -190,7 +190,7 @@ Section Pt2ExecSlot.
                               σ.(mdev))
                      tlb (vec_update_dec tlbvec (tlb_hash (__id 39) vpn)
                             (Some (u_walk_entry vpn p2 p1 (pte_set_ad p0 a1 d1) (mword_of_int 0)))))).
-  Proof.
+  Proof using .
     intros vpn p0 Hchk Hcanon Hout Hvarp Hbase Hmaps Htlbok Hsm2 Hsm1 Hsm0
            Hmisa Hmenv Hhtif Hcp Htm Heff Hss Hsatp Hppn Hasid Htlb
            HA Hord HR HW Hcov Hpmar Hpmaw.
@@ -430,7 +430,7 @@ Section Pt2ExecSlot.
                               σ.(mdev))
                      tlb (vec_update_dec tlbvec (tlb_hash (__id 39) vpn)
                             (Some (u_walk_entry vpn p2 p1 (pte_set_ad p0 a1 d1) (mword_of_int 0)))))).
-  Proof.
+  Proof using .
     intros vpn p0 Hchk Hcanon Hout Hvarp Hmaps Hslot Hsm0
            Hmisa Hmenv Hhtif Hcp Htm Heff Hss Hsatp Hppn Hasid Htlb
            HA Hord HR HW Hcov Hpmar Hpmaw.
@@ -629,7 +629,7 @@ Section Pt2CertSlot.
     pma_allows_pte_write (register_lookup pma_regions sg.(sregs)) ->
     goodmb Dr Dw (translate 39 (mword_of_int 0 : mword 16) root_ppn vpn acc pv mxr do_sum tt)
       sg mm = true.
-  Proof.
+  Proof using HDa HDc HDh HDme HDmi HDp HDt HWt.
     intros vpn p0 Hchk Hgchk Hv2 Hn2 Hv1 Hn1 Hv0 Hl0 Hnap Hg2 Hg1 Hg0
            Hsm2 Hsm1 Hsm0 Hown2 Hown1 Hown0
            Hmisa Hmenv Hhtif Htlb Hlk HA Hord HR HW Hcov Hpmar Hpmaw.
@@ -745,7 +745,7 @@ Section Pt2CertSlot.
     pma_allows_pte_read (register_lookup pma_regions sg.(sregs)) ->
     pma_allows_pte_write (register_lookup pma_regions sg.(sregs)) ->
     goodmb Dr Dw (translateAddr (Virtaddr va) acc) sg mm = true.
-  Proof.
+  Proof using HDa HDc HDcp HDh HDme HDmi HDms HDp HDsatp HDt HWt.
     intros vpn p0 Hchk Hgchk Hcanon Hout Hvarp Hbase Hmaps Htlbok Hg2 Hg1 Hg0
            Hsm2 Hsm1 Hsm0 Hown2 Hown1 Hown0
            Hmisa Hmenv Hhtif Hcp Htm Htmg Heff Heffg Hss Hssg
@@ -996,7 +996,7 @@ Section Pt2CertSlot.
     pma_allows_pte_read (register_lookup pma_regions sg.(sregs)) ->
     pma_allows_pte_write (register_lookup pma_regions sg.(sregs)) ->
     goodmb Dr Dw (translateAddr (Virtaddr va) acc) sg mm = true.
-  Proof.
+  Proof using HDa HDc HDcp HDh HDme HDmi HDms HDp HDsatp HDt HWt.
     intros vpn p0 Hchk Hgchk Hcanon Hout Hvarp Hmaps Hslot Hg0 Hsm0 Hown0
            Hmisa Hmenv Hhtif Hcp Htm Htmg Heff Heffg Hss Hssg
            Hsatp Hppn Hasid Htlb HA Hord HR HW Hcov Hpmar Hpmaw.

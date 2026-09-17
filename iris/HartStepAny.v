@@ -144,7 +144,7 @@ Section stepany.
       (fun _ => ∃ (rs2 : regstate) (mi : SailStdpp.Values.mword 64),
                   ⌜Q rs2⌝ ∗ hreg_frame (wrap_post rs2 mi) Drw ∗
                   hreg_frame_ro Df (wrap_post rs2 mi) Dro ∗ R)%I.
-  Proof.
+  Proof using .
     intros Hdisj HDpriv HDhart HDmc HDcfg HWmi HDmi HWms HDms
       HWpc HDpc HDnpc Hhart HQhart HQmi.
     iIntros "#Hcert Hrw Hro Hbody".
@@ -372,7 +372,7 @@ Section stepany.
          hreg_frame rs3 Drw -∗ hreg_frame_ro Df rs3 Dro -∗ Psi -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hdisj HWcy HWti HWip HDpriv HDhart HDmc HDcfg HWmi HDmi HWms HDms
       HWpc HDpc HDnpc Hhart HQhart HQmi Hpre.
     iIntros "#Hcert Hfrag Hrw Hro Hbody Hcont".
@@ -443,7 +443,7 @@ Section stepany.
       (fun _ => ∃ (rs2 : regstate) (mi : SailStdpp.Values.mword 64),
                   ⌜Q rs2⌝ ∗ hreg_frame (wrap_post rs2 mi) Drw ∗
                   hreg_frame_ro Df (wrap_post rs2 mi) Dro ∗ R rs2)%I.
-  Proof.
+  Proof using .
     intros Hdisj HDpriv HDhart HDmc HDcfg HWmi HDmi HWms HDms
       HWpc HDpc HDnpc Hhart HQhart HQmi.
     iIntros "#Hcert Hrw Hro Hbody".
@@ -657,7 +657,7 @@ Section stepany.
          hreg_frame rs3 Drw -∗ hreg_frame_ro Df rs3 Dro -∗ Psi rs2 -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hdisj HWcy HWti HWip HDpriv HDhart HDmc HDcfg HWmi HDmi HWms HDms
       HWpc HDpc HDnpc Hhart HQhart HQmi Hpre.
     iIntros "#Hcert Hfrag Hrw Hro Hbody Hcont".

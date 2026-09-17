@@ -63,7 +63,7 @@ Section FileInv.
      reference carries genuine points-to fractions.  No [agree] ghost. *)
   Lemma file_fields_agree k q1 C1 q2 C2 :
     file_fields k q1 C1 -∗ file_fields k q2 C2 -∗ ⌜C1 = C2⌝.
-  Proof.
+  Proof using .
     rewrite /file_fields.
     iIntros "(Ht1 & Hr1 & Hw1 & Hp1 & Hi1 & Hm1)".
     iIntros "(Ht2 & Hr2 & Hw2 & Hp2 & Hi2 & Hm2)".
@@ -82,7 +82,7 @@ Section FileInv.
      cell any more. *)
   Lemma file_fields_ip k q C :
     file_fields k q C -∗ a_fip k ↦₈{DfracOwn q} fc_ip C.
-  Proof. iIntros "(_ & _ & _ & _ & $ & _)". Qed.
+  Proof using . iIntros "(_ & _ & _ & _ & $ & _)". Qed.
 
   (* Two references onto one slot agree on the STATE -- so two descriptors
      onto one file report the same thing to their user, and filedup's two
@@ -93,7 +93,7 @@ Section FileInv.
      caller has two of them in hand to compare. *)
   Lemma file_ref_agree γ k q1 st1 q2 st2 :
     file_ref γ k q1 st1 -∗ file_ref γ k q2 st2 -∗ ⌜st1 = st2⌝.
-  Proof.
+  Proof using .
     iIntros "(%C1 & _ & H1 & Hp1 & _) (%C2 & _ & H2 & Hp2 & _)".
     iDestruct (file_fields_agree with "H1 H2") as %<-.
     by iDestruct (file_pay_st_agree with "Hp1 Hp2") as %<-.
@@ -102,7 +102,7 @@ Section FileInv.
   (* the split filedup performs and fileclose undoes. *)
   Lemma file_fields_frac_split k q1 q2 C :
     file_fields k (q1 + q2) C ⊣⊢ file_fields k q1 C ∗ file_fields k q2 C.
-  Proof.
+  Proof using .
     rewrite /file_fields.
     rewrite (ctx_word4_pointsto_frac_split _ (a_ftype k)).
     rewrite (ctx_pointsto_frac_split _ (a_freadable k)).
@@ -133,7 +133,7 @@ Section FileInv.
     (∀ M' : gmap nat (Qp * positive),
        ⌜∀ k, k ≠ i -> M' !! k = M !! k⌝ -∗ fslot γ M' i -∗
        [∗ list] k ∈ seq 0 NFILE, fslot γ M' k).
-  Proof.
+  Proof using .
     iIntros (Hi) "H".
     assert (Hlk : seq 0 NFILE !! i = Some i).
     { apply lookup_seq. lia. }
@@ -161,7 +161,7 @@ Section FileInv.
     ⌜∃ qt n, M !! k = Some (qt, n) /\ (qt ≤ 1)%Qp /\
        (n = 1%positive -> q = qt) /\ (q = qt -> n = 1%positive) /\
        (n <> 1%positive -> (q < qt)%Qp)⌝.
-  Proof.
+  Proof using .
     rewrite /ftable_auth /fref_tok. iIntros "[Ha _] Hf".
     iDestruct (fref_own_valid_2 with "Ha Hf")
       as %[Hincl Hval]%auth_both_valid_discrete.
@@ -203,7 +203,7 @@ Section FileInv.
     m !! k = None ->
     flive_own (● m) ==∗
     flive_own (● (<[k := 1%positive]> m)) ∗ flive_tok k.
-  Proof.
+  Proof using .
     intros Hm. iIntros "Ha". rewrite /flive_tok.
     iMod (flive_own_update _
             (● (<[k := 1%positive]> m) ⋅ ◯ {[k := 1%positive]}) with "Ha") as "H".
@@ -216,7 +216,7 @@ Section FileInv.
     m !! k = Some n ->
     flive_own (● m) -∗ flive_tok k ==∗
     flive_own (● (<[k := Pos.succ n]> m)) ∗ flive_tok k ∗ flive_tok k.
-  Proof.
+  Proof using .
     intros Hm. iIntros "Ha Hf". rewrite /flive_tok.
     iMod (flive_own_update_2 _ _ (● (<[k := Pos.succ n]> m))
             (◯ {[k := 2%positive]}) with "Ha Hf") as "[$ Hfrag]".
@@ -238,7 +238,7 @@ Section FileInv.
   Lemma flive_close (m : gmap nat positive) k (n : positive) :
     m !! k = Some (Pos.succ n) ->
     flive_own (● m) -∗ flive_tok k ==∗ flive_own (● (<[k := n]> m)).
-  Proof.
+  Proof using .
     intros Hm. iIntros "Ha Hf". rewrite /flive_tok.
     iMod (flive_own_update_2' (● m) (◯ {[k := 1%positive]})
             (● (<[k := n]> m)) with "Ha Hf") as "$"; [|done].
@@ -267,7 +267,7 @@ Section FileInv.
   Lemma flive_close_last (m : gmap nat positive) k :
     m !! k = Some 1%positive ->
     flive_own (● m) -∗ flive_tok k ==∗ flive_own (● (delete k m)).
-  Proof.
+  Proof using .
     intros Hm. iIntros "Ha Hf". rewrite /flive_tok.
     iMod (flive_own_update_2' (● m) (◯ {[k := 1%positive]})
             (● (delete k m)) with "Ha Hf") as "$"; [|done].
@@ -296,7 +296,7 @@ Section FileInv.
   Lemma flive_excl_last (m : gmap nat positive) k :
     m !! k = Some 1%positive ->
     flive_own (● m) -∗ flive_tok k -∗ flive_tok k -∗ False.
-  Proof.
+  Proof using .
     intros Hm. iIntros "Ha H1 H2". rewrite /flive_tok.
     iDestruct (flive_own_valid_2 (● m)
                  (◯ {[k := 1%positive]} ⋅ ◯ {[k := 1%positive]})
@@ -326,7 +326,7 @@ Section FileInv.
   Lemma file_off_reclaim (E : coPset) (k : nat) (pn : fpnames) (C : fcontent) :
     ↑(offBoxN .@ k) ⊆ E ->
     file_core_off k 1 pn C ={E}=∗ off_free k 1.
-  Proof.
+  Proof using .
     iIntros (HE) "Hoff". rewrite /file_core_off.
     destruct (bool_decide (fc_type C = FD_INODE)); [| by iModIntro].
     rewrite /off_fd.
@@ -352,7 +352,7 @@ Section FileInv.
     M !! k = None -> fc_type C = FD_NONE ->
     ftable_auth γ M -∗ file_fields k 1 C -∗ file_pay γ k 1 C ==∗
     ftable_auth γ (<[k := (1%Qp, 1%positive)]> M) ∗ file_ref γ k 1 FdClosed.
-  Proof.
+  Proof using .
     iIntros (HM Hty) "[Ha Hl] Hf Hp".
     iDestruct (file_pay_st_none _ _ _ _ Hty with "Hp") as "Hp".
     rewrite /ftable_auth /fref_tok.
@@ -379,7 +379,7 @@ Section FileInv.
     ftable_auth γ M -∗ file_ref γ k q st ==∗
     ftable_auth γ (<[k := (qt, Pos.succ n)]> M) ∗
     file_ref γ k (q/2)%Qp st ∗ file_ref γ k (q/2)%Qp st.
-  Proof.
+  Proof using .
     iIntros (HM) "[Ha Hl] (%C & Hf & Hc & Hp & Hlv)".
     rewrite /ftable_auth /fref_tok.
     assert (Hml : Mcount M !! k = Some n)
@@ -426,7 +426,7 @@ Section FileInv.
     ftable_auth γ M -∗ file_ref γ k q st ==∗
     ftable_auth γ (<[k := (qr, n)]> M) ∗
     ∃ C : fcontent, file_fields k q C ∗ file_pay γ k q C.
-  Proof.
+  Proof using .
     iIntros (HM Hsub) "[Ha Hl] (%C & Hf & Hc & Hp & Hlv)".
     iDestruct (file_pay_st_pay with "Hp") as "Hp".
     rewrite /ftable_auth /fref_tok.
@@ -490,7 +490,7 @@ Section FileInv.
     M !! k = Some (qt, 1%positive) ->
     ftable_auth γ M -∗ fref_tok γ k qt -∗ flive_tok k ==∗
     ftable_auth γ (delete k M).
-  Proof.
+  Proof using .
     iIntros (HM) "[Ha Hl] Hf Hlv".
     rewrite /ftable_auth /fref_tok.
     assert (Hml : Mcount M !! k = Some 1%positive)
@@ -531,7 +531,7 @@ Section FileInv.
     ftable_auth γ M -∗ file_ref γ k qt st ==∗
     ftable_auth γ (delete k M) ∗
     ∃ C : fcontent, file_fields k qt C ∗ file_pay γ k qt C.
-  Proof.
+  Proof using .
     iIntros (HM) "Hauth (%C & Hf & Hc & Hp & Hlv)".
     iDestruct (file_pay_st_pay with "Hp") as "Hp".
     iMod (file_close_last_ghost γ M k qt HM with "Hauth Hf Hlv") as "$".
@@ -550,7 +550,7 @@ Section FileInv.
     (qt ≤ 1)%Qp ->
     file_fields k qt C -∗ file_pay γ k qt C -∗ file_rest γ k qt -∗
     file_fields k 1 C ∗ file_pay γ k 1 C.
-  Proof.
+  Proof using .
     intros Hle. rewrite /file_rest.
     destruct (1 - qt)%Qp as [q'|] eqn:Et.
     - apply Qp.sub_Some in Et.        (* 1 = qt + q' *)
@@ -575,7 +575,7 @@ Section FileInv.
     (qt ≤ 1)%Qp ->
     file_fields k qt C -∗ file_pay_st γ k qt C st -∗ file_rest γ k qt -∗
     file_fields k 1 C ∗ file_pay_st γ k 1 C st.
-  Proof.
+  Proof using .
     intros Hle. rewrite /file_rest.
     destruct (1 - qt)%Qp as [q'|] eqn:Et.
     - apply Qp.sub_Some in Et.        (* 1 = qt + q' *)
@@ -601,7 +601,7 @@ Section FileInv.
     (qt - q)%Qp = Some qr -> (qt ≤ 1)%Qp ->
     file_rest γ k qt -∗ file_fields k q C -∗ file_pay γ k q C -∗
     file_rest γ k qr.
-  Proof.
+  Proof using .
     intros Hsub Hle. apply Qp.sub_Some in Hsub.   (* qt = q + qr *)
     rewrite /file_rest.
     destruct (1 - qt)%Qp as [s|] eqn:Et.
@@ -680,7 +680,7 @@ Section FileLock.
     is_lock γl ftable_addr "ftable"%string (ftable_res_at γ).
 
   Global Instance is_ftable_persistent γl γ : Persistent (is_ftable γl γ).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 End FileLock.
 
 (* NO [Typeclasses Opaque ftable_res].  §0.14′'s [PipeInvDefs] note says the
@@ -734,7 +734,7 @@ Section FileGhostAlloc.
   Lemma fpay_map0_split (γ : gname) (n : nat) :
     own γ ((ε, fpay_map0 n) : fileUR) ⊢
     [∗ list] k ∈ seq 0 n, own γ ((ε, {[ k := fpay_v0 ]}) : fileUR).
-  Proof.
+  Proof using .
     induction n as [|n IH]; [by iIntros "_"|].
     rewrite seq_S big_sepL_app. iIntros "H". cbn [fpay_map0].
     rewrite (insert_singleton_op (fpay_map0 n) n fpay_v0);
@@ -755,7 +755,7 @@ Section FileGhostAlloc.
     flive_own (● (∅ : gmap nat positive)) -∗
     |==> ∃ γ, ftable_auth γ ∅ ∗
               [∗ list] k ∈ seq 0 NFILE, ∃ pn, fpay_tok γ k 1 pn.
-  Proof.
+  Proof using .
     iIntros "Hfol".
     iMod (own_alloc (((● (∅ : gmap nat (Qp * positive))),
                       fpay_map0 NFILE)
@@ -814,7 +814,7 @@ Section FileGhostAlloc.
     fd_slots_auth -∗
     iref_slots NFILE ={E}=∗
     ∃ γ : gname, ftable_res γ.
-  Proof.
+  Proof using .
     iIntros "Hfol Hraw Hfda Hir".
     iMod (ftable_ghosts_alloc with "Hfol") as (γ) "[Hauth Htoks]".
     iDestruct (iref_slots_to_any (seq 0 NFILE) with "[Hir]") as "Hunits".

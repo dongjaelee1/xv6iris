@@ -198,7 +198,7 @@ Section CwBodies.
 
   Lemma cw_frame_back `{XI : CurCtx} (sp0 : mword 64) (m0 : regfile) :
     cw_saved sp0 m0 -∗ cw_rest sp0 -∗ stack_own (KTR := KT1) sp0 16.
-  Proof.
+  Proof using .
     iIntros "(H1 & H2 & H3) Hr".
     rewrite (stack_own_slots (KTR := KT1)) /cw_rest.
     change (seq 1 16) with ((seq 1 3 ++ seq 4 13)%list).
@@ -212,7 +212,7 @@ Section CwBodies.
   Lemma cw_buf_slots `{XI : CurCtx} (sp0 : mword 64) :
     (forall i, (i < 4)%nat -> is_aligned_paddr (Physaddr (pa_stk sp0 (16 - i))) 8 = true) ->
     cw_buf sp0 ⊢ [∗ list] i ∈ seq 0 4, ∃ w : mword 64, pa_stk sp0 (16 - i) ↦₈[KT1] w.
-  Proof.
+  Proof using .
     intro Hal. rewrite /cw_buf.
     change 32%nat with (8 * 4)%nat.
     iApply (bytes_own_slotsn (KTR := KT1) sp0 16 4 ltac:(lia) Hal).
@@ -234,7 +234,7 @@ Section CwBodies.
 
   Lemma cw_regs_cs `{XI : CurCtx} (M M' : regfile) spd sp0 src n i :
     callee_saved M M' -> cw_regs M spd sp0 src n i -> cw_regs M' spd sp0 src n i.
-  Proof.
+  Proof using .
     intros Hcs (H1 & H2 & H3 & H4 & H5 & H6 & H7 & H8 & H9 & H10).
     unfold cw_regs.
     rewrite (callee_saved_lookup Hcs csp_rs1 ltac:(vm_compute; reflexivity)).
@@ -279,7 +279,7 @@ Section CwBodies.
     proc_priv_core pa pid U ⊢
     p_pid pa ↦₄{DfracOwn (1/2)} pid ∗
     (p_pid pa ↦₄{DfracOwn (1/2)} pid -∗ proc_priv_core pa pid U).
-  Proof.
+  Proof using .
     rewrite /proc_priv_core.
     iIntros "(%H1 & %H2 & Hpid & Hrest)".
     iSplitL "Hpid"; [iExact "Hpid"|].
@@ -333,7 +333,7 @@ Section CwBodies.
     uptd_ext_sz (pv_sz (us_V U)) (pv_upt (us_V U)) P1 ->
     cw_ret (CID0 := CID0) jp m0 av eb pid U n lks Q Pe -∗
     cw_ret (CID0 := CID0) jp m0 av eb pid (us_upt U P1) n lks Q Pe.
-  Proof.
+  Proof using .
     intro Hext. rewrite /cw_ret /wp_next.
     iIntros "H" (CID) "%Hg".
     iSpecialize ("H" $! CID with "[%]"); [exact Hg|].
@@ -380,7 +380,7 @@ Section CwBodies.
     Q (Z.to_nat r) -∗
     cw_ret (CID0 := CID0) jp m0 av eb pid U n lks Q Pe -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pj Hm0sp HMsp HMs1 HMcs Hr Hshort Hav Heb Hcr.
     iIntros "#Ht Hcg Hcnt Hpc Hpriv (Hk1 & Hk2 & Hk3) Hrest Hrcpt Hcont".
     assert (Hb1 : add_vec (pa_stk sp0 16%nat)
@@ -536,7 +536,7 @@ Section CwBodies.
     (forall i, (i < 4)%nat ->
        is_aligned_paddr (Physaddr (pa_stk sp0 (16 - i))) 8 = true) ->
     cw_spill sp0 m0 -∗ cw_buf sp0 -∗ cw_rest sp0.
-  Proof.
+  Proof using .
     intro Hal. iIntros "Hsp Hbuf".
     iDestruct (cw_buf_slots sp0 Hal with "Hbuf") as "Hb".
     rewrite /cw_rest /cw_spill.
@@ -585,7 +585,7 @@ Section CwBodies.
     Q (Z.to_nat r) -∗
     cw_ret (CID0 := CID0) jp m0 av eb pid U n lks Q Pe -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pj Hm0sp HMsp HMs1 HMs11 Hr Hshort Hav Heb Hal Hcr.
     iIntros "#Ht Hcg Hcnt Hpc Hpriv Hsaved Hspill Hbuf Hrcpt Hcont".
     rewrite /cw_spill.
@@ -817,7 +817,7 @@ Section CwBodies.
     Q (Z.to_nat r) -∗
     cw_ret (CID0 := CID0) jp m0 av eb pid U n lks Q Pe -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pj Hm0sp HMsp HMs1 HMs11 Hr Hshort Hav Heb Hal Hcr.
     iIntros "#Ht Hcg Hcnt Hpc Hpriv Hsaved Hspill Hbuf Hrcpt Hcont".
     rewrite /cw_spill.
@@ -1079,7 +1079,7 @@ Section CwBodies.
       cons_out_chain (S gen_id) Mu src Q (Z.to_nat i) (Z.to_nat (n - i)) -∗
       cw_ret (CID0 := CID0) jp m0 av eb pid U n lks Q Pe -∗
       WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hj Hjlp Hlens Hn31 Hav Heb Hm0sp Hsrc Hal.
     induction mrem as [| mrem IH]; intros CID M U i Hi Hrem HMu Hpext Hregs Hs11 Hcr Hbelow.
     { (* fuel 0 is unreachable: the head is entered only with [i < n] *)
@@ -1751,7 +1751,7 @@ Section CwBodies.
       (pid : mword 32) (U : ustate) (n : Z) (b : bool) (lks : gset string)
       (Q : nat -> iProp Σ)
     : wp_consolewrite_sconf_body γa γf γs jp γlp γu γv γl m av eb pid U n b lks Q.
-  Proof.
+  Proof using .
     cbv beta delta [wp_consolewrite_sconf_body].
     (* [Hbelow] is SpecConsolewrite.v's own [locks_below lks (lock_rank
        "proc")] premise -- see the companion note at [cw_loop] above for why

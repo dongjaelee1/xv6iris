@@ -592,7 +592,7 @@ Section ProofSysLinkFrame.
     bytes_own (KTR := KT1) (DfracOwn 1) (pa_stk sp0 6) 16 ∗
     bytes_own (KTR := KT1) (DfracOwn 1) (pa_stk sp0 22) 128 ∗
     bytes_own (KTR := KT1) (DfracOwn 1) (pa_stk sp0 38) 128.
-  Proof.
+  Proof using .
     iIntros "H". rewrite (stack_own_slots (KTR := KT1)). cbn [seq].
     iDestruct "H" as "(H1 & H2 & H3 & H4 & H5 & H6 & H7 & H8 & H9 & H10 &
                        H11 & H12 & H13 & H14 & H15 & H16 & H17 & H18 & H19 &
@@ -647,7 +647,7 @@ Section ProofSysLinkFrame.
     bytes_own (KTR := KT1) (DfracOwn 1) (pa_stk sp0 22) 128 -∗
     bytes_own (KTR := KT1) (DfracOwn 1) (pa_stk sp0 38) 128 -∗
     stack_own (KTR := KT1) sp0 38.
-  Proof.
+  Proof using .
     intros (HalO & HalW & HalN). iIntros "H1 H2 H3 H4 HbN HbW HbO".
     (* the [8 * n] conversions are done INSIDE the framing braces, never on
        the goal: a goal-level [change 128 with (8*16)] survives into the
@@ -695,11 +695,11 @@ Section ProofSysLinkFrame.
   Lemma sl_bytes_name `{XI : CurCtx} (a : mword 64) (N : nat) :
     bytes_own (KTR := KT1) (DfracOwn 1) a N ⊢
     ∃ f : nat -> bv 8, [∗ list] j ∈ seq 0 N, pa_add a j ↦ₘ[KT1] f j.
-  Proof. rewrite /bytes_own. exact (bb_any_named (KTR := KT1) a N). Qed.
+  Proof using . rewrite /bytes_own. exact (bb_any_named (KTR := KT1) a N). Qed.
 
   Lemma sl_name_bytes `{XI : CurCtx} (a : mword 64) (N : nat) (f : nat -> bv 8) :
     ([∗ list] j ∈ seq 0 N, pa_add a j ↦ₘ[KT1] f j) ⊢ bytes_own (KTR := KT1) (DfracOwn 1) a N.
-  Proof. rewrite /bytes_own. exact (bb_named_any (KTR := KT1) a N f). Qed.
+  Proof using . rewrite /bytes_own. exact (bb_named_any (KTR := KT1) a N f). Qed.
 
   (* 128 = (k+1) + (127-k): the walkers read the NUL-terminated prefix, the
      rest rides through untouched *)
@@ -709,7 +709,7 @@ Section ProofSysLinkFrame.
     ([∗ list] j ∈ seq 0 (S k), pa_add a j ↦ₘ[KT1] f j)
     ∗ ([∗ list] j ∈ seq 0 (127 - k)%nat,
          pa_add (pa_add a (S k)) j ↦ₘ[KT1] f (S k + j)%nat).
-  Proof.
+  Proof using .
     intro Hk.
     replace 128%nat with (S k + (127 - k))%nat by lia.
     rewrite (bb_split a (S k) (127 - k)%nat f). iIntros "[$ $]".
@@ -721,7 +721,7 @@ Section ProofSysLinkFrame.
     ([∗ list] j ∈ seq 0 (127 - k)%nat,
        pa_add (pa_add a (S k)) j ↦ₘ[KT1] f (S k + j)%nat) -∗
     bytes_own (KTR := KT1) (DfracOwn 1) a 128.
-  Proof.
+  Proof using .
     intro Hk. iIntros "H1 H2".
     iDestruct (sl_name_bytes a (S k) f with "H1") as "B1".
     iDestruct (sl_name_bytes (pa_add a (S k)) (127 - k)%nat
@@ -736,7 +736,7 @@ Section ProofSysLinkFrame.
     ([∗ list] j ∈ seq 0 16, pa_add a j ↦ₘ[KT1] f j) -∗
     ([∗ list] j ∈ seq 0 14, pa_add a j ↦ₘ[KT1] f j)
     ∗ ([∗ list] j ∈ seq 0 2, pa_add (pa_add a 14) j ↦ₘ[KT1] f (14 + j)%nat).
-  Proof.
+  Proof using .
     change 16%nat with (14 + 2)%nat.
     rewrite (bb_split a 14 2 f). iIntros "[$ $]".
   Qed.
@@ -745,7 +745,7 @@ Section ProofSysLinkFrame.
     ([∗ list] j ∈ seq 0 14, pa_add a j ↦ₘ[KT1] g j) -∗
     ([∗ list] j ∈ seq 0 2, pa_add (pa_add a 14) j ↦ₘ[KT1] f (14 + j)%nat) -∗
     bytes_own (KTR := KT1) (DfracOwn 1) a 16.
-  Proof.
+  Proof using .
     iIntros "H1 H2".
     iDestruct (sl_name_bytes a 14 g with "H1") as "B1".
     iDestruct (sl_name_bytes (pa_add a 14) 2
@@ -818,7 +818,7 @@ Section ProofSysLinkEpilogue.
         pc_is (ret_pc (m !!! Regidx Rra : mword 64)) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK38 Kpop Hsp0 HMsp HMthr HMs1 HMs2 Hal.
     iIntros "Hcg #Htext Hpc Hf1 Hf2 Hf3 Hf4 HbN HbW HbO Hcont".
     (* ===== +0x11a c.mv a0,a5 ===== *)

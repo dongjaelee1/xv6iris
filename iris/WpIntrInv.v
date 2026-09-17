@@ -197,7 +197,7 @@ Section IFrames.
      (R_bitvector_64 mcycle) ↦ᵣ register_lookup (R_bitvector_64 mcycle) rs ∗
      (R_bitvector_64 mtime) ↦ᵣ register_lookup (R_bitvector_64 mtime) rs ∗
      (R_bitvector_64 mip) ↦ᵣ register_lookup (R_bitvector_64 mip) rs)%I.
-  Proof.
+  Proof using .
     rewrite /hreg_frame /i_Drw.
     repeat (rewrite big_sepS_union; last set_solver).
     rewrite !big_sepS_singleton.
@@ -214,7 +214,7 @@ Section IFrames.
        (register_lookup (R_bitvector_32 mcountinhibit) rs) ∗
      reg_pointsto (R_bitvector_64 minstretcfg) DfracDiscarded
        (register_lookup (R_bitvector_64 minstretcfg) rs))%I.
-  Proof.
+  Proof using .
     rewrite /hreg_frame_ro /i_Dro.
     repeat (rewrite big_sepS_union; last set_solver).
     rewrite !big_sepS_singleton.
@@ -226,16 +226,16 @@ Section IFrames.
 
   Lemma i_agree_rw (rs rs' : regstate) :
     reg_agree_on (i_Drw ∪ i_Dro) rs rs' -> reg_agree_on i_Drw rs rs'.
-  Proof. intros Hag r Hr. apply Hag. set_solver. Qed.
+  Proof using . intros Hag r Hr. apply Hag. set_solver. Qed.
 
   Lemma i_agree_ro (rs rs' : regstate) :
     reg_agree_on (i_Drw ∪ i_Dro) rs rs' -> reg_agree_on i_Dro rs rs'.
-  Proof. intros Hag r Hr. apply Hag. set_solver. Qed.
+  Proof using . intros Hag r Hr. apply Hag. set_solver. Qed.
 
   Lemma i_rw_ext (rs rs' : regstate) :
     reg_agree_on (i_Drw ∪ i_Dro) rs rs' ->
     hreg_frame rs i_Drw -∗ (hreg_frame rs' i_Drw : iProp Σ).
-  Proof.
+  Proof using .
     intros Hag. rewrite (hreg_frame_ext _ _ i_Drw (i_agree_rw _ _ Hag)).
     iIntros "H". iExact "H".
   Qed.
@@ -243,7 +243,7 @@ Section IFrames.
   Lemma i_ro_ext (rs rs' : regstate) :
     reg_agree_on (i_Drw ∪ i_Dro) rs rs' ->
     hreg_frame_ro i_Df rs i_Dro -∗ (hreg_frame_ro i_Df rs' i_Dro : iProp Σ).
-  Proof.
+  Proof using .
     intros Hag. rewrite (hreg_frame_ro_ext _ _ _ i_Dro (i_agree_ro _ _ Hag)).
     iIntros "H". iExact "H".
   Qed.
@@ -726,7 +726,7 @@ Section TrapSwp.
          reg_pointsto (R_bitvector_64 PC) dqp pc0 ∗
          reg_pointsto misa dqm mis ∗ reg_pointsto stvec dqv stv ∗
          reg_pointsto elp DfracDiscarded e).
-  Proof.
+  Proof using .
     rewrite /hreg_frame /hreg_frame_ro /ti_Drw /ti_Dro.
     repeat (rewrite big_sepS_union; last set_solver).
     rewrite !big_sepS_singleton.
@@ -746,7 +746,7 @@ Section TrapSwp.
     (hreg_frame (ti_rs ms sc sv se p npc pc0 mis stv e) ti_Drw ∗
      hreg_frame_ro (ti_Df dqp dqm dqv)
        (ti_rs ms sc sv se p npc pc0 mis stv e) ti_Dro : iProp Σ).
-  Proof.
+  Proof using .
     iIntros "H1 H2 H3 H4 H5 H6 H7 H8 H9 H10". rewrite ti_frames. iFrame.
   Qed.
 
@@ -760,12 +760,12 @@ Section TrapSwp.
      reg_pointsto (R_bitvector_64 PC) dqp pc0 ∗
      reg_pointsto misa dqm mis ∗ reg_pointsto stvec dqv stv ∗
      reg_pointsto elp DfracDiscarded e).
-  Proof. rewrite ti_frames. iIntros "H". iExact "H". Qed.
+  Proof using . rewrite ti_frames. iIntros "H". iExact "H". Qed.
 
   Lemma ti_rw_ext (rs rs' : regstate) :
     reg_agree_on (ti_Drw ∪ ti_Dro) rs rs' ->
     hreg_frame rs ti_Drw -∗ (hreg_frame rs' ti_Drw : iProp Σ).
-  Proof.
+  Proof using .
     intros Hag. rewrite (hreg_frame_ext _ _ ti_Drw
       (reg_agree_mono (ti_Drw ∪ ti_Dro) ti_Drw _ _ ltac:(set_solver) Hag)).
     iIntros "H". iExact "H".
@@ -774,7 +774,7 @@ Section TrapSwp.
   Lemma ti_ro_ext (Df : register -> dfrac) (rs rs' : regstate) :
     reg_agree_on (ti_Drw ∪ ti_Dro) rs rs' ->
     hreg_frame_ro Df rs ti_Dro -∗ (hreg_frame_ro Df rs' ti_Dro : iProp Σ).
-  Proof.
+  Proof using .
     intros Hag. rewrite (hreg_frame_ro_ext Df _ _ ti_Dro
       (reg_agree_mono (ti_Drw ∪ ti_Dro) ti_Dro _ _ ltac:(set_solver) Hag)).
     iIntros "H". iExact "H".
@@ -802,7 +802,7 @@ Section TrapSwp.
          hreg_frame (ti_rs (ti_ms1 e ms) sc sv se p npc pc0 mis stv e) ti_Drw ∗
          hreg_frame_ro (ti_Df dqp dqm dqv)
            (ti_rs (ti_ms1 e ms) sc sv se p npc pc0 mis stv e) ti_Dro).
-  Proof.
+  Proof using .
     intros He. iIntros "#Hcert #Help Hrw Hro".
     unfold zicfilp_preserve_elp_on_trap. cbn match.
     iApply (swp_bind0_use _ _
@@ -859,7 +859,7 @@ Section TrapSwp.
          hreg_frame_ro (ti_Df dqp dqm dqv)
            (ti_rs (ti_ms4 e ms) (ti_sc2 sc ii) (zeros' 64) pc0
               Supervisor npc pc0 mis stv e) ti_Dro).
-  Proof.
+  Proof using .
     intros He HmisaS Htvd. iIntros "#Hcert #Help Hrw Hro".
     unfold trap_handler. cbn zeta.
     change (orb (get_config_print_exception tt) (get_config_print_interrupt tt))
@@ -1000,7 +1000,7 @@ Section TrapSwp.
          hreg_frame_ro (ti_Df dqp dqm dqv)
            (ti_rs (ti_ms4 e ms) (ti_sc2 sc ii) (zeros' 64) pc0
               Supervisor (stvec_base stv) pc0 mis stv e) ti_Dro).
-  Proof.
+  Proof using .
     intros He HmisaS Htvd. iIntros "#Hcert #Help Hrw Hro".
     unfold handle_interrupt.
     iApply (swp_bind_use _ _ _ _ with "[Hrw Hro] [-]").
@@ -1050,7 +1050,7 @@ Section TrapSwp.
          sepc ↦ᵣ pc0 ∗
          cur_privilege ↦ᵣ Supervisor ∗
          (R_bitvector_64 nextPC) ↦ᵣ stvec_base stvec_v).
-  Proof.
+  Proof using .
     intros Hnp HmisaS Htvd.
     pose proof (elp_no_lp elp_v Hnp) as He.
     iIntros "#Hcert HPC Hmisa Hstv #Help Hms Hsc Hsv Hse Hpriv Hnpc".
@@ -1101,7 +1101,7 @@ Section IntrEngine.
         (register_beq r (R_bitvector_64 satp)).
 
   Lemma i_Db_in (r : register) : i_Db r = true -> r ∈ s_Drw ∪ s_Dro.
-  Proof.
+  Proof using .
     unfold i_Db. intros Hr.
     apply orb_true_elim in Hr as [Hr | Hr];
       [ apply orb_true_elim in Hr as [Hr | Hr] | ];
@@ -1113,7 +1113,7 @@ Section IntrEngine.
      write-set-generic cycle body below needs it. *)
   Lemma i_Db_in_gen (D : gset register) (HD : s_frame_ok D) (r : register) :
     i_Db r = true -> r ∈ D ∪ s_Dro.
-  Proof.
+  Proof using .
     unfold i_Db. intros Hr.
     apply orb_true_elim in Hr as [Hr | Hr];
       [ apply orb_true_elim in Hr as [Hr | Hr] | ];
@@ -1230,7 +1230,7 @@ Section IntrEngine.
                         hreg_frame rs2 SD ∗
                         hreg_frame_ro (s_Df (DfracOwn 1)) rs2 s_Dro ∗
                         Rr rs2)).
-  Proof.
+  Proof using .
     intros Hmisa HSXL HMPRV Hmm Help Hpma Hsok Hpok Hsidepre.
     pose proof Hpok as Hpf'. destruct Hpf' as (HA & Hord & HX & HW & HR & Hcov).
     iIntros "#Hcert Hinstr Hres Hfrag HW Hrw Hro Hqi Hex".
@@ -1354,7 +1354,7 @@ Section IntrEngine.
                         hreg_frame rs2 s_Drw ∗
                         hreg_frame_ro (s_Df (DfracOwn 1)) rs2 s_Dro ∗
                         Rr rs2)).
-  Proof.
+  Proof using .
     intros Hmisa HSXL HMPRV Hmm Help Hpma Hsok Hpok.
     iApply (swp_run_hart_active_instr_S_res_D s_Drw s_frame_ok_Drw
               pc0 msr bmi cy ti ip mst0 pcfg paddr mc micfg
@@ -1445,7 +1445,7 @@ Section IntrEngine.
                         hreg_frame rs2 s_Drwb ∗
                         hreg_frame_ro (s_Df (DfracOwn 1)) rs2 s_Dro ∗
                         Rr rs2)).
-  Proof.
+  Proof using .
     intros Hmisa HSXL HMPRV Hmm Help Hpma Hsok Hpok.
     iApply (swp_run_hart_active_instr_S_res_D s_Drwb s_frame_ok_Drwb
               pc0 msr bmi cy ti ip mst0 pcfg paddr mc micfg
@@ -1525,7 +1525,7 @@ Section IntrEngine.
                         hreg_frame rs2 s_Drw ∗
                         hreg_frame_ro (s_Df (DfracOwn 1)) rs2 s_Dro ∗
                         Rr rs2)).
-  Proof.
+  Proof using .
     intros Hmisa HSXL HMPRV Hmm Help Hpma Hsatpf Hpmpf.
     pose proof Hsatpf as Hsf'. destruct Hsf' as (Hmode & Hasid & Hppn).
     assert (Hroot : strans_root_of satp0 = root_ppn) by exact Hppn.
@@ -1573,14 +1573,14 @@ Section IntrEngine.
 
   Lemma s_tlb_at_bare (tv : type_of_register tlb) :
     s_tlb_at s_Drwb tv ⊣⊢ (emp : iProp Σ).
-  Proof.
+  Proof using .
     rewrite /s_tlb_at bool_decide_eq_false_2; [reflexivity |].
     rewrite /s_Drwb. set_solver.
   Qed.
 
   Lemma s_tlb_at_kpt (tv : type_of_register tlb) :
     s_tlb_at s_Drw tv ⊣⊢ (tlb ↦ᵣ tv : iProp Σ).
-  Proof.
+  Proof using .
     rewrite /s_tlb_at bool_decide_eq_true_2; [reflexivity | exact s_w_tlb].
   Qed.
 
@@ -1602,20 +1602,20 @@ Section IntrEngine.
 
   Lemma s_arm_satp_ok (SD : gset register) (satp0 : mword 64) :
     s_arm_ok SD satp0 -> strans_satp_ok satp0.
-  Proof.
+  Proof using .
     intros [[_ H] | [_ H]]; [ left; exact H | right; exact H ].
   Qed.
 
   Lemma s_arm_frame_ok (SD : gset register) (satp0 : mword 64) :
     s_arm_ok SD satp0 -> s_frame_ok SD.
-  Proof.
+  Proof using .
     intros [[-> _] | [-> _]];
       [ exact s_frame_ok_Drwb | exact s_frame_ok_Drw ].
   Qed.
 
   Lemma s_arm_cells (SD : gset register) (satp0 : mword 64) :
     s_arm_ok SD satp0 -> SD = s_Drw \/ SD = s_Drwb.
-  Proof. intros [[-> _] | [-> _]]; [ right | left ]; reflexivity. Qed.
+  Proof using . intros [[-> _] | [-> _]]; [ right | left ]; reflexivity. Qed.
 
   (* the regime's FETCH side condition, out of the arm.  [sr_swp_side_ok]
      cannot serve: it demands [tlb ∈ Drw], which the Bare arm's empty-of-tlb
@@ -1634,7 +1634,7 @@ Section IntrEngine.
     _get_Mstatus_SXL (register_lookup mstatus dst.(sregs)) = 'b"10" ->
     register_lookup satp dst.(sregs) = satp0 ->
     strans_swp_side acc va ppn kp Db SD s_Dro rs dst.
-  Proof.
+  Proof using .
     intros Harm Hacc Hsatp HMPRV Hpok Hpma HDm HDs HSXL Hdsatp.
     destruct Harm as [[-> Hb] | [-> Hk]].
     - apply (strans_swp_side_bare acc va ppn kp Db s_Drwb s_Dro rs dst Hacc);
@@ -1685,7 +1685,7 @@ Section IntrEngine.
     Lemma s_frames_cells :
       (hreg_frame SRS s_Drw ∗ hreg_frame_ro (s_Df (DfracOwn 1)) SRS s_Dro
        : iProp Σ) ⊣⊢ s_cells.
-    Proof.
+    Proof using .
       rewrite s_rw_split s_ro_split /s_cells. srs.
       iSplit.
       - iIntros "(H1 & H2)".
@@ -1723,7 +1723,7 @@ Section IntrEngine.
     Lemma s_frames_cells_b :
       (hreg_frame SRS s_Drwb ∗ hreg_frame_ro (s_Df (DfracOwn 1)) SRS s_Dro
        : iProp Σ) ⊣⊢ s_cells_b.
-    Proof.
+    Proof using .
       rewrite s_rw_split_b s_ro_split /s_cells_b. srs.
       iSplit.
       - iIntros "(H1 & H2)".
@@ -1764,7 +1764,7 @@ Section IntrEngine.
       SD = s_Drw \/ SD = s_Drwb ->
       (hreg_frame SRS SD ∗ hreg_frame_ro (s_Df (DfracOwn 1)) SRS s_Dro
        : iProp Σ) ⊣⊢ s_cells_D SD.
-    Proof.
+    Proof using .
       intros [-> | ->].
       - rewrite s_frames_cells /s_cells /s_cells_D s_tlb_at_kpt. reflexivity.
       - rewrite s_frames_cells_b /s_cells_b /s_cells_D s_tlb_at_bare.
@@ -1791,7 +1791,7 @@ Section IntrEngine.
       cur_privilege ↦ᵣ Supervisor ∗ mstatus ↦ᵣ mst0 ∗
       ghost_var sie_gname (1/2) (_get_Mstatus_SIE mst0) ∗ sret_tie mst0 ∗
       mie ↦ᵣ MIE_S ∗ mideleg ↦ᵣ mdv0 ∗ menvcfg ↦ᵣ MENVCFG_S.
-  Proof.
+  Proof using .
     iIntros "(#Hhw & #Hminv & Hpriv & Hmsx & Hmiex & Hmenvx)".
     iDestruct "Hmsx" as (mst0) "(Hms & Hhalf & Htie & %Hmsf)".
     iDestruct "Hmiex" as (mdv0) "(Hmie & Hmdl & %Hmm)".
@@ -1808,7 +1808,7 @@ Section IntrEngine.
     cur_privilege ↦ᵣ Supervisor -∗ mstatus ↦ᵣ mst0 -∗
     ghost_var sie_gname (1/2) (_get_Mstatus_SIE mst0) -∗ sret_tie mst0 -∗
     mie ↦ᵣ MIE_S -∗ mideleg ↦ᵣ mdv0 -∗ menvcfg ↦ᵣ MENVCFG_S -∗ sconf.
-  Proof.
+  Proof using .
     intros Hmsf Hmm.
     iIntros "#Hhw #Hminv Hpriv Hms Hhalf Htie Hmie Hmdl Hmenv".
     rewrite /sconf. iFrame "Hhw Hminv Hpriv".
@@ -1850,7 +1850,7 @@ Section IntrEngine.
        mie ↦ᵣ MIE_S ∗ mideleg ↦ᵣ mdv ∗ menvcfg ↦ᵣ MENVCFG_S)%I.
 
   Lemma sconf_at_priv_open : sconf -∗ ∃ ms : mword 64, sconf_at_priv ms.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct (sconf_to_cells with "H") as (mst0 mdv0)
       "(%Hmsf & %Hmm & #Hhw & #Hminv & Hpriv & Hms & Hhalf & Htie & Hmie &
         Hmdl & Hmenv)".
@@ -1860,7 +1860,7 @@ Section IntrEngine.
   Qed.
 
   Lemma sconf_at_priv_close (ms : mword 64) : sconf_at_priv ms -∗ sconf.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as (mdv)
       "(%Hmsf & %Hmm & #Hhw & #Hminv & Hpriv & Hms & Hhalf & Htie & Hmie &
         Hmdl & Hmenv)".
@@ -1877,7 +1877,7 @@ Section IntrEngine.
     cur_privilege ↦ᵣ Supervisor -∗ mstatus ↦ᵣ ms -∗
     ghost_var sie_gname (1/2) (_get_Mstatus_SIE ms) -∗ sret_tie ms -∗
     mie ↦ᵣ MIE_S -∗ mideleg ↦ᵣ mdv -∗ menvcfg ↦ᵣ MENVCFG_S -∗ sconf_at ms.
-  Proof.
+  Proof using .
     intros Hmsf Hmm.
     iIntros "#Hhw #Hminv Hpriv Hms Hhalf Htie Hmie Hmdl Hmenv".
     rewrite /sconf_at. iSplitL "Hms Hhalf Htie".
@@ -1889,7 +1889,7 @@ Section IntrEngine.
   Qed.
 
   Lemma sconf_at_of_priv (ms : mword 64) : sconf_at_priv ms -∗ sconf_at ms.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as (mdv)
       "(%Hmsf & %Hmm & #Hhw & #Hminv & Hpriv & Hms & Hhalf & Htie & Hmie &
         Hmdl & Hmenv)".
@@ -1905,7 +1905,7 @@ Section IntrEngine.
       satp ↦ᵣ satp0 ∗ tlb ↦ᵣ tlbv ∗
       pmpcfg_n ↦ᵣ pcfg ∗ pmpaddr_n ↦ᵣ paddr ∗
       tlb_snap_ok tlbv ∗ kpt_inv root_ppn ∗ kpt_creds.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as (satp0 tlbv)
       "(Hsatp & %Hmode & %Hasid & %Hppn & Htlb & Hsnap & Hpmp & #Hkinv & #Hcreds)".
     iDestruct "Hpmp" as (pcfg paddr)
@@ -1924,7 +1924,7 @@ Section IntrEngine.
     satp ↦ᵣ satp0 -∗ tlb ↦ᵣ tlbv -∗
     pmpcfg_n ↦ᵣ pcfg -∗ pmpaddr_n ↦ᵣ paddr -∗
     tlb_snap_ok tlbv -∗ kpt_inv root_ppn -∗ kpt_creds -∗ tlb_res_pt root_ppn.
-  Proof.
+  Proof using .
     intros (Hmode & Hasid & Hppn) (HA & Hord & HX & HW & HR & Hcov).
     iIntros "Hsatp Htlb Hpcfg Hpaddr Hsnap #Hkinv #Hcreds".
     iExists satp0, tlbv. iFrame "Hsatp Htlb Hsnap Hkinv Hcreds".
@@ -1968,7 +1968,7 @@ Section IntrEngine.
       satp ↦ᵣ satp0 ∗ tlb ↦ᵣ tlbv ∗
       pmpcfg_n ↦ᵣ pcfg ∗ pmpaddr_n ↦ᵣ paddr ∗
       strans_res_at satp0 tlbv ∗ sie_cap_rest kt m av b p.
-  Proof.
+  Proof using .
     iIntros "#Hon (Hstk & Htr & Harm & Hctx & #Htc & #Hwit)".
     iDestruct (strans_swp_open with "Hon Htr") as (satp0 tlbv pcfg paddr)
       "(%Hsok & %Hpok & Hsatp & Htlb & Hpcfg & Hpaddr & Hres)".
@@ -1987,7 +1987,7 @@ Section IntrEngine.
     (⌜ SD = s_Drwb ⌝ ∨ kpt_on cpu_id)%I.
 
   Global Instance s_kpt_wit_persistent SD : Persistent (s_kpt_wit SD).
-  Proof. rewrite /s_kpt_wit. apply _. Qed.
+  Proof using . rewrite /s_kpt_wit. apply _. Qed.
 
   (* ==================================================================== *)
   (* THE INSTRUCTION-SIDE SLOT ACCESSOR -- [sda_slot_acc]'s twin, and the   *)
@@ -2019,7 +2019,7 @@ Section IntrEngine.
          pmpcfg_n ↦ᵣ pcfg -∗ pmpaddr_n ↦ᵣ paddr -∗
          strans_res_at satp0 tv' -∗ sie_cap_rest kt m' av' b' p -∗
          sie_cap kt m' av' b' p).
-  Proof.
+  Proof using .
     iIntros "(Hstk & Htr & Harm & Hctx & #Htc & #Hwit)".
     iDestruct "Htr" as "[(Hpend & Hb & Hstv) | (Hkpt & Hk)]".
     - (* ---- Bare: the frame gets NO cell; the slot keeps it ---- *)
@@ -2129,7 +2129,7 @@ Section IntrEngine.
          pmpcfg_n ↦ᵣ pcfg -∗ pmpaddr_n ↦ᵣ paddr -∗
          strans_res_at satp0 tv' -∗ sie_cap_rest kt m' av' b' p -∗
          sie_cap kt m' av' b' p).
-  Proof.
+  Proof using .
     intros HSD.
     iIntros "#Hwitk (Hstk & Htr & Harm & Hctx & #Htc & #Hwit)".
     iDestruct "Htr" as "[(Hpend & Hb & Hstv) | (Hkpt & Hk)]".
@@ -2248,7 +2248,7 @@ Section IntrEngine.
     pmpcfg_n ↦ᵣ pcfg -∗ pmpaddr_n ↦ᵣ paddr -∗
     strans_res_at satp0 tlbv -∗ sie_cap_rest kt m av b p -∗
     sie_cap kt m av b p.
-  Proof.
+  Proof using .
     intros Hsok Hpok.
     iIntros "#Hon Hsatp Htlb Hpcfg Hpaddr Hres (Hstk & Harm & Hctx & #Htc & #Hwit)".
     rewrite /sie_cap. iFrame "Hstk Harm Hctx Htc Hwit".
@@ -2355,7 +2355,7 @@ Section IntrEngine.
          strans_inv ∗ reg_pointsto mstatus dq mst0 ∗
          reg_pointsto cur_privilege dq Supervisor ∗
          reg_pointsto menvcfg dq menv0).
-  Proof.
+  Proof using .
     intros Hmenv HSXL HMPRV Hpma.
     iIntros "Htr Hms Hpriv Hmenv #Hpmar #Hhtif #Hmisa".
     iDestruct "Htr" as "[(Hpend & Hb & Hstv) | (Hkpt & Hk)]".

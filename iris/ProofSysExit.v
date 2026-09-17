@@ -132,7 +132,7 @@ Section ProofSysExit.
  ip dqi
 
                              on fn m av eb b pid U sts v0 lks cs Q.
-  Proof.
+  Proof using .
     cbv beta delta [wp_sys_exit_sconf_body].
     intros pcE pj Hfn Hj Hgl Hv0 Hav Hgeo Heb Hbelow.
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).

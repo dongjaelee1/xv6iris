@@ -102,7 +102,7 @@ Section ProofFiledup.
   Local Lemma sie_b_agree (m : regfile) (n K0 : nat) (eb b : bool) (p : mword 64) (lks : gset string) :
     sie_cap_gpr KT1 m K0 b p -∗ cpu_own n eb p b lks -∗
     ⌜ b = match n with O => eb | S _ => false end ⌝.
-  Proof.
+  Proof using .
     iIntros "Hcg Hcnt". destruct b.
     - iDestruct "Hcnt" as "%Hb". destruct Hb as (-> & -> & _). done.
     - destruct n as [|n']; [ | done ].
@@ -117,7 +117,7 @@ Section ProofFiledup.
       (γl γf : gname) (k : nat) (q : Qp) (st : fdstate)
       (m : regfile) (n : nat) (eb : bool) (p : mword 64) (K : nat) (b : bool) (lks : gset string)
     : wp_filedup_sconf_body γl γf k q st m n eb p K b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_filedup_sconf_body].
     intros pcE ret_tgt HK HnZ Ha0 Hbelow.
     pose proof (locks_below_not_elem _ _ Hbelow) as Hfresh.

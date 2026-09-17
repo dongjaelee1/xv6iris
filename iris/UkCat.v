@@ -103,7 +103,7 @@ Section UkCat.
     (udepw_law 5 ∗ udepw_law 15 ∗ udepw_law 16 ∗ udepw_law 21)%I.
 
   Global Instance cat_deps_persistent : Persistent cat_deps.
-  Proof. rewrite /cat_deps. apply _. Qed.
+  Proof using . rewrite /cat_deps. apply _. Qed.
 
   Local Notation ra_idx := (mword_of_int 1 : mword 5).
   Local Notation s0_idx := (mword_of_int 8 : mword 5).
@@ -153,7 +153,7 @@ Section UkCat.
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hnone. iIntros "#Hdp #Hcode Hrun Hstd Hcont".
     destruct cat_syms_pins
       as (_ & _ & _ & _ & _ & _ & _ & Hwrite & Hopen & Hclose & _).
@@ -250,7 +250,7 @@ Section UkCat.
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Harg. iIntros "#Hdp #Hcode Hrun Hfdh Hcont".
     destruct cat_syms_pins
       as (_ & _ & _ & _ & _ & _ & _ & Hwrite & Hopen & Hclose & _).
@@ -328,7 +328,7 @@ Section UkCat.
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "#Hdp #Hcode Hrun Hcont".
     destruct cat_syms_pins
       as (_ & _ & _ & _ & _ & _ & _ & Hwrite & Hopen & Hclose & _).
@@ -401,7 +401,7 @@ Section UkCat.
     cat_code γt -∗
     urun N h m (mword_of_int CatSyms.exit) avail -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using Hpay.
     iIntros "#Hcode Hrun".
     destruct cat_syms_pins
       as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hexit).
@@ -458,7 +458,7 @@ Section UkCat.
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Ha1 Hcnt. iIntros "#Hdp #Hcode Hbs Hrun Hcont".
     destruct cat_syms_pins
       as (_ & _ & _ & _ & _ & _ & Hread & _ & _ & _ & _).

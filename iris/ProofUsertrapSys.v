@@ -111,7 +111,7 @@ Section UtSysBlock.
      whole for [proc_priv_tf_upd] right afterward. *)
   Local Lemma ut_tfp_valid (γf : gname) (pa : mword 64) (pid : mword 32) (U : ustate) :
     proc_priv γf pa pid U -∗ ⌜page_valid (page_base (ud_tfp (pv_upt (us_V U))))⌝.
-  Proof.
+  Proof using .
     iIntros "[(_ & _ & _ & _ & Hpt & _) _]".
     rewrite /proc_ptm_at. iDestruct "Hpt" as "(_ & _ & Hptt)".
     iDestruct (proc_ptm_wf with "Hptt") as "%Hwf".
@@ -166,7 +166,7 @@ Section UtSysBlock.
       (fun CID' => usertrap_post (CID := CID') (ut_res SY.syscall_env) pt ksp m0
                      mie_v menvcfg0 U0 sts gn cs pid epv scv fdep Wk) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using ufdG0.
     intros Hgnq Hwf Hav Hnx Htfpe Hksp Hm0sp Hmsp Hms1 Hma0 Hcs Hmiev Hmenvv Hpro Hscec.
     pose proof (ut_nx_bound false av nx Hav Hnx) as Hks.
     pose proof (ut_nx_bound_off av nx Hav Hnx) as Hkso.

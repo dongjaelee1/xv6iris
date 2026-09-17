@@ -132,7 +132,7 @@ Section UserretEntryPt.
       gpr_file m -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HSIE HMPRV HSXL HTVM Hmm HPBMTE Hmenvval0 Hwf Ha0 HuMode Huasid Huppn.
     iIntros "#Hhw #Hinv Hhs Hpriv Hms Hmie Hmdl Hmenv #Hclaim #Hcreds Hktlb
              Hufr Htok Hstep HPimg Hpc Hfmap Hi0 Hi1 Hi2 Hi3 Hcont".

@@ -1200,7 +1200,7 @@ Section PtTreeIris.
     end.
 
   Global Instance pt_slot_own_timeless a dq w : Timeless (pt_slot_own a dq w).
-  Proof. rewrite /pt_slot_own. destruct PTT; apply _. Qed.
+  Proof using . rewrite /pt_slot_own. destruct PTT; apply _. Qed.
 
   (* BOTH tiers forget to the raw physical word -- which is all the PURE
      memory facts below ever wanted of a slot.  This is why the index costs
@@ -1209,7 +1209,7 @@ Section PtTreeIris.
      is. *)
   Lemma kpt_slot_pin_forget a dq w B :
     kpt_slot_pin a dq w B ⊢ phys_word_pointsto a dq w.
-  Proof.
+  Proof using .
     iIntros "[%Hal Hb]". rewrite /phys_word_pointsto. iSplitR; first done.
     iApply (big_sepL_impl with "Hb").
     iIntros "!>" (k j _) "(%Ba & %t & %HBa & H & _)".
@@ -1218,7 +1218,7 @@ Section PtTreeIris.
 
   Lemma pt_slot_own_forget a dq w :
     pt_slot_own a dq w ⊢ phys_word_pointsto a dq w.
-  Proof.
+  Proof using .
     rewrite /pt_slot_own. destruct PTT as [B|xi].
     - apply kpt_slot_pin_forget.
     - apply ctx_phys_word_pointsto_forget.
@@ -1234,20 +1234,20 @@ Section PtTreeIris.
      using it inline. *)
   Lemma pt_slot_own_ram a dq w :
     pt_slot_own a dq w ⊢ ⌜addr_is_ram a⌝.
-  Proof. rewrite pt_slot_own_forget. apply phys_word_pointsto_ram. Qed.
+  Proof using . rewrite pt_slot_own_forget. apply phys_word_pointsto_ram. Qed.
 
   Lemma pt_slot_own_ram7 a dq w :
     pt_slot_own a dq w ⊢ ⌜addr_is_ram (pa_add a 7)⌝.
-  Proof. rewrite pt_slot_own_forget. apply phys_word_pointsto_ram7. Qed.
+  Proof using . rewrite pt_slot_own_forget. apply phys_word_pointsto_ram7. Qed.
 
   Lemma pt_slot_own_ctx (xi : CtxId) a dq w :
     PTT = UTier xi -> pt_slot_own a dq w = ctx_phys_word_pointsto xi a dq w.
-  Proof. intros HP. by rewrite /pt_slot_own HP. Qed.
+  Proof using . intros HP. by rewrite /pt_slot_own HP. Qed.
 
   Lemma pt_slot_own_ker (B : nat) a dq w :
     PTT = KTier B ->
     pt_slot_own a dq w = kpt_slot_pin a dq w B.
-  Proof. intros HP. by rewrite /pt_slot_own HP. Qed.
+  Proof using . intros HP. by rewrite /pt_slot_own HP. Qed.
 
   (* PERSISTENT per-node identity claim (uniform-claims PHYSICAL TIER): the
      node page's vpn maps to its own ppn at KP_rw in the kernel map, and the
@@ -1272,7 +1272,7 @@ Section PtTreeIris.
      kmap_at (pt_page_vpn b) b KP_rw)%I.
 
   Global Instance pt_node_claim_persistent b : Persistent (pt_node_claim b).
-  Proof. rewrite /pt_node_claim. apply _. Qed.
+  Proof using . rewrite /pt_node_claim. apply _. Qed.
 
   (* one node's page: the identity claim, plus all 512 slots (whatever words
      the description says). *)
@@ -1303,7 +1303,7 @@ Section PtTreeIris.
 
   Lemma ptree_own_S_at (lvl : nat) (dq : dfrac) (t : ptree) :
     ptree_own_at (S lvl) dq t ⊣⊢ pt_page_own_at dq t ∗ pt_kids_own_at lvl dq t.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* TIMELESS: every leaf of the tree ownership is a points-to / a pure
      fact / a persisted ghost_map fragment.  This is what lets a SHARED
@@ -1311,10 +1311,10 @@ Section PtTreeIris.
      invariant yields the body under a [▷], and the A/D write-back needs
      the slot ownership NOW, in the same fupd. *)
   Global Instance pt_page_own_timeless_at dq t : Timeless (pt_page_own_at dq t).
-  Proof. rewrite /pt_page_own_at /pt_node_claim. apply _. Qed.
+  Proof using . rewrite /pt_page_own_at /pt_node_claim. apply _. Qed.
 
   Global Instance ptree_own_timeless_at lvl dq t : Timeless (ptree_own_at lvl dq t).
-  Proof.
+  Proof using .
     revert t. induction lvl as [| lvl IH]; intros t.
     - rewrite /ptree_own_at. apply _.
     - rewrite ptree_own_S_at /pt_kids_own_at.
@@ -1329,7 +1329,7 @@ Section PtTreeIris.
      NULL has nothing else to argue from; [page_valid_ne_null] does the rest. *)
   Lemma ptree_own_page_valid_at (lvl : nat) (dq : dfrac) (t : ptree) :
     ptree_own_at lvl dq t ⊢ ⌜page_valid (page_base (pt_base t))⌝.
-  Proof.
+  Proof using .
     destruct lvl as [| l];
       [ rewrite /ptree_own_at | rewrite ptree_own_S_at ];
       rewrite /pt_page_own_at /pt_node_claim;
@@ -1343,7 +1343,7 @@ Section PtTreeIris.
       (∀ w' : mword 64,
          pt_slot_own (u_pte_addr (pt_base t) i) dq w' -∗
          pt_page_own_at dq (pt_upd_ent t i w')).
-  Proof.
+  Proof using .
     pose proof (pt_bv9_range i) as Hir.
     assert (Hlk : seqZ 0 512 !! Z.to_nat (bv_unsigned i) = Some (bv_unsigned i)).
     { apply lookup_seqZ. split; lia. }
@@ -1383,7 +1383,7 @@ Section PtTreeIris.
     pt_page_own_at dq t ⊢
       pt_slot_own (u_pte_addr (pt_base t) i) dq (pt_ents t i) ∗
       (pt_slot_own (u_pte_addr (pt_base t) i) dq (pt_ents t i) -∗ pt_page_own_at dq t).
-  Proof.
+  Proof using .
     pose proof (pt_bv9_range i) as Hir.
     assert (Hlk : seqZ 0 512 !! Z.to_nat (bv_unsigned i) = Some (bv_unsigned i)).
     { apply lookup_seqZ. split; lia. }
@@ -1406,7 +1406,7 @@ Section PtTreeIris.
       (∀ c' : ptree,
          ptree_own_at lvl dq c' -∗
          pt_kids_own_at lvl dq (pt_upd_kid t i (Some c'))).
-  Proof.
+  Proof using .
     intros Hk.
     pose proof (pt_bv9_range i) as Hir.
     assert (Hlk : seqZ 0 512 !! Z.to_nat (bv_unsigned i) = Some (bv_unsigned i)).
@@ -1441,7 +1441,7 @@ Section PtTreeIris.
     pt_kids t i = Some c ->
     pt_kids_own_at lvl dq t ⊢
       ptree_own_at lvl dq c ∗ (ptree_own_at lvl dq c -∗ pt_kids_own_at lvl dq t).
-  Proof.
+  Proof using .
     intros Hk.
     pose proof (pt_bv9_range i) as Hir.
     assert (Hlk : seqZ 0 512 !! Z.to_nat (bv_unsigned i) = Some (bv_unsigned i)).
@@ -1469,7 +1469,7 @@ Section PtTreeIris.
        pt_slot_own (pt_addr1 p2 vpn) dq p1 -∗
        pt_slot_own (pt_addr0 p1 vpn) dq p0 -∗
        ptree_own_at 2 dq t).
-  Proof.
+  Proof using .
     intros (c1 & c0 & Hk2 & Hk1 & He2 & He1 & He0 & Hb1 & Hb0 & _).
     iIntros "[Hpg Hks]".
     iDestruct (pt_page_own_acc_ro_at dq t (vpn_idx 2 vpn) with "Hpg") as "[Hs2 Hpg]".
@@ -1507,7 +1507,7 @@ Section PtTreeIris.
          pt_slot_own (pt_addr1 p2 vpn) dq p1 -∗
          pt_slot_own (pt_addr0 p1 vpn) dq w' -∗
          ptree_own_at 2 dq (ptree_set_leaf t vpn w')).
-  Proof.
+  Proof using .
     intros (c1 & c0 & Hk2 & Hk1 & He2 & He1 & He0 & Hb1 & Hb0 & _).
     iIntros "[Hpg Hks]".
     iDestruct (pt_page_own_acc_ro_at dq t (vpn_idx 2 vpn) with "Hpg") as "[Hs2 Hpg]".
@@ -1543,7 +1543,7 @@ Section PtTreeIris.
 
   Lemma slot_mem_of_own (sg : mstate) (a : Arch.pa) (dq : dfrac) (w : mword 64) :
     gen_heap_interp sg.(mem) -∗ pt_slot_own a dq w -∗ ⌜pt_slot_mem sg a w⌝.
-  Proof.
+  Proof using .
     iIntros "Hm Hw".
     iDestruct (pt_slot_own_forget with "Hw") as "Hw".
     iDestruct (phys_word_pointsto_aligned_p with "Hw") as %Hal.
@@ -1577,7 +1577,7 @@ Section PtTreeIris.
     ⌜(pt_slot_mem sg (pt_addr2 t vpn) p2 /\
       pt_slot_mem sg (pt_addr1 p2 vpn) p1 /\
       pt_slot_mem sg (pt_addr0 p1 vpn) p0)%type⌝.
-  Proof.
+  Proof using .
     intros Hmaps.
     iIntros "Hm Ht".
     iDestruct (ptree_own_path_ro_at dq t vpn p2 p1 p0 Hmaps with "Ht")
@@ -1602,7 +1602,7 @@ Section PtTreeIris.
              pt_slot_mem sg (pt_addr2 t vpn) p2 /\ pte_valid p2 /\ pte_ptr p2 /\
              pt_slot_mem sg (pt_addr1 p2 vpn) p1 /\ pte_valid p1 /\ pte_ptr p1 /\
              pt_slot_mem sg (pt_addr0 p1 vpn) w0 /\ pte_invalid w0))%type ⌝.
-  Proof.
+  Proof using .
     intros Hblk.
     iIntros "Hm [Hpg Hks]".
     destruct Hblk as
@@ -2337,7 +2337,7 @@ Section PtHit.
     exec (translate_TLB_hit 39 asid vpn acc p mxr do_sum tt idx
             (u_walk_entry vpn p2 p1 q0 asid)) s
     = Some (Ok (autocast (T := mword) ((autocast (T := mword) (PPN_of_PTE q0)) : mword 44), PBMT_PMA, tt), s).
-  Proof.
+  Proof using .
     intros Hchk Hupd Hpb.
     unfold translate_TLB_hit. cbn zeta.
     match goal with |- context[tlb_get_pte ?sz ?e] => change sz with 8 end.
@@ -2396,7 +2396,7 @@ Section PtHit.
     pte_pbmt0 q0 ->
     goodb Db (translate_TLB_hit 39 asid vpn acc p mxr do_sum tt idx
                 (u_walk_entry vpn p2 p1 q0 asid)) s = true.
-  Proof.
+  Proof using .
     intros Hchk Hpure Hupd Hpb.
     unfold translate_TLB_hit. cbn zeta.
     match goal with |- context[tlb_get_pte ?sz ?e] => change sz with 8 end.
@@ -2443,7 +2443,7 @@ Section PtHit.
       (Ok (autocast (T := mword)
              ((autocast (T := mword) (PPN_of_PTE q0)) : mword 44),
            PBMT_PMA, tt)) rs.
-  Proof.
+  Proof using .
     intros HD Hag Hchk Hpure Hupd Hpb.
     eapply (hval_of_goodb Db D Drw _ dst rs _ HD Hag).
     - exact (goodb_translate_TLB_hit_pt Db vpn p2 p1 q0 asid idx dst
@@ -2461,7 +2461,7 @@ Section PtHit.
     exec (translate_TLB_hit 39 asid vpn acc p mxr do_sum tt idx
             (u_walk_entry vpn p2 p1 q0 asid)) s
     = Some (Err (PTW_No_Permission tt, tt), s).
-  Proof.
+  Proof using .
     intros Hden.
     unfold translate_TLB_hit. cbn zeta.
     match goal with |- context[tlb_get_pte ?sz ?e] => change sz with 8 end.
@@ -2516,7 +2516,7 @@ Section PtFault.
     exec (lookup_TLB 39 (mword_of_int 0) vpn) s = Some (None, s) ->
     exec (translate 39 (mword_of_int 0 : mword 16) root vpn acc p mxr do_sum tt) s
     = Some (Err (PTW_Invalid_PTE tt, tt), s).
-  Proof.
+  Proof using .
     intros Hstop Hlk.
     apply (exec_translate_walk_user_err vpn acc p mxr do_sum (mword_of_int 0) root _ s Hlk).
     apply exec_translate_TLB_miss_user_walk_err.
@@ -2551,7 +2551,7 @@ Section PtFault.
     exec (lookup_TLB 39 (mword_of_int 0) vpn) s = Some (None, s) ->
     exec (translate 39 (mword_of_int 0 : mword 16) root vpn acc p mxr do_sum tt) s
     = Some (Err (PTW_No_Permission tt, tt), s).
-  Proof.
+  Proof using .
     intros Hv2 Hn2 Hv1 Hn1 Hv0 Hl0 Hden Hrd2 Hrd1 Hrd0 Hlk.
     apply (exec_translate_walk_user_err vpn acc p mxr do_sum (mword_of_int 0) root _ s Hlk).
     apply exec_translate_TLB_miss_user_walk_err.
@@ -2574,7 +2574,7 @@ Section PtFault.
     ptree_blocks t vpn ->
     register_lookup tlb s.(sregs) = tlbvec ->
     exec (lookup_TLB 39 (mword_of_int 0) vpn) s = Some (None, s).
-  Proof.
+  Proof using .
     intros Hok Hblk Htlb.
     destruct (vec_access_dec tlbvec (tlb_hash (__id 39) vpn)) as [ent|] eqn:Hslot.
     - destruct (Hok vpn ent Hslot) as (vpn0 & q2 & q1 & q0 & a' & d' & Hm0 & Hh & ->).

@@ -187,7 +187,7 @@ Section Kalloc.
   Global Typeclasses Opaque page_filled.
 
   Lemma page_own_of_filled p c : page_filled p c ⊢ page_own p.
-  Proof.
+  Proof using .
     rewrite /page_filled /page_own. apply big_sepL_mono.
     intros k j _. rewrite /byte_any. iIntros "H".
     by iApply TsoCtx.ctx_pointsto_free.
@@ -197,7 +197,7 @@ Section Kalloc.
      (a copy, a boot carve) rather than by one constant. *)
   Lemma page_own_of_named p (f : nat -> bv 8) :
     ([∗ list] j ∈ seq 0 4096, (pa_add p j) ↦ₘ (f j)) ⊢ page_own p.
-  Proof.
+  Proof using .
     rewrite /page_own. apply big_sepL_mono. intros k j _.
     rewrite /byte_any. iIntros "H".
     by iApply TsoCtx.ctx_pointsto_free.
@@ -205,21 +205,21 @@ Section Kalloc.
 
   Lemma page_own_of_named_ex p :
     ([∗ list] j ∈ seq 0 4096, ∃ b : bv 8, (pa_add p j) ↦ₘ b) ⊢ page_own p.
-  Proof.
+  Proof using .
     rewrite /page_own. apply big_sepL_mono. intros k j _.
     rewrite /byte_any. iIntros "(%b & H)".
     by iApply TsoCtx.ctx_pointsto_free.
   Qed.
 
   Lemma page_own_split p : page_own p ⊣⊢ page_head8 p ∗ page_rest p.
-  Proof.
+  Proof using .
     rewrite /page_own /page_head8 /page_rest.
     replace 4096%nat with (8 + 4088)%nat by lia.
     rewrite seq_app big_sepL_app //.
   Qed.
 
   Lemma word_at_head8 p w : word_at p w ⊢ page_head8 p.
-  Proof.
+  Proof using .
     rewrite /word_at /page_head8 ctx_word_pointsto_unfold. iIntros "[_ H]".
     iApply (big_sepL_mono with "H"). iIntros (k j _) "Hb".
     rewrite /byte_any. by iApply TsoCtx.ctx_pointsto_free.
@@ -236,14 +236,14 @@ Section Kalloc.
     page_filled p c ⊣⊢
     ([∗ list] j ∈ seq 0 8, (pa_add p j) ↦ₘ c) ∗
     ([∗ list] j ∈ seq 8 4088, (pa_add p j) ↦ₘ c).
-  Proof.
+  Proof using .
     rewrite /page_filled. replace 4096%nat with (8 + 4088)%nat by lia.
     rewrite seq_app big_sepL_app //.
   Qed.
 
   Lemma filled_rest_page_rest p c :
     ([∗ list] j ∈ seq 8 4088, (pa_add p j) ↦ₘ c) ⊢ page_rest p.
-  Proof.
+  Proof using .
     rewrite /page_rest. apply big_sepL_mono. intros k j _.
     rewrite /byte_any. iIntros "H". by iApply TsoCtx.ctx_pointsto_free.
   Qed.
@@ -251,7 +251,7 @@ Section Kalloc.
   Lemma filled_head8_word_at p c :
     page_valid p ->
     ([∗ list] j ∈ seq 0 8, (pa_add p j) ↦ₘ c) ⊢ ∃ w : mword 64, word_at p w.
-  Proof.
+  Proof using .
     intros Hv.
     change (seq 0 8) with [0;1;2;3;4;5;6;7]%nat.
     iIntros "(H0 & H1 & H2 & H3 & H4 & H5 & H6 & H7 & _)".
@@ -273,7 +273,7 @@ Section Kalloc.
   Qed.
 
   Lemma run_page_page_own p next : run_page p next ⊢ page_own p.
-  Proof.
+  Proof using .
     rewrite /run_page page_own_split. iIntros "[Hw $]". by iApply word_at_head8.
   Qed.
 
@@ -288,7 +288,7 @@ Section Kalloc.
   Lemma freelist_chain_cons head p ps :
     freelist_chain head (p :: ps)
     = (⌜head = p⌝ ∗ ⌜page_valid p⌝ ∗ (∃ nxt : mword 64, run_page p nxt ∗ freelist_chain nxt ps))%I.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* ===== the page-count ghost (see the header) ===== *)
 
@@ -299,10 +299,10 @@ Section Kalloc.
   Definition kalloc_sealed (γs : gname) : iProp Σ :=
     own γs (Cinr (to_agree ()) : kalloc_oneshotR).
   Global Instance kalloc_sealed_persistent γs : Persistent (kalloc_sealed γs).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma kalloc_pending_sealed γs : kalloc_pending γs -∗ kalloc_sealed γs -∗ False.
-  Proof. iIntros "Hp Hs". iDestruct (own_valid_2 with "Hp Hs") as %[]. Qed.
+  Proof using . iIntros "Hp Hs". iDestruct (own_valid_2 with "Hp Hs") as %[]. Qed.
 
   (* the caller-side count: exclusive exact count (boot) or persistent no-info
      witness (steady state). *)
@@ -312,7 +312,7 @@ Section Kalloc.
     | None   => kalloc_sealed γk.2
     end%I.
   Global Instance kalloc_avail_None_persistent γk : Persistent (kalloc_avail γk None).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* the invariant-side authority: while counting, the ghost_var's other half
      (tied to [length pages]); once the seal has fired, any lock holder may
@@ -323,7 +323,7 @@ Section Kalloc.
 
   Lemma kalloc_avail_alloc n :
     ⊢ |==> ∃ γk, kalloc_avail γk (Some n) ∗ kmem_avail_auth γk n.
-  Proof.
+  Proof using .
     iMod (ghost_var_alloc n) as (γc) "Hg".
     iEval (rewrite -Qp.half_half) in "Hg".
     iDestruct (ghost_var_split with "Hg") as "[H1 H2]".
@@ -335,7 +335,7 @@ Section Kalloc.
      the result is persistent, so it can be handed to every later caller. *)
   Lemma kalloc_avail_seal γk n :
     kalloc_avail γk (Some n) ==∗ kalloc_avail γk None.
-  Proof.
+  Proof using .
     iIntros "[Hp _]". iApply (own_update with "Hp").
     by apply cmra_update_exclusive.
   Qed.
@@ -343,7 +343,7 @@ Section Kalloc.
   (* boot mode agrees with the invariant's count *)
   Lemma kalloc_avail_agree γk n npages :
     kalloc_avail γk (Some n) -∗ kmem_avail_auth γk npages -∗ ⌜n = npages⌝.
-  Proof.
+  Proof using .
     iIntros "[Hp Hv] [Hv'|Hs]".
     - iApply (ghost_var_agree with "Hv Hv'").
     - iExFalso. iApply (kalloc_pending_sealed with "Hp Hs").
@@ -352,7 +352,7 @@ Section Kalloc.
   (* an empty free list forces the caller's count (if any) to be 0 *)
   Lemma kalloc_avail_zero γk on :
     kalloc_avail γk on -∗ kmem_avail_auth γk 0%nat -∗ ⌜avail_zero on⌝.
-  Proof.
+  Proof using .
     destruct on as [n|]; cbn.
     - iIntros "Hav Hauth". iApply (kalloc_avail_agree with "Hav Hauth").
     - auto.
@@ -362,7 +362,7 @@ Section Kalloc.
   Lemma kmem_avail_dec γk on npages :
     kalloc_avail γk on -∗ kmem_avail_auth γk (S npages) ==∗
     kalloc_avail γk (avail_dec on) ∗ kmem_avail_auth γk npages.
-  Proof.
+  Proof using .
     iIntros "Hav Hauth". destruct on as [n|]; cbn.
     - iDestruct "Hav" as "[Hp Hv]".
       iDestruct "Hauth" as "[Hv'|Hs]";
@@ -377,7 +377,7 @@ Section Kalloc.
   Lemma kmem_avail_inc γk on npages :
     kalloc_avail γk on -∗ kmem_avail_auth γk npages ==∗
     kalloc_avail γk (avail_inc on) ∗ kmem_avail_auth γk (S npages).
-  Proof.
+  Proof using .
     iIntros "Hav Hauth". destruct on as [n|]; cbn.
     - iDestruct "Hav" as "[Hp Hv]".
       iDestruct "Hauth" as "[Hv'|Hs]";
@@ -403,7 +403,7 @@ Section Kalloc.
   Lemma kmem_res_close γk fl head pages :
     word_at fl head ∗ freelist_chain head pages ∗ kmem_avail_auth γk (length pages)
     ⊢ kmem_res γk fl.
-  Proof. iIntros "H". iExists head, pages. iExact "H". Qed.
+  Proof using . iIntros "H". iExists head, pages. iExact "H". Qed.
 
   (* kalloc's logical core: the opened invariant either has an empty list (put
      it back unchanged, kalloc returns null -- [kalloc_avail_zero] pins the
@@ -422,7 +422,7 @@ Section Kalloc.
     freelist_chain oldhead pages -∗
     kmem_avail_auth γk (length pages) ==∗
     kalloc_avail γk (avail_inc on) ∗ kmem_res γk fl.
-  Proof.
+  Proof using .
     iIntros (Hp) "Hav Hfl Hrun Hchain Hauth".
     iMod (kmem_avail_inc γk on (length pages) with "Hav Hauth") as "[Hav Hauth]".
     iModIntro. iFrame "Hav".
@@ -452,14 +452,14 @@ Section Kalloc.
   Lemma kalloc_post_success_filled γk k r :
     kalloc_post γk (Some (S k)) r -∗
     ⌜page_valid r⌝ ∗ page_filled r kalloc_junk ∗ kalloc_avail γk (Some k).
-  Proof.
+  Proof using .
     iIntros "[(_ & %Hz & _) | H]"; [discriminate | iExact "H"].
   Qed.
 
   Lemma kalloc_post_success γk k r :
     kalloc_post γk (Some (S k)) r -∗
     ⌜page_valid r⌝ ∗ page_own r ∗ kalloc_avail γk (Some k).
-  Proof.
+  Proof using .
     iIntros "H".
     iDestruct (kalloc_post_success_filled with "H") as "($ & Hp & $)".
     by iApply page_own_of_filled.
@@ -471,7 +471,7 @@ Section Kalloc.
     kalloc_post γk on r -∗
     (⌜r = nullp⌝ ∗ ⌜avail_zero on⌝ ∗ kalloc_avail γk on)
     ∨ (⌜page_valid r⌝ ∗ page_own r ∗ kalloc_avail γk (avail_dec on)).
-  Proof.
+  Proof using .
     iIntros "[Hl | (%Hv & Hp & Ha)]"; [by iLeft |].
     iRight. iSplitR; [done|]. iFrame "Ha". by iApply page_own_of_filled.
   Qed.
@@ -506,11 +506,11 @@ Section KallocCtx.
      has no context to be registered to. *)
   Global Instance byte_any_morph (a : Arch.pa) :
     CtxMorph (λ _ : CtxId, byte_any a).
-  Proof. iIntros (ξ ξ') "Hd H". iModIntro. iFrame. Qed.
+  Proof using . iIntros (ξ ξ') "Hd H". iModIntro. iFrame. Qed.
 
   Global Instance word_at_morph (a w : mword 64) :
     CtxMorph (λ ξ0 : CtxId, word_at (XIk := ξ0) a w).
-  Proof.
+  Proof using .
     iIntros (ξ ξ') "Hd H". rewrite /word_at.
     iMod (ctx_morph_word _ _ _ _ ξ ξ' with "Hd H") as "[Hd H]".
     iModIntro. iFrame "Hd". iExact "H".
@@ -518,11 +518,11 @@ Section KallocCtx.
 
   Global Instance page_rest_morph (p : mword 64) :
     CtxMorph (λ _ : CtxId, page_rest p).
-  Proof. iIntros (ξ ξ') "Hd H". iModIntro. iFrame. Qed.
+  Proof using . iIntros (ξ ξ') "Hd H". iModIntro. iFrame. Qed.
 
   Global Instance run_page_morph (p next : mword 64) :
     CtxMorph (λ ξ0 : CtxId, run_page (XIk := ξ0) p next).
-  Proof.
+  Proof using .
     iIntros (ξ ξ') "Hd H". rewrite /run_page.
     iDestruct "H" as "[Hw Hr]".
     iMod (word_at_morph p next ξ ξ' with "Hd Hw") as "[Hd Hw]".
@@ -533,7 +533,7 @@ Section KallocCtx.
   Global Instance freelist_chain_morph (head : mword 64)
       (pages : list (mword 64)) :
     CtxMorph (λ ξ0 : CtxId, freelist_chain (XIk := ξ0) head pages).
-  Proof.
+  Proof using .
     revert head. induction pages as [|p ps IH] => head.
     - iIntros (ξ ξ') "Hd H". iModIntro. iFrame.
     - iIntros (ξ ξ') "Hd H". simpl.
@@ -546,7 +546,7 @@ Section KallocCtx.
 
   Global Instance kmem_res_morph (γk : gname * gname) (fl : mword 64) :
     CtxMorph (λ ξ0 : CtxId, kmem_res (XIk := ξ0) γk fl).
-  Proof.
+  Proof using .
     iIntros (ξ ξ') "Hd H". rewrite /kmem_res.
     iDestruct "H" as (head pages) "(Hw & Hchain & Hauth)".
     iMod (word_at_morph fl head ξ ξ' with "Hd Hw") as "[Hd Hw]".
@@ -562,5 +562,5 @@ Section KallocCtx.
   Definition is_kmem (γ : gname) (γk : gname * gname) (lk fl : mword 64) : iProp Σ :=
     is_lock γ lk "kmem"%string (λ ξ : CtxId, kmem_res (XIk := ξ) γk fl).
   Global Instance is_kmem_persistent γ γk lk fl : Persistent (is_kmem γ γk lk fl).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 End KallocCtx.

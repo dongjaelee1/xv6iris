@@ -99,16 +99,16 @@ Section UartsFields.
     ([∗ list] i ∈ enum uart_id, uart_base_pinned i ∗ uart_rx_pinned i)%I.
 
   Global Instance uart_base_pinned_persistent i : Persistent (uart_base_pinned i).
-  Proof. rewrite /uart_base_pinned. apply _. Qed.
+  Proof using . rewrite /uart_base_pinned. apply _. Qed.
   Global Instance uart_rx_pinned_persistent i : Persistent (uart_rx_pinned i).
-  Proof. rewrite /uart_rx_pinned. apply _. Qed.
+  Proof using . rewrite /uart_rx_pinned. apply _. Qed.
   Global Instance uarts_pinned_persistent : Persistent uarts_pinned.
-  Proof. rewrite /uarts_pinned. apply _. Qed.
+  Proof using . rewrite /uarts_pinned. apply _. Qed.
 
   (* focus one port out of the pair, the only way a rule reaches it *)
   Lemma uarts_pinned_at (i : uart_id) :
     uarts_pinned -∗ uart_base_pinned i ∗ uart_rx_pinned i.
-  Proof.
+  Proof using .
     rewrite /uarts_pinned /enum /uart_id_finite /=.
     iIntros "#(H0 & H1 & _)". by destruct i.
   Qed.

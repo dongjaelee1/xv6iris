@@ -49,29 +49,29 @@ Section PipeInv.
      addend, so the bridge between the byte view ([pa_add]) and the
      instruction view ([poff_of] / WpLock's field forms) is a conversion. *)
   Lemma pa_pipe_lock (pi : mword 64) : pa_add pi 0%nat = pi.
-  Proof. unfold pa_add. change (Z.of_nat 0) with 0. apply avi0. Qed.
+  Proof using . unfold pa_add. change (Z.of_nat 0) with 0. apply avi0. Qed.
   Lemma pa_pipe_name (pi : mword 64) : pa_add pi 8%nat = lock_name_field pi.
-  Proof. unfold pa_add, add_vec_int, lock_name_field. apply f_equal.
+  Proof using . unfold pa_add, add_vec_int, lock_name_field. apply f_equal.
          apply bv_eq; vm_compute; reflexivity. Qed.
   Lemma pa_pipe_cpu (pi : mword 64) : pa_add pi 16%nat = lock_cpu pi.
-  Proof. unfold pa_add, add_vec_int, lock_cpu. apply f_equal.
+  Proof using . unfold pa_add, add_vec_int, lock_cpu. apply f_equal.
          apply bv_eq; vm_compute; reflexivity. Qed.
   Lemma pa_pipe_nread (pi : mword 64) : pa_add pi 536%nat = a_pnread pi.
-  Proof. unfold pa_add, add_vec_int, a_pnread, poff_of. apply f_equal.
+  Proof using . unfold pa_add, add_vec_int, a_pnread, poff_of. apply f_equal.
          apply bv_eq; vm_compute; reflexivity. Qed.
   Lemma pa_pipe_nwrite (pi : mword 64) : pa_add pi 540%nat = a_pnwrite pi.
-  Proof. unfold pa_add, add_vec_int, a_pnwrite, poff_of. apply f_equal.
+  Proof using . unfold pa_add, add_vec_int, a_pnwrite, poff_of. apply f_equal.
          apply bv_eq; vm_compute; reflexivity. Qed.
   Lemma pa_pipe_ro (pi : mword 64) : pa_add pi 544%nat = a_popen pi false.
-  Proof. unfold pa_add, add_vec_int, a_popen, poff_of. apply f_equal.
+  Proof using . unfold pa_add, add_vec_int, a_popen, poff_of. apply f_equal.
          apply bv_eq; vm_compute; reflexivity. Qed.
   Lemma pa_pipe_wo (pi : mword 64) : pa_add pi 548%nat = a_popen pi true.
-  Proof. unfold pa_add, add_vec_int, a_popen, poff_of. apply f_equal.
+  Proof using . unfold pa_add, add_vec_int, a_popen, poff_of. apply f_equal.
          apply bv_eq; vm_compute; reflexivity. Qed.
 
   Lemma pipe_data_rebase (pi : mword 64) (bs : list (bv 8)) :
     ([∗ list] j ↦ b ∈ bs, pa_add (pa_add pi pipe_data_off) j ↦ₘ b) ⊣⊢ pipe_data pi bs.
-  Proof.
+  Proof using .
     rewrite /pipe_data /pipe_data_at. apply big_sepL_proper. intros k b _. by rewrite pa_add_add.
   Qed.
 
@@ -88,7 +88,7 @@ Section PipeInv.
       ([∗ list] j ∈ seq 544 4, byte_any (pa_add pi j)) ∗
       ([∗ list] j ∈ seq 548 4, byte_any (pa_add pi j)) ∗
       ([∗ list] j ∈ seq 552 3544, byte_any (pa_add pi j)).
-  Proof.
+  Proof using .
     rewrite /page_own.
     replace 4096%nat with (4 + 4092)%nat by lia.
     rewrite (bwin_split pi 0 4 4092). replace (0 + 4)%nat with 4%nat by lia.
@@ -123,7 +123,7 @@ Section PipeInv.
       ([∗ list] j ∈ seq 544 4, (pa_add pi j) ↦ₘ c) ∗
       ([∗ list] j ∈ seq 548 4, (pa_add pi j) ↦ₘ c) ∗
       ([∗ list] j ∈ seq 552 3544, (pa_add pi j) ↦ₘ c).
-  Proof.
+  Proof using .
     rewrite /page_filled.
     replace 4096%nat with (4 + 4092)%nat by lia.
     rewrite (bwin_named_split pi 0 4 4092). replace (0 + 4)%nat with 4%nat by lia.
@@ -167,7 +167,7 @@ Section PipeInv.
      [KallocInv.page_filled] and is a named window at every field. *)
   Lemma page_filled_pipe_raw (pi : mword 64) (c : bv 8) :
     page_valid pi -> page_filled pi c ⊢ pipe_raw pi.
-  Proof.
+  Proof using .
     intro Hpv. rewrite pipe_windows_named /pipe_raw /pipe_slack.
     iIntros "(W0 & W4 & W8 & W16 & Wd & W536 & W540 & W544 & W548 & Wtail)".
     iSplitL "W0".
@@ -213,7 +213,7 @@ Section PipeInv.
      what turns release's spoils back into [kfree_pre]. *)
   Lemma pipe_raw_page_own (pi : mword 64) :
     pipe_raw pi ⊢ page_own pi.
-  Proof.
+  Proof using .
     rewrite /page_own /pipe_raw /pipe_slack.
     replace 4096%nat with (4 + 4092)%nat by lia.
     rewrite (bwin_split pi 0 4 4092). replace (0 + 4)%nat with 4%nat by lia.
@@ -280,7 +280,7 @@ Section PipeInv.
   Lemma pipe_bytes_page_own (pi : mword 64) :
     WpLock.lock_word_fresh pi -∗ WpLock.lk_cpu_ready pi -∗ pipe_bytes pi -∗
     page_own pi.
-  Proof.
+  Proof using .
     iIntros "Hw Hready Hb".
     iDestruct (WpLock.lock_word_fresh_free with "Hw") as "Hw".
     rewrite /WpLock.lk_cpu_ready /WpLock.lk_cpu_ready_at.
@@ -354,7 +354,7 @@ Section PipeInv.
              pipe_end_full γp false ∗ pipe_end_full γp true ∗
              pipe_openmark γp false ∗ pipe_openmark γp true ∗
              pipe_qauth (pn_queue γp) pst0 ∗ pipe_qfrag (pn_queue γp) pst0.
-  Proof.
+  Proof using .
     iMod (own_alloc (1%Qp : fracR)) as (γr) "Hr"; [done|].
     iMod (own_alloc (1%Qp : fracR)) as (γw) "Hw"; [done|].
     iMod (own_alloc (DfracOwn 1)) as (γmr) "Hmr"; [done|].
@@ -392,7 +392,7 @@ Section PipeInv.
                 read, both ends open -- what sys_pipe hands the process
                 (design/pipe.md, "The byte queue") *)
              pipe_qfrag (pn_queue γp) pst0.
-  Proof.
+  Proof using .
     iIntros (Hpv Hlen) "Hnm Hword Hready Hnr Hnw Hro Hwo Hdata Hslack Hrun".
     (* A6.105: unbundle the floor that travels with the owner cell; it becomes
        [is_pipe]'s floor below. *)

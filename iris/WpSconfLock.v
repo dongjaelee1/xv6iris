@@ -130,7 +130,7 @@ Section WpSconfLock.
      [wordw_claim] -- it is strictly stronger, and this is the projection. *)
   Local Lemma lk_addr_claim_wordw (a : Arch.pa) (w : Z) :
     WpLock.lk_addr_claim a w ⊢ wordw_claim (KTR := KT0) w a.
-  Proof.
+  Proof using .
     rewrite /WpLock.lk_addr_claim /wordw_claim /mem_claim.
     iIntros "(%Hal & %ppn & #Hk & %Hc & %Hr & %Hp & _)".
     iSplitR; [done|]. iExists ppn. iFrame "Hk". by iPureIntro.
@@ -150,7 +150,7 @@ Section WpSconfLock.
      text had to FORGET the owner cell to a raw word to read a claim off it
      and then cross BACK through [TsoCtxShim.ctx_word_of_mem]; that was the
      shim's last live use in the tree, and it dies here. *)
-  Proof.
+  Proof using .
     intros HE Href. iIntros "#Hlock HT".
     iDestruct (WpLock.lock_openable_parts with "Hlock") as (lo) "[#Hfl #Hopen]".
     iMod ("Hopen" $! E T with "[%] [] HT")
@@ -179,7 +179,7 @@ Section WpSconfLock.
     tso_interp_at riscv_eraGS g ∗
     ([∗ list] j ∈ seq 0 n,
        TsoCtx.phys_ledger (pa_add a j) (DfracOwn 1) (f j)).
-  Proof.
+  Proof using .
     induction n as [|n IH].
     - iIntros "Hgh Hint _". iModIntro. iFrame "Hgh Hint". done.
     - rewrite seq_S !big_sepL_app /=.
@@ -204,7 +204,7 @@ Section WpSconfLock.
     tso_interp_at riscv_eraGS g ∗
     ([∗ list] j ∈ seq 0 n, ∃ t' : nat,
        TsoCtx.phys_ledger_pin (pa_add a j) (DfracOwn 1) (f j) t' B (Sf j)).
-  Proof.
+  Proof using .
     intros HtB. induction n as [|n IH]; intros Hf.
     - iIntros "Hgh Hint _". iModIntro. iFrame "Hgh Hint". done.
     - rewrite seq_S !big_sepL_app /=.
@@ -226,7 +226,7 @@ Section WpSconfLock.
     gen_heap_interp (hG := riscv_memGS) g.(gmem) ∗
     tso_interp_at riscv_eraGS g ∗
     WpLock.lock_word lk v.
-  Proof.
+  Proof using .
     iIntros "Hgh Hint [%Hal Hb]".
     iMod (pin_drop_run g lk 4 (nth_byte v) B WpLock.lkw_set
             with "Hgh Hint Hb") as "(Hgh & Hint & Hb)".
@@ -270,7 +270,7 @@ Section WpSconfLock.
          exists v : mword (8*4),
            tso_read_bytes img log (hart_agent (@cpu_id CIDw)) tvr
              (pa_of ppn ea) (Z.to_N 4) v /\ True⌝.
-  Proof.
+  Proof using .
     intros CIDw img sigma log V ppn Hcan Hoff Hid _.
     iIntros "#Hk Hmem Htso Hctx _".
     iDestruct (tso_interp_of_pin with "Htso") as %Hpin.
@@ -306,7 +306,7 @@ Section WpSconfLock.
         pc_is (add_vec_int pc 2) -∗
         WP (Loop : expr riscv_lang))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pa Hpalk Hrd Hrdok Href.
     (* the class, consumed at [rs1] -- the one line the funnel change needs,
        and this leaf's wiring check.  See the family note at the head of this
@@ -404,7 +404,7 @@ Section WpSconfLock.
            tso_read_bytes img log (hart_agent (@cpu_id CIDw)) tvr
              (pa_of ppn ea) (Z.to_N 4) v /\
            neq_vec (sign_extend' 64 v) zero_reg = true⌝.
-  Proof.
+  Proof using .
     intros CIDw img sigma log V ppn Hcan Hoff Hid Hsame.
     iIntros "#Hk Hmem Htso Hctx [#Hfl (%v & %Hvnz & %Hal & Hpin)]".
     iDestruct (TsoCtx.own_context_floor_view (CID := CIDw) CtxIdDefs.cur_ctx B
@@ -444,7 +444,7 @@ Section WpSconfLock.
       ⌜forall tvr : nat, (V (hart_agent (@cpu_id CIDw)) <= tvr)%nat ->
          tso_read_bytes img log (hart_agent (@cpu_id CIDw)) tvr
            (pa_of ppn ea) (Z.to_N 4) v⌝.
-  Proof.
+  Proof using .
     intros CIDw img sigma log V ppn v Hcan Hoff Hid Hsame.
     pose proof (Hsame Hbp) as Hcid.
     assert (Hcid' : (@cpu_id CIDw : CPU) = (@cpu_id CID : CPU)) by exact Hcid.
@@ -509,7 +509,7 @@ Section WpSconfLock.
          position", and a LOSING spinner is not the acquirer -- [B] is the
          incumbent holder's.  A loser leaves with nothing but the interp. *)
       WpLock.lock_word_pin B ea vnew.
-  Proof.
+  Proof using .
     intros Hset. iIntros "Hm Htso Hctx [%Hal Hb]".
     iDestruct (tso_interp_of_pin with "Htso") as %Hpin.
     iDestruct (tso_interp_of_bound with "Htso") as %Hbd.
@@ -588,7 +588,7 @@ Section WpSconfLock.
          free off the post-state and [ctx_bound_raise] turns it into the
          floor the holder token carries away (§0.38′'s agreed one form). *)
       TsoCtx.ctx_floor CtxIdDefs.cur_ctx (S (length log)).
-  Proof.
+  Proof using .
     intros Hset. iIntros "Hm Htso Hctx (%vold & %Hal & Hb)".
     iDestruct (tso_interp_of_pin with "Htso") as %Hpin.
     iDestruct (tso_interp_of_bound with "Htso") as %Hbd.
@@ -696,7 +696,7 @@ Section WpSconfLock.
         pc_is (add_vec_int pc 2) -∗
         WP (Loop : expr riscv_lang))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pa h0 Hpalk Hrd Hrdok Hbp Href.
     (* the class, consumed at [rs1] -- the one line the funnel change needs,
        and this leaf's wiring check.  See the family note at the head of this
@@ -783,7 +783,7 @@ Section WpSconfLock.
     gen_heap_interp (hG := riscv_memGS) mm -∗
     WpLock.lock_word_at st B a v -∗
     ⌜forall j : nat, (j < 4)%nat -> mm !! (pa_add a j) = Some (nth_byte v j)⌝.
-  Proof.
+  Proof using .
     iIntros "Hm Hw".
     iAssert ([∗ list] j ∈ seq 0 4, phys_pointsto (pa_add a j) (DfracOwn 1)
                (nth_byte v j))%I with "[Hw]" as "Hb".
@@ -838,7 +838,7 @@ Section WpSconfLock.
                       (hart_agent (@cpu_id CIDw))])%list V) ∗
       TsoCtx.own_context (CID := CIDw) CtxIdDefs.cur_ctx ∗
       TsoCtx.phys_ledger_word4 ea (DfracOwn 1) vnew.
-  Proof.
+  Proof using .
     intros CIDw img sigma log V ppn Hcan Hoff Hid _.
     rewrite (ktier_pin_id ppn ea Hid).
     iIntros "#Hk Hm Htso Hctx (%B0 & %vold & Hpin0)".
@@ -930,7 +930,7 @@ Section WpSconfLock.
       pc_is (add_vec_int pc 4) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pa Hpalk Href.
     (* the class, consumed at [rs1] -- the one line the funnel change needs,
        and this leaf's wiring check.  See the family note at the head of this
@@ -1036,7 +1036,7 @@ Section WpSconfLock.
          exists v : mword (8*8),
            tso_read_bytes img log (hart_agent (@cpu_id CIDw)) tvr
              (pa_of ppn ea) (Z.to_N 8) v /\ True⌝.
-  Proof.
+  Proof using .
     intros CIDw img sigma log V ppn Hcan Hoff Hid _.
     iIntros "#Hk Hmem Htso Hctx _".
     iDestruct (tso_interp_of_pin with "Htso") as %Hpin.
@@ -1074,7 +1074,7 @@ Section WpSconfLock.
         pc_is (add_vec_int pc 2) -∗
         WP (Loop : expr riscv_lang))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pa Hpacpu Hrd Hrdok Href.
     (* the class, consumed at [rs1] -- the one line the funnel change needs,
        and this leaf's wiring check.  See the family note at the head of this
@@ -1134,7 +1134,7 @@ Section WpSconfLock.
       ⌜forall tvr : nat, (V (hart_agent (@cpu_id CIDw)) <= tvr)%nat ->
          tso_read_bytes img log (hart_agent (@cpu_id CIDw)) tvr
            (pa_of ppn ea) (Z.to_N 8) v⌝.
-  Proof.
+  Proof using .
     subst ea.
     intros CIDw img sigma log V ppn v Hcan Hoff Hid Hsame.
     pose proof (Hsame Hbp) as Hcid.
@@ -1217,7 +1217,7 @@ Section WpSconfLock.
          exists w : mword (8*8),
            tso_read_bytes img log (hart_agent (@cpu_id CIDw)) tvr
              (pa_of ppn ea) (Z.to_N 8) w /\ w <> cpus_ptr (@cpu_id CID)⌝.
-  Proof.
+  Proof using .
     subst ea.
     intros CIDw img sigma log V ppn Hcan Hoff Hid Hsame.
     pose proof (Hsame Hbp) as Hcid.
@@ -1288,7 +1288,7 @@ Section WpSconfLock.
       pc_is (add_vec_int pc 2) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pa h0 cpuv Hpacpu Hrd Hrdok Hbp Href.
     (* the class, consumed at [rs1] -- the one line the funnel change needs,
        and this leaf's wiring check.  See the family note at the head of this
@@ -1382,7 +1382,7 @@ Section WpSconfLock.
         pc_is (add_vec_int pc (if cmp then 2 else 4)) -∗
         WP (Loop : expr riscv_lang))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pa h0 Hpacpu Hrd Hrdok Hfresh Hbp Href.
     assert (Hpa_all : forall hh : CpuId,
               add_vec (rget (CID := hh) m rs1) (sign_extend' 64 imm) = pa)
@@ -1497,7 +1497,7 @@ Section WpSconfLock.
         pc_is (add_vec_int pc 2) -∗
         WP (Loop : expr riscv_lang))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pa h0 cpuv Hpacpu Hrd Hrdok Hfresh Hbp Href.
     assert (Hpa_all : forall hh : CpuId,
               add_vec (rget (CID := hh) m rs1) (sign_extend' 64 imm) = pa)
@@ -1561,7 +1561,7 @@ Section WpSconfLock.
                       (hart_agent (@cpu_id CIDw))])%list V) ∗
       TsoCtx.own_context (CID := CIDw) CtxIdDefs.cur_ctx ∗
       lk_cpu_cell_ex lo lk unew exnew.
-  Proof.
+  Proof using .
     subst ea. subst uval.
     intros CIDw img sigma log V ppn Hcan Hoff Hid Hsame.
     pose proof (Harm CIDw Hsame) as Hcase.
@@ -1700,7 +1700,7 @@ Section WpSconfLock.
       T' -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pa Hpacpu Hsv Harm Hbp Hupd Href.
     (* the class, consumed at [rs1 / rs2] -- the one line the funnel change needs,
        and this leaf's wiring check.  See the family note at the head of this
@@ -1783,7 +1783,7 @@ Section WpSconfLock.
          (lk_ex (Some (cpu_id, true))) ==∗
          lk_cpu_res lo (Some (cpu_id, true)) lk r ∗
          (locked γl cpu_id ∗ cpu_locks_at cpu_id ({[r]} ∪ S))).
-  Proof.
+  Proof using .
     iIntros "Hg Hcpures (Htok & Hheld & Hcl)".
     iMod (lock_setcpu γl st B cpu_id with "Hg Htok") as "(%Hst & Hg & Htok)".
     rewrite Hst.
@@ -1819,7 +1819,7 @@ Section WpSconfLock.
          lk_cpu_res lo (Some (cpu_id, false)) lk r ∗
          (locked_pre γl cpu_id ∗ lock_ctx_held ∗
           cpu_locks_at cpu_id (S ∖ {[r]}) ∗ ⌜r ∈ S⌝)).
-  Proof.
+  Proof using .
     iIntros "Hg Hcpures [Htok Hcl]".
     iEval (rewrite locked_split) in "Htok". iDestruct "Htok" as "[Htok Hheld]".
     iMod (lock_clrcpu γl st B cpu_id with "Hg Htok") as "(%Hst & Hg & Htok)".
@@ -1878,7 +1878,7 @@ Section WpSconfLock.
       cpu_locks_at h0 ({[s]} ∪ S) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pa h0 Hpacpu Hmycpu Hfresh Hbp Href.
     (* the class, consumed at [rs1 / rs2] -- the one line the funnel change needs,
        and this leaf's wiring check.  See the family note at the head of this
@@ -1948,7 +1948,7 @@ Section WpSconfLock.
       ⌜s ∈ S⌝ -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pa h0 Hpacpu Hbp Href.
     (* the class, consumed at [rs1] -- the one line the funnel change needs,
        and this leaf's wiring check.  See the family note at the head of this
@@ -2043,7 +2043,7 @@ Section WpSconfLock.
          ∨ ⌜neq_vec (sign_extend' 64 w) zero_reg = true⌝) -∗
         WP (Loop : expr riscv_lang))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros pa h0 Hpalk Hone Hstz Hrd Hrdok Href.
     assert (Hzeroone : amoswap_stored (rget m rs2) = WpLock.lkw_one)
       by (rewrite Hone /amoswap_stored /WpLock.lkw_one;

@@ -293,7 +293,7 @@ Section HwCounters.
   Context `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}.
 
   Lemma hw_config_counters : hw_config -∗ counter_caps.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /hw_config.
     iDestruct "H" as (misa0 mseccfg0 pmar0 elp0)
       "(_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ &
@@ -452,7 +452,7 @@ Section UserExec.
     pc_is (stvec_base (uc_stvec C)) -∗
     gpr_file g -∗ user_pt_any pt -∗ user_cfg -∗ Rut pt -∗
     user_trap_frame.
-  Proof.
+  Proof using .
     iIntros (Hok) "Hhs Hpriv Hms Hsc Hstval Hsepc Hpc Hgpr Hupt Hcfg Hrut".
     iExists ms', sc', stv', sep', g.
     iFrame "Hhs Hpriv Hms Hsc Hstval Hsepc Hgpr Hupt Hcfg Hrut".
@@ -511,7 +511,7 @@ Section UserExec.
     user_inv -∗
     ▷ stvec_handler_wp -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "#Hstep".
     iLöb as "IH".
     iIntros "HP Htrap".
@@ -565,7 +565,7 @@ Section MainCompatUserExec.
     pc_is (stvec_base (uc_stvec C)) -∗
     gpr_file g -∗ user_pt_any pt -∗ user_cfg C -∗ Rut pt -∗
     user_trap_frame_at ms' sc' stv' sep' g.
-  Proof.
+  Proof using .
     iIntros (Hok) "Hhs Hpriv Hms Hsc Hstval Hsepc Hpc Hgpr Hupt Hcfg Hrut".
     rewrite /user_trap_frame_at.
     iFrame "Hhs Hpriv Hms Hsc Hstval Hsepc Hgpr Hupt Hcfg Hrut".
@@ -612,7 +612,7 @@ Section MainCompatUserExec.
       (ms_v sc_v stval_v sepc_v : mword 64) (g : regfile) :
     user_trap_frame_atm sz M ms_v sc_v stval_v sepc_v g -∗
     user_trap_frame_at ms_v sc_v stval_v sepc_v g.
-  Proof.
+  Proof using .
     rewrite /user_trap_frame_atm /user_trap_frame_at.
     iIntros "(%Hok & Hhs & Hpriv & Hms & Hsc & Hstval & Hsepc & Hpc & Hg &
               Hpt & Hcfg & Hrut)".
@@ -641,7 +641,7 @@ Section MainCompatUserExec.
     pc_is (stvec_base (uc_stvec C)) -∗
     gpr_file g -∗ user_ptm_inv pt sz M -∗ user_cfg C -∗ Rut pt -∗
     user_trap_frame_atm sz M ms' sc' stv' sep' g.
-  Proof.
+  Proof using .
     iIntros (Hok) "Hhs Hpriv Hms Hsc Hstval Hsepc Hpc Hgpr Hupt Hcfg Hrut".
     rewrite /user_trap_frame_atm.
     iSplitR; [ iPureIntro; exact Hok | ].
@@ -661,5 +661,5 @@ Lemma user_trap_frame_unfold :
     user_trap_frame C pt Rut ⊣⊢
     ∃ (ms_v sc_v stval_v sepc_v : mword 64) (g : regfile),
       user_trap_frame_at ms_v sc_v stval_v sepc_v g.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 End MainCompatUserExec.

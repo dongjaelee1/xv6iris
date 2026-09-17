@@ -116,14 +116,14 @@ Section DiskBoot.
     ([∗ list] j ∈ seq 0 L, pa_add p j ↦ₘ byte_zero)
     ⊣⊢ ([∗ list] j ∈ seq 0 k, pa_add p j ↦ₘ byte_zero) ∗
        ([∗ list] j ∈ seq 0 n, pa_add (pa_add p k) j ↦ₘ byte_zero).
-  Proof. intros <-. exact (bb_split p k n (fun _ => byte_zero)). Qed.
+  Proof using . intros <-. exact (bb_split p k n (fun _ => byte_zero)). Qed.
 
   Local Lemma zchunk (p : Arch.pa) (k n L : nat) :
     (k * n = L)%nat ->
     ([∗ list] j ∈ seq 0 L, pa_add p j ↦ₘ byte_zero)
     ⊢ [∗ list] i ∈ seq 0 k,
         [∗ list] j ∈ seq 0 n, pa_add (pa_add p (i * n)) j ↦ₘ byte_zero.
-  Proof.
+  Proof using .
     intros <-. iIntros "H".
     iDestruct (bb_chunk n k p (fun _ => byte_zero) with "H") as "H". iExact "H".
   Qed.
@@ -134,12 +134,12 @@ Section DiskBoot.
      hand-guessed sum. *)
   Local Lemma pa_add_eq (a : Arch.pa) (i j : nat) :
     (i = j)%nat -> pa_add a i = pa_add a j.
-  Proof. intros ->. reflexivity. Qed.
+  Proof using . intros ->. reflexivity. Qed.
 
   Local Lemma zshift (p : Arch.pa) (o n : nat) :
     ([∗ list] j ∈ seq o n, pa_add p j ↦ₘ byte_zero)
     ⊢ [∗ list] j ∈ seq 0 n, pa_add (pa_add p o) j ↦ₘ byte_zero.
-  Proof.
+  Proof using .
     rewrite (bb_seq_shift (fun j => pa_add p j ↦ₘ byte_zero)%I o n).
     apply big_sepL_mono. intros i j Hj. apply lookup_seq in Hj as [-> _].
     rewrite pa_add_add. reflexivity.
@@ -150,7 +150,7 @@ Section DiskBoot.
     is_aligned_paddr (Physaddr a) 8 = true ->
     ([∗ list] j ∈ seq 0 8, pa_add a j ↦ₘ byte_zero)
     ⊢ a ↦₈ (mword_of_int 0 : mword 64).
-  Proof.
+  Proof using .
     intro Hal.
     assert (Hfg : forall j, (j < 8)%nat ->
               byte_zero = nth_byte (mword_of_int 0 : mword 64) j).
@@ -164,7 +164,7 @@ Section DiskBoot.
     is_aligned_paddr (Physaddr a) 4 = true ->
     ([∗ list] j ∈ seq 0 4, pa_add a j ↦ₘ byte_zero)
     ⊢ a ↦₄ (mword_of_int 0 : mword 32).
-  Proof.
+  Proof using .
     intro Hal.
     assert (Hfg : forall j, (j < 4)%nat ->
               byte_zero = nth_byte (mword_of_int 0 : mword 32) j).
@@ -179,7 +179,7 @@ Section DiskBoot.
     is_aligned_paddr (Physaddr a) 2 = true ->
     ([∗ list] j ∈ seq 0 2, pa_add a j ↦ₘ byte_zero)
     ⊢ a ↦₂ (mword_of_int 0 : mword 16).
-  Proof.
+  Proof using .
     intro Hal.
     assert (Hfg : forall j, (j < 2)%nat ->
               byte_zero = nth_byte (mword_of_int 0 : mword 16) j).
@@ -198,7 +198,7 @@ Section DiskBoot.
     bv_unsigned (pd : SailStdpp.Values.mword 64) `mod` 4096 = 0 -> (i < 8)%nat ->
     ([∗ list] j ∈ seq 0 16, pa_add (pa_add pd (i * 16)) j ↦ₘ byte_zero)
     ⊢ desc_entry_own pd i.
-  Proof.
+  Proof using .
     intros Hm Hi.
     assert (Hc : (i * 16)%nat = (16 * i)%nat) by lia. rewrite Hc.
     assert (A1 : pa_add (pa_add pd (16 * i)) 8 = pa_add pd (16 * i + 8)%nat).
@@ -234,7 +234,7 @@ Section DiskBoot.
     bv_unsigned (pd : SailStdpp.Values.mword 64) `mod` 4096 = 0 ->
     ([∗ list] j ∈ seq 0 4096, pa_add pd j ↦ₘ byte_zero)
     ⊢ [∗ list] i ∈ seq 0 8, desc_entry_own pd i.
-  Proof.
+  Proof using .
     intro Hm.
     rewrite (zsplit pd 128 3968 4096 ltac:(lia)).
     iIntros "[Hh _]".
@@ -258,7 +258,7 @@ Section DiskBoot.
      [disk_free]; [disk_res] names them [d_free_cell].  Same cells. *)
   Lemma disk_free_cell_eq (j : nat) :
     pa_add SpecVirtioDiskInit.disk_free j = d_free_cell j.
-  Proof.
+  Proof using .
     rewrite /d_free_cell.
     assert (Hb : SpecVirtioDiskInit.disk_free = pa_add DiskAddrs.disk_base 24)
       by (apply bv_eq; vm_compute; reflexivity).
@@ -269,7 +269,7 @@ Section DiskBoot.
     ([∗ list] i ∈ seq 0 8, desc_entry_own pd i) -∗
     ([∗ list] i ∈ seq 0 8, disk_slot_raw i) -∗
     ([∗ list] i ∈ seq 0 8, free_slot_res pd i).
-  Proof.
+  Proof using .
     iIntros "Hd Hr".
     iAssert ([∗ list] i ∈ seq 0 8, desc_entry_own pd i ∗ disk_slot_raw i)%I
       with "[Hd Hr]" as "H".
@@ -285,7 +285,7 @@ Section DiskBoot.
     ([∗ map] i ↦ st ∈ gset_to_gmap HInactive (set_seq 0 8 : gset nat),
        i ↪[dn_head γ] st) -∗
     free_bundles γ pd (fun _ => true).
-  Proof.
+  Proof using .
     iIntros "Hc Hd Hr Hfrags".
     iDestruct (free_slots_boot pd with "Hd Hr") as "Hs".
     rewrite /free_bundles. cbn [andb].
@@ -337,7 +337,7 @@ Section DiskBoot.
     (* decision 4: the holder's half ctx cells of the ring *)
     ring_hcells cur_ctx pav -∗
     disk_res γ pd pav pu.
-  Proof.
+  Proof using .
     intro Hal. destruct (init_cfg_pages_aligned pd pav pu Hal) as [Hpd Hpav].
     iIntros "Hpub Hrd Hstg Hdesc Hfree Huidx Hraw Hlb Hfrags Hcm Havh Hfl Hflr #Hfl0 #Hfl1 Hringh".
     iDestruct (desc_page_entries pd Hpd with "Hdesc") as "Hde".

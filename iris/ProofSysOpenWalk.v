@@ -308,7 +308,7 @@ Section ProofSysOpenWalk.
                 dqb dqs dqbs dqn (proc_addr jx) pidv Mim pvv vom U sts
                 P Pmiss Fo Ft m K eb b lks) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK HdevR Hnib0 Hgeom Hsize Hbm0 Hbmcov
            Hbmlog Hist0 Hcovb Hbmgeo Hiregb Hpcstr Hplen Hni1 Hni2 Hni3 Hush
  Hnsb Hj Hgl Heb Hlkempty Hpof Hom Hal23 Hsp0 HNsp HNthr HNs0 HNs2

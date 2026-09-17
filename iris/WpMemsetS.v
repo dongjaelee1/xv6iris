@@ -425,16 +425,16 @@ Section WpMemsetS.
 
 
   Lemma ms_addr_pa_add (p : mword 64) (j : nat) : ms_addr p j = pa_add p j.
-  Proof. unfold ms_addr, pa_add, add_vec_int. reflexivity. Qed.
+  Proof using . unfold ms_addr, pa_add, add_vec_int. reflexivity. Qed.
 
   (* the c.addi increment [ms_incr1] is just [1]. *)
   Lemma ms_incr1_one : ms_incr1 = (mword_of_int 1 : mword 64).
-  Proof. unfold ms_incr1. apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . unfold ms_incr1. apply bv_eq; vm_compute; reflexivity. Qed.
 
   (* pointer arithmetic: the c.addi advances the byte offset by one (any j). *)
   Lemma ms_incr_step (p : mword 64) (j : nat) :
     add_vec (ms_addr p j) ms_incr1 = ms_addr p (S j).
-  Proof.
+  Proof using .
     rewrite ms_incr1_one. rewrite !ms_addr_pa_add. unfold pa_add, add_vec_int.
     apply bv_eq. rewrite !add_vec64_unsigned. rewrite !moi64_unsigned.
     rewrite Nat2Z.inj_succ.
@@ -443,7 +443,7 @@ Section WpMemsetS.
   Qed.
 
   Lemma seq_cons (a b : nat) : seq a (S b) = a :: seq (S a) b.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* ---- c.addi rd,rd,imm on the [smode_config] bundle: thin wrapper over the
      unbundled [wp_caddi_gpr_s_config_pt] (the add preserves every config cell). *)

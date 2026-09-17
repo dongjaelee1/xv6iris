@@ -197,7 +197,7 @@ Section ProofCreateMain.
  plen pfun ty major minor
                          U u Sb ns pidv dqb dqs dqbs dqn m K eb b lks
                          P Pmiss Farm Fdots Fun Fok Fex.
-  Proof.
+  Proof using .
     rewrite /wp_create_sconf_body.
     intros HK Hroot Hnib0 Hlg Hsize Hbms0 Hbmsc Hbmsl
            Hist0 Hcovb Hbmgeo Hiregb Hcstr Hplen31 Hni1 Hni2 Hni3 Hnib16

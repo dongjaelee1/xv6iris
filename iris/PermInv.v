@@ -101,7 +101,7 @@ Section perm.
     inv permN (perm_inv_body gd γP).
 
   Global Instance perm_inv_persistent gd γP : Persistent (perm_inv gd γP).
-  Proof. rewrite /perm_inv. apply _. Qed.
+  Proof using . rewrite /perm_inv. apply _. Qed.
 
   (* THE TIMELESS SKELETON: this is what a request slot stores.  It is a
      [ghost_map] element -- pure, discrete, timeless -- so it rides
@@ -115,19 +115,19 @@ Section perm.
 
   Global Instance perm_tok_timeless γP k b γq w todo :
     Timeless (perm_tok γP k b γq w todo).
-  Proof. rewrite /perm_tok. apply _. Qed.
+  Proof using . rewrite /perm_tok. apply _. Qed.
 
   (* the enqueuer's persistent handle on its own receipt *)
   Definition perm_receipt (γq : gname) (Q : iProp Σ) : iProp Σ :=
     saved_prop_own γq DfracDiscarded Q.
 
   Global Instance perm_receipt_persistent γq Q : Persistent (perm_receipt γq Q).
-  Proof. rewrite /perm_receipt. apply _. Qed.
+  Proof using . rewrite /perm_receipt. apply _. Qed.
 
   (* two tokens for the same key cannot both exist: the element is exclusive *)
   Lemma perm_tok_excl γP k b1 b2 γq1 γq2 w1 w2 t1 t2 :
     perm_tok γP k b1 γq1 w1 t1 -∗ perm_tok γP k b2 γq2 w2 t2 -∗ False.
-  Proof.
+  Proof using .
     rewrite /perm_tok. iIntros "H1 H2".
     iDestruct (ghost_map_elem_ne with "H1 H2") as %Hne. done.
   Qed.
@@ -139,7 +139,7 @@ Section perm.
   (* the empty channel, as the body an [inv_alloc] consumes.  Nothing is in
      flight at power-on, so the map is empty and no permit is owed. *)
   Lemma perm_ghost_alloc (gd : nat) : ⊢ |==> ∃ γP : gname, perm_inv_body gd γP.
-  Proof.
+  Proof using .
     iMod (ghost_map_alloc (∅ : gmap nat (bool * gname * (disk_wr * gset nat))))
       as (γP) "[Hauth _]".
     iModIntro. iExists γP. rewrite /perm_inv_body.
@@ -147,7 +147,7 @@ Section perm.
   Qed.
 
   Lemma perm_inv_alloc E gd γP : perm_inv_body gd γP ={E}=∗ perm_inv gd γP.
-  Proof. iIntros "Hbody". rewrite /perm_inv. by iApply inv_alloc. Qed.
+  Proof using . iIntros "Hbody". rewrite /perm_inv. by iApply inv_alloc. Qed.
 
   (* ==================================================================== *)
   (* 1. DEPOSIT -- the enqueuer, in a plain fupd (no program step)         *)
@@ -167,7 +167,7 @@ Section perm.
       ∃ (k : nat) (γq : gname),
         perm_tok γP k true γq w (set_seq 0 (wr_nsectors w)) ∗
         perm_receipt γq Q.
-  Proof.
+  Proof using .
     iIntros (HE) "#Hinv Hperm".
     iMod (saved_prop_alloc Q DfracDiscarded) as (γq) "#Hsp"; [done|].
     iInv "Hinv" as "Hbody" "Hclose".
@@ -227,7 +227,7 @@ Section perm.
       start_auth n ∗
       disk_fixed_auth (wr_apply (wr_sector w i) dk) ∗
       ▷ riscv_crash_pred.
-  Proof.
+  Proof using .
     iIntros (Hi) "Hbody Htok Hsa %Hn Ha HP". rewrite {1}/perm_inv_body.
     iDestruct "Hbody" as (m) "[Hauth Hents]".
     rewrite /perm_tok.
@@ -275,7 +275,7 @@ Section perm.
       perm_inv_body gd γP ∗ perm_tok γP k false γq w ∅ ∗ start_auth n ∗
       disk_fixed_auth (wr_apply None dk) ∗
       ▷ riscv_crash_pred.
-  Proof.
+  Proof using .
     iIntros "Hbody Htok Hsa %Hn Ha HP". rewrite {1}/perm_inv_body.
     iDestruct "Hbody" as (m) "[Hauth Hents]".
     rewrite /perm_tok.
@@ -314,9 +314,9 @@ Section perm.
 
   Global Instance perm_pend_timeless γP kq w todo :
     Timeless (perm_pend γP kq w todo).
-  Proof. rewrite /perm_pend. apply _. Qed.
+  Proof using . rewrite /perm_pend. apply _. Qed.
   Global Instance perm_done_timeless γP kq w : Timeless (perm_done γP kq w).
-  Proof. rewrite /perm_done. apply _. Qed.
+  Proof using . rewrite /perm_done. apply _. Qed.
 
   Lemma perm_step_kq (gd : nat) (γP : gname) (kq : nat * gname)
       (w : disk_wr) (todo : gset nat) (i : nat) (dk : Z -> bv 8) (n : nat) :
@@ -329,7 +329,7 @@ Section perm.
       start_auth n ∗
       disk_fixed_auth (wr_apply (wr_sector w i) dk) ∗
       ▷ riscv_crash_pred.
-  Proof.
+  Proof using .
     iIntros (Hi) "Hbody Hpend Hsa %Hn Ha HP". rewrite /perm_pend.
     iMod (perm_step gd γP kq.1 kq.2 w todo i dk n Hi
             with "Hbody Hpend Hsa [//] Ha HP")
@@ -346,7 +346,7 @@ Section perm.
       perm_inv_body gd γP ∗ perm_done γP kq w ∗ start_auth n ∗
       disk_fixed_auth (wr_apply None dk) ∗
       ▷ riscv_crash_pred.
-  Proof.
+  Proof using .
     iIntros "Hbody Hpend Hsa %Hn Ha HP". rewrite /perm_pend /perm_done.
     iMod (perm_consume with "Hbody Hpend Hsa [//] Ha HP")
       as "(Hbody & Htok & Hsa & Ha & HP)".
@@ -361,7 +361,7 @@ Section perm.
     perm_inv gd γP -∗ disk_seq_permit gd w Q ={E}=∗
       ∃ kq : nat * gname,
         perm_pend γP kq w (set_seq 0 (wr_nsectors w)) ∗ perm_receipt kq.2 Q.
-  Proof.
+  Proof using .
     iIntros (HE) "#Hinv Hperm".
     iMod (perm_deposit gd γP w Q E HE with "Hinv Hperm") as (k γq) "[Htok #Hrc]".
     iModIntro. iExists (k, γq). rewrite /perm_pend /=. iFrame "Htok Hrc".
@@ -377,7 +377,7 @@ Section perm.
       (w : disk_wr) (Q : iProp Σ) :
     perm_inv_body gd γP -∗ perm_receipt γq Q -∗ perm_tok γP k false γq w ∅ ==∗
       perm_inv_body gd γP ∗ ▷ Q.
-  Proof.
+  Proof using .
     iIntros "Hbody #Hrc Htok". rewrite {1}/perm_inv_body /perm_tok /perm_receipt.
     iDestruct "Hbody" as (m) "[Hauth Hents]".
     iDestruct (ghost_map_lookup with "Hauth Htok") as %Hk.
@@ -402,7 +402,7 @@ Section perm.
     ↑permN ⊆ E ->
     perm_inv gd γP -∗ perm_receipt γq Q -∗ perm_tok γP k false γq w ∅ ={E}=∗
       ▷ ▷ Q.
-  Proof.
+  Proof using .
     iIntros (HE) "#Hinv #Hrc Htok".
     iInv "Hinv" as "Hbody" "Hclose".
     rewrite /perm_inv_body /perm_tok /perm_receipt.
@@ -432,7 +432,7 @@ Section perm.
       (w : disk_wr) (Q : iProp Σ) :
     perm_inv_body gd γP -∗ perm_receipt kq.2 Q -∗ perm_done γP kq w ==∗
       perm_inv_body gd γP ∗ ▷ Q.
-  Proof.
+  Proof using .
     iIntros "Hbody #Hrc Htok". rewrite /perm_done.
     iApply (perm_collect_body with "Hbody Hrc Htok").
   Qed.

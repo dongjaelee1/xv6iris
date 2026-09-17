@@ -375,7 +375,7 @@ Section Era0EchoEpoch.
     fs_snap (FsDurBytes.snap_gamma g gl gt) g era0_D S -∗
       ⌜era0_echo_pins (abs_view (fss_inodes S))⌝
       ∗ fs_snap (FsDurBytes.snap_gamma g gl gt) g era0_D S.
-  Proof.
+  Proof using .
     iIntros "H".
     iDestruct (fs_snap_read_ok_keep _ _ _ _ _ era0_dblk_full with "H")
       as "[%Hok H]".
@@ -400,7 +400,7 @@ Section Era0EchoLive.
     astate Γ (abs_view (fss_inodes S)) -∗
       astate Γ (abs_view (fss_inodes S))
       ∗ ⌜era0_echo_pins (abs_view (fss_inodes S))⌝.
-  Proof.
+  Proof using .
     intros HS. iIntros "Hst". iFrame "Hst". iPureIntro.
     exact (era0_echo_pins_of_snap S HS).
   Qed.
@@ -416,7 +416,7 @@ Section Era0EchoLive.
     astate Γ (abs_view (fss_inodes S)) -∗
       astate Γ (abs_view (fss_inodes S))
       ∗ ⌜era0_echo_pins (abs_view (fss_inodes S))⌝.
-  Proof.
+  Proof using .
     intros Hb Hdk Hcov. iIntros "Hst". iFrame "Hst". iPureIntro.
     exact (era0_boot_echo_pins dk ndisk S Pb sb nib cov Hb Hdk Hcov).
   Qed.
@@ -429,7 +429,7 @@ Section Era0EchoLive.
     snap_ok S era0_D ->
     astate Γ (abs_view (fss_inodes S)) -∗ nview Γ q ECHO_INO a -∗
       ⌜a = MkAnode (AFile echo_bytes) 1%nat⌝.
-  Proof.
+  Proof using .
     intros HS. iIntros "Hst Hn".
     iDestruct (astate_nview with "Hst Hn") as %Hav.
     iPureIntro.
@@ -445,7 +445,7 @@ Section Era0EchoLive.
     cov = fsimg_cov ->
     astate Γ (abs_view (fss_inodes S)) -∗ nview Γ q ECHO_INO a -∗
       ⌜a = MkAnode (AFile echo_bytes) 1%nat⌝.
-  Proof.
+  Proof using .
     intros Hb Hdk Hcov. iIntros "Hst Hn".
     iApply (nview_era0_echo Γ S q a
               (era0_boot_snap_ok dk ndisk S Pb sb nib cov Hb Hdk Hcov)

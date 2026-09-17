@@ -360,14 +360,14 @@ Section LogAmort.
        ⌜(u + size (F ∖ Sb) <= v)%nat⌝ ∗ log_opS γ v Sb)%I.
 
   Global Instance log_amort_timeless γ F u : Timeless (log_amort γ F u).
-  Proof. rewrite /log_amort. apply _. Qed.
+  Proof using . rewrite /log_amort. apply _. Qed.
 
   (* ENTERING: a caller with [u + size F] units in hand and no credits at
      all can reserve F.  This is the worst case -- every block of F still
      to be paid for. *)
   Lemma log_amort_intro γ F u v :
     (u + size F <= v)%nat -> log_opb γ v -∗ log_amort γ F u.
-  Proof.
+  Proof using .
     iIntros (Hv) "H". rewrite /log_opb /log_amort.
     iDestruct "H" as (Sb) "H". iExists Sb, v. iFrame.
     iPureIntro.
@@ -379,7 +379,7 @@ Section LogAmort.
      wants the counted form (iupdate, end_op) takes this. *)
   Lemma log_amort_elim γ F u :
     log_amort γ F u -∗ ∃ v : nat, ⌜(u <= v)%nat⌝ ∗ log_opb γ v.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /log_amort. iDestruct "H" as (Sb v) "(%Hv & H)".
     iExists v. iSplitR; [iPureIntro; lia|]. iApply (log_opS_opb with "H").
   Qed.
@@ -388,14 +388,14 @@ Section LogAmort.
      FEWER BLOCKS is weaker (F is capacity held back, not a claim) *)
   Lemma log_amort_weaken γ F u u' :
     (u' <= u)%nat -> log_amort γ F u -∗ log_amort γ F u'.
-  Proof.
+  Proof using .
     iIntros (Hu) "H". rewrite /log_amort. iDestruct "H" as (Sb v) "(%Hv & H)".
     iExists Sb, v. iFrame. iPureIntro. lia.
   Qed.
 
   Lemma log_amort_shrink γ F F' u :
     F' ⊆ F -> log_amort γ F u -∗ log_amort γ F' u.
-  Proof.
+  Proof using .
     iIntros (HF) "H". rewrite /log_amort. iDestruct "H" as (Sb v) "(%Hv & H)".
     iExists Sb, v. iFrame. iPureIntro.
     assert (Hsub : F' ∖ Sb ⊆ F ∖ Sb) by set_solver.
@@ -420,7 +420,7 @@ Section LogAmort.
       ⌜cr = true -> b ∈ Sb⌝ ∗
       log_opS γ (S v) Sb ∗
       (log_opS γ (if cr then S v else v) (Sb ∪ {[b]}) -∗ log_amort γ F (S u)).
-  Proof.
+  Proof using .
     iIntros (HbF) "H". rewrite /log_amort.
     iDestruct "H" as (Sb v) "(%Hv & H)".
     destruct (decide (b ∈ Sb)) as [Hin|Hout].
@@ -454,7 +454,7 @@ Section LogAmort.
     ∃ (Sb : gset Z) (v : nat),
       log_opS γ (S v) Sb ∗
       (∀ Sb' : gset Z, ⌜Sb ⊆ Sb'⌝ -∗ log_opS γ v Sb' -∗ log_amort γ F u).
-  Proof.
+  Proof using .
     iIntros "H". rewrite /log_amort. iDestruct "H" as (Sb v) "(%Hv & H)".
     destruct v as [|v']; [lia|].
     iExists Sb, v'. iFrame "H".
@@ -467,7 +467,7 @@ Section LogAmort.
   (* ...and the same at a budget that is not [S _]: spending nothing. *)
   Lemma log_amort_reframe γ F u (Sb : gset Z) (v : nat) :
     (u + size (F ∖ Sb) <= v)%nat -> log_opS γ v Sb -∗ log_amort γ F u.
-  Proof. iIntros (Hv) "H". iExists Sb, v. by iFrame. Qed.
+  Proof using . iIntros (Hv) "H". iExists Sb, v. by iFrame. Qed.
 
   (* ADOPTING A BLOCK INTO F.  Enlarging F by a block THE OP HAS ALREADY
      LOGGED leaves the potential untouched, because the new member is not
@@ -479,7 +479,7 @@ Section LogAmort.
     b ∈ Sb ->
     (u + size (F ∖ Sb) <= v)%nat ->
     log_opS γ v Sb -∗ log_amort γ ({[b]} ∪ F) u.
-  Proof.
+  Proof using .
     iIntros (Hb Hv) "H". iExists Sb, v. iFrame. iPureIntro.
     assert (Heq : ({[b]} ∪ F) ∖ Sb ⊆ F ∖ Sb) by set_solver.
     pose proof (subseteq_size _ _ Heq). lia.
@@ -494,7 +494,7 @@ Section LogAmort.
 
   Lemma wi_amort_intro γ bmapstart ind u v :
     (u + 2 <= v)%nat -> log_opb γ v -∗ wi_amort γ bmapstart ind u.
-  Proof.
+  Proof using .
     iIntros (Hv) "H". rewrite /wi_amort.
     iApply (log_amort_intro with "H").
     assert (Hs : (size ({[bmapstart]} ∪ {[ind]} : gset Z) <= 2)%nat).
@@ -504,7 +504,7 @@ Section LogAmort.
 
   Lemma wi_amort_elim γ bmapstart ind u :
     wi_amort γ bmapstart ind u -∗ ∃ v : nat, ⌜(u <= v)%nat⌝ ∗ log_opb γ v.
-  Proof. rewrite /wi_amort. iApply log_amort_elim. Qed.
+  Proof using . rewrite /wi_amort. iApply log_amort_elim. Qed.
 
   (* RESERVING A BLOCK WHOSE IDENTITY IS NOT YET KNOWN.  [log_amort_adopt]
      is free but needs the block to be logged ALREADY; this is its dual --
@@ -515,7 +515,7 @@ Section LogAmort.
      moment the wand is applied, not afterwards.) *)
   Lemma log_amort_reserve γ F u (x : Z) :
     log_amort γ F (S u) -∗ log_amort γ ({[x]} ∪ F) u.
-  Proof.
+  Proof using .
     iIntros "H". rewrite /log_amort. iDestruct "H" as (Sb v) "(%Hv & H)".
     iExists Sb, v. iFrame. iPureIntro.
     assert (Heq : ({[x]} ∪ F) ∖ Sb = ({[x]} ∖ Sb) ∪ (F ∖ Sb)) by set_solver.
@@ -546,7 +546,7 @@ Section LogAmort.
       (∀ Sb' : gset Z,
          ⌜Sb ∪ {[b]} ⊆ Sb'⌝ -∗
          log_opS γ (if cr then S v else v) Sb' -∗ log_amort γ F (S u)).
-  Proof.
+  Proof using .
     iIntros (HbF) "H". rewrite /log_amort.
     iDestruct "H" as (Sb v) "(%Hv & H)".
     destruct (decide (b ∈ Sb)) as [Hin|Hout].

@@ -152,7 +152,7 @@ Section ProofSysDup.
     (0 < k)%nat ->
     sie_cap_gpr KT1 mm k bb pp -∗
     ⌜(8 <= uint (mm !!! Regidx csp_rs1) < 274877906944 + 8)%Z⌝.
-  Proof.
+  Proof using .
     iIntros (Hk) "(_ & _ & (Hstk & _ & _) & _)".
     iApply (stack_own_sp_bounds (KTR := KT1) _ (trap_res bb + k)%nat with "Hstk").
     destruct bb; unfold trap_res; lia.
@@ -192,7 +192,7 @@ Section ProofSysDup.
         pc_is (ret_pc ra0) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hav Hsp0 Hra0 Hs00 Hmtsp Hmta5 Hthr.
     iIntros "Hcg #Htext Hpc Hb1 Hb2 Hb3 Hb4 Hb5 Hb6 Hcont".
     (* ---- +0x3c: c.mv a0,a5 ---- *)
@@ -342,7 +342,7 @@ Section ProofSysDup.
       (v : mword 64) (pid : mword 32) (U : ustate) (sts : list fdstate)
       (b : bool) (lks : gset string)
     : wp_sys_dup_sconf_body γl γf m av n eb p v pid U sts b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_sys_dup_sconf_body].
     intros pcE ret_tgt Harg Hn Hav Hftno.
     

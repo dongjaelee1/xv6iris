@@ -413,7 +413,7 @@ Section ExecArgsHeap.
       (f : nat -> bv 8) :
     uheap gt gd gs M pm sz -∗ ubytesq gd dq a n f -∗
     ⌜ forall k : nat, (k < n)%nat -> M !! (a + Z.of_nat k)%Z = Some (f k) ⌝.
-  Proof.
+  Proof using .
     iIntros "Hheap Hbs".
     iInduction n as [ | k IH ] "IH" forall (f).
     { iPureIntro. intros j Hj. exfalso. lia. }
@@ -434,7 +434,7 @@ Section ExecArgsHeap.
       (f : nat -> bv 8) :
     uheap gt gd gs M pm sz -∗ ubytesq gd dq a n f -∗
     ⌜ forall k : nat, (k < n)%nat -> 0 <= a + Z.of_nat k < 2 ^ 38 ⌝.
-  Proof.
+  Proof using .
     iIntros "Hheap Hbs".
     iInduction n as [ | k IH ] "IH" forall (f).
     { iPureIntro. intros j Hj. exfalso. lia. }
@@ -455,7 +455,7 @@ Section ExecArgsHeap.
     uwordq gd dq a (mword_of_int z : mword 64) -∗
     ⌜ forall k : nat, (k < 8)%nat ->
         M !! (a + Z.of_nat k)%Z = bv_to_little_endian 8 8 z !! k ⌝.
-  Proof.
+  Proof using .
     iIntros "Hheap Hw". rewrite /uwordq.
     iDestruct (uheap_ubytesq_img with "Hheap Hw") as %Hb.
     iPureIntro. exact (img_word_of_bytes M a z Hb).
@@ -465,7 +465,7 @@ Section ExecArgsHeap.
       (pm : gmap (mword 27) uperm) (sz : Z) (dq : dfrac) (a : Z) (w : mword 64) :
     uheap gt gd gs M pm sz -∗ uwordq gd dq a w -∗
     ⌜ 0 <= a /\ a + 8 <= 2 ^ 38 ⌝.
-  Proof.
+  Proof using .
     iIntros "Hheap Hw". rewrite /uwordq.
     iDestruct (uheap_ubytesq_range with "Hheap Hw") as %Hr.
     iPureIntro.
@@ -495,7 +495,7 @@ Section ExecArgsHeap.
 
   Global Instance uargv_exec_persistent γd av args :
     Persistent (uargv_exec γd av args).
-  Proof. rewrite /uargv_exec. apply _. Qed.
+  Proof using . rewrite /uargv_exec. apply _. Qed.
 
   (* THE LAYOUT, READ OFF THE HEAP THE DEPOSIT LENDS.  PURE, and it has to
      be: the reading is consumed inside a persistent constructor that
@@ -506,7 +506,7 @@ Section ExecArgsHeap.
       (pm : gmap (mword 27) uperm) (sz av : Z) (args : list uarg) :
     uheap gt gd gs M pm sz -∗ uargv_exec gd av args -∗
     ⌜ uargv_img M av args ⌝.
-  Proof.
+  Proof using .
     iIntros "Hheap (%Hsh & #Hargv & #Hcap)".
     destruct Hsh as (Hmax & Hsh).
     iDestruct (uheap_uwordq_img with "Hheap Hcap") as %Hcapb.
@@ -567,7 +567,7 @@ Section ExecArgsHeap.
     uheap gt gd gs M pm sz -∗ uargv_exec gd av args -∗
     ⌜ exec_args_of M (mword_of_int av : mword 64)
         (length args) (ua_alen args) (ua_afun args) ⌝.
-  Proof.
+  Proof using .
     iIntros "Hheap #Hv".
     iDestruct (uargv_img_of_uargv with "Hheap Hv") as %Himg.
     iDestruct "Hv" as "(%Hsh & _ & _)".
@@ -592,7 +592,7 @@ Section ExecArgsHeap.
       (pl : list (bv 8)) :
     uheap gt gd gs M pm sz -∗ upath gd dq pa pl -∗
     ⌜ exec_path_of M (mword_of_int pa : mword 64) pl ⌝.
-  Proof.
+  Proof using .
     iIntros "Hheap Hs". rewrite /upath /ustr.
     iDestruct "Hs" as "(%Hno & %Hlen & Hbs & Hnul)".
     iDestruct (uheap_ubytesq_img with "Hheap Hbs") as %Hbv.
@@ -746,7 +746,7 @@ Section ExecArgsLift.
     exec_args_of M av na alen afun ->
     image_entry_at f na alen afun sts cw cs pidv Q Pay X -∗
     image_entry f M av sts cw cs pidv Q Pay X.
-  Proof.
+  Proof using .
     intros Hargs. iIntros "#H". rewrite /image_entry.
     iIntros "!>" (na' alen' afun' W')
       "%Hok %Hcw %Hlz %Hch %Hpid %Hargs' Hp HPay".

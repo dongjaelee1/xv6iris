@@ -190,7 +190,7 @@ Section ProofSysOpenCreArm.
      singleton map is its witness. *)
   Lemma socr_obs_pure (i0 : Z) (n0 : fs_node) :
     ⊢ so_obs (socr_Phio_pure i0 (abs_row n0)) i0 n0.
-  Proof.
+  Proof using .
     rewrite /so_obs /socr_Phio_pure.
     iExists (if decide (an_nlink (abs_row n0) = 0%nat) then ∅
              else {[ i0 := abs_row n0 ]} : aview).
@@ -203,7 +203,7 @@ Section ProofSysOpenCreArm.
       (Phio : pfam Σ (aview -> Z -> anode -> iProp Σ)) :
     (∃ av : aview, ⌜arow_at av i0 (abs_row n0)⌝ ∗ Phio.(pf_recv) av i0 (abs_row n0))
     -∗ so_obs (socr_Phio_tag i0 (abs_row n0) Phio) i0 n0.
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as (av) "[%Hav HP]".
     rewrite /so_obs /socr_Phio_tag. cbn [pf_recv pf_refund]. iExists av.
     iSplitR; [by iPureIntro |]. iFrame "HP".
@@ -231,7 +231,7 @@ Section ProofSysOpenCreArm.
               ∨ (∃ (i : Z) (av : aview) (a : anode),
                    ⌜arow_at av i a⌝ ∗ Phio.(pf_recv) av i a))
            ∗ open_trunc_piece (fs_gamma_L fsc_fs) vom Phit.
-  Proof.
+  Proof using .
     intros Hpl0.
     rewrite /open_post_fail_plain /socr_P /socr_Pm.
     iIntros "H". iDestruct "H" as "[Hpre | H]".
@@ -286,7 +286,7 @@ Section ProofSysOpenCreArm.
       ∗ ∃ γo : gname,
             open_fd_ok gf pj pidv U (om_readable vom) (om_writable vom)
               (FdInode i0 γo OffParked) sts r.
-  Proof.
+  Proof using .
     rewrite /open_post_ok_plain /socr_P /socr_Phio_pure.
     cbn [pf_recv pf_refund].
     iIntros "H". iDestruct "H" as (pl av i) "[_ [[%Hi HR] Harm]]".
@@ -338,7 +338,7 @@ Section ProofSysOpenCreArm.
               open_trunc_piece (fs_gamma_L fsc_fs) vom Phit ∗
               open_fd_ok gf pj pidv U (om_readable vom) (om_writable vom)
                 (FdDevice ma) sts r)).
-  Proof.
+  Proof using .
     intros Hnd.
     rewrite /open_post_ok_plain /socr_P /socr_Phio_tag.
     cbn [pf_recv pf_refund].
@@ -380,7 +380,7 @@ Section ProofSysOpenCreArm.
     ={⊤}=∗ open_arms_create (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) gf pj pidv
              Mim pvv vom
              P Pmiss Phiarm Phiun Phiok Phiex Phio Phit sts U r.
-  Proof.
+  Proof using .
     intros Hpl.
     rewrite /open_arms_plain /open_arms_create.
     iIntros "[Harms $]".
@@ -431,7 +431,7 @@ Section ProofSysOpenCreArm.
     ={⊤}=∗ open_arms_create (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) gf pj pidv
              Mim pvv vom
              P Pmiss Phiarm Phiun Phiok Phiex Phio Phit sts U r.
-  Proof.
+  Proof using .
     intros Hpl Hnd.
     rewrite /open_arms_plain /open_arms_create.
     iIntros "[Harms $]".

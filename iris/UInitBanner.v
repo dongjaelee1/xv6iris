@@ -100,11 +100,11 @@ Section UInitBanner.
                                  (bv_unsigned (init_lit LIT_START j))
                | None => false
                end) (seq 0 18) = true.
-  Proof. vm_compute. reflexivity. Qed.
+  Proof using . vm_compute. reflexivity. Qed.
 
   Lemma init_banner_bytes (j : nat) :
     (j < 18)%nat -> u_banner !! j = Some (init_lit LIT_START j).
-  Proof.
+  Proof using .
     intros Hj. pose proof init_banner_bytes_bool as H.
     rewrite forallb_forall in H.
     specialize (H j ltac:(apply in_seq; lia)).
@@ -118,7 +118,7 @@ Section UInitBanner.
   Lemma ubyte_halves (γd : gname) (a : Z) (b : bv 8) :
     ubyte γd a b ⊣⊢
     ubyteq γd (DfracOwn (1/2)) a b ∗ ubyteq γd (DfracOwn (1/2)) a b.
-  Proof.
+  Proof using .
     rewrite /ubyte /ubyteq.
     apply (fractional_half _ (fun q => (a ↪[γd]{DfracOwn q} b)%I) 1%Qp _).
   Qed.
@@ -126,24 +126,24 @@ Section UInitBanner.
   Lemma ubyte_split (γd : gname) (a : Z) (b : bv 8) :
     ubyte γd a b -∗
     ubyteq γd (DfracOwn (1/2)) a b ∗ ubyteq γd (DfracOwn (1/2)) a b.
-  Proof. rewrite (ubyte_halves γd a b). by iIntros "$". Qed.
+  Proof using . rewrite (ubyte_halves γd a b). by iIntros "$". Qed.
 
   Lemma ubyte_join (γd : gname) (a : Z) (b : bv 8) :
     ubyteq γd (DfracOwn (1/2)) a b -∗ ubyteq γd (DfracOwn (1/2)) a b -∗
     ubyte γd a b.
-  Proof. rewrite (ubyte_halves γd a b). iIntros "H1 H2". iFrame. Qed.
+  Proof using . rewrite (ubyte_halves γd a b). iIntros "H1 H2". iFrame. Qed.
 
   Lemma ubytesq_one (γd : gname) (dq : dfrac) (a : Z) (b : bv 8) :
     ubyteq γd dq a b ⊣⊢ ubytesq γd dq a 1%nat (fun _ => b).
-  Proof. by rewrite /ubytesq /= Z.add_0_r right_id. Qed.
+  Proof using . by rewrite /ubytesq /= Z.add_0_r right_id. Qed.
 
   Lemma ubytesq_of_one (γd : gname) (dq : dfrac) (a : Z) (b : bv 8) :
     ubyteq γd dq a b -∗ ubytesq γd dq a 1%nat (fun _ => b).
-  Proof. rewrite (ubytesq_one γd dq a b). by iIntros "$". Qed.
+  Proof using . rewrite (ubytesq_one γd dq a b). by iIntros "$". Qed.
 
   Lemma ubytesq_to_one (γd : gname) (dq : dfrac) (a : Z) (b : bv 8) :
     ubytesq γd dq a 1%nat (fun _ => b) -∗ ubyteq γd dq a b.
-  Proof. rewrite (ubytesq_one γd dq a b). by iIntros "$". Qed.
+  Proof using . rewrite (ubytesq_one γd dq a b). by iIntros "$". Qed.
 
   (* =================================================================== *)
   (*  S2  ONE BYTE, THROUGH THE ERA'S WRITE LINK                          *)
@@ -298,7 +298,7 @@ Section UInitBanner.
      half [kinit_dl0]. *)
   Lemma kinit_ban0_of_eturn :
     eturn γ (S gen_id) -∗ kinit_dl0 ∗ kinit_ban 0%nat.
-  Proof.
+  Proof using .
     iIntros "Hturn".
     iDestruct "Hturn" as (v) "(#Hpin & Htn & Hdl & #Hcs & #Hps & #HE)".
     iSplitL "Hdl"; [ rewrite /kinit_dl0; iExists v; iFrame "Hpin Hdl HE" | ].
@@ -359,7 +359,7 @@ Section UInitBanner.
     (Rt -∗ Rt') -∗
     UkInitMain.kinit_banner0 N stc_cons Rt -∗
     UkInitMain.kinit_banner0 N stc_cons Rt'.
-  Proof.
+  Proof using .
     iIntros "Hm H".
     rewrite /UkInitMain.kinit_banner0 /UkInit.kinit_banner_pay.
     iIntros "Hl". iDestruct ("H" with "Hl") as (Ch) "(#Hst & H0 & Hfin)".
@@ -380,7 +380,7 @@ Section UInitBanner.
     kinit_own n ⊣⊢
       ∃ I : list (bv 8),
         ⌜length I = n⌝ ∗ EchoLinks.ewc_cred T γ (S gen_id) I 0%nat.
-  Proof.
+  Proof using .
     rewrite /kinit_own /EchoLinks.ewc_cred /EchoLinks.ewc_pr.
     iSplit.
     - iIntros "H". iDestruct "H" as (v I) "(%Hl & #Hpin & Ho)".

@@ -80,7 +80,7 @@ Section UkInitLit.
     init_lit_ok base len = true ->
     Z.of_nat len < 2 ^ 31 ->
     init_rodata γt -∗ utext_str γt base len (init_lit base).
-  Proof.
+  Proof using .
     intros Hok Hlen. iIntros "#Hro". rewrite /init_rodata.
     iApply (utext_str_of_img γt init_ro base len (init_lit base)).
     - intros j Hj. intro He.
@@ -95,7 +95,7 @@ Section UkInitLit.
   Lemma init_lit_nopct (base : Z) (len : nat) (j : nat) :
     init_lit_ok base len = true -> (j < len)%nat ->
     bv_unsigned (init_lit base j) <> 37.
-  Proof.
+  Proof using .
     intros Hok Hj.
     exact (proj2 (proj2 (init_lit_ok_body base len j Hok Hj))).
   Qed.

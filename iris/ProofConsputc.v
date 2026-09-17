@@ -134,7 +134,7 @@ Section ProofConsputc.
       ⌜ callee_saved m mf /\ mf !!! Regidx ra_idx = m !!! Regidx ra_idx ⌝ -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hsp Hagree.
     iIntros "Hcg #Htext Hpc Hc1 Hc2 Hcont".
     assert (Hpush : add_vec (m !!! Regidx csp_rs1) (sign_extend' 64 (sign_extend' 12 (mword_of_int 48 : mword 6))) = pa_stk (m !!! Regidx csp_rs1) 2).

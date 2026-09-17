@@ -136,7 +136,7 @@ Section ProofSysClose.
     (0 < k)%nat ->
     sie_cap_gpr KT1 m k b pp -∗
     ⌜(8 <= uint (m !!! Regidx csp_rs1) < 274877906944 + 8)%Z⌝.
-  Proof.
+  Proof using .
     iIntros (Hk) "(_ & _ & (Hstk & _ & _) & _)".
     iApply (stack_own_sp_bounds (KTR := KT1) _ (trap_res b + k)%nat with "Hstk").
     destruct b; unfold trap_res; lia.
@@ -178,7 +178,7 @@ Section ProofSysClose.
         pc_is (ret_pc ra0) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hav Hsp0 Hra0 Hs00 Hmtsp Hmt15 Hthr.
     iIntros "Hcg #Htext Hpc Hb1 Hb2 Hb3 Hb4 Hcont".
     (* ---- +0x3a: c.mv a0,a5 ---- *)
@@ -329,7 +329,7 @@ Section ProofSysClose.
       (v : mword 64) (pid : mword 32) (U : ustate) (sts : list fdstate)
       (b : bool) (lks : gset string) (Φc : iProp Σ)
     : wp_sys_close_sconf_body γl γf fn on m av n eb p v pid U sts b lks Φc.
-  Proof.
+  Proof using .
     cbv beta delta [wp_sys_close_sconf_body].
     intros pcE ret_tgt Harg Hn Hav Hbelow Hfpid Hfdq.
     

@@ -285,7 +285,7 @@ Section ProofSysOpenPub.
       (so_cont_au gf nsj
                dqb dqs (proc_addr jx) pidv Mim pvv vom U sts P Pmiss Fo Ft m K eb b lks) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hqs HKiu HKeo HK24 Kpop Hkk Hinb Hipos Hgeom Hj Hgl Hlkempty Hkf Hfdlt
            Hlen Hfrees Hip Htyor Hwrb Hrdw Hdir Hdvw Hwf Hom Htyt Hsp0 HMsp HMthr
            HMs1 HMs3 Hal.

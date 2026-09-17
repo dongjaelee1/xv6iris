@@ -1080,13 +1080,13 @@ Section window.
     find_top h tv 0 =
       match (if visibleb h tv log 0 then log_byte img log 0 (pa_add a 0) else None) with
       | Some _ => Some 0%nat | None => None end.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma find_top_S (h : agent) (tv t : nat) :
     find_top h tv (S t) =
       match (if visibleb h tv log (S t) then log_byte img log (S t) (pa_add a 0) else None) with
       | Some _ => Some (S t) | None => find_top h tv t end.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* ---- THE REASSEMBLY: one timestamp serves every byte ---- *)
   Lemma read_down_win (h : agent) (tv t : nat) (j : nat) :
@@ -1096,7 +1096,7 @@ Section window.
       | Some T => log_byte img log T (pa_add a j)
       | None => None
       end.
-  Proof.
+  Proof using Hn.
     move => Hw Hj. elim: t => [|t IH].
     - rewrite read_down_0 find_top_0.
       have Hv : visibleb h tv log 0 = true by (apply visibleb_below; lia).
@@ -1122,7 +1122,7 @@ Section window.
     find_top h tv t = Some T ->
     (T <= t)%nat /\ visibleb h tv log T = true
     /\ is_Some (log_byte img log T (pa_add a 0)).
-  Proof.
+  Proof using Hn.
     elim: t => [|t IH].
     - rewrite find_top_0.
       case Ev : (visibleb h tv log 0); last by [].
@@ -1141,7 +1141,7 @@ Section window.
     (t' <= t)%nat -> visibleb h tv log t' = true ->
     is_Some (log_byte img log t' (pa_add a 0)) ->
     exists T, find_top h tv t = Some T /\ (t' <= T)%nat.
-  Proof.
+  Proof using Hn.
     elim: t => [|t IH] Hle Hv [b Hb].
     - have Ht0 : t' = 0%nat by lia.
       rewrite find_top_0. move: Hb Hv. rewrite Ht0 => -> ->.
@@ -1258,7 +1258,7 @@ Section window.
     (exists k, (k < n)%nat /\ z k <> cp h k) ->
     (forall h', h' <> h -> exists k, (k < n)%nat /\ cp h' k <> cp h k) ->
     exists k, (k < n)%nat /\ tso_read img log h tv (pa_add a k) <> Some (cp h k).
-  Proof.
+  Proof using Hn.
     move => Hw Hp Hlen Hvis Hz Ho [k0 [Hk0 Hzk]] Hinj.
     have Hsome : forall j, (j < n)%nat -> is_Some (log_byte img log t (pa_add a j))
       by move => j Hj; rewrite (Hz j Hj); by eexists.
@@ -1329,7 +1329,7 @@ Section floor_byte.
   (* the unrelativised forms ARE the floor-0 instances *)
   Lemma own_last_fl_0 (h : agent) (a : Arch.pa) (t : nat) :
     own_last log h a t <-> own_last_fl 0 h a t.
-  Proof.
+  Proof using .
     split.
     - move => Ho i m _ Hlk Htid Hs. exact (Ho i m Hlk Htid Hs).
     - move => Ho i m Hlk Htid Hs. exact (Ho i m ltac:(lia) Hlk Htid Hs).
@@ -1337,7 +1337,7 @@ Section floor_byte.
 
   Lemma writer_pin_fl_0 (a : Arch.pa) (Sf : agent -> bv 8 -> Prop) :
     writer_pin log a Sf <-> writer_pin_fl 0 a Sf.
-  Proof.
+  Proof using .
     split.
     - move => Hw i m c _ Hlk Hb. exact (Hw i m c Hlk Hb).
     - move => Hw i m c Hlk Hb. exact (Hw i m c ltac:(lia) Hlk Hb).
@@ -1358,7 +1358,7 @@ Section floor_byte.
       /\ tso_read img log h tv a = Some v
       /\ visibleb h tv log T = true
       /\ log_byte img log T a = Some v.
-  Proof.
+  Proof using .
     move => Htv Hlen Hbm.
     have Hvis : visibleb h tv log Bm = true by (apply visibleb_below; lia).
     have [T [v [Hge [Hrd [Hv Hb]]]]] :=
@@ -1382,7 +1382,7 @@ Section floor_byte.
     writer_pin_fl Bm a Sf ->
     tso_read img log h tv a = Some b ->
     b = v \/ exists h', h' <> h /\ Sf h' b.
-  Proof.
+  Proof using .
     move => Hfl Hlen Hvis Hb Ho Hw Hrd.
     destruct (read_down_latest img log h tv a (length log) t v Hlen Hvis Hb)
       as (t'' & v'' & Hle & Hrd'' & Hvis'' & Hb'').
@@ -1407,7 +1407,7 @@ Section floor_byte.
     (forall i m, (Bm <= S i)%nat -> log !! i = Some m -> pm_tid m = h ->
        msg_byte m a = None) ->
     own_last_fl Bm h a Bm.
-  Proof.
+  Proof using .
     move => Hno i m Hge Hlk Htid Hs.
     rewrite /is_Some (Hno i m Hge Hlk Htid) in Hs. by destruct Hs as [? ?].
   Qed.
@@ -1420,7 +1420,7 @@ Section floor_byte.
     (pm_tid m = h -> msg_byte m a = None) ->
     (forall i m0, (Bm <= S i)%nat -> (log ++ [m]) !! i = Some m0 ->
        pm_tid m0 = h -> is_Some (msg_byte m0 a) -> (S i <= t)%nat).
-  Proof.
+  Proof using .
     move => Ho Hfr i m0 Hge Hlk Htid Hs.
     apply lookup_app_Some in Hlk. destruct Hlk as [Hlk | [Hge2 Hlk]].
     - exact (Ho i m0 Hge Hlk Htid Hs).
@@ -1435,7 +1435,7 @@ Section floor_byte.
     (forall c, msg_byte m a = Some c -> Sf (pm_tid m) c) ->
     (forall i m0 c, (Bm <= S i)%nat -> (log ++ [m]) !! i = Some m0 ->
        msg_byte m0 a = Some c -> Sf (pm_tid m0) c).
-  Proof.
+  Proof using .
     move => Hw Hm i m0 c Hge Hlk Hb.
     apply lookup_app_Some in Hlk. destruct Hlk as [Hlk | [Hge2 Hlk]].
     - exact (Hw i m0 c Hge Hlk Hb).
@@ -1483,7 +1483,7 @@ Section floor_window.
       \/ (forall j, (j < n)%nat -> log_byte img log t (pa_add a j) = None).
 
   Lemma win_ok_fl_0 : win_ok img log a n <-> win_ok_fl 0.
-  Proof.
+  Proof using Hn.
     split.
     - move => Hw t _. exact (Hw t).
     - move => Hw t. exact (Hw t ltac:(lia)).
@@ -2131,14 +2131,14 @@ Section assemble.
     log !! i = Some m -> (k < n)%nat -> is_Some (msg_byte m (pa_add base k)) ->
     (forall j, (j < n)%nat -> msg_byte m (pa_add base j) = Some (z j))
     \/ (forall j, (j < n)%nat -> msg_byte m (pa_add base j) = Some (cp (pm_tid m) j)).
-  Proof.
+  Proof using Hcov.
     move => Hge Hlk Hk Hs.
     have [_ [_ [H1 _]]] := Hcov k Hk.
     exact (H1 i m Hge Hlk Hs).
   Qed.
 
   Lemma win_assemble_win_ok : win_ok_fl img log base n lo.
-  Proof.
+  Proof using Hcov Hn.
     move => t Hge. case: t Hge => [|i] Hge.
     - left. move => j Hj.
       have [_ [_ [_ [H2 _]]]] := Hcov 0%nat Hn.
@@ -2161,7 +2161,7 @@ Section assemble.
     wpin_fl log base lo
       (fun j f => (forall k, (k < n)%nat -> f k = Some (z k))
                \/ (forall k, (k < n)%nat -> f k = Some (cp j k))).
-  Proof.
+  Proof using Hcov Hn.
     move => i m Hge Hlk Hs. exact (win_msg_all i m 0%nat Hge Hlk Hn Hs).
   Qed.
 
@@ -2169,7 +2169,7 @@ Section assemble.
      over the whole window *)
   Lemma win_assemble_floor :
     forall k, (k < n)%nat -> log_byte img log lo (pa_add base k) = Some (z k).
-  Proof.
+  Proof using Hcov Hn.
     move => k Hk. have [_ [_ [_ [_ [_ [Hfl _]]]]]] := Hcov 0%nat Hn.
     exact (Hfl k Hk).
   Qed.
@@ -2198,7 +2198,7 @@ Section assemble.
     (exists k, (k < n)%nat /\ z k <> cp h k) ->
     (forall h', h' <> h -> exists k, (k < n)%nat /\ cp h' k <> cp h k) ->
     exists k, (k < n)%nat /\ tso_read img log h tv (pa_add base k) <> Some (cp h k).
-  Proof.
+  Proof using Hcov Hn.
     move => Hown Hfv Hanc Hzk Hinj.
     have Hge : (lo <= t)%nat
       by (have [_ [_ [_ [_ [_ [_ H3]]]]]] := Hcov 0%nat Hn;
@@ -2537,7 +2537,7 @@ Section rel_read.
   Lemma rel_read_floor (h : agent) (tv : nat) (j : nat) :
     (j < n)%nat -> visibleb h tv log (tf j) = true ->
     read_down img log h tv (pa_add base j) lo = Some (fv j).
-  Proof.
+  Proof using Hcov.
     move => Hj Hv.
     have [_ [_ [_ [_ [_ [_ Hfl]]]]]] := Hcov j Hj.
     have [Hle [Hb Hnone]] := Hfl j Hj.
@@ -2564,7 +2564,7 @@ Section rel_read.
                 read_down img log h tv (pa_add base j) (lo + d) = Some (f j))
           /\ (forall q g, (q, g) ∈ hist -> (q <= lo + d)%nat ->
                 visibleb h tv log q = true -> (q <= T)%nat)).
-  Proof.
+  Proof using Hcov Hn.
     move => Hvf. elim: d => [|d IH] Hlen.
     - left. rewrite Nat.add_0_r. split.
       + move => j Hj. exact (rel_read_floor h tv j Hj (Hvf j Hj)).
@@ -2664,7 +2664,7 @@ Section rel_read.
           /\ (forall j, (j < n)%nat ->
                 tso_read img log h tv (pa_add base j) = Some (f j))
           /\ (forall q g, (q, g) ∈ hist -> visibleb h tv log q = true -> (q <= T)%nat)).
-  Proof.
+  Proof using Hcov Hn.
     move => Hvf.
     have [_ [_ [Hlo [_ [H1b _]]]]] := Hcov 0%nat Hn.
     cbn [tr_base tr_n tr_j tr_auth tr_lo tr_fl tr_fv tr_hist] in Hlo, H1b.

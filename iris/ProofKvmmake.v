@@ -744,7 +744,7 @@ Section KvmmakeHouse.
          page_filled (zero_extend' 64 (concat_vec (pas' i) (zeros' 12 : mword 12))) kalloc_junk) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros sp0 spr ret_tgt Hlvl HK Hcross Hsp Hs1 Hx18 Hx19 Hx20 Hx21 Hx22 Hx23 Hx24 Hx25 Hx26 Hx27
       Hrep Hnodes Hpasok.
     iIntros "Hcg Hcnt #Htext Hpc Hc1 Hc2 Hc3 Hc4 Hptree Henv Hpages Hcont".
@@ -1035,7 +1035,7 @@ Section KvmmakeBody.
       ⌜M !!! Regidx (mword_of_int 27) = mm !!! Regidx (mword_of_int 27)⌝ -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using wp_kalloc wp_memset.
     intros sp0 spr Hbelow HK Hnb.
     pose proof (cap_bounds K HK) as (Hc4 & Hc2 & Hc14 & Hc34 & Hc44).
     iIntros "Hcg Hcnt #Htext Hpc Henv Hcont".
@@ -2311,7 +2311,7 @@ Section KvmmakeBody.
   Lemma wp_kvmmake_sconf_gen (γa : gname) (γk : gname * gname) (mm : regfile)
       (lvl K : nat) (eb : bool) (p : mword 64) (on : option nat) (b : bool) (lks : gset string) :
     wp_kvmmake_sconf_body γa γk mm lvl K eb p on b lks.
-  Proof.
+  Proof using wp_kalloc wp_kvmmap wp_memset wp_pms.
     unfold wp_kvmmake_sconf_body.
     intros Hlvl HK Hex Hbelow.
     destruct Hex as (nb & Hon & Hnbk).

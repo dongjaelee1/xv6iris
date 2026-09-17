@@ -75,7 +75,7 @@ Section ProofMappages.
   Lemma sie_cap_gpr_settp `{CID0 : CpuId} (m : regfile) (n : nat) (b : bool)
       (p0 v : mword 64) :
     sie_cap_gpr kt m n b p0 -∗ sie_cap_gpr kt (<[Regidx Rtp := v]> m) n b p0.
-  Proof.
+  Proof using .
     assert (Hsp : <[Regidx Rtp := v]> m !!! Regidx csp_rs1 = m !!! Regidx csp_rs1)
       by (apply upd_ne; reg_neq).
     assert (Htpn : tp_pin (<[Regidx Rtp := v]> m) = tp_pin m)
@@ -150,7 +150,7 @@ Section ProofMappages.
             avail_zero (avail_sub on g)) ⌝ -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros va vpn0 ppn0 sp0 spr ret_tgt HK Hsp Hx24 Hx25 Hx26 Hx27 Hbase Hrep Hpres Hnodes Hmiss Hpay.
     iIntros "Hcg Hcnt #Htext Hpc
              Hc72 Hc64 Hc56 Hc48 Hc40 Hc32 Hc24 Hc16 Hc08 Hc00ex
@@ -489,7 +489,7 @@ Section ProofMappages.
             avail_zero (avail_sub on g)) ⌝ -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     revert CID0.
     induction rem as [| rem' IH]; intros CID0 k Mk tk consumed va pa vpn0 ppn0 sp0 spr ret_tgt
       Hlvl HK Hkrem Hrem Hroot Hvaal Hpaal Hpermreg Hpok Hvab Hpab Hnone
@@ -1166,7 +1166,7 @@ Section ProofMappages.
       (m : gmap (mword 27) (mword 64)) (npages : nat) (perm : Z) (lvl K : nat)
       (eb : bool) (p : mword 64) (on : option nat) (b : bool) (lks : gset string)
     : wp_mappages_sconf_body kt γa γk mm t m npages perm lvl K eb p on b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_mappages_sconf_body].
     intros va pa vpn0 ppn0 ret_tgt
       Hlvl HK Hroot Hvaal Hpaal Hsz Hnp Hpermreg Hpok Hvab Hpab Hrep Hnone Hlkbelow.

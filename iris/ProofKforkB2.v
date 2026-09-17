@@ -201,7 +201,7 @@ Section KforkTfLoop.
         tf_page tfdst ws -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hpvsrc Hpvdst Hwslen Hcur0len HM5 HM4 HM3.
     iIntros "Hcg #Htext Hpc Hsrcp Hdstp Hcont".
     (* [pt_node_claim] for both pages, ONCE: [hw_config] peels off [Hcg]

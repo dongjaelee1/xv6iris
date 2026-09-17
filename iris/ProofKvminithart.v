@@ -50,7 +50,7 @@ Section KvminithartBody.
       (tlbvec0 : vec (option TLB_Entry) (2 ^ 6)) (pcur : mword 64)
       (Pk Qk : iProp Σ) :
     wp_kvminithart_sconf_body mm lvl K root tlbvec0 pcur Pk Qk.
-  Proof.
+  Proof using .
     unfold wp_kvminithart_sconf_body.
     intros Hlvl HK.
     iIntros "Hcg Hbit #Htext Hpc Htlb #Hcell Hhook HPk Hcont".

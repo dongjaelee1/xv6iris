@@ -136,7 +136,7 @@ Section SwpDispatch.
      unfolded -- name it rather than fighting [cbn] at each use. *)
   Lemma goodb_returnm (Db : register -> bool) {E X : Type} (x : X) (s : mstate) :
     goodb Db (Defs.returnm (E := E) x) s = true.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma swp_external_interrupts_pending_S (Drw Dro : gset register)
       (Df : register -> dfrac) (rs : regstate) (dst : mstate)
@@ -153,7 +153,7 @@ Section SwpDispatch.
     swp (external_interrupts_pending tt)
       (fun v => ∃ meip seip : mword 1, ⌜v = s_ext_ip meip seip⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDb Hag HES HESg.
     iIntros "#Hcert Hrw Hro".
     unfold external_interrupts_pending.
@@ -193,7 +193,7 @@ Section SwpDispatch.
     swp (read_mip IncludePlatformInterrupts)
       (fun v => ∃ meip seip : mword 1, ⌜v = s_mip_bits mip_v meip seip⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDmip Hmip HDb Hag HES HESg.
     iIntros "#Hcert Hrw Hro".
     unfold read_mip. cbn match.
@@ -248,7 +248,7 @@ Section SwpDispatch.
                       then Some (s_pending mip_v meip seip mie_v mdv_v, Supervisor)
                       else None)⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDmip HDmie HDmdl HDbmst Hmip Hmie Hmdl Hms Hmm HDb Hag
       HES HESg.
     iIntros "#Hcert Hrw Hro".
@@ -405,7 +405,7 @@ Section SwpDispatch.
       (fun r => ∃ meip seip : mword 1,
                 ⌜r = s_dispatch mip_v meip seip mie_v mdv_v ms_v⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDmip HDmie HDmdl HDbmst Hmip Hmie Hmdl Hms Hmm HDb Hag
       HES HESg.
     iIntros "#Hcert Hrw Hro".
@@ -489,7 +489,7 @@ Section SwpDispatch.
                       hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro)
                  ∨ (⌜st = Step_Execute (RETIRE_SUCCESS, zero_extend' 32 w)⌝ ∗
                     hreg_frame rs2 Drw ∗ hreg_frame_ro Df rs2 Dro ∗ R)).
-  Proof.
+  Proof using .
     intros Hdisj HDpriv HDmip HDmie HDmdl HDpc HDnpc HDbmst Hpriv Hmip Hmie
       Hmdl Hms Hmm HDb Hag HES HESg Hpcf Hdec Hlpad.
     iIntros "#Hcert Hrw Hro Hfet Hex".
@@ -691,15 +691,15 @@ Section PendBits.
   Let p := s_pending mip_v meip seip MIE_S mdv.
 
   Lemma pend_MEI : eq_vec (_get_Minterrupts_MEI (Mk_Minterrupts p)) ('b"1") = false.
-  Proof. unfold p. pend_bit 11. Qed.
+  Proof using mdv meip mip_v seip. unfold p. pend_bit 11. Qed.
   Lemma pend_MSI : eq_vec (_get_Minterrupts_MSI (Mk_Minterrupts p)) ('b"1") = false.
-  Proof. unfold p. pend_bit 3. Qed.
+  Proof using mdv meip mip_v seip. unfold p. pend_bit 3. Qed.
   Lemma pend_MTI : eq_vec (_get_Minterrupts_MTI (Mk_Minterrupts p)) ('b"1") = false.
-  Proof. unfold p. pend_bit 7. Qed.
+  Proof using mdv meip mip_v seip. unfold p. pend_bit 7. Qed.
   Lemma pend_SSI : eq_vec (_get_Minterrupts_SSI (Mk_Minterrupts p)) ('b"1") = false.
-  Proof. unfold p. pend_bit 1. Qed.
+  Proof using mdv meip mip_v seip. unfold p. pend_bit 1. Qed.
   Lemma pend_LCOFI : eq_vec (_get_Minterrupts_LCOFI (Mk_Minterrupts p)) ('b"1") = false.
-  Proof. unfold p. pend_bit 13. Qed.
+  Proof using mdv meip mip_v seip. unfold p. pend_bit 13. Qed.
 End PendBits.
 
 (* THE CONFINEMENT.  Note the constructor names carry the [I_] prefix. *)

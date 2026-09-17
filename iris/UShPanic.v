@@ -121,7 +121,7 @@ Section UShPanic.
   Lemma ubyte_halves (γd : gname) (a : Z) (b : bv 8) :
     ubyte γd a b ⊣⊢
     ubyteq γd (DfracOwn (1/2)) a b ∗ ubyteq γd (DfracOwn (1/2)) a b.
-  Proof.
+  Proof using .
     rewrite /ubyte /ubyteq.
     apply (fractional_half _ (fun q => (a ↪[γd]{DfracOwn q} b)%I) 1%Qp _).
   Qed.
@@ -129,24 +129,24 @@ Section UShPanic.
   Lemma ubyte_split (γd : gname) (a : Z) (b : bv 8) :
     ubyte γd a b -∗
     ubyteq γd (DfracOwn (1/2)) a b ∗ ubyteq γd (DfracOwn (1/2)) a b.
-  Proof. rewrite (ubyte_halves γd a b). by iIntros "$". Qed.
+  Proof using . rewrite (ubyte_halves γd a b). by iIntros "$". Qed.
 
   Lemma ubyte_join (γd : gname) (a : Z) (b : bv 8) :
     ubyteq γd (DfracOwn (1/2)) a b -∗ ubyteq γd (DfracOwn (1/2)) a b -∗
     ubyte γd a b.
-  Proof. rewrite (ubyte_halves γd a b). iIntros "H1 H2". iFrame. Qed.
+  Proof using . rewrite (ubyte_halves γd a b). iIntros "H1 H2". iFrame. Qed.
 
   Lemma ubytesq_one (γd : gname) (dq : dfrac) (a : Z) (b : bv 8) :
     ubyteq γd dq a b ⊣⊢ ubytesq γd dq a 1%nat (fun _ => b).
-  Proof. by rewrite /ubytesq /= Z.add_0_r right_id. Qed.
+  Proof using . by rewrite /ubytesq /= Z.add_0_r right_id. Qed.
 
   Lemma ubytesq_of_one (γd : gname) (dq : dfrac) (a : Z) (b : bv 8) :
     ubyteq γd dq a b -∗ ubytesq γd dq a 1%nat (fun _ => b).
-  Proof. rewrite (ubytesq_one γd dq a b). by iIntros "$". Qed.
+  Proof using . rewrite (ubytesq_one γd dq a b). by iIntros "$". Qed.
 
   Lemma ubytesq_to_one (γd : gname) (dq : dfrac) (a : Z) (b : bv 8) :
     ubytesq γd dq a 1%nat (fun _ => b) -∗ ubyteq γd dq a b.
-  Proof. rewrite (ubytesq_one γd dq a b). by iIntros "$". Qed.
+  Proof using . rewrite (ubytesq_one γd dq a b). by iIntros "$". Qed.
 
   (* =================================================================== *)
   (*  S2  SH'S WRITE STUB OVER THE RUN-CARRYING LEAF                      *)
@@ -184,7 +184,7 @@ Section UShPanic.
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "#Hcode Hrun Hsb Hstd Hbuf Hcont".
     rewrite shp_write.
     (* ---- 0xca6  c.li a7,16 ---- *)
@@ -401,7 +401,7 @@ Section UShPanic.
     prompt_step F -∗
     F i -∗
     cons_out_chain (S gen_id) M ua F i c.
-  Proof.
+  Proof using .
     intros c. induction c as [| c IH]; intros i Hle Hline HM.
     - iIntros "_ Hc". cbn [cons_out_chain]. iExact "Hc".
     - iIntros "#Hst Hc". cbn [cons_out_chain]. iSplit.
@@ -431,7 +431,7 @@ Section UShPanic.
       (mword_of_int sh_prompt_pv) 2%nat
       (UserFd.ustd (ukn_fd N) l ∗ F 0%nat)
       (UserFd.ustd (ukn_fd N) l ∗ F 2%nat).
-  Proof.
+  Proof using .
     intros Hl2.
     iIntros "#Hst #Hro" (h m avail)
       "%Ha0 %Ha1 %Ha2 #Hcode [Hstd Hc] Hrun Hcont".
@@ -547,7 +547,7 @@ Section UShPanic.
   Lemma prompt_step_lpr (v : era_pins) (I : list (bv 8)) :
     era_pin γ (S gen_id) v -∗ echo_links T γ -∗
     prompt_step (fun p : nat => EchoLinksLine.ewc_lpr T v I p).
-  Proof.
+  Proof using Persistent0.
     iIntros "#Hpin #Hlk". rewrite /prompt_step.
     iIntros "!>" (p b Φ) "%Hb %Hp Hc HΦ".
     iApply (EchoLinksLine.ewc_lpr_step T γ (S gen_id) v I p b Φ Hb Hp

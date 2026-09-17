@@ -168,7 +168,7 @@ Section Overlap.
     ~ ✓ (dq1 ⋅ dq2) -> (k1 < length bs1)%nat -> (k2 < length bs2)%nat ->
     off1 + Z.of_nat k1 = off2 + Z.of_nat k2 ->
     byte_range_q Γ dq1 b off1 bs1 -∗ byte_range_q Γ dq2 b off2 bs2 -∗ False.
-  Proof.
+  Proof using .
     intros Hnv Hk1 Hk2 Heq. iIntros "H1 H2".
     destruct (lookup_lt_is_Some_2 bs1 k1 Hk1) as [v1 Hv1].
     destruct (lookup_lt_is_Some_2 bs2 k2 Hk2) as [v2 Hv2].
@@ -189,7 +189,7 @@ Section Overlap.
     ~ ✓ (dq1 ⋅ dq2) -> 0 <= off -> off + Z.of_nat (length bs) <= BSIZE_z ->
     (0 < length bs)%nat ->
     blk_owned_q Γ dq1 b cs -∗ byte_range_q Γ dq2 b off bs -∗ False.
-  Proof.
+  Proof using .
     intros Hnv Hoff Hfit Hne. iIntros "H1 H2". rewrite /blk_owned_q.
     iDestruct "H1" as "[%Hlc H1]".
     iApply (byte_range_q_overlap Γ Hex dq1 dq2 b 0 off cs bs
@@ -206,7 +206,7 @@ Section Overlap.
     0 <= b < nb -> 0 <= off -> off + Z.of_nat (length bs) <= BSIZE_z ->
     (0 < length bs)%nat ->
     free_pool Γ nb u -∗ byte_range Γ b off bs -∗ ⌜b ∈ u⌝.
-  Proof.
+  Proof using .
     intros Hb Hoff Hfit Hne.
     destruct (decide (b ∈ u)) as [Hin | Hnot].
     { iIntros "_ _". iPureIntro. exact Hin. }
@@ -231,7 +231,7 @@ Section Overlap.
 
   Lemma inode_phi_dat Γ (sb : fs_sb) (i : Z) (n : fs_node) :
     inode_phi Γ sb i n ⊣⊢ rec_owned Γ sb i (fn_rec n) ∗ inode_dat Γ n.
-  Proof. rewrite /inode_phi /inode_dat //. Qed.
+  Proof using . rewrite /inode_phi /inode_dat //. Qed.
 
 End Overlap.
 
@@ -256,7 +256,7 @@ Section Read.
     (∃ B : gmap Z (bv 8), ghost_map_auth g 1 B ∗ ⌜B ⊆ fs_dbytes D⌝)%I.
 
   Global Instance snap_auth_timeless g D : Timeless (snap_auth g D).
-  Proof. rewrite /snap_auth. apply _. Qed.
+  Proof using . rewrite /snap_auth. apply _. Qed.
 
   (* SEALED: the identity is ONE hypothesis at every reader, and an
      [iIntros] pattern that descends into it would split the authority off
@@ -273,7 +273,7 @@ Section Read.
     snap_auth g D -∗
     byte_range_q (snap_gamma g gl gt) dq b off bs -∗
     ⌜(map_seqZ (b * BSZ + off) bs : gmap Z (bv 8)) ⊆ fs_dbytes D⌝.
-  Proof.
+  Proof using .
     iIntros "Hau Hr". rewrite /snap_auth.
     iDestruct "Hau" as (B) "[Ha %Hsub]".
     iAssert (⌜forall (k : nat) (v : bv 8), bs !! k = Some v ->
@@ -309,7 +309,7 @@ Section Read.
                 /\ exists pre post,
                      cs = (pre ++ bs ++ post)%list
                      /\ Z.of_nat (length pre) = off⌝.
-  Proof.
+  Proof using .
     intros Hf Hoff Hfit Hne. iIntros "Ha Hr".
     iDestruct (snap_run_sub with "Ha Hr") as %Hsub.
     iPureIntro. exact (dbytes_run_read D b off bs Hf Hoff Hfit Hne Hsub).
@@ -325,7 +325,7 @@ Section Read.
                 /\ exists pre post,
                      cs = (pre ++ bs ++ post)%list
                      /\ Z.of_nat (length pre) = off⌝.
-  Proof.
+  Proof using .
     intros Hf Hoff Hfit Hne. rewrite byte_range_1.
     iApply (snap_run_read g gl gt D (DfracOwn 1) b off bs Hf Hoff Hfit Hne).
   Qed.
@@ -337,7 +337,7 @@ Section Read.
     snap_auth g D -∗
     blk_owned_q (snap_gamma g gl gt) dq b bs -∗
     ⌜D !! b = Some bs⌝.
-  Proof.
+  Proof using .
     (* [blk_owned_q] is sealed (a 1024-element big-op behind a definition is
        an [iFrame] hang), so the pair is opened by an explicit unfold *)
     intros Hf. iIntros "Ha Hb". rewrite /blk_owned_q.
@@ -362,7 +362,7 @@ Section Read.
     snap_auth g D -∗
     blk_owned (snap_gamma g gl gt) b bs -∗
     ⌜D !! b = Some bs⌝.
-  Proof.
+  Proof using .
     intros Hf. rewrite blk_owned_1.
     iApply (snap_blk_read g gl gt D (DfracOwn 1) b bs Hf).
   Qed.
@@ -376,7 +376,7 @@ Section Read.
     snap_auth g D -∗
     blk_owned_q (snap_gamma g gl gt) dq b bs -∗
     ⌜is_Some (D !! b)⌝.
-  Proof.
+  Proof using .
     intros Hf. iIntros "Ha Hb".
     iDestruct (snap_blk_read with "Ha Hb") as %Hb; [exact Hf |].
     iPureIntro. by exists bs.

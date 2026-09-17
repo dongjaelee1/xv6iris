@@ -118,7 +118,7 @@ Section ProofPlicComplete.
   (* =================================================================== *)
   Lemma wp_plic_complete_sconf (γd γd1 : uart_names) (γv : disk_names) (m0 : regfile) (n : nat) (p : mword 64)
     : wp_plic_complete_sconf_body γd γd1 γv m0 n p.
-  Proof.
+  Proof using .
     cbv beta delta [wp_plic_complete_sconf_body].
     intros ra_idx tp_idx pcE ra0 ret_tgt Hhart Ha0ok Hn.
     assert (Htp : forall mm : regfile, rget mm tp_idx = cid_word)

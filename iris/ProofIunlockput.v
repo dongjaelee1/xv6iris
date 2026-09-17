@@ -107,7 +107,7 @@ Section ProofIunlockputMain.
                                  gil gisl
  k qi s gy loy tly d inum dn' bm' n Sb crb cru
                                  crz e0 tid qtx pidv dq dqb dqs m K eb b lks Upr.
-  Proof.
+  Proof using .
     cbv beta delta [wp_iunlockput_dep_gen_body].
     intros pcE ip pj ret_tgt HK Hdsh Hk Hcrb Hcru Hlg Hsize Hbm0 Hbmcov Hbmlog Hins0
            Hiblk Hiblklog Hinumb Hcovb Hnu Hj Hgl Ha0 Hfresh Hdside.
@@ -606,7 +606,7 @@ Section ProofIunlockputMain.
                                    gil gisl
  k qi s gy loy tly d inum
                                    dn' bm' n tid qtx pidv dq dqb dqs m K eb b lks Upr.
-  Proof.
+  Proof using .
     cbv beta delta [wp_iunlockput_dep_sconf_body].
     intros pcE ip pj ret_tgt HK Hdsh Hk Hlg Hsize Hbm0 Hbmcov Hbmlog Hins0
            Hiblk Hiblklog Hinumb Hcovb Hnu Hj Hgl Ha0 Hfresh Hdside.
@@ -663,7 +663,7 @@ Section ProofIunlockputMain.
                                   gil gisl
  k qi s gy loy tly inum dn' bm' n
                                   pidv dq dqb dqs m K eb b lks Upr.
-  Proof.
+  Proof using .
     apply wp_iunlockput_tx_of_dep_sconf. intros d tid qtx.
     apply wp_iunlockput_dep_sconf.
   Qed.
@@ -682,7 +682,7 @@ Section ProofIunlockputMain.
                                 gil gisl
  k qi s gy loy tly inum dn' bm' n Sb crb cru
                                 crz e0 pidv dq dqb dqs m K eb b lks Upr.
-  Proof.
+  Proof using .
     apply wp_iunlockput_tx_of_dep_gen. intros d tid qtx.
     apply wp_iunlockput_dep_gen.
   Qed.

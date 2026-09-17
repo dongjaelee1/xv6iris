@@ -996,7 +996,7 @@ Section WpCsrwGprNewB.
     register_lookup mseccfg rs = mword_of_int 0 ->
     register_lookup misa rs = MISA_C ->
     hval D Drw rs (legalize_mideleg o v) (mideleg_legalized o v) rs.
-  Proof.
+  Proof using .
     intros HD1 HD2 HD3 Hp Hs Hm.
     exact (hval_of_goodb D_m D Drw _ dstateM rs (mideleg_legalized o v)
              (dm_sub D HD1 HD2 HD3)
@@ -1017,7 +1017,7 @@ Section WpCsrwGprNewB.
             (cw_Drw mideleg) ∗
           hreg_frame_ro (cw_Df dq)
             (cw_rs mideleg (mideleg_legalized mideleg0 v)) cw_Dro)).
-  Proof.
+  Proof using .
     intros Hfresh. iIntros "#Hcert Hrw Hro".
     rewrite write_CSR_mideleg_red.
     iApply (swp_bind_use (Defs.read_reg mideleg) _
@@ -1107,7 +1107,7 @@ Section WpCsrwGprNewB.
       mideleg ↦ᵣ mideleg_legalized mideleg0 (m !!! Regidx rs1) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hpmp Hstat Hrs1) "Hmm Hpmpc Hpc Hf Hcsr Hinstr Hcont".
     assert (Hfresh : cw_fresh mideleg)
       by (rewrite /cw_fresh; split_and!; vm_compute; reflexivity).
@@ -1189,7 +1189,7 @@ Section WpCsrwGprNewB.
       mideleg ↦ᵣ mideleg0 -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hpmp Hstat Hrs1) "Hmm Hpmpc Hpc Hf Hmie Hmdl Hinstr Hcont".
     assert (Hok : cw2_ok mie mideleg).
     { rewrite /cw2_ok /cw_fresh. split_and!;
@@ -1298,7 +1298,7 @@ Section WpCsrwGprNewB.
     exec (legalize_satp RV64 o v) dst = Some (satp_legalized o v, dst) ->
     goodb Db (legalize_satp RV64 o v) dst = true ->
     hval D Drw rs (legalize_satp RV64 o v) (satp_legalized o v) rs.
-  Proof.
+  Proof using .
     intros Hsub Hag Hex Hgb.
     exact (hval_of_goodb Db D Drw _ dst rs (satp_legalized o v) Hsub Hag Hgb Hex).
   Qed.
@@ -1311,7 +1311,7 @@ Section WpCsrwGprNewB.
     register_lookup mseccfg rs = mword_of_int 0 ->
     register_lookup misa rs = MISA_C ->
     hval D Drw rs (legalize_satp RV64 o v) (satp_legalized o v) rs.
-  Proof.
+  Proof using .
     intros HD1 HD2 HD3 Hp Hs Hm.
     exact (hval_of_goodb D_m D Drw _ dstateM rs (satp_legalized o v)
              (dm_sub D HD1 HD2 HD3)
@@ -1338,7 +1338,7 @@ Section WpCsrwGprNewB.
           hreg_frame_ro (cw2_Df dq dq2 mstatus)
             (cw2_rs satp (satp_legalized satp0 v) mstatus ms0)
             (cw2_Dro mstatus))).
-  Proof.
+  Proof using .
     intros Hok HSXL. iIntros "#Hcert Hrw Hro".
     rewrite write_CSR_satp_red.
     (* 1. the architecture read, walked *)
@@ -1458,7 +1458,7 @@ Section WpCsrwGprNewB.
       satp ↦ᵣ satp_legalized satp0 (m !!! Regidx rs1) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hpmp Hstat Hrs1) "Hmm Hpmpc Hpc Hf Hcsr Hinstr Hcont".
     assert (Hok : cw2_ok satp mstatus).
     { rewrite /cw2_ok /cw_fresh. split_and!;
@@ -1546,7 +1546,7 @@ Section WpCsrwGprNewB.
       pmpaddr_n ↦ᵣ pmp0_newaddr pmpcfg0 pmpaddr0 (m !!! Regidx rs1) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hpmp Hstat Hrs1) "Hmm Hpmpc Hpc Hf Hcsr Hinstr Hcont".
     assert (Hok : cw2_ok pmpaddr_n pmpcfg_n).
     { rewrite /cw2_ok /cw_fresh. split_and!;

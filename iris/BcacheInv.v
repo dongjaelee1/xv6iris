@@ -236,7 +236,7 @@ Section BcacheInv.
      at itself both ways. *)
   Lemma bcache_lru_nil (h : mword 64) :
     bnext h ↦₈ h -∗ bprev h ↦₈ h -∗ bcache_lru h [].
-  Proof. iIntros "Hn Hp". rewrite /bcache_lru /=. by iFrame "Hn Hp". Qed.
+  Proof using . iIntros "Hn Hp". rewrite /bcache_lru /=. by iFrame "Hn Hp". Qed.
 
   (* THE loop-body lemma.  Splicing a new node [a] in right after the head
      touches exactly four cells: the head's next, the prev of whatever the head
@@ -250,7 +250,7 @@ Section BcacheInv.
        bnext h ↦₈ a -∗ bprev (List.hd h l) ↦₈ a -∗
        bnext a ↦₈ List.hd h l -∗ bprev a ↦₈ h -∗
        bcache_lru h (a :: l)).
-  Proof.
+  Proof using .
     destruct l as [| b l'].
     - iIntros "(Hhn & Hhp & _)". cbn [List.hd].
       iFrame "Hhn Hhp". iIntros (a) "Hhn Hhp Han Hap".
@@ -279,14 +279,14 @@ Section BcacheInv.
      which is what lets the induction hypotheses below match syntactically. *)
   Lemma bseg_cons (n prev a : mword 64) (l : list (mword 64)) :
     bseg n prev (a :: l) = (bprev a ↦₈ prev ∗ bnext a ↦₈ List.hd n l ∗ bseg n a l)%I.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* ---- [bseg] splits along [++] ---- *)
 
   Lemma bseg_app_split (n prev : mword 64) (l1 l2 : list (mword 64)) :
     bseg n prev (l1 ++ l2)%list -∗
     bseg (List.hd n l2) prev l1 ∗ bseg n (List.last l1 prev) l2.
-  Proof.
+  Proof using .
     revert prev. induction l1 as [|a l1 IH]; intros prev.
     - iIntros "H". cbn [app List.last bseg]. iSplitR; [done | iExact "H"].
     - change ((a :: l1) ++ l2)%list with (a :: (l1 ++ l2))%list.
@@ -302,7 +302,7 @@ Section BcacheInv.
   Lemma bseg_app_join (n prev : mword 64) (l1 l2 : list (mword 64)) :
     bseg (List.hd n l2) prev l1 -∗ bseg n (List.last l1 prev) l2 -∗
     bseg n prev (l1 ++ l2)%list.
-  Proof.
+  Proof using .
     revert prev. induction l1 as [|a l1 IH]; intros prev.
     - iIntros "_ H". cbn [app List.last]. iExact "H".
     - change ((a :: l1) ++ l2)%list with (a :: (l1 ++ l2))%list.
@@ -323,7 +323,7 @@ Section BcacheInv.
     bseg n prev (c :: l) -∗
     bnext (List.last l c) ↦₈ n ∗
     (∀ n2 : mword 64, bnext (List.last l c) ↦₈ n2 -∗ bseg n2 prev (c :: l)).
-  Proof.
+  Proof using .
     revert prev c. induction l as [|b l IH]; intros prev c.
     - cbn [List.hd List.last bseg].
       iIntros "(Hp & Hnx & _)". iFrame "Hnx".
@@ -342,7 +342,7 @@ Section BcacheInv.
   Lemma bseg_first_prev (n p1 c : mword 64) (l : list (mword 64)) :
     bseg n p1 (c :: l) -∗
     bprev c ↦₈ p1 ∗ (∀ p2 : mword 64, bprev c ↦₈ p2 -∗ bseg n p2 (c :: l)).
-  Proof.
+  Proof using .
     rewrite (bseg_cons n p1 c l).
     iIntros "(Hp & Hnx & Hrest)". iFrame "Hp".
     iIntros (p2) "Hp". rewrite (bseg_cons n p2 c l). iFrame "Hp Hnx Hrest".
@@ -358,7 +358,7 @@ Section BcacheInv.
     bnext (List.last l1 h) ↦₈ a ∗
     (∀ n2 : mword 64,
        bnext (List.last l1 h) ↦₈ n2 -∗ bnext h ↦₈ List.hd n2 l1 ∗ bseg n2 h l1).
-  Proof.
+  Proof using .
     destruct l1 as [|c l1].
     - cbn [List.hd List.last bseg].
       iIntros "Hhn _". iFrame "Hhn". iIntros (n2) "Hhn". by iFrame "Hhn".
@@ -375,7 +375,7 @@ Section BcacheInv.
     bprev (List.hd h l2) ↦₈ a ∗
     (∀ p2 : mword 64,
        bprev (List.hd h l2) ↦₈ p2 -∗ bprev h ↦₈ List.last l2 p2 ∗ bseg h p2 l2).
-  Proof.
+  Proof using .
     destruct l2 as [|b l2].
     - cbn [List.hd List.last bseg].
       iIntros "Hhp _". iFrame "Hhp". iIntros (p2) "Hhp". by iFrame "Hhp".
@@ -408,7 +408,7 @@ Section BcacheInv.
       (bnext (List.last l1 h) ↦₈ List.hd h l2 -∗
        bprev (List.hd h l2) ↦₈ List.last l1 h -∗
        bcache_lru h (l1 ++ l2)%list).
-  Proof.
+  Proof using .
     rewrite /bcache_lru.
     rewrite (hd_app_mid h a l1 l2) (last_app_mid h a l1 l2).
     iIntros "(Hhn & Hhp & Hseg)".

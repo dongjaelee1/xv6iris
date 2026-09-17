@@ -458,7 +458,7 @@ Section RecOwned.
 
   Global Instance rec_owned_at_timeless `{!GTimeless Γ} istart z dn :
     Timeless (rec_owned_at Γ istart z dn).
-  Proof. rewrite /rec_owned_at. apply _. Qed.
+  Proof using . rewrite /rec_owned_at. apply _. Qed.
 
   (* THE RECORD AT A SHARE (durable-disk EV-X).  It used NOT to need one --
      records park region-side at fraction 1 always and no lock splits them
@@ -479,27 +479,27 @@ Section RecOwned.
 
   Lemma rec_owned_q_1 Γ sb i dn :
     rec_owned Γ sb i dn = rec_owned_q Γ (DfracOwn 1) sb i dn.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma rec_owned_at_q_1 Γ istart z dn :
     rec_owned_at Γ istart z dn = rec_owned_at_q Γ (DfracOwn 1) istart z dn.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Global Instance rec_owned_q_timeless `{!GTimeless Γ} dq sb i dn :
     Timeless (rec_owned_q Γ dq sb i dn).
-  Proof. rewrite /rec_owned_q. apply _. Qed.
+  Proof using . rewrite /rec_owned_q. apply _. Qed.
 
   Global Instance rec_owned_at_q_timeless `{!GTimeless Γ} dq istart z dn :
     Timeless (rec_owned_at_q Γ dq istart z dn).
-  Proof. rewrite /rec_owned_at_q. apply _. Qed.
+  Proof using . rewrite /rec_owned_at_q. apply _. Qed.
 
   Lemma gamma_q_rec_owned Γ dq sb i dn :
     rec_owned (gamma_q Γ dq) sb i dn ⊣⊢ rec_owned_q Γ dq sb i dn.
-  Proof. rewrite /rec_owned /rec_owned_q gamma_q_byte_range //. Qed.
+  Proof using . rewrite /rec_owned /rec_owned_q gamma_q_byte_range //. Qed.
 
   Lemma gamma_q_rec_owned_at Γ dq istart z dn :
     rec_owned_at (gamma_q Γ dq) istart z dn ⊣⊢ rec_owned_at_q Γ dq istart z dn.
-  Proof. rewrite /rec_owned_at /rec_owned_at_q gamma_q_byte_range //. Qed.
+  Proof using . rewrite /rec_owned_at /rec_owned_at_q gamma_q_byte_range //. Qed.
 
   (* the region's fraction-1 record, shed to the share the collection hands
      the transport (durable-disk EV-X) *)
@@ -507,13 +507,13 @@ Section RecOwned.
     rec_owned_at_q Γ (DfracOwn (q1 + q2)) istart z dn
     ⊣⊢ rec_owned_at_q Γ (DfracOwn q1) istart z dn
         ∗ rec_owned_at_q Γ (DfracOwn q2) istart z dn.
-  Proof. rewrite /rec_owned_at_q (byte_range_q_split Γ Hfr) //. Qed.
+  Proof using . rewrite /rec_owned_at_q (byte_range_q_split Γ Hfr) //. Qed.
 
   Lemma rec_owned_at_split_34 Γ (Hfr : phi_frac Γ) istart z dn :
     rec_owned_at Γ istart z dn
     ⊣⊢ rec_owned_at_q Γ (DfracOwn (3/4)) istart z dn
         ∗ rec_owned_at_q Γ (DfracOwn (1/4)) istart z dn.
-  Proof.
+  Proof using .
     rewrite rec_owned_at_q_1 -(rec_owned_at_q_split Γ Hfr (3/4) (1/4)).
     rewrite Qp.three_quarter_quarter //.
   Qed.
@@ -526,7 +526,7 @@ Section RecOwned.
   Lemma rec_owned_sb Γ sb i dn :
     0 <= i < 2 ^ 32 ->
     rec_owned Γ sb i dn ⊣⊢ rec_owned_at Γ (sb_inodestart sb) i dn.
-  Proof.
+  Proof using .
     intros Hi.
     assert (H32 : bv_modulus 32 = (2 ^ 32)%Z) by (vm_compute; reflexivity).
     assert (Hbv : bv_unsigned (fs_inum_bv i) = i).
@@ -546,12 +546,12 @@ Section RecOwned.
     rec_owned_at Γ istart z dn -∗
     rec_owned_at_q Γ (DfracOwn (3/4)) istart z dn
     ∗ rec_owned_at_q Γ (DfracOwn (1/4)) istart z dn.
-  Proof. iIntros "H". by iApply (rec_owned_at_split_34 Γ Hfr). Qed.
+  Proof using . iIntros "H". by iApply (rec_owned_at_split_34 Γ Hfr). Qed.
 
   Lemma rec_owned_sb_q Γ dq sb i dn :
     0 <= i < 2 ^ 32 ->
     rec_owned_q Γ dq sb i dn ⊣⊢ rec_owned_at_q Γ dq (sb_inodestart sb) i dn.
-  Proof.
+  Proof using .
     intros Hi.
     rewrite -(gamma_q_rec_owned Γ dq sb i dn)
             -(gamma_q_rec_owned_at Γ dq (sb_inodestart sb) i dn).
@@ -563,7 +563,7 @@ Section RecOwned.
   (* three generic big-op readings, all about the INDEX only *)
   Lemma big_sepL_seq0 (Ψ : nat -> iProp Σ) (n : nat) :
     ([∗ list] j ∈ seq 0 n, Ψ j) ⊣⊢ ([∗ list] k ↦ _ ∈ seq 0 n, Ψ k).
-  Proof.
+  Proof using .
     apply big_sepL_proper. intros k j Hk.
     apply lookup_seq in Hk as [-> _]. done.
   Qed.
@@ -572,7 +572,7 @@ Section RecOwned.
   Lemma big_sepL_seq_chunks (Phi : nat -> iProp Σ) (m n : nat) :
     ([∗ list] i ∈ seq 0 n, [∗ list] k ∈ seq 0 m, Phi (m * i + k)%nat)
     ⊣⊢ ([∗ list] j ∈ seq 0 (m * n), Phi j).
-  Proof.
+  Proof using .
     induction n as [| n IH].
     - rewrite Nat.mul_0_r //.
     - rewrite seq_S big_sepL_app big_sepL_cons big_sepL_nil right_id.
@@ -591,7 +591,7 @@ Section RecOwned.
       (Ψ : nat -> iProp Σ) :
     length l = length l' ->
     ([∗ list] k ↦ _ ∈ l, Ψ k) ⊣⊢ ([∗ list] k ↦ _ ∈ l', Ψ k).
-  Proof.
+  Proof using .
     revert l' Ψ. induction l as [| x l IH]; intros l' Ψ Hlen.
     - destruct l' as [| y l']; [done | simpl in Hlen; lia].
     - destruct l' as [| y l']; [simpl in Hlen; lia |].
@@ -606,7 +606,7 @@ Section RecOwned.
     byte_range Γ b off (diblk_bytes ds)
     ⊣⊢ [∗ list] k ↦ d ∈ ds,
          byte_range Γ b (off + 64 * Z.of_nat k) (dinode_bytes d).
-  Proof.
+  Proof using .
     revert off. induction ds as [| d ds IH]; intros off Hall.
     { rewrite diblk_bytes_nil byte_range_nil big_sepL_nil //. }
     inversion Hall as [| xd xds Hd Hds]; subst.
@@ -626,7 +626,7 @@ Section RecOwned.
     (k < 16)%nat ->
     rec_owned_at Γ istart (16 * bi + Z.of_nat k) dn
     ⊣⊢ byte_range Γ (istart + bi) (64 * Z.of_nat k) (dinode_bytes dn).
-  Proof.
+  Proof using .
     intros Hk. rewrite /rec_owned_at.
     assert (Hk0 : Z.of_nat k `div` 16 = 0) by (apply Z.div_small; lia).
     assert (Hd : (16 * bi + Z.of_nat k) `div` 16 = bi).
@@ -645,7 +645,7 @@ Section RecOwned.
     byte_range Γ (istart + bi) 0 (diblk_bytes ds)
     ⊣⊢ [∗ list] k ∈ seq 0 16,
          rec_owned_at Γ istart (16 * bi + Z.of_nat k) (ds !!! k).
-  Proof.
+  Proof using .
     intros [Hlen Hall].
     rewrite (byte_range_diblk Γ (istart + bi) 0 ds Hall).
     rewrite (big_sepL_seq0
@@ -691,16 +691,16 @@ Section InodeOwned.
      else blk_owned Γ (fn_indb n) (ind_bytes (fn_ent n)))%I.
 
   Lemma ind_owned_1 Γ n : ind_owned Γ n = ind_owned_q Γ (DfracOwn 1) n.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Global Instance ind_owned_q_timeless `{!GTimeless Γ} dq n :
     Timeless (ind_owned_q Γ dq n).
-  Proof. rewrite /ind_owned_q. case_decide; apply _. Qed.
+  Proof using . rewrite /ind_owned_q. case_decide; apply _. Qed.
 
   Lemma ind_owned_q_split Γ (Hfr : phi_frac Γ) (q1 q2 : Qp) n :
     ind_owned_q Γ (DfracOwn (q1 + q2)) n
     ⊣⊢ ind_owned_q Γ (DfracOwn q1) n ∗ ind_owned_q Γ (DfracOwn q2) n.
-  Proof.
+  Proof using .
     rewrite /ind_owned_q. case_decide.
     - iSplit; [iIntros "_"; iSplitR; done | iIntros "_"; done].
     - apply (blk_owned_q_split Γ Hfr).
@@ -709,7 +709,7 @@ Section InodeOwned.
   Lemma ind_owned_split_34 Γ (Hfr : phi_frac Γ) n :
     ind_owned Γ n
     ⊣⊢ ind_owned_q Γ (DfracOwn (3/4)) n ∗ ind_owned_q Γ (DfracOwn (1/4)) n.
-  Proof.
+  Proof using .
     rewrite ind_owned_1 -(ind_owned_q_split Γ Hfr (3/4) (1/4)).
     rewrite Qp.three_quarter_quarter //.
   Qed.
@@ -742,7 +742,7 @@ Section InodeOwned.
      ∗ ind_owned Γ n)%I.
 
   Lemma inode_dat_1 Γ n : inode_dat Γ n = inode_dat_q Γ (DfracOwn 1) n.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* Peel one connective per step and call [apply _] only at the LEAVES
      (optimization.md; the idiom is [IcacheEscrow]'s).  The leaves here are
@@ -756,11 +756,11 @@ Section InodeOwned.
 
   Global Instance inode_dat_q_timeless `{!GTimeless Γ} dq n :
     Timeless (inode_dat_q Γ dq n).
-  Proof. rewrite /inode_dat_q. tl_struct. Qed.
+  Proof using . rewrite /inode_dat_q. tl_struct. Qed.
 
   Global Instance inode_dat_timeless `{!GTimeless Γ} n :
     Timeless (inode_dat Γ n).
-  Proof. rewrite inode_dat_1. apply _. Qed.
+  Proof using . rewrite inode_dat_1. apply _. Qed.
 
   (* the block big-op at a sum of shares, which is the half of the split
      that is not already [ind_owned_q_split] *)
@@ -771,7 +771,7 @@ Section InodeOwned.
           blk_owned_q Γ (DfracOwn q1) (fn_naddr n k) bs)
         ∗ ([∗ map] k ↦ bs ∈ fn_blk n,
              blk_owned_q Γ (DfracOwn q2) (fn_naddr n k) bs).
-  Proof.
+  Proof using .
     rewrite -big_sepM_sep.
     apply big_sepM_proper. intros k bs _.
     apply (blk_owned_q_split Γ Hfr).
@@ -780,7 +780,7 @@ Section InodeOwned.
   Lemma inode_dat_q_split Γ (Hfr : phi_frac Γ) (q1 q2 : Qp) n :
     inode_dat_q Γ (DfracOwn (q1 + q2)) n
     ⊣⊢ inode_dat_q Γ (DfracOwn q1) n ∗ inode_dat_q Γ (DfracOwn q2) n.
-  Proof.
+  Proof using .
     rewrite /inode_dat_q (inode_dat_blks_split Γ Hfr q1 q2 n).
     rewrite (ind_owned_q_split Γ Hfr q1 q2 n).
     iSplit.
@@ -794,7 +794,7 @@ Section InodeOwned.
     inode_dat_q Γ dq n -∗
       blk_owned_q Γ dq (fn_naddr n k) bs
       ∗ (blk_owned_q Γ dq (fn_naddr n k) bs -∗ inode_dat_q Γ dq n).
-  Proof.
+  Proof using .
     intros Hbs. iIntros "[Hb Hi]".
     iDestruct (big_sepM_delete _ _ k bs Hbs with "Hb") as "[Hbk Hrest]".
     iFrame "Hbk". iIntros "Hbk".
@@ -813,7 +813,7 @@ Section InodeOwned.
      pattern moves. *)
   Lemma inode_phi_dat Γ sb i n :
     inode_phi Γ sb i n = (rec_owned Γ sb i (fn_rec n) ∗ inode_dat Γ n)%I.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* THE GEOMETRY-FREE READING, the [rec_owned_at]/[free_bitmap_at] pattern:
      the inode REGION has no superblock, only [icfg_ist] and an inum as a
@@ -825,14 +825,14 @@ Section InodeOwned.
 
   Global Instance inode_phi_at_timeless `{!GTimeless Γ} istart z n :
     Timeless (inode_phi_at Γ istart z n).
-  Proof. rewrite /inode_phi_at. tl_struct. Qed.
+  Proof using . rewrite /inode_phi_at. tl_struct. Qed.
 
   (* THE RANGE PREMISE IS [rec_owned_sb]'s, and it is real for the same
      reason: [fs_inum_bv] wraps at 2^32. *)
   Lemma inode_phi_sb Γ sb i n :
     0 <= i < 2 ^ 32 ->
     inode_phi_at Γ (sb_inodestart sb) i n ⊣⊢ inode_phi Γ sb i n.
-  Proof.
+  Proof using .
     intros Hi.
     rewrite /inode_phi_at inode_phi_dat (rec_owned_sb Γ sb i (fn_rec n) Hi) //.
   Qed.
@@ -862,14 +862,14 @@ Section InodeOwned.
 
   Lemma gamma_q_ind_owned Γ dq n :
     ind_owned (gamma_q Γ dq) n ⊣⊢ ind_owned_q Γ dq n.
-  Proof.
+  Proof using .
     rewrite /ind_owned /ind_owned_q. case_decide as Hz; [done |].
     apply gamma_q_blk_owned.
   Qed.
 
   Lemma gamma_q_inode_dat Γ dq n :
     inode_dat (gamma_q Γ dq) n ⊣⊢ inode_dat_q Γ dq n.
-  Proof.
+  Proof using .
     rewrite /inode_dat /inode_dat_q gamma_q_ind_owned.
     apply bi.sep_proper; [| done].
     apply big_sepM_proper. intros k bs _. apply gamma_q_blk_owned.
@@ -878,7 +878,7 @@ Section InodeOwned.
   (* SHEDDING, AT ONE INODE'S BYTES ([FsStateDefs.view_shed]). *)
   Lemma ind_owned_shed Γ Γ1 Γ2 (Hs : view_shed Γ Γ1 Γ2) n :
     ind_owned Γ n ⊢ ind_owned Γ1 n ∗ ind_owned Γ2 n.
-  Proof.
+  Proof using .
     rewrite /ind_owned. case_decide.
     - iIntros "_". iSplitR; done.
     - apply (blk_owned_shed Γ Γ1 Γ2 Hs).
@@ -886,7 +886,7 @@ Section InodeOwned.
 
   Lemma inode_phi_shed Γ Γ1 Γ2 (Hs : view_shed Γ Γ1 Γ2) sb i n :
     inode_phi Γ sb i n ⊢ inode_phi Γ1 sb i n ∗ inode_phi Γ2 sb i n.
-  Proof.
+  Proof using .
     rewrite /inode_phi /rec_owned. iIntros "(Hr & Hb & Hi)".
     iDestruct (byte_range_shed Γ Γ1 Γ2 Hs with "Hr") as "[Hr1 Hr2]".
     iDestruct (ind_owned_shed Γ Γ1 Γ2 Hs with "Hi") as "[Hi1 Hi2]".
@@ -902,7 +902,7 @@ Section InodeOwned.
   Lemma gamma_q_inode_phi Γ dq sb i n :
     inode_phi (gamma_q Γ dq) sb i n
     ⊣⊢ rec_owned_q Γ dq sb i (fn_rec n) ∗ inode_dat_q Γ dq n.
-  Proof.
+  Proof using .
     rewrite inode_phi_dat gamma_q_inode_dat /rec_owned /rec_owned_q
             gamma_q_byte_range //.
   Qed.
@@ -938,7 +938,7 @@ Section InodeOwned.
     end.
 
   Lemma fn_ity_ok_ex n : exists v, fn_ity_ok n v.
-  Proof.
+  Proof using .
     destruct (fn_is_dir n) eqn:E; [exists (TDir 0) | exists TFile]; exact E.
   Qed.
 
@@ -954,13 +954,13 @@ Section InodeOwned.
      -- and a free record's -- register is empty and the type write is not
      an update at all *)
   Lemma fn_mult_zero n : fn_nlink n = 0%nat -> fn_mult n = 0%nat.
-  Proof.
+  Proof using .
     intros Hz. rewrite /fn_mult Hz /fn_orphan
       (bool_decide_eq_true_2 (fn_nlink n = 0%nat) Hz) andb_false_r //.
   Qed.
 
   Lemma fn_mult_ge n : (fn_nlink n <= fn_mult n)%nat.
-  Proof. rewrite /fn_mult. destruct (_ && _)%bool; lia. Qed.
+  Proof using . rewrite /fn_mult. destruct (_ && _)%bool; lia. Qed.
 
   (* TWO EXEMPTIONS, and each is the kernel's own arithmetic.
 
@@ -1100,11 +1100,11 @@ Section InodeOwned.
 
   Lemma inode_owned_split Γ sb i n :
     inode_owned Γ sb i n ⊣⊢ inode_phi Γ sb i n ∗ inode_ghost Γ i n.
-  Proof. done. Qed.
+  Proof using . done. Qed.
 
   Lemma inode_owned_local Γ sb i n :
     inode_owned Γ sb i n -∗ ⌜inode_local i n⌝.
-  Proof. iIntros "[_ (%v & _ & _ & _ & $)]". Qed.
+  Proof using . iIntros "[_ (%v & _ & _ & _ & $)]". Qed.
 
   (* THE Φ-FREE HALF DOES NOT MOVE AT A SHARE, and this is the EV-X ruling
      in one line: [FsStateDefs.gamma_q] copies [γlink] and [γtop], so an
@@ -1113,13 +1113,13 @@ Section InodeOwned.
      the authorities stay whole. *)
   Lemma gamma_q_inode_ghost Γ dq i n :
     inode_ghost (gamma_q Γ dq) i n = inode_ghost Γ i n.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma gamma_q_inode_owned Γ dq sb i n :
     inode_owned (gamma_q Γ dq) sb i n
     ⊣⊢ (rec_owned_q Γ dq sb i (fn_rec n) ∗ inode_dat_q Γ dq n)
         ∗ inode_ghost Γ i n.
-  Proof.
+  Proof using .
     rewrite /inode_owned gamma_q_inode_phi gamma_q_inode_ghost //.
   Qed.
 
@@ -1137,7 +1137,7 @@ Section InodeOwned.
   Lemma inode_ghost_of Γ (i : Z) (n : fs_node) (v : ity) :
     fn_ity_ok n v -> inode_local i n ->
     link_auth Γ i (fn_mult n) v -∗ ent_toks_x Γ i n -∗ inode_ghost Γ i n.
-  Proof.
+  Proof using .
     intros Hv Hl. iIntros "Ha Ht".
     rewrite /inode_ghost. iExists v.
     iSplitR; [by iPureIntro |].
@@ -1151,30 +1151,30 @@ Section InodeOwned.
 
   Global Instance rec_owned_timeless `{!GTimeless Γ} sb i dn :
     Timeless (rec_owned Γ sb i dn).
-  Proof. rewrite /rec_owned. apply _. Qed.
+  Proof using . rewrite /rec_owned. apply _. Qed.
 
   Global Instance ind_owned_timeless `{!GTimeless Γ} n :
     Timeless (ind_owned Γ n).
-  Proof. rewrite /ind_owned. case_decide; apply _. Qed.
+  Proof using . rewrite /ind_owned. case_decide; apply _. Qed.
 
   Global Instance inode_phi_timeless `{!GTimeless Γ} sb i n :
     Timeless (inode_phi Γ sb i n).
-  Proof. rewrite /inode_phi. apply _. Qed.
+  Proof using . rewrite /inode_phi. apply _. Qed.
 
   Global Instance ent_tok_at_timeless Γ self orph s t ty :
     Timeless (ent_tok_at Γ self orph s t ty).
-  Proof. rewrite /ent_tok_at. destruct (ent_tokenless self orph s t); apply _. Qed.
+  Proof using . rewrite /ent_tok_at. destruct (ent_tokenless self orph s t); apply _. Qed.
 
   Global Instance ent_tok_timeless Γ self dd orph isd s t :
     Timeless (ent_tok Γ self dd orph isd s t).
-  Proof. rewrite /ent_tok. destruct (ent_tokenless self orph s t); apply _. Qed.
+  Proof using . rewrite /ent_tok. destruct (ent_tokenless self orph s t); apply _. Qed.
 
   (* the congruence at the READINGS: two nodes whose entry maps and orphan
      flags agree carry the same fragments, whatever their records are *)
   Lemma ent_toks_cong_ent Γ i n n' D :
     fn_orphan n' = fn_orphan n -> dir_entries n' = dir_entries n ->
     ent_toks Γ i n D ⊣⊢ ent_toks Γ i n' D.
-  Proof. intros Ho He. rewrite /ent_toks /fn_dd He Ho //. Qed.
+  Proof using . intros Ho He. rewrite /ent_toks /fn_dd He Ho //. Qed.
 
   (* the marker set is only ever read AT AN ENTRY, so two sets that agree
      on the entry map's domain carry the same fragments.  It is what the
@@ -1183,7 +1183,7 @@ Section InodeOwned.
   Lemma ent_toks_dset_ext Γ i n D D' :
     (forall s, is_Some (dir_entries n !! s) -> (s ∈ D <-> s ∈ D')) ->
     ent_toks Γ i n D ⊣⊢ ent_toks Γ i n D'.
-  Proof.
+  Proof using .
     intros Hext. rewrite /ent_toks.
     apply big_sepM_proper. intros s t Hs.
     rewrite (bool_decide_ext (s ∈ D) (s ∈ D')); [done |].
@@ -1192,7 +1192,7 @@ Section InodeOwned.
 
   Lemma ent_dset_ok_cong n n' D :
     dir_entries n' = dir_entries n -> ent_dset_ok n D -> ent_dset_ok n' D.
-  Proof. intros He Hok s Hs. rewrite He. exact (Hok s Hs). Qed.
+  Proof using . intros He Hok s Hs. rewrite He. exact (Hok s Hs). Qed.
 
   (* the marker set rides any move that only ADDS entries, and the count
      rides any move that leaves [nlink] and the type alone.  Together they
@@ -1201,7 +1201,7 @@ Section InodeOwned.
   Lemma ent_dset_ok_grow n n' D :
     (forall s, is_Some (dir_entries n !! s) -> is_Some (dir_entries n' !! s)) ->
     ent_dset_ok n D -> ent_dset_ok n' D.
-  Proof.
+  Proof using .
     intros Hgrow Hok s Hs. destruct (Hok s Hs) as (Hex & H1 & H2).
     split_and!; [exact (Hgrow s Hex) | exact H1 | exact H2].
   Qed.
@@ -1212,7 +1212,7 @@ Section InodeOwned.
   Lemma ent_dset_ok_delete (n n' : fs_node) (s : fname) (D : gset fname) :
     dir_entries n' = delete s (dir_entries n) -> s ∉ D ->
     ent_dset_ok n D -> ent_dset_ok n' D.
-  Proof.
+  Proof using .
     intros Hents Hs Hok t Ht.
     destruct (Hok t Ht) as (Hsome & Hd & Hdd).
     split_and!; [| exact Hd | exact Hdd].
@@ -1223,7 +1223,7 @@ Section InodeOwned.
   Lemma node_exact_cong n n' D :
     fn_is_dir n' = fn_is_dir n -> fn_nlink n' = fn_nlink n ->
     node_exact n D -> node_exact n' D.
-  Proof.
+  Proof using .
     intros Hd Hnl Hx Hdir. rewrite /node_exact in Hx.
     rewrite /fn_orphan. rewrite !Hnl. apply Hx. rewrite -Hd. exact Hdir.
   Qed.
@@ -1236,7 +1236,7 @@ Section InodeOwned.
     fn_nlink n <> 0%nat ->
     s ∉ D ->
     node_exact n D -> node_exact n' ({[s]} ∪ D).
-  Proof.
+  Proof using .
     intros Hd Hnl Hnz HsD Hx Hdir.
     assert (Hx' := Hx ltac:(rewrite -Hd; exact Hdir)).
     rewrite /fn_orphan in Hx' |- *.
@@ -1248,20 +1248,20 @@ Section InodeOwned.
   Qed.
 
   Lemma ent_dset_ok_empty n : ent_dset_ok n ∅.
-  Proof. intros s Hs. exfalso. set_solver. Qed.
+  Proof using . intros s Hs. exfalso. set_solver. Qed.
 
   Lemma node_exact_not_dir n D :
     fn_is_dir n = false -> node_exact n D.
-  Proof. intros H Hc. rewrite H in Hc. discriminate. Qed.
+  Proof using . intros H Hc. rewrite H in Hc. discriminate. Qed.
 
   (* a NON-directory owns no entries and therefore no fragments *)
   Lemma ent_toks_not_dir Γ i n D : fn_is_dir n = false -> ⊢ ent_toks Γ i n D.
-  Proof.
+  Proof using .
     intros H. rewrite /ent_toks /dir_entries H big_sepM_empty. done.
   Qed.
 
   Lemma ent_toks_x_not_dir Γ i n : fn_is_dir n = false -> ⊢ ent_toks_x Γ i n.
-  Proof.
+  Proof using .
     intros H. iExists ∅. iSplitR; [iPureIntro; exact (ent_dset_ok_empty n) |].
     iSplitR; [iPureIntro; exact (node_exact_not_dir n ∅ H) |].
     iApply (ent_toks_not_dir Γ i n ∅ H).
@@ -1270,7 +1270,7 @@ Section InodeOwned.
   (* ...and neither does a directory whose record count is zero (a claim
      box, a truncated corpse) *)
   Lemma ent_toks_nrec0 Γ i n D : fn_nrec n = 0%nat -> ⊢ ent_toks Γ i n D.
-  Proof.
+  Proof using .
     intros H. rewrite /ent_toks /dir_entries.
     destruct (fn_is_dir n); [| rewrite big_sepM_empty; done].
     rewrite H dir_view_nil big_sepM_empty. done.
@@ -1286,7 +1286,7 @@ Section InodeOwned.
     (fn_is_dir n = true ->
        fn_nlink n = (if fn_orphan n then 0%nat else 1%nat)) ->
     ⊢ ent_toks_x Γ i n.
-  Proof.
+  Proof using .
     intros H Hex. iExists ∅.
     iSplitR; [iPureIntro; exact (ent_dset_ok_empty n) |].
     iSplitR.
@@ -1295,26 +1295,26 @@ Section InodeOwned.
   Qed.
 
   Global Instance ent_toks_timeless Γ i n D : Timeless (ent_toks Γ i n D).
-  Proof. rewrite /ent_toks. apply _. Qed.
+  Proof using . rewrite /ent_toks. apply _. Qed.
 
   Global Instance ent_toks_x_timeless Γ i n : Timeless (ent_toks_x Γ i n).
-  Proof. rewrite /ent_toks_x. apply _. Qed.
+  Proof using . rewrite /ent_toks_x. apply _. Qed.
 
   (* the up-pointing target under a delete that is not the up-pointing
      record itself *)
   Lemma fn_dotdot_delete n n' s :
     s <> DOTDOT -> dir_entries n' = delete s (dir_entries n) ->
     fn_dotdot n' = fn_dotdot n.
-  Proof.
+  Proof using .
     intros Hne Hdel. rewrite /fn_dotdot Hdel lookup_delete_ne //.
   Qed.
 
   Global Instance inode_ghost_timeless Γ i n : Timeless (inode_ghost Γ i n).
-  Proof. rewrite /inode_ghost. apply _. Qed.
+  Proof using . rewrite /inode_ghost. apply _. Qed.
 
   Global Instance inode_owned_timeless `{!GTimeless Γ} sb i n :
     Timeless (inode_owned Γ sb i n).
-  Proof. rewrite /inode_owned. apply _. Qed.
+  Proof using . rewrite /inode_owned. apply _. Qed.
 
   (* ---------------------------------------------------------------- *)
   (*  6.  Gathering and scattering the link ghosts                     *)
@@ -1328,7 +1328,7 @@ Section InodeOwned.
          ent_tokenless self orph s t = false ->
          ent_ty_ok self dd (bool_decide (s ∈ D)) s (tyf s)⌝
       ∗ ([∗ map] s ↦ t ∈ m, ent_tok_at Γ self orph s t (tyf s)).
-  Proof.
+  Proof using .
     induction m as [| s t m Hs IH] using map_ind.
     - iIntros "_". iExists (fun _ => TFile). iSplitR.
       { iPureIntro. intros s' t' Hlk. rewrite lookup_empty in Hlk. done. }
@@ -1366,7 +1366,7 @@ Section InodeOwned.
        ent_ty_ok self dd (bool_decide (s ∈ D)) s (tyf s)) ->
     ([∗ map] s ↦ t ∈ m, ent_tok_at Γ self orph s t (tyf s)) -∗
     ([∗ map] s ↦ t ∈ m, ent_tok Γ self dd orph (bool_decide (s ∈ D)) s t).
-  Proof.
+  Proof using .
     intros Hok. iIntros "H".
     iApply (big_sepM_mono with "H"). intros s t Hlk; simpl.
     rewrite /ent_tok_at /ent_tok.
@@ -1379,7 +1379,7 @@ Section InodeOwned.
     link_auth Γ i (fn_mult n) v -∗
     ([∗ map] s ↦ t ∈ dir_entries n, ent_tok_at Γ i (fn_orphan n) s t (tyf s)) -∗
     own (γlink Γ) (link_elem_node i n v tyf).
-  Proof.
+  Proof using .
     iIntros "Ha Ht".
     iDestruct (own_gather_map_opt (γlink Γ)
                  (fun (s : fname) (t : Z) => link_tok_elem t (tyf s))
@@ -1397,7 +1397,7 @@ Section InodeOwned.
     own (γlink Γ) x -∗ link_auth Γ i (fn_mult n) v -∗
     ([∗ map] s ↦ t ∈ dir_entries n, ent_tok_at Γ i (fn_orphan n) s t (tyf s)) -∗
     own (γlink Γ) (x ⋅ link_elem_node i n v tyf).
-  Proof.
+  Proof using .
     iIntros "Hx Ha Ht".
     iDestruct (own_op with "[$Hx $Ha]") as "Hxa".
     iDestruct (own_gather_map_opt (γlink Γ)
@@ -1416,7 +1416,7 @@ Section InodeOwned.
     own (γlink Γ) (link_elem_node i n v tyf) ⊢
     link_auth Γ i (fn_mult n) v
     ∗ ([∗ map] s ↦ t ∈ dir_entries n, ent_tok_at Γ i (fn_orphan n) s t (tyf s)).
-  Proof.
+  Proof using .
     rewrite /link_elem_node own_op. iIntros "[$ Ht]".
     iDestruct (own_scatter_map_opt (γlink Γ)
                  (fun (s : fname) (t : Z) => link_tok_elem t (tyf s))
@@ -1432,7 +1432,7 @@ Section InodeOwned.
     (∃ v, ⌜fn_ity_ok n v⌝ ∗ link_auth Γ i (fn_mult n) v) ∗ ent_toks_x Γ i n
     ⊣⊢ ∃ D v tyf, ⌜node_ent_ok i n D v tyf⌝
                   ∗ own (γlink Γ) (link_elem_node i n v tyf).
-  Proof.
+  Proof using .
     iSplit.
     - iIntros "[(%v & %Hv & Ha) (%D & %Hd & %Hx & Ht)]".
       iDestruct (ent_toks_choose with "Ht") as (tyf) "[%Hok Ht]".
@@ -1456,7 +1456,7 @@ Section InodeOwned.
     ⊣⊢ (∃ D v tyf, ⌜node_ent_ok i n D v tyf⌝
                    ∗ own (γlink Γ) (link_elem_node i n v tyf))
        ∗ ⌜inode_local i n⌝.
-  Proof.
+  Proof using .
     rewrite /inode_ghost -inode_link_iff.
     iSplit.
     - iIntros "(%v & %Hv & Ha & Ht & %Hl)".
@@ -1478,7 +1478,7 @@ Section InodeOwned.
   (* ---------------------------------------------------------------- *)
 
   Lemma rec_owned_length dn : dinode_wf dn -> length (dinode_bytes dn) = 64%nat.
-  Proof. apply dinode_bytes_length. Qed.
+  Proof using . apply dinode_bytes_length. Qed.
 
   (* (a) the record's bytes move -- iupdate, ialloc, ifree *)
   Lemma rec_owned_acc Γ sb i dn dn' :
@@ -1488,7 +1488,7 @@ Section InodeOwned.
       ∗ (byte_range Γ (IBLOCK (fs_inum_bv i) (sb_inodestart sb))
                       (Z.of_nat (64 * islot (fs_inum_bv i))) (dinode_bytes dn')
          -∗ rec_owned Γ sb i dn').
-  Proof. iIntros "H". iFrame "H". by iIntros "H". Qed.
+  Proof using . iIntros "H". iFrame "H". by iIntros "H". Qed.
 
   (* (a') THE BARE MOVE -- the ONE mover the claim box and the corpse both
      use.  Section 2a's [fn_bare] covers three records of the same shape, so
@@ -1508,7 +1508,7 @@ Section InodeOwned.
     inode_owned Γ sb i n ⊢
       rec_owned Γ sb i (fn_rec n)
       ∗ (rec_owned Γ sb i (fn_rec n') -∗ inode_owned Γ sb i n').
-  Proof.
+  Proof using .
     intros Hb Hb' Hty.
     pose proof Hb' as (Ha' & He' & Hblk' & Hsz' & Hnl').
     assert (Hnn : fn_nlink n' = fn_nlink n).
@@ -1554,7 +1554,7 @@ Section InodeOwned.
     inode_phi Γ sb i n ⊢
       rec_owned Γ sb i (fn_rec n)
       ∗ (rec_owned Γ sb i (fn_rec n') -∗ inode_phi Γ sb i n').
-  Proof.
+  Proof using .
     intros Hblk Hent Hind Hkept.
     iIntros "(Hr & Hb & Hi)". iFrame "Hr". iIntros "Hr".
     rewrite /inode_phi. iFrame "Hr".
@@ -1571,9 +1571,9 @@ Section InodeOwned.
     MkNode (fn_rec n) (fn_ent n) (<[k := bs]> (fn_blk n)).
 
   Lemma fn_naddr_set_blk n k bs : fn_naddr (fn_set_blk n k bs) = fn_naddr n.
-  Proof. done. Qed.
+  Proof using . done. Qed.
   Lemma fn_indb_set_blk n k bs : fn_indb (fn_set_blk n k bs) = fn_indb n.
-  Proof. done. Qed.
+  Proof using . done. Qed.
 
   Lemma inode_phi_blk_move Γ sb i n k bs bs' :
     fn_blk n !! k = Some bs ->
@@ -1581,7 +1581,7 @@ Section InodeOwned.
       blk_owned Γ (fn_naddr n k) bs
       ∗ (blk_owned Γ (fn_naddr n k) bs'
          -∗ inode_phi Γ sb i (fn_set_blk n k bs')).
-  Proof.
+  Proof using .
     intros Hk. iIntros "(Hr & Hb & Hi)".
     iDestruct (big_sepM_insert_acc _ _ k bs Hk with "Hb") as "[$ Hb]".
     iIntros "Hnew". iDestruct ("Hb" with "Hnew") as "Hb".
@@ -1597,7 +1597,7 @@ Section InodeOwned.
     fn_blk n !! k = None ->
     inode_phi Γ sb i n ∗ blk_owned Γ (fn_naddr n k) bs
     ⊢ inode_phi Γ sb i (fn_set_blk n k bs).
-  Proof.
+  Proof using .
     intros Hk. iIntros "((Hr & Hb & Hi) & Hnew)".
     rewrite /inode_phi /fn_set_blk /=. iFrame "Hr Hi".
     rewrite big_sepM_insert //. iFrame.
@@ -1612,7 +1612,7 @@ Section InodeOwned.
     inode_phi Γ sb i n ⊢
       blk_owned Γ (fn_indb n) (ind_bytes (fn_ent n))
       ∗ (blk_owned Γ (fn_indb n) (ind_bytes (fn_ent n')) -∗ inode_phi Γ sb i n').
-  Proof.
+  Proof using .
     intros Hrec Hblk Hkept Hnz.
     iIntros "(Hr & Hb & Hi)".
     rewrite {1}/ind_owned decide_False //.
@@ -1638,7 +1638,7 @@ Section InodeOwned.
       ∗ (rec_owned Γ sb i (fn_rec n')
          -∗ blk_owned Γ (fn_indb n') (ind_bytes (fn_ent n'))
          -∗ inode_phi Γ sb i n').
-  Proof.
+  Proof using .
     intros Hblk Hkept Hz Hnz.
     iIntros "(Hr & Hb & _)". iFrame "Hr". iIntros "Hr Hnew".
     rewrite /inode_phi. iFrame "Hr".
@@ -1662,7 +1662,7 @@ Section InodeOwned.
       ∗ ind_owned Γ n
       ∗ rec_owned Γ sb i (fn_rec n)
       ∗ (rec_owned Γ sb i (fn_rec n') -∗ inode_phi Γ sb i n').
-  Proof.
+  Proof using .
     intros Hblk Hind.
     iIntros "(Hr & Hb & Hi)".
     iSplitL "Hb"; [iExact "Hb" |].
@@ -1677,10 +1677,10 @@ Section InodeOwned.
   Lemma ind_owned_block Γ n :
     fn_indb n <> 0 ->
     ind_owned Γ n ⊢ blk_owned Γ (fn_indb n) (ind_bytes (fn_ent n)).
-  Proof. intros Hnz. rewrite /ind_owned (decide_False _ _ Hnz) //. Qed.
+  Proof using . intros Hnz. rewrite /ind_owned (decide_False _ _ Hnz) //. Qed.
 
   Lemma ind_owned_none Γ n : fn_indb n = 0 -> ind_owned Γ n ⊣⊢ emp.
-  Proof. intros Hz. rewrite /ind_owned (decide_True _ _ Hz) //. Qed.
+  Proof using . intros Hz. rewrite /ind_owned (decide_True _ _ Hz) //. Qed.
 
   (* ---------------------------------------------------------------- *)
   (*  8.  ENCODE LEMMAS -- the dirent moves, at the token layer         *)
@@ -1701,7 +1701,7 @@ Section InodeOwned.
     ent_toks Γ i n D -∗
     ent_tok Γ i (fn_dd n) (fn_orphan n) (bool_decide (s ∈ D)) s t
     ∗ ent_toks Γ i n' (D ∖ {[s]}).
-  Proof.
+  Proof using .
     intros Horph Hdd Hs Hdel.
     rewrite /ent_toks (big_sepM_delete _ (dir_entries n) s t) //.
     iIntros "[$ H]". rewrite Hdel Horph Hdd.
@@ -1722,7 +1722,7 @@ Section InodeOwned.
     ent_toks Γ i n D -∗
     ent_tok Γ i (fn_dd n) (fn_orphan n) isd s (bv_unsigned z) -∗
     ent_toks Γ i n' (if isd then {[s]} ∪ D else D).
-  Proof.
+  Proof using .
     intros Horph Hdd Hd Hd' Hnone Hins HsD.
     rewrite /ent_toks (dir_entries_write n n' k0 s z Hd Hd' Hnone Hins)
       Horph Hdd.
@@ -1742,14 +1742,14 @@ Section InodeOwned.
   (* ---- the exemption's own arithmetic ------------------------------ *)
 
   Lemma dot_ne_dotdot : DOT <> DOTDOT.
-  Proof. rewrite /DOT /DOTDOT. intros H. inversion H. Qed.
+  Proof using . rewrite /DOT /DOTDOT. intros H. inversion H. Qed.
 
 
   (* a NAME record (neither dot) is never exempt, at any orphan flag *)
   Lemma ent_tokenless_name self orph s t :
     s <> DOT -> s <> DOTDOT -> t <> self ->
     ent_tokenless self orph s t = false.
-  Proof.
+  Proof using .
     intros Hnd Hne Hts. rewrite /ent_tokenless
       (bool_decide_eq_false_2 (s = DOT) Hnd)
       (bool_decide_eq_false_2 (s = DOTDOT) Hne)
@@ -1763,7 +1763,7 @@ Section InodeOwned.
      [+1] of [fn_mult] and the tie rmdir's (D1) reads. *)
   Lemma ent_tokenless_self_ne self orph s t :
     t = self -> s <> DOT -> ent_tokenless self orph s t = true.
-  Proof.
+  Proof using .
     intros -> Hnd. rewrite /ent_tokenless
       (bool_decide_eq_true_2 (self = self) eq_refl)
       (bool_decide_eq_false_2 (s = DOT) Hnd) /=.
@@ -1772,7 +1772,7 @@ Section InodeOwned.
 
   Lemma ent_tok_self_ne Γ self dd orph isd s t :
     t = self -> s <> DOT -> ⊢ ent_tok Γ self dd orph isd s t.
-  Proof.
+  Proof using .
     intros Ht Hnd. rewrite /ent_tok (ent_tokenless_self_ne self orph s t Ht Hnd).
     done.
   Qed.
@@ -1780,7 +1780,7 @@ Section InodeOwned.
   Lemma ent_tokenless_orphan_ne self orph orph' s t :
     s <> DOT -> s <> DOTDOT ->
     ent_tokenless self orph' s t = ent_tokenless self orph s t.
-  Proof.
+  Proof using .
     intros Hnd Hne. rewrite /ent_tokenless
       (bool_decide_eq_false_2 (s = DOT) Hnd)
       (bool_decide_eq_false_2 (s = DOTDOT) Hne) /=.
@@ -1789,7 +1789,7 @@ Section InodeOwned.
 
   Lemma ent_tokenless_orph_up self s t :
     ent_tokenless self false s t = true -> ent_tokenless self true s t = true.
-  Proof.
+  Proof using .
     rewrite /ent_tokenless.
     destruct (bool_decide (s = DOT)), (bool_decide (s = DOTDOT)),
              (bool_decide (t = self)); simpl; auto.
@@ -1797,7 +1797,7 @@ Section InodeOwned.
 
   Lemma ent_tokenless_dotdot self orph t :
     ent_tokenless self orph DOTDOT t = (orph || bool_decide (t = self)).
-  Proof.
+  Proof using .
     rewrite /ent_tokenless
       (bool_decide_eq_true_2 (DOTDOT = DOTDOT) eq_refl)
       (bool_decide_eq_false_2 (DOTDOT = DOT)
@@ -1807,7 +1807,7 @@ Section InodeOwned.
 
   Lemma ent_tokenless_dot self orph t :
     ent_tokenless self orph DOT t = orph.
-  Proof.
+  Proof using .
     rewrite /ent_tokenless (bool_decide_eq_true_2 (DOT = DOT) eq_refl) /=.
     by destruct orph, (bool_decide (t = self)).
   Qed.
@@ -1815,14 +1815,14 @@ Section InodeOwned.
   Lemma ent_ty_ok_dot (self : Z) (dd : option Z) (isd : bool) (ty : ity) :
     (forall p q, ty = TDir p -> dd = Some q -> q = p) ->
     ent_ty_ok self dd isd DOT ty.
-  Proof.
+  Proof using .
     intros H. rewrite /ent_ty_ok
       (bool_decide_eq_true_2 (DOT = DOT) eq_refl). exact H.
   Qed.
 
   Lemma ent_ty_ok_dot_none (self : Z) (isd : bool) (ty : ity) :
     ent_ty_ok self None isd DOT ty.
-  Proof. apply ent_ty_ok_dot. intros p q _ Hc. discriminate. Qed.
+  Proof using . apply ent_ty_ok_dot. intros p q _ Hc. discriminate. Qed.
 
   (* THE (D1) READING, at the payload: a LIVE directory's ["."] fragment
      is [TDir] of its own [".."] target. *)
@@ -1830,14 +1830,14 @@ Section InodeOwned.
       (p : Z) (ty : ity) :
     ent_ty_ok self dd isd DOT ty -> ty = TDir p ->
     forall q, dd = Some q -> q = p.
-  Proof.
+  Proof using .
     rewrite /ent_ty_ok (bool_decide_eq_true_2 (DOT = DOT) eq_refl).
     intros H Hty q Hq. exact (H p q Hty Hq).
   Qed.
 
   Lemma ent_ty_ok_dotdot (self : Z) (dd : option Z) (isd : bool) (ty : ity) :
     ent_ty_ok self dd isd DOTDOT ty.
-  Proof.
+  Proof using .
     rewrite /ent_ty_ok (bool_decide_eq_false_2 (DOTDOT = DOT)
                           (fun H => dot_ne_dotdot (eq_sym H)))
       (bool_decide_eq_true_2 (DOTDOT = DOTDOT) eq_refl) //.
@@ -1848,7 +1848,7 @@ Section InodeOwned.
     s <> DOT -> s <> DOTDOT ->
     (if isd then ty = TDir self else ty = TFile) ->
     ent_ty_ok self dd isd s ty.
-  Proof.
+  Proof using .
     intros Hd Hdd Hp. rewrite /ent_ty_ok
       (bool_decide_eq_false_2 (s = DOT) Hd)
       (bool_decide_eq_false_2 (s = DOTDOT) Hdd). exact Hp.
@@ -1860,7 +1860,7 @@ Section InodeOwned.
       (isd : bool) (ty : ity) :
     s <> DOT -> s <> DOTDOT -> ent_ty_ok self dd isd s ty ->
     (if isd then ty = TDir self else ty = TFile).
-  Proof.
+  Proof using .
     intros Hd Hdd. rewrite /ent_ty_ok
       (bool_decide_eq_false_2 (s = DOT) Hd)
       (bool_decide_eq_false_2 (s = DOTDOT) Hdd). done.
@@ -1871,7 +1871,7 @@ Section InodeOwned.
   Lemma ent_ty_ok_dd_ne (self : Z) (dd dd' : option Z) (isd : bool)
       (s : fname) (ty : ity) :
     s <> DOT -> ent_ty_ok self dd isd s ty -> ent_ty_ok self dd' isd s ty.
-  Proof.
+  Proof using .
     intros Hne. rewrite /ent_ty_ok (bool_decide_eq_false_2 (s = DOT) Hne).
     done.
   Qed.
@@ -1879,7 +1879,7 @@ Section InodeOwned.
   Lemma ent_tok_dd_ne Γ self dd dd' orph isd s t :
     s <> DOT ->
     ent_tok Γ self dd orph isd s t -∗ ent_tok Γ self dd' orph isd s t.
-  Proof.
+  Proof using .
     intros Hne. rewrite /ent_tok.
     destruct (ent_tokenless self orph s t); [iIntros "Hx"; iExact "Hx" |].
     iIntros "(%ty & Ht & %Hok)". iExists ty. iFrame "Ht". iPureIntro.
@@ -1894,7 +1894,7 @@ Section InodeOwned.
   Lemma ent_toks_dot_take Γ (i : Z) (n : fs_node) (D : gset fname) :
     dir_entries n !! DOT = Some i -> fn_orphan n = false ->
     ent_toks Γ i n D -∗ (∃ v0, link_tok Γ i v0) ∗ ent_toks_nodot Γ i n D.
-  Proof.
+  Proof using .
     intros Hlk Ho.
     assert (Htl : ent_tokenless i (fn_orphan n) DOT i = false).
     { rewrite /ent_tokenless Ho
@@ -1909,7 +1909,7 @@ Section InodeOwned.
   Lemma ent_tok_of_link Γ self dd orph isd s t ty :
     ent_ty_ok self dd isd s ty ->
     link_tok Γ t ty -∗ ent_tok Γ self dd orph isd s t.
-  Proof.
+  Proof using .
     intros Hok. rewrite /ent_tok.
     destruct (ent_tokenless self orph s t); [iIntros "_"; done |].
     iIntros "Ht". iExists ty. by iFrame.
@@ -1917,7 +1917,7 @@ Section InodeOwned.
 
   Lemma ent_tok_orph_up Γ self dd isd s t :
     ent_tok Γ self dd false isd s t -∗ ent_tok Γ self dd true isd s t.
-  Proof.
+  Proof using .
     rewrite /ent_tok. destruct (ent_tokenless self false s t) eqn:H0.
     - rewrite (ent_tokenless_orph_up self s t H0). iIntros "$".
     - destruct (ent_tokenless self true s t); iIntros "H"; done.
@@ -1929,7 +1929,7 @@ Section InodeOwned.
      and is not exempt. *)
   Lemma ent_tokenless_ne self orph s t :
     t <> self -> orph = false -> ent_tokenless self orph s t = false.
-  Proof.
+  Proof using .
     intros Hne ->. rewrite /ent_tokenless
       (bool_decide_eq_false_2 (t = self) Hne) /=.
     by destruct (bool_decide (s = DOT)), (bool_decide (s = DOTDOT)).
@@ -1939,14 +1939,14 @@ Section InodeOwned.
     ent_tokenless self orph s t = false ->
     ent_tok Γ self dd orph isd s t
     ⊣⊢ ∃ ty, link_tok Γ t ty ∗ ⌜ent_ty_ok self dd isd s ty⌝.
-  Proof. intros H. rewrite /ent_tok H //. Qed.
+  Proof using . intros H. rewrite /ent_tok H //. Qed.
 
   Lemma ent_tok_ne Γ self dd orph isd s t :
     s <> DOT -> s <> DOTDOT -> t <> self ->
     ent_tok Γ self dd orph isd s t
     ⊣⊢ ∃ ty, link_tok Γ t ty
              ∗ ⌜if isd then ty = TDir self else ty = TFile⌝.
-  Proof.
+  Proof using .
     intros Hd Hdd Hts.
     rewrite (ent_tok_open Γ self dd orph isd s t
                (ent_tokenless_name self orph s t Hd Hdd Hts)).
@@ -1957,7 +1957,7 @@ Section InodeOwned.
   Lemma ent_tok_dotdot Γ self dd orph isd t :
     ent_tok Γ self dd orph isd DOTDOT t
     ⊣⊢ (if orph || bool_decide (t = self) then emp else ∃ ty, link_tok Γ t ty).
-  Proof.
+  Proof using .
     rewrite /ent_tok ent_tokenless_dotdot.
     destruct (orph || bool_decide (t = self)); [done |].
     iSplit.
@@ -1970,7 +1970,7 @@ Section InodeOwned.
     ent_tok Γ self dd orph isd DOT t
     ⊣⊢ (if orph then emp
         else ∃ ty, link_tok Γ t ty ∗ ⌜ent_ty_ok self dd isd DOT ty⌝).
-  Proof. rewrite /ent_tok ent_tokenless_dot. by destruct orph. Qed.
+  Proof using . rewrite /ent_tok ent_tokenless_dot. by destruct orph. Qed.
 
   (* THE ORPHAN STEP: the directory's own count reaches zero, BOTH its dot
      records become exempt, and the two fragments come out -- the [".."]'s,
@@ -1989,7 +1989,7 @@ Section InodeOwned.
     ∗ (∃ ty, link_tok Γ i ty
              ∗ ⌜ent_ty_ok i (fn_dd n) (bool_decide (DOT ∈ D)) DOT ty⌝)
     ∗ ent_toks Γ i n' D.
-  Proof.
+  Proof using .
     intros Hents Ho Ho' Hdd Hdt Hne.
     assert (Hdd' : fn_dd n' = fn_dd n) by (rewrite /fn_dd Hents //).
     rewrite /ent_toks Hents Ho Ho' Hdd'.
@@ -2024,7 +2024,7 @@ Section InodeOwned.
   Lemma ent_toks_x_intro Γ i n D :
     ent_dset_ok n D -> node_exact n D ->
     ent_toks Γ i n D -∗ ent_toks_x Γ i n.
-  Proof. intros Hd Hx. iIntros "H". iExists D. by iFrame. Qed.
+  Proof using . intros Hd Hx. iIntros "H". iExists D. by iFrame. Qed.
 
   (* (D2), READ OFF THE PAYLOAD: a directory holding a live SUBDIRECTORY
      record has at least TWO links -- one for its own entry in its parent
@@ -2033,7 +2033,7 @@ Section InodeOwned.
   Lemma node_exact_min2 n D s :
     node_exact n D -> fn_is_dir n = true -> fn_orphan n = false ->
     s ∈ D -> (2 <= fn_nlink n)%nat.
-  Proof.
+  Proof using .
     intros Hx Hd Ho Hs. rewrite (Hx Hd) Ho.
     assert (Hpos : (1 <= size D)%nat).
     { destruct (decide (size D = 0%nat)) as [Hz | Hnz]; [| lia].
@@ -2047,7 +2047,7 @@ Section InodeOwned.
   Lemma node_exact_one n :
     node_exact n ∅ -> fn_is_dir n = true -> fn_orphan n = false ->
     fn_nlink n = 1%nat.
-  Proof. intros Hx Hd Ho. rewrite (Hx Hd) Ho size_empty. lia. Qed.
+  Proof using . intros Hx Hd Ho. rewrite (Hx Hd) Ho size_empty. lia. Qed.
 
   (* ---------------------------------------------------------------- *)
   (*  9.  The readings, after a write                                  *)
@@ -2056,7 +2056,7 @@ Section InodeOwned.
   Lemma fn_data_set_blk n k bs j :
     fn_data (fn_set_blk n k bs) j =
       if decide (j = k) then bs else fn_data n j.
-  Proof.
+  Proof using .
     rewrite /fn_data /fn_set_blk /=.
     destruct (decide (j = k)) as [-> |].
     - by rewrite lookup_insert.
@@ -2068,19 +2068,19 @@ Section InodeOwned.
       if decide ((j `div` BSIZE)%nat = k)
       then bs !!! (j `mod` BSIZE)%nat
       else file_byte (fn_data n) j.
-  Proof.
+  Proof using .
     rewrite /file_byte fn_data_set_blk.
     by destruct (decide ((j `div` BSIZE)%nat = k)).
   Qed.
 
   Lemma fn_size_set_blk n k bs : fn_size (fn_set_blk n k bs) = fn_size n.
-  Proof. done. Qed.
+  Proof using . done. Qed.
   Lemma fn_is_dir_set_blk n k bs : fn_is_dir (fn_set_blk n k bs) = fn_is_dir n.
-  Proof. done. Qed.
+  Proof using . done. Qed.
   Lemma fn_nlink_set_blk n k bs : fn_nlink (fn_set_blk n k bs) = fn_nlink n.
-  Proof. done. Qed.
+  Proof using . done. Qed.
   Lemma fn_orphan_set_blk n k bs : fn_orphan (fn_set_blk n k bs) = fn_orphan n.
-  Proof. done. Qed.
+  Proof using . done. Qed.
 
 End InodeOwned.
 

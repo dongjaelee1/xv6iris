@@ -48,7 +48,7 @@ Section IcachePinwObl.
     ∃ K : nat,
       view_lb view_name loglen_name (hart_agent cpu_id) K ∗
       TsoCtx.ledger_vis (hart_agent cpu_id) K lo.
-  Proof.
+  Proof using .
     iIntros (Hlotl) "Hctx #Hfl".
     iDestruct "Hfl" as "[Hflc | (%a & Hw)]".
     - iDestruct (TsoCtx.own_context_floor_view CtxIdDefs.cur_ctx tl
@@ -77,7 +77,7 @@ Section IcachePinwObl.
              tso_read_bytes g.(gimg) g.(glog) (hart_agent cpu_id) tvr
                (i_ref (ientry k)) 4 v ->
              (0 < bv_unsigned v < 2 ^ 31)%Z)⌝.
-  Proof.
+  Proof using .
     iIntros (Hlotl) "Hint Hctx #Hfl Hrows".
     iDestruct (cred_floor_vis lo tl Hlotl with "Hctx Hfl")
       as "[Hctx Hview]".
@@ -122,7 +122,7 @@ Section IcachePinwObl.
     ⌜forall tvr : nat, (g.(gtv) cpu_id <= tvr)%nat ->
        tso_read_bytes g.(gimg) g.(glog) (hart_agent cpu_id) tvr
          (i_ref (ientry k)) 4 w⌝.
-  Proof.
+  Proof using .
     iIntros (Htsttl) "Hint Hgh Hctx #Hfl Hrows".
     iDestruct (TsoCtx.own_context_floor_view CtxIdDefs.cur_ctx tl with "Hctx Hfl")
       as "[Hctx Hview]".
@@ -164,7 +164,7 @@ Section IcachePinwObl.
        /\ (forall v : mword 32,
              tso_read_bytes g.(gimg) g.(glog) (hart_agent cpu_id) tvr
                (i_ref (ientry k)) (Z.to_N 4) v -> v = w)⌝.
-  Proof.
+  Proof using .
     iIntros (Htsttl) "Hint Hgh Hctx #Hfl Hrows".
     iDestruct (iref_read_locked_obl g k w lo tst tl Htsttl
                  with "Hint Hgh Hctx Hfl Hrows") as %HH.

@@ -297,7 +297,7 @@ Section UserMemArmsBase.
     tlb_ok_pt (mword_of_int 0) t' (register_lookup tlb rs') ->
     u_mem_step pt t t' mm mm' ->
     base_post pt t mm rsf va w.
-  Proof.
+  Proof using .
     intros Hdec Hhv Hwok Hvr Hvg Hland Htlb Hst.
     apply (finish_mem_base pt t t' mm rsf va
              (LOAD (imm, Regidx rs1, Regidx rd, us, width)) RETIRE_SUCCESS w
@@ -336,7 +336,7 @@ Section UserMemArmsBase.
     tlb_ok_pt (mword_of_int 0) t' (register_lookup tlb rs') ->
     u_mem_step pt t t' mm mm' ->
     base_post pt t mm rsf va w.
-  Proof.
+  Proof using .
     intros Hdec Hhv Hwok Hue Hvr Hvg Hland Htlb Hst.
     apply (finish_mem_base pt t t' mm rsf va
              (LOAD (imm, Regidx rs1, Regidx rd, us, width))
@@ -381,7 +381,7 @@ Section UserMemArmsBase.
     tlb_ok_pt (mword_of_int 0) t' (register_lookup tlb rs') ->
     u_mem_step pt t t' mm mm' ->
     base_post pt t mm rsf va w.
-  Proof.
+  Proof using .
     intros Hdec Hhv Hwok Hvw Hvg Hland Htlb Hst.
     apply (finish_mem_base pt t t' mm rsf va
              (STORE (imm, Regidx rs2, Regidx rs1, width)) RETIRE_SUCCESS w
@@ -429,7 +429,7 @@ Section UserMemArmsBase.
     tlb_ok_pt (mword_of_int 0) t' (register_lookup tlb rs') ->
     u_mem_step pt t t' mm mm' ->
     base_post pt t mm rsf va w.
-  Proof.
+  Proof using .
     intros Hdec Hhv Hwok Hue Hvw Hvg Hland Htlb Hst.
     apply (finish_mem_base pt t t' mm rsf va
              (STORE (imm, Regidx rs2, Regidx rs1, width))
@@ -453,7 +453,7 @@ Section UserMemArmsBase.
       (m : Defs.monad E X) (s : mstate) :
     u_mem_wf pt t mm -> u_mem_step pt t t' mm mm' ->
     goodmb Du_r Du_w m s mm' = goodmb Du_r Du_w m s mm.
-  Proof.
+  Proof using .
     intros Hwf Hst. apply goodmb_dom.
     exact (u_mem_step_dom pt t t' mm mm' Hwf Hst).
   Qed.
@@ -462,7 +462,7 @@ Section UserMemArmsBase.
   (* the landing file of a walk is [u_Dfix]-invisible: [tlb] is not in it *)
   Lemma u_fix_of_tlb_only (rs rs' : regstate) :
     u_tlb_only rs rs' -> reg_agree_on u_Dfix rs' rs.
-  Proof.
+  Proof using .
     intros H r Hr. apply H.
     destruct (register_beq r tlb) eqn:Hb; [| reflexivity].
     exfalso. apply register_beq_true in Hb. subst r.
@@ -484,7 +484,7 @@ Section UserMemArmsBase.
     u_data_cfg rs -> u_exec_pins pt t rs ->
     exec (get_pmlen acc User) (u_state rs mm) = Some (0, u_state rs mm)
     /\ goodmb Du_r Du_w (get_pmlen acc User) (u_state rs mm) mb = true.
-  Proof.
+  Proof using .
     intros Hif Hlp Hsp (_ & Lms & Lmenv) (Hhw & _).
     destruct Lms as (_ & _ & Lmxr & _).
     destruct Hhw as (Hmisa & _ & Hsenv & _ & _ & _).
@@ -519,7 +519,7 @@ Section UserMemArmsBase.
          = Some (rv64d_types.Trap (User, make_sync_exception e va,
                                    register_lookup PC rs), u_state rs mm)
     /\ goodmb Du_r Du_w (memory_exception (Virtaddr va) e) (u_state rs mm) mm = true.
-  Proof.
+  Proof using .
     intros Hacc Hte1 Hte2 Hte3 Hflavor Hcfg Hpins Hwf.
     pose proof Hcfg as (Lcp & Lms & Lmenv).
     destruct Lms as (Lsxl & Lmprv & _).
@@ -546,7 +546,7 @@ Section UserMemArmsBase.
       = Some (E_Load_Page_Fault tt, s)
     /\ exec (translationException (Load Data) (PTW_No_Permission tt)) s
       = Some (E_Load_Page_Fault tt, s).
-  Proof. split_and!; unfold translationException; cbn match; apply exec_returnm. Qed.
+  Proof using . split_and!; unfold translationException; cbn match; apply exec_returnm. Qed.
 
   Lemma u_texc_store (s : mstate) :
     exec (translationException (Store Data) (PTW_Invalid_Addr tt)) s
@@ -555,7 +555,7 @@ Section UserMemArmsBase.
       = Some (E_SAMO_Page_Fault tt, s)
     /\ exec (translationException (Store Data) (PTW_No_Permission tt)) s
       = Some (E_SAMO_Page_Fault tt, s).
-  Proof. split_and!; unfold translationException; cbn match; apply exec_returnm. Qed.
+  Proof using . split_and!; unfold translationException; cbn match; apply exec_returnm. Qed.
 
   (* the FAULT twins of [UserMemCert]'s [u_tarv_page] / [u_tawv_page] *)
   Lemma u_tarv_fault (t : ptree) (mm : PtBytes.pamap) (rs : regstate)
@@ -570,7 +570,7 @@ Section UserMemArmsBase.
     /\ goodmb Du_r Du_w
          (translate_and_read_value (Virtaddr va) k (Load Data) false false false)
          (u_state rs mm) mm = true.
-  Proof.
+  Proof using .
     intros Hflavor Hcfg Hpins Hwf.
     destruct (u_fault_pair t mm rs (Load Data) (E_Load_Page_Fault tt) va
                 (or_intror (or_introl eq_refl))
@@ -598,7 +598,7 @@ Section UserMemArmsBase.
     /\ goodmb Du_r Du_w
          (translate_and_write_value (Virtaddr va) k v (Store Data) false false false)
          (u_state rs mm) mm = true.
-  Proof.
+  Proof using .
     intros Hflavor Hcfg Hpins Hwf.
     destruct (u_fault_pair t mm rs (Store Data) (E_SAMO_Page_Fault tt) va
                 (or_intror (or_intror (or_introl eq_refl)))
@@ -650,7 +650,7 @@ Section UserMemArmsBase.
         /\ u_tlb_only rs rs'
         /\ tlb_ok_pt (mword_of_int 0) t' (register_lookup tlb rs')
         /\ u_mem_step pt t t' mm mm').
-  Proof.
+  Proof using .
     intros Hk Hk8 Hcfg Hpins Hwf.
     pose proof Hwf as (md0 & _ & _ & _ & _ & _ & Hacc & _ & _).
     pose proof Hpins as (_ & _ & _ & Htlb0).
@@ -785,7 +785,7 @@ Section UserMemArmsBase.
   Lemma u_data_cfg_tick (rsf : regstate) (va : mword 64) (n : Z) :
     u_data_cfg rsf ->
     u_data_cfg (register_set nextPC (add_vec_int va n) rsf).
-  Proof.
+  Proof using .
     intros (Lcp & Lms & Lmenv). split_and!;
       [ rewrite (u_tick_reg cur_privilege rsf va n eq_refl); exact Lcp
       | rewrite (u_tick_reg (R_bitvector_64 mstatus) rsf va n eq_refl); exact Lms
@@ -809,7 +809,7 @@ Section UserMemArmsBase.
       (LOAD (imm, rs1, rd, is_unsigned, width)) rsf ->
     u_exec_pins pt t rsf -> u_mem_wf pt t mm ->
     base_post pt t mm rsf va w.
-  Proof.
+  Proof using .
     intros Hpfc Hag Hwid Hdec Hhv Hpins Hwf.
     destruct rs1 as [ir1]. destruct rd as [ird].
     assert (Hk : 0 < width) by (destruct Hwid as [-> | [-> | [-> | ->]]]; lia).
@@ -903,7 +903,7 @@ Section UserMemArmsBase.
         /\ u_tlb_only rs rs'
         /\ tlb_ok_pt (mword_of_int 0) t' (register_lookup tlb rs')
         /\ u_mem_step pt t t' mm mm').
-  Proof.
+  Proof using .
     intros Hk Hk8 Hcfg Hpins Hwf.
     pose proof Hwf as (md0 & _ & _ & _ & _ & _ & Hacc & _ & _).
     pose proof Hpins as (_ & _ & _ & Htlb0).
@@ -1090,7 +1090,7 @@ Section UserMemArmsBase.
       (STORE (imm, rs2, rs1, width)) rsf ->
     u_exec_pins pt t rsf -> u_mem_wf pt t mm ->
     base_post pt t mm rsf va w.
-  Proof.
+  Proof using .
     intros Hpfc Hag Hwid Hdec Hhv Hpins Hwf.
     destruct rs2 as [ir2]. destruct rs1 as [ir1].
     assert (Hk : 0 < width) by (destruct Hwid as [-> | [-> | [-> | ->]]]; lia).

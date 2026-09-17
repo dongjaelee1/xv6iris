@@ -144,7 +144,7 @@ Section WpSconfUartAccess.
          (subrange_vec_dec (bits_of_virtaddr (Virtaddr a8)) (Z.sub 39 1) 0)
          (Z.sub 39 1) pagesize_bits) = uart_vpn_of i
     /\ zero_extend' 64 (add_vec_int a8 (0 * 1)) = uart_pa i off.
-  Proof.
+  Proof using .
     unfold uart_size. intro Hoff.
     assert (Hc : off = 0 \/ off = 1 \/ off = 2 \/ off = 3 \/
                  off = 4 \/ off = 5 \/ off = 6 \/ off = 7) by lia.
@@ -161,7 +161,7 @@ Section WpSconfUartAccess.
      the cancellation is proved once, abstractly. *)
   Local Lemma addv_imm0 (x : mword 64) :
     add_vec x (sign_extend' 64 (mword_of_int 0 : mword 12)) = x.
-  Proof.
+  Proof using .
     replace (sign_extend' 64 (mword_of_int 0 : mword 12) : mword 64)
       with (mword_of_int 0 : mword 64) by (apply bv_eq; vm_compute; reflexivity).
     apply kv_addv_zero.
@@ -192,7 +192,7 @@ Section WpSconfUartAccess.
       (⌜ lsr_thre_clear bt = false ⌝ -∗ uart_out_lb γd l) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hrd Hrdok Haddr) "Hcg Hpc Hinstr #Hdinv Hown Hcont".
     (* the class, consumed at [rs1] -- the one line the funnel change needs,
        and this leaf's wiring check.  See the family note at the head of this
@@ -254,7 +254,7 @@ Section WpSconfUartAccess.
       (⌜ lsr_thre_clear bt = false ⌝ -∗ uart_out_lb γd l) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hrd Hrdok Haddr.
     exact (wp_uart_lsr_read_ea_s_sconf_at i γd pc rd rs1 (mword_of_int 0 : mword 12)
              m n l b Hrd Hrdok
@@ -298,7 +298,7 @@ Section WpSconfUartAccess.
       pc_is (add_vec_int pc 4) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hoff Hne0 Hrd Hrdok Haddr) "Hcg Hpc Hinstr #Hdinv Hcont".
     (* the class, consumed at [rs1] -- the one line the funnel change needs,
        and this leaf's wiring check.  See the family note at the head of this
@@ -384,7 +384,7 @@ Section WpSconfUartAccess.
       Φ -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros sb.
     iIntros (Haddr) "Hcg Hpc Hinstr #Hdinv Hown #Hlb #Hoff HΨ Hcont".
     (* the class, consumed at [rs1 / rs2] -- the one line the funnel change needs,
@@ -471,7 +471,7 @@ Section WpSconfUartAccess.
       (⌜ rx_empty bt = false ⌝ -∗ uart_rx_pushed_lb γd (S k)) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hrd Hrdok Haddr) "Hcg Hpc Hinstr #Hdinv Htok Hcont".
     assert (Haddr_all : forall hh : CpuId,
               add_vec (rget (CID := hh) m rs1) (sign_extend' 64 imm) = uart_pa i 5)
@@ -553,7 +553,7 @@ Section WpSconfUartAccess.
          uart_rx_tok γd (S k) (Some h)) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hrd Hrdok Haddr) "Hcg Hpc Hinstr #Hdinv #Hdlab Htok #Hlb Hcont".
     assert (Haddr_all : forall hh : CpuId,
               add_vec (rget (CID := hh) m rs1) (sign_extend' 64 imm) = uart_pa i 0)
@@ -623,7 +623,7 @@ Section WpSconfUartAccess.
       S -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros sb.
     iIntros (Haddr) "Hcg Hpc Hinstr #Hdinv Htok HR Hstep Hcont".
     assert (Haddr_all : forall hh : CpuId,
@@ -694,7 +694,7 @@ Section WpSconfUartAccess.
       (⌜ lsr_thre_clear bt = false ⌝ -∗ uart_out_lb γd l) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hrd Hrdok Haddr) "Hcg Hpc Hinstr #Hdinv Hown Hcont".
     iDestruct (dev_inv_uart with "Hdinv") as "#Huinv".
     iApply (wp_uart_lsr_read_ea_s_sconf_at Uart0 γd pc rd rs1 imm m n l b
@@ -717,7 +717,7 @@ Section WpSconfUartAccess.
       (⌜ lsr_thre_clear bt = false ⌝ -∗ uart_out_lb γd l) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hrd Hrdok Haddr) "Hcg Hpc Hinstr #Hdinv Hown Hcont".
     iDestruct (dev_inv_uart with "Hdinv") as "#Huinv".
     iApply (wp_uart_lsr_read_s_sconf_at Uart0 γd pc rd rs1 m n l b
@@ -741,7 +741,7 @@ Section WpSconfUartAccess.
       pc_is (add_vec_int pc 4) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hoff Hne0 Hrd Hrdok Haddr) "Hcg Hpc Hinstr #Hdinv Hcont".
     iDestruct (dev_inv_uart with "Hdinv") as "#Huinv".
     iApply (wp_uart_read_free_s_sconf_at Uart0 γd off pc rd rs1 imm m n b
@@ -768,7 +768,7 @@ Section WpSconfUartAccess.
       Φ -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros sb.
     iIntros (Haddr) "Hcg Hpc Hinstr #Hdinv Hown #Hlb #Hoff HΨ Hcont".
     iDestruct (dev_inv_uart with "Hdinv") as "#Huinv".
@@ -795,7 +795,7 @@ Section WpSconfUartAccess.
       (⌜ rx_empty bt = false ⌝ -∗ uart_rx_pushed_lb γd (S k)) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hrd Hrdok Haddr) "Hcg Hpc Hinstr #Hdinv Htok Hcont".
     iDestruct (dev_inv_uart with "Hdinv") as "#Huinv".
     iApply (wp_uart_lsr_read_rx_s_sconf_at Uart0 γd pc rd rs1 imm m n k hl b
@@ -825,7 +825,7 @@ Section WpSconfUartAccess.
          uart_rx_tok γd (S k) (Some h)) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hrd Hrdok Haddr) "Hcg Hpc Hinstr #Hdinv #Hdlab Htok #Hlb Hcont".
     iDestruct (dev_inv_uart with "Hdinv") as "#Huinv".
     iApply (wp_uart_rhr_pop_s_sconf_at Uart0 γd pc rd rs1 imm m n k hl b
@@ -858,7 +858,7 @@ Section WpSconfUartAccess.
       S -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros sb.
     iIntros (Haddr) "Hcg Hpc Hinstr #Hdinv Htok HR Hstep Hcont".
     iDestruct (dev_inv_uart with "Hdinv") as "#Huinv".

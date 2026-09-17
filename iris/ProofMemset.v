@@ -67,14 +67,14 @@ Section ProofMemset.
      buffer's [ms_pa cur] (both are just cur). *)
   Local Lemma ms_pa_sb_pa (cur : mword 64) :
     ms_pa cur = add_vec cur (sign_extend' 64 (mword_of_int 0 : mword 12)).
-  Proof.
+  Proof using .
     unfold ms_pa, ms_a8.
     change (0 * 1)%Z with 0%Z. rewrite avi0. rewrite zero_extend'_id.
     rewrite subrange_id. rewrite sign_extend'_id. reflexivity.
   Qed.
 
   Local Lemma trunc8_nth0 (v : mword 64) : trunc8 v = nth_byte (trunc8 v) 0.
-  Proof.
+  Proof using .
     apply bv_eq. rewrite nth_byte_unsigned.
     change (Z.of_N (8 * N.of_nat 0)) with 0%Z. rewrite Z.shiftr_0_r.
     symmetry. apply Z.mod_small.
@@ -115,7 +115,7 @@ Section ProofMemset.
       `{!SrcOk ra1, !SrcOk ra4, !SrcOk ra5} (imm_bne : mword 13)
       (n : nat) (b : bool) (pcur : mword 64)
     : wp_memset_loop_free_sconf_body kt ktb N p e cval ra1 ra4 ra5 imm_bne n b pcur.
-  Proof.
+  Proof using .
     cbv beta delta [wp_memset_loop_free_sconf_body].
     intros pc0 pc4 pc6 cbyte Hra1 Hra4 Hra5 Hback Hal0
       Hincr Hcmp Hra4ne Hra1ne Hra5sp Hext0 Hext4 Hext6.
@@ -246,7 +246,7 @@ Section ProofMemset.
       `{!SrcOk ra1, !SrcOk ra4, !SrcOk ra5} (imm_bne : mword 13)
       (olds : nat -> bv 8) (n : nat) (b : bool) (pcur : mword 64)
     : wp_memset_loop_sconf_body kt ktb N p e cval ra1 ra4 ra5 imm_bne olds n b pcur.
-  Proof.
+  Proof using .
     cbv beta delta [wp_memset_loop_sconf_body].
     intros pc0 pc4 pc6 cbyte Hra1 Hra4 Hra5 Hback Hal0
       Hincr Hcmp Hra4ne Hra1ne Hra5sp Hext0 Hext4 Hext6.
@@ -263,7 +263,7 @@ Section ProofMemset.
   Lemma wp_memset_suffix_sconf
       (M : regfile) (n : nat) (ra0e s00e : mword 64) (b : bool) (pcur : mword 64)
     : wp_memset_suffix_sconf_body kt M n ra0e s00e b pcur.
-  Proof.
+  Proof using .
     cbv beta delta [wp_memset_suffix_sconf_body].
     intros spd sp0up ret_tgt.
     set (M4 := <[Regidx (mword_of_int 1 : mword 5) := regval_into_reg ra0e]> M).
@@ -356,7 +356,7 @@ Section ProofMemset.
   Lemma wp_memset_head_sconf
       (m0 : regfile) (n : nat) (imm_entry : mword 6) (nzimm_s0 : mword 8) (b : bool) (pcur : mword 64)
     : wp_memset_head_sconf_body kt m0 n imm_entry nzimm_s0 b pcur.
-  Proof.
+  Proof using .
     cbv beta delta [wp_memset_head_sconf_body].
     intros ra_idx s0_idx pcE sp0 sp' pa_ra pa_s0 ra0 s00 m1 m2 Hn2 Hsp'.
     iIntros "Hcg Hpc Hi00 Hi02 Hi04 Hi06 Hcont".
@@ -415,7 +415,7 @@ Section ProofMemset.
   Lemma wp_memset_skip_sconf
       (M : regfile) (n : nat) (imm8_beqz : mword 8) (b : bool) (pcur : mword 64)
     : wp_memset_skip_sconf_body kt M n imm8_beqz b pcur.
-  Proof.
+  Proof using .
     cbv beta delta [wp_memset_skip_sconf_body].
     intros a2_idx pcE Hz Htgt.
     iIntros "Hcg Hpc Hi08 Hcont".
@@ -443,7 +443,7 @@ Section ProofMemset.
       (M : regfile) (n : nat) (shamt_l shamt_r : mword 6) (imm8_beqz : mword 8)
       (wval_add : mword 64) (b : bool) (pcur : mword 64)
     : wp_memset_setup_sconf_body kt M n shamt_l shamt_r imm8_beqz wval_add b pcur.
-  Proof.
+  Proof using .
     cbv beta delta [wp_memset_setup_sconf_body].
     intros a0_idx a2_idx a4_idx a5_idx pcE m3 m4 m5 m6 Hn0 Hvalue_add.
     iIntros "Hcg Hpc Hi08 Hi0a Hi0c Hi0e Hi10 Hcont".

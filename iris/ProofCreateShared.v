@@ -1443,13 +1443,13 @@ Section ProofCreateMain.
   Lemma cr_carve_gen (k : nat) (q s : Qp) (inum : mword 32) (g : gname) :
     inode_ref_gen k (q + s)%Qp icfg_dev inum g ⊣⊢
     inode_ref_short_gen k (q + s)%Qp q icfg_dev inum g ∗ inode_shr_gen k s icfg_dev inum g.
-  Proof. apply inode_ref_carve_gen. Qed.
+  Proof using . apply inode_ref_carve_gen. Qed.
 
   Lemma cr_shed_gen (k : nat) (q : Qp) (inum : mword 32) (g : gname) :
     inode_ref_gen k q icfg_dev inum g ⊣⊢
     inode_ref_short_gen k (q/2 + q/2)%Qp (q/2)%Qp icfg_dev inum g ∗
     inode_shr_gen k (q/2)%Qp icfg_dev inum g.
-  Proof.
+  Proof using .
     pose proof (cr_carve_gen k (q/2)%Qp (q/2)%Qp inum g) as Hc.
     by rewrite {1}(Qp.div_2 q) in Hc.
   Qed.
@@ -1460,7 +1460,7 @@ Section ProofCreateMain.
     IcacheRef.inode_ref_genlo k q dev inum g lo ⊣⊢
     IcacheRef.inode_ref_short_genlo k (q/2 + q/2)%Qp (q/2)%Qp dev inum g lo ∗
     IcacheRef.inode_shr_genlo k (q/2)%Qp dev inum g lo.
-  Proof. apply IcacheRef.inode_ref_genlo_shed. Qed.
+  Proof using . apply IcacheRef.inode_ref_genlo_shed. Qed.
 
   (* the two frame slots [name[DIRSIZ]] occupies (10 and 9), carved into
      sixteen named bytes and put back.  ProofDirlink's [de] record
@@ -1470,7 +1470,7 @@ Section ProofCreateMain.
     ⌜is_aligned_paddr (Physaddr (pa_stk sp0 10)) 8 = true
      /\ is_aligned_paddr (Physaddr (pa_stk sp0 9)) 8 = true⌝ ∗
     bytes_own (KTR := KT1) (DfracOwn 1) (pa_stk sp0 10) 16.
-  Proof.
+  Proof using .
     assert (E1 : pa_add (pa_stk sp0 10) 8 = pa_stk sp0 9)
       by (rewrite (pa_stk_next sp0 10 ltac:(lia)); reflexivity).
     iIntros "H1 H2".
@@ -1486,7 +1486,7 @@ Section ProofCreateMain.
     is_aligned_paddr (Physaddr (pa_stk sp0 9)) 8 = true ->
     bytes_own (KTR := KT1) (DfracOwn 1) (pa_stk sp0 10) 16 ⊢
     ∃ w1 w2 : bv 64, (pa_stk sp0 10) ↦₈[KT1] w1 ∗ (pa_stk sp0 9) ↦₈[KT1] w2.
-  Proof.
+  Proof using .
     intros Ha1 Ha2.
     assert (E1 : pa_add (pa_stk sp0 10) 8 = pa_stk sp0 9)
       by (rewrite (pa_stk_next sp0 10 ltac:(lia)); reflexivity).
@@ -1503,7 +1503,7 @@ Section ProofCreateMain.
     ([∗ list] j ∈ seq 0 16, pa_add a j ↦ₘ[KT1] f j) ⊣⊢
     ([∗ list] j ∈ seq 0 14, pa_add a j ↦ₘ[KT1] f j) ∗
     ([∗ list] j ∈ seq 14 2, pa_add a j ↦ₘ[KT1] f j).
-  Proof.
+  Proof using .
     change 16%nat with (14 + 2)%nat. rewrite seq_app big_sepL_app.
     reflexivity.
   Qed.
@@ -1516,7 +1516,7 @@ Section ProofCreateMain.
     ([∗ list] j ∈ seq 0 14, pa_add a j ↦ₘ[KT1] f j) -∗
     ([∗ list] j ∈ seq 14 2, pa_add a j ↦ₘ[KT1] g j) -∗
     ∃ h : nat -> bv 8, ([∗ list] j ∈ seq 0 16, pa_add a j ↦ₘ[KT1] h j).
-  Proof.
+  Proof using .
     iIntros "H1 H2".
     iExists (fun j => if decide (j < 14)%nat then f j else g j).
     rewrite cr_split14. iSplitL "H1".
@@ -1535,7 +1535,7 @@ Section ProofCreateMain.
     (k < NINODE)%nat ->
     (ic_escrows fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst -∗ ic_escrow fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k
      : iProp Σ).
-  Proof.
+  Proof using .
     iIntros (Hk) "H". rewrite /ic_escrows /ic_boxes_all /ic_escrow.
     assert (Hl : seq 0 NINODE !! k = Some k) by (rewrite lookup_seq; lia).
     iDestruct (big_sepL_lookup _ _ k k Hl with "H") as "$".
@@ -1543,7 +1543,7 @@ Section ProofCreateMain.
 
   Lemma cr_bs3 :
     (bslots 3 : iProp Σ) ⊣⊢ bslot ∗ bslots 2.
-  Proof. rewrite /bslot. change 3%nat with (1 + 2)%nat. apply bslots_op. Qed.
+  Proof using . rewrite /bslot. change 3%nat with (1 + 2)%nat. apply bslots_op. Qed.
 
   (* the p->cwd the walk lends and gets back untouched *)
   (* NAMED, not spliced: an inline [ltac:(vm_compute; lia)] in argument
@@ -1551,14 +1551,14 @@ Section ProofCreateMain.
      the [nl] evar in it and [vm_compute] does not come back
      (durable-notes' inline-[ltac:] trap). *)
   Lemma cr_nl_short_1 : bv_unsigned (mword_of_int 1 : mword 16) <= 32767.
-  Proof.
+  Proof using .
     assert (H : bv_unsigned (mword_of_int 1 : mword 16) = 1)
       by (vm_compute; reflexivity).
     rewrite H. clear H. lia.
   Qed.
 
   Lemma cr_nl_short_0 : bv_unsigned (mword_of_int 0 : mword 16) <= 32767.
-  Proof.
+  Proof using .
     assert (H : bv_unsigned (mword_of_int 0 : mword 16) = 0)
       by (vm_compute; reflexivity).
     rewrite H. clear H. lia.
@@ -1569,11 +1569,11 @@ Section ProofCreateMain.
      so (durable-disk 2b-inode-3). *)
   Lemma cr_nl_bump_short (x : Z) :
     x <= 32767 -> x <> 32767 -> x + 1 <= 32767.
-  Proof. lia. Qed.
+  Proof using . lia. Qed.
 
   Lemma cr_nl_ne_32767 (d : mword 16) :
     d <> (mword_of_int 32767 : mword 16) -> bv_unsigned d <> 32767.
-  Proof.
+  Proof using .
     intros Hne Hc. apply Hne. apply bv_eq. rewrite Hc.
     vm_compute. reflexivity.
   Qed.
@@ -1583,7 +1583,7 @@ Section ProofCreateMain.
   Lemma cr_setf_rec_local (dn : dinode) (mj mn nl : mword 16) :
     inode_rec_local dn -> bv_unsigned nl <= 32767 ->
     inode_rec_local (cr_setf dn mj mn nl).
-  Proof.
+  Proof using .
     intros Hrl Hnl.
     apply (inode_rec_local_same_type dn _ Hrl (cr_setf_type dn mj mn nl)).
     - rewrite cr_setf_nlink. exact Hnl.
@@ -1593,13 +1593,13 @@ Section ProofCreateMain.
   (* a MAX of two multiples of sixteen is one (durable-disk 2b-inode-3:
      dirlink's size growth, at [inode_rec_local]'s granularity clause) *)
   Lemma cr_max_div16 (a b : Z) : (16 | a) -> (16 | b) -> (16 | Z.max a b).
-  Proof.
+  Proof using .
     intros Ha Hb. destruct (Z.max_spec a b) as [[_ ->] | [_ ->]];
       [exact Hb | exact Ha].
   Qed.
 
   Lemma cr_upd_cwd_id (V : pprivate) : upd_cwd V (pv_cwd V) = V.
-  Proof. destruct V; reflexivity. Qed.
+  Proof using . destruct V; reflexivity. Qed.
 
   (* ------------------------------------------------------------------- *)
   (*  THE THREE NAMED BODIES (optimization.md, RULE ONE)                   *)
@@ -1657,7 +1657,7 @@ Section ProofCreateMain.
     pf_at (aarm_commit_at (fs_gamma_L fsc_fs) appE c) Farm -∗
     top_frag (fs_gamma_L fsc_fs) i n ={E}=∗
       cr_dirty t i ∗ top_frag (fs_gamma_L fsc_fs) i n' ∗ cre_arm_fired Farm i.
-  Proof.
+  Proof using .
     iIntros (HE Hnone Hrow) "#Hi #Hai Htx Hcm Hf".
     iMod (ireg_arm E fsc_fs i t (1/2)%Qp (ftopN_sub_app E HE) with "Hi Htx")
       as (k) "Harm".
@@ -1677,7 +1677,7 @@ Section ProofCreateMain.
     top_frag (fs_gamma_L fsc_fs) i n ={E}=∗
       cr_dirty t i ∗ top_frag (fs_gamma_L fsc_fs) i n'
       ∗ cre_dots_fired Fdots i d full.
-  Proof.
+  Proof using .
     iIntros (HE Hrow Hrow') "#Hi #Hai Hd Hcm Hf". rewrite /cr_dirty.
     iDestruct "Hd" as (k) "Harm".
     iMod (caf_dots_fire fsc_fs E k t (1/2)%Qp {[i]} i d full Fdots n n' HE
@@ -1697,7 +1697,7 @@ Section ProofCreateMain.
     top_frag (fs_gamma_L fsc_fs) i n ={E}=∗
       t ↪[ln_tx icfg_log]{#(1/2)} tt ∗ top_frag (fs_gamma_L fsc_fs) i n'
       ∗ cre_dots_fired Fdots i d full.
-  Proof.
+  Proof using .
     iIntros (HE Hloc Hrow Hrow') "#Hi #Hai Hd Hcm Hf". rewrite /cr_dirty.
     iDestruct "Hd" as (k) "Harm".
     iMod (caf_dots_fire fsc_fs E k t (1/2)%Qp {[i]} i d full Fdots n n' HE
@@ -1722,7 +1722,7 @@ Section ProofCreateMain.
     top_frag (fs_gamma_L fsc_fs) i n ={E}=∗
       t ↪[ln_tx icfg_log]{#(1/2)} tt ∗ top_frag (fs_gamma_L fsc_fs) i n'
       ∗ cre_unarm_fired Fun i.
-  Proof.
+  Proof using .
     iIntros (HE Hloc Hrow Hnone) "#Hi #Hai Hd Hcm Hf". rewrite /cr_dirty.
     iDestruct "Hd" as (k) "Harm".
     iMod (caf_unarm_fire_armed fsc_fs E k t (1/2)%Qp {[i]} i c Fun n n' HE
@@ -1751,7 +1751,7 @@ Section ProofCreateMain.
     ftop_inv fsc_fs -∗ app_inv fsc_fs -∗ cr_dirty t i -∗
     top_frag (fs_gamma_L fsc_fs) i n ={E}=∗
       cr_dirty t i ∗ top_frag (fs_gamma_L fsc_fs) i n'.
-  Proof.
+  Proof using .
     iIntros (HE Habs) "#Hi #Hai Hd Hf". rewrite /cr_dirty.
     iDestruct "Hd" as (k) "Harm".
     iMod (ireg_top_retag_armed_same E fsc_fs k t (1/2)%Qp {[i]} i n n' HE
@@ -1768,7 +1768,7 @@ Section ProofCreateMain.
     ftop_inv fsc_fs -∗ app_inv fsc_fs -∗ cr_dirty t i -∗
     top_frag (fs_gamma_L fsc_fs) i n ={E}=∗
       t ↪[ln_tx icfg_log]{#(1/2)} tt ∗ top_frag (fs_gamma_L fsc_fs) i n'.
-  Proof.
+  Proof using .
     iIntros (HE Habs Hloc) "#Hi #Hai Hd Hf". rewrite /cr_dirty.
     iDestruct "Hd" as (k) "Harm".
     iMod (ireg_top_retag_armed_same E fsc_fs k t (1/2)%Qp {[i]} i n n' HE
@@ -1801,7 +1801,7 @@ Section ProofCreateMain.
     cre_commits (fs_gamma_L fsc_fs) tyz ma mi Farm Fdots Fun Fok -∗
     cre_fail_arms (fs_gamma_L fsc_fs) γfs tyz ma mi P Pmiss
       Farm Fdots Fun Fok Fex pl.
-  Proof.
+  Proof using .
     iIntros "HP Hdl Hcre". rewrite /cre_fail_arms /cre_commits.
     iDestruct "Hcre" as "(Ha & Hd & Hu & Hac)".
     iRight. iExists d. iFrame "HP". iSplitL "Hdl"; [by iRight |].
@@ -1823,7 +1823,7 @@ Section ProofCreateMain.
     cre_commits (fs_gamma_L fsc_fs) tyz ma mi Farm Fdots Fun Fok -∗
     cre_fail_arms (fs_gamma_L fsc_fs) γfs tyz ma mi P Pmiss
       Farm Fdots Fun Fok Fex pl.
-  Proof.
+  Proof using .
     iIntros "Hdead Hdl Hcre".
     iDestruct (np_dead_to_mknod γfs P Pmiss pl with "Hdead") as "[Hd | Hp]".
     - rewrite /cre_fail_arms. iLeft. iFrame "Hd Hdl Hcre".
@@ -1847,7 +1847,7 @@ Section ProofCreateMain.
     cre_commits (fs_gamma_L fsc_fs) tyz ma mi Farm Fdots Fun Fok -∗
     cre_fail_arms (fs_gamma_L fsc_fs) γfs tyz ma mi P Pmiss
       Farm Fdots Fun Fok Fex pl.
-  Proof.
+  Proof using .
     iIntros (Hlast) "HP Hex Hcre". rewrite /cre_fail_arms /cre_commits.
     iDestruct "Hcre" as "(Ha & Hd & Hu & Hac)".
     iRight. iExists d. iFrame "HP".
@@ -1873,7 +1873,7 @@ Section ProofCreateMain.
     cre_unarm_fired Fun i -∗
     cre_fail_arms (fs_gamma_L fsc_fs) γfs tyz ma mi P Pmiss
       Farm Fdots Fun Fok Fex pl.
-  Proof.
+  Proof using .
     iIntros "HP Hdl Hac Hd Hu". rewrite /cre_fail_arms.
     iRight. iExists d. iFrame "HP". iSplitL "Hdl"; [by iRight |].
     iFrame "Hac". iRight. iExists i. iFrame "Hd Hu".
@@ -1894,7 +1894,7 @@ Section ProofCreateMain.
     cre_commits (fs_gamma_L fsc_fs) tyz ma mi Farm Fdots Fun Fok -∗
     cre_ok_arms (fs_gamma_L fsc_fs) tyz ma mi P Farm Fdots Fun Fok Fex
       pl false i.
-  Proof.
+  Proof using .
     iIntros (Hlast) "HP Hex Hcre". rewrite /cre_ok_arms.
     iExists d, nm. iSplitR; [by iPureIntro |]. iFrame "HP Hex Hcre".
   Qed.
@@ -1917,7 +1917,7 @@ Section ProofCreateMain.
     pf_at (dlookup_commit_at (fs_gamma_L fsc_fs) appE) Fex -∗
     cre_ok_arms (fs_gamma_L fsc_fs) tyz ma mi P Farm Fdots Fun Fok Fex
       pl true i.
-  Proof.
+  Proof using .
     iIntros (Hlast) "HP Hd Hac Hu Hdl". rewrite /cre_ok_arms.
     iExists d, nm. iSplitR; [by iPureIntro |]. iFrame "HP Hd Hac Hu Hdl".
   Qed.
@@ -2030,7 +2030,7 @@ Section ProofCreateMain.
     kernel_text -∗
     □ wp_next (CID0 := CID) true (proc_addr j)
         (fun CIDt : CpuId => cr_tail_body j m sp0 ret_tgt K b lks CIDt).
-  Proof.
+  Proof using .
     intros HKsum Hal10 Hal9 Hspm Hrt.
     assert (Hcsa0 : is_cs_idx Ra0 = false) by (vm_compute; reflexivity).
     assert (Hcsra : is_cs_idx Rra = false) by (vm_compute; reflexivity).
@@ -3212,7 +3212,7 @@ Section ProofCreateMain.
        (Physaddr (pa_stk (m !!! Regidx csp_rs1 : mword 64) 10)) 8 = true
      /\ is_aligned_paddr
        (Physaddr (pa_stk (m !!! Regidx csp_rs1 : mword 64) 9)) 8 = true⌝.
-  Proof.
+  Proof using .
     intro Hn. iIntros "(_ & _ & Hcap & _)".
     iDestruct (sie_cap_push m
                  (<[Regidx csp_rs1 := regval_into_reg

@@ -70,7 +70,7 @@ Context `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}.
     (pc : mword 64) (is_rvc : bool) (rs2 rs1 : mword 5) `{!SrcOk rs1} `{!SrcOk rs2} (imm : mword 12)
     (m : regfile) (n : nat) (R S : iProp Σ) (b : bool) (p : mword 64)
     : wp_sb_uart_uinv_s_sconf_at_body kt i γd off pc is_rvc rs2 rs1 imm m n R S b p.
-  Proof.
+  Proof using .
     cbv beta delta [wp_sb_uart_uinv_s_sconf_at_body].
     intros ea a8 storebyte Hoff Hcanon Hvpn_def Hpa.
     (* COLLAPSE [a8] INTO [ea] FIRST.  Every premise is stated at [a8] while
@@ -321,7 +321,7 @@ Qed.
     (pc : mword 64) (is_rvc : bool) (rs2 rs1 : mword 5) `{!SrcOk rs1} `{!SrcOk rs2} (imm : mword 12)
     (m : regfile) (n : nat) (R S : iProp Σ) (b : bool) (p : mword 64)
     : wp_sb_uart_uinv_s_sconf_body kt γd off pc is_rvc rs2 rs1 imm m n R S b p.
-  Proof.
+  Proof using .
     cbv beta delta [wp_sb_uart_uinv_s_sconf_body].
     intros ea a8 storebyte lppn Hoff Hcanon Hvpn_def Hpa.
     iIntros "Hcg Hpc Hinstr #Huinv HR Hacc Hcont".
@@ -346,7 +346,7 @@ Qed.
     (pc : mword 64) (is_rvc : bool) (rs2 rs1 : mword 5) `{!SrcOk rs1} `{!SrcOk rs2} (imm : mword 12)
     (m : regfile) (n : nat) (R S : iProp Σ) (b : bool) (p : mword 64)
     : wp_sb_uart_s_sconf_body kt γd γv off pc is_rvc rs2 rs1 imm m n R S b p.
-  Proof.
+  Proof using .
     cbv beta delta [wp_sb_uart_s_sconf_body].
     intros ea a8 storebyte lppn Hoff Hcanon Hvpn_def Hpa.
     iIntros "Hcg Hpc Hinstr #Hdinv HR Hacc Hcont".
@@ -367,7 +367,7 @@ Qed.
     (pc : mword 64) (is_rvc is_unsigned : bool) (rd rs1 : mword 5) `{!SrcOk rs1} (imm : mword 12)
     (m : regfile) (n : nat) (R : iProp Σ) (S : bv 8 -> iProp Σ) (b : bool) (p : mword 64)
     : wp_lb_uart_uinv_s_sconf_at_body kt i γd off pc is_rvc is_unsigned rd rs1 imm m n R S b p.
-  Proof.
+  Proof using .
     cbv beta delta [wp_lb_uart_uinv_s_sconf_at_body].
     intros ea a8 ldval Hoff Hrd Hrdok Hcanon Hvpn_def Hpa.
     rdok_split Hrdok.
@@ -623,7 +623,7 @@ Qed.
     (pc : mword 64) (is_rvc is_unsigned : bool) (rd rs1 : mword 5) `{!SrcOk rs1} (imm : mword 12)
     (m : regfile) (n : nat) (R : iProp Σ) (S : bv 8 -> iProp Σ) (b : bool) (p : mword 64)
     : wp_lb_uart_s_sconf_body kt γd γv off pc is_rvc is_unsigned rd rs1 imm m n R S b p.
-  Proof.
+  Proof using .
     cbv beta delta [wp_lb_uart_s_sconf_body].
     intros ea a8 ldval lppn Hoff Hrd Hrdok Hcanon Hvpn_def Hpa.
     iIntros "Hcg Hpc Hinstr #Hdinv HR Hacc Hcont".

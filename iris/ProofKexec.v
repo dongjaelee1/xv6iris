@@ -233,7 +233,7 @@ Section KexecAUTail.
            eb eb ∅ dqb dqs fsc_bmapstart na alen plen pv dqpv
            pfun av dqa avf aslen dqas afun) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HQe Hqfnm Hqfaf HK Hcstr Hnamax Hsz1ge Havf_nz Hal Hmsp Hmra Hms0 Hms1 Hms2
            Hmw5 Hmw6 Hmw7 Hmw8 Hmw9 Hmw10 Hmw11 Hmw12.
     iIntros "#Htext Hst Hcont".
@@ -303,7 +303,7 @@ Section KexecAUTail.
            eb eb ∅ dqb dqs fsc_bmapstart na alen plen pv dqpv
            pfun av dqa avf aslen dqas afun) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HQe Hqfnm Hqfaf HK Hcstr Hnamax Havf_nz Havf_na Halen_b Halen_c Halen_4
            Hmsp Hmra Hms0 Hms1 Hms2
            Hmw5 Hmw6 Hmw7 Hmw8 Hmw9 Hmw10 Hmw11 Hmw12.
@@ -427,7 +427,7 @@ Section KexecAUExit.
     R -∗
     wp_next (CID0 := CIDx) true pj KEX -∗
     wp_next (CID0 := CIDx) true pj E.
-  Proof.
+  Proof using .
     rewrite /wp_next. iIntros "Hw HR H" (CID Hcr).
     iSpecialize ("H" $! CID with "[%]"); [exact Hcr |].
     iApply ("Hw" with "H HR").
@@ -452,7 +452,7 @@ Section KexecAUExit.
                  = MkAnode (AFile (kxc_fb data dn)) nl
                  /\ SpecKexec.kexec_loadable (kxc_fb data dn) }
     + { ~ SpecKexec.anode_loadable (abs_row (FsStateEra.era_node dn bm data)) }.
-  Proof.
+  Proof using XI.
     intros Hrow.
     destruct (decide (bv_unsigned (di_type dn) = FsImg.T_FILE_z)) as [Ht | Ht].
     - destruct (kexec_loadable_dec (kxc_fb data dn)) as [Hl | Hl].
@@ -503,7 +503,7 @@ Section KexecAUExit.
       (na : nat) (alen : nat -> nat) :
     a = MkAnode (AFile f) nl -> SpecKexec.kexec_loadable f ->
     SpecKexec.exec_fail_ok a na alen SpecKexec.EfNoMem.
-  Proof.
+  Proof using .
     intros Ha Hl. cbn. intros f' nl' Heq.
     rewrite Ha in Heq. injection Heq as Hn _. rewrite <- Hn.
     exact (kexec_magic_of_loadable f Hl).
@@ -518,7 +518,7 @@ Section KexecAUExit.
     SpecKexec.kexec_loadable f -> kxau_QFp f na alen c ->
     exists e : SpecKexec.exec_fail_cause,
       SpecKexec.exec_fail_ok (MkAnode (AFile f) nl) na alen e.
-  Proof.
+  Proof using .
     intros Hload Hc. destruct c; cbn in Hc.
     - exfalso. exact (Hc Hload).
     - exists SpecKexec.EfArgsFit. cbn. exists f, nl.
@@ -535,7 +535,7 @@ Section KexecAUExit.
        forall j : nat, (j < 64)%nat -> ef j = f !!! j) ->
     ~ KexecBuilt.kxb_walk_loadable f ef ->
     kxau_QFp f na alen KexecOkQ.KfNotLoadable.
-  Proof.
+  Proof using .
     intros Hag Hn Hload. apply Hn.
     apply KexecBuilt.kxb_walk_loadable_of_loadable;
       [apply (proj1 (KexecImageAlg.kxb_loadable_eq f)); exact Hload
@@ -552,7 +552,7 @@ Section KexecAUExit.
               + 2 * PageGeom.PGSIZE)%Z) ->
       ~ kxc_stack_ok z (z - PageGeom.PGSIZE) alen na ->
       kxau_QFp f na alen KexecOkQ.KfArgsFit.
-  Proof.
+  Proof using .
     intros Hag z Hz Hns Hload. cbn.
     assert (Hwk : KexecBuilt.kxb_walk_ok f ef)
       by (apply KexecImageAlg.kxb_walk_ok_of_loadable;
@@ -563,7 +563,7 @@ Section KexecAUExit.
 
   Lemma kxau_fb_length (data : nat -> list (bv 8)) (dn : dinode) :
     length (kxc_fb data dn) = Z.to_nat (bv_unsigned (di_size dn)).
-  Proof.
+  Proof using .
     unfold kxc_fb, FsTree.file_bytes. rewrite length_fmap length_seq.
     reflexivity.
   Qed.
@@ -571,7 +571,7 @@ Section KexecAUExit.
   Lemma kxau_argc_ne_m1 (na : nat) :
     (na <= MAXARG)%nat ->
     (mword_of_int (Z.of_nat na) : mword 64) <> (mword_of_int (-1) : mword 64).
-  Proof.
+  Proof using .
     intros Hna Heq.
     assert (Hsm : bv_wrap 64 (Z.of_nat na) = Z.of_nat na).
     { apply bvw64_small. unfold MAXARG in Hna.
@@ -616,7 +616,7 @@ Section KexecAUExit.
       kxau_QF (fun _ : KexecOkQ.kxf_cause => Logic.True)
       gf fsc_kalloc pj pidv U m ret_tgt K b eb lks dqb dqs fsc_bmapstart
       na alen plen pv dqpv pfun av dqa avf aslen dqas afun.
-  Proof.
+  Proof using .
     iIntros "Hret Hfail". rewrite /KexecOkQ.kexec_closer /kxau_QF.
     iIntros (mf U' entry spv szv') "%Hcs %Hq".
     iIntros "Hcg Hcnt Hextc Hclmc Hpc Hbm Hins Hka Hpriv Hpath Hargv Hargs Hbs Hirs".
@@ -670,7 +670,7 @@ Section KexecAUExit.
       (kxau_QFp (kxc_fb datl dn) na alen)
       gf fsc_kalloc pj pidv U m ret_tgt K b eb lks dqb dqs fsc_bmapstart
       na alen plen pv dqpv pfun av dqa avf aslen dqas afun.
-  Proof.
+  Proof using .
     intros Hag Htflen Hnamax.
     iIntros "#Hmp Hret Hrcpt". rewrite /KexecOkQ.kexec_closer.
     iIntros (mf U' entry spv szv') "%Hcs %Hq".
@@ -845,7 +845,7 @@ Section KexecAUMain.
       (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ)) :
     SpecKexec.wp_kexec_sconf_body Fs gs jp gl pd pav pu gf plen pfun na avf alen
       aslen afun pidv U sts gn cs dqb dqs dqa dqpv dqas m K eb b lks Qpay P Pmiss Fo.
-  Proof.
+  Proof using .
     rewrite /SpecKexec.wp_kexec_sconf_body /SpecKexec.wp_kexec_frame.
     intros HK Hroot Hnib0 Hlg Hsz Hbm0 Hbmc Hbml Hins0
            Hcovb Hiregb Hcstr Hplen Havf_nz Havf_na Hnamax

@@ -161,7 +161,7 @@ Section UkRunMem.
       Z.rem (uint (mword_of_int a : mword 64)) 4096 <= 4096 - Z.of_nat k /\
       is_aligned_vaddr (Virtaddr (mword_of_int a : mword 64)) (Z.of_nat k) = true /\
       (forall j : nat, (j < k)%nat -> M !! (a + Z.of_nat j)%Z = Some (f j)) ⌝.
-  Proof.
+  Proof using .
     intros Hk Hw Hm. iIntros "Hheap Hbs".
     iDestruct (uheap_ubytes_at γt γd γs M pm sz dq a k f with "Hheap Hbs")
       as %Hall.
@@ -192,7 +192,7 @@ Section UkRunMem.
          urun N h' m (add_vec_int pc 4) avail -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Ha Hal. iIntros "#Hi Hw Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -226,7 +226,7 @@ Section UkRunMem.
          urun N h' m (add_vec_int pc 4) avail -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Ha Hal. iIntros "#Hi Hw Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -260,7 +260,7 @@ Section UkRunMem.
          urun N h' m (add_vec_int pc 2) avail -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Ha Hal. iIntros "#Hi Hw Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -297,7 +297,7 @@ Section UkRunMem.
          urun N h' m (add_vec_int pc 2) avail -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros He1 He2 Ha Hal. iIntros "#Hi Hw Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -334,7 +334,7 @@ Section UkRunMem.
          urun N h' m (add_vec_int pc 2) avail -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros He1 He2 Ha Hal. iIntros "#Hi Hw Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -370,7 +370,7 @@ Section UkRunMem.
          urun N h' m (add_vec_int pc 4) avail -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Ha. iIntros "#Hi Hw Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -428,7 +428,7 @@ Section UkRunMem.
        [urun] ([UkRun.urun_nopipe]) and the leaf mints it off its own
        [udep]. *)
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Ha. iIntros "#Hi #Ht Hrun Hpay".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iMod (udep_exit_run N m pc M pm sz fdv cw gn cs pidv
@@ -469,7 +469,7 @@ Section UkRunMem.
            (add_vec_int pc 4) avail -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hns Ha Hal Hrd. iIntros "#Hi Hw Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -504,7 +504,7 @@ Section UkRunMem.
            (add_vec_int pc 2) avail -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hns Ha Hal Hrd. iIntros "#Hi Hw Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -543,7 +543,7 @@ Section UkRunMem.
            (add_vec_int pc 2) avail -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hns He1 He2 Ha Hal Hrd. iIntros "#Hi Hw Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -577,7 +577,7 @@ Section UkRunMem.
            (add_vec_int pc 4) avail -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hns Ha Hal Hrd. iIntros "#Hi Hw Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -610,7 +610,7 @@ Section UkRunMem.
            (add_vec_int pc 4) avail -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hns Ha Hal Hrd. iIntros "#Hi Hw Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -646,7 +646,7 @@ Section UkRunMem.
            (add_vec_int pc 2) avail -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hns He1 He2 Ha Hal Hrd. iIntros "#Hi Hw Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -682,7 +682,7 @@ Section UkRunMem.
            (add_vec_int pc 4) avail -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hns Ha Hrd. iIntros "#Hi Hw Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -725,7 +725,7 @@ Section UkRunMem.
          (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hns Ha Hrd. iIntros "#Hi #Hw Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -768,7 +768,7 @@ Section UkRunMem.
       Z.rem (uint (mword_of_int a : mword 64)) 4096 <= 4096 - Z.of_nat k /\
       is_aligned_vaddr (Virtaddr (mword_of_int a : mword 64)) (Z.of_nat k) = true /\
       (forall j : nat, (j < k)%nat -> M !! (a + Z.of_nat j)%Z = Some (f j)) ⌝.
-  Proof.
+  Proof using .
     intros Hk Hw Hm. iIntros "Hheap #Hbs".
     iAssert (⌜forall j : nat, (j < k)%nat ->
                M !! (a + Z.of_nat j)%Z = Some (f j) /\
@@ -825,7 +825,7 @@ Section UkRunMem.
          (add_vec_int pc 2) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hns He1 He2 Ha Hal Hrd. iIntros "#Hi #Hw Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -865,7 +865,7 @@ Section UkRunMem.
          (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hns Ha Hal Hrd. iIntros "#Hi #Hw Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.

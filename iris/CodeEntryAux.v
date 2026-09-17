@@ -139,28 +139,28 @@ Definition pc_start : mword 64 := mword_of_int (KernelSyms.start). (* start() *)
 Definition entry_sp1 : mword 64 := add_vec pc_e0 (auipc_off imm_auipc).
 Lemma entry_instr_auipc :
   kernel_text -∗ instr pc_e0 false (UTYPE (imm_auipc, Regidx i_auipc, AUIPC)).
-Proof. exact eni_00. Qed.
+Proof using . exact eni_00. Qed.
 Lemma entry_instr_ld :
   kernel_text -∗ instr pc_e1 false (LOAD (imm_ld, Regidx i_ld, Regidx i_ld, false, 8)).
-Proof. exact eni_04. Qed.
+Proof using . exact eni_04. Qed.
 Lemma entry_instr_clui :
   kernel_text -∗ instr pc_e2 true (UTYPE (sign_extend' 20 imm_clui, rd_clui, LUI)).
-Proof. exact eni_08. Qed.
+Proof using . exact eni_08. Qed.
 Lemma entry_instr_csrr :
   kernel_text -∗ instr pc_e3 false (CSRReg (csr_csrr, zreg, Regidx i_rd_csrr, CSRRS)).
-Proof. exact eni_0a. Qed.
+Proof using . exact eni_0a. Qed.
 Lemma entry_instr_caddi :
   kernel_text -∗ instr pc_e4 true (ITYPE (sign_extend' 12 imm_caddi, rsd_caddi, rsd_caddi, ADDI)).
-Proof. exact eni_0e. Qed.
+Proof using . exact eni_0e. Qed.
 Lemma entry_instr_mul :
   kernel_text -∗
   instr pc_e5 false (MUL (Regidx i_mul_rs2, Regidx i_mul_rs1, Regidx i_mul_rd, mulop_mul)).
-Proof. exact eni_10. Qed.
+Proof using . exact eni_10. Qed.
 Lemma entry_instr_cadd :
   kernel_text -∗ instr pc_e6 true (RTYPE (rs2_cadd, rsd_cadd, rsd_cadd, ADD)).
-Proof. exact eni_14. Qed.
+Proof using . exact eni_14. Qed.
 Lemma entry_instr_jal :
   kernel_text -∗ instr pc_e7 false (JAL (imm_jal, Regidx i_jal)).
-Proof. exact eni_16. Qed.
+Proof using . exact eni_16. Qed.
 
 End CodeEntryAux.

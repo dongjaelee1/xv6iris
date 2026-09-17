@@ -74,7 +74,7 @@ Section WpJalGpr.
       gpr_file (<[Regidx rd := regval_into_reg (add_vec_int pc 4)]> m) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros (Hpmp Hstat Hrd Halign) "Hmm Hpmpc Hpc Hf Hinstr Hcont".
     iDestruct (mmode_config_split with "Hmm") as "[Hmm_wp Hmm_k]".
     iDestruct "Hpmpc" as "[Hpmpc_wp Hpmpc_k]".

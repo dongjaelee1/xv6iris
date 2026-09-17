@@ -121,9 +121,9 @@ Section UartTxInv.
   Definition a_tx_chan : mword 64 := a_tx_chan_at Uart0.
 
   Lemma a_tx_lock_uarts : a_tx_lock = mword_of_int (KernelSyms.uarts + 16).
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
   Lemma a_tx_chan_uarts : a_tx_chan = mword_of_int KernelSyms.uarts.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   (* THE LOCK'S NAME IS THE PORT'S NAME.  [uartinit] passes the literal
      "uart0"/"uart1" to [initlock(&u->tx_lock, name)] -- the old single
@@ -147,7 +147,7 @@ Section UartTxInv.
     ((pa_of_z (uart_f_rx i)) ↦₈[KT0]□ (Z_to_bv 64 (uart_rx_hook i)))%I.
 
   Global Instance uart_rx_word_persistent i : Persistent (uart_rx_word i).
-  Proof. rewrite /uart_rx_word. apply _. Qed.
+  Proof using . rewrite /uart_rx_word. apply _. Qed.
 
   (* ---- the protected resource: the transmitter, at whatever trace it is at.
      The trace is EXISTENTIAL here because no reader of the lock predicts it --
@@ -159,7 +159,7 @@ Section UartTxInv.
 
   Lemma tx_res_intro (γu : uart_names) (l : list (bv 8)) :
     uart_tx_own γu l -∗ tx_res γu.
-  Proof. iIntros "H". by iExists l. Qed.
+  Proof using . iIntros "H". by iExists l. Qed.
 
   (* ---- the lock.  [uart_dlab_off] rides along because it is persistent and
      every THR write needs it: offset 0 is the divisor latch, not THR, while
@@ -197,34 +197,34 @@ Section UartTxInv.
     is_txlock_at Uart0 γl γu.
 
   Global Instance is_txlock_at_persistent i γl γu : Persistent (is_txlock_at i γl γu).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance is_txlock_persistent γl γu : Persistent (is_txlock γl γu).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   Lemma is_txlock_at_lock i γl γu :
     is_txlock_at i γl γu -∗
     is_lock γl (a_tx_lock_at i) (uart_lock_name i) <{ tx_res γu }>.
-  Proof. iIntros "[$ _]". Qed.
+  Proof using . iIntros "[$ _]". Qed.
 
   Lemma is_txlock_lock γl γu :
     is_txlock γl γu -∗ is_lock γl a_tx_lock (uart_lock_name Uart0) <{ tx_res γu }>.
-  Proof. iIntros "[$ _]". Qed.
+  Proof using . iIntros "[$ _]". Qed.
 
   Lemma is_txlock_at_dlab i γl γu : is_txlock_at i γl γu -∗ uart_dlab_off γu.
-  Proof. iIntros "[_ $]". Qed.
+  Proof using . iIntros "[_ $]". Qed.
 
   Lemma is_txlock_dlab γl γu : is_txlock γl γu -∗ uart_dlab_off γu.
-  Proof. iIntros "[_ $]". Qed.
+  Proof using . iIntros "[_ $]". Qed.
 
   Lemma is_txlock_at_intro i γl γu :
     is_lock γl (a_tx_lock_at i) (uart_lock_name i) <{ tx_res γu }> -∗
     uart_dlab_off γu -∗ is_txlock_at i γl γu.
-  Proof. iIntros "#Hl #Ho". by iFrame "Hl Ho". Qed.
+  Proof using . iIntros "#Hl #Ho". by iFrame "Hl Ho". Qed.
 
   Lemma is_txlock_intro γl γu :
     is_lock γl a_tx_lock (uart_lock_name Uart0) <{ tx_res γu }> -∗
     uart_dlab_off γu -∗ is_txlock γl γu.
-  Proof. iIntros "#Hl #Ho". by iFrame "Hl Ho". Qed.
+  Proof using . iIntros "#Hl #Ho". by iFrame "Hl Ho". Qed.
 
   (* ===================================================================== *)
   (*  Reading the accepted trace out of [dev_inv].                          *)
@@ -253,7 +253,7 @@ Section UartTxInv.
      at all; every producer above the driver now reaches [uart_sent]
      through the THR leaf's own ghost step. *)
   Lemma uart_sent_nil (γu : uart_names) : ⊢ |==> uart_sent γu [].
-  Proof.
+  Proof using .
     iMod (own_unit (mono_listUR (leibnizO (bv 8))) γu.(un_acc)) as "H".
     iModIntro.
     rewrite /uart_sent -(mono_list_lb_nil_is_unit (leibnizO (bv 8))).
@@ -264,7 +264,7 @@ Section UartTxInv.
      of the authoritative accepted trace. *)
   Lemma uart_sent_prefix (γu : uart_names) (u : uart_state) (l : list (bv 8)) :
     uart_sent_auth γu u -∗ uart_sent γu l -∗ ⌜ l `prefix_of` uart_acc u ⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Hl". rewrite /uart_sent_auth /uart_sent.
     by iDestruct (own_valid_2 with "Ha Hl") as %?%mono_list_both_valid_L.
   Qed.
@@ -285,7 +285,7 @@ Section UartTxInv.
     ↑(uartN i) ⊆ E ->
     uart_inv i γu -∗ uart_tx_own γu l ={E}=∗
       uart_tx_own γu l ∗ uart_sent γu l.
-  Proof.
+  Proof using .
     iIntros (HE) "#Huinv Hown".
     iInv "Huinv" as ">Hbody" "Hclose".
     iDestruct "Hbody" as (u) "(Hu & Hg & Hcol & Hincl)".
@@ -303,7 +303,7 @@ Section UartTxInv.
     ↑(uartN i) ⊆ E ->
     uart_inv i γu -∗ uart_tx_own γu l -∗ uart_sent γu L ={E}=∗
       uart_tx_own γu l ∗ ⌜ L `prefix_of` l ⌝.
-  Proof.
+  Proof using .
     iIntros (HE) "#Huinv Hown #HL".
     iInv "Huinv" as ">Hbody" "Hclose".
     iDestruct "Hbody" as (u) "(Hu & Hg & Hcol & Hincl)".
@@ -318,14 +318,14 @@ Section UartTxInv.
 
   (* ---- the console-bundle instances, verbatim in their old statements ---- *)
   Lemma uartN_devN_console : (↑(uartN Uart0) : coPset) ⊆ ↑devN.
-  Proof. rewrite /uartN. solve_ndisj. Qed.
+  Proof using . rewrite /uartN. solve_ndisj. Qed.
 
   Lemma uart_tx_own_snapshot (γu : uart_names) (γd : disk_names)
       (l : list (bv 8)) (E : coPset) :
     ↑devN ⊆ E ->
     dev_inv γu γd -∗ uart_tx_own γu l ={E}=∗
       uart_tx_own γu l ∗ uart_sent γu l.
-  Proof.
+  Proof using .
     iIntros (HE) "#Hinv Hown".
     iDestruct (dev_inv_uart with "Hinv") as "#Huinv".
     iApply (uart_tx_own_snapshot_at Uart0 γu l E
@@ -337,7 +337,7 @@ Section UartTxInv.
     ↑devN ⊆ E ->
     dev_inv γu γd -∗ uart_tx_own γu l -∗ uart_sent γu L ={E}=∗
       uart_tx_own γu l ∗ ⌜ L `prefix_of` l ⌝.
-  Proof.
+  Proof using .
     iIntros (HE) "#Hinv Hown #HL".
     iDestruct (dev_inv_uart with "Hinv") as "#Huinv".
     iApply (uart_tx_own_sent_prefix_at Uart0 γu l L E

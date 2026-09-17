@@ -479,7 +479,7 @@ Section ProofSysPipe.
     (0 < k)%nat ->
     sie_cap_gpr KT1 m k b p -∗
     ⌜(8 <= uint (m !!! Regidx csp_rs1) < 274877906944 + 8)%Z⌝.
-  Proof.
+  Proof using .
     iIntros (Hk) "(_ & _ & (Hstk & _ & _) & _)".
     iApply (stack_own_sp_bounds (KTR := KT1) _ (trap_res b + k)%nat with "Hstk").
     destruct b; unfold trap_res; lia.
@@ -529,7 +529,7 @@ Section ProofSysPipe.
         p_ofile p fd ↦₈ (zero_reg : mword 64) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hfd Hro Ha5 Hs1 Hs2 Hs6 Hs8 Hs12.
     destruct (sp_ofile_arith (Z.of_nat fd) Hfd) as (Ha1 & Ha2 & Ha3 & Ha4).
     iIntros "Hcg Hpc Hi0 Hi2 Hi6 Hi8 Hcell Hcont".
@@ -684,7 +684,7 @@ Section ProofSysPipe.
     pipe_clink γ w (pipe_qfrag γ s1) -∗
     (∀ s : pipe_st, pipe_qfrag γ (pst_close w' s) ={⊤}=∗ Φ) -∗
     pipe_clink γ w' Φ.
-  Proof.
+  Proof using .
     rewrite /pipe_clink. iIntros "Hl Hk" (s) "Ha".
     iMod ("Hl" $! s with "Ha") as "[Ha Hf]".
     iMod (pipe_queue_update _ _ _ (pst_close w' s) with "Ha Hf") as "[Ha Hf]".
@@ -693,7 +693,7 @@ Section ProofSysPipe.
 
   Lemma sp_cpay_of_cpost (γ : gname) (w w' : bool) (s1 : pipe_st) (last : bool) :
     pipe_cpost γ w (pipe_qfrag γ s1) last -∗ pipe_cpay γ w' True%I.
-  Proof.
+  Proof using .
     rewrite /pipe_cpost /pipe_cpay.
     iIntros "[Hf | [[#Ht _] | [_ Hp]]]".
     - iLeft. iApply (pipe_clink_of_frag γ w' True%I s1 with "Hf").
@@ -709,7 +709,7 @@ Section ProofSysPipe.
     pipe_qfrag (pn_queue γp) pst0 -∗
     fileclose_cpay (FdOpen r w (FdPipe γp))
       (pipe_qfrag (pn_queue γp) (pst_close w pst0)).
-  Proof.
+  Proof using .
     iIntros "Hf". rewrite /fileclose_cpay /pipe_cpay. iLeft.
     iApply (pipe_clink_of_frag (pn_queue γp) w _ pst0 with "Hf").
     iIntros "H". by iModIntro.
@@ -719,7 +719,7 @@ Section ProofSysPipe.
       (s1 : pipe_st) :
     fileclose_cpost q (FdOpen r0 w0 (FdPipe γp)) (pipe_qfrag (pn_queue γp) s1) -∗
     fileclose_cpay (FdOpen r1 w1 (FdPipe γp)) True%I.
-  Proof.
+  Proof using .
     rewrite /fileclose_cpost /fileclose_cpay. iApply sp_cpay_of_cpost.
   Qed.
 
@@ -729,7 +729,7 @@ Section ProofSysPipe.
     proc_priv_bare p pid U ∗ fileclose_fs_env fn n eb p ∗
     (proc_priv_bare p pid U -∗ fileclose_fs_env fn n eb p -∗
        proc_priv γf p pid U ∗ fileclose_fs_env_nopid fn n eb p).
-  Proof.
+  Proof using .
     iIntros "Hpriv Hfe".
     iDestruct (proc_priv_bare_acc with "Hpriv") as "[Hb Hback]".
     iSplitL "Hb"; [iExact "Hb"|].
@@ -827,7 +827,7 @@ Section ProofSysPipe.
         proc_priv_bare p pidv Upr -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hnav Hs0 Hr1 Hr2 Hs04 Hs812 Hs1618 Ht1 Ht2 Hbelow.
     iIntros "Hcg Hcpu Hextc Hextm #Htext #Hkd Hpc #Hftab #Hpe Hi0 Hi4 Hi8 Hic Hj10
               Hc6 Hc7 Href0 Href1 Hcpay0 Hcwand Hpenv Hfenv Hpbare Hiru Hcont".
@@ -994,7 +994,7 @@ Section ProofSysPipe.
         pc_is (ret_pc ra0) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hav Hsp0 Hra0 Hs00 Hs10 Hmtsp Hmt15 Hthr.
     iIntros "Hcg #Htext Hpc Hb1 Hb2 Hb3 Hb4 Hb5 Hb6 Hb7 Hb8 Hcont".
     (* ---- +0xda: c.mv a0,a5 ---- *)
@@ -1157,7 +1157,7 @@ Section ProofSysPipe.
       (v : mword 64) (pid : mword 32) (U : ustate) (sts : list fdstate)
       (b : bool) (lks : gset string)
     : wp_sys_pipe_sconf_body γa γfl γf fn on m av eb p v pid U sts b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_sys_pipe_sconf_body].
     intros pcE ret_tgt Harg Hav Hbelow Hfpid Hfdq.
     (* Every callee's stack bound, discharged HERE: [lia] is unreliable once

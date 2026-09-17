@@ -109,7 +109,7 @@ Section ProofStrlen.
      scratch index, so the [vm_compute] side goal is closed. *)
   Local Lemma cs_ne (k r : mword 5) :
     is_cs_idx k = false -> is_cs_idx r = true -> Regidx r <> Regidx k.
-  Proof. intros Hk Hr He. symmetry in He. exact (is_cs_idx_true_neq k r Hk Hr He). Qed.
+  Proof using . intros Hk Hr He. symmetry in He. exact (is_cs_idx_true_neq k r Hk Hr He). Qed.
 
   (* peel an insert tower with a SYMBOLIC index, given the index's
      disequalities as [r <> ...] hypotheses in scope.  The two names must be
@@ -127,23 +127,23 @@ Section ProofStrlen.
 
   Local Lemma sl_push (X : mword 64) :
     add_vec X (sign_extend' 64 (sign_extend' 12 (mword_of_int 48 : mword 6))) = pa_stk X 2.
-  Proof. unfold pa_stk, add_vec_int. apply f_equal. apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . unfold pa_stk, add_vec_int. apply f_equal. apply bv_eq; vm_compute; reflexivity. Qed.
 
   (* +0x0e [addi a5,a0,1] : the FIRST cursor, one past the base *)
   Local Lemma sl_bump1 (p : mword 64) :
     add_vec p (sign_extend' 64 (mword_of_int 1 : mword 12)) = pa_add p 1.
-  Proof. unfold pa_add, add_vec_int. apply f_equal. apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . unfold pa_add, add_vec_int. apply f_equal. apply bv_eq; vm_compute; reflexivity. Qed.
 
   (* +0x14 [c.addi a5,a5,1] *)
   Local Lemma sl_step (p : mword 64) (j : nat) :
     add_vec (pa_add p j) (sign_extend' 64 (sign_extend' 12 (mword_of_int 1 : mword 6)))
     = pa_add p (S j).
-  Proof. apply pa_add_step. apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . apply pa_add_step. apply bv_eq; vm_compute; reflexivity. Qed.
 
   (* +0x16 [lbu a4,-1(a5)] : gcc bumps first and accesses behind the cursor *)
   Local Lemma sl_back (p : mword 64) (j : nat) :
     add_vec (pa_add p (S j)) (sign_extend' 64 (mword_of_int 4095 : mword 12)) = pa_add p j.
-  Proof. apply pa_add_back1. apply bv_eq; vm_compute; reflexivity. Qed.
+  Proof using . apply pa_add_back1. apply bv_eq; vm_compute; reflexivity. Qed.
 
   (* ================================================================== *)
   (*  THE EPILOGUE (+0x20 .. +0x26), entered by both arms.               *)
@@ -170,7 +170,7 @@ Section ProofStrlen.
         pc_is (ret_pc ra0) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hsp0 Hra0 Hs00 Hmtsp Hmta0 Hthr.
     iIntros "Hcg #Htext Hpc Hb1 Hb2 Hcont".
     (* ---- +0x20: c.ldsp ra,8(sp) ---- *)
@@ -315,7 +315,7 @@ Section ProofStrlen.
         (pa_add s (S t)) ↦ₘ[kts]{dq} bt -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Ha5.
     iIntros "Hcg #Htext Hpc Hbyte Hcont".
     (* ---- +0x12: c.mv a3,a5 ---- *)
@@ -424,7 +424,7 @@ Section ProofStrlen.
         ([∗ list] j ∈ seq 0 n, (pa_add s j) ↦ₘ[kts]{dq} f j) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hkn Hcstr Hk31 rem.
     induction rem as [| rem IH]; intros t M CID0 Hchain Hsum Hnn Hsp Ha0 Ha5 Hthr;
       iIntros "Hcg #Htext Hpc Hbuf Hcont".
@@ -537,7 +537,7 @@ Section ProofStrlen.
   Lemma wp_strlen_sconf (mm : regfile)
       (n k : nat) (f : nat -> bv 8) (K : nat) (dq : dfrac) (b : bool) (p : mword 64)
     : wp_strlen_sconf_body kts mm n k f K dq b p.
-  Proof.
+  Proof using .
     cbv beta delta [wp_strlen_sconf_body].
     intros pcE s ret_tgt HK Hkn Hcstr Hk31.
     change (2 ^ 31)%Z with 2147483648%Z in Hk31.

@@ -225,7 +225,7 @@ Section ProofSysUnlinkShared.
     (k < NINODE)%nat ->
     (ic_escrows fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst -∗ ic_escrow fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k
      : iProp Σ).
-  Proof.
+  Proof using .
     iIntros (Hk) "H".
     iApply (ic_escrows_lookup fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst k Hk with "H").
   Qed.
@@ -237,7 +237,7 @@ Section ProofSysUnlinkShared.
        is_sleeplock_genl gil gisl (i_lock (ientry k)) "inode"%string
                         (ic_slp fsc_ic k) (slh_tok (icfg_isl k))
      : iProp Σ).
-  Proof.
+  Proof using .
     iIntros (Hk) "H". rewrite /ic_sleeplocks.
     assert (Hl : seq 0 NINODE !! k = Some k) by (rewrite lookup_seq; lia).
     iDestruct (big_sepL_lookup _ _ k k Hl with "H") as "$".
@@ -245,7 +245,7 @@ Section ProofSysUnlinkShared.
 
   Lemma su_bs3 `{XI : CurCtx} :
     (bslots 3 : iProp Σ) ⊣⊢ bslot ∗ bslots 2.
-  Proof. rewrite /bslot. change 3%nat with (1 + 2)%nat. apply bslots_op. Qed.
+  Proof using . rewrite /bslot. change 3%nat with (1 + 2)%nat. apply bslots_op. Qed.
 
   (* THE GENERATION-NAMED SHED.  [IcacheRef.inode_ref_shed] loses the
      generation, and nameiparent's [inode_held_ty] payout is exactly the
@@ -257,13 +257,13 @@ Section ProofSysUnlinkShared.
   Lemma su_carve_gen `{XI : CurCtx} (k : nat) (q s : Qp) (dv inum : mword 32) (gy : gname) :
     inode_ref_gen k (q + s)%Qp dv inum gy ⊣⊢
     inode_ref_short_gen k (q + s)%Qp q dv inum gy ∗ inode_shr_gen k s dv inum gy.
-  Proof. apply inode_ref_carve_gen. Qed.
+  Proof using . apply inode_ref_carve_gen. Qed.
 
   Lemma su_shed_gen `{XI : CurCtx} (k : nat) (q : Qp) (dv inum : mword 32) (gy : gname) :
     inode_ref_gen k q dv inum gy ⊣⊢
     inode_ref_short_gen k (q/2 + q/2)%Qp (q/2)%Qp dv inum gy ∗
     inode_shr_gen k (q/2)%Qp dv inum gy.
-  Proof.
+  Proof using .
     pose proof (su_carve_gen k (q/2)%Qp (q/2)%Qp dv inum gy) as Hc.
     by rewrite {1}(Qp.div_2 q) in Hc.
   Qed.
@@ -271,7 +271,7 @@ Section ProofSysUnlinkShared.
   Lemma su_dot_window `{XI : CurCtx} `{GEN : GenId} (a : mword 64) :
     a = mword_of_int su_dot_addr ->
     kernel_data -∗ ([∗ list] j ∈ seq 0 14, (pa_add a j) ↦ₘ□ su_dot_f j).
-  Proof.
+  Proof using .
     intros ->. iApply (kernel_data_bytes su_dot_addr 14 su_dot_f _ eq_refl
                          ltac:(unfold text_end, su_dot_addr; lia)
                          ltac:(vm_compute; discriminate)).
@@ -283,7 +283,7 @@ Section ProofSysUnlinkShared.
   Lemma su_dotdot_window `{XI : CurCtx} `{GEN : GenId} (a : mword 64) :
     a = mword_of_int su_dotdot_addr ->
     kernel_data -∗ ([∗ list] j ∈ seq 0 14, (pa_add a j) ↦ₘ□ su_dotdot_f j).
-  Proof.
+  Proof using .
     intros ->. iApply (kernel_data_bytes su_dotdot_addr 14 su_dotdot_f _ eq_refl
                          ltac:(unfold text_end, su_dotdot_addr; lia)
                          ltac:(vm_compute; discriminate)).
@@ -302,13 +302,13 @@ Section ProofSysUnlinkShared.
     ([∗ list] j ∈ seq 0 16, pa_add a j ↦ₘ[KT1] f j)
     ⊣⊢ ([∗ list] j ∈ seq 0 2, pa_add a j ↦ₘ[KT1] f j)
        ∗ ([∗ list] j ∈ seq 0 14, pa_add (pa_add a 2) j ↦ₘ[KT1] f (2 + j)%nat).
-  Proof. exact (bb_split a 2 14 f). Qed.
+  Proof using . exact (bb_split a 2 14 f). Qed.
 
   Lemma su_half_acc `{XI : CurCtx} (data : nat -> list (bv 8)) (i : nat) (a : Arch.pa) :
     is_aligned_paddr (Physaddr a) 2 = true ->
     ([∗ list] j ∈ seq 0 2, pa_add a j ↦ₘ[KT1] file_byte data (16 * i + j)%nat)
     ⊣⊢ a ↦₂[KT1] dir_inum data i.
-  Proof.
+  Proof using .
     intro Hal.
     rewrite (bb_ext (KTR := KT1) a 2 (fun j => file_byte data (16 * i + j)%nat)
                         (fun j => nth_byte (dir_inum data i) j)
@@ -323,7 +323,7 @@ Section ProofSysUnlinkShared.
   Lemma su_name_acc `{XI : CurCtx} (data : nat -> list (bv 8)) (i : nat) (a : Arch.pa) :
     ([∗ list] j ∈ seq 0 14, pa_add a j ↦ₘ[KT1] file_byte data (16 * i + (2 + j))%nat)
     ⊣⊢ ([∗ list] j ∈ seq 0 14, pa_add a j ↦ₘ[KT1] dir_name data i j).
-  Proof.
+  Proof using .
     apply (bb_ext (KTR := KT1) a 14 (fun j => file_byte data (16 * i + (2 + j))%nat)
                        (dir_name data i)
              (fun j _ => su_name_shift data i j)).
@@ -335,7 +335,7 @@ Section ProofSysUnlinkShared.
     ([∗ list] jj ∈ seq 0 16, pa_add a jj ↦ₘ[KT1] file_byte data (16 * i + jj)%nat)
     ⊣⊢ a ↦₂[KT1] dir_inum data i
        ∗ ([∗ list] jj ∈ seq 0 14, pa_add (pa_add a 2) jj ↦ₘ[KT1] dir_name data i jj).
-  Proof.
+  Proof using .
     intro Hal.
     rewrite -(su_half_acc data i a Hal).
     rewrite -(su_name_acc data i (pa_add a 2)).
@@ -349,7 +349,7 @@ Section ProofSysUnlinkShared.
        pa_add a jj ↦ₘ[KT1] rd_delivered data olds (16 * i)%nat 16 jj)
     ⊣⊢ ([∗ list] jj ∈ seq 0 16,
           pa_add a jj ↦ₘ[KT1] file_byte data (16 * i + jj)%nat).
-  Proof.
+  Proof using .
     apply (bb_ext (KTR := KT1) a 16
              (fun jj => rd_delivered data olds (16 * i)%nat 16 jj)
              (fun jj => file_byte data (16 * i + jj)%nat)

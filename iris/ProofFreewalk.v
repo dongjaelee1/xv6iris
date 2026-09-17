@@ -337,7 +337,7 @@ Section ProofFreewalk.
 
   Lemma fw_open `{XI : CurCtx} (lvl : nat) (t : ptree) :
     ptree_own lvl (DfracOwn 1) t ⊢ pt_node_claim (pt_base t) ∗ fw_todo lvl t 0.
-  Proof.
+  Proof using .
     rewrite /fw_todo. replace (512 - 0) with 512 by lia.
     rewrite big_sepL_sep.
     destruct lvl as [| l].
@@ -356,7 +356,7 @@ Section ProofFreewalk.
       (u_pte_addr (pt_base t) (mword_of_int d) ↦ₚₜ pt_ents t (mword_of_int d)
        ∗ fw_slot lvl t (mword_of_int d))
       ∗ fw_todo lvl t (d + 1).
-  Proof.
+  Proof using .
     intros Hd. rewrite /fw_todo.
     rewrite (seqZ_cons d (512 - d) ltac:(lia)).
     assert (E1 : Z.succ d = d + 1) by lia.
@@ -369,7 +369,7 @@ Section ProofFreewalk.
     0 <= d ->
     fw_done b d ∗ (∃ w : mword 64, u_pte_addr b (mword_of_int d) ↦ₚₜ w)
     ⊢ fw_done b (d + 1).
-  Proof.
+  Proof using .
     intros Hd. rewrite /fw_done.
     rewrite (seqZ_app 0 d 1 ltac:(lia) ltac:(lia)).
     rewrite big_sepL_app.
@@ -432,7 +432,7 @@ Section ProofFreewalk.
       ⌜callee_saved mm mf⌝ -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros spr HK Hilvl Hmmsp Hjsp Hjs3 Hjthr Hfresh.
     iIntros "Hcg Hcnt #Htext Hpc Hpre #Henv Hk1 Hk2 Hk3 Hk4 Hk5 Hk6 Hcont".
     iDestruct "Hk6" as (u6) "Hk6".
@@ -687,7 +687,7 @@ Section ProofFreewalk.
       fw_done (pt_base t) 512 -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros HK Hilvl Hok.
     intro rem.
     revert CID.
@@ -1058,7 +1058,7 @@ Section ProofFreewalk.
   (*  §5  THE WHOLE FUNCTION at one level, over [REC] one level down.     *)
   (* ================================================================== *)
   Local Lemma fw_body (lvl : nat) (REC : forall l, (l < lvl)%nat -> fw_rec l) : fw_rec lvl.
-  Proof.
+  Proof using .
     unfold fw_rec. intros CID0 XI γa mm t K eb p ilvl b lks.
     cbv beta delta [wp_freewalk_sconf_body].
     intros pcE ret_tgt HK Hilvl Ha0 Hfree Hbelow.
@@ -1293,7 +1293,7 @@ Section ProofFreewalk.
   (*  §6  The induction on the level.                                     *)
   (* ================================================================== *)
   Local Lemma fw_go_aux (n : nat) : forall lvl : nat, (lvl <= n)%nat -> fw_rec lvl.
-  Proof.
+  Proof using .
     induction n as [| n IHn]; intros lvl Hle.
     - apply fw_body. intros l Hl. exfalso. lia.
     - apply fw_body. intros l Hl. apply IHn. lia.
@@ -1303,7 +1303,7 @@ Section ProofFreewalk.
       (t : ptree) (lvl : nat) (K : nat) (eb : bool) (p : mword 64)
       (ilvl : nat) (b : bool) (lks : gset string)
     : wp_freewalk_sconf_body γa mm t lvl K eb p ilvl b lks.
-  Proof. exact (fw_go_aux lvl lvl (Nat.le_refl lvl) CID XI γa mm t K eb p ilvl b lks). Qed.
+  Proof using . exact (fw_go_aux lvl lvl (Nat.le_refl lvl) CID XI γa mm t K eb p ilvl b lks). Qed.
 
 End ProofFreewalk.
 

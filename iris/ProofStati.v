@@ -87,7 +87,7 @@ Section ProofStatiMain.
       (K : nat) (dqd dqn : dfrac) (b : bool) (p : mword 64)
     : wp_stati_sconf_body mm ip st dev inum dn dev0 ino0 ty0 nl0 sz0
                           K dqd dqn b p.
-  Proof.
+  Proof using .
     cbv beta delta [wp_stati_sconf_body].
     intros pcE ret_tgt HK Ha0 Ha1.
     pose proof HK as HK'. 

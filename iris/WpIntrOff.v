@@ -90,7 +90,7 @@ Section WpIntrOff.
       pc_is (add_vec_int pc 4) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     destruct b.
     - (* ---- ENABLED: the real flip.  Everything comes out of the arm. ---- *)
       iIntros "Hcg Hcpu _ Hpc Hinstr Hcont".

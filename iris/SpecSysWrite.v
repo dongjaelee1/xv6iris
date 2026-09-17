@@ -145,7 +145,7 @@ Section SpecSysWrite.
     filewrite_fs_env γf fn -∗ filewrite_devsw fn -∗
     filewrite_env γf fn st ∗
     (filewrite_env_out fn st -∗ filewrite_fs_out fn ∗ filewrite_devsw fn).
-  Proof.
+  Proof using .
     iIntros "Hfs Hdev". rewrite /filewrite_env /filewrite_env_out.
     destruct st as [|? ? [? ? ?| |mj]].
     { (* CLOSED *)
@@ -192,7 +192,7 @@ Section SpecSysWrite.
 
   Lemma sys_write_arms_ret V v sts n M ua Q Qe r :
     sys_write_arms V v sts n M ua Q Qe r -∗ ⌜sys_write_ret V v n r⌝.
-  Proof. iIntros "[%H _]". by iPureIntro. Qed.
+  Proof using . iIntros "[%H _]". by iPureIntro. Qed.
 
   (* ...and the other projection -- the arm's payout without the blanket,
      which is what travels back to the process ([SpecSysRead]'s twin says
@@ -200,7 +200,7 @@ Section SpecSysWrite.
   Lemma sys_write_arms_extra V v sts n M ua Q Qe r :
     sys_write_arms V v sts n M ua Q Qe r -∗
     filewrite_extra (pv_gen V) (pv_upt V) (sys_fd_st v (pv_ofile V) sts) n M ua Q Qe r.
-  Proof. iIntros "[_ $]". Qed.
+  Proof using . iIntros "[_ $]". Qed.
 
   (* ---- the key, read at the two shapes the walk reaches it in --------
      argfd answered NONE (the -1 above the branch), or it answered a
@@ -211,7 +211,7 @@ Section SpecSysWrite.
     arg_fd v (pv_ofile V) = None ->
     r = (mword_of_int (-1) : mword 64) ->
     ⊢ sys_write_arms V v sts n M ua Q Qe r.
-  Proof.
+  Proof using .
     intros Hnone Hr. rewrite /sys_write_arms /sys_fd_st Hnone.
     iSplitR; [| done]. iPureIntro. left. split; [exact Hr | exact Hnone].
   Qed.
@@ -223,7 +223,7 @@ Section SpecSysWrite.
     arg_fd v (pv_ofile V) = Some (fd, fv) ->
     sts !! fd = Some st ->
     sys_write_in V v sts n M ua Q Qe -∗ filewrite_in st n M ua Q Qe.
-  Proof.
+  Proof using .
     intros Hsome Hst. rewrite /sys_write_in /sys_fd_st Hsome Hst /=.
     by iIntros "$".
   Qed.
@@ -235,7 +235,7 @@ Section SpecSysWrite.
     arg_fd v (pv_ofile V) = Some (fd, fv) ->
     sts !! fd = Some st ->
     filewrite_arms (pv_gen V) (pv_upt V) st n M ua Q Qe r -∗ sys_write_arms V v sts n M ua Q Qe r.
-  Proof.
+  Proof using .
     intros Hsome Hst. rewrite /sys_write_arms /sys_fd_st Hsome Hst /=.
     iIntros "[%Hret $]". iPureIntro. right. by exists fd, fv.
   Qed.

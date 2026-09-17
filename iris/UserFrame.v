@@ -417,7 +417,7 @@ Section UGprFrame.
      [rf_to_gmap_dom], i.e. always true) *)
   Lemma u_gpr_file_enum (f : regfile) :
     gpr_file f ⊣⊢ [∗ list] r ∈ enum regidx, gpr_pt r (f r).
-  Proof.
+  Proof using .
     assert (Hd : ∀ r : regidx, r ∈ dom (rf_to_gmap f)) by (apply rf_to_gmap_dom).
     rewrite /gpr_file (bi.pure_True _ Hd) left_id.
     rewrite /rf_to_gmap big_sepM_list_to_map; last first.
@@ -430,7 +430,7 @@ Section UGprFrame.
   (* the frame side, as a list -- one [big_sepS_list_to_set] off [u_gpr_nodup] *)
   Lemma u_gpr_frame_list (rs : regstate) :
     hreg_frame rs u_Dgpr ⊣⊢ [∗ list] r ∈ u_gpr_list, r ↦ᵣ register_lookup r rs.
-  Proof.
+  Proof using .
     rewrite /hreg_frame /u_Dgpr.
     apply big_sepS_list_to_set; exact u_gpr_nodup.
   Qed.
@@ -439,7 +439,7 @@ Section UGprFrame.
      userret and the exit into uservec), never per step. *)
   Lemma u_gpr_file_frame (g : regfile) (rs : regstate) :
     u_gpr_agree g rs -> gpr_file g ⊢ hreg_frame rs u_Dgpr.
-  Proof.
+  Proof using .
     intros Hag. rewrite u_gpr_file_enum u_gpr_frame_list u_enum_regidx_eq.
     replace (seqZ 0 32) with (([0] ++ seqZ 1 31)%list)
       by (rewrite (seqZ_cons 0 32); [reflexivity | lia]).
@@ -458,7 +458,7 @@ Section UGprFrame.
 
   Lemma u_frame_gpr_file (rs : regstate) :
     hreg_frame rs u_Dgpr ⊢ gpr_file (u_regfile rs).
-  Proof.
+  Proof using .
     rewrite u_gpr_frame_list u_gpr_file_enum u_enum_regidx_eq.
     replace (seqZ 0 32) with (([0] ++ seqZ 1 31)%list)
       by (rewrite (seqZ_cons 0 32); [reflexivity | lia]).
@@ -479,7 +479,7 @@ Section UGprFrame.
      agree on x1..x31 by hypothesis and on x0 because [gpr_file] says so. *)
   Lemma u_gpr_file_eq (g : regfile) (rs : regstate) :
     u_gpr_agree g rs -> gpr_file g ⊢ ⌜g = u_regfile rs⌝.
-  Proof.
+  Proof using .
     intros Hag. iIntros "Hg".
     iDestruct (gpr_file_x0 g (mword_of_int 0) ltac:(apply (u_uint_mword5 0); lia)
                  with "Hg") as "[%H0 _]".
@@ -692,7 +692,7 @@ Section UFrames.
     (* [utlb_inv_pt] and its [pmp_config] *)
     satp ↦ᵣ satpv -∗ tlb ↦ᵣ tlbv -∗ pmpcfg_n ↦ᵣ pcfg -∗ pmpaddr_n ↦ᵣ paddr -∗
     hreg_frame rs u_Drw ∗ hreg_frame_ro (u_Df dqc) rs u_Dro.
-  Proof.
+  Proof using .
     intros (Hhs & Hpriv & Hms & Hsc & Hstv & Hsep & Hpc & Hnpc & Hgag)
            (Hmst & Hmi & Hmc & Hmicfg & Hcy & Hti & Hip)
            (Hstvec & Hmie & Hmdl & Hmedl & Hmenv & Hmste & Hsste & Hmcen &
@@ -758,7 +758,7 @@ Section UFrames.
      htif_tohost_base ↦ᵣ□ htifv ∗ (R_bitvector_1 elp) ↦ᵣ□ elpv ∗
      senvcfg ↦ᵣ□ senvv ∗
      satp ↦ᵣ satpv ∗ tlb ↦ᵣ tlbv ∗ pmpcfg_n ↦ᵣ pcfg ∗ pmpaddr_n ↦ᵣ paddr).
-  Proof.
+  Proof using .
     intros (Hhs & Hpriv & Hms & Hsc & Hstv & Hsep & Hpc & Hnpc & _)
            (Hmst & Hmi & Hmc & Hmicfg & Hcy & Hti & Hip)
            (Hstvec & Hmie & Hmdl & Hmedl & Hmenv & Hmste & Hsste & Hmcen &
@@ -849,7 +849,7 @@ Section UFrames.
      htif_tohost_base ↦ᵣ□ htifv ∗ (R_bitvector_1 elp) ↦ᵣ□ elpv ∗
      senvcfg ↦ᵣ□ senvv ∗
      satp ↦ᵣ satpv ∗ tlb ↦ᵣ tlbv ∗ pmpcfg_n ↦ᵣ pcfg ∗ pmpaddr_n ↦ᵣ paddr).
-  Proof.
+  Proof using .
     intros (Hhs & Hpriv & Hms & Hsc & Hstv & Hsep & Hpc & Hnpc & _)
            (Hmst & Hmi & Hmc & Hmicfg & Hcy & Hti & Hip)
            (Hstvec & Hmie & Hmdl & Hmedl & Hmenv & Hmste & Hsste & Hmcen &
@@ -928,7 +928,7 @@ Section URegs.
     u_regs hs ms sc stv sep va va g ⊣⊢
       hart_state ↦ᵣ hs ∗ cur_privilege ↦ᵣ User ∗ mstatus ↦ᵣ ms ∗
       scause ↦ᵣ sc ∗ stval ↦ᵣ stv ∗ sepc ↦ᵣ sep ∗ pc_is va ∗ gpr_file g.
-  Proof.
+  Proof using .
     rewrite /u_regs /pc_is. iSplit.
     - iIntros "(Hhs & Hpriv & Hms & Hsc & Hstv & Hsep & HPC & HnPC & Hmr &
                 Hcr & Hresv & Hg)". iFrame.
@@ -949,7 +949,7 @@ Section URegs.
          (R_bitvector_64 minstretcfg) ↦ᵣ□ micfg) ∗
       (∃ cy ti ip : mword 64, mcycle ↦ᵣ cy ∗ mtime ↦ᵣ ti ∗ mip ↦ᵣ ip) ∗
       resv_any cpu_id.
-  Proof.
+  Proof using .
     rewrite /u_regs /minstret_res /clock_res. iSplit.
     - iIntros "(Hhs & Hpriv & Hms & Hsc & Hstv & Hsep & HPC & HnPC & Hmr &
                 Hcr & Hresv & Hg)". iFrame.
@@ -1091,7 +1091,7 @@ Section URs.
    [uint i = k] back into the index equality [i = mword_of_int k] the file's
    own spelling needs. *)
 Lemma u_rs_gpr_agree : u_gpr_agree g RS.
-Proof.
+Proof using .
   intros i Hi. pose proof (uint5_lt i) as Hb.
   assert (Hc : uint i = 1 \/ uint i = 2 \/ uint i = 3 \/ uint i = 4 \/ uint i = 5 \/ uint i = 6 \/ uint i = 7 \/ uint i = 8 \/ uint i = 9 \/ uint i = 10 \/ uint i = 11 \/ uint i = 12 \/ uint i = 13 \/ uint i = 14 \/ uint i = 15 \/ uint i = 16 \/ uint i = 17 \/ uint i = 18 \/ uint i = 19 \/ uint i = 20 \/ uint i = 21 \/ uint i = 22 \/ uint i = 23 \/ uint i = 24 \/ uint i = 25 \/ uint i = 26 \/ uint i = 27 \/ uint i = 28 \/ uint i = 29 \/ uint i = 30 \/ uint i = 31) by lia.
   destruct Hc as [H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|H]]]]]]]]]]]]]]]]]]]]]]]]]]]]]];
@@ -1133,22 +1133,22 @@ Qed.
   (* EVERY ONE OF THESE IS ONE IOTA STEP.  That is the whole point of the
      [Build_regstate] spelling. *)
   Lemma u_rs_pins_regs : u_pins_regs RS hs ms sc stv sep va va' g.
-  Proof.
+  Proof using .
     rewrite /u_pins_regs. split_and!; try reflexivity.
     exact u_rs_gpr_agree.
   Qed.
 
   Lemma u_rs_pins_tick : u_pins_tick RS mst mi mc micfg cy ti ip.
-  Proof. rewrite /u_pins_tick. split_and!; reflexivity. Qed.
+  Proof using . rewrite /u_pins_tick. split_and!; reflexivity. Qed.
 
   Lemma u_rs_pins_cfg :
     u_pins_cfg RS stvecv miev mdlv medv menvv mstenv sstenv mcenv scenv hpm.
-  Proof. rewrite /u_pins_cfg. split_and!; reflexivity. Qed.
+  Proof using . rewrite /u_pins_cfg. split_and!; reflexivity. Qed.
 
   Lemma u_rs_pins_hw : u_pins_hw RS misav mseccfgv senvv pmar htifv elpv.
-  Proof. rewrite /u_pins_hw. split_and!; reflexivity. Qed.
+  Proof using . rewrite /u_pins_hw. split_and!; reflexivity. Qed.
 
   Lemma u_rs_pins_pt : u_pins_pt RS satpv pcfg paddr tlbv.
-  Proof. rewrite /u_pins_pt. split_and!; reflexivity. Qed.
+  Proof using . rewrite /u_pins_pt. split_and!; reflexivity. Qed.
 
 End URs.

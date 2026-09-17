@@ -1820,12 +1820,12 @@ Section echo_out.
     ghost_map_elem (eg_pin γ) k DfracDiscarded v.
 
   Global Instance era_pin_persistent k v : Persistent (era_pin k v).
-  Proof. rewrite /era_pin. apply _. Qed.
+  Proof using . rewrite /era_pin. apply _. Qed.
   Global Instance era_pin_timeless k v : Timeless (era_pin k v).
-  Proof. rewrite /era_pin. apply _. Qed.
+  Proof using . rewrite /era_pin. apply _. Qed.
 
   Lemma era_pin_agree k v v' : era_pin k v -∗ era_pin k v' -∗ ⌜v = v'⌝.
-  Proof.
+  Proof using .
     rewrite /era_pin. iIntros "H1 H2".
     iDestruct (ghost_map_elem_agree with "H1 H2") as %Heq.
     iPureIntro. exact Heq.
@@ -1850,16 +1850,16 @@ Section echo_out.
     mono_nat_lb_own (ep_go v) m.
 
   Global Instance turn_timeless v P : Timeless (turn v P).
-  Proof. rewrite /turn. apply _. Qed.
+  Proof using . rewrite /turn. apply _. Qed.
   Global Instance turn_auth_timeless v P : Timeless (turn_auth v P).
-  Proof. rewrite /turn_auth. apply _. Qed.
+  Proof using . rewrite /turn_auth. apply _. Qed.
   Global Instance turn_lb_timeless v m : Timeless (turn_lb v m).
-  Proof. rewrite /turn_lb. apply _. Qed.
+  Proof using . rewrite /turn_lb. apply _. Qed.
   Global Instance turn_lb_persistent v m : Persistent (turn_lb v m).
-  Proof. rewrite /turn_lb. apply _. Qed.
+  Proof using . rewrite /turn_lb. apply _. Qed.
 
   Lemma turn_agree v P P' : turn v P -∗ turn_auth v P' -∗ ⌜P = P'⌝.
-  Proof.
+  Proof using .
     rewrite /turn /turn_auth. iIntros "H1 H2".
     iDestruct (mono_nat_auth_own_agree with "H1 H2") as %[_ Heq].
     iPureIntro. exact Heq.
@@ -1869,7 +1869,7 @@ Section echo_out.
   Lemma turn_update v P P' P'' :
     (P <= P'')%nat ->
     turn v P -∗ turn_auth v P' ==∗ turn v P'' ∗ turn_auth v P''.
-  Proof.
+  Proof using .
     intros Hle. rewrite /turn /turn_auth. iIntros "H1 H2".
     iDestruct (mono_nat_auth_own_agree with "H1 H2") as %[_ <-].
     iAssert (mono_nat_auth_own (ep_go v) 1 P) with "[H1 H2]" as "H".
@@ -1880,17 +1880,17 @@ Section echo_out.
   Qed.
 
   Lemma turn_lb_get v P : turn_auth v P -∗ turn_lb v P.
-  Proof. rewrite /turn_auth /turn_lb. iApply mono_nat_lb_own_get. Qed.
+  Proof using . rewrite /turn_auth /turn_lb. iApply mono_nat_lb_own_get. Qed.
 
   Lemma turn_lb_le v P m : turn v P -∗ turn_lb v m -∗ ⌜(m <= P)%nat⌝.
-  Proof.
+  Proof using .
     rewrite /turn /turn_lb. iIntros "H1 H2".
     iDestruct (mono_nat_lb_own_valid with "H1 H2") as %[_ Hle].
     iPureIntro. exact Hle.
   Qed.
 
   Lemma turn_lb_weaken v m m' : (m' <= m)%nat -> turn_lb v m -∗ turn_lb v m'.
-  Proof. intros Hle. rewrite /turn_lb. by iApply mono_nat_lb_own_le. Qed.
+  Proof using . intros Hle. rewrite /turn_lb. by iApply mono_nat_lb_own_le. Qed.
 
   (* THE LINE CHOICES, as a monotone list: the output claim holds the
      authority, a writer holds a persistent lower bound (review S9). *)
@@ -1900,14 +1900,14 @@ Section echo_out.
     own (ep_gcs v) (◯ML (l : list (leibnizO nat))).
 
   Global Instance cs_lb_persistent v l : Persistent (cs_lb v l).
-  Proof. rewrite /cs_lb. apply _. Qed.
+  Proof using . rewrite /cs_lb. apply _. Qed.
   Global Instance cs_lb_timeless v l : Timeless (cs_lb v l).
-  Proof. rewrite /cs_lb. apply _. Qed.
+  Proof using . rewrite /cs_lb. apply _. Qed.
   Global Instance cs_auth_timeless v l : Timeless (cs_auth v l).
-  Proof. rewrite /cs_auth. apply _. Qed.
+  Proof using . rewrite /cs_auth. apply _. Qed.
 
   Lemma cs_lb_get v l : cs_auth v l -∗ cs_auth v l ∗ cs_lb v l.
-  Proof.
+  Proof using .
     rewrite /cs_auth /cs_lb. iIntros "H".
     iDestruct (own_mono _ _ (◯ML (l : list (leibnizO nat))) with "H")
       as "#Hl"; [apply mono_list_included |].
@@ -1916,7 +1916,7 @@ Section echo_out.
 
   Lemma cs_auth_grow v l a :
     cs_auth v l ==∗ cs_auth v (l ++ [a]) ∗ cs_lb v (l ++ [a]).
-  Proof.
+  Proof using .
     rewrite /cs_auth /cs_lb. iIntros "H".
     iMod (own_update _ _ (●ML ((l ++ [a]) : list (leibnizO nat)))
             with "H") as "H".
@@ -1927,7 +1927,7 @@ Section echo_out.
   Qed.
 
   Lemma cs_lb_prefix v l l' : cs_auth v l -∗ cs_lb v l' -∗ ⌜l' `prefix_of` l⌝.
-  Proof.
+  Proof using .
     rewrite /cs_auth /cs_lb. iIntros "Ha Hl".
     iDestruct (own_valid_2 with "Ha Hl") as %Hv.
     iPureIntro. by apply mono_list_both_valid_L in Hv.
@@ -1945,14 +1945,14 @@ Section echo_out.
     own (ep_gps v) (◯ML (l : list (leibnizO nat))).
 
   Global Instance ps_lb_persistent v l : Persistent (ps_lb v l).
-  Proof. rewrite /ps_lb. apply _. Qed.
+  Proof using . rewrite /ps_lb. apply _. Qed.
   Global Instance ps_lb_timeless v l : Timeless (ps_lb v l).
-  Proof. rewrite /ps_lb. apply _. Qed.
+  Proof using . rewrite /ps_lb. apply _. Qed.
   Global Instance ps_auth_timeless v l : Timeless (ps_auth v l).
-  Proof. rewrite /ps_auth. apply _. Qed.
+  Proof using . rewrite /ps_auth. apply _. Qed.
 
   Lemma ps_lb_get v l : ps_auth v l -∗ ps_auth v l ∗ ps_lb v l.
-  Proof.
+  Proof using .
     rewrite /ps_auth /ps_lb. iIntros "H".
     iDestruct (own_mono _ _ (◯ML (l : list (leibnizO nat))) with "H")
       as "#Hl"; [apply mono_list_included |].
@@ -1961,7 +1961,7 @@ Section echo_out.
 
   Lemma ps_auth_grow v l a :
     ps_auth v l ==∗ ps_auth v (l ++ [a]) ∗ ps_lb v (l ++ [a]).
-  Proof.
+  Proof using .
     rewrite /ps_auth /ps_lb. iIntros "H".
     iMod (own_update _ _ (●ML ((l ++ [a]) : list (leibnizO nat)))
             with "H") as "H".
@@ -1972,7 +1972,7 @@ Section echo_out.
   Qed.
 
   Lemma ps_lb_prefix v l l' : ps_auth v l -∗ ps_lb v l' -∗ ⌜l' `prefix_of` l⌝.
-  Proof.
+  Proof using .
     rewrite /ps_auth /ps_lb. iIntros "Ha Hl".
     iDestruct (own_valid_2 with "Ha Hl") as %Hv.
     iPureIntro. by apply mono_list_both_valid_L in Hv.
@@ -1991,14 +1991,14 @@ Section echo_out.
     own (ep_gE v) (◯ML (E : list (leibnizO (list mobs * bv 8)))).
 
   Global Instance Elist_lb_persistent v E : Persistent (Elist_lb v E).
-  Proof. rewrite /Elist_lb. apply _. Qed.
+  Proof using . rewrite /Elist_lb. apply _. Qed.
   Global Instance Elist_lb_timeless v E : Timeless (Elist_lb v E).
-  Proof. rewrite /Elist_lb. apply _. Qed.
+  Proof using . rewrite /Elist_lb. apply _. Qed.
   Global Instance Elist_auth_timeless v E : Timeless (Elist_auth v E).
-  Proof. rewrite /Elist_auth. apply _. Qed.
+  Proof using . rewrite /Elist_auth. apply _. Qed.
 
   Lemma Elist_lb_get v E : Elist_auth v E -∗ Elist_auth v E ∗ Elist_lb v E.
-  Proof.
+  Proof using .
     rewrite /Elist_auth /Elist_lb. iIntros "H".
     iDestruct (own_mono _ _ (◯ML (E : list (leibnizO (list mobs * bv 8))))
                  with "H") as "#Hl"; [apply mono_list_included |].
@@ -2007,7 +2007,7 @@ Section echo_out.
 
   Lemma Elist_auth_grow v E x :
     Elist_auth v E ==∗ Elist_auth v (E ++ [x]) ∗ Elist_lb v (E ++ [x]).
-  Proof.
+  Proof using .
     rewrite /Elist_auth /Elist_lb. iIntros "H".
     iMod (own_update _ _
             (●ML ((E ++ [x]) : list (leibnizO (list mobs * bv 8))))
@@ -2022,7 +2022,7 @@ Section echo_out.
 
   Lemma Elist_prefix v E E' :
     Elist_auth v E -∗ Elist_lb v E' -∗ ⌜E' `prefix_of` E⌝.
-  Proof.
+  Proof using .
     rewrite /Elist_auth /Elist_lb. iIntros "Ha Hl".
     iDestruct (own_valid_2 with "Ha Hl") as %Hv.
     iPureIntro. by apply mono_list_both_valid_L in Hv.
@@ -2034,7 +2034,7 @@ Section echo_out.
   Lemma Elist_lb_cmp v E1 E2 :
     Elist_lb v E1 -∗ Elist_lb v E2 -∗
       ⌜E1 `prefix_of` E2 \/ E2 `prefix_of` E1⌝.
-  Proof.
+  Proof using .
     rewrite /Elist_lb. iIntros "H1 H2".
     iDestruct (own_valid_2 with "H1 H2") as %Hv.
     iPureIntro. by apply mono_list_lb_op_valid_L in Hv.
@@ -2044,7 +2044,7 @@ Section echo_out.
      writer's bounds line them up with the bounds a read hands out *)
   Lemma cs_lb_cmp v l1 l2 :
     cs_lb v l1 -∗ cs_lb v l2 -∗ ⌜l1 `prefix_of` l2 \/ l2 `prefix_of` l1⌝.
-  Proof.
+  Proof using .
     rewrite /cs_lb. iIntros "H1 H2".
     iDestruct (own_valid_2 with "H1 H2") as %Hv.
     iPureIntro. by apply mono_list_lb_op_valid_L in Hv.
@@ -2052,7 +2052,7 @@ Section echo_out.
 
   Lemma ps_lb_cmp v l1 l2 :
     ps_lb v l1 -∗ ps_lb v l2 -∗ ⌜l1 `prefix_of` l2 \/ l2 `prefix_of` l1⌝.
-  Proof.
+  Proof using .
     rewrite /ps_lb. iIntros "H1 H2".
     iDestruct (own_valid_2 with "H1 H2") as %Hv.
     iPureIntro. by apply mono_list_lb_op_valid_L in Hv.
@@ -2060,7 +2060,7 @@ Section echo_out.
 
   Lemma Elist_lb_weaken v E E' :
     E' `prefix_of` E -> Elist_lb v E -∗ Elist_lb v E'.
-  Proof.
+  Proof using .
     intros Hp. rewrite /Elist_lb. iApply own_mono.
     apply mono_list_lb_mono. exact Hp.
   Qed.
@@ -2077,13 +2077,13 @@ Section echo_out.
     (∃ E : list (list mobs * bv 8), Elist_lb v E ∗ ⌜(snd <$> E) = I⌝)%I.
 
   Global Instance inp_lb_persistent v I : Persistent (inp_lb v I).
-  Proof. rewrite /inp_lb. apply _. Qed.
+  Proof using . rewrite /inp_lb. apply _. Qed.
   Global Instance inp_lb_timeless v I : Timeless (inp_lb v I).
-  Proof. rewrite /inp_lb. apply _. Qed.
+  Proof using . rewrite /inp_lb. apply _. Qed.
 
   Lemma inp_lb_of_lb v E I :
     I `prefix_of` (snd <$> E) -> Elist_lb v E -∗ inp_lb v I.
-  Proof.
+  Proof using .
     intros HI. iIntros "H".
     iDestruct (Elist_lb_weaken v E (take (length I) E) (prefix_take E _)
                  with "H") as "H'".
@@ -2096,7 +2096,7 @@ Section echo_out.
      own input. *)
   Lemma inp_lb_le v E I :
     Elist_auth v E -∗ inp_lb v I -∗ ⌜I `prefix_of` (snd <$> E)⌝.
-  Proof.
+  Proof using .
     iIntros "Ha Hl". iDestruct "Hl" as (E') "[Hl %Heq]".
     iDestruct (Elist_prefix with "Ha Hl") as %Hp.
     iPureIntro. rewrite -Heq. by apply epu_fmap_prefix.
@@ -2104,7 +2104,7 @@ Section echo_out.
 
   Lemma inp_lb_prefix v I I' :
     I' `prefix_of` I -> inp_lb v I -∗ inp_lb v I'.
-  Proof.
+  Proof using .
     intros HI. iIntros "Hl". iDestruct "Hl" as (E) "[Hl %Heq]".
     iApply (inp_lb_of_lb v E I' with "Hl"). by rewrite Heq.
   Qed.
@@ -2112,7 +2112,7 @@ Section echo_out.
   Lemma inp_lb_cmp v I1 I2 :
     inp_lb v I1 -∗ inp_lb v I2 -∗
       ⌜I1 `prefix_of` I2 \/ I2 `prefix_of` I1⌝.
-  Proof.
+  Proof using .
     iIntros "H1 H2".
     iDestruct "H1" as (E1) "[H1 %Heq1]". iDestruct "H2" as (E2) "[H2 %Heq2]".
     iDestruct (Elist_lb_cmp with "H1 H2") as %[Hp | Hp]; iPureIntro.
@@ -2122,7 +2122,7 @@ Section echo_out.
 
   Lemma inp_lb_agree v I1 I2 :
     length I1 = length I2 -> inp_lb v I1 -∗ inp_lb v I2 -∗ ⌜I1 = I2⌝.
-  Proof.
+  Proof using .
     intros Hlen. iIntros "H1 H2".
     iDestruct (inp_lb_cmp with "H1 H2") as %[Hp | Hp]; iPureIntro.
     - by apply prefix_length_eq; [| lia].
@@ -2135,11 +2135,11 @@ Section echo_out.
     ghost_var (ep_gdl v) q n.
 
   Global Instance dl_cnt_timeless v q n : Timeless (dl_cnt v q n).
-  Proof. rewrite /dl_cnt. apply _. Qed.
+  Proof using . rewrite /dl_cnt. apply _. Qed.
 
   Lemma dl_cnt_agree v q1 q2 n1 n2 :
     dl_cnt v q1 n1 -∗ dl_cnt v q2 n2 -∗ ⌜n1 = n2⌝.
-  Proof.
+  Proof using .
     rewrite /dl_cnt. iIntros "H1 H2".
     iDestruct (ghost_var_agree with "H1 H2") as %Heq. iPureIntro. exact Heq.
   Qed.
@@ -2147,7 +2147,7 @@ Section echo_out.
   Lemma dl_cnt_update v n1 n2 m :
     dl_cnt v (1/2) n1 -∗ dl_cnt v (1/2) n2 ==∗
       dl_cnt v (1/2) m ∗ dl_cnt v (1/2) m.
-  Proof.
+  Proof using .
     rewrite /dl_cnt. iIntros "H1 H2".
     by iMod (ghost_var_update_halves m with "H1 H2") as "[$ $]".
   Qed.
@@ -2185,7 +2185,7 @@ Section echo_out.
         ∗ ⌜ecl_pure k ho so H⌝)%I.
 
   Global Instance ecl_timeless k ho H : Timeless (ecl k ho H).
-  Proof. rewrite /ecl. apply _. Qed.
+  Proof using Timeless0. rewrite /ecl. apply _. Qed.
 
   (* ---- FILING THE LOG ENTRY NEEDS NO GHOST UPDATE AT ALL.
 
@@ -2199,7 +2199,7 @@ Section echo_out.
     ConsLog.cons_hist_ok H ->
     ConsLog.cons_ev_ok H ConsLog.EvClose ->
     ecl k ho H -∗ ecl k ho (ConsLog.cons_step H ConsLog.EvClose).
-  Proof.
+  Proof using .
     intros Hok Hev. rewrite /ecl.
     iIntros "[HT | Hc]"; [by iLeft |]. iRight.
     iDestruct "Hc" as (v so) "(Hpin & Htn & Hcs & Hps & HE & Hdl & %Hpure)".
@@ -2216,7 +2216,7 @@ Section echo_out.
     disc h -> trace_shape h true -> obs_ends_in Uart0 h c ->
     (forall e, e ∈ LogEntryDefs.ch_log H -> hist_ext (le_hist e) h) ->
     ecl k ho H -∗ ecl k h (ConsLog.cons_step H (ConsLog.EvOpen h c cs)).
-  Proof.
+  Proof using .
     intros Hn Hd Hb Hdh Hsh Hends Hord. rewrite /ecl.
     iIntros "[HT | Hc]"; [by iLeft |]. iRight.
     iDestruct "Hc" as (v so) "(Hpin & Htn & Hcs & Hps & HE & Hdl & %Hpure)".
@@ -2235,12 +2235,12 @@ Section echo_out.
     (⌜trace_shape h true⌝ ∗ (⌜disc h⌝ ∨ T))%I.
 
   Global Instance etag_persistent h : Persistent (etag h).
-  Proof. rewrite /etag. apply _. Qed.
+  Proof using Persistent0. rewrite /etag. apply _. Qed.
   Global Instance etag_timeless h : Timeless (etag h).
-  Proof. rewrite /etag. apply _. Qed.
+  Proof using Timeless0. rewrite /etag. apply _. Qed.
 
   Global Instance eturn_timeless k : Timeless (eturn k).
-  Proof. rewrite /eturn. apply _. Qed.
+  Proof using . rewrite /eturn. apply _. Qed.
 
   (* ---- THE LICENCES ([App.al_sup] / [al_sup]) ---- *)
 
@@ -2253,12 +2253,12 @@ Section echo_out.
        ghost_map_auth (eg_pin γ) 1 Mp ∗ ⌜pin_dom Mp (obs_boots h)⌝)%I.
 
   Global Instance pin_map_timeless h : Timeless (pin_map h).
-  Proof. rewrite /pin_map. apply _. Qed.
+  Proof using . rewrite /pin_map. apply _. Qed.
 
   (* an event that starts no era leaves the map exactly where it was *)
   Lemma pin_map_step (h : list mobs) (e : mobs) :
     obs_boots [e] = 0%nat -> pin_map h -∗ pin_map (h ++ [e]).
-  Proof.
+  Proof using .
     intros He. rewrite /pin_map obs_boots_app He Nat.add_0_r. by iIntros "$".
   Qed.
 
@@ -2268,7 +2268,7 @@ Section echo_out.
   Lemma pin_map_on (h : list mobs) (v : era_pins) :
     pin_map h ==∗
       pin_map (h ++ [ObsPowerOn]) ∗ era_pin (S (obs_boots h)) v.
-  Proof.
+  Proof using .
     rewrite /pin_map /era_pin obs_boots_app. cbn [obs_boots].
     rewrite Nat.add_1_r.
     iIntros "H". iDestruct "H" as (Mp) "[Hm %Hd]".
@@ -2285,10 +2285,10 @@ Section echo_out.
      ∗ Elist_auth v [] ∗ ghost_var (ep_gdl v) 1 0%nat)%I.
 
   Global Instance era_full_timeless v : Timeless (era_full v).
-  Proof. rewrite /era_full. apply _. Qed.
+  Proof using . rewrite /era_full. apply _. Qed.
 
   Lemma era_full_alloc : ⊢ |==> ∃ v : era_pins, era_full v.
-  Proof.
+  Proof using .
     iMod (mono_nat_own_alloc 0%nat) as (go) "[Ht _]".
     iMod (own_alloc (●ML ([] : list (leibnizO nat)))) as (gcs) "Hcs";
       [apply mono_list_auth_valid |].
@@ -2303,17 +2303,17 @@ Section echo_out.
   Qed.
 
   Lemma pcount_nil (ps cs : list nat) : pcount ps cs [] [] = 0%nat.
-  Proof. reflexivity. Qed.
+  Proof using . reflexivity. Qed.
 
   Lemma seg_of_echoed_nil : seg_of (echoed []) = [].
-  Proof. by rewrite echoed_nil /seg_of fmap_nil. Qed.
+  Proof using . by rewrite echoed_nil /seg_of fmap_nil. Qed.
 
   (* THE FOUNDING, as a resource split: the era's ghosts become the port's
      claim at the start of their era and init's console credential. *)
   Lemma era_full_split_cl (k : nat) (v : era_pins) :
     era_pin k v -∗ era_full v -∗
       ecl k [] (LogEntryDefs.MkCH [] [] [] None) ∗ eturn k.
-  Proof.
+  Proof using .
     iIntros "#Hpin (Ht & Hcs & Hps & HE & Hdl)".
     iAssert (turn_lb v 0%nat) as "#Htlb0".
     { rewrite /turn_lb. iApply (mono_nat_lb_own_get with "Ht"). }
@@ -2359,7 +2359,7 @@ Section echo_out.
     mono_nat_auth_own (eg_taint γ) 1 0%nat -∗
     ghost_map_auth (eg_pin γ) 1 (∅ : gmap nat era_pins) -∗
     echo_led [].
-  Proof.
+  Proof using .
     iIntros "Ht Hm". rewrite /echo_led /pin_map.
     rewrite decide_True; [| exact disc_nil].
     iFrame "Ht".
@@ -2376,28 +2376,28 @@ Section echo_out.
      input. *)
   Lemma good_out_step (seg : list mobs) (e : mobs) :
     obs_wire Uart0 [e] = [] -> good_out seg -> good_out (seg ++ [e]).
-  Proof.
+  Proof using .
     intros He Hg. rewrite /good_out obs_wire_app He app_nil_r.
     apply (expected_rel_ins_prefix (ins seg)); [| exact Hg].
     rewrite ins_app. by apply prefix_app_r.
   Qed.
 
   Lemma obs_wire_in (i : uart_id) (b : bv 8) : obs_wire Uart0 [ObsUartIn i b] = [].
-  Proof. by destruct i. Qed.
+  Proof using . by destruct i. Qed.
 
   Lemma obs_wire_out_other (i : uart_id) (b : bv 8) :
     i <> Uart0 -> obs_wire Uart0 [ObsUartOut i b] = [].
-  Proof. intros Hi. destruct i; [by destruct Hi | done]. Qed.
+  Proof using . intros Hi. destruct i; [by destruct Hi | done]. Qed.
 
   Lemma io_singleton (e : mobs) :
     is_io e = true -> Forall (fun x => is_io x = true) [e].
-  Proof. intros He. constructor; [exact He | constructor]. Qed.
+  Proof using . intros He. constructor; [exact He | constructor]. Qed.
 
   (* THE MACHINE IS OFF AFTER A PowerOff, which is what makes [era_live]'s
      guarded conjunct vacuous there. *)
   Lemma trace_shape_off (h : list mobs) :
     trace_shape (h ++ [ObsPowerOff]) true -> False.
-  Proof.
+  Proof using .
     rewrite /trace_shape foldl_app.
     destruct (foldl obs_step (Some false) h) as [[|] |]; by cbn.
   Qed.
@@ -2405,7 +2405,7 @@ Section echo_out.
   Lemma phi_step_io (h : list mobs) (e : mobs) :
     trace_shape h true -> is_io e = true -> obs_wire Uart0 [e] = [] ->
     Forall good_out (cycles_of h) -> Forall good_out (cycles_of (h ++ [e])).
-  Proof.
+  Proof using .
     intros Hsh Hio Hw HF.
     destruct (cycles_of_io h [e] Hsh (io_singleton e Hio)) as (cs & H1 & H2).
     rewrite H2. rewrite H1 in HF. apply Forall_app in HF as [Hcs Hlast].
@@ -2418,7 +2418,7 @@ Section echo_out.
     trace_shape h true -> is_io e = true ->
     good_out (open_seg h ++ [e]) ->
     Forall good_out (cycles_of h) -> Forall good_out (cycles_of (h ++ [e])).
-  Proof.
+  Proof using .
     intros Hsh Hio Hgo HF.
     destruct (cycles_of_io h [e] Hsh (io_singleton e Hio)) as (cs & H1 & H2).
     rewrite H2. rewrite H1 in HF. apply Forall_app in HF as [Hcs _].
@@ -2443,7 +2443,7 @@ Section echo_out.
       ∗ (if on then emp
          else ecl (S (obs_boots h)) [] (LogEntryDefs.MkCH [] [] [] None)
               ∗ eturn (S (obs_boots h))).
-  Proof.
+  Proof using .
     iIntros "(Ht & Hpm & Hphi)". rewrite /echo_led.
     rewrite (decide_ext _ (disc h) 0%nat 1%nat (disc_power h on)).
     destruct on.
@@ -2468,7 +2468,7 @@ Section echo_out.
   Lemma ecl_sup (k : nat) (ho : list mobs) (H : LogEntryDefs.cons_hist)
       (ev : ConsLog.cons_ev) :
     T -∗ ecl k ho H ==∗ ecl k ho (ConsLog.cons_step H ev).
-  Proof. iIntros "#HT _". iModIntro. rewrite /ecl. by iLeft. Qed.
+  Proof using Persistent0. iIntros "#HT _". iModIntro. rewrite /ecl. by iLeft. Qed.
 
   (* THE OUTPUT STEP.  The obligation is UNGUARDED: the drain hands over
      [good_out] of the extended segment or the taint, and a byte reaching
@@ -2478,7 +2478,7 @@ Section echo_out.
     trace_shape h true ->
     (T ∨ ⌜i = Uart0 -> good_out (open_seg h ++ [ObsUartOut i b])⌝) -∗
     echo_led h ==∗ echo_led (h ++ [ObsUartOut i b]).
-  Proof.
+  Proof using .
     intros Hsh. iIntros "Hgo (Hcnt & Hpm & Hphi)".
     iDestruct (pin_map_step h (ObsUartOut i b) eq_refl with "Hpm") as "Hpm".
     rewrite /echo_led.
@@ -2498,7 +2498,7 @@ Section echo_out.
     echo_led h ==∗
       echo_led (h ++ [ObsUartIn i b])
       ∗ (⌜disc (h ++ [ObsUartIn i b])⌝ ∨ mono_nat_lb_own (eg_taint γ) 1).
-  Proof.
+  Proof using .
     intros Hsh. iIntros "(Hcnt & Hpm & Hphi)".
     iDestruct (pin_map_step h (ObsUartIn i b) eq_refl with "Hpm") as "Hpm".
     iAssert (⌜Forall good_out (cycles_of (h ++ [ObsUartIn i b]))⌝ ∨ T)%I
@@ -2525,7 +2525,7 @@ Section echo_out.
   Lemma echo_led_phi (h : list mobs) :
     (T -∗ mono_nat_lb_own (eg_taint γ) 1) -∗
     echo_led h -∗ ⌜disc h -> Forall good_out (cycles_of h)⌝.
-  Proof.
+  Proof using .
     iIntros "HTT (Hcnt & _ & [%Hg | HT'])".
     { iPureIntro. by intros _. }
     iDestruct ("HTT" with "HT'") as "Hlb".
@@ -2569,7 +2569,7 @@ Section echo_out.
     LogEntryDefs.ch_arm CH = Some (h, c, [echo_of c], 0%nat) ->
     ecl k ho CH ==∗
       ecl k h (ConsLog.cons_step CH (ConsLog.EvByte (echo_of c))).
-  Proof.
+  Proof using Persistent0.
     intros Hdisc Hsh Hk Hends Hwire Hord Hlt Harm. subst k.
     iIntros "Hcl".
     iDestruct "Hcl" as "[#HT | Hp]".
@@ -2732,7 +2732,7 @@ Section echo_out.
     ecl k ho H ==∗
       ecl k ho (ConsLog.cons_step H (ConsLog.EvOut b))
       ∗ ((turn v (S P) ∗ ps_lb v ps0 ∗ cs_lb v cs0 ∗ inp_lb v I0) ∨ T).
-  Proof.
+  Proof using Persistent0.
     intros Hn Hpin0 Hb.
     iIntros "#Hpin Ht #Hpslb #Hcslb #Hilb Hcl".
     iDestruct "Hcl" as "[#HT | Hp]".
@@ -3199,7 +3199,7 @@ Section echo_out.
     (dl ++ ws) `prefix_of` echoed pops
     /\ ein_pure k pops (dl ++ ws) cs0
     /\ (nlines (snd <$> (dl ++ ws)) <= S (length cs0))%nat.
-  Proof.
+  Proof using .
     intros Hread (Hlog & Hdisc & Hstamp & Hdlp & Hidx & Hbyte & Hbnd).
     assert (Hnoer : forall e, e ∈ pops -> cons_erase (le_byte e) = false).
     { intros e He. eapply disc_seg_no_erase; [by apply Hdisc |].
@@ -3252,7 +3252,7 @@ Section echo_out.
                                  (snd <$> (LogEntryDefs.ch_dl CH ++ ws))))
                   ∗ ⌜rd_stage ps0 cs0
                        (snd <$> (LogEntryDefs.ch_dl CH ++ ws))⌝)).
-  Proof.
+  Proof using Persistent0.
     intros Hread. iIntros "#Hpinr Hdlr Hcl".
     iDestruct "Hcl" as "[#HT | Hp]".
     { iModIntro. iSplitR; [rewrite /ecl; by iLeft |]. iLeft. by iFrame "Hdlr". }
@@ -3314,7 +3314,7 @@ Section echo_out.
     length dl = n ->
     ws !! 0%nat = Some x ->
     x.2 = (snd <$> (dl ++ ws)) !!! n.
-  Proof.
+  Proof using .
     intros Hp Hdl Hx.
     assert (Hlk : (dl ++ ws) !! n = Some x).
     { rewrite lookup_app_r; [| lia]. rewrite Hdl Nat.sub_diag. exact Hx. }
@@ -3338,7 +3338,7 @@ Section echo_out.
   Lemma ecl_arm (k : nat) (ho : list mobs) (CH : LogEntryDefs.cons_hist) :
     ecl k ho CH -∗
       ecl k ho CH ∗ (T ∨ ⌜ch_arm_era k ho (LogEntryDefs.ch_arm CH)⌝).
-  Proof.
+  Proof using Persistent0.
     rewrite /ecl. iIntros "[#HT | Hp]".
     { iSplitR; [by iLeft | by iLeft]. }
     iDestruct "Hp" as (v so) "(#Hpin & Hta & Hcs & Hps & HE & Hdl & %Hall)".
@@ -3358,7 +3358,7 @@ Section echo_out.
       ecl k ho CH
       ∗ (T ∨ ⌜(length (echoed (LogEntryDefs.ch_log CH))
                < length (ins (open_seg h)))%nat⌝).
-  Proof.
+  Proof using Persistent0.
     intros Hsh Hk Hends Hord. rewrite /ecl. iIntros "[#HT | Hp]".
     { iSplitR; [by iLeft | by iLeft]. }
     iDestruct "Hp" as (v so) "(#Hpin & Hta & Hcs & Hps & HE & Hdl & %Hall)".
@@ -3384,7 +3384,7 @@ Section echo_out.
     ConsLog.cons_hist_ok CH ->
     ConsLog.cons_ev_ok CH (ConsLog.EvByte b) ->
     ecl k ho CH ==∗ ecl k ho (ConsLog.cons_step CH (ConsLog.EvByte b)).
-  Proof.
+  Proof using Persistent0.
     intros Hok Hev. iIntros "Hcl".
     iDestruct (ecl_arm with "Hcl") as "[Hcl [#HT | %Hera]]".
     { iModIntro. rewrite /ecl. by iLeft. }
@@ -3428,7 +3428,7 @@ Section echo_out.
     ins seg = ins (open_seg h) ->
     obs_wire Uart0 seg `prefix_of` LogEntryDefs.ch_acc CH ->
     ecl k ho CH -∗ ecl k ho CH ∗ (T ∨ ⌜good_out seg⌝).
-  Proof.
+  Proof using Persistent0.
     intros Hsh Hk Hpre Hins Hwire. subst k. rewrite /ecl.
     iIntros "Hcl".
     iDestruct "Hcl" as "[#HT | Hp]".
@@ -3482,13 +3482,13 @@ Section echo_out.
 
     Lemma chist_at0 (kk : nat) (hh : list mobs) (HH : LogEntryDefs.cons_hist) :
       chist_at Uart0 kk hh HH = ecl kk hh HH.
-    Proof. rewrite /chist_at. by rewrite Hcons. Qed.
+    Proof using Hcons. rewrite /chist_at. by rewrite Hcons. Qed.
 
     (* ---- the taint route: once the era is off the discipline every link
             of every run is free ---- *)
     Lemma cons_link_of_taint (k : nat) (ev : ConsLog.cons_ev) (Φ : iProp Σ) :
       T -∗ Φ -∗ cons_link Uart0 k ev Φ.
-    Proof.
+    Proof using Hcons Persistent0.
       iIntros "#HT HΦ" (o H) "#Hlb Hres _ _".
       iModIntro. iExists o.
       iSplitR; [iExact "Hlb" |].
@@ -3518,7 +3518,7 @@ Section echo_out.
       era_pin k v -∗ turn v P -∗ ps_lb v ps0 -∗ cs_lb v cs0 -∗ inp_lb v I0 -∗
       (((turn v (S P) ∗ ps_lb v ps0 ∗ cs_lb v cs0 ∗ inp_lb v I0) ∨ T) -∗ Φ) -∗
       out_link Uart0 k b Φ.
-    Proof.
+    Proof using Hcons Persistent0.
       intros Hn Hpin0 Hb.
       iIntros "#Hpin Ht #Hpslb #Hcslb #Hilb HΦ" (o H) "#Hlb Hres".
       rewrite !chist_at0.
@@ -3535,7 +3535,7 @@ Section echo_out.
        instead of the cursor. *)
     Lemma echo_write_link_taint (k : nat) (b : bv 8) (Φ : iProp Σ) :
       T -∗ (T -∗ Φ) -∗ out_link Uart0 k b Φ.
-    Proof.
+    Proof using Hcons Persistent0.
       iIntros "#HT HΦ" (o H) "#Hlb Hres".
       iModIntro. iExists o.
       iSplitR; [iExact "Hlb" |].
@@ -3561,7 +3561,7 @@ Section echo_out.
       (((turn v (S P) ∗ ps_lb v ps0 ∗ cs_lb v (cs0 ++ [a]) ∗ inp_lb v I0)
         ∨ T) -∗ Φ) -∗
       out_link Uart0 k b Φ.
-    Proof.
+    Proof using Hcons Persistent0.
       intros Hne0 Hr0 Hdiv Hpin0 HPeq Halt Hhead.
       iIntros "#Hpin Ht #Hpslb #Hcslb #Hilb HΦ" (o H) "#Hlb Hres".
       rewrite !chist_at0.
@@ -3592,7 +3592,7 @@ Section echo_out.
       (((turn v (S P) ∗ ps_lb v (ps0 ++ [a]) ∗ cs_lb v cs0 ∗ inp_lb v I0)
         ∨ T) -∗ Φ) -∗
       out_link Uart0 k b Φ.
-    Proof.
+    Proof using Hcons Persistent0.
       intros Hr0 Hopen Hdiv Hpin0 Hnd HPeq Halt Hhead.
       iIntros "#Hpin Ht #Hpslb #Hcslb #Hilb HΦ" (o H) "#Hlb Hres".
       rewrite !chist_at0.
@@ -3634,7 +3634,7 @@ Section echo_out.
         (ws : list (list mobs * bv 8)) (Φ : iProp Σ) :
       era_pin k v -∗ dl_cnt v (1/2) n -∗ (read_ret k v n ws -∗ Φ) -∗
       cons_link Uart0 k (ConsLog.EvRead ws) Φ.
-    Proof.
+    Proof using Hcons Persistent0.
       iIntros "#Hpin Hdlr HΦ" (o H) "#Hlb Hres _ %Hread".
       rewrite !chist_at0.
       iMod (ecl_step_read k v n (default [] o) H ws Hread
@@ -3668,7 +3668,7 @@ Section echo_out.
        is an ENTAILMENT -- no ghost of the era's moves ([ecl_close]). *)
     Lemma echo_close_link (k : nat) (Φ : iProp Σ) :
       Φ -∗ cons_link Uart0 k ConsLog.EvClose Φ.
-    Proof.
+    Proof using Hcons.
       iIntros "HΦ" (o H) "#Hlb Hres %Hok %Hev".
       rewrite chist_at0.
       iDestruct (ecl_close k (default [] o) H Hok Hev with "Hres") as "Hres".
@@ -3680,7 +3680,7 @@ Section echo_out.
        event's premises ([ecl_step_byte]). *)
     Lemma echo_byte_link (k : nat) (b : bv 8) (Φ : iProp Σ) :
       Φ -∗ cons_link Uart0 k (ConsLog.EvByte b) Φ.
-    Proof.
+    Proof using Hcons Persistent0.
       iIntros "HΦ" (o H) "#Hlb Hres %Hok %Hev".
       rewrite chist_at0.
       iMod (ecl_step_byte k (default [] o) H b Hok Hev with "Hres") as "Hres".
@@ -3692,7 +3692,7 @@ Section echo_out.
        and echo link together. *)
     Lemma echo_cons_run (k : nat) (cs : list (bv 8)) (Φ : iProp Σ) :
       Φ -∗ cons_run k cs Φ.
-    Proof.
+    Proof using Hcons Persistent0.
       iIntros "HΦ". iInduction cs as [| b cs] "IH" forall (Φ);
         cbn [cons_run].
       - by iApply echo_close_link.
@@ -3705,7 +3705,7 @@ Section echo_out.
     Lemma echo_happ_echo :
       ⊢ ∀ (GEN : GenId) (XI : CurCtx),
           @SpecConsoleintr.cons_echo_shift Σ HRg GEN XI.
-    Proof.
+    Proof using Hcons Htag Persistent0.
       iIntros (GEN XI).
       rewrite /SpecConsoleintr.cons_echo_shift Htag.
       iIntros "!>" (h c cs Φ) "%Hends %Hk %Hcs #Htg #Hlbh HΦ".

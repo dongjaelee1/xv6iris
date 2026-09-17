@@ -125,7 +125,7 @@ Section PanicData.
   Lemma pn_hdr_bytes :
     forall j b, cstring_bytes pn_hdr !! j = Some b ->
       KernelData.kernel_data !! (pn_hdr_a + Z.of_nat j)%Z = Some b.
-  Proof.
+  Proof using .
     intros j b Hj.
     do 8 (destruct j as [|j]; [ vm_compute in Hj |- *; congruence | ]).
     vm_compute in Hj; discriminate.
@@ -134,7 +134,7 @@ Section PanicData.
   Lemma pn_fmt_bytes :
     forall j b, cstring_bytes pn_fmt !! j = Some b ->
       KernelData.kernel_data !! (pn_fmt_a + Z.of_nat j)%Z = Some b.
-  Proof.
+  Proof using .
     intros j b Hj.
     do 4 (destruct j as [|j]; [ vm_compute in Hj |- *; congruence | ]).
     vm_compute in Hj; discriminate.
@@ -142,7 +142,7 @@ Section PanicData.
 
   Lemma pn_hdr_str :
     (kernel_data : iProp Σ) -∗ (mword_of_int pn_hdr_a : mword 64) ↦ₛ□ pn_hdr.
-  Proof.
+  Proof using .
     iIntros "#Hd".
     iApply (kernel_data_string pn_hdr_a pn_hdr _ eq_refl
               ltac:(unfold text_end, pn_hdr_a; lia)
@@ -151,7 +151,7 @@ Section PanicData.
 
   Lemma pn_fmt_str :
     (kernel_data : iProp Σ) -∗ (mword_of_int pn_fmt_a : mword 64) ↦ₛ□ pn_fmt.
-  Proof.
+  Proof using .
     iIntros "#Hd".
     iApply (kernel_data_string pn_fmt_a pn_fmt _ eq_refl
               ltac:(unfold text_end, pn_fmt_a; lia)
@@ -182,7 +182,7 @@ Section PanicSpin.
       sie_cap_gpr kt m K b p -∗
       pc_is (mword_of_int (PA + 0x26)) -∗
       WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     assert (Htgt : add_vec (mword_of_int (PA + 0x26) : mword 64)
                      (sign_extend' 64 (sign_extend' 21
                         (concat_vec (mword_of_int 0 : mword 11) ('b"0"))))
@@ -231,7 +231,7 @@ Section ProofPanic.
       (n : nat) (eb : bool) (b : bool) (p : mword 64)
       (dm : pk_arg_desc) (lks : gset string)
     : wp_panic_sconf_body kt m K n eb b p dm lks.
-  Proof.
+  Proof using .
     cbv beta zeta delta [wp_panic_sconf_body].
     intros HK Hdm Hn31 Hbelow.
     iIntros "Hcg Hown #Htext #Hkdata Hpc #Henv0 Hmsg".

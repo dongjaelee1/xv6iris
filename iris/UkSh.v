@@ -639,7 +639,7 @@ Section UkSh.
   Definition sh_deps : iProp Σ := udepw_law 16.
 
   Global Instance sh_deps_persistent : Persistent sh_deps.
-  Proof. rewrite /sh_deps. apply _. Qed.
+  Proof using . rewrite /sh_deps. apply _. Qed.
 
   Local Notation ra_idx := (mword_of_int 1 : mword 5).
   Local Notation s0_idx := (mword_of_int 8 : mword 5).
@@ -666,25 +666,25 @@ Section UkSh.
   (* breaks whenever the catalog does.  Destructed ONCE, here.              *)
   (* ===================================================================== *)
   Local Lemma shp_start  : ShSyms.start  = 0x9d0.
-  Proof. destruct shk_syms_pins as (H&_&_&_&_&_&_&_&_&_). exact H. Qed.
+  Proof using . destruct shk_syms_pins as (H&_&_&_&_&_&_&_&_&_). exact H. Qed.
   Local Lemma shp_main   : ShSyms.main   = 0x8e2.
-  Proof. destruct shk_syms_pins as (_&H&_&_&_&_&_&_&_&_). exact H. Qed.
+  Proof using . destruct shk_syms_pins as (_&H&_&_&_&_&_&_&_&_). exact H. Qed.
   Local Lemma shp_getcmd : ShSyms.getcmd = 0x0.
-  Proof. destruct shk_syms_pins as (_&_&H&_&_&_&_&_&_&_). exact H. Qed.
+  Proof using . destruct shk_syms_pins as (_&_&H&_&_&_&_&_&_&_). exact H. Qed.
   Local Lemma shp_memset : ShSyms.memset = 0xa5c.
-  Proof. destruct shk_syms_pins as (_&_&_&H&_&_&_&_&_&_). exact H. Qed.
+  Proof using . destruct shk_syms_pins as (_&_&_&H&_&_&_&_&_&_). exact H. Qed.
   Local Lemma shp_gets   : ShSyms.gets   = 0xaaa.
-  Proof. destruct shk_syms_pins as (_&_&_&_&H&_&_&_&_&_). exact H. Qed.
+  Proof using . destruct shk_syms_pins as (_&_&_&_&H&_&_&_&_&_). exact H. Qed.
   Local Lemma shp_open   : ShSyms.open   = 0xcc6.
-  Proof. destruct shk_syms_pins as (_&_&_&_&_&H&_&_&_&_). exact H. Qed.
+  Proof using . destruct shk_syms_pins as (_&_&_&_&_&H&_&_&_&_). exact H. Qed.
   Local Lemma shp_close  : ShSyms.close  = 0xcae.
-  Proof. destruct shk_syms_pins as (_&_&_&_&_&_&H&_&_&_). exact H. Qed.
+  Proof using . destruct shk_syms_pins as (_&_&_&_&_&_&H&_&_&_). exact H. Qed.
   Local Lemma shp_exit   : ShSyms.exit   = 0xc86.
-  Proof. destruct shk_syms_pins as (_&_&_&_&_&_&_&H&_&_). exact H. Qed.
+  Proof using . destruct shk_syms_pins as (_&_&_&_&_&_&_&H&_&_). exact H. Qed.
   Local Lemma shp_write  : ShSyms.write  = 0xca6.
-  Proof. destruct shk_syms_pins as (_&_&_&_&_&_&_&_&H&_). exact H. Qed.
+  Proof using . destruct shk_syms_pins as (_&_&_&_&_&_&_&_&H&_). exact H. Qed.
   Local Lemma shp_read   : ShSyms.read   = 0xc9e.
-  Proof. destruct shk_syms_pins as (_&_&_&_&_&_&_&_&_&H&_). exact H. Qed.
+  Proof using . destruct shk_syms_pins as (_&_&_&_&_&_&_&_&_&H&_). exact H. Qed.
 
 
   (* ===================================================================== *)
@@ -706,7 +706,7 @@ Section UkSh.
     ubytesq γd dq a k f -∗
       ubyteq γd dq (a + Z.of_nat j) (f j) ∗
       (ubyteq γd dq (a + Z.of_nat j) (f j) -∗ ubytesq γd dq a k f).
-  Proof.
+  Proof using .
     intros Hj. rewrite /ubytesq. iIntros "H".
     iDestruct (big_sepL_lookup_acc _ _ j j with "H") as "[Hb Hcl]";
       [ apply lookup_seq; split; [ lia | exact Hj ] | ].
@@ -717,7 +717,7 @@ Section UkSh.
   Local Lemma ush_bytes_ext (dq : dfrac) (a : Z) (k : nat) (f g : nat -> bv 8) :
     (forall i : nat, (i < k)%nat -> f i = g i) ->
     ubytesq γd dq a k f -∗ ubytesq γd dq a k g.
-  Proof.
+  Proof using .
     intros Hfg. rewrite /ubytesq. iIntros "H".
     iApply (big_sepL_mono with "H").
     intros i y Hy.
@@ -728,7 +728,7 @@ Section UkSh.
   (* a ONE-byte run is a byte *)
   Local Lemma ush_bytes_one (b : Z) (g : nat -> bv 8) (v : bv 8) :
     g 0%nat = v -> ubytes γd b 1 g ⊣⊢ ubyte γd b v.
-  Proof.
+  Proof using .
     intro Hv. rewrite /ubytes /ubytesq /ubyte /= Z.add_0_r right_id Hv.
     reflexivity.
   Qed.
@@ -739,7 +739,7 @@ Section UkSh.
     ubytes γd a k f -∗
       ubyte γd (a + Z.of_nat j) (f j) ∗
       (∀ b : bv 8, ubyte γd (a + Z.of_nat j) b -∗ ubytes γd a k (ush_set f j b)).
-  Proof.
+  Proof using .
     intros Hj.
     remember (k - j - 1)%nat as q eqn:Hq.
     assert (Hk : k = (j + (1 + q))%nat) by lia.
@@ -781,7 +781,7 @@ Section UkSh.
   Local Lemma urun_ubyte_bnd (h : CpuId) (m : regfile) (pc : mword 64)
       (avail : nat) (dq : dfrac) (a : Z) (b : bv 8) :
     urun N h m pc avail -∗ ubyteq γd dq a b -∗ ⌜ 0 <= a < 2 ^ 38 ⌝.
-  Proof.
+  Proof using .
     iIntros "Hrun Hb".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(_ & _ & _ & _ & Hh & _ & _ & _ & _)".
     iDestruct (uheap_ubyte with "Hh Hb") as %(_ & _ & Hbnd).
@@ -793,7 +793,7 @@ Section UkSh.
     (0 < k)%nat ->
     urun N h m pc avail -∗ ubytesq γd dq a k f -∗
     ⌜ 0 <= a /\ a + Z.of_nat k <= 2 ^ 38 ⌝.
-  Proof.
+  Proof using .
     intros Hk. iIntros "Hrun Hbs".
     iDestruct (ush_bytes_at dq a k 0%nat f ltac:(lia) with "Hbs") as "[Hb0 Hcl]".
     iDestruct (urun_ubyte_bnd with "Hrun Hb0") as %Hlo.
@@ -812,7 +812,7 @@ Section UkSh.
   Local Lemma urun_x0 (h : CpuId) (m : regfile) (pc : mword 64) (avail : nat) :
     urun N h m pc avail -∗
     ⌜ m !!! Regidx x0_idx = zero_reg ⌝ ∗ urun N h m pc avail.
-  Proof.
+  Proof using .
     iIntros "Hrun".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iDestruct (uvb_x0 with "Hb") as "[%Hx0 Hb]".
@@ -823,13 +823,13 @@ Section UkSh.
   Qed.
 
   Local Lemma ush_nth_byte0_zero : nth_byte (zero_reg : mword 64) 0 = ubyte0.
-  Proof. vm_compute. reflexivity. Qed.
+  Proof using . vm_compute. reflexivity. Qed.
 
   (* ...and the byte a [lbu]/[sb] pair puts back (lane IO-LEAF, M5(3)):
      what gets stores at buf[i] is the byte the read delivered. *)
   Local Lemma ush_nth_byte0_moi (b : bv 8) :
     nth_byte (mword_of_int (bv_unsigned b) : mword 64) 0%nat = b.
-  Proof.
+  Proof using .
     pose proof (bv_unsigned_in_range 8 b) as Hr.
     assert (Em : bv_modulus 8 = 256) by (vm_compute; reflexivity).
     rewrite Em in Hr.
@@ -843,7 +843,7 @@ Section UkSh.
   (* the [blez] the walk runs on a read's answer, as a NUMBER *)
   Local Lemma ush_blez_taken (v : mword 64) :
     uv_btaken BGE (zero_reg : mword 64) v = Z.geb 0 (bv_signed v).
-  Proof.
+  Proof using .
     cbn [uv_btaken]. unfold zopz0zKzJ_s.
     assert (Hz : sint (zero_reg : mword 64) = 0)
       by (vm_compute; reflexivity).
@@ -855,7 +855,7 @@ Section UkSh.
   Local Lemma ush_eqz_sub (x d : Z) :
     0 <= x < Z64 -> 0 <= d < Z64 ->
     eq_vec (mword_of_int (x - d) : mword 64) zero_reg = Z.eqb x d.
-  Proof.
+  Proof using .
     intros Hx Hd.
     assert (E : (mword_of_int (x - d) : mword 64)
                 = mword_of_int ((x - d) mod Z64)).
@@ -873,7 +873,7 @@ Section UkSh.
   Local Lemma ush_neqz_sub (x d : Z) :
     0 <= x < Z64 -> 0 <= d < Z64 ->
     neq_vec (mword_of_int (x - d) : mword 64) zero_reg = negb (Z.eqb x d).
-  Proof.
+  Proof using .
     intros Hx Hd. unfold neq_vec. rewrite (ush_eqz_sub x d Hx Hd). reflexivity.
   Qed.
 
@@ -882,7 +882,7 @@ Section UkSh.
     0 <= x < Z64 -> uoff_i12 imm = - d ->
     (mword_of_int (x - d) : mword 64)
     = add_vec (mword_of_int x : mword 64) (sign_extend' 64 imm).
-  Proof.
+  Proof using .
     intros Hx Hd. apply (umoi_add_i12 (mword_of_int x) imm (x - d)).
     rewrite (uint_moi x Hx) Hd. lia.
   Qed.
@@ -932,7 +932,7 @@ Section UkSh.
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Himm Hno He Hf Hx Hs Hw Hp Hr Hst Hcl Hdp Hop Hcd E01 E12 Hal2.
     iIntros "#Hdp #Ci0 #Ci1 #Ci2 Hrun Hcont".
     (* ---- pc0  c.li a7,n ---- *)
@@ -1006,7 +1006,7 @@ Section UkSh.
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Harg Hnp Himm Hno E01 E12 Hal2.
     iIntros "#Ci0 #Ci1 #Ci2 Hrun Hfdh Hcont".
     (* ---- pc0  c.li a7,USYS_close ---- *)
@@ -1071,7 +1071,7 @@ Section UkSh.
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Harg Hnp. iIntros "#Hcode Hrun Hfdh Hcont".
     rewrite shp_close.
     iApply (wp_ksh_cstub h m 0xcae 0xcb0 0xcb4
@@ -1106,7 +1106,7 @@ Section UkSh.
     ukn_pay N (-1) -∗
     urun N h m (mword_of_int ShSyms.exit) avail -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using Hpay.
     iIntros "#Hcode Hpay Hrun".
     rewrite shp_exit.
     (* ---- 0xc86  c.li a7,2 ---- *)
@@ -1152,7 +1152,7 @@ Section UkSh.
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "#Hdp #Hcode Hrun Hcont".
     rewrite shp_write.
     iApply (wp_ksh_qstub h m 0xca6 0xca8 0xcac
@@ -1212,7 +1212,7 @@ Section UkSh.
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "#Hcode Hrun Hsb Hstd Hcont".
     rewrite shp_write.
     (* ---- 0xca6  c.li a7,16 ---- *)
@@ -1325,7 +1325,7 @@ Section UkSh.
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "#Hcode Hrun Hsb Hstd #Hbs Hcont".
     rewrite shp_write.
     (* ---- 0xca6  c.li a7,16 ---- *)
@@ -1442,7 +1442,7 @@ Section UkSh.
      [wp_ksh_write_chain]) while the swap happens one site at a time. *)
   Lemma ksh_w_of_law (fdw ua : mword 64) (nb : nat) (Ci Co : iProp Σ) :
     (Ci ⊢ Co) -> sh_deps -∗ ksh_w fdw ua nb Ci Co.
-  Proof.
+  Proof using .
     intros Hm. iIntros "#Hdp" (h m avail) "_ _ _ #Hcode HCi Hrun Hcont".
     iApply (wp_ksh_write h m avail with "Hdp Hcode Hrun").
     iIntros (h' ret) "Hrun".
@@ -1453,7 +1453,7 @@ Section UkSh.
      of a run hand its cursor straight on ([UkEcho.kecho_w_mono]'s twin). *)
   Lemma ksh_w_mono (fdw ua : mword 64) (nb : nat) (Ci Co Co' : iProp Σ) :
     (Co -∗ Co') -∗ ksh_w fdw ua nb Ci Co -∗ ksh_w fdw ua nb Ci Co'.
-  Proof.
+  Proof using .
     iIntros "Hm Hw" (h m avail) "%Ha0 %Ha1 %Ha2 #Hcode HCi Hrun Hcont".
     iApply ("Hw" $! h m avail with "[%] [%] [%] Hcode HCi Hrun");
       [ exact Ha0 | exact Ha1 | exact Ha2 | ].
@@ -1469,7 +1469,7 @@ Section UkSh.
      meet here. *)
   Lemma ksh_w_frame (fdw ua : mword 64) (nb : nat) (Ci Co C : iProp Σ) :
     C -∗ ksh_w fdw ua nb (Ci ∗ C) Co -∗ ksh_w fdw ua nb Ci Co.
-  Proof.
+  Proof using .
     iIntros "HC Hw" (h m avail) "%Ha0 %Ha1 %Ha2 #Hcode HCi Hrun Hcont".
     iApply ("Hw" $! h m avail with "[%] [%] [%] Hcode [$HCi $HC] Hrun Hcont");
       [ exact Ha0 | exact Ha1 | exact Ha2 ].
@@ -1539,7 +1539,7 @@ Section UkSh.
                (ustd γfd l) (ustd γfd l))))%I.
 
   Global Instance ush_prompt_law_persistent : Persistent ush_prompt_law.
-  Proof. rewrite /ush_prompt_law. apply _. Qed.
+  Proof using . rewrite /ush_prompt_law. apply _. Qed.
 
   (* ...AS THE LOOP CARRIES IT, at three arms.  The BOTH-CONSOLE arm: fd 0,
      fd 1 and fd 2 are the console (init's pinned table, preserved by the
@@ -1572,7 +1572,7 @@ Section UkSh.
     fd_lowest_closed l = Some k ->
     ush_wcp l I 0%nat -∗
     ush_wcp (<[k := FdOpen true true (FdDevice CONSOLE)]> l) I 0%nat.
-  Proof.
+  Proof using ush_wb_wc.
     intros Hlen Hk. rewrite /ush_wcp.
     iIntros "[[%Hrow Hc] | [%Hcl Hb]]"; last first.
     { destruct Hcl as [[j [Hj2 Hlcl]] _].
@@ -1602,7 +1602,7 @@ Section UkSh.
     ush_wcp l I 0%nat -∗
     ksh_w (mword_of_int 2) (mword_of_int sh_prompt_pv) 2%nat
       (ustd γfd l) (ustd γfd l ∗ ush_wcp l I 2%nat).
-  Proof.
+  Proof using .
     iIntros "#Hlaw Hwc". rewrite /ush_prompt_law.
     iDestruct "Hlaw" as "[#Hplaw #Hclaw]".
     iDestruct "Hwc" as "[[%Hrow Hc] | [%Hcl Hb]]"; last first.
@@ -1644,7 +1644,7 @@ Section UkSh.
     (□ (∀ h : list mobs, riscv_rx_tag h -∗ ⌜disc h⌝ ∨ T))%I.
 
   Global Instance ush_tag_law_persistent : Persistent ush_tag_law.
-  Proof. rewrite /ush_tag_law. apply _. Qed.
+  Proof using . rewrite /ush_tag_law. apply _. Qed.
 
   (* ===================================================================== *)
   (* THE ONE HYPOTHESIS OF STAGE 2: SH'S CONSOLE READ, WITH THE RECEIPT     *)
@@ -1724,7 +1724,7 @@ Section UkSh.
 
   (* ...and the ONE thing the exit stub wants off it *)
   Lemma ush_pos_pay : ush_pos -∗ ukn_pay N (-1).
-  Proof. rewrite /ush_pos /ush_at. iIntros "H". by iDestruct "H" as (n) "[_ $]". Qed.
+  Proof using . rewrite /ush_pos /ush_at. iIntros "H". by iDestruct "H" as (n) "[_ $]". Qed.
 
   (* ===================================================================== *)
   (*  THE LEASE, UNBUNDLED (lane IO-LEAF, M5(3); D3's unbundling, whole   *)
@@ -1811,14 +1811,14 @@ Section UkSh.
         Pm (I ++ l ++ [wl_nl]) ∗ Wc (I ++ l ++ [wl_nl]) 3%nat.
 
   Lemma ush_pos_of_pm (I : list (bv 8)) : T -∗ Pm I -∗ ush_pos.
-  Proof.
+  Proof using HT ush_at_of_pm_taint.
     iIntros "#HT H". rewrite /ush_pos. iExists (length I).
     iApply (ush_at_of_pm_taint I with "HT H").
   Qed.
 
   Lemma ush_pos_of_lease_taint (I : list (bv 8)) :
     T -∗ ush_lease I -∗ ush_pos.
-  Proof.
+  Proof using HT ush_at_of_pm_taint.
     iIntros "#HT [H | [_ $]]". iApply (ush_pos_of_pm I with "HT H").
   Qed.
 
@@ -1850,7 +1850,7 @@ Section UkSh.
 
   Lemma ush_posb_of_wc (l : list fdstate) (p : nat) (I : list (bv 8)) :
     rest_of I = [] -> Pm I -∗ ush_wcp l I p -∗ ush_posb l p.
-  Proof.
+  Proof using .
     intro Hn. iIntros "H Hc". rewrite /ush_posb. iLeft. iExists I.
     iSplitR; [ by iPureIntro | ]. iFrame "H Hc".
   Qed.
@@ -1872,7 +1872,7 @@ Section UkSh.
 
   Lemma ush_posb_of_posw (l : list fdstate) (ws : list (list (bv 8))) :
     ush_posw l ws -∗ ush_posb l 3%nat.
-  Proof.
+  Proof using .
     rewrite /ush_posw /ush_posb. iIntros "[H | H]"; [ | iRight; iExact "H" ].
     iLeft. iDestruct "H" as (I) "([%Hr %Hw] & H & Hc)". iExists I.
     iSplitR; [ by iPureIntro | ]. iFrame "H Hc".
@@ -1880,7 +1880,7 @@ Section UkSh.
 
   Lemma ush_posw_taint (l : list fdstate) (ws : list (list (bv 8))) :
     T -∗ ush_pos -∗ ush_posw l ws.
-  Proof. iIntros "#HT H". rewrite /ush_posw. iRight. iFrame "HT H". Qed.
+  Proof using HT. iIntros "#HT H". rewrite /ush_posw. iRight. iFrame "HT H". Qed.
 
   (* ...and it rides the console preamble's back edge, for the slot's own
      reason ([ush_wcp_cons]) *)
@@ -1889,7 +1889,7 @@ Section UkSh.
     fd_lowest_closed l = Some k ->
     ush_posb l 0%nat -∗
     ush_posb (<[k := FdOpen true true (FdDevice CONSOLE)]> l) 0%nat.
-  Proof.
+  Proof using ush_wb_wc.
     intros Hlen Hk. rewrite /ush_posb. iIntros "[H | H]"; [ | iRight; iExact "H" ].
     iLeft. iDestruct "H" as (I) "(%Hn & H & Hc)". iExists I.
     iSplitR; [ by iPureIntro | ]. iFrame "H".
@@ -1898,7 +1898,7 @@ Section UkSh.
 
   Lemma ush_posb_taint (l : list fdstate) (p : nat) :
     T -∗ ush_pos -∗ ush_posb l p.
-  Proof. iIntros "#HT H". rewrite /ush_posb. iRight. iFrame "HT H". Qed.
+  Proof using HT. iIntros "#HT H". rewrite /ush_posb. iRight. iFrame "HT H". Qed.
 
   (* the body's slot back at the head's index (step 4): a block owed with
      nothing chosen is a boundary credential ([ush_wc_blk_line]) -- the
@@ -1906,7 +1906,7 @@ Section UkSh.
      closed arm does not reach the body ([p < 3]); the rest is as it was *)
   Lemma ush_posb_blk_line (l : list fdstate) :
     ush_posb l 3%nat -∗ ush_posb l 0%nat.
-  Proof.
+  Proof using ush_wc_blk_line.
     rewrite /ush_posb. iIntros "[H | H]"; [ | iRight; iExact "H" ].
     iLeft. iDestruct "H" as (I) "(%Hn & H & Hc)". iExists I.
     iSplitR; [ by iPureIntro | ]. iFrame "H".
@@ -2011,7 +2011,7 @@ Section UkSh.
       (cap : nat) (I : list (bv 8)) (g : nat -> bv 8) :
     ush_read_ans cnm l r cap I g -∗
     (∃ I' : list (bv 8), Pm I') ∨ (T ∗ ush_pos).
-  Proof.
+  Proof using HT.
     rewrite /ush_read_ans.
     iIntros "[Hw | [(_ & _ & Hp) | [#HT Hp]]]".
     - iDestruct "Hw" as (dd dc hs sl J)
@@ -2051,7 +2051,7 @@ Section UkSh.
       (sl : list (list mobs * bv 8)) (dc : nat) :
     dc <> 0%nat ->
     ush_tag_law -∗ ucons_swallow cnm False sl 0%nat dc -∗ T.
-  Proof.
+  Proof using .
     intro Hdc. iIntros "#Hlaw Hsw". rewrite /ucons_swallow.
     iDestruct "Hsw" as "[%He | [%He H]]"; [ exfalso; exact (Hdc He) | ].
     iDestruct "H" as (h b) "(%Hen & _ & _ & Htg & Hwhy)".
@@ -2150,7 +2150,7 @@ Section UkSh.
       (f : nat -> bv 8) :
     rest_of I0 = [] ->
     Pm I0 -∗ ush_gets_line l I0 [] f.
-  Proof.
+  Proof using .
     intro Hr0. iIntros "Hp". rewrite /ush_gets_line. iLeft.
     iSplitR.
     { iPureIntro. rewrite /ush_gline_p. split_and!.
@@ -2208,7 +2208,7 @@ Section UkSh.
       (f : nat -> bv 8) :
     l !! 0%nat = Some FdClosed ->
     Pm I0 -∗ ush_wcp l I0 2%nat -∗ ush_gets_done l 0%nat f.
-  Proof.
+  Proof using ush_at_of_pm_wb.
     intro Hcl. iIntros "H Hwc". rewrite /ush_gets_done. iLeft.
     iSplitR; [ by iPureIntro | ].
     rewrite /ush_pos. iExists (length I0).
@@ -2238,7 +2238,7 @@ Section UkSh.
     ush_wcp l I0 2%nat -∗
     Pm (I0 ++ J ++ [wl_nl]) -∗
     ush_gets_done l (length (wl_line ws)) f.
-  Proof.
+  Proof using HT ush_at_of_pm_taint ush_wb_read ush_wc_read.
     intros (Hr0 & Hnl & Hlt & Hfdc & Hby & _) Hbody Hws Hfnl.
     (* the buffer holds the body and then the newline *)
     assert (Hline : wl_line ws = J ++ [wl_nl]).
@@ -2283,7 +2283,7 @@ Section UkSh.
   Lemma ush_gets_done_line_t (l : list fdstate) (I : list (bv 8)) (i : nat)
       (f : nat -> bv 8) :
     T -∗ Pm I -∗ ush_gets_done l i f.
-  Proof.
+  Proof using HT ush_at_of_pm_taint.
     iIntros "#HT H". rewrite /ush_gets_done. iRight. iRight. iFrame "HT".
     iApply (ush_pos_of_pm I with "HT H").
   Qed.
@@ -2331,7 +2331,7 @@ Section UkSh.
       ∗ ⌜ ush_fd0c l ⌝ ∗ Pm (I ++ [g 0%nat]))
      ∨ (⌜ (bv_signed r <= 0)%Z ⌝ ∗ ⌜ l !! 0%nat = Some FdClosed ⌝ ∗ Pm I)
      ∨ (T ∗ ush_pos)).
-  Proof.
+  Proof using HT ush_at_of_pm_taint.
     iIntros "#Hlaw [Hw | [(%Hm1 & %Hcl & Hp) | [#HT Hp]]]"; last first.
     { iRight. iRight. iFrame "HT Hp". }
     { iRight. iLeft.
@@ -2448,7 +2448,7 @@ Section UkSh.
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using ush_read_leaf.
     intros Ha0 Ha1 Ha2 Hck Hc31 Hfd0.
     iIntros "#Hcode Hbs Hstd Hpos Hrun Hcont".
     rewrite shp_read.
@@ -2539,7 +2539,7 @@ Section UkSh.
   Local Lemma ucs_ne (r q : mword 5) :
     ucallee_saved_idx r = true -> ucallee_saved_idx q = false ->
     Regidx r <> Regidx q.
-  Proof.
+  Proof using .
     intros Hr Hq He.
     assert (Hrr : r = q) by (injection He; trivial).
     rewrite Hrr Hq in Hr. discriminate.
@@ -2573,7 +2573,7 @@ Section UkSh.
          urun N h' mc' (mword_of_int 0xa7a) nn -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros k. induction k as [| k IH ];
       intros j h mc f nn HN Ha0 Ha64 Hc Hpre Ha5 Ha4;
       iIntros "#Hcode Hbs Hrun Hcont".
@@ -2725,12 +2725,12 @@ Section UkSh.
 
   (* two register indices are equal when their numbers are *)
   Local Lemma ush_ridx_eq (r q : mword 5) : uint r = uint q -> Regidx r = Regidx q.
-  Proof.
+  Proof using .
     intro H. f_equal. apply bv_eq. rewrite <- !(uint_unsigned_n 5). exact H.
   Qed.
 
   Local Lemma ush_ridx_ne (r q : mword 5) : uint r <> uint q -> Regidx r <> Regidx q.
-  Proof.
+  Proof using .
     intros H He. apply H.
     assert (Hrq : r = q) by (injection He; trivial). rewrite Hrq. reflexivity.
   Qed.
@@ -2770,7 +2770,7 @@ Section UkSh.
     ukn_pay N (-1) -∗
     urun N h m (mword_of_int ShSyms.memset) (2 + nn) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Halo Hahi0 Ha0 Ha2 HN0 HN31. iIntros "#Hcode #Ht0 Hpay Hrun".
     rewrite shp_memset.
     iDestruct (urun_stack with "Hrun") as %[Hal8 Hroom].
@@ -3008,7 +3008,7 @@ Section UkSh.
      byte ([ShSyms.getcmd = 0]), so it is in the dumped image, hence in the
      TEXT half of [UserHeap.uheap] -- and a text page is X-and-not-W. *)
   Lemma ush_text0 (g : gname) : shk_code g -∗ ∃ b : bv 8, utext g 0 b.
-  Proof.
+  Proof using .
     iIntros "#Ht".
     iDestruct (shk_code_img with "Ht") as "Himg". rewrite /utext_img.
     destruct (ShInstrs.sh_bytes !! 0%Z) as [b0 |] eqn:Hb0.
@@ -3031,7 +3031,7 @@ Section UkSh.
          urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (2 + nn) -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Ha0 Ha2 HN0 HN31. iIntros "#Hcode Hbs Hrun Hcont".
     rewrite shp_memset.
     iDestruct (urun_stack with "Hrun") as %[Hal8 Hroom].
@@ -3425,7 +3425,7 @@ Section UkSh.
 
   Local Lemma ush_keep_ne (r q : mword 5) :
     ush_gets_keep r = true -> ush_gets_keep q = false -> Regidx r <> Regidx q.
-  Proof.
+  Proof using .
     intros Hr Hq He.
     assert (Hrr : r = q) by (injection He; trivial).
     rewrite Hrr Hq in Hr. discriminate.
@@ -3477,7 +3477,7 @@ Section UkSh.
        urun N h' mc' (mword_of_int 0xb00) nn -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using HT ush_at_of_pm_taint ush_at_of_pm_wb ush_read_leaf ush_wb_read ush_wc_read.
     intros k. induction k as [| k IH ];
       intros i J h mc f bc nn HN Hi Hij HNb Ha0 Ha64 HN31 Hsz0 Hsz1
              Hs0 Hs1 Hs2 Hs4 Hs5 Hs6.
@@ -4296,7 +4296,7 @@ Section UkSh.
       (∃ w : mword 64, uword γd (uint sp - 80) w) ∗
       (∃ w : mword 64, uword γd (uint sp - 88) w) ∗
       (∃ w : mword 64, uword γd (uint sp - 96) w).
-  Proof. rewrite ustack_12. iIntros "$". Qed.
+  Proof using . rewrite ustack_12. iIntros "$". Qed.
 
   Local Lemma ush_stack_12_close (sp : mword 64) :
     ⌜ uint sp mod 8 = 0 ⌝ -∗
@@ -4313,7 +4313,7 @@ Section UkSh.
     (∃ w : mword 64, uword γd (uint sp - 88) w) -∗
     (∃ w : mword 64, uword γd (uint sp - 96) w) -∗
     ustack γd sp 12.
-  Proof.
+  Proof using .
     rewrite ustack_12.
     iIntros "%H H1 H2 H3 H4 H5 H6 H7 H8 H9 H10 H11 H12".
     iSplit; [ iPureIntro; exact H | ].
@@ -4339,7 +4339,7 @@ Section UkSh.
     ucallee_saved_idx r = true ->
     uint r = 2 \/ uint r = 3 \/ uint r = 4 \/ uint r = 8 \/ uint r = 9 \/
     (18 <= uint r <= 27).
-  Proof.
+  Proof using .
     unfold ucallee_saved_idx. intro H.
     repeat (apply orb_prop in H as [H | H]).
     all: try (apply Z.eqb_eq in H; lia).
@@ -4349,7 +4349,7 @@ Section UkSh.
 
   Local Lemma ush_r_ne (r : mword 5) (z : Z) (q : mword 5) :
     uint q = z -> uint r <> z -> Regidx r <> Regidx q.
-  Proof. intros Hq Hr. apply ush_ridx_ne. rewrite Hq. exact Hr. Qed.
+  Proof using . intros Hq Hr. apply ush_ridx_ne. rewrite Hq. exact Hr. Qed.
 
   (* ---- gets, the whole function --------------------------------------- *)
   (* DEPENDS ON [ush_read_leaf].                                            *)
@@ -4378,7 +4378,7 @@ Section UkSh.
          urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (12 + nn) -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using HT ush_at_of_pm_taint ush_at_of_pm_wb ush_read_leaf ush_wb_read ush_wc_read.
     intros Ha0 Ha1 HNle HN31 Hfd0.
     assert (HN0 : (0 < Nb)%nat)
       by (rewrite HNle; unfold sh_nbuf; lia).
@@ -5412,7 +5412,7 @@ Section UkSh.
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (4 + (12 + nn)) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using HT ush_at_of_pm_taint ush_at_of_pm_wb ush_read_leaf ush_wb_read ush_wc_read.
     intros Ha0 Ha1 HNle HN31 Hfd0.
     assert (HN0 : (0 < Nb)%nat) by (rewrite HNle; unfold sh_nbuf; lia).
     iIntros "#Hdp #Hlaw #Hplaw #Hcode Hbs Hstd Hpos Hrun Hcont".
@@ -6381,7 +6381,7 @@ Section UkSh.
 
   Local Lemma ush_regs_upd (m : regfile) (r : mword 5) (v : mword 64) :
     ush_regs m -> ush_reg_free r = true -> ush_regs (<[Regidx r := v]> m).
-  Proof.
+  Proof using .
     intros (H2 & H3 & H4 & H5 & H6) Hf.
     unfold ush_reg_free in Hf. apply negb_true_iff in Hf.
     assert (Hne : forall (q : mword 5) (z : Z), uint q = z -> 18 <= z <= 22 ->
@@ -6409,7 +6409,7 @@ Section UkSh.
 
   Local Lemma ush_regs_cs (m m' : regfile) :
     ush_regs m -> ucallee_saved m m' -> ush_regs m'.
-  Proof.
+  Proof using .
     intros (H2 & H3 & H4 & H5 & H6) Hcs. split_and!.
     - rewrite (Hcs s2_idx ltac:(vm_compute; reflexivity)). exact H2.
     - rewrite (Hcs s3_idx ltac:(vm_compute; reflexivity)). exact H3.
@@ -6504,12 +6504,12 @@ Section UkSh.
           T -∗ my_pay (uvis_gen W) (ukn_pay N) -∗ uslot W))%I.
 
   Global Instance ush_gen_slot_persistent : Persistent ush_gen_slot.
-  Proof. rewrite /ush_gen_slot. apply _. Qed.
+  Proof using . rewrite /ush_gen_slot. apply _. Qed.
 
   Lemma ush_gen_run (h : CpuId) (m : regfile) (pc : mword 64) (avail : nat) :
     is_aligned_vaddr (Virtaddr pc) 2 = true ->
     ush_gen_slot -∗ T -∗ urun N h m pc avail -∗ WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intro Hal. rewrite /ush_gen_slot. iIntros "#Hg HT Hrun".
     iApply (urun_gen N T h m pc avail Hal with "Hg HT Hrun").
   Qed.
@@ -6661,7 +6661,7 @@ Section UkSh.
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using HT.
     intros Ha0 Ha1 Hal.
     iIntros "#Hcode #Hro #Hgen Hrun Hcwd Hstd Hin Hcont".
     iDestruct "Hin" as "[#Hlf | [[#Hlf HK] | #HT]]".
@@ -6758,7 +6758,7 @@ Section UkSh.
     (∃ p : Z, ⌜p <> 1⌝ ∗ UserChildren.upid γpid p)%I.
 
   Global Instance ush_pid_timeless : Timeless ush_pid.
-  Proof. rewrite /ush_pid. apply _. Qed.
+  Proof using . rewrite /ush_pid. apply _. Qed.
 
   Definition ush_pstate (l : list fdstate) : iProp Σ :=
     (ush_std l ∗ UserCwd.ucwd γcwd FsImg.ROOTINO ∗ UserChildren.uch γch ∅
@@ -6782,7 +6782,7 @@ Section UkSh.
      back edge, the [cd] arm's, and a fork that failed *)
   Lemma ush_pstate_of_bstate (l : list fdstate) (ws : list (list (bv 8))) :
     ush_bstate l ws -∗ ush_pstate l.
-  Proof.
+  Proof using ush_wc_blk_line.
     rewrite /ush_bstate /ush_pstate.
     iIntros "(Hstd & Hcwd & Hch & Hpid & Hpos)". iFrame "Hstd Hcwd Hch Hpid".
     iApply (ush_posb_blk_line l with "[Hpos]").
@@ -6869,7 +6869,7 @@ Section UkSh.
   Lemma ush_rest_line_taint (ws : list (list (bv 8))) (f : nat -> bv 8)
       (k : nat) :
     T -∗ ush_rest_line ws f k.
-  Proof. iIntros "HT". rewrite /ush_rest_line. by iRight. Qed.
+  Proof using . iIntros "HT". rewrite /ush_rest_line. by iRight. Qed.
 
   (* ===================================================================== *)
   (* §2b THE JUMP TABLE, as a resource: five rows of four TEXT bytes.  Only *)
@@ -6894,13 +6894,13 @@ Section UkSh.
      ush_jrow g 4 ∗ ush_jrow g 5 ∗ shk_rodata g)%I.
 
   Global Instance ush_jrow_persistent g k : Persistent (ush_jrow g k).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
   Global Instance ush_jtab_persistent g : Persistent (ush_jtab g).
-  Proof. apply _. Qed.
+  Proof using . apply _. Qed.
 
   (* ...and the image it carries *)
   Lemma ush_jtab_ro (g : gname) : ush_jtab g -∗ shk_rodata g.
-  Proof. iIntros "(_ & _ & _ & _ & _ & #H)". iExact "H". Qed.
+  Proof using . iIntros "(_ & _ & _ & _ & _ & #H)". iExact "H". Qed.
 
   (* ...AND WHERE IT COMES FROM: the .rodata image itself (lane SH-LINE 2b,
      (b)).  The table IS .rodata, so a process that holds sh's read-only
@@ -6910,7 +6910,7 @@ Section UkSh.
      text, beside [shk_code] and [shk_rodata], instead of a caller of
      [UInitSh.sh_pay_rest] carrying it -- which no caller could. *)
   Lemma ush_jtab_of_rodata (g : gname) : shk_rodata g -∗ ush_jtab g.
-  Proof.
+  Proof using .
     iIntros "#Hro".
     iAssert (∀ k : Z, ⌜In k [1; 2; 3; 4; 5]%Z⌝ -∗ ush_jrow g k)%I as "#Hrow".
     { iIntros (k) "%Hk". rewrite /ush_jrow.
@@ -7008,7 +7008,7 @@ Section UkSh.
   (* NOT [apply _]: with the obligation transparent the search walks its
      whole body.  Name the instance the box deserves. *)
   Global Instance ush_rest_l_persistent R : Persistent (ush_rest_l R).
-  Proof. rewrite /ush_rest_l. apply bi.intuitionistically_persistent. Qed.
+  Proof using . rewrite /ush_rest_l. apply bi.intuitionistically_persistent. Qed.
 
   (* ---- ONE TURN of the leading-blank scan, 0x964..0x974 ---------------- *)
   (*   c.addi s1,1 ; lbu a5,0(s1) ; addi a4,a5,-32 ; c.beqz a4,0x964        *)
@@ -7036,7 +7036,7 @@ Section UkSh.
          urun N h' mc' tgt (16 + n) -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hbz Hregs Hs1 Hrng Htgt. iIntros "#Hcode Hb Hrun Hcont".
     assert (Hbzr : 0 <= bz < 256).
     { rewrite <- Hbz. pose proof (bv_unsigned_in_range 8 b) as Hr8.
@@ -7241,7 +7241,7 @@ Section UkSh.
        urun N h' mc' (mword_of_int 0x976) (16 + n) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     assert (Hbf : sh_buf = 8224) by (vm_compute; reflexivity).
     assert (Hnb : sh_nbuf = 100%nat) by (vm_compute; reflexivity).
     intros d. induction d as [| d IH ];
@@ -7300,7 +7300,7 @@ Section UkSh.
     ukn_pay N (-1) -∗
     urun N h mc (mword_of_int 0x9ca) n -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using Hpay.
     iIntros "#Hcode Hpay Hrun".
     iApply (wp_uk_cli N h mc (mword_of_int 0x9ca)
               (mword_of_int 0 : mword 6) a0_idx n
@@ -7413,7 +7413,7 @@ Section UkSh.
     ush_prompt_law -∗
     ush_rest_l R -∗ shk_code γt -∗ ush_jtab γt -∗ ush_gen_slot -∗
     ush_loop_head R l.
-  Proof.
+  Proof using HT Hpay ush_at_of_pm_taint ush_at_of_pm_wb ush_pm_of_at ush_read_leaf ush_wb_read ush_wc_blk_line ush_wc_read.
     assert (Hbf : sh_buf = 8224) by (vm_compute; reflexivity).
     assert (Hnb : sh_nbuf = 100%nat) by (vm_compute; reflexivity).
     assert (Hnbz : Z.of_nat sh_nbuf = 100) by (vm_compute; reflexivity).
@@ -7901,7 +7901,7 @@ Section UkSh.
     ubytes γd sh_buf sh_nbuf f -∗
     urun N h m (mword_of_int 0x914) (16 + (ush_Dbody + n0)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using HT Hpay ush_at_of_pm_taint ush_at_of_pm_wb ush_pm_of_at ush_read_leaf ush_wb_read ush_wc_blk_line ush_wc_read.
     iIntros "#Hdp #Hlaw #Hplaw #Hrest #Hcode #Hjt #Hgen %Hfd0 Hstd HR Hbs Hrun".
     set (n := (ush_Dbody + n0)%nat).
     (* ---- 0x914  li s3,100 ---- *)
@@ -8065,7 +8065,7 @@ Section UkSh.
     (k < NSTD)%nat ->
     uv_btaken BGE (mword_of_int 2 : mword 64)
       (mword_of_int (Z.of_nat k) : mword 64) = true.
-  Proof.
+  Proof using .
     intro Hk. unfold NSTD in Hk. cbn [uv_btaken].
     rewrite (moi_ge_s 2 (Z.of_nat k) ltac:(unfold Z63; lia)
                ltac:(unfold Z63; lia)).
@@ -8126,7 +8126,7 @@ Section UkSh.
     ubytes γd sh_buf sh_nbuf f -∗
     urun N h m (mword_of_int 0x900) (16 + (ush_Dbody + n0)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using HT Hpay ush_at_of_pm_taint ush_at_of_pm_wb ush_pm_of_at ush_read_leaf ush_wb_read ush_wb_wc ush_wc_blk_line ush_wc_read.
     iIntros "#Hdp #Hlaw #Hplaw #Hrest #Hcode #Hjt #Hro #Hgen".
     set (n := (16 + (ush_Dbody + n0))%nat).
     iLöb as "IH" forall (h m l).
@@ -8410,7 +8410,7 @@ Section UkSh.
     urun N h m (mword_of_int ShSyms.main)
       (8 + (16 + (ush_Dbody + n0))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using HT Hpay ush_at_of_pm_taint ush_at_of_pm_wb ush_pm_of_at ush_read_leaf ush_wb_read ush_wb_wc ush_wc_blk_line ush_wc_read.
     iIntros "#Hdp #Hlaw #Hplaw #Hrest #Hcode #Hjt #Hro #Hgen %Hfd0 Hin Hstd Hcwd Hch Hpid Hpos
              HR Hbs Hrun".
     set (n := (16 + (ush_Dbody + n0))%nat).
@@ -8699,7 +8699,7 @@ Section UkSh.
     urun N h m (mword_of_int ShSyms.start)
       (2 + (8 + (16 + (ush_Dbody + n0)))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using HT Hpay ush_at_of_pm_taint ush_at_of_pm_wb ush_pm_of_at ush_read_leaf ush_wb_read ush_wb_wc ush_wc_blk_line ush_wc_read.
     iIntros "#Hdp #Hlaw #Hplaw #Hrest #Hcode #Hjt #Hro #Hgen #Hfd0 Hin Hstd Hcwd Hch Hpid Hpos
              HR Hbs Hrun".
     (* THE TAINT ARM GOES GENERIC AT ONCE, and this is the ONE place it can:

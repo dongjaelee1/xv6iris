@@ -258,7 +258,7 @@ Section LinkFire.
           ⌜arow_at av t (abs_row nt)⌝
           ∗ ⌜link_tgt_ok (an_node (abs_row nt))⌝
           ∗ Ftgt.(pf_recv) av t (abs_row nt).
-  Proof.
+  Proof using .
     intros HE Hloc Hnzt Hok Habs'. iIntros "#Hi #Hai Hcm Hf".
     (* THE PIECE IS SPENT: the fire eliminates to the AU side. *)
     iDestruct (pf_at_au with "Hcm") as "Hcm".
@@ -322,7 +322,7 @@ Section LinkFire.
           ⌜av !! d = Some (MkAnode (ADir (dir_entries np)) (fn_nlink np))⌝
           ∗ ⌜dir_entries np !! nm = None⌝
           ∗ Fent.(pf_recv) av d nm t.
-  Proof.
+  Proof using .
     intros HE Hloc Hdir Hnl Hnm Habsp'. iIntros "#Hi #Hai Hcm Hf".
     iDestruct (pf_at_au with "Hcm") as "Hcm".
     rewrite /top_frag /fs_gamma_L /=.

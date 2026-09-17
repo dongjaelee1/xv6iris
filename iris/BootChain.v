@@ -159,7 +159,7 @@ Section BootRun.
        pc_is (mword_of_int KernelSyms.main) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hreset.
     pose proof (reset_regs_mie _ _ Hreset) as Hmie0.
     pose proof (reset_regs_mideleg _ _ Hreset) as Hmdl0.

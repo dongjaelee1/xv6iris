@@ -580,9 +580,9 @@ Section smem.
   Hypothesis Huintw : uint (to_bits 64 width) = width.
 
   Local Lemma w_pos : 0 < width.
-  Proof. exact (vmem_width_pos width Hvw). Qed.
+  Proof using Hvw. exact (vmem_width_pos width Hvw). Qed.
   Local Lemma w_le8 : width <= 8.
-  Proof. exact (vmem_width_le width Hvw). Qed.
+  Proof using Hvw. exact (vmem_width_le width Hvw). Qed.
 
   (* THE ADDRESS CLASS.  RAM and MMIO run the SAME chain and differ in
      exactly four facts, so those are the section's parameters rather than a
@@ -678,7 +678,7 @@ Section smem.
            (Physaddr pa) width false false false false)
       (fun r => ⌜r = Values.Ok (bytes, tt)⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro ∗ R).
-  Proof.
+  Proof using Hmmio_r Hpma_load Hpmprange Hread_node Hvw.
     intros Hdisj HDpma HDcfg HDaddr HDhtif Hhtif Hpma Hpcfg Hpaddr
       HA Hord HR Hcov Hpallow Hram Hpa.
     pose proof w_pos as Hw0. pose proof w_le8 as Hw8.
@@ -773,7 +773,7 @@ Section smem.
     swp (mem_read (Load Data) PBMT_PMA pa width false false false)
       (fun r => ⌜r = Values.Ok w⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro ∗ R).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv Hpriv Hep.
     iIntros "#Hcert Hrw Hro Hcmr".
     unfold mem_read.
@@ -861,7 +861,7 @@ Section smem.
                   ⌜ rsf = rs \/ exists tv, rsf = register_set tlb tv rs ⌝ ∗
                   hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro ∗
                   Rt rsf ∗ resv_any cpu_id ∗ R).
-  Proof.
+  Proof using Hmmio_r Hpma_load Hpmprange Hread_node Hvw.
     intros Hdisj HDmst HDpriv HDpma HDcfg HDaddr HDhtif Hpriv Hhtif Hpma
       Hpcfg Hpaddr Hep HA Hord HR Hcov Hpallow Hram Hpa.
     iIntros "#Hcert Hfrag Hres Hrw Hro Htr Hmem".
@@ -960,7 +960,7 @@ Section smem.
                   ⌜ rsf = rs \/ exists tv, rsf = register_set tlb tv rs ⌝ ∗
                   hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro ∗
                   Rt rsf ∗ resv_any cpu_id ∗ R).
-  Proof.
+  Proof using Hmmio_r Hpma_load Hpmprange Hread_node Hvw.
     intros Hdisj HDmst HDpriv HDsatp HDpma HDcfg HDaddr HDhtif Hpriv Hhtif
       Hpma Hpcfg Hpaddr HSXL Hmode Hep HA Hord HR Hcov Hpallow Hram Hva Hpa.
     pose proof w_pos as Hw0. pose proof w_le8 as Hw8.
@@ -1065,7 +1065,7 @@ Section smem.
                        (Virtaddr (add_vec (m !!! Regidx i) offset))⌝ ∗
                 gpr_file m ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv HDmenv HDsatp Hpriv Hep Hnf Hnlp Hnsp Hmxr
       Hpmm HSXL Hmode.
     iIntros "#Hcert Hf Hrw Hro".
@@ -1153,7 +1153,7 @@ Section smem.
                   ⌜ rsf = rs \/ exists tv, rsf = register_set tlb tv rs ⌝ ∗
                   hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro ∗
                   Rt rsf ∗ resv_any cpu_id ∗ R).
-  Proof.
+  Proof using Hmmio_r Hpma_load Hpmprange Hread_node Hvw.
     intros ea Hdisj HDmst HDpriv HDmenv HDsatp HDpma HDcfg HDaddr HDhtif
       Hpriv Hhtif Hpma Hpcfg Hpaddr Hmxr Hpmm HSXL Htf Hmode Hep HA Hord HR
       Hcov Hpallow Hram Hva Hpa.
@@ -1248,7 +1248,7 @@ Section smem.
                   ⌜ rsf = rs \/ exists tv, rsf = register_set tlb tv rs ⌝ ∗
                   hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro ∗
                   Rt rsf ∗ resv_any cpu_id ∗ R).
-  Proof.
+  Proof using Hmmio_r Hpma_load Hpmprange Hread_node Hvw.
     intros ea Hdisj HDmst HDpriv HDmenv HDsatp HDpma HDcfg HDaddr HDhtif
       Hpriv Hhtif Hpma Hpcfg Hpaddr Hmxr Hpmm HSXL Htf Hmode Hep HA Hord HR
       Hcov Hpallow Hram Hva Hpa Hrd.
@@ -1327,7 +1327,7 @@ Section smem.
       (fun r => ∃ bytes : SailStdpp.Values.mword (8 * width),
                 ⌜r = Values.Ok (bytes, tt)⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro ∗ Rr bytes).
-  Proof.
+  Proof using Hmmio_r Hpma_load Hpmprange Hvw.
     intros Hdisj HDpma HDcfg HDaddr HDhtif Hhtif Hpma Hpcfg Hpaddr
       HA Hord HR Hcov Hpallow Hram Hpa Hnode_ex.
     pose proof w_pos as Hw0. pose proof w_le8 as Hw8.
@@ -1421,7 +1421,7 @@ Section smem.
       (fun r => ∃ bytes : SailStdpp.Values.mword (8 * width),
                 ⌜r = Values.Ok bytes⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro ∗ Rr bytes).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv Hpriv Hep.
     iIntros "#Hcert Hrw Hro Hcmr".
     unfold mem_read.
@@ -1511,7 +1511,7 @@ Section smem.
                   ⌜ rsf = rs \/ exists tv, rsf = register_set tlb tv rs ⌝ ∗
                   hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro ∗
                   Rt rsf ∗ resv_any cpu_id ∗ Rr bytes).
-  Proof.
+  Proof using Hmmio_r Hpma_load Hpmprange Hvw.
     intros Hdisj HDmst HDpriv HDpma HDcfg HDaddr HDhtif Hpriv Hhtif Hpma
       Hpcfg Hpaddr Hep HA Hord HR Hcov Hpallow Hram Hpa Hnode_ex.
     iIntros "#Hcert Hfrag Hres Hrw Hro Htr Hmem".
@@ -1611,7 +1611,7 @@ Section smem.
                   ⌜ rsf = rs \/ exists tv, rsf = register_set tlb tv rs ⌝ ∗
                   hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro ∗
                   Rt rsf ∗ resv_any cpu_id ∗ Rr bytes).
-  Proof.
+  Proof using Hmmio_r Hpma_load Hpmprange Hvw.
     intros Hdisj HDmst HDpriv HDsatp HDpma HDcfg HDaddr HDhtif Hpriv Hhtif
       Hpma Hpcfg Hpaddr HSXL Hmode Hep HA Hord HR Hcov Hpallow Hram Hva Hpa
       Hnode_ex.
@@ -1739,7 +1739,7 @@ Section smem.
                   ⌜ rsf = rs \/ exists tv, rsf = register_set tlb tv rs ⌝ ∗
                   hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro ∗
                   Rt rsf ∗ resv_any cpu_id ∗ Rr bytes).
-  Proof.
+  Proof using Hmmio_r Hpma_load Hpmprange Hvw.
     intros ea Hdisj HDmst HDpriv HDmenv HDsatp HDpma HDcfg HDaddr HDhtif
       Hpriv Hhtif Hpma Hpcfg Hpaddr Hmxr Hpmm HSXL Htf Hmode Hep HA Hord HR
       Hcov Hpallow Hram Hva Hpa Hnode_ex.
@@ -1841,7 +1841,7 @@ Section smem.
                   ⌜ rsf = rs \/ exists tv, rsf = register_set tlb tv rs ⌝ ∗
                   hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro ∗
                   Rt rsf ∗ resv_any cpu_id ∗ Rr bytes).
-  Proof.
+  Proof using Hmmio_r Hpma_load Hpmprange Hvw.
     intros ea Hdisj HDmst HDpriv HDmenv HDsatp HDpma HDcfg HDaddr HDhtif
       Hpriv Hhtif Hpma Hpcfg Hpaddr Hmxr Hpmm HSXL Htf Hmode Hep HA Hord HR
       Hcov Hpallow Hram Hva Hpa Hrd Hnode_ex.
@@ -1967,7 +1967,7 @@ Section snodes.
              tso_interp_of riscv_eraGS img σ.(mem) log V ∗ R)) -∗
     swp (read_ram Read_plain (Physaddr pa) 1 false)
       (fun r => ⌜r = (bytes, default_meta)⌝ ∗ R).
-  Proof.
+  Proof using .
     intro Hdev.
     node_read (mread_req1 pa) (hread_req_at_read_ram1 pa)
       (hread_resume_read_ram1 pa bytes).
@@ -1987,7 +1987,7 @@ Section snodes.
              tso_interp_of riscv_eraGS img σ.(mem) log V ∗ R)) -∗
     swp (read_ram Read_plain (Physaddr pa) 2 false)
       (fun r => ⌜r = (bytes, default_meta)⌝ ∗ R).
-  Proof.
+  Proof using .
     intro Hdev.
     node_read (mread_req2 pa) (hread_req_at_read_ram2 pa)
       (hread_resume_read_ram2 pa bytes).
@@ -2007,7 +2007,7 @@ Section snodes.
              tso_interp_of riscv_eraGS img σ.(mem) log V ∗ R)) -∗
     swp (read_ram Read_plain (Physaddr pa) 4 false)
       (fun r => ⌜r = (bytes, default_meta)⌝ ∗ R).
-  Proof.
+  Proof using .
     intro Hdev.
     node_read (mread_req pa) (hread_req_at_read_ram pa)
       (hread_resume_read_ram pa bytes).
@@ -2027,7 +2027,7 @@ Section snodes.
              tso_interp_of riscv_eraGS img σ.(mem) log V ∗ R)) -∗
     swp (read_ram Read_plain (Physaddr pa) 8 false)
       (fun r => ⌜r = (bytes, default_meta)⌝ ∗ R).
-  Proof.
+  Proof using .
     intro Hdev.
     node_read (mread_req8 pa) (hread_req_at_read_ram8 pa)
       (hread_resume_read_ram8 pa bytes).
@@ -2110,7 +2110,7 @@ Section snodes.
     swp (read_ram Read_plain (Physaddr pa) 1 false)
       (fun r => ∃ bytes : SailStdpp.Values.mword (8 * 1),
                   ⌜r = (bytes, default_meta)⌝ ∗ ⌜P bytes⌝ ∗ R).
-  Proof.
+  Proof using .
     intro Hdev.
     node_read_exv (mread_req1 pa) (hread_req_at_read_ram1 pa)
       (hread_resume_read_ram1 pa) P.
@@ -2133,7 +2133,7 @@ Section snodes.
     swp (read_ram Read_plain (Physaddr pa) 2 false)
       (fun r => ∃ bytes : SailStdpp.Values.mword (8 * 2),
                   ⌜r = (bytes, default_meta)⌝ ∗ ⌜P bytes⌝ ∗ R).
-  Proof.
+  Proof using .
     intro Hdev.
     node_read_exv (mread_req2 pa) (hread_req_at_read_ram2 pa)
       (hread_resume_read_ram2 pa) P.
@@ -2156,7 +2156,7 @@ Section snodes.
     swp (read_ram Read_plain (Physaddr pa) 4 false)
       (fun r => ∃ bytes : SailStdpp.Values.mword (8 * 4),
                   ⌜r = (bytes, default_meta)⌝ ∗ ⌜P bytes⌝ ∗ R).
-  Proof.
+  Proof using .
     intro Hdev.
     node_read_exv (mread_req pa) (hread_req_at_read_ram pa)
       (hread_resume_read_ram pa) P.
@@ -2179,7 +2179,7 @@ Section snodes.
     swp (read_ram Read_plain (Physaddr pa) 8 false)
       (fun r => ∃ bytes : SailStdpp.Values.mword (8 * 8),
                   ⌜r = (bytes, default_meta)⌝ ∗ ⌜P bytes⌝ ∗ R).
-  Proof.
+  Proof using .
     intro Hdev.
     node_read_exv (mread_req8 pa) (hread_req_at_read_ram8 pa)
       (hread_resume_read_ram8 pa) P.
@@ -2207,7 +2207,7 @@ Section snodes.
                   ⌜r = (bytes, default_meta)⌝ ∗
                   (∃ tvn : nat, hart_rview_lb_at cpu_id tvn ∗
                                 ⌜Q bytes tvn⌝) ∗ R).
-  Proof.
+  Proof using .
     intro Hdev.
     iIntros "#Hcert Hmem".
     iApply (swp_hart_ram_read_plain_ex _ (mread_req1 pa) _ _ (fun _ => True) (hread_req_at_read_ram1 pa)
@@ -2258,7 +2258,7 @@ Section snodes.
                   ⌜r = (bytes, default_meta)⌝ ∗
                   (∃ tvn : nat, hart_rview_lb_at cpu_id tvn ∗
                                 Rr bytes tvn)).
-  Proof.
+  Proof using .
     intro Hdev.
     iIntros "#Hcert Hmem".
     iApply (swp_hart_ram_read_plain_ex _ (mread_req1 pa) _ _ (fun _ => True) (hread_req_at_read_ram1 pa)
@@ -2297,7 +2297,7 @@ Section snodes.
                   ⌜r = (bytes, default_meta)⌝ ∗
                   (∃ tvn : nat, hart_rview_lb_at cpu_id tvn ∗
                                 Rr bytes tvn)).
-  Proof.
+  Proof using .
     intro Hdev.
     iIntros "#Hcert Hmem".
     iApply (swp_hart_ram_read_plain_ex _ (mread_req2 pa) _ _ (fun _ => True) (hread_req_at_read_ram2 pa)
@@ -2336,7 +2336,7 @@ Section snodes.
                   ⌜r = (bytes, default_meta)⌝ ∗
                   (∃ tvn : nat, hart_rview_lb_at cpu_id tvn ∗
                                 Rr bytes tvn)).
-  Proof.
+  Proof using .
     intro Hdev.
     iIntros "#Hcert Hmem".
     iApply (swp_hart_ram_read_plain_ex _ (mread_req pa) _ _ (fun _ => True) (hread_req_at_read_ram pa)
@@ -2375,7 +2375,7 @@ Section snodes.
                   ⌜r = (bytes, default_meta)⌝ ∗
                   (∃ tvn : nat, hart_rview_lb_at cpu_id tvn ∗
                                 Rr bytes tvn)).
-  Proof.
+  Proof using .
     intro Hdev.
     iIntros "#Hcert Hmem".
     iApply (swp_hart_ram_read_plain_ex _ (mread_req8 pa) _ _ (fun _ => True) (hread_req_at_read_ram8 pa)
@@ -2414,7 +2414,7 @@ Section snodes.
                   ⌜r = (bytes, default_meta)⌝ ∗
                   (∃ tvn : nat, hart_rview_lb_at cpu_id tvn ∗
                                 ⌜Q bytes tvn⌝) ∗ R).
-  Proof.
+  Proof using .
     intro Hdev.
     iIntros "#Hcert Hmem".
     iApply (swp_hart_ram_read_plain_ex _ (mread_req2 pa) _ _ (fun _ => True) (hread_req_at_read_ram2 pa)
@@ -2454,7 +2454,7 @@ Section snodes.
                   ⌜r = (bytes, default_meta)⌝ ∗
                   (∃ tvn : nat, hart_rview_lb_at cpu_id tvn ∗
                                 ⌜Q bytes tvn⌝) ∗ R).
-  Proof.
+  Proof using .
     intro Hdev.
     iIntros "#Hcert Hmem".
     iApply (swp_hart_ram_read_plain_ex _ (mread_req pa) _ _ (fun _ => True) (hread_req_at_read_ram pa)
@@ -2494,7 +2494,7 @@ Section snodes.
                   ⌜r = (bytes, default_meta)⌝ ∗
                   (∃ tvn : nat, hart_rview_lb_at cpu_id tvn ∗
                                 ⌜Q bytes tvn⌝) ∗ R).
-  Proof.
+  Proof using .
     intro Hdev.
     iIntros "#Hcert Hmem".
     iApply (swp_hart_ram_read_plain_ex _ (mread_req8 pa) _ _ (fun _ => True) (hread_req_at_read_ram8 pa)
@@ -2538,7 +2538,7 @@ Section snodes.
                   ⌜r = (bytes, default_meta)⌝ ∗
                   (∃ tvn : nat, hart_rview_lb_at cpu_id tvn ∗
                                 Q bytes tvn) ∗ R).
-  Proof.
+  Proof using .
     intro Hdev.
     iIntros "#Hcert Hmem".
     iApply (swp_hart_ram_read_plain_ex _ (mread_req1 pa) _ _ (fun _ => True) (hread_req_at_read_ram1 pa)
@@ -2578,7 +2578,7 @@ Section snodes.
                   ⌜r = (bytes, default_meta)⌝ ∗
                   (∃ tvn : nat, hart_rview_lb_at cpu_id tvn ∗
                                 Q bytes tvn) ∗ R).
-  Proof.
+  Proof using .
     intro Hdev.
     iIntros "#Hcert Hmem".
     iApply (swp_hart_ram_read_plain_ex _ (mread_req2 pa) _ _ (fun _ => True) (hread_req_at_read_ram2 pa)
@@ -2618,7 +2618,7 @@ Section snodes.
                   ⌜r = (bytes, default_meta)⌝ ∗
                   (∃ tvn : nat, hart_rview_lb_at cpu_id tvn ∗
                                 Q bytes tvn) ∗ R).
-  Proof.
+  Proof using .
     intro Hdev.
     iIntros "#Hcert Hmem".
     iApply (swp_hart_ram_read_plain_ex _ (mread_req pa) _ _ (fun _ => True) (hread_req_at_read_ram pa)
@@ -2658,7 +2658,7 @@ Section snodes.
                   ⌜r = (bytes, default_meta)⌝ ∗
                   (∃ tvn : nat, hart_rview_lb_at cpu_id tvn ∗
                                 Q bytes tvn) ∗ R).
-  Proof.
+  Proof using .
     intro Hdev.
     iIntros "#Hcert Hmem".
     iApply (swp_hart_ram_read_plain_ex _ (mread_req8 pa) _ _ (fun _ => True) (hread_req_at_read_ram8 pa)
@@ -2692,7 +2692,7 @@ Section snodes.
     swp (read_ram Read_plain (Physaddr pa) 1 false)
       (fun r => ∃ bytes : SailStdpp.Values.mword (8 * 1),
                   ⌜r = (bytes, default_meta)⌝ ∗ Rr bytes).
-  Proof.
+  Proof using .
     intro Hdev.
     node_read_ex (mread_req1 pa) (hread_req_at_read_ram1 pa)
       (hread_resume_read_ram1 pa).
@@ -2714,7 +2714,7 @@ Section snodes.
     swp (read_ram Read_plain (Physaddr pa) 2 false)
       (fun r => ∃ bytes : SailStdpp.Values.mword (8 * 2),
                   ⌜r = (bytes, default_meta)⌝ ∗ Rr bytes).
-  Proof.
+  Proof using .
     intro Hdev.
     node_read_ex (mread_req2 pa) (hread_req_at_read_ram2 pa)
       (hread_resume_read_ram2 pa).
@@ -2736,7 +2736,7 @@ Section snodes.
     swp (read_ram Read_plain (Physaddr pa) 4 false)
       (fun r => ∃ bytes : SailStdpp.Values.mword (8 * 4),
                   ⌜r = (bytes, default_meta)⌝ ∗ Rr bytes).
-  Proof.
+  Proof using .
     intro Hdev.
     node_read_ex (mread_req pa) (hread_req_at_read_ram pa)
       (hread_resume_read_ram pa).
@@ -2758,7 +2758,7 @@ Section snodes.
     swp (read_ram Read_plain (Physaddr pa) 8 false)
       (fun r => ∃ bytes : SailStdpp.Values.mword (8 * 8),
                   ⌜r = (bytes, default_meta)⌝ ∗ Rr bytes).
-  Proof.
+  Proof using .
     intro Hdev.
     node_read_ex (mread_req8 pa) (hread_req_at_read_ram8 pa)
       (hread_resume_read_ram8 pa).
@@ -2785,9 +2785,9 @@ Section smem_w.
   Hypothesis Huintw : uint (to_bits 64 width) = width.
 
   Local Lemma ww_pos : 0 < width.
-  Proof. exact (vmem_width_pos width Hvw). Qed.
+  Proof using Hvw. exact (vmem_width_pos width Hvw). Qed.
   Local Lemma ww_le8 : width <= 8.
-  Proof. exact (vmem_width_le width Hvw). Qed.
+  Proof using Hvw. exact (vmem_width_le width Hvw). Qed.
 
   (* the store side's copy of the load section's address-class parameters *)
   Variable Acls : SailStdpp.Values.mword 64 -> Prop.
@@ -2873,7 +2873,7 @@ Section smem_w.
            false false false)
       (fun r => ⌜r = Values.Ok tt⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using Hpma_store Hpmprange Hvw.
     intros Hdisj HDmst HDpriv HDpma HDcfg HDaddr Hpriv Hpma Hpcfg Hpaddr
       Hep HA Hord HW Hcov Hpallow Hram Hpa.
     pose proof ww_pos as Hw0. pose proof ww_le8 as Hw8.
@@ -2961,7 +2961,7 @@ Section smem_w.
       (fun r => ⌜r = Values.Ok true⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro ∗ R ∗
                 resv_frag cpu_id None).
-  Proof.
+  Proof using Hmmio_w Hpma_store Hpmprange Hvw Hwrite_node.
     intros Hdisj HDpma HDcfg HDaddr HDhtif Hpma Hpcfg Hpaddr Hhtif
       HA Hord HW Hcov Hpallow Hram Hpa.
     pose proof ww_pos as Hw0. pose proof ww_le8 as Hw8.
@@ -3065,7 +3065,7 @@ Section smem_w.
       (fun r => ⌜r = Values.Ok true⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro ∗ R ∗
                 resv_frag cpu_id None).
-  Proof.
+  Proof using Hmmio_w Hpma_store Hpmprange Hvw Hwrite_node.
     intros Hdisj HDmst HDpriv HDpma HDcfg HDaddr HDhtif Hpriv Hpma Hpcfg
       Hpaddr Hhtif Hep HA Hord HW Hcov Hpallow Hram Hpa.
     iIntros "#Hcert Hfrag Hrw Hro Hmem".
@@ -3156,7 +3156,7 @@ Section smem_w.
                   ⌜ rsf = rs \/ exists tv, rsf = register_set tlb tv rs ⌝ ∗
                   hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro ∗
                   Rt rsf ∗ R ∗ resv_frag cpu_id None).
-  Proof.
+  Proof using Hmmio_w Hpma_store Hpmprange Hvw Hwrite_node.
     intros Hdisj HDmst HDpriv HDsatp HDpma HDcfg HDaddr HDhtif Hpriv Hpma
       Hpcfg Hpaddr Hhtif HSXL Hmode Hep HA Hord HW Hcov Hpallow Hram Hva Hpa.
     pose proof ww_pos as Hw0. pose proof ww_le8 as Hw8.
@@ -3315,7 +3315,7 @@ Section smem_w.
                   ⌜ rsf = rs \/ exists tv, rsf = register_set tlb tv rs ⌝ ∗
                   hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro ∗
                   Rt rsf ∗ R ∗ resv_frag cpu_id None).
-  Proof.
+  Proof using Hmmio_w Hpma_store Hpmprange Hvw Hwrite_node.
     intros ea Hdisj HDmst HDpriv HDmenv HDsatp HDpma HDcfg HDaddr HDhtif
       Hpriv Hpma Hpcfg Hpaddr Hhtif Hmxr Hpmm HSXL Htf Hmode Hep HA Hord HW
       Hcov Hpallow Hram Hva Hpa.
@@ -3410,7 +3410,7 @@ Section smem_w.
                   ⌜ rsf = rs \/ exists tv, rsf = register_set tlb tv rs ⌝ ∗
                   hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro ∗
                   Rt rsf ∗ R ∗ resv_frag cpu_id None).
-  Proof.
+  Proof using Hmmio_w Hpma_store Hpmprange Hvw Hwrite_node.
     intros ea Hdata Hdisj HDmst HDpriv HDmenv HDsatp HDpma HDcfg HDaddr
       HDhtif Hpriv Hpma Hpcfg Hpaddr Hhtif Hmxr Hpmm HSXL Htf Hmode Hep HA Hord
       HW Hcov Hpallow Hram Hva Hpa.
@@ -3593,7 +3593,7 @@ Section swnodes.
                              (hart_agent cpu_id)])%list V) ∗ R)) -∗
     swp (write_ram Write_plain (Physaddr pa) 1 v tt)
       (fun r => ⌜r = true⌝ ∗ R ∗ resv_frag cpu_id None).
-  Proof.
+  Proof using .
     intro Hdev.
     node_write (mwrite_req1 pa v) (hwrite_req_at_write_ram1 pa v)
       (mwrite_req1_value pa v) (hwrite_resume_write_ram1 pa v).
@@ -3620,7 +3620,7 @@ Section swnodes.
                              (hart_agent cpu_id)])%list V) ∗ R)) -∗
     swp (write_ram Write_plain (Physaddr pa) 2 v tt)
       (fun r => ⌜r = true⌝ ∗ R ∗ resv_frag cpu_id None).
-  Proof.
+  Proof using .
     intro Hdev.
     node_write (mwrite_req2 pa v) (hwrite_req_at_write_ram2 pa v)
       (mwrite_req2_value pa v) (hwrite_resume_write_ram2 pa v).
@@ -3647,7 +3647,7 @@ Section swnodes.
                              (hart_agent cpu_id)])%list V) ∗ R)) -∗
     swp (write_ram Write_plain (Physaddr pa) 4 v tt)
       (fun r => ⌜r = true⌝ ∗ R ∗ resv_frag cpu_id None).
-  Proof.
+  Proof using .
     intro Hdev.
     node_write (mwrite_req pa v) (hwrite_req_at_write_ram pa v)
       (mwrite_req4_value pa v) (hwrite_resume_write_ram pa v).
@@ -3674,7 +3674,7 @@ Section swnodes.
                              (hart_agent cpu_id)])%list V) ∗ R)) -∗
     swp (write_ram Write_plain (Physaddr pa) 8 v tt)
       (fun r => ⌜r = true⌝ ∗ R ∗ resv_frag cpu_id None).
-  Proof.
+  Proof using .
     intro Hdev.
     node_write (mwrite_req8 pa v) (hwrite_req_at_write_ram8 pa v)
       (mwrite_req8_value pa v) (hwrite_resume_write_ram8 pa v).
@@ -3710,7 +3710,7 @@ Section ram_class.
     = Some (Values.Ok
               {| Phys_Mem_Access_Info_splittable := CannotSplit;
                  Phys_Mem_Access_Info_granule_size_exp := 0 |}, rs).
-  Proof.
+  Proof using Hdvd Hvw.
     pose proof (vmem_width_pos width Hvw) as Hw0.
     pose proof (vmem_width_le width Hvw) as Hw8.
     exact (hfrun_check_pma_load_S D Drw rs pa pmar0 width Hw0
@@ -3729,7 +3729,7 @@ Section ram_class.
     = Some (Values.Ok
               {| Phys_Mem_Access_Info_splittable := CannotSplit;
                  Phys_Mem_Access_Info_granule_size_exp := 0 |}, rs).
-  Proof.
+  Proof using Hdvd Hvw.
     pose proof (vmem_width_pos width Hvw) as Hw0.
     pose proof (vmem_width_le width Hvw) as Hw8.
     exact (hfrun_check_pma_store_S D Drw rs pa pmar0 width Hw0
@@ -3743,7 +3743,7 @@ Section ram_class.
     addr_is_ram pa ->
     hfrun 12 D Drw rs (within_mmio_readable (Physaddr pa) width)
     = Some (false, rs).
-  Proof.
+  Proof using Hvw.
     pose proof (vmem_width_pos width Hvw) as Hw0.
     exact (hfrun_within_mmio_ram D Drw rs pa width ltac:(lia)).
   Qed.
@@ -3755,7 +3755,7 @@ Section ram_class.
     addr_is_ram pa ->
     hfrun 12 D Drw rs (within_mmio_writable (Physaddr pa) width)
     = Some (false, rs).
-  Proof.
+  Proof using Hvw.
     pose proof (vmem_width_pos width Hvw) as Hw0.
     exact (hfrun_within_mmio_w_ram D Drw rs pa width ltac:(lia)).
   Qed.
@@ -3766,7 +3766,7 @@ Section ram_class.
     pmpRangeMatch (Z.mul (uint (zeros' 64 : mword 64)) 4)
       (Z.mul (uint paddr0) 4) (uint pa) (uint (to_bits 64 width))
     = PMP_Match.
-  Proof.
+  Proof using Hdvd Huintw Hvw.
     intros Hram Hpa Hcov.
     pose proof (vmem_width_pos width Hvw) as Hw0.
     pose proof (vmem_width_le width Hvw) as Hw8.
@@ -3909,7 +3909,7 @@ Section dev_class.
     = Some (Values.Ok
               {| Phys_Mem_Access_Info_splittable := CannotSplit;
                  Phys_Mem_Access_Info_granule_size_exp := 0 |}, rs).
-  Proof.
+  Proof using .
     intros HD Hpma Hpallow (Hdev & Hnc & Hacc) Hpa.
     exact (hfrun_check_pma_load_io D Drw rs pa pmar0 width HD Hpma Hpallow
              Hacc Hpa).
@@ -3927,7 +3927,7 @@ Section dev_class.
     = Some (Values.Ok
               {| Phys_Mem_Access_Info_splittable := CannotSplit;
                  Phys_Mem_Access_Info_granule_size_exp := 0 |}, rs).
-  Proof.
+  Proof using .
     intros HD Hpma Hpallow (Hdev & Hnc & Hacc) Hpa.
     exact (hfrun_check_pma_store_io D Drw rs pa pmar0 width HD Hpma Hpallow
              Hacc Hpa).
@@ -3940,7 +3940,7 @@ Section dev_class.
     dev_cls width pa ->
     hfrun 12 D Drw rs (within_mmio_readable (Physaddr pa) width)
     = Some (false, rs).
-  Proof.
+  Proof using Hvw.
     intros HD Hhtif (Hdev & Hnc & Hacc).
     exact (hfrun_within_mmio_dev_r D Drw rs pa width
              (vmem_width_pos width Hvw) HD Hhtif Hnc).
@@ -3953,7 +3953,7 @@ Section dev_class.
     dev_cls width pa ->
     hfrun 12 D Drw rs (within_mmio_writable (Physaddr pa) width)
     = Some (false, rs).
-  Proof.
+  Proof using Hvw.
     intros HD Hhtif (Hdev & Hnc & Hacc).
     exact (hfrun_within_mmio_dev_w D Drw rs pa width
              (vmem_width_pos width Hvw) HD Hhtif Hnc).
@@ -3965,7 +3965,7 @@ Section dev_class.
     pmpRangeMatch (Z.mul (uint (zeros' 64 : mword 64)) 4)
       (Z.mul (uint paddr0) 4) (uint pa) (uint (to_bits 64 width))
     = PMP_Match.
-  Proof.
+  Proof using Huintw Hvw.
     intros (Hdev & Hnc & Hacc) Hpa Hcov.
     pose proof (vmem_width_pos width Hvw) as Hw0.
     destruct Hacc as (Hwr & Hlo & Hhi).
@@ -3999,7 +3999,7 @@ Section sdevnodes.
         ▷ (|={∅,⊤}=> mstate_interp (MState σ.(sregs) σ.(mem) d') ∗ R)) -∗
     swp (read_ram Read_plain (Physaddr pa) 1 false)
       (fun r => ⌜r = (bytes, default_meta)⌝ ∗ R).
-  Proof.
+  Proof using .
     intro Hdev. iIntros "#Hcert Hmem".
     iApply (swp_hart_dev_read 1 (mread_req1 pa) _ _
               (hread_req_at_read_ram1 pa) Hdev with "Hcert [Hmem]").
@@ -4018,7 +4018,7 @@ Section sdevnodes.
         ▷ (|={∅,⊤}=> mstate_interp (MState σ.(sregs) σ.(mem) d') ∗ R)) -∗
     swp (read_ram Read_plain (Physaddr pa) 4 false)
       (fun r => ⌜r = (bytes, default_meta)⌝ ∗ R).
-  Proof.
+  Proof using .
     intro Hdev. iIntros "#Hcert Hmem".
     iApply (swp_hart_dev_read 4 (mread_req pa) _ _
               (hread_req_at_read_ram pa) Hdev with "Hcert [Hmem]").
@@ -4042,7 +4042,7 @@ Section sdevnodes.
     swp (read_ram Read_plain (Physaddr pa) 1 false)
       (fun r => ∃ bytes : SailStdpp.Values.mword (8 * 1),
                   ⌜r = (bytes, default_meta)⌝ ∗ Rr bytes).
-  Proof.
+  Proof using .
     intro Hdev. iIntros "#Hcert Hmem".
     iApply (swp_hart_dev_read 1 (mread_req1 pa) _ _
               (hread_req_at_read_ram1 pa) Hdev with "Hcert [Hmem]").
@@ -4063,7 +4063,7 @@ Section sdevnodes.
     swp (read_ram Read_plain (Physaddr pa) 4 false)
       (fun r => ∃ bytes : SailStdpp.Values.mword (8 * 4),
                   ⌜r = (bytes, default_meta)⌝ ∗ Rr bytes).
-  Proof.
+  Proof using .
     intro Hdev. iIntros "#Hcert Hmem".
     iApply (swp_hart_dev_read 4 (mread_req pa) _ _
               (hread_req_at_read_ram pa) Hdev with "Hcert [Hmem]").
@@ -4083,7 +4083,7 @@ Section sdevnodes.
         ▷ (|={∅,⊤}=> mstate_interp (MState σ.(sregs) σ.(mem) d') ∗ R)) -∗
     swp (write_ram Write_plain (Physaddr pa) 1 v tt)
       (fun r => ⌜r = true⌝ ∗ R ∗ resv_frag cpu_id None).
-  Proof.
+  Proof using .
     intro Hdev. iIntros "#Hcert Hfrag Hmem".
     iApply (swp_hart_dev_write 1 (mwrite_req1 pa v) _ _ rr
               (hwrite_req_at_write_ram1 pa v) Hdev
@@ -4105,7 +4105,7 @@ Section sdevnodes.
         ▷ (|={∅,⊤}=> mstate_interp (MState σ.(sregs) σ.(mem) d') ∗ R)) -∗
     swp (write_ram Write_plain (Physaddr pa) 4 v tt)
       (fun r => ⌜r = true⌝ ∗ R ∗ resv_frag cpu_id None).
-  Proof.
+  Proof using .
     intro Hdev. iIntros "#Hcert Hfrag Hmem".
     iApply (swp_hart_dev_write 4 (mwrite_req pa v) _ _ rr
               (hwrite_req_at_write_ram pa v) Hdev
@@ -4209,7 +4209,7 @@ Section instances.
 
   Local Lemma dev_cls_dev (width : Z) (pa : SailStdpp.Values.mword 64) :
     dev_cls width pa -> dev_addr pa = true.
-  Proof. by intros (H & _ & _). Qed.
+  Proof using . by intros (H & _ & _). Qed.
 
   (* ---- the four RAM LOAD engines ---- *)
   Definition swp_execute_LOAD_ram_S1 :=
@@ -4277,7 +4277,7 @@ Section instances.
     Mobl_ram width pa bytes R -∗
     swp (read_ram Read_plain (Physaddr pa) width false)
       (fun r => ⌜r = (bytes, default_meta)⌝ ∗ R).
-  Proof.
+  Proof using .
     intros [-> | [-> | [-> | ->]]] Hdev;
       [ exact (swp_read_ram_node1 pa bytes R Hdev)
       | exact (swp_read_ram_node2 pa bytes R Hdev)
@@ -4295,7 +4295,7 @@ Section instances.
     Wobl_ram width pa v R -∗
     swp (write_ram Write_plain (Physaddr pa) width v tt)
       (fun r => ⌜r = true⌝ ∗ R ∗ resv_frag cpu_id None).
-  Proof.
+  Proof using .
     intros [-> | [-> | [-> | ->]]] Hdev;
       [ exact (swp_write_ram_node1 pa v R rr Hdev)
       | exact (swp_write_ram_node2 pa v R rr Hdev)
@@ -4383,7 +4383,7 @@ Section instances.
       swp (read_ram Read_plain (Physaddr pa) width false)
         (fun r => ∃ bytes : SailStdpp.Values.mword (8 * width),
                     ⌜r = (bytes, default_meta)⌝ ∗ ⌜P bytes⌝ ∗ R).
-  Proof.
+  Proof using .
     intros [-> | [-> | [-> | ->]]] Hdev;
       [ exact (swp_read_ram_node1_exv pa P R Hdev)
       | exact (swp_read_ram_node2_exv pa P R Hdev)
@@ -4419,7 +4419,7 @@ Section instances.
                     ⌜r = (bytes, default_meta)⌝ ∗
                     (∃ tvn : nat, hart_rview_lb_at cpu_id tvn ∗
                                   ⌜Q bytes tvn⌝) ∗ R).
-  Proof.
+  Proof using .
     intros [-> | [-> | [-> | ->]]] Hdev;
       [ exact (swp_read_ram_node1_exvv pa Q R Hdev)
       | exact (swp_read_ram_node2_exvv pa Q R Hdev)
@@ -4456,7 +4456,7 @@ Section instances.
                     ⌜r = (bytes, default_meta)⌝ ∗
                     (∃ tvn : nat, hart_rview_lb_at cpu_id tvn ∗
                                   Rr bytes tvn)).
-  Proof.
+  Proof using .
     intros [-> | [-> | [-> | ->]]] Hdev;
       [ exact (swp_read_ram_node1_exvvr pa Rr Hdev)
       | exact (swp_read_ram_node2_exvvr pa Rr Hdev)
@@ -4492,7 +4492,7 @@ Section instances.
                     ⌜r = (bytes, default_meta)⌝ ∗
                     (∃ tvn : nat, hart_rview_lb_at cpu_id tvn ∗
                                   Q bytes tvn) ∗ R).
-  Proof.
+  Proof using .
     intros [-> | [-> | [-> | ->]]] Hdev;
       [ exact (swp_read_ram_node1_exvi pa Q R Hdev)
       | exact (swp_read_ram_node2_exvi pa Q R Hdev)
@@ -4509,7 +4509,7 @@ Section instances.
       swp (read_ram Read_plain (Physaddr pa) width false)
         (fun r => ∃ bytes : SailStdpp.Values.mword (8 * width),
                     ⌜r = (bytes, default_meta)⌝ ∗ Rr bytes).
-  Proof.
+  Proof using .
     intros [-> | [-> | [-> | ->]]] Hdev;
       [ exact (swp_read_ram_node1_ex pa Rr Hdev)
       | exact (swp_read_ram_node2_ex pa Rr Hdev)
@@ -4707,7 +4707,7 @@ Section samo_nodes.
     swp (read_ram Read_RISCV_reserved_acquire (Physaddr pa) 4 false)
       (fun r => ⌜r = (bytes, default_meta)⌝ ∗ R ∗
                 resv_fragb cpu_id (Some (snap_of pa 4 bytes)) true).
-  Proof.
+  Proof using .
     intro Hdev. iIntros "#Hcert Hfrag Hmem".
     iApply (swp_hart_ram_read_excl 4 (mread_req4_racq pa) _ _ rr
               (hread_req_at_read_ram4_racq pa) Hdev ltac:(reflexivity)
@@ -4746,7 +4746,7 @@ Section samo_nodes.
       (fun r => ∃ bytes : SailStdpp.Values.mword (8 * 4),
                   ⌜r = (bytes, default_meta)⌝ ∗ Rr bytes ∗
                   resv_fragb cpu_id (Some (snap_of pa 4 bytes)) true).
-  Proof.
+  Proof using .
     intro Hdev. iIntros "#Hcert Hfrag Hmem".
     iApply (swp_hart_ram_read_excl 4 (mread_req4_racq pa) _ _ rr
               (hread_req_at_read_ram4_racq pa) Hdev ltac:(reflexivity)
@@ -4785,7 +4785,7 @@ Section samo_nodes.
              ∗ R)) -∗
     swp (write_ram Write_RISCV_conditional (Physaddr pa) 4 v tt)
       (fun r => ⌜r = true⌝ ∗ R ∗ resv_frag cpu_id None).
-  Proof.
+  Proof using .
     intro Hdev. iIntros "#Hcert Hfrag Hmem".
     iApply (swp_hart_ram_write_cond 4 (mwrite_req4_con pa v) _ _ old true
               (hwrite_req_at_write_ram4_con pa v) Hdev ltac:(lia)
@@ -4849,7 +4849,7 @@ Section samo.
     swp (mem_write_ea (Physaddr pa) 4 amoacc PBMT_PMA false false true)
       (fun r => ⌜r = Values.Ok tt⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv HDpma HDcfg HDaddr Hpriv Hpma Hpcfg Hpaddr
       Hep HA Hord HR HW Hcov Hpallow Hram Hpa.
     assert (Hacc : pma_ram_access pa 4)
@@ -4945,7 +4945,7 @@ Section samo.
       (fun r => ⌜r = Values.Ok (bytes, tt)⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro ∗ R ∗
                 resv_fragb cpu_id (Some (snap_of pa 4 bytes)) true).
-  Proof.
+  Proof using .
     intros Hdisj HDpma HDcfg HDaddr HDhtif Hhtif Hpma Hpcfg Hpaddr
       HA Hord HR HW Hcov Hpallow Hram Hpa.
     assert (Hacc : pma_ram_access pa 4)
@@ -5057,7 +5057,7 @@ Section samo.
                   ⌜r = Values.Ok (bytes, tt)⌝ ∗
                   hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro ∗ Rr bytes ∗
                   resv_fragb cpu_id (Some (snap_of pa 4 bytes)) true).
-  Proof.
+  Proof using .
     intros Hdisj HDpma HDcfg HDaddr HDhtif Hhtif Hpma Hpcfg Hpaddr
       HA Hord HR HW Hcov Hpallow Hram Hpa.
     assert (Hacc : pma_ram_access pa 4)
@@ -5149,7 +5149,7 @@ Section samo.
     swp (mem_read amoacc PBMT_PMA pa 4 true false true)
       (fun r => ⌜r = Values.Ok w⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro ∗ R).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv Hpriv Hep.
     iIntros "#Hcert Hrw Hro Hcmr".
     unfold mem_read.
@@ -5202,7 +5202,7 @@ Section samo.
       (fun r => ∃ w : SailStdpp.Values.mword (8 * 4),
                   ⌜r = Values.Ok w⌝ ∗
                   hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro ∗ R w).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv Hpriv Hep.
     iIntros "#Hcert Hrw Hro Hcmr".
     unfold mem_read.
@@ -5282,7 +5282,7 @@ Section samo.
       (fun r => ⌜r = Values.Ok true⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro ∗ R ∗
                 resv_frag cpu_id None).
-  Proof.
+  Proof using .
     intros Hdisj HDpma HDcfg HDaddr HDhtif Hpma Hpcfg Hpaddr Hhtif
       HA Hord HR HW Hcov Hpallow Hram Hpa.
     assert (Hacc : pma_ram_access pa 4)
@@ -5402,7 +5402,7 @@ Section samo.
       (fun r => ⌜r = Values.Ok true⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro ∗ R ∗
                 resv_frag cpu_id None).
-  Proof.
+  Proof using .
     intros Hdisj HDmst HDpriv HDpma HDcfg HDaddr HDhtif Hpriv Hpma Hpcfg
       Hpaddr Hhtif Hep HA Hord HR HW Hcov Hpallow Hram Hpa.
     iIntros "#Hcert Hfrag Hrw Hro Hmem".
@@ -5524,7 +5524,7 @@ Section samo.
                   ⌜ rsf = rs \/ exists tv, rsf = register_set tlb tv rs ⌝ ∗
                   hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro ∗
                   Rt rsf ∗ R ∗ resv_frag cpu_id None).
-  Proof.
+  Proof using .
     intros ea sv Hdisj HDmst HDpriv HDmenv HDsatp HDpma HDcfg HDaddr HDhtif
       Hpriv Hpma Hpcfg Hpaddr Hhtif Hmxr Hpmm HSXL Hmode Hep HA Hord HR HW
       Hcov Hpallow Hram Hva Hpa Hrd.
@@ -5735,7 +5735,7 @@ Section samo.
                   ⌜ rsf = rs \/ exists tv, rsf = register_set tlb tv rs ⌝ ∗
                   hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro ∗
                   Rt rsf ∗ R bytes ∗ resv_frag cpu_id None).
-  Proof.
+  Proof using .
     intros ea sv Hdisj HDmst HDpriv HDmenv HDsatp HDpma HDcfg HDaddr HDhtif
       Hpriv Hpma Hpcfg Hpaddr Hhtif Hmxr Hpmm HSXL Hmode Hep HA Hord HR HW
       Hcov Hpallow Hram Hva Hpa Hrd.
@@ -5934,7 +5934,7 @@ Section samo.
                   ⌜ rsf = rs \/ exists tv, rsf = register_set tlb tv rs ⌝ ∗
                   hreg_frame rsf Drw ∗ hreg_frame_ro Df rsf Dro ∗
                   Rt rsf ∗ R bytes ∗ resv_frag cpu_id None).
-  Proof.
+  Proof using .
     intros ea sv Hdisj HDmst HDpriv HDmenv HDsatp HDpma HDcfg HDaddr HDhtif
       Hpriv Hpma Hpcfg Hpaddr Hhtif Hmxr Hpmm HSXL Hmode Hep HA Hord HR HW
       Hcov Hpallow Hram Hva Hpa Hrd.

@@ -143,7 +143,7 @@ Section UShRest.
       UkSh.ush_rest_l (PS := uprogSG_free) N γp T Wc Wbn
         (UShLine.ush_mid γ γp)
         (UInitSh.sh_Rsh (ukn_t N) (ukn_d N) (ukn_s N)).
-  Proof.
+  Proof using HPT HTT.
     intros Hkt.
     (* the credential's conversion at a fork that failed: the block the
        line owed, read as a boundary credential *)

@@ -254,7 +254,7 @@ Lemma wp_lw_virtio_dinv_s_sconf (γd : disk_names) (pc : mword 64) (is_rvc is_un
     S w -∗
     WP (Loop : expr riscv_lang)) -∗
   WP (Loop : expr riscv_lang).
-Proof.
+Proof using .
   intros ea a8 ldval Hrange Halign Hcanon Hdevvpn Hrdnz Hrdok.
   (* the class, consumed at [rs1] -- the one line the funnel change needs,
      and this leaf's wiring check.  See the family note at the head of this
@@ -540,7 +540,7 @@ Lemma wp_sw_virtio_dinv_s_sconf (γd : disk_names) (pc : mword 64) (is_rvc : boo
     S -∗
     WP (Loop : expr riscv_lang)) -∗
   WP (Loop : expr riscv_lang).
-Proof.
+Proof using .
   intros ea a8 storeword Hrange Halign Hcanon Hdevvpn.
   (* the class, consumed at [rs1 / rs2] -- the one line the funnel change needs,
      and this leaf's wiring check.  See the family note at the head of this
@@ -814,7 +814,7 @@ Lemma wp_lw_virtio_dev_s_sconf (γu : uart_names) (γd : disk_names) (pc : mword
     pc_is (add_vec_int pc (if is_rvc then 2 else 4)) -∗
     WP (Loop : expr riscv_lang)) -∗
   WP (Loop : expr riscv_lang).
-Proof.
+Proof using .
   intros ea a8 ldval Hrange Halign Hcanon Hdevvpn Hrdnz Hrdok Hread.
   (* the class, consumed at [rs1] -- the one line the funnel change needs,
      and this leaf's wiring check.  See the family note at the head of this
@@ -882,7 +882,7 @@ Lemma wp_sw_virtio_dev_s_sconf (γu : uart_names) (γd : disk_names) (pc : mword
     pc_is (add_vec_int pc (if is_rvc then 2 else 4)) -∗
     WP (Loop : expr riscv_lang)) -∗
   WP (Loop : expr riscv_lang).
-Proof.
+Proof using .
   intros ea a8 storeword Hrange Halign Hcanon Hdevvpn Hwrite.
   (* the class, consumed at [rs1 / rs2] -- the one line the funnel change needs,
      and this leaf's wiring check.  See the family note at the head of this

@@ -293,7 +293,7 @@ Section OpenFire.
   Lemma opf_start_of_open `{XI : CtxIdDefs.CurCtx} (γfs : fs_names) (cw : Z) (P Pmiss : nat -> Z -> iProp Σ)
       (pl : list (bv 8)) :
     namei_walk_pre_era γfs cw P Pmiss -∗ ex_start γfs cw P Pmiss pl.
-  Proof.
+  Proof using .
     iIntros "Hpre". rewrite /ex_start. iIntros (r Hr).
     rewrite /namei_walk_pre_era.
     iMod ("Hpre" $! pl r with "[%]") as "[$ $]"; [exact Hr | done].
@@ -315,7 +315,7 @@ Section OpenFire.
       top_frag_q (fs_gamma_L γfs) dq i n
       ∗ ∃ av : aview,
           ⌜arow_at av i (abs_row n)⌝ ∗ Fo.(pf_recv) av i (abs_row n).
-  Proof.
+  Proof using .
     intros HE Hnz. iIntros "#Hi Hcm Hf".
     (* THE PIECE IS SPENT: the fire eliminates to the AU side. *)
     iDestruct (pf_at_au with "Hcm") as "Hcm".
@@ -351,7 +351,7 @@ Section OpenFire.
       top_frag (fs_gamma_L γfs) i n
       ∗ ∃ av : aview,
           ⌜arow_at av i (abs_row n)⌝ ∗ Fo.(pf_recv) av i (abs_row n).
-  Proof.
+  Proof using .
     intros HE Hnz. rewrite top_frag_1. exact (opf_open_fire γfs E _ Fo i n HE Hnz).
   Qed.
 
@@ -380,7 +380,7 @@ Section OpenFire.
       top_frag (fs_gamma_L γfs) i n'
       ∗ ∃ av : aview,
           ⌜arow_at av i (MkAnode (AFile bs0) nl)⌝ ∗ Ft.(pf_recv) av i bs0.
-  Proof.
+  Proof using .
     intros HE Hloc Hnz Habs Hnz' Habs'. iIntros "#Hi #Hai Hcm Hf".
     iDestruct (pf_at_au with "Hcm") as "Hcm".
     rewrite /top_frag /fs_gamma_L /=.

@@ -124,7 +124,7 @@ Section UkShLoop.
       UkShMalloc.ushm_fresh N sz ∗
       ustr γd DfracDiscarded ushp_whitespace 5 ushp_ws_f ∗
       ustr γd DfracDiscarded ushp_symbols 7 ushp_sym_f.
-  Proof.
+  Proof using .
     iIntros "(Hws & Hsy & Hfp & Hbase) Hsz".
     rewrite /UkShMalloc.ushm_fresh. iFrame "Hfp Hbase Hsz Hws Hsy".
   Qed.
@@ -175,7 +175,7 @@ Section UkShLoop.
       (l : list fdstate) (sz : Z) :
     UkSh.ush_loop_head N γp T Wc Wb Pm (ushl_R sz) l -∗
     ushl_head T Wc Wb Pm l sz.
-  Proof.
+  Proof using .
     iIntros "H" (h m f n) "%Hregs %Hfd0 Hstd Hdat Hsz Hbuf Hrun".
     iApply ("H" $! h m f n with "[%//] [%//] Hstd [$Hdat $Hsz] Hbuf Hrun").
   Qed.

@@ -68,7 +68,7 @@ Section ProofSwtch.
 
   Local Instance stack_own_timeless_local `{XI' : CurCtx} (sp : mword 64) (n : nat) :
     Timeless (stack_own (KTR := KT1) (XI := XI') sp n).
-  Proof.
+  Proof using .
     rewrite /stack_own. apply bi.exist_timeless. intros ws.
     apply bi.sep_timeless; [ apply _ | ].
     apply big_sepL_timeless. intros ? ? _.
@@ -85,7 +85,7 @@ Section ProofSwtch.
      lemma the file is 39 s. *)
   Local Lemma callee_img_nth1 (m : regfile) (d : mword 64) :
     nth 1 (callee_img m) d = m !!! Regidx csp_rs1.
-  Proof. unfold callee_img, ctx_regs, csp_rs1. cbn [map nth]. reflexivity. Qed.
+  Proof using . unfold callee_img, ctx_regs, csp_rs1. cbn [map nth]. reflexivity. Qed.
 
   Lemma wp_swtch_sconf
       (P : CPU -d> ctx_adm -d> mword 64 -d> mword 64 -d>
@@ -94,7 +94,7 @@ Section ProofSwtch.
       (oldc newc : mword 64) (m0 : regfile) (old_vs : list (mword 64))
       (av : nat) (eb : bool) (p : mword 64) (back : bool) :
     wp_swtch_sconf_body P An Ao oldc newc m0 old_vs av eb p back.
-  Proof.
+  Proof using .
     cbv beta delta [wp_swtch_sconf_body].
     iIntros (Hlen_old Holdc Hnewc HPm Hadm Hadmo)
       "#Ht Hcg Hcpuown Hpc Holdcells Hvalidnew HP Hwold".

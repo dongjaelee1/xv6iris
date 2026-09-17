@@ -240,7 +240,7 @@ Section ProofFetchaddr.
         pc_is (ret_pc ra0) -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hav Hsp0 Hra0 Hs00 Hs10 Hs20 Hmtsp Hmta0 Hthr.
     iIntros "Hcg #Htext Hpc Hb1 Hb2 Hb3 Hb4 Hcont".
     (* ---- +0x36: c.ldsp ra,24(sp) ---- *)
@@ -420,7 +420,7 @@ Section ProofFetchaddr.
       (m : regfile) (av : nat) (eb : bool) (p : mword 64)
       (pid : mword 32) (U : ustate) (oldv : mword 64) (b : bool) (lks : gset string)
     : wp_fetchaddr_sconf_body γa γf m av eb p pid U oldv b lks.
-  Proof.
+  Proof using .
     cbv beta delta [wp_fetchaddr_sconf_body].
     intros pcE addr ip ret_tgt Hav.
     

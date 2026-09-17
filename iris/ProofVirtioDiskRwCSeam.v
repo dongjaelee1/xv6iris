@@ -139,7 +139,7 @@ Section ProofVirtioDiskRwCSeam.
     b_disk b ↦₄ dsk0 -∗
     vdrw_p3_exit CID γk γs j γd pd pav pu K eb sp0 b wr sector m0 lks -∗
     P2.vdrw_p2_exit CID γk γs j γd pd pav pu K eb sp0 b wr sector m0 lks.
-  Proof.
+  Proof using .
     iIntros "#Htext #Hgeom Hbd Hexit".
     rewrite /P2.vdrw_p2_exit.
     iIntros (CIDx Hsx M np nr cm fr h m2 t) "%Hrh %Hfacts %Hal

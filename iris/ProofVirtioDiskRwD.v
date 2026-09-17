@@ -505,7 +505,7 @@ Section VdrwdMaps.
     pm_list l -∗
     phys_map (foldr union ∅ l) ∗ ⌜pm_ok l⌝ ∗
     ⌜forall m, m ∈ l -> m ⊆ foldr union ∅ l⌝.
-  Proof.
+  Proof using .
     induction l as [|m l IH].
     - iIntros "_". rewrite /phys_map big_sepM_empty. iSplitR; [done|].
       iSplitR; [iPureIntro; exact I|].
@@ -527,7 +527,7 @@ Section VdrwdMaps.
      one opaque [phys_map] apart into the cells [free_chain] hands back. *)
   Lemma pm_split (l : list _) :
     pm_ok l -> phys_map (foldr union ∅ l) -∗ pm_list l.
-  Proof.
+  Proof using .
     induction l as [|m l IH]; intro Hok.
     - iIntros "_". rewrite /pm_list. done.
     - destruct Hok as [Hd Hokl].
@@ -548,7 +548,7 @@ Section VdrwdMaps.
     po_list l -∗
     pin_offer (foldr union ∅ l) ∗ ⌜pm_ok l⌝ ∗
     ⌜forall m, m ∈ l -> m ⊆ foldr union ∅ l⌝.
-  Proof.
+  Proof using .
     induction l as [|m l IH].
     - iIntros "_". rewrite /pin_offer big_sepM_empty. iSplitR; [done|].
       iSplitR; [iPureIntro; exact I|].
@@ -571,7 +571,7 @@ Section VdrwdMaps.
 
   Lemma kp_union (ξ : CtxId) (l : list _) :
     pm_ok l -> kp_list ξ l -∗ keep_map ξ (foldr union ∅ l).
-  Proof.
+  Proof using .
     induction l as [|m l IH]; intro Hok.
     - iIntros "_". rewrite keep_map_empty. done.
     - destruct Hok as [Hd Hokl]. rewrite /kp_list. iIntros "[Hm Hl]".
@@ -583,7 +583,7 @@ Section VdrwdMaps.
      shape [pm_union] consumes *)
   Lemma vdrwd_pw8_map (a : Arch.pa) (w : bv 64) :
     phys_word8 a w ⊣⊢ phys_map (range_map a 8 (nth_byte w)).
-  Proof. rewrite /phys_word8. symmetry. apply (phys_map_range a 8 (nth_byte w)). lia. Qed.
+  Proof using . rewrite /phys_word8. symmetry. apply (phys_map_range a 8 (nth_byte w)). lia. Qed.
 
   (* A6.69: [VirtioProto.phys_map] is a big-op of [TsoCtx.phys_ledger], so
      the singleton bridge is stated at the LEDGER byte.  The raw
@@ -591,7 +591,7 @@ Section VdrwdMaps.
      re-entered (A6.9). *)
   Lemma vdrwd_pb_map (a : Arch.pa) (v : bv 8) :
     phys_ledger a (DfracOwn 1) v ⊣⊢ phys_map {[ a := v ]}.
-  Proof. rewrite /phys_map big_sepM_singleton. reflexivity. Qed.
+  Proof using . rewrite /phys_map big_sepM_singleton. reflexivity. Qed.
 
 End VdrwdMaps.
 
@@ -658,7 +658,7 @@ Section VdrwdLeaves.
        (uint (pa_add (pa_add pav 2%nat) j : SailStdpp.Values.mword 64) < 274877906944)%Z) ->
     kmap_static_claims -∗ avail_half pav np -∗
     wordw_claim (KTR := KT0) 2 (pa_add pav 2%nat).
-  Proof.
+  Proof using .
     iIntros (Halign Hst2 Hcan2) "#Hkm Havh".
     iDestruct (avail_half_ram with "Havh") as %Hram.
     assert (H02 : (0 < 2)%nat) by lia.
@@ -688,7 +688,7 @@ Section VdrwdLeaves.
       ⌜forall tvr : nat, (V (hart_agent (@cpu_id CIDw)) <= tvr)%nat ->
          tso_read_bytes img log (hart_agent (@cpu_id CIDw)) tvr
            (pa_of ppn ea) (Z.to_N 2) v⌝.
-  Proof.
+  Proof using .
     intros -> CIDw img sigma log V ppn v Hcan Hoff Hid _.
     rewrite (ktier_pin_id ppn _ Hid).
     iIntros "#Hk Hgh Htso Hctx [%Hv Havh]". subst v.
@@ -732,7 +732,7 @@ Section VdrwdLeaves.
          ([∗ list] j ∈ seq 0 2, phys_ledger_at (pa_add (pa_add pav 2%nat) j) (DfracOwn 1)
                                   (nth_byte (wrap16 (S np)) j) t) ∗
          TsoCtx.ctx_wrote CtxIdDefs.cur_ctx t (pa_add pav 2%nat)).
-  Proof.
+  Proof using .
     intros -> CIDw img sigma log V ppn Hcan Hoff Hid _.
     rewrite (ktier_pin_id ppn _ Hid).
     iIntros "#Hk Hm Htso Hctx Hres".
@@ -794,7 +794,7 @@ Section VdrwdLeaves.
       (dq : dfrac) (v : SailStdpp.Values.mword 16) :
     wordw_pointsto (KTR := KTR2) 2 a dq v
     ⊣⊢ TsoCtx.ctx_word2_pointsto (KTR := KTR2) cur_ctx a dq v.
-  Proof.
+  Proof using .
     rewrite /wordw_pointsto /TsoCtx.ctx_word2_pointsto.
     by change (Z.to_nat 2) with 2%nat.
   Qed.
@@ -808,7 +808,7 @@ Section VdrwdLeaves.
        (uint (pa_add A j : SailStdpp.Values.mword 64) < 274877906944)%Z) ->
     kmap_static_claims -∗ hcell_map cur_ctx (range_map A 2 (nth_byte w)) -∗
     wordw_claim (KTR := KT0) 2 A.
-  Proof.
+  Proof using .
     iIntros (Halign Hst2 Hcan2) "#Hkm Hhc".
     iDestruct (hcell_map_ram with "Hhc") as %Hram.
     assert (H02 : (0 < 2)%nat) by lia.
@@ -841,7 +841,7 @@ Section VdrwdLeaves.
       pc_is (add_vec_int pc 4) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hea Hrd Hrdsp.
     (* the class, consumed at [rs1] -- see [IntrDefs.SrcOk] *)
     assert (Hea_all : forall hh : CpuId,
@@ -914,7 +914,7 @@ Section VdrwdLeaves.
       hcell_map cur_ctx (range_map (d_ring pav (np `mod` 8)) 2 (nth_byte h)) -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hea Hsv.
     assert (Hea_all : forall hh : CpuId,
               add_vec (rget (CID := hh) m rs1) (sign_extend' 64 imm)
@@ -1034,7 +1034,7 @@ Section VdrwdLeaves.
       avail_half pav (S np) -∗ pin_back pin -∗
       WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hea Hsv Hpinok Hdcsl Hdcpos Hdcpin Hwrbdom Hwrpin.
     assert (Hea_all : forall hh : CpuId,
               add_vec (rget (CID := hh) m rs1) (sign_extend' 64 imm)
@@ -1297,7 +1297,7 @@ Section VdrwdPinRes.
   Lemma vdrwd_w2 (a : Arch.pa) (w : bv 16) :
     (forall j, (j < 2)%nat -> kmap_static (svpn_of (pa_add a j)) KP_rw) ->
     kmap_static_claims -∗ a ↦₂ w -∗ phys_map (range_map a 2 (nth_byte w)).
-  Proof.
+  Proof using .
     iIntros (Hs) "#Hb H". rewrite <- phys_word2_map.
     iApply (word2_to_phys a w Hs with "Hb H").
   Qed.
@@ -1305,7 +1305,7 @@ Section VdrwdPinRes.
   Lemma vdrwd_w4 (a : Arch.pa) (w : bv 32) :
     (forall j, (j < 4)%nat -> kmap_static (svpn_of (pa_add a j)) KP_rw) ->
     kmap_static_claims -∗ a ↦₄ w -∗ phys_map (range_map a 4 (nth_byte w)).
-  Proof.
+  Proof using .
     iIntros (Hs) "#Hb H". rewrite <- phys_word4_map.
     iApply (word4_to_phys a w Hs with "Hb H").
   Qed.
@@ -1313,7 +1313,7 @@ Section VdrwdPinRes.
   Lemma vdrwd_w8 (a : Arch.pa) (w : bv 64) :
     (forall j, (j < 8)%nat -> kmap_static (svpn_of (pa_add a j)) KP_rw) ->
     kmap_static_claims -∗ a ↦₈ w -∗ phys_map (range_map a 8 (nth_byte w)).
-  Proof.
+  Proof using .
     iIntros (Hs) "#Hb H". rewrite <- vdrwd_pw8_map.
     iApply (word8_to_phys a w Hs with "Hb H").
   Qed.
@@ -1324,7 +1324,7 @@ Section VdrwdPinRes.
     (forall j, (j < 2)%nat -> kmap_static (svpn_of (pa_add a j)) KP_rw) ->
     kmap_static_claims -∗ a ↦₂ w -∗
     pin_offer (range_map a 2 (nth_byte w)) ∗ keep_map cur_ctx (range_map a 2 (nth_byte w)).
-  Proof.
+  Proof using .
     iIntros (Hs) "#Hb [_ H]".
     iApply (ctx_win_offer a 2 (nth_byte w) ltac:(lia) Hs with "Hb H").
   Qed.
@@ -1333,7 +1333,7 @@ Section VdrwdPinRes.
     (forall j, (j < 4)%nat -> kmap_static (svpn_of (pa_add a j)) KP_rw) ->
     kmap_static_claims -∗ a ↦₄ w -∗
     pin_offer (range_map a 4 (nth_byte w)) ∗ keep_map cur_ctx (range_map a 4 (nth_byte w)).
-  Proof.
+  Proof using .
     iIntros (Hs) "#Hb [_ H]".
     iApply (ctx_win_offer a 4 (nth_byte w) ltac:(lia) Hs with "Hb H").
   Qed.
@@ -1342,7 +1342,7 @@ Section VdrwdPinRes.
     (forall j, (j < 8)%nat -> kmap_static (svpn_of (pa_add a j)) KP_rw) ->
     kmap_static_claims -∗ a ↦₈ w -∗
     pin_offer (range_map a 8 (nth_byte w)) ∗ keep_map cur_ctx (range_map a 8 (nth_byte w)).
-  Proof.
+  Proof using .
     iIntros (Hs) "#Hb [_ H]".
     iApply (ctx_win_offer a 8 (nth_byte w) ltac:(lia) Hs with "Hb H").
   Qed.
@@ -1352,7 +1352,7 @@ Section VdrwdPinRes.
     bs = g <$> seq 0 n ->
     ([∗ list] j ↦ x ∈ bs, pa_add a j ↦ₘ x)
     ⊣⊢ ([∗ list] j ∈ seq 0 n, pa_add a j ↦ₘ g j).
-  Proof.
+  Proof using .
     intros ->. rewrite big_sepL_fmap.
     apply big_sepL_proper. intros k y Hk.
     apply lookup_seq in Hk as [Hy _].
@@ -1365,7 +1365,7 @@ Section VdrwdPinRes.
     kmap_static_claims -∗ ([∗ list] j ↦ x ∈ bs, pa_add a j ↦ₘ x) -∗
     pin_offer (range_map a (length bs) (fun j => bs !!! j)) ∗
     keep_map cur_ctx (range_map a (length bs) (fun j => bs !!! j)).
-  Proof.
+  Proof using .
     iIntros (Hn Hs) "#Hb H".
     iEval (rewrite (vdrwd_ctx_bytes_of_fun a (length bs) (fun j => bs !!! j) bs
                       (list_eq_total bs))) in "H".
@@ -1375,7 +1375,7 @@ Section VdrwdPinRes.
   Lemma vdrwd_buf_to_phys (a : Arch.pa) (bs : list (bv 8)) :
     (forall j, (j < length bs)%nat -> kmap_static (svpn_of (pa_add a j)) KP_rw) ->
     kmap_static_claims -∗ ([∗ list] j ↦ x ∈ bs, pa_add a j ↦ₘ x) -∗ phys_list a bs.
-  Proof.
+  Proof using .
     iIntros (Hs) "#Hb H". rewrite /phys_list.
     iApply (big_sepL_impl with "H").
     iIntros "!>" (k x Hk) "Hx".
@@ -1390,7 +1390,7 @@ Section VdrwdPinRes.
   Lemma vdrwd_plist_map (a : Arch.pa) (bs : list (bv 8)) :
     (Z.of_nat (length bs) < 18446744073709551616)%Z ->
     phys_list a bs -∗ phys_map (range_map a (length bs) (fun j => bs !!! j)).
-  Proof. intro Hn. rewrite (phys_list_map a bs Hn). iIntros "$". Qed.
+  Proof using . intro Hn. rewrite (phys_list_map a bs Hn). iIntros "$". Qed.
 
   (* the status byte is in [struct disk], the buffer in a [struct buf]: an
      address disequality, and hence provable from OWNERSHIP alone. *)
@@ -1398,7 +1398,7 @@ Section VdrwdPinRes.
     length bs = 1024%nat ->
     phys_ledger sts (DfracOwn 1) v -∗ phys_list a bs -∗
     ⌜sts ∉ pa_range a 1024⌝.
-  Proof.
+  Proof using .
     iIntros (Hlen) "Hs Hl".
     iDestruct (TsoCtx.phys_ledger_forget with "Hs") as "Hs".
     destruct (decide (sts ∈ pa_range a 1024)) as [Hin|Hout]; [| iPureIntro; exact Hout ].
@@ -1422,7 +1422,7 @@ Section VdrwdPinRes.
     kmap_static_claims -∗
     phys_ledger sts (DfracOwn 1) v -∗ ([∗ list] j ↦ x ∈ bs, pa_add a j ↦ₘ x) -∗
     ⌜sts ∉ pa_range a 1024⌝.
-  Proof.
+  Proof using .
     iIntros (Hlen Hs) "#Hkm Hs Hl".
     iDestruct (TsoCtx.phys_ledger_forget with "Hs") as "Hs".
     destruct (decide (sts ∈ pa_range a 1024)) as [Hin|Hout]; [| iPureIntro; exact Hout ].
@@ -1479,7 +1479,7 @@ Section VdrwdPinBuild.
       d_info_b h ↦₈ (b : SailStdpp.Values.mword 64) ∗
       b_disk b ↦₄ (SailStdpp.Values.mword_of_int (len := 32) 1) ∗
       vdrw_slot_rest m2 ∗ vdrw_slot_rest t.
-  Proof.
+  Proof using .
     intros Hh Hm Ht Hlen Hlensl Hbsl Hspd Hspav Hsbuf.
     iIntros "#Hkm Hchain Hbuf".
     rewrite /vdrw_chain.
@@ -1825,7 +1825,7 @@ Section VdrwdP4.
         vdrw_slot_rest m2 -∗ vdrw_slot_rest t -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Htok Hlenbuf Hlendisk Hbufkd Hoff Ha0 Ha5.
     destruct Htok as (Hhm & Hht & Hmt & Hh8 & Hm8 & Ht8). cbn in Hh8, Hm8, Ht8.
     iIntros "Hcg #Htext Hpc #Hdinv #Hgeom Hbody Hchain Hfrag Hbuf Hdisk Hpend Hcont".

@@ -191,7 +191,7 @@ Section rekey.
      and not at the raw one. *)
   Lemma ctx_kt0_phys (va : mword 64) dq b :
     va ↦ₘ[KT0]{dq} b ⊢ TsoCtx.ctx_phys_pointsto XI va dq b.
-  Proof.
+  Proof using .
     iIntros "H".
     iEval (rewrite (TsoCtx.ctx_pointsto_phys (KTR := KT0) XI va dq b)) in "H".
     iDestruct "H" as (ppn) "(_ & _ & %Hpin & Hp)".
@@ -200,7 +200,7 @@ Section rekey.
 
   Lemma mem_kt0_phys (va : mword 64) dq b :
     va ↦ₘ[KT0]{dq} b ⊢ va ↦ₚ{dq} b.
-  Proof.
+  Proof using .
     iIntros "H".
     iDestruct (TsoCtx.ctx_pointsto_forget with "H") as "H".
     iEval (rewrite /mem_pointsto) in "H".
@@ -219,7 +219,7 @@ Section rekey.
     kmap_at (kstack_vpn i) ppn KP_rw -∗
     (pa_add (page_base ppn) j) ↦ₘ[KT0]{dq} b -∗
     (pa_add (kstack_va i) j) ↦ₘ[KT1]{dq} b.
-  Proof.
+  Proof using .
     intros Hi Hkd Hj. iIntros "#Hcl H".
     (* A6.16 verbatim: down to the PHYSICAL LEDGER byte at the KT0 side
        (whose tier pin IS the identity, so the address does not move), and
@@ -250,7 +250,7 @@ Section rekey.
       (DfracOwn 1) w -∗
     TsoCtx.ctx_word_pointsto (KTR := KT1) XI (pa_add (kstack_va i) o)
       (DfracOwn 1) w.
-  Proof.
+  Proof using .
     intros Hi Hkd Ho Hdvd. iIntros "#Hcl H".
     rewrite /TsoCtx.ctx_word_pointsto.
     iDestruct "H" as "[_ Hbs]".
@@ -291,7 +291,7 @@ Section ladder.
       ([∗ list] k ↦ w ∈ ws,
          TsoCtx.ctx_word_pointsto (KTR := KT0) XI (pa_add p (8 * k)%nat)
            (DfracOwn 1) w).
-  Proof.
+  Proof using .
     induction n as [|n IH]; intro Hal.
     - iIntros "_". iExists []. by iSplit.
     - replace (8 * S n)%nat with (8 * n + 8)%nat by lia.
@@ -315,7 +315,7 @@ Section ladder.
   Lemma bigsep_ws_seq (Φ : nat -> bv 64 -> iProp Σ) (ws : list (bv 64)) :
     ([∗ list] k ↦ w ∈ ws, Φ k w) ⊢
     [∗ list] j ∈ seq 0 (length ws), ∃ w : bv 64, Φ j w.
-  Proof.
+  Proof using .
     induction ws as [|w ws IH] using rev_ind; [ by iIntros "_" | ].
     rewrite length_app /= Nat.add_1_r seq_S big_sepL_app big_sepL_singleton.
     rewrite big_sepL_app big_sepL_singleton.
@@ -335,7 +335,7 @@ Section ladder.
        TsoCtx.ctx_word_pointsto (KTR := kt) XI (pa_add base (8 * k)%nat)
          (DfracOwn 1) w) ⊢
     stack_own (KTR := kt) (pa_add base (8 * n)%nat) n.
-  Proof.
+  Proof using .
     intro Hlen.
     rewrite (stack_own_base (KTR := kt) (pa_add base (8 * n)%nat) n).
     assert (Hb : pa_stk (pa_add base (8 * n)%nat) n = base).
@@ -379,7 +379,7 @@ Section mint.
     kmap_at (kstack_vpn i) ppn KP_rw -∗
     page_filled (page_base ppn) c -∗
     stack_own (KTR := KT1) (add_vec (kstack_va i) (mword_of_int 4096)) 512.
-  Proof.
+  Proof using .
     intros Hi Hkd. iIntros "#Hcl Hpg".
     rewrite /page_filled.
     replace 4096%nat with (8 * 512)%nat by lia.
@@ -413,7 +413,7 @@ Section mint.
     ([∗ list] i ∈ seq 0 64, kmap_at (kstack_vpn i) (pas i) KP_rw) -∗
     ([∗ list] i ∈ seq 0 64, page_filled (page_base (pas i)) c) -∗
     kstack_bank.
-  Proof.
+  Proof using .
     intros Hok. iIntros "#Hcl Hpg". rewrite /kstack_bank.
     iApply (big_sepL_impl with "Hpg").
     iIntros "!>" (k i Hk) "Hp".

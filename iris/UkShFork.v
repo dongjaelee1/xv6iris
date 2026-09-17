@@ -202,10 +202,10 @@ Section UkShFork.
   (* same filter of [ShData.sh_data] -- so each bridge is one line.         *)
   (* ===================================================================== *)
   Lemma ushf_code_shp (g : gname) : shk_code g -∗ shp_code g.
-  Proof. rewrite /shk_code /shp_code. iIntros "#H". iExact "H". Qed.
+  Proof using . rewrite /shk_code /shp_code. iIntros "#H". iExact "H". Qed.
 
   Lemma ushf_rodata_shp (g : gname) : shk_rodata g -∗ shp_rodata g.
-  Proof.
+  Proof using .
     rewrite /shk_rodata /shp_rodata /shk_ro /shp_ro.
     iIntros "#H". iExact "H".
   Qed.
@@ -226,7 +226,7 @@ Section UkShFork.
 
   Global Instance forkable_ushf_pay (f : nat -> bv 8) :
     Forkable (ushf_pay f).
-  Proof.
+  Proof using .
     rewrite /ushf_pay /UkShLoop.ushl_dat.
     apply forkable_sep; [ apply forkable_shk_code | ].
     apply forkable_sep; [ apply forkable_shk_rodata | ].
@@ -241,7 +241,7 @@ Section UkShFork.
   (* what a nonzero pid does to the [c.beqz] at 0x930 *)
   Lemma ushf_eqv_false (x : mword 64) :
     x <> (mword_of_int 0 : mword 64) -> eq_vec x zero_reg = false.
-  Proof.
+  Proof using .
     intros H. apply (proj2 (eq_vec_false_iff x zero_reg)).
     rewrite zero_reg_moi. exact H.
   Qed.
@@ -291,7 +291,7 @@ Section UkShFork.
     (□ (∀ I : list (bv 8), riscv_kill_cred -∗ Wc I 0%nat))%I.
 
   Global Instance ushf_kill_law_persistent : Persistent ushf_kill_law.
-  Proof. rewrite /ushf_kill_law. apply _. Qed.
+  Proof using . rewrite /ushf_kill_law. apply _. Qed.
 
   (* THE CHILD'S WALK AT THE PAID PAYLOAD, as a law the body takes: from
      0x9c0 (the [c.beqz] at 0x930 taken, the line cut out of the child's own
@@ -338,7 +338,7 @@ Section UkShFork.
           WP (Loop : expr riscv_lang)))%I.
 
   Global Instance ushf_child_law_persistent : Persistent ushf_child_law.
-  Proof. rewrite /ushf_child_law. apply _. Qed.
+  Proof using . rewrite /ushf_child_law. apply _. Qed.
 
   (* WHAT THE FORK LEFT IN THE PARENT'S HAND, beside the children set it
      grew to: the lend back whole (fork failed -- and fork1 panicked, so
@@ -364,7 +364,7 @@ Section UkShFork.
     (ret = (mword_of_int (-1) : mword 64) -> Sw' = (∅ : gset gname)) ->
     ushf_fans ∅ Q Rc Sw -∗ uwait_ans_pid ret Sw Sw' pidv -∗
     ⌜Sw' = (∅ : gset gname)⌝.
-  Proof.
+  Proof using .
     intros Hne Hm1. iIntros "Hfans Hans".
     rewrite /uwait_ans_pid /uwait_ans_at.
     iDestruct "Hans" as (gn b rv xs) "[%Hr Hwa]".
@@ -385,7 +385,7 @@ Section UkShFork.
      word other than <init>'s *)
   Lemma ushf_pid_ne_1 (pidv : mword 32) (p : Z) :
     bv_unsigned pidv = p -> p <> 1 -> pidv <> (mword_of_int 1 : mword 32).
-  Proof.
+  Proof using .
     intros Hp Hne Heq. apply Hne. rewrite <- Hp, Heq. vm_compute. reflexivity.
   Qed.
 
@@ -476,7 +476,7 @@ Section UkShFork.
     ubytes γd sh_buf sh_nbuf f -∗
     urun N h m (mword_of_int 0x92c) (16 + (80 + n)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using Hpay Hpsok_free.
     intros HQc Hregs Hs1 Hnn Hnul Hkl.
     iIntros "Hhead #Hcode #Hro #Hjt %Hfd0 Hustd Hcwd Hch Hpid HRc #Hkw
              Hlease Hpanic Hchild Hre Hdat Hsz Hbuf Hrun".
@@ -772,7 +772,7 @@ Section UkShFork.
     ubytes γd sh_buf sh_nbuf f -∗
     urun N h m (mword_of_int 0x92c) (16 + (80 + n)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using HT HWct Hpay Hpsok_free.
     intros Hregs Hs1 Hns Htoks Htlen Hnn Hnul Hkl Hline Hszlo Hszal Hszok
            Hpm1 Hpmwb Hwbl.
     iIntros "#Hgen Hhead #Hcode #Hro #Hjt #Hkl #Hchl #Hplaw %Hfd0 Hstd
@@ -955,7 +955,7 @@ Section UkShFork.
     ubytes γd sh_buf sh_nbuf f -∗
     urun N h m (mword_of_int 0x97a) (16 + (80 + n)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using HT HWct Hpay Hpsok_free.
     intros Hregs Hs1 Ha5 Hnn Hnul Hkl Hns Htoks Htlen Hline Hszlo Hszal Hszok
            Hpm1 Hpmwb Hwbl.
     iIntros "#Hgen Hhead #Hcode #Hro #Hpcode #Hjt #Hkl #Hchl #Hplaw %Hfd0
@@ -1030,7 +1030,7 @@ Section UkShFork.
       exists len : nat, (len <= d)%nat /\
         (forall j : nat, (j < len)%nat -> f (k + j)%nat <> ubyte0) /\
         f (k + len)%nat = ubyte0.
-  Proof.
+  Proof using .
     induction d as [| d IH]; intros k Hd.
     - exists 0%nat. split; [ lia | ].
       split; [ intros j Hj; lia | exact Hd ].
@@ -1053,7 +1053,7 @@ Section UkShFork.
     exists len : nat, (k + len <= i2)%nat /\
       (forall j : nat, (j < len)%nat -> f (k + j)%nat <> ubyte0) /\
       f (k + len)%nat = ubyte0.
-  Proof.
+  Proof using .
     intros Hk Hi2.
     destruct (ushf_first_nul_aux f (i2 - k)%nat k
                 ltac:(replace (k + (i2 - k))%nat with i2 by lia; exact Hi2))
@@ -1100,7 +1100,7 @@ Section UkShFork.
        ush_panic_law_holds] *)
     UkShDiag.ush_panic_law Wc Wb -∗
     UkSh.ush_rest_l N γp T Wc Wb Pm (UkShLoop.ushl_R N sz).
-  Proof.
+  Proof using HT HWct Hpay Hpsok_free.
     intros Hlex Hszlo Hszal Hszok Hwbl.
     iIntros "#Hkl #Hchl #Hplaw".
     (* THE RECORD'S OWN THREE COME OUT OF THE OBLIGATION now (lane SH-LINE

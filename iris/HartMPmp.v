@@ -577,7 +577,7 @@ Section swp_pmp.
     swp (pmpCheck (Physaddr addr) 4 (InstructionFetch tt) Machine)
       (fun r => ⌜r = None⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HD Hunlock Halign Hpcfg.
     exact (swp_span Drw Dro Df rs rs _ None Hdisj
              (mpmp_hval_ifetch4 (Drw ∪ Dro) Drw pcfg addr rs
@@ -600,7 +600,7 @@ Section swp_pmp.
     swp (pmpCheck (Physaddr addr) 2 (InstructionFetch tt) Machine)
       (fun r => ⌜r = None⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HD Hunlock Halign Hpcfg.
     exact (swp_span Drw Dro Df rs rs _ None Hdisj
              (mpmp_hval_ifetch2 (Drw ∪ Dro) Drw pcfg addr rs
@@ -622,7 +622,7 @@ Section swp_pmp.
     swp (pmpCheck (Physaddr addr) 8 (Store Data) Machine)
       (fun r => ⌜r = None⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HD Hoff Hpcfg.
     exact (swp_span Drw Dro Df rs rs _ None Hdisj
              (mpmp_hval_off (Drw ∪ Dro) Drw pcfg addr rs 8 (Store Data)
@@ -643,7 +643,7 @@ Section swp_pmp.
     swp (pmpCheck (Physaddr addr) 8 (Load Data) Machine)
       (fun r => ⌜r = None⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HD Hoff Hpcfg.
     exact (swp_span Drw Dro Df rs rs _ None Hdisj
              (mpmp_hval_off (Drw ∪ Dro) Drw pcfg addr rs 8 (Load Data)
@@ -673,7 +673,7 @@ Section swp_pmp.
     swp (pmpCheck (Physaddr addr) 8 (Store Data) Machine)
       (fun r => ⌜r = None⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDcfg HDaddr Hpcfg Hpaddr HA Hunl Hord Hrange.
     exact (swp_span Drw Dro Df rs rs _ None Hdisj
              (mpmp_hval_tor0 (Drw ∪ Dro) Drw pcfg paddr addr rs 8 (Store Data)
@@ -703,7 +703,7 @@ Section swp_pmp.
     swp (pmpCheck (Physaddr addr) 8 (Load Data) Machine)
       (fun r => ⌜r = None⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HDcfg HDaddr Hpcfg Hpaddr HA Hunl Hord Hrange.
     exact (swp_span Drw Dro Df rs rs _ None Hdisj
              (mpmp_hval_tor0 (Drw ∪ Dro) Drw pcfg paddr addr rs 8 (Load Data)
@@ -726,7 +726,7 @@ Section swp_pmp.
     swp (pmpCheck (Physaddr addr) 4 (Store Data) Machine)
       (fun r => ⌜r = None⌝ ∗
                 hreg_frame rs Drw ∗ hreg_frame_ro Df rs Dro).
-  Proof.
+  Proof using .
     intros Hdisj HD Hunlock Halign Hpcfg.
     exact (swp_span Drw Dro Df rs rs _ None Hdisj
              (mpmp_hval_store4 (Drw ∪ Dro) Drw pcfg addr rs

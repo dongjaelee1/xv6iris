@@ -198,7 +198,7 @@ Section UvEngine.
       (pcfg : type_of_register pmpcfg_n) (paddr : type_of_register pmpaddr_n) :
     pt_same_shape 2 t t' ->
     uv_res M t usatp pcfg paddr -∗ uv_res M t' usatp pcfg paddr.
-  Proof.
+  Proof using .
     intros Hshape. iIntros "[#Hc Hcl]". iSplitR.
     { by iApply (pt_claims_shape 2 t t' Hshape). }
     iIntros (t'' tlbv'') "%Hs'' %Htok'' %Hok'' Hsatp Htlb Hpcfg Hpaddr Hmm".
@@ -386,7 +386,7 @@ Section UvLandClose.
      sepc ↦ᵣ (register_lookup (R_bitvector_64 sepc) rs2) ∗
      pc_is npc ∗ gpr_file g ∗ user_cfg C ∗
      utlb_inv_pt (ud_root pt) (ud_tfp pt) (ud_um pt) ∗ umem_x pt M).
-  Proof.
+  Proof using .
     intros Htail Lhs Lpriv Lnpc Hgag Hx0 Lstvec Lmie Lmdl Lmedl Lmenv Lmste
       Lsste Lsenv Lsatp Lpcfg Lpaddr Htok Htlbok.
     (* every cell of the footprint but PC and minstret reads through *)
@@ -571,7 +571,7 @@ Section UvArms.
     (R -∗ ∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx), uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ M m' -∗
        pc_is (CID := CID0) npc -∗ WP (Loop : expr riscv_lang)) -∗
     uv_psi C R rs2.
-  Proof.
+  Proof using .
     intros Lhs Lpriv Hmsok Lnpc Hgag Hx0 Lstvec Lmie Lmdl Lmedl Lmenv Lmste
       Lsste Lsenv Lsatp Lpcfg Lpaddr Htok Htlbok.
     iIntros "#Hamb #Hcap Hresv Hmm Hres Hctx Hk".
@@ -625,7 +625,7 @@ Section UvArms.
     (uv_trap_frame C pt sc_v stv_v sep_v g M -∗ TsoCtx.own_context XI -∗ R -∗
      WP (Loop : expr riscv_lang)) -∗
     uv_psi C R rs2.
-  Proof.
+  Proof using .
     intros Lsc Lstv Lsep.
     subst sc_v stv_v sep_v.
     intros Lhs Lpriv Hmsok Lnpc Hgag Hx0 Lstvec Lmie Lmdl Lmedl Lmenv Lmste
@@ -664,7 +664,7 @@ Section UvArms.
     uv_step_obl C pt Kc Ψ M m pc -∗
     uv_step_post C (uv_ih C pt Kc Ψ M m pc ∗ Kc)%I rs1
       (Step_Pending_Interrupt (i, Supervisor)).
-  Proof.
+  Proof using .
     intros (Hinj & Htok & Hpins & Lhs & Lpriv & Hmsok & Lpc & Hgag & Lstvec &
             Lmie & Lmdl & Lmedl & Lmenv & Lsatp & Lpcfg & Lpaddr & Lmi & Hx0).
     pose proof Hpins as ((Hmisa & Hsec & Hsenv & Hhtif & Hall & Helpne) &
@@ -787,7 +787,7 @@ Section UvStepEngine.
   Lemma wp_uv_step_gen (Kc : iProp Σ) (Ψ : usys_protocol Σ)
       (M : gmap Z (bv 8)) (m : regfile) (pc : mword 64) :
     ⊢ uv_ih C pt Kc Ψ M m pc.
-  Proof.
+  Proof using .
     rewrite /uv_ih.
     iLöb as "IH".
     iIntros (CID XIv) "(#Hcap & Hlin & Hgpr) Hpc Hobl Hkc".
@@ -1395,7 +1395,7 @@ Section UvFunnel.
       (m : regfile) (pc : mword 64) :
     uv_cap_gpr C pt Ψ M m -∗ pc_is pc -∗ uv_step_obl C pt Kc Ψ M m pc -∗
     ▷ Kc -∗ WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "Hcg Hpc Hobl Hkc".
     iPoseProof (wp_uv_step_gen C pt Kc Ψ M m pc) as "H". rewrite /uv_ih.
     iApply ("H" $! CID XI with "Hcg Hpc Hobl Hkc").
@@ -1420,7 +1420,7 @@ Section UvFunnel.
        TsoCtx.own_context XI -∗
        resv_any cpu_id -∗ Pe RETIRE_SUCCESS ib) -∗
     swp (execute i) (run_exec_post Pe ib).
-  Proof.
+  Proof using .
     intros Hred Hg1 Hg2 He.
     iIntros "#Hcert Hany Hrw Hro Hrun Hk".
     iAssert (bytes_own (∅ : gmap Arch.pa (bv 8))) as "#Hemp";
@@ -1542,7 +1542,7 @@ Section UvFunnel.
     swp (execute i)
       (run_exec_post (fun (r : ExecutionResult) (ib' : mword 32) =>
                         uv_step_post C R rs1 (Step_Execute (r, ib'))) ib).
-  Proof.
+  Proof using .
     intros Hwrok Hred Hg1 Hg2 Hexec Lpc2 Lhs2 Lcp2 Hms2 Hgag2 Hx0 Lstvec2
       Lmie2 Lmdl2 Lmedl2 Lmenv2 Lmste2 Lsste2 Lsenv2 Lsatp2 Lpcfg2 Lpaddr2
       Lmi2 Htlbok2 Hagd2 Htok'.
@@ -1711,7 +1711,7 @@ Section UvObligation.
          (fun (xv : mword 64) (e : ExceptionType) =>
             uv_step_post C R rs1 (Step_Fetch_Failure (Virtaddr xv, e)))
          (fun _ : ext_fetch_addr_error => False)).
-  Proof.
+  Proof using .
     intros Hpre Hdec Hwrok Hred Hg1 Hg2 Hexec.
     pose proof Hpre as (Hinj & Htok & HpinsA & LhsA & LcpA & HmsokA & LpcA &
                         HgagA & LstvecA & LmieA & LmdlA & LmedlA & LmenvA &
@@ -1842,7 +1842,7 @@ Section UvObligation.
          (fun (xv : mword 64) (e : ExceptionType) =>
             uv_step_post C R rs1 (Step_Fetch_Failure (Virtaddr xv, e)))
          (fun _ : ext_fetch_addr_error => False)).
-  Proof.
+  Proof using .
     intros Hpre Hdec Hwrok Hred Hg1 Hg2 Hexec.
     pose proof Hpre as (Hinj & Htok & HpinsA & LhsA & LcpA & HmsokA & LpcA &
                         HgagA & LstvecA & LmieA & LmdlA & LmedlA & LmenvA &
@@ -2017,7 +2017,7 @@ Section UvRetire.
            (uv_next jt (add_vec_int pc (if is_rvc then 2 else 4))) -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hui Hred Hlpad Hwrok Hg1 Hg2 Hexec.
     iIntros "Hcg Hpc Hcont".
     iApply (wp_uv_step C pt _ Ψ M m pc with "Hcg Hpc [] Hcont").
@@ -2096,7 +2096,7 @@ Section UvRetire.
          (uv_next jt (add_vec_int pc (if is_rvc then 2 else 4))) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hui Hred Hlpad Hwrok Hg1 Hg2 Hexec.
     iIntros "Hcg Hpc Hcont".
     iApply (wp_uv_retire_later Ψ M m pc is_rvc i o jt wr
@@ -2173,7 +2173,7 @@ Section UvEcallPost.
     swp (execute (ECALL tt))
       (run_exec_post (fun (r : ExecutionResult) (ib' : mword 32) =>
                         uv_step_post C R rs1 (Step_Execute (r, ib'))) ib).
-  Proof.
+  Proof using .
     intros Hg Lpc2 Lhs2 Lcp2 Hms2 Hgag2 Hx0 Lstvec2 Lmie2 Lmdl2 Lmedl2 Lmenv2
       Lmste2 Lsste2 Lsenv2 Lsatp2 Lpcfg2 Lpaddr2 Lmisa2 Helpne2 Lmi2
       Htlbok2 Htok'.
@@ -2370,7 +2370,7 @@ Section UvEcall.
     pc_is pc -∗
     Ψ (uint (m !!! Regidx a7_idx)) m pc M -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hui Hg.
     destruct Hui as [Hal2 Hcanon Hleaf Hinpage Hcode Htext].
     destruct Hleaf as (w_leaf & Hum & Hlok).

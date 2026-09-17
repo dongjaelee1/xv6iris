@@ -150,7 +150,7 @@ Section WpSwtchVc.
 
   (* the 28-instruction body's code resource, extracted from kernel_text. *)
   Lemma swtch_code : kernel_text -∗ block_instrs_s KernelSyms.swtch swtch_prog.
-  Proof.
+  Proof using .
     iIntros "#Ht".
     cbn [block_instrs_s swtch_prog vop_s_rvc vop_s_ast vop_s_w].
     iSplitR; [by iApply swi_00|].
@@ -192,7 +192,7 @@ Section WpSwtchVc.
     rho breg = c ->
     ([∗ list] j ∈ seg_cells breg off ws, sval_den rho j.1 ↦₈ sval_den rho j.2)
     ⊣⊢ ctx_cells_at c off (map (fun w => rho w) ws).
-  Proof.
+  Proof using .
     intro Hc. revert off. induction ws as [|w rest IH]; intro off.
     - reflexivity.
     - cbn [seg_cells map ctx_cells_at]. rewrite big_sepL_cons. cbn [fst snd].
@@ -209,7 +209,7 @@ Section WpSwtchVc.
     [nth 0 l d; nth 1 l d; nth 2 l d; nth 3 l d; nth 4 l d; nth 5 l d; nth 6 l d;
      nth 7 l d; nth 8 l d; nth 9 l d; nth 10 l d; nth 11 l d; nth 12 l d; nth 13 l d]
     = l.
-  Proof.
+  Proof using .
     intro H.
     do 14 (destruct l as [|? l]; [simpl in H; lia|]).
     destruct l; [reflexivity | simpl in H; lia].

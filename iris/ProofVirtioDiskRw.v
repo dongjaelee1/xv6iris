@@ -167,7 +167,7 @@ Section ProofVirtioDiskRw.
         b_blockno bp ↦₄{DfracOwn (1/2)} bno -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using bioslotG0.
     intros sp0 bp wr HK Hfresh.
     iIntros "Hcg Hown Hextc Hextm #Htext Hpc #Hlk Hbno Hcont".
     (* ---- the instruction facts ---- *)
@@ -691,7 +691,7 @@ Section ProofVirtioDiskRw.
         vdrw_scan_out fr k M' -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     induction n as [|n IH]; intros k M Hkn Ha5 Ha4 Hs1;
       iIntros "Hcg #Htext Hpc Hcells Hcont".
     all: assert (Hk8 : (k < 8)%nat) by (clear -Hkn; lia).
@@ -945,7 +945,7 @@ Section ProofVirtioDiskRw.
         vdrw_iter_out γd pd fr idxa i M M' -∗
         WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hi8 Ha2 Hs5 Hs1 Hs2.
     iIntros "Hcg #Htext Hpc Hcells Hidx Hcont".
     (* ---- +0x05c  c.mv a1,a2 ---- *)
@@ -1241,7 +1241,7 @@ Section ProofVirtioDiskRw.
     (∃ v0 v1 v2 vp : mword 32,
        pa_stk sp0 12 ↦₄[KT1] v0 ∗ pa_add (pa_stk sp0 12) 4 ↦₄[KT1] v1 ∗
        pa_stk sp0 11 ↦₄[KT1] v2 ∗ pa_add (pa_stk sp0 11) 4 ↦₄[KT1] vp).
-  Proof.
+  Proof using .
     iIntros "H". iDestruct "H" as (w11 w12) "[H11 H12]".
     (* A6.69: the conclusion's halves are [↦₄], the CONTEXT tower, so the
        split stays inside it -- forgetting to the raw window here loses the
@@ -1261,7 +1261,7 @@ Section ProofVirtioDiskRw.
      about the ORIGINAL map, at a necessarily different index *)
   Lemma fr_upd_true_inv (fr : nat -> bool) (h m : nat) :
     fr_upd fr h false m = true -> m <> h /\ fr m = true.
-  Proof.
+  Proof using .
     intro H. destruct (Nat.eq_dec m h) as [He|Hne].
     - subst m. rewrite fr_upd_eq in H. exfalso. discriminate H.
     - rewrite (fr_upd_ne fr h m false Hne) in H. split; [exact Hne | exact H].
@@ -1330,7 +1330,7 @@ Section ProofVirtioDiskRw.
         vdrw_alloc_out γd pd sp0 fr M' -∗
         WP (Loop : expr riscv_lang))) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Hs0 Hs5 Hs1 Hs4.
     iIntros "Hcg #Htext Hpc Hcells Hscr Hcont".
     iDestruct (vdrw_scratch_split with "Hscr") as "[%Hal Hidx]".

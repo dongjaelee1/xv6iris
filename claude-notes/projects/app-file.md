@@ -6649,9 +6649,13 @@ asked for beside them — SKELETON's `Hdep1`/`Hwrite1`, and CAT-ENTRY-2's count
 bound on both arms of the deed read — landed.**
 
 **WHAT LANDED** (whole tree green on the lane's remote tree, `--proofs -k`,
-`EXIT=0`, zero `Error`; `Proof using` everywhere; no `Admitted` of this
-lane's — `UEchoFile.v`'s seven are lane SKELETON's skeleton, by design; every
-statement that changed shape is listed here and nothing else moved.)
+`EXIT=0`, zero `Error`, and a confirming re-run with nothing left to compile;
+`make audit-all-only` / `audit-tree-only` / `audit-file-only` UNCHANGED —
+system THIRTEEN, echo FOURTEEN, tree THIRTEEN, file FOURTEEN, the same
+`PrimInt63`/`PrimString`/`resv_*`/`functional_extensionality_dep` sets as
+before; `Proof using` everywhere; no `Admitted` of this lane's —
+`UEchoFile.v`'s seven are lane SKELETON's skeleton, by design; every statement
+that changed shape is listed here and nothing else moved.)
 
 **THE MERGE'S FIX-FORWARD** (three files, all breakages of the WRITE-RELAY +
 SKELETON combination rather than of this lane): WRITE-RELAY gave

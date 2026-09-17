@@ -36,6 +36,14 @@ echo line (the round in flight at the cut).  `f` never contains junk.
    not full" is a bitmap fact no application-tier claim can see.  The
    model carries the subset (`sel`).  Refuting it is a kernel-tier lane
    (a capacity conjunct in the abstract view) and is NOT taken.
+   WHAT IS REFUTED, on the other hand, is a PARTIAL chunk: `writei`'s
+   "disturbed region" (a partially copied block committed, kernel defect
+   D1's fix) exists only because `either_copyin` can fail on the user
+   arm, and `SpecCopyin`'s failure arm names an unreadable address — so
+   the held write chain's partial node carries that reason (design §3,
+   RELAY 4) and a caller whose source run is mapped, as every U-tier
+   write's is (`usrc_ok`'s mapped row), meets no partial arm.  A chunk
+   either lands whole or not at all; nothing unnamed ever reaches `f`.
 2. **Across a power cycle the theorem is weaker than reality.**  The
    durable claim is the copy made at the LAST COMMIT, and no syscall's
    post says its transaction committed (durability receipts are the
@@ -309,25 +317,47 @@ member.  FOUR coupled facts, each adopted as a ruling:
 3. **The publish reads the caller's mode** (`ProofSysOpenPub`:
    `off_pub_park` or `off_pub_hand`, `fp_om` set to match, the held half
    `uoff γo 0` in the receipt at `OffHeld`).
-4. **The exec crossing takes the surrender bundle.**  A generic slot's
-   mint needed `fdv_all_parked` of the whole table, which no U-tier
-   program can prove (a dropped `ufd` handle leaves an open row it cannot
-   name).  The premise is now `FdPark.uoff_surr_at`: all parked, or a
-   surrender (`off_user_inv γo`, persistent) per held row; and a
-   verified program pays it because `urun` carries a COUNTER of held rows
-   (`uheld n`, one half beside `ufd_auth`, the other the program's;
-   a hand-open increments, a close or dup of a held row moves it, fork
-   copies it with the table), so a program holding `n` held handles knows
-   they are all the held rows there are and surrenders each
-   (`uoff_park`) before an exec to an unverified target or a fork.  A
-   surrendered row keeps its `OffHeld` tag (the tag is the object's) and
-   is paid like a parked one, from the surrender.
+4. **The exec crossing takes the surrender bundle — on the TAINT arm only.**
+   A generic slot's mint needed `fdv_all_parked` of the whole table; lane
+   OFF-HAND-2 put that row on the exec crossing's wands, kernel-paid from
+   the pin, and OFF-HAND-3 relayed it into every ENTRY as a received
+   premise.  That is right for the taint arm (the generic mint is the
+   row's only consumer) and WRONG for a verified entry: an entry that
+   receives "the table is all parked" can never be entered with a held
+   row, and the redirect child execs /echo holding `f` at a held offset.
+   RULED (2026-09-17): the verified entries (`image_entry`,
+   `image_entry_at`) DROP the row — the held halves reach the new image
+   through `my_pay`, which both arms receive at the call — and the taint
+   arm (`image_entry_taint`, the generic mint) takes the SURRENDER bundle
+   `FdPark.uoff_surr_at` instead, which the caller's taint-arm proof
+   builds itself under a fancy update from the `uoff`s in its payload
+   (`uoff_park`, one persistent `off_user_inv` per held row).  The
+   carrier is the SET of descriptors a record may hold, `ukn_held : gset
+   nat` on `uk_names` (OFF-HAND-3's static bit generalised: `∅` is
+   "answers for its offsets"; the row `urun_rows` keeps is "every held
+   row of the table is in the set"; a hand-open needs its slot in the
+   set; a forking parent chooses the child's set; the redirect child's is
+   `{1}`, cat's is the tail `[NSTD, NOFILE)`), because a program that
+   execs must know WHICH rows to surrender and a count cannot say
+   (OFF-HAND-3's finding 2).  A ghost carrier is refuted three ways
+   (OFF-HAND-3's finding 1) and is not to be re-proposed.  The generic
+   slot is minted at the key and its surrender bundle, its Löb carrying
+   the bundle across rounds (a generic process never hand-opens; dup
+   shares the object's surrender; close drops the row).
 
-Lane OFF-HAND-2 is 1–4 at the kernel/spec tier; OFF-HAND-3 is the counter,
-the hand-mode open leaf and the two held file members
-(`wp_uk_ecall_write_file_held` with the exact payment `FdPark.uoff_rcpt`
-and its tie `off' = off`, `wp_uk_ecall_read_file_held`).
-`FdSlots.foff_row` already answers `emp` at `OffHeld`.
+Lane OFF-HAND-2 landed the exec crossing's all-parked row (the kernel pays
+it) and found that facts 1–3 sit BEHIND the counter: the generic
+builders of a read/write chain (`FsAbsInvFire.fsabs_filewrite_in`) serve
+an arbitrary row and need `⌜fdst_parked st⌝`, which only a program that
+can state its own table's parkedness supplies.  So OFF-HAND-3 goes
+counter first (`uheld` inside `urun`, a fact about the whole table, the
+shape of `urun_nopipe`), then the mode in `fpnames`, then the HELD BRANCH
+of `filewrite_in`/`fileread_in`, whose chain nodes RELAY what the claim's
+step cannot otherwise know (lane F-WRITE's findings): the fire's offset
+is the caller's anchor (`off = off0 + p`), the node's run is the whole
+chunk, and the partial node carries `either_copyin`'s reason (RELAY 4,
+§0), so a mapped source refutes it; then the hand-mode open leaf and the
+two held members.  `FdSlots.foff_row` already answers `emp` at `OffHeld`.
 
 ## 4. The console side: the stage carries the era's boot state, the ledger the line list
 
@@ -431,6 +461,86 @@ under the discipline no `LEchoF` line of THIS era precedes init's first
 byte, so `ls ⊑ efl_before h k` (under the taint the conjunct is `T`).
 `al_pow`'s seed is `fecl` at the empty stage with `o_f0 = None`, plus
 the turn.  `Hphi` reads `file_phi` off the ledger as `echo_R_phi` does.
+
+### 4.3a What lane STAGE landed, and the two rulings (2026-09-17)
+
+STAGE landed 4.1–4.4 in `FileOutPure.v`, `FileOut.v`, `FileLinks.v`,
+`AppFileRec.v` (whole tree green, both audits unchanged) with these
+corrections to the text above, which are now the design:
+
+- **The tag is at the FILE discipline**: `ftag h := ⌜trace_shape h true⌝
+  ∗ (⌜disc_f h⌝ ∨ file_taint c) ∗ fl_lb c (efl_of h)` — NOT `etag ∗ lb`,
+  because `disc_f h` does not imply `disc h` (a `cat` line is not an echo
+  line).  The ledger's counter is at `decide (disc_f h)`.
+- **No total range condition**: the stage carries the POINTWISE
+  `alts_pre I cs` and `FileDisc.alts_ok` is reached by padding
+  (`alts_pad`), which moves no prologue round.
+- **`feout_pure`'s `o_f0` clause is an IFF** (`o_f0 = None <-> o_E = []
+  /\ o_w = []`).
+- **The era's first byte is a prologue-choice write**: at `ps0 = []` the
+  plain link's premise is unsatisfiable, so `file_write_link_first` is the
+  `_pro` shape at the empty stage and needs no stage premise.
+- **The record's fixed part is `FileOut.file_gn`** (AppFile's
+  `file_fixed` paired with the era map's gname); AppFile's lemmas are read
+  at `fgn_cl g`.
+- **The read exports a truncated choice list** (`fread_ret`).
+- **Determinacy at two boot states** (`sessf_prefix_det2`): the
+  discipline's witness and the claim's own need not agree, and
+  `alt_seq_f_prefix_det` already takes them apart.
+- **`al_programs` is a section hypothesis** of `AppFileRec.file_laws`
+  until SH-ROUND lands (the preferred shape).
+
+STAGE named two blockers.  RULINGS:
+
+**Blocker 1 — `Decision (disc_f h)` is a section hypothesis of `FileOut`.**
+The ledger's counter must decide the file discipline at every rx.
+`disc_f`'s `∃ s : fst` ranges over all byte lists; the rest (`∃ ps cs`)
+ports from `EchoDisc.disc_seg'_dec` (`pro_cands`, `bounded_lists`, plus
+an enumerator of `sel`s).  THE FIX IS A CANONICALISATION LEMMA, not a
+change to the discipline: a boot state's content surfaces on the wire
+only through an `RCRan` round whose state is `s0` itself (the state
+before a round is `s0` exactly, or a reset value `Some []`/`Some (subseq
+…)` that does not depend on `s0` — `fsm` never modifies `s0`, and
+`RFOpenM` keeps a present state), and there it is printed VERBATIM
+(`cont (Some bs) LCat RCRan = bs ++ u_prompt`) inside a checked
+transcript, hence a contiguous substring of that prefix's wire.  If no
+checked transcript (`p ∈ in_pres seg`) contains such a round, every
+checked transcript is IDENTICAL at `Some []` (the state chains agree
+pointwise except at `s0`-derived positions, and `cont` reads the state
+only at `RCRan`).  So `(∃ s, fst_ok s /\ disc_seg_f' s seg) <-> (∃ s ∈
+scands seg, …)` with `scands seg := None :: Some [] :: (Some <$>
+substrings (obs_wire Uart0 seg))` — finite — and `fcont_ok` is decidable
+(`last bs = Some wl_nl` and `Forall wl_body_byte` of the rest).  Lane
+FILE-DEC (`iris/FileDiscDec.v`): `Global Instance disc_f_dec h :
+Decision (disc_f h)`, then `FileOut`'s `Hdf` context goes.  Not on any
+program lane's critical path.
+
+**Blocker 2 — `file_phi`'s `echof_lines_before` IS reachable; no claim
+change.**  STAGE compared the deed's witness against the ledger's line
+list at EVERY drain and dropped `file_phi`'s antecedent.  Both are the
+error.  The ledger's conclusion is `FileDisc.file_phi h` VERBATIM (the
+antecedent `disc_f h` included; `disc_f` is prefix-closed —
+`FileOutPure.disc_f_prefix` — so the induction at each step assumes the
+discipline of the NEW history and gets the old one's witnesses), and the
+era's boot state is FIXED AT THE ERA'S FIRST DRAIN, where the cycle's
+input is empty: under `disc_f h`, a cycle whose wire is empty has no
+input byte (D2 at the prefix before its first input byte would put
+`pro_of ps` — nonempty under `pro_ok_f` — on an empty wire), so
+`efl_of h = echof_lines_before h (obs_boots h)` exactly there, and
+`f0_typed_adm` reads the witness's `ls ⊑ efl_of h` AS `fadm_boot
+(echof_lines_before h k) s0`.  At cycle 0 the same reading refutes the
+`Some` arm (`ws ∈ ls ⊑ []`), which is the guarded first clause.  The
+ledger keeps, per era, the state it fixed: `f0_lb vf s0` from
+`fdrain_ret` (which hands the era pin and the lower bound beside the
+witness; the stage holds `f0_auth vf [s0]`), and every later drain's
+`s0` agrees with it (two lower bounds of a list of length ≤ 1).  The
+pure carrier is `∃ s0s, ⌜disc_f h -> file_phi_body h s0s⌝` with the
+current era's entry pinned by the lower bound once the era has drained
+(`obs_wire Uart0 (open_seg h) ≠ []`, a pure condition), and `None`
+provisionally at `al_pow` (an empty cycle is good at any state; `None`
+is admissible anywhere), REPLACED at the first drain.  Lane STAGE-2, in
+`FileOut.v`/`FileOutPure.v` only; `AppFileRec.file_phi := fun _ h =>
+FileDisc.file_phi h`.
 
 ### 4.4 The record (AppFile layer B)
 

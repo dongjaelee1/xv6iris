@@ -162,6 +162,38 @@ Section file_links.
     by iApply "HΦ".
   Qed.
 
+  (* (W-pro) THE WRITE LINK AT A PROLOGUE ROUND'S CHOICE BYTE.  Init's own
+     knowledge of which of the four alternatives its restart loop is taking,
+     filed into the claim; the round-opening test is
+     [FileDisc.ralt_panic] of the last line's alternative, so the two new
+     line shapes' fork alternatives open a round too. *)
+  Lemma file_write_link_pro (k : nat) (v : era_pins) (vf : file_era)
+      (P a : nat) (b : bv 8) (ps0 cs0 : list nat) (s0 : fst)
+      (I0 : list (bv 8)) (Φ : iProp Σ) :
+    rest_of I0 = [] ->
+    (I0 = [] \/ ralt_panic (ralt_at cs0 (nlines I0 - 1)%nat) = true) ->
+    (nlines I0 <= length cs0)%nat ->
+    pro_pin_f ps0 cs0 I0 ->
+    ~ pro_done (pro_from (pro_idx_f cs0 (nlines I0)) ps0) ->
+    P = length (proc_stream_f ps0 cs0 (Some s0) I0) ->
+    (a < length pro_alts)%nat ->
+    pro_alts !!! a !! 0%nat = Some b ->
+    era_pin (fgn_echo g) k v -∗ file_era_pin g k vf -∗ turn v P -∗
+    ps_lb v ps0 -∗ cs_lb v cs0 -∗ inp_lb v I0 -∗ f0_lb vf s0 -∗
+    (((turn v (S P) ∗ ps_lb v (ps0 ++ [a]) ∗ cs_lb v cs0 ∗ inp_lb v I0
+       ∗ f0_lb vf s0) ∨ file_taint (fgn_cl g)) -∗ Φ) -∗
+    out_link Uart0 k b Φ.
+  Proof using Hcons.
+    intros Hr0 Hopen Hdiv Hpin0 Hnd HPeq Halt Hhead.
+    iIntros "#Hpin #Hfp Ht #Hpslb #Hcslb #Hilb #Hf0lb HΦ" (o H) "#Hlb Hres".
+    rewrite !fchist_at0.
+    iMod (fecl_step_write_pro g k v vf P a b ps0 cs0 s0 I0 (default [] o) H
+            Hr0 Hopen Hdiv Hpin0 Hnd HPeq Halt Hhead
+            with "Hpin Hfp Ht Hpslb Hcslb Hilb Hf0lb Hres") as "(Hres & Hret)".
+    iModIntro. iExists o. rewrite fchist_at0. iFrame "Hlb Hres".
+    by iApply "HΦ".
+  Qed.
+
   (* (R) THE READ LINK.  Beside the window it exports THE ERA'S INPUT AT THE
      WINDOW'S FAR END, its discipline, the era's BOOT STATE and the stage
      the writer has reached -- with the choice list TRUNCATED to the

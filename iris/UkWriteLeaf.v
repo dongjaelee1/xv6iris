@@ -282,6 +282,95 @@ Section UkWriteLeaf.
     rewrite /filewrite_in. iExact "Hch".
   Qed.
 
+  (* =================================================================== *)
+  (*  S4b  THE DEPOSIT THAT GIVES THE SOURCE RUN BACK                     *)
+  (*       (lane CAT-ENTRY-2, RULING (h))                                 *)
+  (*                                                                     *)
+  (*  S4's deposit premise is a wand over the LENT heap, and the only     *)
+  (*  thing a program can read the chain's per-byte premise off is its    *)
+  (*  own source run ([UkRunSys.uheap_ubytes_wat]).  echo's run is        *)
+  (*  [ustr … DfracDiscarded] -- persistent -- so one copy serves both    *)
+  (*  the wand and the leaf underneath.  cat's run is its 512-byte READ   *)
+  (*  BUFFER at [DfracOwn 1]: the copy put into the wand is consumed      *)
+  (*  there, and the buffer cannot be rebuilt for the next turn.          *)
+  (*                                                                     *)
+  (*  THE FIX IS TO LET THE WAND HAND IT BACK, and the way out is the     *)
+  (*  chain's own payload: [cons_out_chain]'s nodes are ADDITIVE, so a    *)
+  (*  resource held beside the cursor answers every node and rides out    *)
+  (*  with [Q] at the count the post reports ([uwrite_no_short] below).   *)
+  (*  So the caller halves its run ([ubytes_halve]), lends one half to    *)
+  (*  the leaf and one to the wand, and gets both back.                   *)
+  (* =================================================================== *)
+
+  (* the chain carries a frame: every node is [Q j ∧ the step], and an
+     additive conjunction is answered by ONE copy of the context *)
+  Lemma cons_out_chain_frame (k : nat) (M : gmap Z (bv 8)) (ua : mword 64)
+      (Q : nat -> iProp Σ) (R : iProp Σ) (j cnt : nat) :
+    R -∗ cons_out_chain k M ua Q j cnt -∗
+    cons_out_chain k M ua (fun i : nat => Q i ∗ R)%I j cnt.
+  Proof using .
+    revert j. induction cnt as [| cnt IH]; intros j.
+    - iIntros "HR HQ". cbn [cons_out_chain]. iFrame "HQ HR".
+    - iIntros "HR H". cbn [cons_out_chain]. iSplit.
+      + iDestruct "H" as "[HQ _]". iFrame "HQ HR".
+      + iDestruct "H" as "[_ H]". iIntros (b) "%Hb".
+        iDestruct ("H" $! b with "[%]") as "H"; [ exact Hb | ].
+        iApply (out_link_mono Uart0 k b
+                  (cons_out_chain k M ua Q (S j) cnt)
+                  (cons_out_chain k M ua (fun i : nat => Q i ∗ R)%I (S j) cnt)
+                  with "[HR] H").
+        iIntros "Hc". iApply (IH (S j) with "HR Hc").
+  Qed.
+
+  (* ...and S4's supply at it: the deposit premise RETURNS the caller's
+     source run beside the chain, and the run comes home in the post's
+     own [Q] ([uwrite_post_cons] / [uwrite_no_short] at [fun j => Q j ∗ R]) *)
+  Lemma uwrite_chain_sup_ret (N : uk_names Σ) (Q : nat -> iProp Σ)
+      (R : iProp Σ) (m : regfile) (pc : mword 64) (l : list fdstate)
+      (i : nat) (rb : bool) (mj : Z) :
+    bv_signed (trunc32 (m !!! Regidx a0_idx)) = Z.of_nat i ->
+    (i < NSTD)%nat ->
+    l !! i = Some (FdOpen rb true (FdDevice mj)) ->
+    (∀ (M : gmap Z (bv 8)) (pm : gmap (mword 27) uperm) (sz : Z),
+       uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗
+       uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗ R ∗
+       cons_out_chain (S gen_id) M (m !!! Regidx a1_idx) Q 0%nat
+         (Z.to_nat (sys_rw_count (m !!! Regidx a2_idx)))) -∗
+    udepwf_std N m pc 16 (xfam_wr (fun j : nat => Q j ∗ R)%I (ukn_pay N)) l.
+  Proof using .
+    intros H0 Hi Hli. iIntros "Hch".
+    iApply (uwrite_chain_sup N (fun j : nat => Q j ∗ R)%I m pc l i rb mj
+              H0 Hi Hli).
+    iIntros (M pm sz) "Hheap".
+    iDestruct ("Hch" $! M pm sz with "Hheap") as "(Hheap & HR & Hch)".
+    iFrame "Hheap".
+    iApply (cons_out_chain_frame (S gen_id) M (m !!! Regidx a1_idx) Q R
+              0%nat _ with "HR Hch").
+  Qed.
+
+  (* ...AND THE RUN'S OWN HALVING, so a caller whose source run is
+     EXCLUSIVE can be in both places at once.  [UserHeap.v] is the natural
+     home for this and [UserHeap.ubytesq] has no fractional law today; it
+     is stated here, beside its one consumer, because that file's cone is
+     the whole U tier. *)
+  Lemma ubytesq_frac (γd : gname) (q1 q2 : Qp) (a : Z) (n : nat)
+      (f : nat -> bv 8) :
+    ubytesq γd (DfracOwn (q1 + q2)) a n f ⊣⊢
+    ubytesq γd (DfracOwn q1) a n f ∗ ubytesq γd (DfracOwn q2) a n f.
+  Proof using .
+    rewrite /ubytesq -big_sepL_sep.
+    apply big_opL_proper. intros k j _. rewrite /ubyteq.
+    exact (ghost_map_elem_fractional (a + Z.of_nat j)%Z γd (f j) q1 q2).
+  Qed.
+
+  Lemma ubytes_halve (γd : gname) (a : Z) (n : nat) (f : nat -> bv 8) :
+    ubytes γd a n f ⊣⊢
+    ubytesq γd (DfracOwn (1/2)) a n f ∗ ubytesq γd (DfracOwn (1/2)) a n f.
+  Proof using .
+    rewrite /ubytes -(ubytesq_frac γd (1/2)%Qp (1/2)%Qp a n f).
+    by rewrite Qp.half_half.
+  Qed.
+
   (* ...AND THE POST, READ BACK AT THE SAME FAMILY.  The device arm of
      [SpecFilewrite.filewrite_extra] is keyed on [CONSOLE] -- at any other
      major the call reached a callee this layer cannot name and nothing

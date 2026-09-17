@@ -39,6 +39,11 @@ Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes.
 Require Import RegFile.
 Require Import UmodeArith UmodeAbi.
 Require Import UserHeap UkRun UkRunLeaf UkRunSys.
+Require Import VcGen.              (* [trunc32_subrange] -- a2 read as a C [int] *)
+Require Import SpecConsolewrite.   (* [cons_out_chain] *)
+Require Import SpecSysRead.        (* [sys_rw_count] *)
+Require Import WpUart.             (* [out_link] *)
+Require Import UkWriteLeaf.        (* the supply and the post, at row 16 *)
 Require Import UCodeCat.
 Require User.CatSyms User.CatInstrs.
 Require Import ChildTok.
@@ -121,6 +126,13 @@ Section UCatKernel.
   Local Notation γt := (ukn_t N).
   Local Notation γd := (ukn_d N).
   Local Notation γfd := (ukn_fd N).
+
+  (* the argument registers, at [UkCat.v]'s own spelling (a7 is
+     [UmodeCap]'s and the rest [UmodeAbi]'s; both are these literals) *)
+  Local Notation a0_idx := (mword_of_int 10 : mword 5).
+  Local Notation a1_idx := (mword_of_int 11 : mword 5).
+  Local Notation a2_idx := (mword_of_int 12 : mword 5).
+  Local Notation a7_idx := (mword_of_int 17 : mword 5).
 
   (* =================================================================== *)
   (*  2.  THE ROUND'S INVARIANT: THE LEDGER, AND -- AT ONE AND THE SAME  *)
@@ -224,6 +236,44 @@ Section UCatKernel.
   (*  plus the count -- the shape [UCatOut.cch_chain] yields through      *)
   (*  [UkCat.wp_kcat_write_chain].                                        *)
   (* =================================================================== *)
+  (* =================================================================== *)
+  (*  [Hheld]: THE HELD READ'S OBLIGATION, NAMED (lane CAT-ENTRY-2, T3).  *)
+  (*                                                                     *)
+  (*  This is the ONE thing cat's entry takes on credit, and it is        *)
+  (*  written here once so that the entry is ONE INSTANTIATION when lane  *)
+  (*  OFF-HAND-6's [wp_uk_ecall_read_file_held] lands.  Read it as: at a  *)
+  (*  cursor [p] inside the content, the descriptor HELD AT [p] reads the *)
+  (*  deed at [p] -- the count is [ard_count 512 p (length bs)], byte [j] *)
+  (*  is [bs !!! (p + j)] -- and comes back HELD AT [p + count]; or the   *)
+  (*  era is tainted and the handle comes back at some position.          *)
+  (*                                                                     *)
+  (*  [Hold] IS ABSTRACT, and deliberately so: OFF-HAND-6's design        *)
+  (*  records the offset VALUE in the descriptor state ([OffHeld off])    *)
+  (*  and lets the half ride the kernel's bundle, so [Hold p] may end up  *)
+  (*  being just [UserFd.ufd γfd fd (FdOpen true wb (FdInode i γo         *)
+  (*  (OffHeld p)))] with the deed fraction and no user-side [uoff] at    *)
+  (*  all.  Either shape instantiates this.                              *)
+  (*                                                                     *)
+  (*  NOTE THE SHAPE, because the two obvious ones are VACUOUS            *)
+  (*  (CAT-WALK-2).  The ROW may NOT be boxed over the expected offset:   *)
+  (*  at two different ones the box is inconsistent.  Nor may the         *)
+  (*  OBLIGATION be boxed over the cursor at a FIXED handle: one          *)
+  (*  descriptor has one offset.  What is boxed is the obligation AT      *)
+  (*  [Hold p] -- the handle that is ITSELF at [p].                       *)
+  (* =================================================================== *)
+  Definition cat_held_read (Hold : nat -> iProp Σ) (c : file_fixed)
+      (fd : nat) (bs : list (bv 8)) : iProp Σ :=
+    (□ (∀ p : nat, ⌜(p <= length bs)%nat⌝ -∗
+          UkCat.kcat_r N (mword_of_int (Z.of_nat fd)) CatSyms.buf 512%nat
+            (Hold p)
+            (fun (rv : mword 64) (gb : nat -> bv 8) =>
+               ((⌜Z.to_nat (bv_unsigned rv) = ard_count 512 p (length bs)⌝
+                 ∗ ⌜forall j : nat, (j < Z.to_nat (bv_unsigned rv))%nat ->
+                      gb j = bs !!! (p + j)%nat⌝
+                 ∗ Hold (p + Z.to_nat (bv_unsigned rv))%nat)
+                ∨ ((∃ p' : nat, ⌜(p' <= length bs)%nat⌝ ∗ Hold p')
+                   ∗ file_taint c))%I)))%I.
+
   Lemma cat_round_at (c : file_fixed) (i : Z) (bs : list (bv 8)) (fd : nat)
       (Hold : nat -> iProp Σ) (l : list fdstate)
       (v : era_pins) (vf : file_era)
@@ -231,18 +281,15 @@ Section UCatKernel.
       (Cend : iProp Σ) :
     c = fgn_cl g ->
     cat_tie cs0 s0 I0 (Some (i, bs)) ->
-    (* [Hpin]: the offset-pinned read, at a handle that is itself at [p] *)
-    □ (∀ p : nat, ⌜(p <= length bs)%nat⌝ -∗
-         UkCat.kcat_r N (mword_of_int (Z.of_nat fd)) CatSyms.buf 512%nat
-           (Hold p)
-           (fun (rv : mword 64) (gb : nat -> bv 8) =>
-              ((⌜Z.to_nat (bv_unsigned rv) = ard_count 512 p (length bs)⌝
-                ∗ ⌜forall j : nat, (j < Z.to_nat (bv_unsigned rv))%nat ->
-                     gb j = bs !!! (p + j)%nat⌝
-                ∗ Hold (p + Z.to_nat (bv_unsigned rv))%nat)
-               ∨ ((∃ p' : nat, ⌜(p' <= length bs)%nat⌝ ∗ Hold p')
-                  ∗ file_taint c))%I)) -∗
-    (* [Hw]: the turn's write, at the cursor *)
+    (* [Hheld]: the offset-pinned read, at a handle that is itself at [p] *)
+    cat_held_read Hold c fd bs -∗
+    (* [Hw]: the turn's write, at the cursor -- COUNT-EXACT (RULING (g)).
+       Its output is read at the value [write] RETURNED, and it says that
+       value IS the count: [UkWriteLeaf.uwrite_no_short] gives exactly
+       that at a console destination the caller owns, and it is what
+       refutes cat's `write error` tail inside the walk.  So the round
+       this file builds never funds [UkCatCat.kcat_dg_cw] and does not
+       take it as a premise. *)
     □ (∀ (p nb : nat) (rv : mword 64) (fbb : nat -> bv 8),
          (* THE COUNT IS READ OFF THE RETURNED WORD, not off the walk's
             [nb].  [UkCatCat.kcat_round]'s write arm is quantified over
@@ -261,18 +308,19 @@ Section UCatKernel.
           ∨ file_taint c) -∗
          UserFd.ustd γfd l -∗
          UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P p -∗
-         UkCat.kcat_w N (mword_of_int 1) (mword_of_int CatSyms.buf) nb
+         UkCat.kcat_wr N (mword_of_int 1) (mword_of_int CatSyms.buf) nb
            (ubytes γd CatSyms.buf 512 fbb)
-           (UserFd.ustd γfd l
-            ∗ UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P
-                (p + Z.to_nat (bv_unsigned rv))%nat
-            ∗ ubytes γd CatSyms.buf 512 fbb)) -∗
-    (* the two diagnostic tails, and the loop's normal exit.  [Cend]'s
-       wand takes the cursor and the handle's position SEPARATELY: the
-       loop exits on [read] returning zero, and it is the ENTRY -- which
-       owns the arithmetic of [ard_count] -- that reads off that the two
-       are then the same. *)
-    □ UkCatCat.kcat_dg_cw N -∗
+           (fun wret : mword 64 =>
+              (⌜wret = (mword_of_int (Z.of_nat nb) : mword 64)⌝
+               ∗ UserFd.ustd γfd l
+               ∗ UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P
+                   (p + Z.to_nat (bv_unsigned rv))%nat
+               ∗ ubytes γd CatSyms.buf 512 fbb))) -∗
+    (* the read-error tail, and the loop's normal exit.  [Cend]'s wand
+       takes the cursor and the handle's position SEPARATELY: the loop
+       exits on [read] returning zero, and it is the ENTRY -- which owns
+       the arithmetic of [ard_count] -- that reads off that the two are
+       then the same. *)
     □ UkCatCat.kcat_dg_cr N -∗
     □ (∀ p p' : nat, ⌜(p <= length bs)%nat⌝ -∗ ⌜(p' <= length bs)%nat⌝ -∗
          UserFd.ustd γfd l -∗ Hold p' -∗
@@ -282,8 +330,8 @@ Section UCatKernel.
       (cat_round_inv Hold l bs v vf ps0 cs0 s0 I0 P) Cend.
   Proof using .
     intros Hgc Htie.
-    iIntros "#Hpin #Hw #Hdcw #Hdcr #Hend #Hcode".
-    rewrite /UkCatCat.kcat_round. iModIntro.
+    iIntros "#Hpin #Hw #Hdcr #Hend #Hcode".
+    rewrite /cat_held_read /UkCatCat.kcat_round. iModIntro.
     iIntros (h m avail f) "%Ha0 %Ha1 %Ha2 _ HI Hbuf Hrun Hcont".
     iDestruct "HI" as "[Hstd Hcur]".
     iDestruct "Hcur" as (p) "(%Hple & Hhold & Hc)".
@@ -302,17 +350,19 @@ Section UCatKernel.
         iApply ("Hend" $! p p2 with "[%] [%] Hstd Hhold Hc");
           [ exact Hple | exact Hp2 ].
       - iIntros (nb) "%Hret _".
-        iApply (UkCat.kcat_w_mono N (mword_of_int 1)
+        iApply (UkCat.kcat_wr_mono N (mword_of_int 1)
                   (mword_of_int CatSyms.buf) nb
                   (ubytes γd CatSyms.buf 512 gb)%I
-                  (UserFd.ustd γfd l
-                   ∗ UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P
-                       (p + Z.to_nat (bv_unsigned ret))%nat
-                   ∗ ubytes γd CatSyms.buf 512 gb)%I
+                  (fun wret : mword 64 =>
+                     (⌜wret = (mword_of_int (Z.of_nat nb) : mword 64)⌝
+                      ∗ UserFd.ustd γfd l
+                      ∗ UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P
+                          (p + Z.to_nat (bv_unsigned ret))%nat
+                      ∗ ubytes γd CatSyms.buf 512 gb)%I)
                   _ with "[Hhold] [Hstd Hc]").
-        { iIntros "(Hstd & _ & Hb)".
+        { iIntros (wret) "(%Hws & Hstd & _ & Hb)".
           iSplitR "Hb"; [ | iExact "Hb" ].
-          iSplit; [ | iExact "Hdcw" ].
+          iLeft. iSplitR; [ by iPureIntro | ].
           rewrite /cat_round_inv. iFrame "Hstd".
           iExists p2. iSplitR; [ by iPureIntro | ]. iFrame "Hhold".
           rewrite /UCatOut.cch. iRight. rewrite <- Hgc. iExact "HT". }
@@ -334,17 +384,19 @@ Section UCatKernel.
                 with "[%] [%] Hstd Hhold Hc");
         [ exact Hple | exact Hnext ].
     - iIntros (nb) "%Hret %Hnb0".
-      iApply (UkCat.kcat_w_mono N (mword_of_int 1)
+      iApply (UkCat.kcat_wr_mono N (mword_of_int 1)
                 (mword_of_int CatSyms.buf) nb
                 (ubytes γd CatSyms.buf 512 gb)%I
-                (UserFd.ustd γfd l
-                 ∗ UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P
-                     (p + Z.to_nat (bv_unsigned ret))%nat
-                 ∗ ubytes γd CatSyms.buf 512 gb)%I
+                (fun wret : mword 64 =>
+                   (⌜wret = (mword_of_int (Z.of_nat nb) : mword 64)⌝
+                    ∗ UserFd.ustd γfd l
+                    ∗ UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P
+                        (p + Z.to_nat (bv_unsigned ret))%nat
+                    ∗ ubytes γd CatSyms.buf 512 gb)%I)
                 _ with "[Hhold] [Hstd Hc]").
-      { iIntros "(Hstd & Hc' & Hb)".
+      { iIntros (wret) "(%Hws & Hstd & Hc' & Hb)".
         iSplitR "Hb"; [ | iExact "Hb" ].
-        iSplit; [ | iExact "Hdcw" ].
+        iLeft. iSplitR; [ by iPureIntro | ].
         rewrite /cat_round_inv. iFrame "Hstd".
         iExists (p + Z.to_nat (bv_unsigned ret))%nat.
         iSplitR; [ by iPureIntro | ]. iFrame "Hhold". iExact "Hc'". }
@@ -354,6 +406,246 @@ Section UCatKernel.
       exact (cat_round_line cs0 s0 I0 (Some (i, bs)) i bs p
                (Z.to_nat (bv_unsigned ret)) gb
                Htie eq_refl Hple Hcnt Hbyt).
+  Qed.
+
+  (* =================================================================== *)
+  (*  4.  [Hw]: THE TURN'S WRITE AT THE CURSOR (lane CAT-ENTRY-2,        *)
+  (*      RULING (h)) -- cat's twin of [UEchoOut.kecho_w_of_link_data].   *)
+  (*                                                                     *)
+  (*  ONE call of [write(1, buf, n)] paid out of the era's own console    *)
+  (*  credential at cat's cursor, with THREE differences from echo's.     *)
+  (*                                                                     *)
+  (*  (1) THE SOURCE RUN IS OWNED, NOT PERSISTENT.  echo writes its argv  *)
+  (*  strings ([ustr … DfracDiscarded]), so one copy serves both the      *)
+  (*  chain's deposit and the leaf underneath.  cat writes its 512-byte   *)
+  (*  READ BUFFER at [DfracOwn 1], and the copy put into the deposit's    *)
+  (*  wand is consumed there.  So the run is HALVED                       *)
+  (*  ([UkWriteLeaf.ubytes_halve]): one half goes to the leaf and comes   *)
+  (*  back in its continuation, the other goes into the wand and comes    *)
+  (*  back through the chain's own payload                                *)
+  (*  ([UkWriteLeaf.uwrite_chain_sup_ret]), and the two rejoin.  The      *)
+  (*  buffer is whole again for the next turn of the loop, which is what  *)
+  (*  the round's invariant needs.                                       *)
+  (*                                                                     *)
+  (*  (2) THE COUNT IS THE READ'S RETURN and not a string length, so the  *)
+  (*  bytes written are a PREFIX of the buffer; the tail is split off     *)
+  (*  with [UserHeap.ubytes_app] and framed across the call.              *)
+  (*                                                                     *)
+  (*  (3) THE NO-SHORT FACT IS KEPT.  echo's twin reads                   *)
+  (*  [UkWriteLeaf.uwrite_no_short] and DROPS its equation; cat's loop    *)
+  (*  branches on exactly that word ([beq a0,s1]), so it is the output --  *)
+  (*  and it is what refutes the `cat: write error` tail (RULING (g)).    *)
+  (*  It holds whether or not the era is tainted, because it is a fact    *)
+  (*  about the LEAF -- a console write of a run the caller owns returns  *)
+  (*  the full count -- and not about the claim.                          *)
+  (* =================================================================== *)
+
+  (* the syscall's count register, read as the C [int] it is.  The same
+     reading as [UEchoOut.echo_count_is] and [UShOut]'s, at the WORD
+     rather than at a [nat]: the payer may not compute the count from the
+     walk's [nb] (above 2^64 the equation [ret = mword_of_int nb] does not
+     identify it), so everything below reads it off [bv_unsigned].  Its
+     home is [SpecSysRead.v], whose cone is the whole read/write tower. *)
+  Lemma cat_count_is (nb : nat) :
+    (Z.of_nat nb < 2 ^ 31)%Z ->
+    sys_rw_count (mword_of_int (Z.of_nat nb) : mword 64) = Z.of_nat nb.
+  Proof using .
+    intros Hlt. change (2 ^ 31)%Z with 2147483648%Z in Hlt.
+    assert (Hu : uint (mword_of_int (Z.of_nat nb) : mword 64) = Z.of_nat nb)
+      by (apply uint_moi; unfold Z64; lia).
+    rewrite uint_unsigned in Hu.
+    rewrite /sys_rw_count. unfold bv_signed.
+    rewrite trunc32_subrange subrange_31_0_unsigned Hu.
+    rewrite (Z.mod_small (Z.of_nat nb) 4294967296); [| lia].
+    assert (Hhm : bv_half_modulus 32 = 2147483648) by (vm_compute; reflexivity).
+    rewrite bv_swrap_small; [ reflexivity | rewrite Hhm; lia ].
+  Qed.
+
+  (* ...and a word IS the machine integer of its own unsigned value, which
+     is how the count the payer reads off the word gets back into the
+     [mword_of_int] shape the walk's equation is stated at. *)
+  Lemma cat_moi_uint (v : mword 64) :
+    (mword_of_int (bv_unsigned v) : mword 64) = v.
+  Proof using . rewrite <- uint_unsigned. apply moi_of_uint. Qed.
+
+  (* the deposit family row 16 is read at, at cat's own cursor
+     ([UEchoOut.kec_fam]'s mould: an [xfam]-typed argument is not an
+     [sfam] until the instance is fixed) *)
+  Definition cat_fam (Q : nat -> iProp Σ) : sfam := xfam_wr Q (ukn_pay N).
+
+  (* =================================================================== *)
+  (*  [Hw] ITSELF.  The count is [Z.to_nat (bv_unsigned rv)] throughout   *)
+  (*  and the walk's [nb] is used ONLY where the register rows demand it, *)
+  (*  which is CAT-WALK-2's smaller finding taken seriously.              *)
+  (*                                                                     *)
+  (*  THE CAP IS A PREMISE AND NOT A CONSEQUENCE, and this is the one     *)
+  (*  thing [cat_round_at]'s TAINT arm cannot supply.  The no-short       *)
+  (*  refutation is a fact about bytes the CALLER OWNS, and cat owns 512  *)
+  (*  of them; so a write of more than 512 is not fundable by this        *)
+  (*  payment at all.  In the CONTENT arm the cap rides in [Hw]'s own     *)
+  (*  left disjunct ([ard_count 512 p _ <= 512]); in the TAINT arm        *)
+  (*  nothing bounds the read's return, because                           *)
+  (*  [UkFileOpen.wp_uk_read_deed_learns_mapped]'s taint disjunct is      *)
+  (*  [fdq ∗ file_taint c] and says nothing about [rv].  THE MISSING ROW  *)
+  (*  IS "a read of [cnt] returns at most [cnt]", and its home is         *)
+  (*  [UkRunSys.wp_uk_ecall_read_file]'s post (lane OFF-HAND-6's file),   *)
+  (*  relayed through [FileOpen.file_read_arms_learn] -- so it belongs    *)
+  (*  with the HELD leaf's obligation and not here.                       *)
+  (* =================================================================== *)
+  Lemma cat_w_of_link (c : file_fixed) (v : era_pins) (vf : file_era)
+      (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (P : nat)
+      (l : list fdstate) (rb : bool)
+      (p nb : nat) (rv : mword 64) (fbb : nat -> bv 8) :
+    c = fgn_cl g ->
+    UCatOut.cat_stage ps0 cs0 s0 I0 P ->
+    l !! 1%nat = Some (FdOpen rb true (FdDevice CONSOLE)) ->
+    rv = (mword_of_int (Z.of_nat nb) : mword 64) ->
+    (Z.to_nat (bv_unsigned rv) <= 512)%nat ->
+    era_pin (fgn_echo g) (S gen_id) v -∗
+    file_era_pin g (S gen_id) vf -∗
+    (⌜(Z.to_nat (bv_unsigned rv) <= 512)%nat
+      /\ forall j : nat, (j < Z.to_nat (bv_unsigned rv))%nat ->
+           cont (cat_st cs0 s0 I0) LCat (ralt_dec (ralt_enc RCRan))
+             !! (p + j)%nat = Some (fbb j)⌝
+     ∨ file_taint c) -∗
+    UserFd.ustd γfd l -∗
+    UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P p -∗
+    UkCat.kcat_wr N (mword_of_int 1) (mword_of_int CatSyms.buf) nb
+      (ubytes γd CatSyms.buf 512 fbb)
+      (fun wret : mword 64 =>
+         (⌜wret = (mword_of_int (Z.of_nat nb) : mword 64)⌝
+          ∗ UserFd.ustd γfd l
+          ∗ UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P
+              (p + Z.to_nat (bv_unsigned rv))%nat
+          ∗ ubytes γd CatSyms.buf 512 fbb)).
+  Proof using Hcons.
+    intros Hgc Hst Hl1 Hrv Hcap.
+    set (cnt := Z.to_nat (bv_unsigned rv)).
+    pose proof (bv_unsigned_in_range 64 rv) as [Hrvnn _].
+    assert (Hmoi : (mword_of_int (Z.of_nat cnt) : mword 64) = rv).
+    { unfold cnt. rewrite Z2Nat.id; [ | exact Hrvnn ].
+      exact (cat_moi_uint rv). }
+    assert (Hcz : sys_rw_count rv = Z.of_nat cnt).
+    { rewrite <- Hmoi. apply cat_count_is.
+      change (2 ^ 31)%Z with 2147483648%Z. lia. }
+    assert (Hok : ralt_ok LCat (ralt_dec (ralt_enc RCRan)))
+      by (rewrite ralt_dec_enc; exact UCatOut.cat_ralt_ok_ran).
+    pose proof UCatOut.cat_ralt_panic_ran as Hnp.
+    iIntros "#Hpin #Hfp Hjust Hstd Hc" (h m avail)
+      "%Ha0 %Ha1 %Ha2 #Hcode Hbuf Hrun Hcont".
+    (* the three argument rows, at the register file the leaf runs on *)
+    assert (Hua : uint (m !!! Regidx a1_idx) = CatSyms.buf).
+    { rewrite Ha1. apply uint_moi.
+      unfold Z64, CatSyms.buf. lia. }
+    assert (Ham1 : (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m)
+                     !!! Regidx a1_idx = m !!! Regidx a1_idx)
+      by exact (upd_ne m (Regidx a7_idx) (Regidx a1_idx) _
+                  ltac:(vm_compute; discriminate)).
+    assert (Ham0 : (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m)
+                     !!! Regidx a0_idx = (mword_of_int 1 : mword 64)).
+    { rewrite <- Ha0.
+      exact (upd_ne m (Regidx a7_idx) (Regidx a0_idx) _
+               ltac:(vm_compute; discriminate)). }
+    assert (Ham2 : (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m)
+                     !!! Regidx a2_idx = rv).
+    { rewrite Hrv. rewrite <- Ha2.
+      exact (upd_ne m (Regidx a7_idx) (Regidx a2_idx) _
+               ltac:(vm_compute; discriminate)). }
+    assert (Hi0 : bv_signed (trunc32
+                    ((<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m)
+                       !!! Regidx a0_idx)) = Z.of_nat 1)
+      by (rewrite Ham0; vm_compute; reflexivity).
+    assert (Hcnt : Z.to_nat (sys_rw_count
+                     ((<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m)
+                        !!! Regidx a2_idx)) = cnt)
+      by (rewrite Ham2 Hcz; lia).
+    (* ---- THE CHAIN, from the row or from the taint ---- *)
+    iAssert (∀ M : gmap Z (bv 8),
+               ⌜forall j : nat, (j < cnt)%nat ->
+                  M !! uint (add_vec_int (m !!! Regidx a1_idx) (Z.of_nat j))
+                  = Some (fbb j)⌝ -∗
+               cons_out_chain (S gen_id) M (m !!! Regidx a1_idx)
+                 (fun j : nat => UCatOut.cch g v vf ps0 cs0 s0 I0
+                                   (ralt_enc RCRan) P (p + j)%nat)
+                 0%nat cnt)%I with "[Hc Hjust]" as "Hmk".
+    { iDestruct "Hjust" as "[[%_ %Hline] | #HT]".
+      - iIntros (M) "%HM".
+        iApply (UCatOut.cch_chain g Hcons (S gen_id) v vf ps0 cs0 s0 I0
+                  (ralt_enc RCRan) P p M (m !!! Regidx a1_idx) fbb
+                  Hst Hok Hnp cnt 0%nat
+                  ltac:(intros j _ Hj; apply Hline; lia)
+                  ltac:(intros j _ Hj; apply HM; lia)
+                  with "Hpin Hfp [Hc]").
+        by rewrite Nat.add_0_r.
+      - iIntros (M) "_".
+        iApply (UCatOut.cch_chain_taint g Hcons (S gen_id) v vf ps0 cs0 s0 I0
+                  (ralt_enc RCRan) P p M (m !!! Regidx a1_idx) cnt 0%nat
+                  with "[HT]").
+        rewrite <- Hgc. iExact "HT". }
+    (* ---- THE RUN: the prefix the call writes, and its two halves ---- *)
+    pose (nr := (512 - cnt)%nat).
+    assert (Hsz : (cnt + nr)%nat = 512%nat) by (unfold nr; lia).
+    iAssert (ubytes γd CatSyms.buf cnt fbb
+             ∗ ubytes γd (CatSyms.buf + Z.of_nat cnt) nr
+                 (fun j : nat => fbb (cnt + j)%nat))%I
+      with "[Hbuf]" as "[Hpre Hsuf]".
+    { rewrite <- (ubytes_app γd CatSyms.buf cnt nr fbb).
+      rewrite Hsz. iExact "Hbuf". }
+    iAssert (ubytesq γd (DfracOwn (1/2)) (uint (m !!! Regidx a1_idx)) cnt fbb
+             ∗ ubytesq γd (DfracOwn (1/2)) (uint (m !!! Regidx a1_idx))
+                 cnt fbb)%I with "[Hpre]" as "[Hh1 Hh2]".
+    { rewrite Hua. rewrite <- (ubytes_halve γd CatSyms.buf cnt fbb).
+      iExact "Hpre". }
+    (* ---- THE CALL ---- *)
+    iApply (UkCat.wp_kcat_write_chain N h m avail
+              (cat_fam (fun j : nat =>
+                          (UCatOut.cch g v vf ps0 cs0 s0 I0
+                             (ralt_enc RCRan) P (p + j)%nat
+                           ∗ ubytesq γd (DfracOwn (1/2))
+                               (uint (m !!! Regidx a1_idx)) cnt fbb)%I))
+              l (DfracOwn (1/2)) cnt fbb
+              with "Hcode Hrun [Hmk Hh2] Hstd Hh1").
+    { (* THE DEPOSIT: cat's own chain at its own cursor, and the half of
+         the run that the wand hands back through the chain's payload *)
+      iApply (uwrite_chain_sup_ret N
+                (fun j : nat => UCatOut.cch g v vf ps0 cs0 s0 I0
+                                  (ralt_enc RCRan) P (p + j)%nat)
+                (ubytesq γd (DfracOwn (1/2))
+                   (uint (m !!! Regidx a1_idx)) cnt fbb)
+                (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m)
+                (add_vec_int (mword_of_int CatSyms.write : mword 64) 2)
+                l 1%nat rb CONSOLE Hi0 ltac:(unfold NSTD; lia) Hl1).
+      iIntros (M pm sz) "Hheap".
+      iDestruct (uheap_ubytes_wat γt γd (ukn_s N) M pm sz
+                   (DfracOwn (1/2)) (m !!! Regidx a1_idx) cnt fbb
+                   with "Hheap Hh2") as %HM.
+      iFrame "Hheap Hh2".
+      rewrite Ham1 Hcnt.
+      iApply ("Hmk" $! M with "[%]"). exact HM. }
+    iIntros (h' ret W cw' cs')
+      "%Hka0 %Hka1 %Hka2 %Htk %Hlz %Hnf Hstd Hh1 Hpost Hrun".
+    iDestruct (uwrite_no_short
+                 (fun j : nat =>
+                    (UCatOut.cch g v vf ps0 cs0 s0 I0
+                       (ralt_enc RCRan) P (p + j)%nat
+                     ∗ ubytesq γd (DfracOwn (1/2))
+                         (uint (m !!! Regidx a1_idx)) cnt fbb)%I)
+                 (ukn_pay N) W ret (uvis_M W) (uvis_fd W) cw' cs'
+                 l 1%nat rb cnt
+                 ltac:(rewrite Hka0 Ha0; vm_compute; reflexivity)
+                 ltac:(unfold NSTD; lia) Htk Hl1
+                 ltac:(rewrite Hka2 Ha2 -Hrv; exact Hcz)
+                 Hlz
+                 ltac:(rewrite Hka1; exact Hnf)
+                 with "Hpost") as "[%Hws [Hcc Hh2]]".
+    iApply ("Hcont" $! h' ret with "[Hstd Hcc Hh1 Hh2 Hsuf] Hrun").
+    iSplitR.
+    { iPureIntro. rewrite Hws Hmoi. exact Hrv. }
+    iFrame "Hstd Hcc".
+    rewrite <- Hsz. rewrite (ubytes_app γd CatSyms.buf cnt nr fbb).
+    iSplitR "Hsuf"; [ | iExact "Hsuf" ].
+    rewrite (ubytes_halve γd CatSyms.buf cnt fbb) -Hua.
+    iFrame "Hh1 Hh2".
   Qed.
 
 End UCatKernel.

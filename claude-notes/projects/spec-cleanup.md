@@ -904,6 +904,65 @@ unmoved.
    `xv6_slot_app_project` to feed, and the right disjunct is a ghost fact
    `app_phi` does not take.  TL-5's pricing stands.
 
+**TL-7 AS LANDED — `UInitCons.v` OFF `echo_names`, /init's CONSOLE SETUP AT
+THE DEED, AND ONE PREMISE LEFT (a RULING, not a proof)** — branch
+`tl7-init-cons`, two commits; design of record `design/user-tree.md` §9.6.
+Whole iris tree green on the mirror (10 files rebuilt from a forced cone);
+`AppEcho.v` / `AppInv.v` / `UkInit.v` / `UInitKernel.v` / `UInitSh.v` /
+`UInitBoot.v` untouched; `UInitBootAdequacy.echo_adequacy_echoΣ`
+byte-identical; echo audit 14, tree audit unmoved.
+
+1. **D1 LANDED.** `UInitCons.init_cons_laws_at` and everything under it are
+   stated over an abstract `Pure : aview -> Prop` and `Made : Z -> iProp Σ`;
+   the echo instance is DEFINITIONAL (`init_cons_laws T K r :=
+   init_cons_laws_at echo_fs_pure (cons_made r) cons_absent T K`), so every
+   consumer stated at that name is untouched and `UInitConsK.v` took
+   instantiation edits only.  The one real shape change is the one the tree
+   needed: `init_cons_laws_open_console` spends the flag LINEARLY, which is
+   what makes it usable at a claim whose `Made` is a DEED.
+2. **D2 LANDED** (new `iris/UInitTreeCons.v`): `tree_cons_abs_law`,
+   `tree_open_absent_leaf_holds` (which is `UInitConsK`'s leaf VERBATIM),
+   a device-node open corollary for the tree (`tree_open_recv_dev` /
+   `tree_open_sup_dev` / `wp_uk_ecall_open_dev_own`),
+   `tree_open_console_leaf_holds`, `tree_mknod_leaf_holds`,
+   `tree_init_cons_leaves`; and in new `iris/UInitTreeBoot.v`
+   `tree_init_cons_dance_all` = `UInitKernel.init_cons_dance_all` at the
+   tree claim, which CLOSES §9.5(5)'s first entry.  Every arm hands the
+   claim back as the DEED, never the taint.  The moved deed is FROZEN
+   inside the mknod's success arm (a walk needs the `□` law; /init never
+   moves the namespace again).  `Cns := True`.
+3. **A TOOLING WALL WITH A MEASURED SHAPE.** `UkTreeRead.wp_uk_ecall_open_own`
+   (`UkTreeRead.v:294`) and `UkTreeCreate.wp_uk_ecall_mknod_own`
+   (`UkTreeCreate.v:481`) are pinned at `uprogSG_gen` through their `urun`;
+   /init runs at `uprogSG_free`.  Adding `Context `{PS : uprogSG Σ}` to
+   either tree file WEDGES its own compile (measured: `UkTreeRead.v` 6+ min,
+   RSS +32 MB/45 s, killed).  The two ecall walks are re-derived in
+   `UInitTreeCons.v` from the PS-free pieces instead.  `udepwf_at` is
+   SG-indexed and takes no PS; only `urun` and the `wp_uk_*` leaves do.
+4. **D3 WALLED, AND THE WALL IS ONE ENTAILMENT.**  `UkInit.init_cons_sup`
+   has exactly one producer (`UInitSh.init_exec_sup_of_sh_slot`,
+   `UInitSh.v:1157`), whose premise `UInitSh.cons_cred_holds`
+   (`UInitSh.v:532`) has an EIGHTH conjunct (`UInitSh.v:562`) that at
+   `UInitTree.tree_cc` reduces to `⊢ tree_turn c -∗ tree_taint c` — the
+   era's unspent licence becoming the taint UPDATE-FREE.
+   `UInitTreeBoot.tree_cc_wb_conj8_is_turn_to_taint` proves that reduction
+   in both directions and is **closed under the global context**.  It is
+   `AppTree.tree_bump_free_is_vacuous` one premise over, so the fix is
+   §9.4's ruling verbatim: re-cut that conjunct as an UPDATE (echo: one
+   `iModIntro`; the tree: SPEND the licence).  Dropping `cc_wb`'s licence
+   arm is not an option — it is what makes the banner the mint.
+   Two smaller entries owed beside it: `cons_cred_holds`'s FIRST conjunct
+   (sh's read leaf as a closed entailment, `UInitSh.v:535`), and the dance's
+   HIT arm (`UkInit.uki_mknod_hit_leaf`, `UkInit.v:499`) which wants a
+   credential-free `□`-shaped mknod the tree cannot give (it needs the LIVE
+   deed).
+5. **D4 NOT LANDED**, and (4) is why: `UInitKernel.init_boot_con` takes
+   `init_cons_sup` at `UInitKernel.v:718`, so there is no behavioural
+   `tree_Hinit_boot` to re-point `UTreeAdequacy.tree_adequacy_treeΣ` at.
+   The at-boot form stands, unrenamed.  What the lane bought is that
+   /init's premise list at the tree claim is down from TWO open entries to
+   ONE, and that one is an owner ruling.
+
 ## RELAY QUEUE (for upstream, via the owner's push)
 
 1. **The R-a walls + the `uheld` proposal** (`design/user-read.md`

@@ -272,6 +272,168 @@ Section file_links.
   Qed.
 
   (* ==================================================================== *)
+  (*  THE BUNDLE (lane LINK-GEN, item 20).  CAT-ENTRY's ask, verbatim:     *)
+  (*  FileLinks.v had no EchoLinks.echo_links-style BUNDLE, so every       *)
+  (*  program-side file had to re-take Hcons as a section hypothesis and   *)
+  (*  thread g and Hcons through every application.                        *)
+  (*                                                                      *)
+  (*  [EchoLinks.echo_links]'s shape at this claim: the seven links as     *)
+  (*  CLOSED [box] wands with their Coq-level premises turned into         *)
+  (*  [pure] wands, so the whole thing is ONE [iProp] a program holds and  *)
+  (*  spends per byte, and the record equations stay where [App.al_echo]   *)
+  (*  hands them over.  This is what fills [LinkRec.lk_links] at the file  *)
+  (*  application.                                                         *)
+  (* ==================================================================== *)
+  Definition file_link_w : iProp Σ :=
+    (□ ∀ (k : nat) (v : era_pins) (vf : file_era) (P : nat) (b : bv 8)
+         (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (Φ : iProp Σ),
+        ⌜(nlines I0 <= length cs0)%nat⌝ -∗
+        ⌜pro_pin_f ps0 cs0 I0⌝ -∗
+        ⌜proc_stream_f ps0 cs0 (Some s0) I0 !! P = Some b⌝ -∗
+        era_pin (fgn_echo g) k v -∗ file_era_pin g k vf -∗ turn v P -∗
+        ps_lb v ps0 -∗ cs_lb v cs0 -∗ inp_lb v I0 -∗ f0_lb vf s0 -∗
+        (((turn v (S P) ∗ ps_lb v ps0 ∗ cs_lb v cs0 ∗ inp_lb v I0
+           ∗ f0_lb vf s0) ∨ file_taint (fgn_cl g)) -∗ Φ) -∗
+        out_link Uart0 k b Φ)%I.
+
+  Definition file_link_blk : iProp Σ :=
+    (□ ∀ (k : nat) (v : era_pins) (vf : file_era) (P a : nat) (b : bv 8)
+         (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (Φ : iProp Σ),
+        ⌜I0 <> []⌝ -∗
+        ⌜rest_of I0 = []⌝ -∗
+        ⌜(nlines I0 <= S (length cs0))%nat⌝ -∗
+        ⌜pro_pin_f ps0 cs0 I0⌝ -∗
+        ⌜P = length (proc_before_f ps0 cs0 (Some s0) I0)⌝ -∗
+        ⌜ralt_ok (uline_of (bodies_of I0 !!! (nlines I0 - 1)%nat))
+                 (ralt_dec a)⌝ -∗
+        ⌜cont (fst_upto cs0 s0 (bodies_of I0) (nlines I0 - 1)%nat)
+              (uline_of (bodies_of I0 !!! (nlines I0 - 1)%nat)) (ralt_dec a)
+           !! 0%nat = Some b⌝ -∗
+        era_pin (fgn_echo g) k v -∗ file_era_pin g k vf -∗ turn v P -∗
+        ps_lb v ps0 -∗ cs_lb v cs0 -∗ inp_lb v I0 -∗ f0_lb vf s0 -∗
+        (((turn v (S P) ∗ ps_lb v ps0 ∗ cs_lb v (cs0 ++ [a]) ∗ inp_lb v I0
+           ∗ f0_lb vf s0) ∨ file_taint (fgn_cl g)) -∗ Φ) -∗
+        out_link Uart0 k b Φ)%I.
+
+  Definition file_link_pro : iProp Σ :=
+    (□ ∀ (k : nat) (v : era_pins) (vf : file_era) (P a : nat) (b : bv 8)
+         (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (Φ : iProp Σ),
+        ⌜rest_of I0 = []⌝ -∗
+        ⌜I0 = [] \/ ralt_panic (ralt_at cs0 (nlines I0 - 1)%nat) = true⌝ -∗
+        ⌜(nlines I0 <= length cs0)%nat⌝ -∗
+        ⌜pro_pin_f ps0 cs0 I0⌝ -∗
+        ⌜~ pro_done (pro_from (pro_idx_f cs0 (nlines I0)) ps0)⌝ -∗
+        ⌜P = length (proc_stream_f ps0 cs0 (Some s0) I0)⌝ -∗
+        ⌜(a < length pro_alts)%nat⌝ -∗
+        ⌜pro_alts !!! a !! 0%nat = Some b⌝ -∗
+        era_pin (fgn_echo g) k v -∗ file_era_pin g k vf -∗ turn v P -∗
+        ps_lb v ps0 -∗ cs_lb v cs0 -∗ inp_lb v I0 -∗ f0_lb vf s0 -∗
+        (((turn v (S P) ∗ ps_lb v (ps0 ++ [a]) ∗ cs_lb v cs0 ∗ inp_lb v I0
+           ∗ f0_lb vf s0) ∨ file_taint (fgn_cl g)) -∗ Φ) -∗
+        out_link Uart0 k b Φ)%I.
+
+  (* (W-first) the era's FIRST process byte, which files the boot state *)
+  Definition file_link_first : iProp Σ :=
+    (□ ∀ (k : nat) (v : era_pins) (vf : file_era) (a : nat) (b : bv 8)
+         (s0 : fst) (Φ : iProp Σ),
+        ⌜fst_ok s0⌝ -∗
+        ⌜(a < length pro_alts)%nat⌝ -∗
+        ⌜pro_alts !!! a !! 0%nat = Some b⌝ -∗
+        era_pin (fgn_echo g) k v -∗ file_era_pin g k vf -∗
+        turn v 0%nat -∗ ps_lb v [] -∗ cs_lb v [] -∗ inp_lb v [] -∗
+        (f0_typed g s0 ∨ file_taint (fgn_cl g)) -∗
+        (((turn v 1%nat ∗ ps_lb v [a] ∗ cs_lb v [] ∗ inp_lb v []
+           ∗ f0_lb vf s0) ∨ file_taint (fgn_cl g)) -∗ Φ) -∗
+        out_link Uart0 k b Φ)%I.
+
+  Definition file_link_taint : iProp Σ :=
+    (□ ∀ (k : nat) (b : bv 8) (Φ : iProp Σ),
+        file_taint (fgn_cl g) -∗ (file_taint (fgn_cl g) -∗ Φ) -∗
+        out_link Uart0 k b Φ)%I.
+
+  Definition file_link_rd : iProp Σ :=
+    (□ ∀ (k : nat) (v : era_pins) (n : nat)
+         (ws : list (list mobs * bv 8)) (Φ : iProp Σ),
+        era_pin (fgn_echo g) k v -∗ dl_cnt v (1/2) n -∗
+        (fread_ret k v n ws -∗ Φ) -∗
+        cons_link Uart0 k (ConsLog.EvRead ws) Φ)%I.
+
+  Definition file_link_rd_taint : iProp Σ :=
+    (□ ∀ (k : nat) (ws : list (list mobs * bv 8)) (Φ : iProp Σ),
+        file_taint (fgn_cl g) -∗ (file_taint (fgn_cl g) -∗ Φ) -∗
+        cons_link Uart0 k (ConsLog.EvRead ws) Φ)%I.
+
+  Definition file_links : iProp Σ :=
+    (file_link_w ∗ file_link_blk ∗ file_link_pro ∗ file_link_first
+     ∗ file_link_taint ∗ file_link_rd ∗ file_link_rd_taint)%I.
+
+  Global Instance file_link_w_persistent : Persistent file_link_w.
+  Proof using . rewrite /file_link_w. apply _. Qed.
+  Global Instance file_link_blk_persistent : Persistent file_link_blk.
+  Proof using . rewrite /file_link_blk. apply _. Qed.
+  Global Instance file_link_pro_persistent : Persistent file_link_pro.
+  Proof using . rewrite /file_link_pro. apply _. Qed.
+  Global Instance file_link_first_persistent : Persistent file_link_first.
+  Proof using . rewrite /file_link_first. apply _. Qed.
+  Global Instance file_link_taint_persistent : Persistent file_link_taint.
+  Proof using . rewrite /file_link_taint. apply _. Qed.
+  Global Instance file_link_rd_persistent : Persistent file_link_rd.
+  Proof using . rewrite /file_link_rd. apply _. Qed.
+  Global Instance file_link_rd_taint_persistent : Persistent file_link_rd_taint.
+  Proof using . rewrite /file_link_rd_taint. apply _. Qed.
+  Global Instance file_links_persistent : Persistent file_links.
+  Proof using . rewrite /file_links. apply _. Qed.
+
+  (* ---- the seven projections, which is all a consumer ever uses ---- *)
+  Lemma file_links_w : file_links -∗ file_link_w.
+  Proof using . by iIntros "($ & _ & _ & _ & _ & _ & _)". Qed.
+  Lemma file_links_blk : file_links -∗ file_link_blk.
+  Proof using . by iIntros "(_ & $ & _ & _ & _ & _ & _)". Qed.
+  Lemma file_links_pro : file_links -∗ file_link_pro.
+  Proof using . by iIntros "(_ & _ & $ & _ & _ & _ & _)". Qed.
+  Lemma file_links_first : file_links -∗ file_link_first.
+  Proof using . by iIntros "(_ & _ & _ & $ & _ & _ & _)". Qed.
+  Lemma file_links_taint : file_links -∗ file_link_taint.
+  Proof using . by iIntros "(_ & _ & _ & _ & $ & _ & _)". Qed.
+  Lemma file_links_rd : file_links -∗ file_link_rd.
+  Proof using . by iIntros "(_ & _ & _ & _ & _ & $ & _)". Qed.
+  Lemma file_links_rd_taint : file_links -∗ file_link_rd_taint.
+  Proof using . by iIntros "(_ & _ & _ & _ & _ & _ & $)". Qed.
+
+  Lemma file_links_holds : ⊢ file_links.
+  Proof using Hcons.
+    rewrite /file_links /file_link_w /file_link_blk /file_link_pro
+            /file_link_first /file_link_taint /file_link_rd
+            /file_link_rd_taint.
+    iSplit; [| iSplit; [| iSplit; [| iSplit; [| iSplit; [| iSplit]]]]].
+    - iIntros "!>" (k v vf P b ps0 cs0 s0 I0 Φ) "%Hbnd %Hpin0 %Hb".
+      iIntros "Hpin Hfp Ht Hps Hcs HE Hf0 HΦ".
+      iApply (file_write_link with "Hpin Hfp Ht Hps Hcs HE Hf0 HΦ");
+        try assumption.
+    - iIntros "!>" (k v vf P a b ps0 cs0 s0 I0 Φ).
+      iIntros "%Hne %Hrest %Hbnd %Hpin0 %HPeq %Halt %Hhead".
+      iIntros "Hpin Hfp Ht Hps Hcs HE Hf0 HΦ".
+      iApply (file_write_link_blk with "Hpin Hfp Ht Hps Hcs HE Hf0 HΦ");
+        try assumption.
+    - iIntros "!>" (k v vf P a b ps0 cs0 s0 I0 Φ).
+      iIntros "%Hrest %Hopen %Hbnd %Hpin0 %Hnd %HPeq %Halt %Hhead".
+      iIntros "Hpin Hfp Ht Hps Hcs HE Hf0 HΦ".
+      iApply (file_write_link_pro with "Hpin Hfp Ht Hps Hcs HE Hf0 HΦ");
+        try assumption.
+    - iIntros "!>" (k v vf a b s0 Φ) "%Hfok %Halt %Hhead".
+      iIntros "Hpin Hfp Ht Hps Hcs HE Hty HΦ".
+      iApply (file_write_link_first with "Hpin Hfp Ht Hps Hcs HE Hty HΦ");
+        try assumption.
+    - iIntros "!>" (k b Φ) "HT HΦ".
+      iApply (file_write_link_taint with "HT HΦ").
+    - iIntros "!>" (k v n ws Φ) "Hpin Hdl HΦ".
+      iApply (file_read_link with "Hpin Hdl HΦ").
+    - iIntros "!>" (k ws Φ) "#HT HΦ".
+      iApply (file_cons_link_of_taint with "HT [HΦ]").
+      by iApply "HΦ".
+  Qed.
+
+  (* ==================================================================== *)
   (*  THE ECHO SHIFT ITSELF -- [App.al_echo], a CLOSED entailment.         *)
   (* ==================================================================== *)
   Lemma file_happ_echo :

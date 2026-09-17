@@ -682,6 +682,88 @@ Section UShPanicGen.
   Qed.
 
   (* =================================================================== *)
+  (*  S6b  THE TWO LAWS WITH A LINEAR FRAME (lane LINK-GEN, for lane      *)
+  (*      SH-ROUND).  At the FILE application the credential family the    *)
+  (*      command loop carries is [UShRound.Wcf I p := Wcl I p ∗           *)
+  (*      sh_hold I] -- THE DEED RIDES INSIDE THE FAMILY -- so every law   *)
+  (*      stated at the family must admit a linear conjunct.  The panic    *)
+  (*      line and the exec-failed diagnostic write only to the CONSOLE,   *)
+  (*      so the conjunct rides through untouched; what that needs of the  *)
+  (*      write obligation is that it THREAD a frame from its input to     *)
+  (*      its output, which [UkSh.ksh_w_frame] does not do (it SPENDS the  *)
+  (*      frame) -- hence the three rules below.                           *)
+  (* =================================================================== *)
+  Lemma ksh_w_mono_in (N : uk_names Σ) (fdw ua : mword 64) (nb : nat)
+      (Ci Ci' Co : iProp Σ) :
+    (Ci' -∗ Ci) -∗
+    UkSh.ksh_w N fdw ua nb Ci Co -∗ UkSh.ksh_w N fdw ua nb Ci' Co.
+  Proof using .
+    iIntros "Hm Hw" (h m avail) "%Ha0 %Ha1 %Ha2 #Hcode HCi Hrun Hcont".
+    iApply ("Hw" $! h m avail with "[%] [%] [%] Hcode [Hm HCi] Hrun Hcont");
+      [ exact Ha0 | exact Ha1 | exact Ha2 | iApply ("Hm" with "HCi") ].
+  Qed.
+
+  Lemma ksh_w_thread (N : uk_names Σ) (fdw ua : mword 64) (nb : nat)
+      (Ci Co K : iProp Σ) :
+    UkSh.ksh_w N fdw ua nb Ci Co -∗
+    UkSh.ksh_w N fdw ua nb (Ci ∗ K) (Co ∗ K).
+  Proof using .
+    iIntros "Hw" (h m avail) "%Ha0 %Ha1 %Ha2 #Hcode [HCi HK] Hrun Hcont".
+    iApply ("Hw" $! h m avail with "[%] [%] [%] Hcode HCi Hrun [HK Hcont]");
+      [ exact Ha0 | exact Ha1 | exact Ha2 | ].
+    iIntros (h' ret) "HCo Hrun".
+    iApply ("Hcont" $! h' ret with "[$HCo $HK] Hrun").
+  Qed.
+
+  Lemma ksh_w1_hold (N : uk_names Σ) (fdv : mword 64) (b : bv 8)
+      (St C D K : iProp Σ) :
+    UkShDiag.ksh_w1 N fdv b (St ∗ C) (St ∗ D) -∗
+    UkShDiag.ksh_w1 N fdv b (St ∗ (C ∗ K)) (St ∗ (D ∗ K)).
+  Proof using .
+    iIntros "Hw" (ua).
+    iDestruct ("Hw" $! ua) as "Hw".
+    iApply (ksh_w_mono_in N fdv ua 1%nat
+              ((ubyte (ukn_d N) (uint ua) b ∗ (St ∗ C)) ∗ K)%I
+              with "[] [Hw]").
+    { iIntros "(Hb & HSt & HC & HK)". iFrame "Hb HSt HC HK". }
+    iApply (ksh_w_mono N fdv ua 1%nat
+              ((ubyte (ukn_d N) (uint ua) b ∗ (St ∗ C)) ∗ K)%I
+              ((ubyte (ukn_d N) (uint ua) b ∗ (St ∗ D)) ∗ K)%I
+              (ubyte (ukn_d N) (uint ua) b ∗ (St ∗ (D ∗ K)))%I
+              with "[] [Hw]").
+    { iIntros "((Hb & HSt & HD) & HK)". iFrame "Hb HSt HD HK". }
+    iApply (ksh_w_thread N fdv ua 1%nat
+              (ubyte (ukn_d N) (uint ua) b ∗ (St ∗ C))%I
+              (ubyte (ukn_d N) (uint ua) b ∗ (St ∗ D))%I K with "Hw").
+  Qed.
+
+  (* sh's fork panic, at a family with a linear conjunct *)
+  Lemma ush_panic_law_hold_at (Hold : list (bv 8) -> iProp Σ) :
+    lk_links L -∗
+    UkShDiag.ush_panic_law
+      (fun I p => lk_lcred L (S gen_id) I p ∗ Hold I)%I
+      (fun I => (∃ v : era_pins, lk_pin L (S gen_id) v
+                   ∗ lk_ban L (S gen_id) v I 0%nat) ∗ Hold I)%I.
+  Proof.
+    iIntros "#Hlk". rewrite /UkShDiag.ush_panic_law.
+    iIntros "!>" (N I l) "%Hfd2 [Hc Hh]". destruct Hfd2 as [rb Hl2].
+    iDestruct (lk_lcred_blk_panic L (S gen_id) I with "Hc") as (v) "[#Hpin Hc]".
+    iExists (fun p : nat => lk_panic L (S gen_id) v I p ∗ Hold I)%I.
+    iSplitL; [ iFrame "Hc Hh" | ].
+    iSplit.
+    - iIntros "!>" (p b) "%Hb".
+      iApply (ksh_w1_hold N (mword_of_int 2 : mword 64) b
+                (UserFd.ustd (ukn_fd N) l)
+                (lk_panic L (S gen_id) v I p)
+                (lk_panic L (S gen_id) v I (S p)) (Hold I)).
+      iApply (ksh_w1_of_link_panic_at N v I l rb p b Hl2 Hb with "Hpin Hlk").
+    - iIntros "!> [Hp Hh]". iFrame "Hh". iExists v. iFrame "Hpin".
+      iPoseProof (lk_panic_done L (S gen_id) v I) as "Hd".
+      iEval (rewrite (lk_ab_pan L I) alt_panic_len) in "Hd".
+      iApply ("Hd" with "Hp").
+  Qed.
+
+  (* =================================================================== *)
   (*  S7  THE EXEC-FAILED CHILD'S DIAGNOSTIC (M4b(2)): [UkShDiag.          *)
   (*      ush_execfail_law] at the era's links.  The block credential the  *)
   (*      exec handed back opens at alternative 1 ([EchoLinksLine.         *)
@@ -710,6 +792,36 @@ Section UShPanicGen.
                 ltac:(rewrite (lk_ab_exf L I); exact Hb)
                 with "Hpin Hlk").
     - iIntros "!> Hp".
+      iApply (lk_lcred_of_post_a L (S gen_id) I (lk_exf L) v
+                (lk_apr_exf L I) with "Hpin").
+      rewrite /lk_post (lk_ab_exf L I) alt_execfail_len. iExact "Hp".
+  Qed.
+
+  (* the exec-failed diagnostic, at a family with a linear conjunct *)
+  Lemma ush_execfail_law_hold_at (Hold : list (bv 8) -> iProp Σ)
+      (I : list (bv 8)) :
+    lk_links L -∗
+    UkShDiag.ush_execfail_law
+      (lk_lcred L (S gen_id) I 3%nat ∗ Hold I)
+      (lk_lcred L (S gen_id) I 0%nat ∗ Hold I).
+  Proof.
+    iIntros "#Hlk". rewrite /UkShDiag.ush_execfail_law.
+    iIntros "!>" (N l) "%Hfd2 [Hc Hh]". destruct Hfd2 as [rb Hl2].
+    iDestruct (lk_lcred_blk_open L (S gen_id) I (lk_exf L) with "Hc")
+      as (v) "[#Hpin Hc]".
+    iExists (fun p : nat =>
+               lk_blk L (S gen_id) v I (lk_exf L) p ∗ Hold I)%I.
+    iSplitL; [ iFrame "Hc Hh" | ].
+    iSplit.
+    - iIntros "!>" (p b) "%Hb".
+      iApply (ksh_w1_hold N (mword_of_int 2 : mword 64) b
+                (UserFd.ustd (ukn_fd N) l)
+                (lk_blk L (S gen_id) v I (lk_exf L) p)
+                (lk_blk L (S gen_id) v I (lk_exf L) (S p)) (Hold I)).
+      iApply (ksh_w1_of_link_blk_at N v I l rb (lk_exf L) p b Hl2
+                ltac:(rewrite (lk_ab_exf L I); exact Hb)
+                with "Hpin Hlk").
+    - iIntros "!> [Hp Hh]". iFrame "Hh".
       iApply (lk_lcred_of_post_a L (S gen_id) I (lk_exf L) v
                 (lk_apr_exf L I) with "Hpin").
       rewrite /lk_post (lk_ab_exf L I) alt_execfail_len. iExact "Hp".

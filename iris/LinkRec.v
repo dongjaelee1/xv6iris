@@ -81,6 +81,12 @@ Section linkrec.
     (* ---- the era ---- *)
     lk_T : iProp Σ;
     lk_pin : nat -> era_pins -> iProp Σ;
+    (* THE ECHO-SIDE ERA PIN ON ITS OWN.  [UShLine.ush_mid] and every
+       read-side shape carry [EchoOut.era_pin] and NOT the era's file pin
+       (the file application reuses [EchoOut]'s ghost algebra verbatim), so
+       the two pins are separate fields and [lk_pin_epin] is the one-way
+       projection.  At the echo application they are the same. *)
+    lk_epin : nat -> era_pins -> iProp Σ;
     lk_links : iProp Σ;
 
     (* ---- the LINE MODEL ---- *)
@@ -109,6 +115,13 @@ Section linkrec.
     lk_lpr : nat -> era_pins -> list (bv 8) -> nat -> iProp Σ;
     lk_lend : nat -> era_pins -> list (bv 8) -> iProp Σ;
     lk_rr : nat -> era_pins -> nat -> list (list mobs * bv 8) -> iProp Σ;
+    (* THE READER'S RESIDUE ([UShLine.rd_res]): what the era's read link
+       hands back at a window's far end beyond the delivered count -- the
+       reader's two bounds on the transcript's resolution and the WRITER's
+       cursor bound at the stream those bounds compute.  It is what refutes
+       a credential that still owes the round's banner at a boundary the
+       reader is past. *)
+    lk_rres : era_pins -> list (bv 8) -> iProp Σ;
     (* THE ERA'S TURN: what [App.al_programs] hands /init's first
        instruction ([EchoOut.eturn]; the file application's
        [FileOut.fturn] is that plus the era's file pin). *)
@@ -121,6 +134,10 @@ Section linkrec.
     lk_pin_pers : forall k v, Persistent (lk_pin k v);
     lk_pin_tl : forall k v, Timeless (lk_pin k v);
     lk_pin_agr : forall k v v', ⊢ lk_pin k v -∗ lk_pin k v' -∗ ⌜v = v'⌝;
+    lk_epin_pers : forall k v, Persistent (lk_epin k v);
+    lk_epin_tl : forall k v, Timeless (lk_epin k v);
+    lk_epin_agr : forall k v v', ⊢ lk_epin k v -∗ lk_epin k v' -∗ ⌜v = v'⌝;
+    lk_pin_epin : forall k v, ⊢ lk_pin k v -∗ lk_epin k v;
     lk_ban_tl : forall k v I i, Timeless (lk_ban k v I i);
     lk_owed_tl : forall k v I, Timeless (lk_owed k v I);
     lk_sp_tl : forall k v I, Timeless (lk_sp k v I);
@@ -133,6 +150,8 @@ Section linkrec.
     lk_pr_tl : forall k v I p, Timeless (lk_pr k v I p);
     lk_lpr_tl : forall k v I p, Timeless (lk_lpr k v I p);
     lk_lend_tl : forall k v I, Timeless (lk_lend k v I);
+    lk_rres_pers : forall v I, Persistent (lk_rres v I);
+    lk_rres_tl : forall v I, Timeless (lk_rres v I);
 
     (* ---- the two indexed families, read at their four indices ---- *)
     lk_pr_0 : forall k v I, lk_pr k v I 0%nat = lk_owed k v I;
@@ -177,6 +196,10 @@ Section linkrec.
       ⊢ lk_pin k v -∗ lk_links -∗ lk_ban k v I i -∗
       (lk_ban k v I (S i) -∗ Φ) -∗ out_link Uart0 k b Φ;
     lk_ban_owed : forall k v I, ⊢ lk_ban k v I 0%nat -∗ lk_owed k v I;
+    (* the banner-owed credential is the round's OPEN-PROLOGUE shape, which
+       is the TIGHT reading [UInitBoot]'s [Hsh_wbwc] spends
+       ([EchoLinks.ewc_ban_pro]) *)
+    lk_ban_pro : forall k v I, ⊢ lk_ban k v I 0%nat -∗ lk_pro k v I;
     lk_ban_done : forall k v I,
       ⊢ lk_ban k v I (length u_banner) -∗ lk_owed k v I;
     lk_ban_done_line : forall k v I,
@@ -240,6 +263,11 @@ Section linkrec.
 
     (* ---- the turn comes apart into the read half and round 0's
             banner-owed credential ([UInitBanner.kinit_ban0_of_eturn]) ---- *)
+    (* ---- a read PAST a banner-owed boundary is the taint
+            ([UShLine.ush_wb_read_holds], and lane SKELETON's [Hwbr]) ---- *)
+    lk_ban_read_taint : forall k v I l, wl_nl ∉ l ->
+      ⊢ lk_ban k v I 0%nat -∗ lk_rres v (I ++ l ++ [wl_nl]) -∗ lk_T;
+
     lk_turn0 : forall k,
       ⊢ lk_turn k -∗
         (∃ v : era_pins, lk_pin k v ∗ dl_cnt v (1/2) 0%nat ∗ inp_lb v [])
@@ -259,6 +287,8 @@ Global Existing Instance lk_T_tl.
 Global Existing Instance lk_links_pers.
 Global Existing Instance lk_pin_pers.
 Global Existing Instance lk_pin_tl.
+Global Existing Instance lk_epin_pers.
+Global Existing Instance lk_epin_tl.
 Global Existing Instance lk_ban_tl.
 Global Existing Instance lk_owed_tl.
 Global Existing Instance lk_sp_tl.
@@ -271,6 +301,8 @@ Global Existing Instance lk_line_tl.
 Global Existing Instance lk_pr_tl.
 Global Existing Instance lk_lpr_tl.
 Global Existing Instance lk_lend_tl.
+Global Existing Instance lk_rres_pers.
+Global Existing Instance lk_rres_tl.
 
 (* ===================================================================== *)
 (*  THE DERIVED FAMILIES AND LAWS -- everything a console program uses    *)
@@ -364,15 +396,30 @@ Section linkgen.
     iApply (lk_read_t L k v I 0%nat l Hl with "HE' Hc").
   Qed.
 
+  (* THE READ THAT COMPLETED A LINE.  The era pin it takes is the ECHO-side
+     one, because that is what [UShLine.ush_mid] carries: the credential's
+     own (full) pin is read OUT of it and projected down to compare. *)
   Lemma lk_lcred_read k I l v :
     wl_nl ∉ l ->
-    lk_pin L k v -∗ inp_lb v (I ++ l ++ [wl_nl]) -∗
+    lk_epin L k v -∗ inp_lb v (I ++ l ++ [wl_nl]) -∗
     lk_lcred k I 2%nat -∗ lk_lcred k (I ++ l ++ [wl_nl]) 3%nat.
   Proof using .
     intros Hl. iIntros "#Hpin #HE' Hc". rewrite /lk_lcred.
     iDestruct "Hc" as (v') "[#Hpin' Hc]".
-    iDestruct (lk_pin_agr L k v v' with "Hpin Hpin'") as %<-.
-    iExists v. iFrame "Hpin". iApply (lk_lpr_read v I l k Hl with "HE' Hc").
+    iDestruct (lk_pin_epin L k v' with "Hpin'") as "#Hep'".
+    iDestruct (lk_epin_agr L k v v' with "Hpin Hep'") as %<-.
+    iExists v. iFrame "Hpin'". iApply (lk_lpr_read v I l k Hl with "HE' Hc").
+  Qed.
+
+  (* THE BANNER-OWED CREDENTIAL IS A BOUNDARY ONE ([UInitBoot]'s
+     [Hsh_wbwc], and lane SKELETON's [Hwbwc]). *)
+  Lemma lk_lcred_of_ban k I :
+    (∃ v : era_pins, lk_pin L k v ∗ lk_ban L k v I 0%nat) -∗
+    lk_lcred k I 0%nat.
+  Proof using .
+    iIntros "Hc". iDestruct "Hc" as (v) "[#Hpin Hb]".
+    rewrite /lk_lcred. iExists v. iFrame "Hpin". rewrite (lk_lpr_0 L).
+    iApply (lk_line_of_pro L k v I). iApply (lk_ban_pro L k v I with "Hb").
   Qed.
 
   (* ---- the block owed IS a boundary credential ---- *)
@@ -504,6 +551,51 @@ Section echo_inst.
     T -∗ EchoLinks.ewc_sp T v I.
   Proof using . iIntros "HT". rewrite /EchoLinks.ewc_sp. by iRight. Qed.
 
+  (* THE READER'S RESIDUE, spelled ([UShLine.rd_res]'s body: it is stated
+     here so that [UShLine]'s own definition is [lk_rres] at this instance
+     when that file is swept). *)
+  Definition echo_rres (v : era_pins) (I : list (bv 8)) : iProp Σ :=
+    (∃ ps0 cs0 : list nat,
+       ⌜rd_stage ps0 cs0 I⌝ ∗ turn_lb v (length (proc_before ps0 cs0 I))
+       ∗ ps_lb v ps0 ∗ cs_lb v cs0)%I.
+
+  Global Instance echo_rres_persistent v I : Persistent (echo_rres v I).
+  Proof using . rewrite /echo_rres. apply _. Qed.
+  Global Instance echo_rres_timeless v I : Timeless (echo_rres v I).
+  Proof using . rewrite /echo_rres. apply _. Qed.
+
+  (* [UShLine.ush_wb_read_holds]'s content: a credential that still owes
+     the round's banner at a boundary the reader is strictly past is the
+     taint ([EchoLinks.wr_owed_read_refute] at [wr_ban_pro]). *)
+  Local Lemma ei_ban_read_taint (k : nat) (v : era_pins)
+      (I l : list (bv 8)) :
+    wl_nl ∉ l ->
+    EchoLinks.ewc_ban T v I 0%nat -∗ echo_rres v (I ++ l ++ [wl_nl]) -∗ T.
+  Proof using HPT.
+    intro Hnl. iIntros "Hb #Hres".
+    rewrite /EchoLinks.ewc_ban.
+    iDestruct "Hb" as "[Hl | #HT]"; [ | iExact "HT" ].
+    iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & _)".
+    rewrite /echo_rres.
+    iDestruct "Hres" as (ps0 cs0) "(%Hrd & #Htlb & #Hps0 & #Hcs0)".
+    iDestruct (turn_lb_le v (P + 0)%nat _ with "Htn Htlb") as %Hle.
+    iDestruct (ps_lb_cmp v ps ps0 with "Hps Hps0") as %Hpsc.
+    iDestruct (cs_lb_cmp v cs cs0 with "Hcs Hcs0") as %Hcsc.
+    iExFalso. iPureIntro.
+    assert (Hpre : I `prefix_of` (I ++ l ++ [wl_nl])) by (by eexists).
+    assert (Hne : I <> I ++ l ++ [wl_nl]).
+    { intro Heq. apply (f_equal length) in Heq.
+      rewrite !length_app length_cons in Heq. lia. }
+    exact (EchoLinks.wr_owed_read_refute ps cs ps0 cs0 I
+             (I ++ l ++ [wl_nl]) P
+             (or_introl (EchoLinks.wr_ban_pro ps cs I P Hw))
+             Hpre Hne Hrd Hpsc Hcsc ltac:(lia)).
+  Qed.
+
+  Local Lemma ei_pin_epin (k : nat) (v : era_pins) :
+    era_pin γ k v -∗ era_pin γ k v.
+  Proof using . by iIntros "$". Qed.
+
   Local Lemma ei_apr_exf (I : list (bv 8)) : (1 < 3)%nat.
   Proof using . lia. Qed.
 
@@ -527,6 +619,7 @@ Section echo_inst.
   Definition echo_link_inst : LinkRec Σ :=
     {| lk_T := T;
        lk_pin := era_pin γ;
+       lk_epin := era_pin γ;
        lk_links := EchoLinks.echo_links T γ;
        lk_ab := fun I a => line_alts_of (last_ws I) !!! a;
        lk_apr := fun _ a => (a < 3)%nat;
@@ -547,6 +640,7 @@ Section echo_inst.
        lk_lend := fun _ v I => echo_lend v I;
        lk_rr := fun k v n ws => EchoOut.read_ret T k v n ws;
        lk_turn := fun k => eturn γ k;
+       lk_rres := echo_rres;
 
        lk_T_pers := HPT;
        lk_T_tl := HTT;
@@ -554,6 +648,10 @@ Section echo_inst.
        lk_pin_pers := era_pin_persistent γ;
        lk_pin_tl := era_pin_timeless γ;
        lk_pin_agr := era_pin_agree γ;
+       lk_epin_pers := era_pin_persistent γ;
+       lk_epin_tl := era_pin_timeless γ;
+       lk_epin_agr := era_pin_agree γ;
+       lk_pin_epin := ei_pin_epin;
        lk_ban_tl := fun _ v I i => EchoLinks.ewc_ban_timeless T v I i;
        lk_owed_tl := fun _ v I => EchoLinks.ewc_owed_timeless T v I;
        lk_sp_tl := fun _ v I => EchoLinks.ewc_sp_timeless T v I;
@@ -566,6 +664,8 @@ Section echo_inst.
        lk_pr_tl := fun _ v I p => EchoLinks.ewc_pr_timeless T v I p;
        lk_lpr_tl := fun _ v I p => EchoLinksLine.ewc_lpr_timeless T v I p;
        lk_lend_tl := fun _ v I => echo_lend_timeless v I;
+       lk_rres_pers := echo_rres_persistent;
+       lk_rres_tl := echo_rres_timeless;
 
        lk_pr_0 := fun _ v I => eq_refl;
        lk_pr_1 := fun _ v I => eq_refl;
@@ -598,6 +698,7 @@ Section echo_inst.
 
        lk_ban_step := fun k v I i b Φ Hb => EchoLinks.echo_banner_step T γ k v I i b Φ Hb;
        lk_ban_owed := fun _ v I => EchoLinks.ewc_ban_owed T v I;
+       lk_ban_pro := fun _ v I => EchoLinks.ewc_ban_pro T v I;
        lk_ban_done := fun _ v I => EchoLinks.ewc_ban_done T v I;
        lk_ban_done_line := fun _ v I => EchoLinksLine.ewc_ban_done_line T v I;
        lk_ban_inp := ei_ban_inp;
@@ -623,6 +724,7 @@ Section echo_inst.
        lk_ab_exf := fun I => line_alts_of_1 (last_ws I);
        lk_apr_exf := ei_apr_exf;
        lk_turn0 := ei_turn0;
+       lk_ban_read_taint := ei_ban_read_taint;
        lk_panic_done := fun _ v I => EchoLinksLine.ewc_panic_done T v I;
     |}.
 

@@ -463,7 +463,9 @@ Section UInitBoot.
     init_boot_bundle (bv_unsigned InodeInv.ROOTINO) fdt0.
   Proof using .
     iIntros "#Hcl #Hinv #Hcon #Hgen HPay".
-    rewrite /init_boot_bundle. iIntros "Hrd".
+    rewrite /init_boot_bundle.
+    iSplitR; [iPureIntro; apply fdv_all_parked_fdt0 |].
+    iIntros "Hrd".
     iDestruct ("HPay" with "Hrd") as "HPay".
     rewrite init_boot_cw.
     iDestruct (pinned_exec_bundle_boot fsc_fs uslot era0_pins T

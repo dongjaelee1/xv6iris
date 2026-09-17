@@ -855,11 +855,11 @@ Section UEchoOut.
     assert (Hsp0 : 0 <= uint (uvis_sp W)) by lia.
     assert (Hargc0 : 0 <= uvis_argc W)
       by exact (proj1 (uka_argc _ _ _ _ _ _ Hargs)).
-    iApply (uslot_of_urun_ro W 12 Q
+    iApply (uslot_of_urun_ro W 12 Q false
               Hal8
               ltac:(unfold uvis_sp in Hroom; lia) Hstk Hfdlen Hstop Hlzf
-              with "Hdep Hnpw Hpay").
-    iIntros (N h) "%Hpayeq %Hsz Hszf #Ht Hstd _ _ _ #HA Hrun".
+              ltac:(discriminate) with "Hdep Hnpw Hpay").
+    iIntros (N h) "%Hpayeq %Hparkeq %Hsz Hszf #Ht Hstd _ _ _ #HA Hrun".
     pose proof (ukn_const_of_eq N _ Hpayeq HQc) as Htc.
     rewrite Hpc.
     iApply (wp_kecho_start N h (tf_resume_gpr0 (uvis_tf W))

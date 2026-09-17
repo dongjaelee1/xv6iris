@@ -672,3 +672,146 @@ alternative list all move first.  Until one of them is taken, the only thing
 cursor, which says nothing about `f`'s content and so proves none of the
 application's claim.  `FileWrite.file_awrite_node` is the piece that turns
 either ruling into the chain in a dozen lines.
+
+### OFF-HAND-2 (kernel/spec tier, 2026-09-17) — THE EXEC WAND CARRIES THE ROW; D1–D3 ARE GATED ON OFF-HAND-3's COUNTER, AND SO IS HALF OF D4
+
+**The lane's verdict in one line: the brief's D1 (and therefore D2 and D3)
+cannot land before the U-tier carrier the brief defers to OFF-HAND-3,
+because relaxing the pin makes `FdSlots.foff_row` irreducible at the two
+kernel fire sites and the only repair routes through
+`FsAbsInvFire.fsabs_fileread_in` / `fsabs_filewrite_in`, which serve an
+ARBITRARY state on behalf of the generic tier.  D4's kernel half landed in
+full; D4's generic-mint half is blocked at the same wall, one file lower
+than the brief expected.  Everything below is checked in the tree, not
+inferred.**
+
+**WHAT LANDED** (whole tree green on the lane's remote tree,
+`make -f CoqMakefile -j32 -k`, `EXIT=0`, zero `Error`; `make -n` reports
+nothing left; audits unchanged).  Sixteen files, one new premise:
+THE EXEC CROSSING'S SLOT WANDS NOW CARRY THE RESUMED KEY'S ALL-PARKED ROW,
+AND THE KERNEL PAYS IT.
+
+- `SpecKexec.exec_slot_pre` — both wands gain `⌜fdv_all_parked (uvis_fd W')⌝`,
+  between the pid row and `my_pay`.  This is §8.3's finding C's premise, at
+  the place `PinnedExec.v:281`'s note said it belongs.
+- `SpecKexec.wp_kexec_sconf_body` gains the pure premise `fdv_all_parked sts`
+  (first in its chain), relayed by `SpecSysExec.wp_sys_exec_sconf_body`, and
+  spent in `ProofKexec.kxau_close` — the ONE place in the tree that applies
+  either wand — through `SpecKexec.exec_key_fd`.
+- `ProofSyscall`'s exec arm pays it off the machine:
+  `iDestruct (proc_priv_parked with "Hpriv Hufrag") as %Hpkexec`.  This is
+  the only tier that holds the process block and its descriptor bundle at
+  one instant, and it is the ONE LINE that changes when the pin relaxes.
+- `InitBoot.init_boot_bundle` gains a pure row `⌜fdv_all_parked sts⌝` beside
+  its wand, because `ProofForkret.fkr_boot` — the first process's one exec —
+  holds neither the array nor the bundle.  Its producers state it at `fdt0`
+  (`InitBoot.init_boot_bundle_triv`, `UInitBoot.init_boot_bundle_of_pinned`,
+  `SystemAdequacy.init_boot_of_sup` / `init_boot_of_triv`, `App`,
+  `UTreeAdequacy`), all discharged by `FdSlots.fdv_all_parked_fdt0`.
+- `UexecExecMint.uslot_mint` — the GENERIC application's entry decider — is
+  narrowed to all-parked keys (`⌜fdv_all_parked (uvis_fd W)⌝` on its
+  `□ (∀ W, …)`), and `InitBoot.init_boot_bundle_triv` relays it.  The
+  generic application's chain is therefore closed end to end.
+
+**STATEMENTS THAT CHANGED SHAPE** (exhaustive): `SpecKexec.exec_slot_pre`,
+`SpecKexec.exec_au_pre_triv_at`, `SpecKexec.wp_kexec_sconf_body` (hence the
+`KEXEC` module type), `SpecSysExec.wp_sys_exec_sconf_body` (hence `SYSEXEC`),
+`ProofSysExec.sx_break_au`, `ProofKexec.kxau_close`,
+`InitBoot.init_boot_bundle` and `init_boot_bundle_triv`,
+`SystemAdequacy.init_boot_of_sup` and `init_boot_of_triv`,
+`UexecExecMint.uslot_mint`.  **NO U-TIER STATEMENT MOVED** — `pex_slot`,
+`image_entry`, `image_entry_taint`, `xv6_sbundle` and every row-15 family
+field are byte-identical, and the row-15 `of_mode` field was NOT added (see
+D2/D3 below: it could only ever be `OffParked` without D1).
+
+**REFUTED / BLOCKED, with the evidence.**
+
+1. **D1 IS BLOCKED, AND NOT BY `fdstate_ok_inj`.**  The `fp_om` move of the
+   previous lane's finding 2 is right and its shape is cheap (one field, one
+   extra parameter on `fdstate_ok`, ~57 textual sites).  What it costs is
+   elsewhere: with the FD_INODE arm pinned at `fp_om pn` instead of at
+   `OffParked`, `FileInvDefs.fdstate_ok_inode` hands the kernel a state at an
+   OPAQUE mode, and `FdSlots.foff_row` does not reduce.  The two sites are
+   `ProofFileread.v:2253` (`assert (Hstm : st = FdOpen true wbx (FdInode …
+   OffParked))`, spent at `:2263` on `FdSlots.foff_row_inode_of`, which takes
+   the literal `OffParked`) and `ProofFilewrite.v:4935`/`:4947`.  Both need
+   either the arm split (payment `FdPark.uoff_rcpt`, which this brief defers)
+   or a pure `⌜fdst_parked st⌝` premise.  EITHER REPAIR ENDS IN THE SAME
+   PLACE: the payment rides `SpecFileread.fileread_in`'s inode arm (which the
+   whole dispatcher chain threads opaquely, so nothing between moves — this
+   part of the previous lane's finding 4 is confirmed), but its GENERIC
+   builder `FsAbsInvFire.fsabs_fileread_in` / `fsabs_filewrite_in`
+   (`UexecExecInst.v:969`/`:975`) builds it at an arbitrary `st` for a
+   process that knows nothing of its descriptors, so it needs
+   `⌜fdst_parked st⌝` — i.e. the class field `xv6_sbundle_of_supply_ne`
+   narrowed to all-parked keys, i.e. every VERIFIED program able to state
+   all-parkedness of its own table.  That is OFF-HAND-3's counter.  **D2 and
+   D3 sit behind D1 and were not attempted**: without a held publish,
+   `xfam`'s `of_mode` can only ever be `OffParked`, so adding it is dead
+   weight, and weakening `UsysMemOk.usys_fd_ok`'s open arm would give up a
+   true fact for nothing.
+
+2. **D2's "ONE CONSUMER TO RE-ROUTE" DOES NOT EXIST.**  Checked by grep over
+   the whole tree: `UsysMemOk.usys_fd_ok_parked` has ZERO proof consumers
+   (only comments).  So do `ProcInv.proc_priv_parked`'s whole chain
+   (`FileInvDefs.fdstate_ok_parked` → `file_ref_parked` →
+   `ProcInv.ofile_slot_parked` → `ofile_slots_parked` → `proc_ofiles_parked`
+   → `proc_priv_parked`) and `SpecKexec.kexec_image_ok_parked` /
+   `exec_key_ok_parked`.  The generic Löb step does NOT read
+   successor-parkedness off `usys_fd_ok` today — RA-3 landed the conjunct and
+   the theorem, not a consumer.  **This lane gave `proc_priv_parked` its
+   first consumer** (`ProofSyscall`'s exec arm, above), which is why it must
+   NOT be deleted: it is now the payer of the exec crossing's row.
+
+3. **D4's `FdPark.uoff_surr_at` CANNOT RIDE THE SLOT WANDS, for a reason
+   about the kexec contract and not about the tier.**  `SpecKexec`'s frame
+   carries NO descriptor resource at all — no `fd_frags`, no `fd_auths`, no
+   `file_ref` — and `sts` is a free binder in `wp_kexec_sconf_body`
+   (`SpecKexec.v:1303`'s own note says so).  `ProofKexec.kxau_close` spends
+   `proc_priv` into the continuation one line before it applies either wand
+   (`ProofKexec.v:679`), so even that is not in hand.  A RESOURCE on the
+   wands would therefore have to be threaded through the whole five-phase
+   kexec walk with nowhere to live; the PURE row is what the crossing can
+   carry, and it is also what the consumer needs — the generic tier's own
+   Löb step wants a FACT about every successor key, and the left disjunct of
+   a `⌜…⌝ ∨ uoff_surrs` cannot be recovered from the right one.  **So the
+   surrender's home is one tier up**: `ProofSyscall`'s exec arm, which holds
+   `fd_frags` and `proc_priv`, is where `FdPark.uoff_surr_at` enters and
+   `FdPark.fd_frags_park_at` converts it into exactly the pure row this lane
+   landed.  One line changes there and nothing below it.
+
+4. **D4's OTHER HALF — narrowing the generic mint at the TAINT arm — IS
+   BLOCKED, AND THE WALL IS `UkSh.ush_gen_slot`.**  Attempted and reverted:
+   putting the row on `ExecEntry.image_entry_taint` (and hence on
+   `PinnedExec.pex_slot`'s taint arm, `UexecExecMint.uslot_mint_pay` /
+   `uslot_mint_all`, `UInitBoot`, `UInitSh`, `UShEchoPay`, `UShKernel`)
+   compiles all the way down to `UShKernel.v:655`, where
+   `iExact "Hgen"` must produce `UkSh.ush_gen_slot` (`UkSh.v:6502`):
+   `□ (∀ W, T -∗ my_pay (uvis_gen W) (ukn_pay N) -∗ uslot W)` — quantified
+   over EVERY key and spent at `UkSh.ush_gen_run` (`:6509`) on the key inside
+   `UkRun.urun`'s existential.  A verified program that is TAINTED hands its
+   own run to the generic family at a table the U tier cannot name, so
+   narrowing the family pushes the obligation exactly where the previous
+   lane's finding 1 says it cannot go.  `uslot_mint` (the trivial-payload
+   entry decider) is used ONLY by the generic application and is narrowed;
+   `uslot_mint_pay` / `uslot_mint_all` are not.  `UkRun.urun_nopipe`
+   (`UkRun.v:655`, a pure table fact carried across the run and maintained by
+   `usys_fd_ok_nopipe`) is the SHAPE the carrier should copy — but its
+   `∨ □ riscv_kill_cred` escape is exactly what a parked carrier may not
+   have, since the taint is the case that needs the fact.
+
+**THE ONE THING OFF-HAND-3 NEEDS FIRST: the counter must live where
+`ush_gen_slot` can read it, i.e. inside `UkRun.urun`, and it must be a FACT
+about the whole table and not a disjunction with the taint.**  The previous
+lane's `uheld γ n` is right; what this lane adds is where it has to surface:
+`UkRun.urun` needs a derived reading `urun_parked : urun N h m pc avail -∗
+⌜fdv_all_parked fdv⌝` at `n = 0` (shaped like `UkRun.urun_nopipe` and
+maintained across a round by `UsysMemOk.usys_fd_ok_parked`, which is already
+proved and has been waiting for its first consumer), because
+`UkSh.ush_gen_run` and `/init`'s twin are the sites that spend the generic
+slot and they hold nothing else.  With that: `image_entry_taint` and the two
+remaining mints narrow, D1's pin relaxation gets its `⌜fdst_parked st⌝` for
+`fsabs_fileread_in` / `fsabs_filewrite_in` through
+`FdPark.fdst_parked_of_key`, and `ProofSyscall`'s exec arm swaps
+`proc_priv_parked` for the caller's `FdPark.uoff_surr_at` +
+`fd_frags_park_at` — the one line this lane deliberately left as the pin's.

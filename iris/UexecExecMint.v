@@ -383,13 +383,25 @@ Section UexecExecMint.
      own premise): a slot at EVERY key is a slot that may trap at exit at
      every key, and exit's deposit is a payment.  At the trivial payload,
      which is the only one a generic process has. *)
+  (* THE FAMILY IS NARROWED TO ALL-PARKED KEYS (design/user-read.md SS8.1,
+     SS8.3; lane OFF-HAND-2).  A generic process knows nothing about its
+     descriptors, so the only offset supplier its fires can ever present is
+     the weak one -- [OffGv.off_user_inv], which [FdSlots.foff_row] carries
+     at a PARKED inode row and at no other.  A key with a HELD row would
+     leave those fires with no supplier at all, and a persistent supply can
+     never present an exclusive [UserOff.uoff] in its place.  So the mint
+     asks its key for the discipline, in the PURE form the tier can carry
+     across its own Loeb step ([UsysMemOk.usys_fd_ok_parked] is the row
+     that maintains it); the exec crossing is where the fact enters, off
+     [SpecKexec.exec_slot_pre]'s wands. *)
   Lemma uslot_mint :
     app_sup -∗ □ riscv_kill_cred -∗ cons_licence -∗ □ uexec_wp -∗
-    □ (∀ W : uvis, my_pay (uvis_gen W) (fun _ => True)%I -∗ uslot W).
+    □ (∀ W : uvis, ⌜FdSlots.fdv_all_parked (uvis_fd W)⌝ -∗
+                   my_pay (uvis_gen W) (fun _ => True)%I -∗ uslot W).
   Proof using ghost_varG0 ufdG0.
     iIntros "#Hsup #Hkc #Hlic #Hgen".
     iDestruct (udep_gen with "Hsup Hkc Hlic") as "#Hdep".
-    iIntros "!>" (W) "#Hpay".
+    iIntros "!>" (W) "_ #Hpay".
     (* AT THE GENERIC INSTANCE, EXPLICITLY (lane SUPPLY-SPLIT).  The chain
        is now parametric in which [uprogSG] its two verified arms run at,
        because a verified program's is NOT this one; the generic mint is

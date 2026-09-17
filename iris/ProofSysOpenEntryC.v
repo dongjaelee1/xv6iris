@@ -795,7 +795,7 @@ Section ProofSysOpenEntryC.
       iAssert (socr_exists vom P Phiarm Phiun Phiok Phiex (bview plen bp)
                  (bv_unsigned inum)
                ∗ open_trunc_at (fs_gamma_L fsc_fs) vom (bv_unsigned inum)
-                   (socr_ft (bview plen bp) P Phiarm Phiok Phiex (bv_unsigned inum) Phit))%I
+                   (socr_ft_ex (bview plen bp) P Phiarm Phiex (bv_unsigned inum) Phit))%I
         with "[Hcauf Htc]" as "[HR Htc]".
       { iDestruct (cre_ok_file_exists with "Hcauf") as (d nm av ents nl)
           "(%Hl & %Hrow & %Hent & HP & HPhi & Hac & Hcl)".
@@ -810,7 +810,7 @@ Section ProofSysOpenEntryC.
                                 (bv_unsigned inum)))
                     (socr_Phio_tag (bv_unsigned inum)
                        (abs_row (era_node dn bm data)) Phio)
-                    (socr_ft (bview plen bp) P Phiarm Phiok Phiex (bv_unsigned inum) Phit) m K eb b lks))
+                    (socr_ft_ex (bview plen bp) P Phiarm Phiex (bv_unsigned inum) Phit) m K eb b lks))
         with "[Hcont Hsbn Hsbs]" as "Hcontj".
       { iEval (rewrite /wp_next). iIntros (CIDz) "%Hqz".
         iEval (rewrite /so_cont_au). iIntros (mf ns2) "%Hcsf %Hns2".
@@ -835,7 +835,7 @@ Section ProofSysOpenEntryC.
                             (bv_unsigned inum)))
                 (socr_Phio_tag (bv_unsigned inum)
                    (abs_row (era_node dn bm data)) Phio)
-                (socr_ft (bview plen bp) P Phiarm Phiok Phiex (bv_unsigned inum) Phit)
+                (socr_ft_ex (bview plen bp) P Phiarm Phiex (bv_unsigned inum) Phit)
                 Hqs HKfull Hkk ltac:(exact (proj2 Hinum)) ltac:(exact (proj1 Hinum)) Hgeom Hsize Hbm0 Hbmcov Hbmlog
                 Hist0 Hibcov Hiblog Hcovb
                 ltac:(exact (proj2 (proj2 Hu1) eq_refl)) Hj Hgl Hlkempty

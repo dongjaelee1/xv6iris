@@ -1222,57 +1222,49 @@ Section FileOpen.
       rewrite /file_esc_pay. by iLeft.
   Qed.
 
-  (* ...AND AT THE TIE, which is what the DEVICE sub-arm needs: on the
-     FRESH branch the create leg fired and the deed is back at the row the
-     call reached; on the EXISTS one the escrow's token is in hand beside
-     the lookup's reading AT THE LOOKUP'S VIEW. *)
+  (* ...AND AT THE TIE, which is what the DEVICE sub-arm needs: the
+     escrow's token is in hand beside the lookup's reading AT THE LOOKUP'S
+     VIEW.  ONE ARM AND THE TAINT (lane F-OPEN-6): the permit this reads
+     is the EXISTS branch, which the arm that paid it now names
+     ([SysOpenDefs.trunc_permit_ex]) -- create's [dirlookup] found the
+     name, so the create leg never fired and no "the deed is back at the
+     row" disjunct is left to report. *)
   Definition file_permit_read (c : file_fixed) (r : file_names) (s : dst)
       (g : gname) (i : Z) : iProp Σ :=
-    ((⌜s = None⌝ ∗ fown r (Some (i, [])))
-     ∨ (∃ avx : aview,
-          ⌜astep avx FsImg.ROOTINO fname_f = Some i⌝ ∗ ⌜f_ok avx s⌝
-          ∗ fesc_res r s g)
+    ((∃ avx : aview,
+        ⌜astep avx FsImg.ROOTINO fname_f = Some i⌝ ∗ ⌜f_ok avx s⌝
+        ∗ fesc_res r s g)
      ∨ file_taint c)%I.
 
-  Lemma file_permit_tied (c : file_fixed) (r : file_names) (jc : Z) (n : nat)
-      (s : dst) (g : gname) (pl : list (bv 8)) (i : Z)
+  Lemma file_permit_tied (c : file_fixed) (r : file_names) (n : nat)
+      (s : dst) (g : gname) (jc : Z) (pl : list (bv 8)) (i : Z)
       (Γ : fs_view_names Σ) :
     list_basics.last (path_elems pl) = Some fname_f ->
-    trunc_permit_of Γ
+    trunc_permit_ex Γ
       (trunc_tie_at pl (fun (_ : nat) (d : Z) => ⌜d = ROOTINO⌝%I))
-      (file_arm_fam c r jc s g) (file_cre_fam c r jc s g)
-      (file_dlk_fam c r n s g) i -∗
+      (file_arm_fam c r jc s g) (file_dlk_fam c r n s g) i -∗
     file_permit_read c r s g i.
   Proof using .
-    intros Hlast. iIntros "H". rewrite /trunc_permit_of.
-    iDestruct "H" as (d nm) "[Htie Hrest]".
+    intros Hlast. iIntros "H". rewrite /trunc_permit_ex.
+    iDestruct "H" as (d nm) "(Htie & Hex & Harm)".
     iEval (rewrite /trunc_tie_at) in "Htie".
     iDestruct "Htie" as "[%Hl %Hd]".
     assert (Hnmf : nm = fname_f) by (rewrite Hlast in Hl; by injection Hl).
     subst nm d.
-    iDestruct "Hrest" as "[Hfresh | [Hex Harm]]".
-    - rewrite /cre_acre_fired.
-      iDestruct "Hfresh" as (av ents nl) "[_ Hrec]".
-      rewrite /file_cre_fam /file_cre_recv. cbn [pf_recv].
-      iDestruct "Hrec" as "[[%Hne _] | [[%Hb Hown] | #HT]]".
-      + exfalso. exact (proj1 Hne eq_refl).
-      + rewrite /file_permit_read. iLeft. iFrame "Hown". iPureIntro.
-        exact (proj1 Hb).
-      + rewrite /file_permit_read. iRight. iRight. iExact "HT".
-    - rewrite /cre_ex_fired.
-      iDestruct "Hex" as (avx entsx nlx) "(%Hrx & %Hex & Hrec)".
-      rewrite /file_dlk_fam /file_dlk_recv. cbn [pf_recv].
-      rewrite /pf_at. iDestruct "Harm" as "[_ Harm]".
-      rewrite /file_arm_fam. cbn [pf_refund].
-      assert (Hstx : astep avx FsImg.ROOTINO fname_f = Some i)
-        by (rewrite /astep /aents Hrx /= /anode_ents /=; exact Hex).
-      iDestruct "Hrec" as "[[_ Hval] | #HT]"; last first.
-      { rewrite /file_permit_read. iRight. iRight. iExact "HT". }
-      iDestruct "Harm" as "[Htk Htok]".
-      iDestruct "Hval" as "[%Hokx | #Hsp]"; last first.
-      { iDestruct (esc_tok_spent g with "Htok Hsp") as %[]. }
-      rewrite /file_permit_read. iRight. iLeft. iExists avx.
-      rewrite /fesc_res. iFrame "Htk Htok". iPureIntro. by split.
+    rewrite /cre_ex_fired.
+    iDestruct "Hex" as (avx entsx nlx) "(%Hrx & %Hex & Hrec)".
+    rewrite /file_dlk_fam /file_dlk_recv. cbn [pf_recv].
+    rewrite /pf_at. iDestruct "Harm" as "[_ Harm]".
+    rewrite /file_arm_fam. cbn [pf_refund].
+    assert (Hstx : astep avx FsImg.ROOTINO fname_f = Some i)
+      by (rewrite /astep /aents Hrx /= /anode_ents /=; exact Hex).
+    iDestruct "Hrec" as "[[_ Hval] | #HT]"; last first.
+    { rewrite /file_permit_read. iRight. iExact "HT". }
+    iDestruct "Harm" as "[Htk Htok]".
+    iDestruct "Hval" as "[%Hokx | #Hsp]"; last first.
+    { iDestruct (esc_tok_spent g with "Htok Hsp") as %[]. }
+    rewrite /file_permit_read. iLeft. iExists avx.
+    rewrite /fesc_res. iFrame "Htk Htok". iPureIntro. by split.
   Qed.
 
   Lemma file_permit_read_pay (c : file_fixed) (r : file_names) (s : dst)
@@ -1280,33 +1272,33 @@ Section FileOpen.
     file_permit_read c r s g i -∗ file_esc_pay c r s g.
   Proof using .
     rewrite /file_permit_read /file_esc_pay.
-    iIntros "[[_ Hown] | [Hex | #HT]]".
-    - iRight. iLeft. iExists i. iExact "Hown".
+    iIntros "[Hex | #HT]".
     - iDestruct "Hex" as (avx) "(_ & _ & Hres)". by iLeft.
     - iRight. iRight. iExact "HT".
   Qed.
 
-  (* THE DEVICE SUB-ARM, REFUTED (lane F-OPEN-5).  create's F-OK admits a
-     found DEVICE; the claim says otherwise AT THE OPEN'S OWN OBSERVATION
-     INSTANT, which is what the open observation's family now reads.  On
-     the permit's EXISTS branch the token refutes the spent disjunct, the
-     tie identifies `f`'s row with the row the call reached, and the
-     claim's own [AFile] contradicts the [ADev] on the nose.  ON THE
-     PERMIT'S FRESH BRANCH the create leg fired at that very row and the
-     deed is back at [Some (i, [])], so the arm pays the same thing the
-     inode arm does. *)
+  (* THE DEVICE SUB-ARM, REFUTED (lanes F-OPEN-5 and F-OPEN-6).  create's
+     F-OK admits a found DEVICE; the claim says otherwise AT THE OPEN'S
+     OWN OBSERVATION INSTANT, which is what the open observation's family
+     reads.  The permit is the EXISTS branch and the arm that paid it now
+     says so, so the token refutes the spent disjunct, the tie identifies
+     `f`'s row with the row the call reached, and the claim's own [AFile]
+     contradicts the [ADev] on the nose.  WHAT IS LEFT IS THE TAINT ALONE
+     -- the one state in which the application's claim says nothing about
+     the file system, and in which a device at `f` is a real outcome; it
+     is the same escape every other arm of this file carries. *)
   Lemma file_dev_refute (c : file_fixed) (r : file_names) (s : dst)
       (g : gname) (i ma mi : Z) (nl : nat) (av : aview) :
     arow_at av i (MkAnode (ADev ma mi) nl) ->
     file_permit_read c r s g i -∗
     ((⌜f_ok av s⌝ ∨ esc_spent g) ∨ file_taint c) -∗
-    (fown r (Some (i, [])) ∨ file_taint c).
+    file_taint c.
   Proof using .
     intros Hrow. iIntros "Hperm Hobs".
     rewrite /file_permit_read.
-    iDestruct "Hperm" as "[[_ Hown] | [Hex | #HT]]"; [ by iLeft | | by iRight ].
+    iDestruct "Hperm" as "[Hex | #HT]"; [| by iFrame "HT" ].
     iDestruct "Hex" as (avx) "(%Hstx & %Hokx & [Htk Htok])".
-    iDestruct "Hobs" as "[[%Hoka | #Hsp] | #HT]"; [| | by iRight ]; last first.
+    iDestruct "Hobs" as "[[%Hoka | #Hsp] | #HT]"; [| | by iFrame "HT" ]; last first.
     { iDestruct (esc_tok_spent g with "Htok Hsp") as %[]. }
     exfalso. destruct s as [[j bs] |]; last first.
     { (* an ABSENT deed contradicts the found entry at the tie *)
@@ -1344,18 +1336,17 @@ Section FileOpen.
       (γfs : fs_names) (vom : mword 64) (pl : list (bv 8)) (i : Z) :
     om_trunc vom = true ->
     list_basics.last (path_elems pl) = Some fname_f ->
-    cre_trunc_kept (fs_gamma_L γfs) vom pl
+    cre_trunc_kept_ex (fs_gamma_L γfs) vom pl
       (fun (_ : nat) (d : Z) => ⌜d = ROOTINO⌝%I)
-      (file_arm_fam c r jc s g) (file_cre_fam c r jc s g)
-      (file_dlk_fam c r n s g)
+      (file_arm_fam c r jc s g) (file_dlk_fam c r n s g)
       i (file_trunc_fam c r s) -∗
     file_permit_read c r s g i.
   Proof using .
     intros Htr Hlast. iIntros "H".
-    rewrite /cre_trunc_kept /open_trunc_at Htr /pf_at /cre_ft_kept.
+    rewrite /cre_trunc_kept_ex /open_trunc_at Htr /pf_at /cre_ft_kept.
     cbn [pf_refund]. iDestruct "H" as "[_ [_ Hk]]".
-    rewrite /cre_permit.
-    iApply (file_permit_tied c r jc n s g pl i (fs_gamma_L γfs) Hlast with "Hk").
+    rewrite /cre_permit_ex.
+    iApply (file_permit_tied c r n s g jc pl i (fs_gamma_L γfs) Hlast with "Hk").
   Qed.
 
   (* the escrow off create's own child legs, which every arm that fired
@@ -1422,15 +1413,35 @@ Section FileOpen.
           iApply (file_legs_pay c r jc n s g _ with "Hlegs").
   Qed.
 
-  (* ---- THE WHOLE RECEIPT, at the redirect child's own mode.  THREE
-     outcomes still, but the second and third now say the SAME thing about
-     the claim -- `f` is present and EMPTY at the row the call reached --
-     and the second is the one the round runs on: a descriptor on an
-     INODE.  F-OPEN-3's "the deed unmoved" disjunct is gone (the escrow
-     refutes it) and F-OPEN-4's DEVICE hole is closed on the permit's
-     EXISTS branch; what is left of the device arm is the permit's FRESH
-     branch, where the create leg fired at that row and the deed is back
-     there -- see section 6. *)
+  (* ---- WHAT THE FD ARM HANDS THE ROUND, AT THE DESCRIPTOR'S TYPE.  This
+     is [UkShRedirAns.ush_open_call2]'s [K], one sentence: the descriptor
+     is on an INODE and `f` is present and EMPTY at that inode -- or the
+     claim is TAINTED, the one state in which the application promises
+     nothing about the file system and in which the kernel's own
+     [FdDevice] arm is a real outcome.  That is why the disjunction sits
+     OUTSIDE the type equation and not inside it: a tainted claim cannot
+     refute a device, and nothing below this line can either.
+     [UkFileOpen.redir_K] is this, and it is the name lane SH-ROUND
+     instantiates. *)
+  Definition file_open_fd_K (c : file_fixed) (r : file_names)
+      (ty : fdtype) : iProp Σ :=
+    ((∃ (i : Z) (γo : gname),
+        ⌜ty = FdInode i γo OffParked⌝ ∗ fown r (Some (i, [])))
+     ∨ file_taint c)%I.
+
+  (* ---- THE WHOLE RECEIPT, at the redirect child's own mode.  TWO
+     outcomes (lane F-OPEN-6): the [-1] fold, and A DESCRIPTOR ON AN
+     INODE with `f` present and empty at it.  F-OPEN-3's "the deed
+     unmoved" disjunct is gone (the escrow refutes it), and the DEVICE
+     outcome is gone as an arm of its own:
+     [SpecSysOpen.open_post_ok_create]'s EXISTS arm now says WHICH BRANCH
+     of the truncate permit it paid, so [file_dev_refute] contradicts the
+     [ADev] on the nose, and the FRESH arm never had a device sub-arm at
+     all -- [sys_open] type-checks the inode [create] returned, STILL
+     LOCKED, so its observation is that child's own [AFile []].  What
+     survives of the device is the TAINT, which rides
+     [file_open_fd_K]'s right disjunct like every other arm's.  See
+     section 6. *)
   Lemma file_open_create_recv (γfs : fs_names) (c : file_fixed)
       (r : file_names) (jc : Z) (n : nat) (s : dst) (g : gname) (cw : Z)
       (M : gmap Z (bv 8)) (pv vom : mword 64) (pl : list (bv 8))
@@ -1451,14 +1462,9 @@ Section FileOpen.
       (file_trunc_fam c r s) sts rv fdv' ={E}=∗
       ((⌜rv = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜fdv' = sts⌝
         ∗ file_open_pay c r s)
-       ∨ (∃ (i : Z) (γo : gname),
-            ⌜open_fd_rcpt (om_readable vom) (om_writable vom)
-               (FdInode i γo OffParked) sts rv fdv'⌝
-            ∗ (fown r (Some (i, [])) ∨ file_taint c))
-       ∨ (∃ (i ma : Z),
-            ⌜open_fd_rcpt (om_readable vom) (om_writable vom)
-               (FdDevice ma) sts rv fdv'⌝
-            ∗ (fown r (Some (i, [])) ∨ file_taint c))).
+       ∨ (∃ ty : fdtype,
+            ⌜open_fd_rcpt (om_readable vom) (om_writable vom) ty sts rv fdv'⌝
+            ∗ file_open_fd_K c r ty)).
   Proof using .
     intros HE Htr Hpath Hlast Heq. rewrite /open_receipt_create.
     iIntros "#Hinv #Hwit [(%Hr & %Hfdv & Hf) | Hok]".
@@ -1476,8 +1482,10 @@ Section FileOpen.
       iDestruct "Htrc" as (av' nl') "[_ Hrec]".
       rewrite /file_trunc_fam /file_trunc_recv. cbn [pf_recv].
       iDestruct "Hfd" as (γo) "%Hrcpt".
-      iModIntro. iRight. iLeft. iExists i, γo. iSplitR; [ by iPureIntro |].
-      iExact "Hrec".
+      iModIntro. iRight. iExists (FdInode i γo OffParked).
+      iSplitR; [ by iPureIntro |]. rewrite /file_open_fd_K.
+      iDestruct "Hrec" as "[Hown | #HT]"; [| by iRight ].
+      iLeft. iExists i, γo. iSplitR; [ by iPureIntro |]. iExact "Hown".
     - (* THE NAME WAS THERE *)
       rewrite (arg_path_of_uniq M pv pl0 pl Hpath0 Hpath).
       iDestruct "Hex" as (avx entsx nlx) "(_ & _ & _ & _ & _ & Hrest)".
@@ -1488,16 +1496,21 @@ Section FileOpen.
         iDestruct "Htrc" as (av') "[_ Hrec]".
         rewrite /file_trunc_fam /file_trunc_recv. cbn [pf_recv].
         iDestruct "Hfd" as (γo) "%Hrcpt".
-        iModIntro. iRight. iLeft. iExists i, γo. iSplitR; [ by iPureIntro |].
-        iExact "Hrec".
-      + (* ...or on a DEVICE, which the claim refutes on the permit's
-             EXISTS branch and pays on its FRESH one *)
+        iModIntro. iRight. iExists (FdInode i γo OffParked).
+        iSplitR; [ by iPureIntro |]. rewrite /file_open_fd_K.
+        iDestruct "Hrec" as "[Hown | #HT]"; [| by iRight ].
+        iLeft. iExists i, γo. iSplitR; [ by iPureIntro |]. iExact "Hown".
+      + (* ...or on a DEVICE, WHICH THE CLAIM REFUTES: the permit is the
+             EXISTS branch and the arm says so, so all that is left is the
+             taint *)
         iDestruct "Hdev" as (ma mi) "(%Hrow & _ & Hobs & Hkept & %Hrcpt)".
         rewrite /file_odlk_fam /file_odlk_recv. cbn [pf_recv].
         iDestruct (file_kept_tied c r jc n s g γfs vom pl i Htr Hlast
                      with "Hkept") as "Hperm".
-        iModIntro. iRight. iRight. iExists i, ma. iSplitR; [ by iPureIntro |].
-        iApply (file_dev_refute c r s g i ma mi nl av Hrow with "Hperm Hobs").
+        iDestruct (file_dev_refute c r s g i ma mi nl av Hrow
+                     with "Hperm Hobs") as "#HT".
+        iModIntro. iRight. iExists (FdDevice ma).
+        iSplitR; [ by iPureIntro |]. rewrite /file_open_fd_K. by iRight.
   Qed.
 
   (* =================================================================== *)
@@ -1990,17 +2003,26 @@ End FileOpen.
 (*      carries both.  That is an [AppFile.v] restatement of [file_pred], *)
 (*      not a [FileOpen.v] one, and it moves the transports, the boot     *)
 (*      resource, the era-0 mint and every landed consumer of the claim.  *)
-(*      Until (i) or (iii) lands, lane SH-ROUND's round reads the         *)
-(*      redirect child's fd arm as the DISJUNCTION and not as             *)
-(*      [fown r (Some (i, []))] alone.                                    *)
+(*      (iii) LANDED (lane F-OPEN-5), and the fd arm is                   *)
+(*      [fown r (Some (i, [])) ∨ file_taint c].                           *)
 (*                                                                       *)
-(*      THE SAME SHAPE ONCE MORE, SMALLER: create's F-OK admits a found   *)
-(*      DEVICE, and this claim cannot refute that either -- the row's     *)
-(*      type is reported at the OPEN's observation instant and the tie is *)
-(*      at the lookup's.  [file_open_create_recv] therefore has THREE     *)
-(*      outcomes and not two; closing (i) or (iii) closes this one too,   *)
-(*      since both give the lookup's view a readable claim.  (ii) would   *)
-(*      have, and cannot -- see above.                                    *)
+(*      THE SAME SHAPE ONCE MORE, SMALLER, AND ALSO CLOSED: create's      *)
+(*      F-OK admits a found DEVICE, and the row's type is reported at the *)
+(*      OPEN's observation instant while the tie is at the lookup's.      *)
+(*      What closes it is not a wider reading but the ARM SAYING WHICH    *)
+(*      BRANCH OF THE TRUNCATE PERMIT IT PAID (lane F-OPEN-6,             *)
+(*      [SysOpenDefs.trunc_permit_ex]): the device is reported on the     *)
+(*      EXISTS run alone, the escrow's token is in hand there, and        *)
+(*      [file_dev_refute] contradicts the [ADev] on the nose.  The FRESH  *)
+(*      run needs nothing: [sys_open] type-checks the inode [create]      *)
+(*      returned, still locked, so its observation is that child's own    *)
+(*      [AFile []] and the arm has no device sub-arm.  WHAT SURVIVES IS   *)
+(*      THE TAINT, and it survives everywhere: a tainted claim promises   *)
+(*      nothing about the file system, so the kernel's [FdDevice] is a    *)
+(*      real outcome there and no reading of the claim can refute it.     *)
+(*      That is why [file_open_fd_K] puts the taint OUTSIDE the type      *)
+(*      equation -- the fd arm is one arm, not two, and the type is       *)
+(*      pinned on every branch but the taint.                             *)
 (*                                                                       *)
 (*  (b) THE O_RDONLY OPEN AT AN ABSENT `f` -- CLOSED (lane F-OPEN-2,      *)
 (*      seam 2).  [file_open_miss_au] / [file_open_miss_recv] below are    *)

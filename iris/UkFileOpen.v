@@ -513,10 +513,10 @@ Section UkFileOpen.
   (*  and [FileOpen.file_open_create_au] / [file_open_create_recv] are    *)
   (*  the two halves it is built from.  ONE DEED IN (the bundle supplies  *)
   (*  its own truncate piece at every mode -- lane F-OPEN-3), and the     *)
-  (*  three outcomes [file_open_create_recv] folds the receipt into come  *)
-  (*  out as three arms here, in [UkShRedirAns.ush_open_ans2]'s shape:    *)
-  (*  the descriptor on an INODE with `f` present and EMPTY at it, the    *)
-  (*  descriptor on a found DEVICE, and [-1] with the deed home.         *)
+  (*  two outcomes [file_open_create_recv] folds the receipt into come    *)
+  (*  out as two arms here, in [UkShRedirAns.ush_open_ans2]'s shape: a    *)
+  (*  descriptor at a type [redir_K] pins -- an INODE with `f` present    *)
+  (*  and EMPTY at it, or the taint -- and [-1] with the deed home.       *)
   (*                                                                      *)
   (*  THE LEAF IS A VISIBLE PARAMETER here exactly as in sections 1-3:    *)
   (*  the corollary is stated over [UkRunSys.wp_uk_ecall_open_recv_img],  *)
@@ -624,6 +624,18 @@ Section UkFileOpen.
     rewrite Hins in Hl1. rewrite Hl2 in Hl1. congruence.
   Qed.
 
+  (* THE PAYLOAD THE 0x601 CALL'S FD ARM HANDS THE ROUND, AT THE
+     DESCRIPTOR'S TYPE -- the name lane SH-ROUND instantiates
+     [UkShRedirAns.ush_open_call2]'s [K] at (its [Kf] is
+     [FileOpen.file_open_pay], unchanged).  ONE ARM AND THE TAINT: the
+     descriptor is on an INODE and `f` is present and EMPTY there.  The
+     device is gone (lane F-OPEN-6, [FileOpen.file_dev_refute] at the
+     permit's named EXISTS branch); the taint sits OUTSIDE the type
+     equation because a tainted claim promises nothing about the file
+     system and cannot refute the kernel's [FdDevice] arm. *)
+  Definition redir_K (c : file_fixed) (r : file_names) (ty : fdtype)
+      : iProp Σ := file_open_fd_K c r ty.
+
   (* THE DEPOSIT: the 0x601 bundle, from one deed. *)
   Lemma file_create_sup (N : uk_names Σ) (c : file_fixed) (r : file_names)
       (jc : Z) (n : nat) (s : dst) (g : gname)
@@ -713,25 +725,19 @@ Section UkFileOpen.
            before the failure left standing, or the taint *)
         (⌜rv = (mword_of_int (-1) : mword 64)⌝ ∗ ustd (ukn_fd N) l
          ∗ file_open_pay c r s)
-        (* ...OR THE HANDLE, ON AN INODE, with `f` EMPTY at it *)
-        ∨ (∃ (fd : nat) (γo : gname) (i : Z),
+        (* ...OR THE HANDLE, AND IT IS ONE ARM (lane F-OPEN-6): the
+           descriptor's type is whatever the kernel installed and
+           [redir_K] says what that is -- an INODE with `f` empty at it,
+           or the taint.  The found-DEVICE arm create's F-OK admits is
+           refuted at the permit's named EXISTS branch and has no arm of
+           its own any more. *)
+        ∨ (∃ (fd : nat) (ty : fdtype),
              ⌜rv = (mword_of_int (Z.of_nat fd) : mword 64)
               /\ (fd < NOFILE)%nat⌝ ∗
              ualloc (ukn_fd N) l fd
                (FdOpen (om_readable (m !!! Regidx a1_idx))
-                       (om_writable (m !!! Regidx a1_idx))
-                       (FdInode i γo OffParked)) ∗
-             (fown r (Some (i, [])) ∨ file_taint c))
-        (* ...or on a found DEVICE, which create's F-OK admits and which
-           the claim refutes on every branch of the permit but one *)
-        ∨ (∃ (fd : nat) (ma : Z),
-             ⌜rv = (mword_of_int (Z.of_nat fd) : mword 64)
-              /\ (fd < NOFILE)%nat⌝ ∗
-             ualloc (ukn_fd N) l fd
-               (FdOpen (om_readable (m !!! Regidx a1_idx))
-                       (om_writable (m !!! Regidx a1_idx))
-                       (FdDevice ma)) ∗
-             ((∃ i : Z, fown r (Some (i, []))) ∨ file_taint c))) -∗
+                       (om_writable (m !!! Regidx a1_idx)) ty) ∗
+             redir_K c r ty)) -∗
        UserCwd.ucwd (ukn_cwd N) cw -∗
        urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
@@ -773,14 +779,15 @@ Section UkFileOpen.
                  Hlast Heq with "Hinv Hkey Hrc") as "Hans".
     iModIntro.
     iApply ("Hcont" $! h' rv with "[Hfd Hans] Hcwd Hrun").
-    iDestruct "Hans" as "[(%Hr & %Hfdv & Hpay) | [Hino | Hdev]]".
+    iDestruct "Hans" as "[(%Hr & %Hfdv & Hpay) | Hfdarm]".
     - (* THE CALL FAILED *)
       iLeft. iFrame "Hpay". iSplitR; [ by iPureIntro | ].
       iApply (init_cons_fail_std (ukn_fd N) l (uvis_fd W) fdv' rv Hr
                 with "[Hfd]").
       rewrite /uk_open_fd_arm. iExact "Hfd".
-    - (* THE HANDLE, ON AN INODE *)
-      iDestruct "Hino" as (i γo) "[%Hrcpt Hpay]".
+    - (* THE HANDLE.  The receipt names the type the kernel installed and
+         [redir_K] is what the claim says about it. *)
+      iDestruct "Hfdarm" as (t0) "[%Hrcpt Hpay]".
       iDestruct "Hfd" as "[Hal | [%Hb _]]"; last first.
       { exfalso. destruct Hb as [Hrm _].
         destruct Hrcpt as (fd0 & Hr0 & Hcl0 & _).
@@ -792,29 +799,10 @@ Section UkFileOpen.
       rewrite (file_open_fd_tie (uvis_fd W) fdv' rv
                  (om_readable (m !!! Regidx a1_idx))
                  (om_writable (m !!! Regidx a1_idx))
-                 (FdInode i γo OffParked) fd rd wr ty
+                 t0 fd rd wr ty
                  Hlen Hr1 Hlt1 Hfdv1 Hrcpt).
-      iRight. iLeft. iExists fd, γo, i. iFrame "Hal Hpay". iPureIntro.
-      exact (conj Hr1 Hlt1).
-    - (* ...OR ON A FOUND DEVICE *)
-      iDestruct "Hdev" as (i ma) "[%Hrcpt Hpay]".
-      iDestruct "Hfd" as "[Hal | [%Hb _]]"; last first.
-      { exfalso. destruct Hb as [Hrm _].
-        destruct Hrcpt as (fd0 & Hr0 & Hcl0 & _).
-        assert (Hlt0 : (fd0 < NOFILE)%nat).
-        { rewrite <- Hlen. exact (lookup_lt_Some _ _ _ Hcl0). }
-        exact (init_cons_moi_nat_m1 fd0 Hlt0 (eq_trans (eq_sym Hr0) Hrm)). }
-      iDestruct "Hal" as (fd rd wr ty) "[%Hb Hal]".
-      destruct Hb as (Hr1 & Hlt1 & Hfdv1).
-      rewrite (file_open_fd_tie (uvis_fd W) fdv' rv
-                 (om_readable (m !!! Regidx a1_idx))
-                 (om_writable (m !!! Regidx a1_idx))
-                 (FdDevice ma) fd rd wr ty
-                 Hlen Hr1 Hlt1 Hfdv1 Hrcpt).
-      iRight. iRight. iExists fd, ma. iFrame "Hal". iSplitR.
-      { iPureIntro. exact (conj Hr1 Hlt1). }
-      iDestruct "Hpay" as "[Hown | #HT]"; [| by iRight ].
-      iLeft. iExists i. iExact "Hown".
+      iRight. iExists fd, t0. iFrame "Hal". rewrite /redir_K.
+      iFrame "Hpay". iPureIntro. exact (conj Hr1 Hlt1).
   Qed.
 
 
@@ -905,7 +893,8 @@ Section UkFileOpen.
   Qed.
 
   Lemma file_create_sup_v (N : uk_names Σ) (c : file_fixed) (r : file_names)
-      (jc : Z) (s : dst) (ls : list wordline) (ws : wordline) (cw : Z)
+      (jc : Z) (n : nat) (s : dst) (g : gname)
+      (ls : list wordline) (ws : wordline) (cw : Z)
       (Img : gmap Z (bv 8)) (pv : mword 64) (m : regfile) (pc : mword 64)
       (pl : list (bv 8)) :
     file_app = MkAppcfg file_names (file_pred c) r ->
@@ -917,17 +906,18 @@ Section UkFileOpen.
     list_basics.last (path_elems pl) = Some fname_f ->
     ws ∈ ls -> EchoDisc.line_ok ws ->
     app_inv fsc_fs -∗ uimg_view N Img -∗
-    cons_made (fn_cons r) jc -∗ fl_lb c ls -∗ fown r s -∗
-    udepwf_at N m pc USYS_open (file_create_fam c r jc s (ukn_pay N)) cw.
+    cons_made (fn_cons r) jc -∗ fl_lb c ls -∗
+    esc_key c r n s g -∗ fesc_res r s g -∗
+    udepwf_at N m pc USYS_open (file_create_fam c r jc n s g (ukn_pay N)) cw.
   Proof using .
     intros Heq Hpath Ha0 Hcr Hnp Hstart Hlast Hin Hokw.
-    iIntros "#Hinv #Hro #Hm #Hlb Hown".
+    iIntros "#Hinv #Hro #Hm #Hlb #Hwit Hres".
     rewrite /udepwf_at. iSplitR; [ iPureIntro; reflexivity | ].
     iIntros (M pm sz fdv gn cs pidv) "#Hmpay Hheap Hufd".
     iDestruct (uimg_view_sub N Img M pm sz with "Hheap Hro") as %Hsro.
     iFrame "Hheap Hufd".
     iApply (sbundle_at_open_intro_at uslot
-              (file_create_fam c r jc s (ukn_pay N))
+              (file_create_fam c r jc n s g (ukn_pay N))
               (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
               cw M pv (m !!! Regidx a1_idx) eq_refl eq_refl
               (eq_trans (tf_of_arg0 m pc) Ha0)
@@ -935,9 +925,9 @@ Section UkFileOpen.
     cbn [file_create_fam xfam_fcreate of_P of_Pmiss of_Farm of_Fun
          of_Fok of_Fex of_Fo of_Ft].
     rewrite /open_in Hcr.
-    iApply (file_open_create_au fsc_fs c r jc s ls ws cw M pv
+    iApply (file_open_create_au fsc_fs c r jc n s g ls ws cw M pv
               (m !!! Regidx a1_idx) pl Heq (Hpath M Hsro) Hnp Hstart Hlast
-              Hin Hokw with "Hinv Hm Hlb Hown").
+              Hin Hokw with "Hinv Hm Hlb Hwit Hres").
   Qed.
 
   Lemma wp_uk_ecall_open_read_deed_v (N : uk_names Σ) (h : CpuId) (m : regfile)
@@ -1124,24 +1114,19 @@ Section UkFileOpen.
            before the failure left standing, or the taint *)
         (⌜rv = (mword_of_int (-1) : mword 64)⌝ ∗ ustd (ukn_fd N) l
          ∗ file_open_pay c r s)
-        (* ...OR THE HANDLE, ON AN INODE, with `f` EMPTY at it *)
-        ∨ (∃ (fd : nat) (γo : gname) (i : Z),
+        (* ...OR THE HANDLE, AND IT IS ONE ARM (lane F-OPEN-6): the
+           descriptor's type is whatever the kernel installed and
+           [redir_K] says what that is -- an INODE with `f` empty at it,
+           or the taint.  The found-DEVICE arm create's F-OK admits is
+           refuted at the permit's named EXISTS branch and has no arm of
+           its own any more. *)
+        ∨ (∃ (fd : nat) (ty : fdtype),
              ⌜rv = (mword_of_int (Z.of_nat fd) : mword 64)
               /\ (fd < NOFILE)%nat⌝ ∗
              ualloc (ukn_fd N) l fd
                (FdOpen (om_readable (m !!! Regidx a1_idx))
-                       (om_writable (m !!! Regidx a1_idx))
-                       (FdInode i γo OffParked)) ∗
-             (fown r (Some (i, [])) ∨ fown r s ∨ file_taint c))
-        (* ...or on a found DEVICE, which create's F-OK admits *)
-        ∨ (∃ (fd : nat) (ma : Z),
-             ⌜rv = (mword_of_int (Z.of_nat fd) : mword 64)
-              /\ (fd < NOFILE)%nat⌝ ∗
-             ualloc (ukn_fd N) l fd
-               (FdOpen (om_readable (m !!! Regidx a1_idx))
-                       (om_writable (m !!! Regidx a1_idx))
-                       (FdDevice ma)) ∗
-             file_open_pay c r s)) -∗
+                       (om_writable (m !!! Regidx a1_idx)) ty) ∗
+             redir_K c r ty)) -∗
        UserCwd.ucwd (ukn_cwd N) cw -∗
        urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
@@ -1149,16 +1134,24 @@ Section UkFileOpen.
   Proof using .
     intros Heq Hn Hal4 Hpath Ha0 Hcr Htr Hnp Hstart Hlast Hin Hokw.
     iIntros "#Hi #Hro Hrun Hcwd Hstd #Hinv #Hm #Hlb Hown Hcont".
-    iDestruct (file_create_sup_v N c r jc s ls ws cw Img pv m pc pl Heq Hpath
+    (* THE PARK: the deed's half goes into the claim, and what comes out
+       is the ticket, the one-shot token and the ledger key *)
+    iApply fupd_wp.
+    iMod (file_escrow_park fsc_fs c r s ⊤ ltac:(set_solver) Heq
+            with "Hinv Hown") as (n g) "(#Hkey & Htok & Htk)".
+    iModIntro.
+    iAssert (fesc_res r s g) with "[Htk Htok]" as "Hres".
+    { rewrite /fesc_res. iFrame "Htk Htok". }
+    iDestruct (file_create_sup_v N c r jc n s g ls ws cw Img pv m pc pl Heq Hpath
                  Ha0 Hcr Hnp Hstart Hlast Hin Hokw
-                 with "Hinv Hro Hm Hlb Hown") as "Hsb".
+                 with "Hinv Hro Hm Hlb Hkey Hres") as "Hsb".
     iApply (wp_uk_ecall_open_recv_gimg N h m pc l avail
-              (file_create_fam c r jc s (ukn_pay N)) cw Img Hn Hal4
+              (file_create_fam c r jc n s g (ukn_pay N)) cw Img Hn Hal4
               with "Hi Hro Hrun Hcwd Hsb Hstd").
     iIntros (h' rv W M' fdv' cw' cs')
       "%Himg %Hlen %Hk0 %Hk1 %Hcw %Htk Hfd Hpost Hcwd Hrun".
     iDestruct (spost_at_open_elim_at uslot
-                 (file_create_fam c r jc s (ukn_pay N)) W
+                 (file_create_fam c r jc n s g (ukn_pay N)) W
                  cw (uvis_M W) pv (m !!! Regidx a1_idx) rv M' fdv' cw' cs'
                  Hcw eq_refl
                  ltac:(rewrite Hk0; exact Ha0)
@@ -1167,18 +1160,23 @@ Section UkFileOpen.
     iEval (rewrite /open_receipt Hcr) in "Hrc".
     iEval (cbn [file_create_fam xfam_fcreate of_P of_Pmiss of_Farm of_Fun
                 of_Fok of_Fex of_Fo of_Ft]) in "Hrc".
-    iDestruct (file_open_create_recv fsc_fs c r jc s cw (uvis_M W) pv
-                 (m !!! Regidx a1_idx) (uvis_fd W) rv fdv' Htr
-                 with "Hrc") as "Hans".
+    iApply fupd_wp.
+    iMod (file_open_create_recv fsc_fs c r jc n s g cw (uvis_M W) pv
+                 (m !!! Regidx a1_idx) pl (uvis_fd W) rv fdv' ⊤
+                 ltac:(set_solver) Htr
+                 ltac:(exact (Hpath (uvis_M W) Himg))
+                 Hlast Heq with "Hinv Hkey Hrc") as "Hans".
+    iModIntro.
     iApply ("Hcont" $! h' rv with "[Hfd Hans] Hcwd Hrun").
-    iDestruct "Hans" as "[(%Hr & %Hfdv & Hpay) | [Hino | Hdev]]".
+    iDestruct "Hans" as "[(%Hr & %Hfdv & Hpay) | Hfdarm]".
     - (* THE CALL FAILED *)
       iLeft. iFrame "Hpay". iSplitR; [ by iPureIntro | ].
       iApply (init_cons_fail_std (ukn_fd N) l (uvis_fd W) fdv' rv Hr
                 with "[Hfd]").
       rewrite /uk_open_fd_arm. iExact "Hfd".
-    - (* THE HANDLE, ON AN INODE *)
-      iDestruct "Hino" as (i γo) "[%Hrcpt Hpay]".
+    - (* THE HANDLE.  The receipt names the type the kernel installed and
+         [redir_K] is what the claim says about it. *)
+      iDestruct "Hfdarm" as (t0) "[%Hrcpt Hpay]".
       iDestruct "Hfd" as "[Hal | [%Hb _]]"; last first.
       { exfalso. destruct Hb as [Hrm _].
         destruct Hrcpt as (fd0 & Hr0 & Hcl0 & _).
@@ -1190,27 +1188,10 @@ Section UkFileOpen.
       rewrite (file_open_fd_tie (uvis_fd W) fdv' rv
                  (om_readable (m !!! Regidx a1_idx))
                  (om_writable (m !!! Regidx a1_idx))
-                 (FdInode i γo OffParked) fd rd wr ty
+                 t0 fd rd wr ty
                  Hlen Hr1 Hlt1 Hfdv1 Hrcpt).
-      iRight. iLeft. iExists fd, γo, i. iFrame "Hal Hpay". iPureIntro.
-      exact (conj Hr1 Hlt1).
-    - (* ...OR ON A FOUND DEVICE *)
-      iDestruct "Hdev" as (ma) "[%Hrcpt Hpay]".
-      iDestruct "Hfd" as "[Hal | [%Hb _]]"; last first.
-      { exfalso. destruct Hb as [Hrm _].
-        destruct Hrcpt as (fd0 & Hr0 & Hcl0 & _).
-        assert (Hlt0 : (fd0 < NOFILE)%nat).
-        { rewrite <- Hlen. exact (lookup_lt_Some _ _ _ Hcl0). }
-        exact (init_cons_moi_nat_m1 fd0 Hlt0 (eq_trans (eq_sym Hr0) Hrm)). }
-      iDestruct "Hal" as (fd rd wr ty) "[%Hb Hal]".
-      destruct Hb as (Hr1 & Hlt1 & Hfdv1).
-      rewrite (file_open_fd_tie (uvis_fd W) fdv' rv
-                 (om_readable (m !!! Regidx a1_idx))
-                 (om_writable (m !!! Regidx a1_idx))
-                 (FdDevice ma) fd rd wr ty
-                 Hlen Hr1 Hlt1 Hfdv1 Hrcpt).
-      iRight. iRight. iExists fd, ma. iFrame "Hal Hpay". iPureIntro.
-      exact (conj Hr1 Hlt1).
+      iRight. iExists fd, t0. iFrame "Hal". rewrite /redir_K.
+      iFrame "Hpay". iPureIntro. exact (conj Hr1 Hlt1).
   Qed.
 
   Lemma wp_uk_ecall_open_read_deed_d (N : uk_names Σ) (h : CpuId) (m : regfile)
@@ -1330,24 +1311,17 @@ Section UkFileOpen.
            before the failure left standing, or the taint *)
         (⌜rv = (mword_of_int (-1) : mword 64)⌝ ∗ ustd (ukn_fd N) l
          ∗ file_open_pay c r s)
-        (* ...OR THE HANDLE, ON AN INODE, with `f` EMPTY at it *)
-        ∨ (∃ (fd : nat) (γo : gname) (i : Z),
+        (* ...OR THE HANDLE, AND IT IS ONE ARM (lane F-OPEN-6): the
+           descriptor's type is whatever the kernel installed and
+           [redir_K] says what that is -- an INODE with `f` empty at it,
+           or the taint. *)
+        ∨ (∃ (fd : nat) (ty : fdtype),
              ⌜rv = (mword_of_int (Z.of_nat fd) : mword 64)
               /\ (fd < NOFILE)%nat⌝ ∗
              ualloc (ukn_fd N) l fd
                (FdOpen (om_readable (m !!! Regidx a1_idx))
-                       (om_writable (m !!! Regidx a1_idx))
-                       (FdInode i γo OffParked)) ∗
-             (fown r (Some (i, [])) ∨ fown r s ∨ file_taint c))
-        (* ...or on a found DEVICE, which create's F-OK admits *)
-        ∨ (∃ (fd : nat) (ma : Z),
-             ⌜rv = (mword_of_int (Z.of_nat fd) : mword 64)
-              /\ (fd < NOFILE)%nat⌝ ∗
-             ualloc (ukn_fd N) l fd
-               (FdOpen (om_readable (m !!! Regidx a1_idx))
-                       (om_writable (m !!! Regidx a1_idx))
-                       (FdDevice ma)) ∗
-             file_open_pay c r s)) -∗
+                       (om_writable (m !!! Regidx a1_idx)) ty) ∗
+             redir_K c r ty)) -∗
        UserCwd.ucwd (ukn_cwd N) cw -∗
        urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗

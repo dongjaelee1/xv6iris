@@ -247,7 +247,14 @@ Section UkTreeCreate.
        kf_lend  := emp%I;
        kf_xpay  := Q;
        rf_ret   := fun _ _ => True%I;
-       rf_in    := fun _ => True%I |}.
+       rf_in    := fun _ => True%I;
+       (* ...and nothing about any pipe or close (upstream's pipe-queue
+          fields, at their generic defaults): a tree application claims
+          nothing there *)
+       rf_pq    := fun _ => True%I;
+       rf_pqe   := fun _ _ => True%I;
+       wf_Qe    := fun _ _ => True%I;
+       cl_P     := True%I |}.
 
   (* THE OWNER'S CURSOR, and it is PURE at a parent prefix of length zero:
      the walk reads no claim law at all ([FsAbsEra.ep_hops_from] is the

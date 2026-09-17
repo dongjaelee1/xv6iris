@@ -88,6 +88,7 @@ Require Import FileInvDefs.        (* [fileG] / [file_app]: the era's record *)
 Require Import AppCfg.
 Require Import AppInv.
 Require Import FsCfg.
+Require Import EchoDisc.           (* [line_ok] *)
 Require Import EchoOut.
 Require Import AppEcho.            (* [echo_taint], [echo_cl], [cons_state],
                                       [echo_boot], [echo_pred]'s pieces *)
@@ -338,16 +339,22 @@ Section FileClaim.
     - rewrite /f_absent. intros Hs. by rewrite Hs.
   Qed.
 
-  (* the bytes are a chunk subset of one of these lines *)
+  (* the bytes are a chunk subset of one of these lines, and the line is an
+     ADMISSIBLE one ([EchoDisc.line_ok]: alphanumeric words, fewer than ten,
+     shorter than sh's buffer) -- the ledger appends nothing else, and the
+     bound is what keeps [f]'s row apart from the pinned binaries' rows
+     (35 KB and more) at a truncate or a write: two rows with different
+     contents are different inums. *)
   Definition f_bytes_typed (ls : list wordline) (bs : list (bv 8)) : Prop :=
     exists (ws : wordline) (sel : list nat),
-      ws ∈ ls /\ sel_ok (echo_chunks ws) sel /\ bs = subseq (echo_chunks ws) sel.
+      ws ∈ ls /\ EchoDisc.line_ok ws /\ sel_ok (echo_chunks ws) sel
+      /\ bs = subseq (echo_chunks ws) sel.
 
   Lemma f_bytes_typed_mono (ls ls' : list wordline) (bs : list (bv 8)) :
     ls `prefix_of` ls' -> f_bytes_typed ls bs -> f_bytes_typed ls' bs.
   Proof using .
-    intros Hp (ws & sel & Hin & Hsel & Hbs). exists ws, sel.
-    split; [| by split]. eapply elem_of_prefix; [exact Hin | exact Hp].
+    intros Hp (ws & sel & Hin & Hok & Hsel & Hbs). exists ws, sel.
+    split; [| by split_and!]. eapply elem_of_prefix; [exact Hin | exact Hp].
   Qed.
 
   (* ...as the claim carries it: nothing at an absent file, a lower bound
@@ -372,10 +379,10 @@ Section FileClaim.
 
   Lemma f_typed_some (c : file_fixed) (ls : list wordline) (ws : wordline)
       (sel : list nat) :
-    ws ∈ ls -> sel_ok (echo_chunks ws) sel ->
+    ws ∈ ls -> EchoDisc.line_ok ws -> sel_ok (echo_chunks ws) sel ->
     fl_lb c ls -∗ f_typed c (Some (subseq (echo_chunks ws) sel)).
   Proof using .
-    intros Hin Hsel. iIntros "#Hlb". rewrite /f_typed. iExists ls.
+    intros Hin Hok Hsel. iIntros "#Hlb". rewrite /f_typed. iExists ls.
     iFrame "Hlb". iPureIntro. by exists ws, sel.
   Qed.
 

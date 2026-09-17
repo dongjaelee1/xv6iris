@@ -73,29 +73,45 @@ conclusion `FileDisc.file_phi`.
   `vm_compute` demos including the echo/power-off/cat transcript and a
   crash mid-round.  Bar: `Closed under the global context`.
 
-## Wave 2 — the claim and the suppliers (after wave 1; the designer writes `AppFile.v`'s definitions first)
+## Wave 1 — as launched (2026-09-17), and what each left
 
-- [ ] **APP-CLAIM**: `iris/AppFile.v` — `file_fixed`, `file_names`,
-  `f_state`, `file_pred`, the transport (commit and boot, design §2),
-  `file_boot`, era 0 at the image, the record `app_file` with every
-  `xv6_app_laws` field but `al_programs` (echo's re-instantiated at the
-  projections, the ledger and tag grown by §4), the taint/supply lemmas.
-- [ ] **F-OPEN**: the child's open supplier from the deed
-  (`TreeMove.tree_open_create_au` / `UInitCons` mould): the create arm at
-  `None`, the exists+truncate arm at `Some _`, both at a length-0 prefix,
-  and the U-tier corollary on the held-offset open leaf — three arms:
-  fd 1 on the node with the deed at `Some []` and `uoff γo 0`; `-1`
-  with the deed unchanged; `-1` with the deed at `Some []` (created,
-  then `filealloc` failed).
-- [ ] **ECHO-FILE**: `iris/UEchoFile.v` (design §5.2).
-- [ ] **CAT-ENTRY**: `iris/UCatKernel.v` + `iris/UCatOut.v` (design §5.3).
+- [x] **CAT-PIN** landed (`FsCatPin.v`, `FsFPin.v`, `FileFsPure.v`; cat is inum 3).
+- [~] **OFF-HAND** did not land its members: it found the four coupled facts
+  design §3 now records, and landed `FdPark.v`'s exact-payment supplier.
+  Continued as **OFF-HAND-2** (kernel/spec: the mode in `fpnames`, the
+  successor-parkedness carrier moved to the family's post, the publish's
+  mode, the surrender bundle at the exec crossing) and then
+  **OFF-HAND-3** (U tier: the held-row counter in `urun`, the hand-mode
+  open leaf, the held read/write members, the held branch of
+  `filewrite_in`/`fileread_in`).
+- [~] **SH-REDIR** landed runcmd's REDIR arm with the open as a call premise
+  (`UkShRedir.ush_open_call`, `wp_kshr_redir_arm`) and gettoken's `>` arm;
+  the parser is **SH-PARSE** (the generalised gettoken, parseredirs once,
+  redircmd into the catalog, parseexec/nulterminate/parsecmd at the redirect
+  shape, the child walk at both line shapes).
+- [ ] **MODEL** — running.
+
+## Wave 2 — on the claim (`iris/AppFile.v`, branch `app-file/claim`, layer A landed 2026-09-17)
+
+- [ ] **F-OPEN** (running): `FileDeltas.v` (the pure preservation of `f_ok`
+  and the pins under every leg), `FileOpen.v` (the create/truncate open
+  supplier from the deed at both deed values, the plain O_RDONLY open, the
+  read piece), `UkFileOpen.v` (the corollaries at the parked leaves, in
+  `ush_open_call`'s `K ty` shape).
+- [ ] **F-WRITE** (running): `FileWrite.v` (the append phases and chain at
+  the deed, the offset equation as a premise the held leaf discharges),
+  `UkFileWrite.v` (the member at the parked leaf and the consumer test).
 - [ ] **STAGE**: `EchoOut`/`EchoOutPure` grown by `o_fh` and the line
   shapes (design §4); the ledger's line list and the tag's lb; `al_pow`'s
-  seed; `Hphi` at `file_phi`.
+  seed; `Hphi` at `file_phi`; the record `app_file` (AppFile layer B).
+- [ ] **ECHO-FILE**: `iris/UEchoFile.v` (design §5.2), after OFF-HAND-3.
+- [ ] **CAT-ENTRY**: `iris/UCatKernel.v` + `iris/UCatOut.v` (design §5.3),
+  after OFF-HAND-3 and STAGE.
 - [ ] **SH-ROUND**: sh's fork lends the deed, the exit payload returns
   it, the prompt link records `o_fh`; `UShCat`; the dispatch on the
-  line's shape; the REDIR child's proof at the claim (the open premise
-  instantiated, the taint arm parks).
+  line's shape; the REDIR child's proof at the claim (`ush_open_call`
+  instantiated by `UkFileOpen`, the taint arm surrenders), after SH-PARSE
+  and STAGE.
 - [ ] **ADEQUACY**: `iris/UFileBootAdequacy.v`, `iris/FileAssumptions.v`,
   `make audit-file{,-only}`; the design page's §0 rewritten as landed.
 

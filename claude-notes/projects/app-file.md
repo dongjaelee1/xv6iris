@@ -746,6 +746,13 @@ unchanged — echo fourteen, system thirteen, tree thirteen).
   two-phase park-and-resync — with the already-empty case split off, since
   `AppFile.file_resync` wants `s ≠ s'`), and `file_trunc_piece` at the
   permit.
+- **THE RECEIPT, READ** (`FileOpen.file_open_create_recv`, with
+  `file_open_pay` / `file_legs_pay` / `file_permit_pay` / `file_kept_pay`
+  / `file_open_create_fail_pay`).  Three outcomes at the redirect child's
+  own mode: `-1` with the deed home (from the arm piece's refund on four
+  shapes, and from the KEYED PIECE'S REFUND on arm (a)), a descriptor on
+  an inode with `f` present and empty at it, or a descriptor on the found
+  DEVICE create's F-OK admits.
 - **THE 0x601 BUNDLE, FROM ONE DEED** (`FileOpen.file_open_create_au`).
   No trunc premise at any mode: the bundle supplies its own piece.  New
   premise `last (path_elems pl) = Some fname_f` (the tie is what
@@ -914,12 +921,16 @@ out, no truncate premise.  What SH-ROUND must instantiate is
 
 — `Kf` is exactly what F-OPEN-2 named (arm (a)'s deed comes home through
 the keyed piece's refund, `cre_ft_kept`), and `K` is F-OPEN-2's with the
-second disjunct the paragraph above explains.  THE RECEIPT READER IS NOT
-WRITTEN: a `file_open_create_recv` reading `open_receipt_create` at these
-families into those two payloads is mechanical (five failure shapes, each
-handing the deed back through the arm piece's refund, the create receipt
-or the keyed piece's refund; two success arms through the truncate's
-receipt) but it would today deliver a THREE-shaped fd arm — inode-with-
-`Some (i, [])`, inode-with-`s`, and device — and lane SH-ROUND should
-decide whether to take it at that shape or close (ii) first.  Everything
-else it needs of this lane is landed.
+second disjunct the paragraph above explains.  THE RECEIPT READER IS
+WRITTEN: `FileOpen.file_open_create_recv` folds `open_receipt_create` at
+these families into THREE outcomes — the `-1` arm at `file_open_pay`
+(F-OPEN-2's `Kf`, with the taint), a descriptor on an INODE with
+`fown r (Some (i, []))` or the unmoved deed, and a descriptor on a found
+DEVICE with `file_open_pay` — and `file_open_create_fail_pay` /
+`file_legs_pay` / `file_permit_pay` / `file_kept_pay` are where each of
+the five failure shapes hands the deed back.  So SH-ROUND's remaining
+choice is only whether to take the fd arm at that shape or close (ii)
+first; everything else it needs of this lane is landed, and the U-tier
+wrapper (`wp_uk_ecall_open_create_deed`, `UkTreeCreate`'s mould at this
+claim) is the one piece still unwritten — it wants OFF-HAND-3's held
+offset anyway, exactly as F-OPEN-2's three U-tier corollaries do.

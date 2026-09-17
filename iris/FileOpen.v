@@ -991,6 +991,202 @@ Section FileOpen.
               Heq Hpath Hnp Hstart Hlast Hin Hok with "Hinv Hm Hlb Hown").
   Qed.
 
+  (* ---- 3g.  THE RECEIPT, READ: WHAT THE REDIRECT CHILD GETS BACK ----
+
+     [SpecSysOpen.open_receipt_create] at the families above, folded into
+     the two payloads lane SH-ROUND instantiates
+     [UkShRedirAns.ush_open_call2] with.  Every arm hands the deed back
+     and the lemma says through WHICH: a fired truncate through its own
+     receipt, a create that fired and then failed through the KEYED
+     PIECE'S REFUND (the permit, [SysOpenDefs.cre_ft_kept] -- this is
+     F-OPEN's "third arm"), and everything else through the arm piece's
+     refund or the create leg's receipt.
+
+     THREE OUTCOMES AND NOT TWO, and the third is the honest one: create's
+     F-OK admits a found DEVICE, and this claim cannot refute it (the
+     row's type is reported at the OPEN's observation instant and the tie
+     is at the lookup's -- section 6's second hole).  A caller that wants
+     "the descriptor is on `f`'s own inode" closes that first. *)
+
+  (* what the deed is worth on an arm that did not settle at `f`: F-OPEN-2's
+     [Kf], with the taint *)
+  Definition file_open_pay (c : file_fixed) (r : file_names) (s : dst)
+      : iProp Σ :=
+    (fown r s ∨ (∃ i : Z, fown r (Some (i, []))) ∨ file_taint c)%I.
+
+  (* the permit, read back off a piece that never fired.  THE TIE IS NOT
+     READ here -- identifying the row is the truncate's business, and an
+     unfired permit is worth only what was parked in it -- so the lemma is
+     at any tie. *)
+  Lemma file_permit_pay (c : file_fixed) (r : file_names) (jc : Z) (s : dst)
+      (T : Z -> fname -> iProp Σ) (i : Z) (Γ : fs_view_names Σ) :
+    trunc_permit_of Γ T
+      (file_arm_fam c r jc s) (file_cre_fam c r jc s) (file_dlk_fam c) i -∗
+    file_open_pay c r s.
+  Proof using .
+    iIntros "H". rewrite /trunc_permit_of.
+    iDestruct "H" as (d nm) "[_ [Hfresh | [_ Harm]]]".
+    - rewrite /cre_acre_fired.
+      iDestruct "Hfresh" as (av ents nl) "[_ Hrec]".
+      rewrite /file_cre_fam /file_cre_recv. cbn [pf_recv].
+      iDestruct "Hrec" as "[[_ Hown] | [[_ Hown] | #HT]]".
+      + rewrite /file_open_pay. by iLeft.
+      + rewrite /file_open_pay. iRight. iLeft. iExists i. iExact "Hown".
+      + rewrite /file_open_pay. iRight. iRight. iExact "HT".
+    - rewrite /pf_at. iDestruct "Harm" as "[_ Hown]".
+      rewrite /file_arm_fam. cbn [pf_refund].
+      rewrite /file_open_pay. by iLeft.
+  Qed.
+
+  (* ...and off the keyed piece, whose refund carries it *)
+  Lemma file_kept_pay (c : file_fixed) (r : file_names) (jc : Z) (s : dst)
+      (γfs : fs_names) (vom : mword 64) (pl : list (bv 8)) (i : Z) :
+    om_trunc vom = true ->
+    cre_trunc_kept (fs_gamma_L γfs) vom pl
+      (fun (_ : nat) (d : Z) => ⌜d = ROOTINO⌝%I)
+      (file_arm_fam c r jc s) (file_cre_fam c r jc s) (file_dlk_fam c)
+      i (file_trunc_fam c r s) -∗
+    file_open_pay c r s.
+  Proof using .
+    intros Htr. iIntros "H".
+    rewrite /cre_trunc_kept /open_trunc_at Htr /pf_at /cre_ft_kept.
+    cbn [pf_refund]. iDestruct "H" as "[_ [_ Hk]]".
+    rewrite /cre_permit.
+    iApply (file_permit_pay c r jc s _ i (fs_gamma_L γfs) with "Hk").
+  Qed.
+
+  (* the deed off create's own child legs, which every arm that fired
+     nothing hands back *)
+  Lemma file_legs_pay (c : file_fixed) (r : file_names) (jc : Z) (s : dst)
+      (Γ : fs_view_names Σ) :
+    (cre_child_unfired Γ (AFile []) (file_arm_fam c r jc s)
+       (file_unarm_fam c r s)
+     ∨ ∃ ic : Z, cre_child_pair (file_arm_fam c r jc s)
+                   (file_unarm_fam c r s) ic) -∗
+    file_open_pay c r s.
+  Proof using .
+    iIntros "[Hch | Hp]".
+    - rewrite /cre_child_unfired. iDestruct "Hch" as "[Harm _]".
+      iDestruct (pf_at_refund with "Harm") as "Hown".
+      rewrite /file_arm_fam. cbn [pf_refund]. rewrite /file_open_pay.
+      by iLeft.
+    - iDestruct "Hp" as (ic) "Hp". rewrite /cre_child_pair /cre_unarm_fired.
+      iDestruct "Hp" as (av0 c0) "[_ Hrec]".
+      rewrite /file_unarm_fam. cbn [pf_recv].
+      iDestruct "Hrec" as "[Hown | #HT]"; rewrite /file_open_pay.
+      + by iLeft.
+      + iRight. iRight. iExact "HT".
+  Qed.
+
+  (* ---- THE FAILURE FOLD, PAID.  Five shapes and every one of them hands
+     the deed back: through the arm piece's refund where nothing fired,
+     and through the KEYED PIECE'S REFUND -- the permit -- where the
+     create fired and the call failed past it. *)
+  Lemma file_open_create_fail_pay (γfs : fs_names) (c : file_fixed)
+      (r : file_names) (jc : Z) (s : dst) (cw : Z) (M : gmap Z (bv 8))
+      (pv vom : mword 64) :
+    om_trunc vom = true ->
+    open_post_fail_create (fs_gamma_L γfs) γfs cw M pv vom
+      (fun (_ : nat) (d : Z) => ⌜d = ROOTINO⌝%I)
+      (fun _ _ => True%I)
+      (file_arm_fam c r jc s) (file_unarm_fam c r s)
+      (file_cre_fam c r jc s) (file_dlk_fam c)
+      (pfam_triv (fun _ _ _ => True%I))
+      (file_trunc_fam c r s) -∗
+    file_open_pay c r s.
+  Proof using .
+    intros Htr. rewrite /open_post_fail_create /open_au_create_at.
+    iIntros "[Hau | H]".
+    - iDestruct "Hau" as "(_ & _ & _ & _ & _ & Hch)".
+      iApply (file_legs_pay c r jc s _ with "[Hch]"). by iLeft.
+    - iDestruct "H" as (pl0) "[_ [Hd | Hc]]".
+      + iDestruct "Hd" as "(_ & _ & _ & _ & _ & Hch)".
+        iApply (file_legs_pay c r jc s _ with "[Hch]"). by iLeft.
+      + iDestruct "Hc" as (d) "[_ [Ha | [Hb | Hc]]]".
+        * (* (a) the create FIRED and the open failed past it: the deed is
+               in the permit, which the keyed piece's refund carries *)
+          iDestruct "Ha" as (av i nm ents nl)
+            "(_ & _ & _ & _ & _ & _ & Hkept & _)".
+          iApply (file_kept_pay c r jc s γfs vom pl0 i Htr with "Hkept").
+        * (* (b) the name existed *)
+          iDestruct "Hb" as (av i nm ents nl) "(_ & _ & _ & _ & _ & Hfk & _)".
+          rewrite /cre_fail_kept Htr.
+          iDestruct "Hfk" as "[[Hkept _] | [_ Hlegs]]".
+          { iApply (file_kept_pay c r jc s γfs vom pl0 i Htr with "Hkept"). }
+          iApply (file_legs_pay c r jc s _ with "Hlegs").
+        * (* (c) nothing was observed at all *)
+          iDestruct "Hc" as "(_ & _ & _ & _ & Hlegs)".
+          iApply (file_legs_pay c r jc s _ with "Hlegs").
+  Qed.
+
+  (* ---- THE WHOLE RECEIPT, at the redirect child's own mode.  Three
+     outcomes, and the second is the one the round runs on: a descriptor on
+     an INODE, with `f` present and EMPTY at that inode -- or, on the run
+     an absent deed makes unreachable and the statement cannot refute, the
+     deed unmoved (section 6's first hole).  The third is the found DEVICE
+     create's F-OK admits (section 6's second). *)
+  Lemma file_open_create_recv (γfs : fs_names) (c : file_fixed)
+      (r : file_names) (jc : Z) (s : dst) (cw : Z) (M : gmap Z (bv 8))
+      (pv vom : mword 64) (sts : list fdstate) (rv : mword 64)
+      (fdv' : list fdstate) :
+    om_trunc vom = true ->
+    open_receipt_create (fs_gamma_L γfs) γfs cw M pv vom
+      (fun (_ : nat) (d : Z) => ⌜d = ROOTINO⌝%I)
+      (fun _ _ => True%I)
+      (file_arm_fam c r jc s) (file_unarm_fam c r s)
+      (file_cre_fam c r jc s) (file_dlk_fam c)
+      (pfam_triv (fun _ _ _ => True%I))
+      (file_trunc_fam c r s) sts rv fdv' -∗
+      ((⌜rv = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜fdv' = sts⌝
+        ∗ file_open_pay c r s)
+       ∨ (∃ (i : Z) (γo : gname),
+            ⌜open_fd_rcpt (om_readable vom) (om_writable vom)
+               (FdInode i γo OffParked) sts rv fdv'⌝
+            ∗ (fown r (Some (i, [])) ∨ fown r s ∨ file_taint c))
+       ∨ (∃ ma : Z,
+            ⌜open_fd_rcpt (om_readable vom) (om_writable vom)
+               (FdDevice ma) sts rv fdv'⌝
+            ∗ file_open_pay c r s)).
+  Proof using .
+    intros Htr. rewrite /open_receipt_create.
+    iIntros "[(%Hr & %Hfdv & Hf) | Hok]".
+    { iLeft. iSplitR; [ by iPureIntro |]. iSplitR; [ by iPureIntro |].
+      iApply (file_open_create_fail_pay γfs c r jc s cw M pv vom Htr
+                with "Hf"). }
+    iDestruct "Hok" as (pl0 d i nm) "(_ & _ & _ & [Hfresh | Hex])".
+    - (* FRESH: create made `f` and the truncate fired at the empty child *)
+      iDestruct "Hfresh" as (av ents nl)
+        "(_ & _ & _ & _ & _ & Htrc & _ & Hfd)".
+      iEval (rewrite Htr) in "Htrc".
+      iDestruct "Htrc" as (av' nl') "[_ Hrec]".
+      rewrite /file_trunc_fam /file_trunc_recv. cbn [pf_recv].
+      iDestruct "Hfd" as (γo) "%Hrcpt".
+      iRight. iLeft. iExists i, γo. iSplitR; [ by iPureIntro |].
+      iDestruct "Hrec" as "[Hown | [Hown | #HT]]".
+      + iRight. iLeft. iExact "Hown".
+      + iLeft. iExact "Hown".
+      + iRight. iRight. iExact "HT".
+    - (* THE NAME WAS THERE *)
+      iDestruct "Hex" as (avx entsx nlx) "(_ & _ & _ & _ & _ & Hrest)".
+      iDestruct "Hrest" as (av nl) "[Hfile | Hdev]".
+      + (* ...on a FILE: the truncate fired there *)
+        iDestruct "Hfile" as (bs0) "(_ & _ & Htrc & Hfd)".
+        iEval (rewrite Htr) in "Htrc".
+        iDestruct "Htrc" as (av') "[_ Hrec]".
+        rewrite /file_trunc_fam /file_trunc_recv. cbn [pf_recv].
+        iDestruct "Hfd" as (γo) "%Hrcpt".
+        iRight. iLeft. iExists i, γo. iSplitR; [ by iPureIntro |].
+        iDestruct "Hrec" as "[Hown | [Hown | #HT]]".
+        * iRight. iLeft. iExact "Hown".
+        * iLeft. iExact "Hown".
+        * iRight. iRight. iExact "HT".
+      + (* ...or on a DEVICE: nothing fired, and the deed comes home out
+             of the permit the keyed piece kept *)
+        iDestruct "Hdev" as (ma mi) "(_ & _ & _ & Hkept & %Hrcpt)".
+        iRight. iRight. iExists ma. iSplitR; [ by iPureIntro |].
+        iApply (file_kept_pay c r jc s γfs vom pl0 i Htr with "Hkept").
+  Qed.
+
   (* =================================================================== *)
   (*  4.  THE READ AT `f`'s INUM                                          *)
   (*                                                                      *)
@@ -1351,6 +1547,13 @@ End FileOpen.
 (*      (ii) costs no kernel restatement and is this file's business; it  *)
 (*      is what lane SH-ROUND needs if its round is to read the redirect  *)
 (*      child's fd arm as [fown r (Some (i, []))] ALONE.                  *)
+(*                                                                       *)
+(*      THE SAME SHAPE ONCE MORE, SMALLER: create's F-OK admits a found   *)
+(*      DEVICE, and this claim cannot refute that either -- the row's     *)
+(*      type is reported at the OPEN's observation instant and the tie is *)
+(*      at the lookup's.  [file_open_create_recv] therefore has THREE     *)
+(*      outcomes and not two; closing (i) or (ii) closes this one too,    *)
+(*      since both give the lookup's view a readable claim.               *)
 (*                                                                       *)
 (*  (b) THE O_RDONLY OPEN AT AN ABSENT `f` -- CLOSED (lane F-OPEN-2,      *)
 (*      seam 2).  [file_open_miss_au] / [file_open_miss_recv] below are    *)

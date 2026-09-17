@@ -304,3 +304,236 @@ the parser chain (peek, both scans, `parseredirs`' frame, `parseexec`'s
 argument loop) is either already general or a mechanical re-walk that
 cannot start until a `gettoken` exists that returns something other than
 `'a'` and `0`.
+
+### CAT-PIN — LANDED (2026-09-17, commit `9fb054b3b`)
+
+**cat's inum is 3.**  Read off the image, not chosen: mkfs packs the
+root in `UPROGS` order and `cat` is the first program after `README`
+(inum 2), so the root's record 3 is `(3, "cat")`.  Its record is
+`T_FILE`, `nlink = 1`, `size = 36728` — and those 36,728 bytes ARE
+`user/_cat`, byte for byte (`FsImgCheck.fsimg_cat_bytes_bool`).
+
+**What landed.**
+
+- `iris/FsCatPin.v` — `CAT_INO = 3`, `cat_path`, `cat_bytes :=
+  ElfUser.cat_elf`; `fsimg_cat_size` / `_nlink` / `_nlink_nz` /
+  `_size_bound` / `_type_nz` / `_type_nd` / `_file_bytes` / `_abs`;
+  `era0_cat_path_pin`, `era0_cat_content_pin`, `era0_cat_arun`,
+  `era0_cat_pins`, `era0_cat_pins_of_snap`, `era0_boot_cat_pins`,
+  `era0_recovery_cat_pins`, `era0_reboot_cat_pins`; and the resource
+  forms `fs_snap_era0_cat_pins`, `astate_era0_cat_pins`,
+  `astate_era0_boot_cat_pins`, `nview_era0_cat`, `nview_era0_boot_cat`.
+  `FsEchoPin.v` with `echo` → `cat` throughout and nothing else.
+- `iris/FsFPin.v` — `f_path`, `fsimg_f_path`, the five
+  `fname_f_ne_*`, `f_absent`, `f_absent_apath`, `era0_f_absent`,
+  `era0_boot_f_absent`, `era0_recovery_f_absent`.
+- `iris/FileFsPure.v` — `file_fs_pure av := echo_fs_pure av /\
+  era0_cat_pins av`, `file_fs_pure_echo`, `file_fs_pure_cat`,
+  `file_fs_era0` (the twin of `AppEcho.echo_fs_era0`: same three
+  premises, `file_fs_pure (abs_view (fss_inodes S))`).
+- `iris/FsImgCheck.v` (additive) — `fname_cat`, `fname_f`,
+  `fsimg_cat_path` (`= Some 3`), `fsimg_cat_type`,
+  `fsimg_cat_bytes_bool`, `fsimg_cat_at`, `fsimg_cat_ok`.  Each exactly
+  where echo's twin sits; no landed statement moved.
+- `iris/ElfUser.v` (additive) — `cat_elf` and the fifth copy of the
+  program theorem set, on `echo_elf`'s pattern (pure-bss writable
+  segment: entry 0xf6, loads `(0x0, 0xecc, 0xecc, R-X)` and
+  `(0x1000, 0x0, 0x220, RW-)`, `.bss = [0x1000, 0x1220)`).
+- `user-rocq/_CoqProject` — `CatElfRaw.v` joins the list.  It was
+  DUMPED but deliberately unlisted ("nothing needs it"); now something
+  does.  **The next lane that adds a program must do the same**, and
+  must `rm` the remote `CoqMakefile` afterwards (`run-on-gcp --proofs`
+  regenerates it only when it is ABSENT, so a `_CoqProject` edit is
+  invisible to the remote build until you delete it).
+
+**The `no f` sentence is `FsConsPin`'s, not `TreeImg`'s.**  The brief
+asked for it on `TreeImg.img_root_blk`'s constant reading; it is not
+needed and would have cost an import of `TreeImg` (hence `App` and
+`AppTree`) into an image leaf.  `FsConsPin.fsimg_console_path` already
+pays the identical computation for `console` — a MISS, so the full scan
+— through `FsImgCheck.fsimg_path_root`, which is `FsImg.path_at_disk_dir`'s
+single `dir_first` pass and not `dir_view`.  `fsimg_f_path` is that line
+at `fname_f`, and it is not measurably slower than its neighbours.
+`TreeImg`'s `img_root_blk` / `Global Opaque` machinery exists for
+`dir_view`, which nothing here calls.
+
+**Traps hit (one).**  `FsFPin` is a PURE leaf — no `iris.proofmode` —
+so `rewrite /f_absent` and `rewrite -Hdk` (ssreflect) do not parse
+there: `Syntax error: '*' or [oriented_rewriter] expected after
+'rewrite'`.  Every pin file in this family imports `iris.proofmode` for
+its own `iProp` sections and therefore gets ssr rewriting for free; a
+file that does not must spell `unfold` / `rewrite <-`.  Worth knowing
+for MODEL (`FileDisc.v`), which is Iris-free by charter.
+
+**Assumptions.**  `Print Assumptions` on `era0_cat_path_pin`,
+`era0_cat_content_pin`, `era0_cat_arun`, `era0_cat_pins_of_snap`,
+`era0_boot_cat_pins`, `era0_recovery_cat_pins`, `era0_f_absent`,
+`era0_recovery_f_absent`, `file_fs_era0`, `ElfUser.cat_elf_wf` and
+`FsImgCheck.fsimg_cat_ok`: the eleven `PrimString`/`PrimInt63`
+primitives, nothing else — no `Admitted`, no project axiom, no `Spec*`
+module parameter.  Echo audit still 14, tree audit still the system
+theorem's thirteen (ten Rocq primitives + the two reservation
+`Parameter`s + `functional_extensionality_dep`).  Whole tree green
+(`--proofs -k`, no `Error`).
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  APP-CLAIM: `f_ok av None`
+is `FsFPin.f_absent av` — use that name rather than re-spelling the
+`astep`, because `FsConsPin`'s section 5 delta algebra
+(`cons_absent_arm` / `_create_other` / `_unarm` / `_trunc`, and the
+name-generic `file_pin_*` family beside them) is written against
+exactly this shape and is what carries the claim through the mknod and
+the create legs.  `FsFPin` deliberately stops before those: they need
+`FsAbsDelta` and belong with the claim, and the five `fname_f_ne_*`
+inequalities they take are already proved there.
+
+### OFF-HAND (kernel tier, 2026-09-17) — THE PIN DOES NOT COME OFF; ONE UNPAID SITE, NAMED
+
+**The lane's verdict in one line: deliverable 1 reduces to a SINGLE unpaid
+obligation — `fdv_all_parked` at the exec crossing — and the payer the brief
+names for it does not exist at the tier it names.  Deliverables 2 and 3 sit
+behind it.  Everything below is checked at the statement in the tree, not
+inferred from the earlier RA blocks.**
+
+**WHAT LANDED** (whole tree green on the lane's remote tree, `--proofs -k`, 0
+`Error`; echo audit 14; every new lemma `Proof using` and `Closed under the
+global context` — no platform axiom at all): `iris/FdPark.v`, additive, no
+landed statement moved.
+
+- `FdPark.fdst_parked_of_key` — the one step between the STRONG premise a
+  slot's mint is narrowed by (`FdSlots.fdv_all_parked` of the key's table)
+  and the WEAK one a deposit actually spends (`fdst_parked` of
+  `FdSlots.fd_st_of_key` at the call's own argument word, which is how rows
+  5 and 16 read the mode).  Out of range and off the end `fd_st_of_key`
+  answers `FdClosed`, so the step is free at both.  This is the lemma the
+  class field's premise is discharged through; without it every prover of
+  `xv6_sbundle_of_supply_ne` would re-derive it.
+- `FdPark.off_supply_of_st_at` / `off_supply_of_st_at_eq` — **the arm's
+  supplier at an EXACT payment, which is what RA-2's `uoff_surr` cannot
+  give.**  `uoff_surr` names its position under an `∃` (right for a
+  boundary, which does not care), so `off_supply_of_st` hands its receipt
+  back at the KERNEL's offset.  A held FILE MEMBER has to promise more:
+  design/app-file.md §3's append step needs `uoff γo off` in and
+  `uoff γo (off + d)` out at the CALLER's own `off`.  These take the payment
+  at `uoff_rcpt`'s (exact) shape and return, beside the supplier, THE TIE
+  `⌜m = OffHeld -> off' = off⌝` — the kernel learns it by agreement against
+  its own half (`UserOff.uoff_agree_k`), so the caller still pays no
+  equation and a PARKED row still costs exactly nothing (payment `True`,
+  tie guarded by the mode).  It is also what makes a MULTI-NODE walk
+  statable: filewrite's chain fires once per chunk, the receipt of node `k`
+  is the payment of node `k+1` at the same exact shape, so a loop carries
+  `uoff_rcpt st (off0 + p)` at its own byte cursor and the tie turns each
+  fire's offset into `off0 + p` — the anchored-cursor equation
+  design/user-write.md §3c says is missing.  With `uoff_surr` the cursor can
+  only be re-existentialised at every node.
+- `FdPark.uoff_rcpt_of_parked` — the exact payment read at an equation on
+  the state, which is how a member's premise list holds it.
+
+**REFUTED / BLOCKED.**
+
+1. **DELIVERABLE 1 HAS EXACTLY ONE UNPAID SITE, AND IT IS EXEC.**  The mint
+   sites that owe `fdv_all_parked (uvis_fd W)` are FOUR, not three (the
+   brief asked): `SystemAdequacy.init_boot_of_sup` (`:1063`),
+   `PinnedExec.pex_slot`'s taint arm (`:281`), `UInitBoot`'s taint-arm mint
+   (`:860`) and `UInitSh`'s (`:1370`).  Of these:
+   - `init_boot_of_sup` is FREE (`FdSlots.fdv_all_parked_fdt0`).
+   - **FORK IS NOT A SITE AT ALL**, and the brief's "fork's child … a
+     verified parent parks first" is unnecessary: `UexecRet.uexec_fork_child_F`
+     (`:1320`) builds the child's slot at
+     `bump_at W … (uvis_fd W) …` and `uexec_fork_F` pins `⌜fdv' = uvis_fd W⌝`
+     — the CHILD'S KEY CARRIES THE PARENT'S TABLE VERBATIM, so the mint's
+     premise transfers by that equation, for a generic parent and a verified
+     one alike.  (RD-2's consequence (b) was about the descriptor BUNDLE,
+     not the key.)
+   - the generic tier's own Löb step is FREE too: the successor key's
+     all-parkedness comes off `UsysMemOk.usys_fd_ok`'s open-arm conjunct,
+     which RA-3 landed for exactly this.
+   - **the remaining three are ONE crossing — exec** (`SpecKexec.exec_slot_pre`'s
+     two wands), and its only supplier is `ProcInv.proc_priv_parked`
+     (`:1459`), which IS the pin, in three steps
+     (`FileInvDefs.fdstate_ok_parked :635` → `file_ref_parked :1802` →
+     `ProcInv.ofile_slot_parked :432` / `ofile_slots_parked :655` /
+     `proc_ofiles_parked :677`).  Relaxing the pin deletes it.  §8.4's wall 2
+     therefore stands, now sharpened: it is the ONLY obligation left unpaid.
+     (Note `proc_priv_parked` has ZERO proof consumers today — so the pin's
+     relaxation costs nothing until the premise exists, and everything until
+     then.)
+   - **THE BRIEF'S REPLACEMENT PAYER IS REFUTED BY COVERAGE, NOT BY PROOF
+     DIFFICULTY.**  "The U-tier exec leaf gains the premise; a verified
+     caller parks with `UserOff.uoff_park` before the ecall" cannot work:
+     `fdv_all_parked fdv` quantifies over all `NOFILE` slots, and a
+     program's U-tier knowledge of its table is `UserFd.ustd` (slots
+     `< NSTD = 3`) plus its `UserFd.ufd` handles (each carries `NSTD <= fd`).
+     A `ufd` handle is an ordinary affine resource: a program may DROP it
+     while its descriptor stays OPEN in `fdv`.  So parking every offset the
+     caller can name leaves the rows it cannot name unconstrained, and the
+     premise is unprovable at that tier however much the caller parks.  This
+     is §8.3's finding C read at the exec arm.
+
+2. **"THE MODE IS FREE" REFUTES `FileInvDefs.fdstate_ok_inj`, AND THIS IS NEW
+   (no RA block records it).**  With `m` unconstrained,
+   `FdOpen r w (FdInode n γo OffParked)` and `FdOpen r w (FdInode n γo OffHeld)`
+   both satisfy `fdstate_ok` at ONE `C`, so `fdstate_ok_inj` (`:669`) is
+   false and `file_pay_st_agree` (`:1736`) and `FileInv.file_ref_agree`
+   (`:94`) fall with it — and they are load-bearing (two descriptors on one
+   file must report one state; filedup's two shares must not drift apart,
+   and a drifted pair would have one row claiming an `off_user_inv` that was
+   never allocated).  **The fix is not to drop the pin but to MOVE it**: the
+   offset mode is a per-FILE constant, so it belongs with the other two
+   (`fp_inum`, `fp_ooff`) in the payload names record.  `FileInvDefs.fpnames`
+   gains `fp_om : offmode` (six `MkFPNames` sites: `ProofPipealloc` ×4,
+   `ProofSysOpenParts` ×2), `fdstate_ok` takes it where it takes `γo`, and
+   the FD_INODE arm pins `m = fp_om pn`.  `fpay_tok`'s `to_agree` then makes
+   two holders agree on the mode for free, exactly as they agree on the
+   inum — and it is semantically right: `γo` is per FILE OBJECT, so dup and
+   fork share one mode by construction (user-read.md §4).
+
+3. **DELIVERABLE 2 IS §8.4's WALL 1, UNCHANGED, AND THE MODE-IN-THE-FAMILY
+   WORDING DOES NOT ROUTE AROUND IT.**  `UsysMemOk.usys_fd_ok`'s open arm
+   carries `fdst_parked (FdOpen rd wr t)` on the ACTUAL successor table, and
+   that relation is threaded with NO tier index: `SpecSyscall.sysc_fd_ok`
+   (`:328`) is it verbatim and `SpecUsertrap.ut_fd_ecall` (`:310`) relays it
+   at every number.  An open that installs `FdInode i γo OffHeld` refutes it
+   whatever the deposit's family says, because the family is invisible to a
+   pure relation; and the conjunct cannot come off while the generic Löb
+   reads successor-parkedness from it (finding 1).  So "the mode from the
+   deposit's open family" needs the generic tier's successor-parkedness
+   carrier moved to the slot's own post (`UexecSG.spost_at`'s `fdv'`, which
+   the FAMILY chooses) FIRST — a lane, not a step, exactly as §8.4 priced it.
+
+4. **DELIVERABLE 3: ALL THREE MEMBERS SIT BEHIND 1 AND 2.**
+   `wp_uk_ecall_open_recv_img_held` is blocked by 3 above.  The two file
+   members are blocked one step earlier than "no held descriptor exists":
+   `SpecFilewrite.filewrite_extra` and `SpecFileread`'s read arms return NO
+   OFFSET RECEIPT at any mode, so the briefed post (`uoff γo (off + landed)`
+   on BOTH arms) is not derivable from the landed kernel rows even at a
+   hypothetical held state — stating it would be stating the arm split, not
+   using it.  **The cheap half, for whoever takes the split:**
+   `SpecFilewrite.filewrite_in` (`:789`) and `SpecFileread.fileread_in`
+   (`:929`) already match `FdInode i γo _` — THE MODE IS IGNORED — so the
+   split's PARKED branch is byte-for-byte what is there now and every
+   `_in_inode` / `_extra_inode` reader keeps its statement.  The whole cost
+   is the HELD branch (payment `FdPark.uoff_rcpt st off`) plus a receipt
+   parameter on `write_arms_at` / `read_arms`, and then `fsabs_filewrite_in`
+   / `fsabs_fileread_in` gaining `⌜fdst_parked st⌝` — which is where the
+   class premise of finding 1 attaches, through `fdst_parked_of_key`.
+   The kernel fire sites are few and known: `ProofFilewrite:4947`
+   (`Hoinvw`, handed to the body at `:5481`, spent at `:2960` / `:3098`) and
+   `ProofFileread:2263` (spent at `:2839` / `:3190`); both become
+   `FdPark.off_supply_of_st_at_eq`.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST: the owner's ruling on §8.4's
+U-tier held carrier — and this lane's check makes it CHEAPER than §8.4
+priced it.**  The only obligation it has to discharge is `fdv_all_parked fdv`
+at the exec crossing (finding 1), so §8.4's *set* of held descriptors is more
+than is needed: a COUNTER suffices.  `uheld γ (n : nat)`, one half beside
+`UserFd.ufd_auth` inside `UkRun.urun` and the other the program's, at the
+invariant "`n` is the number of held rows in `fdv`": `n = 0` gives
+`fdv_all_parked fdv` outright, a hand-open increments it as it hands the half
+out, `FdPark.foff_row_park` at one row decrements, close of a held row
+decrements.  A program that never hand-opened carries `uheld γ 0` and pays
+the exec premise from that alone — which is what the three unpaid mint sites
+need and what no `ustd`/`ufd` combination can give.  It is NOT RA-1's
+finding-2 brute fix: it makes no program unable to hold a `uoff`, it makes
+every program able to SAY whether it does.  With it, finding 1 closes, the
+`fp_om` move of finding 2 makes the pin's relaxation type-correct, and
+deliverable 2 still waits on the `spost_at` lane of finding 3.

@@ -1452,6 +1452,8 @@ LinkConsolewrite.v
 
 FsShPin.v
 FsEchoPin.v
+FsCatPin.v
+FsFPin.v
 FsConsPin.v
 SpecKexec.v
 InitBoot.v
@@ -1479,6 +1481,7 @@ SystemUartAccepted.v
 App.v
 
 LineWords.v
+FileState.v
 EchoDisc.v
 LogEntryDefs.v
 ConsLog.v
@@ -1489,7 +1492,9 @@ EchoLinksPro.v
 EchoLinksLine.v
 EchoLinksBan.v
 EchoFsPure.v
+FileFsPure.v
 AppEcho.v
+AppFile.v
 AppTree.v
 
 FsAbsUnlinkFire.v

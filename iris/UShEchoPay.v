@@ -232,7 +232,7 @@ Section UShEchoPay.
     iIntros "#Hlk #Hdep (#Hinv & #Hcl & #Hgen)".
     rewrite /UkShEcho.sh_exec_sup_echo_wq. iIntros "!>" (I) "%Hokws".
     rewrite /UkShEcho.sh_exec_sup_echo.
-    iIntros "!>" (N' m pc s0 t g ld) "%Hpeq %Ha0 %Ha1 %Hbytes %Hfd1 Hstd #Hcmd Hcr".
+    iIntros "!>" (N' m pc s0 t g ld) "%Hpeq %Hheq %Ha0 %Ha1 %Hbytes %Hfd1 Hstd #Hcmd Hcr".
     (* the lend, pinned *)
     rewrite /EchoLinksLine.ewc_lcred. iDestruct "Hcr" as (v) "[#Hpin Hcr]".
     (* ---- THE TAINT ARM: the generic slot at the chosen payload.  It names
@@ -265,6 +265,10 @@ Section UShEchoPay.
     (* the run's two table rows come in bundled (lane OFF-HAND-3, R1);
        the entry below is stated at the pipe half. *)
     iDestruct (UkRun.urun_rows_nopipe _ _ with "Hnpw") as "#Hnp0".
+    (* ...and the offset half, which the entry asks of the table it is
+       stated at now (lane OFF-HAND-4, S2) *)
+    iDestruct (UkRun.urun_rows_parked (ukn_parked0 := Hheq) N' fdv with "Hnpw")
+      as %Hpks.
     (* the node, read ONCE off the lent heap *)
     iAssert (⌜ echo_node_img (last_ws I) M s0 t g ⌝)%I as %Himg.
     { iApply (echo_node_img_of_cmd (last_ws I) _ _ _ M pm sz s0 t g Hokws
@@ -289,7 +293,7 @@ Section UShEchoPay.
     (* ---- (E): echo's PAID entry, at the pinned image ---- *)
     iSplitR "Hstd Hcr".
     { rewrite Hpeq. rewrite /image_entry. iModIntro.
-      iIntros (na alen afun W') "%Hok %Hcwd0 %Hlzf _ _ %Hpkq %Hargs Hmp [_ Hc]".
+      iIntros (na alen afun W') "%Hok %Hcwd0 %Hlzf _ _ %Hargs Hmp [_ Hc]".
       destruct (echo_args_det_holds (last_ws I) Hokws M s0 t g na alen afun
                   Himg Hbytes Hargs) as (Hna & Halen & Hafun).
       (* ECHO'S FRAME FITS: the arguments this line pushed leave the
@@ -299,8 +303,7 @@ Section UShEchoPay.
       iApply (echo_slot_of_kexec_at na alen afun fdv W' v I Hokws Hok
                 (echo_room_of_det (last_ws I) na alen Hokws Hna Halen)
                 Hlen
-                ltac:(rewrite <- (kexec_image_ok_fd _ na alen afun fdv W' Hok);
-                      exact Hpkq)
+                Hpks
                 Hlzf Hna Halen Hafun Hfd1' Hkt
                 with "Hpin Hlk Hnp0 Hdep Hgen Hmp Hc"). }
     iFrame "Hstd Hcr".

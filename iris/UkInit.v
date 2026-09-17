@@ -1727,6 +1727,16 @@ Section UkInit.
       (γ : gname) (n : nat) : iProp Σ :=
     (∀ (N' : uk_names Σ) (m : regfile) (pc : mword 64) (l : list fdstate),
        ⌜ ukn_pay N' = ucons_pay cn γ T (init_rd (cc_rd Cr) (cc_wbn Cr)) ⌝ -∗
+       (* ...AND THE EXEC'ING RECORD HOLDS NO OFFSET HALF (lane OFF-HAND-4,
+          S2).  sh's entry is minted at [ukn_held = empty]
+          ([UShKernel.sh_uexec_slot]) and [ExecEntry.image_entry_at] no
+          longer relays the key's all-parked row, so the SUPPLIER has to
+          say it about the table it execs with -- which it reads off its
+          own run ([UkRun.urun_rows_parked]) exactly when this row holds.
+          The spender is /init's exec leaf, whose record carries the class
+          ([UkRun.ukn_parked]); the child that execs sh is minted at its
+          parent's set ([UkFork.wp_uk_ecall_fork]). *)
+       ⌜ ukn_held N' = ∅ ⌝ -∗
        ⌜ m !!! Regidx a0_idx = (mword_of_int 0x9a8 : mword 64) ⌝ -∗
        ⌜ m !!! Regidx a1_idx = (mword_of_int 0x1000 : mword 64) ⌝ -∗
        init_rodata (ukn_t N') -∗

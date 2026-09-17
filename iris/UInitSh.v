@@ -1044,6 +1044,13 @@ Section UInitSh.
     cs = ∅ ->
     bv_unsigned pidv <> 1 ->
     length fdv = NOFILE ->
+    (* ...AND /INIT'S OWN TABLE IS ALL PARKED (lane OFF-HAND-4, S2).  sh's
+       record is minted at [ukn_held = empty] ([UShKernel.sh_uexec_slot]),
+       which is honest only at such a key; [ExecEntry.image_entry_at] no
+       longer relays the row, so the entry says it about the table it is
+       stated at and the exec'ing process reads it off its OWN run
+       ([UkRun.urun_rows_parked] at the empty held set). *)
+    fdv_all_parked fdv ->
     cons_cred_holds cn T Cr ->
     (* ...and whether /init's own table holds a pipe row (design/pipe.md,
        "The exit path"): sh's table IS this one
@@ -1071,7 +1078,7 @@ Section UInitSh.
                 (cc_wp Cr) (cc_wbn Cr) l np))%I
       uslot.
   Proof using .
-    intros Hpsok_free Hn0 Hsav Hsro Hl Hcs Hpid Hlen HCr.
+    intros Hpsok_free Hn0 Hsav Hsro Hl Hcs Hpid Hlen Hpks HCr.
     pose proof HCr as (Hrl & Hpm1 & Hpm3 & Hpmwb & Hwc
                        & Hwbwc & Hwbl & Hwbr & Hbd & Hpw).
     (* the credential's laws are stated over EVERY position ghost; this
@@ -1082,8 +1089,11 @@ Section UInitSh.
     iIntros "#Hnpw #Hdep #Hdp #Hplaw #Hcons #Hfd0 #Hgen'".
     rewrite /image_entry. iModIntro.
     iIntros (na alen afun W')
-      "%Hok %Hcwd0 %Hlzf %Hchq %Hpiq %Hpkq %Hargs #Hmp
+      "%Hok %Hcwd0 %Hlzf %Hchq %Hpiq %Hargs #Hmp
        [[#Hp1 [#Hp2 #Htag]] [Hps [Hls [Hstd' Hcred]]]]".
+    (* the discipline comes off /init's own table now -- see the premise *)
+    assert (Hpkq : fdv_all_parked (uvis_fd W'))
+      by (rewrite (kexec_image_ok_fd _ na alen afun fdv W' Hok); exact Hpks).
     assert (Hch0 : uvis_ch W' = ∅) by (rewrite Hchq; exact Hcs).
     assert (Hpid1 : bv_unsigned (uvis_pid W') <> 1)
       by (rewrite Hpiq; exact Hpid).
@@ -1258,7 +1268,7 @@ Section UInitSh.
        needs is [length fdv = NOFILE], which comes off the LENT authority
        ([UserFd.ufd_auth_len]) rather than off the ledger. *)
     iModIntro. iIntros (γp np N m pc l)
-      "%Hpeq %Ha0 %Ha1 #Hro #Hargv Hstd Hrow Hcred Hpos Hlease Hchf Hpidf".
+      "%Hpeq %Hheq %Ha0 %Ha1 #Hro #Hargv Hstd Hrow Hcred Hpos Hlease Hchf Hpidf".
     (* ...and the taint arm at the SAME payload: a tainted process runs on
        the generic family, which exists at any constant payload and HOLDS
        the resource it names ([UexecExecMint.uslot_mint_pay]).  The payload
@@ -1309,6 +1319,12 @@ Section UInitSh.
     (* the run's two table rows come in bundled (lane OFF-HAND-3, R1);
        what the entry below is stated at is still the pipe half. *)
     iDestruct (UkRun.urun_rows_nopipe _ _ with "Hnpw") as "#Hnp0".
+    (* ...AND THE OFFSET HALF IS THE ENTRY'S NOW (lane OFF-HAND-4, S2):
+       [ExecEntry.image_entry_at] stopped relaying the key's all-parked
+       row, so the exec'ing process reads it off its OWN run -- which is
+       exactly what the record's empty held set buys. *)
+    iDestruct (UkRun.urun_rows_parked (ukn_parked0 := Hheq) N fdv with "Hnpw")
+      as %Hpks.
     (* ---- THE TWO IDENTITY READINGS (lane EXEC-SEAM), off the lent
        authorities against the child's own fragments: the key's children
        set is EMPTY and its pid is not <init>'s.  Both are pure, so the
@@ -1371,19 +1387,14 @@ Section UInitSh.
        hands it to whatever slot answers, so sh's entry gets its exit
        payload -- the console reader token -- from here and from nowhere
        else (EXEC-PAY, GENERIC-PAY). *)
-    (* (* RA-2: held case here *) THE TAINT ARM, AT THE KEY sh RESUMES AT.
-       Under RA-2's narrowing [Hgen'] above gains
-       [⌜FdSlots.fdv_all_parked (uvis_fd W')⌝] and the key's table is
-       [fdv] -- init's OWN table at the exec, since exec keeps it
-       ([SpecKexec.kexec_image_ok_parked] is the crossing).  init's table
-       really is all-parked (it holds three console descriptors and
-       thirteen closed slots), but note what says so TODAY: only
-       [Hl : take NSTD fdv = l] from [UserFd.ustd_agree] and the
-       [UInitFd.ufd_row] facts above, i.e. the low three slots.  The rest
-       of the table is unconstrained at this tier, which is why the
-       premise must ride the kexec SLOT WANDS (kernel-supplied, off
-       [ProcInv.proc_priv_parked]) and not that assertion -- see the same
-       note at [PinnedExec.pex_slot]'s taint arm. *)
+    (* THE ALL-PARKED ROW IS THE RUN'S OWN NOW (lane OFF-HAND-4, S1/S2).
+       It used to have to ride the kexec SLOT WANDS, because the only
+       thing this tier could say about its table was [Hl : take NSTD fdv =
+       l] -- the low three slots -- and the rest was unconstrained.  The
+       record's HELD SET says it: [UkRun.urun_rows] carries [fdv_held_in
+       (ukn_held N) fdv] at every trap, and at the empty set that IS
+       all-parkedness ([Hpks] above).  The key sh resumes at inherits it
+       through [SpecKexec.kexec_image_ok_parked]. *)
     (* THE LINEAR HALF OF [Pay] IS THE POSITION: [UInitSh.sh_pay] is
        persistent, so what actually crosses [PinnedExec]'s one linear slot
        is [UserConsole.upos] at the pair init minted for this round.  The
@@ -1395,7 +1406,7 @@ Section UInitSh.
     { rewrite Hpeq.
       iApply (init_sh_image_entry T cn K Cr Rsh n0 γp np N l
                 M fdv cs pidv Hpsok_free Hn0 Hsav Hsro Hl Hcs
-                ltac:(rewrite Hpv; exact Hp1) Hlen HCr
+                ltac:(rewrite Hpv; exact Hp1) Hlen Hpks HCr
                 with "Hnp0 Hdep Hdp Hplaw Hcons Hfd0 Hgen'"). }
     (* ...AND THE LINEAR PAYLOAD, WHOLE: [PinnedExec]'s one [Pay] slot is
        sh's persistent state, the position init minted for this round, the

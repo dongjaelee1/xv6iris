@@ -6520,6 +6520,13 @@ Section UkSh.
   Global Instance ush_gen_slot_persistent : Persistent ush_gen_slot.
   Proof using . rewrite /ush_gen_slot. apply _. Qed.
 
+  (* ...and the row on its own (lane OFF-HAND-4, S2).  sh's record holds no
+     offset half, and the slot is where that travels; a child sh forks
+     inherits the set ([UkFork.wp_uk_ecall_fork]'s [hs]), so this is what
+     says the forked child may run /echo's verified entry. *)
+  Lemma ush_gen_slot_held : ush_gen_slot -∗ ⌜ukn_held N = ∅⌝.
+  Proof using . iIntros "[$ _]". Qed.
+
   Lemma ush_gen_run (h : CpuId) (m : regfile) (pc : mword 64) (avail : nat) :
     is_aligned_vaddr (Virtaddr pc) 2 = true ->
     ush_gen_slot -∗ T -∗ urun N h m pc avail -∗ WP (Loop : expr riscv_lang).

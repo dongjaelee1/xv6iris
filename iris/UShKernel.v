@@ -1008,6 +1008,13 @@ Section UShKernel.
     kexec_sz sh_elf - PGSIZE + 8 * Z.of_nat (2 + (8 + (16 + (ush_Dbody + n0))))
       <= kxc_sp_final (kexec_sz sh_elf) alen na ->
     length sts = NOFILE ->
+    (* ...AND THE CALLER'S OWN TABLE IS ALL PARKED (lane OFF-HAND-4, S2).
+       sh's record is minted at [ukn_held = empty] ([sh_uexec_slot]), which
+       is honest only at such a key -- and since [ExecEntry.image_entry_at]
+       stopped relaying the row, the entry says it about the table it is
+       stated at.  sh's caller is /init, whose own run carries it
+       ([UkRun.urun_rows_parked]). *)
+    fdv_all_parked sts ->
     (* the two identity readings the CALLER makes, as equations against
        what [image_entry_at] relays (lane EXEC-SEAM) *)
     cs = ∅ ->
@@ -1046,10 +1053,16 @@ Section UShKernel.
             ∗ UkSh.ush_wcp Wc Wb (take NSTD sts) I 0%nat) ∨ T))
       uslot.
   Proof using .
-    intros Hbd HQc Hroom Hlen -> Hpid1.
+    intros Hbd HQc Hroom Hlen Hpks -> Hpid1.
     iIntros "#Hpay #Hnpw #Hdep #Hdp #Htag #Hplaw #Hrest #Hfd0 #Hin #Hgen".
     rewrite /image_entry_at. iIntros "!>" (W')
-      "%Hok %Hcwd0 %Hlzf %Hchq %Hpiq %Hpkq Hmp (Hpos & Hlease & Hwcp)".
+      "%Hok %Hcwd0 %Hlzf %Hchq %Hpiq Hmp (Hpos & Hlease & Hwcp)".
+    (* THE DISCIPLINE COMES OFF [sts] NOW (lane OFF-HAND-4, S2): the entry
+       stopped relaying it ([ExecEntry.image_entry_at]'s note), and the
+       image fact pins the resumed key's table to the caller's
+       ([SpecKexec.kexec_image_ok_fd]). *)
+    assert (Hpkq : fdv_all_parked (uvis_fd W'))
+      by (rewrite (kexec_image_ok_fd _ _ _ _ _ _ Hok); exact Hpks).
     assert (Hch0 : uvis_ch W' = ∅) by exact Hchq.
     assert (Hpid1' : bv_unsigned (uvis_pid W') <> 1)
       by (rewrite Hpiq; exact Hpid1).

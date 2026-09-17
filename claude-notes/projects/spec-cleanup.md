@@ -987,7 +987,7 @@ audit 13, both unmoved.
    the taint is owed in three `∗`-separated places: both wands of
    `SpecKexec.exec_slot_pre` (`SpecKexec.v:861`) and the deposit's refund
    `UkInit.init_lend_ref` (`UkInit.v:1755`).  `PieceFam.pf_at`'s `∧`
-   (`PieceFam.v:100`) covers fire-versus-refund only.
+   (`PieceFam.v:99`) covers fire-versus-refund only.
 3. **/init's premise list is otherwise PAID**: `tree_init_boot_con` is
    `UInitKernel.init_boot_con` (`:679`) with every premise discharged
    (echo's room/length/head/nopipe/psok arithmetic verbatim), and

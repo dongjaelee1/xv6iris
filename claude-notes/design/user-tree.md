@@ -2504,7 +2504,7 @@ one licence cannot pay the node:
   wands of `SpecKexec.exec_slot_pre` (`SpecKexec.v:861`, whose own comment
   says the bundle carries both arms though one fires), and the deposit's
   REFUND, which must be `UkInit.init_lend_ref` (`UkInit.v:1755`) — the lend
-  again.  `PieceFam.pf_at`'s `∧` (`PieceFam.v:100`) covers fire-versus-
+  again.  `PieceFam.pf_at`'s `∧` (`PieceFam.v:99`) covers fire-versus-
   refund and NOT the two arms; the walk's cursor (`FsAbsEra.ex_start`,
   `FsAbsEra.v:939`, a fancy update — the one place a mint could run) and
   the observation's receipt each reach both arms, but both live in

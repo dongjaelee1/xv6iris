@@ -150,8 +150,9 @@ Section ExecBundle.
          above are equations on [cw], on [uvis_lazy W'], on [cs] and on
          [pidv], and a bare [subst] would spend one of those instead. *)
       injection Hnode; intros Hnl Hf. subst f' nl'.
-      iApply ("Hcon" $! W' with "[%] [%] [%] [%] [%] Hp HPay");
-        [ exact Hok | exact Hcwq | exact Hlzq | exact Hchq | exact Hpiq ].
+      iApply ("Hcon" $! W' with "[%] [%] [%] [%] [%] [%] Hp HPay");
+        [ exact Hok | exact Hcwq | exact Hlzq | exact Hchq | exact Hpiq
+        | exact Hpk ].
     - (* ---- ARM (b): a loadable file IS loadable, so this arm is dead ---- *)
       iIntros (av' i a W') "HP Hrecv %Hnload %Hkey %Hcwq %Hlzq %Hchq %Hpiq %Hpk #Hp".
       iPoseProof ("Hid" $! av' i a) as "Hid'".

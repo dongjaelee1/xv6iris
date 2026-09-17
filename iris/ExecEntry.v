@@ -111,6 +111,15 @@ Section ExecEntry.
           ⌜uvis_lazy W' = false⌝ -∗
           ⌜uvis_ch W' = cs⌝ -∗
           ⌜uvis_pid W' = pidv⌝ -∗
+          (* ...AND THE RESUMED KEY'S TABLE IS ALL PARKED (lane OFF-HAND-3,
+             R1).  [SpecKexec.exec_slot_pre]'s wands have carried this row
+             since lane OFF-HAND-2, and until now every producer DROPPED
+             it.  It is relayed here because the entry is where a program's
+             record is minted, and a record that answers for its offsets
+             ([UkRun.ukn_park]) may only be minted at an all-parked key --
+             [UkRun.uslot_of_urun*]'s own premise.  A program that does not
+             care drops it, exactly as it drops the four identity rows. *)
+          ⌜FdSlots.fdv_all_parked (uvis_fd W')⌝ -∗
           my_pay (uvis_gen W') Q -∗ Pay -∗ X W'))%I.
 
   (* ------------------------------------------------------------------ *)
@@ -130,6 +139,9 @@ Section ExecEntry.
           ⌜uvis_lazy W' = false⌝ -∗
           ⌜uvis_ch W' = cs⌝ -∗
           ⌜uvis_pid W' = pidv⌝ -∗
+          (* ...and the resumed key's all-parked row -- [image_entry_at]'s
+             note (lane OFF-HAND-3, R1) *)
+          ⌜FdSlots.fdv_all_parked (uvis_fd W')⌝ -∗
           ⌜exec_args_of M av na alen afun⌝ -∗
           my_pay (uvis_gen W') Q -∗ Pay -∗ X W'))%I.
 
@@ -184,11 +196,12 @@ Section ExecEntry.
     image_entry f M av sts cw cs pidv Q Pay X.
   Proof using .
     iIntros "#H". rewrite /image_entry. iIntros "!>" (na alen afun W')
-      "%Hok %Hcw %Hlz %Hch %Hpid %Hargs Hp HPay".
+      "%Hok %Hcw %Hlz %Hch %Hpid %Hpk %Hargs Hp HPay".
     iDestruct ("H" $! na alen afun with "[%]") as "#He"; [ exact Hargs | ].
     rewrite /image_entry_at.
-    iApply ("He" $! W' with "[%] [%] [%] [%] [%] Hp HPay");
-      [ exact Hok | exact Hcw | exact Hlz | exact Hch | exact Hpid ].
+    iApply ("He" $! W' with "[%] [%] [%] [%] [%] [%] Hp HPay");
+      [ exact Hok | exact Hcw | exact Hlz | exact Hch | exact Hpid
+      | exact Hpk ].
   Qed.
 
   (* ...and back, at any shape the reading admits *)
@@ -201,11 +214,11 @@ Section ExecEntry.
     image_entry_at f na alen afun sts cw cs pidv Q Pay X.
   Proof using .
     intros Hargs. iIntros "#H". rewrite /image_entry_at.
-    iIntros "!>" (W') "%Hok %Hcw %Hlz %Hch %Hpid Hp HPay".
+    iIntros "!>" (W') "%Hok %Hcw %Hlz %Hch %Hpid %Hpk Hp HPay".
     rewrite /image_entry.
-    iApply ("H" $! na alen afun W' with "[%] [%] [%] [%] [%] [%] Hp HPay");
+    iApply ("H" $! na alen afun W' with "[%] [%] [%] [%] [%] [%] [%] Hp HPay");
       [ exact Hok | exact Hcw | exact Hlz | exact Hch | exact Hpid
-      | exact Hargs ].
+      | exact Hpk | exact Hargs ].
   Qed.
 
 End ExecEntry.

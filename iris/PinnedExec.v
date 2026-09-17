@@ -210,6 +210,10 @@ Section PinnedExec.
          (* ...AND THE TWO IDENTITY ROWS (lane EXEC-SEAM): the resumed
             key's children set and pid are the caller's *)
          ⌜uvis_ch W' = cs⌝ -∗ ⌜uvis_pid W' = pidv⌝ -∗
+         (* ...AND THE RESUMED KEY'S ALL-PARKED ROW (lane OFF-HAND-3, R1):
+            [ExecEntry.image_entry_at]'s, relayed off [SpecKexec.
+            exec_slot_pre]'s wands. *)
+         ⌜FdSlots.fdv_all_parked (uvis_fd W')⌝ -∗
          my_pay (uvis_gen W') Q -∗ Pay -∗ X W') -∗
     □ (∀ W' : uvis, T -∗ my_pay (uvis_gen W') Q -∗ X W') -∗
     Pay -∗
@@ -271,6 +275,10 @@ Section PinnedExec.
             can say it has no children yet and is not <init>. *)
          ⌜uvis_ch W' = cs⌝ -∗
          ⌜uvis_pid W' = pidv⌝ -∗
+         (* ...AND THE RESUMED KEY'S ALL-PARKED ROW (lane OFF-HAND-3, R1):
+            [ExecEntry.image_entry_at]'s, relayed off [SpecKexec.
+            exec_slot_pre]'s wands. *)
+         ⌜FdSlots.fdv_all_parked (uvis_fd W')⌝ -∗
          ⌜exec_args_of M av na alen afun⌝ -∗
          my_pay (uvis_gen W') Q -∗ Pay -∗ X W') -∗
     (* THE TAINT ARM TAKES THE KEY FIRST AND THE PAY FACT BESIDE [T]: a
@@ -341,6 +349,10 @@ Section PinnedExec.
          (* ...and its two identity rows (lane EXEC-SEAM), see [pex_slot] *)
          ⌜uvis_ch W' = cs⌝ -∗
          ⌜uvis_pid W' = pidv⌝ -∗
+         (* ...AND THE RESUMED KEY'S ALL-PARKED ROW (lane OFF-HAND-3, R1):
+            [ExecEntry.image_entry_at]'s, relayed off [SpecKexec.
+            exec_slot_pre]'s wands. *)
+         ⌜FdSlots.fdv_all_parked (uvis_fd W')⌝ -∗
          ⌜exec_args_of M av na alen afun⌝ -∗
          my_pay (uvis_gen W') Q -∗ Pay -∗ X W') -∗
     (* the taint's generic slot, indexed by the pay fact and handed the
@@ -396,6 +408,10 @@ Section PinnedExec.
          (* ...and its two identity rows (lane EXEC-SEAM), see [pex_slot] *)
          ⌜uvis_ch W' = cs⌝ -∗
          ⌜uvis_pid W' = pidv⌝ -∗
+         (* ...AND THE RESUMED KEY'S ALL-PARKED ROW (lane OFF-HAND-3, R1):
+            [ExecEntry.image_entry_at]'s, relayed off [SpecKexec.
+            exec_slot_pre]'s wands. *)
+         ⌜FdSlots.fdv_all_parked (uvis_fd W')⌝ -∗
          ⌜exec_args_of M av na alen afun⌝ -∗
          my_pay (uvis_gen W') Q -∗ Pay -∗ X W') -∗
     □ (∀ W' : uvis, T -∗ my_pay (uvis_gen W') Q -∗ X W') -∗
@@ -475,7 +491,7 @@ Section PinnedExec.
     - rewrite /pobs_Fo /pfam_triv. cbn [pf_recv].
       iApply (pobs_node_id Pin T cw pl hops ino (MkAnode (AFile f) nl) Hres).
     - rewrite /image_entry_at.
-      iIntros "!>" (W') "%Hok %Hcwq %Hlzq _ _ Hp HPay".
+      iIntros "!>" (W') "%Hok %Hcwq %Hlzq _ _ _ Hp HPay".
       iApply ("Hcon" $! W' with "[%] [%] [%] Hp HPay");
         [ exact Hok | exact Hcwq | exact Hlzq ].
     - rewrite /image_entry_taint. iExact "Hgen".

@@ -401,14 +401,14 @@ Section UexecExecMint.
   Proof using ghost_varG0 ufdG0.
     iIntros "#Hsup #Hkc #Hlic #Hgen".
     iDestruct (udep_gen with "Hsup Hkc Hlic") as "#Hdep".
-    iIntros "!>" (W) "_ #Hpay".
+    iIntros "!>" (W) "%Hpark #Hpay".
     (* AT THE GENERIC INSTANCE, EXPLICITLY (lane SUPPLY-SPLIT).  The chain
        is now parametric in which [uprogSG] its two verified arms run at,
        because a verified program's is NOT this one; the generic mint is
        the caller that instantiates it here, where every number is admitted
        and echo's flagged deposit is therefore free as well. *)
     iApply (UexecCond.cond_entry_slot uprogSG_gen W ltac:(intros k _; exact I)
-              with "[] Hdep [] Hkc Hgen Hpay").
+              Hpark with "[] Hdep [] Hkc Hgen Hpay").
     { iApply (udepw_law_of_psok (PS := uprogSG_gen) 16
                 ltac:(exact I) ltac:(vm_compute; discriminate)). }
     { rewrite /ssupply /= /xv6_ssupply. iModIntro.

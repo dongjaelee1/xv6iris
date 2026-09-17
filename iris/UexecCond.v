@@ -271,6 +271,13 @@ Section UexecCond.
   Lemma sync_gate_slot (PF : uprogSG Σ) (W : uvis) :
     (forall k : Z, free_num k -> @psok Σ PF k) ->
     sync_gate W ->
+    (* ...AND THE KEY'S TABLE IS ALL PARKED (lane OFF-HAND-3, R1): the
+       entry constructor mints sync's record at [ukn_park = true], which is
+       honest only at such a key.  Unlike the pipe row below, this one has
+       NO taint arm -- the fact a narrowed generic family needs is a fact
+       about the table, so a credential cannot stand in for it -- and it is
+       relayed from the mint's own premise ([UexecExecMint.uslot_mint]). *)
+    FdSlots.fdv_all_parked (uvis_fd W) ->
     (* ...and whether the key's table holds a pipe row (design/pipe.md,
        "The exit path"): the entry constructor puts it in the run, where
        the exit leaf mints the tear-down's bundle row off it.  The generic
@@ -280,12 +287,12 @@ Section UexecCond.
     udep (PS := PF) -∗ my_pay (uvis_gen W) (fun _ => True)%I -∗ uslot W.
   Proof using ghost_varG0 ghost_varG1 ufdG0.
     intros Hpsok_free (Hteq & Hpc & Hxo & Hroom & Hal8 & Hstk & Hfdlen & Hlzf
-                      & Hstop).
+                      & Hstop) Hpark.
     exact (sync_uexec_slot (PS := PF) W Hpc
              (text_region_eq_uimg_sub (uvis_M W) Hteq)
              (sync_xopage_addrs (uvis_perm W) Hxo)
              Hroom Hal8 (sync_stkdata_all W Hstk) Hfdlen
-             (ustop_gate_at W Hstop) Hpsok_free Hlzf).
+             (ustop_gate_at W Hstop) Hpsok_free Hlzf Hpark).
   Qed.
 
   (* ...and echo's *)
@@ -298,6 +305,8 @@ Section UexecCond.
      on the generic path ever had. *)
   Lemma echo_gate_slot (PF : uprogSG Σ) (W : uvis) :
     echo_gate W ->
+    (* ...and the key's all-parked row -- [sync_gate_slot]'s note *)
+    FdSlots.fdv_all_parked (uvis_fd W) ->
     udepw_law (PS := PF) 16 -∗
     (* ...and whether the key's table holds a pipe row (design/pipe.md,
        "The exit path"): the entry constructor puts it in the run, where
@@ -308,13 +317,13 @@ Section UexecCond.
     udep (PS := PF) -∗ my_pay (uvis_gen W) (fun _ => True)%I -∗ uslot W.
   Proof using ghost_varG1.
     intros (Hteq & Hpc & Hxo & Hroom & Hal8 & Hstk & Hargs & Havd & Havs
-            & Hfdlen & Hlzf & Hstop).
+            & Hfdlen & Hlzf & Hstop) Hpark.
     exact (echo_uexec_slot (PS := PF) W Hpc
              (text_region_eq_of_uimg_sub EchoInstrs.echo_bytes (uvis_M W) Hteq)
              (sync_xopage_addrs (uvis_perm W) Hxo)
              Hroom Hal8 (echo_stkdata_all W Hstk) Hargs
              (echo_avd_arr_all W Havd) (echo_avd_str_all W Havs) Hfdlen
-             (ustop_gate_at W Hstop) Hlzf).
+             (ustop_gate_at W Hstop) Hlzf Hpark).
   Qed.
 
   (* THE SUPPLY REACHES EVERY BRANCH, not only the generic tail: sync and
@@ -338,6 +347,12 @@ Section UexecCond.
      construction, plus echo's one flagged deposit. *)
   Lemma cond_entry_slot (PF : uprogSG Σ) (W : uvis) :
     (forall k : Z, free_num k -> @psok Σ PF k) ->
+    (* ...AND THE KEY'S TABLE IS ALL PARKED (lane OFF-HAND-3, R1): the two
+       GATED arms mint a verified program's record at [ukn_park = true].
+       The generic tail below needs nothing.  [UexecExecMint.uslot_mint]
+       has carried this premise since lane OFF-HAND-2 and dropped it; this
+       is its first consumer. *)
+    FdSlots.fdv_all_parked (uvis_fd W) ->
     udepw_law (PS := PF) 16 -∗
     (* ...AND THE KILL CREDENTIAL, which only the GENERIC tail spends (lane
        KILL-PAY, K3(b)): a slot that answers at every cause answers at the
@@ -348,7 +363,7 @@ Section UexecCond.
     udep (PS := PF) -∗ □ ssupply -∗ □ riscv_kill_cred -∗ □ uexec_wp -∗
     my_pay (uvis_gen W) (fun _ => True)%I -∗ uslot W.
   Proof using ghost_varG1.
-    intros Hpsok_free. iIntros "#Hwr #Hdep #Hsup #Hkc #Hgen #Hpay".
+    intros Hpsok_free Hpark. iIntros "#Hwr #Hdep #Hsup #Hkc #Hgen #Hpay".
     (* THE TABLE FACT THE TWO GATED ARMS NEED IS THE CREDENTIAL ITSELF
        (design/pipe.md, "The exit path"): this slot answers at every cause,
        so it already holds the kill credential, and that is the arm of
@@ -356,9 +371,10 @@ Section UexecCond.
     iAssert (UkRun.urun_nopipe (uvis_fd W)) as "#Hnpw";
       [ iApply (UkRun.urun_nopipe_taint _ with "Hkc") | ].
     destruct (decide (sync_gate W)) as [Hgate | _].
-    { iApply (sync_gate_slot PF W Hpsok_free Hgate with "Hnpw Hdep Hpay"). }
+    { iApply (sync_gate_slot PF W Hpsok_free Hgate Hpark
+                with "Hnpw Hdep Hpay"). }
     destruct (decide (echo_gate W)) as [Hgate | _].
-    { iApply (echo_gate_slot PF W Hgate with "Hwr Hnpw Hdep Hpay"). }
+    { iApply (echo_gate_slot PF W Hgate Hpark with "Hwr Hnpw Hdep Hpay"). }
     iApply (uexec_wp_uslot_triv W with "Hsup Hkc Hgen Hpay").
   Qed.
 

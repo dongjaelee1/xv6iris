@@ -277,6 +277,13 @@ Section UInitKernel.
        <init> at [FdSlots.fdt0], which is all closed, so the same site that
        discharges the ledger row above discharges this. *)
     fdv_nopipe (uvis_fd W) ->
+    (* ...AND THE KEY'S TABLE IS ALL PARKED (lane OFF-HAND-3, R1): this
+       program answers for its own offsets ([UkRun.ukn_park] at [true]),
+       and a record may claim that only at a key with no offset half
+       outside the kernel.  The caller reads it off
+       [SpecKexec.exec_slot_pre]'s wands, relayed through
+       [ExecEntry.image_entry_at]. *)
+    fdv_all_parked (uvis_fd W) ->
     (* the map stops at the break -- [UkRun.uslot_of_urun_all]'s own premise *)
     (forall (p : mword 27) (q : uperm), uvis_perm W !! p = Some q ->
        bv_unsigned p * 4096 < UserPtTree.pgroundup (uvis_sz W)) ->
@@ -379,7 +386,7 @@ Section UInitKernel.
     uslot W.
   Proof using .
     intros Hne Hkt Hpc Hsub Hx Hwd Hszd Hbase Hal8 Hroom Hstk Hfdlen Hl0 Hnpk
-           Hstop Hcw Hpsok_free Hlzf.
+           Hpark Hstop Hcw Hpsok_free Hlzf.
     (* [Hdp] LINEARLY, and that is not a style choice: [UkInit.init_deps]
        is persistent, but its [T]-indexed conjuncts send the [Persistent]
        search for the WHOLE bundle off unfolding [udepw]'s wand chain and
@@ -390,8 +397,8 @@ Section UInitKernel.
     iAssert (UkRun.urun_nopipe (uvis_fd W)) as "#Hnpw";
       [ iApply (UkRun.urun_nopipe_intro _ Hnpk) | ].
     iApply (uslot_of_urun_all W (2 + (4 + (12 + (12 + (4 + n0))))) (fun _ => True)%I
-              false Hal8 Hroom Hstk Hfdlen Hstop Hlzf ltac:(discriminate)
-              with "Hdep Hnpw Hmp").
+              true Hal8 Hroom Hstk Hfdlen Hstop Hlzf
+              ltac:(intros _; exact Hpark) with "Hdep Hnpw Hmp").
     (* init's own half of its children set travels with its cwd: nothing
        on init's walk READS it, but fork MOVES it, so the fragment goes
        down the chain index-free ([UserChildren.uch_any]). *)
@@ -472,6 +479,9 @@ Section UInitKernel.
        carries this between traps and /init's exit stub mints its bundle
        row off it.  <init>'s table is [FdSlots.fdt0], all closed. *)
     fdv_nopipe sts ->
+    (* ...AND ALL PARKED (lane OFF-HAND-3, R1): <init>'s record answers
+       for its own offsets, and [FdSlots.fdt0] is all closed. *)
+    fdv_all_parked sts ->
     (* THE PROCESS IS AT THE ROOT.  userinit's [namei("/")] is what put it
        there, and this is the one entry premise the image fact does not
        carry -- exec does not chdir, so the key's [uvis_cwd] is whatever
@@ -512,7 +522,7 @@ Section UInitKernel.
     UkInitMain.kinit_diag_law stc (cc_wp Cr) (cc_wbn Cr) -∗
     my_pay (uvis_gen W') (fun _ => True)%I -∗ uslot W'.
   Proof using .
-    intros Hne Hkt Hok Hroom Hlen Hl0 Hnpk Hcw Hpsok_free Hlzf.
+    intros Hne Hkt Hok Hroom Hlen Hl0 Hnpk Hpark Hcw Hpsok_free Hlzf.
     (* THE MAP STOPS AT THE BREAK, off the image fact's own row --
        [UShKernel.sh_slot_of_kexec]'s note is the reasoning. *)
     pose proof (kexec_image_ok_below _ _ _ _ _ _ Hok) as Hstop.
@@ -605,6 +615,7 @@ Section UInitKernel.
     - rewrite Hfd. exact Hlen.
     - rewrite Hfd. exact Hl0.
     - rewrite Hfd. exact Hnpk.
+    - rewrite Hfd. exact Hpark.
     - exact Hstop.
     - exact Hcw.
     - exact Hpsok_free.
@@ -686,6 +697,9 @@ Section UInitKernel.
        carries this between traps and /init's exit stub mints its bundle
        row off it.  <init>'s table is [FdSlots.fdt0], all closed. *)
     fdv_nopipe sts ->
+    (* ...AND ALL PARKED (lane OFF-HAND-3, R1): <init>'s record answers
+       for its own offsets, and [FdSlots.fdt0] is all closed. *)
+    fdv_all_parked sts ->
     (forall k : Z, free_num k -> psok k) ->
     (* THE BOX IS IN THE STATEMENT, and that is not decoration.  The
        conclusion is a [□], so the deposits have to be intuitionistic here;
@@ -711,11 +725,11 @@ Section UInitKernel.
        straight out into [init_slot_of_kexec]'s own linear premise.  No
        [Persistent] search, no [iFrame] against a [□]-wand -- see the
        statement's note. *)
-    intros Hne Hkt Hroom Hlen Hl0 Hnpk Hpsok.
+    intros Hne Hkt Hroom Hlen Hl0 Hnpk Hpark Hpsok.
     iIntros "#Hdp #Hdep #Hxs !>"
       (W') "%Hok %Hcw %Hlz #Hmp (Hdn & Hrd & Hrd0 & Hbn & #Hblaw & #Hdlaw)".
     iApply (init_slot_of_kexec T Cns stc Cr cn na alen afun sts W' n0
-              Hne Hkt Hok Hroom Hlen Hl0 Hnpk Hcw Hpsok Hlz
+              Hne Hkt Hok Hroom Hlen Hl0 Hnpk Hpark Hcw Hpsok Hlz
               with "Hdp Hdep Hxs Hdn Hrd Hrd0 Hbn Hblaw Hdlaw Hmp").
   Qed.
 

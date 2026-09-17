@@ -507,7 +507,7 @@ Section ExecRun.
     image_entry f M av sts cw cs pidv Q Pay X.
   Proof using .
     iIntros "#HT #Hgen". rewrite /image_entry /image_entry_taint.
-    iIntros "!>" (na alen afun W') "_ _ _ _ _ _ Hmp _".
+    iIntros "!>" (na alen afun W') "_ _ _ _ _ _ _ Hmp _".
     iApply ("Hgen" $! W' with "HT Hmp").
   Qed.
 
@@ -801,8 +801,9 @@ Section ExecRun.
                      [ExecEntry.image_entry_taint]'s note. *)
         iApply ("Hgen" $! W' with "HT Hp"). }
       cbn [an_node] in Hnode. injection Hnode as Hf. subst f'.
-      iApply ("Hcon" $! W' with "[%] [%] [%] [%] [%] Hp HPay");
-        [ exact Hok | exact Hcwq | exact Hlzq | exact Hchq | exact Hpiq ].
+      iApply ("Hcon" $! W' with "[%] [%] [%] [%] [%] [%] Hp HPay");
+        [ exact Hok | exact Hcwq | exact Hlzq | exact Hchq | exact Hpiq
+        | exact Hpk ].
     - (* ---- ARM (b): a loadable content IS loadable ---- *)
       iIntros (av' i a W') "HP Hrecv %Hnload %Hkey %Hcwq %Hlzq %Hchq %Hpiq %Hpk #Hp".
       iPoseProof ("Hid" $! av' i a) as "Hid'".

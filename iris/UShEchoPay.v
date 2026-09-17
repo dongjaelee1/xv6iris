@@ -124,6 +124,9 @@ Section UShEchoPay.
     kexec_sz ElfUser.echo_elf - PGSIZE + 96
       <= kxc_sp_final (kexec_sz ElfUser.echo_elf) alen na ->
     length sts = NOFILE ->
+    (* ...and the exec'ing process's table is all parked (lane OFF-HAND-3,
+       R1) -- [UShEcho.echo_slot_of_kexec]'s note *)
+    fdv_all_parked sts ->
     uvis_lazy W' = false ->
     na = length (last_ws I) ->
     (forall i : nat, (i < length (last_ws I))%nat ->
@@ -151,7 +154,7 @@ Section UShEchoPay.
       EchoLinksLine.ewc_lpr T v I 3%nat -∗
       uslot W'.
   Proof using HPT ghost_varG0 ghost_varG1 ufdG0.
-    intros Hokws Hok Hroom Hfdl Hlzf Hna Halen Hafun Hfd1 Hkt.
+    intros Hokws Hok Hroom Hfdl Hpark Hlzf Hna Halen Hafun Hfd1 Hkt.
     iIntros "#Hpin #Hlk #Hnpw #Hdep #Hgen Hmp Hc".
     destruct (echo_kexec_pages na alen afun sts W' Hok)
       as (Hpc & Hsub & Hx & Hwr & Hrp).
@@ -193,6 +196,7 @@ Section UShEchoPay.
               (line_ok_ge2 (last_ws I) Hokws)
               Hst Hargv Hl1 Hpc Hsub Hsub2 Hx Hroom96 Hal8 Hstkrow Hargsrow
               Havd Havs Hfdlen Hstop Hlzf
+              ltac:(rewrite Hfd; exact Hpark)
               with "[] Hpin Hlk Hnpw' Hdep Hmp [Htn]").
     - (* THE BLOCK'S END PAYS THE EXIT: the output's own length on, the
          choice filed, the credential is the shell's next prompt's *)
@@ -285,7 +289,7 @@ Section UShEchoPay.
     (* ---- (E): echo's PAID entry, at the pinned image ---- *)
     iSplitR "Hstd Hcr".
     { rewrite Hpeq. rewrite /image_entry. iModIntro.
-      iIntros (na alen afun W') "%Hok %Hcwd0 %Hlzf _ _ %Hargs Hmp [_ Hc]".
+      iIntros (na alen afun W') "%Hok %Hcwd0 %Hlzf _ _ %Hpkq %Hargs Hmp [_ Hc]".
       destruct (echo_args_det_holds (last_ws I) Hokws M s0 t g na alen afun
                   Himg Hbytes Hargs) as (Hna & Halen & Hafun).
       (* ECHO'S FRAME FITS: the arguments this line pushed leave the
@@ -294,7 +298,10 @@ Section UShEchoPay.
          vector's address as a number ([UShEcho.echo_room_of_det]). *)
       iApply (echo_slot_of_kexec_at na alen afun fdv W' v I Hokws Hok
                 (echo_room_of_det (last_ws I) na alen Hokws Hna Halen)
-                Hlen Hlzf Hna Halen Hafun Hfd1' Hkt
+                Hlen
+                ltac:(rewrite <- (kexec_image_ok_fd _ na alen afun fdv W' Hok);
+                      exact Hpkq)
+                Hlzf Hna Halen Hafun Hfd1' Hkt
                 with "Hpin Hlk Hnp0 Hdep Hgen Hmp Hc"). }
     iFrame "Hstd Hcr".
   Qed.

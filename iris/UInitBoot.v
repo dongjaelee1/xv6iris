@@ -1010,7 +1010,8 @@ Section EchoInitBoot.
                 init_cons_fd_ne Hktaint
                 (init_boot_room 0%nat
                                    ltac:(vm_compute; discriminate))
-                fdt0_length eq_refl (fdv_nopipe_closed _) (fun k H => H)
+                fdt0_length eq_refl (fdv_nopipe_closed _)
+                (fdv_all_parked_closed _) (fun k H => H)
                 with "[] [] Hxs").
       - iModIntro. iExact "Hdp".
       - iApply (udep_free). }

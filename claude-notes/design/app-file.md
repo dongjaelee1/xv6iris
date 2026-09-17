@@ -372,44 +372,45 @@ user-tree.md §8.1: state the form to compute with).
   the console writes pay the stage's pending (§4); `close`; `exit`
   returns the deed.
 
-**THE OFFSET** (the design of record after OFF-HAND-6 and the owner's
-principle, §3.5; the four refuted shapes are in §7).  The append step
-needs `off = |bs0|`, and a parked row's offset is an existential nobody
-can read (`off_user_inv γo`), so the redirect child opens `f` in HAND
-mode and the offset is HELD — but nothing exclusive is ever in a
-program's hands for it:
+**THE OFFSET** (the design of record after the review of 2026-09-17,
+`claude-notes/reviews/app-file-review.md` §2 — the owner's principle
+§3.5 applied FULLY; the five refuted shapes are in §7).  The append
+step needs `off = |bs0|`; a parked row's offset is an existential.  So:
 
-- `FdSlots.offmode := OffParked | OffHeld (off : nat)`: a held row
-  RECORDS ITS OFFSET in the fd-table state.  The state is the exec key,
-  so a verified image reads the offset off its key and a generic image's
-  Löb treats it as data.
-- `FdSlots.foff_row` at `OffHeld off` is the half `UserOff.uoff γo off`
-  (exclusive) — the KERNEL holds the bundle during a syscall, so every
-  fire has the half: the syscall arm lends the row to the fire
-  (`FdPark.off_supply_of_st_at_eq`: the row goes in, comes back ADVANCED
-  by `FdSlots.fdst_adv`) and re-records it, `usys_fd_ok`'s read/write
-  row at a held descriptor being `sts' = <[fd := fdst_adv (sts !!! fd)
-  d]> sts`.  The fire's offset IS the row's value (RELAY 1, free).  No
-  contract mode-split: `fileread_in`/`filewrite_in` take an abstract
-  supplier.
-- The kernel's coupling of the recorded value to the object's box is
-  `(coupled) ∨ □ riscv_kill_cred` (§3.5): `fdstate_ok` at a held object
-  pins the reference count at 1 in the coupled arm; dup/fork of a held
-  row take `⌜parked⌝ ∨ taint` and the coupling disconnects — no kernel-
-  side park, no `fp_om` on the names.
-- The exec crossing carries NOTHING about offsets: the row crosses in
-  the table and the half in the bundle, on both arms.
-- The hand-mode open leaf: the publish at the caller's mode
-  (`off_pub_hand_0`) records `OffHeld 0`; cat opens `f` in hand mode too
-  (its reads must chain from 0, §5.3).
-- The held read/write leaves are the parked ones with the row's value
-  read off the table and the post at `OffHeld (off + n)`; echo's append
-  and cat's round read `off` there.
+- THE HALF IS THE PROGRAM'S.  `UserOff.uoff γo off` (RD-1) is what a
+  verified program holds for a descriptor it opened in hand mode; it
+  crosses exec in `Pay` exactly as the deed does, and fork/dup never
+  meet it in this campaign.  No mode in the fd-table state, no half in
+  the kernel's bundle: `FdSlots.foff_row := True`, `fd_frags` persistent
+  again; `offmode`/`OffHeld`/`fdst_adv`/`FdPark` are DELETED
+  (OFF-HAND-6's H1 reverted); `fdstate_ok`'s pin stays as dead data.
+- THE BOX HAS A TAINT ARM.  `FileOffCell.off_resident` becomes
+  `(cell ∗ off_gv γo (1/2) v) ∨ (cell ∗ □ riscv_kill_cred)` on
+  `PipeInvDefs.pipe_qres`'s model: once a fire runs without the link the
+  object's offset ghost is disconnected, permanently.
+- THE LINK IS THE NODE.  `FsAbsWriteFire.awrite_full_at`/`awrite_part_at`
+  and `aread_commit_at`'s phase 2 already hand the node the kernel half
+  and take it back; a node whose closure holds `uoff γo off0` learns
+  `off = off0` by `OffGv.off_gv_agree` (RELAY 1/2, free) and keeps the
+  advanced fragment (`UserOff.uoff_advance`).  `filewrite_in`/
+  `fileread_in`'s inode arms are `chain ∨ □ riscv_kill_cred`, the posts
+  `fired ∨ (taint ∗ payment back)`; the two fire sites case on the
+  box's arm; `off_supply*` and both suppliers are deleted.
+- THE MINT.  `ProofSysOpenPub` at the caller's hand mode calls
+  `off_pub_hand_0` and the receipt carries `uoff g 0` where it carried
+  `off_user_inv g`; it rides the open's fd arm to the U tier
+  (`wp_uk_ecall_open_recv_img_hand`, the deed corollaries' one swap).
+  A parked open's user half is simply dropped; `off_user_inv` goes.
+- THE VACUITY CHECK, written first: the taint arm is reachable from
+  `app_sup` (the generic builders hold `pipe_taint_cred`), and a node
+  holding `uoff` is NOT payable from `app_sup`.
+- THE OTHER TWO RELAYS ride the same node sweep: RELAY 3 (`wri_pre`
+  fixes `length bs`; `ubytes_at` is prefix-closed today) and RELAY 4
+  (`awrite_part_at`'s reason, READ-RELAY's twin in `SysWriteDefs`).
 
-Landed: OFF-HAND-6 (the state, the bundle, the exec row deleted on both
-arms); in flight: OFF-HAND-7 (the coupled read/write row, the taint arm
-at dup/fork, the leaves, and the DELETION of everything the refuted
-shapes left behind).
+Lanes: WRITE-RELAY (relays 3 and 4, `SysWriteDefs`/`SpecWritei`/
+`ProofWritei`/`FsAbsWriteFire`/`FileWrite`), then OFF-LINK (the rest of
+this block, on the off-hand worktree after OFF-HAND-7 stopped).
 
 ### 3.5 THE OWNER'S PRINCIPLE (2026-09-17): `link ∨ taint`, the pipe pattern
 
@@ -438,6 +439,47 @@ follows it; the file-offset invariant did not.  The review at
 `claude-notes/reviews/app-file-review.md` assesses the campaign against
 it; lanes OFF-HAND-7 (J2/J3) build on it.
 
+The survey's verdicts (`claude-notes/reviews/taint-pattern-survey.md`),
+adopted: R1 the generic supply IS the taint (`al_sup_of_kill` on the app
+laws, `xv6_ssupply := □ riscv_kill_cred`, the duplicated credentials off
+~20 generic-tier statements — lane SUP-ONE); R2 the offset (OFF-LINK,
+with the deletions as its exit criterion); R4 the open leaves export
+`fdst_nopipe` so a close at an opened descriptor needs no free law
+(SUP-ONE); R5 NOT a taint change — `sys_open`'s residues are arm
+EXCLUSIVITY (`acre_commit_at_gen` taking the unfired `Fex`); R3 the
+write chain's copyin-partial arm is REFUTED (WRITE-RELAY), the disk-full
+short write is limit 1's whole-chunk skip, and no kernel taint goes on
+either.  Two facts decide every verdict: the generic tier already holds
+the taint everywhere, and a verified program must never be able to
+taint itself at an arm it dislikes (the vacuity trap) — it closes an
+unreachable arm by arm exclusivity in the kernel contract.
+
+### 3.6 PROCESS RULES (review §D4–D5, 2026-09-17)
+
+- A ruling is checked at the STATEMENT before it is issued: the mask it
+  fires under, the persistence of what it hands out, and the home of
+  every linear resource across fork/exec/wait — the three facts every
+  refuted OFF-HAND/F-OPEN ruling failed on.
+- The consumer's SKELETON compiles first: `UEchoFile.v` and
+  `UShRound.v` are written with `Admitted` against the current tree
+  before any further kernel ruling, so the exact obligations are known
+  (as `UCatKernel.cat_round_at`'s abstract `Hold` found `Hpin`).
+- Lanes name the statements they may move and are sized so that a
+  refuted ruling wastes one file, not a sweep.
+- The worklist is a DEPENDENCY GRAPH with the program tier priced, not
+  a chain of "the one thing the next lane needs first".
+  THE GRAPH IS lane SKELETON's K4 table (worklist, "## Findings",
+  SKELETON): 22 obligations of `UEchoFile.v`/`UShRound.v`/`UInitFile.v`
+  (on branch `app-file/program-tier`, `Admitted`, outside the audited
+  cone), each with its owner — OFF-LINK 2, WRITE-RELAY 2, LINK-GEN 8,
+  CAT-GEOM 1, six small new items (the ledger-slot write leaf and its
+  deposit, the redirect line's lexability threading, the redirect
+  child's law, `ush_tag_law`'s discipline parameter, `init_boot_pay`
+  with the deed), two free.  Two shapes it settled: the deed rides
+  INSIDE sh's credential family (`Wcf I p := Wcl I p ∗ sh_hold I`, no
+  `ushf_wq` twin), and echo's exec crossing costs one `Pay` (`Wq ∗ fown
+  ∗ uoff γo 0`) and one PURE row about the exec'ing table.
+
 ## 4. The console side: the stage carries the era's boot state, the ledger the line list
 
 The echo application's per-era STAGE (`EchoOut.ostage`: `ps`, `cs`,
@@ -452,6 +494,16 @@ the generic links take one more argument than the echo ones, so the
 thirty files above `EchoOut` would move for a statement-preserving
 refactor's sake.  The pure stage machine is ~1,500 lines of list
 algebra; its twin at `FileDisc`'s session is the price.)
+
+REVERSED for the PROGRAM tier (review §D3, 2026-09-17): the stage and
+ledger twins stand as landed, but the console files above the links
+(`UShLine`, `UShPanic`, `UShRest`, `UShEchoPay`, `UEchoOut`,
+`UInitBanner`, `UInitConsK` — ~8,000 lines) are NOT twinned.  Lane
+LINK-GEN generalises `EchoLinks.echo_links` / `EchoLinksLine.ewc_lcred`
+over a LINK RECORD on TL-7's pattern (`UInitCons` off `echo_names`,
+echo's instance definitional), so those files are instantiated at
+`FileLinks` and the echo audit stays at fourteen.  This is the largest
+single item of the campaign and was unpriced until the review.
 
 ### 4.1 What the stage adds: ONE value per era
 
@@ -777,8 +829,12 @@ lane, not an application one.
   record may hold", with a guarded generic read/write premise: it
   reaches every spend of a flagged deposit and no resource carries it
   across a record re-binding (OFF-HAND-5 D3).  All four are instances of
-  conjuring a precondition in the generic proof (§3.5); the design of
-  record is §3, "THE OFFSET".
+  conjuring a precondition in the generic proof (§3.5).  (5) The half in
+  the KERNEL's descriptor bundle with the value in the fd-table state
+  (OFF-HAND-6): it takes the half away from the node that needs it
+  (RELAY 2 becomes a premise nobody supplies) and drags in an advancing
+  successor-table row, a reference-count pin and a kernel-side park —
+  the review's §A1.  The design of record is §3, "THE OFFSET".
 - **A pure arm over the view with no deed.**  Not steppable by echo
   (§2).
 - **Per-round records agreed between the fs claim and the stage by

@@ -433,6 +433,36 @@ Section UkCatCat.
     UkCat.kcat_pay_seq N (mword_of_int 2) (cat_lit 0x9c8) 0%nat 16%nat
       emp%I (ukn_pay N (-1)).
 
+  (* ===================================================================== *)
+  (* RULING (g) (lane CAT-ENTRY-2): THE WRITE ARM IS COUNT-EXACT, AND THE    *)
+  (* `cat: write error` TAIL IS AN ARM THE PAYER MAY REFUTE.                *)
+  (*                                                                       *)
+  (* The write output used to be [(I ∧ kcat_dg_cw) ∗ buffer]: an ADDITIVE  *)
+  (* pair the payer owed on EVERY turn, because the walk takes whichever    *)
+  (* arm of [beq a0,s1] the return value picks and the payment could not    *)
+  (* say which.  [UCatOut.cch_step] can only fund a byte the MODEL's        *)
+  (* continuation holds at the cursor, and "cat: write error" is not in it  *)
+  (* at any position -- so a claim-bearing payer could never build a round. *)
+  (*                                                                       *)
+  (* What replaces it is a DISJUNCTION THE PAYER PICKS, over the write's    *)
+  (* own returned word ([UkCat.kcat_wr]):                                   *)
+  (*                                                                       *)
+  (*   - the NO-SHORT arm -- the call returned exactly the count it was     *)
+  (*     given, so [beq a0,s1] is TAKEN and the diagnostic branch is        *)
+  (*     REFUTED at the leaf.  [UkWriteLeaf.uwrite_no_short] is where that  *)
+  (*     fact comes from: a console write of a run the CALLER OWNS returns  *)
+  (*     the full count, which is lane READ-RELAY's move one syscall over.  *)
+  (*     A deed payer picks this one and never funds the tail.              *)
+  (*                                                                       *)
+  (*   - the DIAGNOSTIC arm -- the old additive pair, unchanged.  The FREE  *)
+  (*     write law has a short arm and says nothing about the return, so    *)
+  (*     [kcat_round_of_law] picks this one and the claim-free chain is     *)
+  (*     exactly what it was.                                              *)
+  (*                                                                       *)
+  (* The walk funds both, so [kcat_dg_cw] is still a payment of this file   *)
+  (* and the `cat: write error` code is still WALKED -- it is only no       *)
+  (* longer an OBLIGATION of every payer.                                   *)
+  (* ===================================================================== *)
   Definition kcat_round (fdv : mword 64) (I Cend : iProp Σ) : iProp Σ :=
     (□ UkCat.kcat_r N fdv CatSyms.buf 512 I
          (fun (ret : mword 64) (g : nat -> bv 8) =>
@@ -441,10 +471,13 @@ Section UkCatCat.
              ∧ (∀ nb : nat,
                   ⌜ret = (mword_of_int (Z.of_nat nb) : mword 64)⌝ -∗
                   ⌜(0 < nb)%nat⌝ -∗
-                  UkCat.kcat_w N (mword_of_int 1)
+                  UkCat.kcat_wr N (mword_of_int 1)
                     (mword_of_int CatSyms.buf) nb
                     (ubytes γd CatSyms.buf 512 g)
-                    ((I ∧ kcat_dg_cw) ∗ ubytes γd CatSyms.buf 512 g)))))%I.
+                    (fun wret : mword 64 =>
+                       (((⌜wret = (mword_of_int (Z.of_nat nb) : mword 64)⌝ ∗ I)
+                         ∨ (I ∧ kcat_dg_cw))
+                        ∗ ubytes γd CatSyms.buf 512 g))))))%I.
 
   Global Instance kcat_round_persistent fdv I Cend :
     Persistent (kcat_round fdv I Cend).
@@ -474,6 +507,19 @@ Section UkCatCat.
                 16%nat (ukn_pay N (-1)) Hfree 0%nat with "Hwr").
     - by iIntros "_".
     - iIntros (nb) "_ _".
+      (* THE FREE PAYER PICKS THE DIAGNOSTIC ARM: the free write law has a
+         short arm and hands back no return value, so the no-short
+         disjunct is not available to it -- and the claim-free round is
+         then exactly the additive pair this file paid before. *)
+      iApply (UkCat.kcat_wr_mono N (mword_of_int 1)
+                (mword_of_int CatSyms.buf) nb
+                (ubytes γd CatSyms.buf 512 g)
+                (fun _ : mword 64 =>
+                   ((emp ∧ kcat_dg_cw) ∗ ubytes γd CatSyms.buf 512 g)%I)
+                _ with "[]").
+      { iIntros (r) "[Hd Hb]". iSplitR "Hb"; [ | iExact "Hb" ].
+        iRight. iExact "Hd". }
+      iApply UkCat.kcat_wr_of_w.
       iApply (UkCat.kcat_w_mono N (mword_of_int 1)
                 (mword_of_int CatSyms.buf) nb
                 (ubytes γd CatSyms.buf 512 g)
@@ -1513,6 +1559,26 @@ Section UkCatCat.
                          (sign_extend' 64 (mword_of_int 8166 : mword 13))
                        = mword_of_int 0x22)
         by (apply bv_eq; vm_compute; reflexivity).
+      (* the two registers the branch compares, so that the NO-SHORT
+         disjunct of the payment can decide it (RULING (g)) *)
+      assert (Ha0k : mk !!! Regidx a0_idx = wret)
+        by exact (upd_eq _ (Regidx a0_idx) wret).
+      assert (Hs1k : mk !!! Regidx s1_idx = add_vec zero_reg ret).
+      { rewrite /mk (upd_ne
+                       (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> mj)
+                       (Regidx a0_idx) (Regidx s1_idx) _
+                       ltac:(vm_compute; discriminate)).
+        rewrite (upd_ne mj (Regidx a7_idx) (Regidx s1_idx) _
+                   ltac:(vm_compute; discriminate)).
+        rewrite /mj (upd_ne mi (Regidx ra_idx) (Regidx s1_idx) _
+                       ltac:(vm_compute; discriminate)).
+        rewrite /mi (upd_ne mh (Regidx a0_idx) (Regidx s1_idx) _
+                       ltac:(vm_compute; discriminate)).
+        rewrite /mh (upd_ne mg (Regidx a1_idx) (Regidx s1_idx) _
+                       ltac:(vm_compute; discriminate)).
+        rewrite /mg (upd_ne mf (Regidx a2_idx) (Regidx s1_idx) _
+                       ltac:(vm_compute; discriminate)).
+        exact Hs1f. }
       destruct (uv_btaken BEQ (mk !!! Regidx a0_idx) (mk !!! Regidx s1_idx))
         eqn:Hbeq.
       + (* write wrote all of it: round again *)
@@ -1524,7 +1590,11 @@ Section UkCatCat.
                   with "[] Hrun").
         { iApply (uis_cat_3c with "Hcode"). }
         iNext. iIntros (h13) "Hrun".
-        iDestruct "Hpick" as "[HI _]".
+        (* EITHER disjunct funds the back edge: the no-short arm carries
+           the invariant beside its equation, the diagnostic arm has it as
+           the left conjunct of the additive pair. *)
+        iAssert I with "[Hpick]" as "HI".
+        { iDestruct "Hpick" as "[[_ $] | [$ _]]". }
         iApply ("IH" $! h13 mk g with "[] HI Hw1 Hw2 Hw3 Hw4 Hw5 Hw6 Hw7 Hw8
                                        Hbuf Hrun Hcont").
         iPureIntro. exact Hinvk.
@@ -1541,7 +1611,18 @@ Section UkCatCat.
                       = mword_of_int 0x40)
           by (apply bv_eq; vm_compute; reflexivity).
         iNext. rewrite E3c. iIntros (h13) "Hrun".
-        iDestruct "Hpick" as "[_ Hdg]".
+        (* ...AND THE SHORT BRANCH IS REFUTED FROM THE NO-SHORT DISJUNCT:
+           a payer that took it says the call returned exactly [nb], which
+           is the value [s1] holds, so this branch was not taken.  A payer
+           that took the diagnostic arm funds the tail as before. *)
+        iAssert kcat_dg_cw with "[Hpick]" as "Hdg".
+        { iDestruct "Hpick" as "[[%Hws _] | [_ Hdg]]"; [ | iExact "Hdg" ].
+          exfalso.
+          assert (Hbeqt : uv_btaken BEQ (mk !!! Regidx a0_idx)
+                            (mk !!! Regidx s1_idx) = true).
+          { rewrite Ha0k Hs1k Hws add_vec_zero_l Hnbz.
+            cbn [uv_btaken]. apply eq_vec_refl. }
+          rewrite Hbeqt in Hbeq. discriminate. }
         iApply (wp_kcat_cat_die_cw h13 mk n with "Hdg Hcode Hro Hrun").
   Qed.
 

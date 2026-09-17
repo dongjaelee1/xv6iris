@@ -99,6 +99,7 @@ Require Import SpecFilewrite.      (* [filewrite_in] / [filewrite_extra] *)
 Require Import SpecSysRead.        (* [sys_rw_count] *)
 Require Import SpecCopyin.         (* [ubytes_at] -- the content seam *)
 Require Import SysWriteDefs.       (* [wchunks] *)
+Require Import UserPtTree.         (* [uptd]: the partial arm's table *)
 Require Import AppInv.             (* [appE] / [app_sup] *)
 Require Import FsBytesGamma.       (* [fs_gamma_L] *)
 Require Import FsAbsWriteFire.     (* [awrite_chain] and its cursor *)
@@ -247,12 +248,12 @@ Section UkWriteFile.
      nothing between ([SpecFilewrite]'s decode note 3).  A writer that wants
      the left arm tests [r >= 0], which is what any real loop does. *)
   Lemma write_arms_file_learn (Γ := fs_gamma_L fsc_fs)
-      (i : Z) (γo : gname) (nb : nat) (r : mword 64)
+      (i : Z) (γo : gname) (P : uptd) (nb : nat) (r : mword 64)
       (M : gmap Z (bv 8)) (ua : mword 64) (f : nat -> bv 8)
       (Q : nat -> iProp Σ) :
     (forall j : nat, (j < nb)%nat ->
        M !! uint (add_vec_int ua (Z.of_nat j)) = Some (f j)) ->
-    write_arms_at Γ i γo (Z.of_nat nb) M ua Q r -∗
+    write_arms_at Γ i γo P (Z.of_nat nb) M ua Q r -∗
     ((⌜r = (mword_of_int (Z.of_nat nb) : mword 64)⌝ ∗
       ∃ bss : list (list (bv 8)),
         ⌜length (concat bss) = nb⌝ ∗
@@ -276,7 +277,7 @@ Section UkWriteFile.
         pose proof (ubytes_at_src M ua (concat bss) nb f Hat
                       ltac:(lia) Himg) as Hby.
         intros j Hj. apply Hby. lia. }
-      iApply (awrite_chain_cursor with "Hch").
+      iApply (awrite_chain_at_cursor with "Hch").
     - iRight. iSplitR; [ by iPureIntro | ].
       iDestruct "Hp" as (bss x) "(%Hlt & %Hchk & %Hx & %Hat & Hch)".
       assert (Hlen : (length (concat bss) < nb)%nat) by (destruct Hlt; lia).
@@ -285,7 +286,7 @@ Section UkWriteFile.
       iSplitR.
       { iPureIntro.
         exact (ubytes_at_src M ua (concat bss) nb f Hat ltac:(lia) Himg). }
-      iApply (awrite_chain_cursor with "Hch").
+      iApply (awrite_chain_at_cursor with "Hch").
   Qed.
 
   (* =================================================================== *)
@@ -360,7 +361,7 @@ Section UkWriteFile.
     iEval (rewrite Hkey Hcnt;
            cbn [write_file_fam xfam_wr wf_Q];
            rewrite /filewrite_extra /=) in "Hp".
-    iDestruct (write_arms_file_learn i γo nb r (uvis_M W)
+    iDestruct (write_arms_file_learn i γo P nb r (uvis_M W)
                  (m !!! Regidx a1_idx) f (fun _ => True%I)
                  (proj1 Hsrc) with "Hp") as "Harm".
     iApply ("Hcont" $! h' r with "Hufdh Hbuf [Harm] Hrun").
@@ -369,6 +370,124 @@ Section UkWriteFile.
       iSplitR; [ by iPureIntro | ]. iPureIntro. by exists (concat bss).
     - iDestruct "H" as (bss p) "(%Hlen & %Hby & _)". iRight.
       iSplitR; [ by iPureIntro | ]. iPureIntro. by exists (concat bss).
+  Qed.
+
+  (* =================================================================== *)
+  (*  6.  THE LEDGER SLOT (lane OFF-LINK, L5; lane SKELETON's [Hdep1] /   *)
+  (*      [Hwrite1] in [UEchoFile.v])                                     *)
+  (*                                                                     *)
+  (*  echo writes fd 1, which is BELOW [NSTD]: its descriptor knowledge   *)
+  (*  is the whole ledger ([UserFd.ustd]) and its deposit is fixed at the  *)
+  (*  ledger ([UkRun.udepwf_std]), while section 3's member is            *)
+  (*  handle-fixed at [NSTD <= fd].  These two are that member's ledger    *)
+  (*  twins and nothing else: same walk, same family, same post; the      *)
+  (*  descriptor knowledge and the deposit's reading are what change.     *)
+  (* =================================================================== *)
+
+  (* THE ARM, OUT OF THE CALLER'S OWN LEDGER, at ANY state -- the general
+     form of [UkWriteLeaf.uwr_fd_st_dev], whose proof this is verbatim.  A
+     ledger slot is below [NSTD] and [NSTD <= NOFILE], so the key's total
+     lookup is the ledger's own entry. *)
+  Lemma uwr_fd_st_std (v0 : mword 64) (fdv l : list fdstate)
+      (i : nat) (st : fdstate) :
+    bv_signed (trunc32 v0) = Z.of_nat i ->
+    (i < NSTD)%nat ->
+    take NSTD fdv = l ->
+    l !! i = Some st ->
+    fd_st_of_key v0 fdv = st.
+  Proof using .
+    intros H0 Hi Htake Hli. rewrite /fd_st_of_key H0.
+    destruct (decide (0 <= Z.of_nat i < Z.of_nat NOFILE)) as [_ | Hc];
+      [ | exfalso; apply Hc; unfold NOFILE, NSTD in *; lia ].
+    rewrite <- Htake in Hli.
+    rewrite lookup_take in Hli; [ | exact Hi ].
+    rewrite Nat2Z.id Hli. reflexivity.
+  Qed.
+
+  (* THE DEPOSIT AT LEDGER SLOT 1, [udepwf_st_write_file]'s twin: the chain
+     enters as a wand over the heap the deposit lends (the same shape
+     [UkWriteLeaf.uwrite_chain_sup] uses), and the arm is computed from the
+     ledger rather than from a handle.  The state's OFFSET MODE is free:
+     [SpecFilewrite.filewrite_in]'s inode arm is mode-blind, which is what
+     lets a HELD descriptor use this deposit unchanged. *)
+  Lemma udepwf_std_write_file (N : uk_names Σ) (m : regfile) (pc : mword 64)
+      (l : list fdstate) (rb : bool) (i : Z) (γo : gname) (om : offmode)
+      (Q : nat -> iProp Σ) (n : Z) :
+    l !! 1%nat = Some (FdOpen rb true (FdInode i γo om)) ->
+    bv_signed (trunc32 (m !!! Regidx a0_idx)) = 1%Z ->
+    sys_rw_count (m !!! Regidx a2_idx) = n ->
+    (∀ (M : gmap Z (bv 8)) (pm : gmap (mword 27) uperm) (sz : Z),
+       uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗
+       uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗
+       awrite_chain (fs_gamma_L fsc_fs) appE i γo M (m !!! Regidx a1_idx) n
+         Q 0%nat (wchunks n)) -∗
+    udepwf_std N m pc 16 (write_file_fam Q (ukn_pay N)) l.
+  Proof using .
+    intros Hl1 H0 Hcnt. iIntros "Hch".
+    rewrite /udepwf_std. iSplitR; [ iPureIntro; reflexivity | ].
+    iIntros (M pm sz fdv cw gn cs pidv) "%Htake #Hmpay Hheap Hufd".
+    iDestruct ("Hch" $! M pm sz with "Hheap") as "[Hheap Hch]".
+    iFrame "Hheap Hufd".
+    iApply (sbundle_at_write_intro_at uslot (write_file_fam Q (ukn_pay N))
+              (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
+              (m !!! Regidx a0_idx) (m !!! Regidx a1_idx)
+              (m !!! Regidx a2_idx) fdv M
+              (tf_of_arg0 m pc) (tf_of_arg1 m pc) (tf_of_arg2 m pc)
+              (uvis_of_run_fd m pc M pm sz fdv cw gn cs pidv false)
+              eq_refl).
+    rewrite (uwr_fd_st_std (m !!! Regidx a0_idx) fdv l 1%nat
+               (FdOpen rb true (FdInode i γo om))
+               H0 ltac:(unfold NSTD; lia) Htake Hl1).
+    cbn [write_file_fam xfam_wr wf_Q].
+    rewrite /filewrite_in Hcnt. iExact "Hch".
+  Qed.
+
+  (* THE LEDGER-SLOT WRITE LEAF, [wp_uk_ecall_write_file]'s twin: the one
+     write walk at [K fdv := take NSTD fdv = l], with [UserFd.ustd] in
+     place of [UserFd.ufd] and [UkRun.udepwf_std] in place of [udepwf_st].
+     Nothing about the file is in it -- it is
+     [UkRunSys.wp_uk_ecall_write_chain_buf] with the buffer replaced by an
+     abstract [S] and its source-run row, which is the shape a program that
+     owns its output as a claim (rather than as [ubytesq]) needs. *)
+  Lemma wp_uk_ecall_write_std (N : uk_names Σ) (h : CpuId) (m : regfile)
+      (pc : mword 64) (avail : nat) (fdep : sfam) (l : list fdstate)
+      (S : iProp Σ) (nb : nat) (f : nat -> bv 8) :
+    usysno m = 16 ->
+    bv_signed (trunc32 (m !!! Regidx a0_idx)) = 1%Z ->
+    is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
+    (forall (M : gmap Z (bv 8)) (pmv : gmap (mword 27) uperm) (sz : Z),
+       uheap (ukn_t N) (ukn_d N) (ukn_s N) M pmv sz -∗ S -∗
+       ⌜usrc_ok M pmv sz (m !!! Regidx a1_idx) nb f⌝) ->
+    uinstr_is (ukn_t N) pc false (ECALL tt) -∗
+    urun N h m pc avail -∗
+    udepwf_std N m pc 16 fdep l -∗
+    UserFd.ustd (ukn_fd N) l -∗
+    S -∗
+    (∀ (h' : CpuId) (rv : mword 64) (W : uvis) (cw' : Z)
+       (cs' : gset gname),
+       ⌜tf_w (uvis_tf W) (tf_arg_idx 0) = m !!! Regidx a0_idx⌝ -∗
+       ⌜tf_w (uvis_tf W) (tf_arg_idx 1) = m !!! Regidx a1_idx⌝ -∗
+       ⌜tf_w (uvis_tf W) (tf_arg_idx 2) = m !!! Regidx a2_idx⌝ -∗
+       ⌜take NSTD (uvis_fd W) = l⌝ -∗
+       ⌜uvis_lazy W = false⌝ -∗
+       ⌜usrc_ok (uvis_M W) (uvis_perm W) (uvis_sz W)
+          (m !!! Regidx a1_idx) nb f⌝ -∗
+       UserFd.ustd (ukn_fd N) l -∗
+       S -∗
+       spost_at uslot 16 fdep W rv (uvis_M W) (uvis_fd W) cw' cs' -∗
+       urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
+       WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+  Proof using .
+    intros Hn H0 Hal4 Hsrc.
+    iIntros "#Hi Hrun Hsb Hstd Hbuf Hcont".
+    iApply (wp_uk_ecall_write_at N h m pc avail fdep
+              (UserFd.ustd (ukn_fd N) l) S
+              (fun fdv => take NSTD fdv = l) nb f Hn Hal4
+              (fun fdv => ustd_agree (ukn_fd N) fdv l)
+              Hsrc
+              with "Hi Hrun [Hsb] Hstd Hbuf Hcont").
+    iApply (udepwf_K_std N m pc 16 fdep l with "Hsb").
   Qed.
 
 End UkWriteFile.

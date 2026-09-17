@@ -118,7 +118,7 @@ Definition wp_setkilled_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslo
      hands back: the owed side's payload is the only thing that can build
      kexit's payment for a self-kill, since its marker is now in the row. *)
   (if self then ChildTok.kill_owed gn ∗ ChildTok.taken_at gn
-   else □ riscv_kill_cred) -∗
+   else app_taint) -∗
   (* ...AND THE CALLER'S REGISTRATION EIGHTH, LENT (lane SELF-KILL, P6b):
      what says the [gn] the payment is keyed at IS the generation
      <p->lock>'s row is at ([SlotGen.pid_reg_agree]).  usertrap's fault arm
@@ -161,7 +161,7 @@ Definition wp_setkilled_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslo
       (* ...AND THE SIDE THE WRITE DID NOT SPEND: the taint back (it is
          persistent), or the process's own death payload, which the fault
          arm hands its kexit directly ([SpecKexit]'s left side at -1) *)
-      (if self then ChildTok.kill_owed gn else □ riscv_kill_cred) -∗
+      (if self then ChildTok.kill_owed gn else app_taint) -∗
       WP (Loop : expr riscv_lang)) -∗
   WP (Loop : expr riscv_lang).
 

@@ -643,7 +643,7 @@ Section UkLoadPostFetch.
        credential.  The WITNESS is the fault flavor above; the caller
        ([wp_uk_load_later]) refutes all three flavors at
        [uvis_lazy W = false] and discharges this vacuously. *)
-    (⊢ (□ riscv_kill_cred : iProp Σ)) ->
+    (⊢ (app_taint : iProp Σ)) ->
     Z.rem (uint va) 4096 <= 4096 - kk ->
     uva_inj pt Mp ->
     match o with
@@ -976,7 +976,7 @@ Section UkLoadObl.
        usertrap kills at.  Gated on the flavor, so a verified program --
        whose caller refutes all three -- pays nothing. *)
     (u_fault_flavor (Load Data) (ud_tfp pt) (ud_um pt) va ->
-     ⊢ (□ riscv_kill_cred : iProp Σ)) ->
+     ⊢ (app_taint : iProp Σ)) ->
     uva_canon va ->
     Z.rem (uint va) 4096 <= 4096 - kk ->
     is_aligned_vaddr (Virtaddr va) kk = true ->
@@ -1133,7 +1133,7 @@ Section UkLoadObl.
        usertrap kills at.  Gated on the flavor, so a verified program --
        whose caller refutes all three -- pays nothing. *)
     (u_fault_flavor (Load Data) (ud_tfp pt) (ud_um pt) va ->
-     ⊢ (□ riscv_kill_cred : iProp Σ)) ->
+     ⊢ (app_taint : iProp Σ)) ->
     uva_canon va ->
     Z.rem (uint va) 4096 <= 4096 - kk ->
     is_aligned_vaddr (Virtaddr va) kk = true ->
@@ -1399,7 +1399,7 @@ Section UkLoad.
        So a verified program never pays the price of a kill it cannot
        suffer. *)
     assert (Hkcf : u_fault_flavor (Load Data) (ud_tfp pt') (ud_um pt') va ->
-                   ⊢ (□ riscv_kill_cred : iProp Σ)).
+                   ⊢ (app_taint : iProp Σ)).
     { intros Hfl. exfalso.
       destruct (lazy_free_wmapped pt' sz (svpn_of va) q Hwf' Hlf'
                   ltac:(rewrite Hpm'; exact Hq) Hqw) as (w0 & Hw0 & _ & _).

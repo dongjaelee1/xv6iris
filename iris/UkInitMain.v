@@ -844,7 +844,7 @@ Section UkInitMain.
        [T] -- is what pays the payload.  The premise is the ROUND's, not
        the application's (lane TL-6; user-tree §9.4, ruling (b)): the
        lend is in hand here, and [UkInit.init_kill_law] buys the row off
-       it and gives it back.  It REPLACES [⊢ □ riscv_kill_cred -∗ T],
+       it and gives it back.  It REPLACES [⊢ app_taint -∗ T],
        which reads "a kill is free" and is echo's identity alone. *)
     (⊢ init_kill_law T stc (cc_wp Cr) (cc_wbn Cr)) ->
     init_code γt -∗ init_rodata γt -∗ init_argv γd -∗ usz γs szv -∗
@@ -1290,7 +1290,7 @@ Section UkInitMain.
        the application no more than the credential this round already
        carries -- give the lend, get it back and the child's kill arm
        ([UkInit.init_kill_law], whose header is the whole story).  It
-       REPLACES [⊢ □ riscv_kill_cred -∗ T], which was echo's identity
+       REPLACES [⊢ app_taint -∗ T], which was echo's identity
        and false at an application whose kill credential is generic. *)
     (⊢ init_kill_law T stc (cc_wp Cr) (cc_wbn Cr)) ->
     init_deps T -∗
@@ -1891,7 +1891,7 @@ Section UkInitMain.
        the application no more than the credential this round already
        carries -- give the lend, get it back and the child's kill arm
        ([UkInit.init_kill_law], whose header is the whole story).  It
-       REPLACES [⊢ □ riscv_kill_cred -∗ T], which was echo's identity
+       REPLACES [⊢ app_taint -∗ T], which was echo's identity
        and false at an application whose kill credential is generic. *)
     (⊢ init_kill_law T stc (cc_wp Cr) (cc_wbn Cr)) ->
     init_deps T -∗
@@ -2108,7 +2108,7 @@ Section UkInitMain.
        the application no more than the credential this round already
        carries -- give the lend, get it back and the child's kill arm
        ([UkInit.init_kill_law], whose header is the whole story).  It
-       REPLACES [⊢ □ riscv_kill_cred -∗ T], which was echo's identity
+       REPLACES [⊢ app_taint -∗ T], which was echo's identity
        and false at an application whose kill credential is generic. *)
     (⊢ init_kill_law T stc (cc_wp Cr) (cc_wbn Cr)) ->
     init_deps T -∗
@@ -2248,7 +2248,7 @@ Section UkInitMain.
        the application no more than the credential this round already
        carries -- give the lend, get it back and the child's kill arm
        ([UkInit.init_kill_law], whose header is the whole story).  It
-       REPLACES [⊢ □ riscv_kill_cred -∗ T], which was echo's identity
+       REPLACES [⊢ app_taint -∗ T], which was echo's identity
        and false at an application whose kill credential is generic. *)
     (⊢ init_kill_law T stc (cc_wp Cr) (cc_wbn Cr)) ->
     init_deps T -∗
@@ -2426,7 +2426,7 @@ Section UkInitMain.
        the application no more than the credential this round already
        carries -- give the lend, get it back and the child's kill arm
        ([UkInit.init_kill_law], whose header is the whole story).  It
-       REPLACES [⊢ □ riscv_kill_cred -∗ T], which was echo's identity
+       REPLACES [⊢ app_taint -∗ T], which was echo's identity
        and false at an application whose kill credential is generic. *)
     (⊢ init_kill_law T stc (cc_wp Cr) (cc_wbn Cr)) ->
     init_deps T -∗
@@ -2780,7 +2780,7 @@ Section UkInitMain.
        the application no more than the credential this round already
        carries -- give the lend, get it back and the child's kill arm
        ([UkInit.init_kill_law], whose header is the whole story).  It
-       REPLACES [⊢ □ riscv_kill_cred -∗ T], which was echo's identity
+       REPLACES [⊢ app_taint -∗ T], which was echo's identity
        and false at an application whose kill credential is generic. *)
     (⊢ init_kill_law T stc (cc_wp Cr) (cc_wbn Cr)) ->
     init_deps T -∗

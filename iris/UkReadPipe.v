@@ -415,7 +415,7 @@ Section UkReadPipe.
        the credential arm -- and the credential is what every pipe payment
        is payable from ([PipeQueue.pipe_cpay]).  A program that opens a
        pipe pays its own tear-down's closes out of it. *)
-    □ riscv_kill_cred -∗
+    app_taint -∗
     ustd (ukn_fd N) l -∗
     ubytes (ukn_d N) (uint (m !!! Regidx a0_idx)) 8 f -∗
     (∀ (h' : CpuId) (r : mword 64) (g : nat -> bv 8),

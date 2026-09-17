@@ -1034,17 +1034,8 @@ Section ProofSysDup.
       by (apply lookup_lt_is_Some_2; rewrite Hstslen; exact Hfd0N).
     destruct Hst0x as [st0 Hst0].
     iDestruct (fd_frags_acc (pv_fdg (us_V U)) sts fd0 st0 Hst0 with "Hfrag")
-      as "(Hfr0 & Hrow0 & Hfrback0)".
+      as "(Hfr0 & #Hrow0 & Hfrback0)".
     iDestruct (fd_st_agree with "Hauth0 Hfr0") as %<-.
-    (* THE SOURCE'S ROW IS COPIED, so it has to be DUPLICABLE -- which it is
-       exactly where the descriptor is parked ([FdSlots.foff_row_dup]).
-       The fact is the file invariant's own pin, read off the reference the
-       loan handed back ([FileInvDefs.file_ref_parked_keep]); when the pin
-       comes off it is the reference COUNT that says it (design/app-file.md
-       SS3 fact 4: a held object has exactly one row, and dup is holding
-       two shares). *)
-    iDestruct (file_ref_parked_keep with "Href0") as "[%Hpkf Href0]".
-    iDestruct (foff_row_dup stf Hpkf with "Hrow0") as "[Hrow0 Hrow0b]".
     iDestruct ("Hfrback0" with "Hfr0 Hrow0") as "Hfrag".
     rewrite (list_insert_id sts fd0 stf Hst0).
     (* ...and now the DESTINATION, which is the row that moves *)
@@ -1061,7 +1052,7 @@ Section ProofSysDup.
     iMod (fd_st_move _ fd1 FdClosed stq stf with "Hauth1 Hfr")
       as "[Hauth1 Hfr]".
     (* the destination's offset row is the SOURCE's: one file, one shadow *)
-    iDestruct ("Hfrback" with "Hfr Hrow0b") as "Hfrag".
+    iDestruct ("Hfrback" with "Hfr Hrow0") as "Hfrag".
     iDestruct (proc_ofiles_repay γf (pv_fdg (us_V U)) p (pv_ofile (upd_ofile (us_V U) fd1 (fnode k)))
                  {[fd0]} fd1 k (q/2)%Qp stf
                  ltac:(apply not_elem_of_singleton_2; exact Hne01)

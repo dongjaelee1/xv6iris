@@ -8631,7 +8631,7 @@ Section UkShDiagLeaf.
       (* the exec deposit's supplier -- see [wp_kshr_runcmd]: this
          record's own payload, which is its forked children's too *)
       uxsup_at (ukn_pay N) -∗
-      □ (riscv_kill_cred -∗ ukn_pay N (-1)) -∗
+      □ (app_taint -∗ ukn_pay N (-1)) -∗
       ush_jtab (ukn_t N) -∗ ush_cmd (ukn_d N) t c -∗ usz (ukn_s N) szv -∗
       UserFd.ustd (ukn_fd N) ld -∗
       UserCwd.ucwd_any (ukn_cwd N) -∗
@@ -8940,7 +8940,7 @@ Section UkShDiagLeaf.
     UserChildren.uch (ukn_ch N) Sc -∗
     ([∗ map] fd ↦ st ∈ D, UserFd.ufd (ukn_fd N) fd st) -∗
     Rc -∗
-    □ (riscv_kill_cred -∗ Q (-1)) -∗
+    □ (app_taint -∗ Q (-1)) -∗
     (* WHAT THE PANIC SPENDS, BORROWED (lane KILL-PAY, K4(a); M4b(2)):
        fork1's [-1] arm panics, and the panic is the caller's.  The
        returning arm hands it straight back. *)

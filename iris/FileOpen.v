@@ -1556,6 +1556,20 @@ Section FileOpen.
      in, and the deed's state names both the inum and the bytes. *)
   (* THE OK ARM ON ITS OWN, so the mapped corollary below -- which REFUTES
      the other one -- does not have to re-prove it. *)
+  (* THE COUNT NEVER EXCEEDS THE ONE ASKED FOR, and it is ARM-INDEPENDENT
+     (lane OFF-LINK, for CAT-ENTRY-2): [SysReadDefs.ard_ret_tie] answers
+     [ard_count] on a file row and a value in [0 .. n] on every other, so
+     whatever the receipt's own arm turns out to be -- content or taint --
+     the return sits inside the caller's count.  [bv_unsigned] of a
+     [mword_of_int] is a [mod], which only ever DECREASES a non-negative
+     value, so the bound needs no width side condition. *)
+  Lemma moi_le (z : Z) :
+    0 <= z -> bv_unsigned (mword_of_int z : mword 64) <= z.
+  Proof using .
+    intro Hz. rewrite moi_unsigned. apply Z.mod_le; [ exact Hz | ].
+    unfold Z64. lia.
+  Qed.
+
   Lemma file_read_post_ok_learn (c : file_fixed) (r : file_names) (q : Qp)
       (jc : Z) (i : Z) (bs : list (bv 8)) (n : Z)
       (rv : mword 64) (M' : gmap Z (bv 8)) (addr : mword 64)
@@ -1567,18 +1581,33 @@ Section FileOpen.
     (Z.to_nat n <= k)%nat ->
     read_post_ok (fs_gamma_L fsc_fs) i n
       (file_read_recv c r q jc (Some (i, bs))) rv M' addr -∗
-    (((∃ off : nat,
+    (⌜(Z.to_nat (bv_unsigned rv) <= Z.to_nat n)%nat⌝ ∗
+     (((∃ off : nat,
             ⌜Z.to_nat (bv_unsigned rv)
              = ard_count (Z.to_nat n) off (length bs)⌝ ∗
             ⌜forall j : nat, (j < Z.to_nat (bv_unsigned rv))%nat ->
                g j = bs !!! (off + j)%nat⌝)
-      ∗ fdq r q (Some (i, bs)))
-     ∨ (fdq r q (Some (i, bs)) ∗ file_taint c)).
+       ∗ fdq r q (Some (i, bs)))
+      ∨ (fdq r q (Some (i, bs)) ∗ file_taint c))).
   Proof using .
     intros Hlin Himg Hnk.
     rewrite /read_post_ok.
     iIntros "Hok".
     iDestruct "Hok" as (av off a d) "(%Hpre & %Hn & %Htie & %Hdr & %Hbytes & Hc)".
+    (* THE BOUND, off the tie alone and BEFORE the receipt's arms *)
+    assert (Hbnd : (Z.to_nat (bv_unsigned rv) <= Z.to_nat n)%nat).
+    { rewrite /ard_ret_tie in Htie.
+      destruct (an_node a) as [bs' | ents | ma mi] eqn:Han;
+        try rewrite Han in Htie; try cbn in Htie.
+      - rewrite Htie.
+        pose proof (moi_le (Z.of_nat (ard_count (Z.to_nat n) off (length bs')))
+                      ltac:(lia)) as Hle.
+        pose proof (ard_count_le (Z.to_nat n) off (length bs')) as Hcl. lia.
+      - destruct Htie as (rv' & Hrv & Hlo & Hhi). rewrite Hrv.
+        pose proof (moi_le rv' Hlo) as Hle. lia.
+      - destruct Htie as (rv' & Hrv & Hlo & Hhi). rewrite Hrv.
+        pose proof (moi_le rv' Hlo) as Hle. lia. }
+    iSplitR; [ by iPureIntro | ].
     rewrite /file_read_recv. cbn [pf_recv].
     iDestruct "Hc" as "[[%Hf Hd] | [Hd #HT]]"; last first.
     { iRight. iFrame "Hd". iExact "HT". }
@@ -1645,7 +1674,7 @@ Section FileOpen.
         + iLeft. iFrame "Hd". iLeft. by iPureIntro.
         + iRight. iFrame "Hd". iExact "HT". }
     iDestruct (file_read_post_ok_learn c r q jc i bs n rv M' addr k g
-                 Hlin Himg Hnk with "Hok") as "[[H Hd] | [Hd HT]]".
+                 Hlin Himg Hnk with "Hok") as "[_ [[H Hd] | [Hd HT]]]".
     - iLeft. iFrame "Hd". iRight. iExact "H".
     - iRight. iFrame "Hd". iExact "HT".
   Qed.
@@ -1668,13 +1697,18 @@ Section FileOpen.
        uva_wmapped P (uint (add_vec_int addr (Z.of_nat j)))) ->
     read_arms (fs_gamma_L fsc_fs) i γo P n
       (file_read_recv c r q jc (Some (i, bs))) rv M' addr -∗
-    (((∃ off : nat,
-         ⌜Z.to_nat (bv_unsigned rv)
-          = ard_count (Z.to_nat n) off (length bs)⌝ ∗
-         ⌜forall j : nat, (j < Z.to_nat (bv_unsigned rv))%nat ->
-            g j = bs !!! (off + j)%nat⌝)
-      ∗ fdq r q (Some (i, bs)))
-     ∨ (fdq r q (Some (i, bs)) ∗ file_taint c)).
+    (* ...AND THE COUNT'S BOUND RIDES OUT BESIDE THE ARMS (lane OFF-LINK,
+       for CAT-ENTRY-2): a read of [n] bytes returns at most [n] whichever
+       arm the receipt took, which is what a caller needs to refute a short
+       write at the cursor on the TAINT arm, where the deed says nothing. *)
+    (⌜(Z.to_nat (bv_unsigned rv) <= Z.to_nat n)%nat⌝ ∗
+     (((∃ off : nat,
+          ⌜Z.to_nat (bv_unsigned rv)
+           = ard_count (Z.to_nat n) off (length bs)⌝ ∗
+          ⌜forall j : nat, (j < Z.to_nat (bv_unsigned rv))%nat ->
+             g j = bs !!! (off + j)%nat⌝)
+       ∗ fdq r q (Some (i, bs)))
+      ∨ (fdq r q (Some (i, bs)) ∗ file_taint c))).
   Proof using .
     intros Hlin Himg Hn Hnk Hmap. iIntros "H".
     iApply (file_read_post_ok_learn c r q jc i bs n rv M' addr k g

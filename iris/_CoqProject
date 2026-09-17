@@ -1499,6 +1499,8 @@ EchoFsPure.v
 FileFsPure.v
 AppEcho.v
 AppFile.v
+FileOpen.v
+FileDeltas.v
 FileWrite.v
 AppTree.v
 

@@ -5384,3 +5384,291 @@ SH-ROUND is the kernel-tier device refutation (S3) if the round wants
 leaf (`wp_uk_ecall_open_recv_img_held`), which re-instantiates this
 corollary by the one swap F-OPEN-4 recorded plus `UserOff.uoff γo 0` in
 the fd arms.
+
+### WRITE-RELAY (2026-09-17) — RELAY 3 LANDS WHOLE AND THE CHUNK EQUATION LEAVES `FileWrite`; RELAY 4 IS **STOPPED**, BECAUSE THE PARTIAL ARM HAS A SECOND REASON THE MAPPED ROW DOES NOT COVER AND §0's LIMIT 1 IS FALSE AS STATED
+
+**The lane's verdict in one line: RELAY 3 is CLOSED — every full node now
+carries the count the fire was called with, `FileWrite.file_awrite_full_anchored`'s
+`⌜bs = bsk⌝` arrow is DELETED and discharged FROM the node, and nothing above
+`filewrite` moved; RELAY 4 is STOPPED at the brief's own stop condition, because
+`FsAbsWriteFire.awrite_part_at` is NOT the disturbed-tail arm — since round E2
+(lane E2-W) it is ALSO the disk-full SHORT-write arm — so a caller whose source
+run is readable-mapped still meets it, and design/app-file.md §0 limit 1's "a
+chunk lands whole or not at all" is false of the landed tree.**
+
+Branch `app-file/write-relay`, four commits on top of main.  Whole tree green on
+the lane's remote tree (`--proofs -k`, `EXIT=0`, zero `Error`, 1589/1589 `.vo`,
+no non-empty `.vos`); `make audit-all-only` / `audit-tree-only` /
+`audit-file-only` unchanged (echo FOURTEEN, system THIRTEEN, tree THIRTEEN, file
+FOURTEEN); no `Admitted`; `Proof using` on every new result;
+`tools/comment_quote_check.py iris` clean.
+
+**WHAT RELAY 3 IS, AND WHY A LENGTH IS THE WHOLE OF IT.**  `SpecCopyin.ubytes_at
+M ua bs` is a `∀` over `bs`'s OWN indices, hence PREFIX-CLOSED: the node promises
+a run of the caller's image at a base, never the whole chunk.  The missing half
+is a LENGTH, and the kernel holds it for free at the fire — it is the number it
+passed writei.  At node `k` of a request for `n` bytes that number is
+`SysWriteDefs.wchunk_at n k := Z.min (n - FW_MAX * k) FW_MAX`
+(`iris/SysWriteDefs.v:115`), because every chunk that reached node `k` was FULL
+(a short one breaks filewrite's loop) — which is exactly the loop's own tie
+`t = FW_MAX * p`.  `wchunk_at_pick` (`:122`) turns `fw_test`'s AU-EDIT-5 clause
+(`c = n - i \/ c = FW_MAX`, which says the chunk is one of the two the code can
+pick and not merely bounded by both) plus that tie into the equation, and
+`SpecCopyin.ubytes_at_inj` (`iris/SpecCopyin.v:216`) — two runs of one length at
+one base are one run — turns the length into the identification.  **RELAY 3 asks
+writei for nothing**; the count is filewrite's own, so `SpecWritei.v`,
+`ProofWritei.v` and `SpecEitherCopyin.v` are untouched.
+
+**EVERY STATEMENT THAT CHANGED SHAPE, EXHAUSTIVELY** (and nothing else did).
+
+1. `SysWriteDefs.v` — NEW, pure, additive: `wchunk_at` (`:115`),
+   `wchunk_at_pick` (`:122`), `wchunk_at_pos`, `wchunk_at_le`.  No landed
+   statement in the file moved.
+2. `SpecCopyin.ubytes_at_inj` (`:216`) — NEW.
+3. `FsAbsWriteFire.awrite_full_at` (`:577`) — gains `(n : Z)` between `ua` and
+   `k`, and a THIRD pure arrow `⌜Z.of_nat (length bs) = wchunk_at n k⌝` AFTER
+   the content tie, so every intro pattern gains one `%` and nothing is renamed.
+4. `FsAbsWriteFire.awrite_part_at` (`:618`) — gains the same `(n : Z)` and a pure
+   arrow `⌜Z.of_nat r < wchunk_at n k⌝`: the count returned is strictly below the
+   node's chunk, which is what ENDS filewrite's loop.  (Placed after the
+   `length bs <= r + BSIZE` bound, before the content tie.)
+5. `FsAbsWriteFire.awrite_chain` (`:655`) — gains `(n : Z)` after `ua`.
+   Consequent parameter-list moves only: `awrite_chain_0`, `awrite_chain_S`,
+   `awrite_chain_cursor`, `awrite_chain_unit`.
+6. `FsAbsWriteFire.wrf_awrite_fire_gen` (`:734`) / `wrf_awrite_fire` /
+   `wrf_awrite_fire_held` — gain `(cnt : Z)` after `ua` and the premise
+   `Z.of_nat (length bs) = wchunk_at cnt k`, LAST of the pure premises.
+7. `FsAbsWriteFire.wrf_apart_fire_gen` (`:886`) / `wrf_apart_fire` /
+   `wrf_apart_fire_held` — the same with `Z.of_nat r < wchunk_at cnt k`.
+8. `ProofFilewriteChain.fw_au_raw` and its five moves (`_init`, `_take`,
+   `_spend_part`, `_ok`, `_fail`) — ARGUMENT PASS-THROUGH ONLY: `n` was already
+   a parameter of the loop invariant.
+9. `SpecFilewrite.write_post_ok_at` / `write_post_fail_at` / `filewrite_in`'s
+   inode arm / `filewrite_in_inode` / `write_arms_at_neg` — ARGUMENT
+   PASS-THROUGH ONLY, same reason.  **NOTHING ABOVE `filewrite` MOVED**: not
+   `filewrite_extra`, not `filewrite_arms`, not `SpecSysWrite`, not
+   `UexecExecInst`'s row 16, not `ProofSyscall`, not one U-tier write leaf's
+   statement.
+10. `FsAbsInvFire.fsabs_awrite_chain` — gains `(n : Z)`.
+11. `UexecExecMint.filewrite_in_of_sup`, `UkWriteFile.udepwf_st_write_file`,
+    `UkWriteFile.wp_uk_write_file_lands`, `UkTreeWrite`'s supplier — argument
+    pass-through; no U-tier statement changed shape.
+12. `TreeMove.tree_awrite_chain` (`:390`) — gains `(nn : Z)`; it INTRODUCES AND
+    DROPS both relays.  The tree claim is existential in everything the kernel
+    picks (`tree_wq` says only `twrote i t t'`), so a node is payable whatever
+    the relays say and the tree keeps paying BOTH arms.
+13. `FileWrite.file_awrite_full_anchored` (`:474`) — gains `(nn : Z)`, **DROPS
+    the `⌜bs = bsk⌝` arrow AND the `bsk` parameter**, and carries RELAY 3's arrow
+    verbatim from the node.  Exactly TWO arrows now separate it from
+    `awrite_full_at`: RELAY 1 (the claim owes `f`'s inum) and RELAY 2 (the kernel
+    owes the anchored offset).
+14. `FileWrite.file_awrite_node` (`:519`) — gains `(nn : Z)` and TWO Coq premises
+    about the writer's OWN buffer, `ubytes_at M (ua + FW_MAX*k)
+    (echo_chunks ws !!! jx)` and `Z.of_nat (length (echo_chunks ws !!! jx)) =
+    wchunk_at nn k`, and derives `bs = echo_chunks ws !!! jx` itself.  Neither is
+    a contract fact — a writer holds both about its own run.
+15. `FileWrite.file_write_premises_sat` (`:264`) — gains `bsk` and
+    `(Z.of_nat (length bsk) <= FW_MAX)%Z`, and a FOURTH clause
+    `Z.of_nat (length bsk) = wchunk_at (Z.of_nat (length bsk)) 0` — the vacuity
+    witness AT ECHO'S OWN SHAPE (one `write` per chunk, so the node is node 0 of
+    a one-chunk request and `wchunk_at` collapses to the chunk).
+16. `ProofFilewrite.v` — PROOF SCRIPT ONLY: `Hcw : c = wchunk_at n p` once before
+    the `rz = c` key split, `Hlenw` at the full fire, `Hshort` at the partial
+    fire.
+17. `SysWriteDefs.wchunks_one` / `wchunk_at_0` — NEW, for lane SKELETON's
+    finding 5 (below).
+18. `OffGv.off_ret` / `off_ret_keep` / `off_ret_adv` — NEW (lane SKELETON's
+    `Hoff_link`, below).  In `OffGv` and not `UserOff` because the four producer
+    sites outside the fire files already require the former and not the latter.
+19. `FsAbsWriteFire.awrite_full_at`'s phase 2 returns `off_ret γo off (length
+    bs)` in place of `off_gv γo (1/2) (Z.of_nat off)`; `awrite_part_at`'s returns
+    `off_ret γo off r`.  `awrite_chain_unit`'s two arms answer with
+    `off_ret_keep`.
+20. `FsAbsReadFire.aread_commit_at` returns `off_ret γo off d`;
+    `aread_commit_at_unit`, `aread_commit_at_pinned`, `aread_commit_at_pinned_self`
+    answer with `off_ret_keep` and `arf_pin_compose` frames it through.
+21. `UserOff.off_supply` — SAME name, arity and three producers; its INPUT
+    widened to `off_ret γo off d`.  `FdPark.off_supply_of_st` / `_eq` / `_at` /
+    `_at_eq` are untouched, and so are all six write fires and all five read
+    fires, in statement AND in proof.
+22. `FileWrite.file_awrite_full_anchored` returns `off_ret γo off (length bs)`;
+    `file_awrite_node` answers with `off_ret_keep`.
+23. `TreeMove.tree_awrite_chain`, `FileOpen.file_read_piece`,
+    `UkTreeRead.tree_read_piece` — proof-script only, one `off_ret_keep` each
+    (`UkTreeRead` gains `Require Import OffGv`).
+24. `SpecWritei.v`, `ProofWritei.v`, `SpecEitherCopyin.v`, `SpecFileread`/read
+    side, every other file — **UNTOUCHED**.
+
+**LANE SKELETON's `Hoff_link` (its item 1 / finding 4) — THE NODE'S ANSWER IS
+NOW A CHOICE, IN ONE DEFINITION, AND EVERY FIRE IS UNCHANGED IN STATEMENT AND IN
+PROOF.**  The exact returned shape, for lane OFF-LINK to build the fire on:
+
+    OffGv.off_ret γo off d  :=  ∃ v : Z, off_gv γo (1/2) v
+                                  ∗ ⌜v = Z.of_nat off \/ v = Z.of_nat (off + d)⌝
+    OffGv.off_ret_keep : off_gv γo (1/2) (Z.of_nat off)       -∗ off_ret γo off d
+    OffGv.off_ret_adv  : off_gv γo (1/2) (Z.of_nat (off + d)) -∗ off_ret γo off d
+
+- `FsAbsWriteFire.awrite_full_at`'s phase 2 returns `off_ret γo off (length bs)`.
+- `FsAbsWriteFire.awrite_part_at`'s phase 2 returns `off_ret γo off r` — the
+  COUNT writei returned, matching `wrf_apart_fire`'s payout and not the run that
+  landed.
+- `FsAbsReadFire.aread_commit_at` returns `off_ret γo off d` (cat's held read
+  advances by what it read).
+- `FileWrite.file_awrite_full_anchored` returns `off_ret γo off (length bs)` too,
+  and `file_awrite_node` proves it with `off_ret_keep`: its cursor holds no user
+  half yet, and that is OFF-LINK's link arm.
+
+**`UserOff.off_supply` KEEPS ITS NAME, ARITY AND ALL THREE PRODUCERS**
+(`off_supply_parked`, `_parked_keep`, `_held`, hence `FdPark.off_supply_of_st*`
+untouched); only its INPUT widened from `off_gv γo (1/2) (Z.of_nat off)` to
+`off_ret γo off d`.  That is why **all six write fires
+(`wrf_awrite_fire_gen` / `_` / `_held`, `wrf_apart_fire_gen` / `_` / `_held`) and
+all five read fires (`arf_read_fire_gen` / `_` / `_held` / `_1` / `_held_1`) are
+unchanged in statement AND in proof** — the one `iMod ("Hsup" with "Hg")`
+line still typechecks, because the commit now hands `Hsup` exactly what it
+takes.
+
+**WHY ONE DEFINITION AND NOT TWO NAMED FORMS.**  Two forms (`awrite_full_at` /
+`awrite_full_at_adv`, with the first a corollary) would make the CHAIN the client
+builds carry which one it chose, and the fire would then have to branch on the
+CALLER — the error OFF-HAND-5's finding 1 names and review §A1 calls the
+campaign's recurring one ("the kernel cannot branch on the taint").  With one
+definition the fire sees a `v` it must close on either way, and `off_supply` is
+the single place the two values are told apart.  It also composes with RELAY 3
+for free: the length arrow is a PREMISE of the node and the return is its
+CONCLUSION, so the two never meet.
+
+**AND THE ADVANCED ARM IS ALREADY VACUOUS AT BOTH LANDED SUPPLIERS** — the
+honest reading today, and the vacuity check the ruling owes.
+`off_supply_held` at `v = off + d` derives a CONTRADICTION whenever `0 < d`
+(`UserOff.uoff_agree_k`: the caller holds the OTHER half at `off` while the
+kernel's reads `off + d`); `off_supply_parked` simply moves its existential row
+to the value that is already there.  So nothing in the tree can yet answer
+`off_ret_adv`, and nothing has to: the link arm is `FileOffCell.off_resident`'s,
+lane OFF-LINK's.
+
+**LANE SKELETON's finding 5 — "one echo write is ONE chain node" is now a
+lemma.**  `SysWriteDefs.wchunks_one` (`0 < n -> n <= FW_MAX -> wchunks n = 1`)
+and `SysWriteDefs.wchunk_at_0` (`n <= FW_MAX -> wchunk_at n 0 = n`).  So
+`UEchoFile`'s chain at one write is `Q 0 ∧ (full ∧ partial)`: ONE full node
+whose chunk IS the whole request — which is what makes RELAY 3's two premises
+free at echo — beside ONE partial node, which is the arm RELAY 4's stop leaves
+unpayable.  `FileWrite.file_write_premises_sat`'s fourth clause is `wchunk_at_0`
+at the witness.
+
+**RELAY 4 — STOPPED, AND THE STOP IS THE BRIEF'S OWN.**  The row the brief asks
+for is "the partial node carries the reason `either_copyin` names, and a caller
+whose source run is readable-mapped meets NO partial arm".  The carrying half is
+landable exactly as READ-RELAY's twin.  The refuting half is FALSE of the landed
+tree, and not for want of proof effort:
+
+- **`FsAbsWriteFire.awrite_part_at` is not the disturbed-tail arm.**  Round E2
+  (lane E2-W, ruling Q-i) MERGED two filewrite exits into it.
+  `ProofFilewrite.v:3067` takes the partial arm on
+  `decide (0 < length (wrf_landed wrote dstb sz off tot dist))%nat`, i.e. on
+  `0 < tot + min dist …` — satisfied by `dist = 0` and `0 < tot`.
+- **THE SECOND REASON, with its site.**  `ProofWritei.v:2433` is writei's `bmap`
+  break (`uint addr = bmap(ip, off/BSIZE); if(addr == 0) break;` — balloc out of
+  blocks, `kernel/fs.c`), and `ProofWritei.v:2454` exits it by calling `wi_size`
+  (`ProofWritei.v:1405`, whose argument list is `… off n tot src_bytes wrote dist
+  dstb …`) with `dist := 0%nat` and the loop's ACCUMULATED `tot`.  On any
+  iteration but the first that `tot` is positive.  So writei can answer
+  `0 < tot < n` with `dist = 0` and NO unreadable source byte: a SHORT write with
+  nothing unnamed in it.  `SpecWritei.v:753` / `:1036` is where the post stops —
+  `⌜(tot = n)%nat -> dist = 0%nat⌝` and `⌜user = false -> dist = 0%nat⌝` are its
+  only `dist` clauses, nothing says `tot < n -> 0 < dist`, and nothing could.
+- **The U tier cannot exclude it**, and design/app-file.md §0 says why in its own
+  words: "the disk is not full" is a bitmap fact no application-tier claim can
+  see, and refuting it "is a kernel-tier lane … and is NOT taken".
+  `UkRunSys.usrc_ok`'s mapped row (`iris/UkRunSys.v:4188`) refutes copyin faults
+  and says nothing about the bitmap.
+- **Therefore design/app-file.md §0 limit 1 is FALSE as stated.**  "A chunk
+  either lands whole or not at all" fails at a chunk that STRADDLES A BLOCK
+  BOUNDARY whose second block balloc cannot allocate: the first block's bytes are
+  committed (`log_write` ran before the break), the second never starts, and `f`
+  holds a PROPER NON-EMPTY PREFIX of an echo chunk.  `AppFile.f_bytes_typed`
+  admits only whole-chunk subsequences, so F-WRITE finding 3 stands.
+
+**WHAT THE RELAY WOULD STILL BUY — one third of F-WRITE finding 3 is retired by
+the analysis alone.**  The honest consequence of the copyin reason is
+`⌜(r < length bs)%nat -> wr_fail_why P ua (Z.to_nat n)⌝` on the partial node, and
+at a mapped source that forces `r = length bs`, hence `take r bs = bs`: **every
+byte that lands is the CALLER's**.  That kills `awrite_part_at`'s
+NON-DETERMINISM in the bytes — the "up to one block of bytes nobody names" — and
+leaves a DETERMINISTIC short write.  So F-WRITE's way out (a) sharpens from "a
+partial last chunk plus a bounded junk tail" to **"a partial last chunk, NO junk
+tail"**, which `FileDisc`'s `ralt`/`fsm` can express as `sel` plus a PREFIX of one
+further chunk, and §0's alternative list gains "a prefix of the last chunk"
+instead of "junk".  That is a strictly better model than the one F-WRITE priced,
+and it is the designer's call.
+
+**THE ONE EXTRA CONJUNCT THAT WOULD CLOSE THE REFUTATION OUTRIGHT, and the proof
+already derives it.**
+
+    SpecWritei's post gains  ⌜wi_blocks off n = 1%nat -> (tot < n)%nat ->
+                               tot = 0%nat \/ wr_fail_why P src n⌝
+
+`wi_blocks off n = 1` (`SpecWritei.v:357`) is the SINGLE-BLOCK shape — the whole
+range inside one block — and under it writei's loop runs one iteration, so a short
+answer is either bmap's failure on the FIRST block (`tot = 0`, nothing committed)
+or copyin's (the reason).  `ProofWritei.v` already has the fact at exactly that
+exit: `wi16_fresh` (`ProofWritei.v:261`) is `wi_blocks off n = 1%nat -> tot =
+0%nat /\ …` and `ProofWritei.v:2487` destructs it inside the bmap break.  With
+that conjunct, a mapped source AND a single-block chunk leave `tot = 0`,
+`dist = 0`, `wrf_landed` empty (`wrf_landed_length`) — and `ProofFilewrite.v:3067`
+takes the `_same` branch, so the chain spends NO node and the partial arm is
+refuted outright.  The single-block premise is an APPLICATION-TIER fact, not a
+bitmap one: the deed holder knows `off = |subseq (echo_chunks ws) sel|` and
+`|chunk|`, so it knows whether the chunk straddles.  (A line long enough to
+straddle is then the honest residue, and §0 must name it.)
+
+**COST OF THE CARRYING HALF, MEASURED, so the next lane is not surprised.**
+`wr_fail_why P src n := ∃ d, (d < n)%nat /\ ~ uva_rmapped P (uint (add_vec_int
+src (Z.of_nat d)))` is a two-line leaf in `SysWriteDefs` — the exact twin of
+`SysReadDefs.rd_fail_why` (`iris/SysReadDefs.v:192`), `~ uva_rmapped` where the
+read side has `~ uva_wmapped`, plus `wr_nrmapped_entry` / `_entry` / `_mono` /
+`_refute` — and `SpecEitherCopyin.either_copyin_post` ALREADY names the failing
+byte (`iris/SpecEitherCopyin.v:109-113`), so the relay through `ProofWritei` is
+`ProofReadi.v:1887-1913` mirrored, and `ProofWritei.v:155-157`'s own header
+already says the copyin break is the ONLY site that instantiates `dist` nonzero.
+**The expensive part is neither: it is that the reason names a `uptd`, while the
+chain lives in `SpecFilewrite.filewrite_in` — the PRE, which a U-tier program
+supplies before it knows the kernel's table.**  The read side never paid this,
+because `rd_fail_why` rides `read_arms` inside the POST, where `P` is delivered
+existentially (`UkWriteLeaf.spost_at_write_elim_at`'s `∃ P` already does exactly
+that for the write's console arm).  Three shapes were checked and only the third
+works:
+  (i) quantify `P` unconditionally inside the node — the client then owes the
+      refutation at EVERY table, which is false;
+  (ii) key the reason on the image `M` the chain already carries — REFUTED:
+      `ProcPtOwn.proc_ptm` (`iris/ProcPtOwn.v:3496`) is `umem_lazy P sz M`, which
+      records a 0 at every va below `p->sz` the table does NOT map, so
+      `M !! a = Some c` implies nothing about `uva_rmapped P a`;
+  (iii) `filewrite_in` gains ONE parameter `(TB : uptd -> Prop)` and its inode arm
+      becomes `∀ P, ⌜TB P⌝ -∗ awrite_chain … P …`; `UexecExecInst`'s `xv6_sbundle`
+      row 16 instantiates `TB` at `uvis_perm W` / `uvis_sz W` / `uvis_lazy W` —
+      the three facts `UkRunSys.usrc_ok`'s second conjunct consumes and
+      `spost_at_write_intro` already exhibits on the post side — and
+      `ProofSyscall.sysc_dep_write` gains the two premises
+      `ProofSyscall.sysc_out_write` already carries (`proc_pt_wf`, the guarded
+      `lazy_free`).  That is one parameter on `filewrite_in`, NO new parameter on
+      `sbundle_at_write_intro_at` / `sbundle_at_write_elim`, and one
+      `iIntros (P) "%Htb"` at each of the six U-tier write suppliers
+      (`UkWriteLeaf`, `UkWriteClosed`, `UkWriteFile`, `UkWritePipe`,
+      `UkWriteCons`, `UkTreeWrite`).
+Lane OFF-LINK is also moving `filewrite_in`'s inode arm, so whoever goes second
+pays that merge; RELAY 3 deliberately did not touch it.
+
+**WHAT ECHO-FILE APPLIES, AT ITS FOUR NODES.**  `FileWrite.file_awrite_node` is
+the node with two arrows left, and echo's four writes discharge both of its new
+Coq premises for free: each chunk goes out in a `write` of its own, so `k = 0`,
+`nn = Z.of_nat |chunk|` and `wchunk_at nn 0 = nn` (`file_write_premises_sat`'s
+fourth clause), and the content row is the buffer echo owns
+(`UkRunSys.usrc_ok`'s FIRST conjunct, joined to `ubytes_at` by
+`UkWriteFile.ubytes_at_src`).  What `UEchoFile` still cannot supply is unchanged
+and is not this lane's: RELAY 1 (`AppFile.f_ok`'s existential inum) and RELAY 2
+(the anchored offset, design §3's OFF-LINK block).  And it must still be told
+which ruling on the partial arm the designer takes — F-WRITE's (a), now sharpened
+to "a partial last chunk, NO junk tail", or the single-block conjunct above.
+Until one is taken, `UEchoFile` has no node it can offer at the partial arm,
+exactly as F-WRITE said.

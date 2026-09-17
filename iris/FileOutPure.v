@@ -2027,3 +2027,265 @@ Proof using.
     apply sessf_take. lia. }
   rewrite Hcut. by apply sessf_mono.
 Qed.
+
+(* ====================================================================== *)
+(*  12.  THE ERA'S FIRST DRAIN: AN UNDRAINED CYCLE HAS TYPED NOTHING       *)
+(*                                                                        *)
+(*  The ledger fixes an era's boot state at the era's FIRST DRAIN, and     *)
+(*  what makes that the right moment is D2: the checked prefix before a    *)
+(*  cycle's first input byte already owes the whole prologue, which is     *)
+(*  NONEMPTY.  So a cycle whose console wire is still empty has no input   *)
+(*  byte at all, hence no complete line, hence the ledger's line list at   *)
+(*  that moment IS the list of lines typed in strictly EARLIER cycles --   *)
+(*  which is the set [FileDisc.file_phi]'s third clause reads the boot     *)
+(*  state against.                                                        *)
+(* ====================================================================== *)
+
+(* the prefix before a cycle's FIRST console input byte is itself input-free *)
+Lemma in_pres_first (seg : list mobs) :
+  ins seg <> [] -> exists p, p ∈ in_pres seg /\ ins p = [].
+Proof using.
+  induction seg as [| e seg IH]; [by intros Hne |].
+  destruct e as [i b | i b | |]; cbn [in_pres].
+  - destruct i.
+    + intros _. exists []. split; [apply elem_of_cons; by left | done].
+    + intros Hne. destruct (IH Hne) as (p & Hp & Hi).
+      exists (ObsUartIn Uart1 b :: p). split; [| exact Hi].
+      apply elem_of_list_fmap. by exists p.
+  - intros Hne. destruct (IH Hne) as (p & Hp & Hi).
+    exists (ObsUartOut i b :: p). split; [| exact Hi].
+    apply elem_of_list_fmap. by exists p.
+  - intros Hne. destruct (IH Hne) as (p & Hp & Hi).
+    exists (ObsPowerOn :: p). split; [| exact Hi].
+    apply elem_of_list_fmap. by exists p.
+  - intros Hne. destruct (IH Hne) as (p & Hp & Hi).
+    exists (ObsPowerOff :: p). split; [| exact Hi].
+    apply elem_of_list_fmap. by exists p.
+Qed.
+
+(* THE PURE FACT.  Under the discipline, a cycle whose console wire is
+   empty has received no console input. *)
+Lemma disc_f_first_out (h : list mobs) :
+  disc_f h -> trace_shape h true ->
+  obs_wire Uart0 (open_seg h) = [] -> ins (open_seg h) = [].
+Proof using.
+  intros Hd Hsh Hw.
+  destruct (decide (ins (open_seg h) = [])) as [? | Hne]; [done | exfalso].
+  destruct (disc_seg_f'_open_seg h Hsh Hd) as (s & _ & _ & ps & cs & _ & Hall).
+  destruct (in_pres_first (open_seg h) Hne) as (p & Hp & Hpi).
+  destruct (Hall p Hp) as [[Hpsb Hlt] Hpt].
+  rewrite /disc_pt_f Hpi in Hpt.
+  assert (Hwp : obs_wire Uart0 p = []).
+  { destruct (proj1 (Forall_forall _ _) (in_pres_prefix_all (open_seg h)) p Hp)
+      as [z Hz].
+    rewrite Hz obs_wire_app in Hw. by destruct (app_eq_nil _ _ Hw) as [Hz1 _]. }
+  rewrite Hwp in Hpt.
+  apply (sessf_nonnil ps cs s [] Hpsb).
+  - apply (proj2 (pro_done_rounds ps)).
+    rewrite Hpi nlines_nil in Hlt. cbn [pro_idx_f] in Hlt. lia.
+  - exact (prefix_nil_inv _ Hpt).
+Qed.
+
+(* ---- the two readings of a cycle list split at its last cycle ---- *)
+
+Lemma echof_lines_before_cut (h : list mobs) (cs : list (list mobs))
+    (o : list mobs) :
+  cycles_of h = cs ++ [o] ->
+  echof_lines_before h (length cs) = concat (echof_cyc <$> cs).
+Proof using.
+  intros Hc. rewrite /echof_lines_before Hc take_app_length. reflexivity.
+Qed.
+
+Lemma echof_lines_of_cut (h : list mobs) (cs : list (list mobs))
+    (o : list mobs) :
+  cycles_of h = cs ++ [o] -> ins o = [] ->
+  echof_lines_of h = concat (echof_cyc <$> cs).
+Proof using.
+  intros Hc Ho. rewrite /echof_lines_of Hc fmap_app concat_app.
+  cbn [fmap list_fmap concat]. rewrite /echof_cyc Ho.
+  rewrite /echof_lines_in /lines_of bodies_of_nil fmap_nil.
+  by rewrite !app_nil_r.
+Qed.
+
+(* THE COROLLARY THE LEDGER SPENDS.  At the era's first drain the ledger's
+   line list -- the lines of the WHOLE history -- is exactly the list of
+   lines typed in the cycles strictly before the open one.  [n] is the open
+   cycle's INDEX, which is one less than the number of cycles (and so one
+   less than [obs_boots h]: the eras the per-era maps are keyed by are
+   1-based, the cycles 0-based). *)
+Lemma efl_of_first_out (h : list mobs) (e : mobs) (n : nat) :
+  disc_f h -> trace_shape h true -> is_io e = true ->
+  obs_wire Uart0 (open_seg h) = [] ->
+  S n = length (cycles_of h) ->
+  echof_lines_of h = echof_lines_before (h ++ [e]) n.
+Proof using.
+  intros Hd Hsh Hio Hw Hn.
+  destruct (cycles_of_io h [e] Hsh (proj2 (Forall_singleton _ _) Hio)) as (cs & H1 & H2).
+  assert (Hlen : length cs = n).
+  { rewrite H1 length_app in Hn. cbn [length] in Hn. lia. }
+  rewrite (echof_lines_of_cut h cs (open_seg h) H1
+             (disc_f_first_out h Hd Hsh Hw)).
+  rewrite -Hlen. symmetry.
+  exact (echof_lines_before_cut (h ++ [e]) cs (open_seg h ++ [e]) H2).
+Qed.
+
+(* ====================================================================== *)
+(*  13.  THE CONCLUSION'S BODY, AND ITS FOUR STEPS                         *)
+(*                                                                        *)
+(*  [FileDisc.file_phi]'s body at a given list of per-cycle boot states.   *)
+(*  The ledger carries [exists s0s, disc_f h -> file_phi_body h s0s], so   *)
+(*  [FileDisc.file_phi] follows VERBATIM.                                  *)
+(* ====================================================================== *)
+
+Definition file_phi_body (h : list mobs) (s0s : list fst) : Prop :=
+  length s0s = length (cycles_of h)
+  /\ (forall s, s0s !! 0%nat = Some s -> s = None)
+  /\ (forall k s, s0s !! S k = Some s ->
+        fadm_boot (echof_lines_before h (S k)) s)
+  /\ Forall2 good_out_f s0s (cycles_of h).
+
+Lemma file_phi_of_body (h : list mobs) (s0s : list fst) :
+  (disc_f h -> file_phi_body h s0s) -> file_phi h.
+Proof using.
+  intros H Hd. destruct (H Hd) as (H1 & H2 & H3 & H4).
+  by exists s0s.
+Qed.
+
+Lemma file_phi_body_nil : file_phi_body [] [].
+Proof using.
+  rewrite /file_phi_body (_ : cycles_of [] = []); [| reflexivity].
+  split_and!.
+  - reflexivity.
+  - intros s Hs. discriminate.
+  - intros k s Hs. discriminate.
+  - constructor.
+Qed.
+
+(* an event that puts nothing on the console's wire *)
+Lemma file_phi_body_step_io (h : list mobs) (e : mobs) (s0s : list fst) :
+  trace_shape h true -> is_io e = true -> obs_wire Uart0 [e] = [] ->
+  file_phi_body h s0s -> file_phi_body (h ++ [e]) s0s.
+Proof using.
+  intros Hsh Hio Hw (Hlen & H0 & Hadm & HF).
+  destruct (cycles_of_io h [e] Hsh (proj2 (Forall_singleton _ _) Hio)) as (cs & H1 & H2).
+  rewrite H1 in Hlen, HF. rewrite /file_phi_body H2.
+  assert (Hcut : forall j, (j < length s0s)%nat ->
+                   echof_lines_before (h ++ [e]) j = echof_lines_before h j).
+  { intros j Hj. rewrite /echof_lines_before H1 H2.
+    rewrite length_app in Hlen. cbn [length] in Hlen.
+    rewrite !take_app_le; [reflexivity | lia | lia]. }
+  split_and!.
+  - rewrite Hlen !length_app. reflexivity.
+  - exact H0.
+  - intros k s Hs. rewrite (Hcut (S k) (lookup_lt_Some _ _ _ Hs)).
+    exact (Hadm k s Hs).
+  - apply Forall2_app_inv_r in HF as (u1 & u2 & Hu1 & Hu2 & ->).
+    apply Forall2_app; [exact Hu1 |].
+    apply Forall2_cons_inv_r in Hu2 as (y & u3 & Hy & Hu3 & ->).
+    apply Forall2_nil_inv_r in Hu3 as ->.
+    constructor; [| constructor].
+    exact (good_out_f_step y (open_seg h) e Hw Hy).
+Qed.
+
+Lemma file_phi_body_off (h : list mobs) (s0s : list fst) :
+  file_phi_body h s0s -> file_phi_body (h ++ [ObsPowerOff]) s0s.
+Proof using.
+  rewrite /file_phi_body /echof_lines_before cycles_of_off. done.
+Qed.
+
+Lemma file_phi_body_on (h : list mobs) (s0s : list fst) :
+  file_phi_body h s0s -> file_phi_body (h ++ [ObsPowerOn]) (s0s ++ [None]).
+Proof using.
+  intros (Hlen & H0 & Hadm & HF). rewrite /file_phi_body cycles_of_on.
+  assert (Hcut : forall j, (j <= length s0s)%nat ->
+                   echof_lines_before (h ++ [ObsPowerOn]) j
+                   = echof_lines_before h j).
+  { intros j Hj. rewrite /echof_lines_before cycles_of_on.
+    rewrite take_app_le; [reflexivity | lia]. }
+  split_and!.
+  - rewrite !length_app Hlen. reflexivity.
+  - intros s Hs. destruct s0s as [| y s0s].
+    + cbn in Hs. by injection Hs as <-.
+    + rewrite -app_comm_cons in Hs. cbn in Hs. exact (H0 s Hs).
+  - intros k s Hs.
+    destruct (decide (S k < length s0s)%nat) as [Hk | Hk].
+    + rewrite lookup_app_l in Hs; [| lia].
+      rewrite (Hcut (S k) ltac:(lia)). exact (Hadm k s Hs).
+    + rewrite lookup_app_r in Hs; [| lia].
+      assert (Hje : S k = length s0s).
+      { apply lookup_lt_Some in Hs. cbn [length] in Hs. lia. }
+      rewrite Hje Nat.sub_diag in Hs. cbn in Hs.
+      injection Hs as <-. by left.
+  - apply Forall2_app; [exact HF |].
+    constructor; [exact (good_out_f_nil None) | constructor].
+Qed.
+
+(* the admissibility the OPEN cycle's entry already carries: at cycle 0 it
+   is the guarded first clause (the entry is [None], admissible anywhere),
+   and at a later cycle it is the third clause, whose line set a console
+   output does not move *)
+Lemma file_phi_body_last_adm (h : list mobs) (e : mobs) (u1 : list fst)
+    (x : fst) :
+  trace_shape h true -> is_io e = true ->
+  file_phi_body h (u1 ++ [x]) ->
+  fadm_boot (echof_lines_before (h ++ [e]) (length u1)) x.
+Proof using.
+  intros Hsh Hio (Hlen & H0 & Hadm & _).
+  destruct (cycles_of_io h [e] Hsh (proj2 (Forall_singleton _ _) Hio)) as (cs & H1 & H2).
+  assert (Hcs : length cs = length u1).
+  { rewrite H1 !length_app in Hlen. cbn [length] in Hlen. lia. }
+  assert (Hlk : (u1 ++ [x]) !! length u1 = Some x)
+    by (rewrite lookup_app_r; [by rewrite Nat.sub_diag | lia]).
+  destruct (length u1) as [| n] eqn:Hn.
+  - rewrite (H0 x Hlk). by left.
+  - assert (Hcut : echof_lines_before (h ++ [e]) (S n)
+                   = echof_lines_before h (S n)).
+    { rewrite /echof_lines_before H1 H2 !take_app_le; [reflexivity | lia | lia]. }
+    rewrite Hcut. exact (Hadm n x Hlk).
+Qed.
+
+(* THE DRAIN'S STEP: the console's own output, at the era's boot state --
+   which the ledger may REPLACE here, because this may be the era's first
+   drain and the entry it replaces was provisional. *)
+Lemma file_phi_body_out (h : list mobs) (b : bv 8) (u1 : list fst)
+    (x s0 : fst) :
+  trace_shape h true ->
+  good_out_f s0 (open_seg h ++ [ObsUartOut Uart0 b]) ->
+  fadm_boot (echof_lines_before (h ++ [ObsUartOut Uart0 b]) (length u1)) s0 ->
+  file_phi_body h (u1 ++ [x]) ->
+  file_phi_body (h ++ [ObsUartOut Uart0 b]) (u1 ++ [s0]).
+Proof using.
+  intros Hsh Hgo Hadm0 (Hlen & H0 & Hadm & HF).
+  destruct (cycles_of_io h [ObsUartOut Uart0 b] Hsh
+              (proj2 (Forall_singleton _ _) (eq_refl : is_io (ObsUartOut Uart0 b) = true))) as (cs & H1 & H2).
+  assert (Hcs : length cs = length u1).
+  { rewrite H1 !length_app in Hlen. cbn [length] in Hlen. lia. }
+  assert (Hcut : forall j, (j <= length u1)%nat ->
+                   echof_lines_before (h ++ [ObsUartOut Uart0 b]) j
+                   = echof_lines_before h j).
+  { intros j Hj. rewrite /echof_lines_before H1 H2.
+    rewrite !take_app_le; [reflexivity | lia | lia]. }
+  rewrite /file_phi_body H2. split_and!.
+  - rewrite !length_app. rewrite H1 !length_app in Hlen. exact Hlen.
+  - intros s Hs. destruct u1 as [| y u1].
+    + cbn in Hs. injection Hs as <-. cbn [length] in Hadm0.
+      destruct Hadm0 as [Hz | (ws & sel & Hws & _)]; [exact Hz |].
+      exfalso. revert Hws. rewrite /echof_lines_before take_0.
+      cbn [fmap list_fmap concat]. apply not_elem_of_nil.
+    + apply (H0 s). exact Hs.
+  - intros k s Hs.
+    destruct (decide (S k < length u1)%nat) as [Hk | Hk].
+    + rewrite lookup_app_l in Hs; [| lia].
+      rewrite (Hcut (S k) ltac:(lia)). apply (Hadm k s).
+      rewrite lookup_app_l; [exact Hs | lia].
+    + rewrite lookup_app_r in Hs; [| lia].
+      assert (Hje : S k = length u1).
+      { apply lookup_lt_Some in Hs. cbn [length] in Hs. lia. }
+      rewrite Hje Nat.sub_diag in Hs. cbn in Hs.
+      injection Hs as <-. rewrite Hje. exact Hadm0.
+  - rewrite H1 in HF.
+    destruct (Forall2_app_inv good_out_f u1 [x] cs [open_seg h] ltac:(lia) HF)
+      as [Hv1 _].
+    apply Forall2_app; [exact Hv1 |].
+    constructor; [exact Hgo | constructor].
+Qed.

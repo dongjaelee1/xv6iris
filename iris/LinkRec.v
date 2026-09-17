@@ -100,6 +100,13 @@ Section linkrec.
     lk_sp_t : nat -> era_pins -> list (bv 8) -> iProp Σ;
     lk_open_t : nat -> era_pins -> list (bv 8) -> iProp Σ;
     lk_line : nat -> era_pins -> list (bv 8) -> iProp Σ;
+    (* the two PROMPT-INDEXED families.  They are FIELDS and not a [match]
+       over the four above, because a consumer names them PARTIALLY APPLIED
+       ([UShKernel.sh_prompt_law (ewc_lcred T γ k)]) and a [match] on the
+       index does not reduce under a binder -- the echo instance would then
+       not recover the landed statement by conversion. *)
+    lk_pr : nat -> era_pins -> list (bv 8) -> nat -> iProp Σ;
+    lk_lpr : nat -> era_pins -> list (bv 8) -> nat -> iProp Σ;
     lk_lend : nat -> era_pins -> list (bv 8) -> iProp Σ;
     lk_rr : nat -> era_pins -> nat -> list (list mobs * bv 8) -> iProp Σ;
 
@@ -119,7 +126,19 @@ Section linkrec.
     lk_sp_t_tl : forall k v I, Timeless (lk_sp_t k v I);
     lk_open_t_tl : forall k v I, Timeless (lk_open_t k v I);
     lk_line_tl : forall k v I, Timeless (lk_line k v I);
+    lk_pr_tl : forall k v I p, Timeless (lk_pr k v I p);
+    lk_lpr_tl : forall k v I p, Timeless (lk_lpr k v I p);
     lk_lend_tl : forall k v I, Timeless (lk_lend k v I);
+
+    (* ---- the two indexed families, read at their four indices ---- *)
+    lk_pr_0 : forall k v I, lk_pr k v I 0%nat = lk_owed k v I;
+    lk_pr_1 : forall k v I, lk_pr k v I 1%nat = lk_sp k v I;
+    lk_pr_S2 : forall k v I p, lk_pr k v I (S (S p)) = lk_open k v I;
+    lk_lpr_0 : forall k v I, lk_lpr k v I 0%nat = lk_line k v I;
+    lk_lpr_1 : forall k v I, lk_lpr k v I 1%nat = lk_sp_t k v I;
+    lk_lpr_2 : forall k v I, lk_lpr k v I 2%nat = lk_open_t k v I;
+    lk_lpr_S3 : forall k v I p,
+      lk_lpr k v I (S (S (S p))) = lk_blk k v I 0%nat 0%nat;
 
     (* ---- the taint inhabits every shape ---- *)
     lk_ban_taint : forall k v I i, ⊢ lk_T -∗ lk_ban k v I i;
@@ -238,6 +257,8 @@ Global Existing Instance lk_pro_tl.
 Global Existing Instance lk_sp_t_tl.
 Global Existing Instance lk_open_t_tl.
 Global Existing Instance lk_line_tl.
+Global Existing Instance lk_pr_tl.
+Global Existing Instance lk_lpr_tl.
 Global Existing Instance lk_lend_tl.
 
 (* ===================================================================== *)
@@ -262,58 +283,38 @@ Section linkgen.
   Definition lk_panic (k : nat) (v : era_pins) (I : list (bv 8)) (i : nat)
     : iProp Σ := lk_blk L k v I (lk_pan L) i.
 
-  (* the LOOSE prompt family, [EchoLinks.ewc_pr] *)
-  Definition lk_pr (k : nat) (v : era_pins) (I : list (bv 8)) (p : nat)
-    : iProp Σ :=
-    match p with
-    | O => lk_owed L k v I
-    | S O => lk_sp L k v I
-    | _ => lk_open L k v I
-    end.
-
-  (* ...and the TIGHT one, [EchoLinksLine.ewc_lpr] *)
-  Definition lk_lpr (k : nat) (v : era_pins) (I : list (bv 8)) (p : nat)
-    : iProp Σ :=
-    match p with
-    | O => lk_line L k v I
-    | S O => lk_sp_t L k v I
-    | S (S O) => lk_open_t L k v I
-    | _ => lk_blk L k v I 0%nat 0%nat
-    end.
-
   (* the two with the era's pin inside, [ewc_cred] / [ewc_lcred] *)
   Definition lk_cred (k : nat) (I : list (bv 8)) (p : nat) : iProp Σ :=
-    (∃ v : era_pins, lk_pin L k v ∗ lk_pr k v I p)%I.
+    (∃ v : era_pins, lk_pin L k v ∗ lk_pr L k v I p)%I.
 
   Definition lk_lcred (k : nat) (I : list (bv 8)) (p : nat) : iProp Σ :=
-    (∃ v : era_pins, lk_pin L k v ∗ lk_lpr k v I p)%I.
+    (∃ v : era_pins, lk_pin L k v ∗ lk_lpr L k v I p)%I.
 
   Global Instance lk_post_timeless k v I a : Timeless (lk_post k v I a).
   Proof using . rewrite /lk_post. apply _. Qed.
   Global Instance lk_panic_timeless k v I i : Timeless (lk_panic k v I i).
   Proof using . rewrite /lk_panic. apply _. Qed.
-  Global Instance lk_pr_timeless k v I p : Timeless (lk_pr k v I p).
-  Proof using . rewrite /lk_pr. destruct p as [| [| p]]; apply _. Qed.
-  Global Instance lk_lpr_timeless k v I p : Timeless (lk_lpr k v I p).
-  Proof using . rewrite /lk_lpr. destruct p as [| [| [| p]]]; apply _. Qed.
   Global Instance lk_cred_timeless k I p : Timeless (lk_cred k I p).
   Proof using . rewrite /lk_cred. apply _. Qed.
   Global Instance lk_lcred_timeless k I p : Timeless (lk_lcred k I p).
   Proof using . rewrite /lk_lcred. apply _. Qed.
 
   (* ---- the taint inhabits the derived shapes too ---- *)
-  Lemma lk_lpr_taint k v I p : lk_T L -∗ lk_lpr k v I p.
+  Lemma lk_lpr_taint k v I p : lk_T L -∗ lk_lpr L k v I p.
   Proof using .
-    iIntros "HT". rewrite /lk_lpr. destruct p as [| [| [| p]]];
-      [ by iApply lk_line_taint | by iApply lk_sp_t_taint
-      | by iApply lk_open_t_taint | by iApply lk_blk_taint ].
+    iIntros "HT". destruct p as [| [| [| p]]];
+      [ rewrite lk_lpr_0; by iApply lk_line_taint
+      | rewrite lk_lpr_1; by iApply lk_sp_t_taint
+      | rewrite lk_lpr_2; by iApply lk_open_t_taint
+      | rewrite lk_lpr_S3; by iApply lk_blk_taint ].
   Qed.
 
-  Lemma lk_pr_taint k v I p : lk_T L -∗ lk_pr k v I p.
+  Lemma lk_pr_taint k v I p : lk_T L -∗ lk_pr L k v I p.
   Proof using .
-    iIntros "HT". rewrite /lk_pr. destruct p as [| [| p]];
-      [ by iApply lk_owed_taint | by iApply lk_sp_taint
-      | by iApply lk_open_taint ].
+    iIntros "HT". destruct p as [| [| p]];
+      [ rewrite lk_pr_0; by iApply lk_owed_taint
+      | rewrite lk_pr_1; by iApply lk_sp_taint
+      | rewrite lk_pr_S2; by iApply lk_open_taint ].
   Qed.
 
   Lemma lk_lcred_taint k I p v : lk_pin L k v -∗ lk_T L -∗ lk_lcred k I p.
@@ -325,27 +326,30 @@ Section linkgen.
   (* ---- the prompt's two bytes, as ONE step family ---- *)
   Lemma lk_lpr_step k v I p b Φ :
     u_prompt !! p = Some b -> (p < 2)%nat ->
-    lk_pin L k v -∗ lk_links L -∗ lk_lpr k v I p -∗
-    (lk_lpr k v I (S p) -∗ Φ) -∗ out_link Uart0 k b Φ.
+    lk_pin L k v -∗ lk_links L -∗ lk_lpr L k v I p -∗
+    (lk_lpr L k v I (S p) -∗ Φ) -∗ out_link Uart0 k b Φ.
   Proof using .
     intros Hb Hp. destruct p as [| [| p]]; [| | exfalso; lia].
     - assert (Hb0 : b = u_prompt !!! 0%nat).
       { rewrite wr_prompt_head in Hb. by injection Hb. }
       iIntros "#Hpin #Hlk Hc HΦ".
+      rewrite (lk_lpr_0 L) (lk_lpr_1 L).
       iApply (lk_prompt_dollar_line L k v I b Φ Hb0 with "Hpin Hlk Hc HΦ").
     - assert (Hb1 : b = u_prompt !!! 1%nat).
       { rewrite wr_prompt_tail in Hb. by injection Hb. }
       iIntros "#Hpin #Hlk Hc HΦ".
+      rewrite (lk_lpr_1 L) (lk_lpr_2 L).
       iApply (lk_prompt_space_t L k v I b Φ Hb1 with "Hpin Hlk Hc HΦ").
   Qed.
 
   (* ---- the read of a line lands on the BLOCK-OWED shape ---- *)
   Lemma lk_lpr_read v I l k :
     wl_nl ∉ l ->
-    inp_lb v (I ++ l ++ [wl_nl]) -∗ lk_lpr k v I 2%nat -∗
-    lk_lpr k v (I ++ l ++ [wl_nl]) 3%nat.
+    inp_lb v (I ++ l ++ [wl_nl]) -∗ lk_lpr L k v I 2%nat -∗
+    lk_lpr L k v (I ++ l ++ [wl_nl]) 3%nat.
   Proof using .
-    intros Hl. iIntros "#HE' Hc". cbn [lk_lpr].
+    intros Hl. iIntros "#HE' Hc".
+    rewrite (lk_lpr_2 L) (lk_lpr_S3 L k v (I ++ l ++ [wl_nl]) 0%nat).
     iApply (lk_read_t L k v I 0%nat l Hl with "HE' Hc").
   Qed.
 
@@ -361,8 +365,11 @@ Section linkgen.
   Qed.
 
   (* ---- the block owed IS a boundary credential ---- *)
-  Lemma lk_lpr_blk_line k v I : lk_lpr k v I 3%nat -∗ lk_lpr k v I 0%nat.
-  Proof using . cbn [lk_lpr]. iApply (lk_line_of_blk0 L k v I 0%nat). Qed.
+  Lemma lk_lpr_blk_line k v I : lk_lpr L k v I 3%nat -∗ lk_lpr L k v I 0%nat.
+  Proof using .
+    rewrite (lk_lpr_S3 L k v I 0%nat) (lk_lpr_0 L).
+    iApply (lk_line_of_blk0 L k v I 0%nat).
+  Qed.
 
   Lemma lk_lcred_blk_line k I : lk_lcred k I 3%nat -∗ lk_lcred k I 0%nat.
   Proof using .
@@ -378,7 +385,7 @@ Section linkgen.
     lk_pin L k v -∗ lk_post k v I a -∗ lk_lcred k I 0%nat.
   Proof using .
     intros Ha. iIntros "#Hpin Hc". rewrite /lk_lcred. iExists v.
-    iFrame "Hpin". cbn [lk_lpr]. rewrite /lk_post.
+    iFrame "Hpin". rewrite (lk_lpr_0 L) /lk_post.
     iApply (lk_line_of_post L k v I a Ha with "Hc").
   Qed.
 
@@ -387,7 +394,7 @@ Section linkgen.
     lk_lcred k I 3%nat -∗ ∃ v : era_pins, lk_pin L k v ∗ lk_blk L k v I a 0%nat.
   Proof using .
     rewrite /lk_lcred. iIntros "Hc". iDestruct "Hc" as (v) "[#Hpin Hc]".
-    iExists v. iFrame "Hpin". cbn [lk_lpr].
+    iExists v. iFrame "Hpin". rewrite (lk_lpr_S3 L k v I 0%nat).
     iApply (lk_blk_0 L k v I 0%nat a with "Hc").
   Qed.
 
@@ -395,7 +402,7 @@ Section linkgen.
     lk_lcred k I 3%nat -∗ ∃ v : era_pins, lk_pin L k v ∗ lk_lend L k v I.
   Proof using .
     rewrite /lk_lcred. iIntros "Hc". iDestruct "Hc" as (v) "[#Hpin Hc]".
-    iExists v. iFrame "Hpin". cbn [lk_lpr].
+    iExists v. iFrame "Hpin". rewrite (lk_lpr_S3 L k v I 0%nat).
     iApply (lk_lend_of_blk0 L k v I 0%nat with "Hc").
   Qed.
 
@@ -403,7 +410,7 @@ Section linkgen.
     lk_lcred k I 3%nat -∗ ∃ v : era_pins, lk_pin L k v ∗ lk_panic k v I 0%nat.
   Proof using .
     rewrite /lk_lcred. iIntros "Hc". iDestruct "Hc" as (v) "[#Hpin Hc]".
-    iExists v. iFrame "Hpin". cbn [lk_lpr]. rewrite /lk_panic.
+    iExists v. iFrame "Hpin". rewrite (lk_lpr_S3 L k v I 0%nat) /lk_panic.
     iApply (lk_blk_0 L k v I 0%nat (lk_pan L) with "Hc").
   Qed.
 
@@ -422,7 +429,7 @@ Section linkgen.
   Lemma lk_cred_of_ban k I v : lk_pin L k v -∗ lk_ban L k v I 0%nat -∗ lk_cred k I 0%nat.
   Proof using .
     iIntros "#Hpin Hc". rewrite /lk_cred. iExists v. iFrame "Hpin".
-    cbn [lk_pr]. iApply (lk_ban_owed L k v I with "Hc").
+    rewrite (lk_pr_0 L). iApply (lk_ban_owed L k v I with "Hc").
   Qed.
 
 End linkgen.
@@ -507,6 +514,8 @@ Section echo_inst.
        lk_sp_t := fun _ v I => EchoLinksLine.ewc_sp_t T v I;
        lk_open_t := fun _ v I => EchoLinksLine.ewc_open_t T v I;
        lk_line := fun _ v I => EchoLinksLine.ewc_line T v I;
+       lk_pr := fun _ v I p => EchoLinks.ewc_pr T v I p;
+       lk_lpr := fun _ v I p => EchoLinksLine.ewc_lpr T v I p;
        lk_lend := fun _ v I => echo_lend v I;
        lk_rr := fun k v n ws => EchoOut.read_ret T k v n ws;
 
@@ -525,7 +534,17 @@ Section echo_inst.
        lk_sp_t_tl := fun _ v I => EchoLinksLine.ewc_sp_t_timeless T v I;
        lk_open_t_tl := fun _ v I => EchoLinksLine.ewc_open_t_timeless T v I;
        lk_line_tl := fun _ v I => EchoLinksLine.ewc_line_timeless T v I;
+       lk_pr_tl := fun _ v I p => EchoLinks.ewc_pr_timeless T v I p;
+       lk_lpr_tl := fun _ v I p => EchoLinksLine.ewc_lpr_timeless T v I p;
        lk_lend_tl := fun _ v I => echo_lend_timeless v I;
+
+       lk_pr_0 := fun _ v I => eq_refl;
+       lk_pr_1 := fun _ v I => eq_refl;
+       lk_pr_S2 := fun _ v I p => eq_refl;
+       lk_lpr_0 := fun _ v I => eq_refl;
+       lk_lpr_1 := fun _ v I => eq_refl;
+       lk_lpr_2 := fun _ v I => eq_refl;
+       lk_lpr_S3 := fun _ v I p => eq_refl;
 
        lk_ban_taint := fun _ v I i => EchoLinks.ewc_ban_taint T v I i;
        lk_owed_taint := fun _ v I => EchoLinks.ewc_owed_taint T v I;
@@ -606,23 +625,22 @@ Section echo_inst.
   Lemma echo_inst_panic k v I i :
     lk_panic echo_link_inst k v I i = EchoLinksLine.ewc_panic T v I i.
   Proof using . reflexivity. Qed.
-  Lemma echo_inst_pr k v I p :
-    lk_pr echo_link_inst k v I p = EchoLinks.ewc_pr T v I p.
-  Proof using . destruct p as [| [| p]]; reflexivity. Qed.
-  Lemma echo_inst_lpr k v I p :
-    lk_lpr echo_link_inst k v I p = EchoLinksLine.ewc_lpr T v I p.
-  Proof using . destruct p as [| [| [| p]]]; reflexivity. Qed.
+  Lemma echo_inst_pr : lk_pr echo_link_inst = fun k => EchoLinks.ewc_pr T.
+  Proof using . reflexivity. Qed.
+  Lemma echo_inst_lpr :
+    lk_lpr echo_link_inst = fun k => EchoLinksLine.ewc_lpr T.
+  Proof using . reflexivity. Qed.
   Lemma echo_inst_cred k I p :
     lk_cred echo_link_inst k I p = EchoLinks.ewc_cred T γ k I p.
-  Proof using .
-    rewrite /lk_cred /EchoLinks.ewc_cred.
-    destruct p as [| [| p]]; reflexivity.
-  Qed.
+  Proof using . reflexivity. Qed.
+  Lemma echo_inst_lcred_eta k :
+    lk_lcred echo_link_inst k = EchoLinksLine.ewc_lcred T γ k.
+  Proof using . reflexivity. Qed.
+  Lemma echo_inst_cred_eta k :
+    lk_cred echo_link_inst k = EchoLinks.ewc_cred T γ k.
+  Proof using . reflexivity. Qed.
   Lemma echo_inst_lcred k I p :
     lk_lcred echo_link_inst k I p = EchoLinksLine.ewc_lcred T γ k I p.
-  Proof using .
-    rewrite /lk_lcred /EchoLinksLine.ewc_lcred.
-    destruct p as [| [| [| p]]]; reflexivity.
-  Qed.
+  Proof using . reflexivity. Qed.
 
 End echo_inst.

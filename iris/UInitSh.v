@@ -1287,6 +1287,11 @@ Section UInitSh.
       iApply ("Hgen" $! (ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wbn Cr)) (-1)) W' with "HT [Hmp] []").
       - rewrite ucons_pay_eta. iExact "Hmp".
       - iModIntro. iIntros "_". iApply (ucons_pay_taint with "HT"). }
+    (* THE UPDATE DOOR COSTS ECHO ONE TOKEN (lane TL-9): the node's
+       conclusion is [|==> udepw_at_refR_ids ...] now
+       ([UkInit.init_exec_sup_pos]), and echo spends nothing to open it --
+       its credential is the taint, which is persistent. *)
+    iModIntro.
     (* ---- AND THE WHOLE OF THE REST IS THE U-TIER RULE (lane EX-4).
        [ExecRun.udepw_at_refR_ids_of_sup_ids] is the general step from an
        exec bundle to the deposit the leaf consumes; what is left below is

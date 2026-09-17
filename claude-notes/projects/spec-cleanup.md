@@ -1504,6 +1504,51 @@ Derived corollaries, in order of what applications actually use:
   note and the "XXX" paragraph.  LAST — the tree leads, the TR
   records.
 
+## TL-9 (verified /init on the tree claim) — LANDED, and D4's wall is now a DEED question
+
+Branch `tl9-hinit-boot`; design of record `design/user-tree.md` §9.8.
+
+- [x] **The UPDATE DOOR on the exec supply.** `UkInit.init_exec_sup_pos`
+  ends in `|==> udepw_at_refR_ids …`. Echo pays one `iModIntro`
+  (`UInitSh.init_exec_sup_of_sh_slot`); the ONE consumer
+  (`UkInitMain.v:757`) applies the node with `iMod` at the `WP` goal and
+  hands the deposit to `wp_kinit_exec` — a premise goal is not a place an
+  update runs, so the application is hoisted rather than re-bracketed.
+  `UInitBootAdequacy.echo_adequacy_echoΣ` byte-identical.
+- [x] **`Cns := True`, and TL-8's token count retired.**
+  `UInitTree.tree_lend_taint` (the taint off the lend's three arms; the
+  kill row is now three tokens on top of it),
+  `UInitTreeExec.tree_init_exec_sup_pos` / `_lend` / `_lend_of_lend` /
+  `tree_init_cons_sup`. One licence per era is enough:
+  `tree_init_boot_pay` takes TL-7's dance AS LANDED (deed-credentialled,
+  `Cns := True`) and spends `tree_turn c` only on `cc_wbn 0`. The
+  fractional licence §9.7(4) priced is NOT taken.
+- [x] **/init's whole entry slot at the tree claim.**
+  `UInitTreeExec.tree_init_boot_uslot` — `UInitKernel.init_boot_con`
+  applied, every premise paid, from the era's deed + one licence + the
+  kernel's reader token. `Print Assumptions`: the two reservation
+  parameters, funext, the `PrimString`/`PrimInt63` primitives.
+- [ ] **D4 (`tree_Hinit_boot` behavioural) — BLOCKED, and the brief's
+  `init_boot_bundle_of_own` is REFUTED at two named statements.**
+  `PinnedExec.pinned_exec_bundle_boot` (`PinnedExec.v:537`) takes its pin
+  law under a `□`; the tree claim pays such a law only from the FROZEN
+  deed (`TreeExec.exec_walk_of_own`, `TreeExec.v:89`), and freezing the
+  era's ONE boot deed (`AppTree.tree_freeze` is one-way) leaves
+  `UInitTreeBoot.tree_init_cons_dance_all` (`UInitTreeBoot.v:104`) with no
+  live deed for its mknod. Independently, `AppTree.tree_boot`
+  (`AppTree.v:2546`) quantifies the deed's subtree EXISTENTIALLY and
+  `App.al_programs` (`App.v:371`) hands `Hinit_boot` no era-0 premise, so
+  the resolution fact `TreeObs.tree_pin_resolves_abs_path`
+  (`TreeObs.v:150`) needs cannot be supplied at all. There is no
+  `tc_img c`: the tree's fixed part carries no image.
+  **Two owner-level shapes would answer it** — a deed with a persistent
+  READ half beside a linear MOVE half, or an era-0 image premise on
+  `App.al_programs`. Cheap and independent of the ruling: a BOOT twin of
+  `ExecRun.v` §6's content-level rule (`pinned_exec_bundle_boot_at` is at
+  `ex_node_id` through `ExecBundle.exec_bundle_of_at`; the `_abs`
+  assembly ExecRun has is the syscall one). The nlink worry is NOT a
+  wall — §6 exists precisely because the tree pins content, not counts.
+
 ## Territory / coordination
 
 - RD-4 is DONE and it did NOT need the merged claim as an input: the

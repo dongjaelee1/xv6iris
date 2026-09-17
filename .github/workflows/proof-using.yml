@@ -130,8 +130,13 @@ jobs:
           # Generated layers carry the annotation from their generators, so the
           # sweep regenerates rather than edits.  Both targets are no-ops when
           # the tracked output already matches.
-          make gen-code
-          make gen-ucode
+          #
+          # SWITCH is not optional: gen-ucode reads every AST off the model
+          # through coqc, and the Makefile runs that as
+          # `opam exec --switch=$(SWITCH)`, whose default is the DEV switch
+          # (/shared/xv6rocq) -- absent here.  Same override ci.yml passes.
+          make SWITCH="$GITHUB_WORKSPACE" gen-code
+          make SWITCH="$GITHUB_WORKSPACE" gen-ucode
 
           n=$(grep -oE '^annotated [0-9]+' "$RUNNER_TEMP/apply.log" | grep -oE '[0-9]+' || echo 0)
           echo "count=$n" >> "$GITHUB_OUTPUT"

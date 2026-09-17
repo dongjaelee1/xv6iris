@@ -1,0 +1,272 @@
+(* FileLinks.v -- THE FILE APPLICATION'S CONSOLE LINKS.
+
+   Design of record: claude-notes/design/app-file.md section 4, deliverable
+   3.  [EchoOut.v]'s [Section echo_links] at the file claim: the same links
+   wrapped onto the kernel's own console contracts, with the era's BOOT FILE
+   STATE beside the three bounds a writer already carried, and the era's
+   FIRST byte -- which files that state out of the deed's own typed witness
+   -- as a link of its own.
+
+   A link runs at [⊤ ∖ ↑uartN Uart0] and opens NOTHING but the port
+   invariant: every authority an era has is in the claim the link is handed,
+   so no link reaches the application's ledger and [App.al_echo] stays a
+   CLOSED entailment, exactly as for the echo application. *)
+From Stdlib Require Import ZArith Lia List.
+From stdpp Require Import gmap list bitvector.definitions.
+From iris.proofmode Require Import proofmode.
+From iris.base_logic.lib Require Import mono_nat own ghost_var ghost_map.
+From iris.algebra.lib Require Import mono_list.
+Require Import SailStdpp.Operators_mwords.
+Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values
+        SailStdpp.MachineWord.
+Require Import RiscvLang.
+Require Import ObsTrace.
+Require Import LineWords.
+Require Import EchoDisc.
+Require Import ConsLog.
+Require Import EchoOutPure.
+Require Import FileDisc.
+Require Import FileOutPure.
+Require Import EchoOut.
+Require Import AppEcho.
+Require Import AppFile.
+Require Import FileOut.
+Require Import RiscvPtsto.
+Require Import WpUart.
+Require Import CtxIdDefs.
+Require Import SpecConsoleintr.
+Local Open Scope list_scope.
+
+Section file_links.
+  Context {Σ : gFunctors}.
+  Context `{!echoOutG Σ, !inG Σ (mono_listR (leibnizO Z)), !fileAppG Σ,
+            !fileOutG Σ}.
+  Context (g : file_gn).
+  Context `{HRg : !riscvGS Σ}.
+
+  (* the record equations, as section parameters: [App.al_echo] hands them
+     over at the [boot_fixedGS] literal *)
+  Context (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HRg) = fecl g).
+  Context (Htag : @riscv_rx_tag Σ (@riscv_fixedGS Σ HRg) = ftag g).
+
+  Lemma fchist_at0 (kk : nat) (hh : list mobs) (HH : LogEntryDefs.cons_hist) :
+    chist_at Uart0 kk hh HH = fecl g kk hh HH.
+  Proof using Hcons. rewrite /chist_at. by rewrite Hcons. Qed.
+
+  (* ---- the taint route: once the era is off the discipline every link of
+          every run is free ---- *)
+  Lemma file_cons_link_of_taint (k : nat) (ev : ConsLog.cons_ev)
+      (Φ : iProp Σ) :
+    file_taint (fgn_cl g) -∗ Φ -∗ cons_link Uart0 k ev Φ.
+  Proof using Hcons.
+    iIntros "#HT HΦ" (o H) "#Hlb Hres _ _".
+    iModIntro. iExists o.
+    iSplitR; [iExact "Hlb" |].
+    iSplitR "HΦ"; [| iExact "HΦ"].
+    rewrite !fchist_at0 /fecl. by iLeft.
+  Qed.
+
+  Lemma file_write_link_taint (k : nat) (b : bv 8) (Φ : iProp Σ) :
+    file_taint (fgn_cl g) -∗ (file_taint (fgn_cl g) -∗ Φ) -∗
+    out_link Uart0 k b Φ.
+  Proof using Hcons.
+    iIntros "#HT HΦ" (o H) "#Hlb Hres".
+    iModIntro. iExists o.
+    iSplitR; [iExact "Hlb" |].
+    iSplitR "HΦ"; [| by iApply "HΦ"].
+    rewrite !fchist_at0 /fecl. by iLeft.
+  Qed.
+
+  (* (W-first) THE ERA'S FIRST PROCESS BYTE.  It is the first byte of the
+     prologue's first letter, and it FILES the era's boot state out of the
+     deed's own typed witness -- which is what [App.al_programs] hands
+     <init> beside [fturn].  What comes back is that state's persistent
+     witness [f0_lb], which every later write carries. *)
+  Lemma file_write_link_first (k : nat) (v : era_pins) (vf : file_era)
+      (a : nat) (b : bv 8) (s0 : fst) (Φ : iProp Σ) :
+    fst_ok s0 ->
+    (a < length pro_alts)%nat ->
+    pro_alts !!! a !! 0%nat = Some b ->
+    era_pin (fgn_echo g) k v -∗ file_era_pin g k vf -∗
+    turn v 0%nat -∗ ps_lb v [] -∗ cs_lb v [] -∗ inp_lb v [] -∗
+    (f0_typed g s0 ∨ file_taint (fgn_cl g)) -∗
+    (((turn v 1%nat ∗ ps_lb v [a] ∗ cs_lb v [] ∗ inp_lb v []
+       ∗ f0_lb vf s0) ∨ file_taint (fgn_cl g)) -∗ Φ) -∗
+    out_link Uart0 k b Φ.
+  Proof using Hcons.
+    intros Hfok Halt Hhead.
+    iIntros "#Hpin #Hfp Ht #Hpslb #Hcslb #Hilb Hty HΦ" (o H) "#Hlb Hres".
+    rewrite !fchist_at0.
+    iMod (fecl_step_write_first g k v vf a b s0 (default [] o) H
+            Hfok Halt Hhead with "Hpin Hfp Ht Hpslb Hcslb Hilb Hty Hres")
+      as "(Hres & Hret)".
+    iModIntro. iExists o. rewrite fchist_at0. iFrame "Hlb Hres".
+    by iApply "HΦ".
+  Qed.
+
+  (* (W) THE WRITE LINK, INSIDE A BLOCK -- [EchoOut.echo_write_link] with
+     the era's boot state beside the three bounds, and the byte read off
+     [FileOutPure.proc_stream_f] at that state. *)
+  Lemma file_write_link (k : nat) (v : era_pins) (vf : file_era) (P : nat)
+      (b : bv 8) (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8))
+      (Φ : iProp Σ) :
+    (nlines I0 <= length cs0)%nat ->
+    pro_pin_f ps0 cs0 I0 ->
+    proc_stream_f ps0 cs0 (Some s0) I0 !! P = Some b ->
+    era_pin (fgn_echo g) k v -∗ file_era_pin g k vf -∗ turn v P -∗
+    ps_lb v ps0 -∗ cs_lb v cs0 -∗ inp_lb v I0 -∗ f0_lb vf s0 -∗
+    (((turn v (S P) ∗ ps_lb v ps0 ∗ cs_lb v cs0 ∗ inp_lb v I0
+       ∗ f0_lb vf s0) ∨ file_taint (fgn_cl g)) -∗ Φ) -∗
+    out_link Uart0 k b Φ.
+  Proof using Hcons.
+    intros Hn Hpin0 Hb.
+    iIntros "#Hpin #Hfp Ht #Hpslb #Hcslb #Hilb #Hf0lb HΦ" (o H) "#Hlb Hres".
+    rewrite !fchist_at0.
+    iMod (fecl_step_write g k v vf P b ps0 cs0 s0 I0 (default [] o) H
+            Hn Hpin0 Hb with "Hpin Hfp Ht Hpslb Hcslb Hilb Hf0lb Hres")
+      as "(Hres & Hret)".
+    iModIntro. iExists o. rewrite fchist_at0. iFrame "Hlb Hres".
+    by iApply "HΦ".
+  Qed.
+
+  (* (W') THE WRITE LINK AT A BLOCK'S FIRST BYTE.  The alternative's INDEX
+     is the program's own knowledge and the step files it; where echo asked
+     for [a < 4] the file asks for [FileDisc.ralt_ok] at the LINE the block
+     answers, which is what "whatever you type is echoed back" becomes once
+     three line shapes and twelve alternatives are in play. *)
+  Lemma file_write_link_blk (k : nat) (v : era_pins) (vf : file_era)
+      (P a : nat) (b : bv 8) (ps0 cs0 : list nat) (s0 : fst)
+      (I0 : list (bv 8)) (Φ : iProp Σ) :
+    I0 <> [] ->
+    rest_of I0 = [] ->
+    (nlines I0 <= S (length cs0))%nat ->
+    pro_pin_f ps0 cs0 I0 ->
+    P = length (proc_before_f ps0 cs0 (Some s0) I0) ->
+    ralt_ok (uline_of (bodies_of I0 !!! (nlines I0 - 1)%nat)) (ralt_dec a) ->
+    cont (fst_upto cs0 s0 (bodies_of I0) (nlines I0 - 1)%nat)
+         (uline_of (bodies_of I0 !!! (nlines I0 - 1)%nat)) (ralt_dec a)
+      !! 0%nat = Some b ->
+    era_pin (fgn_echo g) k v -∗ file_era_pin g k vf -∗ turn v P -∗
+    ps_lb v ps0 -∗ cs_lb v cs0 -∗ inp_lb v I0 -∗ f0_lb vf s0 -∗
+    (((turn v (S P) ∗ ps_lb v ps0 ∗ cs_lb v (cs0 ++ [a]) ∗ inp_lb v I0
+       ∗ f0_lb vf s0) ∨ file_taint (fgn_cl g)) -∗ Φ) -∗
+    out_link Uart0 k b Φ.
+  Proof using Hcons.
+    intros Hne0 Hr0 Hdiv Hpin0 HPeq Halt Hhead.
+    iIntros "#Hpin #Hfp Ht #Hpslb #Hcslb #Hilb #Hf0lb HΦ" (o H) "#Hlb Hres".
+    rewrite !fchist_at0.
+    iMod (fecl_step_write_blk g k v vf P a b ps0 cs0 s0 I0 (default [] o) H
+            Hne0 Hr0 Hdiv Hpin0 HPeq Halt Hhead
+            with "Hpin Hfp Ht Hpslb Hcslb Hilb Hf0lb Hres") as "(Hres & Hret)".
+    iModIntro. iExists o. rewrite fchist_at0. iFrame "Hlb Hres".
+    by iApply "HΦ".
+  Qed.
+
+  (* (R) THE READ LINK.  Beside the window it exports THE ERA'S INPUT AT THE
+     WINDOW'S FAR END, its discipline, the era's BOOT STATE and the stage
+     the writer has reached -- with the choice list TRUNCATED to the
+     window's own line count, because [FileOutPure.alts_pre] ties every
+     entry to the line at its index. *)
+  Definition fread_ret (k : nat) (v : era_pins) (n : nat)
+      (ws : list (list mobs * bv 8)) : iProp Σ :=
+    ((file_taint (fgn_cl g) ∗ dl_cnt v (1/2) n)
+     ∨ dl_cnt v (1/2) (n + length ws)%nat
+       ∗ ∃ (pops : list log_entry) (dl : list (list mobs * bv 8)),
+           ⌜read_ok pops dl ws⌝ ∗ ⌜length dl = n⌝
+           ∗ ⌜(dl ++ ws) `prefix_of` echoed pops⌝
+           ∗ ⌜E_index (seg_of (echoed pops))⌝
+           ∗ ⌜E_disc_f (seg_of (echoed pops))⌝
+           ∗ inp_lb v (snd <$> (dl ++ ws))
+           ∗ ⌜disc_input_f (snd <$> (dl ++ ws))⌝
+           ∗ (⌜ws = []⌝
+              ∨ ∃ (cs0 ps0 : list nat) (vf : file_era) (s0 : fst),
+                  cs_lb v cs0 ∗ ps_lb v ps0
+                  ∗ file_era_pin g k vf ∗ f0_lb vf s0
+                  ∗ ⌜(nlines (snd <$> (dl ++ ws)) <= S (length cs0))%nat⌝
+                  ∗ turn_lb v (length (proc_before_f ps0 cs0 (Some s0)
+                                 (snd <$> (dl ++ ws))))
+                  ∗ ⌜rd_stage_f ps0 cs0 (snd <$> (dl ++ ws))⌝))%I.
+
+  Lemma file_read_link (k : nat) (v : era_pins) (n : nat)
+      (ws : list (list mobs * bv 8)) (Φ : iProp Σ) :
+    era_pin (fgn_echo g) k v -∗ dl_cnt v (1/2) n -∗
+    (fread_ret k v n ws -∗ Φ) -∗
+    cons_link Uart0 k (ConsLog.EvRead ws) Φ.
+  Proof using Hcons.
+    iIntros "#Hpin Hdlr HΦ" (o H) "#Hlb Hres _ %Hread".
+    rewrite !fchist_at0.
+    iMod (fecl_step_read g k v n (default [] o) H ws Hread
+            with "Hpin Hdlr Hres") as "(Hres & Hret)".
+    iModIntro. iExists o. rewrite fchist_at0. iFrame "Hlb Hres".
+    iApply "HΦ". rewrite /fread_ret.
+    iDestruct "Hret" as "[Ht | (Hdlr & %Hdl & %Hpref & %Hidx & %Hbyte
+                               & Hilb & %Hdi & Hrest)]"; [by iLeft |].
+    iRight. iFrame "Hdlr".
+    iExists (LogEntryDefs.ch_log H), (LogEntryDefs.ch_dl H).
+    iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
+    iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
+    iSplitR; [by iPureIntro |].
+    iSplitL "Hilb"; [iExact "Hilb" |].
+    iSplitR; [by iPureIntro |]. iExact "Hrest".
+  Qed.
+
+  (* ---- the arm's close and its bytes, both free ---- *)
+  Lemma file_close_link (k : nat) (Φ : iProp Σ) :
+    Φ -∗ cons_link Uart0 k ConsLog.EvClose Φ.
+  Proof using Hcons.
+    iIntros "HΦ" (o H) "#Hlb Hres %Hok %Hev".
+    rewrite fchist_at0.
+    iDestruct (fecl_close g k (default [] o) H Hok Hev with "Hres") as "Hres".
+    iModIntro. iExists o. rewrite fchist_at0. by iFrame "Hlb Hres HΦ".
+  Qed.
+
+  Lemma file_byte_link (k : nat) (b : bv 8) (Φ : iProp Σ) :
+    Φ -∗ cons_link Uart0 k (ConsLog.EvByte b) Φ.
+  Proof using Hcons.
+    iIntros "HΦ" (o H) "#Hlb Hres %Hok %Hev".
+    rewrite fchist_at0.
+    iMod (fecl_step_byte g k (default [] o) H b Hok Hev with "Hres") as "Hres".
+    iModIntro. iExists o. rewrite fchist_at0. by iFrame "Hlb Hres HΦ".
+  Qed.
+
+  Lemma file_cons_run (k : nat) (cs : list (bv 8)) (Φ : iProp Σ) :
+    Φ -∗ cons_run k cs Φ.
+  Proof using Hcons.
+    iIntros "HΦ". iInduction cs as [| b cs] "IH" forall (Φ); cbn [cons_run].
+    - by iApply file_close_link.
+    - iSplit.
+      + by iApply file_close_link.
+      + iApply file_byte_link. by iApply "IH".
+  Qed.
+
+  (* ==================================================================== *)
+  (*  THE ECHO SHIFT ITSELF -- [App.al_echo], a CLOSED entailment.         *)
+  (* ==================================================================== *)
+  Lemma file_happ_echo :
+    ⊢ ∀ (GEN : GenId) (XI : CurCtx),
+        @SpecConsoleintr.cons_echo_shift Σ HRg GEN XI.
+  Proof using Hcons Htag.
+    iIntros (GEN XI).
+    rewrite /SpecConsoleintr.cons_echo_shift Htag.
+    iIntros "!>" (h c cs Φ) "%Hends %Hk %Hcs #Htg #Hlbh HΦ".
+    iDestruct "Htg" as "(%Hsh & [%Hdisc | #HT] & #Hfllb)"; last first.
+    { iApply (file_cons_link_of_taint with "HT [HΦ]").
+      by iApply file_cons_run. }
+    iIntros (o H) "#Hlb Hres %Hok %Hev".
+    pose proof Hev as Hev0.
+    destruct Hev0 as (Hnone & _ & _ & Hord & _).
+    rewrite fchist_at0.
+    iDestruct (fecl_lt g (S gen_id) h c (default [] o) H Hsh Hk Hends Hord
+                 with "Hres") as "[Hres [#HT | %Hlt]]".
+    { iModIntro. iExists o. iFrame "Hlb".
+      rewrite fchist_at0. iSplitR; [rewrite /fecl; by iLeft |].
+      by iApply file_cons_run. }
+    iDestruct (fecl_open g (S gen_id) (default [] o) H h c cs Hnone
+                 (disc_seg_f_open_seg h Hsh Hdisc) Hk Hdisc Hsh Hends Hord Hlt
+                 with "Hres") as "Hres".
+    iModIntro. iExists (Some h). cbn [obs_hist_lb_o from_option id].
+    rewrite fchist_at0. iFrame "Hlbh Hres".
+    by iApply file_cons_run.
+  Qed.
+
+End file_links.

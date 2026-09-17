@@ -1501,6 +1501,8 @@ FileFsPure.v
 AppEcho.v
 AppFile.v
 FileOut.v
+FileLinks.v
+AppFileRec.v
 AppTree.v
 
 FsAbsUnlinkFire.v

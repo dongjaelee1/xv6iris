@@ -1551,6 +1551,59 @@ Section FileOpen.
       pose proof (arow_at_pinned _ _ _ _ Hra Hav) as Hab. discriminate Hab.
   Qed.
 
+  (* ---- 3h.  THE ESCROW THAT WOULD CLOSE THE `s = None` EXISTS ARM, AND
+     THE MASK THAT REFUTES IT (lane F-OPEN-4).
+
+     Lane F-OPEN-3 left the EXISTS disjunct at [s = None] DISCHARGED and
+     not REFUTED (section 6 (a)) and named two ways out; way (ii) was
+     ruled: put the deed's half in an INVARIANT OF THE CLAIM'S OWN with a
+     one-shot in the arm piece, so the LOOKUP piece may open it, read
+     [fdeed r None] against [file_pred] through [file_deed_law], conclude
+     [f_ok avx None] and refute [Fex]'s found entry at the tie.
+
+     THAT SHAPE IS REFUTED, and by a MASK and not by a fraction.  The
+     refutation needs TWO resources at ONE instant -- [file_pred c r avx],
+     which lives only inside [AppInv.app_inv] at the namespace
+     [AppInv.appN], and the deed's half, which by hypothesis lives inside
+     an escrow invariant at some namespace [N].  The lookup piece is
+     [FsAbsCreateFire.dlookup_commit_at Gamma appE], whose body is a fancy
+     update AT THE MASK [AppInv.appE], and the kernel fixes that mask:
+     [SysOpenDefs.open_au_create_at] (SysOpenDefs.v line 864) asks the
+     application for [pf_at (dlookup_commit_at Gamma appE) Fex] and for
+     nothing else.  [AppInv.appE] is [nclose appN] (AppInv.v line 85), so
+     opening [app_inv] with [inv_acc appE appN] leaves the mask
+     [appE ∖ nclose appN], which is EMPTY -- and no namespace's closure
+     is empty.  The two lemmas below are that argument, machine-checked;
+     [file_escrow_mask_blocked] is the whole obstruction.
+
+     So an escrow invariant may be opened at a fire point -- AppInv.v's
+     own mask note says so, and [OffGv.foffN] is the landed example -- but
+     never AT THE SAME TIME as the claim, which is exactly what the
+     refutation wants.  The remaining ways are unchanged in number: lane
+     F-OPEN-2's restatement 3 (kernel-tier), or a THIRD one this lane
+     names, (iii): move the escrow INSIDE the claim, i.e. give
+     [AppFile.f_state] an arm in which the holder's half is parked beside
+     a one-shot the holder keeps, so that ONE invariant carries both and
+     the mask question never arises.  (iii) is an [AppFile.v] restatement
+     of [file_pred] and therefore moves the transports, the boot resource,
+     the era-0 mint and every landed consumer of the claim; it is not a
+     [FileOpen.v] change, which is what the ruling assumed way (ii) was. *)
+
+  Lemma app_commit_mask_full : appE ∖ ↑appN = ∅.
+  Proof using . rewrite /appE. set_solver. Qed.
+
+  (* NO invariant at all can be opened inside a commit that has the claim
+     open: the mask left over is empty, and a namespace's closure is
+     infinite. *)
+  Lemma file_escrow_mask_blocked (N : namespace) :
+    (↑N : coPset) ⊆ appE ∖ ↑appN -> False.
+  Proof using .
+    intros HN. apply (nclose_infinite N). exists nil. intros x Hx.
+    exfalso. apply HN in Hx. rewrite /appE in Hx.
+    assert (Hem : x ∈ (∅ : coPset)) by (revert Hx; set_solver).
+    revert Hem. set_solver.
+  Qed.
+
 End FileOpen.
 
 (* ===================================================================== *)
@@ -1603,23 +1656,40 @@ End FileOpen.
 (*      piece, which at [s = None] the create's parent leg has already    *)
 (*      claimed in full ([AppFile.file_step_park] at `f` wants            *)
 (*      [fdeed_whole], and the bundle's pieces are [∗]-separated).  So    *)
-(*      the choice is exactly two: (i) lane F-OPEN-2's restatement 3 --   *)
-(*      [FsAbsCreateFire.acre_commit_at_gen] takes the UNFIRED [Fex]      *)
+(*      the choice was priced as two: (i) lane F-OPEN-2's restatement 3   *)
+(*      -- [FsAbsCreateFire.acre_commit_at_gen] takes the UNFIRED [Fex]   *)
 (*      piece beside the arm's receipt, making the two exclusive in the   *)
 (*      logic and letting the parent leg reassemble [q1 + q2]; or (ii) an *)
 (*      APPLICATION-SIDE ESCROW -- the deed's half in an invariant of the *)
 (*      claim's own, with the arm's piece holding the one-shot that says  *)
 (*      it has not fired, so [Fex] may read it and the arm may take it.   *)
-(*      (ii) costs no kernel restatement and is this file's business; it  *)
-(*      is what lane SH-ROUND needs if its round is to read the redirect  *)
-(*      child's fd arm as [fown r (Some (i, []))] ALONE.                  *)
+(*                                                                       *)
+(*      (ii) IS REFUTED (lane F-OPEN-4), AND BY THE MASK.  Section 3h     *)
+(*      above carries the argument and its two machine-checked lemmas     *)
+(*      ([app_commit_mask_full], [file_escrow_mask_blocked]): the lookup  *)
+(*      piece's commit is a fancy update at [AppInv.appE], the kernel     *)
+(*      fixes that mask ([SysOpenDefs.open_au_create_at]), [appE] is      *)
+(*      [nclose appN], and reading the claim opens [appN] -- so the mask  *)
+(*      left over is EMPTY and no escrow invariant, at any namespace,     *)
+(*      can be open at the same instant as the claim.  The deed's half    *)
+(*      and [file_pred] must meet, and there is no place for them to.     *)
+(*      What replaces (ii) is (iii): move the escrow INSIDE the claim --  *)
+(*      an arm of [AppFile.f_state] in which the holder's half is parked  *)
+(*      beside a one-shot the holder keeps -- so that ONE invariant       *)
+(*      carries both.  That is an [AppFile.v] restatement of [file_pred], *)
+(*      not a [FileOpen.v] one, and it moves the transports, the boot     *)
+(*      resource, the era-0 mint and every landed consumer of the claim.  *)
+(*      Until (i) or (iii) lands, lane SH-ROUND's round reads the         *)
+(*      redirect child's fd arm as the DISJUNCTION and not as             *)
+(*      [fown r (Some (i, []))] alone.                                    *)
 (*                                                                       *)
 (*      THE SAME SHAPE ONCE MORE, SMALLER: create's F-OK admits a found   *)
 (*      DEVICE, and this claim cannot refute that either -- the row's     *)
 (*      type is reported at the OPEN's observation instant and the tie is *)
 (*      at the lookup's.  [file_open_create_recv] therefore has THREE     *)
-(*      outcomes and not two; closing (i) or (ii) closes this one too,    *)
-(*      since both give the lookup's view a readable claim.               *)
+(*      outcomes and not two; closing (i) or (iii) closes this one too,   *)
+(*      since both give the lookup's view a readable claim.  (ii) would   *)
+(*      have, and cannot -- see above.                                    *)
 (*                                                                       *)
 (*  (b) THE O_RDONLY OPEN AT AN ABSENT `f` -- CLOSED (lane F-OPEN-2,      *)
 (*      seam 2).  [file_open_miss_au] / [file_open_miss_recv] below are    *)

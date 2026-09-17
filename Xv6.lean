@@ -190,3 +190,8 @@ import Xv6.KstackMap
 import Xv6.UPtUnmapLemmas
 import Xv6.ProofUvmunmap
 import Xv6.LinkUvmunmap
+import Xv6.UPtFreeLemmas
+import Xv6.ProofFreewalk
+import Xv6.LinkFreewalk
+import Xv6.ProofUvmfree
+import Xv6.LinkUvmfree

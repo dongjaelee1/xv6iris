@@ -4816,3 +4816,258 @@ theorem's axiom list FOURTEEN, the SYSTEM theorem's THIRTEEN and the TREE
 theorem's THIRTEEN, all unchanged.  `make gen-ucode` prints *unchanged*
 for all seven catalogs; no `UCode*.v` and no `tools/ucode_manifest.json`
 was touched.
+
+### OFF-HAND-6 (kernel/U tier, 2026-09-17) — THE HELD HALF RIDES THE BUNDLE AND THE EXEC ROW IS GONE; THE CONTRACT MODE-SPLIT IS REFUTED AS UNNECESSARY, AND `fpnames` NEEDS NOTHING
+
+**The lane's verdict in one line: H1 and the DELETION half of H3 landed — a
+held row now RECORDS ITS OFFSET in the fd-table state, `FdSlots.foff_row`
+answers the exclusive half `UserOff.uoff γo off` at it, the boundary park
+takes no user deposit, and the exec crossing's all-parked row is deleted on
+BOTH arms together with the whole `fdv_held_in`/`ukn_held` carrier, so an
+entry constructor may now mint a record at a key with a held descriptor.
+H2's contract mode-split is REFUTED as unnecessary (fact 4 makes the fire's
+offset supplier mode-blind), `fpnames` is shown to need NO `fp_om` (the
+row's state alone decides, and the reference count does the rest), and what
+H2 actually costs is measured: it FORCES H3's read/write row, because two
+of the four row-copying sites cannot be discharged by the count. Two
+commits, each whole-tree green.**
+
+**WHAT LANDED** (whole tree green on the lane's remote tree, `make -f
+CoqMakefile -j16 -k`, `EXIT=0`, zero `Error`; `make audit-all-only`
+thirteen/fourteen, `audit-tree-only` thirteen, `audit-file-only` fourteen —
+unchanged; `Proof using` everywhere, no `Admitted`.)
+
+*`be377d08f` — H1: the held half rides the descriptor bundle, its value the
+descriptor state*
+
+- `FdSlots.offmode := OffParked | OffHeld (off : nat)`; `fdst_parked`
+  unchanged in meaning; `foff_row (FdOpen _ _ (FdInode _ γo (OffHeld off)))`
+  is `UserOff.uoff γo off` (was `emp`).  `FdSlots.v` now imports `UserOff`
+  (no cycle: `UserOff` requires only `RiscvPtsto`/`Xv6Cameras`/`OffGv`).
+- NEW `FdSlots.om_adv` / `fdst_adv` (the advance of a row by a count,
+  identity at a parked row) with `om_adv_0`, `fdst_adv_0`,
+  `fdst_adv_parked`, `fdst_adv_id_parked`.  This is the function every
+  later row ("this read advanced the descriptor") is stated at.
+- THE PERSISTENCE, priced exactly: `foff_row_persistent` and
+  `foff_rows_persistent` stop being INSTANCES and become the lemmas
+  `foff_row_persistent_parked` / `foff_rows_persistent_parked` under
+  `fdst_parked` / `fdv_all_parked`, with `foff_row_dup` / `foff_rows_dup`
+  the form a proof applies.  `foff_rows_insert` is replaced by the
+  accessor `foff_rows_acc` (out and back at a new state); `foff_rows_lookup`
+  survives, now consuming.  `foff_row_inode_held` takes the half;
+  NEW `foff_row_inode_held_of` reads it back at an equation.
+  **`FdSlots.fd_frags_acc`, `fd_frags_acc_lt`, `fd_frags_any_acc`,
+  `fd_frags_rows`, `fd_frags` and `fd_frags_any` DO NOT MOVE** — the
+  accessor shape was already "one row out, a new row back", which is
+  exactly what a non-persistent family needs, so every site that threads
+  the bundle opaquely is untouched.
+- THE BOUNDARY PARK LOSES ITS USER DEPOSIT.  `FdPark.foff_row_park`,
+  `foff_rows_park`, `fd_frags_park` and `fd_frags_park_at` drop the
+  `uoff_surr*` argument: the half they park is in the bundle they were
+  handed.  `fd_frags_park_at` is now premise-free
+  (`fd_auths γ sts -∗ fd_frags γ sts ={E}=∗ ∃ sts', ⌜sts' = fdv_park sts⌝ ∗
+  ⌜fdv_all_parked sts'⌝ ∗ fd_auths γ sts' ∗ fd_frags γ sts'`), which is what
+  H4's kernel-side dup/fork park will apply.  `uoff_surr`, `uoff_surrs`,
+  `uoff_surrs_map`, `uoff_surr_at` and `uoff_rcpt` are LEFT COMPILING AND
+  ARE DEAD: no lemma and no proof in the tree spends one.
+- THE SUPPLIER IS RESTATED AT THE ROW.  `FdPark.off_supply_of_st`,
+  `off_supply_of_st_eq`, `off_supply_of_st_at`, `off_supply_of_st_at_eq`
+  take `foff_row st` and the kernel's half and give back the kernel's half,
+  the tie `⌜forall o : nat, m = OffHeld o -> o = off⌝` (learned kernel-side
+  by `UserOff.uoff_agree_k` — design §3's RELAY 1, now free) and
+  `off_supply γo E off d (foff_row (fdst_adv st d))`.  **The row goes in
+  and the row comes back ADVANCED**, at every mode.  NEW
+  `UserOff.off_supply_parked_keep` is the parked half of that (the
+  invariant is persistent, so it hands itself back for nothing).
+- THE FOUR ROW-COPYING SITES, named, with their discharge today and their
+  discharge tomorrow.  A held row's entry is EXCLUSIVE, so a site that
+  hands one row to two places needs `foff_row_dup`, which needs
+  `fdst_parked`.  There are exactly four, and NEW
+  `FileInvDefs.file_ref_parked_keep` (the pin read off the reference
+  without spending it, `file_pay_st_ok`'s `∧` convention) discharges all
+  four while the pin stands:
+  1. `ProofSysDup.wp_sys_dup_sconf` (`:1046`) — the destination row is the
+     source's.  When the pin comes off: the REFERENCE COUNT says it (a held
+     object has exactly one row, and dup is holding two shares).
+  2. `ProofKforkB3.kfkb3_fd_loop` (`:782`) — the child's row is the
+     parent's.  Same replacement.
+  3. `ProofSysRead.wp_sys_read_sconf` (`:967`) and
+  4. `ProofSysWrite.wp_sys_write_sconf` (`:983`) — the row is LENT to
+     `wp_fileread_sconf` / `wp_filewrite_sconf` and also put back.  These
+     two CANNOT use the count (the syscall holds the only reference, at the
+     whole fraction the lend handed out).  Their replacement is the LEND:
+     the fire takes `foff_row st` and returns `foff_row (fdst_adv st d)`,
+     and the syscall re-records the row — which is exactly H3's read/write
+     row and is why H2 forces it (finding 3 below).
+- Proof-only, no statement moved: `ProofSysClose:797`, `ProofKexit:956`,
+  `ProofFileread:529`, `ProofFilewrite:3672` (the `foff_row` premise
+  introduced linearly instead of intuitionistically),
+  `FileInvDefs.fdstate_ok_parked`'s destruct pattern.
+
+*`a02d138d9` — H3, the deletion half: the exec crossing's all-parked row is
+deleted on BOTH arms, with the whole `fdv_held_in` carrier*
+
+- `ExecEntry.image_entry_taint` drops `⌜FdSlots.fdv_all_parked (uvis_fd
+  W')⌝`.  Fact 4 makes the row pointless in one step: the half a held row's
+  fire needs is in the DESCRIPTOR BUNDLE, so a generic image's deposits owe
+  nothing about offsets at any mode.  **The two provers never read it**
+  (`UShEchoPay:241` and `UInitSh:1286` both introduced it as `_`): what the
+  row cost was the PREMISE on every builder and on every record mint above
+  it.
+- `UkRun.urun_parked_row` becomes `True` (it was `fdv_held_in (ukn_held N)
+  fdv`).  `urun_rows_held` and `urun_rows_parked` are DELETED;
+  `urun_rows_insert` / `_dup` / `_copy` / `_step` drop their parked side
+  conditions; `ukn_held` survives as DEAD DATA on `uk_names` (no statement
+  mentions it but the field and the `ukn_parked` class).  **An entry
+  constructor may now mint a record at a key with a HELD descriptor**,
+  which is the fact a redirect child's `exec /echo` was waiting on.
+- STATEMENTS THAT CHANGED SHAPE (exhaustive): `ExecEntry.image_entry_taint`;
+  `ExecBundle.exec_slot_of_entry_at` / `sys_exec_slot_of_entry` /
+  `exec_bundle_of` / `exec_bundle_of_at`;
+  `ExecRun.sbundle_pay_refR_of_exec` / `_abs` / `udepw_at_refR_of_sup` /
+  `_ids_of_sup_ids` / `_of_sup_abs` / `wp_uk_ecall_exec_run` / `_ids` /
+  `_abs` / `wp_uk_ecall_exec_pin_test` / `wp_uk_ecall_exec_taint_test` /
+  `image_entry_of_taint` / `exec_slot_of_entry_at_abs` /
+  `sys_exec_slot_of_entry_abs` / `exec_bundle_of_abs`;
+  `PinnedExec.pex_slot_at` / `pex_slot` / `pinned_exec_bundle_at` /
+  `pinned_exec_bundle` / `pinned_exec_bundle_boot_at` /
+  `pinned_exec_bundle_boot`; `TreeExec.wp_uk_ecall_exec_own_test`;
+  `SpecKexec.exec_au_pre_triv_at` / `exec_au_pre_triv`;
+  `InitBoot.init_boot_bundle` (its pure row, now consumer-less) /
+  `init_boot_bundle_triv`; `SystemAdequacy.init_boot_of_sup` /
+  `init_boot_of_triv`; `UexecExecMint.uslot_mint`;
+  `UexecCond.sync_gate_slot` / `echo_gate_slot` / `cond_entry_slot`;
+  `USyncKernel.sync_uexec_slot`; `UEchoKernel.echo_uexec_slot`;
+  `UEchoOut.echo_uexec_slot_at`; `UShKernel.sh_uexec_slot` /
+  `sh_slot_of_kexec` / `sh_exec_entry`; `UInitKernel.init_slot_of_kexec`
+  and its two wrappers; `UInitSh.init_sh_image_entry`;
+  `UShEcho.echo_slot_of_kexec_holds` / `echo_image_entry`;
+  `UShEchoPay`'s echo-exec supply; `UkRun.urun_parked_row` /
+  `urun_rows_held` (deleted) / `urun_rows_parked` (deleted) /
+  `urun_rows_insert` / `urun_rows_dup` / `urun_rows_copy` /
+  `urun_rows_step` / `urun_gen` / `uslot_of_urun` / `uslot_of_urun_ro` /
+  `uslot_of_urun_all`; `UkSh.ush_gen_slot`.  **Nothing else moved** — in
+  particular nothing in `UsysMemOk`, `SpecSyscall`, `ProofSyscall`,
+  `UexecRet`, `UexecSG`, `FsAbsInvFire`, `SpecFileread`, `SpecFilewrite`,
+  `FileInvDefs`, `ProcInv`, and no program-walk leaf.
+- WHAT IS LEFT OF THE CARRIER, and it is dead weight only:
+  `UkRunSys.wp_uk_ecall_dup` (`:1029`) and `wp_uk_ecall_dup_closed`
+  (`:1198`) still take `ukn_held N = ∅` and `UkFork.wp_uk_ecall_fork`
+  (`:817`) / its `_at` twin (`:1181`) still take `ukn_held N ⊆ hs`; all
+  four premises are now UNUSED in their proofs, and deleting them is what
+  frees `UkInit`/`UkInitMain`'s `Context {Hpark : !ukn_parked N}` (their
+  only three uses are `UkInit:808`, `UkInit:914`, `UkInitMain:1075`, plus
+  `UInitKernel:417`).  NOT DONE HERE: removing the `Context` is a whole-file
+  `Proof using` sweep with no semantic gain, and the ruling allows
+  `ukn_held` to stay as dead data until a cleanup lane.
+
+**REFUTED / MEASURED, with the evidence.**
+
+1. **THE CONTRACT MODE-SPLIT OF `fileread_in`/`filewrite_in` IS
+   UNNECESSARY UNDER FACT 4, AND WAS NOT TAKEN.**  OFF-HAND-5's D2 (its WIP
+   patch, reused for its `_inode_any` twins only) added `⌜om = OffParked⌝`
+   to the inode arm and `fdst_parked st ->` to
+   `FsAbsInvFire.fsabs_fileread_in` / `fsabs_filewrite_in`, because the
+   kernel's fire read the offset out of `FdSlots.foff_row`, which was `emp`
+   at `OffHeld`.  Fact 4 removes the reason: `foff_row` at a held row IS the
+   half, and the two fires take an ABSTRACT supplier —
+   `FsAbsReadFire.arf_read_fire_gen` and `FsAbsWriteFire.wrf_awrite_fire_gen`
+   both take `UserOff.off_supply γo E off d R` and hand `R` back, and the
+   app-tier deposit on the inode arm (`pf_at (aread_commit_at …) F`, and
+   `awrite_chain … i γo M ua Q 0 (wchunks n)`) mentions no mode at all.  So
+   `FdPark.off_supply_of_st_at_eq` as restated above serves BOTH modes from
+   the row alone, and the contract's inode arm is byte-for-byte what it
+   always was.  **The whole of the mode's arrival at the fire is a change
+   of one `iDestruct` at each of `ProofFileread:2263` and
+   `ProofFilewrite:4947`** (from `FdSlots.foff_row_inode_of`, which pins
+   `OffParked`, to `FdPark.off_supply_of_st_at_eq`, which does not) — plus
+   the row the syscall must then re-record, which is finding 3.  Nothing
+   from OFF-HAND-5's `UexecSG` guard, `udepw` guard or `udepw_law_parked`
+   was taken, and none is needed: the guard existed to carry
+   `fdst_parked` to a fire, and no fire asks.
+2. **`FileInvDefs.fpnames` NEEDS NO `fp_om`, AND THE PIN THAT REPLACES
+   `fdstate_ok`'s `m = OffParked` IS THE REFERENCE COUNT.**  The brief left
+   the choice open ("the mode bit, or nothing if the row's state alone
+   decides — say which and why").  It is NOTHING, and the why is exact:
+   - A mode BIT on the names would not save `fdstate_ok_inj` anyway.  With
+     the value in the row (fact 4), `FdInode i γo (OffHeld 3)` and
+     `FdInode i γo (OffHeld 5)` are both honest readings of one file at one
+     bit, so injectivity fails at held whatever the names carry.
+   - What does save it is that a held object has exactly ONE row.  State it
+     as a pin on the payload: `file_pay_st γ k q C st` gains
+     `⌜¬ fdst_parked st -> q = 1%Qp⌝`.  Then `file_pay_st_agree` (two
+     shares, fractions valid, so `q1 + q2 ≤ 1`) refutes held on both sides
+     and closes at the parked `fdstate_ok_inj`; `FileInv.file_ref_agree`
+     follows; and `file_pay_st_split` gains `fdst_parked st ->`, which is
+     honest (splitting a held object's payload is exactly what dup must not
+     do before it parks — H4).  `fpay_tok` needs one new lemma, the
+     fractional validity `fpay_tok γ k q1 pn1 -∗ fpay_tok γ k q2 pn2 -∗
+     ⌜(q1 + q2 ≤ 1)%Qp⌝`, which is `own_valid_2` on the frac component.
+   - The `_parked` chain then goes as the ruling says
+     (`fdstate_ok_parked` → `file_ref_parked` → `ProcInv.ofile_slot_parked`
+     → `ofile_slots_parked` → `proc_ofiles_parked` → `proc_priv_parked`),
+     and `file_ref_parked_keep` (this lane's, H1) is replaced by the
+     two-share reading at sys_dup and kfork.
+   - `fdstate_ok_inode`'s six readers (`FileInvDefs`, `ProofFileclose`,
+     `ProofFilestat`, `ProofFileread`, `ProofFilewrite`, `SpecFileread`)
+     take the mode existentially; `fdstate_ok_inj`'s three
+     (`FileInvDefs`, `ProofSysOpenPub`, `ProofSysOpenParts`) take the
+     parked form.  Both lists are small.
+3. **H2 FORCES H3's READ/WRITE ROW — THEY ARE ONE CHANGE — AND THAT IS WHY
+   THIS LANE STOPPED AT H1 + H3's DELETION HALF.**  The moment
+   `fdstate_ok` stops pinning `OffParked`, `file_ref_parked_keep` dies, and
+   with it the discharge at row-copying sites 3 and 4 above
+   (`ProofSysRead:967`, `ProofSysWrite:983`).  Those two hold ONE reference
+   at the fraction the lend handed out (`ProcInv.proc_ofiles_lend` gives
+   the slot's whole `q`), so the reference-count reading of finding 2 does
+   not reach them; the only honest replacement is the LEND, i.e. the fire
+   gives the row back ADVANCED and the syscall re-records it — which moves
+   the successor table and therefore moves:
+   - `UsysMemOk.usys_fd_ok`'s `else` branch (`sts' = sts`) must gain a
+     read/write arm `sts' = <[fd := fdst_adv (sts !!! fd) d]> sts` with `d`
+     the count; `usys_fd_ok_quiet` gains two premises and has **20
+     occurrences across `UsysMemOk`, `UkRunSys`, `UexecApply`,
+     `UkRunExecRef`**;
+   - `SpecSyscall.sysc_fd_ok` and `SpecUsertrap.ut_fd_ecall` relay it;
+     `ProofSyscall`'s read and write arms prove it;
+   - `SpecSysRead.sys_read_out` / `SpecSysWrite.sys_write_out` and
+     `SpecFileread`/`SpecFilewrite`'s posts must return
+     `foff_row (fdst_adv st d)`;
+   - the generic Löb (`UexecRet.uexec_ret_cont_gen`'s pure rows) absorbs a
+     successor table that CHANGES at a held descriptor;
+   - `FileInvDefs.file_ref` must be RETYPED at the advanced state (a pure
+     step once the pin is off: `fdstate_ok … C (fdst_adv st d)` holds, and
+     at a held object the count says there is no second holder to disagree).
+   This is a lane, not a step.  Everything it needs from the kernel side is
+   in place: `FdPark.off_supply_of_st_at_eq` is the fire's step and
+   `FdSlots.fdst_adv` is the row's function.
+4. **H4 AND H5 WERE NOT ATTEMPTED**, and both are now cheaper than the
+   brief priced them.  H4's kernel-side park is `FdPark.fd_frags_park_at`,
+   which this lane made PREMISE-FREE — a dup or fork arm applies it to the
+   bundle it already holds and gets an all-parked table back; what it still
+   owes is the ARRAY half (`ProcInv.ofile_slot`'s file disjunct and
+   `FileInvDefs.file_ref`'s own `st`, which `fdstate_ok` pins), i.e. H2.
+   H5's hand-mode open leaf is `ProofSysOpenPub`:324-330 switching
+   `off_pub_park` for `UserOff.off_pub_hand_0` and publishing
+   `OffHeld 0` — blocked only by `UsysMemOk.usys_fd_ok`'s open arm
+   (`fdst_parked (FdOpen rd wr t)`), which is OFF-HAND-3's finding 3 and
+   still stands.  The held read/write leaves are the parked leaves with
+   `⌜sts !! fd = Some (FdOpen _ _ (FdInode i γo (OffHeld off)))⌝` read off
+   the table and the post at `OffHeld (off + n)` — i.e. exactly finding 3's
+   row, at a named descriptor.
+
+**WHAT ECHO-FILE / CAT-WALK / SH-ROUND HAND IN, as of this lane.**
+- The exec crossing is FREE at every mode: `ExecEntry.image_entry_taint`,
+  `ExecBundle.*`, `ExecRun.*`, `PinnedExec.*`, `TreeExec.*`,
+  `UShKernel.sh_exec_entry`, `UShEcho.echo_image_entry` and
+  `UInitSh.init_sh_image_entry` take NO fact about offsets, and a record is
+  minted at any held set.  A redirect child may exec `/echo` with a held
+  descriptor in its table as soon as one can exist.
+- The descriptor bundle CARRIES the half: `FdSlots.foff_row` at
+  `OffHeld off` is `UserOff.uoff γo off`, `FdSlots.fdst_adv` is the
+  advance, and `FdPark.off_supply_of_st_at_eq` is the one step from the row
+  to a fire's supplier and back to the row advanced.  No program tier
+  resource, no deposit and no surrender is involved anywhere.
+- What they still cannot do is OPEN in hand mode or READ/WRITE a held row:
+  that is finding 3's single coupled change (H2 + H3's row), and its full
+  site list is above.

@@ -1541,11 +1541,6 @@ Proof.
      The cursor, the miss family, the observation pair and the refund are
      the bundle's own; this arm reads none of them. *)
   iEval (rewrite /init_boot_bundle /init_boot_path) in "Hbundle".
-  (* THE ALL-PARKED ROW, OFF THE BUNDLE (lane OFF-HAND-2).  This arm holds
-     neither the descriptor bundle nor the array, so it cannot read the
-     fact; the bundle's producer stated it at [FdSlots.fdt0], the table
-     userinit built, and kexec spends it on the slot wands. *)
-  iDestruct "Hbundle" as "[%Hpkboot Hbundle]".
   (* THE TOKEN IS THE BUNDLE'S INPUT: applied HERE, once, at the one kexec
      the first process ever gets ([InitBoot]'s note). *)
   iDestruct ("Hbundle" with "Hrdtok") as "Hbundle".

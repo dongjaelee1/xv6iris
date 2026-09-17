@@ -143,8 +143,7 @@ Section InitBoot.
      [SpecKexec.exec_au_pre_triv_at] for the generic application,
      [PinnedExec.pinned_exec_bundle_boot] for a constraining one. *)
   Definition init_boot_bundle (cw : Z) (sts : list fdstate) : iProp Σ :=
-    (⌜FdSlots.fdv_all_parked sts⌝ ∗
-     (cons_reader fsc_cons 0%nat -∗
+    ((cons_reader fsc_cons 0%nat -∗
      ∃ (P Pmiss : nat -> Z -> iProp Σ)
        (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ))
        (R : iProp Σ),
@@ -157,13 +156,10 @@ Section InitBoot.
      tracks nothing.  [App.xv6_app_adequacy_triv_xv6Σ] reaches the family
      through [AppInv.app_sup_raw_triv] and [UexecExecMint.uslot_mint]. *)
   Lemma init_boot_bundle_triv (cw : Z) (sts : list fdstate) :
-    fdv_all_parked sts ->
-    □ (∀ W : uvis, ⌜FdSlots.fdv_all_parked (uvis_fd W)⌝ -∗
-                   my_pay (uvis_gen W) (fun _ => True)%I -∗ uslot W) -∗
+    □ (∀ W : uvis, my_pay (uvis_gen W) (fun _ => True)%I -∗ uslot W) -∗
     init_boot_bundle cw sts.
   Proof using .
-    intros Hpk0. iIntros "#HS". rewrite /init_boot_bundle.
-    iSplitR; [iPureIntro; exact Hpk0 |].
+    iIntros "#HS". rewrite /init_boot_bundle.
     (* THE GENERIC INSTANCE DROPS THE TOKEN: a program that tracks nothing
        reads the console on the persistent credential, not on the token
        ([FsAbsInvFire.fsabs_fileread_in]). *)
@@ -173,9 +169,9 @@ Section InitBoot.
     iIntros (cs pidv).
     iApply (exec_au_pre_triv_at uslot (fs_gamma_L fsc_fs) fsc_fs cw
               init_boot_path 1%nat (fun _ => 5%nat) (fun _ => init_boot_bytes)
-              sts cs pidv Hpk0).
-    iModIntro. iIntros (W) "%Hpk Hp".
-    iApply ("HS" $! W with "[%] Hp"). exact Hpk.
+              sts cs pidv).
+    iModIntro. iIntros (W) "Hp".
+    iApply ("HS" $! W with "Hp").
   Qed.
 
 End InitBoot.

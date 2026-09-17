@@ -36,6 +36,7 @@ Require Import ProcGeom.
 Require SailStdpp.Values RiscvExtras.   (* [mword] / [trunc32], qualified: importing them shadows [∈] below *)
 Require Import RiscvPtsto Xv6Cameras.   (* [riscvGS] / [offboxG] -- the classes the offset row binds; IMPORTED, or the binder below generalises them silently *)
 Require Import OffGv.   (* [off_user_inv] / [off_permit] -- the fd row's offset shadow *)
+Require Import UserOff.  (* [uoff] -- THE HELD ROW'S HALF, which rides the bundle (design/app-file.md SS3 fact 4) *)
 Require Import PipeNames.   (* [pipe_names]: what a pipe descriptor's state carries *)
 Local Open Scope Z_scope.
 
@@ -173,7 +174,7 @@ Definition fdslotUR : ucmra := authUR natUR.
    PINS it ([FileInvDefs.fdstate_ok]'s FD_INODE arm), so the kernel meets
    no held descriptor and its proofs are byte-for-byte what they were.
    Mode [hand] is wired at the enriched open row by the next lane. *)
-Inductive offmode := OffParked | OffHeld.
+Inductive offmode := OffParked | OffHeld (off : nat).
 
 Global Instance offmode_eq_dec : EqDecision offmode.
 Proof. solve_decision. Defined.
@@ -241,14 +242,48 @@ Global Instance fdstate_inhabited : Inhabited fdstate := populate FdClosed.
    untouched. *)
 Definition fdst_parked (st : fdstate) : Prop :=
   match st with
-  | FdOpen _ _ (FdInode _ _ OffHeld) => False
+  | FdOpen _ _ (FdInode _ _ (OffHeld _)) => False
   | _ => True
   end.
 
 Global Instance fdst_parked_dec (st : fdstate) : Decision (fdst_parked st).
-Proof. destruct st as [|? ? [? ? [|]|?|?]]; cbn; apply _. Defined.
+Proof. destruct st as [|? ? [? ? [|?]|?|?]]; cbn; apply _. Defined.
 
 Definition fdv_all_parked (l : list fdstate) : Prop := Forall fdst_parked l.
+
+(* ---- THE ADVANCE, which is what a fire does to a held row (design/
+   app-file.md SS3 fact 4): the value the state records moves by the count
+   and a parked row is its own.  PURE, and a function of the state, for
+   the same reason [fdst_parked] is: every row that says "this read
+   advanced the descriptor" says it at this function and no site that
+   threads the bundle opaquely has to know. ---- *)
+Definition om_adv (m : offmode) (d : nat) : offmode :=
+  match m with
+  | OffParked  => OffParked
+  | OffHeld o  => OffHeld (o + d)
+  end.
+
+Definition fdst_adv (st : fdstate) (d : nat) : fdstate :=
+  match st with
+  | FdOpen r w (FdInode i γo m) => FdOpen r w (FdInode i γo (om_adv m d))
+  | _ => st
+  end.
+
+Lemma om_adv_0 (m : offmode) : om_adv m 0 = m.
+Proof. destruct m as [| o]; [reflexivity | cbn; by rewrite Nat.add_0_r]. Qed.
+
+Lemma fdst_adv_0 (st : fdstate) : fdst_adv st 0 = st.
+Proof. destruct st as [| r w [i g m | g | mj]]; try reflexivity. cbn. by rewrite om_adv_0. Qed.
+
+(* ...and it PRESERVES the discipline in both directions: advancing never
+   makes a row held and never makes one parked. *)
+Lemma fdst_adv_parked (st : fdstate) (d : nat) :
+  fdst_parked st -> fdst_parked (fdst_adv st d).
+Proof. destruct st as [| r w [i g [| o] | g | mj]]; done. Qed.
+
+Lemma fdst_adv_id_parked (st : fdstate) (d : nat) :
+  fdst_parked st -> fdst_adv st d = st.
+Proof. destruct st as [| r w [i g [| o] | g | mj]]; try reflexivity. by intros []. Qed.
 
 Global Instance fdv_all_parked_dec (l : list fdstate) : Decision (fdv_all_parked l).
 Proof. unfold fdv_all_parked. apply _. Defined.
@@ -726,12 +761,33 @@ Section FdSlots.
      untouched). *)
   Definition foff_row (st : fdstate) : iProp Σ :=
     match st with
-    | FdOpen _ _ (FdInode _ γo OffParked) => off_user_inv γo
-    | FdOpen _ _ (FdInode _ _ OffHeld)   => emp
+    | FdOpen _ _ (FdInode _ γo OffParked)    => off_user_inv γo
+    | FdOpen _ _ (FdInode _ γo (OffHeld off)) => uoff γo off
     | _ => True
     end.
-  Global Instance foff_row_persistent st : Persistent (foff_row st).
-  Proof using . destruct st as [|? ? [? ? [|]|?|?]]; apply _. Qed.
+
+  (* PERSISTENT ONLY WHERE THE ROW IS PARKED, which is the price of fact 4
+     and the whole of it: a held row's entry IS the exclusive half, so the
+     family cannot be copied at one.  Every site that threads the bundle
+     opaquely is still untouched (the family is still a pure function of
+     the state, and the accessor below still opens one row and closes it
+     back); the sites that COPY a row -- dup's destination and kfork's
+     scan -- are the ones that need this, and they take the parkedness of
+     the table they copy as a premise until the kernel park of
+     design/app-file.md SS3 fact 4's dup/fork half discharges it. *)
+  Global Instance foff_row_persistent_parked st :
+    fdst_parked st -> Persistent (foff_row st).
+  Proof using .
+    destruct st as [|? ? [? ? [|?]|?|?]]; intros Hpk; try apply _.
+    destruct Hpk.
+  Qed.
+
+  Lemma foff_row_dup (st : fdstate) :
+    fdst_parked st -> foff_row st -∗ foff_row st ∗ foff_row st.
+  Proof using .
+    intros Hpk. pose proof (foff_row_persistent_parked st Hpk).
+    iIntros "#H". iSplitR; iExact "H".
+  Qed.
 
   Lemma foff_row_closed : ⊢ foff_row FdClosed.
   Proof using . done. Qed.
@@ -742,11 +798,20 @@ Section FdSlots.
   Lemma foff_row_inode (r w : bool) (i : Z) (γo : gname) :
     off_user_inv γo -∗ foff_row (FdOpen r w (FdInode i γo OffParked)).
   Proof using . iIntros "$". Qed.
-  (* ...and the held row, which is free: a handed-out half leaves the row
-     with nothing to say. *)
-  Lemma foff_row_inode_held (r w : bool) (i : Z) (γo : gname) :
-    ⊢ foff_row (FdOpen r w (FdInode i γo OffHeld)).
-  Proof using . done. Qed.
+  (* ...and the held row, whose entry IS the half: the program's [uoff] at
+     the value the state records (design/app-file.md SS3 fact 4).  This is
+     what the hand-mode open's publish puts in the bundle and what the
+     kernel's fire spends and returns advanced. *)
+  Lemma foff_row_inode_held (r w : bool) (i : Z) (γo : gname) (off : nat) :
+    uoff γo off -∗ foff_row (FdOpen r w (FdInode i γo (OffHeld off))).
+  Proof using . iIntros "$". Qed.
+
+  (* ...and the reading back, at the equation a kernel proof holds its
+     state at ([foff_row_inode_of]'s convention). *)
+  Lemma foff_row_inode_held_of (st : fdstate) (r w : bool) (i : Z) (γo : gname)
+      (off : nat) :
+    st = FdOpen r w (FdInode i γo (OffHeld off)) -> foff_row st -∗ uoff γo off.
+  Proof using . intros ->. iIntros "$". Qed.
 
   (* ...and the reading a walk needs, at a state it holds only through an
      EQUATION: a descriptor's shape is derived from its content, never
@@ -765,8 +830,23 @@ Section FdSlots.
 
   Definition foff_rows (sts : list fdstate) : iProp Σ :=
     ([∗ list] st ∈ sts, foff_row st)%I.
-  Global Instance foff_rows_persistent sts : Persistent (foff_rows sts).
-  Proof using . rewrite /foff_rows. apply _. Qed.
+  (* ...PERSISTENT AT AN ALL-PARKED TABLE, and only there.  Stated as a
+     lemma rather than an instance so that no site picks it up silently:
+     a proof that copies the family says, in its own premises, that the
+     table it copies is parked. *)
+  Lemma foff_rows_persistent_parked sts :
+    fdv_all_parked sts -> Persistent (foff_rows sts).
+  Proof using .
+    intros Hpk. rewrite /foff_rows. apply big_sepL_persistent.
+    intros k st Hk. exact (foff_row_persistent_parked st (fdv_all_parked_lookup sts k st Hpk Hk)).
+  Qed.
+
+  Lemma foff_rows_dup (sts : list fdstate) :
+    fdv_all_parked sts -> foff_rows sts -∗ foff_rows sts ∗ foff_rows sts.
+  Proof using .
+    intros Hpk. pose proof (foff_rows_persistent_parked sts Hpk).
+    iIntros "#H". iSplitR; iExact "H".
+  Qed.
 
   Lemma foff_rows_closed (n : nat) : ⊢ foff_rows (replicate n FdClosed).
   Proof using .
@@ -774,19 +854,26 @@ Section FdSlots.
     apply lookup_replicate in Hk as [-> _]. iApply foff_row_closed.
   Qed.
 
+  (* ONE ROW OUT AND BACK.  The lookup CONSUMES the family now -- a held
+     row's entry is exclusive -- so the two old readings are one accessor,
+     which is exactly the shape [fd_frags_acc] was already stated at. *)
+  Lemma foff_rows_acc (sts : list fdstate) (fd : nat) (st : fdstate) :
+    sts !! fd = Some st ->
+    foff_rows sts -∗
+    foff_row st ∗ (∀ st', foff_row st' -∗ foff_rows (<[fd := st']> sts)).
+  Proof using .
+    iIntros (Hfd) "H". rewrite /foff_rows.
+    iDestruct (big_sepL_insert_acc _ _ _ _ Hfd with "H") as "[$ Hback]".
+    iIntros (st') "Hst'". iApply ("Hback" with "Hst'").
+  Qed.
+
+  (* ...and the two old readings, kept at the PARKED premise that makes
+     them true, for the sites that only want one half. *)
   Lemma foff_rows_lookup (sts : list fdstate) (fd : nat) (st : fdstate) :
     sts !! fd = Some st -> foff_rows sts -∗ foff_row st.
   Proof using .
-    iIntros (Hfd) "#H". iDestruct (big_sepL_lookup _ _ _ _ Hfd with "H") as "$".
-  Qed.
-
-  Lemma foff_rows_insert (sts : list fdstate) (fd : nat) (st st' : fdstate) :
-    sts !! fd = Some st ->
-    foff_rows sts -∗ foff_row st' -∗ foff_rows (<[fd := st']> sts).
-  Proof using .
-    iIntros (Hfd) "#H Hst'". rewrite /foff_rows.
-    iDestruct (big_sepL_insert_acc _ _ _ _ Hfd with "H") as "[_ Hback]".
-    iApply ("Hback" with "Hst'").
+    iIntros (Hfd) "H".
+    iDestruct (foff_rows_acc _ _ _ Hfd with "H") as "[$ _]".
   Qed.
 
   Definition fd_frags (γ : gname) (sts : list fdstate) : iProp Σ :=
@@ -1031,14 +1118,14 @@ Section FdSlots.
     fd_st γ fd st ∗ foff_row st ∗
     (∀ st', fd_st γ fd st' -∗ foff_row st' -∗ fd_frags γ (<[fd := st']> sts)).
   Proof using .
-    iIntros (Hfd) "(%Hlen & Hs & #Hrows)".
-    iDestruct (foff_rows_lookup _ _ _ Hfd with "Hrows") as "#Hrow".
+    iIntros (Hfd) "(%Hlen & Hs & Hrows)".
+    iDestruct (foff_rows_acc _ _ _ Hfd with "Hrows") as "[Hrow Hrback]".
     iDestruct (big_sepL_insert_acc _ _ _ _ Hfd with "Hs") as "[Hst Hback]".
-    iSplitL "Hst"; [iExact "Hst" |]. iSplitR "Hback"; [iExact "Hrow" |].
+    iSplitL "Hst"; [iExact "Hst" |]. iSplitR "Hback Hrback"; [iExact "Hrow" |].
     iIntros (st') "Hst Hrow'". iSplitR.
     { iPureIntro. rewrite length_insert. exact Hlen. }
     iSplitL "Hst Hback"; [iApply ("Hback" with "Hst") |].
-    iApply (foff_rows_insert _ _ _ _ Hfd with "Hrows Hrow'").
+    iApply ("Hrback" with "Hrow'").
   Qed.
 
   (* ...and at the quantified bundle, which is what a syscall actually
@@ -1076,7 +1163,7 @@ Section FdSlots.
     iDestruct (fd_frags_len with "Hb") as %Hlen.
     assert (Hlk : is_Some (sts !! fd)) by (apply lookup_lt_is_Some_2; lia).
     destruct Hlk as [st Hst].
-    iDestruct (fd_frags_acc γ sts fd st Hst with "Hb") as "(Hst & #Hrow & Hback)".
+    iDestruct (fd_frags_acc γ sts fd st Hst with "Hb") as "(Hst & Hrow & Hback)".
     iExists st. iFrame "Hst Hrow". iIntros (st') "Hst Hrow'".
     iExists (<[fd := st']> sts). iApply ("Hback" with "Hst Hrow'").
   Qed.

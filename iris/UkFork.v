@@ -941,16 +941,15 @@ Section UkFork.
   Proof using .
     intros Hn Hhsub Hal4. iIntros "#Hi HRc HP Hsz Hstd HD Hcwd Hchf #Hkw Hrun [Hpar Hchild]".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
-    (* THE CHILD'S ROW, AT THE PARENT'S TABLE.  fork copies the table, so
-       the parent's row is the child's one set wider ([UsysMemOk.
-       fdv_held_in_mono]); the pipe half is the parent's verbatim. *)
-    iDestruct (urun_rows_held N fdv with "Hnpx") as %Hheld.
+    (* THE CHILD'S ROW, AT THE PARENT'S TABLE: the pipe half is the
+       parent's verbatim, and there is no offset half any more (lane
+       OFF-HAND-6, H3). *)
     iAssert (urun_rows (MkUkNames (ukn_t N) (ukn_d N) (ukn_s N) (ukn_fd N)
                           (ukn_cwd N) (ukn_ch N) (ukn_pay N) (ukn_pid N) hs) fdv)
       as "#Hnpc";
       [ rewrite /urun_rows; iSplitR;
         [ iApply (urun_rows_nopipe N fdv with "Hnpx")
-        | iPureIntro; exact (fdv_held_in_mono _ _ fdv Hhsub Hheld) ] | ].
+        | by iPureIntro ] | ].
     (* the caller's half pins the key's working directory *)
     iDestruct (ucwd_agree with "Hcwda Hcwd") as %->.
     (* ...and its other half pins the key's children set, which is why the

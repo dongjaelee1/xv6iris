@@ -1691,6 +1691,60 @@ Section UkInit.
      ∨ (⌜l = ufd_l0⌝ ∗ Wb n)
      ∨ T)%I.
 
+  (* =================================================================== *)
+  (*  THE KILL ROW (lane TL-6; design/user-tree.md §9.4, ruling (b)).     *)
+  (*                                                                     *)
+  (*  WHAT /init ACTUALLY SPENDS A KILL ON, and it is one site: the       *)
+  (*  child it forks is lent the console lease, and a KILLED child        *)
+  (*  cannot hand the lease back, so the payload /init chooses for it     *)
+  (*  ([UserConsole.ucons_pay])'s kill arm is the application's [T]       *)
+  (*  ([UkInitMain.wp_kinit_fork]).  That is the whole spend.             *)
+  (*                                                                     *)
+  (*  IT USED TO BE A CLOSED ENTAILMENT, [⊢ □ riscv_kill_cred -∗ T],      *)
+  (*  which reads "a kill is free for the application" and is ECHO's      *)
+  (*  fact and no one else's (echo's kill credential IS its taint, so     *)
+  (*  the premise was an identity there).  At an application whose kill   *)
+  (*  credential is the generic one ([App.app_iface_triv]) the premise    *)
+  (*  reads [True -∗ T] and is FALSE for any [T] worth having -- the      *)
+  (*  tree claim's taint is exactly such a [T]                            *)
+  (*  ([AppTree.tree_bump_free_is_vacuous]).                              *)
+  (*                                                                     *)
+  (*  SO THE PRICE IS CUT AT THE CREDENTIAL THE ROUND ALREADY HOLDS.      *)
+  (*  The kill arm is reached with the lend in hand -- it is what the     *)
+  (*  parent is about to hand the child -- so the honest premise is: a    *)
+  (*  kill costs the application NO MORE THAN the credential this round   *)
+  (*  is already carrying -- give the lend, get it back and the kill      *)
+  (*  row.  ECHO discharges it out of its identity and at every arm       *)
+  (*  ([init_kill_law_of_taint] below, so echo's site moves by one        *)
+  (*  token); an application whose taint is a RESOURCE discharges it by   *)
+  (*  reading the taint off the round-open arm ([Wp], which its banner    *)
+  (*  left) and, on the banner-owed arm ([Wb], the licence it has not     *)
+  (*  spent yet), by SPENDING it -- which is why the law is an update     *)
+  (*  and why its conclusion may come back on the lend's third arm.       *)
+  (* =================================================================== *)
+  Definition init_kill_law (T : iProp Σ) (st : fdstate)
+      (Wp Wb : nat -> iProp Σ) : iProp Σ :=
+    (□ (∀ (l : list fdstate) (n : nat),
+          init_lend_cred T st Wp Wb l n ==∗
+          init_lend_cred T st Wp Wb l n ∗ □ (riscv_kill_cred -∗ T)))%I.
+
+  Global Instance init_kill_law_persistent T st Wp Wb :
+    Persistent (init_kill_law T st Wp Wb).
+  Proof using . rewrite /init_kill_law. apply _. Qed.
+
+  (* THE OLD PREMISE IMPLIES THE NEW ONE, at every ledger and every
+     count: an application for which a kill is free pays the row without
+     reading the lend at all.  This is echo's discharge. *)
+  Lemma init_kill_law_of_taint (T : iProp Σ) (st : fdstate)
+      (Wp Wb : nat -> iProp Σ) :
+    (⊢ □ riscv_kill_cred -∗ T) ->
+    ⊢ init_kill_law T st Wp Wb.
+  Proof using .
+    intros Hkt. rewrite /init_kill_law.
+    iIntros "!>" (l n) "Hl". iModIntro. iFrame "Hl".
+    iModIntro. iIntros "#Hc". iApply Hkt. iExact "Hc".
+  Qed.
+
   (* WHAT A FAILED exec REFUNDS (lane M6b): the lend as it went in --
      the child's ledger, the position, the lease and the credential at
      that ledger.  The exec supply below puts exactly this into the

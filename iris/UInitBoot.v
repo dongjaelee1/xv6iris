@@ -1011,7 +1011,12 @@ Section EchoInitBoot.
                 (echo_cc HR GEN γ)
                 fsc_cons
                 1%nat (fun _ => 5%nat) (fun _ => init_boot_bytes) fdt0 0%nat
-                init_cons_fd_ne Hktaint
+                init_cons_fd_ne
+                (* THE KILL ROW (lane TL-6): echo's own identity pays it at
+                   every ledger and every count -- [init_boot_con]'s premise
+                   is the round's now, and echo's discharge is one token
+                   longer ([UkInit.init_kill_law_of_taint]). *)
+                (UkInit.init_kill_law_of_taint _ _ _ _ Hktaint)
                 (init_boot_room 0%nat
                                    ltac:(vm_compute; discriminate))
                 fdt0_length eq_refl (fdv_nopipe_closed _)

@@ -232,13 +232,19 @@ Section UInitKernel.
       (cn : cons_names)
       (W : uvis) (n0 : nat) :
     stc <> FdClosed ->
-    (* THE KILL CREDENTIAL BUYS THE APPLICATION'S TAINT (lane KILL-PAY,
-       K4(a)).  A killed process's exit payload is a WAND from the
-       credential now, and the shell /init forks pays its own out of the
-       taint ([UserConsole.ucons_pay]'s right arm).  A Coq-level premise
-       because the equation [riscv_kill_cred = echo_taint] is the
-       application's ([UInitBoot]) and this file sits above it. *)
-    (⊢ □ riscv_kill_cred -∗ T) ->
+    (* THE KILL ROW (lane TL-6; design/user-tree.md §9.4, ruling (b)).
+       A killed child's exit payload is a WAND from the credential, and
+       the shell /init forks pays its own out of the application's [T]
+       ([UserConsole.ucons_pay]'s right arm) -- the ONE site in /init's
+       walk that spends a kill ([UkInitMain.wp_kinit_fork]).  The premise
+       is the ROUND's and not the application's: the lend is in hand at
+       that site, so [UkInit.init_kill_law] buys the row off the
+       credential the round already carries and hands the lend back.  It
+       REPLACES [⊢ □ riscv_kill_cred -∗ T] -- "a kill is free for the
+       application" -- which is echo's identity ([UInitBoot]'s
+       [riscv_kill_cred = echo_taint]) and is FALSE at an application
+       whose kill credential is the generic one. *)
+    (⊢ UkInit.init_kill_law T stc (cc_wp Cr) (cc_wbn Cr)) ->
     tf_resume_pc (uvis_tf W) = (mword_of_int InitSyms.start : mword 64) ->
     init_img_sub (uvis_M W) ->
     (* init's whole image is one executable page *)
@@ -460,13 +466,19 @@ Section UInitKernel.
       (afun : nat -> nat -> bv 8) (sts : list fdstate)
       (W' : uvis) (n0 : nat) :
     stc <> FdClosed ->
-    (* THE KILL CREDENTIAL BUYS THE APPLICATION'S TAINT (lane KILL-PAY,
-       K4(a)).  A killed process's exit payload is a WAND from the
-       credential now, and the shell /init forks pays its own out of the
-       taint ([UserConsole.ucons_pay]'s right arm).  A Coq-level premise
-       because the equation [riscv_kill_cred = echo_taint] is the
-       application's ([UInitBoot]) and this file sits above it. *)
-    (⊢ □ riscv_kill_cred -∗ T) ->
+    (* THE KILL ROW (lane TL-6; design/user-tree.md §9.4, ruling (b)).
+       A killed child's exit payload is a WAND from the credential, and
+       the shell /init forks pays its own out of the application's [T]
+       ([UserConsole.ucons_pay]'s right arm) -- the ONE site in /init's
+       walk that spends a kill ([UkInitMain.wp_kinit_fork]).  The premise
+       is the ROUND's and not the application's: the lend is in hand at
+       that site, so [UkInit.init_kill_law] buys the row off the
+       credential the round already carries and hands the lend back.  It
+       REPLACES [⊢ □ riscv_kill_cred -∗ T] -- "a kill is free for the
+       application" -- which is echo's identity ([UInitBoot]'s
+       [riscv_kill_cred = echo_taint]) and is FALSE at an application
+       whose kill credential is the generic one. *)
+    (⊢ UkInit.init_kill_law T stc (cc_wp Cr) (cc_wbn Cr)) ->
     kexec_image_ok ElfUser.init_elf na alen afun sts W' ->
     (* room for init's frames on the stack page, below the argument block *)
     kexec_sz ElfUser.init_elf - PGSIZE
@@ -681,13 +693,19 @@ Section UInitKernel.
       (na : nat) (alen : nat -> nat) (afun : nat -> nat -> bv 8)
       (sts : list fdstate) (n0 : nat) :
     stc <> FdClosed ->
-    (* THE KILL CREDENTIAL BUYS THE APPLICATION'S TAINT (lane KILL-PAY,
-       K4(a)).  A killed process's exit payload is a WAND from the
-       credential now, and the shell /init forks pays its own out of the
-       taint ([UserConsole.ucons_pay]'s right arm).  A Coq-level premise
-       because the equation [riscv_kill_cred = echo_taint] is the
-       application's ([UInitBoot]) and this file sits above it. *)
-    (⊢ □ riscv_kill_cred -∗ T) ->
+    (* THE KILL ROW (lane TL-6; design/user-tree.md §9.4, ruling (b)).
+       A killed child's exit payload is a WAND from the credential, and
+       the shell /init forks pays its own out of the application's [T]
+       ([UserConsole.ucons_pay]'s right arm) -- the ONE site in /init's
+       walk that spends a kill ([UkInitMain.wp_kinit_fork]).  The premise
+       is the ROUND's and not the application's: the lend is in hand at
+       that site, so [UkInit.init_kill_law] buys the row off the
+       credential the round already carries and hands the lend back.  It
+       REPLACES [⊢ □ riscv_kill_cred -∗ T] -- "a kill is free for the
+       application" -- which is echo's identity ([UInitBoot]'s
+       [riscv_kill_cred = echo_taint]) and is FALSE at an application
+       whose kill credential is the generic one. *)
+    (⊢ UkInit.init_kill_law T stc (cc_wp Cr) (cc_wbn Cr)) ->
     kexec_sz ElfUser.init_elf - PGSIZE
       + 8 * Z.of_nat (2 + (4 + (12 + (12 + (4 + n0)))))
       <= kxc_sp_final (kexec_sz ElfUser.init_elf) alen na ->

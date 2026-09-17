@@ -823,13 +823,16 @@ Section UkInitMain.
       (cn : cons_names) (l : list fdstate) (γ : gname) (np : nat)
       (szv : Z) (h : CpuId) (m : regfile) (avail : nat)
       (Sc : gset gname) :
-    (* THE CHILD'S EXIT PAYLOAD IS A WAND FROM THE KILL CREDENTIAL NOW
-       (lane KILL-PAY, K4(a)), and this is what pays it: the credential
-       IS the application's taint, and the taint is [ucons_pay]'s right
-       arm ([UserConsole.ucons_pay_taint]).  A Coq-level premise, because
-       the equation [riscv_kill_cred = echo_taint] is known where the era
-       is -- [UInitBoot] -- and not here. *)
-    (⊢ □ riscv_kill_cred -∗ T) ->
+    (* THE CHILD'S EXIT PAYLOAD IS A WAND FROM THE KILL CREDENTIAL
+       (lane KILL-PAY, K4(a)), and THIS IS THE ONE SITE IN /init's WALK
+       THAT SPENDS A KILL: a killed child cannot hand the console lease
+       back, so [UserConsole.ucons_pay]'s right arm -- the application's
+       [T] -- is what pays the payload.  The premise is the ROUND's, not
+       the application's (lane TL-6; user-tree §9.4, ruling (b)): the
+       lend is in hand here, and [UkInit.init_kill_law] buys the row off
+       it and gives it back.  It REPLACES [⊢ □ riscv_kill_cred -∗ T],
+       which reads "a kill is free" and is echo's identity alone. *)
+    (⊢ init_kill_law T stc (cc_wp Cr) (cc_wbn Cr)) ->
     init_code γt -∗ init_rodata γt -∗ init_argv γd -∗ usz γs szv -∗
     (* THE CHILD'S EXIT PAYLOAD, at the kill status: the console reader
        token (or the taint) that init hands the shell, and that a KILLED
@@ -927,6 +930,13 @@ Section UkInitMain.
   Proof using .
     intros Hkt.
     iIntros "#Hcode #Hro #Hargv Hsz HQ Hpos Hcred Hstd #Hrow Hcwd Hch Hrun [Hpar Hchi]".
+    (* THE KILL ROW, OFF THE LEND (lane TL-6): the row the child's exit
+       payload is founded on is bought here, with the very credential
+       this round is about to hand the child, and the lend comes back --
+       possibly on its taint arm, which is the price an application whose
+       taint is a resource pays for a kill it has not accounted for. *)
+    iPoseProof Hkt as "#Hkl".
+    iMod ("Hkl" $! l np with "Hcred") as "[Hcred #Hkw]".
     (* the list the head is at, and the arm's way back -- usable at EITHER
        ghost name, which is what the child's half needs *)
     destruct init_syms_pins
@@ -979,7 +989,7 @@ Section UkInitMain.
        TAINT buys the payload's right arm, and the wand is what the
        child's KILLED ROW is founded on -- one boxed premise, where the
        payload used to be carried linearly by the child's run. *)
-    { iModIntro. iIntros "#Hc". iApply ucons_pay_taint. iApply Hkt.
+    { iModIntro. iIntros "#Hc". iApply ucons_pay_taint. iApply "Hkw".
       iExact "Hc". }
     assert (E36c : add_vec_int (mword_of_int 0x36c : mword 64) 4
                    = mword_of_int 0x370)
@@ -1249,13 +1259,13 @@ Section UkInitMain.
   Lemma wp_kinit_main_loop (T : iProp Σ) `{!Persistent T} `{!Timeless T}
       (stc : fdstate) (Cr : cons_cred Σ)
       (cn : cons_names) (szv : Z) (n : nat) :
-    (* THE KILL CREDENTIAL BUYS THE APPLICATION'S TAINT (lane KILL-PAY,
-       K4(a)).  The child's exit payload is a WAND from the credential
-       now, and [UserConsole.ucons_pay]'s right arm is [T], so this is
-       what pays it.  A Coq-level premise because the equation
-       [riscv_kill_cred = echo_taint] is known where the era is
-       ([UInitBoot]) and not here. *)
-    (⊢ □ riscv_kill_cred -∗ T) ->
+    (* THE KILL ROW (lane TL-6; user-tree §9.4, ruling (b)): a kill costs
+       the application no more than the credential this round already
+       carries -- give the lend, get it back and the child's kill arm
+       ([UkInit.init_kill_law], whose header is the whole story).  It
+       REPLACES [⊢ □ riscv_kill_cred -∗ T], which was echo's identity
+       and false at an application whose kill credential is generic. *)
+    (⊢ init_kill_law T stc (cc_wp Cr) (cc_wbn Cr)) ->
     init_deps T -∗
     (* THE BANNER'S CONVERSION, persistent so the restart loop keeps it *)
     kinit_ban_law stc (cc_wp Cr) (cc_wbn Cr) -∗
@@ -1850,13 +1860,13 @@ Section UkInitMain.
       (cn : cons_names)
       (szv : Z) (h : CpuId) (m : regfile) (n : nat) :
     stc <> FdClosed ->
-    (* THE KILL CREDENTIAL BUYS THE APPLICATION'S TAINT (lane KILL-PAY,
-       K4(a)).  The child's exit payload is a WAND from the credential
-       now, and [UserConsole.ucons_pay]'s right arm is [T], so this is
-       what pays it.  A Coq-level premise because the equation
-       [riscv_kill_cred = echo_taint] is known where the era is
-       ([UInitBoot]) and not here. *)
-    (⊢ □ riscv_kill_cred -∗ T) ->
+    (* THE KILL ROW (lane TL-6; user-tree §9.4, ruling (b)): a kill costs
+       the application no more than the credential this round already
+       carries -- give the lend, get it back and the child's kill arm
+       ([UkInit.init_kill_law], whose header is the whole story).  It
+       REPLACES [⊢ □ riscv_kill_cred -∗ T], which was echo's identity
+       and false at an application whose kill credential is generic. *)
+    (⊢ init_kill_law T stc (cc_wp Cr) (cc_wbn Cr)) ->
     init_deps T -∗
     (* THE BANNER'S CONVERSION, persistent so the restart loop keeps it *)
     kinit_ban_law stc (cc_wp Cr) (cc_wbn Cr) -∗
@@ -2067,13 +2077,13 @@ Section UkInitMain.
       (cn : cons_names)
       (szv : Z) (h : CpuId) (m : regfile) (n : nat) :
     stc <> FdClosed ->
-    (* THE KILL CREDENTIAL BUYS THE APPLICATION'S TAINT (lane KILL-PAY,
-       K4(a)).  The child's exit payload is a WAND from the credential
-       now, and [UserConsole.ucons_pay]'s right arm is [T], so this is
-       what pays it.  A Coq-level premise because the equation
-       [riscv_kill_cred = echo_taint] is known where the era is
-       ([UInitBoot]) and not here. *)
-    (⊢ □ riscv_kill_cred -∗ T) ->
+    (* THE KILL ROW (lane TL-6; user-tree §9.4, ruling (b)): a kill costs
+       the application no more than the credential this round already
+       carries -- give the lend, get it back and the child's kill arm
+       ([UkInit.init_kill_law], whose header is the whole story).  It
+       REPLACES [⊢ □ riscv_kill_cred -∗ T], which was echo's identity
+       and false at an application whose kill credential is generic. *)
+    (⊢ init_kill_law T stc (cc_wp Cr) (cc_wbn Cr)) ->
     init_deps T -∗
     (* THE BANNER'S CONVERSION, persistent so the restart loop keeps it *)
     kinit_ban_law stc (cc_wp Cr) (cc_wbn Cr) -∗
@@ -2207,13 +2217,13 @@ Section UkInitMain.
       (cn : cons_names)
       (szv : Z) (h : CpuId) (m : regfile) (n : nat) :
     stc <> FdClosed ->
-    (* THE KILL CREDENTIAL BUYS THE APPLICATION'S TAINT (lane KILL-PAY,
-       K4(a)).  The child's exit payload is a WAND from the credential
-       now, and [UserConsole.ucons_pay]'s right arm is [T], so this is
-       what pays it.  A Coq-level premise because the equation
-       [riscv_kill_cred = echo_taint] is known where the era is
-       ([UInitBoot]) and not here. *)
-    (⊢ □ riscv_kill_cred -∗ T) ->
+    (* THE KILL ROW (lane TL-6; user-tree §9.4, ruling (b)): a kill costs
+       the application no more than the credential this round already
+       carries -- give the lend, get it back and the child's kill arm
+       ([UkInit.init_kill_law], whose header is the whole story).  It
+       REPLACES [⊢ □ riscv_kill_cred -∗ T], which was echo's identity
+       and false at an application whose kill credential is generic. *)
+    (⊢ init_kill_law T stc (cc_wp Cr) (cc_wbn Cr)) ->
     init_deps T -∗
     (* THE BANNER'S CONVERSION, persistent so the restart loop keeps it *)
     kinit_ban_law stc (cc_wp Cr) (cc_wbn Cr) -∗
@@ -2385,13 +2395,13 @@ Section UkInitMain.
       (cn : cons_names)
       (szv : Z) (h : CpuId) (m : regfile) (n : nat) :
     stc <> FdClosed ->
-    (* THE KILL CREDENTIAL BUYS THE APPLICATION'S TAINT (lane KILL-PAY,
-       K4(a)).  The child's exit payload is a WAND from the credential
-       now, and [UserConsole.ucons_pay]'s right arm is [T], so this is
-       what pays it.  A Coq-level premise because the equation
-       [riscv_kill_cred = echo_taint] is known where the era is
-       ([UInitBoot]) and not here. *)
-    (⊢ □ riscv_kill_cred -∗ T) ->
+    (* THE KILL ROW (lane TL-6; user-tree §9.4, ruling (b)): a kill costs
+       the application no more than the credential this round already
+       carries -- give the lend, get it back and the child's kill arm
+       ([UkInit.init_kill_law], whose header is the whole story).  It
+       REPLACES [⊢ □ riscv_kill_cred -∗ T], which was echo's identity
+       and false at an application whose kill credential is generic. *)
+    (⊢ init_kill_law T stc (cc_wp Cr) (cc_wbn Cr)) ->
     init_deps T -∗
     (* THE BANNER'S CONVERSION, persistent so the restart loop keeps it *)
     kinit_ban_law stc (cc_wp Cr) (cc_wbn Cr) -∗
@@ -2739,13 +2749,13 @@ Section UkInitMain.
       (cn : cons_names)
       (szv : Z) (h : CpuId) (m : regfile) (n : nat) :
     stc <> FdClosed ->
-    (* THE KILL CREDENTIAL BUYS THE APPLICATION'S TAINT (lane KILL-PAY,
-       K4(a)).  The child's exit payload is a WAND from the credential
-       now, and [UserConsole.ucons_pay]'s right arm is [T], so this is
-       what pays it.  A Coq-level premise because the equation
-       [riscv_kill_cred = echo_taint] is known where the era is
-       ([UInitBoot]) and not here. *)
-    (⊢ □ riscv_kill_cred -∗ T) ->
+    (* THE KILL ROW (lane TL-6; user-tree §9.4, ruling (b)): a kill costs
+       the application no more than the credential this round already
+       carries -- give the lend, get it back and the child's kill arm
+       ([UkInit.init_kill_law], whose header is the whole story).  It
+       REPLACES [⊢ □ riscv_kill_cred -∗ T], which was echo's identity
+       and false at an application whose kill credential is generic. *)
+    (⊢ init_kill_law T stc (cc_wp Cr) (cc_wbn Cr)) ->
     init_deps T -∗
     (* THE BANNER'S CONVERSION, persistent so the restart loop keeps it *)
     kinit_ban_law stc (cc_wp Cr) (cc_wbn Cr) -∗

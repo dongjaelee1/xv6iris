@@ -1084,7 +1084,7 @@ Section UtDispatch.
            (design/pipe.md, "The exit path"): a process that kills ITSELF
            pays the closes of the table it is holding, and what pays them is
            the deposit it made when it trapped. *)
-        iAssert ((□ riscv_kill_cred
+        iAssert ((app_taint
                   ∨ (ChildTok.kill_owed (pv_gen (us_V U))
                      ∗ UexecSG.sbundle_at UexecRet.uslot UsysMemOk.USYS_exit fdep Wk))
                  ∧ UexecRet.uslot Wk)%I

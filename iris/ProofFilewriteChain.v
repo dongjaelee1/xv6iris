@@ -53,6 +53,7 @@ Require Import FsStateDefs.
 Require Import Xv6G.
 Require Import SysWriteDefs.     (* [FW_MAX], [wchunks], [wri_pre]        *)
 Require Import FsAbsWriteFire.     (* [awrite_chain] and its two arms       *)
+Require Import UserPtTree.         (* [uptd]: the partial arm's table       *)
 Require Import SpecCopyin.         (* [ubytes_at]: the content seam         *)
 Require Import SpecFilewrite.      (* [write_post_ok_at], [write_post_fail_at] *)
 Require Import AppInv.             (* [appE]                                *)
@@ -66,7 +67,10 @@ Section FilewriteChain.
   Context `{XI : CurCtx}.
   Implicit Types Γ : fs_view_names Σ.
 
-  Definition fw_au_raw Γ (i : Z) (γo : gname) (n : Z)
+  (* [P] IS THE TABLE THE PARTIAL ARMS NAME (lane WRITE-RELAY-2): the chain
+     the contract hands in owes EVERY table ([FsAbsWriteFire.awrite_chain]'s
+     [∀ P]) and the walk fixes its own once, at [fw_au_raw_init]. *)
+  Definition fw_au_raw Γ (i : Z) (γo : gname) (P : uptd) (n : Z)
       (M : gmap Z (bv 8)) (ua : mword 64) (Q : nat -> iProp Σ)
       (t : Z) (p x : nat) : iProp Σ :=
     (∃ bss : list (list (bv 8)),
@@ -80,13 +84,16 @@ Section FilewriteChain.
           is true of every state the loop hands out -- the exhausted exit
           included -- and both exits read it off unchanged. *)
        ⌜ubytes_at M ua (concat bss)⌝ ∗
-       awrite_chain Γ appE i γo M ua n Q (p + x) (wchunks n - p - x)%nat)%I.
+       awrite_chain_at Γ appE i γo M ua P n Q (p + x) (wchunks n - p - x)%nat)%I.
 
-  Lemma fw_au_raw_init Γ (i : Z) γo (n : Z) M ua Q :
+  Lemma fw_au_raw_init Γ (i : Z) γo (P : uptd) (n : Z) M ua Q :
     awrite_chain Γ appE i γo M ua n Q 0%nat (wchunks n) -∗
-    fw_au_raw Γ i γo n M ua Q 0 0%nat 0%nat.
+    fw_au_raw Γ i γo P n M ua Q 0 0%nat 0%nat.
   Proof using .
-    iIntros "Hcm". rewrite /fw_au_raw. iExists [].
+    iIntros "Hcm".
+    iDestruct (awrite_chain_at_of Γ appE i γo M ua n Q 0%nat (wchunks n) P
+                 with "Hcm") as "Hcm".
+    rewrite /fw_au_raw. iExists [].
     iSplitR; [done |]. iSplitR; [done |]. iSplitR; [iPureIntro; lia |].
     iSplitR; [iPureIntro; lia |].
     iSplitR; [iPureIntro; apply ubytes_at_nil |].
@@ -98,15 +105,15 @@ Section FilewriteChain.
      the chain), and the closer takes that rest back with the chunk's
      bytes.  The chain's own [Q k] conjunct is DROPPED here -- the kernel
      eliminates to an arm when it fires. *)
-  Lemma fw_au_raw_take Γ (i : Z) γo (n : Z) M ua Q (t : Z) (p : nat) :
+  Lemma fw_au_raw_take Γ (i : Z) γo (P : uptd) (n : Z) M ua Q (t : Z) (p : nat) :
     (0 <= t)%Z -> (t < n)%Z -> t = FW_MAX * Z.of_nat p ->
-    fw_au_raw Γ i γo n M ua Q t p 0%nat -∗
+    fw_au_raw Γ i γo P n M ua Q t p 0%nat -∗
       awrite_full_at Γ appE i γo M ua n p
-        (awrite_chain Γ appE i γo M ua n Q (S p) (wchunks n - S p)) ∗
+        (awrite_chain_at Γ appE i γo M ua P n Q (S p) (wchunks n - S p)) ∗
       (∀ bs : list (bv 8),
          ⌜ubytes_at M (add_vec_int ua t) bs⌝ -∗
-         awrite_chain Γ appE i γo M ua n Q (S p) (wchunks n - S p) -∗
-         fw_au_raw Γ i γo n M ua Q (t + Z.of_nat (length bs)) (S p) 0%nat).
+         awrite_chain_at Γ appE i γo M ua P n Q (S p) (wchunks n - S p) -∗
+         fw_au_raw Γ i γo P n M ua Q (t + Z.of_nat (length bs)) (S p) 0%nat).
   Proof using .
     intros Ht Htn Htie. iIntros "Hst".
     assert (Hsp : (S p <= wchunks n)%nat)
@@ -116,7 +123,7 @@ Section FilewriteChain.
     (* the peel: the chain has at least one node left, and the FULL arm is
        its second conjunct's first ([awrite_chain]'s shape) *)
     assert (Hcnt : (wchunks n - p - 0 = S (wchunks n - S p))%nat) by lia.
-    rewrite Hcnt (Nat.add_0_r p) awrite_chain_S.
+    rewrite Hcnt (Nat.add_0_r p) awrite_chain_at_S.
     iDestruct "Hcm" as "[_ [Hhead _]]".
     iFrame "Hhead". iIntros (bs) "%Hbyc Htail".
     iExists (bss ++ [bs])%list.
@@ -140,13 +147,13 @@ Section FilewriteChain.
      the closer takes the rest of the chain back one node further on.  The
      cursor at that position is whatever the caller built inside the arm's
      own phase 2, so the fail exit reads off what landed. *)
-  Lemma fw_au_raw_spend_part Γ (i : Z) γo (n : Z) M ua Q (t : Z) (p : nat) :
+  Lemma fw_au_raw_spend_part Γ (i : Z) γo (P : uptd) (n : Z) M ua Q (t : Z) (p : nat) :
     (0 <= t)%Z -> (t < n)%Z -> t = FW_MAX * Z.of_nat p ->
-    fw_au_raw Γ i γo n M ua Q t p 0%nat -∗
-      awrite_part_at Γ appE i γo M ua n p
-        (awrite_chain Γ appE i γo M ua n Q (S p) (wchunks n - S p)) ∗
-      (awrite_chain Γ appE i γo M ua n Q (S p) (wchunks n - S p) -∗
-       fw_au_raw Γ i γo n M ua Q t p 1%nat).
+    fw_au_raw Γ i γo P n M ua Q t p 0%nat -∗
+      awrite_part_at Γ appE i γo M ua P n p
+        (awrite_chain_at Γ appE i γo M ua P n Q (S p) (wchunks n - S p)) ∗
+      (awrite_chain_at Γ appE i γo M ua P n Q (S p) (wchunks n - S p) -∗
+       fw_au_raw Γ i γo P n M ua Q t p 1%nat).
   Proof using .
     intros Ht Htn Htie. iIntros "Hst".
     assert (Hsp : (S p <= wchunks n)%nat)
@@ -154,7 +161,7 @@ Section FilewriteChain.
     rewrite /fw_au_raw.
     iDestruct "Hst" as (bss) "(%Hlen & %Htot & %Hp & %Hx & %Hby & Hcm)".
     assert (Hcnt : (wchunks n - p - 0 = S (wchunks n - S p))%nat) by lia.
-    rewrite Hcnt (Nat.add_0_r p) awrite_chain_S.
+    rewrite Hcnt (Nat.add_0_r p) awrite_chain_at_S.
     iDestruct "Hcm" as "[_ [_ Hpart]]".
     iFrame "Hpart". iIntros "Htail".
     iExists bss.
@@ -166,8 +173,9 @@ Section FilewriteChain.
   Qed.
 
   (* THE EXITS *)
-  Lemma fw_au_raw_ok Γ (i : Z) γo (n : Z) M ua Q (p : nat) :
-    fw_au_raw Γ i γo n M ua Q n p 0%nat -∗ write_post_ok_at Γ i γo n M ua Q.
+  Lemma fw_au_raw_ok Γ (i : Z) γo (P : uptd) (n : Z) M ua Q (p : nat) :
+    fw_au_raw Γ i γo P n M ua Q n p 0%nat -∗
+    write_post_ok_at Γ i γo P n M ua Q.
   Proof using .
     iIntros "Hst". rewrite /fw_au_raw /write_post_ok_at.
     iDestruct "Hst" as (bss) "(%Hlen & %Htot & %Hp & %Hx & %Hby & Hcm)".
@@ -180,9 +188,10 @@ Section FilewriteChain.
      (the short-write break, the only way out of the loop that is not the
      count); the second disjunct is the CAPSTONE's, on the [n < 0] guard at
      +0x20, where the loop is never entered and the chain refunds whole. *)
-  Lemma fw_au_raw_fail Γ (i : Z) γo (n : Z) M ua Q (t : Z) (p x : nat) :
+  Lemma fw_au_raw_fail Γ (i : Z) γo (P : uptd) (n : Z) M ua Q (t : Z) (p x : nat) :
     (t < n)%Z \/ (n < 0)%Z /\ p = 0%nat ->
-    fw_au_raw Γ i γo n M ua Q t p x -∗ write_post_fail_at Γ i γo n M ua Q.
+    fw_au_raw Γ i γo P n M ua Q t p x -∗
+    write_post_fail_at Γ i γo P n M ua Q.
   Proof using .
     intros Hex. iIntros "Hst". rewrite /fw_au_raw /write_post_fail_at.
     iDestruct "Hst" as (bss) "(%Hlen & %Htot & %Hp & %Hx & %Hby & Hcm)".

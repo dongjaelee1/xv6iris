@@ -132,7 +132,7 @@ Section UShRest.
   (*  at [uprogSG_free] on both sides.                                     *)
   (* =================================================================== *)
   Lemma sh_rest_holds (γp : gname) (N : uk_names Σ) :
-    (⊢ □ riscv_kill_cred -∗ T) ->
+    (⊢ app_taint -∗ T) ->
     ⊢ EchoLinks.echo_links T γ -∗
       (* PINNED at the FREE instance on both sides (durable-notes): the
          deposit's [uprogSG] is what [UShEchoPay]'s laws are stated at, and

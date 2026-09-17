@@ -127,6 +127,11 @@ Section UkCatDeed.
     urun N h m (mword_of_int CatSyms.read) avail -∗
     (∀ (h' : CpuId) (rv : mword 64) (gb : nat -> bv 8),
        UserFd.ufd (ukn_fd N) fd (FdOpen true wb (FdInode i γo OffParked)) -∗
+       (* the count's bound, ON BOTH ARMS (lane OFF-LINK, relayed from
+          [UkFileOpen.wp_uk_read_deed_learns_mapped]): what
+          [UCatKernel.cat_w_of_link] refutes its short write with, and the
+          taint arm below says nothing about [rv] without it *)
+       ⌜(Z.to_nat (bv_unsigned rv) <= cnt)%nat⌝ -∗
        (((∃ off : nat,
             ⌜Z.to_nat (bv_unsigned rv)
              = ard_count cnt off (length bs)⌝ ∗
@@ -227,7 +232,8 @@ Section UkCatDeed.
                   = mword_of_int 0x3ca)
       by (apply bv_eq; vm_compute; reflexivity).
     rewrite E1r.
-    iIntros (h2 rv gb) "Hufdh Hans Hrun Hbs".
+    iIntros (h2 rv gb) "Hufdh %Hbnd Hans Hrun Hbs".
+    rewrite Nat2Z.id in Hbnd.
     iEval (rewrite Hua) in "Hbs".
     iEval (rewrite Nat2Z.id) in "Hans".
     set (m2 := <[Regidx a0_idx := rv]> m1).
@@ -247,7 +253,8 @@ Section UkCatDeed.
               with "[] Hrun").
     { iApply (uis_cat_3ca with "Hcode"). }
     iIntros (h3) "Hrun".
-    iApply ("Hcont" $! h3 rv gb with "Hufdh Hans Hbs Hrun").
+    iApply ("Hcont" $! h3 rv gb with "Hufdh [%] Hans Hbs Hrun").
+    exact Hbnd.
   Qed.
 
   (* =================================================================== *)
@@ -304,7 +311,10 @@ Section UkCatDeed.
     iApply (wp_kcat_read_deed a cnt f h m avail fd wb i γo c r q jc bs
               Heq Ha0 Hahi Ha1 Ha2 Hfdv Hfdlt
               with "Hcode Hufdh Hm Hinv Hd Hbs Hrun").
-    iIntros (h' rv gb) "Hufdh Hans Hbs Hrun".
+    (* the count's bound arrives here (lane OFF-LINK); putting it into
+       [UkCat.kcat_r]'s post family is CAT-ENTRY-2's one-line change, and
+       the fact is in hand for it *)
+    iIntros (h' rv gb) "Hufdh %Hbnd Hans Hbs Hrun".
     iApply ("Hcont" $! h' rv gb with "[Hufdh Hans] Hbs Hrun").
     iDestruct "Hans" as "[[Hok Hd] | [Hd HT]]".
     - iFrame "Hufdh Hd". by iLeft.
@@ -392,7 +402,7 @@ Section UkCatDeed.
   (* [fd_lowest_closed l = None] in hand; the deed arm hands the whole    *)
   (* allocation out and lets the payer decide, which is what a round that *)
   (* wants the descriptor's TYPE (an inode on the deed's own inum, hence  *)
-  (* not a pipe, hence [UkCat.kcat_cldep_nonpipe]) needs.                *)
+  (* not a pipe, hence [UkCat.kcat_cldep_nopipe]) needs.                *)
   (* =================================================================== *)
   Lemma wp_kcat_open_read_deed (h : CpuId) (m : regfile) (l : list fdstate)
       (avail : nat) (c : file_fixed) (r : file_names) (q1 q2 : Qp)
@@ -622,7 +632,7 @@ Section UkCatDeed.
   (*  invariant and code stay outside, and what the PRESENT arm hands     *)
   (*  back is [ualloc] on the deed's own inum -- which is the whole       *)
   (*  point, because a descriptor whose type is [FdInode i γo _] is not   *)
-  (*  a pipe and cat's close is then FREE ([UkCat.kcat_cldep_nonpipe]).   *)
+  (*  a pipe and cat's close is then FREE ([UkCat.kcat_cldep_nopipe]).   *)
   (*  The ABSENT arm hands the ledger back UNTOUCHED at [-1], which is    *)
   (*  what the `cat: cannot open f` turn spends.                         *)
   (* =================================================================== *)

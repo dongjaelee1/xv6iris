@@ -156,14 +156,14 @@ Section UShEchoPayGen.
        = wl_line (last_ws I)
            !!! (UkShEcho.echo_off (last_ws I) i + j)%nat) ->
     UkSh.ush_fd1p (take NSTD sts) ->
-    (⊢ □ riscv_kill_cred -∗ lk_T L) ->
+    (⊢ app_taint -∗ lk_T L) ->
     ⊢ lk_pin L (S gen_id) v -∗
       lk_links L -∗
       UkRun.urun_nopipe sts -∗
       udep (PS := uprogSG_free) -∗
       □ (∀ (R : iProp Σ) (W : uvis),
            lk_T L -∗ my_pay (uvis_gen W) (fun _ => R)%I -∗
-           □ (riscv_kill_cred -∗ R) -∗ uslot W) -∗
+           □ (app_taint -∗ R) -∗ uslot W) -∗
       my_pay (uvis_gen W') (fun _ : Z => UkShFork.ushf_wq Wc I) -∗
       lk_lpr L (S gen_id) v I 3%nat -∗
       Hold I -∗
@@ -196,7 +196,7 @@ Section UShEchoPayGen.
     { (* a tainted lend: the generic slot, and the kill wand from the taint *)
       iApply ("Hgen" $! (UkShFork.ushf_wq Wc I) W' with "HT Hmp []").
       iIntros "!> #Hk". rewrite /UkShFork.ushf_wq. iRight.
-      iApply (Hwct I v with "Hpin"). iApply Hkt. iModIntro. iExact "Hk". }
+      iApply (Hwct I v with "Hpin"). iApply Hkt. iExact "Hk". }
     iDestruct "Hstg" as (st) "(%Hok0 & %Halt & Hcur & #Hpost)".
     rewrite /echo_out_argv in Hargv. rewrite <- Halt in Hargv.
     iApply (echo_uexec_slot_at_at (PS := uprogSG_free)
@@ -249,7 +249,7 @@ Section UShEchoPayGen.
          Hold I0 -∗ Wc I0 0%nat) ->
     (forall (I0 : list (bv 8)) (v0 : era_pins),
        ⊢ lk_pin L (S gen_id) v0 -∗ lk_T L -∗ Wc I0 0%nat) ->
-    (⊢ □ riscv_kill_cred -∗ lk_T L) ->
+    (⊢ app_taint -∗ lk_T L) ->
     ⊢ lk_links L -∗ udep (PS := uprogSG_free) -∗ sh_echo_slot (lk_T L) -∗
       UkShEcho.sh_exec_sup_echo_wq Wc.
   Proof using St ghost_varG0 ghost_varG1 ufdG0.
@@ -269,7 +269,7 @@ Section UShEchoPayGen.
     { rewrite /image_entry_taint. iModIntro. iIntros (W') "#HT #Hmp".
       iApply ("Hgen" $! (UkShFork.ushf_wq Wc I) W' with "HT Hmp []").
       iIntros "!> #Hk". rewrite /UkShFork.ushf_wq. iRight.
-      iApply (Hwct I v with "Hpin"). iApply Hkt. iModIntro. iExact "Hk". }
+      iApply (Hwct I v with "Hpin"). iApply Hkt. iExact "Hk". }
     (* ---- ...AND THE REST IS THE U-TIER RULE (lane EX-4). ---- *)
     iApply (udepw_at_refR_of_sup N' m pc
               (mword_of_int s0) (mword_of_int (t + 8))
@@ -390,14 +390,14 @@ Section UShEchoPayEcho.
        = wl_line (last_ws I)
            !!! (UkShEcho.echo_off (last_ws I) i + j)%nat) ->
     UkSh.ush_fd1p (take NSTD sts) ->
-    (⊢ □ riscv_kill_cred -∗ T) ->
+    (⊢ app_taint -∗ T) ->
     ⊢ era_pin γ (S gen_id) v -∗
       EchoLinks.echo_links T γ -∗
       UkRun.urun_nopipe sts -∗
       udep (PS := uprogSG_free) -∗
       □ (∀ (R : iProp Σ) (W : uvis),
            T -∗ my_pay (uvis_gen W) (fun _ => R)%I -∗
-           □ (riscv_kill_cred -∗ R) -∗ uslot W) -∗
+           □ (app_taint -∗ R) -∗ uslot W) -∗
       my_pay (uvis_gen W') (fun _ : Z => Wq I) -∗
       EchoLinksLine.ewc_lpr T v I 3%nat -∗
       emp -∗
@@ -406,7 +406,7 @@ Section UShEchoPayEcho.
          ei_hold_tl ei_wc0 ei_wct.
 
   Definition sh_exec_sup_echo_wq_holds :
-    (⊢ □ riscv_kill_cred -∗ T) ->
+    (⊢ app_taint -∗ T) ->
     ⊢ EchoLinks.echo_links T γ -∗ udep (PS := uprogSG_free) -∗
       sh_echo_slot T -∗ UkShEcho.sh_exec_sup_echo_wq Wc
     := sh_exec_sup_echo_wq_holds_at SE Wc (fun _ => emp)%I
@@ -417,20 +417,20 @@ Section UShEchoPayEcho.
   (* =================================================================== *)
   (* a killed child pays the credential with the taint, at any pin *)
   Lemma ushf_kill_law_holds (v : era_pins) :
-    (⊢ □ riscv_kill_cred -∗ T) ->
+    (⊢ app_taint -∗ T) ->
     ⊢ era_pin γ (S gen_id) v -∗ UkShFork.ushf_kill_law Wc.
   Proof.
     intros Hkt. iIntros "#Hpin". rewrite /UkShFork.ushf_kill_law.
     iIntros "!>" (n) "#Hk".
     iApply (EchoLinksLine.ewc_lcred_taint T γ (S gen_id) n 0%nat v
               with "Hpin [Hk]").
-    iApply Hkt. iModIntro. iExact "Hk".
+    iApply Hkt. iExact "Hk".
   Qed.
 
   (* ...and the paid child's walk, out of the supply above: the closed form
      that says the composition exists *)
   Lemma ushf_child_law_holds_at :
-    (⊢ □ riscv_kill_cred -∗ T) ->
+    (⊢ app_taint -∗ T) ->
     ⊢ EchoLinks.echo_links T γ -∗ udep (PS := uprogSG_free) -∗
       sh_echo_slot T -∗
       UkShFork.ushf_child_law (PS := uprogSG_free) Wc.

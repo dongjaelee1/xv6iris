@@ -955,7 +955,7 @@ Section KexitLoop.
         iDestruct "Hfrag" as (sts) "[Hfrs Hcpays]".
         iDestruct (fd_frags_acc_lt (pv_fdg (us_V U)) sts fd
                      ltac:(unfold NOFILE in *; lia) with "Hfrs")
-          as (stq) "(%Hlkq & Hfr & Hrowq & Hfrback)".
+          as (stq) "(%Hlkq & Hfr & #Hrowq & Hfrback)".
         iDestruct (fd_st_agree with "Hst Hfr") as %<-.
         rewrite /fileclose_cpays.
         iDestruct (big_sepL_insert_acc _ _ _ _ Hlkq with "Hcpays")

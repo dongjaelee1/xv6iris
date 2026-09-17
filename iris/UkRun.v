@@ -423,7 +423,7 @@ Section UkRun.
         that CALLS pipe(2) exits by: it gives up [fdv_nopipe] at the pipe
         leaf and carries the credential instead. *)
      ⌜ forall (W : uvis) (Q : Z -> iProp Σ),
-         ⊢ □ Dsup -∗ □ riscv_kill_cred ==∗ sbundle_pay uslot USYS_exit Q W ⌝)%I.
+         ⊢ □ Dsup -∗ app_taint ==∗ sbundle_pay uslot USYS_exit Q W ⌝)%I.
 
   Global Instance udep_persistent : Persistent udep.
   Proof using . rewrite /udep. apply _. Qed.
@@ -454,7 +454,7 @@ Section UkRun.
 
   (* ...and the same row out of the taint, at ANY table *)
   Lemma udep_exit_taint (W : uvis) (Q : Z -> iProp Σ) :
-    □ riscv_kill_cred -∗ udep -∗ |==> sbundle_pay uslot USYS_exit Q W.
+    app_taint -∗ udep -∗ |==> sbundle_pay uslot USYS_exit Q W.
   Proof using .
     iIntros "#Ht [#Hs [_ [_ [_ %Hlaw]]]]".
     iApply (Hlaw W Q with "Hs Ht").
@@ -619,11 +619,20 @@ Section UkRun.
   (* LEFT: the caller KNOWS its descriptor is not a pipe -- a console, an    *)
   (* inode, a device -- and owes nothing at all; the leaf mints the row out  *)
   (* of the key-guarded law above, off the [udep] its own run carries.       *)
-  (* RIGHT: the caller does NOT know (a descriptor [open] returned carries   *)
-  (* an existential type: [UsysMemOk.usys_fd_ok]'s open row does not pin     *)
-  (* it), and then it hands over a deposit at 21 like any other flagged      *)
-  (* number ([udepw_law], which the pipe arm makes payable out of the        *)
-  (* taint -- [UexecExecMint.udepw_law_of_sup_close]).                       *)
+  (* RIGHT: the caller does NOT know -- it holds a descriptor whose type   *)
+  (* nothing told it, an fd read out of a table it did not fill -- and then  *)
+  (* it hands over a deposit at 21 like any other flagged number             *)
+  (* ([udepw_law], which the pipe arm makes payable out of the taint --      *)
+  (* [UexecExecMint.udepw_law_of_sup_close]).                                *)
+  (*                                                                        *)
+  (* THE OLD READING OF THE RIGHT ARM IS GONE (survey R4, lane SUP-ONE).     *)
+  (* It used to say that a descriptor [open] RETURNED forced the right arm,  *)
+  (* because "[UsysMemOk.usys_fd_ok]'s open row does not pin the type".      *)
+  (* The row pins [fdst_nopipe] and has since the pipe landing; what was     *)
+  (* missing was the EXPORT, and the five [UkRunSys.wp_uk_ecall_open*]       *)
+  (* leaves carry it now.  So a program that opened its own descriptor takes *)
+  (* [udepw_cl_nopipe] below and owes NOTHING -- which is what took          *)
+  (* [udepw_law 21] out of [UkCat.cat_deps].                                 *)
   (* ------------------------------------------------------------------- *)
   Definition udepw_cl (N : uk_names Σ) (m : regfile) (pc : mword 64)
       (st : fdstate) : iProp Σ :=
@@ -636,6 +645,18 @@ Section UkRun.
     (forall (rb wb : bool) (gp : pipe_names), st <> FdOpen rb wb (FdPipe gp)) ->
     ⊢ udepw_cl N m pc st.
   Proof using . intros Hnp. rewrite /udepw_cl. iLeft. by iPureIntro. Qed.
+
+  (* ...AND THE FREE ROUTE AT THE FACT THE OPEN LEAVES EXPORT (survey R4):
+     [FdSlots.fdst_nopipe] is the shape [UsysMemOk.usys_fd_ok]'s open row
+     states and the leaves hand out, and this is the one line that turns it
+     into the left arm. *)
+  Lemma udepw_cl_nopipe (N : uk_names Σ) (m : regfile) (pc : mword 64)
+      (st : fdstate) :
+    fdst_nopipe st -> ⊢ udepw_cl N m pc st.
+  Proof using .
+    intros Hnp. apply udepw_cl_nonpipe.
+    intros rb wb gp Heq. rewrite Heq in Hnp. exact Hnp.
+  Qed.
 
   Lemma udepw_cl_of_udepw (N : uk_names Σ) (m : regfile) (pc : mword 64)
       (st : fdstate) :
@@ -693,7 +714,7 @@ Section UkRun.
   (* PERSISTENT, so a leaf that destructs its run keeps a copy for free.      *)
   (* ------------------------------------------------------------------- *)
   Definition urun_nopipe (fdv : list fdstate) : iProp Σ :=
-    (⌜fdv_nopipe fdv⌝ ∨ □ riscv_kill_cred)%I.
+    (⌜fdv_nopipe fdv⌝ ∨ app_taint)%I.
 
   Global Instance urun_nopipe_persistent (fdv : list fdstate) :
     Persistent (urun_nopipe fdv).
@@ -707,7 +728,7 @@ Section UkRun.
   Proof using . apply urun_nopipe_intro, fdv_nopipe_closed. Qed.
 
   Lemma urun_nopipe_taint (fdv : list fdstate) :
-    □ riscv_kill_cred -∗ urun_nopipe fdv.
+    app_taint -∗ urun_nopipe fdv.
   Proof using . iIntros "#H". rewrite /urun_nopipe. by iRight. Qed.
 
   (* THE ROUND'S EFFECT ON IT, at every number but pipe(2): the table the
@@ -819,7 +840,7 @@ Section UkRun.
      process pays the pipe half out of the kill credential; the offset half
      is not tainted-escapable and has to come from the table. *)
   Lemma urun_rows_taint (N : uk_names Σ) (fdv : list fdstate) :
-    urun_parked_row N fdv -> □ riscv_kill_cred -∗ urun_rows N fdv.
+    urun_parked_row N fdv -> app_taint -∗ urun_rows N fdv.
   Proof using .
     intros Hpk. iIntros "#H". rewrite /urun_rows.
     iSplitR; [ iApply (urun_nopipe_taint fdv with "H") | by iPureIntro ].
@@ -1375,7 +1396,7 @@ Section UkRun.
           receives and mints the record at. *)
        my_pay gn (ukn_pay N) ∗
        (* THE PAYLOAD AT THE KILL STATUS IS NOT HERE ANY MORE (lane
-          SELF-KILL, P6).  The run used to carry [□ riscv_kill_cred -∗
+          SELF-KILL, P6).  The run used to carry [app_taint -∗
           ukn_pay N (-1)] between traps, hand it to the kernel at every
           entry and take it back at every resume.  Nothing is deposited at
           a trap now -- the price of a KILL is the killer's, paid into
@@ -1555,7 +1576,7 @@ Section UkRun.
     (* THE RUN CARRIES NO PAYLOAD (lane SELF-KILL, P6) and the TAINT ARM
        ASKS FOR NONE (P6b): a tainted process runs on the generic family,
        whose constant payload is carried PERSISTENTLY
-       ([UexecExecMint.uslot_mint_all] at [□ (riscv_kill_cred -∗ R)]) and
+       ([UexecExecMint.uslot_mint_all] at [□ (app_taint -∗ R)]) and
        is built out of [T] itself ([UserConsole.ucons_pay_taint]).  So all
        that crosses here is the taint and the key's own pay fact. *)
     □ (∀ W : uvis,

@@ -506,7 +506,6 @@ IcacheHeld.v
 EscrowDefs.v
 OffGv.v
 UserOff.v
-FdPark.v
 FileOffCell.v
 OffBox.v
 FileInvDefs.v
@@ -1565,6 +1564,7 @@ UkShFork.v
 UConsLine.v
 UkShWords.v
 UkShEcho.v
+UShLexRedir.v
 UInitCons.v
 UConsOpen.v
 UInitConsK.v
@@ -1605,6 +1605,7 @@ UkFileOpen.v
 UkShRedirAns.v
 UkCatDeed.v
 UCatOut.v
+UShCat.v
 UCatKernel.v
 UInitTree.v
 UInitTreeCons.v

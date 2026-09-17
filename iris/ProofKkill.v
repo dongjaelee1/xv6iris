@@ -214,7 +214,7 @@ Section ProofKkill.
        entry -- [SchedCtx.proc_pub]'s killed row cannot be re-bundled at a
        nonzero flag without it.  Persistent, so the loop carries it into
        every iteration for free. *)
-    □ riscv_kill_cred -∗
+    app_taint -∗
     procs_inv γs -∗
     (* the exit continuation: control at the epilogue entry [kkill+0x54],
        at whatever hart the scan ended on, with a0 = 0 or -1. *)
@@ -633,7 +633,7 @@ Section ProofKkill.
           { (* the flag is 1 here, so the row must be re-closed on its PAID
                arm -- and what pays is the price the slot itself publishes:
                the target's payload at -1, bought with the application's
-               TAINT ([RiscvPtsto.riscv_kill_cred], lane SELF-KILL, §4b').
+               TAINT ([RiscvPtsto.app_taint], lane SELF-KILL, §4b').
                THE STEP IS A GHOST UPDATE because the writer also FIRES the
                incarnation's kill one-shot (lane SELF-KILL, P6): from here
                on the flag is nonzero for good, and that is the fact

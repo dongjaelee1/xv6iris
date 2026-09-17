@@ -283,7 +283,7 @@ Section ProofSetkilled.
        never went in and the fault arm still holds it for the kexit two
        critical sections later. *)
     iAssert (|==> pid_reg pidv (DfracOwn qeighth) gn ∗ ChildTok.kill_shot gn
-                  ∗ (if self then ChildTok.kill_owed gn else □ riscv_kill_cred)
+                  ∗ (if self then ChildTok.kill_owed gn else app_taint)
                   ∗ proc_lock_res γs γl (proc_addr j))%I
       with "[Hstate Hpg Hchan Hkilled Hxstate Hpidq Hrow Hslot Hkill Hreg]"
       as ">(Hreg & #Hshot & Hback & HR2)".

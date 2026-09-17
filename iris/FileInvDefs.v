@@ -624,22 +624,6 @@ Proof.
     rewrite Ht in Hc; apply (f_equal bv_unsigned) in Hc; by vm_compute in Hc.
 Qed.
 
-(* ...AND THE OFFSET MODE, which is the FD_INODE arm's pin read as the fact
-   it actually is (design/user-read.md SS8.1, SS8.3): a descriptor state
-   that a live [struct file] admits is PARKED.  It is what makes the
-   all-parked discipline a THEOREM about any live process block rather
-   than an assumption about the tier -- [ProcInv.proc_priv_parked] is that
-   reading one layer up -- and relaxing the pin is exactly what makes this
-   lemma false, which is why the boundary parks have to be in place first.
-   (* RA-2: held case here *) *)
-Lemma fdstate_ok_parked (inum : mword 32) (γo : gname) (γp : pipe_names) (C : fcontent)
-    (st : fdstate) :
-  fdstate_ok inum γo γp C st -> fdst_parked st.
-Proof.
-  destruct st as [| r w [n g [|o] |g'| mj]]; cbn; intros Hok; try exact I.
-  destruct Hok as (_ & _ & _ & _ & _ & Hm). discriminate Hm.
-Qed.
-
 (* THE MODE FLAGS, read off the cells.  What a proof that has just branched
    on [beqz f->readable] learns about the state it was handed. *)
 Lemma fdstate_ok_rw (inum : mword 32) (γo : gname) (γp : pipe_names) (C : fcontent) (r w : bool) (t : fdtype) :
@@ -1795,33 +1779,19 @@ Section FileInv.
        fref_tok γ k q ∗ file_fields k q C ∗ file_pay_st γ k q C st ∗
        flive_tok k)%I.
 
-  (* THE OFFSET MODE OF A REFERENCED DESCRIPTOR, which is the pin read off
-     the reference itself: a [struct file] that exists has a content, and
-     [file_pay_st] carries [fdstate_ok] of it, which pins [OffParked].
-     This is the one step [ProcInv]'s array export is made of. *)
-  Lemma file_ref_parked (γ : gname) (k : nat) (q : Qp) (st : fdstate) :
-    file_ref γ k q st -∗ ⌜fdst_parked st⌝.
-  Proof using .
-    iIntros "(%C & _ & _ & (%pn & %Hok & _ & _) & _)". iPureIntro.
-    exact (fdstate_ok_parked _ _ _ C st Hok).
-  Qed.
-
-  (* ...AND THE SAME FACT READ WITHOUT SPENDING THE REFERENCE
-     ([file_pay_st_ok]'s [∧] convention).  This is the shape the two ROW-
-     COPYING sites want -- sys_dup's destination and kfork's scan, which
-     hand one descriptor's [FdSlots.foff_row] to a second descriptor and
-     therefore need it DUPLICABLE ([FdSlots.foff_row_dup], which is where
-     lane OFF-HAND-6's valued [OffHeld] made the family exclusive).  It is
-     the pin again, so when the pin comes off (design/app-file.md SS3 fact
-     4's [fpnames.fp_om]) those two sites read the same fact off the
-     REFERENCE COUNT instead: a held object has exactly one row, and a
-     site that holds two shares is looking at a parked one. *)
-  Lemma file_ref_parked_keep (γ : gname) (k : nat) (q : Qp) (st : fdstate) :
-    file_ref γ k q st -∗ ⌜fdst_parked st⌝ ∧ file_ref γ k q st.
-  Proof using .
-    iIntros "H". iSplit; [| iExact "H"].
-    iApply (file_ref_parked with "H").
-  Qed.
+  (* [fdstate_ok_parked], [file_ref_parked] AND [file_ref_parked_keep] ARE
+     DELETED (lane OFF-LINK), and with them [ProcInv]'s whole chain
+     ([ofile_slot_parked] -> [ofile_slots_parked] -> [proc_ofiles_parked]
+     -> [proc_priv_parked]).  They read [fdstate_ok]'s [m = OffParked] pin
+     off a reference and carried it up to "every row of this key's table is
+     parked", which is the fact design/app-file.md SS3.5's principle
+     retires: the generic tier pays the TAINT instead of being told
+     anything about offsets.  Not one of them had an application anywhere
+     in the tree (lane OFF-HAND-7, measurement 1: every hit outside their
+     own files is a comment), and the four row-copying sites take the row
+     PERSISTENTLY again (this lane's L1), so the deletion is free at the
+     pin's current strength and stays free when the pin moves to
+     [fpnames.fp_om]. *)
 
   (* THE BRIDGE OUT OF THE QUANTIFIER: what a proof that has to look at the
      file's own cells opens the reference for.  Every [fc_type]-to-[st]
@@ -2014,7 +1984,8 @@ End FileLiveEq.
 Section FoffRow.
   Context `{!riscvGS Σ, !offboxG Σ}.
 
-  Lemma foff_row_of_ok (inum : mword 32) (γo : gname) (γp : pipe_names) (C : fcontent) (st : fdstate) :
+  Lemma foff_row_of_ok (inum : mword 32) (γo : gname) (γp : pipe_names)
+      (C : fcontent) (st : fdstate) :
     fdstate_ok inum γo γp C st ->
     (if bool_decide (fc_type C = FD_INODE) then off_user_inv γo else True) -∗
     foff_row st.

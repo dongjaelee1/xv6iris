@@ -392,7 +392,7 @@ Section UInitTreeCons.
         { rewrite <- Hlen. exact (lookup_lt_Some _ _ _ Hcl0). }
         exact (init_cons_moi_nat_m1 fd0 Hlt0 (eq_trans (eq_sym Hr0) Hrm)). }
       iDestruct "Hal" as (fd rd wr ty) "[%Hb Hal]".
-      destruct Hb as (Hr1 & Hlt1 & Hfdv1).
+      destruct Hb as (Hr1 & Hlt1 & Hfdv1 & _).
       (* the two spellings of the resume view agree at the slot the call
          wrote, so the receipt's TYPE is the ledger's ([UkTreeRead.
          tree_open_fd_tie] at the device row) *)

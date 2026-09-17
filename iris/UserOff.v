@@ -147,6 +147,23 @@ Section UserOff.
     iModIntro. by iFrame.
   Qed.
 
+  (* ...AND THE SAME SUPPLIER LEAVING ITS OWN ROW BEHIND, which is what a
+     descriptor bundle's row wants back: [off_user_inv] is persistent, so
+     the parked supplier can hand its input out again for nothing.  This
+     is the parked half of "the row goes in and the row comes back
+     advanced" ([FdPark.off_supply_of_st]); at a parked row the advance is
+     the identity on the state, so the row that comes back is the row that
+     went in. *)
+  Lemma off_supply_parked_keep (E : coPset) γo (off d : nat) :
+    ↑foffN ⊆ E ->
+    off_user_inv γo -∗ off_supply γo E off d (off_user_inv γo).
+  Proof using .
+    intros HE. rewrite /off_supply. iIntros "#Hinv Hk".
+    iMod (off_user_inv_move E γo (Z.of_nat off) (Z.of_nat (off + d)) HE
+            with "Hinv Hk") as "Hk".
+    iModIntro. by iFrame "Hk Hinv".
+  Qed.
+
   (* SUPPLIER 2 -- HELD: the caller presented its own half at the offset
      the transfer used and takes it back ADVANCED.  Note what is NOT here:
      no invariant is opened, so this supplier is good at EVERY mask. *)

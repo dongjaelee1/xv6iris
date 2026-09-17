@@ -795,7 +795,7 @@ Section ProofSysClose.
         by (apply lookup_lt_is_Some_2; rewrite Hstslen0; unfold NOFILE in *; lia).
       destruct Hstfx as [stq0 Hstf].
       iDestruct (fd_frags_acc (pv_fdg (us_V U)) sts fd stq0 Hstf with "Hfrag")
-        as "(Hfr0 & #Hrow0 & Hfrback0)".
+        as "(Hfr0 & Hrow0 & Hfrback0)".
       iDestruct (fd_st_agree with "Hst Hfr0") as %<-.
       iDestruct ("Hfrback0" with "Hfr0 Hrow0") as "Hfrag".
       iEval (rewrite (list_insert_id sts fd stf Hstf)) in "Hfrag".

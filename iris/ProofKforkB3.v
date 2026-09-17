@@ -769,8 +769,18 @@ Section KforkB3Proof.
            it also has to move [FileInvDefs.file_ref]'s own [st], which is
            the array half this file's [Hst] carries. *)
         iDestruct (fd_frags_acc (pv_fdg (us_V Up)) stsP i stp HstpL with "Hpfrag")
-          as "(Hpfr & #Hprow & Hpfrback)".
+          as "(Hpfr & Hprow & Hpfrback)".
         iDestruct (fd_st_agree with "Hst Hpfr") as %Heqst. subst stp.
+        (* THE PARENT'S ROW IS COPIED, so it has to be DUPLICABLE -- which it
+           is exactly where the descriptor is parked ([FdSlots.foff_row_dup],
+           the family having become exclusive at a held row in lane
+           OFF-HAND-6).  The fact is the file invariant's own pin, read off
+           the reference filedup handed back; when the pin comes off it is
+           the reference COUNT that says it (design/app-file.md SS3 fact 4:
+           a held object has exactly one row, and the scan is holding two
+           shares of this one). *)
+        iDestruct (file_ref_parked_keep with "Hslota") as "[%Hpkf Hslota]".
+        iDestruct (foff_row_dup stf Hpkf with "Hprow") as "[Hprow Hprowc]".
         iDestruct ("Hpfrback" with "Hpfr Hprow") as "Hpfrag".
         iEval (rewrite (list_insert_id stsP i stf HstpL)) in "Hpfrag".
         (* the child's slot [i] is CLOSED in the list the scan has built so
@@ -786,7 +796,7 @@ Section KforkB3Proof.
         (* THE CHILD'S OFFSET ROW IS THE PARENT'S: one file, one shadow, and
            the parent's entry is persistent -- this is where a forked child
            inherits its parent's offsets *)
-        iDestruct ("Hcfrback" with "Hcfr Hprow") as "Hcfrag".
+        iDestruct ("Hcfrback" with "Hcfr Hprowc") as "Hcfrag".
         iEval (rewrite (kfk_at_step stsP fdt0 i stf HlenP fdt0_length HstpL Hi))
           in "Hcfrag".
         iDestruct (ofile_slot_file γf _ npa i k (q/2)%Qp stf Hk Hty

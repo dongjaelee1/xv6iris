@@ -46,8 +46,6 @@ Require Import UmodeMem UmodeArith UmodeText.
 Require Import UserPerm UexecWp UexecSlot UexecRet.
 Require Import FdSlots.      (* [fdstate] -- the key's descriptor view *)
 Require Import PipeNames.    (* [pipe_names] -- what a pipe descriptor carries *)
-Require Import SpecArgfd.    (* [fd_st_of_key] -- the descriptor argument 0 names,
-                                which is what decides close's deposit *)
 Require Import WpMmodeLeafBase.
 Require Import UptTree.
 Require Import WpUmodeStore.
@@ -1061,7 +1059,7 @@ Section UkRun.
      [udepwf_at] fixes the working directory because a PINNED OPEN is about
      a path; this one fixes the low [NSTD] descriptor states because a
      CONSOLE READ is about a descriptor.  Row 5's bundle is
-     [SpecFileread.fileread_in] at [SpecArgfd.fd_st_of_key (xk_a W 0)
+     [SpecFileread.fileread_in] at [FdSlots.fd_st_of_key (xk_a W 0)
      (uvis_fd W)], so which ARM the supplier has to answer is decided by
      the key's own descriptor table -- and a supplier holding the reader
      token has to answer the CONSOLE arm and no other, because that is the

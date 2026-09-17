@@ -1436,8 +1436,8 @@ Section UexecRet.
      is the U tier's: the count is the a2 word read as a C [int]
      ([SpecSysRead.sys_rw_count]'s spelling), the descriptor is the a0 word
      read as an index into the caller's own table
-     ([SpecArgfd.fd_st_of_key]'s two cases, split out so that neither
-     definition has to travel down here), and CONSOLE is major 1
+     ([FdSlots.fd_st_of_key]'s in-range case, spelled out), and CONSOLE is
+     major 1
      ([ConsoleInv.CONSOLE]). *)
   (* ...AND WAIT'S CLAUSE BESIDE IT (lane TRAP-ROWS-3, T4(c)): at a NULL
      status pointer a -1 means the caller's children column was EMPTY, and
@@ -1567,8 +1567,8 @@ Section UexecRet.
           hop between them.
           READ AT THE TRAPPING KEY's descriptor view and argument words,
           which is what the caller holds.  The descriptor is named by INDEX
-          rather than through [SpecArgfd.fd_st_of_key]: that lives above
-          this file, and a program holds its table as a list. *)
+          rather than through [FdSlots.fd_st_of_key], because a program
+          holds its table as a list. *)
        ⌜uexec_live_ok n (uvis_tf W) (uvis_fd W) r cs'⌝ -∗
        (* ...AND THE CHILDREN SET, off the same return value: the row the
           number's own answer carries -- pure and quiet at the twenty

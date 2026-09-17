@@ -130,7 +130,6 @@ Require Import UexecSG.        (* [uexecSG]: [sbundle] / [spost] / [skey_eq] *)
 Require Import UexecApply.     (* [uslot_key_cong] -- the slot across the re-key *)
 Require Import UexecExecInst.  (* the class INSTANCE: the process's exec bundle *)
 Require Import SpecSysRead.    (* [sys_rw_count] -- the read's count, for [ut_live_out] *)
-Require Import SpecArgfd.      (* [fd_st_of_key] -- the descriptor the read names *)
 Require Import Xv6Cameras.      (* [pipe_taint_cred] *)
 Require Import ConsoleInv.     (* [CONSOLE] -- the device the read row is about *)
 Require Import StackOwn.       (* [uint_zero_reg] *)
@@ -781,9 +780,10 @@ Proof.
 Qed.
 
 (* ...AND THE SAME ROW AT THE U TIER'S SPELLING (lane TRAP-ROWS, T2(iii)).
-   [UexecRet.uexec_live_ok] names the descriptor by INDEX, because
-   [SpecArgfd.fd_st_of_key] lives above that file; this is the one hop
-   between the two, and it is the [decide] in [fd_st_of_key] itself. *)
+   [UexecRet.uexec_live_ok] names the descriptor by INDEX, the form a
+   program holding its table wants; this is the one hop between that and
+   [FdSlots.fd_st_of_key], and it is the [decide] in [fd_st_of_key]
+   itself. *)
 Lemma uexec_live_ok_of_live (sc_v : mword 64) (tf : list (mword 64))
     (sts : list fdstate) (r : mword 64) (cs' : gset gname) :
   sc_v = uecall_scause ->

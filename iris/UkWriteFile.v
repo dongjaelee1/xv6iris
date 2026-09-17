@@ -95,7 +95,6 @@ Require Import UkRun UkRunSys.
 Require Import UexecExecInst.      (* THE INSTANCE: [uexecSG_xv6] *)
 Require Import UkReadRows.         (* [udepwf_st] / [ufd_key_agree] *)
 Require Import UkWriteLeaf.        (* row 16's family, and its two key rows *)
-Require Import SpecArgfd.          (* [fd_st_of_key] *)
 Require Import SpecFilewrite.      (* [filewrite_in] / [filewrite_extra] *)
 Require Import SpecSysRead.        (* [sys_rw_count] *)
 Require Import SpecCopyin.         (* [ubytes_at] -- the content seam *)
@@ -172,7 +171,7 @@ Section UkWriteFile.
     usysno m = 16 ->
     (* THE DESCRIPTOR ARGUMENT IS THE ONE THE HANDLE NAMES.  a0 carries it
        as a C [int], so the reading is the signed low word -- the same one
-       [SpecArgfd.fd_st_of_key] takes. *)
+       [FdSlots.fd_st_of_key] takes. *)
     bv_signed (trunc32 (m !!! Regidx a0_idx)) = Z.of_nat fd ->
     (fd < NOFILE)%nat ->
     is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->

@@ -28,11 +28,12 @@
    [proc]-side model of [p->ofile[]] is the other end of the same law, and
    both sides should name the same thing. *)
 From Stdlib Require Import ZArith Lia List.
-From stdpp Require Import gmap list.
+From stdpp Require Import gmap list bitvector.definitions.
 From iris.algebra Require Import auth numbers frac agree gmap.
 From iris.proofmode Require Import proofmode.
 From iris.base_logic.lib Require Import own.
 Require Import ProcGeom.
+Require SailStdpp.Values RiscvExtras.   (* [mword] / [trunc32], qualified: importing them shadows [∈] below *)
 Require Import RiscvPtsto Xv6Cameras.   (* [riscvGS] / [offboxG] -- the classes the offset row binds; IMPORTED, or the binder below generalises them silently *)
 Require Import OffGv.   (* [off_user_inv] / [off_permit] -- the fd row's offset shadow *)
 Require Import PipeNames.   (* [pipe_names]: what a pipe descriptor's state carries *)
@@ -382,6 +383,18 @@ Qed.
 
 Lemma fdv_nopipe_closed (n : nat) : fdv_nopipe (replicate n FdClosed).
 Proof. apply fdv_nopipe_replicate, fdst_nopipe_closed. Qed.
+
+(* THE DESCRIPTOR A SYSCALL ARGUMENT NAMES, read off the STATE list alone:
+   argument [v] as a C [int], closed out of range.  A function of what a
+   user process holds, so the U tier states its read/write/close rows with
+   it; [SpecArgfd.sys_fd_st_of_key] is the equation with argfd's own
+   reading of the kernel's [ofile] array. *)
+Definition fd_st_of_key (v : SailStdpp.Values.mword 64) (sts : list fdstate)
+    : fdstate :=
+  let z := bv_signed (RiscvExtras.trunc32 v) in
+  if decide (0 <= z < Z.of_nat NOFILE)
+  then default FdClosed (sts !! Z.to_nat z)
+  else FdClosed.
 
 Definition fdstElt : cmra := prodR fracR (agreeR (leibnizO fdstate)).
 Definition fdstUR : ucmra := gmapUR nat fdstElt.

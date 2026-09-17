@@ -64,7 +64,6 @@ Require Import PieceFam.
 Require Import UexecSlot UexecRet UexecSG.
 Require Import UkRun.
 Require Import UexecExecInst.      (* THE INSTANCE: [uexecSG_xv6] *)
-Require Import SpecArgfd.          (* [fd_st_of_key] *)
 Require Import SpecFilewrite.      (* [filewrite_in] / [filewrite_extra] *)
 Require Import SpecConsolewrite.   (* [cons_out_chain] *)
 Require Import SpecSysRead.        (* [sys_rw_count] *)

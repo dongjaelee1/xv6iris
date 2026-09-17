@@ -175,18 +175,12 @@ Definition sys_fd_st (v : mword 64) (fs : list (mword 64))
    process has.  But it does not have to: [ProcInv.ofile_slot] pins each
    cell's nullity to its descriptor's ghost state ("[v = zero_reg] iff
    [st = FdClosed]"), so the pointer array carries no information the
-   STATE list does not already carry.  [fd_st_of_key] is the key-level
-   reading -- a function of syscall argument 0 and the descriptor states
-   alone -- and [sys_fd_st_of_key] is the equation.  It is what makes
+   STATE list does not already carry.  [FdSlots.fd_st_of_key] is the
+   key-level reading -- a function of syscall argument 0 and the descriptor
+   states alone -- and [sys_fd_st_of_key] is the equation.  It is what makes
    sys_read's and sys_write's bundles statable at the ARM's key
    ([UexecSG]'s [sbundle X n W], whose [W] carries the descriptor view and
    not the ofile array). *)
-Definition fd_st_of_key (v : mword 64) (sts : list fdstate) : fdstate :=
-  let z := bv_signed (trunc32 v) in
-  if decide (0 <= z < Z.of_nat NOFILE)
-  then default FdClosed (sts !! Z.to_nat z)
-  else FdClosed.
-
 Lemma sys_fd_st_of_key (v : mword 64) (fs : list (mword 64))
     (sts : list fdstate) :
   length fs = NOFILE -> length sts = NOFILE ->

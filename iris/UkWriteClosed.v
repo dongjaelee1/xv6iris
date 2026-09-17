@@ -9,7 +9,7 @@
 (*  At the U tier that is row 16's CLOSED arm --                          *)
 (*  [SpecFilewrite.filewrite_in] at [FdClosed] is [emp], and which arm    *)
 (*  the row asks for is decided by the KEY's own descriptor table         *)
-(*  ([SpecArgfd.fd_st_of_key] at argument 0), of which a program holds    *)
+(*  ([FdSlots.fd_st_of_key] at argument 0), of which a program holds      *)
 (*  the low [NSTD] slots ([UserFd.ustd]).  So a program whose ledger says *)
 (*  the descriptor it is about to write is closed owes NOTHING for the    *)
 (*  call: the deposit [UkRun.udepwf_std] is supplied out of thin air, the *)
@@ -68,7 +68,6 @@ Require Import UserHeap.
 Require Import ProcGeom.           (* [NOFILE] / [tf_arg_idx] *)
 Require Import UexecRet UexecSG.
 Require Import UkRun.
-Require Import SpecArgfd.          (* [fd_st_of_key] *)
 Require Import SpecFilewrite.      (* [filewrite_in] *)
 Require Import UkWriteLeaf.        (* [xfam_wr] / [sbundle_at_write_intro_at] *)
 Require Import UkSh.               (* [ksh_w] / [wp_ksh_write_chain] *)

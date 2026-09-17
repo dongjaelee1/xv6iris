@@ -3196,7 +3196,7 @@ Section SyscallArms.
   (* key's projections -- the arm's own [Hnum] picks the branch and the     *)
   (* arm's own [Hv0]/[Hv1]/[Hv2] name the argument words.                   *)
   (*                                                                        *)
-  (* READ AND WRITE COME OUT AT [SpecArgfd.fd_st_of_key], the descriptor key *)
+  (* READ AND WRITE COME OUT AT [FdSlots.fd_st_of_key], the descriptor key   *)
   (* a PROCESS can name; [sysc_fd_key] is the equation that turns it into    *)
   (* the contract's [sys_fd_st], and its three premises are the kernel       *)
   (* resources the arm is holding anyway.                                    *)
@@ -3403,7 +3403,7 @@ Section SyscallArms.
   (* [sysc_dep_*] reader -- the arm's own [Hnum] picks the branch, its own   *)
   (* [Hv0]/[Hv1]/[Hv2] name the argument words -- and each takes the armed   *)
   (* post the contract just returned.  read and write take it at             *)
-  (* [SpecArgfd.fd_st_of_key], the key a PROCESS can name; [sysc_fd_key] is  *)
+  (* [FdSlots.fd_st_of_key], the key a PROCESS can name; [sysc_fd_key] is    *)
   (* what moves it there from the contract's [sys_fd_st].                    *)
   (* ================================================================== *)
   Lemma sysc_sys_out_at (U : ustate) (sts : list fdstate) (gn : gname) (cs : gset gname)
@@ -5765,7 +5765,7 @@ Section SyscallArms.
        themselves, so this arm picks nothing -- it takes the matching input,
        whatever the key turns out to be, out of [SpecSyscall.sysc_sys_in] at
        the process's own cursor and seed.  The deposit is stated at
-       [SpecArgfd.fd_st_of_key], the descriptor key a PROCESS can name;
+       [FdSlots.fd_st_of_key], the descriptor key a PROCESS can name;
        [sysc_fd_key] turns it into the contract's [sys_fd_st] out of the
        three kernel facts this arm is holding anyway.
        THE APPLICATION'S PER-CHUNK STEP IS NOT MINTED HERE AND NOT PAID
@@ -5922,7 +5922,7 @@ Section SyscallArms.
        themselves, so this arm picks nothing -- it takes the matching input,
        whatever the key turns out to be, out of [SpecSyscall.sysc_sys_in] at
        the process's own receipt.  The deposit is stated at
-       [SpecArgfd.fd_st_of_key], the descriptor key a PROCESS can name;
+       [FdSlots.fd_st_of_key], the descriptor key a PROCESS can name;
        [sysc_fd_key] turns it into the contract's [sys_fd_st]. *)
     iDestruct (sysc_fd_key γf (proc_addr j) pid U sts v0 with "Hpriv Hufrag")
       as %Hfdk.
@@ -6634,7 +6634,7 @@ Section SyscallArms.
        straight back in below -- see [SpecFileclose]'s [iref_slot] row. *)
     iDestruct (sysc_iref_split3 with "Hir") as "[Hir Hiru]".
     (* THE CLOSE PAYMENT, out of the process's own deposit (design/pipe.md,
-       the byte queue).  The deposit is stated at [SpecArgfd.fd_st_of_key],
+       the byte queue).  The deposit is stated at [FdSlots.fd_st_of_key],
        the descriptor key a PROCESS can name; [sysc_fd_key] turns it into
        the contract's [sys_fd_st] out of the three kernel facts this arm is
        holding anyway. *)

@@ -45,7 +45,6 @@ Require Import RegFile.
 Require Import UsysMemOk UexecSlot UexecRet.
 Require Import FdSlots.      (* [fdstate] -- the key's descriptor view *)
 Require Import PipeNames.    (* [pipe_names] -- what a pipe descriptor's state carries *)
-Require Import SpecArgfd.    (* [fd_st_of_key] -- the descriptor argument 0 names *)
 Require Import ProcGeom.   (* [tf_arg_idx] -- wait's row is based at a0 *)
 Require Import UkStep.
 Require Import UmodeArith.  (* [moi_add_l] / [uint_moi]: read's row addresses
@@ -3391,7 +3390,7 @@ Section UkRunSys.
   (* holds).                                                                *)
   (*                                                                        *)
   (* ...AND THE CALLER'S DESCRIPTOR KNOWLEDGE IS WHAT MAKES THE RECEIPT     *)
-  (* READABLE AT ALL: the arm is selected by [SpecArgfd.fd_st_of_key        *)
+  (* READABLE AT ALL: the arm is selected by [FdSlots.fd_st_of_key          *)
   (* (xk_a W 0) (uvis_fd W)], and a program holds no [uvis_fd W] -- [urun]  *)
   (* binds it existentially.  What it holds is either its LEDGER of the low *)
   (* [NSTD] slots or a HANDLE on one descriptor, so the walk takes the      *)
@@ -4249,7 +4248,7 @@ Section UkRunSys.
   (*                                                                       *)
   (*   D / K -- THE CALLER'S DESCRIPTOR KNOWLEDGE.  Which arm               *)
   (*   [SpecFilewrite.filewrite_in] takes is decided by the KEY's own       *)
-  (*   table ([SpecArgfd.fd_st_of_key] at argument 0), and a program holds  *)
+  (*   table ([FdSlots.fd_st_of_key] at argument 0), and a program holds    *)
   (*   either its LEDGER of the low [NSTD] slots ([UserFd.ustd_agree]) or a *)
   (*   HANDLE on one descriptor ([UserFd.ufd_agree]).  Before this lane the *)
   (*   write leaves were LEDGER-ONLY, which is exactly why no U-tier write  *)
@@ -4401,7 +4400,7 @@ Section UkRunSys.
   (* CLAIM, item (W); lane IO-LEAF, first half).                            *)
   (*                                                                       *)
   (* Row 16's deposit is [SpecFilewrite.filewrite_in] at                    *)
-  (* [SpecArgfd.fd_st_of_key (xk_a W 0) (uvis_fd W)], and on a WRITABLE     *)
+  (* [FdSlots.fd_st_of_key (xk_a W 0) (uvis_fd W)], and on a WRITABLE       *)
   (* DEVICE descriptor that arm is [SpecConsolewrite.cons_out_chain] over   *)
   (* the caller's own cursor family [wf_Q f] -- one view shift per byte,    *)
   (* the byte pinned against the image the process lent.  Every write leaf  *)

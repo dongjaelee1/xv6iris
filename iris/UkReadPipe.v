@@ -83,7 +83,6 @@ Require Import VcGen.               (* [trunc32] *)
 Require Import UexecSlot UexecRet UsysMemOk UexecSG.
 Require Import UkRun UkRunSys.
 Require Import UkReadRows.          (* the shared key-level rows *)
-Require Import SpecArgfd.           (* [fd_st_of_key] *)
 Require Import SpecFileread.        (* [fileread_in] / [fileread_ret] *)
 Require Import SpecSysRead.         (* [sys_rw_count] *)
 Require Import CtxIdDefs.

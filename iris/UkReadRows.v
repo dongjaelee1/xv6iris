@@ -53,7 +53,6 @@ Require Import PieceFam.           (* [pfam] / [pfam_triv] *)
 Require Import UexecSlot UexecRet UsysMemOk UexecSG.
 Require Import UkRun UkRunSys.
 Require Import UexecExecInst.      (* THE INSTANCE: [uexecSG_xv6], [xfam] *)
-Require Import SpecArgfd.          (* [fd_st_of_key] *)
 Require Import SpecFileread.       (* [fileread_in] / [fileread_extra_core] *)
 Require Import SpecSysRead.        (* [sys_rw_count] *)
 Require Import FsAbsDefs.          (* [aview] / [anode] *)
@@ -296,7 +295,7 @@ Section UkReadRows.
   (*  statements, so every caller is untouched.                           *)
   (* =================================================================== *)
   (* [UkRun.udepwf_std]'s third sibling.  Row 5's / row 16's bundle is the
-     contract at [SpecArgfd.fd_st_of_key (xk_a W 0) (uvis_fd W)], so which
+     contract at [FdSlots.fd_st_of_key (xk_a W 0) (uvis_fd W)], so which
      ARM the supplier must answer is decided by the KEY's own descriptor
      table -- and a supplier holding an observation commit at inode [i] (or
      a write chain at it) answers the INODE arm at THAT file and no other.

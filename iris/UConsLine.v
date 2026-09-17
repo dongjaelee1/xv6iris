@@ -151,7 +151,7 @@ Section UConsLine.
   (*  the three standard streams are open ([UkSh.v:4121-4133]).  What      *)
   (*  sh's read needs is one row: fd 0 is an OPEN, READABLE CONSOLE        *)
   (*  DEVICE, because that row is what selects [SpecFileread.              *)
-  (*  fileread_in]'s console arm at [SpecArgfd.fd_st_of_key (xk_a W 0)]    *)
+  (*  fileread_in]'s console arm at [FdSlots.fd_st_of_key (xk_a W 0)]      *)
   (*  -- and the console arm is the only one that pays a receipt about     *)
   (*  input bytes.                                                        *)
   (*                                                                      *)

@@ -53,7 +53,6 @@ Require Import UkRun UkRunSys.
 Require Import UexecExecInst.      (* THE INSTANCE: [uexecSG_xv6] *)
 Require Import UkReadRows.         (* [udepwf_st] / [ufd_key_agree] *)
 Require Import UkWriteLeaf.        (* row 16's family and its two key rows *)
-Require Import SpecArgfd.          (* [fd_st_of_key] *)
 Require Import SpecFilewrite.      (* [filewrite_in] / [filewrite_extra] *)
 Require Import SpecSysRead.        (* [sys_rw_count] -- the count the key carries *)
 Require Import PipeNames.          (* [pipe_names] / [pipe_st] *)

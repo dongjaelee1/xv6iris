@@ -173,9 +173,11 @@ Section UkShRedirPex.
   (*                                                                       *)
   (* WHAT IT RETURNS IS THE REDIR NODE, and [a0] holds it: sh's [ret]       *)
   (* variable (s1) was re-pointed by the turn while [cmd] (s11) still names *)
-  (* the exec node, which is what the two terminator stores go through --   *)
-  (* so the tree is closed HERE, out of the loop's named node and the exec  *)
-  (* node the stores have just capped.                                     *)
+  (* the exec node, which is what the two terminator stores go through.     *)
+  (* The two nodes come back SEPARATELY, the child pointer named, because   *)
+  (* [nulterminate]'s REDIR row descends into the child and needs its       *)
+  (* extent; [UkShRedirCmd.ushp_redir_close] joins them when a caller wants *)
+  (* the published tree instead.                                           *)
   (*                                                                       *)
   (* TWO MALLOCS.  [execcmd] allocates the exec node and [redircmd] the     *)
   (* REDIR node, so this walk chains two allocator capabilities where the   *)
@@ -208,7 +210,8 @@ Section UkShRedirPex.
     urun N h m (mword_of_int ShSyms.parseexec) (16 + (24 + (8 + nn))) -∗
     (∀ t p : Z,
        ⌜ p + 168 < Z64 ⌝ -∗
-       ushp_tree s0 t (UshpRedir (UshpExec toks) (S (S gp)) fe 1537 1) -∗
+       ushp_redir_node s0 t p (S (S gp)) fe 1537 1 -∗
+       ushp_exec_at s0 p toks -∗
        uword γd ps (mword_of_int (s0 + Z.of_nat len)) -∗
        ustr γd dq s0 len f -∗
        ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
@@ -1494,18 +1497,15 @@ Section UkShRedirPex.
               with "[] Hrun").
     { iApply (uis_shp_606 with "Hcode"). }
     iIntros (h40) "Hrun".
-    iAssert (ushp_tree s0 p (UshpExec toks)) with "[Hty Hav Hev]" as "Hsub".
-    { cbn [ushp_tree]. iApply ushp_exec_pre_at. rewrite /ushp_exec_pre.
+    iApply ("Hcont" $! t p
+              with "[] Hrnode [Hty Hav Hev] Hcur Hstr Hws Hsy [] [] HM2 Hpay Hrun").
+    - iPureIntro. lia.
+    - iApply ushp_exec_pre_at. rewrite /ushp_exec_pre.
       iSplitR; [ iPureIntro; exact Htlen | ].
       iSplitR; [ iPureIntro; exact Hp0 | ].
       iSplitR; [ iPureIntro; exact Hp8 | ].
       iSplitL "Hty"; [ iExact "Hty" | ].
-      iSplitL "Hav"; [ iExact "Hav" | iExact "Hev" ]. }
-    iApply ("Hcont" $! t p
-              with "[] [Hrnode Hsub] Hcur Hstr Hws Hsy [] [] HM2 Hpay Hrun").
-    - iPureIntro. lia.
-    - iApply (ushp_redir_close s0 t p (S (S gp)) fe 1537 1 (UshpExec toks)
-                with "Hrnode Hsub").
+      iSplitL "Hav"; [ iExact "Hav" | iExact "Hev" ].
     - iPureIntro.
       apply (ushp_frame_cs [(ra_idx, mword_of_int 15 : mword 6);
                (s0_idx, mword_of_int 14 : mword 6);

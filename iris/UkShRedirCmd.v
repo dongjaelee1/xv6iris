@@ -141,7 +141,7 @@ Section UkShRedirCmd.
   (* ===================================================================== *)
   Definition ushp_redir_node (s0 t pc : Z) (q eq : nat) (mode fd : Z)
       : iProp Σ :=
-    (⌜ 0 < t ⌝ ∗ ⌜ t mod 8 = 0 ⌝ ∗
+    (⌜ 0 < t ⌝ ∗ ⌜ t mod 8 = 0 ⌝ ∗ ⌜ t + 40 < Z64 ⌝ ∗
      (ubytes γd t 4 (nth_byte (mword_of_int 2 : mword 32)) ∗
       (∃ g : nat -> bv 8, ubytes γd (t + 4) 4 g)) ∗
      uword γd (t + 8) (mword_of_int pc) ∗
@@ -156,7 +156,7 @@ Section UkShRedirCmd.
     ushp_tree s0 t (UshpRedir c q eq mode fd).
   Proof using .
     iIntros "Hn Hsub". rewrite /ushp_redir_node.
-    iDestruct "Hn" as "(%Ht0 & %Ht8 & Hty & Hcmd & Hfile & Hefile & Hmode & Hfd)".
+    iDestruct "Hn" as "(%Ht0 & %Ht8 & %Htz & Hty & Hcmd & Hfile & Hefile & Hmode & Hfd)".
     cbn [ushp_tree ushp_ty]. rewrite /ushp_type_at.
     iSplitR; [ iPureIntro; exact Ht0 | ].
     iSplitR; [ iPureIntro; exact Ht8 | ].
@@ -927,6 +927,10 @@ Section UkShRedirCmd.
     - rewrite /ushp_redir_node.
       iSplitR; [ iPureIntro; exact Hp0 | ].
       iSplitR; [ iPureIntro; exact Hp8 | ].
+      iSplitR;
+        [ iPureIntro;
+          assert (H38' : (2:Z) ^ 38 = 274877906944) by (vm_compute; reflexivity);
+          rewrite H38' in Hpsz; unfold Z64; lia | ].
       iSplitL "Hty Hpad".
       + iSplitL "Hty".
         * iApply (ushp_ubytes_ext p 4

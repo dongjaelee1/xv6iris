@@ -235,3 +235,6 @@ import Xv6.ProofAllocproc
 import Xv6.LinkAllocproc
 import Xv6.ProofReparent
 import Xv6.LinkReparent
+import Xv6.SpecSafestrcpy
+import Xv6.ProofSafestrcpy
+import Xv6.LinkSafestrcpy

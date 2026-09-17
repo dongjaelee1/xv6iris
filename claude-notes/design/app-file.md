@@ -468,6 +468,17 @@ unreachable arm by arm exclusivity in the kernel contract.
   refuted ruling wastes one file, not a sweep.
 - The worklist is a DEPENDENCY GRAPH with the program tier priced, not
   a chain of "the one thing the next lane needs first".
+  THE GRAPH IS lane SKELETON's K4 table (worklist, "## Findings",
+  SKELETON): 22 obligations of `UEchoFile.v`/`UShRound.v`/`UInitFile.v`
+  (on branch `app-file/program-tier`, `Admitted`, outside the audited
+  cone), each with its owner — OFF-LINK 2, WRITE-RELAY 2, LINK-GEN 8,
+  CAT-GEOM 1, six small new items (the ledger-slot write leaf and its
+  deposit, the redirect line's lexability threading, the redirect
+  child's law, `ush_tag_law`'s discipline parameter, `init_boot_pay`
+  with the deed), two free.  Two shapes it settled: the deed rides
+  INSIDE sh's credential family (`Wcf I p := Wcl I p ∗ sh_hold I`, no
+  `ushf_wq` twin), and echo's exec crossing costs one `Pay` (`Wq ∗ fown
+  ∗ uoff γo 0`) and one PURE row about the exec'ing table.
 
 ## 4. The console side: the stage carries the era's boot state, the ledger the line list
 

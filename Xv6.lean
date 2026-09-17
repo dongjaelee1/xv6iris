@@ -233,3 +233,5 @@ import Xv6.ProofUvmalloc
 import Xv6.LinkUvmalloc
 import Xv6.ProofAllocproc
 import Xv6.LinkAllocproc
+import Xv6.ProofReparent
+import Xv6.LinkReparent

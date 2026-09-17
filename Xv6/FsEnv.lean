@@ -57,11 +57,16 @@ def wp_blocking_body {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G
 claim, no trap CSRs and no parking: a call that cannot sleep -- there is
 nothing to sleep on -- so the shape is `wakeup`'s, not `sleep`'s (balanced,
 generic in the interrupt index, the proc table in as the only environment).
+GENERIC IN LOCK DEPTH: `userinit` calls it holding the newborn's `p->lock`
+(`allocproc` returns at `noff = 1`, `locks = ["proc"]`).  A real `namei`
+takes only its own file-system locks, which sit below `"proc"` in the lock
+rank, so it is sound to assume it runs with a higher-ranked lock held; the
+contract is balanced in `k.locks`/`k.noff` (it gives them back unchanged).
 The return register is unconstrained (`namei` returns some inode pointer).
 -/
 def wp_boot_blocking_body {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G GF] [CurCtx]
     (Γ : SchedNames) (cpu : CPU) (k : KCtx) (entry : BitVec 64)
-    (hK : fsSlots ≤ k.avail) (hnoff : k.noff = 0) (hlocks : k.locks = [])
+    (hK : fsSlots ≤ k.avail) (hnoff : k.noff + 1 < 2 ^ 31)
     (htier : k.tier = KTier.kpt) (hproc : k.proc = 0#64) : Prop :=
   kctx cpu k ∗ pcIs cpu entry ∗ procsInv Γ ∗
   wpNext k.sie k.proc cpu (fun cpu' => iprop(∀ spie : Bool, ∀ spp : Bool, ∀ R' : RegMap,
@@ -73,8 +78,8 @@ def wp_boot_blocking_body {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] 
 /-- The assumed contract of one fs entry point at boot. -/
 def FsBootEntry (entry : BitVec 64) : Prop :=
   ∀ {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G GF] [CurCtx]
-    (Γ : SchedNames) (cpu : CPU) (k : KCtx) hK hnoff hlocks htier hproc,
-    wp_boot_blocking_body (hlc := hlc) (GF := GF) Γ cpu k entry hK hnoff hlocks htier hproc
+    (Γ : SchedNames) (cpu : CPU) (k : KCtx) hK hnoff htier hproc,
+    wp_boot_blocking_body (hlc := hlc) (GF := GF) Γ cpu k entry hK hnoff htier hproc
 
 /-- The assumed contract of one fs entry point. -/
 def FsEntry (entry : BitVec 64) : Prop :=

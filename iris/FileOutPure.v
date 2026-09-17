@@ -1458,3 +1458,424 @@ Proof using.
   pose proof (pro_of_pos ps HF Hne) as Hpos. rewrite H in Hpos.
   cbn [length] in Hpos. lia.
 Qed.
+
+(* ====================================================================== *)
+(*  9.  THE STAGE RECORD, AND THE TWO LENGTH LAWS                          *)
+(*                                                                        *)
+(*  [EchoOut.ostage] with ONE VALUE MORE: the era's boot file state.       *)
+(*  Both length laws ([cs_len_ok_f], [ps_len_ok_f]) and the stage's whole  *)
+(*  pure account ([feout_pure]) are pure, so they live here and the claim  *)
+(*  file only has to own the resources.                                    *)
+(* ====================================================================== *)
+
+Record fostage := MkFO {
+  fo_ps : list nat;
+  fo_cs : list nat;
+  fo_E  : list (list mobs * bv 8);
+  fo_w  : list (bv 8);
+  fo_f0 : option fst;
+}.
+Definition fostage0 : fostage := MkFO [] [] [] [] None.
+
+(* out of range the choice list reads 0, which decodes to [REcho 0] -- an
+   alternative whose output is never empty, whatever the line is *)
+Lemma ralt_at_ge (cs : list nat) (i : nat) :
+  (length cs <= i)%nat -> ralt_at cs i = REcho 0%nat.
+Proof using.
+  intro Hi.
+  assert (Hz : cs !!! i = 0%nat).
+  { rewrite list_lookup_total_alt (lookup_ge_None_2 cs i Hi). reflexivity. }
+  rewrite /ralt_at Hz. apply ralt_dec_lt4. lia.
+Qed.
+
+Lemma ralt_panic_ge (cs : list nat) (i : nat) :
+  (length cs <= i)%nat -> ralt_panic (ralt_at cs i) = false.
+Proof using. intro Hi. rewrite (ralt_at_ge cs i Hi). by vm_compute. Qed.
+
+Lemma pro_idx_f_app_le (cs z : list nat) (q : nat) :
+  (q <= length cs)%nat -> pro_idx_f (cs ++ z) q = pro_idx_f cs q.
+Proof using.
+  intro Hq. apply (pro_idx_f_ext (cs ++ z) cs q); [| lia].
+  intros j Hj. rewrite !list_lookup_total_alt lookup_app_l; [done | lia].
+Qed.
+
+(* NO ALTERNATIVE PRINTS NOTHING.  Every constant one carries at least the
+   prompt or its own newline, [RCRan]'s content is closed by the prompt, and
+   an [REcho k] is nonempty for [k < 4] -- which covers both an alternative
+   a line ADMITS and the out-of-range reading. *)
+Lemma cont_nonnil (s : fst) (l : uline) (a : ralt) :
+  ralt_ok l a \/ a = REcho 0%nat -> cont s l a <> [].
+Proof using.
+  intro Ha.
+  assert (Hpr : u_prompt <> []).
+  { pose proof u_prompt_pos as Hup.
+    destruct u_prompt as [| z zs]; [cbn [length] in Hup; lia | done]. }
+  assert (Hex : alt_execfail <> []) by (by vm_compute).
+  assert (Hop : alt_openfail <> []) by (by vm_compute).
+  assert (Hpa : alt_panic <> []) by (by vm_compute).
+  assert (Hca : alt_catopen <> []) by (by vm_compute).
+  assert (Hec : alt_execcat <> []) by (by vm_compute).
+  destruct a as [k | sel | | | | | | | | | |]; rewrite /cont.
+  - assert (Hk : (k < 4)%nat).
+    { destruct Ha as [Ha | Heq]; [| injection Heq as <-; lia].
+      destruct l as [ws | ws |]; [exact Ha | by destruct Ha | by destruct Ha]. }
+    exact (line_alts_of_nonnil (uline_ws l) k Hk).
+  - exact Hpr.
+  - exact Hex.
+  - exact Hop.
+  - exact Hop.
+  - exact Hpr.
+  - exact Hpa.
+  - destruct s as [bs |]; [| exact Hca].
+    intro Hq. by destruct (app_eq_nil bs u_prompt Hq) as [_ Hb].
+  - exact Hca.
+  - exact Hec.
+  - exact Hpr.
+  - exact Hpa.
+Qed.
+
+Lemma pending_at_f_nonnil (ps cs : list nat) (f0 : option fst)
+    (I : list (bv 8)) :
+  alts_pre I cs -> I <> [] -> rest_of I = [] ->
+  pending_at_f ps cs f0 I <> [].
+Proof using.
+  intros Hao Hne Hr. rewrite /pending_at_f.
+  rewrite decide_False; [| exact Hne]. rewrite decide_True; [| exact Hr].
+  rewrite /alt_cont_f. intros Hc. apply app_eq_nil in Hc as [Hc _].
+  revert Hc. apply cont_nonnil.
+  destruct (decide (nlines I - 1 < length cs)%nat) as [Hlt | Hge].
+  - left. exact (alts_pre_at I cs _ Hao Hlt).
+  - right. apply ralt_at_ge. lia.
+Qed.
+
+Lemma pending_f_nonnil (ps cs : list nat) (f0 : option fst)
+    (E : list (list mobs * bv 8)) :
+  alts_pre (snd <$> E) cs -> (snd <$> E) <> [] ->
+  rest_of (snd <$> E) = [] -> pending_f ps cs f0 E <> [].
+Proof using. rewrite /pending_f. apply pending_at_f_nonnil. Qed.
+
+Lemma pending_f_nil_inv (ps cs : list nat) (f0 : option fst)
+    (E : list (list mobs * bv 8)) :
+  alts_pre (snd <$> E) cs -> rest_of (snd <$> E) = [] ->
+  pending_f ps cs f0 E = [] -> (snd <$> E) = [].
+Proof using.
+  intros Hao Hr Hnil.
+  destruct (decide ((snd <$> E) = [])) as [? | Hne]; [done | exfalso].
+  exact (pending_f_nonnil ps cs f0 E Hao Hne Hr Hnil).
+Qed.
+
+(* ---- the choice list's length law ---- *)
+
+Definition cs_len_ok_f (so : fostage) : Prop :=
+  length (fo_cs so)
+  = (if decide (fo_w so = [] /\ rest_of (snd <$> fo_E so) = [])
+     then (nlines (snd <$> fo_E so) - 1)%nat
+     else nlines (snd <$> fo_E so)).
+
+Lemma cs_len_ok_f_inv (so : fostage) :
+  cs_len_ok_f so ->
+  ((fo_w so = [] /\ rest_of (snd <$> fo_E so) = [])
+     /\ length (fo_cs so) = (nlines (snd <$> fo_E so) - 1)%nat)
+  \/ (~ (fo_w so = [] /\ rest_of (snd <$> fo_E so) = [])
+     /\ length (fo_cs so) = nlines (snd <$> fo_E so)).
+Proof using.
+  rewrite /cs_len_ok_f. case_decide as Hb; intros Hc.
+  - left. by split.
+  - right. by split.
+Qed.
+
+Lemma cs_len_ok_f_intro (ps cs : list nat) (E : list (list mobs * bv 8))
+    (w : list (bv 8)) (f0 : option fst) :
+  ((w = [] /\ rest_of (snd <$> E) = []) ->
+     length cs = (nlines (snd <$> E) - 1)%nat) ->
+  (~ (w = [] /\ rest_of (snd <$> E) = []) ->
+     length cs = nlines (snd <$> E)) ->
+  cs_len_ok_f (MkFO ps cs E w f0).
+Proof using.
+  rewrite /cs_len_ok_f. cbn [fo_ps fo_cs fo_E fo_w fo_f0].
+  intros H1 H2. case_decide as Hb; [by apply H1 | by apply H2].
+Qed.
+
+Lemma cs_len_ok_f_mid (so : fostage) :
+  cs_len_ok_f so -> fo_w so <> [] ->
+  length (fo_cs so) = nlines (snd <$> fo_E so).
+Proof using.
+  intros Hc Hw. destruct (cs_len_ok_f_inv so Hc) as [[[Hw' _] _] | [_ ?]];
+    [done | done].
+Qed.
+
+Lemma cs_len_ok_f_echo (so : fostage) (x : list mobs * bv 8) :
+  alts_pre (snd <$> fo_E so) (fo_cs so) ->
+  fo_w so = pending_f (fo_ps so) (fo_cs so) (fo_f0 so) (fo_E so) ->
+  cs_len_ok_f so ->
+  cs_len_ok_f (MkFO (fo_ps so) (fo_cs so) (fo_E so ++ [x]) [] (fo_f0 so)).
+Proof using.
+  intros Hao Hw Hc.
+  assert (Hq : length (fo_cs so) = nlines (snd <$> fo_E so)).
+  { destruct (cs_len_ok_f_inv so Hc) as [[[Hw' Hm] Hq] | [_ Hq]]; [| exact Hq].
+    pose proof (pending_f_nil_inv (fo_ps so) (fo_cs so) (fo_f0 so) (fo_E so)
+                  Hao Hm ltac:(by rewrite -Hw)) as Hz.
+    rewrite Hz in Hq |- *. rewrite nlines_nil in Hq |- *. lia. }
+  apply cs_len_ok_f_intro; rewrite fmap_app /= Hq.
+  - intros [_ Hm]. destruct (decide (x.2 = wl_nl)) as [Hx | Hx].
+    + rewrite Hx nlines_snoc_nl. lia.
+    + exfalso. rewrite (rest_of_snoc_other _ _ Hx) in Hm.
+      by destruct (app_eq_nil (rest_of (snd <$> fo_E so)) [x.2] Hm) as [_ Hb].
+  - intros Hne. destruct (decide (x.2 = wl_nl)) as [Hx | Hx].
+    + exfalso. apply Hne. split; [reflexivity |].
+      rewrite Hx. apply rest_of_snoc_nl.
+    + by rewrite (nlines_snoc_other _ _ Hx).
+Qed.
+
+Lemma cs_len_ok_f_write (so : fostage) (b : bv 8) :
+  cs_len_ok_f so ->
+  (fo_w so <> [] \/ rest_of (snd <$> fo_E so) <> [] \/ (snd <$> fo_E so) = []) ->
+  cs_len_ok_f (MkFO (fo_ps so) (fo_cs so) (fo_E so) (fo_w so ++ [b]) (fo_f0 so)).
+Proof using.
+  intros Hc Hcase. apply cs_len_ok_f_intro.
+  { intros [Hw _]. exfalso.
+    by destruct (app_eq_nil (fo_w so) [b] Hw) as [_ Hb]. }
+  intros _. destruct (cs_len_ok_f_inv so Hc) as [[[Hw Hm] Hq] | [_ Hq]];
+    [| exact Hq].
+  destruct Hcase as [Hw' | [Hm' | Hn]]; [done | done |].
+  rewrite Hq Hn nlines_nil. lia.
+Qed.
+
+Lemma cs_len_ok_f_blk (so : fostage) (a : nat) (b : bv 8) :
+  rest_of (snd <$> fo_E so) = [] ->
+  (snd <$> fo_E so) <> [] ->
+  fo_w so = [] ->
+  cs_len_ok_f so ->
+  cs_len_ok_f (MkFO (fo_ps so) (fo_cs so ++ [a]) (fo_E so) [b] (fo_f0 so)).
+Proof using.
+  intros Hr Hne Hw Hc.
+  pose proof (nlines_pos_of_rest_nil (snd <$> fo_E so) Hne Hr) as Hpos.
+  destruct (cs_len_ok_f_inv so Hc) as [[_ Hq] | [Hne' _]]; last first.
+  { exfalso. by apply Hne'. }
+  apply cs_len_ok_f_intro.
+  { intros [Hb _]. discriminate. }
+  intros _. rewrite length_app. cbn [length]. rewrite Hq. lia.
+Qed.
+
+Lemma cs_len_ok_f_0 : cs_len_ok_f fostage0.
+Proof using.
+  rewrite /fostage0. apply (cs_len_ok_f_intro [] [] [] [] None); intros _;
+    cbn [length]; rewrite fmap_nil nlines_nil; lia.
+Qed.
+
+(* ---- the prologue resolution's length law ---- *)
+
+Definition ps_round_f (so : fostage) : nat :=
+  pro_idx_f (fo_cs so) (nlines (snd <$> fo_E so)).
+
+Definition ps_opens_f (so : fostage) : Prop :=
+  (snd <$> fo_E so) = []
+  \/ (rest_of (snd <$> fo_E so) = []
+      /\ ralt_panic (ralt_at (fo_cs so)
+                       (nlines (snd <$> fo_E so) - 1)%nat) = true).
+
+Definition ps_len_ok_f (so : fostage) : Prop :=
+  pro_from (S (ps_round_f so)) (fo_ps so) = []
+  /\ (ps_opens_f so ->
+      forall ps' : list nat, ps' `prefix_of` fo_ps so ->
+        pro_of (pro_from (ps_round_f so) ps')
+          <> pro_of (pro_from (ps_round_f so) (fo_ps so)) ->
+        (length (pending_at_f ps' (fo_cs so) (fo_f0 so) (snd <$> fo_E so))
+         < length (fo_w so))%nat).
+
+Lemma ps_len_ok_f_empty_above (so : fostage) (R : nat) :
+  ps_len_ok_f so -> (ps_round_f so <= R)%nat -> pro_from (S R) (fo_ps so) = [].
+Proof using.
+  intros [HA _] HR.
+  replace (S R) with (S (ps_round_f so) + (R - ps_round_f so))%nat by lia.
+  rewrite -pro_from_add HA. apply pro_from_nil.
+Qed.
+
+Lemma ps_len_ok_f_0 : ps_len_ok_f fostage0.
+Proof using.
+  rewrite /ps_len_ok_f /ps_round_f /fostage0.
+  cbn [fo_ps fo_cs fo_E fo_w fo_f0]. split.
+  - apply pro_from_nil.
+  - intros _ ps' Hp Hne. exfalso. apply Hne.
+    by rewrite (prefix_nil_inv ps' Hp).
+Qed.
+
+Lemma ps_len_ok_f_write (so : fostage) (b : bv 8) :
+  ps_len_ok_f so ->
+  ps_len_ok_f (MkFO (fo_ps so) (fo_cs so) (fo_E so) (fo_w so ++ [b]) (fo_f0 so)).
+Proof using.
+  intros [HA HB]. rewrite /ps_len_ok_f /ps_round_f /ps_opens_f in HA, HB |- *.
+  cbn [fo_ps fo_cs fo_E fo_w fo_f0] in HA, HB |- *. split; [exact HA |].
+  intros Ho ps' Hp Hne. rewrite (length_app (fo_w so) [b]). cbn [length].
+  pose proof (HB Ho ps' Hp Hne). lia.
+Qed.
+
+Lemma ps_len_ok_f_blk (so : fostage) (a : nat) (b : bv 8) :
+  rest_of (snd <$> fo_E so) = [] ->
+  (snd <$> fo_E so) <> [] ->
+  length (fo_cs so) = (nlines (snd <$> fo_E so) - 1)%nat ->
+  ps_len_ok_f so ->
+  ps_len_ok_f (MkFO (fo_ps so) (fo_cs so ++ [a]) (fo_E so) [b] (fo_f0 so)).
+Proof using.
+  intros Hr Hne Hq Hok.
+  pose proof (nlines_pos_of_rest_nil (snd <$> fo_E so) Hne Hr) as Hpos.
+  pose proof Hok as [HA HB].
+  rewrite /ps_len_ok_f /ps_round_f /ps_opens_f in HA, HB |- *.
+  cbn [fo_ps fo_cs fo_E fo_w fo_f0] in HA, HB |- *.
+  assert (Hold : pro_idx_f (fo_cs so) (nlines (snd <$> fo_E so))
+                 = pro_idx_f (fo_cs so) (nlines (snd <$> fo_E so) - 1)%nat).
+  { replace (nlines (snd <$> fo_E so))
+      with (S (nlines (snd <$> fo_E so) - 1))%nat at 1 by lia.
+    apply pro_idx_f_Sn. apply ralt_panic_ge. lia. }
+  assert (Hnew : (pro_idx_f (fo_cs so) (nlines (snd <$> fo_E so))
+                  <= pro_idx_f (fo_cs so ++ [a])
+                       (nlines (snd <$> fo_E so)))%nat).
+  { rewrite Hold.
+    replace (nlines (snd <$> fo_E so))
+      with (S (nlines (snd <$> fo_E so) - 1))%nat at 2 by lia.
+    rewrite pro_idx_f_S
+      (pro_idx_f_app_le (fo_cs so) [a] (nlines (snd <$> fo_E so) - 1)%nat
+         ltac:(lia)).
+    destruct (ralt_panic _); lia. }
+  split.
+  - apply (ps_len_ok_f_empty_above so); [exact Hok |].
+    rewrite /ps_round_f. exact Hnew.
+  - intros Ho ps' Hp Hne2. exfalso.
+    destruct Ho as [Hz | [_ H3]]; [by destruct (Hne Hz) |].
+    assert (Ha3 : ralt_panic (ralt_dec a) = true).
+    { rewrite /ralt_at list_lookup_total_alt lookup_app_r in H3; [| lia].
+      rewrite Hq Nat.sub_diag in H3. by cbn in H3. }
+    assert (Heq : pro_idx_f (fo_cs so ++ [a]) (nlines (snd <$> fo_E so))
+                  = S (pro_idx_f (fo_cs so) (nlines (snd <$> fo_E so)))).
+    { rewrite Hold
+        -(pro_idx_f_app_le (fo_cs so) [a] (nlines (snd <$> fo_E so) - 1)%nat
+            ltac:(lia)).
+      replace (nlines (snd <$> fo_E so))
+        with (S (nlines (snd <$> fo_E so) - 1))%nat at 1 by lia.
+      apply pro_idx_f_Sp.
+      rewrite /ralt_at list_lookup_total_alt lookup_app_r; [| lia].
+      rewrite Hq Nat.sub_diag. by cbn. }
+    rewrite Heq in Hne2. apply Hne2.
+    assert (Hnil : pro_from
+                     (S (pro_idx_f (fo_cs so) (nlines (snd <$> fo_E so))))
+                     (fo_ps so) = []) by exact HA.
+    assert (Hnil' : pro_from
+                      (S (pro_idx_f (fo_cs so) (nlines (snd <$> fo_E so))))
+                      ps' = []).
+    { apply prefix_nil_inv. rewrite -Hnil. by apply pro_from_mono. }
+    by rewrite Hnil Hnil'.
+Qed.
+
+Lemma ps_len_ok_f_echo (so : fostage) (x : list mobs * bv 8) :
+  ps_len_ok_f so ->
+  ps_len_ok_f (MkFO (fo_ps so) (fo_cs so) (fo_E so ++ [x]) [] (fo_f0 so)).
+Proof using.
+  intros Hok. pose proof Hok as [HA HB].
+  rewrite /ps_len_ok_f /ps_round_f /ps_opens_f in HA, HB |- *.
+  cbn [fo_ps fo_cs fo_E fo_w fo_f0] in HA, HB |- *.
+  rewrite fmap_app /=.
+  assert (Hmono : (pro_idx_f (fo_cs so) (nlines (snd <$> fo_E so))
+                   <= pro_idx_f (fo_cs so)
+                        (nlines ((snd <$> fo_E so) ++ [x.2])))%nat)
+    by (apply pro_idx_f_mono, nlines_app_le).
+  split.
+  - apply (ps_len_ok_f_empty_above so); [exact Hok |].
+    rewrite /ps_round_f. exact Hmono.
+  - intros Ho ps' Hp Hne. exfalso.
+    destruct Ho as [Hz | [Hr H3]].
+    { by destruct (app_eq_nil (snd <$> fo_E so) [x.2] Hz) as [_ Hb]. }
+    assert (Hx : x.2 = wl_nl).
+    { destruct (decide (x.2 = wl_nl)) as [Hx | Hx]; [exact Hx | exfalso].
+      rewrite (rest_of_snoc_other (snd <$> fo_E so) x.2 Hx) in Hr.
+      by destruct (app_eq_nil (rest_of (snd <$> fo_E so)) [x.2] Hr) as [_ Hb]. }
+    rewrite Hx (nlines_snoc_nl (snd <$> fo_E so)) in H3.
+    rewrite Hx (nlines_snoc_nl (snd <$> fo_E so)) in Hne.
+    replace (S (nlines (snd <$> fo_E so)) - 1)%nat
+      with (nlines (snd <$> fo_E so)) in H3 by lia.
+    assert (Heq : pro_idx_f (fo_cs so) (S (nlines (snd <$> fo_E so)))
+                  = S (pro_idx_f (fo_cs so) (nlines (snd <$> fo_E so))))
+      by (apply pro_idx_f_Sp; exact H3).
+    rewrite Heq in Hne. apply Hne.
+    assert (Hnil : pro_from
+                     (S (pro_idx_f (fo_cs so) (nlines (snd <$> fo_E so))))
+                     (fo_ps so) = []) by exact HA.
+    assert (Hnil' : pro_from
+                      (S (pro_idx_f (fo_cs so) (nlines (snd <$> fo_E so))))
+                      ps' = []).
+    { apply prefix_nil_inv. rewrite -Hnil. by apply pro_from_mono. }
+    by rewrite Hnil Hnil'.
+Qed.
+
+Lemma ps_len_ok_f_pro (so : fostage) (a : nat) (b : bv 8) :
+  (ps_round_f so <= pro_rounds (fo_ps so))%nat ->
+  ~ pro_done (pro_from (ps_round_f so) (fo_ps so)) ->
+  fo_w so = pending_f (fo_ps so) (fo_cs so) (fo_f0 so) (fo_E so) ->
+  ps_len_ok_f so ->
+  ps_len_ok_f (MkFO (fo_ps so ++ [a]) (fo_cs so) (fo_E so)
+                 (fo_w so ++ [b]) (fo_f0 so)).
+Proof using.
+  intros Hle Hnd Hw [HA HB].
+  rewrite /ps_len_ok_f /ps_round_f /ps_opens_f in HA, HB, Hle, Hnd |- *.
+  cbn [fo_ps fo_cs fo_E fo_w fo_f0] in HA, HB, Hle, Hnd |- *. split.
+  - replace (S (pro_idx_f (fo_cs so) (nlines (snd <$> fo_E so))))
+      with (pro_idx_f (fo_cs so) (nlines (snd <$> fo_E so)) + 1)%nat by lia.
+    rewrite -pro_from_add (pro_from_snoc_le _ (fo_ps so) a Hle).
+    cbn [pro_from]. by apply pro_tail_open_snoc.
+  - intros Ho ps' Hp Hne. rewrite (length_app (fo_w so) [b]). cbn [length].
+    destruct (decide (length ps' <= length (fo_ps so))%nat) as [Hlen | Hlen].
+    + assert (Hp2 : ps' `prefix_of` fo_ps so).
+      { destruct (prefix_weak_total ps' (fo_ps so) (fo_ps so ++ [a]) Hp
+                    ltac:(by eexists)) as [H | H]; [exact H |].
+        rewrite (prefix_length_eq _ _ H ltac:(lia)). reflexivity. }
+      pose proof (prefix_length _ _ (pending_at_f_ps_mono ps' (fo_ps so)
+                    (fo_cs so) (fo_f0 so) (snd <$> fo_E so) Hp2)) as Hlp.
+      rewrite -/(pending_f (fo_ps so) (fo_cs so) (fo_f0 so) (fo_E so)) -Hw
+        in Hlp. lia.
+    + rewrite (prefix_length_eq ps' (fo_ps so ++ [a]) Hp) in Hne;
+        last by (rewrite (length_app (fo_ps so) [a]); cbn [length]; lia).
+      by destruct (Hne eq_refl).
+Qed.
+
+(* ====================================================================== *)
+(*  10.  THE STAGE'S WHOLE PURE ACCOUNT                                    *)
+(* ====================================================================== *)
+
+Definition feout_pure (k : nat) (ho : list mobs) (so : fostage)
+    (acc : list (bv 8)) : Prop :=
+  acc = D_f (fo_ps so) (fo_cs so) (fo_f0 so) (fo_E so) ++ fo_w so
+  /\ fo_w so `prefix_of` pending_f (fo_ps so) (fo_cs so) (fo_f0 so) (fo_E so)
+  /\ E_index (fo_E so)
+  /\ E_disc_f (fo_E so)
+  /\ Forall (fun a => (a < length pro_alts)%nat) (fo_ps so)
+  /\ pro_pin_f (fo_ps so) (fo_cs so) (snd <$> fo_E so)
+  /\ alts_pre (snd <$> fo_E so) (fo_cs so)
+  /\ Forall (fun x => disc_seg_f (ehist x)) (fo_E so)
+  /\ Forall (fun x => ehist x `prefix_of` open_seg ho) (fo_E so)
+  /\ (length (fo_E so) <= length (ins (open_seg ho)))%nat
+  /\ (fo_E so = [] \/ obs_boots ho = k)
+  (* THE TWO CLAUSES THE FILE ADDS.  The first is design section 4.1's
+     "[o_f0] is [None] until the era's first process byte": the era's boot
+     state is not read before it is filed, and the discipline puts no input
+     before init's banner.  The second is what the determinacy argument
+     spends -- a file holds a content, never junk. *)
+  /\ (fo_f0 so = None -> fo_E so = [] /\ fo_w so = [])
+  /\ fst_ok (f0_st (fo_f0 so)).
+
+Lemma feout_pure_0 k ho : feout_pure k ho fostage0 [].
+Proof using.
+  rewrite /feout_pure /fostage0. cbn [fo_ps fo_cs fo_E fo_w fo_f0].
+  split_and!.
+  - rewrite D_f_nil. done.
+  - rewrite pending_f_nil. apply prefix_nil.
+  - intros j x Hx. by rewrite lookup_nil in Hx.
+  - rewrite /E_disc_f fmap_nil. exact disc_input_f_nil.
+  - constructor.
+  - rewrite fmap_nil. intros q Hq. rewrite nstarted_nil in Hq. lia.
+  - apply alts_pre_nil.
+  - constructor.
+  - constructor.
+  - cbn [length]. lia.
+  - by left.
+  - by intros _.
+  - exact I.
+Qed.

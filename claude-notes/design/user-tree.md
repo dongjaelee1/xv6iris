@@ -2463,3 +2463,122 @@ at-boot form stands unrenamed and the tree audit is unmoved.  What the
 theorem says is therefore still §9.3(2)'s; what the lane bought is that
 the premise list is down from TWO open entries to ONE, and that one is a
 ruling.
+
+### 9.7 TL-8 as landed — the exec supply is the TAINT's, TL-7's wall is closed, and D4 is a token count
+
+Branch `tl8-exec-sup`, two commits, ONE new file `iris/UInitTreeExec.v`
+(row after `UInitTreeBoot` in `_CoqProject`).  `UkInit.v` / `UInitSh.v` /
+`UInitBoot.v` / `UInitKernel.v` / `UInitBootAdequacy.v` untouched; echo
+audit **14** and tree audit **13**, both unmoved.
+
+**(1) D3 LANDED, AND §9.6(4)'s RULING IS NO LONGER NEEDED.**  The tree
+pays `UkInit.init_cons_sup` WITHOUT echo's producer and therefore without
+`UInitSh.cons_cred_holds`'s ten laws — so the update-recut of its eighth
+conjunct that §9.6(4) asked the owner for is withdrawn, and so is the
+smaller entry about its first conjunct (sh's read leaf).  Four statements:
+
+| statement | what it is |
+| --- | --- |
+| `UInitTreeExec.tree_gen_slot` | the generic user slot off the taint — `AppTree.tree_sup_of_taint` into `UexecExecMint.uslot_mint_all`, with the output licence (`WpUart.cons_licence_triv`) and the kill credential (`kill_cred_triv`) free at this record's interface, exactly the two readings `UInitTree.tree_init_deps` already makes |
+| `UInitTreeExec.tree_image_entry_taint` | `ExecEntry.image_entry_taint` at the lease's payload (`UserConsole.ucons_pay_eta` / `_taint`) — a CLOSED statement: the taint is its argument, which is what makes it usable before the round's lend has been read |
+| `UInitTreeExec.tree_init_exec_sup_lend` | `tree_taint c -∗ UkInit.init_exec_sup_lend cn (tree_taint c) stc (tree_cc c)`: (W) is `ExecRun.exec_walk_of_taint`, (E) is `image_entry_of_taint`, (L) is `ElfLoadable.sh_elf_loadable`, the one reading left is /init's own path out of its rodata (`UInitSh.init_sh_path_of`), and the refund is the lend itself by framing (`UkInit.init_lend_ref`) |
+| `UInitTreeExec.tree_init_cons_sup` | `⊢ UkInit.init_cons_sup cn (tree_taint c) (tree_taint c) stc (tree_cc c)` — **`Cns := tree_taint c`**, both halves one line |
+
+`Print Assumptions` on all four: the two reservation `Parameter`s, the
+`PrimInt63`/`PrimString` primitives (they arrive with the image bytes,
+through `init_sh_path_of` and `ElfUser.sh_elf`) and
+`functional_extensionality_dep`.  Nothing beyond the standing bar.
+
+**(2) THE BRIEF'S ROUTE IS REFUTED — the supply is NOT payable at
+`Cns := True`, and the reason is a token count.**  The brief asked for the
+supply from the lend: take `UkInit.init_lend_cred` (`UkInit.v:1687`) and,
+on the closed row, MINT its `cc_wbn` into the taint.  That row at
+`UInitTree.tree_cc` (`UInitTree.v:121`) is the era's UNSPENT LICENCE, and
+one licence cannot pay the node:
+
+- there is **no update door**.  The node's conclusion
+  `UkRunExecRef.udepw_at_refR_ids` (`UkRunExecRef.v:240`) is update-free,
+  and `UkInit.init_exec_sup_lend` (`UkInit.v:1806`) is a `□` — so a linear
+  licence can only be spent INSIDE the node's own construction.
+- inside, the taint is owed in **three `∗`-separated places**: both slot
+  wands of `SpecKexec.exec_slot_pre` (`SpecKexec.v:861`, whose own comment
+  says the bundle carries both arms though one fires), and the deposit's
+  REFUND, which must be `UkInit.init_lend_ref` (`UkInit.v:1755`) — the lend
+  again.  `PieceFam.pf_at`'s `∧` (`PieceFam.v:99`) covers fire-versus-
+  refund and NOT the two arms; the walk's cursor (`FsAbsEra.ex_start`,
+  `FsAbsEra.v:939`, a fancy update — the one place a mint could run) and
+  the observation's receipt each reach both arms, but both live in
+  conjuncts `∗`-separated from the refund
+  (`SpecSysExec.sys_exec_au_pre`, `SpecSysExec.v:265`).
+
+So the design's own answer is the one that lands: the shell's entry is the
+GENERIC slot, the generic slot is bought with the taint and nothing weaker
+buys it, therefore the credential /init's dance leaves IS the taint.
+
+**(3) EVERYTHING ELSE OF /init's PREMISE LIST IS PAID.**
+`UInitTreeExec.tree_init_boot_con` is `UInitKernel.init_boot_con`
+(`UInitKernel.v:679`) at the tree claim with every premise discharged: the
+deposits (`UInitTree.tree_init_deps`), the kill row
+(`UInitTree.tree_init_kill_law`, §9.5(2)), the exec supply above, and —
+verbatim from echo, as §9.5(5) predicted — the room arithmetic
+(`UInitBoot.init_boot_room`), `fdt0_length`, the head `eq_refl`,
+`fdv_nopipe_closed` and `psok` at the free instance.
+`UInitTreeExec.tree_init_boot_pay` then assembles
+`UInitKernel.init_boot_pay` (`UInitKernel.v:666`) from its only two costly
+conjuncts: the banner law and the two diagnostics are `UInitTree`'s off the
+deposits, and `cc_rd` is `True` (`tree_cc_rd_triv`).
+
+**(4) D4 NOT LANDED, AND THE WALL IS ONE LICENCE SHORT PER ERA.**
+`init_boot_pay`'s two remaining conjuncts are
+`init_cons_dance_all T Cns stc` and `(cc_wbn Cr) 0`, and they are
+`∗`-separated:
+
+- with `Cns := tree_taint c` (which (2) forces), the dance's leaves must
+  PRODUCE the taint, i.e. spend a licence (`AppTree.tree_taint_mint`,
+  `AppTree.v:1424`).  TL-7's dance
+  (`UInitTreeBoot.tree_init_cons_dance_all`) is landed at `Cns := True`
+  with `K` the DEED, so it would be restated with `K := deed ∗ tree_turn c`
+  and the mint inside `UkInit.uki_mknod_leaf`'s WP — where an update does
+  run.
+- `(cc_wbn Cr) 0` is the era's licence too, by construction: that is what
+  makes the banner the mint (§9.5(3)), and dropping `cc_wb`'s licence arm
+  is what §9.6(4) already ruled out.
+
+`App.al_pow` files exactly ONE row per power-on
+(`AppTree.tree_licence_mint`, `AppTree.v:1401`), so the two conjuncts
+cannot both be paid.  **The cheap fix, priced and not taken (it is the
+owner's/Fable's to rule):** make the licence SPLITTABLE —
+`tree_turn c := ∃ k q, k ↪[c]{#q} tt` instead of the whole element, with
+`tree_turn_split` halving `q`.  `tree_taint_mint` is unchanged
+(`ghost_map_elem_persist` runs at any `dq`), and it costs the claim
+NOTHING: after one mint the taint is persistent, `tree_sup_of_taint` gives
+`AppInv.app_sup`, and every later move is free anyway — so a second half
+buys no unpaid move that the first did not already buy.  `tree_turn` has
+16 occurrences in four files (`AppTree.v`, `TreeMove.v`, `UInitTree.v`,
+`UInitTreeBoot.v`); the cone under `AppTree.v` is the thirteen tree files.
+
+**(5) A SECOND D4 ENTRY, found while pricing (4) and worth stating before
+anyone starts.**  `UInitBoot.init_boot_bundle_of_pinned`
+(`UInitBoot.v:442`) — the step from /init's slot to
+`InitBoot.init_boot_bundle` — takes the pin law
+`□ (∀ v, app_pred app_run v -∗ app_pred app_run v ∗ (⌜era0_pins v⌝ ∨ T))`,
+i.e. /init's OWN image pinned at `INIT_INO`.  The tree claim does not pin
+the image; it pins the PARTITION.  The law is derivable from the era's
+DEED at the image tree (`TreeObs.tree_own_claim_law` plus a computation on
+the deed's `ttree`, §9.3(4)'s "case on whether the deed's tree resolves
+what it needs"), but that is a deed-indexed twin of the lemma, not an
+instantiation of it, and the deed is then owed in two places again (the
+boot walk and the dance).  A behavioural `tree_Hinit_boot` therefore needs
+`init_boot_bundle_of_own` beside the licence ruling.
+
+**WHAT THE THEOREM SAYS TODAY.**  Unchanged from §9.3(2):
+`UTreeAdequacy.tree_adequacy_treeΣ` still points at the AT-BOOT
+`tree_Hinit_boot`, so the whole-system theorem holds at the tree claim with
+the era's first process taken as unverified and the claim recording it at
+boot.  What TL-8 buys is that the gap between that and the behavioural
+statement is now entirely accounted for: /init's own walk at the tree claim
+has NO echo-indexed premise left — the setup is proved against the deed
+(TL-7), the banner mints at its first byte (TL-6), the exec of /sh is the
+generic slot bought with the taint (TL-8) — and the two things still owed
+are a ruling about the era licence's algebra and one deed-indexed twin of
+echo's boot-bundle lemma.

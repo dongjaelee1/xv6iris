@@ -1119,22 +1119,26 @@ Section UkCat.
           WP (Loop : expr riscv_lang)) -∗
        WP (Loop : expr riscv_lang))%I.
 
-  Lemma kcat_o_of_law (pv : mword 64) (l : list fdstate) (Oi : iProp Σ)
-      (Oo : mword 64 -> iProp Σ) :
+  (* THE FREE INSTANCE: the landed stub's own post, with the LEDGER coming
+     in and going back out through the obligation's two halves.  A caller
+     that wants to attach more to it -- a diagnostic run, a round for the
+     file it just opened -- does so with [kcat_o_mono], which takes an
+     IRIS wand and can therefore use the laws the caller holds. *)
+  Lemma kcat_o_of_law (pv : mword 64) (l : list fdstate) :
     fd_lowest_closed l = None ->
-    (forall ret : mword 64,
-       ((((∃ (fd : nat) (rd wr : bool) (t : fdtype),
-             ⌜ret = (mword_of_int (Z.of_nat fd) : mword 64)
-              /\ (fd < NOFILE)%nat⌝ ∗ ufd γfd fd (FdOpen rd wr t))
-          ∨ ⌜ret = (mword_of_int (-1) : mword 64)⌝)
-         ∗ ustd γfd l) ∗ Oi) ⊢ Oo ret) ->
-    udepw_law 15 -∗ ustd γfd l -∗ kcat_o pv Oi Oo.
+    udepw_law 15 -∗
+    kcat_o pv (ustd γfd l)
+      (fun ret : mword 64 =>
+         (((∃ (fd : nat) (rd wr : bool) (t : fdtype),
+              ⌜ret = (mword_of_int (Z.of_nat fd) : mword 64)
+               /\ (fd < NOFILE)%nat⌝ ∗ ufd γfd fd (FdOpen rd wr t))
+           ∨ ⌜ret = (mword_of_int (-1) : mword 64)⌝)
+          ∗ ustd γfd l)%I).
   Proof using .
-    intros Hnone Hm. iIntros "#Hop Hstd" (h m avail) "_ _ #Hcode HOi Hrun Hcont".
+    intros Hnone. iIntros "#Hop" (h m avail) "_ _ #Hcode Hstd Hrun Hcont".
     iApply (wp_kcat_open h m l avail Hnone with "Hop Hcode Hrun Hstd").
     iIntros (h' ret) "Hfdh Hstd Hrun".
-    iApply ("Hcont" $! h' ret with "[Hfdh Hstd HOi] Hrun").
-    iApply (Hm ret). iFrame "Hfdh Hstd HOi".
+    iApply ("Hcont" $! h' ret with "[Hfdh Hstd] Hrun"). iFrame "Hfdh Hstd".
   Qed.
 
   Definition kcat_cl (fd : nat) (Ci Co : iProp Σ) : iProp Σ :=
@@ -1152,14 +1156,31 @@ Section UkCat.
           WP (Loop : expr riscv_lang)) -∗
        WP (Loop : expr riscv_lang))%I.
 
-  Lemma kcat_cl_of_dep (fd : nat) (st : fdstate) (Ci Co : iProp Σ) :
-    (Ci ⊢ Co) ->
-    kcat_cldep st -∗ ufd γfd fd st -∗ kcat_cl fd Ci Co.
+  (* ...and the open's output side is MONOTONE.  The wand is an IRIS one
+     and not a Coq entailment, because what a caller wants to attach to
+     the raw post -- the diagnostic run, a round for the file -- is itself
+     built out of the laws it holds. *)
+  Lemma kcat_o_mono (pv : mword 64) (Oi : iProp Σ)
+      (Oo Oo' : mword 64 -> iProp Σ) :
+    (∀ ret : mword 64, Oo ret -∗ Oo' ret) -∗
+    kcat_o pv Oi Oo -∗ kcat_o pv Oi Oo'.
   Proof using .
-    intros Hm. iIntros "#Hdp Hfdh" (h m avail) "%Ha0 #Hcode HCi Hrun Hcont".
+    iIntros "Hm Ho" (h m avail) "%Ha0 %Ha1 #Hcode HOi Hrun Hcont".
+    iApply ("Ho" $! h m avail with "[%] [%] Hcode HOi Hrun");
+      [ exact Ha0 | exact Ha1 | ].
+    iIntros (h' ret) "HOo Hrun".
+    iApply ("Hcont" $! h' ret with "[Hm HOo] Hrun").
+    iApply ("Hm" with "HOo").
+  Qed.
+
+  Lemma kcat_cl_of_dep (fd : nat) (st : fdstate) (Ci Co : iProp Σ) :
+    kcat_cldep st -∗ ufd γfd fd st -∗ (Ci -∗ Co) -∗ kcat_cl fd Ci Co.
+  Proof using .
+    iIntros "#Hdp Hfdh Hm" (h m avail) "%Ha0 #Hcode HCi Hrun Hcont".
     iApply (wp_kcat_close h m fd st avail Ha0 with "Hdp Hcode Hrun Hfdh").
     iIntros (h' ret) "Hrun".
-    iApply ("Hcont" $! h' ret with "[HCi] Hrun"). by iApply Hm.
+    iApply ("Hcont" $! h' ret with "[Hm HCi] Hrun").
+    iApply ("Hm" with "HCi").
   Qed.
 
 End UkCat.

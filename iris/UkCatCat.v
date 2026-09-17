@@ -450,6 +450,47 @@ Section UkCatCat.
     Persistent (kcat_round fdv I Cend).
   Proof using . rewrite /kcat_round. apply _. Qed.
 
+  (* ...AND THE FREE ROUND (lane CAT-WALK, W1).  This is the whole of what
+     the landed, claim-free loop said, as ONE corollary at the free laws:
+     the read pays from [udepw_law 5], every write from [udepw_law 16],
+     nothing is carried and nothing is claimed.  A program entering on the
+     generic path builds its round with this and gets the old statement
+     back; it is also the VACUITY GUARD for the restatement -- the
+     obligations above are satisfiable, so [wp_kcat_cat_loop] is not
+     vacuously true. *)
+  Lemma kcat_round_of_law (fdv : mword 64) :
+    (⊢ ukn_pay N (-1)) ->
+    udepw_law 5 -∗ udepw_law 16 -∗ kcat_round fdv emp%I emp%I.
+  Proof using .
+    intros Hfree. iIntros "#Hrd #Hwr". rewrite /kcat_round. iModIntro.
+    iIntros (h m avail f) "_ %Ha1 %Ha2 #Hcode _ Hbuf Hrun Hcont".
+    iApply (UkCat.wp_kcat_read N CatSyms.buf 512 f h m avail Ha1 Ha2
+              with "Hrd Hcode Hbuf Hrun").
+    iIntros (h' ret g) "Hbuf Hrun".
+    iApply ("Hcont" $! h' ret g with "[] Hbuf Hrun").
+    iSplit; [| iSplit ].
+    - iIntros "_". rewrite /kcat_dg_cr.
+      iApply (UkCat.kcat_pay_seq_of_law N (mword_of_int 2) (cat_lit 0x9c8)
+                16%nat (ukn_pay N (-1)) Hfree 0%nat with "Hwr").
+    - by iIntros "_".
+    - iIntros (nb) "_ _".
+      iApply (UkCat.kcat_w_mono N (mword_of_int 1)
+                (mword_of_int CatSyms.buf) nb
+                (ubytes γd CatSyms.buf 512 g)
+                (ubytes γd CatSyms.buf 512 g)
+                ((emp ∧ kcat_dg_cw) ∗ ubytes γd CatSyms.buf 512 g)%I
+                with "[] []").
+      + iIntros "Hb". iSplitR "Hb"; [ | iExact "Hb" ].
+        iSplit; [ done | ]. rewrite /kcat_dg_cw.
+        iApply (UkCat.kcat_pay_seq_of_law N (mword_of_int 2) (cat_lit 0x9b0)
+                  17%nat (ukn_pay N (-1)) Hfree 0%nat with "Hwr").
+      + iApply (UkCat.kcat_w_of_law N (mword_of_int 1)
+                  (mword_of_int CatSyms.buf) nb
+                  (ubytes γd CatSyms.buf 512 g)
+                  (ubytes γd CatSyms.buf 512 g)
+                  ltac:(reflexivity) with "Hwr").
+  Qed.
+
   Lemma wp_kcat_cat_die_cw (hcw : CpuId) (mcw0 : regfile) (n : nat) :
     kcat_dg_cw -∗
     cat_code γt -∗ cat_rodata γt -∗

@@ -337,6 +337,97 @@ Section UkCatMain.
      ∧ (⌜(2 <= length args)%nat⌝ -∗
           kcat_pay args 1%nat (length args - 1)%nat Ci Cend))%I.
 
+  (* ===================================================================== *)
+  (* THE FREE CHAIN (lane CAT-WALK, W1).                                    *)
+  (*                                                                       *)
+  (* [UEchoKernel.echo_uexec_slot]'s pattern: the whole of what the landed,
+     claim-free walk said is ONE corollary at the four free laws, so a
+     program entering on the generic path instantiates the restated walk
+     in a line and gets the old statement back.  NOTHING OUTSIDE
+     [UkCat*.v] requires cat's walk today, so there is no caller to fix --
+     but this is also the VACUITY GUARD: it witnesses that the payments
+     [wp_kcat_start] now asks for are satisfiable, and hence that the
+     restated walk is not vacuously true.                                  *)
+  (* ===================================================================== *)
+  Lemma kcat_file_of_law (g : uarg) (l : list fdstate) :
+    (⊢ ukn_pay N (-1)) ->
+    fd_lowest_closed l = None ->
+    udepw_law 5 -∗ udepw_law 15 -∗ udepw_law 16 -∗ udepw_law 21 -∗
+    kcat_file g (ustd γfd l) (ustd γfd l).
+  Proof using .
+    intros Hfree Hnone. iIntros "#Hrd #Hop #Hwr #Hcl".
+    assert (Hm1s : bv_signed (mword_of_int (-1) : mword 64) = -1)
+      by (vm_compute; reflexivity).
+    rewrite /kcat_file.
+    iApply (UkCat.kcat_o_mono N (mword_of_int (ua_ptr g)) (ustd γfd l)
+              with "[] []"); last first.
+    { iApply (UkCat.kcat_o_of_law N (mword_of_int (ua_ptr g)) l Hnone
+                with "Hop"). }
+    iIntros (ret) "[Harm Hstd]". iSplit.
+    - (* the open failed: the diagnostic run, then the exit *)
+      iIntros "_". rewrite /kcat_dg_open.
+      iExists emp%I, emp%I. iSplitR; [| iSplitR ].
+      + iApply (UkCat.kcat_pay_seq_of_law N (mword_of_int 2) cm_lit
+                  cm_msg_q emp%I ltac:(done) 0%nat with "Hwr").
+      + iApply (UkCat.kcat_pay_seq_of_law N (mword_of_int 2) (ua_bytes g)
+                  (ua_len g) emp%I ltac:(done) 0%nat with "Hwr").
+      + iApply (UkCat.kcat_pay_seq_of_law N (mword_of_int 2) cm_lit
+                  (cm_msg_len - S (S cm_msg_q))%nat (ukn_pay N (-1)) Hfree
+                  (S (S cm_msg_q)) with "Hwr").
+    - (* it succeeded: a round for the content, then the close *)
+      iIntros "%Hpos".
+      iDestruct "Harm" as "[Hok | %Hm1]"; last first.
+      { exfalso. rewrite Hm1 Hm1s in Hpos. lia. }
+      iDestruct "Hok" as (fd rd wr t) "[[%Hr %Hlt] Hh]".
+      iExists fd, emp%I. iSplitR; [ by iPureIntro | ].
+      iSplitR; [ by iPureIntro | ]. iSplitR "Hh Hstd".
+      + rewrite /kcat_run0. iExists emp%I, emp%I. iSplitR; [| iSplitR ].
+        * iApply (kcat_round_of_law N (mword_of_int (Z.of_nat fd)) Hfree
+                    with "Hrd Hwr").
+        * done.
+        * by iIntros "_".
+      + iApply (UkCat.kcat_cl_of_dep N fd (FdOpen rd wr t) emp%I
+                  (ustd γfd l) with "[] Hh [Hstd]").
+        { iApply (UkCat.kcat_cldep_of_law N (FdOpen rd wr t) with "Hcl"). }
+        { iIntros "_". iExact "Hstd". }
+  Qed.
+
+  Lemma kcat_pay_of_law (args : list uarg) (l : list fdstate) (k : nat) :
+    (⊢ ukn_pay N (-1)) ->
+    fd_lowest_closed l = None ->
+    forall i : nat, (i + k <= length args)%nat ->
+      udepw_law 5 -∗ udepw_law 15 -∗ udepw_law 16 -∗ udepw_law 21 -∗
+      kcat_pay args i k (ustd γfd l) (ukn_pay N (-1)).
+  Proof using .
+    intros Hfree Hnone. induction k as [| k IH]; intros i Hik;
+      iIntros "#Hrd #Hop #Hwr #Hcl".
+    - cbn [kcat_pay]. iIntros "_". iApply Hfree.
+    - cbn [kcat_pay].
+      destruct (lookup_lt_is_Some_2 args i ltac:(lia)) as [g Hg].
+      iExists g, (ustd γfd l). iSplitR; [ by iPureIntro | ]. iSplitR.
+      + iApply (kcat_file_of_law g l Hfree Hnone with "Hrd Hop Hwr Hcl").
+      + iApply (IH (S i) ltac:(lia) with "Hrd Hop Hwr Hcl").
+  Qed.
+
+  Lemma kcat_pay_all_of_law (args : list uarg) (l : list fdstate) :
+    (⊢ ukn_pay N (-1)) ->
+    fd_lowest_closed l = None ->
+    udepw_law 5 -∗ udepw_law 15 -∗ udepw_law 16 -∗ udepw_law 21 -∗
+    kcat_pay_all args (ustd γfd l) (ukn_pay N (-1)).
+  Proof using .
+    intros Hfree Hnone. iIntros "#Hrd #Hop #Hwr #Hcl".
+    rewrite /kcat_pay_all. iSplit.
+    - iIntros "_". iExists emp%I. iSplitR.
+      + rewrite /kcat_run0. iExists emp%I, emp%I. iSplitR; [| iSplitR ].
+        * iApply (kcat_round_of_law N (mword_of_int 0) Hfree with "Hrd Hwr").
+        * done.
+        * by iIntros "_".
+      + iIntros "_". iApply Hfree.
+    - iIntros "%Hge".
+      iApply (kcat_pay_of_law args l (length args - 1)%nat Hfree Hnone
+                1%nat ltac:(lia) with "Hrd Hop Hwr Hcl").
+  Qed.
+
   (* --------------------------------------------------------------------- *)
   (* THE OPEN-FAILURE ARM, 0xde -> exit.                                    *)
   (*                                                                        *)

@@ -603,3 +603,203 @@ cannot reach echo's entry.**  The two ways out, both the designer's:
 Until one is taken, `UEchoFile`'s WRITE post can be planned against finding 4
 (the arm split is a mechanical consequence of R2) but its EXEC step cannot,
 and `UCatKernel`'s open-at-a-held-offset hits the same wall one syscall over.
+
+### OFF-HAND-4 (kernel/U tier, 2026-09-17) — THE CARRIER IS THE SET; THE VERIFIED ENTRIES DROP THE ROW; THE SURRENDER'S HOME IS NOT THE TAINT ARM, AND THE EVIDENCE IS ONE CONSUMER CHAIN
+
+**The lane's verdict in one line: S1 landed exactly as design/app-file.md
+§3 fact 4 rules it, and so did the HALF of S2 the ruling is really about —
+a verified entry no longer receives "the table is all parked", so a held
+row may cross `exec` into a verified image.  The OTHER half — the taint
+arm taking `FdPark.uoff_surr_at` in place of the pure row — is REFUTED AS
+STATED by its own consumer chain, and the refutation says where the
+surrender bundle does belong.  S3 is not attempted and the ordering fact
+that decides it is recorded.  Everything below is checked at the statement
+in the tree.**
+
+**WHAT LANDED** (whole tree green on the lane's remote tree, `make -f
+CoqMakefile -j32 -k`, `EXIT=0`, zero `Error`, `make -n` reports nothing
+left; `make audit-all-only`: echo audit fourteen, system audit thirteen;
+every new result `Proof using`).  Two commits, each green on its own.
+
+*(1) `22292e156` — S1: the carrier is the SET of descriptors a record may hold*
+
+- `UkRun.uk_names`'s `ukn_park : bool` is `ukn_held : gset nat`.  `∅` is
+  what `true` was and `ukn_parked` is that as a class
+  (`ukn_parked_eq : ukn_held N = ∅`), so **no landed site's spelling
+  moved** — `urun_rows_parked`, `UkSh.ush_gen_slot` and the five entry
+  constructors read exactly as before, one word apart.
+- `UsysMemOk.fdv_held_in H l` is the row, IN THE CONTRAPOSITIVE — every
+  UNPARKED row's index is in `H` — because that is the direction every
+  consumer has it, and it makes the set an OVER-approximation (so a record
+  may be minted at a set wider than it holds, and a fork may widen its
+  child's).  `fdv_held_in_empty` is the reading at `∅`,
+  `fdv_held_in_of_parked` the other way, `fdv_held_in_mono` the widening,
+  `fdv_held_in_insert` / `_closed` the kit.
+- `UkRun.urun_parked_row N fdv := fdv_held_in (ukn_held N) fdv`, and
+  `urun_rows` is the same bundled conjunct — so the 103 leaves that
+  destructure `urun` positionally still do not move.  `urun_rows_held` is
+  the new projection (`urun_rows` is persistent, so reading the row off a
+  run a leaf is KEEPING costs it nothing).
+- `uslot_of_urun` / `_all` / `_ro` mint at a caller-chosen `hs : gset nat`
+  with `fdv_held_in hs (uvis_fd W)` as the honest premise and hand the
+  program `⌜ukn_held N = hs⌝`.  `UkFork.wp_uk_ecall_fork` / `_argv` mint
+  the CHILD at a PARENT-CHOSEN `hs` with `ukn_held N ⊆ hs`, and the child
+  arm carries `⌜ukn_held N' = hs⌝`: the child's table IS the parent's, so
+  any superset is honest, and the redirect child of §3 has no other place
+  to say it may hold slot 1.
+
+*(2) `6cdf267bf` — S2's verified half: the entries drop the row*
+
+- `ExecEntry.image_entry_at` / `image_entry` DROP
+  `⌜FdSlots.fdv_all_parked (uvis_fd W')⌝`, and so do the four inline
+  VERIFIED spellings on `PinnedExec.pex_slot` / `pex_slot_at` /
+  `pinned_exec_bundle` / `_at`.  `image_entry_taint` KEEPS its row (see
+  finding 1).
+- **The fact is not lost, it moves to the party that can state it.**
+  `SpecKexec.kexec_image_ok_fd` pins `uvis_fd W' = sts` and `sts` is a
+  PARAMETER of the entry, so each verified constructor says the discipline
+  about the table it is stated at: `UShKernel.sh_image_entry_at`,
+  `UShEcho.echo_image_entry` and `ExecRun.image_entry_of_taint` take
+  `fdv_all_parked sts`; `UInitSh.init_sh_image_entry` takes
+  `fdv_all_parked fdv`.
+- **AND /init SUPPLIES IT FROM ITS OWN RUN** (`UkRun.urun_rows_parked` at
+  the empty held set).  That is precisely what lane OFF-HAND-2 recorded as
+  impossible and `UInitSh.v:1376`'s note said in so many words — "only
+  `take NSTD fdv = l` … the rest of the table is unconstrained at this
+  tier, which is why the premise must ride the kexec SLOT WANDS".  The
+  set-valued carrier is what makes it possible; the note is rewritten.
+  sh does the same for its /echo child.
+- What that costs: the empty held set becomes a PURE ROW on every exec
+  supply and fork arm that reaches an entry — `UkInit.init_exec_sup_pos`,
+  `UkShEcho.sh_exec_sup_echo`, `UkShFork.ushf_child_law` and
+  `wp_kshf_fork_core`'s child arm, `UkShRun.wp_kshr_fork` /
+  `wp_kshr_fork1` / runcmd's two child arms, `UkShDiag.wp_kshr_fork1_final`,
+  `UkInitMain`'s fork wrapper and `wp_kinit_main_child`,
+  `UkShEcho.wp_kshr_exec_echo` / `wp_kshm_child_echo` — read off
+  `UkSh.ush_gen_slot_held` (new) at sh and off `UkRun.ukn_parked` at /init.
+
+**STATEMENTS THAT CHANGED SHAPE** (exhaustive).  S1: `UkRun.uk_names`
+(hence `MkUkNames`'s last argument type), `ukn_parked`,
+`urun_parked_row`, `urun_rows_step` (a new guard at `USYS_dup`),
+`urun_rows_dup` (`+ fdst_parked st`), `urun_rows_copy`
+(`+ fdst_parked (fdv !!! k)`), `urun_gen` (`ukn_held N = ∅`),
+`uslot_of_urun` / `_all` / `_ro`; NEW `UkRun.urun_rows_held`;
+`UkRunSys.wp_uk_ecall_dup` / `wp_uk_ecall_dup_untracked`
+(`+ ukn_held N = ∅`); `UkFork.wp_uk_ecall_fork` / `wp_uk_ecall_fork_argv`;
+`UkSh.ush_gen_slot`; NEW in `UsysMemOk`: `fdv_held_in`,
+`fdv_held_in_of_parked`, `fdv_held_in_empty`, `fdv_held_in_mono`,
+`fdv_held_in_insert`, `fdv_held_in_closed`, `usys_fd_ok_held`; `UkInit.v`
+and `UkInitMain.v` gained a section `Context {!ukn_parked N}` (named only
+in the `Proof using` of the lemmas that walk a dup or an exec).
+S2: `ExecEntry.image_entry_at` / `image_entry` (and `image_entry_of_at` /
+`image_entry_at_of`, `ExecArgs`'s reading bridge);
+`PinnedExec.pex_slot` / `pex_slot_at` / `pinned_exec_bundle` / `_at`;
+`ExecRun.image_entry_of_taint` (`+ fdv_all_parked sts`) and
+`wp_uk_ecall_exec_taint_test` (`+ ukn_held N = ∅`);
+`UShKernel.sh_image_entry_at`; `UShEcho.echo_image_entry`;
+`UkShEcho.wp_kshr_exec_echo` / `wp_kshm_child_echo` /
+`sh_exec_sup_echo`; `UkShFork.ushf_child_law` /
+`wp_kshf_fork_core`'s child arm; `UkShRun.wp_kshr_fork` /
+`wp_kshr_fork1` / `wp_kshr_runcmd`'s two child arms;
+`UkShDiag.wp_kshr_fork1_final`; `UkInit.init_exec_sup_pos`;
+`UkInitMain.wp_kinit_main_child` and its fork wrapper;
+`UInitSh.init_sh_image_entry`; NEW `UkSh.ush_gen_slot_held`.
+**Nothing in `SpecKexec`, `ProofKexec`, `ProofSyscall`, `ProcInv`,
+`FdPark`, `FileInvDefs`, `FileInv`, `UexecRet`, `UexecSG`,
+`UexecExecInst`, `FsAbsInvFire`, `InitBoot` or `UInitBoot` moved.**
+
+**REFUTED / BLOCKED, with the evidence.**
+
+1. **THE TAINT ARM CANNOT TAKE THE SURRENDER BUNDLE, AND ITS OWN CONSUMER
+   CHAIN IS WHY.**  `ExecEntry.image_entry_taint`'s row is spent by
+   `UexecExecMint.uslot_mint` (`:397`) → `UexecCond.cond_entry_slot`
+   (`:348`) → **the two GATED VERIFIED arms** `sync_gate_slot` (`:271`)
+   and `echo_gate_slot` (`:306`), and those need the PURE
+   `fdv_all_parked (uvis_fd W)` because they mint a verified record at
+   `ukn_held = ∅` — `UkRun.uslot_of_urun*`'s honest premise, which is a
+   fact about the table and not a resource.  `FdPark.uoff_surr_at`
+   (`:347`) is `⌜fdv_all_parked sts⌝ ∨ uoff_surrs sts`; its right disjunct
+   is a big-op of EXCLUSIVE `uoff` halves, no lemma turns it into a pure
+   fact, and SPENDING it (`FdPark.fd_frags_park_at`, `:366`) produces a
+   DIFFERENT table `fdv_park sts` — so a slot at the key whose table is
+   `sts` cannot be minted from the halves at all.  The generic TAIL of
+   `cond_entry_slot` needs nothing today, so an `image_entry_taint` at
+   `uoff_surr_at` would simply drop the bundle unspent: sound, and
+   vacuous.
+   **WHERE THE BUNDLE DOES BELONG is where `FdPark.v:577` already says:
+   the fork/exec DEPOSIT, spent by the KERNEL before the key is built.**
+   `SpecKexec.exec_slot_pre`'s rows are kernel-supplied,
+   `fd_frags_park_at` is the kernel's step, and `ProofSyscall`'s exec arm
+   (`:5299`, `ProcInv.proc_priv_parked` at `:1459`) is the one site that
+   holds the descriptor bundle and the block at once.  Done there, the key
+   the taint arm is applied at is all-parked BY CONSTRUCTION and the arm
+   keeps a PURE row — which is also what keeps the two gated arms
+   provable.  So the §3 sentence "the taint arm takes the SURRENDER
+   BUNDLE" should read "the exec DEPOSIT takes it, and the taint arm keeps
+   the row the kernel then proves".
+2. **THE FANCY UPDATE NEVER REACHES `ProofKexec.kxau_close`, AND AT THE
+   PLACE IT DOES REACH IT IS UNELIMINABLE.**  `kxau_close` (`:637`)
+   applies `exec_slot_pre`'s two wands and hands `S W'` straight into
+   `SpecKexec.exec_post_ok`; `S` is abstract there, so a
+   `|={⊤}=> S W'` would be carried, not eliminated.  The elimination would
+   have to happen one level DOWN, where `image_entry_taint` is turned into
+   `exec_slot_pre` — `ExecBundle.ex_node_id` (`:101`, arms at `:138` /
+   `:157`) and `ExecRun.ex_node_abs` (`:722`, arms at `:795` / `:808`) —
+   and there the entry's continuation `X` is a PARAMETER, so
+   `|={⊤}=> X W' ⊢ X W'` is not provable.  The fupd shape is therefore
+   refuted at the abstract supplier, independently of finding 1.
+3. **DUP(2) IS THE ONE SYSCALL ROW THE SET-VALUED CARRIER DOES NOT SURVIVE
+   FOR FREE, AND NOTHING IN THE CAMPAIGN PREDICTED IT.**  Four of
+   `UsysMemOk.usys_fd_ok`'s five moving rows INSTALL a parked descriptor
+   (close installs `FdClosed`, open carries `fdst_parked` explicitly, pipe
+   installs two ends), so they preserve `fdv_held_in H` at ANY `H`.  DUP
+   COPIES its argument's row onto the slot `fdalloc` chose, and that slot
+   is not one the record can be said to hold — `fd_least_closed` says
+   nothing about the held set.  So `usys_fd_ok_held` carries a guard at
+   `USYS_dup`, `urun_rows_dup` / `_copy` carry it row-shaped, and both dup
+   leaves (`UkRunSys.wp_uk_ecall_dup`, `_dup_untracked`) take
+   `ukn_held N = ∅` and discharge the guard from their own run.  **A held
+   descriptor cannot be dup'd at all this lane**; §3 has dup share the
+   object's surrender, which needs the two slots' halves to be ONE
+   resource, and that is the next lane's.
+4. **A `Prop`-VALUED RESTATEMENT PROVED BY `exact` IS A HANG, NOT AN
+   ERROR.**  `UkShDiag.wp_kshr_fork1_final` (`:8928`) is
+   `UkShRun.wp_kshr_fork1` restated at this file's stack need and closed
+   by `exact (wp_kshr_fork1 …)`.  Adding one pure row to the child arm of
+   the ORIGINAL and not to the COPY does not fail: the unifier spins on
+   the 9013-line file's goal with a perfectly stable 1.8 GB RSS, which
+   reads exactly like a slow file.  **When a fork/exec arm grows a row,
+   grep for its restatements before building** — `ukn_pay N' =` in premise
+   position is the tell, and there are twelve such copies in the U tier.
+
+5. **S3 IS NOT ATTEMPTED, and the ordering fact that decides it is this.**
+   The pin (`ProcInv.proc_priv_parked` through
+   `SpecKexec.exec_slot_pre`'s pure rows) is what makes finding 1's
+   "all-parked BY CONSTRUCTION" true today, so removing it and narrowing
+   the generic family are ONE change, not two: `UexecCond.cond_entry_slot`'s
+   generic tail needs nothing at present, so nothing forces
+   `UexecRet.uexec_wp_uslot` (`:2816`, inside `uslot_of_creds` `:2748`) to
+   be re-plumbed until `UexecSG.sbundle_of_supply_ne` (`:468`) /
+   `sbundle_of_supply` (`:499`) are guarded and
+   `FsAbsInvFire.fsabs_fileread_in` (`:304`) / `fsabs_filewrite_in`
+   (`:354`) take the row.  OFF-HAND-3's finding 3 stands unchanged on the
+   route; what this lane adds is that the route's FIRST step is a kernel
+   one (the deposit, finding 1) and not a U-tier one.
+
+**THE ONE THING OFF-HAND-5 — THE HELD BRANCH, THE PUBLISH, THE LEAVES —
+NEEDS FIRST: a ruling on the surrender's HOME (finding 1).**  It decides
+two statements that everything else hangs off.  If the bundle rides the
+exec/fork DEPOSIT (this lane's evidence), then `ExecEntry.image_entry_taint`
+keeps a pure row forever, `fdv_all_parked` never leaves the kernel, and
+S3's order is: `ProofSyscall`'s exec arm takes `FdPark.uoff_surr_at`
+through `fd_frags_park_at` where `proc_priv_parked` is → the pure rows come
+off `SpecKexec.exec_slot_pre` → `FileInvDefs.fpnames`' mode → the held
+branch of `fileread_in`/`filewrite_in` → the hand-mode open leaf.  If
+instead the taint arm is to grow a resource, then
+`UexecCond.cond_entry_slot`'s two GATED arms have to be re-keyed onto
+`fdv_park (uvis_fd W)` first — a new key, not a new premise — and that is a
+different and much larger change than §3 prices.  Until it is ruled, the
+held-row EXEC is unblocked at the entry (this lane) and blocked at the
+deposit, and `UEchoFile`'s entry can be written (mint at `ukn_held = {1}`,
+`fdv_held_in {1} sts` as its own premise) while its caller's exec cannot
+yet pay.

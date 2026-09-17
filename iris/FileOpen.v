@@ -248,7 +248,7 @@ Section FileOpen.
   Lemma file_claim_read_esc (γfs : fs_names) (c : file_fixed) (r : file_names)
       (jc : Z) (n : nat) (s : dst) (g : gname) (I : gmap Z fs_node) :
     file_app = MkAppcfg file_names (file_pred c) r ->
-    app_inv γfs -∗ cons_made (fn_cons r) jc -∗ esc_wit r n s g -∗
+    app_inv γfs -∗ cons_made (fn_cons r) jc -∗ esc_key c r n s g -∗
     esc_tok g -∗
     ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I ={appE}=∗
       ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I ∗ esc_tok g ∗
@@ -291,7 +291,7 @@ Section FileOpen.
   Lemma file_escrow_read_at (γfs : fs_names) (c : file_fixed) (r : file_names)
       (n : nat) (s : dst) (g : gname) (I : gmap Z fs_node) :
     file_app = MkAppcfg file_names (file_pred c) r ->
-    app_inv γfs -∗ esc_wit r n s g -∗
+    app_inv γfs -∗ esc_key c r n s g -∗
     ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I ={appE}=∗
       ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I ∗
       (⌜f_ok (abs_view I) s⌝ ∨ esc_spent g ∨ file_taint c).
@@ -402,7 +402,7 @@ Section FileOpen.
   Lemma file_arm_commit (γfs : fs_names) (c : file_fixed) (r : file_names)
       (jc : Z) (n : nat) (s : dst) (g : gname) (bsc : list (bv 8)) :
     file_app = MkAppcfg file_names (file_pred c) r ->
-    app_inv γfs -∗ cons_made (fn_cons r) jc -∗ esc_wit r n s g -∗
+    app_inv γfs -∗ cons_made (fn_cons r) jc -∗ esc_key c r n s g -∗
     fesc_res r s g -∗
     aarm_commit_at (fs_gamma_L γfs) appE (AFile bsc)
       (file_arm_fam c r jc s g).(pf_recv).
@@ -441,7 +441,7 @@ Section FileOpen.
   Lemma file_unarm_commit (γfs : fs_names) (c : file_fixed) (r : file_names)
       (jc : Z) (n : nat) (s : dst) (g : gname) :
     file_app = MkAppcfg file_names (file_pred c) r ->
-    app_inv γfs -∗ cons_made (fn_cons r) jc -∗ esc_wit r n s g -∗
+    app_inv γfs -∗ cons_made (fn_cons r) jc -∗ esc_key c r n s g -∗
     aunarm_of_arm (fs_gamma_L γfs) appE (file_arm_fam c r jc s g)
       (file_unarm_fam c r s g).(pf_recv).
   Proof using .
@@ -500,7 +500,7 @@ Section FileOpen.
       (ls : list wordline) (ws : wordline) :
     file_app = MkAppcfg file_names (file_pred c) r ->
     ws ∈ ls -> EchoDisc.line_ok ws ->
-    app_inv γfs -∗ cons_made (fn_cons r) jc -∗ esc_wit r n s g -∗
+    app_inv γfs -∗ cons_made (fn_cons r) jc -∗ esc_key c r n s g -∗
     fl_lb c ls -∗
     acre_commit_at_gen (fs_gamma_L γfs) appE (fun _ _ => AFile [])
       (fun d : Z => ⌜d = ROOTINO⌝%I)
@@ -701,7 +701,7 @@ Section FileOpen.
   Lemma file_dlk_piece (γfs : fs_names) (c : file_fixed) (r : file_names)
       (n : nat) (s : dst) (g : gname) :
     file_app = MkAppcfg file_names (file_pred c) r ->
-    app_inv γfs -∗ esc_wit r n s g -∗
+    app_inv γfs -∗ esc_key c r n s g -∗
     pf_at (dlookup_commit_at (fs_gamma_L γfs) appE) (file_dlk_fam c r n s g).
   Proof using .
     intros Heq. iIntros "#Hinv #Hwit". rewrite /pf_at. cbn [pf_recv pf_refund].
@@ -736,7 +736,7 @@ Section FileOpen.
   Lemma file_odlk_piece (γfs : fs_names) (c : file_fixed) (r : file_names)
       (n : nat) (s : dst) (g : gname) :
     file_app = MkAppcfg file_names (file_pred c) r ->
-    app_inv γfs -∗ esc_wit r n s g -∗
+    app_inv γfs -∗ esc_key c r n s g -∗
     pf_at (aopen_commit_at (fs_gamma_L γfs) appE) (file_odlk_fam c r n s g).
   Proof using .
     intros Heq. iIntros "#Hinv #Hwit". rewrite /pf_at. cbn [pf_recv pf_refund].
@@ -890,7 +890,7 @@ Section FileOpen.
     avx !! FsImg.ROOTINO = Some (MkAnode (ADir entsx) nlx) ->
     entsx !! fname_f = Some i ->
     ws ∈ ls -> EchoDisc.line_ok ws ->
-    app_inv γfs -∗ cons_made (fn_cons r) jc -∗ esc_wit r n s g -∗
+    app_inv γfs -∗ cons_made (fn_cons r) jc -∗ esc_key c r n s g -∗
     fl_lb c ls -∗
     ((⌜fclaim_free avx⌝ ∗ (⌜f_ok avx s⌝ ∨ esc_spent g)) ∨ file_taint c) -∗
     fesc_res r s g -∗
@@ -958,7 +958,7 @@ Section FileOpen.
       iMod (file_escrow_return γfs c r n (Some (i, [])) g appE
               ltac:(set_solver) Heq with "Hinv Hwit Htok Htk") as "Hres".
       iModIntro. iFrame "Hka'". rewrite /file_trunc_recv.
-      iDestruct "Hres" as "[Hown | [_ #HT]]".
+      iDestruct "Hres" as "[Hown | #HT]".
       - iLeft. iExact "Hown".
       - iRight. iExact "HT". }
     assert (Hp4 : f_ok (delta_trunc i (abs_view I)) (Some (i, [])))
@@ -991,7 +991,7 @@ Section FileOpen.
     arg_path_of M pv pl ->
     list_basics.last (path_elems pl) = Some fname_f ->
     ws ∈ ls -> EchoDisc.line_ok ws ->
-    app_inv γfs -∗ cons_made (fn_cons r) jc -∗ esc_wit r n s g -∗
+    app_inv γfs -∗ cons_made (fn_cons r) jc -∗ esc_key c r n s g -∗
     fl_lb c ls -∗
     pf_at (atrunc_of_permit (fs_gamma_L γfs) appE
              (trunc_permit_of (fs_gamma_L γfs)
@@ -1062,7 +1062,7 @@ Section FileOpen.
     list_basics.last (path_elems pl) = Some fname_f ->
     ws ∈ ls -> EchoDisc.line_ok ws ->
     app_inv γfs -∗ cons_made (fn_cons r) jc -∗ fl_lb c ls -∗
-    esc_wit r n s g -∗ fesc_res r s g -∗
+    esc_key c r n s g -∗ fesc_res r s g -∗
     open_au_create_at (fs_gamma_L γfs) γfs cw M pv vom
       (fun (_ : nat) (d : Z) => ⌜d = ROOTINO⌝%I)
       (fun _ _ => True%I)
@@ -1135,7 +1135,7 @@ Section FileOpen.
     om_trunc vom = false ->
     ws ∈ ls -> EchoDisc.line_ok ws ->
     app_inv γfs -∗ cons_made (fn_cons r) jc -∗ fl_lb c ls -∗
-    esc_wit r n s g -∗ fesc_res r s g -∗
+    esc_key c r n s g -∗ fesc_res r s g -∗
     open_au_create_at (fs_gamma_L γfs) γfs cw M pv vom
       (fun (_ : nat) (d : Z) => ⌜d = ROOTINO⌝%I)
       (fun _ _ => True%I)
@@ -1184,12 +1184,12 @@ Section FileOpen.
       (n : nat) (s : dst) (g : gname) (E : coPset) :
     ↑appN ⊆ E ->
     file_app = MkAppcfg file_names (file_pred c) r ->
-    app_inv γfs -∗ esc_wit r n s g -∗ file_esc_pay c r s g ={E}=∗
+    app_inv γfs -∗ esc_key c r n s g -∗ file_esc_pay c r s g ={E}=∗
       file_open_pay c r s.
   Proof using .
     intros HE Heq. iIntros "#Hinv #Hwit [[Htk Htok] | [Hd | #HT]]".
     - iMod (file_escrow_return γfs c r n s g E HE Heq
-              with "Hinv Hwit Htok Htk") as "[Hown | [_ #HT]]".
+              with "Hinv Hwit Htok Htk") as "[Hown | #HT]".
       + iModIntro. rewrite /file_open_pay. by iLeft.
       + iModIntro. rewrite /file_open_pay. iRight. by iRight.
     - iModIntro. rewrite /file_open_pay. iRight. by iLeft.
@@ -1441,7 +1441,7 @@ Section FileOpen.
     arg_path_of M pv pl ->
     list_basics.last (path_elems pl) = Some fname_f ->
     file_app = MkAppcfg file_names (file_pred c) r ->
-    app_inv γfs -∗ esc_wit r n s g -∗
+    app_inv γfs -∗ esc_key c r n s g -∗
     open_receipt_create (fs_gamma_L γfs) γfs cw M pv vom
       (fun (_ : nat) (d : Z) => ⌜d = ROOTINO⌝%I)
       (fun _ _ => True%I)

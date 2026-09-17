@@ -533,6 +533,7 @@ Section UkFileOpen.
   Definition xfam_fcreate (P : nat -> Z -> iProp Σ)
       (Farm Fun : pfam Σ (aview -> Z -> iProp Σ))
       (Fok Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
+      (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ))
       (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ))
       (Q : Z -> iProp Σ) : sfam :=
     {| xf_P     := fun _ _ => True%I;
@@ -551,7 +552,7 @@ Section UkFileOpen.
        of_Fun   := Fun;
        of_Fok   := Fok;
        of_Fex   := Fex;
-       of_Fo    := pfam_triv (fun _ _ _ => True%I);
+       of_Fo    := Fo;
        of_Ft    := Ft;
        wf_Q     := fun _ => True%I;
        nf_P     := fun _ _ => True%I;
@@ -587,10 +588,11 @@ Section UkFileOpen.
        cl_P     := True%I |}.
 
   Definition file_create_fam (c : file_fixed) (r : file_names) (jc : Z)
-      (s : dst) (Q : Z -> iProp Σ) : sfam :=
+      (n : nat) (s : dst) (g : gname) (Q : Z -> iProp Σ) : sfam :=
     xfam_fcreate (fun (_ : nat) (d : Z) => ⌜d = FsImg.ROOTINO⌝%I)
-      (file_arm_fam c r jc s) (file_unarm_fam c r s)
-      (file_cre_fam c r jc s) (file_dlk_fam c)
+      (file_arm_fam c r jc s g) (file_unarm_fam c r s g)
+      (file_cre_fam c r jc s g) (file_dlk_fam c r n s g)
+      (file_odlk_fam c r n s g)
       (file_trunc_fam c r s) Q.
 
   (* THE LEDGER TIE, at ANY descriptor type.  [UkTreeRead.tree_open_fd_tie]
@@ -624,7 +626,8 @@ Section UkFileOpen.
 
   (* THE DEPOSIT: the 0x601 bundle, from one deed. *)
   Lemma file_create_sup (N : uk_names Σ) (c : file_fixed) (r : file_names)
-      (jc : Z) (s : dst) (ls : list wordline) (ws : wordline) (cw : Z)
+      (jc : Z) (n : nat) (s : dst) (g : gname)
+      (ls : list wordline) (ws : wordline) (cw : Z)
       (Img : gmap Z (bv 8)) (pv : mword 64) (m : regfile) (pc : mword 64)
       (pl : list (bv 8)) :
     file_app = MkAppcfg file_names (file_pred c) r ->
@@ -636,17 +639,18 @@ Section UkFileOpen.
     list_basics.last (path_elems pl) = Some fname_f ->
     ws ∈ ls -> EchoDisc.line_ok ws ->
     app_inv fsc_fs -∗ utext_img (ukn_t N) Img -∗
-    cons_made (fn_cons r) jc -∗ fl_lb c ls -∗ fown r s -∗
-    udepwf_at N m pc USYS_open (file_create_fam c r jc s (ukn_pay N)) cw.
+    cons_made (fn_cons r) jc -∗ fl_lb c ls -∗
+    esc_key c r n s g -∗ fesc_res r s g -∗
+    udepwf_at N m pc USYS_open (file_create_fam c r jc n s g (ukn_pay N)) cw.
   Proof using .
     intros Heq Hpath Ha0 Hcr Hnp Hstart Hlast Hin Hokw.
-    iIntros "#Hinv #Hro #Hm #Hlb Hown".
+    iIntros "#Hinv #Hro #Hm #Hlb #Hwit Hres".
     rewrite /udepwf_at. iSplitR; [ iPureIntro; reflexivity | ].
     iIntros (M pm sz fdv gn cs pidv) "#Hmpay Hheap Hufd".
     iDestruct (cons_ro_sub N Img M pm sz with "Hheap Hro") as %Hsro.
     iFrame "Hheap Hufd".
     iApply (sbundle_at_open_intro_at uslot
-              (file_create_fam c r jc s (ukn_pay N))
+              (file_create_fam c r jc n s g (ukn_pay N))
               (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
               cw M pv (m !!! Regidx a1_idx) eq_refl eq_refl
               (eq_trans (tf_of_arg0 m pc) Ha0)
@@ -654,20 +658,30 @@ Section UkFileOpen.
     cbn [file_create_fam xfam_fcreate of_P of_Pmiss of_Farm of_Fun
          of_Fok of_Fex of_Fo of_Ft].
     rewrite /open_in Hcr.
-    iApply (file_open_create_au fsc_fs c r jc s ls ws cw M pv
+    iApply (file_open_create_au fsc_fs c r jc n s g ls ws cw M pv
               (m !!! Regidx a1_idx) pl Heq (Hpath M Hsro) Hnp Hstart Hlast
-              Hin Hokw with "Hinv Hm Hlb Hown").
+              Hin Hokw with "Hinv Hm Hlb Hwit Hres").
   Qed.
 
   (* ---- THE COROLLARY: "close 1, then open `f` at 0x601, from the deed".
      THREE arms, and the second is the one the redirect round runs on: a
-     descriptor on an INODE, with `f` present and EMPTY at that inode (or,
-     on the run an absent deed makes unreachable and which this statement
-     cannot refute -- [FileOpen] section 6 (a), and lane F-OPEN-4's mask
-     refutation of the escrow that would have closed it -- the deed
-     unmoved).  The third is the found DEVICE create's F-OK admits.  Every
-     arm hands the deed back, and [FileOpen.file_open_pay] is the payload
-     lane SH-ROUND instantiates [UkShRedirAns.ush_open_ans2]'s [Kf] at. *)
+     descriptor on an INODE, WITH `f` PRESENT AND EMPTY AT THAT INODE --
+     and nothing else (lane F-OPEN-5).  F-OPEN-3's "or the deed unmoved"
+     disjunct is GONE: the escrow inside the claim ([AppFile]'s section
+     2a) lets the create's [dirlookup] observation read the claim's own
+     value AT ITS OWN VIEW, which at an ABSENT deed contradicts the found
+     entry.  The third arm is the found DEVICE create's F-OK admits; it
+     too now reports `f` present and empty at a row of the claim's own
+     (the claim's reading at the OPEN's observation instant refutes the
+     device outright on the permit's EXISTS branch), so the call's whole
+     non-failing outcome is ONE sentence about the deed.
+     [FileOpen.file_open_pay] is still the [-1] payload lane SH-ROUND
+     instantiates [UkShRedirAns.ush_open_ans2]'s [Kf] at.
+
+     THE DEED GOES IN WHOLE and is PARKED HERE, not by the caller: this
+     wrapper opens the escrow before the call ([AppFile.file_escrow_park])
+     and closes it after (inside [FileOpen.file_open_create_recv]), so
+     nothing of the escrow protocol is visible above this line. *)
   Lemma wp_uk_ecall_open_create_deed (N : uk_names Σ) (h : CpuId)
       (m : regfile) (pc : mword 64) (l : list fdstate) (avail : nat)
       (c : file_fixed) (r : file_names) (jc : Z) (s : dst)
@@ -707,8 +721,9 @@ Section UkFileOpen.
                (FdOpen (om_readable (m !!! Regidx a1_idx))
                        (om_writable (m !!! Regidx a1_idx))
                        (FdInode i γo OffParked)) ∗
-             (fown r (Some (i, [])) ∨ fown r s ∨ file_taint c))
-        (* ...or on a found DEVICE, which create's F-OK admits *)
+             (fown r (Some (i, [])) ∨ file_taint c))
+        (* ...or on a found DEVICE, which create's F-OK admits and which
+           the claim refutes on every branch of the permit but one *)
         ∨ (∃ (fd : nat) (ma : Z),
              ⌜rv = (mword_of_int (Z.of_nat fd) : mword 64)
               /\ (fd < NOFILE)%nat⌝ ∗
@@ -716,7 +731,7 @@ Section UkFileOpen.
                (FdOpen (om_readable (m !!! Regidx a1_idx))
                        (om_writable (m !!! Regidx a1_idx))
                        (FdDevice ma)) ∗
-             file_open_pay c r s)) -∗
+             ((∃ i : Z, fown r (Some (i, []))) ∨ file_taint c))) -∗
        UserCwd.ucwd (ukn_cwd N) cw -∗
        urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
@@ -724,16 +739,24 @@ Section UkFileOpen.
   Proof using .
     intros Heq Hn Hal4 Hpath Ha0 Hcr Htr Hnp Hstart Hlast Hin Hokw.
     iIntros "#Hi #Hro Hrun Hcwd Hstd #Hinv #Hm #Hlb Hown Hcont".
-    iDestruct (file_create_sup N c r jc s ls ws cw Img pv m pc pl Heq Hpath
+    (* THE PARK: the deed's half goes into the claim, and what comes out
+       is the ticket, the one-shot token and the ledger key *)
+    iApply fupd_wp.
+    iMod (file_escrow_park fsc_fs c r s ⊤ ltac:(set_solver) Heq
+            with "Hinv Hown") as (n g) "(#Hkey & Htok & Htk)".
+    iModIntro.
+    iAssert (fesc_res r s g) with "[Htk Htok]" as "Hres".
+    { rewrite /fesc_res. iFrame "Htk Htok". }
+    iDestruct (file_create_sup N c r jc n s g ls ws cw Img pv m pc pl Heq Hpath
                  Ha0 Hcr Hnp Hstart Hlast Hin Hokw
-                 with "Hinv Hro Hm Hlb Hown") as "Hsb".
+                 with "Hinv Hro Hm Hlb Hkey Hres") as "Hsb".
     iApply (wp_uk_ecall_open_recv_img N h m pc l avail
-              (file_create_fam c r jc s (ukn_pay N)) cw Img Hn Hal4
+              (file_create_fam c r jc n s g (ukn_pay N)) cw Img Hn Hal4
               with "Hi Hro Hrun Hcwd Hsb Hstd").
     iIntros (h' rv W M' fdv' cw' cs')
       "%Himg %Hlen %Hk0 %Hk1 %Hcw %Htk Hfd Hpost Hcwd Hrun".
     iDestruct (spost_at_open_elim_at uslot
-                 (file_create_fam c r jc s (ukn_pay N)) W
+                 (file_create_fam c r jc n s g (ukn_pay N)) W
                  cw (uvis_M W) pv (m !!! Regidx a1_idx) rv M' fdv' cw' cs'
                  Hcw eq_refl
                  ltac:(rewrite Hk0; exact Ha0)
@@ -742,9 +765,13 @@ Section UkFileOpen.
     iEval (rewrite /open_receipt Hcr) in "Hrc".
     iEval (cbn [file_create_fam xfam_fcreate of_P of_Pmiss of_Farm of_Fun
                 of_Fok of_Fex of_Fo of_Ft]) in "Hrc".
-    iDestruct (file_open_create_recv fsc_fs c r jc s cw (uvis_M W) pv
-                 (m !!! Regidx a1_idx) (uvis_fd W) rv fdv' Htr
-                 with "Hrc") as "Hans".
+    iApply fupd_wp.
+    iMod (file_open_create_recv fsc_fs c r jc n s g cw (uvis_M W) pv
+                 (m !!! Regidx a1_idx) pl (uvis_fd W) rv fdv' ⊤
+                 ltac:(set_solver) Htr
+                 ltac:(exact (Hpath (uvis_M W) Himg))
+                 Hlast Heq with "Hinv Hkey Hrc") as "Hans".
+    iModIntro.
     iApply ("Hcont" $! h' rv with "[Hfd Hans] Hcwd Hrun").
     iDestruct "Hans" as "[(%Hr & %Hfdv & Hpay) | [Hino | Hdev]]".
     - (* THE CALL FAILED *)
@@ -770,7 +797,7 @@ Section UkFileOpen.
       iRight. iLeft. iExists fd, γo, i. iFrame "Hal Hpay". iPureIntro.
       exact (conj Hr1 Hlt1).
     - (* ...OR ON A FOUND DEVICE *)
-      iDestruct "Hdev" as (ma) "[%Hrcpt Hpay]".
+      iDestruct "Hdev" as (i ma) "[%Hrcpt Hpay]".
       iDestruct "Hfd" as "[Hal | [%Hb _]]"; last first.
       { exfalso. destruct Hb as [Hrm _].
         destruct Hrcpt as (fd0 & Hr0 & Hcl0 & _).
@@ -784,8 +811,10 @@ Section UkFileOpen.
                  (om_writable (m !!! Regidx a1_idx))
                  (FdDevice ma) fd rd wr ty
                  Hlen Hr1 Hlt1 Hfdv1 Hrcpt).
-      iRight. iRight. iExists fd, ma. iFrame "Hal Hpay". iPureIntro.
-      exact (conj Hr1 Hlt1).
+      iRight. iRight. iExists fd, ma. iFrame "Hal". iSplitR.
+      { iPureIntro. exact (conj Hr1 Hlt1). }
+      iDestruct "Hpay" as "[Hown | #HT]"; [| by iRight ].
+      iLeft. iExists i. iExact "Hown".
   Qed.
 
 End UkFileOpen.

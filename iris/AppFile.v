@@ -464,6 +464,22 @@ Section FileClaim.
     iApply big_sepL_app. iFrame "Hh". rewrite big_sepL_singleton. iExact "Hp".
   Qed.
 
+  (* THE KEY A PARKED HOLDER CARRIES: the ledger entry, or the taint.  A
+     TAINTED claim has no [f_state] at all -- [file_step_taint] drops it,
+     and [file_sup_of_taint] says the taint alone answers for every view
+     -- so there is no ledger to name an escrow in; the holder's key is
+     then the taint itself, which is what every arm of every piece below
+     already answers with.  This is what lets the park ALWAYS succeed, so
+     that no program above has a branch on it. *)
+  Definition esc_key (c : file_fixed) (r : file_names) (n : nat) (s : dst)
+      (g : gname) : iProp Σ :=
+    (esc_wit r n s g ∨ file_taint c)%I.
+
+  Global Instance esc_key_persistent c r n s g : Persistent (esc_key c r n s g).
+  Proof using . rewrite /esc_key. apply _. Qed.
+  Global Instance esc_key_timeless c r n s g : Timeless (esc_key c r n s g).
+  Proof using . rewrite /esc_key. apply _. Qed.
+
   (* fresh names, both halves of both ghosts, at any value, and the
      escrow ledger EMPTY: what every transport and the era-0 mint
      allocate.  (Lane F-OPEN-5: the ledger is the claim's alone -- no
@@ -731,12 +747,15 @@ Section FileClaim.
 
   Lemma file_escrow_read (c : file_fixed) (r : file_names) :
     ⊢ □ (∀ (v : aview) (n : nat) (s : dst) (g : gname),
-           esc_wit r n s g -∗ file_pred c r v -∗
+           esc_key c r n s g -∗ file_pred c r v -∗
            file_pred c r v ∗
            ((⌜f_ok v s /\ file_fs_pure v⌝ ∗ f_typed c s)
             ∨ esc_spent g ∨ file_taint c)).
   Proof using .
-    iIntros "!>" (v n s g) "#Hwit Hp". rewrite /file_pred.
+    iIntros "!>" (v n s g) "#Hkey Hp".
+    iDestruct "Hkey" as "[#Hwit | #Ht0]"; last first.
+    { iFrame "Hp". iRight. by iRight. }
+    rewrite /file_pred.
     iDestruct "Hp" as "[#Ht | (%Hpins & Hc & Hf)]".
     { iSplitR; [ by iLeft |]. iRight. by iRight. }
     rewrite /f_state.
@@ -770,13 +789,13 @@ Section FileClaim.
      claim is AT THE ESCROWED CONTENT, full stop. *)
   Lemma file_escrow_law (c : file_fixed) (r : file_names) :
     ⊢ □ (∀ (v : aview) (n : nat) (s : dst) (g : gname),
-           esc_wit r n s g -∗ esc_tok g -∗ file_pred c r v -∗
+           esc_key c r n s g -∗ esc_tok g -∗ file_pred c r v -∗
            file_pred c r v ∗ esc_tok g ∗
            ((⌜f_ok v s /\ file_fs_pure v⌝ ∗ f_typed c s) ∨ file_taint c)).
   Proof using .
     iDestruct (file_escrow_read c r) as "#Hrd".
-    iIntros "!>" (v n s g) "#Hwit Htok Hp".
-    iDestruct ("Hrd" $! v n s g with "Hwit Hp") as "[Hp Hres]".
+    iIntros "!>" (v n s g) "#Hkey Htok Hp".
+    iDestruct ("Hrd" $! v n s g with "Hkey Hp") as "[Hp Hres]".
     iDestruct "Hres" as "[Hok | [#Hsp | #Ht]]".
     - iFrame "Hp Htok". by iLeft.
     - iDestruct (esc_tok_spent g with "Htok Hsp") as %[].
@@ -908,10 +927,12 @@ Section FileClaim.
     (cons_absent av -> cons_absent av') ->
     (forall i, cons_present_at i av -> cons_present_at i av') ->
     (f_ok av s -> f_ok av' s') ->
-    esc_wit r n s g -∗ esc_tok g -∗ f_typed c s' -∗
+    esc_key c r n s g -∗ esc_tok g -∗ f_typed c s' -∗
     file_pred c r av ==∗ file_pred c r av'.
   Proof using .
-    intros Hpins Hab Hpr Hok. iIntros "#Hwit Htok #Hty' Hp".
+    intros Hpins Hab Hpr Hok. iIntros "#Hkey Htok #Hty' Hp".
+    iDestruct "Hkey" as "[#Hwit | #Ht0]"; last first.
+    { iModIntro. rewrite /file_pred. by iLeft. }
     rewrite /file_pred.
     iDestruct "Hp" as "[#Ht | (%Hpins0 & Hc & Hf)]".
     { iModIntro. by iLeft. }
@@ -1306,8 +1327,7 @@ Section FileClaimEra.
     ↑appN ⊆ E ->
     file_app = MkAppcfg file_names (file_pred c) r ->
     app_inv γfs -∗ fown r s ={E}=∗
-      (∃ (n : nat) (g : gname), esc_wit r n s g ∗ esc_tok g ∗ ftkt r s)
-      ∨ (fown r s ∗ file_taint c).
+      ∃ (n : nat) (g : gname), esc_key c r n s g ∗ esc_tok g ∗ ftkt r s.
   Proof using .
     intros HE Heq. iIntros "#Hinv [Hd Htk]".
     iMod (inv_acc E appN with "Hinv") as "[Hbody Hclose]"; [ exact HE |].
@@ -1321,7 +1341,8 @@ Section FileClaimEra.
         iSplitL; [| by iPureIntro ].
         rewrite Heq. cbn [app_pred app_run app_names]. rewrite /file_pred.
         by iLeft. }
-      iModIntro. iRight. rewrite /fown. iFrame "Hd Htk Ht". }
+      iMod esc_alloc as (g) "Htok". iModIntro.
+      iExists 0%nat, g. iFrame "Htok Htk". rewrite /esc_key. by iRight. }
     rewrite /f_state.
     iDestruct "Hf" as "[[Hwr Hf] | Hf]"; last first.
     { (* an escrow is already live: its whole deed refutes the holder's
@@ -1346,7 +1367,8 @@ Section FileClaimEra.
       iRight. iSplitR; [ by iPureIntro |]. iFrame "Hc".
       rewrite /f_state. iRight. rewrite /f_esc_live.
       iExists h, s, g. iFrame "Ha Hrec Hwh Htk' Hty". by iPureIntro. }
-    iModIntro. iLeft. iExists (length h), g. iFrame "Hwit Htok Htk".
+    iModIntro. iExists (length h), g. iFrame "Htok Htk".
+    rewrite /esc_key. by iLeft.
   Qed.
 
   (* THE RETURN: an escrow that never fired comes home.  The token is SPENT
@@ -1357,10 +1379,12 @@ Section FileClaimEra.
       (n : nat) (s : dst) (g : gname) (E : coPset) :
     ↑appN ⊆ E ->
     file_app = MkAppcfg file_names (file_pred c) r ->
-    app_inv γfs -∗ esc_wit r n s g -∗ esc_tok g -∗ ftkt r s ={E}=∗
-      fown r s ∨ (ftkt r s ∗ file_taint c).
+    app_inv γfs -∗ esc_key c r n s g -∗ esc_tok g -∗ ftkt r s ={E}=∗
+      fown r s ∨ file_taint c.
   Proof using .
-    intros HE Heq. iIntros "#Hinv #Hwit Htok Htk".
+    intros HE Heq. iIntros "#Hinv #Hkey Htok Htk".
+    iDestruct "Hkey" as "[#Hwit | #Ht0]"; last first.
+    { iModIntro. by iRight. }
     iMod (inv_acc E appN with "Hinv") as "[Hbody Hclose]"; [ exact HE |].
     iEval (rewrite /app_body) in "Hbody".
     iDestruct "Hbody" as (I0) "(>Hka & Hp & >%Hdom & #Hx)".
@@ -1372,7 +1396,7 @@ Section FileClaimEra.
         iSplitL; [| by iPureIntro ].
         rewrite Heq. cbn [app_pred app_run app_names]. rewrite /file_pred.
         by iLeft. }
-      iModIntro. iRight. iFrame "Htk Ht". }
+      iModIntro. iRight. iExact "Ht". }
     rewrite /f_state.
     iDestruct "Hf" as "[[Hwr Hf] | Hf]".
     { rewrite /f_esc_wrap. iDestruct "Hwr" as (h) "[Ha #Hrec]".
@@ -1407,14 +1431,14 @@ Section FileClaimEra.
     (cons_absent (abs_view I) -> cons_absent av') ->
     (forall j, cons_present_at j (abs_view I) -> cons_present_at j av') ->
     (f_ok (abs_view I) s -> f_ok av' s') ->
-    esc_wit r n s g -∗ esc_tok g -∗ f_typed c s' -∗ app_step i I av'.
+    esc_key c r n s g -∗ esc_tok g -∗ f_typed c s' -∗ app_step i I av'.
   Proof using .
-    intros Heq Hpins Hab Hpr Hok. iIntros "#Hwit Htok #Hty'".
+    intros Heq Hpins Hab Hpr Hok. iIntros "#Hkey Htok #Hty'".
     rewrite /app_step. iIntros (nd) "%Hav Hp".
     rewrite Heq. cbn [app_pred app_run app_names]. rewrite Hav.
     iDestruct "Hp" as ">Hp".
     iMod (file_escrow_step c r (abs_view I) av' n s s' g
-            Hpins Hab Hpr Hok with "Hwit Htok Hty' Hp") as "Hp".
+            Hpins Hab Hpr Hok with "Hkey Htok Hty' Hp") as "Hp".
     iModIntro. iNext. iExact "Hp".
   Qed.
 

@@ -203,7 +203,8 @@ Section TreeMove.
     (tree_pred c r (abs_view I) -∗ tree_pred c r av') -∗ app_step i I av'.
   Proof.
     intros Heq. rewrite /app_step Heq. cbn [app_pred app_run app_names].
-    iIntros "Hw" (n') "%Hav Hp". rewrite Hav. iNext. iApply ("Hw" with "Hp").
+    iIntros "Hw" (n') "%Hav Hp". rewrite Hav. iModIntro. iNext.
+    iApply ("Hw" with "Hp").
   Qed.
 
   (* ...and the one a TAINTED owner hands over: a tainted claim holds of
@@ -216,6 +217,25 @@ Section TreeMove.
     intros Heq. iIntros "#HT".
     iApply (tree_app_step_of c r i I av' Heq). iIntros "_".
     rewrite /tree_pred. iLeft. iExact "HT".
+  Qed.
+
+  (* ...and THE UNPAID MOVER'S OWN STEP (SEAM-I's consumer,
+     [AppTree.tree_step_bump] at the fire's shape).  This is the step that
+     the seam bought: it is NOT an [AppInv.app_step] under the old,
+     update-free reading, because paying it BUMPS the era's taint counter.
+     A party holding the counter may therefore move the view without
+     answering for it, at the price of recording the move as the taint --
+     which is exactly what an exec into an unverified image spends
+     ([ExecEntry.image_entry_taint] is a wand FROM the taint). *)
+  Lemma tree_app_step_bump (c : tree_fixed) (r : tree_names) (i : Z)
+      (I : gmap Z fs_node) (av' : aview) :
+    file_app = MkAppcfg tree_names (tree_pred c) r ->
+    tree_cl c -∗ app_step i I av'.
+  Proof.
+    intros Heq. rewrite /app_step Heq. cbn [app_pred app_run app_names].
+    iIntros "Hcl" (n') "%Hav Hp". rewrite Hav.
+    iMod (tree_taint_mint c with "Hcl") as "#Ht". iModIntro. iNext.
+    rewrite /tree_pred. iLeft. iExact "Ht".
   Qed.
 
   (* PHASE 1's READ: the owner agrees the map the kernel lent it against

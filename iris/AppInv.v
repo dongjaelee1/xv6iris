@@ -46,8 +46,19 @@
     Both are ONE lemma, [app_top_update], at a later-shaped step: the
     application's claim is an arbitrary iProp -- neither timeless nor
     persistent -- so it stays under the invariant's later and the step is
-    applied there ([▷ (P -∗ Q) ∗ ▷ P ⊢ ▷ Q]).  Only the authority comes out
-    from under the later.
+    applied there.  Only the authority comes out from under the later.
+
+    THE STEP IS A BASIC UPDATE (seam I): [▷ app_pred av ==∗ ▷ app_pred av'],
+    the update OUTSIDE the later, where it can run.  A claim whose survival
+    of a move is a RESOURCE MOVE -- a counter bumped, a slot parked -- and
+    not merely a rearrangement is then payable; a claim that only needs the
+    rearrangement pays with a plain wand and lifts for free
+    ([app_top_update_step], whose statement is update-free, and
+    [app_step_acc] off the supply).  The seam is zero-semantic-change for
+    every consumer: a proof that BUILDS a step gains an [iModIntro] and a
+    proof that SPENDS one is unchanged.  What it does NOT do is create a
+    resource -- it only lets a mover spend one it already holds
+    ([AppTree.tree_bump_free_is_vacuous] is that lesson, in Rocq).
 
     THE MASK.  [appN] is the application's namespace: [app_inv] lives at it,
     the AU commits fire at [appE] = [↑appN] (so an application's discharger
@@ -290,7 +301,7 @@ Section AppInv.
     ↑appN ⊆ E ->
     app_inv γfs -∗
     (⌜I !! i = Some n⌝ -∗
-       ▷ app_pred app_run (abs_view I) -∗
+       ▷ app_pred app_run (abs_view I) ==∗
        ▷ app_pred app_run (abs_view (<[i := n']> I))) -∗
     ghost_map_auth (fs_top γfs) (1/2) I -∗ i ↪[fs_top γfs] n ={E}=∗
       ghost_map_auth (fs_top γfs) (1/2) (<[i := n']> I) ∗ i ↪[fs_top γfs] n'.
@@ -305,7 +316,7 @@ Section AppInv.
     { iEval (rewrite -Qp.half_half). iSplitL "Hk"; [iExact "Hk" | iExact "Hh"]. }
     iMod (ghost_map_update n' with "Hk Hf") as "[Hk Hf]".
     iDestruct "Hk" as "[Hk Hh]".
-    iDestruct ("Hstep" with "[//] Hp") as "Hp".
+    iMod ("Hstep" with "[//] Hp") as "Hp".
     iMod ("Hclose" with "[Hh Hp]") as "_".
     { iNext. rewrite /app_body. iExists (<[i := n']> I). iFrame "Hh Hp Hx".
       iPureIntro. exact (app_dom_insert I i n n' Hi Hd). }
@@ -323,7 +334,8 @@ Section AppInv.
   Proof.
     iIntros (HE Habs) "#Hinv Hk Hf".
     iApply (app_top_update E γfs I i n n' HE with "Hinv [] Hk Hf").
-    iIntros (Hi) "Hp". rewrite (abs_view_insert_same I i n n' Hi Habs). iExact "Hp".
+    iIntros (Hi) "Hp". iModIntro.
+    rewrite (abs_view_insert_same I i n n' Hi Habs). iExact "Hp".
   Qed.
 
   (* [_step]: the caller pays, with a plain wand -- it lifts under the later *)
@@ -338,7 +350,28 @@ Section AppInv.
   Proof.
     iIntros (HE) "#Hinv Hstep Hk Hf".
     iApply (app_top_update E γfs I i n n' HE with "Hinv [Hstep] Hk Hf").
-    iIntros (Hi) "Hp". iNext. iApply ("Hstep" with "Hp").
+    iIntros (Hi) "Hp". iModIntro. iNext. iApply ("Hstep" with "Hp").
+  Qed.
+
+  (* ...AND ITS [==∗] TWIN (seam I).  The step [app_top_update] takes is now
+     an UPDATE under the later, so a caller may pay the move with a ghost
+     move of its own -- which is the whole content of the seam: a claim
+     whose survival of a move is a RESOURCE MOVE (a counter bumped, a slot
+     parked) and not merely a rearrangement can now be an [app_step].  The
+     update is OUTSIDE the later, where a basic update can run; a wand
+     under the later is the [_step] form above and lifts into this one. *)
+  Lemma app_top_update_bupd (E : coPset) (γfs : fs_names) (I : gmap Z fs_node)
+      (i : Z) (n n' : fs_node) :
+    ↑appN ⊆ E ->
+    app_inv γfs -∗
+    (▷ app_pred app_run (abs_view I) ==∗
+       ▷ app_pred app_run (abs_view (<[i := n']> I))) -∗
+    ghost_map_auth (fs_top γfs) (1/2) I -∗ i ↪[fs_top γfs] n ={E}=∗
+      ghost_map_auth (fs_top γfs) (1/2) (<[i := n']> I) ∗ i ↪[fs_top γfs] n'.
+  Proof.
+    iIntros (HE) "#Hinv Hstep Hk Hf".
+    iApply (app_top_update E γfs I i n n' HE with "Hinv [Hstep] Hk Hf").
+    iIntros (Hi) "Hp". iApply ("Hstep" with "Hp").
   Qed.
 
   (* ------------------------------------------------------------------ *)
@@ -357,14 +390,14 @@ Section AppInv.
   Definition app_step (i : Z) (I : gmap Z fs_node) (av' : aview) : iProp Σ :=
     (∀ n' : fs_node,
        ⌜abs_view (<[i := n']> I) = av'⌝ -∗
-       ▷ app_pred app_run (abs_view I) -∗
+       ▷ app_pred app_run (abs_view I) ==∗
        ▷ app_pred app_run (abs_view (<[i := n']> I)))%I.
 
   (* the fire's reading: at the node it chose *)
   Lemma app_step_at (i : Z) (I : gmap Z fs_node) (av' : aview) (n' : fs_node) :
     abs_view (<[i := n']> I) = av' ->
     app_step i I av' -∗
-    ▷ app_pred app_run (abs_view I) -∗
+    ▷ app_pred app_run (abs_view I) ==∗
     ▷ app_pred app_run (abs_view (<[i := n']> I)).
   Proof.
     intros Heq. iIntros "Hstep Hp". rewrite /app_step.
@@ -379,7 +412,8 @@ Section AppInv.
   Lemma app_step_id (i : Z) (I : gmap Z fs_node) :
     ⊢ app_step i I (abs_view I).
   Proof.
-    rewrite /app_step. iIntros (n' Heq) "Hp". rewrite Heq. iExact "Hp".
+    rewrite /app_step. iIntros (n' Heq) "Hp". rewrite Heq. iModIntro.
+    iExact "Hp".
   Qed.
 
   (* THE TRANSPORT, READ OFF THE INVARIANT: [▷]-shaped and persistent, so
@@ -441,7 +475,7 @@ Section AppInv.
   Lemma app_step_acc (i : Z) (I : gmap Z fs_node) (av' : aview) :
     app_sup -∗ app_step i I av'.
   Proof.
-    iIntros "#Hs". rewrite /app_step. iIntros (n' Heq) "_". iNext.
+    iIntros "#Hs". rewrite /app_step. iIntros (n' Heq) "_". iModIntro. iNext.
     rewrite /app_sup /app_sup_raw. iApply "Hs".
   Qed.
 

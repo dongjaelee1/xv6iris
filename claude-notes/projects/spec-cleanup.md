@@ -745,7 +745,52 @@ headlines:
    counter's authority and an unpaid mover BUMPS it — design §3's own
    sentence, made a resource, neither dead nor vacuous.  Two owner
    decisions are queued at §8.4, and SEAM-I touches `AppInv.v`, which
-   this campaign's bar has kept untouched — hence the relay entry below.
+   this campaign's bar has kept untouched.  ~~Hence the relay entry
+   below.~~  RULED in-house and LANDED — the block that follows, and
+   `design/user-tree.md` §9.1 corrects the consumer's shape.
+
+**SEAM-I AS LANDED** — branch `seam-i`; design of record
+`design/user-tree.md` §9.1 (rewritten as the as-landed block).  Whole
+iris tree green on the mirror; every landed TL-*/EX-* statement
+unchanged; echo audit 14, system audit 13, tree audit 10.
+
+1. **THE SEAM** (`AppInv.v`, §7.1 verbatim): `app_step`'s wand is
+   `▷ app_pred av ==∗ ▷ app_pred av'`; `app_top_update`'s step premise
+   likewise and its proof `iMod`s it; `app_step_at`'s conclusion is `==∗`;
+   `app_top_update_step` keeps its update-free STATEMENT and lifts by one
+   `iModIntro`; `app_top_update_same`, `app_step_id`, `app_step_acc` gain
+   one each; new `app_top_update_bupd`, the `==∗` twin of `_step`.
+2. **THE LIFT IS FOUR FILES, not ten.**  Only a proof that BUILDS a step
+   (or `app_top_update`'s premise) moves: `InodeRegion.ireg_top_retag_gen`
+   + `…_armed_gen` (statements unchanged), `TreeMove.tree_app_step_of`,
+   `UInitCons` ×4.  Every fire's `iApply (app_step_at …)` typechecks
+   unchanged, because the slot and the lemma moved together.  `grep -n
+   "app_step" iris/*.v` is the whole census; §7.1's other names
+   (`PinnedOpen`, `AppEcho`, `UkWriteFile`, `UkTreeRead`) only MENTION it.
+3. **THE CONSUMER — AND THE DESIGN'S ONE ERROR, NOW A ROCQ THEOREM.**
+   §9.1 asked for `tree_step_bump` FROM NOTHING, with the counter's
+   authority in the claim's live arm.  That is inconsistent:
+   `AppTree.tree_bump_free_is_vacuous` derives `⊢ |==> tree_taint c` from
+   it, because `App.xv6_app_adequacy`'s `Happ_init` binder mints era 0's
+   claim with NO antecedent (`tree_init`), so anything in the live arm is
+   free — and independently, `app_xfer_boot_raw` hands out a SECOND live
+   claim at the one fixed `c` on every crossing, so an exclusive row could
+   be transported only by tainting the era at each one.  **An update in
+   `app_step` does not create a resource; it lets a mover SPEND one.**
+4. **THE MINT, AS LANDED**: `AppTree.tree_step_bump : tree_cl c -∗
+   ▷ tree_pred c r av ==∗ ▷ tree_pred c r av' ∗ tree_taint c`,
+   `AppTree.tree_sup_of_bump : tree_cl c ==∗ app_sup_raw (tree_pred c) r`,
+   and the seam's actual consumer `TreeMove.tree_app_step_bump :
+   tree_cl c -∗ app_step i I av'` — an `app_step` that is NOT one under
+   the old update-free reading, because paying it bumps the counter, and
+   it pays LAZILY (the taint is minted only if the step fires).
+5. **WHAT TL-5 OWES** is the HAND-DOWN, not a claim row: `tree_cl` IS
+   `App.app_cl` at this record, and today `al_R0` buries it in `tree_R`
+   while `app_turn app_tree` is `emp`.  The era's turn is the one per-era
+   linear channel to `/init` (`al_pow` mints it), so land
+   `app_turn app_tree c k :=` the counter and demote `tree_R` to the
+   lower bound — §9.1's "`app_R` becomes a lower bound only" was right,
+   its ARM was wrong.  Then wall (a) falls as §8.4 wanted.
 
 ## RELAY QUEUE (for upstream, via the owner's push)
 
@@ -763,12 +808,11 @@ headlines:
 3. **The count/window join** at the pipe read receipt, and **row 16's
    missing return blanket** (`design/user-write.md`): one conjunct
    each, wide cones, both priced in the design pages.
-4. **SEAM-I** (`design/user-tree.md` §7.1, consumer named at §8.2/§8.4):
-   `AppInv.app_step` at `▷ app_pred av ==∗ ▷ app_pred av'` — one `-∗`
-   becomes `==∗`, every site costed leg by leg in §7.1, zero semantic
-   change for every existing consumer.  It is what makes the tree
-   application's taint MINTABLE (at the unpaid move, where design §3 puts
-   it) and hence `Hinit_boot` provable at all.  It touches `AppInv.v`.
+4. ~~**SEAM-I**~~ — **RETIRED, done in-house on the owner's word**
+   (branch `seam-i`; as-landed block above and `design/user-tree.md`
+   §9.1).  `AppInv.app_step` is at `▷ app_pred av ==∗ ▷ app_pred av'`,
+   zero semantic change for every consumer, whole tree green, all three
+   audits unmoved.
 
 OPENED 2026-09-15 (owner: "focus on cleanup... the read system
 call spec needs generalization... a generic read spec... will allow us

@@ -23,8 +23,9 @@
 (* AND WHAT IS DELIBERATELY NOT HERE: anything that MOVES the tree.       *)
 (* O_TRUNC is a write, so every open below is at [om_trunc vom = false];  *)
 (* the write side waits on the owner's ruling (design section 5, TL-2's   *)
-(* finding 1: an owner's own move is a ghost-map UPDATE and                *)
-(* [AppInv.app_step] is an update-free wand).                             *)
+(* finding 1: an owner's own move is a ghost-map UPDATE, which the        *)
+(* update-free reading of [AppInv.app_step] could not pay; TL-3W's        *)
+(* two-phase move is the answer, and lane SEAM-I's update is not).        *)
 (* ===================================================================== *)
 From Stdlib Require Import ZArith Bool Lia List.
 From stdpp Require Import gmap list bitvector.definitions.

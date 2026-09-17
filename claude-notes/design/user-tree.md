@@ -619,7 +619,7 @@ own receipt `Φ`.  That is TL-2's route (ii), pre-existing.  RULING:
 the write side lands on §7.2 with NO seam change; §7.1 stays designed
 and ready for a claim that genuinely needs a wand-side update.
 
-### 7.1 Seam (i), exactly — designed, not (yet) applied
+### 7.1 Seam (i), exactly — APPLIED (lane SEAM-I; §9.1 is the as-landed block)
 
 - `AppInv.app_step i I av' := ∀ n', ⌜abs_view (<[i:=n']> I) = av'⌝ -∗
   ▷ app_pred app_run (abs_view I) ==∗ ▷ app_pred app_run (abs_view (<[i:=n']> I))`
@@ -639,6 +639,13 @@ and ready for a claim that genuinely needs a wand-side update.
   `app_step_at` into `app_top_update`'s slot still typechecks; a site
   that `iDestruct`s the wand's result becomes `iMod`.
 - Bar: zero semantic change for every consumer; echo audit at 14.
+
+APPLIED, and the SITE LIST is SHORTER than this section guessed: only a
+proof that BUILDS an `app_step` value, or that builds `app_top_update`'s
+step premise, moves — and `grep -n "app_step" iris/*.v` is the whole
+census, because `PinnedOpen`/`AppEcho`/`UkWriteFile`/`UkTreeRead` (named
+above) only MENTION the step in comments; the ones that build it are
+`AppInv` itself, `InodeRegion`, `TreeMove` and `UInitCons`.  See §9.1.
 
 ### 7.2 The two-phase owner move — what TL-3 (write) lands
 
@@ -1804,6 +1811,9 @@ There are exactly TWO routes to one and the tree application can take
 neither.
 
 **(a) WALL 1 — THE TAINT HAS NO MINT, so every arm keyed on it is dead.**
+(As of SEAM-I: still true of the RECORD as it stands, and §9.1 names the
+one hand-down that dissolves it — `tree_cl` onto the era's turn.  The
+MINT itself is landed: `tree_sup_of_bump`.)
 `AppTree.tree_taint c` is `mono_nat_lb_own c 1` and `tree_cl c` is the
 counter's authority; `tree_taint_mint` is landed but UNREACHABLE,
 because the authority lives in the ledger (`AppTree.tree_R`) and no
@@ -1873,6 +1883,13 @@ free to supply, unusable without wall (a)'s mint.
 
 ### 8.4 THE FIX IS ONE ALREADY-DESIGNED LANE: SEAM-I (§7.1)
 
+> **SUPERSEDED IN ONE POINT by §9.1 as landed.**  SEAM-I is built and
+> wall (a) does fall, but NOT the way this section says: the claim's body
+> CANNOT carry the counter's authority (era 0's claim is minted from
+> nothing, so anything in the live arm is free — `tree_bump_free_is_vacuous`).
+> The counter reaches the mover through the era's own resources instead.
+> Read §9.1 for the landed shape; the rest of this section stands.
+
 §7.1 says of SEAM-I: "deferred; ready: as one mechanical lane if a
 consumer appears".  **A consumer has appeared, and it is the taint's
 mint.**  With `AppInv.app_step` at `▷ app_pred av ==∗ ▷ app_pred av'`
@@ -1918,28 +1935,79 @@ bar has so far kept untouched.
 Both of §8.4's questions are ruled YES.  This section is the design of
 record for the two lanes that follow.
 
-### 9.1 SEAM-I is built (in-house), and its consumer is the tree taint's mint
+### 9.1 SEAM-I as LANDED — and the mint's premise, which the design got wrong
 
-§7.1 is applied verbatim: `AppInv.app_step`'s wand becomes `▷ app_pred
-av ==∗ ▷ app_pred av'`, `app_top_update` `iMod`s it, `app_top_update_step`
-keeps its update-free statement, the ~10 suppliers gain an `iModIntro`.
-Zero semantic change for every consumer; `AppInv.v` is touched, which
-this campaign had avoided as a courtesy to upstream's redesign — that
-redesign has landed, so the courtesy is spent.
+**THE SEAM (`AppInv.v`), applied verbatim from §7.1.**  `app_step`'s wand
+is now `▷ app_pred av ==∗ ▷ app_pred av'`; `app_top_update`'s step premise
+likewise, and its proof `iMod`s it where it used to `iDestruct` it;
+`app_top_update_step` keeps its update-free statement and lifts by one
+`iModIntro`; `app_top_update_same` gains one; `app_step_at`'s conclusion
+is `==∗`; `app_step_id` and `app_step_acc` gain one `iModIntro` each.
+NEW: `app_top_update_bupd`, the `==∗` twin of `_step` — the caller pays
+the move with a ghost move of its own, the update OUTSIDE the later where
+a basic update can run.
 
-THE CONSUMER.  TL-4 wall (a): the tree taint has no mint, so `app_sup`
-is unobtainable and every taint-guarded deposit is dead.  Under SEAM-I
-the mint is the UNPAID MOVER'S OWN STEP: `tree_body` carries the taint
-counter's AUTHORITY (`mono_nat_auth (tc_taint c) 1 n`, moved out of
-`tree_R`/`tree_cl` — the ledger `app_R` becomes a lower bound only), and
+**THE LIFT IS FOUR FILES, not the ten §7.1 guessed.**  A site moves only
+if it BUILDS an `app_step` value or builds `app_top_update`'s premise:
+
+| site | edit |
+| --- | --- |
+| `InodeRegion.ireg_top_retag_gen`, `…_armed_gen` | `{ iApply ("Hstep" $! I). }` → `{ iIntros (Hlk) "Hp". iModIntro. iApply ("Hstep" $! I with "[//] Hp"). }` (statements unchanged: both keep their update-free `▷`-wand premise) |
+| `TreeMove.tree_app_step_of` | one `iModIntro` before the `iNext` |
+| `UInitCons` ×4 (the hand-built console steps) | one `iModIntro` before the `iNext` |
+
+Everything else typechecks unchanged: every fire's
+`{ iIntros (_) "Hp". iApply (app_step_at … with "Hstep Hp"). }` still
+applies, because the slot it fills and the lemma it applies moved
+together; every statement that NAMES `app_step` is unchanged; the
+`app_step_acc` consumers are unchanged.  `PinnedOpen`, `AppEcho`,
+`UkWriteFile` and `UkTreeRead` — §7.1's list — build no step at all.
+
+**THE CONSUMER, AND THE CORRECTION.**  §9.1 as designed asked for
 `tree_step_bump : ▷ tree_pred c r av ==∗ ▷ tree_pred c r av' ∗ tree_taint c`
-— open the live arm, bump the counter to 1, close in the taint arm, keep
-a persistent lower bound.  Provable from NOTHING, which is exactly what
-a generic discharger has.  So `app_sup` for the tree application IS the
-taint, obtainable by whoever makes the first unpaid move — and by whoever
-hands a process to the generic tier (§9.2's exec of /sh mints it there,
-by the same lemma).  Design §3's "the first unpaid move is recorded as
-the taint" is now a resource, neither dead nor vacuous.
+**from nothing**, with the counter's authority parked in the claim's live
+arm.  THAT SHAPE IS INCONSISTENT, and `AppTree.tree_bump_free_is_vacuous`
+is the proof, in Rocq:
+
+> `App.xv6_app_adequacy`'s `Happ_init` binder is
+> `⊢ |==> ∃ r, app_pred A c r av_img` — NO ANTECEDENT.  For this claim it
+> is `AppTree.tree_init`, which allocates two empty ghost maps and is done.
+> So a bump provable from the claim alone is provable from nothing;
+> `tree_taint c` is then free, `AppInv.app_sup` with it
+> (`tree_sup_of_taint`), and every deed reads back a disjunction whose
+> right arm always holds — the application says nothing.
+
+No arrangement of rows inside `tree_body` escapes it: the hypothesis
+quantifies over the instance `r`, and a fresh `r` is allocatable.  And
+even setting that aside, the TRANSPORT makes an exclusive row of the live
+arm unworkable: `app_xfer_boot_raw` hands out a SECOND live claim at the
+one fixed `c` on every crossing (`tree_xfer_boot_at` is the landed
+proof), so a globally unique row could be transported only by tainting
+the era at each one.  **`AppInv.app_step` being an update does not create
+a resource; it only lets a mover SPEND one.**
+
+**SO THE COUNTER TRAVELS WITH THE MOVER**, and that is the landed shape:
+
+- `AppTree.tree_step_bump : tree_cl c -∗ ▷ tree_pred c r av ==∗ ▷ tree_pred c r av' ∗ tree_taint c`
+- `AppTree.tree_sup_of_bump : tree_cl c ==∗ app_sup_raw (tree_pred c) r`
+- `TreeMove.tree_app_step_bump : file_app = MkAppcfg … → tree_cl c -∗ app_step i I av'`
+  — **this one is the seam's consumer**: it is not an `app_step` under the
+  old update-free reading, because paying it BUMPS the era's counter.
+  A holder of the counter may move the view without answering for it, at
+  the price of recording the move as the taint, and it pays LAZILY — the
+  taint is minted only if the step actually fires.
+
+`tree_cl c` IS `App.app_cl` at this record, born once with the fixed part
+(`al_birth`).  What TL-5 owes is the HAND-DOWN: today `al_R0` buries it in
+the ledger (`tree_R := tree_cl ∨ tree_taint`) and `app_turn app_tree` is
+`emp`.  The era's turn is the one per-era linear channel to `/init`
+(`al_pow` mints it), so the shape to land is `app_turn app_tree c k :=`
+the counter, `tree_R` demoted to the lower bound, exactly as §9.1's
+"`app_R` becomes a lower bound only" already said — it was the ARM that
+was wrong, not the ledger.  With it, wall (a) falls the way §8.4 wanted:
+`Hinit_boot` mints the taint out of the era's own turn, gets `app_sup`,
+and takes `InitBoot.init_boot_bundle_triv`; and §9.2's "exec of /sh mints
+the taint" is `tree_sup_of_bump` at that instant.
 
 ### 9.2 Verified init on the tree claim — what the theorem says
 

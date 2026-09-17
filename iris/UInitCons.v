@@ -576,7 +576,8 @@ Section UInitCons.
         subst d nm.
         iDestruct "Hpay" as "[[%Hp0 [%Hpv0 HK0]] | #HT]".
         + iModIntro. iFrame "Hka HPd". iSplitL "HK0".
-          { rewrite /app_step. iIntros (n') "%Heq Hp". rewrite Heq. iNext.
+          { rewrite /app_step. iIntros (n') "%Heq Hp". rewrite Heq.
+            iModIntro. iNext.
             iApply ("Hmk" $! (abs_view I) ents nl i with "[%] HK0 Hp").
             exact Hpre. }
           iIntros (I') "%Heq' Hka".
@@ -605,7 +606,8 @@ Section UInitCons.
           right. intros ->. exact (Hother (conj eq_refl eq_refl)). }
         iDestruct "Hpay" as "[[%Hp0 [%Hpv0 HK0]] | #HT]".
         + iModIntro. iFrame "Hka HPd". iSplitR.
-          { rewrite /app_step. iIntros (n') "%Heq Hp". rewrite Heq. iNext.
+          { rewrite /app_step. iIntros (n') "%Heq Hp". rewrite Heq.
+            iModIntro. iNext.
             iApply ("Hoth" $! (abs_view I) d nm ents nl i with "[%] [%] Hp");
               [ exact Hpre | exact Hne ]. }
           iIntros (I') "%Heq' Hka". iModIntro. iFrame "Hka".
@@ -644,7 +646,8 @@ Section UInitCons.
       { iNext. rewrite /app_body. iExists I. iFrame "Hh Hp Hx".
         iPureIntro. exact Hdom. }
       iModIntro. iFrame "Hka". iSplitR.
-      { rewrite /app_step. iIntros (n') "%Heq Hp". rewrite Heq. iNext.
+      { rewrite /app_step. iIntros (n') "%Heq Hp". rewrite Heq.
+            iModIntro. iNext.
         iApply ("Harml" $! (abs_view I) i with "[%] Hp"). exact Hnone. }
       iIntros (I') "%Heq' Hka". iModIntro. iFrame "Hka".
       rewrite /init_mk_Farm /=.
@@ -684,7 +687,8 @@ Section UInitCons.
     iModIntro. iFrame "Hka".
     iDestruct "Hc" as "[%Hab | #HT]".
     - iSplitR.
-      { rewrite /app_step. iIntros (n') "%Heq Hp". rewrite Heq. iNext.
+      { rewrite /app_step. iIntros (n') "%Heq Hp". rewrite Heq.
+            iModIntro. iNext.
         iApply ("Hunl" $! av0 (abs_view I) i with "[%] [%] [%] [%] Hp");
           [ exact Hfree | exact Hp0 | exact Hpv0 | exact Hab ]. }
       iIntros (I') "%Heq' Hka". iModIntro. iFrame "Hka".

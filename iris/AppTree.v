@@ -33,10 +33,15 @@
    ============ THE THREE FINDINGS, and what they cost ============
 
    FINDING 1 (THE SEAM) -- CLOSED BY LANE TL-3W, design/user-tree.md
-   section 7.2, AND CLOSED WITH NO SEAM.  What TL-2 found stands as
-   stated: [AppInv.app_step] is an UPDATE-FREE wand applied under the
-   invariant's later, and moving an owner's recorded subtree is a GHOST
-   MAP UPDATE, so an owner's move cannot be paid BY THE STEP ALONE --
+   section 7.2, AND CLOSED WITH NO SEAM.  (Lane SEAM-I has since made
+   [AppInv.app_step] a BASIC UPDATE -- design section 9.1 -- but the
+   argument below is unaffected and TL-3W's two-phase move stands: what
+   the seam buys is the TAINT's mint, [TreeMove.tree_app_step_bump], not
+   an owner's paid move.)  What TL-2 found stands as stated at the
+   update-free reading: [AppInv.app_step] was an UPDATE-FREE wand applied
+   under the invariant's later, and moving an owner's recorded subtree is
+   a GHOST MAP UPDATE, so an owner's move cannot be paid BY THE STEP
+   ALONE --
      - a plain wand can TRANSFER resources but cannot run a frame-
        preserving update;
      - wrapping the claim in [|==>] makes the wand able to update, but
@@ -52,7 +57,7 @@
    that sees the move.  So the move splits, with no [AppInv] change at
    all (the seam of section 7.1 stays designed and deferred):
      PHASE 1  [tree_step_move_gen] and its legs -- an update-free wand,
-              which [app_step] takes verbatim: the owner's DEED and a
+              which [app_step] takes verbatim (and still does): the DEED and a
               fresh TOKEN are PARKED in the entry's SLOT, which leaves
               the exact arm and says nothing until phase 2;
      PHASE 2  [tree_resync] -- the ticket identifies the entry, the exact
@@ -1583,6 +1588,49 @@ Section AppTree.
     rewrite /tree_pred. iLeft. iExact "Ht".
   Qed.
 
+  (* ---- 2c'.  THE MINT (SEAM-I's consumer; design section 9.1) -------- *)
+
+  (* THE UNPAID MOVER'S OWN STEP.  With [AppInv.app_step] a BASIC UPDATE
+     (seam I), a party that holds the era's counter may pay a view move it
+     cannot justify by BUMPING the counter and leaving the claim in its
+     taint arm -- design section 3's "the first unpaid move is recorded as
+     the taint", as a resource.  It is neither dead (the counter sits at 0
+     until somebody actually moves unpaid) nor vacuous (the taint costs the
+     era's counter, which exists once).
+
+     WHY THE COUNTER IS A PREMISE AND NOT A ROW OF [tree_body].  Section
+     9.1 asked for this lemma FROM NOTHING, with the authority parked in
+     the claim's live arm.  That shape is inconsistent, and
+     [tree_bump_free_is_vacuous] below is the proof: era 0's claim is
+     minted from nothing ([App.xv6_app_adequacy]'s [Happ_init] is
+     [⊢ |==> ∃ r, app_pred A c r av], which for this claim is [tree_init]),
+     so a bump that needs nothing beside the claim needs nothing at all,
+     and [tree_taint c] -- hence [AppInv.app_sup] -- would be free.  (And
+     even setting that aside, the TRANSPORT makes an exclusive row of the
+     live arm unworkable rather than merely awkward: [app_xfer_boot_raw]
+     hands out a SECOND live claim at the one fixed [c] on every crossing,
+     so a globally unique row could be transported only by tainting the
+     era at each one.)  So the counter travels WITH THE MOVER, and the era
+     hands it down: it is born with the fixed part ([tree_cl] IS
+     [App.app_cl] at this record) and reaches a process through the era's
+     own resources, not through the claim. *)
+  Lemma tree_step_bump (c : tree_fixed) (r : tree_names) (av av' : aview) :
+    tree_cl c -∗ ▷ tree_pred c r av ==∗ ▷ tree_pred c r av' ∗ tree_taint c.
+  Proof.
+    iIntros "Hcl _". iMod (tree_taint_mint c with "Hcl") as "#Ht".
+    iModIntro. iSplit; [| iExact "Ht"].
+    iNext. rewrite /tree_pred. iLeft. iExact "Ht".
+  Qed.
+
+  (* ...and the supply it buys, which is what a generic slot's every
+     [AppInv.app_step] is then paid from ([AppInv.app_step_acc]). *)
+  Lemma tree_sup_of_bump (c : tree_fixed) (r : tree_names) :
+    tree_cl c ==∗ app_sup_raw (tree_pred c) r.
+  Proof.
+    iIntros "Hcl". iMod (tree_taint_mint c with "Hcl") as "#Ht".
+    iModIntro. iApply (tree_sup_of_taint c r with "Ht").
+  Qed.
+
   (* THE TRANSPORT ([App.Happ_xfer]): a copy of the claim at FRESH names.
      The copy is born OWNING NOTHING -- the empty partition -- which is
      well formed at any view the original's own [own_wf] says is
@@ -2246,6 +2294,30 @@ Section AppTree.
     iApply (tree_body_empty (γa, γb) av Hwf Hr Hro with "Ha Hb").
   Qed.
 
+  (* WHY THE MINT CANNOT BE FREE (the SEAM-I lane's finding; design
+     section 9.1 asked for [tree_step_bump] with NO premise).  Era 0's
+     claim is minted from nothing at any tree-shaped view -- that is
+     [tree_init] just above, and it is forced by [App.xv6_app_adequacy]'s
+     [Happ_init] binder, which is [⊢ |==> ∃ r, app_pred A c r av] with no
+     antecedent.  So a bump provable from the claim alone is provable from
+     nothing, [AppInv.app_sup] is free at this claim
+     ([tree_sup_of_taint]), and every owner's deed reads back a disjunction
+     whose right arm always holds: the application says nothing.  No
+     arrangement of rows inside [tree_body] escapes this, because the
+     hypothesis quantifies over the instance [r] and a fresh one is
+     allocatable. *)
+  Lemma tree_bump_free_is_vacuous (c : tree_fixed) (av : aview) :
+    aview_tree_wf av -> adir_at av FsImg.ROOTINO -> aview_rooted av ->
+    (forall (r : tree_names) (av1 av2 : aview),
+       ⊢ ▷ tree_pred c r av1 ==∗ ▷ tree_pred c r av2 ∗ tree_taint c) ->
+    ⊢ |==> tree_taint c.
+  Proof.
+    intros Hwf Hr Hro Hbump.
+    iMod (tree_init c av Hwf Hr Hro) as (r) "Hp".
+    iMod (Hbump r av av with "[Hp]") as "[_ #Ht]"; [iNext; iExact "Hp" |].
+    iModIntro. iExact "Ht".
+  Qed.
+
   (* ...AND THE ERA'S FIRST OWNER BESIDE IT: the boot process owns the
      whole namespace at the root the image gives it.  (Design section 3's
      "the first process owns / at the mkfs image's tree"; the view is an
@@ -2497,7 +2569,11 @@ End AppTreeRecord.
 (*      [UInitSh] construction at this claim.  Finding 2 is CLOSED (TL-3:  *)
 (*      [TreeExec.exec_walk_of_own] at [ExecRun]'s absnode-level chain),   *)
 (*      so a PINNED bundle is buildable; what is left is the construction. *)
-(*    ...and the LEDGER: [app_R] here never bumps the counter, so         *)
-(*      [tree_taint] is not mintable and [app_sup] is unobtainable.  A    *)
-(*      real tree application reads an unpaid move off its own ledger.    *)
+(*    ...and the LEDGER (SEAM-I): [tree_taint] IS mintable now --        *)
+(*      [tree_sup_of_bump] mints it from [tree_cl], which IS [app_cl] at  *)
+(*      this record -- but [app_R] still buries the counter and           *)
+(*      [app_turn] here is [emp], so nothing HANDS IT DOWN to a process.  *)
+(*      TL-5's shape: [app_turn app_tree c k] carries the counter (the    *)
+(*      one per-era linear channel, minted by [al_pow]) and [tree_R]      *)
+(*      demotes to the lower bound.  design/user-tree.md section 9.1.     *)
 (* ===================================================================== *)

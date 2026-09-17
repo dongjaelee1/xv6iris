@@ -3383,7 +3383,7 @@ Section InodeRegion.
     rewrite /top_frag /fs_gamma_L /=.
     iMod (app_top_update (E ∖ ↑ftopN) γfs I i n n' (appN_sub_ftop E HE)
             with "Hai [Hstep] Ha Hf") as "[Ha Hf]".
-    { iApply ("Hstep" $! I). }
+    { iIntros (Hlk) "Hp". iModIntro. iApply ("Hstep" $! I with "[//] Hp"). }
     iMod ("Hclose" with "[Ha Hla Hpark]") as "_".
     { iNext. rewrite /ftop_body. iExists (<[i := n']> I), A.
       iFrame "Ha Hla Hpark". iPureIntro.
@@ -3444,7 +3444,7 @@ Section InodeRegion.
     rewrite /top_frag /fs_gamma_L /=.
     iMod (app_top_update (E ∖ ↑ftopN) γfs I i n n' (appN_sub_ftop E HE)
             with "Hai [Hstep] Ha Hf") as "[Ha Hf]".
-    { iApply ("Hstep" $! I). }
+    { iIntros (Hlk) "Hp". iModIntro. iApply ("Hstep" $! I with "[//] Hp"). }
     iMod ("Hclose" with "[Ha Hla Hpark]") as "_".
     { iNext. rewrite /ftop_body. iExists (<[i := n']> I), A.
       iFrame "Ha Hla Hpark". iPureIntro.

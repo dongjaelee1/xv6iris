@@ -1043,26 +1043,16 @@ Lemma init_boot_of_sup {Σ}
      rx-tag equation) -- so a caller that already hands over [app_sup]
      hands over nothing new. *)
   (app_sup ⊢ cons_licence) ->
-  (* (* RA-2: held case here *) THE MINT SITE'S ALL-PARKED FACT
-     (design/user-read.md SS8.1's finding 3, SS8.3).  When
-     [UexecExecMint.uslot_mint] is narrowed to keys whose table is
-     all-parked, this discharge owes [FdSlots.fdv_all_parked sts] -- and
-     it has it for nothing at the only [sts] the boot chain instantiates:
-     [FdSlots.fdv_all_parked_fdt0], since [App.xv6_app] and
-     [BootChain]/[ProofMain] all state the bundle at [FdSlots.fdt0].  The
-     fact then crosses the exec that spends the bundle by
-     [SpecKexec.kexec_image_ok_parked] / [exec_key_ok_parked], which is
-     what carries it to the key the first process resumes at.  So the
-     premise, when RA-2 adds it, is [fdv_all_parked sts] here and
-     [fdv_all_parked_fdt0] at every caller. *)
-  fdv_all_parked sts ->
+  (* NO ALL-PARKED FACT (lane OFF-HAND-6, H3): the exec crossing's taint
+     arm stopped asking for one, because a held row's half is in the
+     descriptor bundle (design/app-file.md SS3 fact 4). *)
   app_sup -∗ □ riscv_kill_cred -∗ init_boot_bundle cw sts.
 Proof.
-  intros Hlic Hpk0. iIntros "#Hsup #Hkc".
+  intros Hlic. iIntros "#Hsup #Hkc".
   iAssert cons_licence as "#Hlic"; [by iApply Hlic|].
   iPoseProof LinkUserinit.UG.uexec_wp_gen as "#Hgen".
   iDestruct (UexecExecMint.uslot_mint with "Hsup Hkc Hlic Hgen") as "#Hmk".
-  iApply (init_boot_bundle_triv cw sts Hpk0 with "Hmk").
+  iApply (init_boot_bundle_triv cw sts with "Hmk").
 Qed.
 
 (* ...and at the generic application's predicate, which is what the three
@@ -1078,12 +1068,10 @@ Lemma init_boot_of_triv {Σ}
   (* ...and the CONSOLE CLAIM is the trivial one, which is what makes the
      generic supply's licence free (redesign R2: one claim, one licence) *)
   @riscv_cons_res Σ _ = cons_res_triv ->
-  fdv_all_parked sts ->
   ⊢ init_boot_bundle cw sts.
 Proof.
-  intros Htriv Hkc Hcons Hpk0. iApply (init_boot_of_sup cw sts).
+  intros Htriv Hkc Hcons. iApply (init_boot_of_sup cw sts).
   { iIntros "_". by iApply cons_licence_triv. }
-  { exact Hpk0. }
   { iApply app_sup_of_triv. exact Htriv. }
   rewrite Hkc /kill_cred_triv. iModIntro. done.
 Qed.
@@ -1676,8 +1664,7 @@ Proof.
                   iIntros "_ _ _"; iModIntro; iApply init_boot_of_triv;
                   [ rewrite Heq; intros r' av; reflexivity
                   | rewrite /riscv_kill_cred Hiface; reflexivity
-                  | rewrite /riscv_cons_res Hiface; reflexivity
-                  | apply fdv_all_parked_fdt0 ])
+                  | rewrite /riscv_cons_res Hiface; reflexivity ])
             (* THE ECHO'S JUSTIFICATION, at the TRIVIAL console claim: every
                link is free, so the echo justifies itself. *)
             ltac:(intros HRi ci Hifacei; iIntros (GEN XI);
@@ -1862,7 +1849,6 @@ Proof.
                   iIntros "_ _ _"; iModIntro; iApply init_boot_of_sup;
                   [ rewrite /cons_licence /riscv_cons_res Hiface;
                     iIntros "_"; iApply Hout_lic
-                  | apply fdv_all_parked_fdt0
                   | iApply app_sup_of_triv; rewrite Heq; intros r' av;
                     reflexivity
                   | rewrite /riscv_kill_cred Hiface /= /kill_cred_triv;
@@ -2318,8 +2304,7 @@ Proof.
                   iIntros "_ _ _"; iModIntro; iApply init_boot_of_triv;
                   [ rewrite Heq; intros r' av; reflexivity
                   | rewrite /riscv_kill_cred Hiface; reflexivity
-                  | rewrite /riscv_cons_res Hiface; reflexivity
-                  | apply fdv_all_parked_fdt0 ])
+                  | rewrite /riscv_cons_res Hiface; reflexivity ])
             (* THE ECHO'S JUSTIFICATION, at the TRIVIAL console claim: every
                link is free, so the echo justifies itself. *)
             ltac:(intros HRi ci Hifacei; iIntros (GEN XI);

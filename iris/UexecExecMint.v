@@ -396,19 +396,18 @@ Section UexecExecMint.
      [SpecKexec.exec_slot_pre]'s wands. *)
   Lemma uslot_mint :
     app_sup -∗ □ riscv_kill_cred -∗ cons_licence -∗ □ uexec_wp -∗
-    □ (∀ W : uvis, ⌜FdSlots.fdv_all_parked (uvis_fd W)⌝ -∗
-                   my_pay (uvis_gen W) (fun _ => True)%I -∗ uslot W).
+    □ (∀ W : uvis, my_pay (uvis_gen W) (fun _ => True)%I -∗ uslot W).
   Proof using ghost_varG0 ufdG0.
     iIntros "#Hsup #Hkc #Hlic #Hgen".
     iDestruct (udep_gen with "Hsup Hkc Hlic") as "#Hdep".
-    iIntros "!>" (W) "%Hpark #Hpay".
+    iIntros "!>" (W) "#Hpay".
     (* AT THE GENERIC INSTANCE, EXPLICITLY (lane SUPPLY-SPLIT).  The chain
        is now parametric in which [uprogSG] its two verified arms run at,
        because a verified program's is NOT this one; the generic mint is
        the caller that instantiates it here, where every number is admitted
        and echo's flagged deposit is therefore free as well. *)
     iApply (UexecCond.cond_entry_slot uprogSG_gen W ltac:(intros k _; exact I)
-              Hpark with "[] Hdep [] Hkc Hgen Hpay").
+              with "[] Hdep [] Hkc Hgen Hpay").
     { iApply (udepw_law_of_psok (PS := uprogSG_gen) 16
                 ltac:(exact I) ltac:(vm_compute; discriminate)). }
     { rewrite /ssupply /= /xv6_ssupply. iModIntro.

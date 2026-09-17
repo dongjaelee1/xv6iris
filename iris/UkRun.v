@@ -776,8 +776,18 @@ Section UkRun.
   (* NEEDS the fact, so an escape hatch on the right would make the row      *)
   (* useless exactly where it is spent.                                      *)
   (* ===================================================================== *)
+  (* ...AND THE OFFSET HALF OF IT IS GONE (lane OFF-HAND-6, H3).  It used
+     to be [fdv_held_in (ukn_held N) fdv] -- "every UNPARKED row of this
+     table is one the record says it holds" -- and its ONE consumer was
+     the exec crossing's taint arm ([ExecEntry.image_entry_taint]), which
+     asks for nothing now: a held row's half is in the DESCRIPTOR BUNDLE
+     and the kernel holds it at every fire (design/app-file.md SS3 fact
+     4).  So the row is [True] and [ukn_held] is dead data on [uk_names]
+     until a cleanup lane deletes the field; the side conditions the
+     steps below still take are left in place unread, so no leaf's
+     statement moves. *)
   Definition urun_parked_row (N : uk_names Σ) (fdv : list fdstate) : Prop :=
-    fdv_held_in (ukn_held N) fdv.
+    True.
 
   Definition urun_rows (N : uk_names Σ) (fdv : list fdstate) : iProp Σ :=
     (urun_nopipe fdv ∗ ⌜urun_parked_row N fdv⌝)%I.
@@ -792,24 +802,6 @@ Section UkRun.
     urun_rows N fdv -∗ urun_nopipe fdv.
   Proof using . iIntros "[$ _]". Qed.
 
-  (* ...and the OFFSET row on its own, for the leaves that read it off a
-     run they are keeping ([urun_rows] is persistent, so this costs the
-     leaf nothing). *)
-  Lemma urun_rows_held (N : uk_names Σ) (fdv : list fdstate) :
-    urun_rows N fdv -∗ ⌜urun_parked_row N fdv⌝.
-  Proof using . iIntros "[_ $]". Qed.
-
-  (* ...AND THE READING THE TAINT ARM SPENDS: a record that answers for its
-     offsets reads all-parkedness off its own run, with nothing in hand but
-     the run.  This is what [urun_gen_parked] and [UkSh.ush_gen_run]'s
-     narrowed twin pay their family with. *)
-  Lemma urun_rows_parked (N : uk_names Σ) `{!ukn_parked N} (fdv : list fdstate) :
-    urun_rows N fdv -∗ ⌜fdv_all_parked fdv⌝.
-  Proof using .
-    iIntros "[_ %Hp]". iPureIntro. apply fdv_held_in_empty.
-    rewrite <- (ukn_parked_eq (N := N)). exact Hp.
-  Qed.
-
   Lemma urun_rows_intro (N : uk_names Σ) (fdv : list fdstate) :
     fdv_nopipe fdv -> urun_parked_row N fdv -> ⊢ urun_rows N fdv.
   Proof using .
@@ -820,8 +812,7 @@ Section UkRun.
   Lemma urun_rows_closed (N : uk_names Σ) (n : nat) :
     ⊢ urun_rows N (replicate n FdClosed).
   Proof using .
-    apply urun_rows_intro; [ apply fdv_nopipe_closed | ].
-    apply fdv_held_in_closed.
+    apply urun_rows_intro; [ apply fdv_nopipe_closed | exact I ].
   Qed.
 
   (* THE TAINT'S PIPE ROW, with the offset row still owed.  A tainted
@@ -843,13 +834,11 @@ Section UkRun.
   Lemma urun_rows_step (N : uk_names Σ) (n : Z) (tf : list (mword 64))
       (r : mword 64) (fdv fdv' : list fdstate) :
     n <> USYS_pipe -> usys_fd_ok n tf r fdv fdv' ->
-    (n = USYS_dup -> fdst_parked (fdv !!! Z.to_nat (usys_argfd tf))) ->
     urun_rows N fdv -∗ urun_rows N fdv'.
   Proof using .
-    intros Hne Hok Hdup. iIntros "[Hnp %Hpk]". rewrite /urun_rows.
+    intros Hne Hok. iIntros "[Hnp %Hpk]". rewrite /urun_rows.
     iSplitL "Hnp"; [ iApply (urun_nopipe_step n tf r fdv fdv' Hne Hok with "Hnp") | ].
-    iPureIntro.
-    exact (usys_fd_ok_held (ukn_held N) n tf r fdv fdv' Hok Hdup Hpk).
+    by iPureIntro.
   Qed.
 
   Lemma urun_rows_quiet (N : uk_names Σ) (fdv fdv' : list fdstate) :
@@ -860,12 +849,12 @@ Section UkRun.
      rather than [usys_fd_ok] itself. *)
   Lemma urun_rows_insert (N : uk_names Σ) (fdv : list fdstate) (k : nat)
       (st : fdstate) :
-    fdst_nopipe st -> fdst_parked st ->
+    fdst_nopipe st ->
     urun_rows N fdv -∗ urun_rows N (<[k := st]> fdv).
   Proof using .
-    intros Hnp Hpk. iIntros "[Hn %Hp]". rewrite /urun_rows.
+    intros Hnp. iIntros "[Hn %Hp]". rewrite /urun_rows.
     iSplitL "Hn"; [ iApply (urun_nopipe_insert fdv k st Hnp with "Hn") | ].
-    iPureIntro. apply fdv_held_in_insert; [ exact Hp | left; exact Hpk ].
+    by iPureIntro.
   Qed.
 
   (* ...AND DUP'S, WITH ITS ONE GUARD (lane OFF-HAND-4, S1).  The copied
@@ -875,21 +864,20 @@ Section UkRun.
      derive it from. *)
   Lemma urun_rows_dup (N : uk_names Σ) (fdv : list fdstate) (k j : nat)
       (st : fdstate) :
-    fdv !! k = Some st -> fdst_parked st ->
+    fdv !! k = Some st ->
     urun_rows N fdv -∗ urun_rows N (<[j := st]> fdv).
   Proof using .
-    intros Hk Hpk. iIntros "[Hn %Hp]". rewrite /urun_rows.
+    intros Hk. iIntros "[Hn %Hp]". rewrite /urun_rows.
     iSplitL "Hn"; [ iApply (urun_nopipe_dup fdv k j st Hk with "Hn") | ].
-    iPureIntro. apply fdv_held_in_insert; [ exact Hp | left; exact Hpk ].
+    by iPureIntro.
   Qed.
 
   Lemma urun_rows_copy (N : uk_names Σ) (fdv : list fdstate) (k j : nat) :
-    fdst_parked (fdv !!! k) ->
     urun_rows N fdv -∗ urun_rows N (<[j := fdv !!! k]> fdv).
   Proof using .
-    intros Hpk. iIntros "[Hn %Hp]". rewrite /urun_rows.
+    iIntros "[Hn %Hp]". rewrite /urun_rows.
     iSplitL "Hn"; [ iApply (urun_nopipe_copy fdv k j with "Hn") | ].
-    iPureIntro. apply fdv_held_in_insert; [ exact Hp | left; exact Hpk ].
+    by iPureIntro.
   Qed.
 
   (* ...AND WHAT IT BUYS: exit's deposit at the key the leaf has destructed
@@ -1560,14 +1548,10 @@ Section UkRun.
   Lemma urun_gen (N : uk_names Σ) (T : iProp Σ) (h : CpuId) (m : regfile)
       (pc : mword 64) (avail : nat) :
     is_aligned_vaddr (Virtaddr pc) 2 = true ->
-    (* ...AND THE RECORD ANSWERS FOR ITS OFFSETS (lane OFF-HAND-3, R1;
-       OFF-HAND-4, S1).  The family the taint runs on is narrowed to keys
-       whose held halves have been surrendered
-       ([ExecEntry.image_entry_taint]), and the key a running process is at
-       is bound by [urun]'s own existential -- so the only thing that can
-       pay the row here is the run's own, which is guarded by the record's
-       held SET being empty. *)
-    ukn_held N = ∅ ->
+    (* ...AND IT ANSWERS FOR NO OFFSETS (lane OFF-HAND-6, H3): the family
+     the taint runs on is not narrowed any more
+     ([ExecEntry.image_entry_taint]), because a held row's half is in the
+     descriptor bundle and the kernel holds it at every fire. *)
     (* THE RUN CARRIES NO PAYLOAD (lane SELF-KILL, P6) and the TAINT ARM
        ASKS FOR NONE (P6b): a tainted process runs on the generic family,
        whose constant payload is carried PERSISTENTLY
@@ -1575,19 +1559,16 @@ Section UkRun.
        is built out of [T] itself ([UserConsole.ucons_pay_taint]).  So all
        that crosses here is the taint and the key's own pay fact. *)
     □ (∀ W : uvis,
-         ⌜fdv_all_parked (uvis_fd W)⌝ -∗
          T -∗ my_pay (uvis_gen W) (ukn_pay N) -∗ uslot W) -∗
     T -∗ urun N h m pc avail -∗ WP (Loop : expr riscv_lang).
   Proof using .
-    intros Hal Hpk. iIntros "#Hgen HT Hrun".
+    intros Hal. iIntros "#Hgen HT Hrun".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv)
       "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iDestruct "Hnpx" as "[#Hnp %Hpkr]".
     iDestruct (uvb_x0 with "Hb") as "[%Hx0 Hb]".
     iDestruct ("Hgen" $! (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
-                 with "[%] HT []") as "Hslot".
-    { cbn [uvis_fd uvis_of_run]. apply fdv_held_in_empty.
-      rewrite <- Hpk. exact Hpkr. }
+                 with "HT []") as "Hslot".
     { cbn [uvis_gen uvis_of_run]. iExact "Hmy". }
     rewrite (uslot_run m pc M pm sz fdv cw gn cs pidv Hx0 Hal).
     iApply ("Hslot" $! h xi C pt Rfd Rut HRut with "[%] [%] [%] Hb");
@@ -1948,11 +1929,11 @@ Section UkRun.
        eager ([SpecKexec.exec_slot_pre]'s success wands; lane LAZY-FLAG's
        K4 is what puts the fact on them). *)
     uvis_lazy W = false ->
-    (* ...AND THE HELD SET IS HONEST (lane OFF-HAND-3, R1; OFF-HAND-4, S1):
-       a constructor may mint a record at a held set only if every unparked
-       row of the key's table is one of those slots.  See the row lent
-       below. *)
-    fdv_held_in hs (uvis_fd W) ->
+    (* ...AND NO HONESTY ROW ON THE HELD SET (lane OFF-HAND-6, H3): the
+       record's [ukn_held] is dead data now ([urun_parked_row]'s note), so
+       a constructor mints at any set and an entry may be taken at a key
+       with a HELD descriptor -- which is what makes a redirect child's
+       exec provable (design/app-file.md SS3 fact 4). *)
     (* ...and the deposit supplier, exactly as [uslot_of_urun] takes it *)
     udep -∗
     (* ...AND THE PROCESS'S OWN KNOWLEDGE OF ITS EXIT PAYLOAD.  A [urun]
@@ -2028,7 +2009,7 @@ Section UkRun.
        WP (Loop : expr riscv_lang))
     -∗ uslot W.
   Proof using .
-    intros Hal8 Hroom Hstk Hfdlen Hstop Hlzf Hpkw.
+    intros Hal8 Hroom Hstk Hfdlen Hstop Hlzf.
     iIntros "#Hdep #Hnpx #Hpay Hprog".
     rewrite uslot_ukc /ukc Hlzf.
     iIntros (h xi C pt Rfd Rut HRut) "%Hlo %Hpm %Hlzr Hb".
@@ -2115,7 +2096,7 @@ Section UkRun.
     iFrame "Hheap Hstk Hufd Hcwa Hcha Hpay Hdep".
     iSplitR;
       [ rewrite /urun_rows; iSplitR;
-        [ iExact "Hnpx" | iPureIntro; exact Hpkw ] | ].
+        [ iExact "Hnpx" | by iPureIntro ] | ].
     rewrite /uvb /uvb_F /user_ptm_inv_x.
     iFrame "Hamb Hregs Hfrag Hcfg Hgpr Hpc Hrut Hkont Htlb Hlazy".
     iPureIntro. split_and!; [ exact Hsz | exact Hinj | exact Hacc ].
@@ -2149,11 +2130,11 @@ Section UkRun.
        bv_unsigned p * 4096 < UserPtTree.pgroundup (uvis_sz W)) ->
     (* ...AND THE KEY'S LAZY BIT IS [false] -- see [uslot_of_urun_all]. *)
     uvis_lazy W = false ->
-    (* ...AND THE HELD SET IS HONEST (lane OFF-HAND-3, R1; OFF-HAND-4, S1):
-       a constructor may mint a record at a held set only if every unparked
-       row of the key's table is one of those slots.  See the row lent
-       below. *)
-    fdv_held_in hs (uvis_fd W) ->
+    (* ...AND NO HONESTY ROW ON THE HELD SET (lane OFF-HAND-6, H3): the
+       record's [ukn_held] is dead data now ([urun_parked_row]'s note), so
+       a constructor mints at any set and an entry may be taken at a key
+       with a HELD descriptor -- which is what makes a redirect child's
+       exec provable (design/app-file.md SS3 fact 4). *)
     (* THE DEPOSIT SUPPLIER, at the key the slot is being built for.  This
        is the one obligation the ARM adds to an entry constructor: whoever
        hands a program a [urun] says which syscall bundles it can pay and
@@ -2231,7 +2212,7 @@ Section UkRun.
        WP (Loop : expr riscv_lang))
     -∗ uslot W.
   Proof using .
-    intros Hal8 Hroom Hstk Hfdlen Hstop Hlzf Hpkw.
+    intros Hal8 Hroom Hstk Hfdlen Hstop Hlzf.
     iIntros "#Hdep #Hnpx #Hpay Hprog". rewrite uslot_ukc /ukc Hlzf.
     iIntros (h xi C pt Rfd Rut HRut) "%Hlo %Hpm %Hlzr Hb".
     set (sz := uvis_sz W).
@@ -2293,7 +2274,7 @@ Section UkRun.
     iFrame "Hheap Hstk Hufd Hcwa Hcha Hpay Hdep".
     iSplitR;
       [ rewrite /urun_rows; iSplitR;
-        [ iExact "Hnpx" | iPureIntro; exact Hpkw ] | ].
+        [ iExact "Hnpx" | by iPureIntro ] | ].
     rewrite /uvb /uvb_F /user_ptm_inv_x.
     iFrame "Hamb Hregs Hfrag Hcfg Hgpr Hpc Hrut Hkont Htlb Hlazy".
     iPureIntro. split_and!; [ exact Hsz | exact Hinj | exact Hacc ].
@@ -2335,11 +2316,11 @@ Section UkRun.
        bv_unsigned p * 4096 < UserPtTree.pgroundup (uvis_sz W)) ->
     (* ...AND THE KEY'S LAZY BIT IS [false] -- see [uslot_of_urun_all]. *)
     uvis_lazy W = false ->
-    (* ...AND THE HELD SET IS HONEST (lane OFF-HAND-3, R1; OFF-HAND-4, S1):
-       a constructor may mint a record at a held set only if every unparked
-       row of the key's table is one of those slots.  See the row lent
-       below. *)
-    fdv_held_in hs (uvis_fd W) ->
+    (* ...AND NO HONESTY ROW ON THE HELD SET (lane OFF-HAND-6, H3): the
+       record's [ukn_held] is dead data now ([urun_parked_row]'s note), so
+       a constructor mints at any set and an entry may be taken at a key
+       with a HELD descriptor -- which is what makes a redirect child's
+       exec provable (design/app-file.md SS3 fact 4). *)
     (* THE DEPOSIT SUPPLIER, at the key the slot is being built for.  This
        is the one obligation the ARM adds to an entry constructor: whoever
        hands a program a [urun] says which syscall bundles it can pay and
@@ -2422,7 +2403,7 @@ Section UkRun.
        WP (Loop : expr riscv_lang))
     -∗ uslot W.
   Proof using .
-    intros Hal8 Hroom Hstk Hfdlen Hstop Hlzf Hpkw.
+    intros Hal8 Hroom Hstk Hfdlen Hstop Hlzf.
     iIntros "#Hdep #Hnpx #Hpay Hprog". rewrite uslot_ukc /ukc Hlzf.
     iIntros (h xi C pt Rfd Rut HRut) "%Hlo %Hpm %Hlzr Hb".
     set (sz := uvis_sz W).
@@ -2496,7 +2477,7 @@ Section UkRun.
     iFrame "Hheap Hstk Hufd Hcwa Hcha Hpay Hdep".
     iSplitR;
       [ rewrite /urun_rows; iSplitR;
-        [ iExact "Hnpx" | iPureIntro; exact Hpkw ] | ].
+        [ iExact "Hnpx" | by iPureIntro ] | ].
     rewrite /uvb /uvb_F /user_ptm_inv_x.
     iFrame "Hamb Hregs Hfrag Hcfg Hgpr Hpc Hrut Hkont Htlb Hlazy".
     iPureIntro. split_and!; [ exact Hsz | exact Hinj | exact Hacc ].

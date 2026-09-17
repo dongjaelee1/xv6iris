@@ -464,7 +464,6 @@ Section UInitBoot.
   Proof using .
     iIntros "#Hcl #Hinv #Hcon #Hgen HPay".
     rewrite /init_boot_bundle.
-    iSplitR; [iPureIntro; apply fdv_all_parked_fdt0 |].
     iIntros "Hrd".
     iDestruct ("HPay" with "Hrd") as "HPay".
     rewrite init_boot_cw.
@@ -473,16 +472,13 @@ Section UInitBoot.
                  INIT_INO ElfUser.init_elf 1%nat Pay (fun _ => True)%I
                  1%nat (fun _ => 5%nat) (fun _ => init_boot_bytes) fdt0
                  init_boot_pin_resolves init_elf_loadable
-                 (fdv_all_parked_fdt0)
                  with "Hcl Hinv [] [] HPay") as (P Pmiss Fo R) "Hb".
     - iModIntro. iIntros (W') "%Hok %Hcw %Hlz #Hp HP".
       iApply ("Hcon" $! W' with "[%] [%] [%] Hp HP");
         [ exact Hok | exact Hcw | exact Hlz ].
-    - (* the all-parked row stops here (lane OFF-HAND-3, R1): the GENERIC
-         family a tainted process runs on ([UexecExecMint.uslot_mint_all])
-         is not narrowed yet -- what is narrowed is the ARM, which is what
-         [PinnedExec.pex_slot]'s taint side now carries. *)
-      iModIntro. iIntros (W') "_ #HT #Hp". iApply ("Hgen" $! W' with "HT Hp").
+    - (* the taint arm takes the key and nothing else (lane OFF-HAND-6,
+         H3): [ExecEntry.image_entry_taint] carries no all-parked row. *)
+      iModIntro. iIntros (W') "#HT #Hp". iApply ("Hgen" $! W' with "HT Hp").
     - iExists P, Pmiss, Fo, R. iExact "Hb".
   Qed.
 
@@ -1021,7 +1017,7 @@ Section EchoInitBoot.
                 (init_boot_room 0%nat
                                    ltac:(vm_compute; discriminate))
                 fdt0_length eq_refl (fdv_nopipe_closed _)
-                (fdv_all_parked_closed _) (fun k H => H)
+                (fun k H => H)
                 with "[] [] Hxs").
       - iModIntro. iExact "Hdp".
       - iApply (udep_free). }

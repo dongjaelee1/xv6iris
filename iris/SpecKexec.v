@@ -953,14 +953,15 @@ Section KexecAU.
       (pl : list (bv 8))
       (na : nat) (alen : nat -> nat) (afun : nat -> nat -> bv 8)
       (sts : list fdstate) (cs : gset gname) (pidv : mword 32) :
-    fdv_all_parked sts ->
-    □ (∀ W : uvis, ⌜fdv_all_parked (uvis_fd W)⌝ -∗
-                   my_pay (uvis_gen W) (fun _ => True)%I -∗ S W) -∗
+    (* NO ALL-PARKED ROW (lane OFF-HAND-6, H3): [ExecEntry.image_entry_taint]
+       carries none, because the half a held row's fire needs is in the
+       descriptor bundle (design/app-file.md SS3 fact 4). *)
+    □ (∀ W : uvis, my_pay (uvis_gen W) (fun _ => True)%I -∗ S W) -∗
     exec_au_pre (MkPfam S True%I) Γ γfs cw (fun _ => True%I)
       (fun _ _ => True%I) (fun _ _ => True%I) (pfam_triv (fun _ _ _ => True%I))
       pl na alen afun sts cs pidv.
   Proof using .
-    intros Hpk0. iIntros "#HS". rewrite /exec_au_pre. iSplitR.
+    iIntros "#HS". rewrite /exec_au_pre. iSplitR.
     { rewrite /ex_start /ex_hops_from. iIntros (r) "_". iModIntro.
       iSplit; [done |]. iApply ax_hops_triv. }
     iSplitR.
@@ -972,11 +973,9 @@ Section KexecAU.
     rewrite /pf_at /=. iSplit; [| done].
     rewrite /exec_slot_pre. iSplitR.
     - iIntros (av i f nl W') "_ _ _ %Hok _ _ _ _ Hp".
-      iApply ("HS" $! W' with "[%] Hp").
-      exact (kexec_image_ok_parked f na alen afun sts W' Hok Hpk0).
+      iApply ("HS" $! W' with "Hp").
     - iIntros (av i a W') "_ _ _ %Hok _ _ _ _ Hp".
-      iApply ("HS" $! W' with "[%] Hp").
-      exact (exec_key_ok_parked na alen sts W' Hok Hpk0).
+      iApply ("HS" $! W' with "Hp").
   Qed.
 
   (* ...and the one a caller that wants nothing back hands in: the slot
@@ -985,15 +984,13 @@ Section KexecAU.
   Lemma exec_au_pre_triv Γ (γfs : fs_names) (cw : Z) (pl : list (bv 8))
       (na : nat) (alen : nat -> nat) (afun : nat -> nat -> bv 8)
       (sts : list fdstate) (cs : gset gname) (pidv : mword 32) :
-    fdv_all_parked sts ->
     ⊢ exec_au_pre (MkPfam (fun _ => emp%I) True%I) Γ γfs cw (fun _ => True%I)
         (fun _ _ => True%I) (fun _ _ => True%I) (pfam_triv (fun _ _ _ => True%I))
         pl na alen afun sts cs pidv.
   Proof using .
-    intros Hpk0.
     iApply (exec_au_pre_triv_at (fun _ => emp%I) Γ γfs cw pl na alen afun
-              sts cs pidv Hpk0).
-    iIntros "!>" (W) "_ _". iEmpIntro.
+              sts cs pidv).
+    iIntros "!>" (W) "_". iEmpIntro.
   Qed.
 
   (* non-expansive in the slot predicate: UexecExecInst.v instantiates

@@ -172,7 +172,9 @@ Section UInitTreeExec.
         (ucons_pay cn γ (tree_taint c) Rd) uslot.
   Proof using .
     intros Heq Hcons Hkill.
-    rewrite /image_entry_taint. iIntros "!>" (W') "#HT Hmp".
+    (* the key's all-parked row (lane OFF-HAND-4, S2) is not read here:
+       the generic slot is quantified over every key *)
+    rewrite /image_entry_taint. iIntros "!>" (W') "%Hpk #HT Hmp".
     iDestruct (tree_gen_slot c r Heq Hcons Hkill with "HT") as "#Hgen".
     iApply ("Hgen" $! (ucons_pay cn γ (tree_taint c) Rd (-1)) W'
               with "[Hmp] []").
@@ -203,7 +205,7 @@ Section UInitTreeExec.
     intros Heq Hcons Hkill. iIntros "#HT".
     rewrite /UkInit.init_exec_sup_lend.
     iIntros "!>" (γ np N m pc l)
-      "%Hpeq %Ha0 %Ha1 #Hro #Hargv Hstd Hrow Hcred Hpos Hlease Hchf Hpidf".
+      "%Hpeq %Hhd %Ha0 %Ha1 #Hro #Hargv Hstd Hrow Hcred Hpos Hlease Hchf Hpidf".
     iAssert (image_entry_taint (tree_taint c) (ukn_pay N) uslot) as "#Hgen".
     { rewrite Hpeq.
       iApply (tree_image_entry_taint c r cn γ
@@ -217,7 +219,7 @@ Section UInitTreeExec.
                  ∗ ucons_pay cn γ (tree_taint c) (cc_rd (tree_cc c)) (-1)
                  ∗ UkInit.init_lend_cred (tree_taint c) stc
                      (cc_wp (tree_cc c)) (cc_wbn (tree_cc c)) l np)%I
-              _ sh_elf_loadable Ha0 Ha1
+              _ sh_elf_loadable Ha0 Ha1 Hhd
               with "[] Hgen [Hstd Hpos Hlease Hcred]").
     (* ---- THE REFUND IS THE LEND ITSELF ([UkInit.init_lend_ref]): what
            went into the deposit comes back at the shapes it went in at,
@@ -235,8 +237,12 @@ Section UInitTreeExec.
     iFrame "Hheap Hufd Hids".
     iSplitR; [ iPureIntro; exact (UInitSh.init_sh_path_of M Hsro) | ].
     iSplitR; [ iApply (exec_walk_of_taint with "HT") | ].
+    (* the taint arm asks for the exec'ing table's all-parked row (lane
+       OFF-HAND-4, S2); /init's run answers it at the empty held set *)
+    iDestruct (urun_rows_parked (ukn_parked0 := Hhd) N fdv with "Hnpw")
+      as %Hpk0.
     iSplitR "Hstd Hpos Hlease Hcred";
-      [ iApply (image_entry_of_taint with "HT Hgen") | ].
+      [ iApply (image_entry_of_taint _ _ _ _ _ _ _ _ _ _ _ Hpk0 with "HT Hgen") | ].
     iFrame "Hstd Hpos Hlease Hcred".
   Qed.
 
@@ -293,7 +299,8 @@ Section UInitTreeExec.
               init_cons_fd_ne
               (tree_init_kill_law c init_cons_fd)
               (init_boot_room 0%nat ltac:(vm_compute; discriminate))
-              fdt0_length eq_refl (fdv_nopipe_closed _) (fun k H => H)
+              fdt0_length eq_refl (fdv_nopipe_closed _) fdv_all_parked_fdt0
+              (fun k H => H)
               with "[] [] []").
     - iApply (tree_init_deps c r Heq Hcons Hkill).
     - iApply (udep_free).

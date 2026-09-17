@@ -1273,7 +1273,7 @@ Section UInitSh.
        the whole reason a tainted process needs no lease. *)
     iAssert (image_entry_taint T
                (ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wbn Cr))) uslot)%I as "#Hgen'".
-    { rewrite /image_entry_taint. iModIntro. iIntros (W') "#HT #Hmp".
+    { rewrite /image_entry_taint. iModIntro. iIntros (W') "_ #HT #Hmp".
       iApply ("Hgen" $! (ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wbn Cr)) (-1)) W' with "HT [Hmp] []").
       - rewrite ucons_pay_eta. iExact "Hmp".
       - iModIntro. iIntros "_". iApply (ucons_pay_taint with "HT"). }

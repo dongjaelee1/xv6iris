@@ -145,7 +145,7 @@ Section ExecBundle.
                      family the taint arm runs on is not narrowed yet, and
                      cannot be until the U tier can name its own table --
                      [ExecEntry.image_entry_taint]'s note. *)
-        iApply ("Hgen" $! W' with "HT Hp"). }
+        iApply ("Hgen" $! W' with "[%] HT Hp"); exact Hpk. }
       (* [subst f' nl'] and not a bare [subst]: the rows introduced just
          above are equations on [cw], on [uvis_lazy W'], on [cs] and on
          [pidv], and a bare [subst] would spend one of those instead. *)
@@ -161,7 +161,7 @@ Section ExecBundle.
                      family the taint arm runs on is not narrowed yet, and
                      cannot be until the U tier can name its own table --
                      [ExecEntry.image_entry_taint]'s note. *)
-        iApply ("Hgen" $! W' with "HT Hp"). }
+        iApply ("Hgen" $! W' with "[%] HT Hp"); exact Hpk. }
       subst a. exfalso. apply Hnload. exists f, nl.
       split; [ reflexivity | exact Hload ].
   Qed.

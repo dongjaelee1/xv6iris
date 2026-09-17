@@ -1533,6 +1533,12 @@ Section UkRun.
   Lemma urun_gen (N : uk_names Σ) (T : iProp Σ) (h : CpuId) (m : regfile)
       (pc : mword 64) (avail : nat) :
     is_aligned_vaddr (Virtaddr pc) 2 = true ->
+    (* ...AND THE RECORD ANSWERS FOR ITS OFFSETS (lane OFF-HAND-3, R1).
+       The family the taint runs on is narrowed to all-parked keys
+       ([ExecEntry.image_entry_taint]), and the key a running process is at
+       is bound by [urun]'s own existential -- so the only thing that can
+       pay the row here is the run's own, which is guarded by this bit. *)
+    ukn_park N = true ->
     (* THE RUN CARRIES NO PAYLOAD (lane SELF-KILL, P6) and the TAINT ARM
        ASKS FOR NONE (P6b): a tainted process runs on the generic family,
        whose constant payload is carried PERSISTENTLY
@@ -1540,15 +1546,18 @@ Section UkRun.
        is built out of [T] itself ([UserConsole.ucons_pay_taint]).  So all
        that crosses here is the taint and the key's own pay fact. *)
     □ (∀ W : uvis,
+         ⌜fdv_all_parked (uvis_fd W)⌝ -∗
          T -∗ my_pay (uvis_gen W) (ukn_pay N) -∗ uslot W) -∗
     T -∗ urun N h m pc avail -∗ WP (Loop : expr riscv_lang).
   Proof using .
-    intros Hal. iIntros "#Hgen HT Hrun".
+    intros Hal Hpk. iIntros "#Hgen HT Hrun".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv)
       "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
+    iDestruct "Hnpx" as "[#Hnp %Hpkr]".
     iDestruct (uvb_x0 with "Hb") as "[%Hx0 Hb]".
     iDestruct ("Hgen" $! (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
-                 with "HT []") as "Hslot".
+                 with "[%] HT []") as "Hslot".
+    { cbn [uvis_fd uvis_of_run]. exact (Hpkr Hpk). }
     { cbn [uvis_gen uvis_of_run]. iExact "Hmy". }
     rewrite (uslot_run m pc M pm sz fdv cw gn cs pidv Hx0 Hal).
     iApply ("Hslot" $! h xi C pt Rfd Rut HRut with "[%] [%] [%] Hb");

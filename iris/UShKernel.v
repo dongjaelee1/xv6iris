@@ -608,7 +608,12 @@ Section UShKernel.
        uslot_mint_all]).  sh's console open is PINNED, so the taint has no
        bundle for row 15 and the preamble must be able to stop walking sh's
        code.  This is [UInitSh.init_sh_slot]'s third conjunct at [Q]. *)
-    □ (∀ W' : uvis, T -∗ my_pay (uvis_gen W') Q -∗ uslot W') -∗
+    (* ...AND THE TAINT ARM TAKES THE KEY'S ALL-PARKED ROW (lane
+       OFF-HAND-3, R1): the family a tainted process runs on is narrowed
+       to all-parked keys ([ExecEntry.image_entry_taint]), and sh's own
+       generic slot ([UkSh.ush_gen_slot]) relays the row to it. *)
+    □ (∀ W' : uvis, ⌜fdv_all_parked (uvis_fd W')⌝ -∗
+                    T -∗ my_pay (uvis_gen W') Q -∗ uslot W') -∗
     (* THE PAY FACT, at sh's own payload, and NOTHING BESIDE IT (lane
        SELF-KILL, P6b): no run carries a payload between traps any more,
        and what sh's exit owes crosses the exec as [PinnedExec]'s linear
@@ -660,7 +665,8 @@ Section UShKernel.
       - iRight. iRight. iExact "HT". }
     (* ...and the taint's continuation at this record's own payload *)
     iAssert (UkSh.ush_gen_slot N T) as "#Hgen'".
-    { rewrite /UkSh.ush_gen_slot Hpayeq. iExact "Hgen". }
+    { rewrite /UkSh.ush_gen_slot Hpayeq.
+      iSplitR; [ iPureIntro; exact Hparkeq | iExact "Hgen" ]. }
     (* sh's OWN READ-ONLY IMAGE, off the same text: the jump table, the
        "console" literal the pinned open resolves and the prompt's two
        bytes all live in it, so it is read out once here. *)
@@ -818,7 +824,10 @@ Section UShKernel.
     (□ (∀ N : uk_names Σ, UkSh.ush_open_console_leaf N T)
      ∨ (□ (∀ N : uk_names Σ, UkSh.ush_open_absent_leaf N T K) ∗ K)
      ∨ T) -∗
-    □ (∀ W : uvis, T -∗ my_pay (uvis_gen W) Q -∗ uslot W) -∗
+    (* ...and the taint arm's key row, passed straight through: see
+       [sh_uexec_slot] *)
+    □ (∀ W : uvis, ⌜fdv_all_parked (uvis_fd W)⌝ -∗
+                   T -∗ my_pay (uvis_gen W) Q -∗ uslot W) -∗
     my_pay (uvis_gen W') Q -∗
     upos γp n -∗
     (* the lend, beside the position (lane KILL-PAY, K4(a); step 3) *)

@@ -238,7 +238,7 @@ Section UShEchoPay.
     (* ---- THE TAINT ARM: the generic slot at the chosen payload.  It names
        no key, so it is built before the deposit's own ∀. ---- *)
     iAssert (image_entry_taint T (fun _ : Z => Wq I) uslot)%I as "#Hgen'".
-    { rewrite /image_entry_taint. iModIntro. iIntros (W') "#HT #Hmp".
+    { rewrite /image_entry_taint. iModIntro. iIntros (W') "_ #HT #Hmp".
       iApply ("Hgen" $! (Wq I) W' with "HT Hmp []").
       iIntros "!> #Hk". rewrite /UkShFork.ushf_wq. iRight.
       iApply (EchoLinksLine.ewc_lcred_taint T γ (S gen_id) I 0%nat v

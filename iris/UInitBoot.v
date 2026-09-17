@@ -477,7 +477,11 @@ Section UInitBoot.
     - iModIntro. iIntros (W') "%Hok %Hcw %Hlz #Hp HP".
       iApply ("Hcon" $! W' with "[%] [%] [%] Hp HP");
         [ exact Hok | exact Hcw | exact Hlz ].
-    - iModIntro. iIntros (W') "#HT #Hp". iApply ("Hgen" $! W' with "HT Hp").
+    - (* the all-parked row stops here (lane OFF-HAND-3, R1): the GENERIC
+         family a tainted process runs on ([UexecExecMint.uslot_mint_all])
+         is not narrowed yet -- what is narrowed is the ARM, which is what
+         [PinnedExec.pex_slot]'s taint side now carries. *)
+      iModIntro. iIntros (W') "_ #HT #Hp". iApply ("Hgen" $! W' with "HT Hp").
     - iExists P, Pmiss, Fo, R. iExact "Hb".
   Qed.
 

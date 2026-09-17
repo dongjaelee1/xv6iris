@@ -507,8 +507,8 @@ Section ExecRun.
     image_entry f M av sts cw cs pidv Q Pay X.
   Proof using .
     iIntros "#HT #Hgen". rewrite /image_entry /image_entry_taint.
-    iIntros "!>" (na alen afun W') "_ _ _ _ _ _ _ Hmp _".
-    iApply ("Hgen" $! W' with "HT Hmp").
+    iIntros "!>" (na alen afun W') "_ _ _ _ _ %Hpk _ Hmp _".
+    iApply ("Hgen" $! W' with "[%] HT Hmp"); exact Hpk.
   Qed.
 
   (* THE PATH READING, as a program actually holds it: the string exec
@@ -799,7 +799,7 @@ Section ExecRun.
                      family the taint arm runs on is not narrowed yet, and
                      cannot be until the U tier can name its own table --
                      [ExecEntry.image_entry_taint]'s note. *)
-        iApply ("Hgen" $! W' with "HT Hp"). }
+        iApply ("Hgen" $! W' with "[%] HT Hp"); exact Hpk. }
       cbn [an_node] in Hnode. injection Hnode as Hf. subst f'.
       iApply ("Hcon" $! W' with "[%] [%] [%] [%] [%] [%] Hp HPay");
         [ exact Hok | exact Hcwq | exact Hlzq | exact Hchq | exact Hpiq
@@ -812,7 +812,7 @@ Section ExecRun.
                      family the taint arm runs on is not narrowed yet, and
                      cannot be until the U tier can name its own table --
                      [ExecEntry.image_entry_taint]'s note. *)
-        iApply ("Hgen" $! W' with "HT Hp"). }
+        iApply ("Hgen" $! W' with "[%] HT Hp"); exact Hpk. }
       exfalso. apply Hnload. exists f, (an_nlink a).
       split; [ | exact Hload ].
       destruct a as [nd k]. cbn [an_node an_nlink] in Hnode |- *.

@@ -1702,7 +1702,7 @@ Section KexecABody.
             rewrite /Q9. apply upd_eq. }
           apply eq_vec_true_iff in Ecmp.
           rewrite Hget0 Hget5 in Ecmp.
-          destruct Hret as [[_ Huser] | [Ha0 _]]; [discriminate Huser |].
+          destruct Hret as [[_ [Huser _]] | [Ha0 _]]; [discriminate Huser |].
           rewrite Ha0 in Ecmp.
           apply kxc_moi_nat64_inj in Ecmp; [exact Ecmp | | lia].
           unfold rd_clamp in Htotb. destruct (decide _); lia. }
@@ -1806,7 +1806,7 @@ Section KexecABody.
             rewrite /Q9. apply upd_eq. }
           apply eq_vec_true_iff in Ecmp.
           rewrite Hget0 Hget5 in Ecmp.
-          destruct Hret as [[_ Huser] | [Ha0 _]]; [discriminate Huser |].
+          destruct Hret as [[_ [Huser _]] | [Ha0 _]]; [discriminate Huser |].
           rewrite Ha0 in Ecmp.
           apply kxc_moi_nat64_inj in Ecmp; [exact Ecmp | | lia].
           unfold rd_clamp in Htotb. destruct (decide _); lia. }
@@ -1815,7 +1815,7 @@ Section KexecABody.
           destruct (decide (j < tot)%nat) as [_ | Hno]; [| lia].
           by rewrite Nat.add_0_l. }
         assert (Hsz64 : 64 <= bv_unsigned (di_size dnl)).
-        { destruct Hret as [[_ Huser] | [_ Htoteq]]; [discriminate Huser |].
+        { destruct Hret as [[_ [Huser _]] | [_ Htoteq]]; [discriminate Huser |].
           rewrite Htot64 in Htoteq. unfold rd_clamp in Htoteq.
           pose proof (proj1 (bv_unsigned_in_range _ (di_size dnl))) as Hnn.
           destruct (decide (Z.to_nat (bv_unsigned (di_size dnl)) < 0 + 64)%nat)
@@ -1940,7 +1940,7 @@ Section KexecABody.
                   = (mword_of_int (Z.of_nat 64) : mword 64)).
         { intro CX. rewrite (rget_ne (CID := CX) Q9 Ra5 ltac:(nz)).
           rewrite /Q9. apply upd_eq. }
-        destruct Hret as [[_ Huser] | [Ha0 Htoteq]]; [discriminate Huser |].
+        destruct Hret as [[_ [Huser _]] | [Ha0 Htoteq]]; [discriminate Huser |].
         assert (Htotlt : (tot < 64)%nat).
         { assert (Hle : (tot <= 64)%nat)
             by (unfold rd_clamp in Htotb; destruct (decide _); lia).

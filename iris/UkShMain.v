@@ -342,7 +342,7 @@ Section UkShMain.
 
   (* every byte a program owns is inside the user region -- read off the
      run's own heap, and the run survives because the conclusion is pure *)
-  Local Lemma urun_ubytes_bnd (h : CpuId) (m : regfile) (pc : mword 64)
+  Lemma urun_ubytes_bnd (h : CpuId) (m : regfile) (pc : mword 64)
       (avail : nat) (a : Z) (nb : nat) (fb : nat -> bv 8) :
     urun N h m pc avail -∗ ubytes γd a nb fb -∗
     ⌜ forall j : nat, (j < nb)%nat -> 0 <= a + Z.of_nat j < 2 ^ 38 ⌝.
@@ -359,25 +359,37 @@ Section UkShMain.
      of the parser's node and the NUL-cut line, and every byte of it is
      DISCARDED on the way -- which is what makes the tree persistent, hence
      what lets it cross the fork as a payload. *)
-  Lemma ush_cmd_of_ushp (h : CpuId) (m : regfile) (pc : mword 64) (avail : nat)
-      (s0 p : Z) (len : nat) (f : nat -> bv 8)
+  (* THE CONVERSION, at what it actually needs.  The NUL cut enters the     *)
+  (* argument only through three facts about the line's bytes -- each       *)
+  (* token is inside the line, its END byte is zero, and no byte of its     *)
+  (* BODY is -- so those are the premises, and the cut that produced them   *)
+  (* is the caller's business.  [ush_cmd_of_ushp] below is this lemma at    *)
+  (* stage 4's cut; the redirect line's cut is one byte longer and is the   *)
+  (* other instance.                                                        *)
+  Lemma ush_cmd_of_ushp_gen (h : CpuId) (m : regfile) (pc : mword 64)
+      (avail : nat) (s0 p : Z) (len : nat) (g : nat -> bv 8)
       (toks : list (nat * nat)) :
-    ushp_tokens len f 0 toks ->
-    ushp_no_symbols len f ->
-    (forall j : nat, (j < len)%nat -> f j <> ubyte0) ->
+    (forall (i : nat) (tk : nat * nat), toks !! i = Some tk ->
+       (fst tk < snd tk)%nat /\ (snd tk <= len)%nat) ->
+    (forall (i : nat) (tk : nat * nat), toks !! i = Some tk ->
+       g (snd tk) = ubyte0) ->
+    (forall (i : nat) (tk : nat * nat), toks !! i = Some tk ->
+       forall j : nat, (j < snd tk - fst tk)%nat ->
+         g (fst tk + j)%nat <> ubyte0) ->
     Z.of_nat len < 2 ^ 31 ->
     0 < s0 -> s0 + Z.of_nat len < 2 ^ 38 ->
     (* the run is here only to read the node's address bound off the heap *)
     urun N h m pc avail -∗
     ushp_tree N s0 p (UshpExec toks) -∗
-    ubytes γd s0 (S len) (ushp_nulfold toks (ushp_ext len f)) ==∗
+    (* the line ALREADY PERSISTED: a caller with a second string to cut out
+       of it (the redirect's file name) needs it afterwards, and the cut is
+       done by then either way *)
+    ubytesq γd DfracDiscarded s0 (S len) g ==∗
     urun N h m pc avail ∗
-    ush_cmd γd p (UExec (ush_args s0 (ushp_nulfold toks (ushp_ext len f)) toks)).
+    ush_cmd γd p (UExec (ush_args s0 g toks)).
   Proof using .
-    intros Htoks Hns Hnn Hlen31 Hs0 Hs0hi.
-    set (g := ushp_nulfold toks (ushp_ext len f)).
-    iIntros "Hrun Hnode Hline".
-    iMod (ubytes_persist γd s0 (S len) g with "Hline") as "#Hline".
+    intros Hin Hend Hbod Hlen31 Hs0 Hs0hi.
+    iIntros "Hrun Hnode #Hline".
     iDestruct "Hnode" as "(%Hlt10 & %Hp0 & %Hp8 & [Hty _] & Hargv & _)".
     iDestruct (urun_ubytes_bnd h m pc avail p 4 _ with "Hrun Hty") as %Hpb.
     assert (Hp : 0 < p < 2 ^ 38).
@@ -409,28 +421,9 @@ Section UkShMain.
     { rewrite /ush_args big_sepL_fmap.
       iApply big_sepL_intro. iIntros "!>" (i tk Hi).
       rewrite /ush_str. cbn [ua_ptr ua_len ua_bytes fst snd].
-      assert (H0len : (0 <= len)%nat) by lia.
-      destruct (ushp_tokens_in len f 0%nat toks Htoks H0len i tk Hi)
-        as [Hlo Hhi].
+      destruct (Hin i tk Hi) as [Hlo Hhi].
       iSplitR; [ iPureIntro; lia | ].
-      (* the body: inside the line, and untouched by the NUL cut *)
-      assert (Hbody : forall j : nat, (j < snd tk - fst tk)%nat ->
-                g (fst tk + j)%nat <> ubyte0).
-      { intros j Hj.
-        assert (Hin : (fst tk <= fst tk + j < snd tk)%nat) by lia.
-        assert (Hmiss : forall (q : nat) (t : nat * nat),
-                  toks !! q = Some t -> (fst tk + j)%nat <> snd t).
-        { intros q t Hq.
-          assert (H0 : (0 <= len)%nat) by lia.
-          exact (ushp_tokens_gap len f 0%nat toks Hns Htoks H0
-                   i tk Hi q t Hq (fst tk + j)%nat Hin). }
-        rewrite /g (ushp_nulfold_miss toks (ushp_ext len f) (fst tk + j)%nat
-                      Hmiss).
-        rewrite /ushp_ext.
-        assert (Hlt : ((fst tk + j) < len)%nat) by lia.
-        rewrite (bool_decide_eq_true_2 _ Hlt).
-        apply Hnn. exact Hlt. }
-      iSplitR; [ iPureIntro; exact Hbody | ].
+      iSplitR; [ iPureIntro; exact (Hbod i tk Hi) | ].
       iSplitR; [ iPureIntro; lia | ].
       iSplitL.
       - (* the bytes *)
@@ -439,9 +432,7 @@ Section UkShMain.
       - (* the terminator, which is the zero [nulterminate] wrote *)
         iDestruct (ubytesq_at γd s0 (S len) g (snd tk) ltac:(lia) with "Hline")
           as "Hb".
-        assert (Eg : g (snd tk) = ubyte0)
-          by (rewrite /g; exact (ushp_nulfold_hit toks (ushp_ext len f) i tk Hi)).
-        rewrite Eg.
+        rewrite (Hend i tk Hi).
         assert (Ea : (s0 + Z.of_nat (snd tk))%Z
                      = (s0 + Z.of_nat (fst tk) + Z.of_nat (snd tk - fst tk))%Z)
           by lia.
@@ -489,6 +480,52 @@ Section UkShMain.
     rewrite (lookup_ge_None_2 toks (length toks) ltac:(lia)).
     iExact "Hw".
   Qed.
+
+  (* ---- the landed statement, which is that conversion at STAGE 4's cut -- *)
+  Lemma ush_cmd_of_ushp (h : CpuId) (m : regfile) (pc : mword 64) (avail : nat)
+      (s0 p : Z) (len : nat) (f : nat -> bv 8)
+      (toks : list (nat * nat)) :
+    ushp_tokens len f 0 toks ->
+    ushp_no_symbols len f ->
+    (forall j : nat, (j < len)%nat -> f j <> ubyte0) ->
+    Z.of_nat len < 2 ^ 31 ->
+    0 < s0 -> s0 + Z.of_nat len < 2 ^ 38 ->
+    urun N h m pc avail -∗
+    ushp_tree N s0 p (UshpExec toks) -∗
+    ubytes γd s0 (S len) (ushp_nulfold toks (ushp_ext len f)) ==∗
+    urun N h m pc avail ∗
+    ush_cmd γd p (UExec (ush_args s0 (ushp_nulfold toks (ushp_ext len f)) toks)).
+  Proof using .
+    intros Htoks Hns Hnn Hlen31 Hs0 Hs0hi.
+    iIntros "Hrun Hnode Hline".
+    iMod (ubytes_persist γd s0 (S len) _ with "Hline") as "#Hline".
+    iApply (ush_cmd_of_ushp_gen h m pc avail s0 p len
+              (ushp_nulfold toks (ushp_ext len f)) toks
+              ltac:(intros i tk Hi;
+                    destruct (ushp_tokens_in len f 0%nat toks Htoks
+                                ltac:(lia) i tk Hi) as [Hlo Hhi];
+                    split; lia)
+              ltac:(intros i tk Hi;
+                    exact (UkShParseCmd.ushp_nulfold_hit toks
+                             (ushp_ext len f) i tk Hi))
+              ltac:(intros i tk Hi j Hj;
+                    destruct (ushp_tokens_in len f 0%nat toks Htoks
+                                ltac:(lia) i tk Hi) as [Hlo Hhi];
+                    rewrite (ushp_nulfold_miss toks (ushp_ext len f)
+                               (fst tk + j)%nat
+                               ltac:(intros q t Hq;
+                                     exact (ushp_tokens_gap len f 0%nat toks
+                                              Hns Htoks ltac:(lia)
+                                              i tk Hi q t Hq
+                                              (fst tk + j)%nat ltac:(lia))));
+                    rewrite /ushp_ext
+                      (bool_decide_eq_true_2 ((fst tk + j) < len)%nat
+                         ltac:(lia));
+                    apply Hnn; lia)
+              Hlen31 Hs0 Hs0hi
+              with "Hrun Hnode Hline").
+  Qed.
+
 
   (* ===================================================================== *)
   (* §4 THE CHILD: parse the line, then run the tree.                       *)

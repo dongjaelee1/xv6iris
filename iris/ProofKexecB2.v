@@ -1466,9 +1466,9 @@ Section KexecB2Loops.
         exact (HD6get r Hr Hne). }
       assert (HM2a0 : M2 !!! Regidx Ra0
                       = (mword_of_int (Z.of_nat tot) : mword 64)).
-      { destruct Hret as [(_ & Hbad) | (Hv & _)]; [discriminate Hbad | exact Hv]. }
+      { destruct Hret as [(_ & Hbad & _) | (Hv & _)]; [discriminate Hbad | exact Hv]. }
       assert (Htoteq : tot = rd_clamp (di_size dnf) offn nn).
-      { destruct Hret as [(_ & Hbad) | (_ & Hv)]; [discriminate Hbad | exact Hv]. }
+      { destruct Hret as [(_ & Hbad & _) | (_ & Hv)]; [discriminate Hbad | exact Hv]. }
       (* ---- +0x0ea: bne s2,a0,+0x324 -- the short read goes to [bad:] ---- *)
       assert (Hszn : (Z.of_nat (Z.to_nat (bv_unsigned (di_size dnf)))
                       <= 274432)%Z).

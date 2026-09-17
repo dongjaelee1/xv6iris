@@ -1431,6 +1431,11 @@ Section UShEcho.
     echo_node_img ws M s0 t g ->
     UkShEcho.echo_argv_bytes ws g ->
     length sts = NOFILE ->
+    (* ...AND THE EXEC'ING PROCESS'S TABLE IS ALL PARKED (lane OFF-HAND-4,
+       S2): echo's record is minted at [ukn_held = empty], and the entry
+       says so about the table it is stated at now that
+       [ExecEntry.image_entry_at] no longer relays the row. *)
+    fdv_all_parked sts ->
     udepw_law 16 -∗
     (* ...and the exec'ing process's table, pipe-free (design/pipe.md,
        "The exit path") *)
@@ -1438,15 +1443,14 @@ Section UShEcho.
     image_entry ElfUser.echo_elf M (mword_of_int (t + 8) : mword 64) sts
       cw cs pidv (fun _ : Z => True)%I emp uslot.
   Proof.
-    intros Hok Himg Hbytes Hfdl. iIntros "#Hwr #Hnpw #Hdep".
+    intros Hok Himg Hbytes Hfdl Hpks. iIntros "#Hwr #Hnpw #Hdep".
     iApply image_entry_of_at. iIntros "!>" (na alen afun) "%Hargs".
     destruct (echo_args_det_holds ws Hok M s0 t g na alen afun Himg Hbytes
                 Hargs) as (Hna & Halen & _).
-    rewrite /image_entry_at. iIntros "!>" (W') "%Hokk _ %Hlzf _ _ %Hpkq Hmp _".
+    rewrite /image_entry_at. iIntros "!>" (W') "%Hokk _ %Hlzf _ _ Hmp _".
     iApply (echo_slot_of_kexec_holds na alen afun sts W' Hokk
               (echo_room_of_det ws na alen Hok Hna Halen) Hfdl
-              ltac:(rewrite <- (kexec_image_ok_fd _ na alen afun sts W' Hokk);
-                    exact Hpkq)
+              Hpks
               Hlzf with "Hwr Hnpw Hdep Hmp").
   Qed.
 

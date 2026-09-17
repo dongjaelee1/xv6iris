@@ -1305,7 +1305,12 @@ Section SpecFileread.
       (r : mword 64) (M' : gmap Z (bv 8)) (addr : mword 64) : iProp Σ :=
     match st with
     | FdOpen true _ (FdInode i γo _) =>
-        read_arms (fs_gamma_L fsc_fs) i γo n F r M' addr
+        (* [pt] IS THE INODE ARM'S TABLE TOO, since lane READ-RELAY: the
+           fired -1 arm names an address the process cannot be written at
+           ([FsAbsReadFire.read_post_fail]), and that is a fact about this
+           table and the buffer [addr] -- the same pair the console arm's
+           swallowed byte is stated at. *)
+        read_arms (fs_gamma_L fsc_fs) i γo pt n F r M' addr
     | FdOpen true _ (FdDevice mj) =>
         (* UNIFORM: the receipt is paid at every caller now, because [Rd]
            is the caller's own choice of what to be told and the [None]
@@ -1397,7 +1402,7 @@ Section SpecFileread.
      the payload in hand and BUILDS the payout in the goal that is left,
      which is the shape the landed walks are written in. *)
   Lemma fileread_extra_inode (gn : gname) (pt : uptd) wb i γo n F Rd Rin Rp Rpe P r M' addr :
-    P -∗ read_arms (fs_gamma_L fsc_fs) i γo n F r M' addr -∗
+    P -∗ read_arms (fs_gamma_L fsc_fs) i γo pt n F r M' addr -∗
     fileread_extra gn pt (FdOpen true wb (FdInode i γo OffParked)) n F Rd Rin Rp Rpe P r M' addr.
   Proof using . iIntros "HP H". rewrite /fileread_extra. iFrame "HP". iExact "H". Qed.
 
@@ -1415,7 +1420,7 @@ Section SpecFileread.
   Lemma fileread_extra_inode_of (gn : gname) (pt : uptd) (st : fdstate) (wb : bool) (i : Z) (γo : gname)
       n F Rd Rin Rp Rpe P r M' addr :
     st = FdOpen true wb (FdInode i γo OffParked) ->
-    P -∗ read_arms (fs_gamma_L fsc_fs) i γo n F r M' addr -∗
+    P -∗ read_arms (fs_gamma_L fsc_fs) i γo pt n F r M' addr -∗
     fileread_extra gn pt st n F Rd Rin Rp Rpe P r M' addr.
   Proof using .
     intros ->. iIntros "HP H". rewrite /fileread_extra. iFrame "HP". iExact "H".

@@ -2196,6 +2196,690 @@ seam 1's three restatements land, `FileOpen.file_open_create_au` takes the
 truncate piece as a PREMISE, so the redirect child's open is suppliable
 only at `om_trunc = false` (`file_open_create_au_notrunc`).
 
+### ADEQUACY (2026-09-17) — THE TOP-LEVEL THEOREM IS A THEOREM; NO WALL, ONE PREMISE
+
+Branch `app-file/adequacy`, commit `cd2625d57`.  Whole tree GREEN on the
+lane's remote tree (`run-on-gcp --proofs -k`, `EXIT=0`, zero `Error`; only
+the one new file compiled).  `make audit-file-only` runs and prints
+EXACTLY FOURTEEN — the echo theorem's fourteen, item for item.  `make
+audit-all-only` UNCHANGED (echo fourteen, system thirteen).  Nothing is
+`Admitted`, there is no new `Axiom`, and every `Qed` carries `Proof
+using`.  TWO new files and two edited: `iris/UFileBootAdequacy.v`,
+`iris/FileAssumptions.v`, two rows of `iris/_CoqProject`, and the
+`audit-file`/`audit-file-only` rules in the `Makefile`.  No landed
+statement moves; `AppFileRec.v` is untouched.
+
+**NO WALL.**  Every premise of `App.xv6_app_adequacy` composes at
+`AppFileRec.app_file` as landed: the eleven laws are
+`AppFileRec.file_laws` (ten discharged, `al_programs` its section
+hypothesis), era 0's claim is `AppFileRec.file_Happ_init` at the literal
+mkfs image, and `Hphi` is `RiscvAdequacy.obs_ledger_at_phi` at
+`AppFileRec.file_Hphi_R`.  Nothing about the crash-slot transport
+(`file_xfer_boot`), the kill/taint laws or the UART ledger steps needed
+restating.  `user-tree.md` §8.2's three walls do not recur here, because
+STAGE/STAGE-2/FILE-DEC had already paid what they were about.
+
+**WHICH MOULD, AND WHY.**  `UInitBootAdequacy.v` (ECHO), not
+`UTreeAdequacy.v`.  The two files are the same statement one application
+over, but the tree twin's `app_phi` is `True`, its `Hphi` is `Logic.I`
+and its closed corollary keeps only the reducibility conjunct.  The file
+application has a real trace predicate read off its own ledger, so the
+echo shape is the one that fits: BOTH conjuncts survive into the
+corollary.  What is taken from the tree twin is only its treatment of a
+law that is not proved yet.
+
+**WHAT LANDED, with file:lemma.**
+
+- `iris/UFileBootAdequacy.v:121  file_prog_law` — `App.al_programs` at
+  `app_file`, NAMED, verbatim from `AppFileRec`'s own
+  `Context (Hprog : …)`, so the instance below is that hypothesis applied
+  and not a restatement of it.  Naming it is what makes the premise
+  readable in the corollary's binder list.
+- `iris/UFileBootAdequacy.v:143  file_laws_at` — `#[local] Instance … | 0
+  := @AppFileRec.file_laws Σ _ _ _ _ _ _ _ Hprog`.  The priority is
+  load-bearing: `AppFileRec.file_laws` is itself a `Global Instance` whose
+  trailing `Hprog` argument is NOT a class, so resolution must never reach
+  it.
+- `iris/UFileBootAdequacy.v:154  file_adequacy_at_img` — the Σ-generic
+  theorem at the image's facts, `echo_adequacy_modulo_phi`'s shape: the
+  laws arrive as the instance, era 0's claim is the one argument and
+  `Hphi` goes in as a HOLE (`UInitBootAdequacy`'s measured rule -- handing
+  `xv6_app_adequacy` its obligations at once makes the elaborator unify
+  each against a record field whose type it is still solving).
+- `iris/UFileBootAdequacy.v:228  fileLineΣ` / `:234  fileΣ` — the concrete
+  functor list: `xv6Σ ; bioslotΣ ; echoOutΣ ; fileLineΣ ; fileAppΣ ;
+  fileOutΣ`.  `fileLineΣ` is `UInitBootAdequacy.echoLineΣ` spelled again
+  rather than imported, because importing it would put the whole echo
+  program tier into this file's build cone for one line.
+- `iris/UFileBootAdequacy.v:243  file_adequacy_fileΣ` — THE AUDIT TARGET.
+- `iris/FileAssumptions.v` + `make audit-file` / `audit-file-only` —
+  `EchoAssumptions.v`'s mould.  `audit-all-only` IS LEFT ALONE: the tree
+  rule was never added to it either (it is still `audit-only
+  audit-echo-only` under `-j2`), so a fourth entry there would be a change
+  of policy, not a lane's business.
+
+**THE TOP-LEVEL STATEMENT, VERBATIM.**
+
+```coq
+Corollary file_adequacy_fileΣ
+    (Hprog : file_prog_law (Σ := fileΣ))
+    (g : gstate)
+    (Hgen0 : g.(ggen) = 0%nat) (Hpow0 : g.(gpow) = false)
+    (Hdisk : v_disk (g.(gdev).(dvirtio)) = FsImgDisk.fsimg_dk) :
+  forall (n : nat) (κs : list mobs) t2 g2,
+    language.nsteps n ([PowerLoopE : language.expr riscv_lang], g)
+      κs (t2, g2) ->
+    (forall e2, e2 ∈ t2 -> language.reducible (Λ := riscv_lang) e2 g2)
+    /\ FileDisc.file_phi κs.
+```
+
+The trace predicate is `FileDisc.file_phi` VERBATIM (`iris/FileDisc.v`,
+the `file_phi` STAGE-2 landed): IF the console input kept the FILE
+discipline (`disc_f κs`), THEN there is one boot state per power cycle
+such that the FIRST cycle boots with no `f`, every later cycle boots at a
+chunk subsequence of an `echo … > f` line typed in a STRICTLY EARLIER
+cycle (`fadm_boot (echof_lines_before κs (S k))`), and each cycle's
+console output is a prefix of the transcript its input calls for from
+that state (`good_out_f`).  It is the `echo_phi` twin, spelled at the
+record only through `AppFileRec.file_phi := fun _ h => FileDisc.file_phi h`
+— the corollary names no record, so the ghost layer stays out of the
+STATEMENT's trusted base.
+
+**THE SHAPE THE AUDIT RULE HANDLES, AND IT IS THE PREMISE ONE.**  `Hprog`
+is a section hypothesis in the theorem and therefore an explicit PREMISE
+of the corollary — `Hprog -> …`, not a section variable the audit prints.
+A theorem's premises are part of its statement and NEVER appear in a
+`Print Assumptions` (`EchoAssumptions.v` makes the same point about the
+late `Hsh_owed`), and the measured audit confirms it: the fourteen lines
+below and NO `Hprog`.
+
+```
+PrimInt63.int / .eqb / .sub / .lsl / .lsr / .land / .lor
+PrimString.string / .get / .cat / .length
+xv6iris_extras.resv_matches / resv_is_valid
+FunctionalExtensionality.functional_extensionality_dep
+```
+
+The `Axiom` shape — which WOULD print — was declined and should not be
+re-proposed: it is weight in the tree that `tools/lemma_diff.py` reports
+as a regression, and an audit line nothing ever discharges is worth less
+than a binder nothing hides.  `FileAssumptions.v`'s header carries the
+complementary check in prose, which is where a reader meets it.
+
+**IS `Hprog` SATISFIABLE?** (durable-notes: a premise on the anchor
+theorem is worth a satisfiability witness before it is worth an audit.)
+Its SHAPE is — the same field is proved at two other records,
+`App.app_triv_init_boot` and `UInitBoot.echo_Hinit_boot`, and its three
+equational premises are the ones every record gets.  What is peculiar to
+this claim is which ROUTE is open, and that is the lane's one finding for
+SH-ROUND.
+
+**WHAT SH-ROUND MUST DELIVER, VERBATIM** (`iris/UFileBootAdequacy.v`, and
+identical to `AppFileRec`'s `Context (Hprog : …)`):
+
+```coq
+  Definition file_prog_law : Prop :=
+    forall (HR : riscvGS Σ) (GEN : GenId)
+           (HBs : bioslotG Σ) (HFd : fdslotG Σ) (HIr : irefslotG Σ)
+           (HPav : pavG Σ) (HWc : wchG Σ) (HF : fileG Σ)
+           (c : app_fixed (app_file (Σ := Σ)))
+           (r : app_names (app_file (Σ := Σ))),
+      @file_app Σ HF
+        = MkAppcfg (app_names app_file) (app_pred app_file c) r ->
+      @riscvF_app_iface Σ (@riscv_fixedGS Σ HR) = app_ifc app_file c ->
+      @riscvF_genGS Σ (@riscv_fixedGS Σ HR) = riscv_pre_genGS ->
+      ⊢ AppInv.app_inv FsCfg.fsc_fs -∗ app_boot app_file c (S gen_id) r -∗
+        app_turn app_file c (S gen_id) -∗
+        |==> init_boot_bundle (bv_unsigned InodeInv.ROOTINO) fdt0.
+```
+
+Once it is a lemma, the discharge is `Definition`-level: instantiate
+`Hprog` at it in `file_adequacy_fileΣ` and delete the premise; nothing
+else in either new file moves, and `FileAssumptions.v` keeps its target.
+
+**THE TREE'S DISCHARGE IS NOT AVAILABLE HERE, AND THAT IS A RULING, NOT A
+COST.**  `UTreeAdequacy.tree_Hinit_boot` pays the same field in three
+lines: the era's turn mints the taint (`AppTree.tree_sup_of_bump`), the
+taint IS `AppInv.app_sup` at that claim, and the supply buys
+`SystemAdequacy.init_boot_of_sup` — the honest "the era's first process is
+not verified against the claim, and the claim records it".  At `app_file`
+that route is closed twice over.  (1) There is no turn-to-taint mint and
+there must not be one: `AppTree.tree_sup_of_bump` has no file twin, and
+`FileOut.file_led`'s counter is `if decide (disc_f h) then 0%nat else
+1%nat`, so a `file_taint` held from boot is inconsistent with the ledger
+at every history where the user KEEPS the discipline — the `al_rx` step
+could not be reproved.  (2) Even read as a weakening it would gut the
+conclusion, because `FileOut.file_led_phi` proves `file_phi h` from the
+taint by REFUTING `disc_f h`: a boot-time taint makes the theorem say
+only "the user never kept the discipline".  So SH-ROUND's route is
+`UInitBoot.echo_Hinit_boot`'s — a VERIFIED /init that execs /sh — and the
+tainted-at-boot arm that made the tree application a theorem is not on
+this campaign's menu.  Recorded here so nobody prices it again.
+
+### SH-PARSE-2 (2026-09-17) — the parser chain above `parseredirs`, the parser theorem, and the child at the redirect shape
+
+Branch `app-file/sh-redir`, on top of SH-PARSE's.  Whole tree green on the
+lane's remote tree; `make audit-echo-only` still FOURTEEN; `make
+check-ucode` green (the catalog did not move — this lane fetches no new
+function); every landed sh STATEMENT unchanged.
+
+**WHAT LANDED**, in the order the brief named it.
+
+`iris/UkShParseSym.v` §7 (added): the three readings of `ushs_toks` the
+argument loop turns on (`ushs_toks_nil_inv` / `_cons_inv'` / `_skip`,
+plus the two constructors in applied form), gettoken's answer at an
+ordinary word (`ushs_gettok_res_word` / `_end_word`, `_end_stop`,
+`_fin_stop`), and `ushs_toklen_pos_nosym` / `_nows` — a token of positive
+length starts at a byte that is neither blank nor symbol, which is what
+makes every peek in the chain miss.
+
+`iris/UkShRedirEx.v` (new) — **the argument loop**.
+
+- `wp_kshp_pex_end` — the round that finds the line exhausted (peek 0,
+  gettoken 0, `c.beqz` out to 0x662).  It touches NEITHER the node nor
+  s1/s2/s3, so it is stated over none of them, and both arms of the loop
+  reach it.
+- `wp_kshp_pex_loop_gt` — `UkShParseExec.wp_kshp_pex_loop` at
+  `ushs_redir` / `ushs_toks`.  **The turn is the LAST round's
+  `parseredirs`, not a round of its own**: sh calls `parseredirs` after
+  every argument, all of those calls but the last sit on an ordinary word
+  (`wp_kshp_parseredirs_ns`) and the last sits on the '>'
+  (`wp_kshp_parseredirs_gtn`).  So the induction is over a NON-EMPTY
+  token list, the `Nil` goal is refuted from that premise, and the `Cons`
+  goal splits on the tail — the two arms differing only in which
+  `parseredirs` closes the round.
+
+`iris/UkShRedirPex.v` (new) — `wp_kshp_parseexec_gt`.  Three lines of
+`UkShParseExec.wp_kshp_parseexec`'s 1400 differ: the `peek(ps,es,"(")` is
+refuted from the byte AT THE CURSOR rather than from the whole line, the
+`parseredirs` before the loop sits on the first word and does nothing,
+and the loop is the redirect one.
+
+`iris/UkShRedirNul.v` (new) — **nulterminate's REDIR row**.  Four
+instructions (0x832 `c.ld a0,8(a0)`, 0x834 `jal nulterminate`, 0x838
+`c.ld a5,24(s1)`, 0x83a `sb zero,0(a5)`) and then the same 0x83e tail the
+EXEC arm falls into, so `UkShParseCmd.wp_kshp_nul_fin` closes both.
+Everything ABOVE the switch is the same walk at a different type word: 2
+instead of 1, so the jump table is indexed at 0x13b8 rather than 0x13b4
+and the row there sends control to 0x832 rather than 0x81a.
+`ushp_jrow_redir` is those four .rodata bytes, read off the image.
+
+`iris/UkShRedirCm.v` (new) — `wp_kshp_parsepipe_gt`, `wp_kshp_parseline_gt`.
+`iris/UkShRedirPc.v` (new) — `wp_kshp_parsecmd_gt` and **the parser
+theorem `wp_kshp_parser_redir`**.
+`iris/UkShLoop.v` — `ush_line_lexable_redir` (below).
+`iris/UkShRedirSeam.v` (new) — `ushs_toks_below` (the truncation),
+`ush_cmd_of_ushs_redir` (**the seam**) and `wp_kshm_child_redir` (**the
+child walk**).
+
+**THE SHAPE FACT THAT DECIDED THE LANE: the REDIR node's child pointer
+has to be NAMED.**  `ushp_tree`'s REDIR row hides it under an
+existential, which is the right reading of a FINISHED tree and the wrong
+postcondition for a CONSTRUCTOR — because `parseexec` stores the argv
+TERMINATOR through the exec node AFTER `parseredirs` has swallowed it
+into a REDIR node, and an existential pointer cannot address a cell.  So
+`UkShRedirCmd.ushp_redir_node s0 t pc q eq mode fd` is the node's own
+seven fields with the child pointer named and nothing said about what
+lives there, `ushp_redir_close` is the one-way door to `ushp_tree`, and
+`wp_kshp_redircmd` / `wp_kshp_parseredirs_gt` KEEP their landed
+statements as three-line corollaries of the general walks (`_n` / `_gtn`,
+which take the sub-command as an abstract `Sub`).  Everything from
+`parseexec_gt` up to `parsecmd_gt` relays the two nodes SEPARATELY; only
+the theorem closes them.
+
+**TWO MALLOCS, AND THAT IS WHERE THE LANE STOPS.**  `execcmd` allocates
+the exec node and `redircmd` the REDIR node, so the redirect parse chains
+TWO allocator capabilities where the symbol-free parse chains one.  Every
+walk from `wp_kshp_parseexec_gt` up takes them as
+`Context (UM0 UM1 UM2)` with `ushp_malloc_ty UM0 UM1` and
+`ushp_malloc_ty UM1 UM2`.  **`UkShMalloc` proves only the FIRST call** —
+its own header says so: `ushm_fresh` says the free list is EMPTY
+(`freep` is 0, `base` untouched) and "a second call is a different
+theorem, not a weaker one".  So:
+
+- `wp_kshm_child_redir` is stated and proved at TWO ABSTRACT capabilities
+  and LANDS;
+- **`wp_kshm_child_alloc_redir` — the same walk with the allocator
+  DISCHARGED — is BLOCKED**, and blocked on a design fact rather than on
+  effort: there is no `ushp_malloc_ty (usz γs szv) _` to instantiate
+  `UM1 → UM2` with.  What unblocks it is a second-call malloc theorem in
+  `UkShMalloc` (the free list after one `morecore`, with the remainder of
+  the 65536-byte chunk on it), and nothing else in this lane.
+
+**REFUTED.**
+
+- **`UkShLoop.ush_line_lexable` cannot become a disjunction** — SH-PARSE
+  proved it and this lane implements the replacement:
+  `ush_line_lexable_redir`, quantified over
+  `UkShRedirLine.ushs_line_is ws file f k len`, whose first conjunct is
+  `ushs_redir` at `p = |wl_body ws| + 1`, `e = |wl_body ws| + 3 + |file|`
+  and whose second is the token list with `0 < length args < 10`.  The
+  first conjunct is DERIVABLE (`ush_line_lexable_redir_shape`, one line
+  over `ushs_line_is_redir`) and is stated anyway, exactly as
+  `ush_line_lexable`'s first conjunct is; what a supplier really owes is
+  the token count.  A widened premise is the CONJUNCTION of the two
+  predicates, never a disjunction inside one.
+- **The seam could not be reused as it stood.**
+  `UkShMain.ush_cmd_of_ushp` fixes the cut line to
+  `ushp_nulfold toks (ushp_ext len f)`; the redirect cut is one byte
+  longer (nulterminate's REDIR arm zeroes `efile` too) and the file name
+  has to be read out of the same line afterwards.  Both are fixed by
+  generalising in place: `UkShMain.ush_cmd_of_ushp_gen` takes the line
+  ALREADY PERSISTED and three facts about it — each token is inside the
+  line, its END byte is zero, no byte of its BODY is — and the landed
+  `ush_cmd_of_ushp` is that lemma at stage 4's cut, in twenty lines.
+- **`ushp_tokens_gap` did NOT have to be re-proved.**  The argument
+  tokens all end below the '>', and every scan that measures them stops
+  below it too, so they are `ushp_tokens` of the line TRUNCATED at the
+  '>' — whose only symbol byte is the one the truncation cut off.  That
+  is `UkShRedirSeam.ushs_toks_below`, and it puts stage 4's separation
+  fact back in scope unchanged.
+
+**THE EXACT STATEMENT OF `wp_kshm_child_redir`** (`iris/UkShRedirSeam.v`),
+which is what lane SH-ROUND instantiates:
+
+```coq
+  Lemma wp_kshm_child_redir (UM0 UM1 UM2 : iProp Σ)
+      (Hm0 : UkShParse.ushp_malloc_ty N UM0 UM1)
+      (Hm1 : UkShParse.ushp_malloc_ty N UM1 UM2)
+      (h : CpuId) (m : regfile) (dw dv : dfrac)
+      (s0 cwdv : Z) (len : nat) (f : nat -> bv 8)
+      (args : list (nat * nat)) (gp fe : nat)
+      (ld : list fdstate) (st1 : fdstate) (n : nat)
+      (K : fdtype -> iProp Σ) :
+    m !!! Regidx s1_idx = (mword_of_int s0 : mword 64) ->
+    ushs_redir len f gp fe ->
+    ushs_toks len f gp 0%nat args ->
+    (0 < length args)%nat ->
+    (length args < 10)%nat ->
+    0 < s0 -> s0 + Z.of_nat len + 1 < Z64 -> s0 + Z.of_nat len < 2 ^ 38 ->
+    ld !! 1%nat = Some st1 ->
+    st1 <> FdClosed ->
+    (forall (rb wb : bool) (gn : PipeNames.pipe_names),
+       st1 <> FdOpen rb wb (FdPipe gn)) ->
+    (⊢ ukn_pay N (-1)) ->
+    UkSh.sh_deps -∗
+    shk_code γt -∗
+    ush_jtab γt -∗
+    shp_code γt -∗ shp_rodata γt -∗
+    ustr γd (DfracOwn 1) s0 len f -∗
+    ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
+    ustr γd dv ushp_symbols 7 ushp_sym_f -∗
+    UserFd.ustd γfd ld -∗
+    UserCwd.ucwd γcwd cwdv -∗
+    UM0 -∗
+    UkShRedir.ush_open_call N cwdv (s0 + Z.of_nat (S (S gp))) 1537
+      (<[1%nat := FdClosed]> ld) K -∗
+    urun N h m (mword_of_int 0x9c0)
+      (68 + (8 + (UkShDiag.ush_Dg + n))) -∗
+    (∀ (h' : CpuId) (m' : regfile) (q : Z) (ty : fdtype),
+       ⌜ m' !!! Regidx a0_idx = (mword_of_int q : mword 64) ⌝ -∗
+       ush_cmd γd q
+         (UExec (ush_args s0 (ushs_nulcut args len f fe) args)) -∗
+       UserFd.ustd γfd
+         (<[1%nat := FdOpen false true ty]> (<[1%nat := FdClosed]> ld)) -∗
+       UserCwd.ucwd γcwd cwdv -∗
+       K ty -∗
+       UM2 -∗
+       urun N h' m' (mword_of_int ShSyms.runcmd)
+         (UkShDiag.ush_Dg + (70 + n)) -∗
+       WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+```
+
+Read it against `UkShMain.wp_kshm_child`: the two parser premises are
+`ushs_redir` / `ushs_toks` plus `0 < length args` (the redirect parse
+needs at least one argument — with none, `parseexec`'s FIRST
+`parseredirs` would turn and the walk is a different one); the open is a
+CALL PREMISE at the file name the line itself names; `ucwd_any` is a
+CONCRETE `ucwd` because the open's bundle is stated at one; the ledger's
+slot 1 is named because `close(1)` spends it; and `uxsup_at` /
+`riscv_kill_cred` / `uch_any` are GONE, because this walk stops at
+runcmd's REDIR arm and never reaches `wp_kshr_runcmd_final`.
+
+**WHAT SH-ROUND INSTANTIATES.**  `ush_open_call` (SH-REDIR's shape,
+verbatim — the held offset goes inside `K ty` when OFF-HAND lands, so
+neither premise is restated then), the two malloc capabilities, and the
+CONTINUATION: at runcmd's own entry pc, with the EXEC sub-tree
+`ush_cmd γd q (UExec (ush_args s0 (ushs_nulcut args len f fe) args))`,
+the ledger with slot 1 reopened at `ty`, the cwd, `K ty` and `UM2`.
+`ushs_nulcut args len f fe` is `UkShRedirPc.ushs_nulcut`: the line with a
+NUL at every argument's end index AND one at the file name's.  The
+application's own EXEC walk goes in that continuation and `K ty` is in
+hand there, which is the whole point of the shape.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  **malloc's SECOND call.**
+Everything above it is stated and proved; what nothing can discharge is
+`ushp_malloc_ty UM1 UM2`, and until `UkShMalloc` has a theorem for a
+`malloc` that runs on a NON-EMPTY free list, `wp_kshm_child_redir` cannot
+become `wp_kshm_child_alloc_redir` and the redirect line cannot be run
+end to end from `ushm_fresh`.  The shape of that theorem is visible from
+this side: after the first call the list holds the remainder of the one
+65536-byte chunk `morecore` inserted, so the second call is the SAME walk
+with `freep` non-zero and the search loop turning once — not the
+first-generation induction over a circular list that `UkShMalloc`'s
+header declines.
+
+### OFF-HAND-4 (kernel/U tier, 2026-09-17) — THE CARRIER IS THE SET; THE VERIFIED ENTRIES DROP THE ROW; THE SURRENDER'S HOME IS NOT THE TAINT ARM, AND THE EVIDENCE IS ONE CONSUMER CHAIN
+
+**The lane's verdict in one line: S1 landed exactly as design/app-file.md
+§3 fact 4 rules it, and so did the HALF of S2 the ruling is really about —
+a verified entry no longer receives "the table is all parked", so a held
+row may cross `exec` into a verified image.  The OTHER half — the taint
+arm taking `FdPark.uoff_surr_at` in place of the pure row — is REFUTED AS
+STATED by its own consumer chain, and the refutation says where the
+surrender bundle does belong.  S3 is not attempted and the ordering fact
+that decides it is recorded.  Everything below is checked at the statement
+in the tree.**
+
+**WHAT LANDED** (whole tree green on the lane's remote tree, `make -f
+CoqMakefile -j32 -k`, `EXIT=0`, zero `Error`, `make -n` reports nothing
+left; `make audit-all-only`: echo audit fourteen, system audit thirteen;
+every new result `Proof using`).  Two commits, each green on its own.
+
+*(1) `22292e156` — S1: the carrier is the SET of descriptors a record may hold*
+
+- `UkRun.uk_names`'s `ukn_park : bool` is `ukn_held : gset nat`.  `∅` is
+  what `true` was and `ukn_parked` is that as a class
+  (`ukn_parked_eq : ukn_held N = ∅`), so **no landed site's spelling
+  moved** — `urun_rows_parked`, `UkSh.ush_gen_slot` and the five entry
+  constructors read exactly as before, one word apart.
+- `UsysMemOk.fdv_held_in H l` is the row, IN THE CONTRAPOSITIVE — every
+  UNPARKED row's index is in `H` — because that is the direction every
+  consumer has it, and it makes the set an OVER-approximation (so a record
+  may be minted at a set wider than it holds, and a fork may widen its
+  child's).  `fdv_held_in_empty` is the reading at `∅`,
+  `fdv_held_in_of_parked` the other way, `fdv_held_in_mono` the widening,
+  `fdv_held_in_insert` / `_closed` the kit.
+- `UkRun.urun_parked_row N fdv := fdv_held_in (ukn_held N) fdv`, and
+  `urun_rows` is the same bundled conjunct — so the 103 leaves that
+  destructure `urun` positionally still do not move.  `urun_rows_held` is
+  the new projection (`urun_rows` is persistent, so reading the row off a
+  run a leaf is KEEPING costs it nothing).
+- `uslot_of_urun` / `_all` / `_ro` mint at a caller-chosen `hs : gset nat`
+  with `fdv_held_in hs (uvis_fd W)` as the honest premise and hand the
+  program `⌜ukn_held N = hs⌝`.  `UkFork.wp_uk_ecall_fork` / `_argv` mint
+  the CHILD at a PARENT-CHOSEN `hs` with `ukn_held N ⊆ hs`, and the child
+  arm carries `⌜ukn_held N' = hs⌝`: the child's table IS the parent's, so
+  any superset is honest, and the redirect child of §3 has no other place
+  to say it may hold slot 1.
+
+*(2) `6cdf267bf` — S2's verified half: the entries drop the row*
+
+- `ExecEntry.image_entry_at` / `image_entry` DROP
+  `⌜FdSlots.fdv_all_parked (uvis_fd W')⌝`, and so do the four inline
+  VERIFIED spellings on `PinnedExec.pex_slot` / `pex_slot_at` /
+  `pinned_exec_bundle` / `_at`.  `image_entry_taint` KEEPS its row (see
+  finding 1).
+- **The fact is not lost, it moves to the party that can state it.**
+  `SpecKexec.kexec_image_ok_fd` pins `uvis_fd W' = sts` and `sts` is a
+  PARAMETER of the entry, so each verified constructor says the discipline
+  about the table it is stated at: `UShKernel.sh_image_entry_at`,
+  `UShEcho.echo_image_entry` and `ExecRun.image_entry_of_taint` take
+  `fdv_all_parked sts`; `UInitSh.init_sh_image_entry` takes
+  `fdv_all_parked fdv`.
+- **AND /init SUPPLIES IT FROM ITS OWN RUN** (`UkRun.urun_rows_parked` at
+  the empty held set).  That is precisely what lane OFF-HAND-2 recorded as
+  impossible and `UInitSh.v:1376`'s note said in so many words — "only
+  `take NSTD fdv = l` … the rest of the table is unconstrained at this
+  tier, which is why the premise must ride the kexec SLOT WANDS".  The
+  set-valued carrier is what makes it possible; the note is rewritten.
+  sh does the same for its /echo child.
+- What that costs: the empty held set becomes a PURE ROW on every exec
+  supply and fork arm that reaches an entry — `UkInit.init_exec_sup_pos`,
+  `UkShEcho.sh_exec_sup_echo`, `UkShFork.ushf_child_law` and
+  `wp_kshf_fork_core`'s child arm, `UkShRun.wp_kshr_fork` /
+  `wp_kshr_fork1` / runcmd's two child arms, `UkShDiag.wp_kshr_fork1_final`,
+  `UkInitMain`'s fork wrapper and `wp_kinit_main_child`,
+  `UkShEcho.wp_kshr_exec_echo` / `wp_kshm_child_echo` — read off
+  `UkSh.ush_gen_slot_held` (new) at sh and off `UkRun.ukn_parked` at /init.
+
+**STATEMENTS THAT CHANGED SHAPE** (exhaustive).  S1: `UkRun.uk_names`
+(hence `MkUkNames`'s last argument type), `ukn_parked`,
+`urun_parked_row`, `urun_rows_step` (a new guard at `USYS_dup`),
+`urun_rows_dup` (`+ fdst_parked st`), `urun_rows_copy`
+(`+ fdst_parked (fdv !!! k)`), `urun_gen` (`ukn_held N = ∅`),
+`uslot_of_urun` / `_all` / `_ro`; NEW `UkRun.urun_rows_held`;
+`UkRunSys.wp_uk_ecall_dup` / `wp_uk_ecall_dup_untracked`
+(`+ ukn_held N = ∅`); `UkFork.wp_uk_ecall_fork` / `wp_uk_ecall_fork_argv`;
+`UkSh.ush_gen_slot`; NEW in `UsysMemOk`: `fdv_held_in`,
+`fdv_held_in_of_parked`, `fdv_held_in_empty`, `fdv_held_in_mono`,
+`fdv_held_in_insert`, `fdv_held_in_closed`, `usys_fd_ok_held`; `UkInit.v`
+and `UkInitMain.v` gained a section `Context {!ukn_parked N}` (named only
+in the `Proof using` of the lemmas that walk a dup or an exec).
+S2: `ExecEntry.image_entry_at` / `image_entry` (and `image_entry_of_at` /
+`image_entry_at_of`, `ExecArgs`'s reading bridge);
+`PinnedExec.pex_slot` / `pex_slot_at` / `pinned_exec_bundle` / `_at`;
+`ExecRun.image_entry_of_taint` (`+ fdv_all_parked sts`) and
+`wp_uk_ecall_exec_taint_test` (`+ ukn_held N = ∅`);
+`UShKernel.sh_image_entry_at`; `UShEcho.echo_image_entry`;
+`UkShEcho.wp_kshr_exec_echo` / `wp_kshm_child_echo` /
+`sh_exec_sup_echo`; `UkShFork.ushf_child_law` /
+`wp_kshf_fork_core`'s child arm; `UkShRun.wp_kshr_fork` /
+`wp_kshr_fork1` / `wp_kshr_runcmd`'s two child arms;
+`UkShDiag.wp_kshr_fork1_final`; `UkInit.init_exec_sup_pos`;
+`UkInitMain.wp_kinit_main_child` and its fork wrapper;
+`UInitSh.init_sh_image_entry`; NEW `UkSh.ush_gen_slot_held`.
+**Nothing in `SpecKexec`, `ProofKexec`, `ProofSyscall`, `ProcInv`,
+`FdPark`, `FileInvDefs`, `FileInv`, `UexecRet`, `UexecSG`,
+`UexecExecInst`, `FsAbsInvFire`, `InitBoot` or `UInitBoot` moved.**
+
+**REFUTED / BLOCKED, with the evidence.**
+
+1. **THE TAINT ARM CANNOT TAKE THE SURRENDER BUNDLE, AND ITS OWN CONSUMER
+   CHAIN IS WHY.**  `ExecEntry.image_entry_taint`'s row is spent by
+   `UexecExecMint.uslot_mint` (`:397`) → `UexecCond.cond_entry_slot`
+   (`:348`) → **the two GATED VERIFIED arms** `sync_gate_slot` (`:271`)
+   and `echo_gate_slot` (`:306`), and those need the PURE
+   `fdv_all_parked (uvis_fd W)` because they mint a verified record at
+   `ukn_held = ∅` — `UkRun.uslot_of_urun*`'s honest premise, which is a
+   fact about the table and not a resource.  `FdPark.uoff_surr_at`
+   (`:347`) is `⌜fdv_all_parked sts⌝ ∨ uoff_surrs sts`; its right disjunct
+   is a big-op of EXCLUSIVE `uoff` halves, no lemma turns it into a pure
+   fact, and SPENDING it (`FdPark.fd_frags_park_at`, `:366`) produces a
+   DIFFERENT table `fdv_park sts` — so a slot at the key whose table is
+   `sts` cannot be minted from the halves at all.  The generic TAIL of
+   `cond_entry_slot` needs nothing today, so an `image_entry_taint` at
+   `uoff_surr_at` would simply drop the bundle unspent: sound, and
+   vacuous.
+   **WHERE THE BUNDLE DOES BELONG is where `FdPark.v:577` already says:
+   the fork/exec DEPOSIT, spent by the KERNEL before the key is built.**
+   `SpecKexec.exec_slot_pre`'s rows are kernel-supplied,
+   `fd_frags_park_at` is the kernel's step, and `ProofSyscall`'s exec arm
+   (`:5299`, `ProcInv.proc_priv_parked` at `:1459`) is the one site that
+   holds the descriptor bundle and the block at once.  Done there, the key
+   the taint arm is applied at is all-parked BY CONSTRUCTION and the arm
+   keeps a PURE row — which is also what keeps the two gated arms
+   provable.  So the §3 sentence "the taint arm takes the SURRENDER
+   BUNDLE" should read "the exec DEPOSIT takes it, and the taint arm keeps
+   the row the kernel then proves".
+2. **THE FANCY UPDATE NEVER REACHES `ProofKexec.kxau_close`, AND AT THE
+   PLACE IT DOES REACH IT IS UNELIMINABLE.**  `kxau_close` (`:637`)
+   applies `exec_slot_pre`'s two wands and hands `S W'` straight into
+   `SpecKexec.exec_post_ok`; `S` is abstract there, so a
+   `|={⊤}=> S W'` would be carried, not eliminated.  The elimination would
+   have to happen one level DOWN, where `image_entry_taint` is turned into
+   `exec_slot_pre` — `ExecBundle.ex_node_id` (`:101`, arms at `:138` /
+   `:157`) and `ExecRun.ex_node_abs` (`:722`, arms at `:795` / `:808`) —
+   and there the entry's continuation `X` is a PARAMETER, so
+   `|={⊤}=> X W' ⊢ X W'` is not provable.  The fupd shape is therefore
+   refuted at the abstract supplier, independently of finding 1.
+3. **DUP(2) IS THE ONE SYSCALL ROW THE SET-VALUED CARRIER DOES NOT SURVIVE
+   FOR FREE, AND NOTHING IN THE CAMPAIGN PREDICTED IT.**  Four of
+   `UsysMemOk.usys_fd_ok`'s five moving rows INSTALL a parked descriptor
+   (close installs `FdClosed`, open carries `fdst_parked` explicitly, pipe
+   installs two ends), so they preserve `fdv_held_in H` at ANY `H`.  DUP
+   COPIES its argument's row onto the slot `fdalloc` chose, and that slot
+   is not one the record can be said to hold — `fd_least_closed` says
+   nothing about the held set.  So `usys_fd_ok_held` carries a guard at
+   `USYS_dup`, `urun_rows_dup` / `_copy` carry it row-shaped, and both dup
+   leaves (`UkRunSys.wp_uk_ecall_dup`, `_dup_untracked`) take
+   `ukn_held N = ∅` and discharge the guard from their own run.  **A held
+   descriptor cannot be dup'd at all this lane**; §3 has dup share the
+   object's surrender, which needs the two slots' halves to be ONE
+   resource, and that is the next lane's.
+4. **A `Prop`-VALUED RESTATEMENT PROVED BY `exact` IS A HANG, NOT AN
+   ERROR.**  `UkShDiag.wp_kshr_fork1_final` (`:8928`) is
+   `UkShRun.wp_kshr_fork1` restated at this file's stack need and closed
+   by `exact (wp_kshr_fork1 …)`.  Adding one pure row to the child arm of
+   the ORIGINAL and not to the COPY does not fail: the unifier spins on
+   the 9013-line file's goal with a perfectly stable 1.8 GB RSS, which
+   reads exactly like a slow file.  **When a fork/exec arm grows a row,
+   grep for its restatements before building** — `ukn_pay N' =` in premise
+   position is the tell, and there are twelve such copies in the U tier.
+
+5. **S3 IS NOT ATTEMPTED, and the ordering fact that decides it is this.**
+   The pin (`ProcInv.proc_priv_parked` through
+   `SpecKexec.exec_slot_pre`'s pure rows) is what makes finding 1's
+   "all-parked BY CONSTRUCTION" true today, so removing it and narrowing
+   the generic family are ONE change, not two: `UexecCond.cond_entry_slot`'s
+   generic tail needs nothing at present, so nothing forces
+   `UexecRet.uexec_wp_uslot` (`:2816`, inside `uslot_of_creds` `:2748`) to
+   be re-plumbed until `UexecSG.sbundle_of_supply_ne` (`:468`) /
+   `sbundle_of_supply` (`:499`) are guarded and
+   `FsAbsInvFire.fsabs_fileread_in` (`:304`) / `fsabs_filewrite_in`
+   (`:354`) take the row.  OFF-HAND-3's finding 3 stands unchanged on the
+   route; what this lane adds is that the route's FIRST step is a kernel
+   one (the deposit, finding 1) and not a U-tier one.
+
+**THE ONE THING OFF-HAND-5 — THE HELD BRANCH, THE PUBLISH, THE LEAVES —
+NEEDS FIRST: a ruling on the surrender's HOME (finding 1).**  It decides
+two statements that everything else hangs off.  If the bundle rides the
+exec/fork DEPOSIT (this lane's evidence), then `ExecEntry.image_entry_taint`
+keeps a pure row forever, `fdv_all_parked` never leaves the kernel, and
+S3's order is: `ProofSyscall`'s exec arm takes `FdPark.uoff_surr_at`
+through `fd_frags_park_at` where `proc_priv_parked` is → the pure rows come
+off `SpecKexec.exec_slot_pre` → `FileInvDefs.fpnames`' mode → the held
+branch of `fileread_in`/`filewrite_in` → the hand-mode open leaf.  If
+instead the taint arm is to grow a resource, then
+`UexecCond.cond_entry_slot`'s two GATED arms have to be re-keyed onto
+`fdv_park (uvis_fd W)` first — a new key, not a new premise — and that is a
+different and much larger change than §3 prices.  Until it is ruled, the
+held-row EXEC is unblocked at the entry (this lane) and blocked at the
+deposit, and `UEchoFile`'s entry can be written (mint at `ukn_held = {1}`,
+`fdv_held_in {1} sts` as its own premise) while its caller's exec cannot
+yet pay.
+
+### READ-RELAY (2026-09-17) — THE COPYOUT'S REASON RIDES READ'S `-1` ARM ALL THE WAY UP, AND A MAPPED BUFFER REFUTES IT IN ONE LINE
+
+**The lane's verdict in one line: design/app-file.md §5.3 (c) is SETTLED
+AS REFUTED — the `cat: read error` tail is unreachable at a U-tier caller
+whose destination buffer it owns, `RCReadErr` is not added, and there is
+NO second reason for the failing copyout that the U tier cannot exclude.**
+
+**THE REASON, PRECISELY.**  readi's one `-1` exit is `either_copyout`
+answering `-1` on the USER arm.  Its contract already named the byte
+(`SpecEitherCopyout.either_copyout_ran` `:116`, out of
+`SpecCopyout.copyout_wrote` `:174`): `~ uva_wmapped P (uint
+(add_vec_int dst (Z.of_nat d)))` with `d < len` — an address in the
+destination run the process's page table does not map for WRITING
+(walkaddr answered 0 and vmfault declined, or the re-walk's leaf has
+PTE_W clear).  Stated at the ENTRY descriptor, which is the weaker and
+therefore usable form (the round's table only GREW: `uptd_ext_sz` +
+`UserPtTree.uva_wmapped_mono`).  The relay's carrier is one pure
+definition, `SysReadDefs.rd_fail_why P dst n := exists d, (d < n)%nat /\
+~ uva_wmapped P (uint (add_vec_int dst (Z.of_nat d)))` — keyed by the
+64-bit va like every image equation in the tower, so it promises nothing
+about `dst + n` not wrapping, and the index is EXISTENTIAL because
+copyout walks whole pages and the failing round may have delivered a
+prefix of its own chunk first.
+
+**ONLY ONE REASON, and that is a fact about the code, checked:** readi's
+other break (`bmap` returned 0) is dead under `bm_covers`
+(`SpecReadi.v:264`), and `either_copyout` answers 0 unconditionally on
+the kernel arm (`SpecEitherCopyout.either_copyout_post`'s else branch),
+which is why readi's `-1` arm already carried `user = true`.  At an OPEN
+READABLE INODE descriptor the only other `-1` above is fileread's own
+sign guard, which `FsAbsReadFire.read_post_fail`'s LEFT disjunct already
+keys on `n < 0`.  So `0 <= n` plus a mapped buffer leaves no `-1` at all.
+Nothing was weakened to cover a second reason; there is none.
+
+**THE RELAY, SITE BY SITE (every statement that changed shape, and
+nothing else did).**
+
+1. `SysReadDefs.v` — NEW and pure: `rd_fail_why`, `rd_nwmapped_entry`
+   (the round's verdict brought back to the entry table),
+   `rd_fail_why_entry`, `rd_fail_why_mono`, and `rd_fail_why_refute` —
+   the refutation itself, three lines, "a buffer every byte of which is
+   writable-mapped has no failing address in it".  The file gains
+   `Require Import UserPtTree` / `ProcPtOwn`.
+2. `SpecReadi.wp_readi_sconf_body` — the post's `-1` arm gains a THIRD
+   conjunct, `rd_fail_why (pv_upt (us_V U)) dst n`, inside the existing
+   `⌜…⌝` premise slot (no new premise).  `READI`/`LinkReadi` unchanged.
+3. `ProofReadi.v` — the same arm in `rd_cont`, and as a premise of the
+   three return blocks `rd_ret`, `rd_join`, `rd_exit` (all `Local`, all
+   pass it through by `exact`).  The loop's chunk post keeps
+   `either_copyout`'s third component; the failing index is `tot + dwr`
+   off readi's own `a2` (`InstrBytes.pa_add_add`) and is inside the
+   request because `dwr < mm <= nc - tot` and `nc <= n`.
+4. `FsAbsReadFire.read_post_fail` — gains `(P : uptd)` after `γo` and
+   `(addr : mword 64)` last; its `0 <= n` disjunct gains
+   `⌜rd_fail_why P addr (Z.to_nat n)⌝` as its SECOND conjunct.
+   `read_arms` gains `(P : uptd)` after `γo`.  Consequent parameter-list
+   moves only: `read_arms_ret`, `read_arms_neg`, `arf_stable_fail_arm`
+   (also gains `addr`), `arf_stable_of_arms`.  `read_post_ok`,
+   `read_stable_arms` and `aread_commit_at` are untouched.
+5. `SpecFileread.fileread_extra_core` — SAME parameter list; its inode
+   branch now passes `pt` into `read_arms`.  **That is the whole reason
+   nothing above `fileread` moved**: `pt` was already there for the
+   console arm's swallowed byte (lane CONS-SWALLOW W3), so
+   `fileread_extra`, `fileread_arms`, `SpecSysRead.sys_read_arms`,
+   `SpecSyscall` and `UexecExecInst.xv6_spost`'s row 5 are all unchanged.
+   `fileread_extra_inode` / `fileread_extra_inode_of` take `pt` in their
+   `read_arms` premise (their own binders unchanged).
+6. `ProofFileread.v` — the `blez` skip case's `-1` disjunct carries the
+   reason at fileread's own `addr` (readi's `a2` IS `m !!! Ra1`,
+   `HJ6a2`), and the fired arm supplies it.
+7. `UkReadFile.read_arms_file_learn`, `UkTreeRead.read_arms_tree_learn`,
+   `FileOpen.file_read_arms_learn` — each gains `(P : uptd)` after `γo`;
+   their CONCLUSIONS are unchanged.
+8. `UkFileOpen.wp_uk_read_deed_learns` and
+   `UkReadFile.wp_uk_cat_read_learns` — statements UNCHANGED (`P` comes
+   out of `spost_at_read_elim` inside the proof).
+
+**PROOF-SCRIPT-ONLY at readi's six other callers.**  `user = true` is no
+longer the LAST conjunct of the `-1` arm, so `discriminate` on it needs
+one more layer: `ProofDirlookup:1660`, `ProofDirlink:3025`,
+`ProofSysUnlinkW3:535`, `ProofKexecACode` (×4), `ProofKexecB2` (×2),
+`ProofKexecB3` (×3).  Nothing else in the kernel tier noticed.
+
+**THE REFUTATION, AND IT REALLY IS ONE LINE.**
+`FsAbsReadFire.read_arms_mapped` — at `0 <= n`, `Z.to_nat n <= k`, and
+"every byte of `[addr, addr+k)` is `uva_wmapped` in `P`",
+`read_arms … -∗ read_post_ok …`.  Both `*_learn` families were split so
+the mapped corollary does not re-prove the ok arm:
+`UkReadFile.read_post_ok_file_learn` + `read_arms_file_learn_mapped`,
+`FileOpen.file_read_post_ok_learn` + `file_read_arms_learn_mapped`.
+**The program pays nothing for the mapped row**: it is the read leaf's
+own, handed out beside the resume image
+(`UkReadFile.wp_uk_ecall_read_file`'s fifth pure row, the twin of the
+write side's `UkRunSys.usrc_ok` mapped conjunct), and
+`UkReadRows.spost_at_read_elim` hands out the `proc_pt_wf` /
+`perm_of` / `lazy_free` triple the row consumes.  So the ONLY premise the
+mapped corollaries add is `0 <= cnt`.
+
+**WHAT CAT-WALK APPLIES.**
+`UkFileOpen.wp_uk_read_deed_learns_mapped` — same statement as
+`wp_uk_read_deed_learns` plus `(0 <= cnt)%Z`, and its deed arm has NO
+`⌜rv = -1⌝` disjunct: it is `(∃ off, the count ∗ the bytes) ∗ fdq` or the
+taint, full stop.  cat reads 512 bytes into a buffer it owns, so that is
+exactly its shape, and `cat: read error` has no arm to file.
+`UkReadFile.wp_uk_cat_read_learns_mapped` is the same thing at the
+generic leaf, kept beside the landed test as the end-to-end check that
+the leaf's row alone discharges the relay.
+
+**ONE DELETION, deliberate** (so `tools/lemma_diff.py` has its answer):
+`UkReadFile.cat_recv` is gone, replaced everywhere by the new
+`UkReadFile.file_read_fam i q bs0 nl` — the same `MkPfam`, named once
+because three lemmas now share it.
+
+**FOR THE NEXT LANE.**  The write side's RELAY 4 (design §3) is still
+open at the INODE chain: `FsAbsWriteFire.awrite_part_at` carries no
+reason and F-WRITE's finding 3 stands.  The shape to copy is this lane's:
+the reason is a pure `Prop` in the vocabulary LEAF (`SysWriteDefs`'s twin
+of `rd_fail_why`), the chain node carries it, and the refutation is one
+lemma at the arms.
+
 ### CAT-ENTRY (2026-09-17) — C1 LANDS; C2/C3 ARE STOPPED, AND THE BLOCKER IS THAT cat's WALK WAS LANDED CLAIM-FREE
 
 Branch `app-file/cat-entry`.  Whole tree GREEN on the lane's remote tree

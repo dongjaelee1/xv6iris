@@ -129,6 +129,14 @@ proof and is not.
 
 ### Staleness, and the ways a check lies
 
+- **A stale non-empty `.vos` left by `--check` poisons every later check in
+  its cone** with the same bogus "inconsistent assumptions over library X".
+  Probe with `find iris -name '*.vos' -size +0c` on the remote tree and
+  truncate the offender to zero bytes. Separately, the audit compiles with
+  `-w +comment-terminator-in-string`, so a `"…"` split across two comment
+  lines fails the AUDIT even when the ordinary build passed;
+  `tools/comment_quote_check.py iris` catches it without a build. (ADEQUACY,
+  2026-09-17)
 - **A comment-only edit invalidates a `.vo`** (the library digest covers source
   LOCATIONS), and the failure is the same "inconsistent assumptions" as a real
   change. Never `touch` a `.vo` to dodge a rebuild, and never edit a file low in
@@ -710,6 +718,22 @@ iAssert (<the premise, spelled out>) with "[Hcg]" as "Hcg". { iExact "Hcg". }
 A fast `iAssert` and a hanging `iExact` is the mismatch. Fix by spelling in
 `rget` form, or follow every such leaf with `iEval (rgne) in "Hcg"`.
 
+### Two more silent hangs: a `Prop`-valued restatement, and a budget that does not line up
+
+- **Growing a row on an arm that has `exact`-proved restatements is a HANG,
+  not an error.** Twelve U-tier lemmas restate a fork/exec arm at their own
+  stack need and close it by `exact (original …)`; add a pure row to the
+  ORIGINAL and not to the copy and the unifier spins on the copy's
+  9000-line goal at a stable 1.8 GB RSS, which reads exactly like a slow
+  file. Before building, grep for the restatements (`ukn_pay N' =` in
+  premise position is the tell). (OFF-HAND-4, 2026-09-17)
+- **A numeric budget argument that does not match the caller's is not an
+  error either** — Iris's unifier just searches. A walk that grew eight
+  words while its two call sites kept the old `(50 + nn)` took twenty
+  minutes of CPU instead of forty seconds with no diagnostic. When a new
+  walk file compiles pathologically slowly, check every budget argument
+  against the caller's first. (SH-PARSE-2, 2026-09-17)
+
 ### Making a leaf hart-generic
 
 ```coq
@@ -1091,6 +1115,13 @@ defining one as the symbol directly compiles, but `unfold` then leaves something
 
 ### Arithmetic
 
+- **`lia` does not see through a beta-redex hypothesis.** `Forall (fun j => j
+  < m) l` taken apart by `Forall_cons_1` / `Forall_forall` leaves
+  `(fun j => j < m) x`, and `lia` answers *Cannot find witness* with the goal
+  `x < n` right there. `cbn beta in H` first. (Goals are fine: `apply`
+  beta-reduces what it produces.) Also `apply Forall_singleton in H` takes
+  stdpp's iff the WRONG way (it wraps `H`); `rewrite Forall_singleton in H`
+  unwraps it. (FILE-DEC, 2026-09-17)
 - **A definition whose body is a `++` is taken apart by `rewrite !length_app`,
   and `Opaque` does not stop it.** ssreflect's rewrite unfolds a constant to
   match `length (_ ++ _)`, so turning a byte literal into a structured join

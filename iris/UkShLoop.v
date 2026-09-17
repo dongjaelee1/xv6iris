@@ -40,6 +40,9 @@ Require Import UserHeap UkRun.
 Require Import FdSlots UserFd.
 Require Import UkSh.
 Require Import UkShParse.
+Require Import UkShParseSym.
+Require Import LineWords.
+Require Import UkShRedirLine.
 Require Import UkShMalloc.
 Require Import CtxIdDefs.
 Require Import ChildTok.  (* [genF] -- the capacity the slot's fork arms name *)
@@ -74,6 +77,50 @@ Definition ush_line_lexable : Prop :=
     /\ exists toks : list (nat * nat),
          ushp_tokens len (fun j : nat => f (k + j)%nat) 0 toks
          /\ (length toks < 10)%nat.
+
+(* ===================================================================== *)
+(* THE SECOND LEXABLE PREDICATE (lane SH-PARSE-2, design SS5.1).           *)
+(*                                                                        *)
+(* [ush_line_lexable] CANNOT simply grow to admit the redirect line.       *)
+(* [UkShRedirLine.ushs_line_is_nosym] proves why: a line [UkSh.ush_line_is] *)
+(* describes never carries a symbol byte, because it carries               *)
+(* [EchoDisc.line_ok], hence [LineWords.wl_wf], hence every buffer byte is  *)
+(* alphanumeric, a blank or the newline.  Weakening this predicate's       *)
+(* CONCLUSION to "no symbols OR the redirect shape" would add a right      *)
+(* disjunct unreachable from its own premise, and the child's redirect arm *)
+(* would be vacuous.                                                       *)
+(*                                                                        *)
+(* So the redirect line gets its OWN positional predicate                  *)
+(* ([UkShRedirLine.ushs_line_is]) and its own lexability [Prop], and a     *)
+(* widened premise is the CONJUNCTION of the two rather than a disjunction *)
+(* inside one.  The first conjunct below is derivable                      *)
+(* ([UkShRedirLine.ushs_line_is_redir]) and is stated anyway, exactly as   *)
+(* [ush_line_lexable]'s first conjunct is; what is NOT derivable, and so   *)
+(* what the premise is really for, is the token count.                     *)
+(* ===================================================================== *)
+Definition ush_line_lexable_redir : Prop :=
+  forall (ws : list (list (bv 8))) (file : list (bv 8)) (f : nat -> bv 8)
+         (k len : nat),
+    UkShRedirLine.ushs_line_is ws file f k len ->
+    ushs_redir len (fun j : nat => f (k + j)%nat)
+      (length (wl_body ws) + 1)%nat
+      (length (wl_body ws) + 3 + length file)%nat
+    /\ exists args : list (nat * nat),
+         ushs_toks len (fun j : nat => f (k + j)%nat)
+           (length (wl_body ws) + 1)%nat 0 args
+         /\ (0 < length args)%nat
+         /\ (length args < 10)%nat.
+
+(* ...and its first conjunct IS derivable, so a supplier owes only the
+   token list.  [UkShLoop] states it here because this is the lowest file
+   that sees both halves. *)
+Lemma ush_line_lexable_redir_shape (ws : list (list (bv 8)))
+    (file : list (bv 8)) (f : nat -> bv 8) (k len : nat) :
+  UkShRedirLine.ushs_line_is ws file f k len ->
+  ushs_redir len (fun j : nat => f (k + j)%nat)
+    (length (wl_body ws) + 1)%nat
+    (length (wl_body ws) + 3 + length file)%nat.
+Proof. exact (UkShRedirLine.ushs_line_is_redir ws file f k len). Qed.
 
 Section UkShLoop.
   Context `{!riscvGS Σ}.

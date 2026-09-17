@@ -835,7 +835,7 @@ Section UEchoOut.
        bv_unsigned p * 4096 < UserPtTree.pgroundup (uvis_sz W)) ->
     uvis_lazy W = false ->
     (* ...AND THE KEY'S TABLE IS ALL PARKED (lane OFF-HAND-3, R1): this
-       program answers for its own offsets ([UkRun.ukn_park] at [true]),
+       program answers for its own offsets ([UkRun.ukn_held] at [empty]),
        and a record may claim that only at a key with no offset half
        outside the kernel.  The caller reads it off
        [SpecKexec.exec_slot_pre]'s wands, relayed through
@@ -862,10 +862,11 @@ Section UEchoOut.
     assert (Hsp0 : 0 <= uint (uvis_sp W)) by lia.
     assert (Hargc0 : 0 <= uvis_argc W)
       by exact (proj1 (uka_argc _ _ _ _ _ _ Hargs)).
-    iApply (uslot_of_urun_ro W 12 Q true
+    iApply (uslot_of_urun_ro W 12 Q ∅
               Hal8
               ltac:(unfold uvis_sp in Hroom; lia) Hstk Hfdlen Hstop Hlzf
-              ltac:(intros _; exact Hpark) with "Hdep Hnpw Hpay").
+              ltac:(exact (UsysMemOk.fdv_held_in_of_parked _ _ Hpark))
+              with "Hdep Hnpw Hpay").
     iIntros (N h) "%Hpayeq %Hparkeq %Hsz Hszf #Ht Hstd _ _ _ #HA Hrun".
     pose proof (ukn_const_of_eq N _ Hpayeq HQc) as Htc.
     rewrite Hpc.

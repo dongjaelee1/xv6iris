@@ -74,6 +74,7 @@ Require Import PathElems.
 Require Import FsTree.
 Require Import InodeInv.           (* [MAXFILE] *)
 Require Import BioDefs.            (* [BSIZE] *)
+Require Import UserPtTree.         (* [uptd]: the table the read's -1 reason is at *)
 Require Import FsAbsReadFire.      (* [aread_commit_at] / [read_arms] *)
 Require Import FsAbsEra.
 Require Import TreeView.
@@ -436,7 +437,7 @@ Section UkTreeRead.
      node's because the CLAIM says so at the very view the kernel read it
      in, and from there the count and the bytes are the landed post's. *)
   Lemma read_arms_tree_learn (Γ := fs_gamma_L fsc_fs) (Pin : aview -> Prop)
-      (T : iProp Σ) (i : Z) (γo : gname) (n : Z) (bs0 : list (bv 8))
+      (T : iProp Σ) (i : Z) (γo : gname) (P : uptd) (n : Z) (bs0 : list (bv 8))
       (r : mword 64) (M' : gmap Z (bv 8)) (addr : mword 64)
       (k : nat) (g : nat -> bv 8) :
     (forall v : aview, Pin v -> exists q : nat,
@@ -446,7 +447,7 @@ Section UkTreeRead.
     (forall j : nat, (j < k)%nat ->
        M' !! uint (add_vec_int addr (Z.of_nat j)) = Some (g j)) ->
     (Z.to_nat n <= k)%nat ->
-    read_arms Γ i γo n (tree_read_recv Pin T) r M' addr -∗
+    read_arms Γ i γo P n (tree_read_recv Pin T) r M' addr -∗
     ((⌜r = (mword_of_int (-1) : mword 64)⌝
       ∨ (∃ off : nat,
            ⌜Z.to_nat (bv_unsigned r)
@@ -569,7 +570,7 @@ Section UkTreeRead.
       by (rewrite /sys_rw_count /trunc32; exact Hcnt).
     rewrite Hc2.
     iDestruct (read_arms_tree_learn (fun v => subtree v root = Some t)
-                 (tree_taint c) i γo cnt bs rv M' (m !!! Regidx a1_idx) k gb
+                 (tree_taint c) i γo P cnt bs rv M' (m !!! Regidx a1_idx) k gb
                  (fun v HP => proj2 (tree_pin_resolves_file root d i t bs cw pl
                                        Hp Hstart Hd Hres) v HP)
                  Hlin Himg ltac:(lia) with "Hcore") as "Hlearn".

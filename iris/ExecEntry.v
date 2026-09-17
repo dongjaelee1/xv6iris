@@ -111,15 +111,19 @@ Section ExecEntry.
           ⌜uvis_lazy W' = false⌝ -∗
           ⌜uvis_ch W' = cs⌝ -∗
           ⌜uvis_pid W' = pidv⌝ -∗
-          (* ...AND THE RESUMED KEY'S TABLE IS ALL PARKED (lane OFF-HAND-3,
-             R1).  [SpecKexec.exec_slot_pre]'s wands have carried this row
-             since lane OFF-HAND-2, and until now every producer DROPPED
-             it.  It is relayed here because the entry is where a program's
-             record is minted, and a record that answers for its offsets
-             ([UkRun.ukn_park]) may only be minted at an all-parked key --
-             [UkRun.uslot_of_urun*]'s own premise.  A program that does not
-             care drops it, exactly as it drops the four identity rows. *)
-          ⌜FdSlots.fdv_all_parked (uvis_fd W')⌝ -∗
+          (* NO ALL-PARKED ROW HERE (lane OFF-HAND-4, S2; design/app-file.md
+             SS3 fact 4, RULED).  Lane OFF-HAND-3 relayed
+             [SpecKexec.exec_slot_pre]'s row into this entry, and that is
+             WRONG for a VERIFIED image: an entry that RECEIVES "the table
+             is all parked" can never be entered with a held row, and the
+             redirect child execs /echo holding [f] at a held offset.  The
+             fact is not lost -- [kexec_image_ok] pins [uvis_fd W' = sts]
+             ([SpecKexec.kexec_image_ok_fd]) and [sts] is a PARAMETER here,
+             so an entry that wants the discipline states it about [sts] as
+             its own premise and an entry that means to hold a row states
+             the set instead ([UsysMemOk.fdv_held_in]).  The TAINT arm
+             keeps a row, because the generic family really does need one:
+             see [image_entry_taint]. *)
           my_pay (uvis_gen W') Q -∗ Pay -∗ X W'))%I.
 
   (* ------------------------------------------------------------------ *)
@@ -139,9 +143,8 @@ Section ExecEntry.
           ⌜uvis_lazy W' = false⌝ -∗
           ⌜uvis_ch W' = cs⌝ -∗
           ⌜uvis_pid W' = pidv⌝ -∗
-          (* ...and the resumed key's all-parked row -- [image_entry_at]'s
-             note (lane OFF-HAND-3, R1) *)
-          ⌜FdSlots.fdv_all_parked (uvis_fd W')⌝ -∗
+          (* ...and NO all-parked row -- [image_entry_at]'s note (lane
+             OFF-HAND-4, S2) *)
           ⌜exec_args_of M av na alen afun⌝ -∗
           my_pay (uvis_gen W') Q -∗ Pay -∗ X W'))%I.
 
@@ -156,7 +159,7 @@ Section ExecEntry.
      inside [UkRun.urun]'s existential ([UkSh.ush_gen_run]), so narrowing
      the arm used to push the obligation onto a table the U tier could not
      name.  It can name it now: [UkRun.urun] carries the row
-     ([urun_rows]), guarded by the record's own [ukn_park] bit, and every
+     ([urun_rows]), guarded by the record's own [ukn_held] set, and every
      verified program's entry constructor mints its record at [true].  So
      the row goes all the way to the family the taint runs on, which is
      what lets [UexecExecInst.xv6_sbundle]'s fire rows be narrowed in
@@ -197,12 +200,11 @@ Section ExecEntry.
     image_entry f M av sts cw cs pidv Q Pay X.
   Proof using .
     iIntros "#H". rewrite /image_entry. iIntros "!>" (na alen afun W')
-      "%Hok %Hcw %Hlz %Hch %Hpid %Hpk %Hargs Hp HPay".
+      "%Hok %Hcw %Hlz %Hch %Hpid %Hargs Hp HPay".
     iDestruct ("H" $! na alen afun with "[%]") as "#He"; [ exact Hargs | ].
     rewrite /image_entry_at.
-    iApply ("He" $! W' with "[%] [%] [%] [%] [%] [%] Hp HPay");
-      [ exact Hok | exact Hcw | exact Hlz | exact Hch | exact Hpid
-      | exact Hpk ].
+    iApply ("He" $! W' with "[%] [%] [%] [%] [%] Hp HPay");
+      [ exact Hok | exact Hcw | exact Hlz | exact Hch | exact Hpid ].
   Qed.
 
   (* ...and back, at any shape the reading admits *)
@@ -215,11 +217,11 @@ Section ExecEntry.
     image_entry_at f na alen afun sts cw cs pidv Q Pay X.
   Proof using .
     intros Hargs. iIntros "#H". rewrite /image_entry_at.
-    iIntros "!>" (W') "%Hok %Hcw %Hlz %Hch %Hpid %Hpk Hp HPay".
+    iIntros "!>" (W') "%Hok %Hcw %Hlz %Hch %Hpid Hp HPay".
     rewrite /image_entry.
-    iApply ("H" $! na alen afun W' with "[%] [%] [%] [%] [%] [%] [%] Hp HPay");
+    iApply ("H" $! na alen afun W' with "[%] [%] [%] [%] [%] [%] Hp HPay");
       [ exact Hok | exact Hcw | exact Hlz | exact Hch | exact Hpid
-      | exact Hpk | exact Hargs ].
+      | exact Hargs ].
   Qed.
 
 End ExecEntry.

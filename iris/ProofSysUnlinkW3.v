@@ -532,7 +532,7 @@ Section ProofSysUnlinkW3.
     assert (Hrdregs : su_regs m sp0 dpv ipv
                         (mword_of_int (Z.of_nat (16 * jj))) mrd)
       by exact (su_regs_cs m sp0 _ _ _ N6 mrd Hcsrd HN6regs).
-    destruct Harm as [[_ Hfalse] | [Ha0 Htoteq]]; [discriminate Hfalse |].
+    destruct Harm as [[_ [Hfalse _]] | [Ha0 Htoteq]]; [discriminate Hfalse |].
     (* ===== +0x116 c.li a5,16 ===== *)
     iApply (wp_cli_s_sconf (CID := CID7) (mword_of_int (SU + 0x116)) Ra5
               (mword_of_int 16 : mword 6) (mword_of_int 16 : mword 64) mrd

@@ -1545,6 +1545,11 @@ UkShRedirTok.v
 UkShRedirGtk.v
 UkShRedirCmd.v
 UkShRedirPr.v
+UkShRedirEx.v
+UkShRedirPex.v
+UkShRedirNul.v
+UkShRedirCm.v
+UkShRedirPc.v
 
 UCodeShM.v
 UkShMalloc.v
@@ -1553,6 +1558,7 @@ UkShRedirLine.v
 UkShLoop.v
 UkShCd.v
 UkShMain.v
+UkShRedirSeam.v
 UkShFork.v
 UConsLine.v
 UkShWords.v
@@ -1598,3 +1604,6 @@ UkShRedirAns.v
 UCatOut.v
 UInitTree.v
 # TreeAssumptions.v
+
+UFileBootAdequacy.v
+# FileAssumptions.v

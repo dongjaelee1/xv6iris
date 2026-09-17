@@ -2807,8 +2807,15 @@ Section ProofFileread.
                 carries readi's own EQUATION, because the observation's return
                 tie is read off them and nothing below mentions [Hrdret] again
                 on the run side. *)
+             (* ...AND THE -1 SKIP CARRIES readi's REASON (lane READ-RELAY):
+                the copyout that faulted named a byte of THIS buffer the
+                process cannot be written at, at readi's own a2, which is
+                fileread's [addr] ([HJ6a2]).  It rides the skip disjunct
+                because that is the only disjunct that can be -1. *)
              assert (Hcase : (zopz0zKzJ_s (zero_reg : mword 64) (mrd !!! Regidx Ra0) = true
-                              /\ (mrd !!! Regidx Ra0 = (mword_of_int (-1) : mword 64)
+                              /\ ((mrd !!! Regidx Ra0 = (mword_of_int (-1) : mword 64)
+                                   /\ rd_fail_why (pv_upt (us_V U))
+                                        (m !!! Regidx Ra1 : mword 64) (Z.to_nat n))
                                   \/ (mrd !!! Regidx Ra0
                                         = (mword_of_int (Z.of_nat tot) : mword 64)
                                       /\ tot = 0%nat)))
@@ -2817,8 +2824,12 @@ Section ProofFileread.
                                  /\ (0 < tot)%nat
                                  /\ tot = rd_clamp (di_size dnl)
                                             (Z.to_nat (bv_unsigned v)) (Z.to_nat n))).
-             { destruct Hrdret as [[H1 _] | [H1 Hteq]].
-               - left. split; [rewrite H1; exact fr_blez_m1 | left; exact H1].
+             { destruct Hrdret as [[H1 [_ Hwhy]] | [H1 Hteq]].
+               - assert (Hwhy' : rd_fail_why (pv_upt (us_V U))
+                                   (m !!! Regidx Ra1 : mword 64) (Z.to_nat n))
+                   by (rewrite -HJ6a2; exact Hwhy).
+                 left. split; [rewrite H1; exact fr_blez_m1 |].
+                 left. split; [exact H1 | exact Hwhy'].
                - destruct (decide (tot = 0%nat)) as [Ht0 | Htne].
                  + left. split; [rewrite H1 Ht0; exact fr_blez_zero | right; by split].
                  + right. split; [exact H1 |]. split; [| exact Hteq].
@@ -3046,10 +3057,11 @@ Section ProofFileread.
                 { iSplitR; [iPureIntro; exact Hretok |].
                   iApply (fileread_extra_inode_of _ _ st wbx (bv_unsigned inm) γo0
                             n Fr Rd _ _ _ _ _ _ _ Hstm with "HP").
-                  destruct Hskip as [H1 | [H1 Ht0]].
+                  destruct Hskip as [[H1 Hwhy1] | [H1 Ht0]].
                   { rewrite /read_arms /read_post_fail. iRight.
                     iSplitR; [iPureIntro; exact H1 |]. iRight.
                     iSplitR; [iPureIntro; exact Hn0 |].
+                    iSplitR; [iPureIntro; exact Hwhy1 |].
                     iExists avf, (Z.to_nat (bv_unsigned v)),
                       (abs_row (era_node dnl bml data)).
                     iSplitR; [iPureIntro; exact Hpref |]. iExact "HΦf". }

@@ -1528,6 +1528,7 @@ UkShRedirTok.v
 UkShRedirGtk.v
 UkShRedirCmd.v
 UkShRedirPr.v
+UkShRedirEx.v
 
 UCodeShM.v
 UkShMalloc.v

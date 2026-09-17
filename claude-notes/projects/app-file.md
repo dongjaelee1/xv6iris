@@ -333,3 +333,189 @@ finding-2 brute fix: it makes no program unable to hold a `uoff`, it makes
 every program able to SAY whether it does.  With it, finding 1 closes, the
 `fp_om` move of finding 2 makes the pin's relaxation type-correct, and
 deliverable 2 still waits on the `spost_at` lane of finding 3.
+
+### F-OPEN (2026-09-17) — THE CREATE ARM AND THE READ SUPPLIERS LANDED; O_TRUNC IS A SECOND MOVE THE DEED CANNOT PAY
+
+**The lane's verdict in one line: the open supplier is provable from the
+deed at every leg the deed can reach, and the two it cannot are BOTH the
+same shape — a syscall that must READ or MOVE the claim in TWO
+∗-separated pieces while the deed pays for one.  Where the piece only
+READS, the fix is free (split the deed's half; a fraction agrees and
+refutes but does not park), and the lane took it.  Where the piece
+MOVES, the fix is a kernel seam and is named below.**
+
+**WHAT LANDED** (whole tree green on the lane's remote tree; every new
+lemma `Proof using`; `Print Assumptions` on all 26 named results is
+`Closed under the global context` or the eleven `PrimInt63`/`PrimString`
+primitives and NOTHING else — no project axiom, no `resv_*`, no funext).
+
+- `iris/FileDeltas.v` (deliverable 1, ~1100 lines, pure).  It is
+  `FsConsPin` section 5 re-proved ONCE over two shapes that cover all
+  four readings the claim needs — `name_absent nm av` (the root has no
+  entry `nm`: `FsConsPin.cons_absent` and `FsFPin.f_absent` ARE this,
+  definitionally) and `node_pin nm ino a av` (`FsConsPin.file_pin` and
+  `cons_present_at` are this through their own `_astep`/`_of_parts`
+  pair) — and at a NON-DIRECTORY child, which `delta_create_armed`
+  collapses and `delta_create_dev` does not.  Legs: `name_absent_arm` /
+  `_unarm` / `_create` / `_dots` / `_trunc` / `_write` and
+  `node_pin_arm` / `_unarm` / `_unarm_fresh` / `_create` / `_create_at` /
+  `_dots` / `_trunc_ne` / `_trunc_nonfile` / `_write_ne` /
+  `_write_nonfile`.
+  - `f_ok` at every leg: `f_ok_arm`, `f_ok_unarm`, `f_ok_unarm_none`,
+    `f_ok_unarm_fresh`, `f_ok_create_other`, `f_ok_dots`,
+    `f_ok_trunc_ne`, `f_ok_trunc_nil`, `f_ok_write_ne`; and `f`'s own
+    three moves `f_ok_create_f`, `f_ok_trunc_f`, `f_ok_write_f`,
+    `f_ok_append_f` with `blk_splice_append`.
+  - the pins and the console under each: `file_fs_pure_arm` /
+    `_unarm_fresh` / `_create` / `_dots` / `_trunc_ne` / `_write_ne`;
+    `cons_absent_arm_nd` / `_create_nd` / `_dots` / `_trunc_any` /
+    `_write_any` and the four `cons_present_*` twins.
+  - the INUM SEPARATION: `subseq_length_le` (a chunk subset is no longer
+    than the chunk list, through `NoDup_submseteq` and a
+    Permutation-respecting `sum_list_with`), `f_bytes_typed_short` (a
+    typed content is shorter than `EchoDisc.line_max` = 100),
+    `init_bytes_length` / `sh_bytes_length` / `echo_bytes_length` /
+    `cat_bytes_length` at **Z**, and `f_inum_not_pinned` /
+    `f_inum_ne_cons`.
+  - the three composite steps a supplier spends: `file_create_at_f`,
+    `file_trunc_at_f`, `file_write_at_f` (each: the four pins, the
+    console's two guards and `f_ok`, in one `split_and!`).
+- `iris/FileOpen.v` (deliverable 2, ~900 lines).
+  - **THE FRACTION** (section 1): `fdq r q s` is `AppFile.fdeed` at any
+    fraction; `fdq_split` / `fdq_join` / `fdq_agree` / `fdq_whole_excl`
+    and `file_deed_law_q` — a positive fraction AGREES with the exact arm
+    and REFUTES the in-flight one, so it reads the claim; only the whole
+    half parks.
+  - `file_cons_law` (the era's console flag read through
+    `AppFile.file_pred_cons` and `AppEcho.echo_cons_law`),
+    `fclaim_facts`, `file_claim_read` (`TreeMove.tree_claim_read`'s twin:
+    the deed in, the deed out, the three pure facts or the taint),
+    `file_app_step_free_at`.
+  - **THE CREATE BUNDLE** (deliverable 2a): `file_arm_fam`,
+    `file_unarm_fam`, `file_cre_fam`; `file_arm_commit` (free, and it
+    MINTS the permit carrying the deed), `file_unarm_commit` (free, and
+    it SPENDS it), `file_acre_commit` (the parent leg: at `f` in the root
+    the two-phase move — `file_app_step_park` in phase 1,
+    `AppFile.file_resync` in phase 2 — and at any other name the free
+    step with the deed back), `file_open_create_au` and
+    `file_open_create_au_notrunc`.  Three receipt arms exactly as the
+    brief asked: `⌜nm ≠ f⌝ ∗ fown r s`, `⌜s = None ∧ d = ROOTINO ∧ nm =
+    f⌝ ∗ fown r (Some (i, []))`, or the taint.
+  - **THE READ** (deliverable 2c): `file_read_recv`, `file_read_piece`
+    (`UkTreeRead.tree_read_piece` at a FRACTION instead of a frozen pin)
+    and `file_read_arms_learn` (`read_arms_tree_learn`'s twin, with the
+    fraction returned on every arm — `read_post_fail`'s sign-guard arm
+    gives the whole `pf_at` back and its copyout arm the fired receipt).
+  - **THE O_RDONLY OPEN** (deliverable 2b, the RESOLVING half):
+    `f_pin_walks` / `f_pin_resolves`, `file_pin_law_q`,
+    `file_open_recv` / `file_aopen_piece`, `file_open_plain_au` and
+    `file_open_recv_file`.  Three arms: `-1` with the table untouched,
+    the descriptor `FdInode i γo OffParked` **on the deed's own inum**
+    with BOTH fractions back, or the taint.
+  - `f_pin_misses` (the ABSENT half's pin), and section 6 is the STOP
+    record.
+
+**THE CLAIM CHANGED UNDER THE LANE AND IT WAS THE RIGHT CHANGE.**  Lane
+F-WRITE's relay 1 (`dst = option (Z * list (bv 8))`) was merged mid-lane.
+It **closed a wall this lane had already hit**: at a content-only deed
+the create's UNARM leg is unprovable — `f_ok av0 (Some bs)` and `f_ok av
+(Some bs)` may name DIFFERENT inums, so `av0 !! i = None` does not give
+`i ≠ f`'s inum, and deleting `i` leaves the root's `f` entry dangling
+(no `f_ok` holds of the result, so the claim breaks and cannot be
+stepped).  With the inum in the state `f_ok_unarm_fresh` is three lines.
+`AppTree` gets the same fact from `aview_rooted`; the file claim has no
+tree, and the inum is what replaces it.
+
+**WHAT THE CONSOLE OWES, AND WHO PAYS IT.**  The unarm's OTHER side
+condition is "the armed inum is not the CONSOLE's", and the deed says
+nothing about the console.  Every supplier here therefore takes
+`AppEcho.cons_made (fn_cons r) jc` — persistent, minted by /init's own
+mknod, already carried down the process chain — and `file_cons_law`
+turns it into the pin at every view.  It costs the caller nothing it does
+not already hold and it also makes `cons_absent` vacuous inside every
+step, which is why no supplier below needs a console credential.
+
+**REFUTED / BLOCKED — and both are ONE sentence at two places.**
+
+1. **THE O_TRUNC LEG OF THE CREATE BUNDLE CANNOT BE PAID FROM THE DEED,
+   and it is structural.**  `SysOpenDefs.open_au_create_at` (`:549`)
+   joins `open_trunc_piece Γ vom Ft` and `cre_child_unfired Γ (AFile [])
+   Farm Fun` under one `∗`.  The create's parent leg MOVES the claim, and
+   a move is `AppFile.file_step_park` (`:544`, joins the holder's HALF
+   with the claim's to make `fdeed_whole`) plus `AppFile.file_resync`
+   (`:848`, needs `ftkt r s`, the ticket's HALF) — both on the nose, so
+   no proper fraction parks and the truncate piece is left with nothing
+   to read the claim with.  It must read it: `f_ok av s` determines `s`
+   from the view, so every case is decidable EXCEPT "`i` is the deed's
+   inum and its content is non-empty", which is exactly the case that
+   needs the move.
+   - **Deferring the create's phase 2 to the truncate does not work**,
+     and this is the part that is not obvious: in this xv6 revision
+     `itrunc` runs AFTER `filealloc`/`fdalloc`, so
+     `SpecSysOpen.open_post_fail_create`'s arm (a) — create fired, the
+     descriptor table was full — hands the truncate piece back UNFIRED
+     (`:705`).  A claim parked there is in flight for ever: a resync
+     needs the map authority, i.e. a later fire, and the redirect child's
+     next act is a console `fprintf` and `exit`.  That arm is exactly the
+     brief's third arm (`-1` with `fown r (Some [])`), so it is not one
+     to give up.
+   - **THE FIX, and it is small**: key the truncate piece as the unarm is
+     keyed to its arm.  `open_trunc_piece` becomes `∀ i, <permit i> -∗
+     atrunc_commit_at Γ appE i Φ` with the permit the create's own `Fok`
+     receipt (FRESH arm) or the `Fex`/`Fo` receipt (EXISTS arm), on
+     `FsAbsCreateFire.aunarm_of_arm`'s (`:531`) mould.  Then the deed
+     rides `Fok` into the truncate and the whole 0x601 bundle is one more
+     instance of `FileOpen` section 3.  Kernel sites: `SysOpenDefs`
+     (`open_trunc_piece`, both `_at` bundles and the four `_of_all`),
+     `SpecSysOpen`'s two post folds and two receipts, and the generic
+     supplier.  `SysOpenDefs`' own note at `open_trunc_piece` says the
+     piece is unkeyed "because no inum exists to name at supply time" —
+     true of the SUPPLY, not of the FIRE, which is why a permit and not
+     an index is the shape.
+2. **THE ABSENT-`f` OPEN LOSES ITS CREDENTIAL.**  `PinnedObs.pobs_hop_dead`
+   (`:498`) takes `K`, reads the claim with it and answers the miss out
+   of `pobs_miss_free` — `K` is dropped, and `pobs_P_dead` (`:479`) has
+   no slot for it.  So cat's "cannot open" arm would burn the deed
+   fraction it was paid with, and a holder that cannot reassemble
+   `AppFile.fdeed` can never move the claim again.  Putting the fraction
+   in `Pmiss` fixes the arm that actually fires; the `hop never fired`
+   arm of `SysOpenDefs.namei_walk_dead_era` (`:456`) returns the unfired
+   `ax_hop` itself, which is not a `PieceFam` and has no refund to
+   eliminate to.  **NOTE THIS IS NOT THE FILE LANE'S PROBLEM ALONE**:
+   /init's own first open goes through the same lemma with its EXCLUSIVE
+   `cons_key` as `K` (`UInitCons.init_cons_open_bundle_absent`), so the
+   same credential is being dropped there.  The fix is one of: a
+   refunding dead hop (`Pmiss k d := K ∨ T`, plus a refunding
+   "never fired" arm), or the walk piece becoming a `pf_at`.
+3. **DELIVERABLE 3 (the U-tier corollaries) IS NOT TAKEN**, and the
+   reason is 1: `wp_uk_ecall_open_create_deed` is the create bundle at
+   mode 0x601, which is the bundle 1 blocks; at 0x201 it would be a
+   corollary of `file_open_create_au_notrunc` with no consumer.  The
+   pieces it needs are otherwise all here — `file_open_create_au`'s three
+   receipt arms are already the three arms the brief lists, and
+   `file_open_recv_file` is the plain open's.
+
+**AppFile.v NEEDS NOTHING CHANGED.**  Every lemma this lane wanted was
+there in the shape it wanted, `file_step_park` / `file_resync` /
+`file_app_step_park` / `file_app_step_taint` / `file_pred_cons` /
+`f_typed_some` / `f_ok_fcontent` included.  Two observations for the
+designer, neither a change request: (i) `file_step_free`'s premise
+`∀ s, f_ok av s -> f_ok av' s` is exactly as strong as the same at the
+ONE `s` the view admits (`f_ok_det`), so no supplier ever needs more —
+worth a line at the definition; (ii) `fdeed` is spelled at `1/2` and this
+lane had to unfold it to split it (`FileOpen.fdq`), so a fractional
+`fdeed_frac` beside it in `AppFile` would keep the unfolding out of the
+suppliers.
+
+**THE ONE THING LANE SH-ROUND NEEDS FIRST.**  `UkShRedir.ush_open_ans`'s
+`-1` arm carries NO application payload — it is `⌜r = -1⌝ ∗ ustd … l`,
+while its fd arm carries `K ty`.  The file application's open has THREE
+outcomes, not two: fd 1 with `fown r (Some (i, []))`, `-1` with the deed
+UNCHANGED, and `-1` with the deed at `Some (i, [])` (the create fired and
+`filealloc` failed — `SpecSysOpen.open_post_fail_create` arm (a), and
+the deed is genuinely moved there).  So `ush_open_ans` needs its `-1` arm
+to carry an application receipt too (`Kf : iProp Σ`, or a second
+`fdtype`-free payload), or sh's redirect drops the deed on a path the
+kernel spec says is reachable.  Everything else SH-ROUND needs of this
+lane is `FileOpen.file_open_create_au`'s conclusion, instantiated at
+`K ty := ∃ i γo, ⌜ty = FdInode i γo OffParked⌝ ∗ fown r (Some (i, []))`.

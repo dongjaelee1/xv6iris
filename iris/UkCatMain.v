@@ -352,10 +352,13 @@ Section UkCatMain.
   Lemma kcat_file_of_law (g : uarg) (l : list fdstate) :
     (⊢ ukn_pay N (-1)) ->
     fd_lowest_closed l = None ->
-    udepw_law 5 -∗ udepw_law 15 -∗ udepw_law 16 -∗ udepw_law 21 -∗
+    (* NO [udepw_law 21] (survey R4, lane SUP-ONE): cat closes the
+       descriptor its own open returned, and the leaf exports
+       [FdSlots.fdst_nopipe] for it, so the close is FREE. *)
+    udepw_law 5 -∗ udepw_law 15 -∗ udepw_law 16 -∗
     kcat_file g (ustd γfd l) (ustd γfd l).
   Proof using .
-    intros Hfree Hnone. iIntros "#Hrd #Hop #Hwr #Hcl".
+    intros Hfree Hnone. iIntros "#Hrd #Hop #Hwr".
     assert (Hm1s : bv_signed (mword_of_int (-1) : mword 64) = -1)
       by (vm_compute; reflexivity).
     rewrite /kcat_file.
@@ -378,7 +381,7 @@ Section UkCatMain.
       iIntros "%Hpos".
       iDestruct "Harm" as "[Hok | %Hm1]"; last first.
       { exfalso. rewrite Hm1 Hm1s in Hpos. lia. }
-      iDestruct "Hok" as (fd rd wr t) "[[%Hr %Hlt] Hh]".
+      iDestruct "Hok" as (fd rd wr t) "[(%Hr & %Hlt & %Hnp) Hh]".
       iExists fd, emp%I. iSplitR; [ by iPureIntro | ].
       iSplitR; [ by iPureIntro | ]. iSplitR "Hh Hstd".
       + rewrite /kcat_run0. iExists emp%I, emp%I. iSplitR; [| iSplitR ].
@@ -388,7 +391,7 @@ Section UkCatMain.
         * by iIntros "_".
       + iApply (UkCat.kcat_cl_of_dep N fd (FdOpen rd wr t) emp%I
                   (ustd γfd l) with "[] Hh [Hstd]").
-        { iApply (UkCat.kcat_cldep_of_law N (FdOpen rd wr t) with "Hcl"). }
+        { iApply (UkCat.kcat_cldep_nopipe N (FdOpen rd wr t) Hnp). }
         { iIntros "_". iExact "Hstd". }
   Qed.
 
@@ -396,26 +399,26 @@ Section UkCatMain.
     (⊢ ukn_pay N (-1)) ->
     fd_lowest_closed l = None ->
     forall i : nat, (i + k <= length args)%nat ->
-      udepw_law 5 -∗ udepw_law 15 -∗ udepw_law 16 -∗ udepw_law 21 -∗
+      udepw_law 5 -∗ udepw_law 15 -∗ udepw_law 16 -∗
       kcat_pay args i k (ustd γfd l) (ukn_pay N (-1)).
   Proof using .
     intros Hfree Hnone. induction k as [| k IH]; intros i Hik;
-      iIntros "#Hrd #Hop #Hwr #Hcl".
+      iIntros "#Hrd #Hop #Hwr".
     - cbn [kcat_pay]. iIntros "_". iApply Hfree.
     - cbn [kcat_pay].
       destruct (lookup_lt_is_Some_2 args i ltac:(lia)) as [g Hg].
       iExists g, (ustd γfd l). iSplitR; [ by iPureIntro | ]. iSplitR.
-      + iApply (kcat_file_of_law g l Hfree Hnone with "Hrd Hop Hwr Hcl").
-      + iApply (IH (S i) ltac:(lia) with "Hrd Hop Hwr Hcl").
+      + iApply (kcat_file_of_law g l Hfree Hnone with "Hrd Hop Hwr").
+      + iApply (IH (S i) ltac:(lia) with "Hrd Hop Hwr").
   Qed.
 
   Lemma kcat_pay_all_of_law (args : list uarg) (l : list fdstate) :
     (⊢ ukn_pay N (-1)) ->
     fd_lowest_closed l = None ->
-    udepw_law 5 -∗ udepw_law 15 -∗ udepw_law 16 -∗ udepw_law 21 -∗
+    udepw_law 5 -∗ udepw_law 15 -∗ udepw_law 16 -∗
     kcat_pay_all args (ustd γfd l) (ukn_pay N (-1)).
   Proof using .
-    intros Hfree Hnone. iIntros "#Hrd #Hop #Hwr #Hcl".
+    intros Hfree Hnone. iIntros "#Hrd #Hop #Hwr".
     rewrite /kcat_pay_all. iSplit.
     - iIntros "_". iExists emp%I. iSplitR.
       + rewrite /kcat_run0. iExists emp%I, emp%I. iSplitR; [| iSplitR ].
@@ -425,7 +428,7 @@ Section UkCatMain.
       + iIntros "_". iApply Hfree.
     - iIntros "%Hge".
       iApply (kcat_pay_of_law args l (length args - 1)%nat Hfree Hnone
-                1%nat ltac:(lia) with "Hrd Hop Hwr Hcl").
+                1%nat ltac:(lia) with "Hrd Hop Hwr").
   Qed.
 
   (* --------------------------------------------------------------------- *)

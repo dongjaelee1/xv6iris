@@ -98,7 +98,7 @@ Definition wp_kkill_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG �
      has been paid", and this function is one of the two writers, so it
      cannot re-bundle the lock's payload without it.  PERSISTENT, so it is
      lent and not spent. *)
-  □ riscv_kill_cred -∗
+  app_taint -∗
   sie_cap_gpr KT1 m av b p -∗
   cpu_own n eb p b lks -∗
   kernel_text -∗ pc_is pcE -∗

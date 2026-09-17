@@ -2046,6 +2046,20 @@ Section DevLoops.
   Global Instance cons_licence_persistent : Persistent cons_licence.
   Proof using . rewrite /cons_licence. apply _. Qed.
 
+  (* ...AND THE TAINT BUYS IT (lane SUP-ONE, survey R1).  ONE LAW where
+     there were a Coq-level premise on [SystemAdequacy.init_boot_of_sup]
+     ([app_sup ⊢ cons_licence]) and a hand proof at [UInitBoot] -- both
+     spelling "the application's kill price pays for a boundary event".
+     It is [RiscvPtsto.app_iface]'s own field [ai_lic], read at the
+     machine's ambient interface, so it needs NO record equation and
+     holds at every altitude: the generic supply therefore carries the
+     TAINT alone where it carried a licence beside it. *)
+  Lemma cons_licence_of_taint : app_taint -∗ cons_licence.
+  Proof using .
+    rewrite /cons_licence /riscv_cons_res /app_taint.
+    iIntros "Ht". iApply (ai_lic riscvF_app_iface with "Ht").
+  Qed.
+
   (* A PROCESS BYTE REACHING THE WIRE (redesign R2).  The name and the
      shape every writer threads are unchanged; what moves underneath is the
      port's ONE claim, by [EvOut].  Keeping the name is what leaves the

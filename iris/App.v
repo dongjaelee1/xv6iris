@@ -587,10 +587,8 @@ Section AppTriv.
     iApply init_boot_of_triv.
     - rewrite Heq. intros r' av.
       cbn [app_triv app_pred app_names]. reflexivity.
-    - rewrite /riscv_kill_cred Hiface.
+    - rewrite /app_taint Hiface.
       cbn [app_triv app_ifc app_iface_triv ai_kill]. reflexivity.
-    - rewrite /riscv_cons_res Hiface.
-      cbn [app_triv app_ifc app_iface_triv ai_cons]. reflexivity.
   Qed.
 
   Lemma app_triv_R0 (c : app_fixed (app_triv Σ)) :

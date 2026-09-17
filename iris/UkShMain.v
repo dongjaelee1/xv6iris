@@ -575,7 +575,7 @@ Section UkShMain.
        runcmd's EXEC arm, and its forks run at the same payload. *)
     uxsup_at (ukn_pay N) -∗
     (* ...and how a killer pays for a forked child (lane IO-LEAF, M3b) *)
-    □ (riscv_kill_cred -∗ ukn_pay N (-1)) -∗
+    □ (app_taint -∗ ukn_pay N (-1)) -∗
     shp_code γt -∗ shp_rodata γt -∗ ush_jtab γt -∗
     ustr γd (DfracOwn 1) s0 len f -∗
     ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
@@ -759,7 +759,7 @@ Section UkShMain.
        runcmd's EXEC arm, and its forks run at the same payload. *)
     uxsup_at (ukn_pay N) -∗
     (* ...and how a killer pays for a forked child (lane IO-LEAF, M3b) *)
-    □ (riscv_kill_cred -∗ ukn_pay N (-1)) -∗
+    □ (app_taint -∗ ukn_pay N (-1)) -∗
     shp_code γt -∗ shp_rodata γt -∗ ush_jtab γt -∗
     ustr γd (DfracOwn 1) s0 len f -∗
     ustr γd dw ushp_whitespace 5 ushp_ws_f -∗

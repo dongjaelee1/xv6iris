@@ -3244,7 +3244,7 @@ Section SyscallArms.
   Lemma sysc_dep_kill (U : ustate) (sts : list fdstate) (gn : gname)
       (cs : gset gname) (pid : mword 32) (f : sfam) :
     sysc_num (us_V U) = 6 ->
-    sysc_sys_in U sts gn cs pid f -∗ □ riscv_kill_cred.
+    sysc_sys_in U sts gn cs pid f -∗ app_taint.
   Proof using .
     intros Hn. iIntros "H".
     iDestruct (sysc_sys_in_at U sts gn cs pid f 6 Hn ltac:(vm_compute; discriminate) with "H") as "H".

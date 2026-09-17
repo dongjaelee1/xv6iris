@@ -611,7 +611,7 @@ Section UexecExecInst.
           application's supply ([xv6_ssupply] below), which is why the row
           costs the theorem nothing.  It is the only branch of this match
           that is not about the file system. *)
-       (□ riscv_kill_cred)
+       (app_taint)
      else if decide (n = 21) then
        (* CLOSE(21) PAYS THE BYTE QUEUE'S CLOSE LINK AT A PIPE KEY (design/
           pipe.md, "The byte queue"), and nothing at any other -- the
@@ -934,14 +934,25 @@ Section UexecExecInst.
      already paying, and keeps every verified program -- whose slot is at
      [uprogSG_free] and touches none of the three -- free.  The licence is
      LAST. *)
-  (* ...AND IT IS BACK TO THE TRIPLE (redesign R4).  Lane CONS-IO made it a
+  (* ...AND THEN IT WAS A TRIPLE (redesign R4).  Lane CONS-IO made it a
      quadruple because the port carried TWO claims and so needed two
      licences -- one for [write(2)] and one for consoleintr's shift and
-     [read(2)] on fd 0.  There is ONE claim now ([RiscvPtsto.riscv_cons_res])
+     [read(2)] on fd 0.  There is ONE claim ([RiscvPtsto.riscv_cons_res])
      and therefore ONE law over it ([WpUart.cons_licence]), which the
-     application prices once ([App]'s [al_sup]). *)
+     application prices once. *)
+  (* ...AND IT IS BACK TO THE PAIR (lane SUP-ONE, survey R1).  The
+     LICENCE is not a credential any more: the application's kill price
+     buys it outright ([RiscvPtsto.app_iface]'s [ai_lic], read here as
+     [WpUart.cons_licence_of_taint]), so what the generic slot carries is
+     the application's claim at every view and the application's TAINT,
+     and every generic-tier signature below lost its [cons_licence]
+     argument.  THE PAIR DOES NOT COLLAPSE FURTHER -- see the lane's
+     findings: [app_sup] lives on [AppCfg.appcfg] (through
+     [FileInvDefs.file_app]) and the taint on [RiscvPtsto.app_iface]
+     (through [riscvFixedGS]), and the equation that ties the two records
+     is a PREMISE of each boot obligation, ambient nowhere. *)
   Definition xv6_ssupply : iProp Σ :=
-    (app_sup ∗ □ riscv_kill_cred ∗ □ cons_licence)%I.
+    (app_sup ∗ app_taint)%I.
 
   (* THE BUPD IS WRITE'S, AND ONLY WRITE'S: the console arm carries the trace
      seed [WpUart.uart_sent γu []], a mono-list lower bound at the empty
@@ -960,7 +971,7 @@ Section UexecExecInst.
     n <> USYS_exec ->
     ⊢ □ xv6_ssupply ==∗ ∃ f : xfam, ⌜kf_xpay f = Q⌝ ∗ xv6_sbundle X n f W.
   Proof using .
-    intros Hne. rewrite /xv6_ssupply. iIntros "#(Hsup & Hkc & Hlic)".
+    intros Hne. rewrite /xv6_ssupply. iIntros "#(Hsup & Hkc)".
     iAssert (|==> xv6_sbundle X n (xfam_at Q xfam_pt) W)%I with "[]" as "Hb";
       [ | iMod "Hb" as "Hb"; iModIntro; iExists (xfam_at Q xfam_pt);
           iSplitR; [ done | iExact "Hb" ] ].
@@ -968,13 +979,13 @@ Section UexecExecInst.
     destruct (decide (n = USYS_exec)) as [He | _];
       [ exfalso; exact (Hne He) | ].
     destruct (decide (n = 5)) as [_ | _];
-      [ iModIntro; iApply (fsabs_fileread_in with "Hlic Hsup Hkc") | ].
+      [ iModIntro; iApply (fsabs_fileread_in with "Hsup Hkc") | ].
     destruct (decide (n = 9)) as [_ | _];
       [ iModIntro; iApply fsabs_chdir_pre | ].
     destruct (decide (n = 15)) as [_ | _];
       [ iModIntro; iApply (fsabs_open_in with "Hsup") | ].
     destruct (decide (n = 16)) as [_ | _];
-      [ iApply (fsabs_filewrite_in with "Hsup Hlic Hkc") | ].
+      [ iApply (fsabs_filewrite_in with "Hsup Hkc") | ].
     destruct (decide (n = 17)) as [_ | _];
       [ iModIntro; iApply (fsabs_mknod_pre with "Hsup") | ].
     destruct (decide (n = 18)) as [_ | _];
@@ -987,7 +998,7 @@ Section UexecExecInst.
     destruct (decide (n = 6)) as [_ | _];
       [ iModIntro; iExact "Hkc" | ].
     (* row 21: a pipe's close link, paid by the taint -- the same
-       credential, read as [PipeQueue.pipe_taint_cred] *)
+       credential, read as [PipeQueue.app_taint] *)
     destruct (decide (n = 21)) as [_ | _];
       [ iModIntro; iApply (fileclose_cpay_taint with "Hkc") | ].
     (* row 2: the table's close links, paid by the same taint *)
@@ -1013,7 +1024,7 @@ Section UexecExecInst.
      [∗]-separated slot wands, and nothing hands the new image a payload
      any more ([exec_slot_pre] lost its [Q (-1)] premise), so the resource
      the generic family runs on arrives here as [□ R] -- which is the
-     caller's [□ (riscv_kill_cred -∗ R)] cashed against the taint it holds
+     caller's [□ (app_taint -∗ R)] cashed against the taint it holds
      ([UexecRet.uexec_dep_F_of_supply]).  The wand's antecedent is dropped
      at this altitude and only here: this is [UexecSG]'s class field and
      the class carries [ctokG] alone. *)
@@ -1024,7 +1035,7 @@ Section UexecExecInst.
       ∃ f : xfam, ⌜kf_xpay f = (fun _ => R)%I⌝ ∗ xv6_sbundle X n f W.
   Proof using .
     rewrite /xv6_ssupply.
-    iIntros "#Hpay #(Hsup & Hkc & Hlic) #HR #Hs".
+    iIntros "#Hpay #(Hsup & Hkc) #HR #Hs".
     destruct (decide (n = USYS_exec)) as [He | Hne].
     - iModIntro. iExists (xfam_at (fun _ => R)%I xfam_pt). iSplitR; [done |].
       rewrite /xv6_sbundle. destruct (decide (n = USYS_exec)) as [_ | Hc];
@@ -1063,7 +1074,7 @@ Section UexecExecInst.
         iApply ("Hs" with "Hp HR").
     - iApply (xv6_sbundle_of_supply_ne X n W (fun _ => R)%I Hne).
       rewrite /xv6_ssupply. iModIntro.
-      iSplit; [ iExact "Hsup" | iSplit; [ iExact "Hkc" | iExact "Hlic" ] ].
+      iSplit; [ iExact "Hsup" | iExact "Hkc" ].
   Qed.
 
   (* THE RE-KEYING PASSES THROUGH BOTH BUNDLE ROWS ([UexecSG.sbundle_at_at]
@@ -1290,7 +1301,7 @@ Section UexecExecInst.
      program that CALLED pipe(2) exits by. *)
   Lemma xv6_sbundle_exit_taint (X : uvis -d> iPropO Σ) (W : uvis)
       (Q : Z -> iProp Σ) :
-    □ riscv_kill_cred -∗
+    app_taint -∗
     |==> ∃ f : xfam, ⌜kf_xpay f = Q⌝ ∗ xv6_sbundle X USYS_exit f W.
   Proof using .
     iIntros "#Ht".
@@ -1454,7 +1465,7 @@ Section UexecExecInst.
      needs it because writing [p->killed] nonzero has to re-establish
      [SchedCtx.proc_pub]'s killed row. *)
   Lemma sbundle_at_kill_elim (X : uvis -d> iPropO Σ) (f : xfam) (W : uvis) :
-    sbundle_at X 6 f W -∗ □ riscv_kill_cred.
+    sbundle_at X 6 f W -∗ app_taint.
   Proof using .
     iIntros "H". rewrite /sbundle_at /= /xv6_sbundle /xk_a.
     xv6_skip. xv6_skip. xv6_skip. xv6_skip. xv6_skip. xv6_skip. xv6_skip.

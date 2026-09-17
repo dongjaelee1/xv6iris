@@ -14,6 +14,9 @@ Require Import RiscvLang.
 Require Import ObsTrace.
 Require Import LogEntryDefs.  (* [log_entry]: the console input log's
                                  vocabulary, and nothing else of its theory *)
+Require Import ConsLog.       (* [cons_ev]/[cons_step]: the console log's
+                                  step relation, which the interface's
+                                  LICENCE law below is stated over *)
 Require Import TsoMemPa TsoGhost.  (* the TSO machine ghosts (tso-machine-flip.md) *)
 Require Export DiskImg.  (* [diskImgG]/[disk_img_auth]: the disk image map *)
 (* [disk_write]/[disk_wr]/[wr_apply]: the disk image and the pure write
@@ -407,7 +410,7 @@ Record riscvEraGS := RiscvEraGS {
 (*  obligation took one EQUATION per field -- five in all, one per         *)
 (*  projection the obligation happened to read.                            *)
 (*                                                                        *)
-(*  ONE FIELD AND ONE EQUATION.  [riscv_rx_tag], [riscv_kill_cred] and     *)
+(*  ONE FIELD AND ONE EQUATION.  [riscv_rx_tag], [app_taint] and          *)
 (*  [riscv_cons_res] are PROJECTIONS of this record now, so the fifty-odd  *)
 (*  kernel files that name them are unchanged; what changes is that an     *)
 (*  obligation takes [riscvF_app_iface = <the application's>] and derives  *)
@@ -441,13 +444,36 @@ Record app_iface (Σ : gFunctors) := MkAppIface {
   ai_cons_timeless :
     forall (k : nat) (h : list mobs) (H : LogEntryDefs.cons_hist),
       Timeless (ai_cons k h H);
+  (* THE LICENCE, OFF THE TAINT (survey R1, lane SUP-ONE).  An
+     application's KILL PRICE buys the right to move its console claim:
+     whoever holds [ai_kill] may step [ai_cons] by any event.  It is the
+     law [UInitBoot] proved BY HAND at echo's instance and
+     [SystemAdequacy.init_boot_of_sup] carried as a Coq-level premise
+     ([app_sup ⊢ cons_licence]); as a FIELD of the interface the generic
+     tier reads it off the machine's own record with no equation at all,
+     which is what takes [WpUart.cons_licence] out of the generic supply
+     ([UexecExecInst.xv6_ssupply]) and out of every generic-tier
+     signature.
+
+     WHY IT IS HONEST AT EVERY APPLICATION.  The trivial console claim is
+     [emp] and every event on it is free; a constraining one prices the
+     licence at its own taint arm ([App]'s [al_sup] is the same law read
+     off the supply, and [EchoOut.ecl_sup] / [AppFileRec]'s [fecl_sup] are
+     the two discharges).  An application whose claim does NOT survive an
+     arbitrary boundary event simply cannot set this field -- and it could
+     not run the generic slot either, which is the same fact. *)
+  ai_lic : ai_kill ⊢
+    □ (∀ (k : nat) (h : list mobs) (H : LogEntryDefs.cons_hist)
+         (ev : ConsLog.cons_ev),
+         ai_cons k h H ==∗ ai_cons k h (ConsLog.cons_step H ev));
 }.
-Arguments MkAppIface {Σ} _ _ _ _ _ _ _ _.
+Arguments MkAppIface {Σ} _ _ _ _ _ _ _ _ _.
 Arguments ai_tag {Σ} _ _. Arguments ai_kill {Σ} _.
 Arguments ai_cons {Σ} _ _ _ _.
 Arguments ai_tag_persistent {Σ} _ _. Arguments ai_tag_timeless {Σ} _ _.
 Arguments ai_kill_persistent {Σ} _. Arguments ai_kill_timeless {Σ} _.
 Arguments ai_cons_timeless {Σ} _ _ _ _.
+Arguments ai_lic {Σ} _.
 
 Class riscvFixedGS (Σ : gFunctors) := RiscvFixedGS {
   riscvF_invGS :: invGS Σ;
@@ -601,8 +627,8 @@ Class riscvFixedGS (Σ : gFunctors) := RiscvFixedGS {
   riscvF_obshGS :: inG Σ (mono_listR (leibnizO mobs));
   riscv_obs_hist : gname;
   (* THE APPLICATION'S CONSOLE INTERFACE, as ONE field (redesign R4).
-     [riscv_rx_tag], [riscv_kill_cred] and [riscv_cons_res] were three
-     fields here with six companion instance fields; they are PROJECTIONS
+     [riscv_rx_tag], [app_taint] and [riscv_cons_res] were three fields
+     here with six companion instance fields; they are PROJECTIONS
      of this one now, so every kernel file that names them is unchanged and
      every boot obligation takes ONE equation instead of five.
 
@@ -629,7 +655,13 @@ Class riscvFixedGS (Σ : gFunctors) := RiscvFixedGS {
    itself. *)
 Definition riscv_rx_tag `{!riscvFixedGS Σ} : list mobs -> iProp Σ :=
   ai_tag riscvF_app_iface.
-Definition riscv_kill_cred `{!riscvFixedGS Σ} : iProp Σ :=
+(* THE TAINT.  The application's kill price, and -- by the pipe pattern
+   (design/pipe.md, "The coupling, or the taint") -- the one credential a
+   disconnected coupling is paid with: the pipe's [link ∨ taint] payments,
+   the kill rows, and the generic slot's supply all name THIS.  It is
+   PERSISTENT ([app_taint_persistent] just below), so it is written bare:
+   a [□] in front of it says nothing the instance does not already say. *)
+Definition app_taint `{!riscvFixedGS Σ} : iProp Σ :=
   ai_kill riscvF_app_iface.
 Definition riscv_cons_res `{!riscvFixedGS Σ} :
     nat -> list mobs -> LogEntryDefs.cons_hist -> iProp Σ :=
@@ -645,12 +677,12 @@ Proof. rewrite /riscv_rx_tag. apply ai_tag_persistent. Qed.
 Global Instance riscv_rx_tag_timeless `{!riscvFixedGS Σ} h :
   Timeless (riscv_rx_tag h).
 Proof. rewrite /riscv_rx_tag. apply ai_tag_timeless. Qed.
-Global Instance riscv_kill_cred_persistent `{!riscvFixedGS Σ} :
-  Persistent riscv_kill_cred.
-Proof. rewrite /riscv_kill_cred. apply ai_kill_persistent. Qed.
-Global Instance riscv_kill_cred_timeless `{!riscvFixedGS Σ} :
-  Timeless riscv_kill_cred.
-Proof. rewrite /riscv_kill_cred. apply ai_kill_timeless. Qed.
+Global Instance app_taint_persistent `{!riscvFixedGS Σ} :
+  Persistent app_taint.
+Proof. rewrite /app_taint. apply ai_kill_persistent. Qed.
+Global Instance app_taint_timeless `{!riscvFixedGS Σ} :
+  Timeless app_taint.
+Proof. rewrite /app_taint. apply ai_kill_timeless. Qed.
 Global Instance riscv_cons_res_timeless `{!riscvFixedGS Σ} k h H :
   Timeless (riscv_cons_res k h H).
 Proof. rewrite /riscv_cons_res. apply ai_cons_timeless. Qed.
@@ -952,6 +984,17 @@ Global Instance cons_res_triv_timeless {Σ : gFunctors} (k : nat)
   Timeless (cons_res_triv (Σ := Σ) k h H).
 Proof. rewrite /cons_res_triv. apply _. Qed.
 
+(* ...and the trivial claim's LICENCE (lane SUP-ONE): [emp] survives every
+   event, so the trivial interface pays the law for nothing. *)
+Lemma cons_res_triv_lic {Σ : gFunctors} :
+  (kill_cred_triv : iProp Σ) ⊢
+    □ (∀ (k : nat) (h : list mobs) (H : LogEntryDefs.cons_hist)
+         (ev : ConsLog.cons_ev),
+         cons_res_triv k h H ==∗ cons_res_triv k h (ConsLog.cons_step H ev)).
+Proof.
+  rewrite /cons_res_triv. iIntros "_ !>" (k h H ev) "_". by iModIntro.
+Qed.
+
 (* ...and the three of them AS AN INTERFACE (redesign R4): what the generic
    application sets [riscvF_app_iface] to.  One value where the trivial
    theorem used to hand over three predicates and five instances. *)
@@ -959,7 +1002,8 @@ Definition app_iface_triv (Σ : gFunctors) : app_iface Σ :=
   MkAppIface rx_tag_triv (@rx_tag_triv_persistent Σ) (@rx_tag_triv_timeless Σ)
              kill_cred_triv (@kill_cred_triv_persistent Σ)
              (@kill_cred_triv_timeless Σ)
-             cons_res_triv (@cons_res_triv_timeless Σ).
+             cons_res_triv (@cons_res_triv_timeless Σ)
+             (@cons_res_triv_lic Σ).
 
 (* [win_res_triv] lived here. *)
 

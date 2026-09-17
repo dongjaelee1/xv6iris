@@ -357,7 +357,7 @@ Qed.
 (* THE -1 PAYLOAD IS NOT CARRIED HERE ANY MORE (app-echo.md, lane          *)
 (* SELF-KILL, P6).                                                        *)
 (*                                                                        *)
-(* [upay_neg Q := □ riscv_kill_cred -∗ Q (-1)] used to be the whole        *)
+(* [upay_neg Q := app_taint -∗ Q (-1)] used to be the whole        *)
 (* carrier of a process's payload at the kill status: the deposit          *)
 (* ([UexecRet.upay_at]), the resume, the run's own row ([UkRun.urun]) and  *)
 (* the kernel's exec route ([SpecKexec.exec_slot_pre]) were all at that    *)

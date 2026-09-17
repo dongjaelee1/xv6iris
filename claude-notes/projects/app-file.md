@@ -6698,8 +6698,10 @@ obligations are unchanged in content.
   `fdv_all_parked_app` / `_take` / `_drop` moved to `FdSlots.v` beside
   `fdv_all_parked` itself, which is the only file `ProofKforkB3` now needs.
 
-*`<HASH2>` — L0's vacuity check, the box's arm, the settle, L5's ledger slot,
-L6's `_parked` chain, and CAT-ENTRY-2's count bound*
+*`bb7d140b3` — L0's vacuity check, the box's arm, the settle, L5's ledger
+slot and L6's `_parked` chain; then the merge (`1dce01f22`, WRITE-RELAY at
+`32854875a`) and `e274708f7` — the fire's case split on the landed node,
+CAT-ENTRY-2's count bound, and the merge's fix-forward*
 
 - THE VACUITY CHECK (`iris/UserOff.v` section 5), three `Example`s over one
   arithmetic lemma (`off_gv_whole_half`: the whole shadow plus any fraction of

@@ -94,7 +94,7 @@ Section UkShRedirCmd.
   Local Notation s5_idx := (mword_of_int 21 : mword 5).
   Local Notation s6_idx := (mword_of_int 22 : mword 5).
 
-  Local Notation ushp_malloc_ty := (UkShParse.ushp_malloc_ty N).
+  Local Notation ushp_malloc_ty := (UkShParse.ushp_malloc_ty_le N 168).
   Local Notation ushp_peel0 := (UkShParse.ushp_peel0 N).
   Local Notation ushp_tree := (UkShParse.ushp_tree N).
   Local Notation ushp_type_at := (UkShParse.ushp_type_at N).
@@ -102,6 +102,11 @@ Section UkShRedirCmd.
   Local Notation wp_kshp_frame_epi := (UkShParse.wp_kshp_frame_epi N).
   Local Notation wp_kshp_frame_pro := (UkShParse.wp_kshp_frame_pro N).
 
+  (* the capability is stated at [B = 168] like every other file's, even
+     though the call below asks for 40: a capability good for requests up
+     to 168 serves a request of 40, and the site's own [ltac:(lia)]
+     discharges [40 <= 168].  One bound, no weakening lemma anywhere
+     (lane SH-MALLOC-3). *)
   Context (UMalloc UMalloc' : iProp Σ).
   Hypothesis ushp_malloc_ok : ushp_malloc_ty UMalloc UMalloc'.
 

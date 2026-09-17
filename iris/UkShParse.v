@@ -3567,6 +3567,57 @@ Section UkShParse.
          WP (Loop : expr riscv_lang)) -∗
       WP (Loop : expr riscv_lang).
 
+  (* ===================================================================== *)
+  (* THE SAME CONTRACT AT A BOUNDED REQUEST (lane SH-MALLOC-3).             *)
+  (*                                                                        *)
+  (* The type above quantifies [nbytes] over the ALLOCATOR's whole range,   *)
+  (* [0 < nbytes <= 65504], and that is more than sh's constructors ever    *)
+  (* ask for: [execcmd] calls [malloc(168)] and [redircmd] calls            *)
+  (* [malloc(40)], and nothing else in the parser allocates at all.  The    *)
+  (* difference matters because the unbounded type DOES NOT CHAIN: a first  *)
+  (* call at 65504 takes 4095 of the 4096 units [morecore] inserts, so the  *)
+  (* strongest thing it can promise is "one unit is free", and a second     *)
+  (* call at 65504 needs 4095 -- see iris/UkShMalloc.v §7 for the           *)
+  (* refutation in full.  Bound the request and the chain closes, because   *)
+  (* the free count of what a call LEAVES is then computable from [B]       *)
+  (* rather than from the caller's own request.                             *)
+  (*                                                                        *)
+  (* The parser files carry this one at [B = 168] -- [execcmd]'s size, the  *)
+  (* larger of the two -- and [redircmd]'s site discharges its own premise  *)
+  (* as [40 <= 168], so ONE bound serves both call sites and no weakening   *)
+  (* lemma appears at either.  The only difference from [ushp_malloc_ty] is *)
+  (* the third premise.                                                     *)
+  (* ===================================================================== *)
+  Definition ushp_malloc_ty_le (B : Z) (UM UM' : iProp Σ) : Prop :=
+    forall (h : CpuId) (m : regfile) (nbytes : Z) (avail : nat),
+      m !!! Regidx a0_idx = mword_of_int nbytes ->
+      0 < nbytes -> nbytes <= B ->
+      shp_code γt -∗
+      UM -∗
+      urun N h m (mword_of_int ShSyms.malloc) (10 + avail) -∗
+      (∀ (h' : CpuId) (m' : regfile),
+         ⌜ ucallee_saved m m' ⌝ -∗
+         (⌜ m' !!! Regidx a0_idx = (mword_of_int 0 : mword 64) ⌝
+          ∨ (∃ (p : Z) (g : nat -> bv 8),
+               ⌜ m' !!! Regidx a0_idx = mword_of_int p ⌝ ∗
+               ⌜ 0 < p /\ p mod 16 = 0 /\ p + nbytes < 2 ^ 38 ⌝ ∗
+               ubytes γd p (Z.to_nat nbytes) g ∗ UM')) -∗
+         urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (10 + avail) -∗
+         WP (Loop : expr riscv_lang)) -∗
+      WP (Loop : expr riscv_lang).
+
+  (* the landed type IS the bounded one at the allocator's own ceiling *)
+  Lemma ushp_malloc_ty_le_top (UM UM' : iProp Σ) :
+    ushp_malloc_ty UM UM' -> ushp_malloc_ty_le 65504 UM UM'.
+  Proof using . intro H. exact H. Qed.
+
+  Lemma ushp_malloc_ty_le_mono (B B' : Z) (UM UM' : iProp Σ) :
+    B' <= B -> ushp_malloc_ty_le B UM UM' -> ushp_malloc_ty_le B' UM UM'.
+  Proof using .
+    intros HB H h m nbytes avail Ha0 Hlo Hhi.
+    exact (H h m nbytes avail Ha0 Hlo ltac:(lia)).
+  Qed.
+
 End UkShParse.
 
 (* The closer the call sites use for the two lemmas above: it is the SHAPE

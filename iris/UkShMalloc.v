@@ -4662,11 +4662,21 @@ Section UkShMalloc.
   (* 40 -- so the capability they actually need is [ushm_malloc_ty_le B],   *)
   (* which is [ushp_malloc_ty] with [nbytes <= 65504] weakened to           *)
   (* [nbytes <= B].  That one CHAINS, because the output's free count can   *)
-  (* be computed from [B] instead of from the caller's request.  Nothing    *)
-  (* landed consumes it yet: the thirteen files that carry                  *)
-  (* [Hypothesis ushp_malloc_ok : ushp_malloc_ty _ _] would have to carry   *)
-  (* [ushm_malloc_ty_le 168 _ _] instead, and that is a statement move.     *)
+  (* be computed from [B] instead of from the caller's request.             *)
+  (*                                                                        *)
+  (* LANE SH-MALLOC-3 MADE THAT STATEMENT MOVE.  The type itself now lives  *)
+  (* UPSTREAM, in iris/UkShParse.v as [ushp_malloc_ty_le], because the      *)
+  (* thirteen files that carry [Hypothesis ushp_malloc_ok] are all compiled *)
+  (* BEFORE this one and cannot name anything in it; all thirteen carry it  *)
+  (* at [B = 168], and [redircmd]'s call site at 40 discharges its own      *)
+  (* premise as [40 <= 168], so ONE bound serves both sites and no          *)
+  (* weakening lemma appears at either.  The notations below keep this      *)
+  (* section's text reading the way it did.                                 *)
   (* ===================================================================== *)
+  Local Notation ushm_malloc_ty_le := (UkShParse.ushp_malloc_ty_le N).
+  Local Notation ushm_malloc_ty_le_top := (UkShParse.ushp_malloc_ty_le_top N).
+  Local Notation ushm_malloc_ty_le_mono :=
+    (UkShParse.ushp_malloc_ty_le_mono N).
 
   (* the free list after ONE call, with the count existential: what a call
      at an UNKNOWN request size can promise *)
@@ -4720,38 +4730,6 @@ Section UkShMalloc.
       assert (Hrb : 0 <= (nbytes + 15) mod 16 < 16)
         by (apply Z.mod_pos_bound; lia).
       lia.
-  Qed.
-
-  (* THE BOUNDED CAPABILITY: [ushp_malloc_ty] at a request the CALLER's
-     size is known to be under.  The only difference is the third premise. *)
-  Definition ushm_malloc_ty_le (B : Z) (UM UM' : iProp Σ) : Prop :=
-    forall (h : CpuId) (m : regfile) (nbytes : Z) (avail : nat),
-      m !!! Regidx a0_idx = mword_of_int nbytes ->
-      0 < nbytes -> nbytes <= B ->
-      shp_code γt -∗
-      UM -∗
-      urun N h m (mword_of_int ShSyms.malloc) (10 + avail) -∗
-      (∀ (h' : CpuId) (m' : regfile),
-         ⌜ ucallee_saved m m' ⌝ -∗
-         (⌜ m' !!! Regidx a0_idx = (mword_of_int 0 : mword 64) ⌝
-          ∨ (∃ (p : Z) (g : nat -> bv 8),
-               ⌜ m' !!! Regidx a0_idx = mword_of_int p ⌝ ∗
-               ⌜ 0 < p /\ p mod 16 = 0 /\ p + nbytes < 2 ^ 38 ⌝ ∗
-               ubytes γd p (Z.to_nat nbytes) g ∗ UM')) -∗
-         urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (10 + avail) -∗
-         WP (Loop : expr riscv_lang)) -∗
-      WP (Loop : expr riscv_lang).
-
-  (* the landed type IS the bounded one at the allocator's own ceiling *)
-  Lemma ushm_malloc_ty_le_top (UM UM' : iProp Σ) :
-    UkShParse.ushp_malloc_ty N UM UM' -> ushm_malloc_ty_le 65504 UM UM'.
-  Proof using . intro H. exact H. Qed.
-
-  Lemma ushm_malloc_ty_le_mono (B B' : Z) (UM UM' : iProp Σ) :
-    B' <= B -> ushm_malloc_ty_le B UM UM' -> ushm_malloc_ty_le B' UM UM'.
-  Proof using .
-    intros HB H h m nbytes avail Ha0 Hlo Hhi.
-    exact (H h m nbytes avail Ha0 Hlo ltac:(lia)).
   Qed.
 
   (* THE FIRST CALL, BOUNDED: the free count of what it leaves is computed
@@ -4843,6 +4821,24 @@ Section UkShMalloc.
       by (vm_compute; reflexivity).
     rewrite <- E.
     exact (ushm_malloc_le_one 40 sz 4084 ltac:(lia) ltac:(lia)
+             ltac:(vm_compute; reflexivity)).
+  Qed.
+
+  (* ...AND THE SECOND CALL AT THE BOUND THE PARSER ACTUALLY CARRIES.
+     [ushm_malloc_le_redir] is the second call stated at [redircmd]'s own
+     request; it is TRUE and it is not what the seam consumes, because the
+     thirteen files carry ONE capability type ([B = 168]) and chaining
+     asks for both links at the SAME [B].  So the second link is this one:
+     the same call, charged as if it had asked for 168, which costs twelve
+     units instead of four.  4084 - 12 = 4072, and the redirect line's
+     whole parse still costs twenty-four of the chunk's 4096 units. *)
+  Corollary ushm_malloc_le_next (sz : Z) :
+    ushm_malloc_ty_le 168 (ushm_one_ge sz 4084) (ushm_one_ge sz 4072).
+  Proof using .
+    assert (E : (4084 - ((168 + 15) / 16 + 1))%Z = 4072%Z)
+      by (vm_compute; reflexivity).
+    rewrite <- E.
+    exact (ushm_malloc_le_one 168 sz 4084 ltac:(lia) ltac:(lia)
              ltac:(vm_compute; reflexivity)).
   Qed.
 

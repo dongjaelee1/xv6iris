@@ -135,7 +135,7 @@ Section UkShRedirPex.
   Local Notation ushp_frame_join := (UkShParse.ushp_frame_join N).
   Local Notation ushp_frame_split := (UkShParse.ushp_frame_split N).
   Local Notation ushp_lit_str := (UkShParseLex.ushp_lit_str N).
-  Local Notation ushp_malloc_ty := (UkShParse.ushp_malloc_ty N).
+  Local Notation ushp_malloc_ty := (UkShParse.ushp_malloc_ty_le N 168).
   Local Notation ushp_slots_cap := (UkShParse.ushp_slots_cap N).
   Local Notation ushp_slots_upd := (UkShParse.ushp_slots_upd N).
   Local Notation ushp_type_at := (UkShParse.ushp_type_at N).
@@ -150,7 +150,10 @@ Section UkShRedirPex.
 
   (* TWO allocator capabilities, chained.  [execcmd] spends the first and
      [redircmd] the second; the symbol-free parser spends one.  Each is
-     stated at [UkShParse.ushp_malloc_ty], which is one call. *)
+     stated at [UkShParse.ushp_malloc_ty_le N 168], which is one call at a
+     request of at most 168 bytes -- [execcmd]'s size.  [redircmd] asks for
+     40 and discharges its own premise as [40 <= 168], so ONE bound serves
+     both sites (lane SH-MALLOC-3). *)
   Context (UM0 UM1 UM2 : iProp Σ).
   Hypothesis ushp_malloc_ok0 : ushp_malloc_ty UM0 UM1.
   Hypothesis ushp_malloc_ok1 : ushp_malloc_ty UM1 UM2.

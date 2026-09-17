@@ -4230,7 +4230,7 @@ Section ProofFilewrite.
                      with "Hcnt") as "Hcnt".
         iApply (Pipewrite.wp_pipewrite_sconf fsc_kalloc γf γs j γlp (fp_lock pn) (fp_pipe pn)
                   (fc_wbool Cf) q P2 (K - 12)%nat eb pidv U n b lks Q Qe
-                  Hj Hgs Hlens HP2a2 (fw_n_range n Hn01) (fw_av_pipe K HK) Heb
+                  Hj Hgs Hlens HP2a2 (fw_n_range n Hn01) (fw_av_pipe K HK) Heb Hwb
                   with "Hcg Hcnt Htext Hpc [] Hpref Hpay Hpriv Hkenv Hprocs").
         all: try lkbelow.
         { iEval (rewrite HP2a0). iExact "Hpipe". }

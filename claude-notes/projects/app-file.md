@@ -7360,3 +7360,445 @@ EXACTLY** — the eleven `PrimInt63`/`PrimString` primitives plus
   naming `mword_of_int 1%nat`.  Where a hypothesis already carries
   `mword_of_int (Z.of_nat nb)`, rewrite BY it and never normalise the
   literal first.
+
+### OFF-HAND-7 (STOPPED, 2026-09-17) — NOTHING LANDED BEYOND THE MERGE; THE U-TIER PRICE OF OFF-HAND-6's ADVANCING ROW IS MEASURED AND NAMED
+
+**The lane's verdict in one line: stopped by the owner's review before J1
+landed, with NO commit of its own — the branch `app-file/off-hand` is a
+FAST-FORWARD to main at `79d0e349e`, whole-tree green (426 files rebuilt,
+zero `Error`, `EXIT` clean) on the lane's remote tree.  What the lane
+produced is the merge's fix-forward (derived independently and identical
+to main's, so main's copies are what the branch carries) and two
+MEASUREMENTS that price the shape the review has now replaced.**
+
+**BRANCH STATE.** `git merge main` from `4bc427216` fast-forwarded through
+`da12f4845` to `79d0e349e`.  No lane commit, no half-sweep: the in-progress
+J1 edit to `iris/FileInvDefs.v` was `git checkout`ed away rather than
+landed.  `claude-notes/design/app-file.md` is main's copy, untouched.
+
+**THE MERGE'S FIX-FORWARD** (three files; all three were breakages of the
+OFF-HAND-6 + F-OPEN-5 + CAT-WALK-2 + upstream combination, not of this
+lane, and main now carries the same fixes):
+
+- `UkRunSys.v:5083` — the dead `Hpko` argument to `urun_rows_insert` in
+  CAT-WALK-2's `wp_uk_ecall_open_recv_gimg` copy, against OFF-HAND-6's
+  premise-free row.
+- `UkFileOpen.v` section 5 — `file_create_sup_v` and
+  `wp_uk_ecall_open_create_deed_v` were merged at the PRE-F-OPEN-5
+  signature (`file_create_fam c r jc s`, `fown r s`) into a file whose
+  definition and section 4 had already moved to the escrow's
+  (`file_create_fam c r jc n s g`, `esc_key`/`fesc_res`,
+  `file_open_create_au` / `file_open_create_recv` with the mask and the
+  key).  Regenerated from section 4 with `uimg_view` /
+  `wp_uk_ecall_open_recv_gimg` in place of `utext_img` /
+  `wp_uk_ecall_open_recv_img`, and `_d`'s statement narrowed to match (the
+  fd arm `fown r (Some (i, [])) ∨ file_taint c`, the device arm
+  `(∃ i, fown r (Some (i, []))) ∨ file_taint c`).
+- `UInitTreeExec.v` — four dead arguments against OFF-HAND-6's deletions:
+  `image_entry_taint`'s `%Hpk` intro, the `urun_rows_parked` destruct and
+  its `Hpk0` argument to `ExecRun.image_entry_of_taint`,
+  `fdv_all_parked_fdt0` at `UInitKernel.init_boot_con`, and `Hhd` at
+  `ExecRun.udepw_at_refR_ids_of_sup_ids`.
+
+**J1 REACHED AND DISCARDED.** `iris/FileInvDefs.v` alone was green under
+`--check-proof` with the coupled change's payload half: `fdstate_ok`'s
+FD_INODE arm dropping `m = OffParked`; `fdstate_ok_inode` existential in
+the mode; `fdstate_ok_parked` deleted and `fdstate_ok_adv` in its place;
+`fdstate_ok_inj` taking both states' parkedness; NEW `fpay_tok_valid`
+(`own_valid_2` on the frac component, `⌜(q1 + q2 ≤ 1)%Qp⌝`);
+`file_pay_st` gaining `⌜¬ fdst_parked st -> q = 1%Qp⌝`; `file_pay_st_split`
+taking `fdst_parked st`; NEW `file_pay_st_parked2` / `file_pay_st_adv`;
+`file_pay_st_agree` re-proved through them; `file_ref_parked` and
+`file_ref_parked_keep` deleted and `file_ref_parked2` / `file_ref_adv` in
+their place; `foff_row_of_ok` taking `fdst_parked st`; the
+`file_pay_st_morph` `CtxMorph` instance gaining one `ctx_morph_sep` for
+the new pure conjunct.  **None of it is committed and nothing downstream
+was touched**, so the tree is exactly main's.
+
+**THE TWO MEASUREMENTS WORTH KEEPING** (both are about OFF-HAND-6's
+advancing-row shape, which the review deletes; they are the evidence for
+why it had to go, and the second one survives the new design as a fact
+about `filedup`):
+
+1. **THE `_parked` CHAIN IS CONSUMER-FREE AND THE COUNT PIN HAS EXACTLY
+   FOUR CUSTOMERS.**  `ProcInv.ofile_slot_parked` → `ofile_slots_parked` →
+   `proc_ofiles_parked` → `proc_priv_parked`, and
+   `FileInvDefs.file_ref_parked`, have NO application anywhere in the tree
+   — every hit outside their own files is a COMMENT (`FdPark:598`,
+   `PinnedExec:310`, `ProofSyscall:5289`, `SpecKexec:878` and `:1357`).
+   `file_ref_parked_keep` has exactly the four row-copying sites OFF-HAND-6
+   named: `ProofSysDup:1046`, `ProofKforkB3:782`, `ProofSysRead:967`,
+   `ProofSysWrite:983`.  So deleting the chain is free whichever shape the
+   offset takes.
+
+2. **THE ADVANCING ROW HAS NO ATTACHMENT POINT ABOVE `UkRun.urun`, AND
+   THAT — NOT PROOF EFFORT — IS WHAT STOPPED J1.**  `usys_fd_ok`'s
+   read/write row moves the successor table
+   (`sts' = <[fd := fdst_adv (sts !!! fd) d]> sts`), so every U-tier leaf
+   that admits read(5) or write(16) must either absorb a moved table or
+   prove the call's descriptor parked.  It can do NEITHER:
+   - `UkRun.urun` HIDES the descriptor view (`fdv` sits inside `urun`'s
+     existential), so "the row at the call's argument fd is parked" cannot
+     be stated as a leaf premise at all — and the one proposition that
+     could carry it, `UkRun.urun_parked_row`, was deleted by OFF-HAND-6
+     (H3) to let a record be minted at a key with a held descriptor;
+   - `UserFd.ufd_auth` is a `ghost_map_auth` at fraction 1, so a leaf
+     cannot move ONE slot without that slot's fragment, which a generic
+     leaf does not hold.
+   The sites: `UkRunSys.wp_uk_ecall_quiet` (`:528`, already excludes read
+   and ADMITS write(16) — instantiated at 16 by `UkEcho:1012`,
+   `UkInit:1223`, `UkCat:402`, and at a symbolic number by `UkSh:949`),
+   `wp_uk_ecall_window` (`:2664`, admits read(5), and
+   `wp_uk_ecall_read_win` `:3244` routes through it),
+   `wp_uk_ecall_quiet_recv` (`:4035`), `wp_uk_ecall_quiet_recv_img`
+   (`:5170`), `wp_uk_ecall_write_at` (`:4293`), plus `UexecApply:1236` and
+   `UkRunExecRef:214` / `:366`.  Under the review's design
+   (`foff_row := True`, the half in the program's `Pay`, the chain nodes
+   taking the kernel half in and returning it advanced) `usys_fd_ok`'s
+   rows do not move at all and every one of these sites is untouched,
+   which is the point.
+3. **AND THE COUNT PIN REACHES `filedup`, NOT ONLY THE COPY SITE.**
+   `FileInv.file_dup_step` (`:378`) splits `file_pay_st` at `q/2`
+   (`iEval (rewrite -{1}(Qp.div_2 q) file_pay_st_split)`, `:410`), so with
+   the pin `⌜¬ fdst_parked st -> q = 1⌝` on the payload the SPLIT itself
+   is illegal at a held row — the premise is `fdst_parked st` on
+   `file_dup_step`, and it propagates through `wp_filedup_sconf` and
+   `ProofSysDup.wp_sys_dup_sconf` to the U-tier dup leaf.  OFF-HAND-6
+   priced dup's discharge at the copy site (two shares in hand); the
+   split happens EARLIER, with one share in hand, and no count can pay it
+   there.  This is a fact about filedup under any "a held object has one
+   row" pin, so a design that keeps such a pin must put `⌜fdst_parked⌝ ∨
+   taint` on `file_dup_step`, not on `ProofSysDup`'s copy.
+
+**WHAT THE NEXT LANE INHERITS.** A green branch identical to main; no
+statement moved by this lane; the J1 payload half above as a recipe if any
+part of the count pin is reused; and measurements 2 and 3 as the price
+list for any shape that makes a read or a write move the descriptor table.
+
+### OFF-LINK (kernel/U tier, 2026-09-17) — THE HALF IS THE PROGRAM'S AGAIN AND `FdPark.v` IS GONE; THE VACUITY CHECK **REFUTES** THE BRIEFED SHAPE (the disconnect cannot live in `off_supply`), AND THE BOX'S ARM IS STOPPED ON THE NODE'S *LEND*
+
+**The lane's verdict in one line: L1 landed whole — OFF-HAND-6's H1 reverted,
+`FdPark.v` deleted, the row family persistent again, the four row-copying
+sites free; the VACUITY CHECK landed and it refutes the shape this lane was
+briefed to build (`UserOff.off_supply` cannot carry the disconnect: its output
+is a MOVE of the shadow and a move needs the half the taint does not have), so
+the arm belongs in the BOX and the supplier's output must be `off_link`, which
+is what landed instead; L2's `fp_om` and L3's box arm are STOPPED, each on one
+named design fact, and the recipe for both is below; and what the program tier
+asked for beside them — SKELETON's `Hdep1`/`Hwrite1`, and CAT-ENTRY-2's count
+bound on both arms of the deed read — landed.**
+
+**WHAT LANDED** (whole tree green on the lane's remote tree, `--proofs -k`,
+`EXIT=0`, zero `Error`, and a confirming re-run with nothing left to compile;
+`make audit-all-only` / `audit-tree-only` / `audit-file-only` UNCHANGED —
+system THIRTEEN, echo FOURTEEN, tree THIRTEEN, file FOURTEEN, the same
+`PrimInt63`/`PrimString`/`resv_*`/`functional_extensionality_dep` sets as
+before; `Proof using` everywhere; no `Admitted` of this lane's —
+`UEchoFile.v`'s seven are lane SKELETON's skeleton, by design; every statement
+that changed shape is listed here and nothing else moved.)
+
+**THE MERGE'S FIX-FORWARD** (three files, all breakages of the WRITE-RELAY +
+SKELETON combination rather than of this lane): WRITE-RELAY gave
+`FsAbsWriteFire.awrite_full_at` / `awrite_part_at` / `awrite_chain` the
+chain's own count `n` and the premise `⌜Z.of_nat (length bs) = wchunk_at n k⌝`,
+and `iris/UEchoFile.v` (lane SKELETON, all proofs `Admitted`) was merged at the
+old arity.  `ef_full_adv` / `ef_full_adv_raw` gain `(n : Z)` and that premise,
+`Hoff_link` / `Hrelay3` / `ef_node` / `ef_chain` / `Hdep1` thread it, and
+`UkWriteFile.udepwf_std_write_file` (this lane's, below) passes `n` to the
+chain so `Hdep1` is still discharged by `exact`.  No proof moved: the file's
+obligations are unchanged in content.
+
+*`51848c2b2` — L1: the held half goes back to the program; `FdPark.v` deleted*
+
+- `FdSlots.offmode` is `OffParked | OffHeld` with NO PAYLOAD again — the mode
+  says WHERE THE USER HALF IS, not what it reads — and `FdSlots.foff_row` is
+  `OffGv.off_user_inv γo` at a parked inode row and `emp` at a held one.
+  `foff_row_persistent` / `foff_rows_persistent` are INSTANCES again,
+  `foff_rows_insert` is back beside `foff_rows_lookup`, and `fd_frags` is
+  persistent in its row half.  DELETED with the revert: `FdSlots.fdst_adv`,
+  `om_adv`, `om_adv_0`, `fdst_adv_0`, `fdst_adv_parked`, `fdst_adv_id_parked`,
+  `foff_row_dup`, `foff_rows_dup`, `foff_row_inode_held_of`, `foff_rows_acc`,
+  `foff_row_persistent_parked`, `foff_rows_persistent_parked`,
+  `UserOff.off_supply_parked_keep`, `FileInvDefs.file_ref_parked_keep`;
+  `foff_row_inode_held` is back at its payload-free statement.
+- THE FOUR ROW-COPYING SITES copy the row for nothing again —
+  `ProofSysDup.v:1046`, `ProofKforkB3.v:782`, `ProofSysRead.v:967`,
+  `ProofSysWrite.v:983` — each one `#`-intro where it was a
+  `file_ref_parked_keep` + `foff_row_dup` pair.  `ProofFileread:529`,
+  `ProofFilewrite:3672`, `ProofSysClose:797`, `ProofKexit:956` take the row
+  intuitionistically again.
+- `iris/FdPark.v` (622 lines) IS DELETED, with its `_CoqProject` entry and
+  `ProofKforkB3`'s `Require`: the park (`fdst_park`, `fdv_park`,
+  `fd_frags_park{,_parked,_at}`, `foff_row{s}_park`, `fd_auths`,
+  `fd_auths_parked_id`), the surrender (`uoff_surr`, `uoff_surrs`,
+  `uoff_surrs_map`, `uoff_surr_at{,_parked,_held}`, `uoff_rcpt*` — dead since
+  OFF-HAND-6 H1) and the four `off_supply_of_st*`.  Nothing parks a row any
+  more, and with the family persistent there is nothing to re-mint.  Its one
+  live export was a PURE list kit that has nothing to do with a park:
+  `fdv_all_parked_app` / `_take` / `_drop` moved to `FdSlots.v` beside
+  `fdv_all_parked` itself, which is the only file `ProofKforkB3` now needs.
+
+*`bb7d140b3` — L0's vacuity check, the box's arm, the settle, L5's ledger
+slot and L6's `_parked` chain; then the merge (`1dce01f22`, WRITE-RELAY at
+`32854875a`) and `e274708f7` — the fire's case split on the landed node,
+CAT-ENTRY-2's count bound, and the merge's fix-forward*
+
+- THE VACUITY CHECK (`iris/UserOff.v` section 5), three `Example`s over one
+  arithmetic lemma (`off_gv_whole_half`: the whole shadow plus any fraction of
+  it is invalid).  All three are one fact read three ways — **a half of
+  `off_gv` is not derivable from anything persistent**:
+  - `vacuity_link_not_taint` — `(⊢ □ riscv_kill_cred -∗ uoff γo off) -> □
+    riscv_kill_cred ∗ off_gv γo 1 z ⊢ False`.  A node stated at the program's
+    own offset is a REAL obligation, and the generic tier can never take the
+    LINK arm of a `link ∨ taint` payment.  (Fact B checked: a program cannot
+    taint itself into the cheap arm, and the taint cannot buy the link.)
+  - `vacuity_lend_not_taint` — the same for the HALF THE NODE IS LENT: `(⊢ □
+    riscv_kill_cred -∗ off_gv γo (1/2) (Z.of_nat off)) -> □ riscv_kill_cred ∗
+    off_gv γo 1 z ⊢ False`.  This is the price of the box's taint arm and the
+    reason L3 stops (REFUTED 2).
+  - `vacuity_supply_not_taint` — `(0 < d)%nat -> (⊢ □ riscv_kill_cred -∗
+    off_supply γo E off d R) -> □ riscv_kill_cred ∗ off_gv γo 1 (Z.of_nat off)
+    ⊢ |={E}=> False`.  This is (a)'s refutation; see REFUTED 1.
+- THE BOX'S ARM, named once so the box, the fire and the contract all spell it
+  (`iris/UserOff.v` section 4): `off_link γo z := off_gv γo (1/2) z ∨ □
+  riscv_kill_cred`, with `off_link_of` (the coupled arm), `off_link_taint`
+  (the disconnect — payable by the generic tier and by nobody else) and
+  `off_link_advanced` (a node that advanced BOTH halves hands the coupled arm
+  back for free).  `off_link_timeless` is an instance.
+- THE FIRE'S CASE SPLIT against WRITE-RELAY's landed node
+  (`OffGv.off_ret γo off d`, merged here at `32854875a`): `off_ret_case γo off
+  d : off_ret γo off d -∗ off_gv γo (1/2) (Z.of_nat off) ∨ off_link γo
+  (Z.of_nat (off + d))` — the node hands the half back UNMOVED, and then the
+  settle carries it to the box's arm, or ADVANCED BY THE CHUNK, which IS the
+  box's coupled arm and costs nothing.  That is the whole of how the fire
+  consumes `off_ret`, and it is why the settle is stated at the unmoved value
+  alone.
+- THE SETTLE, which is what replaces `off_supply` at the fire:
+  `off_settle γo E off d R := off_gv γo (1/2) (Z.of_nat off) ={E}=∗
+  off_link γo (Z.of_nat (off + d)) ∗ R` — the old supplier with the BOX'S ARM
+  as its output instead of a bare half.  Two payers, and they are the whole of
+  `link ∨ taint` at this coupling: `off_settle_parked` (`↑foffN ⊆ E ->
+  off_user_inv γo -∗ off_settle γo E off d True`, verbatim today's parked path)
+  and `off_settle_taint` (`□ riscv_kill_cred -∗ off_settle γo E off d True` —
+  the kernel DROPS its half instead of moving it, which is the whole content
+  of the disconnect).
+- THE LEDGER SLOT (L5's third item; lane SKELETON's `Hdep1` / `Hwrite1`),
+  `iris/UkWriteFile.v` section 6 — echo writes fd 1, below `NSTD`, and
+  `wp_uk_ecall_write_file` is handle-fixed at `NSTD <= fd`:
+  - `uwr_fd_st_std` — `UkWriteLeaf.uwr_fd_st_dev` at ANY state (the arm a
+    ledger slot computes to), same proof;
+  - `udepwf_std_write_file` — the deposit at ledger slot 1, the twin of
+    `udepwf_st_write_file`, with the state's OFFSET MODE FREE
+    (`SpecFilewrite.filewrite_in`'s inode arm is mode-blind, which is what
+    lets a HELD descriptor reuse it unchanged);
+  - `wp_uk_ecall_write_std` — the ledger-slot write leaf,
+    `wp_uk_ecall_write_file` with `UserFd.ustd` for `UserFd.ufd` and
+    `UkRun.udepwf_std` for `udepwf_st`, proved through
+    `UkRunSys.wp_uk_ecall_write_at` at `K fdv := take NSTD fdv = l` with
+    `UserFd.ustd_agree`.  Both are stated so `UEchoFile.v`'s `Hdep1` /
+    `Hwrite1` are discharged by `exact`.
+- THE COUNT BOUND ON BOTH ARMS (CAT-ENTRY-2's ask): a read of `cnt` bytes
+  returns at most `cnt` WHICHEVER arm the deed's receipt took.  The kernel
+  fact is `SysReadDefs.ard_ret_tie` — `ard_count` on a file row, a value in
+  `[0, n]` on every other — and `bv_unsigned` of a `mword_of_int` is a `mod`,
+  which only DECREASES a non-negative value (NEW `FileOpen.moi_le`), so the
+  bound needs no width side condition.  It is derived BEFORE the receipt's
+  arms and carried out beside them: `FileOpen.file_read_post_ok_learn` and
+  `file_read_arms_learn_mapped` gain `⌜(Z.to_nat (bv_unsigned rv) <= Z.to_nat
+  n)%nat⌝ ∗` in front of their disjunction; `UkFileOpen.
+  wp_uk_read_deed_learns_mapped` and `UkCatDeed.wp_kcat_read_deed` relay it to
+  their continuations.  `file_read_arms_learn` (the UNMAPPED one) does NOT get
+  it and must not: its `-1` arm has `bv_unsigned rv = 2^64-1`.  The last step
+  is CAT-ENTRY-2's and is one line: put the conjunct into
+  `UkCatDeed.kcat_r_of_deed`'s post family (`UkCat.kcat_r`'s), where the fact
+  is now in hand at `UkCatDeed.v:317`.
+- THE `_parked` CHAIN, DELETED, each with its reason:
+  `FileInvDefs.fdstate_ok_parked` (**no consumer** once `file_ref_parked` goes),
+  `FileInvDefs.file_ref_parked` (**no consumer**), `ProcInv.ofile_slot_parked`
+  → `ofile_slots_parked` → `proc_ofiles_parked` → `proc_priv_parked` (**no
+  consumer** — OFF-HAND-7's measurement 1: every hit outside their own files
+  is a comment, at `PinnedExec:310`, `ProofSyscall:5289`, `SpecKexec:878` and
+  `:1357`).  They carried "every row of this key's table is parked" to the
+  generic tier, which is the fact §3.5's principle retires; and the four
+  row-copying sites that used to need the reading take the row persistently
+  again.  `FileInvDefs.fdstate_ok` STILL PINS `m = OffParked` — the pin is what
+  L2 moves to `fp_om`, and it is left standing here because L2 does not land
+  alone (REFUTED 3).
+
+**REFUTED / MEASURED, with the evidence.**
+
+1. **THE DISCONNECT CANNOT BE PUSHED INTO `UserOff.off_supply`** — the survey's
+   R2 recommendation (`reviews/taint-pattern-survey.md` R2, last paragraph:
+   "or — cheaper, and already half-built — the disconnect is pushed into the
+   abstract supplier `UserOff.off_supply` … so the pieces do not move.
+   Recommend the second"), which is this lane's L3 as briefed.
+   `off_supply γo E off d R` must hand the kernel's half back AT `off + d`;
+   that is a MOVE of a `ghost_var`, a move needs the other half, and the other
+   half is the program's.  So a taint arm on `off_supply` is UNPROVABLE, not
+   merely unhelpful — `UserOff.vacuity_supply_not_taint` is that at the
+   statement.  CONSEQUENCE: the arm belongs in the BOX, where the half may be
+   DROPPED rather than moved, and the supplier's OUTPUT must therefore be the
+   box's arm (`off_link`) and not a bare half.  That is exactly what the landed
+   `off_settle` is, and it is why its two payers are the parked invariant and
+   the taint and nothing else.
+2. **THE BOX'S TAINT ARM IS STOPPED ON THE NODE'S *LEND*, NOT ON ITS RETURN**
+   — AND WRITE-RELAY'S LANDED NODE DOES NOT CHANGE THIS, because what it
+   widened is the node's ANSWER (`OffGv.off_ret`, phase 2) and not its
+   ARGUMENT (phase 1 still takes `off_gv γo (1/2) (Z.of_nat off)`, see
+   `FsAbsWriteFire.awrite_full_at` as merged at `32854875a`).
+   `FsAbsWriteFire.awrite_full_at` (`:567`), `awrite_part_at` (`:603`) and
+   `FsAbsReadFire.aread_commit_at` (`:249`) each take `off_gv γo (1/2)
+   (Z.of_nat off)` — the kernel's half AT THE FIRE'S OFFSET — as an argument of
+   phase 1.  A DISCONNECTED object has no such half, so at an object whose box
+   has already taken the taint arm the kernel cannot run the node at all; and
+   the node is the only payer of the row retag's `AppInv.app_step`
+   (`iris/AppInv.v:390`), whose other payer is `app_step_acc` off `app_sup`
+   (`:475`), which the taint reaches only through the survey's R1
+   (`al_sup_of_kill`, lane SUP-ONE) — not in the tree.  So the FIRST disconnect
+   at an object is payable (the box is still coupled, the node is lent the
+   half, the fire returns the box in the taint arm and drops the half) and
+   EVERY LATER FIRE AT THAT OBJECT IS NOT.  `UserOff.vacuity_lend_not_taint` is
+   the fact at the statement.  WHAT UNBLOCKS IT, either one: (i) SUP-ONE's R1,
+   after which a fire at a disconnected box skips the node entirely and pays
+   `app_step` from `app_sup`; or (ii) **WRITE-RELAY's node LEND becoming
+   `off_gv γo (1/2) (Z.of_nat off) ∨ □ riscv_kill_cred`** — the survey's first
+   option, which it rejected as "the three pieces move" but which WRITE-RELAY
+   is now moving anyway.  (ii) is one conjunct and costs no client anything:
+   the generic node frames the lend straight back (`awrite_chain_unit`,
+   `aread_commit_at_unit`) and a linked node takes the left arm.  RECOMMENDED
+   to WRITE-RELAY, and it is the only thing OFF-LINK's L3 waits on besides its
+   own phase-2 shape.
+3. **`fpnames.fp_om` (L2) AND THE HELD FIRE ARE ONE CHANGE** — OFF-HAND-6's
+   finding 3 one level down, and the reason L2 is not committed.  The patch
+   itself is small and was written and then REVERTED rather than half-landed;
+   what it runs into is this: the moment `FileInvDefs.fdstate_ok` stops pinning
+   `m = OffParked`, `fdstate_ok_inode` returns the mode EXISTENTIALLY and the
+   two fire sites — `ProofFilewrite.v:4947` and `ProofFileread.v:2263`, both
+   `foff_row_inode_of … as "#Hoinvw"` — lose their supplier: at a held row
+   `foff_row st` is `emp` and there is no other resource at the site.  The held
+   row's supplier can only come from the CONTRACT, and the contract's held arm
+   cannot be stated until WRITE-RELAY's advancing node exists.  THE PATCH,
+   exactly, so nobody re-derives it (all in `iris/FileInvDefs.v`): `fpnames`
+   gains `fp_om : offmode` (and `fpnames_inhabited` its `OffParked`);
+   `fdstate_ok` gains a parameter `(om : offmode)` before `C` and its FD_INODE
+   arm pins `m = om`; `fdstate_ok_{pipe,inode,device,none,rw,inj,flags,opened,
+   open}`, `fdstate_ok_inode_names` and `foff_row_of_ok` gain the binder (the
+   `_names` one also returns `om1 = om2`, and `foff_row_of_ok` destructs `om`);
+   `fdstate_ok_inode`'s conclusion names `γo om`; `fdstate_ok_parked` is
+   deleted (it IS the pin); `file_pay_st` passes `(fp_om pn)`;
+   `file_pay_st_ok`'s `∃` gains `om`; `file_pay_st_agree`'s `fdstate_ok_inj`
+   gains one `_`.  Outside the file the sweep is ~45 real sites in 12 files,
+   all mechanical — `SpecFileread.fileread_pay_carve` and
+   `ProofFilewrite.fwau_pay_carve` additionally quantify `om` existentially,
+   and `SpecFileread.fileread_st_inode_rd`'s conclusion names it.  **A
+   PAYLOAD-FREE MODE IS WHAT MAKES THE PIN SAVE `fdstate_ok_inj`**, which is
+   the one thing OFF-HAND-6's finding 2 could not have: its mode carried a
+   value, so two honest readings of one object differed.
+4. **NOTHING FROM §7's FIVE REFUTED SHAPES WAS RE-PROPOSED**, and the two this
+   lane came closest to are refuted again at the statement: an "all rows
+   parked" fact has no carrier (its whole chain is deleted here as
+   consumer-free), and a kernel-side park has nothing to re-mint now that the
+   row family is persistent.
+
+**THE SHAPE THE NEXT LANE LANDS** (stated, not compiled; WRITE-RELAY IS
+merged here at `32854875a`, so the node's phase 2 now answers
+`OffGv.off_ret γo off len` and `off_ret_case` above is how the fire eats it):
+
+- `FileOffCell.off_resident γo k := ∃ v : mword 32, a_foff k ↦₄ v ∗ ⌜off_wf v⌝
+  ∗ UserOff.off_link γo (bv_unsigned v)` — the box at the arm this lane landed.
+  Its ONLY two destruct sites are `ProofFilewrite.v:2425` and
+  `ProofFileread.v:2498`; the box machinery (`OffBox.off_hdr`,
+  `FileOffProtocol`'s three) threads it opaquely, and `off_resident_of` /
+  `off_resident_intro` keep their statements with an `iLeft`.
+- `SpecFilewrite.filewrite_in`'s inode arm, keyed on the mode the row carries
+  — and shaped so WRITE-RELAY-2's deferred `TB : uptd -> Prop` guard (`∀ P,
+  ⌜TB P⌝ -∗ chain … P`) goes in FRONT of the chain on BOTH arms without
+  another restatement, i.e. the mode's match is OUTSIDE the `∀ P`:
+  at `OffParked` today's `awrite_chain`; at `OffHeld` the owner's principle
+  literally — `(the ADVANCING chain) ∨ (today's chain ∗ □ riscv_kill_cred)`.
+  `SpecFileread.fileread_in` likewise at `aread_commit_at`.  The posts
+  (`write_arms_at`, `read_arms`) gain, at a held row, `uoff γo (off + d)` and
+  `⌜off = off0⌝` on the fired arm — the pin CAT-WALK-2's `Hpin` asks for — or
+  the taint with the payment back.
+- The fire (`wrf_awrite_fire_gen`, `arf_read_fire_gen`) consults the settle
+  ONLY on the UNMOVED branch: `v = off + len` IS the box's coupled arm
+  (`off_link_advanced`), `v = off` at a parked row is `off_settle_parked`, and
+  `v = off` at a held row is `off_settle_taint`, whose taint comes from the
+  contract's right arm above.  That is why `off_settle` is stated at `v = off`
+  alone and why its output is `off_link`.  The `∀ v, ⌜v = off ∨ v = off +
+  len⌝ -∗ …` form the coordinator asked the fire to accept is TWO LINES over
+  the landed pieces and needs no new payer: at `v = off + len` it is
+  `off_link_advanced`, at `v = off` it is the settle — and it is stated that
+  way rather than landed here only because `UserOff.v` sits under `FdSlots.v`
+  and every addition to it rebuilds the tree.
+
+**WHAT DID NOT LAND, and what each is blocked on** (§3.6: checked at the
+statement, at the mask, at the persistence, and at the home across exec):
+
+- L2 (`fp_om`, the pin) — blocked on L3's contract arm, itself blocked on
+  WRITE-RELAY's node.  Recipe in REFUTED 3; nothing in it is in doubt.
+- L3 (the box arm, the two fire walks) — blocked on REFUTED 2 for the SECOND
+  fire at a disconnected object.  Everything else about it is stated above.
+- L4 (the mint) — not attempted.  `ProofSysOpenPub.v:324-330` is one swap
+  (`off_pub_park` → `UserOff.off_pub_hand_0`, the receipt carrying `uoff g 0`
+  where it carries `off_user_inv g`, `fp_om` set to match), but
+  `UsysMemOk.usys_fd_ok`'s open arm pins `fdst_parked (FdOpen rd wr t)`
+  (`UsysMemOk.v:533`) and that pin is what makes `usys_fd_ok_parked` (`:791`) a
+  THEOREM; relaxing it moves `fdv_all_parked` through the generic tier's Löb.
+  It needs L2 under it in any case.
+- L5 (the held read/write leaves) — the LEDGER-SLOT half landed (above).  The
+  held leaves themselves are cheap and are NOT a new walk:
+  `UkReadFile.wp_uk_ecall_read_file` and `UkWriteFile.wp_uk_ecall_write_file`
+  are already state-generic and DO NOT MOVE; what a held descriptor needs is a
+  new DEPOSIT supplier beside `udepwf_st_read_file` / `udepwf_st_write_file`
+  (the same body at `FdOpen _ _ (FdInode i γo OffHeld)`, carrying `uoff γo off`
+  into the contract's held arm) and the post read at the held arm — i.e. they
+  are blocked on L3's contract arm and on nothing else.
+- L6's remaining deletions — NOT blocked by anything, and they are what the
+  next lane should take first if the merge is not ready: `usys_fd_ok_parked`,
+  `FdSlots.fdv_all_parked` and its kit, `fdv_held_in*`, `usys_fd_ok_held`,
+  `UkRun.ukn_held` (the field — `MkUkNames` loses an argument, 15 files name
+  it), `ukn_parked`, `urun_parked_row`, the dead premises at
+  `UkRunSys:1001/:1185`, `UkShEcho:538/:828`, `UkFork:817/:1181`,
+  `UkSh.ush_gen_slot`'s row and `ush_gen_slot_held`, the three `Hpark`
+  contexts (`UkInit:112`, `UkInitMain:115`, `UInitKernel:417`), and
+  `SpecKexec.kexec_image_ok_parked` / `exec_key_ok_parked`.
+  `fileread_in_inode_any` / `filewrite_in_inode_any` DO NOT EXIST any more —
+  OFF-HAND-5's twins are already gone.  `UserOff.off_supply` and
+  `off_supply_held` are superseded by `off_settle` but still have consumers
+  (`wrf_awrite_fire{,_held}`, `arf_read_fire{,_held}`) and stay until the merge.
+
+**WHAT ECHO-FILE / CAT-ENTRY-2 / SH-ROUND HAND IN, as of this lane.**
+- The descriptor bundle carries NOTHING exclusive again: `fd_frags` and
+  `foff_rows` are persistent, so fork, dup, exec and every opaque threading of
+  the bundle are free at EVERY mode, no program-tier resource, deposit or
+  surrender is involved anywhere, and a record may still be minted at a key
+  with a held descriptor (OFF-HAND-6's H3 deletion, kept).
+- `UserOff.uoff`, `uoff_advance`, `uoff_agree_k`, `off_pub_hand{,_0}` stand
+  (RD-1), and so does the fact that makes RELAY 2 free: a node whose closure
+  holds `uoff γo off0` learns `off = off0` by `OffGv.off_gv_agree` against the
+  half it is ALREADY LENT, inside its own phase 1 — no premise slot, no relay
+  from the kernel.  `FileWrite.file_awrite_full_anchored`'s `⌜off = off0⌝` is
+  discharged there and nowhere else, and `uoff_advance` runs in the same phase
+  (that is what makes phase 2 hand the half back ADVANCED).
+- `UserOff.off_link` / `off_settle` are the names the box, the fire and the
+  contract will all be stated at; no program ever sees either.
+- echo's fd-1 write has its leaf (`UkWriteFile.wp_uk_ecall_write_std`) and its
+  deposit (`udepwf_std_write_file`), both offset-mode-free, so `UEchoFile.v`'s
+  `Hwrite1` / `Hdep1` are discharged today.
+- `UEchoFile.v`'s `Hoff_link` — SKELETON's HYPOTHESIS 1, addressed to THIS
+  lane ("a node holding ONE half cannot both return it unmoved and keep it
+  advanced") — IS DISCHARGED, and not by anything of this lane's: WRITE-RELAY's
+  `OffGv.off_ret_adv` is exactly the weakening, so
+  `ef_full_adv_raw … ⊢ awrite_full_at …` is one `iApply` once
+  `ef_full_adv_raw` is restated at the node's current arity (WRITE-RELAY's
+  `n` parameter and its `⌜length bs = wchunk_at n k⌝` premise).  The
+  resource-home defect review §A1 named is closed: the half is the program's,
+  the node advances it, and the kernel's side of the disjunction is
+  `off_ret_keep`.
+- cat's deed read carries the count bound on BOTH arms as far as
+  `UkCatDeed.v:317`; one line in `kcat_r_of_deed`'s post family puts it in
+  `UCatKernel.cat_held_read`'s hands.
+- What they still cannot do is OPEN in hand mode or READ/WRITE a held row:
+  that is L2+L3+L4, whose remaining blocker is the node's LEND (REFUTED 2) and
+  whose statements are all above.

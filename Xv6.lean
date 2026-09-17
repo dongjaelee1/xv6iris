@@ -240,3 +240,5 @@ import Xv6.ProofSafestrcpy
 import Xv6.LinkSafestrcpy
 import Xv6.ProofKexit
 import Xv6.LinkKexit
+import Xv6.ProofKwait
+import Xv6.LinkKwait

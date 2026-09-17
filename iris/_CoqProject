@@ -1531,6 +1531,8 @@ UkShRedirPr.v
 UkShRedirEx.v
 UkShRedirPex.v
 UkShRedirNul.v
+UkShRedirCm.v
+UkShRedirPc.v
 
 UCodeShM.v
 UkShMalloc.v
@@ -1539,6 +1541,7 @@ UkShRedirLine.v
 UkShLoop.v
 UkShCd.v
 UkShMain.v
+UkShRedirSeam.v
 UkShFork.v
 UConsLine.v
 UkShWords.v

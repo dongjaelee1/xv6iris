@@ -1217,6 +1217,38 @@ Section UkShMalloc.
     - rewrite /ushm_hdr. iFrame "Hnx Hsz Hpad".
   Qed.
 
+
+  (* ===================================================================== *)
+  (* §4c THE FREE LIST AFTER ONE CALL -- [ushm_one].                        *)
+  (*                                                                        *)
+  (* [ushm_fresh] says the list is EMPTY.  This says it holds EXACTLY ONE   *)
+  (* block, which is the shape every call after the first runs on:          *)
+  (* [morecore] ran once, [free] linked its 64 KiB chunk in after [base],   *)
+  (* and each call since has cut its request off that chunk's TAIL.  So     *)
+  (*                                                                        *)
+  (*   freep = &base ;  base = { ptr = c ; size = 0 } ;                     *)
+  (*   c     = { ptr = &base ; size = R }                                   *)
+  (*                                                                        *)
+  (* with [R] units -- [16 * R] bytes counting the header -- still free at  *)
+  (* [c], and the body of those bytes owned here.  What was already CARVED  *)
+  (* off the chunk is not mentioned: those blocks belong to the callers     *)
+  (* that were handed them, and an allocator state that named them could    *)
+  (* not be handed back by a call that gives its block away.                *)
+  (*                                                                        *)
+  (* [sz] is the break, carried because [usz] is what the sbrk row moves    *)
+  (* and what the FIRST call's postcondition already hands out; a call      *)
+  (* that fits in [c] does not touch it, so it crosses unchanged.           *)
+  (* ===================================================================== *)
+  Definition ushm_one (sz R : Z) : iProp Σ :=
+    (∃ c : Z,
+       ⌜ SH_BASE + 16 <= c /\ c mod 16 = 0 /\
+         0 < R /\ R < 2 ^ 31 /\ c + 16 * R <= sz /\ sz < 2 ^ 38 ⌝ ∗
+       uword γd SH_FREEP (mword_of_int SH_BASE) ∗
+       ushm_hdr SH_BASE (mword_of_int c) 0 ∗
+       ushm_hdr c (mword_of_int SH_BASE) R ∗
+       (∃ g : nat -> bv 8, ubytes γd (c + 16) (Z.to_nat (16 * R - 16)) g) ∗
+       usz γs sz)%I.
+
   (* ===================================================================== *)
   (* §5 [malloc] @0x118c -- THE FIRST CALL, WITH [morecore] INLINED.        *)
   (*                                                                        *)
@@ -1505,7 +1537,13 @@ Section UkShMalloc.
       exact (upd_eq q3 (Regidx s3_idx) _).
   Qed.
 
-  Lemma wp_kshm_malloc_first (h : CpuId) (m : regfile)
+  (* THE FIRST CALL, WITH THE LIST IT LEAVES BEHIND.  [wp_kshm_malloc_first]
+     below is this lemma with that list DROPPED, and it is the statement
+     stage 4 has always consumed -- unchanged, to the character.  The
+     leftover is threaded out here because a SECOND call needs it and
+     nothing else in the walk changes: the free list the success arm
+     leaves is [ushm_one] and always was, it just had no consumer. *)
+  Lemma wp_kshm_malloc_first_st (h : CpuId) (m : regfile)
       (nbytes sz : Z) (fb : nat -> bv 8) (avail : nat) :
     m !!! Regidx a0_idx = (mword_of_int nbytes : mword 64) ->
     0 < nbytes -> nbytes <= 65504 ->
@@ -1525,7 +1563,8 @@ Section UkShMalloc.
         ∨ (∃ (q : Z) (g : nat -> bv 8),
              ⌜ r = (mword_of_int q : mword 64) ⌝ ∗
              ⌜ 0 < q /\ q mod 16 = 0 /\ q + nbytes < 2 ^ 38 ⌝ ∗
-             usz γs (sz + 65536) ∗ ubytes γd q (Z.to_nat nbytes) g)) -∗
+             ushm_one (sz + 65536) (4096 - ((nbytes + 15) / 16 + 1)) ∗
+             ubytes γd q (Z.to_nat nbytes) g)) -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (10 + avail) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
@@ -3430,7 +3469,8 @@ Section UkShMalloc.
       rewrite Era_1.
       replace (8 + (2 + avail))%nat with (10 + avail)%nat by lia.
       iApply ("Hcont" $! h67 mF (mword_of_int (t + 16))
-                with "[%] [%] [Hsz Hpay] Hrun").
+                with "[%] [%] [Hsz Hpay Hfreep Hbn Hbs Hbp Hh0n Hh0s Hh0p
+                              Hgap] Hrun").
       + (* the ABI read-back *)
         intros q Hq.
         assert (Hne : forall rq : mword 5, ucallee_saved_idx rq = false ->
@@ -3548,7 +3588,78 @@ Section UkShMalloc.
         iSplitR; [ done | ].
         iSplitR; [ iPureIntro; split_and!; [ unfold t; lia | | unfold t; lia ] | ].
         { rewrite (Z.add_mod t 16 16 ltac:(lia)). rewrite Ht16. reflexivity. }
-        iFrame "Hsz". iExact "Hpay".
+        (* the free list the call leaves: [base] pointing at the chunk at
+           [sz], the chunk pointing back with its SHRUNK size, and the
+           bytes between its header and the piece just carved off *)
+        iSplitR "Hpay"; [ | iExact "Hpay" ].
+        rewrite /ushm_one.
+        assert (Edn : Z.to_nat (16 * (4096 - nu) - 16) = dn)
+          by (unfold dn; lia).
+        rewrite Edn.
+        iExists sz.
+        iSplitR.
+        { iPureIntro. split_and!.
+          - exact Hszlo.
+          - exact Hsz16.
+          - lia.
+          - change (2 ^ 31)%Z with 2147483648%Z. lia.
+          - lia.
+          - exact Hszhi. }
+        iEval (rewrite Ha0_F) in "Hfreep".
+        iFrame "Hfreep".
+        iSplitL "Hbn Hbs Hbp"; [ rewrite /ushm_hdr; iFrame "Hbn Hbs Hbp" | ].
+        iSplitL "Hh0n Hh0s Hh0p";
+          [ rewrite /ushm_hdr; iFrame "Hh0n Hh0s Hh0p" | ].
+        iSplitR "Hsz"; [ | iExact "Hsz" ].
+        iExists (fun j : nat => gsb (16 + j)%nat). iExact "Hgap".
+  Qed.
+
+  (* STAGE 4'S STATEMENT, UNCHANGED: the same call with the free list it
+     leaves DROPPED.  Twenty lines, because dropping a resource is what
+     separation logic does for free -- and the reason to keep the landed
+     shape rather than to widen it is that [UkShParse.ushp_malloc_ty] is
+     stated at it, in four files. *)
+  Lemma wp_kshm_malloc_first (h : CpuId) (m : regfile)
+      (nbytes sz : Z) (fb : nat -> bv 8) (avail : nat) :
+    m !!! Regidx a0_idx = (mword_of_int nbytes : mword 64) ->
+    0 < nbytes -> nbytes <= 65504 ->
+    SH_BASE + 16 <= sz ->
+    UserPtTree.pgroundup sz = sz ->
+    usz_ok (sz + 65536) ->
+    shm_code γt -∗
+    uword γd SH_FREEP (mword_of_int 0) -∗
+    ubytes γd SH_BASE 16 fb -∗
+    usz γs sz -∗
+    urun N h m (mword_of_int ShSyms.malloc) (10 + avail) -∗
+    (∀ (h' : CpuId) (m' : regfile) (r : mword 64),
+       ⌜ ucallee_saved m m' ⌝ -∗
+       ⌜ m' !!! Regidx a0_idx = r ⌝ -∗
+       ((⌜ r = (mword_of_int 0 : mword 64) ⌝ ∗
+         ushm_sbrk_ans sz 65536 (mword_of_int (-1)))
+        ∨ (∃ (q : Z) (g : nat -> bv 8),
+             ⌜ r = (mword_of_int q : mword 64) ⌝ ∗
+             ⌜ 0 < q /\ q mod 16 = 0 /\ q + nbytes < 2 ^ 38 ⌝ ∗
+             usz γs (sz + 65536) ∗ ubytes γd q (Z.to_nat nbytes) g)) -∗
+       urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (10 + avail) -∗
+       WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+  Proof using Hpsok_free.
+    intros Ha0 Hnb0 Hnbhi Hszlo Hszal Hszok.
+    iIntros "#Hcode Hfreep Hbase Hsz Hrun Hcont".
+    iApply (wp_kshm_malloc_first_st h m nbytes sz fb avail
+              Ha0 Hnb0 Hnbhi Hszlo Hszal Hszok
+              with "Hcode Hfreep Hbase Hsz Hrun").
+    iIntros (h' m' r) "%Hcs %Ha0' Hans Hrun".
+    iApply ("Hcont" $! h' m' r with "[%] [%] [Hans] Hrun");
+      [ exact Hcs | exact Ha0' | ].
+    iDestruct "Hans" as
+      "[Hf | (%q & %g & %Hr & %Hqb & Hone & Hbytes)]".
+    - iLeft. iExact "Hf".
+    - iRight. iExists q, g.
+      iSplitR; [ iPureIntro; exact Hr | ].
+      iSplitR; [ iPureIntro; exact Hqb | ].
+      iDestruct "Hone" as (c) "(_ & _ & _ & _ & _ & Hsz)".
+      iFrame "Hsz Hbytes".
   Qed.
 
 

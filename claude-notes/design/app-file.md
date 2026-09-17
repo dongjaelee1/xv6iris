@@ -733,6 +733,20 @@ suppliers get argv twins; the held open leaf is stated at the data
 image from the start.  (f) `UkCatDeed.v` (out of the build: a
 25-argument `iApply` that does not terminate) comes back through the
 unshelve hoist.  Lane CAT-WALK-2; `UCatKernel` after OFF-HAND-6.
+CAT-WALK-2 landed (e), (f) and the round at the offset-pinned read
+(`UCatKernel.cat_round_at`; the held leaf discharges `Hpin` from `Hold
+p` = the held row at `p`, its half and the deed fraction, advancing
+both to `p + count`).  Two more RULINGS (2026-09-17): (g) the `cat:
+write error` tail is NOT an alternative of the model — `kcat_round`'s
+write output loses its additive `∧ kcat_dg_cw` in favour of an arm the
+console write leaf's own no-short row (`UkWriteLeaf.uwrite_no_short`)
+refutes at a destination the caller owns, READ-RELAY's move one syscall
+over; (h) the turn's write at the cursor (`Hw`, cat's twin of
+`UEchoOut.kecho_w_of_link_data`) takes a variant of
+`UkWriteLeaf.uwrite_chain_sup` whose deposit premise RETURNS the
+caller's source run beside the chain (cat's run is its owned read
+buffer, not a discarded literal).  Lane CAT-ENTRY-2; the entry itself is
+then one instantiation at OFF-HAND-6's held read leaf.
 
 ### 5.4 sh execs cat, and the dispatch
 

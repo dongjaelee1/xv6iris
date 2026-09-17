@@ -1595,5 +1595,6 @@ TreeImg.v
 UTreeAdequacy.v
 UkFileOpen.v
 UkShRedirAns.v
+UCatOut.v
 UInitTree.v
 # TreeAssumptions.v

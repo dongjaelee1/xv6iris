@@ -89,7 +89,7 @@ conclusion `FileDisc.file_phi`.
   the parser is **SH-PARSE** (the generalised gettoken, parseredirs once,
   redircmd into the catalog, parseexec/nulterminate/parsecmd at the redirect
   shape, the child walk at both line shapes).
-- [ ] **MODEL** — running.
+- [x] **MODEL** landed (`FileDisc.v` on `app-file/model`; design §1 corrected as it found — see its findings).
 
 ## Wave 2 — on the claim (`iris/AppFile.v`, branch `app-file/claim`, layer A landed 2026-09-17)
 

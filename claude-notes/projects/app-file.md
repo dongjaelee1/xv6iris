@@ -9193,3 +9193,139 @@ with `Hep := fun v => (identity)` — one application each, today.
   expected to rename c into C*) because the projection's binder names come
   from the field's own definition; `Global Arguments ck_stg {_ _ _ _} _.`
   is right.
+
+### OFF-LINK-3 (kernel/U tier, 2026-09-17) — THE MERGE, AND THE ONE DERIVATION THE COUPLED REMAINDER TURNS ON: THE KERNEL HOLDS THE `uoff`, THE NODE IS **ANCHORED**, AND THE FIRE DOES NOT MOVE
+
+**The lane's verdict in one line: the merge of main (LINK-GEN-2/3, and this
+lane's own OFF-LINK-2 coming back through it) landed green with a four-file
+fix-forward, and the coupled remainder — L3's contract arms, L2, L4, L5 — is
+NOT landed; what this lane produces instead is the derivation that decides its
+shape, which every earlier attempt in this campaign got wrong in the same way:
+the program's half must be in the KERNEL's hands at the fire and the equation
+`off = off0` must be RELAYED INTO the node, not derived inside it, and once it
+is, `UserOff.off_supply_held` applies at the node's UNMOVED arm and the fire
+lemmas do not move at all.**
+
+**WHAT LANDED** (whole tree green on the lane's remote tree, `EXIT=0`, zero
+`Error`; audits unchanged — system THIRTEEN, echo FOURTEEN, tree THIRTEEN,
+file FOURTEEN.)
+
+*`792f02143`, `5b9e998a0` — the merge of main and its fix-forward*
+
+Two conflicts, both where LINK-GEN-3 had replaced an echo proof by a
+`Definition` at a generic `_at` lemma while this lane's L6 had edited the old
+proof text (`UEchoOut.v`, `UShEchoPay.v`): main's versions taken, as the
+coordinator ruled.  Four files then needed L6's deletions applied to main's new
+text: `UEchoOut`'s slot mint (the deleted `hs` argument and its row),
+`UShEchoPay`'s and `UkShRedirBody`'s child laws (the `⌜ukn_held N' = ∅⌝` row
+and its two discharges), and `UkShRedirBody`'s two interderivability lemmas.
+
+**THE DERIVATION, and it is the whole of what the remainder waits on.**
+
+The held write arm has to make FOUR things true at once, and exactly one
+arrangement does it:
+
+1. the NODE's claim step needs `off = off0` (echo appends at `|bs0|`, and
+   `FileWrite.file_awrite_full_anchored` carries that as a premise);
+2. the FIRE's settle needs the program's half (`off_supply_held`), because at
+   a held row `FdSlots.foff_row st` is `emp` and the box's coupled arm cannot
+   be moved by one half;
+3. a `ghost_var` half cannot be split between the two (1 requires it inside
+   the node's closure, 2 requires it in the kernel's hands, and a fraction of
+   a half cannot move the ghost);
+4. the generic tier must be able to pay the arm at all.
+
+(1) and (2) are irreconcilable ONLY if the equation has to be DERIVED inside
+the node.  It does not: the KERNEL knows `off` at the fire and, holding the
+program's `uoff γo off0`, learns `off = off0` by `UserOff.uoff_agree_k` against
+the box's own half — and can then RELAY it into the node as a pure premise.
+That is the "premise slot in `awrite_full_at` that does not exist" of the
+review's §A1, and it exists the moment the arm is stated at an ANCHORED node
+instead of the plain one.  So:
+
+    (* [FsAbsWriteFire], additive: [awrite_full_at] with ONE arrow added *)
+    awrite_full_anch Γ E i γo M ua n k (off0 : nat) REST :=
+      ∀ I off bs bs0 nl,
+        ⌜wri_pre …⌝ -∗ ⌜ubytes_at …⌝ -∗ ⌜length bs = wchunk_at n k⌝ -∗
+        (⌜off = off0⌝ ∨ app_taint) -∗           (* THE ANCHOR, or the taint *)
+        ghost_map_auth … -∗ off_link γo (Z.of_nat off) ={E}=∗ …
+        (… off_ret γo off (length bs) ∗ REST)
+
+    awrite_chain_anch … Q k cnt off0 :=
+      match cnt with O => Q k
+      | S cnt' => Q k ∧ (awrite_full_anch … k off0
+                           (awrite_chain_anch … (S k) cnt'
+                              (off0 + Z.to_nat (wchunk_at n k)))
+                         ∧ awrite_part_anch … k off0 (…)) end
+
+    (* [SpecFilewrite.filewrite_in]'s inode arm, keyed on the ROW'S MODE,
+       with the match OUTSIDE the ∀ P so WRITE-RELAY-3's [TB] guard fits in
+       front of the chain on both arms *)
+    | FdOpen _ true (FdInode i γo OffParked) => awrite_chain … n Q 0 (wchunks n)
+    | FdOpen _ true (FdInode i γo OffHeld)   =>
+        (∃ off0 : nat, uoff γo off0 ∗ awrite_chain_anch … n Q 0 (wchunks n) off0)
+        ∨ (awrite_chain … n Q 0 (wchunks n) ∗ app_taint)
+
+and THE FIRE DOES NOT MOVE.  At the coupled box the kernel agrees, feeds
+`iLeft`, fires, and settles with `off_supply_held` — whose post this lane
+already landed at `pipe_wpost`'s shape, `uoff γo (off + d) ∨ (uoff γo off ∗
+app_taint)`.  At a DISCONNECTED box it feeds the box's own `app_taint` into
+the anchor's right arm (the node goes to its claim's taint arm), fires, and
+settles with `off_supply_taint`.  The generic tier pays the RIGHT arm of the
+contract (4), and `awrite_chain`'s own `awrite_chain_unit` is what builds it.
+The loop carries `uoff γo (off + |bs|)` out of the post into the next node's
+anchor, which is `off0 + wchunk_at n k` — the value the fixpoint already
+names.
+
+THE READ SIDE NEEDS NO ANCHOR AT ALL, and that is worth saying separately:
+`FsAbsReadFire.aread_commit_at` REPORTS the offset to the client's receipt
+(`F.(pf_recv) av off a d`), so the program learns `off` from the POST rather
+than inside the commit.  Its held arm is therefore
+
+    | FdOpen true _ (FdInode i γo OffHeld) =>
+        (∃ off0 : nat, uoff γo off0 ∗ pf_at (aread_commit_at …) F)
+        ∨ (pf_at (aread_commit_at …) F ∗ app_taint)
+
+with `read_arms`' fired arm gaining `⌜off = off0⌝ ∗ uoff γo (off + d)` (the
+kernel's own agreement, reported) or the taint with the payment back.  That is
+exactly CAT-ENTRY-2's `Hpin`: from `Hold p := ufd … ∗ uoff γo p ∗ fdq …` the
+read reports `off = p` and hands `uoff γo (p + count)` back.
+
+**WHAT REMAINS, in the order it must be done, with its price.**
+
+- (a) the two arms above, their `_of_*` readings, and the two fire sites
+  casing on the row's mode.  The arms are cheap (`Spec*` files, small cones);
+  the WRITE fire site is not, because `ProofFilewrite`'s loop invariant has to
+  carry `uoff γo (current offset)` and the anchored chain across iterations —
+  that is the one piece of real surgery left in this campaign, and it is a
+  lane of its own.  The READ fire site is a single commit and is cheap.
+- (b) L2 (`fpnames.fp_om`) — the recipe in lane OFF-LINK's REFUTED 3 is exact
+  and was re-walked here; it lands WITH (a) because the moment the pin moves,
+  `ProofFilewrite.v:5016` and its read twin must case on the mode and take the
+  held row's supplier off the contract's arm.
+- (c) L4 (the mint) — `ProofSysOpenPub` at `off_pub_hand_0` with the receipt
+  carrying `uoff g 0` and `fp_om` set to match, and `usys_fd_ok`'s open arm's
+  `fdst_parked` relaxed to the caller's family's mode.  Nothing depends on
+  the pin any more (lane OFF-LINK-2 deleted `usys_fd_ok_parked`), and the
+  generic Löb needs nothing: open moves one row of the table, not the
+  discipline.
+- (d) L5 — the held deposit suppliers are the landed parked ones at
+  `FdOpen _ _ (FdInode i γo OffHeld)` carrying `uoff γo off` into the held
+  arm; `UkReadFile.wp_uk_ecall_read_file` / `UkWriteFile.wp_uk_ecall_write_file`
+  and the ledger-slot `wp_uk_ecall_write_std` DO NOT MOVE (they are already
+  state-generic), so L5 is two deposits, one deed corollary
+  (`wp_uk_read_deed_learns_held`, the landed `_mapped` one with `⌜off = p⌝`
+  from the post) and `UEchoFile`'s `ef_node`/`ef_chain` re-instantiated at
+  `awrite_chain_anch`.
+
+**WHAT ECHO-FILE / CAT-GEOM-2 / SH-ROUND APPLY, as of this lane.**
+- Everything lane OFF-LINK-2 listed still holds: the generic tier is told
+  nothing about offsets, the box may be disconnected, `Hoff_link` /
+  `Hdep1` / `Hwrite1` are discharged.
+- The write side's program obligation is now NAMED: `UEchoFile.ef_node` is to
+  be stated at `awrite_full_anch` (the anchor arrow in front of the phases),
+  and its `⌜off = off0⌝` comes from the KERNEL, not from an agreement inside
+  the node — so `efq`'s cursor need not hold `uoff` at all, which is one
+  linear resource fewer in echo's chain.
+- cat's read obligation is unchanged in shape and gains the two conjuncts
+  above on the fired arm.

@@ -440,9 +440,11 @@ five at `file_led`), `Happ_init` = `file_init_img`, `al_xfer` =
 The line `echo a b > f` lexes to `echo`, `a`, `b`, `>`, `f`; `parseexec`
 calls `parseredirs` after every token, so after `b` the tree becomes
 `URedir (UExec [echo;a;b]) "f" 0x601 1`; `nulterminate` NULs the file
-name.  `UkShRun.ush_simple` admits one top-level `URedir` over an
-`UExec` (the two arms that move the descriptor table were refuted only
-because the walk did not carry the ledger — it does now).  The REDIR arm
+name.  `UkShRedir.ush_top` is the scope one level wider than
+`UkShRun.ush_simple`: one top-level `URedir` over a simple tree (the two
+arms that move the descriptor table were refuted only because the walk
+did not carry the ledger; a structural `Fixpoint` cannot say "at the top
+and nowhere deeper", so the widening is a layer, not an edit).  The REDIR arm
 is `close(1); open(file, mode) < 0 → fprintf(2, "open %s failed\n"); exit(1)
 | runcmd(sub)`; the open is a CALL PREMISE of the walk (user-heap.md's
 "a call can be a premise"), instantiated by the application's supplier

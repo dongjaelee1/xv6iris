@@ -280,6 +280,23 @@ premise, the holder's half in hand):
   of the claim kept building; the fd arm then reads `fown r (Some (i,
   []))` alone.  Way (i), the kernel restatement of `acre_commit_at_gen`,
   is not taken.
+  F-OPEN-5 LANDED it (the escrow is a `mono_list` ledger of one-shots
+  inside the claim, the tie to the lookup piece PERSISTENT because the
+  syscall's fold drops the lookup receipt on two arms; the fd arm is
+  `fown r (Some (i, [])) ∨ file_taint c`; the wrapper's premises are
+  unchanged, it parks and returns the escrow itself).  ONE residue, and
+  it must close because the child's `exec /echo` cannot pay a write to a
+  device: `open_post_ok_create`'s EXISTS-DEVICE sub-arm carries the
+  permit only through `cre_trunc_kept`'s refund, so the STATEMENT admits
+  "a found DEVICE and the permit paid with create's FRESH receipt".
+  RULED (2026-09-17): close it kernel-side by F-OPEN-5's way (ii) — the
+  EXISTS arm says which branch of the permit it paid (at a truncating
+  create `cre_rcpt_kept` keeps the EXISTS receipt beside the permit
+  instead of spending it whole), and the FRESH arm's observation is the
+  create's own locked inode (xv6's `create` returns it locked and
+  `sys_open` type-checks it before unlocking), so a FRESH-paid permit
+  never meets a device observation.  Lane F-OPEN-6, small; then `K ty`
+  is the single INODE arm.
 - **append** (echo's chunk `j`, `awrite_full_at`'s `wri_pre av i off bs
   bs0 nl` with `off = |bs0|` — §3 on why the offset is known): `Some bs0
   → Some (bs0 ++ chunk_j)`; echo's own proof carries the words and the
@@ -451,6 +468,26 @@ member.  FOUR coupled facts, each adopted as a ruling:
    `usys_fd_ok`'s read/write rows advancing a held row (and the tierless
    `sysc_fd_ok`) → dup/fork parking → the hand-mode open leaf and the
    held read/write leaves → deletion of the dead carrier premises.
+   OFF-HAND-6 LANDED the state, the bundle, the boundary park without a
+   user deposit, and the deletion of the exec row on both arms (the
+   crossing is free at every mode), with three corrections adopted as
+   rulings: (a) NO contract mode-split — the fires take an abstract
+   offset supplier and `FdPark.off_supply_of_st_at_eq` serves both modes
+   from the row alone (the row goes in, comes back ADVANCED by
+   `FdSlots.fdst_adv`), so `fileread_in`/`filewrite_in` do not move; (b)
+   `fpnames` gains NOTHING — the pin that replaces `fdstate_ok`'s
+   `OffParked` is the REFERENCE COUNT (`file_pay_st` gains `¬ fdst_parked
+   st -> q = 1`, so two shares refute held and `fdstate_ok_inj` closes at
+   parked; `file_pay_st_split` takes `fdst_parked st`); (c) the pin's
+   removal and `usys_fd_ok`'s read/write row are ONE change (the two
+   syscalls LEND the row to the fire and re-record it advanced:
+   `sts' = <[fd := fdst_adv (sts !!! fd) d]> sts`; `usys_fd_ok_quiet`'s
+   twenty sites, `sysc_fd_ok`/`ut_fd_ecall`, `sys_read_out`/`sys_write_out`
+   returning `foff_row (fdst_adv st d)`, `file_ref` retyped, the generic
+   Löb absorbing a changing successor table), then H4's park applies the
+   now premise-free `fd_frags_park_at`, and H5's open leaf switches the
+   publish to `off_pub_hand_0` once `usys_fd_ok`'s open arm drops
+   `fdst_parked`.  Lane OFF-HAND-7.
 
 ## 4. The console side: the stage carries the era's boot state, the ledger the line list
 

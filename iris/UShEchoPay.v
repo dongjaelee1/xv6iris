@@ -258,7 +258,7 @@ Section UShEchoPayGen.
     rewrite /UkShEcho.sh_exec_sup_echo_wq. iIntros "!>" (I) "%Hokws".
     rewrite /UkShEcho.sh_exec_sup_echo.
     iIntros "!>" (N' m pc s0 t g ld)
-      "%Hpeq %Hheq %Ha0 %Ha1 %Hbytes %Hfd1 Hstd #Hcmd Hcr".
+      "%Hpeq %Ha0 %Ha1 %Hbytes %Hfd1 Hstd #Hcmd Hcr".
     (* the lend, opened: the era's pin, the block-owed family and the
        resource that rides beside it *)
     iDestruct (Hwc3 I with "Hcr") as (v) "(#Hpin & Hcr & HR)".

@@ -374,7 +374,7 @@ Section ProofSysOpenShared.
     fd_slot -∗
     P (length (path_elems pl)) i -∗
     so_obs Fo i n -∗
-    open_trunc_piece (fs_gamma_L fsc_fs) vom Ft -∗
+    open_trunc_at (fs_gamma_L fsc_fs) vom i Ft -∗
     open_arms_plain (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) gf pj pidv
            Mim pvv vom
       P Pmiss Fo Ft sts U r.
@@ -405,7 +405,7 @@ Section ProofSysOpenShared.
     fd_slot -∗
     namei_walk_dead_era fsc_fs P Pmiss pl -∗
     pf_at (aopen_commit_at (fs_gamma_L fsc_fs) appE) Fo -∗
-    open_trunc_piece (fs_gamma_L fsc_fs) vom Ft -∗
+    open_trunc_piece (fs_gamma_L fsc_fs) vom trunc_permit_triv Ft -∗
     open_arms_plain (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) gf pj pidv
            Mim pvv vom
       P Pmiss Fo Ft sts U r.
@@ -463,7 +463,7 @@ Section ProofSysOpenShared.
     P (length (path_elems pl)) i -∗
     (∃ av : aview, ⌜arow_at av i (MkAnode (ADev ma mi) nl)⌝
                    ∗ Fo.(pf_recv) av i (MkAnode (ADev ma mi) nl)) -∗
-    open_trunc_piece (fs_gamma_L fsc_fs) vom Ft -∗
+    open_trunc_at (fs_gamma_L fsc_fs) vom i Ft -∗
     (∀ r : mword 64,
        open_fd_ok gf pj pidv U (om_readable vom) (om_writable vom)
          (FdDevice ma) sts r -∗
@@ -550,7 +550,7 @@ Section ProofSysOpenShared.
     P (length (path_elems pl)) i -∗
     (∃ av : aview, ⌜arow_at av i (MkAnode (ADir ents) nl)⌝
                    ∗ Fo.(pf_recv) av i (MkAnode (ADir ents) nl)) -∗
-    open_trunc_piece (fs_gamma_L fsc_fs) vom Ft -∗
+    open_trunc_at (fs_gamma_L fsc_fs) vom i Ft -∗
     (∀ r : mword 64,
        open_fd_ok gf pj pidv U (om_readable vom) (om_writable vom)
          (FdInode i γo OffParked) sts r -∗
@@ -591,7 +591,7 @@ Section ProofSysOpenShared.
      \/ bv_unsigned (di_type dn) = FsImg.T_DEVICE_z) ->
     P (length (path_elems pl)) i -∗
     so_obs Fo i (era_node dn bm data) -∗
-    open_trunc_piece (fs_gamma_L fsc_fs) vom Ft -∗
+    open_trunc_at (fs_gamma_L fsc_fs) vom i Ft -∗
     (∀ r : mword 64,
        open_fd_ok gf pj pidv U (om_readable vom) (om_writable vom) t sts r -∗
        open_post_ok_plain (fs_gamma_L fsc_fs) gf pj pidv Mim pvv vom P Fo Ft sts U r).

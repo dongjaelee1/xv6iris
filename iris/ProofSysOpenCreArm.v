@@ -143,7 +143,11 @@ Section ProofSysOpenCreArm.
 
   (* ARM C-OK's payout, plus the two commits [SysOpenDefs]'s FRESH arms
      refund and the inum bound they assert. *)
-  Definition socr_fresh (P : nat -> Z -> iProp Σ)
+  (* THE RESIDUE IS AT THE CALLER'S OWN MODE (lane F-OPEN-3), because a
+     TRUNCATING open pays the truncate's permit out of exactly these: the
+     walk's terminal cursor and create's own fired receipt.  At
+     [om_trunc vom = false] the residue is what it always was. *)
+  Definition socr_fresh (vom : mword 64) (P : nat -> Z -> iProp Σ)
       (Phiarm Phiun : pfam Σ (aview -> Z -> iProp Σ))
       (Phiok Phiex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
       (Phio : pfam Σ (aview -> Z -> anode -> iProp Σ))
@@ -152,8 +156,8 @@ Section ProofSysOpenCreArm.
        ⌜list_basics.last (path_elems pl) = Some nm⌝ ∗
        ⌜cre_pre av d nm ents nl i0 (AFile [])⌝ ∗
        ⌜0 < i0 < 16 * Z.of_nat icfg_nib⌝ ∗
-       P (length (npar_elems pl)) d ∗
-       Phiok.(pf_recv) av d nm i0 ∗
+       cre_cur_kept vom P (length (npar_elems pl)) d ∗
+       cre_rcpt_kept vom Phiok av d nm i0 ∗
        pf_at (dlookup_commit_at (fs_gamma_L fsc_fs) appE) Phiex ∗
        pf_at (aopen_commit_at (fs_gamma_L fsc_fs) appE) Phio ∗
        (* THE TRUNC COMMIT DOES NOT RIDE HERE ANY MORE: the tail runs at the
@@ -168,7 +172,7 @@ Section ProofSysOpenCreArm.
   (* ARM F-OK's payout: the exists observation fired, the create commit
      refunded.  Both of open's own commits are SPENT by the tail on this
      flavour, so neither rides here. *)
-  Definition socr_exists (P : nat -> Z -> iProp Σ)
+  Definition socr_exists (vom : mword 64) (P : nat -> Z -> iProp Σ)
       (Phiarm Phiun : pfam Σ (aview -> Z -> iProp Σ))
       (Phiok Phiex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
       (pl : list (bv 8)) (i0 : Z) : iProp Σ :=
@@ -176,12 +180,155 @@ Section ProofSysOpenCreArm.
        ⌜list_basics.last (path_elems pl) = Some nm⌝ ∗
        ⌜av !! d = Some (MkAnode (ADir ents) nl)⌝ ∗
        ⌜ents !! nm = Some i0⌝ ∗
-       P (length (npar_elems pl)) d ∗
-       Phiex.(pf_recv) av d nm i0 ∗
+       cre_cur_kept vom P (length (npar_elems pl)) d ∗
+       cre_rcpt_kept vom Phiex av d nm i0 ∗
        pf_at (acre_commit_at (fs_gamma_L fsc_fs) appE (AFile [])
                 (P (length (npar_elems pl))) Phiarm) Phiok ∗
-       (* the name was already there: create's child legs are whole *)
-       cre_child_unfired (fs_gamma_L fsc_fs) (AFile []) Phiarm Phiun)%I.
+       (* the name was already there: create's child legs are whole -- and
+          at a TRUNCATING open the ARM's went into the permit *)
+       cre_child_kept (fs_gamma_L fsc_fs) vom Phiarm Phiun)%I.
+
+  (* THE FAMILY THE TAIL RUNS AT on this surface: the caller's own, with
+     the permit kept on the refund side, so an arm that does not fire the
+     truncate hands back what the permit was paid with
+     ([SysOpenDefs.cre_ft_kept]). *)
+  Definition socr_ft (pl : list (bv 8)) (P : nat -> Z -> iProp Σ)
+      (Phiarm : pfam Σ (aview -> Z -> iProp Σ))
+      (Phiok Phiex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
+      (i0 : Z) (Phit : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ))
+      : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ) :=
+    cre_ft_kept (cre_permit (fs_gamma_L fsc_fs) pl P Phiarm Phiok Phiex)
+      i0 Phit.
+
+  (* the tail's family and the caller's are the same RECEIPT, and the
+     piece at it is the post's own slot: both by [reflexivity], and both
+     named because the definitions are sealed for [iFrame]'s sake *)
+  Lemma socr_ft_recv (pl : list (bv 8)) (P : nat -> Z -> iProp Σ)
+      (Phiarm : pfam Σ (aview -> Z -> iProp Σ))
+      (Phiok Phiex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
+      (i0 : Z) (Phit : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ)) :
+    (socr_ft pl P Phiarm Phiok Phiex i0 Phit).(pf_recv) = Phit.(pf_recv).
+  Proof using . reflexivity. Qed.
+
+  Lemma socr_ft_kept (vom : mword 64) (pl : list (bv 8))
+      (P : nat -> Z -> iProp Σ)
+      (Phiarm : pfam Σ (aview -> Z -> iProp Σ))
+      (Phiok Phiex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
+      (i0 : Z) (Phit : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ)) :
+    open_trunc_at (fs_gamma_L fsc_fs) vom i0
+      (socr_ft pl P Phiarm Phiok Phiex i0 Phit)
+    = cre_trunc_kept (fs_gamma_L fsc_fs) vom pl P Phiarm Phiok Phiex i0 Phit.
+  Proof using . reflexivity. Qed.
+
+  (* ================================================================== *)
+  (*  2b.  PAYING THE TRUNCATE'S PERMIT (lane F-OPEN-3)                   *)
+  (*                                                                     *)
+  (*  This is the ONE place the permit is paid, and it is the only place  *)
+  (*  that can pay it: create has just returned a node, so the walk's     *)
+  (*  terminal cursor, the tie and whichever of the two arms ran are all  *)
+  (*  in hand, and everything below the join only ever needs the commit   *)
+  (*  AT THAT INUM ([SysOpenDefs.open_trunc_at]).  What the permit takes  *)
+  (*  is exactly what the residue then stops carrying, which is why the   *)
+  (*  two are built by one lemma.                                        *)
+  (* ================================================================== *)
+
+  Lemma socr_fresh_key `{GEN : GenId} (vom : mword 64) (P : nat -> Z -> iProp Σ)
+      (Phiarm Phiun : pfam Σ (aview -> Z -> iProp Σ))
+      (Phiok Phiex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
+      (Phio : pfam Σ (aview -> Z -> anode -> iProp Σ))
+      (Phit : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ))
+      (pl : list (bv 8)) (i0 d : Z) (nm : fname) (av : aview)
+      (ents : gmap fname Z) (nl : nat) :
+    list_basics.last (path_elems pl) = Some nm ->
+    cre_pre av d nm ents nl i0 (AFile []) ->
+    0 < i0 < 16 * Z.of_nat icfg_nib ->
+    P (length (npar_elems pl)) d -∗
+    Phiok.(pf_recv) av d nm i0 -∗
+    pf_at (dlookup_commit_at (fs_gamma_L fsc_fs) appE) Phiex -∗
+    pf_at (aopen_commit_at (fs_gamma_L fsc_fs) appE) Phio -∗
+    pf_at (aunarm_of_arm (fs_gamma_L fsc_fs) appE Phiarm) Phiun -∗
+    open_trunc_piece (fs_gamma_L fsc_fs) vom
+      (trunc_permit_of (fs_gamma_L fsc_fs) (trunc_tie_at pl P)
+         Phiarm Phiok Phiex) Phit -∗
+    socr_fresh vom P Phiarm Phiun Phiok Phiex Phio pl i0
+    ∗ open_trunc_at (fs_gamma_L fsc_fs) vom i0
+        (socr_ft pl P Phiarm Phiok Phiex i0 Phit).
+  Proof using .
+    intros Hl Hpre Hib. iIntros "HP HPhi Hdl Hoc Hun Htc".
+    rewrite /socr_ft.
+    iAssert (socr_fresh vom P Phiarm Phiun Phiok Phiex Phio pl i0
+             ∗ (if om_trunc vom
+                then cre_permit (fs_gamma_L fsc_fs) pl P Phiarm Phiok Phiex i0
+                else emp))%I with "[HP HPhi Hdl Hoc Hun]" as "[HR Hk]".
+    { rewrite /socr_fresh /cre_cur_kept /cre_rcpt_kept.
+      destruct (om_trunc vom).
+      - iSplitR "HP HPhi".
+        { iExists d, nm, av, ents, nl.
+          iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
+          iSplitR; [by iPureIntro |]. iSplitR; [done |]. iSplitR; [done |].
+          iFrame "Hdl Hoc Hun". }
+        rewrite /cre_permit /trunc_permit_of /trunc_tie_at. iExists d, nm.
+        iSplitL "HP"; [ iSplitR; [by iPureIntro | iExact "HP"] |].
+        iLeft. rewrite /cre_acre_fired. iExists av, ents, nl.
+        iSplitR; [by iPureIntro |]. iExact "HPhi".
+      - iSplitL; [| done]. iExists d, nm, av, ents, nl.
+        iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
+        iSplitR; [by iPureIntro |]. iFrame "HP HPhi Hdl Hoc Hun". }
+    iFrame "HR".
+    iApply (open_trunc_at_of_permit (fs_gamma_L fsc_fs) vom
+              (cre_permit (fs_gamma_L fsc_fs) pl P Phiarm Phiok Phiex) i0 Phit
+              with "Htc Hk").
+  Qed.
+
+  Lemma socr_exists_key `{GEN : GenId} (vom : mword 64) (P : nat -> Z -> iProp Σ)
+      (Phiarm Phiun : pfam Σ (aview -> Z -> iProp Σ))
+      (Phiok Phiex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
+      (Phit : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ))
+      (pl : list (bv 8)) (i0 d : Z) (nm : fname) (av : aview)
+      (ents : gmap fname Z) (nl : nat) :
+    list_basics.last (path_elems pl) = Some nm ->
+    av !! d = Some (MkAnode (ADir ents) nl) ->
+    ents !! nm = Some i0 ->
+    P (length (npar_elems pl)) d -∗
+    Phiex.(pf_recv) av d nm i0 -∗
+    pf_at (acre_commit_at (fs_gamma_L fsc_fs) appE (AFile [])
+             (P (length (npar_elems pl))) Phiarm) Phiok -∗
+    cre_child_unfired (fs_gamma_L fsc_fs) (AFile []) Phiarm Phiun -∗
+    open_trunc_piece (fs_gamma_L fsc_fs) vom
+      (trunc_permit_of (fs_gamma_L fsc_fs) (trunc_tie_at pl P)
+         Phiarm Phiok Phiex) Phit -∗
+    socr_exists vom P Phiarm Phiun Phiok Phiex pl i0
+    ∗ open_trunc_at (fs_gamma_L fsc_fs) vom i0
+        (socr_ft pl P Phiarm Phiok Phiex i0 Phit).
+  Proof using .
+    intros Hl Hrow Hent. iIntros "HP HPhi Hac Hcl Htc".
+    rewrite /socr_ft /cre_child_unfired.
+    iDestruct "Hcl" as "[Harm Hun]".
+    iAssert (socr_exists vom P Phiarm Phiun Phiok Phiex pl i0
+             ∗ (if om_trunc vom
+                then cre_permit (fs_gamma_L fsc_fs) pl P Phiarm Phiok Phiex i0
+                else emp))%I with "[HP HPhi Hac Harm Hun]" as "[HR Hk]".
+    { rewrite /socr_exists /cre_cur_kept /cre_rcpt_kept /cre_child_kept.
+      destruct (om_trunc vom).
+      - iSplitR "HP HPhi Harm".
+        { iExists d, nm, av, ents, nl.
+          iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
+          iSplitR; [by iPureIntro |]. iSplitR; [done |]. iSplitR; [done |].
+          iFrame "Hac Hun". }
+        rewrite /cre_permit /trunc_permit_of /trunc_tie_at. iExists d, nm.
+        iSplitL "HP"; [ iSplitR; [by iPureIntro | iExact "HP"] |].
+        iRight. iSplitR "Harm"; [| iExact "Harm" ].
+        rewrite /cre_ex_fired. iExists av, ents, nl.
+        iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
+        iExact "HPhi".
+      - iSplitL; [| done]. iExists d, nm, av, ents, nl.
+        iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
+        iSplitR; [by iPureIntro |]. iFrame "HP HPhi Hac Harm Hun". }
+    iFrame "HR".
+    iApply (open_trunc_at_of_permit (fs_gamma_L fsc_fs) vom
+              (cre_permit (fs_gamma_L fsc_fs) pl P Phiarm Phiok Phiex) i0 Phit
+              with "Htc Hk").
+  Qed.
 
   (* ================================================================== *)
   (*  3.  THE TWO OBSERVATION SEEDS                                      *)
@@ -231,7 +378,10 @@ Section ProofSysOpenCreArm.
            ∗ (pf_at (aopen_commit_at (fs_gamma_L fsc_fs) appE) Phio
               ∨ (∃ (i : Z) (av : aview) (a : anode),
                    ⌜arow_at av i a⌝ ∗ Phio.(pf_recv) av i a))
-           ∗ open_trunc_piece (fs_gamma_L fsc_fs) vom Phit.
+           (* the piece comes home KEYED at the node the call reached: the
+              two arms above the join carry the plain surface's own
+              (trivially permitted) piece, which keys for nothing *)
+           ∗ open_trunc_at (fs_gamma_L fsc_fs) vom i0 Phit.
   Proof using .
     intros Hpl0.
     rewrite /open_post_fail_plain /socr_P /socr_Pm.
@@ -243,19 +393,23 @@ Section ProofSysOpenCreArm.
       rewrite /FsAbsEra.ex_start.
       iMod ("Hst" $! (FsAbsEra.um_start_of cw pl0) with "[//]") as "[HP _]".
       iDestruct "HP" as "[_ HR]".
+      iDestruct (open_trunc_at_of_triv (fs_gamma_L fsc_fs) vom i0 Phit
+                   with "Htc") as "Htc".
       iModIntro. iFrame "HR Htc". by iLeft.
     - iDestruct "H" as (pl) "[_ [Hd | Hf]]".
       + iDestruct "Hd" as "(Hdead & Hoc & Htc)".
         rewrite /namei_walk_dead_era.
+        iDestruct (open_trunc_at_of_triv (fs_gamma_L fsc_fs) vom i0 Phit
+                     with "Htc") as "Htc".
         iDestruct "Hdead" as (k d) "(_ & [[HP _] | [HPm _]])".
         * iDestruct "HP" as "[_ HR]".
           iModIntro. iFrame "HR Htc". by iLeft.
         * iModIntro. iFrame "HPm Htc". by iLeft.
       + iDestruct "Hf" as (i) "(HP & Hobs & Htc)".
-        iDestruct "HP" as "[_ HR]".
+        iDestruct "HP" as "[%Hii HR]". subst i.
         iDestruct "Hobs" as (av a) "[%Hav HPhi]".
         iModIntro. iFrame "HR Htc". iRight.
-        iExists i, av, a. iSplitR; [by iPureIntro |]. iExact "HPhi".
+        iExists i0, av, a. iSplitR; [by iPureIntro |]. iExact "HPhi".
   Qed.
 
   (* ================================================================== *)
@@ -336,7 +490,7 @@ Section ProofSysOpenCreArm.
               ⌜arow_at av i0 (MkAnode (ADev ma mi) nl)⌝ ∗
               ⌜0 <= ma <= NDEV_max⌝ ∗
               Phio.(pf_recv) av i0 (MkAnode (ADev ma mi) nl) ∗
-              open_trunc_piece (fs_gamma_L fsc_fs) vom Phit ∗
+              open_trunc_at (fs_gamma_L fsc_fs) vom i0 Phit ∗
               open_fd_ok gf pj pidv U (om_readable vom) (om_writable vom)
                 (FdDevice ma) sts r)).
   Proof using .
@@ -374,10 +528,10 @@ Section ProofSysOpenCreArm.
     arg_path_of Mim pvv pl ->
     open_arms_plain (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) gf pj pidv
       Mim pvv vom
-      (socr_P (socr_fresh P Phiarm Phiun Phiok Phiex Phio pl i0) i0)
-      (socr_Pm (socr_fresh P Phiarm Phiun Phiok Phiex Phio pl i0))
+      (socr_P (socr_fresh vom P Phiarm Phiun Phiok Phiex Phio pl i0) i0)
+      (socr_Pm (socr_fresh vom P Phiarm Phiun Phiok Phiex Phio pl i0))
       (socr_Phio_pure i0 (MkAnode (AFile []) nl0))
-      Phit sts U r
+      (socr_ft pl P Phiarm Phiok Phiex i0 Phit) sts U r
     ={⊤}=∗ open_arms_create (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) gf pj pidv
              Mim pvv vom
              P Pmiss Phiarm Phiun Phiok Phiex Phio Phit sts U r.
@@ -397,11 +551,14 @@ Section ProofSysOpenCreArm.
       iDestruct "HR" as (d nm av ents nl)
         "(%Hl & %Hpre & %Hib & HP & HPhi & Hdl & Hoc & Hun)".
       iRight. iExists pl. iSplitR; [by iPureIntro |].
-      iRight. iExists d. iFrame "HP Htc".
+      iRight. iExists d. iFrame "HP".
       iLeft. iExists av, i0, nm, ents, nl.
       iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
-      iSplitR; [by iPureIntro |]. iFrame "HPhi Hdl Hoc Hun".
+      iSplitR; [by iPureIntro |].
+      iEval (rewrite /socr_ft) in "Htc". rewrite /cre_trunc_kept.
+      iFrame "HPhi Hdl Hoc Htc Hun".
     - iDestruct (socr_ok_fresh_arm with "Hok") as "(HR & Htr & Hfd)".
+      iEval (rewrite socr_ft_recv) in "Htr".
       rewrite /socr_fresh.
       iDestruct "HR" as (d nm av ents nl)
         "(%Hl & %Hpre & %Hib & HP & HPhi & Hdl & Hoc & Hun)".
@@ -426,9 +583,10 @@ Section ProofSysOpenCreArm.
     (forall (ents : gmap fname Z) (nl : nat), a0 <> MkAnode (ADir ents) nl) ->
     open_arms_plain (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) gf pj pidv
       Mim pvv vom
-      (socr_P (socr_exists P Phiarm Phiun Phiok Phiex pl i0) i0)
-      (socr_Pm (socr_exists P Phiarm Phiun Phiok Phiex pl i0))
-      (socr_Phio_tag i0 a0 Phio) Phit sts U r
+      (socr_P (socr_exists vom P Phiarm Phiun Phiok Phiex pl i0) i0)
+      (socr_Pm (socr_exists vom P Phiarm Phiun Phiok Phiex pl i0))
+      (socr_Phio_tag i0 a0 Phio)
+      (socr_ft pl P Phiarm Phiok Phiex i0 Phit) sts U r
     ={⊤}=∗ open_arms_create (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) gf pj pidv
              Mim pvv vom
              P Pmiss Phiarm Phiun Phiok Phiex Phio Phit sts U r.
@@ -444,11 +602,13 @@ Section ProofSysOpenCreArm.
       iDestruct "HR" as (d nm av ents nl)
         "(%Hl & %Hrow & %Hent & HP & HPhi & Hac & Hcl)".
       iRight. iExists pl. iSplitR; [by iPureIntro |].
-      iRight. iExists d. iFrame "HP Htc".
+      iRight. iExists d. iFrame "HP".
       iRight. iLeft. iExists av, i0, nm, ents, nl.
       iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
       iSplitR; [by iPureIntro |]. iFrame "HPhi Hac".
-      iSplitL "Hcl"; [iLeft; iExact "Hcl" |].
+      iSplitL "Htc Hcl".
+      { iEval (rewrite /socr_ft) in "Htc".
+        iApply (cre_fail_kept_of_at with "Htc Hcl"). }
       iDestruct "Hob" as "[Hoc | Hfired]".
       + (* THE TAG COMES OFF THE RECEIPT AND THE REFUND IS UNTOUCHED: both
            pairs carry [Phio]'s own refund, so the equation is [eq_refl]
@@ -466,9 +626,11 @@ Section ProofSysOpenCreArm.
         iDestruct "Hfired" as (ix avx ax) "(%Hax & [%Heq HP2])".
         destruct Heq as [Hix _]. subst ix.
         iExists avx, ax. iSplitR; [by iPureIntro |]. iExact "HP2".
-    - iDestruct (socr_ok_exists_arm (socr_exists P Phiarm Phiun Phiok Phiex pl i0)
-                   i0 a0 Phio Phit gf pj pidv Mim pvv vom U sts r Hnd with "Hok")
+    - iDestruct (socr_ok_exists_arm (socr_exists vom P Phiarm Phiun Phiok Phiex pl i0)
+                   i0 a0 Phio (socr_ft pl P Phiarm Phiok Phiex i0 Phit)
+                   gf pj pidv Mim pvv vom U sts r Hnd with "Hok")
         as "[HR Hrest]".
+      iEval (rewrite socr_ft_recv socr_ft_kept) in "Hrest".
       rewrite /socr_exists.
       iDestruct "HR" as (d nm av ents nl)
         "(%Hl & %Hrow & %Hent & HP & HPhi & Hac & Hcl)".
@@ -482,4 +644,4 @@ Section ProofSysOpenCreArm.
 
 End ProofSysOpenCreArm.
 
-Global Typeclasses Opaque socr_fresh socr_exists.
+Global Typeclasses Opaque socr_fresh socr_exists socr_ft.

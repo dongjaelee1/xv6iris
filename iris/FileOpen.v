@@ -460,6 +460,120 @@ Section FileOpen.
   Qed.
 
 
+  (* ---- 3e'.  WHAT THE CLAIM SAYS AT A VIEW NOBODY HOLDS A FRACTION AT
+
+     The truncate's EXISTS disjunct has to identify a row at the view
+     create's own [dirlookup] read, which is EARLIER than the [itrunc]'s
+     own instant and which no deed fraction reaches: the deed's half is in
+     the ARM's piece, where the create leg needs it WHOLE (its park at `f`
+     joins it with the claim's), and the pieces of a bundle are
+     [∗]-separated.  What IS readable there costs no fraction at all:
+     [file_pred]'s non-taint arm carries [⌜file_fs_pure av⌝] and, in BOTH
+     arms of [f_state], the TYPED witness of whatever state the claim is
+     at ([AppFile.f_typed]'s pure part).  Together they say: if the root
+     has an `f` at this view, its row is a file of FEWER THAN
+     [EchoDisc.line_max] bytes -- which is exactly the premise
+     [FileDeltas.f_inum_not_pinned] wants, so the truncate at that inum
+     cannot be one of the four era-0 binaries.  That is the whole content
+     of the dlookup family below, and it is why nothing LINEAR rides in
+     it. *)
+
+  Definition fclaim_free (v : aview) : Prop :=
+    file_fs_pure v /\
+    forall i : Z, astep v FsImg.ROOTINO fname_f = Some i ->
+      exists bs : list (bv 8),
+        v !! i = Some (MkAnode (AFile bs) 1%nat)
+        /\ (length bs < EchoDisc.line_max)%nat.
+
+  Lemma file_claim_read_free (γfs : fs_names) (c : file_fixed) (r : file_names)
+      (I : gmap Z fs_node) :
+    file_app = MkAppcfg file_names (file_pred c) r ->
+    app_inv γfs -∗
+    ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I ={appE}=∗
+      ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I ∗
+      (⌜fclaim_free (abs_view I)⌝ ∨ file_taint c).
+  Proof using .
+    intros Heq. iIntros "#Hinv Hka".
+    iMod (inv_acc appE appN with "Hinv") as "[Hbody Hclose]"; [ set_solver | ].
+    iEval (rewrite /app_body) in "Hbody".
+    iDestruct "Hbody" as (I') "(>Hh & Hp & >%Hdom & #Hx)".
+    iDestruct (ghost_map_auth_agree with "Hka Hh") as %<-.
+    iEval (rewrite Heq; cbn [app_pred app_run app_names]) in "Hp".
+    iDestruct "Hp" as ">Hp".
+    iAssert (file_pred c r (abs_view I)
+             ∗ (⌜fclaim_free (abs_view I)⌝ ∨ file_taint c))%I
+      with "[Hp]" as "[Hp Hres]".
+    { rewrite /file_pred.
+      iDestruct "Hp" as "[#Ht | (%Hpins & Hc & Hf)]".
+      { iSplitR; [ by iLeft |]. by iRight. }
+      iAssert (f_state c r (abs_view I)
+               ∗ ⌜fclaim_free (abs_view I)⌝)%I with "[Hf]" as "[Hf %Hfree]".
+      { rewrite /f_state.
+        iDestruct "Hf" as "[Hf | Hf]".
+        - iDestruct "Hf" as (s') "(Hd & Htk & #Hty & %Hok)".
+          iAssert (⌜fclaim_free (abs_view I)⌝)%I as "%Hfree".
+          { destruct s' as [[i0 bs0] |].
+            - rewrite /f_typed.
+              iDestruct "Hty" as (ls) "[_ %Hbt]". iPureIntro.
+              split; [ exact Hpins |]. intros i Hst.
+              destruct Hok as (Hst0 & Hrow0). rewrite Hst0 in Hst.
+              injection Hst as <-. exists bs0. split; [ exact Hrow0 |].
+              exact (f_bytes_typed_short ls bs0 Hbt).
+            - iPureIntro. split; [ exact Hpins |]. intros i Hst.
+              assert (Hab : astep (abs_view I) FsImg.ROOTINO fname_f = None)
+                by exact Hok.
+              rewrite Hab in Hst. discriminate. }
+          iSplitL; [| by iPureIntro ].
+          iLeft. iExists s'. iFrame "Hd Htk Hty". by iPureIntro.
+        - iDestruct "Hf" as (s0 s1) "(Hw & Htk & #Hty & %Hok)".
+          iAssert (⌜fclaim_free (abs_view I)⌝)%I as "%Hfree".
+          { destruct s1 as [[i0 bs0] |].
+            - rewrite /f_typed.
+              iDestruct "Hty" as (ls) "[_ %Hbt]". iPureIntro.
+              split; [ exact Hpins |]. intros i Hst.
+              destruct Hok as (Hst0 & Hrow0). rewrite Hst0 in Hst.
+              injection Hst as <-. exists bs0. split; [ exact Hrow0 |].
+              exact (f_bytes_typed_short ls bs0 Hbt).
+            - iPureIntro. split; [ exact Hpins |]. intros i Hst.
+              assert (Hab : astep (abs_view I) FsImg.ROOTINO fname_f = None)
+                by exact Hok.
+              rewrite Hab in Hst. discriminate. }
+          iSplitL; [| by iPureIntro ].
+          iRight. iExists s0, s1. iFrame "Hw Htk Hty". by iPureIntro. }
+      iSplitL "Hc Hf".
+      - iRight. iSplitR; [ by iPureIntro |]. iFrame "Hc Hf".
+      - iLeft. by iPureIntro. }
+    iMod ("Hclose" with "[Hh Hp]") as "_".
+    { iNext. rewrite /app_body. iExists I. iFrame "Hh Hx".
+      iSplitL; [| by iPureIntro ].
+      rewrite Heq. cbn [app_pred app_run app_names]. iExact "Hp". }
+    iModIntro. iFrame "Hka Hres".
+  Qed.
+
+  (* THE EXISTS OBSERVATION'S FAMILY: the pure reading above, at the view
+     create's [dirlookup] fired at.  Nothing linear -- see the note. *)
+  Definition file_dlk_recv (c : file_fixed)
+      : aview -> Z -> fname -> Z -> iProp Σ :=
+    fun (av : aview) (_ : Z) (_ : fname) (_ : Z) =>
+      (⌜fclaim_free av⌝ ∨ file_taint c)%I.
+
+  Definition file_dlk_fam (c : file_fixed)
+      : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ) :=
+    MkPfam (file_dlk_recv c) True%I.
+
+  Lemma file_dlk_piece (γfs : fs_names) (c : file_fixed) (r : file_names) :
+    file_app = MkAppcfg file_names (file_pred c) r ->
+    app_inv γfs -∗
+    pf_at (dlookup_commit_at (fs_gamma_L γfs) appE) (file_dlk_fam c).
+  Proof using .
+    intros Heq. iIntros "#Hinv". rewrite /pf_at. cbn [pf_recv pf_refund].
+    iSplit; [| done ].
+    rewrite /dlookup_commit_at. iIntros (I d i nm ents nl) "%Hd %Hnm Hka".
+    iMod (file_claim_read_free γfs c r I Heq with "Hinv Hka") as "[Hka Hres]".
+    iModIntro. iFrame "Hka". rewrite /file_dlk_fam /file_dlk_recv.
+    cbn [pf_recv]. iExact "Hres".
+  Qed.
+
   (* ---- 3f.  THE O_TRUNC LEG, KEYED TO THE CREATE'S OWN RECEIPT ----
 
      Lane F-OPEN stopped here and priced the seam; this is its
@@ -483,11 +597,16 @@ Section FileOpen.
      another name at the state it had, and at `f`'s own create at
      [Some (i, [])], which is where the parent leg already put it. *)
 
+  (* THE RECEIPT.  Three arms and they are the three runs: the deed did
+     not move (the truncate reached a row this claim does not name), the
+     deed is at `f` PRESENT AND EMPTY at the row the truncate reached
+     (create's own child on the FRESH run, `f`'s own row on the EXISTS
+     one), or the taint. *)
   Definition file_trunc_recv (c : file_fixed) (r : file_names) (s : dst)
       : aview -> Z -> list (bv 8) -> iProp Σ :=
     fun (_ : aview) (i : Z) (_ : list (bv 8)) =>
       (fown r s
-       ∨ (⌜s = None⌝ ∗ fown r (Some (i, [])))
+       ∨ fown r (Some (i, []))
        ∨ file_taint c)%I.
 
   Definition file_trunc_fam (c : file_fixed) (r : file_names) (s : dst)
@@ -569,8 +688,7 @@ Section FileOpen.
         - intros s' Hs'.
           rewrite (f_ok_det (abs_view I) s' (Some (i, [])) Hs' Hok). exact Hp4. }
       iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'".
-      rewrite /file_trunc_recv. iRight. iLeft.
-      iSplitR; [ by iPureIntro | ]. iFrame "Hd Ht".
+      rewrite /file_trunc_recv. iRight. iLeft. iFrame "Hd Ht".
     - (* ANY OTHER NAME: the deed is at [s] and stays there *)
       destruct Hfa as (_ & Hf0). destruct Hf0 as (Hok0 & Hpure0 & _).
       iMod (file_claim_read γfs c r jc s (1/2) I Heq
@@ -598,18 +716,166 @@ Section FileOpen.
      truncate hands the deed back through the CREATE's receipt
      ([SpecSysOpen.open_post_fail_create] arm (a)), so this piece owes
      nothing on that path. *)
-  Lemma file_trunc_piece (γfs : fs_names) (c : file_fixed) (r : file_names)
-      (jc : Z) (s : dst) :
+  (* ---- 3f'.  THE EXISTS DISJUNCT: `f` WAS THERE AND THE TRUNCATE MOVES IT
+
+     What the permit hands on this run is the exists observation's receipt
+     -- the pure reading of section 3e' at the view create's [dirlookup]
+     fired at -- BESIDE THE ARM PIECE THE RUN NEVER FIRED (create found
+     the name, so [ialloc] never ran), and [pf_at] is a conjunction, so
+     the piece's REFUND is the deed's whole half.  With the tie
+     ([d = ROOTINO] off the cursor, [nm = f] off the path's last element)
+     the lookup's view says the root's `f` is the row the truncate
+     reached, and the typed bound says that row is none of the four era-0
+     binaries.  The rest is the two-phase move at the deed's own value. *)
+  Lemma file_trunc_of_exists (γfs : fs_names) (c : file_fixed) (r : file_names)
+      (jc : Z) (s : dst) (ls : list wordline) (ws : wordline)
+      (i : Z) (avx : aview) (entsx : gmap fname Z) (nlx : nat) :
     file_app = MkAppcfg file_names (file_pred c) r ->
-    app_inv γfs -∗ cons_made (fn_cons r) jc -∗
+    avx !! FsImg.ROOTINO = Some (MkAnode (ADir entsx) nlx) ->
+    entsx !! fname_f = Some i ->
+    ws ∈ ls -> EchoDisc.line_ok ws ->
+    app_inv γfs -∗ cons_made (fn_cons r) jc -∗ fl_lb c ls -∗
+    (⌜fclaim_free avx⌝ ∨ file_taint c) -∗
+    fown r s -∗
+    atrunc_commit_i (fs_gamma_L γfs) appE i (file_trunc_recv c r s).
+  Proof using .
+    intros Heq Hrowx Hentx Hin Hokw. iIntros "#Hinv #Hm #Hlb Hfree [Hd Ht]".
+    rewrite /atrunc_commit_i. iIntros (I bs0 nl) "%Hrow Hka".
+    (* the lookup's view, read: the root's `f` is [i], and its row is a
+       SHORT file, so [i] is none of the four pinned binaries *)
+    iDestruct "Hfree" as "[%Hfree | #HT]"; last first.
+    { iModIntro. iFrame "Hka". iSplitR.
+      { iApply (file_app_step_taint c r i I _ Heq). iExact "HT". }
+      iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'".
+      rewrite /file_trunc_recv. iRight. iRight. iExact "HT". }
+    assert (Hstx : astep avx FsImg.ROOTINO fname_f = Some i)
+      by (rewrite /astep /aents Hrowx /= /anode_ents /=; exact Hentx).
+    destruct Hfree as (Hpurex & Hrowf).
+    destruct (Hrowf i Hstx) as (bsx & Hrowi & Hlenx).
+    destruct (f_inum_not_pinned avx i bsx Hpurex Hrowi Hlenx)
+      as (N1 & N2 & N3 & N4).
+    iMod (file_claim_read γfs c r jc s (1/2) I Heq with "Hinv Hm Hd Hka")
+      as "(Hka & Hd & [%Hf | #HT])"; last first.
+    { iModIntro. iFrame "Hka". iSplitR.
+      { iApply (file_app_step_taint c r i I _ Heq). iExact "HT". }
+      iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'".
+      rewrite /file_trunc_recv. iRight. iRight. iExact "HT". }
+    destruct Hf as (Hok & Hpure & Hcons).
+    (* the three legs the truncate at a NON-PINNED row always carries *)
+    assert (Hp1 : file_fs_pure (delta_trunc i (abs_view I)))
+      by exact (file_fs_pure_trunc_ne i (abs_view I) N1 N2 N3 N4 Hpure).
+    assert (Hp2 : cons_absent (abs_view I) ->
+                  cons_absent (delta_trunc i (abs_view I)))
+      by exact (cons_absent_trunc_any i (abs_view I)).
+    assert (Hp3 : forall j, cons_present_at j (abs_view I) ->
+                  cons_present_at j (delta_trunc i (abs_view I)))
+      by (intros j; exact (cons_present_trunc_any j i (abs_view I))).
+    destruct s as [[j bs] |]; last first.
+    - (* THE DEED SAYS `f` IS ABSENT: nothing of this claim is at [i], so
+         the truncate is free and the deed comes back unmoved. *)
+      iModIntro. iFrame "Hka". iSplitR "Hd Ht".
+      { iApply (file_app_step_free_at c r i I _ Heq).
+        - intros _. exact Hp1.
+        - exact Hp2.
+        - exact Hp3.
+        - intros s' Hs'. rewrite (f_ok_det (abs_view I) s' None Hs' Hok).
+          apply (f_ok_trunc_ne i (abs_view I) None); [| exact Hok].
+          intros j' bs' Hc. discriminate Hc. }
+      iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'".
+      rewrite /file_trunc_recv. iLeft. iFrame "Hd Ht".
+    - destruct (decide (j = i)) as [-> | Hne]; last first.
+      { (* the truncate reached some OTHER row: free, deed unmoved *)
+        iModIntro. iFrame "Hka". iSplitR "Hd Ht".
+        { iApply (file_app_step_free_at c r i I _ Heq).
+          - intros _. exact Hp1.
+          - exact Hp2.
+          - exact Hp3.
+          - intros s' Hs'.
+            rewrite (f_ok_det (abs_view I) s' (Some (j, bs)) Hs' Hok).
+            apply (f_ok_trunc_ne i (abs_view I) (Some (j, bs))); [| exact Hok].
+            intros j' bs' Hc. injection Hc as Hj _. rewrite -Hj.
+            exact (not_eq_sym Hne). }
+        iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'".
+        rewrite /file_trunc_recv. iLeft. iFrame "Hd Ht". }
+      (* THE ROW IS `f`'s OWN: the claim moves to the empty content *)
+      destruct (decide (bs = [])) as [-> | Hbs].
+      { (* it was empty already: the delta is the identity on the claim *)
+        iModIntro. iFrame "Hka". iSplitR "Hd Ht".
+        { iApply (file_app_step_free_at c r i I _ Heq).
+          - intros _. exact Hp1.
+          - exact Hp2.
+          - exact Hp3.
+          - intros s' Hs'.
+            rewrite (f_ok_det (abs_view I) s' (Some (i, [])) Hs' Hok).
+            exact (f_ok_trunc_nil i i (abs_view I) Hok). }
+        iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'".
+        rewrite /file_trunc_recv. iRight. iLeft. iFrame "Hd Ht". }
+      assert (Hp4 : f_ok (delta_trunc i (abs_view I)) (Some (i, [])))
+        by exact (f_ok_trunc_f i bs (abs_view I) Hok).
+      iModIntro. iFrame "Hka". iSplitL "Hd".
+      { iApply (file_app_step_park c r i I _ (Some (i, bs)) (Some (i, []))
+                  Heq (fun _ => Hp1) Hp2 Hp3 (fun _ => Hp4) with "Hd []").
+        rewrite -(subseq_nil (echo_chunks ws)).
+        iApply (f_typed_some c ls ws [] i Hin Hokw
+                  (sel_ok_nil (echo_chunks ws)) with "Hlb"). }
+      iIntros (I') "%Hav Hka'".
+      iMod (file_resync γfs c r (Some (i, bs)) (Some (i, [])) I' appE
+              ltac:(set_solver) Heq
+              ltac:(rewrite -(f_ok_fcontent (abs_view I') (Some (i, [])));
+                    [ reflexivity | rewrite Hav; exact Hp4 ])
+              ltac:(congruence)
+              with "Hinv Ht Hka'") as "(Hka' & Hres)".
+      iModIntro. iFrame "Hka'".
+      rewrite /file_trunc_recv.
+      iDestruct "Hres" as "[Hown | [_ #HT]]".
+      + iRight. iLeft. iExact "Hown".
+      + iRight. iRight. iExact "HT".
+  Qed.
+
+  (* ---- 3f''.  THE PIECE, AT THE PERMIT THE O_CREATE BUNDLE CARRIES ---- *)
+
+  Lemma file_trunc_piece (γfs : fs_names) (c : file_fixed) (r : file_names)
+      (jc : Z) (s : dst) (ls : list wordline) (ws : wordline)
+      (M : gmap Z (bv 8)) (pv : mword 64) (pl : list (bv 8)) :
+    file_app = MkAppcfg file_names (file_pred c) r ->
+    arg_path_of M pv pl ->
+    list_basics.last (path_elems pl) = Some fname_f ->
+    ws ∈ ls -> EchoDisc.line_ok ws ->
+    app_inv γfs -∗ cons_made (fn_cons r) jc -∗ fl_lb c ls -∗
     pf_at (atrunc_of_permit (fs_gamma_L γfs) appE
-             (trunc_permit_cre (file_cre_fam c r jc s)))
+             (trunc_permit_of (fs_gamma_L γfs)
+                (trunc_tie_arg M pv (fun (_ : nat) (d : Z) => ⌜d = ROOTINO⌝%I))
+                (file_arm_fam c r jc s) (file_cre_fam c r jc s)
+                (file_dlk_fam c)))
       (file_trunc_fam c r s).
   Proof using .
-    intros Heq. iIntros "#Hinv #Hm". rewrite /pf_at. cbn [pf_recv pf_refund].
+    intros Heq Hpath Hlast Hin Hokw. iIntros "#Hinv #Hm #Hlb".
+    rewrite /pf_at. cbn [pf_recv pf_refund].
     iSplit; [| done ].
     rewrite /atrunc_of_permit. iIntros (i) "Hperm".
-    iApply (file_trunc_of_cre γfs c r jc s i Heq with "Hinv Hm Hperm").
+    rewrite /trunc_permit_of.
+    iDestruct "Hperm" as (d nm) "[Htie Hrest]".
+    iEval (rewrite /trunc_tie_arg) in "Htie".
+    iDestruct "Htie" as "[Hnm Hcur]".
+    (* THE TIE, READ: the name is `f` and the parent is the root *)
+    iDestruct ("Hnm" $! pl with "[%]") as "%Hl"; [ exact Hpath |].
+    assert (Hnmf : nm = fname_f) by (rewrite Hlast in Hl; by injection Hl).
+    subst nm.
+    iDestruct (npar_cur_elim M pv pl
+                 (fun (_ : nat) (d : Z) => ⌜d = ROOTINO⌝%I) d Hpath
+                 with "Hcur") as "%Hd". subst d.
+    iDestruct "Hrest" as "[Hfresh | [Hex Harm]]".
+    - (* THE FRESH RUN: create's own receipt, as lane F-OPEN-2 landed it *)
+      iApply (file_trunc_of_cre γfs c r jc s i Heq with "Hinv Hm [Hfresh]").
+      rewrite /trunc_permit_cre. iExists ROOTINO, fname_f. iExact "Hfresh".
+    - (* THE EXISTS RUN: the observation's pure reading beside the arm
+         piece's refund, which is the deed's whole half *)
+      rewrite /cre_ex_fired. iDestruct "Hex" as (avx entsx nlx) "(%Hrx & %Hex & Hrec)".
+      rewrite /file_dlk_fam. cbn [pf_recv].
+      rewrite /pf_at. iDestruct "Harm" as "[_ Harm]".
+      rewrite /file_arm_fam. cbn [pf_refund].
+      iApply (file_trunc_of_exists γfs c r jc s ls ws i avx entsx nlx
+                Heq Hrx Hex Hin Hokw with "Hinv Hm Hlb Hrec Harm").
   Qed.
 
   (* ---- 3e.  ...AND THE WHOLE BUNDLE, FROM ONE DEED ---- *)
@@ -620,31 +886,33 @@ Section FileOpen.
      duplicable and returns itself in phase 1 -- [TreeMove.tree_mknod_au]'s
      reason, at this path.
 
-     THE TRUNCATION PIECE IS A PREMISE, and section 5 says why it cannot be
-     anything else. *)
+     THE TRUNCATION PIECE IS THE CLAIM'S OWN (lane F-OPEN-3), at ANY mode:
+     the bundle carries it at the permit create pays, and section 3f''
+     supplies it.  The path's LAST ELEMENT is a premise because the tie is
+     what identifies the truncated row -- the redirect child opens `f`, and
+     that is the sentence saying so. *)
   Lemma file_open_create_au (γfs : fs_names) (c : file_fixed) (r : file_names)
       (jc : Z) (s : dst) (ls : list wordline) (ws : wordline)
-      (cw : Z) (M : gmap Z (bv 8)) (pv vom : mword 64) (pl : list (bv 8))
-      (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ)) :
+      (cw : Z) (M : gmap Z (bv 8)) (pv vom : mword 64) (pl : list (bv 8)) :
     file_app = MkAppcfg file_names (file_pred c) r ->
     arg_path_of M pv pl ->
     np_elems pl = [] ->
     um_start_of cw pl = ROOTINO ->
+    list_basics.last (path_elems pl) = Some fname_f ->
     ws ∈ ls -> EchoDisc.line_ok ws ->
     app_inv γfs -∗ cons_made (fn_cons r) jc -∗ fl_lb c ls -∗
-    open_trunc_piece (fs_gamma_L γfs) vom Ft -∗
     fown r s -∗
     open_au_create_at (fs_gamma_L γfs) γfs cw M pv vom
       (fun (_ : nat) (d : Z) => ⌜d = ROOTINO⌝%I)
       (fun _ _ => True%I)
       (file_arm_fam c r jc s) (file_unarm_fam c r s)
       (file_cre_fam c r jc s)
-      (pfam_triv (fun _ _ _ _ => True%I))
+      (file_dlk_fam c)
       (pfam_triv (fun _ _ _ => True%I))
-      Ft.
+      (file_trunc_fam c r s).
   Proof using .
-    intros Heq Hpath Hnp Hstart Hin Hok.
-    iIntros "#Hinv #Hm #Hlb Htr Hown".
+    intros Heq Hpath Hnp Hstart Hlast Hin Hok.
+    iIntros "#Hinv #Hm #Hlb Hown".
     rewrite /open_au_create_at. iSplitR.
     { (* THE WALK: no hops at all, and the start cursor is pure *)
       iIntros (pl0) "%Hpath0".
@@ -652,15 +920,19 @@ Section FileOpen.
       rewrite /ep_start. iIntros (r0) "%Hr0". iModIntro. iSplitR.
       - iPureIntro. rewrite Hr0 Hstart //.
       - iApply (ep_hops_done γfs _ _ pl 0%nat). rewrite Hnp /=. lia. }
-    iSplitR "Htr Hown"; last first.
+    iSplitR "Hown"; last first.
     { iSplitR.
-      { iApply pf_at_triv. iApply dlookup_commit_at_unit. }
+      { iApply (file_dlk_piece γfs c r Heq with "Hinv"). }
       iSplitR.
       { (* the open observation is READ-ONLY and the file claim asks
            nothing of it: the deed is spent in the create's own legs *)
         iApply pf_at_triv. rewrite /aopen_commit_at.
         iIntros (I i a) "%Hrow Hka". iModIntro. by iFrame "Hka". }
-      iSplitL "Htr"; [ iExact "Htr" |].
+      iSplitR.
+      { (* THE TRUNCATE, at the permit create pays (section 3f'') *)
+        rewrite /open_trunc_piece. destruct (om_trunc vom); [| done].
+        iApply (file_trunc_piece γfs c r jc s ls ws M pv pl
+                  Heq Hpath Hlast Hin Hok with "Hinv Hm Hlb"). }
       (* THE CHILD'S TWO LEGS: the deed goes in HERE and comes back out
          through whichever of the parent leg and the unarm fired *)
       rewrite /cre_child_unfired. iSplitL "Hown".
@@ -687,16 +959,19 @@ Section FileOpen.
                 with "Hinv Hm Hlb").
   Qed.
 
-  (* ...at [om_trunc vom = false], where nothing is owed for the truncate
-     and the bundle costs exactly the deed. *)
+  (* ...and at [om_trunc vom = false], where the truncate is never owed.
+     SUBSUMED by the lemma above (lane F-OPEN-3): the bundle now supplies
+     its own piece at every mode, so this is the same statement under one
+     more premise, kept only so a caller at 0x201 need not read the
+     guard. *)
   Lemma file_open_create_au_notrunc (γfs : fs_names) (c : file_fixed)
       (r : file_names) (jc : Z) (s : dst) (ls : list wordline) (ws : wordline)
-      (cw : Z) (M : gmap Z (bv 8)) (pv vom : mword 64) (pl : list (bv 8))
-      (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ)) :
+      (cw : Z) (M : gmap Z (bv 8)) (pv vom : mword 64) (pl : list (bv 8)) :
     file_app = MkAppcfg file_names (file_pred c) r ->
     arg_path_of M pv pl ->
     np_elems pl = [] ->
     um_start_of cw pl = ROOTINO ->
+    list_basics.last (path_elems pl) = Some fname_f ->
     om_trunc vom = false ->
     ws ∈ ls -> EchoDisc.line_ok ws ->
     app_inv γfs -∗ cons_made (fn_cons r) jc -∗ fl_lb c ls -∗
@@ -706,15 +981,14 @@ Section FileOpen.
       (fun _ _ => True%I)
       (file_arm_fam c r jc s) (file_unarm_fam c r s)
       (file_cre_fam c r jc s)
-      (pfam_triv (fun _ _ _ _ => True%I))
+      (file_dlk_fam c)
       (pfam_triv (fun _ _ _ => True%I))
-      Ft.
+      (file_trunc_fam c r s).
   Proof using .
-    intros Heq Hpath Hnp Hstart Htr Hin Hok.
+    intros Heq Hpath Hnp Hstart Hlast Htr Hin Hok.
     iIntros "#Hinv #Hm #Hlb Hown".
-    iApply (file_open_create_au γfs c r jc s ls ws cw M pv vom pl Ft
-              Heq Hpath Hnp Hstart Hin Hok with "Hinv Hm Hlb [] Hown").
-    iApply (open_trunc_piece_none _ vom Ft Htr).
+    iApply (file_open_create_au γfs c r jc s ls ws cw M pv vom pl
+              Heq Hpath Hnp Hstart Hlast Hin Hok with "Hinv Hm Hlb Hown").
   Qed.
 
   (* =================================================================== *)
@@ -949,7 +1223,7 @@ Section FileOpen.
       iApply pobs_miss_taint_Pmiss. }
     iSplitL "Hd2".
     { iApply (file_aopen_piece γfs c r q2 (Some (i, bs)) Heq with "Hinv Hd2"). }
-    iApply (open_trunc_piece_none _ vom Ft Htr).
+    iApply (open_trunc_piece_none _ vom _ Ft Htr).
   Qed.
 
   (* ---- 5e.  THE RECEIPT, READ AT THE DEED ----
@@ -1020,82 +1294,63 @@ End FileOpen.
 (* ===================================================================== *)
 (*  6.  WHAT IS *NOT* HERE, AND EXACTLY WHY (the lane's STOP rule)        *)
 (*                                                                       *)
-(*  (a) THE O_TRUNC LEG OF THE CREATE BUNDLE -- HALF CLOSED, AND THE      *)
-(*      OTHER HALF IS A DESIGN FACT, NOT PROOF EFFORT (lane F-OPEN-2,     *)
-(*      seam 1).                                                          *)
+(*  (a) THE O_TRUNC LEG OF THE CREATE BUNDLE -- CLOSED (lane F-OPEN-3),   *)
+(*      WITH ONE HOLE NAMED AT THE END.                                   *)
 (*                                                                       *)
-(*      WHAT LANDED.  [SysOpenDefs.atrunc_of_permit] is the KEYED shape   *)
-(*      lane F-OPEN priced -- the truncate's commit AT ONE INUM, produced *)
-(*      from a permit naming it, on [FsAbsCreateFire.aunarm_of_arm]'s     *)
-(*      mould -- with both bridges, so every generic supplier is a        *)
-(*      restatement ([atrunc_of_permit_of_all], the permit unread).  And  *)
-(*      [file_trunc_of_cre] / [file_trunc_piece] above are the FILE       *)
-(*      claim's supplier at [SysOpenDefs.trunc_permit_cre]: the create's  *)
-(*      own fired receipt IS a permit this claim can spend, at BOTH deed  *)
-(*      values, and the truncate is free there.  That is the half the     *)
-(*      lane was asked for and it is machine-checked.                     *)
+(*      WHAT LANDED.  [SysOpenDefs.open_trunc_piece] now carries the      *)
+(*      permit [SysOpenDefs.trunc_permit_of]: the WALK'S TIE (the arg     *)
+(*      path's last element is [nm], and the walk's terminal directory is *)
+(*      [d] -- the two facts [SysMknodDefs.npar_cur] carries, guarded the *)
+(*      same way) beside the DISJUNCTION the kernel pays from whichever   *)
+(*      of create's arms ran: the create leg's fired receipt on the FRESH *)
+(*      run, the exists observation's receipt BESIDE THE UNFIRED ARM      *)
+(*      PIECE on the EXISTS one.  [file_trunc_piece] supplies it at both  *)
+(*      ([file_trunc_of_cre] and [file_trunc_of_exists]), and             *)
+(*      [file_open_create_au] no longer takes the truncate as a premise   *)
+(*      at any mode -- the 0x601 bundle is one deed.                      *)
 (*                                                                       *)
-(*      WHAT STILL BLOCKS THE BUNDLE, and it corrects the ruling: KEYING  *)
-(*      THE PIECE IS NECESSARY AND NOT SUFFICIENT, because the create     *)
-(*      surface has TWO arms and the caller hands in ONE piece.  The      *)
-(*      kernel fires the truncate on the EXISTS arm too (the C test is    *)
-(*      [(omode & O_TRUNC) && ip->type == T_FILE], and [create] returns   *)
-(*      the FOUND inode there), so the permit the bundle carries has to   *)
-(*      be a DISJUNCTION -- the create's receipt on the fresh arm, and    *)
-(*      something the EXISTS arm holds on the other -- and the            *)
-(*      application owes BOTH disjuncts.  Three facts, in order:          *)
+(*      THE RULING SAID THE EXISTS DISJUNCT NEEDS A DEED FRACTION INSIDE  *)
+(*      [Fex]'s RECEIPT (lane F-OPEN-2's finding 2) AND IT DOES NOT.      *)
+(*      What the disjunct must establish at the truncate is that the row  *)
+(*      the call reached is not one of the four era-0 binaries, and the   *)
+(*      claim says that at the LOOKUP's view with NOTHING LINEAR: its     *)
+(*      non-taint arm carries [⌜file_fs_pure av⌝], and both arms of       *)
+(*      [AppFile.f_state] carry the TYPED witness of whatever state the   *)
+(*      claim is at, whose pure part bounds the content by               *)
+(*      [EchoDisc.line_max].  That is [fclaim_free] and                   *)
+(*      [file_claim_read_free], and it is why [file_dlk_fam]'s receipt    *)
+(*      holds no fraction at all -- which is what makes the whole half    *)
+(*      available in the ARM piece, where the create leg needs it.        *)
+(*      Lane F-OPEN-2's finding 3 (the split is impossible at             *)
+(*      [s = None]) was therefore never on the critical path, and no      *)
+(*      third kernel seam was needed.                                     *)
 (*                                                                       *)
-(*      1. THE EXISTS ARM'S PERMIT MUST TIE ITS INUM TO THE CLAIM, and    *)
-(*         no landed receipt does.  A truncate at an inum this claim      *)
-(*         cannot identify is UNSTEPPABLE, not merely unprovable: the row *)
-(*         might be one of the four era-0 binaries, and [delta_trunc]     *)
-(*         there destroys [FileFsPure.file_fs_pure].  The FRESH arm is    *)
-(*         fine precisely because [cre_pre] hands the row over ([AFile    *)
-(*         []] at nlink 1, so none of the four by LENGTH); the EXISTS     *)
-(*         arm's [Fex] receipt names [(d, nm, i)] with [d] and [nm]       *)
-(*         QUANTIFIED INSIDE its commit, so "the found node is `f`'s"     *)
-(*         is exactly what it cannot say.  The fix is TL-3K's shape one   *)
-(*         piece over: the permit carries the walk's terminal             *)
-(*         identification as the same guarded pure facts                  *)
-(*         [SysMknodDefs.npar_cur] already carries -- [∀ pl,              *)
-(*         ⌜arg_path_of M pv pl⌝ -∗ ⌜last (path_elems pl) = Some nm⌝],    *)
-(*         and the parent's -- which the kernel HOLDS at the fire (the    *)
-(*         arms state both) and which the application, knowing its own    *)
-(*         path, reads off in one line.                                   *)
-(*                                                                       *)
-(*      2. AND THE DEED ARITHMETIC NEEDS THE ARM PIECE'S REFUND.  Even    *)
-(*         with the tie, the EXISTS arm's move [Some (i, bs) -> Some (i,  *)
-(*         [])] needs the deed's WHOLE half ([AppFile.file_step_park]     *)
-(*         joins it with the claim's), while identifying [i] needs a      *)
-(*         POSITIVE FRACTION inside [Fex]'s own receipt -- two places,    *)
-(*         one half.  The split that works is [q1] into [Farm] and [q2]   *)
-(*         into [Fex] with [q1 + q2 = 1/2], because on the EXISTS run the *)
-(*         ARM NEVER FIRES: its piece comes back and [fdq_join] puts the  *)
-(*         half together at the truncate.  So the permit's exists         *)
-(*         disjunct is [Fex]'s receipt BESIDE [Farm]'s refund, and        *)
-(*         [SpecSysOpen.open_post_ok_create]'s EXISTS arm must give up    *)
-(*         [cre_child_unfired]'s arm half under [om_trunc].                *)
-(*                                                                       *)
-(*      3. AND AT AN ABSENT DEED THE SPLIT IS IMPOSSIBLE.  At [s = None]  *)
-(*         the create's own parent leg MOVES the claim, so the whole half *)
-(*         must sit in [Farm] and [Fex] gets nothing -- and the exists    *)
-(*         disjunct, a run [s = None] makes unreachable but which the     *)
-(*         SUPPLY must still cover, has no fraction left to refute it     *)
-(*         with.  Refuting it is what [s = None] would need: [f_ok av     *)
-(*         None] says the root has no `f`, which contradicts [Fex]'s      *)
-(*         [ents !! nm = Some i] at the tie -- but only at a view the     *)
-(*         application can READ, i.e. only holding a fraction.  The fix   *)
-(*         is the THIRD seam, and it is [cre_arm_fired]'s own trick once  *)
-(*         more: create's [dirlookup] either FINDS the name (and [Fex]    *)
-(*         fires) or does not (and the ARM fires), so the two are         *)
-(*         EXCLUSIVE on every run and [acre_commit_at_gen] can take the   *)
-(*         unfired [Fex] piece beside the arm's receipt -- at which point  *)
-(*         the parent leg reassembles [q1 + q2] and the split costs       *)
-(*         nothing.                                                       *)
-(*                                                                       *)
-(*      So the O_TRUNC bundle is three kernel-tier restatements away, not *)
-(*      one, and all three are named above.  [file_open_create_au] keeps  *)
-(*      the trunc piece as a PREMISE until they land.                     *)
+(*      WHAT IS STILL OPEN, and it is the ONE thing a redirect round      *)
+(*      needs next: THE EXISTS DISJUNCT AT [s = None] IS DISCHARGED AND   *)
+(*      NOT REFUTED.  At an absent deed a run in which create's           *)
+(*      [dirlookup] FINDS `f` is unreachable, but the SUPPLY must still   *)
+(*      cover it; [file_trunc_of_exists] covers it by stepping FREELY     *)
+(*      (the row is not pinned, [f_ok av None] is preserved) and handing  *)
+(*      the deed back UNMOVED, so [file_trunc_recv]'s first arm           *)
+(*      ([fown r s]) is reachable in the statement though not on any run. *)
+(*      REFUTING it needs the claim read AT THE LOOKUP'S VIEW -- the      *)
+(*      entry fact [ents !! f = Some i] is at [avx], and between [avx]    *)
+(*      and the [itrunc] the parent is unlocked, so no later view carries *)
+(*      it -- and reading the claim's OWN VALUE there (rather than the    *)
+(*      determined one) needs a positive deed fraction inside the [Fex]   *)
+(*      piece, which at [s = None] the create's parent leg has already    *)
+(*      claimed in full ([AppFile.file_step_park] at `f` wants            *)
+(*      [fdeed_whole], and the bundle's pieces are [∗]-separated).  So    *)
+(*      the choice is exactly two: (i) lane F-OPEN-2's restatement 3 --   *)
+(*      [FsAbsCreateFire.acre_commit_at_gen] takes the UNFIRED [Fex]      *)
+(*      piece beside the arm's receipt, making the two exclusive in the   *)
+(*      logic and letting the parent leg reassemble [q1 + q2]; or (ii) an *)
+(*      APPLICATION-SIDE ESCROW -- the deed's half in an invariant of the *)
+(*      claim's own, with the arm's piece holding the one-shot that says  *)
+(*      it has not fired, so [Fex] may read it and the arm may take it.   *)
+(*      (ii) costs no kernel restatement and is this file's business; it  *)
+(*      is what lane SH-ROUND needs if its round is to read the redirect  *)
+(*      child's fd arm as [fown r (Some (i, []))] ALONE.                  *)
 (*                                                                       *)
 (*  (b) THE O_RDONLY OPEN AT AN ABSENT `f` -- CLOSED (lane F-OPEN-2,      *)
 (*      seam 2).  [file_open_miss_au] / [file_open_miss_recv] below are    *)

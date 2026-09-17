@@ -375,7 +375,11 @@ Section OpenFire.
     fn_type n' <> 0 ->
     abs_row n' = MkAnode (AFile []) nl ->
     ftop_inv γfs -∗ app_inv γfs -∗
-    pf_at (atrunc_commit_at (fs_gamma_L γfs) appE) Ft -∗
+    (* THE PIECE ARRIVES KEYED AT THE INUM (lane F-OPEN-3): the permit was
+       paid where what pays it was still in hand -- create's own payout on
+       the O_CREATE surface, nothing at all on the plain one
+       ([SysOpenDefs.open_trunc_at]). *)
+    pf_at (atrunc_commit_i (fs_gamma_L γfs) appE i) Ft -∗
     top_frag (fs_gamma_L γfs) i n ={E}=∗
       top_frag (fs_gamma_L γfs) i n'
       ∗ ∃ av : aview,
@@ -401,7 +405,7 @@ Section OpenFire.
         rewrite (delta_trunc_absent _ _ Hnone). exact (delete_notin _ _ Hnone).
       - by rewrite (delta_trunc_file (abs_view I) i bs0 nl (arow_at_live _ _ _ Hrow Hz)). }
     iMod (fupd_mask_subseteq appE) as "Hcl2"; [rewrite /appE; solve_ndisj |].
-    iMod ("Hcm" $! I i bs0 nl with "[//] Hta") as "(Hta & Hstep & Hph2)".
+    iMod ("Hcm" $! I bs0 nl with "[//] Hta") as "(Hta & Hstep & Hph2)".
     (* THE MOVE, at the whole authority: the application's half comes out
        of [appN] beside its claim, which the caller's step re-establishes
        under the later ([AppInv.app_top_update]) *)

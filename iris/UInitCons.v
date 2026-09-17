@@ -246,7 +246,7 @@ Section UInitCons.
     □ (∀ v : aview, app_pred app_run v -∗
                       app_pred app_run v ∗ (⌜cons_present_at i v⌝ ∨ T)) -∗
     app_inv γfs -∗
-    open_trunc_piece (fs_gamma_L γfs) vom Ft -∗
+    open_trunc_piece (fs_gamma_L γfs) vom trunc_permit_triv Ft -∗
     open_in (fs_gamma_L γfs) γfs FsImg.ROOTINO M pv vom
       (pobs_P T [FsImg.ROOTINO; i]) (pobs_Pmiss T) Farm Fun Fok Fex
       (pobs_Fo (cons_present_at i) T) Ft.
@@ -282,7 +282,7 @@ Section UInitCons.
     destruct (om_rdwr_plain vom Hom) as [Hcr Htr].
     iApply (init_cons_open_bundle γfs T i M pv vom Ft Farm Fun Fok Fex
               Hcr Hpath with "Hcl Hinv []").
-    iApply (open_trunc_piece_none _ vom Ft Htr).
+    iApply (open_trunc_piece_none _ vom _ Ft Htr).
   Qed.
 
   (* =================================================================== *)
@@ -305,7 +305,7 @@ Section UInitCons.
       ((⌜r = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜fdv' = sts⌝)
        ∨ (⌜open_fd_rcpt (om_readable vom) (om_writable vom)
               (FdDevice CONSOLE) sts r fdv'⌝
-          ∗ open_trunc_piece (fs_gamma_L γfs) vom Ft)
+          ∗ open_trunc_at (fs_gamma_L γfs) vom i Ft)
        ∨ T).
   Proof using .
     intros Hpath. iIntros "Hrc".

@@ -874,6 +874,10 @@ Section ProofSysOpenFullBody.
        lane TL-3K) *)
     iDestruct (open_acre_inst _ (us_M U) v (bview pk bf)
                  P Farm Fok Hpof with "Hac") as "Hac".
+    (* ...and so is the TRUNCATE'S PERMIT, whose tie is the same cursor
+       beside the same guarded pure fact (lane F-OPEN-3) *)
+    iDestruct (open_trunc_piece_arg_to_at _ vom (us_M U) v (bview pk bf)
+                 P Farm Fok Fex Ft Hpof with "Htc") as "Htc".
     iApply (EntryC.so_entry_c_au (CID0 := CID22) gfl gf gs j gl pd pav
               pu
  pk bf (arg_int32 vom) (word_lo u23) ns Sb0

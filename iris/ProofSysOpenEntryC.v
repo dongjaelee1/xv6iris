@@ -328,7 +328,12 @@ Section ProofSysOpenEntryC.
              (P (length (npar_elems (bview plen bp)))) Phiarm) Phiok -∗
     pf_at (dlookup_commit_at (fs_gamma_L fsc_fs) appE) Phiex -∗
     pf_at (aopen_commit_at (fs_gamma_L fsc_fs) appE) Phio -∗
-    open_trunc_piece (fs_gamma_L fsc_fs) vom Phit -∗
+    (* the piece as the O_CREATE bundle carries it: UNKEYED, at create's
+       own permit, which this block hands down for [ProofSysOpenCreArm]
+       to pay once create has returned a node (lane F-OPEN-3) *)
+    open_trunc_piece (fs_gamma_L fsc_fs) vom
+      (trunc_permit_of (fs_gamma_L fsc_fs)
+         (trunc_tie_at (bview plen bp) P) Phiarm Phiok Phiex) Phit -∗
     (* ...and create's CHILD legs (round E2, lane E2-C) *)
     cre_child_unfired (fs_gamma_L fsc_fs) (AFile []) Phiarm Phiun -∗
     wp_next true (proc_addr jx)
@@ -682,16 +687,21 @@ Section ProofSysOpenEntryC.
       assert (Harow : abs_row (era_node dn bm data)
                       = MkAnode (AFile []) (fn_nlink (era_node dn bm data))).
       { rewrite (opf_era_file_row dn bm data Htyf) Hbsnil. reflexivity. }
-      iAssert (socr_fresh P Phiarm Phiun Phiok Phiex Phio (bview plen bp)
-                 (bv_unsigned inum))
-        with "[Hcauf Hoc]" as "HR".
-      { rewrite /socr_fresh.
-        iDestruct (cre_ok_file_fresh with "Hcauf") as (d nm av ents nl)
+      (* THE PERMIT IS PAID HERE (lane F-OPEN-3), out of create's own
+         payout: the walk's tie and the create leg's fired receipt go into
+         it and the piece comes out keyed at the child. *)
+      assert (Hibnd : 0 < bv_unsigned inum < 16 * Z.of_nat icfg_nib) by lia.
+      iAssert (socr_fresh vom P Phiarm Phiun Phiok Phiex Phio (bview plen bp)
+                 (bv_unsigned inum)
+               ∗ open_trunc_at (fs_gamma_L fsc_fs) vom (bv_unsigned inum)
+                   (socr_ft (bview plen bp) P Phiarm Phiok Phiex (bv_unsigned inum) Phit))%I
+        with "[Hcauf Hoc Htc]" as "[HR Htc]".
+      { iDestruct (cre_ok_file_fresh with "Hcauf") as (d nm av ents nl)
           "(%Hl & %Hpre & HP & HPhi & Hdl & Hun)".
-        iExists d, nm, av, ents, nl.
-        iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
-        iSplitR; [iPureIntro; lia |].
-        iFrame "HP HPhi Hdl Hoc Hun". }
+        iApply (socr_fresh_key vom P Phiarm Phiun Phiok Phiex Phio Phit
+                  (bview plen bp) (bv_unsigned inum) d nm av ents nl
+                  Hl Hpre Hibnd
+                  with "HP HPhi Hdl Hoc Hun Htc"). }
       iAssert (so_obs (socr_Phio_pure (bv_unsigned inum)
                          (MkAnode (AFile [])
                                   (fn_nlink (era_node dn bm data))))
@@ -699,15 +709,15 @@ Section ProofSysOpenEntryC.
       { rewrite -Harow. iApply socr_obs_pure. }
       iAssert (wp_next true (proc_addr jx)
                  (so_cont_au gf ns1 dqb dqs (proc_addr jx) pidv Mim pvv vom U sts
-                    (socr_P (socr_fresh P Phiarm Phiun Phiok Phiex Phio
+                    (socr_P (socr_fresh vom P Phiarm Phiun Phiok Phiex Phio
                                (bview plen bp) (bv_unsigned inum))
                             (bv_unsigned inum))
-                    (socr_Pm (socr_fresh P Phiarm Phiun Phiok Phiex Phio
+                    (socr_Pm (socr_fresh vom P Phiarm Phiun Phiok Phiex Phio
                                 (bview plen bp) (bv_unsigned inum)))
                     (socr_Phio_pure (bv_unsigned inum)
                        (MkAnode (AFile [])
                                 (fn_nlink (era_node dn bm data))))
-                    Phit m K eb b lks))
+                    (socr_ft (bview plen bp) P Phiarm Phiok Phiex (bv_unsigned inum) Phit) m K eb b lks))
         with "[Hcont Hsbn Hsbs]" as "Hcontj".
       { iEval (rewrite /wp_next). iIntros (CIDz) "%Hqz".
         iEval (rewrite /so_cont_au). iIntros (mf ns2) "%Hcsf %Hns2".
@@ -726,15 +736,15 @@ Section ProofSysOpenEntryC.
                 gil gisl kk qi ss gy loy tly inum dn bm om lo ns1 u1 pidv dqb dqs
                 U sts m P1 sp0 K eb b lks w4 w5 w6 w24 bp1
                 data Mim pvv vom (bview plen bp)
-                (socr_P (socr_fresh P Phiarm Phiun Phiok Phiex Phio
+                (socr_P (socr_fresh vom P Phiarm Phiun Phiok Phiex Phio
                            (bview plen bp) (bv_unsigned inum))
                         (bv_unsigned inum))
-                (socr_Pm (socr_fresh P Phiarm Phiun Phiok Phiex Phio
+                (socr_Pm (socr_fresh vom P Phiarm Phiun Phiok Phiex Phio
                             (bview plen bp) (bv_unsigned inum)))
                 (socr_Phio_pure (bv_unsigned inum)
                    (MkAnode (AFile [])
                             (fn_nlink (era_node dn bm data))))
-                Phit
+                (socr_ft (bview plen bp) P Phiarm Phiok Phiex (bv_unsigned inum) Phit)
                 Hqs HKfull Hkk ltac:(exact (proj2 Hinum)) ltac:(exact (proj1 Hinum)) Hgeom Hsize Hbm0 Hbmcov Hbmlog
                 Hist0 Hibcov Hiblog Hcovb
                 ltac:(exact (proj2 (proj2 Hu1) eq_refl)) Hj Hgl Hlkempty
@@ -779,24 +789,28 @@ Section ProofSysOpenEntryC.
       iDestruct ("Hflatb" with "Htop") as "Hflat".
       iDestruct (socr_obs_tag (bv_unsigned inum) (era_node dn bm data) Phio
                    with "Hobs0") as "Hobs".
-      iAssert (socr_exists P Phiarm Phiun Phiok Phiex (bview plen bp)
-                 (bv_unsigned inum))
-        with "[Hcauf]" as "HR".
-      { rewrite /socr_exists.
-        iDestruct (cre_ok_file_exists with "Hcauf") as (d nm av ents nl)
+      (* THE PERMIT IS PAID HERE (lane F-OPEN-3): the tie, the exists
+         observation's receipt and the ARM PIECE THE RUN NEVER FIRED --
+         create's [dirlookup] found the name. *)
+      iAssert (socr_exists vom P Phiarm Phiun Phiok Phiex (bview plen bp)
+                 (bv_unsigned inum)
+               ∗ open_trunc_at (fs_gamma_L fsc_fs) vom (bv_unsigned inum)
+                   (socr_ft (bview plen bp) P Phiarm Phiok Phiex (bv_unsigned inum) Phit))%I
+        with "[Hcauf Htc]" as "[HR Htc]".
+      { iDestruct (cre_ok_file_exists with "Hcauf") as (d nm av ents nl)
           "(%Hl & %Hrow & %Hent & HP & HPhi & Hac & Hcl)".
-        iExists d, nm, av, ents, nl.
-        iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
-        iSplitR; [by iPureIntro |]. iFrame "HP HPhi Hac Hcl". }
+        iApply (socr_exists_key vom P Phiarm Phiun Phiok Phiex Phit
+                  (bview plen bp) (bv_unsigned inum) d nm av ents nl
+                  Hl Hrow Hent with "HP HPhi Hac Hcl Htc"). }
       iAssert (wp_next true (proc_addr jx)
                  (so_cont_au gf ns1 dqb dqs (proc_addr jx) pidv Mim pvv vom U sts
-                    (socr_P (socr_exists P Phiarm Phiun Phiok Phiex (bview plen bp)
+                    (socr_P (socr_exists vom P Phiarm Phiun Phiok Phiex (bview plen bp)
                                (bv_unsigned inum)) (bv_unsigned inum))
-                    (socr_Pm (socr_exists P Phiarm Phiun Phiok Phiex (bview plen bp)
+                    (socr_Pm (socr_exists vom P Phiarm Phiun Phiok Phiex (bview plen bp)
                                 (bv_unsigned inum)))
                     (socr_Phio_tag (bv_unsigned inum)
                        (abs_row (era_node dn bm data)) Phio)
-                    Phit m K eb b lks))
+                    (socr_ft (bview plen bp) P Phiarm Phiok Phiex (bv_unsigned inum) Phit) m K eb b lks))
         with "[Hcont Hsbn Hsbs]" as "Hcontj".
       { iEval (rewrite /wp_next). iIntros (CIDz) "%Hqz".
         iEval (rewrite /so_cont_au). iIntros (mf ns2) "%Hcsf %Hns2".
@@ -815,13 +829,13 @@ Section ProofSysOpenEntryC.
                 gil gisl kk qi ss gy loy tly inum dn bm om lo ns1 u1 pidv dqb dqs
                 U sts m P1 sp0 K eb b lks w4 w5 w6 w24 bp1
                 data Mim pvv vom (bview plen bp)
-                (socr_P (socr_exists P Phiarm Phiun Phiok Phiex (bview plen bp)
+                (socr_P (socr_exists vom P Phiarm Phiun Phiok Phiex (bview plen bp)
                            (bv_unsigned inum)) (bv_unsigned inum))
-                (socr_Pm (socr_exists P Phiarm Phiun Phiok Phiex (bview plen bp)
+                (socr_Pm (socr_exists vom P Phiarm Phiun Phiok Phiex (bview plen bp)
                             (bv_unsigned inum)))
                 (socr_Phio_tag (bv_unsigned inum)
                    (abs_row (era_node dn bm data)) Phio)
-                Phit
+                (socr_ft (bview plen bp) P Phiarm Phiok Phiex (bv_unsigned inum) Phit)
                 Hqs HKfull Hkk ltac:(exact (proj2 Hinum)) ltac:(exact (proj1 Hinum)) Hgeom Hsize Hbm0 Hbmcov Hbmlog
                 Hist0 Hibcov Hiblog Hcovb
                 ltac:(exact (proj2 (proj2 Hu1) eq_refl)) Hj Hgl Hlkempty

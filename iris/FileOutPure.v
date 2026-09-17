@@ -1858,7 +1858,7 @@ Definition feout_pure (k : nat) (ho : list mobs) (so : fostage)
      state is not read before it is filed, and the discipline puts no input
      before init's banner.  The second is what the determinacy argument
      spends -- a file holds a content, never junk. *)
-  /\ (fo_f0 so = None -> fo_E so = [] /\ fo_w so = [])
+  /\ (fo_f0 so = None <-> (fo_E so = [] /\ fo_w so = []))
   /\ fst_ok (f0_st (fo_f0 so)).
 
 Lemma feout_pure_0 k ho : feout_pure k ho fostage0 [].
@@ -1876,6 +1876,17 @@ Proof using.
   - constructor.
   - cbn [length]. lia.
   - by left.
-  - by intros _.
+  - split; [by intros _ | by intros _].
   - exact I.
+Qed.
+
+(* the era's stream opens with the block the EMPTY input owes, so a stage
+   whose input is nonempty has already owed the whole prologue *)
+Lemma proc_before_f_head (ps cs : list nat) (f0 : option fst)
+    (I : list (bv 8)) :
+  I <> [] ->
+  pending_at_f ps cs f0 [] `prefix_of` proc_before_f ps cs f0 I.
+Proof using.
+  destruct I as [| b I']; [done |]. intros _.
+  rewrite /proc_before_f. cbn [proc_before_from_f]. by eexists.
 Qed.

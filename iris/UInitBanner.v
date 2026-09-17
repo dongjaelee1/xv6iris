@@ -68,20 +68,25 @@ Require Import UkInit UkInitLit UkInitMain.
 Require Import EchoDisc.
 Require Import EchoOut.
 Require Import EchoLinks.
+Require Import LinkRec.          (* lane LINK-GEN: the record this file is
+                                    generic over *)
 Require Import CtxIdDefs.
 Require User.InitSyms.
 Local Open Scope Z_scope.
 Import Defs.
 
-Section UInitBanner.
+Section UInitBannerGen.
   Context `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ,
             !irefslotG Σ, !pavG Σ, !wchG Σ, !ufdG Σ}.
   Context `{GEN : GenId} `{XI : CurCtx}.
   Context `{!ghost_varG Σ Z}.
   Context `{!ghost_varG Σ (gset gname)}.
   Context `{!echoOutG Σ}.
-  Context (T : iProp Σ) (γ : echo_gn).
-  Context `{!Persistent T} `{!Timeless T}.
+  (* THE LINK RECORD (lane LINK-GEN): /init's banner is the same
+     eighteen bytes at either application, and what changes -- the taint,
+     the era's pin, the era's extra state under the credential -- is the
+     record's. *)
+  Context (L : LinkRec Σ).
   Context `{PS : uprogSG Σ}.
 
   Local Notation a0_idx := (mword_of_int 10 : mword 5).
@@ -150,7 +155,7 @@ Section UInitBanner.
   (* =================================================================== *)
   (* the ecall leaves take [UexecSG.sfam] and an [xfam]-typed argument is
      not one until the instance is fixed -- [UShLine.ush_rd_fam]'s mould *)
-  Definition kbn_fam (N : uk_names Σ) (Q : nat -> iProp Σ) : sfam :=
+  Definition kbn_fam_at (N : uk_names Σ) (Q : nat -> iProp Σ) : sfam :=
     xfam_wr Q (ukn_pay N).
 
   (* WHAT THE WALK CARRIES, at the round the credential names (lane
@@ -159,18 +164,18 @@ Section UInitBanner.
      is this at whatever count the shell that died left behind.  The shape
      is [EchoLinks]'s, so nothing about the prologue's arithmetic lives in
      this file any more. *)
-  Definition bnr (v : era_pins) (I : list (bv 8)) (i : nat) : iProp Σ :=
-    EchoLinks.ewc_ban T v I i.
+  Definition bnr_at (v : era_pins) (I : list (bv 8)) (i : nat) : iProp Σ :=
+    lk_ban L (S gen_id) v I i.
 
-  Lemma kinit_w1_of_link (N : uk_names Σ) (v : era_pins) (I : list (bv 8))
+  Lemma kinit_w1_of_link_at (N : uk_names Σ) (v : era_pins) (I : list (bv 8))
       (l : list fdstate) (rb : bool) (i : nat) (b : bv 8) :
     l !! 1%nat = Some (FdOpen rb true (FdDevice CONSOLE)) ->
     u_banner !! i = Some b ->
-    era_pin γ (S gen_id) v -∗
-    echo_links T γ -∗
+    lk_pin L (S gen_id) v -∗
+    lk_links L -∗
     UkInit.kinit_w1 N (mword_of_int 1 : mword 64) b
-      (UserFd.ustd (ukn_fd N) l ∗ bnr v I i)
-      (UserFd.ustd (ukn_fd N) l ∗ bnr v I (S i)).
+      (UserFd.ustd (ukn_fd N) l ∗ bnr_at v I i)
+      (UserFd.ustd (ukn_fd N) l ∗ bnr_at v I (S i)).
   Proof.
     intros Hli Hb.
     iIntros "#Hpin #Hlk" (h m avail) "%Ha0 %Ha2 #Hcode Hbuf [Hl Hbnd] Hrun Hcont".
@@ -181,7 +186,7 @@ Section UInitBanner.
        the byte, and the era's cursor before and after this byte *)
     set (Q := (fun k : nat =>
                  ubyteq (ukn_d N) (DfracOwn (1/2)) (uint ua) b
-                 ∗ match k with O => bnr v I i | _ => bnr v I (S i) end)%I).
+                 ∗ match k with O => bnr_at v I i | _ => bnr_at v I (S i) end)%I).
     assert (Ham1 : (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m)
                      !!! Regidx a1_idx = ua)
       by exact (upd_ne m (Regidx a7_idx) (Regidx a1_idx) _
@@ -205,7 +210,7 @@ Section UInitBanner.
                        !!! Regidx a0_idx)) = Z.of_nat 1)
       by (rewrite Ham0; vm_compute; reflexivity).
     iApply (UkInit.wp_kinit_write_chain N h m avail
-              (kbn_fam N Q) l (DfracOwn (1/2)) 1%nat (fun _ => b)
+              (kbn_fam_at N Q) l (DfracOwn (1/2)) 1%nat (fun _ => b)
               with "Hcode Hrun [Hb1 Hbnd] Hl [Hb2]").
     { (* THE DEPOSIT: the caller's own chain at its own cursor *)
       iApply (uwrite_chain_sup N Q
@@ -227,9 +232,9 @@ Section UInitBanner.
         { pose proof (HM 0%nat ltac:(lia)) as HM0.
           cbn in HM0. rewrite HM0 in Hb'. by injection Hb'. }
         subst b'.
-        iApply (EchoLinks.echo_banner_step T γ (S gen_id) v I i b (Q 1%nat)
+        iApply (lk_ban_step L (S gen_id) v I i b (Q 1%nat)
                   Hb with "Hpin Hlk Hbnd [Hb1]").
-        iIntros "Hres". rewrite /Q. iFrame "Hb1". rewrite /bnr. iExact "Hres". }
+        iIntros "Hres". rewrite /Q. iFrame "Hb1". rewrite /bnr_at. iExact "Hres". }
     { iApply (ubytesq_of_one with "Hb2"). }
     iIntros (h' ret W cw' cs') "%Hka0 %Hka1 %Hka2 %Htk %Hlz %Hnf Hl Hb2 Hpost Hrun".
     (* THE POST: the short arm is refuted from the run the caller owns *)
@@ -257,28 +262,28 @@ Section UInitBanner.
 
   (* THE TWO CREDENTIALS THE BANNER STANDS BETWEEN, at a count and with
      the era's pin beside them (nothing below this file can produce one).
-     [kinit_ban n] is /init's own loop head -- the round's banner owed --
-     and [kinit_own n] is what the eighteenth byte leaves: the PROMPT's
+     [kinit_ban_at n] is /init's own loop head -- the round's banner owed --
+     and [kinit_own_at n] is what the eighteenth byte leaves: the PROMPT's
      credential, which is what /init lends the shell it forks. *)
   (* AT THE ERA'S INPUT, UNDER THE COUNT (project echo-any-line): /init's
      families stay position-indexed -- the ring's pair holds a number --
      and the input of that length is existential.  Two lower bounds of one
      era's echoed list with equal length are equal
      ([EchoOut.inp_lb_agree]), so the existential costs nothing. *)
-  Definition kinit_ban (n : nat) : iProp Σ :=
+  Definition kinit_ban_at (n : nat) : iProp Σ :=
     (∃ (v : era_pins) (I : list (bv 8)),
-       ⌜length I = n⌝ ∗ era_pin γ (S gen_id) v
-       ∗ EchoLinks.ewc_ban T v I 0%nat)%I.
+       ⌜length I = n⌝ ∗ lk_pin L (S gen_id) v
+       ∗ lk_ban L (S gen_id) v I 0%nat)%I.
 
-  Definition kinit_own (n : nat) : iProp Σ :=
+  Definition kinit_own_at (n : nat) : iProp Σ :=
     (∃ (v : era_pins) (I : list (bv 8)),
-       ⌜length I = n⌝ ∗ era_pin γ (S gen_id) v
-       ∗ EchoLinks.ewc_owed T v I)%I.
+       ⌜length I = n⌝ ∗ lk_pin L (S gen_id) v
+       ∗ lk_owed L (S gen_id) v I)%I.
 
-  Global Instance kinit_ban_timeless n : Timeless (kinit_ban n).
-  Proof. rewrite /kinit_ban. apply _. Qed.
-  Global Instance kinit_own_timeless n : Timeless (kinit_own n).
-  Proof. rewrite /kinit_own. apply _. Qed.
+  Global Instance kinit_ban_timeless_at n : Timeless (kinit_ban_at n).
+  Proof. rewrite /kinit_ban_at. apply _. Qed.
+  Global Instance kinit_own_timeless_at n : Timeless (kinit_own_at n).
+  Proof. rewrite /kinit_own_at. apply _. Qed.
 
   (* ...AND THE READER'S HALF OF THE DELIVERED COUNT, SPLIT OFF HERE (lane
      IO-LEAF, M5).  [EchoOut.eturn] carries FIVE things and the banner
@@ -288,52 +293,49 @@ Section UInitBanner.
      the console lease ([UserConsole.ucons_pay]'s [Rd]).  So the payment
      hands it straight back, at the era's own pin, and /init's boot bundle
      puts it where the lease is minted. *)
-  Definition kinit_dl0 : iProp Σ :=
-    (∃ v : era_pins, era_pin γ (S gen_id) v ∗ dl_cnt v (1/2) 0%nat
+  Definition kinit_dl0_at : iProp Σ :=
+    (∃ v : era_pins, lk_pin L (S gen_id) v ∗ dl_cnt v (1/2) 0%nat
                      ∗ inp_lb v [])%I.
 
   (* THE ERA'S TURN AT STAGE 0 IS ROUND 0's BANNER-OWED CREDENTIAL.  Both
      halves of [EchoOut.eturn] come apart here: the write half becomes
-     [kinit_ban 0] ([EchoLinks.wr_ban_round0] is the shape) and the read
-     half [kinit_dl0]. *)
-  Lemma kinit_ban0_of_eturn :
-    eturn γ (S gen_id) -∗ kinit_dl0 ∗ kinit_ban 0%nat.
+     [kinit_ban_at 0] ([EchoLinks.wr_ban_round0] is the shape) and the read
+     half [kinit_dl0_at]. *)
+  Lemma kinit_ban0_of_eturn_at :
+    lk_turn L (S gen_id) -∗ kinit_dl0_at ∗ kinit_ban_at 0%nat.
   Proof using .
     iIntros "Hturn".
-    iDestruct "Hturn" as (v) "(#Hpin & Htn & Hdl & #Hcs & #Hps & #HE)".
-    iSplitL "Hdl"; [ rewrite /kinit_dl0; iExists v; iFrame "Hpin Hdl HE" | ].
-    rewrite /kinit_ban. iExists v, []. iSplitR; [ by iPureIntro | ].
-    iFrame "Hpin".
-    rewrite /EchoLinks.ewc_ban. iLeft. iExists [], [], 0%nat.
-    rewrite Nat.add_0_r. iFrame "Htn Hps Hcs HE".
-    iPureIntro. exact EchoLinks.wr_ban_round0.
+    iDestruct (lk_turn0 L (S gen_id) with "Hturn") as "[Hrd Hwr]".
+    iSplitL "Hrd"; [ iExact "Hrd" | ].
+    rewrite /kinit_ban_at. iDestruct "Hwr" as (v) "[#Hpin Hb]".
+    iExists v, []. iSplitR; [ by iPureIntro | ]. iFrame "Hpin Hb".
   Qed.
 
   (* THE BANNER AS A PERSISTENT CONVERSION (lane IO-LEAF, M6a(2)).  What
      /init's walk holds is the credential, and what it needs is the
      payment; the conversion between them is closed under the era's links,
      so it is a [□] and /init's restart loop spends it at EVERY round. *)
-  Lemma kinit_banner_law_holds :
-    echo_links T γ -∗
+  Lemma kinit_banner_law_holds_at :
+    lk_links L -∗
     □ (∀ (n : nat) (N : uk_names Σ),
-         kinit_ban n -∗ UkInitMain.kinit_banner0 N stc_cons (kinit_own n)).
+         kinit_ban_at n -∗ UkInitMain.kinit_banner0 N stc_cons (kinit_own_at n)).
   Proof.
     iIntros "#Hlk !>" (n N) "Hban".
     rewrite /UkInitMain.kinit_banner0 /UkInit.kinit_banner_pay.
     iIntros "Hl".
     iDestruct "Hban" as (v I) "(%Hlen & #Hpin & Hbnr)".
-    iExists (fun i => UserFd.ustd (ukn_fd N) (ufd_l3 stc_cons) ∗ bnr v I i)%I.
+    iExists (fun i => UserFd.ustd (ukn_fd N) (ufd_l3 stc_cons) ∗ bnr_at v I i)%I.
     iSplitR "Hbnr Hl".
     { iIntros "!>" (j) "%Hj".
-      iApply (kinit_w1_of_link N v I (ufd_l3 stc_cons) true j
+      iApply (kinit_w1_of_link_at N v I (ufd_l3 stc_cons) true j
                 (init_lit LIT_START j)
                 (ufd_l3_row1 stc_cons) (init_banner_bytes j Hj)
                 with "Hpin Hlk"). }
     iSplitL; [ iFrame "Hl Hbnr" | ].
-    iIntros "[$ Hbnd]". rewrite /kinit_own. iExists v, I.
+    iIntros "[$ Hbnd]". rewrite /kinit_own_at. iExists v, I.
     iSplitR; [ by iPureIntro | ]. iFrame "Hpin".
-    iApply (EchoLinks.ewc_ban_done T v I with "[Hbnd]").
-    rewrite /bnr.
+    iApply (lk_ban_done L (S gen_id) v I with "[Hbnd]").
+    rewrite /bnr_at.
     by replace (length u_banner) with 18%nat by (vm_compute; reflexivity).
   Qed.
 
@@ -355,7 +357,7 @@ Section UInitBanner.
   (* [kinit_banner_pay]'s [Rt] occurs POSITIVELY (it is what the last
      byte's continuation hands back), so a payment that leaves one
      credential behind leaves any consequence of it behind. *)
-  Lemma kinit_banner0_mono (N : uk_names Σ) (Rt Rt' : iProp Σ) :
+  Lemma kinit_banner0_mono_at (N : uk_names Σ) (Rt Rt' : iProp Σ) :
     (Rt -∗ Rt') -∗
     UkInitMain.kinit_banner0 N stc_cons Rt -∗
     UkInitMain.kinit_banner0 N stc_cons Rt'.
@@ -369,40 +371,118 @@ Section UInitBanner.
   Qed.
 
   (* WHAT THE BANNER LEAVES BEHIND IS THE SHELL'S PROMPT CREDENTIAL AT THE
-     SAME COUNT (lane IO-LEAF, step 3): [kinit_own n] IS the credential
+     SAME COUNT (lane IO-LEAF, step 3): [kinit_own_at n] IS the credential
      family the shell's command loop carries at a boundary with no prompt
      byte out ([EchoLinks.ewc_cred] at [p = 0]) -- the two spellings are
      one proposition once [ewc_pr] is unfolded at 0, and the top
      ([UInitBoot]) instantiates init's [Wc] at that family.  So the law
-     above is [UkInitMain.kinit_ban_law] at [Wb := kinit_ban], with no
+     above is [UkInitMain.kinit_ban_law] at [Wb := kinit_ban_at], with no
      further conversion. *)
-  Lemma kinit_own_is_cred (n : nat) :
-    kinit_own n ⊣⊢
+  Lemma kinit_own_is_cred_at (n : nat) :
+    kinit_own_at n ⊣⊢
       ∃ I : list (bv 8),
-        ⌜length I = n⌝ ∗ EchoLinks.ewc_cred T γ (S gen_id) I 0%nat.
+        ⌜length I = n⌝ ∗ lk_cred L (S gen_id) I 0%nat.
   Proof using .
-    rewrite /kinit_own /EchoLinks.ewc_cred /EchoLinks.ewc_pr.
+    rewrite /kinit_own_at /lk_cred.
     iSplit.
     - iIntros "H". iDestruct "H" as (v I) "(%Hl & #Hpin & Ho)".
-      iExists I. iSplitR; [ by iPureIntro | ]. iExists v. iFrame "Hpin Ho".
+      iExists I. iSplitR; [ by iPureIntro | ]. iExists v.
+      rewrite (lk_pr_0 L). iFrame "Hpin Ho".
     - iIntros "H". iDestruct "H" as (I) "[%Hl H]".
-      iDestruct "H" as (v) "[#Hpin Ho]".
+      iDestruct "H" as (v) "[#Hpin Ho]". rewrite (lk_pr_0 L).
       iExists v, I. iSplitR; [ by iPureIntro | ]. iFrame "Hpin Ho".
   Qed.
 
-  Lemma kinit_ban_law_holds :
+  Lemma kinit_ban_law_holds_at :
+    lk_links L -∗
+    □ (∀ (n : nat) (N : uk_names Σ),
+         kinit_ban_at n -∗
+         UkInitMain.kinit_banner0 N stc_cons
+           (∃ I : list (bv 8),
+              ⌜length I = n⌝ ∗ lk_cred L (S gen_id) I 0%nat)).
+  Proof.
+    iIntros "#Hlk". iDestruct (kinit_banner_law_holds_at with "Hlk") as "#Hlaw".
+    iIntros "!>" (n N) "Hban".
+    iApply (kinit_banner0_mono_at N (kinit_own_at n) with "[] [Hban]"); last first.
+    { iApply ("Hlaw" $! n N with "Hban"). }
+    iIntros "Ht". rewrite <- kinit_own_is_cred_at. iExact "Ht".
+  Qed.
+
+End UInitBannerGen.
+
+(* ===================================================================== *)
+(*  THE ECHO INSTANCE (lane LINK-GEN): the names this file exports are    *)
+(*  the generic ones at [echo_link_inst], with no proof text.             *)
+(* ===================================================================== *)
+Section UInitBannerEcho.
+  Context `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ,
+            !irefslotG Σ, !pavG Σ, !wchG Σ, !ufdG Σ}.
+  Context `{GEN : GenId} `{XI : CurCtx}.
+  Context `{!ghost_varG Σ Z}.
+  Context `{!ghost_varG Σ (gset gname)}.
+  Context `{!echoOutG Σ}.
+  Context (T : iProp Σ) (γ : echo_gn).
+  Context `{!Persistent T} `{!Timeless T}.
+  Context `{PS : uprogSG Σ}.
+
+  Local Notation stc_cons := (FdOpen true true (FdDevice CONSOLE)).
+  Local Notation EI := (echo_link_inst T γ).
+
+  Definition kbn_fam (N : uk_names Σ) (Q : nat -> iProp Σ) : sfam :=
+    kbn_fam_at N Q.
+
+  Definition bnr (v : era_pins) (I : list (bv 8)) (i : nat) : iProp Σ :=
+    bnr_at EI v I i.
+
+  Definition kinit_ban (n : nat) : iProp Σ := kinit_ban_at EI n.
+  Definition kinit_own (n : nat) : iProp Σ := kinit_own_at EI n.
+  Definition kinit_dl0 : iProp Σ := kinit_dl0_at EI.
+
+  Global Instance kinit_ban_timeless n : Timeless (kinit_ban n).
+  Proof using . rewrite /kinit_ban. apply _. Qed.
+  Global Instance kinit_own_timeless n : Timeless (kinit_own n).
+  Proof using . rewrite /kinit_own. apply _. Qed.
+
+  Definition kinit_w1_of_link (N : uk_names Σ) (v : era_pins)
+      (I : list (bv 8)) (l : list fdstate) (rb : bool) (i : nat) (b : bv 8) :
+    l !! 1%nat = Some (FdOpen rb true (FdDevice CONSOLE)) ->
+    u_banner !! i = Some b ->
+    era_pin γ (S gen_id) v -∗
+    echo_links T γ -∗
+    UkInit.kinit_w1 N (mword_of_int 1 : mword 64) b
+      (UserFd.ustd (ukn_fd N) l ∗ bnr v I i)
+      (UserFd.ustd (ukn_fd N) l ∗ bnr v I (S i))
+    := kinit_w1_of_link_at EI N v I l rb i b.
+
+  Definition kinit_ban0_of_eturn :
+    eturn γ (S gen_id) -∗ kinit_dl0 ∗ kinit_ban 0%nat
+    := kinit_ban0_of_eturn_at EI.
+
+  Definition kinit_banner_law_holds :
+    echo_links T γ -∗
+    □ (∀ (n : nat) (N : uk_names Σ),
+         kinit_ban n -∗ UkInitMain.kinit_banner0 N stc_cons (kinit_own n))
+    := kinit_banner_law_holds_at EI.
+
+  Definition kinit_banner0_mono (N : uk_names Σ) (Rt Rt' : iProp Σ) :
+    (Rt -∗ Rt') -∗
+    UkInitMain.kinit_banner0 N stc_cons Rt -∗
+    UkInitMain.kinit_banner0 N stc_cons Rt'
+    := kinit_banner0_mono_at N Rt Rt'.
+
+  Definition kinit_own_is_cred (n : nat) :
+    kinit_own n ⊣⊢
+      ∃ I : list (bv 8),
+        ⌜length I = n⌝ ∗ EchoLinks.ewc_cred T γ (S gen_id) I 0%nat
+    := kinit_own_is_cred_at EI n.
+
+  Definition kinit_ban_law_holds :
     echo_links T γ -∗
     □ (∀ (n : nat) (N : uk_names Σ),
          kinit_ban n -∗
          UkInitMain.kinit_banner0 N stc_cons
            (∃ I : list (bv 8),
-              ⌜length I = n⌝ ∗ EchoLinks.ewc_cred T γ (S gen_id) I 0%nat)).
-  Proof.
-    iIntros "#Hlk". iDestruct (kinit_banner_law_holds with "Hlk") as "#Hlaw".
-    iIntros "!>" (n N) "Hban".
-    iApply (kinit_banner0_mono N (kinit_own n) with "[] [Hban]"); last first.
-    { iApply ("Hlaw" $! n N with "Hban"). }
-    iIntros "Ht". rewrite <- kinit_own_is_cred. iExact "Ht".
-  Qed.
+              ⌜length I = n⌝ ∗ EchoLinks.ewc_cred T γ (S gen_id) I 0%nat))
+    := kinit_ban_law_holds_at EI.
 
-End UInitBanner.
+End UInitBannerEcho.

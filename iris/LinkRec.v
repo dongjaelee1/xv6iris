@@ -109,6 +109,10 @@ Section linkrec.
     lk_lpr : nat -> era_pins -> list (bv 8) -> nat -> iProp Σ;
     lk_lend : nat -> era_pins -> list (bv 8) -> iProp Σ;
     lk_rr : nat -> era_pins -> nat -> list (list mobs * bv 8) -> iProp Σ;
+    (* THE ERA'S TURN: what [App.al_programs] hands /init's first
+       instruction ([EchoOut.eturn]; the file application's
+       [FileOut.fturn] is that plus the era's file pin). *)
+    lk_turn : nat -> iProp Σ;
 
     (* ---- structure ---- *)
     lk_T_pers : Persistent lk_T;
@@ -233,6 +237,13 @@ Section linkrec.
     lk_ab_pan : forall I, lk_ab I lk_pan = alt_panic;
     lk_ab_exf : forall I, lk_ab I lk_exf = alt_execfail;
     lk_apr_exf : forall I, lk_apr I lk_exf;
+
+    (* ---- the turn comes apart into the read half and round 0's
+            banner-owed credential ([UInitBanner.kinit_ban0_of_eturn]) ---- *)
+    lk_turn0 : forall k,
+      ⊢ lk_turn k -∗
+        (∃ v : era_pins, lk_pin k v ∗ dl_cnt v (1/2) 0%nat ∗ inp_lb v [])
+        ∗ (∃ v : era_pins, lk_pin k v ∗ lk_ban k v [] 0%nat);
     lk_panic_done : forall k v I,
       ⊢ lk_blk k v I lk_pan (length (lk_ab I lk_pan)) -∗ lk_ban k v I 0%nat;
   }.
@@ -496,6 +507,23 @@ Section echo_inst.
   Local Lemma ei_apr_exf (I : list (bv 8)) : (1 < 3)%nat.
   Proof using . lia. Qed.
 
+  (* THE ERA'S TURN AT STAGE 0 IS ROUND 0's BANNER-OWED CREDENTIAL
+     ([UInitBanner.kinit_ban0_of_eturn]'s content, which is where the two
+     halves of [EchoOut.eturn] come apart). *)
+  Local Lemma ei_turn0 (k : nat) :
+    eturn γ k -∗
+    (∃ v : era_pins, era_pin γ k v ∗ dl_cnt v (1/2) 0%nat ∗ inp_lb v [])
+    ∗ (∃ v : era_pins, era_pin γ k v ∗ EchoLinks.ewc_ban T v [] 0%nat).
+  Proof using .
+    iIntros "Hturn".
+    iDestruct "Hturn" as (v) "(#Hpin & Htn & Hdl & #Hcs & #Hps & #HE)".
+    iSplitL "Hdl"; [ iExists v; by iFrame "Hpin Hdl HE" | ].
+    iExists v. iFrame "Hpin".
+    rewrite /EchoLinks.ewc_ban. iLeft. iExists [], [], 0%nat.
+    rewrite Nat.add_0_r. iFrame "Htn Hps Hcs HE".
+    iPureIntro. exact EchoLinks.wr_ban_round0.
+  Qed.
+
   Definition echo_link_inst : LinkRec Σ :=
     {| lk_T := T;
        lk_pin := era_pin γ;
@@ -518,6 +546,7 @@ Section echo_inst.
        lk_lpr := fun _ v I p => EchoLinksLine.ewc_lpr T v I p;
        lk_lend := fun _ v I => echo_lend v I;
        lk_rr := fun k v n ws => EchoOut.read_ret T k v n ws;
+       lk_turn := fun k => eturn γ k;
 
        lk_T_pers := HPT;
        lk_T_tl := HTT;
@@ -593,6 +622,7 @@ Section echo_inst.
        lk_ab_pan := fun I => line_alts_of_3 (last_ws I);
        lk_ab_exf := fun I => line_alts_of_1 (last_ws I);
        lk_apr_exf := ei_apr_exf;
+       lk_turn0 := ei_turn0;
        lk_panic_done := fun _ v I => EchoLinksLine.ewc_panic_done T v I;
     |}.
 

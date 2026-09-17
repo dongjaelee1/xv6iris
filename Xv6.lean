@@ -187,3 +187,6 @@ import Xv6.UPtWalkaddrLemmas
 import Xv6.ProofWalkaddr
 import Xv6.LinkWalkaddr
 import Xv6.KstackMap
+import Xv6.UPtUnmapLemmas
+import Xv6.ProofUvmunmap
+import Xv6.LinkUvmunmap

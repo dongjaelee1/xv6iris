@@ -629,6 +629,29 @@ read's `-1` arm at an inode needs a copyout failure, which the mapped row
 excludes) — if the kernel spec's arm cannot be refuted at the U tier the
 alternative joins §1's list instead; the lane says which.
 
+RULED after CAT-ENTRY (2026-09-17).  (a) An ABSENT `f` files `RCRan`,
+not `RCNoOpen`: `cont None LCat RCRan` already IS the cannot-open
+diagnostic, and `RCNoOpen` is the present file whose `filealloc`/
+`fdalloc` failed; the two print the same bytes, so THE DEED DECIDES which
+is filed (as it decides `RFOpenU`/`RFOpenM`).  (b) At `Some (i, [])` cat
+prints nothing and files nothing; the block's first byte is sh's prompt,
+so sh files `RCRan` at its own prompt byte through `file_write_link_blk`
+— sh reads its deed before it prints.  (c) The `cat: read error` tail is
+NOT refutable at the U tier as the kernel stands: `FsAbsReadFire.
+read_post_fail`'s `0 <= n` arm names no address.  It gets READ's twin of
+RELAY 4 (lane READ-RELAY: the arm carries `SpecCopyout`'s reason — an
+address the page table does not map for writing — through
+`FsAbsReadFire`, `SpecFileread`'s and `SpecSysRead`'s folds), and a
+mapped buffer then refutes it in one line; the alternative `RCReadErr j`
+is NOT added.  (d) cat's walk (`UkCat*`) was landed claim-free — free
+write laws, trivial payload, generic open/read leaves — and is RESTATED
+on echo's mould (lane CAT-WALK: `kcat_w`/`kcat_pay_all`, `ukn_const`,
+deed arms over `UkFileOpen`'s corollaries) before `UCatKernel` exists.
+`UCatOut.v` (CAT-ENTRY) is the payment the restated walk consumes, and
+its section 1 — the block-byte family at the FILE stage, `EchoLinksLine.
+wr_blk_*`'s twin — is what the redirect child's and sh's rounds should
+be stated at too.
+
 ### 5.4 sh execs cat, and the dispatch
 
 `UShCat` is `UShEcho` at `FsCatPin`; sh's child branches on the parsed

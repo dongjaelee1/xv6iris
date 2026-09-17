@@ -31,9 +31,8 @@
      or the taint).  The ledger's drain reads it against its own [fl_auth]
      and that is how [FileDisc.fadm_boot] is discharged.
 
-   THE ONE THING THIS FILE TAKES AS A HYPOTHESIS AND CANNOT PROVE:
-   [Decision (FileDisc.disc_f h)].  See the note above [Section file_led].
-   Everything else is closed. *)
+   NOTHING IS TAKEN AS A HYPOTHESIS: the ledger's counter reads
+   [FileDiscDec.disc_f_dec] (lane FILE-DEC).  Everything is closed. *)
 From Stdlib Require Import ZArith Lia List.
 From stdpp Require Import gmap list bitvector.definitions.
 From iris.proofmode Require Import proofmode.
@@ -49,6 +48,7 @@ Require Import EchoDisc.
 Require Import ConsLog.
 Require Import EchoOutPure.
 Require Import FileDisc.
+Require Import FileDiscDec.   (* [disc_f_dec]: the ledger's counter *)
 Require Import FileOutPure.
 Require Import EchoOut.          (* the ghost algebra, [ch_E] and its laws *)
 Require Import AppEcho.          (* [echo_fixed] *)
@@ -1878,22 +1878,21 @@ Section file_out.
   (* ====================================================================== *)
   (*  5.  THE LEDGER                                                        *)
   (*                                                                        *)
-  (*  THE ONE HYPOTHESIS THIS FILE TAKES AND DOES NOT DISCHARGE.            *)
+  (*  THE COUNTER IS AT [decide (FileDisc.disc_f h)].                       *)
   (*  [EchoOut.echo_led]'s taint counter is at [decide (EchoDisc.disc h)],  *)
   (*  and the file ledger's must be at [decide (FileDisc.disc_f h)]: the    *)
   (*  conclusion's antecedent is the FILE discipline, and [disc_f h] does   *)
   (*  not imply [disc h] (a [cat f] line is not an echo line), so echo's    *)
-  (*  counter proves nothing here.  [FileDisc.disc_f] is NOT decidable as   *)
-  (*  landed -- lane MODEL says so ("[disc_seg_f'] is NOT decidable here")  *)
-  (*  -- and the obstacle is not the finite search over resolutions but the *)
-  (*  PER-CYCLE BOOT STATE: [disc_f] quantifies [exists s, fst_ok s /\ ...] *)
-  (*  over ALL byte lists.  Only [al_rx] needs to DECIDE (every other step  *)
-  (*  needs a [decide_ext] over one of [disc_f]'s closure laws), and there  *)
-  (*  the ledger must hand out the byte's tag, whose left arm IS the        *)
-  (*  discipline.  So the instance is a section hypothesis, named here and  *)
-  (*  reported; every result below is a theorem WITH it, not an axiom.      *)
+  (*  counter proves nothing here.  Only [al_rx] needs to DECIDE (every     *)
+  (*  other step needs a [decide_ext] over one of [disc_f]'s closure laws), *)
+  (*  and there the ledger must hand out the byte's tag, whose left arm IS  *)
+  (*  the discipline.  The instance is [FileDiscDec.disc_f_dec], lane       *)
+  (*  FILE-DEC: the per-cycle boot state, which [disc_f] quantifies over    *)
+  (*  ALL byte lists, is canonicalised to a finite list read off the        *)
+  (*  segment's own wire ([FileDiscDec.disc_seg_f'_canon]), and the rest of *)
+  (*  the search ports from [EchoDisc.disc_seg'_dec].  So this file takes   *)
+  (*  NO hypothesis of its own.                                            *)
   (* ====================================================================== *)
-  Context `{Hdf : forall hh : list mobs, Decision (disc_f hh)}.
 
   (* the SECOND per-era map, beside [EchoOut.pin_map] *)
   Definition f0_map (h : list mobs) : iProp Σ :=

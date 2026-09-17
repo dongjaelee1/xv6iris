@@ -9,11 +9,11 @@
    the file era map's gname -- so nothing in [AppFile.v] moves: every one
    of its lemmas is read at [fgn_cl c].
 
-   TWO THINGS ARE SECTION HYPOTHESES AND ARE NOT DISCHARGED HERE.
-   [al_programs] is lane SH-ROUND's (the first process's exec bundle), and
-   [Decision (FileDisc.disc_f h)] is the ledger's, reported at its site in
-   [FileOut.v].  Neither is an axiom: every result below is a theorem with
-   them in its binder list. *)
+   ONE THING IS A SECTION HYPOTHESIS AND IS NOT DISCHARGED HERE:
+   [al_programs], lane SH-ROUND's (the first process's exec bundle).  It is
+   not an axiom -- every result below is a theorem with it in its binder
+   list.  [Decision (FileDisc.disc_f h)] WAS the second and is now
+   [FileDiscDec.disc_f_dec] (lane FILE-DEC). *)
 From Stdlib Require Import ZArith Lia List.
 From stdpp Require Import gmap list bitvector.definitions.
 From iris.proofmode Require Import proofmode.
@@ -80,9 +80,6 @@ Section FileApp.
   Context {Σ : gFunctors}.
   Context `{!echoOutG Σ, !inG Σ (mono_listR (leibnizO Z)), !fileAppG Σ,
             !fileOutG Σ}.
-  (* the ledger's one hypothesis; see the note above [FileOut]'s
-     [Section]'s fifth part *)
-  Context `{Hdf : forall hh : list mobs, Decision (disc_f hh)}.
 
   (* ---- the four fields that are resources ---- *)
 
@@ -335,7 +332,6 @@ Section FileLaws.
   Context `{!ufdG Σ}.
   Context `{!echoOutG Σ, !inG Σ (mono_listR (leibnizO Z)), !fileAppG Σ,
             !fileOutG Σ}.
-  Context `{Hdf : forall hh : list mobs, Decision (disc_f hh)}.
 
   (* lane SH-ROUND's field, verbatim from [App.xv6_app_laws] *)
   Context (Hprog :

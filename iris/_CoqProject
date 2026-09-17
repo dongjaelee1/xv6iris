@@ -1487,6 +1487,7 @@ LineWords.v
 FileState.v
 EchoDisc.v
 FileDisc.v
+FileDiscDec.v
 LogEntryDefs.v
 ConsLog.v
 EchoOutPure.v

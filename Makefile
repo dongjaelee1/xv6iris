@@ -20,6 +20,8 @@
 #   make audit-only the same audit, against an already-built tree
 #   make audit-echo / audit-echo-only  the same, for the ECHO APPLICATION
 #                   theorem -- a cone the system audit never walks
+#   make audit-tree / audit-tree-only  the same, for the TREE APPLICATION's
+#                   era-0 obligation -- a cone neither of the other two walks
 #   make audit-all / audit-all-only    BOTH audits, run concurrently
 #   make model      compile the Sail-generated Coq model (model-xv6iris/)
 #   make kernel     build the xv6 kernel ELF (xv6-riscv/kernel/kernel)
@@ -134,7 +136,7 @@ USER_DUMPS ?= sync:Sync echo:Echo sh:Sh init:Init cat:Cat
 
 .PHONY: all proofs model kernel user dump dump-force kernel-rocq user-rocq \
         xv6-rev-check sail-rev-check gen-code check-decode update-decode \
-        audit audit-only audit-echo audit-echo-only audit-all audit-all-only vtest vtest-check vtest-check-ci vtest-gen vtest-deps \
+        audit audit-only audit-echo audit-echo-only audit-tree audit-tree-only audit-all audit-all-only vtest vtest-check vtest-check-ci vtest-gen vtest-deps \
         hwtest hwtest-gen hwtest-gen-all hwtest-probe \
         vtest-runs vtest-passes vtest-table \
         clean clean-proofs distclean model-gen
@@ -316,6 +318,20 @@ audit-echo: proofs
 
 audit-echo-only:
 	cd $(IRIS) && $(RUN) coqc $(AUDIT_FLAGS) -noglob EchoAssumptions.v
+
+# The SAME audit for the TREE APPLICATION (iris/TreeAssumptions.v): `Print
+# Assumptions` on TreeImg.tree_Happ_init, the era-0 obligation of
+# AppTree.app_tree at the literal mkfs image.  A THIRD target for the reason
+# there is a second: no two of the three cones contain each other -- the
+# system audit walks no application tier at all, and the echo audit walks
+# AppEcho/EchoOut/USh* and never AppTree/TreeView/TreeMove/TreeImg.  That
+# file's header says what it audits and why it is not yet a whole-system
+# theorem.  Same reasons for -noglob and for staying out of iris/_CoqProject.
+audit-tree: proofs
+	$(MAKE) audit-tree-only
+
+audit-tree-only:
+	cd $(IRIS) && $(RUN) coqc $(AUDIT_FLAGS) -noglob TreeAssumptions.v
 
 # BOTH audits, and the reason this target exists rather than a habit of typing
 # `make audit-only audit-echo-only`: that line SERIALISES them.  Make runs the

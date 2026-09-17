@@ -39,7 +39,8 @@ inside the project-local opam switch, so you do **not** need to
 make            # == make proofs: build the model, the kernel dump, and all Iris proofs
 make audit      # build, then Print Assumptions on the system theorem (see below)
 make audit-echo # the same, for the echo application theorem
-make audit-all  # both audits, run concurrently
+make audit-tree # the same, for the tree application's era-0 obligation
+make audit-all  # the system and echo audits, run concurrently
 make model      # compile only model-xv6iris/ (the Sail-generated Rocq model)
 make kernel     # build the xv6 kernel ELF (xv6-riscv/kernel/kernel)
 make user       # build the xv6 user programs (xv6-riscv/user/_*, via fs.img)
@@ -66,6 +67,15 @@ behind a seal there. `make audit-all` runs the two concurrently — they are
 independent processes over a built tree, so the pair costs the longer of them
 rather than the sum. CI runs both on every push and reports each list, plus the
 trusted base of each adequacy statement, in the run's step summary.
+
+`make audit-tree` is the third of the family (`iris/TreeAssumptions.v`, `Print
+Assumptions TreeImg.tree_Happ_init`). The tree application — subtree ownership
+as an application claim, `claude-notes/design/user-tree.md` — has no
+whole-system theorem yet: its `Hinit_boot` is open and §8 of that file says
+why. What this audit covers is the part of that theorem's cone that exists, the
+era-0 claim at the mkfs image, and its cone is walked by neither of the other
+two. When `Hinit_boot` lands, the target moves to the closed corollary and
+nothing else about the file changes.
 
 Build graph: each ELF is disassembled by `tools/dump_elf.py` — the kernel into
 `kernel-rocq/*.v`, each user program into `user-rocq/*.v`; `iris/` depends on

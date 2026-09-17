@@ -9031,3 +9031,246 @@ with `Hep := fun v => (identity)` — one application each, today.
   expected to rename c into C*) because the projection's binder names come
   from the field's own definition; `Global Arguments ck_stg {_ _ _ _} _.`
   is right.
+
+### LINK-GEN-4 (2026-09-17) — THE DISCIPLINE AND THE DIAGNOSTIC BECOME PARAMETERS; `ReadRec` LANDS AND sh's READ LEAF IS GENERIC; THE WALK'S THREE READINGS ARE THE WHOLE RESIDUE
+
+Branch `app-file/link-stage`, on top of LINK-GEN-2 and LINK-GEN-3.  Whole
+tree GREEN on the lane's remote tree (`--proofs -k`, `EXIT=0`, zero
+`Error`); all four audits unchanged (`audit-only` thirteen,
+`audit-echo-only` FOURTEEN with the identical list, `audit-tree-only`
+thirteen, `audit-file-only` fourteen); no `Admitted` added outside
+`UShRound.v`'s skeleton, which gains none; `Proof using` everywhere.
+
+**THE LANE'S VERDICT IN ONE LINE.**  LINK-GEN-3 named two walls —
+`UkSh.ush_read_ans`'s hard-coded `EchoDisc.disc_input` and
+`UkShEcho.ush_execfail_law_wq`'s hard-coded `alt_execfail` — and both come
+down to the SAME one-line pattern SH-CHILD used for `ush_tag_law_at`: the
+era-specific thing becomes a parameter, the landed name becomes that at the
+echo value BY DEFINITION, and no consumer moves.  What does NOT come down
+that way is the WALK, and the walk's dependence on the discipline is
+exactly three readings, named below.
+
+#### 1. THE SEVEN `UkSh` STATEMENTS, AND THEIR ECHO INSTANCES
+
+Every one is `X_at (Dsc : list (bv 8) -> Prop) …`, and every landed name is
+`X … := X_at disc_input …` — a `Definition`, no proof text, so
+`UShKernel`, `UInitSh`, `UInitBoot`, `UConsLine` and `UShLine` are
+untouched.
+
+| generic | echo instance | what `Dsc` replaces |
+| --- | --- | --- |
+| `ush_read_ans_at` | `ush_read_ans` | the receipt's `⌜disc_input (I ++ J)⌝` conjunct |
+| `ush_read_ans_pm_at` | `ush_read_ans_pm` | (relay) |
+| `ush_read_ans_1_at` | `ush_read_ans_1` | `⌜disc_input (I ++ [g 0])⌝` on the delivered arm |
+| `ush_read_recv_leaf_at` | `ush_read_recv_leaf` | (relay, through `ush_read_ans_at`) |
+| `ush_gline_p_at` | `ush_gline_p` | `J <> [] -> disc_input (I0 ++ J)` |
+| `ush_gets_line_at` | `ush_gets_line` | (relay) |
+| `ush_gets_done_line_at` | `ush_gets_done_line` | its `ush_gline_p` premise |
+
+plus `ush_gets_line_split_at`, `ush_gets_line_0_at`,
+`ush_gets_line_of_posb_at` with their instances (three more relays).
+
+**`ush_gets_done_line` KEEPS `EchoDisc.body_ok J`, AND THAT IS THE FINDING
+UNDER THE FINDING.**  It was tempting to weaken the premise to the one
+equation the proof spends (`wl_body (wl_words J) = J`, the join's round
+trip).  It cannot be: the SECOND conjunct, `line_ok (wl_words J)`, is spent
+too — through `ush_line_is` inside `ush_gets_done`.  So the LINE predicate
+is a second axis, orthogonal to the input discipline, and it is the one
+`UkSh.ush_rest_line_at`'s `D` and `UkShFork.ushf_child_law_at`'s `Lp`
+already own (lane SH-CHILD).  A second era parameterizes the discipline
+here and the line predicate there; neither subsumes the other.
+
+#### 2. `ReadRec` (`iris/ReadRec.v`, new)
+
+```coq
+  Record ReadRec (L : LinkRec Σ) := MkReadRec {
+    rk_disc : list (bv 8) -> Prop;
+    rk_rd : forall (k n : nat) (v : era_pins)
+                   (ws : list (list mobs * bv 8)) (Φ : iProp Σ),
+      ⊢ lk_links L -∗ lk_pin L k v -∗ dl_cnt v (1/2) n -∗
+        (lk_rr L k v n ws -∗ Φ) -∗ cons_link Uart0 k (ConsLog.EvRead ws) Φ;
+    rk_rd_taint : forall (k : nat) (ws : list (list mobs * bv 8))
+                         (Φ : iProp Σ),
+      ⊢ lk_links L -∗ lk_T L -∗ (lk_T L -∗ Φ) -∗
+        cons_link Uart0 k (ConsLog.EvRead ws) Φ;
+    rk_arms : forall (k : nat) (v : era_pins) (I : list (bv 8))
+                (ws sl sl' : list (list mobs * bv 8))
+                (hs : list (list mobs)) (dd dc : nat) (g : nat -> bv 8),
+      (dd <= dc)%nat -> length ws = dc ->
+      cons_window sl (length I) dd g hs ->
+      sl `prefix_of` sl' ->
+      (forall j : nat, (j < dc)%nat -> ws !! j = sl' !! (length I + j)%nat) ->
+      ⊢ lk_epin L k v -∗ inp_lb v I -∗ lk_rres L v I -∗
+        lk_rr L k v (length I) ws -∗
+        (dl_cnt v (1/2) (length I + dc)%nat
+         ∗ ∃ J : list (bv 8),
+             ⌜length J = dc⌝ ∗ ⌜rk_disc (I ++ J)⌝
+             ∗ ⌜(0 < dd)%nat -> g 0%nat = J !!! 0%nat⌝
+             ∗ inp_lb v (I ++ J) ∗ lk_rres L v (I ++ J))
+        ∨ lk_T L;
+  }.
+```
+
+`rk_rd` / `rk_rd_taint` exist because `LinkRec` carries the read's RETURN
+(`lk_rr`) but NOT the read LINK — `EchoLinks.echo_link_rd` is a projection
+of `lk_links` that the record does not expose, and `LinkRec` is frozen.
+`rk_arms` is `UShLine.ush_read_recv_era`'s own era block, verbatim, as a
+law: opening `EchoOut.read_ret`'s body is what that lemma did by hand, and
+it does it through this one field now.  `EchoDisc.disc_input_no_cr` and
+`UShLine.ush_rd_byte_of_rows` MOVE into `ReadRec.v` (as
+`disc_input_no_cr` / `rr_byte_of_rows`) because the echo instance is what
+needs them.  `echo_read_inst` is definitional.
+
+#### 3. `UShLine`'s READ LEAF IS GENERIC
+
+`ush_rd_pin_at (Rres)`, `ush_rd_x_at (Rres)`, `ush_rd_in_at R`,
+`ush_read_fam_era_at R`, `ush_read_pay_era_at R`, `ush_read_sup_era_at R`,
+`ush_read_recv_era_at R`, `ush_read_recv_leaf_holds_at R` — all over
+`{L : LinkRec Σ} (R : ReadRec L)`, with ONE extra premise everywhere:
+
+```coq
+    (forall v : era_pins, ⊢ era_pin γ (S gen_id) v -∗ lk_pin L (S gen_id) v)
+```
+
+the bridge from the PIECES' own pin to the record's.  It is the identity at
+echo (`rr_ep_refl`) and at the file (`lk_pin file_link_inst :=
+era_pin (fgn_echo g)`).  Every landed echo name is recovered as a
+`Definition` at `echo_read_inst`, with no proof text.
+
+**WHAT SH-ROUND APPLIES.**
+
+```coq
+  Lemma ush_read_recv_leaf_holds_at {L : LinkRec Σ} (R : ReadRec L)
+      (γ : echo_gn) (Wb : list (bv 8) -> iProp Σ)
+      (N : uk_names Σ) (γp : gname) (l : list fdstate) :
+    ukn_pay N
+      = ucons_pay fsc_cons γp (lk_T L) (ush_rd_x_at (lk_rres L) γ Wb) ->
+    (⊢ app_sup -∗ lk_T L) ->
+    (⊢ lk_T L -∗ app_sup) ->
+    (forall v : era_pins, ⊢ era_pin γ (S gen_id) v -∗ lk_pin L (S gen_id) v) ->
+    (⊢ lk_links L) ->
+    ⊢ UkSh.ush_read_recv_leaf_at (PS := uprogSG_free) N γp (lk_T L)
+        (ush_mid_at (lk_rres L) γ γp) (rk_disc L R) fsc_cons l.
+```
+
+so the file's read leaf is ONE application once `FileLinkInst` gains a
+`ReadRec` (four fields, §6 below).
+
+#### 4. `ush_execfail_law_wq_at` (`iris/UkShEcho.v`)
+
+```coq
+  Definition ush_execfail_law_wq_at (dg : list (bv 8) -> list (bv 8))
+      (nn : list (bv 8) -> nat) (Wc : list (bv 8) -> nat -> iProp Σ)
+      : iProp Σ :=
+    (□ (∀ I : list (bv 8),
+          UkShDiag.ush_execfail_law_at (dg I) (nn I)
+            (Wc I 3%nat) (Wc I 0%nat)))%I.
+
+  Definition ush_execfail_law_wq (Wc) : iProp Σ :=
+    ush_execfail_law_wq_at (fun _ => alt_execfail) (fun _ => 17%nat) Wc.
+
+  Lemma ush_execfail_law_wq_of_at dg nn Wc :
+    (forall I, dg I = alt_execfail) -> (forall I, nn I = 17%nat) ->
+    ush_execfail_law_wq_at dg nn Wc -∗ ush_execfail_law_wq Wc.
+```
+
+and, in `UShEchoPay`, the discharge that needs NO equation at any era:
+
+```coq
+  Lemma ush_execfail_law_wq_at_hold (Hold : list (bv 8) -> iProp Σ) :
+    ⊢ lk_links L -∗
+      UkShEcho.ush_execfail_law_wq_at (PS := uprogSG_free)
+        (lk_exfb L) (fun I => (length (lk_exfb L I) - 2)%nat)
+        (fun I p => lk_lcred L (S gen_id) I p ∗ Hold I)%I.
+```
+
+(`UShPanic.ush_execfail_law_hold_at` already delivers the law at
+`lk_exfb L I`; the constant carrier was the only thing in the way.)
+`ush_execfail_law_wq_hold_at`, the bridge to the landed carrier, keeps its
+`forall I, lk_exfb L I = alt_execfail` premise — true at echo, FALSE at the
+file (`FileLinksLine.fexfb LCat = alt_execcat`).
+
+#### 5. `UShRound.v` — THE THREE HYPOTHESIS RESHAPES (skeleton only; every proof still `Admitted`)
+
+1. The five `UShLine.ush_mid (fgn_echo g) γp` sites are
+   `UShLine.ush_mid_at (lk_rres FI) (fgn_echo g) γp` at
+   `FI := FileLinkInst.file_link_inst g` (`Hwc` ×2, `Hwbr` ×2, and the
+   round's own `Pm`).  The ghost algebra is unchanged; only the RESIDUE is
+   the record's, and `lk_rres FI` is `FileLinksLine.fwc_rres g`.
+2. `Hcltaint` takes the echo-side era pin:
+   `forall I p v, ⊢ era_pin (fgn_echo g) (S gen_id) v -∗ T -∗ Wcl I p`.
+   ONE pin, not two: `lk_pin FI` IS `era_pin (fgn_echo g)`, so
+   `LinkRec.lk_lcred_taint` discharges it and
+   `FileLinkInst.file_Hcltaint` is already written at that shape.
+3. `Hexecfail` is
+   `⊢ UkShEcho.ush_execfail_law_wq_at (lk_exfb FI)
+       (fun I => (length (lk_exfb FI I) - 2)%nat) Wcf`
+   and is **dischargeable today** by
+   `UShEchoPay.ush_execfail_law_wq_at_hold`.
+
+`UShRound.v` gained `Require Import LinkRec. Require Import FileLinkInst.`
+and a `Local Notation FI`; nothing else there moved and no proof text was
+added or removed.
+
+#### 6. WHAT IS STILL OPEN FOR `sh_round_holds_file`, EXACTLY
+
+1. **THE WALK'S THREE READINGS OF THE DISCIPLINE.**  After §1 the ONLY
+   `EchoDisc.disc_input` left in `UkSh.v` above the statements is inside
+   `wp_kshg_loop`, at three sites (`iris/UkSh.v:3961`, `:4190`, `:4338`):
+   - `:3961` — "the input grew by that byte and is disciplined still", the
+     row that decides every branch (`EchoDisc.disc_input_byte_val`, through
+     `ush_disc_snoc_val`);
+   - `:4190` — `disc_input_snoc_nl`: the line a newline closed is an
+     admissible BODY;
+   - `:4338` — `disc_input_rest_short`: the remainder is short enough that
+     its newline still fits.
+   Those three are the whole law set a generic `wp_kshg_loop` needs, and at
+   `FileDisc.disc_input_f` the first and third are immediate (the
+   definitions are the same shape at `fbody_byte` / `fbody_ok`); the second
+   lands in `fbody_ok`, not `EchoDisc.body_ok`, which is the LINE axis of
+   §1's second paragraph.  Making the walk generic means a section variable
+   `Dsc` plus those three hypotheses from `UkSh.v:2461` on, which re-signs
+   every walk lemma after it and `UShKernel`'s three
+   `ush_read_recv_leaf` hypothesis lines.  **That is a lane, and it is the
+   last one between the file era and sh's loop.**
+2. **`UkShEcho.ushf_child_law_holds` STILL NAMES THE CONSTANT CARRIER.**
+   It takes `ush_execfail_law_wq Wc`, i.e. `alt_execfail` at EVERY input.
+   The file supplies `ush_execfail_law_wq_at (lk_exfb FI) …`, and the gap
+   is exactly `forall I, lk_exfb FI I = alt_execfail`, which is false at an
+   `LCat` line and TRUE at the inputs the echo child law is about.  The fix
+   is to let `UkShFork.ushf_child_law_at`'s own `Lp` imply it:
+   `ushf_child_law_at Lp` already carries `⌜Lp ws g 0 len⌝` and
+   `⌜ws = last_ws I⌝`, so `ushf_child_law_holds` should take
+   `ush_execfail_law_wq_at dg nn Wc` plus
+   `forall ws g len I, Lp ws g 0%nat len -> ws = last_ws I ->
+      dg I = alt_execfail /\ nn I = 17%nat`.
+   That is a one-statement change in `UkShEcho.v` and it is the natural
+   companion to SH-CHILD-2's fd-1 generalisation of the same file.
+3. **`FileLinkInst` OWES A `ReadRec`**, four fields:
+   `rk_disc := FileDisc.disc_input_f`; `rk_rd` / `rk_rd_taint` off
+   `FileLinks.file_links`' read projections (`FileLinks.fread_ret` is
+   already `lk_rr file_link_inst`); `rk_arms` the file twin of
+   `ReadRec.eri_arms` — the same proof with `FileOut`'s `ein_read_byte`
+   twin and `fwc_rres` in place of `echo_rres`.  With it, `Hread` for the
+   file round is `UShLine.ush_read_recv_leaf_holds_at` at one application.
+4. Everything LINK-GEN-3's §4 listed for `Hchild_echo`, `Hwc`, `Hwbr` and
+   `ush_rest_l` stands unchanged; `Hexecfail` has moved from "not stated
+   truthfully" to "dischargeable today".
+
+#### 7. BUILD NOTES
+
+- **A section variable added mid-file re-signs everything after it.**  That
+  is why §1 parameterizes the STATEMENTS (whose `Dsc` is a definition
+  parameter, before `UkSh.v`'s `Context (cn)`) and not the walk: a
+  `Context (Dsc)` at `:2461` would have carried `Dsc` and its three laws
+  into every walk lemma and out to `UShKernel`.
+- **`Global Arguments` on a record projection is worth skipping.**  The
+  implicit count depends on which section variables the record actually
+  uses, and getting it wrong costs a build; `ReadRec` keeps its parameter
+  `L` EXPLICIT on every projection (`rk_rd L R k n v ws Φ`), as
+  `LinkRec`'s own fields keep theirs.
+- **A `Definition` recovery of an Iris lemma works exactly as a `Lemma`
+  does** — the `bi_emp_valid` coercion fires in a definition's codomain
+  too — so `Definition f … : <landed statement> := f_at <instance> …` is
+  the whole of an echo recovery, with the instance's own laws passed as
+  named lemmas.

@@ -55,8 +55,15 @@ func nulterminate
 func peek
 func gettoken
 
-# ---- the one cmd constructor a symbol-free line reaches --------------
+# ---- the two cmd constructors the walked lines reach -----------------
+# [execcmd] is every line's; [redircmd] is the REDIRECT line's, and it is
+# here because lane SH-PARSE walks it (iris/UkShRedirCmd.v).  It used to be
+# a [skipfunc]: reachable only from parseredirs' switch, which runs only
+# when [peek(ps,es,"<>")] is true, which [ushp_no_symbols] refutes.  The
+# line model widened ([UkShParseSym.ushs_redir] admits ONE '>'), the switch
+# runs once, and the constructor's 48 instructions are fetched.
 func execcmd
+func redircmd
 
 # ---- the C library the above calls (memset is UCodeShK.v's) ----------
 func strlen
@@ -64,7 +71,6 @@ func strchr
 
 # ---- and what is deliberately absent ---------------------------------
 skipfunc parseblock reached only through [peek(ps,es,"(")] in parseexec, and a '(' is a symbol byte -- excluded by the walk's [ushp_no_symbols] premise on the line, so no instruction of it is ever fetched
-skipfunc redircmd reached only from parseredirs' switch, which runs only when [peek(ps,es,"<>")] is true -- excluded by [ushp_no_symbols]
 skipfunc pipecmd reached only from parsepipe's [peek(ps,es,"|")] arm -- excluded by [ushp_no_symbols]
 skipfunc listcmd reached only from parseline's [peek(ps,es,";")] arm -- excluded by [ushp_no_symbols]
 skipfunc backcmd reached only from parseline's [peek(ps,es,"&")] loop -- excluded by [ushp_no_symbols]

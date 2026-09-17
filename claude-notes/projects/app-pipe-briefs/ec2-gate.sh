@@ -34,13 +34,12 @@ log=/tmp/gate-$(date +%s).log
     ( cd \$d && rocq makefile -f _CoqProject -o CoqMakefile >/dev/null 2>&1 && make -f CoqMakefile -j30 ) >> $log 2>&1 || { rc=\$?; echo \"build FAILED in \$d (rc=\$rc)\"; break; }; \
     echo \"built \$d\"; done; \
   if grep -Eq 'Error|Segmentation fault|Anomaly' $log; then echo '---- errors:'; grep -E 'Error|Segmentation fault|Anomaly' -B3 -A8 $log | tail -80; [ \$rc -eq 0 ] && rc=1; fi; \
-  # tiny .vo = the rm+touch fabrication trap
   small=\$(find iris -name '*.vo' -size -1k | head); [ -z \"\$small\" ] || { echo \"suspiciously small .vo: \$small\"; rc=1; }; \
   echo BUILD_RC=\$rc; exit \$rc" || { echo "GATE RED (build) at ${sha:0:10}"; exit 1; }
 
 # 3. audits (statement-level TCB counts must not move: system 13, echo 14, tree 10; file/pipe reported)
 if [ $AUDIT = 1 ]; then
   "${SSH[@]}" "set -o pipefail; cd $REMOTE && eval \$(opam env --switch=/shared/xv6rocq --set-switch); \
-    for t in audit-only audit-echo-only audit-tree-only; do echo "== \$t"; make -s \$t 2>&1 | grep -Ev '^(Warning|make)' | tail -30; done" || { echo "GATE RED (audit) at ${sha:0:10}"; exit 1; }
+    for t in audit-only audit-echo-only audit-tree-only; do echo '== '\$t; make -s \$t 2>&1 | grep -Ev '^(Warning|make)' | tail -30; done" || { echo "GATE RED (audit) at ${sha:0:10}"; exit 1; }
 fi
 echo "GATE GREEN at ${sha:0:10}"

@@ -164,3 +164,76 @@ Section file_link_inst.
     |}.
 
 End file_link_inst.
+
+(* ===================================================================== *)
+(*  THE [UShRound]-FACING LEMMAS.                                         *)
+(*                                                                       *)
+(*  Lane SKELETON's obligation table, discharged by NAME at the file      *)
+(*  instance.  [Wcl]/[Wbl] below are what [UShRound.v] must instantiate   *)
+(*  its two parameters at; [Wcf I p = Wcl I p ∗ sh_hold I] is then the    *)
+(*  family the loop carries, and the two framed laws admit that linear    *)
+(*  conjunct.                                                            *)
+(* ===================================================================== *)
+Section sh_round_facing.
+  Context {Σ : gFunctors}.
+  Context `{!echoOutG Σ, !inG Σ (mono_listR (leibnizO Z)), !fileAppG Σ,
+            !fileOutG Σ}.
+  Context (g : file_gn).
+  Context `{HRg : !riscvGS Σ}.
+  Context `{GEN : GenId}.
+
+  Local Notation FI := (file_link_inst g).
+
+  (* the two families [UShRound]'s [Wcl] / [Wbl] are instantiated at *)
+  Definition file_Wcl (I : list (bv 8)) (p : nat) : iProp Σ :=
+    lk_lcred FI (S gen_id) I p.
+
+  Definition file_Wbl (I : list (bv 8)) : iProp Σ :=
+    (∃ v : era_pins,
+       lk_pin FI (S gen_id) v ∗ lk_ban FI (S gen_id) v I 0%nat)%I.
+
+  Global Instance file_Wcl_timeless I p : Timeless (file_Wcl I p).
+  Proof using . rewrite /file_Wcl. apply _. Qed.
+
+  (* ---- [UShRound]'s [Hwbl] ---- *)
+  Lemma file_Hwbl (I : list (bv 8)) : ⊢ file_Wcl I 3%nat -∗ file_Wcl I 0%nat.
+  Proof using . rewrite /file_Wcl. iApply (lk_lcred_blk_line FI (S gen_id) I). Qed.
+
+  (* ---- [UShRound]'s [Hwbwc] ---- *)
+  Lemma file_Hwbwc (I : list (bv 8)) : ⊢ file_Wbl I -∗ file_Wcl I 0%nat.
+  Proof using . rewrite /file_Wcl /file_Wbl. iApply (lk_lcred_of_ban FI (S gen_id) I). Qed.
+
+  (* ---- [UShRound]'s [Hcltaint], AT THE TWO-PIN SHAPE (the lane's
+          one-line change to [UShRound.v]; see the findings) ---- *)
+  Lemma file_Hcltaint (I : list (bv 8)) (p : nat) (v : era_pins) :
+    ⊢ era_pin (fgn_echo g) (S gen_id) v -∗
+      file_taint (fgn_cl g) -∗ file_Wcl I p.
+  Proof using .
+    rewrite /file_Wcl. iApply (lk_lcred_taint FI (S gen_id) I p v).
+  Qed.
+
+  (* ---- [UShRound]'s [Hwc]: the read that completed a line ---- *)
+  Lemma file_Hwc (I l : list (bv 8)) (v : era_pins) :
+    wl_nl ∉ l ->
+    ⊢ era_pin (fgn_echo g) (S gen_id) v -∗
+      inp_lb v (I ++ l ++ [wl_nl]) -∗
+      file_Wcl I 2%nat -∗ file_Wcl (I ++ l ++ [wl_nl]) 3%nat.
+  Proof using .
+    intros Hl. rewrite /file_Wcl.
+    iApply (lk_lcred_read FI (S gen_id) I l v Hl).
+  Qed.
+
+  (* ---- [UShRound]'s [Hwbr]: a read past a banner-owed boundary ---- *)
+  Lemma file_Hwbr (I l : list (bv 8)) (v : era_pins) :
+    wl_nl ∉ l ->
+    ⊢ era_pin (fgn_echo g) (S gen_id) v -∗
+      lk_rres FI v (I ++ l ++ [wl_nl]) -∗
+      file_Wbl I -∗ file_taint (fgn_cl g).
+  Proof using .
+    intros Hl. iIntros "#Hpin #Hres Hb". rewrite /file_Wbl.
+    iDestruct "Hb" as (v') "[#Hpin' Hb]".
+    iDestruct (lk_pin_agr FI (S gen_id) v v' with "Hpin Hpin'") as %<-.
+    iApply (lk_ban_read_taint FI (S gen_id) v I l Hl with "Hb Hres").
+  Qed.
+
+End sh_round_facing.

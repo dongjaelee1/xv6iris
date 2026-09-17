@@ -284,7 +284,13 @@ Section UkCatDeed.
     UkCat.kcat_r N (mword_of_int (Z.of_nat fd)) a cnt
       (kcat_deed_hold fd wb i γo r q bs)
       (fun (rv : mword 64) (gb : nat -> bv 8) =>
-         (kcat_deed_hold fd wb i γo r q bs
+         (* THE COUNT'S BOUND, ON BOTH ARMS (lane OFF-LINK, relayed here
+            by lane CAT-GEOM-2): a read of [cnt] bytes reports at most
+            [cnt].  It is what [UCatKernel.cat_w_of_link] refutes its
+            short write with, and without it the TAINT arm says nothing
+            at all about [rv]. *)
+         (⌜(Z.to_nat (bv_unsigned rv) <= cnt)%nat⌝
+          ∗ kcat_deed_hold fd wb i γo r q bs
           ∗ ((∃ off : nat,
                 ⌜Z.to_nat (bv_unsigned rv)
                  = ard_count cnt off (length bs)⌝ ∗
@@ -316,6 +322,7 @@ Section UkCatDeed.
        the fact is in hand for it *)
     iIntros (h' rv gb) "Hufdh %Hbnd Hans Hbs Hrun".
     iApply ("Hcont" $! h' rv gb with "[Hufdh Hans] Hbs Hrun").
+    iSplitR; [ by iPureIntro | ].
     iDestruct "Hans" as "[[Hok Hd] | [Hd HT]]".
     - iFrame "Hufdh Hd". by iLeft.
     - iFrame "Hufdh Hd". by iRight.
@@ -365,7 +372,8 @@ Section UkCatDeed.
     UkCat.kcat_r N (mword_of_int (Z.of_nat fd)) a cnt
       (kcat_deed_hold fd wb i γo r q bs)
       (fun (rv : mword 64) (gb : nat -> bv 8) =>
-         (kcat_deed_hold fd wb i γo r q bs
+         (⌜(Z.to_nat (bv_unsigned rv) <= cnt)%nat⌝
+          ∗ kcat_deed_hold fd wb i γo r q bs
           ∗ ((⌜Z.to_nat (bv_unsigned rv)
                = ard_count cnt off0 (length bs)⌝
              ∗ ⌜forall j : nat, (j < Z.to_nat (bv_unsigned rv))%nat ->
@@ -378,7 +386,7 @@ Section UkCatDeed.
               _ _ _ with "[] []"); last first.
     { iApply (kcat_r_of_deed a cnt fd wb i γo c r q jc bs Heq Ha0 Hahi Hfdlt
                 with "Hcode Hm Hinv"). }
-    iIntros (rv gb) "[$ [Hok | HT]]"; [| by iRight ].
+    iIntros (rv gb) "[$ [$ [Hok | HT]]]"; [| by iRight ].
     iDestruct "Hok" as (off) "[%Hc %Hb]".
     iDestruct ("Hoff" $! rv gb off with "[%] [%]") as %Hoe;
       [ exact Hc | exact Hb | ].

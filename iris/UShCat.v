@@ -1048,14 +1048,16 @@ Section UShCat.
        bv_unsigned p * 4096 < UserPtTree.pgroundup (uvis_sz W)) ->
     uvis_lazy W = false ->
     fd_lowest_closed (take NSTD (uvis_fd W)) = None ->
+    (* NO [udepw_law 21] (lane SUP-ONE): cat closes the descriptor its
+       own open returned and the leaf exports [FdSlots.fdst_nopipe] for
+       it, so the close is FREE. *)
     UkRun.udepw_law 5 -∗ UkRun.udepw_law 15 -∗ UkRun.udepw_law 16 -∗
-    UkRun.udepw_law 21 -∗
     UkRun.urun_nopipe (uvis_fd W) -∗ udep -∗
     my_pay (uvis_gen W) (fun _ => True)%I -∗ uslot W.
   Proof using ghost_varG1.
     intros Hpc Hsub Hsub2 Hx Hroom Hal8 Hstk Hbuf Hargs Havd Havs Hnz
            Hfdlen Hstop Hlzf Hnone.
-    iIntros "#Hrd #Hop #Hwr #Hcl #Hnpw #Hdep Hmp".
+    iIntros "#Hrd #Hop #Hwr #Hnpw #Hdep Hmp".
     assert (Hargc0 : 0 <= uvis_argc W)
       by exact (proj1 (uka_argc _ _ _ _ _ _ Hargs)).
     (* every argv slot the vector spells points inside the stack page *)
@@ -1085,7 +1087,7 @@ Section UShCat.
               ltac:(unfold uvis_av; symmetry; apply moi_of_uint)
               with "[] Hcode Hro Hargv Hstd Hbuf Hrun").
     iApply (kcat_pay_all_of_law N (cat_args W) (take NSTD (uvis_fd W))
-              (ukn_pay_free_of_triv N Hti) Hnone with "Hrd Hop Hwr Hcl").
+              (ukn_pay_free_of_triv N Hti) Hnone with "Hrd Hop Hwr").
   Qed.
 
   (* ------------------------------------------------------------------- *)
@@ -1105,7 +1107,6 @@ Section UShCat.
       uvis_lazy W' = false ->
       fd_lowest_closed (take NSTD sts) = None ->
       ⊢ UkRun.udepw_law 5 -∗ UkRun.udepw_law 15 -∗ UkRun.udepw_law 16 -∗
-        UkRun.udepw_law 21 -∗
         UkRun.urun_nopipe sts -∗ udep -∗
         my_pay (uvis_gen W') (fun _ => True)%I -∗ uslot W'.
 
@@ -1121,12 +1122,12 @@ Section UShCat.
       as Hbuf.
     pose proof (cat_kexec_argnz na alen afun sts W' Hok Hroom) as Hnz.
     pose proof (kexec_image_ok_fd _ na alen afun sts W' Hok) as Hfd.
-    iIntros "#Hrd #Hop #Hwr #Hcl #Hnpw #Hdep Hmp".
+    iIntros "#Hrd #Hop #Hwr #Hnpw #Hdep Hmp".
     iAssert (UkRun.urun_nopipe (uvis_fd W')) as "#Hnpw'";
       [ rewrite Hfd; iExact "Hnpw" | ].
     iApply (cat_uexec_slot W' Hpc Hsub Hsub2 Hx Hroom336 Hal8 Hstkrow Hbuf
               Hargsrow Havd Havs Hnz Hfdlen Hstop Hlzf
               ltac:(rewrite Hfd; exact Hnone)
-              with "Hrd Hop Hwr Hcl Hnpw' Hdep Hmp").
+              with "Hrd Hop Hwr Hnpw' Hdep Hmp").
   Qed.
 End UShCat.

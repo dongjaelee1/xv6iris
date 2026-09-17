@@ -438,7 +438,7 @@ Definition blkcs_f (cs : list nat) (a i : nat) : list nat :=
 (* ===================================================================== *)
 
 (* ---- the stage's own readings ---- *)
-Lemma pro_pin_f_nil : pro_pin_f [] [] [].
+Lemma pro_pin_f_nil (ps cs : list nat) : pro_pin_f ps cs [].
 Proof using. intros q Hq. rewrite nstarted_nil in Hq. lia. Qed.
 
 Lemma pro_pin_f_at (ps cs : list nat) (I : list (bv 8)) (q : nat) :
@@ -572,6 +572,34 @@ Proof using.
   lia.
 Qed.
 
+(* the block's bytes are a PREFIX of what the round then owes -- an
+   equality at a non-panic alternative, a prefix at the panic one (whose
+   block runs on into the next round's prologue).  That is all a BYTE
+   lookup needs, so [wr_blk_byte_f] does not ask for [fapr]. *)
+Lemma wr_blk_pending_pre_f (ps cs : list nat) (s0 : fst) (I : list (bv 8))
+    (P a : nat) :
+  wr_blk_f ps cs s0 I P ->
+  ralt_ok (fline I) (ralt_dec a) -> fst_free (ralt_dec a) = true ->
+  fab I a `prefix_of` pending_at_f ps (cs ++ [a]) (Some s0) I.
+Proof using.
+  intros Hw Hok Hfr.
+  pose proof (wr_blk_nonnil_f ps cs s0 I P Hw) as Hne.
+  pose proof Hw as (_ & Hr & Hn & _).
+  assert (Hlast : (nlines I - 1)%nat = length cs) by lia.
+  assert (Hat : ralt_at (cs ++ [a]) (nlines I - 1)%nat = ralt_dec a).
+  { rewrite /ralt_at Hlast fd_snoc_lookup_total. reflexivity. }
+  assert (Hup : fst_upto (cs ++ [a]) s0 (bodies_of I) (nlines I - 1)%nat
+                = fst_upto cs s0 (bodies_of I) (nlines I - 1)%nat).
+  { apply (fst_upto_ext (cs ++ [a]) cs s0 (bodies_of I) (bodies_of I));
+      [| intros j _; reflexivity ].
+    intros j Hj. rewrite list_lookup_total_alt lookup_app_l; [| lia].
+    by rewrite -list_lookup_total_alt. }
+  rewrite /pending_at_f decide_False; [| exact Hne].
+  rewrite decide_True; [| exact Hr].
+  rewrite /alt_cont_f f0_st_some Hat Hup -(fab_at I a _ Hok Hfr).
+  by eexists.
+Qed.
+
 Lemma wr_tail_snoc_f (ps cs : list nat) (a : nat) :
   ralt_panic (ralt_dec a) = false -> wr_tail_f ps cs -> wr_tail_f ps (cs ++ [a]).
 Proof using.
@@ -689,7 +717,7 @@ Qed.
 Lemma wr_ban_round0_f (s0 : fst) : wr_ban_f [] [] s0 [] 0%nat.
 Proof using.
   rewrite /wr_ban_f. split_and!.
-  - exact pro_pin_f_nil.
+  - exact (pro_pin_f_nil _ _).
   - exact rest_of_nil.
   - by rewrite nlines_nil.
   - by left.
@@ -1520,7 +1548,7 @@ Section file_links_line.
     rewrite Hbc.
     iLeft. iExists ps, (cs ++ [fpan_of (fline I)]), s0,
       (P + length (fab I (fpan_of (fline I))))%nat.
-    iFrame "Htn Hps Hcs HE Hf". iPureIntro. cbn [wr_banp_f].
+    rewrite Nat.add_0_r. iFrame "Htn Hps Hcs HE Hf". iPureIntro. cbn [wr_banp_f].
     exact (wr_blk_ban_f ps cs s0 I P Hw).
   Qed.
 
@@ -1690,7 +1718,7 @@ Section file_links_line.
       by vm_compute. }
     split.
     - rewrite /wr_open_f. split_and!.
-      + exact pro_pin_f_nil.
+      + exact (pro_pin_f_nil _ _).
       + exact rest_of_nil.
       + by rewrite nlines_nil.
       + rewrite nlines_nil. cbn [pro_idx_f].
@@ -1994,7 +2022,7 @@ Section file_links_line.
                 ltac:(left; apply prefix_nil) ltac:(left; apply prefix_nil)
                 ltac:(lia)).
       left. rewrite /wr_pro_f. split_and!.
-      + exact pro_pin_f_nil.
+      + exact (pro_pin_f_nil _ _).
       + exact rest_of_nil.
       + by rewrite nlines_nil.
       + by left.
@@ -2031,13 +2059,14 @@ Section file_links_line.
     - rewrite /fhead.
       iDestruct "Hh" as "(-> & %Hk & Htn & #Hps & #Hcs & #HE & _ & _)".
       iDestruct (turn_lb_le with "Htn Htlb") as %Hle.
+      rewrite app_nil_l in Hle.
       iExFalso. iPureIntro.
       refine (wr_owed_read_refute_f [] [] ps0 cs0 s0 [] (l ++ [wl_nl]) 0%nat
                 _ ltac:(apply prefix_nil) _ Hrs
                 ltac:(left; apply prefix_nil) ltac:(left; apply prefix_nil)
                 ltac:(lia)).
       + left. rewrite /wr_pro_f. split_and!.
-        * exact pro_pin_f_nil.
+        * exact (pro_pin_f_nil _ _).
         * exact rest_of_nil.
         * by rewrite nlines_nil.
         * by left.

@@ -755,6 +755,60 @@ instance instCtxMorphProcDormantNoctx (tier : KTier) (pa : BitVec 64) (st : BitV
             (@instCtxMorphSep hlc GF _ _ _ (instCtxMorphProcFieldsNoctx _ _ _ _)
               (instCtxMorphDormantSpace _ _ _ _))))))
 
+/-- **`procPriv` minus the 14 context words** (Rocq's `proc_priv`: the
+running process's block, whose save area lives in the lock's RUNNING arm,
+not here).  The four current-process syscalls take THIS, never the full
+`procPriv` -- the save area is owned by `runSlotAt` and read out of
+`p->lock` only where a `swtch` needs it (`kexit`; cf. `yield`). -/
+def procPrivNoctxAt (ξ : CtxId) (pa : BitVec 64) (pid : BitVec 32) (V : ProcPriv)
+    (M : Nat → List (BitVec 8)) : IProp GF := iprop%
+  ⌜V.sz.toNat ≤ uvmMaxsz ∧ umBelow V.sz V.upt ∧
+    V.pagetable = pageAddr V.upt.root ∧ V.trapframe = pageAddr V.upt.tfp⌝ ∗
+  @wordPointsTo hlc GF _ ⟨ξ, KTier.kpt⟩ (pPid pa) 4 pidPriv pid ∗
+  @procFieldsNoctx hlc GF _ ⟨ξ, KTier.kpt⟩ pa (DFrac.own 1) V ∗
+  @procPtAt hlc GF _ ⟨ξ, KTier.kpt⟩ V.upt M ∗
+  @tfPageAt hlc GF _ ⟨ξ, KTier.kpt⟩ V.upt.tfp V.tf
+
+instance instCtxMorphProcPrivNoctxAt (pa : BitVec 64) (pid : BitVec 32) (V : ProcPriv)
+    (M : Nat → List (BitVec 8)) :
+    CtxMorph (GF := GF) (fun ξ => procPrivNoctxAt ξ pa pid V M) := by
+  unfold procPrivNoctxAt
+  exact @instCtxMorphSep hlc GF _ _ _ (instCtxMorphConst _)
+    (@instCtxMorphSep hlc GF _ _ _ (instCtxMorphWordAt _ _ _ _ _)
+      (@instCtxMorphSep hlc GF _ _ _ (instCtxMorphProcFieldsNoctx _ _ _ _)
+        (@instCtxMorphSep hlc GF _ _ _ (instCtxMorphProcPtAt _ _ _)
+          (instCtxMorphTfPageAt _ _ _))))
+
+/-- The running block once `copyout`/`copyin`'s lazy faults grew the space
+to `P'` (`procPrivExt` ctx-free, `kwait`'s post): the size bound is dropped
+and the table is `P'`. -/
+def procPrivExtNoctxAt (ξ : CtxId) (pa : BitVec 64) (pid : BitVec 32) (V : ProcPriv)
+    (P' : UPtd) (M' : Nat → List (BitVec 8)) : IProp GF := iprop%
+  ⌜V.sz.toNat ≤ uvmMaxsz ∧ V.pagetable = pageAddr P'.root ∧ V.trapframe = pageAddr P'.tfp⌝ ∗
+  @wordPointsTo hlc GF _ ⟨ξ, KTier.kpt⟩ (pPid pa) 4 pidPriv pid ∗
+  @procFieldsNoctx hlc GF _ ⟨ξ, KTier.kpt⟩ pa (DFrac.own 1) V ∗
+  @procPtAt hlc GF _ ⟨ξ, KTier.kpt⟩ P' M' ∗
+  @tfPageAt hlc GF _ ⟨ξ, KTier.kpt⟩ P'.tfp V.tf
+
+theorem procPrivNoctx_to_ext (ξ : CtxId) (pa : BitVec 64) (pid : BitVec 32) (V : ProcPriv)
+    (M : Nat → List (BitVec 8)) :
+    procPrivNoctxAt (GF := GF) ξ pa pid V M ⊢ procPrivExtNoctxAt ξ pa pid V V.upt M := by
+  unfold procPrivNoctxAt procPrivExtNoctxAt procFieldsNoctx
+  iintro ⟨%hf, Hpid, Hfields, Hpt, Htf⟩
+  isplitl []
+  · ipureintro; exact ⟨hf.1, hf.2.2.1, hf.2.2.2⟩
+  · iframe
+
+theorem procPrivExtNoctx_close (ξ : CtxId) (pa : BitVec 64) (pid : BitVec 32) (V : ProcPriv)
+    (P' : UPtd) (M' : Nat → List (BitVec 8)) (h : umBelow V.sz P') :
+    procPrivExtNoctxAt (GF := GF) ξ pa pid V P' M' ⊢ procPrivNoctxAt ξ pa pid { V with upt := P' } M' := by
+  unfold procPrivNoctxAt procPrivExtNoctxAt procFieldsNoctx
+  iintro ⟨%hf, Hpid, Hfields, Hpt, Htf⟩
+  isplitl []
+  · ipureintro
+    refine ⟨hf.1, h, hf.2.1, hf.2.2⟩
+  · iframe
+
 instance instCtxMorphContextCells (tier : KTier) (pa : BitVec 64) (dq : DFrac) (ws : List (BitVec 64)) :
     CtxMorph (GF := GF) (fun ξ => @contextCells hlc GF _ ⟨ξ, tier⟩ pa dq ws) :=
   @instCtxMorphSep hlc GF _ (fun _ => iprop(⌜ws.length = 14⌝)) _ (instCtxMorphConst _)

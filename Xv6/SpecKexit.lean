@@ -75,7 +75,7 @@ def wp_kexit_body {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G GF
   kctx cpu k ∗ pcIs cpu kexitAddr ∗ procsInv Γ ∗
   trapCsrs cpu ∗ cpuClaim cpu k.proc ∗ intrRes cpu ∗
   isLock γw waitLockAddr "wait_lock" waitLockPay ∗ initprocIs ip ∗
-  procPriv (procAddr j) pid V M ∗
+  procPrivNoctxAt curCtx (procAddr j) pid V M ∗
   (stackOwn k.sp k.avail -∗ stackOwn (V.kstack + 4096#64) 512)
   ⊢ wpLoop (GF := GF) cpu
 

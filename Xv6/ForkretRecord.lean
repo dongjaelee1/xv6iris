@@ -97,28 +97,6 @@ variable {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G GF]
 
 /-! ## The private block without its save area -/
 
-/-- `procPriv` minus the 14 context words, at context `ξ` (the shape
-`procDormantNoctx` has for a dormant slot: what a party owns of a process
-while the save area is somebody else's -- here, the record's). -/
-def procPrivNoctxAt (ξ : CtxId) (pa : BitVec 64) (pid : BitVec 32) (V : ProcPriv)
-    (M : Nat → List (BitVec 8)) : IProp GF := iprop%
-  ⌜V.sz.toNat ≤ uvmMaxsz ∧ umBelow V.sz V.upt ∧
-    V.pagetable = pageAddr V.upt.root ∧ V.trapframe = pageAddr V.upt.tfp⌝ ∗
-  @wordPointsTo hlc GF _ ⟨ξ, KTier.kpt⟩ (pPid pa) 4 pidPriv pid ∗
-  @procFieldsNoctx hlc GF _ ⟨ξ, KTier.kpt⟩ pa (DFrac.own 1) V ∗
-  @procPtAt hlc GF _ ⟨ξ, KTier.kpt⟩ V.upt M ∗
-  @tfPageAt hlc GF _ ⟨ξ, KTier.kpt⟩ V.upt.tfp V.tf
-
-instance instCtxMorphProcPrivNoctxAt (pa : BitVec 64) (pid : BitVec 32) (V : ProcPriv)
-    (M : Nat → List (BitVec 8)) :
-    CtxMorph (GF := GF) (fun ξ => procPrivNoctxAt ξ pa pid V M) := by
-  unfold procPrivNoctxAt
-  exact @instCtxMorphSep hlc GF _ _ _ (instCtxMorphConst _)
-    (@instCtxMorphSep hlc GF _ _ _ (instCtxMorphWordAt _ _ _ _ _)
-      (@instCtxMorphSep hlc GF _ _ _ (instCtxMorphProcFieldsNoctx _ _ _ _)
-        (@instCtxMorphSep hlc GF _ _ _ (instCtxMorphProcPtAt _ _ _)
-          (instCtxMorphTfPageAt _ _ _))))
-
 /-- **The block splits at the save area**: the private block is the record's
 14 cells and everything else. -/
 theorem procPriv_split (ξ : CtxId) (pa : BitVec 64) (pid : BitVec 32) (V : ProcPriv)

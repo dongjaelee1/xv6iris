@@ -372,122 +372,44 @@ user-tree.md §8.1: state the form to compute with).
   the console writes pay the stage's pending (§4); `close`; `exit`
   returns the deed.
 
-**WHY THE OFFSET MUST BE HELD** (the one kernel-tier campaign this design
-needs; lanes OFF-HAND-2/3 in the worklist).  The append step needs `off =
-|bs0|`.  The fire hands `off` as a number; the fd's offset is the open-file
-object's, and in mode `park` (every open today) the user half sits in
-`off_user_inv γo`, an existential nobody can read.  Reporting the offset
-(RD-2's route R-c) does not help: a reported number has no tie to the
-row, and between two fires nothing says the object's offset did not
-move.  RD-1 landed the other mode at the ghost level — `UserOff.uoff`,
-`off_pub_hand`, `off_supply_held` — and lane OFF-HAND (its findings are
-in the worklist) checked what stands between it and a held U-tier
-member.  FOUR coupled facts, each adopted as a ruling:
+**THE OFFSET** (the design of record after OFF-HAND-6 and the owner's
+principle, §3.5; the four refuted shapes are in §7).  The append step
+needs `off = |bs0|`, and a parked row's offset is an existential nobody
+can read (`off_user_inv γo`), so the redirect child opens `f` in HAND
+mode and the offset is HELD — but nothing exclusive is ever in a
+program's hands for it:
 
-1. **The mode is a per-file-object constant.**  `FileInvDefs.fdstate_ok`
-   pinned every inode row at `OffParked`; with the mode free,
-   `fdstate_ok_inj` (two descriptors on one file report one state) is
-   false.  So the mode joins the payload names (`fpnames.fp_om`) beside
-   the inum, the row's mode is `fp_om` of its object, and dup and fork
-   share one mode by construction (user-read.md §4).
-2. **Successor-parkedness moves from the pure table relation to the
-   family's post.**  `UsysMemOk.usys_fd_ok`'s open arm asserted the new
-   row parked, tier-free, and the generic user-safety Löb read its
-   successor's parkedness there.  Now the open's RECEIPT carries the mode
-   as the caller's family chose it (`xfam`'s `of_mode`); the generic
-   family fixes `OffParked` and reads its successor off its own post.
-3. **The publish reads the caller's mode** (`ProofSysOpenPub`:
-   `off_pub_park` or `off_pub_hand`, `fp_om` set to match, the held half
-   `uoff γo 0` in the receipt at `OffHeld`).
-4. **The held half rides the DESCRIPTOR BUNDLE and its value the
-   DESCRIPTOR STATE; no program ever carries an offset half.**  RULED
-   2026-09-17 after OFF-HAND-5, which refuted the two previous rulings
-   (the surrender bundle on the taint arm, OFF-HAND-4; the exec deposit
-   the kernel spends on one arm and returns on the other, OFF-HAND-5)
-   and showed the wall is structural: a bundle with a taint arm can
-   never carry an exclusive half (the generic slot is minted from a
-   persistent family), the kernel cannot branch on the taint (verified
-   vs tainted is decided inside the U-tier proof of the arm), and the
-   redirect child cannot refute the taint (a persistent `mono_nat_lb`
-   whose authority is the ledger's).  So the half must not be in the
-   program's hands at the crossing at all.  THE SHAPE:
-   - `FdSlots.offmode` becomes `OffParked | OffHeld (off : nat)`: a held
-     row RECORDS ITS OFFSET in the fd-table state.  The state is the
-     exec key, so a verified image reads the offset off its key, and a
-     generic image's Löb treats it as data.
-   - `FdSlots.foff_row` at `OffHeld off` is `UserOff.uoff γo off` (the
-     half, exclusive) instead of `emp`; at `OffParked` it is
-     `off_user_inv γo` as today.  `foff_rows` is persistent only at an
-     all-parked table, which is exactly where every site that COPIES a
-     row needs it (see dup/fork below); every site that threads the
-     bundle opaquely is untouched.  The kernel holds the bundle during a
-     syscall, so a held row's half is IN THE KERNEL'S HANDS at every
-     fire and at every crossing: the kernel's syscall arm passes it into
-     the held branch of `fileread_in`/`filewrite_in` (design §3's held
-     branch, now supplied by `ProofSyscall`/`ProofFilewrite`, not by a
-     user deposit), gets it back advanced, and the syscall's post
-     re-records the row: `UsysMemOk.usys_fd_ok`'s read/write rows at a
-     held descriptor ADVANCE the row's value by the count (parked rows
-     are unchanged as today).  The fire's offset is the row's recorded
-     value — RELAY 1 (`off = off0 + p`) is the half's agreement, kernel-
-     side.
-   - `FileInvDefs.fpnames` gains `fp_om`; `fdstate_ok` at a held object
-     pins the reference count at 1 (a held object has exactly one row,
-     anywhere) beside the mode; the `_parked` chain is deleted (OFF-HAND-5
-     D1 left it consumer-less).
-   - DUP and FORK PARK, kernel-side, from the bundle: the kernel retypes
-     the source row `OffHeld off → OffParked` with `uoff_park` (the half
-     is in its hands; `FdPark.fd_frags_park_at` is the step) BEFORE the
-     copy, so a copied row is always parked and the persistent scan
-     stands; the posts say so (`usys_fd_ok`'s dup and fork rows at a
-     held source: both rows parked).  No user surrender, no deposit, no
-     `uoff_surr*`.  In this campaign neither ever meets a held row.
-   - EXEC keeps the table and the bundle: the held row crosses on BOTH
-     arms with its half in the fd resources.  `ExecEntry.image_entry*`
-     receive no offset premise; `image_entry_taint`'s pure all-parked
-     row is DELETED (the generic mint needs nothing about modes any
-     more: its deposits are free at every mode because the kernel needs
-     no user resource at a fire), and with it `UexecSG`'s guarded
-     read/write premise (OFF-HAND-5 D3), `udepw_law_parked`, and the
-     whole `ukn_held`/`fdv_held_in`/`uoff_surr_at` carrier (OFF-HAND-3/4;
-     `ukn_held` may stay on `uk_names` as dead data until a cleanup lane
-     deletes it, but no new statement may mention it).
-   - THE HAND-MODE OPEN LEAF: the open's publish at the caller's mode
-     (`off_pub_hand`) records `OffHeld 0` in the new row and puts the
-     half in the bundle; the receipt reports the state.  cat opens `f`
-     read-only in hand mode too (its reads must chain from 0 for the
-     printed bytes to be the content in order — §5.3).
-   - The program tier: a record's fd resources carry the held half
-     inside `urun`, so a verified program's write at a held row is the
-     same leaf shape as at a parked one with `⌜sts !! fd = Some (FdOpen
-     _ _ (FdInode i γo (OffHeld off)))⌝` read off its table and the post
-     at `OffHeld (off + n)`; the app's append step reads `off` there.
-   The order (lane OFF-HAND-6): the `offmode` payload and `foff_row`
-   (13 `OffHeld` sites) → `fpnames.fp_om` + `fdstate_ok` at held + the
-   two fire sites through the held branch supplied by the syscall arm →
-   `usys_fd_ok`'s read/write rows advancing a held row (and the tierless
-   `sysc_fd_ok`) → dup/fork parking → the hand-mode open leaf and the
-   held read/write leaves → deletion of the dead carrier premises.
-   OFF-HAND-6 LANDED the state, the bundle, the boundary park without a
-   user deposit, and the deletion of the exec row on both arms (the
-   crossing is free at every mode), with three corrections adopted as
-   rulings: (a) NO contract mode-split — the fires take an abstract
-   offset supplier and `FdPark.off_supply_of_st_at_eq` serves both modes
-   from the row alone (the row goes in, comes back ADVANCED by
-   `FdSlots.fdst_adv`), so `fileread_in`/`filewrite_in` do not move; (b)
-   `fpnames` gains NOTHING — the pin that replaces `fdstate_ok`'s
-   `OffParked` is the REFERENCE COUNT (`file_pay_st` gains `¬ fdst_parked
-   st -> q = 1`, so two shares refute held and `fdstate_ok_inj` closes at
-   parked; `file_pay_st_split` takes `fdst_parked st`); (c) the pin's
-   removal and `usys_fd_ok`'s read/write row are ONE change (the two
-   syscalls LEND the row to the fire and re-record it advanced:
-   `sts' = <[fd := fdst_adv (sts !!! fd) d]> sts`; `usys_fd_ok_quiet`'s
-   twenty sites, `sysc_fd_ok`/`ut_fd_ecall`, `sys_read_out`/`sys_write_out`
-   returning `foff_row (fdst_adv st d)`, `file_ref` retyped, the generic
-   Löb absorbing a changing successor table), then H4's park applies the
-   now premise-free `fd_frags_park_at`, and H5's open leaf switches the
-   publish to `off_pub_hand_0` once `usys_fd_ok`'s open arm drops
-   `fdst_parked`.  Lane OFF-HAND-7.
+- `FdSlots.offmode := OffParked | OffHeld (off : nat)`: a held row
+  RECORDS ITS OFFSET in the fd-table state.  The state is the exec key,
+  so a verified image reads the offset off its key and a generic image's
+  Löb treats it as data.
+- `FdSlots.foff_row` at `OffHeld off` is the half `UserOff.uoff γo off`
+  (exclusive) — the KERNEL holds the bundle during a syscall, so every
+  fire has the half: the syscall arm lends the row to the fire
+  (`FdPark.off_supply_of_st_at_eq`: the row goes in, comes back ADVANCED
+  by `FdSlots.fdst_adv`) and re-records it, `usys_fd_ok`'s read/write
+  row at a held descriptor being `sts' = <[fd := fdst_adv (sts !!! fd)
+  d]> sts`.  The fire's offset IS the row's value (RELAY 1, free).  No
+  contract mode-split: `fileread_in`/`filewrite_in` take an abstract
+  supplier.
+- The kernel's coupling of the recorded value to the object's box is
+  `(coupled) ∨ □ riscv_kill_cred` (§3.5): `fdstate_ok` at a held object
+  pins the reference count at 1 in the coupled arm; dup/fork of a held
+  row take `⌜parked⌝ ∨ taint` and the coupling disconnects — no kernel-
+  side park, no `fp_om` on the names.
+- The exec crossing carries NOTHING about offsets: the row crosses in
+  the table and the half in the bundle, on both arms.
+- The hand-mode open leaf: the publish at the caller's mode
+  (`off_pub_hand_0`) records `OffHeld 0`; cat opens `f` in hand mode too
+  (its reads must chain from 0, §5.3).
+- The held read/write leaves are the parked ones with the row's value
+  read off the table and the post at `OffHeld (off + n)`; echo's append
+  and cat's round read `off` there.
+
+Landed: OFF-HAND-6 (the state, the bundle, the exec row deleted on both
+arms); in flight: OFF-HAND-7 (the coupled read/write row, the taint arm
+at dup/fork, the leaves, and the DELETION of everything the refuted
+shapes left behind).
 
 ### 3.5 THE OWNER'S PRINCIPLE (2026-09-17): `link ∨ taint`, the pipe pattern
 
@@ -839,6 +761,24 @@ lane, not an application one.
 
 ## 7. Rejected on the way
 
+- **THE HELD OFFSET'S FOUR REFUTED SHAPES (2026-09-17, lanes OFF-HAND
+  1–5).**  (1) The half in the PROGRAM's hands (route R-a, user-read.md
+  §8): every crossing (fork, exec) then needs the program to surrender
+  it, and the generic tier needs "all rows parked" as a precondition it
+  cannot state.  (2) The surrender bundle on the exec's TAINT arm: the
+  taint arm's consumer chain (the gated verified arms of the generic
+  entry) needs a PURE all-parked fact about the key's table, and parking
+  changes the table (OFF-HAND-4).  (3) The surrender bundle as an exec
+  DEPOSIT the kernel spends on the taint arm and returns on the verified
+  arm: the kernel cannot branch on the taint (verified vs tainted is
+  decided inside the U-tier proof of the arm), and at the U tier the
+  deposit is derivable from the premise the builder already needs
+  (OFF-HAND-5).  (4) The set-valued carrier `ukn_held` of "which rows a
+  record may hold", with a guarded generic read/write premise: it
+  reaches every spend of a flagged deposit and no resource carries it
+  across a record re-binding (OFF-HAND-5 D3).  All four are instances of
+  conjuring a precondition in the generic proof (§3.5); the design of
+  record is §3, "THE OFFSET".
 - **A pure arm over the view with no deed.**  Not steppable by echo
   (§2).
 - **Per-round records agreed between the fs claim and the stage by

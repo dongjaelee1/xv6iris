@@ -303,4 +303,101 @@ Section PinnedOpen.
     intros Hz. apply Hne. by apply nil_length_inv.
   Qed.
 
+  (* ------------------------------------------------------------------ *)
+  (*  3a.  THE DEAD OPEN THAT REFUNDS ITS CREDENTIAL (lane F-OPEN-2)      *)
+  (*                                                                      *)
+  (*  Section 3 SPENDS [K] -- [PinnedObs] section 8's hop drops it -- and  *)
+  (*  /init could afford that because its console key is re-minted by the  *)
+  (*  mknod.  A FRACTION OF A LIVE DEED cannot be re-minted, so cat's      *)
+  (*  absent-`f` open takes [PinnedObs] section 8a's refunding walk        *)
+  (*  instead: the credential rides the cursor, and both arms of the       *)
+  (*  failure fold hand it back.                                          *)
+  (* ------------------------------------------------------------------ *)
+  Lemma pinned_open_bundle_dead_lin (γfs : fs_names)
+      (Pin : aview -> Prop) (T : iProp Σ) `{!Persistent T} `{!Timeless T}
+      (K : iProp Σ) `{!Timeless K} (Pmiss : nat -> Z -> iProp Σ)
+      (cw : Z) (pl : list (bv 8)) (d0 : Z)
+      (M : gmap Z (bv 8)) (pv vom : mword 64)
+      (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ))
+      (Farm Fun : pfam Σ (aview -> Z -> iProp Σ))
+      (Fok Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ)) :
+    om_create vom = false ->
+    om_trunc vom = false ->
+    pin_misses_at Pin cw pl d0 ->
+    arg_path_of M pv pl ->
+    □ (∀ v : aview, K -∗ app_pred app_run v -∗
+                      app_pred app_run v ∗ K ∗ (⌜Pin v⌝ ∨ T)) -∗
+    pobs_miss_taint T Pmiss -∗
+    pobs_miss_hold K Pmiss -∗
+    app_inv γfs -∗
+    K -∗
+    open_in (fs_gamma_L γfs) γfs cw M pv vom
+      (pobs_P_dead_lin T K d0) Pmiss Farm Fun Fok Fex
+      (pfam_triv (fun (_ : aview) (_ : Z) (_ : anode) => True%I)) Ft.
+  Proof using .
+    intros Hcr Htr Hres Hpath. iIntros "#Hcl #Hmt #Hmh #Hinv HK".
+    rewrite /open_in Hcr /open_au_plain_at.
+    iSplitL "HK".
+    { iIntros (pl') "%Hpath'".
+      rewrite (arg_path_of_uniq M pv pl' pl Hpath' Hpath).
+      iApply (pobs_walk_dead_lin γfs Pin T K Pmiss cw pl d0 Hres
+                with "Hcl Hmt Hmh Hinv HK"). }
+    iSplitR; [ iApply pobs_aopen_triv | ].
+    iApply (open_trunc_piece_none _ vom Ft Htr).
+  Qed.
+
+  (* ...AND THE RECEIPT, READ: the call failed and the table did not move
+     AND THE CREDENTIAL IS BACK, or the application is tainted.  The one
+     [={⊤}=>] is the failure fold's first arm: argstr may never have
+     answered, so what comes back there is the walk one-shot itself and
+     the cursor is behind its fupd ([PinnedObs.pobs_dead_start_refund]). *)
+  Lemma pinned_open_dead_lin (γfs : fs_names) (T K : iProp Σ)
+      (cw : Z) (pl : list (bv 8)) (d0 : Z)
+      (M : gmap Z (bv 8)) (pv vom : mword 64)
+      (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ))
+      (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ))
+      (sts : list fdstate) (r : mword 64) (fdv' : list fdstate) :
+    arg_path_of M pv pl ->
+    path_elems pl <> [] ->
+    open_receipt_plain (fs_gamma_L γfs) γfs cw M pv vom
+      (pobs_P_dead_lin T K d0) (pobs_Pmiss_ref T K) Fo Ft sts r fdv'
+    ={⊤}=∗ ((⌜r = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜fdv' = sts⌝ ∗ K) ∨ T).
+  Proof using .
+    intros Hpath Hne. iIntros "Hrc". rewrite /open_receipt_plain.
+    assert (Hlen : length (path_elems pl) <> 0%nat)
+      by (intros Hz; apply Hne; by apply nil_length_inv).
+    iDestruct "Hrc" as "[(%Hr & %Hfd & Hfail) | Hok]"; last first.
+    { iDestruct "Hok" as (pl' av i) "(%Hpath' & HP & _)".
+      rewrite (arg_path_of_uniq M pv pl' pl Hpath' Hpath).
+      iModIntro. iRight.
+      iApply (pobs_dead_term_lin T K d0 (length (path_elems pl)) i Hlen
+                with "HP"). }
+    rewrite /open_post_fail_plain.
+    iDestruct "Hfail" as "[Hpre | Hrest]".
+    - rewrite /open_au_plain_at. iDestruct "Hpre" as "(Hw & _ & _)".
+      iDestruct ("Hw" $! pl with "[%]") as "Hst"; [ exact Hpath | ].
+      iMod (pobs_dead_start_refund γfs T K (pobs_Pmiss_ref T K) cw pl d0
+              with "Hst") as "Hc".
+      iModIntro. iDestruct "Hc" as "[HK | HT]"; [ | by iRight ].
+      iLeft. iSplitR; [ by iPureIntro | ]. iSplitR; [ by iPureIntro | ].
+      iExact "HK".
+    - iDestruct "Hrest" as (pl') "(%Hpath' & Hr2)".
+      rewrite (arg_path_of_uniq M pv pl' pl Hpath' Hpath).
+      iDestruct "Hr2" as "[Hdead | Hpost]"; last first.
+      { iDestruct "Hpost" as (i) "(HP & _ & _)".
+        iModIntro. iRight.
+        iApply (pobs_dead_term_lin T K d0 (length (path_elems pl)) i Hlen
+                  with "HP"). }
+      iDestruct "Hdead" as "(Hde & _ & _)".
+      rewrite /namei_walk_dead_era.
+      iDestruct "Hde" as (k d) "(%Hk & Harm)". iModIntro.
+      iAssert (K ∨ T)%I with "[Harm]" as "Hc".
+      { iDestruct "Harm" as "[[HP _] | [HPm _]]".
+        - iApply (pobs_dead_cursor_refund with "HP").
+        - iApply (pobs_dead_miss_refund with "HPm"). }
+      iDestruct "Hc" as "[HK | HT]"; [ | by iRight ].
+      iLeft. iSplitR; [ by iPureIntro | ]. iSplitR; [ by iPureIntro | ].
+      iExact "HK".
+  Qed.
+
 End PinnedOpen.

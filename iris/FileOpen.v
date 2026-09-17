@@ -59,6 +59,7 @@ Require Import ArgPath.          (* [arg_path_of], [arg_path_of_uniq] *)
 Require Import SysOpenDefs.      (* [open_au_create_at], [open_trunc_piece] *)
 Require Import SpecSysOpen.      (* [open_receipt_plain] *)
 Require Import PinnedObs.        (* the pinned walk and the linear cursor *)
+Require Import PinnedOpen.       (* [pinned_open_bundle_dead_lin] (lane F-OPEN-2) *)
 Require Import SysReadDefs.      (* [ard_count] / [ard_pre] *)
 Require Import InodeInv.         (* [MAXFILE] *)
 Require Import BioDefs.          (* [BSIZE] *)
@@ -895,18 +896,17 @@ End FileOpen.
 (*      deed rides the create's [Fok] into the truncate and the whole      *)
 (*      0x601 bundle is one more instance of section 3.                    *)
 (*                                                                       *)
-(*  (b) THE O_RDONLY OPEN AT AN ABSENT `f` (cat's `cannot open` arm).      *)
-(*      [PinnedOpen.pinned_open_bundle_dead] is the shape, and the pin is  *)
-(*      [f_pin_misses] below -- but the WALK PIECE IS NOT REFUNDABLE:      *)
-(*      [PinnedObs.pobs_hop_dead] spends its credential [K] at hop 0 and   *)
-(*      answers the miss out of [pobs_miss_free], so the deed fraction     *)
-(*      the hop was paid with does not come home, and a holder that        *)
-(*      cannot reassemble [AppFile.fdeed] can never move the claim again.  *)
-(*      A [Pmiss] carrying the fraction fixes the arm that actually fires; *)
-(*      the `hop never fired` arm of [SysOpenDefs.namei_walk_dead_era]     *)
-(*      returns the unfired [ax_hop] itself, which is not a [PieceFam]     *)
-(*      and has no refund to eliminate to.  So the absent arm waits on     *)
-(*      either a refunding dead hop or the walk piece becoming a [pf_at].  *)
+(*  (b) THE O_RDONLY OPEN AT AN ABSENT `f` -- CLOSED (lane F-OPEN-2,      *)
+(*      seam 2).  [file_open_miss_au] / [file_open_miss_recv] below are    *)
+(*      the bundle and its receipt at [f_pin_misses], and the fraction     *)
+(*      comes home.  What F-OPEN priced as two fixes turned out to be      *)
+(*      one: put [K] ON THE CURSOR ([PinnedObs.pobs_P_dead_lin], section   *)
+(*      11a's construction one list shorter) and BOTH arms of              *)
+(*      [SysOpenDefs.namei_walk_dead_era] refund without that definition   *)
+(*      moving -- the `hop never fired` arm hands back [P k d] and the     *)
+(*      `fired and missed` arm hands back [Pmiss k d], and at              *)
+(*      [pobs_Pmiss_ref] both carry [K].  The walk piece did NOT have to   *)
+(*      become a [pf_at].                                                  *)
 (* ===================================================================== *)
 
 Section FileOpenMiss.
@@ -924,4 +924,70 @@ Section FileOpenMiss.
     intros v s Hp Hs. rewrite Hel in Hs. cbn in Hs.
     injection Hs as <-. exact Hp.
   Qed.
+  (* ---- THE BUNDLE, AND IT REFUNDS THE FRACTION ----
+
+     [PinnedOpen.pinned_open_bundle_dead_lin] at the ABSENT pin: the walk
+     dies at its first hop, the success fold collapses to the taint, and
+     the deed fraction the hop was paid with rides the CURSOR and comes
+     home through whichever arm of the failure fold the receipt hands
+     back ([PinnedObs] section 8a).  That is the whole of what lane
+     F-OPEN's STOP item (b) was waiting on. *)
+  Lemma file_open_miss_au (γfs : fs_names) (c : file_fixed) (r : file_names)
+      (q : Qp) (cw : Z) (M : gmap Z (bv 8)) (pv vom : mword 64)
+      (pl : list (bv 8))
+      (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ))
+      (Farm Fun : pfam Σ (aview -> Z -> iProp Σ))
+      (Fok Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ)) :
+    file_app = MkAppcfg file_names (file_pred c) r ->
+    arg_path_of M pv pl ->
+    path_elems pl = [fname_f] ->
+    um_start_of cw pl = ROOTINO ->
+    om_create vom = false ->
+    om_trunc vom = false ->
+    app_inv γfs -∗
+    fdq r q None -∗
+    open_in (fs_gamma_L γfs) γfs cw M pv vom
+      (pobs_P_dead_lin (file_taint c) (fdq r q None) ROOTINO)
+      (pobs_Pmiss_ref (file_taint c) (fdq r q None))
+      Farm Fun Fok Fex
+      (pfam_triv (fun (_ : aview) (_ : Z) (_ : anode) => True%I)) Ft.
+  Proof using .
+    intros Heq Hpath Hel Hst Hcr Htr. iIntros "#Hinv Hd".
+    iApply (pinned_open_bundle_dead_lin γfs
+              (fun v : aview => f_ok v None) (file_taint c)
+              (fdq r q None)
+              (pobs_Pmiss_ref (file_taint c) (fdq r q None))
+              cw pl ROOTINO M pv vom Ft Farm Fun Fok Fex
+              Hcr Htr (f_pin_misses cw pl Hel Hst) Hpath
+              with "[] [] [] Hinv Hd").
+    - iApply (file_pin_law_q c r q None Heq).
+    - iApply pobs_miss_taint_ref.
+    - iApply pobs_miss_hold_ref.
+  Qed.
+
+  (* ...AND THE RECEIPT: the open failed and the table did not move AND
+     THE FRACTION IS BACK, or the application is tainted.  There is no
+     third arm -- cat's `cannot open` branch is a THEOREM at an absent
+     deed, not an arm it has to carry. *)
+  Lemma file_open_miss_recv (γfs : fs_names) (c : file_fixed) (r : file_names)
+      (q : Qp) (cw : Z) (M : gmap Z (bv 8)) (pv vom : mword 64)
+      (pl : list (bv 8))
+      (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ))
+      (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ))
+      (sts : list fdstate) (rv : mword 64) (fdv' : list fdstate) :
+    arg_path_of M pv pl ->
+    path_elems pl = [fname_f] ->
+    open_receipt_plain (fs_gamma_L γfs) γfs cw M pv vom
+      (pobs_P_dead_lin (file_taint c) (fdq r q None) ROOTINO)
+      (pobs_Pmiss_ref (file_taint c) (fdq r q None)) Fo Ft sts rv fdv'
+    ={⊤}=∗ ((⌜rv = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜fdv' = sts⌝
+             ∗ fdq r q None)
+            ∨ file_taint c).
+  Proof using .
+    intros Hpath Hel. iIntros "Hrc".
+    iApply (pinned_open_dead_lin γfs (file_taint c) (fdq r q None)
+              cw pl ROOTINO M pv vom Fo Ft sts rv fdv' Hpath
+              ltac:(rewrite Hel; discriminate) with "Hrc").
+  Qed.
+
 End FileOpenMiss.

@@ -580,6 +580,202 @@ Section PinnedObs.
                 ltac:(lia) with "Hfree").
   Qed.
 
+
+  (* ------------------------------------------------------------------ *)
+  (*  8a.  THE DEAD WALK THAT REFUNDS ITS CREDENTIAL (lane F-OPEN-2,     *)
+  (*  seam 2)                                                            *)
+  (*                                                                      *)
+  (*  Section 8 SPENDS [K]: the hop resource holds it, reads the claim     *)
+  (*  with it and answers the miss out of [pobs_miss_free], so the         *)
+  (*  credential never comes home.  For /init's console key that was       *)
+  (*  affordable -- the key is re-minted by the mknod -- but for a         *)
+  (*  FRACTION OF A LIVE DEED it is not: a holder that cannot reassemble   *)
+  (*  [AppFile.fdeed] can never move its claim again, so cat's absent-`f`  *)
+  (*  open would burn the deed it was paid with.                           *)
+  (*                                                                      *)
+  (*  THE FIX IS SECTION 11a'S, ONE LIST SHORTER: put [K] ON THE CURSOR.   *)
+  (*  A hop takes it out of its INPUT cursor and puts it back into its     *)
+  (*  OUTPUT one -- and a hop that MISSES puts it into [Pmiss], which is   *)
+  (*  why the miss family here is [K ∨ T] rather than free.  Both arms of  *)
+  (*  [SysOpenDefs.namei_walk_dead_era] then refund WITHOUT that           *)
+  (*  definition moving: the `hop never fired` arm hands back [P k d] and  *)
+  (*  the `fired and missed` arm hands back [Pmiss k d], and at this       *)
+  (*  family both carry [K].                                              *)
+  (*                                                                      *)
+  (*  The hop resource itself is built from persistent things alone, as in *)
+  (*  section 11a, so the walk takes [K] exactly once -- at the START.     *)
+  (* ------------------------------------------------------------------ *)
+
+  (* THE CURSOR: hop 0 stands on the start inum AND CARRIES [K]; every
+     later hop, and the terminal one, is the taint (the walk died at hop
+     0, so a later hop is only ever reached under [T]). *)
+  Definition pobs_P_dead_lin (T K : iProp Σ) (d0 : Z) (k : nat) (d : Z)
+      : iProp Σ :=
+    ((⌜k = 0%nat /\ d = d0⌝ ∗ K) ∨ T)%I.
+
+  (* ...AND THE MISS FAMILY THAT REFUNDS: what the hop that actually fires
+     hands back. *)
+  Definition pobs_Pmiss_ref (T K : iProp Σ) (k : nat) (d : Z) : iProp Σ :=
+    (K ∨ T)%I.
+
+  (* THE SECOND THING EVERY HOP OWES at this shape: a hop whose cursor came
+     in LIVE finds no entry and must answer the miss out of [K].
+     [pobs_miss_taint] is still owed, for the hop whose cursor came in
+     tainted. *)
+  Definition pobs_miss_hold (K : iProp Σ) (Pmiss : nat -> Z -> iProp Σ)
+      : iProp Σ :=
+    (□ (∀ (k : nat) (d : Z), K -∗ Pmiss k d))%I.
+
+  Lemma pobs_miss_hold_ref (T K : iProp Σ) :
+    ⊢ pobs_miss_hold K (pobs_Pmiss_ref T K).
+  Proof using .
+    rewrite /pobs_miss_hold /pobs_Pmiss_ref. iIntros "!>" (k d) "H". by iLeft.
+  Qed.
+
+  Lemma pobs_miss_taint_ref (T K : iProp Σ) :
+    ⊢ pobs_miss_taint T (pobs_Pmiss_ref T K).
+  Proof using .
+    rewrite /pobs_miss_taint /pobs_Pmiss_ref. iIntros "!>" (k d) "H". by iRight.
+  Qed.
+
+  (* a free miss family answers both obligations, so section 8's instances
+     lift to this one unchanged *)
+  Lemma pobs_miss_hold_of_free (K : iProp Σ) (Pmiss : nat -> Z -> iProp Σ) :
+    pobs_miss_free Pmiss -∗ pobs_miss_hold K Pmiss.
+  Proof using .
+    rewrite /pobs_miss_free /pobs_miss_hold. iIntros "#H !>" (k d) "_".
+    iApply "H".
+  Qed.
+
+  (* THE TERMINAL READING, unchanged in content: at any hop but the first
+     the cursor IS the taint, so the success fold still collapses. *)
+  Lemma pobs_dead_term_lin (T K : iProp Σ) (d0 : Z) (n : nat) (d : Z) :
+    (n <> 0)%nat -> pobs_P_dead_lin T K d0 n d -∗ T.
+  Proof using .
+    intros Hn. rewrite /pobs_P_dead_lin.
+    iIntros "[[%Hp _] | HT]";
+      [ destruct Hp as [Hk _]; destruct (Hn Hk) | iExact "HT" ].
+  Qed.
+
+  (* HOP 0: the claim says the entry is not there, so the hop takes the
+     MISS branch -- and pays it out of the [K] its own cursor handed in. *)
+  Lemma pobs_hop_dead_lin (γfs : fs_names) (Pin : aview -> Prop) (T : iProp Σ)
+      `{!Persistent T} `{!Timeless T} (K : iProp Σ) `{!Timeless K}
+      (Pmiss : nat -> Z -> iProp Σ)
+      (cw : Z) (pl : list (bv 8)) (d0 : Z) (s : fname) :
+    pin_misses_at Pin cw pl d0 ->
+    path_elems pl !! 0%nat = Some s ->
+    □ (∀ v : aview, K -∗ app_pred app_run v -∗
+                      app_pred app_run v ∗ K ∗ (⌜Pin v⌝ ∨ T)) -∗
+    pobs_miss_taint T Pmiss -∗
+    pobs_miss_hold K Pmiss -∗
+    app_inv γfs -∗
+    ex_hop γfs (pobs_P_dead_lin T K d0) Pmiss 0%nat s.
+  Proof using .
+    intros (_ & Hmiss) Hs. iIntros "#Hcl #Hmt #Hmh #Hinv".
+    rewrite /ex_hop /ax_hop /pobs_P_dead_lin.
+    iIntros (d ents dqv) "HP HF".
+    iDestruct "HP" as "[[%Hpd HK] | #HT]"; last first.
+    { iModIntro. iFrame "HF".
+      destruct (ents !! s) as [c |]; [ by iRight | iApply ("Hmt" with "HT") ]. }
+    destruct Hpd as [_ Hd]. subst d.
+    iMod (inv_acc ⊤ appN with "Hinv") as "[Hbody Hclose]"; [ set_solver | ].
+    iEval (rewrite /app_body) in "Hbody".
+    iDestruct "Hbody" as (I) "(>Hh & Hp & >%Hdom & #Hx)".
+    iAssert (▷ (app_pred app_run (abs_view I) ∗ K ∗ (⌜Pin (abs_view I)⌝ ∨ T)))%I
+      with "[Hp HK]" as "Hpc".
+    { iNext. iApply ("Hcl" with "HK Hp"). }
+    iDestruct "Hpc" as "[Hp [HK Hc]]".
+    iMod "Hc". iMod "HK".
+    iDestruct (pobs_elend_astep γfs (1/2)%Qp I d0 dqv ents s
+                 with "Hh HF") as %Hae.
+    iMod ("Hclose" with "[Hh Hp]") as "_".
+    { iNext. rewrite /app_body. iExists I. iFrame "Hh Hp Hx".
+      iPureIntro. exact Hdom. }
+    iModIntro. iFrame "HF".
+    iDestruct "Hc" as "[%HP | #HT]"; last first.
+    { destruct (ents !! s) as [c |]; [ by iRight | iApply ("Hmt" with "HT") ]. }
+    assert (Hn : ents !! s = None)
+      by (rewrite -Hae; exact (Hmiss (abs_view I) s HP Hs)).
+    rewrite Hn. iApply ("Hmh" with "HK").
+  Qed.
+
+  (* ...AND EVERY LATER HOP, reached only under the taint. *)
+  Lemma pobs_hop_dead_hi_lin (γfs : fs_names) (T K : iProp Σ)
+      (Pmiss : nat -> Z -> iProp Σ) (d0 : Z) (k : nat) (s : fname) :
+    (k <> 0)%nat ->
+    pobs_miss_taint T Pmiss -∗
+    ex_hop γfs (pobs_P_dead_lin T K d0) Pmiss k s.
+  Proof using .
+    intros Hk. iIntros "#Hmt".
+    rewrite /ex_hop /ax_hop /pobs_P_dead_lin.
+    iIntros (d ents dqv) "HP HF".
+    iDestruct "HP" as "[[%Hpd _] | HT]";
+      [ destruct Hpd as [Hz _]; destruct (Hk Hz) | ].
+    iModIntro. iFrame "HF".
+    destruct (ents !! s) as [c |]; [ by iRight | iApply ("Hmt" with "HT") ].
+  Qed.
+
+  (* THE WHOLE WALK, at the one path the pin is about: [K] is spent into
+     the START cursor and comes back out of whichever arm the receipt
+     hands the caller. *)
+  Lemma pobs_walk_dead_lin (γfs : fs_names) (Pin : aview -> Prop) (T : iProp Σ)
+      `{!Persistent T} `{!Timeless T} (K : iProp Σ) `{!Timeless K}
+      (Pmiss : nat -> Z -> iProp Σ)
+      (cw : Z) (pl : list (bv 8)) (d0 : Z) :
+    pin_misses_at Pin cw pl d0 ->
+    □ (∀ v : aview, K -∗ app_pred app_run v -∗
+                      app_pred app_run v ∗ K ∗ (⌜Pin v⌝ ∨ T)) -∗
+    pobs_miss_taint T Pmiss -∗
+    pobs_miss_hold K Pmiss -∗
+    app_inv γfs -∗
+    K -∗
+    ex_start γfs cw (pobs_P_dead_lin T K d0) Pmiss pl.
+  Proof using .
+    intros Hres. pose proof Hres as [Hstart _].
+    iIntros "#Hcl #Hmt #Hmh #Hinv HK".
+    rewrite /ex_start. iIntros (r Hr). iModIntro. iSplitL "HK".
+    { rewrite /pobs_P_dead_lin. iLeft. iFrame "HK". iPureIntro.
+      split; [ reflexivity | by rewrite Hr ]. }
+    rewrite /ex_hops_from /ax_hops_from drop_0.
+    destruct (path_elems pl) as [| s0 rest] eqn:Hpe; [ done | ].
+    rewrite big_sepL_cons. iSplitR.
+    - iApply (pobs_hop_dead_lin γfs Pin T K Pmiss cw pl d0 s0 Hres
+                ltac:(rewrite Hpe; reflexivity) with "Hcl Hmt Hmh Hinv").
+    - iApply big_sepL_intro. iIntros "!>" (j s Hj).
+      iApply (pobs_hop_dead_hi_lin γfs T K Pmiss d0 (0 + S j)%nat s
+                ltac:(lia) with "Hmt").
+  Qed.
+
+  (* THE REFUND, READ OFF THE DEATH RECEIPT.  Both arms of the era refund
+     carry a cursor application at this family, and both give [K] back:
+     the `never fired` arm at hop [k] (only [k = 0] is live, and a later
+     one is the taint) and the `fired and missed` arm out of
+     [pobs_Pmiss_ref].  Stated over the hop index so no consumer destructs
+     the receipt's disjunction by hand. *)
+  Lemma pobs_dead_cursor_refund (T K : iProp Σ) (d0 : Z) (k : nat) (d : Z) :
+    pobs_P_dead_lin T K d0 k d -∗ K ∨ T.
+  Proof using .
+    rewrite /pobs_P_dead_lin. iIntros "[[_ HK] | HT]";
+      [ by iLeft | by iRight ].
+  Qed.
+
+  Lemma pobs_dead_miss_refund (T K : iProp Σ) (k : nat) (d : Z) :
+    pobs_Pmiss_ref T K k d -∗ K ∨ T.
+  Proof using . rewrite /pobs_Pmiss_ref. iIntros "H". iExact "H". Qed.
+
+  (* ...and off the UNINSTANTIATED walk, which is what the failure fold's
+     first arm returns when argstr never answered: one [={⊤}=>] fires the
+     one-shot at its own start inum and the START cursor carries [K]. *)
+  Lemma pobs_dead_start_refund (γfs : fs_names) (T K : iProp Σ)
+      (Pmiss : nat -> Z -> iProp Σ) (cw : Z) (pl : list (bv 8)) (d0 : Z) :
+    ex_start γfs cw (pobs_P_dead_lin T K d0) Pmiss pl ={⊤}=∗ K ∨ T.
+  Proof using .
+    iIntros "Hst". rewrite /ex_start.
+    iMod ("Hst" $! (um_start_of cw pl) with "[//]") as "[HP _]".
+    iModIntro. iApply (pobs_dead_cursor_refund with "HP").
+  Qed.
+
   (* ------------------------------------------------------------------ *)
   (*  9.  THE OBSERVATION A DEAD WALK OWES: nothing                       *)
   (*                                                                      *)

@@ -92,3 +92,46 @@ Proof.
   { apply Z.div_lt_upper_bound; rewrite /FW_MAX; lia. }
   apply Z2Nat.nonpos. lia.
 Qed.
+
+(* ---------------------------------------------------------------------
+   1c.  THE CHUNK AT ONE NODE -- RELAY 3 (lane WRITE-RELAY)
+
+   [wchunks n] says HOW MANY instants can fire; [wchunk_at n k] says how
+   BIG the one at node [k] is.  filewrite's loop computes it in two
+   instructions ([subw a5,s5,s4] then the [FW_MAX] cap), and every chunk
+   that reaches node [k] was FULL -- a short one breaks the loop -- so the
+   loop's running offset at node [k] is [FW_MAX * k] and the count it
+   passes writei is [min (n - FW_MAX*k) FW_MAX].
+
+   WHY THE NODE NEEDS IT.  [SpecCopyin.ubytes_at M ua bs] is a [∀] over
+   [bs]'s OWN indices and is therefore PREFIX-CLOSED: it says "these bytes
+   are a run of the caller's image at this base", never "this is the whole
+   chunk".  So a client that knows which bytes it asked to have written
+   cannot identify the fire's [bs] with them from the content tie alone --
+   it needs the LENGTH, and the length is the one thing the kernel holds
+   for free at the fire (it is the number it passed writei).  With the two
+   together the identification is [ubytes_at_inj]'s one line.  (F-WRITE
+   finding 2; design/app-file.md section 3, RELAY 3.) *)
+Definition wchunk_at (n : Z) (k : nat) : Z :=
+  Z.min (n - FW_MAX * Z.of_nat k) FW_MAX.
+
+(* THE LOOP'S OWN CHUNK IS THIS ONE.  [ProofFilewrite.fw_test] hands the
+   body [0 < c <= FW_MAX], [c <= n - t] and -- the clause lane E2-W added
+   for exactly this kind of reasoning -- [c = n - t \/ c = FW_MAX].  With
+   the loop's tie [t = FW_MAX * k] that pins [c] outright. *)
+Lemma wchunk_at_pick (n c t : Z) (k : nat) :
+  0 <= t -> t < n -> t = FW_MAX * Z.of_nat k ->
+  0 < c -> c <= FW_MAX -> c <= n - t ->
+  (c = n - t \/ c = FW_MAX) ->
+  c = wchunk_at n k.
+Proof.
+  intros Ht Htn Htie Hc0 Hcm Hcr Hpick.
+  rewrite /wchunk_at -Htie. destruct Hpick as [-> | ->]; lia.
+Qed.
+
+Lemma wchunk_at_pos (n : Z) (k : nat) :
+  FW_MAX * Z.of_nat k < n -> 0 < wchunk_at n k.
+Proof. intro H. rewrite /wchunk_at /FW_MAX in H |- *. lia. Qed.
+
+Lemma wchunk_at_le (n : Z) (k : nat) : wchunk_at n k <= FW_MAX.
+Proof. rewrite /wchunk_at. lia. Qed.

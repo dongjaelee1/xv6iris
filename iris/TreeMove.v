@@ -381,12 +381,18 @@ Section TreeMove.
      picks, and whichever arm fires builds the next node out of phase 2's
      own result.  This is [FsAbsWriteFire.awrite_chain_unit] with the
      application's SUPPLY replaced by the owner's DEED. *)
+  (* THE TREE PAYS BOTH ARMS STILL (lane WRITE-RELAY).  The two relays the
+     node gained -- the chunk's LENGTH on the full arm and the partial
+     arm's REASON -- are facts the tree claim does not read: [tree_wq] is
+     existential in everything the kernel picks, so each node is payable at
+     any [(I, off, bs, bs0, nl)] whatever the relays say.  They are
+     introduced and dropped.  ([FileWrite]'s node is where they are spent.) *)
   Lemma tree_awrite_chain (γfs : fs_names) (c : tree_fixed) (r : tree_names)
       (g : gname) (root i : Z) (t : ttree) (γo : gname)
-      (M : gmap Z (bv 8)) (ua : mword 64) (cnt k : nat) :
+      (M : gmap Z (bv 8)) (ua : mword 64) (nn : Z) (cnt k : nat) :
     file_app = MkAppcfg tree_names (tree_pred c) r ->
     app_inv γfs -∗ tree_wq c r g root i t -∗
-    awrite_chain (fs_gamma_L γfs) appE i γo M ua
+    awrite_chain (fs_gamma_L γfs) appE i γo M ua nn
       (fun _ : nat => tree_wq c r g root i t) k cnt.
   Proof.
     intros Heq. revert k. induction cnt as [| cnt IH]; intros k.
@@ -394,7 +400,7 @@ Section TreeMove.
     iIntros "#Hinv Hq". rewrite awrite_chain_S. iSplit; [iExact "Hq" |].
     iSplit.
     - rewrite /awrite_full_at.
-      iIntros (I off bs bs0 nl) "%Hpre %Hby Hka Hoff".
+      iIntros (I off bs bs0 nl) "%Hpre %Hby %Hlen Hka Hoff".
       destruct Hpre as (Hrow & _ & _ & _).
       iMod (tree_awrite_phases γfs c r g root i t I off bs bs0 nl Heq Hrow
               with "Hinv Hq Hka") as "(Hka & Hstep & Hph2)".
@@ -402,7 +408,7 @@ Section TreeMove.
       iMod ("Hph2" $! I' with "[//] Hka'") as "[Hka' Hq']".
       iModIntro. iFrame "Hka' Hoff". iApply (IH (S k) with "Hinv Hq'").
     - rewrite /awrite_part_at.
-      iIntros (I off n bs bs0 nl) "%Hpre %Hn %Hgap %Hby Hka Hoff".
+      iIntros (I off n bs bs0 nl) "%Hpre %Hn %Hgap %Hshort %Hby Hka Hoff".
       destruct Hpre as (Hrow & _ & _ & _).
       iMod (tree_awrite_phases γfs c r g root i t I off bs bs0 nl Heq Hrow
               with "Hinv Hq Hka") as "(Hka & Hstep & Hph2)".

@@ -564,12 +564,23 @@ Section WriteFire.
      beside [REST]; the chain's PREFIX CURSOR subsumes it -- the caller
      builds node [k+1] inside this very phase 2, where the post-map witness
      is in hand, so whatever it wanted to record it records in [Q (S k)]. *)
+  (* ...AND THE CHUNK'S LENGTH RIDES WITH IT (lane WRITE-RELAY, RELAY 3).
+     [ubytes_at] is PREFIX-CLOSED, so the tie above says "these bytes are a
+     run of the caller's image at this base" and NOT "this is the whole
+     chunk"; a client that knows which bytes it asked to have written can
+     only identify them with [bs] once the LENGTH is beside the tie
+     ([SpecCopyin.ubytes_at_inj]).  The length is the one thing the kernel
+     holds for free at the fire -- it is the count it passed writei -- and
+     at node [k] of a request for [n] bytes it is [SysWriteDefs.wchunk_at n
+     k], because every chunk that reached node [k] was FULL.  (F-WRITE
+     finding 2; design/app-file.md section 3.) *)
   Definition awrite_full_at Γ (E : coPset) (i : Z) (γo : gname)
-      (M : gmap Z (bv 8)) (ua : mword 64) (k : nat)
+      (M : gmap Z (bv 8)) (ua : mword 64) (n : Z) (k : nat)
       (REST : iProp Σ) : iProp Σ :=
     (∀ (I : gmap Z fs_node) (off : nat) (bs bs0 : list (bv 8)) (nl : nat),
        ⌜wri_pre (abs_view I) i off bs bs0 nl⌝ -∗
        ⌜ubytes_at M (add_vec_int ua (FW_MAX * Z.of_nat k)) bs⌝ -∗
+       ⌜Z.of_nat (length bs) = wchunk_at n k⌝ -∗
        ghost_map_auth (γtop Γ) (1/2) I -∗ off_gv γo (1/2) (Z.of_nat off) ={E}=∗
        ghost_map_auth (γtop Γ) (1/2) I ∗
          (* THE CALLER'S STEP (app-instances.md section 7): its claim about
@@ -600,13 +611,18 @@ Section WriteFire.
      THE COUNTED PREFIX is
      the caller's ([take r bs]), the rest of [bs] being writei's disturbed
      tail, which no [ubytes_at] can claim. *)
+  (* ...AND THE PARTIAL ARM IS A SHORT CHUNK (lane WRITE-RELAY): the count
+     it returned is strictly below the chunk the fire was called with, which
+     is what ENDS filewrite's loop.  Same source as the full arm's length
+     conjunct, and it is what says this arm is the loop's last. *)
   Definition awrite_part_at Γ (E : coPset) (i : Z) (γo : gname)
-      (M : gmap Z (bv 8)) (ua : mword 64) (k : nat)
+      (M : gmap Z (bv 8)) (ua : mword 64) (n : Z) (k : nat)
       (REST : iProp Σ) : iProp Σ :=
     (∀ (I : gmap Z fs_node) (off r : nat) (bs bs0 : list (bv 8)) (nl : nat),
        ⌜wri_pre (abs_view I) i off bs bs0 nl⌝ -∗
        ⌜(r <= length bs)%nat⌝ -∗
        ⌜(length bs <= r + BSIZE)%nat⌝ -∗
+       ⌜Z.of_nat r < wchunk_at n k⌝ -∗
        ⌜ubytes_at M (add_vec_int ua (FW_MAX * Z.of_nat k)) (take r bs)⌝ -∗
        ghost_map_auth (γtop Γ) (1/2) I -∗ off_gv γo (1/2) (Z.of_nat off) ={E}=∗
        ghost_map_auth (γtop Γ) (1/2) I ∗
@@ -637,36 +653,36 @@ Section WriteFire.
      The partial arm ends filewrite's loop ([r != n1] breaks), so it is taken
      at most once, last -- the posts' [x <= 1] slack. *)
   Fixpoint awrite_chain Γ (E : coPset) (i : Z) (γo : gname)
-      (M : gmap Z (bv 8)) (ua : mword 64)
+      (M : gmap Z (bv 8)) (ua : mword 64) (n : Z)
       (Q : nat -> iProp Σ) (k cnt : nat) : iProp Σ :=
     match cnt with
     | O => Q k
     | S cnt' =>
         (Q k
-         ∧ (awrite_full_at Γ E i γo M ua k
-              (awrite_chain Γ E i γo M ua Q (S k) cnt')
-            ∧ awrite_part_at Γ E i γo M ua k
-                (awrite_chain Γ E i γo M ua Q (S k) cnt')))%I
+         ∧ (awrite_full_at Γ E i γo M ua n k
+              (awrite_chain Γ E i γo M ua n Q (S k) cnt')
+            ∧ awrite_part_at Γ E i γo M ua n k
+                (awrite_chain Γ E i γo M ua n Q (S k) cnt')))%I
     end.
 
-  Lemma awrite_chain_0 Γ E i γo M ua Q k :
-    awrite_chain Γ E i γo M ua Q k 0 ⊣⊢ Q k.
+  Lemma awrite_chain_0 Γ E i γo M ua n Q k :
+    awrite_chain Γ E i γo M ua n Q k 0 ⊣⊢ Q k.
   Proof using . reflexivity. Qed.
 
-  Lemma awrite_chain_S Γ E i γo M ua Q k cnt :
-    awrite_chain Γ E i γo M ua Q k (S cnt) ⊣⊢
+  Lemma awrite_chain_S Γ E i γo M ua n Q k cnt :
+    awrite_chain Γ E i γo M ua n Q k (S cnt) ⊣⊢
       Q k
-      ∧ (awrite_full_at Γ E i γo M ua k
-           (awrite_chain Γ E i γo M ua Q (S k) cnt)
-         ∧ awrite_part_at Γ E i γo M ua k
-             (awrite_chain Γ E i γo M ua Q (S k) cnt)).
+      ∧ (awrite_full_at Γ E i γo M ua n k
+           (awrite_chain Γ E i γo M ua n Q (S k) cnt)
+         ∧ awrite_part_at Γ E i γo M ua n k
+             (awrite_chain Γ E i γo M ua n Q (S k) cnt)).
   Proof using . reflexivity. Qed.
 
   (* THE CALLER'S ELIMINATION, at any stop position and any remaining
      count: the node IS the cursor.  This is the whole of what the two
      exits of filewrite's loop read off. *)
-  Lemma awrite_chain_cursor Γ E i γo M ua Q k cnt :
-    awrite_chain Γ E i γo M ua Q k cnt -∗ Q k.
+  Lemma awrite_chain_cursor Γ E i γo M ua n Q k cnt :
+    awrite_chain Γ E i γo M ua n Q k cnt -∗ Q k.
   Proof using .
     destruct cnt as [| cnt'].
     - rewrite awrite_chain_0. iIntros "$".
@@ -681,19 +697,20 @@ Section WriteFire.
      live Γ's dischargers. *)
   (* ...at the live Γ, since the full arm owes the caller's step, paid here
      out of the SUPPLY ([AppInv.app_step_acc]) *)
-  Lemma awrite_chain_unit (γfs : fs_names) E i γo M ua k cnt :
+  Lemma awrite_chain_unit (γfs : fs_names) E i γo M ua n k cnt :
     app_sup -∗
-    awrite_chain (fs_gamma_L γfs) E i γo M ua (fun _ => True%I) k cnt.
+    awrite_chain (fs_gamma_L γfs) E i γo M ua n (fun _ => True%I) k cnt.
   Proof using .
     revert k. induction cnt as [| cnt IH]; intros k.
     { rewrite awrite_chain_0. by iIntros "_". }
     rewrite awrite_chain_S. iIntros "#Hsup". iSplit; [done |]. iSplit.
-    - rewrite /awrite_full_at. iIntros (I off bs bs0 nl) "%Hpre %Hby Ha Hk".
+    - rewrite /awrite_full_at.
+      iIntros (I off bs bs0 nl) "%Hpre %Hby %Hlen Ha Hk".
       iDestruct (app_step_acc i I _ with "Hsup") as "Hstep".
       iModIntro. iFrame "Ha Hstep". iIntros (I') "%Heq Ha'". iModIntro.
       iFrame "Ha' Hk". iApply (IH with "Hsup").
     - rewrite /awrite_part_at.
-      iIntros (I off r bs bs0 nl) "%Hpre %Hr %Hgap %Hby Ha Hk".
+      iIntros (I off r bs bs0 nl) "%Hpre %Hr %Hgap %Hshort %Hby Ha Hk".
       iDestruct (app_step_acc i I _ with "Hsup") as "Hstep".
       iModIntro. iFrame "Ha Hstep". iIntros (I') "%Heq Ha'". iModIntro.
       iFrame "Ha' Hk". iApply (IH with "Hsup").
@@ -715,7 +732,7 @@ Section WriteFire.
      OBSERVED one -- the fragment read is the one the fire retags, so
      nothing can move between the observation and the update. *)
   Lemma wrf_awrite_fire_gen (γfs : fs_names) (E : coPset) (i : Z) (γo : gname)
-      (M : gmap Z (bv 8)) (ua : mword 64) (k : nat) (REST ROff : iProp Σ)
+      (M : gmap Z (bv 8)) (ua : mword 64) (cnt : Z) (k : nat) (REST ROff : iProp Σ)
       (off : nat) (bs bs0 : list (bv 8)) (nl : nat) (n n' : fs_node) :
     ↑ftopN ∪ ↑appN ⊆ E ->
     inode_local i n' ->
@@ -727,15 +744,16 @@ Section WriteFire.
     fn_type n' <> 0 ->
     abs_row n' = MkAnode (AFile (blk_splice off bs bs0)) nl ->
     ubytes_at M (add_vec_int ua (FW_MAX * Z.of_nat k)) bs ->
+    Z.of_nat (length bs) = wchunk_at cnt k ->
     ftop_inv γfs -∗ app_inv γfs -∗ off_supply γo E off (length bs) ROff -∗
-    awrite_full_at (fs_gamma_L γfs) appE i γo M ua k REST -∗
+    awrite_full_at (fs_gamma_L γfs) appE i γo M ua cnt k REST -∗
     top_frag (fs_gamma_L γfs) i n -∗
     off_gv γo (1/2) (Z.of_nat off) ={E}=∗
       top_frag (fs_gamma_L γfs) i n'
       ∗ off_gv γo (1/2) (Z.of_nat (off + length bs))
       ∗ ROff ∗ REST.
   Proof using .
-    intros HE Hloc Hpos Hoff Hcap Hnz Habs Hnz' Habs' Hby.
+    intros HE Hloc Hpos Hoff Hcap Hnz Habs Hnz' Habs' Hby Hlen.
     iIntros "#Hi #Hai Hsup Hcm Hf Hg".
     (* the re-spelling is needed because the unifier cannot solve
        [γtop ?Γ =?= fs_top γfs]. *)
@@ -762,7 +780,7 @@ Section WriteFire.
       - by rewrite (delta_write_file (abs_view I) i off bs bs0 nl
                       (arow_at_live _ _ _ Hrow Hz)). }
     iMod (fupd_mask_subseteq appE) as "Hcl2"; [rewrite /appE; solve_ndisj |].
-    iMod ("Hcm" $! I off bs bs0 nl with "[//] [//] Hta Hg") as "(Hta & Hstep & Hph2)".
+    iMod ("Hcm" $! I off bs bs0 nl with "[//] [//] [//] Hta Hg") as "(Hta & Hstep & Hph2)".
     (* THE MOVE, at the whole authority: the application's half comes out
        of [appN] beside its claim, which the caller's step re-establishes
        under the later ([AppInv.app_top_update]) *)
@@ -790,7 +808,7 @@ Section WriteFire.
      ([OffGv.off_user_inv], persistent, carried by [FdSlots.foff_row] and
      threaded down from sys_write's descriptor bundle). *)
   Lemma wrf_awrite_fire (γfs : fs_names) (E : coPset) (i : Z) (γo : gname)
-      (M : gmap Z (bv 8)) (ua : mword 64) (k : nat) (REST : iProp Σ)
+      (M : gmap Z (bv 8)) (ua : mword 64) (cnt : Z) (k : nat) (REST : iProp Σ)
       (off : nat) (bs bs0 : list (bv 8)) (nl : nat) (n n' : fs_node) :
     ↑ftopN ∪ ↑appN ⊆ E ->
     inode_local i n' ->
@@ -802,20 +820,21 @@ Section WriteFire.
     fn_type n' <> 0 ->
     abs_row n' = MkAnode (AFile (blk_splice off bs bs0)) nl ->
     ubytes_at M (add_vec_int ua (FW_MAX * Z.of_nat k)) bs ->
+    Z.of_nat (length bs) = wchunk_at cnt k ->
     ftop_inv γfs -∗ app_inv γfs -∗ off_user_inv γo -∗
-    awrite_full_at (fs_gamma_L γfs) appE i γo M ua k REST -∗
+    awrite_full_at (fs_gamma_L γfs) appE i γo M ua cnt k REST -∗
     top_frag (fs_gamma_L γfs) i n -∗
     off_gv γo (1/2) (Z.of_nat off) ={E}=∗
       top_frag (fs_gamma_L γfs) i n'
       ∗ off_gv γo (1/2) (Z.of_nat (off + length bs))
       ∗ REST.
   Proof using .
-    intros HE Hloc Hpos Hoff Hcap Hnz Habs Hnz' Habs' Hby.
+    intros HE Hloc Hpos Hoff Hcap Hnz Habs Hnz' Habs' Hby Hlen.
     iIntros "#Hi #Hai #Hoinv Hcm Hf Hg".
     assert (Hfoff : ↑foffN ⊆ E).
     { etrans; [| exact HE]. rewrite /foffN /appN. solve_ndisj. }
-    iMod (wrf_awrite_fire_gen γfs E i γo M ua k REST True off bs bs0 nl n n'
-            HE Hloc Hpos Hoff Hcap Hnz Habs Hnz' Habs' Hby
+    iMod (wrf_awrite_fire_gen γfs E i γo M ua cnt k REST True off bs bs0 nl n n'
+            HE Hloc Hpos Hoff Hcap Hnz Habs Hnz' Habs' Hby Hlen
             with "Hi Hai [] Hcm Hf Hg") as "(Hf & Hg & _ & Hrest)".
     { iApply (off_supply_parked E γo off (length bs) Hfoff with "Hoinv"). }
     iModIntro. iFrame "Hf Hg Hrest".
@@ -828,7 +847,7 @@ Section WriteFire.
      read fire: [awrite_full_at] still lends the KERNEL half and takes it
      back unmoved; the only client-side move is the client's own [uoff]. *)
   Lemma wrf_awrite_fire_held (γfs : fs_names) (E : coPset) (i : Z) (γo : gname)
-      (M : gmap Z (bv 8)) (ua : mword 64) (k : nat) (REST : iProp Σ)
+      (M : gmap Z (bv 8)) (ua : mword 64) (cnt : Z) (k : nat) (REST : iProp Σ)
       (off : nat) (bs bs0 : list (bv 8)) (nl : nat) (n n' : fs_node) :
     ↑ftopN ∪ ↑appN ⊆ E ->
     inode_local i n' ->
@@ -840,19 +859,20 @@ Section WriteFire.
     fn_type n' <> 0 ->
     abs_row n' = MkAnode (AFile (blk_splice off bs bs0)) nl ->
     ubytes_at M (add_vec_int ua (FW_MAX * Z.of_nat k)) bs ->
+    Z.of_nat (length bs) = wchunk_at cnt k ->
     ftop_inv γfs -∗ app_inv γfs -∗ uoff γo off -∗
-    awrite_full_at (fs_gamma_L γfs) appE i γo M ua k REST -∗
+    awrite_full_at (fs_gamma_L γfs) appE i γo M ua cnt k REST -∗
     top_frag (fs_gamma_L γfs) i n -∗
     off_gv γo (1/2) (Z.of_nat off) ={E}=∗
       top_frag (fs_gamma_L γfs) i n'
       ∗ off_gv γo (1/2) (Z.of_nat (off + length bs))
       ∗ uoff γo (off + length bs) ∗ REST.
   Proof using .
-    intros HE Hloc Hpos Hoff Hcap Hnz Habs Hnz' Habs' Hby.
+    intros HE Hloc Hpos Hoff Hcap Hnz Habs Hnz' Habs' Hby Hlen.
     iIntros "#Hi #Hai Hu Hcm Hf Hg".
-    iApply (wrf_awrite_fire_gen γfs E i γo M ua k REST (uoff γo (off + length bs))
+    iApply (wrf_awrite_fire_gen γfs E i γo M ua cnt k REST (uoff γo (off + length bs))
               off bs bs0 nl n n'
-              HE Hloc Hpos Hoff Hcap Hnz Habs Hnz' Habs' Hby
+              HE Hloc Hpos Hoff Hcap Hnz Habs Hnz' Habs' Hby Hlen
               with "Hi Hai [Hu] Hcm Hf Hg").
     iApply (off_supply_held E γo off (length bs) with "Hu").
   Qed.
@@ -864,7 +884,7 @@ Section WriteFire.
      landed.  ([wrf_partial_move], the offset-only move this replaces, is
      gone with the hole it papered over.) *)
   Lemma wrf_apart_fire_gen (γfs : fs_names) (E : coPset) (i : Z) (γo : gname)
-      (M : gmap Z (bv 8)) (ua : mword 64) (k : nat)
+      (M : gmap Z (bv 8)) (ua : mword 64) (cnt : Z) (k : nat)
       (REST ROff : iProp Σ) (off r : nat) (bs bs0 : list (bv 8)) (nl : nat)
       (n n' : fs_node) :
     ↑ftopN ∪ ↑appN ⊆ E ->
@@ -879,15 +899,16 @@ Section WriteFire.
     fn_type n' <> 0 ->
     abs_row n' = MkAnode (AFile (blk_splice off bs bs0)) nl ->
     ubytes_at M (add_vec_int ua (FW_MAX * Z.of_nat k)) (take r bs) ->
+    Z.of_nat r < wchunk_at cnt k ->
     ftop_inv γfs -∗ app_inv γfs -∗ off_supply γo E off r ROff -∗
-    awrite_part_at (fs_gamma_L γfs) appE i γo M ua k REST -∗
+    awrite_part_at (fs_gamma_L γfs) appE i γo M ua cnt k REST -∗
     top_frag (fs_gamma_L γfs) i n -∗
     off_gv γo (1/2) (Z.of_nat off) ={E}=∗
       top_frag (fs_gamma_L γfs) i n'
       ∗ off_gv γo (1/2) (Z.of_nat (off + r))
       ∗ ROff ∗ REST.
   Proof using .
-    intros HE Hloc Hpos Hoff Hcap Hr Hgap Hnz Habs Hnz' Habs' Hby.
+    intros HE Hloc Hpos Hoff Hcap Hr Hgap Hnz Habs Hnz' Habs' Hby Hshort.
     iIntros "#Hi #Hai Hsup Hcm Hf Hg".
     rewrite /top_frag /fs_gamma_L /=.
     iMod (inv_acc E ftopN with "Hi") as "[Hbody Hclose]"; [solve_ndisj |].
@@ -908,7 +929,7 @@ Section WriteFire.
       - by rewrite (delta_write_file (abs_view I) i off bs bs0 nl
                       (arow_at_live _ _ _ Hrow Hz)). }
     iMod (fupd_mask_subseteq appE) as "Hcl2"; [rewrite /appE; solve_ndisj |].
-    iMod ("Hcm" $! I off r bs bs0 nl with "[//] [//] [//] [//] Hta Hg")
+    iMod ("Hcm" $! I off r bs bs0 nl with "[//] [//] [//] [//] [//] Hta Hg")
       as "(Hta & Hstep & Hph2)".
     iMod (app_top_update appE γfs I i n n' ltac:(rewrite /appE; done)
             with "Hai [Hstep] Hta Hf") as "[Hta Hf]".
@@ -931,7 +952,7 @@ Section WriteFire.
   (* SUPPLIER 1 -- THE PARKED PATH, verbatim the statement this lemma had
      before RD-1 ([ProofFilewrite]'s call site is here and nowhere else). *)
   Lemma wrf_apart_fire (γfs : fs_names) (E : coPset) (i : Z) (γo : gname)
-      (M : gmap Z (bv 8)) (ua : mword 64) (k : nat)
+      (M : gmap Z (bv 8)) (ua : mword 64) (cnt : Z) (k : nat)
       (REST : iProp Σ) (off r : nat) (bs bs0 : list (bv 8)) (nl : nat)
       (n n' : fs_node) :
     ↑ftopN ∪ ↑appN ⊆ E ->
@@ -946,20 +967,21 @@ Section WriteFire.
     fn_type n' <> 0 ->
     abs_row n' = MkAnode (AFile (blk_splice off bs bs0)) nl ->
     ubytes_at M (add_vec_int ua (FW_MAX * Z.of_nat k)) (take r bs) ->
+    Z.of_nat r < wchunk_at cnt k ->
     ftop_inv γfs -∗ app_inv γfs -∗ off_user_inv γo -∗
-    awrite_part_at (fs_gamma_L γfs) appE i γo M ua k REST -∗
+    awrite_part_at (fs_gamma_L γfs) appE i γo M ua cnt k REST -∗
     top_frag (fs_gamma_L γfs) i n -∗
     off_gv γo (1/2) (Z.of_nat off) ={E}=∗
       top_frag (fs_gamma_L γfs) i n'
       ∗ off_gv γo (1/2) (Z.of_nat (off + r))
       ∗ REST.
   Proof using .
-    intros HE Hloc Hpos Hoff Hcap Hr Hgap Hnz Habs Hnz' Habs' Hby.
+    intros HE Hloc Hpos Hoff Hcap Hr Hgap Hnz Habs Hnz' Habs' Hby Hshort.
     iIntros "#Hi #Hai #Hoinv Hcm Hf Hg".
     assert (Hfoff : ↑foffN ⊆ E).
     { etrans; [| exact HE]. rewrite /foffN /appN. solve_ndisj. }
-    iMod (wrf_apart_fire_gen γfs E i γo M ua k REST True off r bs bs0 nl n n'
-            HE Hloc Hpos Hoff Hcap Hr Hgap Hnz Habs Hnz' Habs' Hby
+    iMod (wrf_apart_fire_gen γfs E i γo M ua cnt k REST True off r bs bs0 nl n n'
+            HE Hloc Hpos Hoff Hcap Hr Hgap Hnz Habs Hnz' Habs' Hby Hshort
             with "Hi Hai [] Hcm Hf Hg") as "(Hf & Hg & _ & Hrest)".
     { iApply (off_supply_parked E γo off r Hfoff with "Hoinv"). }
     iModIntro. iFrame "Hf Hg Hrest".
@@ -969,7 +991,7 @@ Section WriteFire.
      is the COUNT writei returned, not the run it offered -- which is
      exactly the knowledge a program needs to resume a short write. *)
   Lemma wrf_apart_fire_held (γfs : fs_names) (E : coPset) (i : Z) (γo : gname)
-      (M : gmap Z (bv 8)) (ua : mword 64) (k : nat)
+      (M : gmap Z (bv 8)) (ua : mword 64) (cnt : Z) (k : nat)
       (REST : iProp Σ) (off r : nat) (bs bs0 : list (bv 8)) (nl : nat)
       (n n' : fs_node) :
     ↑ftopN ∪ ↑appN ⊆ E ->
@@ -984,19 +1006,20 @@ Section WriteFire.
     fn_type n' <> 0 ->
     abs_row n' = MkAnode (AFile (blk_splice off bs bs0)) nl ->
     ubytes_at M (add_vec_int ua (FW_MAX * Z.of_nat k)) (take r bs) ->
+    Z.of_nat r < wchunk_at cnt k ->
     ftop_inv γfs -∗ app_inv γfs -∗ uoff γo off -∗
-    awrite_part_at (fs_gamma_L γfs) appE i γo M ua k REST -∗
+    awrite_part_at (fs_gamma_L γfs) appE i γo M ua cnt k REST -∗
     top_frag (fs_gamma_L γfs) i n -∗
     off_gv γo (1/2) (Z.of_nat off) ={E}=∗
       top_frag (fs_gamma_L γfs) i n'
       ∗ off_gv γo (1/2) (Z.of_nat (off + r))
       ∗ uoff γo (off + r) ∗ REST.
   Proof using .
-    intros HE Hloc Hpos Hoff Hcap Hr Hgap Hnz Habs Hnz' Habs' Hby.
+    intros HE Hloc Hpos Hoff Hcap Hr Hgap Hnz Habs Hnz' Habs' Hby Hshort.
     iIntros "#Hi #Hai Hu Hcm Hf Hg".
-    iApply (wrf_apart_fire_gen γfs E i γo M ua k REST (uoff γo (off + r))
+    iApply (wrf_apart_fire_gen γfs E i γo M ua cnt k REST (uoff γo (off + r))
               off r bs bs0 nl n n'
-              HE Hloc Hpos Hoff Hcap Hr Hgap Hnz Habs Hnz' Habs' Hby
+              HE Hloc Hpos Hoff Hcap Hr Hgap Hnz Habs Hnz' Habs' Hby Hshort
               with "Hi Hai [Hu] Hcm Hf Hg").
     iApply (off_supply_held E γo off r with "Hu").
   Qed.

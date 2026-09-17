@@ -141,7 +141,7 @@ Section UkWriteFile.
     (∀ (M : gmap Z (bv 8)) (pm : gmap (mword 27) uperm) (sz : Z),
        uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗
        uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗
-       awrite_chain (fs_gamma_L fsc_fs) appE i γo M (m !!! Regidx a1_idx)
+       awrite_chain (fs_gamma_L fsc_fs) appE i γo M (m !!! Regidx a1_idx) n
          Q 0%nat (wchunks n)) -∗
     udepwf_st N m pc 16 (write_file_fam Q (ukn_pay N))
       (FdOpen rb true (FdInode i γo OffParked)).
@@ -338,7 +338,7 @@ Section UkWriteFile.
                  (Z.of_nat nb) Hcnt with "[]") as "Hsb".
     { iIntros (M pm sz) "Hheap". iFrame "Hheap".
       iApply (fsabs_awrite_chain fsc_fs i γo M (m !!! Regidx a1_idx)
-                0%nat (wchunks (Z.of_nat nb)) with "Hsup"). }
+                (Z.of_nat nb) 0%nat (wchunks (Z.of_nat nb)) with "Hsup"). }
     iApply (wp_uk_ecall_write_file N h m pc avail
               (write_file_fam (fun _ => True%I) (ukn_pay N)) fd
               (FdOpen rb true (FdInode i γo OffParked))

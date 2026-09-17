@@ -2855,6 +2855,22 @@ Section ProofFilewrite.
                  ∗ fw_au_raw (fs_gamma_L fsc_fs) nx γx n (us_M U) (m !!! Regidx Ra1) Q tf pf xf)%I
       with "[Htop Hau Hgv]" as ">(Htop & Hgv & Hst)".
     { rewrite Hnum.
+      (* RELAY 3 (lane WRITE-RELAY): THE COUNT THIS NODE WAS CALLED WITH.
+         The chunk the test picked is [SysWriteDefs.wchunk_at n p] and not
+         merely something bounded by [FW_MAX] and by the remainder -- which
+         is what [fw_test]'s [Hcpick] clause is there to say -- because the
+         loop's tie [Hmul] pins the running offset at node [p] to
+         [FW_MAX * p].  Both arms below relay it into the fire: the FULL arm
+         as the chunk's length, the PARTIAL arm as "the count returned was
+         SHORT of it". *)
+      assert (Ht0w : (0 <= t)%Z) by (zlia Htiz Hiz).
+      assert (Htnw : (t < n)%Z) by (zlia Htiz Hiz).
+      assert (Hcrw : (c <= n - t)%Z) by (zlia Hcrem Htiz).
+      assert (Hcw : c = wchunk_at n p).
+      { apply (wchunk_at_pick n c t p Ht0w Htnw Hmul
+                 (proj1 Hcrange) (proj2 Hcrange) Hcrw).
+        destruct Hcpick as [Hp1 | Hp2];
+          [left; zlia Hp1 Htiz | right; exact Hp2]. }
       destruct (decide (rz = c)) as [Hfc | Hnokey].
       - (* ---- THE CHUNK FIRES ---- *)
         assert (Hrzpos : (0 < rz)%Z) by (zlia Hfc Hcrange).
@@ -2957,14 +2973,20 @@ Section ProofFilewrite.
                   (add_vec_int (m !!! Regidx Ra1) (FW_MAX * Z.of_nat p))
                   (wrf_run wrote tot))
           by (rewrite -Hmul; exact Hchunkb).
+        (* ...AND THE CHUNK'S LENGTH, RELAYED (RELAY 3).  What landed is
+           exactly what writei was asked for -- the arm's own [tot = c] --
+           and [Hcw] says which node's count that is. *)
+        assert (Hlenw : (Z.of_nat (length (wrf_run wrote tot))
+                         = wchunk_at n p)%Z)
+          by (rewrite wrf_run_length -Hcw; zlia Htotc Hcz).
         iMod (wrf_awrite_fire fsc_fs ⊤ (bv_unsigned inum) γx (us_M U)
-                (m !!! Regidx Ra1) p _
+                (m !!! Regidx Ra1) n p _
                 (Z.to_nat (bv_unsigned v)) (wrf_run wrote tot)
                 (fn_file_bytes (era_node dnl bml datal))
                 (fn_nlink (era_node dnl bml datal))
                 (era_node dnl bml datal) (era_node dn' bm' data')
                 ltac:(solve_ndisj) Hlocw Hposbs Hoffbs Hcapbs Hnzl Hrow Hnz' Hrow'
-                Hchunkp
+                Hchunkp Hlenw
                 with "[] [] Hoinv Hcm Htop [Hgv]") as "(Htop & Hgv & Htail)";
           [iApply (ireg_inv_ftop with "Hireg") | iApply (ireg_inv_app with "Hireg") | rewrite Hgxo Hoffz; iExact "Hgv" |].
         iModIntro. iFrame "Htop".
@@ -3095,8 +3117,14 @@ Section ProofFilewrite.
             { rewrite Hrztotn /wrf_landed take_app_length';
                 [| exact (eq_sym (wrf_run_length wrote tot))].
               rewrite -Hmul. exact Hchunkb. }
+            (* ...AND THE ARM IS A SHORT CHUNK (RELAY 3's partial half):
+               [rz <= c] is writei's own bound and [rz <> c] is the key this
+               branch stands on, so the count returned is strictly below the
+               node's chunk -- which is exactly why the loop breaks here. *)
+            assert (Hshort : (Z.of_nat (Z.to_nat rz) < wchunk_at n p)%Z)
+              by (rewrite -Hcw; zlia Hrzge Hrzr Hnokey).
             iMod (wrf_apart_fire fsc_fs ⊤ (bv_unsigned inum) γx (us_M U)
-                    (m !!! Regidx Ra1) p _
+                    (m !!! Regidx Ra1) n p _
                     (Z.to_nat (bv_unsigned v)) (Z.to_nat rz)
                     (wrf_landed wrote dstb
                               (Z.to_nat (bv_unsigned (di_size dnl)))
@@ -3105,7 +3133,7 @@ Section ProofFilewrite.
                     (fn_nlink (era_node dnl bml datal))
                     (era_node dnl bml datal) (era_node dn' bm' data')
                     ltac:(solve_ndisj) Hlocw Hbspos Hoffbs Hcapbs Hrle Hgap
-                    Hnzl Hrowl Hnz' Hrow' Htakep
+                    Hnzl Hrowl Hnz' Hrow' Htakep Hshort
                     with "[] [] Hoinv Hpart Htop [Hgv]")
               as "(Htop & Hgv & Htail)";
               [iApply (ireg_inv_ftop with "Hireg")

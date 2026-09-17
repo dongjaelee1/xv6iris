@@ -718,6 +718,21 @@ iAssert (<the premise, spelled out>) with "[Hcg]" as "Hcg". { iExact "Hcg". }
 A fast `iAssert` and a hanging `iExact` is the mismatch. Fix by spelling in
 `rget` form, or follow every such leaf with `iEval (rgne) in "Hcg"`.
 
+### A section variable of a class type is a LOCAL INSTANCE, and it makes `urun` a different proposition
+
+A file that declares `Context {SG : uexecSG}` or `` `{PS : uprogSG} `` beside
+`!xv6G Σ` gives every `UkRun.urun` in its own statements a different
+instance from the one the lemmas it applies were proved at (those are at
+the ambient `UexecExecInst.uexecSG_xv6` / `uprogSG_gen`). The two print
+identically and do not unify; the symptom is an `iApply` that never
+terminates, or after hoisting the arguments (`iPoseProof` at explicit
+arguments) an `iSpecialize: cannot instantiate (urun …) with (urun …)`
+whose two sides read the same. Drop the binders. `UEchoOut.v`'s header
+records the `uexecSG` half; `UkCatDeed.v`'s the `uprogSG` half. The same
+trap one class in: a second `ghost_varG`/`ctokG` beside `!xv6G Σ` (which
+already carries both). The hoist is still worth doing first — it is what
+turns the hang into a readable failure. (CAT-WALK-2, 2026-09-17)
+
 ### Two more silent hangs: a `Prop`-valued restatement, and a budget that does not line up
 
 - **Growing a row on an arm that has `exact`-proved restatements is a HANG,

@@ -6514,7 +6514,6 @@ Section UkSh.
   Definition ush_gen_slot : iProp Σ :=
     (⌜ukn_held N = ∅⌝ ∗
      □ (∀ W : uvis,
-          ⌜fdv_all_parked (uvis_fd W)⌝ -∗
           T -∗ my_pay (uvis_gen W) (ukn_pay N) -∗ uslot W))%I.
 
   Global Instance ush_gen_slot_persistent : Persistent ush_gen_slot.
@@ -6531,8 +6530,8 @@ Section UkSh.
     is_aligned_vaddr (Virtaddr pc) 2 = true ->
     ush_gen_slot -∗ T -∗ urun N h m pc avail -∗ WP (Loop : expr riscv_lang).
   Proof using .
-    intro Hal. rewrite /ush_gen_slot. iIntros "[%Hpk #Hg] HT Hrun".
-    iApply (urun_gen N T h m pc avail Hal Hpk with "Hg HT Hrun").
+    intro Hal. rewrite /ush_gen_slot. iIntros "[_ #Hg] HT Hrun".
+    iApply (urun_gen N T h m pc avail Hal with "Hg HT Hrun").
   Qed.
 
   (* THE TAG'S READING ([ush_tag_law]) IS STATED ABOVE THE READ LEAF now

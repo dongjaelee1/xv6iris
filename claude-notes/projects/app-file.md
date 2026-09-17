@@ -4533,3 +4533,854 @@ theorem's axiom list THIRTEEN and the ECHO theorem's FOURTEEN, both
 unchanged.  `make audit-tree-only` was not run and does not need to be:
 cat's walk is in no theorem's cone --- nothing outside `UkCat*.v`
 requires it --- so the tree theorem cannot have moved.
+
+### CAT-WALK-2 (2026-09-17) — THE DEED OPEN REACHES A PATH IN HEAP DATA; `UkCatDeed` IS BACK IN THE BUILD AND THE DIVERGENCE WAS A SECOND CLASS INSTANCE; THE ROUND IS STATED AND PROVED AT THE OFFSET-PINNED OBLIGATION
+
+Branch `app-file/cat-entry`, on top of lane CAT-WALK's `7ff508011`, merged
+with `main` at `9ec014914` (clean; nothing in `iris/` conflicted, and the
+merged tree was built green before a line was written: `TREE_EXIT=0`, 187
+files, zero `Error`).
+
+**THE LANE'S VERDICT IN ONE LINE: all three of CAT-WALK's stops are
+gone.  The open leaf now reads its caller's path off EITHER heap half, so
+cat's `argv[1]` and the redirect child's line buffer discharge it; the
+read arm's non-terminating `iApply` was never an `iApply` problem at all
+— it was a SECOND `uexecSG`/`uprogSG` instance, and with the two section
+binders dropped the file compiles in seven seconds with the ORIGINAL
+application; and the loop's round is proved at the offset-pinned read, so
+the entry is one instantiation once OFF-HAND-6's held leaf lands.**
+
+**K1 — THE PATH THAT LIVES IN DATA: LANDS.**  The blocker CAT-WALK named
+is one `iDestruct` in one landed leaf, and the fix is to make the ROW the
+premise rather than the resource that yields it.
+
+- `UkRunSys.uimg_view N Img` — `□ (∀ M pm sz, uheap (ukn_t N) (ukn_d N)
+  (ukn_s N) M pm sz -∗ ⌜∀ a b, Img !! a = Some b → M !! a = Some b⌝)`, a
+  boxed wand off the run's own heap authority.  It is the ONLY thing the
+  landed walk ever does with the caller's persistent view, and it is
+  `UConsOpen.cons_ro_sub`'s conclusion with the supplier abstracted.
+  `uimg_view_sub` is the reading; `uimg_view_persistent` the instance.
+- `UkRunSys.uimg_view_text` — `utext_img (ukn_t N) Img -∗ uimg_view N
+  Img`, which is literally the `iDestruct` the landed leaf runs, hoisted
+  out of its walk.
+- `UkRunSys.uimg_view_data` — `([∗ map] a ↦ b ∈ Img, ubyteq (ukn_d N)
+  DfracDiscarded a b) -∗ uimg_view N Img`, through `UserHeap.uheap_ubyte`
+  (the fractional twin of `uheap_text`).  **THAT IS THE EXACT PREDICATE**
+  the brief asked to be named: it is what `UserHeap.uargv` is built out of
+  (`ustr … DfracDiscarded`, whose bytes are `ubyteq γd DfracDiscarded`),
+  what `ExecArgs.uargv_img_of_uargv` reads the argv layout off, and what
+  `UkFork.v:595` already carries as a map-shaped bundle across fork.
+- `UkRunSys.wp_uk_ecall_open_recv_gimg` — the landed leaf's ~130-line walk
+  with `utext_img` replaced by `uimg_view` and the one `iAssert` replaced
+  by `uimg_view_sub`.  **THE WALK IS WRITTEN ONCE MORE AND NOT TWICE**,
+  and the reason is the additivity rule, not proof economy: the landed
+  `wp_uk_ecall_open_recv_img` could have become a two-line corollary of it
+  (`uimg_view_text` then apply), but lane OFF-HAND-6 is editing
+  `UkRunSys.v` beside that lemma, so its proof body was left untouched and
+  the generic copy appended after its `Qed.`  Merging costs nothing; the
+  duplication is one walk and it is deliberate.
+- `UkRunSys.wp_uk_ecall_open_recv_dimg` — five lines over the generic
+  leaf, at the data image.  **Its post is the text leaf's word for word**:
+  the same image row comes back at `uvis_M W'`.
+- `UkFileOpen` section 5: `file_open_sup_v` / `file_miss_sup_v` /
+  `file_create_sup_v` and `wp_uk_ecall_open_read_deed_v` / `_miss_deed_v`
+  / `_create_deed_v` are sections 1/2/4 verbatim with `uimg_view` in place
+  of `utext_img` — the bodies are unchanged, only which persistent view
+  supplies `uimg_sub` moves — and `wp_uk_ecall_open_read_deed_d` /
+  `_miss_deed_d` / `_create_deed_d` are ONE application each at the data
+  image.  Sections 1/2/4 are untouched.
+
+**K2 — `UkCatDeed.v` IS BACK IN `_CoqProject` AND GREEN IN 6.8 s.  THE
+UNSHELVE HOIST IS NOT WHAT UNBLOCKED IT, AND THIS IS THE LANE'S MOST
+USEFUL FINDING.**  CAT-WALK's diagnosis — "`optimization.md`'s inline
+`ltac:` in argument position, in its slowest form" — is REFUTED.  What
+happened:
+
+1. The hoist was run as prescribed (`iPoseProof` at the twenty-five
+   explicit arguments, then `iApply` on the resulting ground chain of
+   wands).  The compile then TERMINATED — in ninety seconds, with an
+   error instead of a `.vo`:
+
+       iSpecialize: cannot instantiate
+         (urun N h1 m1 (mword_of_int 966) avail -∗ … ) with
+         (urun N h1 m1 (mword_of_int 966) avail)
+
+   — two propositions that print identically.  **So the hoist's value
+   here was DIAGNOSTIC: it converted a non-terminating unification into a
+   readable failure at the hypothesis that caused it.**
+2. The cause is CAT-WALK's own `ghost_varG`/`ctokG` note ONE CLASS
+   FURTHER OUT.  `UkFileOpen.v` declares NO `uexecSG` and NO `uprogSG`
+   section variable, so every `UkRun.urun` in its statements is at the
+   AMBIENT pair resolution finds — `UexecExecInst.uexecSG_xv6` and
+   `uprogSG_gen`.  `UkCatDeed.v` declared both as section variables.  A
+   section variable of a class type is a LOCAL INSTANCE and wins
+   resolution, so the file's own `urun` was a different proposition from
+   the one the leaf's statement is about.
+3. With the two binders dropped the file compiles in 6.8 s — **and so
+   does the original, un-hoisted `iApply`** (measured: 6.8 s).  The hoist
+   is kept anyway, with the finding written at the site, because it costs
+   nothing and it is what makes such a failure readable.
+
+`UEchoOut.v`'s header already records the `uexecSG` half of this rule
+("NO `uexecSG` VARIABLE … this file reads row 16's CONCRETE arm").  **The
+`uprogSG` half is new, and it has a consequence worth stating: the deed
+corollaries are PINNED to the generic-slot instance.**  Any application
+file that wants to apply `UkFileOpen`'s or `UkCatDeed`'s lemmas must
+declare neither class, and is thereby at `uprogSG_gen`.
+
+What is in the file now.  Restored unchanged from `8d692f26c`:
+`wp_kcat_read_deed`, `kcat_deed_hold`, `kcat_r_of_deed`,
+`kcat_r_of_deed_at` (plus two import fixes `main` made necessary —
+`VcGen` for `trunc32_mword_of_int`, `FsAbsEra` for `um_start_of` — and
+one comment whose `"…"` closed on the next line, which upstream's
+`comment-terminator-in-string` rejects).  NEW, cat's OPEN at the deed
+over K1's data-image leaves:
+
+- `UkCatDeed.wp_kcat_open_read_deed` / `wp_kcat_open_miss_deed` —
+  `UkCat.wp_kcat_open`'s three instructions (0x3ec `c.li a7,15`, 0x3ee
+  `ecall`, 0x3f2 `c.jr ra`) with the ecall at
+  `UkFileOpen.wp_uk_ecall_open_read_deed_d` / `_miss_deed_d`.  The mode
+  word is `0`, so `om_create`/`om_trunc` are `false` and the stored pair
+  is `(true, false)` by `vm_compute`.
+- `UkCatDeed.kcat_open_hold`, `kcat_o_of_deed`, `kcat_o_of_deed_miss` —
+  `UkCat.kcat_o_of_law`'s twins.  The ledger and the working directory
+  ride in the obligation's two halves (both linear; main's loop opens once
+  per argument); the PRESENT arm hands back `UserFd.ualloc γfd l fd
+  (FdOpen true false (FdInode i γo OffParked))` — the deed's OWN INUM,
+  whose type is not a pipe, so cat's close is free
+  (`UkCat.kcat_cldep_nonpipe`) — and the ABSENT arm hands the ledger back
+  UNTOUCHED at `-1` with the fraction home.  **`kcat_o`'s deed instance
+  therefore exists, which is CAT-ENTRY's blocker (3) closed.**
+
+**K3 — `UCatKernel.cat_round_at`: THE ROUND LANDS, AND THE SHAPE OF ITS
+CREDIT IS THE FINDING.**  `iris/UCatKernel.v` is new and green (8.1 s).
+
+- `cat_round_line` (pure) — the heart.  From the deed-aware read's two
+  outputs (`Z.to_nat (bv_unsigned rv) = ard_count 512 p (length bs)` and
+  `∀ j < rv, gb j = bs !!! (p + j)`) it derives exactly the row
+  `UCatOut.cch_chain` asks for: `cont (cat_st cs0 s0 I0) LCat (ralt_dec
+  (ralt_enc RCRan)) !! (p + j) = Some (gb j)`.  It goes through
+  `UCatOut.cat_out_of_tie` (`cont … RCRan = bs ++ u_prompt`), and the
+  prompt is never reached because the count stops at `length bs`.
+  `cat_round_cursor` is its arithmetic twin (`p + count ≤ length bs`).
+- `cat_round_inv Hold l bs v vf ps0 cs0 s0 I0 P` — the ledger, and AT ONE
+  AND THE SAME position the deed's handle and the console cursor:
+  `ustd γfd l ∗ ∃ p, ⌜p ≤ length bs⌝ ∗ Hold p ∗ UCatOut.cch g … p`.
+- `cat_round_at` — `UkCatCat.kcat_round N (mword_of_int (Z.of_nat fd))
+  (cat_round_inv …) Cend`, proved.  The `cat: read error` arm is
+  discharged from the boxed diagnostic and is VACUOUS at a deed anyway
+  (READ-RELAY); the normal exit hands the pieces to `Cend`'s wand; the
+  write arm goes through `UkCat.kcat_w_mono` at the cursor and is funded
+  by `Hw`.  The TAINT disjunct funds every arm from `cch`'s own right
+  disjunct.
+- `cat_pinned_read_at` — the SHAPE GUARD: given the row at ONE `off0`,
+  `UkCatDeed.kcat_r_of_deed_at` yields exactly the proposition
+  `cat_round_at` takes boxed over the cursor.  So the round's read premise
+  is inhabited and the lemma is not vacuously true.
+
+**THE EXACT `Hpin`, AND WHAT THE HELD LEAF MUST DISCHARGE IT FROM.  TWO
+SHAPES ARE VACUOUS AND BOTH WERE TRIED AND REJECTED IN THIS LANE — this
+is the part worth reading.**
+
+CAT-WALK named the premise as the ROW
+
+    □ (∀ rv gb off, ⌜Z.to_nat (bv_unsigned rv) = ard_count cnt off
+                      (length bs)⌝ -∗
+                    ⌜∀ j < Z.to_nat (bv_unsigned rv),
+                       gb j = bs !!! (off + j)⌝ -∗ ⌜off = off0⌝)
+
+and that is right AT A FIXED `off0` — it is `kcat_r_of_deed_at`'s premise.
+It may NOT be boxed over `off0` as well: at two different `off0` the box
+is inconsistent, so a round built on it says nothing.  (Written that way
+first; caught before it landed.)
+
+Nor may the OBLIGATION be boxed over the cursor at a FIXED handle: one
+descriptor has one offset, so "at any `p` I can read at `p`" is
+unsuppliable, and the round would again be an unusable statement.  (Second
+shape; also caught before it landed.)
+
+**The shape that is neither is the one `cat_round_at` takes**: the
+obligation boxed over the cursor at a handle that is ITSELF a function of
+the cursor —
+
+    □ (∀ p : nat, ⌜p ≤ length bs⌝ -∗
+         UkCat.kcat_r N (mword_of_int (Z.of_nat fd)) CatSyms.buf 512
+           (Hold p)
+           (fun rv gb =>
+              (⌜Z.to_nat (bv_unsigned rv) = ard_count 512 p (length bs)⌝
+               ∗ ⌜∀ j < Z.to_nat (bv_unsigned rv), gb j = bs !!! (p + j)⌝
+               ∗ Hold (p + Z.to_nat (bv_unsigned rv)))
+              ∨ ((∃ p', ⌜p' ≤ length bs⌝ ∗ Hold p') ∗ file_taint c)))
+
+**WHAT OFF-HAND-6 MUST DISCHARGE IT FROM, exactly.**  `Hold p` is
+`UserFd.ufd γfd fd (FdOpen true wb (FdInode i γo (OffHeld p))) ∗
+UserOff.uoff γo p ∗ FileOpen.fdq r q (Some (i, bs))` — the held
+descriptor row AT `p`, its offset half, and the deed's fraction.  The held
+read leaf must (a) report `off = p` from `OffHeld p` and the half, and
+(b) ADVANCE the row and the half to `p + count`, so that `Hold` comes
+back at the new position.  Nothing else is owed: the count and the bytes
+are already `wp_uk_read_deed_learns_mapped`'s own outputs, and the
+payer-side tie *the deed's offset IS the console cursor* is
+`cat_round_inv`'s single existential, which is what makes "cat's output
+is the file's content IN ORDER" a statement about one number.
+
+**WHAT `UCatKernel`'s ENTRY STILL NEEDS, in order.**
+
+1. **OFF-HAND-6's held read leaf**, for `Hpin` above.  Until it lands a
+   caller can only take `UkCatDeed.kcat_r_of_deed`'s existential offset,
+   and the ordering is unprovable — not by any amount of payer-side work.
+2. **`Hw`, the turn's write at the cursor — the cat twin of
+   `UEchoOut.kecho_w_of_link_data`, and it has ONE resource-algebra step
+   this lane did not take.**  Everything else is in place:
+   `UkCat.wp_kcat_write_chain` is the stub, `UkWriteLeaf.uwrite_chain_sup`
+   builds the deposit, `uwrite_no_short` reads the post, and
+   `UCatOut.cch_chain` supplies the chain from `cat_round_line`'s row.
+   THE STEP: `uwrite_chain_sup`'s deposit premise is a wand `∀ M pm sz,
+   uheap -∗ uheap ∗ cons_out_chain …`, and the image row inside it comes
+   from `UkRunSys.uheap_ubytes_wat` applied to the SOURCE RUN — which
+   echo can do because its run is `ustr … DfracDiscarded`, PERSISTENT, and
+   cat cannot because its run is the 512-byte read buffer at `DfracOwn 1`.
+   Splitting the prefix off is free (`UserHeap.ubytes_app`); splitting the
+   FRACTION is not — there is no `ubytesq` fractional-split lemma in
+   `UserHeap.v`, and the half put into the closure is CONSUMED there, so
+   the buffer cannot be rebuilt for `kcat_w`'s `Co`.  Two ways out, both
+   small: (i) add `ubytesq γd (DfracOwn 1) a n f ⊣⊢ ubytesq γd (DfracOwn
+   (1/2)) a n f ∗ ubytesq γd (DfracOwn (1/2)) a n f` (Iris's
+   `ghost_map_elem_fractional` plus `Qp.half_half`, ~10 lines) AND carry
+   the half back out through the chain's own `Q` — which needs
+   `cons_out_chain` framed, and its nodes are ADDITIVE `∧`, so a frame
+   lemma is provable but wants `out_link` monotone in its continuation;
+   or (ii) a variant of `uwrite_chain_sup` whose deposit premise returns
+   the caller's source run beside the chain.  **(ii) is the cheaper one
+   and it is a `UkWriteLeaf` change, not an application one.**
+3. **`kcat_dg_cw`, the `cat: write error` tail — AND IT IS NOT FUNDABLE
+   FROM THE CURSOR, contrary to CAT-WALK's reading.**  `UkCatCat.kcat_dg_cw`
+   is `kcat_pay_seq N (mword_of_int 2) (cat_lit 0x9b0) 0 17 emp (ukn_pay
+   N (-1))` — seventeen bytes of a literal at fd 2 — and it sits under an
+   ADDITIVE `∧` in `kcat_round`'s write output, so the payer must fund it
+   whether or not the write is short.  `UCatOut.cch_step` can only fund a
+   byte the MODEL's continuation holds at the cursor, and at `RCRan` that
+   continuation is `bs ++ u_prompt` (`cat_out_of_tie`): "cat: write error"
+   is not in it at any position.  `kcat_dg_cr` is in the same position.
+   So `cat_round_at` takes both as `□` premises and names them; the entry
+   cannot discharge them from the stage as it stands.  **THE DESIGNER'S
+   CHOICE, and it is a ruling this lane cannot make:** either (a) the
+   model grows an alternative whose continuation IS the write-error
+   diagnostic (the `RCReadErr` that READ-RELAY made unnecessary for the
+   read, now needed for the WRITE), or (b) `kcat_round`'s write output
+   loses its additive `∧ kcat_dg_cw` in favour of an arm the write leaf's
+   own no-short row refutes — which is possible, because
+   `UkWriteLeaf.uwrite_no_short` DOES give `r = mword_of_int (Z.of_nat
+   nb)` at a console fd whose destination the caller owns, exactly as the
+   read's `-1` arm was refuted.  **(b) is the same move READ-RELAY made
+   one syscall over, and it costs `UkCatCat.kcat_round` one restatement
+   and cat's `beq`-walk nothing.**
+4. Then `UCatKernel.cat_image_entry` is `UShEcho.echo_image_entry`'s shape
+   with `kcat_o_of_deed` for the open (LANDED), `cat_round_at` for the
+   content (LANDED, at 1–3), `UkCatMain.kcat_dg_open` over
+   `UCatOut.cch_step` for the diagnostic, `UkCat.kcat_cldep_nonpipe` for
+   the close, and `UCatOut.catq_filed`/`catq_unfiled` for the payload.
+
+**ONE SMALLER FINDING, for whoever writes `Hw`.**  `UkCatCat.kcat_round`'s
+write arm is `∀ nb, ⌜ret = mword_of_int (Z.of_nat nb)⌝ -∗ ⌜0 < nb⌝ -∗
+kcat_w … nb …`, and that equation does NOT identify `nb` above `2^64`.  So
+a payer may not compute the cursor's advance from `nb`; it must read it
+off the returned WORD (`Z.to_nat (bv_unsigned ret)`), which is also what
+the kernel's `sys_rw_count` will read.  `cat_round_at` is stated that way
+throughout.
+
+**EVERY STATEMENT THAT MOVED, EXHAUSTIVELY: NONE.  Everything is
+additive.**  `iris/UkRunSys.v` gains seven results after
+`wp_uk_ecall_open_recv_img`'s `Qed.` (`uimg_view`,
+`uimg_view_persistent`, `uimg_view_sub`, `uimg_view_text`,
+`uimg_view_data`, `wp_uk_ecall_open_recv_gimg`,
+`wp_uk_ecall_open_recv_dimg`) and NO landed line changes, so lane
+OFF-HAND-6's parallel edit beside that lemma merges trivially.
+`iris/UkFileOpen.v` gains a section 5 of nine results before `End`;
+sections 1–4 are byte-identical.  `iris/UkCatDeed.v` returns (five
+restored results, five new).  `iris/UCatKernel.v` is new (five results).
+`iris/_CoqProject` gains two lines, `UkCatDeed.v` after `UkShRedirAns.v`
+and `UCatKernel.v` after `UCatOut.v`.  `FileOpen.v` and `AppFile.v` (lane
+F-OPEN-5) and `UkReadFile.v` (lane OFF-HAND-6) were not touched.
+
+**THE BAR.**  WHOLE TREE GREEN on the lane's remote tree: `make -f
+CoqMakefile -j8 -k` over all of `iris/_CoqProject` finishes `TREE_EXIT=0`
+with ZERO `Error`, and a re-run is *Nothing to be done for 'real-all'*.
+Compile times: `UkRunSys.vo` 28 s, `UkFileOpen.vo` 10 s, `UkCatDeed.vo`
+6.8 s, `UCatKernel.vo` 8.1 s — no step came near ten minutes once the
+instance defect was out.  Nothing is `Admitted`; every new result carries
+`Proof using` (the three bare `Proof.` in `UkRunSys.v` are pre-existing
+and above the section).  `make audit-all-only` and `make audit-tree-only`
+from the tree root: `AUDIT_EXIT=0` / `AUDITTREE_EXIT=0`, the ECHO
+theorem's axiom list FOURTEEN, the SYSTEM theorem's THIRTEEN and the TREE
+theorem's THIRTEEN, all unchanged.  `make gen-ucode` prints *unchanged*
+for all seven catalogs; no `UCode*.v` and no `tools/ucode_manifest.json`
+was touched.
+
+### OFF-HAND-6 (kernel/U tier, 2026-09-17) — THE HELD HALF RIDES THE BUNDLE AND THE EXEC ROW IS GONE; THE CONTRACT MODE-SPLIT IS REFUTED AS UNNECESSARY, AND `fpnames` NEEDS NOTHING
+
+**The lane's verdict in one line: H1 and the DELETION half of H3 landed — a
+held row now RECORDS ITS OFFSET in the fd-table state, `FdSlots.foff_row`
+answers the exclusive half `UserOff.uoff γo off` at it, the boundary park
+takes no user deposit, and the exec crossing's all-parked row is deleted on
+BOTH arms together with the whole `fdv_held_in`/`ukn_held` carrier, so an
+entry constructor may now mint a record at a key with a held descriptor.
+H2's contract mode-split is REFUTED as unnecessary (fact 4 makes the fire's
+offset supplier mode-blind), `fpnames` is shown to need NO `fp_om` (the
+row's state alone decides, and the reference count does the rest), and what
+H2 actually costs is measured: it FORCES H3's read/write row, because two
+of the four row-copying sites cannot be discharged by the count. Two
+commits, each whole-tree green.**
+
+**WHAT LANDED** (whole tree green on the lane's remote tree, `make -f
+CoqMakefile -j16 -k`, `EXIT=0`, zero `Error`; `make audit-all-only`
+thirteen/fourteen, `audit-tree-only` thirteen, `audit-file-only` fourteen —
+unchanged; `Proof using` everywhere, no `Admitted`.)
+
+*`be377d08f` — H1: the held half rides the descriptor bundle, its value the
+descriptor state*
+
+- `FdSlots.offmode := OffParked | OffHeld (off : nat)`; `fdst_parked`
+  unchanged in meaning; `foff_row (FdOpen _ _ (FdInode _ γo (OffHeld off)))`
+  is `UserOff.uoff γo off` (was `emp`).  `FdSlots.v` now imports `UserOff`
+  (no cycle: `UserOff` requires only `RiscvPtsto`/`Xv6Cameras`/`OffGv`).
+- NEW `FdSlots.om_adv` / `fdst_adv` (the advance of a row by a count,
+  identity at a parked row) with `om_adv_0`, `fdst_adv_0`,
+  `fdst_adv_parked`, `fdst_adv_id_parked`.  This is the function every
+  later row ("this read advanced the descriptor") is stated at.
+- THE PERSISTENCE, priced exactly: `foff_row_persistent` and
+  `foff_rows_persistent` stop being INSTANCES and become the lemmas
+  `foff_row_persistent_parked` / `foff_rows_persistent_parked` under
+  `fdst_parked` / `fdv_all_parked`, with `foff_row_dup` / `foff_rows_dup`
+  the form a proof applies.  `foff_rows_insert` is replaced by the
+  accessor `foff_rows_acc` (out and back at a new state); `foff_rows_lookup`
+  survives, now consuming.  `foff_row_inode_held` takes the half;
+  NEW `foff_row_inode_held_of` reads it back at an equation.
+  **`FdSlots.fd_frags_acc`, `fd_frags_acc_lt`, `fd_frags_any_acc`,
+  `fd_frags_rows`, `fd_frags` and `fd_frags_any` DO NOT MOVE** — the
+  accessor shape was already "one row out, a new row back", which is
+  exactly what a non-persistent family needs, so every site that threads
+  the bundle opaquely is untouched.
+- THE BOUNDARY PARK LOSES ITS USER DEPOSIT.  `FdPark.foff_row_park`,
+  `foff_rows_park`, `fd_frags_park` and `fd_frags_park_at` drop the
+  `uoff_surr*` argument: the half they park is in the bundle they were
+  handed.  `fd_frags_park_at` is now premise-free
+  (`fd_auths γ sts -∗ fd_frags γ sts ={E}=∗ ∃ sts', ⌜sts' = fdv_park sts⌝ ∗
+  ⌜fdv_all_parked sts'⌝ ∗ fd_auths γ sts' ∗ fd_frags γ sts'`), which is what
+  H4's kernel-side dup/fork park will apply.  `uoff_surr`, `uoff_surrs`,
+  `uoff_surrs_map`, `uoff_surr_at` and `uoff_rcpt` are LEFT COMPILING AND
+  ARE DEAD: no lemma and no proof in the tree spends one.
+- THE SUPPLIER IS RESTATED AT THE ROW.  `FdPark.off_supply_of_st`,
+  `off_supply_of_st_eq`, `off_supply_of_st_at`, `off_supply_of_st_at_eq`
+  take `foff_row st` and the kernel's half and give back the kernel's half,
+  the tie `⌜forall o : nat, m = OffHeld o -> o = off⌝` (learned kernel-side
+  by `UserOff.uoff_agree_k` — design §3's RELAY 1, now free) and
+  `off_supply γo E off d (foff_row (fdst_adv st d))`.  **The row goes in
+  and the row comes back ADVANCED**, at every mode.  NEW
+  `UserOff.off_supply_parked_keep` is the parked half of that (the
+  invariant is persistent, so it hands itself back for nothing).
+- THE FOUR ROW-COPYING SITES, named, with their discharge today and their
+  discharge tomorrow.  A held row's entry is EXCLUSIVE, so a site that
+  hands one row to two places needs `foff_row_dup`, which needs
+  `fdst_parked`.  There are exactly four, and NEW
+  `FileInvDefs.file_ref_parked_keep` (the pin read off the reference
+  without spending it, `file_pay_st_ok`'s `∧` convention) discharges all
+  four while the pin stands:
+  1. `ProofSysDup.wp_sys_dup_sconf` (`:1046`) — the destination row is the
+     source's.  When the pin comes off: the REFERENCE COUNT says it (a held
+     object has exactly one row, and dup is holding two shares).
+  2. `ProofKforkB3.kfkb3_fd_loop` (`:782`) — the child's row is the
+     parent's.  Same replacement.
+  3. `ProofSysRead.wp_sys_read_sconf` (`:967`) and
+  4. `ProofSysWrite.wp_sys_write_sconf` (`:983`) — the row is LENT to
+     `wp_fileread_sconf` / `wp_filewrite_sconf` and also put back.  These
+     two CANNOT use the count (the syscall holds the only reference, at the
+     whole fraction the lend handed out).  Their replacement is the LEND:
+     the fire takes `foff_row st` and returns `foff_row (fdst_adv st d)`,
+     and the syscall re-records the row — which is exactly H3's read/write
+     row and is why H2 forces it (finding 3 below).
+- Proof-only, no statement moved: `ProofSysClose:797`, `ProofKexit:956`,
+  `ProofFileread:529`, `ProofFilewrite:3672` (the `foff_row` premise
+  introduced linearly instead of intuitionistically),
+  `FileInvDefs.fdstate_ok_parked`'s destruct pattern.
+
+*`a02d138d9` — H3, the deletion half: the exec crossing's all-parked row is
+deleted on BOTH arms, with the whole `fdv_held_in` carrier*
+
+- `ExecEntry.image_entry_taint` drops `⌜FdSlots.fdv_all_parked (uvis_fd
+  W')⌝`.  Fact 4 makes the row pointless in one step: the half a held row's
+  fire needs is in the DESCRIPTOR BUNDLE, so a generic image's deposits owe
+  nothing about offsets at any mode.  **The two provers never read it**
+  (`UShEchoPay:241` and `UInitSh:1286` both introduced it as `_`): what the
+  row cost was the PREMISE on every builder and on every record mint above
+  it.
+- `UkRun.urun_parked_row` becomes `True` (it was `fdv_held_in (ukn_held N)
+  fdv`).  `urun_rows_held` and `urun_rows_parked` are DELETED;
+  `urun_rows_insert` / `_dup` / `_copy` / `_step` drop their parked side
+  conditions; `ukn_held` survives as DEAD DATA on `uk_names` (no statement
+  mentions it but the field and the `ukn_parked` class).  **An entry
+  constructor may now mint a record at a key with a HELD descriptor**,
+  which is the fact a redirect child's `exec /echo` was waiting on.
+- STATEMENTS THAT CHANGED SHAPE (exhaustive): `ExecEntry.image_entry_taint`;
+  `ExecBundle.exec_slot_of_entry_at` / `sys_exec_slot_of_entry` /
+  `exec_bundle_of` / `exec_bundle_of_at`;
+  `ExecRun.sbundle_pay_refR_of_exec` / `_abs` / `udepw_at_refR_of_sup` /
+  `_ids_of_sup_ids` / `_of_sup_abs` / `wp_uk_ecall_exec_run` / `_ids` /
+  `_abs` / `wp_uk_ecall_exec_pin_test` / `wp_uk_ecall_exec_taint_test` /
+  `image_entry_of_taint` / `exec_slot_of_entry_at_abs` /
+  `sys_exec_slot_of_entry_abs` / `exec_bundle_of_abs`;
+  `PinnedExec.pex_slot_at` / `pex_slot` / `pinned_exec_bundle_at` /
+  `pinned_exec_bundle` / `pinned_exec_bundle_boot_at` /
+  `pinned_exec_bundle_boot`; `TreeExec.wp_uk_ecall_exec_own_test`;
+  `SpecKexec.exec_au_pre_triv_at` / `exec_au_pre_triv`;
+  `InitBoot.init_boot_bundle` (its pure row, now consumer-less) /
+  `init_boot_bundle_triv`; `SystemAdequacy.init_boot_of_sup` /
+  `init_boot_of_triv`; `UexecExecMint.uslot_mint`;
+  `UexecCond.sync_gate_slot` / `echo_gate_slot` / `cond_entry_slot`;
+  `USyncKernel.sync_uexec_slot`; `UEchoKernel.echo_uexec_slot`;
+  `UEchoOut.echo_uexec_slot_at`; `UShKernel.sh_uexec_slot` /
+  `sh_slot_of_kexec` / `sh_exec_entry`; `UInitKernel.init_slot_of_kexec`
+  and its two wrappers; `UInitSh.init_sh_image_entry`;
+  `UShEcho.echo_slot_of_kexec_holds` / `echo_image_entry`;
+  `UShEchoPay`'s echo-exec supply; `UkRun.urun_parked_row` /
+  `urun_rows_held` (deleted) / `urun_rows_parked` (deleted) /
+  `urun_rows_insert` / `urun_rows_dup` / `urun_rows_copy` /
+  `urun_rows_step` / `urun_gen` / `uslot_of_urun` / `uslot_of_urun_ro` /
+  `uslot_of_urun_all`; `UkSh.ush_gen_slot`.  **Nothing else moved** — in
+  particular nothing in `UsysMemOk`, `SpecSyscall`, `ProofSyscall`,
+  `UexecRet`, `UexecSG`, `FsAbsInvFire`, `SpecFileread`, `SpecFilewrite`,
+  `FileInvDefs`, `ProcInv`, and no program-walk leaf.
+- WHAT IS LEFT OF THE CARRIER, and it is dead weight only:
+  `UkRunSys.wp_uk_ecall_dup` (`:1029`) and `wp_uk_ecall_dup_closed`
+  (`:1198`) still take `ukn_held N = ∅` and `UkFork.wp_uk_ecall_fork`
+  (`:817`) / its `_at` twin (`:1181`) still take `ukn_held N ⊆ hs`; all
+  four premises are now UNUSED in their proofs, and deleting them is what
+  frees `UkInit`/`UkInitMain`'s `Context {Hpark : !ukn_parked N}` (their
+  only three uses are `UkInit:808`, `UkInit:914`, `UkInitMain:1075`, plus
+  `UInitKernel:417`).  NOT DONE HERE: removing the `Context` is a whole-file
+  `Proof using` sweep with no semantic gain, and the ruling allows
+  `ukn_held` to stay as dead data until a cleanup lane.
+
+**REFUTED / MEASURED, with the evidence.**
+
+1. **THE CONTRACT MODE-SPLIT OF `fileread_in`/`filewrite_in` IS
+   UNNECESSARY UNDER FACT 4, AND WAS NOT TAKEN.**  OFF-HAND-5's D2 (its WIP
+   patch, reused for its `_inode_any` twins only) added `⌜om = OffParked⌝`
+   to the inode arm and `fdst_parked st ->` to
+   `FsAbsInvFire.fsabs_fileread_in` / `fsabs_filewrite_in`, because the
+   kernel's fire read the offset out of `FdSlots.foff_row`, which was `emp`
+   at `OffHeld`.  Fact 4 removes the reason: `foff_row` at a held row IS the
+   half, and the two fires take an ABSTRACT supplier —
+   `FsAbsReadFire.arf_read_fire_gen` and `FsAbsWriteFire.wrf_awrite_fire_gen`
+   both take `UserOff.off_supply γo E off d R` and hand `R` back, and the
+   app-tier deposit on the inode arm (`pf_at (aread_commit_at …) F`, and
+   `awrite_chain … i γo M ua Q 0 (wchunks n)`) mentions no mode at all.  So
+   `FdPark.off_supply_of_st_at_eq` as restated above serves BOTH modes from
+   the row alone, and the contract's inode arm is byte-for-byte what it
+   always was.  **The whole of the mode's arrival at the fire is a change
+   of one `iDestruct` at each of `ProofFileread:2263` and
+   `ProofFilewrite:4947`** (from `FdSlots.foff_row_inode_of`, which pins
+   `OffParked`, to `FdPark.off_supply_of_st_at_eq`, which does not) — plus
+   the row the syscall must then re-record, which is finding 3.  Nothing
+   from OFF-HAND-5's `UexecSG` guard, `udepw` guard or `udepw_law_parked`
+   was taken, and none is needed: the guard existed to carry
+   `fdst_parked` to a fire, and no fire asks.
+2. **`FileInvDefs.fpnames` NEEDS NO `fp_om`, AND THE PIN THAT REPLACES
+   `fdstate_ok`'s `m = OffParked` IS THE REFERENCE COUNT.**  The brief left
+   the choice open ("the mode bit, or nothing if the row's state alone
+   decides — say which and why").  It is NOTHING, and the why is exact:
+   - A mode BIT on the names would not save `fdstate_ok_inj` anyway.  With
+     the value in the row (fact 4), `FdInode i γo (OffHeld 3)` and
+     `FdInode i γo (OffHeld 5)` are both honest readings of one file at one
+     bit, so injectivity fails at held whatever the names carry.
+   - What does save it is that a held object has exactly ONE row.  State it
+     as a pin on the payload: `file_pay_st γ k q C st` gains
+     `⌜¬ fdst_parked st -> q = 1%Qp⌝`.  Then `file_pay_st_agree` (two
+     shares, fractions valid, so `q1 + q2 ≤ 1`) refutes held on both sides
+     and closes at the parked `fdstate_ok_inj`; `FileInv.file_ref_agree`
+     follows; and `file_pay_st_split` gains `fdst_parked st ->`, which is
+     honest (splitting a held object's payload is exactly what dup must not
+     do before it parks — H4).  `fpay_tok` needs one new lemma, the
+     fractional validity `fpay_tok γ k q1 pn1 -∗ fpay_tok γ k q2 pn2 -∗
+     ⌜(q1 + q2 ≤ 1)%Qp⌝`, which is `own_valid_2` on the frac component.
+   - The `_parked` chain then goes as the ruling says
+     (`fdstate_ok_parked` → `file_ref_parked` → `ProcInv.ofile_slot_parked`
+     → `ofile_slots_parked` → `proc_ofiles_parked` → `proc_priv_parked`),
+     and `file_ref_parked_keep` (this lane's, H1) is replaced by the
+     two-share reading at sys_dup and kfork.
+   - `fdstate_ok_inode`'s six readers (`FileInvDefs`, `ProofFileclose`,
+     `ProofFilestat`, `ProofFileread`, `ProofFilewrite`, `SpecFileread`)
+     take the mode existentially; `fdstate_ok_inj`'s three
+     (`FileInvDefs`, `ProofSysOpenPub`, `ProofSysOpenParts`) take the
+     parked form.  Both lists are small.
+3. **H2 FORCES H3's READ/WRITE ROW — THEY ARE ONE CHANGE — AND THAT IS WHY
+   THIS LANE STOPPED AT H1 + H3's DELETION HALF.**  The moment
+   `fdstate_ok` stops pinning `OffParked`, `file_ref_parked_keep` dies, and
+   with it the discharge at row-copying sites 3 and 4 above
+   (`ProofSysRead:967`, `ProofSysWrite:983`).  Those two hold ONE reference
+   at the fraction the lend handed out (`ProcInv.proc_ofiles_lend` gives
+   the slot's whole `q`), so the reference-count reading of finding 2 does
+   not reach them; the only honest replacement is the LEND, i.e. the fire
+   gives the row back ADVANCED and the syscall re-records it — which moves
+   the successor table and therefore moves:
+   - `UsysMemOk.usys_fd_ok`'s `else` branch (`sts' = sts`) must gain a
+     read/write arm `sts' = <[fd := fdst_adv (sts !!! fd) d]> sts` with `d`
+     the count; `usys_fd_ok_quiet` gains two premises and has **20
+     occurrences across `UsysMemOk`, `UkRunSys`, `UexecApply`,
+     `UkRunExecRef`**;
+   - `SpecSyscall.sysc_fd_ok` and `SpecUsertrap.ut_fd_ecall` relay it;
+     `ProofSyscall`'s read and write arms prove it;
+   - `SpecSysRead.sys_read_out` / `SpecSysWrite.sys_write_out` and
+     `SpecFileread`/`SpecFilewrite`'s posts must return
+     `foff_row (fdst_adv st d)`;
+   - the generic Löb (`UexecRet.uexec_ret_cont_gen`'s pure rows) absorbs a
+     successor table that CHANGES at a held descriptor;
+   - `FileInvDefs.file_ref` must be RETYPED at the advanced state (a pure
+     step once the pin is off: `fdstate_ok … C (fdst_adv st d)` holds, and
+     at a held object the count says there is no second holder to disagree).
+   This is a lane, not a step.  Everything it needs from the kernel side is
+   in place: `FdPark.off_supply_of_st_at_eq` is the fire's step and
+   `FdSlots.fdst_adv` is the row's function.
+4. **H4 AND H5 WERE NOT ATTEMPTED**, and both are now cheaper than the
+   brief priced them.  H4's kernel-side park is `FdPark.fd_frags_park_at`,
+   which this lane made PREMISE-FREE — a dup or fork arm applies it to the
+   bundle it already holds and gets an all-parked table back; what it still
+   owes is the ARRAY half (`ProcInv.ofile_slot`'s file disjunct and
+   `FileInvDefs.file_ref`'s own `st`, which `fdstate_ok` pins), i.e. H2.
+   H5's hand-mode open leaf is `ProofSysOpenPub`:324-330 switching
+   `off_pub_park` for `UserOff.off_pub_hand_0` and publishing
+   `OffHeld 0` — blocked only by `UsysMemOk.usys_fd_ok`'s open arm
+   (`fdst_parked (FdOpen rd wr t)`), which is OFF-HAND-3's finding 3 and
+   still stands.  The held read/write leaves are the parked leaves with
+   `⌜sts !! fd = Some (FdOpen _ _ (FdInode i γo (OffHeld off)))⌝` read off
+   the table and the post at `OffHeld (off + n)` — i.e. exactly finding 3's
+   row, at a named descriptor.
+
+**WHAT ECHO-FILE / CAT-WALK / SH-ROUND HAND IN, as of this lane.**
+- The exec crossing is FREE at every mode: `ExecEntry.image_entry_taint`,
+  `ExecBundle.*`, `ExecRun.*`, `PinnedExec.*`, `TreeExec.*`,
+  `UShKernel.sh_exec_entry`, `UShEcho.echo_image_entry` and
+  `UInitSh.init_sh_image_entry` take NO fact about offsets, and a record is
+  minted at any held set.  A redirect child may exec `/echo` with a held
+  descriptor in its table as soon as one can exist.
+- The descriptor bundle CARRIES the half: `FdSlots.foff_row` at
+  `OffHeld off` is `UserOff.uoff γo off`, `FdSlots.fdst_adv` is the
+  advance, and `FdPark.off_supply_of_st_at_eq` is the one step from the row
+  to a fire's supplier and back to the row advanced.  No program tier
+  resource, no deposit and no surrender is involved anywhere.
+- What they still cannot do is OPEN in hand mode or READ/WRITE a held row:
+  that is finding 3's single coupled change (H2 + H3's row), and its full
+  site list is above.
+
+### F-OPEN-5 (2026-09-17) — THE ESCROW GOES INSIDE THE CLAIM, AND THE `s = None` EXISTS DISJUNCT IS REFUTED
+
+**The lane's verdict in one line: the ruled escrow (F-OPEN-4's way (iii))
+BUILDS, and the one thing the ruling got wrong is the TIE — the reader the
+escrow exists for is the create's `dirlookup` observation, whose receipt
+the syscall's fold DROPS on two arms, so its tie to the escrow cannot be a
+fraction of anything and must be a PERSISTENT entry in a growing ledger.
+With that, `file_trunc_of_exists` reads the claim's own value AT THE
+LOOKUP'S VIEW, refutes an absent deed against the found entry, identifies
+the row at a present one, and `UkFileOpen.wp_uk_ecall_open_create_deed`'s
+fd arm is `fown r (Some (i, [])) ∨ file_taint c` — F-OPEN-3's unreachable
+`fown r s` disjunct is gone. The DEVICE sub-arm is refuted too, on every
+branch of the permit but one, and that one is a KERNEL-tier disjunction
+(S3 below).**
+
+**WHAT LANDED** (whole tree green on the lane's remote tree, `EXIT=0`,
+zero `Error`; `make audit-all-only` / `audit-tree-only` / `audit-file-only`
+unchanged — system THIRTEEN, echo FOURTEEN, tree THIRTEEN, file FOURTEEN;
+`Print Assumptions` on `file_open_create_au` and `file_open_create_recv` is
+the PrimString/PrimInt63 primitives alone, and on
+`wp_uk_ecall_open_create_deed` those plus `xv6iris_extras.resv_matches`,
+`resv_is_valid`, `functional_extensionality_dep` — byte for byte the set
+`wp_uk_ecall_open_read_deed` has, exactly as F-OPEN-4 reported; every new
+result carries `Proof using`; no `Admitted`).
+
+- **THE ESCROW ARM** (`iris/AppFile.v` sections 2a and 4).  `f_state` is
+  now TWO arms, not three:
+
+      f_core c r av    := <F-OPEN-4's f_state, verbatim: EXACT ∨ IN FLIGHT>
+      f_esc_wrap r     := ∃ h, esc_auth r h ∗ esc_recs h
+      f_esc_live c r av := ∃ h0 s g, esc_auth r (h0 ++ [(s, g)]) ∗ esc_recs h0
+                           ∗ fdeed_whole r s ∗ ftkt r s ∗ f_typed c s ∗ ⌜f_ok av s⌝
+      f_state c r av   := (f_esc_wrap r ∗ f_core c r av) ∨ f_esc_live c r av
+
+  (`:597`, `:604`, `:613`).  `esc_rec := dst * gname`; `esc_recs h :=
+  [∗ list] p ∈ h, esc_spent p.2` (`:444`) is the ledger's INVARIANT —
+  every escrow the claim has ever opened is spent except a LIVE head — and
+  that is why there is no "fired" arm: a fire spends the head, and a spent
+  head is an ordinary ledger entry, so the claim is back in the wrap arm
+  with the core IN FLIGHT.
+- **THE TOKEN'S RA IS `mono_nat`, THE LEDGER'S IS `mono_list`** (`:340`,
+  `:341`, `:372`).  `esc_tok g := mono_nat_auth_own g 1 0` (exclusive),
+  `esc_spent g := mono_nat_lb_own g 1` (persistent and timeless);
+  `esc_spend : esc_tok g ==∗ esc_spent g`, `esc_tok_spent : esc_tok g -∗
+  esc_spent g -∗ False`, `esc_alloc`.  No new camera: `mono_natG Σ` is
+  already `EchoOut.echoOutG`'s first field (the taint counter's).  The
+  ledger is `own (fn_esc r) (●ML h)` at a new `file_names` field, with
+  `esc_wit r n s g := ∃ h, esc_lb r h ∗ ⌜h !! n = Some (s, g)⌝` (`:378`)
+  PERSISTENT, and `esc_wit_head` (`:429`) the one piece of arithmetic
+  every reader runs on: a witnessed entry is the LIVE HEAD or it is one
+  of the spent ones.
+- **THE FOUR LEMMAS THE RULING NAMED**, at `AppFile.v`:
+  `file_escrow_park` (`:1325`, at `app_inv`, any mask holding `appN`:
+  `fown r s ={E}=∗ ∃ n g, esc_key c r n s g ∗ esc_tok g ∗ ftkt r s`),
+  `file_escrow_read` (`:748`) and its token-carrying twin
+  `file_escrow_law` (`:790`), `file_escrow_step` (`:924`) with its
+  `AppInv.app_step`-shaped wrapper `file_app_step_escrow` (`:1426`), and
+  `file_escrow_return` (`:1378`).
+- **THE PIECES** (`iris/FileOpen.v` sections 2a, 3a–3f'').
+  `file_claim_read_esc` (`:248`) is `file_claim_read` at a PARKED deed —
+  the escrow's token and ledger key in place of the deed fraction — and
+  `file_escrow_read_at` (`:291`) is the same read with NOTHING in hand.
+  `fesc_res r s g := ftkt r s ∗ esc_tok g` (`:365`) is what the create's
+  legs carry in place of `fown r s`.  `file_dlk_recv` (`:690`) gains
+  `(⌜f_ok av s⌝ ∨ esc_spent g)` and stays free; `file_odlk_recv` /
+  `file_odlk_piece` (`:727`, `:736`) are the same read at the OPEN
+  observation's instant, which is what the device refutation needs.
+  `file_trunc_of_exists` (`:885`) is the deliverable: the token refutes
+  the receipt's `esc_spent` disjunct, what is left is `⌜f_ok avx s⌝`, and
+  at `None` that contradicts the found entry at the tie.
+- **THE RECEIPT** (`file_trunc_recv` `:778` — TWO arms;
+  `file_open_create_recv` `:1434` — a fupd at `app_inv`, THREE outcomes,
+  both fd arms at `fown r (Some (i, [])) ∨ file_taint c`), and the
+  U-tier wrapper (`iris/UkFileOpen.v:685`), whose PREMISES are unchanged
+  (one deed in) because the wrapper parks and returns the escrow itself.
+
+**THE ESCROW'S EXACT SHAPE, AND THE TOKEN'S RA.**  The ruling asked for
+`∃ s γ, fdeed_whole r s ∗ ftkt r s ∗ f_typed c s ∗ ⌜f_ok av s⌝ ∗
+esc_pending γ`.  What landed is that arm with `esc_pending γ` replaced by
+the claim's ledger: the arm holds `esc_auth r (h0 ++ [(s, g)])` and
+`esc_recs h0`, so being the ledger's HEAD and not being in `esc_recs` IS
+the pending state.  The holder keeps `ftkt r s` (unchanged: `file_resync`
+keys on it), `esc_tok g`, and the PERSISTENT `esc_wit r (length h0) s g`.
+`fown` did not change, and no half of the ledger is ever outside the
+claim.
+
+**WHY THE TIE HAD TO BE PERSISTENT — the ruling's one real error.**  The
+ruling had the holder hand `fesc` shares to the pieces.  That cannot work,
+and the obstruction is the SPEC, not the claim: at a truncating create
+`SpecSysOpen.cre_rcpt_kept vom Fex` is `emp` (`iris/SpecSysOpen.v:640`),
+so the EXISTS arm reports the lookup's receipt no more — it went into the
+permit — and `open_post_fail_create`'s arm (b) has a sub-case
+(`cre_fail_kept`'s second disjunct, `iris/SpecSysOpen.v:681`) where the
+permit was never paid and the receipt is nowhere at all.  A fraction
+handed to the lookup piece is therefore a fraction the deed can NEVER get
+back, and `file_escrow_return` becomes unprovable on a reachable failure
+arm.  The lookup piece must carry nothing linear — which is exactly what
+F-OPEN-3 had already found of it — so its tie must be persistent, and a
+persistent tie to a slot opened and closed once per shell round can only
+be an entry in a GROWING structure.  Hence the ledger.
+
+**WHAT ELSE THE RULING SAID THAT THE PROOFS CORRECTED.**
+
+1. **There is no third arm, and `file_resync` needed no change.**  The
+   ruling asked whether the fired escrow becomes "the in-flight arm or the
+   exact arm".  Neither: it becomes NOT-AN-ESCROW.  `file_escrow_step`
+   spends the head's one-shot, appends it to `esc_recs`, and hands the
+   claim back in the `f_esc_wrap ∗ f_core` arm with the core IN FLIGHT at
+   `(s, s')` — the very shape `file_resync` already consumes.  So phase 2
+   is `AppFile.file_resync` verbatim, at its landed statement, and the
+   deed comes home as `fown r s'`.
+2. **Phase 1 is not a park.**  The ruling said the fire moves the content
+   "exactly as `file_app_step_park` + `file_resync` do today".  The park
+   JOINS the holder's half with the claim's; under an escrow there is
+   nothing to join (the claim holds the deed whole already), so phase 1 is
+   its own lemma and its only resource is the one-shot.
+3. **The park must always succeed, so its key is "the ledger entry OR THE
+   TAINT".**  A tainted claim has no `f_state` (`file_step_taint` drops
+   it, and `file_sup_of_taint` says the taint alone answers for every
+   view), so there is no ledger in which to name an escrow.  A park that
+   could fail would give every program above it a branch it cannot take —
+   the vacuity trap of durable-notes' "Vacuity" section, one level up.
+   `AppFile.esc_key c r n s g := esc_wit r n s g ∨ file_taint c` (`:474`)
+   is the disjunction; every escrow lemma takes it, and its taint arm is
+   the taint arm each piece already had.
+4. **The transport copies the escrow arm as the EXACT arm, and the token
+   does not cross.**  `f_state_copy`'s copy gets a FRESH EMPTY ledger
+   (`esc_auth r' []`) and the exact arm at `fcontent_of av` — which, when
+   the original is escrowed, IS the escrowed content by `f_ok_fcontent`.
+   A one-shot two claims could spend is not a one-shot, and a durable copy
+   is never stepped, so it never needs an escrow.
+5. **`AppFileRec` and `UFileBootAdequacy` absorbed the new arm with no
+   change at all** (deliverable S3's question): both compile untouched,
+   because `file_xfer`, `file_xfer_boot`, `file_boot`, `file_init` and
+   `file_init_img` all keep their landed statements — the ledger is
+   allocated inside `fnames_alloc` and never leaves the claim.  The three
+   audits are unchanged.
+
+**WHAT WAS REFUTED, AND WITH WHAT.**
+
+- **`s = None` on the EXISTS run** (F-OPEN-3's P3, the lane's point).  The
+  dlookup receipt gives `⌜f_ok avx None⌝ ∨ esc_spent g` at the LOOKUP'S
+  OWN VIEW; the arm piece's refund is the UNSPENT token, which kills the
+  right disjunct (`esc_tok_spent`); `f_ok avx None` is
+  `astep avx ROOTINO fname_f = None`, and the permit's tie carries
+  `entsx !! fname_f = Some i` at that same `avx`.  `discriminate`.
+- **"the truncate reached some other row"**: at `s = Some (j, bs)` the
+  same reading gives `astep avx ROOTINO fname_f = Some j` against
+  `Some i`, so `j = i` — the row is IDENTIFIED, which is what kills
+  `file_trunc_recv`'s old first arm.
+- **"the create fired at a name other than `f`"** on the FRESH run:
+  `file_trunc_of_cre` (`:818`) now takes the create receipt AT
+  `ROOTINO`/`fname_f`.  The tie was always there — `file_trunc_piece` read
+  it and then threw it away into `trunc_permit_cre`'s existentials — so
+  this cost one restatement and no new fact.
+- **The EXISTS-DEVICE sub-arm, on the permit's EXISTS branch**
+  (`file_dev_refute`, `:1298`).  The open observation now reads the claim
+  at ITS OWN instant (free), the token refutes `esc_spent`, the tie
+  identifies `f`'s row with the row the call reached, and
+  `f_ok av (Some (i, bs))` says `av !! i` is an `AFile` against the
+  observation's `ADev`.
+
+**REFUTED / BLOCKED (S3): THE DEVICE ARM DOES NOT GO AWAY ENTIRELY, AND
+THE OBSTRUCTION IS THE PERMIT'S OWN DISJUNCTION.**
+`SysOpenDefs.trunc_permit_of` (`iris/SysOpenDefs.v:548`) is
+
+    ∃ d nm, T d nm ∗ (cre_acre_fired Fok d nm i (AFile [])
+                      ∨ (cre_ex_fired Fex d nm i ∗ pf_at (aarm_commit_at …) Farm))
+
+and `SpecSysOpen.open_post_ok_create`'s EXISTS-DEVICE sub-arm
+(`iris/SpecSysOpen.v:803`) carries the permit only through
+`cre_trunc_kept`'s refund.  So the STATEMENT admits "the open reported a
+found DEVICE **and** the permit was paid with create's FRESH receipt".  On
+that branch the application holds no token (the create leg spent it firing
+the escrow) and no fraction at the observation's view, so the `ADev`
+cannot be contradicted — the combination is unreachable on any run and
+unrefutable in the logic, F-OPEN-3's P3 one level over.  It is NOT a loss:
+on that branch the create leg fired at that very inum, so the deed is back
+at `Some (i, [])` there, and the arm reports it.  Closing it needs one of
+(i) F-OPEN-2's restatement 3 — `FsAbsCreateFire.acre_commit_at_gen` takes
+the unfired `Fex` piece beside the arm's receipt, making create's two arms
+exclusive IN THE LOGIC; or (ii) `open_post_ok_create`'s EXISTS arm saying
+which branch of the permit it paid (`cre_rcpt_kept` at a truncating create
+keeping the EXISTS receipt beside the permit instead of spending it
+whole).  Both are kernel-tier and neither is this lane's.
+
+**STATEMENTS THAT CHANGED SHAPE, EXHAUSTIVELY.**
+
+`iris/AppFile.v`:
+1. `file_names` — a fourth field, `fn_esc : gname` (so `MkFileNames` takes
+   four arguments).
+2. `fileAppG` / `fileAppΣ` — a third camera,
+   `inG Σ (mono_listR (leibnizO esc_rec))`.
+3. `fnames_alloc` — one more conjunct in the post, `esc_auth r []`.
+4. `f_state` — restated as above; its old body is now `f_core`.
+5. `file_pred_exact` — one more premise, `f_esc_wrap r` (between
+   `cons_state` and `fdeed`).
+6. `f_state_copy` — one more premise, `esc_auth r' []` (first).
+   Everything else in the file keeps its landed statement:
+   `fdeed`/`fdeed_whole`/`ftkt`/`fown` and their laws, `file_deed_law`,
+   `file_deed_law_pure`, `f_state_mono`, `f_state_typed_at`,
+   `file_step_free`, `file_step_park`, `file_step_taint`,
+   `cons_state_mono`, `file_pred`, `file_pred_cons`,
+   `file_pred_split`/`_join`, `file_sup_of_taint`, `file_taint_of_sup`,
+   `file_xfer`, `file_boot`, `file_xfer_boot`, `file_init`,
+   `file_init_img`, `file_app_step_park`, `file_app_step_taint`,
+   `file_resync` — the last of these is the one worth naming twice.
+
+`iris/FileOpen.v`:
+7. `file_arm_fam`, `file_unarm_fam`, `file_cre_recv`, `file_cre_fam` — one
+   more argument (`g : gname`); the deed in them is `fesc_res r s g`
+   instead of `fown r s` (`file_cre_recv`'s `f` arm still `fown r (Some
+   (i, []))`, which is what the resync hands back).
+8. `file_arm_commit`, `file_unarm_commit`, `file_acre_commit` — two more
+   arguments (`n`, `g`) and the premise `esc_key c r n s g` in place of
+   the deed.
+9. `file_dlk_recv` / `file_dlk_fam` — four more arguments (`r n s g`); the
+   receipt is `(⌜fclaim_free av⌝ ∗ (⌜f_ok av s⌝ ∨ esc_spent g)) ∨
+   file_taint c`.  `file_dlk_piece` — the same, plus the `esc_key`
+   premise.
+10. `file_trunc_recv` / `file_trunc_fam` — TWO arms,
+    `fown r (Some (i, [])) ∨ file_taint c`.
+11. `file_trunc_of_cre` — two more arguments (`n`, `g`), and its permit
+    argument is the TIED create receipt (`∃ av0 ents nl0, ⌜cre_pre av0
+    ROOTINO fname_f …⌝ ∗ pf_recv … ROOTINO fname_f i`) rather than
+    `trunc_permit_cre`.
+12. `file_trunc_of_exists` — two more arguments, the `esc_key` premise,
+    the dlookup receipt at its new shape, and `fesc_res r s g` in place of
+    `fown r s`.
+13. `file_trunc_piece` — two more arguments and the `esc_key` premise, at
+    the new families.
+14. `file_open_create_au` and `file_open_create_au_notrunc` — two more
+    arguments; `fown r s` replaced by `esc_key c r n s g -∗ fesc_res r s
+    g`; the open observation's family is `file_odlk_fam c r n s g` instead
+    of `pfam_triv`.
+15. `file_permit_pay`, `file_kept_pay`, `file_legs_pay`,
+    `file_open_create_fail_pay` — two more arguments; the conclusion is
+    `file_esc_pay c r s g` (the escrow) instead of `file_open_pay c r s`.
+16. `file_open_create_recv` — a FUPD.  New premises `↑appN ⊆ E`,
+    `arg_path_of M pv pl`, `last (path_elems pl) = Some fname_f`,
+    `file_app = MkAppcfg …`, and `app_inv γfs -∗ esc_key c r n s g -∗` in
+    front; the two fd outcomes carry `fown r (Some (i, [])) ∨ file_taint
+    c`.
+    Unchanged: `fdq*`, `file_deed_law_q` (its PROOF moved, not its
+    statement), `file_deed_law_pins`, `file_cons_law`, `fclaim_facts`,
+    `file_claim_read`, `file_app_step_free_at`, `fclaim_free`,
+    `file_claim_read_free`, `file_trunc_free`, `file_open_pay`, section
+    4's read pieces, section 5's pinned-open pieces,
+    `app_commit_mask_full`, `file_escrow_mask_blocked`, section 7's miss
+    lemmas.
+    New beside them: `fclaim_free_of`, `file_claim_read_esc`,
+    `file_escrow_read_at`, `fesc_res`, `file_odlk_recv`/`_fam`/`_piece`,
+    `file_esc_pay`, `file_esc_pay_home`, `file_permit_read`,
+    `file_permit_tied`, `file_permit_read_pay`, `file_dev_refute`,
+    `file_kept_tied`.
+
+`iris/UkFileOpen.v`:
+17. `xfam_fcreate` — one more argument, `Fo` (its `of_Fo` was an inert
+    `pfam_triv`).
+18. `file_create_fam` — two more arguments (`n`, `g`), and `of_Fo` at
+    `file_odlk_fam`.
+19. `file_create_sup` — two more arguments; `fown r s` replaced by
+    `esc_key … -∗ fesc_res …`.
+20. `wp_uk_ecall_open_create_deed` — PREMISES UNCHANGED (still one
+    `fown r s`: the wrapper parks and returns the escrow itself).  Its
+    POST's fd arm is `fown r (Some (i, [])) ∨ file_taint c` (F-OPEN-4's
+    `∨ fown r s` gone) and its DEVICE arm's payload is
+    `(∃ i, fown r (Some (i, []))) ∨ file_taint c` instead of
+    `file_open_pay c r s`.
+    `file_open_fd_tie` unchanged.
+
+Nothing outside these three files moved.
+
+**THE EXACT FD ARM SH-ROUND NOW GETS**
+(`UkFileOpen.wp_uk_ecall_open_create_deed`, verbatim):
+
+    (⌜rv = -1⌝ ∗ ustd (ukn_fd N) l ∗ file_open_pay c r s)
+    ∨ (∃ (fd : nat) (γo : gname) (i : Z),
+         ⌜rv = mword_of_int (Z.of_nat fd) /\ (fd < NOFILE)%nat⌝ ∗
+         ualloc (ukn_fd N) l fd
+           (FdOpen (om_readable vom) (om_writable vom)
+                   (FdInode i γo OffParked)) ∗
+         (fown r (Some (i, [])) ∨ file_taint c))
+    ∨ (∃ (fd : nat) (ma : Z),
+         ⌜rv = mword_of_int (Z.of_nat fd) /\ (fd < NOFILE)%nat⌝ ∗
+         ualloc (ukn_fd N) l fd
+           (FdOpen (om_readable vom) (om_writable vom) (FdDevice ma)) ∗
+         ((∃ i : Z, fown r (Some (i, []))) ∨ file_taint c))
+
+with `file_open_pay c r s = fown r s ∨ (∃ i, fown r (Some (i, []))) ∨
+file_taint c` unchanged.  So `UkShRedirAns.ush_open_call2` is instantiated
+at
+
+    K ty := (∃ i γo, ⌜ty = FdInode i γo OffParked⌝ ∗
+               (fown r (Some (i, [])) ∨ file_taint c))
+            ∨ (∃ ma, ⌜ty = FdDevice ma⌝ ∗
+               ((∃ i, fown r (Some (i, []))) ∨ file_taint c))
+    Kf   := file_open_pay c r s
+
+— `ty` is existential in `ush_open_ans2`'s fd arm, so both outcomes ride
+one arm.  A redirect child that then writes needs the INODE reading, and
+what stands between it and a single-arm `K` is only the device residue of
+S3 above.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  Nothing of this lane:
+`wp_uk_ecall_open_create_deed` takes one deed and gives the fd arm above,
+and the escrow is invisible from outside it.  What the campaign still owes
+SH-ROUND is the kernel-tier device refutation (S3) if the round wants
+`ty = FdInode …` without a disjunction, and lane OFF-HAND-6's held-offset
+leaf (`wp_uk_ecall_open_recv_img_held`), which re-instantiates this
+corollary by the one swap F-OPEN-4 recorded plus `UserOff.uoff γo 0` in
+the fd arms.

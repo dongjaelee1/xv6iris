@@ -75,14 +75,14 @@ Definition fdst_park (st : fdstate) : fdstate :=
 Definition fdv_park (sts : list fdstate) : list fdstate := fdst_park <$> sts.
 
 Lemma fdst_park_parked (st : fdstate) : fdst_parked (fdst_park st).
-Proof. destruct st as [| r w [i g [|] | | mj]]; exact I. Qed.
+Proof. destruct st as [| r w [i g [|o] | | mj]]; exact I. Qed.
 
 (* ...AND IT IS THE IDENTITY WHERE THE DISCIPLINE ALREADY HOLDS.  This is
    the vacuity, in one line: with [FileInvDefs.fdstate_ok] pinning every
    live inode row at [OffParked], every table the kernel meets is
    all-parked, so every park below is a no-op on the table it moves. *)
 Lemma fdst_park_id (st : fdstate) : fdst_parked st -> fdst_park st = st.
-Proof. destruct st as [| r w [i g [|] | | mj]]; [done | done | done | done | done]. Qed.
+Proof. destruct st as [| r w [i g [|o] | | mj]]; [done | done | done | done | done]. Qed.
 
 Lemma fdv_park_id (sts : list fdstate) :
   fdv_all_parked sts -> fdv_park sts = sts.
@@ -162,7 +162,7 @@ Section FdPark.
      row has a half outside the kernel. *)
   Definition uoff_surr (st : fdstate) : iProp Σ :=
     match st with
-    | FdOpen _ _ (FdInode _ γo OffHeld) => (∃ off : nat, uoff γo off)%I
+    | FdOpen _ _ (FdInode _ γo (OffHeld _)) => (∃ off : nat, uoff γo off)%I
     | _ => emp%I
     end.
 
@@ -184,7 +184,7 @@ Section FdPark.
      today pays it by [emp]-introduction and no existing proof moves. *)
   Lemma uoff_surr_parked (st : fdstate) : fdst_parked st -> ⊢ uoff_surr st.
   Proof using .
-    intros H. destruct st as [| r w [i g [|] | | mj]]; try (iEmpIntro).
+    intros H. destruct st as [| r w [i g [|o] | | mj]]; try (iEmpIntro).
     destruct H.
   Qed.
 
@@ -206,8 +206,8 @@ Section FdPark.
   (* ...AND THE HELD ROW ITSELF, named: what a program that owns an offset
      hands over when it forks or execs.  RA-2's open at mode [hand] is
      what first makes this inhabited. *)
-  Lemma uoff_surr_held (r w : bool) (i : Z) (γo : gname) (off : nat) :
-    uoff γo off -∗ uoff_surr (FdOpen r w (FdInode i γo OffHeld)).
+  Lemma uoff_surr_held (r w : bool) (i : Z) (γo : gname) (o off : nat) :
+    uoff γo off -∗ uoff_surr (FdOpen r w (FdInode i γo (OffHeld o))).
   Proof using . iIntros "H". by iExists off. Qed.
 
   (* =================================================================== *)
@@ -221,16 +221,16 @@ Section FdPark.
      [UserOff.uoff_park] allocates an invariant and needs no side
      condition, so a boundary may run this at whatever mask it holds. *)
   Lemma foff_row_park (E : coPset) (st : fdstate) :
-    foff_row st -∗ uoff_surr st ={E}=∗ foff_row (fdst_park st).
+    foff_row st ={E}=∗ foff_row (fdst_park st).
   Proof using .
-    destruct st as [| r w [i g [|] | | mj]]; cbn [fdst_park uoff_surr].
-    - iIntros "$ _". done.
-    - iIntros "$ _". done.
-    - iIntros "_ Hs". iDestruct "Hs" as (off) "Hu".
-      iMod (uoff_park E g off with "Hu") as "#Hinv". iModIntro.
+    destruct st as [| r w [i g [|o] | | mj]]; cbn [fdst_park foff_row].
+    - iIntros "$". done.
+    - iIntros "$". done.
+    - iIntros "Hu".
+      iMod (uoff_park E g o with "Hu") as "#Hinv". iModIntro.
       iApply (foff_row_inode r w i g with "Hinv").
-    - iIntros "$ _". done.
-    - iIntros "$ _". done.
+    - iIntros "$". done.
+    - iIntros "$". done.
   Qed.
 
   (* ...AND THE WHOLE FAMILY.  [foff_rows] is persistent, so what the
@@ -238,15 +238,14 @@ Section FdPark.
      were already parked come back unchanged and the held ones come back
      as rows at all. *)
   Lemma foff_rows_park (E : coPset) (sts : list fdstate) :
-    foff_rows sts -∗ uoff_surrs sts ={E}=∗ foff_rows (fdv_park sts).
+    foff_rows sts ={E}=∗ foff_rows (fdv_park sts).
   Proof using .
-    iIntros "#Hrows Hsurr".
-    rewrite /foff_rows /uoff_surrs /fdv_park big_sepL_fmap.
+    iIntros "Hrows".
+    rewrite /foff_rows /fdv_park big_sepL_fmap.
     iApply big_sepL_fupd.
-    iApply (big_sepL_impl with "Hsurr").
+    iApply (big_sepL_impl with "Hrows").
     iIntros "!>" (k st Hk) "Hs".
-    iApply (foff_row_park E st with "[] Hs").
-    iApply (big_sepL_lookup _ _ _ _ Hk with "Hrows").
+    iApply (foff_row_park E st with "Hs").
   Qed.
 
   (* =================================================================== *)
@@ -279,12 +278,12 @@ Section FdPark.
      [fd_st_move] per slot at a state equal to itself.  A caller that
      wants even that to disappear takes [fd_frags_park_parked] below. *)
   Lemma fd_frags_park (E : coPset) (γ : gname) (sts : list fdstate) :
-    fd_auths γ sts -∗ fd_frags γ sts -∗ uoff_surrs sts ={E}=∗
+    fd_auths γ sts -∗ fd_frags γ sts ={E}=∗
       fd_auths γ (fdv_park sts) ∗ fd_frags γ (fdv_park sts).
   Proof using .
-    iIntros "Ha Hb Hs".
-    iDestruct "Hb" as "(%Hlen & Hfr & #Hrows)".
-    iMod (foff_rows_park E sts with "Hrows Hs") as "#Hrows'".
+    iIntros "Ha Hb".
+    iDestruct "Hb" as "(%Hlen & Hfr & Hrows)".
+    iMod (foff_rows_park E sts with "Hrows") as "Hrows'".
     rewrite /fd_auths /fd_frags /fdv_park !big_sepL_fmap.
     iAssert ([∗ list] fd ↦ st ∈ sts, (fd_st_auth γ fd st ∗ fd_st γ fd st))%I
       with "[Ha Hfr]" as "Hb2"; [ rewrite big_sepL_sep; iFrame "Ha Hfr" | ].
@@ -364,21 +363,16 @@ Section FdPark.
      [ProofKforkB3]'s descriptor scan, and exec's, at the table handover
      -- and it never has to know which tier its caller was. *)
   Lemma fd_frags_park_at (E : coPset) (γ : gname) (sts : list fdstate) :
-    fd_auths γ sts -∗ fd_frags γ sts -∗ uoff_surr_at sts ={E}=∗
+    fd_auths γ sts -∗ fd_frags γ sts ={E}=∗
       ∃ sts' : list fdstate,
         ⌜sts' = fdv_park sts⌝ ∗ ⌜fdv_all_parked sts'⌝ ∗
         fd_auths γ sts' ∗ fd_frags γ sts'.
   Proof using .
-    iIntros "Ha Hb [%Hpk | Hs]".
-    - (* the generic tier: the table is already parked, so the park is the
-         identity and not one ghost moves ([fdv_park_id]). *)
-      iModIntro. iExists (fdv_park sts).
-      iSplitR; [done |]. iSplitR; [iPureIntro; apply fdv_all_parked_park |].
-      rewrite (fdv_park_id sts Hpk). iFrame "Ha Hb".
-    - iMod (fd_frags_park E γ sts with "Ha Hb Hs") as "[Ha Hb]".
-      iModIntro. iExists (fdv_park sts).
-      iSplitR; [done |]. iSplitR; [iPureIntro; apply fdv_all_parked_park |].
-      iFrame "Ha Hb".
+    iIntros "Ha Hb".
+    iMod (fd_frags_park E γ sts with "Ha Hb") as "[Ha Hb]".
+    iModIntro. iExists (fdv_park sts).
+    iSplitR; [done |]. iSplitR; [iPureIntro; apply fdv_all_parked_park |].
+    iFrame "Ha Hb".
   Qed.
 
   (* =================================================================== *)
@@ -401,18 +395,18 @@ Section FdPark.
      boundary has to say it.) *)
   Definition uoff_rcpt (st : fdstate) (o : nat) : iProp Σ :=
     match st with
-    | FdOpen _ _ (FdInode _ γo OffHeld) => uoff γo o
+    | FdOpen _ _ (FdInode _ γo (OffHeld _)) => uoff γo o
     | _ => True
     end%I.
 
   Lemma uoff_rcpt_parked (st : fdstate) (o : nat) :
     fdst_parked st -> ⊢ uoff_rcpt st o.
   Proof using .
-    intros H. destruct st as [| r w [i g [|] | | mj]]; done.
+    intros H. destruct st as [| r w [i g [|v0] | | mj]]; done.
   Qed.
 
-  Lemma uoff_rcpt_held (r w : bool) (i : Z) (γo : gname) (o : nat) :
-    uoff γo o -∗ uoff_rcpt (FdOpen r w (FdInode i γo OffHeld)) o.
+  Lemma uoff_rcpt_held (r w : bool) (i : Z) (γo : gname) (v o : nat) :
+    uoff γo o -∗ uoff_rcpt (FdOpen r w (FdInode i γo (OffHeld v))) o.
   Proof using . by iIntros "$". Qed.
 
   (* ...AND THE RECEIPT IS A PAYMENT AGAIN.  This is the one step that
@@ -423,7 +417,7 @@ Section FdPark.
   Lemma uoff_rcpt_surr (st : fdstate) (o : nat) :
     uoff_rcpt st o -∗ uoff_surr st.
   Proof using .
-    destruct st as [| r w [i g [|] | | mj]]; cbn;
+    destruct st as [| r w [i g [|v0] | | mj]]; cbn;
       try (iIntros "_"; by iEmpIntro).
     iIntros "H". by iExists o.
   Qed.
@@ -455,18 +449,20 @@ Section FdPark.
       (m : offmode) (off d : nat) :
     ↑foffN ⊆ E ->
     foff_row (FdOpen r w (FdInode i γo m)) -∗
-    uoff_surr (FdOpen r w (FdInode i γo m)) -∗
     off_gv γo (1/2) (Z.of_nat off) -∗
       off_gv γo (1/2) (Z.of_nat off)
+      ∗ ⌜forall o : nat, m = OffHeld o -> o = off⌝
       ∗ off_supply γo E off d
-          (uoff_rcpt (FdOpen r w (FdInode i γo m)) (off + d)).
+          (foff_row (FdOpen r w (FdInode i γo (om_adv m d)))).
   Proof using .
-    intros HE. destruct m; cbn [foff_row uoff_surr uoff_rcpt].
-    - iIntros "#Hinv _ $". iApply (off_supply_parked E γo off d HE with "Hinv").
-    - iIntros "_ Hs Hk". iDestruct "Hs" as (o) "Hu".
+    intros HE. destruct m as [| o]; cbn [foff_row om_adv].
+    - iIntros "#Hinv $". iSplitR; [iPureIntro; discriminate |].
+      iApply (off_supply_parked_keep E γo off d HE with "Hinv").
+    - iIntros "Hu Hk".
       iDestruct (uoff_agree_k γo o (Z.of_nat off) with "Hu Hk") as %Heq.
       assert (Ho : o = off) by (apply Nat2Z.inj; symmetry; exact Heq).
-      rewrite Ho. iFrame "Hk".
+      subst o. iFrame "Hk".
+      iSplitR; [iPureIntro; by intros ? [= <-] |].
       iApply (off_supply_held E γo off d with "Hu").
   Qed.
 
@@ -477,9 +473,10 @@ Section FdPark.
       (γo : gname) (m : offmode) (off d : nat) :
     st = FdOpen r w (FdInode i γo m) ->
     ↑foffN ⊆ E ->
-    foff_row st -∗ uoff_surr st -∗ off_gv γo (1/2) (Z.of_nat off) -∗
+    foff_row st -∗ off_gv γo (1/2) (Z.of_nat off) -∗
       off_gv γo (1/2) (Z.of_nat off)
-      ∗ off_supply γo E off d (uoff_rcpt st (off + d)).
+      ∗ ⌜forall o : nat, m = OffHeld o -> o = off⌝
+      ∗ off_supply γo E off d (foff_row (fdst_adv st d)).
   Proof using .
     intros -> HE. exact (off_supply_of_st E r w i γo m off d HE).
   Qed.
@@ -518,39 +515,28 @@ Section FdPark.
      re-existentialised at every node.  ([uoff_rcpt_surr] is still the way
      out to a boundary.) *)
   Lemma off_supply_of_st_at (E : coPset) (r w : bool) (i : Z) (γo : gname)
-      (m : offmode) (off' off d : nat) :
+      (m : offmode) (off d : nat) :
     ↑foffN ⊆ E ->
     foff_row (FdOpen r w (FdInode i γo m)) -∗
-    uoff_rcpt (FdOpen r w (FdInode i γo m)) off' -∗
     off_gv γo (1/2) (Z.of_nat off) -∗
       off_gv γo (1/2) (Z.of_nat off)
-      ∗ ⌜m = OffHeld -> off' = off⌝
+      ∗ ⌜forall o : nat, m = OffHeld o -> o = off⌝
       ∗ off_supply γo E off d
-          (uoff_rcpt (FdOpen r w (FdInode i γo m)) (off + d)).
-  Proof using .
-    intros HE. destruct m; cbn [foff_row uoff_rcpt].
-    - iIntros "#Hinv _ $". iSplitR; [ iPureIntro; discriminate | ].
-      iApply (off_supply_parked E γo off d HE with "Hinv").
-    - iIntros "_ Hu Hk".
-      iDestruct (uoff_agree_k γo off' (Z.of_nat off) with "Hu Hk") as %Heq.
-      assert (Ho : off' = off) by lia.
-      subst off'. iFrame "Hk".
-      iSplitR; [ iPureIntro; reflexivity | ].
-      iApply (off_supply_held E γo off d with "Hu").
-  Qed.
+          (foff_row (FdOpen r w (FdInode i γo (om_adv m d)))).
+  Proof using . exact (off_supply_of_st E r w i γo m off d). Qed.
 
   (* ...and at the EQUATION a kernel proof holds its state at
      ([off_supply_of_st_eq]'s convention). *)
   Lemma off_supply_of_st_at_eq (E : coPset) (st : fdstate) (r w : bool)
-      (i : Z) (γo : gname) (m : offmode) (off' off d : nat) :
+      (i : Z) (γo : gname) (m : offmode) (off d : nat) :
     st = FdOpen r w (FdInode i γo m) ->
     ↑foffN ⊆ E ->
-    foff_row st -∗ uoff_rcpt st off' -∗ off_gv γo (1/2) (Z.of_nat off) -∗
+    foff_row st -∗ off_gv γo (1/2) (Z.of_nat off) -∗
       off_gv γo (1/2) (Z.of_nat off)
-      ∗ ⌜m = OffHeld -> off' = off⌝
-      ∗ off_supply γo E off d (uoff_rcpt st (off + d)).
+      ∗ ⌜forall o : nat, m = OffHeld o -> o = off⌝
+      ∗ off_supply γo E off d (foff_row (fdst_adv st d)).
   Proof using .
-    intros -> HE. exact (off_supply_of_st_at E r w i γo m off' off d HE).
+    intros -> HE. exact (off_supply_of_st_at E r w i γo m off d HE).
   Qed.
 
   (* THE EXACT PAYMENT IS FREE AT A PARKED ROW, which is the whole reason

@@ -3669,7 +3669,7 @@ Section ProofFilewrite.
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).
     (* "Hfin" -- NOT "Hin": the device arm already binds that name for its
        major-range fact. *)
-    iIntros "Hcg Hcnt #Htext #Hkd Hpc #Hpenv Href Hpriv Hkenv #Hprocs Henv #Hfoff Hfin Hcont".
+    iIntros "Hcg Hcnt #Htext #Hkd Hpc #Hpenv Href Hpriv Hkenv #Hprocs Henv Hfoff Hfin Hcont".
     (* PIN THE INDEX.  This contract carries [eb = true ->] and [cpu_own] at
        level 0, so [cpu_own_eb_agree] forces [b] to be the literal [true].
        That is what reconciles the [true]-spelled crossings (this contract's

@@ -1044,13 +1044,9 @@ Section UInitSh.
     cs = ∅ ->
     bv_unsigned pidv <> 1 ->
     length fdv = NOFILE ->
-    (* ...AND /INIT'S OWN TABLE IS ALL PARKED (lane OFF-HAND-4, S2).  sh's
-       record is minted at [ukn_held = empty] ([UShKernel.sh_uexec_slot]),
-       which is honest only at such a key; [ExecEntry.image_entry_at] no
-       longer relays the row, so the entry says it about the table it is
-       stated at and the exec'ing process reads it off its OWN run
-       ([UkRun.urun_rows_parked] at the empty held set). *)
-    fdv_all_parked fdv ->
+    (* NO ALL-PARKED PREMISE (lane OFF-HAND-6, H3): a record's held set is
+       dead data now ([UkRun.urun_parked_row]), so this entry may be taken
+       at a key with a HELD descriptor (design/app-file.md SS3 fact 4). *)
     cons_cred_holds cn T Cr ->
     (* ...and whether /init's own table holds a pipe row (design/pipe.md,
        "The exit path"): sh's table IS this one
@@ -1078,7 +1074,7 @@ Section UInitSh.
                 (cc_wp Cr) (cc_wbn Cr) l np))%I
       uslot.
   Proof using .
-    intros Hpsok_free Hn0 Hsav Hsro Hl Hcs Hpid Hlen Hpks HCr.
+    intros Hpsok_free Hn0 Hsav Hsro Hl Hcs Hpid Hlen HCr.
     pose proof HCr as (Hrl & Hpm1 & Hpm3 & Hpmwb & Hwc
                        & Hwbwc & Hwbl & Hwbr & Hbd & Hpw).
     (* the credential's laws are stated over EVERY position ghost; this
@@ -1091,9 +1087,6 @@ Section UInitSh.
     iIntros (na alen afun W')
       "%Hok %Hcwd0 %Hlzf %Hchq %Hpiq %Hargs #Hmp
        [[#Hp1 [#Hp2 #Htag]] [Hps [Hls [Hstd' Hcred]]]]".
-    (* the discipline comes off /init's own table now -- see the premise *)
-    assert (Hpkq : fdv_all_parked (uvis_fd W'))
-      by (rewrite (kexec_image_ok_fd _ na alen afun fdv W' Hok); exact Hpks).
     assert (Hch0 : uvis_ch W' = ∅) by (rewrite Hchq; exact Hcs).
     assert (Hpid1 : bv_unsigned (uvis_pid W') <> 1)
       by (rewrite Hpiq; exact Hpid).
@@ -1149,8 +1142,8 @@ Section UInitSh.
                   1%nat alen afun fdv W' n0 np
                   Hbd
                   (ucons_pay_const cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wbn Cr))) Hok Hcwd0
-                  (init_sh_room alen n0 Halen Hn0) Hlen Hlzf Hch0 Hpid1
-                  Hpkq) as Hsk.
+                  (init_sh_room alen n0 Halen Hn0) Hlen Hlzf Hch0 Hpid1)
+      as Hsk.
     idtac "MARK-s4c-pose-ok".
     iApply (Hsk with "[] Hnpw Hdep Hdp Htag Hplaw [] [] Hcons Hgen' Hmp Hps
                       Hls Hwcp").
@@ -1283,7 +1276,7 @@ Section UInitSh.
        the whole reason a tainted process needs no lease. *)
     iAssert (image_entry_taint T
                (ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wbn Cr))) uslot)%I as "#Hgen'".
-    { rewrite /image_entry_taint. iModIntro. iIntros (W') "_ #HT #Hmp".
+    { rewrite /image_entry_taint. iModIntro. iIntros (W') "#HT #Hmp".
       iApply ("Hgen" $! (ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wbn Cr)) (-1)) W' with "HT [Hmp] []").
       - rewrite ucons_pay_eta. iExact "Hmp".
       - iModIntro. iIntros "_". iApply (ucons_pay_taint with "HT"). }
@@ -1306,7 +1299,7 @@ Section UInitSh.
                     ∗ UkInit.init_lend_cred T
                         (FdOpen true true (FdDevice ConsoleInv.CONSOLE))
                         (cc_wp Cr) (cc_wbn Cr) l np))%I
-              _ sh_elf_loadable Ha0 Ha1 Hheq
+              _ sh_elf_loadable Ha0 Ha1
               with "[] [] [Hstd Hrow Hcred Hpos Hlease Hchf Hpidf]").
     (* ---- THE REFUND IS THE LEND ITSELF (lane KILL-PAY, K4(a), ruling R-A;
        lane M6b): what init's child put into this deposit is the bundle's
@@ -1324,12 +1317,6 @@ Section UInitSh.
     (* the run's two table rows come in bundled (lane OFF-HAND-3, R1);
        what the entry below is stated at is still the pipe half. *)
     iDestruct (UkRun.urun_rows_nopipe _ _ with "Hnpw") as "#Hnp0".
-    (* ...AND THE OFFSET HALF IS THE ENTRY'S NOW (lane OFF-HAND-4, S2):
-       [ExecEntry.image_entry_at] stopped relaying the key's all-parked
-       row, so the exec'ing process reads it off its OWN run -- which is
-       exactly what the record's empty held set buys. *)
-    iDestruct (UkRun.urun_rows_parked (ukn_parked0 := Hheq) N fdv with "Hnpw")
-      as %Hpks.
     (* ---- THE TWO IDENTITY READINGS (lane EXEC-SEAM), off the lent
        authorities against the child's own fragments: the key's children
        set is EMPTY and its pid is not <init>'s.  Both are pure, so the
@@ -1411,7 +1398,7 @@ Section UInitSh.
     { rewrite Hpeq.
       iApply (init_sh_image_entry T cn K Cr Rsh n0 γp np N l
                 M fdv cs pidv Hpsok_free Hn0 Hsav Hsro Hl Hcs
-                ltac:(rewrite Hpv; exact Hp1) Hlen Hpks HCr
+                ltac:(rewrite Hpv; exact Hp1) Hlen HCr
                 with "Hnp0 Hdep Hdp Hplaw Hcons Hfd0 Hgen'"). }
     (* ...AND THE LINEAR PAYLOAD, WHOLE: [PinnedExec]'s one [Pay] slot is
        sh's persistent state, the position init minted for this round, the

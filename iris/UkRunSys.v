@@ -942,7 +942,7 @@ Section UkRunSys.
       iModIntro.
       (* ...AND THE TABLE STILL HOLDS NO PIPE (design/pipe.md, "The exit
          path"): open installs an inode or a device and the row says so. *)
-      iDestruct (urun_rows_insert N fdv fd (FdOpen rd wr t) Hnpo Hpko
+      iDestruct (urun_rows_insert N fdv fd (FdOpen rd wr t) Hnpo
                    with "Hnpx") as "#Hnpo".
       rewrite (uslot_bump_run m pc M M pm pm sz sz fdv
                  (<[fd := FdOpen rd wr t]> fdv) cw cw' gn gn cs cs pidv false false r Hx0 Hal4).
@@ -1029,12 +1029,6 @@ Section UkRunSys.
     intros Hn Harg Hstne Hhd Hal4.
     iIntros "#Hi Hrun Hsb Hstd Hh0 Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
-    (* THE RUN'S OWN ROW IS WHAT DISCHARGES DUP'S GUARD at the empty held
-       set (lane OFF-HAND-4, S1): every descriptor of the table is parked,
-       so the row the copy carries is too. *)
-    iDestruct (urun_rows_held N fdv with "Hnpx") as %Hheld.
-    assert (Hallpk : fdv_all_parked fdv)
-      by (apply fdv_held_in_empty; rewrite <- Hhd; exact Hheld).
     iMod (udepw_mint N m pc _ M pm _ fdv cw gn cs pidv
                 with "Hdep Hmy Hsb Hheap Hufd") as "(Hheap & Hufd & Hdepn)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -1135,9 +1129,7 @@ Section UkRunSys.
       iModIntro.
       (* ...and dup copies a row the table already had, so it holds no
          pipe either (design/pipe.md, "The exit path") *)
-      iDestruct (urun_rows_dup N fdv fd0 fd1 st Hsrc
-                   (fdv_all_parked_lookup fdv fd0 st Hallpk Hsrc)
-                   with "Hnpx") as "#Hnpo".
+      iDestruct (urun_rows_dup N fdv fd0 fd1 st Hsrc with "Hnpx") as "#Hnpo".
       rewrite (uslot_bump_run m pc M M pm pm sz sz fdv
                  (<[fd1 := st]> fdv) cw cw' gn gn cs cs pidv false false r Hx0 Hal4).
       iApply ukcq_ukc.
@@ -1206,10 +1198,6 @@ Section UkRunSys.
     intros Hn Hhd Hal4.
     iIntros "#Hi Hrun Hsb Hstd Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
-    (* the run's own row discharges dup's guard -- [wp_uk_ecall_dup]'s note *)
-    iDestruct (urun_rows_held N fdv with "Hnpx") as %Hheld.
-    assert (Hallpk : fdv_all_parked fdv)
-      by (apply fdv_held_in_empty; rewrite <- Hhd; exact Hheld).
     iMod (udepw_mint N m pc _ M pm _ fdv cw gn cs pidv
                 with "Hdep Hmy Hsb Hheap Hufd") as "(Hheap & Hufd & Hdepn)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -1299,7 +1287,6 @@ Section UkRunSys.
       iModIntro.
       (* ...and dup copies a row the table already had *)
       iDestruct (urun_rows_copy N fdv (Z.to_nat (usys_argfd (tf_of m pc))) fd1
-                   (fdv_all_parked_lookup_total fdv _ Hallpk)
                    with "Hnpx") as "#Hnpo".
       rewrite (uslot_bump_run m pc M M pm pm sz sz fdv
                  (<[fd1 := fdv !!! Z.to_nat (usys_argfd (tf_of m pc))]> fdv) cw cw' gn gn cs cs pidv false false
@@ -1633,7 +1620,7 @@ Section UkRunSys.
                (<[fd := FdClosed]> fdv) cw cw' gn gn cs cs pidv false false r Hx0 Hal4).
     (* ...and close installs [FdClosed], which is not a pipe row *)
     iDestruct (urun_rows_insert N fdv fd FdClosed fdst_nopipe_closed
-                 fdst_parked_closed with "Hnpx") as "#Hnpo".
+                 with "Hnpx") as "#Hnpo".
     iApply ukcq_ukc.
     iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
               ltac:(unfold unot_sp; vm_compute; discriminate)
@@ -1747,7 +1734,7 @@ Section UkRunSys.
                (<[fd := FdClosed]> fdv) cw cw' gn gn cs cs pidv false false r Hx0 Hal4).
     (* ...and close installs [FdClosed], which is not a pipe row *)
     iDestruct (urun_rows_insert N fdv fd FdClosed fdst_nopipe_closed
-                 fdst_parked_closed with "Hnpx") as "#Hnpo".
+                 with "Hnpx") as "#Hnpo".
     iApply ukcq_ukc.
     iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
               ltac:(unfold unot_sp; vm_compute; discriminate)
@@ -3227,9 +3214,7 @@ Section UkRunSys.
           | exact Hbytes | exact Hca | exact Hcb | exact Hfdv' ].
       - rewrite (Hfail Hr0). iModIntro. iFrame "Hufd".
         iRight. iFrame "Hstd". iPureIntro. exact Hr0. }
-    iDestruct ("Hnpx" $! fdv' with "[%]") as "#Hnpo";
-      [ exact (usys_fd_ok_held (ukn_held N) _ _ _ _ _ Hfdok
-                 ltac:(intro Hd; vm_compute in Hd; discriminate) Hpkr) | ].
+    iDestruct ("Hnpx" $! fdv' with "[%]") as "#Hnpo"; [ exact I | ].
     iDestruct (urun_close_upd N (umem_write M (uint dst) dd gg) pm m
                  (mword_of_int 10) r sz fdv' cw' gn cs pidv (add_vec_int pc 4) avail
                  ltac:(unfold unot_sp; vm_compute; discriminate)
@@ -3984,7 +3969,7 @@ Section UkRunSys.
               ltac:(discriminate) with "Hufd Hstd") as "[Hufd Hh]".
       iModIntro.
       (* ...and open installs an inode or a device, never a pipe end *)
-      iDestruct (urun_rows_insert N fdv fd (FdOpen rd wr t) Hnpo Hpko
+      iDestruct (urun_rows_insert N fdv fd (FdOpen rd wr t) Hnpo
                    with "Hnpx") as "#Hnpi".
       rewrite (uslot_bump_run m pc M M pm pm sz sz fdv
                  (<[fd := FdOpen rd wr t]> fdv) c c gn gn cs cs pidv false false r Hx0 Hal4).
@@ -4853,7 +4838,7 @@ Section UkRunSys.
               ltac:(discriminate) with "Hufd Hstd") as "[Hufd Hh]".
       iModIntro.
       (* ...and open installs an inode or a device, never a pipe end *)
-      iDestruct (urun_rows_insert N fdv fd (FdOpen rd wr t) Hnpo Hpko
+      iDestruct (urun_rows_insert N fdv fd (FdOpen rd wr t) Hnpo
                    with "Hnpx") as "#Hnpi".
       rewrite (uslot_bump_run m pc M M pm pm sz sz fdv
                  (<[fd := FdOpen rd wr t]> fdv) c c gn gn cs cs pidv false false r Hx0 Hal4).
@@ -4893,6 +4878,294 @@ Section UkRunSys.
       iRight. iFrame "Hstd". iPureIntro. split; [ exact Hrm | ].
       rewrite (uvis_of_run_fd m pc M pm sz fdv c gn cs pidv false). reflexivity.
   Qed.
+
+  (* =================================================================== *)
+  (*  THE PATH ARGUMENT'S IMAGE VIEW, AT EITHER HALF OF THE HEAP         *)
+  (*  (lane CAT-WALK-2, K1).                                             *)
+  (*                                                                     *)
+  (*  [wp_uk_ecall_open_recv_img] above reads the caller's image row off  *)
+  (*  [UserHeap.utext_img] -- the TEXT half -- which is right for a       *)
+  (*  program whose path argument is a LITERAL (/init's, sh's console     *)
+  (*  open).  It is wrong for every program whose path is heap DATA:      *)
+  (*  cat's path is [argv[1]], which the exec crossing copied onto its    *)
+  (*  stack as [UserHeap.uargv] (persistent [ubyteq] under [ukn_d]), and  *)
+  (*  the redirect child's comes out of sh's line buffer.  Neither is a   *)
+  (*  [utext] byte and no amount of work on the caller's side makes one:  *)
+  (*  the text half is exactly the X-and-NOT-W pages.                     *)
+  (*                                                                     *)
+  (*  So the row itself becomes the premise.  [uimg_view N Img] is        *)
+  (*  "whatever I hold, it lets me read [Img] off the key's own image"    *)
+  (*  -- a boxed wand off the run's heap authority, which is the ONLY     *)
+  (*  thing the walk below ever does with the caller's view.  The two     *)
+  (*  halves supply it in one line each ([uimg_view_text] /               *)
+  (*  [uimg_view_data]), and the walk is proved ONCE.                     *)
+  (* =================================================================== *)
+  Definition uimg_view (N : uk_names Σ) (Img : gmap Z (bv 8)) : iProp Σ :=
+    (□ (∀ (M : gmap Z (bv 8)) (pm : gmap (mword 27) uperm) (sz : Z),
+          uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗
+          ⌜ forall (a : Z) (b : bv 8),
+              Img !! a = Some b -> M !! a = Some b ⌝))%I.
+
+  Global Instance uimg_view_persistent N Img : Persistent (uimg_view N Img).
+  Proof using . rewrite /uimg_view. apply _. Qed.
+
+  (* the reading, in [UConsOpen.cons_ro_sub]'s own shape *)
+  Lemma uimg_view_sub (N : uk_names Σ) (Img M : gmap Z (bv 8))
+      (pm : gmap (mword 27) uperm) (sz : Z) :
+    uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗
+    uimg_view N Img -∗
+    ⌜ forall (a : Z) (b : bv 8), Img !! a = Some b -> M !! a = Some b ⌝.
+  Proof using .
+    iIntros "Hheap #Hv". iApply ("Hv" $! M pm sz with "Hheap").
+  Qed.
+
+  (* THE TEXT HALF supplies it: this IS the [iDestruct] the landed leaf
+     runs, hoisted out of its walk. *)
+  Lemma uimg_view_text (N : uk_names Σ) (Img : gmap Z (bv 8)) :
+    utext_img (ukn_t N) Img -∗ uimg_view N Img.
+  Proof using .
+    iIntros "#Ht". rewrite /uimg_view. iIntros "!>" (M pm sz) "Hheap".
+    iIntros (a b Hb).
+    rewrite /utext_img.
+    iDestruct (big_sepM_lookup _ _ a b Hb with "Ht") as "Hb'".
+    iDestruct (uheap_text with "Hheap Hb'") as %(HM & _ & _).
+    iPureIntro. exact HM.
+  Qed.
+
+  (* ...AND SO DOES THE DATA HALF, through [UserHeap.uheap_ubyte] (the
+     fractional twin of [uheap_text]) at [DfracDiscarded] -- the step
+     [ExecArgs.uargv_img_of_uargv] already takes to read the argv layout
+     off the heap the deposit lends.  The predicate is the argv's own:
+     [UserHeap.uargv] is built from [ustr … DfracDiscarded], whose bytes
+     are [ubyteq γd DfracDiscarded], and [UkFork.v]'s fork image is the
+     same map-shaped bundle. *)
+  Lemma uimg_view_data (N : uk_names Σ) (Img : gmap Z (bv 8)) :
+    ([∗ map] a ↦ b ∈ Img, ubyteq (ukn_d N) DfracDiscarded a b) -∗
+    uimg_view N Img.
+  Proof using .
+    iIntros "#Hd". rewrite /uimg_view. iIntros "!>" (M pm sz) "Hheap".
+    iIntros (a b Hb).
+    iDestruct (big_sepM_lookup _ _ a b Hb with "Hd") as "Hb'".
+    iDestruct (uheap_ubyte with "Hheap Hb'") as %(HM & _ & _).
+    iPureIntro. exact HM.
+  Qed.
+
+  Lemma wp_uk_ecall_open_recv_gimg (N : uk_names Σ) (h : CpuId)
+      (m : regfile) (pc : mword 64) (l : list fdstate) (avail : nat)
+      (fdep : sfam) (c : Z) (Img : gmap Z (bv 8)) :
+    usysno m = USYS_open ->
+    is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
+    uinstr_is (ukn_t N) pc false (ECALL tt) -∗
+    (* the caller's own PERSISTENT view of a piece of its image, at
+       WHICHEVER HALF supplies it *)
+    uimg_view N Img -∗
+    urun N h m pc avail -∗
+    (* the program's half of its working directory... *)
+    UserCwd.ucwd (ukn_cwd N) c -∗
+    (* ...and the deposit at every key whose cwd is that one inum, at the
+       family the program will read its receipt at *)
+    udepwf_at N m pc USYS_open fdep c -∗
+    ustd (ukn_fd N) l -∗
+    (∀ (h' : CpuId) (r : mword 64) (W : uvis)
+       (M' : gmap Z (bv 8)) (fdv' : list fdstate) (cw' : Z)
+       (cs' : gset gname),
+       (* THE TRAPPING KEY'S TWO ARGUMENT WORDS ARE THE CALLER'S OWN, which
+          is what lets a program that knows its image read its own path
+          argument off the receipt ([ArgPath.arg_path_of] at [uvis_M W] and
+          [tf_arg_idx 0]). *)
+       ⌜ forall (a : Z) (b : bv 8),
+           Img !! a = Some b -> uvis_M W !! a = Some b ⌝ -∗
+       (* ...AND THE TABLE'S LENGTH, which is what bounds the descriptor a
+          receipt names and so lets a caller identify it with the one its
+          own ledger decided. *)
+       ⌜length (uvis_fd W) = NOFILE⌝ -∗
+       ⌜tf_w (uvis_tf W) (tf_arg_idx 0) = m !!! Regidx (mword_of_int 10)⌝ -∗
+       ⌜tf_w (uvis_tf W) (tf_arg_idx 1) = m !!! Regidx (mword_of_int 11)⌝ -∗
+       (* ...AND ITS CWD AND ITS LEDGER ARE THE CALLER'S OWN TOO *)
+       ⌜uvis_cwd W = c⌝ -∗
+       ⌜take NSTD (uvis_fd W) = l⌝ -∗
+       (* the ledger, exactly [wp_uk_ecall_open]'s two arms *)
+       ((∃ (fd : nat) (rd wr : bool) (t : fdtype),
+           (* ...AND THE ROW THE ALLOCATION LEFT IN THE RESUME VIEW, beside
+              the number and the handle: the receipt's own descriptor row
+              is about [fdv'], so without this the caller cannot tie the
+              TYPE the receipt names to the SLOT its ledger decided. *)
+           ⌜r = (mword_of_int (Z.of_nat fd) : mword 64)
+            /\ (fd < NOFILE)%nat
+            /\ fdv' = <[fd := FdOpen rd wr t]> (uvis_fd W)⌝ ∗
+           ualloc (ukn_fd N) l fd (FdOpen rd wr t))
+        ∨ (⌜r = (mword_of_int (-1) : mword 64)
+             /\ fdv' = uvis_fd W⌝ ∗ ustd (ukn_fd N) l)) -∗
+       (* ...AND THE POST, at the TRAPPING key and the resume view *)
+       spost_at uslot USYS_open fdep W r M' fdv' cw' cs' -∗
+       UserCwd.ucwd (ukn_cwd N) c -∗
+       urun N h' (<[Regidx (mword_of_int 10) := r]> m)
+         (add_vec_int pc 4) avail -∗
+       WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+  Proof using .
+    intros Hn Hal4.
+    iIntros "#Hi #Himg Hrun Hcwd Hsb Hstd Hcont".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
+    (* the key's cwd IS the one the caller's PINNED bundle is stated at *)
+    iDestruct (ucwd_agree with "Hcwda Hcwd") as %->.
+    (* ...and the key's low three slots ARE the caller's own ledger, which
+       is what makes the receipt's descriptor row readable at all *)
+    iDestruct (ustd_agree (ukn_fd N) fdv l with "Hufd Hstd") as %Htake.
+    (* ...AND THE IMAGE ROW: the caller's persistent view is a submap of the
+       key's own image, which is what lets it read its path argument off
+       the receipt ([ArgPath.arg_path_of] at [uvis_M W]). *)
+    iDestruct (uimg_view_sub N Img M pm sz with "Hheap Himg") as %Hsimg.
+    (* the deposit, at the family the receipt will come back at *)
+    iDestruct "Hsb" as "[%Hfp Hsb]".
+    iDestruct ("Hsb" $! M pm sz fdv gn cs pidv with "Hmy Hheap Hufd")
+      as "(Hheap & Hufd & Hdepn)".
+    iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
+    iDestruct (uvb_x0 with "Hb") as "[%Hx0 Hb]".
+    iApply (UkStep.wp_uk_ecall C pt Rfd Rut pm sz Hlo Hpm HRut Hlzf M m pc fdv c gn cs pidv Hui
+              (fun (s : mstate)
+                   (Hp : register_lookup cur_privilege s.(sregs) = User)
+                   (Hc : register_lookup (R_bitvector_64 PC) s.(sregs) = pc) =>
+                 UserExecFacts.goodmb_execute_ECALL_U UserFrame.Du_r UserFrame.Du_w
+                   s pc ltac:(vm_compute; reflexivity)
+                   ltac:(vm_compute; reflexivity) Hp Hc)
+              with "Hb Hmy").
+    rewrite (uexec_ret_ecall _ _ eq_refl).
+    assert (Hnum : usys_num (uvis_tf (uvis_of_run m pc M pm sz fdv c gn cs pidv false)) = USYS_open).
+    { cbn [uvis_tf uvis_of_run]. rewrite tf_of_num. exact Hn. }
+    rewrite /uexec_pay_dep /upay_at.
+    rewrite Hnum. cbv zeta.
+    destruct (decide (uecall_scause = uecall_scause)) as [_ | Hpne];
+      [ | exfalso; exact (Hpne eq_refl) ].
+    destruct (decide (USYS_open = USYS_exit)) as [He | _];
+      [ exfalso; vm_compute in He; discriminate | ].
+    destruct (decide (USYS_open = USYS_fork)) as [He | _];
+      [ exfalso; vm_compute in He; discriminate | ].
+    iExists fdep. rewrite Hfp.
+    cbn [uvis_gen uvis_of_run].
+    iSplitR; [ iFrame "Hmy" | ].
+    iSplitL "Hdepn"; [ iExact "Hdepn" | ].
+    iIntros (r M' pm' sz' fdv' cw' gn' cs' lz')
+      "%Hok %Hfdok %Hpiperow %Hcwrow %Hgnrow %Hpidrow %Hliverow %Hchrow Hpost".
+    (* THE LAZY BIT CROSSED THE TRAP UNCHANGED (lane LAZY-FLAG, L6).  The
+       trapping key is at [false] -- the U tier's run is
+       ([UexecRet.ukcq]) -- and every row but sbrk's is the equation
+       ([UsysMemOk.usys_mem_ok_lazy]), so the resume key is at [false] too
+       and the close below is at the run's own bit. *)
+    assert (Hlzq : lz' = false)
+      by (refine (usys_mem_ok_lazy _ _ _ _ _ _ _ _ _ _ _ _ Hok);
+          first [ assumption | vm_compute; discriminate ]).
+    subst lz'.
+    assert (Hcw : cw' = c)
+      by (refine (usys_cwd_ok_quiet _ _ _ _ _ Hcwrow); vm_compute; discriminate).
+    assert (Hgn : gn' = gn) by exact (usys_gen_ok_quiet _ _ _ Hgnrow).
+    assert (Hch : cs' = cs) by exact (usys_ch_ok_quiet _ _ _ _ Hchrow).
+    subst gn' cs' cw'.
+    destruct (usys_mem_ok_quiet USYS_open _ r _ _ _ _ _ _ _ _
+                ltac:(discriminate) ltac:(discriminate) ltac:(discriminate)
+                ltac:(discriminate) ltac:(discriminate) ltac:(discriminate) Hok)
+      as [-> [-> ->]].
+    unfold usys_fd_ok in Hfdok.
+    destruct (decide (USYS_open = USYS_close)) as [Hc | _]; [ discriminate Hc | ].
+    destruct (decide (USYS_open = USYS_dup)) as [Hc | _]; [ discriminate Hc | ].
+    destruct (decide (USYS_open = USYS_open)) as [_ | Hc];
+      [ | exfalso; exact (Hc eq_refl) ].
+    cbn [uvis_M uvis_perm uvis_fd uvis_of_run] in Hfdok |- *.
+    iDestruct (ufd_auth_len with "Hufd") as %Hfdlen.
+    iApply uslot_bupd.
+    destruct Hfdok as [(fd & rd & wr & t & Hr & Hcl & -> & Hpko & Hnpo) | [Hrm ->]].
+    - (* A DESCRIPTOR CAME BACK, at the LOWEST free slot, and the RECEIPT
+         says at which type *)
+      iMod (ufd_alloc_least (ukn_fd N) fdv l fd (FdOpen rd wr t) Hcl
+              ltac:(discriminate) with "Hufd Hstd") as "[Hufd Hh]".
+      iModIntro.
+      (* ...and open installs an inode or a device, never a pipe end *)
+      iDestruct (urun_rows_insert N fdv fd (FdOpen rd wr t) Hnpo
+                   with "Hnpx") as "#Hnpi".
+      rewrite (uslot_bump_run m pc M M pm pm sz sz fdv
+                 (<[fd := FdOpen rd wr t]> fdv) c c gn gn cs cs pidv false false r Hx0 Hal4).
+      iApply ukcq_ukc.
+      iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
+                ltac:(unfold unot_sp; vm_compute; discriminate)
+                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep Hnpi").
+      iIntros (h') "Hrun".
+      iApply ("Hcont" $! h' r (uvis_of_run m pc M pm sz fdv c gn cs pidv false)
+                _ _ _ _ with "[%] [%] [%] [%] [%] [%] [Hh] Hpost Hcwd Hrun").
+      { exact Hsimg. }
+      { rewrite (uvis_of_run_fd m pc M pm sz fdv c gn cs pidv false). exact Hfdlen. }
+      { rewrite /tf_w. cbn [uvis_tf uvis_of_run]. exact (tf_of_arg0 m pc). }
+      { rewrite /tf_w. cbn [uvis_tf uvis_of_run]. exact (tf_of_arg1 m pc). }
+      { exact (uvis_of_run_cwd m pc M pm sz fdv c gn cs pidv false). }
+      { rewrite (uvis_of_run_fd m pc M pm sz fdv c gn cs pidv false). exact Htake. }
+      iLeft. iExists fd, rd, wr, t. iFrame "Hh". iPureIntro.
+      split_and!; [ exact Hr | | ].
+      { rewrite <- Hfdlen. exact (fd_least_closed_lt _ _ Hcl). }
+      rewrite (uvis_of_run_fd m pc M pm sz fdv c gn cs pidv false). reflexivity.
+    - (* the call failed: nothing moved, and the ledger comes straight back *)
+      iModIntro.
+      rewrite (uslot_bump_run m pc M M pm pm sz sz fdv fdv c c gn gn cs cs pidv false false r Hx0 Hal4).
+      iApply ukcq_ukc.
+      iApply (urun_close_upd _ _ _ m (mword_of_int 10) _ _ _ _ _ _ _ _ _
+                ltac:(unfold unot_sp; vm_compute; discriminate)
+                with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep Hnpx").
+      iIntros (h') "Hrun".
+      iApply ("Hcont" $! h' r (uvis_of_run m pc M pm sz fdv c gn cs pidv false)
+                _ _ _ _ with "[%] [%] [%] [%] [%] [%] [Hstd] Hpost Hcwd Hrun").
+      { exact Hsimg. }
+      { rewrite (uvis_of_run_fd m pc M pm sz fdv c gn cs pidv false). exact Hfdlen. }
+      { rewrite /tf_w. cbn [uvis_tf uvis_of_run]. exact (tf_of_arg0 m pc). }
+      { rewrite /tf_w. cbn [uvis_tf uvis_of_run]. exact (tf_of_arg1 m pc). }
+      { exact (uvis_of_run_cwd m pc M pm sz fdv c gn cs pidv false). }
+      { rewrite (uvis_of_run_fd m pc M pm sz fdv c gn cs pidv false). exact Htake. }
+      iRight. iFrame "Hstd". iPureIntro. split; [ exact Hrm | ].
+      rewrite (uvis_of_run_fd m pc M pm sz fdv c gn cs pidv false). reflexivity.
+  Qed.
+
+  (* ---- THE DATA-IMAGE LEAF, which is what cat and the redirect child
+     take.  Its post is the TEXT leaf's, word for word: the same image row
+     comes back at [uvis_M W]. *)
+  Lemma wp_uk_ecall_open_recv_dimg (N : uk_names Σ) (h : CpuId)
+      (m : regfile) (pc : mword 64) (l : list fdstate) (avail : nat)
+      (fdep : sfam) (c : Z) (Img : gmap Z (bv 8)) :
+    usysno m = USYS_open ->
+    is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
+    uinstr_is (ukn_t N) pc false (ECALL tt) -∗
+    ([∗ map] a ↦ b ∈ Img, ubyteq (ukn_d N) DfracDiscarded a b) -∗
+    urun N h m pc avail -∗
+    UserCwd.ucwd (ukn_cwd N) c -∗
+    udepwf_at N m pc USYS_open fdep c -∗
+    ustd (ukn_fd N) l -∗
+    (∀ (h' : CpuId) (r : mword 64) (W : uvis)
+       (M' : gmap Z (bv 8)) (fdv' : list fdstate) (cw' : Z)
+       (cs' : gset gname),
+       ⌜ forall (a : Z) (b : bv 8),
+           Img !! a = Some b -> uvis_M W !! a = Some b ⌝ -∗
+       ⌜length (uvis_fd W) = NOFILE⌝ -∗
+       ⌜tf_w (uvis_tf W) (tf_arg_idx 0) = m !!! Regidx (mword_of_int 10)⌝ -∗
+       ⌜tf_w (uvis_tf W) (tf_arg_idx 1) = m !!! Regidx (mword_of_int 11)⌝ -∗
+       ⌜uvis_cwd W = c⌝ -∗
+       ⌜take NSTD (uvis_fd W) = l⌝ -∗
+       ((∃ (fd : nat) (rd wr : bool) (t : fdtype),
+           ⌜r = (mword_of_int (Z.of_nat fd) : mword 64)
+            /\ (fd < NOFILE)%nat
+            /\ fdv' = <[fd := FdOpen rd wr t]> (uvis_fd W)⌝ ∗
+           ualloc (ukn_fd N) l fd (FdOpen rd wr t))
+        ∨ (⌜r = (mword_of_int (-1) : mword 64)
+             /\ fdv' = uvis_fd W⌝ ∗ ustd (ukn_fd N) l)) -∗
+       spost_at uslot USYS_open fdep W r M' fdv' cw' cs' -∗
+       UserCwd.ucwd (ukn_cwd N) c -∗
+       urun N h' (<[Regidx (mword_of_int 10) := r]> m)
+         (add_vec_int pc 4) avail -∗
+       WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+  Proof using .
+    intros Hn Hal4. iIntros "#Hi #Hd Hrun Hcwd Hsb Hstd Hcont".
+    iApply (wp_uk_ecall_open_recv_gimg N h m pc l avail fdep c Img Hn Hal4
+              with "Hi [] Hrun Hcwd Hsb Hstd Hcont").
+    iApply (uimg_view_data N Img with "Hd").
+  Qed.
+
+
 
   Lemma wp_uk_ecall_quiet_recv_img (N : uk_names Σ) (h : CpuId)
       (m : regfile) (pc : mword 64) (n : Z) (avail : nat) (fdep : sfam)

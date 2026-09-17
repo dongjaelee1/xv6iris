@@ -3219,9 +3219,9 @@ the walk -- `exit(0)` after the last file, `exit(0)` after `cat(0)`,
 (`git diff --stat app-file/read-relay HEAD -- iris/` is exactly
 `UkCat.v`, `UkCatPutc.v`, `UkCatVprintf.v`, `UkCatVprintfS.v`,
 `UkCatFprintf.v`, `UkCatCat.v`, `UkCatMain.v` and CAT-ENTRY's own
-`UCatOut.v`.  `iris/_CoqProject` is back to CAT-ENTRY's: the one line
-this lane added was `UkCatDeed.v`'s, and it came out again with the
-file.)
+`UCatOut.v`, plus the one `iris/_CoqProject` line CAT-ENTRY added for
+that file.  `_CoqProject` is otherwise back to CAT-ENTRY's: the line this
+lane added was `UkCatDeed.v`'s, and it came out again with the file.)
 
 `UkCat.v`
   - `wp_kcat_write` takes `udepw_law 16` where it took `cat_deps`;

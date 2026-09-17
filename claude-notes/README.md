@@ -256,6 +256,15 @@ in `durable-notes.md` for what belongs where and what gets deleted.
   it and the one kernel pin that blocks it), the stage's f-state history,
   and the three honest limits with their prices.
 
+- **[`app-pipe.md`](design/app-pipe.md)** — THE PIPELINE APPLICATION:
+  `echo … | cat` prints the line — the first application to HOLD A PIPE:
+  the registry that replaces the taint for a pipe-holding program (the
+  pipe-queue campaign's deferred ruling), the per-pipe protocol invariant
+  three processes share (echo writes, cat reads, sh reads the round off
+  the two exit payloads), the one premise on the write link that freezes
+  the contents at EOF, sh's PIPE arm, the two-writer console lease for the
+  both-execs-failed arm, and the three honest limits.
+
 - **[`contexts.md`](design/contexts.md)** — CONTEXTS (`TsoCtx.v`): the three
   tokens (running, stamped, parked under a context), the one domination
   relation and its four mints, `CtxMorph` as the only transport class with

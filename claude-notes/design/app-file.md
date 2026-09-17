@@ -320,45 +320,118 @@ the hand-mode open leaf and the two held file members
 and its tie `off' = off`, `wp_uk_ecall_read_file_held`).
 `FdSlots.foff_row` already answers `emp` at `OffHeld`.
 
-## 4. The console side: the stage grows an f-state history
+## 4. The console side: the stage carries the era's boot state, the ledger the line list
 
 The echo application's per-era STAGE (`EchoOut.ostage`: `ps`, `cs`,
-`E`, `w`) and its pure account `ecl_pure` are kept; two things are added.
+`E`, `w`) with its pure account `ecl_pure`, its four per-era authorities
+(`era_pins`), its links (`echo_write_link`, `_blk`, `_pro`,
+`echo_read_link`) and its ledger (`echo_led`) are the shape.  The file
+application's are THE SAME SHAPE with two additions, in NEW files
+(`FileOutPure.v`, `FileOut.v`) that reuse `EchoOut`'s ghost algebra and
+never edit the echo files — the echo theorem and its audit stay exactly
+as they are.  (A functor over a line model was considered and declined:
+the generic links take one more argument than the echo ones, so the
+thirty files above `EchoOut` would move for a statement-preserving
+refactor's sake.  The pure stage machine is ~1,500 lines of list
+algebra; its twin at `FileDisc`'s session is the price.)
 
-1. **`o_fh : list fst`, the f-state HISTORY**, a per-era `mono_list`
-   whose gname joins `EchoOut.era_pins` (allocated by `al_pow` with the
-   others).  Entry `i` is the f-state at the START of round `i`; sh's
-   prompt link appends `fst_after`'s value read off its deed, and the
-   stage's pure part requires `o_fh !! S i = fsm (o_fh !!! i) line_i
-   (cs !!! i)`.  Entry 0 is the ERA'S BOOT STATE, appended at sh's FIRST
-   prompt from the deed `file_boot` handed it, with `fadm_boot` proved
-   from the deed's `lb` against the ledger's (below).  `pending` for a
-   cat round reads `o_fh`, so the process byte a cat link owes is a
-   function of the stage, as every process byte is.
-   **The tie to the claim is the deed alone**: cat's link holds the
-   deed at `s` and `mono_list_lb (fh_gn v) fh` with `last fh = s`
-   (lent by sh at the fork); the stage's `o_fh ⊒ fh` and — the stage's
-   invariant — `length o_fh = the round index + 1`, so the entry cat's
-   round reads IS `s`.  No fs invariant is opened from a console link and
-   no console invariant from an fs fire.
-2. **The ledger's LINE LIST.**  `file_R c h := echo_led … ∗
-   mono_list_auth (fl_gn c) 1 (echof_lines_of h)`; the rx wand appends
-   the words when a `LEchoF` line's newline arrives (pure: the parse of
-   `ins` so far); the input tag gains `mono_list_lb (fl_gn c)
-   (echof_lines_of h)`, which is how the line reaches the child's create
-   step (sh's console read yields the tag, `UConsLine.ush_tag_law`).
-   `al_pow` puts `mono_list_lb (fl_gn c) (echof_lines_of h)` into the
-   fresh stage, so sh's first record can compare the boot deed's `ls`
-   against it (both lbs of one list are comparable).  `Hphi` reads
-   `file_phi` off the ledger as `echo_R_phi` does: the boot states are
-   the stages' entry-0 values, which the ledger's tx wand copied out at
-   each era's first prompt (a pure value beside `echo_led`'s phi
-   conjunct).
+### 4.1 What the stage adds: ONE value per era
 
-Everything else — the taint, the tag's discipline arm, the kill
-credential, the console claim's `EvOpen`/`EvByte`/`EvClose`/`EvRead`
-steps, the turn — is `AppEcho`'s verbatim at the projection `c.1`,
-`r.1`.
+The transcript of a cycle is `FileDisc.sessf ps cs s0 I`: the session
+resolved by `ps`/`cs` as before, threaded through the f-state from the
+ERA'S BOOT STATE `s0`.  Every round's state is DETERMINED by `s0`, the
+lines and the alternatives (`fsm`), so the stage carries no history of
+states — only `s0`:
+
+    Record fostage := MkFO { o_ps; o_cs; o_E; o_w; o_f0 : option fst }.
+
+`o_f0` is `None` until the era's FIRST process byte and `Some s0` from
+then on; `feout_pure` says `o_f0 = None -> o_E = [] /\ o_w = []` (under
+the discipline no input precedes init's banner, and under the taint the
+arm does not matter), and `pending_f`/`D_f` read `o_f0`'s value where
+`EchoOutPure.pending_at`/`D` read nothing.  `cs` entries are `ralt`s in
+`FileDisc`'s `nat` encoding; `ralt_ok` replaces `< 4`.
+
+The per-era ghost: `f0_auth v l` / `f0_lb v s0`, a `mono_list` at one
+more gname per era (`AppEcho`'s `cons_made` trick: `●ML []` before,
+`●ML [s0]` after, `◯ML [s0]` the PERSISTENT witness), kept in a second
+per-era record the file ledger allocates beside `era_pins` at `al_pow`
+(a `ghost_map nat gname`; `EchoOut.era_pins` is not edited).
+
+**Who files `s0`, and with what.**  The era's first write link — init's
+first banner byte, at cursor `P = 0`, `file_write_link_first` — takes
+the deed's typed witness from `file_boot` (`▷ (f_typed c s0 ∨ taint)`,
+stripped: `fl_lb c ls ∗ ⌜f_bytes_typed ls s0⌝`, or `s0 = None`, or the
+taint) and files `o_f0 := Some s0`, keeping the witness as a persistent
+conjunct of the stage (`f0_typed`) for the ledger to read (4.3).  init
+holds the deed at that moment (`file_boot` reaches it through
+`App.al_programs`), so the value is its own.
+
+**The process side.**  `file_write_link k v P b ps0 cs0 s0 I0 Φ` is
+`echo_write_link` with `f0_lb v s0` beside the three bounds and the
+premise `proc_stream_f ps0 cs0 s0 I0 !! P = Some b`; `_blk` files an
+alternative `a` with `ralt_ok (line of last_ws I0) a`; `_pro`,
+`read_link`, the taint routes and the drain are the echo ones at the file
+stage.  A program proves its byte is the stream's from the same facts as
+before PLUS the state before its round, which it computes from `s0`, the
+lines and the choices — all of which it holds lower bounds of.
+
+### 4.2 The deed meets the stage in sh's proof, purely
+
+The stage never sees the deed and the claim never sees the stage.  What
+ties them is a PURE invariant the shell carries: "my deed's content is
+the model's state at my round index" — true at the era's start (sh
+receives the deed from init with the fact that `s0` was filed at its
+value) and re-established at every round because the process that files
+the round's alternative knows its effect exactly: sh files `RFRan sel` at
+its prompt byte after `wait` with `sel` from echo's exit payload (echo's
+proof tracks the landed chunks purely), `RFOpenU`/`RFFork` with the deed
+unchanged, the child files `RFExec`/`RFOpenM` with the deed at `Some []`,
+cat files `RCRan` and returns the deed unchanged.  cat's own byte
+premise is then `proc_stream_f … !! P = Some b` with its round's block
+being `content (state before) ++ "$ "`, and `content (state before)` IS
+the bytes its `read` delivered, by the deed's agreement and sh's
+invariant handed down with the deed.
+
+### 4.3 The ledger: the line list and the conclusion
+
+    file_led c h := echo_led-shaped:
+        mono_nat_auth (taint) ∗ pin_map h ∗ f0_map h
+      ∗ AppFile.fl_auth c (efl_of h)                      -- THE LINE LIST
+      ∗ (⌜file_good h⌝ ∨ T)
+
+`efl_of h : list wordline` is the pure parse: the words of every complete
+`LEchoF` line the console has received, over the whole history.  The rx
+wand appends when a newline completes such a line (`FileDisc.lines_of`
+at the new input; `disc_input_f` says the body parses), and mints the
+tag with the lower bound: `file_tag c h := etag h ∗ fl_lb c (efl_of h)`.
+The tag is how the line reaches the child's create step (`file_typed_some`
+needs `ws ∈ ls`), through the console read (`UConsLine.ush_tag_law`) and
+sh's fork lend.
+
+`file_good h` is `file_phi`'s body without its antecedent: `∃ s0s`, one
+boot state per cycle, `s0s !! 0 = Some None`, every later one in
+`fadm_boot (efl_before h k)`, and `Forall2 (good_out_f …) s0s (cycles_of
+h)`.  The tx wand's drain (`fecl_drain`, `EchoOut.ecl_drain`'s twin) hands
+the ledger `good_out_f Ls s0 (open_seg h ++ [out b])` for the stage's
+own `s0` together with `f0_typed`'s witness; the ledger fixes the era's
+`s0` at the era's first drain (it keeps `f0_lb v s0` from then on and
+agrees at every later one) and proves `fadm_boot` from the witness
+against its own `fl_auth`: the lb's `ls` is a prefix of `efl_of h`, and
+under the discipline no `LEchoF` line of THIS era precedes init's first
+byte, so `ls ⊑ efl_before h k` (under the taint the conjunct is `T`).
+`al_pow`'s seed is `fecl` at the empty stage with `o_f0 = None`, plus
+the turn.  `Hphi` reads `file_phi` off the ledger as `echo_R_phi` does.
+
+### 4.4 The record (AppFile layer B)
+
+`app_file := MkApp file_fixed file_cl file_names file_pred file_boot
+file_R file_ifc file_turn file_phi` with `file_ifc` = echo's tag grown
+by the lb, echo's kill credential (the taint), and `fecl` at the file
+taint; every `xv6_app_laws` field but `al_programs` discharged at the
+projections (`AppEcho`'s lemmas through `file_pred_cons`, the ledger's
+five at `file_led`), `Happ_init` = `file_init_img`, `al_xfer` =
+`file_xfer_boot`.
 
 ## 5. Programs
 

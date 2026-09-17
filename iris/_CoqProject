@@ -1582,6 +1582,7 @@ UkWriteLeaf.v
 UkWriteCons.v
 UkWriteFile.v
 UkWritePipe.v
+UkPipeMoves.v
 UkWriteClosed.v
 UInitBanner.v
 UInitDiag.v

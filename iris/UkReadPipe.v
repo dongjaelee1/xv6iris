@@ -413,8 +413,21 @@ Section UkReadPipe.
        is the one number that puts a pipe row in the table, so it is the
        one number after which the run's [UkRun.urun_nopipe] can only be
        the credential arm -- and the credential is what every pipe payment
-       is payable from ([PipeQueue.pipe_cpay]).  A program that opens a
-       pipe pays its own tear-down's closes out of it. *)
+       is payable from ([PipeQueue.pipe_cpay]).  As the leaf stands, a
+       program that opens a pipe pays its own tear-down's closes out of
+       it, which is why nothing verified has held a pipe.
+
+       THAT IS THE WALL, AND IT IS RULED ON: design/app-pipe.md SS2 puts
+       the pipe's exact fragment in a PER-PIPE INVARIANT and makes the
+       run's reading the invariant's persistent HANDLE, one per pipe row
+       ([urun_nopipe] redefined as a list of registrations, the taint kept
+       as one of its two intro lemmas).  A link built from an invariant
+       handle is buildable any number of times, which is what pays the two
+       rows sh holds on one pipe and every dup/fork copy of a row -- none
+       of which one exclusive fragment can pay.  Lane PIPE-REG lands that
+       and drops this premise; until it does, this leaf is the honest
+       statement of what the tree supports and a pipe holder must be
+       tainted. *)
     □ riscv_kill_cred -∗
     ustd (ukn_fd N) l -∗
     ubytes (ukn_d N) (uint (m !!! Regidx a0_idx)) 8 f -∗

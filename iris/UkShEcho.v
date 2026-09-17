@@ -1017,15 +1017,48 @@ Section UkShEcho.
   Proof using . rewrite /sh_exec_sup_echo_wq. apply _. Qed.
 
   (* ...and the diagnostic's law at the same two ends (M4b(2)): from the
-     block owed to the block written up to its prompt, at every boundary *)
-  Definition ush_execfail_law_wq (Wc : list (bv 8) -> nat -> iProp Σ)
+     block owed to the block written up to its prompt, at every boundary.
+     THE DIAGNOSTIC IS A PARAMETER (lane LINK-GEN-4), as it already is one
+     level down ([UkShDiag.ush_execfail_law_at dg n]).  An era whose
+     exec-failed alternative depends on the LINE -- the file's
+     [FileLinksLine.fexfb], which is [alt_execcat] at an [LCat] line --
+     cannot answer the constant form at every input, and the producer
+     ([UShPanic.ush_execfail_law_hold_at]) delivers it at [lk_exfb L I]
+     anyway.  So the carrier takes the bytes and their index as functions
+     of the input, and echo's is this at the constants. *)
+  Definition ush_execfail_law_wq_at (dg : list (bv 8) -> list (bv 8))
+      (nn : list (bv 8) -> nat) (Wc : list (bv 8) -> nat -> iProp Σ)
       : iProp Σ :=
     (□ (∀ I : list (bv 8),
-          UkShDiag.ush_execfail_law (Wc I 3%nat) (Wc I 0%nat)))%I.
+          UkShDiag.ush_execfail_law_at (dg I) (nn I)
+            (Wc I 3%nat) (Wc I 0%nat)))%I.
 
+  Definition ush_execfail_law_wq (Wc : list (bv 8) -> nat -> iProp Σ)
+      : iProp Σ :=
+    ush_execfail_law_wq_at (fun _ => alt_execfail) (fun _ => 17%nat) Wc.
+
+  Global Instance ush_execfail_law_wq_at_persistent dg nn Wc :
+    Persistent (ush_execfail_law_wq_at dg nn Wc).
+  Proof using . rewrite /ush_execfail_law_wq_at. apply _. Qed.
   Global Instance ush_execfail_law_wq_persistent Wc :
     Persistent (ush_execfail_law_wq Wc).
   Proof using . rewrite /ush_execfail_law_wq. apply _. Qed.
+
+  (* ...AND THE WEAKENING, [UkSh.ush_tag_law_of_at]'s pattern: an era whose
+     exec-failed bytes ARE the constants answers the landed carrier.  This
+     is the ONE step a second application still owes at an ECHO line, and
+     [UkShFork.ushf_child_law_at]'s own [Lp] is what should imply it --
+     see the lane's findings. *)
+  Lemma ush_execfail_law_wq_of_at (dg : list (bv 8) -> list (bv 8))
+      (nn : list (bv 8) -> nat) (Wc : list (bv 8) -> nat -> iProp Σ) :
+    (forall I : list (bv 8), dg I = alt_execfail) ->
+    (forall I : list (bv 8), nn I = 17%nat) ->
+    ush_execfail_law_wq_at dg nn Wc -∗ ush_execfail_law_wq Wc.
+  Proof using .
+    intros Hdg Hnn. iIntros "#Hx".
+    rewrite /ush_execfail_law_wq /ush_execfail_law_wq_at.
+    iIntros "!>" (I). rewrite <- (Hdg I), <- (Hnn I). iApply ("Hx" $! I).
+  Qed.
 
   Lemma ushf_child_law_holds (Wc : list (bv 8) -> nat -> iProp Σ) :
     ush_execfail_law_wq Wc -∗

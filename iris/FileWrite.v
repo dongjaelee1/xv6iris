@@ -230,13 +230,10 @@ Qed.
    resolves to moves [f]'s state by the splice, and moves nothing else. *)
 Lemma f_ok_delta_write (av : aview) (i : Z) (off : nat)
     (new bs0 : list (bv 8)) :
-  astep av FsImg.ROOTINO fname_f = Some i ->
-  f_ok av (Some bs0) ->
-  f_ok (delta_write i off new av) (Some (blk_splice off new bs0)).
+  f_ok av (Some (i, bs0)) ->
+  f_ok (delta_write i off new av) (Some (i, blk_splice off new bs0)).
 Proof.
-  intros Hst (i0 & Hst0 & Hrow).
-  assert (Hi : i0 = i) by congruence. subst i0.
-  exists i. split.
+  intros (Hst0 & Hrow). split.
   - by rewrite delta_write_astep.
   - by rewrite (delta_write_lookup av i off new bs0 1%nat Hrow).
 Qed.
@@ -287,10 +284,10 @@ Section FileWrite.
      ledger's lower bound -- or the taint, which is what a move somebody
      else did not pay leaves behind.  [AppTree]'s [TreeMove.tree_wq] with
      the owner's subtree replaced by the deed's CONTENT. *)
-  Definition file_wq (c : file_fixed) (r : file_names) (ws : wordline)
+  Definition file_wq (c : file_fixed) (r : file_names) (i : Z) (ws : wordline)
       (sel : list nat) (off : nat) : iProp Σ :=
     ((∃ ls : list wordline,
-        fown r (Some (subseq (echo_chunks ws) sel))
+        fown r (Some (i, subseq (echo_chunks ws) sel))
         ∗ ⌜off = length (subseq (echo_chunks ws) sel)⌝
         ∗ ⌜EchoDisc.line_ok ws⌝
         ∗ ⌜sel_ok (echo_chunks ws) sel⌝
@@ -313,7 +310,7 @@ Section FileWrite.
      against the application's own half and reads [f]'s state off the
      claim.  LINEAR -- the deed goes in and comes back. *)
   Lemma file_claim_read (γfs : fs_names) (c : file_fixed) (r : file_names)
-      (s : fst) (I : gmap Z fs_node) :
+      (s : dst) (I : gmap Z fs_node) :
     file_app = MkAppcfg file_names (file_pred c) r ->
     app_inv γfs -∗ fdeed r s -∗
     ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I ={appE}=∗
@@ -365,7 +362,7 @@ Section FileWrite.
     Forall (fun k => (k < jx)%nat) sel ->
     (* PREMISE 4 -- [f] is not one of the four pinned binaries *)
     i <> INIT_INO -> i <> SH_INO -> i <> ECHO_INO -> i <> CAT_INO ->
-    app_inv γfs -∗ file_wq c r ws sel off -∗
+    app_inv γfs -∗ file_wq c r i ws sel off -∗
     ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I ={appE}=∗
       ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I ∗
       app_step i I (delta_write i offk bs (abs_view I)) ∗
@@ -373,7 +370,7 @@ Section FileWrite.
          ⌜abs_view I' = delta_write i offk bs (abs_view I)⌝ -∗
          ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I' ={appE}=∗
          ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I' ∗
-         file_wq c r ws (sel ++ [jx]) (off + length bs)).
+         file_wq c r i ws (sel ++ [jx]) (off + length bs)).
   Proof using .
     intros Heq Hpre Hnode Hoffk Hbs Hjx Hlt Hi1 Hi2 Hi3 Hi4. subst offk.
     iIntros "#Hinv Hq Hka".
@@ -385,7 +382,7 @@ Section FileWrite.
       iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'".
       rewrite /file_wq. by iRight. }
     iDestruct "Hq" as (ls) "([Hd Htk] & %Hoff & %Hline & %Hsel & #Hlb & %Hin)".
-    iMod (file_claim_read γfs c r (Some (subseq (echo_chunks ws) sel)) I Heq
+    iMod (file_claim_read γfs c r (Some (i, subseq (echo_chunks ws) sel)) I Heq
             with "Hinv Hd Hka") as "(Hka & Hd & [[%Hok _] | #HT])"; last first.
     { (* the claim is tainted: pay the step off the taint *)
       iModIntro. iFrame "Hka". iSplitR.
@@ -394,8 +391,7 @@ Section FileWrite.
       rewrite /file_wq. by iRight. }
     (* THE EXACT ARM: the deed's content IS the row the fire is at *)
     destruct Hpre as (Hrow & Hpos & Hle & Hcap).
-    destruct Hok as (i0 & Hst0 & Hrow0).
-    assert (Hii : i0 = i) by congruence. subst i0.
+    destruct Hok as (Hst0 & Hrow0).
     pose proof (arow_at_pinned (abs_view I) i _ _ Hrow Hrow0) as Hab.
     injection Hab as Hbs0 Hnl. subst bs0. clear Hnl.
     (* the offset equation, cashed: the fire is at the END of [f] *)
@@ -408,18 +404,18 @@ Section FileWrite.
     assert (Hselok : sel_ok (echo_chunks ws) (sel ++ [jx]))
       by exact (sel_ok_snoc _ sel jx Hsel Hjx Hlt).
     (* the step's own obligations *)
-    assert (Hstep : f_ok (abs_view I) (Some (subseq (echo_chunks ws) sel)) ->
+    assert (Hstep : f_ok (abs_view I) (Some (i, subseq (echo_chunks ws) sel)) ->
                     f_ok (delta_write i off bs (abs_view I))
-                      (Some (subseq (echo_chunks ws) (sel ++ [jx])))).
+                      (Some (i, subseq (echo_chunks ws) (sel ++ [jx])))).
     { intros Hok. rewrite Hsnoc -Hend.
-      exact (f_ok_delta_write (abs_view I) i off bs _ Hnode Hok). }
-    iAssert (f_typed c (Some (subseq (echo_chunks ws) (sel ++ [jx]))))%I
+      exact (f_ok_delta_write (abs_view I) i off bs _ Hok). }
+    iAssert (f_typed c (Some (i, subseq (echo_chunks ws) (sel ++ [jx]))))%I
       as "#Hty'".
-    { iApply (f_typed_some c ls ws (sel ++ [jx]) Hin Hline Hselok). iExact "Hlb". }
+    { iApply (f_typed_some c ls ws (sel ++ [jx]) i Hin Hline Hselok). iExact "Hlb". }
     iModIntro. iFrame "Hka". iSplitL "Hd".
     { iApply (file_app_step_park c r i I _
-                (Some (subseq (echo_chunks ws) sel))
-                (Some (subseq (echo_chunks ws) (sel ++ [jx]))) Heq
+                (Some (i, subseq (echo_chunks ws) sel))
+                (Some (i, subseq (echo_chunks ws) (sel ++ [jx]))) Heq
                 (file_fs_pure_write i off bs (abs_view I) Hi1 Hi2 Hi3 Hi4)
                 (cons_absent_write i off bs (abs_view I))
                 (fun jc => cons_present_write jc i off bs (abs_view I))
@@ -427,17 +423,17 @@ Section FileWrite.
     (* PHASE 2 *)
     iIntros (I') "%Hav Hka'".
     assert (Hokpost : f_ok (abs_view I')
-                        (Some (subseq (echo_chunks ws) (sel ++ [jx])))).
-    { rewrite Hav. apply Hstep. exists i. split; [exact Hst0 | exact Hrow0]. }
-    assert (Hne : (Some (subseq (echo_chunks ws) sel) : fst)
-                  <> Some (subseq (echo_chunks ws) (sel ++ [jx]))).
+                        (Some (i, subseq (echo_chunks ws) (sel ++ [jx])))).
+    { rewrite Hav. apply Hstep. split; [exact Hst0 | exact Hrow0]. }
+    assert (Hne : (Some (i, subseq (echo_chunks ws) sel) : dst)
+                  <> Some (i, subseq (echo_chunks ws) (sel ++ [jx]))).
     { intros Hc. injection Hc as Hc. rewrite Hsnoc in Hc.
       assert (Hl : length (subseq (echo_chunks ws) sel)
                    = length (subseq (echo_chunks ws) sel ++ bs))
         by (by rewrite -Hc).
       rewrite length_app in Hl. lia. }
-    iMod (file_resync γfs c r (Some (subseq (echo_chunks ws) sel))
-            (Some (subseq (echo_chunks ws) (sel ++ [jx]))) I' appE
+    iMod (file_resync γfs c r (Some (i, subseq (echo_chunks ws) sel))
+            (Some (i, subseq (echo_chunks ws) (sel ++ [jx]))) I' appE
             ltac:(set_solver) Heq (f_ok_fcontent _ _ Hokpost) Hne
             with "Hinv Htk [Hka']") as "[Hka' Hout]".
     { rewrite /fs_gamma_L /=. iExact "Hka'". }
@@ -503,9 +499,9 @@ Section FileWrite.
     (jx < length (echo_chunks ws))%nat ->
     Forall (fun q => (q < jx)%nat) sel ->
     i <> INIT_INO -> i <> SH_INO -> i <> ECHO_INO -> i <> CAT_INO ->
-    app_inv γfs -∗ file_wq c r ws sel off -∗
+    app_inv γfs -∗ file_wq c r i ws sel off -∗
     file_awrite_full_anchored γfs i γo M ua k off (echo_chunks ws !!! jx)
-      (file_wq c r ws (sel ++ [jx])
+      (file_wq c r i ws (sel ++ [jx])
          (off + length (echo_chunks ws !!! jx))).
   Proof using .
     intros Heq Hjx Hlt Hi1 Hi2 Hi3 Hi4. iIntros "#Hinv Hq".

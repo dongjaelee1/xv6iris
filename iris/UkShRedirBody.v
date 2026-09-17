@@ -235,6 +235,24 @@ Section UkShRedirBody.
       | exact Hszok | exact Hrows ].
   Qed.
 
+  (* ...and the other way, so the two shapes are interderivable and a
+     supplier may prove whichever is convenient. *)
+  Lemma sh_redir_child_law_of_at :
+    UkShFork.ushf_child_law_at Wc ushs_lp -∗ sh_redir_child_law.
+  Proof using .
+    iIntros "#Hl". rewrite /sh_redir_child_law.
+    iIntros "!>" (N' h m dw dv s0 len ws file g sz ld n I)
+      "%Hpeq %Hheq %Hs1 %Hline %Hlws %Hs0 %Hs64 %Hs38 %Hszlo %Hszal %Hszok
+       %Hrows #Hcode #Hpcode #Hpro #Hjt Hstr Hws Hsy Hstd Hcwd Hch HM Hcr Hrun".
+    iApply ("Hl" $! N' h m dw dv s0 len ws g sz ld n I
+              with "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%]
+                    Hcode Hpcode Hpro Hjt Hstr Hws Hsy Hstd Hcwd Hch HM
+                    Hcr Hrun");
+      [ exact Hpeq | exact Hheq | exact Hs1 | by exists file | exact Hlws
+      | exact Hs0 | exact Hs64 | exact Hs38 | exact Hszlo | exact Hszal
+      | exact Hszok | exact Hrows ].
+  Qed.
+
   (* =================================================================== *)
   (*  §4  THE THREE-WAY CASE (deliverable 3)                              *)
   (*                                                                     *)

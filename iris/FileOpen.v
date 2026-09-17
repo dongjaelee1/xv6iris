@@ -52,6 +52,8 @@ Require Import AppInv.           (* [app_inv], [app_body], [app_step], [appE] *)
 Require Import FsAbsDelta.       (* [cre_pre], the legs *)
 Require Import PieceFam.         (* [pfam] / [pf_at] *)
 Require Import FsAbsCreateFire.  (* create's four commits, [cre_arm_fired] *)
+Require Import UserPtTree.       (* [uptd] / [uva_wmapped]: the read's -1 arm's
+                                    table and its reason *)
 Require Import FsAbsReadFire.    (* [aread_commit_at] / [read_arms] *)
 Require Import FsAbsEra.         (* [ep_start], [np_elems], [um_start_of] *)
 Require Import SysMknodDefs.     (* [npar_cur], [npar_elems] *)
@@ -757,8 +759,10 @@ Section FileOpen.
      frozen pin replaced by the deed's own reading -- the observed row is
      `f`'s because the CLAIM says so at the very view the kernel read it
      in, and the deed's state names both the inum and the bytes. *)
-  Lemma file_read_arms_learn (c : file_fixed) (r : file_names) (q : Qp)
-      (jc : Z) (i : Z) (bs : list (bv 8)) (γo : gname) (n : Z)
+  (* THE OK ARM ON ITS OWN, so the mapped corollary below -- which REFUTES
+     the other one -- does not have to re-prove it. *)
+  Lemma file_read_post_ok_learn (c : file_fixed) (r : file_names) (q : Qp)
+      (jc : Z) (i : Z) (bs : list (bv 8)) (n : Z)
       (rv : mword 64) (M' : gmap Z (bv 8)) (addr : mword 64)
       (k : nat) (g : nat -> bv 8) :
     (forall j : nat, (j < k)%nat ->
@@ -766,31 +770,19 @@ Section FileOpen.
     (forall j : nat, (j < k)%nat ->
        M' !! uint (add_vec_int addr (Z.of_nat j)) = Some (g j)) ->
     (Z.to_nat n <= k)%nat ->
-    read_arms (fs_gamma_L fsc_fs) i γo n
+    read_post_ok (fs_gamma_L fsc_fs) i n
       (file_read_recv c r q jc (Some (i, bs))) rv M' addr -∗
-    (((⌜rv = (mword_of_int (-1) : mword 64)⌝
-       ∨ (∃ off : nat,
+    (((∃ off : nat,
             ⌜Z.to_nat (bv_unsigned rv)
              = ard_count (Z.to_nat n) off (length bs)⌝ ∗
             ⌜forall j : nat, (j < Z.to_nat (bv_unsigned rv))%nat ->
-               g j = bs !!! (off + j)%nat⌝))
+               g j = bs !!! (off + j)%nat⌝)
       ∗ fdq r q (Some (i, bs)))
      ∨ (fdq r q (Some (i, bs)) ∗ file_taint c)).
   Proof using .
     intros Hlin Himg Hnk.
-    rewrite /read_arms /read_post_ok /read_post_fail.
-    iIntros "[Hok | [%Hm1 Hf]]"; last first.
-    { (* the sign guard hands the piece back whole; the copyout-fault arm
-         hands the FIRED receipt.  Either way the fraction comes home. *)
-      iDestruct "Hf" as "[[_ Hpf] | [_ Hfired]]".
-      - iDestruct (pf_at_refund with "Hpf") as "Hd".
-        rewrite /file_read_recv. cbn [pf_refund].
-        iLeft. iFrame "Hd". iLeft. by iPureIntro.
-      - iDestruct "Hfired" as (av off a) "(_ & Hc)".
-        rewrite /file_read_recv. cbn [pf_recv].
-        iDestruct "Hc" as "[[_ Hd] | [Hd #HT]]".
-        + iLeft. iFrame "Hd". iLeft. by iPureIntro.
-        + iRight. iFrame "Hd". iExact "HT". }
+    rewrite /read_post_ok.
+    iIntros "Hok".
     iDestruct "Hok" as (av off a d) "(%Hpre & %Hn & %Htie & %Hdr & %Hbytes & Hc)".
     rewrite /file_read_recv. cbn [pf_recv].
     iDestruct "Hc" as "[[%Hf Hd] | [Hd #HT]]"; last first.
@@ -804,7 +796,7 @@ Section FileOpen.
     apply Nat2Z.inj_le in Hsz. rewrite Nat2Z.inj_mul in Hsz.
     change (Z.of_nat InodeInv.MAXFILE) with 268 in Hsz.
     change (Z.of_nat BioDefs.BSIZE) with 1024 in Hsz.
-    iLeft. iFrame "Hd". iRight. iExists off.
+    iLeft. iFrame "Hd". iExists off.
     assert (Hdc : d = ard_count (Z.to_nat n) off (length bs)).
     { assert (Hbu : bv_unsigned rv
                     = Z.of_nat (ard_count (Z.to_nat n) off (length bs))).
@@ -821,6 +813,80 @@ Section FileOpen.
     pose proof (Hbytes ltac:(intros i0 Hi0; apply Hlin; lia) j Hjd) as HM.
     pose proof (Himg j ltac:(lia)) as HG.
     rewrite HM in HG. by injection HG.
+  Qed.
+
+  Lemma file_read_arms_learn (c : file_fixed) (r : file_names) (q : Qp)
+      (jc : Z) (i : Z) (bs : list (bv 8)) (γo : gname) (P : uptd) (n : Z)
+      (rv : mword 64) (M' : gmap Z (bv 8)) (addr : mword 64)
+      (k : nat) (g : nat -> bv 8) :
+    (forall j : nat, (j < k)%nat ->
+       uint (add_vec_int addr (Z.of_nat j)) = (uint addr + Z.of_nat j)%Z) ->
+    (forall j : nat, (j < k)%nat ->
+       M' !! uint (add_vec_int addr (Z.of_nat j)) = Some (g j)) ->
+    (Z.to_nat n <= k)%nat ->
+    read_arms (fs_gamma_L fsc_fs) i γo P n
+      (file_read_recv c r q jc (Some (i, bs))) rv M' addr -∗
+    (((⌜rv = (mword_of_int (-1) : mword 64)⌝
+       ∨ (∃ off : nat,
+            ⌜Z.to_nat (bv_unsigned rv)
+             = ard_count (Z.to_nat n) off (length bs)⌝ ∗
+            ⌜forall j : nat, (j < Z.to_nat (bv_unsigned rv))%nat ->
+               g j = bs !!! (off + j)%nat⌝))
+      ∗ fdq r q (Some (i, bs)))
+     ∨ (fdq r q (Some (i, bs)) ∗ file_taint c)).
+  Proof using .
+    intros Hlin Himg Hnk.
+    rewrite /read_arms /read_post_fail.
+    iIntros "[Hok | [%Hm1 Hf]]"; last first.
+    { (* the sign guard hands the piece back whole; the copyout-fault arm
+         hands the FIRED receipt.  Either way the fraction comes home. *)
+      iDestruct "Hf" as "[[_ Hpf] | [_ [_ Hfired]]]".
+      - iDestruct (pf_at_refund with "Hpf") as "Hd".
+        rewrite /file_read_recv. cbn [pf_refund].
+        iLeft. iFrame "Hd". iLeft. by iPureIntro.
+      - iDestruct "Hfired" as (av off a) "(_ & Hc)".
+        rewrite /file_read_recv. cbn [pf_recv].
+        iDestruct "Hc" as "[[_ Hd] | [Hd #HT]]".
+        + iLeft. iFrame "Hd". iLeft. by iPureIntro.
+        + iRight. iFrame "Hd". iExact "HT". }
+    iDestruct (file_read_post_ok_learn c r q jc i bs n rv M' addr k g
+                 Hlin Himg Hnk with "Hok") as "[[H Hd] | [Hd HT]]".
+    - iLeft. iFrame "Hd". iRight. iExact "H".
+    - iRight. iFrame "Hd". iExact "HT".
+  Qed.
+
+  (* ...AND AT A MAPPED DESTINATION BUFFER THE -1 ARM IS GONE (lane
+     READ-RELAY, deliverable 2).  One line: the relay carried the copyout's
+     reason from [SpecCopyout] to [FsAbsReadFire.read_post_fail], and a
+     program that owns its destination run refutes it there. *)
+  Lemma file_read_arms_learn_mapped (c : file_fixed) (r : file_names) (q : Qp)
+      (jc : Z) (i : Z) (bs : list (bv 8)) (γo : gname) (P : uptd) (n : Z)
+      (rv : mword 64) (M' : gmap Z (bv 8)) (addr : mword 64)
+      (k : nat) (g : nat -> bv 8) :
+    (forall j : nat, (j < k)%nat ->
+       uint (add_vec_int addr (Z.of_nat j)) = (uint addr + Z.of_nat j)%Z) ->
+    (forall j : nat, (j < k)%nat ->
+       M' !! uint (add_vec_int addr (Z.of_nat j)) = Some (g j)) ->
+    (0 <= n)%Z ->
+    (Z.to_nat n <= k)%nat ->
+    (forall j : nat, (j < k)%nat ->
+       uva_wmapped P (uint (add_vec_int addr (Z.of_nat j)))) ->
+    read_arms (fs_gamma_L fsc_fs) i γo P n
+      (file_read_recv c r q jc (Some (i, bs))) rv M' addr -∗
+    (((∃ off : nat,
+         ⌜Z.to_nat (bv_unsigned rv)
+          = ard_count (Z.to_nat n) off (length bs)⌝ ∗
+         ⌜forall j : nat, (j < Z.to_nat (bv_unsigned rv))%nat ->
+            g j = bs !!! (off + j)%nat⌝)
+      ∗ fdq r q (Some (i, bs)))
+     ∨ (fdq r q (Some (i, bs)) ∗ file_taint c)).
+  Proof using .
+    intros Hlin Himg Hn Hnk Hmap. iIntros "H".
+    iApply (file_read_post_ok_learn c r q jc i bs n rv M' addr k g
+              Hlin Himg Hnk).
+    iApply (read_arms_mapped (fs_gamma_L fsc_fs) i γo P n
+              (file_read_recv c r q jc (Some (i, bs))) rv M' addr k
+              Hn Hnk Hmap with "H").
   Qed.
 
   (* =================================================================== *)

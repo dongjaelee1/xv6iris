@@ -56,6 +56,8 @@ Require Import UexecSlot UexecRet UsysMemOk UexecSG.
 Require Import UkRun UkRunSys.
 Require Import UexecExecInst.
 Require Import UkReadRows.
+Require Import UserPtTree.         (* [uva_wmapped]: the read's -1 reason, and
+                                      the mapped row that refutes it *)
 Require Import UkReadFile.
 Require Import UmodeAbi.           (* [uimg_sub] *)
 Require Import UConsOpen.          (* [xfam_open] and the ledger arms *)
@@ -415,8 +417,90 @@ Section UkFileOpen.
     assert (Hc2 : sys_rw_count (m !!! Regidx a2_idx) = cnt)
       by (rewrite /sys_rw_count /trunc32; exact Hcnt).
     rewrite Hc2.
-    iDestruct (file_read_arms_learn c r q jc i bs γo cnt rv M'
+    iDestruct (file_read_arms_learn c r q jc i bs γo P cnt rv M'
                  (m !!! Regidx a1_idx) k gb Hlin Himg ltac:(lia)
+                 with "Hcore") as "Hlearn".
+    iApply ("Hcont" $! h' rv gb with "Hufdh Hlearn Hrun Hbuf").
+  Qed.
+
+  (* ...AND AT A NON-NEGATIVE COUNT THERE IS NO -1 ARM AT ALL (lane
+     READ-RELAY, deliverable 2).  This is what CAT-WALK's read arm applies:
+     cat asks for 512 bytes into a buffer it owns, so the only -1 the
+     kernel could answer -- readi's copyout faulting -- names a byte of
+     THAT buffer the process cannot be written at, and the leaf's own
+     mapped row says every byte of it can be.  The program pays nothing
+     new: the row comes out of [wp_uk_ecall_read_file] beside the resume
+     image, and the ONE added premise is [0 <= cnt], which kills fileread's
+     sign guard -- the other, and now only other, -1.  So cat's
+     "cat: read error" tail is unreachable, and the alternative [RCReadErr]
+     design/app-file.md section 5.3 (c) declined to add stays out. *)
+  Lemma wp_uk_read_deed_learns_mapped (N : uk_names Σ) (h : CpuId) (m : regfile)
+      (pc : mword 64) (cnt : Z) (k : nat) (f : nat -> bv 8) (avail : nat)
+      (fd : nat) (wb : bool) (i : Z) (γo : gname)
+      (c : file_fixed) (r : file_names) (q : Qp) (jc : Z)
+      (bs : list (bv 8)) :
+    file_app = MkAppcfg file_names (file_pred c) r ->
+    usysno m = USYS_read ->
+    bv_signed (subrange_vec_dec (m !!! Regidx a2_idx) 31 0 : mword 32) = cnt ->
+    (0 <= cnt)%Z ->
+    (Z.to_nat cnt <= k)%nat ->
+    bv_signed (trunc32 (m !!! Regidx a0_idx)) = Z.of_nat fd ->
+    (fd < NOFILE)%nat ->
+    is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
+    uinstr_is (ukn_t N) pc false (ECALL tt) -∗
+    urun N h m pc avail -∗
+    UserFd.ufd (ukn_fd N) fd (FdOpen true wb (FdInode i γo OffParked)) -∗
+    cons_made (fn_cons r) jc -∗
+    app_inv fsc_fs -∗
+    fdq r q (Some (i, bs)) -∗
+    ubytes (ukn_d N) (uint (m !!! Regidx a1_idx)) k f -∗
+    (∀ (h' : CpuId) (rv : mword 64) (gb : nat -> bv 8),
+       UserFd.ufd (ukn_fd N) fd (FdOpen true wb (FdInode i γo OffParked)) -∗
+       (((∃ off : nat,
+            ⌜Z.to_nat (bv_unsigned rv)
+             = ard_count (Z.to_nat cnt) off (length bs)⌝ ∗
+            ⌜forall j : nat, (j < Z.to_nat (bv_unsigned rv))%nat ->
+               gb j = bs !!! (off + j)%nat⌝)
+         ∗ fdq r q (Some (i, bs)))
+        ∨ (fdq r q (Some (i, bs)) ∗ file_taint c)) -∗
+       urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
+       ubytes (ukn_d N) (uint (m !!! Regidx a1_idx)) k gb -∗
+       WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+  Proof using .
+    intros Heq Hn Hcnt Hcnt0 Hcapk Hfdv Hfdlt Hal4.
+    iIntros "#Hi Hrun Hufdh #Hm #Hinv Hd Hbuf Hcont".
+    iDestruct (file_read_piece fsc_fs c r q jc (Some (i, bs)) i γo Heq
+                 with "Hinv Hm Hd") as "Hau".
+    iDestruct (udepwf_st_read_file N m pc wb i γo
+                 (file_read_recv c r q jc (Some (i, bs))) with "Hau") as "Hsb".
+    iApply (wp_uk_ecall_read_file N h m pc cnt k f avail
+              (read_file_fam (ukn_pay N)
+                 (file_read_recv c r q jc (Some (i, bs)))) fd
+              (FdOpen true wb (FdInode i γo OffParked))
+              Hn Hcnt Hcapk Hfdv Hfdlt Hal4 with "Hi Hrun Hsb Hufdh Hbuf").
+    iIntros (h' rv dd gb W M' fdv' cw' cs')
+      "%Hdd %Hgf %Hlin %Himg %Hnf %H0 %H1 %H2 %Hkey %Hlz %Hlive Hufdh Hpost Hrun Hbuf".
+    iDestruct (spost_at_read_elim uslot
+                 (xfam_rdf (ukn_pay N)
+                    (file_read_recv c r q jc (Some (i, bs)))) W
+                 (m !!! Regidx a0_idx) (m !!! Regidx a1_idx)
+                 (m !!! Regidx a2_idx) (uvis_fd W)
+                 rv M' fdv' cw' cs' H0 H1 H2 eq_refl with "Hpost")
+      as "[%Hret Hcore]".
+    iDestruct "Hcore" as (P) "(%Hperm & %Hwf & %Hlazy & Hcore)".
+    (* THE MAPPED ROW, straight out of the leaf's own hand *)
+    assert (Hmap : forall j : nat, (j < k)%nat ->
+              uva_wmapped P
+                (uint (add_vec_int (m !!! Regidx a1_idx) (Z.of_nat j))))
+      by (intros j Hj; exact (Hnf P j Hwf Hperm (Hlazy Hlz) Hj)).
+    rewrite Hkey.
+    rewrite /fileread_extra_core /=.
+    assert (Hc2 : sys_rw_count (m !!! Regidx a2_idx) = cnt)
+      by (rewrite /sys_rw_count /trunc32; exact Hcnt).
+    rewrite Hc2.
+    iDestruct (file_read_arms_learn_mapped c r q jc i bs γo P cnt rv M'
+                 (m !!! Regidx a1_idx) k gb Hlin Himg Hcnt0 ltac:(lia) Hmap
                  with "Hcore") as "Hlearn".
     iApply ("Hcont" $! h' rv gb with "Hufdh Hlearn Hrun Hbuf").
   Qed.

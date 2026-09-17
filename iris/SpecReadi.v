@@ -409,9 +409,19 @@ Definition wp_readi_sconf_body
       (* THE TWO ARMS.  The "bmap returned 0" break is dead under
          [bm_covers], and either_copyout answers 0 unconditionally on the
          kernel arm, so a short read is possible ONLY on the user arm and
-         the second arm is an EQUALITY.  See the header. *)
+         the second arm is an EQUALITY.  See the header.
+         ...AND THE FAILING ARM CARRIES ITS REASON (lane READ-RELAY).  The
+         one -1 exit is [either_copyout] answering -1, and its answer names
+         the byte it died on: a destination address the process cannot be
+         written at ([SysReadDefs.rd_fail_why], stated at the ENTRY table
+         because the round only GREW it).  It rides HERE, inside the arm it
+         belongs to, exactly as the console short arm carries its own
+         ([SpecFilewrite.write_cons_short]) -- so a caller whose whole
+         destination buffer is writable-mapped refutes this arm outright,
+         and no caller that does not care pays anything for it. *)
       ⌜(mf !!! Regidx (mword_of_int 10 : mword 5) = (mword_of_int (-1) : mword 64)
-        /\ user = true)
+        /\ user = true
+        /\ rd_fail_why (pv_upt (us_V U)) dst n)
        \/ (mf !!! Regidx (mword_of_int 10 : mword 5)
              = (mword_of_int (Z.of_nat tot) : mword 64)
            /\ tot = rd_clamp (di_size dn) off n)⌝ -∗

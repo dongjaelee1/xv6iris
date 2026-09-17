@@ -3022,7 +3022,7 @@ Section ProofDirlinkMain.
                    ∗ proc_priv_bare (proc_addr j) pidv Upr)%I
             with "[Hdst2]" as "[Hde Hppid]".
           { iExact "Hdst2". }
-          destruct Hrdret as [[_ Hbad] | [Hra0rd Hteq]]; [discriminate |].
+          destruct Hrdret as [[_ [Hbad _]] | [Hra0rd Hteq]]; [discriminate Hbad |].
           assert (Hrdr : dl_regs m sp0 ip nb
                            (zero_extend' 64 (inum : mword 16) : mword 64)
                            (16 * i)%nat mrd)

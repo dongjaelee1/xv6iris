@@ -117,6 +117,9 @@ Require Import InodeInv.       (* [MAXFILE]; exports InodeDefs' [file_byte] *)
 From Kernel Require KernelSyms.
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import FsAbsDefs.          (* the abstract state (lane A, landed)       *)
+Require Import UserPtTree.         (* [uptd] / [uva_wmapped]: the read's
+                                      failure reason                          *)
+Require Import ProcPtOwn.          (* [uptd_ext_sz]: the round's table grew     *)
 Import Defs.
 
 Local Open Scope Z_scope.
@@ -159,6 +162,74 @@ Proof.
   intro Hi. rewrite /rd_delivered /rd_bytes.
   case_decide as H1; [reflexivity | exfalso; lia].
 Qed.
+
+(* ===================================================================== *)
+(*  0b.  WHY A READ FAILS -- THE COPYOUT'S REASON (lane READ-RELAY)       *)
+(* ===================================================================== *)
+
+(* readi's one -1 exit is [either_copyout] answering -1 on the USER arm
+   ([SpecEitherCopyout.either_copyout_ran]'s failing disjunct; bmap's own
+   break is dead under [bm_covers], and the kernel arm's copy cannot
+   fail), and that answer names the byte it died on: a destination address
+   the process's page table does not map for WRITING --- walkaddr answered
+   0 on the round's table and vmfault could not back the page, or the
+   re-walk's leaf has PTE_W clear ([SpecCopyout.copyout_wrote]'s header
+   enumerates them).  Stated at the ENTRY descriptor [P], which is the
+   WEAKER form and the one a caller can use: the round's table only GREW
+   ([uptd_ext_sz]) and a byte the entry table can take the grown one can
+   take too ([UserPtTree.uva_wmapped_mono]), so [rd_nwmapped_entry] below
+   is how a proof brings the round's verdict back to the entry.
+
+   WHICH byte is EXISTENTIAL and the bound is the REQUEST: copyout walks
+   whole pages, so the failing round may have delivered a prefix of its own
+   chunk first, and all the caller is promised is that the bad byte is
+   inside the run it asked for.  That is enough: a caller whose whole
+   destination buffer is writable-mapped refutes the arm outright, which is
+   what [UkRunSys.usrc_ok]'s mapped row does for the write side.
+
+   KEYED BY THE 64-BIT VA, like every image equation in the tower, so this
+   promises nothing about [dst + n] not wrapping. *)
+Definition rd_fail_why (P : uptd) (dst : mword 64) (n : nat) : Prop :=
+  exists d : nat, (d < n)%nat
+    /\ ~ uva_wmapped P (uint (add_vec_int dst (Z.of_nat d))).
+
+(* the round's verdict, brought back to the ENTRY table *)
+Lemma rd_nwmapped_entry (szv : mword 64) (P Pc : uptd) (va : Z) :
+  uptd_ext_sz szv P Pc -> ~ uva_wmapped Pc va -> ~ uva_wmapped P va.
+Proof.
+  intros Hext Hn Hc. apply Hn.
+  destruct (uptd_ext_sz_ext szv P Pc Hext) as (_ & _ & Hsub).
+  exact (uva_wmapped_mono P Pc va Hsub Hc).
+Qed.
+
+(* ...and the same for the whole reason, at a request the round's count
+   sits inside *)
+Lemma rd_fail_why_entry (szv : mword 64) (P Pc : uptd) (dst : mword 64)
+    (n : nat) :
+  uptd_ext_sz szv P Pc -> rd_fail_why Pc dst n -> rd_fail_why P dst n.
+Proof.
+  intros Hext (d & Hd & Hn). exists d. split; [exact Hd |].
+  exact (rd_nwmapped_entry szv P Pc _ Hext Hn).
+Qed.
+
+(* THE REFUTATION, and it is one line: a caller whose whole destination
+   buffer is writable-mapped in the table the reason is stated at has no
+   copyout fault to answer for.  This is the read's twin of what
+   [UkRunSys.usrc_ok]'s mapped row does to the console write's short arm. *)
+Lemma rd_fail_why_refute (P : uptd) (dst : mword 64) (k n : nat) :
+  (n <= k)%nat ->
+  (forall j : nat, (j < k)%nat ->
+     uva_wmapped P (uint (add_vec_int dst (Z.of_nat j)))) ->
+  rd_fail_why P dst n -> False.
+Proof.
+  intros Hnk Hmap (d & Hd & Hn). exact (Hn (Hmap d ltac:(lia))).
+Qed.
+
+(* the reason survives a WIDER request: a caller that asked for more still
+   has the bad byte inside its buffer *)
+Lemma rd_fail_why_mono (P : uptd) (dst : mword 64) (n n' : nat) :
+  (n <= n')%nat -> rd_fail_why P dst n -> rd_fail_why P dst n'.
+Proof. intros Hle (d & Hd & Hn). exists d. split; [lia | exact Hn]. Qed.
 
 (* ===================================================================== *)
 (*  1.  THE COUNT, THE SLICE, AND THE READI BRIDGE (PURE)                 *)

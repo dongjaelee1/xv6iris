@@ -111,6 +111,8 @@ Require Import FsStateEra.       (* [era_node], [era_node_rec]              *)
 Require Import InodeRegion.      (* [ftop_inv]/[ftop_body]/[ftop_clean]     *)
 Require Import Xv6G.
 Require Import PipeInvDefs.      (* [pipe_rw_ret]: the return blanket       *)
+Require Import UserPtTree.       (* [uptd] / [uva_wmapped]: the fail arm's
+                                    table and its reason                    *)
 Require Import SysReadDefs.    (* the read observation's pure vocabulary  *)
 Require FsImg.                   (* [T_FILE_z] -- Require, NOT Import
                                     ([FsAbsOpenFire]'s reason)              *)
@@ -387,28 +389,44 @@ Section ReadFire.
      why it takes no image: readi overwrites its running count with -1 when
      a copyout faults, so blocks it already delivered are in the buffer and
      unaccounted for, and the ok arm's tie would be false here. *)
-  Definition read_post_fail Γ (i : Z) (γo : gname) (n : Z)
-      (F : pfam Σ (aview -> nat -> anode -> nat -> iProp Σ)) : iProp Σ :=
+  (* ...AND THE FIRED ARM NAMES ITS REASON (lane READ-RELAY, the twin of
+     the write chain's RELAY 4).  This arm is reachable for exactly one
+     reason -- readi's copyout faulted -- and readi's own contract now says
+     which byte it died on ([SysReadDefs.rd_fail_why], relayed from
+     [SpecEitherCopyout.either_copyout_ran] through [SpecReadi]'s -1 arm):
+     an address in the destination run the process's page table does not
+     map for WRITING.  [P] is the table the call RAN AT (the entry
+     descriptor, which is the weaker and hence usable form) and [addr] the
+     destination this contract already names on the ok arm.  WHICH byte is
+     existential -- copyout walks whole pages and the failing round may
+     have delivered a prefix of its own chunk first -- so a caller refutes
+     the arm from its own permission map over the WHOLE buffer, exactly as
+     the write side's mapped row ([UkRunSys.usrc_ok]) refutes the console
+     short arm.  The GUARD arm ([n < 0]) fires before any table is touched
+     and says nothing. *)
+  Definition read_post_fail Γ (i : Z) (γo : gname) (P : uptd) (n : Z)
+      (F : pfam Σ (aview -> nat -> anode -> nat -> iProp Σ))
+      (addr : mword 64) : iProp Σ :=
     ((⌜n < 0⌝ ∗ pf_at (aread_commit_at Γ appE i γo) F)
-     ∨ (⌜0 <= n⌝
+     ∨ (⌜0 <= n⌝ ∗ ⌜rd_fail_why P addr (Z.to_nat n)⌝
         ∗ ∃ (av : aview) (off : nat) (a : anode),
             ⌜ard_pre av i off a⌝ ∗ F.(pf_recv) av off a 0%nat))%I.
 
   (* the armed disjunction the continuation receives, keyed on a0 *)
-  Definition read_arms Γ (i : Z) (γo : gname) (n : Z)
+  Definition read_arms Γ (i : Z) (γo : gname) (P : uptd) (n : Z)
       (F : pfam Σ (aview -> nat -> anode -> nat -> iProp Σ))
       (r : mword 64) (M' : gmap Z (bv 8)) (addr : mword 64) : iProp Σ :=
     (read_post_ok Γ i n F r M' addr
      ∨ (⌜r = (mword_of_int (-1) : mword 64)⌝
-        ∗ read_post_fail Γ i γo n F))%I.
+        ∗ read_post_fail Γ i γo P n F addr))%I.
 
   (* the arms refine the unified contract's unconditional return clause --
      [SpecFileread.fileread_ret] IS [pipe_rw_ret], and [ard_ret_tie_ret] is
      the ok arm's half.  Stated here so nothing above has to unfold the
      disjunction to see it. *)
-  Lemma read_arms_ret Γ (i : Z) γo (n : Z) F (r : mword 64)
+  Lemma read_arms_ret Γ (i : Z) γo (P : uptd) (n : Z) F (r : mword 64)
       (M' : gmap Z (bv 8)) (addr : mword 64) :
-    read_arms Γ i γo n F r M' addr -∗ ⌜pipe_rw_ret n r⌝.
+    read_arms Γ i γo P n F r M' addr -∗ ⌜pipe_rw_ret n r⌝.
   Proof using .
     rewrite /read_arms /read_post_ok. iIntros "[Hok | [%Hm1 _]]".
     - iDestruct "Hok" as (av off a d) "(_ & %Hn & %Htie & _ & _ & _)".
@@ -420,16 +438,40 @@ Section ReadFire.
      fileread's [n < 0] test fires before the type dispatch, so nothing
      fs-visible has happened and the caller eliminates the returned pair to
      its own [pf_refund]. *)
-  Lemma read_arms_neg Γ (i : Z) γo (n : Z)
+  Lemma read_arms_neg Γ (i : Z) γo (P : uptd) (n : Z)
       (F : pfam Σ (aview -> nat -> anode -> nat -> iProp Σ))
       (M' : gmap Z (bv 8)) (addr : mword 64) :
     (n < 0)%Z ->
     pf_at (aread_commit_at Γ appE i γo) F -∗
-    read_arms Γ i γo n F (mword_of_int (-1) : mword 64) M' addr.
+    read_arms Γ i γo P n F (mword_of_int (-1) : mword 64) M' addr.
   Proof using .
     intros Hn. iIntros "Hc". rewrite /read_arms. iRight.
     iSplitR; [done |]. rewrite /read_post_fail. iLeft.
     iSplitR; [by iPureIntro |]. iExact "Hc".
+  Qed.
+
+  (* ...AND AT A MAPPED DESTINATION THE FIRED ARM IS REFUTED (lane
+     READ-RELAY, the read's twin of the write chain's RELAY 4 refutation).
+     This is what carrying the reason BUYS: a program that owns its
+     destination run knows every byte of it is writable-mapped in any table
+     the trapping key admits ([UkReadFile]'s leaf hands that row out beside
+     the resume image), so the copyout-fault arm cannot have fired; and with
+     a non-negative count the sign guard is gone too, which leaves the ok
+     arm alone.  One line at every caller, and nothing about the file. *)
+  Lemma read_arms_mapped Γ (i : Z) γo (P : uptd) (n : Z)
+      (F : pfam Σ (aview -> nat -> anode -> nat -> iProp Σ))
+      (r : mword 64) (M' : gmap Z (bv 8)) (addr : mword 64) (k : nat) :
+    (0 <= n)%Z ->
+    (Z.to_nat n <= k)%nat ->
+    (forall j : nat, (j < k)%nat ->
+       uva_wmapped P (uint (add_vec_int addr (Z.of_nat j)))) ->
+    read_arms Γ i γo P n F r M' addr -∗ read_post_ok Γ i n F r M' addr.
+  Proof using .
+    intros Hn Hnk Hmap. rewrite /read_arms /read_post_fail.
+    iIntros "[Hok | [_ Hf]]"; [iExact "Hok" |].
+    iDestruct "Hf" as "[[%Hlt _] | [_ [%Hwhy _]]]".
+    - exfalso. lia.
+    - exfalso. exact (rd_fail_why_refute P addr k (Z.to_nat n) Hnk Hmap Hwhy).
   Qed.
 
   (* ---- the stable corollary's arms ------------------------------------
@@ -729,20 +771,20 @@ Section ReadFire.
      the wrapped share inside the returned closure.  With the premise that
      disjunct is refuted, so the surviving arm carries a FIRED receipt --
      which is why read needs no escape arm where write does. *)
-  Lemma arf_stable_fail_arm Γ (i : Z) γo (nz : Z) (q : Qp)
+  Lemma arf_stable_fail_arm Γ (i : Z) γo (P : uptd) (nz : Z) (q : Qp)
       (bs0 : list (bv 8)) (nl : nat)
       (F : pfam Σ (aview -> nat -> anode -> nat -> iProp Σ))
-      (r : mword 64) :
+      (r : mword 64) (addr : mword 64) :
     0 <= nz ->
     r = (mword_of_int (-1) : mword 64) ->
-    read_post_fail Γ i γo nz
-      (arf_pin_fam Γ i q (MkAnode (AFile bs0) nl) F)
+    read_post_fail Γ i γo P nz
+      (arf_pin_fam Γ i q (MkAnode (AFile bs0) nl) F) addr
     ⊢ read_stable_arms Γ i nz q bs0 nl F.(pf_recv) r.
   Proof using .
     intros Hnz Hr.
     rewrite /read_post_fail /read_stable_arms /arf_pin_fam.
     cbn [pf_recv pf_refund]. rewrite /arf_pin_recv.
-    iIntros "[[%Hlt _] | [%Hge Hrest]]"; [exfalso; lia |].
+    iIntros "[[%Hlt _] | [%Hge [_ Hrest]]]"; [exfalso; lia |].
     iDestruct "Hrest" as (av off a) "(%Hpre & %Hrow & %Hab & Hnv & HΦ)".
     subst a. destruct Hpre as (Hlk & Hoff & Hsz).
     assert (Hsz' : (length bs0 <= MAXFILE * BSIZE)%nat) by exact Hsz.
@@ -755,19 +797,20 @@ Section ReadFire.
   Qed.
 
   (* the two arms, joined *)
-  Lemma arf_stable_of_arms Γ (i : Z) γo (nz : Z) (q : Qp)
+  Lemma arf_stable_of_arms Γ (i : Z) γo (P : uptd) (nz : Z) (q : Qp)
       (bs0 : list (bv 8)) (nl : nat)
       (F : pfam Σ (aview -> nat -> anode -> nat -> iProp Σ))
       (r : mword 64) (M' : gmap Z (bv 8)) (addr : mword 64) :
     0 <= nz ->
-    read_arms Γ i γo nz
+    read_arms Γ i γo P nz
       (arf_pin_fam Γ i q (MkAnode (AFile bs0) nl) F) r M' addr
     ⊢ read_stable_arms Γ i nz q bs0 nl F.(pf_recv) r.
   Proof using .
     intros Hnz. rewrite /read_arms.
     iIntros "[Hok | [%Hr Hfail]]".
     - iApply (arf_stable_ok_arm with "Hok").
-    - iApply (arf_stable_fail_arm Γ i γo nz q bs0 nl F r Hnz Hr with "Hfail").
+    - iApply (arf_stable_fail_arm Γ i γo P nz q bs0 nl F r addr Hnz Hr
+                with "Hfail").
   Qed.
 
 End ReadFire.

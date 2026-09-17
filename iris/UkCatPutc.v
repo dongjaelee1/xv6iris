@@ -37,10 +37,17 @@ Section UkCatPutc.
      carries beside the cwd's *)
   Context `{!ghost_varG Σ (gset gname)}.
   Context (N : uk_names Σ).
-  (* THIS PROGRAM'S EXIT OWES ITS PARENT NOTHING at this lane, as a
-     CLASS so that it reaches the exit ecall without an argument at every
-     call site ([UkRun.ukn_triv]). *)
-  Context `{Hpay : !ukn_triv N}.
+  (* THIS PROGRAM'S EXIT PAYLOAD DOES NOT READ ITS STATUS (lane CAT-WALK,
+     W2), as a CLASS so that it reaches the exit ecall without an argument
+     at every call site ([UkRun.ukn_const]).  It used to be [ukn_triv] --
+     "cat owes its parent nothing" -- which pinned the payload at [True]
+     and so made cat's exit incapable of handing the shell the deed
+     fraction, the advanced console credential or the filed alternative
+     ([UCatOut.catq_filed] / [catq_unfiled]).  What cat actually needs of
+     its own payload is only that its two exits -- 0 on the content arm,
+     1 on the diagnostic arm -- owe the SAME thing, which is exactly this
+     class; echo's walk is stated at it for the same reason. *)
+  Context `{Hpay : !ukn_const N}.
   (* the fields, under the names the engine has always used *)
   Local Notation γt := (ukn_t N).
   Local Notation γd := (ukn_d N).
@@ -115,17 +122,28 @@ Section UkCatPutc.
   (* [avail] and learns nothing about the frame's contents, which is why     *)
   (* the post is [ucallee_saved] and nothing else.                           *)
   (* --------------------------------------------------------------------- *)
-  Lemma wp_kcat_putc (h : CpuId) (m : regfile) (n : nat) :
-    UkCat.cat_deps -∗
+  (* ...AND WHAT IT SPENDS (lane CAT-WALK, W1): ONE per-call obligation at
+     the byte it is about to store, not the flagged deposit.  The byte is
+     the low half of the caller's a1 and the descriptor is the caller's a0,
+     so the premise is read straight off the entry register file and putc
+     gains no argument of its own; the FRAME ADDRESS is quantified inside
+     [UkCat.kcat_wb], because it is one frame below the caller's sp and no
+     caller can name it. *)
+  Lemma wp_kcat_putc (h : CpuId) (m : regfile) (n : nat)
+      (Ci Co : iProp Σ) :
+    UkCat.kcat_wb N (m !!! Regidx a0_idx)
+      (nth_byte (m !!! Regidx a1_idx) 0) Ci Co -∗
     cat_code γt -∗
+    Ci -∗
     urun N h m (mword_of_int CatSyms.putc) (4 + n) -∗
     (∀ (h' : CpuId) (m' : regfile),
        ⌜ ucallee_saved m m' ⌝ -∗
+       Co -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (4 + n) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof using .
-    iIntros "#Hdp #Hcode Hrun Hcont".
+    iIntros "Hw #Hcode HCi Hrun Hcont".
     destruct cat_syms_pins
       as (_ & _ & _ & _ & _ & Hputc & _ & Hwrite & _ & _ & _).
     rewrite Hputc.
@@ -266,8 +284,10 @@ Section UkCatPutc.
       by (apply bv_eq; vm_compute; reflexivity).
     rewrite E422.
     iIntros (h5) "Hrun".
-    (* ...and the frame word is whole again, at SOME value *)
-    iDestruct ("Hwbc" with "Hb7") as "Hwb".
+    (* THE FRAME WORD STAYS OPEN over the write (lane CAT-WALK, W1): the
+       byte just stored is the one the payment reads, so it is lent to
+       [UkCat.kcat_wb] and the word is closed again only after the call
+       returns it. *)
     (* ---- 0x460  c.li a2,1 ---- *)
     iApply (wp_uk_cli N h5 m2 (mword_of_int 0x460)
               (mword_of_int 1 : mword 6) a2_idx n
@@ -320,9 +340,56 @@ Section UkCatPutc.
                  := regval_into_reg (mword_of_int 0x46a : mword 64)]> m4).
     assert (Hra5 : m5 !!! Regidx ra_idx = (mword_of_int 0x46a : mword 64))
       by exact (upd_eq m4 (Regidx ra_idx) (regval_into_reg _)).
-    (* ---- write(fd, sp0-17, 1) -- the QUIET row: no heap effect at all ---- *)
-    iApply (wp_kcat_write N h8 m5 n with "Hdp Hcode Hrun").
-    iIntros (h9 ret) "Hrun".
+    (* ---- write(fd, sp0-17, 1) -- THE PER-CALL OBLIGATION (lane CAT-WALK,
+       W1).  The byte just stored is lent to the payment and comes back in
+       its output half; the frame word is closed again below. ---- *)
+    assert (Ha0m5 : m5 !!! Regidx a0_idx = m !!! Regidx a0_idx).
+    { rewrite /m5 (upd_ne m4 (Regidx ra_idx) (Regidx a0_idx) _
+                     ltac:(vm_compute; discriminate)).
+      rewrite /m4 (upd_ne m3 (Regidx a1_idx) (Regidx a0_idx) _
+                     ltac:(vm_compute; discriminate)).
+      rewrite /m3 (upd_ne m2 (Regidx a2_idx) (Regidx a0_idx) _
+                     ltac:(vm_compute; discriminate)).
+      rewrite /m2 (upd_ne m1 (Regidx s0_idx) (Regidx a0_idx) _
+                     ltac:(vm_compute; discriminate)).
+      exact (upd_ne m (Regidx csp_rs1) (Regidx a0_idx) _
+               ltac:(vm_compute; discriminate)). }
+    assert (Ha1m2 : m2 !!! Regidx a1_idx = m !!! Regidx a1_idx).
+    { rewrite /m2 (upd_ne m1 (Regidx s0_idx) (Regidx a1_idx) _
+                     ltac:(vm_compute; discriminate)).
+      exact (upd_ne m (Regidx csp_rs1) (Regidx a1_idx) _
+               ltac:(vm_compute; discriminate)). }
+    assert (Ha2m5 : m5 !!! Regidx a2_idx
+                    = (mword_of_int (Z.of_nat 1) : mword 64)).
+    { rewrite /m5 (upd_ne m4 (Regidx ra_idx) (Regidx a2_idx) _
+                     ltac:(vm_compute; discriminate)).
+      rewrite /m4 (upd_ne m3 (Regidx a1_idx) (Regidx a2_idx) _
+                     ltac:(vm_compute; discriminate)).
+      rewrite /m3 (upd_eq m2 (Regidx a2_idx) (regval_into_reg _)).
+      apply bv_eq; vm_compute; reflexivity. }
+    assert (Ha1m5 : m5 !!! Regidx a1_idx
+                    = (mword_of_int (uint sp0 - 17) : mword 64)).
+    { rewrite /m5 (upd_ne m4 (Regidx ra_idx) (Regidx a1_idx) _
+                     ltac:(vm_compute; discriminate)).
+      rewrite /m4 (upd_eq m3 (Regidx a1_idx) (regval_into_reg _)).
+      rewrite Hs03. symmetry.
+      apply (umoi_add_i12 sp0 (mword_of_int 4079 : mword 12) (uint sp0 - 17)).
+      rewrite Hoff17. lia. }
+    assert (Huaddr : uint (mword_of_int (uint sp0 - 17) : mword 64)
+                     = uint sp0 - 17).
+    { apply uint_moi.
+      clear -HR Hlo. rewrite uint_unsigned in Hlo |- *. unfold Z64. lia. }
+    iEval (rewrite Ha1m2) in "Hb7".
+    iApply ("Hw" $! (mword_of_int (uint sp0 - 17) : mword 64) h8 m5 n
+              with "[%] [%] [%] Hcode [$HCi Hb7] Hrun").
+    { exact Ha0m5. }
+    { exact Ha1m5. }
+    { exact Ha2m5. }
+    { rewrite Huaddr. iExact "Hb7". }
+    iIntros (h9 ret) "[HCo Hb7] Hrun".
+    iEval (rewrite Huaddr) in "Hb7".
+    (* ...and the frame word is whole again, at SOME value *)
+    iDestruct ("Hwbc" with "Hb7") as "Hwb".
     assert (Eret : ret_pc (m5 !!! Regidx ra_idx) = (mword_of_int 0x46a : mword 64))
       by (rewrite Hra5; apply bv_eq; vm_compute; reflexivity).
     rewrite Eret.
@@ -460,7 +527,7 @@ Section UkCatPutc.
               with "[] Hrun").
     { iApply (uis_cat_470 with "Hcode"). }
     iIntros (h13) "Hrun".
-    iApply ("Hcont" $! h13 m9 with "[] Hrun").
+    iApply ("Hcont" $! h13 m9 with "[] HCo Hrun").
     iPureIntro. intros r Hr.
     destruct (decide (Regidx r = Regidx csp_rs1)) as [Hrsp | Hrsp].
     { rewrite Hrsp /m9 (upd_eq m8 (Regidx csp_rs1) (regval_into_reg sp0)).

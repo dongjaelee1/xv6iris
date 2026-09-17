@@ -58,10 +58,17 @@ Section UkCatVprintfS.
      carries beside the cwd's *)
   Context `{!ghost_varG Σ (gset gname)}.
   Context (N : uk_names Σ).
-  (* THIS PROGRAM'S EXIT OWES ITS PARENT NOTHING at this lane, as a
-     CLASS so that it reaches the exit ecall without an argument at every
-     call site ([UkRun.ukn_triv]). *)
-  Context `{Hpay : !ukn_triv N}.
+  (* THIS PROGRAM'S EXIT PAYLOAD DOES NOT READ ITS STATUS (lane CAT-WALK,
+     W2), as a CLASS so that it reaches the exit ecall without an argument
+     at every call site ([UkRun.ukn_const]).  It used to be [ukn_triv] --
+     "cat owes its parent nothing" -- which pinned the payload at [True]
+     and so made cat's exit incapable of handing the shell the deed
+     fraction, the advanced console credential or the filed alternative
+     ([UCatOut.catq_filed] / [catq_unfiled]).  What cat actually needs of
+     its own payload is only that its two exits -- 0 on the content arm,
+     1 on the diagnostic arm -- owe the SAME thing, which is exactly this
+     class; echo's walk is stated at it for the same reason. *)
+  Context `{Hpay : !ukn_const N}.
   (* the fields, under the names the engine has always used *)
   Local Notation γt := (ukn_t N).
   Local Notation γd := (ukn_d N).

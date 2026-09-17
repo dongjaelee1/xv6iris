@@ -8142,3 +8142,185 @@ six further files as PROOF TEXT and nothing else — `destruct Hb as
 sites), `UInitConsK.v` (LINK-GEN's, one), `UShConsK.v`,
 `UInitTreeCons.v`, `UkTreeCreate.v`, `UkTreeRead.v`.  No statement in any
 of those moved.
+
+### SH-CHILD (2026-09-17) — the line the loop reads is a TYPED line and WHICH lines an era admits is a parameter; the redirect body is the ECHO body at another line shape, and what is left of obligation 18 is THREE named things
+
+Branch `app-file/sh-redir`, on top of SH-LEX-REDIR's, merged from `main` at
+`ba34a9c5f` (SUP-ONE's rename, OFF-LINK, WRITE-RELAY-2, CAT-GEOM, LINK-GEN
+and the fix-forward).  Whole tree green on the lane's remote tree
+(`--proofs -k`, `EXIT=0`, zero `Error`); `make audit-all-only` unchanged
+(system THIRTEEN, echo FOURTEEN, both lists textually identical); `make
+gen-ucode` prints all seven catalogs unchanged; no `Admitted`; the ONE
+thing owed is a named `Hypothesis` (`Hcat_body`); every new result carries
+`Proof using`.
+
+#### 1. THE RULING THE LANE TURNS ON
+
+**sh's body reads its line EXACTLY ONCE — at 0x97a, and only to see that
+the first byte is not a `c`.**  Everything else the walk does with the line
+is hand it to the CHILD's law.  Three things follow, and they are the whole
+lane:
+
+1. **The redirect line needs NO new walk.**  `echo a b` and `echo a b > f`
+   both begin with 'e', so both take the `bne a5,s5` at 0x97a and run the
+   same fork1, the same diagnostic and the same runcmd call.
+   `UkShFork.wp_kshm_body_at` is the landed body ABSTRACT IN THE LINE SHAPE
+   and `UkShRedirBody.wp_kshm_body_redir` is that lemma at the redirect
+   shape; the one thing it costs is `ushs_line_is_byte0` — "the redirect
+   line's first byte is 'e'", off the `EchoDisc.line_ok` the shape already
+   carries.
+2. **THE THREE LEXER PREMISES WERE DEAD.**  `wp_kshf_fork` and
+   `wp_kshm_body` took `ushp_no_symbols`, `ushp_tokens` and
+   `length toks < 10`, and NEITHER PROOF READ THEM: the parse happens in
+   the CHILD, whose law re-derives it from the line fact
+   (`UkShEcho.ush_line_toks_holds` inside `wp_kshm_child_echo_holds`).
+   They are gone, and with them `UkShLoop.ush_line_lexable` as a premise of
+   `UkShFork.ushf_rest_of_body`.  They could not have survived anyway: a
+   redirect line HAS a symbol byte, so at the widened premise the landed
+   statement was not weakenable but false.
+3. **`cat f` is the only arm that is a different walk**, because it begins
+   with 'c': the `bne` is NOT taken and control goes into the three-byte
+   `cd` test, which this tree deleted with `UkShCd.wp_kshc_cd` when the
+   disciplined line made the arm unreachable.  That is `Hcat_body`, and it
+   is stated at exactly the law the other two arms are.
+
+#### 2. THE SHAPE: THE LINE IS TYPED, AND THE ERA SAYS WHICH LINES
+
+`UkSh.ush_rest_line`'s payload was `⌜ush_line_is ws f k len⌝` — echo's line
+and nothing else — and `UkShRedirLine.ushs_line_is_nosym` proves no such
+line carries a '>'.  **So today's tree forces a redirect line to the TAINT
+at sh's prompt.**  What replaces it is not a three-way disjunction but the
+observation that all three lines are lines of ONE discipline:
+
+```coq
+  Definition ush_line_at (l : FileDisc.uline) (f : nat -> bv 8)
+      (k len : nat) : Prop :=
+    FileDisc.uline_ok l
+    /\ len = length (FileDisc.line_bytes l)
+    /\ (forall j : nat, (j < len)%nat ->
+          f (k + j)%nat = FileDisc.line_bytes l !!! j).
+
+  Definition ush_rest_line_at (D : FileDisc.uline -> Prop)
+      (ws : list (list (bv 8))) (f : nat -> bv 8) (k : nat) : iProp Σ :=
+    ((∀ len : nat,
+        ⌜forall j : nat, (j < len)%nat -> f (k + j)%nat <> ubyte0⌝ -∗
+        ⌜f (k + len)%nat = ubyte0⌝ -∗
+        ⌜exists l : FileDisc.uline,
+           D l /\ FileDisc.uline_ws l = ws /\ ush_line_at l f k len⌝)
+     ∨ T)%I.
+```
+
+with `ush_line_echo l := ∃ ws, l = LEcho ws` the echo era's `D` and
+`ush_line_at (LEcho ws) f k len` CONVERTIBLE to `ush_line_is ws f k len`
+(`ush_line_at_echo` is `split; intro H; exact H`).  **`UkSh.ush_line_is`
+did not move and neither did `ush_rest_line` / `ush_rest_l`**: they are the
+`D := ush_line_echo` instances, so `UShKernel` (three sites), `UInitSh`
+(two), `UShRound` and `UInitBootAdequacy` name them at their landed arity
+and were not edited at all.  Only a walk that CASE-SPLITS pays, and there
+is exactly one.
+
+#### 3. WHAT LANDED, file by file
+
+- **`iris/UkSh.v`** — `ush_line_at`, `ush_line_at_echo`, `ush_line_echo`,
+  `ush_line_echo_of_is` (the echo era's producer, one line),
+  `ush_rest_line_at` (+ its persistence and taint constructor),
+  `ush_rest_l_at`; `ush_rest_line` and `ush_rest_l` are the echo instances
+  by definition.  `Require Import FileDisc` — pure, like `EchoDisc`, and
+  `FileDisc` is `_CoqProject` 1489 against `UkSh`'s 1531.
+- **`iris/UkShFork.v`** — `ushf_child_law_at Lp` (`ushf_child_law` is it at
+  `UkSh.ush_line_is`), `wp_kshf_fork_at Lp`, `wp_kshm_body_at Lp` (+
+  `Hlp0`, the one reading), `ushf_lp0_echo`, and **`ushf_body_law D sz`** —
+  the body as a LAW over the lines an era admits, which is what
+  `ushf_rest_of_body_at D` now takes in place of the two child laws, the
+  panic law and the lexability:
+
+```coq
+  Definition ushf_body_law (D : FileDisc.uline -> Prop) (sz : Z) : iProp Σ :=
+    (□ (∀ (lu : FileDisc.uline) (h : CpuId) (m : regfile) (f : nat -> bv 8)
+          (k len : nat) (l : list fdstate) (n : nat),
+          ⌜ D lu ⌝ -∗ ⌜ UkSh.ush_line_at lu f k len ⌝ -∗ ... -∗
+          ush_bstate l (FileDisc.uline_ws lu) -∗ ... -∗
+          urun N h m (mword_of_int 0x97a) (16 + (UkSh.ush_Dbody + n)) -∗
+          WP (Loop : expr riscv_lang)))%I.
+```
+
+  `ushf_body_law_echo` is the echo era's (one constructor, one walk, and
+  where `ushf_child_law` is spent) and `ushf_rest_of_body` is the landed
+  discharger at it — same statement as before MINUS the lexability.
+- **`iris/UkShRedirLine.v`** — the typed bridge: `ushs_line_is_of_at`
+  (`ush_line_at (LEchoF ws) f k len -> ushs_line_is ws fname_f f k len`),
+  `ushs_line_is_byte0`, `ushs_line_is_shift`, and the four suffix bytes
+  (`suf_gtf_0`..`_3`, `fname_f_word`, `fname_f_len`, moved down from
+  `UShLexRedir` so the command loop's case can use them).
+- **`iris/UkShRedirBody.v` (NEW)** — `ushs_lp` (the redirect shape, file
+  name existential — the WALK never reads it), `ushs_lp0`, `ushs_lp_of_at`,
+  **`wp_kshm_body_redir`** (deliverable 2), **`sh_redir_child_law`**
+  (`UShRound`'s statement verbatim) with BOTH directions of its bridge to
+  `ushf_child_law_at Wc ushs_lp`, **`ushf_body_law_file`** (deliverable 3 —
+  the three-way case) and `ushf_rest_of_body_file`, the obligation at the
+  file era's lines, which is what `UShRound.sh_round_holds_file` applies:
+
+```coq
+  Lemma ushf_rest_of_body_file (sz : Z) :
+    8344 <= sz -> UserPtTree.pgroundup sz = sz -> usz_ok (sz + 65536) ->
+    (forall I : list (bv 8), ⊢ Wc I 3%nat -∗ Wc I 0%nat) ->
+    UkShFork.ushf_kill_law Wc -∗
+    UkShFork.ushf_child_law Wc -∗
+    sh_redir_child_law -∗
+    UkShDiag.ush_panic_law Wc Wb -∗
+    UkSh.ush_rest_l_at N γp T Wc Wb Pm ush_line_file
+      (UkShLoop.ushl_R N sz).
+```
+
+#### 4. THE TWO EDITS IN OTHER LANES' FILES, exactly
+
+- **`iris/UShRest.v`** (LINK-GEN-3's), TWO tokens and no proof text:
+  the argument `ush_line_lexable_holds` is removed from the
+  `UkShFork.ushf_rest_of_body` application (it is not a premise any more),
+  and `rewrite /UkSh.ush_rest_l` becomes
+  `rewrite /UkSh.ush_rest_l /UkSh.ush_rest_l_at` (one more layer to unfold,
+  because the landed name is now the echo instance).  `ush_line_lexable_holds`
+  itself is untouched and still proved.
+- **`iris/UkShEcho.v`**, ONE token: `rewrite /UkShFork.ushf_child_law`
+  becomes `rewrite /UkShFork.ushf_child_law /UkShFork.ushf_child_law_at`
+  in `ushf_child_law_holds`.
+
+#### 5. WHAT IS LEFT OF OBLIGATION 18, and it is THREE named things
+
+`sh_redir_child_law` is STATED and its bridge to the body walk is proved,
+so the THREAD is closed: the loop's line fact now reaches the redirect
+child.  The child's own walk is not proved, and assembling it from
+`UkShRedirSeam.wp_kshm_child_alloc_redir` needs, in this order:
+
+1. **The seam's EXIT PAYMENT is the wrong shape.**
+   `wp_kshm_child_alloc_redir` takes `(⊢ ukn_pay N (-1))` — the payload is
+   free — because the parser's walk can die at malloc's NULL store.  At the
+   PAID child the payload is `UkShFork.ushf_wq Wc I`, i.e. `Wc I 3 ∨ Wc I 0`,
+   which is NOT derivable from nothing.  The echo child's walk does it
+   properly: `wp_kshm_child_echo` carries the lend `Cr` and
+   `□ (Cr -∗ Q (-1))` and hands `Cr` back on the arm where the allocation
+   succeeded.  So `wp_kshm_child_redir` / `_alloc_redir` have to take
+   `Cr` + `Hcq` in place of that premise — the walk itself does not change.
+2. **The EXEC ARM at fd 1 = the FILE.**  `UkShEcho.wp_kshr_exec_echo` is
+   the arm from `runcmd`, and it names fd 1 TWICE: `UkSh.ush_fd1p ld` and,
+   inside `sh_exec_sup_echo`, the same row as the supply's premise.  The
+   redirect child's fd 1 is `FdOpen false true ty`.  Both are one
+   parameter: `ush_fd1p` becomes an abstract `Fd1 : list fdstate -> Prop`
+   and the supply is stated at it — echo's console arm is the instance at
+   `ush_fd1p`, the redirect child's is K1's `UEchoFile.efile_image_entry`
+   wrapped as that supply.
+3. **`echo_argv_bytes` at the REDIRECT CUT.**
+   `UkShEcho.echo_argv_bytes_of_line_holds` is proved at
+   `ushp_nulfold (echo_toks ws) (ushp_ext len f)`; the redirect child's
+   tree is built over `UkShRedirPc.ushs_nulcut args len f fe`, which NULs
+   the file name's end as well.  SH-LEX-REDIR's ruling makes the token list
+   the SAME (`args = wl_toks ws = echo_toks ws`), so this is that lemma at
+   one more terminator and nothing else.
+
+**And one more thing this lane changes about the graph:**
+`UkShLoop.ush_line_lexable` and `ush_line_lexable_redir` now have NO
+consumer in the tree — the body walk never needed them and the child's walk
+is not written yet.  Both stay: `UShRest.ush_line_lexable_holds` and
+`UShLexRedir.ush_line_lexable_redir_holds` are what item 2 above will spend
+when the redirect child's parse is walked, exactly as
+`UkShEcho.wp_kshm_child_echo_holds` spends `ush_line_toks_holds` today.

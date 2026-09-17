@@ -431,7 +431,7 @@ Section UkTreeRead.
     { iNext. rewrite /app_body. iExists I. iFrame "Hh Hp Hx".
       iPureIntro. exact Hdom. }
     iModIntro. iFrame "Hka".
-    iSplitL "Hoff"; [iApply (off_ret_keep with "Hoff") |]. iExact "Hc".
+    iSplitL "Hoff"; [iApply (off_ret_of_link with "Hoff") |]. iExact "Hc".
   Qed.
 
   (* ...AND THE ARMS, READ.  [UkReadFile.read_arms_file_learn] with the

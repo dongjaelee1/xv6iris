@@ -6554,25 +6554,21 @@ Section UkSh.
      producer ([UShKernel.sh_uexec_slot]) holds the equation the entry
      constructor handed over. *)
   Definition ush_gen_slot : iProp Σ :=
-    (⌜ukn_held N = ∅⌝ ∗
-     □ (∀ W : uvis,
+    (□ (∀ W : uvis,
           T -∗ my_pay (uvis_gen W) (ukn_pay N) -∗ uslot W))%I.
 
   Global Instance ush_gen_slot_persistent : Persistent ush_gen_slot.
   Proof using . rewrite /ush_gen_slot. apply _. Qed.
 
-  (* ...and the row on its own (lane OFF-HAND-4, S2).  sh's record holds no
-     offset half, and the slot is where that travels; a child sh forks
-     inherits the set ([UkFork.wp_uk_ecall_fork]'s [hs]), so this is what
-     says the forked child may run /echo's verified entry. *)
-  Lemma ush_gen_slot_held : ush_gen_slot -∗ ⌜ukn_held N = ∅⌝.
-  Proof using . iIntros "[$ _]". Qed.
+  (* [ush_gen_slot_held] IS DELETED with [UkRun.ukn_held] (lane OFF-LINK-2,
+     L6): the slot carried "sh's record holds no offset half", which is the
+     fact design/app-file.md SS3.5's principle retires. *)
 
   Lemma ush_gen_run (h : CpuId) (m : regfile) (pc : mword 64) (avail : nat) :
     is_aligned_vaddr (Virtaddr pc) 2 = true ->
     ush_gen_slot -∗ T -∗ urun N h m pc avail -∗ WP (Loop : expr riscv_lang).
   Proof using .
-    intro Hal. rewrite /ush_gen_slot. iIntros "[_ #Hg] HT Hrun".
+    intro Hal. rewrite /ush_gen_slot. iIntros "#Hg HT Hrun".
     iApply (urun_gen N T h m pc avail Hal with "Hg HT Hrun").
   Qed.
 

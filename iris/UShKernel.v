@@ -635,11 +635,11 @@ Section UShKernel.
     iIntros "#Hpay #Hnpw #Hdep #Hdp #Htag #Hplaw #Hrest #Hfd0 Hin #Hgen #Hmp Hpos
              Hlease Hwcp".
     iApply (uslot_of_urun_all W (2 + (8 + (16 + (ush_Dbody + n0)))) Q
-              ∅ Hal8 Hroom Hstk Hfdlen Hstop Hlzf with "Hdep Hnpw Hmp").
+              Hal8 Hroom Hstk Hfdlen Hstop Hlzf with "Hdep Hnpw Hmp").
     (* sh's own half of its children set travels in [UkSh.ush_pstate]
        beside the ledger and the cwd: fork1 MOVES the set, so the fragment
        goes down the chain index-free ([UserChildren.uch_any]). *)
-    iIntros (N h) "%Hpayeq %Hheldeq %Hsz Hszf #Ht Hstd Hcwf Hchf Hpidf Dlo _ Hrun".
+    iIntros (N h) "%Hpayeq %Hsz Hszf #Ht Hstd Hcwf Hchf Hpidf Dlo _ Hrun".
     (* THE RECORD'S PAYLOAD IS SH'S, and it is CONSTANT: that is the whole
        of what the walk below needs of it ([UkRun.ukn_const]). *)
     pose proof (ukn_const_of_eq N Q Hpayeq HQc) as Hti.
@@ -658,8 +658,7 @@ Section UShKernel.
       - iRight. iRight. iExact "HT". }
     (* ...and the taint's continuation at this record's own payload *)
     iAssert (UkSh.ush_gen_slot N T) as "#Hgen'".
-    { rewrite /UkSh.ush_gen_slot Hpayeq.
-      iSplitR; [ iPureIntro; exact Hheldeq | iExact "Hgen" ]. }
+    { rewrite /UkSh.ush_gen_slot Hpayeq. iExact "Hgen". }
     (* sh's OWN READ-ONLY IMAGE, off the same text: the jump table, the
        "console" literal the pinned open resolves and the prompt's two
        bytes all live in it, so it is read out once here. *)

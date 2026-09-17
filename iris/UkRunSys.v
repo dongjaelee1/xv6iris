@@ -1001,7 +1001,6 @@ Section UkRunSys.
        it does not already know.  (Duplicating a HELD descriptor is the
        next lane's: design/app-file.md SS3 has dup share the object's
        surrender.) *)
-    ukn_held N = ∅ ->
     is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
     uinstr_is (ukn_t N) pc false (ECALL tt) -∗
     urun N h m pc avail -∗
@@ -1029,7 +1028,7 @@ Section UkRunSys.
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof using .
-    intros Hn Harg Hstne Hhd Hal4.
+    intros Hn Harg Hstne Hal4.
     iIntros "#Hi Hrun Hsb Hstd Hh0 Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iMod (udepw_mint N m pc _ M pm _ fdv cw gn cs pidv
@@ -1185,7 +1184,6 @@ Section UkRunSys.
       (m : regfile) (pc : mword 64) (l : list fdstate) (avail : nat) :
     usysno m = USYS_dup ->
     (* ...and the record holds no offset half -- [wp_uk_ecall_dup]'s note *)
-    ukn_held N = ∅ ->
     is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
     uinstr_is (ukn_t N) pc false (ECALL tt) -∗
     urun N h m pc avail -∗
@@ -1198,7 +1196,7 @@ Section UkRunSys.
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof using .
-    intros Hn Hhd Hal4.
+    intros Hn Hal4.
     iIntros "#Hi Hrun Hsb Hstd Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iMod (udepw_mint N m pc _ M pm _ fdv cw gn cs pidv
@@ -2974,16 +2972,11 @@ Section UkRunSys.
     set (dst := m !!! Regidx (mword_of_int 10)).
     iIntros "#Hi Hrun Hsb #Hktnt Hstd Hbuf Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hrws & Hb)".
-    iDestruct "Hrws" as "[_ %Hpkr]".
-    (* the run goes on at the TAINT arm from here for the PIPE half: the
-       table it comes back with holds two pipe rows.  The OFFSET half is
-       not tainted-escapable (lane OFF-HAND-3, R1) and comes off the run's
-       own row through [UsysMemOk.usys_fd_ok_parked] instead -- a pipe end
-       is a parked descriptor. *)
-    iAssert (∀ fdv0 : list fdstate,
-               ⌜urun_parked_row N fdv0⌝ -∗ urun_rows N fdv0)%I as "#Hnpx";
-      [ iIntros (fdv0) "%Hpk0";
-        iApply (urun_rows_taint N fdv0 Hpk0 with "Hktnt") | ].
+    (* the run goes on at the TAINT arm from here: the table it comes back
+       with holds two pipe rows, and the rows a run carries are about pipes
+       and nothing else (lane OFF-LINK-2's L6 deleted the offset half). *)
+    iAssert (∀ fdv0 : list fdstate, urun_rows N fdv0)%I as "#Hnpx";
+      [ iIntros (fdv0); iApply (urun_rows_taint N fdv0 with "Hktnt") | ].
     iMod (udepw_mint N m pc _ M pm _ fdv cw gn cs pidv
                 with "Hdep Hmy Hsb Hheap Hufd") as "(Hheap & Hufd & Hdepn)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -3217,7 +3210,7 @@ Section UkRunSys.
           | exact Hbytes | exact Hca | exact Hcb | exact Hfdv' ].
       - rewrite (Hfail Hr0). iModIntro. iFrame "Hufd".
         iRight. iFrame "Hstd". iPureIntro. exact Hr0. }
-    iDestruct ("Hnpx" $! fdv' with "[%]") as "#Hnpo"; [ exact I | ].
+    iDestruct ("Hnpx" $! fdv') as "#Hnpo".
     iDestruct (urun_close_upd N (umem_write M (uint dst) dd gg) pm m
                  (mword_of_int 10) r sz fdv' cw' gn cs pidv (add_vec_int pc 4) avail
                  ltac:(unfold unot_sp; vm_compute; discriminate)

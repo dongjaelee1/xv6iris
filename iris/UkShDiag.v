@@ -9009,7 +9009,6 @@ Section UkShDiagLeaf.
         ⌜ ukn_pay N' = Q ⌝ -∗
         (* ...and its held set is the caller's (lane OFF-HAND-4, S1/S2):
            [UkShRun.wp_kshr_fork1]'s row, relayed *)
-        ⌜ ukn_held N' = ukn_held N ⌝ -∗
         ⌜ ucallee_saved m m' ⌝ -∗
         ⌜ m' !!! Regidx a0_idx = (mword_of_int 0 : mword 64) ⌝ -∗
         my_pay γ' Q -∗

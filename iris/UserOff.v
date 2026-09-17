@@ -136,11 +136,17 @@ Section UserOff.
      the kernel's reads [off + d] -- so that arm is vacuous for it whenever
      [0 < d].  Which is the honest reading today: only a node holding the
      user half can advance, and no such node exists until the off box grows
-     its link arm (design/app-file.md section 3, lane OFF-LINK). *)
+     its link arm (design/app-file.md section 3, lane OFF-LINK).
+
+     ...AND ITS OUTPUT IS THE BOX'S ARM (lane OFF-LINK-2's L3), because its
+     input is: a node LENT the taint hands the taint back, and no supplier
+     can conjure the half it never had ([vacuity_lend_not_taint] below).
+     So what the fire puts back in the box is [OffGv.off_link], and the
+     disconnect is one arm of it -- permanently. *)
   Definition off_supply (γo : gname) (E : coPset) (off d : nat)
       (R : iProp Σ) : iProp Σ :=
     (off_ret γo off d ={E}=∗
-       off_gv γo (1/2) (Z.of_nat (off + d)) ∗ R)%I.
+       off_link γo (Z.of_nat (off + d)) ∗ R)%I.
 
   (* SUPPLIER 1 -- PARKED: the generic-safety path, where the process
      knows nothing of its descriptors and the row's existential invariant
@@ -153,23 +159,51 @@ Section UserOff.
   Proof using .
     intros HE. rewrite /off_supply. iIntros "#Hinv Hk".
     iDestruct "Hk" as (v) "[Hk _]".
+    iDestruct "Hk" as "[Hk | #Ht]"; last first.
+    { iModIntro. iSplitR; [ by iApply off_link_taint | done ]. }
     iMod (off_user_inv_move E γo v (Z.of_nat (off + d)) HE
             with "Hinv Hk") as "Hk".
-    iModIntro. by iFrame.
+    iModIntro. iSplitL; [ by iApply off_link_of | done ].
+  Qed.
+
+  (* SUPPLIER 0 -- THE TAINT, and this is the DISCONNECT: the kernel drops
+     the half rather than moving it, and the box keeps the cell alone.
+     Only the generic tier can pay this (Fact B: a verified program under
+     an untainted discipline cannot mint [app_taint], which is what
+     [vacuity_link_not_taint] below checks), and it is what makes a fire at
+     a HELD row with no link -- or at an object already disconnected --
+     payable at all. *)
+  Lemma off_supply_taint (E : coPset) γo (off d : nat) :
+    app_taint -∗ off_supply γo E off d True.
+  Proof using .
+    rewrite /off_supply. iIntros "#Ht Hk".
+    iModIntro. iSplitR; [ by iApply off_link_taint | done ].
   Qed.
 
   (* SUPPLIER 2 -- HELD: the caller presented its own half at the offset
      the transfer used and takes it back ADVANCED.  Note what is NOT here:
      no invariant is opened, so this supplier is good at EVERY mask. *)
+  (* ...AND ITS POST IS [fired ∨ (taint ∗ payment back)] (design/pipe.md's
+     [pipe_wpost] shape, lane OFF-LINK-2's L3).  At a COUPLED object both
+     halves move together and the caller's cursor comes back ADVANCED; at a
+     DISCONNECTED one there is no other half to move, so what comes back is
+     the caller's own half UNMOVED beside the taint that says why.  A
+     verified program under an untainted discipline refutes the right arm
+     from its own claim; it cannot be conjured ([vacuity_link_not_taint]). *)
   Lemma off_supply_held (E : coPset) γo (off d : nat) :
-    uoff γo off -∗ off_supply γo E off d (uoff γo (off + d)).
+    uoff γo off -∗
+    off_supply γo E off d (uoff γo (off + d) ∨ (uoff γo off ∗ app_taint)).
   Proof using .
     rewrite /off_supply. iIntros "Hu Hk".
     iDestruct "Hk" as (v) "[Hk _]".
+    iDestruct "Hk" as "[Hk | #Ht]"; last first.
+    { iModIntro. iSplitR; [ by iApply off_link_taint | ].
+      iRight. iFrame "Hu". iExact "Ht". }
     (* the caller's own half PINS the value: the advanced arm is a
        contradiction for this supplier whenever [0 < d]. *)
     iDestruct (uoff_agree_k γo off v with "Hu Hk") as %->.
-    iMod (uoff_advance γo off d with "Hu Hk") as "[$ $]". done.
+    iMod (uoff_advance γo off d with "Hu Hk") as "[Hk Hu]".
+    iModIntro. iSplitL "Hk"; [ by iApply off_link_of | by iLeft ].
   Qed.
 
   (* ================================================================== *)
@@ -214,82 +248,16 @@ Section UserOff.
   (*  4.  THE BOX'S ARM, AND THE SETTLE (lane OFF-LINK, L0/L3)           *)
   (* ================================================================== *)
 
-  (* THE COUPLING, OR THE TAINT (design/pipe.md, "The coupling, or the
-     taint"; design/app-file.md SS3 "THE OFFSET", SS3.5).  This is the arm
-     [FileOffCell.off_resident] takes when the disconnect lands: the
-     kernel's half at the value the cell holds, or -- once a fire has run
-     at a HELD row with no link -- the application's taint and NO GHOST AT
-     ALL, permanently (a [ghost_var] half cannot be re-minted at an
-     existing name, the pipe's "no fresh authority at an existing name").
-     Stated HERE rather than inside the box so that the box, the fire and
-     the supplier all name one proposition. *)
-  Definition off_link (γo : gname) (z : Z) : iProp Σ :=
-    (off_gv γo (1/2) z ∨ app_taint)%I.
+  (* [off_link] AND ITS TWO ARMS MOVED TO [OffGv.v] (lane OFF-LINK-2's L3),
+     because the nodes' LEND is stated at them and [OffGv.off_ret] carries
+     them: [off_link], [off_link_of], [off_link_taint], [off_link_timeless].
+     They are in scope here unchanged -- this file imports [OffGv]. *)
 
-  Global Instance off_link_timeless γo z : Timeless (off_link γo z).
-  Proof using . rewrite /off_link. apply _. Qed.
-
-  (* the coupled arm, which is what a fire that MOVED the ghost hands back
-     -- and what a node whose closure holds [uoff] leaves behind when it
-     advances both halves itself (design SS3: "THE LINK IS THE NODE") *)
-  Lemma off_link_of γo (z : Z) : off_gv γo (1/2) z -∗ off_link γo z.
-  Proof using . iIntros "H". by iLeft. Qed.
-
-  (* ...and the disconnect, which is what the GENERIC tier pays with: the
-     taint it already holds ([PipeQueue.app_taint],
-     [UexecExecInst.xv6_ssupply]; the survey's Fact A). *)
-  Lemma off_link_taint γo (z : Z) : app_taint -∗ off_link γo z.
-  Proof using . iIntros "#H". by iRight. Qed.
-
-  (* THE SETTLE: what the FIRE needs when the node hands the kernel's half
-     back UNMOVED and the cell is about to move by [d].  It is exactly the
-     old [off_supply] with the box's ARM as its output instead of the bare
-     half -- so a payer that cannot move the ghost may disconnect it
-     instead, which is the whole of the taint arm's content.  [R] is what
-     the payer leaves behind. *)
-  Definition off_settle (γo : gname) (E : coPset) (off d : nat)
-      (R : iProp Σ) : iProp Σ :=
-    (off_gv γo (1/2) (Z.of_nat off) ={E}=∗ off_link γo (Z.of_nat (off + d)) ∗ R)%I.
-
-  (* PAYER 1 -- THE PARKED ROW, verbatim what [off_supply_parked] pays
-     today: the row's own existential invariant holds the user half and the
-     kernel moves both against it. *)
-  Lemma off_settle_parked (E : coPset) γo (off d : nat) :
-    ↑foffN ⊆ E ->
-    off_user_inv γo -∗ off_settle γo E off d True.
-  Proof using .
-    intros HE. rewrite /off_settle. iIntros "#Hinv Hk".
-    iMod (off_user_inv_move E γo (Z.of_nat off) (Z.of_nat (off + d)) HE
-            with "Hinv Hk") as "Hk".
-    iModIntro. iSplitL; [ by iApply off_link_of | done ].
-  Qed.
-
-  (* PAYER 2 -- THE TAINT, and this is the disconnect: the kernel DROPS its
-     half rather than moving it, and the box keeps the cell alone.  Only
-     the generic tier can pay this ([Fact B]: a verified program under an
-     untainted discipline cannot mint [app_taint], which is what
-     [vacuity_link_not_taint] below checks). *)
-  Lemma off_settle_taint (E : coPset) γo (off d : nat) :
-    app_taint -∗ off_settle γo E off d True.
-  Proof using .
-    rewrite /off_settle. iIntros "#Ht Hk".
-    iModIntro. iSplitR; [ by iApply off_link_taint | done ].
-  Qed.
-
-  (* THE FIRE'S CASE SPLIT, against lane WRITE-RELAY's node shape
-     ([OffGv.off_ret]): the node hands the kernel's half back either
-     UNMOVED -- and then the settle above is what carries it to the box's
-     arm -- or ADVANCED BY THE CHUNK, which IS the box's coupled arm and
-     costs nothing.  Two lines, and they are the whole of how the fire
-     consumes [off_ret]: [off_settle] is consulted on the LEFT arm only. *)
-  Lemma off_ret_case γo (off d : nat) :
-    off_ret γo off d -∗
-    off_gv γo (1/2) (Z.of_nat off) ∨ off_link γo (Z.of_nat (off + d)).
-  Proof using .
-    iIntros "H". iDestruct "H" as (v) "[Hk %Hv]".
-    destruct Hv as [-> | ->]; [ by iLeft | ].
-    iRight. by iApply off_link_of.
-  Qed.
+  (* [off_settle] IS GONE, AND [off_supply] IS IT (lane OFF-LINK-2's L3).
+     The lane landed the settle as a separate name while the nodes still
+     lent the bare half; with the lend at [OffGv.off_link] the supplier's
+     own output is the box's arm, so the two are one proposition and the
+     landed name is the one every fire already takes. *)
 
   (* ...AND THE THIRD CASE NEEDS NO PAYER AT ALL: a node whose closure held
      [uoff γo off] advanced BOTH halves inside its own phase 2
@@ -359,13 +327,18 @@ Section UserOff.
      second").  [off_supply] must hand back the kernel's half AT [off + d];
      that is a MOVE of the shadow, and a move needs the other half, which
      the taint does not have.  Hence the arm belongs in the BOX (where the
-     half may be dropped) and the supplier's output must be [off_link] --
-     which is what [off_settle] above is.  Checked at the statement, per
-     SS3.6. *)
+     half may be dropped) and the supplier's OUTPUT must be [OffGv.off_link]
+     -- which is what [off_supply] above now is.  The statement below is
+     the refutation AT THE OLD OUTPUT, spelled inline so it keeps saying
+     what it said when the output was the bare half; [off_supply_taint]
+     above is the same fact read forwards, and the two together are why the
+     arm is in the box and not in the supplier.  Checked at the statement,
+     per SS3.6. *)
   Example vacuity_supply_not_taint (E : coPset) (γo : gname) (off d : nat)
       (R : iProp Σ) :
     (0 < d)%nat ->
-    (⊢ app_taint -∗ off_supply γo E off d R) ->
+    (⊢ app_taint -∗
+       (off_ret γo off d ={E}=∗ off_gv γo (1/2) (Z.of_nat (off + d)) ∗ R)) ->
     app_taint ∗ off_gv γo 1 (Z.of_nat off) ⊢ |={E}=> False.
   Proof using .
     intros Hd Hbad. iIntros "[#Ht Hw]".

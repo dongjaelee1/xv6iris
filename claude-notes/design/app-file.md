@@ -489,6 +489,33 @@ member.  FOUR coupled facts, each adopted as a ruling:
    publish to `off_pub_hand_0` once `usys_fd_ok`'s open arm drops
    `fdst_parked`.  Lane OFF-HAND-7.
 
+### 3.5 THE OWNER'S PRINCIPLE (2026-09-17): `link ∨ taint`, the pipe pattern
+
+The owner: "one thing you might be struggling with is how to deal with
+the generic proof. we should adopt the approach taken by the pipe specs:
+decouple the kernel's state from the user-facing ghost state when the
+system becomes tainted. so, instead of having to conjure up various
+preconditions for syscalls in the generic WP user proof, we should be
+able to pass in EITHER the precondition OR the persistent taint resource,
+and the persistent taint resource allows the kernel's invariant to
+disconnect the kernel state from the ghost state."
+
+The pattern (design/pipe.md, "The coupling, or the taint"): the kernel
+invariant's coupling of ghost to physical state is a DISJUNCTION
+`(coupled) ∨ □ riscv_kill_cred`; every syscall payment is `link ∨
+taint`, every post `fired ∨ taint`; the generic supply pays the taint
+arm, so the generic WP user proof never needs a precondition it cannot
+state; a verified program holds the link where it has one.  Applied
+here: the coupling of a HELD row's recorded offset to the file object's
+box takes a taint arm, dup/fork of a held row take `⌜parked⌝ ∨ taint`
+instead of a kernel-side park, the open arm's mode is the caller's, and
+any remaining "all rows parked"/"surrender"/"guarded generic premise"
+shape is an instance of the error this principle names.  The deed's own
+taint arm (`file_taint c ∨ …`, every piece `link ∨ taint`) already
+follows it; the file-offset invariant did not.  The review at
+`claude-notes/reviews/app-file-review.md` assesses the campaign against
+it; lanes OFF-HAND-7 (J2/J3) build on it.
+
 ## 4. The console side: the stage carries the era's boot state, the ledger the line list
 
 The echo application's per-era STAGE (`EchoOut.ostage`: `ps`, `cs`,

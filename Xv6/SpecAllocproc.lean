@@ -40,7 +40,7 @@ def allocprocPost {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G GF
   (∃ (j : Nat) (ch : BitVec 64) (pid : BitVec 32) (V : ProcPriv) (M : Nat → List (BitVec 8)) (g : Nat),
     ⌜r = procAddr j ∧ j < NPROC ∧ 1 ≤ pid.toNat ∧ pid.toNat ≤ PIDMAX ∧ allocprocPriv V ∧ g ≤ procPagetableNodes + 1⌝ ∗
     procHeld Γ cpu j USED ch ∗ hartAtAny Γ (procAddr j) ∗
-    procPriv (procAddr j) pid V M ∗ kallocAvail γk (availSub on g))
+    procPriv (procAddr j) pid V M ∗ stackOwn (V.kstack + 4096#64) 512 ∗ kallocAvail γk (availSub on g))
 
 def wp_allocproc_body {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G GF] [CurCtx]
     (Γ : SchedNames) (cpu : CPU) (k : KCtx) (γl γp : GName) (γk : KmemNames) (on : Option Nat)

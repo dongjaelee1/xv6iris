@@ -176,18 +176,20 @@ def procPub (pa : BitVec 64) (st : BitVec 32) (chan : BitVec 64) (killed xstate 
 
 /-! ## Dormant slots (Rocq `proc_dormant`, `proc_slots`) -/
 
-/-- The address space a dormant slot still owns (the tail of Rocq
-`proc_dormant`): at UNUSED nothing -- its `pagetable`, `trapframe`, `sz`
-and `pid` are zero; at ZOMBIE the space and the trapframe page, which
-`wait` reaps. -/
+/-- The memory a dormant slot still owns (the tail of Rocq
+`proc_dormant`): its whole kernel stack (the 512 slots below `kstack +
+PGSIZE`: nobody runs on it), and at ZOMBIE the address space and the
+trapframe page, which `wait` reaps; at UNUSED `pagetable`, `trapframe`,
+`sz` and `pid` are zero. -/
 def dormantSpace (st : BitVec 32) (V : ProcPriv) (pid : BitVec 32) : IProp GF :=
   if st = UNUSED then
-    iprop(⌜V.pagetable = 0#64 ∧ V.trapframe = 0#64 ∧ V.sz = 0#64 ∧ pid = 0#32⌝)
+    iprop(⌜V.pagetable = 0#64 ∧ V.trapframe = 0#64 ∧ V.sz = 0#64 ∧ pid = 0#32⌝ ∗
+      stackOwn (V.kstack + 4096#64) 512)
   else
     iprop(∃ M : Nat → List (BitVec 8),
       ⌜V.pagetable = pageAddr V.upt.root ∧ V.trapframe = pageAddr V.upt.tfp ∧
         umBelow V.sz V.upt⌝ ∗
-      procPtAt V.upt M ∗ tfPageAt V.upt.tfp V.tf)
+      procPtAt V.upt M ∗ tfPageAt V.upt.tfp V.tf ∗ stackOwn (V.kstack + 4096#64) 512)
 
 /-- A slot nobody runs (UNUSED or ZOMBIE): the private block's cells with
 existential values, no open files, no cwd (Rocq `proc_dormant`; its file

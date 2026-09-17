@@ -29,6 +29,7 @@ variable {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [CurCtx]
 page if `trapframe ≠ 0`, the address space if `pagetable ≠ 0`. -/
 def freeprocIn (pa : BitVec 64) (pid : BitVec 32) (V : ProcPriv) (M : Nat → List (BitVec 8)) : IProp GF := iprop%
   wordPointsTo (pPid pa) 4 pidPriv pid ∗ procFields pa (DFrac.own 1) V ∗
+  stackOwn (V.kstack + 4096#64) 512 ∗
   (if V.trapframe = 0#64 then emp else ⌜V.trapframe = pageAddr V.upt.tfp⌝ ∗ tfPageAt V.upt.tfp V.tf) ∗
   (if V.pagetable = 0#64 then emp else
     ⌜V.pagetable = pageAddr V.upt.root ∧ V.sz.toNat ≤ uvmMaxsz ∧ umBelow V.sz V.upt⌝ ∗ procPtAt V.upt M)

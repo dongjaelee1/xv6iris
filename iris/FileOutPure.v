@@ -2289,3 +2289,53 @@ Proof using.
     apply Forall2_app; [exact Hv1 |].
     constructor; [exact Hgo | constructor].
 Qed.
+
+(* a nonempty list is a snoc *)
+Lemma fop_snoc_inv {A} (l : list A) : l <> [] -> exists l' a, l = l' ++ [a].
+Proof using.
+  intros Hne. induction l as [| x l IH] using rev_ind; [done |].
+  by exists l, x.
+Qed.
+
+(* THE LEDGER'S DRAIN STEP, PURELY.  At the era's FIRST drain the entry
+   being replaced is provisional, and the admissibility of the drain's own
+   state comes from the deed's witness read against the WHOLE history's
+   line list -- which, the cycle having typed nothing ([efl_of_first_out]),
+   IS the list of lines typed in strictly earlier cycles.  At a LATER drain
+   the state is the one the ledger already fixed, and its admissibility is
+   in the body already. *)
+Lemma file_phi_body_drain (h : list mobs) (b : bv 8) (s0s : list fst)
+    (s0 : fst) :
+  trace_shape h true -> disc_f h ->
+  good_out_f s0 (open_seg h ++ [ObsUartOut Uart0 b]) ->
+  fadm_boot (echof_lines_of h) s0 ->
+  (obs_wire Uart0 (open_seg h) <> [] -> exists u1, s0s = u1 ++ [s0]) ->
+  file_phi_body h s0s ->
+  file_phi_body (h ++ [ObsUartOut Uart0 b]) (removelast s0s ++ [s0]).
+Proof using.
+  intros Hsh Hd Hgo Hadm Hlast Hb.
+  destruct (cycles_of_io h [ObsUartOut Uart0 b] Hsh
+              (proj2 (Forall_singleton _ _)
+                 (eq_refl : is_io (ObsUartOut Uart0 b) = true)))
+    as (cs & H1 & H2).
+  assert (Hne : s0s <> []).
+  { intros Hz. destruct Hb as (Hlen & _).
+    rewrite Hz H1 length_app in Hlen. cbn [length] in Hlen. lia. }
+  destruct (fop_snoc_inv s0s Hne) as (u1 & x & ->).
+  rewrite (epu_removelast_snoc u1 x).
+  apply (file_phi_body_out h b u1 x s0 Hsh Hgo); [| exact Hb].
+  destruct (decide (obs_wire Uart0 (open_seg h) = [])) as [Hw | Hw].
+  - (* the era's FIRST drain *)
+    assert (Hlen : S (length u1) = length (cycles_of h)).
+    { destruct Hb as (Hl & _). rewrite length_app in Hl. cbn [length] in Hl. lia. }
+    rewrite -(efl_of_first_out h (ObsUartOut Uart0 b) (length u1)
+                Hd Hsh eq_refl Hw Hlen).
+    exact Hadm.
+  - (* a LATER drain of the same era: the state is the one already fixed *)
+    assert (Hx : x = s0).
+    { destruct (Hlast Hw) as (u2 & Hu2).
+      destruct (app_inj_2 u1 u2 [x] [s0] eq_refl Hu2) as [_ Hxx].
+      by injection Hxx. }
+    rewrite -Hx.
+    exact (file_phi_body_last_adm h (ObsUartOut Uart0 b) u1 x Hsh eq_refl Hb).
+Qed.

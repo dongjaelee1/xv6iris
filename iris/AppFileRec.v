@@ -67,14 +67,11 @@ Local Open Scope Z_scope.
 (* ====================================================================== *)
 (*  1.  THE CONCLUSION                                                     *)
 (*                                                                        *)
-(*  [FileDisc.file_phi]'s shape, with the one weakening [FileOut.v]'s      *)
-(*  [file_led_tx] records: the per-cycle boot state is admissible for the  *)
-(*  lines typed in the WHOLE history and not only for those typed in       *)
-(*  strictly earlier cycles.  Like [AppEcho.echo_phi] it reads the trace   *)
-(*  alone, so the state argument is dropped.                               *)
+(*  [FileDisc.file_phi] VERBATIM.  Like [AppEcho.echo_phi] it reads the    *)
+(*  trace alone, so the state argument is dropped.                         *)
 (* ====================================================================== *)
 Definition file_phi : gstate -> list mobs -> Prop :=
-  fun _ h => disc_f h -> file_good h.
+  fun _ h => FileDisc.file_phi h.
 
 Section FileApp.
   Context {Σ : gFunctors}.
@@ -217,10 +214,12 @@ Section FileApp.
     iAssert (|==> (if i is Uart0 then fecl c (S gen_id) ho H else emp)
                   ∗ (file_taint (fgn_cl c)
                      ∨ (match i with
-                        | Uart0 => ∃ s0 : fst,
+                        | Uart0 => ∃ (s0 : fst) (vf : file_era),
                                      ⌜good_out_f s0
                                         (open_seg h ++ [ObsUartOut Uart0 b])⌝
                                      ∗ f0_typed c s0
+                                     ∗ file_era_pin c (obs_boots h) vf
+                                     ∗ f0_lb vf s0
                         | _ => True
                         end)))%I with "[Ho]" as ">[Ho Hgo]".
     { destruct i; last first.
@@ -235,15 +234,23 @@ Section FileApp.
         rewrite -(DevModel.uart_tx_pop_acc u b u' Htxp) /DevModel.uart_acc
                 (DevModel.uart_tx_pop_out u b u' Htxp).
         exists (u_tx u'). by rewrite -app_assoc. }
+      (* THE DRAIN IS AT A NONEMPTY WIRE -- this byte is on it -- which is
+         what lets it hand over the era's boot state's lower bound *)
+      assert (Hne : obs_wire Uart0 (open_seg h ++ [ObsUartOut Uart0 b]) <> []).
+      { rewrite obs_wire_app.
+        replace (obs_wire Uart0 [ObsUartOut Uart0 b]) with [b] by reflexivity.
+        intros Hz. apply (f_equal length) in Hz.
+        rewrite length_app in Hz. cbn [length] in Hz. lia. }
       iDestruct (fecl_drain c (S gen_id) h ho H
                    (open_seg h ++ [ObsUartOut Uart0 b])
-                   Hsh Hbt Hpo Hins ltac:(rewrite Hacc; exact Hpre)
+                   Hsh Hbt Hpo Hins ltac:(rewrite Hacc; exact Hpre) Hne
                    with "Ho") as "[Ho Hgo]".
       iModIntro. iFrame "Ho".
       rewrite /fdrain_ret.
       iDestruct "Hgo" as "[HT | Hgo]"; [by iLeft |].
-      iDestruct "Hgo" as (s0) "(%Hg & %Hfok & #Hty)".
-      iRight. iExists s0. iFrame "Hty". by iPureIntro. }
+      iDestruct "Hgo" as (s0 vf) "(%Hg & %Hfok & #Hty & #Hfp & #Hlb)".
+      iRight. iExists s0, vf. rewrite Hbt. iFrame "Hty Hfp Hlb".
+      by iPureIntro. }
     iMod (file_led_tx c h i b Hsh with "Hgo Hled") as "Hled".
     iModIntro. iFrame "Ho Hg Hled".
   Qed.

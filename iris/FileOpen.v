@@ -145,14 +145,22 @@ Section FileOpen.
     iDestruct "Hp" as "[#Ht | (%Hpins & Hc & Hf)]".
     { iSplitR; [ by iLeft |]. iFrame "Hd". by iRight. }
     rewrite /f_state.
+    iDestruct "Hf" as "[[Hw Hf] | Hf]"; last first.
+    { (* THE ESCROW ARM: the deed is WHOLE in the claim, and a fraction
+         meets it exactly as it meets the in-flight arm (lane F-OPEN-5) *)
+      rewrite /f_esc_live.
+      iDestruct "Hf" as (h0 s0 g) "(_ & _ & Hwh & _ & _ & _)".
+      iDestruct (fdq_whole_excl with "Hd Hwh") as %[]. }
+    rewrite /f_core.
     iDestruct "Hf" as "[Hf | Hf]"; last first.
-    { iDestruct "Hf" as (s0 s1) "(Hw & _ & _ & _)".
-      iDestruct (fdq_whole_excl with "Hd Hw") as %[]. }
+    { iDestruct "Hf" as (s0 s1) "(Hwh & _ & _ & _)".
+      iDestruct (fdq_whole_excl with "Hd Hwh") as %[]. }
     iDestruct "Hf" as (s') "(Hd' & Ht & #Hty & %Hok)".
     iDestruct (fdq_agree r q (1/2) s s' with "Hd Hd'") as %<-.
-    iSplitL "Hc Hd' Ht".
-    { iRight. iSplitR; [ by iPureIntro |]. iFrame "Hc". iLeft. iExists s.
-      iFrame "Hd' Ht Hty". by iPureIntro. }
+    iSplitL "Hc Hw Hd' Ht".
+    { iRight. iSplitR; [ by iPureIntro |]. iFrame "Hc".
+      iApply (f_state_of_core with "Hw").
+      iApply (f_core_exact c r v s Hok with "Hd' Ht Hty"). }
     iFrame "Hd". iLeft. by iPureIntro.
   Qed.
 
@@ -229,6 +237,89 @@ Section FileOpen.
       [ exact (proj1 H1) | exact (proj2 H1) | exact H2 ].
   Qed.
 
+  (* ---- 2a.  THE CLAIM READ THROUGH AN ESCROW (lane F-OPEN-5) ----
+
+     [file_claim_read]'s twin for a caller whose deed is PARKED IN THE
+     CLAIM ([AppFile.file_escrow_park]).  What it holds is the escrow's
+     UNSPENT TOKEN beside a persistent witness of the ledger entry, and
+     what it reads is the same three facts -- so every leg of the create
+     reads its claim exactly as it did before, at a deed it no longer
+     holds. *)
+  Lemma file_claim_read_esc (γfs : fs_names) (c : file_fixed) (r : file_names)
+      (jc : Z) (n : nat) (s : dst) (g : gname) (I : gmap Z fs_node) :
+    file_app = MkAppcfg file_names (file_pred c) r ->
+    app_inv γfs -∗ cons_made (fn_cons r) jc -∗ esc_key c r n s g -∗
+    esc_tok g -∗
+    ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I ={appE}=∗
+      ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I ∗ esc_tok g ∗
+      (⌜fclaim_facts jc s (abs_view I)⌝ ∨ file_taint c).
+  Proof using .
+    intros Heq. iIntros "#Hinv #Hm #Hwit Htok Hka".
+    iDestruct (file_escrow_law c r) as "#Hlaw".
+    iDestruct (file_cons_law c r jc with "Hm") as "#Hcl".
+    iMod (inv_acc appE appN with "Hinv") as "[Hbody Hclose]"; [ set_solver | ].
+    iEval (rewrite /app_body) in "Hbody".
+    iDestruct "Hbody" as (I') "(>Hh & Hp & >%Hdom & #Hx)".
+    iDestruct (ghost_map_auth_agree with "Hka Hh") as %<-.
+    iEval (rewrite Heq; cbn [app_pred app_run app_names]) in "Hp".
+    iAssert (▷ (file_pred c r (abs_view I) ∗ esc_tok g
+                ∗ ((⌜f_ok (abs_view I) s /\ file_fs_pure (abs_view I)⌝
+                    ∗ f_typed c s) ∨ file_taint c)))%I
+      with "[Hp Htok]" as "Hpc".
+    { iNext. iApply ("Hlaw" with "Hwit Htok Hp"). }
+    iDestruct "Hpc" as "[Hp [Htok Hc1]]". iMod "Hc1". iMod "Htok".
+    iAssert (▷ (file_pred c r (abs_view I)
+                ∗ (⌜cons_present_at jc (abs_view I)⌝ ∨ file_taint c)))%I
+      with "[Hp]" as "Hpd".
+    { iNext. iApply ("Hcl" with "Hp"). }
+    iDestruct "Hpd" as "[Hp Hc2]". iMod "Hc2".
+    iMod ("Hclose" with "[Hh Hp]") as "_".
+    { iNext. rewrite /app_body. iExists I. iFrame "Hh Hx".
+      iSplitL; [| by iPureIntro ].
+      rewrite Heq. cbn [app_pred app_run app_names]. iExact "Hp". }
+    iModIntro. iFrame "Hka Htok".
+    iDestruct "Hc1" as "[[%H1 _] | #HT]"; [| by iRight ].
+    iDestruct "Hc2" as "[%H2 | #HT]"; [| by iRight ].
+    iLeft. iPureIntro. rewrite /fclaim_facts. split_and!;
+      [ exact (proj1 H1) | exact (proj2 H1) | exact H2 ].
+  Qed.
+
+  (* ...AND WITH NOTHING IN HAND AT ALL: the persistent witness alone,
+     which is what the create's [dirlookup] observation carries.  The
+     answer is the DISJUNCTION, and the holder of the unspent token is
+     what refutes its second half downstream ([file_trunc_of_exists]). *)
+  Lemma file_escrow_read_at (γfs : fs_names) (c : file_fixed) (r : file_names)
+      (n : nat) (s : dst) (g : gname) (I : gmap Z fs_node) :
+    file_app = MkAppcfg file_names (file_pred c) r ->
+    app_inv γfs -∗ esc_key c r n s g -∗
+    ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I ={appE}=∗
+      ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I ∗
+      (⌜f_ok (abs_view I) s⌝ ∨ esc_spent g ∨ file_taint c).
+  Proof using .
+    intros Heq. iIntros "#Hinv #Hwit Hka".
+    iDestruct (file_escrow_read c r) as "#Hlaw".
+    iMod (inv_acc appE appN with "Hinv") as "[Hbody Hclose]"; [ set_solver | ].
+    iEval (rewrite /app_body) in "Hbody".
+    iDestruct "Hbody" as (I') "(>Hh & Hp & >%Hdom & #Hx)".
+    iDestruct (ghost_map_auth_agree with "Hka Hh") as %<-.
+    iEval (rewrite Heq; cbn [app_pred app_run app_names]) in "Hp".
+    iAssert (▷ (file_pred c r (abs_view I)
+                ∗ ((⌜f_ok (abs_view I) s /\ file_fs_pure (abs_view I)⌝
+                    ∗ f_typed c s) ∨ esc_spent g ∨ file_taint c)))%I
+      with "[Hp]" as "Hpc".
+    { iNext. iApply ("Hlaw" with "Hwit Hp"). }
+    iDestruct "Hpc" as "[Hp Hc]". iMod "Hc".
+    iMod ("Hclose" with "[Hh Hp]") as "_".
+    { iNext. rewrite /app_body. iExists I. iFrame "Hh Hx".
+      iSplitL; [| by iPureIntro ].
+      rewrite Heq. cbn [app_pred app_run app_names]. iExact "Hp". }
+    iModIntro. iFrame "Hka".
+    iDestruct "Hc" as "[[%H1 _] | [#Hsp | #HT]]".
+    - iLeft. iPureIntro. exact (proj1 H1).
+    - iRight. by iLeft.
+    - iRight. by iRight.
+  Qed.
+
   (* THE FREE STEP at the era's record: [AppFile.file_step_free] wrapped in
      [AppInv.app_step]'s shape.  [file_app_step_park]'s twin, with no
      resource at all. *)
@@ -260,21 +351,35 @@ Section FileOpen.
   (*  [FsAbsCreateFire.acre_commit_at_gen]'s note).                        *)
   (* =================================================================== *)
 
-  (* ---- 3a.  THE FAMILIES ---- *)
+  (* ---- 3a.  THE FAMILIES, AT AN ESCROWED DEED (lane F-OPEN-5) ----
+
+     The deed itself is no longer in any of them: it is PARKED IN THE
+     CLAIM before the call ([AppFile.file_escrow_park]).  What travels is
+     [fesc_res] -- the holder's TICKET, which is what [AppFile.file_resync]
+     keys on and which the create's own legs need for phase 2, beside the
+     escrow's UNSPENT TOKEN, which is what says the escrow has not fired.
+     The ledger witness is PERSISTENT and rides as a premise of every
+     lemma, never in a family: that is what makes the lookup piece free,
+     and it is the whole reason the escrow lives in the claim's ledger
+     rather than in a second fraction (see [AppFile] section 2a). *)
+  Definition fesc_res (r : file_names) (s : dst) (g : gname) : iProp Σ :=
+    (ftkt r s ∗ esc_tok g)%I.
 
   Definition file_arm_fam (c : file_fixed) (r : file_names) (jc : Z) (s : dst)
-      : pfam Σ (aview -> Z -> iProp Σ) :=
+      (g : gname) : pfam Σ (aview -> Z -> iProp Σ) :=
     MkPfam (fun (av : aview) (_ : Z) =>
-              ((⌜fclaim_facts jc s av⌝ ∗ fown r s) ∨ file_taint c)%I)
-           (fown r s).
+              ((⌜fclaim_facts jc s av⌝ ∗ fesc_res r s g) ∨ file_taint c)%I)
+           (fesc_res r s g).
 
   Definition file_unarm_fam (c : file_fixed) (r : file_names) (s : dst)
-      : pfam Σ (aview -> Z -> iProp Σ) :=
-    MkPfam (fun (_ : aview) (_ : Z) => (fown r s ∨ file_taint c)%I) True%I.
+      (g : gname) : pfam Σ (aview -> Z -> iProp Σ) :=
+    MkPfam (fun (_ : aview) (_ : Z) => (fesc_res r s g ∨ file_taint c)%I)
+           True%I.
 
   (* the parent leg's receipt: at `f`'s own create the deed AT THE NEW
-     STATE -- present, empty, at the inum the arm chose -- at any other
-     name the deed back, or the taint *)
+     STATE -- present, empty, at the inum the arm chose, and OUT OF THE
+     ESCROW, because the leg fires it and phase 2 hands both halves back
+     -- at any other name the escrow untouched, or the taint. *)
   (* THE FIRST ARM CARRIES THE CLAIM'S READING AT THE LEG'S OWN VIEW
      (lane F-OPEN-2).  A create at any name but `f` leaves the deed alone,
      and the three pure facts it read there are what the O_TRUNC leg
@@ -282,44 +387,47 @@ Section FileOpen.
      is [AFile []] at nlink 1 ([cre_pre]), so it is none of the four pinned
      binaries by LENGTH, and it is `f`'s own inum only if `f` is empty. *)
   Definition file_cre_recv (c : file_fixed) (r : file_names) (jc : Z)
-      (s : dst) : aview -> Z -> fname -> Z -> iProp Σ :=
+      (s : dst) (g : gname) : aview -> Z -> fname -> Z -> iProp Σ :=
     fun (av : aview) (d : Z) (nm : fname) (i : Z) =>
-      ((⌜nm <> fname_f /\ fclaim_facts jc s av⌝ ∗ fown r s)
+      ((⌜nm <> fname_f /\ fclaim_facts jc s av⌝ ∗ fesc_res r s g)
        ∨ (⌜s = None /\ d = ROOTINO /\ nm = fname_f⌝ ∗ fown r (Some (i, [])))
        ∨ file_taint c)%I.
 
   Definition file_cre_fam (c : file_fixed) (r : file_names) (jc : Z)
-      (s : dst) : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ) :=
-    MkPfam (file_cre_recv c r jc s) True%I.
+      (s : dst) (g : gname) : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ) :=
+    MkPfam (file_cre_recv c r jc s g) True%I.
 
   (* ---- 3b.  THE ARM LEG: free, and it MINTS THE PERMIT ---- *)
 
   Lemma file_arm_commit (γfs : fs_names) (c : file_fixed) (r : file_names)
-      (jc : Z) (s : dst) (bsc : list (bv 8)) :
+      (jc : Z) (n : nat) (s : dst) (g : gname) (bsc : list (bv 8)) :
     file_app = MkAppcfg file_names (file_pred c) r ->
-    app_inv γfs -∗ cons_made (fn_cons r) jc -∗ fown r s -∗
+    app_inv γfs -∗ cons_made (fn_cons r) jc -∗ esc_key c r n s g -∗
+    fesc_res r s g -∗
     aarm_commit_at (fs_gamma_L γfs) appE (AFile bsc)
-      (file_arm_fam c r jc s).(pf_recv).
+      (file_arm_fam c r jc s g).(pf_recv).
   Proof using .
-    intros Heq. iIntros "#Hinv #Hm [Hd Ht]".
+    intros Heq. iIntros "#Hinv #Hm #Hwit [Htk Htok]".
     assert (Hnd : forall e : gmap fname Z, AFile bsc <> ADir e)
       by (intros e Hc; discriminate Hc).
     rewrite /aarm_commit_at. iIntros (I i) "%Hnone %Hsome Hka".
-    iMod (file_claim_read γfs c r jc s (1/2) I Heq with "Hinv Hm Hd Hka")
-      as "(Hka & Hd & [%Hf | #HT])"; last first.
+    iMod (file_claim_read_esc γfs c r jc n s g I Heq
+            with "Hinv Hm Hwit Htok Hka") as "(Hka & Htok & [%Hf | #HT])";
+      last first.
     { iModIntro. iFrame "Hka". iSplitR.
       { iApply (file_app_step_taint c r i I _ Heq). iExact "HT". }
       iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'". cbn [pf_recv].
       by iRight. }
     destruct Hf as (Hok & Hpure & Hcons).
-    iModIntro. iFrame "Hka". iSplitR "Hd Ht".
+    iModIntro. iFrame "Hka". iSplitR "Htk Htok".
     { iApply (file_app_step_free_at c r i I _ Heq).
       - intros _. exact (file_fs_pure_arm i (AFile bsc) (abs_view I) Hnone Hpure).
       - exact (cons_absent_arm_nd i (AFile bsc) (abs_view I) Hnd).
       - intros j. exact (cons_present_arm_nd j i (AFile bsc) (abs_view I) Hnone).
       - intros s'. exact (f_ok_arm i (AFile bsc) (abs_view I) s' Hnone Hnd). }
     iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'". cbn [pf_recv].
-    iLeft. iFrame "Hd Ht". iPureIntro. by rewrite /fclaim_facts.
+    iLeft. rewrite /fesc_res. iFrame "Htk Htok". iPureIntro.
+    by rewrite /fclaim_facts.
   Qed.
 
   (* ---- 3c.  THE UNARM LEG: free, and it SPENDS THE PERMIT ----
@@ -331,30 +439,31 @@ Section FileOpen.
      console's is the flag's ([file_cons_law]); `f`'s is the DEED'S OWN
      INUM, which is why the deed's state carries it. *)
   Lemma file_unarm_commit (γfs : fs_names) (c : file_fixed) (r : file_names)
-      (jc : Z) (s : dst) :
+      (jc : Z) (n : nat) (s : dst) (g : gname) :
     file_app = MkAppcfg file_names (file_pred c) r ->
-    app_inv γfs -∗ cons_made (fn_cons r) jc -∗
-    aunarm_of_arm (fs_gamma_L γfs) appE (file_arm_fam c r jc s)
-      (file_unarm_fam c r s).(pf_recv).
+    app_inv γfs -∗ cons_made (fn_cons r) jc -∗ esc_key c r n s g -∗
+    aunarm_of_arm (fs_gamma_L γfs) appE (file_arm_fam c r jc s g)
+      (file_unarm_fam c r s g).(pf_recv).
   Proof using .
-    intros Heq. iIntros "#Hinv #Hm". rewrite /aunarm_of_arm.
+    intros Heq. iIntros "#Hinv #Hm #Hwit". rewrite /aunarm_of_arm.
     iIntros (i) "Harm". rewrite /cre_arm_fired.
     iDestruct "Harm" as (av0) "[%Hfree Hrec]". cbn [pf_recv].
     rewrite /aunarm_commit_at. iIntros (I c0) "%Hrow Hka".
-    iDestruct "Hrec" as "[[%Hf0 [Hd Ht]] | #HT]"; last first.
+    iDestruct "Hrec" as "[[%Hf0 [Htk Htok]] | #HT]"; last first.
     { iModIntro. iFrame "Hka". iSplitR.
       { iApply (file_app_step_taint c r i I _ Heq). iExact "HT". }
       iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'". cbn [pf_recv].
       by iRight. }
     destruct Hf0 as (Hok0 & Hpure0 & Hcons0).
-    iMod (file_claim_read γfs c r jc s (1/2) I Heq with "Hinv Hm Hd Hka")
-      as "(Hka & Hd & [%Hf | #HT])"; last first.
+    iMod (file_claim_read_esc γfs c r jc n s g I Heq
+            with "Hinv Hm Hwit Htok Hka") as "(Hka & Htok & [%Hf | #HT])";
+      last first.
     { iModIntro. iFrame "Hka". iSplitR.
       { iApply (file_app_step_taint c r i I _ Heq). iExact "HT". }
       iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'". cbn [pf_recv].
       by iRight. }
     destruct Hf as (Hok & Hpure & Hcons).
-    iModIntro. iFrame "Hka". iSplitR "Hd Ht".
+    iModIntro. iFrame "Hka". iSplitR "Htk Htok".
     { iApply (file_app_step_free_at c r i I _ Heq).
       - intros _.
         exact (file_fs_pure_unarm_fresh i av0 (abs_view I) Hfree Hpure0 Hpure).
@@ -371,42 +480,48 @@ Section FileOpen.
       - intros s' Hs'. rewrite (f_ok_det (abs_view I) s' s Hs' Hok).
         exact (f_ok_unarm_fresh i av0 (abs_view I) s Hfree Hok0 Hok). }
     iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'". cbn [pf_recv].
-    iLeft. iFrame "Hd Ht".
+    iLeft. rewrite /fesc_res. iFrame "Htk Htok".
   Qed.
 
   (* ---- 3d.  THE PARENT LEG: the two-phase move, at `f` ---- *)
 
   (* The name the create reached decides the leg: at `f` in the root the
-     claim moves ABSENT -> present-and-empty (phase 1 parks the deed,
-     phase 2 resyncs it at the new content); at any other name the claim is
-     carried and the deed comes straight back.  The deed's own state
-     decides which of the two is even possible -- [cre_pre] says `f` was
-     ABSENT when the leg fired, so at a PRESENT deed the `f` case is
-     refuted outright. *)
+     claim moves ABSENT -> present-and-empty -- and THE ESCROW IS WHAT
+     PAYS FOR IT: phase 1 is [AppFile.file_app_step_escrow], which moves
+     the content of the deed the claim already holds WHOLE and spends the
+     one-shot, and phase 2 is [AppFile.file_resync] exactly as before, on
+     the ticket the holder kept.  At any other name the claim is carried
+     and the escrow comes back untouched.  The deed's own state decides
+     which of the two is even possible -- [cre_pre] says `f` was ABSENT
+     when the leg fired, so at a PRESENT deed the `f` case is refuted
+     outright. *)
   Lemma file_acre_commit (γfs : fs_names) (c : file_fixed) (r : file_names)
-      (jc : Z) (s : dst) (ls : list wordline) (ws : wordline) :
+      (jc : Z) (n : nat) (s : dst) (g : gname)
+      (ls : list wordline) (ws : wordline) :
     file_app = MkAppcfg file_names (file_pred c) r ->
     ws ∈ ls -> EchoDisc.line_ok ws ->
-    app_inv γfs -∗ cons_made (fn_cons r) jc -∗ fl_lb c ls -∗
+    app_inv γfs -∗ cons_made (fn_cons r) jc -∗ esc_key c r n s g -∗
+    fl_lb c ls -∗
     acre_commit_at_gen (fs_gamma_L γfs) appE (fun _ _ => AFile [])
       (fun d : Z => ⌜d = ROOTINO⌝%I)
-      (file_arm_fam c r jc s) (file_cre_fam c r jc s).(pf_recv).
+      (file_arm_fam c r jc s g) (file_cre_fam c r jc s g).(pf_recv).
   Proof using .
-    intros Heq Hin Hok. iIntros "#Hinv #Hm #Hlb".
+    intros Heq Hin Hok. iIntros "#Hinv #Hm #Hwit #Hlb".
     assert (Hnd : forall e : gmap fname Z, AFile [] <> ADir e)
       by (intros e Hc; discriminate Hc).
     rewrite /acre_commit_at_gen.
     iIntros (I d i nm ents nl) "%Hpre %Hdots Harm %Hd Hka". subst d.
     rewrite /cre_arm_fired. iDestruct "Harm" as (av0) "[%Hfree Hrec]".
     cbn [pf_recv].
-    iDestruct "Hrec" as "[[%Hf0 [Hd Ht]] | #HT]"; last first.
+    iDestruct "Hrec" as "[[%Hf0 [Htk Htok]] | #HT]"; last first.
     { iModIntro. iFrame "Hka". iSplitR; [ done |]. iSplitR.
       { iApply (file_app_step_taint c r ROOTINO I _ Heq). iExact "HT". }
       iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'".
       rewrite /file_cre_fam /file_cre_recv. cbn [pf_recv].
       iRight. iRight. iExact "HT". }
-    iMod (file_claim_read γfs c r jc s (1/2) I Heq with "Hinv Hm Hd Hka")
-      as "(Hka & Hd & [%Hf | #HT])"; last first.
+    iMod (file_claim_read_esc γfs c r jc n s g I Heq
+            with "Hinv Hm Hwit Htok Hka") as "(Hka & Htok & [%Hf | #HT])";
+      last first.
     { iModIntro. iFrame "Hka". iSplitR; [ done |]. iSplitR.
       { iApply (file_app_step_taint c r ROOTINO I _ Heq). iExact "HT". }
       iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'".
@@ -414,7 +529,7 @@ Section FileOpen.
       iRight. iRight. iExact "HT". }
     destruct Hf as (Hokv & Hpure & Hcons).
     destruct (decide (nm = fname_f)) as [-> | Hne].
-    - (* THE CREATE AT `f`: the deed must be ABSENT, and it moves *)
+    - (* THE CREATE AT `f`: the deed must be ABSENT, and the ESCROW moves *)
       pose proof (cre_pre_f_absent (abs_view I) ents nl i (AFile []) Hpre)
         as HNone.
       assert (Hs : s = None)
@@ -422,9 +537,10 @@ Section FileOpen.
       subst s.
       destruct (file_create_at_f (abs_view I) ents nl i Hpre Hpure)
         as (Hp1 & Hp2 & Hp3 & Hp4).
-      iModIntro. iFrame "Hka". iSplitR; [ done |]. iSplitL "Hd".
-      { iApply (file_app_step_park c r ROOTINO I _ None (Some (i, [])) Heq
-                  (fun _ => Hp1) Hp2 Hp3 (fun _ => Hp4) with "Hd []").
+      iModIntro. iFrame "Hka". iSplitR; [ done |]. iSplitL "Htok".
+      { iApply (file_app_step_escrow c r ROOTINO I _ n None (Some (i, [])) g
+                  Heq (fun _ => Hp1) Hp2 Hp3 (fun _ => Hp4)
+                  with "Hwit Htok []").
         rewrite -(subseq_nil (echo_chunks ws)).
         iApply (f_typed_some c ls ws [] i Hin Hok
                   (sel_ok_nil (echo_chunks ws)) with "Hlb"). }
@@ -433,13 +549,13 @@ Section FileOpen.
               ltac:(set_solver) Heq
               ltac:(rewrite -(f_ok_fcontent (abs_view I') (Some (i, [])));
                     [ reflexivity | rewrite Hav; exact Hp4 ])
-              ltac:(discriminate) with "Hinv Ht Hka'") as "(Hka' & Hres)".
+              ltac:(discriminate) with "Hinv Htk Hka'") as "(Hka' & Hres)".
       iModIntro. iFrame "Hka'".
       rewrite /file_cre_fam /file_cre_recv. cbn [pf_recv].
       iDestruct "Hres" as "[Hown | [_ #HT]]".
       + iRight. iLeft. iFrame "Hown". iPureIntro. split_and!; reflexivity.
       + iRight. iRight. iExact "HT".
-    - (* ANY OTHER NAME: the claim is carried, the deed comes back *)
+    - (* ANY OTHER NAME: the claim is carried, the escrow comes back *)
       assert (Hnc : nm <> fname_console).
       { intros ->. destruct Hpre as (Hdr & Hfr & _).
         pose proof (cons_present_astep jc (abs_view I) Hcons) as Hst.
@@ -456,7 +572,8 @@ Section FileOpen.
                               (abs_view I) s' Hpre Hnd (or_intror Hne)). }
       iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'".
       rewrite /file_cre_fam /file_cre_recv. cbn [pf_recv].
-      iLeft. iFrame "Hd Ht". iPureIntro. split; [ exact Hne | ].
+      iLeft. rewrite /fesc_res. iFrame "Htk Htok". iPureIntro.
+      split; [ exact Hne | ].
       rewrite /fclaim_facts. split_and!;
         [ exact Hokv | exact Hpure | exact Hcons ].
   Qed.
@@ -487,6 +604,24 @@ Section FileOpen.
         v !! i = Some (MkAnode (AFile bs) 1%nat)
         /\ (length bs < EchoDisc.line_max)%nat.
 
+  (* the whole pure reading, off ONE arm's typed witness: this is what
+     every arm of [f_state] -- the exact one, the in-flight one and the
+     ESCROW -- gives, and the only thing that differs between them is
+     which state the witness is at. *)
+  Lemma fclaim_free_of (c : file_fixed) (v : aview) (s : dst) :
+    file_fs_pure v -> f_ok v s -> f_typed c s -∗ ⌜fclaim_free v⌝.
+  Proof using .
+    intros Hpins Hok. iIntros "#Hty". destruct s as [[i0 bs0] |].
+    - rewrite /f_typed. iDestruct "Hty" as (ls) "[_ %Hbt]". iPureIntro.
+      split; [ exact Hpins |]. intros i Hst.
+      destruct Hok as (Hst0 & Hrow0). rewrite Hst0 in Hst.
+      injection Hst as <-. exists bs0. split; [ exact Hrow0 |].
+      exact (f_bytes_typed_short ls bs0 Hbt).
+    - iPureIntro. split; [ exact Hpins |]. intros i Hst.
+      assert (Hab : astep v FsImg.ROOTINO fname_f = None) by exact Hok.
+      rewrite Hab in Hst. discriminate.
+  Qed.
+
   Lemma file_claim_read_free (γfs : fs_names) (c : file_fixed) (r : file_names)
       (I : gmap Z fs_node) :
     file_app = MkAppcfg file_names (file_pred c) r ->
@@ -511,37 +646,29 @@ Section FileOpen.
       iAssert (f_state c r (abs_view I)
                ∗ ⌜fclaim_free (abs_view I)⌝)%I with "[Hf]" as "[Hf %Hfree]".
       { rewrite /f_state.
-        iDestruct "Hf" as "[Hf | Hf]".
-        - iDestruct "Hf" as (s') "(Hd & Htk & #Hty & %Hok)".
-          iAssert (⌜fclaim_free (abs_view I)⌝)%I as "%Hfree".
-          { destruct s' as [[i0 bs0] |].
-            - rewrite /f_typed.
-              iDestruct "Hty" as (ls) "[_ %Hbt]". iPureIntro.
-              split; [ exact Hpins |]. intros i Hst.
-              destruct Hok as (Hst0 & Hrow0). rewrite Hst0 in Hst.
-              injection Hst as <-. exists bs0. split; [ exact Hrow0 |].
-              exact (f_bytes_typed_short ls bs0 Hbt).
-            - iPureIntro. split; [ exact Hpins |]. intros i Hst.
-              assert (Hab : astep (abs_view I) FsImg.ROOTINO fname_f = None)
-                by exact Hok.
-              rewrite Hab in Hst. discriminate. }
+        iDestruct "Hf" as "[[Hw Hf] | Hf]"; last first.
+        - (* THE ESCROW ARM carries the typed witness of the escrowed
+             content exactly as the exact arm does (lane F-OPEN-5) *)
+          rewrite /f_esc_live.
+          iDestruct "Hf" as (h0 s0 g) "(Ha & #Hrec & Hwh & Htk & #Hty & %Hok)".
+          iDestruct (fclaim_free_of c (abs_view I) s0 Hpins Hok with "Hty")
+            as "%Hfree".
           iSplitL; [| by iPureIntro ].
-          iLeft. iExists s'. iFrame "Hd Htk Hty". by iPureIntro.
-        - iDestruct "Hf" as (s0 s1) "(Hw & Htk & #Hty & %Hok)".
-          iAssert (⌜fclaim_free (abs_view I)⌝)%I as "%Hfree".
-          { destruct s1 as [[i0 bs0] |].
-            - rewrite /f_typed.
-              iDestruct "Hty" as (ls) "[_ %Hbt]". iPureIntro.
-              split; [ exact Hpins |]. intros i Hst.
-              destruct Hok as (Hst0 & Hrow0). rewrite Hst0 in Hst.
-              injection Hst as <-. exists bs0. split; [ exact Hrow0 |].
-              exact (f_bytes_typed_short ls bs0 Hbt).
-            - iPureIntro. split; [ exact Hpins |]. intros i Hst.
-              assert (Hab : astep (abs_view I) FsImg.ROOTINO fname_f = None)
-                by exact Hok.
-              rewrite Hab in Hst. discriminate. }
-          iSplitL; [| by iPureIntro ].
-          iRight. iExists s0, s1. iFrame "Hw Htk Hty". by iPureIntro. }
+          iRight. iExists h0, s0, g. iFrame "Ha Hrec Hwh Htk Hty".
+          by iPureIntro.
+        - rewrite /f_core. iDestruct "Hf" as "[Hf | Hf]".
+          + iDestruct "Hf" as (s') "(Hd & Htk & #Hty & %Hok)".
+            iDestruct (fclaim_free_of c (abs_view I) s' Hpins Hok with "Hty")
+              as "%Hfree".
+            iSplitL; [| by iPureIntro ].
+            iLeft. iFrame "Hw". iLeft. iExists s'. iFrame "Hd Htk Hty".
+            by iPureIntro.
+          + iDestruct "Hf" as (s0 s1) "(Hwh & Htk & #Hty & %Hok)".
+            iDestruct (fclaim_free_of c (abs_view I) s1 Hpins Hok with "Hty")
+              as "%Hfree".
+            iSplitL; [| by iPureIntro ].
+            iLeft. iFrame "Hw". iRight. iExists s0, s1.
+            iFrame "Hwh Htk Hty". by iPureIntro. }
       iSplitL "Hc Hf".
       - iRight. iSplitR; [ by iPureIntro |]. iFrame "Hc Hf".
       - iLeft. by iPureIntro. }
@@ -553,27 +680,76 @@ Section FileOpen.
   Qed.
 
   (* THE EXISTS OBSERVATION'S FAMILY: the pure reading above, at the view
-     create's [dirlookup] fired at.  Nothing linear -- see the note. *)
-  Definition file_dlk_recv (c : file_fixed)
+     create's [dirlookup] fired at, AND THE ESCROW READ AT THAT SAME VIEW
+     (lane F-OPEN-5).  Still nothing linear: the escrow's tie is the
+     PERSISTENT ledger witness, which is exactly what this piece needs,
+     because the syscall's fold DROPS this receipt on the arm where the
+     permit was never paid ([SpecSysOpen.cre_rcpt_kept] is [emp] at a
+     truncating create) -- a fraction handed to this piece would be a
+     fraction the deed could never get back. *)
+  Definition file_dlk_recv (c : file_fixed) (r : file_names) (n : nat)
+      (s : dst) (g : gname)
       : aview -> Z -> fname -> Z -> iProp Σ :=
     fun (av : aview) (_ : Z) (_ : fname) (_ : Z) =>
-      (⌜fclaim_free av⌝ ∨ file_taint c)%I.
+      ((⌜fclaim_free av⌝ ∗ (⌜f_ok av s⌝ ∨ esc_spent g)) ∨ file_taint c)%I.
 
-  Definition file_dlk_fam (c : file_fixed)
+  Definition file_dlk_fam (c : file_fixed) (r : file_names) (n : nat)
+      (s : dst) (g : gname)
       : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ) :=
-    MkPfam (file_dlk_recv c) True%I.
+    MkPfam (file_dlk_recv c r n s g) True%I.
 
-  Lemma file_dlk_piece (γfs : fs_names) (c : file_fixed) (r : file_names) :
+  Lemma file_dlk_piece (γfs : fs_names) (c : file_fixed) (r : file_names)
+      (n : nat) (s : dst) (g : gname) :
     file_app = MkAppcfg file_names (file_pred c) r ->
-    app_inv γfs -∗
-    pf_at (dlookup_commit_at (fs_gamma_L γfs) appE) (file_dlk_fam c).
+    app_inv γfs -∗ esc_key c r n s g -∗
+    pf_at (dlookup_commit_at (fs_gamma_L γfs) appE) (file_dlk_fam c r n s g).
   Proof using .
-    intros Heq. iIntros "#Hinv". rewrite /pf_at. cbn [pf_recv pf_refund].
+    intros Heq. iIntros "#Hinv #Hwit". rewrite /pf_at. cbn [pf_recv pf_refund].
     iSplit; [| done ].
     rewrite /dlookup_commit_at. iIntros (I d i nm ents nl) "%Hd %Hnm Hka".
-    iMod (file_claim_read_free γfs c r I Heq with "Hinv Hka") as "[Hka Hres]".
+    iMod (file_claim_read_free γfs c r I Heq with "Hinv Hka") as "[Hka Hfree]".
+    iMod (file_escrow_read_at γfs c r n s g I Heq with "Hinv Hwit Hka")
+      as "[Hka Hesc]".
     iModIntro. iFrame "Hka". rewrite /file_dlk_fam /file_dlk_recv.
-    cbn [pf_recv]. iExact "Hres".
+    cbn [pf_recv].
+    iDestruct "Hfree" as "[%Hfree | #HT]"; [| by iRight ].
+    iDestruct "Hesc" as "[%Hok | [#Hsp | #HT]]".
+    - iLeft. iSplitR; [ by iPureIntro |]. iLeft. by iPureIntro.
+    - iLeft. iSplitR; [ by iPureIntro |]. by iRight.
+    - by iRight.
+  Qed.
+
+  (* THE OPEN OBSERVATION'S FAMILY: the same escrow read at the instant
+     the kernel reports the FOUND NODE'S TYPE.  That instant is later than
+     the lookup's, which is why the claim must be read AGAIN here -- and
+     it is what refutes create's F-OK's found DEVICE (lane F-OPEN-5): at
+     the deed's own inum the claim says the row is an [AFile]. *)
+  Definition file_odlk_recv (c : file_fixed) (r : file_names) (n : nat)
+      (s : dst) (g : gname) : aview -> Z -> anode -> iProp Σ :=
+    fun (av : aview) (_ : Z) (_ : anode) =>
+      ((⌜f_ok av s⌝ ∨ esc_spent g) ∨ file_taint c)%I.
+
+  Definition file_odlk_fam (c : file_fixed) (r : file_names) (n : nat)
+      (s : dst) (g : gname) : pfam Σ (aview -> Z -> anode -> iProp Σ) :=
+    MkPfam (file_odlk_recv c r n s g) True%I.
+
+  Lemma file_odlk_piece (γfs : fs_names) (c : file_fixed) (r : file_names)
+      (n : nat) (s : dst) (g : gname) :
+    file_app = MkAppcfg file_names (file_pred c) r ->
+    app_inv γfs -∗ esc_key c r n s g -∗
+    pf_at (aopen_commit_at (fs_gamma_L γfs) appE) (file_odlk_fam c r n s g).
+  Proof using .
+    intros Heq. iIntros "#Hinv #Hwit". rewrite /pf_at. cbn [pf_recv pf_refund].
+    iSplit; [| done ].
+    rewrite /aopen_commit_at. iIntros (I i a) "%Hrow Hka".
+    iMod (file_escrow_read_at γfs c r n s g I Heq with "Hinv Hwit Hka")
+      as "[Hka Hesc]".
+    iModIntro. iFrame "Hka". rewrite /file_odlk_fam /file_odlk_recv.
+    cbn [pf_recv].
+    iDestruct "Hesc" as "[%Hok | [#Hsp | #HT]]".
+    - iLeft. iLeft. by iPureIntro.
+    - iLeft. by iRight.
+    - by iRight.
   Qed.
 
   (* ---- 3f.  THE O_TRUNC LEG, KEYED TO THE CREATE'S OWN RECEIPT ----
@@ -585,38 +761,29 @@ Section FileOpen.
      [SysOpenDefs.trunc_permit_cre] is the permit the FRESH arm holds: the
      create's own fired receipt, which for this claim carries the deed.
 
-     THE TRUNCATE IS THEN FREE AT BOTH DEED VALUES, and that is the whole
+     THE TRUNCATE IS THEN FREE ON THE FRESH RUN, and that is the whole
      content: the row the call reached is the CHILD the create just made,
-     so [cre_pre] says it is [AFile []] at nlink 1, and
-       - it is none of the four pinned binaries, because a pinned row's
-         content is an ELF and this one is EMPTY
-         ([FileDeltas.f_inum_not_pinned] at length 0);
-       - it is `f`'s own inum only if `f` was already EMPTY, because the
-         two rows are the same row -- and truncating an empty `f` is the
-         identity ([FileDeltas.f_ok_trunc_nil]);
-       - and at every other inum the leg is [f_ok_trunc_ne].
-     So the deed comes back UNMOVED on both arms: at a create under
-     another name at the state it had, and at `f`'s own create at
-     [Some (i, [])], which is where the parent leg already put it. *)
+     so [cre_pre] says it is [AFile []] at nlink 1, the tie says the name
+     was `f`, and the deed is at [Some (i, [])] where the parent leg put
+     it -- so the truncate at that row is the identity
+     ([FileDeltas.f_ok_trunc_nil]) and the deed comes back unmoved. *)
 
-  (* THE RECEIPT.  Three arms and they are the three runs: the deed did
-     not move (the truncate reached a row this claim does not name), the
-     deed is at `f` PRESENT AND EMPTY at the row the truncate reached
-     (create's own child on the FRESH run, `f`'s own row on the EXISTS
-     one), or the taint. *)
+  (* THE RECEIPT.  TWO arms (lane F-OPEN-5, and this is the deliverable):
+     `f` IS PRESENT AND EMPTY AT THE ROW THE TRUNCATE REACHED -- create's
+     own child on the FRESH run, `f`'s own row on the EXISTS one -- or the
+     taint.  The old first arm ("the deed did not move") is GONE: on the
+     fresh run the tie refutes a create at any other name, and on the
+     exists run the escrow's reading at the lookup's view identifies the
+     row and refutes an absent deed outright. *)
   Definition file_trunc_recv (c : file_fixed) (r : file_names) (s : dst)
       : aview -> Z -> list (bv 8) -> iProp Σ :=
     fun (_ : aview) (i : Z) (_ : list (bv 8)) =>
-      (fown r s
-       ∨ fown r (Some (i, []))
-       ∨ file_taint c)%I.
+      (fown r (Some (i, [])) ∨ file_taint c)%I.
 
   Definition file_trunc_fam (c : file_fixed) (r : file_names) (s : dst)
       : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ) :=
     MkPfam (file_trunc_recv c r s) True%I.
 
-  (* the pure heart: at the row [cre_pre] describes, the truncate carries
-     the claim whatever the deed's state is *)
   Lemma file_trunc_free (av0 av : aview) (i : Z) (s : dst) (jc : Z) :
     av0 !! i = Some (MkAnode (AFile []) 1%nat) ->
     file_fs_pure av0 ->
@@ -649,25 +816,26 @@ Section FileOpen.
   Qed.
 
   Lemma file_trunc_of_cre (γfs : fs_names) (c : file_fixed) (r : file_names)
-      (jc : Z) (s : dst) (i : Z) :
+      (jc : Z) (n : nat) (s : dst) (g : gname) (i : Z) :
     file_app = MkAppcfg file_names (file_pred c) r ->
     app_inv γfs -∗ cons_made (fn_cons r) jc -∗
-    trunc_permit_cre (file_cre_fam c r jc s) i -∗
+    (∃ (av0 : aview) (ents : gmap fname Z) (nl0 : nat),
+       ⌜cre_pre av0 ROOTINO fname_f ents nl0 i (AFile [])⌝ ∗
+       (file_cre_fam c r jc s g).(pf_recv) av0 ROOTINO fname_f i) -∗
     atrunc_commit_i (fs_gamma_L γfs) appE i (file_trunc_recv c r s).
   Proof using .
     intros Heq. iIntros "#Hinv #Hm Hperm".
-    rewrite /trunc_permit_cre /cre_acre_fired.
-    iDestruct "Hperm" as (d nm av0 ents nl0) "[%Hpre Hrec]".
-    cbn [pf_recv]. rewrite /file_cre_fam /file_cre_recv. cbn [pf_recv].
+    iDestruct "Hperm" as (av0 ents nl0) "[%Hpre Hrec]".
+    rewrite /file_cre_fam /file_cre_recv. cbn [pf_recv].
     rewrite /atrunc_commit_i. iIntros (I bs0 nl) "%Hrow Hka".
     (* the child's row, off [cre_pre] *)
     destruct Hpre as (_ & _ & Hrow0).
-    iDestruct "Hrec" as "[[%Hfa [Hd Ht]] | [Hfb | #HT]]"; last first.
+    iDestruct "Hrec" as "[[%Hfa Hdrop] | [Hfb | #HT]]"; last first.
     { (* the taint: the step is free and the receipt is the taint *)
       iModIntro. iFrame "Hka". iSplitR.
       { iApply (file_app_step_taint c r i I _ Heq). iExact "HT". }
       iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'".
-      rewrite /file_trunc_recv. iRight. iRight. iExact "HT". }
+      rewrite /file_trunc_recv. iRight. iExact "HT". }
     - (* THE CREATE AT `f`: the deed is at [Some (i, [])] and the truncate
          is the identity there *)
       iDestruct "Hfb" as "[%Hfb [Hd Ht]]".
@@ -677,7 +845,7 @@ Section FileOpen.
       { iModIntro. iFrame "Hka". iSplitR.
         { iApply (file_app_step_taint c r i I _ Heq). iExact "HT". }
         iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'".
-        rewrite /file_trunc_recv. iRight. iRight. iExact "HT". }
+        rewrite /file_trunc_recv. iRight. iExact "HT". }
       destruct Hf as (Hok & Hpure & Hcons).
       destruct (file_trunc_free (abs_view I) (abs_view I) i (Some (i, []))
                   jc (proj2 Hok) Hpure Hok Hpure Hok Hcons)
@@ -690,27 +858,9 @@ Section FileOpen.
         - intros s' Hs'.
           rewrite (f_ok_det (abs_view I) s' (Some (i, [])) Hs' Hok). exact Hp4. }
       iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'".
-      rewrite /file_trunc_recv. iRight. iLeft. iFrame "Hd Ht".
-    - (* ANY OTHER NAME: the deed is at [s] and stays there *)
-      destruct Hfa as (_ & Hf0). destruct Hf0 as (Hok0 & Hpure0 & _).
-      iMod (file_claim_read γfs c r jc s (1/2) I Heq
-              with "Hinv Hm Hd Hka") as "(Hka & Hd & [%Hf | #HT])"; last first.
-      { iModIntro. iFrame "Hka". iSplitR.
-        { iApply (file_app_step_taint c r i I _ Heq). iExact "HT". }
-        iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'".
-        rewrite /file_trunc_recv. iRight. iRight. iExact "HT". }
-      destruct Hf as (Hok & Hpure & Hcons).
-      destruct (file_trunc_free av0 (abs_view I) i s jc Hrow0 Hpure0 Hok0
-                  Hpure Hok Hcons) as (Hp1 & Hp2 & Hp3 & Hp4).
-      iModIntro. iFrame "Hka". iSplitR "Hd Ht".
-      { iApply (file_app_step_free_at c r i I _ Heq).
-        - intros _. exact Hp1.
-        - exact Hp2.
-        - exact Hp3.
-        - intros s' Hs'. rewrite (f_ok_det (abs_view I) s' s Hs' Hok).
-          exact Hp4. }
-      iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'".
-      rewrite /file_trunc_recv. iLeft. iFrame "Hd Ht".
+      rewrite /file_trunc_recv. iLeft. rewrite /fown. iFrame "Hd Ht".
+    - (* THE TIE SAYS THE NAME WAS `f`, so this arm is refuted *)
+      exfalso. exact (proj1 Hfa eq_refl).
   Qed.
 
   (* ...AND THE PIECE, as a bundle would carry it: the keyed AU beside a
@@ -721,47 +871,68 @@ Section FileOpen.
   (* ---- 3f'.  THE EXISTS DISJUNCT: `f` WAS THERE AND THE TRUNCATE MOVES IT
 
      What the permit hands on this run is the exists observation's receipt
-     -- the pure reading of section 3e' at the view create's [dirlookup]
-     fired at -- BESIDE THE ARM PIECE THE RUN NEVER FIRED (create found
-     the name, so [ialloc] never ran), and [pf_at] is a conjunction, so
-     the piece's REFUND is the deed's whole half.  With the tie
-     ([d = ROOTINO] off the cursor, [nm = f] off the path's last element)
-     the lookup's view says the root's `f` is the row the truncate
-     reached, and the typed bound says that row is none of the four era-0
-     binaries.  The rest is the two-phase move at the deed's own value. *)
+     -- the pure reading of section 3e' and THE ESCROW'S OWN READING, both
+     at the view create's [dirlookup] fired at -- BESIDE THE ARM PIECE THE
+     RUN NEVER FIRED (create found the name, so [ialloc] never ran), and
+     [pf_at] is a conjunction, so the piece's REFUND is the escrow's
+     UNSPENT TOKEN.  The token refutes the receipt's [esc_spent] disjunct,
+     so what is left is [f_ok avx s] -- the claim's own value AT THE
+     LOOKUP'S VIEW, which is what F-OPEN-3 could not have and what
+     F-OPEN-4 could not reach through a second invariant.  At [s = None]
+     it contradicts the found entry at the tie (REFUTED); at
+     [s = Some (i, bs)] it IDENTIFIES the row, and the move
+     [Some (i, bs) -> Some (i, [])] is the escrow's fire and resync. *)
   Lemma file_trunc_of_exists (γfs : fs_names) (c : file_fixed) (r : file_names)
-      (jc : Z) (s : dst) (ls : list wordline) (ws : wordline)
+      (jc : Z) (n : nat) (s : dst) (g : gname)
+      (ls : list wordline) (ws : wordline)
       (i : Z) (avx : aview) (entsx : gmap fname Z) (nlx : nat) :
     file_app = MkAppcfg file_names (file_pred c) r ->
     avx !! FsImg.ROOTINO = Some (MkAnode (ADir entsx) nlx) ->
     entsx !! fname_f = Some i ->
     ws ∈ ls -> EchoDisc.line_ok ws ->
-    app_inv γfs -∗ cons_made (fn_cons r) jc -∗ fl_lb c ls -∗
-    (⌜fclaim_free avx⌝ ∨ file_taint c) -∗
-    fown r s -∗
+    app_inv γfs -∗ cons_made (fn_cons r) jc -∗ esc_key c r n s g -∗
+    fl_lb c ls -∗
+    ((⌜fclaim_free avx⌝ ∗ (⌜f_ok avx s⌝ ∨ esc_spent g)) ∨ file_taint c) -∗
+    fesc_res r s g -∗
     atrunc_commit_i (fs_gamma_L γfs) appE i (file_trunc_recv c r s).
   Proof using .
-    intros Heq Hrowx Hentx Hin Hokw. iIntros "#Hinv #Hm #Hlb Hfree [Hd Ht]".
+    intros Heq Hrowx Hentx Hin Hokw.
+    iIntros "#Hinv #Hm #Hwit #Hlb Hfree [Htk Htok]".
     rewrite /atrunc_commit_i. iIntros (I bs0 nl) "%Hrow Hka".
     (* the lookup's view, read: the root's `f` is [i], and its row is a
        SHORT file, so [i] is none of the four pinned binaries *)
-    iDestruct "Hfree" as "[%Hfree | #HT]"; last first.
+    iDestruct "Hfree" as "[[%Hfree Hval] | #HT]"; last first.
     { iModIntro. iFrame "Hka". iSplitR.
       { iApply (file_app_step_taint c r i I _ Heq). iExact "HT". }
       iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'".
-      rewrite /file_trunc_recv. iRight. iRight. iExact "HT". }
+      rewrite /file_trunc_recv. iRight. iExact "HT". }
+    (* THE REFUTATION: the token says the escrow never fired *)
+    iDestruct "Hval" as "[%Hokx | #Hsp]"; last first.
+    { iDestruct (esc_tok_spent g with "Htok Hsp") as %[]. }
     assert (Hstx : astep avx FsImg.ROOTINO fname_f = Some i)
       by (rewrite /astep /aents Hrowx /= /anode_ents /=; exact Hentx).
     destruct Hfree as (Hpurex & Hrowf).
     destruct (Hrowf i Hstx) as (bsx & Hrowi & Hlenx).
     destruct (f_inum_not_pinned avx i bsx Hpurex Hrowi Hlenx)
       as (N1 & N2 & N3 & N4).
-    iMod (file_claim_read γfs c r jc s (1/2) I Heq with "Hinv Hm Hd Hka")
-      as "(Hka & Hd & [%Hf | #HT])"; last first.
+    (* AND THE IDENTIFICATION: the deed's value at the lookup's own view
+       names the row the truncate reached *)
+    destruct s as [[j bs] |]; last first.
+    { (* AN ABSENT DEED IS REFUTED: the root had no `f` at [avx], and the
+         lookup found one *)
+      exfalso.
+      assert (Hab : astep avx FsImg.ROOTINO fname_f = None) by exact Hokx.
+      rewrite Hab in Hstx. discriminate. }
+    assert (Hji : j = i)
+      by (destruct Hokx as (Hstj & _); rewrite Hstj in Hstx; by injection Hstx).
+    subst j.
+    iMod (file_claim_read_esc γfs c r jc n (Some (i, bs)) g I Heq
+            with "Hinv Hm Hwit Htok Hka") as "(Hka & Htok & [%Hf | #HT])";
+      last first.
     { iModIntro. iFrame "Hka". iSplitR.
       { iApply (file_app_step_taint c r i I _ Heq). iExact "HT". }
       iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'".
-      rewrite /file_trunc_recv. iRight. iRight. iExact "HT". }
+      rewrite /file_trunc_recv. iRight. iExact "HT". }
     destruct Hf as (Hok & Hpure & Hcons).
     (* the three legs the truncate at a NON-PINNED row always carries *)
     assert (Hp1 : file_fs_pure (delta_trunc i (abs_view I)))
@@ -772,86 +943,64 @@ Section FileOpen.
     assert (Hp3 : forall j, cons_present_at j (abs_view I) ->
                   cons_present_at j (delta_trunc i (abs_view I)))
       by (intros j; exact (cons_present_trunc_any j i (abs_view I))).
-    destruct s as [[j bs] |]; last first.
-    - (* THE DEED SAYS `f` IS ABSENT: nothing of this claim is at [i], so
-         the truncate is free and the deed comes back unmoved. *)
-      iModIntro. iFrame "Hka". iSplitR "Hd Ht".
+    destruct (decide (bs = [])) as [-> | Hbs].
+    { (* it was empty already: the delta is the identity on the claim, and
+         the escrow comes home UNSPENT in phase 2 *)
+      iModIntro. iFrame "Hka". iSplitR.
       { iApply (file_app_step_free_at c r i I _ Heq).
         - intros _. exact Hp1.
         - exact Hp2.
         - exact Hp3.
-        - intros s' Hs'. rewrite (f_ok_det (abs_view I) s' None Hs' Hok).
-          apply (f_ok_trunc_ne i (abs_view I) None); [| exact Hok].
-          intros j' bs' Hc. discriminate Hc. }
-      iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'".
-      rewrite /file_trunc_recv. iLeft. iFrame "Hd Ht".
-    - destruct (decide (j = i)) as [-> | Hne]; last first.
-      { (* the truncate reached some OTHER row: free, deed unmoved *)
-        iModIntro. iFrame "Hka". iSplitR "Hd Ht".
-        { iApply (file_app_step_free_at c r i I _ Heq).
-          - intros _. exact Hp1.
-          - exact Hp2.
-          - exact Hp3.
-          - intros s' Hs'.
-            rewrite (f_ok_det (abs_view I) s' (Some (j, bs)) Hs' Hok).
-            apply (f_ok_trunc_ne i (abs_view I) (Some (j, bs))); [| exact Hok].
-            intros j' bs' Hc. injection Hc as Hj _. rewrite -Hj.
-            exact (not_eq_sym Hne). }
-        iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'".
-        rewrite /file_trunc_recv. iLeft. iFrame "Hd Ht". }
-      (* THE ROW IS `f`'s OWN: the claim moves to the empty content *)
-      destruct (decide (bs = [])) as [-> | Hbs].
-      { (* it was empty already: the delta is the identity on the claim *)
-        iModIntro. iFrame "Hka". iSplitR "Hd Ht".
-        { iApply (file_app_step_free_at c r i I _ Heq).
-          - intros _. exact Hp1.
-          - exact Hp2.
-          - exact Hp3.
-          - intros s' Hs'.
-            rewrite (f_ok_det (abs_view I) s' (Some (i, [])) Hs' Hok).
-            exact (f_ok_trunc_nil i i (abs_view I) Hok). }
-        iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'".
-        rewrite /file_trunc_recv. iRight. iLeft. iFrame "Hd Ht". }
-      assert (Hp4 : f_ok (delta_trunc i (abs_view I)) (Some (i, [])))
-        by exact (f_ok_trunc_f i bs (abs_view I) Hok).
-      iModIntro. iFrame "Hka". iSplitL "Hd".
-      { iApply (file_app_step_park c r i I _ (Some (i, bs)) (Some (i, []))
-                  Heq (fun _ => Hp1) Hp2 Hp3 (fun _ => Hp4) with "Hd []").
-        rewrite -(subseq_nil (echo_chunks ws)).
-        iApply (f_typed_some c ls ws [] i Hin Hokw
-                  (sel_ok_nil (echo_chunks ws)) with "Hlb"). }
+        - intros s' Hs'.
+          rewrite (f_ok_det (abs_view I) s' (Some (i, [])) Hs' Hok).
+          exact (f_ok_trunc_nil i i (abs_view I) Hok). }
       iIntros (I') "%Hav Hka'".
-      iMod (file_resync γfs c r (Some (i, bs)) (Some (i, [])) I' appE
-              ltac:(set_solver) Heq
-              ltac:(rewrite -(f_ok_fcontent (abs_view I') (Some (i, [])));
-                    [ reflexivity | rewrite Hav; exact Hp4 ])
-              ltac:(congruence)
-              with "Hinv Ht Hka'") as "(Hka' & Hres)".
-      iModIntro. iFrame "Hka'".
-      rewrite /file_trunc_recv.
-      iDestruct "Hres" as "[Hown | [_ #HT]]".
-      + iRight. iLeft. iExact "Hown".
-      + iRight. iRight. iExact "HT".
+      iMod (file_escrow_return γfs c r n (Some (i, [])) g appE
+              ltac:(set_solver) Heq with "Hinv Hwit Htok Htk") as "Hres".
+      iModIntro. iFrame "Hka'". rewrite /file_trunc_recv.
+      iDestruct "Hres" as "[Hown | #HT]".
+      - iLeft. iExact "Hown".
+      - iRight. iExact "HT". }
+    assert (Hp4 : f_ok (delta_trunc i (abs_view I)) (Some (i, [])))
+      by exact (f_ok_trunc_f i bs (abs_view I) Hok).
+    iModIntro. iFrame "Hka". iSplitL "Htok".
+    { iApply (file_app_step_escrow c r i I _ n (Some (i, bs)) (Some (i, [])) g
+                Heq (fun _ => Hp1) Hp2 Hp3 (fun _ => Hp4) with "Hwit Htok []").
+      rewrite -(subseq_nil (echo_chunks ws)).
+      iApply (f_typed_some c ls ws [] i Hin Hokw
+                (sel_ok_nil (echo_chunks ws)) with "Hlb"). }
+    iIntros (I') "%Hav Hka'".
+    iMod (file_resync γfs c r (Some (i, bs)) (Some (i, [])) I' appE
+            ltac:(set_solver) Heq
+            ltac:(rewrite -(f_ok_fcontent (abs_view I') (Some (i, [])));
+                  [ reflexivity | rewrite Hav; exact Hp4 ])
+            ltac:(congruence)
+            with "Hinv Htk Hka'") as "(Hka' & Hres)".
+    iModIntro. iFrame "Hka'".
+    rewrite /file_trunc_recv.
+    iDestruct "Hres" as "[Hown | [_ #HT]]".
+    + iLeft. iExact "Hown".
+    + iRight. iExact "HT".
   Qed.
 
-  (* ---- 3f''.  THE PIECE, AT THE PERMIT THE O_CREATE BUNDLE CARRIES ---- *)
-
   Lemma file_trunc_piece (γfs : fs_names) (c : file_fixed) (r : file_names)
-      (jc : Z) (s : dst) (ls : list wordline) (ws : wordline)
+      (jc : Z) (n : nat) (s : dst) (g : gname)
+      (ls : list wordline) (ws : wordline)
       (M : gmap Z (bv 8)) (pv : mword 64) (pl : list (bv 8)) :
     file_app = MkAppcfg file_names (file_pred c) r ->
     arg_path_of M pv pl ->
     list_basics.last (path_elems pl) = Some fname_f ->
     ws ∈ ls -> EchoDisc.line_ok ws ->
-    app_inv γfs -∗ cons_made (fn_cons r) jc -∗ fl_lb c ls -∗
+    app_inv γfs -∗ cons_made (fn_cons r) jc -∗ esc_key c r n s g -∗
+    fl_lb c ls -∗
     pf_at (atrunc_of_permit (fs_gamma_L γfs) appE
              (trunc_permit_of (fs_gamma_L γfs)
                 (trunc_tie_arg M pv (fun (_ : nat) (d : Z) => ⌜d = ROOTINO⌝%I))
-                (file_arm_fam c r jc s) (file_cre_fam c r jc s)
-                (file_dlk_fam c)))
+                (file_arm_fam c r jc s g) (file_cre_fam c r jc s g)
+                (file_dlk_fam c r n s g)))
       (file_trunc_fam c r s).
   Proof using .
-    intros Heq Hpath Hlast Hin Hokw. iIntros "#Hinv #Hm #Hlb".
+    intros Heq Hpath Hlast Hin Hokw. iIntros "#Hinv #Hm #Hwit #Hlb".
     rewrite /pf_at. cbn [pf_recv pf_refund].
     iSplit; [| done ].
     rewrite /atrunc_of_permit. iIntros (i) "Hperm".
@@ -867,20 +1016,21 @@ Section FileOpen.
                  (fun (_ : nat) (d : Z) => ⌜d = ROOTINO⌝%I) d Hpath
                  with "Hcur") as "%Hd". subst d.
     iDestruct "Hrest" as "[Hfresh | [Hex Harm]]".
-    - (* THE FRESH RUN: create's own receipt, as lane F-OPEN-2 landed it *)
-      iApply (file_trunc_of_cre γfs c r jc s i Heq with "Hinv Hm [Hfresh]").
-      rewrite /trunc_permit_cre. iExists ROOTINO, fname_f. iExact "Hfresh".
-    - (* THE EXISTS RUN: the observation's pure reading beside the arm
-         piece's refund, which is the deed's whole half *)
-      rewrite /cre_ex_fired. iDestruct "Hex" as (avx entsx nlx) "(%Hrx & %Hex & Hrec)".
+    - (* THE FRESH RUN: create's own receipt AT THE TIED NAME *)
+      iApply (file_trunc_of_cre γfs c r jc n s g i Heq with "Hinv Hm [Hfresh]").
+      rewrite /cre_acre_fired. iExact "Hfresh".
+    - (* THE EXISTS RUN: the observation's reading -- pure AND ESCROWED --
+         beside the arm piece's refund, which is the escrow's token *)
+      rewrite /cre_ex_fired.
+      iDestruct "Hex" as (avx entsx nlx) "(%Hrx & %Hex & Hrec)".
       rewrite /file_dlk_fam. cbn [pf_recv].
       rewrite /pf_at. iDestruct "Harm" as "[_ Harm]".
       rewrite /file_arm_fam. cbn [pf_refund].
-      iApply (file_trunc_of_exists γfs c r jc s ls ws i avx entsx nlx
-                Heq Hrx Hex Hin Hokw with "Hinv Hm Hlb Hrec Harm").
+      iApply (file_trunc_of_exists γfs c r jc n s g ls ws i avx entsx nlx
+                Heq Hrx Hex Hin Hokw with "Hinv Hm Hwit Hlb Hrec Harm").
   Qed.
 
-  (* ---- 3e.  ...AND THE WHOLE BUNDLE, FROM ONE DEED ---- *)
+  (* ---- 3e.  ...AND THE WHOLE BUNDLE, FROM ONE ESCROWED DEED ---- *)
 
   (* [SysOpenDefs.open_au_create_at] at the path `f`, whose parent prefix
      is EMPTY: the walk is the start cursor alone ([ep_hops_done] over the
@@ -892,9 +1042,18 @@ Section FileOpen.
      the bundle carries it at the permit create pays, and section 3f''
      supplies it.  The path's LAST ELEMENT is a premise because the tie is
      what identifies the truncated row -- the redirect child opens `f`, and
-     that is the sentence saying so. *)
+     that is the sentence saying so.
+
+     WHAT GOES IN IS NO LONGER THE DEED (lane F-OPEN-5) but the ESCROW:
+     the caller parks its half in the claim with
+     [AppFile.file_escrow_park] before the call and hands in the ticket,
+     the one-shot token and the ledger witness.  The OPEN OBSERVATION is
+     no longer trivial either: it reads the claim at the instant the
+     kernel reports the found node's type, which is what refutes create's
+     F-OK's found DEVICE. *)
   Lemma file_open_create_au (γfs : fs_names) (c : file_fixed) (r : file_names)
-      (jc : Z) (s : dst) (ls : list wordline) (ws : wordline)
+      (jc : Z) (n : nat) (s : dst) (g : gname)
+      (ls : list wordline) (ws : wordline)
       (cw : Z) (M : gmap Z (bv 8)) (pv vom : mword 64) (pl : list (bv 8)) :
     file_app = MkAppcfg file_names (file_pred c) r ->
     arg_path_of M pv pl ->
@@ -903,18 +1062,18 @@ Section FileOpen.
     list_basics.last (path_elems pl) = Some fname_f ->
     ws ∈ ls -> EchoDisc.line_ok ws ->
     app_inv γfs -∗ cons_made (fn_cons r) jc -∗ fl_lb c ls -∗
-    fown r s -∗
+    esc_key c r n s g -∗ fesc_res r s g -∗
     open_au_create_at (fs_gamma_L γfs) γfs cw M pv vom
       (fun (_ : nat) (d : Z) => ⌜d = ROOTINO⌝%I)
       (fun _ _ => True%I)
-      (file_arm_fam c r jc s) (file_unarm_fam c r s)
-      (file_cre_fam c r jc s)
-      (file_dlk_fam c)
-      (pfam_triv (fun _ _ _ => True%I))
+      (file_arm_fam c r jc s g) (file_unarm_fam c r s g)
+      (file_cre_fam c r jc s g)
+      (file_dlk_fam c r n s g)
+      (file_odlk_fam c r n s g)
       (file_trunc_fam c r s).
   Proof using .
     intros Heq Hpath Hnp Hstart Hlast Hin Hok.
-    iIntros "#Hinv #Hm #Hlb Hown".
+    iIntros "#Hinv #Hm #Hlb #Hwit Hres".
     rewrite /open_au_create_at. iSplitR.
     { (* THE WALK: no hops at all, and the start cursor is pure *)
       iIntros (pl0) "%Hpath0".
@@ -922,26 +1081,25 @@ Section FileOpen.
       rewrite /ep_start. iIntros (r0) "%Hr0". iModIntro. iSplitR.
       - iPureIntro. rewrite Hr0 Hstart //.
       - iApply (ep_hops_done γfs _ _ pl 0%nat). rewrite Hnp /=. lia. }
-    iSplitR "Hown"; last first.
+    iSplitR "Hres"; last first.
     { iSplitR.
-      { iApply (file_dlk_piece γfs c r Heq with "Hinv"). }
+      { iApply (file_dlk_piece γfs c r n s g Heq with "Hinv Hwit"). }
       iSplitR.
-      { (* the open observation is READ-ONLY and the file claim asks
-           nothing of it: the deed is spent in the create's own legs *)
-        iApply pf_at_triv. rewrite /aopen_commit_at.
-        iIntros (I i a) "%Hrow Hka". iModIntro. by iFrame "Hka". }
+      { (* THE OPEN OBSERVATION, at the escrow's reading *)
+        iApply (file_odlk_piece γfs c r n s g Heq with "Hinv Hwit"). }
       iSplitR.
       { (* THE TRUNCATE, at the permit create pays (section 3f'') *)
         rewrite /open_trunc_piece. destruct (om_trunc vom); [| done].
-        iApply (file_trunc_piece γfs c r jc s ls ws M pv pl
-                  Heq Hpath Hlast Hin Hok with "Hinv Hm Hlb"). }
-      (* THE CHILD'S TWO LEGS: the deed goes in HERE and comes back out
+        iApply (file_trunc_piece γfs c r jc n s g ls ws M pv pl
+                  Heq Hpath Hlast Hin Hok with "Hinv Hm Hwit Hlb"). }
+      (* THE CHILD'S TWO LEGS: the escrow goes in HERE and comes back out
          through whichever of the parent leg and the unarm fired *)
-      rewrite /cre_child_unfired. iSplitL "Hown".
-      - rewrite /pf_at /file_arm_fam /=. iSplit; [| iExact "Hown"].
-        iApply (file_arm_commit γfs c r jc s [] Heq with "Hinv Hm Hown").
+      rewrite /cre_child_unfired. iSplitL "Hres".
+      - rewrite /pf_at /file_arm_fam /=. iSplit; [| iExact "Hres"].
+        iApply (file_arm_commit γfs c r jc n s g [] Heq
+                  with "Hinv Hm Hwit Hres").
       - rewrite /pf_at /file_unarm_fam /=. iSplit; [| done].
-        iApply (file_unarm_commit γfs c r jc s Heq with "Hinv Hm"). }
+        iApply (file_unarm_commit γfs c r jc n s g Heq with "Hinv Hm Hwit"). }
     (* THE PARENT LEG, at the guarded cursor: the move between the two
        readings is the ISO, and it costs nothing at this prefix *)
     rewrite /pf_at /file_cre_fam /=. iSplit; [| done].
@@ -950,24 +1108,24 @@ Section FileOpen.
               (fun _ _ => AFile [])
               (fun d : Z => ⌜d = ROOTINO⌝%I)
               (npar_cur M pv (fun (_ : nat) (d : Z) => ⌜d = ROOTINO⌝%I))
-              (file_arm_fam c r jc s)
-              (file_cre_fam c r jc s).(pf_recv)
+              (file_arm_fam c r jc s g)
+              (file_cre_fam c r jc s g).(pf_recv)
               with "[] [] []").
     - iIntros "!>" (d) "H". rewrite /npar_cur.
       iApply ("H" $! pl). iPureIntro. exact Hpath.
     - iIntros "!>" (d) "%Hd". rewrite /npar_cur. iIntros (pl0) "_".
       by iPureIntro.
-    - iApply (file_acre_commit γfs c r jc s ls ws Heq Hin Hok
-                with "Hinv Hm Hlb").
+    - iApply (file_acre_commit γfs c r jc n s g ls ws Heq Hin Hok
+                with "Hinv Hm Hwit Hlb").
   Qed.
 
   (* ...and at [om_trunc vom = false], where the truncate is never owed.
-     SUBSUMED by the lemma above (lane F-OPEN-3): the bundle now supplies
-     its own piece at every mode, so this is the same statement under one
-     more premise, kept only so a caller at 0x201 need not read the
-     guard. *)
+     SUBSUMED by the lemma above (lane F-OPEN-3): the bundle supplies its
+     own piece at every mode, so this is the same statement under one more
+     premise, kept only so a caller at 0x201 need not read the guard. *)
   Lemma file_open_create_au_notrunc (γfs : fs_names) (c : file_fixed)
-      (r : file_names) (jc : Z) (s : dst) (ls : list wordline) (ws : wordline)
+      (r : file_names) (jc : Z) (n : nat) (s : dst) (g : gname)
+      (ls : list wordline) (ws : wordline)
       (cw : Z) (M : gmap Z (bv 8)) (pv vom : mword 64) (pl : list (bv 8)) :
     file_app = MkAppcfg file_names (file_pred c) r ->
     arg_path_of M pv pl ->
@@ -977,38 +1135,37 @@ Section FileOpen.
     om_trunc vom = false ->
     ws ∈ ls -> EchoDisc.line_ok ws ->
     app_inv γfs -∗ cons_made (fn_cons r) jc -∗ fl_lb c ls -∗
-    fown r s -∗
+    esc_key c r n s g -∗ fesc_res r s g -∗
     open_au_create_at (fs_gamma_L γfs) γfs cw M pv vom
       (fun (_ : nat) (d : Z) => ⌜d = ROOTINO⌝%I)
       (fun _ _ => True%I)
-      (file_arm_fam c r jc s) (file_unarm_fam c r s)
-      (file_cre_fam c r jc s)
-      (file_dlk_fam c)
-      (pfam_triv (fun _ _ _ => True%I))
+      (file_arm_fam c r jc s g) (file_unarm_fam c r s g)
+      (file_cre_fam c r jc s g)
+      (file_dlk_fam c r n s g)
+      (file_odlk_fam c r n s g)
       (file_trunc_fam c r s).
   Proof using .
     intros Heq Hpath Hnp Hstart Hlast Htr Hin Hok.
-    iIntros "#Hinv #Hm #Hlb Hown".
-    iApply (file_open_create_au γfs c r jc s ls ws cw M pv vom pl
-              Heq Hpath Hnp Hstart Hlast Hin Hok with "Hinv Hm Hlb Hown").
+    iIntros "#Hinv #Hm #Hlb #Hwit Hres".
+    iApply (file_open_create_au γfs c r jc n s g ls ws cw M pv vom pl
+              Heq Hpath Hnp Hstart Hlast Hin Hok with "Hinv Hm Hlb Hwit Hres").
   Qed.
 
   (* ---- 3g.  THE RECEIPT, READ: WHAT THE REDIRECT CHILD GETS BACK ----
 
      [SpecSysOpen.open_receipt_create] at the families above, folded into
-     the two payloads lane SH-ROUND instantiates
-     [UkShRedirAns.ush_open_call2] with.  Every arm hands the deed back
-     and the lemma says through WHICH: a fired truncate through its own
-     receipt, a create that fired and then failed through the KEYED
-     PIECE'S REFUND (the permit, [SysOpenDefs.cre_ft_kept] -- this is
-     F-OPEN's "third arm"), and everything else through the arm piece's
-     refund or the create leg's receipt.
+     the payloads lane SH-ROUND instantiates [UkShRedirAns.ush_open_call2]
+     with.  Every arm hands the deed back and the lemma says through
+     WHICH: a fired truncate through its own receipt, a create that fired
+     and then failed through the KEYED PIECE'S REFUND (the permit,
+     [SysOpenDefs.cre_ft_kept] -- this is F-OPEN's "third arm"), and
+     everything else through the arm piece's refund, WHICH IS NOW THE
+     ESCROW and comes home through [AppFile.file_escrow_return].
 
-     THREE OUTCOMES AND NOT TWO, and the third is the honest one: create's
-     F-OK admits a found DEVICE, and this claim cannot refute it (the
-     row's type is reported at the OPEN's observation instant and the tie
-     is at the lookup's -- section 6's second hole).  A caller that wants
-     "the descriptor is on `f`'s own inode" closes that first. *)
+     THE FD ARM IS [fown r (Some (i, []))] ALONE (lane F-OPEN-5): the
+     escrow's reading at the LOOKUP's own view refutes an absent deed at
+     the found entry and identifies the row at a present one, so
+     F-OPEN-3's unreachable [fown r s] disjunct is gone. *)
 
   (* what the deed is worth on an arm that did not settle at `f`: F-OPEN-2's
      [Kf], with the taint *)
@@ -1016,146 +1173,302 @@ Section FileOpen.
       : iProp Σ :=
     (fown r s ∨ (∃ i : Z, fown r (Some (i, []))) ∨ file_taint c)%I.
 
+  (* ...and the same BEFORE the escrow comes home: this is what every
+     payer below produces, and [file_esc_pay_home] is the one fupd that
+     turns it into the deed. *)
+  Definition file_esc_pay (c : file_fixed) (r : file_names) (s : dst)
+      (g : gname) : iProp Σ :=
+    (fesc_res r s g ∨ (∃ i : Z, fown r (Some (i, []))) ∨ file_taint c)%I.
+
+  Lemma file_esc_pay_home (γfs : fs_names) (c : file_fixed) (r : file_names)
+      (n : nat) (s : dst) (g : gname) (E : coPset) :
+    ↑appN ⊆ E ->
+    file_app = MkAppcfg file_names (file_pred c) r ->
+    app_inv γfs -∗ esc_key c r n s g -∗ file_esc_pay c r s g ={E}=∗
+      file_open_pay c r s.
+  Proof using .
+    intros HE Heq. iIntros "#Hinv #Hwit [[Htk Htok] | [Hd | #HT]]".
+    - iMod (file_escrow_return γfs c r n s g E HE Heq
+              with "Hinv Hwit Htok Htk") as "[Hown | #HT]".
+      + iModIntro. rewrite /file_open_pay. by iLeft.
+      + iModIntro. rewrite /file_open_pay. iRight. by iRight.
+    - iModIntro. rewrite /file_open_pay. iRight. by iLeft.
+    - iModIntro. rewrite /file_open_pay. iRight. by iRight.
+  Qed.
+
   (* the permit, read back off a piece that never fired.  THE TIE IS NOT
      READ here -- identifying the row is the truncate's business, and an
      unfired permit is worth only what was parked in it -- so the lemma is
      at any tie. *)
-  Lemma file_permit_pay (c : file_fixed) (r : file_names) (jc : Z) (s : dst)
-      (T : Z -> fname -> iProp Σ) (i : Z) (Γ : fs_view_names Σ) :
+  Lemma file_permit_pay (c : file_fixed) (r : file_names) (jc : Z) (n : nat)
+      (s : dst) (g : gname) (T : Z -> fname -> iProp Σ) (i : Z)
+      (Γ : fs_view_names Σ) :
     trunc_permit_of Γ T
-      (file_arm_fam c r jc s) (file_cre_fam c r jc s) (file_dlk_fam c) i -∗
-    file_open_pay c r s.
+      (file_arm_fam c r jc s g) (file_cre_fam c r jc s g)
+      (file_dlk_fam c r n s g) i -∗
+    file_esc_pay c r s g.
   Proof using .
     iIntros "H". rewrite /trunc_permit_of.
     iDestruct "H" as (d nm) "[_ [Hfresh | [_ Harm]]]".
     - rewrite /cre_acre_fired.
       iDestruct "Hfresh" as (av ents nl) "[_ Hrec]".
       rewrite /file_cre_fam /file_cre_recv. cbn [pf_recv].
-      iDestruct "Hrec" as "[[_ Hown] | [[_ Hown] | #HT]]".
-      + rewrite /file_open_pay. by iLeft.
-      + rewrite /file_open_pay. iRight. iLeft. iExists i. iExact "Hown".
-      + rewrite /file_open_pay. iRight. iRight. iExact "HT".
-    - rewrite /pf_at. iDestruct "Harm" as "[_ Hown]".
+      iDestruct "Hrec" as "[[_ Hres] | [[_ Hown] | #HT]]".
+      + rewrite /file_esc_pay. by iLeft.
+      + rewrite /file_esc_pay. iRight. iLeft. iExists i. iExact "Hown".
+      + rewrite /file_esc_pay. iRight. iRight. iExact "HT".
+    - rewrite /pf_at. iDestruct "Harm" as "[_ Hres]".
       rewrite /file_arm_fam. cbn [pf_refund].
-      rewrite /file_open_pay. by iLeft.
+      rewrite /file_esc_pay. by iLeft.
+  Qed.
+
+  (* ...AND AT THE TIE, which is what the DEVICE sub-arm needs: on the
+     FRESH branch the create leg fired and the deed is back at the row the
+     call reached; on the EXISTS one the escrow's token is in hand beside
+     the lookup's reading AT THE LOOKUP'S VIEW. *)
+  Definition file_permit_read (c : file_fixed) (r : file_names) (s : dst)
+      (g : gname) (i : Z) : iProp Σ :=
+    ((⌜s = None⌝ ∗ fown r (Some (i, [])))
+     ∨ (∃ avx : aview,
+          ⌜astep avx FsImg.ROOTINO fname_f = Some i⌝ ∗ ⌜f_ok avx s⌝
+          ∗ fesc_res r s g)
+     ∨ file_taint c)%I.
+
+  Lemma file_permit_tied (c : file_fixed) (r : file_names) (jc : Z) (n : nat)
+      (s : dst) (g : gname) (pl : list (bv 8)) (i : Z)
+      (Γ : fs_view_names Σ) :
+    list_basics.last (path_elems pl) = Some fname_f ->
+    trunc_permit_of Γ
+      (trunc_tie_at pl (fun (_ : nat) (d : Z) => ⌜d = ROOTINO⌝%I))
+      (file_arm_fam c r jc s g) (file_cre_fam c r jc s g)
+      (file_dlk_fam c r n s g) i -∗
+    file_permit_read c r s g i.
+  Proof using .
+    intros Hlast. iIntros "H". rewrite /trunc_permit_of.
+    iDestruct "H" as (d nm) "[Htie Hrest]".
+    iEval (rewrite /trunc_tie_at) in "Htie".
+    iDestruct "Htie" as "[%Hl %Hd]".
+    assert (Hnmf : nm = fname_f) by (rewrite Hlast in Hl; by injection Hl).
+    subst nm d.
+    iDestruct "Hrest" as "[Hfresh | [Hex Harm]]".
+    - rewrite /cre_acre_fired.
+      iDestruct "Hfresh" as (av ents nl) "[_ Hrec]".
+      rewrite /file_cre_fam /file_cre_recv. cbn [pf_recv].
+      iDestruct "Hrec" as "[[%Hne _] | [[%Hb Hown] | #HT]]".
+      + exfalso. exact (proj1 Hne eq_refl).
+      + rewrite /file_permit_read. iLeft. iFrame "Hown". iPureIntro.
+        exact (proj1 Hb).
+      + rewrite /file_permit_read. iRight. iRight. iExact "HT".
+    - rewrite /cre_ex_fired.
+      iDestruct "Hex" as (avx entsx nlx) "(%Hrx & %Hex & Hrec)".
+      rewrite /file_dlk_fam /file_dlk_recv. cbn [pf_recv].
+      rewrite /pf_at. iDestruct "Harm" as "[_ Harm]".
+      rewrite /file_arm_fam. cbn [pf_refund].
+      assert (Hstx : astep avx FsImg.ROOTINO fname_f = Some i)
+        by (rewrite /astep /aents Hrx /= /anode_ents /=; exact Hex).
+      iDestruct "Hrec" as "[[_ Hval] | #HT]"; last first.
+      { rewrite /file_permit_read. iRight. iRight. iExact "HT". }
+      iDestruct "Harm" as "[Htk Htok]".
+      iDestruct "Hval" as "[%Hokx | #Hsp]"; last first.
+      { iDestruct (esc_tok_spent g with "Htok Hsp") as %[]. }
+      rewrite /file_permit_read. iRight. iLeft. iExists avx.
+      rewrite /fesc_res. iFrame "Htk Htok". iPureIntro. by split.
+  Qed.
+
+  Lemma file_permit_read_pay (c : file_fixed) (r : file_names) (s : dst)
+      (g : gname) (i : Z) :
+    file_permit_read c r s g i -∗ file_esc_pay c r s g.
+  Proof using .
+    rewrite /file_permit_read /file_esc_pay.
+    iIntros "[[_ Hown] | [Hex | #HT]]".
+    - iRight. iLeft. iExists i. iExact "Hown".
+    - iDestruct "Hex" as (avx) "(_ & _ & Hres)". by iLeft.
+    - iRight. iRight. iExact "HT".
+  Qed.
+
+  (* THE DEVICE SUB-ARM, REFUTED (lane F-OPEN-5).  create's F-OK admits a
+     found DEVICE; the claim says otherwise AT THE OPEN'S OWN OBSERVATION
+     INSTANT, which is what the open observation's family now reads.  On
+     the permit's EXISTS branch the token refutes the spent disjunct, the
+     tie identifies `f`'s row with the row the call reached, and the
+     claim's own [AFile] contradicts the [ADev] on the nose.  ON THE
+     PERMIT'S FRESH BRANCH the create leg fired at that very row and the
+     deed is back at [Some (i, [])], so the arm pays the same thing the
+     inode arm does. *)
+  Lemma file_dev_refute (c : file_fixed) (r : file_names) (s : dst)
+      (g : gname) (i ma mi : Z) (nl : nat) (av : aview) :
+    arow_at av i (MkAnode (ADev ma mi) nl) ->
+    file_permit_read c r s g i -∗
+    ((⌜f_ok av s⌝ ∨ esc_spent g) ∨ file_taint c) -∗
+    (fown r (Some (i, [])) ∨ file_taint c).
+  Proof using .
+    intros Hrow. iIntros "Hperm Hobs".
+    rewrite /file_permit_read.
+    iDestruct "Hperm" as "[[_ Hown] | [Hex | #HT]]"; [ by iLeft | | by iRight ].
+    iDestruct "Hex" as (avx) "(%Hstx & %Hokx & [Htk Htok])".
+    iDestruct "Hobs" as "[[%Hoka | #Hsp] | #HT]"; [| | by iRight ]; last first.
+    { iDestruct (esc_tok_spent g with "Htok Hsp") as %[]. }
+    exfalso. destruct s as [[j bs] |]; last first.
+    { (* an ABSENT deed contradicts the found entry at the tie *)
+      assert (Hab : astep avx FsImg.ROOTINO fname_f = None) by exact Hokx.
+      rewrite Hab in Hstx. discriminate. }
+    assert (Hji : j = i)
+      by (destruct Hokx as (Hstj & _); rewrite Hstj in Hstx; by injection Hstx).
+    subst j. destruct Hoka as (_ & Hrowf).
+    rewrite /arow_at in Hrow. cbn [an_nlink] in Hrow.
+    destruct (decide (nl = 0%nat)); simpl in Hrow; congruence.
   Qed.
 
   (* ...and off the keyed piece, whose refund carries it *)
-  Lemma file_kept_pay (c : file_fixed) (r : file_names) (jc : Z) (s : dst)
+  Lemma file_kept_pay (c : file_fixed) (r : file_names) (jc : Z) (n : nat)
+      (s : dst) (g : gname)
       (γfs : fs_names) (vom : mword 64) (pl : list (bv 8)) (i : Z) :
     om_trunc vom = true ->
     cre_trunc_kept (fs_gamma_L γfs) vom pl
       (fun (_ : nat) (d : Z) => ⌜d = ROOTINO⌝%I)
-      (file_arm_fam c r jc s) (file_cre_fam c r jc s) (file_dlk_fam c)
+      (file_arm_fam c r jc s g) (file_cre_fam c r jc s g)
+      (file_dlk_fam c r n s g)
       i (file_trunc_fam c r s) -∗
-    file_open_pay c r s.
+    file_esc_pay c r s g.
   Proof using .
     intros Htr. iIntros "H".
     rewrite /cre_trunc_kept /open_trunc_at Htr /pf_at /cre_ft_kept.
     cbn [pf_refund]. iDestruct "H" as "[_ [_ Hk]]".
     rewrite /cre_permit.
-    iApply (file_permit_pay c r jc s _ i (fs_gamma_L γfs) with "Hk").
+    iApply (file_permit_pay c r jc n s g _ i (fs_gamma_L γfs) with "Hk").
   Qed.
 
-  (* the deed off create's own child legs, which every arm that fired
+  (* ...and the same piece read AT THE TIE, which the device arm wants *)
+  Lemma file_kept_tied (c : file_fixed) (r : file_names) (jc : Z) (n : nat)
+      (s : dst) (g : gname)
+      (γfs : fs_names) (vom : mword 64) (pl : list (bv 8)) (i : Z) :
+    om_trunc vom = true ->
+    list_basics.last (path_elems pl) = Some fname_f ->
+    cre_trunc_kept (fs_gamma_L γfs) vom pl
+      (fun (_ : nat) (d : Z) => ⌜d = ROOTINO⌝%I)
+      (file_arm_fam c r jc s g) (file_cre_fam c r jc s g)
+      (file_dlk_fam c r n s g)
+      i (file_trunc_fam c r s) -∗
+    file_permit_read c r s g i.
+  Proof using .
+    intros Htr Hlast. iIntros "H".
+    rewrite /cre_trunc_kept /open_trunc_at Htr /pf_at /cre_ft_kept.
+    cbn [pf_refund]. iDestruct "H" as "[_ [_ Hk]]".
+    rewrite /cre_permit.
+    iApply (file_permit_tied c r jc n s g pl i (fs_gamma_L γfs) Hlast with "Hk").
+  Qed.
+
+  (* the escrow off create's own child legs, which every arm that fired
      nothing hands back *)
-  Lemma file_legs_pay (c : file_fixed) (r : file_names) (jc : Z) (s : dst)
-      (Γ : fs_view_names Σ) :
-    (cre_child_unfired Γ (AFile []) (file_arm_fam c r jc s)
-       (file_unarm_fam c r s)
-     ∨ ∃ ic : Z, cre_child_pair (file_arm_fam c r jc s)
-                   (file_unarm_fam c r s) ic) -∗
-    file_open_pay c r s.
+  Lemma file_legs_pay (c : file_fixed) (r : file_names) (jc : Z) (n : nat)
+      (s : dst) (g : gname) (Γ : fs_view_names Σ) :
+    (cre_child_unfired Γ (AFile []) (file_arm_fam c r jc s g)
+       (file_unarm_fam c r s g)
+     ∨ ∃ ic : Z, cre_child_pair (file_arm_fam c r jc s g)
+                   (file_unarm_fam c r s g) ic) -∗
+    file_esc_pay c r s g.
   Proof using .
     iIntros "[Hch | Hp]".
     - rewrite /cre_child_unfired. iDestruct "Hch" as "[Harm _]".
-      iDestruct (pf_at_refund with "Harm") as "Hown".
-      rewrite /file_arm_fam. cbn [pf_refund]. rewrite /file_open_pay.
+      iDestruct (pf_at_refund with "Harm") as "Hres".
+      rewrite /file_arm_fam. cbn [pf_refund]. rewrite /file_esc_pay.
       by iLeft.
     - iDestruct "Hp" as (ic) "Hp". rewrite /cre_child_pair /cre_unarm_fired.
       iDestruct "Hp" as (av0 c0) "[_ Hrec]".
       rewrite /file_unarm_fam. cbn [pf_recv].
-      iDestruct "Hrec" as "[Hown | #HT]"; rewrite /file_open_pay.
+      iDestruct "Hrec" as "[Hres | #HT]"; rewrite /file_esc_pay.
       + by iLeft.
       + iRight. iRight. iExact "HT".
   Qed.
 
   (* ---- THE FAILURE FOLD, PAID.  Five shapes and every one of them hands
-     the deed back: through the arm piece's refund where nothing fired,
-     and through the KEYED PIECE'S REFUND -- the permit -- where the
-     create fired and the call failed past it. *)
+     the escrow or the deed back: through the arm piece's refund where
+     nothing fired, and through the KEYED PIECE'S REFUND -- the permit --
+     where the create fired and the call failed past it. *)
   Lemma file_open_create_fail_pay (γfs : fs_names) (c : file_fixed)
-      (r : file_names) (jc : Z) (s : dst) (cw : Z) (M : gmap Z (bv 8))
-      (pv vom : mword 64) :
+      (r : file_names) (jc : Z) (n : nat) (s : dst) (g : gname)
+      (cw : Z) (M : gmap Z (bv 8)) (pv vom : mword 64) :
     om_trunc vom = true ->
     open_post_fail_create (fs_gamma_L γfs) γfs cw M pv vom
       (fun (_ : nat) (d : Z) => ⌜d = ROOTINO⌝%I)
       (fun _ _ => True%I)
-      (file_arm_fam c r jc s) (file_unarm_fam c r s)
-      (file_cre_fam c r jc s) (file_dlk_fam c)
-      (pfam_triv (fun _ _ _ => True%I))
+      (file_arm_fam c r jc s g) (file_unarm_fam c r s g)
+      (file_cre_fam c r jc s g) (file_dlk_fam c r n s g)
+      (file_odlk_fam c r n s g)
       (file_trunc_fam c r s) -∗
-    file_open_pay c r s.
+    file_esc_pay c r s g.
   Proof using .
     intros Htr. rewrite /open_post_fail_create /open_au_create_at.
     iIntros "[Hau | H]".
     - iDestruct "Hau" as "(_ & _ & _ & _ & _ & Hch)".
-      iApply (file_legs_pay c r jc s _ with "[Hch]"). by iLeft.
+      iApply (file_legs_pay c r jc n s g _ with "[Hch]"). by iLeft.
     - iDestruct "H" as (pl0) "[_ [Hd | Hc]]".
       + iDestruct "Hd" as "(_ & _ & _ & _ & _ & Hch)".
-        iApply (file_legs_pay c r jc s _ with "[Hch]"). by iLeft.
+        iApply (file_legs_pay c r jc n s g _ with "[Hch]"). by iLeft.
       + iDestruct "Hc" as (d) "[_ [Ha | [Hb | Hc]]]".
         * (* (a) the create FIRED and the open failed past it: the deed is
                in the permit, which the keyed piece's refund carries *)
           iDestruct "Ha" as (av i nm ents nl)
             "(_ & _ & _ & _ & _ & _ & Hkept & _)".
-          iApply (file_kept_pay c r jc s γfs vom pl0 i Htr with "Hkept").
+          iApply (file_kept_pay c r jc n s g γfs vom pl0 i Htr with "Hkept").
         * (* (b) the name existed *)
           iDestruct "Hb" as (av i nm ents nl) "(_ & _ & _ & _ & _ & Hfk & _)".
           rewrite /cre_fail_kept Htr.
           iDestruct "Hfk" as "[[Hkept _] | [_ Hlegs]]".
-          { iApply (file_kept_pay c r jc s γfs vom pl0 i Htr with "Hkept"). }
-          iApply (file_legs_pay c r jc s _ with "Hlegs").
+          { iApply (file_kept_pay c r jc n s g γfs vom pl0 i Htr with "Hkept"). }
+          iApply (file_legs_pay c r jc n s g _ with "Hlegs").
         * (* (c) nothing was observed at all *)
           iDestruct "Hc" as "(_ & _ & _ & _ & Hlegs)".
-          iApply (file_legs_pay c r jc s _ with "Hlegs").
+          iApply (file_legs_pay c r jc n s g _ with "Hlegs").
   Qed.
 
-  (* ---- THE WHOLE RECEIPT, at the redirect child's own mode.  Three
-     outcomes, and the second is the one the round runs on: a descriptor on
-     an INODE, with `f` present and EMPTY at that inode -- or, on the run
-     an absent deed makes unreachable and the statement cannot refute, the
-     deed unmoved (section 6's first hole).  The third is the found DEVICE
-     create's F-OK admits (section 6's second). *)
+  (* ---- THE WHOLE RECEIPT, at the redirect child's own mode.  THREE
+     outcomes still, but the second and third now say the SAME thing about
+     the claim -- `f` is present and EMPTY at the row the call reached --
+     and the second is the one the round runs on: a descriptor on an
+     INODE.  F-OPEN-3's "the deed unmoved" disjunct is gone (the escrow
+     refutes it) and F-OPEN-4's DEVICE hole is closed on the permit's
+     EXISTS branch; what is left of the device arm is the permit's FRESH
+     branch, where the create leg fired at that row and the deed is back
+     there -- see section 6. *)
   Lemma file_open_create_recv (γfs : fs_names) (c : file_fixed)
-      (r : file_names) (jc : Z) (s : dst) (cw : Z) (M : gmap Z (bv 8))
-      (pv vom : mword 64) (sts : list fdstate) (rv : mword 64)
-      (fdv' : list fdstate) :
+      (r : file_names) (jc : Z) (n : nat) (s : dst) (g : gname) (cw : Z)
+      (M : gmap Z (bv 8)) (pv vom : mword 64) (pl : list (bv 8))
+      (sts : list fdstate) (rv : mword 64) (fdv' : list fdstate)
+      (E : coPset) :
+    ↑appN ⊆ E ->
     om_trunc vom = true ->
+    arg_path_of M pv pl ->
+    list_basics.last (path_elems pl) = Some fname_f ->
+    file_app = MkAppcfg file_names (file_pred c) r ->
+    app_inv γfs -∗ esc_key c r n s g -∗
     open_receipt_create (fs_gamma_L γfs) γfs cw M pv vom
       (fun (_ : nat) (d : Z) => ⌜d = ROOTINO⌝%I)
       (fun _ _ => True%I)
-      (file_arm_fam c r jc s) (file_unarm_fam c r s)
-      (file_cre_fam c r jc s) (file_dlk_fam c)
-      (pfam_triv (fun _ _ _ => True%I))
-      (file_trunc_fam c r s) sts rv fdv' -∗
+      (file_arm_fam c r jc s g) (file_unarm_fam c r s g)
+      (file_cre_fam c r jc s g) (file_dlk_fam c r n s g)
+      (file_odlk_fam c r n s g)
+      (file_trunc_fam c r s) sts rv fdv' ={E}=∗
       ((⌜rv = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜fdv' = sts⌝
         ∗ file_open_pay c r s)
        ∨ (∃ (i : Z) (γo : gname),
             ⌜open_fd_rcpt (om_readable vom) (om_writable vom)
                (FdInode i γo OffParked) sts rv fdv'⌝
-            ∗ (fown r (Some (i, [])) ∨ fown r s ∨ file_taint c))
-       ∨ (∃ ma : Z,
+            ∗ (fown r (Some (i, [])) ∨ file_taint c))
+       ∨ (∃ (i ma : Z),
             ⌜open_fd_rcpt (om_readable vom) (om_writable vom)
                (FdDevice ma) sts rv fdv'⌝
-            ∗ file_open_pay c r s)).
+            ∗ (fown r (Some (i, [])) ∨ file_taint c))).
   Proof using .
-    intros Htr. rewrite /open_receipt_create.
-    iIntros "[(%Hr & %Hfdv & Hf) | Hok]".
-    { iLeft. iSplitR; [ by iPureIntro |]. iSplitR; [ by iPureIntro |].
-      iApply (file_open_create_fail_pay γfs c r jc s cw M pv vom Htr
-                with "Hf"). }
-    iDestruct "Hok" as (pl0 d i nm) "(_ & _ & _ & [Hfresh | Hex])".
+    intros HE Htr Hpath Hlast Heq. rewrite /open_receipt_create.
+    iIntros "#Hinv #Hwit [(%Hr & %Hfdv & Hf) | Hok]".
+    { iMod (file_esc_pay_home γfs c r n s g E HE Heq with "Hinv Hwit [Hf]")
+        as "Hpay".
+      { iApply (file_open_create_fail_pay γfs c r jc n s g cw M pv vom Htr
+                  with "Hf"). }
+      iModIntro. iLeft. iSplitR; [ by iPureIntro |].
+      iSplitR; [ by iPureIntro |]. iExact "Hpay". }
+    iDestruct "Hok" as (pl0 d i nm) "(%Hpath0 & _ & _ & [Hfresh | Hex])".
     - (* FRESH: create made `f` and the truncate fired at the empty child *)
       iDestruct "Hfresh" as (av ents nl)
         "(_ & _ & _ & _ & _ & Htrc & _ & Hfd)".
@@ -1163,12 +1476,10 @@ Section FileOpen.
       iDestruct "Htrc" as (av' nl') "[_ Hrec]".
       rewrite /file_trunc_fam /file_trunc_recv. cbn [pf_recv].
       iDestruct "Hfd" as (γo) "%Hrcpt".
-      iRight. iLeft. iExists i, γo. iSplitR; [ by iPureIntro |].
-      iDestruct "Hrec" as "[Hown | [Hown | #HT]]".
-      + iRight. iLeft. iExact "Hown".
-      + iLeft. iExact "Hown".
-      + iRight. iRight. iExact "HT".
+      iModIntro. iRight. iLeft. iExists i, γo. iSplitR; [ by iPureIntro |].
+      iExact "Hrec".
     - (* THE NAME WAS THERE *)
+      rewrite (arg_path_of_uniq M pv pl0 pl Hpath0 Hpath).
       iDestruct "Hex" as (avx entsx nlx) "(_ & _ & _ & _ & _ & Hrest)".
       iDestruct "Hrest" as (av nl) "[Hfile | Hdev]".
       + (* ...on a FILE: the truncate fired there *)
@@ -1177,16 +1488,16 @@ Section FileOpen.
         iDestruct "Htrc" as (av') "[_ Hrec]".
         rewrite /file_trunc_fam /file_trunc_recv. cbn [pf_recv].
         iDestruct "Hfd" as (γo) "%Hrcpt".
-        iRight. iLeft. iExists i, γo. iSplitR; [ by iPureIntro |].
-        iDestruct "Hrec" as "[Hown | [Hown | #HT]]".
-        * iRight. iLeft. iExact "Hown".
-        * iLeft. iExact "Hown".
-        * iRight. iRight. iExact "HT".
-      + (* ...or on a DEVICE: nothing fired, and the deed comes home out
-             of the permit the keyed piece kept *)
-        iDestruct "Hdev" as (ma mi) "(_ & _ & _ & Hkept & %Hrcpt)".
-        iRight. iRight. iExists ma. iSplitR; [ by iPureIntro |].
-        iApply (file_kept_pay c r jc s γfs vom pl0 i Htr with "Hkept").
+        iModIntro. iRight. iLeft. iExists i, γo. iSplitR; [ by iPureIntro |].
+        iExact "Hrec".
+      + (* ...or on a DEVICE, which the claim refutes on the permit's
+             EXISTS branch and pays on its FRESH one *)
+        iDestruct "Hdev" as (ma mi) "(%Hrow & _ & Hobs & Hkept & %Hrcpt)".
+        rewrite /file_odlk_fam /file_odlk_recv. cbn [pf_recv].
+        iDestruct (file_kept_tied c r jc n s g γfs vom pl i Htr Hlast
+                     with "Hkept") as "Hperm".
+        iModIntro. iRight. iRight. iExists i, ma. iSplitR; [ by iPureIntro |].
+        iApply (file_dev_refute c r s g i ma mi nl av Hrow with "Hperm Hobs").
   Qed.
 
   (* =================================================================== *)

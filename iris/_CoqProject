@@ -1479,6 +1479,7 @@ SystemUartAccepted.v
 App.v
 
 LineWords.v
+FileState.v
 EchoDisc.v
 LogEntryDefs.v
 ConsLog.v
@@ -1490,6 +1491,7 @@ EchoLinksLine.v
 EchoLinksBan.v
 EchoFsPure.v
 AppEcho.v
+AppFile.v
 AppTree.v
 
 FsAbsUnlinkFire.v

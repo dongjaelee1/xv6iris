@@ -1890,3 +1890,95 @@ Proof using.
   destruct I as [| b I']; [done |]. intros _.
   rewrite /proc_before_f. cbn [proc_before_from_f]. by eexists.
 Qed.
+
+(* ---- THE PADDING MOVES NO PROLOGUE ROUND.  [pro_idx_f] reads the choice
+       list only through [ralt_panic], and neither the out-of-range reading
+       ([REcho 0]) nor any default alternative panics -- so a stage's round
+       index is the same at its own list and at the padded one. ---- *)
+Lemma ralt_panic_def (l : uline) : ralt_panic (ralt_dec (ralt_def l)) = false.
+Proof using.
+  destruct l as [ws | ws |]; cbn [ralt_def].
+  - rewrite (ralt_dec_lt4 0%nat ltac:(lia)). by vm_compute.
+  - rewrite ralt_dec_enc. by vm_compute.
+  - rewrite ralt_dec_enc. by vm_compute.
+Qed.
+
+Lemma pro_idx_f_ext_panic (cs1 cs2 : list nat) (q : nat) :
+  (forall j, (j < q)%nat ->
+     ralt_panic (ralt_at cs1 j) = ralt_panic (ralt_at cs2 j)) ->
+  forall j, (j <= q)%nat -> pro_idx_f cs1 j = pro_idx_f cs2 j.
+Proof using.
+  intros Hj j. induction j as [| j IH]; intros Hjq; [done |].
+  rewrite !pro_idx_f_S IH; [| lia]. by rewrite (Hj j ltac:(lia)).
+Qed.
+
+Lemma alts_pad_panic (I : list (bv 8)) (cs : list nat) (j : nat) :
+  (j < nlines I)%nat ->
+  ralt_panic (ralt_at (alts_pad I cs) j) = ralt_panic (ralt_at cs j).
+Proof using.
+  intros Hj. destruct (decide (j < length cs)%nat) as [Hlt | Hge].
+  - by rewrite /ralt_at (fop_lta_prefix cs (alts_pad I cs) j
+                           (alts_pad_prefix I cs) Hlt).
+  - rewrite (ralt_panic_ge cs j ltac:(lia)).
+    destruct (decide (j < length (alts_pad I cs))%nat) as [Hlt2 | Hge2];
+      last first.
+    { by rewrite (ralt_panic_ge (alts_pad I cs) j ltac:(lia)). }
+    (* inside the PAD: the entry is the line's default alternative *)
+    assert (Hjl : (j < length (lines_of I))%nat)
+      by (rewrite lines_of_length; lia).
+    destruct (lookup_lt_is_Some_2 (lines_of I) j Hjl) as [l Hl].
+    assert (Hlk : alts_pad I cs !!! j = ralt_def l).
+    { rewrite /alts_pad list_lookup_total_alt lookup_app_r; [| lia].
+      rewrite list_lookup_fmap lookup_drop.
+      replace (length cs + (j - length cs))%nat with j by lia.
+      by rewrite Hl. }
+    rewrite /ralt_at Hlk. exact (ralt_panic_def _).
+Qed.
+
+Lemma alts_pad_pro_idx (I : list (bv 8)) (cs : list nat) (q : nat) :
+  (q <= nlines I)%nat -> pro_idx_f (alts_pad I cs) q = pro_idx_f cs q.
+Proof using.
+  intro Hq. apply (pro_idx_f_ext_panic (alts_pad I cs) cs (nlines I));
+    [| exact Hq].
+  intros j Hj. exact (alts_pad_panic I cs j Hj).
+Qed.
+
+(* THE STAGE'S TRANSCRIPT AT A FULL RESOLUTION.  [FileDisc.sessf_prefix_det]
+   and [good_out_f] are stated at an [alts_ok] -- a resolution with one
+   entry per completed line -- and the stage's list runs one short at a
+   block boundary.  This packages the padding: the padded list agrees with
+   the stage's wherever the stage reads it, and the stage's transcript is
+   below the padded session. *)
+Lemma stage_sessf_pad (ps cs : list nat) (f0 : option fst)
+    (E : list (list mobs * bv 8)) (w : list (bv 8)) :
+  alts_pre (snd <$> E) cs ->
+  (nlines (removelast (snd <$> E)) <= length cs)%nat ->
+  ((nlines (snd <$> E) <= length cs)%nat \/ w = []) ->
+  E_disc_f E ->
+  pro_pin_f ps cs (snd <$> E) ->
+  w `prefix_of` pending_f ps cs f0 E ->
+  alts_ok (snd <$> E) (alts_pad (snd <$> E) cs)
+  /\ pro_pin_f ps (alts_pad (snd <$> E) cs) (snd <$> E)
+  /\ D_f ps cs f0 E = D_f ps (alts_pad (snd <$> E) cs) f0 E
+  /\ w `prefix_of` pending_f ps (alts_pad (snd <$> E) cs) f0 E
+  /\ (D_f ps cs f0 E ++ w)
+       `prefix_of` sessf ps (alts_pad (snd <$> E) cs) (f0_st f0) (snd <$> E).
+Proof using.
+  intros Hao Hrl Hlast HE Hpin Hw.
+  set (cs' := alts_pad (snd <$> E) cs).
+  assert (Hcc : cs `prefix_of` cs') by apply alts_pad_prefix.
+  assert (Hok : alts_ok (snd <$> E) cs') by exact (alts_pad_ok _ cs Hao).
+  assert (Hpin' : pro_pin_f ps cs' (snd <$> E)).
+  { intros q Hq.
+    assert (Hqle : (q <= nlines (snd <$> E))%nat).
+    { pose proof (nstarted_le_S (snd <$> E)). lia. }
+    rewrite /cs' (alts_pad_pro_idx (snd <$> E) cs q Hqle). by apply Hpin. }
+  assert (HD : D_f ps cs f0 E = D_f ps cs' f0 E)
+    by (apply (D_f_cs_prefix ps ps cs cs' f0 E ltac:(reflexivity) Hcc Hpin Hrl)).
+  assert (Hw' : w `prefix_of` pending_f ps cs' f0 E).
+  { destruct Hlast as [Hle | ->]; [| apply prefix_nil].
+    rewrite /pending_f
+      -(pending_at_f_cs_ext ps cs cs' f0 (snd <$> E) Hcc Hle). exact Hw. }
+  split_and!; [exact Hok | exact Hpin' | exact HD | exact Hw' |].
+  rewrite HD. exact (D_f_stage_prefix ps cs' f0 E w HE Hw').
+Qed.

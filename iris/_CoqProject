@@ -1497,6 +1497,7 @@ EchoLinksPro.v
 EchoLinksLine.v
 EchoLinksBan.v
 LinkRec.v
+StageRec.v
 EchoFsPure.v
 FileFsPure.v
 AppEcho.v
@@ -1506,6 +1507,8 @@ FileDeltas.v
 FileWrite.v
 FileOut.v
 FileLinks.v
+FileLinksLine.v
+FileLinkInst.v
 AppFileRec.v
 AppTree.v
 
@@ -1564,6 +1567,7 @@ UConsLine.v
 UkShWords.v
 UkShEcho.v
 UShLexRedir.v
+UkShRedirBody.v
 UInitCons.v
 UConsOpen.v
 UInitConsK.v

@@ -146,6 +146,10 @@ Require Import EchoDisc.     (* [line_ok] / [disc_input] / [disc] -- WHICH
                                 discipline the input tag is read as (lane
                                 SH-LINE 2b).
                                 A PURE file: no ghost class comes with it. *)
+Require Import FileDisc.     (* [uline] -- the line the loop read, TYPED: the
+                                three constructors of the file discipline,
+                                of which the echo era admits one (lane
+                                SH-CHILD).  PURE, like [EchoDisc]. *)
 Require Import UserConsole.  (* [upos] -- sh's half of the console position
                                 pair (app-echo.md, "SH-LINE RULING") *)
 Require Import ObsTrace.     (* [mobs] -- what a tag's history is made of, and
@@ -6907,23 +6911,76 @@ Section UkSh.
   (* [len] from the loop's "some byte at or after [k] is NUL", and the line *)
   (* fact has to hold at the [len] it derived.                              *)
   (* ===================================================================== *)
-  Definition ush_rest_line (ws : list (list (bv 8))) (f : nat -> bv 8)
-      (k : nat) : iProp Σ :=
+  (* ...AND THE LINE IS TYPED (lane SH-CHILD).  The shape the buffer holds
+     used to be [ush_line_is ws] -- echo's line and nothing else -- and the
+     FILE application's sh reads two more: [echo a b > f] and [cat f].  All
+     three are lines of ONE discipline ([FileDisc.uline]), so what the loop
+     carries is "the buffer at [k] holds the bytes of an admissible line
+     whose words are [ws]", and WHICH constructors an era admits is the
+     parameter [D].  [ush_line_is ws] IS this at [l := LEcho ws]
+     ([ush_line_at_echo], by conversion), so the echo era's instance
+     ([ush_line_echo]) says exactly what the landed premise said. *)
+  Definition ush_line_at (l : FileDisc.uline) (f : nat -> bv 8)
+      (k len : nat) : Prop :=
+    FileDisc.uline_ok l
+    /\ len = length (FileDisc.line_bytes l)
+    /\ (forall j : nat, (j < len)%nat ->
+          f (k + j)%nat = FileDisc.line_bytes l !!! j).
+
+  Lemma ush_line_at_echo (ws : list (list (bv 8))) (f : nat -> bv 8)
+      (k len : nat) :
+    ush_line_at (FileDisc.LEcho ws) f k len <-> ush_line_is ws f k len.
+  Proof using . split; intro H; exact H. Qed.
+
+  (* the echo era's shapes: its discipline admits [LEcho] lines alone
+     ([EchoDisc.disc]), which is why widening the payload costs the echo
+     tier nothing -- its producer supplies this constructor and its
+     consumer case-splits on a one-armed case. *)
+  Definition ush_line_echo (l : FileDisc.uline) : Prop :=
+    exists ws : list (list (bv 8)), l = FileDisc.LEcho ws.
+
+  Definition ush_rest_line_at (D : FileDisc.uline -> Prop)
+      (ws : list (list (bv 8))) (f : nat -> bv 8) (k : nat) : iProp Σ :=
     ((∀ len : nat,
         ⌜forall j : nat, (j < len)%nat -> f (k + j)%nat <> ubyte0⌝ -∗
-        ⌜f (k + len)%nat = ubyte0⌝ -∗ ⌜ush_line_is ws f k len⌝)
+        ⌜f (k + len)%nat = ubyte0⌝ -∗
+        ⌜exists l : FileDisc.uline,
+           D l /\ FileDisc.uline_ws l = ws /\ ush_line_at l f k len⌝)
      ∨ T)%I.
 
+  Definition ush_rest_line (ws : list (list (bv 8))) (f : nat -> bv 8)
+      (k : nat) : iProp Σ := ush_rest_line_at ush_line_echo ws f k.
+
+  Global Instance ush_rest_line_at_persistent D ws f k :
+    Persistent (ush_rest_line_at D ws f k).
+  Proof using HT. rewrite /ush_rest_line_at. apply _. Qed.
   Global Instance ush_rest_line_persistent ws f k :
     Persistent (ush_rest_line ws f k).
-  Proof. rewrite /ush_rest_line. apply _. Qed.
+  Proof using HT. rewrite /ush_rest_line. apply _. Qed.
 
   (* ...AND THE ARM A TAINTED TURN IS AT, as a constructor, so a walk that
      has learned the taint does not have to spell the disjunction. *)
+  Lemma ush_rest_line_at_taint (D : FileDisc.uline -> Prop)
+      (ws : list (list (bv 8))) (f : nat -> bv 8) (k : nat) :
+    T -∗ ush_rest_line_at D ws f k.
+  Proof using . iIntros "HT". rewrite /ush_rest_line_at. by iRight. Qed.
+
   Lemma ush_rest_line_taint (ws : list (list (bv 8))) (f : nat -> bv 8)
       (k : nat) :
     T -∗ ush_rest_line ws f k.
-  Proof using . iIntros "HT". rewrite /ush_rest_line. by iRight. Qed.
+  Proof using . exact (ush_rest_line_at_taint ush_line_echo ws f k). Qed.
+
+  (* ...and the ECHO era's producer, in one line: the constructor its
+     discipline admits, at the line the read delivered. *)
+  Lemma ush_line_echo_of_is (ws : list (list (bv 8))) (f : nat -> bv 8)
+      (k len : nat) :
+    ush_line_is ws f k len ->
+    exists l : FileDisc.uline,
+      ush_line_echo l /\ FileDisc.uline_ws l = ws /\ ush_line_at l f k len.
+  Proof using .
+    intro Hl. exists (FileDisc.LEcho ws).
+    split; [ by exists ws | ]. split; [ reflexivity | exact Hl ].
+  Qed.
 
   (* ===================================================================== *)
   (* §2b THE JUMP TABLE, as a resource: five rows of four TEXT bytes.  Only *)
@@ -7015,7 +7072,8 @@ Section UkSh.
      [ush_rest] -- the same thing without the line fact -- is gone with
      M5(3): [wp_ksh_getcmd] produces the fact now, so the loop takes this
      one and nothing is left that could take the other. *)
-  Definition ush_rest_l (R : iProp Σ) : iProp Σ :=
+  Definition ush_rest_l_at (D : FileDisc.uline -> Prop) (R : iProp Σ)
+      : iProp Σ :=
     (□ (∀ (l : list fdstate),
         ⌜ ukn_const N ⌝ -∗
         (* ...AND THE LEASE'S TWO LAWS THE BODY'S FORK ARM SPENDS (lane
@@ -7052,17 +7110,27 @@ Section UkSh.
           ⌜ m !!! Regidx a5_idx = mword_of_int (bv_unsigned (f k)) ⌝ -∗
           ⌜ (k <= i2 < sh_nbuf)%nat /\ f i2 = ubyte0 ⌝ -∗
           ⌜ ush_fd0p l ⌝ -∗
-          ush_rest_line ws f k -∗
+          ush_rest_line_at D ws f k -∗
           ush_bstate l ws -∗
           R -∗
           ubytes γd sh_buf sh_nbuf f -∗
           urun N h m (mword_of_int 0x97a) (16 + (ush_Dbody + n)) -∗
           WP (Loop : expr riscv_lang)))%I.
 
+  (* the ECHO era's obligation, and the landed name: every file that
+     threads it ([UShKernel], [UInitSh], [UShRest]) is stated at this one
+     and does not move.  A widened era passes its own [D]. *)
+  Definition ush_rest_l (R : iProp Σ) : iProp Σ :=
+    ush_rest_l_at ush_line_echo R.
+
   (* NOT [apply _]: with the obligation transparent the search walks its
      whole body.  Name the instance the box deserves. *)
+  Global Instance ush_rest_l_at_persistent D R : Persistent (ush_rest_l_at D R).
+  Proof using .
+    rewrite /ush_rest_l_at. apply bi.intuitionistically_persistent.
+  Qed.
   Global Instance ush_rest_l_persistent R : Persistent (ush_rest_l R).
-  Proof using . rewrite /ush_rest_l. apply bi.intuitionistically_persistent. Qed.
+  Proof using . rewrite /ush_rest_l. apply _. Qed.
 
   (* ---- ONE TURN of the leading-blank scan, 0x964..0x974 ---------------- *)
   (*   c.addi s1,1 ; lbu a5,0(s1) ; addi a4,a5,-32 ; c.beqz a4,0x964        *)
@@ -7908,9 +7976,14 @@ Section UkSh.
       | iPureIntro; rewrite Ha5_8; reflexivity | ].
     (* THE LINE STARTS AT 0 on this arm: the first byte is neither a space
        nor a tab, so the blank scan never ran. *)
-    rewrite /ush_rest_line.
+    rewrite /ush_rest_line /ush_rest_line_at.
     iDestruct "Hline" as "[%Hl | #HT]"; [ | iRight; iExact "HT" ].
     iLeft. iIntros (len) "%Hne %Hnl". iPureIntro.
+    (* THE CONSTRUCTOR THE ECHO ERA ADMITS (lane SH-CHILD): the payload is
+       "some admissible line of the discipline", and this era's is
+       [LEcho ws] -- [ush_line_echo_of_is] is the whole of the widening's
+       cost on this side. *)
+    apply ush_line_echo_of_is.
     destruct Hl as [Hi17 [Hok [_ Hby]]].
     (* THE NUL THE SCAN FOUND IS THE LINE'S END: no byte of a line is a NUL
        ([ush_line_no_nul]), and the one [gets] planted sits just past it. *)

@@ -8763,18 +8763,38 @@ Section UkShDiagLeaf.
   (* law is at the two ends as the runner names them; [UShPanic.            *)
   (* ush_execfail_law_holds] is the discharge at the era's links.           *)
   (* ===================================================================== *)
-  Definition ush_execfail_law (Cr Cd : iProp Σ) : iProp Σ :=
+  (* THE DIAGNOSTIC'S BYTES ARE A PARAMETER (lane LINK-GEN-2).  sh prints
+     "exec %s failed\n" with the COMMAND NAME spliced in, so the bytes are
+     [EchoDisc.alt_execfail] at an echo line and [FileDisc.alt_execcat] at
+     a cat one, and [FileDisc.ralt_ok] admits the alternative only at its
+     own line shape.  THE PARAMETER IS ON THE LAW AND NOT ON THE WALK:
+     [wp_kshd_execfail_paid] below spends sh's own .rodata literal and its
+     argv premise names "echo", so it stays at echo's instance; a second
+     line shape supplies its own bytes by its own byte proof.  [n] is the
+     index the block is written up to (the diagnostic's length less the
+     prompt's two bytes) and is a parameter for the same reason. *)
+  Definition ush_execfail_law_at (dg : list (bv 8)) (n : nat)
+      (Cr Cd : iProp Σ) : iProp Σ :=
     (□ (∀ (N : uk_names Σ) (l : list fdstate),
           ⌜ UkSh.ush_fd2p l ⌝ -∗
           Cr -∗
           ∃ Pf : nat -> iProp Σ,
             Pf 0%nat
             ∗ □ (∀ (p : nat) (b : bv 8),
-                   ⌜ alt_execfail !! p = Some b ⌝ -∗
+                   ⌜ dg !! p = Some b ⌝ -∗
                    ksh_w1 N (mword_of_int 2 : mword 64) b
                      (UserFd.ustd (ukn_fd N) l ∗ Pf p)
                      (UserFd.ustd (ukn_fd N) l ∗ Pf (S p)))
-            ∗ □ (Pf 17%nat -∗ Cd)))%I.
+            ∗ □ (Pf n -∗ Cd)))%I.
+
+  (* ...and the ECHO instance, DEFINITIONALLY: the landed body verbatim,
+     so the walk and [UkShEcho]'s two uses are untouched. *)
+  Definition ush_execfail_law (Cr Cd : iProp Σ) : iProp Σ :=
+    ush_execfail_law_at alt_execfail 17%nat Cr Cd.
+
+  Global Instance ush_execfail_law_at_persistent dg n Cr Cd :
+    Persistent (ush_execfail_law_at dg n Cr Cd).
+  Proof using . rewrite /ush_execfail_law_at. apply _. Qed.
 
   Global Instance ush_execfail_law_persistent Cr Cd :
     Persistent (ush_execfail_law Cr Cd).

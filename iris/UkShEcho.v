@@ -1031,7 +1031,8 @@ Section UkShEcho.
     ush_execfail_law_wq Wc -∗
     sh_exec_sup_echo_wq Wc -∗ UkShFork.ushf_child_law Wc.
   Proof.
-    iIntros "#Hxl #Hsup". rewrite /UkShFork.ushf_child_law.
+    iIntros "#Hxl #Hsup".
+    rewrite /UkShFork.ushf_child_law /UkShFork.ushf_child_law_at.
     iIntros "!>" (N' h m dw dv s0 len ws g sz ld n I)
       "%Hpeq %Hs1 %Hline %Hlws %Hs0 %Hs64 %Hs38 %Hszlo %Hszal %Hszok %Hrows
        #Hcode #Hpcode #Hpro #Hjt Hline Hws Hsy Hstd Hcwd Hch HM Hcr Hrun".

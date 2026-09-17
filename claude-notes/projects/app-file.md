@@ -8304,3 +8304,892 @@ it.  What changed shape, exhaustively:
 - `UEchoFile.v`'s `Hoff_link` is discharged (an `iExact` over the landed node),
   and `Hdep1`/`Hwrite1` were discharged by lane OFF-LINK's L5 — so the program
   tier's write side owes the kernel only the contract's held arm.
+
+### SH-CHILD (2026-09-17) — the line the loop reads is a TYPED line and WHICH lines an era admits is a parameter; the redirect body is the ECHO body at another line shape, and what is left of obligation 18 is THREE named things
+
+Branch `app-file/sh-redir`, on top of SH-LEX-REDIR's, merged from `main` at
+`ba34a9c5f` (SUP-ONE's rename, OFF-LINK, WRITE-RELAY-2, CAT-GEOM, LINK-GEN
+and the fix-forward).  Whole tree green on the lane's remote tree
+(`--proofs -k`, `EXIT=0`, zero `Error`); `make audit-all-only` unchanged
+(system THIRTEEN, echo FOURTEEN, both lists textually identical); `make
+gen-ucode` prints all seven catalogs unchanged; no `Admitted`; the ONE
+thing owed is a named `Hypothesis` (`Hcat_body`); every new result carries
+`Proof using`.
+
+#### 1. THE RULING THE LANE TURNS ON
+
+**sh's body reads its line EXACTLY ONCE — at 0x97a, and only to see that
+the first byte is not a `c`.**  Everything else the walk does with the line
+is hand it to the CHILD's law.  Three things follow, and they are the whole
+lane:
+
+1. **The redirect line needs NO new walk.**  `echo a b` and `echo a b > f`
+   both begin with 'e', so both take the `bne a5,s5` at 0x97a and run the
+   same fork1, the same diagnostic and the same runcmd call.
+   `UkShFork.wp_kshm_body_at` is the landed body ABSTRACT IN THE LINE SHAPE
+   and `UkShRedirBody.wp_kshm_body_redir` is that lemma at the redirect
+   shape; the one thing it costs is `ushs_line_is_byte0` — "the redirect
+   line's first byte is 'e'", off the `EchoDisc.line_ok` the shape already
+   carries.
+2. **THE THREE LEXER PREMISES WERE DEAD.**  `wp_kshf_fork` and
+   `wp_kshm_body` took `ushp_no_symbols`, `ushp_tokens` and
+   `length toks < 10`, and NEITHER PROOF READ THEM: the parse happens in
+   the CHILD, whose law re-derives it from the line fact
+   (`UkShEcho.ush_line_toks_holds` inside `wp_kshm_child_echo_holds`).
+   They are gone, and with them `UkShLoop.ush_line_lexable` as a premise of
+   `UkShFork.ushf_rest_of_body`.  They could not have survived anyway: a
+   redirect line HAS a symbol byte, so at the widened premise the landed
+   statement was not weakenable but false.
+3. **`cat f` is the only arm that is a different walk**, because it begins
+   with 'c': the `bne` is NOT taken and control goes into the three-byte
+   `cd` test, which this tree deleted with `UkShCd.wp_kshc_cd` when the
+   disciplined line made the arm unreachable.  That is `Hcat_body`, and it
+   is stated at exactly the law the other two arms are.
+
+#### 2. THE SHAPE: THE LINE IS TYPED, AND THE ERA SAYS WHICH LINES
+
+`UkSh.ush_rest_line`'s payload was `⌜ush_line_is ws f k len⌝` — echo's line
+and nothing else — and `UkShRedirLine.ushs_line_is_nosym` proves no such
+line carries a '>'.  **So today's tree forces a redirect line to the TAINT
+at sh's prompt.**  What replaces it is not a three-way disjunction but the
+observation that all three lines are lines of ONE discipline:
+
+```coq
+  Definition ush_line_at (l : FileDisc.uline) (f : nat -> bv 8)
+      (k len : nat) : Prop :=
+    FileDisc.uline_ok l
+    /\ len = length (FileDisc.line_bytes l)
+    /\ (forall j : nat, (j < len)%nat ->
+          f (k + j)%nat = FileDisc.line_bytes l !!! j).
+
+  Definition ush_rest_line_at (D : FileDisc.uline -> Prop)
+      (ws : list (list (bv 8))) (f : nat -> bv 8) (k : nat) : iProp Σ :=
+    ((∀ len : nat,
+        ⌜forall j : nat, (j < len)%nat -> f (k + j)%nat <> ubyte0⌝ -∗
+        ⌜f (k + len)%nat = ubyte0⌝ -∗
+        ⌜exists l : FileDisc.uline,
+           D l /\ FileDisc.uline_ws l = ws /\ ush_line_at l f k len⌝)
+     ∨ T)%I.
+```
+
+with `ush_line_echo l := ∃ ws, l = LEcho ws` the echo era's `D` and
+`ush_line_at (LEcho ws) f k len` CONVERTIBLE to `ush_line_is ws f k len`
+(`ush_line_at_echo` is `split; intro H; exact H`).  **`UkSh.ush_line_is`
+did not move and neither did `ush_rest_line` / `ush_rest_l`**: they are the
+`D := ush_line_echo` instances, so `UShKernel` (three sites), `UInitSh`
+(two), `UShRound` and `UInitBootAdequacy` name them at their landed arity
+and were not edited at all.  Only a walk that CASE-SPLITS pays, and there
+is exactly one.
+
+#### 3. WHAT LANDED, file by file
+
+- **`iris/UkSh.v`** — `ush_line_at`, `ush_line_at_echo`, `ush_line_echo`,
+  `ush_line_echo_of_is` (the echo era's producer, one line),
+  `ush_rest_line_at` (+ its persistence and taint constructor),
+  `ush_rest_l_at`; `ush_rest_line` and `ush_rest_l` are the echo instances
+  by definition.  `Require Import FileDisc` — pure, like `EchoDisc`, and
+  `FileDisc` is `_CoqProject` 1489 against `UkSh`'s 1531.
+- **`iris/UkShFork.v`** — `ushf_child_law_at Lp` (`ushf_child_law` is it at
+  `UkSh.ush_line_is`), `wp_kshf_fork_at Lp`, `wp_kshm_body_at Lp` (+
+  `Hlp0`, the one reading), `ushf_lp0_echo`, and **`ushf_body_law D sz`** —
+  the body as a LAW over the lines an era admits, which is what
+  `ushf_rest_of_body_at D` now takes in place of the two child laws, the
+  panic law and the lexability:
+
+```coq
+  Definition ushf_body_law (D : FileDisc.uline -> Prop) (sz : Z) : iProp Σ :=
+    (□ (∀ (lu : FileDisc.uline) (h : CpuId) (m : regfile) (f : nat -> bv 8)
+          (k len : nat) (l : list fdstate) (n : nat),
+          ⌜ D lu ⌝ -∗ ⌜ UkSh.ush_line_at lu f k len ⌝ -∗ ... -∗
+          ush_bstate l (FileDisc.uline_ws lu) -∗ ... -∗
+          urun N h m (mword_of_int 0x97a) (16 + (UkSh.ush_Dbody + n)) -∗
+          WP (Loop : expr riscv_lang)))%I.
+```
+
+  `ushf_body_law_echo` is the echo era's (one constructor, one walk, and
+  where `ushf_child_law` is spent) and `ushf_rest_of_body` is the landed
+  discharger at it — same statement as before MINUS the lexability.
+- **`iris/UkShRedirLine.v`** — the typed bridge: `ushs_line_is_of_at`
+  (`ush_line_at (LEchoF ws) f k len -> ushs_line_is ws fname_f f k len`),
+  `ushs_line_is_byte0`, `ushs_line_is_shift`, and the four suffix bytes
+  (`suf_gtf_0`..`_3`, `fname_f_word`, `fname_f_len`, moved down from
+  `UShLexRedir` so the command loop's case can use them).
+- **`iris/UkShRedirBody.v` (NEW)** — `ushs_lp` (the redirect shape, file
+  name existential — the WALK never reads it), `ushs_lp0`, `ushs_lp_of_at`,
+  **`wp_kshm_body_redir`** (deliverable 2), **`sh_redir_child_law`**
+  (`UShRound`'s statement verbatim) with BOTH directions of its bridge to
+  `ushf_child_law_at Wc ushs_lp`, **`ushf_body_law_file`** (deliverable 3 —
+  the three-way case) and `ushf_rest_of_body_file`, the obligation at the
+  file era's lines, which is what `UShRound.sh_round_holds_file` applies:
+
+```coq
+  Lemma ushf_rest_of_body_file (sz : Z) :
+    8344 <= sz -> UserPtTree.pgroundup sz = sz -> usz_ok (sz + 65536) ->
+    (forall I : list (bv 8), ⊢ Wc I 3%nat -∗ Wc I 0%nat) ->
+    UkShFork.ushf_kill_law Wc -∗
+    UkShFork.ushf_child_law Wc -∗
+    sh_redir_child_law -∗
+    UkShDiag.ush_panic_law Wc Wb -∗
+    UkSh.ush_rest_l_at N γp T Wc Wb Pm ush_line_file
+      (UkShLoop.ushl_R N sz).
+```
+
+#### 4. THE TWO EDITS IN OTHER LANES' FILES, exactly
+
+- **`iris/UShRest.v`** (LINK-GEN-3's), TWO tokens and no proof text:
+  the argument `ush_line_lexable_holds` is removed from the
+  `UkShFork.ushf_rest_of_body` application (it is not a premise any more),
+  and `rewrite /UkSh.ush_rest_l` becomes
+  `rewrite /UkSh.ush_rest_l /UkSh.ush_rest_l_at` (one more layer to unfold,
+  because the landed name is now the echo instance).  `ush_line_lexable_holds`
+  itself is untouched and still proved.
+- **`iris/UkShEcho.v`**, ONE token: `rewrite /UkShFork.ushf_child_law`
+  becomes `rewrite /UkShFork.ushf_child_law /UkShFork.ushf_child_law_at`
+  in `ushf_child_law_holds`.
+
+#### 5. WHAT IS LEFT OF OBLIGATION 18, and it is THREE named things
+
+`sh_redir_child_law` is STATED and its bridge to the body walk is proved,
+so the THREAD is closed: the loop's line fact now reaches the redirect
+child.  The child's own walk is not proved, and assembling it from
+`UkShRedirSeam.wp_kshm_child_alloc_redir` needs, in this order:
+
+1. **The seam's EXIT PAYMENT is the wrong shape.**
+   `wp_kshm_child_alloc_redir` takes `(⊢ ukn_pay N (-1))` — the payload is
+   free — because the parser's walk can die at malloc's NULL store.  At the
+   PAID child the payload is `UkShFork.ushf_wq Wc I`, i.e. `Wc I 3 ∨ Wc I 0`,
+   which is NOT derivable from nothing.  The echo child's walk does it
+   properly: `wp_kshm_child_echo` carries the lend `Cr` and
+   `□ (Cr -∗ Q (-1))` and hands `Cr` back on the arm where the allocation
+   succeeded.  So `wp_kshm_child_redir` / `_alloc_redir` have to take
+   `Cr` + `Hcq` in place of that premise — the walk itself does not change.
+2. **The EXEC ARM at fd 1 = the FILE.**  `UkShEcho.wp_kshr_exec_echo` is
+   the arm from `runcmd`, and it names fd 1 TWICE: `UkSh.ush_fd1p ld` and,
+   inside `sh_exec_sup_echo`, the same row as the supply's premise.  The
+   redirect child's fd 1 is `FdOpen false true ty`.  Both are one
+   parameter: `ush_fd1p` becomes an abstract `Fd1 : list fdstate -> Prop`
+   and the supply is stated at it — echo's console arm is the instance at
+   `ush_fd1p`, the redirect child's is K1's `UEchoFile.efile_image_entry`
+   wrapped as that supply.
+3. **`echo_argv_bytes` at the REDIRECT CUT.**
+   `UkShEcho.echo_argv_bytes_of_line_holds` is proved at
+   `ushp_nulfold (echo_toks ws) (ushp_ext len f)`; the redirect child's
+   tree is built over `UkShRedirPc.ushs_nulcut args len f fe`, which NULs
+   the file name's end as well.  SH-LEX-REDIR's ruling makes the token list
+   the SAME (`args = wl_toks ws = echo_toks ws`), so this is that lemma at
+   one more terminator and nothing else.
+
+**And one more thing this lane changes about the graph:**
+`UkShLoop.ush_line_lexable` and `ush_line_lexable_redir` now have NO
+consumer in the tree — the body walk never needed them and the child's walk
+is not written yet.  Both stay: `UShRest.ush_line_lexable_holds` and
+`UShLexRedir.ush_line_lexable_redir_holds` are what item 2 above will spend
+when the redirect child's parse is walked, exactly as
+`UkShEcho.wp_kshm_child_echo_holds` spends `ush_line_toks_holds` today.
+
+### LINK-GEN-2 (2026-09-17) — THE FILE MODEL'S CREDENTIAL ALGEBRA LANDS; `file_link_inst` IS BLOCKED BY THREE RECORD FIELDS WHOSE TYPE IS WRONG, AND THE DIFF IS EXACT
+
+Branch `app-file/link-gen`, merged with `main` (`93fb91316`).  New file
+`iris/FileLinksLine.v`: `FileLinks`' credential families — the eleven pure
+shapes at `pro_pin_f` / `proc_before_f` / `proc_stream_f` / `pro_idx_f` /
+`FileDisc.fst_upto`, their ~30 lemmas, and the resource families with
+their laws.  No echo file is edited, no `Admitted` is added.
+
+**THE LANE'S VERDICT IN ONE LINE.**  The file model's algebra ports
+cleanly — `FileOutPure` already has every extension lemma the echo proofs
+spend, so the shapes and steps are transcriptions — but `file_link_inst`
+cannot be built against `LinkRec` as it stands, because THREE of its
+fields are typed as if there were ONE line shape: `lk_pan` and `lk_exf`
+are `nat` where they must be `list (bv 8) -> nat`, and the exec-failed
+diagnostic's BYTES are per-line too.
+
+#### 1. THE BLOCKING FINDING, exactly
+
+`FileDisc.ralt_ok` admits an alternative ONLY at its own line shape:
+
+    LEcho ws  -> REcho k (k < 4) and nothing else
+    LEchoF ws -> RFRan sel / RFExec / RFOpenU / RFOpenM / RFSilent / RFFork
+    LCat      -> RCRan / RCNoOpen / RCExec / RCSilent / RCFork
+
+So sh's FORK PANIC is `REcho 3` at an echo line, `RFFork` at a redirect
+one and `RCFork` at a cat one, and its EXEC-FAILED diagnostic is
+`REcho 1` / `RFExec` / `RCExec`.  At the echo application there is one
+line shape, so `lk_pan := 3` and `lk_exf := 1` are constants and
+`lk_ab_pan : ∀ I, lk_ab I lk_pan = alt_panic` holds; at the file
+`lk_ab I 3 = []` at every line that is not an `LEcho`, because `fab`
+guards on admissibility.  **`lk_ab_pan` and `lk_ab_exf` are therefore
+UNINHABITABLE at the file instance as stated, and a record needs all its
+fields — so there is no `file_link_inst` until the three change.**
+
+THE DIFF, for lane LINK-GEN-3 (five lines of `LinkRec.v`, and echo's
+instance stays definitional because `fun _ => 3` applied is `3`):
+
+    lk_pan  : list (bv 8) -> nat;          (* was [nat]; echo: fun _ => 3%nat *)
+    lk_exf  : list (bv 8) -> nat;          (* was [nat]; echo: fun _ => 1%nat *)
+    lk_exfb : list (bv 8) -> list (bv 8);  (* NEW; echo: fun _ => alt_execfail *)
+    lk_ab_pan   : forall I, lk_ab I (lk_pan I) = alt_panic;
+    lk_ab_exf   : forall I, lk_ab I (lk_exf I) = lk_exfb I;
+    lk_apr_exf  : forall I, lk_apr I (lk_exf I);
+    lk_panic_done : forall k v I,
+      ⊢ lk_blk k v I (lk_pan I) (length (lk_ab I (lk_pan I))) -∗ lk_ban k v I 0%nat;
+
+`alt_panic` itself stays a constant: `FileDisc.cont` answers it at
+`RFFork` AND `RCFork`, and `EchoDisc.line_alts_of ws !!! 3` is the same
+five bytes — `FileLinksLine.cont_fpan` proves the three cases agree.  The
+exec diagnostic does NOT: `cont _ LCat RCExec = alt_execcat`
+("exec cat failed"), which is why `lk_exfb` is a new field.
+
+**AND IT REACHES ONE LAYER FURTHER DOWN**, which is a finding for lane
+SKELETON rather than for me: `UkShDiag.ush_execfail_law Cr Cd` hard-codes
+`⌜alt_execfail !! p = Some b⌝` in its byte step, so even with `lk_exfb`
+the law cannot be stated at a cat line.  sh's walk prints
+`"exec %s failed\n"` with the command name, so the literal belongs in a
+parameter: `ush_execfail_law (dg : list (bv 8)) (Cr Cd : iProp Σ)` with
+echo's instance at `dg := alt_execfail`.  Until that lands,
+`UShPanic.ush_execfail_law_hold_at` (LINK-GEN's framed law, which is
+lane SKELETON's `Hexecfail`) is available at the ECHO and REDIRECT line
+shapes only.
+
+#### 2. WHAT LANDED — `iris/FileLinksLine.v`
+
+**S0, the line model.**  `fline I` (the last complete body's parse),
+`fst_free` (the alternatives whose output does NOT read the file's state
+— every `ralt` but `RCRan`), `cont_state_free` (one `destruct`), and the
+record's `lk_ab` at the file:
+
+    Definition fab (I : list (bv 8)) (a : nat) : list (bv 8) :=
+      if decide (ralt_ok (fline I) (ralt_dec a) /\ fst_free (ralt_dec a) = true)
+      then cont None (fline I) (ralt_dec a) else [].
+
+with `fab_ok` (a byte lookup implies BOTH guards, so the block-byte step
+needs no premise, exactly as `EchoDisc.line_alts_lt` gives echo),
+`fab_at` (the guarded value is `cont` at ANY state), `fab_len_ge2`,
+`fab_dollar`, `fab_space` (the block's last two bytes are the prompt, read
+off the twelve cases; `FileDisc.cont_shape` says so too but under
+`uline_ok`, which a writer does not hold), and the three per-line
+alternatives `fpan_of` / `fexf_of` / `fnoc_of` with their
+`_ok` / `_free` / `_panic` / `cont_*` readings.
+
+**S1, the eleven shapes.**  `wr_pro_f`, `wr_blk_f`, `wr_open_f`,
+`wr_sp_f`, `wr_owed_f`, `wr_ban_f` (with `wr_pre_f`), `wr_tail_f`,
+`wr_blk_t_f`, `wr_sp_t_f`, `wr_open_t_f`, `blkcs_f`, `wr_banp_f` — each
+`EchoLinks`/`EchoLinksLine`'s with the era's BOOT STATE `s0` threaded and
+`cs !!! (nlines I - 1) = 3` replaced by
+`ralt_panic (ralt_at cs (nlines I - 1)) = true`, so the two new line
+shapes' fork alternatives open a round too.
+
+**S2–S7, the ~30 pure lemmas.**  `pro_pin_f_nil`/`_at`,
+`wr_blk_nonnil_f`, `wr_blk_lines_f`, `wr_blk_started_f`,
+`wr_blk_t_stage_f`, `wr_blk_pin_snoc_f`, `wr_blk_low_f`,
+`wr_blk_pending_f`, `wr_blk_pending_pre_f`, `wr_blk_byte_f`,
+`fd_snoc_lookup_total`, `pro_idx_f_snoc_ne`, `pro_idx_f_snoc_pan`,
+`wr_tail_snoc_f`, `pending_at_f_round_snoc`, `wr_ban_pro_f`,
+`wr_ban_low_f`, `wr_ban_filed_f`, `wr_ban_byte_f`, `wr_ban_done_f`,
+`wr_ban_round0_f`, `proc_before_from_gap_f`, `proc_before_line_f`,
+`wr_pro_dollar_f`, `wr_blk_dollar_f`, `wr_sp_open_f`, `wr_open_read_f`,
+`wr_blk_open_f`, `wr_blk_sp_f`, `wr_sp_open_t_f`, `wr_open_read_t_f`,
+`wr_pro_tail_f`, `wr_pro_dollar_t_f`, `wr_blk_pending_pan_f`,
+`wr_blk_ban_f`, `pending_at_f_nonnil_at`, `wr_owed_read_refute_f`.
+
+**THE PROLOGUE IS NOT TWINNED.**  `EchoLinks.pro_of_open_snoc_eq`,
+`wr_prompt_len`, `wr_pro_alts_0`, `wr_prompt_head`, `wr_prompt_tail`,
+`wr_line_alts_2`, `nlines_app_nonl`, `rest_of_app_nonl`,
+`pro_rounds_one` and `EchoLinksLine.line_alts_len_ge2` / `line_alts_dollar`
+/ `line_alts_space` / `line_alts_len3` are IMPORTED: the file application
+runs the same /init, so its prologue, its banner and its prompt are
+echo's, byte for byte.
+
+**S8, the resource families.**  `f0w` (the era's boot state pinned by its
+file pin, with `f0w_agree`), `fcur`, `f0pre`/`fhead` (below), `fwc_pro`,
+`fwc_blk`, `fwc_owed`, `fwc_sp`, `fwc_open`, `fwc_sp_t`, `fwc_open_t`,
+`fwc_ban`, `fwc_line`, `fwc_lend`, `fwc_pr`, `fwc_lpr`, `fwc_rres`, their
+timeless instances and taint routes, and the conversions
+`fwc_pro_owed`, `fwc_blk_owed`, `fwc_sp_t_sp`, `fwc_open_t_open`,
+`fwc_blk_0`, `fwc_line_of_blk0`, `fwc_line_of_post`, `fwc_line_of_pro`,
+`fwc_lend_of_blk0`, `fwc_blk_sp`, `fwc_ban_pro`, `fwc_ban_owed`,
+`fwc_ban_done`, `fwc_ban_done_line`, `fwc_ban_inp`, `fwc_read`,
+`fwc_read_t`, `fwc_panic_done`.
+
+#### 3. THREE MORE RECORD-SHAPE FINDINGS FOR LANE LINK-GEN-3
+
+1. **The era's HEAD is a new arm, and four families must admit it.**  At
+   the file the era's FIRST process byte has no boot state to pin: it is
+   `FileLinks.file_write_link_first` that FILES one, out of the deed's own
+   typed witness.  So `fwc_pro`, `fwc_owed`, `fwc_line` and `fwc_ban` (at
+   `i = 0`) carry a third arm `fhead` — "nothing written, `turn v 0`, the
+   three empty bounds, and `f0pre`" — beside the informative one and the
+   taint.  Nothing in `LinkRec` has to change for this (the families are
+   fields), and no law is weakened: `lk_prompt_dollar` /
+   `lk_prompt_dollar_line` / `lk_ban_step` all take the head arm through
+   `file_write_link_first` and land in the INFORMATIVE arm, because the
+   era's first byte is a prologue-choice write.  It is recorded because it
+   is the one place the file's families are not echo's shape.
+2. **`lk_rres` needs the era index.**  `lk_rres : era_pins -> list (bv 8)
+   -> iProp Σ` is `k`-free because echo's `UShLine.rd_res` needs no pin;
+   the file's residue must carry `f0_lb` at the era's FILE pin, and
+   `lk_ban_read_taint`'s agreement (`file_era_pin_agree`, then
+   `f0_lb_agree`) is at an index.  `FileLinksLine.fwc_rres` pins it at
+   `S gen_id` — the one era the console tier runs at — and `f0w` carries
+   `⌜k = S gen_id⌝` so the law holds at every `k`.  The honest field is
+   `lk_rres : nat -> era_pins -> list (bv 8) -> iProp Σ`.
+3. **`lk_turn` must carry the deed's typed witness.**  `lk_turn0` has to
+   produce the head arm, and `FileOut.fturn` alone cannot: the witness
+   comes from `AppFile.file_boot`, which `App.al_programs` hands /init
+   BESIDE the turn.  The file instance sets
+   `lk_turn k := ⌜k = S gen_id⌝ ∗ FileOut.fturn g k ∗ f0pre`; echo's stays
+   `eturn γ`, so `UInitBanner.kinit_ban0_of_eturn` does not move.
+
+#### 4. THE ONE-LINE CHANGE `UShRound.v` NEEDS (lane SKELETON owns the file)
+
+Restated from LINK-GEN's findings, unchanged:
+
+    (* was: Hypothesis Hcltaint : forall I p, ⊢ T -∗ Wcl I p. *)
+    Hypothesis Hcltaint : forall (I : list (bv 8)) (p : nat)
+        (v : era_pins) (vf : file_era),
+      ⊢ era_pin (fgn_echo g) (S gen_id) v -∗ file_era_pin g (S gen_id) vf -∗
+        T -∗ Wcl I p.
+
+`Wcl I p` carries the era's pin under an existential and the taint does
+not produce a `ghost_map` element; `sh_round_holds_file` already takes
+both pins, and `sh_kill_law_file` — the only consumer — holds them.
+
+### LINK-GEN-2 (2026-09-17) — THE FILE INSTANCE IS GREEN: `file_link_inst` EXISTS, THE THREE MIS-TYPED FIELDS ARE FIXED, AND `UkShDiag`'s EXEC DIAGNOSTIC IS A PARAMETER OF THE LAW
+
+Branch `app-file/link-gen`, merged with `main` (`ba34a9c5f`).  New files
+`iris/FileLinksLine.v` (2,057 lines) and `iris/FileLinkInst.v`, both in
+`_CoqProject` and both compiling; `iris/LinkRec.v`, `iris/UkShDiag.v`,
+`iris/UShPanic.v` changed.  No `Admitted`; echo's instance is still
+DEFINITIONAL and the fourteen `echo_inst_*` `reflexivity` checks are
+unmoved.
+
+**THE LANE'S VERDICT IN ONE LINE.**  `LinkRec` is inhabited at the file
+application, so the console tier above the links is now a genuine
+instantiation at both ends; the record needed exactly the three-field
+change LINK-GEN-2 priced, and the one thing that reached a layer further
+down was the exec-failed child's DIAGNOSTIC, which is per-line and
+therefore a parameter of `UkShDiag`'s law.
+
+#### 1. THE RECORD CHANGE, AS RULED
+
+    lk_pan  : list (bv 8) -> nat;          (* echo: fun _ => 3%nat *)
+    lk_exf  : list (bv 8) -> nat;          (* echo: fun _ => 1%nat *)
+    lk_exfb : list (bv 8) -> list (bv 8);  (* NEW; echo: fun _ => alt_execfail *)
+    lk_ab_pan  : forall I, lk_ab I (lk_pan I) = alt_panic;
+    lk_ab_exf  : forall I, lk_ab I (lk_exf I) = lk_exfb I;
+    lk_apr_exf : forall I, lk_apr I (lk_exf I);
+    lk_panic_done : forall k v I,
+      ⊢ lk_blk k v I (lk_pan I) (length (lk_ab I (lk_pan I))) -∗ lk_ban k v I 0%nat;
+
+`fun _ => 3` applied IS `3`, so echo's instance stays definitional and
+`UShPanic`/`UInitBanner`'s echo re-exports are still `Definition`s at
+their landed statements with no proof text.  At the file the three are
+`fun I => fpan_of (fline I)` / `fexf_of (fline I)` / `fexfb (fline I)`:
+`REcho 3` / `REcho 1` / `alt_execfail` at an `LEcho` line, `RFFork` /
+`RFExec` / `alt_execfail` at an `LEchoF` one, `RCFork` / `RCExec` /
+**`alt_execcat`** at an `LCat` one.  `FileLinksLine.cont_fpan` proves the
+panic's bytes ARE uniform across the three.
+
+#### 2. `UkShDiag.ush_execfail_law` GAINS THE DIAGNOSTIC, ON THE LAW ONLY
+
+    Definition ush_execfail_law_at (dg : list (bv 8)) (n : nat)
+        (Cr Cd : iProp Σ) : iProp Σ := (* the byte step at [dg !! p],
+                                          the end at [Pf n] *)
+    Definition ush_execfail_law (Cr Cd : iProp Σ) : iProp Σ :=
+      ush_execfail_law_at alt_execfail 17%nat Cr Cd.
+
+The index `n` is a parameter for the same reason as `dg` (it is the
+diagnostic's length less the prompt's two bytes).  **WHAT MOVED, and what
+did not.**  `ush_execfail_law`'s body is the landed one VERBATIM, so
+`UkShDiag.wp_kshd_execfail_paid` — the walk, which spends sh's own
+.rodata literal and whose argv premise names `"echo"` — is untouched, and
+so are `UkShEcho.ush_execfail_law_wq` and its two uses in `UkShEcho`.
+What moved is `UShPanic`'s two generic laws, now stated at
+`ush_execfail_law_at (lk_exfb L I) (length (lk_exfb L I) - 2)`:
+`ush_execfail_law_holds_at` and the framed `ush_execfail_law_hold_at`
+(lane SKELETON's `Hexecfail`).  Their echo re-export
+`UShPanic.ush_execfail_law_holds` is still a `Definition` at the landed
+statement — which also settles that `length alt_execfail - 2` and `17`
+are convertible.
+
+#### 3. WHAT `iris/FileLinksLine.v` CONTAINS
+
+- **the line model**: `fline I` (the last complete body's parse),
+  `fst_free` (every `ralt` but `RCRan` — the alternatives whose output
+  does not read the file's state), `cont_state_free`, and
+
+      Definition fab (I : list (bv 8)) (a : nat) : list (bv 8) :=
+        if decide (ralt_ok (fline I) (ralt_dec a)
+                   /\ fst_free (ralt_dec a) = true)
+        then cont None (fline I) (ralt_dec a) else [].
+
+  GUARDED, so that a byte lookup alone says the alternative is admissible
+  AND state-free (`fab_ok`) and the block-byte step needs no premise —
+  exactly as `EchoDisc.line_alts_lt` gives echo.  With `fab_at`,
+  `fab_len_ge2`, `fab_dollar`, `fab_space` (read off the twelve cases,
+  because `FileDisc.cont_shape` says the same under `uline_ok`, which a
+  writer does not hold), and the three per-line alternatives.
+- **the eleven shapes**: `wr_pro_f`, `wr_blk_f`, `wr_open_f`, `wr_sp_f`,
+  `wr_owed_f`, `wr_ban_f` (with `wr_pre_f`, `wr_banp_f`), `wr_tail_f`,
+  `wr_blk_t_f`, `wr_sp_t_f`, `wr_open_t_f`, `blkcs_f`, with the era's
+  boot state threaded and `cs !!! (nlines I - 1) = 3` replaced by
+  `ralt_panic (ralt_at cs (nlines I - 1)) = true`.
+- **~40 pure lemmas**, up to and including `wr_owed_read_refute_f`.
+- **the credential families**: `f0w` (the boot state pinned by the era's
+  file pin, with `f0w_agree`), `fcur`, `f0pre`/`fhead`, `fwc_pro`,
+  `fwc_blk`, `fwc_owed`, `fwc_sp`, `fwc_open`, `fwc_sp_t`, `fwc_open_t`,
+  `fwc_ban`, `fwc_line`, `fwc_lend`, `fwc_pr`, `fwc_lpr`, `fwc_rres`, and
+  their laws.
+- **the steps through `FileLinks.file_links`**: `fban_step`, `fblk_step`,
+  `fhead_dollar`, `fprompt_dollar`, `fprompt_space`,
+  `fprompt_dollar_ban`, `fprompt_dollar_post`, `fprompt_space_t`,
+  `fprompt_dollar_line`, `fwc_read`, `fwc_read_t`, `fwc_panic_done`,
+  `fowed_read_taint`, `fban_read_taint`, `fturn0`.
+
+**THE PROLOGUE IS NOT TWINNED.**  The file application runs the same
+/init, so `EchoLinks.pro_of_open_snoc_eq` / `wr_prompt_len` /
+`wr_pro_alts_0` / `wr_prompt_head` / `wr_prompt_tail` / `wr_line_alts_2` /
+`nlines_app_nonl` / `rest_of_app_nonl` / `pro_rounds_one` and
+`EchoLinksLine.line_alts_len_ge2` / `_dollar` / `_space` / `line_alts_len3`
+are IMPORTED.
+
+#### 4. THREE RECORD-SHAPE FINDINGS, RESOLVED INSIDE THE INSTANCE
+
+None of the three needed another `LinkRec` change.
+
+1. **The era's HEAD is a third arm, in four families.**  At the file the
+   era's FIRST process byte has no boot state to pin: it is
+   `FileLinks.file_write_link_first` that FILES one, out of the deed's own
+   typed witness.  So `fwc_pro`, `fwc_owed`, `fwc_line` and `fwc_ban` (at
+   `i = 0`) carry `fhead` — `⌜I = []⌝ ∗ ⌜k = S gen_id⌝ ∗ turn v 0` ∗ the
+   three empty bounds ∗ the era's file pin ∗ `f0pre` — beside the
+   informative arm and the taint.  NO LAW IS WEAKENED: `lk_ban_step`,
+   `lk_prompt_dollar` and `lk_prompt_dollar_line` take the head arm
+   through `file_write_link_first` (at `a = 3` and `a = 0`) and land in
+   the INFORMATIVE arm, because the era's first byte is a prologue-choice
+   write; `fhead_dollar` and `wr_sp_f_head` are that step.
+2. **`lk_rres` does NOT need the era index.**  `fwc_rres` pins the file
+   era at the console era `S gen_id` and `f0w k s0` carries
+   `⌜k = S gen_id⌝`, so `lk_ban_read_taint` is provable at EVERY `k` with
+   the field `k`-free as it stands.
+3. **`lk_turn` carries the deed's typed witness**, as a field value:
+   `fturn_pre g k := ⌜k = S gen_id⌝ ∗ FileOut.fturn g k ∗ f0pre`.  Echo's
+   stays `eturn γ`, so `UInitBanner.kinit_ban0_of_eturn` does not move.
+
+#### 5. THE EXACT STATEMENTS LANE SH-ROUND APPLIES
+
+At `Wcl := FileLinkInst.file_Wcl g` and
+`Wbl := FileLinkInst.file_Wbl g` (both in `iris/FileLinkInst.v`):
+
+| `UShRound.v` | what to apply | shape |
+| --- | --- | --- |
+| `Hwbl` | `FileLinkInst.file_Hwbl g I` | `⊢ file_Wcl g I 3 -∗ file_Wcl g I 0` |
+| `Hwbwc` | `FileLinkInst.file_Hwbwc g I` | `⊢ file_Wbl g I -∗ file_Wcl g I 0` |
+| `Hcltaint` | `FileLinkInst.file_Hcltaint g I p v` | `⊢ era_pin (fgn_echo g) (S gen_id) v -∗ file_taint (fgn_cl g) -∗ file_Wcl g I p` |
+| `Hwc` | `FileLinkInst.file_Hwc g I l v Hl` | `⊢ era_pin (fgn_echo g) (S gen_id) v -∗ inp_lb v (I++l++[wl_nl]) -∗ file_Wcl g I 2 -∗ file_Wcl g (I++l++[wl_nl]) 3` |
+| `Hwbr` | `FileLinkInst.file_Hwbr g I l v Hl` | `⊢ era_pin (fgn_echo g) (S gen_id) v -∗ lk_rres (file_link_inst g) v (I++l++[wl_nl]) -∗ file_Wbl g I -∗ file_taint (fgn_cl g)` |
+| `Hpanic` | `UShPanic.ush_panic_law_hold_at (file_link_inst g) sh_hold` | `lk_links L -∗ UkShDiag.ush_panic_law (fun I p => lk_lcred L (S gen_id) I p ∗ sh_hold I) (fun I => (∃ v, lk_pin L (S gen_id) v ∗ lk_ban L (S gen_id) v I 0) ∗ sh_hold I)` |
+| `Hexecfail` | `UShPanic.ush_execfail_law_hold_at (file_link_inst g) sh_hold I`, wrapped in one `iIntros "!>" (I)` | `lk_links L -∗ UkShDiag.ush_execfail_law_at (lk_exfb L I) (length (lk_exfb L I) - 2) (lk_lcred L (S gen_id) I 3 ∗ sh_hold I) (lk_lcred L (S gen_id) I 0 ∗ sh_hold I)` |
+| `Hchild_echo` | — | still open; it needs lane LINK-GEN-3's `StageRec` (`UEchoOut`/`UShEchoPay` read an EXPLICIT stage, not a credential) |
+| item 20 | `FileLinks.file_links g` + seven projections + `file_links_holds` | landed |
+| item 21 | `UkSh.ush_tag_law_at D` / `ush_tag_law_of_at` / `ush_tag_law_echo`; the file side owes only the pure `disc_f h -> obs_ends_in Uart0 h b -> bv_unsigned (cons_xlate b) = 4 -> False` (`FileOutPure.disc_seg_f_no_ctrl_d`'s reading) | landed |
+
+#### 6. WHAT `UShRound.v` NEEDS CHANGED (lane SKELETON owns the file)
+
+**ONE HYPOTHESIS, ONE LINE.**
+
+    (* was: Hypothesis Hcltaint : forall I p, ⊢ T -∗ Wcl I p. *)
+    Hypothesis Hcltaint : forall (I : list (bv 8)) (p : nat) (v : era_pins),
+      ⊢ era_pin (fgn_echo g) (S gen_id) v -∗ T -∗ Wcl I p.
+
+`Wcl I p` carries the era's pin under an existential and the taint does
+not produce a `ghost_map` element.  `sh_round_holds_file` already takes
+`(∃ v, era_pin (fgn_echo g) (S gen_id) v)`, and `sh_kill_law_file` — the
+only consumer — holds it.  (The file's `Wcl` needs only the ECHO-side pin,
+not the era's file pin: `lk_pin (file_link_inst g) = era_pin (fgn_echo g)`
+and the file pin lives inside the families, in `f0w`.)
+
+**AND ONE SHAPE.**  `Hexecfail` is stated at `UkShEcho.ush_execfail_law_wq
+Wcf`, which unfolds to `UkShDiag.ush_execfail_law` — echo's instance at
+`alt_execfail`/`17`.  A cat line prints `alt_execcat`, so that hypothesis
+must read `□ ∀ I, UkShDiag.ush_execfail_law_at (dg I) (n I) (Wcf I 3)
+(Wcf I 0)` for the era's own diagnostic family; at the file instance
+`dg := lk_exfb (file_link_inst g)` and `n I := length (dg I) - 2`.
+`UkShEcho.ush_execfail_law_wq` should gain the same two parameters, with
+echo's instance a `Definition` at `alt_execfail`/`17`.
+
+### LINK-GEN-3 (2026-09-17) — THE STAGE RECORD; THE CURSOR IS WHAT CARRIES A LINEAR RESOURCE ACROSS A CHILD'S WALK, AND `Hchild_echo`/`Hwbr`/`Hwc` ARE ONE APPLICATION EACH
+
+Branch `app-file/link-stage`, merged with `main` (SUP-ONE's `app_taint`
+rename, OFF-LINK, WRITE-RELAY-2, CAT-GEOM).  Whole tree GREEN on the
+lane's remote tree (`--proofs -k`, `EXIT=0`, zero `Error`); all four
+audits unchanged (`audit-only` thirteen, `audit-echo-only` FOURTEEN with
+the identical list, `audit-tree-only` thirteen, `audit-file-only`
+fourteen); no `Admitted` added; `Proof using` everywhere.
+
+**THE LANE'S VERDICT IN ONE LINE.**  `UEchoOut`/`UShEchoPay` could not be
+swept over `LinkRec` because they read an EXPLICIT STAGE; the abstraction
+they need is not "the stage" but **the CURSOR and its byte step**, and the
+reason it must be a record of its own — not more fields on `LinkRec` — is
+that a forked child at the file application has to carry a LINEAR resource
+(sh's deed fraction) across its whole walk, and the walk's exit wand is a
+BOX, so the only thing that can carry it is the cursor.
+
+#### 1. THE TWO RECORDS (`iris/StageRec.v`, new, ~420 lines)
+
+`Record CurRec (L : LinkRec Σ)` — six fields, and that is ALL `UEchoOut`
+takes of an era:
+
+| field | type | echo's |
+| --- | --- | --- |
+| `ck_stg` | `Type` | `Record echo_stg := MkEchoStg { es_ps; es_cs; es_I; es_P }` — the brief's `list nat * list nat * list (bv 8) * nat`, named |
+| `ck_ok` | `ck_stg -> list (list (bv 8)) -> Prop` | `fun st ws => echo_stage (es_ps st) (es_cs st) (es_I st) ws (es_P st)` |
+| `ck_alt` | `list (list (bv 8)) -> list (bv 8)` | `fun ws => line_alts_of ws !!! 0%nat` |
+| `ck_cur` | `nat -> era_pins -> ck_stg -> nat -> iProp Σ` | `UEchoOut.ech`'s body |
+| `ck_cur_tl` | `Timeless (ck_cur k v st p)` | — |
+| `ck_step` | `ck_ok st ws -> ck_alt ws !! i = Some b -> lk_pin L k v -∗ lk_links L -∗ ck_cur k v st i -∗ (ck_cur k v st (S i) -∗ Φ) -∗ out_link Uart0 k b Φ` | `UEchoOut.ech_step`'s content |
+
+`Record StageRec (L : LinkRec Σ)` — `sk_cur : CurRec L` plus exactly two
+laws:
+
+```coq
+    sk_lend_stage : forall (k : nat) (v : era_pins) (I : list (bv 8)),
+      ⊢ lk_lend L k v I -∗
+        (∃ st : ck_stg sk_cur,
+           ⌜ck_ok sk_cur st (last_ws I)⌝
+           ∗ ⌜ck_alt sk_cur (last_ws I) = line_alts_of (last_ws I) !!! 0%nat⌝
+           ∗ ck_cur sk_cur k v st 0%nat
+           ∗ □ (ck_cur sk_cur k v st
+                  (length (wl_line (drop 1 (last_ws I)))) -∗
+                lk_post L k v I 0%nat))
+        ∨ lk_T L;
+    sk_apr0 : forall I : list (bv 8), lk_apr L I 0%nat;
+```
+
+and the DERIVED cursor
+
+```coq
+  Definition cur_hold (C : CurRec L) (R : iProp Σ) (HRT : Timeless R)
+    : CurRec L   (* ck_cur := fun k v st p => ck_cur C k v st p ∗ R *)
+```
+
+echo's instance `echo_cur_inst` / `echo_stage_inst` is DEFINITIONAL, with
+five `reflexivity` checks (`echo_stage_inst_cur`, `_ok`, `_alt`,
+`_cur_body`, `_ok_body`).  `UEchoOut.echo_stage` and `UEchoOut.echcs` MOVE
+into `StageRec.v` (the instance is built out of them and sits below
+`UEchoOut`); nothing outside referenced them in code.
+
+**THREE DESIGN FACTS WORTH KEEPING.**
+
+1. **The LINE is an index, not a component of the stage.**  `ck_ok st ws`
+   and `ck_alt ws` take the word list separately.  If `ws` lived inside
+   `ck_stg`, `UEchoOut.ech` (which does not mention `ws`) would only be
+   recoverable at an arbitrary dummy line and every `iApply` would be a
+   conversion gamble.  With the line as an index, `ech v ps0 cs0 I0 P p :=
+   ck_cur CE (S gen_id) v (MkEchoStg ps0 cs0 I0 P) p` and
+   `echo_stage ps0 cs0 I0 ws P = ck_ok CE (MkEchoStg ps0 cs0 I0 P) ws` are
+   both `eq_refl`.
+2. **ONE alternative, not four.**  `ck_alt` is the alternative the PROGRAM
+   writes (the "good" one, index 0) and is not indexed by `a`: the shell's
+   own diagnostics go through `LinkRec.lk_blk_step` and never through a
+   cursor.  This is why `LinkRec`'s `lk_pan`/`lk_exf`/`lk_noc` are
+   **nowhere in this lane's files** — LINK-GEN-2's change of their type to
+   `list (bv 8) -> nat` and its new `lk_exfb` touch nothing here.
+3. **`cur_hold` is the whole reason the cursor is its own record.**
+   `UShRound`'s round lends its child `Wcf I 3 = Wcl I 3 ∗ sh_hold I` and
+   is owed `Wcf I 0 = Wcl I 0 ∗ sh_hold I` back.  `sh_hold I` is LINEAR (a
+   deed fraction).  `UEchoOut.echo_uexec_slot_at`'s exit wand is
+   `□ (cursor -∗ Q (-1))`, so a box cannot produce it; the walk's ONE
+   linear thread is the cursor, so the resource rides it.  `cur_hold C R`
+   is a valid `CurRec` (the step frames `R`) but NOT a valid `StageRec`
+   (`sk_lend_stage` would have to conjure `R`), which is exactly why the
+   two are separate records.
+
+#### 2. WHAT LANDED, file:lemma
+
+- `iris/StageRec.v` — `CurRec`, `StageRec`, `cur_hold`, `echo_stage` and
+  its three lemmas, `echcs`/`echcs_pos`, `echo_stg`, `echo_cur`,
+  `echo_cur_inst`, `echo_stage_inst`, the five conversion checks.
+- `iris/UEchoOut.v` — `Section UEchoOutGen` over `{L : LinkRec Σ}
+  (C : CurRec L)`: `ech_chain_at`, `kecho_w_of_link_data_at`,
+  `kecho_w_of_link_txt_at`, `kecho_pay_of_link_from_at`,
+  `kecho_pay_of_link_at`, `echo_uexec_slot_at_at`.  `Section UEchoOutEcho`
+  recovers `ech`, `ech_timeless`, `echq`, `ech_step`, `ech_chain`,
+  `kecho_w_of_link_data`, `kecho_w_of_link_txt`, `kecho_pay_of_link_from`,
+  `kecho_pay_of_link`, `echo_uexec_slot_at` as `Definition`s at
+  `echo_cur_inst` with NO PROOF TEXT.  New top-level `out_argv_at A ws
+  args`, with `echo_out_argv ws args := out_argv_at (line_alts_of ws !!! 0)
+  ws args` (byte-identical premise at echo; `UShEchoOut` unchanged).
+- `iris/UShEchoPay.v` — `Section UShEchoPayGen` over `{L} (St : StageRec L)`:
+  `echo_slot_of_kexec_at_at`, `sh_exec_sup_echo_wq_holds_at`,
+  `ushf_child_law_hold_at`.  `Section UShEchoPayEcho` recovers
+  `sh_exec_sup_echo_wq_holds` VERBATIM and `echo_slot_of_kexec_at` with one
+  added `emp` slot, as `Definition`s.
+- `iris/UShLine.v` — `ush_mid_at (Rres) γ γp I` with
+  `ush_mid := ush_mid_at rd_res`, `ush_mid_wc_read_t_at`,
+  `ush_wb_read_holds_at`, `ep_refl`; `ush_mid_wc_read_t` and
+  `ush_wb_read_holds` recovered as `Definition`s.
+- `iris/UShRest.v` — `Section UShRestGen`: `sh_rest_holds_at`.
+**MAIN WAS RED IN THREE PLACES AND THIS LANE FIXED TWO OF THEM.**  None
+of these is this lane's own work; they are recorded so the next lane does
+not re-discover them.
+
+1. `iris/UEchoFile.v` — the three write-node statements had not been
+   re-typed after WRITE-RELAY put `n : Z` on `awrite_full_at` /
+   `awrite_part_at` / `awrite_chain`.  Fixed here AND independently on
+   `main`; the merge took main's.
+2. `iris/UkFileOpen.v` (`:234`, `:809`, `:1019`, `:1198`) — the open's fd
+   arm gained a `∧ fdst_nopipe (FdOpen rd wr ty)` conjunct, so
+   `destruct Hb as (Hr1 & Hlt1 & Hfdv1)` leaves `Hfdv1` a conjunction and
+   `*_open_fd_tie` wants only the equality.  This lane used
+   `(proj1 Hfdv1)`; `main` fixed it by destructuring four ways, as
+   `UkTreeRead` / `UkTreeCreate` already did, and the merge took main's.
+3. `iris/UShCat.v:1011` and `iris/UCatKernel.v:1214` — SUP-ONE's survey R4
+   dropped `udepw_law 21` from `UkCatMain.kcat_pay_all_of_law` (cat closes
+   nothing), but both callers still handed it a fourth wand.  One token
+   each.
+
+#### 3. THE GENERIC STATEMENTS' SHAPES — what a second application sees
+
+```coq
+  (* UEchoOut *)
+  Lemma echo_uexec_slot_at_at (W : uvis) (v : era_pins) (st : ck_stg C)
+      (ws : list (list (bv 8))) (rb : bool) (Q : Z -> iProp Σ) :
+    ck_alt C ws = line_alts_of ws !!! 0%nat ->     (* NEW, first premise *)
+    (forall x y : Z, Q x = Q y) -> (2 <= length ws)%nat ->
+    ck_ok C st ws ->                               (* was [echo_stage …] *)
+    out_argv_at (ck_alt C ws) ws (echo_args …) ->  (* was [echo_out_argv ws …] *)
+    … the eighteen key/stack/argv rows, verbatim … ->
+    □ (ck_cur C (S gen_id) v st (length (wl_line (drop 1 ws))) -∗ Q (-1)) -∗
+    lk_pin L (S gen_id) v -∗ lk_links L -∗ UkRun.urun_nopipe (uvis_fd W) -∗
+    udep -∗ my_pay (uvis_gen W) Q -∗ ck_cur C (S gen_id) v st 0%nat -∗ uslot W.
+
+  (* UShEchoPay -- THIS is what [UShRound.Hchild_echo] is ONE application of *)
+  Lemma sh_exec_sup_echo_wq_holds_at
+      (Wc : list (bv 8) -> nat -> iProp Σ) (Hold : list (bv 8) -> iProp Σ) :
+    (forall I0, Timeless (Hold I0)) ->
+    (forall I0, ⊢ Wc I0 3%nat -∗ ∃ v, lk_pin L (S gen_id) v
+                  ∗ lk_lpr L (S gen_id) v I0 3%nat ∗ Hold I0) ->
+    (forall I0 v0, ⊢ lk_pin L (S gen_id) v0 -∗ lk_lpr L (S gen_id) v0 I0 3%nat
+                  -∗ Hold I0 -∗ Wc I0 3%nat) ->
+    (forall I0 v0, ⊢ lk_pin L (S gen_id) v0 -∗ lk_post L (S gen_id) v0 I0 0%nat
+                  -∗ Hold I0 -∗ Wc I0 0%nat) ->
+    (forall I0 v0, ⊢ lk_pin L (S gen_id) v0 -∗ lk_T L -∗ Wc I0 0%nat) ->
+    (⊢ app_taint -∗ lk_T L) ->
+    ⊢ lk_links L -∗ udep (PS := uprogSG_free) -∗ sh_echo_slot (lk_T L) -∗
+      UkShEcho.sh_exec_sup_echo_wq Wc.
+
+  (* ...and at the ONE family the campaign uses, the four [Wc] laws are the
+     RECORD's own and only [Hold]'s two properties are owed -- plus the
+     exec-failed diagnostic's law, which is a PREMISE for section 6.0's
+     reason: *)
+  Lemma ushf_child_law_hold_at (Hold : list (bv 8) -> iProp Σ) :
+    (forall I0, Timeless (Hold I0)) -> (forall I0, ⊢ lk_T L -∗ Hold I0) ->
+    (⊢ app_taint -∗ lk_T L) ->
+    ⊢ lk_links L -∗ udep (PS := uprogSG_free) -∗ sh_echo_slot (lk_T L) -∗
+      UkShEcho.ush_execfail_law_wq (PS := uprogSG_free)
+        (fun I p => lk_lcred L (S gen_id) I p ∗ Hold I)%I -∗
+      UkShFork.ushf_child_law (PS := uprogSG_free)
+        (fun I p => lk_lcred L (S gen_id) I p ∗ Hold I)%I.
+
+  Lemma ush_execfail_law_wq_hold_at (Hold : list (bv 8) -> iProp Σ) :
+    (forall I0, lk_exfb L I0 = alt_execfail) ->
+    ⊢ lk_links L -∗
+      UkShEcho.ush_execfail_law_wq (PS := uprogSG_free)
+        (fun I p => lk_lcred L (S gen_id) I p ∗ Hold I)%I.
+
+  (* UShLine -- [Hwc] and [Hwbr] *)
+  Lemma ush_mid_wc_read_t_at (L : LinkRec Σ) (γ : echo_gn) (γp : gname)
+      (k : nat) (I l : list (bv 8)) :
+    wl_nl ∉ l ->
+    (forall v, ⊢ era_pin γ (S gen_id) v -∗ lk_epin L k v) ->
+    ush_mid_at (lk_rres L) γ γp (I ++ l ++ [wl_nl]) -∗ lk_lcred L k I 2%nat -∗
+    ush_mid_at (lk_rres L) γ γp (I ++ l ++ [wl_nl])
+    ∗ lk_lcred L k (I ++ l ++ [wl_nl]) 3%nat.
+
+  Lemma ush_wb_read_holds_at (L : LinkRec Σ) (γ : echo_gn) (γp : gname)
+      (k : nat) (I l : list (bv 8)) :
+    wl_nl ∉ l ->
+    (forall v, ⊢ era_pin γ (S gen_id) v -∗ lk_epin L k v) ->
+    ush_mid_at (lk_rres L) γ γp (I ++ l ++ [wl_nl]) -∗
+    (∃ v, lk_pin L k v ∗ lk_ban L k v I 0%nat) -∗
+    ush_mid_at (lk_rres L) γ γp (I ++ l ++ [wl_nl]) ∗ lk_T L.
+
+  (* UShRest -- the whole tail obligation, at [UShRound]'s own family *)
+  Lemma sh_rest_holds_at (Hold) (γ : echo_gn) (γp : gname) (N : uk_names Σ) :
+    (forall I0, Timeless (Hold I0)) -> (forall I0, ⊢ lk_T L -∗ Hold I0) ->
+    (⊢ app_taint -∗ lk_T L) ->
+    ⊢ lk_links L -∗ udep (PS := uprogSG_free) -∗
+      UShEcho.sh_echo_slot (lk_T L) -∗
+      UkShEcho.ush_execfail_law_wq (PS := uprogSG_free)
+        (fun I p => lk_lcred L (S gen_id) I p ∗ Hold I)%I -∗
+      (∃ v, lk_pin L (S gen_id) v) -∗
+      UkSh.ush_rest_l (PS := uprogSG_free) N γp (lk_T L)
+        (fun I p => lk_lcred L (S gen_id) I p ∗ Hold I)%I
+        (fun I => (∃ v, lk_pin L (S gen_id) v
+                    ∗ lk_ban L (S gen_id) v I 0%nat) ∗ Hold I)%I
+        (UShLine.ush_mid_at (lk_rres L) γ γp)
+        (UInitSh.sh_Rsh (ukn_t N) (ukn_d N) (ukn_s N)).
+```
+
+#### 4. `UShRound`'s TABLE, UPDATED
+
+| `UShRound.v` | delivered by | how |
+| --- | --- | --- |
+| `Hchild_echo` | `UShEchoPay.sh_exec_sup_echo_wq_holds_at file_stage_inst Wcf sh_hold …` | ONE application; the four `Wc` laws are `LinkRec`'s (`lk_lcred`'s definition, `lk_lcred_of_post_a` at `sk_apr0`, `lk_lcred_taint`) framed with `sh_hold` |
+| `Hwc` | `UShLine.ush_mid_wc_read_t_at file_link_inst (fgn_echo g) γp (S gen_id) I l` | ONE application, at `ush_mid_at (lk_rres file_link_inst)` |
+| `Hwbr` | `UShLine.ush_wb_read_holds_at file_link_inst (fgn_echo g) γp (S gen_id) I l` | ONE application |
+| `Hwbl` / `Hwbwc` / `Hcltaint` / `Hexecfail` / `Hpanic` | LINK-GEN's, unchanged | — |
+| the WHOLE of `ush_rest_l` (minus the redirect child) | `UShRest.sh_rest_holds_at` | ONE application; it is `ushf_kill_law` + `ushf_child_law_hold_at` + `UShPanic.ush_panic_law_hold_at` assembled |
+
+**`ush_mid` CHANGES AT THE FILE APPLICATION, and `UShRound.v` must follow.**
+`UShRound.sh_round_holds_file` names `UShLine.ush_mid (fgn_echo g) γp`.
+That is `ush_mid_at rd_res`, i.e. the ECHO writer's cursor bound
+(`rd_stage` / `proc_before`), which is FALSE at the file era.  SH-ROUND
+must write `UShLine.ush_mid_at (lk_rres file_link_inst) (fgn_echo g) γp`
+in all four places (`:198`, `:199`, `:203`, `:204`, `:443`).  The ghost
+algebra is unchanged — `ush_mid_at` still carries `EchoOut.era_pin γ`,
+`dl_cnt`, `inp_lb`; only the RESIDUE is the record's.
+
+#### 5. WHAT THE FILE INSTANCE MUST SUPPLY, FIELD BY FIELD
+
+Written against LINK-GEN-2's `iris/FileLinksLine.v` and
+`iris/FileLinkInst.v`, which landed while this lane ran.  Everything a
+`StageRec FileLinkInst.file_link_inst` needs is now one lemma away:
+
+| field | what the file must give, at LINK-GEN-2's names |
+| --- | --- |
+| `ck_stg` | `Record file_stg := { fs_ps; fs_cs; fs_s0 : fst; fs_I; fs_P }` — exactly `FileLinksLine.fcur`'s five arguments besides `v` and `k` |
+| `ck_ok st ws` | `wr_blk_t_f (fs_ps st) (fs_cs st) (fs_s0 st) (fs_I st) (fs_P st) /\ last_ws (fs_I st) = ws` (`wr_blk_t_f` is `FileLinksLine.v:423`; its `wr_tail_f` half is what the LEND carries and what the post law needs) |
+| `ck_alt ws` | `line_alts_of ws !!! 0%nat` — **the same list as echo's** (see the obligation below) |
+| `ck_cur k v st p` | `(turn v (fs_P st + p) ∗ ps_lb v (fs_ps st) ∗ cs_lb v (blkcs_f (fs_cs st) 0%nat p) ∗ inp_lb v (fs_I st) ∗ f0w k (fs_s0 st)) ∨ FT` — i.e. `FileLinksLine.fwc_blk g k v I 0%nat p` with the stage NAMED instead of existential.  `blkcs_f` is already `echcs`'s twin (`:432`) |
+| `ck_cur_tl` | `apply _` (`fcur_timeless`, `f0w_timeless` are there) |
+| `ck_step` | `FileLinks.file_write_link_blk` at `i = 0` (files the alternative) and `file_write_link_w` after, taint arm from `file_write_link_taint`.  Its pure inputs are `FileLinksLine`'s `wr_blk_pin_snoc_f` / `wr_blk_byte_f` family (the `fab I a !! j = Some b -> proc_stream_f … !! (P + j) = Some b` lemma at `:533`), which is `UCatOut` section 1's shape at a general alternative |
+| `sk_lend_stage` | `lk_lend file_link_inst = FileLinksLine.fwc_lend g`, whose untainted arm IS `∃ ps cs s0 P, ⌜wr_blk_t_f …⌝ ∗ fcur v ps cs s0 I P k` — the stage falls straight out.  The `□` half is the file twin of `EchoLinksLine.ewc_post_of_ech`: from the cursor at `length (wl_line (drop 1 (last_ws I)))` to `fwc_blk g k v I 0 (length (fab I 0) - 2)`, i.e. `lk_post file_link_inst k v I 0` |
+| `sk_apr0` | `lk_apr file_link_inst = FileLinksLine.fapr`, so it is `ralt_ok (fline I) (ralt_dec 0) /\ fst_free (ralt_dec 0) = true /\ ralt_panic (ralt_dec 0) = false` — three `cbn`s at an echo line |
+
+**THE ONE NON-OBVIOUS OBLIGATION, now exact.**  `sk_lend_stage`'s second
+conjunct is
+
+```coq
+    FileLinksLine.fab I 0%nat = EchoDisc.line_alts_of (last_ws I) !!! 0%nat
+```
+
+and by `FileLinksLine.fab_free` (`:99`) that is
+`FileDisc.cont None (fline I) (ralt_dec 0) = line_alts_of (last_ws I) !!! 0`
+— **the GOOD alternative of a line is echo's own output, byte for byte, at
+either application**.  It is forced and it is not free.  Without it the
+shell's program tier cannot read the forked child's bytes off `EchoDisc`
+at all and `UEchoOut` would have to be twinned (~900 lines).  It is the
+exact analogue of LINK-GEN's finding that `FileDisc.cont` returns
+`alt_panic` / `alt_execfail` VERBATIM at `RFFork` / `RFExec`.
+
+**`Hwbr` AND `Hwc` NEED NOTHING NEW AT ALL.**  `lk_rres file_link_inst`
+is already `FileLinksLine.fwc_rres g` (`:1307`: `rd_stage_f` +
+`turn_lb (length (proc_before_f …))` + `f0w`), and `lk_ban_read_taint` is
+already a field of `file_link_inst`.  So `UShRound.Hwbr` is
+`UShLine.ush_wb_read_holds_at file_link_inst (fgn_echo g) γp (S gen_id)`
+and `Hwc` is `UShLine.ush_mid_wc_read_t_at` at the same arguments, both
+with `Hep := fun v => (identity)` — one application each, today.
+
+#### 6. WHAT COULD NOT BE ABSTRACTED, AND WHY
+
+0. **`UkShEcho.ush_execfail_law_wq` NAMES THE DIAGNOSTIC AND MUST STOP.**
+   LINK-GEN-2 made `UkShDiag.ush_execfail_law_at dg n` take the bytes and
+   their length, and `UShPanic.ush_execfail_law_hold_at L Hold I` now
+   delivers it at `lk_exfb L I`.  But `UkShEcho.ush_execfail_law_wq Wc`
+   still asks for `UkShDiag.ush_execfail_law` (= `ush_execfail_law_at
+   alt_execfail 17`) at EVERY input, and at the file
+   `FileLinksLine.fexfb LCat = alt_execcat`, so the ∀-`I` form is FALSE
+   there.  This lane therefore takes it as a PREMISE:
+   `UShEchoPay.ushf_child_law_hold_at` and `UShRest.sh_rest_holds_at` both
+   receive `UkShEcho.ush_execfail_law_wq Wcf` and
+   `UShEchoPay.ush_execfail_law_wq_hold_at` discharges it at any era whose
+   exec-failed bytes are constant (`forall I, lk_exfb L I = alt_execfail`).
+   **The fix is the one LINK-GEN-2 already made one level down**:
+   `ush_execfail_law_wq` gains `dg : list (bv 8) -> list (bv 8)` and uses
+   `ush_execfail_law_at (dg I) (length (dg I) - 2)`, and
+   `UkShFork.ushf_child_law`'s own use follows.  Until then the file's
+   round owes it by hand.
+
+1. **`UShLine`'s READ LEAF is not swept, and the reason is a THIRD record
+   this lane did not need.**  `Hwbr` and `Hwc` — the two `UShRound` owes —
+   need only the residue and two `LinkRec` laws, so `ush_mid_at` plus
+   `ush_wb_read_holds_at` / `ush_mid_wc_read_t_at` deliver them.  The
+   LEAF (`ush_rd_in`, `ush_read_pay_era`, `ush_read_sup_era`,
+   `ush_read_recv_era`, `ush_read_recv_leaf_holds`) additionally opens
+   `EchoOut.read_ret`'s body and spends `EchoLinks.echo_link_rd` /
+   `echo_link_rd_taint`, which `LinkRec` does NOT carry (it has the read
+   RETURN `lk_rr` but not the read LINK).  Since `LinkRec` is frozen, that
+   is a `ReadRec (L : LinkRec Σ)` with four fields:
+   - `rk_link_rd : lk_links L -∗ □ (∀ k v n ws Φ, lk_pin L k v -∗
+     dl_cnt v (1/2) n -∗ (lk_rr L k v n ws -∗ Φ) -∗
+     cons_link Uart0 k (ConsLog.EvRead ws) Φ)`,
+   - `rk_link_rd_taint` (its twin at the taint),
+   - `rk_disc : list (bv 8) -> Prop` (the input's discipline;
+     `EchoDisc.disc_input` at echo, `FileDisc.disc_input_f` at the file),
+   - `rk_rr_arms` — the window arm, packaged at exactly what
+     `ush_read_recv_era` consumes:
+     ```coq
+     forall k v I ws sl sl' hs dc g,
+       length ws = dc -> cons_window sl (length I) dd g hs ->
+       sl `prefix_of` sl' ->
+       (forall j, (j < dc)%nat -> ws !! j = sl' !! (length I + j)%nat) ->
+       ⊢ lk_epin L k v -∗ inp_lb v I -∗ lk_rr L k v (length I) ws -∗
+         (dl_cnt v (1/2) (length I + dc)%nat
+          ∗ ∃ J, ⌜length J = dc⌝ ∗ ⌜rk_disc (I ++ J)⌝
+                 ∗ ⌜(0 < dd)%nat -> g 0%nat = J !!! 0%nat⌝
+                 ∗ inp_lb v (I ++ J) ∗ lk_rres L v (I ++ J))
+         ∨ lk_T L
+     ```
+   **AND IT HAS A WALL THAT IS NOT IN ANY EARLIER BLOCK.**
+   `UkSh.ush_read_ans` (`iris/UkSh.v:2008`) carries `⌜disc_input (I ++ J)⌝`
+   — *echo's* discipline, with no parameter — and `UkSh` relays it through
+   `ush_read_ans_1` (`:2368`), `ush_read_ans_pm` (`:2048`) and the loop's
+   own line assembly (`:2164`, `:3875`, `:4104`, `:4252`, `:4305`).  So
+   `rk_disc` cannot simply be the file's `disc_input_f`: EITHER the file
+   proves `disc_input_f I -> disc_input I` (which is exactly lane STAGE's
+   refuted shape one level down — a `cat` line is not an echo line), OR
+   `UkSh.ush_read_ans`'s discipline becomes a parameter, which is a sweep
+   of `UkSh.v` (seven statements and the loop's line assembly) and a lane
+   of its own.  **This is the finding to act on before anyone writes
+   `ReadRec`.**
+2. **`echo_slot_of_kexec_at` gained an `emp` slot and that is unavoidable.**
+   The generic takes `… -∗ lk_lpr L k v I 3%nat -∗ Hold I -∗ uslot W'`;
+   at echo `Hold I := emp` and `P -∗ emp -∗ Q` is not convertible to
+   `P -∗ Q`.  The lemma's only consumer is in its own file, no landed echo
+   THEOREM moves, and the audit does not change.  `sh_exec_sup_echo_wq_holds`
+   IS recovered verbatim.
+3. **`ck_alt` cannot be dropped in favour of `lk_ab`.**  `LinkRec.lk_ab I a`
+   is indexed by the era's INPUT; `UEchoOut` names the line `ws` and the
+   input `I0` separately (its argv premise is at `ws`), and the equation
+   `last_ws I0 = ws` lives inside `ck_ok` and is not definitional.  A
+   generic statement at `lk_ab L I0 0` therefore cannot recover
+   `echo_out_argv ws args` by conversion.  Indexing the alternative by the
+   LINE (`ck_alt ws`) is what makes every recovery `eq_refl`.
+4. **`ech_step` is a field, not a derived lemma.**  It is `ck_step`
+   itself; the echo recovery is `Definition ech_step … := ck_step CE …`.
+   Nothing about the block-first byte (`EchoLinks.echo_link_blk` files the
+   alternative; every byte after it goes through `echo_link_w` at the
+   extended choice list) survives abstraction — it IS the field's proof.
+
+#### 7. BUILD NOTES
+
+- **`_CoqProject` edits are invisible to the remote build until the remote
+  `CoqMakefile` is deleted** (CAT-PIN said it for `user-rocq`; it is true
+  for `iris/` too).  The loop that works for a NEW file is
+  `run-on-gcp --sync-only` then
+  `run-on-gcp --no-sync bash -c 'cd <remote>/iris && rm -f CoqMakefile
+  CoqMakefile.conf && coq_makefile -f _CoqProject -o CoqMakefile &&
+  make -f CoqMakefile -j8 <F>.vo'`.
+- **`S` is a terrible name for a record variable.**  `Context (S : CurRec L)`
+  shadows the successor constructor and `ck_cur S k v st (S i)` stops
+  parsing as anything sane.  The record variables here are `C` and `St`.
+- **A record with a PARAMETER does not elaborate from `{| … |}` under a
+  type ascription** — the parameter stays an evar while the fields are
+  checked and the first dependent field fails.  Use the constructor
+  applied to the parameter (`MkCurRec LE echo_stg … `), as this file does.
+- **`Global Arguments` on a record projection must use `_`, not names.**
+  `Global Arguments ck_stg {Σ _ _ L} C.` is refused (*Flag "rename"
+  expected to rename c into C*) because the projection's binder names come
+  from the field's own definition; `Global Arguments ck_stg {_ _ _ _} _.`
+  is right.

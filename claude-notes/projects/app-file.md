@@ -2028,3 +2028,170 @@ cannot reach echo's entry.**  The two ways out, both the designer's:
 Until one is taken, `UEchoFile`'s WRITE post can be planned against finding 4
 (the arm split is a mechanical consequence of R2) but its EXEC step cannot,
 and `UCatKernel`'s open-at-a-held-offset hits the same wall one syscall over.
+
+### F-OPEN-2 (2026-09-17) — THE DEAD WALK REFUNDS, THE U-TIER COROLLARIES LAND, AND O_TRUNC NEEDS THREE SEAMS AND NOT ONE
+
+**The lane's verdict in one line: seam 2 was smaller than F-OPEN priced
+(one fix, not two — put `K` on the CURSOR and `namei_walk_dead_era` does
+not move at all) and seam 1 is BIGGER than the ruling priced (keying the
+truncate piece is necessary and NOT sufficient: the create surface has
+TWO arms and the caller hands in ONE piece, so the permit is a
+disjunction and the application owes both disjuncts — which costs two
+further kernel-tier restatements, both named below).**
+
+**WHAT LANDED** (whole tree green on the lane's remote tree; every new
+lemma `Proof using`; `make audit-all-only` unchanged — echo audit
+fourteen, system audit thirteen, tree audit unchanged).
+
+- **SEAM 2, IN FULL** (`iris/PinnedObs.v` section 8a, `iris/PinnedOpen.v`
+  section 3a, `iris/UInitCons.v`, `iris/FileOpen.v`).
+  - `PinnedObs.pobs_P_dead_lin T K d0` / `pobs_Pmiss_ref T K` /
+    `pobs_miss_hold`, and section 8's three lemmas at them:
+    `pobs_hop_dead_lin` / `pobs_hop_dead_hi_lin` / `pobs_walk_dead_lin`.
+    **`SysOpenDefs.namei_walk_dead_era` DID NOT HAVE TO CHANGE**, and that
+    is the lane's first finding: F-OPEN read the two arms as needing
+    separate fixes (a refunding `Pmiss`, plus a refund on the "hop never
+    fired" arm, which "is not a `PieceFam` and has no refund to eliminate
+    to").  Put `K` on the CURSOR — section 11a's construction one list
+    shorter — and BOTH arms refund out of the definition as it stands:
+    the never-fired arm hands back `P k d`, the fired-and-missed arm hands
+    back `Pmiss k d`, and at this family both carry `K`.  The walk piece
+    did not have to become a `pf_at` either.
+  - `pobs_dead_cursor_refund` / `pobs_dead_miss_refund` /
+    `pobs_dead_start_refund` read the credential off each of the three
+    places the failure fold can return it (the third is the argstr arm,
+    where the cursor sits behind the walk one-shot — one `={⊤}=>`).
+  - `PinnedOpen.pinned_open_bundle_dead_lin` / `pinned_open_dead_lin`.
+  - `UInitCons.init_cons_open_bundle_absent` / `_recv_absent` /
+    `init_cons_laws_open_absent` re-instantiated at it: **/init's
+    EXCLUSIVE `cons_key` now survives its own first open**, which it did
+    not before.  Their statements gained the refund and nothing else.
+  - `FileOpen.file_open_miss_au` / `file_open_miss_recv` close F-OPEN's
+    STOP item (b): cat's absent-`f` open is a bundle from a deed FRACTION
+    and the fraction comes home.
+- **DELIVERABLE 3, IN FULL except the create corollary** (`iris/UkFileOpen.v`,
+  new): `wp_uk_ecall_open_read_deed` (O_RDONLY at a present deed — the
+  descriptor is on the deed's OWN inum and both fractions come home),
+  `wp_uk_ecall_open_miss_deed` (the same call at an absent deed — `-1`,
+  the ledger untouched, the fraction back) and `wp_uk_read_deed_learns`
+  (the bytes in the buffer ARE the deed's).  All three are `UkTreeRead`'s
+  mould at `AppFile`'s deed and spend nothing but a landed U-tier leaf
+  plus one `FileOpen` bundle and one receipt reader.  **The leaf is a
+  visible parameter**: all three are stated over the PARKED-offset members
+  (`UkRunSys.wp_uk_ecall_open_recv_img`, `UkReadFile.wp_uk_ecall_read_file`),
+  so lane OFF-HAND-3's held-offset twins re-instantiate each by swapping
+  exactly one application.
+- **THE SH SEAM** (`iris/UkShRedirAns.v`, new): `ush_open_ans2` /
+  `ush_open_call2` — `UkShRedir`'s pair with a `-1` payload `Kf`, plus
+  `ush_open_ans2_mono` and `ush_open_ans2_drop` (at `Kf := emp` the two
+  are the same proposition, so the merge lane loses nothing).  A NEW FILE
+  and not a definition beside the landed pair, per the brief's own
+  fallback: `iris/UkShRedir.v` lives on branch `app-file/sh-redir`, which
+  lane SH-PARSE-2 had checked out and DIRTY (untracked `UkShRedirEx.v`, a
+  commit eighteen minutes old) while this lane ran.
+- **SEAM 1's SHAPE AND ITS APPLICATION HALF** (`iris/SysOpenDefs.v`
+  section 2b'', `iris/FileOpen.v` section 3f).  `atrunc_commit_i` (the
+  trunc commit at ONE inum), `atrunc_of_permit` (the keyed family, on
+  `aunarm_of_arm`'s mould), the two bridges `atrunc_commit_i_of_at` /
+  `atrunc_commit_at_of_i`, the generic supplier's one line
+  `atrunc_of_permit_of_all` (the permit unread), `atrunc_of_permit_unit`,
+  and `trunc_permit_cre` — the create's own fired receipt, read as a
+  permit.  On the application side `FileOpen.file_trunc_free`,
+  `file_trunc_of_cre` and `file_trunc_piece`: **the deed rides the
+  create's receipt into the truncate's fire, at BOTH deed values, and the
+  truncate is FREE there.**  All of it is ADDITIVE — no landed statement
+  moved for it.
+
+**STATEMENTS THAT CHANGED SHAPE** (three, all named in the brief or
+forced by it):
+1. `UInitCons.init_cons_open_bundle_absent` / `init_cons_open_recv_absent`
+   / `init_cons_laws_open_absent` — the refunding cursor
+   (`pobs_P_dead_lin` for `pobs_P_dead`, the two miss obligations for
+   `pobs_miss_free`, and a `∗ K` plus one `={⊤}=>` on the receipt).  No
+   consumer outside `UInitCons` reads them.
+2. `FileOpen.file_cre_recv` / `file_cre_fam` gain the console gname `jc`
+   and their `nm ≠ f` arm gains `⌜fclaim_facts jc s av⌝` — the three
+   facts the leg already read, needed downstream by `file_trunc_of_cre`
+   to identify the truncated row.  `file_open_create_au` /
+   `_notrunc` carry the extra index and are otherwise verbatim.
+3. Nothing else.  `SysOpenDefs.open_trunc_piece` is UNCHANGED, and that
+   is the STOP below.
+
+**REFUTED / BLOCKED — seam 1's bundle, and it corrects the ruling.**
+The ruling was: key the truncate piece to the open's own receipt (`Fok`
+on the FRESH arm, `Fex`/`Fo` on the EXISTS arm) and the 0x601 bundle
+falls out.  The FRESH half is exactly right and is landed
+(`file_trunc_of_cre`).  The EXISTS half does not work, for three reasons
+in order, and the third is the one that stops the lane:
+
+1. **THE EXISTS ARM'S PERMIT MUST TIE ITS INUM TO THE CLAIM, and neither
+   `Fex`'s nor `Fo`'s receipt can.**  A truncate at an inum this claim
+   cannot identify is UNSTEPPABLE, not merely unprovable: the row might
+   be one of the four era-0 binaries and `delta_trunc` there destroys
+   `FileFsPure.file_fs_pure`.  The FRESH arm is safe precisely because
+   `cre_pre` hands the row over — `AFile []` at nlink 1, hence none of the
+   four BY LENGTH (`FileDeltas.f_inum_not_pinned` at length 0) and `f`'s
+   own inum only if `f` was already empty.  `dlookup_commit_at` quantifies
+   `d` and `nm` INSIDE, so "the found node is `f`'s" is exactly what its
+   receipt cannot say.  **The fix is TL-3K's shape one piece over**: the
+   permit carries the walk's terminal identification as the same GUARDED
+   PURE facts `SysMknodDefs.npar_cur` already carries (`∀ pl,
+   ⌜arg_path_of M pv pl⌝ -∗ ⌜last (path_elems pl) = Some nm⌝`, and the
+   parent's), which the kernel HOLDS at the fire — both arms state them —
+   and which an application knowing its own path reads off in one line.
+2. **AND THE DEED ARITHMETIC NEEDS THE ARM PIECE'S REFUND.**  With the
+   tie, the EXISTS move `Some (i, bs) → Some (i, [])` needs the deed's
+   WHOLE half (`file_step_park` joins it with the claim's) while
+   identifying `i` needs a POSITIVE FRACTION inside `Fex`'s receipt — two
+   places, one half.  The split that works is `q1` into `Farm` and `q2`
+   into `Fex` with `q1 + q2 = 1/2`, **because on the EXISTS run the ARM
+   NEVER FIRES**: its piece comes back and `FileOpen.fdq_join` puts the
+   half together at the truncate.  So the exists disjunct of the permit
+   is `Fex`'s receipt BESIDE `Farm`'s refund, and
+   `SpecSysOpen.open_post_ok_create`'s EXISTS arm must give up
+   `cre_child_unfired`'s arm half under `om_trunc`.
+3. **AND AT AN ABSENT DEED THE SPLIT IS IMPOSSIBLE.**  At `s = None` the
+   create's own parent leg MOVES the claim, so the whole half must sit in
+   `Farm` and `Fex` gets nothing — and the exists disjunct, a run
+   `s = None` makes UNREACHABLE but which the SUPPLY must still cover, has
+   no fraction left to refute itself with.  (Refuting it is all `s = None`
+   needs: `f_ok av None` says the root has no `f`, contradicting `Fex`'s
+   `ents !! nm = Some i` at the tie — but only at a view the application
+   can READ, i.e. only holding a fraction.)  **The fix is
+   `cre_arm_fired`'s own trick once more**: create's `dirlookup` either
+   FINDS the name (and `Fex` fires) or does not (and the ARM fires), so
+   the two are EXCLUSIVE on every run, and `acre_commit_at_gen` can take
+   the unfired `Fex` piece beside the arm's receipt — at which point the
+   parent leg reassembles `q1 + q2` and the split costs nothing.
+
+So `open_trunc_piece` was left at its landed shape: changing it without
+(1)–(3) would buy the file lane nothing and would cost the whole sys_open
+chain an arity sweep (~190 mention sites across `SysOpenDefs`,
+`SpecSysOpen`, eight `ProofSysOpen*` files and ten consumers) for a piece
+no application could then supply.  The three restatements are the lane
+after this one, and they are all one shape: **a piece's permit carries
+what the FIRE knows and the SUPPLY could not name** — TL-3K's cursor at
+the create commit, this at the truncate, and §7.9(8)'s two at unlink.
+
+**TWO SMALLER FINDINGS FOR THE DESIGNER.**
+- `PinnedObs` section 8's `pobs_hop_dead` takes `K` as a resource and
+  drops it; section 8a's twin takes NOTHING linear (the cursor carries
+  it) and is strictly more useful.  Section 8 now has no consumer that
+  section 8a would not serve better; a later sweep should delete it
+  rather than keep two.
+- `UkTreeRead.tree_open_fd_tie` is claim-free (it is pure ledger
+  arithmetic) and `UkFileOpen` reuses it across applications; it wants to
+  move down beside `UConsOpen`'s arithmetic, which is where its twins
+  already live.
+
+**THE ONE THING LANE SH-ROUND NEEDS FIRST** is unchanged from F-OPEN and
+is now LANDED as vocabulary: `UkShRedirAns.ush_open_call2` /
+`ush_open_ans2`, the redirect stub's shape with a `-1` payload.  Instantiate
+`K ty := ∃ i γo, ⌜ty = FdInode i γo OffParked⌝ ∗ fown r (Some (i, []))`
+and `Kf := fown r s ∨ ∃ i, fown r (Some (i, []))` — the second disjunct is
+`SpecSysOpen.open_post_fail_create`'s arm (a), where the create fired and
+`filealloc` failed past it, and it is why the `-1` arm cannot be
+payload-free.  What SH-ROUND must NOT assume is a 0x601 bundle: until
+seam 1's three restatements land, `FileOpen.file_open_create_au` takes the
+truncate piece as a PREMISE, so the redirect child's open is suppliable
+only at `om_trunc = false` (`file_open_create_au_notrunc`).

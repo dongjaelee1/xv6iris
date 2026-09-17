@@ -423,6 +423,110 @@ Section OpenDefs.
     om_trunc vom = false -> ⊢ open_trunc_piece Γ vom Ft.
   Proof using . intros Hv. rewrite /open_trunc_piece Hv. done. Qed.
 
+
+  (* ------------------------------------------------------------------ *)
+  (*  2b''.  THE KEYED TRUNC PIECE (lane F-OPEN-2, seam 1) -- THE SHAPE,  *)
+  (*  AND WHAT IS STILL MISSING BEFORE THE BUNDLES CAN CARRY IT           *)
+  (*                                                                      *)
+  (*  The note at [open_trunc_piece] says the commit is NOT keyed at the   *)
+  (*  opened inum because no inum exists to name at SUPPLY time.  That is  *)
+  (*  true of the supply and false of the FIRE, and lane F-OPEN priced     *)
+  (*  the difference: a constraining application -- one whose claim is     *)
+  (*  about a PARTICULAR file -- cannot step a truncate at an inum it      *)
+  (*  cannot identify, because the row the call reached might be one its   *)
+  (*  own claim pins (in the file application's case one of the four       *)
+  (*  era-0 binaries, whose rows [FileFsPure.file_fs_pure] holds).  So     *)
+  (*  the piece has to arrive KEYED, on [FsAbsCreateFire.aunarm_of_arm]'s  *)
+  (*  mould: a PERMIT naming the inum goes in, the commit AT THAT INUM     *)
+  (*  comes out, and whatever the application parked in the permit rides   *)
+  (*  into the fire.                                                      *)
+  (*                                                                      *)
+  (*  [atrunc_commit_i] is [atrunc_commit_at] with [i] an INDEX rather     *)
+  (*  than quantified inside, [atrunc_of_permit] is the keyed family, and  *)
+  (*  the two bridges below say the keyed shape is WEAKER than the landed  *)
+  (*  one in the direction that matters (a caller that answers at every    *)
+  (*  row answers at the permitted one, so every generic supplier is a     *)
+  (*  restatement and the permit goes unread).                            *)
+  (*                                                                      *)
+  (*  THE BUNDLES DO NOT CARRY IT YET, and the reason is not proof effort. *)
+  (*  See [FileOpen.v] section 7: keying the piece is necessary and NOT    *)
+  (*  sufficient -- the EXISTS arm needs the permit to tie its inum to the *)
+  (*  WALK'S TERMINAL IDENTIFICATION as well, and the deed arithmetic      *)
+  (*  behind it needs two further kernel-tier seams.  What IS machine-     *)
+  (*  checked is the half that was the point: at the FRESH arm the         *)
+  (*  create's own receipt is a permit the file claim can spend            *)
+  (*  ([FileOpen.file_trunc_of_cre]).                                     *)
+  (* ------------------------------------------------------------------ *)
+
+  Definition atrunc_commit_i Γ (E : coPset) (i : Z)
+      (Φ : aview -> Z -> list (bv 8) -> iProp Σ) : iProp Σ :=
+    (∀ (I : gmap Z fs_node) (bs0 : list (bv 8)) (nl : nat),
+       ⌜arow_at (abs_view I) i (MkAnode (AFile bs0) nl)⌝ -∗
+       ghost_map_auth (γtop Γ) (1/2) I ={E}=∗
+       ghost_map_auth (γtop Γ) (1/2) I ∗
+         app_step i I (delta_trunc i (abs_view I)) ∗
+         (∀ I' : gmap Z fs_node,
+            ⌜abs_view I' = delta_trunc i (abs_view I)⌝ -∗
+            ghost_map_auth (γtop Γ) (1/2) I' ={E}=∗
+            ghost_map_auth (γtop Γ) (1/2) I' ∗ Φ (abs_view I) i bs0))%I.
+
+  (* the two readings, in both directions: the indexed family at every
+     index IS the landed one *)
+  Lemma atrunc_commit_i_of_at Γ (E : coPset) (i : Z)
+      (Φ : aview -> Z -> list (bv 8) -> iProp Σ) :
+    atrunc_commit_at Γ E Φ -∗ atrunc_commit_i Γ E i Φ.
+  Proof using .
+    rewrite /atrunc_commit_at /atrunc_commit_i.
+    iIntros "H" (I bs0 nl) "%Hpre Hka".
+    iApply ("H" $! I i bs0 nl with "[%] Hka"). exact Hpre.
+  Qed.
+
+  Lemma atrunc_commit_at_of_i Γ (E : coPset)
+      (Φ : aview -> Z -> list (bv 8) -> iProp Σ) :
+    (∀ i : Z, atrunc_commit_i Γ E i Φ) -∗ atrunc_commit_at Γ E Φ.
+  Proof using .
+    rewrite /atrunc_commit_at /atrunc_commit_i.
+    iIntros "H" (I i bs0 nl) "%Hpre Hka".
+    iApply ("H" $! i I bs0 nl with "[%] Hka"). exact Hpre.
+  Qed.
+
+  (* THE KEYED PIECE, on [aunarm_of_arm]'s mould *)
+  Definition atrunc_of_permit Γ (E : coPset) (Kt : Z -> iProp Σ)
+      (Φ : aview -> Z -> list (bv 8) -> iProp Σ) : iProp Σ :=
+    (∀ i : Z, Kt i -∗ atrunc_commit_i Γ E i Φ)%I.
+
+  (* THE BRIDGE every generic supplier takes, and the whole content of
+     "the permit is unread at a trivial family": a caller that can answer
+     at EVERY file row can answer at the permitted one, and drops the
+     permit ([aunarm_of_arm_of_all]'s twin). *)
+  Lemma atrunc_of_permit_of_all Γ (E : coPset) (Kt : Z -> iProp Σ)
+      (Φ : aview -> Z -> list (bv 8) -> iProp Σ) :
+    atrunc_commit_at Γ E Φ -∗ atrunc_of_permit Γ E Kt Φ.
+  Proof using .
+    iIntros "H". rewrite /atrunc_of_permit. iIntros (i) "_".
+    iApply (atrunc_commit_i_of_at with "H").
+  Qed.
+
+  (* satisfiability at the live Γ, so the keyed shape cannot be vacuously
+     blocked on the caller either *)
+  Lemma atrunc_of_permit_unit (γfs : fs_names) E (Kt : Z -> iProp Σ) :
+    app_sup -∗ atrunc_of_permit (fs_gamma_L γfs) E Kt (fun _ _ _ => True%I).
+  Proof using .
+    iIntros "#Hsup".
+    iApply (atrunc_of_permit_of_all with "[]").
+    iApply (atrunc_commit_at_unit γfs E with "Hsup").
+  Qed.
+
+  (* THE CREATE'S OWN RECEIPT, AS A PERMIT: what the FRESH arm holds when
+     it fires the truncate.  [FsAbsCreateFire.cre_acre_fired] already
+     carries the create's pre-state facts beside the caller's receipt, so
+     this is that pair with the parent and the name existentially closed --
+     the truncate is keyed by the CHILD's inum and by nothing else. *)
+  Definition trunc_permit_cre
+      (Fok : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ)) (i : Z)
+      : iProp Σ :=
+    (∃ (d : Z) (nm : fname), cre_acre_fired Fok d nm i (AFile []))%I.
+
   (* ------------------------------------------------------------------ *)
   (*  2c.  The walk package (full path; the era hops; quantified start)   *)
   (* ------------------------------------------------------------------ *)

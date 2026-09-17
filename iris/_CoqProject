@@ -1593,4 +1593,6 @@ UkTreeWrite.v
 UkTreeCreate.v
 TreeImg.v
 UTreeAdequacy.v
+UkFileOpen.v
+UkShRedirAns.v
 # TreeAssumptions.v

@@ -52,22 +52,20 @@ def wp_blocking_body {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G
     ⌜calleeSaved k.regs R'⌝ -∗ wpLoop cpu'))
   ⊢ wpLoop (GF := GF) cpu
 
-/-- **A blocking call made at BOOT**, before any process runs: `userinit`'s
-`namei("/")`.  There is no process on this hart (`k.proc = 0`) and hence no
-claim, no trap CSRs and no parking: a call that cannot sleep -- there is
-nothing to sleep on -- so the shape is `wakeup`'s, not `sleep`'s (balanced,
-generic in the interrupt index, the proc table in as the only environment).
-GENERIC IN LOCK DEPTH: `userinit` calls it holding the newborn's `p->lock`
-(`allocproc` returns at `noff = 1`, `locks = ["proc"]`).  A real `namei`
-takes only its own file-system locks, which sit below `"proc"` in the lock
-rank, so it is sound to assume it runs with a higher-ranked lock held; the
-contract is balanced in `k.locks`/`k.noff` (it gives them back unchanged).
-The return register is unconstrained (`namei` returns some inode pointer).
--/
-def wp_boot_blocking_body {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G GF] [CurCtx]
+/-- **A NON-BLOCKING fs call**: one that takes only its own file-system
+spinlocks (below `"proc"` in rank) and never sleeps -- `filedup`/`idup`
+(ref-count bumps under `ftable`/`itable`), and `namei("/")` at boot (no
+scheduler to sleep on).  Balanced and generic: any interrupt index, any
+lock depth (`kfork` calls `filedup`/`idup` holding the child's `p->lock`;
+`userinit` calls `namei` holding it too), any process (`k.proc`
+unconstrained).  It gives `k.locks`/`k.noff` back unchanged and returns
+some word in `a0`.  This is the sound contract for a call that only takes
+lower-ranked locks -- the sleep-shaped `FsEntry` (which pins
+`k.locks = []`) would wrongly forbid the held `"proc"` lock. -/
+def wp_nb_blocking_body {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G GF] [CurCtx]
     (Γ : SchedNames) (cpu : CPU) (k : KCtx) (entry : BitVec 64)
     (hK : fsSlots ≤ k.avail) (hnoff : k.noff + 1 < 2 ^ 31)
-    (htier : k.tier = KTier.kpt) (hproc : k.proc = 0#64) : Prop :=
+    (htier : k.tier = KTier.kpt) : Prop :=
   kctx cpu k ∗ pcIs cpu entry ∗ procsInv Γ ∗
   wpNext k.sie k.proc cpu (fun cpu' => iprop(∀ spie : Bool, ∀ spp : Bool, ∀ R' : RegMap,
     ⌜k.sie = false → spie = k.spie ∧ spp = k.spp⌝ -∗
@@ -75,11 +73,11 @@ def wp_boot_blocking_body {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] 
     ⌜calleeSaved k.regs R'⌝ -∗ wpLoop cpu'))
   ⊢ wpLoop (GF := GF) cpu
 
-/-- The assumed contract of one fs entry point at boot. -/
-def FsBootEntry (entry : BitVec 64) : Prop :=
+/-- The assumed contract of one non-blocking fs entry point. -/
+def FsEntryNB (entry : BitVec 64) : Prop :=
   ∀ {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G GF] [CurCtx]
-    (Γ : SchedNames) (cpu : CPU) (k : KCtx) hK hnoff htier hproc,
-    wp_boot_blocking_body (hlc := hlc) (GF := GF) Γ cpu k entry hK hnoff htier hproc
+    (Γ : SchedNames) (cpu : CPU) (k : KCtx) hK hnoff htier,
+    wp_nb_blocking_body (hlc := hlc) (GF := GF) Γ cpu k entry hK hnoff htier
 
 /-- The assumed contract of one fs entry point. -/
 def FsEntry (entry : BitVec 64) : Prop :=
@@ -95,10 +93,10 @@ class FsEnv : Prop where
   end_op : FsEntry endOpAddr
   iput : FsEntry iputAddr
   namei : FsEntry nameiAddr
-  filedup : FsEntry filedupAddr
-  idup : FsEntry idupAddr
+  filedup : FsEntryNB filedupAddr
+  idup : FsEntryNB idupAddr
   /-- `userinit` calls `namei("/")` on the boot hart, where no process runs
   yet (`Xv6/SpecUserinit.lean`). -/
-  nameiBoot : FsBootEntry nameiAddr
+  nameiBoot : FsEntryNB nameiAddr
 
 end Xv6

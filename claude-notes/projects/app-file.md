@@ -6530,8 +6530,12 @@ Read off it, in the order CAT-ENTRY-2 asked for:
 **THE BAR.**  `./gcp-rocq/run-on-gcp --proofs -k` over the whole tree on
 the lane's remote tree: `EXIT=0`, ZERO `Error`.  Nothing is `Admitted`;
 `grep -c "^ *Proof\.$"` is 0 in both touched files.  `make
-audit-all-only` / `make audit-tree-only` / `make gen-ucode`: see the run
-recorded with this block.  `Print Assumptions
+audit-all-only` and `make audit-tree-only` from the tree root:
+`AUDIT_EXIT=0` / `AUDITTREE_EXIT=0`, and the three axiom lists are
+UNCHANGED -- the SYSTEM theorem's THIRTEEN, the ECHO theorem's FOURTEEN
+and the TREE theorem's THIRTEEN.  `make gen-ucode` prints *unchanged*
+for all seven catalogs (`UCodeCat.v` 388 instr, 276 words); no
+`UCode*.v` and no `tools/ucode_manifest.json` was touched.  `Print Assumptions
 UCatKernel.cat_image_entry` is **`UShEcho.echo_image_entry`'s list
 EXACTLY** — the eleven `PrimInt63`/`PrimString` primitives plus
 `resv_matches`, `resv_is_valid` and

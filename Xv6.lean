@@ -227,3 +227,5 @@ import Xv6.ProofVmfault
 import Xv6.LinkVmfault
 import Xv6.ProofCopyout
 import Xv6.LinkCopyout
+import Xv6.ProofFreeproc
+import Xv6.LinkFreeproc

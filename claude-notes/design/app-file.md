@@ -260,6 +260,26 @@ premise, the holder's half in hand):
   restatement.  The same escrow closes the EXISTS-DEVICE sub-arm.  Lane
   F-OPEN-4; then the U-tier wrapper `wp_uk_ecall_open_create_deed` over
   the parked leaf as a visible parameter, so the held twin is one swap.
+  F-OPEN-4 REFUTED the second invariant by the MASK (`appE = ↑appN`:
+  reading the claim at the lookup's fire leaves the empty mask, and no
+  namespace fits in it — `FileOpen.file_escrow_mask_blocked`) and landed
+  the wrapper.  RULED (2026-09-17): the escrow goes INSIDE THE CLAIM
+  (F-OPEN-4's way (iii)) — `AppFile.f_state` gains an ESCROW arm: the
+  holder's half parked in the claim (`fdeed_whole r s ∗ ftkt r s`) at
+  the exact content, beside a one-shot `esc γ` whose exclusive token the
+  holder keeps and hands to the ARM piece.  Readers at `app_inv` alone
+  (the lookup piece, at its own view) get `⌜f_ok avx s⌝ ∨ esc_spent γ`;
+  the arm piece, holding the token, moves the content and spends it;
+  the truncate on the EXISTS run holds the arm's refund — the token —
+  so it refutes `esc_spent` in the lookup's receipt and keeps `⌜f_ok
+  avx s⌝`, which at `None` contradicts the found entry at the tie and at
+  `Some (i, bs)` identifies the row; the refund path returns the half
+  (`esc_tok ∗ escrow ==∗ fown r s`).  The DEVICE sub-arm is refuted the
+  same way (the row's type at the lookup's view is `f`'s, an inode).
+  Lane F-OPEN-5, in `AppFile.v`/`FileOpen.v` with every landed consumer
+  of the claim kept building; the fd arm then reads `fown r (Some (i,
+  []))` alone.  Way (i), the kernel restatement of `acre_commit_at_gen`,
+  is not taken.
 - **append** (echo's chunk `j`, `awrite_full_at`'s `wri_pre av i off bs
   bs0 nl` with `off = |bs0|` — §3 on why the offset is known): `Some bs0
   → Some (bs0 ++ chunk_j)`; echo's own proof carries the words and the

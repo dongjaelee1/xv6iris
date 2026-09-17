@@ -1605,6 +1605,7 @@ UkFileOpen.v
 UkShRedirAns.v
 UkCatDeed.v
 UCatOut.v
+UShCat.v
 UCatKernel.v
 UInitTree.v
 UInitTreeCons.v

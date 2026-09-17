@@ -273,25 +273,51 @@ user-tree.md §8.1: state the form to compute with).
   the console writes pay the stage's pending (§4); `close`; `exit`
   returns the deed.
 
-**WHY THE OFFSET MUST BE HELD** (the one kernel-tier lane this design
-needs, OFF-HAND in the worklist).  The append step needs `off = |bs0|`.
-The fire hands `off` as a number; the fd's offset is the open-file
+**WHY THE OFFSET MUST BE HELD** (the one kernel-tier campaign this design
+needs; lanes OFF-HAND-2/3 in the worklist).  The append step needs `off =
+|bs0|`.  The fire hands `off` as a number; the fd's offset is the open-file
 object's, and in mode `park` (every open today) the user half sits in
-`off_user_inv γo`, an existential nobody can read.  RD-1 landed the
-other mode at the ghost level — `UserOff.uoff`, `off_pub_hand`,
-`off_supply_held` — and RD-2 chose the report-not-own route for the
-generic members.  What blocks mode `hand` is ONE pure pin,
-`FileInvDefs.fdstate_ok`'s FD_INODE arm ("the offset mode is parked"),
-which the generic user-safety WP relies on (a held row has no
-`off_user_inv`, so the generic fire supplier cannot pay it).  The lane:
-the pin comes off; the generic slot's mint takes `FdSlots.fdv_all_parked`
-of its key's table as an EXPLICIT premise, discharged at its three sites
-(userinit's `fdt0`; fork's child from a generic parent, and `FdPark`'s
-park for a verified one — user-read.md §4's ruling; exec's taint arm,
-where the U-tier leaf makes the caller park first); `ProofSysOpenPub`
-branches on a mode bit the U-tier open family carries; and the three
-held members (`wp_uk_ecall_open_recv_img_held`, `_write_file_held`,
-`_read_file_held`) are the landed members with `off_supply_held`.
+`off_user_inv γo`, an existential nobody can read.  Reporting the offset
+(RD-2's route R-c) does not help: a reported number has no tie to the
+row, and between two fires nothing says the object's offset did not
+move.  RD-1 landed the other mode at the ghost level — `UserOff.uoff`,
+`off_pub_hand`, `off_supply_held` — and lane OFF-HAND (its findings are
+in the worklist) checked what stands between it and a held U-tier
+member.  FOUR coupled facts, each adopted as a ruling:
+
+1. **The mode is a per-file-object constant.**  `FileInvDefs.fdstate_ok`
+   pinned every inode row at `OffParked`; with the mode free,
+   `fdstate_ok_inj` (two descriptors on one file report one state) is
+   false.  So the mode joins the payload names (`fpnames.fp_om`) beside
+   the inum, the row's mode is `fp_om` of its object, and dup and fork
+   share one mode by construction (user-read.md §4).
+2. **Successor-parkedness moves from the pure table relation to the
+   family's post.**  `UsysMemOk.usys_fd_ok`'s open arm asserted the new
+   row parked, tier-free, and the generic user-safety Löb read its
+   successor's parkedness there.  Now the open's RECEIPT carries the mode
+   as the caller's family chose it (`xfam`'s `of_mode`); the generic
+   family fixes `OffParked` and reads its successor off its own post.
+3. **The publish reads the caller's mode** (`ProofSysOpenPub`:
+   `off_pub_park` or `off_pub_hand`, `fp_om` set to match, the held half
+   `uoff γo 0` in the receipt at `OffHeld`).
+4. **The exec crossing takes the surrender bundle.**  A generic slot's
+   mint needed `fdv_all_parked` of the whole table, which no U-tier
+   program can prove (a dropped `ufd` handle leaves an open row it cannot
+   name).  The premise is now `FdPark.uoff_surr_at`: all parked, or a
+   surrender (`off_user_inv γo`, persistent) per held row; and a
+   verified program pays it because `urun` carries a COUNTER of held rows
+   (`uheld n`, one half beside `ufd_auth`, the other the program's;
+   a hand-open increments, a close or dup of a held row moves it, fork
+   copies it with the table), so a program holding `n` held handles knows
+   they are all the held rows there are and surrenders each
+   (`uoff_park`) before an exec to an unverified target or a fork.  A
+   surrendered row keeps its `OffHeld` tag (the tag is the object's) and
+   is paid like a parked one, from the surrender.
+
+Lane OFF-HAND-2 is 1–4 at the kernel/spec tier; OFF-HAND-3 is the counter,
+the hand-mode open leaf and the two held file members
+(`wp_uk_ecall_write_file_held` with the exact payment `FdPark.uoff_rcpt`
+and its tie `off' = off`, `wp_uk_ecall_read_file_held`).
 `FdSlots.foff_row` already answers `emp` at `OffHeld`.
 
 ## 4. The console side: the stage grows an f-state history

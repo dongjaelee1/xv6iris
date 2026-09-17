@@ -8778,8 +8778,9 @@ not re-discover them.
 2. `iris/UkFileOpen.v` (`:234`, `:809`, `:1019`, `:1198`) — the open's fd
    arm gained a `∧ fdst_nopipe (FdOpen rd wr ty)` conjunct, so
    `destruct Hb as (Hr1 & Hlt1 & Hfdv1)` leaves `Hfdv1` a conjunction and
-   `*_open_fd_tie` wants only the equality.  `(proj1 Hfdv1)` at all four.
-   `UkTreeRead` / `UkTreeCreate` already destructure four ways.
+   `*_open_fd_tie` wants only the equality.  This lane used
+   `(proj1 Hfdv1)`; `main` fixed it by destructuring four ways, as
+   `UkTreeRead` / `UkTreeCreate` already did, and the merge took main's.
 3. `iris/UShCat.v:1011` and `iris/UCatKernel.v:1214` — SUP-ONE's survey R4
    dropped `udepw_law 21` from `UkCatMain.kcat_pay_all_of_law` (cat closes
    nothing), but both callers still handed it a fourth wand.  One token

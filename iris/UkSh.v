@@ -1640,11 +1640,49 @@ Section UkSh.
   (* STATED HERE rather than in [UConsLine.v] because [ush_rest_l] below    *)
   (* consumes what it produces and this file is under that one.            *)
   (* ===================================================================== *)
-  Definition ush_tag_law : iProp Σ :=
-    (□ (∀ h : list mobs, riscv_rx_tag h -∗ ⌜disc h⌝ ∨ T))%I.
+  (* THE DISCIPLINE IS A PARAMETER (lane LINK-GEN, item 21).  The tag's
+     reading was [⌜EchoDisc.disc h⌝ ∨ T] -- the ECHO discipline -- and the
+     FILE era cannot supply it: [FileOut.ftag]'s second conjunct is
+     [⌜FileDisc.disc_f h⌝ ∨ file_taint], and [disc_f h] does NOT imply
+     [disc h] (lane STAGE's ruling: a [cat] line is not an echo line).  So
+     the reading takes the discipline as a parameter [D]. *)
+  Definition ush_tag_law_at (D : list mobs -> Prop) : iProp Σ :=
+    (□ (∀ h : list mobs, riscv_rx_tag h -∗ ⌜D h⌝ ∨ T))%I.
 
+  (* ...AND WHAT EVERYTHING BELOW ACTUALLY DRAWS FROM IT is ONE
+     consequence: a tag on a history whose last console byte is C('D') is
+     the taint ([ush_swallow_taint] is its only consumer, and the ^D
+     refutation is the only use the discipline was ever put to here).  So
+     THAT is what travels -- [UInitSh.sh_pay]'s third conjunct,
+     [UConsLine]'s payload, [UShKernel]'s three entries -- and a
+     discipline appears only where an era PRODUCES it.  A [D]-era
+     converts with [ush_tag_law_of_at] once it has shown that no
+     [D]-history ends in a C('D'); echo's is [disc_no_ctrl_d]. *)
+  Definition ush_tag_law : iProp Σ :=
+    (□ (∀ (h : list mobs) (b : bv 8),
+          ⌜obs_ends_in Uart0 h b⌝ -∗
+          ⌜bv_unsigned (cons_xlate b) = 4⌝ -∗
+          riscv_rx_tag h -∗ T))%I.
+
+  Global Instance ush_tag_law_at_persistent D : Persistent (ush_tag_law_at D).
+  Proof using . rewrite /ush_tag_law_at. apply _. Qed.
   Global Instance ush_tag_law_persistent : Persistent ush_tag_law.
   Proof using . rewrite /ush_tag_law. apply _. Qed.
+
+  Lemma ush_tag_law_of_at (D : list mobs -> Prop) :
+    (forall (h : list mobs) (b : bv 8),
+       obs_ends_in Uart0 h b -> bv_unsigned (cons_xlate b) = 4 ->
+       D h -> False) ->
+    ush_tag_law_at D -∗ ush_tag_law.
+  Proof using .
+    intro HD. iIntros "#Hl !>" (h b) "%Hen %Hx Htg".
+    iDestruct ("Hl" $! h with "Htg") as "[%Hd | HT]"; [ | iExact "HT" ].
+    exfalso. exact (HD h b Hen Hx Hd).
+  Qed.
+
+  (* the echo era's instance: [D := EchoDisc.disc] *)
+  Lemma ush_tag_law_echo : ush_tag_law_at disc -∗ ush_tag_law.
+  Proof using . exact (ush_tag_law_of_at disc disc_no_ctrl_d). Qed.
 
   (* ===================================================================== *)
   (* THE ONE HYPOTHESIS OF STAGE 2: SH'S CONSOLE READ, WITH THE RECEIPT     *)
@@ -2056,8 +2094,8 @@ Section UkSh.
     iDestruct "Hsw" as "[%He | [%He H]]"; [ exfalso; exact (Hdc He) | ].
     iDestruct "H" as (h b) "(%Hen & _ & _ & Htg & Hwhy)".
     iDestruct "Hwhy" as "[%Hd | %Hf]"; [ | exfalso; exact Hf ].
-    iDestruct ("Hlaw" $! h with "Htg") as "[%Hdisc | HT]"; [ | iExact "HT" ].
-    exfalso. exact (disc_no_ctrl_d h b Hen (proj2 Hd) Hdisc).
+    iApply ("Hlaw" $! h b with "[%] [%] Htg");
+      [ exact Hen | exact (proj2 Hd) ].
   Qed.
 
 

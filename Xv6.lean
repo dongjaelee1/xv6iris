@@ -186,3 +186,4 @@ import Xv6.LinkUvmcreate
 import Xv6.UPtWalkaddrLemmas
 import Xv6.ProofWalkaddr
 import Xv6.LinkWalkaddr
+import Xv6.KstackMap

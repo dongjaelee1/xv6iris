@@ -522,7 +522,7 @@ Section SysOpenArms.
            ⌜arow_at av i (MkAnode (ADev ma mi) nl)⌝ ∗
            ⌜0 <= ma <= NDEV_max⌝ ∗
            Fo.(pf_recv) av i (MkAnode (ADev ma mi) nl) ∗
-           open_trunc_piece Γ vom Ft ∗
+           open_trunc_at Γ vom i Ft ∗
            open_fd_ok γf p pid UW (om_readable vom) (om_writable vom)
              (FdDevice ma) sts r)
         ∨ (* FILE: the ONE delta of this surface, iff O_TRUNC -- the trunc
@@ -546,7 +546,7 @@ Section SysOpenArms.
            ⌜arow_at av i (MkAnode (ADir ents) nl)⌝ ∗
            ⌜om_arg vom = 0⌝ ∗
            Fo.(pf_recv) av i (MkAnode (ADir ents) nl) ∗
-           open_trunc_piece Γ vom Ft ∗
+           open_trunc_at Γ vom i Ft ∗
            ∃ γo : gname,
              open_fd_ok γf p pid UW true false (FdInode i γo OffParked) sts r)))%I.
 
@@ -571,12 +571,14 @@ Section SysOpenArms.
           ⌜arg_path_of M pv pl⌝ ∗
           ((namei_walk_dead_era γfs P Pmiss pl
               ∗ pf_at (aopen_commit_at Γ appE) Fo
-              ∗ open_trunc_piece Γ vom Ft)
+              ∗ open_trunc_piece Γ vom trunc_permit_triv Ft)
            ∨ (∃ i : Z,
                 P (length (path_elems pl)) i
                 ∗ (∃ (av : aview) (a : anode),
                      ⌜arow_at av i a⌝ ∗ Fo.(pf_recv) av i a)
-                ∗ open_trunc_piece Γ vom Ft))))%I.
+                (* the piece is KEYED once the walk has an inode: the
+                   permit was paid where what pays it was in hand *)
+                ∗ open_trunc_at Γ vom i Ft))))%I.
 
   (* the armed disjunction the continuation receives, keyed on a0, with
      the landed post's fd-side bundle folded in per arm (the caller's
@@ -602,6 +604,129 @@ Section SysOpenArms.
   (*  2g.  The O_CREATE arms                                              *)
   (* ------------------------------------------------------------------ *)
 
+  (* WHAT A TRUNCATING O_CREATE DOES NOT REPORT (lane F-OPEN-3).  The
+     [itrunc]'s piece arrives KEYED ([SysOpenDefs.open_trunc_piece] at
+     [SysOpenDefs.trunc_permit_of]), and the permit is paid out of
+     create's OWN payout at the instant create returns: the walk's
+     terminal cursor and the tie on both runs, plus the create leg's
+     fired receipt on the FRESH run, or the exists observation's receipt
+     BESIDE THE UNFIRED ARM PIECE on the EXISTS one.  So a truncating
+     create's arms report those pieces no more -- what they report
+     instead is the truncate's own receipt where it fired
+     ([open_trunc_at]'s refund where it did not), which is where a
+     constraining caller's investment comes home.  AT
+     [om_trunc vom = false] EVERY ONE OF THESE IS WHAT IT ALWAYS WAS. *)
+  (* THE O_CREATE SURFACE'S PERMIT, at the path the call read (which every
+     arm of both folds binds), and the piece an arm hands back once it has
+     been paid: the commit at the node the call reached, with the permit
+     itself on the refund side ([SysOpenDefs.cre_ft_kept]). *)
+  Definition cre_permit Γ (pl : list (bv 8)) (P : nat -> Z -> iProp Σ)
+      (Farm : pfam Σ (aview -> Z -> iProp Σ))
+      (Fok Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
+      : Z -> iProp Σ :=
+    trunc_permit_of Γ (trunc_tie_at pl P) Farm Fok Fex.
+
+  Definition cre_trunc_kept Γ (vom : mword 64) (pl : list (bv 8))
+      (P : nat -> Z -> iProp Σ)
+      (Farm : pfam Σ (aview -> Z -> iProp Σ))
+      (Fok Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
+      (i : Z) (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ)) : iProp Σ :=
+    open_trunc_at Γ vom i (cre_ft_kept (cre_permit Γ pl P Farm Fok Fex) i Ft).
+
+  Definition cre_cur_kept (vom : mword 64) (P : nat -> Z -> iProp Σ)
+      (k : nat) (d : Z) : iProp Σ :=
+    (if om_trunc vom then emp else P k d)%I.
+
+  Definition cre_rcpt_kept (vom : mword 64)
+      (F : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
+      (av : aview) (d : Z) (nm : fname) (i : Z) : iProp Σ :=
+    (if om_trunc vom then emp else F.(pf_recv) av d nm i)%I.
+
+  Definition cre_child_kept Γ (vom : mword 64)
+      (Farm Fun : pfam Σ (aview -> Z -> iProp Σ)) : iProp Σ :=
+    (if om_trunc vom
+     then pf_at (aunarm_of_arm Γ appE Farm) Fun
+     else cre_child_unfired Γ (AFile []) Farm Fun)%I.
+
+  Lemma cre_cur_kept_none (vom : mword 64) (P : nat -> Z -> iProp Σ)
+      (k : nat) (d : Z) : om_trunc vom = true -> ⊢ cre_cur_kept vom P k d.
+  Proof using . intros Hv. rewrite /cre_cur_kept Hv. done. Qed.
+
+  Lemma cre_cur_kept_of (vom : mword 64) (P : nat -> Z -> iProp Σ)
+      (k : nat) (d : Z) : P k d -∗ cre_cur_kept vom P k d.
+  Proof using .
+    iIntros "H". rewrite /cre_cur_kept. destruct (om_trunc vom); done.
+  Qed.
+
+  Lemma cre_rcpt_kept_of (vom : mword 64)
+      (F : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
+      (av : aview) (d : Z) (nm : fname) (i : Z) :
+    F.(pf_recv) av d nm i -∗ cre_rcpt_kept vom F av d nm i.
+  Proof using .
+    iIntros "H". rewrite /cre_rcpt_kept. destruct (om_trunc vom); done.
+  Qed.
+
+  (* WHAT THE "name existed" FAILURE ARM HANDS BACK, which has TWO
+     producers and they differ in whether the permit has been paid.
+     create's own failure fold reaches this arm with create having
+     returned 0 (a found DIRECTORY, say): the permit was never paid, so
+     the caller's piece is whole and BOTH child legs come home.
+     sys_open's own later failure past a good found node reaches it with
+     the permit paid: the piece is keyed at that node, the arm's half went
+     into the permit and rides the keyed piece's refund
+     ([SysOpenDefs.cre_ft_kept]), and only the unarm comes home beside it.
+     The two travel together because the piece and the legs are what the
+     permit was paid WITH.  At [om_trunc vom = false] this is exactly the
+     child-leg disjunct every arm always carried. *)
+  Definition cre_fail_kept Γ (vom : mword 64) (pl : list (bv 8))
+      (P : nat -> Z -> iProp Σ)
+      (Farm Fun : pfam Σ (aview -> Z -> iProp Σ))
+      (Fok Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
+      (i : Z) (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ)) : iProp Σ :=
+    (if om_trunc vom
+     then (cre_trunc_kept Γ vom pl P Farm Fok Fex i Ft
+           ∗ pf_at (aunarm_of_arm Γ appE Farm) Fun)
+          ∨ (open_trunc_piece Γ vom (cre_permit Γ pl P Farm Fok Fex) Ft
+             ∗ (cre_child_unfired Γ (AFile []) Farm Fun
+                ∨ ∃ ic : Z, cre_child_pair Farm Fun ic))
+     else cre_child_unfired Γ (AFile []) Farm Fun
+          ∨ ∃ ic : Z, cre_child_pair Farm Fun ic)%I.
+
+  Lemma cre_fail_kept_of_piece Γ (vom : mword 64) (pl : list (bv 8))
+      (P : nat -> Z -> iProp Σ)
+      (Farm Fun : pfam Σ (aview -> Z -> iProp Σ))
+      (Fok Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
+      (i : Z) (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ)) :
+    open_trunc_piece Γ vom (cre_permit Γ pl P Farm Fok Fex) Ft -∗
+    (cre_child_unfired Γ (AFile []) Farm Fun
+     ∨ ∃ ic : Z, cre_child_pair Farm Fun ic) -∗
+    cre_fail_kept Γ vom pl P Farm Fun Fok Fex i Ft.
+  Proof using .
+    iIntros "Ht Hcl". rewrite /cre_fail_kept.
+    destruct (om_trunc vom); [| iExact "Hcl" ]. iRight. iFrame "Ht Hcl".
+  Qed.
+
+  Lemma cre_fail_kept_of_at Γ (vom : mword 64) (pl : list (bv 8))
+      (P : nat -> Z -> iProp Σ)
+      (Farm Fun : pfam Σ (aview -> Z -> iProp Σ))
+      (Fok Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
+      (i : Z) (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ)) :
+    cre_trunc_kept Γ vom pl P Farm Fok Fex i Ft -∗
+    cre_child_kept Γ vom Farm Fun -∗
+    cre_fail_kept Γ vom pl P Farm Fun Fok Fex i Ft.
+  Proof using .
+    iIntros "Ht Hcl". rewrite /cre_fail_kept /cre_child_kept.
+    destruct (om_trunc vom); [| by iLeft ]. iLeft. iFrame "Ht Hcl".
+  Qed.
+
+  Lemma cre_child_kept_of Γ (vom : mword 64)
+      (Farm Fun : pfam Σ (aview -> Z -> iProp Σ)) :
+    cre_child_unfired Γ (AFile []) Farm Fun -∗ cre_child_kept Γ vom Farm Fun.
+  Proof using .
+    iIntros "H". rewrite /cre_child_kept. destruct (om_trunc vom); [| done].
+    rewrite /cre_child_unfired. iDestruct "H" as "[_ $]".
+  Qed.
+
   (* ret = fd: FRESH (the fused delta fired at the entry write; the
      terminal observation refunded, the TRUNC COMMIT FIRED at the empty
      child iff O_TRUNC -- itrunc's delta is the identity there, which is
@@ -621,12 +746,12 @@ Section SysOpenArms.
        (* the path is the caller's own argument 0, as on the plain side *)
        ⌜arg_path_of M pv pl⌝ ∗
        ⌜list_basics.last (path_elems pl) = Some nm⌝ ∗
-       P (length (npar_elems pl)) d ∗
+       cre_cur_kept vom P (length (npar_elems pl)) d ∗
        ((* FRESH *)
         (∃ (av : aview) (ents : gmap fname Z) (nl : nat),
            ⌜cre_pre av d nm ents nl i (AFile [])⌝ ∗
            ⌜0 < i < 16 * Z.of_nat icfg_nib⌝ ∗
-           Fok.(pf_recv) av d nm i ∗
+           cre_rcpt_kept vom Fok av d nm i ∗
            pf_at (dlookup_commit_at Γ appE) Fex ∗
            pf_at (aopen_commit_at Γ appE) Fo ∗
            (* THE TRUNC COMMIT FIRES ON THIS ARM TOO, at the empty child.
@@ -655,11 +780,13 @@ Section SysOpenArms.
         (∃ (avx : aview) (entsx : gmap fname Z) (nlx : nat),
            ⌜avx !! d = Some (MkAnode (ADir entsx) nlx)⌝ ∗
            ⌜entsx !! nm = Some i⌝ ∗
-           Fex.(pf_recv) avx d nm i ∗
+           cre_rcpt_kept vom Fex avx d nm i ∗
            pf_at (acre_commit_at Γ appE (AFile [])
                      (P (length (npar_elems pl))) Farm) Fok ∗
-           (* the name was already there: create's child legs are whole *)
-           cre_child_unfired Γ (AFile []) Farm Fun ∗
+           (* the name was already there: create's child legs are whole --
+              and at a TRUNCATING open the ARM's half went into the
+              permit, so what comes back is the unarm alone *)
+           cre_child_kept Γ vom Farm Fun ∗
            (∃ (av : aview) (nl : nat),
               ((* the found node is a FILE *)
                (∃ bs0 : list (bv 8),
@@ -679,7 +806,7 @@ Section SysOpenArms.
                   ⌜arow_at av i (MkAnode (ADev ma mi) nl)⌝ ∗
                   ⌜0 <= ma <= NDEV_max⌝ ∗
                   Fo.(pf_recv) av i (MkAnode (ADev ma mi) nl) ∗
-                  open_trunc_piece Γ vom Ft ∗
+                  cre_trunc_kept Γ vom pl P Farm Fok Fex i Ft ∗
                   open_fd_ok γf p pid UW (om_readable vom)
                     (om_writable vom) (FdDevice ma) sts r))))))%I.
 
@@ -702,20 +829,22 @@ Section SysOpenArms.
                      (P (length (npar_elems pl))) Farm) Fok
              ∗ pf_at (dlookup_commit_at Γ appE) Fex
              ∗ pf_at (aopen_commit_at Γ appE) Fo
-             ∗ open_trunc_piece Γ vom Ft
+             ∗ open_trunc_piece Γ vom (cre_permit Γ pl P Farm Fok Fex) Ft
              ∗ cre_child_unfired Γ (AFile []) Farm Fun)
           ∨ (∃ d : Z,
-               P (length (npar_elems pl)) d
-               ∗ open_trunc_piece Γ vom Ft
+               cre_cur_kept vom P (length (npar_elems pl)) d
                ∗ ((* (a) create succeeded FRESH; open failed past it *)
                   (∃ (av : aview) (i : Z) (nm : fname)
                      (ents : gmap fname Z) (nl : nat),
                      ⌜list_basics.last (path_elems pl) = Some nm⌝ ∗
                      ⌜cre_pre av d nm ents nl i (AFile [])⌝ ∗
                      ⌜0 < i < 16 * Z.of_nat icfg_nib⌝ ∗
-                     Fok.(pf_recv) av d nm i
+                     cre_rcpt_kept vom Fok av d nm i
                      ∗ pf_at (dlookup_commit_at Γ appE) Fex
                      ∗ pf_at (aopen_commit_at Γ appE) Fo
+                     (* the truncate never ran (itrunc is past fdalloc), so
+                        its piece comes home KEYED at the created child *)
+                     ∗ cre_trunc_kept Γ vom pl P Farm Fok Fex i Ft
                      (* the child's row STANDS; the arm's permit was spent
                         by the create leg *)
                      ∗ pf_at (aunarm_of_arm Γ appE Farm) Fun)
@@ -727,14 +856,15 @@ Section SysOpenArms.
                      ⌜list_basics.last (path_elems pl) = Some nm⌝ ∗
                      ⌜av !! d = Some (MkAnode (ADir ents) nl)⌝ ∗
                      ⌜ents !! nm = Some i⌝ ∗
-                     Fex.(pf_recv) av d nm i
+                     cre_rcpt_kept vom Fex av d nm i
                      ∗ pf_at (acre_commit_at Γ appE (AFile [])
                      (P (length (npar_elems pl))) Farm) Fok
                      (* create's child legs: whole, or the do-then-undo
                         PAIR -- the fold does not separate the two here
-                        (round E2, lane E2-C) *)
-                     ∗ (cre_child_unfired Γ (AFile []) Farm Fun
-                        ∨ ∃ ic : Z, cre_child_pair Farm Fun ic)
+                        (round E2, lane E2-C); at a TRUNCATING open they
+                        travel with the truncate's own piece, which is
+                        what the permit was paid with *)
+                     ∗ cre_fail_kept Γ vom pl P Farm Fun Fok Fex i Ft
                      ∗ (pf_at (aopen_commit_at Γ appE) Fo
                         ∨ (∃ (av' : aview) (a : anode),
                              ⌜arow_at av' i a⌝ ∗ Fo.(pf_recv) av' i a)))
@@ -744,8 +874,9 @@ Section SysOpenArms.
                      (P (length (npar_elems pl))) Farm) Fok
                    ∗ pf_at (dlookup_commit_at Γ appE) Fex
                    ∗ pf_at (aopen_commit_at Γ appE) Fo
-                   (* the guards and "out of inodes" fired nothing; a failed
-                      [dirlink] fired the do-then-undo PAIR (ruling Q-h) *)
+                   (* create never returned a node, so the permit was never
+                      paid and the piece is the one the caller handed in *)
+                   ∗ open_trunc_piece Γ vom (cre_permit Γ pl P Farm Fok Fex) Ft
                    ∗ (cre_child_unfired Γ (AFile []) Farm Fun
                       ∨ ∃ ic : Z, cre_child_pair Farm Fun ic)))))))%I.
 
@@ -969,7 +1100,7 @@ Section SysOpenArms.
               ⌜arow_at av i (MkAnode (ADev ma mi) nl)⌝ ∗
               ⌜0 <= ma <= NDEV_max⌝ ∗
               Fo.(pf_recv) av i (MkAnode (ADev ma mi) nl) ∗
-              open_trunc_piece Γ vom Ft ∗
+              open_trunc_at Γ vom i Ft ∗
               ⌜open_fd_rcpt (om_readable vom) (om_writable vom)
                  (FdDevice ma) sts r fdv'⌝)
            ∨ (* FILE, with the trunc leg *)
@@ -989,7 +1120,7 @@ Section SysOpenArms.
               ⌜arow_at av i (MkAnode (ADir ents) nl)⌝ ∗
               ⌜om_arg vom = 0⌝ ∗
               Fo.(pf_recv) av i (MkAnode (ADir ents) nl) ∗
-              open_trunc_piece Γ vom Ft ∗
+              open_trunc_at Γ vom i Ft ∗
               ∃ γo : gname,
                 ⌜open_fd_rcpt true false (FdInode i γo OffParked) sts r fdv'⌝))))%I.
 
@@ -1006,12 +1137,12 @@ Section SysOpenArms.
      ∨ (∃ (pl : list (bv 8)) (d i : Z) (nm : fname),
           ⌜arg_path_of M pv pl⌝ ∗
           ⌜list_basics.last (path_elems pl) = Some nm⌝ ∗
-          P (length (npar_elems pl)) d ∗
+          cre_cur_kept vom P (length (npar_elems pl)) d ∗
           ((* FRESH *)
            (∃ (av : aview) (ents : gmap fname Z) (nl : nat),
               ⌜cre_pre av d nm ents nl i (AFile [])⌝ ∗
               ⌜0 < i < 16 * Z.of_nat icfg_nib⌝ ∗
-              Fok.(pf_recv) av d nm i ∗
+              cre_rcpt_kept vom Fok av d nm i ∗
               pf_at (dlookup_commit_at Γ appE) Fex ∗
               pf_at (aopen_commit_at Γ appE) Fo ∗
               (if om_trunc vom
@@ -1027,10 +1158,10 @@ Section SysOpenArms.
            (∃ (avx : aview) (entsx : gmap fname Z) (nlx : nat),
               ⌜avx !! d = Some (MkAnode (ADir entsx) nlx)⌝ ∗
               ⌜entsx !! nm = Some i⌝ ∗
-              Fex.(pf_recv) avx d nm i ∗
+              cre_rcpt_kept vom Fex avx d nm i ∗
               pf_at (acre_commit_at Γ appE (AFile [])
                      (P (length (npar_elems pl))) Farm) Fok ∗
-              cre_child_unfired Γ (AFile []) Farm Fun ∗
+              cre_child_kept Γ vom Farm Fun ∗
               (∃ (av : aview) (nl : nat),
                  ((∃ bs0 : list (bv 8),
                      ⌜arow_at av i (MkAnode (AFile bs0) nl)⌝ ∗
@@ -1047,7 +1178,7 @@ Section SysOpenArms.
                        ⌜arow_at av i (MkAnode (ADev ma mi) nl)⌝ ∗
                        ⌜0 <= ma <= NDEV_max⌝ ∗
                        Fo.(pf_recv) av i (MkAnode (ADev ma mi) nl) ∗
-                       open_trunc_piece Γ vom Ft ∗
+                       cre_trunc_kept Γ vom pl P Farm Fok Fex i Ft ∗
                        ⌜open_fd_rcpt (om_readable vom) (om_writable vom)
                           (FdDevice ma) sts r fdv'⌝)))))))%I.
 
@@ -1425,7 +1556,9 @@ Section SysOpenArms.
     cre_fail_arms Γ γfs (bv_unsigned T_FILE) ma mi P Pmiss
       Farm Fdots Fun Fok Fex pl -∗
     pf_at (aopen_commit_at Γ appE) Fo -∗
-    open_trunc_piece Γ vom Ft -∗
+    (* the piece at the ONE-PATH permit, which is how the create entry
+       holds it once argstr has answered ([open_au_create_at_inst]) *)
+    open_trunc_piece Γ vom (cre_permit Γ pl P Farm Fok Fex) Ft -∗
     open_post_fail_create Γ γfs cw M pv vom P Pmiss Farm Fun Fok Fex Fo Ft.
   Proof using .
     intros Hpl. iIntros "Hcf Ho Ht".
@@ -1435,19 +1568,26 @@ Section SysOpenArms.
     iDestruct "Hcf" as "[(Hd & Hac & Hdl & Hcl) | Hr]".
     - iLeft. iFrame "Hd Hac Hdl Ho Ht Hcl".
     - iRight. iDestruct "Hr" as (d) "(HP & Hac & Hrest & Hcl)".
-      iExists d. iFrame "HP Ht".
+      iExists d.
       iDestruct "Hrest" as "[Hfired | Hdl]".
-      + (* (b): the name was there and the observation fired *)
+      + (* (b): the name was there and the observation fired.  The
+           TRUNCATE'S PIECE IS STILL THE CALLER'S here -- create returned
+           0, so sys_open never reached the node and the permit was never
+           paid ([cre_fail_kept]'s right disjunct). *)
+        iSplitL "HP"; [ iApply (cre_cur_kept_of with "HP") |].
         iRight. iLeft.
         iDestruct "Hfired" as (av i nm ents nl) "(%Hl & %Hrow & %Hent & HΦ)".
         iExists av, i, nm, ents, nl.
         iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
         iSplitR; [by iPureIntro |].
-        iFrame "HΦ Hac".
-        iSplitL "Hcl"; [iExact "Hcl" |].
+        iSplitL "HΦ"; [ iApply (cre_rcpt_kept_of with "HΦ") |].
+        iFrame "Hac".
+        iSplitL "Ht Hcl".
+        { iApply (cre_fail_kept_of_piece with "Ht Hcl"). }
         iLeft. iExact "Ho".
       + (* (c): nothing observed *)
-        iRight. iRight. iFrame "Hac Hdl Ho Hcl".
+        iSplitL "HP"; [ iApply (cre_cur_kept_of with "HP") |].
+        iRight. iRight. iFrame "Hac Hdl Ho Ht Hcl".
   Qed.
 
 End SysOpenArms.
@@ -1458,7 +1598,11 @@ End SysOpenArms.
 Global Typeclasses Opaque open_post_ok_plain open_post_fail_plain
   open_arms_plain open_post_ok_create open_post_fail_create
   open_arms_create open_in open_arms
-  open_receipt_plain open_receipt_create open_receipt.
+  open_receipt_plain open_receipt_create open_receipt
+  (* the O_CREATE surface's guarded slots, for the same reason (lane
+     F-OPEN-3) *)
+  cre_permit cre_trunc_kept cre_cur_kept cre_rcpt_kept cre_child_kept
+  cre_fail_kept.
 
 (* ===================================================================== *)
 (*  THE WHOLE-FUNCTION FRAME, abstracted over the caller's bundle and the *)

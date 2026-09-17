@@ -93,7 +93,7 @@ Section UkShParseTok.
   Local Notation urun_x0 := (UkShParse.urun_x0 N).
   Local Notation ushp_frame_join := (UkShParse.ushp_frame_join N).
   Local Notation ushp_frame_split := (UkShParse.ushp_frame_split N).
-  Local Notation ushp_malloc_ty := (UkShParse.ushp_malloc_ty N).
+  Local Notation ushp_malloc_ty := (UkShParse.ushp_malloc_ty_le N 168).
   Local Notation wp_kshp_fp := (UkShParse.wp_kshp_fp N).
   Local Notation wp_kshp_peek_epi := (UkShParseLex.wp_kshp_peek_epi N).
   Local Notation wp_kshp_restore := (UkShParse.wp_kshp_restore N).

@@ -161,8 +161,9 @@ Record uk_names (Σ : gFunctors) := MkUkNames {
      [UkFork.wp_uk_ecall_fork]'s [⌜pidc <> 1⌝], name the literal and an
      entry constructor has nothing left to choose. *)
   ukn_pid : gname;
-  (* WHETHER THIS PROCESS ANSWERS FOR ITS OFFSETS (lane OFF-HAND-3, R1).
-     A STATIC BIT ON THE RECORD, and not a ghost, for the reason
+  (* WHICH DESCRIPTORS THIS PROCESS MAY HOLD AN OFFSET HALF OF (lane
+     OFF-HAND-4, S1; design/app-file.md SS3 fact 4).  A STATIC SET ON THE
+     RECORD, and not a ghost, for the reason
      [ExecEntry.image_entry_taint]'s note names: the fact a taint arm has
      to pay is a fact about the WHOLE table, spent inside [urun]'s own
      existential at a key the U tier cannot name ([UkSh.ush_gen_run]), so
@@ -170,18 +171,26 @@ Record uk_names (Σ : gFunctors) := MkUkNames {
      program's walk.  A resource is not -- an exclusive half would appear
      in every statement between the entry and the exec -- and a
      PERSISTENT resource cannot be revoked, which is what a hand-open
-     needs.  A bit on the record is both: [urun] carries the pure row
-     [ukn_park N = true -> fdv_all_parked fdv] ([urun_rows]), which is
-     free at every leaf and re-established by [UsysMemOk.usys_fd_ok_parked]
-     across a round; a program whose record says [true] reads
-     all-parkedness off its own run and pays the taint arm with it; a
-     program that means to hold an offset half is minted at [false], and
-     its held-open leaf is the one that requires it.  Which bit a record
-     carries is fixed where every other field is -- by the entry
-     constructor ([uslot_of_urun*]'s [pk] argument), out of a pure premise
-     about the key's table.  [ukn_parked] is the class a program file
-     carries, [ukn_triv]'s mould. *)
-  ukn_park : bool
+     needs (lane OFF-HAND-3's finding 1 refutes all three ghost shapes).
+
+     A SET AND NOT A BIT, AND NOT A COUNT.  A program that execs or forks
+     while it holds a row has to SURRENDER exactly those rows
+     ([FdPark.uoff_surrs] is a big-op over the table), so the carrier has
+     to say WHICH slots they are: a bit cannot, and a count cannot
+     (OFF-HAND-3's finding 2).  [empty] is what the bit's [true] was --
+     the record answers for every offset it has -- and [ukn_parked] is
+     that as a class, [ukn_triv]'s mould.
+
+     [urun] carries the pure row [fdv_held_in (ukn_held N) fdv]
+     ([urun_rows]): every UNPARKED row of the table is one of these
+     slots.  It is free at every leaf and re-established across a round by
+     [UsysMemOk.usys_fd_ok_held].  Which set a record carries is fixed
+     where every other field is -- by the entry constructor
+     ([uslot_of_urun*]'s [hs] argument), out of a pure premise about the
+     key's table -- or, for a forked child, by its PARENT
+     ([UkFork.wp_uk_ecall_fork]'s [hs]: the child's table is the parent's,
+     so any superset of the parent's set is honest). *)
+  ukn_held : gset nat
 }.
 Global Arguments MkUkNames {_} _ _ _ _ _ _ _ _ _.
 Global Arguments ukn_t {_} _.
@@ -192,14 +201,16 @@ Global Arguments ukn_cwd {_} _.
 Global Arguments ukn_ch {_} _.
 Global Arguments ukn_pay {_} _.
 Global Arguments ukn_pid {_} _.
-Global Arguments ukn_park {_} _.
+Global Arguments ukn_held {_} _.
 
 (* THE PARKED RECORD, AS A CLASS ([ukn_triv]'s mould).  A program file
    that reads its own table's all-parkedness carries one of these as a
    section hypothesis; the entry constructor that minted the record is
-   what fixes it. *)
+   what fixes it.  It is the EMPTY held set -- a record that may hold no
+   offset half answers for every offset it has -- so no landed site's
+   spelling moved when the bit became a set. *)
 Class ukn_parked {Σ : gFunctors} (N : uk_names Σ) : Prop :=
-  ukn_parked_eq : ukn_park N = true.
+  ukn_parked_eq : ukn_held N = ∅.
 
 (* THE TRIVIAL PAYLOAD, AS A CLASS.  A program whose exit owes its parent
    nothing has to be able to SAY so at its exit ecall
@@ -766,7 +777,7 @@ Section UkRun.
   (* useless exactly where it is spent.                                      *)
   (* ===================================================================== *)
   Definition urun_parked_row (N : uk_names Σ) (fdv : list fdstate) : Prop :=
-    ukn_park N = true -> fdv_all_parked fdv.
+    fdv_held_in (ukn_held N) fdv.
 
   Definition urun_rows (N : uk_names Σ) (fdv : list fdstate) : iProp Σ :=
     (urun_nopipe fdv ∗ ⌜urun_parked_row N fdv⌝)%I.
@@ -781,6 +792,13 @@ Section UkRun.
     urun_rows N fdv -∗ urun_nopipe fdv.
   Proof using . iIntros "[$ _]". Qed.
 
+  (* ...and the OFFSET row on its own, for the leaves that read it off a
+     run they are keeping ([urun_rows] is persistent, so this costs the
+     leaf nothing). *)
+  Lemma urun_rows_held (N : uk_names Σ) (fdv : list fdstate) :
+    urun_rows N fdv -∗ ⌜urun_parked_row N fdv⌝.
+  Proof using . iIntros "[_ $]". Qed.
+
   (* ...AND THE READING THE TAINT ARM SPENDS: a record that answers for its
      offsets reads all-parkedness off its own run, with nothing in hand but
      the run.  This is what [urun_gen_parked] and [UkSh.ush_gen_run]'s
@@ -788,7 +806,8 @@ Section UkRun.
   Lemma urun_rows_parked (N : uk_names Σ) `{!ukn_parked N} (fdv : list fdstate) :
     urun_rows N fdv -∗ ⌜fdv_all_parked fdv⌝.
   Proof using .
-    iIntros "[_ %Hp]". iPureIntro. exact (Hp ukn_parked_eq).
+    iIntros "[_ %Hp]". iPureIntro. apply fdv_held_in_empty.
+    rewrite <- (ukn_parked_eq (N := N)). exact Hp.
   Qed.
 
   Lemma urun_rows_intro (N : uk_names Σ) (fdv : list fdstate) :
@@ -802,7 +821,7 @@ Section UkRun.
     ⊢ urun_rows N (replicate n FdClosed).
   Proof using .
     apply urun_rows_intro; [ apply fdv_nopipe_closed | ].
-    intros _. apply fdv_all_parked_closed.
+    apply fdv_held_in_closed.
   Qed.
 
   (* THE TAINT'S PIPE ROW, with the offset row still owed.  A tainted
@@ -816,18 +835,21 @@ Section UkRun.
   Qed.
 
   (* THE ROUND'S EFFECT ON BOTH ROWS, at every number but pipe(2).  The
-     offset half is [UsysMemOk.usys_fd_ok_parked] -- landed by RA-3 for
-     exactly this and, until this lane, with no consumer at all -- and it
-     holds at EVERY number, pipe included. *)
+     offset half is [UsysMemOk.usys_fd_ok_held], which is free at every
+     number but dup -- see its note: a dup COPIES its argument's row, so a
+     copy of a HELD one lands on a slot the record may not hold.  The
+     guard is free at every all-parked table and is what the two dup
+     leaves pay. *)
   Lemma urun_rows_step (N : uk_names Σ) (n : Z) (tf : list (mword 64))
       (r : mword 64) (fdv fdv' : list fdstate) :
     n <> USYS_pipe -> usys_fd_ok n tf r fdv fdv' ->
+    (n = USYS_dup -> fdst_parked (fdv !!! Z.to_nat (usys_argfd tf))) ->
     urun_rows N fdv -∗ urun_rows N fdv'.
   Proof using .
-    intros Hne Hok. iIntros "[Hnp %Hpk]". rewrite /urun_rows.
+    intros Hne Hok Hdup. iIntros "[Hnp %Hpk]". rewrite /urun_rows.
     iSplitL "Hnp"; [ iApply (urun_nopipe_step n tf r fdv fdv' Hne Hok with "Hnp") | ].
-    iPureIntro. intros Hq.
-    exact (usys_fd_ok_parked n tf r fdv fdv' Hok (Hpk Hq)).
+    iPureIntro.
+    exact (usys_fd_ok_held (ukn_held N) n tf r fdv fdv' Hok Hdup Hpk).
   Qed.
 
   Lemma urun_rows_quiet (N : uk_names Σ) (fdv fdv' : list fdstate) :
@@ -843,26 +865,31 @@ Section UkRun.
   Proof using .
     intros Hnp Hpk. iIntros "[Hn %Hp]". rewrite /urun_rows.
     iSplitL "Hn"; [ iApply (urun_nopipe_insert fdv k st Hnp with "Hn") | ].
-    iPureIntro. intros Hq. exact (fdv_all_parked_insert fdv k st (Hp Hq) Hpk).
+    iPureIntro. apply fdv_held_in_insert; [ exact Hp | left; exact Hpk ].
   Qed.
 
+  (* ...AND DUP'S, WITH ITS ONE GUARD (lane OFF-HAND-4, S1).  The copied
+     row has to be parked, because the slot fdalloc chose is not one the
+     record can be said to hold -- [UsysMemOk.usys_fd_ok_held]'s note.
+     Free at every all-parked table, which is what the two dup leaves
+     derive it from. *)
   Lemma urun_rows_dup (N : uk_names Σ) (fdv : list fdstate) (k j : nat)
       (st : fdstate) :
-    fdv !! k = Some st -> urun_rows N fdv -∗ urun_rows N (<[j := st]> fdv).
+    fdv !! k = Some st -> fdst_parked st ->
+    urun_rows N fdv -∗ urun_rows N (<[j := st]> fdv).
   Proof using .
-    intros Hk. iIntros "[Hn %Hp]". rewrite /urun_rows.
+    intros Hk Hpk. iIntros "[Hn %Hp]". rewrite /urun_rows.
     iSplitL "Hn"; [ iApply (urun_nopipe_dup fdv k j st Hk with "Hn") | ].
-    iPureIntro. intros Hq. apply fdv_all_parked_insert;
-      [ exact (Hp Hq) | exact (fdv_all_parked_lookup fdv k st (Hp Hq) Hk) ].
+    iPureIntro. apply fdv_held_in_insert; [ exact Hp | left; exact Hpk ].
   Qed.
 
   Lemma urun_rows_copy (N : uk_names Σ) (fdv : list fdstate) (k j : nat) :
+    fdst_parked (fdv !!! k) ->
     urun_rows N fdv -∗ urun_rows N (<[j := fdv !!! k]> fdv).
   Proof using .
-    iIntros "[Hn %Hp]". rewrite /urun_rows.
+    intros Hpk. iIntros "[Hn %Hp]". rewrite /urun_rows.
     iSplitL "Hn"; [ iApply (urun_nopipe_copy fdv k j with "Hn") | ].
-    iPureIntro. intros Hq. apply fdv_all_parked_insert;
-      [ exact (Hp Hq) | exact (fdv_all_parked_lookup_total fdv k (Hp Hq)) ].
+    iPureIntro. apply fdv_held_in_insert; [ exact Hp | left; exact Hpk ].
   Qed.
 
   (* ...AND WHAT IT BUYS: exit's deposit at the key the leaf has destructed
@@ -1533,6 +1560,14 @@ Section UkRun.
   Lemma urun_gen (N : uk_names Σ) (T : iProp Σ) (h : CpuId) (m : regfile)
       (pc : mword 64) (avail : nat) :
     is_aligned_vaddr (Virtaddr pc) 2 = true ->
+    (* ...AND THE RECORD ANSWERS FOR ITS OFFSETS (lane OFF-HAND-3, R1;
+       OFF-HAND-4, S1).  The family the taint runs on is narrowed to keys
+       whose held halves have been surrendered
+       ([ExecEntry.image_entry_taint]), and the key a running process is at
+       is bound by [urun]'s own existential -- so the only thing that can
+       pay the row here is the run's own, which is guarded by the record's
+       held SET being empty. *)
+    ukn_held N = ∅ ->
     (* THE RUN CARRIES NO PAYLOAD (lane SELF-KILL, P6) and the TAINT ARM
        ASKS FOR NONE (P6b): a tainted process runs on the generic family,
        whose constant payload is carried PERSISTENTLY
@@ -1540,15 +1575,19 @@ Section UkRun.
        is built out of [T] itself ([UserConsole.ucons_pay_taint]).  So all
        that crosses here is the taint and the key's own pay fact. *)
     □ (∀ W : uvis,
+         ⌜fdv_all_parked (uvis_fd W)⌝ -∗
          T -∗ my_pay (uvis_gen W) (ukn_pay N) -∗ uslot W) -∗
     T -∗ urun N h m pc avail -∗ WP (Loop : expr riscv_lang).
   Proof using .
-    intros Hal. iIntros "#Hgen HT Hrun".
+    intros Hal Hpk. iIntros "#Hgen HT Hrun".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv)
       "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
+    iDestruct "Hnpx" as "[#Hnp %Hpkr]".
     iDestruct (uvb_x0 with "Hb") as "[%Hx0 Hb]".
     iDestruct ("Hgen" $! (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
-                 with "HT []") as "Hslot".
+                 with "[%] HT []") as "Hslot".
+    { cbn [uvis_fd uvis_of_run]. apply fdv_held_in_empty.
+      rewrite <- Hpk. exact Hpkr. }
     { cbn [uvis_gen uvis_of_run]. iExact "Hmy". }
     rewrite (uslot_run m pc M pm sz fdv cw gn cs pidv Hx0 Hal).
     iApply ("Hslot" $! h xi C pt Rfd Rut HRut with "[%] [%] [%] Hb");
@@ -1888,7 +1927,7 @@ Section UkRun.
   (* would drop.                                                          *)
   (* ------------------------------------------------------------------- *)
   Lemma uslot_of_urun_all (W : uvis) (avail : nat) (Q : Z -> iProp Σ)
-      (pk : bool) :
+      (hs : gset nat) :
     uint (tf_resume_gpr0 (uvis_tf W) !!! Regidx csp_rs1) mod 8 = 0 ->
     8 * Z.of_nat avail
       <= uint (tf_resume_gpr0 (uvis_tf W) !!! Regidx csp_rs1) ->
@@ -1909,10 +1948,11 @@ Section UkRun.
        eager ([SpecKexec.exec_slot_pre]'s success wands; lane LAZY-FLAG's
        K4 is what puts the fact on them). *)
     uvis_lazy W = false ->
-    (* ...AND THE PARK BIT IS HONEST (lane OFF-HAND-3, R1): a constructor
-       may mint a record that answers for its offsets only at an all-parked
-       table.  See the row lent below. *)
-    (pk = true -> fdv_all_parked (uvis_fd W)) ->
+    (* ...AND THE HELD SET IS HONEST (lane OFF-HAND-3, R1; OFF-HAND-4, S1):
+       a constructor may mint a record at a held set only if every unparked
+       row of the key's table is one of those slots.  See the row lent
+       below. *)
+    fdv_held_in hs (uvis_fd W) ->
     (* ...and the deposit supplier, exactly as [uslot_of_urun] takes it *)
     udep -∗
     (* ...AND THE PROCESS'S OWN KNOWLEDGE OF ITS EXIT PAYLOAD.  A [urun]
@@ -1934,22 +1974,23 @@ Section UkRun.
        program that means to call pipe(2) comes in on the right arm
        instead ([urun_nopipe_taint]). *)
     (* ...AND WHETHER IT ANSWERS FOR ITS OFFSETS (lane OFF-HAND-3, R1).
-       [pk] is the bit the minted record carries and this is the premise
-       that makes it honest: a constructor may claim [true] only at a key
-       whose table is all parked.  Every landed entry passes [true] at a
-       table the kernel has just handed over ([SpecKexec.exec_slot_pre]'s
-       all-parked row, [FdSlots.fdv_all_parked_fdt0] at the boot), and a
-       constructor for a program that means to HOLD an offset half passes
-       [false] and the premise is free. *)
+       [hs] is the set the minted record carries and this is the premise
+       that makes it honest: a constructor may claim a set only if every
+       unparked row of the key's table is in it.  Every landed entry
+       passes [empty] at a table the kernel has just handed over
+       ([SpecKexec.exec_slot_pre]'s all-parked row,
+       [FdSlots.fdv_all_parked_fdt0] at the boot), and a constructor for a
+       program that means to HOLD an offset half passes the slots it means
+       to hold. *)
     urun_nopipe (uvis_fd W) -∗
     my_pay (uvis_gen W) Q -∗
     (∀ (N : uk_names Σ) (h : CpuId),
        (* the record's payload IS the one that came in, which is what lets
           the program's proof read its own [ukn_pay] *)
        ⌜ ukn_pay N = Q ⌝ -∗
-       (* ...and the record's PARK BIT is the one that came in, which is
+       (* ...and the record's HELD SET is the one that came in, which is
           what lets the program's proof carry [ukn_parked] *)
-       ⌜ ukn_park N = pk ⌝ -∗
+       ⌜ ukn_held N = hs ⌝ -∗
        ⌜ usz_ok (uvis_sz W) ⌝ -∗
        usz (ukn_s N) (uvis_sz W) -∗
        utext_all (ukn_t N) (uvis_M W) (uvis_perm W) -∗
@@ -2056,7 +2097,7 @@ Section UkRun.
       unfold f. rewrite Hb'. reflexivity. }
     iDestruct (ubytes_of_map γd _ base (8 * avail) f Hf with "Dmid") as "Hbs".
     iDestruct (ustack_of_ubytes γd sp avail f Hal8 Hroom with "Hbs") as "Hstk".
-    iSpecialize ("Hprog" $! (MkUkNames γt γd γs γfd γc γch Q γpid pk) h
+    iSpecialize ("Hprog" $! (MkUkNames γt γd γs γfd γc γch Q γpid hs) h
                    with "[%] [%] [%] Hszf Ht Hstd Hcwf Hchf Hpidf Dlo Dtop");
       [ reflexivity | reflexivity | exact Hsz | ].
     iApply "Hprog".
@@ -2069,7 +2110,7 @@ Section UkRun.
     (* the record is minted at [Q], so the payload the constructor was
        handed IS the run's [ukn_pay N (-1)] *)
     (* the two identity authorities go in as ONE conjunct ([urun_ids]) *)
-    iDestruct (urun_ids_intro (MkUkNames γt γd γs γfd γc γch Q γpid pk)
+    iDestruct (urun_ids_intro (MkUkNames γt γd γs γfd γc γch Q γpid hs)
                  (uvis_ch W) (uvis_pid W) with "Hcha Hpida") as "Hcha".
     iFrame "Hheap Hstk Hufd Hcwa Hcha Hpay Hdep".
     iSplitR;
@@ -2081,7 +2122,7 @@ Section UkRun.
   Qed.
 
   Lemma uslot_of_urun (W : uvis) (avail : nat) (Q : Z -> iProp Σ)
-      (pk : bool) :
+      (hs : gset nat) :
     (* the resume sp is word-aligned -- what [ustack] now asserts, and the
        one place it is an obligation rather than a consequence, since it is
        a fact about the process the kernel set up *)
@@ -2108,10 +2149,11 @@ Section UkRun.
        bv_unsigned p * 4096 < UserPtTree.pgroundup (uvis_sz W)) ->
     (* ...AND THE KEY'S LAZY BIT IS [false] -- see [uslot_of_urun_all]. *)
     uvis_lazy W = false ->
-    (* ...AND THE PARK BIT IS HONEST (lane OFF-HAND-3, R1): a constructor
-       may mint a record that answers for its offsets only at an all-parked
-       table.  See the row lent below. *)
-    (pk = true -> fdv_all_parked (uvis_fd W)) ->
+    (* ...AND THE HELD SET IS HONEST (lane OFF-HAND-3, R1; OFF-HAND-4, S1):
+       a constructor may mint a record at a held set only if every unparked
+       row of the key's table is one of those slots.  See the row lent
+       below. *)
+    fdv_held_in hs (uvis_fd W) ->
     (* THE DEPOSIT SUPPLIER, at the key the slot is being built for.  This
        is the one obligation the ARM adds to an entry constructor: whoever
        hands a program a [urun] says which syscall bundles it can pay and
@@ -2138,22 +2180,23 @@ Section UkRun.
        program that means to call pipe(2) comes in on the right arm
        instead ([urun_nopipe_taint]). *)
     (* ...AND WHETHER IT ANSWERS FOR ITS OFFSETS (lane OFF-HAND-3, R1).
-       [pk] is the bit the minted record carries and this is the premise
-       that makes it honest: a constructor may claim [true] only at a key
-       whose table is all parked.  Every landed entry passes [true] at a
-       table the kernel has just handed over ([SpecKexec.exec_slot_pre]'s
-       all-parked row, [FdSlots.fdv_all_parked_fdt0] at the boot), and a
-       constructor for a program that means to HOLD an offset half passes
-       [false] and the premise is free. *)
+       [hs] is the set the minted record carries and this is the premise
+       that makes it honest: a constructor may claim a set only if every
+       unparked row of the key's table is in it.  Every landed entry
+       passes [empty] at a table the kernel has just handed over
+       ([SpecKexec.exec_slot_pre]'s all-parked row,
+       [FdSlots.fdv_all_parked_fdt0] at the boot), and a constructor for a
+       program that means to HOLD an offset half passes the slots it means
+       to hold. *)
     urun_nopipe (uvis_fd W) -∗
     my_pay (uvis_gen W) Q -∗
     (∀ (N : uk_names Σ) (h : CpuId),
        (* the record's payload IS the one that came in, which is what lets
           the program's proof read its own [ukn_pay] *)
        ⌜ ukn_pay N = Q ⌝ -∗
-       (* ...and the record's PARK BIT is the one that came in, which is
+       (* ...and the record's HELD SET is the one that came in, which is
           what lets the program's proof carry [ukn_parked] *)
-       ⌜ ukn_park N = pk ⌝ -∗
+       ⌜ ukn_held N = hs ⌝ -∗
        ⌜ usz_ok (uvis_sz W) ⌝ -∗
        usz (ukn_s N) (uvis_sz W) -∗
        utext_all (ukn_t N) (uvis_M W) (uvis_perm W) -∗
@@ -2232,7 +2275,7 @@ Section UkRun.
       unfold f. unfold D, base in *. rewrite Hb. reflexivity. }
     iDestruct (ubytes_of_map γd D base (8 * avail) f Hf with "Hd") as "Hbs".
     iDestruct (ustack_of_ubytes γd sp avail f Hal8 Hroom with "Hbs") as "Hstk".
-    iSpecialize ("Hprog" $! (MkUkNames γt γd γs γfd γc γch Q γpid pk) h
+    iSpecialize ("Hprog" $! (MkUkNames γt γd γs γfd γc γch Q γpid hs) h
                    with "[%] [%] [%] Hszf Ht Hstd Hcwf Hchf Hpidf");
       [ reflexivity | reflexivity | exact Hsz | ].
     iApply "Hprog".
@@ -2245,7 +2288,7 @@ Section UkRun.
     (* the record is minted at [Q], so the payload the constructor was
        handed IS the run's [ukn_pay N (-1)] *)
     (* the two identity authorities go in as ONE conjunct ([urun_ids]) *)
-    iDestruct (urun_ids_intro (MkUkNames γt γd γs γfd γc γch Q γpid pk)
+    iDestruct (urun_ids_intro (MkUkNames γt γd γs γfd γc γch Q γpid hs)
                  (uvis_ch W) (uvis_pid W) with "Hcha Hpida") as "Hcha".
     iFrame "Hheap Hstk Hufd Hcwa Hcha Hpay Hdep".
     iSplitR;
@@ -2272,7 +2315,7 @@ Section UkRun.
   (* decide whether two argv slots point at the same string.               *)
   (* ------------------------------------------------------------------- *)
   Lemma uslot_of_urun_ro (W : uvis) (avail : nat) (Q : Z -> iProp Σ)
-      (pk : bool) :
+      (hs : gset nat) :
     uint (tf_resume_gpr0 (uvis_tf W) !!! Regidx csp_rs1) mod 8 = 0 ->
     8 * Z.of_nat avail
       <= uint (tf_resume_gpr0 (uvis_tf W) !!! Regidx csp_rs1) ->
@@ -2292,10 +2335,11 @@ Section UkRun.
        bv_unsigned p * 4096 < UserPtTree.pgroundup (uvis_sz W)) ->
     (* ...AND THE KEY'S LAZY BIT IS [false] -- see [uslot_of_urun_all]. *)
     uvis_lazy W = false ->
-    (* ...AND THE PARK BIT IS HONEST (lane OFF-HAND-3, R1): a constructor
-       may mint a record that answers for its offsets only at an all-parked
-       table.  See the row lent below. *)
-    (pk = true -> fdv_all_parked (uvis_fd W)) ->
+    (* ...AND THE HELD SET IS HONEST (lane OFF-HAND-3, R1; OFF-HAND-4, S1):
+       a constructor may mint a record at a held set only if every unparked
+       row of the key's table is one of those slots.  See the row lent
+       below. *)
+    fdv_held_in hs (uvis_fd W) ->
     (* THE DEPOSIT SUPPLIER, at the key the slot is being built for.  This
        is the one obligation the ARM adds to an entry constructor: whoever
        hands a program a [urun] says which syscall bundles it can pay and
@@ -2322,22 +2366,23 @@ Section UkRun.
        program that means to call pipe(2) comes in on the right arm
        instead ([urun_nopipe_taint]). *)
     (* ...AND WHETHER IT ANSWERS FOR ITS OFFSETS (lane OFF-HAND-3, R1).
-       [pk] is the bit the minted record carries and this is the premise
-       that makes it honest: a constructor may claim [true] only at a key
-       whose table is all parked.  Every landed entry passes [true] at a
-       table the kernel has just handed over ([SpecKexec.exec_slot_pre]'s
-       all-parked row, [FdSlots.fdv_all_parked_fdt0] at the boot), and a
-       constructor for a program that means to HOLD an offset half passes
-       [false] and the premise is free. *)
+       [hs] is the set the minted record carries and this is the premise
+       that makes it honest: a constructor may claim a set only if every
+       unparked row of the key's table is in it.  Every landed entry
+       passes [empty] at a table the kernel has just handed over
+       ([SpecKexec.exec_slot_pre]'s all-parked row,
+       [FdSlots.fdv_all_parked_fdt0] at the boot), and a constructor for a
+       program that means to HOLD an offset half passes the slots it means
+       to hold. *)
     urun_nopipe (uvis_fd W) -∗
     my_pay (uvis_gen W) Q -∗
     (∀ (N : uk_names Σ) (h : CpuId),
        (* the record's payload IS the one that came in, which is what lets
           the program's proof read its own [ukn_pay] *)
        ⌜ ukn_pay N = Q ⌝ -∗
-       (* ...and the record's PARK BIT is the one that came in, which is
+       (* ...and the record's HELD SET is the one that came in, which is
           what lets the program's proof carry [ukn_parked] *)
-       ⌜ ukn_park N = pk ⌝ -∗
+       ⌜ ukn_held N = hs ⌝ -∗
        ⌜ usz_ok (uvis_sz W) ⌝ -∗
        usz (ukn_s N) (uvis_sz W) -∗
        utext_all (ukn_t N) (uvis_M W) (uvis_perm W) -∗
@@ -2433,7 +2478,7 @@ Section UkRun.
                  (base.filter (fun kv : Z * bv 8 => kv.1 < uint sp) D)
                  base (8 * avail) f Hf with "Dlo") as "Hbs".
     iDestruct (ustack_of_ubytes γd sp avail f Hal8 Hroom with "Hbs") as "Hstk".
-    iSpecialize ("Hprog" $! (MkUkNames γt γd γs γfd γc γch Q γpid pk) h
+    iSpecialize ("Hprog" $! (MkUkNames γt γd γs γfd γc γch Q γpid hs) h
                    with "[%] [%] [%] Hszf Ht Hstd Hcwf Hchf Hpidf Dhi");
       [ reflexivity | reflexivity | exact Hsz | ].
     iApply "Hprog".
@@ -2446,7 +2491,7 @@ Section UkRun.
     (* the record is minted at [Q], so the payload the constructor was
        handed IS the run's [ukn_pay N (-1)] *)
     (* the two identity authorities go in as ONE conjunct ([urun_ids]) *)
-    iDestruct (urun_ids_intro (MkUkNames γt γd γs γfd γc γch Q γpid pk)
+    iDestruct (urun_ids_intro (MkUkNames γt γd γs γfd γc γch Q γpid hs)
                  (uvis_ch W) (uvis_pid W) with "Hcha Hpida") as "Hcha".
     iFrame "Hheap Hstk Hufd Hcwa Hcha Hpay Hdep".
     iSplitR;

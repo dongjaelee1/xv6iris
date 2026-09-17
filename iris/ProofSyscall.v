@@ -5284,24 +5284,22 @@ Section SyscallArms.
                  ltac:(rewrite Hnum; reflexivity) Hv0 Hv1
                  with "Hxin") as "[#Hmp Hau]".
     iDestruct "Hau" as (P Pmiss Fo) "Hau".
-    (* THE ALL-PARKED ROW, READ OFF THE MACHINE (design/user-read.md SS8.3,
-       lane OFF-HAND-2).  This is the one tier that holds the process block
-       and its descriptor bundle at the same instant, so it is the one that
-       can say the table has no offset half outside the kernel -- a fact,
-       not an assumption: [FileInvDefs.fdstate_ok] pins every live inode
-       row parked and [ProcInv.proc_priv_parked] is that pin walked over
-       the array.  It goes down to [SpecKexec.exec_slot_pre]'s two wands,
-       where the new image's generic slot asks its key for it.  WHEN THE
-       PIN RELAXES this is the line that changes and nothing below it: the
-       payer becomes the exec'ing process's own surrender
-       ([FdPark.uoff_surr_at] into [FdPark.fd_frags_park_at], whose output
-       is this same fact at the table exec hands over). *)
-    iDestruct (proc_priv_parked with "Hpriv Hufrag") as %Hpkexec.
+    (* NO ALL-PARKED ROW IS READ HERE ANY MORE (lane OFF-HAND-5, D1).
+       Lane OFF-HAND-2 read it off the machine with
+       [ProcInv.proc_priv_parked] -- the pin
+       ([FileInvDefs.fdstate_ok]'s [OffParked]) walked over the array --
+       and threaded it to [SpecKexec.exec_slot_pre]'s two wands.  That
+       made the dispatcher the pin's ONLY consumer, and the pin is what
+       this campaign takes off: the exec crossing's row is now stated by
+       the party that BUILDS the bundle, about the table it execs with
+       ([ExecBundle.exec_slot_of_entry_at], paid from
+       [UkRun.urun_rows_parked]).  The kernel says nothing about the
+       exec'ing process's descriptors. *)
     iApply (SysExec.wp_sys_exec_sconf (MkPfam uslot (sexec_refund fdep)) γf γs j γl
               (fcn_pd fn) (fcn_pav fn) (fcn_pu fn)
               DfracDiscarded DfracDiscarded v0 v1 pid U sts gn cs M (av - 4)%nat true true lks
               (kf_xpay fdep) P Pmiss Fo
-              Hpkexec ltac:(lia) Hroot Hnib0 Hlg Hsize
+              ltac:(lia) Hroot Hnib0 Hlg Hsize
               Hbm0 Hbmc Hbml Hist0 Hcb Hireg Hj Hgamma eq_refl Hv0 Hv1
               with "Hcg Hcpu Htcx Hccx Htext Hdata Hpc Hfab Hbmp Hisp Hbmr Hbs
                     Hkalloc Hire Hpriv Hmp Hau").

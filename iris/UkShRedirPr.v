@@ -103,7 +103,7 @@ Section UkShRedirPr.
   Local Notation ushp_frame_join := (UkShParse.ushp_frame_join N).
   Local Notation ushp_frame_split := (UkShParse.ushp_frame_split N).
   Local Notation ushp_lit_str := (UkShParseLex.ushp_lit_str N).
-  Local Notation ushp_malloc_ty := (UkShParse.ushp_malloc_ty N).
+  Local Notation ushp_malloc_ty := (UkShParse.ushp_malloc_ty_le N 168).
   Local Notation ushp_tree := (UkShParse.ushp_tree N).
   Local Notation ushp_type_at := (UkShParse.ushp_type_at N).
   Local Notation wp_kshp_frame_epi := (UkShParse.wp_kshp_frame_epi N).
@@ -116,6 +116,10 @@ Section UkShRedirPr.
 
   Local Notation wp_kshp_redircmd :=
     (UkShRedirCmd.wp_kshp_redircmd N UMalloc UMalloc' ushp_malloc_ok).
+  Local Notation wp_kshp_redircmd_n :=
+    (UkShRedirCmd.wp_kshp_redircmd_n N UMalloc UMalloc' ushp_malloc_ok).
+  Local Notation ushp_redir_node := (UkShRedirCmd.ushp_redir_node N).
+  Local Notation ushp_redir_close := (UkShRedirCmd.ushp_redir_close N).
 
   Lemma wp_kshp_frame_pro_at (k n : nat) (rs : list (mword 5 * mword 6))
       (p0 : Z) (pcs : nat -> Z) (imm : mword 6) (nz : mword 8)
@@ -268,9 +272,9 @@ Section UkShRedirPr.
   (* turn calls [redircmd], and [redircmd] calls [malloc].                  *)
   (* ===================================================================== *)
 
-  Lemma wp_kshp_parseredirs_gt {Pex : iProp Σ} (h : CpuId) (m : regfile)
+  Lemma wp_kshp_parseredirs_gtn {Pex : iProp Σ} (h : CpuId) (m : regfile)
       (dq dw dv : dfrac) (cmd ps s0 : Z) (len off p e : nat)
-      (f : nat -> bv 8) (c : ushp_cmd) (w0 : mword 64) (nn : nat) :
+      (f : nat -> bv 8) (Sub : iProp Σ) (w0 : mword 64) (nn : nat) :
     m !!! Regidx a0_idx = mword_of_int cmd ->
     m !!! Regidx a1_idx = mword_of_int ps ->
     m !!! Regidx a2_idx = mword_of_int (s0 + Z.of_nat len) ->
@@ -285,7 +289,7 @@ Section UkShRedirPr.
     UMalloc -∗
     □ (Pex -∗ ukn_pay N (-1)) -∗
     Pex -∗
-    ushp_tree s0 cmd c -∗
+    Sub -∗
     uword γd ps w0 -∗
     ustr γd dq s0 len f -∗
     ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
@@ -297,7 +301,8 @@ Section UkShRedirPr.
        ustr γd dq s0 len f -∗
        ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
        ustr γd dv ushp_symbols 7 ushp_sym_f -∗
-       ushp_tree s0 t (UshpRedir c (S (S p)) e 1537 1) -∗
+       ushp_redir_node s0 t cmd (S (S p)) e 1537 1 -∗
+       Sub -∗
        UMalloc' -∗
        Pex -∗
        ∀ (h' : CpuId) (m' : regfile),
@@ -1505,11 +1510,11 @@ Section UkShRedirPr.
       exact (Hg1cs r Hr Hs1). }
     rewrite <- shpp_redircmd.
     (* ---- redircmd(cmd, q, eq, 0x601, 1) -- the REDIR node ---- *)
-    iApply (wp_kshp_redircmd h40 r18 s0 cmd 1537 1 c (S (S p)) e nn
+    iApply (wp_kshp_redircmd_n h40 r18 s0 cmd 1537 1 Sub (S (S p)) e nn
               Ga0 Ga1 Ga2 Ga3 Ga4
               ltac:(unfold Z31; lia) ltac:(unfold Z31; lia)
               with "Hcode HM Hpx Hpay Hsub Hrun").
-    iIntros (h41 g2 t) "%Hcsg2 %Ha0g2 %Hpb Htree HM' Hpay Hrun".
+    iIntros (h41 g2 t) "%Hcsg2 %Ha0g2 %Hpb Htree Hsub HM' Hpay Hrun".
     rewrite Eret3.
     assert (Hg2cs : forall r : mword 5, ucallee_saved_idx r = true ->
               Regidx r <> Regidx s1_idx -> g2 !!! Regidx r = n0 !!! Regidx r)
@@ -1817,7 +1822,7 @@ Section UkShRedirPr.
     { iApply (uis_shp_58c with "Hcode"). }
     { iApply (uis_shp_58e with "Hcode"). }
     iIntros (hf) "Hrun".
-    iApply ("Hcont" $! t with "Hcur Hstr Hws Hsy Htree HM' Hpay [] [] Hrun").
+    iApply ("Hcont" $! t with "Hcur Hstr Hws Hsy Htree Hsub HM' Hpay [] [] Hrun").
     - iPureIntro.
       apply (ushp_frame_cs _ vals m me sp0 eq_refl).
       + intros i r u Hi.
@@ -1874,6 +1879,65 @@ Section UkShRedirPr.
         destruct i as [| [| [| [| [| [| [| [| [| [| [| i ]]]]]]]]]]];
           cbn in Hi; try discriminate Hi;
           injection Hi as Hr Hu0; subst; vm_compute in He; discriminate.
+  Qed.
+
+
+  (* ---- the landed statement, which is that walk at a TREE -------------- *)
+  (* [wp_kshp_parseredirs_gtn] says nothing about the sub-command and hands  *)
+  (* the REDIR node back with its child POINTER named -- which is what       *)
+  (* [parseexec] needs, because the argv terminator is still to be stored    *)
+  (* through the exec node the turn has just swallowed.  Supply a tree for   *)
+  (* that pointer and the node closes into [ushp_tree]; that is this         *)
+  (* corollary and nothing else.                                             *)
+  Lemma wp_kshp_parseredirs_gt {Pex : iProp Σ} (h : CpuId) (m : regfile)
+      (dq dw dv : dfrac) (cmd ps s0 : Z) (len off p e : nat)
+      (f : nat -> bv 8) (c : ushp_cmd) (w0 : mword 64) (nn : nat) :
+    m !!! Regidx a0_idx = mword_of_int cmd ->
+    m !!! Regidx a1_idx = mword_of_int ps ->
+    m !!! Regidx a2_idx = mword_of_int (s0 + Z.of_nat len) ->
+    (off <= len)%nat ->
+    w0 = mword_of_int (s0 + Z.of_nat off) ->
+    ushs_redir len f p e ->
+    (off + ushp_skipws (len - off) off f)%nat = p ->
+    0 <= s0 -> s0 + Z.of_nat len < Z64 ->
+    0 < ps -> ps mod 8 = 0 -> ps + 8 < Z64 ->
+    shp_code γt -∗
+    shp_rodata γt -∗
+    UMalloc -∗
+    □ (Pex -∗ ukn_pay N (-1)) -∗
+    Pex -∗
+    ushp_tree s0 cmd c -∗
+    uword γd ps w0 -∗
+    ustr γd dq s0 len f -∗
+    ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
+    ustr γd dv ushp_symbols 7 ushp_sym_f -∗
+    urun N h m (mword_of_int ShSyms.parseredirs)
+      (14 + (8 + (2 + (8 + nn)))) -∗
+    (∀ (t : Z),
+       uword γd ps (mword_of_int (s0 + Z.of_nat len)) -∗
+       ustr γd dq s0 len f -∗
+       ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
+       ustr γd dv ushp_symbols 7 ushp_sym_f -∗
+       ushp_tree s0 t (UshpRedir c (S (S p)) e 1537 1) -∗
+       UMalloc' -∗
+       Pex -∗
+       ∀ (h' : CpuId) (m' : regfile),
+         ⌜ ucallee_saved m m' ⌝ -∗
+         ⌜ m' !!! Regidx a0_idx = mword_of_int t ⌝ -∗
+         urun N h' m' (ret_pc (m !!! Regidx ra_idx))
+           (14 + (8 + (2 + (8 + nn)))) -∗
+         WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+  Proof using ushp_malloc_ok.
+    intros Ha0 Ha1 Ha2 Hoffle Hw0 Hred Hp Hs0 Hs64 Hps0 Hps8 Hpssz.
+    iIntros "#Hcode #Hro HM #Hpx Hpay Hsub Hcur Hstr Hws Hsy Hrun Hcont".
+    iApply (wp_kshp_parseredirs_gtn h m dq dw dv cmd ps s0 len off p e f
+              (ushp_tree s0 cmd c) w0 nn
+              Ha0 Ha1 Ha2 Hoffle Hw0 Hred Hp Hs0 Hs64 Hps0 Hps8 Hpssz
+              with "Hcode Hro HM Hpx Hpay Hsub Hcur Hstr Hws Hsy Hrun").
+    iIntros (t) "Hcur Hstr Hws Hsy Hnode Hsub HM' Hpay".
+    iApply ("Hcont" $! t with "Hcur Hstr Hws Hsy [Hnode Hsub] HM' Hpay").
+    iApply (ushp_redir_close s0 t cmd (S (S p)) e 1537 1 c with "Hnode Hsub").
   Qed.
 
 

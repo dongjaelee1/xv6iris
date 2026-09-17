@@ -234,6 +234,8 @@ Section ExecRun.
     m !!! Regidx a0_idx = pv ->
     m !!! Regidx a1_idx = av ->
     exec_path_of M pv pl ->
+    (* the builder's all-parked row (lane OFF-HAND-5, D1) *)
+    FdSlots.fdv_all_parked fdv ->
     □ (Pay -∗ R) -∗
     my_pay gn (ukn_pay N) -∗
     exec_walk_of c T pl (MkAnode (AFile f) nl) -∗
@@ -243,7 +245,7 @@ Section ExecRun.
     sbundle_pay_refR X (ukn_pay N) R
       (uvis_of_run m pc M pm sz fdv c gn cs pidv false).
   Proof using .
-    intros Hload Ha0 Ha1 Hpath.
+    intros Hload Ha0 Ha1 Hpath Hpk0.
     iIntros "#Hrf Hmp Hw #Hcon #Hgen HPay".
     iDestruct "Hw" as (P Pmiss Fo) "(Hst & Hobs & #Hid)".
     assert (Ea0 : tf_w (uvis_tf (uvis_of_run m pc M pm sz fdv c gn cs pidv false))
@@ -259,7 +261,7 @@ Section ExecRun.
     rewrite Ea0 Ea1. cbn [uvis_M uvis_cwd uvis_fd uvis_ch uvis_pid uvis_of_run].
     iApply (exec_bundle_of fsc_fs X T P Pmiss Fo c pl f nl Pay (ukn_pay N)
               M pv av fdv cs pidv
-              Hload Hpath with "Hst Hobs Hid Hcon Hgen HPay").
+              Hload Hpath Hpk0 with "Hst Hobs Hid Hcon Hgen HPay").
   Qed.
 
   (* ------------------------------------------------------------------ *)
@@ -365,19 +367,27 @@ Section ExecRun.
     kexec_loadable f ->
     m !!! Regidx a0_idx = pv ->
     m !!! Regidx a1_idx = av ->
+    (* ...AND THE RECORD ANSWERS FOR ITS OFFSETS (lane OFF-HAND-5, D1).
+       The exec crossing's TAINT arm needs the table exec hands over to be
+       all-parked ([ExecEntry.image_entry_taint]); the kernel stopped
+       supplying that fact, so the run does -- [UkRun.urun_rows_parked]
+       reads it off the very [fdv] the supply is instantiated at. *)
+    ukn_held N = ∅ ->
     □ (Pay -∗ R) -∗
     image_entry_taint T (ukn_pay N) uslot -∗
     uexec_sup_run N pv av c T pl f nl Pay -∗
     udepw_at_refR N m pc c R.
   Proof using .
-    intros Hload Ha0 Ha1. iIntros "#Hrf #Hgen Hsup".
+    intros Hload Ha0 Ha1 Hhd. iIntros "#Hrf #Hgen Hsup".
     rewrite /udepw_at_refR. iIntros (M pm sz fdv gn cs pidv) "Hmp #Hnpw Hh Hf".
+    iDestruct (urun_rows_parked (ukn_parked0 := Hhd) N fdv with "Hnpw")
+      as %Hpk0.
     rewrite /uexec_sup_run.
     iDestruct ("Hsup" $! M pm sz fdv cs pidv with "Hnpw Hh Hf")
       as "(Hh & Hf & %Hpath & Hw & #Hcon & HPay)".
     iFrame "Hh Hf".
     iApply (sbundle_pay_refR_of_exec uslot T N m pc M pm sz fdv c gn cs pidv
-              pv av pl f nl Pay R Hload Ha0 Ha1 Hpath
+              pv av pl f nl Pay R Hload Ha0 Ha1 Hpath Hpk0
               with "Hrf Hmp Hw Hcon Hgen HPay").
   Qed.
 
@@ -388,19 +398,27 @@ Section ExecRun.
     kexec_loadable f ->
     m !!! Regidx a0_idx = pv ->
     m !!! Regidx a1_idx = av ->
+    (* ...AND THE RECORD ANSWERS FOR ITS OFFSETS (lane OFF-HAND-5, D1).
+       The exec crossing's TAINT arm needs the table exec hands over to be
+       all-parked ([ExecEntry.image_entry_taint]); the kernel stopped
+       supplying that fact, so the run does -- [UkRun.urun_rows_parked]
+       reads it off the very [fdv] the supply is instantiated at. *)
+    ukn_held N = ∅ ->
     □ (Pay -∗ R) -∗
     image_entry_taint T (ukn_pay N) uslot -∗
     uexec_sup_run_ids N pv av c T pl f nl Pay -∗
     udepw_at_refR_ids N m pc c R.
   Proof using .
-    intros Hload Ha0 Ha1. iIntros "#Hrf #Hgen Hsup".
+    intros Hload Ha0 Ha1 Hhd. iIntros "#Hrf #Hgen Hsup".
     rewrite /udepw_at_refR_ids. iIntros (M pm sz fdv gn cs pidv) "Hmp #Hnpw Hh Hf Hids".
+    iDestruct (urun_rows_parked (ukn_parked0 := Hhd) N fdv with "Hnpw")
+      as %Hpk0.
     rewrite /uexec_sup_run_ids.
     iDestruct ("Hsup" $! M pm sz fdv cs pidv with "Hnpw Hh Hf Hids")
       as "(Hh & Hf & Hids & %Hpath & Hw & #Hcon & HPay)".
     iFrame "Hh Hf Hids".
     iApply (sbundle_pay_refR_of_exec uslot T N m pc M pm sz fdv c gn cs pidv
-              pv av pl f nl Pay R Hload Ha0 Ha1 Hpath
+              pv av pl f nl Pay R Hload Ha0 Ha1 Hpath Hpk0
               with "Hrf Hmp Hw Hcon Hgen HPay").
   Qed.
 
@@ -429,6 +447,9 @@ Section ExecRun.
     is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
     (* (L), by computation ([ElfLoadable.kexec_loadable_of_b]) *)
     kexec_loadable f ->
+    (* ...and the record answers for its offsets (lane OFF-HAND-5, D1):
+       the exec crossing's taint arm reads it off the run *)
+    ukn_held N = ∅ ->
     uinstr_is (ukn_t N) pc false (ECALL tt) -∗
     urun N h m pc avail -∗
     UserCwd.ucwd (ukn_cwd N) c -∗
@@ -449,12 +470,12 @@ Section ExecRun.
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof using .
-    intros Hn Ha0 Ha1 Hal4 Hload.
+    intros Hn Ha0 Ha1 Hal4 Hload Hhd.
     iIntros "#Hi Hrun Hcwd #Hrf #Hgen Hsup Hcont".
     iApply (wp_uk_ecall_exec_at_cwd_refR N h m pc avail c R Hn Hal4
               with "Hi Hrun Hcwd [Hsup] Hcont").
     iApply (udepw_at_refR_of_sup N m pc pv av c T pl f nl Pay R
-              Hload Ha0 Ha1 with "Hrf Hgen Hsup").
+              Hload Ha0 Ha1 Hhd with "Hrf Hgen Hsup").
   Qed.
 
   (* ...and the same at a supply that reads the record's identity rows *)
@@ -467,6 +488,9 @@ Section ExecRun.
     m !!! Regidx a1_idx = av ->
     is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
     kexec_loadable f ->
+    (* ...and the record answers for its offsets (lane OFF-HAND-5, D1):
+       the exec crossing's taint arm reads it off the run *)
+    ukn_held N = ∅ ->
     uinstr_is (ukn_t N) pc false (ECALL tt) -∗
     urun N h m pc avail -∗
     UserCwd.ucwd (ukn_cwd N) c -∗
@@ -482,12 +506,12 @@ Section ExecRun.
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof using .
-    intros Hn Ha0 Ha1 Hal4 Hload.
+    intros Hn Ha0 Ha1 Hal4 Hload Hhd.
     iIntros "#Hi Hrun Hcwd #Hrf #Hgen Hsup Hcont".
     iApply (wp_uk_ecall_exec_at_cwd_refR_ids N h m pc avail c R Hn Hal4
               with "Hi Hrun Hcwd [Hsup] Hcont").
     iApply (udepw_at_refR_ids_of_sup_ids N m pc pv av c T pl f nl Pay R
-              Hload Ha0 Ha1 with "Hrf Hgen Hsup").
+              Hload Ha0 Ha1 Hhd with "Hrf Hgen Hsup").
   Qed.
 
   (* ------------------------------------------------------------------ *)
@@ -503,12 +527,21 @@ Section ExecRun.
       (av : mword 64) (sts : list fdstate) (cw : Z) (cs : gset gname)
       (pidv : mword 32) (Q : Z -> iProp Σ) (Pay : iProp Σ)
       (T : iProp Σ) (X : uvis -d> iPropO Σ) :
+    (* ...AND THE CALLER'S OWN TABLE IS ALL PARKED (lane OFF-HAND-4, S2).
+       [image_entry] stopped relaying the row when the VERIFIED entries
+       dropped it, and the TAINT arm still needs one -- so a tainted
+       caller has to say it about the table it execs with, which its own
+       run does ([UkRun.urun_rows_parked] at [ukn_held N = empty]).  The
+       step to the resumed key is [SpecKexec.kexec_image_ok_parked],
+       through the image fact the entry already receives. *)
+    FdSlots.fdv_all_parked sts ->
     □ T -∗ image_entry_taint T Q X -∗
     image_entry f M av sts cw cs pidv Q Pay X.
   Proof using .
-    iIntros "#HT #Hgen". rewrite /image_entry /image_entry_taint.
-    iIntros "!>" (na alen afun W') "_ _ _ _ _ _ Hmp _".
-    iApply ("Hgen" $! W' with "HT Hmp").
+    intros Hpk. iIntros "#HT #Hgen". rewrite /image_entry /image_entry_taint.
+    iIntros "!>" (na alen afun W') "%Hok _ _ _ _ _ Hmp _".
+    iApply ("Hgen" $! W' with "[%] HT Hmp").
+    exact (kexec_image_ok_parked f na alen afun sts W' Hok Hpk).
   Qed.
 
   (* THE PATH READING, as a program actually holds it: the string exec
@@ -594,6 +627,8 @@ Section ExecRun.
     (* (W)'s content: at every view the claim admits, this path walks to a
        node that is THIS file *)
     pin_resolves Pin c pl hops ino f nl ->
+    (* ...and the record answers for its offsets (lane OFF-HAND-5, D1) *)
+    ukn_held N = ∅ ->
     uinstr_is (ukn_t N) pc false (ECALL tt) -∗
     urun N h m pc avail -∗
     UserCwd.ucwd (ukn_cwd N) c -∗
@@ -616,10 +651,11 @@ Section ExecRun.
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof using .
-    intros Hn Ha0 Ha1 Hal4 Hload Hres.
+    intros Hn Ha0 Ha1 Hal4 Hload Hres Hhd.
     iIntros "#Hi Hrun Hcwd #Hcl #Hinv #Hrd #Hcon #Hgen #Hrf HPay Hcont".
     iApply (wp_uk_ecall_exec_run N h m pc avail c T pv av pl f nl Pay R
-              Hn Ha0 Ha1 Hal4 Hload with "Hi Hrun Hcwd Hrf Hgen [HPay] Hcont").
+              Hn Ha0 Ha1 Hal4 Hload Hhd
+              with "Hi Hrun Hcwd Hrf Hgen [HPay] Hcont").
     rewrite /uexec_sup_run. iIntros (M pm sz fdv cs pidv) "#Hnpw Hheap Hufd".
     iDestruct ("Hrd" $! M pm sz with "Hheap") as %Hpath.
     iFrame "Hheap Hufd". iSplitR; [ by iPureIntro | ].
@@ -645,6 +681,12 @@ Section ExecRun.
     m !!! Regidx a0_idx = pv ->
     is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
     kexec_loadable f ->
+    (* ...AND THE RECORD HOLDS NO OFFSET HALF (lane OFF-HAND-4, S2): a
+       TAINTED caller's verified entry IS its taint arm
+       ([image_entry_of_taint]), and that arm still asks for the key's
+       all-parked row -- which the caller's own run answers at the empty
+       held set ([UkRun.urun_rows_parked]). *)
+    ukn_held N = ∅ ->
     uinstr_is (ukn_t N) pc false (ECALL tt) -∗
     urun N h m pc avail -∗
     UserCwd.ucwd (ukn_cwd N) c -∗
@@ -659,19 +701,21 @@ Section ExecRun.
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof using .
-    intros Hn Ha0 Hal4 Hload.
+    intros Hn Ha0 Hal4 Hload Hhd.
     iIntros "#Hi Hrun Hcwd #HT #Hgen #Hrd Hcont".
     iApply (wp_uk_ecall_exec_run N h m pc avail c T pv
               (m !!! Regidx a1_idx) pl f nl emp emp
-              Hn Ha0 eq_refl Hal4 Hload
+              Hn Ha0 eq_refl Hal4 Hload Hhd
               with "Hi Hrun Hcwd [] Hgen [] [Hcont]").
     - iIntros "!> _". done.
     - rewrite /uexec_sup_run. iIntros (M pm sz fdv cs pidv) "#Hnpw Hheap Hufd".
       iDestruct ("Hrd" $! M pm sz with "Hheap") as %Hpath.
+      iDestruct (urun_rows_parked (ukn_parked0 := Hhd) N fdv with "Hnpw")
+        as %Hpkq.
       iFrame "Hheap Hufd". iSplitR; [ by iPureIntro | ].
       iSplitR; [ iApply (exec_walk_of_taint with "HT") | ].
       iSplitR; [ | done ].
-      iApply (image_entry_of_taint with "HT Hgen").
+      iApply (image_entry_of_taint _ _ _ _ _ _ _ _ _ _ _ Hpkq with "HT Hgen").
     - iIntros (h') "Hcwd _ Hrun". iApply ("Hcont" with "Hcwd Hrun").
   Qed.
 
@@ -782,36 +826,36 @@ Section ExecRun.
       (cw : Z) (na : nat) (alen : nat -> nat) (afun : nat -> nat -> bv 8)
       (sts : list fdstate) (cs : gset gname) (pidv : mword 32) :
     kexec_loadable f ->
+    (* the builder's all-parked row (lane OFF-HAND-5, D1): the taint arm's
+       only, about the table this key execs with *)
+    FdSlots.fdv_all_parked sts ->
     ex_node_abs T Pfin Φo (AFile f) -∗
     image_entry_at f na alen afun sts cw cs pidv Q Pay X -∗
     image_entry_taint T Q X -∗
     Pay -∗
     exec_slot_pre X Q Pfin Φo cw na alen afun sts cs pidv.
   Proof using .
-    intros Hload. iIntros "#Hid #Hcon #Hgen HPay".
+    intros Hload Hpk0. iIntros "#Hid #Hcon #Hgen HPay".
     rewrite /exec_slot_pre /ex_node_abs /image_entry_at /image_entry_taint.
     iSplitL "HPay".
     - (* ---- ARM (a): the observed content IS the caller's file ---- *)
-      iIntros (av' i f' nl' W') "HP Hrecv %Hload' %Hok %Hcwq %Hlzq %Hchq %Hpiq %Hpk #Hp".
+      iIntros (av' i f' nl' W') "HP Hrecv %Hload' %Hok %Hcwq %Hlzq %Hchq %Hpiq #Hp".
       iPoseProof ("Hid" $! av' i (MkAnode (AFile f') nl')) as "Hid'".
       iDestruct ("Hid'" with "HP Hrecv") as "[%Hnode | HT]"; last first.
-      { (* the all-parked row stops here (lane OFF-HAND-2): the generic
-                     family the taint arm runs on is not narrowed yet, and
-                     cannot be until the U tier can name its own table --
-                     [ExecEntry.image_entry_taint]'s note. *)
-        iApply ("Hgen" $! W' with "HT Hp"). }
+      { (* THE BUILDER'S ROW IS SPENT HERE (lane OFF-HAND-5, D1), through
+           [SpecKexec.kexec_image_ok_parked] *)
+        iApply ("Hgen" $! W' with "[%] HT Hp").
+        exact (kexec_image_ok_parked f' na alen afun sts W' Hok Hpk0). }
       cbn [an_node] in Hnode. injection Hnode as Hf. subst f'.
       iApply ("Hcon" $! W' with "[%] [%] [%] [%] [%] Hp HPay");
         [ exact Hok | exact Hcwq | exact Hlzq | exact Hchq | exact Hpiq ].
     - (* ---- ARM (b): a loadable content IS loadable ---- *)
-      iIntros (av' i a W') "HP Hrecv %Hnload %Hkey %Hcwq %Hlzq %Hchq %Hpiq %Hpk #Hp".
+      iIntros (av' i a W') "HP Hrecv %Hnload %Hkey %Hcwq %Hlzq %Hchq %Hpiq #Hp".
       iPoseProof ("Hid" $! av' i a) as "Hid'".
       iDestruct ("Hid'" with "HP Hrecv") as "[%Hnode | HT]"; last first.
-      { (* the all-parked row stops here (lane OFF-HAND-2): the generic
-                     family the taint arm runs on is not narrowed yet, and
-                     cannot be until the U tier can name its own table --
-                     [ExecEntry.image_entry_taint]'s note. *)
-        iApply ("Hgen" $! W' with "HT Hp"). }
+      { (* ...and at the other arm, through [exec_key_ok_parked] *)
+        iApply ("Hgen" $! W' with "[%] HT Hp").
+        exact (exec_key_ok_parked na alen sts W' Hkey Hpk0). }
       exfalso. apply Hnload. exists f, (an_nlink a).
       split; [ | exact Hload ].
       destruct a as [nd k]. cbn [an_node an_nlink] in Hnode |- *.
@@ -825,6 +869,8 @@ Section ExecRun.
       (sts : list fdstate) (cs : gset gname) (pidv : mword 32) :
     kexec_loadable f ->
     exec_path_of M pv pl ->
+    (* the builder's all-parked row (lane OFF-HAND-5, D1) *)
+    FdSlots.fdv_all_parked sts ->
     ex_node_abs T (P (length (path_elems pl))) Φo (AFile f) -∗
     image_entry f M av sts cw cs pidv Q Pay X -∗
     image_entry_taint T Q X -∗
@@ -832,12 +878,13 @@ Section ExecRun.
     pf_at (fun S => sys_exec_slot_pre S Q P Φo cw M pv av sts cs pidv)
       (MkPfam X Pay).
   Proof using .
-    intros Hload Hpath. iIntros "#Hid #Hcon #Hgen HPay".
+    intros Hload Hpath Hpk0. iIntros "#Hid #Hcon #Hgen HPay".
     rewrite /pf_at. cbn [pf_recv pf_refund]. iSplit; [ | iExact "HPay" ].
     rewrite /sys_exec_slot_pre. iIntros (pl' na alen afun) "%Hpath' %Hargs".
     rewrite (exec_path_of_uniq M pv pl' pl Hpath' Hpath).
     iApply (exec_slot_of_entry_at_abs X T (P (length (path_elems pl))) Φo f
-              Pay Q cw na alen afun sts cs pidv Hload with "Hid [] Hgen HPay").
+              Pay Q cw na alen afun sts cs pidv Hload Hpk0
+              with "Hid [] Hgen HPay").
     iApply (image_entry_at_of f M av sts cw cs pidv Q Pay X na alen afun Hargs
               with "Hcon").
   Qed.
@@ -851,6 +898,8 @@ Section ExecRun.
       (cs : gset gname) (pidv : mword 32) :
     kexec_loadable f ->
     exec_path_of M pv pl ->
+    (* the builder's all-parked row (lane OFF-HAND-5, D1) *)
+    FdSlots.fdv_all_parked sts ->
     ex_start fsc_fs cw P Pmiss pl -∗
     pf_at (aopen_commit_at (fs_gamma_L fsc_fs) appE) Fo -∗
     ex_node_abs T (P (length (path_elems pl))) Fo.(pf_recv) (AFile f) -∗
@@ -860,13 +909,13 @@ Section ExecRun.
     sys_exec_au_pre (MkPfam X Pay) (fs_gamma_L fsc_fs) fsc_fs cw Q P Pmiss Fo
       M pv av sts cs pidv.
   Proof using .
-    intros Hload Hpath. iIntros "Hwalk Hobs #Hid #Hcon #Hgen HPay".
+    intros Hload Hpath Hpk0. iIntros "Hwalk Hobs #Hid #Hcon #Hgen HPay".
     rewrite /sys_exec_au_pre. iSplitL "Hwalk".
     { iIntros (pl') "%Hpath'".
       rewrite (exec_path_of_uniq M pv pl' pl Hpath' Hpath). iExact "Hwalk". }
     iSplitL "Hobs"; [ iExact "Hobs" | ].
     iApply (sys_exec_slot_of_entry_abs X T P Fo.(pf_recv) f Pay Q cw pl M pv av
-              sts cs pidv Hload Hpath with "Hid Hcon Hgen HPay").
+              sts cs pidv Hload Hpath Hpk0 with "Hid Hcon Hgen HPay").
   Qed.
 
   (* ---- 6b.  THE DEPOSIT AND THE RULE, AT THE CONTENT ----------------- *)
@@ -881,6 +930,8 @@ Section ExecRun.
     m !!! Regidx a0_idx = pv ->
     m !!! Regidx a1_idx = av ->
     exec_path_of M pv pl ->
+    (* the builder's all-parked row (lane OFF-HAND-5, D1) *)
+    FdSlots.fdv_all_parked fdv ->
     □ (Pay -∗ R) -∗
     my_pay gn (ukn_pay N) -∗
     exec_walk_of_abs c T pl (AFile f) -∗
@@ -890,7 +941,7 @@ Section ExecRun.
     sbundle_pay_refR X (ukn_pay N) R
       (uvis_of_run m pc M pm sz fdv c gn cs pidv false).
   Proof using .
-    intros Hload Ha0 Ha1 Hpath.
+    intros Hload Ha0 Ha1 Hpath Hpk0.
     iIntros "#Hrf Hmp Hw #Hcon #Hgen HPay".
     iDestruct "Hw" as (P Pmiss Fo) "(Hst & Hobs & #Hid)".
     assert (Ea0 : tf_w (uvis_tf (uvis_of_run m pc M pm sz fdv c gn cs pidv false))
@@ -905,7 +956,7 @@ Section ExecRun.
     { cbn [uvis_gen uvis_of_run]. iExact "Hmp". }
     rewrite Ea0 Ea1. cbn [uvis_M uvis_cwd uvis_fd uvis_ch uvis_pid uvis_of_run].
     iApply (exec_bundle_of_abs X T P Pmiss Fo c pl f Pay (ukn_pay N)
-              M pv av fdv cs pidv Hload Hpath
+              M pv av fdv cs pidv Hload Hpath Hpk0
               with "Hst Hobs Hid Hcon Hgen HPay").
   Qed.
 
@@ -937,19 +988,27 @@ Section ExecRun.
     kexec_loadable f ->
     m !!! Regidx a0_idx = pv ->
     m !!! Regidx a1_idx = av ->
+    (* ...AND THE RECORD ANSWERS FOR ITS OFFSETS (lane OFF-HAND-5, D1).
+       The exec crossing's TAINT arm needs the table exec hands over to be
+       all-parked ([ExecEntry.image_entry_taint]); the kernel stopped
+       supplying that fact, so the run does -- [UkRun.urun_rows_parked]
+       reads it off the very [fdv] the supply is instantiated at. *)
+    ukn_held N = ∅ ->
     □ (Pay -∗ R) -∗
     image_entry_taint T (ukn_pay N) uslot -∗
     uexec_sup_run_abs N pv av c T pl f Pay -∗
     udepw_at_refR N m pc c R.
   Proof using .
-    intros Hload Ha0 Ha1. iIntros "#Hrf #Hgen Hsup".
+    intros Hload Ha0 Ha1 Hhd. iIntros "#Hrf #Hgen Hsup".
     rewrite /udepw_at_refR. iIntros (M pm sz fdv gn cs pidv) "Hmp #Hnpw Hh Hf".
+    iDestruct (urun_rows_parked (ukn_parked0 := Hhd) N fdv with "Hnpw")
+      as %Hpk0.
     rewrite /uexec_sup_run_abs.
     iDestruct ("Hsup" $! M pm sz fdv cs pidv with "Hnpw Hh Hf")
       as "(Hh & Hf & %Hpath & Hw & #Hcon & HPay)".
     iFrame "Hh Hf".
     iApply (sbundle_pay_refR_of_exec_abs uslot T N m pc M pm sz fdv c gn cs pidv
-              pv av pl f Pay R Hload Ha0 Ha1 Hpath
+              pv av pl f Pay R Hload Ha0 Ha1 Hpath Hpk0
               with "Hrf Hmp Hw Hcon Hgen HPay").
   Qed.
 
@@ -966,6 +1025,9 @@ Section ExecRun.
     m !!! Regidx a1_idx = av ->
     is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
     kexec_loadable f ->
+    (* ...and the record answers for its offsets (lane OFF-HAND-5, D1):
+       the exec crossing's taint arm reads it off the run *)
+    ukn_held N = ∅ ->
     uinstr_is (ukn_t N) pc false (ECALL tt) -∗
     urun N h m pc avail -∗
     UserCwd.ucwd (ukn_cwd N) c -∗
@@ -981,12 +1043,12 @@ Section ExecRun.
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof using .
-    intros Hn Ha0 Ha1 Hal4 Hload.
+    intros Hn Ha0 Ha1 Hal4 Hload Hhd.
     iIntros "#Hi Hrun Hcwd #Hrf #Hgen Hsup Hcont".
     iApply (wp_uk_ecall_exec_at_cwd_refR N h m pc avail c R Hn Hal4
               with "Hi Hrun Hcwd [Hsup] Hcont").
     iApply (udepw_at_refR_of_sup_abs N m pc pv av c T pl f Pay R
-              Hload Ha0 Ha1 with "Hrf Hgen Hsup").
+              Hload Ha0 Ha1 Hhd with "Hrf Hgen Hsup").
   Qed.
 
 End ExecRun.

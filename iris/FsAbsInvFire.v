@@ -168,13 +168,18 @@ Section FsAbsInvFire.
      [om_trunc vom = false] nothing is owed and the supply is not even
      read.  This is the tightening's payoff on the generic side -- the
      piece is now payable more easily, never less. *)
-  Lemma fsabs_trunc_piece (γfs : fs_names) (vom : mword 64) :
+  (* THE PERMIT IS FREE HERE (lane F-OPEN-3), exactly as [Pd] is below: a
+     family that answers at EVERY file row answers at the permitted one
+     and never reads the permit ([SysOpenDefs.open_trunc_piece_of_all]),
+     so the generic supply is one line at whatever permit the bundle it
+     is handed to carries. *)
+  Lemma fsabs_trunc_piece (γfs : fs_names) (vom : mword 64)
+      (Kt : Z -> iProp Σ) :
     app_sup -∗
-    open_trunc_piece (fs_gamma_L γfs) vom (pfam_triv (fun _ _ _ => True%I)).
+    open_trunc_piece (fs_gamma_L γfs) vom Kt (pfam_triv (fun _ _ _ => True%I)).
   Proof using .
-    iIntros "#Hsup". rewrite /open_trunc_piece. destruct (om_trunc vom).
-    - iApply (fsabs_atrunc with "Hsup").
-    - done.
+    iIntros "#Hsup".
+    iApply open_trunc_piece_of_all. iApply (fsabs_atrunc with "Hsup").
   Qed.
 
   (* [Pd] IS FREE HERE (lane TL-3K): the generic application ignores the

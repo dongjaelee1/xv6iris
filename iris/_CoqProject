@@ -1487,9 +1487,11 @@ LineWords.v
 FileState.v
 EchoDisc.v
 FileDisc.v
+FileDiscDec.v
 LogEntryDefs.v
 ConsLog.v
 EchoOutPure.v
+FileOutPure.v
 EchoOut.v
 EchoLinks.v
 EchoLinksPro.v
@@ -1502,6 +1504,9 @@ AppFile.v
 FileOpen.v
 FileDeltas.v
 FileWrite.v
+FileOut.v
+FileLinks.v
+AppFileRec.v
 AppTree.v
 
 FsAbsUnlinkFire.v
@@ -1540,6 +1545,11 @@ UkShRedirTok.v
 UkShRedirGtk.v
 UkShRedirCmd.v
 UkShRedirPr.v
+UkShRedirEx.v
+UkShRedirPex.v
+UkShRedirNul.v
+UkShRedirCm.v
+UkShRedirPc.v
 
 UCodeShM.v
 UkShMalloc.v
@@ -1548,6 +1558,7 @@ UkShRedirLine.v
 UkShLoop.v
 UkShCd.v
 UkShMain.v
+UkShRedirSeam.v
 UkShFork.v
 UConsLine.v
 UkShWords.v
@@ -1587,9 +1598,15 @@ UkTreeRead.v
 UkTreeWrite.v
 UkTreeCreate.v
 TreeImg.v
+UTreeAdequacy.v
+UkFileOpen.v
+UkShRedirAns.v
+UCatOut.v
 UInitTree.v
 UInitTreeCons.v
 UInitTreeBoot.v
 UInitTreeExec.v
-UTreeAdequacy.v
 # TreeAssumptions.v
+
+UFileBootAdequacy.v
+# FileAssumptions.v

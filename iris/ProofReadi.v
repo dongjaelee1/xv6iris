@@ -303,7 +303,8 @@ Section ReadiDefs.
         ⌜callee_saved m mf⌝ -∗
         ⌜uptd_ext_sz (pv_sz (us_V U)) (pv_upt (us_V U)) P'⌝ -∗
         ⌜(tot <= rd_clamp (di_size dn) off n)%nat⌝ -∗
-        ⌜(mf !!! Regidx Ra0 = (mword_of_int (-1) : mword 64) /\ user = true)
+        ⌜(mf !!! Regidx Ra0 = (mword_of_int (-1) : mword 64) /\ user = true
+          /\ rd_fail_why (pv_upt (us_V U)) (m !!! Regidx Ra2 : mword 64) n)
          \/ (mf !!! Regidx Ra0 = (mword_of_int (Z.of_nat tot) : mword 64)
              /\ tot = rd_clamp (di_size dn) off n)⌝ -∗
         sie_cap_gpr KT1 mf K b (proc_addr j) -∗
@@ -363,7 +364,8 @@ Section ReadiRet.
     M !!! Regidx Rs11 = (m !!! Regidx Rs11 : mword 64) ->
     uptd_ext_sz (pv_sz (us_V U)) (pv_upt (us_V U)) P' ->
     (tot <= rd_clamp (di_size dn) off n)%nat ->
-    ((M !!! Regidx Ra0 = (mword_of_int (-1) : mword 64) /\ user = true)
+    ((M !!! Regidx Ra0 = (mword_of_int (-1) : mword 64) /\ user = true
+      /\ rd_fail_why (pv_upt (us_V U)) (m !!! Regidx Ra2 : mword 64) n)
      \/ (M !!! Regidx Ra0 = (mword_of_int (Z.of_nat tot) : mword 64)
          /\ tot = rd_clamp (di_size dn) off n)) ->
     sie_cap_gpr KT1 M (K - 14)%nat b (proc_addr j) -∗
@@ -686,7 +688,8 @@ Section ReadiJoin.
     M !!! Regidx Rs11 = (m !!! Regidx Rs11 : mword 64) ->
     uptd_ext_sz (pv_sz (us_V U)) (pv_upt (us_V U)) P' ->
     (tot <= rd_clamp (di_size dn) off n)%nat ->
-    ((ans = (mword_of_int (-1) : mword 64) /\ user = true)
+    ((ans = (mword_of_int (-1) : mword 64) /\ user = true
+      /\ rd_fail_why (pv_upt (us_V U)) (m !!! Regidx Ra2 : mword 64) n)
      \/ (ans = (mword_of_int (Z.of_nat tot) : mword 64)
          /\ tot = rd_clamp (di_size dn) off n)) ->
     sie_cap_gpr KT1 M (K - 14)%nat b (proc_addr j) -∗
@@ -830,7 +833,8 @@ Section ReadiExit.
     M !!! Regidx Rs3 = ans ->
     uptd_ext_sz (pv_sz (us_V U)) (pv_upt (us_V U)) P' ->
     (tot <= rd_clamp (di_size dn) off n)%nat ->
-    ((ans = (mword_of_int (-1) : mword 64) /\ user = true)
+    ((ans = (mword_of_int (-1) : mword 64) /\ user = true
+      /\ rd_fail_why (pv_upt (us_V U)) (m !!! Regidx Ra2 : mword 64) n)
      \/ (ans = (mword_of_int (Z.of_nat tot) : mword 64)
          /\ tot = rd_clamp (di_size dn) off n)) ->
     (* the block's own pc chain, as LITERALS *)
@@ -1836,7 +1840,9 @@ Section ReadiLoop.
                  ⌜((mE !!! Regidx Ra0 : mword 64) = (mword_of_int 0 : mword 64)
                    /\ dwr = mm)
                   \/ ((mE !!! Regidx Ra0 : mword 64)
-                        = (mword_of_int (-1) : mword 64) /\ user = true)⌝ ∗
+                        = (mword_of_int (-1) : mword 64) /\ user = true
+                      /\ rd_fail_why (pv_upt (us_V U))
+                           (m !!! Regidx Ra2 : mword 64) n)⌝ ∗
                  rd_dst (ktb := ktb) γf j pidv dq user
                         (rd_img U data (m !!! Regidx Ra2 : mword 64) off
                                 (tot + dwr)%nat P2) U
@@ -1874,10 +1880,43 @@ Section ReadiLoop.
           iExists P2, dwr.
           iSplitR; [iPureIntro; exact (uptd_ext_sz_trans _ _ _ _ HextI Hx)|].
           iSplitR; [iPureIntro; exact Hdwrle|].
+          (* ...AND THE FAULT'S REASON, brought back to the ENTRY table.
+             [either_copyout] names the byte it died on at the chunk's own
+             base [dst + tot] and at the table THIS round entered
+             ([SpecEitherCopyout.either_copyout_ran]); the caller's index is
+             [tot + dwr] off [dst] ([InstrBytes.pa_add_add]) and the entry
+             table is the weaker home ([SysReadDefs.rd_nwmapped_entry]).
+             The index is inside the REQUEST because the chunk is:
+             [dwr < mm <= nc - tot] and [nc <= n]. *)
+          assert (Hwhy : forall d : nat, (d < mm)%nat ->
+                    ~ uva_wmapped
+                        (pv_upt (us_V (rd_img U data
+                                         (m !!! Regidx Ra2 : mword 64) off tot PI)))
+                        (uint (add_vec_int
+                                 (pa_add (m !!! Regidx Ra2 : mword 64) tot)
+                                 (Z.of_nat d))) ->
+                    rd_fail_why (pv_upt (us_V U))
+                      (m !!! Regidx Ra2 : mword 64) n).
+          { intros d Hd Hnw. exists (tot + d)%nat. split; [lia |].
+            assert (Hnw' : ~ uva_wmapped PI
+                      (uint (add_vec_int
+                               (pa_add (m !!! Regidx Ra2 : mword 64) tot)
+                               (Z.of_nat d)))) by exact Hnw.
+            assert (Haddr : (add_vec_int (m !!! Regidx Ra2 : mword 64)
+                               (Z.of_nat (tot + d)) : mword 64)
+                            = add_vec_int
+                                (pa_add (m !!! Regidx Ra2 : mword 64) tot)
+                                (Z.of_nat d))
+              by (symmetry;
+                  exact (pa_add_add (m !!! Regidx Ra2 : mword 64) tot d)).
+            rewrite Haddr.
+            exact (rd_nwmapped_entry (pv_sz (us_V U)) (pv_upt (us_V U)) PI _
+                     HextI Hnw'). }
           iSplitR; [iPureIntro;
-                    destruct Hran as [[Hr Hd] | (Hr & _ & _)];
+                    destruct Hran as [[Hr Hd] | (Hr & Hltd & Hnw)];
                     [left; split; [exact Hr | exact Hd]
-                    | right; split; [exact Hr | reflexivity]]|].
+                    | right; split; [exact Hr |];
+                      split; [reflexivity | exact (Hwhy _ Hltd Hnw)]]|].
           rewrite /rd_img -Himg. iExact "Hpriv".
         - iDestruct "Hpost" as "(%Hr & Hmid)".
           iDestruct "Hdstrest" as "(Hppid & Hp & Hq)".
@@ -2241,7 +2280,7 @@ Section ReadiLoop.
              where either_copyout may answer -1.  readi releases a buffer
              it never modified, so there is nothing to log and nothing to
              re-index: [bio_locked] is the one bread produced. ====== *)
-        destruct Hrm1 as [Hrm1 Huser].
+        destruct Hrm1 as (Hrm1 & Huser & Hwhy2).
         iApply (wp_beq_taken_s_sconf (mword_of_int (RI + 0x64))
                   (mword_of_int 70 : mword 13) Rs8 Ra0 mE (K - 14)%nat b
                   ltac:(nz) ltac:(nz)
@@ -2350,7 +2389,7 @@ Section ReadiLoop.
                   (sign_extend' 21 (concat_vec (mword_of_int 14 : mword 11) ('b"0")))
                   m J3 K eb b lks
                   HK HJ3sp HJ3s3 Hext2 ltac:(lia)
-                  ltac:(left; split; [reflexivity | exact Huser])
+                  ltac:(left; split; [reflexivity | split; [exact Huser | exact Hwhy2]])
                   ltac:(pcw) ltac:(pcw) ltac:(pcw) ltac:(pcw) ltac:(pcw)
                   ltac:(pcw) ltac:(vm_compute; reflexivity)
                   with "Hcg Hcnt Hextc Hextm Htext Hpc [] [] [] [] [] []

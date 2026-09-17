@@ -1657,7 +1657,7 @@ Section ProofDirlookupMain.
                  ∗ proc_priv_bare (proc_addr j) pidv Upr)%I with "[Hdst2]" as "[Hde Hppid]".
         { iExact "Hdst2". }
         first [ iEval (rewrite Hpjd) in "Hppid" | idtac ].
-        destruct Hrdret as [[_ Hbad] | [Hra0rd Hteq]]; [discriminate |].
+        destruct Hrdret as [[_ [Hbad _]] | [Hra0rd Hteq]]; [discriminate Hbad |].
         assert (Hrdregs : dlk_regs m sp0 ip nb pf (16 * i) mrd)
           by exact (dlk_regs_cs m sp0 ip nb pf (16 * i) L6 mrd Hcsrd HL6regs).
         assert (Hs0rd : mrd !!! Regidx Rs0 = sp0).

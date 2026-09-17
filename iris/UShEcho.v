@@ -1329,6 +1329,12 @@ Section UShEcho.
       kexec_sz ElfUser.echo_elf - PGSIZE + 96
         <= kxc_sp_final (kexec_sz ElfUser.echo_elf) alen na ->
       length sts = NOFILE ->
+      (* ...AND THE EXEC'ING PROCESS'S TABLE IS ALL PARKED (lane
+         OFF-HAND-3, R1): echo's record answers for its own offsets, and
+         echo's table IS the exec'ing process's
+         ([SpecKexec.kexec_image_ok_fd]).  The caller reads the row off
+         [ExecEntry.image_entry_at]. *)
+      fdv_all_parked sts ->
       (* ...and the key's LAZY BIT (lane LAZY-FLAG, L6), passed straight
          through to [UEchoKernel.echo_uexec_slot].  [kexec_image_ok] does
          not name it yet, so it is a premise here exactly as it is on
@@ -1345,7 +1351,7 @@ Section UShEcho.
 
   Lemma echo_slot_of_kexec_holds : echo_slot_of_kexec.
   Proof.
-    intros na alen afun sts W' Hok Hroom Hfdl Hlzf.
+    intros na alen afun sts W' Hok Hroom Hfdl Hpark Hlzf.
     destruct (echo_kexec_pages na alen afun sts W' Hok)
       as (Hpc & Hsub & Hx & Hwr & Hrp).
     destruct (echo_kexec_entry_rows na alen afun sts W' Hok Hroom Hfdl Hwr Hrp)
@@ -1357,7 +1363,10 @@ Section UShEcho.
     iAssert (UkRun.urun_nopipe (uvis_fd W')) as "#Hnpw'";
       [ rewrite (kexec_image_ok_fd _ na alen afun sts W' Hok); iExact "Hnpw" | ].
     iApply (echo_uexec_slot W' Hpc Hsub Hx Hroom96 Hal8 Hstkrow Hargsrow
-              Havd Havs Hfdlen Hstop Hlzf with "Hwr Hnpw' Hdep Hmp").
+              Havd Havs Hfdlen Hstop Hlzf
+              ltac:(rewrite (kexec_image_ok_fd _ na alen afun sts W' Hok);
+                    exact Hpark)
+              with "Hwr Hnpw' Hdep Hmp").
   Qed.
 
   (* ---- THE ROOM BOUND, OFF THE ARGUMENT READING (lane EX-1) ---------- *)
@@ -1422,6 +1431,11 @@ Section UShEcho.
     echo_node_img ws M s0 t g ->
     UkShEcho.echo_argv_bytes ws g ->
     length sts = NOFILE ->
+    (* ...AND THE EXEC'ING PROCESS'S TABLE IS ALL PARKED (lane OFF-HAND-4,
+       S2): echo's record is minted at [ukn_held = empty], and the entry
+       says so about the table it is stated at now that
+       [ExecEntry.image_entry_at] no longer relays the row. *)
+    fdv_all_parked sts ->
     udepw_law 16 -∗
     (* ...and the exec'ing process's table, pipe-free (design/pipe.md,
        "The exit path") *)
@@ -1429,14 +1443,15 @@ Section UShEcho.
     image_entry ElfUser.echo_elf M (mword_of_int (t + 8) : mword 64) sts
       cw cs pidv (fun _ : Z => True)%I emp uslot.
   Proof.
-    intros Hok Himg Hbytes Hfdl. iIntros "#Hwr #Hnpw #Hdep".
+    intros Hok Himg Hbytes Hfdl Hpks. iIntros "#Hwr #Hnpw #Hdep".
     iApply image_entry_of_at. iIntros "!>" (na alen afun) "%Hargs".
     destruct (echo_args_det_holds ws Hok M s0 t g na alen afun Himg Hbytes
                 Hargs) as (Hna & Halen & _).
     rewrite /image_entry_at. iIntros "!>" (W') "%Hokk _ %Hlzf _ _ Hmp _".
     iApply (echo_slot_of_kexec_holds na alen afun sts W' Hokk
-              (echo_room_of_det ws na alen Hok Hna Halen) Hfdl Hlzf
-              with "Hwr Hnpw Hdep Hmp").
+              (echo_room_of_det ws na alen Hok Hna Halen) Hfdl
+              Hpks
+              Hlzf with "Hwr Hnpw Hdep Hmp").
   Qed.
 
   (* =================================================================== *)

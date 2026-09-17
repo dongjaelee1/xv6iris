@@ -1523,7 +1523,7 @@ Section KexecB3Body.
     assert (HM2s11 : M2 !!! Regidx Rs11 = (mword_of_int 56 : mword 64))
       by (rewrite (HM2get Rs11 ltac:(vm_compute; reflexivity)); exact HMs11).
     assert (HM2a0 : M2 !!! Regidx Ra0 = (mword_of_int (Z.of_nat tot) : mword 64)).
-    { destruct Hret as [(_ & Hbad) | (Hv & _)]; [discriminate Hbad | exact Hv]. }
+    { destruct Hret as [(_ & Hbad & _) | (Hv & _)]; [discriminate Hbad | exact Hv]. }
     assert (Htotle : (Z.of_nat tot <= 274432)%Z).
     { rewrite /rd_clamp in Htotb.
       pose proof (bv_unsigned_in_range 32 (di_size dnf)) as [Hsz0 _].
@@ -1561,7 +1561,7 @@ Section KexecB3Body.
          file (S3c).
          ================================================================= *)
       assert (Htoteq : tot = rd_clamp (di_size dnf) offn 56%nat).
-      { destruct Hret as [(_ & Hbad) | (_ & Hv)];
+      { destruct Hret as [(_ & Hbad & _) | (_ & Hv)];
           [discriminate Hbad | exact Hv]. }
       assert (Hfitsz : (offn + 56 <= Z.to_nat (bv_unsigned (di_size dnf)))%nat).
       { rewrite /rd_clamp in Htoteq.
@@ -3727,7 +3727,7 @@ Section KexecB3Body.
       { apply (kxb_not_walk_loadable_off (kxc_fb datl dnf) ef i);
           [ lia |].
         assert (Htoteqs : tot = rd_clamp (di_size dnf) offn 56%nat).
-        { destruct Hret as [(_ & Hbad) | (_ & Hv)];
+        { destruct Hret as [(_ & Hbad & _) | (_ & Hv)];
             [discriminate Hbad | exact Hv]. }
         assert (Hshort : (Z.to_nat (bv_unsigned (di_size dnf)) < offn + 56)%nat).
         { rewrite /rd_clamp in Htoteqs.

@@ -215,6 +215,71 @@ premise, the holder's half in hand):
   `astep … = None` off the claim.
 - **truncate** (`f_ok av (Some bs')`, the open's exists arm): the
   trunc piece `delta_trunc i` moves to `Some []`.
+  RULED after F-OPEN-2 (2026-09-17): the redirect's mode is `0x601`
+  (`sh.c:395`, `O_WRONLY|O_CREATE|O_TRUNC`) and the model's `RFRan`
+  assumes the truncation, so the truncate piece must be suppliable.
+  `SysOpenDefs.open_trunc_piece` is restated ONCE, carrying two things
+  (F-OPEN-2's restatements 1 and 2; its 3 is declined): (1) the
+  permit ties the fired inum to the walk's terminal — the same guarded
+  pure facts `SysMknodDefs.npar_cur` carries (the arg path's last
+  element is the name, the parent is the walk's terminal directory),
+  which the kernel holds at the fire and an application knowing its own
+  path reads in one line; (2) the permit is a DISJUNCTION the kernel
+  pays from what fired: the FRESH arm hands `Fok`'s receipt (the row is
+  `AFile []` at nlink 1 — `file_trunc_of_cre`, landed, free at both deed
+  values), the EXISTS arm hands `Fex`'s receipt BESIDE THE UNFIRED ARM
+  PIECE'S REFUND (create's `dirlookup` found the name, so the arm never
+  fires and the kernel still holds it).  The application then identifies
+  the node AT THE TRUNCATE FIRE, with the half the refund returns: the
+  exact arm's `f_ok av (Some (i, bs))` and the tie give the fired inum
+  `= i`, and the move `Some (i, bs) → Some (i, [])` is paid with that
+  same half (park, then resync, inside the fire as `file_cre_fam` does).
+  At `s = None` the EXISTS disjunct is REFUTED the same way (the refund's
+  half reads `f_ok av None`, the root has no `f`, contradicting `Fex`'s
+  found entry at the tie) — so no fraction ever rides inside `Fex`'s
+  receipt, the create's `Fex` piece passes the kernel's own lookup
+  receipt through, and restatement 3 (exclusivity of `Fex` and the arm
+  at `acre_commit_at_gen`) is not needed.  Lane F-OPEN-3 does the one
+  sweep and lands `file_open_create_au` at `om_trunc = true`.
+  LANDED (F-OPEN-3) with two corrections: the EXISTS disjunct needs no
+  fraction at all — the claim's typed witness bounds the content by
+  `line_max` at ANY view, so the row is none of the four binaries
+  (`file_claim_read_free`) — and the permit is paid at create's RETURN
+  and kept on the keyed piece's refund side (`cre_ft_kept`), which is
+  what keeps `open_post_fail_create`'s arm (a) honest.  What did NOT
+  close is the `s = None` refutation: `Fex`'s found entry is at the
+  LOOKUP's view and the truncate fires at a later one (the parent was
+  unlocked between; another process may unlink), so the fd arm's
+  payload is `fown r (Some (i, [])) ∨ fown r s` with an unreachable,
+  unrefutable second disjunct.  RULED (2026-09-17): close it with the
+  APPLICATION-SIDE ESCROW (F-OPEN-3's way (ii)) — the deed's half sits
+  in an invariant of the claim's own with a one-shot in the arm piece
+  saying the arm has not fired, so the lookup piece READS the value at
+  its own view (refuting the found entry at `None`) and the arm piece
+  TAKES the half when it fires; `FileOpen`'s business alone, no kernel
+  restatement.  The same escrow closes the EXISTS-DEVICE sub-arm.  Lane
+  F-OPEN-4; then the U-tier wrapper `wp_uk_ecall_open_create_deed` over
+  the parked leaf as a visible parameter, so the held twin is one swap.
+  F-OPEN-4 REFUTED the second invariant by the MASK (`appE = ↑appN`:
+  reading the claim at the lookup's fire leaves the empty mask, and no
+  namespace fits in it — `FileOpen.file_escrow_mask_blocked`) and landed
+  the wrapper.  RULED (2026-09-17): the escrow goes INSIDE THE CLAIM
+  (F-OPEN-4's way (iii)) — `AppFile.f_state` gains an ESCROW arm: the
+  holder's half parked in the claim (`fdeed_whole r s ∗ ftkt r s`) at
+  the exact content, beside a one-shot `esc γ` whose exclusive token the
+  holder keeps and hands to the ARM piece.  Readers at `app_inv` alone
+  (the lookup piece, at its own view) get `⌜f_ok avx s⌝ ∨ esc_spent γ`;
+  the arm piece, holding the token, moves the content and spends it;
+  the truncate on the EXISTS run holds the arm's refund — the token —
+  so it refutes `esc_spent` in the lookup's receipt and keeps `⌜f_ok
+  avx s⌝`, which at `None` contradicts the found entry at the tie and at
+  `Some (i, bs)` identifies the row; the refund path returns the half
+  (`esc_tok ∗ escrow ==∗ fown r s`).  The DEVICE sub-arm is refuted the
+  same way (the row's type at the lookup's view is `f`'s, an inode).
+  Lane F-OPEN-5, in `AppFile.v`/`FileOpen.v` with every landed consumer
+  of the claim kept building; the fd arm then reads `fown r (Some (i,
+  []))` alone.  Way (i), the kernel restatement of `acre_commit_at_gen`,
+  is not taken.
 - **append** (echo's chunk `j`, `awrite_full_at`'s `wri_pre av i off bs
   bs0 nl` with `off = |bs0|` — §3 on why the offset is known): `Some bs0
   → Some (bs0 ++ chunk_j)`; echo's own proof carries the words and the
@@ -317,33 +382,75 @@ member.  FOUR coupled facts, each adopted as a ruling:
 3. **The publish reads the caller's mode** (`ProofSysOpenPub`:
    `off_pub_park` or `off_pub_hand`, `fp_om` set to match, the held half
    `uoff γo 0` in the receipt at `OffHeld`).
-4. **The exec crossing takes the surrender bundle.**  A generic slot's
-   mint needed `fdv_all_parked` of the whole table, which no U-tier
-   program can prove (a dropped `ufd` handle leaves an open row it cannot
-   name).  The premise is now `FdPark.uoff_surr_at`: all parked, or a
-   surrender (`off_user_inv γo`, persistent) per held row; and a
-   verified program pays it because `urun` carries a COUNTER of held rows
-   (`uheld n`, one half beside `ufd_auth`, the other the program's;
-   a hand-open increments, a close or dup of a held row moves it, fork
-   copies it with the table), so a program holding `n` held handles knows
-   they are all the held rows there are and surrenders each
-   (`uoff_park`) before an exec to an unverified target or a fork.  A
-   surrendered row keeps its `OffHeld` tag (the tag is the object's) and
-   is paid like a parked one, from the surrender.
-
-Lane OFF-HAND-2 landed the exec crossing's all-parked row (the kernel pays
-it) and found that facts 1–3 sit BEHIND the counter: the generic
-builders of a read/write chain (`FsAbsInvFire.fsabs_filewrite_in`) serve
-an arbitrary row and need `⌜fdst_parked st⌝`, which only a program that
-can state its own table's parkedness supplies.  So OFF-HAND-3 goes
-counter first (`uheld` inside `urun`, a fact about the whole table, the
-shape of `urun_nopipe`), then the mode in `fpnames`, then the HELD BRANCH
-of `filewrite_in`/`fileread_in`, whose chain nodes RELAY what the claim's
-step cannot otherwise know (lane F-WRITE's findings): the fire's offset
-is the caller's anchor (`off = off0 + p`), the node's run is the whole
-chunk, and the partial node carries `either_copyin`'s reason (RELAY 4,
-§0), so a mapped source refutes it; then the hand-mode open leaf and the
-two held members.  `FdSlots.foff_row` already answers `emp` at `OffHeld`.
+4. **The held half rides the DESCRIPTOR BUNDLE and its value the
+   DESCRIPTOR STATE; no program ever carries an offset half.**  RULED
+   2026-09-17 after OFF-HAND-5, which refuted the two previous rulings
+   (the surrender bundle on the taint arm, OFF-HAND-4; the exec deposit
+   the kernel spends on one arm and returns on the other, OFF-HAND-5)
+   and showed the wall is structural: a bundle with a taint arm can
+   never carry an exclusive half (the generic slot is minted from a
+   persistent family), the kernel cannot branch on the taint (verified
+   vs tainted is decided inside the U-tier proof of the arm), and the
+   redirect child cannot refute the taint (a persistent `mono_nat_lb`
+   whose authority is the ledger's).  So the half must not be in the
+   program's hands at the crossing at all.  THE SHAPE:
+   - `FdSlots.offmode` becomes `OffParked | OffHeld (off : nat)`: a held
+     row RECORDS ITS OFFSET in the fd-table state.  The state is the
+     exec key, so a verified image reads the offset off its key, and a
+     generic image's Löb treats it as data.
+   - `FdSlots.foff_row` at `OffHeld off` is `UserOff.uoff γo off` (the
+     half, exclusive) instead of `emp`; at `OffParked` it is
+     `off_user_inv γo` as today.  `foff_rows` is persistent only at an
+     all-parked table, which is exactly where every site that COPIES a
+     row needs it (see dup/fork below); every site that threads the
+     bundle opaquely is untouched.  The kernel holds the bundle during a
+     syscall, so a held row's half is IN THE KERNEL'S HANDS at every
+     fire and at every crossing: the kernel's syscall arm passes it into
+     the held branch of `fileread_in`/`filewrite_in` (design §3's held
+     branch, now supplied by `ProofSyscall`/`ProofFilewrite`, not by a
+     user deposit), gets it back advanced, and the syscall's post
+     re-records the row: `UsysMemOk.usys_fd_ok`'s read/write rows at a
+     held descriptor ADVANCE the row's value by the count (parked rows
+     are unchanged as today).  The fire's offset is the row's recorded
+     value — RELAY 1 (`off = off0 + p`) is the half's agreement, kernel-
+     side.
+   - `FileInvDefs.fpnames` gains `fp_om`; `fdstate_ok` at a held object
+     pins the reference count at 1 (a held object has exactly one row,
+     anywhere) beside the mode; the `_parked` chain is deleted (OFF-HAND-5
+     D1 left it consumer-less).
+   - DUP and FORK PARK, kernel-side, from the bundle: the kernel retypes
+     the source row `OffHeld off → OffParked` with `uoff_park` (the half
+     is in its hands; `FdPark.fd_frags_park_at` is the step) BEFORE the
+     copy, so a copied row is always parked and the persistent scan
+     stands; the posts say so (`usys_fd_ok`'s dup and fork rows at a
+     held source: both rows parked).  No user surrender, no deposit, no
+     `uoff_surr*`.  In this campaign neither ever meets a held row.
+   - EXEC keeps the table and the bundle: the held row crosses on BOTH
+     arms with its half in the fd resources.  `ExecEntry.image_entry*`
+     receive no offset premise; `image_entry_taint`'s pure all-parked
+     row is DELETED (the generic mint needs nothing about modes any
+     more: its deposits are free at every mode because the kernel needs
+     no user resource at a fire), and with it `UexecSG`'s guarded
+     read/write premise (OFF-HAND-5 D3), `udepw_law_parked`, and the
+     whole `ukn_held`/`fdv_held_in`/`uoff_surr_at` carrier (OFF-HAND-3/4;
+     `ukn_held` may stay on `uk_names` as dead data until a cleanup lane
+     deletes it, but no new statement may mention it).
+   - THE HAND-MODE OPEN LEAF: the open's publish at the caller's mode
+     (`off_pub_hand`) records `OffHeld 0` in the new row and puts the
+     half in the bundle; the receipt reports the state.  cat opens `f`
+     read-only in hand mode too (its reads must chain from 0 for the
+     printed bytes to be the content in order — §5.3).
+   - The program tier: a record's fd resources carry the held half
+     inside `urun`, so a verified program's write at a held row is the
+     same leaf shape as at a parked one with `⌜sts !! fd = Some (FdOpen
+     _ _ (FdInode i γo (OffHeld off)))⌝` read off its table and the post
+     at `OffHeld (off + n)`; the app's append step reads `off` there.
+   The order (lane OFF-HAND-6): the `offmode` payload and `foff_row`
+   (13 `OffHeld` sites) → `fpnames.fp_om` + `fdstate_ok` at held + the
+   two fire sites through the held branch supplied by the syscall arm →
+   `usys_fd_ok`'s read/write rows advancing a held row (and the tierless
+   `sysc_fd_ok`) → dup/fork parking → the hand-mode open leaf and the
+   held read/write leaves → deletion of the dead carrier premises.
 
 ## 4. The console side: the stage carries the era's boot state, the ledger the line list
 
@@ -448,6 +555,86 @@ byte, so `ls ⊑ efl_before h k` (under the taint the conjunct is `T`).
 `al_pow`'s seed is `fecl` at the empty stage with `o_f0 = None`, plus
 the turn.  `Hphi` reads `file_phi` off the ledger as `echo_R_phi` does.
 
+### 4.3a What lane STAGE landed, and the two rulings (2026-09-17)
+
+STAGE landed 4.1–4.4 in `FileOutPure.v`, `FileOut.v`, `FileLinks.v`,
+`AppFileRec.v` (whole tree green, both audits unchanged) with these
+corrections to the text above, which are now the design:
+
+- **The tag is at the FILE discipline**: `ftag h := ⌜trace_shape h true⌝
+  ∗ (⌜disc_f h⌝ ∨ file_taint c) ∗ fl_lb c (efl_of h)` — NOT `etag ∗ lb`,
+  because `disc_f h` does not imply `disc h` (a `cat` line is not an echo
+  line).  The ledger's counter is at `decide (disc_f h)`.
+- **No total range condition**: the stage carries the POINTWISE
+  `alts_pre I cs` and `FileDisc.alts_ok` is reached by padding
+  (`alts_pad`), which moves no prologue round.
+- **`feout_pure`'s `o_f0` clause is an IFF** (`o_f0 = None <-> o_E = []
+  /\ o_w = []`).
+- **The era's first byte is a prologue-choice write**: at `ps0 = []` the
+  plain link's premise is unsatisfiable, so `file_write_link_first` is the
+  `_pro` shape at the empty stage and needs no stage premise.
+- **The record's fixed part is `FileOut.file_gn`** (AppFile's
+  `file_fixed` paired with the era map's gname); AppFile's lemmas are read
+  at `fgn_cl g`.
+- **The read exports a truncated choice list** (`fread_ret`).
+- **Determinacy at two boot states** (`sessf_prefix_det2`): the
+  discipline's witness and the claim's own need not agree, and
+  `alt_seq_f_prefix_det` already takes them apart.
+- **`al_programs` is a section hypothesis** of `AppFileRec.file_laws`
+  until SH-ROUND lands (the preferred shape).
+
+STAGE named two blockers.  RULINGS:
+
+**Blocker 1 — `Decision (disc_f h)` is a section hypothesis of `FileOut`.**
+The ledger's counter must decide the file discipline at every rx.
+`disc_f`'s `∃ s : fst` ranges over all byte lists; the rest (`∃ ps cs`)
+ports from `EchoDisc.disc_seg'_dec` (`pro_cands`, `bounded_lists`, plus
+an enumerator of `sel`s).  THE FIX IS A CANONICALISATION LEMMA, not a
+change to the discipline: a boot state's content surfaces on the wire
+only through an `RCRan` round whose state is `s0` itself (the state
+before a round is `s0` exactly, or a reset value `Some []`/`Some (subseq
+…)` that does not depend on `s0` — `fsm` never modifies `s0`, and
+`RFOpenM` keeps a present state), and there it is printed VERBATIM
+(`cont (Some bs) LCat RCRan = bs ++ u_prompt`) inside a checked
+transcript, hence a contiguous substring of that prefix's wire.  If no
+checked transcript (`p ∈ in_pres seg`) contains such a round, every
+checked transcript is IDENTICAL at `Some []` (the state chains agree
+pointwise except at `s0`-derived positions, and `cont` reads the state
+only at `RCRan`).  So `(∃ s, fst_ok s /\ disc_seg_f' s seg) <-> (∃ s ∈
+scands seg, …)` with `scands seg := None :: Some [] :: (Some <$>
+substrings (obs_wire Uart0 seg))` — finite — and `fcont_ok` is decidable
+(`last bs = Some wl_nl` and `Forall wl_body_byte` of the rest).  Lane
+FILE-DEC (`iris/FileDiscDec.v`): `Global Instance disc_f_dec h :
+Decision (disc_f h)`, then `FileOut`'s `Hdf` context goes.  Not on any
+program lane's critical path.
+
+**Blocker 2 — `file_phi`'s `echof_lines_before` IS reachable; no claim
+change.**  STAGE compared the deed's witness against the ledger's line
+list at EVERY drain and dropped `file_phi`'s antecedent.  Both are the
+error.  The ledger's conclusion is `FileDisc.file_phi h` VERBATIM (the
+antecedent `disc_f h` included; `disc_f` is prefix-closed —
+`FileOutPure.disc_f_prefix` — so the induction at each step assumes the
+discipline of the NEW history and gets the old one's witnesses), and the
+era's boot state is FIXED AT THE ERA'S FIRST DRAIN, where the cycle's
+input is empty: under `disc_f h`, a cycle whose wire is empty has no
+input byte (D2 at the prefix before its first input byte would put
+`pro_of ps` — nonempty under `pro_ok_f` — on an empty wire), so
+`efl_of h = echof_lines_before h (obs_boots h)` exactly there, and
+`f0_typed_adm` reads the witness's `ls ⊑ efl_of h` AS `fadm_boot
+(echof_lines_before h k) s0`.  At cycle 0 the same reading refutes the
+`Some` arm (`ws ∈ ls ⊑ []`), which is the guarded first clause.  The
+ledger keeps, per era, the state it fixed: `f0_lb vf s0` from
+`fdrain_ret` (which hands the era pin and the lower bound beside the
+witness; the stage holds `f0_auth vf [s0]`), and every later drain's
+`s0` agrees with it (two lower bounds of a list of length ≤ 1).  The
+pure carrier is `∃ s0s, ⌜disc_f h -> file_phi_body h s0s⌝` with the
+current era's entry pinned by the lower bound once the era has drained
+(`obs_wire Uart0 (open_seg h) ≠ []`, a pure condition), and `None`
+provisionally at `al_pow` (an empty cycle is good at any state; `None`
+is admissible anywhere), REPLACED at the first drain.  Lane STAGE-2, in
+`FileOut.v`/`FileOutPure.v` only; `AppFileRec.file_phi := fun _ h =>
+FileDisc.file_phi h`.
+
 ### 4.4 The record (AppFile layer B)
 
 `app_file := MkApp file_fixed file_cl file_names file_pred file_boot
@@ -493,10 +680,59 @@ node as `UShEcho` reads echo's), the open at `f` from the deed (present /
 absent / `-1`), the read at the held offset, the console writes at the
 stage's pending (cat's first byte chooses `RCRan`; the "cannot open"
 diagnostic is `fprintf(2, …)` through `UkCatFprintf`'s `%s` arm, at the
-stage), `close`, `exit`.  The `cat: read error` tail is REFUTED (the
-read's `-1` arm at an inode needs a copyout failure, which the mapped row
-excludes) — if the kernel spec's arm cannot be refuted at the U tier the
-alternative joins §1's list instead; the lane says which.
+stage), `close`, `exit`.  The `cat: read error` tail is REFUTED: the
+read's `-1` arm at an inode needs a copyout failure, the kernel says so
+(item (c) below), and the mapped row excludes it.
+
+RULED after CAT-ENTRY (2026-09-17).  (a) An ABSENT `f` files `RCRan`,
+not `RCNoOpen`: `cont None LCat RCRan` already IS the cannot-open
+diagnostic, and `RCNoOpen` is the present file whose `filealloc`/
+`fdalloc` failed; the two print the same bytes, so THE DEED DECIDES which
+is filed (as it decides `RFOpenU`/`RFOpenM`).  (b) At `Some (i, [])` cat
+prints nothing and files nothing; the block's first byte is sh's prompt,
+so sh files `RCRan` at its own prompt byte through `file_write_link_blk`
+— sh reads its deed before it prints.  (c) The `cat: read error` tail IS refuted at the
+U tier (lane READ-RELAY, landed).  `FsAbsReadFire.read_post_fail`'s
+`0 <= n` arm names the address: `SysReadDefs.rd_fail_why P addr
+(Z.to_nat n)`, "a byte of the destination run the process's page table
+does not map for WRITING", relayed from `SpecCopyout.copyout_wrote`
+through `SpecEitherCopyout.either_copyout_ran`, `SpecReadi`'s `-1` arm
+and `ProofFileread` into `SpecFileread.fileread_extra_core`'s inode
+branch — whose table is `pt`, the one the console arm already carried, so
+nothing above `fileread` moved.  That arm is the ONLY `-1` an open
+readable inode descriptor can answer at `0 <= n` (readi's other break is
+dead under `bm_covers` and the kernel-arm copy cannot fail), so a caller
+that owns its destination buffer refutes it in one line
+(`FsAbsReadFire.read_arms_mapped`) — and the mapped row costs the program
+nothing, because `UkReadFile.wp_uk_ecall_read_file` already hands it out
+beside the resume image.  `UkFileOpen.wp_uk_read_deed_learns_mapped` is
+what cat's walk applies: at `0 <= cnt` it has no `-1` disjunct at all.
+The alternative `RCReadErr j` is NOT added.  (d) cat's walk (`UkCat*`) was landed claim-free — free
+write laws, trivial payload, generic open/read leaves — and is RESTATED
+on echo's mould (lane CAT-WALK: `kcat_w`/`kcat_pay_all`, `ukn_const`,
+deed arms over `UkFileOpen`'s corollaries) before `UCatKernel` exists.
+`UCatOut.v` (CAT-ENTRY) is the payment the restated walk consumes, and
+its section 1 — the block-byte family at the FILE stage, `EchoLinksLine.
+wr_blk_*`'s twin — is what the redirect child's and sh's rounds should
+be stated at too.
+
+After CAT-WALK (2026-09-17): the walk is restated (`kcat_w`/`kcat_wb`/
+`kcat_pay_seq`, the loop's ROUND LAW `kcat_round` — one persistent law
+funding a whole turn, the read's return selecting the branch, an
+additive `∧` after the write — `kcat_r`/`kcat_o`/`kcat_cl`, `kcat_pay_all`,
+`ukn_const`), the free chain is one corollary per level (the vacuity
+guard), and the ordering of cat's output closes payer-side once the
+read's offset is pinned (`kcat_r_of_deed_at`'s premise `off = off0`,
+which the HELD leaf discharges from `OffHeld off`).  RULED: (e) the
+deed open's path row reads the TEXT half (`utext_img`) and both cat's
+path (`argv[1]`) and the redirect child's (the line buffer) are heap
+DATA — so `UkRunSys` gets `wp_uk_ecall_open_recv_dimg`, the same walk
+at the persistent data image (`ubyteq … DfracDiscarded`, the step
+`ExecArgs.uargv_img_of_uargv` already takes), and the deed open
+suppliers get argv twins; the held open leaf is stated at the data
+image from the start.  (f) `UkCatDeed.v` (out of the build: a
+25-argument `iApply` that does not terminate) comes back through the
+unshelve hoist.  Lane CAT-WALK-2; `UCatKernel` after OFF-HAND-6.
 
 ### 5.4 sh execs cat, and the dispatch
 

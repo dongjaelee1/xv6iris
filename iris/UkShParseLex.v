@@ -14,9 +14,11 @@
 (*                       [malloc(168); memset(cmd,0,168); cmd->type=EXEC]  *)
 (*                                                                        *)
 (* THIS IS WHERE THE ALLOCATOR ENTERS.  [ushp_malloc_ok] is declared here  *)
-(* at the type the base file names ([UkShParse.ushp_malloc_ty]) and        *)
-(* [wp_kshp_execcmd] is its only consumer in the whole parser; every file  *)
-(* after this one carries it through and says so.                         *)
+(* at the type the base file names -- [UkShParse.ushp_malloc_ty_le] at     *)
+(* [B = 168], the BOUNDED contract (lane SH-MALLOC-3), because 168 is the  *)
+(* only size this file's call site asks for and the unbounded one does     *)
+(* not chain -- and [wp_kshp_execcmd] is its only consumer in the whole    *)
+(* parser; every file after this one carries it through and says so.      *)
 (*                                                                        *)
 (* See iris/UkShParse.v's header for why stage 4 is six files and what a   *)
 (* split costs.                                                            *)
@@ -102,7 +104,7 @@ Section UkShParseLex.
   Local Notation ushp_exec_pre := (UkShParse.ushp_exec_pre N).
   Local Notation ushp_frame_join := (UkShParse.ushp_frame_join N).
   Local Notation ushp_frame_split := (UkShParse.ushp_frame_split N).
-  Local Notation ushp_malloc_ty := (UkShParse.ushp_malloc_ty N).
+  Local Notation ushp_malloc_ty := (UkShParse.ushp_malloc_ty_le N 168).
   Local Notation ushp_peel0 := (UkShParse.ushp_peel0 N).
   Local Notation ushp_slots_nil0 := (UkShParse.ushp_slots_nil0 N).
   Local Notation ushp_sstr := (UkShParse.ushp_sstr N).
@@ -157,7 +159,11 @@ Section UkShParseLex.
   (* [parseline] and [parsecmd] land they will carry it THROUGH §7, each    *)
   (* labelled in its own header the way stage 2 labelled its seven.         *)
   (* ===================================================================== *)
-  (* stage 4's one Hypothesis, at the type the base file names *)
+  (* stage 4's one Hypothesis, at the type the base file names -- BOUNDED
+     at 168, [execcmd]'s own request (lane SH-MALLOC-3): the notation above
+     is [UkShParse.ushp_malloc_ty_le N 168], and the call site below passes
+     [168 <= 168].  Bounding it is what lets two of these CHAIN from one
+     [ushm_fresh]; see iris/UkShParse.v at [ushp_malloc_ty_le]. *)
   Context (UMalloc UMalloc' : iProp Σ).
   Hypothesis ushp_malloc_ok : ushp_malloc_ty UMalloc UMalloc'.
 

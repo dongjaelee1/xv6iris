@@ -519,6 +519,13 @@ Section UShKernel.
        generation came out of sh's OWN set. *)
     uvis_ch W = ∅ ->
     bv_unsigned (uvis_pid W) <> 1 ->
+    (* ...AND THE KEY'S TABLE IS ALL PARKED (lane OFF-HAND-3, R1): this
+       program answers for its own offsets ([UkRun.ukn_held] at [empty]),
+       and a record may claim that only at a key with no offset half
+       outside the kernel.  The caller reads it off
+       [SpecKexec.exec_slot_pre]'s wands, relayed through
+       [ExecEntry.image_entry_at]. *)
+    fdv_all_parked (uvis_fd W) ->
     (* THE PAYLOAD.  The data below the frame is handed over whole, and it
        is here that it is spent: on the line buffer, which every stage has
        needed, AND on [R] -- the two static lexer tables, the allocator's
@@ -601,7 +608,12 @@ Section UShKernel.
        uslot_mint_all]).  sh's console open is PINNED, so the taint has no
        bundle for row 15 and the preamble must be able to stop walking sh's
        code.  This is [UInitSh.init_sh_slot]'s third conjunct at [Q]. *)
-    □ (∀ W' : uvis, T -∗ my_pay (uvis_gen W') Q -∗ uslot W') -∗
+    (* ...AND THE TAINT ARM TAKES THE KEY'S ALL-PARKED ROW (lane
+       OFF-HAND-3, R1): the family a tainted process runs on is narrowed
+       to all-parked keys ([ExecEntry.image_entry_taint]), and sh's own
+       generic slot ([UkSh.ush_gen_slot]) relays the row to it. *)
+    □ (∀ W' : uvis, ⌜fdv_all_parked (uvis_fd W')⌝ -∗
+                    T -∗ my_pay (uvis_gen W') Q -∗ uslot W') -∗
     (* THE PAY FACT, at sh's own payload, and NOTHING BESIDE IT (lane
        SELF-KILL, P6b): no run carries a payload between traps any more,
        and what sh's exit owes crosses the exec as [PinnedExec]'s linear
@@ -624,16 +636,17 @@ Section UShKernel.
         ∗ UkSh.ush_wcp Wc Wb (take NSTD (uvis_fd W)) I 0%nat) ∨ T) -∗
     uslot W.
   Proof using .
-    intros Hbd HQc Hpc Hsub Hx Hal8 Hroom Hstk Hfdlen Hstop Hcwd0 Hlzf Hch0 Hpid1.
+    intros Hbd HQc Hpc Hsub Hx Hal8 Hroom Hstk Hfdlen Hstop Hcwd0 Hlzf Hch0 Hpid1
+           Hpark.
     iIntros "#Hpay #Hnpw #Hdep #Hdp #Htag #Hplaw #Hrest #Hfd0 Hin #Hgen #Hmp Hpos
              Hlease Hwcp".
     iApply (uslot_of_urun_all W (2 + (8 + (16 + (ush_Dbody + n0)))) Q
-              false Hal8 Hroom Hstk Hfdlen Hstop Hlzf ltac:(discriminate)
-              with "Hdep Hnpw Hmp").
+              ∅ Hal8 Hroom Hstk Hfdlen Hstop Hlzf
+              ltac:(exact (UsysMemOk.fdv_held_in_of_parked _ _ Hpark)) with "Hdep Hnpw Hmp").
     (* sh's own half of its children set travels in [UkSh.ush_pstate]
        beside the ledger and the cwd: fork1 MOVES the set, so the fragment
        goes down the chain index-free ([UserChildren.uch_any]). *)
-    iIntros (N h) "%Hpayeq %Hparkeq %Hsz Hszf #Ht Hstd Hcwf Hchf Hpidf Dlo _ Hrun".
+    iIntros (N h) "%Hpayeq %Hheldeq %Hsz Hszf #Ht Hstd Hcwf Hchf Hpidf Dlo _ Hrun".
     (* THE RECORD'S PAYLOAD IS SH'S, and it is CONSTANT: that is the whole
        of what the walk below needs of it ([UkRun.ukn_const]). *)
     pose proof (ukn_const_of_eq N Q Hpayeq HQc) as Hti.
@@ -652,7 +665,8 @@ Section UShKernel.
       - iRight. iRight. iExact "HT". }
     (* ...and the taint's continuation at this record's own payload *)
     iAssert (UkSh.ush_gen_slot N T) as "#Hgen'".
-    { rewrite /UkSh.ush_gen_slot Hpayeq. iExact "Hgen". }
+    { rewrite /UkSh.ush_gen_slot Hpayeq.
+      iSplitR; [ iPureIntro; exact Hheldeq | iExact "Hgen" ]. }
     (* sh's OWN READ-ONLY IMAGE, off the same text: the jump table, the
        "console" literal the pinned open resolves and the prompt's two
        bytes all live in it, so it is read out once here. *)
@@ -762,6 +776,10 @@ Section UShKernel.
        [sh_uexec_slot] (lane EXEC-SEAM) *)
     uvis_ch W' = ∅ ->
     bv_unsigned (uvis_pid W') <> 1 ->
+    (* ...AND THE KEY'S TABLE IS ALL PARKED (lane OFF-HAND-3, R1), passed
+       straight through: see [sh_uexec_slot].  The caller reads it off
+       [ExecEntry.image_entry_at]'s own row. *)
+    fdv_all_parked (uvis_fd W') ->
     (* the payload, passed straight through: see [sh_uexec_slot] *)
     (* the payload, passed straight through.  ITS [|==>] is lane SH-STATE's:
        sh's static state holds the two lexer tables at [DfracDiscarded]
@@ -806,7 +824,10 @@ Section UShKernel.
     (□ (∀ N : uk_names Σ, UkSh.ush_open_console_leaf N T)
      ∨ (□ (∀ N : uk_names Σ, UkSh.ush_open_absent_leaf N T K) ∗ K)
      ∨ T) -∗
-    □ (∀ W : uvis, T -∗ my_pay (uvis_gen W) Q -∗ uslot W) -∗
+    (* ...and the taint arm's key row, passed straight through: see
+       [sh_uexec_slot] *)
+    □ (∀ W : uvis, ⌜fdv_all_parked (uvis_fd W)⌝ -∗
+                   T -∗ my_pay (uvis_gen W) Q -∗ uslot W) -∗
     my_pay (uvis_gen W') Q -∗
     upos γp n -∗
     (* the lend, beside the position (lane KILL-PAY, K4(a); step 3) *)
@@ -815,7 +836,7 @@ Section UShKernel.
         ∗ UkSh.ush_wcp Wc Wb (take NSTD sts) I 0%nat) ∨ T) -∗
     uslot W'.
   Proof using .
-    intros Hbd HQc Hok Hcwd0 Hroom Hlen Hlzf Hch0 Hpid1.
+    intros Hbd HQc Hok Hcwd0 Hroom Hlen Hlzf Hch0 Hpid1 Hpark.
     (* THE MAP STOPS AT THE BREAK, off the image fact's own row: exec built
        a fresh address space, so [KexecBuilt.kxb_perm_below] says it maps
        nothing above the break, which is what lets sh's later [sbrk] see
@@ -922,6 +943,7 @@ Section UShKernel.
     - exact Hlzf.
     - exact Hch0.
     - exact Hpid1.
+    - exact Hpark.
   Qed.
 
   (* ------------------------------------------------------------------- *)
@@ -986,6 +1008,13 @@ Section UShKernel.
     kexec_sz sh_elf - PGSIZE + 8 * Z.of_nat (2 + (8 + (16 + (ush_Dbody + n0))))
       <= kxc_sp_final (kexec_sz sh_elf) alen na ->
     length sts = NOFILE ->
+    (* ...AND THE CALLER'S OWN TABLE IS ALL PARKED (lane OFF-HAND-4, S2).
+       sh's record is minted at [ukn_held = empty] ([sh_uexec_slot]), which
+       is honest only at such a key -- and since [ExecEntry.image_entry_at]
+       stopped relaying the row, the entry says it about the table it is
+       stated at.  sh's caller is /init, whose own run carries it
+       ([UkRun.urun_rows_parked]). *)
+    fdv_all_parked sts ->
     (* the two identity readings the CALLER makes, as equations against
        what [image_entry_at] relays (lane EXEC-SEAM) *)
     cs = ∅ ->
@@ -1024,16 +1053,22 @@ Section UShKernel.
             ∗ UkSh.ush_wcp Wc Wb (take NSTD sts) I 0%nat) ∨ T))
       uslot.
   Proof using .
-    intros Hbd HQc Hroom Hlen -> Hpid1.
+    intros Hbd HQc Hroom Hlen Hpks -> Hpid1.
     iIntros "#Hpay #Hnpw #Hdep #Hdp #Htag #Hplaw #Hrest #Hfd0 #Hin #Hgen".
     rewrite /image_entry_at. iIntros "!>" (W')
       "%Hok %Hcwd0 %Hlzf %Hchq %Hpiq Hmp (Hpos & Hlease & Hwcp)".
+    (* THE DISCIPLINE COMES OFF [sts] NOW (lane OFF-HAND-4, S2): the entry
+       stopped relaying it ([ExecEntry.image_entry_at]'s note), and the
+       image fact pins the resumed key's table to the caller's
+       ([SpecKexec.kexec_image_ok_fd]). *)
+    assert (Hpkq : fdv_all_parked (uvis_fd W'))
+      by (rewrite (kexec_image_ok_fd _ _ _ _ _ _ Hok); exact Hpks).
     assert (Hch0 : uvis_ch W' = ∅) by exact Hchq.
     assert (Hpid1' : bv_unsigned (uvis_pid W') <> 1)
       by (rewrite Hpiq; exact Hpid1).
     iApply (sh_slot_of_kexec R γp cn T K Q Ql Pm Wc Wb Hrl Hpm1 Hpm3 Hpmwb
               Hwc Hwbwc Hwbl Hwbr na alen afun sts W' n0 n Hbd HQc Hok Hcwd0
-              Hroom Hlen Hlzf Hch0 Hpid1'
+              Hroom Hlen Hlzf Hch0 Hpid1' Hpkq
               with "[] Hnpw Hdep Hdp Htag Hplaw Hrest Hfd0 [] [] Hmp Hpos Hlease
                     Hwcp").
     - (* the payload at THIS key, off the [∀]-over-keys wand *)

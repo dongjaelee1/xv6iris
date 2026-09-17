@@ -246,7 +246,7 @@ Section UInitCons.
     □ (∀ v : aview, app_pred app_run v -∗
                       app_pred app_run v ∗ (⌜cons_present_at i v⌝ ∨ T)) -∗
     app_inv γfs -∗
-    open_trunc_piece (fs_gamma_L γfs) vom Ft -∗
+    open_trunc_piece (fs_gamma_L γfs) vom trunc_permit_triv Ft -∗
     open_in (fs_gamma_L γfs) γfs FsImg.ROOTINO M pv vom
       (pobs_P T [FsImg.ROOTINO; i]) (pobs_Pmiss T) Farm Fun Fok Fex
       (pobs_Fo (cons_present_at i) T) Ft.
@@ -282,7 +282,7 @@ Section UInitCons.
     destruct (om_rdwr_plain vom Hom) as [Hcr Htr].
     iApply (init_cons_open_bundle γfs T i M pv vom Ft Farm Fun Fok Fex
               Hcr Hpath with "Hcl Hinv []").
-    iApply (open_trunc_piece_none _ vom Ft Htr).
+    iApply (open_trunc_piece_none _ vom _ Ft Htr).
   Qed.
 
   (* =================================================================== *)
@@ -305,7 +305,7 @@ Section UInitCons.
       ((⌜r = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜fdv' = sts⌝)
        ∨ (⌜open_fd_rcpt (om_readable vom) (om_writable vom)
               (FdDevice CONSOLE) sts r fdv'⌝
-          ∗ open_trunc_piece (fs_gamma_L γfs) vom Ft)
+          ∗ open_trunc_at (fs_gamma_L γfs) vom i Ft)
        ∨ T).
   Proof using .
     intros Hpath. iIntros "Hrc".
@@ -355,8 +355,14 @@ Section UInitCons.
   (* init's own bundle for an open it expects to fail.  The observation
      piece is the TRIVIAL one and honestly so: the walk dies before any
      node is locked, so it is never fired. *)
+  (* THE CREDENTIAL COMES HOME (lane F-OPEN-2, seam 2).  The walk is
+     [PinnedObs] section 8a's rather than section 8's: [K] rides the
+     CURSOR, so both arms of the death receipt refund it and init's
+     EXCLUSIVE console key survives its own first open.  Nothing else
+     about the statement moved -- the miss family is still a parameter,
+     and its two obligations are what [pobs_Pmiss_ref] answers. *)
   Lemma init_cons_open_bundle_absent (γfs : fs_names) (T : iProp Σ)
-      `{!Persistent T} `{!Timeless T} (K : iProp Σ)
+      `{!Persistent T} `{!Timeless T} (K : iProp Σ) `{!Timeless K}
       (Pmiss : nat -> Z -> iProp Σ)
       (M : gmap Z (bv 8)) (pv vom : mword 64)
       (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ))
@@ -365,37 +371,39 @@ Section UInitCons.
     om_arg vom = 2 ->
     arg_path_of M pv init_cons_pl ->
     init_cons_abs_law T K -∗
-    pobs_miss_free Pmiss -∗
+    pobs_miss_taint T Pmiss -∗
+    pobs_miss_hold K Pmiss -∗
     app_inv γfs -∗
     K -∗
     open_in (fs_gamma_L γfs) γfs FsImg.ROOTINO M pv vom
-      (pobs_P_dead T FsImg.ROOTINO) Pmiss Farm Fun Fok Fex
+      (pobs_P_dead_lin T K FsImg.ROOTINO) Pmiss Farm Fun Fok Fex
       (pfam_triv (fun (_ : aview) (_ : Z) (_ : anode) => True%I)) Ft.
   Proof using .
-    intros Hom Hpath. iIntros "#Hcl #Hfree #Hinv HK".
+    intros Hom Hpath. iIntros "#Hcl #Hmt #Hmh #Hinv HK".
     destruct (om_rdwr_plain vom Hom) as [Hcr Htr].
-    iApply (pinned_open_bundle_dead γfs cons_absent T K Pmiss FsImg.ROOTINO
-              init_cons_pl FsImg.ROOTINO M pv vom Ft Farm Fun Fok Fex
-              Hcr Htr cons_pin_misses_at Hpath with "Hcl Hfree Hinv HK").
+    iApply (pinned_open_bundle_dead_lin γfs cons_absent T K Pmiss
+              FsImg.ROOTINO init_cons_pl FsImg.ROOTINO M pv vom Ft
+              Farm Fun Fok Fex
+              Hcr Htr cons_pin_misses_at Hpath with "Hcl Hmt Hmh Hinv HK").
   Qed.
 
   (* ...AND THE RECEIPT: the call failed and the descriptor table did not
      move, or the application is tainted.  THERE IS NO THIRD ARM -- this is
      what kills the `fd 0 is open at SOME type` arm the head carried while
      init's first open went through the generic leaf. *)
-  Lemma init_cons_open_recv_absent (γfs : fs_names) (T : iProp Σ)
-      (Pmiss : nat -> Z -> iProp Σ)
+  Lemma init_cons_open_recv_absent (γfs : fs_names) (T K : iProp Σ)
       (M : gmap Z (bv 8)) (pv vom : mword 64)
       (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ))
       (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ))
       (sts : list fdstate) (r : mword 64) (fdv' : list fdstate) :
     arg_path_of M pv init_cons_pl ->
     open_receipt_plain (fs_gamma_L γfs) γfs FsImg.ROOTINO M pv vom
-      (pobs_P_dead T FsImg.ROOTINO) Pmiss Fo Ft sts r fdv' -∗
-      ((⌜r = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜fdv' = sts⌝) ∨ T).
+      (pobs_P_dead_lin T K FsImg.ROOTINO) (pobs_Pmiss_ref T K) Fo Ft
+      sts r fdv'
+    ={⊤}=∗ ((⌜r = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜fdv' = sts⌝ ∗ K) ∨ T).
   Proof using .
     intros Hpath. iIntros "Hrc".
-    iApply (pinned_open_dead γfs T Pmiss FsImg.ROOTINO init_cons_pl
+    iApply (pinned_open_dead_lin γfs T K FsImg.ROOTINO init_cons_pl
               FsImg.ROOTINO M pv vom Fo Ft sts r fdv' Hpath
               init_cons_path_elems_ne with "Hrc").
   Qed.
@@ -1118,7 +1126,7 @@ Section UInitCons.
   Qed.
 
   Lemma init_cons_laws_open_absent (γfs : fs_names)
-      (T K : iProp Σ) `{!Persistent T} `{!Timeless T}
+      (T K : iProp Σ) `{!Persistent T} `{!Timeless T} `{!Timeless K}
       (Pmiss : nat -> Z -> iProp Σ)
       (M : gmap Z (bv 8)) (pv vom : mword 64)
       (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ))
@@ -1127,17 +1135,18 @@ Section UInitCons.
     om_arg vom = 2 ->
     arg_path_of M pv init_cons_pl ->
     init_cons_abs_law T K -∗
-    pobs_miss_free Pmiss -∗
+    pobs_miss_taint T Pmiss -∗
+    pobs_miss_hold K Pmiss -∗
     app_inv γfs -∗
     K -∗
     open_in (fs_gamma_L γfs) γfs FsImg.ROOTINO M pv vom
-      (pobs_P_dead T FsImg.ROOTINO) Pmiss Farm Fun Fok Fex
+      (pobs_P_dead_lin T K FsImg.ROOTINO) Pmiss Farm Fun Fok Fex
       (pfam_triv (fun (_ : aview) (_ : Z) (_ : anode) => True%I)) Ft.
   Proof using .
     intros Hom Hpath.
-    iIntros "#Hc #Hfree #Hinv HK".
+    iIntros "#Hc #Hmt #Hmh #Hinv HK".
     iApply (init_cons_open_bundle_absent γfs T K Pmiss M pv vom Ft
-              Farm Fun Fok Fex Hom Hpath with "Hc Hfree Hinv HK").
+              Farm Fun Fok Fex Hom Hpath with "Hc Hmt Hmh Hinv HK").
   Qed.
 
   Lemma init_cons_laws_open_console (γfs : fs_names)

@@ -257,13 +257,20 @@ Section UkReadFile.
   (* design/user-read.md section 3's Inode arm, assembled: at a PINNED
      file the receipt's own row IS the content post, and the leaf's
      resume-image bridge is what carries it into the buffer the program
-     holds.  The disjunction is honest and it is the kernel's, not a
-     weakening: readi answers -1 when a copyout faults, and no row above
-     rules that out for an INODE descriptor -- [UexecRet.uexec_live_ok]
-     refutes -1 only at the console.  A caller that tests [r >= 0], which
-     is what cat's loop does, is in the left arm. *)
-  Lemma read_arms_file_learn (Γ := fs_gamma_L fsc_fs)
-      (i : Z) (γo : gname) (n : Z) (q : Qp) (bs0 : list (bv 8)) (nl : nat)
+     holds. *)
+  (* THE CALLER'S RECEIPT FAMILY: the pin goes in, the pin comes back, and
+     the observed row is named.  Named once because three lemmas below and
+     the test at the end of the file all speak it. *)
+  Definition file_read_fam (i : Z) (q : Qp) (bs0 : list (bv 8)) (nl : nat)
+      (Γ := fs_gamma_L fsc_fs)
+      : pfam Σ (aview -> nat -> anode -> nat -> iProp Σ) :=
+    MkPfam (fun (av : aview) (_ : nat) (_ : anode) (_ : nat) =>
+              (⌜av !! i = Some (MkAnode (AFile bs0) nl)⌝ ∗
+               nview Γ q i (MkAnode (AFile bs0) nl))%I)
+           (nview Γ q i (MkAnode (AFile bs0) nl)).
+
+  Lemma read_post_ok_file_learn (Γ := fs_gamma_L fsc_fs)
+      (i : Z) (n : Z) (q : Qp) (bs0 : list (bv 8)) (nl : nat)
       (r : mword 64) (M' : gmap Z (bv 8)) (addr : mword 64)
       (k : nat) (g : nat -> bv 8) :
     (forall j : nat, (j < k)%nat ->
@@ -271,26 +278,21 @@ Section UkReadFile.
     (forall j : nat, (j < k)%nat ->
        M' !! uint (add_vec_int addr (Z.of_nat j)) = Some (g j)) ->
     (Z.to_nat n <= k)%nat ->
-    read_arms Γ i γo n
-      (MkPfam (fun (av : aview) (_ : nat) (_ : anode) (_ : nat) =>
-                 (⌜av !! i = Some (MkAnode (AFile bs0) nl)⌝ ∗
-                  nview Γ q i (MkAnode (AFile bs0) nl))%I)
-              (nview Γ q i (MkAnode (AFile bs0) nl)))
-      r M' addr -∗
+    read_post_ok Γ i n (file_read_fam i q bs0 nl) r M' addr -∗
     nview Γ q i (MkAnode (AFile bs0) nl) ∗
-    (⌜r = (mword_of_int (-1) : mword 64)⌝
-     ∨ (∃ off : nat,
-          (* the COUNT: exactly design section 3's [min (cnt, |bs| - off)] *)
-          ⌜Z.to_nat (bv_unsigned r)
-           = ard_count (Z.to_nat n) off (length bs0)⌝ ∗
-          (* ...AND THE BYTES THE PROGRAM HOLDS ARE THE FILE'S *)
-          ⌜forall j : nat, (j < Z.to_nat (bv_unsigned r))%nat ->
-             g j = bs0 !!! (off + j)%nat⌝)).
+    (∃ off : nat,
+       (* the COUNT: exactly design section 3's [min (cnt, |bs| - off)] *)
+       ⌜Z.to_nat (bv_unsigned r)
+        = ard_count (Z.to_nat n) off (length bs0)⌝ ∗
+       (* ...AND THE BYTES THE PROGRAM HOLDS ARE THE FILE'S *)
+       ⌜forall j : nat, (j < Z.to_nat (bv_unsigned r))%nat ->
+          g j = bs0 !!! (off + j)%nat⌝).
   Proof using .
-    intros Hlin Himg Hnk. rewrite /read_arms /read_post_ok /read_post_fail.
-    iIntros "[Hok | [%Hm1 Hfail]]".
-    - iDestruct "Hok" as (av off a d) "(%Hpre & %Hn & %Htie & %Hdr & %Hbytes & [%Hav Hn2])".
-      (* the pin collapses the observed row onto the caller's value *)
+    intros Hlin Himg Hnk. rewrite /read_post_ok /file_read_fam.
+    cbn [pf_recv pf_refund].
+    iIntros "Hok".
+    iDestruct "Hok" as (av off a d) "(%Hpre & %Hn & %Htie & %Hdr & %Hbytes & [%Hav Hn2])".
+    (* the pin collapses the observed row onto the caller's value *)
       destruct Hpre as (Hrow & _ & Hsz).
       assert (Hab : a = MkAnode (AFile bs0) nl)
         by exact (arow_at_pinned _ _ _ _ Hrow Hav).
@@ -301,7 +303,7 @@ Section UkReadFile.
       apply Nat2Z.inj_le in Hsz. rewrite Nat2Z.inj_mul in Hsz.
       change (Z.of_nat MAXFILE) with 268 in Hsz.
       change (Z.of_nat BSIZE) with 1024 in Hsz.
-      iFrame "Hn2". iRight. iExists off.
+      iFrame "Hn2". iExists off.
       (* the return value IS the clamped count, so [d] is it too.  The
          count fits a 64-bit word because the row's own SIZE CAP is what
          [ard_pre] carries: a file is at most [MAXFILE * BSIZE] bytes, so
@@ -324,13 +326,82 @@ Section UkReadFile.
       pose proof (Hbytes ltac:(intros i0 Hi0; apply Hlin; lia) j Hjd) as HM.
       pose proof (Himg j ltac:(lia)) as HG.
       rewrite HM in HG. by injection HG.
+  Qed.
+
+  (* ...AND THE ARMS.  The disjunction is honest and it is the kernel's,
+     not a weakening: readi answers -1 when a copyout faults, and this
+     statement says only THAT it did.  Since lane READ-RELAY the arm also
+     says WHY, which is what [read_arms_file_learn_mapped] below spends;
+     a caller that does not own its buffer keeps this form and tests
+     [r >= 0], which is what cat's loop does. *)
+  Lemma read_arms_file_learn (Γ := fs_gamma_L fsc_fs)
+      (i : Z) (γo : gname) (P : uptd) (n : Z) (q : Qp) (bs0 : list (bv 8))
+      (nl : nat)
+      (r : mword 64) (M' : gmap Z (bv 8)) (addr : mword 64)
+      (k : nat) (g : nat -> bv 8) :
+    (forall j : nat, (j < k)%nat ->
+       uint (add_vec_int addr (Z.of_nat j)) = (uint addr + Z.of_nat j)%Z) ->
+    (forall j : nat, (j < k)%nat ->
+       M' !! uint (add_vec_int addr (Z.of_nat j)) = Some (g j)) ->
+    (Z.to_nat n <= k)%nat ->
+    read_arms Γ i γo P n (file_read_fam i q bs0 nl) r M' addr -∗
+    nview Γ q i (MkAnode (AFile bs0) nl) ∗
+    (⌜r = (mword_of_int (-1) : mword 64)⌝
+     ∨ (∃ off : nat,
+          ⌜Z.to_nat (bv_unsigned r)
+           = ard_count (Z.to_nat n) off (length bs0)⌝ ∗
+          ⌜forall j : nat, (j < Z.to_nat (bv_unsigned r))%nat ->
+             g j = bs0 !!! (off + j)%nat⌝)).
+  Proof using .
+    intros Hlin Himg Hnk. rewrite /read_arms /read_post_fail.
+    iIntros "[Hok | [%Hm1 Hfail]]".
+    - iDestruct (read_post_ok_file_learn i n q bs0 nl r M' addr k g
+                   Hlin Himg Hnk with "Hok") as "[$ H]".
+      iRight. iExact "H".
     - (* the sign guard hands the piece back unfired; the fault arm fires
          at advance 0.  Either way the pin comes home and nothing is
          claimed about the buffer. *)
+      rewrite /file_read_fam. cbn [pf_recv pf_refund].
       iSplitL "Hfail"; [ | iLeft; by iPureIntro ].
-      iDestruct "Hfail" as "[[_ Hpf] | [_ Hrec]]".
+      iDestruct "Hfail" as "[[_ Hpf] | [_ [_ Hrec]]]".
       + iApply (pf_at_refund with "Hpf").
       + iDestruct "Hrec" as (av off a) "[_ [_ $]]".
+  Qed.
+
+  (* ...AND AT A MAPPED DESTINATION THERE IS NO -1 ARM (lane READ-RELAY,
+     deliverable 2).  The premise is the row the leaf below already hands
+     out -- "every byte of the run I own is writable-mapped in any table the
+     trapping key admits" -- and it is the read's twin of the mapped row
+     with which [UkRunSys.usrc_ok] refutes the console write's short arm.
+     ONE LINE: the relay carried the copyout's reason all the way here, so
+     the arm dies at [FsAbsReadFire.read_arms_mapped] and what is left is
+     the ok arm this file already reads. *)
+  Lemma read_arms_file_learn_mapped (Γ := fs_gamma_L fsc_fs)
+      (i : Z) (γo : gname) (P : uptd) (n : Z) (q : Qp) (bs0 : list (bv 8))
+      (nl : nat)
+      (r : mword 64) (M' : gmap Z (bv 8)) (addr : mword 64)
+      (k : nat) (g : nat -> bv 8) :
+    (forall j : nat, (j < k)%nat ->
+       uint (add_vec_int addr (Z.of_nat j)) = (uint addr + Z.of_nat j)%Z) ->
+    (forall j : nat, (j < k)%nat ->
+       M' !! uint (add_vec_int addr (Z.of_nat j)) = Some (g j)) ->
+    (0 <= n)%Z ->
+    (Z.to_nat n <= k)%nat ->
+    (forall j : nat, (j < k)%nat ->
+       uva_wmapped P (uint (add_vec_int addr (Z.of_nat j)))) ->
+    read_arms Γ i γo P n (file_read_fam i q bs0 nl) r M' addr -∗
+    nview Γ q i (MkAnode (AFile bs0) nl) ∗
+    (∃ off : nat,
+       ⌜Z.to_nat (bv_unsigned r)
+        = ard_count (Z.to_nat n) off (length bs0)⌝ ∗
+       ⌜forall j : nat, (j < Z.to_nat (bv_unsigned r))%nat ->
+          g j = bs0 !!! (off + j)%nat⌝).
+  Proof using .
+    intros Hlin Himg Hn Hnk Hmap. iIntros "H".
+    iApply (read_post_ok_file_learn i n q bs0 nl r M' addr k g
+              Hlin Himg Hnk).
+    iApply (read_arms_mapped Γ i γo P n (file_read_fam i q bs0 nl) r M' addr k
+              Hn Hnk Hmap with "H").
   Qed.
 
   (* =================================================================== *)
@@ -349,20 +420,16 @@ Section UkReadFile.
       Z_to_bv 8 33%Z;    (* '!'  *)
       Z_to_bv 8 10%Z ].  (* '\n' *)
 
-  Definition cat_recv (Γ : fs_view_names Σ) (q : Qp) (i : Z) (nl : nat)
-      : pfam Σ (aview -> nat -> anode -> nat -> iProp Σ) :=
-    MkPfam (fun (av : aview) (_ : nat) (_ : anode) (_ : nat) =>
-              (⌜av !! i = Some (MkAnode (AFile cat_file) nl)⌝ ∗
-               nview Γ q i (MkAnode (AFile cat_file) nl))%I)
-           (nview Γ q i (MkAnode (AFile cat_file) nl)).
+  (* the caller's receipt family IS [file_read_fam] at the test's own file:
+     the pin goes in, the pin comes back, and the observed row is named. *)
 
   (* the caller's ONE piece, out of its pin and nothing else *)
   Lemma cat_piece (Γ := fs_gamma_L fsc_fs) (q : Qp) (i : Z) (γo : gname)
       (nl : nat) :
     nview Γ q i (MkAnode (AFile cat_file) nl) -∗
-    pf_at (aread_commit_at Γ appE i γo) (cat_recv Γ q i nl).
+    pf_at (aread_commit_at Γ appE i γo) (file_read_fam i q cat_file nl).
   Proof using .
-    iIntros "Hn". rewrite /pf_at /cat_recv /=. iSplit; [ | iExact "Hn" ].
+    iIntros "Hn". rewrite /pf_at /file_read_fam /=. iSplit; [ | iExact "Hn" ].
     iApply (aread_commit_at_pinned_self Γ appE i γo q
               (MkAnode (AFile cat_file) nl) with "Hn").
     iIntros (av off d) "%Hav Hn". iSplitR; [ by iPureIntro | iExact "Hn" ].
@@ -403,16 +470,16 @@ Section UkReadFile.
     intros Hn Hcnt Hcapk Hfdv Hfdlt Hal4.
     iIntros "#Hi Hrun Hufdh Hpin Hbuf Hcont".
     iDestruct (cat_piece q i γo nl with "Hpin") as "Hau".
-    iDestruct (udepwf_st_read_file N m pc wb i γo (cat_recv Γ q i nl)
+    iDestruct (udepwf_st_read_file N m pc wb i γo (file_read_fam i q cat_file nl)
                  with "Hau") as "Hsb".
     iApply (wp_uk_ecall_read_file N h m pc cnt k f avail
-              (read_file_fam (ukn_pay N) (cat_recv Γ q i nl)) fd
+              (read_file_fam (ukn_pay N) (file_read_fam i q cat_file nl)) fd
               (FdOpen true wb (FdInode i γo OffParked))
               Hn Hcnt Hcapk Hfdv Hfdlt Hal4 with "Hi Hrun Hsb Hufdh Hbuf").
     iIntros (h' r d g W M' fdv' cw' cs')
       "%Hd %Hgf %Hlin %Himg %Hnf %H0 %H1 %H2 %Hkey %Hlz %Hlive Hufdh Hpost Hrun Hbuf".
     iDestruct (spost_at_read_elim uslot
-                 (xfam_rdf (ukn_pay N) (cat_recv Γ q i nl)) W
+                 (xfam_rdf (ukn_pay N) (file_read_fam i q cat_file nl)) W
                  (m !!! Regidx a0_idx) (m !!! Regidx a1_idx)
                  (m !!! Regidx a2_idx) (uvis_fd W)
                  r M' fdv' cw' cs' H0 H1 H2 eq_refl with "Hpost")
@@ -425,8 +492,79 @@ Section UkReadFile.
     assert (Hc2 : sys_rw_count (m !!! Regidx a2_idx) = cnt)
       by (rewrite /sys_rw_count /trunc32; exact Hcnt).
     rewrite Hc2.
-    iDestruct (read_arms_file_learn i γo cnt q cat_file nl r M'
+    iDestruct (read_arms_file_learn i γo P cnt q cat_file nl r M'
                  (m !!! Regidx a1_idx) k g Hlin Himg ltac:(lia)
+                 with "Hcore") as "[Hpin Hlearn]".
+    iApply ("Hcont" $! h' r g with "Hufdh Hpin Hlearn Hrun Hbuf").
+  Qed.
+
+  (* ...AND THE SAME TEST WITH THE -1 ARM GONE (lane READ-RELAY,
+     deliverable 2).  The program pays NOTHING new for it: the mapped row
+     is one the leaf already hands out beside the resume image (it owns the
+     whole destination run, so every byte of it is writable-mapped in any
+     table the trapping key admits), and the only premise this adds is that
+     the request is not negative -- which is fileread's own sign guard and
+     the one -1 the relay does not speak to.  The refutation itself is one
+     [read_arms_file_learn_mapped]. *)
+  Lemma wp_uk_cat_read_learns_mapped (N : uk_names Σ) (h : CpuId) (m : regfile)
+      (pc : mword 64) (cnt : Z) (k : nat) (f : nat -> bv 8) (avail : nat)
+      (fd : nat) (wb : bool) (i : Z) (γo : gname) (q : Qp) (nl : nat)
+      (Γ := fs_gamma_L fsc_fs) :
+    usysno m = USYS_read ->
+    bv_signed (subrange_vec_dec (m !!! Regidx a2_idx) 31 0 : mword 32) = cnt ->
+    (0 <= cnt)%Z ->
+    (Z.to_nat cnt <= k)%nat ->
+    bv_signed (trunc32 (m !!! Regidx a0_idx)) = Z.of_nat fd ->
+    (fd < NOFILE)%nat ->
+    is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
+    uinstr_is (ukn_t N) pc false (ECALL tt) -∗
+    urun N h m pc avail -∗
+    UserFd.ufd (ukn_fd N) fd (FdOpen true wb (FdInode i γo OffParked)) -∗
+    nview Γ q i (MkAnode (AFile cat_file) nl) -∗
+    ubytes (ukn_d N) (uint (m !!! Regidx a1_idx)) k f -∗
+    (∀ (h' : CpuId) (r : mword 64) (g : nat -> bv 8),
+       UserFd.ufd (ukn_fd N) fd (FdOpen true wb (FdInode i γo OffParked)) -∗
+       nview Γ q i (MkAnode (AFile cat_file) nl) -∗
+       (∃ off : nat,
+          ⌜Z.to_nat (bv_unsigned r)
+           = ard_count (Z.to_nat cnt) off (length cat_file)⌝ ∗
+          ⌜forall j : nat, (j < Z.to_nat (bv_unsigned r))%nat ->
+             g j = cat_file !!! (off + j)%nat⌝) -∗
+       urun N h' (<[Regidx a0_idx := r]> m) (add_vec_int pc 4) avail -∗
+       ubytes (ukn_d N) (uint (m !!! Regidx a1_idx)) k g -∗
+       WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+  Proof using .
+    intros Hn Hcnt Hcnt0 Hcapk Hfdv Hfdlt Hal4.
+    iIntros "#Hi Hrun Hufdh Hpin Hbuf Hcont".
+    iDestruct (cat_piece q i γo nl with "Hpin") as "Hau".
+    iDestruct (udepwf_st_read_file N m pc wb i γo (file_read_fam i q cat_file nl)
+                 with "Hau") as "Hsb".
+    iApply (wp_uk_ecall_read_file N h m pc cnt k f avail
+              (read_file_fam (ukn_pay N) (file_read_fam i q cat_file nl)) fd
+              (FdOpen true wb (FdInode i γo OffParked))
+              Hn Hcnt Hcapk Hfdv Hfdlt Hal4 with "Hi Hrun Hsb Hufdh Hbuf").
+    iIntros (h' r d g W M' fdv' cw' cs')
+      "%Hd %Hgf %Hlin %Himg %Hnf %H0 %H1 %H2 %Hkey %Hlz %Hlive Hufdh Hpost Hrun Hbuf".
+    iDestruct (spost_at_read_elim uslot
+                 (xfam_rdf (ukn_pay N) (file_read_fam i q cat_file nl)) W
+                 (m !!! Regidx a0_idx) (m !!! Regidx a1_idx)
+                 (m !!! Regidx a2_idx) (uvis_fd W)
+                 r M' fdv' cw' cs' H0 H1 H2 eq_refl with "Hpost")
+      as "[%Hret Hcore]".
+    iDestruct "Hcore" as (P) "(%Hperm & %Hwf & %Hlazy & Hcore)".
+    (* THE MAPPED ROW, out of the leaf's own hand *)
+    assert (Hmap : forall j : nat, (j < k)%nat ->
+              uva_wmapped P
+                (uint (add_vec_int (m !!! Regidx a1_idx) (Z.of_nat j))))
+      by (intros j Hj; exact (Hnf P j Hwf Hperm (Hlazy Hlz) Hj)).
+    rewrite Hkey.
+    rewrite /fileread_extra_core /=.
+    assert (Hc2 : sys_rw_count (m !!! Regidx a2_idx) = cnt)
+      by (rewrite /sys_rw_count /trunc32; exact Hcnt).
+    rewrite Hc2.
+    iDestruct (read_arms_file_learn_mapped i γo P cnt q cat_file nl r M'
+                 (m !!! Regidx a1_idx) k g Hlin Himg Hcnt0 ltac:(lia) Hmap
                  with "Hcore") as "[Hpin Hlearn]".
     iApply ("Hcont" $! h' r g with "Hufdh Hpin Hlearn Hrun Hbuf").
   Qed.

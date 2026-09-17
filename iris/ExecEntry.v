@@ -111,6 +111,19 @@ Section ExecEntry.
           ⌜uvis_lazy W' = false⌝ -∗
           ⌜uvis_ch W' = cs⌝ -∗
           ⌜uvis_pid W' = pidv⌝ -∗
+          (* NO ALL-PARKED ROW HERE (lane OFF-HAND-4, S2; design/app-file.md
+             SS3 fact 4, RULED).  Lane OFF-HAND-3 relayed
+             [SpecKexec.exec_slot_pre]'s row into this entry, and that is
+             WRONG for a VERIFIED image: an entry that RECEIVES "the table
+             is all parked" can never be entered with a held row, and the
+             redirect child execs /echo holding [f] at a held offset.  The
+             fact is not lost -- [kexec_image_ok] pins [uvis_fd W' = sts]
+             ([SpecKexec.kexec_image_ok_fd]) and [sts] is a PARAMETER here,
+             so an entry that wants the discipline states it about [sts] as
+             its own premise and an entry that means to hold a row states
+             the set instead ([UsysMemOk.fdv_held_in]).  The TAINT arm
+             keeps a row, because the generic family really does need one:
+             see [image_entry_taint]. *)
           my_pay (uvis_gen W') Q -∗ Pay -∗ X W'))%I.
 
   (* ------------------------------------------------------------------ *)
@@ -130,6 +143,8 @@ Section ExecEntry.
           ⌜uvis_lazy W' = false⌝ -∗
           ⌜uvis_ch W' = cs⌝ -∗
           ⌜uvis_pid W' = pidv⌝ -∗
+          (* ...and NO all-parked row -- [image_entry_at]'s note (lane
+             OFF-HAND-4, S2) *)
           ⌜exec_args_of M av na alen afun⌝ -∗
           my_pay (uvis_gen W') Q -∗ Pay -∗ X W'))%I.
 
@@ -137,21 +152,22 @@ Section ExecEntry.
   (*  3.  THE TAINT'S ENTRY                                               *)
   (* ------------------------------------------------------------------ *)
 
-  (* WHY THIS ARM DOES *NOT* TAKE THE KEY'S ALL-PARKED ROW, although
-     [SpecKexec.exec_slot_pre]'s wands now carry it (lane OFF-HAND-2).  It
-     would be the natural place -- the taint arm is the one that runs on
-     the GENERIC family ([UexecExecMint.uslot_mint_all]), and that family
-     must eventually be narrowed to keys with no offset half outside the
-     kernel.  But a VERIFIED program's taint arm is built from its own
-     [UkSh.ush_gen_slot]-shaped slot, which is quantified over EVERY key
-     and spent inside [UkRun.urun]'s existential ([UkSh.ush_gen_run]), so
-     narrowing this arm pushes the obligation onto a table the U tier
-     cannot name.  The carrier that closes it is the U-tier held-row
-     counter (design/user-read.md SS8.4); until it exists the row stops at
-     the wand, where the kernel pays it. *)
+  (* ...AND IT TAKES THE KEY'S ALL-PARKED ROW TOO (lane OFF-HAND-3).  Lane
+     OFF-HAND-2 attempted this and reverted it, for a reason that is now
+     gone: a VERIFIED program's taint arm is built from its own
+     [UkSh.ush_gen_slot]-shaped slot, quantified over EVERY key and spent
+     inside [UkRun.urun]'s existential ([UkSh.ush_gen_run]), so narrowing
+     the arm used to push the obligation onto a table the U tier could not
+     name.  It can name it now: [UkRun.urun] carries the row
+     ([urun_rows]), guarded by the record's own [ukn_held] set, and every
+     verified program's entry constructor mints its record at [true].  So
+     the row goes all the way to the family the taint runs on, which is
+     what lets [UexecExecInst.xv6_sbundle]'s fire rows be narrowed in
+     their turn (design/user-read.md SS8.1). *)
   Definition image_entry_taint (T : iProp Σ) (Q : Z -> iProp Σ)
       (X : uvis -d> iPropO Σ) : iProp Σ :=
-    (□ (∀ W' : uvis, T -∗ my_pay (uvis_gen W') Q -∗ X W'))%I.
+    (□ (∀ W' : uvis, ⌜FdSlots.fdv_all_parked (uvis_fd W')⌝ -∗
+                     T -∗ my_pay (uvis_gen W') Q -∗ X W'))%I.
 
   Global Instance image_entry_at_persistent f na alen afun sts cw cs pidv
       Q Pay X :

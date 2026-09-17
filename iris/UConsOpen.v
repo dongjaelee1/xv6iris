@@ -431,7 +431,7 @@ Section UConsOpen.
       rewrite (arg_path_of_uniq M pv pl' init_cons_pl Hpath' Hpath).
       iApply (cons_walk_dead γfs T K HPT HTT HTK with "Hcl Hinv HK"). }
     iSplitR; [ iApply pobs_aopen_triv | ].
-    iApply (open_trunc_piece_none _ vom Ft Htr).
+    iApply (open_trunc_piece_none _ vom _ Ft Htr).
   Qed.
 
   (* ...AND THE RECEIPT: the call failed, the table did not move, AND THE

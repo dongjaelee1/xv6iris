@@ -229,3 +229,5 @@ import Xv6.ProofCopyout
 import Xv6.LinkCopyout
 import Xv6.ProofFreeproc
 import Xv6.LinkFreeproc
+import Xv6.ProofUvmalloc
+import Xv6.LinkUvmalloc

@@ -296,12 +296,12 @@ Section UInitTreeExec.
     rewrite /UkInit.init_exec_sup_lend. iIntros "!>" (γ np).
     rewrite /UkInit.init_exec_sup_pos.
     iIntros (N m pc l)
-      "%Hpeq %Hhd %Ha0 %Ha1 #Hro #Hargv Hstd Hrow Hcred Hpos Hlease Hchf Hpidf".
+      "%Hpeq %Ha0 %Ha1 #Hro #Hargv Hstd Hrow Hcred Hpos Hlease Hchf Hpidf".
     iMod (tree_lend_taint c stc l np with "Hcred") as "[Hcred #HT]".
     iDestruct (tree_init_exec_sup_pos c r cn stc γ np Heq Hcons Hkill
                  with "HT") as "Hnode".
     rewrite /UkInit.init_exec_sup_pos.
-    iApply ("Hnode" $! N m pc l with "[//] [//] [//] [//] Hro Hargv Hstd Hrow
+    iApply ("Hnode" $! N m pc l with "[//] [//] [//] Hro Hargv Hstd Hrow
                                       Hcred Hpos Hlease Hchf Hpidf").
   Qed.
 

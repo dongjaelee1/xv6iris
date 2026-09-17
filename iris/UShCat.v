@@ -899,10 +899,10 @@ Section UShCat.
     assert (Hsp0 : 0 <= uint (uvis_sp W)) by lia.
     assert (Hargc0 : 0 <= uvis_argc W)
       by exact (proj1 (uka_argc _ _ _ _ _ _ Hargs)).
-    iApply (uslot_of_urun_all W 42 Q ∅
+    iApply (uslot_of_urun_all W 42 Q
               Hal8 ltac:(unfold uvis_sp in Hroom; lia) Hstk Hfdlen Hstop
               Hlzf with "Hdep Hnpw Hmp").
-    iIntros (N h) "%Hpayeq %Hheldeq %Hsz Hszf #Ht Hstd Hcwf _ _ Dlo Dhi Hrun".
+    iIntros (N h) "%Hpayeq %Hsz Hszf #Ht Hstd Hcwf _ _ Dlo Dhi Hrun".
     (* ---- the buffer, out of the EXCLUSIVE low half ---- *)
     iDestruct (ubytes_of_map (ukn_d N) _ CatSyms.buf 512
                  (fun _ : nat => ubyte0)

@@ -763,10 +763,9 @@ Section UkInitMain.
        every other [Hxs] in this file merely threads the [box]. *)
     iMod ("Hxs" $! γ np N' (<[Regidx a7_idx := (mword_of_int 7 : mword 64)]> mc5)
             (mword_of_int 0x3ac) l
-            with "[%] [%] [%] [%] Hro Hargv Hstd Hrow Hcred Hpos Hlease Hch Hpid")
+            with "[%] [%] [%] Hro Hargv Hstd Hrow Hcred Hpos Hlease Hch Hpid")
       as "Hdepx".
     { exact Hpeq. }
-    { exact Hheq. }
     { rewrite (upd_ne mc5 (Regidx a7_idx) (Regidx a0_idx)
                  (mword_of_int 7 : mword 64)
                  ltac:(vm_compute; discriminate)).

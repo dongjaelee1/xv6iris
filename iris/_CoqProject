@@ -1566,4 +1566,5 @@ UkTreeRead.v
 UkTreeWrite.v
 UkTreeCreate.v
 TreeImg.v
+UTreeAdequacy.v
 # TreeAssumptions.v

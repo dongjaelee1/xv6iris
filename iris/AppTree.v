@@ -189,23 +189,40 @@ Local Open Scope Z_scope.
 (*  0.  THE GHOST CLASS                                                   *)
 (* ===================================================================== *)
 
-(* ONE class, bundling the cameras the claim is made of: the taint
-   counter (echo's [mono_nat], for the same reason -- a counter that has
-   left 0 can never come back, so its lower bound is a permanent,
-   persistent fact), the ownership map (used TWICE, at two names -- see
-   [tree_names] below) and the MOVE TOKEN's exclusive unit
-   (design/user-tree.md section 7.2's [tok]). *)
+(* ONE class, bundling the cameras the claim is made of: the ownership
+   map (used TWICE, at two names -- see [tree_names] below), the MOVE
+   TOKEN's exclusive unit (design/user-tree.md section 7.2's [tok]) and
+   the ERA-LICENCE REGISTRY.
+
+   THE REGISTRY REPLACED A [mono_nat] COUNTER (lane TL-5): the taint used
+   to be "a counter that has left 0", which is a permanent persistent
+   fact but is ONE resource, and the hand-down needs one linear licence
+   PER ERA -- section 2's own paragraph.  So the class carries a second
+   [ghost_mapG] and no [mono_natG]; the list is what the closed theorem's
+   [UTreeAdequacy.treeAppΣ] names, so an unused row here is a row in that
+   statement's trusted base.
+
+   TWO [ghost_mapG] INSTANCES IS A HAZARD, and it bit once: a bare [∅]
+   under [ghost_map_auth] no longer determines its key and value types,
+   so a landed statement that wrote one ([tree_body_empty]) resolved to
+   the WRONG map and its own proof stopped applying.  Annotate the map
+   literal wherever one appears. *)
 Class treeG (Σ : gFunctors) := TreeG {
-  tr_mono_nat : mono_natG Σ;
   tr_own_map  : ghost_mapG Σ gname (Z * ttree);
   tr_tok      : inG Σ (exclR unitO);
+  (* THE ERA-LICENCE REGISTRY (lane TL-5, the hand-down): the rows
+     [App.al_pow] files, one per era.  A LIVE row is that era's unspent
+     licence ([tree_turn]), a PERSISTED one is a spent one -- and the
+     taint is "some era's licence was spent". *)
+  tr_era      : ghost_mapG Σ nat unit;
 }.
-Global Existing Instance tr_mono_nat.
 Global Existing Instance tr_own_map.
 Global Existing Instance tr_tok.
+Global Existing Instance tr_era.
 
 Definition treeΣ : gFunctors :=
-  #[ mono_natΣ; ghost_mapΣ gname (Z * ttree); GFunctor (exclR unitO) ].
+  #[ ghost_mapΣ gname (Z * ttree); GFunctor (exclR unitO);
+     ghost_mapΣ nat unit ].
 
 Global Instance subG_treeΣ {Σ} : subG treeΣ Σ -> treeG Σ.
 Proof. solve_inG. Qed.
@@ -1299,8 +1316,26 @@ Qed.
 Section AppTree.
   Context {Σ : gFunctors} `{!treeG Σ}.
 
-  (* THE FIXED PART: the taint counter's name, born once, echo's
-     [echo_fixed] exactly. *)
+  (* THE FIXED PART: the ERA-LICENCE REGISTRY's name, born once, echo's
+     [echo_fixed] exactly.
+
+     IT WAS A BARE mono_nat COUNTER until lane TL-5, and the reason it is
+     a registry now is the HAND-DOWN, which the design page priced wrong
+     (design/user-tree.md section 9.1: "app_turn app_tree c k := tree_cl
+     c", the counter itself).  THAT CANNOT BE PAID.  [App.al_pow] must
+     yield [app_turn] at EVERY power-on out of [app_R] alone, and one
+     exclusive counter can be handed down ONCE: after era 1's <init> holds
+     it, era 2's power-on has nothing to hand, and a ledger arm weak
+     enough to be re-established after the hand-down (the counter's lower
+     bound, which the design page names) is PERSISTENT -- so the licence
+     would be free and the mint with it, which is exactly what
+     [tree_bump_free_is_vacuous] rules out.  So the licence is PER ERA and
+     the ledger keeps the AUTHORITY that mints one: the registry's
+     authority is [tree_cl] (born by [tree_birth], carried by [tree_R]),
+     era k's licence is a LIVE entry of it ([tree_turn]) and the taint is
+     a PERSISTED entry ([tree_taint]) -- "some era's licence was spent".
+     Allocation is free, so every era gets a licence; spending one is not,
+     because no entry exists without the authority. *)
   Definition tree_fixed : Type := gname.
 
   (* THE CLAIM'S INSTANCE NAMES, A PAIR (lane TL-3W, and the one deviation
@@ -1325,30 +1360,72 @@ Section AppTree.
   Definition tn_own (r : tree_names) : gname := r.1.
   Definition tn_tk (r : tree_names) : gname := r.2.
 
-  (* THE TAINT: the counter has left 0 and can never come back, so its
-     lower bound at 1 is a permanent, persistent fact -- "some move of
-     the file system was paid by nobody". *)
-  Definition tree_taint (c : tree_fixed) : iProp Σ := mono_nat_lb_own c 1.
+  (* THE TAINT: some era's licence has been SPENT, and a spent licence can
+     never come back -- a persisted registry entry is a permanent,
+     persistent fact -- "some move of the file system was paid by
+     nobody". *)
+  Definition tree_taint (c : tree_fixed) : iProp Σ :=
+    (∃ k : nat, k ↪[c]□ tt)%I.
 
   Global Instance tree_taint_persistent c : Persistent (tree_taint c).
   Proof. rewrite /tree_taint. apply _. Qed.
   Global Instance tree_taint_timeless c : Timeless (tree_taint c).
   Proof. rewrite /tree_taint. apply _. Qed.
 
-  Definition tree_cl (c : tree_fixed) : iProp Σ := mono_nat_auth_own c 1 0%nat.
+  (* THE ERA'S LICENCE ([App.app_turn] at this record): an UNSPENT entry of
+     the registry.  LINEAR -- it is a whole ghost-map element -- and one
+     per era, because [al_pow] files a fresh row at every power-on. *)
+  Definition tree_turn (c : tree_fixed) : iProp Σ :=
+    (∃ k : nat, k ↪[c] tt)%I.
+
+  Global Instance tree_turn_timeless c : Timeless (tree_turn c).
+  Proof. rewrite /tree_turn. apply _. Qed.
+
+  (* THE BIRTH RESOURCE ([App.app_cl]): the registry's authority.  The
+     LEDGER carries it for the whole run ([tree_R]), which is what lets
+     [al_pow] mint a licence at EVERY era rather than only at the first. *)
+  Definition tree_cl (c : tree_fixed) : iProp Σ :=
+    (∃ M : gmap nat unit, ghost_map_auth c 1 M)%I.
+
+  Global Instance tree_cl_timeless c : Timeless (tree_cl c).
+  Proof. rewrite /tree_cl. apply _. Qed.
 
   Lemma tree_birth : ⊢ |==> ∃ c : tree_fixed, tree_cl c.
   Proof.
-    iMod (mono_nat_own_alloc 0%nat) as (γ) "[Ha _]".
-    iModIntro. iExists γ. iExact "Ha".
+    iMod (ghost_map_alloc_empty (K := nat) (V := unit)) as (γ) "Ha".
+    iModIntro. iExists γ, ∅. iExact "Ha".
   Qed.
 
-  (* the mint TL-4's ledger runs at the first unpaid move *)
-  Lemma tree_taint_mint (c : tree_fixed) : tree_cl c ==∗ tree_taint c.
+  (* THE ERA'S MINT, and it is the whole of the hand-down: the ledger files
+     a FRESH row and keeps its authority, so the next era is served too. *)
+  Lemma tree_licence_mint (c : tree_fixed) :
+    tree_cl c ==∗ tree_cl c ∗ tree_turn c.
   Proof.
-    iIntros "Ha". rewrite /tree_cl /tree_taint.
-    iMod (mono_nat_own_update 1%nat with "Ha") as "[_ #Hlb]"; [lia |].
-    by iModIntro.
+    iIntros "Ha". iDestruct "Ha" as (M) "Ha".
+    iMod (ghost_map_insert (fresh (dom M)) tt with "Ha") as "[Ha Hk]".
+    { apply not_elem_of_dom. apply is_fresh. }
+    iModIntro. iSplitL "Ha"; [ iExists _; iExact "Ha" | ].
+    iExists (fresh (dom M)). iExact "Hk".
+  Qed.
+
+  (* ...AND WHAT A LICENCE IS WORTH BESIDE THE AUTHORITY: nothing is
+     derivable from the ledger alone, so an era that never received one
+     cannot taint the claim.  (The authority's own row for a LIVE licence
+     is exclusive, which is what makes [tree_turn] linear.) *)
+  Lemma tree_taint_needs_a_row (c : tree_fixed) (M : gmap nat unit) :
+    ghost_map_auth c 1 M -∗ tree_taint c -∗ ⌜M <> ∅⌝.
+  Proof.
+    iIntros "Ha (%k & Hk)".
+    iDestruct (ghost_map_lookup with "Ha Hk") as %Hlk.
+    iPureIntro. intros ->. by rewrite lookup_empty in Hlk.
+  Qed.
+
+  (* the mint an unpaid mover runs, at the era's own licence *)
+  Lemma tree_taint_mint (c : tree_fixed) : tree_turn c ==∗ tree_taint c.
+  Proof.
+    iIntros "(%k & Hk)". rewrite /tree_taint.
+    iMod (ghost_map_elem_persist with "Hk") as "#Hk".
+    iModIntro. iExists k. iExact "Hk".
   Qed.
 
   (* ---- 2a.  THE CLAIM ------------------------------------------------ *)
@@ -1512,7 +1589,13 @@ Section AppTree.
      at (the transport's clone, era 0's mint). *)
   Lemma tree_body_empty (r : tree_names) (av : aview) :
     aview_tree_wf av -> adir_at av FsImg.ROOTINO -> aview_rooted av ->
-    ghost_map_auth (tn_own r) 1 ∅ -∗ ghost_map_auth (tn_tk r) 1 ∅ -∗
+    (* THE EMPTY MAPS ARE ANNOTATED, and they have to be since lane TL-5:
+       [treeG] carries TWO [ghost_mapG] instances now (the ownership map
+       and the era-licence registry), so a bare [∅] under [ghost_map_auth]
+       no longer determines its key and value types and resolution may
+       pick the registry's. *)
+    ghost_map_auth (tn_own r) 1 (∅ : gmap gname (Z * ttree)) -∗
+    ghost_map_auth (tn_tk r) 1 (∅ : gmap gname (Z * ttree)) -∗
     tree_body r av.
   Proof.
     intros Hwf Hr Hro. iIntros "Ha Hk".
@@ -1610,12 +1693,14 @@ Section AppTree.
      live arm unworkable rather than merely awkward: [app_xfer_boot_raw]
      hands out a SECOND live claim at the one fixed [c] on every crossing,
      so a globally unique row could be transported only by tainting the
-     era at each one.)  So the counter travels WITH THE MOVER, and the era
-     hands it down: it is born with the fixed part ([tree_cl] IS
-     [App.app_cl] at this record) and reaches a process through the era's
-     own resources, not through the claim. *)
+     era at each one.)  So the LICENCE travels WITH THE MOVER, and the era
+     hands it down: the registry's authority is born with the fixed part
+     ([tree_cl] IS [App.app_cl] at this record), the ledger keeps it, and
+     [al_pow] files one licence per era which the kernel carries to
+     <init> ([App.app_turn]) -- through the era's own resources, never
+     through the claim. *)
   Lemma tree_step_bump (c : tree_fixed) (r : tree_names) (av av' : aview) :
-    tree_cl c -∗ ▷ tree_pred c r av ==∗ ▷ tree_pred c r av' ∗ tree_taint c.
+    tree_turn c -∗ ▷ tree_pred c r av ==∗ ▷ tree_pred c r av' ∗ tree_taint c.
   Proof.
     iIntros "Hcl _". iMod (tree_taint_mint c with "Hcl") as "#Ht".
     iModIntro. iSplit; [| iExact "Ht"].
@@ -1625,7 +1710,7 @@ Section AppTree.
   (* ...and the supply it buys, which is what a generic slot's every
      [AppInv.app_step] is then paid from ([AppInv.app_step_acc]). *)
   Lemma tree_sup_of_bump (c : tree_fixed) (r : tree_names) :
-    tree_cl c ==∗ app_sup_raw (tree_pred c) r.
+    tree_turn c ==∗ app_sup_raw (tree_pred c) r.
   Proof.
     iIntros "Hcl". iMod (tree_taint_mint c with "Hcl") as "#Ht".
     iModIntro. iApply (tree_sup_of_taint c r with "Ht").
@@ -2436,18 +2521,21 @@ End AppTree.
    orphaned, and nothing moves an orphaned subtree until a parent
    re-grants it).
 
-   THE LEDGER IS A PLACEHOLDER (header, "what is owed"): it carries the
-   taint counter's birth so that the counter is not dropped, and it never
-   bumps it.  TL-4 replaces it with echo's shape. *)
+   THE LEDGER IS THE ERA-LICENCE REGISTRY'S AUTHORITY (lane TL-5's
+   hand-down): it carries the fixed part's birth for the whole run, which
+   is what lets the power-on step file ONE LICENCE PER ERA and hand it to
+   <init> through [App.app_turn].  It records nothing about the trace --
+   the taint's mint is a ghost move inside a process's own step and NO
+   trace event witnesses it (design section 8.2), so there is nothing for
+   a trace ledger to see. *)
 Section AppTreeRecord.
   Context {Σ : gFunctors} `{!treeG Σ}.
 
-  (* the ledger: the counter, or the taint it has already become *)
-  Definition tree_R (c : tree_fixed) (_ : list mobs) : iProp Σ :=
-    (tree_cl c ∨ tree_taint c)%I.
+  (* the ledger: the registry's authority, at every history *)
+  Definition tree_R (c : tree_fixed) (_ : list mobs) : iProp Σ := tree_cl c.
 
   Global Instance tree_R_timeless c h : Timeless (tree_R c h).
-  Proof. rewrite /tree_R /tree_cl /tree_taint. apply _. Qed.
+  Proof. rewrite /tree_R. apply _. Qed.
 
   (* THE ERA'S FIRST DEED, as the boot resource (design section 6, finding
      4, landed by TL-3): the era's first process owns "/" at whatever the
@@ -2466,7 +2554,11 @@ Section AppTreeRecord.
              application says nothing about a received byte, puts no price
              on a kill and claims nothing of the console *)
           (fun _ => app_iface_triv Σ)        (* app_ifc *)
-          (fun _ _ => emp%I)                 (* app_turn *)
+          (* THE ERA'S TURN (lane TL-5): the licence its <init> may spend
+             to taint the claim -- the one per-era linear channel from the
+             application to the era's first process, and the ONLY route by
+             which [AppInv.app_sup] is ever reachable at this record. *)
+          (fun c _ => tree_turn c)           (* app_turn *)
           (fun _ _ => True).                 (* app_phi *)
 
   (* ---- the obligations of [App.xv6_app_adequacy] that are lemmas ---- *)
@@ -2517,12 +2609,15 @@ Section AppTreeRecord.
   Lemma app_tree_R0 (c : app_fixed app_tree) :
     app_cl app_tree c ⊢ |==> app_R app_tree c [].
   Proof.
-    cbn [app_tree app_cl app_R]. rewrite /tree_R. iIntros "H". iModIntro.
-    iLeft. iExact "H".
+    cbn [app_tree app_cl app_R]. rewrite /tree_R. iIntros "H". by iModIntro.
   Qed.
 
-  (* the power step: the ledger rides, and the era's console resources are
-     both [emp] *)
+  (* THE POWER STEP, AND THE HAND-DOWN (lane TL-5): the ledger rides, the
+     era's console claim is [emp] -- and the era's TURN is a fresh licence
+     filed in the registry the ledger holds.  This is the one step of the
+     machine that runs once per era, so it is the only place a per-era
+     linear thing can be minted, and the kernel carries it to <init>
+     ([App.app_turn]'s own paragraph). *)
   Lemma app_tree_pow (c : app_fixed app_tree) (h : list mobs) (on : bool)
       (dk : Z -> bv 8) :
     trace_shape h on ->
@@ -2535,8 +2630,11 @@ Section AppTreeRecord.
   Proof.
     intros _. rewrite /app_cons.
     cbn [app_tree app_R app_ifc app_iface_triv ai_cons app_turn].
-    iIntros "H". iModIntro. iSplitL "H"; [iExact "H" |].
-    destruct on; by repeat iSplitR.
+    rewrite /tree_R. iIntros "H".
+    destruct on.
+    { iModIntro. iSplitL "H"; [iExact "H" |]. done. }
+    iMod (tree_licence_mint c with "H") as "[H Ht]". iModIntro.
+    iSplitL "H"; [iExact "H" |]. iSplitR; [done |]. iExact "Ht".
   Qed.
 
   Lemma app_tree_boot (c : app_fixed app_tree) (k : nat) :
@@ -2559,21 +2657,20 @@ End AppTreeRecord.
 (*  [App.xv6_app_adequacy_triv_xv6Σ]'s [ltac:] block): [Htx], [Hrx],      *)
 (*  [Hphi] (the conclusion is [True]).                                    *)
 (*                                                                       *)
-(*  OPEN, and TL-4's:                                                     *)
-(*    [Happ_init] -- era 0's claim at the IMAGE's view.  [tree_init] is   *)
-(*      it, GATED on the pure fact [aview_tree_wf (abs_view (fss_inodes   *)
-(*      (img_state …)))]: the mkfs image's namespace has unique proper    *)
-(*      parenthood and no dangling entry.  A computation over the image,  *)
-(*      on [FsImgCheck]'s mould.                                          *)
-(*    [Hinit_boot] -- the first process's exec bundle at "/init", echo's   *)
-(*      [UInitSh] construction at this claim.  Finding 2 is CLOSED (TL-3:  *)
-(*      [TreeExec.exec_walk_of_own] at [ExecRun]'s absnode-level chain),   *)
-(*      so a PINNED bundle is buildable; what is left is the construction. *)
-(*    ...and the LEDGER (SEAM-I): [tree_taint] IS mintable now --        *)
-(*      [tree_sup_of_bump] mints it from [tree_cl], which IS [app_cl] at  *)
-(*      this record -- but [app_R] still buries the counter and           *)
-(*      [app_turn] here is [emp], so nothing HANDS IT DOWN to a process.  *)
-(*      TL-5's shape: [app_turn app_tree c k] carries the counter (the    *)
-(*      one per-era linear channel, minted by [al_pow]) and [tree_R]      *)
-(*      demotes to the lower bound.  design/user-tree.md section 9.1.     *)
+(*  LANDED ELSEWHERE:                                                     *)
+(*    [Happ_init] -- era 0's claim at the IMAGE's view: [TreeImg.         *)
+(*      tree_Happ_init] (lane TL-4), a computation over the mkfs image.   *)
+(*    [Hinit_boot] -- the first process's exec bundle at "/init":         *)
+(*      [UTreeAdequacy.tree_Hinit_boot] (lane TL-5), out of the ERA'S OWN *)
+(*      LICENCE ([app_turn] above): the licence mints the taint           *)
+(*      ([tree_sup_of_bump]), the taint IS [AppInv.app_sup] at this claim *)
+(*      ([tree_sup_of_taint]), and the generic bundle follows             *)
+(*      ([SystemAdequacy.init_boot_of_sup]).  design/user-tree.md         *)
+(*      section 9.1's wall (a), closed the way section 8.4 wanted.        *)
+(*    ...and the whole class instance and the closed corollary at the     *)
+(*      literal image: [UTreeAdequacy.v].                                 *)
+(*                                                                       *)
+(*  WHAT THE SECOND APPLICATION DOES NOT YET HAVE, and design/user-tree.md *)
+(*  section 9.2 is the worklist: a VERIFIED <init> at this claim, which   *)
+(*  would move the mint from the boot bundle to <init>'s own exec of /sh. *)
 (* ===================================================================== *)

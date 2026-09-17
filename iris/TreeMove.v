@@ -222,15 +222,15 @@ Section TreeMove.
   (* ...and THE UNPAID MOVER'S OWN STEP (SEAM-I's consumer,
      [AppTree.tree_step_bump] at the fire's shape).  This is the step that
      the seam bought: it is NOT an [AppInv.app_step] under the old,
-     update-free reading, because paying it BUMPS the era's taint counter.
-     A party holding the counter may therefore move the view without
+     update-free reading, because paying it SPENDS the era's licence.
+     A party holding the era's licence may therefore move the view without
      answering for it, at the price of recording the move as the taint --
      which is exactly what an exec into an unverified image spends
      ([ExecEntry.image_entry_taint] is a wand FROM the taint). *)
   Lemma tree_app_step_bump (c : tree_fixed) (r : tree_names) (i : Z)
       (I : gmap Z fs_node) (av' : aview) :
     file_app = MkAppcfg tree_names (tree_pred c) r ->
-    tree_cl c -∗ app_step i I av'.
+    tree_turn c -∗ app_step i I av'.
   Proof.
     intros Heq. rewrite /app_step Heq. cbn [app_pred app_run app_names].
     iIntros "Hcl" (n') "%Hav Hp". rewrite Hav.

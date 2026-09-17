@@ -462,6 +462,86 @@ byte, so `ls ⊑ efl_before h k` (under the taint the conjunct is `T`).
 `al_pow`'s seed is `fecl` at the empty stage with `o_f0 = None`, plus
 the turn.  `Hphi` reads `file_phi` off the ledger as `echo_R_phi` does.
 
+### 4.3a What lane STAGE landed, and the two rulings (2026-09-17)
+
+STAGE landed 4.1–4.4 in `FileOutPure.v`, `FileOut.v`, `FileLinks.v`,
+`AppFileRec.v` (whole tree green, both audits unchanged) with these
+corrections to the text above, which are now the design:
+
+- **The tag is at the FILE discipline**: `ftag h := ⌜trace_shape h true⌝
+  ∗ (⌜disc_f h⌝ ∨ file_taint c) ∗ fl_lb c (efl_of h)` — NOT `etag ∗ lb`,
+  because `disc_f h` does not imply `disc h` (a `cat` line is not an echo
+  line).  The ledger's counter is at `decide (disc_f h)`.
+- **No total range condition**: the stage carries the POINTWISE
+  `alts_pre I cs` and `FileDisc.alts_ok` is reached by padding
+  (`alts_pad`), which moves no prologue round.
+- **`feout_pure`'s `o_f0` clause is an IFF** (`o_f0 = None <-> o_E = []
+  /\ o_w = []`).
+- **The era's first byte is a prologue-choice write**: at `ps0 = []` the
+  plain link's premise is unsatisfiable, so `file_write_link_first` is the
+  `_pro` shape at the empty stage and needs no stage premise.
+- **The record's fixed part is `FileOut.file_gn`** (AppFile's
+  `file_fixed` paired with the era map's gname); AppFile's lemmas are read
+  at `fgn_cl g`.
+- **The read exports a truncated choice list** (`fread_ret`).
+- **Determinacy at two boot states** (`sessf_prefix_det2`): the
+  discipline's witness and the claim's own need not agree, and
+  `alt_seq_f_prefix_det` already takes them apart.
+- **`al_programs` is a section hypothesis** of `AppFileRec.file_laws`
+  until SH-ROUND lands (the preferred shape).
+
+STAGE named two blockers.  RULINGS:
+
+**Blocker 1 — `Decision (disc_f h)` is a section hypothesis of `FileOut`.**
+The ledger's counter must decide the file discipline at every rx.
+`disc_f`'s `∃ s : fst` ranges over all byte lists; the rest (`∃ ps cs`)
+ports from `EchoDisc.disc_seg'_dec` (`pro_cands`, `bounded_lists`, plus
+an enumerator of `sel`s).  THE FIX IS A CANONICALISATION LEMMA, not a
+change to the discipline: a boot state's content surfaces on the wire
+only through an `RCRan` round whose state is `s0` itself (the state
+before a round is `s0` exactly, or a reset value `Some []`/`Some (subseq
+…)` that does not depend on `s0` — `fsm` never modifies `s0`, and
+`RFOpenM` keeps a present state), and there it is printed VERBATIM
+(`cont (Some bs) LCat RCRan = bs ++ u_prompt`) inside a checked
+transcript, hence a contiguous substring of that prefix's wire.  If no
+checked transcript (`p ∈ in_pres seg`) contains such a round, every
+checked transcript is IDENTICAL at `Some []` (the state chains agree
+pointwise except at `s0`-derived positions, and `cont` reads the state
+only at `RCRan`).  So `(∃ s, fst_ok s /\ disc_seg_f' s seg) <-> (∃ s ∈
+scands seg, …)` with `scands seg := None :: Some [] :: (Some <$>
+substrings (obs_wire Uart0 seg))` — finite — and `fcont_ok` is decidable
+(`last bs = Some wl_nl` and `Forall wl_body_byte` of the rest).  Lane
+FILE-DEC (`iris/FileDiscDec.v`): `Global Instance disc_f_dec h :
+Decision (disc_f h)`, then `FileOut`'s `Hdf` context goes.  Not on any
+program lane's critical path.
+
+**Blocker 2 — `file_phi`'s `echof_lines_before` IS reachable; no claim
+change.**  STAGE compared the deed's witness against the ledger's line
+list at EVERY drain and dropped `file_phi`'s antecedent.  Both are the
+error.  The ledger's conclusion is `FileDisc.file_phi h` VERBATIM (the
+antecedent `disc_f h` included; `disc_f` is prefix-closed —
+`FileOutPure.disc_f_prefix` — so the induction at each step assumes the
+discipline of the NEW history and gets the old one's witnesses), and the
+era's boot state is FIXED AT THE ERA'S FIRST DRAIN, where the cycle's
+input is empty: under `disc_f h`, a cycle whose wire is empty has no
+input byte (D2 at the prefix before its first input byte would put
+`pro_of ps` — nonempty under `pro_ok_f` — on an empty wire), so
+`efl_of h = echof_lines_before h (obs_boots h)` exactly there, and
+`f0_typed_adm` reads the witness's `ls ⊑ efl_of h` AS `fadm_boot
+(echof_lines_before h k) s0`.  At cycle 0 the same reading refutes the
+`Some` arm (`ws ∈ ls ⊑ []`), which is the guarded first clause.  The
+ledger keeps, per era, the state it fixed: `f0_lb vf s0` from
+`fdrain_ret` (which hands the era pin and the lower bound beside the
+witness; the stage holds `f0_auth vf [s0]`), and every later drain's
+`s0` agrees with it (two lower bounds of a list of length ≤ 1).  The
+pure carrier is `∃ s0s, ⌜disc_f h -> file_phi_body h s0s⌝` with the
+current era's entry pinned by the lower bound once the era has drained
+(`obs_wire Uart0 (open_seg h) ≠ []`, a pure condition), and `None`
+provisionally at `al_pow` (an empty cycle is good at any state; `None`
+is admissible anywhere), REPLACED at the first drain.  Lane STAGE-2, in
+`FileOut.v`/`FileOutPure.v` only; `AppFileRec.file_phi := fun _ h =>
+FileDisc.file_phi h`.
+
 ### 4.4 The record (AppFile layer B)
 
 `app_file := MkApp file_fixed file_cl file_names file_pred file_boot

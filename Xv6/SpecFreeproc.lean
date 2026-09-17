@@ -5,6 +5,12 @@ and the address space (each if present) returned to the allocator, the
 pid cleared under `pid_lock`, the public fields zeroed, the slot UNUSED.
 Uncounted.  Needs 44 slots (4 + `proc_freepagetable`'s 40).
 
+PINNED AT INTERRUPTS OFF (`hsie`), and it has to be: the post hands
+`procHeld` back, and `procHeld` names the hart the lock is HELD ON, while
+`wpNext`'s hart equality holds only under `k.sie = false ∨ k.proc = 0`.
+Both callers hold `p->lock`, so interrupts are off on this hart anyway
+(the Rocq contract pins the same way).
+
 Imports only definitional files (never a `Code*` or `Proof*` file).
 -/
 import MachCSL.WpSmodeFrame
@@ -26,11 +32,19 @@ section
 variable {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [CurCtx]
 
 /-- What `freeproc` takes of the block: the private fields, the trapframe
-page if `trapframe ≠ 0`, the address space if `pagetable ≠ 0`. -/
+page if `trapframe ≠ 0`, the address space if `pagetable ≠ 0`.  The files
+are already closed and the cwd dropped (the Rocq `fp_rest`'s two pure
+rows): `freeproc` only zeroes cells, so what the UNUSED block it rebuilds
+records of `ofile`/`cwd` has to arrive here.  The trapframe page carries
+its `pageValid` (Rocq `fp_tf`), which is what `kfree` demands of the
+pointer it is handed and which the pagetable arm, when absent, cannot
+supply. -/
 def freeprocIn (pa : BitVec 64) (pid : BitVec 32) (V : ProcPriv) (M : Nat → List (BitVec 8)) : IProp GF := iprop%
+  ⌜V.ofile = List.replicate NOFILE 0#64 ∧ V.cwd = 0#64⌝ ∗
   wordPointsTo (pPid pa) 4 pidPriv pid ∗ procFields pa (DFrac.own 1) V ∗
   stackOwn (V.kstack + 4096#64) 512 ∗
-  (if V.trapframe = 0#64 then emp else ⌜V.trapframe = pageAddr V.upt.tfp⌝ ∗ tfPageAt V.upt.tfp V.tf) ∗
+  (if V.trapframe = 0#64 then emp else
+    ⌜V.trapframe = pageAddr V.upt.tfp ∧ pageValid V.trapframe⌝ ∗ tfPageAt V.upt.tfp V.tf) ∗
   (if V.pagetable = 0#64 then emp else
     ⌜V.pagetable = pageAddr V.upt.root ∧ V.sz.toNat ≤ uvmMaxsz ∧ umBelow V.sz V.upt⌝ ∗ procPtAt V.upt M)
 
@@ -40,7 +54,7 @@ def wp_freeproc_body {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G
     (Γ : SchedNames) (cpu : CPU) (k : KCtx) (γl γp : GName) (γk : KmemNames) (j : Nat) (st : BitVec 32) (ch : BitVec 64)
     (pid : BitVec 32) (V : ProcPriv) (M : Nat → List (BitVec 8))
     (hj : j < NPROC) (hp : k.regs 10#5 = procAddr j) (hst : st = USED ∨ st = ZOMBIE)
-    (hnoff : k.noff + 1 < 2 ^ 31) (hK : freeprocSlots ≤ k.avail)
+    (hnoff : k.noff + 1 < 2 ^ 31) (hK : freeprocSlots ≤ k.avail) (hsie : k.sie = false)
     (hlk : "kmem" ∉ k.locks) (hlp : "nextpid" ∉ k.locks) (htier : k.tier = KTier.kpt) : Prop :=
   kctx cpu k ∗ pcIs cpu freeprocAddr ∗ isLock γl kmemLockAddr "kmem" (kmemRes γk) ∗ kallocAvail γk none ∗
   isLock γp pidLockAddr "nextpid" pidLockPay ∗
@@ -55,7 +69,7 @@ def wp_freeproc_body {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G
 structure FREEPROC : Prop where
   wp_freeproc : ∀ {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G GF] [CurCtx] (Γ : SchedNames) (cpu : CPU) (k : KCtx)
     (γl γp : GName) (γk : KmemNames) (j : Nat) (st : BitVec 32) (ch : BitVec 64) (pid : BitVec 32) (V : ProcPriv)
-    (M : Nat → List (BitVec 8)) hj hp hst hnoff hK hlk hlp htier,
-    wp_freeproc_body (hlc := hlc) (GF := GF) Γ cpu k γl γp γk j st ch pid V M hj hp hst hnoff hK hlk hlp htier
+    (M : Nat → List (BitVec 8)) hj hp hst hnoff hK hsie hlk hlp htier,
+    wp_freeproc_body (hlc := hlc) (GF := GF) Γ cpu k γl γp γk j st ch pid V M hj hp hst hnoff hK hsie hlk hlp htier
 
 end Xv6

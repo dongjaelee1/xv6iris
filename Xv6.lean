@@ -174,6 +174,9 @@ import Xv6.SpecVmfault
 import Xv6.UMem
 import Xv6.SpecCopyout
 import Xv6.SpecUvmcopy
+
+import Xv6.UPtFaultLemmas
+
 import Xv6.UPtLemmas
 import Xv6.PidLock
 import Xv6.SpecProcPagetable
@@ -181,19 +184,37 @@ import Xv6.SpecFreeproc
 import Xv6.SpecAllocproc
 import Xv6.SpecKilled
 import Xv6.SpecGrowproc
+import Xv6.UMemLemmas
 import Xv6.ProofUvmcreate
 import Xv6.LinkUvmcreate
 import Xv6.UPtWalkaddrLemmas
 import Xv6.ProofWalkaddr
 import Xv6.LinkWalkaddr
-import Xv6.KstackMap
 import Xv6.UPtUnmapLemmas
 import Xv6.ProofUvmunmap
 import Xv6.LinkUvmunmap
+
+import Xv6.WaitLock
+import Xv6.FsEnv
+import Xv6.KstackMap
 import Xv6.UPtFreeLemmas
 import Xv6.ProofFreewalk
 import Xv6.LinkFreewalk
 import Xv6.ProofUvmfree
 import Xv6.LinkUvmfree
+
+import Xv6.SpecForkret
+import Xv6.ForkretRecord
+
+import Xv6.SpecReparent
 import Xv6.ProofKilled
 import Xv6.LinkKilled
+import Xv6.SpecKexit
+import Xv6.SpecKwait
+import Xv6.SpecKfork
+import Xv6.SpecUserinit
+import Xv6.SpecEither
+import Xv6.ProofEither
+import Xv6.LinkEither
+import Xv6.UPtPptLemmas
+import Xv6.LinkProcPagetable

@@ -46,7 +46,9 @@ Require Import EchoOut.           (* [era_pin] / [era_pins] *)
 Require Import EchoLinks.         (* [echo_links] / [ewc_ban] *)
 Require Import EchoLinksLine.     (* [ewc_lcred] and its two laws *)
 Require Import UShEcho.           (* [sh_echo_slot] *)
-Require Import UShLine.           (* [ush_mid] *)
+Require Import LinkRec.           (* the era's link record *)
+Require Import StageRec.          (* the cursor / stage record *)
+Require Import UShLine.           (* [ush_mid] / [ush_mid_at] *)
 Require Import UShPanic.          (* [ush_panic_law_holds] *)
 Require Import UShEchoPay.        (* the paid child's two laws *)
 Require Import UInitSh.           (* [sh_Rsh] *)
@@ -173,3 +175,75 @@ Section UShRest.
   Qed.
 
 End UShRest.
+
+(* ===================================================================== *)
+(*  THE SAME GLUE OVER THE RECORD (lane LINK-GEN-3).                      *)
+(*                                                                       *)
+(*  [sh_rest_holds] above is echo's; this is the ONE statement a second   *)
+(*  era instantiates.  The family is [UShRound]'s exactly --              *)
+(*  [Wcf I p := Wcl I p ∗ Hold I] and [Wbf I := (∃ v, pin ∗ ban) ∗        *)
+(*  Hold I] -- so the file application's [ush_rest_l] is ONE application  *)
+(*  of it once [file_link_inst] / the file's [StageRec] exist.  It is NOT *)
+(*  the whole of [UShRound.sh_round_holds_file]: the redirect child is a  *)
+(*  law [UkShFork.ushf_rest_of_body] does not take.                       *)
+(* ===================================================================== *)
+Section UShRestGen.
+  Context `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ,
+            !irefslotG Σ, !pavG Σ, !wchG Σ, !ufdG Σ}.
+  Context `{GEN : GenId} `{XI : CurCtx}.
+  Context `{!ghost_varG Σ Z}.
+  Context `{!uartGhostG Σ}.
+  Context `{!echoOutG Σ}.
+  Context {L : LinkRec Σ} (St : StageRec L).
+
+  Lemma sh_rest_holds_at (Hold : list (bv 8) -> iProp Σ)
+      (γ : echo_gn) (γp : gname) (N : uk_names Σ) :
+    (forall I0 : list (bv 8), Timeless (Hold I0)) ->
+    (forall I0 : list (bv 8), ⊢ lk_T L -∗ Hold I0) ->
+    (⊢ app_taint -∗ lk_T L) ->
+    ⊢ lk_links L -∗
+      udep (PS := uprogSG_free) -∗
+      UShEcho.sh_echo_slot (lk_T L) -∗
+      (∃ v : era_pins, lk_pin L (S gen_id) v) -∗
+      UkSh.ush_rest_l (PS := uprogSG_free) N γp (lk_T L)
+        (fun I p => lk_lcred L (S gen_id) I p ∗ Hold I)%I
+        (fun I => (∃ v : era_pins, lk_pin L (S gen_id) v
+                     ∗ lk_ban L (S gen_id) v I 0%nat) ∗ Hold I)%I
+        (UShLine.ush_mid_at (lk_rres L) γ γp)
+        (UInitSh.sh_Rsh (ukn_t N) (ukn_d N) (ukn_s N)).
+  Proof using St.
+    intros HTl Hht Hkt.
+    assert (Hwbl : forall I : list (bv 8),
+              ⊢ (lk_lcred L (S gen_id) I 3%nat ∗ Hold I) -∗
+                (lk_lcred L (S gen_id) I 0%nat ∗ Hold I)).
+    { intro I. iIntros "[Hc $]".
+      iApply (lk_lcred_blk_line L (S gen_id) I with "Hc"). }
+    iIntros "#Hlk #Hdep #Hslot #Hpin".
+    iDestruct "Hpin" as (v) "#Hp".
+    iPoseProof (UShEchoPay.ushf_child_law_hold_at St Hold HTl Hht Hkt
+                  with "Hlk Hdep Hslot") as "#Hchl".
+    iAssert (UkShFork.ushf_kill_law
+               (fun I p => lk_lcred L (S gen_id) I p ∗ Hold I)%I) as "#Hkl".
+    { rewrite /UkShFork.ushf_kill_law. iIntros "!>" (n) "#Hk".
+      iAssert (lk_T L) as "#HT"; [ iApply Hkt; iExact "Hk" | ].
+      iSplitL.
+      - iApply (lk_lcred_taint L (S gen_id) n 0%nat v with "Hp HT").
+      - iApply Hht. iExact "HT". }
+    iPoseProof (UShPanic.ush_panic_law_hold_at (PS := uprogSG_free) L Hold
+                  with "Hlk") as "#Hplaw".
+    iIntros "!>" (l) "%Hc".
+    iPoseProof (UkShFork.ushf_rest_of_body
+                  (PS := uprogSG_free) (Hpay := Hc)
+                  N γp (lk_T L)
+                  (fun I p => lk_lcred L (S gen_id) I p ∗ Hold I)%I
+                  (fun I => (∃ v0 : era_pins, lk_pin L (S gen_id) v0
+                               ∗ lk_ban L (S gen_id) v0 I 0%nat) ∗ Hold I)%I
+                  (UShLine.ush_mid_at (lk_rres L) γ γp)
+                  (fun k H => H) (kexec_sz ElfUser.sh_elf)
+                  ush_line_lexable_holds sh_sz_lo sh_sz_al sh_sz_ok Hwbl
+                  with "Hkl Hchl Hplaw") as "Hb".
+    rewrite /UkSh.ush_rest_l.
+    iDestruct ("Hb" $! l with "[%]") as "Hb'"; [ exact Hc | iExact "Hb'" ].
+  Qed.
+
+End UShRestGen.

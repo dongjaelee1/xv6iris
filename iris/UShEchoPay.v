@@ -312,6 +312,78 @@ Section UShEchoPayGen.
     iFrame "Hstd Hcr HR".
   Qed.
 
+  (* =================================================================== *)
+  (*  3.  THE CHILD LAW AT THE FRAMED FAMILY                              *)
+  (*                                                                      *)
+  (*  The supply above and [UShPanic.ush_execfail_law_hold_at], at the ONE *)
+  (*  family the campaign instantiates: [Wcf I p := Wcl I p ∗ Hold I]      *)
+  (*  ([UShRound]'s, with [Hold := sh_hold]).  At that family the four     *)
+  (*  [Wc] laws are the RECORD's own, so a caller supplies only [Hold]'s   *)
+  (*  timelessness and its taint arm -- both of which [sh_hold] has by     *)
+  (*  construction (its right disjunct IS the taint).                      *)
+  (* =================================================================== *)
+  Local Lemma lkw_wc3 (Hold : list (bv 8) -> iProp Σ) (I0 : list (bv 8)) :
+    ⊢ (lk_lcred L (S gen_id) I0 3%nat ∗ Hold I0) -∗
+      ∃ v : era_pins,
+        lk_pin L (S gen_id) v ∗ lk_lpr L (S gen_id) v I0 3%nat ∗ Hold I0.
+  Proof using .
+    rewrite /lk_lcred. iIntros "[H HR]". iDestruct "H" as (v) "[#Hp Hc]".
+    iExists v. iFrame "Hp Hc HR".
+  Qed.
+
+  Local Lemma lkw_wc3b (Hold : list (bv 8) -> iProp Σ) (I0 : list (bv 8))
+      (v0 : era_pins) :
+    ⊢ lk_pin L (S gen_id) v0 -∗ lk_lpr L (S gen_id) v0 I0 3%nat -∗
+      Hold I0 -∗ (lk_lcred L (S gen_id) I0 3%nat ∗ Hold I0).
+  Proof using .
+    iIntros "#Hp Hc HR". iFrame "HR". rewrite /lk_lcred. iExists v0.
+    iFrame "Hp Hc".
+  Qed.
+
+  Local Lemma lkw_wc0 (Hold : list (bv 8) -> iProp Σ) (I0 : list (bv 8))
+      (v0 : era_pins) :
+    ⊢ lk_pin L (S gen_id) v0 -∗ lk_post L (S gen_id) v0 I0 0%nat -∗
+      Hold I0 -∗ (lk_lcred L (S gen_id) I0 0%nat ∗ Hold I0).
+  Proof using St.
+    iIntros "#Hp Hc HR". iFrame "HR".
+    iApply (lk_lcred_of_post_a L (S gen_id) I0 0%nat v0 (sk_apr0 St I0)
+              with "Hp Hc").
+  Qed.
+
+  Local Lemma lkw_wct (Hold : list (bv 8) -> iProp Σ)
+      (Hht : forall I0 : list (bv 8), ⊢ lk_T L -∗ Hold I0)
+      (I0 : list (bv 8)) (v0 : era_pins) :
+    ⊢ lk_pin L (S gen_id) v0 -∗ lk_T L -∗
+      (lk_lcred L (S gen_id) I0 0%nat ∗ Hold I0).
+  Proof using .
+    iIntros "#Hp #HT". iSplitL.
+    - iApply (lk_lcred_taint L (S gen_id) I0 0%nat v0 with "Hp HT").
+    - iApply Hht. iExact "HT".
+  Qed.
+
+  Lemma ushf_child_law_hold_at (Hold : list (bv 8) -> iProp Σ) :
+    (forall I0 : list (bv 8), Timeless (Hold I0)) ->
+    (forall I0 : list (bv 8), ⊢ lk_T L -∗ Hold I0) ->
+    (⊢ app_taint -∗ lk_T L) ->
+    ⊢ lk_links L -∗ udep (PS := uprogSG_free) -∗ sh_echo_slot (lk_T L) -∗
+      UkShFork.ushf_child_law (PS := uprogSG_free)
+        (fun I p => lk_lcred L (S gen_id) I p ∗ Hold I)%I.
+  Proof using St ghost_varG0 ghost_varG1 ufdG0.
+    intros HTl Hht Hkt. iIntros "#Hlk #Hdep #Hslot".
+    iPoseProof (sh_exec_sup_echo_wq_holds_at
+                  (fun I p => lk_lcred L (S gen_id) I p ∗ Hold I)%I Hold
+                  HTl (lkw_wc3 Hold) (lkw_wc3b Hold) (lkw_wc0 Hold)
+                  (lkw_wct Hold Hht) Hkt with "Hlk Hdep Hslot") as "Hsup".
+    iAssert (UkShEcho.ush_execfail_law_wq (PS := uprogSG_free)
+               (fun I p => lk_lcred L (S gen_id) I p ∗ Hold I)%I) as "Hxlw".
+    { rewrite /UkShEcho.ush_execfail_law_wq. iIntros "!>" (I).
+      iApply (UShPanic.ush_execfail_law_hold_at (PS := uprogSG_free) L Hold I
+                with "Hlk"). }
+    iApply (UkShEcho.ushf_child_law_holds (PS := uprogSG_free) (fun k H => H)
+              (fun I p => lk_lcred L (S gen_id) I p ∗ Hold I)%I
+              with "Hxlw Hsup").
+  Qed.
+
 End UShEchoPayGen.
 
 (* ===================================================================== *)

@@ -231,7 +231,7 @@ Section UkFileOpen.
       rewrite (tree_open_fd_tie l (uvis_fd W) fdv' rv
                  (om_readable (m !!! Regidx a1_idx))
                  (om_writable (m !!! Regidx a1_idx)) i γo fd rd wr ty
-                 Hlen Hr1 Hlt1 Hfdv1 Hrcpt).
+                 Hlen Hr1 Hlt1 (proj1 Hfdv1) Hrcpt).
       iRight. iLeft. iExists fd, γo. iFrame "Hal Hd1 Hd2". iPureIntro.
       exact (conj Hr1 Hlt1).
     - iLeft. iSplitR; [ by iPureIntro | ].
@@ -806,7 +806,7 @@ Section UkFileOpen.
                  (om_readable (m !!! Regidx a1_idx))
                  (om_writable (m !!! Regidx a1_idx))
                  t0 fd rd wr ty
-                 Hlen Hr1 Hlt1 Hfdv1 Hrcpt).
+                 Hlen Hr1 Hlt1 (proj1 Hfdv1) Hrcpt).
       iRight. iExists fd, t0. iFrame "Hal". rewrite /redir_K.
       iFrame "Hpay". iPureIntro. exact (conj Hr1 Hlt1).
   Qed.
@@ -1016,7 +1016,7 @@ Section UkFileOpen.
       rewrite (tree_open_fd_tie l (uvis_fd W) fdv' rv
                  (om_readable (m !!! Regidx a1_idx))
                  (om_writable (m !!! Regidx a1_idx)) i γo fd rd wr ty
-                 Hlen Hr1 Hlt1 Hfdv1 Hrcpt).
+                 Hlen Hr1 Hlt1 (proj1 Hfdv1) Hrcpt).
       iRight. iLeft. iExists fd, γo. iFrame "Hal Hd1 Hd2". iPureIntro.
       exact (conj Hr1 Hlt1).
     - iLeft. iSplitR; [ by iPureIntro | ].
@@ -1195,7 +1195,7 @@ Section UkFileOpen.
                  (om_readable (m !!! Regidx a1_idx))
                  (om_writable (m !!! Regidx a1_idx))
                  t0 fd rd wr ty
-                 Hlen Hr1 Hlt1 Hfdv1 Hrcpt).
+                 Hlen Hr1 Hlt1 (proj1 Hfdv1) Hrcpt).
       iRight. iExists fd, t0. iFrame "Hal". rewrite /redir_K.
       iFrame "Hpay". iPureIntro. exact (conj Hr1 Hlt1).
   Qed.

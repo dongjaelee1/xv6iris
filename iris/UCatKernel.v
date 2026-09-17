@@ -1211,7 +1211,7 @@ Section UCatKernel.
     iFrame "Hstd".
     iApply (UkCatMain.kcat_pay_all_of_law N' (UShCat.cat_args W)
               (take NSTD (uvis_fd W)) (ukn_pay_free_of_triv N' Hti) Hnone
-              with "Hrd Hop Hwr Hcl").
+              with "Hrd Hop Hwr").
   Qed.
 
 End UCatKernel.

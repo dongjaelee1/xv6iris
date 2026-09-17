@@ -1583,7 +1583,7 @@ Section UkShMalloc.
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (10 + avail) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof.
+  Proof using Hpsok_free.
     intros Ha0 Hnb0 Hnbhi Hszlo Hszal Hszok.
     iIntros "#Hcode Hfreep Hbase Hsz Hrun Hcont".
     unfold ShSyms.malloc.

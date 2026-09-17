@@ -902,7 +902,8 @@ Section EchoInitBoot.
         iApply ("Hsup" with "HT"). }
     (* ---- the tag's reading: E2's own, off the theorem's equation ---- *)
     iAssert (UkSh.ush_tag_law (echo_taint γ)) as "#Htg".
-    { rewrite /UkSh.ush_tag_law. iIntros "!>" (h) "Hr".
+    { iApply (UkSh.ush_tag_law_echo (echo_taint γ)).
+      rewrite /UkSh.ush_tag_law_at. iIntros "!>" (h) "Hr".
       rewrite Htag /echo_tag /EchoOut.etag.
       iDestruct "Hr" as "[_ Hr]". iExact "Hr". }
     (* THE LINKS, ONCE: the law the read leaf and the banner both spend,

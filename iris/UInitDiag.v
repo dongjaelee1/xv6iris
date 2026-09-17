@@ -269,7 +269,7 @@ Section UInitDiag.
   Lemma kinit_own_of_pro (n : nat) :
     kinit_pro n -∗ UInitBanner.kinit_own T γ n.
   Proof.
-    rewrite /kinit_pro /UInitBanner.kinit_own.
+    rewrite /kinit_pro /UInitBanner.kinit_own /UInitBanner.kinit_own_at.
     iIntros "H". iDestruct "H" as (v I) "(%Hl & #Hpin & Hc)".
     iExists v, I. iSplitR; [ by iPureIntro | ]. iFrame "Hpin".
     iApply (EchoLinksPro.ewc_owed_of_pro T v I with "Hc").
@@ -287,21 +287,21 @@ Section UInitDiag.
     iIntros "#Hlk !>" (n N) "Hban".
     rewrite /UkInitMain.kinit_banner0 /UkInit.kinit_banner_pay.
     iIntros "Hl".
-    rewrite /UInitBanner.kinit_ban.
+    rewrite /UInitBanner.kinit_ban /UInitBanner.kinit_ban_at.
     iDestruct "Hban" as (v I) "(%Hlen & #Hpin & Hbnr)".
     iExists (fun i => UserFd.ustd (ukn_fd N) (ufd_l3 stc_cons)
-                      ∗ UInitBanner.bnr T v I i)%I.
+                      ∗ UInitBanner.bnr T γ v I i)%I.
     iSplitR "Hbnr Hl".
     { iIntros "!>" (j) "%Hj".
       iApply (UInitBanner.kinit_w1_of_link T γ N v I (ufd_l3 stc_cons) true j
                 (init_lit LIT_START j)
                 (ufd_l3_row1 stc_cons) (UInitBanner.init_banner_bytes j Hj)
                 with "Hpin Hlk"). }
-    iSplitL; [ rewrite /UInitBanner.bnr; iFrame "Hl Hbnr" | ].
+    iSplitL; [ rewrite /UInitBanner.bnr /UInitBanner.bnr_at; iFrame "Hl Hbnr" | ].
     iIntros "[$ Hbnd]". rewrite /kinit_pro. iExists v, I.
     iSplitR; [ by iPureIntro | ]. iFrame "Hpin".
     iApply (EchoLinksPro.ewc_ban_done_pro T v I with "[Hbnd]").
-    rewrite /UInitBanner.bnr.
+    rewrite /UInitBanner.bnr /UInitBanner.bnr_at.
     by replace (length u_banner) with 18%nat by (vm_compute; reflexivity).
   Qed.
 
@@ -343,7 +343,7 @@ Section UInitDiag.
     iSplitL.
     { iFrame "Hl". rewrite /pdg.
       iApply (EchoLinksPro.ewc_pdiag_0 T v I 1%nat with "Hc"). }
-    iIntros "[$ Hc]". rewrite /UInitBanner.kinit_ban. iExists v, I.
+    iIntros "[$ Hc]". rewrite /UInitBanner.kinit_ban /UInitBanner.kinit_ban_at. iExists v, I.
     iSplitR; [ by iPureIntro | ]. iFrame "Hpin".
     iApply (EchoLinksPro.ewc_pdiag_done_1 T v I with "[Hc]").
     rewrite /pdg.

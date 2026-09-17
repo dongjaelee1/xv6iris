@@ -111,10 +111,12 @@ Section UkShRedirBody.
 
   Lemma ushs_lp_of_at (ws : list (list (bv 8))) (f : nat -> bv 8)
       (k len : nat) :
-    UkSh.ush_line_at (LEchoF ws) f k len -> ushs_lp ws f k len.
+    UkSh.ush_line_at (LEchoF ws) f k len ->
+    ushs_lp ws (fun j : nat => f (k + j)%nat) 0%nat len.
   Proof using .
     intro H. exists fname_f.
-    exact (UkShRedirLine.ushs_line_is_of_at ws f k len H).
+    exact (UkShRedirLine.ushs_line_is_shift ws fname_f f k len
+             (UkShRedirLine.ushs_line_is_of_at ws f k len H)).
   Qed.
 
   (* =================================================================== *)
@@ -152,10 +154,10 @@ Section UkShRedirBody.
     ushl_head l sz -∗
     UCodeShK.shk_code γt -∗
     UCodeShK.shk_rodata γt -∗ UCodeShP.shp_code γt -∗ UkSh.ush_jtab γt -∗
-    UkShFork.ushf_kill_law N γp T Wc -∗
+    UkShFork.ushf_kill_law Wc -∗
     (* THE REDIRECT CHILD'S LAW, which is [sh_redir_child_law] below *)
-    UkShFork.ushf_child_law_at N T Wc ushs_lp -∗
-    UkShDiag.ush_panic_law N γp T Wc Wb -∗
+    UkShFork.ushf_child_law_at Wc ushs_lp -∗
+    UkShDiag.ush_panic_law Wc Wb -∗
     ⌜ UkSh.ush_fd0p l ⌝ -∗
     UkSh.ush_bstate N γp T Wc Wb Pm l ws -∗
     ushl_dat -∗ usz γs sz -∗
@@ -217,7 +219,7 @@ Section UkShRedirBody.
   (* the two shapes, one step apart: the walk takes the file name out of
      the line fact, the law binds it. *)
   Lemma ushf_child_law_at_of_redir :
-    sh_redir_child_law -∗ UkShFork.ushf_child_law_at N T Wc ushs_lp.
+    sh_redir_child_law -∗ UkShFork.ushf_child_law_at Wc ushs_lp.
   Proof using .
     iIntros "#Hl". rewrite /UkShFork.ushf_child_law_at.
     iIntros "!>" (N' h m dw dv s0 len ws g sz ld n I)
@@ -262,10 +264,10 @@ Section UkShRedirBody.
     UserPtTree.pgroundup sz = sz ->
     usz_ok (sz + 65536) ->
     (forall I : list (bv 8), ⊢ Wc I 3%nat -∗ Wc I 0%nat) ->
-    UkShFork.ushf_kill_law N γp T Wc -∗
-    UkShFork.ushf_child_law N T Wc -∗
+    UkShFork.ushf_kill_law Wc -∗
+    UkShFork.ushf_child_law Wc -∗
     sh_redir_child_law -∗
-    UkShDiag.ush_panic_law N γp T Wc Wb -∗
+    UkShDiag.ush_panic_law Wc Wb -∗
     UkShFork.ushf_body_law N γp T Wc Wb Pm ush_line_file sz.
   Proof using HT HWct Hpay Hpsok_free Hcat_body.
     intros Hszlo Hszal Hszok Hwbl.
@@ -312,10 +314,10 @@ Section UkShRedirBody.
     UserPtTree.pgroundup sz = sz ->
     usz_ok (sz + 65536) ->
     (forall I : list (bv 8), ⊢ Wc I 3%nat -∗ Wc I 0%nat) ->
-    UkShFork.ushf_kill_law N γp T Wc -∗
-    UkShFork.ushf_child_law N T Wc -∗
+    UkShFork.ushf_kill_law Wc -∗
+    UkShFork.ushf_child_law Wc -∗
     sh_redir_child_law -∗
-    UkShDiag.ush_panic_law N γp T Wc Wb -∗
+    UkShDiag.ush_panic_law Wc Wb -∗
     UkSh.ush_rest_l_at N γp T Wc Wb Pm ush_line_file
       (UkShLoop.ushl_R N sz).
   Proof using HT HWct Hpay Hpsok_free Hcat_body.

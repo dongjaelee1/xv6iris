@@ -354,3 +354,40 @@ Proof using.
   rewrite <- (wl_lta_app_l (wl_body ws) [wl_nl] 0%nat Hpos).
   exact (line_ok_head_byte0 ws Hok).
 Qed.
+
+(* ...AND THE LINE RE-BASED AT ITS OWN START, which is the form the CHILD's
+   law is stated at ([UkShFork.ushf_child_law_at]: the child holds a copy of
+   the line at [s0] and reads it from 0).  [UkSh.ush_line_is] needs no such
+   lemma -- it writes every index as [f (k + j)] and the re-basing is a
+   conversion -- while this predicate names three bytes by POSITION
+   ([f (k + p0 + 1)] and its neighbours), and [k + (0 + p0 + 1)] is not
+   convertible to [k + p0 + 1] with [k] a variable. *)
+Lemma ushs_line_is_shift (ws : list (list (bv 8))) (file : list (bv 8))
+    (f : nat -> bv 8) (k len : nat) :
+  ushs_line_is ws file f k len ->
+  ushs_line_is ws file (fun j : nat => f (k + j)%nat) 0%nat len.
+Proof using.
+  intros (Hok & Hfile & Hlen & Hbody & Hsp1 & Hgt & Hsp2 & Hfb & Hnl).
+  unfold ushs_line_is. split_and!.
+  - exact Hok.
+  - exact Hfile.
+  - exact Hlen.
+  - intros j Hj. cbn beta. rewrite Nat.add_0_l. exact (Hbody j Hj).
+  - cbn beta. rewrite Nat.add_0_l. exact Hsp1.
+  - cbn beta.
+    replace (k + (0 + length (wl_body ws) + 1))%nat
+      with (k + length (wl_body ws) + 1)%nat by lia.
+    exact Hgt.
+  - cbn beta.
+    replace (k + (0 + length (wl_body ws) + 2))%nat
+      with (k + length (wl_body ws) + 2)%nat by lia.
+    exact Hsp2.
+  - intros j Hj. cbn beta.
+    replace (k + (0 + length (wl_body ws) + 3 + j))%nat
+      with (k + length (wl_body ws) + 3 + j)%nat by lia.
+    exact (Hfb j Hj).
+  - cbn beta.
+    replace (k + (0 + length (wl_body ws) + 3 + length file))%nat
+      with (k + length (wl_body ws) + 3 + length file)%nat by lia.
+    exact Hnl.
+Qed.

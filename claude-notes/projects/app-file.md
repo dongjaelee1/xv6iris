@@ -3108,21 +3108,22 @@ always the plain `file_write_link`: at an `LCat` round whose deed is
 missing lemma but a WRONG cursor: sh would write the prompt at an
 unopened block and the stage's `cs_len_ok_f` would refuse it.
 
-### CAT-WALK (2026-09-17) — cat's WALK IS RESTATED ON echo's MOULD; W1 AND W2 LAND WHOLE, W3 LANDS ITS READ ARM, AND THE OPEN ARM STOPS ON A ROW THAT ONLY READS THE TEXT HALF
+### CAT-WALK (2026-09-17) — cat's WALK IS RESTATED ON echo's MOULD; W1 AND W2 LAND WHOLE; W3's READ ARM IS WRITTEN BUT ITS LEAF APPLICATION DIVERGES, AND ITS OPEN ARM STOPS ON A ROW THAT ONLY READS THE TEXT HALF
 
 Branch `app-file/cat-entry`, on top of lane CAT-ENTRY's `7355595ef` and
 merged with lane READ-RELAY (`git merge app-file/read-relay`; the only
 conflict was this file's Findings section — both blocks kept — and
 `iris/_CoqProject` auto-merged).
 
-**THE LANE'S VERDICT IN ONE LINE: CAT-ENTRY's five blockers are four
-gone and one moved.  cat's walk now takes a PER-CALL OBLIGATION for
-every claim number it calls and a STATUS-INDEPENDENT payload, so the
-two reasons C2/C3 were impossible by STATEMENT are gone; the deed-aware
-READ instantiates; and what stops the entry now is one row in a landed
-leaf — `UkRunSys.wp_uk_ecall_open_recv_img` reads the caller's path
-argument off the TEXT half, and cat's path is `argv[1]`, which is
-data.**
+**THE LANE'S VERDICT IN ONE LINE: CAT-ENTRY's five blockers are three
+gone and two moved.  cat's walk now takes a PER-CALL OBLIGATION for
+every claim number it calls and a STATUS-INDEPENDENT payload, so the two
+reasons C2/C3 were impossible BY STATEMENT are gone and the walk names no
+leaf at all; what is left is not about cat — the open's path row
+(`UkRunSys.wp_uk_ecall_open_recv_img`) reads the caller's argument off
+the TEXT half and cat's path is `argv[1]`, which is data, and the deed
+READ's own stub is written but its one leaf application does not
+terminate.**
 
 **W1 — THE WRITE OBLIGATION AND ITS CHAIN: LANDS.**  `UkCat.kcat_w fdw ua
 nb Ci Co` is `UkSh.ksh_w`'s shape verbatim (descriptor, address, count,
@@ -3390,7 +3391,10 @@ mould) is one step behind C2 for the same reason.
 3. *the open is the generic leaf* — **MOVED**: the walk no longer names a
    leaf at all (`UkCat.kcat_o`), and what is left is the argv-path row
    above, which is a fact about `UkRunSys`, not about cat.
-4. *the read is the generic leaf* — **GONE** (W3's read arm).
+4. *the read is the generic leaf* — **MOVED**: the walk names no read
+   leaf (`UkCat.kcat_r`), the deed instance is written
+   (`UkCatDeed.kcat_r_of_deed`, commit `8d692f26c`), and what is left is
+   one proof-engineering step (the unshelve hoist) and not a statement.
 5. *consequently C3 has nothing to construct* — **MOVED**: C3 now has
    everything except (3).
 

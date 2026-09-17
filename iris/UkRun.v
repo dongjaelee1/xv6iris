@@ -619,11 +619,20 @@ Section UkRun.
   (* LEFT: the caller KNOWS its descriptor is not a pipe -- a console, an    *)
   (* inode, a device -- and owes nothing at all; the leaf mints the row out  *)
   (* of the key-guarded law above, off the [udep] its own run carries.       *)
-  (* RIGHT: the caller does NOT know (a descriptor [open] returned carries   *)
-  (* an existential type: [UsysMemOk.usys_fd_ok]'s open row does not pin     *)
-  (* it), and then it hands over a deposit at 21 like any other flagged      *)
-  (* number ([udepw_law], which the pipe arm makes payable out of the        *)
-  (* taint -- [UexecExecMint.udepw_law_of_sup_close]).                       *)
+  (* RIGHT: the caller does NOT know -- it holds a descriptor whose type   *)
+  (* nothing told it, an fd read out of a table it did not fill -- and then  *)
+  (* it hands over a deposit at 21 like any other flagged number             *)
+  (* ([udepw_law], which the pipe arm makes payable out of the taint --      *)
+  (* [UexecExecMint.udepw_law_of_sup_close]).                                *)
+  (*                                                                        *)
+  (* THE OLD READING OF THE RIGHT ARM IS GONE (survey R4, lane SUP-ONE).     *)
+  (* It used to say that a descriptor [open] RETURNED forced the right arm,  *)
+  (* because "[UsysMemOk.usys_fd_ok]'s open row does not pin the type".      *)
+  (* The row pins [fdst_nopipe] and has since the pipe landing; what was     *)
+  (* missing was the EXPORT, and the five [UkRunSys.wp_uk_ecall_open*]       *)
+  (* leaves carry it now.  So a program that opened its own descriptor takes *)
+  (* [udepw_cl_nopipe] below and owes NOTHING -- which is what took          *)
+  (* [udepw_law 21] out of [UkCat.cat_deps].                                 *)
   (* ------------------------------------------------------------------- *)
   Definition udepw_cl (N : uk_names Σ) (m : regfile) (pc : mword 64)
       (st : fdstate) : iProp Σ :=
@@ -636,6 +645,18 @@ Section UkRun.
     (forall (rb wb : bool) (gp : pipe_names), st <> FdOpen rb wb (FdPipe gp)) ->
     ⊢ udepw_cl N m pc st.
   Proof using . intros Hnp. rewrite /udepw_cl. iLeft. by iPureIntro. Qed.
+
+  (* ...AND THE FREE ROUTE AT THE FACT THE OPEN LEAVES EXPORT (survey R4):
+     [FdSlots.fdst_nopipe] is the shape [UsysMemOk.usys_fd_ok]'s open row
+     states and the leaves hand out, and this is the one line that turns it
+     into the left arm. *)
+  Lemma udepw_cl_nopipe (N : uk_names Σ) (m : regfile) (pc : mword 64)
+      (st : fdstate) :
+    fdst_nopipe st -> ⊢ udepw_cl N m pc st.
+  Proof using .
+    intros Hnp. apply udepw_cl_nonpipe.
+    intros rb wb gp Heq. rewrite Heq in Hnp. exact Hnp.
+  Qed.
 
   Lemma udepw_cl_of_udepw (N : uk_names Σ) (m : regfile) (pc : mword 64)
       (st : fdstate) :

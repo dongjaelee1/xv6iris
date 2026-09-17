@@ -845,7 +845,10 @@ Section UkRunSys.
               descriptor back to close/dup needs to read it as a C [int],
               and [fd < NOFILE] is what makes that reading exact *)
            ⌜r = (mword_of_int (Z.of_nat fd) : mword 64)
-            /\ (fd < NOFILE)%nat⌝ ∗
+            /\ (fd < NOFILE)%nat
+            (* ...AND IT IS NOT A PIPE (survey R4, lane SUP-ONE) -- see
+               the [_recv_img] leaf below for why the fact is exported. *)
+            /\ fdst_nopipe (FdOpen rd wr t)⌝ ∗
            ualloc (ukn_fd N) l fd (FdOpen rd wr t))
         ∨ (⌜r = (mword_of_int (-1) : mword 64)⌝ ∗ ustd (ukn_fd N) l)) -∗
        urun N h' (<[Regidx (mword_of_int 10) := r]> m)
@@ -953,7 +956,7 @@ Section UkRunSys.
       iIntros (h') "Hrun".
       iApply ("Hcont" $! h' r with "[Hh] Hrun").
       iLeft. iExists fd, rd, wr, t. iFrame "Hh". iPureIntro.
-      split; [ exact Hr | ].
+      split_and!; [ exact Hr | | exact Hnpo ].
       (* the slot the kernel chose is a slot of the table *)
       rewrite <- Hfdlen. exact (fd_least_closed_lt _ _ Hcl).
     - (* the call failed: nothing moved, and the ledger comes straight back *)
@@ -3886,7 +3889,10 @@ Section UkRunSys.
        (* the ledger, exactly [wp_uk_ecall_open]'s two arms *)
        ((∃ (fd : nat) (rd wr : bool) (t : fdtype),
            ⌜r = (mword_of_int (Z.of_nat fd) : mword 64)
-            /\ (fd < NOFILE)%nat⌝ ∗
+            /\ (fd < NOFILE)%nat
+            (* ...AND IT IS NOT A PIPE (survey R4, lane SUP-ONE) -- see
+               the [_recv_img] leaf below for why the fact is exported. *)
+            /\ fdst_nopipe (FdOpen rd wr t)⌝ ∗
            ualloc (ukn_fd N) l fd (FdOpen rd wr t))
         ∨ (⌜r = (mword_of_int (-1) : mword 64)⌝ ∗ ustd (ukn_fd N) l)) -∗
        (* ...AND THE POST, at the TRAPPING key and the resume view *)
@@ -3985,7 +3991,7 @@ Section UkRunSys.
       { exact (uvis_of_run_cwd m pc M pm sz fdv c gn cs pidv false). }
       { rewrite (uvis_of_run_fd m pc M pm sz fdv c gn cs pidv false). exact Htake. }
       iLeft. iExists fd, rd, wr, t. iFrame "Hh". iPureIntro.
-      split; [ exact Hr | ].
+      split_and!; [ exact Hr | | exact Hnpo ].
       rewrite <- Hfdlen. exact (fd_least_closed_lt _ _ Hcl).
     - (* the call failed: nothing moved, and the ledger comes straight back *)
       iModIntro.
@@ -4745,7 +4751,13 @@ Section UkRunSys.
               TYPE the receipt names to the SLOT its ledger decided. *)
            ⌜r = (mword_of_int (Z.of_nat fd) : mword 64)
             /\ (fd < NOFILE)%nat
-            /\ fdv' = <[fd := FdOpen rd wr t]> (uvis_fd W)⌝ ∗
+            /\ fdv' = <[fd := FdOpen rd wr t]> (uvis_fd W)
+            (* ...AND IT IS NOT A PIPE (survey R4, lane SUP-ONE).  open
+               installs an inode or a device and [UsysMemOk.usys_fd_ok]'s
+               open row says so; exporting the fact here is what lets a
+               holder of this handle take [UkRun.udepw_cl_nopipe]'s FREE
+               close instead of a flagged deposit at 21. *)
+            /\ fdst_nopipe (FdOpen rd wr t)⌝ ∗
            ualloc (ukn_fd N) l fd (FdOpen rd wr t))
         ∨ (⌜r = (mword_of_int (-1) : mword 64)
              /\ fdv' = uvis_fd W⌝ ∗ ustd (ukn_fd N) l)) -∗
@@ -4856,7 +4868,7 @@ Section UkRunSys.
       { exact (uvis_of_run_cwd m pc M pm sz fdv c gn cs pidv false). }
       { rewrite (uvis_of_run_fd m pc M pm sz fdv c gn cs pidv false). exact Htake. }
       iLeft. iExists fd, rd, wr, t. iFrame "Hh". iPureIntro.
-      split_and!; [ exact Hr | | ].
+      split_and!; [ exact Hr | | | exact Hnpo ].
       { rewrite <- Hfdlen. exact (fd_least_closed_lt _ _ Hcl). }
       rewrite (uvis_of_run_fd m pc M pm sz fdv c gn cs pidv false). reflexivity.
     - (* the call failed: nothing moved, and the ledger comes straight back *)
@@ -4992,7 +5004,13 @@ Section UkRunSys.
               TYPE the receipt names to the SLOT its ledger decided. *)
            ⌜r = (mword_of_int (Z.of_nat fd) : mword 64)
             /\ (fd < NOFILE)%nat
-            /\ fdv' = <[fd := FdOpen rd wr t]> (uvis_fd W)⌝ ∗
+            /\ fdv' = <[fd := FdOpen rd wr t]> (uvis_fd W)
+            (* ...AND IT IS NOT A PIPE (survey R4, lane SUP-ONE).  open
+               installs an inode or a device and [UsysMemOk.usys_fd_ok]'s
+               open row says so; exporting the fact here is what lets a
+               holder of this handle take [UkRun.udepw_cl_nopipe]'s FREE
+               close instead of a flagged deposit at 21. *)
+            /\ fdst_nopipe (FdOpen rd wr t)⌝ ∗
            ualloc (ukn_fd N) l fd (FdOpen rd wr t))
         ∨ (⌜r = (mword_of_int (-1) : mword 64)
              /\ fdv' = uvis_fd W⌝ ∗ ustd (ukn_fd N) l)) -∗
@@ -5098,7 +5116,7 @@ Section UkRunSys.
       { exact (uvis_of_run_cwd m pc M pm sz fdv c gn cs pidv false). }
       { rewrite (uvis_of_run_fd m pc M pm sz fdv c gn cs pidv false). exact Htake. }
       iLeft. iExists fd, rd, wr, t. iFrame "Hh". iPureIntro.
-      split_and!; [ exact Hr | | ].
+      split_and!; [ exact Hr | | | exact Hnpo ].
       { rewrite <- Hfdlen. exact (fd_least_closed_lt _ _ Hcl). }
       rewrite (uvis_of_run_fd m pc M pm sz fdv c gn cs pidv false). reflexivity.
     - (* the call failed: nothing moved, and the ledger comes straight back *)
@@ -5148,7 +5166,13 @@ Section UkRunSys.
        ((∃ (fd : nat) (rd wr : bool) (t : fdtype),
            ⌜r = (mword_of_int (Z.of_nat fd) : mword 64)
             /\ (fd < NOFILE)%nat
-            /\ fdv' = <[fd := FdOpen rd wr t]> (uvis_fd W)⌝ ∗
+            /\ fdv' = <[fd := FdOpen rd wr t]> (uvis_fd W)
+            (* ...AND IT IS NOT A PIPE (survey R4, lane SUP-ONE).  open
+               installs an inode or a device and [UsysMemOk.usys_fd_ok]'s
+               open row says so; exporting the fact here is what lets a
+               holder of this handle take [UkRun.udepw_cl_nopipe]'s FREE
+               close instead of a flagged deposit at 21. *)
+            /\ fdst_nopipe (FdOpen rd wr t)⌝ ∗
            ualloc (ukn_fd N) l fd (FdOpen rd wr t))
         ∨ (⌜r = (mword_of_int (-1) : mword 64)
              /\ fdv' = uvis_fd W⌝ ∗ ustd (ukn_fd N) l)) -∗

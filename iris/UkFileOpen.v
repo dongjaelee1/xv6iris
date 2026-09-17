@@ -227,7 +227,7 @@ Section UkFileOpen.
         { rewrite <- Hlen. exact (lookup_lt_Some _ _ _ Hcl0). }
         exact (init_cons_moi_nat_m1 fd0 Hlt0 (eq_trans (eq_sym Hr0) Hrm)). }
       iDestruct "Hal" as (fd rd wr ty) "[%Hb Hal]".
-      destruct Hb as (Hr1 & Hlt1 & Hfdv1).
+      destruct Hb as (Hr1 & Hlt1 & Hfdv1 & _).
       rewrite (tree_open_fd_tie l (uvis_fd W) fdv' rv
                  (om_readable (m !!! Regidx a1_idx))
                  (om_writable (m !!! Regidx a1_idx)) i γo fd rd wr ty
@@ -788,7 +788,7 @@ Section UkFileOpen.
         { rewrite <- Hlen. exact (lookup_lt_Some _ _ _ Hcl0). }
         exact (init_cons_moi_nat_m1 fd0 Hlt0 (eq_trans (eq_sym Hr0) Hrm)). }
       iDestruct "Hal" as (fd rd wr ty) "[%Hb Hal]".
-      destruct Hb as (Hr1 & Hlt1 & Hfdv1).
+      destruct Hb as (Hr1 & Hlt1 & Hfdv1 & _).
       rewrite (file_open_fd_tie (uvis_fd W) fdv' rv
                  (om_readable (m !!! Regidx a1_idx))
                  (om_writable (m !!! Regidx a1_idx))
@@ -805,7 +805,7 @@ Section UkFileOpen.
         { rewrite <- Hlen. exact (lookup_lt_Some _ _ _ Hcl0). }
         exact (init_cons_moi_nat_m1 fd0 Hlt0 (eq_trans (eq_sym Hr0) Hrm)). }
       iDestruct "Hal" as (fd rd wr ty) "[%Hb Hal]".
-      destruct Hb as (Hr1 & Hlt1 & Hfdv1).
+      destruct Hb as (Hr1 & Hlt1 & Hfdv1 & _).
       rewrite (file_open_fd_tie (uvis_fd W) fdv' rv
                  (om_readable (m !!! Regidx a1_idx))
                  (om_writable (m !!! Regidx a1_idx))
@@ -1018,7 +1018,7 @@ Section UkFileOpen.
         { rewrite <- Hlen. exact (lookup_lt_Some _ _ _ Hcl0). }
         exact (init_cons_moi_nat_m1 fd0 Hlt0 (eq_trans (eq_sym Hr0) Hrm)). }
       iDestruct "Hal" as (fd rd wr ty) "[%Hb Hal]".
-      destruct Hb as (Hr1 & Hlt1 & Hfdv1).
+      destruct Hb as (Hr1 & Hlt1 & Hfdv1 & _).
       rewrite (tree_open_fd_tie l (uvis_fd W) fdv' rv
                  (om_readable (m !!! Regidx a1_idx))
                  (om_writable (m !!! Regidx a1_idx)) i γo fd rd wr ty
@@ -1201,7 +1201,7 @@ Section UkFileOpen.
         { rewrite <- Hlen. exact (lookup_lt_Some _ _ _ Hcl0). }
         exact (init_cons_moi_nat_m1 fd0 Hlt0 (eq_trans (eq_sym Hr0) Hrm)). }
       iDestruct "Hal" as (fd rd wr ty) "[%Hb Hal]".
-      destruct Hb as (Hr1 & Hlt1 & Hfdv1).
+      destruct Hb as (Hr1 & Hlt1 & Hfdv1 & _).
       rewrite (file_open_fd_tie (uvis_fd W) fdv' rv
                  (om_readable (m !!! Regidx a1_idx))
                  (om_writable (m !!! Regidx a1_idx))
@@ -1218,7 +1218,7 @@ Section UkFileOpen.
         { rewrite <- Hlen. exact (lookup_lt_Some _ _ _ Hcl0). }
         exact (init_cons_moi_nat_m1 fd0 Hlt0 (eq_trans (eq_sym Hr0) Hrm)). }
       iDestruct "Hal" as (fd rd wr ty) "[%Hb Hal]".
-      destruct Hb as (Hr1 & Hlt1 & Hfdv1).
+      destruct Hb as (Hr1 & Hlt1 & Hfdv1 & _).
       rewrite (file_open_fd_tie (uvis_fd W) fdv' rv
                  (om_readable (m !!! Regidx a1_idx))
                  (om_writable (m !!! Regidx a1_idx))

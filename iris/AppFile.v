@@ -116,6 +116,7 @@ Record file_names := MkFileNames {
   fn_cons : echo_names;
   fn_deed : gname;
   fn_tkt  : gname;
+  fn_esc  : gname;                     (* THE ESCROW LEDGER (section 2a) *)
 }.
 
 (* THE DEED'S STATE: the model's [fst] with the file's INUM beside its bytes.
@@ -126,14 +127,24 @@ Record file_names := MkFileNames {
 Definition dst : Type := option (Z * list (bv 8)).
 Definition dst_content (s : dst) : fst := (fun p => p.2) <$> s.
 
+(* ONE ESCROW, as the claim's ledger records it: the content the deed was
+   parked AT, and the one-shot name whose token the holder keeps.  The
+   ledger is a [mono_list] of these, so a reader's witness of an entry is
+   PERSISTENT and survives every arm of the syscall's fold -- which is the
+   whole reason the escrow can be read by a piece that carries nothing
+   linear (section 2a). *)
+Definition esc_rec : Type := dst * gname.
+
 Class fileAppG (Σ : gFunctors) := FileAppG {
   fa_deed : ghost_varG Σ dst;
   fa_fl   : inG Σ (mono_listR (leibnizO wordline));
+  fa_esc  : inG Σ (mono_listR (leibnizO esc_rec));
 }.
-#[global] Existing Instances fa_deed fa_fl.
+#[global] Existing Instances fa_deed fa_fl fa_esc.
 
 Definition fileAppΣ : gFunctors :=
-  #[ ghost_varΣ dst; GFunctor (mono_listR (leibnizO wordline)) ].
+  #[ ghost_varΣ dst; GFunctor (mono_listR (leibnizO wordline));
+     GFunctor (mono_listR (leibnizO esc_rec)) ].
 
 Global Instance subG_fileAppΣ {Σ} : subG fileAppΣ Σ -> fileAppG Σ.
 Proof. solve_inG. Qed.
@@ -295,17 +306,182 @@ Section FileClaim.
     iModIntro. iFrame "H1 H2".
   Qed.
 
-  (* fresh names, both halves of both ghosts, at any value: what every
-     transport and the era-0 mint allocate *)
+  (* ---------------------------------------------------------------- *)
+  (*  2a.  THE ESCROW                                                   *)
+  (*                                                                    *)
+  (*  A move the deed's holder cannot make with its own half -- the      *)
+  (*  create's parent leg at `f`, whose park joins the holder's half     *)
+  (*  with the claim's -- can be made by the CLAIM, if the holder parks  *)
+  (*  the half there BEFORE the call.  That is the escrow: the deed      *)
+  (*  WHOLE inside the claim at the exact content, and in the holder's   *)
+  (*  hands a ONE-SHOT TOKEN that says the escrow has not been spent.    *)
+  (*                                                                    *)
+  (*  WHY THE LEDGER IS A [mono_list] AND NOT A SECOND HALF (lane        *)
+  (*  F-OPEN-5's ruling correction).  The reader the escrow exists for   *)
+  (*  -- create's [dirlookup] observation -- carries NOTHING LINEAR:     *)
+  (*  the syscall's fold DROPS its receipt on the arm where the permit   *)
+  (*  was never paid ([SpecSysOpen.cre_rcpt_kept] is [emp] at a          *)
+  (*  truncating create), so a fraction handed to that piece is a        *)
+  (*  fraction the deed can never get back.  So the reader's tie to the  *)
+  (*  escrow must be PERSISTENT, and a persistent tie to a slot that is  *)
+  (*  opened and closed once per shell round can only be an entry in a   *)
+  (*  GROWING structure.  Hence: the claim keeps [esc_auth] over the     *)
+  (*  list of every escrow it has ever opened, a reader keeps            *)
+  (*  [esc_wit] -- a persistent lower bound naming one entry -- and the  *)
+  (*  claim's invariant is that every entry but a LIVE head has been     *)
+  (*  spent ([esc_recs]).  A reader then always concludes the            *)
+  (*  disjunction "the claim is at my content, or my escrow is spent",   *)
+  (*  and the holder of the unspent token refutes the second half.       *)
+  (* ---------------------------------------------------------------- *)
+
+  (* THE ONE-SHOT, at [mono_nat] (the taint counter's algebra, already in
+     [echoOutG]): the whole authority at 0 is the token, a lower bound of
+     1 is the persistent record that it was spent. *)
+  Definition esc_tok (g : gname) : iProp Σ := mono_nat_auth_own g 1 0%nat.
+  Definition esc_spent (g : gname) : iProp Σ := mono_nat_lb_own g 1%nat.
+
+  Global Instance esc_spent_persistent g : Persistent (esc_spent g).
+  Proof using . rewrite /esc_spent. apply _. Qed.
+  Global Instance esc_spent_timeless g : Timeless (esc_spent g).
+  Proof using . rewrite /esc_spent. apply _. Qed.
+  Global Instance esc_tok_timeless g : Timeless (esc_tok g).
+  Proof using . rewrite /esc_tok. apply _. Qed.
+
+  Lemma esc_alloc : ⊢ |==> ∃ g : gname, esc_tok g.
+  Proof using .
+    iMod (mono_nat_own_alloc 0%nat) as (g) "[Ht _]".
+    iModIntro. iExists g. iExact "Ht".
+  Qed.
+
+  Lemma esc_spend (g : gname) : esc_tok g ==∗ esc_spent g.
+  Proof using .
+    rewrite /esc_tok /esc_spent. iIntros "Ht".
+    iMod (mono_nat_own_update 1%nat with "Ht") as "[_ #Hlb]"; [ lia |].
+    iModIntro. iExact "Hlb".
+  Qed.
+
+  (* the refutation the truncate on the EXISTS run runs on *)
+  Lemma esc_tok_spent (g : gname) : esc_tok g -∗ esc_spent g -∗ False.
+  Proof using .
+    rewrite /esc_tok /esc_spent. iIntros "Ht Hlb".
+    iDestruct (mono_nat_lb_own_valid with "Ht Hlb") as %[_ Hle].
+    iPureIntro. lia.
+  Qed.
+
+  (* THE LEDGER: the claim's authority, and a reader's persistent entry *)
+  Definition esc_auth (r : file_names) (h : list esc_rec) : iProp Σ :=
+    own (fn_esc r) (●ML (h : list (leibnizO esc_rec))).
+
+  Definition esc_lb (r : file_names) (h : list esc_rec) : iProp Σ :=
+    own (fn_esc r) (◯ML (h : list (leibnizO esc_rec))).
+
+  Definition esc_wit (r : file_names) (n : nat) (s : dst) (g : gname)
+      : iProp Σ :=
+    (∃ h : list esc_rec, esc_lb r h ∗ ⌜h !! n = Some (s, g)⌝)%I.
+
+  Global Instance esc_lb_persistent r h : Persistent (esc_lb r h).
+  Proof using . rewrite /esc_lb. apply _. Qed.
+  Global Instance esc_wit_persistent r n s g : Persistent (esc_wit r n s g).
+  Proof using . rewrite /esc_wit. apply _. Qed.
+  Global Instance esc_auth_timeless r h : Timeless (esc_auth r h).
+  Proof using . rewrite /esc_auth. apply _. Qed.
+  Global Instance esc_wit_timeless r n s g : Timeless (esc_wit r n s g).
+  Proof using . rewrite /esc_wit /esc_lb. apply _. Qed.
+
+  Lemma esc_auth_wit (r : file_names) (h : list esc_rec) (n : nat)
+      (s : dst) (g : gname) :
+    h !! n = Some (s, g) -> esc_auth r h -∗ esc_auth r h ∗ esc_wit r n s g.
+  Proof using .
+    intros Hn. rewrite /esc_auth /esc_wit /esc_lb. iIntros "Ha".
+    iDestruct (own_mono _ _ (◯ML (h : list (leibnizO esc_rec))) with "Ha")
+      as "#Hb"; [ apply mono_list_included |].
+    iFrame "Ha". iExists h. iFrame "Hb". by iPureIntro.
+  Qed.
+
+  Lemma esc_wit_lookup (r : file_names) (h : list esc_rec) (n : nat)
+      (s : dst) (g : gname) :
+    esc_auth r h -∗ esc_wit r n s g -∗ ⌜h !! n = Some (s, g)⌝.
+  Proof using .
+    rewrite /esc_auth /esc_wit /esc_lb. iIntros "Ha Hw".
+    iDestruct "Hw" as (h') "[Hb %Hn]".
+    iDestruct (own_valid_2 with "Ha Hb") as %Hv%mono_list_both_valid_L.
+    iPureIntro.
+    change (h' !! n = Some (s, g)) in Hn.
+    exact (prefix_lookup_Some _ _ _ _ Hn Hv).
+  Qed.
+
+  Lemma esc_auth_grow (r : file_names) (h : list esc_rec) (s : dst)
+      (g : gname) :
+    esc_auth r h ==∗ esc_auth r (h ++ [(s, g)]) ∗ esc_wit r (length h) s g.
+  Proof using .
+    rewrite /esc_auth. iIntros "Ha".
+    iMod (own_update _ _ (●ML ((h ++ [(s, g)]) : list (leibnizO esc_rec)))
+            with "Ha") as "Ha".
+    { apply mono_list_update. by exists [(s, g)]. }
+    iModIntro.
+    iApply (esc_auth_wit r (h ++ [(s, g)]) (length h) s g with "Ha").
+    by apply list_lookup_middle.
+  Qed.
+
+  (* WHICH ENTRY OF THE LEDGER A WITNESS NAMES, once the claim is open:
+     the LIVE head, or one that has been spent.  This is the one piece of
+     arithmetic the escrow needs, and every reader below runs on it. *)
+  Lemma esc_wit_head (h0 : list esc_rec) (n : nat) (s s0 : dst)
+      (g g0 : gname) :
+    (h0 ++ [(s0, g0)]) !! n = Some (s, g) ->
+    (n < length h0)%nat /\ h0 !! n = Some (s, g)
+    \/ (s0 = s /\ g0 = g).
+  Proof using .
+    intros Hn. apply lookup_snoc_Some in Hn.
+    destruct Hn as [[Hlt Hn0] | [_ Hpair]].
+    - left. by split.
+    - right. by injection Hpair as -> ->.
+  Qed.
+
+  (* THE LEDGER'S INVARIANT: every escrow the claim has recorded is spent
+     -- which is what the [f_esc_wrap] arm of the claim says, and what a
+     reader of an entry that is NOT the live head reads off it. *)
+  Definition esc_recs (h : list esc_rec) : iProp Σ :=
+    ([∗ list] p ∈ h, esc_spent p.2)%I.
+
+  Global Instance esc_recs_persistent h : Persistent (esc_recs h).
+  Proof using . rewrite /esc_recs. apply _. Qed.
+  Global Instance esc_recs_timeless h : Timeless (esc_recs h).
+  Proof using . rewrite /esc_recs. apply _. Qed.
+
+  Lemma esc_recs_at (h : list esc_rec) (n : nat) (s : dst) (g : gname) :
+    h !! n = Some (s, g) -> esc_recs h -∗ esc_spent g.
+  Proof using .
+    intros Hn. rewrite /esc_recs. iIntros "#Hh".
+    iDestruct (big_sepL_lookup _ _ n (s, g) Hn with "Hh") as "H".
+    iExact "H".
+  Qed.
+
+  Lemma esc_recs_snoc (h : list esc_rec) (p : esc_rec) :
+    esc_recs h -∗ esc_spent p.2 -∗ esc_recs (h ++ [p]).
+  Proof using .
+    rewrite /esc_recs. iIntros "#Hh #Hp".
+    iApply big_sepL_app. iFrame "Hh". rewrite big_sepL_singleton. iExact "Hp".
+  Qed.
+
+  (* fresh names, both halves of both ghosts, at any value, and the
+     escrow ledger EMPTY: what every transport and the era-0 mint
+     allocate.  (Lane F-OPEN-5: the ledger is the claim's alone -- no
+     half of it is ever outside the claim, which is why [fown] did not
+     have to change.) *)
   Lemma fnames_alloc (r1 : echo_names) (s : dst) :
     ⊢ |==> ∃ r : file_names,
-        ⌜fn_cons r = r1⌝ ∗ fdeed r s ∗ fdeed r s ∗ ftkt r s ∗ ftkt r s.
+        ⌜fn_cons r = r1⌝ ∗ fdeed r s ∗ fdeed r s ∗ ftkt r s ∗ ftkt r s
+        ∗ esc_auth r [].
   Proof using .
     iMod (ghost_var_alloc s) as (gd) "Hd".
     iMod (ghost_var_alloc s) as (gt) "Ht".
-    iModIntro. iExists (MkFileNames r1 gd gt). rewrite /fdeed /ftkt /=.
+    iMod (own_alloc (●ML ([] : list (leibnizO esc_rec)))) as (ge) "He";
+      [ apply mono_list_auth_valid |].
+    iModIntro. iExists (MkFileNames r1 gd gt ge).
+    rewrite /fdeed /ftkt /esc_auth /=.
     iDestruct "Hd" as "[Hd1 Hd2]". iDestruct "Ht" as "[Ht1 Ht2]".
-    iFrame "Hd1 Hd2 Ht1 Ht2". by iPureIntro.
+    iFrame "Hd1 Hd2 Ht1 Ht2 He". by iPureIntro.
   Qed.
 
   (* ---------------------------------------------------------------- *)
@@ -399,13 +575,56 @@ Section FileClaim.
 
   (* EXACT: the claim's halves at the content.  IN FLIGHT: the whole deed
      at the OLD value, the ticket's half at the old value, the content at
-     the NEW one -- the window between a fire's two phases. *)
-  Definition f_state (c : file_fixed) (r : file_names) (av : aview) : iProp Σ :=
+     the NEW one -- the window between a fire's two phases.  The two
+     together are THE CORE, which is what every move the deed's holder
+     pays for itself runs on. *)
+  Definition f_core (c : file_fixed) (r : file_names) (av : aview) : iProp Σ :=
     ((∃ s : dst, fdeed r s ∗ ftkt r s ∗ f_typed c s ∗ ⌜f_ok av s⌝)
      ∨ (∃ s s' : dst, fdeed_whole r s ∗ ftkt r s ∗ f_typed c s' ∗ ⌜f_ok av s'⌝))%I.
 
+  (* NO LIVE ESCROW: the ledger, and every escrow in it spent (section 2a).
+     A claim in this arm is the claim as it was before lane F-OPEN-5 --
+     the core -- with the ledger beside it. *)
+  Definition f_esc_wrap (r : file_names) : iProp Σ :=
+    (∃ h : list esc_rec, esc_auth r h ∗ esc_recs h)%I.
+
+  (* THE ESCROW ARM: the deed WHOLE inside the claim at the exact content,
+     the ticket's half as ever, and the ledger's HEAD naming this escrow
+     -- the entry whose one-shot the holder still has.  There is no
+     separate "fired" arm: a fire SPENDS the head's token, and a spent
+     head is an ordinary ledger entry, so the claim is back in the arm
+     above with the core IN FLIGHT. *)
+  Definition f_esc_live (c : file_fixed) (r : file_names) (av : aview)
+      : iProp Σ :=
+    (∃ (h0 : list esc_rec) (s : dst) (g : gname),
+       esc_auth r (h0 ++ [(s, g)]) ∗ esc_recs h0 ∗
+       fdeed_whole r s ∗ ftkt r s ∗ f_typed c s ∗ ⌜f_ok av s⌝)%I.
+
+  Definition f_state (c : file_fixed) (r : file_names) (av : aview) : iProp Σ :=
+    ((f_esc_wrap r ∗ f_core c r av) ∨ f_esc_live c r av)%I.
+
+  Global Instance f_core_timeless c r av : Timeless (f_core c r av).
+  Proof using . rewrite /f_core. apply _. Qed.
+  Global Instance f_esc_wrap_timeless r : Timeless (f_esc_wrap r).
+  Proof using . rewrite /f_esc_wrap. apply _. Qed.
+  Global Instance f_esc_live_timeless c r av : Timeless (f_esc_live c r av).
+  Proof using . rewrite /f_esc_live. apply _. Qed.
   Global Instance f_state_timeless c r av : Timeless (f_state c r av).
   Proof using . rewrite /f_state. apply _. Qed.
+
+  (* the core, built at the exact arm *)
+  Lemma f_core_exact (c : file_fixed) (r : file_names) (av : aview) (s : dst) :
+    f_ok av s ->
+    fdeed r s -∗ ftkt r s -∗ f_typed c s -∗ f_core c r av.
+  Proof using .
+    intros Hok. iIntros "Hd Ht #Hty". rewrite /f_core. iLeft. iExists s.
+    iFrame "Hd Ht Hty". by iPureIntro.
+  Qed.
+
+  (* ...and the claim's file state off a core, at the ledger as it stands *)
+  Lemma f_state_of_core (c : file_fixed) (r : file_names) (av : aview) :
+    f_esc_wrap r -∗ f_core c r av -∗ f_state c r av.
+  Proof using . iIntros "Hw Hc". rewrite /f_state. iLeft. iFrame "Hw Hc". Qed.
 
   (* THE PREDICATE: tainted, or the four binaries are the image's AND the
      console is in one of its states AND [f] is in the deed's state. *)
@@ -416,15 +635,20 @@ Section FileClaim.
   Global Instance file_pred_timeless c r av : Timeless (file_pred c r av).
   Proof using . rewrite /file_pred. apply _. Qed.
 
-  (* the exact arm, as the transports and the era mint build it *)
+  (* the exact arm, as the transports and the era mint build it.  THE
+     LEDGER IS A PREMISE (lane F-OPEN-5): the claim carries it in both
+     arms, so a producer of the claim must hand it in -- the era mint
+     hands the fresh empty one, a fire hands back the one it opened. *)
   Lemma file_pred_exact (c : file_fixed) (r : file_names) (av : aview) (s : dst) :
     file_fs_pure av -> f_ok av s ->
-    cons_state (fn_cons r) av -∗ fdeed r s -∗ ftkt r s -∗ f_typed c s -∗
+    cons_state (fn_cons r) av -∗ f_esc_wrap r -∗
+    fdeed r s -∗ ftkt r s -∗ f_typed c s -∗
     file_pred c r av.
   Proof using .
-    intros Hp Hok. iIntros "Hc Hd Ht #Hty". rewrite /file_pred. iRight.
-    iSplitR; [ by iPureIntro |]. iFrame "Hc". rewrite /f_state. iLeft.
-    iExists s. iFrame "Hd Ht Hty". by iPureIntro.
+    intros Hp Hok. iIntros "Hc Hw Hd Ht #Hty". rewrite /file_pred. iRight.
+    iSplitR; [ by iPureIntro |]. iFrame "Hc".
+    iApply (f_state_of_core with "Hw").
+    iApply (f_core_exact c r av s Hok with "Hd Ht Hty").
   Qed.
 
   (* THE ECHO APPLICATION'S CLAIM IS THIS ONE WITH THE FILE FORGOTTEN --
@@ -465,14 +689,22 @@ Section FileClaim.
     iDestruct "Hp" as "[#Ht | (%Hpins & Hc & Hf)]".
     { iSplitR; [ by iLeft |]. iFrame "Hd". by iRight. }
     rewrite /f_state.
+    iDestruct "Hf" as "[[Hw Hf] | Hf]"; last first.
+    { (* THE ESCROW ARM: the deed is WHOLE in the claim, so a holder of a
+         half meets it exactly as it meets the in-flight arm *)
+      rewrite /f_esc_live.
+      iDestruct "Hf" as (h0 s0 g) "(_ & _ & Hwh & _ & _ & _)".
+      iDestruct (fdeed_whole_excl with "Hd Hwh") as %[]. }
+    rewrite /f_core.
     iDestruct "Hf" as "[Hf | Hf]"; last first.
-    { iDestruct "Hf" as (s0 s1) "(Hw & _ & _ & _)".
-      iDestruct (fdeed_whole_excl with "Hd Hw") as %[]. }
+    { iDestruct "Hf" as (s0 s1) "(Hwh & _ & _ & _)".
+      iDestruct (fdeed_whole_excl with "Hd Hwh") as %[]. }
     iDestruct "Hf" as (s') "(Hd' & Ht & #Hty & %Hok)".
     iDestruct (fdeed_agree with "Hd Hd'") as %<-.
-    iSplitL "Hc Hd' Ht".
-    { iRight. iSplitR; [ by iPureIntro |]. iFrame "Hc". iLeft. iExists s.
-      iFrame "Hd' Ht Hty". by iPureIntro. }
+    iSplitL "Hc Hw Hd' Ht".
+    { iRight. iSplitR; [ by iPureIntro |]. iFrame "Hc".
+      iApply (f_state_of_core with "Hw").
+      iApply (f_core_exact c r v s Hok with "Hd' Ht Hty"). }
     iFrame "Hd". iLeft. iFrame "Hty". by iPureIntro.
   Qed.
 
@@ -486,6 +718,71 @@ Section FileClaim.
     iDestruct (file_deed_law c r with "Hd Hp") as "(Hp & Hd & [[%H _] | #Ht])";
       iFrame "Hp Hd"; [ iLeft; by iPureIntro | by iRight ].
   Qed.
+
+  (* ---------------------------------------------------------------- *)
+  (*  4a'.  THE ESCROW LAW: what a reader of an ESCROW reads            *)
+  (*                                                                    *)
+  (*  [file_deed_law]'s twin for a holder that has parked its half.  It  *)
+  (*  costs NOTHING LINEAR: the witness is persistent, so a piece whose  *)
+  (*  receipt the syscall's fold may drop can carry it.  What comes back *)
+  (*  is a DISJUNCTION, and the second half is refuted by the unspent    *)
+  (*  token ([file_escrow_law] below), which is the whole protocol.      *)
+  (* ---------------------------------------------------------------- *)
+
+  Lemma file_escrow_read (c : file_fixed) (r : file_names) :
+    ⊢ □ (∀ (v : aview) (n : nat) (s : dst) (g : gname),
+           esc_wit r n s g -∗ file_pred c r v -∗
+           file_pred c r v ∗
+           ((⌜f_ok v s /\ file_fs_pure v⌝ ∗ f_typed c s)
+            ∨ esc_spent g ∨ file_taint c)).
+  Proof using .
+    iIntros "!>" (v n s g) "#Hwit Hp". rewrite /file_pred.
+    iDestruct "Hp" as "[#Ht | (%Hpins & Hc & Hf)]".
+    { iSplitR; [ by iLeft |]. iRight. by iRight. }
+    rewrite /f_state.
+    iDestruct "Hf" as "[[Hwr Hf] | Hf]".
+    - (* NO LIVE ESCROW: every entry of the ledger is spent, mine too *)
+      rewrite /f_esc_wrap. iDestruct "Hwr" as (h) "[Ha #Hrec]".
+      iDestruct (esc_wit_lookup with "Ha Hwit") as %Hn.
+      iDestruct (esc_recs_at h n s g Hn with "Hrec") as "#Hsp".
+      iSplitL "Hc Ha Hf".
+      { iRight. iSplitR; [ by iPureIntro |]. iFrame "Hc". iLeft.
+        iFrame "Hf". rewrite /f_esc_wrap. iExists h. iFrame "Ha Hrec". }
+      iRight. by iLeft.
+    - rewrite /f_esc_live.
+      iDestruct "Hf" as (h0 s0 g0) "(Ha & #Hrec & Hwh & Htk & #Hty & %Hok)".
+      iDestruct (esc_wit_lookup with "Ha Hwit") as %Hn.
+      iAssert (f_esc_live c r v ∗
+               ((⌜f_ok v s /\ file_fs_pure v⌝ ∗ f_typed c s) ∨ esc_spent g))%I
+        with "[Ha Hwh Htk]" as "[Hlive Hres]".
+      { iSplitL "Ha Hwh Htk".
+        { rewrite /f_esc_live. iExists h0, s0, g0.
+          iFrame "Ha Hrec Hwh Htk Hty". by iPureIntro. }
+        destruct (esc_wit_head h0 n s s0 g g0 Hn) as [[_ Hn0] | [-> ->]].
+        - iRight. iApply (esc_recs_at h0 n s g Hn0 with "Hrec").
+        - iLeft. iFrame "Hty". by iPureIntro. }
+      iSplitL "Hc Hlive".
+      { iRight. iSplitR; [ by iPureIntro |]. iFrame "Hc". by iRight. }
+      iDestruct "Hres" as "[Hok | #Hsp]"; [ by iLeft | iRight; by iLeft ].
+  Qed.
+
+  (* ...AND WITH THE TOKEN IN HAND, which refutes the spent disjunct: the
+     claim is AT THE ESCROWED CONTENT, full stop. *)
+  Lemma file_escrow_law (c : file_fixed) (r : file_names) :
+    ⊢ □ (∀ (v : aview) (n : nat) (s : dst) (g : gname),
+           esc_wit r n s g -∗ esc_tok g -∗ file_pred c r v -∗
+           file_pred c r v ∗ esc_tok g ∗
+           ((⌜f_ok v s /\ file_fs_pure v⌝ ∗ f_typed c s) ∨ file_taint c)).
+  Proof using .
+    iDestruct (file_escrow_read c r) as "#Hrd".
+    iIntros "!>" (v n s g) "#Hwit Htok Hp".
+    iDestruct ("Hrd" $! v n s g with "Hwit Hp") as "[Hp Hres]".
+    iDestruct "Hres" as "[Hok | [#Hsp | #Ht]]".
+    - iFrame "Hp Htok". by iLeft.
+    - iDestruct (esc_tok_spent g with "Htok Hsp") as %[].
+    - iFrame "Hp Htok". by iRight.
+  Qed.
+
 
   (* ---------------------------------------------------------------- *)
   (*  4b.  THE STEPS                                                    *)
@@ -516,15 +813,27 @@ Section FileClaim.
 
   (* the file's state is carried across a move that leaves [f] where it
      was: init's console mknod, every open that creates nothing *)
-  Lemma f_state_mono (c : file_fixed) (r : file_names) (av av' : aview) :
+  Lemma f_core_mono (c : file_fixed) (r : file_names) (av av' : aview) :
     (forall s, f_ok av s -> f_ok av' s) ->
-    f_state c r av -∗ f_state c r av'.
+    f_core c r av -∗ f_core c r av'.
   Proof using .
-    intros Hok. rewrite /f_state. iIntros "[Hf | Hf]".
+    intros Hok. rewrite /f_core. iIntros "[Hf | Hf]".
     - iDestruct "Hf" as (s) "(Hd & Ht & #Hty & %H)". iLeft. iExists s.
       iFrame "Hd Ht Hty". iPureIntro. by apply Hok.
     - iDestruct "Hf" as (s s') "(Hw & Ht & #Hty & %H)". iRight. iExists s, s'.
       iFrame "Hw Ht Hty". iPureIntro. by apply Hok.
+  Qed.
+
+  Lemma f_state_mono (c : file_fixed) (r : file_names) (av av' : aview) :
+    (forall s, f_ok av s -> f_ok av' s) ->
+    f_state c r av -∗ f_state c r av'.
+  Proof using .
+    intros Hok. rewrite /f_state. iIntros "[[Hw Hf] | Hf]".
+    - iLeft. iFrame "Hw". iApply (f_core_mono c r av av' Hok with "Hf").
+    - rewrite /f_esc_live.
+      iDestruct "Hf" as (h0 s g) "(Ha & #Hh & Hwh & Ht & #Hty & %H)".
+      iRight. iExists h0, s, g. iFrame "Ha Hh Hwh Ht Hty". iPureIntro.
+      by apply Hok.
   Qed.
 
   (* THE FREE STEP: a move that touches neither the console nor [f] --
@@ -562,13 +871,18 @@ Section FileClaim.
     iRight. iSplitR; [ iPureIntro; by apply Hpins |].
     iSplitL "Hc"; [ by iApply (cons_state_mono with "Hc") |].
     rewrite /f_state.
+    iDestruct "Hf" as "[[Hw Hf] | Hf]"; last first.
+    { rewrite /f_esc_live.
+      iDestruct "Hf" as (h0 s0 g) "(_ & _ & Hwh & _ & _ & _)".
+      iDestruct (fdeed_whole_excl with "Hd Hwh") as %[]. }
+    iLeft. iFrame "Hw". rewrite /f_core.
     iDestruct "Hf" as "[Hf | Hf]"; last first.
-    { iDestruct "Hf" as (s0 s1) "(Hw & _ & _ & _)".
-      iDestruct (fdeed_whole_excl with "Hd Hw") as %[]. }
+    { iDestruct "Hf" as (s0 s1) "(Hwh & _ & _ & _)".
+      iDestruct (fdeed_whole_excl with "Hd Hwh") as %[]. }
     iDestruct "Hf" as (s0) "(Hd' & Ht & _ & %Hok0)".
     iDestruct (fdeed_agree with "Hd Hd'") as %<-.
-    iDestruct (fdeed_join with "Hd Hd'") as "Hw".
-    iRight. iExists s, s'. iFrame "Hw Ht Hty'". iPureIntro. by apply Hok.
+    iDestruct (fdeed_join with "Hd Hd'") as "Hwh".
+    iRight. iExists s, s'. iFrame "Hwh Ht Hty'". iPureIntro. by apply Hok.
   Qed.
 
   (* THE TAINTED STEP: a holder of the supply moves the view without
@@ -576,6 +890,54 @@ Section FileClaim.
   Lemma file_step_taint (c : file_fixed) (r : file_names) (av av' : aview) :
     file_taint c -∗ file_pred c r av -∗ file_pred c r av'.
   Proof using . iIntros "#Ht _". rewrite /file_pred. by iLeft. Qed.
+
+  (* ---------------------------------------------------------------- *)
+  (*  4a''.  THE FIRE: the escrow moves the content and SPENDS          *)
+  (*                                                                    *)
+  (*  [file_step_park]'s twin at a parked deed, and it is ONE phase in   *)
+  (*  the claim instead of two: the escrow already holds the deed whole, *)
+  (*  so the arm goes straight to IN FLIGHT at the new content -- and    *)
+  (*  the spent head is an ordinary ledger entry, which is why there is  *)
+  (*  no third arm.  Phase 2 is [file_resync] exactly as it is today,    *)
+  (*  keyed on the ticket the holder kept.                              *)
+  (* ---------------------------------------------------------------- *)
+
+  Lemma file_escrow_step (c : file_fixed) (r : file_names) (av av' : aview)
+      (n : nat) (s s' : dst) (g : gname) :
+    (file_fs_pure av -> file_fs_pure av') ->
+    (cons_absent av -> cons_absent av') ->
+    (forall i, cons_present_at i av -> cons_present_at i av') ->
+    (f_ok av s -> f_ok av' s') ->
+    esc_wit r n s g -∗ esc_tok g -∗ f_typed c s' -∗
+    file_pred c r av ==∗ file_pred c r av'.
+  Proof using .
+    intros Hpins Hab Hpr Hok. iIntros "#Hwit Htok #Hty' Hp".
+    rewrite /file_pred.
+    iDestruct "Hp" as "[#Ht | (%Hpins0 & Hc & Hf)]".
+    { iModIntro. by iLeft. }
+    rewrite /f_state.
+    iDestruct "Hf" as "[[Hwr Hf] | Hf]".
+    { (* the ledger has no live head: my entry is spent, and the token
+         says it is not *)
+      rewrite /f_esc_wrap. iDestruct "Hwr" as (h) "[Ha #Hrec]".
+      iDestruct (esc_wit_lookup with "Ha Hwit") as %Hn.
+      iDestruct (esc_recs_at h n s g Hn with "Hrec") as "#Hsp".
+      iDestruct (esc_tok_spent g with "Htok Hsp") as %[]. }
+    rewrite /f_esc_live.
+    iDestruct "Hf" as (h0 s0 g0) "(Ha & #Hrec & Hwh & Htk & _ & %Hok0)".
+    iDestruct (esc_wit_lookup with "Ha Hwit") as %Hn.
+    destruct (esc_wit_head h0 n s s0 g g0 Hn) as [[_ Hn0] | [-> ->]].
+    { iDestruct (esc_recs_at h0 n s g Hn0 with "Hrec") as "#Hsp".
+      iDestruct (esc_tok_spent g with "Htok Hsp") as %[]. }
+    iMod (esc_spend g with "Htok") as "#Hsp".
+    iModIntro. iRight. iSplitR; [ iPureIntro; by apply Hpins |].
+    iSplitL "Hc"; [ by iApply (cons_state_mono with "Hc") |].
+    iLeft. iSplitL "Ha".
+    { rewrite /f_esc_wrap. iExists (h0 ++ [(s, g)]). iFrame "Ha".
+      iApply (esc_recs_snoc h0 (s, g) with "Hrec"). iExact "Hsp". }
+    rewrite /f_core. iRight. iExists s, s'. iFrame "Hwh Htk Hty'".
+    iPureIntro. by apply Hok.
+  Qed.
 
   (* ---------------------------------------------------------------- *)
   (*  5.  THE SUPPLY, OFF THE TAINT, AND ITS CONVERSE                   *)
@@ -606,36 +968,62 @@ Section FileClaim.
 
   (* the copy's file state is EXACT at the view's own content, whatever
      arm the original is in; the typed witness duplicates *)
+  (* THE TOKEN DOES NOT CROSS (lane F-OPEN-5): the copy's LEDGER IS EMPTY
+     and its arm is the EXACT one at the view's own content -- which, when
+     the original is ESCROWED, is the escrowed content itself.  A durable
+     copy is never stepped, so it never needs an escrow; and a one-shot
+     that crossed would be a token two claims could spend. *)
   Lemma f_state_copy (c : file_fixed) (r r' : file_names) (av : aview) :
+    esc_auth r' [] -∗
     fdeed r' (fcontent_of av) -∗ ftkt r' (fcontent_of av) -∗
     f_state c r av -∗ f_state c r av ∗ f_state c r' av.
   Proof using .
-    iIntros "Hd' Ht'". rewrite /f_state. iIntros "[Hf | Hf]".
-    - iDestruct "Hf" as (s) "(Hd & Ht & #Hty & %Hok)".
+    iIntros "Ha' Hd' Ht'".
+    iAssert (f_esc_wrap r') with "[Ha']" as "Hw'".
+    { rewrite /f_esc_wrap. iExists []. iFrame "Ha'". rewrite /esc_recs //. }
+    rewrite /f_state. iIntros "[[Hw Hf] | Hf]".
+    - rewrite /f_core. iDestruct "Hf" as "[Hf | Hf]".
+      + iDestruct "Hf" as (s) "(Hd & Ht & #Hty & %Hok)".
+        pose proof (f_ok_fcontent av s Hok) as Hc.
+        iSplitL "Hw Hd Ht".
+        * iLeft. iFrame "Hw". iLeft. iExists s. iFrame "Hd Ht Hty".
+          by iPureIntro.
+        * iLeft. iFrame "Hw'". iLeft. iExists (fcontent_of av).
+          iFrame "Hd' Ht'". rewrite Hc. iFrame "Hty". by iPureIntro.
+      + iDestruct "Hf" as (s s') "(Hwh & Ht & #Hty & %Hok)".
+        pose proof (f_ok_fcontent av s' Hok) as Hc.
+        iSplitL "Hw Hwh Ht".
+        * iLeft. iFrame "Hw". iRight. iExists s, s'. iFrame "Hwh Ht Hty".
+          by iPureIntro.
+        * iLeft. iFrame "Hw'". iLeft. iExists (fcontent_of av).
+          iFrame "Hd' Ht'". rewrite Hc. iFrame "Hty". by iPureIntro.
+    - rewrite /f_esc_live.
+      iDestruct "Hf" as (h0 s g) "(Ha & #Hh & Hwh & Ht & #Hty & %Hok)".
       pose proof (f_ok_fcontent av s Hok) as Hc.
-      iSplitL "Hd Ht".
-      + iLeft. iExists s. iFrame "Hd Ht Hty". by iPureIntro.
-      + iLeft. iExists (fcontent_of av). iFrame "Hd' Ht'". rewrite Hc.
-        iFrame "Hty". by iPureIntro.
-    - iDestruct "Hf" as (s s') "(Hw & Ht & #Hty & %Hok)".
-      pose proof (f_ok_fcontent av s' Hok) as Hc.
-      iSplitL "Hw Ht".
-      + iRight. iExists s, s'. iFrame "Hw Ht Hty". by iPureIntro.
-      + iLeft. iExists (fcontent_of av). iFrame "Hd' Ht'". rewrite Hc.
-        iFrame "Hty". by iPureIntro.
+      iSplitL "Ha Hwh Ht".
+      + iRight. iExists h0, s, g. iFrame "Ha Hh Hwh Ht Hty". by iPureIntro.
+      + iLeft. iFrame "Hw'". iLeft. iExists (fcontent_of av).
+        iFrame "Hd' Ht'". rewrite Hc. iFrame "Hty". by iPureIntro.
   Qed.
 
   (* the typed witness at the view's own content, off either arm *)
   Lemma f_state_typed_at (c : file_fixed) (r : file_names) (av : aview) :
     f_state c r av -∗ f_state c r av ∗ f_typed c (fcontent_of av).
   Proof using .
-    rewrite /f_state. iIntros "[Hf | Hf]".
-    - iDestruct "Hf" as (s) "(Hd & Ht & #Hty & %Hok)".
+    rewrite /f_state. iIntros "[[Hw Hf] | Hf]".
+    - rewrite /f_core. iDestruct "Hf" as "[Hf | Hf]".
+      + iDestruct "Hf" as (s) "(Hd & Ht & #Hty & %Hok)".
+        rewrite (f_ok_fcontent av s Hok). iSplitL; [| iExact "Hty"].
+        iLeft. iFrame "Hw". iLeft. iExists s. iFrame "Hd Ht Hty".
+        by iPureIntro.
+      + iDestruct "Hf" as (s s') "(Hwh & Ht & #Hty & %Hok)".
+        rewrite (f_ok_fcontent av s' Hok). iSplitL; [| iExact "Hty"].
+        iLeft. iFrame "Hw". iRight. iExists s, s'. iFrame "Hwh Ht Hty".
+        by iPureIntro.
+    - rewrite /f_esc_live.
+      iDestruct "Hf" as (h0 s g) "(Ha & #Hh & Hwh & Ht & #Hty & %Hok)".
       rewrite (f_ok_fcontent av s Hok). iSplitL; [| iExact "Hty"].
-      iLeft. iExists s. iFrame "Hd Ht Hty". by iPureIntro.
-    - iDestruct "Hf" as (s s') "(Hw & Ht & #Hty & %Hok)".
-      rewrite (f_ok_fcontent av s' Hok). iSplitL; [| iExact "Hty"].
-      iRight. iExists s, s'. iFrame "Hw Ht Hty". by iPureIntro.
+      iRight. iExists h0, s, g. iFrame "Ha Hh Hwh Ht Hty". by iPureIntro.
   Qed.
 
   (* the original, read as its echo half and its file half, under the
@@ -679,10 +1067,10 @@ Section FileClaim.
     { iNext. by iApply file_pred_split. }
     iMod ("Hex" $! (fn_cons r) av with "He") as "[He He']".
     iDestruct "He'" as (rc) "He'".
-    iMod (fnames_alloc rc (fcontent_of av)) as (r') "(%Hrc & Hd1 & _ & Ht1 & _)".
+    iMod (fnames_alloc rc (fcontent_of av)) as (r') "(%Hrc & Hd1 & _ & Ht1 & _ & Ha1)".
     iModIntro.
     iAssert (▷ (file_pred c r av ∗ file_pred c r' av))%I
-      with "[He He' Hrest Hd1 Ht1]" as "[H1 H2]"; last first.
+      with "[He He' Hrest Hd1 Ht1 Ha1]" as "[H1 H2]"; last first.
     { iFrame "H1". iExists r'. iExact "H2". }
     iNext.
     iDestruct "Hrest" as "[#Ht | (%Hp & Hf)]".
@@ -691,7 +1079,7 @@ Section FileClaim.
       iApply (file_pred_join with "[He']").
       { rewrite Hrc. iExact "He'". }
       by iLeft. }
-    iDestruct (f_state_copy c r r' av with "Hd1 Ht1 Hf") as "[Hf Hf']".
+    iDestruct (f_state_copy c r r' av with "Ha1 Hd1 Ht1 Hf") as "[Hf Hf']".
     iSplitL "He Hf".
     { iApply (file_pred_join with "He"). iRight. iFrame "Hf". by iPureIntro. }
     iApply (file_pred_join with "[He']").
@@ -726,11 +1114,11 @@ Section FileClaim.
     { iNext. by iApply file_pred_split. }
     iMod ("Hex" $! (fn_cons r) av with "He") as "[He He']".
     iDestruct "He'" as (rc) "[He' Hb]".
-    iMod (fnames_alloc rc (fcontent_of av)) as (r') "(%Hrc & Hd1 & Hd2 & Ht1 & Ht2)".
+    iMod (fnames_alloc rc (fcontent_of av)) as (r') "(%Hrc & Hd1 & Hd2 & Ht1 & Ht2 & Ha1)".
     iModIntro.
     iAssert (▷ (file_pred c r av ∗ file_pred c r' av
                 ∗ (f_typed c (fcontent_of av) ∨ file_taint c)))%I
-      with "[He He' Hrest Hd1 Ht1]" as "(H1 & H2 & H3)"; last first.
+      with "[He He' Hrest Hd1 Ht1 Ha1]" as "(H1 & H2 & H3)"; last first.
     { iFrame "H1". iExists r'. iFrame "H2". rewrite /file_boot Hrc. iFrame "Hb".
       iExists (fcontent_of av). rewrite /fown. iFrame "Hd2 Ht2 H3". }
     iNext.
@@ -741,7 +1129,7 @@ Section FileClaim.
       { rewrite Hrc. iExact "He'". }
       by iLeft. }
     iDestruct (f_state_typed_at with "Hf") as "[Hf #Hty]".
-    iDestruct (f_state_copy c r r' av with "Hd1 Ht1 Hf") as "[Hf Hf']".
+    iDestruct (f_state_copy c r r' av with "Ha1 Hd1 Ht1 Hf") as "[Hf Hf']".
     iSplitL "He Hf".
     { iApply (file_pred_join with "He"). iRight. iFrame "Hf". by iPureIntro. }
     iSplitL "He' Hf'"; [| by iLeft ].
@@ -766,13 +1154,15 @@ Section FileClaim.
   Proof using .
     intros Hdk Hrec HS.
     iMod (echo_init c.1 dk D S Hdk Hrec HS) as (rc) "He".
-    iMod (fnames_alloc rc None) as (r) "(%Hrc & Hd1 & _ & Ht1 & _)".
+    iMod (fnames_alloc rc None) as (r) "(%Hrc & Hd1 & _ & Ht1 & _ & Ha1)".
     iModIntro. iExists r.
     iApply (file_pred_join with "[He]").
     { rewrite Hrc. iExact "He". }
     iRight. iSplitR.
     { iPureIntro. exact (file_fs_era0 dk D S Hdk Hrec HS). }
-    rewrite /f_state. iLeft. iExists None.
+    rewrite /f_state. iLeft. iSplitL "Ha1".
+    { rewrite /f_esc_wrap. iExists []. iFrame "Ha1". rewrite /esc_recs //. }
+    rewrite /f_core. iLeft. iExists None.
     iSplitL "Hd1"; [ iExact "Hd1" |].
     iSplitL "Ht1"; [ iExact "Ht1" |].
     iSplitR; [ by rewrite /f_typed |].
@@ -868,25 +1258,164 @@ Section FileClaimEra.
         iSplitL; [ by iLeft | by iPureIntro ]. }
       iModIntro. iFrame "Hka". iRight. iFrame "Htk Ht". }
     rewrite /f_state.
+    iDestruct "Hf" as "[[Hw Hf] | Hf]"; last first.
+    { (* THE ESCROW ARM: refuted exactly as the exact arm is -- the ticket
+         says the claim is at the OLD content, and the escrow parks the
+         deed AT that content, while the view says it moved *)
+      rewrite /f_esc_live.
+      iDestruct "Hf" as (h0 s0 g) "(_ & _ & _ & Ht' & _ & %Hok)".
+      iDestruct (ftkt_agree with "Htk Ht'") as %<-.
+      exfalso. apply Hne. rewrite -Hcont. symmetry. exact (f_ok_fcontent _ _ Hok). }
+    rewrite /f_core.
     iDestruct "Hf" as "[Hf | Hf]".
     { (* EXACT: refuted -- the ticket says the claim's value is the OLD
          content, the view says the content moved *)
       iDestruct "Hf" as (s0) "(Hd & Ht' & _ & %Hok)".
       iDestruct (ftkt_agree with "Htk Ht'") as %<-.
       exfalso. apply Hne. rewrite -Hcont. symmetry. exact (f_ok_fcontent _ _ Hok). }
-    iDestruct "Hf" as (s0 s1) "(Hw & Ht' & #Hty & %Hok)".
+    iDestruct "Hf" as (s0 s1) "(Hwh & Ht' & #Hty & %Hok)".
     iDestruct (ftkt_agree with "Htk Ht'") as %<-.
     assert (Hs1 : s1 = s') by (rewrite -Hcont; symmetry; exact (f_ok_fcontent _ _ Hok)).
     subst s1.
-    iMod (fdeed_whole_update r s s' with "Hw") as "Hw".
-    iDestruct (fdeed_split with "Hw") as "[Hd1 Hd2]".
+    iMod (fdeed_whole_update r s s' with "Hwh") as "Hwh".
+    iDestruct (fdeed_split with "Hwh") as "[Hd1 Hd2]".
     iMod (ftkt_update r s s s' with "Htk Ht'") as "[Htk Ht']".
-    iMod ("Hclose" with "[Hh Hx Hc Hd2 Ht']") as "_".
+    iMod ("Hclose" with "[Hh Hx Hc Hw Hd2 Ht']") as "_".
     { iNext. rewrite /app_body. iExists I'. iFrame "Hh Hx".
       iSplitL; [| by iPureIntro ].
       rewrite Heq. cbn [app_pred app_run app_names].
-      iApply (file_pred_exact c r _ s' Hpins Hok with "Hc Hd2 Ht' Hty"). }
+      iApply (file_pred_exact c r _ s' Hpins Hok with "Hc Hw Hd2 Ht' Hty"). }
     iModIntro. iFrame "Hka". iLeft. rewrite /fown. iFrame "Hd1 Htk".
+  Qed.
+
+  (* ------------------------------------------------------------------ *)
+  (*  9.  THE ESCROW AT THE ERA'S RECORD (lane F-OPEN-5)                  *)
+  (*                                                                      *)
+  (*  PARK, FIRE, RETURN.  The park and the return move no view, so they   *)
+  (*  are not [app_step]s: they open [app_inv] on their own, at any mask   *)
+  (*  holding [appN] -- which is where the redirect child is before and    *)
+  (*  after its [open] and NOT where a commit fires, so the mask that      *)
+  (*  refuted F-OPEN-4's second invariant is never in play.                *)
+  (* ------------------------------------------------------------------ *)
+
+  (* THE PARK: the holder's half goes into the claim, a fresh one-shot is
+     appended to the ledger, and the holder keeps the TICKET (which is what
+     [file_resync] keys on) beside the token and the persistent witness. *)
+  Lemma file_escrow_park (γfs : fs_names) (c : file_fixed) (r : file_names)
+      (s : dst) (E : coPset) :
+    ↑appN ⊆ E ->
+    file_app = MkAppcfg file_names (file_pred c) r ->
+    app_inv γfs -∗ fown r s ={E}=∗
+      (∃ (n : nat) (g : gname), esc_wit r n s g ∗ esc_tok g ∗ ftkt r s)
+      ∨ (fown r s ∗ file_taint c).
+  Proof using .
+    intros HE Heq. iIntros "#Hinv [Hd Htk]".
+    iMod (inv_acc E appN with "Hinv") as "[Hbody Hclose]"; [ exact HE |].
+    iEval (rewrite /app_body) in "Hbody".
+    iDestruct "Hbody" as (I0) "(>Hka & Hp & >%Hdom & #Hx)".
+    iEval (rewrite Heq; cbn [app_pred app_run app_names]) in "Hp".
+    iDestruct "Hp" as ">Hp". rewrite /file_pred.
+    iDestruct "Hp" as "[#Ht | (%Hpins & Hc & Hf)]".
+    { iMod ("Hclose" with "[Hka Hx]") as "_".
+      { iNext. rewrite /app_body. iExists I0. iFrame "Hka Hx".
+        iSplitL; [| by iPureIntro ].
+        rewrite Heq. cbn [app_pred app_run app_names]. rewrite /file_pred.
+        by iLeft. }
+      iModIntro. iRight. rewrite /fown. iFrame "Hd Htk Ht". }
+    rewrite /f_state.
+    iDestruct "Hf" as "[[Hwr Hf] | Hf]"; last first.
+    { (* an escrow is already live: its whole deed refutes the holder's
+         half, so the park meets no escrow of anybody else's *)
+      rewrite /f_esc_live.
+      iDestruct "Hf" as (h0 s0 g0) "(_ & _ & Hwh & _ & _ & _)".
+      iDestruct (fdeed_whole_excl with "Hd Hwh") as %[]. }
+    rewrite /f_core.
+    iDestruct "Hf" as "[Hf | Hf]"; last first.
+    { iDestruct "Hf" as (s0 s1) "(Hwh & _ & _ & _)".
+      iDestruct (fdeed_whole_excl with "Hd Hwh") as %[]. }
+    iDestruct "Hf" as (s0) "(Hd' & Htk' & #Hty & %Hok)".
+    iDestruct (fdeed_agree with "Hd Hd'") as %<-.
+    iDestruct (fdeed_join with "Hd Hd'") as "Hwh".
+    iMod esc_alloc as (g) "Htok".
+    rewrite /f_esc_wrap. iDestruct "Hwr" as (h) "[Ha #Hrec]".
+    iMod (esc_auth_grow r h s g with "Ha") as "[Ha #Hwit]".
+    iMod ("Hclose" with "[Hka Hx Hc Ha Hwh Htk']") as "_".
+    { iNext. rewrite /app_body. iExists I0. iFrame "Hka Hx".
+      iSplitL; [| by iPureIntro ].
+      rewrite Heq. cbn [app_pred app_run app_names]. rewrite /file_pred.
+      iRight. iSplitR; [ by iPureIntro |]. iFrame "Hc".
+      rewrite /f_state. iRight. rewrite /f_esc_live.
+      iExists h, s, g. iFrame "Ha Hrec Hwh Htk' Hty". by iPureIntro. }
+    iModIntro. iLeft. iExists (length h), g. iFrame "Hwit Htok Htk".
+  Qed.
+
+  (* THE RETURN: an escrow that never fired comes home.  The token is SPENT
+     on the way out -- that is what keeps the ledger's invariant ("every
+     entry but a live head is spent") true, and it is what makes a stale
+     witness of this escrow read [esc_spent] ever after. *)
+  Lemma file_escrow_return (γfs : fs_names) (c : file_fixed) (r : file_names)
+      (n : nat) (s : dst) (g : gname) (E : coPset) :
+    ↑appN ⊆ E ->
+    file_app = MkAppcfg file_names (file_pred c) r ->
+    app_inv γfs -∗ esc_wit r n s g -∗ esc_tok g -∗ ftkt r s ={E}=∗
+      fown r s ∨ (ftkt r s ∗ file_taint c).
+  Proof using .
+    intros HE Heq. iIntros "#Hinv #Hwit Htok Htk".
+    iMod (inv_acc E appN with "Hinv") as "[Hbody Hclose]"; [ exact HE |].
+    iEval (rewrite /app_body) in "Hbody".
+    iDestruct "Hbody" as (I0) "(>Hka & Hp & >%Hdom & #Hx)".
+    iEval (rewrite Heq; cbn [app_pred app_run app_names]) in "Hp".
+    iDestruct "Hp" as ">Hp". rewrite /file_pred.
+    iDestruct "Hp" as "[#Ht | (%Hpins & Hc & Hf)]".
+    { iMod ("Hclose" with "[Hka Hx]") as "_".
+      { iNext. rewrite /app_body. iExists I0. iFrame "Hka Hx".
+        iSplitL; [| by iPureIntro ].
+        rewrite Heq. cbn [app_pred app_run app_names]. rewrite /file_pred.
+        by iLeft. }
+      iModIntro. iRight. iFrame "Htk Ht". }
+    rewrite /f_state.
+    iDestruct "Hf" as "[[Hwr Hf] | Hf]".
+    { rewrite /f_esc_wrap. iDestruct "Hwr" as (h) "[Ha #Hrec]".
+      iDestruct (esc_wit_lookup with "Ha Hwit") as %Hn.
+      iDestruct (esc_recs_at h n s g Hn with "Hrec") as "#Hsp".
+      iDestruct (esc_tok_spent g with "Htok Hsp") as %[]. }
+    rewrite /f_esc_live.
+    iDestruct "Hf" as (h0 s0 g0) "(Ha & #Hrec & Hwh & Htk' & #Hty & %Hok)".
+    iDestruct (esc_wit_lookup with "Ha Hwit") as %Hn.
+    destruct (esc_wit_head h0 n s s0 g g0 Hn) as [[_ Hn0] | [-> ->]].
+    { iDestruct (esc_recs_at h0 n s g Hn0 with "Hrec") as "#Hsp".
+      iDestruct (esc_tok_spent g with "Htok Hsp") as %[]. }
+    iMod (esc_spend g with "Htok") as "#Hsp".
+    iDestruct (fdeed_split with "Hwh") as "[Hd1 Hd2]".
+    iMod ("Hclose" with "[Hka Hx Hc Ha Hd2 Htk']") as "_".
+    { iNext. rewrite /app_body. iExists I0. iFrame "Hka Hx".
+      iSplitL; [| by iPureIntro ].
+      rewrite Heq. cbn [app_pred app_run app_names].
+      iApply (file_pred_exact c r _ s Hpins Hok with "Hc [Ha] Hd2 Htk' Hty").
+      rewrite /f_esc_wrap. iExists (h0 ++ [(s, g)]). iFrame "Ha".
+      iApply (esc_recs_snoc h0 (s, g) with "Hrec"). iExact "Hsp". }
+    iModIntro. iLeft. rewrite /fown. iFrame "Hd1 Htk".
+  Qed.
+
+  (* THE FIRE, at [AppInv.app_step]'s own shape ([file_app_step_park]'s
+     twin at a parked deed): the escrow moves the content and spends. *)
+  Lemma file_app_step_escrow (c : file_fixed) (r : file_names)
+      (i : Z) (I : gmap Z fs_node) (av' : aview)
+      (n : nat) (s s' : dst) (g : gname) :
+    file_app = MkAppcfg file_names (file_pred c) r ->
+    (file_fs_pure (abs_view I) -> file_fs_pure av') ->
+    (cons_absent (abs_view I) -> cons_absent av') ->
+    (forall j, cons_present_at j (abs_view I) -> cons_present_at j av') ->
+    (f_ok (abs_view I) s -> f_ok av' s') ->
+    esc_wit r n s g -∗ esc_tok g -∗ f_typed c s' -∗ app_step i I av'.
+  Proof using .
+    intros Heq Hpins Hab Hpr Hok. iIntros "#Hwit Htok #Hty'".
+    rewrite /app_step. iIntros (nd) "%Hav Hp".
+    rewrite Heq. cbn [app_pred app_run app_names]. rewrite Hav.
+    iDestruct "Hp" as ">Hp".
+    iMod (file_escrow_step c r (abs_view I) av' n s s' g
+            Hpins Hab Hpr Hok with "Hwit Htok Hty' Hp") as "Hp".
+    iModIntro. iNext. iExact "Hp".
   Qed.
 
 End FileClaimEra.

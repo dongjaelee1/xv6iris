@@ -288,3 +288,185 @@ the parser chain (peek, both scans, `parseredirs`' frame, `parseexec`'s
 argument loop) is either already general or a mechanical re-walk that
 cannot start until a `gettoken` exists that returns something other than
 `'a'` and `0`.
+
+### SH-PARSE (2026-09-17) — the redirect line's LEXER lands; the parser chain above `parseredirs` does not
+
+Branch `app-file/sh-redir`, four commits on top of SH-REDIR's.  Whole
+tree green on the lane's remote tree; `make audit-echo-only` still
+FOURTEEN; `make check-ucode` green (the catalog moved, and it moved
+because its SPEC did); every landed sh STATEMENT unchanged.
+
+**WHAT LANDED.**
+
+`iris/UkShParseSym.v` (new, pure, after `UkShParse.v`) — the line model.
+
+- `ushs_one len f o` — every symbol byte of the line is at `o`, and the
+  byte there is `'>'`.  `ushs_one_none : ushs_one len f None <->
+  ushp_no_symbols len f`, BOTH DIRECTIONS: stage 4's landed premise is
+  this model's symbol-free instance, not a parallel development.
+- `ushs_redir len f p e` — design §5.1's canonical shape: one blank each
+  side of the `'>'` at `p`, one word `[p+2, e)`, blanks to the end.
+- the scan measures at that shape: `ushs_skipws_after_gt` (one blank),
+  `ushs_toklen_file` (the file name's length), `ushs_skipws_tail`,
+  `ushs_skipws_at_gt`, `ushs_toklen_at_gt`.
+- `ushs_toks len f stop off toks` — `UkShParse.ushp_tokens` with the
+  TERMINATOR as a parameter, and `ushs_toks_tokens` / `ushp_tokens_toks`
+  the `stop = len` instance.  **This is not a convenience.**
+  `ushp_tokens` has NO INHABITANT on a line whose symbol byte is
+  reachable: its `Cons` needs `0 < ushp_toklen`, which is 0 at a symbol,
+  and its `Nil` needs the blank scan to reach `len`.  So a redirect
+  line's ARGUMENT tokens are not `ushp_tokens` of anything, and every
+  loop invariant above `parseredirs` has to be re-stated at `ushs_toks`.
+- `ushs_gettok_res / _end / _fin` — gettoken's answer at one symbol, with
+  `ushs_gettok_res_nosym` / `_end_nosym` proving the landed
+  `UkShParseTok.ushp_gettok_*` are their symbol-free instances.
+- `ushs_gt_ok len f` — the ONLY thing gettoken needs to know about the
+  line (every symbol byte is a `'>'` that is neither last nor doubled),
+  with both line shapes shown to satisfy it.
+
+`iris/UkShRedirGtk.v` (new) — **THE GENERALISED gettoken**, the linchpin
+SH-REDIR named.
+
+- `wp_kshp_gtk_disp_ns` — the switch at a cursor whose byte is not a
+  symbol.  `UkShParseTok.wp_kshp_gtk_disp` carries `ushp_no_symbols len f`
+  and USES it in exactly ONE LINE of its 460 (to know the byte AT THE
+  CURSOR is not a symbol); everything else was already general.  So this
+  is that walk at the premise it actually needs, and the landed lemma is
+  its instance.  **That one-line-of-460 shape recurs** — see
+  `wp_kshp_parseredirs_ns` below, and expect it at `parseexec`,
+  `parsepipe` and `parseline` too.
+- `wp_kshp_gettoken_sym` — gettoken end to end at `ushs_gt_ok`, a
+  THREE-WAY case on the byte at the blank-scanned cursor: the NUL arm,
+  the `'>'` arm (through SH-REDIR's landed
+  `UkShRedirTok.wp_kshp_gtk_disp_gt`), and the default arm.  All three
+  land on 0x388, so `wp_kshp_gtk_388` / `wp_kshp_gtk_fin` are walked once.
+  The whole file compiles in ~10 s.
+
+`iris/UkShRedirCmd.v` (new) — `wp_kshp_redircmd`, 0x200..0x25e.  An
+eight-word frame (gettoken's, instruction for instruction, so
+`wp_kshp_frame_pro` / `_epi` drive both ends), `malloc(40)` through
+`ushp_malloc_ok`, `memset` across the `shp_code`/`shk_code` bridge, and
+seven field stores that build `ushp_tree`'s REDIR node with the sub-tree
+carried IN and handed back.  The NULL arm is `execcmd`'s: `redircmd` does
+not test malloc's answer either.  `ushp_nth_byte_32_64` is the one pure
+fact the two `sw`s need (the struct's `int` fields are `mword 32` and the
+register is 64 bits).
+
+`tools/ucode_shp.txt` — `skipfunc redircmd` becomes `func redircmd`, and
+`iris/UCodeShP.v` is the REGENERATED output (564 → 603 instruction
+facts).  Two consequences worth knowing before the next coverage change:
+`shp_syms_pins` gains a twelfth conjunct, so `UkShParse.shpp_strlen` /
+`shpp_strchr` each take one more underscore in their `destruct` pattern
+(their STATEMENTS are untouched); and `make check-ucode`'s second half is
+`git diff --exit-code`, so it can only pass after the regenerated catalog
+is COMMITTED.
+
+`iris/UkShRedirPr.v` (new) — `wp_kshp_parseredirs_gt`, **parseredirs
+turning ONCE**, and `wp_kshp_parseredirs_ns`, parseredirs at zero turns on
+a line whose `'>'` is somewhere else.
+
+- the one-turn walk is the `'>'` `gettoken` (both out parameters NULL),
+  the file-name `gettoken` (with `&q` / `&eq` — the first walk in the
+  parser that uses its own frame's LOCALS), the three-way switch (the
+  `'a'` test and the `'<'` test refuted, the `'>'` test taken),
+  `redircmd(cmd, q, eq, 0x601, 1)`, and the SECOND `peek`, which answers 0
+  because the cursor has reached the end of the line.  It returns
+  `ushp_tree s0 t (UshpRedir c (S (S p)) e 1537 1)`.
+- `wp_kshp_frame_pro_at` is why there is a second prologue lemma here, and
+  this is the lane's one real surprise: **`UkShParse.wp_kshp_fp`
+  quantifies the new frame pointer UNIVERSALLY.**  That is enough for
+  every landed caller and not enough for any walk that touches its own
+  LOCALS, because `q` and `eq` live at `s0-104` / `s0-112` while what the
+  walk owns is the stack at `sp0`.  `wp_kshp_frame_pro_at` is
+  `wp_kshp_frame_pro` with the frame pointer at its value and nothing else
+  changed.  Any later walk with locals (`parseexec` has four) needs it.
+- the extra stack depth the locals need is read off `urun`'s OWN budget
+  (`urun_stack` at the post-prologue run), not assumed: the prologue only
+  exposes `8 * k <= uint sp0`, which at `k = 14` gives `uint sp0 >= 112`
+  and leaves `0 < uint sp0 - 112` UNPROVABLE.
+
+`iris/UkShRedirLine.v` (new, pure) — the line-level half, and the
+refutation below.
+
+**REFUTED — and this is deliverable 5's shape, not an effort estimate.**
+
+**`UkShLoop.ush_line_lexable` cannot become a disjunction.**
+`ushs_line_is_nosym` proves it: a line `UkSh.ush_line_is ws f k len`
+describes NEVER carries a symbol byte, because `ush_line_is` carries
+`EchoDisc.line_ok ws`, hence `LineWords.wl_wf ws`, hence every buffer byte
+is alphanumeric, a blank or the newline (`LineWords.wl_line_byte_val`).
+Weakening `ush_line_lexable`'s CONCLUSION to "no symbols ∨ redirect shape"
+therefore adds a right disjunct unreachable from its own premise: every
+consumer would case-split on something that cannot happen, and the
+redirect arm of `wp_kshm_child` would be vacuous.  (Same lemma also shows
+`ush_line_lexable`'s first conjunct is derivable, not assumed.)
+
+What replaces it is a SECOND line predicate, `ushs_line_is ws file f k
+len`, positional exactly as `ush_line_is` is (the words of `ws`, one
+blank, the `'>'`, one blank, the file name, the newline), with
+`ushs_line_is_redir` the bridge to `ushs_redir` at `p = |wl_body ws| + 1`
+and `e = |wl_body ws| + 3 + |file|`.  A widened `ush_line_lexable` is
+`ush_line_lexable ∧ ush_line_lexable_redir`, the second quantified over
+`ushs_line_is` — and the CHILD then has two lemmas, not one arm.
+
+**NOT LANDED, and why.**
+
+- **`parseexec`'s argument loop, `nulterminate`'s REDIR row,
+  `parsepipe` / `parseline` / `parsecmd`, the parser theorem** (the
+  brief's deliverable 4).  Not blocked by a design fact — it is five
+  re-walks, ~3 500 lines, and the pieces they need are now all in place.
+  Two of them are the cheap "one line of N" shape
+  (`wp_kshp_parseredirs_ns` is already landed; `parsepipe` and
+  `parseline` refute their peeks the same way).  Two are real:
+  `wp_kshp_pex_loop` must be re-stated at `ushs_toks len f p 0 args` with
+  the LAST round's `parseredirs` turning (its invariant is
+  `ushp_exec_pre s0 p done` ∗ `ushp_tokens len f cur rest` today, and the
+  tokens half is the part that has no inhabitant on this line), and
+  `nulterminate`'s REDIR row is NEW CODE, not a premise change: the
+  jump-table dispatch to case REDIR, the RECURSION into the sub-tree
+  (hence an induction on `ushp_cmd`), and the NUL store at `efile`.
+- **the child walk at the redirect shape** (deliverable 5).  BLOCKED on
+  the parser theorem, exactly as SH-REDIR predicted: `wp_kshm_child` takes
+  `ushp_no_symbols len f` and `ushp_tokens len f 0 toks` as PREMISES and
+  calls `UkShParseCmd.wp_kshp_parser`, which does not exist at the
+  redirect shape.  Its statement at the redirect shape is
+  `UkShMain.wp_kshm_child` with those two premises replaced by
+
+  ```coq
+      ushs_redir len f p e ->
+      ushs_toks len f p 0%nat args ->
+      (length args < 10)%nat ->
+  ```
+
+  (everything else — `Hmalloc`, `sh_deps`, `shk_code`, `uxsup_at`, the
+  kill credential, the three `ustr`s, `ustd`, `ucwd_any`, `uch_any`,
+  `UMalloc`, the run at 0x9c0 — verbatim), PLUS one new premise, the open
+  as a call:
+
+  ```coq
+      UkShRedir.ush_open_call N cwdv (s0 + Z.of_nat (S (S p)))
+        (1537 : Z) (<[1%nat := FdClosed]> ld) K -∗
+  ```
+
+  and, inside, `UkShRedir.wp_kshr_redir_arm` in place of
+  `UkShRun.wp_kshr_runcmd` at the top node, with the receipt `K ty`
+  carried into the walk's own EXEC arm rather than dropped.
+  `wp_kshm_child_alloc` is the same edit one level up.  **THE APPLICATION
+  LANE INSTANTIATES `ush_open_call` AND NOTHING ELSE** — SH-REDIR's shape,
+  verbatim, still compiles; `K ty` is where the held offset goes when
+  OFF-HAND lands, so neither premise has to be restated then.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**
+
+`wp_kshp_pex_loop` at `ushs_toks`.  Everything under it is landed —
+`wp_kshp_gettoken_sym` answers `'>'`, `'a'` and 0; `wp_kshp_parseredirs_ns`
+is the zero-turn call after each ordinary token; `wp_kshp_parseredirs_gt`
+is the one turn after the LAST one — and everything above it
+(`parsepipe`, `parseline`, `parsecmd`, the theorem) is mechanical once the
+loop's invariant is stated at a terminated token list.  Start by copying
+`UkShParseExec.wp_kshp_pex_loop` into a new file, replacing
+`ushp_tokens len f cur rest` with `ushs_toks len f p cur rest` and
+`ushp_no_symbols len f` with `ushs_redir len f p e`, and expect the two
+`parseredirs` call sites to be the only places the proof text really
+changes.  Use `wp_kshp_frame_pro_at`, not `wp_kshp_frame_pro`:
+`parseexec` has four locals.

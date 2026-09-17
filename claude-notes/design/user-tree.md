@@ -2410,7 +2410,7 @@ console claim.
 **(3) THE DEPOSIT INSTANCE IS A WALL IN THE TREE FILES, and the shape of
 the fix is measured.**  `UkTreeRead.wp_uk_ecall_open_own`
 (`UkTreeRead.v:294`) and `UkTreeCreate.wp_uk_ecall_mknod_own`
-(`UkTreeCreate.v:481`) are pinned at `UexecExecInst.uprogSG_gen` through
+(`UkTreeCreate.v:480`) are pinned at `UexecExecInst.uprogSG_gen` through
 their `UkRun.urun`, while /init must run at `uprogSG_free`
 (`UInitBoot.v`'s ruling: at `gen` its `udep` IS `AppInv.app_sup`, so a
 slot outside the taint arm is a vacuous arm), and the two records are not
@@ -2457,7 +2457,7 @@ verified-`/init` theorem will read "at an era whose namespace has no
 
 **(5) D4 NOT LANDED, and (4) is exactly why.**
 `UInitKernel.init_boot_con` takes `UkInit.init_cons_sup` at
-`UInitKernel.v:718`; with that premise unpayable there is no behavioural
+`UInitKernel.v:720`; with that premise unpayable there is no behavioural
 `tree_Hinit_boot` to point `UTreeAdequacy.tree_adequacy_treeΣ` at, so the
 at-boot form stands unrenamed and the tree audit is unmoved.  What the
 theorem says is therefore still §9.3(2)'s; what the lane bought is that

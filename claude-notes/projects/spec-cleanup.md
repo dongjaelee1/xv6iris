@@ -933,7 +933,7 @@ byte-identical; echo audit 14, tree audit unmoved.
    moves the namespace again).  `Cns := True`.
 3. **A TOOLING WALL WITH A MEASURED SHAPE.** `UkTreeRead.wp_uk_ecall_open_own`
    (`UkTreeRead.v:294`) and `UkTreeCreate.wp_uk_ecall_mknod_own`
-   (`UkTreeCreate.v:481`) are pinned at `uprogSG_gen` through their `urun`;
+   (`UkTreeCreate.v:480`) are pinned at `uprogSG_gen` through their `urun`;
    /init runs at `uprogSG_free`.  Adding `Context `{PS : uprogSG Σ}` to
    either tree file WEDGES its own compile (measured: `UkTreeRead.v` 6+ min,
    RSS +32 MB/45 s, killed).  The two ecall walks are re-derived in
@@ -957,7 +957,7 @@ byte-identical; echo audit 14, tree audit unmoved.
    credential-free `□`-shaped mknod the tree cannot give (it needs the LIVE
    deed).
 5. **D4 NOT LANDED**, and (4) is why: `UInitKernel.init_boot_con` takes
-   `init_cons_sup` at `UInitKernel.v:718`, so there is no behavioural
+   `init_cons_sup` at `UInitKernel.v:720`, so there is no behavioural
    `tree_Hinit_boot` to re-point `UTreeAdequacy.tree_adequacy_treeΣ` at.
    The at-boot form stands, unrenamed.  What the lane bought is that
    /init's premise list at the tree claim is down from TWO open entries to

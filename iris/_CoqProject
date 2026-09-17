@@ -1490,6 +1490,7 @@ FileDisc.v
 LogEntryDefs.v
 ConsLog.v
 EchoOutPure.v
+FileOutPure.v
 EchoOut.v
 EchoLinks.v
 EchoLinksPro.v
@@ -1502,6 +1503,9 @@ AppFile.v
 FileOpen.v
 FileDeltas.v
 FileWrite.v
+FileOut.v
+FileLinks.v
+AppFileRec.v
 AppTree.v
 
 FsAbsUnlinkFire.v

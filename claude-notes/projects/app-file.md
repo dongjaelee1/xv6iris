@@ -1334,3 +1334,377 @@ to carry an application receipt too (`Kf : iProp Σ`, or a second
 kernel spec says is reachable.  Everything else SH-ROUND needs of this
 lane is `FileOpen.file_open_create_au`'s conclusion, instantiated at
 `K ty := ∃ i γo, ⌜ty = FdInode i γo OffParked⌝ ∗ fown r (Some (i, []))`.
+
+### STAGE (2026-09-17) — the console side and the record; two blockers named
+
+Branch `app-file/stage`.  Whole tree GREEN on the lane's remote tree
+(`make -j8 -k` over the four sub-trees, `EXIT=0`, zero `Error`); **both
+audits unchanged** (`make audit-all-only`: the echo theorem's FOURTEEN,
+the system theorem's thirteen).  No echo file and no landed statement of
+`AppFile.v`/`FileDisc.v` moves: the diff to existing files is FOUR LINES
+of `iris/_CoqProject`.
+
+**WHAT LANDED** (four new files, 4,900 lines).
+
+`iris/FileOutPure.v` (2,140) — `EchoOutPure.v`'s twin at `FileDisc.sessf`.
+`pending_at_f`/`pending_f`/`D_from_f`/`D_f` with the era's boot state
+carried as an `option fst` (`f0_st` reads it); F1 `D_f_pending_sessf` /
+`D_f_stage_prefix`; F2 `D2_next_input_f` (with `sessf_length_lt`, which
+`FileDisc` does not state); F3 is `EchoOutPure.read_window_prefix`
+verbatim, reached through `disc_byte_ok_f`/`disc_seg_f_no_erase`/
+`disc_seg_f_no_ctrl_d`; F4 `good_out_f_of_stage`.  Beside them:
+`disc_f`'s five closure laws (`disc_f_out`, `_in`, `_power`, `_other`,
+`_prefix` — `FileDisc` landed `disc_input_f`'s full set and none of
+these, and the ledger's three steps are stated at exactly them); the
+era's process-byte cursor (`proc_before_f`, `proc_stream_f`, `pcount_f`,
+`write_stage_byte_f`, `proc_stream_f_round_banner_open`); the stage
+record `fostage` and its two length laws (`cs_len_ok_f`, `ps_len_ok_f`)
+with `feout_pure`; and `sessf_prefix_det2`.
+
+`iris/FileOut.v` (2,265) — the claim, the tag, the turn, the steps and
+the ledger.  `fecl`, `ftag`, `fturn`, `f0_auth`/`f0_lb`/`file_era_pin`;
+`fecl_close`, `fecl_open`, `fecl_sup`, `fecl_arm`, `fecl_lt`,
+`fecl_step_write_first`, `fecl_step_write`, `fecl_step_write_blk`,
+`fecl_step_write_pro`, `fecl_step_read`, `fecl_step_echo`,
+`fecl_step_byte`, `fecl_drain`; `file_led` with `file_led_init`,
+`file_led_pow`, `file_led_tx`, `file_led_rx`, `file_led_phi`;
+`file_birth_all`.
+
+`iris/FileLinks.v` (300) — `file_write_link`, `_first`, `_blk`, `_pro`,
+`file_write_link_taint`, `file_cons_link_of_taint`, `file_read_link`
+(with `fread_ret`), `file_close_link`, `file_byte_link`,
+`file_cons_run`, and `file_happ_echo` (`App.al_echo`, a closed
+entailment).
+
+`iris/AppFileRec.v` (370) — AppFile layer B: `file_R`, `file_tag`,
+`file_kill`, `file_cons`, `file_turn`, `file_ifc`, the record `app_file`,
+`file_Happ_init` at the literal image, `file_Hphi_R`, and
+`Global Instance file_laws : App.xv6_app_laws app_file` with EVERY field
+but `al_programs` discharged.
+
+**ASSUMPTIONS.**  `Print Assumptions` is *Closed under the global
+context* on `good_out_f_of_stage`, `sessf_prefix_det2`, `D2_next_input_f`,
+`D_f_pending_sessf`, `disc_f_in`, `write_stage_byte_f`, `alts_pad_ok`
+(no axioms at all, not even PrimString), and on `fecl_step_echo`,
+`fecl_step_write_pro`, `fecl_drain`, `file_led_pow`, `file_led_tx`,
+`file_led_rx`, `file_led_phi`, `file_happ_echo`, `file_write_link_first`,
+`file_write_link_pro`, `file_read_link`, `file_al_tx`, `file_al_rx`,
+`file_al_pow`, `file_al_echo`, `file_Happ_init`, `file_Hphi_R` it is the
+eleven PrimString/PrimInt63 primitives and nothing else.  `file_laws`
+adds the two Sail reservation `Parameter`s the TREE audit already prints
+(`resv_matches`, `resv_is_valid`), through `InitBoot.init_boot_bundle`.
+NOTHING is `Admitted`.
+
+**THE TWO SECTION HYPOTHESES, and why neither is an `Admitted`.**
+
+1. `al_programs` — lane SH-ROUND's, taken as `Context (Hprog : …)` in
+   `AppFileRec`'s `Section FileLaws`, so `file_laws` simply does not
+   exist until that lane lands (the brief's preferred shape).
+2. **`Decision (FileDisc.disc_f h)`** — `Context `{Hdf : forall hh,
+   Decision (disc_f hh)}` in `FileOut.v`, from the ledger onwards.
+
+**BLOCKER 1: THE TAINT COUNTER NEEDS `disc_f` DECIDED, AND `disc_f` IS
+NOT DECIDABLE AS LANDED.**  `EchoOut.echo_led`'s counter is at
+`decide (EchoDisc.disc h)` and the FILE ledger's must be at
+`decide (FileDisc.disc_f h)`: the conclusion's antecedent is the file
+discipline and `disc_f h` does NOT imply `disc h` (a `cat f` line is not
+an echo line, so `disc_f_disc`'s equivalence needs the echo-only
+premise).  So the design page's "`file_led` = echo's counter" and
+"`ftag h := etag h ∗ fl_lb …`" are both WRONG as stated: `etag` carries
+`⌜disc h⌝ ∨ T`, which says nothing about the file session.  The landed
+shapes are `⌜trace_shape h true⌝ ∗ (⌜disc_f h⌝ ∨ file_taint c) ∗
+fl_lb c (efl_of h)` and the counter at `decide (disc_f h)`.
+ONLY `al_rx` HAS TO DECIDE (every other ledger step wants a `decide_ext`
+over one of `disc_f`'s closure laws, all of which this lane proved), and
+there it must hand out the byte's tag, whose left arm IS the discipline —
+and the tag's consumers (the echo shift's `ecl_open`, hence
+`D2_next_input_f`) need D1/D2 at the open cycle, not only D3.  So no
+decidable WEAKENING of `disc_f` serves: the predicate the counter reads
+must be implied by `disc_f` AND sufficient for the shift, i.e. equivalent
+to it.
+THE OBSTACLE IS NOT THE RESOLUTIONS, it is the BOOT STATE.  `disc_seg_f'`
+is `∃ ps cs, …`, and `EchoDisc`'s `pro_cands`/`bounded_lists` machinery
+ports (the extra work is a `sel` enumerator: `sel_ok (echo_chunks ws) sel`
+bounds `sel` to the strictly-increasing sublists of
+`seq 0 (length (echo_chunks ws))`).  What does not port is `disc_f`'s own
+`∃ s : fst, fst_ok s ∧ …`, which ranges over ALL byte lists.  THE FIX,
+priced: the witness set is finite once one observes that D1/D2 put the
+WHOLE transcript for the input typed so far on the wire, so every
+completed `RCRan` round's content appears on the wire in full and a
+cycle's admissible boot states are `None` plus the contiguous substrings
+of `obs_wire Uart0 seg` — a canonicalisation lemma of the shape
+`EchoDisc.pro_canon` has for the prologue.  That is a lane
+(`FileDiscDec.v`), not a step; it is NOT on the critical path for any
+program lane, since every link and every other ledger step is closed.
+
+**BLOCKER 2: `file_phi`'s `echof_lines_before` IS NOT REACHABLE, AND THE
+INTERFACE IS WHY.**  `file_led`'s conjunct is `file_good h`, which is
+`FileDisc.file_phi`'s body with TWO weakenings: the admissibility clause
+is at `FileDisc.echof_lines_of h` (the lines of the WHOLE history) where
+the design asks for `echof_lines_before h (S k)` (the lines of strictly
+EARLIER cycles), and the guarded first clause (`s0s !! 0 = Some None`) is
+dropped with it.  So `AppFileRec.file_phi` is
+`fun _ h => disc_f h -> file_good h`, not `FileDisc.file_phi`.
+WHY.  The drain (`fecl_drain`) hands the ledger the era's boot state
+`s0` together with `AppFile.f_typed`'s witness — `∃ ls, fl_lb c ls ∗
+⌜f_bytes_typed ls s0⌝` — and the ledger can only read that lower bound
+against its own authority, which gives `ls ⊑ efl_of h`.  NOTHING RECORDS
+WHEN THE BOUND WAS TAKEN.  Two lower bounds of a `mono_list` are
+comparable but nothing says WHICH WAY, and the era-start list cannot be
+attached to the witness on the way in: `App.app_boot` (which carries the
+deed's witness) is produced by the TRANSPORT (`al_xfer`) and
+`App.app_turn` by the LEDGER (`al_pow`), and the two never meet — a
+transport is `□ (∀ r av, ▷ A r av ==∗ …)` and cannot produce a resource
+it was not given.
+THE FIX, priced.  `AppFile.f_typed` must carry the witness at a list the
+ledger can bound: either (a) an INDEX (`mono_list_idx_own` at `j` with
+`⌜j < n⌝`) where `n` is the era's line count, pinned in a `fe_n` field of
+`FileOut.file_era` at `al_pow` (the ledger holds `fl_auth c (efl_of h)`
+exactly there, and `efl_of h = echof_lines_before (h ++ [ObsPowerOn])
+(S (obs_boots h))` because the new cycle is empty — that half IS
+provable), with the bound paid by the LINK out of the discipline (at
+init's first byte the era's input is empty, which this lane already
+proves inside `fecl_step_write_first`); or (b) milestone 2's commit
+receipt, which makes the boot state exact and the whole clause a
+singleton.  (a) is a claim-lane change to `AppFile.f_typed` plus one
+premise on `file_write_link_first`; nothing else in this lane moves.
+
+**WHAT ELSE THE DESIGN SAID THAT THE PROOFS CORRECTED.**
+
+- **`EchoOutPure.cs_ok` HAS NO TWIN.**  Echo's range condition is the
+  TOTAL `∀ i, cs !!! i < 4`, which is free out of range because `!!!`
+  reads 0 and `0 < 4`.  Out of range the file's entry decodes to
+  `REcho 0`, and `ralt_ok (LCat) (REcho 0)` is FALSE — so no total
+  condition works.  What the stage carries is the POINTWISE
+  `FileOutPure.alts_pre I cs` ("every entry the list HAS is an
+  alternative the line at its index admits"), and `FileDisc.alts_ok` —
+  which the determinacy theorem and `good_out_f` are stated at — is
+  reached by PADDING (`alts_pad`, `alts_pad_ok`, `alts_pad_pro_idx`,
+  `stage_sessf_pad`).  The padding moves no prologue round, because
+  `pro_idx_f` reads the list only through `ralt_panic` and no default
+  alternative panics.  This is the single largest shape difference from
+  `EchoOut.v` and it touches the echo step, the drain and `good_out_f`.
+- **DETERMINACY NEEDS TWO BOOT STATES, and gets them free.**  MODEL's
+  `sessf_prefix_det` fixes ONE `s` for both witnesses; the claim must
+  compare the DISCIPLINE's witness (a state the trace predicate chose
+  existentially) against ITS OWN (filed off the deed), and the two have
+  no reason to be equal.  `FileDisc.alt_seq_f_prefix_det` ALREADY takes
+  the two apart — a non-panic alternative's output is a `$`-free run
+  followed by the prompt whatever the file holds — so
+  `FileOutPure.sessf_prefix_det2` is MODEL's lemma restated at `s` and
+  `s'`, 60 lines.  `FileDisc.sessf_prefix_det` can be generalised in
+  place when MODEL's file is next opened; until then the twin stands
+  beside it.
+- **`feout_pure`'s `o_f0` CLAUSE IS AN IFF, not an implication.**  The
+  design says "`o_f0 = None -> o_E = [] /\ o_w = []`"; the CONVERSE is
+  what `file_write_link_first` needs (to know the state is not filed
+  yet), and it is maintained because the ordinary writes all carry
+  `f0_lb` (so they never run at `None`) and the echo is refuted at an
+  empty transcript by `sessf_nonnil`.
+- **THE ERA'S FIRST BYTE IS A PROLOGUE-CHOICE WRITE, not a plain one.**
+  The design says "`file_write_link_first` … at cursor `P = 0`"; at
+  `ps0 = []` the plain write's premise
+  `proc_stream_f [] [] s0 [] !! 0 = Some b` is UNSATISFIABLE
+  (`pro_of [] = []`), so the lemma would have been vacuous.  The landed
+  `file_write_link_first` is the `_pro` shape at the empty stage, and it
+  needs NO premise about the stage: `turn v 0` pins the cursor,
+  `pro_pin_f` then pins the era's input to `[]`, `ps_len_ok_f`'s second
+  clause pins the prologue resolution to `[]`, `cs_len_ok_f` pins the
+  choice list, and the `o_f0` IFF then says the boot state is unfiled.
+- **THE RECORD'S FIXED PART IS NOT `AppFile.file_fixed`.**  The second
+  per-era map needs a gname that outlives every era and
+  `file_fixed = echo_fixed * gname` has none to spare.  Rather than move
+  a landed statement (lanes F-OPEN and F-WRITE are building on it), the
+  RECORD's `app_fixed` is `FileOut.file_gn` — AppFile's paired with that
+  one gname — and every AppFile lemma is read at `fgn_cl c`.
+- **THE READ EXPORTS A TRUNCATED CHOICE LIST.**  `EchoOut.read_ret`
+  hands out the claim's own `cs0`; here `alts_pre` ties every entry to
+  the line at its index and the claim's list may run past the window's
+  far end, so `fread_ret` exports `take (nlines (snd <$> (dl ++ ws)))
+  (fo_cs so)` and `rd_stage_f` at that.
+
+**EXACTLY WHAT A PROGRAM'S LINK PREMISE LOOKS LIKE NOW.**  The ordinary
+byte, verbatim (`FileLinks.file_write_link`) — echo's argument list with
+`f0_lb vf s0` beside the three bounds, `file_era_pin g k vf` beside
+`era_pin`, and the byte read off `proc_stream_f` AT THE ERA'S BOOT STATE:
+
+```coq
+Lemma file_write_link (k : nat) (v : era_pins) (vf : file_era) (P : nat)
+    (b : bv 8) (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8))
+    (Φ : iProp Σ) :
+  (nlines I0 <= length cs0)%nat ->
+  pro_pin_f ps0 cs0 I0 ->
+  proc_stream_f ps0 cs0 (Some s0) I0 !! P = Some b ->
+  era_pin (fgn_echo g) k v -∗ file_era_pin g k vf -∗ turn v P -∗
+  ps_lb v ps0 -∗ cs_lb v cs0 -∗ inp_lb v I0 -∗ f0_lb vf s0 -∗
+  (((turn v (S P) ∗ ps_lb v ps0 ∗ cs_lb v cs0 ∗ inp_lb v I0
+     ∗ f0_lb vf s0) ∨ file_taint (fgn_cl g)) -∗ Φ) -∗
+  out_link Uart0 k b Φ.
+```
+
+and the BLOCK-OPENING one (`file_write_link_blk`) asks, where echo asked
+for `a < 4` and `line_alts_of (last_ws I0) !!! a !! 0 = Some b`:
+
+```coq
+  ralt_ok (uline_of (bodies_of I0 !!! (nlines I0 - 1)%nat)) (ralt_dec a) ->
+  cont (fst_upto cs0 s0 (bodies_of I0) (nlines I0 - 1)%nat)
+       (uline_of (bodies_of I0 !!! (nlines I0 - 1)%nat)) (ralt_dec a)
+    !! 0%nat = Some b ->
+```
+
+i.e. the program names the ALTERNATIVE its round is taking, proves the
+LINE ADMITS it, and proves its byte is the first of that alternative's
+output AT THE STATE `fst_upto` says the file is in.  `fst_upto` is the
+whole of what the file adds to a writer's obligation, and a program
+computes it from `s0` (which `f0_lb` pins), the bodies of `I0` (which
+`inp_lb` pins) and the choices (which `cs_lb` pins) — no history, no
+ledger, no deed.
+
+**THE ONE THING LANE SH-ROUND NEEDS FIRST.**  `AppFileRec.file_laws` is
+already an instance under `Context (Hprog : …)` whose statement is
+`App.xv6_app_laws`'s `al_programs` field verbatim at `app_file`; SH-ROUND
+supplies exactly that and the record closes.  What it must have in hand
+at <init>'s first instruction is `app_turn app_file c (S gen_id)` =
+`FileOut.fturn c (S gen_id)` — `EchoOut.eturn`'s five components plus
+`file_era_pin c (S gen_id) vf` — and `app_boot app_file c (S gen_id) r` =
+`AppFile.file_boot`, whose `▷ (f_typed c s ∨ file_taint c)` is stripped
+and handed to `FileLinks.file_write_link_first` AS ITS `f0_typed g s0 ∨
+file_taint` ARGUMENT, at the era's very first banner byte (`a = 3`,
+`pro_alts !!! 3 !! 0 = Some b`).  That call is what mints `f0_lb vf s0`,
+and every later write of the era — init's banner tail, sh's prompt, the
+child's diagnostics, cat's content — carries it.  Do NOT try to file the
+boot state at a plain `file_write_link`: at the era's start the prologue
+resolution is empty and the plain link's premise is unsatisfiable.
+
+### STAGE-2 (2026-09-17) — the conclusion IS `FileDisc.file_phi`; BLOCKER 2 superseded
+
+Branch `app-file/stage`.  Whole tree GREEN on the lane's remote tree
+(`--proofs -k`, `EXIT=0`, zero `Error`); **both audits unchanged**
+(`make audit-all-only`: the echo theorem's FOURTEEN, the system theorem's
+thirteen).  Three files move: `FileOutPure.v`, `FileOut.v`,
+`AppFileRec.v`.  `FileDisc.v`, `AppFile.v`, `FileLinks.v` and every echo
+file are untouched, and `FileOut`'s `Hdf` context hypothesis is left
+verbatim for lane FILE-DEC.
+
+**BLOCKER 2 IS SUPERSEDED.**  `AppFileRec.file_phi` is now
+`fun _ h => FileDisc.file_phi h` — the antecedent, the guarded first
+clause and `echof_lines_before` all included, with no change to
+`AppFile.f_typed` and no index on the witness.  `FileOut.file_good` is
+deleted.
+
+**WHAT LANDED.**
+
+`iris/FileOutPure.v` (+330).  THE PURE FACT and the conclusion's body.
+- `in_pres_first` — the prefix before a cycle's first console input byte
+  is itself input-free.
+- `disc_f_first_out : disc_f h -> trace_shape h true ->
+  obs_wire Uart0 (open_seg h) = [] -> ins (open_seg h) = []`.  D2 at that
+  prefix asks for `sessf ps cs s [] = pro_of ps` on the wire, and
+  `pro_ok_f`'s round bound is `pro_done ps`, so `pro_of ps` is nonempty
+  (`EchoDisc.pro_of_pos`) — it cannot sit on an empty wire.
+- `echof_lines_before_cut`, `echof_lines_of_cut`, and the corollary
+  `efl_of_first_out`.
+- `file_phi_body` (= `FileDisc.file_phi`'s body at a given `s0s`),
+  `file_phi_of_body`, and its steps: `file_phi_body_nil`, `_step_io`,
+  `_off`, `_on`, `_last_adm`, `_out`, `_drain`; plus `fop_snoc_inv`.
+
+`iris/FileOut.v`.  THE LEDGER.
+- `f0_pinned h s0s` — `emp` while `obs_wire Uart0 (open_seg h) = []`,
+  and `∃ vf s0, ⌜∃ u1, s0s = u1 ++ [s0]⌝ ∗ file_era_pin (obs_boots h) vf
+  ∗ f0_lb vf s0` once the cycle has drained; with `_undrained`, `_io`,
+  `_drained`, `_drain`.
+- `file_phi_res h := ∃ s0s, ⌜disc_f h -> file_phi_body h s0s⌝
+  ∗ f0_pinned h s0s`, the ledger's fifth conjunct.
+- `f0_lb_agree : f0_lb v s -∗ f0_lb v s' -∗ ⌜s = s'⌝` (the old
+  authority-against-bound lemma is now `f0_auth_lb_agree`).
+- `fdrain_ret` takes the era index and hands `file_era_pin k vf ∗
+  f0_lb vf s0` beside the witness; `fecl_drain` takes
+  `obs_wire Uart0 seg <> []`.
+- `f0_typed_adm` is restated at an arbitrary line list.
+- `file_led_tx`'s Uart0 premise gains the pin and the bound;
+  `file_led_phi : file_led h -∗ ⌜file_phi h⌝`.
+
+`iris/AppFileRec.v`.  `file_phi := fun _ h => FileDisc.file_phi h`;
+`file_al_tx` proves the drain's wire premise and relays the pin at
+`obs_boots h`; `file_Hphi_R` and `file_laws` rebuilt unchanged otherwise.
+
+**THE ARGUMENT, IN ONE PARAGRAPH.**  `al_pow` parks a PROVISIONAL `None`
+for the new cycle (`None` is admissible against any line set, and an
+empty cycle is `good_out_f` at any state).  At a Uart0 output the drain
+hands the era's boot state `s0`, its deed witness, the era pin and
+`f0_lb vf s0`.  If the cycle's wire was still empty this is the era's
+FIRST drain: under the discipline the cycle has no input either
+(`disc_f_first_out`), so the ledger's line list IS the list of lines
+typed in strictly earlier cycles (`efl_of_first_out`), and
+`f0_typed_adm` read there is exactly `file_phi`'s third clause — at cycle
+0 that list is empty and the same reading refutes `f0_typed`'s `Some`
+arm, which is the guarded FIRST clause.  The provisional entry is
+replaced by `s0` and `f0_pinned` records it.  If the cycle HAS drained,
+the handed pin and bound are checked against the kept ones
+(`file_era_pin_agree`, then `f0_lb_agree`), so the entry does not move
+and the body extends by the drain's own `good_out_f`.
+
+**WHAT THE DESIGN SAID THAT THE PROOFS CORRECTED.**
+
+- **THE OPEN CYCLE'S INDEX IS `pred (length (cycles_of h))`, NOT
+  `obs_boots h`.**  §4.3a (and the lane brief) spell the first drain's
+  reading as `efl_of h = echof_lines_before h (obs_boots h)` with
+  `S k = obs_boots h` at the open cycle.  That is off by one and the
+  spelling it names is VACUOUS: the per-era maps (`pin_map`, `f0_map`,
+  `file_era_pin`) are keyed 1-BASED (`pin_dom M n` is `{1..n}`;
+  `f0_map_on` inserts at `S (obs_boots h)`) while `s0s` is indexed by the
+  CYCLE, 0-based, so cycle index = era index - 1 — and
+  `echof_lines_before h (obs_boots h)` is `echof_lines_of h` outright by
+  `FileDisc.echof_lines_before_all`.  What `file_phi`'s third clause
+  wants at the open cycle is `echof_lines_before h (pred (length
+  (cycles_of h)))`.  `efl_of_first_out` is therefore indexed by the CYCLE
+  COUNT (`S n = length (cycles_of h)`), which also keeps the whole lane
+  free of a `length (cycles_of h) = obs_boots h` bridge — a bridge that
+  is FALSE without a `trace_shape` premise, since `cyc_step` opens a
+  cycle for an io event at the empty cycle list
+  (`length (cycles_of [ObsUartOut Uart0 b]) = 1`, `obs_boots` of it `0`).
+- **THE CARRIER MUST NAME ITS LAST ENTRY WITHOUT THE ANTECEDENT.**
+  `f0_pinned` names the era's fixed state, but `length s0s = length
+  (cycles_of h)` lives INSIDE `disc_f h -> …`, so nothing says `s0s` is
+  nonempty when the discipline fails.  Rather than add an unconditional
+  length conjunct beside the implication, the tx step sets
+  `s0s' := removelast s0s ++ [s0]`: its last entry is `s0` whatever `s0s`
+  was (`EchoOutPure.epu_removelast_snoc`), and the discipline is spent
+  only on showing `s0s` was a snoc in the first place.  So the carrier is
+  the brief's, with no extra conjunct.
+- **`f0_pinned` SPELLS THE LAST ENTRY AS A SNOC, NOT WITH `last`.**
+  `FileOut.v` requires `Stdlib.List`, whose `last` (with a default) wins
+  over stdpp's `option`-valued one, so `⌜last s0s = Some s0⌝` does not
+  typecheck there at all.  `⌜∃ u1, s0s = u1 ++ [s0]⌝` is what both
+  consumers want anyway.
+- **THE DRAIN CANNOT ALWAYS MINT THE BOUND, AND THE SIDE CONDITION IS THE
+  WIRE.**  `fecl_drain`'s state is `f0_st (fo_f0 so)`; at an UNFILED
+  stage the authority is `●ML []` and no `◯ML [s]` comes out of it.  It
+  is not a gap: `feout_pure`'s `o_f0` IFF says an unfiled stage has empty
+  `E` and `w`, so `ch_acc` is `D_f … [] ++ []` = `[]` and the wire is
+  empty.  So `fecl_drain` takes `obs_wire Uart0 seg <> []`, which its one
+  caller (`file_al_tx`, at `open_seg h ++ [ObsUartOut Uart0 b]`) proves
+  by inspection, and nothing is filed on the drain path.
+- **TWO LOWER BOUNDS AGREE WITH NO AUTHORITY IN HAND.**  The ledger never
+  holds `f0_auth` (the stage does), so the era-agreement step cannot go
+  through `f0_auth_lb_agree`.  `mono_list_lb_op_valid_1_L` makes two
+  `◯ML` comparable, and a list that never grows past one entry makes two
+  one-element bounds equal — `f0_lb_agree`, four lines.
+- **NOTHING IN `AppFile.v` HAD TO MOVE.**  STAGE priced fix (a): an index
+  (`mono_list_idx_own` at `j`) on `AppFile.f_typed` plus a `fe_n` field on
+  `file_era`, to record WHEN the witness's bound was taken.  It is not
+  needed.  The moment is pinned by the WIRE, not by an index:
+  `obs_wire Uart0 (open_seg h) = []` is a pure fact the ledger already
+  has about the history it already has, and it holds exactly until the
+  era's first drain — which is the only moment at which the ledger has to
+  read the bound.
+
+**ASSUMPTIONS.**  `Print Assumptions` is *Closed under the global
+context* on `FileOutPure.disc_f_first_out`, `efl_of_first_out`,
+`file_phi_body_drain`, and on `FileOut.fecl_drain`, `file_led_pow`,
+`file_led_rx`, `file_led_tx`, `file_led_phi` (no axioms at all, not even
+PrimString — STAGE reported the eleven primitives for the `file_led_*`
+family, which the conclusion's move to `file_phi` retires); on
+`AppFileRec.file_Hphi_R` it is the eleven PrimString/PrimInt63 primitives
+and nothing else.  NOTHING is `Admitted`, and the two section hypotheses
+are unchanged (`al_programs`, `Decision (disc_f h)`).

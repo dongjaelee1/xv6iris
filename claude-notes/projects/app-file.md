@@ -3893,3 +3893,316 @@ disciplined line `ws ∈ ls` (era 0's is available: any `ws` with
 Its remaining choice is unchanged from F-OPEN-3's report except that the
 second disjunct of the fd arm and the DEVICE arm are now known to be
 closable only by (i) or (iii).
+
+### F-OPEN-5 (2026-09-17) — THE ESCROW GOES INSIDE THE CLAIM, AND THE `s = None` EXISTS DISJUNCT IS REFUTED
+
+**The lane's verdict in one line: the ruled escrow (F-OPEN-4's way (iii))
+BUILDS, and the one thing the ruling got wrong is the TIE — the reader the
+escrow exists for is the create's `dirlookup` observation, whose receipt
+the syscall's fold DROPS on two arms, so its tie to the escrow cannot be a
+fraction of anything and must be a PERSISTENT entry in a growing ledger.
+With that, `file_trunc_of_exists` reads the claim's own value AT THE
+LOOKUP'S VIEW, refutes an absent deed against the found entry, identifies
+the row at a present one, and `UkFileOpen.wp_uk_ecall_open_create_deed`'s
+fd arm is `fown r (Some (i, [])) ∨ file_taint c` — F-OPEN-3's unreachable
+`fown r s` disjunct is gone. The DEVICE sub-arm is refuted too, on every
+branch of the permit but one, and that one is a KERNEL-tier disjunction
+(S3 below).**
+
+**WHAT LANDED** (whole tree green on the lane's remote tree, `EXIT=0`,
+zero `Error`; `make audit-all-only` / `audit-tree-only` / `audit-file-only`
+unchanged — system THIRTEEN, echo FOURTEEN, tree THIRTEEN, file FOURTEEN;
+`Print Assumptions` on `file_open_create_au` and `file_open_create_recv` is
+the PrimString/PrimInt63 primitives alone, and on
+`wp_uk_ecall_open_create_deed` those plus `xv6iris_extras.resv_matches`,
+`resv_is_valid`, `functional_extensionality_dep` — byte for byte the set
+`wp_uk_ecall_open_read_deed` has, exactly as F-OPEN-4 reported; every new
+result carries `Proof using`; no `Admitted`).
+
+- **THE ESCROW ARM** (`iris/AppFile.v` sections 2a and 4).  `f_state` is
+  now TWO arms, not three:
+
+      f_core c r av    := <F-OPEN-4's f_state, verbatim: EXACT ∨ IN FLIGHT>
+      f_esc_wrap r     := ∃ h, esc_auth r h ∗ esc_recs h
+      f_esc_live c r av := ∃ h0 s g, esc_auth r (h0 ++ [(s, g)]) ∗ esc_recs h0
+                           ∗ fdeed_whole r s ∗ ftkt r s ∗ f_typed c s ∗ ⌜f_ok av s⌝
+      f_state c r av   := (f_esc_wrap r ∗ f_core c r av) ∨ f_esc_live c r av
+
+  (`:597`, `:604`, `:613`).  `esc_rec := dst * gname`; `esc_recs h :=
+  [∗ list] p ∈ h, esc_spent p.2` (`:444`) is the ledger's INVARIANT —
+  every escrow the claim has ever opened is spent except a LIVE head — and
+  that is why there is no "fired" arm: a fire spends the head, and a spent
+  head is an ordinary ledger entry, so the claim is back in the wrap arm
+  with the core IN FLIGHT.
+- **THE TOKEN'S RA IS `mono_nat`, THE LEDGER'S IS `mono_list`** (`:340`,
+  `:341`, `:372`).  `esc_tok g := mono_nat_auth_own g 1 0` (exclusive),
+  `esc_spent g := mono_nat_lb_own g 1` (persistent and timeless);
+  `esc_spend : esc_tok g ==∗ esc_spent g`, `esc_tok_spent : esc_tok g -∗
+  esc_spent g -∗ False`, `esc_alloc`.  No new camera: `mono_natG Σ` is
+  already `EchoOut.echoOutG`'s first field (the taint counter's).  The
+  ledger is `own (fn_esc r) (●ML h)` at a new `file_names` field, with
+  `esc_wit r n s g := ∃ h, esc_lb r h ∗ ⌜h !! n = Some (s, g)⌝` (`:378`)
+  PERSISTENT, and `esc_wit_head` (`:429`) the one piece of arithmetic
+  every reader runs on: a witnessed entry is the LIVE HEAD or it is one
+  of the spent ones.
+- **THE FOUR LEMMAS THE RULING NAMED**, at `AppFile.v`:
+  `file_escrow_park` (`:1325`, at `app_inv`, any mask holding `appN`:
+  `fown r s ={E}=∗ ∃ n g, esc_key c r n s g ∗ esc_tok g ∗ ftkt r s`),
+  `file_escrow_read` (`:748`) and its token-carrying twin
+  `file_escrow_law` (`:790`), `file_escrow_step` (`:924`) with its
+  `AppInv.app_step`-shaped wrapper `file_app_step_escrow` (`:1426`), and
+  `file_escrow_return` (`:1378`).
+- **THE PIECES** (`iris/FileOpen.v` sections 2a, 3a–3f'').
+  `file_claim_read_esc` (`:248`) is `file_claim_read` at a PARKED deed —
+  the escrow's token and ledger key in place of the deed fraction — and
+  `file_escrow_read_at` (`:291`) is the same read with NOTHING in hand.
+  `fesc_res r s g := ftkt r s ∗ esc_tok g` (`:365`) is what the create's
+  legs carry in place of `fown r s`.  `file_dlk_recv` (`:690`) gains
+  `(⌜f_ok av s⌝ ∨ esc_spent g)` and stays free; `file_odlk_recv` /
+  `file_odlk_piece` (`:727`, `:736`) are the same read at the OPEN
+  observation's instant, which is what the device refutation needs.
+  `file_trunc_of_exists` (`:885`) is the deliverable: the token refutes
+  the receipt's `esc_spent` disjunct, what is left is `⌜f_ok avx s⌝`, and
+  at `None` that contradicts the found entry at the tie.
+- **THE RECEIPT** (`file_trunc_recv` `:778` — TWO arms;
+  `file_open_create_recv` `:1434` — a fupd at `app_inv`, THREE outcomes,
+  both fd arms at `fown r (Some (i, [])) ∨ file_taint c`), and the
+  U-tier wrapper (`iris/UkFileOpen.v:685`), whose PREMISES are unchanged
+  (one deed in) because the wrapper parks and returns the escrow itself.
+
+**THE ESCROW'S EXACT SHAPE, AND THE TOKEN'S RA.**  The ruling asked for
+`∃ s γ, fdeed_whole r s ∗ ftkt r s ∗ f_typed c s ∗ ⌜f_ok av s⌝ ∗
+esc_pending γ`.  What landed is that arm with `esc_pending γ` replaced by
+the claim's ledger: the arm holds `esc_auth r (h0 ++ [(s, g)])` and
+`esc_recs h0`, so being the ledger's HEAD and not being in `esc_recs` IS
+the pending state.  The holder keeps `ftkt r s` (unchanged: `file_resync`
+keys on it), `esc_tok g`, and the PERSISTENT `esc_wit r (length h0) s g`.
+`fown` did not change, and no half of the ledger is ever outside the
+claim.
+
+**WHY THE TIE HAD TO BE PERSISTENT — the ruling's one real error.**  The
+ruling had the holder hand `fesc` shares to the pieces.  That cannot work,
+and the obstruction is the SPEC, not the claim: at a truncating create
+`SpecSysOpen.cre_rcpt_kept vom Fex` is `emp` (`iris/SpecSysOpen.v:640`),
+so the EXISTS arm reports the lookup's receipt no more — it went into the
+permit — and `open_post_fail_create`'s arm (b) has a sub-case
+(`cre_fail_kept`'s second disjunct, `iris/SpecSysOpen.v:681`) where the
+permit was never paid and the receipt is nowhere at all.  A fraction
+handed to the lookup piece is therefore a fraction the deed can NEVER get
+back, and `file_escrow_return` becomes unprovable on a reachable failure
+arm.  The lookup piece must carry nothing linear — which is exactly what
+F-OPEN-3 had already found of it — so its tie must be persistent, and a
+persistent tie to a slot opened and closed once per shell round can only
+be an entry in a GROWING structure.  Hence the ledger.
+
+**WHAT ELSE THE RULING SAID THAT THE PROOFS CORRECTED.**
+
+1. **There is no third arm, and `file_resync` needed no change.**  The
+   ruling asked whether the fired escrow becomes "the in-flight arm or the
+   exact arm".  Neither: it becomes NOT-AN-ESCROW.  `file_escrow_step`
+   spends the head's one-shot, appends it to `esc_recs`, and hands the
+   claim back in the `f_esc_wrap ∗ f_core` arm with the core IN FLIGHT at
+   `(s, s')` — the very shape `file_resync` already consumes.  So phase 2
+   is `AppFile.file_resync` verbatim, at its landed statement, and the
+   deed comes home as `fown r s'`.
+2. **Phase 1 is not a park.**  The ruling said the fire moves the content
+   "exactly as `file_app_step_park` + `file_resync` do today".  The park
+   JOINS the holder's half with the claim's; under an escrow there is
+   nothing to join (the claim holds the deed whole already), so phase 1 is
+   its own lemma and its only resource is the one-shot.
+3. **The park must always succeed, so its key is "the ledger entry OR THE
+   TAINT".**  A tainted claim has no `f_state` (`file_step_taint` drops
+   it, and `file_sup_of_taint` says the taint alone answers for every
+   view), so there is no ledger in which to name an escrow.  A park that
+   could fail would give every program above it a branch it cannot take —
+   the vacuity trap of durable-notes' "Vacuity" section, one level up.
+   `AppFile.esc_key c r n s g := esc_wit r n s g ∨ file_taint c` (`:474`)
+   is the disjunction; every escrow lemma takes it, and its taint arm is
+   the taint arm each piece already had.
+4. **The transport copies the escrow arm as the EXACT arm, and the token
+   does not cross.**  `f_state_copy`'s copy gets a FRESH EMPTY ledger
+   (`esc_auth r' []`) and the exact arm at `fcontent_of av` — which, when
+   the original is escrowed, IS the escrowed content by `f_ok_fcontent`.
+   A one-shot two claims could spend is not a one-shot, and a durable copy
+   is never stepped, so it never needs an escrow.
+5. **`AppFileRec` and `UFileBootAdequacy` absorbed the new arm with no
+   change at all** (deliverable S3's question): both compile untouched,
+   because `file_xfer`, `file_xfer_boot`, `file_boot`, `file_init` and
+   `file_init_img` all keep their landed statements — the ledger is
+   allocated inside `fnames_alloc` and never leaves the claim.  The three
+   audits are unchanged.
+
+**WHAT WAS REFUTED, AND WITH WHAT.**
+
+- **`s = None` on the EXISTS run** (F-OPEN-3's P3, the lane's point).  The
+  dlookup receipt gives `⌜f_ok avx None⌝ ∨ esc_spent g` at the LOOKUP'S
+  OWN VIEW; the arm piece's refund is the UNSPENT token, which kills the
+  right disjunct (`esc_tok_spent`); `f_ok avx None` is
+  `astep avx ROOTINO fname_f = None`, and the permit's tie carries
+  `entsx !! fname_f = Some i` at that same `avx`.  `discriminate`.
+- **"the truncate reached some other row"**: at `s = Some (j, bs)` the
+  same reading gives `astep avx ROOTINO fname_f = Some j` against
+  `Some i`, so `j = i` — the row is IDENTIFIED, which is what kills
+  `file_trunc_recv`'s old first arm.
+- **"the create fired at a name other than `f`"** on the FRESH run:
+  `file_trunc_of_cre` (`:818`) now takes the create receipt AT
+  `ROOTINO`/`fname_f`.  The tie was always there — `file_trunc_piece` read
+  it and then threw it away into `trunc_permit_cre`'s existentials — so
+  this cost one restatement and no new fact.
+- **The EXISTS-DEVICE sub-arm, on the permit's EXISTS branch**
+  (`file_dev_refute`, `:1298`).  The open observation now reads the claim
+  at ITS OWN instant (free), the token refutes `esc_spent`, the tie
+  identifies `f`'s row with the row the call reached, and
+  `f_ok av (Some (i, bs))` says `av !! i` is an `AFile` against the
+  observation's `ADev`.
+
+**REFUTED / BLOCKED (S3): THE DEVICE ARM DOES NOT GO AWAY ENTIRELY, AND
+THE OBSTRUCTION IS THE PERMIT'S OWN DISJUNCTION.**
+`SysOpenDefs.trunc_permit_of` (`iris/SysOpenDefs.v:548`) is
+
+    ∃ d nm, T d nm ∗ (cre_acre_fired Fok d nm i (AFile [])
+                      ∨ (cre_ex_fired Fex d nm i ∗ pf_at (aarm_commit_at …) Farm))
+
+and `SpecSysOpen.open_post_ok_create`'s EXISTS-DEVICE sub-arm
+(`iris/SpecSysOpen.v:803`) carries the permit only through
+`cre_trunc_kept`'s refund.  So the STATEMENT admits "the open reported a
+found DEVICE **and** the permit was paid with create's FRESH receipt".  On
+that branch the application holds no token (the create leg spent it firing
+the escrow) and no fraction at the observation's view, so the `ADev`
+cannot be contradicted — the combination is unreachable on any run and
+unrefutable in the logic, F-OPEN-3's P3 one level over.  It is NOT a loss:
+on that branch the create leg fired at that very inum, so the deed is back
+at `Some (i, [])` there, and the arm reports it.  Closing it needs one of
+(i) F-OPEN-2's restatement 3 — `FsAbsCreateFire.acre_commit_at_gen` takes
+the unfired `Fex` piece beside the arm's receipt, making create's two arms
+exclusive IN THE LOGIC; or (ii) `open_post_ok_create`'s EXISTS arm saying
+which branch of the permit it paid (`cre_rcpt_kept` at a truncating create
+keeping the EXISTS receipt beside the permit instead of spending it
+whole).  Both are kernel-tier and neither is this lane's.
+
+**STATEMENTS THAT CHANGED SHAPE, EXHAUSTIVELY.**
+
+`iris/AppFile.v`:
+1. `file_names` — a fourth field, `fn_esc : gname` (so `MkFileNames` takes
+   four arguments).
+2. `fileAppG` / `fileAppΣ` — a third camera,
+   `inG Σ (mono_listR (leibnizO esc_rec))`.
+3. `fnames_alloc` — one more conjunct in the post, `esc_auth r []`.
+4. `f_state` — restated as above; its old body is now `f_core`.
+5. `file_pred_exact` — one more premise, `f_esc_wrap r` (between
+   `cons_state` and `fdeed`).
+6. `f_state_copy` — one more premise, `esc_auth r' []` (first).
+   Everything else in the file keeps its landed statement:
+   `fdeed`/`fdeed_whole`/`ftkt`/`fown` and their laws, `file_deed_law`,
+   `file_deed_law_pure`, `f_state_mono`, `f_state_typed_at`,
+   `file_step_free`, `file_step_park`, `file_step_taint`,
+   `cons_state_mono`, `file_pred`, `file_pred_cons`,
+   `file_pred_split`/`_join`, `file_sup_of_taint`, `file_taint_of_sup`,
+   `file_xfer`, `file_boot`, `file_xfer_boot`, `file_init`,
+   `file_init_img`, `file_app_step_park`, `file_app_step_taint`,
+   `file_resync` — the last of these is the one worth naming twice.
+
+`iris/FileOpen.v`:
+7. `file_arm_fam`, `file_unarm_fam`, `file_cre_recv`, `file_cre_fam` — one
+   more argument (`g : gname`); the deed in them is `fesc_res r s g`
+   instead of `fown r s` (`file_cre_recv`'s `f` arm still `fown r (Some
+   (i, []))`, which is what the resync hands back).
+8. `file_arm_commit`, `file_unarm_commit`, `file_acre_commit` — two more
+   arguments (`n`, `g`) and the premise `esc_key c r n s g` in place of
+   the deed.
+9. `file_dlk_recv` / `file_dlk_fam` — four more arguments (`r n s g`); the
+   receipt is `(⌜fclaim_free av⌝ ∗ (⌜f_ok av s⌝ ∨ esc_spent g)) ∨
+   file_taint c`.  `file_dlk_piece` — the same, plus the `esc_key`
+   premise.
+10. `file_trunc_recv` / `file_trunc_fam` — TWO arms,
+    `fown r (Some (i, [])) ∨ file_taint c`.
+11. `file_trunc_of_cre` — two more arguments (`n`, `g`), and its permit
+    argument is the TIED create receipt (`∃ av0 ents nl0, ⌜cre_pre av0
+    ROOTINO fname_f …⌝ ∗ pf_recv … ROOTINO fname_f i`) rather than
+    `trunc_permit_cre`.
+12. `file_trunc_of_exists` — two more arguments, the `esc_key` premise,
+    the dlookup receipt at its new shape, and `fesc_res r s g` in place of
+    `fown r s`.
+13. `file_trunc_piece` — two more arguments and the `esc_key` premise, at
+    the new families.
+14. `file_open_create_au` and `file_open_create_au_notrunc` — two more
+    arguments; `fown r s` replaced by `esc_key c r n s g -∗ fesc_res r s
+    g`; the open observation's family is `file_odlk_fam c r n s g` instead
+    of `pfam_triv`.
+15. `file_permit_pay`, `file_kept_pay`, `file_legs_pay`,
+    `file_open_create_fail_pay` — two more arguments; the conclusion is
+    `file_esc_pay c r s g` (the escrow) instead of `file_open_pay c r s`.
+16. `file_open_create_recv` — a FUPD.  New premises `↑appN ⊆ E`,
+    `arg_path_of M pv pl`, `last (path_elems pl) = Some fname_f`,
+    `file_app = MkAppcfg …`, and `app_inv γfs -∗ esc_key c r n s g -∗` in
+    front; the two fd outcomes carry `fown r (Some (i, [])) ∨ file_taint
+    c`.
+    Unchanged: `fdq*`, `file_deed_law_q` (its PROOF moved, not its
+    statement), `file_deed_law_pins`, `file_cons_law`, `fclaim_facts`,
+    `file_claim_read`, `file_app_step_free_at`, `fclaim_free`,
+    `file_claim_read_free`, `file_trunc_free`, `file_open_pay`, section
+    4's read pieces, section 5's pinned-open pieces,
+    `app_commit_mask_full`, `file_escrow_mask_blocked`, section 7's miss
+    lemmas.
+    New beside them: `fclaim_free_of`, `file_claim_read_esc`,
+    `file_escrow_read_at`, `fesc_res`, `file_odlk_recv`/`_fam`/`_piece`,
+    `file_esc_pay`, `file_esc_pay_home`, `file_permit_read`,
+    `file_permit_tied`, `file_permit_read_pay`, `file_dev_refute`,
+    `file_kept_tied`.
+
+`iris/UkFileOpen.v`:
+17. `xfam_fcreate` — one more argument, `Fo` (its `of_Fo` was an inert
+    `pfam_triv`).
+18. `file_create_fam` — two more arguments (`n`, `g`), and `of_Fo` at
+    `file_odlk_fam`.
+19. `file_create_sup` — two more arguments; `fown r s` replaced by
+    `esc_key … -∗ fesc_res …`.
+20. `wp_uk_ecall_open_create_deed` — PREMISES UNCHANGED (still one
+    `fown r s`: the wrapper parks and returns the escrow itself).  Its
+    POST's fd arm is `fown r (Some (i, [])) ∨ file_taint c` (F-OPEN-4's
+    `∨ fown r s` gone) and its DEVICE arm's payload is
+    `(∃ i, fown r (Some (i, []))) ∨ file_taint c` instead of
+    `file_open_pay c r s`.
+    `file_open_fd_tie` unchanged.
+
+Nothing outside these three files moved.
+
+**THE EXACT FD ARM SH-ROUND NOW GETS**
+(`UkFileOpen.wp_uk_ecall_open_create_deed`, verbatim):
+
+    (⌜rv = -1⌝ ∗ ustd (ukn_fd N) l ∗ file_open_pay c r s)
+    ∨ (∃ (fd : nat) (γo : gname) (i : Z),
+         ⌜rv = mword_of_int (Z.of_nat fd) /\ (fd < NOFILE)%nat⌝ ∗
+         ualloc (ukn_fd N) l fd
+           (FdOpen (om_readable vom) (om_writable vom)
+                   (FdInode i γo OffParked)) ∗
+         (fown r (Some (i, [])) ∨ file_taint c))
+    ∨ (∃ (fd : nat) (ma : Z),
+         ⌜rv = mword_of_int (Z.of_nat fd) /\ (fd < NOFILE)%nat⌝ ∗
+         ualloc (ukn_fd N) l fd
+           (FdOpen (om_readable vom) (om_writable vom) (FdDevice ma)) ∗
+         ((∃ i : Z, fown r (Some (i, []))) ∨ file_taint c))
+
+with `file_open_pay c r s = fown r s ∨ (∃ i, fown r (Some (i, []))) ∨
+file_taint c` unchanged.  So `UkShRedirAns.ush_open_call2` is instantiated
+at
+
+    K ty := (∃ i γo, ⌜ty = FdInode i γo OffParked⌝ ∗
+               (fown r (Some (i, [])) ∨ file_taint c))
+            ∨ (∃ ma, ⌜ty = FdDevice ma⌝ ∗
+               ((∃ i, fown r (Some (i, []))) ∨ file_taint c))
+    Kf   := file_open_pay c r s
+
+— `ty` is existential in `ush_open_ans2`'s fd arm, so both outcomes ride
+one arm.  A redirect child that then writes needs the INODE reading, and
+what stands between it and a single-arm `K` is only the device residue of
+S3 above.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  Nothing of this lane:
+`wp_uk_ecall_open_create_deed` takes one deed and gives the fd arm above,
+and the escrow is invisible from outside it.  What the campaign still owes
+SH-ROUND is the kernel-tier device refutation (S3) if the round wants
+`ty = FdInode …` without a disjunction, and lane OFF-HAND-6's held-offset
+leaf (`wp_uk_ecall_open_recv_img_held`), which re-instantiates this
+corollary by the one swap F-OPEN-4 recorded plus `UserOff.uoff γo 0` in
+the fd arms.

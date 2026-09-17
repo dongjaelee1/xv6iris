@@ -105,10 +105,24 @@ Section FileApp.
   Global Instance file_cons_timeless c k h H : Timeless (file_cons c k h H).
   Proof using . rewrite /file_cons. apply _. Qed.
 
+  (* ...AND THE INTERFACE'S LICENCE LAW ([RiscvPtsto.ai_lic], lane
+     SUP-ONE): [file_al_sup] read at the CREDENTIAL instead of at the
+     supply -- the file application's kill price is its taint, and a
+     tainted claim answers any boundary event. *)
+  Lemma file_cons_lic (c : file_gn) :
+    file_kill c ⊢
+      □ (∀ (k : nat) (h : list mobs) (H : LogEntryDefs.cons_hist)
+           (ev : ConsLog.cons_ev),
+           file_cons c k h H ==∗ file_cons c k h (ConsLog.cons_step H ev)).
+  Proof using .
+    rewrite /file_cons /file_kill. iIntros "#Ht !>" (k h H ev) "Ho".
+    iApply (fecl_sup c k h H ev with "Ht Ho").
+  Qed.
+
   Definition file_ifc (c : file_gn) : app_iface Σ :=
     MkAppIface (file_tag c) (file_tag_persistent c) (file_tag_timeless c)
                (file_kill c) (file_kill_persistent c) (file_kill_timeless c)
-               (file_cons c) (file_cons_timeless c).
+               (file_cons c) (file_cons_timeless c) (file_cons_lic c).
 
   Definition file_turn (c : file_gn) : nat -> iProp Σ := fturn c.
 

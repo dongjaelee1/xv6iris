@@ -903,7 +903,7 @@ Section UShEcho.
                          ∗ (⌜FsEchoPin.era0_echo_pins v⌝ ∨ T))
      ∗ □ (∀ (R : iProp Σ) (W : uvis),
             T -∗ my_pay (uvis_gen W) (fun _ => R)%I -∗
-            □ (riscv_kill_cred -∗ R) -∗ uslot W))%I.
+            □ (app_taint -∗ R) -∗ uslot W))%I.
 
   Global Instance sh_echo_slot_persistent T : Persistent (sh_echo_slot T).
   Proof using . rewrite /sh_echo_slot. apply _. Qed.
@@ -922,7 +922,7 @@ Section UShEcho.
                          ∗ (⌜EchoFsPure.echo_fs_pure v⌝ ∨ T))
      ∗ □ (∀ (R : iProp Σ) (W : uvis),
             T -∗ my_pay (uvis_gen W) (fun _ => R)%I -∗
-            □ (riscv_kill_cred -∗ R) -∗ uslot W))%I.
+            □ (app_taint -∗ R) -∗ uslot W))%I.
 
   Lemma sh_echo_slot_of_fs_pure_holds (T : iProp Σ) :
     sh_echo_slot_of_fs_pure T -∗ sh_echo_slot T.

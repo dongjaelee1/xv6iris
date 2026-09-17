@@ -1710,7 +1710,7 @@ Section UkInit.
   (*  ([UserConsole.ucons_pay])'s kill arm is the application's [T]       *)
   (*  ([UkInitMain.wp_kinit_fork]).  That is the whole spend.             *)
   (*                                                                     *)
-  (*  IT USED TO BE A CLOSED ENTAILMENT, [⊢ □ riscv_kill_cred -∗ T],      *)
+  (*  IT USED TO BE A CLOSED ENTAILMENT, [⊢ app_taint -∗ T],      *)
   (*  which reads "a kill is free for the application" and is ECHO's      *)
   (*  fact and no one else's (echo's kill credential IS its taint, so     *)
   (*  the premise was an identity there).  At an application whose kill   *)
@@ -1736,7 +1736,7 @@ Section UkInit.
       (Wp Wb : nat -> iProp Σ) : iProp Σ :=
     (□ (∀ (l : list fdstate) (n : nat),
           init_lend_cred T st Wp Wb l n ==∗
-          init_lend_cred T st Wp Wb l n ∗ □ (riscv_kill_cred -∗ T)))%I.
+          init_lend_cred T st Wp Wb l n ∗ □ (app_taint -∗ T)))%I.
 
   Global Instance init_kill_law_persistent T st Wp Wb :
     Persistent (init_kill_law T st Wp Wb).
@@ -1747,7 +1747,7 @@ Section UkInit.
      reading the lend at all.  This is echo's discharge. *)
   Lemma init_kill_law_of_taint (T : iProp Σ) (st : fdstate)
       (Wp Wb : nat -> iProp Σ) :
-    (⊢ □ riscv_kill_cred -∗ T) ->
+    (⊢ app_taint -∗ T) ->
     ⊢ init_kill_law T st Wp Wb.
   Proof using .
     intros Hkt. rewrite /init_kill_law.

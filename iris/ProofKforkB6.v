@@ -564,7 +564,7 @@ Section KforkPrologue.
     (* ...AND HOW A KILLER PAYS FOR THE CHILD (lane SELF-KILL, §4b'):
        allocproc's premise, relayed.  [SchedCtx.kill_paid]'s live arm
        publishes it and a tainted [kill(2)] cashes it. *)
-    □ (riscv_kill_cred -∗ Q (-1)) -∗
+    □ (app_taint -∗ Q (-1)) -∗
     sie_cap_gpr KT1 m K b pme -∗
     cpu_own lvl eb pme b lks -∗
     kernel_text -∗

@@ -456,6 +456,11 @@ Section UkFileOpen.
     ubytes (ukn_d N) (uint (m !!! Regidx a1_idx)) k f -∗
     (∀ (h' : CpuId) (rv : mword 64) (gb : nat -> bv 8),
        UserFd.ufd (ukn_fd N) fd (FdOpen true wb (FdInode i γo OffParked)) -∗
+       (* THE COUNT'S BOUND, ON BOTH ARMS (lane OFF-LINK, for CAT-ENTRY-2):
+          a read of [cnt] bytes returns at most [cnt] whether the deed's
+          receipt came back as content or as the taint, which is what
+          [UCatKernel.cat_w_of_link] refutes its short write with. *)
+       ⌜(Z.to_nat (bv_unsigned rv) <= Z.to_nat cnt)%nat⌝ -∗
        (((∃ off : nat,
             ⌜Z.to_nat (bv_unsigned rv)
              = ard_count (Z.to_nat cnt) off (length bs)⌝ ∗
@@ -501,8 +506,9 @@ Section UkFileOpen.
     rewrite Hc2.
     iDestruct (file_read_arms_learn_mapped c r q jc i bs γo P cnt rv M'
                  (m !!! Regidx a1_idx) k gb Hlin Himg Hcnt0 ltac:(lia) Hmap
-                 with "Hcore") as "Hlearn".
-    iApply ("Hcont" $! h' rv gb with "Hufdh Hlearn Hrun Hbuf").
+                 with "Hcore") as "[%Hbnd Hlearn]".
+    iApply ("Hcont" $! h' rv gb with "Hufdh [%] Hlearn Hrun Hbuf").
+    exact Hbnd.
   Qed.
 
   (* =================================================================== *)

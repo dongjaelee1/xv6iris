@@ -970,19 +970,9 @@ Section ProofSysWrite.
         by (apply lookup_lt_is_Some_2; rewrite Hstslen; exact Hfdlt).
       destruct Hstqx as [stq Hstq].
       iDestruct (fd_frags_acc (pv_fdg (us_V U)) sts fd stq Hstq with "Hufrag")
-        as "(Hfr & Hrow & Hfrback)".
+        as "(Hfr & #Hrow & Hfrback)".
       iDestruct (fd_st_agree with "Hauth Hfr") as %<-.
-      (* THE ROW IS LENT TO THE CALL AND ALSO PUT BACK, so it has to be
-         DUPLICABLE -- which it is exactly where the descriptor is parked
-         ([FdSlots.foff_row_dup], the family having become exclusive at a
-         held row in lane OFF-HAND-6).  The fact is the file invariant's
-         own pin, read off the reference the loan handed out; when the pin
-         comes off the fire LENDS the row and gets it back ADVANCED
-         (design/app-file.md SS3 fact 4), which is what puts the count on
-         [UsysMemOk.usys_fd_ok]'s read and write rows. *)
-      iDestruct (file_ref_parked_keep with "Href") as "[%Hpkf Href]".
-      iDestruct (foff_row_dup stf Hpkf with "Hrow") as "[Hrow Hrowc]".
-      iDestruct ("Hfrback" with "Hfr Hrowc") as "Hufrag".
+      iDestruct ("Hfrback" with "Hfr Hrow") as "Hufrag".
       iEval (rewrite (list_insert_id sts fd stf Hstq)) in "Hufrag".
       iDestruct (write_env_frame γf fn stf with "Henv Hdev") as "[Hfenv Hfback]".
       iDestruct (cpu_own_transport CID17 CID24 0%nat eb pj b 

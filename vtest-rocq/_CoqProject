@@ -4,6 +4,9 @@
 -R ../kernel-rocq Kernel
 -arg -w
 -arg -notation-overridden
+# a quotation in a comment must not swallow a `*)` (tools/comment_quote_check.py)
+-arg -w
+-arg +comment-terminator-in-string
 VSched.v
 VExecStuck.v
 VTest.v

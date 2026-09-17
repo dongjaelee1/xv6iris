@@ -42,13 +42,13 @@
 (* write walk hands that row out ([UkRunSys.usrc_ok]'s first conjunct), and *)
 (* with it the success arm reads: THE BYTES THE FILE RECEIVED ARE THE       *)
 (* BYTES THE PROGRAM HAD AT a1, all [n] of them.  That is the write         *)
-(* analogue of [UkReadFile.read_arms_file_learn]'s "the bytes the program   *)
-(* holds ARE the file's", and it is [write_arms_file_learn] below.          *)
+(* analogue of [UkReadFile.read_arms_file_learn]'s “the bytes the program   *)
+(* holds ARE the file's”, and it is [write_arms_file_learn] below.          *)
 (*                                                                        *)
 (* WHAT IT IS NOT, and the wall is one level below this file: the post      *)
 (* does NOT say what the file's abstract CONTENT became, and no U-tier      *)
-(* statement can make it.  A cat-shaped dual -- "the program pins the file  *)
-(* and reads its new contents off its own pin" -- is not merely missing,    *)
+(* statement can make it.  A cat-shaped dual -- “the program pins the file  *)
+(* and reads its new contents off its own pin” -- is not merely missing,    *)
 (* it is VACUOUS, because a pin cannot be held across a write:              *)
 (*                                                                        *)
 (*   the kernel's own mover updates the row for [i] at the γtop map, which  *)
@@ -95,7 +95,6 @@ Require Import UkRun UkRunSys.
 Require Import UexecExecInst.      (* THE INSTANCE: [uexecSG_xv6] *)
 Require Import UkReadRows.         (* [udepwf_st] / [ufd_key_agree] *)
 Require Import UkWriteLeaf.        (* row 16's family, and its two key rows *)
-Require Import SpecArgfd.          (* [fd_st_of_key] *)
 Require Import SpecFilewrite.      (* [filewrite_in] / [filewrite_extra] *)
 Require Import SpecSysRead.        (* [sys_rw_count] *)
 Require Import SpecCopyin.         (* [ubytes_at] -- the content seam *)
@@ -172,7 +171,7 @@ Section UkWriteFile.
     usysno m = 16 ->
     (* THE DESCRIPTOR ARGUMENT IS THE ONE THE HANDLE NAMES.  a0 carries it
        as a C [int], so the reading is the signed low word -- the same one
-       [SpecArgfd.fd_st_of_key] takes. *)
+       [FdSlots.fd_st_of_key] takes. *)
     bv_signed (trunc32 (m !!! Regidx a0_idx)) = Z.of_nat fd ->
     (fd < NOFILE)%nat ->
     is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->

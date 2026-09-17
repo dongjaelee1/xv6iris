@@ -19,7 +19,9 @@ NOT touched:
   * `Let` declarations.  Rocq SUGGESTS an annotation for these and then refuses
     it -- *Let does not support Proof using* -- so taking the suggestion breaks
     the build.
-  * anonymous `Goal`s (Rocq calls them `Unnamed_thm`): nothing to key on.
+  * anonymous `Goal`s (Rocq calls them `Unnamed_thm`).  The ones here are
+    `Fail set_solver. Abort.` tripwires -- they define nothing, so there is
+    nothing to annotate.
 """
 
 import argparse, collections, os, re, sys
@@ -92,7 +94,7 @@ def main():
     args = ap.parse_args()
 
     sugg = parse_log(args.log)
-    patched = skipped_gen = skipped_let = unplaceable = 0
+    patched = skipped_gen = skipped_let = skipped_anon = unplaceable = 0
     unplaced = collections.Counter()
 
     for f, items in sorted(sugg.items()):
@@ -107,6 +109,8 @@ def main():
         used = collections.Counter()
         dirty = False
         for name, minimal in items:
+            if name.startswith('Unnamed_thm'):
+                skipped_anon += 1; continue      # an aborted `Goal`: defines nothing
             if name in lets:
                 skipped_let += 1; continue
             cand = slots.get(name)
@@ -124,6 +128,7 @@ def main():
     print('annotated %d proof(s)%s' % (patched, '' if args.apply else ' (dry run)'))
     print('  skipped %d in AUTO-GENERATED files (their generators emit it)' % skipped_gen)
     print('  skipped %d `Let` (Rocq suggests an annotation it then rejects)' % skipped_let)
+    print('  skipped %d anonymous `Goal` (aborted; defines nothing)' % skipped_anon)
     print('  could not place %d' % unplaceable)
     for f, c in unplaced.most_common(8):
         print('      %-32s %d' % (f, c))

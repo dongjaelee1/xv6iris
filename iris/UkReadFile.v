@@ -72,7 +72,6 @@ Require Import UkRun UkRunSys.
 Require Import UkReadRows.         (* the read leaf's SHARED key-level rows:
                                       [xfam_rdf], the intro/elim pair, the
                                       two [fd_st_of_key] readings *)
-Require Import SpecArgfd.          (* [fd_st_of_key] *)
 Require Import SpecFileread.       (* [fileread_in] / [fileread_extra_core] *)
 Require Import SpecSysRead.        (* [sys_rw_count] *)
 Require Import AppInv.             (* [appE] -- the commit mask *)
@@ -161,7 +160,7 @@ Section UkReadFile.
     (Z.to_nat cnt <= k)%nat ->
     (* THE DESCRIPTOR ARGUMENT IS THE ONE THE HANDLE NAMES.  a0 carries it
        as a C [int], so the reading is the signed low word -- the same one
-       [SpecArgfd.fd_st_of_key] takes. *)
+       [FdSlots.fd_st_of_key] takes. *)
     bv_signed (trunc32 (m !!! Regidx a0_idx)) = Z.of_nat fd ->
     (fd < NOFILE)%nat ->
     is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->

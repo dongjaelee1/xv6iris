@@ -54,7 +54,7 @@
    the trivial family -- which is exactly what the two supply laws hand
    back, since those laws ARE [FsAbsInvFire]'s dischargers.
 
-   THE DESCRIPTOR KEY IS [SpecArgfd.fd_st_of_key], NOT [sys_fd_st], and that
+   THE DESCRIPTOR KEY IS [FdSlots.fd_st_of_key], NOT [sys_fd_st], and that
    is what makes read's and write's bundles statable here at all: [sys_fd_st]
    reads the process's [ofile] POINTER array, a kernel-side reading no
    process has.  [SpecArgfd.sys_fd_st_of_key] is the equation between the
@@ -156,8 +156,6 @@ Require FsAbsEra.              (* [ex_start] / [ax_hops_triv]: the walk
 Require Import FsAbsInvFire.   (* [fsabs_exec_half] and the eight other
                                   numbers' dischargers, all out of the
                                   supply                              *)
-Require Import SpecArgfd.      (* [fd_st_of_key] -- the descriptor key a
-                                  PROCESS can name                    *)
 Require Import SpecFileread.   (* [fileread_in] / [fileread_extra]    *)
 Require Import SpecFilewrite.  (* [filewrite_in] / [filewrite_extra]  *)
 Require Import SpecSysRead.    (* [sys_rw_count]                      *)
@@ -538,7 +536,7 @@ Section UexecExecInst.
   (* working directory, and nothing else.  Every branch is a definition       *)
   (* already proved against the code -- no parallel form is introduced here.  *)
   (*                                                                          *)
-  (* READ AND WRITE ARE KEYED AT [SpecArgfd.fd_st_of_key], not at             *)
+  (* READ AND WRITE ARE KEYED AT [FdSlots.fd_st_of_key], not at               *)
   (* [sys_fd_st]: the latter reads the process's [ofile] POINTER array, a     *)
   (* kernel-side reading no process has.  [SpecArgfd.sys_fd_st_of_key] is     *)
   (* the equation, and its three premises are the DISPATCHER's (the fragment  *)
@@ -634,7 +632,7 @@ Section UexecExecInst.
      post, read off the SAME key projections its input branch above is read
      off -- so what a process gets back is a statement about the very
      receipts, refunds and cursors it deposited:
-       5   [SpecFileread.fileread_extra] at [SpecArgfd.fd_st_of_key], at the
+       5   [SpecFileread.fileread_extra] at [FdSlots.fd_st_of_key], at the
            RESUME IMAGE [M'] and the buffer address argument 1 -- the
            receipt names the bytes read() put in the caller's buffer -- with
            [SpecFileread.fileread_ret] in front of it, the return value's

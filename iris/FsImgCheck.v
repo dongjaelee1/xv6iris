@@ -1,6 +1,6 @@
 (* ====================================================================== *)
 (*  FsImgCheck.v -- THE SANITY CHECK, DISK SIDE: the fs.img mkfs built IS   *)
-(*  a well-formed file system, and the four verified user programs it holds *)
+(*  a well-formed file system, and the five verified user programs it holds *)
 (*  ARE the tracked ELF raws, byte for byte.                               *)
 (* ====================================================================== *)
 
@@ -13,20 +13,25 @@
     theorems below read it through the general file-system semantics of
     [FsImg.v] -- the superblock parses, [fsimg_wf] holds, and
 
-        /echo /init /sh /sync  resolve, in the ROOT DIRECTORY, to inodes
-        4 7 13 22, whose CONTENT BYTES are literally [ElfUser.echo_elf],
-        [init_elf], [sh_elf], [sync_elf].
+        /cat /echo /init /sh /sync  resolve, in the ROOT DIRECTORY, to
+        inodes 3 4 7 13 22, whose CONTENT BYTES are literally
+        [ElfUser.cat_elf], [echo_elf], [init_elf], [sh_elf], [sync_elf].
 
-    THE CHAIN THAT CLOSES HERE.  [ElfUser.v] proves things about four
+    ...and ONE NAME THE ROOT DOES NOT HOLD: [fname_f], the file
+    application's `f` (claude-notes/design/app-file.md).  Its absence is
+    [FsFPin]'s sentence, off this file's own [fsimg_path_root] scan --
+    the same computation [FsConsPin] pays for `console`.
+
+    THE CHAIN THAT CLOSES HERE.  [ElfUser.v] proves things about five
     [pstring] blobs: they are well-formed ELF64s, their file-backed images
     are the tracked [<P>Instrs]/[<P>Data] maps, their entries and segment
     geometry are the dumps' constants.  Until now nothing said those blobs
     had anything to do with the machine the proofs run: they were the
-    contents of [user/_<p>] on the build host.  The four [fsimg_<p>_at]
+    contents of [user/_<p>] on the build host.  The five [fsimg_<p>_at]
     equalities are the missing link -- the bytes exec() will read out of
     the FILE SYSTEM are those blobs -- so every [ElfUser] theorem now
     speaks about the files IN the file system of the disk
-    [SystemAdequacy.xv6_fs_adequacy_xv6Σ] powers on with.  The four
+    [SystemAdequacy.xv6_fs_adequacy_xv6Σ] powers on with.  The five
     [fsimg_<p>_ok] corollaries below bundle exactly that and cost no new
     computation: they CITE [ElfUser]'s own theorems.
 
@@ -74,7 +79,8 @@ From xv6iris Require Import
   ElfFile ElfUser.
 From User Require Import
   SyncInstrs SyncData EchoInstrs EchoData
-  ShInstrs   ShData   InitInstrs InitData.
+  ShInstrs   ShData   InitInstrs InitData
+  CatInstrs  CatData.
 
 Local Open Scope Z_scope.
 
@@ -86,7 +92,7 @@ Local Open Scope Z_scope.
     engine, and again in the KERNEL, which re-checks the [vm_cast] the
     tactic left in the proof term.  On this file's sentences that is the
     whole cost -- [fsimg_wf_ok] measured 65.9 s of tactic and 62.6 s of
-    [Qed] for the same reduction, and the four [<p>_bytes_bool] sweeps
+    [Qed] for the same reduction, and the five [<p>_bytes_bool] sweeps
     pay the same way (claude-notes/optimization.md, "[Qed] re-checks and
     therefore DOUBLES every [vm_compute]").
 
@@ -407,6 +413,15 @@ Definition fname_sh : fname :=
   [fsimg_byte 0x73; fsimg_byte 0x68].
 Definition fname_sync : fname :=
   [fsimg_byte 0x73; fsimg_byte 0x79; fsimg_byte 0x6e; fsimg_byte 0x63].
+Definition fname_cat : fname :=
+  [fsimg_byte 0x63; fsimg_byte 0x61; fsimg_byte 0x74].
+
+(* `f`, THE FILE APPLICATION'S ONE FILE -- the only name here that the
+   image does NOT hold.  It is spelled beside the five that it does
+   because the sentence it serves ([FsFPin.f_absent]) is read off the
+   same root-directory scan they are, and a second spelling of the byte
+   0x66 would be a second source of truth. *)
+Definition fname_f : fname := [fsimg_byte 0x66].
 
 Definition fsimg_root_data : nat -> list (bv 8) :=
   fs_file_data fsimg_P fsimg_sb ROOTINO.
@@ -445,6 +460,10 @@ Proof. rewrite fsimg_path_root. vm_eq. Qed.
 
 Lemma fsimg_sync_path :
   path_at (tree_of_disk fsimg_P fsimg_sb) ROOTINO [fname_sync] = Some 22.
+Proof. rewrite fsimg_path_root. vm_eq. Qed.
+
+Lemma fsimg_cat_path :
+  path_at (tree_of_disk fsimg_P fsimg_sb) ROOTINO [fname_cat] = Some 3.
 Proof. rewrite fsimg_path_root. vm_eq. Qed.
 
 (* ====================================================================== *)
@@ -491,6 +510,23 @@ Proof.
   rewrite (fsimg_node_file 4 fsimg_echo_type), H. reflexivity.
 Qed.
 
+(* ---- cat, inum 3, 36728 bytes ---------------------------------------- *)
+
+Lemma fsimg_cat_type :
+  bv_unsigned (di_type (fs_dinode fsimg_P fsimg_sb 3)) = T_FILE_z.
+Proof. vm_eq. Qed.
+
+Lemma fsimg_cat_bytes_bool :
+  bool_decide (fsimg_file_bytes 3 = ElfUser.cat_elf) = true.
+Proof. vm_eq. Qed.
+
+Lemma fsimg_cat_at :
+  node_at fsimg_P fsimg_sb 3 = Some (NFile ElfUser.cat_elf).
+Proof.
+  pose proof fsimg_cat_bytes_bool as H. apply bool_decide_eq_true_1 in H.
+  rewrite (fsimg_node_file 3 fsimg_cat_type), H. reflexivity.
+Qed.
+
 (* ---- init, inum 7, 35976 bytes --------------------------------------- *)
 
 Lemma fsimg_init_type :
@@ -514,7 +550,7 @@ Lemma fsimg_sh_type :
   bv_unsigned (di_type (fs_dinode fsimg_P fsimg_sb 13)) = T_FILE_z.
 Proof. vm_eq. Qed.
 
-(* The biggest of the four: 57 content blocks, so 45 of them are reached
+(* The biggest of the five: 57 content blocks, so 45 of them are reached
    through the indirect block ([FsImg.fs_ind_ents] decodes it ONCE for the
    whole walk -- it is [let]-bound outside [fs_data_of]'s lambda, which is
    what keeps this a 2 s sentence rather than a 256-fold rescan). *)
@@ -567,6 +603,18 @@ Proof.
   split; [exact fsimg_echo_path |].
   split; [exact fsimg_echo_at |].
   split; [exact ElfUser.echo_elf_wf | exact ElfUser.echo_elf_file_image].
+Qed.
+
+Theorem fsimg_cat_ok :
+  path_at (tree_of_disk fsimg_P fsimg_sb) ROOTINO [fname_cat] = Some 3
+  /\ node_at fsimg_P fsimg_sb 3 = Some (NFile ElfUser.cat_elf)
+  /\ elf_wf ElfUser.cat_elf = true
+  /\ elf_file_image ElfUser.cat_elf
+     = CatInstrs.cat_bytes ∪ CatData.cat_data.
+Proof.
+  split; [exact fsimg_cat_path |].
+  split; [exact fsimg_cat_at |].
+  split; [exact ElfUser.cat_elf_wf | exact ElfUser.cat_elf_file_image].
 Qed.
 
 Theorem fsimg_init_ok :

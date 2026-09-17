@@ -125,8 +125,8 @@ Qed.
 (*  both in lockstep: the [struct file *] array the C writes, and the      *)
 (*  fdstate list its ghost carries.  Stating the shape once is what lets   *)
 (*  the loop invariant carry the child's TABLE rather than the fact that   *)
-(*  it has one -- and that, in turn, is what makes "a forked child        *)
-(*  inherits its parent's descriptors" a statement kfork can make.         *)
+(*  it has one -- and that, in turn, is what makes “a forked child        *)
+(*  inherits its parent's descriptors” a statement kfork can make.         *)
 (* ===================================================================== *)
 
 Definition kfk_at {A : Type} (src dst : list A) (i : nat) : list A :=

@@ -779,7 +779,11 @@ Section Ut56.
         iSplitL "Hsret"; [iExact "Hsret"|].
         iSplitL "Hres"; [iExact "Hres"|]. iExact "Hkpt".
       + rewrite /ut_env. iSplitR; [iExact "Hcaps" | iExact "Hown"].
-    - iRight. iFrame "Hshot Hcp HQd".
+    - (* the three residue rows are SPLIT off, not framed: [T.ut_hold_nm]
+         is transparent, so a frame walks the whole process bundle *)
+      iRight. iSplitR "Hcp HQd".
+      2: { iSplitR; [iExact "Hshot"|].
+           iSplitL "Hcp"; [iExact "Hcp" | iExact "HQd"]. }
       iApply (ua_hold_on_nm Rsys N U _ sts cs pid with "Hcpu [-Hclm Hownm] Hclm [-]").
       + rewrite /trap_csrs.
         iSplitL "Hsepc"; [iExists ep; iExact "Hsepc"|].

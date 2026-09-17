@@ -69,8 +69,8 @@ Section Au4Leaves.
   (* moves no call site, and it must be on the WRAPPER too -- the inner      *)
   (* application is at a VARIABLE register, so nothing else could discharge *)
   (* the engine's instance, and an unresolved instance inside an [iApply]   *)
-  (* is SHELVED rather than reported (it would surface as "Attempt to save  *)
-  (* an incomplete proof" at some consumer's [Qed]).  The consuming asserts *)
+  (* is SHELVED rather than reported (it would surface as “Attempt to save  *)
+  (* an incomplete proof” at some consumer's [Qed]).  The consuming asserts *)
   (* in the proofs are the per-register wiring check; do not delete them.   *)
   (* ==================================================================== *)
 

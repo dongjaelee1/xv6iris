@@ -291,8 +291,8 @@ Qed.
 (*  THE [option] FORMS ARE THE EMPTY CASE, not a convenience: the receive  *)
 (*  token's anchor is [None] until the first byte is popped, and the       *)
 (*  console's high-water mark is [None] until the first byte is stored, so *)
-(*  every clause that compares against one has to read [None] as "no       *)
-(*  constraint".                                                          *)
+(*  every clause that compares against one has to read [None] as “no       *)
+(*  constraint”.                                                          *)
 (* ---------------------------------------------------------------------- *)
 
 Definition hist_ext (h h' : list mobs) : Prop :=

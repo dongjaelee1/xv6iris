@@ -253,7 +253,7 @@ Section FsAbsInvFire.
   (* READ'S WHOLE INPUT, at the trivial receipt and the trivial refund, AND
      AT A BARE DESCRIPTOR STATE -- which is the form the ARM's deposit class
      needs: a process's key names its descriptor STATES
-     ([SpecArgfd.fd_st_of_key]) and never the kernel's [ofile] pointer
+     ([FdSlots.fd_st_of_key]) and never the kernel's [ofile] pointer
      array, so the discharger cannot be stated at [SpecArgfd.sys_fd_st].
      The dispatcher's arm bridges the two with
      [SpecArgfd.sys_fd_st_of_key].

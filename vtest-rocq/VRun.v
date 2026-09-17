@@ -287,9 +287,9 @@ Definition thread_no_step (g : gstate) (e : mexpr) : Prop :=
 (*    [picks], [tick] and [budget] are fields because a proof has to name  *)
 (*    the witnesses it computed with, but NONE of them appears in the      *)
 (*    theorem: the claims quantify them existentially.  What is            *)
-(*    claimed is "the model has such an execution", not "it has one within *)
+(*    claimed is "the model has such an execution", not “it has one within *)
 (*    2000 steps with the clock held still and the disk answering its      *)
-(*    lowest in-flight head".                                              *)
+(*    lowest in-flight head”.                                              *)
 (* ---------------------------------------------------------------------- *)
 
 Module Type TEST_RUN (T : TEST).

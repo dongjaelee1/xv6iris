@@ -466,7 +466,7 @@ Global Arguments swp {Σ _ _ _ X} m Φ.
 
 (* the notation leaves read in: the value binder is the point of the layer *)
 Notation "'SWP' m {{ v , Q } }" := (swp m (fun v => Q))
-  (at level 20, m at level 200, v pattern, Q at level 200,
+  (at level 20, m at level 200, v at level 200 as pattern, Q at level 200,
    format "'[hv' 'SWP'  m  '/' {{  '[' v ,  '/' Q  ']' } } ']'").
 Notation "'SWP' m {{ Q } }" := (swp m Q)
   (at level 20, m at level 200, Q at level 200,

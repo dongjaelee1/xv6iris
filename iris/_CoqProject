@@ -4,6 +4,9 @@
 -R ../user-rocq User
 -arg -w
 -arg -notation-overridden
+# a quotation in a comment must not swallow a `*)` (tools/comment_quote_check.py)
+-arg -w
+-arg +comment-terminator-in-string
 SetShrink.v
 SepThread.v
 FastSetSolver.v
@@ -1452,6 +1455,8 @@ LinkConsolewrite.v
 
 FsShPin.v
 FsEchoPin.v
+FsCatPin.v
+FsFPin.v
 FsConsPin.v
 SpecKexec.v
 InitBoot.v
@@ -1479,6 +1484,7 @@ SystemUartAccepted.v
 App.v
 
 LineWords.v
+FileState.v
 EchoDisc.v
 LogEntryDefs.v
 ConsLog.v
@@ -1489,7 +1495,9 @@ EchoLinksPro.v
 EchoLinksLine.v
 EchoLinksBan.v
 EchoFsPure.v
+FileFsPure.v
 AppEcho.v
+AppFile.v
 AppTree.v
 
 FsAbsUnlinkFire.v
@@ -1513,6 +1521,7 @@ UkRunBr.v
 UkSh.v
 UkShRun.v
 UkShDiag.v
+UkShRedir.v
 
 UCodeShP.v
 UkShParse.v
@@ -1521,6 +1530,8 @@ UkShParseTok.v
 UkShParseRedir.v
 UkShParseExec.v
 UkShParseCmd.v
+UkShRedirLex.v
+UkShRedirTok.v
 
 UCodeShM.v
 UkShMalloc.v

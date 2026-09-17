@@ -1254,8 +1254,8 @@ Section PinnedObsAbsLin.
 
   (* ------------------------------------------------------------------ *)
   (*  THE WALL THIS SECTION DOES NOT CLIMB, AND IT CORRECTS DESIGN        *)
-  (*  SECTION 9.2 ("the full-path twin is the same construction one list  *)
-  (*  longer").  IT IS NOT, AND THE OBSTRUCTION IS NOT THE WALK.          *)
+  (*  SECTION 9.2 (“the full-path twin is the same construction one list  *)
+  (*  longer”).  IT IS NOT, AND THE OBSTRUCTION IS NOT THE WALK.          *)
   (*                                                                     *)
   (*  [ExecRun.exec_walk_of_abs] is THREE pieces: the walk, the OPEN      *)
   (*  OBSERVATION's piece, and the terminal identification.  With a       *)

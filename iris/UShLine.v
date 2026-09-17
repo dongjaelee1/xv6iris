@@ -79,7 +79,6 @@ Require Import UkReadRows.         (* the read leaf's SHARED key-level rows:
 Require Import UkReadCons.         (* THE NEUTRAL CONSOLE MEMBER of the read
                                       leaf -- this file's leaf is its echo
                                       INSTANCE (lane RD-4) *)
-Require Import SpecArgfd.          (* [fd_st_of_key] *)
 Require Import SpecFileread.       (* [fileread_in] / [console_receipt] *)
 Require Import SpecSysRead.        (* [sys_rw_count] *)
 Require Import AppInv.      (* [app_sup] *)

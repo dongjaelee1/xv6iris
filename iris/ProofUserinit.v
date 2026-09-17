@@ -420,7 +420,7 @@ Section ProofUserinit.
        forked by nobody and owes nobody anything at exit, so [Q (-1)] is
        [True] and the taint buys it for free.  allocproc
        founds [SchedCtx.kill_paid]'s live arm on this. *)
-    iAssert (□ (riscv_kill_cred -∗ (fun _ : Z => True)%I (-1)))%I as "#HKu".
+    iAssert (□ (app_taint -∗ (fun _ : Z => True)%I (-1)))%I as "#HKu".
     { iModIntro. iIntros "_". done. }
     iApply (AP.wp_allocproc_sconf fsc_kalloc fsc_kpages γp γf γs R3 0%nat (K - 4)%nat b pj
               on (Some (S np)) true b lks (fun _ : Z => True)%I

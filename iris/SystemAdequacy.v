@@ -1046,7 +1046,7 @@ Lemma init_boot_of_sup {Σ}
   (* NO ALL-PARKED FACT (lane OFF-HAND-6, H3): the exec crossing's taint
      arm stopped asking for one, because a held row's half is in the
      descriptor bundle (design/app-file.md SS3 fact 4). *)
-  app_sup -∗ □ riscv_kill_cred -∗ init_boot_bundle cw sts.
+  app_sup -∗ app_taint -∗ init_boot_bundle cw sts.
 Proof.
   intros Hlic. iIntros "#Hsup #Hkc".
   iAssert cons_licence as "#Hlic"; [by iApply Hlic|].
@@ -1064,7 +1064,7 @@ Lemma init_boot_of_triv {Σ}
   (forall r av, app_pred r av ⊣⊢ True) ->
   (* ...and the machine's kill credential is the trivial one, so the
      generic discharge pays it for nothing (lane KILL-PAY, K1) *)
-  riscv_kill_cred = kill_cred_triv ->
+  app_taint = kill_cred_triv ->
   (* ...and the CONSOLE CLAIM is the trivial one, which is what makes the
      generic supply's licence free (redesign R2: one claim, one licence) *)
   @riscv_cons_res Σ _ = cons_res_triv ->
@@ -1073,7 +1073,7 @@ Proof.
   intros Htriv Hkc Hcons. iApply (init_boot_of_sup cw sts).
   { iIntros "_". by iApply cons_licence_triv. }
   { iApply app_sup_of_triv. exact Htriv. }
-  rewrite Hkc /kill_cred_triv. iModIntro. done.
+  rewrite Hkc /kill_cred_triv. done.
 Qed.
 
 (* ---------------------------------------------------------------------- *)
@@ -1663,7 +1663,7 @@ Proof.
                          Heq Hiface Hgeni;
                   iIntros "_ _ _"; iModIntro; iApply init_boot_of_triv;
                   [ rewrite Heq; intros r' av; reflexivity
-                  | rewrite /riscv_kill_cred Hiface; reflexivity
+                  | rewrite /app_taint Hiface; reflexivity
                   | rewrite /riscv_cons_res Hiface; reflexivity ])
             (* THE ECHO'S JUSTIFICATION, at the TRIVIAL console claim: every
                link is free, so the echo justifies itself. *)
@@ -1851,8 +1851,8 @@ Proof.
                     iIntros "_"; iApply Hout_lic
                   | iApply app_sup_of_triv; rewrite Heq; intros r' av;
                     reflexivity
-                  | rewrite /riscv_kill_cred Hiface /= /kill_cred_triv;
-                    iModIntro; done ])
+                  | rewrite /app_taint Hiface /= /kill_cred_triv;
+                    done ])
             ltac:(intros HRi ci Hiface;
                   exact (Hecho HRi
                            ltac:(rewrite /riscv_cons_res Hiface; reflexivity)
@@ -2303,7 +2303,7 @@ Proof.
                          Heq Hiface Hgeni;
                   iIntros "_ _ _"; iModIntro; iApply init_boot_of_triv;
                   [ rewrite Heq; intros r' av; reflexivity
-                  | rewrite /riscv_kill_cred Hiface; reflexivity
+                  | rewrite /app_taint Hiface; reflexivity
                   | rewrite /riscv_cons_res Hiface; reflexivity ])
             (* THE ECHO'S JUSTIFICATION, at the TRIVIAL console claim: every
                link is free, so the echo justifies itself. *)

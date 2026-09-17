@@ -138,19 +138,19 @@ Section UInitTreeExec.
   Lemma tree_gen_slot (c : tree_fixed) (r : tree_names) :
     file_app = MkAppcfg tree_names (tree_pred c) r ->
     riscv_cons_res = cons_res_triv ->
-    riscv_kill_cred = kill_cred_triv ->
+    app_taint = kill_cred_triv ->
     tree_taint c -∗
     □ (∀ (R : iProp Σ) (W : uvis),
          my_pay (uvis_gen W) (fun _ => R)%I -∗
-         □ (riscv_kill_cred -∗ R) -∗ uslot W).
+         □ (app_taint -∗ R) -∗ uslot W).
   Proof using .
     intros Heq Hcons Hkill. iIntros "#Ht".
     iAssert (AppInv.app_sup) as "#Hsup".
     { rewrite /AppInv.app_sup Heq.
       cbn [AppCfg.app_pred AppCfg.app_run AppCfg.app_names].
       iApply (tree_sup_of_taint c r with "Ht"). }
-    iAssert (□ riscv_kill_cred)%I as "#Hkc";
-      [ rewrite Hkill /kill_cred_triv; by iModIntro | ].
+    iAssert (app_taint)%I as "#Hkc";
+      [ rewrite Hkill /kill_cred_triv; done | ].
     iPoseProof (WpUart.cons_licence_triv Hcons) as "#Hlic".
     iPoseProof LinkUserinit.UG.uexec_wp_gen as "#Hwp".
     iApply (uslot_mint_all with "Hsup Hkc Hlic Hwp").
@@ -167,7 +167,7 @@ Section UInitTreeExec.
       (cn : cons_names) (γ : gname) (Rd : nat -> iProp Σ) :
     file_app = MkAppcfg tree_names (tree_pred c) r ->
     riscv_cons_res = cons_res_triv ->
-    riscv_kill_cred = kill_cred_triv ->
+    app_taint = kill_cred_triv ->
     ⊢ image_entry_taint (tree_taint c)
         (ucons_pay cn γ (tree_taint c) Rd) uslot.
   Proof using .
@@ -198,7 +198,7 @@ Section UInitTreeExec.
       (cn : cons_names) (stc : fdstate) :
     file_app = MkAppcfg tree_names (tree_pred c) r ->
     riscv_cons_res = cons_res_triv ->
-    riscv_kill_cred = kill_cred_triv ->
+    app_taint = kill_cred_triv ->
     tree_taint c -∗
     UkInit.init_exec_sup_lend cn (tree_taint c) stc (tree_cc c).
   Proof using .
@@ -252,7 +252,7 @@ Section UInitTreeExec.
       (cn : cons_names) (stc : fdstate) :
     file_app = MkAppcfg tree_names (tree_pred c) r ->
     riscv_cons_res = cons_res_triv ->
-    riscv_kill_cred = kill_cred_triv ->
+    app_taint = kill_cred_triv ->
     ⊢ UkInit.init_cons_sup cn (tree_taint c) (tree_taint c) stc (tree_cc c).
   Proof using .
     intros Heq Hcons Hkill. rewrite /UkInit.init_cons_sup. iSplit.
@@ -279,7 +279,7 @@ Section UInitTreeExec.
   Lemma tree_init_boot_con (c : tree_fixed) (r : tree_names) :
     file_app = MkAppcfg tree_names (tree_pred c) r ->
     riscv_cons_res = cons_res_triv ->
-    riscv_kill_cred = kill_cred_triv ->
+    app_taint = kill_cred_triv ->
     ⊢ □ (∀ W' : uvis,
            ⌜kexec_image_ok ElfUser.init_elf 1%nat (fun _ => 5%nat)
               (fun _ => init_boot_bytes) fdt0 W'⌝ -∗
@@ -328,7 +328,7 @@ Section UInitTreeExec.
       (cn : cons_names) (stc : fdstate) :
     file_app = MkAppcfg tree_names (tree_pred c) r ->
     riscv_cons_res = cons_res_triv ->
-    riscv_kill_cred = kill_cred_triv ->
+    app_taint = kill_cred_triv ->
     UInitKernel.init_cons_dance_all (PS := uprogSG_free) (tree_taint c)
       (tree_taint c) stc -∗
     ucons_reader cn 0%nat -∗

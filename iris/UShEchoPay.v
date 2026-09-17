@@ -139,7 +139,7 @@ Section UShEchoPay.
        = wl_line (last_ws I)
            !!! (UkShEcho.echo_off (last_ws I) i + j)%nat) ->
     UkSh.ush_fd1p (take NSTD sts) ->
-    (⊢ □ riscv_kill_cred -∗ T) ->
+    (⊢ app_taint -∗ T) ->
     ⊢ era_pin γ (S gen_id) v -∗
       echo_links T γ -∗
       (* ...and whether the exec'ing process's table held a pipe row
@@ -151,7 +151,7 @@ Section UShEchoPay.
       (* the taint's generic slot, at any constant payload *)
       □ (∀ (R : iProp Σ) (W : uvis),
            T -∗ my_pay (uvis_gen W) (fun _ => R)%I -∗
-           □ (riscv_kill_cred -∗ R) -∗ uslot W) -∗
+           □ (app_taint -∗ R) -∗ uslot W) -∗
       my_pay (uvis_gen W') (fun _ : Z => Wq I) -∗
       EchoLinksLine.ewc_lpr T v I 3%nat -∗
       uslot W'.
@@ -185,7 +185,7 @@ Section UShEchoPay.
       iIntros "!> #Hk". rewrite /UkShFork.ushf_wq. iRight.
       iApply (EchoLinksLine.ewc_lcred_taint T γ (S gen_id) I 0%nat v
                 with "Hpin [Hk]").
-      iApply Hkt. iModIntro. iExact "Hk". }
+      iApply Hkt. iExact "Hk". }
     iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
     destruct (wr_blk_t_stage ps cs I P Hw)
       as (Hrest & Hn0 & HP & Hpin & Htail).
@@ -225,7 +225,7 @@ Section UShEchoPay.
   (*  chosen payload, and the refund -- the ledger fragment and the lend.  *)
   (* =================================================================== *)
   Lemma sh_exec_sup_echo_wq_holds :
-    (⊢ □ riscv_kill_cred -∗ T) ->
+    (⊢ app_taint -∗ T) ->
     ⊢ echo_links T γ -∗ udep (PS := uprogSG_free) -∗ sh_echo_slot T -∗
       UkShEcho.sh_exec_sup_echo_wq Wc.
   Proof using HPT HTT ghost_varG1.
@@ -244,7 +244,7 @@ Section UShEchoPay.
       iIntros "!> #Hk". rewrite /UkShFork.ushf_wq. iRight.
       iApply (EchoLinksLine.ewc_lcred_taint T γ (S gen_id) I 0%nat v
                 with "Hpin [Hk]").
-      iApply Hkt. iModIntro. iExact "Hk". }
+      iApply Hkt. iExact "Hk". }
     (* ---- ...AND THE REST IS THE U-TIER RULE (lane EX-4).
        [ExecRun.udepw_at_refR_of_sup] is the general step from an exec
        bundle to the deposit the exec leaf consumes; what is left here is
@@ -310,20 +310,20 @@ Section UShEchoPay.
   (* =================================================================== *)
   (* a killed child pays the credential with the taint, at any pin *)
   Lemma ushf_kill_law_holds (v : era_pins) :
-    (⊢ □ riscv_kill_cred -∗ T) ->
+    (⊢ app_taint -∗ T) ->
     ⊢ era_pin γ (S gen_id) v -∗ UkShFork.ushf_kill_law Wc.
   Proof.
     intros Hkt. iIntros "#Hpin". rewrite /UkShFork.ushf_kill_law.
     iIntros "!>" (n) "#Hk".
     iApply (EchoLinksLine.ewc_lcred_taint T γ (S gen_id) n 0%nat v
               with "Hpin [Hk]").
-    iApply Hkt. iModIntro. iExact "Hk".
+    iApply Hkt. iExact "Hk".
   Qed.
 
   (* ...and the paid child's walk, out of the supply above: the closed form
      that says the composition exists *)
   Lemma ushf_child_law_holds_at :
-    (⊢ □ riscv_kill_cred -∗ T) ->
+    (⊢ app_taint -∗ T) ->
     ⊢ echo_links T γ -∗ udep (PS := uprogSG_free) -∗ sh_echo_slot T -∗
       UkShFork.ushf_child_law (PS := uprogSG_free) Wc.
   Proof.

@@ -2038,7 +2038,7 @@ Section UkRunSys.
   (*                                                                       *)
   (* SO THE LEAF BELOW IS THE TAINT-SHAPED KILL: the program pays the       *)
   (* application's kill price through its own deposit at number 6           *)
-  (* ([RiscvPtsto.riscv_kill_cred], which for echo IS the taint) and gets   *)
+  (* ([RiscvPtsto.app_taint], which for echo IS the taint) and gets   *)
   (* back a run and a number it knows nothing about.  It is named rather    *)
   (* than left implicit because a caller should not have to rediscover      *)
   (* which of [wp_uk_ecall_quiet]'s eleven side conditions kill discharges. *)
@@ -2055,7 +2055,7 @@ Section UkRunSys.
     uinstr_is (ukn_t N) pc false (ECALL tt) -∗
     urun N h m pc avail -∗
     (* THE PRICE IS IN HERE.  Number 6's row of the process's own bundle is
-       what carries [riscv_kill_cred] down to kkill ([SpecSysKill]'s
+       what carries [app_taint] down to kkill ([SpecSysKill]'s
        premise); a program with nothing to pay it with cannot mint this
        deposit at this number. *)
     udepw N m pc USYS_kill -∗
@@ -2909,7 +2909,7 @@ Section UkRunSys.
        ([PipeQueue.pipe_cpay]'s second disjunct) -- so a program that opens
        a pipe pays its own tear-down's closes out of the taint, which is
        exactly what the design says it must. *)
-    □ riscv_kill_cred -∗
+    app_taint -∗
     ustd (ukn_fd N) l -∗
     ubytes (ukn_d N) (uint (m !!! Regidx (mword_of_int 10))) 8 f -∗
     (∀ (h' : CpuId) (r : mword 64) (g : nat -> bv 8) (W : uvis) (fdep : sfam)

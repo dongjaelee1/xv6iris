@@ -124,8 +124,8 @@ Section TreeAdequacy.
     assert (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HR) = cons_res_triv).
     { rewrite /riscv_cons_res Hiface.
       by cbn [app_tree app_ifc app_iface_triv ai_cons]. }
-    assert (Hkill : @riscv_kill_cred Σ (@riscv_fixedGS Σ HR) = kill_cred_triv).
-    { rewrite /riscv_kill_cred Hiface.
+    assert (Hkill : @app_taint Σ (@riscv_fixedGS Σ HR) = kill_cred_triv).
+    { rewrite /app_taint Hiface.
       by cbn [app_tree app_ifc app_iface_triv ai_kill]. }
     iIntros "_ _ Hturn".
     (* THE LICENCE IS SPENT HERE, and this is the only place the tree
@@ -142,7 +142,7 @@ Section TreeAdequacy.
            app_tree app_pred app_names].
       iExact "Hsup".
     - (* the kill credential, free at the trivial interface *)
-      rewrite Hkill /kill_cred_triv. iModIntro. done.
+      rewrite Hkill /kill_cred_triv. done.
   Qed.
 
   (* =================================================================== *)

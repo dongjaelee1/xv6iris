@@ -849,7 +849,7 @@ Section UInitSh.
                          app_pred app_run v ∗ (⌜echo_fs_pure v⌝ ∨ T))
      ∗ □ (∀ (R : iProp Σ) (W : uvis),
             T -∗ my_pay (uvis_gen W) (fun _ => R)%I -∗
-            □ (riscv_kill_cred -∗ R) -∗ uslot W)
+            □ (app_taint -∗ R) -∗ uslot W)
      ∗ Pay)%I.
 
   (* THE CONSOLE CREDENTIAL IS NOT HERE but a premise of the constructor
@@ -1271,7 +1271,7 @@ Section UInitSh.
     (* ...AND THE TAINT ARM IS HANDED NOTHING AT ALL NOW (lane SELF-KILL,
        P6b): the generic family's constant payload is carried
        PERSISTENTLY ([UexecExecMint.uslot_mint_all] at
-       [□ (riscv_kill_cred -∗ R)]), and the arm builds it out of the TAINT
+       [□ (app_taint -∗ R)]), and the arm builds it out of the TAINT
        it is already holding ([UserConsole.ucons_pay_taint]) -- which is
        the whole reason a tainted process needs no lease. *)
     iAssert (image_entry_taint T

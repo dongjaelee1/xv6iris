@@ -778,7 +778,7 @@ Section UkShRedir.
       UkSh.sh_deps -∗
       shk_code (ukn_t N) -∗
       uxsup_at (ukn_pay N) -∗
-      □ (riscv_kill_cred -∗ ukn_pay N (-1)) -∗
+      □ (app_taint -∗ ukn_pay N (-1)) -∗
       ush_jtab (ukn_t N) -∗
       ush_cmd (ukn_d N) t (URedir c1 file mode 1) -∗
       usz (ukn_s N) szv -∗

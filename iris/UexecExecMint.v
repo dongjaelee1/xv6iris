@@ -88,7 +88,7 @@ Section UexecExecMint.
      [App.al_sup]), so every existing caller hands them in
      together. *)
   Lemma udep_gen :
-    app_sup -∗ □ riscv_kill_cred -∗ cons_licence -∗ udep.
+    app_sup -∗ app_taint -∗ cons_licence -∗ udep.
   Proof using .
     rewrite /udep /Dsup /= /xv6_ssupply.
     iIntros "#Hsup #Hkc #Hlic".
@@ -250,7 +250,7 @@ Section UexecExecMint.
      [FsAbsInvFire.fsabs_filewrite_in] took the same argument. *)
   Lemma filewrite_in_of_sup (st : fdstate) (n : Z) (M : gmap Z (bv 8))
       (ua : mword 64) :
-    app_sup -∗ cons_licence -∗ □ riscv_kill_cred -∗
+    app_sup -∗ cons_licence -∗ app_taint -∗
     filewrite_in st n M ua (fun _ => True%I) (fun _ _ => True%I).
   Proof using .
     iIntros "#Hsup #Hlic #Hkc".
@@ -265,7 +265,7 @@ Section UexecExecMint.
 
   Lemma udepw_of_sup_write `{PSx : uprogSG Σ} (N : uk_names Σ) (m : regfile)
       (pc : mword 64) :
-    app_sup -∗ cons_licence -∗ □ riscv_kill_cred -∗ udepw (PS := PSx) N m pc 16.
+    app_sup -∗ cons_licence -∗ app_taint -∗ udepw (PS := PSx) N m pc 16.
   Proof using .
     iIntros "#Hsup #Hlic #Hkc".
     rewrite /udepw. iIntros (M pm sz fdv cw gn cs pidv) "#Hmp Hheap Hufd".
@@ -287,7 +287,7 @@ Section UexecExecMint.
   Qed.
 
   Lemma udepw_law_of_sup_write `{PSx : uprogSG Σ} :
-    app_sup -∗ cons_licence -∗ □ riscv_kill_cred -∗ udepw_law (PS := PSx) 16.
+    app_sup -∗ cons_licence -∗ app_taint -∗ udepw_law (PS := PSx) 16.
   Proof using .
     iIntros "#Hsup #Hlic #Hkc". rewrite /udepw_law.
     iIntros "!>" (N m pc). iApply (udepw_of_sup_write N m pc with "Hsup Hlic Hkc").
@@ -302,7 +302,7 @@ Section UexecExecMint.
      kill credential ([fileclose_cpay_taint]) and out of nothing else. *)
   Lemma udepw_of_sup_close `{PSx : uprogSG Σ} (N : uk_names Σ) (m : regfile)
       (pc : mword 64) :
-    □ riscv_kill_cred -∗ udepw (PS := PSx) N m pc 21.
+    app_taint -∗ udepw (PS := PSx) N m pc 21.
   Proof using .
     iIntros "#Hkc".
     rewrite /udepw. iIntros (M pm sz fdv cw gn cs pidv) "#Hmp Hheap Hufd".
@@ -327,7 +327,7 @@ Section UexecExecMint.
   Qed.
 
   Lemma udepw_law_of_sup_close `{PSx : uprogSG Σ} :
-    □ riscv_kill_cred -∗ udepw_law (PS := PSx) 21.
+    app_taint -∗ udepw_law (PS := PSx) 21.
   Proof using .
     iIntros "#Hkc". rewrite /udepw_law.
     iIntros "!>" (N m pc). iApply (udepw_of_sup_close N m pc with "Hkc").
@@ -344,7 +344,7 @@ Section UexecExecMint.
      credential. *)
   Lemma udepw_of_sup_exit `{PSx : uprogSG Σ} (N : uk_names Σ) (m : regfile)
       (pc : mword 64) :
-    □ riscv_kill_cred -∗ udepw (PS := PSx) N m pc USYS_exit.
+    app_taint -∗ udepw (PS := PSx) N m pc USYS_exit.
   Proof using .
     iIntros "#Hkc".
     rewrite /udepw. iIntros (M pm sz fdv cw gn cs pidv) "#Hmp Hheap Hufd".
@@ -370,7 +370,7 @@ Section UexecExecMint.
   Qed.
 
   Lemma udepw_law_of_sup_exit `{PSx : uprogSG Σ} :
-    □ riscv_kill_cred -∗ udepw_law (PS := PSx) USYS_exit.
+    app_taint -∗ udepw_law (PS := PSx) USYS_exit.
   Proof using .
     iIntros "#Hkc". rewrite /udepw_law.
     iIntros "!>" (N m pc). iApply (udepw_of_sup_exit N m pc with "Hkc").
@@ -395,7 +395,7 @@ Section UexecExecMint.
      that maintains it); the exec crossing is where the fact enters, off
      [SpecKexec.exec_slot_pre]'s wands. *)
   Lemma uslot_mint :
-    app_sup -∗ □ riscv_kill_cred -∗ cons_licence -∗ □ uexec_wp -∗
+    app_sup -∗ app_taint -∗ cons_licence -∗ □ uexec_wp -∗
     □ (∀ W : uvis, my_pay (uvis_gen W) (fun _ => True)%I -∗ uslot W).
   Proof using ghost_varG0 ufdG0.
     iIntros "#Hsup #Hkc #Hlic #Hgen".
@@ -425,14 +425,14 @@ Section UexecExecMint.
      payload ([USyncKernel.sync_uexec_slot], [UEchoKernel.echo_uexec_slot]),
      so [uslot_mint] stays THE entry decider and this is its sibling. *)
   (* ...AND THE PAYLOAD IS THE PERSISTENT CARRIER (lane SELF-KILL, P6b):
-     the family runs on [□ (riscv_kill_cred -∗ R)], the process's own
+     the family runs on [□ (app_taint -∗ R)], the process's own
      published payment wand, because a single LINEAR [R] cannot serve both
      legs of a return.  It costs nothing HERE and nowhere else: this mint
-     is the tainted route and takes [riscv_kill_cred] already. *)
+     is the tainted route and takes [app_taint] already. *)
   Lemma uslot_mint_pay (R : iProp Σ) :
-    app_sup -∗ □ riscv_kill_cred -∗ cons_licence -∗ □ uexec_wp -∗
+    app_sup -∗ app_taint -∗ cons_licence -∗ □ uexec_wp -∗
     □ (∀ W : uvis, my_pay (uvis_gen W) (fun _ => R)%I -∗
-                   □ (riscv_kill_cred -∗ R) -∗ uslot W).
+                   □ (app_taint -∗ R) -∗ uslot W).
   Proof using .
     iIntros "#Hsup #Hkc #Hlic #Hgen".
     iIntros "!>" (W) "#Hpay #HR".
@@ -449,10 +449,10 @@ Section UexecExecMint.
      resource has to be bound inside the [□].  Nothing about the proof
      changes -- the generic slot is built per call. *)
   Lemma uslot_mint_all :
-    app_sup -∗ □ riscv_kill_cred -∗ cons_licence -∗ □ uexec_wp -∗
+    app_sup -∗ app_taint -∗ cons_licence -∗ □ uexec_wp -∗
     □ (∀ (R : iProp Σ) (W : uvis),
          my_pay (uvis_gen W) (fun _ => R)%I -∗
-         □ (riscv_kill_cred -∗ R) -∗ uslot W).
+         □ (app_taint -∗ R) -∗ uslot W).
   Proof using .
     iIntros "#Hsup #Hkc #Hlic #Hgen".
     iIntros "!>" (R W) "#Hpay #HR".

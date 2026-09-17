@@ -816,7 +816,7 @@ Section UkStorePostFetch.
        a LINEAR payload -- a forked child hands over [Qp (-1)] itself
        rather than a proof that it is free. *)
     (⊢ (Kcx ∗ ChildTok.my_pay gn Qp -∗
-        (□ riscv_kill_cred ∨ (ChildTok.kill_owed gn ∗
+        (app_taint ∨ (ChildTok.kill_owed gn ∗
             sbundle_at uslot USYS_exit fx
               (uvis_of_run m pc M π sz fdv cw gn cs pidv false))) : iProp Σ)) ->
     Z.rem (uint va) 4096 <= 4096 - kk ->
@@ -1173,7 +1173,7 @@ Section UkStoreObl.
        dies at a LINEAR payload can pay for its own death. *)
     (u_fault_flavor (Store Data) (ud_tfp pt) (ud_um pt) va ->
      ⊢ (Kcx ∗ ChildTok.my_pay gn Qp -∗
-        (□ riscv_kill_cred ∨ (ChildTok.kill_owed gn ∗
+        (app_taint ∨ (ChildTok.kill_owed gn ∗
             sbundle_at uslot USYS_exit fx
               (uvis_of_run m pc M π sz fdv cw gn cs pidv false))) : iProp Σ)) ->
     uva_canon va ->
@@ -1348,7 +1348,7 @@ Section UkStoreObl.
        dies at a LINEAR payload can pay for its own death. *)
     (u_fault_flavor (Store Data) (ud_tfp pt) (ud_um pt) va ->
      ⊢ (Kcx ∗ ChildTok.my_pay gn Qp -∗
-        (□ riscv_kill_cred ∨ (ChildTok.kill_owed gn ∗
+        (app_taint ∨ (ChildTok.kill_owed gn ∗
             sbundle_at uslot USYS_exit fx
               (uvis_of_run m pc M π sz fdv cw gn cs pidv false))) : iProp Σ)) ->
     uva_canon va ->
@@ -1626,7 +1626,7 @@ Section UkStore.
        So a verified program pays NOTHING for the kill it cannot suffer. *)
     assert (Hkcf : u_fault_flavor (Store Data) (ud_tfp pt') (ud_um pt') va ->
                    ⊢ ((True : iProp Σ) ∗ ChildTok.my_pay gn Qp -∗
-                      (□ riscv_kill_cred ∨
+                      (app_taint ∨
                        (ChildTok.kill_owed gn ∗
                         sbundle_at uslot USYS_exit (sfam_at Qp sfam_pt)
                           (uvis_of_run m pc M π sz fdv cw gn cs pidv false)))
@@ -1851,7 +1851,7 @@ Section UkStore.
                    ⊢ ((Qp (-1) ∗ sbundle_at uslot USYS_exit fx
                                    (uvis_of_run m pc M π sz fdv cw gn cs pidv false))
                       ∗ ChildTok.my_pay gn Qp -∗
-                      (□ riscv_kill_cred ∨ (ChildTok.kill_owed gn ∗
+                      (app_taint ∨ (ChildTok.kill_owed gn ∗
                        sbundle_at uslot USYS_exit fx
                          (uvis_of_run m pc M π sz fdv cw gn cs pidv false))) : iProp Σ)).
     { intros _. iIntros "((Hp & Hb) & #Hm)". iRight. iFrame "Hb".

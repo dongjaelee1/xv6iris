@@ -87,7 +87,7 @@ Require Import SpecConsolewrite.   (* [cons_out_chain_of_licence]: the
                                       of the supply's OUTPUT LICENCE *)
 Require Import SpecFilewrite.      (* [filewrite_in]: the one keyed input *)
 Require Import SpecFileread.       (* [fileread_in]: read's keyed input *)
-Require Import PipeQueue.          (* [pipe_taint_cred], [pipe_rpay_taint] / [pipe_wpay_taint]: the pipe arms' price *)
+Require Import PipeQueue.          (* [pipe_rpay_taint] / [pipe_wpay_taint]: the pipe arms' price, paid by [RiscvPtsto.app_taint] *)
 Require Import PieceFam.        (* [pfam]: a one-shot piece's receipt beside its refund *)
 Import Defs.
 Require Import CtxIdDefs.
@@ -308,7 +308,7 @@ Section FsAbsInvFire.
      the kill credential, which the supply already carries. *)
   Lemma fsabs_fileread_in (st : fdstate) (n : Z) (P : iProp Σ) :
     WpUart.cons_licence -∗
-    app_sup -∗ pipe_taint_cred -∗
+    app_sup -∗ app_taint -∗
     fileread_in st n (pfam_triv (fun _ _ _ _ => True%I))
                      (fun _ _ => True%I) (fun _ => True%I)
                      (fun _ => True%I) (fun _ _ => True%I) P.
@@ -358,7 +358,7 @@ Section FsAbsInvFire.
      therefore a PREMISE here, exactly as [app_sup] is. *)
   Lemma fsabs_filewrite_in (st : fdstate) (n : Z)
       (M : gmap Z (bv 8)) (ua : mword 64) :
-    app_sup -∗ cons_licence -∗ pipe_taint_cred -∗
+    app_sup -∗ cons_licence -∗ app_taint -∗
     |==> filewrite_in st n M ua (fun _ => True%I) (fun _ _ => True%I).
   Proof using .
     iIntros "#Hsup #Hlic #Htaint".

@@ -611,7 +611,7 @@ Section UexecExecInst.
           application's supply ([xv6_ssupply] below), which is why the row
           costs the theorem nothing.  It is the only branch of this match
           that is not about the file system. *)
-       (□ riscv_kill_cred)
+       (app_taint)
      else if decide (n = 21) then
        (* CLOSE(21) PAYS THE BYTE QUEUE'S CLOSE LINK AT A PIPE KEY (design/
           pipe.md, "The byte queue"), and nothing at any other -- the
@@ -941,7 +941,7 @@ Section UexecExecInst.
      and therefore ONE law over it ([WpUart.cons_licence]), which the
      application prices once ([App]'s [al_sup]). *)
   Definition xv6_ssupply : iProp Σ :=
-    (app_sup ∗ □ riscv_kill_cred ∗ □ cons_licence)%I.
+    (app_sup ∗ app_taint ∗ □ cons_licence)%I.
 
   (* THE BUPD IS WRITE'S, AND ONLY WRITE'S: the console arm carries the trace
      seed [WpUart.uart_sent γu []], a mono-list lower bound at the empty
@@ -987,7 +987,7 @@ Section UexecExecInst.
     destruct (decide (n = 6)) as [_ | _];
       [ iModIntro; iExact "Hkc" | ].
     (* row 21: a pipe's close link, paid by the taint -- the same
-       credential, read as [PipeQueue.pipe_taint_cred] *)
+       credential, read as [PipeQueue.app_taint] *)
     destruct (decide (n = 21)) as [_ | _];
       [ iModIntro; iApply (fileclose_cpay_taint with "Hkc") | ].
     (* row 2: the table's close links, paid by the same taint *)
@@ -1013,7 +1013,7 @@ Section UexecExecInst.
      [∗]-separated slot wands, and nothing hands the new image a payload
      any more ([exec_slot_pre] lost its [Q (-1)] premise), so the resource
      the generic family runs on arrives here as [□ R] -- which is the
-     caller's [□ (riscv_kill_cred -∗ R)] cashed against the taint it holds
+     caller's [□ (app_taint -∗ R)] cashed against the taint it holds
      ([UexecRet.uexec_dep_F_of_supply]).  The wand's antecedent is dropped
      at this altitude and only here: this is [UexecSG]'s class field and
      the class carries [ctokG] alone. *)
@@ -1290,7 +1290,7 @@ Section UexecExecInst.
      program that CALLED pipe(2) exits by. *)
   Lemma xv6_sbundle_exit_taint (X : uvis -d> iPropO Σ) (W : uvis)
       (Q : Z -> iProp Σ) :
-    □ riscv_kill_cred -∗
+    app_taint -∗
     |==> ∃ f : xfam, ⌜kf_xpay f = Q⌝ ∗ xv6_sbundle X USYS_exit f W.
   Proof using .
     iIntros "#Ht".
@@ -1454,7 +1454,7 @@ Section UexecExecInst.
      needs it because writing [p->killed] nonzero has to re-establish
      [SchedCtx.proc_pub]'s killed row. *)
   Lemma sbundle_at_kill_elim (X : uvis -d> iPropO Σ) (f : xfam) (W : uvis) :
-    sbundle_at X 6 f W -∗ □ riscv_kill_cred.
+    sbundle_at X 6 f W -∗ app_taint.
   Proof using .
     iIntros "H". rewrite /sbundle_at /= /xv6_sbundle /xk_a.
     xv6_skip. xv6_skip. xv6_skip. xv6_skip. xv6_skip. xv6_skip. xv6_skip.

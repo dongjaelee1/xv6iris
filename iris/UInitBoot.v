@@ -802,14 +802,14 @@ Section EchoInitBoot.
     (* the three projections, off the one equation *)
     assert (Htag : @riscv_rx_tag Σ (@riscv_fixedGS Σ HR) = echo_tag γ)
       by (rewrite /riscv_rx_tag Hiface; by cbn [echo_ifc ai_tag]).
-    assert (Hkill : @riscv_kill_cred Σ (@riscv_fixedGS Σ HR) = echo_taint γ)
-      by (rewrite /riscv_kill_cred Hiface; by cbn [echo_ifc ai_kill]).
+    assert (Hkill : @app_taint Σ (@riscv_fixedGS Σ HR) = echo_taint γ)
+      by (rewrite /app_taint Hiface; by cbn [echo_ifc ai_kill]).
     assert (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HR) = echo_cons γ)
       by (rewrite /riscv_cons_res Hiface; by cbn [echo_ifc ai_cons]).
     (* THE CREDENTIAL IS THE TAINT (lane KILL-PAY, K1), which is what pays
        a KILLED shell's exit payload (K4(a)): [UserConsole.ucons_pay]'s
        right arm is the taint, and the equation is known exactly here. *)
-    assert (Hktaint : ⊢ □ riscv_kill_cred -∗ echo_taint γ).
+    assert (Hktaint : ⊢ app_taint -∗ echo_taint γ).
     { rewrite Hkill. iIntros "#H". iExact "H". }
     (* ...AND THE LICENCE IS THE TAINT'S (redesign R2).  The generic slot's
        console write, its read and consoleintr's shift are paid out of the
@@ -843,13 +843,13 @@ Section EchoInitBoot.
     iPoseProof LinkUserinit.UG.uexec_wp_gen as "#Hwp".
     iAssert (□ (∀ (R : iProp Σ) (W : uvis),
                   echo_taint γ -∗ my_pay (uvis_gen W) (fun _ => R)%I -∗
-                  □ (riscv_kill_cred -∗ R) -∗ uslot W))%I as "#Hmint".
+                  □ (app_taint -∗ R) -∗ uslot W))%I as "#Hmint".
     { iIntros "!>" (R W) "#Ht Hp #HR".
       iDestruct ("Hsup" with "Ht") as "#Hs".
       (* the kill credential IS the taint at this application (K1), and the
          generic slot's supply is the pair (§1c) *)
-      iAssert (□ riscv_kill_cred)%I as "#Hkc";
-        [ rewrite Hkill; iModIntro; iExact "Ht" | ].
+      iAssert (app_taint)%I as "#Hkc";
+        [ rewrite Hkill; iExact "Ht" | ].
       iDestruct ("Hlic" with "Ht") as "#Hlc".
       (* (* RA-2: held case here *) THE TAINT ARM'S MINT IS AT AN ARBITRARY
          KEY, which is what RA-2's narrowing bites: [uslot_mint_all] will
@@ -888,7 +888,7 @@ Section EchoInitBoot.
              PIPE arm is the byte queue's write chain, and the generic
              supply pays it out of the kill credential -- which at this
              application IS the taint the arm is already under. *)
-          rewrite Hkill. iModIntro. iExact "HT".
+          rewrite Hkill. iExact "HT".
       - (* ...and the closed-fd leaf, at every record *)
         rewrite /UkInit.kinit_wcl. iIntros "!>" (N0 b).
         iApply (UkWriteClosed.kinit_w1_of_closed_l0 (PS := uprogSG_free) N0 b).
@@ -969,7 +969,7 @@ Section EchoInitBoot.
         iApply (udepw_law_of_sup_write (PSx := uprogSG_free) with "[] [] []").
         + iApply ("Hsup" with "HT").
         + iApply ("Hlic" with "HT").
-        + rewrite Hkill. iModIntro. iExact "HT". }
+        + rewrite Hkill. iExact "HT". }
     (* ---- THE CONSOLE DANCE, at whichever arm the VIEW decided
            ([AppEcho.echo_boot]).  Built through [UInitKernel]'s two intro
            lemmas, which is the one place this file names its vocabulary:

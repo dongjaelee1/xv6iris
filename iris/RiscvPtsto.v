@@ -407,7 +407,7 @@ Record riscvEraGS := RiscvEraGS {
 (*  obligation took one EQUATION per field -- five in all, one per         *)
 (*  projection the obligation happened to read.                            *)
 (*                                                                        *)
-(*  ONE FIELD AND ONE EQUATION.  [riscv_rx_tag], [riscv_kill_cred] and     *)
+(*  ONE FIELD AND ONE EQUATION.  [riscv_rx_tag], [app_taint] and          *)
 (*  [riscv_cons_res] are PROJECTIONS of this record now, so the fifty-odd  *)
 (*  kernel files that name them are unchanged; what changes is that an     *)
 (*  obligation takes [riscvF_app_iface = <the application's>] and derives  *)
@@ -601,8 +601,8 @@ Class riscvFixedGS (Σ : gFunctors) := RiscvFixedGS {
   riscvF_obshGS :: inG Σ (mono_listR (leibnizO mobs));
   riscv_obs_hist : gname;
   (* THE APPLICATION'S CONSOLE INTERFACE, as ONE field (redesign R4).
-     [riscv_rx_tag], [riscv_kill_cred] and [riscv_cons_res] were three
-     fields here with six companion instance fields; they are PROJECTIONS
+     [riscv_rx_tag], [app_taint] and [riscv_cons_res] were three fields
+     here with six companion instance fields; they are PROJECTIONS
      of this one now, so every kernel file that names them is unchanged and
      every boot obligation takes ONE equation instead of five.
 
@@ -629,7 +629,13 @@ Class riscvFixedGS (Σ : gFunctors) := RiscvFixedGS {
    itself. *)
 Definition riscv_rx_tag `{!riscvFixedGS Σ} : list mobs -> iProp Σ :=
   ai_tag riscvF_app_iface.
-Definition riscv_kill_cred `{!riscvFixedGS Σ} : iProp Σ :=
+(* THE TAINT.  The application's kill price, and -- by the pipe pattern
+   (design/pipe.md, "The coupling, or the taint") -- the one credential a
+   disconnected coupling is paid with: the pipe's [link ∨ taint] payments,
+   the kill rows, and the generic slot's supply all name THIS.  It is
+   PERSISTENT ([app_taint_persistent] just below), so it is written bare:
+   a [□] in front of it says nothing the instance does not already say. *)
+Definition app_taint `{!riscvFixedGS Σ} : iProp Σ :=
   ai_kill riscvF_app_iface.
 Definition riscv_cons_res `{!riscvFixedGS Σ} :
     nat -> list mobs -> LogEntryDefs.cons_hist -> iProp Σ :=
@@ -645,12 +651,12 @@ Proof. rewrite /riscv_rx_tag. apply ai_tag_persistent. Qed.
 Global Instance riscv_rx_tag_timeless `{!riscvFixedGS Σ} h :
   Timeless (riscv_rx_tag h).
 Proof. rewrite /riscv_rx_tag. apply ai_tag_timeless. Qed.
-Global Instance riscv_kill_cred_persistent `{!riscvFixedGS Σ} :
-  Persistent riscv_kill_cred.
-Proof. rewrite /riscv_kill_cred. apply ai_kill_persistent. Qed.
-Global Instance riscv_kill_cred_timeless `{!riscvFixedGS Σ} :
-  Timeless riscv_kill_cred.
-Proof. rewrite /riscv_kill_cred. apply ai_kill_timeless. Qed.
+Global Instance app_taint_persistent `{!riscvFixedGS Σ} :
+  Persistent app_taint.
+Proof. rewrite /app_taint. apply ai_kill_persistent. Qed.
+Global Instance app_taint_timeless `{!riscvFixedGS Σ} :
+  Timeless app_taint.
+Proof. rewrite /app_taint. apply ai_kill_timeless. Qed.
 Global Instance riscv_cons_res_timeless `{!riscvFixedGS Σ} k h H :
   Timeless (riscv_cons_res k h H).
 Proof. rewrite /riscv_cons_res. apply ai_cons_timeless. Qed.

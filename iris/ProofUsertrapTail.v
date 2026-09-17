@@ -300,7 +300,7 @@ Section ProofUsertrapTail.
        setkilled, which founded the row on the SPENT arm -- so kexit takes
        the LEFT side of its own payment and owes no marker at all. *)
     ((ChildTok.kill_shot (pv_gen (us_V U)) ∗ ChildTok.taken_at (pv_gen (us_V U))
-      ∗ □ riscv_kill_cred)
+      ∗ app_taint)
      ∨ (fileclose_cpays sts ∗ Q (-1))) -∗
     ut_hold_nm N U b lks sts cs pid -∗
     WP (Loop : expr riscv_lang).
@@ -1596,7 +1596,7 @@ Section UtA6.
                      flag cannot be zero, and the closes and the payload are
                      the trap's own deposit. *)
                   (((⌜klr = (mword_of_int 0 : mword 32)⌝
-                     ∨ (ChildTok.kill_shot (pv_gen (us_V U)) ∗ □ riscv_kill_cred))
+                     ∨ (ChildTok.kill_shot (pv_gen (us_V U)) ∗ app_taint))
                     ∗ ChildTok.taken_at (pv_gen (us_V U)))
                    ∨ (⌜klr <> (mword_of_int 0 : mword 32)⌝
                       ∗ ChildTok.kill_shot (pv_gen (us_V U))
@@ -1624,7 +1624,7 @@ Section UtA6.
                      flag cannot be zero, and the closes and the payload are
                      the trap's own deposit. *)
                   (((⌜klr = (mword_of_int 0 : mword 32)⌝
-                     ∨ (ChildTok.kill_shot (pv_gen (us_V U)) ∗ □ riscv_kill_cred))
+                     ∨ (ChildTok.kill_shot (pv_gen (us_V U)) ∗ app_taint))
                     ∗ ChildTok.taken_at (pv_gen (us_V U)))
                    ∨ (⌜klr <> (mword_of_int 0 : mword 32)⌝
                       ∗ ChildTok.kill_shot (pv_gen (us_V U))
@@ -1721,7 +1721,7 @@ Section UtA6.
                         (<[tf_epc_idx := ret_pc epw]> (pv_tf (us_V U0))) sts0
                         (pv_tf (us_V U) !!! tf_arg_idx 0) cs2⌝) ∗
                   (((⌜klv = (mword_of_int 0 : mword 32)⌝
-                     ∨ (ChildTok.kill_shot (pv_gen (us_V U)) ∗ □ riscv_kill_cred))
+                     ∨ (ChildTok.kill_shot (pv_gen (us_V U)) ∗ app_taint))
                     ∗ ChildTok.taken_at (pv_gen (us_V U)))
                    ∨ (⌜klv <> (mword_of_int 0 : mword 32)⌝
                       ∗ ChildTok.kill_shot (pv_gen (us_V U))

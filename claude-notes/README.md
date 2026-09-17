@@ -248,6 +248,14 @@ in `durable-notes.md` for what belongs where and what gets deleted.
   `App.xv6_app_adequacy`; and the lanes the echo application
   (`echo hello world`, file system unmodified) still owes.
 
+- **[`app-file.md`](design/app-file.md)** — THE FILE APPLICATION: `echo … > f`,
+  a power cycle, `cat f` prints it — the pure model with the f-state
+  threaded across rounds and cycles, the claim as a DEED (one ghost_var
+  half the shell's process chain holds) over the inode abstract state,
+  the create/truncate/append steps, the held offset (why the append needs
+  it and the one kernel pin that blocks it), the stage's f-state history,
+  and the three honest limits with their prices.
+
 - **[`contexts.md`](design/contexts.md)** — CONTEXTS (`TsoCtx.v`): the three
   tokens (running, stamped, parked under a context), the one domination
   relation and its four mints, `CtxMorph` as the only transport class with

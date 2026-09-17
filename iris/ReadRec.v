@@ -148,12 +148,9 @@ Section readrec.
 
 End readrec.
 
-Global Arguments ReadRec {_ _ _ _} _.
-Global Arguments rk_disc {_ _ _ _ _} _ _.
-Global Arguments rk_rd {_ _ _ _ _} _ _ _ _ _ _.
-Global Arguments rk_rd_taint {_ _ _ _ _} _ _ _ _.
-Global Arguments rk_arms {_ _ _ _ _} _ _ _ _ _ _ _ _ _ _ _.
-Global Arguments MkReadRec {_ _ _ _} _.
+(* NO [Global Arguments] HERE: the record's parameter [L] stays EXPLICIT on
+   every projection, as [LinkRec]'s own fields keep theirs ([lk_pin L k v]),
+   so a reader never has to guess which era a law is at. *)
 
 (* ===================================================================== *)
 (*  THE ECHO INSTANCE, DEFINITIONALLY (LinkRec's pattern).                *)
@@ -258,7 +255,7 @@ Section echo_read_inst.
     MkReadRec LE disc_input eri_rd eri_rd_taint eri_arms.
 
   (* ---- the definitional checks ---- *)
-  Lemma echo_read_inst_disc : rk_disc echo_read_inst = disc_input.
+  Lemma echo_read_inst_disc : rk_disc LE echo_read_inst = disc_input.
   Proof using . reflexivity. Qed.
 
 End echo_read_inst.

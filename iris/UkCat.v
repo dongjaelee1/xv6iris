@@ -722,6 +722,12 @@ Section UkCat.
     apply Z.mod_small. clear -Hr. lia.
   Qed.
 
+  (* ...and the same at a zero-extended byte, which is how a character
+     LOADED from memory reaches a1 ([lbu] zero-extends). *)
+  Lemma nth_byte0_zext (b : mword 8) :
+    nth_byte (zero_extend' 64 b : mword 64) 0%nat = b.
+  Proof using . rewrite zext8_moi. apply nth_byte0_moi. Qed.
+
   (* ===================================================================== *)
   (* A RUN OF BYTES THROUGH putc (lane CAT-WALK, W1).                       *)
   (*                                                                       *)

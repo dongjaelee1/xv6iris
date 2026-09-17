@@ -44,6 +44,23 @@ echo line (the round in flight at the cut).  `f` never contains junk.
    RELAY 4) and a caller whose source run is mapped, as every U-tier
    write's is (`usrc_ok`'s mapped row), meets no partial arm.  A chunk
    either lands whole or not at all; nothing unnamed ever reaches `f`.
+   CORRECTED by WRITE-RELAY (2026-09-17): `awrite_part_at` is ALSO the
+   disk-full short-write arm (writei's `bmap` break with a positive
+   accumulated `tot`), so "whole or not at all" holds only for a chunk
+   WITHIN ONE BLOCK — which every chunk of a redirect line is, since the
+   content is bounded by `line_max < BSIZE` (`f_bytes_typed_short`) and
+   the deed holder proves the range lies in block 0.  RULED: RELAY 4 is
+   the reason (`SysWriteDefs.wr_fail_why`, READ-RELAY's twin) PLUS
+   `SpecWritei`'s single-block conjunct `wi_blocks off n = 1 -> tot < n
+   -> tot = 0 \/ wr_fail_why P src n` (already derived at the exit by
+   `wi16_fresh`); at a mapped source and a single-block chunk the partial
+   arm is refuted outright and the chain spends no node.  The reason
+   names the caller's table, so `filewrite_in` gains a parameter `TB :
+   uptd -> Prop` with its inode arm `∀ P, ⌜TB P⌝ -∗ chain … P` (WRITE-
+   RELAY's shape (iii); shapes (i) and (ii) refuted), instantiated at
+   `uvis_perm/uvis_sz/uvis_lazy` in `xv6_sbundle`'s row 16.  Lane
+   WRITE-RELAY-2 (the carrying half up to the node), then the `TB`
+   plumbing after OFF-LINK's move of the inode arm.
 2. **Across a power cycle the theorem is weaker than reality.**  The
    durable claim is the copy made at the LAST COMMIT, and no syscall's
    post says its transaction committed (durability receipts are the

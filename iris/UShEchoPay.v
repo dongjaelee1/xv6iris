@@ -361,27 +361,52 @@ Section UShEchoPayGen.
     - iApply Hht. iExact "HT".
   Qed.
 
+  (* THE EXEC-FAILED DIAGNOSTIC IS A PREMISE AND NOT A CONSEQUENCE (lane
+     LINK-GEN-2).  [UkShEcho.ush_execfail_law_wq Wc] asks for
+     [UkShDiag.ush_execfail_law], i.e. [ush_execfail_law_at alt_execfail 17],
+     at EVERY input; [UShPanic.ush_execfail_law_hold_at] gives
+     [ush_execfail_law_at (lk_exfb L I) (length (lk_exfb L I) - 2)].  At
+     echo those coincide; at the file they do not, because [FileLinksLine.
+     fexfb LCat = alt_execcat].  So the law comes in as a hypothesis, and
+     what has to change before a second era can discharge it is
+     [UkShEcho.ush_execfail_law_wq] itself -- the diagnostic must be a
+     parameter there, exactly as [UkShDiag.ush_execfail_law_at] already
+     makes it one. *)
   Lemma ushf_child_law_hold_at (Hold : list (bv 8) -> iProp Σ) :
     (forall I0 : list (bv 8), Timeless (Hold I0)) ->
     (forall I0 : list (bv 8), ⊢ lk_T L -∗ Hold I0) ->
     (⊢ app_taint -∗ lk_T L) ->
     ⊢ lk_links L -∗ udep (PS := uprogSG_free) -∗ sh_echo_slot (lk_T L) -∗
+      UkShEcho.ush_execfail_law_wq (PS := uprogSG_free)
+        (fun I p => lk_lcred L (S gen_id) I p ∗ Hold I)%I -∗
       UkShFork.ushf_child_law (PS := uprogSG_free)
         (fun I p => lk_lcred L (S gen_id) I p ∗ Hold I)%I.
   Proof using St ghost_varG0 ghost_varG1 ufdG0.
-    intros HTl Hht Hkt. iIntros "#Hlk #Hdep #Hslot".
+    intros HTl Hht Hkt. iIntros "#Hlk #Hdep #Hslot #Hxlw".
     iPoseProof (sh_exec_sup_echo_wq_holds_at
                   (fun I p => lk_lcred L (S gen_id) I p ∗ Hold I)%I Hold
                   HTl (lkw_wc3 Hold) (lkw_wc3b Hold) (lkw_wc0 Hold)
                   (lkw_wct Hold Hht) Hkt with "Hlk Hdep Hslot") as "Hsup".
-    iAssert (UkShEcho.ush_execfail_law_wq (PS := uprogSG_free)
-               (fun I p => lk_lcred L (S gen_id) I p ∗ Hold I)%I) as "Hxlw".
-    { rewrite /UkShEcho.ush_execfail_law_wq. iIntros "!>" (I).
-      iApply (UShPanic.ush_execfail_law_hold_at (PS := uprogSG_free) L Hold I
-                with "Hlk"). }
     iApply (UkShEcho.ushf_child_law_holds (PS := uprogSG_free) (fun k H => H)
               (fun I p => lk_lcred L (S gen_id) I p ∗ Hold I)%I
               with "Hxlw Hsup").
+  Qed.
+
+  (* ...AND ITS ECHO-SIDE DISCHARGE: at an era whose exec-failed
+     diagnostic is [alt_execfail] at every input, the premise above is
+     [UShPanic.ush_execfail_law_hold_at]. *)
+  Lemma ush_execfail_law_wq_hold_at (Hold : list (bv 8) -> iProp Σ) :
+    (forall I0 : list (bv 8), lk_exfb L I0 = alt_execfail) ->
+    ⊢ lk_links L -∗
+      UkShEcho.ush_execfail_law_wq (PS := uprogSG_free)
+        (fun I p => lk_lcred L (S gen_id) I p ∗ Hold I)%I.
+  Proof using .
+    intros Hxb. iIntros "#Hlk".
+    rewrite /UkShEcho.ush_execfail_law_wq. iIntros "!>" (I).
+    rewrite /UkShDiag.ush_execfail_law.
+    iPoseProof (UShPanic.ush_execfail_law_hold_at (PS := uprogSG_free) L Hold I
+                  with "Hlk") as "Hx".
+    rewrite (Hxb I). iExact "Hx".
   Qed.
 
 End UShEchoPayGen.

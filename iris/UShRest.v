@@ -168,9 +168,9 @@ Section UShRest.
                   (PS := uprogSG_free) (Hpay := Hc)
                   N γp T Wc Wbn (UShLine.ush_mid γ γp)
                   (fun k H => H) (kexec_sz ElfUser.sh_elf)
-                  ush_line_lexable_holds sh_sz_lo sh_sz_al sh_sz_ok Hwbl
+                  sh_sz_lo sh_sz_al sh_sz_ok Hwbl
                   with "Hkl Hchl Hplaw") as "Hb".
-    rewrite /UkSh.ush_rest_l.
+    rewrite /UkSh.ush_rest_l /UkSh.ush_rest_l_at.
     iDestruct ("Hb" $! l with "[%]") as "Hb'"; [ exact Hc | iExact "Hb'" ].
   Qed.
 
@@ -204,6 +204,14 @@ Section UShRestGen.
     ⊢ lk_links L -∗
       udep (PS := uprogSG_free) -∗
       UShEcho.sh_echo_slot (lk_T L) -∗
+      (* THE EXEC-FAILED DIAGNOSTIC'S LAW comes in (lane LINK-GEN-2):
+         [UkShEcho.ush_execfail_law_wq] names [alt_execfail] at EVERY
+         input and the file's [fexfb LCat] is not that, so this is a
+         premise until that carrier takes the diagnostic as a parameter.
+         [UShEchoPay.ush_execfail_law_wq_hold_at] discharges it at any era
+         whose exec-failed bytes are constant. *)
+      UkShEcho.ush_execfail_law_wq (PS := uprogSG_free)
+        (fun I p => lk_lcred L (S gen_id) I p ∗ Hold I)%I -∗
       (∃ v : era_pins, lk_pin L (S gen_id) v) -∗
       UkSh.ush_rest_l (PS := uprogSG_free) N γp (lk_T L)
         (fun I p => lk_lcred L (S gen_id) I p ∗ Hold I)%I
@@ -218,10 +226,10 @@ Section UShRestGen.
                 (lk_lcred L (S gen_id) I 0%nat ∗ Hold I)).
     { intro I. iIntros "[Hc $]".
       iApply (lk_lcred_blk_line L (S gen_id) I with "Hc"). }
-    iIntros "#Hlk #Hdep #Hslot #Hpin".
+    iIntros "#Hlk #Hdep #Hslot #Hxlw #Hpin".
     iDestruct "Hpin" as (v) "#Hp".
     iPoseProof (UShEchoPay.ushf_child_law_hold_at St Hold HTl Hht Hkt
-                  with "Hlk Hdep Hslot") as "#Hchl".
+                  with "Hlk Hdep Hslot Hxlw") as "#Hchl".
     iAssert (UkShFork.ushf_kill_law
                (fun I p => lk_lcred L (S gen_id) I p ∗ Hold I)%I) as "#Hkl".
     { rewrite /UkShFork.ushf_kill_law. iIntros "!>" (n) "#Hk".
@@ -240,9 +248,9 @@ Section UShRestGen.
                                ∗ lk_ban L (S gen_id) v0 I 0%nat) ∗ Hold I)%I
                   (UShLine.ush_mid_at (lk_rres L) γ γp)
                   (fun k H => H) (kexec_sz ElfUser.sh_elf)
-                  ush_line_lexable_holds sh_sz_lo sh_sz_al sh_sz_ok Hwbl
+                  sh_sz_lo sh_sz_al sh_sz_ok Hwbl
                   with "Hkl Hchl Hplaw") as "Hb".
-    rewrite /UkSh.ush_rest_l.
+    rewrite /UkSh.ush_rest_l /UkSh.ush_rest_l_at.
     iDestruct ("Hb" $! l with "[%]") as "Hb'"; [ exact Hc | iExact "Hb'" ].
   Qed.
 

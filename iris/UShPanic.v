@@ -395,7 +395,7 @@ Section UShPanicGen.
       (UserFd.ustd (ukn_fd N) l ∗ lk_panic L (S gen_id) v I (S i)).
   Proof.
     intros Hl2 Hb. rewrite /lk_panic.
-    refine (ksh_w1_of_link_blk_at N v I l rb (lk_pan L) i b Hl2 _).
+    refine (ksh_w1_of_link_blk_at N v I l rb (lk_pan L I) i b Hl2 _).
     rewrite (lk_ab_pan L I). exact Hb.
   Qed.
 
@@ -776,55 +776,57 @@ Section UShPanicGen.
   (* =================================================================== *)
   Lemma ush_execfail_law_holds_at (I : list (bv 8)) :
     lk_links L -∗
-    UkShDiag.ush_execfail_law
+    UkShDiag.ush_execfail_law_at (lk_exfb L I)
+      (length (lk_exfb L I) - 2)%nat
       (lk_lcred L (S gen_id) I 3%nat)
       (lk_lcred L (S gen_id) I 0%nat).
   Proof.
-    iIntros "#Hlk". rewrite /UkShDiag.ush_execfail_law.
+    iIntros "#Hlk". rewrite /UkShDiag.ush_execfail_law_at.
     iIntros "!>" (N l) "%Hfd2 Hc". destruct Hfd2 as [rb Hl2].
-    iDestruct (lk_lcred_blk_open L (S gen_id) I (lk_exf L) with "Hc")
+    iDestruct (lk_lcred_blk_open L (S gen_id) I (lk_exf L I) with "Hc")
       as (v) "[#Hpin Hc]".
-    iExists (fun p : nat => lk_blk L (S gen_id) v I (lk_exf L) p).
+    iExists (fun p : nat => lk_blk L (S gen_id) v I (lk_exf L I) p).
     iSplitL "Hc"; [ iExact "Hc" | ].
     iSplit.
     - iIntros "!>" (p b) "%Hb".
-      iApply (ksh_w1_of_link_blk_at N v I l rb (lk_exf L) p b Hl2
+      iApply (ksh_w1_of_link_blk_at N v I l rb (lk_exf L I) p b Hl2
                 ltac:(rewrite (lk_ab_exf L I); exact Hb)
                 with "Hpin Hlk").
     - iIntros "!> Hp".
-      iApply (lk_lcred_of_post_a L (S gen_id) I (lk_exf L) v
+      iApply (lk_lcred_of_post_a L (S gen_id) I (lk_exf L I) v
                 (lk_apr_exf L I) with "Hpin").
-      rewrite /lk_post (lk_ab_exf L I) alt_execfail_len. iExact "Hp".
+      rewrite /lk_post (lk_ab_exf L I). iExact "Hp".
   Qed.
 
   (* the exec-failed diagnostic, at a family with a linear conjunct *)
   Lemma ush_execfail_law_hold_at (Hold : list (bv 8) -> iProp Σ)
       (I : list (bv 8)) :
     lk_links L -∗
-    UkShDiag.ush_execfail_law
+    UkShDiag.ush_execfail_law_at (lk_exfb L I)
+      (length (lk_exfb L I) - 2)%nat
       (lk_lcred L (S gen_id) I 3%nat ∗ Hold I)
       (lk_lcred L (S gen_id) I 0%nat ∗ Hold I).
   Proof.
-    iIntros "#Hlk". rewrite /UkShDiag.ush_execfail_law.
+    iIntros "#Hlk". rewrite /UkShDiag.ush_execfail_law_at.
     iIntros "!>" (N l) "%Hfd2 [Hc Hh]". destruct Hfd2 as [rb Hl2].
-    iDestruct (lk_lcred_blk_open L (S gen_id) I (lk_exf L) with "Hc")
+    iDestruct (lk_lcred_blk_open L (S gen_id) I (lk_exf L I) with "Hc")
       as (v) "[#Hpin Hc]".
     iExists (fun p : nat =>
-               lk_blk L (S gen_id) v I (lk_exf L) p ∗ Hold I)%I.
+               lk_blk L (S gen_id) v I (lk_exf L I) p ∗ Hold I)%I.
     iSplitL; [ iFrame "Hc Hh" | ].
     iSplit.
     - iIntros "!>" (p b) "%Hb".
       iApply (ksh_w1_hold N (mword_of_int 2 : mword 64) b
                 (UserFd.ustd (ukn_fd N) l)
-                (lk_blk L (S gen_id) v I (lk_exf L) p)
-                (lk_blk L (S gen_id) v I (lk_exf L) (S p)) (Hold I)).
-      iApply (ksh_w1_of_link_blk_at N v I l rb (lk_exf L) p b Hl2
+                (lk_blk L (S gen_id) v I (lk_exf L I) p)
+                (lk_blk L (S gen_id) v I (lk_exf L I) (S p)) (Hold I)).
+      iApply (ksh_w1_of_link_blk_at N v I l rb (lk_exf L I) p b Hl2
                 ltac:(rewrite (lk_ab_exf L I); exact Hb)
                 with "Hpin Hlk").
     - iIntros "!> [Hp Hh]". iFrame "Hh".
-      iApply (lk_lcred_of_post_a L (S gen_id) I (lk_exf L) v
+      iApply (lk_lcred_of_post_a L (S gen_id) I (lk_exf L I) v
                 (lk_apr_exf L I) with "Hpin").
-      rewrite /lk_post (lk_ab_exf L I) alt_execfail_len. iExact "Hp".
+      rewrite /lk_post (lk_ab_exf L I). iExact "Hp".
   Qed.
 
 End UShPanicGen.

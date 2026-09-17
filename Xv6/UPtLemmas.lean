@@ -420,6 +420,28 @@ theorem procPtAt_intro [CurCtx] (P : UPtd) (M : Nat → List (BitVec 8)) (h : up
   · ipureintro; exact h
   iexact H
 
+/-- **The root of an owned space is a valid, non-null page** (Rocq
+`ptree_own_page_valid_at`): the tree representation `ptRep` carries
+`pageValid` for every page it owns, and the root `t.base` is one of them.
+The fact is pure, so it comes out beside the space -- a caller (`allocproc`,
+after `proc_pagetable`) reads it to show the returned pointer is not NULL,
+which is why `pptPost` need not expose it (neither does Rocq's `ppt_post`). -/
+theorem procPtAt_root_valid [CurCtx] (P : UPtd) (M : Nat → List (BitVec 8)) :
+    procPtAt (GF := GF) P M ⊢ ⌜pageValid (pageAddr P.root)⌝ ∗ procPtAt P M := by
+  iintro H
+  icases procPtAt_cases P M $$ H with ⟨%hwf, HptO, Hum⟩
+  icases ptOwnRep_cases P.root P.leaves $$ HptO with ⟨%t, %⟨hb, hr⟩, Htree⟩
+  have hbase : t.base ∈ t.pages 2 := by
+    simp only [PTree.pages, List.mem_cons, true_or]
+  have hpv : pageValid (pageAddr P.root) := by
+    rw [← hb]; exact ptRep_pages_valid hr t.base hbase
+  isplitr [Htree Hum]
+  · ipureintro; exact hpv
+  · iapply procPtAt_intro P M hwf
+    isplitl [Htree]
+    · iapply ptOwnRep_intro P.root P.leaves t hb hr; iexact Htree
+    · iexact Hum
+
 /-- **A fresh root is an empty table**: `uvmcreate`'s zeroed page, seen as
 the table with no leaves at all. -/
 theorem ptOwnRep_zeroNode [CurCtx] (b : BitVec 44) (h : pageValid (pageAddr b)) :

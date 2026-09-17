@@ -25,4 +25,11 @@ theorem Copyin (WA : WALKADDR) (VF : VMFAULT) (MM : MEMMOVE) :
     COPYIN :=
   copyin_proof WA VF MM
 
+/-- The proved `copyinstr` interface.  `copyinstr` calls `walkaddr` and
+`vmfault`; it copies byte-by-byte (with `lbu`/`sb`) rather than through
+`memmove`, so it needs neither `walk` nor `memmove`. -/
+theorem Copyinstr (WA : WALKADDR) (VF : VMFAULT) :
+    COPYINSTR :=
+  copyinstr_proof WA VF
+
 end Xv6

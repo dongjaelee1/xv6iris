@@ -850,3 +850,185 @@ arguments.  It IS a statement move, which is why this lane did not make it
 — but it is the cheap fix, and the expensive one (the second `morecore`,
 `free` at two blocks, and `usz_ok` room threaded from `AppFile` down) buys
 nothing the shell uses.
+
+### SH-MALLOC-3 (2026-09-17) — the parser's capability is BOUNDED, and the redirect line's two calls chain from `ushm_fresh`
+
+Branch `app-file/sh-redir`, two commits on top of SH-MALLOC-2's.  Whole
+tree green on the lane's remote tree (`--proofs -k`, `EXIT=0`, zero
+`Error`); `make audit-all-only` unchanged (echo FOURTEEN, system
+THIRTEEN); `make gen-ucode` prints every catalog unchanged; no
+`Admitted`; every new result carries `Proof using`.  Seventeen `iris/`
+files, +236/-58.
+
+**WHAT LANDED.**
+
+- **`UkShParse.ushp_malloc_ty_le`** (`iris/UkShParse.v:3591`) — the
+  allocator contract at a BOUNDED request: `ushp_malloc_ty` with
+  `nbytes <= 65504` weakened to `nbytes <= B`, character for character
+  otherwise.  With `ushp_malloc_ty_le_top` (`:3610`, the landed type IS
+  the bounded one at 65504, by `exact`) and `ushp_malloc_ty_le_mono`
+  (`:3614`).  **It had to live in `UkShParse`, not in `UkShMalloc`**, and
+  that is the one thing SH-MALLOC-2's plan got wrong: `UkShMalloc.v` is
+  `_CoqProject` line 1538 and the thirteen files that carry the hypothesis
+  are 1521–1535, so they cannot name `UkShMalloc.ushm_malloc_ty_le` at
+  all.  `UkShMalloc` §7 keeps its own spelling as three `Local Notation`s
+  (`ushm_malloc_ty_le`, `_top`, `_mono` → `UkShParse.ushp_malloc_ty_le*`),
+  so every line of §7 reads as it did and the four instance theorems keep
+  their names and statements.
+
+- **The thirteen hypotheses, restated at 168** — twelve of them by one
+  line each, `Local Notation ushp_malloc_ty := (UkShParse.ushp_malloc_ty_le
+  N 168).`, in `UkShParseLex:105`, `UkShParseTok:96`, `UkShParseRedir:99`,
+  `UkShParseExec:103`, `UkShParseCmd:105`, `UkShRedirCmd:97`,
+  `UkShRedirPr:106`, `UkShRedirEx:127`, `UkShRedirPex:138`,
+  `UkShRedirNul:117`, `UkShRedirCm:108`, `UkShRedirPc:120`; the
+  thirteenth is `UkShRedirSeam.wp_kshm_child_redir`'s two `Hm` binders
+  (`iris/UkShRedirSeam.v:410-411`).  **Not one line of proof text moved**
+  — no call site, no argument, no tactic.
+
+- **ONE bound covers BOTH call sites, and `_mono` appears at neither.**
+  The brief asked whether `redircmd`'s `malloc(40)` wants
+  `ushm_malloc_ty_le_mono` or a second hypothesis at 40.  It wants
+  neither: `B` bounds the REQUEST from above, so a capability good for
+  every request up to 168 serves a request of 40, and the site's existing
+  `ltac:(lia)` (`iris/UkShRedirCmd.v:401`) discharges `40 <= 168` exactly
+  as it used to discharge `40 <= 65504`.  `execcmd`'s site
+  (`iris/UkShParseLex.v:1896`) discharges `168 <= 168` the same way.  A
+  second hypothesis at 40 would ALSO have forced the files that carry two
+  capabilities (`UkShRedirPex`, `UkShRedirCm`, `UkShRedirPc`) to carry two
+  different notations, and — worse — `ushp_malloc_ty_le B` only CHAINS at
+  a single `B`, since the second link's input is the first link's output.
+  One bound, one notation, no weakening lemma below the seam.
+
+- **`UkShMalloc.ushm_malloc_le_next`** (`iris/UkShMalloc.v:4835`) —
+  `ushm_malloc_ty_le 168 (ushm_one_ge sz 4084) (ushm_one_ge sz 4072)`, the
+  second call charged at the bound the parser actually carries.  The
+  landed `ushm_malloc_le_redir` (at 40, → 4080) is TRUE and is not what
+  the seam consumes, precisely because chaining needs both links at the
+  same `B`: `redircmd` asks for 40 and is billed twelve units instead of
+  four.  The redirect line's whole parse therefore costs TWENTY-FOUR of
+  the chunk's 4096 units, not sixteen.
+
+- **`UkShRedirSeam.wp_kshm_child_alloc_redir`** (`iris/UkShRedirSeam.v:584`)
+  — deliverable B2, `wp_kshm_child_redir` with both capabilities spent out
+  of the heap /init handed sh's child:
+
+```coq
+  Lemma wp_kshm_child_alloc_redir
+      (h : CpuId) (m : regfile) (dw dv : dfrac)
+      (s0 cwdv : Z) (len : nat) (f : nat -> bv 8)
+      (args : list (nat * nat)) (gp fe : nat)
+      (sz : Z) (ld : list fdstate) (st1 : fdstate) (n : nat)
+      (K : fdtype -> iProp Σ) :
+    m !!! Regidx s1_idx = (mword_of_int s0 : mword 64) ->
+    ushs_redir len f gp fe ->
+    ushs_toks len f gp 0%nat args ->
+    (0 < length args)%nat ->
+    (length args < 10)%nat ->
+    0 < s0 -> s0 + Z.of_nat len + 1 < Z64 -> s0 + Z.of_nat len < 2 ^ 38 ->
+    ld !! 1%nat = Some st1 ->
+    st1 <> FdClosed ->
+    (forall (rb wb : bool) (gn : PipeNames.pipe_names),
+       st1 <> FdOpen rb wb (FdPipe gn)) ->
+    8344 <= sz ->
+    UserPtTree.pgroundup sz = sz ->
+    usz_ok (sz + 65536) ->
+    (⊢ ukn_pay N (-1)) ->
+    UkSh.sh_deps -∗
+    shk_code γt -∗
+    ush_jtab γt -∗
+    shp_code γt -∗ shp_rodata γt -∗
+    ustr γd (DfracOwn 1) s0 len f -∗
+    ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
+    ustr γd dv ushp_symbols 7 ushp_sym_f -∗
+    UserFd.ustd γfd ld -∗
+    UserCwd.ucwd γcwd cwdv -∗
+    UkShMalloc.ushm_fresh N sz -∗
+    UkShRedir.ush_open_call N cwdv (s0 + Z.of_nat (S (S gp))) 1537
+      (<[1%nat := FdClosed]> ld) K -∗
+    urun N h m (mword_of_int 0x9c0)
+      (68 + (8 + (UkShDiag.ush_Dg + n))) -∗
+    (∀ (h' : CpuId) (m' : regfile) (q : Z) (ty : fdtype),
+       ⌜ m' !!! Regidx a0_idx = (mword_of_int q : mword 64) ⌝ -∗
+       ush_cmd γd q
+         (UExec (ush_args s0 (ushs_nulcut args len f fe) args)) -∗
+       UserFd.ustd γfd
+         (<[1%nat := FdOpen false true ty]> (<[1%nat := FdClosed]> ld)) -∗
+       UserCwd.ucwd γcwd cwdv -∗
+       K ty -∗
+       UkShMalloc.ushm_one_ge N (sz + 65536) 4072 -∗
+       urun N h' m' (mword_of_int ShSyms.runcmd)
+         (UkShDiag.ush_Dg + (70 + n)) -∗
+       WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+```
+
+  Read it against `UkShMain.wp_kshm_child_alloc`: `UM0` is gone and
+  `UkShMalloc.ushm_fresh N sz` stands in its place, with the SAME three
+  size premises that lemma carries (`8344 <= sz`, page-aligned, `usz_ok
+  (sz + 65536)`); where `UM2` stood the continuation now hands out
+  `ushm_one_ge (sz + 65536) 4072`, the free list the child's own `runcmd`
+  arm inherits, so a later lane that needs sh to allocate again inside the
+  redirect has the capability in hand.  The proof is TWENTY LINES: one
+  `iApply` of `wp_kshm_child_redir` at
+  `UM0 := ushm_fresh sz`, `UM1 := ushm_one_ge (sz + 65536) 4084`,
+  `UM2 := ushm_one_ge (sz + 65536) 4072`, with
+  `UkShMalloc.ushm_malloc_le_exec` and `UkShMalloc.ushm_malloc_le_next`
+  as the two capabilities and every other argument passed straight
+  through.  `Proof using Hpay Hpsok_free.`
+
+**WHAT CHANGED SHAPE — exhaustively.**
+
+1. The thirteen `ushp_malloc_ok` hypotheses (twelve notations + the seam's
+   two `Hm` binders), from `UkShParse.ushp_malloc_ty N` to
+   `UkShParse.ushp_malloc_ty_le N 168`.  Expected.
+2. `UkShMalloc.ushm_malloc_ty_le`, `_top`, `_mono` are no longer
+   `UkShMalloc` DEFINITIONS: they moved to `UkShParse` as
+   `ushp_malloc_ty_le`, `ushp_malloc_ty_le_top`, `ushp_malloc_ty_le_mono`,
+   and `UkShMalloc` keeps the three names as `Local Notation`s.  The Props
+   are identical; the difference is only that a `Local Notation` is not
+   exported, so a LATER file must write `UkShParse.ushp_malloc_ty_le N B`
+   and not `UkShMalloc.ushm_malloc_ty_le B`.  Nothing outside `UkShMalloc`
+   named them before this lane, so nothing broke.
+3. `UkShMalloc.ushm_malloc_le_fresh`, `_one`, `_exec`, `_redir` — their
+   conclusions now spell the type `UkShParse.ushp_malloc_ty_le N B`.  Same
+   Prop, same names, same proofs; the source text of all four is
+   character-identical because of the notation.
+4. NOTHING ELSE.  In particular **`UkShMain.wp_kshm_child`,
+   `UkShMain.wp_kshm_child_alloc` and `UkShEcho`'s walk keep their landed
+   statements to the character** — `wp_kshm_child`'s inline `Hmalloc`
+   binder is still the UNBOUNDED contract, and the weakening happens at
+   the two places that hand a capability to the parser and nowhere else:
+   `iris/UkShMain.v:666` and `iris/UkShEcho.v:933`, each one
+   `ushp_malloc_ty_le_mono N 65504 168 … (ushp_malloc_ty_le_top N … H)`.
+   That is the `ushm_malloc_ty_le_top`-shaped weakening the brief asked
+   for; re-stating `wp_kshm_child_alloc` at the bounded type would have
+   moved a landed statement for nothing, since `UkShMalloc`'s adapters
+   (`ushm_malloc_ok_holds`, `ushm_malloc_ok_one`) prove the unbounded one
+   and the symbol-free line only ever makes ONE call.  For the record,
+   `wp_kshm_child_alloc` has NO consumer in the tree today — grep finds
+   only two comment references (`iris/UkShFork.v:15`,
+   `iris/UkShMalloc.v:4699`) — so "keep every consumer building" is
+   vacuous; what IS a live consumer of the parser is `UkShEcho`'s own
+   walk, and it is the second weakening site above.
+5. No proof text moved anywhere: the diff outside `UkShParse.v`,
+   `UkShMalloc.v` §7 and `UkShRedirSeam.v`'s new lemma is twelve notation
+   lines, two weakening call arguments and comment text.
+
+**WHAT SH-ROUND NEEDS FIRST.**  `wp_kshm_child_alloc_redir` is now the
+whole redirect line from the heap /init hands sh's child down to
+`runcmd`'s REDIR arm, and SH-PARSE-2's instantiation list is unchanged
+EXCEPT that the two malloc capabilities are no longer on it — they are
+discharged.  What SH-ROUND still instantiates is `ush_open_call` (SH-REDIR's
+shape, verbatim) and the CONTINUATION: at runcmd's own entry pc, with the
+EXEC sub-tree `ush_cmd γd q (UExec (ush_args s0 (ushs_nulcut args len f fe)
+args))`, the ledger with slot 1 reopened at `ty`, the cwd, `K ty`, and now
+`ushm_one_ge (sz + 65536) 4072` where `UM2` was.  The three size premises
+are the ones `UkShMain.wp_kshm_child_alloc` already carries, so whatever
+supplies them there supplies them here.  The one thing this lane did NOT
+do and SH-ROUND will need is the LINE side: `UkShLoop.ush_line_lexable`
+still describes only the symbol-free shape, and SH-PARSE-2's
+`ush_line_lexable_redir` / `UkShRedirLine.ushs_line_is` have to be threaded
+from `UkShFork.ushf_rest_of_body` down to this lemma's `ushs_redir` /
+`ushs_toks` premises before the redirect line can be TYPED at sh's prompt
+rather than assumed at `0x9c0`.

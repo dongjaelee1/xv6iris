@@ -276,6 +276,21 @@ Section UserOff.
     iModIntro. iSplitR; [ by iApply off_link_taint | done ].
   Qed.
 
+  (* THE FIRE'S CASE SPLIT, against lane WRITE-RELAY's node shape
+     ([OffGv.off_ret]): the node hands the kernel's half back either
+     UNMOVED -- and then the settle above is what carries it to the box's
+     arm -- or ADVANCED BY THE CHUNK, which IS the box's coupled arm and
+     costs nothing.  Two lines, and they are the whole of how the fire
+     consumes [off_ret]: [off_settle] is consulted on the LEFT arm only. *)
+  Lemma off_ret_case γo (off d : nat) :
+    off_ret γo off d -∗
+    off_gv γo (1/2) (Z.of_nat off) ∨ off_link γo (Z.of_nat (off + d)).
+  Proof using .
+    iIntros "H". iDestruct "H" as (v) "[Hk %Hv]".
+    destruct Hv as [-> | ->]; [ by iLeft | ].
+    iRight. by iApply off_link_of.
+  Qed.
+
   (* ...AND THE THIRD CASE NEEDS NO PAYER AT ALL: a node whose closure held
      [uoff γo off] advanced BOTH halves inside its own phase 2
      ([uoff_advance]) and handed the kernel's back at [off + d], which IS
@@ -356,7 +371,7 @@ Section UserOff.
     intros Hd Hbad. iIntros "[#Ht Hw]".
     iDestruct (off_gv_halves γo (Z.of_nat off) with "Hw") as "[Hk Hu]".
     iDestruct (Hbad with "Ht") as "Hsup".
-    iMod ("Hsup" with "Hk") as "[Hk _]".
+    iMod ("Hsup" with "[Hk]") as "[Hk _]"; [ by iApply off_ret_keep | ].
     iDestruct (off_gv_agree with "Hk Hu") as %Heq.
     iModIntro. iPureIntro. lia.
   Qed.

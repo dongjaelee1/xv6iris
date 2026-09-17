@@ -418,7 +418,7 @@ Section UkWriteFile.
     (∀ (M : gmap Z (bv 8)) (pm : gmap (mword 27) uperm) (sz : Z),
        uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗
        uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗
-       awrite_chain (fs_gamma_L fsc_fs) appE i γo M (m !!! Regidx a1_idx)
+       awrite_chain (fs_gamma_L fsc_fs) appE i γo M (m !!! Regidx a1_idx) n
          Q 0%nat (wchunks n)) -∗
     udepwf_std N m pc 16 (write_file_fam Q (ukn_pay N)) l.
   Proof using .

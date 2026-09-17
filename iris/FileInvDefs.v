@@ -636,7 +636,7 @@ Lemma fdstate_ok_parked (inum : mword 32) (γo : gname) (γp : pipe_names) (C : 
     (st : fdstate) :
   fdstate_ok inum γo γp C st -> fdst_parked st.
 Proof.
-  destruct st as [| r w [n g [|] |g'| mj]]; cbn; intros Hok; try exact I.
+  destruct st as [| r w [n g [|o] |g'| mj]]; cbn; intros Hok; try exact I.
   destruct Hok as (_ & _ & _ & _ & _ & Hm). discriminate Hm.
 Qed.
 
@@ -1804,6 +1804,23 @@ Section FileInv.
   Proof using .
     iIntros "(%C & _ & _ & (%pn & %Hok & _ & _) & _)". iPureIntro.
     exact (fdstate_ok_parked _ _ _ C st Hok).
+  Qed.
+
+  (* ...AND THE SAME FACT READ WITHOUT SPENDING THE REFERENCE
+     ([file_pay_st_ok]'s [∧] convention).  This is the shape the two ROW-
+     COPYING sites want -- sys_dup's destination and kfork's scan, which
+     hand one descriptor's [FdSlots.foff_row] to a second descriptor and
+     therefore need it DUPLICABLE ([FdSlots.foff_row_dup], which is where
+     lane OFF-HAND-6's valued [OffHeld] made the family exclusive).  It is
+     the pin again, so when the pin comes off (design/app-file.md SS3 fact
+     4's [fpnames.fp_om]) those two sites read the same fact off the
+     REFERENCE COUNT instead: a held object has exactly one row, and a
+     site that holds two shares is looking at a parked one. *)
+  Lemma file_ref_parked_keep (γ : gname) (k : nat) (q : Qp) (st : fdstate) :
+    file_ref γ k q st -∗ ⌜fdst_parked st⌝ ∧ file_ref γ k q st.
+  Proof using .
+    iIntros "H". iSplit; [| iExact "H"].
+    iApply (file_ref_parked with "H").
   Qed.
 
   (* THE BRIDGE OUT OF THE QUANTIFIER: what a proof that has to look at the

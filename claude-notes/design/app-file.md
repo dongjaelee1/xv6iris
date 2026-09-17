@@ -280,6 +280,23 @@ premise, the holder's half in hand):
   of the claim kept building; the fd arm then reads `fown r (Some (i,
   []))` alone.  Way (i), the kernel restatement of `acre_commit_at_gen`,
   is not taken.
+  F-OPEN-5 LANDED it (the escrow is a `mono_list` ledger of one-shots
+  inside the claim, the tie to the lookup piece PERSISTENT because the
+  syscall's fold drops the lookup receipt on two arms; the fd arm is
+  `fown r (Some (i, [])) ∨ file_taint c`; the wrapper's premises are
+  unchanged, it parks and returns the escrow itself).  ONE residue, and
+  it must close because the child's `exec /echo` cannot pay a write to a
+  device: `open_post_ok_create`'s EXISTS-DEVICE sub-arm carries the
+  permit only through `cre_trunc_kept`'s refund, so the STATEMENT admits
+  "a found DEVICE and the permit paid with create's FRESH receipt".
+  RULED (2026-09-17): close it kernel-side by F-OPEN-5's way (ii) — the
+  EXISTS arm says which branch of the permit it paid (at a truncating
+  create `cre_rcpt_kept` keeps the EXISTS receipt beside the permit
+  instead of spending it whole), and the FRESH arm's observation is the
+  create's own locked inode (xv6's `create` returns it locked and
+  `sys_open` type-checks it before unlocking), so a FRESH-paid permit
+  never meets a device observation.  Lane F-OPEN-6, small; then `K ty`
+  is the single INODE arm.
 - **append** (echo's chunk `j`, `awrite_full_at`'s `wri_pre av i off bs
   bs0 nl` with `off = |bs0|` — §3 on why the offset is known): `Some bs0
   → Some (bs0 ++ chunk_j)`; echo's own proof carries the words and the
@@ -355,102 +372,102 @@ user-tree.md §8.1: state the form to compute with).
   the console writes pay the stage's pending (§4); `close`; `exit`
   returns the deed.
 
-**WHY THE OFFSET MUST BE HELD** (the one kernel-tier campaign this design
-needs; lanes OFF-HAND-2/3 in the worklist).  The append step needs `off =
-|bs0|`.  The fire hands `off` as a number; the fd's offset is the open-file
-object's, and in mode `park` (every open today) the user half sits in
-`off_user_inv γo`, an existential nobody can read.  Reporting the offset
-(RD-2's route R-c) does not help: a reported number has no tie to the
-row, and between two fires nothing says the object's offset did not
-move.  RD-1 landed the other mode at the ghost level — `UserOff.uoff`,
-`off_pub_hand`, `off_supply_held` — and lane OFF-HAND (its findings are
-in the worklist) checked what stands between it and a held U-tier
-member.  FOUR coupled facts, each adopted as a ruling:
+**THE OFFSET** (the design of record after the review of 2026-09-17,
+`claude-notes/reviews/app-file-review.md` §2 — the owner's principle
+§3.5 applied FULLY; the five refuted shapes are in §7).  The append
+step needs `off = |bs0|`; a parked row's offset is an existential.  So:
 
-1. **The mode is a per-file-object constant.**  `FileInvDefs.fdstate_ok`
-   pinned every inode row at `OffParked`; with the mode free,
-   `fdstate_ok_inj` (two descriptors on one file report one state) is
-   false.  So the mode joins the payload names (`fpnames.fp_om`) beside
-   the inum, the row's mode is `fp_om` of its object, and dup and fork
-   share one mode by construction (user-read.md §4).
-2. **Successor-parkedness moves from the pure table relation to the
-   family's post.**  `UsysMemOk.usys_fd_ok`'s open arm asserted the new
-   row parked, tier-free, and the generic user-safety Löb read its
-   successor's parkedness there.  Now the open's RECEIPT carries the mode
-   as the caller's family chose it (`xfam`'s `of_mode`); the generic
-   family fixes `OffParked` and reads its successor off its own post.
-3. **The publish reads the caller's mode** (`ProofSysOpenPub`:
-   `off_pub_park` or `off_pub_hand`, `fp_om` set to match, the held half
-   `uoff γo 0` in the receipt at `OffHeld`).
-4. **The held half rides the DESCRIPTOR BUNDLE and its value the
-   DESCRIPTOR STATE; no program ever carries an offset half.**  RULED
-   2026-09-17 after OFF-HAND-5, which refuted the two previous rulings
-   (the surrender bundle on the taint arm, OFF-HAND-4; the exec deposit
-   the kernel spends on one arm and returns on the other, OFF-HAND-5)
-   and showed the wall is structural: a bundle with a taint arm can
-   never carry an exclusive half (the generic slot is minted from a
-   persistent family), the kernel cannot branch on the taint (verified
-   vs tainted is decided inside the U-tier proof of the arm), and the
-   redirect child cannot refute the taint (a persistent `mono_nat_lb`
-   whose authority is the ledger's).  So the half must not be in the
-   program's hands at the crossing at all.  THE SHAPE:
-   - `FdSlots.offmode` becomes `OffParked | OffHeld (off : nat)`: a held
-     row RECORDS ITS OFFSET in the fd-table state.  The state is the
-     exec key, so a verified image reads the offset off its key, and a
-     generic image's Löb treats it as data.
-   - `FdSlots.foff_row` at `OffHeld off` is `UserOff.uoff γo off` (the
-     half, exclusive) instead of `emp`; at `OffParked` it is
-     `off_user_inv γo` as today.  `foff_rows` is persistent only at an
-     all-parked table, which is exactly where every site that COPIES a
-     row needs it (see dup/fork below); every site that threads the
-     bundle opaquely is untouched.  The kernel holds the bundle during a
-     syscall, so a held row's half is IN THE KERNEL'S HANDS at every
-     fire and at every crossing: the kernel's syscall arm passes it into
-     the held branch of `fileread_in`/`filewrite_in` (design §3's held
-     branch, now supplied by `ProofSyscall`/`ProofFilewrite`, not by a
-     user deposit), gets it back advanced, and the syscall's post
-     re-records the row: `UsysMemOk.usys_fd_ok`'s read/write rows at a
-     held descriptor ADVANCE the row's value by the count (parked rows
-     are unchanged as today).  The fire's offset is the row's recorded
-     value — RELAY 1 (`off = off0 + p`) is the half's agreement, kernel-
-     side.
-   - `FileInvDefs.fpnames` gains `fp_om`; `fdstate_ok` at a held object
-     pins the reference count at 1 (a held object has exactly one row,
-     anywhere) beside the mode; the `_parked` chain is deleted (OFF-HAND-5
-     D1 left it consumer-less).
-   - DUP and FORK PARK, kernel-side, from the bundle: the kernel retypes
-     the source row `OffHeld off → OffParked` with `uoff_park` (the half
-     is in its hands; `FdPark.fd_frags_park_at` is the step) BEFORE the
-     copy, so a copied row is always parked and the persistent scan
-     stands; the posts say so (`usys_fd_ok`'s dup and fork rows at a
-     held source: both rows parked).  No user surrender, no deposit, no
-     `uoff_surr*`.  In this campaign neither ever meets a held row.
-   - EXEC keeps the table and the bundle: the held row crosses on BOTH
-     arms with its half in the fd resources.  `ExecEntry.image_entry*`
-     receive no offset premise; `image_entry_taint`'s pure all-parked
-     row is DELETED (the generic mint needs nothing about modes any
-     more: its deposits are free at every mode because the kernel needs
-     no user resource at a fire), and with it `UexecSG`'s guarded
-     read/write premise (OFF-HAND-5 D3), `udepw_law_parked`, and the
-     whole `ukn_held`/`fdv_held_in`/`uoff_surr_at` carrier (OFF-HAND-3/4;
-     `ukn_held` may stay on `uk_names` as dead data until a cleanup lane
-     deletes it, but no new statement may mention it).
-   - THE HAND-MODE OPEN LEAF: the open's publish at the caller's mode
-     (`off_pub_hand`) records `OffHeld 0` in the new row and puts the
-     half in the bundle; the receipt reports the state.  cat opens `f`
-     read-only in hand mode too (its reads must chain from 0 for the
-     printed bytes to be the content in order — §5.3).
-   - The program tier: a record's fd resources carry the held half
-     inside `urun`, so a verified program's write at a held row is the
-     same leaf shape as at a parked one with `⌜sts !! fd = Some (FdOpen
-     _ _ (FdInode i γo (OffHeld off)))⌝` read off its table and the post
-     at `OffHeld (off + n)`; the app's append step reads `off` there.
-   The order (lane OFF-HAND-6): the `offmode` payload and `foff_row`
-   (13 `OffHeld` sites) → `fpnames.fp_om` + `fdstate_ok` at held + the
-   two fire sites through the held branch supplied by the syscall arm →
-   `usys_fd_ok`'s read/write rows advancing a held row (and the tierless
-   `sysc_fd_ok`) → dup/fork parking → the hand-mode open leaf and the
-   held read/write leaves → deletion of the dead carrier premises.
+- THE HALF IS THE PROGRAM'S.  `UserOff.uoff γo off` (RD-1) is what a
+  verified program holds for a descriptor it opened in hand mode; it
+  crosses exec in `Pay` exactly as the deed does, and fork/dup never
+  meet it in this campaign.  No mode in the fd-table state, no half in
+  the kernel's bundle: `FdSlots.foff_row := True`, `fd_frags` persistent
+  again; `offmode`/`OffHeld`/`fdst_adv`/`FdPark` are DELETED
+  (OFF-HAND-6's H1 reverted); `fdstate_ok`'s pin stays as dead data.
+- THE BOX HAS A TAINT ARM.  `FileOffCell.off_resident` becomes
+  `(cell ∗ off_gv γo (1/2) v) ∨ (cell ∗ □ riscv_kill_cred)` on
+  `PipeInvDefs.pipe_qres`'s model: once a fire runs without the link the
+  object's offset ghost is disconnected, permanently.
+- THE LINK IS THE NODE.  `FsAbsWriteFire.awrite_full_at`/`awrite_part_at`
+  and `aread_commit_at`'s phase 2 already hand the node the kernel half
+  and take it back; a node whose closure holds `uoff γo off0` learns
+  `off = off0` by `OffGv.off_gv_agree` (RELAY 1/2, free) and keeps the
+  advanced fragment (`UserOff.uoff_advance`).  `filewrite_in`/
+  `fileread_in`'s inode arms are `chain ∨ □ riscv_kill_cred`, the posts
+  `fired ∨ (taint ∗ payment back)`; the two fire sites case on the
+  box's arm; `off_supply*` and both suppliers are deleted.
+- THE MINT.  `ProofSysOpenPub` at the caller's hand mode calls
+  `off_pub_hand_0` and the receipt carries `uoff g 0` where it carried
+  `off_user_inv g`; it rides the open's fd arm to the U tier
+  (`wp_uk_ecall_open_recv_img_hand`, the deed corollaries' one swap).
+  A parked open's user half is simply dropped; `off_user_inv` goes.
+- THE VACUITY CHECK, written first: the taint arm is reachable from
+  `app_sup` (the generic builders hold `pipe_taint_cred`), and a node
+  holding `uoff` is NOT payable from `app_sup`.
+- THE OTHER TWO RELAYS ride the same node sweep: RELAY 3 (`wri_pre`
+  fixes `length bs`; `ubytes_at` is prefix-closed today) and RELAY 4
+  (`awrite_part_at`'s reason, READ-RELAY's twin in `SysWriteDefs`).
+
+Lanes: WRITE-RELAY (relays 3 and 4, `SysWriteDefs`/`SpecWritei`/
+`ProofWritei`/`FsAbsWriteFire`/`FileWrite`), then OFF-LINK (the rest of
+this block, on the off-hand worktree after OFF-HAND-7 stopped).
+
+### 3.5 THE OWNER'S PRINCIPLE (2026-09-17): `link ∨ taint`, the pipe pattern
+
+The owner: "one thing you might be struggling with is how to deal with
+the generic proof. we should adopt the approach taken by the pipe specs:
+decouple the kernel's state from the user-facing ghost state when the
+system becomes tainted. so, instead of having to conjure up various
+preconditions for syscalls in the generic WP user proof, we should be
+able to pass in EITHER the precondition OR the persistent taint resource,
+and the persistent taint resource allows the kernel's invariant to
+disconnect the kernel state from the ghost state."
+
+The pattern (design/pipe.md, "The coupling, or the taint"): the kernel
+invariant's coupling of ghost to physical state is a DISJUNCTION
+`(coupled) ∨ □ riscv_kill_cred`; every syscall payment is `link ∨
+taint`, every post `fired ∨ taint`; the generic supply pays the taint
+arm, so the generic WP user proof never needs a precondition it cannot
+state; a verified program holds the link where it has one.  Applied
+here: the coupling of a HELD row's recorded offset to the file object's
+box takes a taint arm, dup/fork of a held row take `⌜parked⌝ ∨ taint`
+instead of a kernel-side park, the open arm's mode is the caller's, and
+any remaining "all rows parked"/"surrender"/"guarded generic premise"
+shape is an instance of the error this principle names.  The deed's own
+taint arm (`file_taint c ∨ …`, every piece `link ∨ taint`) already
+follows it; the file-offset invariant did not.  The review at
+`claude-notes/reviews/app-file-review.md` assesses the campaign against
+it; lanes OFF-HAND-7 (J2/J3) build on it.
+
+The survey's verdicts (`claude-notes/reviews/taint-pattern-survey.md`),
+adopted: R1 the generic supply IS the taint (`al_sup_of_kill` on the app
+laws, `xv6_ssupply := □ riscv_kill_cred`, the duplicated credentials off
+~20 generic-tier statements — lane SUP-ONE); R2 the offset (OFF-LINK,
+with the deletions as its exit criterion); R4 the open leaves export
+`fdst_nopipe` so a close at an opened descriptor needs no free law
+(SUP-ONE); R5 NOT a taint change — `sys_open`'s residues are arm
+EXCLUSIVITY (`acre_commit_at_gen` taking the unfired `Fex`); R3 the
+write chain's copyin-partial arm is REFUTED (WRITE-RELAY), the disk-full
+short write is limit 1's whole-chunk skip, and no kernel taint goes on
+either.  Two facts decide every verdict: the generic tier already holds
+the taint everywhere, and a verified program must never be able to
+taint itself at an arm it dislikes (the vacuity trap) — it closes an
+unreachable arm by arm exclusivity in the kernel contract.
+
+### 3.6 PROCESS RULES (review §D4–D5, 2026-09-17)
+
+- A ruling is checked at the STATEMENT before it is issued: the mask it
+  fires under, the persistence of what it hands out, and the home of
+  every linear resource across fork/exec/wait — the three facts every
+  refuted OFF-HAND/F-OPEN ruling failed on.
+- The consumer's SKELETON compiles first: `UEchoFile.v` and
+  `UShRound.v` are written with `Admitted` against the current tree
+  before any further kernel ruling, so the exact obligations are known
+  (as `UCatKernel.cat_round_at`'s abstract `Hold` found `Hpin`).
+- Lanes name the statements they may move and are sized so that a
+  refuted ruling wastes one file, not a sweep.
+- The worklist is a DEPENDENCY GRAPH with the program tier priced, not
+  a chain of "the one thing the next lane needs first".
 
 ## 4. The console side: the stage carries the era's boot state, the ledger the line list
 
@@ -466,6 +483,16 @@ the generic links take one more argument than the echo ones, so the
 thirty files above `EchoOut` would move for a statement-preserving
 refactor's sake.  The pure stage machine is ~1,500 lines of list
 algebra; its twin at `FileDisc`'s session is the price.)
+
+REVERSED for the PROGRAM tier (review §D3, 2026-09-17): the stage and
+ledger twins stand as landed, but the console files above the links
+(`UShLine`, `UShPanic`, `UShRest`, `UShEchoPay`, `UEchoOut`,
+`UInitBanner`, `UInitConsK` — ~8,000 lines) are NOT twinned.  Lane
+LINK-GEN generalises `EchoLinks.echo_links` / `EchoLinksLine.ewc_lcred`
+over a LINK RECORD on TL-7's pattern (`UInitCons` off `echo_names`,
+echo's instance definitional), so those files are instantiated at
+`FileLinks` and the echo audit stays at fourteen.  This is the largest
+single item of the campaign and was unpriced until the review.
 
 ### 4.1 What the stage adds: ONE value per era
 
@@ -775,6 +802,28 @@ lane, not an application one.
 
 ## 7. Rejected on the way
 
+- **THE HELD OFFSET'S FOUR REFUTED SHAPES (2026-09-17, lanes OFF-HAND
+  1–5).**  (1) The half in the PROGRAM's hands (route R-a, user-read.md
+  §8): every crossing (fork, exec) then needs the program to surrender
+  it, and the generic tier needs "all rows parked" as a precondition it
+  cannot state.  (2) The surrender bundle on the exec's TAINT arm: the
+  taint arm's consumer chain (the gated verified arms of the generic
+  entry) needs a PURE all-parked fact about the key's table, and parking
+  changes the table (OFF-HAND-4).  (3) The surrender bundle as an exec
+  DEPOSIT the kernel spends on the taint arm and returns on the verified
+  arm: the kernel cannot branch on the taint (verified vs tainted is
+  decided inside the U-tier proof of the arm), and at the U tier the
+  deposit is derivable from the premise the builder already needs
+  (OFF-HAND-5).  (4) The set-valued carrier `ukn_held` of "which rows a
+  record may hold", with a guarded generic read/write premise: it
+  reaches every spend of a flagged deposit and no resource carries it
+  across a record re-binding (OFF-HAND-5 D3).  All four are instances of
+  conjuring a precondition in the generic proof (§3.5).  (5) The half in
+  the KERNEL's descriptor bundle with the value in the fd-table state
+  (OFF-HAND-6): it takes the half away from the node that needs it
+  (RELAY 2 becomes a premise nobody supplies) and drags in an advancing
+  successor-table row, a reference-count pin and a kernel-side park —
+  the review's §A1.  The design of record is §3, "THE OFFSET".
 - **A pure arm over the view with no deed.**  Not steppable by echo
   (§2).
 - **Per-round records agreed between the fs claim and the stage by

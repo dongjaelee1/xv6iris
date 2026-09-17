@@ -204,16 +204,10 @@ Section PinnedExec.
       (sts : list fdstate) (cs : gset gname) (pidv : mword 32) :
     pin_resolves Pin cw pl hops ino f nl ->
     kexec_loadable f ->
-    (* ...AND THE BUILDER'S ALL-PARKED ROW (lane OFF-HAND-5, D1).  It is
-       the TAINT arm's, and only the taint arm's: the verified arm dropped
-       it in lane OFF-HAND-4.  It used to ride
-       [SpecKexec.exec_slot_pre]'s wands and be supplied by the KERNEL off
-       [ProcInv.proc_priv_parked]; the pin that made that readable is what
-       this campaign takes off, so the fact is stated by whoever builds
-       the bundle, about the table [sts] it execs with.  A U-tier builder
-       reads it off its own run ([UkRun.urun_rows_parked] at
-       [ukn_held N = empty]). *)
-    FdSlots.fdv_all_parked sts ->
+    (* NO ALL-PARKED ROW ON EITHER ARM (lane OFF-HAND-6, H3;
+       design/app-file.md SS3 fact 4): the half a held row's fire needs is
+       in the descriptor bundle, so the generic family the taint arm runs
+       on owes nothing about offsets and a held row crosses on both arms. *)
     □ (∀ W' : uvis,
          ⌜kexec_image_ok f na alen afun sts W'⌝ -∗
          ⌜uvis_cwd W' = cw⌝ -∗ ⌜uvis_lazy W' = false⌝ -∗
@@ -225,8 +219,7 @@ Section PinnedExec.
             can never be entered with a held row.  The TAINT arm below
             keeps one. *)
          my_pay (uvis_gen W') Q -∗ Pay -∗ X W') -∗
-    □ (∀ W' : uvis, ⌜FdSlots.fdv_all_parked (uvis_fd W')⌝ -∗
-         T -∗ my_pay (uvis_gen W') Q -∗ X W') -∗
+    □ (∀ W' : uvis, T -∗ my_pay (uvis_gen W') Q -∗ X W') -∗
     Pay -∗
     exec_slot_pre X Q (pobs_P T hops (length (path_elems pl)))
       (pobs_recv Pin T) cw na alen afun sts cs pidv.
@@ -235,10 +228,10 @@ Section PinnedExec.
      [ex_node_id]; what is left here is which supplier, and the [□]
      constructor premise is [ExecEntry.image_entry_at] spelled out. *)
   Proof using .
-    intros Hres Hload Hpk0. iIntros "#Hcon #Hgen HPay".
+    intros Hres Hload. iIntros "#Hcon #Hgen HPay".
     iApply (exec_slot_of_entry_at X T (pobs_P T hops (length (path_elems pl)))
               (pobs_recv Pin T) f nl Pay Q cw na alen afun sts cs pidv Hload
-              Hpk0 with "[] [] [] HPay").
+              with "[] [] [] HPay").
     - iApply (pobs_node_id Pin T cw pl hops ino (MkAnode (AFile f) nl) Hres).
     - rewrite /image_entry_at. iExact "Hcon".
     - rewrite /image_entry_taint. iExact "Hgen".
@@ -272,16 +265,10 @@ Section PinnedExec.
     pin_resolves Pin cw pl hops ino f nl ->
     kexec_loadable f ->
     exec_path_of M pv pl ->
-    (* ...AND THE BUILDER'S ALL-PARKED ROW (lane OFF-HAND-5, D1).  It is
-       the TAINT arm's, and only the taint arm's: the verified arm dropped
-       it in lane OFF-HAND-4.  It used to ride
-       [SpecKexec.exec_slot_pre]'s wands and be supplied by the KERNEL off
-       [ProcInv.proc_priv_parked]; the pin that made that readable is what
-       this campaign takes off, so the fact is stated by whoever builds
-       the bundle, about the table [sts] it execs with.  A U-tier builder
-       reads it off its own run ([UkRun.urun_rows_parked] at
-       [ukn_held N = empty]). *)
-    FdSlots.fdv_all_parked sts ->
+    (* NO ALL-PARKED ROW ON EITHER ARM (lane OFF-HAND-6, H3;
+       design/app-file.md SS3 fact 4): the half a held row's fire needs is
+       in the descriptor bundle, so the generic family the taint arm runs
+       on owes nothing about offsets and a held row crosses on both arms. *)
     □ (∀ (na : nat) (alen : nat -> nat) (afun : nat -> nat -> bv 8)
          (W' : uvis),
          ⌜kexec_image_ok f na alen afun sts W'⌝ -∗
@@ -321,8 +308,7 @@ Section PinnedExec.
        belongs on [SpecKexec.exec_slot_pre]'s two WANDS, where the party
        that supplies it is the KERNEL -- which holds the block and reads
        the fact straight off it ([ProcInv.proc_priv_parked]). *)
-    □ (∀ W' : uvis, ⌜FdSlots.fdv_all_parked (uvis_fd W')⌝ -∗
-         T -∗ my_pay (uvis_gen W') Q -∗ X W') -∗
+    □ (∀ W' : uvis, T -∗ my_pay (uvis_gen W') Q -∗ X W') -∗
     Pay -∗
     pf_at (fun S => sys_exec_slot_pre S Q (pobs_P T hops) (pobs_recv Pin T)
                       cw M pv av sts cs pidv) (MkPfam X Pay).
@@ -330,9 +316,9 @@ Section PinnedExec.
      reading's uniqueness, the argument reading's relay into the entry and
      the two arms are all stated there; the pin supplies [ex_node_id]. *)
   Proof using .
-    intros Hres Hload Hpath Hpk0. iIntros "#Hcon #Hgen HPay".
+    intros Hres Hload Hpath. iIntros "#Hcon #Hgen HPay".
     iApply (sys_exec_slot_of_entry X T (pobs_P T hops) (pobs_recv Pin T)
-              f nl Pay Q cw pl M pv av sts cs pidv Hload Hpath Hpk0
+              f nl Pay Q cw pl M pv av sts cs pidv Hload Hpath
               with "[] [] [] HPay").
     - iApply (pobs_node_id Pin T cw pl hops ino (MkAnode (AFile f) nl) Hres).
     - rewrite /image_entry. iExact "Hcon".
@@ -354,7 +340,10 @@ Section PinnedExec.
     exec_path_of M pv pl ->
     (* the builder's all-parked row, the taint arm's only (lane
        OFF-HAND-5, D1; see [pex_slot_at]) *)
-    FdSlots.fdv_all_parked sts ->
+    (* NO ALL-PARKED ROW ON EITHER ARM (lane OFF-HAND-6, H3;
+       design/app-file.md SS3 fact 4): the half a held row's fire needs is
+       in the descriptor bundle, so the generic family the taint arm runs
+       on owes nothing about offsets and a held row crosses on both arms. *)
     (* the pin, as a law over the application's claim *)
     □ (∀ v : aview, app_pred app_run v -∗
                       app_pred app_run v ∗ (⌜Pin v⌝ ∨ T)) -∗
@@ -382,8 +371,7 @@ Section PinnedExec.
          my_pay (uvis_gen W') Q -∗ Pay -∗ X W') -∗
     (* the taint's generic slot, indexed by the pay fact and handed the
        payload beside it -- see [pex_slot] *)
-    □ (∀ W' : uvis, ⌜FdSlots.fdv_all_parked (uvis_fd W')⌝ -∗
-         T -∗ my_pay (uvis_gen W') Q -∗ X W') -∗
+    □ (∀ W' : uvis, T -∗ my_pay (uvis_gen W') Q -∗ X W') -∗
     Pay -∗
     sys_exec_au_pre (MkPfam X Pay) (fs_gamma_L γfs) γfs cw Q
       (pobs_P T hops) (pobs_Pmiss T) (pobs_Fo Pin T) M pv av sts cs pidv.
@@ -392,11 +380,11 @@ Section PinnedExec.
      the node identification [pobs_node_id].  Nothing about exec is
      re-stated here -- (L) and (E) go straight through. *)
   Proof using .
-    intros Hres Hload Hpath Hpk0.
+    intros Hres Hload Hpath.
     iIntros "#Hcl #Hinv #Hcon #Hgen HPay".
     iApply (exec_bundle_of γfs X T (pobs_P T hops) (pobs_Pmiss T)
               (pobs_Fo Pin T) cw pl f nl Pay Q M pv av sts cs pidv
-              Hload Hpath Hpk0 with "[] [] [] [] [] HPay").
+              Hload Hpath with "[] [] [] [] [] HPay").
     - iApply (pobs_walk γfs Pin T (pobs_Pmiss T) cw pl hops ino
                 (MkAnode (AFile f) nl) Hres with "[] Hcl Hinv").
       iApply pobs_miss_taint_Pmiss.
@@ -421,7 +409,10 @@ Section PinnedExec.
     exec_path_of M pv pl ->
     (* the builder's all-parked row, the taint arm's only (lane
        OFF-HAND-5, D1; see [pex_slot_at]) *)
-    FdSlots.fdv_all_parked sts ->
+    (* NO ALL-PARKED ROW ON EITHER ARM (lane OFF-HAND-6, H3;
+       design/app-file.md SS3 fact 4): the half a held row's fire needs is
+       in the descriptor bundle, so the generic family the taint arm runs
+       on owes nothing about offsets and a held row crosses on both arms. *)
     □ (∀ v : aview, app_pred app_run v -∗
                       app_pred app_run v ∗ (⌜Pin v⌝ ∨ T)) -∗
     app_inv γfs -∗
@@ -443,8 +434,7 @@ Section PinnedExec.
             keeps one. *)
          ⌜exec_args_of M av na alen afun⌝ -∗
          my_pay (uvis_gen W') Q -∗ Pay -∗ X W') -∗
-    □ (∀ W' : uvis, ⌜FdSlots.fdv_all_parked (uvis_fd W')⌝ -∗
-         T -∗ my_pay (uvis_gen W') Q -∗ X W') -∗
+    □ (∀ W' : uvis, T -∗ my_pay (uvis_gen W') Q -∗ X W') -∗
     Pay -∗
     (* THE REFUND IS [Pay], NAMED (lane KILL-PAY, K4(a), ruling R-A): a
        FAILED exec hands the deposit's refund back to the process, and a
@@ -456,10 +446,10 @@ Section PinnedExec.
       sys_exec_au_pre (MkPfam X Pay) (fs_gamma_L γfs) γfs cw Q P Pmiss Fo
         M pv av sts cs pidv.
   Proof using .
-    intros Hres Hload Hpath Hpk0. iIntros "#Hcl #Hinv #Hcon #Hgen HPay".
+    intros Hres Hload Hpath. iIntros "#Hcl #Hinv #Hcon #Hgen HPay".
     iExists (pobs_P T hops), (pobs_Pmiss T), (pobs_Fo Pin T).
     iApply (pinned_exec_bundle_at γfs X Pin T cw pl hops ino f nl Pay Q
-              M pv av sts cs pidv Hres Hload Hpath Hpk0
+              M pv av sts cs pidv Hres Hload Hpath
               with "Hcl Hinv Hcon Hgen HPay").
   Qed.
 
@@ -490,7 +480,10 @@ Section PinnedExec.
     kexec_loadable f ->
     (* the builder's all-parked row, the taint arm's only (lane
        OFF-HAND-5, D1; see [pex_slot_at]) *)
-    FdSlots.fdv_all_parked sts ->
+    (* NO ALL-PARKED ROW ON EITHER ARM (lane OFF-HAND-6, H3;
+       design/app-file.md SS3 fact 4): the half a held row's fire needs is
+       in the descriptor bundle, so the generic family the taint arm runs
+       on owes nothing about offsets and a held row crosses on both arms. *)
     □ (∀ v : aview, app_pred app_run v -∗
                       app_pred app_run v ∗ (⌜Pin v⌝ ∨ T)) -∗
     app_inv γfs -∗
@@ -503,8 +496,7 @@ Section PinnedExec.
          ⌜kexec_image_ok f na alen afun sts W'⌝ -∗
          ⌜uvis_cwd W' = cw⌝ -∗ ⌜uvis_lazy W' = false⌝ -∗
          my_pay (uvis_gen W') Q -∗ Pay -∗ X W') -∗
-    □ (∀ W' : uvis, ⌜FdSlots.fdv_all_parked (uvis_fd W')⌝ -∗
-         T -∗ my_pay (uvis_gen W') Q -∗ X W') -∗
+    □ (∀ W' : uvis, T -∗ my_pay (uvis_gen W') Q -∗ X W') -∗
     Pay -∗
     exec_au_pre (MkPfam X Pay) (fs_gamma_L γfs) γfs cw Q
       (pobs_P T hops) (pobs_Pmiss T) (pobs_Fo Pin T) pl na alen afun sts
@@ -515,10 +507,10 @@ Section PinnedExec.
      argument shape -- and the two identity rows the boot constructor
      does not read are dropped where it is built. *)
   Proof using .
-    intros Hres Hload Hpk0. iIntros "#Hcl #Hinv #Hcon #Hgen HPay".
+    intros Hres Hload. iIntros "#Hcl #Hinv #Hcon #Hgen HPay".
     iApply (exec_bundle_of_at γfs X T (pobs_P T hops) (pobs_Pmiss T)
               (pobs_Fo Pin T) cw pl f nl Pay Q na alen afun sts cs pidv
-              Hload Hpk0 with "[] [] [] [] [] HPay").
+              Hload with "[] [] [] [] [] HPay").
     - iApply (pobs_walk γfs Pin T (pobs_Pmiss T) cw pl hops ino
                 (MkAnode (AFile f) nl) Hres with "[] Hcl Hinv").
       iApply pobs_miss_taint_Pmiss.
@@ -544,7 +536,10 @@ Section PinnedExec.
     kexec_loadable f ->
     (* the builder's all-parked row, the taint arm's only (lane
        OFF-HAND-5, D1; see [pex_slot_at]) *)
-    FdSlots.fdv_all_parked sts ->
+    (* NO ALL-PARKED ROW ON EITHER ARM (lane OFF-HAND-6, H3;
+       design/app-file.md SS3 fact 4): the half a held row's fire needs is
+       in the descriptor bundle, so the generic family the taint arm runs
+       on owes nothing about offsets and a held row crosses on both arms. *)
     □ (∀ v : aview, app_pred app_run v -∗
                       app_pred app_run v ∗ (⌜Pin v⌝ ∨ T)) -∗
     app_inv γfs -∗
@@ -552,8 +547,7 @@ Section PinnedExec.
          ⌜kexec_image_ok f na alen afun sts W'⌝ -∗
          ⌜uvis_cwd W' = cw⌝ -∗ ⌜uvis_lazy W' = false⌝ -∗
          my_pay (uvis_gen W') Q -∗ Pay -∗ X W') -∗
-    □ (∀ W' : uvis, ⌜FdSlots.fdv_all_parked (uvis_fd W')⌝ -∗
-         T -∗ my_pay (uvis_gen W') Q -∗ X W') -∗
+    □ (∀ W' : uvis, T -∗ my_pay (uvis_gen W') Q -∗ X W') -∗
     Pay -∗
     ∃ (P Pmiss : nat -> Z -> iProp Σ)
       (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ)) (R : iProp Σ),
@@ -564,11 +558,11 @@ Section PinnedExec.
         exec_au_pre (MkPfam X R) (fs_gamma_L γfs) γfs cw Q P Pmiss Fo
           pl na alen afun sts cs pidv.
   Proof using .
-    intros Hres Hload Hpk0. iIntros "#Hcl #Hinv #Hcon #Hgen HPay".
+    intros Hres Hload. iIntros "#Hcl #Hinv #Hcon #Hgen HPay".
     iExists (pobs_P T hops), (pobs_Pmiss T), (pobs_Fo Pin T), Pay.
     iIntros (cs pidv).
     iApply (pinned_exec_bundle_boot_at γfs X Pin T cw pl hops ino f nl Pay Q
-              na alen afun sts cs pidv Hres Hload Hpk0
+              na alen afun sts cs pidv Hres Hload
               with "Hcl Hinv Hcon Hgen HPay").
   Qed.
 

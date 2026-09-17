@@ -4817,6 +4817,827 @@ theorem's THIRTEEN, all unchanged.  `make gen-ucode` prints *unchanged*
 for all seven catalogs; no `UCode*.v` and no `tools/ucode_manifest.json`
 was touched.
 
+### OFF-HAND-6 (kernel/U tier, 2026-09-17) — THE HELD HALF RIDES THE BUNDLE AND THE EXEC ROW IS GONE; THE CONTRACT MODE-SPLIT IS REFUTED AS UNNECESSARY, AND `fpnames` NEEDS NOTHING
+
+**The lane's verdict in one line: H1 and the DELETION half of H3 landed — a
+held row now RECORDS ITS OFFSET in the fd-table state, `FdSlots.foff_row`
+answers the exclusive half `UserOff.uoff γo off` at it, the boundary park
+takes no user deposit, and the exec crossing's all-parked row is deleted on
+BOTH arms together with the whole `fdv_held_in`/`ukn_held` carrier, so an
+entry constructor may now mint a record at a key with a held descriptor.
+H2's contract mode-split is REFUTED as unnecessary (fact 4 makes the fire's
+offset supplier mode-blind), `fpnames` is shown to need NO `fp_om` (the
+row's state alone decides, and the reference count does the rest), and what
+H2 actually costs is measured: it FORCES H3's read/write row, because two
+of the four row-copying sites cannot be discharged by the count. Two
+commits, each whole-tree green.**
+
+**WHAT LANDED** (whole tree green on the lane's remote tree, `make -f
+CoqMakefile -j16 -k`, `EXIT=0`, zero `Error`; `make audit-all-only`
+thirteen/fourteen, `audit-tree-only` thirteen, `audit-file-only` fourteen —
+unchanged; `Proof using` everywhere, no `Admitted`.)
+
+*`be377d08f` — H1: the held half rides the descriptor bundle, its value the
+descriptor state*
+
+- `FdSlots.offmode := OffParked | OffHeld (off : nat)`; `fdst_parked`
+  unchanged in meaning; `foff_row (FdOpen _ _ (FdInode _ γo (OffHeld off)))`
+  is `UserOff.uoff γo off` (was `emp`).  `FdSlots.v` now imports `UserOff`
+  (no cycle: `UserOff` requires only `RiscvPtsto`/`Xv6Cameras`/`OffGv`).
+- NEW `FdSlots.om_adv` / `fdst_adv` (the advance of a row by a count,
+  identity at a parked row) with `om_adv_0`, `fdst_adv_0`,
+  `fdst_adv_parked`, `fdst_adv_id_parked`.  This is the function every
+  later row ("this read advanced the descriptor") is stated at.
+- THE PERSISTENCE, priced exactly: `foff_row_persistent` and
+  `foff_rows_persistent` stop being INSTANCES and become the lemmas
+  `foff_row_persistent_parked` / `foff_rows_persistent_parked` under
+  `fdst_parked` / `fdv_all_parked`, with `foff_row_dup` / `foff_rows_dup`
+  the form a proof applies.  `foff_rows_insert` is replaced by the
+  accessor `foff_rows_acc` (out and back at a new state); `foff_rows_lookup`
+  survives, now consuming.  `foff_row_inode_held` takes the half;
+  NEW `foff_row_inode_held_of` reads it back at an equation.
+  **`FdSlots.fd_frags_acc`, `fd_frags_acc_lt`, `fd_frags_any_acc`,
+  `fd_frags_rows`, `fd_frags` and `fd_frags_any` DO NOT MOVE** — the
+  accessor shape was already "one row out, a new row back", which is
+  exactly what a non-persistent family needs, so every site that threads
+  the bundle opaquely is untouched.
+- THE BOUNDARY PARK LOSES ITS USER DEPOSIT.  `FdPark.foff_row_park`,
+  `foff_rows_park`, `fd_frags_park` and `fd_frags_park_at` drop the
+  `uoff_surr*` argument: the half they park is in the bundle they were
+  handed.  `fd_frags_park_at` is now premise-free
+  (`fd_auths γ sts -∗ fd_frags γ sts ={E}=∗ ∃ sts', ⌜sts' = fdv_park sts⌝ ∗
+  ⌜fdv_all_parked sts'⌝ ∗ fd_auths γ sts' ∗ fd_frags γ sts'`), which is what
+  H4's kernel-side dup/fork park will apply.  `uoff_surr`, `uoff_surrs`,
+  `uoff_surrs_map`, `uoff_surr_at` and `uoff_rcpt` are LEFT COMPILING AND
+  ARE DEAD: no lemma and no proof in the tree spends one.
+- THE SUPPLIER IS RESTATED AT THE ROW.  `FdPark.off_supply_of_st`,
+  `off_supply_of_st_eq`, `off_supply_of_st_at`, `off_supply_of_st_at_eq`
+  take `foff_row st` and the kernel's half and give back the kernel's half,
+  the tie `⌜forall o : nat, m = OffHeld o -> o = off⌝` (learned kernel-side
+  by `UserOff.uoff_agree_k` — design §3's RELAY 1, now free) and
+  `off_supply γo E off d (foff_row (fdst_adv st d))`.  **The row goes in
+  and the row comes back ADVANCED**, at every mode.  NEW
+  `UserOff.off_supply_parked_keep` is the parked half of that (the
+  invariant is persistent, so it hands itself back for nothing).
+- THE FOUR ROW-COPYING SITES, named, with their discharge today and their
+  discharge tomorrow.  A held row's entry is EXCLUSIVE, so a site that
+  hands one row to two places needs `foff_row_dup`, which needs
+  `fdst_parked`.  There are exactly four, and NEW
+  `FileInvDefs.file_ref_parked_keep` (the pin read off the reference
+  without spending it, `file_pay_st_ok`'s `∧` convention) discharges all
+  four while the pin stands:
+  1. `ProofSysDup.wp_sys_dup_sconf` (`:1046`) — the destination row is the
+     source's.  When the pin comes off: the REFERENCE COUNT says it (a held
+     object has exactly one row, and dup is holding two shares).
+  2. `ProofKforkB3.kfkb3_fd_loop` (`:782`) — the child's row is the
+     parent's.  Same replacement.
+  3. `ProofSysRead.wp_sys_read_sconf` (`:967`) and
+  4. `ProofSysWrite.wp_sys_write_sconf` (`:983`) — the row is LENT to
+     `wp_fileread_sconf` / `wp_filewrite_sconf` and also put back.  These
+     two CANNOT use the count (the syscall holds the only reference, at the
+     whole fraction the lend handed out).  Their replacement is the LEND:
+     the fire takes `foff_row st` and returns `foff_row (fdst_adv st d)`,
+     and the syscall re-records the row — which is exactly H3's read/write
+     row and is why H2 forces it (finding 3 below).
+- Proof-only, no statement moved: `ProofSysClose:797`, `ProofKexit:956`,
+  `ProofFileread:529`, `ProofFilewrite:3672` (the `foff_row` premise
+  introduced linearly instead of intuitionistically),
+  `FileInvDefs.fdstate_ok_parked`'s destruct pattern.
+
+*`a02d138d9` — H3, the deletion half: the exec crossing's all-parked row is
+deleted on BOTH arms, with the whole `fdv_held_in` carrier*
+
+- `ExecEntry.image_entry_taint` drops `⌜FdSlots.fdv_all_parked (uvis_fd
+  W')⌝`.  Fact 4 makes the row pointless in one step: the half a held row's
+  fire needs is in the DESCRIPTOR BUNDLE, so a generic image's deposits owe
+  nothing about offsets at any mode.  **The two provers never read it**
+  (`UShEchoPay:241` and `UInitSh:1286` both introduced it as `_`): what the
+  row cost was the PREMISE on every builder and on every record mint above
+  it.
+- `UkRun.urun_parked_row` becomes `True` (it was `fdv_held_in (ukn_held N)
+  fdv`).  `urun_rows_held` and `urun_rows_parked` are DELETED;
+  `urun_rows_insert` / `_dup` / `_copy` / `_step` drop their parked side
+  conditions; `ukn_held` survives as DEAD DATA on `uk_names` (no statement
+  mentions it but the field and the `ukn_parked` class).  **An entry
+  constructor may now mint a record at a key with a HELD descriptor**,
+  which is the fact a redirect child's `exec /echo` was waiting on.
+- STATEMENTS THAT CHANGED SHAPE (exhaustive): `ExecEntry.image_entry_taint`;
+  `ExecBundle.exec_slot_of_entry_at` / `sys_exec_slot_of_entry` /
+  `exec_bundle_of` / `exec_bundle_of_at`;
+  `ExecRun.sbundle_pay_refR_of_exec` / `_abs` / `udepw_at_refR_of_sup` /
+  `_ids_of_sup_ids` / `_of_sup_abs` / `wp_uk_ecall_exec_run` / `_ids` /
+  `_abs` / `wp_uk_ecall_exec_pin_test` / `wp_uk_ecall_exec_taint_test` /
+  `image_entry_of_taint` / `exec_slot_of_entry_at_abs` /
+  `sys_exec_slot_of_entry_abs` / `exec_bundle_of_abs`;
+  `PinnedExec.pex_slot_at` / `pex_slot` / `pinned_exec_bundle_at` /
+  `pinned_exec_bundle` / `pinned_exec_bundle_boot_at` /
+  `pinned_exec_bundle_boot`; `TreeExec.wp_uk_ecall_exec_own_test`;
+  `SpecKexec.exec_au_pre_triv_at` / `exec_au_pre_triv`;
+  `InitBoot.init_boot_bundle` (its pure row, now consumer-less) /
+  `init_boot_bundle_triv`; `SystemAdequacy.init_boot_of_sup` /
+  `init_boot_of_triv`; `UexecExecMint.uslot_mint`;
+  `UexecCond.sync_gate_slot` / `echo_gate_slot` / `cond_entry_slot`;
+  `USyncKernel.sync_uexec_slot`; `UEchoKernel.echo_uexec_slot`;
+  `UEchoOut.echo_uexec_slot_at`; `UShKernel.sh_uexec_slot` /
+  `sh_slot_of_kexec` / `sh_exec_entry`; `UInitKernel.init_slot_of_kexec`
+  and its two wrappers; `UInitSh.init_sh_image_entry`;
+  `UShEcho.echo_slot_of_kexec_holds` / `echo_image_entry`;
+  `UShEchoPay`'s echo-exec supply; `UkRun.urun_parked_row` /
+  `urun_rows_held` (deleted) / `urun_rows_parked` (deleted) /
+  `urun_rows_insert` / `urun_rows_dup` / `urun_rows_copy` /
+  `urun_rows_step` / `urun_gen` / `uslot_of_urun` / `uslot_of_urun_ro` /
+  `uslot_of_urun_all`; `UkSh.ush_gen_slot`.  **Nothing else moved** — in
+  particular nothing in `UsysMemOk`, `SpecSyscall`, `ProofSyscall`,
+  `UexecRet`, `UexecSG`, `FsAbsInvFire`, `SpecFileread`, `SpecFilewrite`,
+  `FileInvDefs`, `ProcInv`, and no program-walk leaf.
+- WHAT IS LEFT OF THE CARRIER, and it is dead weight only:
+  `UkRunSys.wp_uk_ecall_dup` (`:1029`) and `wp_uk_ecall_dup_closed`
+  (`:1198`) still take `ukn_held N = ∅` and `UkFork.wp_uk_ecall_fork`
+  (`:817`) / its `_at` twin (`:1181`) still take `ukn_held N ⊆ hs`; all
+  four premises are now UNUSED in their proofs, and deleting them is what
+  frees `UkInit`/`UkInitMain`'s `Context {Hpark : !ukn_parked N}` (their
+  only three uses are `UkInit:808`, `UkInit:914`, `UkInitMain:1075`, plus
+  `UInitKernel:417`).  NOT DONE HERE: removing the `Context` is a whole-file
+  `Proof using` sweep with no semantic gain, and the ruling allows
+  `ukn_held` to stay as dead data until a cleanup lane.
+
+**REFUTED / MEASURED, with the evidence.**
+
+1. **THE CONTRACT MODE-SPLIT OF `fileread_in`/`filewrite_in` IS
+   UNNECESSARY UNDER FACT 4, AND WAS NOT TAKEN.**  OFF-HAND-5's D2 (its WIP
+   patch, reused for its `_inode_any` twins only) added `⌜om = OffParked⌝`
+   to the inode arm and `fdst_parked st ->` to
+   `FsAbsInvFire.fsabs_fileread_in` / `fsabs_filewrite_in`, because the
+   kernel's fire read the offset out of `FdSlots.foff_row`, which was `emp`
+   at `OffHeld`.  Fact 4 removes the reason: `foff_row` at a held row IS the
+   half, and the two fires take an ABSTRACT supplier —
+   `FsAbsReadFire.arf_read_fire_gen` and `FsAbsWriteFire.wrf_awrite_fire_gen`
+   both take `UserOff.off_supply γo E off d R` and hand `R` back, and the
+   app-tier deposit on the inode arm (`pf_at (aread_commit_at …) F`, and
+   `awrite_chain … i γo M ua Q 0 (wchunks n)`) mentions no mode at all.  So
+   `FdPark.off_supply_of_st_at_eq` as restated above serves BOTH modes from
+   the row alone, and the contract's inode arm is byte-for-byte what it
+   always was.  **The whole of the mode's arrival at the fire is a change
+   of one `iDestruct` at each of `ProofFileread:2263` and
+   `ProofFilewrite:4947`** (from `FdSlots.foff_row_inode_of`, which pins
+   `OffParked`, to `FdPark.off_supply_of_st_at_eq`, which does not) — plus
+   the row the syscall must then re-record, which is finding 3.  Nothing
+   from OFF-HAND-5's `UexecSG` guard, `udepw` guard or `udepw_law_parked`
+   was taken, and none is needed: the guard existed to carry
+   `fdst_parked` to a fire, and no fire asks.
+2. **`FileInvDefs.fpnames` NEEDS NO `fp_om`, AND THE PIN THAT REPLACES
+   `fdstate_ok`'s `m = OffParked` IS THE REFERENCE COUNT.**  The brief left
+   the choice open ("the mode bit, or nothing if the row's state alone
+   decides — say which and why").  It is NOTHING, and the why is exact:
+   - A mode BIT on the names would not save `fdstate_ok_inj` anyway.  With
+     the value in the row (fact 4), `FdInode i γo (OffHeld 3)` and
+     `FdInode i γo (OffHeld 5)` are both honest readings of one file at one
+     bit, so injectivity fails at held whatever the names carry.
+   - What does save it is that a held object has exactly ONE row.  State it
+     as a pin on the payload: `file_pay_st γ k q C st` gains
+     `⌜¬ fdst_parked st -> q = 1%Qp⌝`.  Then `file_pay_st_agree` (two
+     shares, fractions valid, so `q1 + q2 ≤ 1`) refutes held on both sides
+     and closes at the parked `fdstate_ok_inj`; `FileInv.file_ref_agree`
+     follows; and `file_pay_st_split` gains `fdst_parked st ->`, which is
+     honest (splitting a held object's payload is exactly what dup must not
+     do before it parks — H4).  `fpay_tok` needs one new lemma, the
+     fractional validity `fpay_tok γ k q1 pn1 -∗ fpay_tok γ k q2 pn2 -∗
+     ⌜(q1 + q2 ≤ 1)%Qp⌝`, which is `own_valid_2` on the frac component.
+   - The `_parked` chain then goes as the ruling says
+     (`fdstate_ok_parked` → `file_ref_parked` → `ProcInv.ofile_slot_parked`
+     → `ofile_slots_parked` → `proc_ofiles_parked` → `proc_priv_parked`),
+     and `file_ref_parked_keep` (this lane's, H1) is replaced by the
+     two-share reading at sys_dup and kfork.
+   - `fdstate_ok_inode`'s six readers (`FileInvDefs`, `ProofFileclose`,
+     `ProofFilestat`, `ProofFileread`, `ProofFilewrite`, `SpecFileread`)
+     take the mode existentially; `fdstate_ok_inj`'s three
+     (`FileInvDefs`, `ProofSysOpenPub`, `ProofSysOpenParts`) take the
+     parked form.  Both lists are small.
+3. **H2 FORCES H3's READ/WRITE ROW — THEY ARE ONE CHANGE — AND THAT IS WHY
+   THIS LANE STOPPED AT H1 + H3's DELETION HALF.**  The moment
+   `fdstate_ok` stops pinning `OffParked`, `file_ref_parked_keep` dies, and
+   with it the discharge at row-copying sites 3 and 4 above
+   (`ProofSysRead:967`, `ProofSysWrite:983`).  Those two hold ONE reference
+   at the fraction the lend handed out (`ProcInv.proc_ofiles_lend` gives
+   the slot's whole `q`), so the reference-count reading of finding 2 does
+   not reach them; the only honest replacement is the LEND, i.e. the fire
+   gives the row back ADVANCED and the syscall re-records it — which moves
+   the successor table and therefore moves:
+   - `UsysMemOk.usys_fd_ok`'s `else` branch (`sts' = sts`) must gain a
+     read/write arm `sts' = <[fd := fdst_adv (sts !!! fd) d]> sts` with `d`
+     the count; `usys_fd_ok_quiet` gains two premises and has **20
+     occurrences across `UsysMemOk`, `UkRunSys`, `UexecApply`,
+     `UkRunExecRef`**;
+   - `SpecSyscall.sysc_fd_ok` and `SpecUsertrap.ut_fd_ecall` relay it;
+     `ProofSyscall`'s read and write arms prove it;
+   - `SpecSysRead.sys_read_out` / `SpecSysWrite.sys_write_out` and
+     `SpecFileread`/`SpecFilewrite`'s posts must return
+     `foff_row (fdst_adv st d)`;
+   - the generic Löb (`UexecRet.uexec_ret_cont_gen`'s pure rows) absorbs a
+     successor table that CHANGES at a held descriptor;
+   - `FileInvDefs.file_ref` must be RETYPED at the advanced state (a pure
+     step once the pin is off: `fdstate_ok … C (fdst_adv st d)` holds, and
+     at a held object the count says there is no second holder to disagree).
+   This is a lane, not a step.  Everything it needs from the kernel side is
+   in place: `FdPark.off_supply_of_st_at_eq` is the fire's step and
+   `FdSlots.fdst_adv` is the row's function.
+4. **H4 AND H5 WERE NOT ATTEMPTED**, and both are now cheaper than the
+   brief priced them.  H4's kernel-side park is `FdPark.fd_frags_park_at`,
+   which this lane made PREMISE-FREE — a dup or fork arm applies it to the
+   bundle it already holds and gets an all-parked table back; what it still
+   owes is the ARRAY half (`ProcInv.ofile_slot`'s file disjunct and
+   `FileInvDefs.file_ref`'s own `st`, which `fdstate_ok` pins), i.e. H2.
+   H5's hand-mode open leaf is `ProofSysOpenPub`:324-330 switching
+   `off_pub_park` for `UserOff.off_pub_hand_0` and publishing
+   `OffHeld 0` — blocked only by `UsysMemOk.usys_fd_ok`'s open arm
+   (`fdst_parked (FdOpen rd wr t)`), which is OFF-HAND-3's finding 3 and
+   still stands.  The held read/write leaves are the parked leaves with
+   `⌜sts !! fd = Some (FdOpen _ _ (FdInode i γo (OffHeld off)))⌝` read off
+   the table and the post at `OffHeld (off + n)` — i.e. exactly finding 3's
+   row, at a named descriptor.
+
+**WHAT ECHO-FILE / CAT-WALK / SH-ROUND HAND IN, as of this lane.**
+- The exec crossing is FREE at every mode: `ExecEntry.image_entry_taint`,
+  `ExecBundle.*`, `ExecRun.*`, `PinnedExec.*`, `TreeExec.*`,
+  `UShKernel.sh_exec_entry`, `UShEcho.echo_image_entry` and
+  `UInitSh.init_sh_image_entry` take NO fact about offsets, and a record is
+  minted at any held set.  A redirect child may exec `/echo` with a held
+  descriptor in its table as soon as one can exist.
+- The descriptor bundle CARRIES the half: `FdSlots.foff_row` at
+  `OffHeld off` is `UserOff.uoff γo off`, `FdSlots.fdst_adv` is the
+  advance, and `FdPark.off_supply_of_st_at_eq` is the one step from the row
+  to a fire's supplier and back to the row advanced.  No program tier
+  resource, no deposit and no surrender is involved anywhere.
+- What they still cannot do is OPEN in hand mode or READ/WRITE a held row:
+  that is finding 3's single coupled change (H2 + H3's row), and its full
+  site list is above.
+
+### F-OPEN-5 (2026-09-17) — THE ESCROW GOES INSIDE THE CLAIM, AND THE `s = None` EXISTS DISJUNCT IS REFUTED
+
+**The lane's verdict in one line: the ruled escrow (F-OPEN-4's way (iii))
+BUILDS, and the one thing the ruling got wrong is the TIE — the reader the
+escrow exists for is the create's `dirlookup` observation, whose receipt
+the syscall's fold DROPS on two arms, so its tie to the escrow cannot be a
+fraction of anything and must be a PERSISTENT entry in a growing ledger.
+With that, `file_trunc_of_exists` reads the claim's own value AT THE
+LOOKUP'S VIEW, refutes an absent deed against the found entry, identifies
+the row at a present one, and `UkFileOpen.wp_uk_ecall_open_create_deed`'s
+fd arm is `fown r (Some (i, [])) ∨ file_taint c` — F-OPEN-3's unreachable
+`fown r s` disjunct is gone. The DEVICE sub-arm is refuted too, on every
+branch of the permit but one, and that one is a KERNEL-tier disjunction
+(S3 below).**
+
+**WHAT LANDED** (whole tree green on the lane's remote tree, `EXIT=0`,
+zero `Error`; `make audit-all-only` / `audit-tree-only` / `audit-file-only`
+unchanged — system THIRTEEN, echo FOURTEEN, tree THIRTEEN, file FOURTEEN;
+`Print Assumptions` on `file_open_create_au` and `file_open_create_recv` is
+the PrimString/PrimInt63 primitives alone, and on
+`wp_uk_ecall_open_create_deed` those plus `xv6iris_extras.resv_matches`,
+`resv_is_valid`, `functional_extensionality_dep` — byte for byte the set
+`wp_uk_ecall_open_read_deed` has, exactly as F-OPEN-4 reported; every new
+result carries `Proof using`; no `Admitted`).
+
+- **THE ESCROW ARM** (`iris/AppFile.v` sections 2a and 4).  `f_state` is
+  now TWO arms, not three:
+
+      f_core c r av    := <F-OPEN-4's f_state, verbatim: EXACT ∨ IN FLIGHT>
+      f_esc_wrap r     := ∃ h, esc_auth r h ∗ esc_recs h
+      f_esc_live c r av := ∃ h0 s g, esc_auth r (h0 ++ [(s, g)]) ∗ esc_recs h0
+                           ∗ fdeed_whole r s ∗ ftkt r s ∗ f_typed c s ∗ ⌜f_ok av s⌝
+      f_state c r av   := (f_esc_wrap r ∗ f_core c r av) ∨ f_esc_live c r av
+
+  (`:597`, `:604`, `:613`).  `esc_rec := dst * gname`; `esc_recs h :=
+  [∗ list] p ∈ h, esc_spent p.2` (`:444`) is the ledger's INVARIANT —
+  every escrow the claim has ever opened is spent except a LIVE head — and
+  that is why there is no "fired" arm: a fire spends the head, and a spent
+  head is an ordinary ledger entry, so the claim is back in the wrap arm
+  with the core IN FLIGHT.
+- **THE TOKEN'S RA IS `mono_nat`, THE LEDGER'S IS `mono_list`** (`:340`,
+  `:341`, `:372`).  `esc_tok g := mono_nat_auth_own g 1 0` (exclusive),
+  `esc_spent g := mono_nat_lb_own g 1` (persistent and timeless);
+  `esc_spend : esc_tok g ==∗ esc_spent g`, `esc_tok_spent : esc_tok g -∗
+  esc_spent g -∗ False`, `esc_alloc`.  No new camera: `mono_natG Σ` is
+  already `EchoOut.echoOutG`'s first field (the taint counter's).  The
+  ledger is `own (fn_esc r) (●ML h)` at a new `file_names` field, with
+  `esc_wit r n s g := ∃ h, esc_lb r h ∗ ⌜h !! n = Some (s, g)⌝` (`:378`)
+  PERSISTENT, and `esc_wit_head` (`:429`) the one piece of arithmetic
+  every reader runs on: a witnessed entry is the LIVE HEAD or it is one
+  of the spent ones.
+- **THE FOUR LEMMAS THE RULING NAMED**, at `AppFile.v`:
+  `file_escrow_park` (`:1325`, at `app_inv`, any mask holding `appN`:
+  `fown r s ={E}=∗ ∃ n g, esc_key c r n s g ∗ esc_tok g ∗ ftkt r s`),
+  `file_escrow_read` (`:748`) and its token-carrying twin
+  `file_escrow_law` (`:790`), `file_escrow_step` (`:924`) with its
+  `AppInv.app_step`-shaped wrapper `file_app_step_escrow` (`:1426`), and
+  `file_escrow_return` (`:1378`).
+- **THE PIECES** (`iris/FileOpen.v` sections 2a, 3a–3f'').
+  `file_claim_read_esc` (`:248`) is `file_claim_read` at a PARKED deed —
+  the escrow's token and ledger key in place of the deed fraction — and
+  `file_escrow_read_at` (`:291`) is the same read with NOTHING in hand.
+  `fesc_res r s g := ftkt r s ∗ esc_tok g` (`:365`) is what the create's
+  legs carry in place of `fown r s`.  `file_dlk_recv` (`:690`) gains
+  `(⌜f_ok av s⌝ ∨ esc_spent g)` and stays free; `file_odlk_recv` /
+  `file_odlk_piece` (`:727`, `:736`) are the same read at the OPEN
+  observation's instant, which is what the device refutation needs.
+  `file_trunc_of_exists` (`:885`) is the deliverable: the token refutes
+  the receipt's `esc_spent` disjunct, what is left is `⌜f_ok avx s⌝`, and
+  at `None` that contradicts the found entry at the tie.
+- **THE RECEIPT** (`file_trunc_recv` `:778` — TWO arms;
+  `file_open_create_recv` `:1434` — a fupd at `app_inv`, THREE outcomes,
+  both fd arms at `fown r (Some (i, [])) ∨ file_taint c`), and the
+  U-tier wrapper (`iris/UkFileOpen.v:685`), whose PREMISES are unchanged
+  (one deed in) because the wrapper parks and returns the escrow itself.
+
+**THE ESCROW'S EXACT SHAPE, AND THE TOKEN'S RA.**  The ruling asked for
+`∃ s γ, fdeed_whole r s ∗ ftkt r s ∗ f_typed c s ∗ ⌜f_ok av s⌝ ∗
+esc_pending γ`.  What landed is that arm with `esc_pending γ` replaced by
+the claim's ledger: the arm holds `esc_auth r (h0 ++ [(s, g)])` and
+`esc_recs h0`, so being the ledger's HEAD and not being in `esc_recs` IS
+the pending state.  The holder keeps `ftkt r s` (unchanged: `file_resync`
+keys on it), `esc_tok g`, and the PERSISTENT `esc_wit r (length h0) s g`.
+`fown` did not change, and no half of the ledger is ever outside the
+claim.
+
+**WHY THE TIE HAD TO BE PERSISTENT — the ruling's one real error.**  The
+ruling had the holder hand `fesc` shares to the pieces.  That cannot work,
+and the obstruction is the SPEC, not the claim: at a truncating create
+`SpecSysOpen.cre_rcpt_kept vom Fex` is `emp` (`iris/SpecSysOpen.v:640`),
+so the EXISTS arm reports the lookup's receipt no more — it went into the
+permit — and `open_post_fail_create`'s arm (b) has a sub-case
+(`cre_fail_kept`'s second disjunct, `iris/SpecSysOpen.v:681`) where the
+permit was never paid and the receipt is nowhere at all.  A fraction
+handed to the lookup piece is therefore a fraction the deed can NEVER get
+back, and `file_escrow_return` becomes unprovable on a reachable failure
+arm.  The lookup piece must carry nothing linear — which is exactly what
+F-OPEN-3 had already found of it — so its tie must be persistent, and a
+persistent tie to a slot opened and closed once per shell round can only
+be an entry in a GROWING structure.  Hence the ledger.
+
+**WHAT ELSE THE RULING SAID THAT THE PROOFS CORRECTED.**
+
+1. **There is no third arm, and `file_resync` needed no change.**  The
+   ruling asked whether the fired escrow becomes "the in-flight arm or the
+   exact arm".  Neither: it becomes NOT-AN-ESCROW.  `file_escrow_step`
+   spends the head's one-shot, appends it to `esc_recs`, and hands the
+   claim back in the `f_esc_wrap ∗ f_core` arm with the core IN FLIGHT at
+   `(s, s')` — the very shape `file_resync` already consumes.  So phase 2
+   is `AppFile.file_resync` verbatim, at its landed statement, and the
+   deed comes home as `fown r s'`.
+2. **Phase 1 is not a park.**  The ruling said the fire moves the content
+   "exactly as `file_app_step_park` + `file_resync` do today".  The park
+   JOINS the holder's half with the claim's; under an escrow there is
+   nothing to join (the claim holds the deed whole already), so phase 1 is
+   its own lemma and its only resource is the one-shot.
+3. **The park must always succeed, so its key is "the ledger entry OR THE
+   TAINT".**  A tainted claim has no `f_state` (`file_step_taint` drops
+   it, and `file_sup_of_taint` says the taint alone answers for every
+   view), so there is no ledger in which to name an escrow.  A park that
+   could fail would give every program above it a branch it cannot take —
+   the vacuity trap of durable-notes' "Vacuity" section, one level up.
+   `AppFile.esc_key c r n s g := esc_wit r n s g ∨ file_taint c` (`:474`)
+   is the disjunction; every escrow lemma takes it, and its taint arm is
+   the taint arm each piece already had.
+4. **The transport copies the escrow arm as the EXACT arm, and the token
+   does not cross.**  `f_state_copy`'s copy gets a FRESH EMPTY ledger
+   (`esc_auth r' []`) and the exact arm at `fcontent_of av` — which, when
+   the original is escrowed, IS the escrowed content by `f_ok_fcontent`.
+   A one-shot two claims could spend is not a one-shot, and a durable copy
+   is never stepped, so it never needs an escrow.
+5. **`AppFileRec` and `UFileBootAdequacy` absorbed the new arm with no
+   change at all** (deliverable S3's question): both compile untouched,
+   because `file_xfer`, `file_xfer_boot`, `file_boot`, `file_init` and
+   `file_init_img` all keep their landed statements — the ledger is
+   allocated inside `fnames_alloc` and never leaves the claim.  The three
+   audits are unchanged.
+
+**WHAT WAS REFUTED, AND WITH WHAT.**
+
+- **`s = None` on the EXISTS run** (F-OPEN-3's P3, the lane's point).  The
+  dlookup receipt gives `⌜f_ok avx None⌝ ∨ esc_spent g` at the LOOKUP'S
+  OWN VIEW; the arm piece's refund is the UNSPENT token, which kills the
+  right disjunct (`esc_tok_spent`); `f_ok avx None` is
+  `astep avx ROOTINO fname_f = None`, and the permit's tie carries
+  `entsx !! fname_f = Some i` at that same `avx`.  `discriminate`.
+- **"the truncate reached some other row"**: at `s = Some (j, bs)` the
+  same reading gives `astep avx ROOTINO fname_f = Some j` against
+  `Some i`, so `j = i` — the row is IDENTIFIED, which is what kills
+  `file_trunc_recv`'s old first arm.
+- **"the create fired at a name other than `f`"** on the FRESH run:
+  `file_trunc_of_cre` (`:818`) now takes the create receipt AT
+  `ROOTINO`/`fname_f`.  The tie was always there — `file_trunc_piece` read
+  it and then threw it away into `trunc_permit_cre`'s existentials — so
+  this cost one restatement and no new fact.
+- **The EXISTS-DEVICE sub-arm, on the permit's EXISTS branch**
+  (`file_dev_refute`, `:1298`).  The open observation now reads the claim
+  at ITS OWN instant (free), the token refutes `esc_spent`, the tie
+  identifies `f`'s row with the row the call reached, and
+  `f_ok av (Some (i, bs))` says `av !! i` is an `AFile` against the
+  observation's `ADev`.
+
+**REFUTED / BLOCKED (S3): THE DEVICE ARM DOES NOT GO AWAY ENTIRELY, AND
+THE OBSTRUCTION IS THE PERMIT'S OWN DISJUNCTION.**
+`SysOpenDefs.trunc_permit_of` (`iris/SysOpenDefs.v:548`) is
+
+    ∃ d nm, T d nm ∗ (cre_acre_fired Fok d nm i (AFile [])
+                      ∨ (cre_ex_fired Fex d nm i ∗ pf_at (aarm_commit_at …) Farm))
+
+and `SpecSysOpen.open_post_ok_create`'s EXISTS-DEVICE sub-arm
+(`iris/SpecSysOpen.v:803`) carries the permit only through
+`cre_trunc_kept`'s refund.  So the STATEMENT admits "the open reported a
+found DEVICE **and** the permit was paid with create's FRESH receipt".  On
+that branch the application holds no token (the create leg spent it firing
+the escrow) and no fraction at the observation's view, so the `ADev`
+cannot be contradicted — the combination is unreachable on any run and
+unrefutable in the logic, F-OPEN-3's P3 one level over.  It is NOT a loss:
+on that branch the create leg fired at that very inum, so the deed is back
+at `Some (i, [])` there, and the arm reports it.  Closing it needs one of
+(i) F-OPEN-2's restatement 3 — `FsAbsCreateFire.acre_commit_at_gen` takes
+the unfired `Fex` piece beside the arm's receipt, making create's two arms
+exclusive IN THE LOGIC; or (ii) `open_post_ok_create`'s EXISTS arm saying
+which branch of the permit it paid (`cre_rcpt_kept` at a truncating create
+keeping the EXISTS receipt beside the permit instead of spending it
+whole).  Both are kernel-tier and neither is this lane's.
+
+**STATEMENTS THAT CHANGED SHAPE, EXHAUSTIVELY.**
+
+`iris/AppFile.v`:
+1. `file_names` — a fourth field, `fn_esc : gname` (so `MkFileNames` takes
+   four arguments).
+2. `fileAppG` / `fileAppΣ` — a third camera,
+   `inG Σ (mono_listR (leibnizO esc_rec))`.
+3. `fnames_alloc` — one more conjunct in the post, `esc_auth r []`.
+4. `f_state` — restated as above; its old body is now `f_core`.
+5. `file_pred_exact` — one more premise, `f_esc_wrap r` (between
+   `cons_state` and `fdeed`).
+6. `f_state_copy` — one more premise, `esc_auth r' []` (first).
+   Everything else in the file keeps its landed statement:
+   `fdeed`/`fdeed_whole`/`ftkt`/`fown` and their laws, `file_deed_law`,
+   `file_deed_law_pure`, `f_state_mono`, `f_state_typed_at`,
+   `file_step_free`, `file_step_park`, `file_step_taint`,
+   `cons_state_mono`, `file_pred`, `file_pred_cons`,
+   `file_pred_split`/`_join`, `file_sup_of_taint`, `file_taint_of_sup`,
+   `file_xfer`, `file_boot`, `file_xfer_boot`, `file_init`,
+   `file_init_img`, `file_app_step_park`, `file_app_step_taint`,
+   `file_resync` — the last of these is the one worth naming twice.
+
+`iris/FileOpen.v`:
+7. `file_arm_fam`, `file_unarm_fam`, `file_cre_recv`, `file_cre_fam` — one
+   more argument (`g : gname`); the deed in them is `fesc_res r s g`
+   instead of `fown r s` (`file_cre_recv`'s `f` arm still `fown r (Some
+   (i, []))`, which is what the resync hands back).
+8. `file_arm_commit`, `file_unarm_commit`, `file_acre_commit` — two more
+   arguments (`n`, `g`) and the premise `esc_key c r n s g` in place of
+   the deed.
+9. `file_dlk_recv` / `file_dlk_fam` — four more arguments (`r n s g`); the
+   receipt is `(⌜fclaim_free av⌝ ∗ (⌜f_ok av s⌝ ∨ esc_spent g)) ∨
+   file_taint c`.  `file_dlk_piece` — the same, plus the `esc_key`
+   premise.
+10. `file_trunc_recv` / `file_trunc_fam` — TWO arms,
+    `fown r (Some (i, [])) ∨ file_taint c`.
+11. `file_trunc_of_cre` — two more arguments (`n`, `g`), and its permit
+    argument is the TIED create receipt (`∃ av0 ents nl0, ⌜cre_pre av0
+    ROOTINO fname_f …⌝ ∗ pf_recv … ROOTINO fname_f i`) rather than
+    `trunc_permit_cre`.
+12. `file_trunc_of_exists` — two more arguments, the `esc_key` premise,
+    the dlookup receipt at its new shape, and `fesc_res r s g` in place of
+    `fown r s`.
+13. `file_trunc_piece` — two more arguments and the `esc_key` premise, at
+    the new families.
+14. `file_open_create_au` and `file_open_create_au_notrunc` — two more
+    arguments; `fown r s` replaced by `esc_key c r n s g -∗ fesc_res r s
+    g`; the open observation's family is `file_odlk_fam c r n s g` instead
+    of `pfam_triv`.
+15. `file_permit_pay`, `file_kept_pay`, `file_legs_pay`,
+    `file_open_create_fail_pay` — two more arguments; the conclusion is
+    `file_esc_pay c r s g` (the escrow) instead of `file_open_pay c r s`.
+16. `file_open_create_recv` — a FUPD.  New premises `↑appN ⊆ E`,
+    `arg_path_of M pv pl`, `last (path_elems pl) = Some fname_f`,
+    `file_app = MkAppcfg …`, and `app_inv γfs -∗ esc_key c r n s g -∗` in
+    front; the two fd outcomes carry `fown r (Some (i, [])) ∨ file_taint
+    c`.
+    Unchanged: `fdq*`, `file_deed_law_q` (its PROOF moved, not its
+    statement), `file_deed_law_pins`, `file_cons_law`, `fclaim_facts`,
+    `file_claim_read`, `file_app_step_free_at`, `fclaim_free`,
+    `file_claim_read_free`, `file_trunc_free`, `file_open_pay`, section
+    4's read pieces, section 5's pinned-open pieces,
+    `app_commit_mask_full`, `file_escrow_mask_blocked`, section 7's miss
+    lemmas.
+    New beside them: `fclaim_free_of`, `file_claim_read_esc`,
+    `file_escrow_read_at`, `fesc_res`, `file_odlk_recv`/`_fam`/`_piece`,
+    `file_esc_pay`, `file_esc_pay_home`, `file_permit_read`,
+    `file_permit_tied`, `file_permit_read_pay`, `file_dev_refute`,
+    `file_kept_tied`.
+
+`iris/UkFileOpen.v`:
+17. `xfam_fcreate` — one more argument, `Fo` (its `of_Fo` was an inert
+    `pfam_triv`).
+18. `file_create_fam` — two more arguments (`n`, `g`), and `of_Fo` at
+    `file_odlk_fam`.
+19. `file_create_sup` — two more arguments; `fown r s` replaced by
+    `esc_key … -∗ fesc_res …`.
+20. `wp_uk_ecall_open_create_deed` — PREMISES UNCHANGED (still one
+    `fown r s`: the wrapper parks and returns the escrow itself).  Its
+    POST's fd arm is `fown r (Some (i, [])) ∨ file_taint c` (F-OPEN-4's
+    `∨ fown r s` gone) and its DEVICE arm's payload is
+    `(∃ i, fown r (Some (i, []))) ∨ file_taint c` instead of
+    `file_open_pay c r s`.
+    `file_open_fd_tie` unchanged.
+
+Nothing outside these three files moved.
+
+**THE EXACT FD ARM SH-ROUND NOW GETS**
+(`UkFileOpen.wp_uk_ecall_open_create_deed`, verbatim):
+
+    (⌜rv = -1⌝ ∗ ustd (ukn_fd N) l ∗ file_open_pay c r s)
+    ∨ (∃ (fd : nat) (γo : gname) (i : Z),
+         ⌜rv = mword_of_int (Z.of_nat fd) /\ (fd < NOFILE)%nat⌝ ∗
+         ualloc (ukn_fd N) l fd
+           (FdOpen (om_readable vom) (om_writable vom)
+                   (FdInode i γo OffParked)) ∗
+         (fown r (Some (i, [])) ∨ file_taint c))
+    ∨ (∃ (fd : nat) (ma : Z),
+         ⌜rv = mword_of_int (Z.of_nat fd) /\ (fd < NOFILE)%nat⌝ ∗
+         ualloc (ukn_fd N) l fd
+           (FdOpen (om_readable vom) (om_writable vom) (FdDevice ma)) ∗
+         ((∃ i : Z, fown r (Some (i, []))) ∨ file_taint c))
+
+with `file_open_pay c r s = fown r s ∨ (∃ i, fown r (Some (i, []))) ∨
+file_taint c` unchanged.  So `UkShRedirAns.ush_open_call2` is instantiated
+at
+
+    K ty := (∃ i γo, ⌜ty = FdInode i γo OffParked⌝ ∗
+               (fown r (Some (i, [])) ∨ file_taint c))
+            ∨ (∃ ma, ⌜ty = FdDevice ma⌝ ∗
+               ((∃ i, fown r (Some (i, []))) ∨ file_taint c))
+    Kf   := file_open_pay c r s
+
+— `ty` is existential in `ush_open_ans2`'s fd arm, so both outcomes ride
+one arm.  A redirect child that then writes needs the INODE reading, and
+what stands between it and a single-arm `K` is only the device residue of
+S3 above.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  Nothing of this lane:
+`wp_uk_ecall_open_create_deed` takes one deed and gives the fd arm above,
+and the escrow is invisible from outside it.  What the campaign still owes
+SH-ROUND is the kernel-tier device refutation (S3) if the round wants
+`ty = FdInode …` without a disjunction, and lane OFF-HAND-6's held-offset
+leaf (`wp_uk_ecall_open_recv_img_held`), which re-instantiates this
+corollary by the one swap F-OPEN-4 recorded plus `UserOff.uoff γo 0` in
+the fd arms.
+
+### F-OPEN-6 (kernel tier, 2026-09-17) — THE EXISTS ARM NAMES THE BRANCH OF THE PERMIT IT PAID AND THE DEVICE SUB-ARM IS REFUTED; THE fd ARM IS ONE ARM, AND WHAT SURVIVES THE REFUTATION IS THE TAINT — WHICH LEAVES THE TYPE EQUATION
+
+**The lane's verdict in one line: V1 landed whole — `open_post_ok_create`'s
+EXISTS-DEVICE sub-arm carries `cre_trunc_kept_ex`, the piece keyed at
+`trunc_permit_ex` (the permit's RIGHT disjunct alone), so `file_dev_refute`
+contradicts the `ADev` on the nose and nothing but the taint is left on that
+arm; V2 landed as far as the logic allows — `file_open_create_recv` is at TWO
+outcomes and the wrapper's fd arm is ONE arm — but the deliverable's
+`K ty := ∃ i γo, ⌜ty = FdInode …⌝ ∗ (fown … ∨ file_taint c)` is REFUTED,
+because a TAINTED claim cannot refute a device fd, so `redir_K` puts the
+taint OUTSIDE the type equation.**
+
+**V1, AND WHY THE FRESH ARM NEEDED NOTHING.**  The residue F-OPEN-5 left is
+that `SysOpenDefs.trunc_permit_of` is a DISJUNCTION and the arm that paid it
+did not say which disjunct it paid, so the DEVICE sub-arm's keyed piece
+refunded a permit the STATEMENT let be create's FRESH receipt.  The fix is
+the permit's right disjunct as a permit of its own,
+
+    SysOpenDefs.trunc_permit_ex Γ T Farm Fex i :=
+      ∃ d nm, T d nm ∗ cre_ex_fired Fex d nm i
+              ∗ pf_at (aarm_commit_at Γ appE (AFile [])) Farm
+
+with `trunc_permit_of_ex` weakening it to `trunc_permit_of`, and
+`open_trunc_at_of_permit_at` paying the caller's piece — keyed at the
+DISJUNCTIVE permit, which is what the caller hands in — with the STRONGER
+one, so the refund keeps the stronger one.  That last step is free because
+`PieceFam.pf_at` is a CONJUNCTION: the payment is available on both sides,
+spent through the weakening on the commit and kept as handed in on the
+refund.  No family, no bundle, no premise and no caller of the create
+surface moved for it.
+
+The FRESH arm needed no restatement and no new fact, and the kernel fact is
+`xv6-riscv/kernel/sysfile.c`'s `sys_open`: on the `omode & O_CREATE` branch
+`ip = create(path, T_FILE, 0, 0)` returns the inode LOCKED, and all three
+`ip->type` reads — the `T_DEVICE` major check, the `FD_DEVICE`/`FD_INODE`
+split and `(omode & O_TRUNC) && ip->type == T_FILE` — run on THAT inode
+before `iunlock(ip)`.  So on the FRESH run the observation IS the created
+child's own type, and `SpecSysOpen.open_post_ok_create`'s FRESH arm already
+says it: `⌜cre_pre av d nm ents nl i (AFile [])⌝`, the descriptor
+`FdInode i γo OffParked`, and the open-observation piece coming home UNFIRED
+(`pf_at (aopen_commit_at Γ appE) Fo`) — that arm has no device sub-arm to
+name.  A found DEVICE is reachable at all only because xv6's `create`
+RETURNS an existing `T_DEVICE` when its `dirlookup` finds the name, which is
+the EXISTS run and nothing else.
+
+**WAY (ii) AS THE RULING PHRASED IT, CORRECTED.**  The ruling said
+"`cre_rcpt_kept` keeps the EXISTS receipt beside the permit instead of
+spending it whole".  `cre_rcpt_kept` DID NOT MOVE, and it cannot: the EXISTS
+receipt IS what pays the permit (`cre_ex_fired Fex d nm i` contains
+`Fex.(pf_recv) av d nm i`), and a linear receipt cannot be in the arm and in
+the permit at once.  What the arm says instead is WHICH DISJUNCT it paid —
+the same information at no resource cost.  The receipt stays inside the
+permit, `cre_trunc_kept_ex` names the branch, and the application reads it
+back off the refund exactly as before.
+
+**STATEMENTS THAT CHANGED SHAPE, EXHAUSTIVELY.**
+
+`iris/SysOpenDefs.v` — nothing existing changed shape; four additions:
+1. NEW `trunc_permit_ex` (above, `:559`).
+2. NEW `trunc_permit_of_ex` — `trunc_permit_ex Γ T Farm Fex i -∗
+   trunc_permit_of Γ T Farm Fok Fex i`.
+3. NEW `open_trunc_at_of_permit_at` — `(Kt' i -∗ Kt i) -∗ open_trunc_piece Γ
+   vom Kt Ft -∗ (if om_trunc vom then Kt' i else emp) -∗ open_trunc_at Γ vom
+   i (cre_ft_kept Kt' i Ft)`; the landed `open_trunc_at_of_permit` is
+   UNCHANGED and is still what the FRESH key uses.
+4. NEW `open_trunc_at_kept_mono` — the keyed piece is monotone in the permit
+   it REFUNDS; and the `Global Typeclasses Opaque` list gains
+   `trunc_permit_ex`.
+   Unchanged: `trunc_permit_of`, `trunc_permit_of_mono`, `trunc_permit_cre`,
+   `trunc_permit_triv`, `trunc_tie_at`/`_arg` and their two conversions,
+   `open_trunc_piece` + `_true`/`_false`/`_none`/`_of_all`, `open_trunc_at` +
+   `_true`/`_false`/`_none`/`_of_triv`, `cre_ft_kept`, `atrunc_of_permit`
+   and everything above them.
+
+`iris/SpecSysOpen.v`:
+5. NEW `cre_permit_ex Γ pl P Farm Fex := trunc_permit_ex Γ (trunc_tie_at pl
+   P) Farm Fex` and NEW `cre_trunc_kept_ex Γ vom pl P Farm Fex i Ft :=
+   open_trunc_at Γ vom i (cre_ft_kept (cre_permit_ex …) i Ft)` (`:640`).
+6. NEW `cre_trunc_kept_of_ex` — the weakening to `cre_trunc_kept`.
+7. CHANGED `open_post_ok_create` — ONE conjunct, in the EXISTS arm's DEVICE
+   sub-arm: `cre_trunc_kept Γ vom pl P Farm Fok Fex i Ft` →
+   `cre_trunc_kept_ex Γ vom pl P Farm Fex i Ft` (`:857`).
+8. CHANGED `open_receipt_create` — the same conjunct in the same sub-arm
+   (`:1229`); the `Global Typeclasses Opaque` list gains both definitions.
+   Unchanged, and this is the point: `cre_permit`, `cre_trunc_kept`,
+   `cre_cur_kept`, `cre_rcpt_kept` (+`_of`), `cre_child_kept` (+`_of`),
+   `cre_fail_kept` (+`_of_piece`/`_of_at`), and `open_post_fail_create` —
+   BOTH its FRESH arm (a) and its "name existed" arm (b) keep the
+   DISJUNCTIVE permit, which is right: (a) is FRESH-paid and (b) has two
+   producers that differ in whether the permit was paid at all.  Also
+   unchanged: `open_arms_create`, `open_in`, `open_receipt`, the whole plain
+   surface, and every statement at `om_trunc vom = false`, where
+   `cre_trunc_kept_ex` is `emp` by `open_trunc_at_false` exactly as
+   `cre_trunc_kept` is — `TreeMove`, `UConsOpen`, `UkTreeRead` and
+   `UInitCons` compile untouched.
+
+`iris/ProofSysOpenCreArm.v`:
+9. NEW `socr_ft_ex` (the EXISTS run's tail family) with `socr_ft_ex_recv` and
+   `socr_ft_ex_kept`, both `reflexivity`, on `socr_ft`'s mould.
+10. CHANGED `socr_exists_key` — its conclusion's trunc piece is at
+    `socr_ft_ex pl P Phiarm Phiex i0 Phit` instead of `socr_ft pl P Phiarm
+    Phiok Phiex i0 Phit`.  Its PREMISE — the caller's `open_trunc_piece` at
+    `trunc_permit_of` — is unchanged.
+11. CHANGED `socr_arms_exists` — the same swap in its premise; the fail side
+    weakens with `cre_trunc_kept_of_ex` before `cre_fail_kept_of_at`.
+    `Global Typeclasses Opaque` gains `socr_ft_ex`.
+    Unchanged: `socr_ft`, `socr_ft_recv`, `socr_ft_kept`, `socr_fresh`,
+    `socr_exists`, `socr_fresh_key`, `socr_arms_fresh`, `socr_res_of_fail`,
+    `socr_ok_fresh_arm`, `socr_ok_exists_arm` (both are generic in `Phit`).
+
+`iris/ProofSysOpenEntryC.v`: NO statement moved.  Three applications on the
+EXISTS path (`:798`, `:813`, `:838`) instantiate `socr_ft_ex`; the FRESH
+path's three stay at `socr_ft`.  `ProofSysOpenJoin`/`Alloc`/`Stores`/
+`Shared`/`Parts`/`Bits`/`Tails`/`Pub`/`Full` compile UNTOUCHED — in
+particular **`ProofSysOpenPub.v` was not edited**, so nothing of lane
+OFF-HAND-7's file moved for this.
+
+`iris/FileOpen.v`:
+12. CHANGED `file_permit_read` (def) — the FRESH disjunct `⌜s = None⌝ ∗ fown
+    r (Some (i, []))` is DELETED; what is left is the lookup-view reading
+    `∨ file_taint c`, two disjuncts (`:1229`).
+13. CHANGED `file_permit_tied` — its permit premise is `trunc_permit_ex Γ
+    (trunc_tie_at pl (fun _ d => ⌜d = ROOTINO⌝)) (file_arm_fam …)
+    (file_dlk_fam …) i`; the `file_cre_fam` argument is GONE from it and the
+    binder order is now `c r n s g jc pl i Γ`.
+14. CHANGED `file_dev_refute` — the conclusion is `file_taint c`, not
+    `fown r (Some (i, [])) ∨ file_taint c` (`:1290`); its premises are
+    unchanged.
+15. CHANGED `file_kept_tied` — its premise is `cre_trunc_kept_ex …` (one
+    family argument fewer).
+16. NEW `file_open_fd_K c r ty := (∃ i γo, ⌜ty = FdInode i γo OffParked⌝ ∗
+    fown r (Some (i, []))) ∨ file_taint c` (`:1426`).
+17. CHANGED `file_open_create_recv` — TWO outcomes.  Every premise is
+    unchanged; the post is
+
+        (⌜rv = -1⌝ ∗ ⌜fdv' = sts⌝ ∗ file_open_pay c r s)
+        ∨ (∃ ty : fdtype,
+             ⌜open_fd_rcpt (om_readable vom) (om_writable vom) ty sts rv fdv'⌝
+             ∗ file_open_fd_K c r ty)
+
+18. `file_permit_read_pay`'s STATEMENT is unchanged (its proof is one case
+    shorter).  Section 6's note (a) is rewritten: the "THREE outcomes and not
+    two" paragraph is gone, and what replaces it is the taint argument below.
+    Unchanged: `file_permit_pay`, `file_kept_pay`, `file_legs_pay`,
+    `file_open_create_fail_pay`, `file_esc_pay`(+`_home`),
+    `file_odlk_recv`/`_fam`/`_piece`, `file_trunc_*`, `file_dlk_*`,
+    `file_arm_fam`, `file_unarm_fam`, `file_cre_*`,
+    `file_open_create_au`(+`_notrunc`), `file_open_pay`,
+    `file_escrow_read_at`, `fesc_res`, and sections 4, 5 and 7 entire.
+
+`iris/UkFileOpen.v`:
+19. NEW `redir_K c r ty := FileOpen.file_open_fd_K c r ty` (`:636`), beside
+    the wrapper — THE NAME SH-ROUND INSTANTIATES.
+20. CHANGED `wp_uk_ecall_open_create_deed` — its two fd arms (the INODE arm
+    and the found-DEVICE arm) are replaced by ONE:
+
+        ∨ (∃ (fd : nat) (ty : fdtype),
+             ⌜rv = mword_of_int (Z.of_nat fd) /\ (fd < NOFILE)%nat⌝ ∗
+             ualloc (ukn_fd N) l fd
+               (FdOpen (om_readable vom) (om_writable vom) ty) ∗
+             redir_K c r ty)
+
+    The `-1` arm (`ustd (ukn_fd N) l ∗ file_open_pay c r s`) and every
+    premise are unchanged.
+21. REBUILT `file_create_sup_v` and `wp_uk_ecall_open_create_deed_v`.  THE
+    MERGE LEFT THEM BROKEN, and this is not a shape choice: CAT-WALK-2 wrote
+    them against F-OPEN-4's five-argument `file_create_fam c r jc s` while
+    F-OPEN-5 made the family seven-argument (`c r jc n s g`) and
+    `file_open_create_recv` a fupd taking `app_inv` and `esc_key`, so the
+    merged `UkFileOpen.v` did not typecheck at all.  Both are now the
+    section-4 members VERBATIM with three substitutions — `uimg_view N Img`
+    for `utext_img (ukn_t N) Img`, `file_create_sup_v` for
+    `file_create_sup`, and `wp_uk_ecall_open_recv_gimg` for
+    `wp_uk_ecall_open_recv_img` — so the escrow park lives inside the
+    wrapper on the data-image side too and nothing of the protocol is
+    visible above it.
+22. CHANGED `wp_uk_ecall_open_create_deed_d` — the same single fd arm; its
+    body is unchanged (one application of `_v` plus `uimg_view_data`).
+    Unchanged: `xfam_fcreate`, `file_create_fam`, `file_create_sup`,
+    `file_open_fd_tie`, and sections 1-3 with all their `_v`/`_d` members.
+
+Nothing outside these six files moved.
+
+**WHAT WAS REFUTED, AND WHY IT IS NOT THE PERMIT'S FAULT.**  The
+deliverable's
+
+    K ty := ∃ i γo, ⌜ty = FdInode i γo OffParked⌝ ∗
+              (fown r (Some (i, [])) ∨ file_taint c)
+
+IS UNPROVABLE, and no kernel-side fact can make it provable.
+`AppFile.file_pred c r av = file_taint c ∨ (⌜file_fs_pure av⌝ ∗ cons_state …
+∗ f_state c r av)` (`iris/AppFile.v:647`): a TAINTED claim carries no
+`f_state` at all, so the application says nothing whatever about `f`'s row,
+and `open(f, 0x601)` at an `f` some unverified process made a device really
+does come back `FdDevice ma`.  Both readings the DEVICE sub-arm runs on
+carry that arm and cannot lose it — the open observation's receipt
+`FileOpen.file_odlk_recv` (`:730`) is `(⌜f_ok av s⌝ ∨ esc_spent g) ∨
+file_taint c`, and the escrow key `AppFile.esc_key` (`:474`) is
+`esc_wit r n s g ∨ file_taint c` — and `AppEcho.echo_taint` is refutable
+only against a discipline witness (`AppEcho.echo_taint_R_refute`, `:267`),
+which neither this wrapper nor the round holds at the call.  So `⌜ty =
+FdInode …⌝` cannot be proved on the taint branch, and the strongest SINGLE
+arm is the one with the taint HOISTED OUT of the type equation.  Nothing is
+lost by the hoist: the INODE reading is intact on every branch a round can
+act on, and a tainted round has no use for the descriptor anyway.  This is
+the same escape every other arm of `FileOpen.v` already carries; it is not a
+new hole, and there is nothing left here for a later lane to close.
+
+**THE EXACT `redir_K` SH-ROUND NAMES** (`UkFileOpen.redir_K`, verbatim, via
+`FileOpen.file_open_fd_K`):
+
+    redir_K c r ty :=
+      (∃ (i : Z) (γo : gname),
+         ⌜ty = FdInode i γo OffParked⌝ ∗ fown r (Some (i, [])))
+      ∨ file_taint c
+
+`UkShRedirAns.ush_open_call2` is instantiated at `K := redir_K c r` and
+`Kf := FileOpen.file_open_pay c r s` (unchanged: `fown r s ∨ (∃ i, fown r
+(Some (i, []))) ∨ file_taint c`).  `ush_open_ans2`'s fd arm already
+existentially quantifies `ty`, so this IS one arm: the round destructs
+`redir_K`, gets `ty = FdInode i γo OffParked` with `fown r (Some (i, []))`
+on the left, and the taint on the right beside every other taint arm it
+already carries.
+
+**THE BAR.**  WHOLE TREE GREEN on the lane's remote tree except ONE file,
+and that file is lane OFF-HAND-7's: `make -f CoqMakefile -j8 -k` over all of
+`iris/_CoqProject` recompiled 165 files and the only `Error` in the log is
+`UInitTreeExec.v:177` (*iIntro: cannot turn (tree_taint c -∗ my_pay … -∗
+uslot W')%I into a universal quantifier*) against OFF-HAND-6's deletions,
+exactly as the merge predicted; NOTHING in the tree requires
+`UInitTreeExec`, so no file is skipped behind it.  A SECOND merge breakage
+in the same lane's files was hit and is patched LOCALLY BUT NOT COMMITTED,
+because that file is not this lane's to move: `iris/UkRunSys.v:5083` passes
+a now-deleted `Hpko` argument to `UkRun.urun_rows_insert`, whose
+`fdst_parked` premise OFF-HAND-6 removed — dropping the one token is the
+whole fix and the other four call sites in that file are already right.
+Without it `UkRunSys.vo` fails and every dependent, `UkFileOpen.v` among
+them, is skipped, so the measurement above was taken with that token
+removed.
+
+Nothing is `Admitted`; every new result carries `Proof using` (the one bare
+`Proof.` in `SysOpenDefs.v` is pre-existing).  `tools/comment_quote_check.py
+iris` reports 0 sites.  `make audit-all-only`, `make audit-tree-only` and
+`make audit-file-only` from the tree root: `AUDIT_EXIT=0`,
+`AUDITTREE_EXIT=0`, `AUDITFILE_EXIT=0`, and the four axiom lists are
+UNCHANGED — the ECHO theorem's FOURTEEN, the SYSTEM theorem's THIRTEEN, the
+TREE theorem's THIRTEEN and the FILE theorem's FOURTEEN.  `Print
+Assumptions`: `FileOpen.file_open_create_recv` is the ELEVEN
+`PrimInt63`/`PrimString` primitives and nothing else (no `resv_*`, no
+funext); `UkFileOpen.wp_uk_ecall_open_create_deed` and its `_v` and `_d`
+twins are those eleven plus `resv_matches`, `resv_is_valid` and
+`functional_extensionality_dep` — F-OPEN-5's lists exactly;
+`FileOpen.file_dev_refute` is *Closed under the global context*.
 ### CAT-ENTRY-2 (2026-09-17) — THE WRITE-ERROR TAIL GOES, THE DEPOSIT GIVES THE RUN BACK, AND THE ENTRY STOPS ON GEOMETRY AND ON ONE MISSING KERNEL ROW
 
 Branch `app-file/cat-entry`, merged with `main` (fast-forward to

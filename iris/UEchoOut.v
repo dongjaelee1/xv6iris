@@ -840,7 +840,9 @@ Section UEchoOut.
        outside the kernel.  The caller reads it off
        [SpecKexec.exec_slot_pre]'s wands, relayed through
        [ExecEntry.image_entry_at]. *)
-    fdv_all_parked (uvis_fd W) ->
+    (* NO ALL-PARKED PREMISE (lane OFF-HAND-6, H3): a record's held set is
+       dead data now ([UkRun.urun_parked_row]), so this entry may be taken
+       at a key with a HELD descriptor (design/app-file.md SS3 fact 4). *)
     □ (ech v ps0 cs0 I0 P (length (wl_line (drop 1 ws))) -∗ Q (-1)) -∗
     era_pin γ (S gen_id) v -∗
     echo_links T γ -∗
@@ -857,7 +859,7 @@ Section UEchoOut.
     uslot W.
   Proof using Persistent0 ghost_varG0 ghost_varG1 ufdG0.
     intros HQc Hws2 Hst Hargv1 Hl1 Hpc Hsub Hsub2 Hx Hroom Hal8 Hstk Hargs
-           Havd Havs Hfdlen Hstop Hlzf Hpark.
+           Havd Havs Hfdlen Hstop Hlzf.
     iIntros "#Hq #Hpin #Hlk #Hnpw #Hdep Hpay Hc".
     assert (Hsp0 : 0 <= uint (uvis_sp W)) by lia.
     assert (Hargc0 : 0 <= uvis_argc W)
@@ -865,7 +867,6 @@ Section UEchoOut.
     iApply (uslot_of_urun_ro W 12 Q ∅
               Hal8
               ltac:(unfold uvis_sp in Hroom; lia) Hstk Hfdlen Hstop Hlzf
-              ltac:(exact (UsysMemOk.fdv_held_in_of_parked _ _ Hpark))
               with "Hdep Hnpw Hpay").
     iIntros (N h) "%Hpayeq %Hparkeq %Hsz Hszf #Ht Hstd _ _ _ #HA Hrun".
     pose proof (ukn_const_of_eq N _ Hpayeq HQc) as Htc.

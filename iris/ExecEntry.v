@@ -152,22 +152,24 @@ Section ExecEntry.
   (*  3.  THE TAINT'S ENTRY                                               *)
   (* ------------------------------------------------------------------ *)
 
-  (* ...AND IT TAKES THE KEY'S ALL-PARKED ROW TOO (lane OFF-HAND-3).  Lane
-     OFF-HAND-2 attempted this and reverted it, for a reason that is now
-     gone: a VERIFIED program's taint arm is built from its own
-     [UkSh.ush_gen_slot]-shaped slot, quantified over EVERY key and spent
-     inside [UkRun.urun]'s existential ([UkSh.ush_gen_run]), so narrowing
-     the arm used to push the obligation onto a table the U tier could not
-     name.  It can name it now: [UkRun.urun] carries the row
-     ([urun_rows]), guarded by the record's own [ukn_held] set, and every
-     verified program's entry constructor mints its record at [true].  So
-     the row goes all the way to the family the taint runs on, which is
-     what lets [UexecExecInst.xv6_sbundle]'s fire rows be narrowed in
-     their turn (design/user-read.md SS8.1). *)
+  (* ...AND IT TAKES NO ALL-PARKED ROW (lane OFF-HAND-6, H3;
+     design/app-file.md SS3 fact 4).  It used to: lanes OFF-HAND-3/4/5 each
+     carried a row saying the key's table had no descriptor with its offset
+     half outside the kernel, on the theory that a generic family could
+     never be handed such a descriptor.  Fact 4 makes the theory false and
+     the row pointless in one step -- THE HALF IS IN THE DESCRIPTOR BUNDLE
+     ([FdSlots.foff_row] at [OffHeld]), so the kernel holds it at every
+     fire and a generic image's deposits owe nothing about offsets at any
+     mode.  A held row therefore crosses an exec on BOTH arms, which is
+     the whole point of the fact, and the two lemmas that used to carry the
+     row from [sts] to the key ([SpecKexec.kexec_image_ok_parked] /
+     [exec_key_ok_parked]) are consumer-less again.  NOTE the two provers
+     never read it ([UShEchoPay], [UInitSh] both introduce it as [_]):
+     what the row cost was the PREMISE on every builder, and that is what
+     this deletes. *)
   Definition image_entry_taint (T : iProp Σ) (Q : Z -> iProp Σ)
       (X : uvis -d> iPropO Σ) : iProp Σ :=
-    (□ (∀ W' : uvis, ⌜FdSlots.fdv_all_parked (uvis_fd W')⌝ -∗
-                     T -∗ my_pay (uvis_gen W') Q -∗ X W'))%I.
+    (□ (∀ W' : uvis, T -∗ my_pay (uvis_gen W') Q -∗ X W'))%I.
 
   Global Instance image_entry_at_persistent f na alen afun sts cw cs pidv
       Q Pay X :

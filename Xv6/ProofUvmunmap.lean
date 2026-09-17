@@ -1114,7 +1114,7 @@ theorem uvmunmap_proof (W : WALK_NOALLOC) (KF : KFREE) : UVMUNMAP where
       exact (leaves_get_run P _ (hlt j hj)).symm
     case hqv =>
       intro j hj w hw
-      exact (hwf.1 _ w hw).2.2.1
+      exact (hwf.1 _ w hw).2.2
 
 set_option maxHeartbeats 4000000 in
 /-- The bare-table freeing contract (`UVMUNMAP_BARE`, `uvmfree`'s caller
@@ -1147,6 +1147,6 @@ theorem uvmunmap_bare_proof (W : WALK_NOALLOC) (KF : KFREE) : UVMUNMAP_BARE wher
       exact hcs
     case hqv =>
       intro j _ w hw
-      exact (hwf.1 _ w hw).2.2.1
+      exact (hwf.1 _ w hw).2.2
 
 end Xv6

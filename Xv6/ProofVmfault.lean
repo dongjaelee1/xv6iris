@@ -497,25 +497,13 @@ theorem uvmclear_proof (W : WALK_NOALLOC) : UVMCLEAR :=
   refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;>
     first | exact True.intro | rfl | assumption⟩
 
-/-- **SPEC GAP.**  `Xv6.uptWf` demands that no user leaf name the process's
-trapframe page (`ptePpn w ≠ P.tfp`), but `vmfault`'s contract owns neither
-the trapframe page nor anything that separates it from the allocator, so the
-page `kalloc` hands out cannot be shown to differ from it.  The Rocq
-reference `ProcPtOwn.proc_pt_wf` carries no such conjunct (it is
-`upt_map_wf ∧ upt_acc_wf ∧ um_pages_valid ∧ um_inj ∧ page_valid (page_base tfp)`);
-dropping `ptePpn w ≠ P.tfp` from `Xv6.uptWf`, or adding `tfPageAt P.tfp` to
-`procPtAt`, removes this assumption. -/
-structure UPTWF_TFP : Prop where
-  fresh_ne_tfp : ∀ (P : UPtd) (r : BitVec 64), uptWf P → pageValid r →
-    BitVec.extractLsb' 12 44 r ≠ P.tfp
-
 /-! ## `vmfault` -/
 
 set_option maxHeartbeats 4000000 in
 /-- The prologue and the `va >= psz` exit; the rest of the function starts
 at `0x800014b4` with the three spare slots still free. -/
 theorem vmfault_proof (IM : ISMAPPED) (KA : KALLOC) (KF : KFREE) (MS : MEMSET)
-    (MA : MAPPAGES_ANY) (TF : UPTWF_TFP) : VMFAULT :=
+    (MA : MAPPAGES_ANY) : VMFAULT :=
   ⟨fun {hlc GF} _ _ _ cpu k γl γk P M hnoff hK hlk hroot hsz => by
   unfold wp_vmfault_body
   simp only [vmfaultAddr, KernelSyms.«vmfault»]
@@ -890,8 +878,7 @@ theorem vmfault_proof (IM : ISMAPPED) (KA : KALLOC) (KF : KFREE) (MS : MEMSET)
           ihave Hpt := UPtFault.procPtAt_close
             (P.insertLeaf (vpnOf (k.regs 12#5)).toNat (R3 10#5) (PTE_W ||| PTE_U ||| PTE_R))
             (viewZero M (vpnOf (k.regs 12#5)).toNat) _
-            (UPtFault.uptWf_insertLeaf P _ (R3 10#5) hwf hltf hvalid
-              (TF.fresh_ne_tfp P _ hwf hvalid) hfresh)
+            (UPtFault.uptWf_insertLeaf P _ (R3 10#5) hwf hltf hvalid hfresh)
             (by rw [PTree.base_setLeaf, PtRun.base_fill]; exact hbase) hrep2 $$ [Htree Hum]
           case' _ => iframe Htree Hum
           ihave Hfr : vfFrame (GF := GF) (k.regs 2#5) (k.regs 1#5) (k.regs 8#5) (k.regs 9#5)

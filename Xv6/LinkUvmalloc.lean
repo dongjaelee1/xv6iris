@@ -1,7 +1,7 @@
 /-
 `uvmalloc`'s and `uvmdealloc`'s interfaces, from their proofs and the
-interfaces of `uvmunmap`, `kalloc`, `kfree`, `memset`, `mappages` (the
-uncounted contract) and the trapframe-disjointness fact (`TFDISJ`).
+interfaces of `uvmunmap`, `kalloc`, `kfree`, `memset` and `mappages` (the
+uncounted contract).
 -/
 import Xv6.ProofUvmalloc
 
@@ -13,10 +13,9 @@ open Xv6.UPtAlloc
 theorem Uvmdealloc (UM : UVMUNMAP) : UVMDEALLOC := uvmdealloc_proof UM
 
 /-- `uvmalloc` meets its contract, given `kalloc`, `kfree`, `memset`,
-`mappages` (uncounted), `uvmunmap` (for the rollback via `uvmdealloc`) and
-`TFDISJ`. -/
+`mappages` (uncounted) and `uvmunmap` (for the rollback via `uvmdealloc`). -/
 theorem Uvmalloc (KA : KALLOC) (KF : KFREE) (MS : MEMSET) (MA : MAPPAGES_ANY)
-    (UM : UVMUNMAP) (TF : TFDISJ) : UVMALLOC :=
-  uvmalloc_proof KA KF MS MA (uvmdealloc_proof UM) TF
+    (UM : UVMUNMAP) : UVMALLOC :=
+  uvmalloc_proof KA KF MS MA (uvmdealloc_proof UM)
 
 end Xv6

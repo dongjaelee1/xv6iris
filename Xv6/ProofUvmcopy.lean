@@ -13,8 +13,7 @@ the parent's own flags (`mappages` with `n = 1`).  A failed `kalloc`, or a
 child's prefix `[0, i)` -- exactly the pages the loop had mapped -- and
 returns `-1`.
 
-ONE GAP, taken as a hypothesis (`TFFRESH`): see its docstring.  Every other
-premise of the contract is discharged here.
+Every premise of the contract is discharged here.
 -/
 import MachCSL.WpSmodeFrame
 import Xv6.SpecUvmcopy
@@ -204,22 +203,6 @@ theorem uc_inv_ok {Pold Pnew P : UPtd} {Mold Mnew : Nat → List (BitVec 8)} {n 
 
 section
 variable {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G GF]
-
-/-- **The one fact `uvmcopy`'s contract does not supply.**  A page `kalloc`
-hands out is not the child's trapframe page.  `procPtAt P M`
-(`Xv6/UPtDefs.lean`) owns the table's node pages and every mapped user page,
-but *not* the trapframe page, so nothing in the precondition rules out
-`kalloc` returning it -- while `uptWf` demands `ptePpn w ≠ P.tfp` of every
-user leaf, which the copy has to re-establish for the page it maps.  It is
-taken as a parameter, so the gap is exactly one hypothesis wide: it becomes
-provable the moment `procPtAt` also owns the trapframe page (`tfPageAt`), and
-disappears if `uptWf` drops the clause.  See the report accompanying this
-file. -/
-structure TFFRESH : Prop where
-  tf_fresh : ∀ {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G GF] [CurCtx]
-    (P : UPtd) (M : Nat → List (BitVec 8)) (p : BitVec 64) (bs : List (BitVec 8)),
-    iprop(procPtAt (GF := GF) P M ∗ byteBuf p (DFrac.own 1) bs) ⊢
-      ⌜BitVec.extractLsb' 12 44 p ≠ P.tfp⌝
 
 /-! ## The callees, at their entry addresses -/
 
@@ -714,12 +697,12 @@ theorem uc_umPages_acc [CurCtx] (P : UPtd) (M : Nat → List (BitVec 8)) (k : Na
       · ipureintro; exact hlen
       · iexact Hb
 
-/-- The two freshness facts about the page `kalloc` returned, kept. -/
-theorem uc_fresh_facts (TF : TFFRESH) [CurCtx] (P : UPtd) (M : Nat → List (BitVec 8))
+/-- The freshness fact about the page `kalloc` returned, kept: it is none of
+the pages already mapped. -/
+theorem uc_fresh_facts [CurCtx] (P : UPtd) (M : Nat → List (BitVec 8))
     (p : BitVec 64) (bs : List (BitVec 8)) (hbs : 8 ≤ bs.length) (hal : p.toNat % 8 = 0) :
     iprop(procPtAt (GF := GF) P M ∗ byteBuf p (DFrac.own 1) bs) ⊢
-      iprop(⌜BitVec.extractLsb' 12 44 p ≠ P.tfp ∧
-          ∀ k w, get? P.um k = some w → pte2pa w ≠ p⌝ ∗
+      iprop(⌜∀ k w, get? P.um k = some w → pte2pa w ≠ p⌝ ∗
         procPtAt P M ∗ byteBuf p (DFrac.own 1) bs) := by
   have hB : iprop(procPtAt (GF := GF) P M ∗ byteBuf p (DFrac.own 1) bs) ⊢
       ⌜∀ k w, get? P.um k = some w → pte2pa w ≠ p⌝ := by
@@ -730,11 +713,10 @@ theorem uc_fresh_facts (TF : TFFRESH) [CurCtx] (P : UPtd) (M : Nat → List (Bit
     isplitl [Hum]
     · iexact Hum
     · iexact Hb
-  refine pure_elim _ (TF.tf_fresh P M p bs) fun ha => ?_
   refine pure_elim _ hB fun hb => ?_
   iintro H
   isplitl []
-  · ipureintro; exact ⟨ha, hb⟩
+  · ipureintro; exact hb
   · iexact H
 
 set_option maxHeartbeats 4000000 in
@@ -744,7 +726,7 @@ set_option maxHeartbeats 4000000 in
 `continue` (`0x800013dc`, the child grown by at most this page) or at `err`
 (`0x80001424`, the child untouched). -/
 theorem uvmcopy_iter (W : WALK_NOALLOC) (KA : KALLOC) (KF : KFREE) (MM : MEMMOVE)
-    (MA : MAPPAGES_ANY) (TF : TFFRESH) [CurCtx]
+    (MA : MAPPAGES_ANY) [CurCtx]
     (k : KCtx) (γl : GName) (γk : KmemNames)
     (Pold Pnew : UPtd) (Mold Mnew : Nat → List (BitVec 8)) (n : Nat)
     (hnoff : k.noff + 1 < 2 ^ 31) (hK : 42 ≤ k.avail) (hlk : "kmem" ∉ k.locks)
@@ -912,7 +894,7 @@ theorem uvmcopy_iter (W : WALK_NOALLOC) (KA : KALLOC) (KF : KFREE) (MM : MEMMOVE
         (UPtCopy.ptRep_entAt hrepo (vpnOf (BitVec.ofNat 64 (4096 * i))) w
           (by rw [hvpni]; exact hwl)).2
       have hleafw : isLeafPte w := (hwfo.1 i w hw).2.1
-      have hpvw : pageValid (pte2pa w) := (hwfo.1 i w hw).2.2.1
+      have hpvw : pageValid (pte2pa w) := (hwfo.1 i w hw).2.2
       have hflagsrwx :
           pteFlags (told.entAt 2 (vpnOf (BitVec.ofNat 64 (4096 * i)))) &&& 0xE#64 ≠ 0#64 :=
         UPtCopy.pteFlags_rwx hleafw hAD
@@ -1037,7 +1019,7 @@ theorem uvmcopy_iter (W : WALK_NOALLOC) (KA : KALLOC) (KF : KFREE) (MM : MEMMOVE
           rw [m18]
           simp only [RegMap.set_apply, BitVec.reduceEq, ite_true, ite_false]
         ihave Hpageso := Hclosep $$ Hsrc
-        icases uc_fresh_facts TF P (UPtCopy.ucView Mold Mnew n) (R3 10#5) (Mold i) (by omega)
+        icases uc_fresh_facts P (UPtCopy.ucView Mold Mnew n) (R3 10#5) (Mold i) (by omega)
           (UPtCopy.toNat_mod8 _ hmemal) $$ [Hchild Hdst] with ⟨%hfresh, Hchild, Hdst⟩
         case' _ => iframe
         icases UPtCopy.procPtAt_cases P (UPtCopy.ucView Mold Mnew n) $$ Hchild
@@ -1148,13 +1130,12 @@ theorem uvmcopy_iter (W : WALK_NOALLOC) (KA : KALLOC) (KF : KFREE) (MM : MEMMOVE
           rw [hvpni] at hrep2
           have hwf2 : uptWf { P with um := insert P.um i (uLeaf (BitVec.extractLsb' 12 44 (R3 10#5)) (pteFlags w)) } := by
             refine UPtCopy.uptWf_insert P i _ hwfc (by rw [uc_tfVpn]; omega)
-              (UPtCopy.leafOf_isLeafPte _ _ (uc_pteFlags_rwx_self hleafw)) ?_ ?_ ?_
+              (UPtCopy.leafOf_isLeafPte _ _ (uc_pteFlags_rwx_self hleafw)) ?_ ?_
             · rw [hleafpa]; exact hpv
-            · rw [hleafppn]; exact hfresh.1
             · intro j w' hj hq
-              refine hfresh.2 j w' hj ?_
+              refine hfresh j w' hj ?_
               rw [← hleafpa]
-              exact UPtCopy.pte2pa_eq_of_ppn w' _ (hwfc.1 j w' hj).2.2.1
+              exact UPtCopy.pte2pa_eq_of_ppn w' _ (hwfc.1 j w' hj).2.2
                 (by rw [hleafpa]; exact hpv) hq
           have hb2 : ((tchild.fill 2 (vpnOf (BitVec.ofNat 64 (4096 * i))) fresh).1.setLeaf 2 (vpnOf (BitVec.ofNat 64 (4096 * i)))
               (leafOf (BitVec.extractLsb' 12 44 (R3 10#5))
@@ -1260,7 +1241,7 @@ set_option maxHeartbeats 4000000 in
 below `sz`) or stops at `err` with the index it had reached.  The hart is
 quantified inside the induction. -/
 theorem uvmcopy_loop (W : WALK_NOALLOC) (KA : KALLOC) (KF : KFREE) (MM : MEMMOVE)
-    (MA : MAPPAGES_ANY) (TF : TFFRESH) [CurCtx]
+    (MA : MAPPAGES_ANY) [CurCtx]
     (k : KCtx) (γl : GName) (γk : KmemNames)
     (Pold Pnew : UPtd) (Mold Mnew : Nat → List (BitVec 8)) (sz : BitVec 64) (n : Nat)
     (hnoff : k.noff + 1 < 2 ^ 31) (hK : 42 ≤ k.avail) (hlk : "kmem" ∉ k.locks)
@@ -1289,7 +1270,7 @@ theorem uvmcopy_loop (W : WALK_NOALLOC) (KA : KALLOC) (KF : KFREE) (MM : MEMMOVE
     have hi : i < n := by omega
     have hlast : i + 1 = n := by omega
     iintro ⟨Hk, Hpc, #Hlk, Hav, Hold, Hchild, HΦ⟩
-    iapply (uvmcopy_iter W KA KF MM MA TF k γl γk Pold Pnew Mold Mnew n hnoff hK hlk hmax hfree
+    iapply (uvmcopy_iter W KA KF MM MA k γl γk Pold Pnew Mold Mnew n hnoff hK hlk hmax hfree
       i hi P hinv spie spp R h9 h20 h22 h23 cur) $$ [- $Hk $Hpc $Hav $Hold $Hchild]
     rotate_right 1
     iframe #
@@ -1337,7 +1318,7 @@ theorem uvmcopy_loop (W : WALK_NOALLOC) (KA : KALLOC) (KF : KFREE) (MM : MEMMOVE
     have hi : i < n := by omega
     have hlast : ¬ (i + 1 = n) := by omega
     iintro ⟨Hk, Hpc, #Hlk, Hav, Hold, Hchild, HΦ⟩
-    iapply (uvmcopy_iter W KA KF MM MA TF k γl γk Pold Pnew Mold Mnew n hnoff hK hlk hmax hfree
+    iapply (uvmcopy_iter W KA KF MM MA k γl γk Pold Pnew Mold Mnew n hnoff hK hlk hmax hfree
       i hi P hinv spie spp R h9 h20 h22 h23 cur) $$ [- $Hk $Hpc $Hav $Hold $Hchild]
     rotate_right 1
     iframe #
@@ -1403,7 +1384,7 @@ theorem uvmcopy_loop (W : WALK_NOALLOC) (KA : KALLOC) (KF : KFREE) (MM : MEMMOVE
 
 set_option maxHeartbeats 4000000 in
 theorem uvmcopy_proof (W : WALK_NOALLOC) (KA : KALLOC) (KF : KFREE) (MM : MEMMOVE)
-    (MA : MAPPAGES_ANY) (UM : UVMUNMAP) (TF : TFFRESH) : UVMCOPY :=
+    (MA : MAPPAGES_ANY) (UM : UVMUNMAP) : UVMCOPY :=
   ⟨fun {hlc GF} _ _ _ cpu k γl γk Pold Pnew Mold Mnew hnoff hK hlk hold hnew hsz hfree => by
   unfold wp_uvmcopy_body
   simp only [uvmcopyAddr, KernelSyms.«uvmcopy»]
@@ -1526,7 +1507,7 @@ theorem uvmcopy_proof (W : WALK_NOALLOC) (KA : KALLOC) (KF : KFREE) (MM : MEMMOV
       (hp18 h).trans ((hp17 h).trans ((hp16 h).trans (hpin15 h)))
     ihave Hchild := uc_procPtAt_view' Pnew Mold Mnew (uvmNp (k.regs 12#5)) hfree $$ Hchild
     rw [uc_pushed_spie_self k 10]
-    iapply (uvmcopy_loop W KA KF MM MA TF k γl γk Pold Pnew Mold Mnew (k.regs 12#5)
+    iapply (uvmcopy_loop W KA KF MM MA k γl γk Pold Pnew Mold Mnew (k.regs 12#5)
       (uvmNp (k.regs 12#5)) hnoff hK hlk rfl hsz hmax hfree (uvmNp (k.regs 12#5) - 1)
       0 (by omega) Pnew (UPtCopy.ucInv_zero Pold Pnew) k.spie k.spp _ ?l9 ?l20 ?l21 ?l22 ?l23 c18)
       $$ [- $Hk $Hpc $Hav $Hold $Hchild]

@@ -700,7 +700,7 @@ theorem uaInv_ok (P P' : UPtd) (M M' : Nat → List (BitVec 8))
 
 /-- Growing the user pages by one fresh zeroed page, together with the
 well-formedness of the enlarged space. -/
-theorem ua_grow_pages (TF : TFDISJ) [CurCtx] (P : UPtd) (M : Nat → List (BitVec 8))
+theorem ua_grow_pages [CurCtx] (P : UPtd) (M : Nat → List (BitVec 8))
     (vpn : Nat) (r perm : BitVec 64) (hnone : get? P.um vpn = none) (hvalid : pageValid r)
     (hmask : perm &&& ~~~0x3FF#64 = 0#64) (hrwx : perm &&& 0xE#64 ≠ 0#64)
     (hwf : uptWf P) (hlt : vpn < tfVpn.toNat) :
@@ -708,16 +708,6 @@ theorem ua_grow_pages (TF : TFDISJ) [CurCtx] (P : UPtd) (M : Nat → List (BitVe
       iprop(umPages (P.insertLeaf vpn r perm) (viewZero M vpn) ∗
         ⌜uptWf (P.insertLeaf vpn r perm)⌝) := by
   have hal : r.toNat % 8 = 0 := pageValid_mod8 r hvalid
-  refine pure_elim _
-    (show iprop(umPages (GF := GF) P M ∗ byteBuf r (DFrac.own 1) (List.replicate 4096 0#8)) ⊢
-      ⌜BitVec.extractLsb' 12 44 r ≠ P.tfp⌝ from ?_) fun htf => ?_
-  · iintro ⟨Hum, Hb⟩
-    iapply (TF.tf_disj P M r (List.replicate 4096 0#8))
-    isplitl []
-    · ipureintro; exact List.length_replicate
-    · isplitl [Hum]
-      · iexact Hum
-      · iexact Hb
   refine pure_elim _
     (show iprop(umPages (GF := GF) P M ∗ byteBuf r (DFrac.own 1) (List.replicate 4096 0#8)) ⊢
       ⌜∀ k w, get? P.um k = some w → pte2pa w ≠ r⌝ from ?_) fun hfrne => ?_
@@ -731,7 +721,7 @@ theorem ua_grow_pages (TF : TFDISJ) [CurCtx] (P : UPtd) (M : Nat → List (BitVe
   · iapply (umPages_insert P M vpn r perm hnone hvalid hmask)
     iexact H
   · ipureintro
-    exact uptWf_insertLeaf P vpn r perm hwf hlt hvalid hmask hrwx htf hfrne
+    exact uptWf_insertLeaf P vpn r perm hwf hlt hvalid hmask hrwx hfrne
 
 /-- Assemble a process address space from its tree and pages. -/
 theorem ua_mkProcPtAt [CurCtx] (P : UPtd) (M : Nat → List (BitVec 8)) (hwf : uptWf P) :
@@ -743,39 +733,6 @@ theorem ua_mkProcPtAt [CurCtx] (P : UPtd) (M : Nat → List (BitVec 8)) (hwf : u
   · isplitl [Ht]
     · iexact Ht
     · iexact Hu
-
-/-- The two freshness facts about the just-mapped page, kept: it is not the
-trapframe page, and it is none of the pages already mapped. -/
-theorem ua_fresh_facts (TF : TFDISJ) [CurCtx] (P : UPtd) (M : Nat → List (BitVec 8))
-    (p : BitVec 64) (hal : p.toNat % 8 = 0) :
-    iprop(umPages (GF := GF) P M ∗ byteBuf p (DFrac.own 1) (List.replicate 4096 0#8)) ⊢
-      iprop(⌜BitVec.extractLsb' 12 44 p ≠ P.tfp⌝ ∗
-        ⌜∀ k w, get? P.um k = some w → pte2pa w ≠ p⌝ ∗
-        umPages P M ∗ byteBuf p (DFrac.own 1) (List.replicate 4096 0#8)) := by
-  have hA : iprop(umPages (GF := GF) P M ∗ byteBuf p (DFrac.own 1) (List.replicate 4096 0#8)) ⊢
-      ⌜BitVec.extractLsb' 12 44 p ≠ P.tfp⌝ := by
-    iintro ⟨Hum, Hb⟩
-    iapply (TF.tf_disj P M p (List.replicate 4096 0#8))
-    isplitl []
-    · ipureintro; exact List.length_replicate
-    · isplitl [Hum]
-      · iexact Hum
-      · iexact Hb
-  have hB : iprop(umPages (GF := GF) P M ∗ byteBuf p (DFrac.own 1) (List.replicate 4096 0#8)) ⊢
-      ⌜∀ k w, get? P.um k = some w → pte2pa w ≠ p⌝ := by
-    iintro ⟨Hum, Hb⟩
-    iapply (umPages_fresh P M p (List.replicate 4096 0#8) (by rw [List.length_replicate]; omega) hal)
-    isplitl [Hum]
-    · iexact Hum
-    · iexact Hb
-  refine pure_elim _ hA fun ha => ?_
-  refine pure_elim _ hB fun hb => ?_
-  iintro H
-  isplitl []
-  · ipureintro; exact ha
-  · isplitl []
-    · ipureintro; exact hb
-    · iexact H
 
 set_option maxHeartbeats 4000000 in
 /-- From `0x80001308` (`mappages` failed): `kfree(mem)`, then the same
@@ -1085,7 +1042,7 @@ set_option maxHeartbeats 4000000 in
 Either the page is mapped (and the loop goes on at `0x800012d6`) or the
 space is rolled back and `0` returned (at the epilogue). -/
 theorem uvma_iter (KA : KALLOC) (KF : KFREE) (MS : MEMSET) (MA : MAPPAGES_ANY)
-    (UD : UVMDEALLOC) (TF : TFDISJ) [CurCtx]
+    (UD : UVMDEALLOC) [CurCtx]
     (k : KCtx) (γl : GName) (γk : KmemNames) (P : UPtd) (M : Nat → List (BitVec 8))
     (perm newsz : BitVec 64) (A np i : Nat)
     (hnoff : k.noff + 1 < 2 ^ 31) (hK : uvmallocSlots ≤ k.avail) (hlk : "kmem" ∉ k.locks)
@@ -1329,7 +1286,7 @@ theorem uvma_iter (KA : KALLOC) (KF : KFREE) (MS : MEMSET) (MA : MAPPAGES_ANY)
       ihave Htr := ptOwnRep_join (Pi.insertLeaf (A / 4096 + i) (R1 10#5) perm).root
         (Pi.insertLeaf (A / 4096 + i) (R1 10#5) perm).leaves _ ⟨hbaseMap, hrepMap⟩ $$ Htree
       -- the new page joins the user pages and keeps the space well-formed
-      ihave Hgrow := ua_grow_pages TF Pi Mi (A / 4096 + i) (R1 10#5) perm hnone hvalid hmask hrwx
+      ihave Hgrow := ua_grow_pages Pi Mi (A / 4096 + i) (R1 10#5) perm hnone hvalid hmask hrwx
         hwfi hltf $$ [Hpages Hbuf]
       case' _ => iframe
       icases Hgrow with ⟨Hpages, %hwfP'⟩
@@ -1464,7 +1421,7 @@ set_option maxHeartbeats 4000000 in
 it runs to `0x800012dc` (all `np` pages mapped) or stops at the epilogue
 `0x800012f8` with the space rolled back and `0` returned. -/
 theorem uvma_loop (KA : KALLOC) (KF : KFREE) (MS : MEMSET) (MA : MAPPAGES_ANY)
-    (UD : UVMDEALLOC) (TF : TFDISJ) [CurCtx]
+    (UD : UVMDEALLOC) [CurCtx]
     (k : KCtx) (γl : GName) (γk : KmemNames) (P : UPtd) (M : Nat → List (BitVec 8))
     (perm newsz : BitVec 64) (A np : Nat)
     (hnoff : k.noff + 1 < 2 ^ 31) (hK : uvmallocSlots ≤ k.avail) (hlk : "kmem" ∉ k.locks)
@@ -1496,7 +1453,7 @@ theorem uvma_loop (KA : KALLOC) (KF : KFREE) (MS : MEMSET) (MA : MAPPAGES_ANY)
     have hi : i < np := by omega
     have hlast : i + 1 = np := by omega
     iintro ⟨Hk, Hpc, #Hlk, Hav, HP, Hsv, HΦ⟩
-    iapply (uvma_iter KA KF MS MA UD TF k γl γk P M perm newsz A np i hnoff hK hlk hmask hrwx
+    iapply (uvma_iter KA KF MS MA UD k γl γk P M perm newsz A np i hnoff hK hlk hmask hrwx
       hA4 hnewsz hlo hfree hi Pi Mi hinv spie spp R hregs cur cur (fun _ => rfl))
       $$ [- $Hk $Hpc $Hav $HP $Hsv]
     rotate_right 1
@@ -1543,7 +1500,7 @@ theorem uvma_loop (KA : KALLOC) (KF : KFREE) (MS : MEMSET) (MA : MAPPAGES_ANY)
     have hi : i < np := by omega
     have hnlast : i + 1 < np := by omega
     iintro ⟨Hk, Hpc, #Hlk, Hav, HP, Hsv, HΦ⟩
-    iapply (uvma_iter KA KF MS MA UD TF k γl γk P M perm newsz A np i hnoff hK hlk hmask hrwx
+    iapply (uvma_iter KA KF MS MA UD k γl γk P M perm newsz A np i hnoff hK hlk hmask hrwx
       hA4 hnewsz hlo hfree hi Pi Mi hinv spie spp R hregs cur cur (fun _ => rfl))
       $$ [- $Hk $Hpc $Hav $HP $Hsv]
     rotate_right 1
@@ -1598,7 +1555,7 @@ theorem uvma_loop (KA : KALLOC) (KF : KFREE) (MS : MEMSET) (MA : MAPPAGES_ANY)
 
 set_option maxHeartbeats 4000000 in
 theorem uvmalloc_proof (KA : KALLOC) (KF : KFREE) (MS : MEMSET) (MA : MAPPAGES_ANY)
-    (UD : UVMDEALLOC) (TF : TFDISJ) : UVMALLOC :=
+    (UD : UVMDEALLOC) : UVMALLOC :=
   ⟨fun {hlc GF} _ _ _ cpu k γl γk P M hnoff hK hlk hroot hold hnew hperm hfree => by
   unfold wp_uvmalloc_body
   simp only [uvmallocAddr, KernelSyms.«uvmalloc»]
@@ -1801,7 +1758,7 @@ theorem uvmalloc_proof (KA : KALLOC) (KF : KFREE) (MS : MEMSET) (MA : MAPPAGES_A
       ihave Hsv := uaSaved_join (k.regs 2#5) (k.regs 9#5) (k.regs 19#5) (k.regs 22#5) $$ [F2 F4 F7]
       case' _ => iframe
       rw [ua_pushed_spie_self k 10]
-      iapply (uvma_loop KA KF MS MA UD TF k γl γk P M (k.regs 13#5 ||| 18#64) (k.regs 12#5)
+      iapply (uvma_loop KA KF MS MA UD k γl γk P M (k.regs 13#5 ||| 18#64) (k.regs 12#5)
         (pgRoundUpN (k.regs 11#5).toNat) (uvmaNp (k.regs 11#5) (k.regs 12#5)) hnoff hK hlk hmask
         hrwx hA4 hnew hlo hhi hfree (uvmaNp (k.regs 11#5) (k.regs 12#5) - 1) 0 (by omega) P M
         (uaInv_zero P M (k.regs 13#5 ||| 18#64) (pgRoundUpN (k.regs 11#5).toNat / 4096))

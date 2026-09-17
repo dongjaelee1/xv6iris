@@ -290,7 +290,6 @@ theorem ptRep_setLeaf_insert {t : PTree} {L : RegMapF (BitVec 64)} (vpn : BitVec
 
 theorem uptWf_insert (P : UPtd) (k : Nat) (leaf : BitVec 64) (hwf : uptWf P)
     (hk : k < tfVpn.toNat) (hlf : isLeafPte leaf) (hpv : pageValid (pte2pa leaf))
-    (htf : ptePpn leaf ≠ P.tfp)
     (hfresh : ∀ j w, get? P.um j = some w → ptePpn w ≠ ptePpn leaf) :
     uptWf { P with um := insert P.um k leaf } := by
   obtain ⟨hleaves, hinj, htfp⟩ := hwf
@@ -300,7 +299,7 @@ theorem uptWf_insert (P : UPtd) (k : Nat) (leaf : BitVec 64) (hwf : uptWf P)
     · rw [get?_insert_eq he] at hw
       simp only [Option.some.injEq] at hw
       subst hw
-      exact ⟨he ▸ hk, hlf, hpv, htf⟩
+      exact ⟨he ▸ hk, hlf, hpv⟩
     · rw [get?_insert_ne he] at hw
       exact hleaves j w hw
   · intro k1 w1 k2 w2 h1 h2 hq

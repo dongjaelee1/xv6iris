@@ -276,9 +276,9 @@ theorem uptWf_clearU (P : UPtd) (k : Nat) (w : BitVec 64) (h : uptWf P)
       exact ⟨w', hj, rfl, rfl, id⟩
   refine ⟨?_, ?_, h.2.2⟩
   · intro j w' hj
-    obtain ⟨v, hv, hpp', hpa', hl⟩ := hkey j w' hj
-    obtain ⟨h1, h2, h3, h4⟩ := h.1 j v hv
-    exact ⟨h1, hl h2, by rw [hpa']; exact h3, by rw [hpp']; exact h4⟩
+    obtain ⟨v, hv, _, hpa', hl⟩ := hkey j w' hj
+    obtain ⟨h1, h2, h3⟩ := h.1 j v hv
+    exact ⟨h1, hl h2, by rw [hpa']; exact h3⟩
   · intro j1 w1 j2 w2 h1 h2 hp
     obtain ⟨v1, hv1, hpp1, _, _⟩ := hkey j1 w1 h1
     obtain ⟨v2, hv2, hpp2, _, _⟩ := hkey j2 w2 h2

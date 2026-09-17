@@ -92,11 +92,12 @@ def ptRep (t : PTree) (L : RegMapF (BitVec 64)) : Prop :=
   (∀ vpn : BitVec 27, Iris.Std.PartialMap.get? L vpn.toNat = none → t.walk 2 vpn = none)
 
 /-- The pure facts of a live table (Rocq `proc_pt_wf`): user leaves below
-`TRAPFRAME`, real leaves (`U` may be clear: `uvmclear`'s guard page), on valid pages, distinct pages,
-none of them the trapframe page; the trapframe page valid. -/
+`TRAPFRAME`, real leaves (`U` may be clear: `uvmclear`'s guard page), on valid pages, distinct pages;
+the trapframe page valid.  (Disjointness of the user pages from the trapframe
+page is enforced by separation-logic ownership, not a pure fact.) -/
 def uptWf (P : UPtd) : Prop :=
   (∀ k w, Iris.Std.PartialMap.get? P.um k = some w →
-    k < tfVpn.toNat ∧ isLeafPte w ∧ pageValid (pte2pa w) ∧ ptePpn w ≠ P.tfp) ∧
+    k < tfVpn.toNat ∧ isLeafPte w ∧ pageValid (pte2pa w)) ∧
   (∀ k1 w1 k2 w2, Iris.Std.PartialMap.get? P.um k1 = some w1 → Iris.Std.PartialMap.get? P.um k2 = some w2 →
     ptePpn w1 = ptePpn w2 → k1 = k2) ∧
   pageValid (pageAddr P.tfp)

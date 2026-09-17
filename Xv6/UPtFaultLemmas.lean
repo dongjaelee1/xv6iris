@@ -268,7 +268,6 @@ theorem pte2pa_uLeaf (r : BitVec 64) (h : pageValid r) :
 new leaf's own facts and that its page is not one of the others'. -/
 theorem uptWf_insert (P : UPtd) (vpn : Nat) (u : BitVec 64) (hwf : uptWf P)
     (hlt : vpn < tfVpn.toNat) (hleaf : isLeafPte u) (hpg : pageValid (pte2pa u))
-    (htf : ptePpn u ≠ P.tfp)
     (hinj : ∀ k w, Iris.Std.PartialMap.get? P.um k = some w → k ≠ vpn → ptePpn w ≠ ptePpn u) :
     uptWf { P with um := Iris.Std.PartialMap.insert P.um vpn u } := by
   obtain ⟨w1, w2, w3⟩ := hwf
@@ -284,7 +283,7 @@ theorem uptWf_insert (P : UPtd) (vpn : Nat) (u : BitVec 64) (hwf : uptWf P)
   refine ⟨?_, ?_, w3⟩
   · intro k w hw
     rcases hget k w hw with ⟨rfl, rfl⟩ | ⟨-, hw'⟩
-    · exact ⟨hlt, hleaf, hpg, htf⟩
+    · exact ⟨hlt, hleaf, hpg⟩
     · exact w1 k w hw'
   · intro k1 u1 k2 u2 h1 h2 hq
     rcases hget k1 u1 h1 with ⟨rfl, rfl⟩ | ⟨hk1, h1'⟩ <;>
@@ -298,9 +297,9 @@ theorem uptWf_insert (P : UPtd) (vpn : Nat) (u : BitVec 64) (hwf : uptWf P)
 theorem uptWf_clearU (P : UPtd) (vpn : Nat) (w : BitVec 64) (hwf : uptWf P)
     (hmap : Iris.Std.PartialMap.get? P.um vpn = some w) :
     uptWf { P with um := Iris.Std.PartialMap.insert P.um vpn (w &&& ~~~PTE_U) } := by
-  obtain ⟨hlt, hleaf, hpg, htf⟩ := hwf.1 vpn w hmap
+  obtain ⟨hlt, hleaf, hpg⟩ := hwf.1 vpn w hmap
   refine uptWf_insert P vpn (w &&& ~~~PTE_U) hwf hlt (isLeafPte_andNotU w hleaf)
-    (by rw [pte2pa_andNotU]; exact hpg) (by rw [ptePpn_andNotU]; exact htf) ?_
+    (by rw [pte2pa_andNotU]; exact hpg) ?_
   intro k w' hw' hk hq
   rw [ptePpn_andNotU] at hq
   exact hk (hwf.2.1 k w' vpn w hw' hmap hq)
@@ -308,17 +307,15 @@ theorem uptWf_clearU (P : UPtd) (vpn : Nat) (w : BitVec 64) (hwf : uptWf P)
 /-- `vmfault`'s write: a fresh page mapped `W|U|R` at an unmapped page number. -/
 theorem uptWf_insertLeaf (P : UPtd) (vpn : Nat) (r : BitVec 64) (hwf : uptWf P)
     (hlt : vpn < tfVpn.toNat) (hr : pageValid r)
-    (htf : BitVec.extractLsb' 12 44 r ≠ P.tfp)
     (hfresh : ∀ k w, Iris.Std.PartialMap.get? P.um k = some w → pte2pa w ≠ r) :
     uptWf (P.insertLeaf vpn r (PTE_W ||| PTE_U ||| PTE_R)) := by
   rw [vmfaultPerm_eq]
   refine uptWf_insert P vpn (uLeaf (BitVec.extractLsb' 12 44 r) 0x16#64) hwf hlt
-    (uLeaf_isLeafPte _) (by rw [pte2pa_uLeaf r hr]; exact hr)
-    (by rw [ptePpn_uLeaf]; exact htf) ?_
+    (uLeaf_isLeafPte _) (by rw [pte2pa_uLeaf r hr]; exact hr) ?_
   intro k w hw _hk hq
   rw [ptePpn_uLeaf] at hq
   refine hfresh k w hw ?_
-  obtain ⟨hp1, -, hp3⟩ := (hwf.1 k w hw).2.2.1
+  obtain ⟨hp1, -, hp3⟩ := (hwf.1 k w hw).2.2
   obtain ⟨hr1, -, hr3⟩ := hr
   unfold physTop at hp3 hr3
   unfold ptePpn at hq

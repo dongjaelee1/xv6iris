@@ -332,7 +332,6 @@ theorem pte2pa_uLeaf (r : BitVec 64) (perm : BitVec 64) (h : pageValid r)
 
 theorem uptWf_insert (P : UPtd) (vpn : Nat) (u : BitVec 64) (hwf : uptWf P)
     (hlt : vpn < tfVpn.toNat) (hleaf : isLeafPte u) (hpg : pageValid (pte2pa u))
-    (htf : ptePpn u ≠ P.tfp)
     (hinj : ∀ k w, get? P.um k = some w → k ≠ vpn → ptePpn w ≠ ptePpn u) :
     uptWf { P with um := insert P.um vpn u } := by
   obtain ⟨w1, w2, w3⟩ := hwf
@@ -348,7 +347,7 @@ theorem uptWf_insert (P : UPtd) (vpn : Nat) (u : BitVec 64) (hwf : uptWf P)
   refine ⟨?_, ?_, w3⟩
   · intro k w hw
     rcases hget k w hw with ⟨rfl, rfl⟩ | ⟨-, hw'⟩
-    · exact ⟨hlt, hleaf, hpg, htf⟩
+    · exact ⟨hlt, hleaf, hpg⟩
     · exact w1 k w hw'
   · intro k1 u1 k2 u2 h1 h2 hq
     rcases hget k1 u1 h1 with ⟨rfl, rfl⟩ | ⟨hk1, h1'⟩ <;>
@@ -362,16 +361,14 @@ theorem uptWf_insert (P : UPtd) (vpn : Nat) (u : BitVec 64) (hwf : uptWf P)
 theorem uptWf_insertLeaf (P : UPtd) (vpn : Nat) (r : BitVec 64) (perm : BitVec 64)
     (hwf : uptWf P) (hlt : vpn < tfVpn.toNat) (hr : pageValid r)
     (hm : perm &&& ~~~0x3FF#64 = 0#64) (hrwx : perm &&& 0xE#64 ≠ 0#64)
-    (htf : BitVec.extractLsb' 12 44 r ≠ P.tfp)
     (hfresh : ∀ k w, get? P.um k = some w → pte2pa w ≠ r) :
     uptWf (P.insertLeaf vpn r perm) := by
   refine uptWf_insert P vpn (uLeaf (BitVec.extractLsb' 12 44 r) perm) hwf hlt
-    (uLeaf_isLeafPte _ _ hrwx) (by rw [pte2pa_uLeaf r perm hr hm]; exact hr)
-    (by rw [ptePpn_uLeaf _ _ hm]; exact htf) ?_
+    (uLeaf_isLeafPte _ _ hrwx) (by rw [pte2pa_uLeaf r perm hr hm]; exact hr) ?_
   intro k w hw _hk hq
   rw [ptePpn_uLeaf _ _ hm] at hq
   refine hfresh k w hw ?_
-  obtain ⟨hp1, -, hp3⟩ := (hwf.1 k w hw).2.2.1
+  obtain ⟨hp1, -, hp3⟩ := (hwf.1 k w hw).2.2
   obtain ⟨hr1, -, hr3⟩ := hr
   unfold physTop at hp3 hr3
   unfold ptePpn at hq
@@ -704,21 +701,5 @@ theorem procPtAt_view_eq (P : UPtd) (M M' : Nat → List (BitVec 8))
   rw [umPages_view_eq P M M' h]
 
 end
-
-/-! ## The missing interface
-
-`uptWf` demands that no user leaf maps the process's trapframe page
-(`ptePpn w ≠ P.tfp`), but `procPtAt P M` does not own that page
-(`tfPageAt` is a separate resource), so a page `kalloc` has just handed
-out cannot be told apart from it.  The Rocq prototype's `proc_pt_wf` has
-no such clause.  Until the port's `uptWf` (or the contracts of `uvmalloc`
-/ `vmfault` / `uvmcopy`) is fixed, the growing functions must take the
-fact as an assumed interface -- exactly as they take `KALLOC` and
-friends. -/
-structure TFDISJ : Prop where
-  tf_disj : ∀ {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [CurCtx]
-    (P : UPtd) (M : Nat → List (BitVec 8)) (r : BitVec 64) (bs : List (BitVec 8)),
-    ⌜bs.length = 4096⌝ ∗ umPages (GF := GF) P M ∗ byteBuf r (DFrac.own 1) bs ⊢
-      (⌜BitVec.extractLsb' 12 44 r ≠ P.tfp⌝ : IProp GF)
 
 end Xv6.UPtAlloc

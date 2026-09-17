@@ -395,3 +395,211 @@ remaining mints narrow, D1's pin relaxation gets its `⌜fdst_parked st⌝` for
 `FdPark.fdst_parked_of_key`, and `ProofSyscall`'s exec arm swaps
 `proc_priv_parked` for the caller's `FdPark.uoff_surr_at` +
 `fd_frags_park_at` — the one line this lane deliberately left as the pin's.
+
+### OFF-HAND-3 (kernel/U tier, 2026-09-17) — THE CARRIER IS A BIT ON THE RECORD, NOT A GHOST; D4 CLOSES; R2/R3/R4 REDUCE TO ONE COUPLED CHANGE, NAMED
+
+**The lane's verdict in one line: R1's carrier landed in the shape OFF-HAND-2
+asked for — inside `UkRun.urun`, readable where `UkSh.ush_gen_slot` is spent,
+a FACT about the whole table and not a disjunction with the taint — but it is
+a STATIC BIT ON `uk_names`, and the ghost counter the two previous lanes
+proposed is REFUTED three ways.  With it, **D4's other half — the narrowing
+OFF-HAND-2 attempted and reverted at `UShKernel.v:655` — LANDED**, and R2, R3
+and R4 now sit behind exactly one further change, which this lane traced end
+to end and prices below.  Everything is checked at the statement in the tree.**
+
+**WHAT LANDED** (whole tree green on the lane's remote tree, `make -f
+CoqMakefile -j32 -k`, `EXIT=0`, zero `Error`, `make -n` reports nothing left;
+`make audit-all-only`: echo audit fourteen, system audit thirteen; every new
+result `Proof using`).  Three commits, each green on its own.
+
+*(1) `97fa5150e` — the run carries whether the process answers for its offsets*
+
+- `UkRun.uk_names` gains `ukn_park : bool`, with the class `ukn_parked`
+  (`ukn_triv`/`ukn_const`'s mould).
+- `UkRun.urun_parked_row N fdv := ukn_park N = true -> fdv_all_parked fdv`,
+  and `urun_rows N fdv := urun_nopipe fdv ∗ ⌜urun_parked_row N fdv⌝` — the two
+  table rows in ONE conjunct.  **That bundling is what made the change
+  affordable**: 103 leaves destructure `urun` positionally and hand the
+  conjunct straight back to `urun_close`, and not one of those sites moved.
+- `urun_rows_parked` is the reading a narrowed taint arm spends;
+  `urun_rows_nopipe` the projection for rows still stated at the pipe half.
+- `urun_rows_step` is the round's effect, and **`UsysMemOk.usys_fd_ok_parked`
+  has its first consumer** — OFF-HAND-2 predicted exactly this.  It holds at
+  EVERY number, so every quiet leaf is free; `urun_rows_insert` / `_dup` /
+  `_copy` serve open, close, dup and pipe, each free from a fact the
+  descriptor row already carries (open's `fdst_parked` conjunct was being
+  destructed as `_` at `UkRunSys.v:945/3955/4824`).
+- `uslot_of_urun` / `_all` / `_ro` take the bit as an argument `pk` with the
+  premise that makes it honest, and hand the program `⌜ukn_park N = pk⌝`
+  beside `⌜ukn_pay N = Q⌝`.  `UkFork`'s child record is minted at the PARENT's
+  bit (the child's table IS the parent's, so the two rows are one
+  proposition).  `UkRun.udepw_at` / `udepw_at_ref` lend the PAIR.
+
+*(2) `7d08f1659` — the exec crossing's all-parked row reaches the entry*
+
+- `ExecEntry.image_entry_at` / `image_entry` gain `⌜fdv_all_parked (uvis_fd
+  W')⌝`.  **The row was already on `SpecKexec.exec_slot_pre`'s wands (lane
+  OFF-HAND-2) and every producer DROPPED it** — `ExecBundle.
+  exec_slot_of_entry_at` and `ExecRun`'s abstract twin both intro'd it as
+  `%Hpk` and threw it away.  `PinnedExec`'s four bundles spell it out inline.
+- Every verified entry constructor passes `pk := true` now
+  (`USyncKernel.sync_uexec_slot`, `UEchoKernel.echo_uexec_slot`,
+  `UEchoOut.echo_uexec_slot_at`, `UInitKernel.init_uexec_slot` /
+  `init_slot_of_kexec` / `init_boot_con`, `UShKernel.sh_uexec_slot` /
+  `sh_slot_of_kexec`), each with `fdv_all_parked` as a new pure premise
+  discharged by the caller off the relay, or at the boot by
+  `FdSlots.fdv_all_parked_closed` at `fdt0`.
+- `UexecCond.cond_entry_slot` and the two gate lemmas take it, and
+  **`UexecExecMint.uslot_mint`'s all-parked premise — landed by OFF-HAND-2
+  and until now dropped (`iIntros "!>" (W) "_ #Hpay"`) — is spent.**
+
+*(3) `ec00a5833` — D4's other half: the taint arm carries the row*
+
+- `ExecEntry.image_entry_taint` gains `⌜fdv_all_parked (uvis_fd W')⌝`, and so
+  do the inline taint spellings on `PinnedExec.pex_slot` / `pex_slot_at` /
+  `pinned_exec_bundle` / `_at` / `_boot`.  The two consumers pay it from the
+  `%Hpk` they were already introducing.
+- `UkRun.urun_gen` is narrowed to all-parked keys and takes `ukn_park N =
+  true`, paid off `urun_rows`'s row.
+- `UkSh.ush_gen_slot` carries BOTH the narrowed family and the record's park
+  bit, **as a pure conjunct of the slot itself** — that placement is what the
+  change turns on.  A section hypothesis would have to be named in the
+  `Proof using` of every lemma on sh's walk between the entry and the taint
+  (measured: the first build round produced one such error per lemma and the
+  call graph is the whole file), while the slot is already threaded to exactly
+  those lemmas and is already persistent.  `UShKernel.sh_uexec_slot` supplies
+  the bit from the equation the entry constructor hands over.
+- `UInitBoot`'s boot taint arm DROPS the row: the generic family it is
+  inhabited from (`UexecExecMint.uslot_mint_all`) is not narrowed yet.
+
+**STATEMENTS THAT CHANGED SHAPE** (exhaustive): `UkRun.uk_names` (hence
+`MkUkNames`'s arity), `urun`, `urun_close`, `urun_close_upd`, `udep_exit_run`,
+`udepw_at`, `udepw_at_ref`, `udepw_at_mint`, `urun_gen`,
+`uslot_of_urun`/`_all`/`_ro`; `ExecRun.uexec_sup_run` / `_ids` / the abstract
+twin; `UkRunExecRef`'s two supply shapes; `TreeExec`'s entry wand;
+`ExecEntry.image_entry_at` / `image_entry` / `image_entry_taint`;
+`PinnedExec.pex_slot` / `pex_slot_at` / `pinned_exec_bundle` / `_at` /
+`_boot`; `UexecCond.cond_entry_slot` / `sync_gate_slot` / `echo_gate_slot`;
+`USyncKernel.sync_uexec_slot`; `UEchoKernel.echo_uexec_slot`;
+`UEchoOut.echo_uexec_slot_at`; `UShEcho.echo_slot_of_kexec`;
+`UShEchoPay.echo_slot_of_kexec_at`; `UInitKernel.init_uexec_slot` /
+`init_slot_of_kexec` / `init_boot_con`; `UShKernel.sh_uexec_slot` /
+`sh_slot_of_kexec` / its two local taint-arm premises; `UkSh.ush_gen_slot`.
+**No leaf statement in `UkRunSys`, `UkFork`, `UkRunMem`, `UkRunBr`,
+`UkRunLeaf` moved, and no program-walk statement in `UkSh`, `UkInit`,
+`UkEcho`, `UkCat`, `UkSync` moved.**
+
+**REFUTED / BLOCKED, with the evidence.**
+
+1. **THE HELD-ROW COUNTER AS A GHOST IS REFUTED, AND SO IS EVERY
+   RESOURCE-SHAPED CARRIER.**  The consumer the brief names —
+   `UkSh.ush_gen_run` and `/init`'s twin — spends the generic slot INSIDE
+   `UkRun.urun`'s existential holding nothing but the run, so whatever carries
+   all-parkedness must be free at every site between a program's entry and
+   that spend.  Three shapes, three failures:
+   - an EXCLUSIVE ghost half (the brief's `uheld N n`) appears in every
+     statement between the entry and the exec — sh's walk alone is ~40 lemmas
+     across nine files — and no landed U-tier statement can carry it without
+     moving;
+   - a PERSISTENT certificate is free to thread and CANNOT BE REVOKED, which
+     is exactly what R4's hand-open needs.  There is no camera in which a
+     freely duplicable witness survives an update that contradicts it;
+   - a one-shot `csum (excl ()) (agree ())` gives both, but the "still parked"
+     half is the EXCLUSIVE one, so it is the first case again.
+   A STATIC FIELD ON THE RECORD is the only shape that is at once free to
+   thread (it is pure), revocable (a program that means to hand-open is minted
+   at `false`) and not an escape hatch (no taint disjunct — OFF-HAND-2's own
+   constraint).  `uk_names` already carries two such classes, so this is the
+   file's idiom, not a new mechanism.
+2. **A COUNT CANNOT PAY THE SURRENDER ROUTE, AND NOTHING IN THE CAMPAIGN
+   RECORDS THIS.**  R1's second half — "a verified program with held rows
+   SURRENDERS them before an exec or a fork, and its counter says its handles
+   are all the held rows there are" — is not statable at a `nat`.  What the
+   crossing takes is `FdPark.uoff_surr_at sts`, whose right disjunct
+   `uoff_surrs sts` (`FdPark.v:174`) is a BIG-OP OVER THE TABLE, one
+   `∃ o, uoff γo o` per held row.  Producing it from "I hold k halves and the
+   count is k" needs to know WHICH rows are held; the count does not say, and
+   no lemma recovers it.  So the surrender needs the SET-valued carrier §8.4
+   originally priced, or a program must CLOSE its held descriptors before it
+   forks or execs.  **This is the one thing on the file lane's critical path
+   this lane could not settle** — see "the one thing" below.
+3. **R2 (D1) IS BLOCKED ON ONE COUPLED CHANGE, AND IT IS NOT WHERE THE
+   PREVIOUS TWO LANES LOOKED.**  The premise `⌜fdst_parked st⌝` that
+   `FileInvDefs.fdstate_ok`'s relaxation needs has ONE attachment point: the
+   two generic builders `FsAbsInvFire.fsabs_fileread_in` (`:304`) /
+   `fsabs_filewrite_in` (`:354`), which are built inside
+   `UexecExecInst.xv6_sbundle_of_supply_ne` (`:958`) / `xv6_sbundle_of_supply`
+   (`:1020`) — the FIELDS `UexecSG.sbundle_of_supply_ne` (`:468`) /
+   `sbundle_of_supply` (`:499`).  This lane traced every consumer of the
+   fields:
+   - `UexecExecMint.udep_gen` (`:99/:104/:107/:112`), which proves
+     `UkRun.udep`'s pure minting law at EVERY key.  **This is nearly free if
+     the new premise is GUARDED BY THE NUMBER** — `(n = USYS_read \/ n =
+     USYS_write -> fdv_all_parked (uvis_fd W))` — because those are the only
+     two rows of `xv6_sbundle` that build a fire contract, and every spend of
+     the law (`UkRun.udep_dep`, `udep_close_dep`, `udep_exit_dep`,
+     `udepw_of_psok`) is at a CONCRETE number or under `psok n`, which at
+     `uprogSG_free` is `free_num n` and excludes 5 and 16 by computation.
+     **Without the guard the premise reaches all ~50 leaves of `UkRunSys` and
+     every program's call sites**, so the unguarded form must not be taken.
+   - `UkRun.udepw_law_of_psok` at 16, spent by `UexecExecMint.uslot_mint`
+     (`:411`): `udepw_law n` quantifies `N m pc` and `udepw` quantifies the
+     key, so the narrowed law is at ALL keys and `uslot_mint`'s single-key
+     premise does not pay it.  A second definition (`udepw_law_parked`) is
+     what echo's write deposit becomes, and echo's own leaves pay it from
+     `urun_rows_parked` — echo's record is at `ukn_park = true` as of this
+     lane, so this is now possible and was not before.
+   - `UexecRet.uexec_wp_uslot` (`:2569`, `:2607`, inside `uslot_of_creds`
+     `:2748`) — the GENERIC slot's Löb, minting at `usys_num (uvis_tf W)`, a
+     symbolic number.  **This is the work left, and it is COUPLED to the
+     field**: narrowing `uslot_of_creds` narrows the Löb hypothesis, and that
+     hypothesis is exactly the `X`-family `uexec_dep_F_of_supply` (`:2565`,
+     `:2604`) hands to `sbundle_of_supply`, so the field's own `X` argument
+     narrows with it — which in turn makes `xv6_sbundle`'s EXEC row owe
+     all-parkedness at the exec'd key, payable off `SpecKexec.exec_slot_pre`'s
+     wands.  The rest of the Löb is mechanical: the trap-out key inherits the
+     row through `user_trap_frame_trapped`'s `Hfdw`, the fork arm through
+     `⌜fdv' = uvis_fd W⌝` (`uexec_fork_parent_F`), and every other arm through
+     `usys_fd_ok_parked` on `uexec_ret_cont_gen`'s SECOND pure row, which
+     `uexec_arm_of_all` (`:2637`) already introduces as `_`.
+   **That conjunct must therefore STAY in `usys_fd_ok`'s open arm** until the
+   Löb is re-plumbed — i.e. **R4's "free the mode in the open arm" must come
+   AFTER this, not before**, which inverts the brief's R4 ordering.
+4. **R3 IS BLOCKED BY R2 AND BY NOTHING ELSE, AND THE REASON IS ONE
+   `destruct`.**  `FsAbsInvFire.fsabs_fileread_in` already destructs its
+   descriptor type as `[i γo om | γp | ma]` — it is GENERIC IN THE MODE today
+   — and hands the inode arm's content over at any `om`.  The moment
+   `SpecFileread.fileread_in`'s inode arm asks for `FdPark.uoff_rcpt st off0`,
+   that supplier owes a `UserOff.uoff` at `om = OffHeld` and has none.  So
+   OFF-HAND's "cheap half" is cheap only AFTER R2.  Everything else about R3
+   was re-checked and stands: `filewrite_in`'s inode arm
+   (`SpecFilewrite.v:789`) matches `FdInode i γo _` with the mode IGNORED, so
+   the split's PARKED branch is byte-for-byte today's and every `_in_inode` /
+   `_extra_inode` reader keeps its statement; the two fire sites are
+   `ProofFileread.v:2253/:2263` and `ProofFilewrite.v:4935/:4947` and both
+   become `FdPark.off_supply_of_st_at_eq`, which OFF-HAND landed for exactly
+   this.
+5. **R4 SITS BEHIND R2 AND R3** and, per finding 3, its `usys_fd_ok` half must
+   come LAST.  `ProofSyscall`'s exec arm can be re-routed the day
+   `proc_priv_parked` goes, but its replacement payer
+   (`FdPark.uoff_surr_at` through `fd_frags_park_at`) is blocked on finding
+   2's set-valued carrier and not on the tier — OFF-HAND-2's finding 3 stands.
+
+**THE ONE THING LANES ECHO-FILE AND CAT-ENTRY NEED FIRST: a ruling on finding
+2, because it decides whether the REDIR child may exec at all while it holds
+f.**  design/app-file.md §3 has the child `open(f,…)` at a HELD offset, write
+four times, and then `exec /echo` carrying the held row into echo's entry.
+With the carrier this lane landed, a record that answers for its offsets
+(`ukn_park = true`) may not hold a held row at all, and a record at `false`
+cannot pay the exec crossing's all-parked wand — so **as designed, the child
+cannot reach echo's entry.**  The two ways out, both the designer's:
+ (a) the child CLOSES f before the exec and `UEchoFile` re-opens on its own —
+     then §3's "exec /echo carries the deed, the held offset and the fd-1 row
+     into echo's entry" is wrong and §5.2 changes; or
+ (b) the carrier grows from a bit to the SET of held rows (`uoff_surrs`'s own
+     index), which is the only thing that makes `FdPark.fd_frags_park_at`'s
+     right disjunct payable from the U tier, and hence the only thing that
+     lets a held row cross a boundary at all.
+Until one is taken, `UEchoFile`'s WRITE post can be planned against finding 4
+(the arm split is a mechanical consequence of R2) but its EXEC step cannot,
+and `UCatKernel`'s open-at-a-held-offset hits the same wall one syscall over.

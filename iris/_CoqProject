@@ -1490,6 +1490,7 @@ FileDisc.v
 LogEntryDefs.v
 ConsLog.v
 EchoOutPure.v
+FileOutPure.v
 EchoOut.v
 EchoLinks.v
 EchoLinksPro.v

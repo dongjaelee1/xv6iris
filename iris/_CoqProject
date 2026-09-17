@@ -1495,6 +1495,7 @@ EchoFsPure.v
 FileFsPure.v
 AppEcho.v
 AppFile.v
+FileDeltas.v
 AppTree.v
 
 FsAbsUnlinkFire.v

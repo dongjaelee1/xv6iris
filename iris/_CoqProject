@@ -1532,6 +1532,7 @@ UkShRedirPr.v
 UCodeShM.v
 UkShMalloc.v
 
+UkShRedirLine.v
 UkShLoop.v
 UkShCd.v
 UkShMain.v

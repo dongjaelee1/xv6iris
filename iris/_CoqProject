@@ -1498,6 +1498,7 @@ EchoFsPure.v
 FileFsPure.v
 AppEcho.v
 AppFile.v
+FileWrite.v
 AppTree.v
 
 FsAbsUnlinkFire.v

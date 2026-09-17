@@ -537,3 +537,138 @@ finding-2 brute fix: it makes no program unable to hold a `uoff`, it makes
 every program able to SAY whether it does.  With it, finding 1 closes, the
 `fp_om` move of finding 2 makes the pin's relaxation type-correct, and
 deliverable 2 still waits on the `spost_at` lane of finding 3.
+
+### F-WRITE — THE MOVE LANDS, THE CHAIN DOES NOT; THREE CONTRACT FACTS, NAMED (2026-09-17)
+
+**The lane's verdict in one line: the APPEND step of design section 2 is
+landed and closed, and `file_awrite_chain` is REFUTED at the shape the brief
+asks for -- not by proof difficulty but because a node of
+`FsAbsWriteFire.awrite_chain` is a `∀` over the fire's data with no premise
+slot, and the file claim (unlike the tree claim) has to re-establish
+`AppFile.f_typed` at `blk_splice off bs bs0` knowing neither `off`, nor `bs`,
+nor that the row is `f`'s.  Deliverable 3 sits behind it.**
+
+**WHAT LANDED** (`iris/FileWrite.v`, additive, commit `f9ec2f1c2`; whole tree
+green on the lane's remote tree, 0 `Error`; `Proof using` on every result in
+the section; `Print Assumptions` closed under the global context but the
+eleven `PrimString`/`PrimInt63` primitives on `file_awrite_phases`,
+`file_awrite_node`, `file_claim_read`, and closed outright on the pure ones).
+
+- `FileWrite.file_wq` — THE CURSOR of design section 3: `fown r (Some (subseq
+  (echo_chunks ws) sel))`, `⌜off = length (subseq …)⌝`, `⌜line_ok ws⌝`,
+  `⌜sel_ok (echo_chunks ws) sel⌝`, `fl_lb c ls ∗ ⌜ws ∈ ls⌝` — or the taint,
+  as `TreeMove.tree_wq`'s.
+- `FileWrite.file_claim_read` — phase 1's read, `TreeMove.tree_claim_read`'s
+  shape at `AppFile.file_deed_law`: the deed goes in, comes back, and the
+  fact is `f_ok (abs_view I) s` with its typed witness, or the taint.
+- `FileWrite.file_awrite_phases` — **ONE CHUNK, BOTH PHASES**, the brief's
+  item 1 in full: phase 1 parks the deed at the appended content
+  (`AppFile.file_app_step_park` at `f_typed c (Some (subseq … (sel ++ [jx])))`,
+  built by `AppFile.f_typed_some` off `FileState.sel_ok_snoc`), phase 2 is
+  `AppFile.file_resync` at `sel ++ [jx]`.  Visibility is free: `wri_pre`'s own
+  `0 < length bs` makes `subseq … (sel ++ [jx]) <> subseq … sel`, so
+  `FileState.echo_args_chunks_nonnil` is not needed.
+- `FileWrite.file_awrite_full_anchored` / `file_awrite_node` — `awrite_full_at`
+  WITH THREE PURE RELAYS ADDED AND NOTHING ELSE CHANGED, and the proof that
+  the cursor pays it.  This is the precise statement of the ask: the day the
+  relays exist, the chain is this node under `awrite_chain`'s induction.
+- The delta algebra the step needs, all new: `delta_write_aents` /
+  `_astep` / `_apath` / `_arun` (**a write is invisible to every directory's
+  entry map** — at the written inum because a file has no entries either way,
+  everywhere else because the row is untouched), `file_pin_write`,
+  `file_pin_cat` (cat's pins are `FsConsPin.file_pin`'s fourth instance, a
+  `reflexivity`), `cons_present_write` / `cons_absent_write` (**the console
+  needs no premise at all**: its row is a DEVICE and `delta_write` at a
+  non-file row is the identity), `file_fs_pure_write`, `f_ok_delta_write`
+  (lane F-OPEN's `FileDeltas.v` is not on this branch, so the one lemma the
+  brief allows is proved here), `blk_splice_end`
+  (`blk_splice (length bs) sub bs = bs ++ sub`), and
+  `file_write_premises_sat`, the vacuity witness for the new pure premises.
+
+**REFUTED / BLOCKED — THREE FACTS, EACH A CONTRACT FACT.**
+
+1. **THE OFFSET, AND THE BRIEF'S ROUTE TO IT IS CLOSED.**  The brief says to
+   park `⌜off = length bs0⌝` as a pure premise "so that they are provable
+   today and the tie discharges the premise the day the held member exists".
+   That works for the PHASES lemma (landed) and **cannot work for the chain**:
+   `awrite_full_at`'s node quantifies `off` with only `wri_pre`'s
+   `off <= length bs0` on it, so the pure `∀ I off bs bs0 nl, wri_pre … ->
+   off = length bs0` is FALSE at any row with non-empty content (instantiate
+   `off := 0`) — the unsatisfiable-`∀`-premise trap of durable-notes.  And no
+   RESOURCE can replace it either: the node is handed the KERNEL's half
+   `off_gv γo (1/2) off`, and in mode `hand` the user's half is inside the
+   kernel for the duration of the call (`FdPark.off_supply_of_st_at_eq` takes
+   the caller's `uoff_rcpt` at the syscall boundary and spends it at each
+   fire, `ProofFilewrite`'s `Hoinvw`), so nothing the client holds across the
+   fire can agree with it.  **The equation has to be RELAYED**: the held
+   branch of `SpecFilewrite.filewrite_in` must instantiate the chain at nodes
+   carrying `⌜off = off0 + p⌝` at the caller's own anchor — design/user-write.md
+   section 3c's anchored cursor, and it is `FileWrite.file_awrite_full_anchored`'s
+   RELAY 2.
+2. **THE CHUNK'S LENGTH — NEW, and nothing in the campaign records it.**
+   `SpecCopyin.ubytes_at M ua bs` is a pure `∀` over `bs`'s own indices and is
+   therefore PREFIX-CLOSED: the node says "these bytes are a run of the
+   caller's image at this base", never "this is the whole chunk".  Nothing in
+   `wri_pre` or in `awrite_full_at` bounds `length bs` by the remaining count
+   — the count `n` is not even a parameter of `awrite_chain`, only `wchunks n`
+   is.  So the client cannot identify `bs` with `echo_chunks ws !!! jx` AT THE
+   FIRE; it can only do so afterwards, off `write_post_ok_at`'s
+   `⌜|concat bss| = n⌝`, and that is too late because `file_step_park` needs
+   `f_typed c s'` BEFORE the delta.  The kernel's own fire knows the number
+   (it is what it passed to writei); the contract drops it.  RELAY 3.
+3. **THE PARTIAL ARM'S DISTURBED TAIL — and this one refutes the MODEL, not
+   just the proof.**  `awrite_part_at`'s delta is `delta_write i off bs` with
+   only `take r bs` the caller's and `⌜length bs <= r + BSIZE⌝`: writei commits
+   the partially copied block, so **up to one block of bytes nobody names
+   lands in `f`**.  `AppFile.f_bytes_typed` admits only whole-chunk
+   subsequences, so that arm's step cannot be paid at all — and it is one of
+   the two arms the kernel may pick at EVERY node (`awrite_chain`'s `∧` is the
+   kernel's choice, which is why `TreeMove.tree_awrite_chain` proves both).
+   **design/app-file.md section 0's limit 1 ("the concatenation of the SUBSET
+   of echo's chunks that landed") is therefore too strong.**  Two ways out,
+   both the designer's call: admit a partial last chunk plus a bounded junk
+   tail in `FileDisc`'s `ralt`/`fsm` and in `f_bytes_typed`; or refute the
+   short-write arm, which is the capacity conjunct section 0 explicitly
+   declines to take.  Note the first way out does NOT rescue item 1 above: with
+   `off` unknown the splice may OVERWRITE inside the existing content, and no
+   "prefix plus junk tail" predicate is closed under that either.
+
+**WHAT `AppFile.v` NEEDS CHANGED (one thing, and it is RELAY 1).**
+`f_ok av (Some bs)` is `∃ i, astep av ROOTINO fname_f = Some i /\ av !! i =
+Some (MkAnode (AFile bs) 1)` — **the inum is existential**, so a deed holder
+learns the CONTENT of `f` and never that the row its descriptor sits on IS
+`f`'s.  `file_awrite_phases` therefore takes `⌜astep (abs_view I) ROOTINO
+fname_f = Some i⌝` as a premise, and no chain node can supply it.  Worse, the
+existential is not even stable: `AppFile.file_step_free`'s premise
+`∀ s, f_ok av s -> f_ok av' s` lets a free step RELOCATE `f` to a different
+inum at the same content.  The fix is to name the inum — either `f_state`
+carries it (`∃ i s, ⌜astep av ROOTINO fname_f = Some i⌝ ∗ …` with `i` pinned by
+a ghost the deed's holder shares) or the deed's state becomes
+`option (Z * list (bv 8))`.  Everything else in `AppFile.v` was exactly right
+for this lane: `file_step_park` / `file_app_step_park` / `file_resync` /
+`file_deed_law` / `f_typed_some` / `fown` were used verbatim and nothing else
+was wanted.  (Second, much smaller: there is no `file_app_step_taint`, the
+twin of `TreeMove.tree_app_step_taint`; `FileWrite.v` proves it locally and it
+belongs beside `file_app_step_park`.)
+
+**THE EXACT PREMISE THE HELD MEMBER MUST DISCHARGE**, at the shape it is
+stated in: `FileWrite.file_awrite_full_anchored`'s RELAY 2, `⌜off = off0⌝`,
+where `off0` is the cursor's anchor `length (subseq (echo_chunks ws) sel)` —
+i.e. `FdPark.off_supply_of_st_at_eq`'s tie `⌜m = OffHeld -> off' = off⌝` read
+at `OffHeld` and RELAYED INTO THE CHAIN NODE, not merely held by the kernel.
+That is a clause on the HELD branch of `SpecFilewrite.filewrite_in`
+(OFF-HAND's finding 4 is where that branch is cut), not on any U-tier
+statement.
+
+**THE ONE THING LANE ECHO-FILE NEEDS FIRST.**  A ruling on findings 2 and 3,
+because they decide `UEchoFile`'s post before a line of it is written:
+either (a) the held branch of `filewrite_in` gains the anchored-and-sized
+node (relays 2 and 3) AND the short-write arm is refuted, and then
+`UEchoFile` gets design section 5.2's exact post, `sel ++ [j]` per write; or
+(b) the model widens to admit a partial last chunk with a bounded junk tail,
+and then `f_bytes_typed`, `FileDisc.ralt`/`fsm` and design section 0's
+alternative list all move first.  Until one of them is taken, the only thing
+`UEchoFile` can carry across a `write` is `TreeMove.tree_wq`'s existential
+cursor, which says nothing about `f`'s content and so proves none of the
+application's claim.  `FileWrite.file_awrite_node` is the piece that turns
+either ruling into the chain in a dozen lines.

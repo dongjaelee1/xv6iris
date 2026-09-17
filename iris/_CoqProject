@@ -4,6 +4,9 @@
 -R ../user-rocq User
 -arg -w
 -arg -notation-overridden
+# a quotation in a comment must not swallow a `*)` (tools/comment_quote_check.py)
+-arg -w
+-arg +comment-terminator-in-string
 SetShrink.v
 SepThread.v
 FastSetSolver.v

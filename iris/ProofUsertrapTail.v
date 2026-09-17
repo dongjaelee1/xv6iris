@@ -117,8 +117,8 @@ Section ProofUsertrapTail.
 
 
   (* ==================================================================== *)
-  (* THE RESIDUE WITHOUT THE INCARNATION'S MARKER (design/pipe.md, "The    *)
-  (* exit path").  A process that kills ITSELF spends the marker founding  *)
+  (* THE RESIDUE WITHOUT THE INCARNATION'S MARKER (design/pipe.md, “The    *)
+  (* exit path”).  A process that kills ITSELF spends the marker founding  *)
   (* <p->lock>'s killed row on its SPENT arm ([SpecSetkilled]'s owed       *)
   (* side), and walks the rest of the trap -- the jump to +0xa6, the       *)
   (* killed check, kexit -- on the block that is left.  kexit is stated at *)

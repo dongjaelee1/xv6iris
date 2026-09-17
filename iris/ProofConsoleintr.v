@@ -2170,7 +2170,7 @@ Section ProofConsoleintr.
       (* the triple just emitted joins the plan's emitted half, and the
          arm's index follows it *)
       iEval (rewrite app_assoc (ct_bs_snoc ii)
-               -(app_length (mjoin (replicate ii consputc_bs)) consputc_bs)
+               -(length_app (mjoin (replicate ii consputc_bs)) consputc_bs)
                (ct_bs_snoc ii)) in "Harm".
       iExact "Harm". }
     iEval (rewrite HL6ra) in "Hpc".

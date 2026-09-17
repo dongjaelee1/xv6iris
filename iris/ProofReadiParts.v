@@ -90,7 +90,7 @@ Qed.
 
 Lemma rd_fbn_lt (x : nat) : (x < MAXFILE * BSIZE)%nat -> (x `div` BSIZE < MAXFILE)%nat.
 Proof.
-  intros H. apply Nat.div_lt_upper_bound; [unfold BSIZE; lia|].
+  intros H. apply Nat.Div0.div_lt_upper_bound.
   rewrite Nat.mul_comm. exact H.
 Qed.
 

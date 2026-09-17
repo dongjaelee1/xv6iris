@@ -351,8 +351,7 @@ Proof.
   intros Hk.
   assert (Hlt : (k < BSIZE * MAXFILE)%nat)
     by (unfold MAXFILE, BSIZE, NDIRECT in *; lia).
-  first [ apply Nat.Div0.div_lt_upper_bound; exact Hlt
-        | apply Nat.div_lt_upper_bound; [unfold BSIZE; lia | exact Hlt] ].
+  apply Nat.Div0.div_lt_upper_bound; exact Hlt.
 Qed.
 
 Lemma wrf_era_file_byte (dn : dinode) (bm : blkmap)

@@ -826,8 +826,8 @@ Qed.
    +0x110 / +0x112 and the live +0x120 read it. *)
 
 (* ===================================================================== *)
-(*  THE PURE BRIDGE THE WALK'S BODY OWES: from "every byte in [off,a) is  *)
-(*  a separator and the byte at [a] is not" to the suffix [nx_skipelem_at] *)
+(*  THE PURE BRIDGE THE WALK'S BODY OWES: from “every byte in [off,a) is  *)
+(*  a separator and the byte at [a] is not” to the suffix [nx_skipelem_at] *)
 (*  computes at.  The loop invariant is stated over [drop off pl]; the    *)
 (*  element starts at [a]; [pe_skip] is exactly the difference.           *)
 (* ===================================================================== *)

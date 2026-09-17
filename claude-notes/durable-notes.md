@@ -230,7 +230,11 @@ work.
 - **A `"` in a comment starts a string.** The warning while quotes are unbalanced
   inside one comment is the cheap tell; the error (`Unterminated string` at end
   of file) arrives once a later comment has the matching quote, hundreds of lines
-  from the cause. Write a comment checker and run it first.
+  from the cause. So a `*)` inside a quotation does not close the comment, and
+  a quotation that wraps across two lines of a boxed comment swallows the
+  box's `*)` — the build makes that (`comment-terminator-in-string`) an error.
+  Keep each quotation on one line, or quote with `“ ”`, which is not a string;
+  `tools/comment_quote_check.py` lists the sites without a build.
 - **A `nat` equality whose RHS is a large literal needs `Z`, not a bigger stack.**
   Every route materializes a unary successor chain and overflows deterministically
   in seconds under 1 GB — so it looks like a broken proof in a file you did not

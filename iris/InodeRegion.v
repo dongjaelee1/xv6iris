@@ -558,7 +558,7 @@ Qed.
    record's type); every other mover runs at [c = None] or at an unchanged
    record, so it carries.  Spelled [x = Excl (di_type d)] rather than as a
    match on [x] so that the landed [destruct c as [x |]] proofs do not have
-   to grow an [ExclBot] arm -- at [ExclBot] the equation is False, which is
+   to grow an [ExclInvalid] arm -- at [ExclInvalid] the equation is False, which is
    what an invalid column deserves. *)
 Definition ireg_claim_ok (c : ctyUR) (f : frzUR) (d : dinode)
   : Prop :=
@@ -573,7 +573,7 @@ Definition ireg_claim_ok (c : ctyUR) (f : frzUR) (d : dinode)
                  standing claim at a commit. *)
               match x with
               | Excl v  => v.1 = di_type d
-              | ExclBot => False
+              | ExclInvalid => False
               end
   end.
 
@@ -887,7 +887,7 @@ Definition ireg_frz_ok (f : frzUR) (n : nat) (d : dinode) : Prop :=
   | Some (Excl (FrzPost _)) => bv_unsigned (di_nlink d) = 0
                            /\ bv_unsigned (di_type d) <> 0
                            /\ n = 0%nat
-  | _                   => False   (* [ExclBot], and the absent column *)
+  | _                   => False   (* [ExclInvalid], and the absent column *)
   end.
 
 (* ...AND THE ONE THE MIRROR TURNS INTO A REFUTATION (iclaim-ledger.md
@@ -1869,7 +1869,7 @@ Section InodeRegion.
      park a positive share of an open transaction's element, so at a commit --
      where the WAL's authority for that map is empty -- no slot in the region
      can be inside a freeze window.  [ireg_cpin_no_ops]'s line, at the f
-     column; [ireg_frz_ok] is what rules out the absent column and [ExclBot],
+     column; [ireg_frz_ok] is what rules out the absent column and [ExclInvalid],
      exactly as [ireg_claim_ok] does there. *)
   Lemma ireg_fsh_no_ops (f : frzUR) (n : nat) (d : dinode) :
     ireg_frz_ok f n d ->
@@ -2595,7 +2595,7 @@ Section InodeRegion.
   (*  existentially: two halves of one element are not the whole.          *)
   (* WHICH TRANSACTION THE COLUMN PINS, as a PURE reading of it: the value's
      second field at a live claim, nothing at an empty or invalid one.  The
-     [ExclBot] arm reads [None] here and is killed by [ireg_claim_ok]
+     [ExclInvalid] arm reads [None] here and is killed by [ireg_claim_ok]
      instead -- which is exactly why [ireg_cpin_no_ops] keeps that premise. *)
   Definition cty_pin (c : ctyUR) : option (nat * Qp) :=
     match c with
@@ -2621,7 +2621,7 @@ Section InodeRegion.
      share of an open transaction's element, so at a commit -- where the
      WAL's authority for that map is empty -- no claim can be standing.
      [TxPin.tx_pin_o_no_ops]'s line, at the c column; the
-     [ExclBot] arm is refuted by the slot's own claim pin, which is why the
+     [ExclInvalid] arm is refuted by the slot's own claim pin, which is why the
      lemma takes it. *)
   Lemma ireg_cpin_no_ops (c : ctyUR) (f : frzUR) (d : dinode) :
     ireg_claim_ok c f d ->

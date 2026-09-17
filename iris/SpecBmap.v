@@ -132,8 +132,8 @@ Local Open Scope Z_scope.
 Notation K_bmap := (78%nat) (only parsing).
 (* ===================================================================== *)
 (*  THE ARMS, AS THE CALLER READS THEM OFF THE BLOCK MAP                  *)
-(*  (fs-icache.md section 18: "bmap: ONE credit (the bitmap), arm-wise    *)
-(*  exact")                                                               *)
+(*  (fs-icache.md section 18: “bmap: ONE credit (the bitmap), arm-wise    *)
+(*  exact”)                                                               *)
 (* ===================================================================== *)
 
 (* [wp_bmap_gen] below is the SET-FORM contract: it takes [LogInv.log_opS]

@@ -2759,3 +2759,123 @@ held-row EXEC is unblocked at the entry (this lane) and blocked at the
 deposit, and `UEchoFile`'s entry can be written (mint at `ukn_held = {1}`,
 `fdv_held_in {1} sts` as its own premise) while its caller's exec cannot
 yet pay.
+
+### READ-RELAY (2026-09-17) — THE COPYOUT'S REASON RIDES READ'S `-1` ARM ALL THE WAY UP, AND A MAPPED BUFFER REFUTES IT IN ONE LINE
+
+**The lane's verdict in one line: design/app-file.md §5.3 (c) is SETTLED
+AS REFUTED — the `cat: read error` tail is unreachable at a U-tier caller
+whose destination buffer it owns, `RCReadErr` is not added, and there is
+NO second reason for the failing copyout that the U tier cannot exclude.**
+
+**THE REASON, PRECISELY.**  readi's one `-1` exit is `either_copyout`
+answering `-1` on the USER arm.  Its contract already named the byte
+(`SpecEitherCopyout.either_copyout_ran` `:116`, out of
+`SpecCopyout.copyout_wrote` `:174`): `~ uva_wmapped P (uint
+(add_vec_int dst (Z.of_nat d)))` with `d < len` — an address in the
+destination run the process's page table does not map for WRITING
+(walkaddr answered 0 and vmfault declined, or the re-walk's leaf has
+PTE_W clear).  Stated at the ENTRY descriptor, which is the weaker and
+therefore usable form (the round's table only GREW: `uptd_ext_sz` +
+`UserPtTree.uva_wmapped_mono`).  The relay's carrier is one pure
+definition, `SysReadDefs.rd_fail_why P dst n := exists d, (d < n)%nat /\
+~ uva_wmapped P (uint (add_vec_int dst (Z.of_nat d)))` — keyed by the
+64-bit va like every image equation in the tower, so it promises nothing
+about `dst + n` not wrapping, and the index is EXISTENTIAL because
+copyout walks whole pages and the failing round may have delivered a
+prefix of its own chunk first.
+
+**ONLY ONE REASON, and that is a fact about the code, checked:** readi's
+other break (`bmap` returned 0) is dead under `bm_covers`
+(`SpecReadi.v:264`), and `either_copyout` answers 0 unconditionally on
+the kernel arm (`SpecEitherCopyout.either_copyout_post`'s else branch),
+which is why readi's `-1` arm already carried `user = true`.  At an OPEN
+READABLE INODE descriptor the only other `-1` above is fileread's own
+sign guard, which `FsAbsReadFire.read_post_fail`'s LEFT disjunct already
+keys on `n < 0`.  So `0 <= n` plus a mapped buffer leaves no `-1` at all.
+Nothing was weakened to cover a second reason; there is none.
+
+**THE RELAY, SITE BY SITE (every statement that changed shape, and
+nothing else did).**
+
+1. `SysReadDefs.v` — NEW and pure: `rd_fail_why`, `rd_nwmapped_entry`
+   (the round's verdict brought back to the entry table),
+   `rd_fail_why_entry`, `rd_fail_why_mono`, and `rd_fail_why_refute` —
+   the refutation itself, three lines, "a buffer every byte of which is
+   writable-mapped has no failing address in it".  The file gains
+   `Require Import UserPtTree` / `ProcPtOwn`.
+2. `SpecReadi.wp_readi_sconf_body` — the post's `-1` arm gains a THIRD
+   conjunct, `rd_fail_why (pv_upt (us_V U)) dst n`, inside the existing
+   `⌜…⌝` premise slot (no new premise).  `READI`/`LinkReadi` unchanged.
+3. `ProofReadi.v` — the same arm in `rd_cont`, and as a premise of the
+   three return blocks `rd_ret`, `rd_join`, `rd_exit` (all `Local`, all
+   pass it through by `exact`).  The loop's chunk post keeps
+   `either_copyout`'s third component; the failing index is `tot + dwr`
+   off readi's own `a2` (`InstrBytes.pa_add_add`) and is inside the
+   request because `dwr < mm <= nc - tot` and `nc <= n`.
+4. `FsAbsReadFire.read_post_fail` — gains `(P : uptd)` after `γo` and
+   `(addr : mword 64)` last; its `0 <= n` disjunct gains
+   `⌜rd_fail_why P addr (Z.to_nat n)⌝` as its SECOND conjunct.
+   `read_arms` gains `(P : uptd)` after `γo`.  Consequent parameter-list
+   moves only: `read_arms_ret`, `read_arms_neg`, `arf_stable_fail_arm`
+   (also gains `addr`), `arf_stable_of_arms`.  `read_post_ok`,
+   `read_stable_arms` and `aread_commit_at` are untouched.
+5. `SpecFileread.fileread_extra_core` — SAME parameter list; its inode
+   branch now passes `pt` into `read_arms`.  **That is the whole reason
+   nothing above `fileread` moved**: `pt` was already there for the
+   console arm's swallowed byte (lane CONS-SWALLOW W3), so
+   `fileread_extra`, `fileread_arms`, `SpecSysRead.sys_read_arms`,
+   `SpecSyscall` and `UexecExecInst.xv6_spost`'s row 5 are all unchanged.
+   `fileread_extra_inode` / `fileread_extra_inode_of` take `pt` in their
+   `read_arms` premise (their own binders unchanged).
+6. `ProofFileread.v` — the `blez` skip case's `-1` disjunct carries the
+   reason at fileread's own `addr` (readi's `a2` IS `m !!! Ra1`,
+   `HJ6a2`), and the fired arm supplies it.
+7. `UkReadFile.read_arms_file_learn`, `UkTreeRead.read_arms_tree_learn`,
+   `FileOpen.file_read_arms_learn` — each gains `(P : uptd)` after `γo`;
+   their CONCLUSIONS are unchanged.
+8. `UkFileOpen.wp_uk_read_deed_learns` and
+   `UkReadFile.wp_uk_cat_read_learns` — statements UNCHANGED (`P` comes
+   out of `spost_at_read_elim` inside the proof).
+
+**PROOF-SCRIPT-ONLY at readi's six other callers.**  `user = true` is no
+longer the LAST conjunct of the `-1` arm, so `discriminate` on it needs
+one more layer: `ProofDirlookup:1660`, `ProofDirlink:3025`,
+`ProofSysUnlinkW3:535`, `ProofKexecACode` (×4), `ProofKexecB2` (×2),
+`ProofKexecB3` (×3).  Nothing else in the kernel tier noticed.
+
+**THE REFUTATION, AND IT REALLY IS ONE LINE.**
+`FsAbsReadFire.read_arms_mapped` — at `0 <= n`, `Z.to_nat n <= k`, and
+"every byte of `[addr, addr+k)` is `uva_wmapped` in `P`",
+`read_arms … -∗ read_post_ok …`.  Both `*_learn` families were split so
+the mapped corollary does not re-prove the ok arm:
+`UkReadFile.read_post_ok_file_learn` + `read_arms_file_learn_mapped`,
+`FileOpen.file_read_post_ok_learn` + `file_read_arms_learn_mapped`.
+**The program pays nothing for the mapped row**: it is the read leaf's
+own, handed out beside the resume image
+(`UkReadFile.wp_uk_ecall_read_file`'s fifth pure row, the twin of the
+write side's `UkRunSys.usrc_ok` mapped conjunct), and
+`UkReadRows.spost_at_read_elim` hands out the `proc_pt_wf` /
+`perm_of` / `lazy_free` triple the row consumes.  So the ONLY premise the
+mapped corollaries add is `0 <= cnt`.
+
+**WHAT CAT-WALK APPLIES.**
+`UkFileOpen.wp_uk_read_deed_learns_mapped` — same statement as
+`wp_uk_read_deed_learns` plus `(0 <= cnt)%Z`, and its deed arm has NO
+`⌜rv = -1⌝` disjunct: it is `(∃ off, the count ∗ the bytes) ∗ fdq` or the
+taint, full stop.  cat reads 512 bytes into a buffer it owns, so that is
+exactly its shape, and `cat: read error` has no arm to file.
+`UkReadFile.wp_uk_cat_read_learns_mapped` is the same thing at the
+generic leaf, kept beside the landed test as the end-to-end check that
+the leaf's row alone discharges the relay.
+
+**ONE DELETION, deliberate** (so `tools/lemma_diff.py` has its answer):
+`UkReadFile.cat_recv` is gone, replaced everywhere by the new
+`UkReadFile.file_read_fam i q bs0 nl` — the same `MkPfam`, named once
+because three lemmas now share it.
+
+**FOR THE NEXT LANE.**  The write side's RELAY 4 (design §3) is still
+open at the INODE chain: `FsAbsWriteFire.awrite_part_at` carries no
+reason and F-WRITE's finding 3 stands.  The shape to copy is this lane's:
+the reason is a pure `Prop` in the vocabulary LEAF (`SysWriteDefs`'s twin
+of `rd_fail_why`), the chain node carries it, and the refutation is one
+lemma at the arms.

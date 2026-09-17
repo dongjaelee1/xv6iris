@@ -393,7 +393,8 @@ of `filewrite_in`/`fileread_in`, whose chain nodes RELAY what the claim's
 step cannot otherwise know (lane F-WRITE's findings): the fire's offset
 is the caller's anchor (`off = off0 + p`), the node's run is the whole
 chunk, and the partial node carries `either_copyin`'s reason (RELAY 4,
-§0), so a mapped source refutes it; then the hand-mode open leaf and the
+§0), so a mapped source refutes it — READ's twin of that relay is landed
+(§5.3 (c), lane READ-RELAY); then the hand-mode open leaf and the
 two held members.  `FdSlots.foff_row` already answers `emp` at `OffHeld`.
 
 ## 4. The console side: the stage carries the era's boot state, the ledger the line list
@@ -624,10 +625,9 @@ node as `UShEcho` reads echo's), the open at `f` from the deed (present /
 absent / `-1`), the read at the held offset, the console writes at the
 stage's pending (cat's first byte chooses `RCRan`; the "cannot open"
 diagnostic is `fprintf(2, …)` through `UkCatFprintf`'s `%s` arm, at the
-stage), `close`, `exit`.  The `cat: read error` tail is REFUTED (the
-read's `-1` arm at an inode needs a copyout failure, which the mapped row
-excludes) — if the kernel spec's arm cannot be refuted at the U tier the
-alternative joins §1's list instead; the lane says which.
+stage), `close`, `exit`.  The `cat: read error` tail is REFUTED: the
+read's `-1` arm at an inode needs a copyout failure, the kernel says so
+(item (c) below), and the mapped row excludes it.
 
 RULED after CAT-ENTRY (2026-09-17).  (a) An ABSENT `f` files `RCRan`,
 not `RCNoOpen`: `cont None LCat RCRan` already IS the cannot-open
@@ -636,14 +636,23 @@ diagnostic, and `RCNoOpen` is the present file whose `filealloc`/
 is filed (as it decides `RFOpenU`/`RFOpenM`).  (b) At `Some (i, [])` cat
 prints nothing and files nothing; the block's first byte is sh's prompt,
 so sh files `RCRan` at its own prompt byte through `file_write_link_blk`
-— sh reads its deed before it prints.  (c) The `cat: read error` tail is
-NOT refutable at the U tier as the kernel stands: `FsAbsReadFire.
-read_post_fail`'s `0 <= n` arm names no address.  It gets READ's twin of
-RELAY 4 (lane READ-RELAY: the arm carries `SpecCopyout`'s reason — an
-address the page table does not map for writing — through
-`FsAbsReadFire`, `SpecFileread`'s and `SpecSysRead`'s folds), and a
-mapped buffer then refutes it in one line; the alternative `RCReadErr j`
-is NOT added.  (d) cat's walk (`UkCat*`) was landed claim-free — free
+— sh reads its deed before it prints.  (c) The `cat: read error` tail IS refuted at the
+U tier (lane READ-RELAY, landed).  `FsAbsReadFire.read_post_fail`'s
+`0 <= n` arm names the address: `SysReadDefs.rd_fail_why P addr
+(Z.to_nat n)`, "a byte of the destination run the process's page table
+does not map for WRITING", relayed from `SpecCopyout.copyout_wrote`
+through `SpecEitherCopyout.either_copyout_ran`, `SpecReadi`'s `-1` arm
+and `ProofFileread` into `SpecFileread.fileread_extra_core`'s inode
+branch — whose table is `pt`, the one the console arm already carried, so
+nothing above `fileread` moved.  That arm is the ONLY `-1` an open
+readable inode descriptor can answer at `0 <= n` (readi's other break is
+dead under `bm_covers` and the kernel-arm copy cannot fail), so a caller
+that owns its destination buffer refutes it in one line
+(`FsAbsReadFire.read_arms_mapped`) — and the mapped row costs the program
+nothing, because `UkReadFile.wp_uk_ecall_read_file` already hands it out
+beside the resume image.  `UkFileOpen.wp_uk_read_deed_learns_mapped` is
+what cat's walk applies: at `0 <= cnt` it has no `-1` disjunct at all.
+The alternative `RCReadErr j` is NOT added.  (d) cat's walk (`UkCat*`) was landed claim-free — free
 write laws, trivial payload, generic open/read leaves — and is RESTATED
 on echo's mould (lane CAT-WALK: `kcat_w`/`kcat_pay_all`, `ukn_const`,
 deed arms over `UkFileOpen`'s corollaries) before `UCatKernel` exists.

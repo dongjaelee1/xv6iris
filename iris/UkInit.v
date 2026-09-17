@@ -44,6 +44,7 @@ Require Import UkRun UkRunLeaf UkRunSys.
 Require Import UkRunExecRef.  (* [udepw_at_refR] -- the exec deposit at a
                                  supplier-named refund (lane M6b) *)
 Require Import UCodeInit.
+Require Import UInitArgv.  (* [init_argv] -- the writable half of init's image *)
 Require Import CtxIdDefs.
 Require User.InitSyms User.InitInstrs.
 Require Import ChildTok.  (* [genF] -- the capacity the slot's fork arms name *)

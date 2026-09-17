@@ -949,7 +949,7 @@ Section UShEcho.
      and they have to be: they are consumed inside [PinnedExec]'s
      PERSISTENT constructor wand, which cannot hold the heap.  So the heap
      is read ONCE, here, into the pure summary [echo_node_img] -- exactly
-     what [UInitSh] gets for free from [uimg_sub UCodeInit.init_argv_map M]
+     what [UInitSh] gets for free from [uimg_sub UInitArgv.init_argv_map M]
      at a CONSTANT image and has to be extracted for a malloc'd one. *)
   Definition echo_node_img (ws : list (list (bv 8))) (M : gmap Z (bv 8))
       (s0 t : Z) (g : nat -> bv 8) : Prop :=

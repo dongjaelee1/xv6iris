@@ -47,7 +47,9 @@ in `durable-notes.md` for what belongs where and what gets deleted.
   walker's map (with the refuted alternative).
 - **[`code-organization.md`](design/code-organization.md)** — where a function's
   decode facts live vs. its WP leaf lemmas, import discipline, lemma-altitude
-  rules, specific-vs-generic leaves.
+  rules, specific-vs-generic leaves, and the two GENERATED code layers
+  (`Code<F>.v` from `gen_code.py`, `UCode<Prog>.v` from `gen_ucode.py`) —
+  their records, what may not be hand-written into one, and how to regenerate.
 - **[`spec-modules.md`](design/spec-modules.md)** — function specs as module
   types: the `SpecF`/sealed-functor/`LinkF` shape that keeps a function proof off
   its callees' proofs, so the build does not serialize along the call graph.

@@ -1,7 +1,7 @@
 # ucode_sync.txt -- the pc set of iris/UCodeSync.v, for tools/gen_ucode.py.
 #
-#   tools/gen_ucode.py --module Sync --out iris/UCodeSync.v \
-#       --spec tools/ucode_sync.txt
+# tools/ucode_manifest.json binds this spec to iris/UCodeSync.v; `make gen-ucode`
+# rewrites that file from it, and `make check-ucode` fails if it moved.
 #
 # sync is the smallest verified user program: four functions, eighteen
 # instructions.  main and start diverge (each ends in a [jal] that never

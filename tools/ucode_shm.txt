@@ -1,22 +1,21 @@
 # ucode_shm.txt -- the pc set of iris/UCodeShM.v, for tools/gen_ucode.py.
 #
-#   tools/gen_ucode.py --module Sh --prog shm --out iris/UCodeShM.v \
-#       --spec tools/ucode_shm.txt
+# tools/ucode_manifest.json binds this spec to iris/UCodeShM.v; `make gen-ucode`
+# rewrites that file from it, and `make check-ucode` fails if it moved.
 #
-# THE FOURTH CATALOG OVER THE SAME DUMP, and the reason there is a fourth is
+# THE THIRD CATALOG OVER THE SAME DUMP, and the reason there is a third is
 # the one measured in stage 4: the catalog's cost is LINEAR in instructions
 # (~22 s fixed + ~1.9 s each), so a function set that no other stage's edit
 # touches belongs in a file of its own that builds in parallel with them.
-# tools/ucode_sh.txt drives iris/UCodeSh.v (the first-generation [uinstr] /
-# page-table form); tools/ucode_shk.txt drives iris/UCodeShK.v (SH lane
-# stages 1-2 and 5, plus the diagnostic subtree); tools/ucode_shp.txt drives
-# iris/UCodeShP.v (stage 4, the parser).  This file drives STAGE 3 -- THE
-# ALLOCATOR -- which every one of those stages reaches through exactly one
-# call and none of them fetches an instruction of.
+# tools/ucode_shk.txt drives iris/UCodeShK.v (SH lane stages 1-2 and 5, plus
+# the diagnostic subtree); tools/ucode_shp.txt drives iris/UCodeShP.v (stage
+# 4, the parser).  This file drives STAGE 3 -- THE ALLOCATOR -- which every
+# one of those stages reaches through exactly one call and none of them
+# fetches an instruction of.
 #
 # [--prog shm] names what this file DEFINES ([shm_text_sub], [uis_shm_*],
 # [shm_code]) while the dump maps it READS stay [ShInstrs.sh_bytes] /
-# [ShData.sh_data], so all four catalogs sit on-build without colliding.
+# [ShData.sh_data], so all three catalogs sit on-build without colliding.
 # [shm_code], [shp_code] and [shk_code] are the SAME proposition (each is
 # [utext_img g ShInstrs.sh_bytes]); iris/UkShMalloc.v carries the one-line
 # bridges, which is what lets the allocator walk be stated against the

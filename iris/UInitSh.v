@@ -66,7 +66,7 @@ Require Import UInitFd.  (* [ufd_head] / [ufd_head_row] -- init's own
                             descriptor head, and the row sh's entry reads
                             off it against the lent authority *)
 Require Import UkRun.
-Require Import UCodeInit UkInit.
+Require Import UCodeInit UInitArgv UkInit.
 Require Import LineWords.       (* [wl_nl]: the credential steps are stated
                                    at the line the read delivered *)
 Require Import UkSh UShKernel.
@@ -179,18 +179,18 @@ Qed.
 Lemma init_argv_words_bool :
   forallb (fun k : nat =>
       bool_decide (
-        UCodeInit.init_argv_map !! (0x1000 + Z.of_nat k)
+        UInitArgv.init_argv_map !! (0x1000 + Z.of_nat k)
           = Some (nth_byte (mword_of_int 0x9a8 : mword 64) k)
-        /\ UCodeInit.init_argv_map !! (0x1008 + Z.of_nat k)
+        /\ UInitArgv.init_argv_map !! (0x1008 + Z.of_nat k)
           = Some (nth_byte (mword_of_int 0 : mword 64) k)))
     (seq 0 8) = true.
 Proof. vm_compute. reflexivity. Qed.
 
 Lemma init_argv_words (k : nat) :
   (k < 8)%nat ->
-  UCodeInit.init_argv_map !! (0x1000 + Z.of_nat k)
+  UInitArgv.init_argv_map !! (0x1000 + Z.of_nat k)
     = Some (nth_byte (mword_of_int 0x9a8 : mword 64) k)
-  /\ UCodeInit.init_argv_map !! (0x1008 + Z.of_nat k)
+  /\ UInitArgv.init_argv_map !! (0x1008 + Z.of_nat k)
     = Some (nth_byte (mword_of_int 0 : mword 64) k).
 Proof.
   intro Hk.
@@ -282,7 +282,7 @@ Lemma init_ro_sh_bytes_bool :
 Proof. vm_compute. reflexivity. Qed.
 
 Lemma init_argv_img (M : gmap Z (bv 8)) :
-  uimg_sub UCodeInit.init_argv_map M ->
+  uimg_sub UInitArgv.init_argv_map M ->
   uimg_sub UCodeInit.init_ro M ->
   uargv_img M 0x1000 init_argv_args.
 Proof.
@@ -325,7 +325,7 @@ Qed.
 
 Lemma init_args_det (M : gmap Z (bv 8)) (na : nat) (alen : nat -> nat)
     (afun : nat -> nat -> bv 8) :
-  uimg_sub UCodeInit.init_argv_map M ->
+  uimg_sub UInitArgv.init_argv_map M ->
   uimg_sub UCodeInit.init_ro M ->
   exec_args_of M (mword_of_int 0x1000 : mword 64) na alen afun ->
   na = 1%nat /\ alen 0%nat = 2%nat.
@@ -1043,7 +1043,7 @@ Section UInitSh.
     8 * Z.of_nat (2 + (8 + (16 + (ush_Dbody + n0)))) <= 0xFE0 ->
     (* the two readings of /init's own image the argument vector is
        determined by ([init_args_det]) *)
-    uimg_sub UCodeInit.init_argv_map M ->
+    uimg_sub UInitArgv.init_argv_map M ->
     uimg_sub UCodeInit.init_ro M ->
     (* /init's ledger, its children set and its pid, as the caller holds
        them *)
@@ -1331,7 +1331,7 @@ Section UInitSh.
       iDestruct (big_sepM_lookup _ _ a b Hb with "Hro") as "Hb".
       iDestruct (uheap_text with "Hheap Hb") as %(HM & _ & _).
       iPureIntro. exact HM. }
-    iAssert (⌜uimg_sub UCodeInit.init_argv_map M⌝)%I as %Hsav.
+    iAssert (⌜uimg_sub UInitArgv.init_argv_map M⌝)%I as %Hsav.
     { iIntros (a b Hb).
       rewrite /init_argv.
       iDestruct (big_sepM_lookup _ _ a b Hb with "Hargv") as "Hb".

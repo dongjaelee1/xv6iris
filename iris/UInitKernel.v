@@ -11,7 +11,7 @@
 (*  segment, and the exec deposit reads them back off the process image.  *)
 (*  So the entry takes the [UkRun.uslot_of_urun_all] carve, lifts those   *)
 (*  sixteen bytes out of the exclusive data below the frame and persists  *)
-(*  them ([UserHeap.uarea_persist]), yielding [UCodeInit.init_argv]: init *)
+(*  them ([UserHeap.uarea_persist]), yielding [UInitArgv.init_argv]: init *)
 (*  never stores into .data, so a read-only view is all it wants, and a   *)
 (*  persisted view is what crosses the fork.  The rest of that page       *)
 (*  (.bss and slack) is dropped.                                          *)
@@ -69,7 +69,7 @@ Require Import FdSlots.
 Require Import ProcGeom.
 Require Import UserFd.
 Require Import UInitFd.    (* [ufd_l0] -- /init's all-closed entry ledger *)
-Require Import UCodeInit UkInit UkInitMain.
+Require Import UCodeInit UInitArgv UkInit UkInitMain.
 Require Import UkRun.          (* [udep] / [uslot_of_urun_all] / [urun] *)
 Require Import PageGeom.       (* [PGSIZE] *)
 Require Import UserPtTree.     (* [pgroundup] *)
@@ -154,11 +154,11 @@ Proof. apply bv_eq. vm_compute. reflexivity. Qed.
 
 (* [UShKernel]'s two closed-arithmetic tactics, which are [Local] there *)
 (* [init_argv_map] IS A FILTER OVER A 1296-ENTRY DUMPED MAP: nothing here
-   computes it (every reading goes through [UCodeInit.init_argv_map_range] /
+   computes it (every reading goes through [UInitArgv.init_argv_map_range] /
    [_data]), but the unifier will if it is let to, and the big-op steps
    below are exactly where it would (durable-notes, "a definition nobody
    computes but the unifier will"). *)
-Local Opaque UCodeInit.init_argv_map.
+Local Opaque UInitArgv.init_argv_map.
 
 Local Ltac zclosed :=
   split; [ vm_compute; discriminate | vm_compute; reflexivity ].

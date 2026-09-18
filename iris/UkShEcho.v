@@ -506,10 +506,17 @@ Section UkShEcho.
     Persistent (sh_exec_sup_echo_at Fd1 ws Q Cr).
   Proof using . rewrite /sh_exec_sup_echo_at. apply _. Qed.
 
+  (* BOTH UNFOLDED FIRST (durable-notes, the dev loop): at [Fd1 :=
+     UkSh.ush_fd1p] the two bodies are the same text, so the match is
+     syntactic.  Left to [iIntros "$"] on the FOLDED goal the proofmode
+     unifies two [udepw_at_refR]-sized terms through their definitions,
+     which is minutes. *)
   Lemma sh_exec_sup_echo_at_fd1p (ws : list (list (bv 8)))
       (Q : Z -> iProp Σ) (Cr : iProp Σ) :
     sh_exec_sup_echo ws Q Cr -∗ sh_exec_sup_echo_at UkSh.ush_fd1p ws Q Cr.
-  Proof using . iIntros "$". Qed.
+  Proof using .
+    rewrite /sh_exec_sup_echo /sh_exec_sup_echo_at. iIntros "$".
+  Qed.
 
   (* THE CWD-INDEXED EXEC STUB.  [UkShRun.wp_kshr_exec] takes the ∀-cwd
      deposit [UkRun.udepw]; a pinned supply cannot pay that (its bundle
@@ -869,13 +876,12 @@ Section UkShEcho.
   Lemma wp_kshr_exec_echo_holds (ws : list (list (bv 8)))
       (Q : Z -> iProp Σ) (Cr Cd : iProp Σ) :
     wp_kshr_exec_echo ws Q Cr Cd.
+  (* BY CONVERSION, not by [iApply]: the landed arm's statement IS the
+     general one at [Fd1 := UkSh.ush_fd1p], delta-beta.  Elaborating the
+     application through the proofmode instead costs tens of minutes on
+     this file. *)
   Proof using .
-    intros N Hcc h m t szv s0 g ld n Hok Hpeq Ha0 Hbytes Hfd1 Hfd2.
-    iIntros "#Hcode Hexs #Hxl #Hcd #Hjt #Htree Hsz Hstd Hcwd Hch Hcr Hrun".
-    iApply (wp_kshr_exec_echo_at_holds UkSh.ush_fd1p ws Q Cr Cd N Hcc h m
-              t szv s0 g ld n Hok Hpeq Ha0 Hbytes Hfd1 Hfd2
-              with "Hcode [Hexs] Hxl Hcd Hjt Htree Hsz Hstd Hcwd Hch Hcr Hrun").
-    iApply (sh_exec_sup_echo_at_fd1p with "Hexs").
+    exact (wp_kshr_exec_echo_at_holds UkSh.ush_fd1p ws Q Cr Cd).
   Qed.
 
   (* =================================================================== *)

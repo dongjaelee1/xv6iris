@@ -334,7 +334,11 @@ Section UEchoFile.
       (∀ (M : gmap Z (bv 8)) (pm : gmap (mword 27) uperm) (sz : Z),
          uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗
          uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗
-         ∀ P : uptd,
+         (* the cursor at zero, unguarded (RULING WR-TB) ... *)
+         Q 0%nat
+         (* ...and the chain under the write guard at the key's own three
+            values -- what the kernel discharges at [fw_au_st_init]. *)
+         ∗ ∀ P : uptd, ⌜wr_tb pm sz false P⌝ -∗
            awrite_chain_adv (fs_gamma_L fsc_fs) appE i γo M
              (m !!! Regidx a1_idx) P n Q 0%nat (wchunks n)) -∗
       udepwf_std N m pc 16 (write_file_fam Q (ukn_pay N)) l.

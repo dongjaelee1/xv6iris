@@ -68,6 +68,7 @@ Require Import FsAbsWriteFire.     (* [awrite_chain] and its two arms       *)
 Require Import UserOff.            (* [uoff]: the held walk's carrier       *)
 Require Import UserPtTree.         (* [uptd]: the partial arm's table       *)
 Require Import SpecCopyin.         (* [ubytes_at]: the content seam         *)
+Require Import UserPerm.   (* [uperm], [perm_of] -- RULING WR-TB *)
 Require Import SpecFilewrite.      (* [write_post_ok_at], [write_post_fail_at] *)
 Require Import AppInv.             (* [appE]                                *)
 Require Import CtxIdDefs.
@@ -427,16 +428,28 @@ Section FilewriteChain.
      supplier; at HAND it is [emp] and the two arms of
      [SpecFilewrite.filewrite_in_held] pick which carrier the loop starts
      in. *)
+  (* ...AND THE TABLE GUARD IS DISCHARGED HERE AND NOWHERE ELSE (RULING
+     WR-TB).  The kernel is the party that knows [P], and at this one site
+     it has all three of the guard's conjuncts about its own
+     [ProcDefs.pv_upt]: the table's well-formedness and the lazy bit's claim
+     are [ProcInv.proc_priv_pt_wf] and [proc_priv_lazy], and the permission
+     map's equation is [UexecSlot.uvis_of]'s own definition -- the key's
+     [uvis_perm] IS [perm_of (ud_um P) (uvis_sz)].  So the client's chain
+     comes out of its [∀ P] with the guard paid, and no U-tier supplier has
+     to know which table it will be fired at. *)
   Lemma fw_au_st_init (om : offmode) (rb wb : bool) (i : Z) (γo : gname)
+      (pmv : gmap (mword 27) uperm) (sz : Z) (lz : bool)
       (P : uptd) (n : Z) M ua Q :
+    wr_tb pmv sz lz P ->
     foff_row (FdOpen rb wb (FdInode i γo om)) -∗
-    filewrite_in_inode_om om i γo n M ua Q -∗
+    filewrite_in_inode_om pmv sz lz om i γo n M ua Q -∗
     fw_au_st om (fs_gamma_L fsc_fs) i γo P n M ua Q 0 0%nat 0%nat.
   Proof using .
-    destruct om; rewrite /filewrite_in_inode_om.
+    intros Htb. destruct om; rewrite /filewrite_in_inode_om.
     - iIntros "#Hrow Hcm". iApply (fw_au_st_init_parked with "Hrow Hcm").
-    - iIntros "_ [Hcm | [Hcm #Ht]]".
-      + iApply (fw_au_st_init_held with "[Hcm]"). iApply ("Hcm" $! P).
+    - iIntros "_ [[_ Hcm] | [Hcm #Ht]]".
+      + iApply (fw_au_st_init_held with "[Hcm]").
+        iApply ("Hcm" $! P with "[//]").
       + iApply (fw_au_st_init_taint with "Ht Hcm").
   Qed.
 

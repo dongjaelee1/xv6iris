@@ -420,6 +420,7 @@ Require Import SpecUartPutc.  (* [uart_base_word]: the third console credential 
 Require Import SpecConsolewrite. (* [consolewrite_stack], [cons_out_chain] *)
 Require Import ConsoleInv.  (* [NDEV_max], [a_devsw_write] *)
 Require Import SysWriteDefs.  (* [FW_MAX], [wchunks], [wri_pre] *)
+Require Import UserPerm.   (* [uperm] -- RULING WR-TB *)
 Require Import SpecFilewrite.
 From Kernel Require KernelSyms.
 Require Import TsoCtx.
@@ -3722,10 +3723,12 @@ Section ProofFilewrite.
       (m : regfile) (K : nat) (eb : bool) (n : Z) (b : bool)
       (lks : gset string) (Q : nat -> iProp Σ)
       (Qe : nat -> pipe_st -> iProp Σ)
-    : wp_filewrite_sconf_body γf γs j γlp k q st fn pidv U m K eb n b lks Q Qe.
+      (pmv : gmap (mword 27) uperm) (szv : Z) (lzv : bool)
+    : wp_filewrite_sconf_body pmv szv lzv γf γs j γlp k q st fn pidv U m K eb n b
+        lks Q Qe.
   Proof using .
     cbv beta delta [wp_filewrite_sconf_body].
-    intros pcE pj ret_tgt uaddr HK Hk Hj Hgs Hlens Hfnj Hfnps Hconw
+    intros pcE pj ret_tgt uaddr Htb HK Hk Hj Hgs Hlens Hfnj Hfnps Hconw
            Ha0 Ha2 Hn Heb Hbelow.
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).
     (* "Hfin" -- NOT "Hin": the device arm already binds that name for its
@@ -4074,7 +4077,7 @@ Section ProofFilewrite.
              same cursor; the console arm's NEG disjunct is pure. *)
           rewrite /filewrite_arms.
           iSplitR; [iPureIntro; apply filewrite_ret_m1 |].
-          iApply (filewrite_extra_neg _ _ st n (us_M U) uaddr Q Qe Hneg
+          iApply (filewrite_extra_neg _ _ st n (us_M U) uaddr Q Qe _ _ _ Hneg
                     with "Hfin"). } }
       (* ---- 0 <= n : [Hn0] is now a fact of the code, not a premise ---- *)
       assert (Hn0 : (0 <= n)%Z) by lia.
@@ -5139,7 +5142,8 @@ Section ProofFilewrite.
                       arrives at [wchunks 0] with the goal. *)
                    rewrite Hnz0.
                    iApply (fw_au_st_ok omfx _ _ _ _ 0%Z _ _ _ 0%nat).
-                   iApply (fw_au_st_init omfx rx true with "[] Hch").
+                   iApply (fw_au_st_init omfx rx true _ _ _ _ _ _ _ _ _ _ Htb
+                             with "[] Hch").
                    iExact "Hfroww". }
                - (* ---- 0 < n: the five late spills, the two 3072s, and
                       the jump to the BOTTOM test at +0xcc ---- *)
@@ -5553,7 +5557,8 @@ Section ProofFilewrite.
                       it is keyed on: at PARK the row is the loop's supplier,
                       at HAND the client's own nodes move the shadow
                       ([ProofFilewriteChain.fw_au_st_init]). *)
-                   iApply (fw_au_st_init omfx rx true with "[]").
+                   iApply (fw_au_st_init omfx rx true _ _ _ _ _ _ _ _ _ _ Htb
+                             with "[]").
                    { rewrite -Hstx. iExact "Hfroww". }
                    iApply (filewrite_in_inode_any rx omfx (bv_unsigned inumx) γox n
                              (us_M U) uaddr Q Qe with "[Hfin]").

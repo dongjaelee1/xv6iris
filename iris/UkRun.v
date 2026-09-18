@@ -817,6 +817,19 @@ Section UkRun.
 
   (* ...and the quiet reading, for the leaves whose round did not touch the
      table at all *)
+  (* ...AND THE ROW A PIPE PUTS IN, at the resource (design/app-pipe.md
+     SS2).  This is what [UkRunSys.wp_uk_ecall_pipe]'s REGISTRAR redeems the
+     run with: a registered row goes into the table and the run's reading
+     survives, which is the whole of what pipe(2) used to break.  The taint
+     arm answers at any row, as it always did. *)
+  Lemma urun_nopipe_insert_reg (fdv : list fdstate) (k : nat) (st : fdstate) :
+    srow_reg st -∗ urun_nopipe fdv -∗ urun_nopipe (<[k := st]> fdv).
+  Proof using .
+    iIntros "Hst Hr". rewrite /urun_nopipe.
+    iDestruct "Hr" as "[Hr | #Ht]"; [ iLeft | by iRight ].
+    iApply (urun_nopipe_regs_insert fdv k st with "Hst Hr").
+  Qed.
+
   Lemma urun_nopipe_quiet (fdv fdv' : list fdstate) :
     fdv' = fdv -> urun_nopipe fdv -∗ urun_nopipe fdv'.
   Proof using . intros ->. iIntros "$". Qed.

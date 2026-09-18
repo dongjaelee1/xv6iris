@@ -1148,6 +1148,22 @@ Section UexecExecInst.
        srow_reg_persistent := pipe_row_reg_persistent;
        srow_reg_nopipe := pipe_row_reg_nopipe |}.
 
+  (* ...AND THE TWO READINGS OF THE ROW AT THIS INSTANCE, which is the only
+     place they can be stated: [UexecSG.srow_reg] is an abstract field to
+     everything below, and here it IS [PipeReg.pipe_row_reg] by
+     [reflexivity].  A file that holds a pipe's registration (lane
+     PIPE-PROTO's invariant handle) or the taint turns it into the run's
+     row through these. *)
+  Lemma srow_reg_of_pipe_reg (rb wb : bool) (γp : pipe_names) :
+    pipe_reg γp -∗ srow_reg (FdOpen rb wb (FdPipe γp)).
+  Proof using . iIntros "H". iExact "H". Qed.
+
+  Lemma srow_reg_of_taint (st : fdstate) :
+    □ riscv_kill_cred -∗ srow_reg st.
+  Proof using .
+    iIntros "#Ht". iApply (pipe_row_reg_of_taint st with "Ht").
+  Qed.
+
   (* ...AND THE GENERIC PROGRAM'S OWN DEPOSIT DATA ([UexecSG.uprogSG]): the
      supply itself, and every number admitted -- which is what makes the
      generic slot's minting law hold at every key ([sbundle_of_supply_ne] is

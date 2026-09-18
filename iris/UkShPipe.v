@@ -523,6 +523,10 @@ Section UkShPipe.
     intros Hge. iIntros "[[%Hlt _] | Hh]"; [ exfalso; lia | iExact "Hh" ].
   Qed.
 
+  Local Lemma ushpi_after_none (l : list fdstate) (st : fdstate) :
+    fd_lowest_closed l = None -> UserFd.ustd_after l st = l.
+  Proof using . intros H. rewrite /UserFd.ustd_after H. reflexivity. Qed.
+
   (* WHERE THE dup LANDS.  [close(1); dup(x)] puts the copy on slot 1 and
      [close(0); dup(x)] on slot 0, and it is the LEDGER that says so
      (design/user-fd.md §2): after the close the lowest closed slot is the
@@ -1848,6 +1852,375 @@ Section UkShPipe.
       rewrite (upd_ne q5 (Regidx ra_idx) (Regidx a0_idx) _
                  ltac:(vm_compute; discriminate)).
       exact (upd_eq mG (Regidx a0_idx) (mword_of_int ql2 : mword 64)).
+  Qed.
+
+
+  (* ===================================================================== *)
+  (* §6 THE CONSUMER TEST: THE ARM AT THE FREE INSTANCE.                    *)
+  (*                                                                        *)
+  (* [wp_kshr_pipe_arm] hands out three continuations and eleven            *)
+  (* parameters; the only way to see the statement is USABLE is to spend     *)
+  (* it, so this corollary closes all three off the LANDED walk and the      *)
+  (* taint, at the degenerate instantiation the brief names -- [R],          *)
+  (* [RcL], [RcR] and [Rk] all [emp], [Qc] the caller's own payload (so      *)
+  (* the children's records satisfy the caller's exec supply and its free    *)
+  (* exit row, exactly as the LIST and BACK arms arrange), the two           *)
+  (* children through [UkShDiag.wp_kshr_runcmd_final] and the parent         *)
+  (* through [UkShRun.wp_kshr_exit0] at 0xea -- which is where the LIST      *)
+  (* arm's parent and the BACK arm's parent end too.                        *)
+  (*                                                                        *)
+  (* WHAT IT DOES NOT DISCHARGE, and this is the lane's one refutation:      *)
+  (* [ush_pipe_call] stays a premise.  It is NOT instantiable from the       *)
+  (* landed [UkRunSys.wp_uk_ecall_pipe] -- see the note on                   *)
+  (* [ush_pipe_ans]'s failure arm.  Everything else the arm asks for is      *)
+  (* paid here, which is what makes the gap exactly one row wide.            *)
+  (* ===================================================================== *)
+  Lemma wp_kshr_runcmd_pipe (cl cr : ushcmd) :
+    ush_simple cl -> ush_simple cr ->
+    forall (N : uk_names Σ) `{!ukn_const N} (h : CpuId) (m : regfile)
+           (t szv cwdv : Z) (ld : list fdstate) (st0 st1 : fdstate)
+           (Sc : gset gname) (n : nat),
+      (⊢ ukn_pay N (-1)) ->
+      ukn_held N = ∅ ->
+      m !!! Regidx a0_idx = (mword_of_int t : mword 64) ->
+      ld !! 0%nat = Some st0 -> ld !! 1%nat = Some st1 ->
+      st0 <> FdClosed -> st1 <> FdClosed ->
+      (forall (rb wb : bool) (gp : pipe_names),
+         st0 <> FdOpen rb wb (FdPipe gp)) ->
+      (forall (rb wb : bool) (gp : pipe_names),
+         st1 <> FdOpen rb wb (FdPipe gp)) ->
+      UkSh.sh_deps -∗
+      shk_code (ukn_t N) -∗
+      uxsup_at (ukn_pay N) -∗
+      □ (riscv_kill_cred -∗ ukn_pay N (-1)) -∗
+      ush_jtab (ukn_t N) -∗
+      ush_cmd (ukn_d N) t (UPipe cl cr) -∗
+      usz (ukn_s N) szv -∗
+      UserFd.ustd (ukn_fd N) ld -∗
+      UserCwd.ucwd (ukn_cwd N) cwdv -∗
+      UserChildren.uch (ukn_ch N) Sc -∗
+      ush_pipe_call N ld (fun _ => emp)%I -∗
+      urun N h m (mword_of_int ShSyms.runcmd)
+        (6 * ush_ht (UPipe cl cr) + (2 + (UkShDiag.ush_Dg + n))) -∗
+      WP (Loop : expr riscv_lang).
+  Proof using Hpsok_free.
+    intros Hscl Hscr N Hcst h m t szv cwdv ld st0 st1 Sc n
+           Hpx Hhd Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1.
+    iIntros "#Hdp #Hcode #Hexs #Hkw #Hjt #Htree Hsz Hstd Hcwd Hch Hpipe Hrun".
+    pose proof (Nat.le_max_l (ush_ht cl) (ush_ht cr)) as HM1.
+    pose proof (Nat.le_max_r (ush_ht cl) (ush_ht cr)) as HM2.
+    replace (6 * ush_ht (UPipe cl cr) + (2 + (UkShDiag.ush_Dg + n)))%nat
+      with (6 + (2 + (UkShDiag.ush_Dg
+                      + (6 * Nat.max (ush_ht cl) (ush_ht cr) + n))))%nat
+      by (cbn [ush_ht]; lia).
+    iApply (wp_kshr_pipe_arm N cl cr h m t szv cwdv ld st0 st1 Sc
+              (6 * Nat.max (ush_ht cl) (ush_ht cr) + n)%nat
+              (fun _ => emp)%I (fun _ => emp)%I (fun _ => emp)%I
+              (fun _ => emp)%I (ukn_pay N)
+              (ukn_const_eq (N := N)) Hpx Hhd Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1
+              with "Hdp Hcode Hjt Htree Hsz Hstd Hcwd Hch Hkw [] Hpipe Hrun").
+    { iIntros (γp) "_". iSplitR; [ done | iSplitR; done ]. }
+    - (* ---- THE LEFT CHILD: the landed walk, at the ledger its prologue
+           left ---- *)
+      iIntros (N' h' m' γ' γp q) "%Hpeq %Hhd' %Ha0' Hmy #Hck #Hjt2 #Hqc Hsz
+                                  Hstd Hcwd Hch _ _ _ Hrun".
+      pose proof (ukn_const_of_eq N' (ukn_pay N) Hpeq
+                    (ukn_const_eq (N := N))) as Hcst'.
+      assert (Hpx' : ⊢ ukn_pay N' (-1)) by (rewrite Hpeq; exact Hpx).
+      iAssert (□ (riscv_kill_cred -∗ ukn_pay N' (-1)))%I as "#Hkw'".
+      { rewrite Hpeq. iExact "Hkw". }
+      iAssert (uxsup_at (ukn_pay N')) as "#Hexs'".
+      { rewrite Hpeq. iExact "Hexs". }
+      replace (2 + (UkShDiag.ush_Dg
+                    + (6 * Nat.max (ush_ht cl) (ush_ht cr) + n)))%nat
+        with (6 * ush_ht cl
+              + (2 + (UkShDiag.ush_Dg
+                      + (6 * (Nat.max (ush_ht cl) (ush_ht cr) - ush_ht cl)
+                         + n))))%nat by lia.
+      iApply (UkShDiag.wp_kshr_runcmd_final Hpsok_free cl Hscl N' h' m' q szv
+                (<[1%nat := FdOpen false true (FdPipe γp)]> ld)
+                ((6 * (Nat.max (ush_ht cl) (ush_ht cr) - ush_ht cl) + n)%nat)
+                Hpx' Ha0'
+                with "Hdp Hck Hexs' Hkw' Hjt2 Hqc Hsz Hstd [Hcwd] [Hch] Hrun").
+      { iApply (UserCwd.ucwd_any_of with "Hcwd"). }
+      { iApply (UserChildren.uch_any_of with "Hch"). }
+    - (* ---- THE RIGHT CHILD ---- *)
+      iIntros (N' h' m' γ' γp q) "%Hpeq %Hhd' %Ha0' Hmy #Hck #Hjt2 #Hqc Hsz
+                                  Hstd Hcwd Hch _ _ _ Hrun".
+      pose proof (ukn_const_of_eq N' (ukn_pay N) Hpeq
+                    (ukn_const_eq (N := N))) as Hcst'.
+      assert (Hpx' : ⊢ ukn_pay N' (-1)) by (rewrite Hpeq; exact Hpx).
+      iAssert (□ (riscv_kill_cred -∗ ukn_pay N' (-1)))%I as "#Hkw'".
+      { rewrite Hpeq. iExact "Hkw". }
+      iAssert (uxsup_at (ukn_pay N')) as "#Hexs'".
+      { rewrite Hpeq. iExact "Hexs". }
+      replace (2 + (UkShDiag.ush_Dg
+                    + (6 * Nat.max (ush_ht cl) (ush_ht cr) + n)))%nat
+        with (6 * ush_ht cr
+              + (2 + (UkShDiag.ush_Dg
+                      + (6 * (Nat.max (ush_ht cl) (ush_ht cr) - ush_ht cr)
+                         + n))))%nat by lia.
+      iApply (UkShDiag.wp_kshr_runcmd_final Hpsok_free cr Hscr N' h' m' q szv
+                (<[0%nat := FdOpen true false (FdPipe γp)]> ld)
+                ((6 * (Nat.max (ush_ht cl) (ush_ht cr) - ush_ht cr) + n)%nat)
+                Hpx' Ha0'
+                with "Hdp Hck Hexs' Hkw' Hjt2 Hqc Hsz Hstd [Hcwd] [Hch] Hrun").
+      { iApply (UserCwd.ucwd_any_of with "Hcwd"). }
+      { iApply (UserChildren.uch_any_of with "Hch"). }
+    - (* ---- THE PARENT: 0xea  c.li a0,0 ; 0xec  jal ra,<exit> ---- *)
+      iIntros (h' m' γp r1 r2 rw1 rw2 S1 S2 S3 S4)
+        "_ _ _ _ Hch #Hjt3 Hsz Hstd Hcwd _ Hrun".
+      iApply (UkShRun.wp_kshr_exit0 N h' m' 0xea 0xec 0xf0
+                (mword_of_int 0 : mword 6) (mword_of_int 2970 : mword 21)
+                (2 + (UkShDiag.ush_Dg
+                      + (6 * Nat.max (ush_ht cl) (ush_ht cr) + n)))%nat Hpx
+                ltac:(apply bv_eq; vm_compute; reflexivity)
+                ltac:(apply bv_eq; vm_compute; reflexivity)
+                ltac:(apply bv_eq; vm_compute; reflexivity)
+                ltac:(vm_compute; reflexivity)
+                with "Hcode [] [] Hrun").
+      { iApply (uis_shk_ea with "Hcode"). }
+      { iApply (uis_shk_ec with "Hcode"). }
+  Qed.
+
+  (* ...AND THE SAME AT [ush_ptop], which is what makes the scope claim of   *)
+  (* §1 load-bearing: at every shape but a top-level PIPE the LANDED walk    *)
+  (* covers the tree unchanged, and at that one shape the corollary above    *)
+  (* does.                                                                   *)
+  Lemma wp_kshr_runcmd_ptop (c : ushcmd) :
+    ush_ptop c ->
+    forall (N : uk_names Σ) `{!ukn_const N} (h : CpuId) (m : regfile)
+           (t szv cwdv : Z) (ld : list fdstate) (st0 st1 : fdstate)
+           (Sc : gset gname) (n : nat),
+      (⊢ ukn_pay N (-1)) ->
+      ukn_held N = ∅ ->
+      m !!! Regidx a0_idx = (mword_of_int t : mword 64) ->
+      ld !! 0%nat = Some st0 -> ld !! 1%nat = Some st1 ->
+      st0 <> FdClosed -> st1 <> FdClosed ->
+      (forall (rb wb : bool) (gp : pipe_names),
+         st0 <> FdOpen rb wb (FdPipe gp)) ->
+      (forall (rb wb : bool) (gp : pipe_names),
+         st1 <> FdOpen rb wb (FdPipe gp)) ->
+      UkSh.sh_deps -∗
+      shk_code (ukn_t N) -∗
+      uxsup_at (ukn_pay N) -∗
+      □ (riscv_kill_cred -∗ ukn_pay N (-1)) -∗
+      ush_jtab (ukn_t N) -∗
+      ush_cmd (ukn_d N) t c -∗
+      usz (ukn_s N) szv -∗
+      UserFd.ustd (ukn_fd N) ld -∗
+      UserCwd.ucwd (ukn_cwd N) cwdv -∗
+      UserChildren.uch (ukn_ch N) Sc -∗
+      ush_pipe_call N ld (fun _ => emp)%I -∗
+      urun N h m (mword_of_int ShSyms.runcmd)
+        (6 * ush_ht c + (2 + (UkShDiag.ush_Dg + n))) -∗
+      WP (Loop : expr riscv_lang).
+  Proof using Hpsok_free.
+    intros Hp N Hcst h m t szv cwdv ld st0 st1 Sc n
+           Hpx Hhd Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1.
+    iIntros "#Hdp #Hcode #Hexs #Hkw #Hjt #Htree Hsz Hstd Hcwd Hch Hpipe Hrun".
+    destruct c as [ args | c1 fl md fd | lc rc | lc rc | c1 ].
+    - iApply (UkShDiag.wp_kshr_runcmd_final Hpsok_free (UExec args) Hp N h m t
+                szv ld n Hpx Ha0
+                with "Hdp Hcode Hexs Hkw Hjt Htree Hsz Hstd [Hcwd] [Hch] Hrun");
+        [ iApply (UserCwd.ucwd_any_of with "Hcwd")
+        | iApply (UserChildren.uch_any_of with "Hch") ].
+    - exfalso. cbn in Hp. exact Hp.
+    - iApply (wp_kshr_runcmd_pipe lc rc (proj1 Hp) (proj2 Hp) N h m t szv cwdv
+                ld st0 st1 Sc n Hpx Hhd Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1
+                with "Hdp Hcode Hexs Hkw Hjt Htree Hsz Hstd Hcwd Hch Hpipe
+                      Hrun").
+    - iApply (UkShDiag.wp_kshr_runcmd_final Hpsok_free (UList lc rc) Hp N h m t
+                szv ld n Hpx Ha0
+                with "Hdp Hcode Hexs Hkw Hjt Htree Hsz Hstd [Hcwd] [Hch] Hrun");
+        [ iApply (UserCwd.ucwd_any_of with "Hcwd")
+        | iApply (UserChildren.uch_any_of with "Hch") ].
+    - iApply (UkShDiag.wp_kshr_runcmd_final Hpsok_free (UBack c1) Hp N h m t
+                szv ld n Hpx Ha0
+                with "Hdp Hcode Hexs Hkw Hjt Htree Hsz Hstd [Hcwd] [Hch] Hrun");
+        [ iApply (UserCwd.ucwd_any_of with "Hcwd")
+        | iApply (UserChildren.uch_any_of with "Hch") ].
+  Qed.
+
+
+  (* ===================================================================== *)
+  (* §7 HOW FAR THE LANDED LEAF GETS -- THE GAP, MEASURED.                  *)
+  (*                                                                        *)
+  (* [ush_pipe_call] is the shape sh's code needs and it is NOT             *)
+  (* instantiable from [UkRunSys.wp_uk_ecall_pipe] today.  The reason is    *)
+  (* ONE CONJUNCT and this section proves that it is one: the predicate     *)
+  (* below is [ush_pipe_call] with its failure arm weakened from            *)
+  (* [r = -1] to the leaf's own [uint r <> 0], and                          *)
+  (* [ush_pipe_call_weak_of_leaf] discharges it OUTRIGHT -- the two         *)
+  (* handles, the eight bytes read back as the two descriptor numbers, the  *)
+  (* ledger, the persistent close registrations and (at [R := emp]) the     *)
+  (* registration are all payable today, off the taint and nothing else.    *)
+  (*                                                                        *)
+  (* WHAT IS MISSING is the SIGN of a failing return, because sh's next     *)
+  (* instruction is [bltz a0]: [UsysMemOk.usys_fd_ok]'s pipe row pins the   *)
+  (* return only on the success side (`if decide (uint r = 0) then … else   *)
+  (* sts' = sts'), while the OPEN and DUP rows beside it both say           *)
+  (* [r = -1] on failure.  It cannot be bridged by a premise: a premise     *)
+  (* [forall r, uint r <> 0 -> r = -1] is FALSE, and one stated over the    *)
+  (* row is false too (take [r = 1], [sts' = sts]), so anything built on    *)
+  (* either would be vacuous (claude-notes/durable-notes.md, Vacuity).      *)
+  (* The fix is in the ROW and its kernel-side discharge; see the lane      *)
+  (* report, item R-1.                                                      *)
+  (* ===================================================================== *)
+  Definition ush_pipe_ans_weak (N : uk_names Σ) (dst : Z) (l : list fdstate)
+      (R : pipe_names -> iProp Σ) (r : mword 64) : iProp Σ :=
+    ((∃ (a b : nat) (γp : pipe_names),
+        ⌜ uint r = 0 /\ a <> b /\ (NSTD <= a)%nat /\ (NSTD <= b)%nat
+          /\ (a < NOFILE)%nat /\ (b < NOFILE)%nat ⌝ ∗
+        ubytes (ukn_d N) dst 4
+          (nth_byte (trunc32 (mword_of_int (Z.of_nat a) : mword 64))) ∗
+        ubytes (ukn_d N) (dst + 4) 4
+          (nth_byte (trunc32 (mword_of_int (Z.of_nat b) : mword 64))) ∗
+        UserFd.ustd (ukn_fd N) l ∗
+        UserFd.ufd (ukn_fd N) a (FdOpen true false (FdPipe γp)) ∗
+        UserFd.ufd (ukn_fd N) b (FdOpen false true (FdPipe γp)) ∗
+        ush_cldep (FdOpen true false (FdPipe γp)) ∗
+        ush_cldep (FdOpen false true (FdPipe γp)) ∗
+        R γp)
+     ∨ (⌜ uint r <> 0 ⌝ ∗
+        (∃ f : nat -> bv 8, ubytes (ukn_d N) dst 8 f) ∗
+        UserFd.ustd (ukn_fd N) l))%I.
+
+  Definition ush_pipe_call_weak (N : uk_names Σ) (l : list fdstate)
+      (R : pipe_names -> iProp Σ) : iProp Σ :=
+    (∀ (h : CpuId) (m : regfile) (av : nat) (dst : Z) (f : nat -> bv 8),
+       ⌜ uint (m !!! Regidx a0_idx) = dst ⌝ -∗
+       shk_code (ukn_t N) -∗
+       UserFd.ustd (ukn_fd N) l -∗
+       ubytes (ukn_d N) dst 8 f -∗
+       urun N h m (mword_of_int ShSyms.pipe) av -∗
+       (∀ (h' : CpuId) (m' : regfile) (r : mword 64),
+          ⌜ ucallee_saved m m' ⌝ -∗
+          ⌜ m' !!! Regidx a0_idx = r ⌝ -∗
+          ush_pipe_ans_weak N dst l R r -∗
+          urun N h' m' (ret_pc (m !!! Regidx ra_idx)) av -∗
+          WP (Loop : expr riscv_lang)) -∗
+       WP (Loop : expr riscv_lang))%I.
+
+  (* THE TAINT AND THE CLOSE LAW ARE TWO PREMISES, not one.  The taint is
+     what [UkRunSys.wp_uk_ecall_pipe] itself asks for; [udepw_law 21] is
+     what the two registrations are built from, and the taint gives it
+     ([UexecExecMint.udepw_law_of_sup_close]) -- but that file is an
+     APPLICATION-LEVEL mint and importing it into a proofmode-heavy walk
+     is the wedge claude-notes/durable-notes.md records, so the
+     conversion is left to the caller, which lives up there anyway. *)
+  Lemma ush_pipe_call_weak_of_leaf (N : uk_names Σ) `{!ukn_const N}
+      (l : list fdstate) :
+    (* the ledger this walk carries: three console rows, nothing shut, so
+       both of the leaf's allocations land ABOVE the standard streams and
+       the ledger does not move *)
+    fd_lowest_closed l = None ->
+    □ riscv_kill_cred -∗ udepw_law 21 -∗
+    ush_pipe_call_weak N l (fun _ => emp)%I.
+  Proof using Hpsok_free.
+    intros Hnone. iIntros "#Hkc #Hcl".
+    iIntros (h m av dst f) "%Hdst #Hcode Hstd Hbuf Hrun Hcont".
+    rewrite shp_pipe.
+    (* ---- 0xc96  c.li a7,4 ---- *)
+    iApply (wp_uk_cli N h m (mword_of_int 0xc96)
+              (mword_of_int 4 : mword 6) a7_idx av
+              ltac:(unfold unot_sp; vm_compute; discriminate)
+              ltac:(vm_compute; discriminate) with "[] Hrun").
+    { iApply (uis_shk_c96 with "Hcode"). }
+    assert (Em : <[Regidx a7_idx
+                   := regval_into_reg (sign_extend' 64
+                        (mword_of_int 4 : mword 6) : mword 64)]> m
+                 = <[Regidx a7_idx := (mword_of_int 4 : mword 64)]> m)
+      by (f_equal; apply bv_eq; vm_compute; reflexivity).
+    assert (E01 : add_vec_int (mword_of_int 0xc96 : mword 64) 2
+                  = mword_of_int 0xc98)
+      by (apply bv_eq; vm_compute; reflexivity).
+    rewrite E01 Em. iIntros (h1) "Hrun".
+    set (m1 := <[Regidx a7_idx := (mword_of_int 4 : mword 64)]> m).
+    assert (Ha0_1 : m1 !!! Regidx a0_idx = m !!! Regidx a0_idx)
+      by exact (upd_ne m (Regidx a7_idx) (Regidx a0_idx) _
+                  ltac:(vm_compute; discriminate)).
+    assert (E12 : add_vec_int (mword_of_int 0xc98 : mword 64) 4
+                  = mword_of_int 0xc9c)
+      by (apply bv_eq; vm_compute; reflexivity).
+    (* ---- 0xc98  ecall -- the PIPE leaf ---- *)
+    iApply (wp_uk_ecall_pipe N h1 m1 (mword_of_int 0xc98) l f av
+              ltac:(unfold usysno;
+                    rewrite (upd_eq m (Regidx a7_idx)
+                               (mword_of_int 4 : mword 64));
+                    vm_compute; reflexivity)
+              ltac:(vm_compute; reflexivity)
+              with "[] Hrun [] Hkc Hstd [Hbuf]").
+    { iApply (uis_shk_c98 with "Hcode"). }
+    { iApply udepw_of_psok; [ apply Hpsok_free; free_lit | ];
+      (discriminate || assumption || (vm_compute; discriminate)). }
+    { rewrite Ha0_1 Hdst. iExact "Hbuf". }
+    rewrite E12.
+    iIntros (h2 r g W fdep M' fdv' cw' cs') "Hans _ Hrun Hbuf".
+    rewrite Ha0_1 Hdst.
+    set (m2 := <[Regidx a0_idx := r]> m1).
+    assert (Hra : m2 !!! Regidx ra_idx = m !!! Regidx ra_idx).
+    { unfold m2, m1.
+      exact (eq_trans
+               (upd_ne m1 (Regidx a0_idx) (Regidx ra_idx) r
+                  ltac:(vm_compute; discriminate))
+               (upd_ne m (Regidx a7_idx) (Regidx ra_idx)
+                  (mword_of_int 4 : mword 64)
+                  ltac:(vm_compute; discriminate))). }
+    (* ---- 0xc9c  c.jr ra ---- *)
+    iApply (wp_uk_cjr N h2 m2 (mword_of_int 0xc9c) ra_idx
+              (ret_pc (m !!! Regidx ra_idx)) av
+              ltac:(vm_compute; discriminate)
+              ltac:(rewrite Hra; reflexivity)
+              with "[] Hrun").
+    { iApply (uis_shk_c9c with "Hcode"). }
+    iIntros (h3) "Hrun".
+    iApply ("Hcont" $! h3 m2 r with "[%] [%] [Hans Hbuf] Hrun").
+    { intros q Hq.
+      rewrite (upd_ne _ (Regidx a0_idx) (Regidx q) r
+                 (UkShRedir.ushx_cs_ne q a0_idx Hq
+                    ltac:(right; left; vm_compute; reflexivity))).
+      rewrite /m1 (upd_ne m (Regidx a7_idx) (Regidx q) _
+                     (UkShRedir.ushx_cs_ne q a7_idx Hq
+                        ltac:(right; right; right; right;
+                              vm_compute; reflexivity))).
+      reflexivity. }
+    { exact (upd_eq m1 (Regidx a0_idx) r). }
+    rewrite /ush_pipe_ans_weak.
+    iDestruct "Hans" as "[ Hok | [%Hrne Hstd] ]"; last first.
+    { iRight. iSplitR; [ by iPureIntro | ]. iSplitL "Hbuf"; [ | iExact "Hstd" ].
+      iExists g. iExact "Hbuf". }
+    iDestruct "Hok" as (a b γp)
+      "((%Hr0 & %Hab & %Halt & %Hblt & %Hg & _) & Hala & Halb & Hstd)".
+    rewrite (ushpi_after_none l (FdOpen true false (FdPipe γp)) Hnone).
+    rewrite (ushpi_after_none l (FdOpen false true (FdPipe γp)) Hnone).
+    rewrite /UserFd.ualloc_at Hnone.
+    iDestruct "Hala" as "[%Hage Hha]".
+    iDestruct "Halb" as "[%Hbge Hhb]".
+    iLeft. iExists a, b, γp.
+    iSplitR.
+    { iPureIntro. repeat split; assumption. }
+    (* THE EIGHT BYTES ARE THE TWO NUMBERS, split at four *)
+    rewrite (UkRunSys.ubytes_split (ukn_d N) dst 4 8 g ltac:(lia)).
+    iDestruct "Hbuf" as "[Hlo Hhi]".
+    iSplitL "Hlo".
+    { iApply (UkRunSys.ubytes_ext (ukn_d N) dst 4 g
+                (nth_byte (trunc32 (mword_of_int (Z.of_nat a) : mword 64)))
+                with "Hlo").
+      intros j Hj. rewrite (Hg j ltac:(lia)).
+      destruct (Nat.ltb_spec j 4) as [_ | Hc]; [ reflexivity | lia ]. }
+    iSplitL "Hhi".
+    { replace (dst + 4) with (dst + Z.of_nat 4) by lia.
+      iApply (UkRunSys.ubytes_ext (ukn_d N) (dst + Z.of_nat 4) (8 - 4)%nat
+                (fun j => g (4 + j)%nat)
+                (nth_byte (trunc32 (mword_of_int (Z.of_nat b) : mword 64)))
+                with "Hhi").
+      intros j Hj. rewrite (Hg (4 + j)%nat ltac:(lia)).
+      destruct (Nat.ltb_spec (4 + j) 4) as [Hc | _]; [ lia | ].
+      replace (4 + j - 4)%nat with j by lia. reflexivity. }
+    iFrame "Hstd Hha Hhb".
+    iSplitR; [ iApply (ush_cldep_of_law with "Hcl") | ].
+    iSplitR; [ iApply (ush_cldep_of_law with "Hcl") | done ].
   Qed.
 
 End UkShPipe.

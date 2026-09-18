@@ -87,7 +87,7 @@ arm is the theorem's one named premise (`pipe_both_law`).
   `UkShFork.ushf_lexable` grows the shape.  NEW files where possible
   (`UkShPipeLex.v`, `UkShPipeParse.v`); the existing simple-line and
   redirect-line theorems unchanged.  Bar: whole tree green.
-- [ ] **SH-PIPE** (U tier, sh's `runcmd`, design §5.1).  NEW `iris/UkShPipe.v`:
+- [x] **SH-PIPE** (U tier, sh's `runcmd`, design §5.1) -- LANDED, see Findings.  NEW `iris/UkShPipe.v`:
   `UkShRun.ush_simple` admits `UPipe (UExec l) (UExec r)` at the top; the
   PIPE arm walked with its non-code obligations as CALL PREMISES
   (SH-REDIR's `ush_open_call` pattern): `ush_pipe_call` shaped like
@@ -148,3 +148,132 @@ arm is the theorem's one named premise (`pipe_both_law`).
   the premise removed.
 
 ## Findings (append as lanes report)
+
+### SH-PIPE (2026-09-18) — runcmd's PIPE arm landed at call premises; the pipe row's -1 is the one wall
+
+Branch `app-pipe/sh-pipe`, three commits, ONE new file (`iris/UkShPipe.v`,
+1 line of `iris/_CoqProject`).  No landed statement moved.
+
+**WHAT LANDED** (`iris/UkShPipe.v`, immediately after `UkShRedir.v`):
+
+- `ush_ptop` — the one-level PIPE relaxation of `UkShRun.ush_simple`,
+  layered exactly as `UkShRedir.ush_top` is.  **Deliverable 1 of the brief
+  ("`ush_simple` admits `UPipe (UExec l) (UExec r)` at the TOP") is
+  REFUTED for SH-REDIR's already-recorded reason**, verbatim: `ush_simple`
+  is a structural `Fixpoint`, so "at the top and nowhere deeper" is not
+  expressible in it, and widening it in place silently strengthens
+  `UkShRun.wp_kshr_runcmd`, whose proof carries no ledger, no children set
+  and no fd handles to spend on the arm.  Design §5.1 should say
+  `ush_ptop`.  (The arm itself needs no scope predicate at all — it takes
+  the tree as `UPipe cl cr` with `ush_simple cl`/`ush_simple cr` beside
+  it, as `wp_kshr_redir_arm` takes `URedir c1 file mode 1`.)
+- `ush_cldep st` = `□ ∀ N m pc, UkRun.udepw_cl N m pc st` — the close
+  deposit at every RECORD and every key (`UkCat.kcat_cldep` with the
+  record quantified too, because the arm's three processes close their
+  pipe rows at three different gname triples).  `ush_cldep_of_law` builds
+  it from `udepw_law 21`.
+- `wp_kshpi_close_h` — sh's `close` stub at a TAIL HANDLE through the
+  generic `UkRunSys.wp_uk_ecall_close`, per lane PIPE-STD's note.
+- `wp_kshpi_dup` — sh's `dup` stub (nothing had walked it).
+- `wp_kshpi_wait0` — `wait(0)` at a NAMED children set, relaying
+  `UexecRet.uwait_ans`.
+- `ush_pipe_ans` / `ush_pipe_call` — pipe(2) as a call premise.
+- `ush_fork_ans` — `wp_kshr_fork1`'s answer with `uch` taken out.
+- **`wp_kshr_pipe_arm`** — the arm, 31 instructions in three processes,
+  0x13c..0x1c2 plus the `panic("pipe")` tail 0x172..0x17a; three
+  continuations out (each child at `runcmd`'s own entry pc, the parent at
+  0xea).  Statement verbatim in the lane report.
+- `wp_kshr_runcmd_pipe` — the CONSUMER TEST: the arm at
+  `R = RcL = RcR = Rk := emp`, `Qc := ukn_pay N`, both children closed by
+  `UkShDiag.wp_kshr_runcmd_final` and the parent by
+  `UkShRun.wp_kshr_exit0` at 0xea.  Its ONLY remaining premise is
+  `ush_pipe_call`.
+- `wp_kshr_runcmd_ptop` — the same at `ush_ptop c`, dispatching to the
+  landed walk at every other shape (this is what makes §1's scope claim
+  load-bearing).
+- `ush_pipe_ans_weak` / `ush_pipe_call_weak` +
+  **`ush_pipe_call_weak_of_leaf`** — the gap, MEASURED: the pipe call with
+  its failure arm weakened from `r = -1` to the leaf's own
+  `uint r <> 0`, discharged OUTRIGHT from the taint and
+  `fd_lowest_closed ld = None`.
+
+**R-1 — THE ONE WALL: `UsysMemOk`'s pipe row does not pin a failing
+return to -1, and sh's next instruction is `bltz a0`.**  Evidence at the
+statement: `UkRunSys.wp_uk_ecall_pipe`'s post is
+`(∃ a b γp, ⌜uint r = 0 /\ …⌝ ∗ …) ∨ (⌜uint r <> 0⌝ ∗ ustd … l)`, and
+`usys_fd_ok`'s pipe row is `if decide (uint r = 0) then … else sts' = sts`
+— the OPEN and DUP rows beside it both say `r = (mword_of_int (-1))` on
+failure, pipe's says nothing.  `uint r <> 0` does not decide
+`uv_btaken BLT r zero_reg`, and the not-taken-and-nonzero path runs the
+whole pipeline on two garbage descriptors, so it is not walkable.  It
+cannot be bridged by a premise either: `∀ r, uint r <> 0 -> r = -1` is
+FALSE, and a premise stated over the row is false too (take `r = 1`,
+`sts' = sts`), so anything built on either would be vacuous.  **The fix
+is one conjunct in `UsysMemOk.usys_fd_ok`'s pipe row plus its
+`ProofSysPipe` discharge** — `ush_pipe_call_weak_of_leaf` proves that
+everything else the arm asks of the leaf (the two handles, the eight
+bytes read back as the two descriptor numbers, the unmoved ledger, the
+two persistent close registrations) is payable today.
+
+**R-2 — a `wait(0)` CANNOT TELL sh's TWO CHILDREN APART, so design §4.2's
+lend/payload split must be SYMMETRIC.**  Two independent reasons, both at
+the statement: (a) `UkShRun.wp_kshr_fork1` requires
+`forall x y, Q x = Q y`, so a child's payload cannot depend on its exit
+status; (b) the reaping arm of `UexecRet.uwait_ans` binds its own
+generation with `γ' ∈ cs \/ pidv = mword_of_int 1`, and the only form
+that refutes the second disjunct (`UkShRun.wp_kshr_wait_pid`) needs the
+caller's `UserChildren.upid` fragment — which `UkFork.wp_uk_ecall_fork`'s
+child arm DOES hand out (`UkFork.v:935`) and which `wp_kshr_fork1` then
+DROPS.  So the arm relays the two `ush_fork_ans` and the two `uwait_ans`
+unredeemed and one payload `Qc` serves both children.
+
+**WHAT ELSE THE DESIGN GOT WRONG.**
+
+1. **`p = {3, 4}` is not derivable** (design §5.1, and the brief's "the
+   eight bytes spell 3, 4").  The row's two slots are
+   `fd_least_closed sts a` over the WHOLE table, and a program's ledger
+   pins only its low `NSTD` (`UserFd.ustd_agree`), so all a caller learns
+   is `NSTD <= a`, `a <> b`, `a, b < NOFILE`.  The arm is stated at
+   abstract `a`/`b` and never needs more.
+2. **The queue fragment cannot be a conjunct of the call premise.**  It
+   lives in the key's own post (`spost_at uslot USYS_pipe`) and only the
+   deposit class's INSTANCE can read that row, while every `Uk*` file —
+   this one included — is stated over the class.  It goes inside the
+   abstract `R γp`, as the file claim goes inside `ush_open_call`'s `K`.
+3. **The registration is HANDED OUT, not OWED.**  Design §2 has the leaf
+   hand the run back as `pipe_reg γp -∗ urun …`; an arm that had to
+   *supply* `R γp` would need a registrar premise over a `γp` it does not
+   yet know.  Stated as an answer conjunct instead, BOTH leaves
+   instantiate it: today's at `R := fun _ => emp`, PIPE-REG's by having
+   its supplier allocate the invariant and redeem the owed run.
+4. **The close deposits are not arm parameters.**  `fileclose_cpay`-shaped
+   per-close parameters cannot be stated: the children close at records
+   fork chooses.  They ride on the call's answer as the two persistent
+   `ush_cldep`s, which is design §2's ruling read literally (one
+   persistent registration per pipe row, payable any number of times).
+5. **`wp_kshr_fork1_any` is the wrong fork wrapper** (the brief names it).
+   It fixes `Rc := emp` and `Q := ukn_pay N`, so it can carry neither a
+   lend nor a per-child payload; the arm uses `UkShRun.wp_kshr_fork1`,
+   which has `Sc`, `Q`, `Rc` and `Pex`.
+6. **`wp_kshr_wait0` returns nothing** — it is index-free (`uch_any`) and
+   discards the answer, which is right for the LIST arm and useless for a
+   round.  Replaced by this file's `wp_kshpi_wait0`.
+7. `int p[2]` costs NO extra stack: `wp_kshr_entry` already hands out the
+   word at `sp0 - 40`, which is exactly p, inside the 48-byte frame.  The
+   arm's budget is the LIST arm's, `6 * ush_ht (UPipe cl cr) + (2 + (ush_Dg + n))`.
+8. Three things the brief expected to be missing were already there:
+   `UkShRun.forkable_ush_paypipe` (the PIPE arm's fork payload), 
+   `UkShRun.ush_pipe_halves`/`ush_bytes_as_word` (§8a), and every
+   `uis_shk_*` fact for 0x13c..0x1c2 (`tools/ucode_shk.txt` catalogues all
+   of runcmd).  `Local` lemmas in a landed file ARE reachable by qualified
+   name (`UkShRun.wp_kshr_wait0`, `UkShRedir.wp_kshx_rcall`), so
+   UkShRedir's "three leaves copied, not shared" was avoidable.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  For SH-PIPE-ROUND: nothing
+from this lane is missing — instantiate `ush_pipe_call` and use
+`wp_kshr_pipe_arm` (not `wp_kshr_runcmd_pipe`, which drops everything).
+For anyone who wants the arm CLOSED at today's kernel: R-1, the `-1` in
+`UsysMemOk`'s pipe row.  For PIPE-REG: `wp_uk_ecall_pipe` should also
+hand back the two `ush_cldep`s (or whatever `pipe_reg` becomes), because
+that is what the six closes are paid with and the taint is the only
+source today.

@@ -578,7 +578,15 @@ unowned critical item (WRITE-RELAY-3's `TB` guard).  RULES, replacing
   `SpecSysMknod.mknod_au_at`, where it is the walked path's last element
   under the cursor's guard, discharged by `ProofSysMknod` from the walk.
   Refused: an `Other` parameter on `init_cons_laws_at` (the consumer
-  cannot supply it — the name is the kernel's to pin).
+  cannot supply it — the name is the kernel's to pin).  Bottom layer
+  landed by INIT-FILE round 3 (`FsAbsCreateNm.v`); the thread up through
+  `SpecCreate`'s shared bundle is round 4's.
+- RULING ND (2026-09-18, INIT-FILE round 3): the UNARM conjunct's receipt
+  repair is refuted (`f_ok_unarm_fresh` needs the deed's CURRENT state at
+  the arm's view, a temporal fact no receipt about one view carries).
+  NM's twin instead: `aunarm_commit_at` gains `Nd : absnode -> Prop`,
+  instantiated at the node the arm placed, so the file's unarm leg is
+  `f_ok_unarm` with the two rows' nodes distinct.
 - TWO SERIAL STREAMS, at most two lanes on `iris/` at once: the KERNEL
   stream (OFF-LINK-6 + L5 + the `TB` guard, exit criterion: `Hopen_hand`,
   cat's lend and `UEchoFile.ef_chain` compile as `Definition`s; then

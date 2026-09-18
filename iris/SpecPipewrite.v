@@ -15,10 +15,13 @@
    public tier:
 
    - the PIPE, at the reference tier (PipeInv.v): [is_pipe] is persistent
-     and [pipe_ref γp w q] -- ANY end, ANY positive fraction -- is the whole
-     credential story.  It is what licenses acquire (and release, and the
-     re-acquire inside sleep) on the pipe's cancellable lock, and it comes
-     back untouched.  Everything pipewrite does to the pipe's fields happens
+     and [pipe_ref γp w q] -- at ANY positive fraction, and at the WRITE end
+     ([w = true]) -- is the whole credential story.  It is what licenses
+     acquire (and release, and the re-acquire inside sleep) on the pipe's
+     cancellable lock, and it comes back untouched.  THE END IS PINNED (lane
+     PQ-FLAG; it used to be either end): the byte queue's write link fires
+     only at [ps_wo s = true], and a share of the WRITE end is the only thing
+     that proves it -- see the premise below.  Everything pipewrite does to the pipe's fields happens
      under [pi->lock] and is invisible to the caller: the counters move, the
      queue coupling [pipe_count_ok] is preserved, and no contract weaker
      than a contents-indexed pipe could say more (see design/pipe.md).

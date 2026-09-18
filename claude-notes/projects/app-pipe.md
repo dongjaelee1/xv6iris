@@ -36,7 +36,8 @@ arm is the theorem's one named premise (`pipe_both_law`).
 
 ## Wave 1 — independent of the protocol (run in parallel)
 
-- [ ] **PQ-FLAG** (kernel/spec, design §3.1).  `PipeQueue.pipe_wlink` gains
+- [x] **PQ-FLAG** (kernel/spec, design §3.1) — LANDED for the WRITE link;
+  the read link's premise REFUTED (see Findings).  `PipeQueue.pipe_wlink` gains
   the premise `⌜ps_wo s = true⌝`, `pipe_rlink` gains `⌜ps_ro s = true⌝`;
   every `_of_frag` constructor and chain lemma (`pipe_wchain`/`pipe_rchain`
   and their `_cursor`/`_neg`/post lemmas) re-proved by ignoring the
@@ -148,3 +149,90 @@ arm is the theorem's one named premise (`pipe_both_law`).
   the premise removed.
 
 ## Findings (append as lanes report)
+
+### PQ-FLAG (2026-09-18)
+
+**LANDED** (`iris/`, branch `app-pipe/pq-flag`, commit `539b48d6`):
+
+- `PipeQueue.pipe_wlink γ b Φ` now reads
+  `∀ s, ⌜ps_wo s = true⌝ -∗ pipe_qauth γ s ={⊤}=∗ pipe_qauth γ (pst_write b s) ∗ Φ`.
+  Every `_of_frag` constructor, every `pipe_wchain`/`pipe_rchain` lemma
+  (`_0`, `_cursor`), every payment/post lemma (`pipe_wpay*`, `pipe_wpost*`,
+  `pipe_rpost*`) keeps its statement BYTE-IDENTICAL and goes through by
+  introducing and ignoring the premise; `pipe_wlink_mono` passes it on.
+- `PipeQueue.pipe_wlink_of_uncond` — the lane's sanity lemma: the
+  unconditional stepper (the OLD link) is still a `pipe_wlink`, so no
+  holder loses anything.  The converse is false and not stated.
+- `SpecPipewrite.wp_pipewrite_sconf_body` gains ONE pure premise, `w = true`
+  (between `eb = true` and `locks_below`).  **This is the shape the design
+  asked to be reported:** the fire site does NOT read the flag out of the
+  code (pipewrite never loads `pi->writeopen`), it reads it out of the
+  CALLER'S CREDENTIAL, so the contract has to pin the end it is entered
+  with to the write end.  It is not a restriction on the code — filewrite
+  reaches the call only past `f->writable`, which IS that boolean.
+- `ProofPipewrite`: `pw_wo_open` (new; `w = true` + the payload's
+  `pipe_endstate γp true wo` + the caller's `pipe_ref γp w q` ⊢
+  `⌜pflag_open wo⌝`, via `PipeInvDefs.pipe_endstate_holder`), derived ONCE
+  per loop round right after the payload is destructured; `pw_qres_push`
+  and `pw_wlink_apply` gain the pure premise (`pflag_open wo` /
+  `ps_wo s = true`), bridged by `pipe_qres`'s coupled arm
+  (`ps_wo s = pflag_bool wo`).  `w` is deliberately NOT substituted — the
+  script names it in a dozen argument lists.
+- `ProofFilewrite`: ONE line — `Hwb : fc_wbool Cf = true` (already asserted
+  on the pipe path from `fw_wbool_of_fall`) added to the
+  `wp_pipewrite_sconf` argument list.  No statement in the file moves.
+
+No other consumer BUILDS a link value today: `SpecFilewrite`/`SpecFileread`,
+`UkWritePipe`/`UkReadPipe` and `UexecExecMint` only pass `pipe_wpay`/
+`pipe_rpay` through or pay the taint, so no holder-side `iIntros (%)` was
+needed anywhere.
+
+**REFUTED: the read link's `⌜ps_ro s = true⌝` (design §3.1's "free, for
+symmetry").  It is not free, and it is not landed.**  Evidence at the
+statement:
+
+1. piperead never loads `pi->readopen` (`grep readopen ProofPiperead.v` is
+   empty; `pr_res_i`'s leftover fact is about `wo`, not `ro`), so the only
+   route to the fact is the caller's `pipe_ref γp false q`, i.e. a
+   `w = false` premise on `SpecPiperead` — the mirror of what landed.
+2. That premise instantiates at `ProofFileread`'s call site to
+   `fc_wbool Cf = false`, and fileread learns NOTHING about
+   `fc_wbool Cf`: the file layer picks a pipe's end off `fc_wbool C`
+   (`FileInvDefs.file_core_noff`), and read's walk only rules out
+   `f->readable = 0` (`SpecFileread.fileread_in_of_pipe` /
+   `fileread_extra_of_pipe` both leave `wb` free — they destruct `rb` and
+   refute `rb = false`, and say nothing of `wb`).
+3. The missing fact is a PIPE FILE'S TWO ENDS ARE COMPLEMENTARY —
+   `pipealloc` sets `readable/writable` to `1/0` and `0/1` — which is true
+   of the code and dropped at the store.  `fdstate_ok` already pins
+   `fc_writable C = (if w then 1 else 0)`, so the fact is expressible; what
+   is missing is a publisher.  Two ways in, BOTH outside this lane's brief
+   (STOP rule 1):
+   - narrow `SpecFileread`'s pipe arm from `FdOpen true _ (FdPipe γp)` to
+     `FdOpen true false (FdPipe γp)` (and add `fc_writable C = 0` to
+     `fileread_in_of_pipe`/`fileread_extra_of_pipe`) — a NON-pipe `Spec*`
+     statement moves, and every U-tier read consumer (row 5, `UkReadPipe`)
+     would have to prove its pipe row is a read-end row;
+   - or add the complementarity conjunct to `FileInvDefs.file_core_noff`'s
+     pipe arm, published by `sys_pipe` — a landed invariant moves.
+   Nothing in the pipeline protocol needs it: (P3) freezes `ps_ws`, which
+   only a WRITE moves, so the reader's side needs no flag premise.  The
+   refutation is recorded in `PipeQueue.v` at `pipe_rlink`.
+
+**WHAT THE DESIGN GOT WRONG.**  §3.1's parenthesis "and symmetrically
+`pipe_rlink` gains `⌜ps_ro s = true⌝` (free, for symmetry …)" — it is not
+free; see above.  §3.1's "the two fire sites supply it from the caller's
+`pipe_ref`" is right for the write site but understates the cost: the
+`pipe_ref` in `SpecPipewrite`'s precondition is at a GENERIC end (`ANY end,
+ANY positive fraction`, the file's own words), so supplying the premise
+means the CONTRACT changes, not just the proof.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST** (PIPE-PROTO): the write link's
+premise is now the state's `ps_wo`, so the (P3) arm of `pipe_body` is
+refuted from `γeof ↦ Some w` forcing `ps_wo s = false` — as designed — and
+the writer's chain builder must hand `pipe_wlink_of_frag` its fragment
+KNOWING nothing extra (the constructor's statement did not change).  Do NOT
+plan on a `ps_ro` premise on the read side; the reader's EOF observation
+(`pipe_olink`, `pst_eof`) is unaffected, but any reader-side protocol that
+wanted "the read end is open" must first pay for the complementarity fact
+above.

@@ -444,6 +444,14 @@ Proof.
   apply elem_of_app. right. by apply elem_of_list_singleton.
 Qed.
 
+(* ...AND THE ONE CONSEQUENCE THE WALK ACTUALLY SPENDS (lane LINK-GEN-5):
+   the byte is not a carriage return.  The walk's only use of the value is
+   to refute the '\r' branch, so this -- and not the alphanumeric range --
+   is what a second era's discipline has to give. *)
+Lemma ush_disc_snoc_ncr (I : list (bv 8)) (b : bv 8) :
+  disc_input (I ++ [b]) -> bv_unsigned b <> 13%Z.
+Proof. intro Hd. pose proof (ush_disc_snoc_val I b Hd). lia. Qed.
+
 (* ...and the two spellings of the newline the branches go between: [gets]
    tests the VALUE and the parser names the BYTE. *)
 Lemma ush_nl_of_val (b : bv 8) : bv_unsigned b = 10%Z -> b = wl_nl.
@@ -2542,8 +2550,33 @@ Section UkSh.
      ([UShLine.ush_read_recv_leaf_holds]) is at [FsCfg.fsc_cons]. *)
   Context (cn : cons_names).
 
+  (* ...AND THE INPUT'S DISCIPLINE, from here on (lane LINK-GEN-5).  The
+     statements above take it as a parameter; the WALK spends it, and it
+     spends exactly three readings of it -- no more.  They are named here
+     so that a second era supplies three lemmas and nothing else.
+
+      - [Hdsc_ncr] is the whole of what the byte's VALUE is read for: the
+        walk's only use is to refute the carriage-return branch (it never
+        needs the alphanumeric range), so the law is one negation and it
+        is true of any discipline whose bytes are body bytes.
+      - [Hdsc_nl] is the LINE the newline closed.  It is [body_ok]-valued
+        because that is what [ush_gets_done_line] spends on BOTH its
+        conjuncts; see the lane's findings -- this is the one of the three
+        that a wider era cannot supply, and the reason is the LINE axis
+        ([ush_line_is] inside [ush_gets_done]) and not the discipline.
+      - [Hdsc_short] is the remainder's length, which is what refutes the
+        buffer-full exit. *)
+  Context (Dsc : list (bv 8) -> Prop).
+
+  Hypothesis Hdsc_ncr : forall (I : list (bv 8)) (b : bv 8),
+    Dsc (I ++ [b]) -> bv_unsigned b <> 13%Z.
+  Hypothesis Hdsc_nl : forall I : list (bv 8),
+    Dsc (I ++ [wl_nl]) -> body_ok (rest_of I).
+  Hypothesis Hdsc_short : forall I : list (bv 8),
+    Dsc I -> (S (length (rest_of I)) < line_max)%nat.
+
   Hypothesis ush_read_leaf :
-    forall l : list fdstate, ⊢ ush_read_recv_leaf cn l.
+    forall l : list fdstate, ⊢ ush_read_recv_leaf_at Dsc cn l.
 
   (* ---- read @0xc9e, SYS_read = 5 -- the WINDOW row's stub -------------- *)
   (* DEPENDS ON [ush_read_leaf].                                            *)
@@ -2564,7 +2597,7 @@ Section UkSh.
        ⌜ (d <= cap)%nat ⌝ -∗
        ⌜ forall j : nat, (d <= j < k)%nat -> g j = f j ⌝ -∗
        ustd γfd l -∗
-       ush_read_ans cn l ret cap I g -∗
+       ush_read_ans_at Dsc cn l ret cap I g -∗
        ubytes γd a k g -∗
        urun N h'
          (<[Regidx a0_idx := ret]>
@@ -2572,7 +2605,7 @@ Section UkSh.
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof using ush_read_leaf.
+  Proof using Hdsc_ncr Hdsc_nl Hdsc_short ush_read_leaf.
     intros Ha0 Ha1 Ha2 Hck Hc31 Hfd0.
     iIntros "#Hcode Hbs Hstd Hpos Hrun Hcont".
     rewrite shp_read.
@@ -3583,7 +3616,7 @@ Section UkSh.
     ubytes γd a Nb f -∗
     ubyte γd (spz - 81) bc -∗
     ustd γfd l -∗
-    ush_gets_line l I0 J f -∗
+    ush_gets_line_at Dsc l I0 J f -∗
     (* ...and the credential the prompt left, riding beside the line
        untouched to the exit that spends it (lane IO-LEAF, M6a(3)) -- or
        the taint, on a turn that holds none (step 4) *)
@@ -3601,7 +3634,7 @@ Section UkSh.
        urun N h' mc' (mword_of_int 0xb00) nn -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof using HT ush_at_of_pm_taint ush_at_of_pm_wb ush_read_leaf ush_wb_read ush_wc_read.
+  Proof using Hdsc_ncr Hdsc_nl Hdsc_short HT ush_at_of_pm_taint ush_at_of_pm_wb ush_read_leaf ush_wb_read ush_wc_read.
     intros k. induction k as [| k IH ];
       intros i J h mc f bc nn HN Hi Hij HNb Ha0 Ha64 HN31 Hsz0 Hsz1
              Hs0 Hs1 Hs2 Hs4 Hs5 Hs6.
@@ -3718,7 +3751,7 @@ Section UkSh.
       iApply ("Hcont" $! h4 m3 i f bc
                 with "[%] [%] [%] Hbs Hb Hstd [Hpos] Hrun");
         [ lia | exact Hs8_3 | exact P13 | ].
-      rewrite /ush_gets_line.
+      rewrite /ush_gets_line_at.
       iDestruct "Hpos" as "[[%Hp Hpm] | [#HT Hp]]"; last first.
       { iApply (ush_gets_done_taint l i f with "HT Hp"). }
       (* THE BUFFER CANNOT FILL INSIDE A LINE: the invariant keeps the line
@@ -3851,7 +3884,7 @@ Section UkSh.
        disjunction and ride the rest of the walk persistently while the
        lease itself is spent -- which is what keeps the walk between the
        read and the '\n' test UNDUPLICATED. *)
-    iDestruct (ush_gets_line_split l I0 J f with "Hpos") as "[Hlease #Hrows]".
+    iDestruct (ush_gets_line_split_at Dsc l I0 J f with "Hpos") as "[Hlease #Hrows]".
     iApply (wp_ksh_read h8 m7 (spz - 81) 1%nat 1%nat (I0 ++ J)
               (fun _ => bc) l nn
               Ha0_7 Ha1_7 Ha2_7 ltac:(lia) ltac:(vm_compute; reflexivity)
@@ -3859,7 +3892,7 @@ Section UkSh.
               with "Hcode Hbw Hstd Hlease Hrun").
     iIntros (h9 ret d g1) "%Hd %Hg1 Hstd Hans Hbw Hrun".
     (* R2: the receipt, read into the three outcomes a one-byte read has *)
-    iDestruct (ush_read_ans_1 cn l ret (I0 ++ J) g1 with "Hlaw Hans")
+    iDestruct (ush_read_ans_1_at Dsc cn l ret (I0 ++ J) g1 with "Hlaw Hans")
       as "Hans".
     rewrite Hra7.
     assert (Eret : ret_pc (mword_of_int 0xae6 : mword 64) = mword_of_int 0xae6)
@@ -3958,7 +3991,7 @@ Section UkSh.
        by that one byte and is disciplined still, which is what decides
        every branch below -- '\n' closes an admissible line, '\r' cannot
        happen, and anything else is a body byte the line grows by. *)
-    iAssert ((⌜disc_input ((I0 ++ J) ++ [g1 0%nat])⌝
+    iAssert ((⌜Dsc ((I0 ++ J) ++ [g1 0%nat])⌝
               ∗ ⌜ush_fd0c l⌝ ∗ Pm ((I0 ++ J) ++ [g1 0%nat]))
              ∨ (T ∗ ush_pos))%I with "[Hans]" as "Hans".
     { iDestruct "Hans"
@@ -4187,7 +4220,7 @@ Section UkSh.
       assert (Hrest : rest_of (I0 ++ J) = J).
       { rewrite /rest_of (wl_cut_app_nonl I0 J Hnlj). cbn [snd].
         rewrite Hr0. reflexivity. }
-      pose proof (disc_input_snoc_nl (I0 ++ J) Hdisc) as Hbody.
+      pose proof (Hdsc_nl (I0 ++ J) Hdisc) as Hbody.
       rewrite Hrest in Hbody.
       assert (Hline : wl_line (wl_words J) = J ++ [wl_nl])
         by (rewrite /wl_line (proj1 Hbody); reflexivity).
@@ -4195,14 +4228,14 @@ Section UkSh.
         by (rewrite Hline length_app; cbn [length]; lia).
       assert (Hfnl : ush_set f i (g1 0%nat) (length J) = wl_nl).
       { rewrite <- Hij, ush_set_at. exact Hnlb. }
-      assert (Hp' : ush_gline_p l I0 J (ush_set f i (g1 0%nat))).
-      { rewrite /ush_gline_p. split_and!;
+      assert (Hp' : ush_gline_p_at Dsc l I0 J (ush_set f i (g1 0%nat))).
+      { rewrite /ush_gline_p_at. split_and!;
           [ exact Hr0 | exact Hnlj | exact Hltj | exact Hfdc' | | exact Hdj ].
         intros j Hj. rewrite (ush_set_lt f i j (g1 0%nat) ltac:(lia)).
         exact (Hbytes j Hj). }
       rewrite <- Hlen.
       iDestruct "Hwc" as "[Hwc | #HT']".
-      { iApply (ush_gets_done_line l I0 J (wl_words J)
+      { iApply (ush_gets_done_line_at Dsc l I0 J (wl_words J)
                   (ush_set f i (g1 0%nat)) Hp' Hbody eq_refl Hfnl
                   with "Hwc Hpm"). }
       iApply (ush_gets_done_line_t l (I0 ++ J ++ [wl_nl]) _
@@ -4318,7 +4351,7 @@ Section UkSh.
            leaves), which is where the loop's bound comes from now. *)
         assert (Hnb : nth_byte (m9 !!! Regidx a5_idx) 0%nat = g1 0%nat)
           by (rewrite Ha5_9; exact (ush_nth_byte0_moi (g1 0%nat))).
-        rewrite Hnb. rewrite /ush_gets_line.
+        rewrite Hnb. rewrite /ush_gets_line_at.
         iDestruct "Hans" as "[(%Hdisc & %Hfdc & Hpm) | [#HT Hp]]"; last first.
         { iRight. iFrame "HT Hp". }
         iDestruct "Hrows" as "[%Hp | #HT]"; last first.
@@ -4335,10 +4368,10 @@ Section UkSh.
         { rewrite (rest_of_snoc_other (I0 ++ J) (g1 0%nat) Hbne).
           rewrite /rest_of (wl_cut_app_nonl I0 J Hnlj). cbn [snd].
           rewrite Hr0. reflexivity. }
-        pose proof (disc_input_rest_short _ Hdisc) as Hshort.
+        pose proof (Hdsc_short _ Hdisc) as Hshort.
         rewrite Hrest length_app in Hshort. cbn [length] in Hshort.
         iLeft. iSplitR.
-        { iPureIntro. rewrite /ush_gline_p. split_and!.
+        { iPureIntro. rewrite /ush_gline_p_at. split_and!.
           - exact Hr0.
           - exact (wl_nonl_app J [g1 0%nat] Hnlj
                      (wl_nonl_cons_2 (g1 0%nat) [] Hbne (not_elem_of_nil _))).
@@ -4396,7 +4429,7 @@ Section UkSh.
     iDestruct "Hans" as "[(%Hdisc & _ & Hpm) | [#HT Hp]]"; last first.
     { iApply (ush_gets_done_taint l (i + 1)%nat _ with "HT Hp"). }
     exfalso.
-    pose proof (ush_disc_snoc_val (I0 ++ J) (g1 0%nat) Hdisc) as Hv.
+    pose proof (Hdsc_ncr (I0 ++ J) (g1 0%nat) Hdisc) as Hv.
     unfold bz in Hb13. lia.
   Qed.
 
@@ -4502,7 +4535,7 @@ Section UkSh.
          urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (12 + nn) -∗
          WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof using HT ush_at_of_pm_taint ush_at_of_pm_wb ush_read_leaf ush_wb_read ush_wc_read.
+  Proof using Hdsc_ncr Hdsc_nl Hdsc_short HT ush_at_of_pm_taint ush_at_of_pm_wb ush_read_leaf ush_wb_read ush_wc_read.
     intros Ha0 Ha1 HNle HN31 Hfd0.
     assert (HN0 : (0 < Nb)%nat)
       by (rewrite HNle; unfold sh_nbuf; lia).
@@ -4849,7 +4882,7 @@ Section UkSh.
     (* THE LINE BEGINS AT A BOUNDARY, which is what the command loop
        carries round its cycle ([ush_posb]) and what makes the byte the
        first read delivers the line's FIRST byte (lane IO-LEAF, M5(3)). *)
-    iDestruct (ush_gets_line_of_posb l f with "Hpos") as (I0) "[Hpos Hwc]".
+    iDestruct (ush_gets_line_of_posb_at Dsc l f with "Hpos") as (I0) "[Hpos Hwc]".
     iApply (wp_ksh_gets_loop a Nb spz l I0 Hfd0 Nb 0%nat [] h18 m8 f
               (nth_byte v11 7) nn
               ltac:(lia) ltac:(lia) ltac:(reflexivity) HNle
@@ -5536,7 +5569,7 @@ Section UkSh.
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (4 + (12 + nn)) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
-  Proof using HT ush_at_of_pm_taint ush_at_of_pm_wb ush_read_leaf ush_wb_read ush_wc_read.
+  Proof using Hdsc_ncr Hdsc_nl Hdsc_short HT ush_at_of_pm_taint ush_at_of_pm_wb ush_read_leaf ush_wb_read ush_wc_read.
     intros Ha0 Ha1 HNle HN31 Hfd0.
     assert (HN0 : (0 < Nb)%nat) by (rewrite HNle; unfold sh_nbuf; lia).
     iIntros "#Hdp #Hlaw #Hplaw #Hcode Hbs Hstd Hpos Hrun Hcont".
@@ -7617,7 +7650,7 @@ Section UkSh.
     ush_prompt_law -∗
     ush_rest_l R -∗ shk_code γt -∗ ush_jtab γt -∗ ush_gen_slot -∗
     ush_loop_head R l.
-  Proof using HT Hpay ush_at_of_pm_taint ush_at_of_pm_wb ush_pm_of_at ush_read_leaf ush_wb_read ush_wc_blk_line ush_wc_read.
+  Proof using Hdsc_ncr Hdsc_nl Hdsc_short HT Hpay ush_at_of_pm_taint ush_at_of_pm_wb ush_pm_of_at ush_read_leaf ush_wb_read ush_wc_blk_line ush_wc_read.
     assert (Hbf : sh_buf = 8224) by (vm_compute; reflexivity).
     assert (Hnb : sh_nbuf = 100%nat) by (vm_compute; reflexivity).
     assert (Hnbz : Z.of_nat sh_nbuf = 100) by (vm_compute; reflexivity).
@@ -8110,7 +8143,7 @@ Section UkSh.
     ubytes γd sh_buf sh_nbuf f -∗
     urun N h m (mword_of_int 0x914) (16 + (ush_Dbody + n0)) -∗
     WP (Loop : expr riscv_lang).
-  Proof using HT Hpay ush_at_of_pm_taint ush_at_of_pm_wb ush_pm_of_at ush_read_leaf ush_wb_read ush_wc_blk_line ush_wc_read.
+  Proof using Hdsc_ncr Hdsc_nl Hdsc_short HT Hpay ush_at_of_pm_taint ush_at_of_pm_wb ush_pm_of_at ush_read_leaf ush_wb_read ush_wc_blk_line ush_wc_read.
     iIntros "#Hdp #Hlaw #Hplaw #Hrest #Hcode #Hjt #Hgen %Hfd0 Hstd HR Hbs Hrun".
     set (n := (ush_Dbody + n0)%nat).
     (* ---- 0x914  li s3,100 ---- *)
@@ -8335,7 +8368,7 @@ Section UkSh.
     ubytes γd sh_buf sh_nbuf f -∗
     urun N h m (mword_of_int 0x900) (16 + (ush_Dbody + n0)) -∗
     WP (Loop : expr riscv_lang).
-  Proof using HT Hpay ush_at_of_pm_taint ush_at_of_pm_wb ush_pm_of_at ush_read_leaf ush_wb_read ush_wb_wc ush_wc_blk_line ush_wc_read.
+  Proof using Hdsc_ncr Hdsc_nl Hdsc_short HT Hpay ush_at_of_pm_taint ush_at_of_pm_wb ush_pm_of_at ush_read_leaf ush_wb_read ush_wb_wc ush_wc_blk_line ush_wc_read.
     iIntros "#Hdp #Hlaw #Hplaw #Hrest #Hcode #Hjt #Hro #Hgen".
     set (n := (16 + (ush_Dbody + n0))%nat).
     iLöb as "IH" forall (h m l).
@@ -8619,7 +8652,7 @@ Section UkSh.
     urun N h m (mword_of_int ShSyms.main)
       (8 + (16 + (ush_Dbody + n0))) -∗
     WP (Loop : expr riscv_lang).
-  Proof using HT Hpay ush_at_of_pm_taint ush_at_of_pm_wb ush_pm_of_at ush_read_leaf ush_wb_read ush_wb_wc ush_wc_blk_line ush_wc_read.
+  Proof using Hdsc_ncr Hdsc_nl Hdsc_short HT Hpay ush_at_of_pm_taint ush_at_of_pm_wb ush_pm_of_at ush_read_leaf ush_wb_read ush_wb_wc ush_wc_blk_line ush_wc_read.
     iIntros "#Hdp #Hlaw #Hplaw #Hrest #Hcode #Hjt #Hro #Hgen %Hfd0 Hin Hstd Hcwd Hch Hpid Hpos
              HR Hbs Hrun".
     set (n := (16 + (ush_Dbody + n0))%nat).
@@ -8908,7 +8941,7 @@ Section UkSh.
     urun N h m (mword_of_int ShSyms.start)
       (2 + (8 + (16 + (ush_Dbody + n0)))) -∗
     WP (Loop : expr riscv_lang).
-  Proof using HT Hpay ush_at_of_pm_taint ush_at_of_pm_wb ush_pm_of_at ush_read_leaf ush_wb_read ush_wb_wc ush_wc_blk_line ush_wc_read.
+  Proof using Hdsc_ncr Hdsc_nl Hdsc_short HT Hpay ush_at_of_pm_taint ush_at_of_pm_wb ush_pm_of_at ush_read_leaf ush_wb_read ush_wb_wc ush_wc_blk_line ush_wc_read.
     iIntros "#Hdp #Hlaw #Hplaw #Hrest #Hcode #Hjt #Hro #Hgen #Hfd0 Hin Hstd Hcwd Hch Hpid Hpos
              HR Hbs Hrun".
     (* THE TAINT ARM GOES GENERIC AT ONCE, and this is the ONE place it can:

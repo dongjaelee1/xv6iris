@@ -9829,3 +9829,187 @@ read reports `off = p` and hands `uoff γo (p + count)` back.
   linear resource fewer in echo's chain.
 - cat's read obligation is unchanged in shape and gains the two conjuncts
   above on the fired arm.
+
+### LINK-GEN-5 (2026-09-17) — THE GETS WALK TAKES THE DISCIPLINE; THE FILE'S READ LEAF IS ONE APPLICATION; THE LAST WALL IS THE LINE AXIS AND IT IS ONE LAW
+
+Branch `app-file/link-stage`, on top of LINK-GEN-4 and main's OFF-LINK-2.
+Whole tree GREEN on the lane's remote tree (`--proofs -k`, `EXIT=0`, zero
+`Error`); all four audits unchanged (`audit-only` thirteen,
+`audit-echo-only` FOURTEEN with the identical list, `audit-tree-only`
+thirteen, `audit-file-only` fourteen); no `Admitted` added; `Proof using`
+everywhere.
+
+**THE LANE'S VERDICT IN ONE LINE.**  LINK-GEN-4 said the walk's dependence
+on the discipline was three readings; it is, and TWO of the three are true
+of any discipline whose bytes are body bytes — the third is not about the
+discipline at all.  `Hdsc_nl` is `EchoDisc.body_ok`-valued, and `body_ok`
+asks `ws !! 0 = Some cmd_echo`; so the last wall between the file era and
+sh's loop is the LINE AXIS (`ush_line_is` inside `ush_gets_done`), it is
+ONE law, and it is named exactly below.
+
+#### 1. THE WALK'S THREE LAWS (`iris/UkSh.v`)
+
+```coq
+  Context (Dsc : list (bv 8) -> Prop).
+
+  Hypothesis Hdsc_ncr : forall (I : list (bv 8)) (b : bv 8),
+    Dsc (I ++ [b]) -> bv_unsigned b <> 13%Z.
+  Hypothesis Hdsc_nl : forall I : list (bv 8),
+    Dsc (I ++ [wl_nl]) -> body_ok (rest_of I).
+  Hypothesis Hdsc_short : forall I : list (bv 8),
+    Dsc I -> (S (length (rest_of I)) < line_max)%nat.
+
+  Hypothesis ush_read_leaf :
+    forall l : list fdstate, ⊢ ush_read_recv_leaf_at Dsc cn l.
+```
+
+placed beside `Context (cn : cons_names)`, so every walk lemma from
+`wp_ksh_read` on is generic in them and nothing below is.
+
+**`Hdsc_ncr` IS ONE NEGATION AND THAT IS THE FINDING.**  The walk's only
+use of the byte's VALUE is at `iris/UkSh.v:4432`, an `exfalso` against the
+`'\r'` branch — it never needs the alphanumeric range `ush_disc_snoc_val`
+gives.  Stated as the range, the law is FALSE at a discipline that admits
+`'>'` (`FileDisc.fbody_byte`); stated as the negation it is true of both.
+`UkSh.ush_disc_snoc_ncr` is echo's, new here, and it is what makes the echo
+instance one lemma rather than a re-proof.
+
+**THE CHAIN THAT WAS RE-SIGNED, and no further.**  `UkSh`'s walk →
+`UShKernel`'s three `Hrl` hypothesis lines (now
+`UkSh.ush_read_recv_leaf_at N γp T Pm Dsc cn l`) and its three lemmas
+(`sh_uexec_slot`, `sh_slot_of_kexec`, `sh_image_entry_at`, each gaining
+`Dsc` and the three laws) → `UInitSh.v`'s two `sh_slot_of_kexec` call
+sites, which pass `EchoDisc.disc_input` with
+`UkSh.ush_disc_snoc_ncr` / `EchoDisc.disc_input_snoc_nl` /
+`EchoDisc.disc_input_rest_short`.  **`UInitSh.cons_cred_holds` and
+`UInitBoot` do not move at all**, because `ush_read_recv_leaf` IS
+`ush_read_recv_leaf_at disc_input` by definition (lane LINK-GEN-4).
+
+#### 2. THE FILE'S SIDE OF THE THREE — TWO PROVED, ONE REFUTED
+
+`FileDisc` has `disc_input_f` and its CLOSURE laws — `disc_input_f_nil`,
+`_snoc`, `_prefix`, `_body`, `_at`, `_dec` — and `fbody_ok_bytes`, but it
+has NO byte-level reading (no twin of `EchoDisc.disc_input_byte` or the
+three consequences under it).  Those are new, in `iris/FileReadInst.v`:
+
+| new lemma | what it says |
+| --- | --- |
+| `disc_input_f_byte` | every byte of a disciplined file input is `fbody_byte` or the newline (`EchoDisc.disc_input_byte`'s twin, same `wl_cut_join` decomposition, with `fbody_ok_bytes` in place of `wl_body_bytes`) |
+| `fbody_byte_val` | `fbody_byte b` reads as `32`, `62`, `48..57`, `65..90` or `97..122` — **the `62` is `FileDisc.wl_gt`, and it is why the echo range is not the shape that travels** |
+| `disc_input_f_byte_ncr` | no byte is `0x0d` |
+| `disc_input_f_no_cr` | `ConsoleInv.cons_xlate` is the identity on it (`ReadRec.disc_input_no_cr`'s twin; `rr_byte_of_rows` takes it) |
+| `disc_input_f_snoc_ncr` | **`Hdsc_ncr` at the file** |
+| `disc_input_f_rest_short` | **`Hdsc_short` at the file** |
+
+**`Hdsc_nl` IS FALSE AT `disc_input_f`, AND THE REASON IS NOT THE
+DISCIPLINE.**  It reads `Dsc (I ++ [wl_nl]) -> EchoDisc.body_ok (rest_of I)`
+and `body_ok l := wl_body (wl_words l) = l /\ line_ok (wl_words l)` with
+`line_ok ws` demanding `ws !! 0 = Some cmd_echo`.  A `cat f` line parses to
+`FileDisc.LCat`, whose `uline_ws` is `[]`, so `body_ok` fails on it.  The
+hypothesis is `body_ok`-valued because `ush_gets_done_line` spends BOTH its
+conjuncts: the first for "the buffer holds `J ++ [nl]`", the second for
+`line_ok ws` inside `ush_line_is`, inside `ush_gets_done`.
+
+**THE FIX, EXACTLY (one law, one lane).**  `ush_gets_done` must go from
+`ush_line_is ws f 0 i` (a WORD LIST) to SH-CHILD's own
+`UkSh.ush_line_at (l : FileDisc.uline) f k len` (a LINE), which is the
+vocabulary `ush_rest_line_at`'s `D` and `ushf_child_law_at`'s `Lp` already
+speak.  Concretely: `ush_gets_done_at (Lp : ... -> Prop)` with `ush_posw`
+unchanged (it is era-free), `ush_gets_done_line_at` taking `Lp` and the
+line the newline closed, and `Hdsc_nl` restated as
+
+```coq
+  Hypothesis Hdsc_line : forall (I : list (bv 8)) (f : nat -> bv 8),
+    Dsc (I ++ [wl_nl]) ->
+    (forall j : nat, (j < length (rest_of I))%nat -> f j = rest_of I !!! j) ->
+    f (length (rest_of I)) = wl_nl ->
+    exists ws : list (list (bv 8)),
+      Lp ws f 0%nat (S (length (rest_of I)))
+      /\ (S (length (rest_of I)) = length (line_bytes_of ws))
+```
+
+— at echo `Lp := ush_line_is` and `ws := wl_words (rest_of I)`, which IS
+`disc_input_snoc_nl`; at the file `Lp` is the wider one SH-CHILD-2 is
+already writing for `ushf_child_law_at`, and `ws` comes off
+`FileDisc.fbody_ok_line`.  **That is the last wall.**
+
+#### 3. `FileReadInst.v` — THE FILE'S `ReadRec`, AND `file_read_leaf_holds`
+
+```coq
+  Definition file_read_inst : ReadRec FI :=
+    MkReadRec FI disc_input_f fri_rd fri_rd_taint fri_arms.
+```
+
+- `rk_disc := FileDisc.disc_input_f`;
+- `rk_rd` / `rk_rd_taint` are `FileLinks.file_links_rd` /
+  `file_links_rd_taint` at `FileLinks.fread_ret`;
+- `rk_arms` is `ReadRec.eri_arms`'s proof at the file model: the same
+  `inp_lb_cmp` prefix argument, with `FileLinks.fread_ret`'s trailing
+  disjunct — which carries the era's FILE pin and the boot state's lower
+  bound beside the writer's cursor — rebuilt as `FileLinksLine.fwc_rres`
+  (`f0w (S gen_id) s0` is exactly the conjunct it has over
+  `LinkRec.echo_rres`).
+
+and the application the lane was asked for:
+
+```coq
+  Lemma file_read_leaf_holds (Wb : list (bv 8) -> iProp Σ)
+      (N : uk_names Σ) (γp : gname) (l : list fdstate) :
+    ukn_pay N
+      = ucons_pay fsc_cons γp (lk_T FI)
+          (UShLine.ush_rd_x_at (lk_rres FI) (fgn_echo g) Wb) ->
+    (⊢ app_sup -∗ lk_T FI) -> (⊢ lk_T FI -∗ app_sup) ->
+    (⊢ lk_links FI) ->
+    ⊢ UkSh.ush_read_recv_leaf_at (PS := uprogSG_free) N γp (lk_T FI)
+        (UShLine.ush_mid_at (lk_rres FI) (fgn_echo g) γp)
+        (rk_disc FI (file_read_inst g)) fsc_cons l.
+```
+
+ONE `iApply` of `UShLine.ush_read_recv_leaf_holds_at`, with the pin bridge
+`file_ep_refl` the identity (`lk_pin FI` IS `era_pin (fgn_echo g)`).
+
+**TWO SMALL DESIGN NOTES.**  `ReadRec.rk_arms` is PINNED at `S gen_id`
+(the two LINK fields stay generic in `k`): a reader's residue names the
+era's FILE state at that generation (`FileLinksLine.f0w`'s own
+`⌜k = S gen_id⌝`), so a `∀ k` window arm is not provable at the file.  And
+`rr_byte_of_rows` now takes the discipline's no-CR reading as a premise
+rather than naming `disc_input`, which is what lets one lemma serve both
+instances.  `FileLinkInst.v` is UNTOUCHED — the file's read record and its
+one consumer live together in `FileReadInst.v`, above `UShLine.v`.
+
+#### 4. WHAT `sh_round_holds_file` STILL OWES
+
+1. **THE LINE AXIS (§2's `Hdsc_line`).**  Until `ush_gets_done` speaks
+   `uline` rather than `wl_words`, the file cannot instantiate `UkSh`'s
+   walk, and therefore cannot instantiate `UShKernel.sh_image_entry_at`.
+   Everything else on the read side is done: the leaf is
+   `file_read_leaf_holds`, today.
+2. **`UkShEcho.ushf_child_law_holds`'s constant carrier** — LINK-GEN-4's
+   residue 2, now lane SH-CHILD-2's: `ush_execfail_law_wq_at dg nn` plus
+   `forall ws g len I, Lp ws g 0%nat len -> ws = last_ws I ->
+   dg I = alt_execfail /\ nn I = 17%nat`, off `ushf_child_law_at`'s own
+   `Lp`.
+3. Everything LINK-GEN-3's §4 listed for `Hchild_echo`, `Hwc`, `Hwbr` and
+   `ush_rest_l` stands: each is one application.  `Hexecfail` is
+   dischargeable (LINK-GEN-4).  `Hcltaint`, `Hwbl`, `Hwbwc` are
+   `FileLinkInst`'s own (`file_Hcltaint`, `file_Hwbl`, `file_Hwbwc`).
+4. The FILE'S `StageRec` (LINK-GEN-3 §5) is still owed, field by field as
+   listed there; `Hchild_echo` waits on it and on nothing else.
+
+#### 5. BUILD NOTES
+
+- **Main was RED in three files after OFF-LINK-2** (which deleted
+  `UkRun.ukn_held` and the held-set argument of `uslot_of_urun_ro`):
+  `iris/UEchoOut.v` (the `∅` argument and one `%Hparkeq`),
+  `iris/UShEchoPay.v` (one `%Hheq`), `iris/UkShRedirBody.v` (the
+  `⌜ukn_held N' = ∅⌝` row of `sh_redir_child_law` and the two intro
+  patterns that read it).  All three fixed here.
+- **`lia` does not split a five-way disjunction introduced by
+  `pose proof`** where the goal is a disequality on a term it cannot see
+  through; `destruct … as [H | [H | [H | [H | H]]]]; lia` does.  The same
+  proof reads fine at echo because the term there is already the bare
+  byte.
+- **stdpp's `Forall_forall` is not Stdlib's.**  In a file that requires
+  both, `proj1 (Forall_forall _ _) Hfb b Hbl` elaborates against Stdlib's
+  `In`-based statement and fails on an `∈`; `elem_of_list_lookup` then
+  `proj1 (Forall_lookup _ _)` is import-order-proof.

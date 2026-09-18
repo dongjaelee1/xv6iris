@@ -39,6 +39,7 @@ Require Import ConsoleInv.
 Require Import WpUart.
 Require Import EchoOut.
 Require Import EchoLinks.
+Require Import CtxIdDefs.
 Require Import LinkRec.
 Local Open Scope list_scope.
 
@@ -65,10 +66,16 @@ Qed.
    [EchoOut.ein_read_byte] places that byte in the ERA'S INPUT at the
    reader's own delivered count.  Stated at index 0, which is the only one
    the era's law reaches and the only one sh's [gets] copies. *)
-Lemma rr_byte_of_rows
+Lemma rr_byte_of_rows (D : list (bv 8) -> Prop)
     (sl sl' ws dl : list (list mobs * bv 8)) (hs : list (list mobs))
     (pops : list LogEntryDefs.log_entry)
     (I J : list (bv 8)) (dd dc : nat) (g : nat -> bv 8) :
+  (* THE DISCIPLINE'S ONE READING (lane LINK-GEN-5): the ring's
+     translation is the identity on it, which is the whole of what the
+     byte's identity needs.  echo passes [disc_input_no_cr]; the file its
+     own twin. *)
+  (forall (I0 : list (bv 8)) (j : nat),
+     D I0 -> (j < length I0)%nat -> cons_xlate (I0 !!! j) = I0 !!! j) ->
   (0 < dd)%nat -> (dd <= dc)%nat ->
   cons_window sl (length I) dd g hs ->
   sl `prefix_of` sl' ->
@@ -76,11 +83,11 @@ Lemma rr_byte_of_rows
   (dl ++ ws) `prefix_of` echoed pops ->
   length dl = length I ->
   (snd <$> (dl ++ ws)) = I ++ J ->
-  disc_input (I ++ J) ->
+  D (I ++ J) ->
   (0 < length J)%nat ->
   g 0%nat = J !!! 0%nat.
 Proof using.
-  intros Hdd Hdc Hwin Hpre Hws Hpr Hdl Hcat Hdisc HJ.
+  intros Hncr Hdd Hdc Hwin Hpre Hws Hpr Hdl Hcat Hdisc HJ.
   destruct Hwin as (_ & _ & Hwj).
   destruct (Hwj 0%nat Hdd) as (hh & b & Hsl & _ & _ & Hg).
   assert (Hsl' : sl' !! (length I + 0)%nat = Some (hh, b))
@@ -94,7 +101,7 @@ Proof using.
     rewrite (lookup_app_r I J (length I) ltac:(lia)) Nat.sub_diag.
     reflexivity. }
   rewrite Hg Hb Hcat. rewrite <- Hidx.
-  apply (disc_input_no_cr (I ++ J) (length I) Hdisc).
+  apply (Hncr (I ++ J) (length I) Hdisc).
   rewrite length_app. lia.
 Qed.
 
@@ -105,6 +112,11 @@ Section readrec.
   Context {Σ : gFunctors} `{!echoOutG Σ}.
   Context `{HRg : !riscvGS Σ}.
   Context `{!uartGhostG Σ}.
+  (* the era's own generation, which is where [rk_arms] is pinned: a
+     reader's residue names the era's FILE state at [S gen_id]
+     ([FileLinksLine.f0w]), so the window arm is stated there and not at an
+     arbitrary [k].  The two LINK fields stay generic in [k]. *)
+  Context `{GEN : GenId}.
 
   Record ReadRec (L : LinkRec Σ) := MkReadRec {
     (* the INPUT's discipline -- [UkSh.ush_read_ans_at]'s parameter *)
@@ -129,15 +141,15 @@ Section readrec.
        consumes: the call moved the era's input on by the [dc] bytes [J],
        the byte it DELIVERED is the first of them, the input so far is
        DISCIPLINED, and the reader's residue is at the far end. *)
-    rk_arms : forall (k : nat) (v : era_pins) (I : list (bv 8))
+    rk_arms : forall (v : era_pins) (I : list (bv 8))
                 (ws sl sl' : list (list mobs * bv 8))
                 (hs : list (list mobs)) (dd dc : nat) (g : nat -> bv 8),
       (dd <= dc)%nat -> length ws = dc ->
       cons_window sl (length I) dd g hs ->
       sl `prefix_of` sl' ->
       (forall j : nat, (j < dc)%nat -> ws !! j = sl' !! (length I + j)%nat) ->
-      ⊢ lk_epin L k v -∗ inp_lb v I -∗ lk_rres L v I -∗
-        lk_rr L k v (length I) ws -∗
+      ⊢ lk_epin L (S gen_id) v -∗ inp_lb v I -∗ lk_rres L v I -∗
+        lk_rr L (S gen_id) v (length I) ws -∗
         (dl_cnt v (1/2) (length I + dc)%nat
          ∗ ∃ J : list (bv 8),
              ⌜length J = dc⌝ ∗ ⌜rk_disc (I ++ J)⌝
@@ -161,6 +173,7 @@ Section echo_read_inst.
   Context `{HPT : !Persistent T} `{HTT : !Timeless T}.
   Context `{HRg : !riscvGS Σ}.
   Context `{!uartGhostG Σ}.
+  Context `{GEN : GenId}.
 
   Local Notation LE := (echo_link_inst T γ).
 
@@ -190,15 +203,15 @@ Section echo_read_inst.
      bounds of one echoed list ([EchoOut.inp_lb_cmp]) and the lease's is
      the shorter; the residue comes off the receipt where a byte was
      delivered and off the lease where the count did not move. *)
-  Local Lemma eri_arms (k : nat) (v : era_pins) (I : list (bv 8))
+  Local Lemma eri_arms (v : era_pins) (I : list (bv 8))
       (ws sl sl' : list (list mobs * bv 8))
       (hs : list (list mobs)) (dd dc : nat) (g : nat -> bv 8) :
     (dd <= dc)%nat -> length ws = dc ->
     cons_window sl (length I) dd g hs ->
     sl `prefix_of` sl' ->
     (forall j : nat, (j < dc)%nat -> ws !! j = sl' !! (length I + j)%nat) ->
-    ⊢ era_pin γ k v -∗ inp_lb v I -∗ echo_rres v I -∗
-      read_ret T k v (length I) ws -∗
+    ⊢ era_pin γ (S gen_id) v -∗ inp_lb v I -∗ echo_rres v I -∗
+      read_ret T (S gen_id) v (length I) ws -∗
       (dl_cnt v (1/2) (length I + dc)%nat
        ∗ ∃ J : list (bv 8),
            ⌜length J = dc⌝ ∗ ⌜disc_input (I ++ J)⌝
@@ -247,7 +260,8 @@ Section echo_read_inst.
     iSplitR; [ by iPureIntro | ]. iSplitR; [ by iPureIntro | ].
     iSplitR; [ | iFrame "HEn Hresn" ].
     iPureIntro. intro Hdd0.
-    exact (rr_byte_of_rows sl sl' ws dl hs pops I J dd dc g
+    exact (rr_byte_of_rows disc_input sl sl' ws dl hs pops I J dd dc g
+             disc_input_no_cr
              Hdd0 Hddc Hwinf Hpre2 Hwsj Hpref Hdl HJ HJdisc ltac:(lia)).
   Qed.
 

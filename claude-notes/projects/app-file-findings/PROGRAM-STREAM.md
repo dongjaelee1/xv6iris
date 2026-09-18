@@ -339,3 +339,48 @@ dischargers are stated at `Wc := fun I p => lk_lcred L (S gen_id) I p ∗ Hold I
 form (the index is existential OUTSIDE the credential).  So the two
 applications wait on INIT-FILE's `_at` layer, and this stream did not prove
 them against a shape that is about to move.
+
+
+## `Hchild_redir`'s ERA STEP — the two things K1's entry must become, measured against the supply it has to fill
+
+The wrapper is `UShEchoPay.sh_exec_sup_echo_wq_holds_at`'s body with the
+`(E)` component replaced, and everything else about it is ALREADY the file
+era's: `exec_walk_of_pin FsEchoPin.era0_echo_pins` and
+`sh_echo_path_of_holds` are about **/echo's image and the pin, not about
+the era**, and the round holds `UShEcho.sh_echo_slot T` at
+`T := file_taint` — so `(W)` and the path come out unchanged.  Two things
+do not, and both are `iris/UEchoFile.v`'s (the KERNEL stream's):
+
+1. **The entry must be PARAMETRIC IN THE PAYLOAD.**
+   `UEchoFile.efile_image_entry` concludes at
+   `image_entry … (fun _ : Z => ef_exit i γo ws) (ef_pay i γo ws) uslot`,
+   and `ExecEntry.image_entry`'s payload slot is `my_pay (uvis_gen W') Q`
+   — which `ChildTok.my_pay_agree` makes RIGID: the generation's payload
+   is what sh's fork chose, `UkShFork.ushf_wq Wcf I`, and no conversion
+   moves an entry from one `Q` to another.  So the entry has to take `Q`
+   with `□ (ef_exit i γo ws -∗ Q (-1))`, which is **exactly the shape K1's
+   own `efile_uexec_slot_at` already has** — `efile_image_entry` is that
+   lemma packaged at the identity wand, and packaging it at a parameter
+   instead is a one-binder change with the same proof.  echo's side has
+   had this all along (`UShEchoPay.echo_slot_of_kexec_at_at` takes `Wc`,
+   `Hold` and the three conversions).
+
+2. **The entry's `Pay` must be the one the SUPPLY hands it**, i.e.
+   `UserFd.ustd (ukn_fd N') ld ∗ Cr` — because
+   `ExecRun.udepw_at_refR_of_sup` gives that same resource to the entry on
+   the exec path and back as the refund on the failure path.  K1's is
+   `ef_pay i γo ws` (`Wq ∗ efq i γo ws []`: the deed and the fragment at
+   zero), so the wrapper needs
+   `□ (ustd (ukn_fd N') ld ∗ Cr -∗ ef_pay i γo ws)` — and that is the
+   ROUND's to give, because at the file era **the deed rides inside the
+   lend** (`Wcf I 3 = Wcl I 3 ∗ sh_hold I`, and `sh_hold` holds
+   `fown r s`).  Under RULING H' it is `sh_hold_at s0 I`, same content.
+
+So the era step is: K1 states `efile_image_entry_at Q` (change 1), the
+round supplies the Pay conversion (change 2, one wand off `sh_hold_at`),
+and the wrapper between them is `sh_exec_sup_echo_wq_holds_at`'s body with
+`(E)` filled by K1 — about sixty lines, none of it new mathematics.
+`UkShRedirBody.wp_kshm_child_file_redir` already takes exactly
+`(∀ ty, K ty -∗ sh_exec_sup_echo_at (ushs_fd1f ty) ws Q Cr)` as its
+premise, so the wrapper plugs straight in, and its home is a file above
+`iris/UEchoFile.v` (1626) — `UkShRedirBody` is at 1571 and cannot name K1.

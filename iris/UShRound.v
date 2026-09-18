@@ -1197,7 +1197,7 @@ Section UShRound.
      the era's taint -- a failed open at a tainted application hands back
      no deed, and a [Kf] without that arm cannot be produced. *)
   Definition redir_Kf (s : dst) : iProp Σ :=
-    (fown r s ∨ (∃ i : Z, fown r (Some (i, []))) ∨ T)%I.
+    (fown r s ∨ (⌜s = None⌝ ∗ ∃ i : Z, fown r (Some (i, []))) ∨ T)%I.
 
   (* ---- WHAT THE OPEN'S RECEIPT SAYS ABOUT THE INODE (the PROGRAM
           STREAM, item (3)'s first premise).  K1's entry takes four
@@ -1306,11 +1306,14 @@ Section UShRound.
     reflexivity.
   Qed.
 
+  (* ...AND THE DEED IS HANDED AT THE CALL (stretch 9): the call resource
+     is built from PERSISTENT facts alone, so the child can hold it across
+     the parse with its lend whole, and the deed flows lend -> call ->
+     receipt ([UkShRedirAns.ush_open_call2]'s [Dd]). *)
   Lemma Hopen_hand (N : uk_names Σ) (file : Z) (l : list fdstate)
-      (ls : list wordline) (ws : wordline) (jc : Z) (s : dst) :
+      (ls : list wordline) (ws : wordline) (jc : Z) :
     ws ∈ ls -> EchoDisc.line_ok ws ->
     app_inv fsc_fs -∗ cons_made (fn_cons r) jc -∗ fl_lb (fgn_cl g) ls -∗
-    fown r s -∗
     (* ...AND THE CWD'S CAMERA IS PINNED TOO (the PROGRAM STREAM's rule,
        one class further out than the deposit): [UserCwd.ucwd] takes a
        [ghost_varG Σ Z], [UkShRedirAns]'s section has its own and the
@@ -1321,12 +1324,12 @@ Section UShRound.
        same proposition unless this says which. *)
     UkShRedirAns.ush_open_call2 (PS := uprogSG_free) (SG := uexecSG_xv6)
       (ghost_varG0 := offbox_offG)
-      N FsImg.ROOTINO file 1537 l redir_K (redir_Kf s).
+      N FsImg.ROOTINO file 1537 l redir_K (fun s : dst => fown r s) redir_Kf.
   Proof using Heq.
-    intros Hin Hokw. iIntros "#Hinv #Hmade #Hlb Hown".
+    intros Hin Hokw. iIntros "#Hinv #Hmade #Hlb".
     rewrite /UkShRedirAns.ush_open_call2.
-    iIntros (h m av Img pl) "%Ha0 %Ha1 %Hpath %Hnp %Hstart %Hlast %Hfdl
-             #Himg #Hcode Hcwd Hstd Hrun Hcont".
+    iIntros (h m av Img pl s) "%Ha0 %Ha1 %Hpath %Hnp %Hstart %Hlast %Hfdl
+             #Himg Hown #Hcode Hcwd Hstd Hrun Hcont".
     rewrite sh_open_stub_pc.
     (* ---- 0xcc6  c.li a7,15 ---- *)
     iApply (wp_uk_cli (PS := uprogSG_free) (SG := uexecSG_xv6)

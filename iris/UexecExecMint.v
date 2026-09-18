@@ -293,7 +293,12 @@ Section UexecExecMint.
     destruct st as [| rb wb ty]; [ iEmpIntro | ].
     destruct wb; [| iEmpIntro ].
     destruct ty as [i γo om | γp | ma].
-    - iApply (fsabs_awrite_chain _ i γo M ua n 0%nat _ with "Hsup").
+    - (* the inode arm at the row's mode (lane OFF-LINK-4): a held row's
+         payment is the same chain beside the taint the supply holds *)
+      destruct om as [|].
+      + iApply (fsabs_awrite_chain _ i γo M ua n 0%nat _ with "Hsup").
+      + rewrite /filewrite_in_held. iRight. iSplitR; [| iExact "Hkc"].
+        iApply (fsabs_awrite_chain _ i γo M ua n 0%nat _ with "Hsup").
     - iApply (pipe_wpay_taint with "Hkc").
     - iApply (cons_out_chain_of_licence with "Hlic").
   Qed.

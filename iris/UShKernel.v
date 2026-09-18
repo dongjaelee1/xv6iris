@@ -434,8 +434,17 @@ Section UShKernel.
          arm: carried unchanged through the prompt, into the payload at
          the shut-fd-0 exit ([Hpmwb]). *)
       (Wb : list (bv 8) -> iProp Σ)
+      (* THE INPUT'S DISCIPLINE (lane LINK-GEN-5): [UkSh]'s walk spends
+         exactly three readings of it and this entry only relays them. *)
+      (Dsc : list (bv 8) -> Prop)
+      (Hdncr : forall (I : list (bv 8)) (b : bv 8),
+         Dsc (I ++ [b]) -> bv_unsigned b <> 13%Z)
+      (Hdnl : forall I : list (bv 8),
+         Dsc (I ++ [wl_nl]) -> EchoDisc.body_ok (rest_of I))
+      (Hdshort : forall I : list (bv 8),
+         Dsc I -> (S (length (rest_of I)) < EchoDisc.line_max)%nat)
       (Hrl : forall (N : uk_names Σ) (l : list fdstate),
-         ukn_pay N = Q -> ⊢ UkSh.ush_read_recv_leaf N γp T Pm cn l)
+         ukn_pay N = Q -> ⊢ UkSh.ush_read_recv_leaf_at N γp T Pm Dsc cn l)
       (Hpm1 : forall (N : uk_names Σ) (i : nat),
          ukn_pay N = Q ->
          ⊢ UkSh.ush_at N γp i -∗
@@ -671,7 +680,7 @@ Section UShKernel.
               (fun I => Hpmwb N I Hpayeq)
               Hwbr
               Hwc
-              cn
+              cn Dsc Hdncr Hdnl Hdshort
               (fun l0 => Hrl N l0 Hpayeq)
               (R (ukn_t N) (ukn_d N) (ukn_s N)) K h _ f n0
               (take NSTD (uvis_fd W))
@@ -716,8 +725,17 @@ Section UShKernel.
          Unguarded: it names no payload. *)
       (Wc : list (bv 8) -> nat -> iProp Σ)
       (Wb : list (bv 8) -> iProp Σ)
+      (* THE INPUT'S DISCIPLINE (lane LINK-GEN-5): [UkSh]'s walk spends
+         exactly three readings of it and this entry only relays them. *)
+      (Dsc : list (bv 8) -> Prop)
+      (Hdncr : forall (I : list (bv 8)) (b : bv 8),
+         Dsc (I ++ [b]) -> bv_unsigned b <> 13%Z)
+      (Hdnl : forall I : list (bv 8),
+         Dsc (I ++ [wl_nl]) -> EchoDisc.body_ok (rest_of I))
+      (Hdshort : forall I : list (bv 8),
+         Dsc I -> (S (length (rest_of I)) < EchoDisc.line_max)%nat)
       (Hrl : forall (N : uk_names Σ) (l : list fdstate),
-         ukn_pay N = Q -> ⊢ UkSh.ush_read_recv_leaf N γp T Pm cn l)
+         ukn_pay N = Q -> ⊢ UkSh.ush_read_recv_leaf_at N γp T Pm Dsc cn l)
       (Hpm1 : forall (N : uk_names Σ) (i : nat),
          ukn_pay N = Q ->
          ⊢ UkSh.ush_at N γp i -∗
@@ -913,7 +931,8 @@ Section UShKernel.
     (* the entry row is stated at the EXEC'ING process's table, which is
        the one the image fact says the new key carries *)
     rewrite <- Hfd.
-    iApply (sh_uexec_slot R γp cn T K Q Ql Pm Wc Wb Hrl Hpm1 Hpm3 Hpmwb
+    iApply (sh_uexec_slot R γp cn T K Q Ql Pm Wc Wb Dsc Hdncr Hdnl Hdshort
+              Hrl Hpm1 Hpm3 Hpmwb
               Hwc Hwbwc Hwbl Hwbr W' n0 n Hbd).
     - exact HQc.
     - rewrite Hpc. exact sh_start_pc.
@@ -965,8 +984,17 @@ Section UShKernel.
       `{!Persistent T} `{!Persistent K}
       (Q Ql : Z -> iProp Σ) (Pm : list (bv 8) -> iProp Σ)
       (Wc : list (bv 8) -> nat -> iProp Σ) (Wb : list (bv 8) -> iProp Σ)
+      (* THE INPUT'S DISCIPLINE (lane LINK-GEN-5): [UkSh]'s walk spends
+         exactly three readings of it and this entry only relays them. *)
+      (Dsc : list (bv 8) -> Prop)
+      (Hdncr : forall (I : list (bv 8)) (b : bv 8),
+         Dsc (I ++ [b]) -> bv_unsigned b <> 13%Z)
+      (Hdnl : forall I : list (bv 8),
+         Dsc (I ++ [wl_nl]) -> EchoDisc.body_ok (rest_of I))
+      (Hdshort : forall I : list (bv 8),
+         Dsc I -> (S (length (rest_of I)) < EchoDisc.line_max)%nat)
       (Hrl : forall (N : uk_names Σ) (l : list fdstate),
-         ukn_pay N = Q -> ⊢ UkSh.ush_read_recv_leaf N γp T Pm cn l)
+         ukn_pay N = Q -> ⊢ UkSh.ush_read_recv_leaf_at N γp T Pm Dsc cn l)
       (Hpm1 : forall (N : uk_names Σ) (i : nat),
          ukn_pay N = Q ->
          ⊢ UkSh.ush_at N γp i -∗
@@ -1044,7 +1072,8 @@ Section UShKernel.
     assert (Hch0 : uvis_ch W' = ∅) by exact Hchq.
     assert (Hpid1' : bv_unsigned (uvis_pid W') <> 1)
       by (rewrite Hpiq; exact Hpid1).
-    iApply (sh_slot_of_kexec R γp cn T K Q Ql Pm Wc Wb Hrl Hpm1 Hpm3 Hpmwb
+    iApply (sh_slot_of_kexec R γp cn T K Q Ql Pm Wc Wb Dsc Hdncr Hdnl Hdshort
+              Hrl Hpm1 Hpm3 Hpmwb
               Hwc Hwbwc Hwbl Hwbr na alen afun sts W' n0 n Hbd HQc Hok Hcwd0
               Hroom Hlen Hlzf Hch0 Hpid1'
               with "[] Hnpw Hdep Hdp Htag Hplaw Hrest Hfd0 [] [] Hmp Hpos Hlease

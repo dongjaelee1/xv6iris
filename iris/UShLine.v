@@ -1155,7 +1155,7 @@ Section UShLine.
            over. *)
         iDestruct (Hep v with "Hpin") as "#Hpl".
         iDestruct (lk_pin_epin L (S gen_id) v with "Hpl") as "#Hepl".
-        iDestruct (rk_arms L R (S gen_id) v I ws sl sl2 hs dd dc g
+        iDestruct (rk_arms L R v I ws sl sl2 hs dd dc g
                      Hddc Hlws Hwinf Hpre2 Hwsj
                      with "Hepl HE0 Hres0 Hret") as "[Hwin | #HT]"; last first.
         { iRight. iFrame "HT". rewrite /UkSh.ush_pos /UkSh.ush_at.

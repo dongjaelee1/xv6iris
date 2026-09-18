@@ -10459,3 +10459,282 @@ all `EXIT=0`, the four axiom lists UNCHANGED (SYSTEM 13, ECHO 14, TREE
 `Print Assumptions`: `cat_child_of_entry` and `cat_taint_open_of_taint`
 are `UShEcho.echo_image_entry`'s FOURTEEN exactly;
 `UkCatCat.kcat_round_of_law` is the three non-primitive ones.
+
+
+### LINK-GEN-6 (2026-09-17) — THE LOOP LEAF SPEAKS `uline`; THE LINE AXIS CLOSES, AND WHAT IS LEFT OF sh's ROUND IS THE THREE CHILDREN, THE DEED, AND ONE MODEL FACT
+
+Branch `app-file/link-stage`, on top of LINK-GEN-5 and main (which already
+carries SH-CHILD-1's line vocabulary -- `ush_line_at`, `ush_rest_line_at`,
+`ush_rest_l_at`, `ushf_body_law D`, `UkShRedirBody.ush_line_file`; lane
+SH-CHILD-2's `app-file/sh-redir` has NOT landed and is NOT merged, see
+§6).  Whole tree GREEN
+on the lane's remote tree (`--proofs -k`, `EXIT=0`, zero `Error`); all four
+audits unchanged (`audit-only` thirteen, `audit-echo-only` FOURTEEN with
+the identical list, `audit-tree-only` thirteen, `audit-file-only`
+fourteen); no `Admitted` added; `Proof using` everywhere.
+
+**THE LANE'S VERDICT IN ONE LINE.**  LINK-GEN-5 said the last wall was one
+law; it was, and it is gone: `UkSh.ush_gets_done` now says "the era admits
+some LINE whose words are the body's parse and whose bytes are in the
+buffer" instead of "the buffer holds `wl_line ws` for an echo `ws`", and
+the loop's three readings of that line are facts about
+`FileDisc.uline_ok` — proved once, for all three constructors.  What the
+file era still owes sh's LOOP is ONE MODEL FACT, and it is a one-line
+choice in `FileDisc`.
+
+#### 1. THE LOOP'S PAYLOAD (`iris/UkSh.v`)
+
+```coq
+  Definition ush_gets_done_at (Dl : FileDisc.uline -> Prop)
+      (l : list fdstate) (i : nat) (f : nat -> bv 8) : iProp Σ :=
+    ((⌜i = 0%nat⌝ ∗ ush_pos)
+     ∨ (∃ lu : FileDisc.uline,
+          ⌜Dl lu /\ i = length (FileDisc.line_bytes lu)
+           /\ ush_line_at lu f 0%nat i⌝
+          ∗ ush_posw l (FileDisc.uline_ws lu))
+     ∨ (T ∗ ush_pos))%I.
+
+  Definition ush_gets_done (l : list fdstate) (i : nat) (f : nat -> bv 8)
+      : iProp Σ := ush_gets_done_at ush_line_echo l i f.
+```
+
+The middle arm is `UkSh.ush_rest_line_at`'s premise VERBATIM — a
+constructor the discipline admits, its words, its bytes — so the loop now
+hands `UkShFork.ushf_body_law D`'s walk exactly what that walk asks for and
+nothing is re-derived in between.  `ush_gets_done_0_at`,
+`ush_gets_done_line_at`, `ush_gets_done_line_t_at`,
+`ush_gets_done_taint_at`, `ush_gets_done_set_at` follow, with the landed
+echo names recovered as `Definition`s at `ush_line_echo`.
+
+`ush_gets_done_line_at` is where `EchoDisc.body_ok J` used to sit; it takes
+instead
+
+```coq
+    Dl lu ->
+    FileDisc.uline_ws lu = wl_words J ->
+    length (FileDisc.line_bytes lu) = S (length J) ->
+    ush_line_at lu f 0%nat (S (length J)) ->
+```
+
+and `Hdsc_nl` becomes, as LINK-GEN-5's §2 wrote it,
+
+```coq
+  Context (Dl : FileDisc.uline -> Prop).
+
+  Hypothesis Hdsc_line : forall (I : list (bv 8)) (f : nat -> bv 8),
+    Dsc (I ++ [wl_nl]) ->
+    (forall j : nat, (j < length (rest_of I))%nat -> f j = rest_of I !!! j) ->
+    f (length (rest_of I)) = wl_nl ->
+    exists lu : FileDisc.uline,
+      Dl lu
+      /\ FileDisc.uline_ws lu = wl_words (rest_of I)
+      /\ length (FileDisc.line_bytes lu) = S (length (rest_of I))
+      /\ ush_line_at lu f 0%nat (S (length (rest_of I))).
+```
+
+with echo's witness `UkSh.ush_disc_line_echo` — one line off
+`EchoDisc.disc_input_snoc_nl` through the new `ush_line_echo_of_body` —
+and the file's `FileReadInst.file_disc_line` off `FileDisc.fbody_ok_line`.
+
+#### 2. THE LOOP'S THREE READINGS OF A LINE ARE `uline_ok` FACTS, NOT `Dl` PREMISES
+
+This is the finding worth keeping.  Each of the loop's uses of the line
+went through `EchoDisc.line_ok`, which demands `ws !! 0 = Some cmd_echo`;
+each is really a fact about `FileDisc.uline_ok`, and `ush_line_at` carries
+that.  So they are LEMMAS, proved once for all three constructors, and the
+loop gains no era-specific premise at all:
+
+| new lemma (`UkSh.v`) | what it replaces | why it holds at every constructor |
+| --- | --- | --- |
+| `ush_uline_bytes_pos` | `LineWords.wl_line_pos` | `line_bytes l = line_body l ++ [wl_nl]` |
+| `ush_uline_body_val` / `ush_uline_no_nul` | `ush_line_no_nul` at `line_ok_wf` | the body's bytes are `fbody_byte` (`wl_body_bytes` at the two echo shapes, `FileDisc.suf_gtf_bytes` for the redirect suffix, a closed computation for `cmd_cat_f`) and the newline is 10 |
+| `ush_uline_head_nonblank` | `EchoDisc.line_ok_head_byte0` (= 'e') | the first byte is 'e' at `LEcho`/`LEchoF` and 'c' at `LCat`; what the walk needs is only that it is neither a tab nor a space, and THAT is the reading that travels |
+
+(`ush_wl_body_pos` is the small step under the second echo shape: a body of
+no bytes would make the line's first byte the newline, which
+`line_ok_head_byte0` refutes.)
+
+#### 3. THE CHAIN RE-SIGNED
+
+`UkSh`'s loop (`wp_kshg_loop`, `wp_ksh_gets`, `wp_ksh_getcmd`,
+`wp_ksh_blank_entry`, `wp_ksh_loop`, `wp_ksh_cmd_head`, `wp_ksh_start`)
+now carries `Dl` and `Hdsc_line` and produces `ush_rest_l_at Dl R` — which
+is SH-CHILD's own parameter, so `UkShFork.ushf_rest_of_body_at` and
+`UkShRedirBody.ushf_rest_of_body_file` (already stated at
+`ush_rest_l_at N … ush_line_file (UkShLoop.ushl_R N sz)`) plug straight
+in: the entry's obligation and the file era's discharger now have the SAME
+shape, and only `Hcat_body` stands between them.  `UShKernel`'s three
+lemmas take `Dl` and `Hdline` beside `Dsc` and its two byte laws;
+`UInitSh` passes `EchoDisc.disc_input`, `UkSh.ush_disc_snoc_ncr`,
+`EchoDisc.disc_input_rest_short`, `UkSh.ush_line_echo`,
+`UkSh.ush_disc_line_echo`.  **`UInitSh.cons_cred_holds` and `UInitBoot` do
+not move**: `ush_rest_l` IS `ush_rest_l_at ush_line_echo` and
+`ush_read_recv_leaf` IS `ush_read_recv_leaf_at disc_input`, both by
+definition.
+
+#### 4. THE FILE'S SIDE (`iris/FileReadInst.v`)
+
+- `disc_input_f_snoc_nl` — `EchoDisc.disc_input_snoc_nl`'s twin: the body a
+  newline completed is `fbody_ok`.
+- `file_disc_line` — the file era's `Hdsc_line`, off `FileDisc.fbody_ok_line`.
+- `file_gets_holds` — the three bundled, in the order
+  `UShKernel.sh_image_entry_at` takes them
+  (`disc_input_f_snoc_ncr`, `disc_input_f_rest_short`, `file_disc_line`).
+
+**BOTH TAKE ONE PREMISE, AND IT IS THE LANE'S OPEN ITEM:**
+
+```coq
+    Hws : forall J : list (bv 8),
+      FileDisc.fbody_ok J -> FileDisc.uline_ws (FileDisc.uline_of J) = wl_words J
+```
+
+`UkSh.ush_posw l ws` indexes by `LineWords.last_ws` of the input — it is
+`(∃ I, ⌜rest_of I = [] /\ last_ws I = ws⌝ ∗ …)` — so the loop's `ws` is
+forced to `wl_words J`, while `UkShFork.ushf_body_law D`'s walk is handed
+`ush_bstate l (FileDisc.uline_ws lu)`.  The two agree at `LEcho` and
+`LEchoF`, whose `uline_ws` IS the parse, and **not** at `LCat`, whose
+`FileDisc.uline_ws` is `[]` while a `cat f` line's words are
+`wl_words cmd_cat_f`.  It is a one-line model choice and it is SH-CHILD-2's
+(it owns the shape `ushf_body_law` reads):
+
+1. `FileDisc.uline_ws LCat := wl_words cmd_cat_f` — then `Hws` is
+   `FileDisc.fbody_ok_line` plus `wl_words (line_body l) = uline_ws l` per
+   constructor, and everything above closes; or
+2. `ushf_body_law` stops indexing by `uline_ws` and takes the words as a
+   separate argument tied to `last_ws`.
+
+Option 1 is the smaller edit and it is the one this lane recommends: no
+consumer of `uline_ws` reads `LCat`'s value today (`UCatKernel`'s round is
+stated at `UCatOut.cat_tie`, not at `uline_ws`).
+
+#### 5. WHAT `sh_round_holds_file` OWES AFTER THIS LANE
+
+The read side and the line side are done.  What is left is what the
+coordinator predicted — the three children and the deed's own steps — plus
+§4's one model fact:
+
+1. **`Hws` (§4)** — the `uline_ws LCat` choice.  Without it the file's
+   `Hdsc_line` is a lemma with an unmet premise; with it, `file_gets_holds`
+   is unconditional and sh's loop at the file era is one application of
+   `UShKernel.sh_image_entry_at`.
+2. **`Hchild_echo`** — `UShEchoPay.sh_exec_sup_echo_wq_holds_at` at the
+   file's `StageRec`, which is still owed field by field (LINK-GEN-3 §5,
+   written against `FileLinksLine`'s names in LINK-GEN-3's revision).
+3. **`Hchild_redir`** — `UkShRedirBody.sh_redir_child_law`, whose open is
+   `Hopen_hand` (OFF-LINK's publish, F-OPEN-6's device arm).
+4. **`Hchild_cat`** — `UCatKernel`'s entry (lane CAT-ENTRY-2 / CAT-GEOM).
+5. **`UkShEcho.ushf_child_law_holds`'s constant carrier** — LINK-GEN-4's
+   residue 2, SH-CHILD-2's: `ush_execfail_law_wq_at dg nn` off
+   `ushf_child_law_at`'s own `Lp`.
+6. **the deed's own steps** — `sh_prompt_alt_of_deed` and `sh_hold`'s
+   round trip, which are `UShRound`'s own and were never a generalisation
+   question.
+
+Everything else LINK-GEN-3/4/5 listed is an application:
+`Hwc`/`Hwbr`/`Hwbl`/`Hwbwc`/`Hcltaint` from `FileLinkInst` and
+`UShLine.*_at`, `Hexecfail` from `UShEchoPay.ush_execfail_law_wq_at_hold`,
+the read leaf from `FileReadInst.file_read_leaf_holds`, and the whole tail
+obligation from `UShRest.sh_rest_holds_at`.
+
+#### 6. BUILD NOTES, AND THE ONE THAT COST THE LANE AN HOUR
+
+**A LINE PREDICATE THAT IS A VARIABLE MAKES A TRANSPARENT OBLIGATION'S
+`Persistent` SEARCH DIVERGE.**  `UkSh.ush_rest_l_at` has had a named
+instance since SH-CHILD-1 wrote it (`ush_rest_l_at_persistent`, with the
+comment "NOT `apply _`: with the obligation transparent the search walks
+its whole body").  The named instance is not enough: the CONSTANT is still
+transparent, so resolution may delta-unfold it while matching, and against
+a goal whose line predicate is a VARIABLE rather than the closed
+`ush_line_echo` the search walks the obligation's whole wand chain and
+does not return.  `UShKernel.sh_uexec_slot`'s opening
+`iIntros "#Hpay #Hnpw … #Hrest …"` wedged `UShKernel.v` for over half an
+hour -- a file that normally compiles in seconds -- the moment its
+`ush_rest_l` became `ush_rest_l_at … Dl …`.  The fix is one line, at the
+head of `UShKernel.v`:
+
+```coq
+#[local] Typeclasses Opaque UkSh.ush_rest_l_at.
+```
+
+Proofs may still `rewrite /ush_rest_l_at`; only resolution is sealed, so
+the named instance becomes the only way in -- which is what it was written
+for.  **Rule for the campaign: every generic obligation that a named
+`Persistent` instance closes wants that seal.**  Generalising a closed
+definition to a parameter is exactly the edit that turns a harmless
+transparent constant into a divergence.
+
+**AND THE SEAL IS ONE-WAY, WHICH IS WHY IT IS `#[local]`.**  `FromModal`
+cannot see the `□` through a sealed constant either, so every proof that
+opens the obligation with a bare `iModIntro` fails with
+`iModIntro: the goal is not a modality` the moment the seal reaches it --
+`UkShFork.ushf_rest_of_body_at` and `UShRest.sh_rest_holds_at` both do.
+The seal's natural home is beside the instance in `UkSh.v`; put there (or
+put un-attributed at the head of `UShKernel.v`, which exports it to
+`UShRest`) it breaks those two.  A `#[local]` seal in the ONE file whose
+line predicate is a variable costs them nothing.  If it is ever made
+global, each such proof needs `rewrite /UkSh.ush_rest_l_at` before its
+`iModIntro`.  **Note that plain `Typeclasses Opaque` at the top level of
+a file IS exported to importers** (verified: a `Fail` that resolves in the
+defining file still fails after `Require Import`), so the attribute is not
+decoration.
+
+**Localising it took three builds and is worth copying.**  `rocq compile
+-time` is block-buffered, so its last line only says which sentence
+STARTED; what pins the wedge is the durable notes' instrument -- wrap the
+suspect tactics in `timeout N (...)` with `idtac "MARK-n"` between them,
+and a single compile prints the marks up to the wedge and then
+`Error: Tactic failure: [Proofview.tclTIMEOUT] Tactic timeout!`.  For an
+`iIntros` of a bundle, split it into one `iIntros` PER NAME with a mark
+each: the run names the exact hypothesis (here the seventh, `#Hrest`),
+which is the whole diagnosis.
+
+**Do not merge a lane branch that has not landed.**  This lane merged
+`app-file/sh-redir` on the brief's "if SH-CHILD-2 has landed" -- it had
+not: its tip is a WIP commit whose `UkShEcho.v` had been compiling for
+fifty-one minutes in its own tree and has no `.vo` anywhere.  Main ALREADY
+carried everything LINK-GEN-6 needs of SH-CHILD (`ush_rest_l_at`,
+`ushf_body_law D`, `ush_line_file`), so the merge bought nothing and cost
+a wedged tree.  Backed out by `git checkout main -- <the four files>`;
+the merge commit stays in history and SH-CHILD-2's work will arrive
+through main.  **Check `git branch --contains` before merging a lane
+branch, and check that the files it brings have `.vo`s.**  And note what
+backing a merge out by file does NOT catch: the merge had also taken
+SH-CHILD-2's `UkSh.ush_Dbody := 88` (the redirect parse is eight words
+deeper), which lives in a file this lane keeps, so the restored
+`UkShFork.v` failed at
+`iSpecialize: cannot instantiate ... (16 + (ush_Dbody + n)) ... with
+... (16 + (80 + n))`.  When you restore files from main, diff the files
+you KEEP against main too and revert the incoming branch's own edits in
+them.
+
+**An interrupted remote build leaves ZERO-LENGTH `.vo` files, and the next
+build's error names the WRONG file.**  When `run-on-gcp` exits while
+workers are still writing (here: its post-build dump verification flaked,
+reporting an empty remote checksum list, and took the build down with it),
+the in-flight `.vo`s are left truncated.  The next build then fails in
+whatever file REQUIRES them, with
+`Error when parsing .vo ... premature end of file. Try to rebuild it.` --
+naming `UkShDiag.v` for a truncated `UkSh.vo`.  Do not read that as a
+proof error: `ls -la` the `.vo`s the message names (they are 0 or 4096
+bytes), delete the artifacts of every file the interrupted build listed,
+and rebuild.  `ROCQ compile F.v` in the log means F STARTED, never that it
+finished.
+
+**Never run two builds against the same remote tree.**  `--proofs` and a
+`make <F>.vo` drive the same `CoqMakefile` in the same directory; started
+concurrently they race on the same `.vo` files and one of them reports a
+stale error that costs an hour of reading.  One build, wait for the
+sentinel.
+
+**Hoisting a definition out of a section is the cheap way to reorder.**
+`ush_line_at` and its three companions were defined 4,600 lines below
+`ush_gets_done` and use no section variable; moving them to top level
+(de-indenting by two) is a no-op for every consumer and is what let the
+loop's payload name them.
+
+**`iApply` against a section-variable-indexed lemma reports the
+INSTANTIATED goal.**  When `wp_ksh_start` began taking `Dl`, the error
+named `ush_rest_line_at ush_line_echo ws g kk` against
+`ush_rest_line_at Dl ws g kk` -- i.e. the walk's own statement had not
+been widened yet.  Reading the two sides of that message is the fastest
+way to find the next statement to move.

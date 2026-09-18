@@ -17,6 +17,13 @@ Map `Chars A-B` to a line with `head -c B <f>.v | wc -l`.
   min of N, `uptime` first. The box is shared and load *inverts* an A/B, not
   merely widens it. Per-file times from two different parallel builds are not a
   comparison.
+- **A `-j96` profile's per-sentence seconds are inflated, and NOT uniformly** —
+  so the ranking it gives is a shortlist, not an ordering. Memory-hungry
+  proofmode sentences inflate ~2× against an isolated `coqc` (a `Release`
+  `iApply` read 5.2 s in the profile and 2.4 s alone) while a cache-resident
+  instance search reads the same either way (`FileLinksLine` 110 s vs 111 s).
+  **Re-measure the candidate file alone before opening it**, or the second tier
+  of a cleanup is chasing contention.
 - **`rm -f .lia.cache .nia.cache` before each arm.** micromega persists every
   certificate per directory; warm readings are off by a large factor, and the
   first compile after an edit re-derives what the edit moved, so an improvement
@@ -360,6 +367,30 @@ for it.
   abstraction that already has its own instance. Descend through connectives,
   never through a name. Peel small bodies too: the predictor is the LEAF. And
   **name the leaf instances** where the peel bottoms out.
+
+  **And the leaf really must be NAMED, because the hint net cannot
+  discriminate in this tree.** `Timeless`/`Persistent` patterns are keyed
+  modulo delta, so the tree's 455 `Timeless` instances — nearly all of them
+  over TRANSPARENT definitions — sit in one undiscriminated bucket and *every*
+  search tries almost all of them: `Set Typeclasses Debug Verbosity 2` on one
+  obligation printed 3253 `simple apply` attempts over 7 goals, ~1.3 s per
+  goal, most of them `uart_*`/`virtio_*`/`word_pointsto` instances that have
+  nothing to do with the goal. Two consequences:
+  - **A block of sibling instances gets progressively slower down the file**
+    (measured in `FileLinksLine`: 0.4 s at the first, 17 s at the eleventh,
+    98 s for the block), which reads like a size effect and is not one.
+  - **`Typeclasses Opaque` on the families fixes it too** — same file, 111 s →
+    16 s — but only inside the defining `Section` (a seal there does not
+    survive it, see `FirstTok.v`), and it breaks every consumer that reads
+    through the name. The named-leaf dispatch is the portable fix: measured
+    `FileLinksLine` 111 s → 12 s, `FileLinksAt` 86 s → 5 s, `FileLinksAtPro`
+    25 s → 5 s, all three on the critical path.
+  - **A `□`-bodied law is one line**: `rewrite /X. apply
+    bi.intuitionistically_persistent.` `apply _` there descends the whole
+    premise tower under the modality (`UkShRedirBody.sh_redir_child_law`,
+    40 s in one sentence).
+  - **A record-parametric family bottoms out in the record's own field
+    instance** — `apply lk_blk_tl`, never `apply _` (`LinkRec`).
 - **Mark big concrete literals `Global Typeclasses Opaque`** (`kernel_bytes`,
   `kernel_data`, `kernel_symbols`, `mem_pointsto`) — never plain `Opaque`, since
   a tactic may need to `unfold`.
@@ -598,7 +629,12 @@ per-file TIMED `real`, never from per-file time sums.
   `Link*` import. No whole-image `vm_compute` belongs in a tail file.
 - **Where ΣCPU goes tree-wide:** `Require`/`From` ~17 %, `iApply` ~16 %, `Qed`
   ~15 %, `iIntros` ~8 %, `iDestruct` ~4 %. The import line is a floor.
-- **Negative results — do not redo these.** `_CoqProject` order does not matter.
+- **Negative results — do not redo these.** `WpGprCsrwA`'s `goodb` chain is
+  CLOSED: its header already records the `erewrite`→`apply` pass, and closing
+  the remaining `goodb` side conditions by `vm_cast_no_check` instead of
+  `vm_compute; reflexivity` moves the sentence 8.8 s → 7.4 s and its `Qed`
+  11.4 s → 10.2 s, i.e. what is left is the `eapply` chain and its proof term,
+  not the VM. `_CoqProject` order does not matter.
   Oversubscribing `-j` costs exactly what it buys. `Proof using` is a fraction of
   a percent OF THE `.vo` BUILD — but that was the wrong metric to judge it by: it
   is what lets `-vos` skip a proof at all, which is the whole edit-check loop

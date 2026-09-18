@@ -78,12 +78,12 @@ Section UShLineHold.
   (* ---- ...AND THE SHAPE RULING H' FIXES: the era's boot state as a
           SHARED INDEX between the credential and the hold ---- *)
   Lemma ush_wc_inp_ex (γ : echo_gn) (T : iProp Σ)
-      (Wc : fst -> list (bv 8) -> nat -> iProp Σ)
-      (Hold : fst -> list (bv 8) -> iProp Σ) :
-    (forall s0 : fst, ush_wc_inp γ T (Wc s0)) ->
+      (Wc : fstate -> list (bv 8) -> nat -> iProp Σ)
+      (Hold : fstate -> list (bv 8) -> iProp Σ) :
+    (forall s0 : fstate, ush_wc_inp γ T (Wc s0)) ->
     ush_wc_inp γ T
       (fun (I : list (bv 8)) (p : nat) =>
-         ∃ s0 : fst, Wc s0 I p ∗ Hold s0 I)%I.
+         ∃ s0 : fstate, Wc s0 I p ∗ Hold s0 I)%I.
   Proof using .
     intros Hw I p. iIntros "H". iDestruct "H" as (s0) "[Hc Hh]".
     iPoseProof (Hw s0 I p) as "Hr".
@@ -91,11 +91,11 @@ Section UShLineHold.
   Qed.
 
   Lemma ush_wb_inp_ex (γ : echo_gn) (T : iProp Σ)
-      (Wb : fst -> list (bv 8) -> iProp Σ)
-      (Hold : fst -> list (bv 8) -> iProp Σ) :
-    (forall s0 : fst, ush_wb_inp γ T (Wb s0)) ->
+      (Wb : fstate -> list (bv 8) -> iProp Σ)
+      (Hold : fstate -> list (bv 8) -> iProp Σ) :
+    (forall s0 : fstate, ush_wb_inp γ T (Wb s0)) ->
     ush_wb_inp γ T
-      (fun I : list (bv 8) => ∃ s0 : fst, Wb s0 I ∗ Hold s0 I)%I.
+      (fun I : list (bv 8) => ∃ s0 : fstate, Wb s0 I ∗ Hold s0 I)%I.
   Proof using .
     intros Hw I. iIntros "H". iDestruct "H" as (s0) "[Hc Hh]".
     iPoseProof (Hw s0 I) as "Hr".

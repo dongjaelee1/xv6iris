@@ -64,16 +64,26 @@ Section file_link_inst.
           record carry the field too, and therefore what keeps the program
           stream off [file_link_inst_at] if it wants to be. ---- *)
   Definition fwc_pban_ex (k : nat) (v : era_pins) (I : list (bv 8))
-    : iProp Σ := (∃ s0 : fst, fwc_pban_at g s0 k v I)%I.
+    : iProp Σ := (∃ s0 : fstate, fwc_pban_at g s0 k v I)%I.
 
   Definition fwc_pdiag_ex (k : nat) (v : era_pins) (I : list (bv 8))
-      (a i : nat) : iProp Σ := (∃ s0 : fst, fwc_pdiag_at g s0 k v I a i)%I.
+      (a i : nat) : iProp Σ := (∃ s0 : fstate, fwc_pdiag_at g s0 k v I a i)%I.
 
+  (* NAME THE LEAF, do not search: with 455 [Timeless] instances in the
+     tree under mostly transparent definitions the hint net cannot
+     discriminate, and one [apply _] at this altitude tries nearly all of
+     them (~2s a site). *)
   Global Instance fwc_pban_ex_timeless k v I : Timeless (fwc_pban_ex k v I).
-  Proof using . rewrite /fwc_pban_ex. apply _. Qed.
+  Proof using .
+    rewrite /fwc_pban_ex. apply bi.exist_timeless; intro.
+    apply fwc_pban_at_timeless.
+  Qed.
   Global Instance fwc_pdiag_ex_timeless k v I a i :
     Timeless (fwc_pdiag_ex k v I a i).
-  Proof using . rewrite /fwc_pdiag_ex. apply _. Qed.
+  Proof using .
+    rewrite /fwc_pdiag_ex. apply bi.exist_timeless; intro.
+    apply fwc_pdiag_at_timeless.
+  Qed.
 
   Lemma fwc_pban_ex_taint k v I : file_taint (fgn_cl g) -∗ fwc_pban_ex k v I.
   Proof using .
@@ -286,7 +296,7 @@ Section sh_round_facing.
        lk_pin FI (S gen_id) v ∗ lk_ban FI (S gen_id) v I 0%nat)%I.
 
   Global Instance file_Wcl_timeless I p : Timeless (file_Wcl I p).
-  Proof using . rewrite /file_Wcl. apply _. Qed.
+  Proof using . rewrite /file_Wcl. apply lk_lcred_timeless. Qed.
 
   (* ---- [UShRound]'s [Hwbl] ---- *)
   Lemma file_Hwbl (I : list (bv 8)) : ⊢ file_Wcl I 3%nat -∗ file_Wcl I 0%nat.
@@ -358,7 +368,7 @@ Section sh_round_facing.
     intro Hl. rewrite Hl file_ralt0. cbn [ralt_ok]. lia.
   Qed.
 
-  Lemma file_ralt0_free : fst_free (ralt_dec 0%nat) = true.
+  Lemma file_ralt0_free : fstate_free (ralt_dec 0%nat) = true.
   Proof using . reflexivity. Qed.
 
   Lemma file_fab0 (I : list (bv 8)) :
@@ -469,7 +479,7 @@ Section file_link_inst_at.
   Context (g : file_gn).
   Context `{HRg : !riscvGS Σ}.
   Context `{GEN : GenId}.
-  Context (s0 : fst).
+  Context (s0 : fstate).
 
   (* [lk_ban_read_taint] is stated at the record's OWN [lk_rres], which
      here is the indexed residue; the ported lemma takes the unindexed one,
@@ -621,9 +631,12 @@ Section file_link_inst_at.
        ∗ lk_ban file_link_inst_at (S gen_id) v I 0%nat)%I.
 
   Global Instance file_Wcl_at_timeless I p : Timeless (file_Wcl_at I p).
-  Proof using . rewrite /file_Wcl_at. apply _. Qed.
+  Proof using . rewrite /file_Wcl_at. apply lk_lcred_timeless. Qed.
   Global Instance file_Wbl_at_timeless I : Timeless (file_Wbl_at I).
-  Proof using . rewrite /file_Wbl_at. apply _. Qed.
+  Proof using .
+    rewrite /file_Wbl_at. apply bi.exist_timeless; intro.
+    apply bi.sep_timeless; [apply lk_pin_tl | apply lk_ban_tl].
+  Qed.
 
   Lemma file_Wcl_at_pack (I : list (bv 8)) (p : nat) :
     file_Wcl_at I p -∗ file_Wcl g I p.
@@ -736,7 +749,7 @@ Section file_W_unpack.
   Context `{GEN : GenId}.
 
   Lemma file_Wcl_unpack (I : list (bv 8)) (p : nat) :
-    file_Wcl g I p -∗ ∃ s0 : fst, file_Wcl_at g s0 I p.
+    file_Wcl g I p -∗ ∃ s0 : fstate, file_Wcl_at g s0 I p.
   Proof using .
     rewrite /file_Wcl /lk_lcred.
     iIntros "H". iDestruct "H" as (v) "[#Hpin Hc]".
@@ -747,7 +760,7 @@ Section file_W_unpack.
   Qed.
 
   Lemma file_Wbl_unpack (I : list (bv 8)) :
-    file_Wbl g I -∗ ∃ s0 : fst, file_Wbl_at g s0 I.
+    file_Wbl g I -∗ ∃ s0 : fstate, file_Wbl_at g s0 I.
   Proof using .
     rewrite /file_Wbl.
     iIntros "H". iDestruct "H" as (v) "[#Hpin Hc]".

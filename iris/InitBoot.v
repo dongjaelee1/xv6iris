@@ -30,7 +30,7 @@ From iris.proofmode Require Import proofmode.
 Require Import SailStdpp.ConcurrencyInterface SailStdpp.ConcurrencyInterfaceBuiltins SailStdpp.ConcurrencyInterfaceTypes SailStdpp.Operators_mwords.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
-Require Import RiscvLang RiscvPtsto.    (* [cstring_bytes] *)
+Require Import RiscvLang RiscvPtsto.    (* [riscvGS], [cstring_bytes] *)
 Require Import DirentEnc.               (* [bview]: the path buffer as a list *)
 (* THE GHOST BINDER LIST'S DEFINING MODULES, each one IMPORTED and not
    merely required: a class named without its module in scope is a fresh

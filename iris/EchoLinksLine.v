@@ -490,24 +490,57 @@ Section echo_links_line.
   Definition ewc_lcred (k : nat) (I : list (bv 8)) (p : nat) : iProp Σ :=
     (∃ v : era_pins, era_pin γ k v ∗ ewc_lpr v I p)%I.
 
+  (* THE DISPATCH, NOT [apply _].  The tree's 455 [Timeless] instances sit
+     under mostly transparent definitions, so the hint net cannot
+     discriminate and one search at this altitude tries nearly all of
+     them (3s a site here, 13s for this block).  Descend through the
+     CONNECTIVES and name the leaf, syntactically -- the same dispatch as
+     [FileLinksLine]'s, one tier down. *)
+  Local Ltac tl_leaf :=
+    lazymatch goal with
+    | |- Timeless (bi_exist _) => apply bi.exist_timeless; intro; tl_leaf
+    | |- Timeless (bi_sep _ _) => apply bi.sep_timeless; [tl_leaf | tl_leaf]
+    | |- Timeless (bi_or _ _) => apply bi.or_timeless; [tl_leaf | tl_leaf]
+    | |- Timeless (bi_pure _) => apply bi.pure_timeless
+    | |- Timeless T => assumption
+    | |- Timeless (turn _ _) => apply turn_timeless
+    | |- Timeless (ps_lb _ _) => apply ps_lb_timeless
+    | |- Timeless (cs_lb _ _) => apply cs_lb_timeless
+    | |- Timeless (inp_lb _ _) => apply inp_lb_timeless
+    | |- Timeless (era_pin _ _ _) => apply era_pin_timeless
+    | |- _ => apply _
+    end.
+
   Global Instance ewc_blk_timeless v I a i : Timeless (ewc_blk v I a i).
-  Proof. rewrite /ewc_blk. apply _. Qed.
+  Proof. rewrite /ewc_blk. tl_leaf. Qed.
   Global Instance ewc_post_timeless v I a : Timeless (ewc_post v I a).
-  Proof. rewrite /ewc_post. apply _. Qed.
+  Proof. rewrite /ewc_post. apply ewc_blk_timeless. Qed.
   Global Instance ewc_panic_timeless v I i : Timeless (ewc_panic v I i).
-  Proof. rewrite /ewc_panic. apply _. Qed.
+  Proof. rewrite /ewc_panic. apply ewc_blk_timeless. Qed.
   Global Instance ewc_pro_timeless v I : Timeless (ewc_pro v I).
-  Proof. rewrite /ewc_pro. apply _. Qed.
+  Proof. rewrite /ewc_pro. tl_leaf. Qed.
   Global Instance ewc_sp_t_timeless v I : Timeless (ewc_sp_t v I).
-  Proof. rewrite /ewc_sp_t. apply _. Qed.
+  Proof. rewrite /ewc_sp_t. tl_leaf. Qed.
   Global Instance ewc_open_t_timeless v I : Timeless (ewc_open_t v I).
-  Proof. rewrite /ewc_open_t. apply _. Qed.
+  Proof. rewrite /ewc_open_t. tl_leaf. Qed.
   Global Instance ewc_line_timeless v I : Timeless (ewc_line v I).
-  Proof. rewrite /ewc_line. apply _. Qed.
+  Proof.
+    rewrite /ewc_line.
+    apply bi.or_timeless; [apply ewc_pro_timeless |].
+    apply bi.exist_timeless; intro.
+    apply bi.sep_timeless; [apply bi.pure_timeless | apply ewc_post_timeless].
+  Qed.
   Global Instance ewc_lpr_timeless v I p : Timeless (ewc_lpr v I p).
-  Proof. rewrite /ewc_lpr. destruct p as [| [| [| p]]]; apply _. Qed.
+  Proof.
+    rewrite /ewc_lpr. destruct p as [| [| [| p]]];
+      [apply ewc_line_timeless | apply ewc_sp_t_timeless
+      | apply ewc_open_t_timeless | apply ewc_blk_timeless].
+  Qed.
   Global Instance ewc_lcred_timeless k I p : Timeless (ewc_lcred k I p).
-  Proof. rewrite /ewc_lcred. apply _. Qed.
+  Proof.
+    rewrite /ewc_lcred. apply bi.exist_timeless; intro.
+    apply bi.sep_timeless; [apply era_pin_timeless | apply ewc_lpr_timeless].
+  Qed.
 
   (* ---- the taint inhabits every shape ---- *)
   Lemma ewc_blk_taint v I a i : T -∗ ewc_blk v I a i.

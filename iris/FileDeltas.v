@@ -61,7 +61,7 @@ Require Import FileFsPure.         (* [file_fs_pure]                      *)
 Require Import ElfUser.            (* the four binaries' lengths          *)
 Require Import LineWords.
 Require Import EchoDisc.           (* [line_ok], [line_max]               *)
-Require Import FileState.          (* [fst], [subseq], [sel_ok]           *)
+Require Import FileState.          (* [fstate], [subseq], [sel_ok]           *)
 Require Import AppFile.            (* [f_ok], [f_bytes_typed]             *)
 
 Local Open Scope Z_scope.

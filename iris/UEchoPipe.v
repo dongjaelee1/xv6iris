@@ -177,7 +177,7 @@ Section UEchoPipe.
     ep_car pn L (length L).
 
   (* THE LEND [ExecEntry.image_entry]'s [Pay] slot carries: the protocol's
-     handle, the missing arm, the frame, and the write permit at ZERO with
+     handle, the frame, and the write permit at ZERO with
      the empty lower bound -- design SS5.2's [Pay] exactly. *)
   Definition ep_pay (pn : pnames) (γp : pipe_names) (L : list (bv 8))
       : iProp Σ :=

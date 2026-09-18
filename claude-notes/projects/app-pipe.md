@@ -135,6 +135,10 @@ arm is the theorem's one named premise (`pipe_both_law`).
   EOF) → waits → the reading says the reader saw L`, at the leaves.
 - [x] **ECHO-PIPE** (design §5.2; after PIPE-PROTO + PIPE-STD).
   `iris/UEchoPipe.v`: echo's `image_entry` at fd 1 = a pipe write end.
+- [x] **ECHO-PIPE-2** (after PIPE-PROTO-2 + PQ-FLAG-2, design §3.1b):
+  `ep_derail` RETIRED — the halt carries (P4)'s shot and pays for itself;
+  the entry's only remaining premise is the KILL row (`Hktaint`, the same
+  one `UCatPipe`'s round names), which lane KILL-TAINT closes for both.
 - [x] **CAT-PIPE** (design §5.3; after PIPE-PROTO + PIPE-STD).
   `iris/UCatPipe.v`: cat's round and `image_entry` at fd 0 = a pipe read
   end, at the pipe stage's cursor.
@@ -3370,3 +3374,130 @@ pay from that; ECHO-PIPE's route (c) — make that arm carry the taint too,
 which the kernel already travels with it at the trap tail — is the whole
 fix, and it is the same debt CAT-PIPE's `Hktaint` names on the read side.
 One ruling closes both.
+
+### ECHO-PIPE-2 (2026-09-18) — `ep_derail` RETIRED: the halt carries (P4)'s shot and pays for itself, and the ONE arm left is the kill
+
+Branch `app-pipe/echo-pipe-2` off `d435281aa`, ONE commit on `iris/UEchoPipe.v`
+(plus this notes file).  **No other file touched, and no statement outside
+`UEchoPipe.v` moved.**  Whole-tree `ec2-lane.sh echo2 build` **RC=0** (plus
+a confirming re-run with nothing left to compile); no `Admitted`, no
+`Axiom`; a MINIMAL `Proof using` on all nineteen results, **re-derived**
+with Rocq's `Set Suggest Proof Using` after the port (unchanged: `Proof
+using .` on sixteen, `Proof using ghost_varG0 ghost_varG1 ufdG0` on the
+three entry-level ones).  `Print Assumptions ep_image_entry` and
+`… ep_test_hi`: the standing **fourteen**; `… ep_pay_of_alloc`: *Closed
+under the global context*.  `make audit-echo-only`: **fourteen, unmoved**
+(and it could not move — nothing in the tree `Require`s `UEchoPipe.v`).
+
+**WHAT CHANGED** (everything the coordinator's brief asked, and nothing else)
+
+- **`ep_stuck` carries the shot**:
+
+        Definition ep_stuck pn L :=
+          (∃ c : nat, ⌜(c <= length L)%nat⌝ ∗ ep_cur pn L c ∗ ro_shot pn)%I
+        Definition ep_halt pn L := (ep_stuck pn L ∨ app_taint)%I
+
+  and `ep_post_ok` gets it in ONE step from `pipe_wpost_line_reason` —
+  the lemma PIPE-PROTO-2 wrote for exactly this.  Its three reasons map
+  one-to-one onto `ep_ok`: `⌜k = n ∨ ¬rmapped⌝` + the caller's mapped
+  source ⟹ the full run (left arm); `ro_shot` ⟹ the stuck arm at the
+  mid-line cursor; `Rk` ⟹ the taint (below).
+- **`ep_pay_halt` is now a LEMMA, not an assumption.**  Its body is
+  `pipe_wpay_of_inv_after_short pn γp L M ua (ep_halt pn L) n` on the stuck
+  arm and `pipe_wpay_taint` on the taint arm — three lines.  `ep_derail`
+  and its `Persistent` instance are DELETED; the `□` the brief expected is
+  not needed at all, because the halt is consumed and re-produced by each
+  write rather than re-used (`ro_shot` and `pipe_inv` are both persistent,
+  so the stuck arm rebuilds itself inside the payment).
+- **`ep_pay` loses the conjunct**: `pipe_inv pn γp L ∗ ep_frame pn ∗
+  wcur pn 0 ∗ pws_lb pn []` — design §5.2's `Pay` exactly (`ep_frame pn =
+  side_L pn ∗ Wq`).  `ep_car_of_pay` follows.
+- **`ep_pay_of_alloc` is now an UNCONDITIONAL fupd**:
+
+        pipe_qfrag (pn_queue γp) pst0 -∗ Wq ={⊤}=∗
+        ∃ pn, pipe_reg γp ∗ rtok pn ∗ side_R pn ∗ ep_pay pn γp L
+
+  i.e. echo's WHOLE lend is minted at `pipe(2)` out of `pipe_proto_alloc`,
+  with the registration, the reader's permit and `side_R` left for the
+  registry, cat and sh, and **nothing left dangling** (ECHO-PIPE's version
+  concluded at `ep_derail -∗ ep_pay`).
+- **`ep_exit_payL` is now stated at the protocol's own payload**:
+
+        ep_exit pn L -∗ side_L pn ∗ Wq ∗ (pipe_payL pn L ∨ app_taint)
+
+  — the halt's stuck arm IS `pipe_payL`'s new third arm, so sh closes the
+  round with the three-armed `pipe_round_reading` and nothing in between.
+- **`ep_image_entry`'s statement changes by exactly two lines**: the
+  `ep_derail` conjunct leaves `Pay`, and the kill row enters as a premise.
+
+**THE ONE ARM STILL OWED, and WHICH SHAPE WAS CHOSEN**
+
+The brief offered two: put `ep_post_ok`'s kill arm at `app_taint`, or take
+a named premise inside the entry.  **Chosen: the named premise**, in
+literally the shape `UCatPipe`'s round already takes on the read side —
+
+        □ (∀ gn : gname, ChildTok.kill_shot gn -∗ app_taint)
+
+— threaded through `ep_w_data` / `ep_w_txt` / `ep_pay_from` / `ep_pay_all`
+/ `ep_uexec_slot_at` / `ep_image_entry` / `ep_test_hi`, and spent at
+`ep_post_ok`, which takes the instance `Rk -∗ app_taint` at its abstract
+`Rk`.  THREE reasons, and the third is the one that decides it:
+
+1. **Putting the arm "at `app_taint`" is not expressible where it would
+   have to be.**  `Rk` is not this file's to choose: the write leaf fixes
+   it to `ChildTok.kill_shot (uvis_gen W)` (`UkWritePipe.uwrite_pipe_extra`
+   hands `pipe_wpost … (ChildTok.kill_shot gn) …`).  A version of
+   `ep_post_ok` stated at `Rk := app_taint` would be a lemma about a post
+   nothing produces; the honest reading of the brief's first option is the
+   premise `Rk -∗ app_taint`, which is what landed.
+2. **ONE ruling must close both sides.**  CAT-PIPE's `Hktaint` is the same
+   proposition (up to its abstract `T`, which the record's kill equation
+   identifies with `app_taint`), so lane KILL-TAINT deletes the same line
+   from two files.  Two different shapes would have made that two rulings.
+3. **It belongs to the ENTRY and NOT to `ep_pay`.**  It is a fact about the
+   kernel and the claim — "a kill taints the application", design
+   `applications.md` — not a resource sh owns and lends, and sh could not
+   mint it.  Keeping it out of `Pay` is what leaves `ep_pay` exactly the
+   design's, and what makes `ep_pay_of_alloc` unconditional.
+
+**WHAT WAS REFUTED / WHAT THE BRIEFS GOT WRONG (three, all small)**
+
+1. **The `□` the brief expected on the derailed payment is unnecessary.**
+   The brief says "the later writes … pay from `pipe_wpay_of_inv_after_short`
+   at `R := ep_halt pn L` **under the `□` that `pipe_inv`/`ro_shot`
+   allow**.  No box is needed anywhere: each write CONSUMES the halt and
+   the post GIVES IT BACK (`ep_post_halt` at the constant `Q`/`Qe`), so the
+   resource is threaded linearly exactly as the good-path cursor is.  What
+   `pipe_inv` and `ro_shot` being persistent buys is not a box but the fact
+   that the stuck arm can be re-assembled inside the payment from the
+   cursor it already holds — three lines in `ep_pay_halt`.
+2. **`pipe_payL` still has no TAINT arm**, so echo's exit payload is
+   `pipe_payL pn L ∨ app_taint` and not `pipe_payL pn L`.  That is not a
+   defect of `pipe_payL` — a tainted era's round is decided by the claim's
+   own taint arm, not by the pipe — but SH-PIPE-ROUND must expect the
+   disjunction at the `Qc` it lends, and `pipe_round_reading` takes
+   `pipe_payL` on the nose.  Either the round's `PL` becomes
+   `pipe_payL ∨ app_taint`, or sh discharges the taint before reading.  ONE
+   line either way; flagged, not decided here.
+3. **PIPE-PROTO-2's "ECHO-PIPE-2 loses nothing" is right, and the reason is
+   worth one line**: `ep_derail`'s shape was already `Q := fun _ => R`,
+   `Qe := fun _ _ => R` at `R := ep_halt`, which is `pipe_wpay_of_inv_after_short`'s
+   shape verbatim — so the port is a substitution, not a re-design, and
+   `ep_w_data` / `ep_w_txt` / the chain / the entry needed NO proof change
+   beyond the premise swap and one `iAssert` per write for the kill wand.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST**
+
+For **SH-PIPE-ROUND**: `ep_image_entry` is ready as `UkShPipe`'s left
+child's (E) obligation; sh lends exactly `ep_pay pn γp L` (four conjuncts,
+ALL of them minted by its own `pipe(2)` — `ep_pay_of_alloc` is the
+instance), and owes the entry one persistent premise, `Hktaint`.  Read the
+exit with `ep_exit_payL`: `side_L pn ∗ Wq ∗ (pipe_payL pn L ∨ app_taint)`,
+and note finding 2 — the `∨ app_taint` is the only thing between it and
+`pipe_round_reading`'s premise.
+
+For **KILL-TAINT**: the two consumers are `UEchoPipe`'s
+`□ (∀ gn, ChildTok.kill_shot gn -∗ app_taint)` (a premise of
+`ep_image_entry`, `ep_test_hi` and the four lemmas between) and
+`UCatPipe.pcat_round_at`'s `Hktaint` at its abstract `T`; retiring the row
+deletes one premise line from each and nothing else moves.

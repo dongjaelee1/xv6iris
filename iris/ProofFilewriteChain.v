@@ -447,7 +447,7 @@ Section FilewriteChain.
   Proof using .
     intros Htb. destruct om; rewrite /filewrite_in_inode_om.
     - iIntros "#Hrow Hcm". iApply (fw_au_st_init_parked with "Hrow Hcm").
-    - iIntros "_ [[_ Hcm] | [Hcm #Ht]]".
+    - iIntros "_ [Hcm | [Hcm #Ht]]".
       + iApply (fw_au_st_init_held with "[Hcm]").
         iApply ("Hcm" $! P with "[//]").
       + iApply (fw_au_st_init_taint with "Ht Hcm").

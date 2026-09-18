@@ -1536,6 +1536,92 @@ Section WriteFire.
         iModIntro. iFrame "Ha' Hg". iApply (IH with "Hrest").
   Qed.
 
+  (* ---- THE PARTIAL ARM IS VACUOUS AT THE ADVANCED NODE TOO -----------
+     [awrite_part_adv] differs from [awrite_part_at] in ONE conjunct of
+     phase 2 (the box's arm comes back advanced), and the refutation above
+     never reaches phase 2: it kills the node at its own premises.  So the
+     proof is [awrite_part_at_mapped_single]'s, letter for letter. *)
+  Lemma awrite_part_adv_mapped_single Γ (E : coPset) (i : Z) (γo : gname)
+      (M : gmap Z (bv 8)) (ua : mword 64) (P : uptd) (n : Z) (k : nat)
+      (REST : iProp Σ) :
+    (forall j : nat, (j < Z.to_nat n)%nat ->
+       uva_rmapped P (uint (add_vec_int ua (Z.of_nat j)))) ->
+    (forall (I : gmap Z fs_node) (off : nat) (bs bs0 : list (bv 8)) (nl : nat),
+       wri_pre (abs_view I) i off bs bs0 nl ->
+       wi_blocks off (Z.to_nat (wchunk_at n k)) = 1%nat) ->
+    ⊢ awrite_part_adv Γ E i γo M ua P n k REST.
+  Proof using .
+    intros Hmap Hsb. rewrite /awrite_part_adv.
+    iIntros (I off r bs bs0 nl) "%Hpre %Hr %Hgap %Hshort %Hwhy %Hsb1 %Hby Ha Hk".
+    iExFalso. iPureIntro.
+    assert (Hrl : r = length bs).
+    { destruct (decide (r < length bs)%nat) as [Hlt | Hge]; [| lia].
+      exfalso.
+      exact (wr_fail_why_refute P ua (Z.to_nat n) (Z.to_nat n)
+               ltac:(lia) Hmap (Hwhy Hlt)). }
+    assert (Hr0 : r = 0%nat)
+      by exact (Hsb1 (Hsb I off bs bs0 nl Hpre)).
+    destruct Hpre as (_ & Hpos & _ & _). lia.
+  Qed.
+
+  (* ...and the node is monotone in its residue, which is what lets a
+     client hand its own cursor to the chain's shape. *)
+  Lemma awrite_full_adv_mono Γ (E : coPset) (i : Z) (γo : gname)
+      (M : gmap Z (bv 8)) (ua : mword 64) (n : Z) (k : nat)
+      (R1 R2 : iProp Σ) :
+    (R1 -∗ R2) -∗
+    awrite_full_adv Γ E i γo M ua n k R1 -∗
+    awrite_full_adv Γ E i γo M ua n k R2.
+  Proof using .
+    iIntros "HR Hn". rewrite /awrite_full_adv.
+    iIntros (I off bs bs0 nl) "%Hpre %Hby %Hlen Hka Hg".
+    iMod ("Hn" $! I off bs bs0 nl with "[//] [//] [//] Hka Hg")
+      as "(Hka & Hstep & Hph2)".
+    iModIntro. iFrame "Hka Hstep". iIntros (I') "%Hav Hka'".
+    iMod ("Hph2" $! I' with "[//] Hka'") as "(Hka' & Hg & Hr)".
+    iModIntro. iFrame "Hka' Hg". iApply ("HR" with "Hr").
+  Qed.
+
+  (* THE CHAIN OF ADVANCED FULL NODES ALONE -- [awrite_fchain]'s twin. *)
+  Fixpoint awrite_fchain_adv Γ (E : coPset) (i : Z) (γo : gname)
+      (M : gmap Z (bv 8)) (ua : mword 64) (n : Z)
+      (Q : nat -> iProp Σ) (k cnt : nat) : iProp Σ :=
+    match cnt with
+    | O => Q k
+    | S cnt' =>
+        (Q k ∧ awrite_full_adv Γ E i γo M ua n k
+                 (awrite_fchain_adv Γ E i γo M ua n Q (S k) cnt'))%I
+    end.
+
+  Lemma awrite_chain_adv_mapped_single Γ (E : coPset) (i : Z) (γo : gname)
+      (M : gmap Z (bv 8)) (ua : mword 64) (P : uptd) (n : Z)
+      (Q : nat -> iProp Σ) (k cnt : nat) :
+    (forall j : nat, (j < Z.to_nat n)%nat ->
+       uva_rmapped P (uint (add_vec_int ua (Z.of_nat j)))) ->
+    (forall (I : gmap Z fs_node) (off : nat) (bs bs0 : list (bv 8))
+            (nl kk : nat),
+       wri_pre (abs_view I) i off bs bs0 nl ->
+       wi_blocks off (Z.to_nat (wchunk_at n kk)) = 1%nat) ->
+    awrite_fchain_adv Γ E i γo M ua n Q k cnt -∗
+    awrite_chain_adv Γ E i γo M ua P n Q k cnt.
+  Proof using .
+    intros Hmap Hsb. revert k. induction cnt as [| cnt IH]; intros k.
+    { rewrite awrite_chain_adv_0 /=. iIntros "$". }
+    rewrite awrite_chain_adv_S /=. iIntros "Hf". iSplit.
+    - iDestruct "Hf" as "[$ _]".
+    - iSplit; last first.
+      + iApply (awrite_part_adv_mapped_single Γ E i γo M ua P n k _ Hmap).
+        intros I off bs bs0 nl Hpre. exact (Hsb I off bs bs0 nl k Hpre).
+      + iDestruct "Hf" as "[_ Hfull]".
+        rewrite {1}/awrite_full_adv /awrite_full_adv.
+        iIntros (I off bs bs0 nl) "%Hpre %Hby %Hlen Ha Hg".
+        iMod ("Hfull" $! I off bs bs0 nl with "[//] [//] [//] Ha Hg")
+          as "(Ha & Hstep & Hph2)".
+        iModIntro. iFrame "Ha Hstep". iIntros (I') "%Hav Ha'".
+        iMod ("Hph2" $! I' with "[//] Ha'") as "(Ha' & Hg & Hrest)".
+        iModIntro. iFrame "Ha' Hg". iApply (IH with "Hrest").
+  Qed.
+
 End WriteFire.
 
 (* the chain is SEALED: its nodes are [∧]-pairs and an [iFrame] near a

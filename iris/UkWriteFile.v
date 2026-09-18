@@ -460,18 +460,17 @@ Section UkWriteFile.
     (∀ (M : gmap Z (bv 8)) (pm : gmap (mword 27) uperm) (sz : Z),
        uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗
        uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗
-       (* the cursor at zero, unguarded (RULING WR-TB) ... *)
-       Q 0%nat
-       (* ...and the chain, at any table the key's own rows admit *)
-       ∗ ∀ P : uptd, ⌜wr_tb pm sz false P⌝ -∗
-         awrite_chain_adv (fs_gamma_L fsc_fs) appE i γo M
-           (m !!! Regidx a1_idx) P n Q 0%nat (wchunks n)) -∗
+       (* the chain, under the write guard at the key's own three values
+          (RULING WR-TB) -- and NOTHING beside it: one cursor, once. *)
+       (∀ P : uptd, ⌜wr_tb pm sz false P⌝ -∗
+          awrite_chain_adv (fs_gamma_L fsc_fs) appE i γo M
+            (m !!! Regidx a1_idx) P n Q 0%nat (wchunks n))) -∗
     udepwf_std N m pc 16 (write_file_fam Q (ukn_pay N)) l.
   Proof using .
     intros Hl1 H0 Hcnt. iIntros "Hch".
     rewrite /udepwf_std. iSplitR; [ iPureIntro; reflexivity | ].
     iIntros (M pm sz fdv cw gn cs pidv) "%Htake #Hmpay Hheap Hufd".
-    iDestruct ("Hch" $! M pm sz with "Hheap") as "(Hheap & Hch0 & Hch)".
+    iDestruct ("Hch" $! M pm sz with "Hheap") as "[Hheap Hch]".
     iFrame "Hheap Hufd".
     iApply (sbundle_at_write_intro_at uslot (write_file_fam Q (ukn_pay N))
               (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
@@ -485,7 +484,7 @@ Section UkWriteFile.
                H0 ltac:(unfold NSTD; lia) Htake Hl1).
     cbn [write_file_fam xfam_wr wf_Q].
     rewrite /filewrite_in Hcnt /filewrite_in_held.
-    iLeft. iFrame "Hch0". iExact "Hch".
+    iLeft. iExact "Hch".
   Qed.
 
   (* THE LEDGER-SLOT WRITE LEAF, [wp_uk_ecall_write_file]'s twin: the one

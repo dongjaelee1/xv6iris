@@ -720,18 +720,20 @@ Section SpecFilewrite.
   Definition filewrite_in_held (pmv : gmap (mword 27) uperm) (sz : Z)
       (lz : bool) (i : Z) (γo : gname) (n : Z)
       (M : gmap Z (bv 8)) (ua : mword 64) (Q : nat -> iProp Σ) : iProp Σ :=
-    (((* THE CURSOR AT ZERO, UNGUARDED (RULING WR-TB).  The guard is about
-          the page table a NODE is fired at; the cursor before any node has
-          fired is about nothing, and the [-1] arms -- the sign guard, the
-          never-entered loop -- have to hand it back without ever naming a
-          table.  The chain implies it
-          ([FsAbsWriteFire.awrite_chain_adv_cursor]), so a client that can
-          build the chain can build this, and echo's is [efq] at its own
-          entry selection. *)
-       Q 0%nat
-       ∗ ∀ P : uptd, ⌜wr_tb pmv sz lz P⌝ -∗
-                     awrite_chain_adv (fs_gamma_L fsc_fs) appE i γo M ua P n
-                       Q 0%nat (wchunks n))
+    ((* THE CHAIN, UNDER THE WRITE GUARD (RULING WR-TB).  The guard is the
+        three facts about the page table the fire will run on, stated at
+        the three USER-VISIBLE values the key already fixes; the KERNEL is
+        what discharges it, at [ProofFilewriteChain.fw_au_st_init].
+        NOTHING SITS BESIDE THE CHAIN.  An earlier draft put an unguarded
+        [Q 0%nat] here so that the [-1] exits could hand the cursor back
+        without naming a table; that made the client pay its cursor TWICE
+        (once as [Q 0], once inside the chain), which no client holding a
+        single cursor can do.  The [-1] exits instantiate the guard
+        instead -- they are the kernel, so they have the table
+        ([filewrite_extra_neg]). *)
+      (∀ P : uptd, ⌜wr_tb pmv sz lz P⌝ -∗
+                   awrite_chain_adv (fs_gamma_L fsc_fs) appE i γo M ua P n
+                     Q 0%nat (wchunks n))
      ∨ (awrite_chain (fs_gamma_L fsc_fs) appE i γo M ua n Q 0%nat (wchunks n)
         ∗ app_taint))%I.
 
@@ -1103,21 +1105,29 @@ Section SpecFilewrite.
     simpl. iExact "Hc".
   Qed.
 
+  (* THE SIGN GUARD'S EXIT TAKES THE WRITE GUARD (RULING WR-TB).  At a held
+     row the caller's input is the chain UNDER the guard, and this exit has
+     to hand the cursor back; it is the kernel, so it pays the guard at the
+     table it is running on, and [wchunks n] is 0 at a negative count, so
+     what comes out of the chain IS the cursor. *)
   Lemma filewrite_extra_neg gn P st n M ua Q Qe (pmv : gmap (mword 27) uperm) (sz : Z) (lz : bool) :
     (n < 0)%Z ->
+    wr_tb pmv sz lz P ->
     filewrite_in pmv sz lz st n M ua Q Qe -∗
     filewrite_extra gn P st n M ua Q Qe (mword_of_int (-1) : mword 64).
   Proof using .
-    intros Hn. destruct st as [| rb wb ty]; [by iIntros |].
+    intros Hn Htb. destruct st as [| rb wb ty]; [by iIntros |].
     destruct wb; [| by iIntros].
     destruct ty as [i γo om | γp | mj]; rewrite /filewrite_in /filewrite_extra.
     - destruct om as [|].
       + iIntros "Hc". by iApply (write_arms_at_neg with "Hc").
-      + (* the HELD row's two arms: the link's own cursor, or the plain
+      + (* the HELD row's two arms: the guarded chain, or the plain
            chain beside the taint (lanes OFF-LINK-4/5) *)
         rewrite /filewrite_in_held.
-        iIntros "[[Hc _] | [Hc _]]".
-        * by iApply (write_arms_at_neg_held (fs_gamma_L fsc_fs) i γo P n M ua Q Hn
+        iIntros "[Hc | [Hc _]]".
+        * iDestruct ("Hc" $! P with "[//]") as "Hc".
+          iEval (rewrite (wchunks_nonpos n ltac:(lia))) in "Hc".
+          by iApply (write_arms_at_neg_held (fs_gamma_L fsc_fs) i γo P n M ua Q Hn
                        with "Hc").
         * by iApply (write_arms_at_neg with "Hc").
     - (* a negative request never reaches the pipe: the payment comes back

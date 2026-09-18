@@ -143,21 +143,78 @@ Section UEchoFile.
   (*  whole of RELAY 2: a node whose closure holds this learns the fire's  *)
   (*  offset by [OffGv.off_gv_agree] and owes the kernel nothing.          *)
   (* =================================================================== *)
+  (* RULING EFQ.  The landed cursor was the CONJUNCTION
+
+       file_wq c r i ws sel (length (subseq (echo_chunks ws) sel))
+       ∗ uoff γo (length (subseq (echo_chunks ws) sel))
+
+     and that is not a statable cursor: [file_wq] is itself a pipe (its
+     right arm is [file_taint c]), so the conjunction pins the program's
+     half to the CONTENT'S LENGTH even on the arm where nobody owes
+     anything about the content.  Nothing supplies that -- a hijacker who
+     moved [f->off] left the shadow wherever it liked -- so the write
+     node's taint arm was unprovable AT THE STATEMENT.
+
+     The owner's shape is the pipe, and it is [FileWrite.file_cur]:
+
+       FIRED:   file_wq at the content, and the half AT ITS LENGTH
+       TAINTED: file_taint c, and the half wherever it is.
+
+     [efq] is that cursor at this entry's claim; the definition is one
+     name so that the node, the chain and the exit payload cannot drift. *)
   Definition efq (i : Z) (γo : gname) (ws : wordline) (sel : list nat)
-      : iProp Σ :=
-    (file_wq c r i ws sel (length (subseq (echo_chunks ws) sel))
-     ∗ uoff γo (length (subseq (echo_chunks ws) sel)))%I.
+      : iProp Σ := file_cur c r i ws sel γo.
 
   (* ...AND THE CHAIN CURSOR, indexed by the node number [k] the kernel is
      at.  Write call [j] fires ONE chunk (every one of echo's chunks is a
      word of a line, so [wchunks n = 1]), so the chain's node [k] is at the
      selection extended by [k] indices beyond [sel0]. *)
+  (* ...AND IT IS EXACT, not a disjunction of two positions.  The landed
+     cursor existentially quantified the selection and constrained it only
+     at [k = 0], which cannot be the shape: the write's own post hands back
+     [Q (length bss)] at the number of chunks that fired, and a caller that
+     cannot read the selection off that index learns nothing from a
+     completed write.  [k] DECIDES the selection here. *)
   Definition efcur (i : Z) (γo : gname) (ws : wordline) (sel0 : list nat)
       (j : nat) : nat -> iProp Σ :=
-    fun k => (∃ sel : list nat,
-                ⌜sel = sel0 \/ sel = sel0 ++ [j]⌝
-                ∗ ⌜(k = 0)%nat -> sel = sel0⌝
-                ∗ efq i γo ws sel)%I.
+    fun k => efq i γo ws (match k with
+                          | O => sel0
+                          | S _ => sel0 ++ [j]
+                          end).
+
+  (* THE CURSOR AT SOME SELECTION BELOW A CHUNK INDEX.  A write can FAIL
+     -- [f]'s next block may not be allocatable, and no application-tier
+     claim can see the bitmap (design/app-file.md SS0, limit 1) -- and then
+     the chunk did not land and the cursor comes back where it was.  So a
+     caller that has made [k] calls knows only that its selection lies
+     below the next chunk index, and THAT is what composes: it is what
+     each write takes and what each write returns, one index further on. *)
+  Local Lemma forall_lt_weaken (sel : list nat) (b b' : nat) :
+    (b <= b')%nat ->
+    Forall (fun q => (q < b)%nat) sel ->
+    Forall (fun q => (q < b')%nat) sel.
+  Proof using .
+    intros Hle. rewrite !Forall_forall. intros Hf q Hq.
+    specialize (Hf q Hq). lia.
+  Qed.
+
+  Definition efany (i : Z) (γo : gname) (ws : wordline) (b : nat) : iProp Σ :=
+    (∃ sel : list nat,
+       ⌜Forall (fun q => (q < b)%nat) sel⌝ ∗ efq i γo ws sel)%I.
+
+  Lemma efany_of (i : Z) (γo : gname) (ws : wordline) (b : nat)
+      (sel : list nat) :
+    Forall (fun q => (q < b)%nat) sel ->
+    efq i γo ws sel -∗ efany i γo ws b.
+  Proof using . iIntros (Hf) "Hq". iExists sel. by iFrame "Hq". Qed.
+
+  Lemma efany_mono (i : Z) (γo : gname) (ws : wordline) (b b' : nat) :
+    (b <= b')%nat -> efany i γo ws b -∗ efany i γo ws b'.
+  Proof using .
+    iIntros (Hle) "Hq". iDestruct "Hq" as (sel) "[%Hf Hq]".
+    iExists sel. iFrame "Hq". iPureIntro.
+    exact (forall_lt_weaken sel b b' Hle Hf).
+  Qed.
 
   (* THE EXIT PAYLOAD ([UkShFork.ushf_wq]'s twin, design SS3): the era's
      credential as it was lent, the deed at WHATEVER prefix of the chunks
@@ -334,13 +391,11 @@ Section UEchoFile.
       (∀ (M : gmap Z (bv 8)) (pm : gmap (mword 27) uperm) (sz : Z),
          uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗
          uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗
-         (* the cursor at zero, unguarded (RULING WR-TB) ... *)
-         Q 0%nat
-         (* ...and the chain under the write guard at the key's own three
-            values -- what the kernel discharges at [fw_au_st_init]. *)
-         ∗ ∀ P : uptd, ⌜wr_tb pm sz false P⌝ -∗
-           awrite_chain_adv (fs_gamma_L fsc_fs) appE i γo M
-             (m !!! Regidx a1_idx) P n Q 0%nat (wchunks n)) -∗
+         (* the chain under the write guard at the key's own three values
+            -- what the kernel discharges at [fw_au_st_init]. *)
+         (∀ P : uptd, ⌜wr_tb pm sz false P⌝ -∗
+            awrite_chain_adv (fs_gamma_L fsc_fs) appE i γo M
+              (m !!! Regidx a1_idx) P n Q 0%nat (wchunks n))) -∗
       udepwf_std N m pc 16 (write_file_fam Q (ukn_pay N)) l.
   Proof using . exact udepwf_std_write_file_held. Qed.
 
@@ -394,34 +449,97 @@ Section UEchoFile.
   (*  [file_awrite_node] is the FRAGMENT: it goes in at [off] and comes    *)
   (*  out at [off + |chunk|] ([ef_off_link]).                              *)
   (* =================================================================== *)
+  (* ...AND IT IS THE CLIENT-ADVANCED NODE, not the parked one: a held
+     descriptor's write takes [FsAbsWriteFire.awrite_full_adv], whose
+     phase 2 hands the box's arm back ADVANCED, and only the party holding
+     the half can prove that.  This entry is that party.
+
+     THE TWO ROWS ABOUT THE WRITER'S OWN BUFFER are new premises and they
+     are not a weakening: the landed statement could not be proved at all
+     without them, because [SpecCopyin.ubytes_at] is prefix-closed and
+     nothing else identifies the bytes that land with the chunk (RELAY 3).
+     THE TAINT BRIDGE is the program's own equation, the one lane
+     KERNEL-STREAM's item 2 landed on the read side. *)
   Lemma ef_node (i : Z) (γo : gname) (ws : wordline) (sel : list nat)
       (jx : nat) (M : gmap Z (bv 8)) (ua : mword 64) (n : Z) (k : nat) :
     (jx < length (echo_chunks ws))%nat ->
     Forall (fun q => (q < jx)%nat) sel ->
     i <> INIT_INO -> i <> SH_INO -> i <> ECHO_INO -> i <> CAT_INO ->
+    ubytes_at M (add_vec_int ua (FW_MAX * Z.of_nat k))
+      (echo_chunks ws !!! jx) ->
+    Z.of_nat (length (echo_chunks ws !!! jx)) = wchunk_at n k ->
+    □ (app_taint -∗ file_taint c) -∗
     app_inv fsc_fs -∗ efq i γo ws sel -∗
-    awrite_full_at (fs_gamma_L fsc_fs) appE i γo M ua n k
+    awrite_full_adv (fs_gamma_L fsc_fs) appE i γo M ua n k
       (efq i γo ws (sel ++ [jx])).
   Proof using Heq.
-  Admitted.
+    intros Hjx Hlt Hi1 Hi2 Hi3 Hi4 Hbsk Hlenk.
+    iIntros "#Hbr #Hinv Hq". rewrite /efq.
+    iApply (file_awrite_node_adv fsc_fs c r i ws sel jx γo M ua n k
+              Heq Hjx Hlt Hi1 Hi2 Hi3 Hi4 Hbsk Hlenk with "Hbr Hinv Hq").
+  Qed.
 
   (* ...AND THE WHOLE CALL'S CHAIN, at the ONE node echo's chunk needs.
      [wchunks n] is 1 for every one of echo's calls: a chunk is a word of
      a line or a single blank, and [FW_MAX] is 3072. *)
   Lemma ef_chain (i : Z) (γo : gname) (ws : wordline) (sel : list nat)
       (jx : nat) (M : gmap Z (bv 8)) (pmv : gmap (mword 27) uperm) (sz : Z)
-      (ua : mword 64) (nb : nat) (f : nat -> bv 8) (n : Z) :
+      (P : uptd) (ua : mword 64) (nb : nat) (f : nat -> bv 8) (n : Z) :
     usrc_ok M pmv sz ua nb f ->
+    (* the three facts about the caller's table the write guard carries
+       ([SpecFilewrite.wr_tb], RULING WR-TB): the chain is handed the
+       table under exactly them, and this is where they are spent -- on
+       the PARTIAL arm's refutation and nowhere else. *)
+    ProcPtOwn.proc_pt_wf P ->
+    perm_of (ud_um P) sz = pmv ->
+    lazy_free (ud_um P) sz ->
     n = Z.of_nat nb ->
     (0 < nb)%nat -> (Z.of_nat nb <= FW_MAX)%Z ->
+    (* the single-block row, the DEED's ([FileDeltas.f_bytes_typed_short]
+       and [EchoDisc.line_max] = 100 < BSIZE) *)
+    (forall (I : gmap Z fs_node) (off : nat) (bs bs0 : list (bv 8))
+            (nl kk : nat),
+       wri_pre (abs_view I) i off bs bs0 nl ->
+       wi_blocks off (Z.to_nat (wchunk_at n kk)) = 1%nat) ->
     (jx < length (echo_chunks ws))%nat ->
     Forall (fun q => (q < jx)%nat) sel ->
+    (* the writer's own two rows about its buffer, at the ONE node *)
+    ubytes_at M ua (echo_chunks ws !!! jx) ->
+    length (echo_chunks ws !!! jx) = nb ->
     i <> INIT_INO -> i <> SH_INO -> i <> ECHO_INO -> i <> CAT_INO ->
+    □ (app_taint -∗ file_taint c) -∗
     app_inv fsc_fs -∗ efq i γo ws sel -∗
-    awrite_chain (fs_gamma_L fsc_fs) appE i γo M ua n
+    awrite_chain_adv (fs_gamma_L fsc_fs) appE i γo M ua P n
       (efcur i γo ws sel jx) 0%nat (wchunks n).
   Proof using Heq.
-  Admitted.
+    intros Hsrc Hwf Hpm Hlf Hn Hnb0 Hnbm Hsb Hjx Hlt Hby Hlenb Hi1 Hi2 Hi3 Hi4.
+    (* EVERY ONE OF ECHO'S WRITES IS ONE CHUNK: a chunk is a word of a
+       line or a single separator byte, and [FW_MAX] is 3072. *)
+    assert (Hone : wchunks n = 1%nat)
+      by (apply wchunks_one; lia).
+    assert (Hmap : forall j : nat, (j < Z.to_nat n)%nat ->
+              uva_rmapped P (uint (add_vec_int ua (Z.of_nat j)))).
+    { intros j Hj. exact (proj2 Hsrc P j Hwf Hpm Hlf ltac:(lia)). }
+    (* the chunk at node 0 IS the whole count *)
+    assert (Hw0 : wchunk_at n 0%nat = n)
+      by (rewrite /wchunk_at; cbn; lia).
+    assert (Hby0 : ubytes_at M (add_vec_int ua (FW_MAX * Z.of_nat 0))
+                     (echo_chunks ws !!! jx)).
+    { replace (FW_MAX * Z.of_nat 0)%Z with 0%Z by lia.
+      by rewrite avi0. }
+    assert (Hlen0 : Z.of_nat (length (echo_chunks ws !!! jx))
+                    = wchunk_at n 0%nat)
+      by (rewrite Hw0 Hlenb; lia).
+    iIntros "#Hbr #Hinv Hq". rewrite Hone.
+    iApply (awrite_chain_adv_mapped_single (fs_gamma_L fsc_fs) appE i γo M ua
+              P n (efcur i γo ws sel jx) 0%nat 1%nat Hmap Hsb).
+    cbn [awrite_fchain_adv efcur]. iSplit.
+    - (* THE CURSOR AT NODE 0: the chain's own entry, at [sel] *)
+      iExact "Hq".
+    - (* THE ONE NODE, and what it leaves IS the chain's cursor at node 1 *)
+      iApply (ef_node i γo ws sel jx M ua n 0%nat Hjx Hlt Hi1 Hi2 Hi3 Hi4
+                Hby0 Hlen0 with "Hbr Hinv Hq").
+  Qed.
 
   (* =================================================================== *)
   (*  S5  ONE OF ECHO'S FOUR WRITES, AT fd 1 ON `f`                       *)
@@ -434,22 +552,152 @@ Section UEchoFile.
   (*  chunks like any other and take the same member -- the TEXT-half      *)
   (*  variant differs only in which [usrc_ok] witness is produced.         *)
   (* =================================================================== *)
-  Lemma ef_w_of_deed (N : uk_names Σ) (i : Z) (γo : gname) (om : offmode)
-      (l : list fdstate) (rb : bool) (ws : wordline) (sel : list nat)
+  (* THE ROW IS HELD, not free.  echo's fd 1 on [f] is the row the
+     redirect open installs, and since lane KERNEL-STREAM's L4 that row is
+     [OffHeld]: the program answers for its own offset.  A free [om] cannot
+     be right here -- the supplier [Hdep1] is the HELD one, and a parked
+     row's write has no client-advanced chain to take. *)
+  Lemma ef_w_of_deed (N : uk_names Σ) (i : Z) (γo : gname)
+      (l : list fdstate) (rb : bool) (ws : wordline) (b : nat)
       (jx : nat) (ua : Z) (nb : nat) (fb : nat -> bv 8) :
-    l !! 1%nat = Some (FdOpen rb true (FdInode i γo om)) ->
+    l !! 1%nat = Some (FdOpen rb true (FdInode i γo OffHeld)) ->
     (0 < nb)%nat -> (Z.of_nat nb <= FW_MAX)%Z -> (Z.of_nat nb < 2 ^ 31)%Z ->
     (jx < length (echo_chunks ws))%nat ->
-    Forall (fun q => (q < jx)%nat) sel ->
+    (b <= jx)%nat ->
     echo_chunks ws !!! jx = (fun j => fb j) <$> seq 0 nb ->
+    (* the DEED's single-block row, [ef_chain]'s (see there) *)
+    (forall (I : gmap Z fs_node) (off : nat) (bs bs0 : list (bv 8))
+            (nl kk : nat),
+       wri_pre (abs_view I) i off bs bs0 nl ->
+       wi_blocks off (Z.to_nat (wchunk_at (Z.of_nat nb) kk)) = 1%nat) ->
     i <> INIT_INO -> i <> SH_INO -> i <> ECHO_INO -> i <> CAT_INO ->
+    □ (app_taint -∗ file_taint c) -∗
     app_inv fsc_fs -∗
     ubytesq (ukn_d N) DfracDiscarded ua nb fb -∗
     kecho_w N (mword_of_int ua) nb
-      (UserFd.ustd (ukn_fd N) l ∗ efq i γo ws sel)
-      (UserFd.ustd (ukn_fd N) l ∗ efq i γo ws (sel ++ [jx])).
+      (UserFd.ustd (ukn_fd N) l ∗ efany i γo ws b)
+      (UserFd.ustd (ukn_fd N) l ∗ efany i γo ws (S jx)).
   Proof using Heq.
-  Admitted.
+    intros Hl1 Hnb0 Hnbm Hnb31 Hjx Hb Hchunk Hsb Hi1 Hi2 Hi3 Hi4.
+    iIntros "#Hbr #Hinv #Hbs" (h m avail)
+      "%Ha0 %Ha1 %Ha2 #Hcode [Hstd Hq] Hrun Hcont".
+    iDestruct "Hq" as (sel) "[%Hlt0 Hq]".
+    assert (Hlt : Forall (fun q => (q < jx)%nat) sel).
+      by exact (forall_lt_weaken sel b jx Hb Hlt0).
+    (* THE SOURCE'S BASE, off the run: a byte the program owns is a byte
+       the image maps, and the heap bounds every mapped address. *)
+    assert (Hs0 : seq 0 nb !! 0%nat = Some 0%nat)
+      by (destruct nb as [| nb']; [ lia | reflexivity ]).
+    iDestruct (big_sepL_lookup_acc _ (seq 0 nb) 0%nat 0%nat Hs0 with "Hbs")
+      as "[#Hb0 _]".
+    iDestruct (urun_ubyte_bnd N h m _ avail DfracDiscarded
+                 (ua + Z.of_nat 0) (fb 0%nat) with "Hrun Hb0") as %Hbnd.
+    change (2 ^ 38) with 274877906944 in Hbnd.
+    assert (Hua : uint (m !!! Regidx a1_idx) = ua)
+      by (rewrite Ha1; apply uint_moi; unfold Z64; lia).
+    (* THE THREE ARGUMENT REGISTERS, past echo's [c.li a7,16] *)
+    assert (Ham1 : (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m)
+                     !!! Regidx a1_idx = m !!! Regidx a1_idx)
+      by exact (upd_ne m (Regidx a7_idx) (Regidx a1_idx) _
+                  ltac:(vm_compute; discriminate)).
+    assert (Ham0 : (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m)
+                     !!! Regidx a0_idx = (mword_of_int 1 : mword 64)).
+    { rewrite <- Ha0.
+      exact (upd_ne m (Regidx a7_idx) (Regidx a0_idx) _
+               ltac:(vm_compute; discriminate)). }
+    assert (Ham2 : (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m)
+                     !!! Regidx a2_idx
+                   = (mword_of_int (Z.of_nat nb) : mword 64)).
+    { rewrite <- Ha2.
+      exact (upd_ne m (Regidx a7_idx) (Regidx a2_idx) _
+               ltac:(vm_compute; discriminate)). }
+    assert (Hi0 : bv_signed (trunc32
+                    ((<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m)
+                       !!! Regidx a0_idx)) = 1%Z)
+      by (rewrite Ham0; vm_compute; reflexivity).
+    pose proof (UEchoOut.echo_count_is nb Hnb31) as Hcz.
+    assert (Hcnt : sys_rw_count
+                     ((<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m)
+                        !!! Regidx a2_idx) = Z.of_nat nb)
+      by (rewrite Ham2; exact Hcz).
+    assert (Hlenb : length (echo_chunks ws !!! jx) = nb)
+      by (rewrite Hchunk length_fmap length_seq; reflexivity).
+    iApply (wp_kecho_write_chain N h m avail
+              (write_file_fam (efcur i γo ws sel jx) (ukn_pay N)) l
+              DfracDiscarded nb fb with "Hcode Hrun [Hq] Hstd [Hbs]");
+      last first.
+    { (* ---- THE POST.  Either the chunk landed, and the cursor is at
+            [sel ++ [jx]], or the write failed -- [f]'s next block was not
+            allocatable, which no claim at this tier can see -- and the
+            cursor is back at [sel].  Both are [efany] at [S jx], which is
+            exactly why the caller's cursor is stated that way. ---- *)
+      iIntros (h' ret W cw' cs')
+        "%Hka0 %Hka1 %Hka2 %Htk %Hlz %Hnf Hstd Hbuf Hpost Hrun".
+      iDestruct (spost_at_write_elim_at uslot
+                   (write_file_fam (efcur i γo ws sel jx) (ukn_pay N)) W
+                   ((<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m)
+                      !!! Regidx a0_idx)
+                   ((<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m)
+                      !!! Regidx a1_idx)
+                   ((<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m)
+                      !!! Regidx a2_idx)
+                   (uvis_fd W) (uvis_M W) ret (uvis_M W) (uvis_fd W) cw' cs'
+                   Hka0 Hka1 Hka2 eq_refl eq_refl with "Hpost")
+        as (P) "(_ & _ & _ & Hp)".
+      assert (Hkey : fd_st_of_key
+                       ((<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m)
+                          !!! Regidx a0_idx) (uvis_fd W)
+                     = FdOpen rb true (FdInode i γo OffHeld))
+        by exact (uwr_fd_st_std _ (uvis_fd W) l 1%nat
+                    (FdOpen rb true (FdInode i γo OffHeld))
+                    Hi0 ltac:(unfold NSTD; lia) Htk Hl1).
+      iEval (rewrite Hkey Hcnt;
+             cbn [write_file_fam xfam_wr wf_Q];
+             rewrite /filewrite_extra /=) in "Hp".
+      rewrite /write_arms_at /write_post_ok_at /write_post_fail_at.
+      iAssert (∃ k : nat, efcur i γo ws sel jx k)%I with "[Hp]" as "Hc".
+      { iDestruct "Hp" as "[[_ Hp] | [_ Hp]]".
+        - iDestruct "Hp" as (bss) "(_ & _ & _ & Hch)".
+          iExists (length bss). iApply (awrite_chain_at_cursor with "Hch").
+        - iDestruct "Hp" as (bss x) "(_ & _ & _ & _ & Hch)".
+          iExists (length bss + x)%nat.
+          iApply (awrite_chain_at_cursor with "Hch"). }
+      iDestruct "Hc" as (k) "Hc".
+      iApply ("Hcont" $! h' ret with "[Hstd Hc] Hrun").
+      iFrame "Hstd".
+      destruct k as [| k'].
+      - iApply (efany_of i γo ws (S jx) sel with "Hc").
+        exact (forall_lt_weaken sel jx (S jx) ltac:(lia) Hlt).
+      - iApply (efany_of i γo ws (S jx) (sel ++ [jx]) with "Hc").
+        apply Forall_app. split.
+        + exact (forall_lt_weaken sel jx (S jx) ltac:(lia) Hlt).
+        + apply Forall_singleton. lia. }
+    { (* ---- THE SOURCE, at the register the leaf names it by ---- *)
+      rewrite Hua. iExact "Hbs". }
+    { (* ---- THE DEPOSIT: the held row's supplier at echo's chain ---- *)
+      iApply (udepwf_std_write_file_held N
+                (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m)
+                (add_vec_int (mword_of_int EchoSyms.write : mword 64) 2)
+                l rb i γo (efcur i γo ws sel jx) (Z.of_nat nb)
+                Hl1 Hi0 Hcnt).
+      iIntros (M pm sz) "Hheap".
+      iDestruct (usrc_ok_ubytesq (ukn_t N) (ukn_d N) (ukn_s N) M pm sz
+                   DfracDiscarded (m !!! Regidx a1_idx) nb fb
+                   with "Hheap [Hbs]") as %Hsrc; [ by rewrite Hua | ].
+      (* the chunk IS the run the source row names, index for index *)
+      assert (Hby : ubytes_at M (m !!! Regidx a1_idx) (echo_chunks ws !!! jx)).
+      { intros d cb Hd. rewrite Hchunk in Hd.
+        apply list_lookup_fmap_Some in Hd as [d' [Hd' Hcb]].
+        apply lookup_seq in Hd' as [Hde Hlt']. subst d'. subst cb.
+        exact (proj1 Hsrc d ltac:(lia)). }
+      iFrame "Hheap". rewrite Ham1.
+      iIntros (P) "%Htb".
+      destruct Htb as (Hwf & Hpm & Hlf).
+      iApply (ef_chain i γo ws sel jx M pm sz P (m !!! Regidx a1_idx) nb fb
+                (Z.of_nat nb) Hsrc Hwf Hpm (Hlf eq_refl) eq_refl Hnb0 Hnbm
+                Hsb Hjx Hlt Hby Hlenb
+                Hi1 Hi2 Hi3 Hi4 with "Hbr Hinv Hq"). }
+  Qed.
 
   (* =================================================================== *)
   (*  S6  THE PAYMENT -- [UEchoOut.kecho_pay_of_link]'s twin              *)

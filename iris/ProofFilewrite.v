@@ -4078,7 +4078,7 @@ Section ProofFilewrite.
           rewrite /filewrite_arms.
           iSplitR; [iPureIntro; apply filewrite_ret_m1 |].
           iApply (filewrite_extra_neg _ _ st n (us_M U) uaddr Q Qe _ _ _ Hneg
-                    with "Hfin"). } }
+                    Htb with "Hfin"). } }
       (* ---- 0 <= n : [Hn0] is now a fact of the code, not a premise ---- *)
       assert (Hn0 : (0 <= n)%Z) by lia.
       assert (Hn01 : (0 <= n < 2 ^ 31)%Z) by lia.

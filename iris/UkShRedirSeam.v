@@ -466,7 +466,9 @@ Section UkShRedirSeam.
      ∧
      (∀ (h' : CpuId) (m' : regfile),
         ⌜ UkShRun.ush_diag_at 0x10e m' ⌝ -∗
-        UkShRun.ush_diag_res γd 0x10e m' -∗
+        UkShRun.ush_ptr γd (uint (m' !!! Regidx s1_idx) + 16)
+          (ua_ptr (ushs_file s0 len f args gp fe)) -∗
+        UkShRun.ush_str γd (ushs_file s0 len f args gp fe) -∗
         UserFd.ustd γfd (<[1%nat := FdClosed]> ld) -∗
         UserCwd.ucwd γcwd cwdv -∗
         Kf -∗
@@ -574,8 +576,8 @@ Section UkShRedirSeam.
       iApply ("Hcont" $! hf mf q ty
                 with "[%//] Hsub Hstd Hcwd HK HM2 Hcr Hrun").
     - iDestruct "Hk" as "[_ Hfail]".
-      iIntros (hf mf) "%Hat Hres Hstd Hcwd HKf Hrun".
-      iApply ("Hfail" $! hf mf with "[%//] Hres Hstd Hcwd HKf Hcr Hrun").
+      iIntros (hf mf) "%Hat Hfp Hfs Hstd Hcwd HKf Hrun".
+      iApply ("Hfail" $! hf mf with "[%//] Hfp Hfs Hstd Hcwd HKf Hcr Hrun").
   Qed.
 
   (* ...and the landed seam, VERBATIM, as its instance: the landed call,
@@ -649,10 +651,17 @@ Section UkShRedirSeam.
     - iIntros "$".
     - iSplit.
       + iExact "Hcont".
-      + iIntros (h' m') "%Hat Hres _ _ _ Hcr Hrun".
+      + iIntros (h' m') "%Hat #Hfp #Hfs _ _ _ Hcr Hrun".
         iDestruct ("Hpxw" with "Hcr") as "Hpay".
         iApply (UkShDiag.ush_diag_leaf_holds N h' m' 0x10e (70 + n) Hat
-                  with "Hdp Hcode Hro Hres Hpay Hrun").
+                  with "Hdp Hcode Hro [] Hpay Hrun").
+        rewrite /UkShRun.ush_diag_res.
+        destruct (decide ((0x10e : Z) = 0xda)) as [Hc | _];
+          [ exfalso; discriminate Hc | ].
+        destruct (decide ((0x10e : Z) = 0x10e)) as [_ | Hc];
+          [ | exfalso; exact (Hc eq_refl) ].
+        iExists (ushs_file s0 len f args gp fe).
+        iSplitR; [ iExact "Hfp" | iExact "Hfs" ].
   Qed.
 
   (* ===================================================================== *)
@@ -739,7 +748,9 @@ Section UkShRedirSeam.
      ∧
      (∀ (h' : CpuId) (m' : regfile),
         ⌜ UkShRun.ush_diag_at 0x10e m' ⌝ -∗
-        UkShRun.ush_diag_res γd 0x10e m' -∗
+        UkShRun.ush_ptr γd (uint (m' !!! Regidx s1_idx) + 16)
+          (ua_ptr (ushs_file s0 len f args gp fe)) -∗
+        UkShRun.ush_str γd (ushs_file s0 len f args gp fe) -∗
         UserFd.ustd γfd (<[1%nat := FdClosed]> ld) -∗
         UserCwd.ucwd γcwd cwdv -∗
         Kf -∗

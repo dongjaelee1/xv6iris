@@ -560,7 +560,12 @@ Section UkShRedir.
      ∧
      (∀ (h' : CpuId) (m' : regfile),
        ⌜ UkShRun.ush_diag_at 0x10e m' ⌝ -∗
-       UkShRun.ush_diag_res (ukn_d N) 0x10e m' -∗
+       (* the site's argument, NAMED: [UkShRun.ush_diag_res] at 0x10e hides
+          which string [rcmd->file] is, and a PAID diagnostic has to know
+          its bytes (they are the era's alternative) *)
+       UkShRun.ush_ptr (ukn_d N) (uint (m' !!! Regidx s1_idx) + 16)
+         (ua_ptr file) -∗
+       UkShRun.ush_str (ukn_d N) file -∗
        UserFd.ustd (ukn_fd N) (<[1%nat := FdClosed]> ld) -∗
        UserCwd.ucwd (ukn_cwd N) cwdv -∗
        Kf -∗
@@ -811,14 +816,9 @@ Section UkShRedir.
       iIntros (h8) "Hrun".
       (* ---- 0x10e: the diagnostic cut, which is the CALLER's ---- *)
       iDestruct "Hk" as "[_ Hfail]".
-      iApply ("Hfail" $! h8 m7 with "[%] [] Hstd Hcwd HKf Hrun").
+      iApply ("Hfail" $! h8 m7 with "[%] [] Hfs Hstd Hcwd HKf Hrun").
       { right; right; split; [ reflexivity | rewrite Hs1u; exact Ht8 ]. }
-      rewrite /UkShRun.ush_diag_res.
-      destruct (decide ((0x10e : Z) = 0xda)) as [Hc | _];
-        [ exfalso; discriminate Hc | ].
-      destruct (decide ((0x10e : Z) = 0x10e)) as [_ | Hc];
-        [ | exfalso; exact (Hc eq_refl) ].
-      iExists file. rewrite Hs1u. iSplitR; [ iExact "Hfp" | iExact "Hfs" ].
+      rewrite Hs1u. iExact "Hfp".
   Qed.
 
   (* ...AND THE LANDED ARM, VERBATIM, as the generic one's instance: the
@@ -868,10 +868,16 @@ Section UkShRedir.
     - iSplit.
       + iIntros (h' m' q ty) "%Ha0' Hqc Hstd Hcwd HK Hrun".
         iApply ("Hcont" $! h' m' q ty with "[%//] Hqc Hstd Hcwd HK Hpex Hrun").
-      + iIntros (h' m') "%Hat Hres _ _ _ Hrun".
+      + iIntros (h' m') "%Hat #Hfp #Hfs _ _ _ Hrun".
         iDestruct ("Hpxw" with "Hpex") as "Hpay".
         iApply (UkShDiag.ush_diag_leaf_holds N h' m' 0x10e av Hat
-                  with "Hdp Hcode Hro Hres Hpay Hrun").
+                  with "Hdp Hcode Hro [] Hpay Hrun").
+        rewrite /UkShRun.ush_diag_res.
+        destruct (decide ((0x10e : Z) = 0xda)) as [Hc | _];
+          [ exfalso; discriminate Hc | ].
+        destruct (decide ((0x10e : Z) = 0x10e)) as [_ | Hc];
+          [ | exfalso; exact (Hc eq_refl) ].
+        iExists file. iSplitR; [ iExact "Hfp" | iExact "Hfs" ].
   Qed.
 
   (* ...and the landed shape: a walk whose exit payload IS free is the

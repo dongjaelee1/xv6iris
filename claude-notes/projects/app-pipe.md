@@ -3734,3 +3734,78 @@ the pipe twin of `file_D_of_line` is the first thing to write, and
 `PipeUline.ush_line_pipe_not_file` is the shape of its case split.
 For **PIPE-LINK-INST**: unaffected; nothing in this lane touches the
 record.
+
+### ULINE-LPIPE-2 (2026-09-18) — the combined gate's ONE red site was TWO, both the same shape: upstream's new batch re-stated three `forall (l : uline)` / `fbody_ok`-guarded results at the OLD arity, and that is the recurring seam this constructor leaves
+
+Branch `app-pipe/uline-lpipe-2` off `main` (`96a73b3f2`), commits
+`3f599c8de`, `e62a763b3` (plus this notes commit).  Whole-tree
+`ec2-lane.sh uline build -k` **RC=0**.  `make audit-file-only` **FOURTEEN**
+and `make audit-echo-only` **FOURTEEN**, both textually the same list as
+before (1 `functional_extensionality_dep` + the 2 `xv6iris_extras`
+reservation `Parameter`s + 11 PrimString/PrimInt63; no `Spec*`/`Link*`
+module `Parameter`).  No `Admitted` added; `Proof using` on the one new
+lemma.
+
+**WHAT LANDED — the reported site.**  `UkShEcho.ushf_child_law_holds_at`.
+Upstream's batch re-split the echo child law into a guarded
+`ushf_child_law_holds_at_D` plus a wrapper "the landed statement,
+VERBATIM".  The merge put ULINE-LPIPE's generalisation into the guarded
+one (`FileDisc.fline_ok (UkSh.ush_lastbody I) -> D I`) and left the NEW
+wrapper at `FileDisc.fbody_ok`, so the wrapper's own `HD` could not be
+handed to the lemma it applies — `UkShEcho.v:1280`, *cannot unify
+`FileDisc.fline_ok (ush_lastbody I)` and `FileDisc.fbody_ok
+(ush_lastbody I)`*.  The wrapper's premise is now `fline_ok`, for the
+reason ULINE-LPIPE gave: "the input's last body is in
+`FileDisc.parse_line`'s range" is the FILE era's reading of
+`UkSh.ush_posw`'s third conjunct, and an era whose lines the file parser
+refuses (the pipeline application's, whose body carries a bar) can supply
+only the weaker one.  **No caller needed touching**: weakening a premise
+strengthens the lemma, `ushf_child_law_holds` discharges it with
+`intros I ws Hok Heq _` (it ignores the argument), and
+`UShRound.file_D_of_line` was already at `fline_ok` and spends it through
+`FileDisc.fline_ok_echo`.  `UkShRedirBody`'s premise, `UkShFork.
+ushf_child_law_at`'s and `UkSh.ush_posw`'s all survived the merge at
+`fline_ok`; a tree-wide grep now finds **no live `FileDisc.fbody_ok`
+outside `FileDisc.v`/`FileReadInst.v`**, where it is the D3 input
+discipline and belongs.
+
+**WHAT THE GATE DID NOT REPORT — a SECOND site, found by the build.**
+`UShRound.fsm_panic` and `UShRound.fsm_fnoc` (new in the same batch) are
+`forall (l : uline)` and were written with a three-branch `destruct`:
+*`UShRound.v:187`, Expects a disjunctive pattern with 4 branches*.  Both
+arms are `reflexivity` — `FileDisc.fsm` moves the file at `LEchoF` and
+nowhere else, so its `| _ => s` catch-all already covers `LPipe`.  Added
+`UShRound.fsm_pipe` beside the landed `fsm_echo`/`fsm_cat` for the reason
+those two exist.  This was invisible to the gate because `-k` was not on
+in the run that reported it: `UShRound` comes after `UkShEcho` in the
+cone, so the first error masked the second.  **Anyone re-running a
+combined gate against this constructor should use `-k`** — the two sites
+are independent and there is no reason to expect only one.
+
+**WHAT THIS SAYS FOR THE CAMPAIGN (the useful part).**  Both breakages are
+the SAME shape and neither is a conflict `git` can see: upstream lanes go
+on writing `forall (l : FileDisc.uline)` lemmas with three-branch
+`destruct`s and `fbody_ok` guards, and every one of them is a textually
+clean merge that fails to compile.  The two cheap detectors, worth running
+after ANY merge of upstream into a branch carrying `LPipe`:
+
+    grep -rn '\[ws | ws |\]' iris/*.v          # a three-branch uline destruct
+    grep -rn 'FileDisc.fbody_ok' iris/*.v       # the FILE parser as an era guard
+
+Both are empty on this branch.  Neither is a substitute for the build, but
+both are seconds instead of an hour, and both name the site exactly.
+
+**NOTHING ELSE MOVED.**  No statement outside `UkShEcho.
+ushf_child_law_holds_at`'s premise changed; `fsm_panic`/`fsm_fnoc` keep
+their statements (only the `destruct`'s arity moved) and `fsm_pipe` is
+new.  ULINE-LPIPE's own findings block above stands unamended — every
+measurement in it (10 definitions, 29 proof sites, the three guarded
+round-trip lemmas, the `ralt_ok := False` refutation, the `ush_posw`
+finding) is unaffected by this batch.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  Unchanged from ULINE-LPIPE:
+**SH-PIPE-ROUND-2** instantiates `Dl := PipeUline.ush_line_pipe` and
+discharges `Hdsc_line` from `uline_ws_of_pline` / `uline_ok_of_pline` /
+`line_bytes_of_pline`, and supplies `ush_posw`'s conjunct with
+`FileDisc.fline_ok_of (FileDisc.LPipe ws)`.  The pipe twin of
+`UShRound.file_D_of_line` is still the first thing that lane writes.

@@ -1264,13 +1264,23 @@ Section UkShEcho.
       iIntros "!> Hc". rewrite /UkShFork.ushf_wq. iRight. iExact "Hc".
   Qed.
 
-  (* ...and the landed statement, VERBATIM, through the guarded one *)
+  (* ...and the landed statement, through the guarded one.  ITS GUARD IS
+     [FileDisc.fline_ok] AND NOT [fbody_ok] (lane ULINE-LPIPE): "the input's
+     last body is in [FileDisc.parse_line]'s range" is the FILE era's
+     reading of [UkSh.ush_posw]'s third conjunct, and the conjunct is what
+     [ushf_child_law_holds_at_D] takes -- an era whose lines the file parser
+     refuses (the pipeline application's, whose body carries a bar) can
+     supply the weaker one and never the stronger.  Weakening a PREMISE
+     makes this lemma stronger, so no caller loses anything: the echo era's
+     ([ushf_child_law_holds] below) ignores the argument and the file era's
+     ([UShRound.file_D_of_line]) spends it through
+     [FileDisc.fline_ok_echo]. *)
   Lemma ushf_child_law_holds_at (D : list (bv 8) -> Prop)
       (dg : list (bv 8) -> list (bv 8)) (nn : list (bv 8) -> nat)
       (Wc : list (bv 8) -> nat -> iProp Σ) :
     (forall (I : list (bv 8)) (ws : list (list (bv 8))),
        line_ok ws -> ws = last_ws I ->
-       FileDisc.fbody_ok (UkSh.ush_lastbody I) -> D I) ->
+       FileDisc.fline_ok (UkSh.ush_lastbody I) -> D I) ->
     (forall I : list (bv 8),
        D I -> dg I = alt_execfail /\ nn I = 17%nat) ->
     ush_execfail_law_wq_at dg nn Wc -∗

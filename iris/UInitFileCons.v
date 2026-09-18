@@ -77,7 +77,9 @@ Require Import FileOut.
 Require Import FileLinks.
 Require Import FileLinksLine.
 Require Import LinkRec.
-Require Import FileLinkInst.       (* [file_link_inst] *)
+Require Import FileLinksAt.        (* the families at a NAMED boot state *)
+Require Import FileLinksAtBan.
+Require Import FileLinkInst.       (* [file_link_inst] / [file_link_inst_at] *)
 Require Import UkRun.
 Require Import UkRunSys.
 Require Import UkWriteClosed.      (* [kinit_w1_of_closed_l0] *)
@@ -417,5 +419,86 @@ Section UInitFileCons.
       + iEval (rewrite /FileLinksLine.fwc_ban). iRight. iRight. iExact "HT".
       + iRight. iExact "HT".
   Qed.
+
+  (* =================================================================== *)
+  (*  9.  RULING H': THE DEED AND THE ERA'S BOOT STATE AT ONE NAME        *)
+  (*                                                                     *)
+  (*  Consequences (a) and (b) of the ruling, checked at the statement.   *)
+  (*  (c) is by construction: nothing here mints a ghost and [FileOut]'s  *)
+  (*  stage is untouched -- [f0pre_at] is [f0pre]'s own body with the     *)
+  (*  witness named, and [f0w] is the same resource it always was.        *)
+  (* =================================================================== *)
+
+  (* [file_f0pre_of_typed] with the state NAMED: the witness /init hands
+     over is its deed's own content, and now it says so.  THE TYPED ARM
+     ONLY -- the taint says nothing about the deed's content, so it cannot
+     name a state; under it /init takes [s0 := None] ([file_f0pre_at_taint]
+     below), which is admissible everywhere and which every [_at] family's
+     taint arm accepts. *)
+  Lemma file_f0pre_at_of_typed (s : dst) :
+    f_typed (fgn_cl g) s -∗ f0pre_at g (dst_content s).
+  Proof using .
+    rewrite /FileLinksAt.f0pre_at.
+    destruct s as [[i bs] | ];
+      cbn [dst_content fmap option_fmap option_map]; iIntros "Hty".
+    - iEval (rewrite /f_typed /=) in "Hty".
+      iDestruct "Hty" as (ls) "[#Hlb %Hbt]".
+      iSplitR.
+      { iPureIntro. destruct Hbt as (ws & sel & _ & Hok & Hsel & ->).
+        exact (FileDisc.fcont_ok_subseq ws sel Hok Hsel). }
+      iLeft. iEval (rewrite /FileOut.f0_typed /=).
+      iExists ls. iFrame "Hlb". by iPureIntro.
+    - iSplitR; [ iPureIntro; exact I | ].
+      iLeft. iApply (FileOut.f0_typed_none g).
+  Qed.
+
+  Lemma file_f0pre_at_taint : FT -∗ f0pre_at g None.
+  Proof using .
+    iIntros "#HT". rewrite /FileLinksAt.f0pre_at.
+    iSplitR; [ iPureIntro; exact I | ]. by iRight.
+  Qed.
+
+  (* THE TURN, AT THE NAMED STATE.  [FileLinksAtBan.fturn_pre_at] is
+     [lk_turn (file_link_inst_at g s0)]. *)
+  Lemma file_turn_pre_at_of_boot (s0 : fst) :
+    FileOut.fturn g (S gen_id) -∗ f0pre_at g s0 -∗
+    lk_turn (file_link_inst_at g s0) (S gen_id).
+  Proof using .
+    iIntros "Ht Hpre".
+    cbn [lk_turn FileLinkInst.file_link_inst_at].
+    rewrite /FileLinksAtBan.fturn_pre_at.
+    iSplitR; [ by iPureIntro | ]. iFrame "Ht Hpre".
+  Qed.
+
+  (* ---- (a) [Wbl_at s0 []] IS INHABITED AT /init's FIRST INSTRUCTION ----
+     at [s0] the deed's own content, out of [AppFile.file_boot]'s two
+     halves and nothing else.  This is what ruling H buys: the credential
+     /init holds from its entry and the deed it holds beside it are at ONE
+     state, so [UShRound]'s hold can be stated without [f0_lb] and the
+     round's first prompt has its tie. *)
+  Lemma file_Wbl_at_of_boot (s0 : fst) :
+    FileOut.fturn g (S gen_id) -∗ f0pre_at g s0 -∗
+    (∃ v : era_pins, era_pin (fgn_echo g) (S gen_id) v
+       ∗ dl_cnt v (1/2) 0%nat ∗ inp_lb v [])
+    ∗ file_Wbl_at g s0 [].
+  Proof using .
+    iIntros "Ht Hpre".
+    iDestruct (file_turn_pre_at_of_boot s0 with "Ht Hpre") as "Hturn".
+    iDestruct (lk_turn0 (file_link_inst_at g s0) (S gen_id) with "Hturn")
+      as "[Hrd Hwr]".
+    iSplitL "Hrd"; [ iExact "Hrd" | iExact "Hwr" ].
+  Qed.
+
+  (* ---- (b) AFTER THE BANNER'S FIRST BYTE THE SAME NAME COMES BACK ----
+     [FileLinksAtBan.fban_at_f0w]: at [S i] the head arm is refuted by its
+     own index, so what is left carries [f0w] AT THE CALLER'S [s0].  The
+     first-drain pinning is untouched -- it reads [f0w] exactly as it
+     always did. *)
+  Lemma file_ban_f0w_at (s0 : fst) (k : nat) (v : era_pins)
+      (I : list (bv 8)) (i : nat) :
+    fwc_ban_at g s0 k v I (S i) -∗
+    fwc_ban_at g s0 k v I (S i)
+    ∗ (FileLinksLine.f0w g k s0 ∨ FT).
+  Proof using . iApply (FileLinksAtBan.fban_at_f0w g s0 k v I i). Qed.
 
 End UInitFileCons.

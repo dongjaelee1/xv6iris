@@ -1618,7 +1618,10 @@ UInitTreeBoot.v
 UInitTreeExec.v
 # TreeAssumptions.v
 
+UShLineHold.v
 FileLinksAt.v
+FileLinksAtBan.v
+FileLinksAtLine.v
 AppFileCons.v
 UFileBootAdequacy.v
 # FileAssumptions.v

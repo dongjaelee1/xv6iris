@@ -53,7 +53,6 @@ Require Import FileLinks.
 Require Import FileLinksLine.
 Require Import EchoLinks.
 Require Import LinkRec.
-Require Import FileLinkInst.
 Require Import RiscvPtsto.
 Require Import WpUart.
 Require Import CtxIdDefs.
@@ -518,76 +517,3 @@ Section file_links_at.
   Qed.
 
 End file_links_at.
-
-(* ===================================================================== *)
-(*  THE INSTANCE'S TWO FAMILIES, AT A NAMED STATE                        *)
-(*                                                                       *)
-(*  [FileLinkInst.file_Wcl] / [file_Wbl] are what [UShRound] instantiates *)
-(*  its [Wcl] / [Wbl] at; these are their [_at] twins, and the two        *)
-(*  equivalences below are what lets the round read                       *)
-(*  [Wcf I p := exists s0, Wcl_at s0 I p * sh_hold_at s0 I].              *)
-(* ===================================================================== *)
-Section file_W_at.
-  Context {Σ : gFunctors}.
-  Context `{!echoOutG Σ, !inG Σ (mono_listR (leibnizO Z)), !fileAppG Σ,
-            !fileOutG Σ}.
-  Context (g : file_gn).
-  Context `{HRg : !riscvGS Σ}.
-  Context `{GEN : GenId}.
-
-  Local Notation FT := (file_taint (fgn_cl g)).
-
-  Definition file_Wcl_at (s0 : fst) (I : list (bv 8)) (p : nat) : iProp Σ :=
-    (∃ v : era_pins,
-       era_pin (fgn_echo g) (S gen_id) v
-       ∗ fwc_lpr_at g s0 (S gen_id) v I p)%I.
-
-  Definition file_Wbl_at (s0 : fst) (I : list (bv 8)) : iProp Σ :=
-    (∃ v : era_pins,
-       era_pin (fgn_echo g) (S gen_id) v
-       ∗ fwc_ban_at g s0 (S gen_id) v I 0%nat)%I.
-
-  Global Instance file_Wcl_at_timeless s0 I p : Timeless (file_Wcl_at s0 I p).
-  Proof using . rewrite /file_Wcl_at. apply _. Qed.
-  Global Instance file_Wbl_at_timeless s0 I : Timeless (file_Wbl_at s0 I).
-  Proof using . rewrite /file_Wbl_at. apply _. Qed.
-
-  Lemma file_Wcl_at_pack s0 I p :
-    file_Wcl_at s0 I p -∗ FileLinkInst.file_Wcl g I p.
-  Proof using .
-    rewrite /file_Wcl_at /FileLinkInst.file_Wcl /lk_lcred.
-    iIntros "H". iDestruct "H" as (v) "[#Hpin Hc]". iExists v.
-    iFrame "Hpin". cbn [lk_lpr FileLinkInst.file_link_inst].
-    iApply (fwc_lpr_at_pack with "Hc").
-  Qed.
-
-  Lemma file_Wcl_unpack I p :
-    FileLinkInst.file_Wcl g I p -∗ ∃ s0 : fst, file_Wcl_at s0 I p.
-  Proof using .
-    rewrite /FileLinkInst.file_Wcl /lk_lcred /file_Wcl_at.
-    iIntros "H". iDestruct "H" as (v) "[#Hpin Hc]".
-    cbn [lk_pin lk_lpr FileLinkInst.file_link_inst] in *.
-    iDestruct (fwc_lpr_unpack with "Hc") as (s0) "Hc".
-    iExists s0, v. iFrame "Hpin Hc".
-  Qed.
-
-  Lemma file_Wbl_at_pack s0 I :
-    file_Wbl_at s0 I -∗ FileLinkInst.file_Wbl g I.
-  Proof using .
-    rewrite /file_Wbl_at /FileLinkInst.file_Wbl.
-    iIntros "H". iDestruct "H" as (v) "[#Hpin Hc]". iExists v.
-    cbn [lk_pin lk_ban FileLinkInst.file_link_inst].
-    iFrame "Hpin". iApply (fwc_ban_at_pack with "Hc").
-  Qed.
-
-  Lemma file_Wbl_unpack I :
-    FileLinkInst.file_Wbl g I -∗ ∃ s0 : fst, file_Wbl_at s0 I.
-  Proof using .
-    rewrite /FileLinkInst.file_Wbl /file_Wbl_at.
-    iIntros "H". iDestruct "H" as (v) "[#Hpin Hc]".
-    cbn [lk_pin lk_ban FileLinkInst.file_link_inst] in *.
-    iDestruct (fwc_ban_unpack with "Hc") as (s0) "Hc".
-    iExists s0, v. iFrame "Hpin Hc".
-  Qed.
-
-End file_W_at.

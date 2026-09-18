@@ -83,6 +83,7 @@ Require Import PageGeom.
 Require Import SpecMyproc SpecAcquire SpecKilled SpecWakeup SpecSleepPrepare SpecSleep SpecCopyout SpecRelease.
 Require Import CodePiperead.
 Require Import SpecPiperead.
+Require Import PipeKillMark.  (* the marker off the private block: the kill arm pays the taint *)
 From Kernel Require KernelSyms.
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import ProcAvail.
@@ -578,7 +579,7 @@ Section ProofPiperead.
       (Q : list (bv 8) -> iProp Σ) (Qe : list (bv 8) -> pipe_st -> iProp Σ)
       (n : Z) (d : nat) (bsw : nat -> bv 8) (r : mword 64) : iProp Σ :=
     pipe_rpost (pv_upt (us_V U)) (pn_queue γp) addrv Q Qe
-      (ChildTok.kill_shot (pv_gen (us_V U))) (Z.to_nat n) d bsw r.
+      ((ChildTok.kill_shot (pv_gen (us_V U)) ∗ app_taint)%I) (Z.to_nat n) d bsw r.
 
   (* the links are [Typeclasses Opaque]: their eliminations *)
   Lemma pr_olink_apply (γ : gname) (Φ : pipe_st -> iProp Σ) (s : pipe_st) :
@@ -641,7 +642,7 @@ Section ProofPiperead.
     (length acc <= Z.to_nat n)%nat -> length acc = d ->
     (forall j : nat, (j < d)%nat -> bsw j = acc !!! j) ->
     pipe_rstop_noobs (pv_upt (us_V U)) addrv
-      (ChildTok.kill_shot (pv_gen (us_V U))) (Z.to_nat n) d r -∗
+      ((ChildTok.kill_shot (pv_gen (us_V U)) ∗ app_taint)%I) (Z.to_nat n) d r -∗
     pr_pay γp Q Qe acc (Z.to_nat n) -∗ pr_post γp U addrv Q Qe n d bsw r.
   Proof using .
     intros Hle Hd Hbs. rewrite /pr_pay /pr_post /pipe_rpost.
@@ -2043,7 +2044,7 @@ Section ProofPiperead.
                      (mword_of_int 0 : mword 64) Hle0 Hlen0 Hbs0
                      with "[] HR") as "HRP".
         { iApply (pr_noobs_met (pv_upt (us_V U)) addrv
-                    (ChildTok.kill_shot (pv_gen (us_V U))) (Z.to_nat n) 0%nat Hd0n). }
+                    ((ChildTok.kill_shot (pv_gen (us_V U)) ∗ app_taint)%I) (Z.to_nat n) 0%nat Hd0n). }
         iApply ("HWX" $! G3 (pv_upt (us_V U)) 0%nat (fun _ : nat => bv_0 8)
                     (mword_of_int 0 : mword 64)
                   with "[%] [%] [%] [%] [%] Hcg Hpc Hown Hpay Hlocked Hres Href HRP [Hpriv] Hchx").
@@ -2735,7 +2736,7 @@ Section ProofPiperead.
                          (mword_of_int (Z.of_nat (S i)) : mword 64)
                          HSile Hlacc' Hbsacc' with "[] HR") as "HRP".
             { iApply (pr_noobs_met (pv_upt (us_V U)) addrv
-                        (ChildTok.kill_shot (pv_gen (us_V U))) (Z.to_nat n) (S i) HSin). }
+                        ((ChildTok.kill_shot (pv_gen (us_V U)) ∗ app_taint)%I) (Z.to_nat n) (S i) HSin). }
             iApply ("HWX" $! D4 P'' (S i) (fun j : nat => ((acc ++ [db])%list) !!! j)
                         (mword_of_int (Z.of_nat (S i)))
                       with "[%] [%] [%] [%] [%] Hcg Hpc Hown Hpay Hlocked Hres Href HRP [Hpriv] Hchx").
@@ -2861,7 +2862,7 @@ Section ProofPiperead.
                        (mword_of_int (-1) : mword 64) Hacclen2 Hlacc Hbsacc2
                        with "[] HR") as "HRP".
           { iApply (pr_noobs_fault (pv_upt (us_V U)) addrv
-                      (ChildTok.kill_shot (pv_gen (us_V U))) (Z.to_nat n) i
+                      ((ChildTok.kill_shot (pv_gen (us_V U)) ∗ app_taint)%I) (Z.to_nat n) i
                       (mword_of_int (-1) : mword 64) Hiltn2 (Hfaultva Hrm1)).
             right. split; [exact Hi0 | reflexivity]. }
           iApply ("HWX" $! E1 P'' i (fun j : nat => acc !!! j) (mword_of_int (-1))
@@ -2899,7 +2900,7 @@ Section ProofPiperead.
                      (mword_of_int (Z.of_nat i) : mword 64) Hacclen2 Hlacc Hbsacc2
                      with "[] HR") as "HRP".
         { iApply (pr_noobs_fault (pv_upt (us_V U)) addrv
-                    (ChildTok.kill_shot (pv_gen (us_V U))) (Z.to_nat n) i
+                    ((ChildTok.kill_shot (pv_gen (us_V U)) ∗ app_taint)%I) (Z.to_nat n) i
                     (mword_of_int (Z.of_nat i) : mword 64) Hiltn2 (Hfaultva Hrm1)).
           left. split; [lia | reflexivity]. }
         iApply ("HWX" $! mrc P'' i (fun j : nat => acc !!! j) (mword_of_int (Z.of_nat i))
@@ -3114,26 +3115,37 @@ Section ProofPiperead.
          where the byte queue's post says WHY, so this caller lends the pid
          quarter and the registration eighth off its own block and takes
          the flag's reading -- and the block -- back. *)
-      iDestruct (proc_priv_core_pid_reg with "Hpriv") as "(Hqp & Hrg & Hpvback)".
+      (* ...AND THE MARKER WITH THEM, WHICH IS WHAT BUYS THE TAINT (lane
+         KILL-TAINT).  A process INSIDE a syscall still holds its own
+         incarnation's marker ([ChildTok.taken_at], the last conjunct of
+         [ProcInv.proc_priv_core]), and the marker refutes the SPENT arm of
+         <p->lock>'s killed row -- so a nonzero flag read here was written
+         by a THIRD PARTY, and that party paid [RiscvPtsto.app_taint] into
+         the row ([SchedCtx.kill_paid_shot_tear], where the landed proof
+         used [kill_paid_shot] and threw the credential away).  That is the
+         honest discharge of the premise CAT-PIPE and ECHO-PIPE-2 assumed:
+         see [PipeKillMark]. *)
+      iDestruct (proc_priv_core_pid_reg_taken with "Hpriv")
+        as "(Hqp & Hrg & Htk & Hpvback)".
       iAssert (∀ (pidr klr : mword 32),
                  p_pid (proc_addr j) ↦₄{DfracOwn (1/4)} pidr -∗
                  SchedCtx.kill_paid pidr klr -∗
                  p_pid (proc_addr j) ↦₄{DfracOwn (1/4)} pidr ∗
                  SchedCtx.kill_paid pidr klr ∗
                  ((⌜klr = (mword_of_int 0 : mword 32)⌝
-                   ∨ ChildTok.kill_shot (pv_gen (us_V U))) ∗
+                   ∨ (ChildTok.kill_shot (pv_gen (us_V U)) ∗ app_taint)%I) ∗
                   proc_priv_core pj pid U))%I
-        with "[Hqp Hrg Hpvback]" as "Hkacc".
+        with "[Hqp Hrg Htk Hpvback]" as "Hkacc".
       { iIntros (pidr klr) "Hpq Hpr".
         iDestruct (ctx_word4_pointsto_agree with "Hpq Hqp") as %->.
-        iDestruct (SchedCtx.kill_paid_shot pid klr _ (pv_gen (us_V U))
-                     with "Hpr Hrg") as "(Hpr & Hrg & Hs)".
-        iFrame "Hpq Hpr Hs". iApply ("Hpvback" with "Hqp Hrg"). }
+        iDestruct (SchedCtx.kill_paid_shot_tear pid klr _ (pv_gen (us_V U))
+                     with "Hpr Hrg Htk") as "(Hpr & Hrg & Htk & Hs)".
+        iFrame "Hpq Hpr Hs". iApply ("Hpvback" with "Hqp Hrg Htk"). }
       iApply (Killed.wp_killed_sconf γs j γlp L3 (trap_res true + (av - 12))%nat 1%nat true pj false
                 ({["pipe"]} ∪ lks)
                 (fun (klv : mword 32) =>
                    ((⌜klv = (mword_of_int 0 : mword 32)⌝
-                     ∨ ChildTok.kill_shot (pv_gen (us_V U))) ∗
+                     ∨ (ChildTok.kill_shot (pv_gen (us_V U)) ∗ app_taint)%I) ∗
                     proc_priv_core pj pid U)%I)
                 HL3a0 Hj Hjl pr_lvl1 ltac:(lia) ltac:(lkbelow)
                 with "Hkacc Hcg Hown Htext Hpc Hpinv").
@@ -3265,7 +3277,7 @@ Section ProofPiperead.
                      (mword_of_int (-1) : mword 64) Hle0k Hlen0k Hbs0k
                      with "[] HR") as "HRP".
         { iApply (pr_noobs_kill (pv_upt (us_V U)) addrv
-                    (ChildTok.kill_shot (pv_gen (us_V U))) (Z.to_nat n)).
+                    ((ChildTok.kill_shot (pv_gen (us_V U)) ∗ app_taint)%I) (Z.to_nat n)).
           iExact "Hshot". }
         iApply ("HEPI" $! N3 (pv_upt (us_V U)) 0%nat (fun _ : nat => bv_0 8)
                     (mword_of_int (-1))

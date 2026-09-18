@@ -163,7 +163,7 @@ Definition wp_piperead_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslot
          observed empty (an end-of-file if nothing came), copy-out fault at
          the entry table, or the kill shot -- or the taint with the payment
          back. *)
-      pipe_rpost (pv_upt (us_V U)) (pn_queue γp) addr Q Qe (kill_shot (pv_gen (us_V U)))
+      pipe_rpost (pv_upt (us_V U)) (pn_queue γp) addr Q Qe (kill_shot (pv_gen (us_V U)) ∗ app_taint)%I
         (Z.to_nat n) d bs (mf !!! Regidx (mword_of_int 10 : mword 5)) -∗
       proc_priv_core pj pid
         (upd_usM (us_upt U P') (umem_wr (us_M U) addr d bs)) -∗

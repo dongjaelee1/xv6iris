@@ -168,7 +168,7 @@ Definition wp_pipewrite_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslo
          or the taint with the payment back.  The short reason is stated at
          the ENTRY table, which is the one the caller can name. *)
       pipe_wpost (pv_upt (us_V U)) (pn_queue γp) (us_M U) addr Q Qe
-        (kill_shot (pv_gen (us_V U))) (Z.to_nat n)
+        (kill_shot (pv_gen (us_V U)) ∗ app_taint)%I (Z.to_nat n)
         (mf !!! Regidx (mword_of_int 10 : mword 5)) -∗
       proc_priv_core pj pid (us_upt U P') -∗
       WP (Loop : expr riscv_lang)) -∗

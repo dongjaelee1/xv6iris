@@ -937,7 +937,7 @@ Section SpecFilewrite.
     (* the pipe: the chain at the stop cursor and the answer's reason, or
        the taint with the payment back ([PipeQueue.pipe_wpost]) *)
     | FdOpen _ true (FdPipe γp) =>
-        pipe_wpost P (pn_queue γp) M ua Q Qe (ChildTok.kill_shot gn) (Z.to_nat n) r
+        pipe_wpost P (pn_queue γp) M ua Q Qe (ChildTok.kill_shot gn ∗ app_taint)%I (Z.to_nat n) r
     | _ => emp
     end%I.
 
@@ -1034,7 +1034,7 @@ Section SpecFilewrite.
   Proof using . by iIntros "$". Qed.
 
   Lemma filewrite_extra_pipe gn P rb (γp : pipe_names) n M ua Q Qe r :
-    pipe_wpost P (pn_queue γp) M ua Q Qe (ChildTok.kill_shot gn) (Z.to_nat n) r -∗
+    pipe_wpost P (pn_queue γp) M ua Q Qe (ChildTok.kill_shot gn ∗ app_taint)%I (Z.to_nat n) r -∗
     filewrite_extra gn P (FdOpen rb true (FdPipe γp)) n M ua Q Qe r.
   Proof using . by iIntros "$". Qed.
 

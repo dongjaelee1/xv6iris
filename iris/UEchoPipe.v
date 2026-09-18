@@ -282,7 +282,10 @@ Section UEchoPipe.
     iDestruct (pipe_wpost_cursor with "H") as "[H | [#Ht _]]"; last first.
     { rewrite /ep_ok /ep_halt. iRight. by iRight. }
     iDestruct "H" as (k) "[%Hk H]".
-    rewrite /ep_ok /ep_halt /ep_stuck /ep_cur /pipe_wQ /pipe_wQe.
+    (* [/pipe_wQe] BEFORE [/pipe_wQ]: since lane PIPE-PROTO-2 the observation
+       node is [pipe_wQ ∗ (⌜ps_ro s = false⌝ -∗ ro_shot pn)], so the inner
+       [pipe_wQ] has to be unfolded after the outer one. *)
+    rewrite /ep_ok /ep_halt /ep_stuck /ep_cur /pipe_wQe /pipe_wQ.
     iDestruct "H" as "[(_ & %Hs & HQ) | [(_ & %Hlt & _ & HQ) | Hobs]]".
     - assert (Hkn : k = n).
       { destruct Hs as [Hkn | Hnm]; [ exact Hkn | ].
@@ -292,7 +295,7 @@ Section UEchoPipe.
     - iRight. iLeft. iExists (c + k)%nat.
       iSplitR; [ iPureIntro; lia | ]. iExact "HQ".
     - iDestruct "Hobs" as "(_ & %Hlt & Hobs)".
-      iDestruct "Hobs" as (s) "[_ HQ]".
+      iDestruct "Hobs" as (s) "[_ [HQ _]]".
       iRight. iLeft. iExists (c + k)%nat.
       iSplitR; [ iPureIntro; lia | ]. iExact "HQ".
   Qed.

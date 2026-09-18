@@ -228,3 +228,66 @@ that equation read as an entailment.
 `StageRec FI`: a `CurRec` at `FileLinksLine`'s cursor plus `sk_lend_stage`
 (the era's lend opened as a stage, with `ck_alt = line_alts_of (last_ws I)
 !!! 0`) and `sk_apr0`.  That is the next stretch's first item.
+
+
+## (c) `file_stage_inst` — WHY IT IS NOT A MIRROR OF ECHO'S, and the four-line fix
+
+The instance itself is SHORT, and shorter than echo's: the file era's
+cursor IS `FileLinksLine.fwc_blk g k v I 0`, its step IS
+`FileLinksLine.fblk_step` (which already takes `fab I a !! i = Some b` and
+walks `file_links_w` / `file_links_blk`), and the lend-to-cursor step is
+`fwc_lend`'s own body at `blkcs_f cs 0 0 = cs` and `P + 0 = P`.  The
+alternative's bytes line up too:
+
+```coq
+  ralt_dec 0 = REcho 0,   fst_free (REcho 0) = true,
+  ralt_ok (LEcho ws) (REcho 0) = (0 < 4)%nat,
+  cont s l (REcho k) = line_alts_of (uline_ws l) !!! k
+```
+
+so **`fab I 0 = line_alts_of ws !!! 0` exactly when `fline I = LEcho ws`**
+— the coordinator's ruling, and it is one `rewrite (fab_is …)`.
+
+**WHAT BLOCKS IT is `StageRec.sk_lend_stage`, which is ECHO-SPECIFIC.**  It
+reads
+
+```coq
+    sk_lend_stage : forall (k : nat) (v : era_pins) (I : list (bv 8)),
+      ⊢ lk_lend L k v I -∗ (∃ st, ⌜ck_ok L sk_cur st (last_ws I)⌝ ∗ … ) ∨ lk_T L;
+```
+
+— **at EVERY input**.  The file era's lend exists at all three lines the
+discipline admits, and at an `LEchoF` one the child writes NOTHING to the
+console (`cont _ (LEchoF ws) (RFRan sel) = u_prompt`), at an `LCat` one it
+writes cat's own bytes; only at `LEcho` is the block `line_alts_of ws !!! 0`.
+So the field as stated says the file's redirect child prints echo's line on
+the console, which is false — the instance cannot be built, and no amount
+of work inside `FileLinksLine` changes that.
+
+**THE FIX, four lines and two consumers.**  The guard the field needs is
+already the one the law above it carries, and it belongs to the ERA:
+
+1. `StageRec.CurRec` gains `ck_lineok : list (bv 8) -> Prop` — "the lines
+   this cursor is about".
+2. `sk_lend_stage` takes `ck_lineok I` as a premise.
+3. `UkShEcho.sh_exec_sup_echo_wq_at` (a twin of the landed name, which
+   keeps `⌜line_ok (last_ws I)⌝`) is guarded by the abstract
+   `ck_lineok I` instead, and `UShEchoPay`'s walk passes its guard
+   through to `sk_lend_stage` — the one place it is spent
+   (`iris/UShEchoPay.v:194`).
+4. echo's instance takes `ck_lineok := fun I => line_ok (last_ws I)` and
+   its `sk_lend_stage` opens with `intros _`; the file's takes
+   `ck_lineok := fun I => fline I = LEcho (last_ws I)`, which is what the
+   ROUND has (its tag law reads the era's discipline) and what
+   `UShEchoPay`'s walk cannot derive on its own.
+
+With that, `file_stage_inst` is `MkStageRec FI file_cur_inst …` over
+`fwc_blk` / `fblk_step` / `fwc_lend`, and it discharges BOTH `Hexecfail`
+(by `UShEchoPay.ush_execfail_law_wq_at_hold FI sh_hold`, which is already
+exactly the shape `UShRound` states) and `Hchild_echo` (by
+`sh_exec_sup_echo_wq_at_holds` at the file guard).
+
+**This is the next stretch's first item, and it is a STATEMENT change in
+three files the program stream owns** (`StageRec.v`, `UkShEcho.v`,
+`UShEchoPay.v`) plus the two instances — not a proof that can be written
+against the record as it stands.

@@ -533,11 +533,23 @@ Section UEchoFile.
 
   (* ...AND THE ENTRY AT THE CHANNEL -- [UShEcho.echo_image_entry]'s
      shape, with the paid constructor and the file lend.  This is what
-     lane SH-ROUND's redirect child applies after its [exec /echo]. *)
+     lane SH-ROUND's redirect child applies after its [exec /echo].
+
+     THE PAYLOAD IS A PARAMETER (the PROGRAM STREAM's era step).  It used
+     to conclude at [fun _ => ef_exit i γo ws] with a vestigial
+     [□ (ef_exit -∗ ef_exit)] premise, and that was unusable: a generation's
+     payload is what the FORK chose ([ChildTok.my_pay_agree] makes
+     [ExecEntry.image_entry]'s [Q] slot rigid, and sh's fork chose
+     [UkShFork.ushf_wq Wcf I]), so no conversion moves the entry from one
+     [Q] to another after the fact.  [efile_uexec_slot_at] below already
+     takes [Q] with exactly this wand; this is that lemma packaged at a
+     parameter instead of at the identity. *)
   Lemma efile_image_entry (ws : wordline) (M : gmap Z (bv 8))
       (s0 t : Z) (g : nat -> bv 8) (sts : list fdstate)
       (cw : Z) (cs : gset gname) (pidv : mword 32)
-      (i : Z) (γo : gname) (om : offmode) (rb : bool) :
+      (i : Z) (γo : gname) (om : offmode) (rb : bool)
+      (Q : Z -> iProp Σ) :
+    (forall x y : Z, Q x = Q y) ->
     EchoDisc.line_ok ws ->
     UShEcho.echo_node_img ws M s0 t g ->
     UkShEcho.echo_argv_bytes ws g ->
@@ -546,12 +558,12 @@ Section UEchoFile.
        own table, which is the child's after [close(1); open(f, 0x601)]. *)
     take NSTD sts !! 1%nat = Some (FdOpen rb true (FdInode i γo om)) ->
     i <> INIT_INO -> i <> SH_INO -> i <> ECHO_INO -> i <> CAT_INO ->
-    □ (ef_exit i γo ws -∗ ef_exit i γo ws) -∗
+    □ (ef_exit i γo ws -∗ Q (-1)) -∗
     app_inv fsc_fs -∗
     UkRun.urun_nopipe sts -∗
     udep (PS := uprogSG_free) -∗
     image_entry ElfUser.echo_elf M (mword_of_int (t + 8) : mword 64) sts
-      cw cs pidv (fun _ : Z => ef_exit i γo ws) (ef_pay i γo ws) uslot.
+      cw cs pidv Q (ef_pay i γo ws) uslot.
   Proof using Heq Hdep1 Hwrite1.
   Admitted.
 

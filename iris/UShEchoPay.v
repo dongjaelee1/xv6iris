@@ -137,6 +137,7 @@ Section UShEchoPayGen.
       (I : list (bv 8)) (v : era_pins) :
     (forall I0 : list (bv 8), Timeless (Hold I0)) ->
     (forall (I0 : list (bv 8)) (v0 : era_pins),
+       ck_lineok (sk_cur St) I0 ->
        ⊢ lk_pin L (S gen_id) v0 -∗ lk_post L (S gen_id) v0 I0 0%nat -∗
          Hold I0 -∗ Wc I0 0%nat) ->
     (forall (I0 : list (bv 8)) (v0 : era_pins),
@@ -218,7 +219,7 @@ Section UShEchoPayGen.
          choice filed, the credential is the shell's next prompt's -- and
          the resource that rode the cursor comes back with it *)
       iIntros "!> [Hc HR]". rewrite /UkShFork.ushf_wq. iRight.
-      iApply (Hwc0 I v with "Hpin [Hc] HR").
+      iApply (Hwc0 I v Hlok with "Hpin [Hc] HR").
       iApply ("Hpost" with "Hc").
     - (* ...and its first byte is where the lend stands *)
       iFrame "Hcur HR".
@@ -250,6 +251,7 @@ Section UShEchoPayGen.
        ⊢ lk_pin L (S gen_id) v0 -∗ lk_lpr L (S gen_id) v0 I0 3%nat -∗
          Hold I0 -∗ Wc I0 3%nat) ->
     (forall (I0 : list (bv 8)) (v0 : era_pins),
+       ck_lineok (sk_cur St) I0 ->
        ⊢ lk_pin L (S gen_id) v0 -∗ lk_post L (S gen_id) v0 I0 0%nat -∗
          Hold I0 -∗ Wc I0 0%nat) ->
     (forall (I0 : list (bv 8)) (v0 : era_pins),
@@ -351,11 +353,12 @@ Section UShEchoPayGen.
 
   Local Lemma lkw_wc0 (Hold : list (bv 8) -> iProp Σ) (I0 : list (bv 8))
       (v0 : era_pins) :
+    ck_lineok (sk_cur St) I0 ->
     ⊢ lk_pin L (S gen_id) v0 -∗ lk_post L (S gen_id) v0 I0 0%nat -∗
       Hold I0 -∗ (lk_lcred L (S gen_id) I0 0%nat ∗ Hold I0).
   Proof using St.
-    iIntros "#Hp Hc HR". iFrame "HR".
-    iApply (lk_lcred_of_post_a L (S gen_id) I0 0%nat v0 (sk_apr0 St I0)
+    intro Hlok. iIntros "#Hp Hc HR". iFrame "HR".
+    iApply (lk_lcred_of_post_a L (S gen_id) I0 0%nat v0 (sk_apr0 St I0 Hlok)
               with "Hp Hc").
   Qed.
 
@@ -485,12 +488,13 @@ Section UShEchoPayEcho.
   Qed.
 
   Local Lemma ei_wc0 (I0 : list (bv 8)) (v0 : era_pins) :
+    True ->
     ⊢ lk_pin LE (S gen_id) v0 -∗ lk_post LE (S gen_id) v0 I0 0%nat -∗
       emp -∗ Wc I0 0%nat.
   Proof using HPT.
-    iIntros "#Hpin Hc _".
+    intros _. iIntros "#Hpin Hc _".
     iApply (lk_lcred_of_post_a LE (S gen_id) I0 0%nat v0
-              (sk_apr0 SE I0) with "Hpin Hc").
+              (sk_apr0 SE I0 I) with "Hpin Hc").
   Qed.
 
   Local Lemma ei_wct (I0 : list (bv 8)) (v0 : era_pins) :

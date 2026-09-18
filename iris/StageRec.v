@@ -209,7 +209,10 @@ Section stagerec.
     (* ...AND THAT ALTERNATIVE ENDS WITH THE SHELL'S PROMPT, which is what
        makes the block a BOUNDARY credential when the child exits
        ([LinkRec.lk_lcred_of_post_a]).  echo's is [0 < 3]. *)
-    sk_apr0 : forall I : list (bv 8), lk_apr L I 0%nat;
+    (* ...AND IT IS THE SAME GUARD (the program stream): at an era with
+       more than one line shape, alternative 0 is admissible only at the
+       lines the cursor is about. *)
+    sk_apr0 : forall I : list (bv 8), ck_lineok L sk_cur I -> lk_apr L I 0%nat;
   }.
 
 End stagerec.
@@ -388,8 +391,8 @@ Section echo_stage_inst.
       iExact "Hc".
   Qed.
 
-  Local Lemma ei_apr0 (I : list (bv 8)) : (0 < 3)%nat.
-  Proof using . lia. Qed.
+  Local Lemma ei_apr0 (I : list (bv 8)) : True -> (0 < 3)%nat.
+  Proof using . intros _. lia. Qed.
 
   Definition echo_stage_inst : StageRec LE :=
     MkStageRec LE echo_cur_inst ei_lend_stage ei_apr0.

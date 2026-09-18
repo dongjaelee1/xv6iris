@@ -135,7 +135,7 @@ arm is the theorem's one named premise (`pipe_both_law`).
   EOF) → waits → the reading says the reader saw L`, at the leaves.
 - [x] **ECHO-PIPE** (design §5.2; after PIPE-PROTO + PIPE-STD).
   `iris/UEchoPipe.v`: echo's `image_entry` at fd 1 = a pipe write end.
-- [ ] **CAT-PIPE** (design §5.3; after PIPE-PROTO + PIPE-STD).
+- [x] **CAT-PIPE** (design §5.3; after PIPE-PROTO + PIPE-STD).
   `iris/UCatPipe.v`: cat's round and `image_entry` at fd 0 = a pipe read
   end, at the pipe stage's cursor.
 - [x] **PIPE-DEC** (pure; after PIPE-MODEL-2).  `iris/PipeDiscDec.v` ending
@@ -2937,3 +2937,269 @@ round needs is in hand: `wp_kshm_child_pipe_line` is the walk,
 the reading, `AppPipeCons.pipe_cat_pins_acc` the /cat pin, and
 `UPipeBootAdequacy.pipe_prog_law` is the exact statement the round has to
 produce.
+
+### CAT-PIPE (2026-09-18) — the round lands with ONE cursor and no `Hpin`, the entry's `cannot open` arm is REFUTED, and the read's `-1` is the one wall: a pipe read that was KILLED has no row to stand on
+
+Branch `app-pipe/cat-pipe`, FIVE commits (`fcbfefc97`, `962342757`,
+`7554b1cf9`, `4cab67a22`, `691350495`).  ONE new file
+(`iris/UCatPipe.v`, ~1,200 lines) plus ONE line of `iris/_CoqProject`;
+**no landed statement moved, and no landed file was edited at all**.
+Whole `iris` tree `ec2-lane.sh cat build` **RC=0** (twice, the second with
+nothing left to compile).  No `Admitted`; every result carries
+`Proof using`.  ALL THREE AUDITS UNMOVED, re-run on the lane's clone: `make
+audit-echo-only` at **fourteen** (the same
+`PrimInt63`/`PrimString`/`resv_*`/`funext` set), `make audit-only` at
+**thirteen**, `make audit-tree-only` at **thirteen**.  They could not have
+moved: nothing in the tree `Require`s `UCatPipe.v` (`grep -l UCatPipe
+iris/*.v` names only itself), and the only edit outside the new file is
+one line of `iris/_CoqProject`, which no audit target reads.
+
+**`Print Assumptions`.**  `pcat_urun_nopipe` and `pcat_round_test`:
+*Closed under the global context*.  `pcat_round_at` and `pcat_ecall_read`:
+`resv_matches`, `resv_is_valid` and `functional_extensionality_dep` —
+THREE.  `pcat_pay_at_of_round`: the two reservation `Parameter`s.
+`pcat_image_entry`: the fourteen, i.e. `UCatKernel.cat_image_entry`'s set
+exactly.  The bar was "≤ `UCatKernel`'s": the entry MEETS it, and the
+round's three are not a regression on `UCatKernel.cat_round_at`'s two —
+that lemma takes the read as a PREMISE (`cat_held_read`) and walks no
+leaf at all, while this round BUILDS the read; the file lane's
+corresponding read builder, `UkCatDeed.kcat_r_of_deed`, carries all
+fourteen.  So the pipe round is three where the file's is fourteen.
+
+**WHAT LANDED** (`iris/UCatPipe.v`)
+
+- §1, the pure stage: `pcat_line`, `pcat_out`, `pcat_stage`,
+  `pcat_stage_{nonnil,last,nstarted,pin_snoc}`, `pcat_blk_{low,pending,byte}`,
+  `pcat_alt`/`pcat_alt_of`/`pcat_alt_panic`, `pcat_round_line`,
+  `pcat_acc_line`, `pcat_signed_small`.  `UCatOut.cat_stage`'s twin at
+  `PipeOutPure`, ONE CONJUNCT SHORTER: a pipeline round reads no state, so
+  there is no `s0`, no `fst_upto`, no `cat_tie`.  What replaces the file's
+  `uline_of … = LCat` is `palt_ok (pcat_line I0) PRan`, which is `True` at
+  an `LPipe` line and `False` at an `LEcho` one — the shape the write link
+  asks for, for free.
+- §2, the cursor: `pcatcs`, **`pcch`** (`turn ∗ ps_lb ∗ cs_lb ∗ inp_lb`, or
+  the taint — `UCatOut.cch` minus `f0_lb`), `pcch_timeless`, `pcch_0_alt`,
+  **`pcch_step`** at `PipeLinks.pipe_write_link_blk` / `pipe_write_link` /
+  `pipe_write_link_taint`.
+- §3, the read: **`pcat_ecall_read`** (the standard-slot pipe read leaf
+  RE-PROVED at `UkRunSys.wp_uk_ecall_read_at`, see finding 1),
+  **`pcat_rpost`** (the post's cat-facing reading, see finding 3),
+  **`pcat_read_walk`** (`UkCatDeed.wp_kcat_read_deed`'s twin: `c.li a7,5 ;
+  ecall ; c.jr ra`).
+- §4, **`pcat_hold`**, **`pcat_round_inv`** and **`pcat_round_at`**.
+- §5, **`pcat_urun_nopipe`**: kexit's whole per-descriptor close row for a
+  table whose slot 0 is a pipe read end, out of `PipeProto.pipe_reg_of_inv`
+  — design §2's claim mechanised at cat (a verified program that HOLDS A
+  PIPE and is not tainted).
+- §6, `pcat_hi` / `pcat_hi_len` / **`pcat_round_test`**, the consumer test
+  at `L = "hi\n"`.
+- §7, **`pcat_pay_at`**, **`pcat_image_entry`**, **`pcat_pay_at_of_round`**.
+
+**THE TWO STATEMENTS, VERBATIM.**
+
+```coq
+  Definition pcat_hold (pn : pnames) (l : list fdstate) (c : nat) : iProp Σ :=
+    (UserFd.ustd γfd l ∗ (rcur pn c ∨ T))%I.
+
+  Definition pcat_round_inv (pn : pnames) (l : list fdstate) (v : era_pins)
+      (ps0 cs0 : list nat) (I0 : list (bv 8)) (P : nat) : iProp Σ :=
+    (∃ c : nat, pcat_hold pn l c ∗ pcch γ v ps0 cs0 I0 pcat_alt P c)%I.
+
+  Lemma pcat_round_at (pn : pnames) (γp : pipe_names) (L : list (bv 8))
+      (l : list fdstate) (wb : bool) (v : era_pins)
+      (ps0 cs0 : list nat) (I0 : list (bv 8)) (P : nat) (Cend : iProp Σ) :
+    pcat_stage ps0 cs0 I0 P ->
+    pcat_out I0 = L ->
+    l !! 0%nat = Some (FdOpen true wb (FdPipe γp)) ->
+    pipe_inv pn γp L -∗
+    □ (∀ gn : gname, ChildTok.kill_shot gn -∗ T) -∗          (* Hktaint *)
+    □ (T -∗ UkCatCat.kcat_dg_cr N) -∗                         (* Hdg *)
+    □ (∀ (c nb : nat) (rv : mword 64) (fbb : nat -> bv 8),    (* Hw *)
+         ⌜rv = (mword_of_int (Z.of_nat nb) : mword 64)⌝ -∗
+         (⌜(Z.to_nat (bv_unsigned rv) <= 512)%nat
+           /\ forall j : nat, (j < Z.to_nat (bv_unsigned rv))%nat ->
+                pcont (pcat_line I0) (palt_of pcat_alt) !! (c + j)%nat
+                = Some (fbb j)⌝
+          ∨ T) -∗
+         UserFd.ustd γfd l -∗
+         pcch γ v ps0 cs0 I0 pcat_alt P c -∗
+         UkCat.kcat_wr N (mword_of_int 1) (mword_of_int CatSyms.buf) nb
+           (ubytes γd CatSyms.buf 512 fbb)
+           (fun wret : mword 64 =>
+              (⌜wret = (mword_of_int (Z.of_nat nb) : mword 64)⌝
+               ∗ UserFd.ustd γfd l
+               ∗ pcch γ v ps0 cs0 I0 pcat_alt P
+                   (c + Z.to_nat (bv_unsigned rv))%nat
+               ∗ ubytes γd CatSyms.buf 512 fbb))) -∗
+    □ (∀ c : nat,                                             (* Hend *)
+         (eof_shot pn (take c L) ∨ T) -∗
+         pcat_hold pn l c -∗
+         pcch γ v ps0 cs0 I0 pcat_alt P c -∗ Cend) -∗
+    cat_code γt -∗
+    UkCatCat.kcat_round N (mword_of_int 0)
+      (pcat_round_inv pn l v ps0 cs0 I0 P) Cend.
+
+  Lemma pcat_image_entry (ws : list (list (bv 8))) (Mn : gmap Z (bv 8))
+      (sv t : Z) (gn : nat -> bv 8)
+      (sts : list fdstate) (cw : Z) (cs : gset gname) (pidv : mword 32)
+      (Q : Z -> iProp Σ) (Pay : iProp Σ) :
+    (forall x y : Z, Q x = Q y) ->
+    line_ok ws ->
+    UShEcho.echo_node_img ws Mn sv t gn ->
+    UkShEcho.echo_argv_bytes ws gn ->
+    length sts = NOFILE ->
+    length ws = 1%nat ->
+    □ (∀ W' : uvis, ⌜uvis_fd W' = sts⌝ -∗ pcat_pay_at W' Q Pay) -∗
+    UkRun.urun_nopipe sts -∗ udep -∗
+    image_entry ElfUser.cat_elf Mn (mword_of_int (t + 8) : mword 64) sts
+      cw cs pidv Q Pay uslot.
+```
+
+**NEITHER STOP RULE FIRED, and both are answered at the statement.**
+
+- **STOP 1 (`kcat_round`'s shape forcing a per-read OFFSET).**  It does
+  not.  `UkCatCat.kcat_round` says NOTHING about offsets — the whole of
+  what `UCatKernel` needs `Hpin`/`cat_held_read`/`Hold : nat -> iProp` for
+  is that a FILE read runs at an offset the DESCRIPTOR records, so the
+  payer must pin "the offset I read at is my console cursor".  A pipe row
+  is `FdOpen rb wb (FdPipe γp)` and records none; the read pointer is
+  `PipeProto.rcur`, ONE EXCLUSIVE PERMIT the reader holds, and the console
+  cursor IS that number.  So `pcat_round_inv` has one existential and two
+  resources at it, there is no `Hold`, no `cat_pinned_read_at`, no boxed
+  row, and the vacuity trap `UCatKernel` documents (a box over `off0`, or
+  over the cursor at a fixed handle) cannot arise.  **What `UkCatCat` pins
+  is only the BUFFER** (`CatSyms.buf`, 512, at `a1`/`a2`) and the fd word
+  at `a0`.
+- **STOP 2 (the write link wanting the stage's `cs`/`I` reading).**  It
+  does not: `⌜acc = take (length acc) (drop c L)⌝` — `pipe_rQ`'s pure
+  conjunct — is ENOUGH.  `pcat_acc_line` turns it into `L !! (c + j) =
+  Some (acc !!! j)` and `pcat_round_line` into the link's own premise
+  `pcont (pcat_line I0) (palt_of pcat_alt) !! (c + j) = Some (gb j)`,
+  because `pcont _ PRan` is `L ++ u_prompt` and the cursor never reaches
+  the prompt.  There is NO lend to design here.
+
+**WHAT WAS REFUTED / WHAT THE DESIGN AND THE BRIEF GOT WRONG (five, each
+read at the statement)**
+
+1. **`UkReadPipe.wp_uk_ecall_read_pipe_std` CANNOT BE USED AS IT STANDS,
+   for two independent reasons, and the lane re-proves it (nothing in
+   `UkReadPipe.v` moves).**  (i) **Its count premise is the WHOLE WORD**:
+   it asks for `uint (m !!! a2) = Z.of_nat cap`, while what cat's own read
+   obligation `UkCat.kcat_r` gives its payer is `bv_signed
+   (subrange_vec_dec (m !!! a2) 31 0) = Z.of_nat cnt` — the low 32 bits,
+   signed, with the upper half unconstrained.  The premise is NOT
+   derivable, and it is not needed: the walk underneath
+   (`UkRunSys.wp_uk_ecall_read_at`) takes the signed reading, and the leaf
+   spends the unsigned one only to re-derive it through
+   `uread_count_is_cap`.  (ii) **It drops the walk's NO-FAULT ROW.**
+   `wp_uk_ecall_read_at` hands out `Hnf` (every byte of the destination is
+   writable-mapped in any table the key's projection admits) and
+   `uvis_lazy W = false`, and `UkReadRows.spost_at_read_elim` exhibits the
+   post's own table `P` with the three facts `Hnf` wants — the pipe leaf's
+   continuation relays NONE of them, and without them a caller cannot
+   refute `PipeQueue.pipe_rstop_noobs`' COPY-OUT FAULT arm, which is one of
+   the three ways a pipe read answers -1.  **For whoever next edits
+   `UkReadPipe.v`: both are one-line relays at the leaf, and both would
+   retire `pcat_ecall_read`.**
+2. **THE READ'S `-1` IS THE LANE'S WALL, and it is a KERNEL ROW, not a
+   design question.**  The brief says "the `-1` arms are the kill/taint
+   arms as in `UCatKernel`"; at the FILE claim there ARE no -1 arms —
+   `UkCatDeed.kcat_r_of_deed` relays lane OFF-LINK's count bound on BOTH
+   arms, so `Z.to_nat (bv_unsigned rv) <= 512`, the signed reading is the
+   unsigned one, and `bv_signed rv < 0` is a contradiction
+   (`UCatKernel.cat_signed_small`).  At a pipe the bound is FALSE:
+   `UkReadPipe.uread_pipe_ans` admits `r = -1` and
+   `PipeQueue.pipe_rstop_noobs` has three arms that produce it.  Two are
+   refutable and are refuted here: the COPY-OUT FAULT at the first byte
+   (from the relayed no-fault row, finding 1) and the file layer's SIGN
+   GUARD (`n = 0`, refuted at `cap = 512`).  The third — **the reader's own
+   KILL SHOT** — is not: a pipe read really does answer -1 when the reader
+   is killed asleep, and the only row in the tree that refutes a -1 from a
+   read, `UexecRet.uexec_live_ok`, states it **for `FdDevice 1` alone**
+   (its premise is `sts !! fd = Some (FdOpen true rb (FdDevice 1))`).  cat
+   branches on exactly that word (`bltz a0,0x6a` → `cat: read error`), and
+   the pipeline model has NO alternative that prints it — so the arm must
+   be closed or the theorem is false.  **It is closed by a NAMED premise,
+   `□ (∀ gn, ChildTok.kill_shot gn -∗ T)` — "a kill taints the
+   application".**  That is the weakest thing that closes it and is what
+   `design/applications.md` already says the taint IS (the application's
+   kill price; `AppPipe.pipe_kill` is the echo taint).  It is NOT "nobody
+   is ever killed", and the round stays true at a tainted era, where cat
+   prints its diagnostic and the model says nothing.  **THE COORDINATOR'S
+   CHOICE**, in the shape the campaign already uses for `pipe_both_law`:
+   keep it as a hypothesis of the pipeline theorem and audit it as such, or
+   buy the kernel row (the pipe twin of `uexec_live_ok`'s read clause,
+   which is `usertrap`'s second `killed()` check — a process that RESUMES
+   was not killed — and is stated for the console only because that is the
+   only place anyone has needed it).  Beside it the round takes `□ (T -∗
+   UkCatCat.kcat_dg_cr N)`, cat's `read error` tail at a TAINTED era; that
+   one is an ordinary payer obligation (the free write law's route,
+   `UkCatCat.kcat_round_of_law`) and not a wall.
+3. **`PipeProto.pipe_rpost_img_line` IS TOO LOSSY FOR A PROGRAM.**  Its
+   proof drops the post's IMAGE ROW — the one fact that turns the ghost
+   `acc` into the caller's buffer function — and drops `length acc = d` on
+   the non-observation arms, so a reader cannot say how many of its buffer
+   bytes the call filled.  The round needs both (it writes exactly `r`
+   bytes of the buffer), so the lane states `pcat_rpost`: the same reading
+   with both kept and the four `pipe_rstop_noobs` arms sorted by what cat's
+   loop BRANCHES ON — the answer is a count `d` (request met, ring
+   observed empty, or a fault above the first byte), or it is -1 and then
+   `d = 0` and one of three things happened.  `pipe_rpost_img_line` is not
+   wrong; it is the right reading for `pipe_proto_test`'s question and the
+   wrong one for a walk.  (Also: `pipe_rstop_noobs` is NOT pure — its kill
+   arm carries `Rk` — so it must be destructed in the logic.)
+4. **"The cursor is inside the line" IS FALSE AS A LEMMA**, and the round
+   does not want it.  `take 0 (drop c L) = []` for EVERY `c`, so from
+   `pipe_rQ`'s pure conjunct at `acc = []` nothing bounds `c` at all.  What
+   the round needs and gets is a LOOKUP (`pcat_acc_line`: `L !! (c + j) =
+   Some (acc !!! j)` for `j < length acc`), from which `c + j < length L`
+   follows where it is used and nowhere else.  Consequently
+   `pcat_round_inv` carries NO bound on its cursor — one conjunct fewer
+   than `UCatKernel.cat_round_inv`, which needs `p <= length bs` for
+   `ard_count`'s arithmetic.
+5. **THE ENTRY IS CHEAPER THAN THE FILE'S, not merely different, and the
+   `cannot open` arm is REFUTED rather than assumed.**  `pcat_pay_at` is
+   `UCatKernel.cat_pay_at` minus FOUR things — the file name's three closed
+   facts, the `arg_path_of` implication over every image, the cwd half and
+   the persisted argument area — all of which exist only to resolve
+   `argv[1]`.  The refutation is mechanised in `pcat_pay_at_of_round`:
+   `UkCatMain.kcat_pay_all` is an ADDITIVE conjunction whose second arm is
+   guarded on `2 <= length args`, `UShCat.cat_args` has `Z.to_nat
+   (uvis_argc W)` entries (`echo_args_length`), and the key's own reading
+   `UShCat.cat_key_args_holds` makes that number the NODE's word count —
+   which sh built at ONE.  So the arm closes by `lia` and
+   `UkCatMain.kcat_dg_open` is never mentioned.  `UShCat.cat_entry_run` is
+   entirely argv-generic and needed no change.
+
+**TWO TRAPS WORTH RECORDING** (both cost real time)
+
+- **A standalone `ctokG` section variable makes `ChildTok.kill_shot` a
+  DIFFERENT TERM.**  `UkReadPipe`'s post carries `kill_shot (uvis_gen W)`
+  with `ctokG` resolved THROUGH the `xv6G` bundle; a `Context `{!ctokG Σ}`
+  beside `xv6G` in the consumer gives a second instance, and the two
+  propositions print identically and do not unify (`iSpecialize: cannot
+  instantiate … with …`, the two sides byte-identical on screen).
+  `UCatKernel` omits `ctokG` for exactly this reason and does not say so;
+  this is the same trap as its documented `uexecSG`/`uprogSG` one.
+- **A leaf that hands its caller an ABSTRACT `Rk : iProp` cannot be
+  reasoned about at all.**  `pcat_ecall_read` binds the KILL GENERATION
+  `gn` instead and puts `ChildTok.kill_shot gn` in the post, which is what
+  makes finding 2's premise statable.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST**
+
+For **SH-PIPE-ROUND**: cat's side of the round is now `pcat_round_at` +
+`pcat_image_entry`, and what sh must LEND the right child is exactly the
+three things `pcat_round_inv` is built from — `pipe_inv pn γp L`,
+`rtok pn` (`= rcur pn 0`) and the era's console credential at cursor 0,
+`pcch γ v ps0 cs0 I0 pcat_alt P 0` (which is `turn v P ∗ ps_lb v ps0 ∗
+cs_lb v cs0 ∗ inp_lb v I0`, the SAME five-minus-one components
+`EchoOut.eturn` has, with `cs0` NOT yet extended — `pcch_0_alt` says the
+alternative is not named until the first byte).  What comes back at cat's
+exit is `pcat_hold pn l c ∗ pcch … c ∗ (eof_shot pn (take c L) ∨ T)`,
+i.e. `PipeProto.pipe_payR`'s success arm beside the lease at the cursor;
+sh's `pipe_round_reading` then reads `w = L` off it and echo's `pws_lb`.
+sh still owes the round's two program-tier premises, `Hw` (its own
+`UEchoOut.kecho_w_of_link_data`-shaped supply, at `pcch_step` — which is
+landed) and `Hdg`; and it owes the OWNER's ruling on finding 2's
+`Hktaint`.

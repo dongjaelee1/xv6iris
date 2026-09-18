@@ -1665,4 +1665,8 @@ UEchoFile.v
 UShRedirPay.v
 UShRound.v
 UInitFile.v
+<<<<<<< HEAD
 UEchoPipe.v
+=======
+UCatPipe.v
+>>>>>>> app-pipe/cat-pipe

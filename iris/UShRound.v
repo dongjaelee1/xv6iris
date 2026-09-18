@@ -107,6 +107,8 @@ Require Import LinkRec.                  (* the era's link record *)
 Require Import FileLinkInst.             (* [file_link_inst] -- lane LINK-GEN-2 *)
 Require Import UShLine.
 Require Import UShEcho.
+Require Import UShPanic.          (* the panic and exec-failed laws at a record *)
+Require Import UShEchoPay.        (* the paid child's laws at a record *)
 Require Import UShKernel.
 Require Import UInitSh.
 Require Import UCatOut.                  (* [cat_tie] -- the pure round tie *)
@@ -133,6 +135,19 @@ Section UShRound.
   (* the era's record: [FileOut]'s gname pair, and the deed's names *)
   Context (g : file_gn) (r : file_names).
   Context (Heq : file_app = MkAppcfg file_names (file_pred (fgn_cl g)) r).
+
+  (* ...AND THE ERA'S BOOT STATE (RULING H', 2026-09-18).  The round's
+     hold is tied to the era's first state BY A SHARED INDEX and not by
+     [FileOut.f0_lb]: that lower bound only exists after the era's first
+     console byte ([FileLinks.file_write_link_first] is its only producer),
+     so a hold that asked for it was uninhabitable at /init's first
+     instruction, where [UInitKernel.init_boot_pay] asks for [cc_wbn Cr 0]
+     -- i.e. for [Wbf []] -- and the taint is not available and must not be
+     (ADEQUACY's ruling).  THE STATE IS AN ERA CONSTANT, so it is a section
+     variable beside [gen_id]; /init instantiates it at the deed's own
+     content ([AppFile.dst_content s_deed]), which is what makes
+     [UCatOut.cat_tie [] s0 [] s] hold by [eq_refl] at the head. *)
+  Context (s0 : fst).
 
   (* the record equations the top theorem hands over
      ([UInitBoot.echo_Hinit_boot]'s [Hcons] / [Htag] one application on) *)
@@ -175,15 +190,29 @@ Section UShRound.
      ([fst_upto cs0 s0 (bodies_of I) (nlines I - 1)]), with [cs0] and [s0]
      pinned by the era's own lower bounds so that the tie is about THIS
      era and not some other. *)
-  Definition sh_hold (I : list (bv 8)) : iProp Σ :=
-    ((∃ (cs0 : list nat) (s0 : fst) (s : dst) (v : era_pins)
-        (vf : file_era),
+  (*  AT RULING H' THE INDEX IS THE SECTION'S and the era's filed boot
+      state is NOT named here.  What used to stand in this arm --
+      [file_era_pin g (S gen_id) vf ∗ f0_lb vf s0] -- said "the state the
+      tie is about is the one the era filed", and it said it with a
+      resource that does not exist before the era's first console byte.
+      The index does the same work for free: the CREDENTIAL's own families
+      ([FileLinksLine.fcur]'s [f0w]) carry the filed state under an
+      existential, [FileLinksLine.f0w_agree] identifies any two of them,
+      and the round's [s0] is what both are read at.  The named layer that
+      makes the identification structural rather than an agreement step is
+      [file_link_inst_at s0] at [FileLinksLine]'s [fwc_*_at s0] families
+      ([file_link_inst] its [∃ s0] packing), and it is LINK-GEN's: until it
+      lands, [FI] below is the packed record and the tie is by
+      [f0w_agree]. *)
+  Definition sh_hold_at (sb : fst) (I : list (bv 8)) : iProp Σ :=
+    ((∃ (cs0 : list nat) (s : dst) (v : era_pins),
         fown r s
-        ∗ ⌜UCatOut.cat_tie cs0 s0 I s⌝
+        ∗ ⌜UCatOut.cat_tie cs0 sb I s⌝
         ∗ f_typed (fgn_cl g) s
-        ∗ era_pin (fgn_echo g) (S gen_id) v ∗ cs_lb v cs0
-        ∗ file_era_pin g (S gen_id) vf ∗ f0_lb vf s0)
+        ∗ era_pin (fgn_echo g) (S gen_id) v ∗ cs_lb v cs0)
      ∨ T)%I.
+
+  Local Notation sh_hold := (sh_hold_at s0).
 
   Definition Wcf (I : list (bv 8)) (p : nat) : iProp Σ :=
     (Wcl I p ∗ sh_hold I)%I.
@@ -191,7 +220,14 @@ Section UShRound.
     (Wbl I ∗ sh_hold I)%I.
 
   Global Instance Wcf_timeless I p : Timeless (Wcf I p).
-  Proof using . rewrite /Wcf /sh_hold /T /file_taint /echo_taint. apply _. Qed.
+  Proof using . rewrite /Wcf /sh_hold_at /T /file_taint /echo_taint. apply _. Qed.
+
+  (* ...AND IT IS INHABITED AT THE ERA'S HEAD, which is the whole of
+     RULING H': at [I = []] the tie is [dst_content s = s0] (because
+     [UCatOut.cat_st cs0 s0 [] = s0]), so /init hands over its own deed at
+     its own boot value and owes no lower bound.  [UInitFileCons.
+     file_hold_head] is this arm's content minus the era pin, which /init
+     holds at that instant ([UInitFileCons.file_turn_pre_of_boot]). *)
 
   (* =================================================================== *)
   (*  S2  LANE LINK-GEN'S OBLIGATIONS, at the ECHO shapes                 *)
@@ -274,7 +310,7 @@ Section UShRound.
   (*  the stage meet, and they meet PURELY.                                *)
   (* =================================================================== *)
   Lemma sh_prompt_alt_of_deed (k : nat) (v : era_pins) (vf : file_era)
-      (P a : nat) (b : bv 8) (ps0 cs0 : list nat) (s0 : fst)
+      (P a : nat) (b : bv 8) (ps0 cs0 : list nat)
       (I0 : list (bv 8)) (s : dst) (Φ : iProp Σ) :
     I0 <> [] ->
     rest_of I0 = [] ->
@@ -318,11 +354,15 @@ Section UShRound.
   (*  [D : list mobs -> Prop] before [UInitSh.sh_pay_of_parts] can be     *)
   (*  applied at this era.  That is a NEW obligation; it surfaces in K3,  *)
   (*  not here, because [UkSh.ush_rest_l] does not mention the tag.       *)
+  (*  PROVED (the program stream): the era's tag IS [FileOut.ftag] and its *)
+  (*  second conjunct is this disjunction, so the law is the projection.    *)
   Lemma sh_tag_law_file :
     ⊢ □ (∀ h : list mobs,
            riscv_rx_tag h -∗ ⌜FileDisc.disc_f h⌝ ∨ T).
   Proof using Htag.
-  Admitted.
+    rewrite Htag. iIntros "!>" (h) "Ht".
+    rewrite /FileOut.ftag. iDestruct "Ht" as "(_ & Hd & _)". iExact "Hd".
+  Qed.
 
   (* =================================================================== *)
   (*  S5  THE THREE-WAY CHILD DISPATCH                                    *)
@@ -379,6 +419,12 @@ Section UShRound.
   (* ---- HYPOTHESIS: the echo-at-console child, at the FILE links.
           [UShEchoPay.sh_exec_sup_echo_wq_holds]'s twin -- with LINK-GEN
           it is an instantiation, without it a ~1,250-line twin. ---- *)
+  (*  (This one names no deposit instance -- [sh_exec_sup_echo_wq] takes
+      only [uexecSG].  The two laws above DO, and they are annotated:
+      left implicit, [uprogSG] resolves to the ambient instance and the
+      discharge, which is at [uprogSG_free], is not well-typed against it
+      -- and the conversion between two deposit instances does not come
+      back.  That is a fifth silent-hang shape.) *)
   Hypothesis Hchild_echo : ⊢ UkShEcho.sh_exec_sup_echo_wq Wcf.
 
   (* ---- HYPOTHESIS: the exec-failed diagnostic's law at the file
@@ -389,14 +435,36 @@ Section UShRound.
           here.  At [ush_execfail_law_wq_at (lk_exfb FI) ...]
           the hypothesis is DISCHARGEABLE TODAY:
           [UShEchoPay.ush_execfail_law_wq_at_hold file_stage_inst]. ---- *)
-  Hypothesis Hexecfail :
-    ⊢ UkShEcho.ush_execfail_law_wq_at (lk_exfb FI)
+  (*  ...AND IT IS DISCHARGED (the program stream), exactly as the comment
+      above said it would be: the carrier is the record's own, the era's
+      links are the only input, and [file_stage_inst] is not even needed.
+      The links are a PREMISE and not a hypothesis because they are a
+      resource the round is handed ([sh_round_holds_file]'s first). *)
+  Lemma Hexecfail :
+    ⊢ FileLinks.file_links g -∗
+      UkShEcho.ush_execfail_law_wq_at (PS := uprogSG_free) (lk_exfb FI)
         (fun I : list (bv 8) => (length (lk_exfb FI I) - 2)%nat)
         Wcf.
+  (* NOT [iApply] (durable-notes, the silent hang): the proofmode would
+     unify the [Wc] SLOT -- a function -- against [Wcf]'s body, and that
+     search does not come back.  Both sides are the same term after delta,
+     so [exact] closes it by conversion. *)
+  Proof using .
+    exact (UShEchoPay.ush_execfail_law_wq_at_hold (L := FI) sh_hold).
+  Qed.
 
-  (* ---- HYPOTHESIS: sh's own fork panic at the file families
-          ([UShPanic.ush_panic_law_holds]'s twin) ---- *)
-  Hypothesis Hpanic : ⊢ UkShDiag.ush_panic_law Wcf Wbf.
+  (* ---- NOT A HYPOTHESIS ANY MORE (the program stream): sh's own fork
+          panic at the file families is [UShPanic.ush_panic_law_hold_at] at
+          this record and [sh_hold], and the two families are the record's
+          own ([FileLinkInst.file_Wcl] / [file_Wbl]) with that one linear
+          conjunct -- which is the shape that lemma takes.  The era's links
+          are its only input. ---- *)
+  Lemma Hpanic :
+    ⊢ FileLinks.file_links g -∗
+      UkShDiag.ush_panic_law (PS := uprogSG_free) Wcf Wbf.
+  Proof using .
+    exact (UShPanic.ush_panic_law_hold_at (PS := uprogSG_free) FI sh_hold).
+  Qed.
 
   (* ---- HYPOTHESIS (lane CAT-ENTRY-2): cat's entry at the exec channel,
           at a deed FRACTION and the offset-pinned read.  [UCatKernel.
@@ -424,7 +492,7 @@ Section UShRound.
       (sts : list fdstate) (v : era_pins) (vf : file_era)
       (ps0 : list nat) (P : nat) : iProp Σ :=
     (Wcl I 3%nat
-     ∗ (∃ (cs0 : list nat) (s0 : fst) (i : Z) (bs : list (bv 8)),
+     ∗ (∃ (cs0 : list nat) (i : Z) (bs : list (bv 8)),
           ⌜UCatOut.cat_tie cs0 s0 I (Some (i, bs))⌝
           ∗ UCatKernel.cat_lend g (fgn_cl g) r q1 q2 i bs om sts
               FsImg.ROOTINO v vf ps0 cs0 s0 I P))%I.
@@ -466,7 +534,7 @@ Section UShRound.
          wand between them is a fact about the era's links, so it belongs
          to the round and not to cat's entry -- which is why
          [UCatKernel.cat_child_of_entry] takes [Q] as a parameter. *)
-      ⊢ □ (∀ (cs0 : list nat) (s0 : fst),
+      ⊢ □ (∀ cs0 : list nat,
              UCatKernel.catq_cat g v vf ps0 cs0 s0 I P (-1)
              -∗ UkShFork.ushf_wq Wcf I) -∗
         app_taint -∗
@@ -484,20 +552,20 @@ Section UShRound.
           [Hexecfail] on the failing arm. ---- *)
   Definition sh_redir_child_law : iProp Σ :=
     (□ (∀ (N' : uk_names Σ) (h : CpuId) (m : regfile) (dw dv : dfrac)
-          (s0 : Z) (len : nat) (ws : wordline) (file : list (bv 8))
+          (sa : Z) (len : nat) (ws : wordline) (file : list (bv 8))
           (fb : nat -> bv 8) (sz : Z) (ld : list fdstate) (n : nat)
           (I : list (bv 8)),
           ⌜ ukn_pay N' = (fun _ : Z => UkShFork.ushf_wq Wcf I) ⌝ -∗
           ⌜ m !!! Regidx (mword_of_int 9 : mword 5)
-              = (mword_of_int s0 : mword 64) ⌝ -∗
+              = (mword_of_int sa : mword 64) ⌝ -∗
           (* THE LINE IS THE REDIRECT SHAPE, which is where this law and
              [UkShFork.ushf_child_law] part company: that one's premise is
              [UkSh.ush_line_is], and [UkShRedirLine.ushs_line_is_nosym]
              proves no such line can carry the [>] byte. *)
           ⌜ UkShRedirLine.ushs_line_is ws file fb 0%nat len ⌝ -∗
           ⌜ ws = last_ws I ⌝ -∗
-          ⌜ 0 < s0 ⌝ -∗ ⌜ s0 + Z.of_nat len + 1 < Z64 ⌝ -∗
-          ⌜ s0 + Z.of_nat len < 2 ^ 38 ⌝ -∗
+          ⌜ 0 < sa ⌝ -∗ ⌜ sa + Z.of_nat len + 1 < Z64 ⌝ -∗
+          ⌜ sa + Z.of_nat len < 2 ^ 38 ⌝ -∗
           ⌜ 8344 <= sz ⌝ -∗ ⌜ UserPtTree.pgroundup sz = sz ⌝ -∗
           ⌜ usz_ok (sz + 65536) ⌝ -∗
           ⌜ UkSh.ush_fd0c ld /\ UkSh.ush_fd1p ld /\ UkSh.ush_fd2p ld ⌝ -∗
@@ -505,7 +573,7 @@ Section UShRound.
           UCodeShP.shp_code (ukn_t N') -∗
           UCodeShP.shp_rodata (ukn_t N') -∗
           UkSh.ush_jtab (ukn_t N') -∗
-          ustr (ukn_d N') (DfracOwn 1) s0 len fb -∗
+          ustr (ukn_d N') (DfracOwn 1) sa len fb -∗
           ustr (ukn_d N') dw ushp_whitespace 5 ushp_ws_f -∗
           ustr (ukn_d N') dv ushp_symbols 7 ushp_sym_f -∗
           UserFd.ustd (ukn_fd N') ld -∗
@@ -524,7 +592,7 @@ Section UShRound.
      [FileDisc.uline_of (wl_body (last_ws I))] -- and sh's tag law ties it
      to the line the discipline admitted. *)
   Lemma sh_child_law_file : ⊢ UkShFork.ushf_child_law Wcf.
-  Proof using Hchild_cat Hchild_echo Hchild_redir Hexecfail Hopen_hand.
+  Proof using Hchild_cat Hchild_echo Hchild_redir Hopen_hand.
   Admitted.
 
   (* ...and a KILLED child pays the payload with the taint (the taint
@@ -543,7 +611,7 @@ Section UShRound.
     iAssert T as "#HT"; [ iApply Hktaint; iExact "Hk" | ].
     rewrite /Wcf. iSplitR.
     - iApply (Hcltaint I 0%nat v with "Hpin HT").
-    - rewrite /sh_hold. iRight. iExact "HT".
+    - rewrite /sh_hold_at. iRight. iExact "HT".
   Qed.
 
   (* =================================================================== *)
@@ -561,8 +629,8 @@ Section UShRound.
       UkSh.ush_rest_l (PS := uprogSG_free) N γp T Wcf Wbf
         (UShLine.ush_mid_at (lk_rres FI) (fgn_echo g) γp)
         (UInitSh.sh_Rsh (ukn_t N) (ukn_d N) (ukn_s N)).
-  Proof using Hchild_cat Hchild_echo Hchild_redir Hcons Hexecfail
-              Hkill Hopen_hand Hpanic Htag.
+  Proof using Hchild_cat Hchild_echo Hchild_redir Hcons
+              Hkill Hopen_hand Htag.
   Admitted.
 
 End UShRound.

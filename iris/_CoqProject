@@ -1618,11 +1618,16 @@ UInitTreeBoot.v
 UInitTreeExec.v
 # TreeAssumptions.v
 
+UShLineHold.v
+FileLinksAt.v
+FileLinksAtBan.v
+FileLinksAtLine.v
+AppFileCons.v
 UFileBootAdequacy.v
 # FileAssumptions.v
 
-# lane SKELETON: the verified PROGRAM TIER's statements (proofs Admitted).
-# Nothing imports these, so neither audit cone reaches them.
+UInitFileCons.v
+
 UEchoFile.v
 UShRound.v
 UInitFile.v

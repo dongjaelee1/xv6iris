@@ -67,7 +67,7 @@ arm is the theorem's one named premise (`pipe_both_law`).
   UEchoFile:459/502, UInitBoot:1020, UInitTreeExec:373, UEchoOut:855,
   USyncKernel:186, UInitKernel:285/405); whole tree green; audits
   unmoved.
-- [ ] **PIPE-MODEL** (pure, design §1).  `iris/PipeDisc.v` at §1's
+- [x] **PIPE-MODEL** (pure, design §1).  `iris/PipeDisc.v` at §1's
   definitions VERBATIM (a lane that finds a definition wrong REPORTS it,
   it does not fix it): `pline`, `line_bytes`, `pline_ok`, `parse_pline`
   and its inverse laws, `disc_input_p` (prefix-closed, decidable, the snoc
@@ -258,3 +258,124 @@ the wrappers serve them unchanged.
 For ECHO-PIPE / CAT-PIPE: the two `_std` leaves are ready and their
 statements are above; the slot is a parameter, so echo takes `fd := 1` and
 cat `fd := 0`, and the OTHER mode flag is free at both.
+
+### PIPE-MODEL (2026-09-18)
+
+**Landed**: `iris/PipeDisc.v` (2731 lines, new file, row added to
+`iris/_CoqProject` after `FileDiscDec.v`), nine sections, every proof with
+a `Proof using`, no `Admitted`, whole `iris` tree green, audits unmoved
+(nothing imports it).  Branch `app-pipe/pipe-model`, five commits
+(`490e2f819`, `75e2d32a4`, `d1c860158`, `edc45260e`, `e90d30b4f`).
+`Print Assumptions` = **Closed under the global context** for
+`palt_of_code`, `merge_prefix`, `pcont_shape`, `sessp_prefix_det`,
+`disc_p_disc`, `demo_p_ran`, `demo_p_both_LR`, `demo_p_bad` (recorded in
+the file's §9).
+
+Shape: `FileDisc.v` file-section for file-section, with **no threaded
+state** (a pipe dies with its era), so the session laws are
+`EchoDisc.sess`'s at the letter.  `FileDisc` is NOT imported.
+
+**WHAT THE DESIGN GOT WRONG.**
+
+1. **`palt_ok` admits no prologue-re-entering alternative at an `LPipe`
+   line** — landed as designed, and the gap is stated as
+   `palt_ok_pipe_no_panic : palt_ok (LPipe ws) a -> palt_panic a = false`.
+   §1's table says `PEcho` is "LEcho lines only"; §1's prose two paragraphs
+   later says the echo application's `alt_panic` arm (sh's **main-loop**
+   `fork1` failing, which kills the shell and re-enters init's prologue)
+   "is unchanged and `LPipe` lines reach it exactly as `LEcho` lines do (it
+   is decided before the line is parsed)".  Both cannot hold.  The machine
+   CAN panic in the main loop on a round whose typed line is a pipeline
+   line, and then the wire shows `fork\n` followed by a FRESH PROLOGUE —
+   which no `LPipe` alternative prints (`PFork` prints `fork\n$ `, and the
+   two part at byte 5 whenever the re-entered prologue carries the banner).
+   **The theorem at the model as written would be FALSE, not vacuous.**
+   One-line repair, for the owner: `palt_ok (LPipe _) (PEcho 3) := True`
+   (`pcont (LPipe ws) (PEcho 3) = alt_panic` already, and `palt_panic`
+   already fires, so `alt_cont_p` appends the prologue with no other
+   change; `palt_ok_pipe_no_panic` then goes away and `pcont_shape_nl`
+   below has to grow the `LPipe` arm, which it can — see 3).
+
+2. **`PBoth`'s code is not computable**, so the design's "one alternative
+   per interleaving, encoded WITH `sel`" cannot be *decided* anywhere.
+   `palt_code (PBoth sel) = 11 + 3 * encode_nat sel` reads `encode_nat` as
+   a **unary `nat`**, and `palt_ok` forces
+   `length sel = |dg_execL| + |dg_execR| = 33`; measured growth is ~4x per
+   entry (`encode_nat (replicate 4 true) = 425`,
+   `encode_nat (replicate 8 true) = 109225`), so the code is ~`4^33`.
+   The model stays sound — nothing in the theorem computes a code and
+   `palt_of_code` is a rewrite — and the two `PBoth` demos are proved by
+   rewriting with it (`demo_p_both`, one lemma for every interleaving).
+   But `alts_ok_p`'s `Decision` instance, and any `vm_compute` witness, is
+   unusable at a `PBoth` round.  **Lane PIPE-STAGE / PIPE-2W: take
+   `cs : list palt`, or index the interleaving by a binary code, if
+   anything downstream has to decide a resolution.**
+
+3. **`pcont_shape` is weaker than `FileDisc.cont_shape`, necessarily.**
+   The brief asked "here EVERY continuation may satisfy the shape; if so
+   say so".  Answer: for the `'$'`-free-run-then-prompt shape, YES — every
+   continuation but `PEcho 3` satisfies it, `PPipe` and `PFork` included,
+   and `PEcho 3` is the one the prologue follows.  But `FileDisc`'s
+   STRONGER shape (the run's only newline, if any, is its LAST byte) is
+   **FALSE at `PBoth sel`**: a merge of the two diagnostics carries TWO
+   newlines (`pcont_both_no_nl_shape` refutes it at
+   `sel = 17 trues ++ 16 falses`).  Landed as two lemmas: `pcont_shape`
+   (nodollar only, every line) and `pcont_shape_nl` (the full shape, echo
+   lines only).  That is enough, because a panic alternative forces an echo
+   line (`palt_panic_LEcho`) and the only cases of `pcont_pair_det` that
+   spend the newline disjunct put a panic on one side.  If repair 1 is
+   applied, the `LPipe` arm of `pcont_shape_nl` is `alt_panic`'s own shape
+   and goes through unchanged.
+
+4. **`merge` must STOP at an exhausted side, not skip.**  With the skipping
+   reading ("a `true` at an empty `d1` consumes the selector and produces
+   nothing") `merge_take` is false — at `sel = [true; false]`, `d1 = []`,
+   `d2 = [x]` it gives `merge sel d1 d2 = [x]` while
+   `merge (take 1 sel) d1 d2 = []` — and §4.3's `merge_prefix` would need
+   side conditions.  Landed stopping, which makes `merge_take` and
+   `merge_prefix` **unconditional**; at every `sel` the model admits the
+   two definitions agree.
+
+5. **`parse_pline` inverts `line_body`, not `line_bytes`.**  The brief's
+   `parse_pline (line_body (line_bytes l)) = Some l` is not well-typed, and
+   `parse_pline (line_bytes l) = Some l` is false at every `l` (the cut has
+   already stripped the newline).  Landed as `parse_pline_body`
+   (`pline_ok l -> parse_pline (line_body l) = Some l`), `line_body_parse`
+   and `line_bytes_parse` (`parse_pline b = Some l -> line_bytes l = b ++
+   [wl_nl]`) — `FileDisc`'s first departure, verbatim.
+
+6. **`pipe_phi` takes the history alone** (`disc_p h -> Forall good_out_p
+   (cycles_of h)`), as `FileDisc.file_phi` does; `AppEcho.echo_phi`'s
+   `gstate` argument belongs to the record, so lane PIPE-STAGE adds it.
+
+**WHAT WAS NOT REFUTED, and is worth knowing.**  `PRan`'s continuation is
+`EchoDisc.line_alts_of ws !!! 0` on the nose (`pcont_PRan_alt0`,
+`pd_ran_echo`), and `alt_execL = EchoDisc.alt_execfail` definitionally
+(`alt_execL_echo`) — so the claim really is cheap.  At an echo-only input
+this model IS the echo model: `sessp_sess`, `pro_ok_p_ok`, `disc_p_disc`
+(`disc_p h <-> disc h`).  And the extension is strict, not a renaming:
+`demo_p_partial`/`demo_p_full` are pipe-disciplined while
+`EchoDisc.disc_input` refutes both (`demo_p_partial_not_echo`,
+`demo_p_full_not_echo`).
+
+**Names that moved** (nothing else): `line_body` added beside
+`line_bytes` (the parser's fixpoint, `FileDisc` precedent);
+`dg_execL`/`dg_execR` for the two diagnostics' BYTES and `dg_exec_cat`,
+`dg_pipe` for their word lists; `alt_execL`/`alt_execR`/`alt_pipe`/
+`alt_forkc` for the four constant continuations (`alt_forkc` is
+`EchoDisc.alt_panic ++ u_prompt`, i.e. the RUNCMD CHILD's panic, which is
+NOT `alt_panic`); `pd_*` for the `FileDisc`-section-0 helpers re-proved
+under their own names.  `merge`, `count_true`, `merge_prefix`,
+`merge_no_dollar`, `palt_code`, `palt_of`, `palt_ok`, `pcont`, `sessp`,
+`alt_cont_p`/`alt_blk_p`/`alt_seq_p`, `expected_rel_p`, `good_out_p`,
+`disc_p`, `pipe_phi`, `sessp_prefix_det`, `demo_p_bad` are the designer's
+names verbatim.  (`merge` shadows stdpp's map `merge`; harmless here, but
+PIPE-2W may prefer `pmerge`.)
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  Lane PIPE-STAGE: the
+resolution list `cs : list nat` cannot carry a `PBoth` alternative in any
+computable form (finding 2).  Decide that before instantiating the stage's
+`cs_auth`/`cs_lb` — the choice propagates into `EchoOut`'s ghosts and into
+PIPE-2W's merge lease.  And the owner owes a ruling on finding 1 before
+`AppPipe`'s theorem is stated, because it is the difference between a true
+theorem and a false one.

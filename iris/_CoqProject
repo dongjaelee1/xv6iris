@@ -1662,3 +1662,4 @@ UEchoFile.v
 UShRedirPay.v
 UShRound.v
 UInitFile.v
+UEchoPipe.v

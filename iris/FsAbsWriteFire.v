@@ -1045,6 +1045,91 @@ Section WriteFire.
     iModIntro. iFrame "Hf Hg HR Hrest".
   Qed.
 
+  (* THE FIRE AT AN ANCHORED NODE (lane OFF-LINK-5).  [wrf_awrite_fire_gen]
+     with ONE argument added and applied at the same instant: the kernel
+     knows the offset it is firing at -- [off] is this lemma's own parameter
+     -- so the arrow [FsAbsWriteFire.awrite_full_anch] carries is discharged
+     HERE and nowhere else, from [UserOff.uoff_agree_k] against the box's
+     half when the object is coupled and from the box's own [app_taint] when
+     it is not.  It cannot be a wrapper over the plain fire: the node's own
+     [off] is bound by its [∀], so nothing can convert an anchored node into
+     a plain one -- which is exactly why the arm is stated at this node and
+     the equation is RELAYED rather than derived. *)
+  Lemma wrf_awrite_fire_anch (γfs : fs_names) (E : coPset) (i : Z) (γo : gname)
+      (M : gmap Z (bv 8)) (ua : mword 64) (cnt : Z) (k : nat) (REST ROff : iProp Σ)
+      (off0 : nat)
+      (off : nat) (bs bs0 : list (bv 8)) (nl : nat) (n n' : fs_node) :
+    ↑ftopN ∪ ↑appN ⊆ E ->
+    inode_local i n' ->
+    (0 < length bs)%nat ->
+    (off <= length bs0)%nat ->
+    (off + length bs <= MAXFILE * BSIZE)%nat ->
+    fn_type n <> 0 ->
+    abs_row n = MkAnode (AFile bs0) nl ->
+    fn_type n' <> 0 ->
+    abs_row n' = MkAnode (AFile (blk_splice off bs bs0)) nl ->
+    ubytes_at M (add_vec_int ua (FW_MAX * Z.of_nat k)) bs ->
+    Z.of_nat (length bs) = wchunk_at cnt k ->
+    ftop_inv γfs -∗ app_inv γfs -∗ off_supply γo E off (length bs) ROff -∗
+    (⌜off = off0⌝ ∨ app_taint) -∗
+    awrite_full_anch (fs_gamma_L γfs) appE i γo M ua cnt k off0 REST -∗
+    top_frag (fs_gamma_L γfs) i n -∗
+    off_link γo (Z.of_nat off) ={E}=∗
+      top_frag (fs_gamma_L γfs) i n'
+      ∗ off_link γo (Z.of_nat (off + length bs))
+      ∗ ROff ∗ REST.
+  Proof using .
+    intros HE Hloc Hpos Hoff Hcap Hnz Habs Hnz' Habs' Hby Hlen.
+    iIntros "#Hi #Hai Hsup Hanch Hcm Hf Hg".
+    (* the re-spelling is needed because the unifier cannot solve
+       [γtop ?Γ =?= fs_top γfs]. *)
+    rewrite /top_frag /fs_gamma_L /=.
+    iMod (inv_acc E ftopN with "Hi") as "[Hbody Hclose]"; [solve_ndisj |].
+    iDestruct "Hbody" as ">Hb".
+    iDestruct "Hb" as (I A) "(Hta & Hla & Hpark & %Hcl)".
+    iDestruct (ghost_map_lookup with "Hta Hf") as %Hlk.
+    (* the row is stated on the COUNT (E2-V2): the fd's inode may have
+       been unlinked while open, and then the view has no row for it *)
+    assert (Hrow : arow_at (abs_view I) i (MkAnode (AFile bs0) nl)).
+    { rewrite -Habs. exact (abs_view_arow I i n Hlk Hnz). }
+    assert (Hpre : wri_pre (abs_view I) i off bs bs0 nl).
+    { rewrite /wri_pre. split_and!; [exact Hrow | exact Hpos | exact Hoff |
+                                     exact Hcap]. }
+    (* the delta collapses to the ONE-ROW counted insert: at a nonzero
+       count the written record's own row, at zero nothing moves *)
+    assert (Hdelta : abs_view (<[i := n']> I)
+                     = delta_write i off bs (abs_view I)).
+    { rewrite (abs_view_insert_row I i n' _ Hnz' Habs') /=.
+      case_decide as Hz.
+      - pose proof (arow_at_gone _ _ _ Hrow Hz) as Hnone.
+        rewrite (delta_write_absent _ _ _ _ Hnone). exact (delete_notin _ _ Hnone).
+      - by rewrite (delta_write_file (abs_view I) i off bs bs0 nl
+                      (arow_at_live _ _ _ Hrow Hz)). }
+    iMod (fupd_mask_subseteq appE) as "Hcl2"; [rewrite /appE; solve_ndisj |].
+    iMod ("Hcm" $! I off bs bs0 nl with "[//] [//] [//] Hanch Hta Hg")
+      as "(Hta & Hstep & Hph2)".
+    (* THE MOVE, at the whole authority: the application's half comes out
+       of [appN] beside its claim, which the caller's step re-establishes
+       under the later ([AppInv.app_top_update]) *)
+    iMod (app_top_update appE γfs I i n n' ltac:(rewrite /appE; done)
+            with "Hai [Hstep] Hta Hf") as "[Hta Hf]".
+    { iIntros (_) "Hp". iApply (app_step_at i I _ n' Hdelta with "Hstep Hp"). }
+    iMod ("Hph2" $! (<[i := n']> I) with "[//] Hta") as "(Hta & Hg & Hrest)".
+    iMod "Hcl2".
+    iMod ("Hclose" with "[Hta Hla Hpark]") as "_".
+    { iNext. rewrite /ftop_body. iExists (<[i := n']> I), A.
+      iFrame "Hta Hla Hpark". iPureIntro.
+      intros jj mm Hj Hun. destruct (decide (jj = i)) as [-> | Hne].
+      - rewrite lookup_insert in Hj. injection Hj as <-. exact Hloc.
+      - rewrite lookup_insert_ne in Hj; [| exact (not_eq_sym Hne)].
+        exact (Hcl jj mm Hj Hun). }
+    (* THE ADVANCE: the user side answers at its own supplier, and both
+       halves move together inside it. *)
+    iMod ("Hsup" with "Hg") as "[Hg HR]".
+    iModIntro. iFrame "Hf Hg HR Hrest".
+  Qed.
+
+
   (* SUPPLIER 1 -- THE PARKED PATH, verbatim the statement this lemma had
      before RD-1 ([ProofFilewrite]'s call site is here and nowhere else):
      the advance comes off the descriptor row's own existential invariant
@@ -1177,6 +1262,79 @@ Section WriteFire.
     iMod (fupd_mask_subseteq appE) as "Hcl2"; [rewrite /appE; solve_ndisj |].
     iMod ("Hcm" $! I off r bs bs0 nl
             with "[//] [//] [//] [//] [//] [//] [//] Hta Hg")
+      as "(Hta & Hstep & Hph2)".
+    iMod (app_top_update appE γfs I i n n' ltac:(rewrite /appE; done)
+            with "Hai [Hstep] Hta Hf") as "[Hta Hf]".
+    { iIntros (_) "Hp". iApply (app_step_at i I _ n' Hdelta with "Hstep Hp"). }
+    iMod ("Hph2" $! (<[i := n']> I) with "[//] Hta") as "(Hta & Hg & Hrest)".
+    iMod "Hcl2".
+    iMod ("Hclose" with "[Hta Hla Hpark]") as "_".
+    { iNext. rewrite /ftop_body. iExists (<[i := n']> I), A.
+      iFrame "Hta Hla Hpark". iPureIntro.
+      intros jj mm Hj Hun. destruct (decide (jj = i)) as [-> | Hne].
+      - rewrite lookup_insert in Hj. injection Hj as <-. exact Hloc.
+      - rewrite lookup_insert_ne in Hj; [| exact (not_eq_sym Hne)].
+        exact (Hcl jj mm Hj Hun). }
+    (* THE ADVANCE, at the COUNT writei returned: the user side answers at
+       its own supplier. *)
+    iMod ("Hsup" with "Hg") as "[Hg HR]".
+    iModIntro. iFrame "Hf Hg HR Hrest".
+  Qed.
+
+  (* ...AND THE PARTIAL ARM'S ANCHORED TWIN (lane OFF-LINK-5), at the same
+     one argument: the arrow is about the offset the fire runs at, and this
+     lemma has it as a parameter. *)
+  Lemma wrf_apart_fire_anch (γfs : fs_names) (E : coPset) (i : Z) (γo : gname)
+      (M : gmap Z (bv 8)) (ua : mword 64) (P : uptd) (cnt : Z) (k : nat)
+      (REST ROff : iProp Σ) (off0 : nat) (off r : nat) (bs bs0 : list (bv 8)) (nl : nat)
+      (n n' : fs_node) :
+    ↑ftopN ∪ ↑appN ⊆ E ->
+    inode_local i n' ->
+    (0 < length bs)%nat ->
+    (off <= length bs0)%nat ->
+    (off + length bs <= MAXFILE * BSIZE)%nat ->
+    (r <= length bs)%nat ->
+    (length bs <= r + BSIZE)%nat ->
+    fn_type n <> 0 ->
+    abs_row n = MkAnode (AFile bs0) nl ->
+    fn_type n' <> 0 ->
+    abs_row n' = MkAnode (AFile (blk_splice off bs bs0)) nl ->
+    ubytes_at M (add_vec_int ua (FW_MAX * Z.of_nat k)) (take r bs) ->
+    Z.of_nat r < wchunk_at cnt k ->
+    ((r < length bs)%nat -> wr_fail_why P ua (Z.to_nat cnt)) ->
+    (wi_blocks off (Z.to_nat (wchunk_at cnt k)) = 1%nat -> r = 0%nat) ->
+    ftop_inv γfs -∗ app_inv γfs -∗ off_supply γo E off r ROff -∗
+    (⌜off = off0⌝ ∨ app_taint) -∗
+    awrite_part_anch (fs_gamma_L γfs) appE i γo M ua P cnt k off0 REST -∗
+    top_frag (fs_gamma_L γfs) i n -∗
+    off_link γo (Z.of_nat off) ={E}=∗
+      top_frag (fs_gamma_L γfs) i n'
+      ∗ off_link γo (Z.of_nat (off + r))
+      ∗ ROff ∗ REST.
+  Proof using .
+    intros HE Hloc Hpos Hoff Hcap Hr Hgap Hnz Habs Hnz' Habs' Hby Hshort Hwhy Hsb1.
+    iIntros "#Hi #Hai Hsup Hanch Hcm Hf Hg".
+    rewrite /top_frag /fs_gamma_L /=.
+    iMod (inv_acc E ftopN with "Hi") as "[Hbody Hclose]"; [solve_ndisj |].
+    iDestruct "Hbody" as ">Hb".
+    iDestruct "Hb" as (I A) "(Hta & Hla & Hpark & %Hcl)".
+    iDestruct (ghost_map_lookup with "Hta Hf") as %Hlk.
+    assert (Hrow : arow_at (abs_view I) i (MkAnode (AFile bs0) nl)).
+    { rewrite -Habs. exact (abs_view_arow I i n Hlk Hnz). }
+    assert (Hpre : wri_pre (abs_view I) i off bs bs0 nl).
+    { rewrite /wri_pre. split_and!; [exact Hrow | exact Hpos | exact Hoff |
+                                     exact Hcap]. }
+    assert (Hdelta : abs_view (<[i := n']> I)
+                     = delta_write i off bs (abs_view I)).
+    { rewrite (abs_view_insert_row I i n' _ Hnz' Habs') /=.
+      case_decide as Hz.
+      - pose proof (arow_at_gone _ _ _ Hrow Hz) as Hnone.
+        rewrite (delta_write_absent _ _ _ _ Hnone). exact (delete_notin _ _ Hnone).
+      - by rewrite (delta_write_file (abs_view I) i off bs bs0 nl
+                      (arow_at_live _ _ _ Hrow Hz)). }
+    iMod (fupd_mask_subseteq appE) as "Hcl2"; [rewrite /appE; solve_ndisj |].
+    iMod ("Hcm" $! I off r bs bs0 nl
+            with "[//] [//] [//] [//] [//] [//] [//] Hanch Hta Hg")
       as "(Hta & Hstep & Hph2)".
     iMod (app_top_update appE γfs I i n n' ltac:(rewrite /appE; done)
             with "Hai [Hstep] Hta Hf") as "[Hta Hf]".

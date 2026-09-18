@@ -2277,3 +2277,436 @@ Proof using.
   apply alt_seq_p_bs_ext. intros j Hj. symmetry.
   exact (pd_lta_take_eq (bodies_of I) (bodies_of I') (nlines I') j Htk Hj).
 Qed.
+
+(* ====================================================================== *)
+(*  8.  ANTI-VACUITY: SIX MACHINE TRANSCRIPTS, FIVE GOOD AND ONE BAD       *)
+(*                                                                        *)
+(*  The five good ones say the model admits what the machine does; the     *)
+(*  bad one says it does not admit what the machine cannot do -- an        *)
+(*  [echo hello | cat] round that prints [goodbye].                        *)
+(*                                                                        *)
+(*  THE [PBoth] DEMOS CANNOT GO THROUGH [vm_compute], and that is a        *)
+(*  finding about the DESIGN and not about the demos: design section 1's   *)
+(*  "[PBoth]'s [sel] is PART OF THE ENCODING" makes [palt_code] read       *)
+(*  [encode_nat sel] as a UNARY [nat], and [sel] has                       *)
+(*  [length dg_execL + length dg_execR = 33] entries, so the code is       *)
+(*  about [4^33] -- not representable, let alone computable.  (Measured:   *)
+(*  [encode_nat (replicate 4 true) = 425],                                 *)
+(*  [encode_nat (replicate 8 true) = 109225].)  The model is still sound   *)
+(*  -- nothing in the theorem computes a code, and [palt_of_code] is a     *)
+(*  rewrite -- so the two [PBoth] demos below are proved by REWRITING with *)
+(*  [palt_of_code] instead, which is exactly what the stage will have to   *)
+(*  do.  Lane PIPE-STAGE / PIPE-2W should take [cs : list palt], or a      *)
+(*  binary code, if anything downstream needs to DECIDE a resolution.      *)
+(* ====================================================================== *)
+
+(* ---- the two schedule builders, and what they put on the wire -------- *)
+
+Lemma pd_out_app (l1 l2 : list (bv 8)) :
+  demo_out (l1 ++ l2) = demo_out l1 ++ demo_out l2.
+Proof using. rewrite /demo_out fmap_app. reflexivity. Qed.
+
+Lemma pd_typed_app (l1 l2 : list (bv 8)) :
+  demo_typed (l1 ++ l2) = demo_typed l1 ++ demo_typed l2.
+Proof using. rewrite /demo_typed fmap_app join_app. reflexivity. Qed.
+
+Lemma pd_ins_out (l : list (bv 8)) : ins (demo_out l) = [].
+Proof using.
+  induction l as [| b l IH] using rev_ind; [reflexivity |].
+  by rewrite pd_out_app ins_app IH.
+Qed.
+
+Lemma pd_wire_out (l : list (bv 8)) : obs_wire Uart0 (demo_out l) = l.
+Proof using.
+  induction l as [| b l IH] using rev_ind; [reflexivity |].
+  rewrite pd_out_app obs_wire_app IH. f_equal; by vm_compute.
+Qed.
+
+Lemma pd_ins_typed (l : list (bv 8)) : ins (demo_typed l) = l.
+Proof using.
+  induction l as [| b l IH] using rev_ind; [reflexivity |].
+  rewrite pd_typed_app ins_app IH. f_equal; by vm_compute.
+Qed.
+
+Lemma pd_wire_typed (l : list (bv 8)) : obs_wire Uart0 (demo_typed l) = l.
+Proof using.
+  induction l as [| b l IH] using rev_ind; [reflexivity |].
+  rewrite pd_typed_app obs_wire_app IH. f_equal; by vm_compute.
+Qed.
+
+(* ---- the ONE-ROUND transcript, with the code never computed ---------- *)
+
+Lemma pd_line_body_nonl (l : pline) :
+  pline_ok l -> wl_nl ∉ line_body l.
+Proof using.
+  intro Hl. pose proof (line_ok_wf _ (pline_ok_ws l Hl)) as Hwf.
+  destruct l as [ws | ws]; rewrite /line_body.
+  - exact (wl_body_nonl ws Hwf).
+  - apply wl_nonl_app; [exact (wl_body_nonl ws Hwf) |].
+    apply (bool_decide_unpack _). vm_compute. exact I.
+Qed.
+
+(* the cut of ONE typed line: one body, no remainder *)
+Lemma pd_bodies_of_line (l : pline) :
+  pline_ok l -> bodies_of (line_bytes l) = [line_body l].
+Proof using.
+  intro Hl. rewrite /line_bytes bodies_of_snoc_nl
+    /bodies_of /rest_of (wl_cut_nonl _ (pd_line_body_nonl l Hl)).
+  reflexivity.
+Qed.
+
+Lemma pd_rest_of_line (l : pline) : rest_of (line_bytes l) = [].
+Proof using. rewrite /line_bytes. exact (rest_of_snoc_nl _). Qed.
+
+Lemma pd_nlines_line (l : pline) : pline_ok l -> nlines (line_bytes l) = 1%nat.
+Proof using. intro Hl. by rewrite /nlines (pd_bodies_of_line l Hl). Qed.
+
+(* THE ONE-ROUND TRANSCRIPT.  The alternative's CODE is never computed:
+   [palt_of_code] is a rewrite, which is what makes the [PBoth] demos
+   possible at all. *)
+Lemma sessp_one (ps : list nat) (l : pline) (a : palt) :
+  pline_ok l ->
+  sessp ps [palt_code a] (line_bytes l)
+  = pro_of ps ++ line_body l ++ wl_nl :: pcont_all ps l a.
+Proof using.
+  intro Hl.
+  rewrite /sessp (pd_bodies_of_line l Hl) (pd_nlines_line l Hl)
+          (pd_rest_of_line l) app_nil_r.
+  rewrite alt_seq_p_S alt_seq_p_0 app_nil_l /alt_blk_p.
+  rewrite (_ : [line_body l] !!! 0%nat = line_body l); [| reflexivity].
+  do 2 f_equal.
+  rewrite alt_cont_p_0 (_ : [line_body l] !!! 0%nat = line_body l);
+    [| reflexivity].
+  rewrite (pline_of_body l Hl) /palt_at
+    (_ : [palt_code a] !!! 0%nat = palt_code a); [| reflexivity].
+  by rewrite palt_of_code.
+Qed.
+
+(* the three-part schedule the demos are built from: what the user typed
+   is the middle part, and the wire is the three parts in order *)
+Lemma pd_seg3_ins (a b c : list (bv 8)) :
+  ins (demo_out a ++ demo_typed b ++ demo_out c) = b.
+Proof using.
+  rewrite (ins_app (demo_out a) (demo_typed b ++ demo_out c))
+          (ins_app (demo_typed b) (demo_out c))
+          (pd_ins_out a) (pd_ins_out c) (pd_ins_typed b).
+  by rewrite app_nil_l app_nil_r.
+Qed.
+
+Lemma pd_seg3_wire (a b c : list (bv 8)) :
+  obs_wire Uart0 (demo_out a ++ demo_typed b ++ demo_out c) = a ++ b ++ c.
+Proof using.
+  by rewrite (obs_wire_app Uart0 (demo_out a) (demo_typed b ++ demo_out c))
+             (obs_wire_app Uart0 (demo_typed b) (demo_out c))
+             (pd_wire_out a) (pd_wire_out c) (pd_wire_typed b).
+Qed.
+
+(* ---- THE PIPELINE LINE OF THE DEMOS ---------------------------------- *)
+
+Definition pd_ws : list (list (bv 8)) :=
+  [sb "echo"%string; sb "hello"%string; sb "world"%string].
+Definition pd_l : pline := LPipe pd_ws.
+Definition pd_b : list (bv 8) := line_body pd_l.
+Definition pd_ran : list (bv 8) := pcont pd_l PRan.
+
+Lemma pd_l_ok : pline_ok pd_l.
+Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+Lemma pd_b_val : pd_b = sb "echo hello world | cat"%string.
+Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+(* WHAT THE CLAIM SAYS THE CONSOLE SHOWS: the line, then the prompt -- and
+   it is the ECHO application's good alternative, byte for byte, because
+   cat copies. *)
+Lemma pd_ran_val : pd_ran = sb "hello world"%string ++ nlb ++ u_prompt.
+Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+Lemma pd_ran_echo : pd_ran = line_alts_of pd_ws !!! 0%nat.
+Proof using. reflexivity. Qed.
+
+Lemma pd_plines : plines_of (line_bytes pd_l) = [pd_l].
+Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+(* ---- (1) THE SUCCESS TRANSCRIPT -------------------------------------- *)
+
+Definition pd_seg_ran : list mobs :=
+  demo_out u_prologue
+  ++ demo_typed (line_bytes pd_l)
+  ++ demo_out pd_ran.
+
+Lemma demo_p_ran : good_out_p pd_seg_ran.
+Proof using.
+  exists [3%nat; 0%nat], [palt_code PRan].
+  apply (bool_decide_unpack _). vm_compute. exact I.
+Qed.
+
+(* ...and the user typed it under the rate discipline, byte by byte *)
+Lemma demo_p_ran_disc : disc_seg_p' pd_seg_ran.
+Proof using.
+  eapply (disc_seg_p'_intro pd_seg_ran [3%nat; 0%nat] [palt_code PRan]);
+    apply (bool_decide_unpack _); vm_compute; exact I.
+Qed.
+
+(* ---- (2) THE LEFT EXEC FAILED ---------------------------------------- *)
+
+Definition pd_seg_execL : list mobs :=
+  demo_out u_prologue
+  ++ demo_typed (line_bytes pd_l)
+  ++ demo_out alt_execL.
+
+Lemma demo_p_execL : good_out_p pd_seg_execL.
+Proof using.
+  exists [3%nat; 0%nat], [palt_code PExecL].
+  apply (bool_decide_unpack _). vm_compute. exact I.
+Qed.
+
+(* ---- (3) AN ECHO ROUND, THEN A PIPELINE ROUND ------------------------ *)
+
+Definition pd_seg_mix : list mobs :=
+  demo_out u_prologue
+  ++ demo_typed (wl_line demo_ws1)
+  ++ demo_out (line_alts_of demo_ws1 !!! 0%nat)
+  ++ demo_typed (line_bytes pd_l)
+  ++ demo_out pd_ran.
+
+Lemma demo_p_mix : good_out_p pd_seg_mix.
+Proof using.
+  exists [3%nat; 0%nat], [palt_code (PEcho 0%nat); palt_code PRan].
+  apply (bool_decide_unpack _). vm_compute. exact I.
+Qed.
+
+Lemma demo_p_mix_disc : disc_seg_p' pd_seg_mix.
+Proof using.
+  eapply (disc_seg_p'_intro pd_seg_mix [3%nat; 0%nat]
+            [palt_code (PEcho 0%nat); palt_code PRan]);
+    apply (bool_decide_unpack _); vm_compute; exact I.
+Qed.
+
+(* ---- (4) AND (5) BOTH EXECS FAILED, AT TWO INTERLEAVINGS ------------- *)
+
+(* the other extreme interleaving: the right child's diagnostic first *)
+Definition sel_RL : list bool :=
+  replicate (length dg_execR) false ++ replicate (length dg_execL) true.
+
+Lemma sel_RL_ok ws : palt_ok (LPipe ws) (PBoth sel_RL).
+Proof using.
+  rewrite /palt_ok /sel_RL. split.
+  - rewrite length_app !length_replicate. lia.
+  - rewrite count_true_app count_true_replicate_false
+            count_true_replicate_true. lia.
+Qed.
+
+Lemma merge_sel_RL : merge sel_RL dg_execL dg_execR = dg_execR ++ dg_execL.
+Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+Definition pd_seg_both (c : list (bv 8)) : list mobs :=
+  demo_out u_prologue
+  ++ demo_typed (line_bytes pd_l)
+  ++ demo_out (c ++ u_prompt).
+
+(* ONE LEMMA FOR EVERY INTERLEAVING, with the code never computed *)
+Lemma demo_p_both (sel : list bool) (c : list (bv 8)) :
+  palt_ok pd_l (PBoth sel) -> merge sel dg_execL dg_execR = c ->
+  good_out_p (pd_seg_both c).
+Proof using.
+  intros Hok Hm.
+  pose proof (pd_seg3_ins u_prologue (line_bytes pd_l) (c ++ u_prompt))
+    as Hins.
+  pose proof (pd_seg3_wire u_prologue (line_bytes pd_l) (c ++ u_prompt))
+    as Hw.
+  rewrite -/(pd_seg_both c) in Hins, Hw.
+  exists [3%nat; 0%nat], [palt_code (PBoth sel)].
+  rewrite Hins Hw. split.
+  { split.
+    - apply (bool_decide_unpack _). vm_compute. exact I.
+    - rewrite (pd_nlines_line pd_l pd_l_ok) pro_idx_p_S /palt_at
+        (_ : [palt_code (PBoth sel)] !!! 0%nat = palt_code (PBoth sel));
+        [| reflexivity].
+      rewrite palt_of_code. cbn [pro_idx_p palt_panic]. vm_compute. lia. }
+  split.
+  { rewrite /alts_ok_p pd_plines. constructor; [| constructor].
+    by rewrite palt_of_code. }
+  rewrite (sessp_one [3%nat; 0%nat] pd_l (PBoth sel) pd_l_ok).
+  rewrite (pcont_all_out _ pd_l (PBoth sel) ltac:(reflexivity)).
+  rewrite /pcont Hm pro_of_good /line_bytes -!app_assoc. reflexivity.
+Qed.
+
+Lemma demo_p_both_LR : good_out_p (pd_seg_both (dg_execL ++ dg_execR)).
+Proof using.
+  apply (demo_p_both sel_LR); [apply sel_LR_ok | exact merge_sel_LR].
+Qed.
+
+Lemma demo_p_both_RL : good_out_p (pd_seg_both (dg_execR ++ dg_execL)).
+Proof using.
+  apply (demo_p_both sel_RL); [apply sel_RL_ok | exact merge_sel_RL].
+Qed.
+
+(* the two wires really are different, so the model's [PBoth] arm is not
+   a single alternative in disguise *)
+Lemma demo_p_both_distinct : dg_execL ++ dg_execR <> dg_execR ++ dg_execL.
+Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+(* ---- (6) THE NEGATIVE WITNESS ---------------------------------------- *)
+
+(* the head byte of a concatenation is the head byte of its first part *)
+Lemma pd_head_app (C Z : list (bv 8)) (b c : bv 8) :
+  C !! 0%nat = Some c -> (C ++ Z) !! 0%nat = Some b -> b = c.
+Proof using.
+  intros Hc Hb. rewrite (lookup_app_l C Z 0%nat) in Hb.
+  - rewrite Hc in Hb. by injection Hb.
+  - apply lookup_lt_Some in Hc. lia.
+Qed.
+
+Definition pd_ws2 : list (list (bv 8)) :=
+  [sb "echo"%string; sb "hello"%string].
+Definition pd_l2 : pline := LPipe pd_ws2.
+Definition pd_b2 : list (bv 8) := line_body pd_l2.
+
+Lemma pd_l2_ok : pline_ok pd_l2.
+Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+Lemma pd_b2_val : pd_b2 = sb "echo hello | cat"%string.
+Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+Lemma pd_line_bytes2 : line_bytes pd_l2 = pd_b2 ++ [wl_nl].
+Proof using. reflexivity. Qed.
+
+(* WHAT AN [echo hello | cat] ROUND CAN PUT ON THE WIRE FIRST: 'h', 'e',
+   'p', 'f' or '$'.  NEVER 'g'. *)
+Lemma pd_bad_head (a : palt) (Z : list (bv 8)) (b : bv 8) :
+  palt_ok pd_l2 a ->
+  (pcont pd_l2 a ++ Z) !! 0%nat = Some b -> bv_unsigned b <> 103%Z.
+Proof using.
+  intros Ha Hb.
+  assert (HeL : dg_execL !! 0%nat = Some (Z_to_bv 8 101%Z))
+    by (apply (bool_decide_unpack _); vm_compute; exact I).
+  assert (HeR : dg_execR !! 0%nat = Some (Z_to_bv 8 101%Z))
+    by (apply (bool_decide_unpack _); vm_compute; exact I).
+  assert (Hran : (wl_line (drop 1 (pline_ws pd_l2)) ++ u_prompt) !! 0%nat
+                 = Some (Z_to_bv 8 104%Z))
+    by (apply (bool_decide_unpack _); vm_compute; exact I).
+  assert (HxL : alt_execL !! 0%nat = Some (Z_to_bv 8 101%Z))
+    by (apply (bool_decide_unpack _); vm_compute; exact I).
+  assert (HxR : alt_execR !! 0%nat = Some (Z_to_bv 8 101%Z))
+    by (apply (bool_decide_unpack _); vm_compute; exact I).
+  assert (Hpi : alt_pipe !! 0%nat = Some (Z_to_bv 8 112%Z))
+    by (apply (bool_decide_unpack _); vm_compute; exact I).
+  assert (Hfk : alt_forkc !! 0%nat = Some (Z_to_bv 8 102%Z))
+    by (apply (bool_decide_unpack _); vm_compute; exact I).
+  destruct a as [k | | | | sel | | |]; rewrite /pcont in Hb.
+  - by destruct Ha.
+  - rewrite (pd_head_app _ _ _ _ Hran Hb). by vm_compute.
+  - rewrite (pd_head_app _ _ _ _ HxL Hb). by vm_compute.
+  - rewrite (pd_head_app _ _ _ _ HxR Hb). by vm_compute.
+  - (* both execs failed: the interleaving's first byte is one of the two
+       diagnostics' first bytes, and they are both 'e' *)
+    destruct (merge sel dg_execL dg_execR) as [| x r] eqn:Hm.
+    + rewrite app_nil_l in Hb.
+      rewrite (pd_head_app _ _ _ _ u_prompt_head Hb). by vm_compute.
+    + assert (Hc : ((x :: r) ++ u_prompt) !! 0%nat = Some x)
+        by reflexivity.
+      rewrite (pd_head_app _ _ _ _ Hc Hb).
+      assert (Hmx : merge sel dg_execL dg_execR !! 0%nat = Some x)
+        by (rewrite Hm; reflexivity).
+      destruct (merge_head sel dg_execL dg_execR x Hmx) as [H | H].
+      * rewrite HeL in H. injection H as Hx. rewrite -Hx. by vm_compute.
+      * rewrite HeR in H. injection H as Hx. rewrite -Hx. by vm_compute.
+  - rewrite (pd_head_app _ _ _ _ Hpi Hb). by vm_compute.
+  - rewrite (pd_head_app _ _ _ _ Hfk Hb). by vm_compute.
+  - rewrite (pd_head_app _ _ _ _ u_prompt_head Hb). by vm_compute.
+Qed.
+
+(* the cancellation the refutation goes through *)
+Lemma pd_cancel (A B G C : list (bv 8)) :
+  (A ++ (B ++ [wl_nl]) ++ G) `prefix_of` (A ++ ((B ++ wl_nl :: C) ++ [])) ->
+  G `prefix_of` C.
+Proof using.
+  intro Hp. rewrite app_nil_r -!app_assoc in Hp.
+  apply wl_prefix_app_cancel in Hp.
+  apply wl_prefix_app_cancel in Hp.
+  exact (prefix_cons_inv_2 _ _ _ _ Hp).
+Qed.
+
+(* THE WIRE THAT IS NOT ADMITTED: [echo hello | cat] was typed, and the
+   console printed [goodbye].  Nothing the model admits prints a byte
+   nobody sent through the pipe, and the refutation is the determinacy
+   theorem plus one head byte. *)
+Definition pd_bad_out : list (bv 8) := sb "goodbye"%string ++ nlb ++ u_prompt.
+
+Definition pd_seg_bad : list mobs :=
+  demo_out u_prologue
+  ++ demo_typed (line_bytes pd_l2)
+  ++ demo_out pd_bad_out.
+
+Lemma demo_p_bad : ~ good_out_p pd_seg_bad.
+Proof using.
+  intros (ps & cs & Hok & Hcs & Hpre).
+  pose proof (pd_seg3_ins u_prologue (line_bytes pd_l2) pd_bad_out) as Hins.
+  pose proof (pd_seg3_wire u_prologue (line_bytes pd_l2) pd_bad_out) as Hw.
+  rewrite -/pd_seg_bad in Hins, Hw.
+  (* the honest transcript through the EMPTY input is already on the wire *)
+  assert (HT : sessp [3%nat; 0%nat] [] [] `prefix_of` sessp ps cs (ins pd_seg_bad)).
+  { etrans; [| exact Hpre]. rewrite Hw sessp_nil pro_of_good. by eexists. }
+  destruct (sessp_prefix_det ps [3%nat; 0%nat] cs [] [] (ins pd_seg_bad)
+              (proj1 Hok)
+              ltac:(split;
+                    [apply (bool_decide_unpack _); vm_compute; exact I
+                    | vm_compute; lia])
+              Hcs
+              ltac:(rewrite /alts_ok_p; constructor)
+              (pro_pin_p_of_ok ps cs (ins pd_seg_bad) Hok)
+              ltac:(rewrite Hins; apply (bool_decide_unpack _);
+                    vm_compute; exact I)
+              disc_input_p_nil HT)
+    as (_ & _ & Heq).
+  rewrite !sessp_nil pro_of_good in Heq.
+  (* so the adversary's prologue IS init's banner and sh's first prompt *)
+  rewrite Hw Hins in Hpre.
+  rewrite /sessp -Heq (pd_bodies_of_line pd_l2 pd_l2_ok)
+          (pd_nlines_line pd_l2 pd_l2_ok) (pd_rest_of_line pd_l2) in Hpre.
+  rewrite alt_seq_p_S alt_seq_p_0 app_nil_l /alt_blk_p
+          (_ : [pd_b2] !!! 0%nat = pd_b2) in Hpre; [| reflexivity].
+  rewrite pd_line_bytes2 in Hpre.
+  apply pd_cancel in Hpre.
+  (* the round's first byte would have to be 'g' *)
+  assert (Hg : pd_bad_out !! 0%nat = Some (Z_to_bv 8 103%Z))
+    by (apply (bool_decide_unpack _); vm_compute; exact I).
+  assert (HC : alt_cont_p ps cs [pd_b2] 0%nat !! 0%nat
+               = Some (Z_to_bv 8 103%Z))
+    by (eapply pd_prefix_lookup; [exact Hpre | exact Hg]).
+  (* ...but the round's alternative is one a pipeline line admits, and no
+     such alternative re-enters the prologue, so the block IS its output *)
+  assert (Ha0 : palt_ok pd_l2 (palt_at cs 0%nat)).
+  { pose proof (alts_ok_p_at (ins pd_seg_bad) cs 0%nat Hcs
+                  ltac:(rewrite Hins (pd_nlines_line pd_l2 pd_l2_ok); lia))
+      as H.
+    rewrite Hins (pd_bodies_of_line pd_l2 pd_l2_ok)
+            (_ : [pd_b2] !!! 0%nat = pd_b2) in H; [| reflexivity].
+    by rewrite (pline_of_body pd_l2 pd_l2_ok) in H. }
+  rewrite /alt_cont_p (_ : [pd_b2] !!! 0%nat = pd_b2) in HC; [| reflexivity].
+  rewrite (pline_of_body pd_l2 pd_l2_ok)
+          (palt_ok_pipe_no_panic pd_ws2 _ Ha0) in HC.
+  pose proof (pd_bad_head (palt_at cs 0%nat) [] _ Ha0 HC) as Hne.
+  apply Hne. by vm_compute.
+Qed.
+
+(* ====================================================================== *)
+(*  9.  THE ASSUMPTION CHECK                                              *)
+(*                                                                        *)
+(*  This file is Iris-free and axiom-free.  The tree's audit convention    *)
+(*  is a descoped [*Assumptions.v] beside the theorem it audits; a pure    *)
+(*  model has no theorem of its own to audit, so the check is recorded     *)
+(*  here and re-run by pasting these lines at the end of the file:         *)
+(*                                                                        *)
+(*    Print Assumptions palt_of_code.        Closed under the global ctx   *)
+(*    Print Assumptions merge_prefix.        Closed under the global ctx   *)
+(*    Print Assumptions pcont_shape.         Closed under the global ctx   *)
+(*    Print Assumptions sessp_prefix_det.    Closed under the global ctx   *)
+(*    Print Assumptions disc_p_disc.         Closed under the global ctx   *)
+(*    Print Assumptions demo_p_ran.          Closed under the global ctx   *)
+(*    Print Assumptions demo_p_both_LR.      Closed under the global ctx   *)
+(*    Print Assumptions demo_p_bad.          Closed under the global ctx   *)
+(*                                                                        *)
+(*  (Checked 2026-09-18 on the lane's mirror; all eight print exactly      *)
+(*  "Closed under the global context".)                                    *)
+(* ====================================================================== *)

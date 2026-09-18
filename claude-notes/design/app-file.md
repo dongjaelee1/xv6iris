@@ -571,6 +571,17 @@ unowned critical item (WRITE-RELAY-3's `TB` guard).  RULES, replacing
   parameter, the file's the stage's `ck_lineok`.  The diagnostic carrier
   came with the same guard, so `pdiag` is not on the program stream's
   critical path.
+- RULING CAT-DEED (2026-09-18, PROGRAM-STREAM stretch 5): cat's exit
+  payload returns the WHOLE deed on every arm — `catq_cat := (catq_filed
+  RCRan ∨ catq_filed RCNoOpen) ∗ fown r (Some (i, bs))` — because the lend
+  gives cat both fractions, cat's reads never move the deed's state, and
+  `cat_hold_at`'s fraction survives a tainted read.  sh's next hold takes
+  it whole with the tie by `cat_tie`'s step.  Also: `ush_open_call2` said
+  nothing about the bytes at the address it handed the open, nor the cwd —
+  it now carries the name as the image the ecall reads, the root cwd and
+  the lowest closed fd (fixed at 6104b5930); and `UkFileOpen` must take
+  `uprogSG` as a section parameter (its corollaries were at the ambient
+  `uprogSG_gen`, unusable by sh's child at `uprogSG_free`).
 - RULING READ-HELD (2026-09-18, KERNEL-STREAM §3a): the read's hand mode
   is the WRITE side's landed shape mirrored — `file_read_piece_adv` as
   `awrite_full_adv`'s twin (the half in the closure, agree/advance/return

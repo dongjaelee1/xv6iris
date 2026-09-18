@@ -320,13 +320,14 @@ Section UkShPipe.
       (l : list fdstate) (fd0 : nat) (st : fdstate) (avail : nat) :
     bv_signed (trunc32 (m !!! Regidx a0_idx)) = Z.of_nat fd0 ->
     st <> FdClosed ->
-    (* [UkRunSys.wp_uk_ecall_dup]'s own premise (lane OFF-HAND-4, S1): the
-       slot fdalloc chose is not one the record can be said to HOLD.  It is
-       a premise here rather than [UkRun.ukn_parked_eq]'s class fact,
-       because sh's record carries no such instance and the arm's children
-       run at records fork chose ([UkShRun.wp_kshr_fork1] relays
-       [ukn_held N' = ukn_held N]). *)
-    ukn_held N = ∅ ->
+    (* THE HELD-SET PREMISE IS GONE (lane PIPE-NEG1, porting SH-PIPE over
+       upstream's OFF-LINK-2 L6).  [UkRunSys.wp_uk_ecall_dup] used to take
+       "the slot fdalloc chose is not one the record can be said to HOLD"
+       ([ukn_held N = ∅]); L6 deleted the parked discipline, the record
+       field [UkRun.ukn_held] and that premise -- so this stub, and every
+       lemma below that relayed the set to a forked child, carries one
+       premise fewer.  The set was DEAD DATA at its end: this file used it
+       only to feed the dup leaf. *)
     shk_code (ukn_t N) -∗
     UserFd.ustd (ukn_fd N) l -∗
     UserFd.ufd_own (ukn_fd N) l fd0 st -∗
@@ -348,7 +349,7 @@ Section UkShPipe.
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof using Hpsok_free.
-    intros Harg Hne Hhd. iIntros "#Hcode Hstd Hown Hrun Hcont".
+    intros Harg Hne. iIntros "#Hcode Hstd Hown Hrun Hcont".
     rewrite shp_dup.
     (* ---- 0xcfe  c.li a7,10 ---- *)
     iApply (wp_uk_cli N h m (mword_of_int 0xcfe)
@@ -379,7 +380,7 @@ Section UkShPipe.
                                (mword_of_int 10 : mword 64));
                     vm_compute; reflexivity)
               ltac:(rewrite Ha0_1; exact Harg)
-              Hne Hhd
+              Hne
               ltac:(vm_compute; reflexivity)
               with "[] Hrun [] Hstd Hown").
     { iApply (uis_shk_d00 with "Hcode"). }
@@ -584,7 +585,7 @@ Section UkShPipe.
     bv_signed (trunc32
       ((<[Regidx ra_idx := (mword_of_int ret : mword 64)]> m)
          !!! Regidx a0_idx)) = Z.of_nat fd0 ->
-    st <> FdClosed -> ukn_held N = ∅ ->
+    st <> FdClosed ->
     forall (h0 : CpuId) (av : nat),
       shk_code (ukn_t N) -∗
       (UserFd.ustd (ukn_fd N) l ∗ UserFd.ufd_own (ukn_fd N) l fd0 st) -∗
@@ -609,8 +610,8 @@ Section UkShPipe.
          WP (Loop : expr riscv_lang)) -∗
       WP (Loop : expr riscv_lang).
   Proof using Hpsok_free.
-    intros Harg Hne Hhd h0 av. iIntros "#Hc [Hs Ho] Hrun Hcont".
-    iApply (wp_kshpi_dup N h0 _ l fd0 st av Harg Hne Hhd
+    intros Harg Hne h0 av. iIntros "#Hc [Hs Ho] Hrun Hcont".
+    iApply (wp_kshpi_dup N h0 _ l fd0 st av Harg Hne
               with "Hc Hs Ho Hrun Hcont").
   Qed.
 
@@ -734,7 +735,6 @@ Section UkShPipe.
       (R RcL RcR Rk : pipe_names -> iProp Σ) (Qc : Z -> iProp Σ) :
     (forall x y : Z, Qc x = Qc y) ->
     (⊢ ukn_pay N (-1)) ->
-    ukn_held N = ∅ ->
     m !!! Regidx a0_idx = (mword_of_int t : mword 64) ->
     (* the two standard streams the two children shut before their dup:
        sh's own, open and not a pipe *)
@@ -762,7 +762,6 @@ Section UkShPipe.
     (∀ (N' : uk_names Σ) (h' : CpuId) (m' : regfile) (γ' : gname)
        (γp : pipe_names) (q : Z),
        ⌜ ukn_pay N' = Qc ⌝ -∗
-       ⌜ ukn_held N' = ∅ ⌝ -∗
        ⌜ m' !!! Regidx a0_idx = (mword_of_int q : mword 64) ⌝ -∗
        my_pay γ' Qc -∗
        shk_code (ukn_t N') -∗
@@ -783,7 +782,6 @@ Section UkShPipe.
     (∀ (N' : uk_names Σ) (h' : CpuId) (m' : regfile) (γ' : gname)
        (γp : pipe_names) (q : Z),
        ⌜ ukn_pay N' = Qc ⌝ -∗
-       ⌜ ukn_held N' = ∅ ⌝ -∗
        ⌜ m' !!! Regidx a0_idx = (mword_of_int q : mword 64) ⌝ -∗
        my_pay γ' Qc -∗
        shk_code (ukn_t N') -∗
@@ -818,7 +816,7 @@ Section UkShPipe.
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof using Hpsok_free.
-    intros HQc Hpx Hhd Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1.
+    intros HQc Hpx Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1.
     iIntros "#Hdp #Hcode #Hjt #Htree Hsz Hstd Hcwd Hch #Hkw Hsplit Hpipe Hrun
              HcL HcR Hpar".
     iDestruct (ush_jtab_ro with "Hjt") as "#Hro".
@@ -1304,7 +1302,6 @@ Section UkShPipe.
           "%Hpeq %Hheq %HcsD %Ha0_D Hmy HRcR #Hck (#Hjt3 & #Ht3 & Hb0 & Hb1)
            Hsz Hstd Hcwd Hch HD Hrun".
         pose proof (ukn_const_of_eq N' Qc Hpeq HQc) as Hcst'.
-        assert (Hhd' : ukn_held N' = ∅) by (rewrite Hheq; exact Hhd).
         pose proof (UkShRun.ush_st_cs f2 mD sp0 t Hst_f2 HcsD) as Hst_mD.
         iDestruct (ushpi_hs_out (ukn_fd N') a b _ _ Hab with "HD")
           as "[Hha Hhb]".
@@ -1405,7 +1402,7 @@ Section UkShPipe.
                            (FdOpen true false (FdPipe γp)))))%I
                   (ushpi_dup_stub N' y1 0x190 (<[0%nat := FdClosed]> ld) a
                      (FdOpen true false (FdPipe γp)) Hy1a
-                     ltac:(discriminate) Hhd')
+                     ltac:(discriminate))
                   ltac:(rewrite shp_dup; apply bv_eq; vm_compute; reflexivity)
                   ltac:(apply bv_eq; vm_compute; reflexivity)
                   ltac:(rewrite shp_dup; vm_compute; reflexivity)
@@ -1560,9 +1557,9 @@ Section UkShPipe.
         { iApply (uis_shk_1a2 with "Hck"). }
         iIntros (hO) "Hrun".
         iApply ("HcR" $! N' hO _ γ' γp qr3
-                  with "[%] [%] [%] Hmy Hck Hjt3 Hqrc3 Hsz Hstd Hcwd Hch
+                  with "[%] [%] Hmy Hck Hjt3 Hqrc3 Hsz Hstd Hcwd Hch
                         HdR HdW HRcR Hrun");
-          [ exact Hpeq | exact Hhd' | ].
+          [ exact Hpeq | ].
         rewrite (upd_ne y4 (Regidx ra_idx) (Regidx a0_idx) _
                    ltac:(vm_compute; discriminate)).
         exact (upd_eq mL (Regidx a0_idx) (mword_of_int qr3 : mword 64)).
@@ -1571,7 +1568,6 @@ Section UkShPipe.
         "%Hpeq %Hheq %Hcs7 %Ha0_7 Hmy HRcL #Hck (#Hjt2 & #Ht2 & Hb0 & Hb1)
          Hsz Hstd Hcwd Hch HD Hrun".
       pose proof (ukn_const_of_eq N' Qc Hpeq HQc) as Hcst'.
-      assert (Hhd' : ukn_held N' = ∅) by (rewrite Hheq; exact Hhd).
       pose proof (UkShRun.ush_st_cs f1 m7 sp0 t Hst_f1 Hcs7) as Hst_m7.
       iDestruct (ushpi_hs_out (ukn_fd N') a b _ _ Hab with "HD")
         as "[Hha Hhb]".
@@ -1691,7 +1687,7 @@ Section UkShPipe.
                          (FdOpen false true (FdPipe γp)))))%I
                 (ushpi_dup_stub N' q2 0x15c (<[1%nat := FdClosed]> ld) b
                    (FdOpen false true (FdPipe γp)) Hq2b
-                   ltac:(discriminate) Hhd')
+                   ltac:(discriminate))
                 ltac:(rewrite shp_dup; apply bv_eq; vm_compute; reflexivity)
                 ltac:(apply bv_eq; vm_compute; reflexivity)
                 ltac:(rewrite shp_dup; vm_compute; reflexivity)
@@ -1846,9 +1842,9 @@ Section UkShPipe.
       { iApply (uis_shk_16e with "Hck"). }
       iIntros (hI) "Hrun".
       iApply ("HcL" $! N' hI _ γ' γp ql2
-                with "[%] [%] [%] Hmy Hck Hjt2 Hqlc2 Hsz Hstd Hcwd Hch
+                with "[%] [%] Hmy Hck Hjt2 Hqlc2 Hsz Hstd Hcwd Hch
                       HdR HdW HRcL Hrun");
-        [ exact Hpeq | exact Hhd' | ].
+        [ exact Hpeq | ].
       rewrite (upd_ne q5 (Regidx ra_idx) (Regidx a0_idx) _
                  ltac:(vm_compute; discriminate)).
       exact (upd_eq mG (Regidx a0_idx) (mword_of_int ql2 : mword 64)).
@@ -1884,7 +1880,6 @@ Section UkShPipe.
            (t szv cwdv : Z) (ld : list fdstate) (st0 st1 : fdstate)
            (Sc : gset gname) (n : nat),
       (⊢ ukn_pay N (-1)) ->
-      ukn_held N = ∅ ->
       m !!! Regidx a0_idx = (mword_of_int t : mword 64) ->
       ld !! 0%nat = Some st0 -> ld !! 1%nat = Some st1 ->
       st0 <> FdClosed -> st1 <> FdClosed ->
@@ -1908,7 +1903,7 @@ Section UkShPipe.
       WP (Loop : expr riscv_lang).
   Proof using Hpsok_free.
     intros Hscl Hscr N Hcst h m t szv cwdv ld st0 st1 Sc n
-           Hpx Hhd Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1.
+           Hpx Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1.
     iIntros "#Hdp #Hcode #Hexs #Hkw #Hjt #Htree Hsz Hstd Hcwd Hch Hpipe Hrun".
     pose proof (Nat.le_max_l (ush_ht cl) (ush_ht cr)) as HM1.
     pose proof (Nat.le_max_r (ush_ht cl) (ush_ht cr)) as HM2.
@@ -1920,12 +1915,12 @@ Section UkShPipe.
               (6 * Nat.max (ush_ht cl) (ush_ht cr) + n)%nat
               (fun _ => emp)%I (fun _ => emp)%I (fun _ => emp)%I
               (fun _ => emp)%I (ukn_pay N)
-              (ukn_const_eq (N := N)) Hpx Hhd Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1
+              (ukn_const_eq (N := N)) Hpx Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1
               with "Hdp Hcode Hjt Htree Hsz Hstd Hcwd Hch Hkw [] Hpipe Hrun").
     { iIntros (γp) "_". iSplitR; [ done | iSplitR; done ]. }
     - (* ---- THE LEFT CHILD: the landed walk, at the ledger its prologue
            left ---- *)
-      iIntros (N' h' m' γ' γp q) "%Hpeq %Hhd' %Ha0' Hmy #Hck #Hjt2 #Hqc Hsz
+      iIntros (N' h' m' γ' γp q) "%Hpeq %Ha0' Hmy #Hck #Hjt2 #Hqc Hsz
                                   Hstd Hcwd Hch _ _ _ Hrun".
       pose proof (ukn_const_of_eq N' (ukn_pay N) Hpeq
                     (ukn_const_eq (N := N))) as Hcst'.
@@ -1948,7 +1943,7 @@ Section UkShPipe.
       { iApply (UserCwd.ucwd_any_of with "Hcwd"). }
       { iApply (UserChildren.uch_any_of with "Hch"). }
     - (* ---- THE RIGHT CHILD ---- *)
-      iIntros (N' h' m' γ' γp q) "%Hpeq %Hhd' %Ha0' Hmy #Hck #Hjt2 #Hqc Hsz
+      iIntros (N' h' m' γ' γp q) "%Hpeq %Ha0' Hmy #Hck #Hjt2 #Hqc Hsz
                                   Hstd Hcwd Hch _ _ _ Hrun".
       pose proof (ukn_const_of_eq N' (ukn_pay N) Hpeq
                     (ukn_const_eq (N := N))) as Hcst'.
@@ -1996,7 +1991,6 @@ Section UkShPipe.
            (t szv cwdv : Z) (ld : list fdstate) (st0 st1 : fdstate)
            (Sc : gset gname) (n : nat),
       (⊢ ukn_pay N (-1)) ->
-      ukn_held N = ∅ ->
       m !!! Regidx a0_idx = (mword_of_int t : mword 64) ->
       ld !! 0%nat = Some st0 -> ld !! 1%nat = Some st1 ->
       st0 <> FdClosed -> st1 <> FdClosed ->
@@ -2020,7 +2014,7 @@ Section UkShPipe.
       WP (Loop : expr riscv_lang).
   Proof using Hpsok_free.
     intros Hp N Hcst h m t szv cwdv ld st0 st1 Sc n
-           Hpx Hhd Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1.
+           Hpx Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1.
     iIntros "#Hdp #Hcode #Hexs #Hkw #Hjt #Htree Hsz Hstd Hcwd Hch Hpipe Hrun".
     destruct c as [ args | c1 fl md fd | lc rc | lc rc | c1 ].
     - iApply (UkShDiag.wp_kshr_runcmd_final Hpsok_free (UExec args) Hp N h m t
@@ -2030,7 +2024,7 @@ Section UkShPipe.
         | iApply (UserChildren.uch_any_of with "Hch") ].
     - exfalso. cbn in Hp. exact Hp.
     - iApply (wp_kshr_runcmd_pipe lc rc (proj1 Hp) (proj2 Hp) N h m t szv cwdv
-                ld st0 st1 Sc n Hpx Hhd Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1
+                ld st0 st1 Sc n Hpx Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1
                 with "Hdp Hcode Hexs Hkw Hjt Htree Hsz Hstd Hcwd Hch Hpipe
                       Hrun").
     - iApply (UkShDiag.wp_kshr_runcmd_final Hpsok_free (UList lc rc) Hp N h m t
@@ -2120,8 +2114,9 @@ Section UkShPipe.
        caller that wants the pipe's fragment supplies a real registrar and
        takes [R γp] with it; PIPE-PROTO's [pipe_proto_alloc] is that one. *)
     iApply (wp_uk_ecall_pipe N h1 m1 (mword_of_int 0xc98) l f av
-              (fun (_ : sfam) (_ : uvis) (_ : mword 64) (_ : gmap Z (bv 8))
-                   (_ : list fdstate) (_ : Z) (_ : gset gname) => emp%I)
+              (* the seven arguments unannotated: this file does not
+                 [Require Import UexecSlot], so [uvis] is not a name here *)
+              (fun _ _ _ _ _ _ _ => emp%I)
               ltac:(unfold usysno;
                     rewrite (upd_eq m (Regidx a7_idx)
                                (mword_of_int 4 : mword 64));
@@ -2230,7 +2225,6 @@ Section UkShPipe.
            (t szv cwdv : Z) (ld : list fdstate) (st0 st1 : fdstate)
            (Sc : gset gname) (n : nat),
       (⊢ ukn_pay N (-1)) ->
-      ukn_held N = ∅ ->
       m !!! Regidx a0_idx = (mword_of_int t : mword 64) ->
       ld !! 0%nat = Some st0 -> ld !! 1%nat = Some st1 ->
       st0 <> FdClosed -> st1 <> FdClosed ->
@@ -2256,10 +2250,10 @@ Section UkShPipe.
       WP (Loop : expr riscv_lang).
   Proof using Hpsok_free.
     intros Hscl Hscr N Hcst h m t szv cwdv ld st0 st1 Sc n
-           Hpx Hhd Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1 Hnone.
+           Hpx Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1 Hnone.
     iIntros "#Hdp #Hcode #Hexs #Hkw #Hkc #Hcw #Hjt #Htree Hsz Hstd Hcwd Hch Hrun".
     iApply (wp_kshr_runcmd_pipe cl cr Hscl Hscr N h m t szv cwdv ld st0 st1 Sc n
-              Hpx Hhd Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1
+              Hpx Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1
               with "Hdp Hcode Hexs Hkw Hjt Htree Hsz Hstd Hcwd Hch [] Hrun").
     iApply (ush_pipe_call_of_leaf N ld Hnone with "Hkc Hcw").
   Qed.
@@ -2271,7 +2265,6 @@ Section UkShPipe.
            (t szv cwdv : Z) (ld : list fdstate) (st0 st1 : fdstate)
            (Sc : gset gname) (n : nat),
       (⊢ ukn_pay N (-1)) ->
-      ukn_held N = ∅ ->
       m !!! Regidx a0_idx = (mword_of_int t : mword 64) ->
       ld !! 0%nat = Some st0 -> ld !! 1%nat = Some st1 ->
       st0 <> FdClosed -> st1 <> FdClosed ->
@@ -2297,10 +2290,10 @@ Section UkShPipe.
       WP (Loop : expr riscv_lang).
   Proof using Hpsok_free.
     intros Hp N Hcst h m t szv cwdv ld st0 st1 Sc n
-           Hpx Hhd Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1 Hnone.
+           Hpx Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1 Hnone.
     iIntros "#Hdp #Hcode #Hexs #Hkw #Hkc #Hcw #Hjt #Htree Hsz Hstd Hcwd Hch Hrun".
     iApply (wp_kshr_runcmd_ptop c Hp N h m t szv cwdv ld st0 st1 Sc n
-              Hpx Hhd Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1
+              Hpx Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1
               with "Hdp Hcode Hexs Hkw Hjt Htree Hsz Hstd Hcwd Hch [] Hrun").
     iApply (ush_pipe_call_of_leaf N ld Hnone with "Hkc Hcw").
   Qed.

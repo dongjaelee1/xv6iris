@@ -325,6 +325,7 @@ Require Import UserPtTree.
 Require Import KvmSpec.
 Require Import ProcPtOwn.
 Require Import SpecCopyin.   (* [copyin_got]: the content seam's vocabulary *)
+Require Import SysWriteDefs. (* [wr_fail_why]: why a copy gave up part-way  *)
 Require Import ProcInv.
 Require Import FileInvDefs.
 From Kernel Require KernelSyms.
@@ -751,6 +752,26 @@ Definition wp_writei_sconf_body
       (* ...and EMPTY OUTRIGHT on the KERNEL arm: either_copyin cannot fail
          there, so the committed partial chunk never exists.  §15.1(i). *)
       ⌜user = false -> dist = 0%nat⌝ -∗
+      (* ...AND WHEN IT IS NOT EMPTY IT CARRIES ITS REASON (lane
+         WRITE-RELAY-2, RELAY 4).  A disturbed tail exists only where
+         [either_copyin] gave up part-way on the USER arm, and its contract
+         names the byte it died on -- an address of the SOURCE run the
+         process's page table does not map for READING.  Relayed at the
+         ENTRY descriptor, which is the weaker and usable form, exactly as
+         the read side's [SysReadDefs.rd_fail_why] is
+         ([SpecReadi.wp_readi_sconf_body]'s [-1] arm).  A caller whose
+         source run is readable-mapped refutes the arm outright
+         ([SysWriteDefs.wr_fail_why_refute]) -- and then NOTHING UNNAMED
+         reached the file.
+
+         RELAY 4's OTHER HALF IS ALREADY HERE and needed nothing: the
+         single-block all-or-nothing clause is [wi16_atomic] below, landed
+         by the sixteen-byte seam, and it says exactly "a range inside one
+         block leaves [tot] at 0 or at [n]".  The two together refute the
+         write chain's partial arm at a caller whose source run is mapped
+         and whose chunk cannot straddle (design/app-file.md section 0,
+         limit 1). *)
+      ⌜(0 < dist)%nat -> wr_fail_why (pv_upt (us_V U)) src n⌝ -∗
       (* THE RANGE CLAUSE -- the whole effect of the write, in one line *)
       ⌜forall k : nat,
          file_byte data' k
@@ -1034,6 +1055,26 @@ Definition wp_writei_gen_body
       (* ...and EMPTY OUTRIGHT on the KERNEL arm: either_copyin cannot fail
          there, so the committed partial chunk never exists.  §15.1(i). *)
       ⌜user = false -> dist = 0%nat⌝ -∗
+      (* ...AND WHEN IT IS NOT EMPTY IT CARRIES ITS REASON (lane
+         WRITE-RELAY-2, RELAY 4).  A disturbed tail exists only where
+         [either_copyin] gave up part-way on the USER arm, and its contract
+         names the byte it died on -- an address of the SOURCE run the
+         process's page table does not map for READING.  Relayed at the
+         ENTRY descriptor, which is the weaker and usable form, exactly as
+         the read side's [SysReadDefs.rd_fail_why] is
+         ([SpecReadi.wp_readi_sconf_body]'s [-1] arm).  A caller whose
+         source run is readable-mapped refutes the arm outright
+         ([SysWriteDefs.wr_fail_why_refute]) -- and then NOTHING UNNAMED
+         reached the file.
+
+         RELAY 4's OTHER HALF IS ALREADY HERE and needed nothing: the
+         single-block all-or-nothing clause is [wi16_atomic] below, landed
+         by the sixteen-byte seam, and it says exactly "a range inside one
+         block leaves [tot] at 0 or at [n]".  The two together refute the
+         write chain's partial arm at a caller whose source run is mapped
+         and whose chunk cannot straddle (design/app-file.md section 0,
+         limit 1). *)
+      ⌜(0 < dist)%nat -> wr_fail_why (pv_upt (us_V U)) src n⌝ -∗
       (* THE RANGE CLAUSE -- the whole effect of the write, in one line *)
       ⌜forall k : nat,
          file_byte data' k

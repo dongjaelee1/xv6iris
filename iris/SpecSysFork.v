@@ -196,7 +196,7 @@ Definition wp_sys_fork_sconf_body
      the child's killed row on it ([SchedCtx.kill_paid]'s live arm).  The
      depositing process supplies it beside the slot
      ([SpecSyscall.sysc_fork_in]). *)
-  □ (riscv_kill_cred -∗ Q (-1)) -∗
+  □ (app_taint -∗ Q (-1)) -∗
   proc_priv γf p pid U -∗
   (* THE PARENT'S DESCRIPTOR STATES.  fork's whole effect on descriptors is
      that the CHILD gets these -- [SpecKfork]'s copy loop retypes the child's

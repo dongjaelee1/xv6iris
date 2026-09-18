@@ -290,7 +290,7 @@ Section Ut56.
     (* ...AND THE RESUME SLOT BESIDE IT, ADDITIVELY (lane TRAP-ROWS, T3):
        what the process handed over is the PAIR, and this arm is one of the
        two that decide which side the kernel takes. *)
-    ((□ riscv_kill_cred
+    ((app_taint
       ∨ (ChildTok.kill_owed (pv_gen (us_V U))
          ∗ UexecSG.sbundle_at UexecRet.uslot UsysMemOk.USYS_exit fdep Wk))
      ∧ UexecRet.uslot Wk) -∗
@@ -663,9 +663,9 @@ Section Ut56.
     iAssert (∃ self : bool,
                (if self then ChildTok.kill_owed (pv_gen (us_V U))
                           ∗ ChildTok.taken_at (pv_gen (us_V U))
-                else □ riscv_kill_cred) ∗
+                else app_taint) ∗
                ((if self then ChildTok.kill_owed (pv_gen (us_V U))
-                 else □ riscv_kill_cred) -∗
+                 else app_taint) -∗
                 ▷ (ChildTok.taken_at (pv_gen (us_V U))
                    ∨ (SpecFileclose.fileclose_cpays sts
                       ∗ sexit_pay fdep (-1)))))%I
@@ -879,7 +879,7 @@ Section UtD0.
     (* ...AND THE RESUME SLOT BESIDE IT, ADDITIVELY (lane TRAP-ROWS, T3):
        what the process handed over is the PAIR, and this arm is one of the
        two that decide which side the kernel takes. *)
-    ((□ riscv_kill_cred
+    ((app_taint
       ∨ (ChildTok.kill_owed (pv_gen (us_V U))
          ∗ UexecSG.sbundle_at UexecRet.uslot UsysMemOk.USYS_exit fdep Wk))
      ∧ UexecRet.uslot Wk) -∗
@@ -1445,7 +1445,7 @@ Section UtE8.
                p_pid (proc_addr (un_j N)) ↦₄{DfracOwn (1/4)} pidr ∗
                SchedCtx.kill_paid pidr klr ∗
                ((⌜klr = (mword_of_int 0 : mword 32)⌝
-                 ∨ (ChildTok.kill_shot (pv_gen (us_V U)) ∗ □ riscv_kill_cred)) ∗
+                 ∨ (ChildTok.kill_shot (pv_gen (us_V U)) ∗ app_taint)) ∗
                 p_pid (un_pj N) ↦₄{DfracOwn (1/4)} pid ∗
                 pid_reg pid (DfracOwn qeighth) (pv_gen (us_V U)) ∗
                 ChildTok.taken_at (pv_gen (us_V U))))%I
@@ -1459,7 +1459,7 @@ Section UtE8.
               (un_pj N) false lks
               (fun (klv : mword 32) =>
                  ((⌜klv = (mword_of_int 0 : mword 32)⌝
-                   ∨ (ChildTok.kill_shot (pv_gen (us_V U)) ∗ □ riscv_kill_cred)) ∗
+                   ∨ (ChildTok.kill_shot (pv_gen (us_V U)) ∗ app_taint)) ∗
                   p_pid (un_pj N) ↦₄{DfracOwn (1/4)} pid ∗
                   pid_reg pid (DfracOwn qeighth) (pv_gen (us_V U)) ∗
                   ChildTok.taken_at (pv_gen (us_V U)))%I)
@@ -1629,7 +1629,7 @@ Section UtE8.
          somebody paid for it. *)
       assert (Hknz : kl <> (mword_of_int 0 : mword 32)).
       { intro Hz0. rewrite Hz0 in Hz. vm_compute in Hz. discriminate Hz. }
-      iAssert (ChildTok.kill_shot (pv_gen (us_V U)) ∗ □ riscv_kill_cred)%I
+      iAssert (ChildTok.kill_shot (pv_gen (us_V U)) ∗ app_taint)%I
         with "[]" as "#[Hshot Hcred]".
       { iDestruct "Hkw" as "[%Hz0 | $]". exfalso; exact (Hknz Hz0). }
       (* THE MARKER, BACK OUT OF THE BLOCK: kexit runs on the marker-less

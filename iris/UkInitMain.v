@@ -112,7 +112,6 @@ Section UkInitMain.
      CLASS, [ukn_const]'s mould: it is named only in the [Proof using] of
      the lemmas that walk a dup, and the entry constructor that minted the
      record is what discharges it. *)
-  Context `{Hpark : !ukn_parked N}.
   (* the console ring's cameras: init mints the POSITION PAIR it lends each
      child out of them ([UserConsole.upos_alloc]) *)
   Context `{!uartGhostG Σ}.
@@ -590,7 +589,6 @@ Section UkInitMain.
     (* ...AND ITS HELD SET IS THE EMPTY ONE (lane OFF-HAND-4, S2): the
        exec below hands sh's entry the key's all-parked row off THIS
        record's own run ([UkInit.init_exec_sup_pos]). *)
-    ukn_held N' = ∅ ->
     init_deps T -∗
     (* the exec diagnostic's conversion (lane M6b), for the arm where the
        exec came back *)
@@ -650,7 +648,7 @@ Section UkInitMain.
     urun N' h m (mword_of_int 0x96) (12 + (12 + (4 + n))) -∗
     WP (Loop : expr riscv_lang).
   Proof using .
-    intros Hpeq Hheq.
+    intros Hpeq.
     (* the walk's own class, off the record's payload: [ucons_pay] does not
        read the exit status ([UserConsole.ucons_pay_const]) *)
     pose proof (ukn_const_of_eq N' (ucons_pay cn γ T (init_rd (cc_rd Cr) (cc_wbn Cr))) Hpeq
@@ -765,10 +763,9 @@ Section UkInitMain.
        every other [Hxs] in this file merely threads the [box]. *)
     iMod ("Hxs" $! γ np N' (<[Regidx a7_idx := (mword_of_int 7 : mword 64)]> mc5)
             (mword_of_int 0x3ac) l
-            with "[%] [%] [%] [%] Hro Hargv Hstd Hrow Hcred Hpos Hlease Hch Hpid")
+            with "[%] [%] [%] Hro Hargv Hstd Hrow Hcred Hpos Hlease Hch Hpid")
       as "Hdepx".
     { exact Hpeq. }
-    { exact Hheq. }
     { rewrite (upd_ne mc5 (Regidx a7_idx) (Regidx a0_idx)
                  (mword_of_int 7 : mword 64)
                  ltac:(vm_compute; discriminate)).
@@ -852,7 +849,7 @@ Section UkInitMain.
        [T] -- is what pays the payload.  The premise is the ROUND's, not
        the application's (lane TL-6; user-tree §9.4, ruling (b)): the
        lend is in hand here, and [UkInit.init_kill_law] buys the row off
-       it and gives it back.  It REPLACES [⊢ □ riscv_kill_cred -∗ T],
+       it and gives it back.  It REPLACES [⊢ app_taint -∗ T],
        which reads "a kill is free" and is echo's identity alone. *)
     (⊢ init_kill_law T stc (cc_wp Cr) (cc_wbn Cr)) ->
     init_code γt -∗ init_rodata γt -∗ init_argv γd -∗ usz γs szv -∗
@@ -934,8 +931,7 @@ Section UkInitMain.
            entry is minted at [ukn_held = empty] and now reads the key's
            all-parked row off the exec'ing process's own run
            ([UkInit.init_exec_sup_pos]). *)
-        ⌜ ukn_held N' = ∅ ⌝ -∗
-        (init_code (ukn_t N') ∗ init_rodata (ukn_t N') ∗ init_argv (ukn_d N'))
+         (init_code (ukn_t N') ∗ init_rodata (ukn_t N') ∗ init_argv (ukn_d N'))
           -∗ usz (ukn_s N') szv -∗
         UserFd.ustd (ukn_fd N') l -∗
         UInitFd.ufd_row T stc l -∗
@@ -955,7 +951,7 @@ Section UkInitMain.
           (ret_pc (m !!! Regidx ra_idx)) avail -∗
         WP (Loop : expr riscv_lang))) -∗
     WP (Loop : expr riscv_lang).
-  Proof using Hpark.
+  Proof using.
     intros Hkt.
     iIntros "#Hcode #Hro #Hargv Hsz HQ Hpos Hcred Hstd #Hrow Hcwd Hch Hrun [Hpar Hchi]".
     (* THE KILL ROW, OFF THE LEND (lane TL-6): the row the child's exit
@@ -1001,16 +997,12 @@ Section UkInitMain.
               l ∅ FsImg.ROOTINO Sc (ucons_pay cn γ T (init_rd (cc_rd Cr) (cc_wbn Cr)))
               (upos γ np ∗ ucons_pay cn γ T (cc_rd Cr) (-1)
                ∗ init_lend_cred T stc (cc_wp Cr) (cc_wbn Cr) l np)%I
-              (* THE CHILD'S HELD SET IS /INIT'S OWN (lane OFF-HAND-4, S1):
-                 the child execs sh, which holds no offset half. *)
-              (ukn_held N)
               (fun gt gd _ =>
                  (init_code gt ∗ init_rodata gt ∗ init_argv gd)%I)
               ltac:(unfold mf1, usysno;
                     rewrite (upd_eq m (Regidx a7_idx)
                                (mword_of_int 1 : mword 64));
                     vm_compute; reflexivity)
-              ltac:(reflexivity)
               ltac:(vm_compute; reflexivity)
               with "[] [Hpos HQ Hcred] [] Hsz Hstd [] Hcwd Hch [] Hrun").
     { iApply (uis_init_36c with "Hcode"). }
@@ -1061,7 +1053,7 @@ Section UkInitMain.
          child execs, and nothing before the exec allocates. *)
       (* the child's own children fragment is [∅] and init's child execs
          before it forks, so nothing here reads it *)
-      iIntros (N' hc γ') "%Hheq0 %Hpeq _ (Hpos & Hlease & Hcred) Hpay Hsz Hstd _ Hcwd Hch' Hpid' Hrun".
+      iIntros (N' hc γ') "%Hpeq _ (Hpos & Hlease & Hcred) Hpay Hsz Hstd _ Hcwd Hch' Hpid' Hrun".
       set (mk := <[Regidx a0_idx := (mword_of_int 0 : mword 64)]> mf1).
       assert (Hrak : mk !!! Regidx ra_idx = m !!! Regidx ra_idx).
       { rewrite /mk (upd_ne mf1 (Regidx a0_idx) (Regidx ra_idx) _
@@ -1076,11 +1068,8 @@ Section UkInitMain.
       { iApply (uis_init_370 with "Hck"). }
       iIntros (hc2) "Hrun".
       iApply ("Hchi" $! N' hc2
-                with "[%] [%] [] Hsz Hstd Hrow Hcred Hpos Hlease Hcwd Hch' Hpid' Hrun").
+                with "[%] [] Hsz Hstd Hrow Hcred Hpos Hlease Hcwd Hch' Hpid' Hrun").
       { exact Hpeq. }
-      (* the child's held set is /init's own, which is empty
-         ([UkFork.wp_uk_ecall_fork]'s [hs] and [UkRun.ukn_parked]) *)
-      { rewrite Hheq0. exact (ukn_parked_eq (N := N)). }
       { iFrame "Hck Hrk Hak". }
   Qed.
 
@@ -1298,7 +1287,7 @@ Section UkInitMain.
        the application no more than the credential this round already
        carries -- give the lend, get it back and the child's kill arm
        ([UkInit.init_kill_law], whose header is the whole story).  It
-       REPLACES [⊢ □ riscv_kill_cred -∗ T], which was echo's identity
+       REPLACES [⊢ app_taint -∗ T], which was echo's identity
        and false at an application whose kill credential is generic. *)
     (⊢ init_kill_law T stc (cc_wp Cr) (cc_wbn Cr)) ->
     init_deps T -∗
@@ -1357,7 +1346,7 @@ Section UkInitMain.
           child_tok γsh pidsh (ucons_pay cn γ T (init_rd (cc_rd Cr) (cc_wbn Cr))) -∗
           urun N h m (mword_of_int 0x44) (12 + (12 + (4 + n))) -∗
           WP (Loop : expr riscv_lang))).
-  Proof using Hpay Hpark Hpayfree Hpsok_free.
+  Proof using Hpay Hpayfree Hpsok_free.
     intros Hkt.
     iIntros "#(Hwr & Hwl15 & Hwl17) #Hblaw #Hdlaw #Hcode #Hxs #Hro #Hargv".
     destruct init_syms_pins
@@ -1604,7 +1593,7 @@ Section UkInitMain.
            [PinnedExec]'s linear [Pay] -- which is what sh's entry
            constructor reads ([UShLine.ush_posb_of_lend]). *)
         iIntros (N' hc)
-          "%Hpeq %Hheq (#Hck & #Hrk & #Hak) Hsz Hstd #Hrow' Hcred Hpos Hlease Hcwd Hch Hpid Hrun".
+          "%Hpeq (#Hck & #Hrk & #Hak) Hsz Hstd #Hrow' Hcred Hpos Hlease Hcwd Hch Hpid Hrun".
         (* the child's walk runs at ITS payload's class, which is the
            shell's ([UserConsole.ucons_pay_const]) *)
         pose proof (ukn_const_of_eq N' (ucons_pay cn γ T (init_rd (cc_rd Cr) (cc_wbn Cr))) Hpeq
@@ -1669,7 +1658,7 @@ Section UkInitMain.
                   with "[] Hrun").
         { iApply (uis_init_42 with "Hck"). }
         iIntros (hc3) "Hrun".
-        iApply (wp_kinit_main_child T stc cn Cr γ np l N' hc3 mc1 n Hpeq Hheq
+        iApply (wp_kinit_main_child T stc cn Cr γ np l N' hc3 mc1 n Hpeq
                   with "[$Hwr $Hwl15 $Hwl17] Hdlaw Hck Hxs Hrk Hak Hcwd Hch Hpid Hstd Hrow'
                         Hcred Hpos Hlease Hrun").
     - (* ==================== the WAIT head @0x44 ==================== *)
@@ -1899,7 +1888,7 @@ Section UkInitMain.
        the application no more than the credential this round already
        carries -- give the lend, get it back and the child's kill arm
        ([UkInit.init_kill_law], whose header is the whole story).  It
-       REPLACES [⊢ □ riscv_kill_cred -∗ T], which was echo's identity
+       REPLACES [⊢ app_taint -∗ T], which was echo's identity
        and false at an application whose kill credential is generic. *)
     (⊢ init_kill_law T stc (cc_wp Cr) (cc_wbn Cr)) ->
     init_deps T -∗
@@ -1934,7 +1923,7 @@ Section UkInitMain.
        (lane IO-LEAF, M1): affine, so every other round is unaffected. *)
     urun N h m (mword_of_int 0x1e) (12 + (12 + (4 + n))) -∗
     WP (Loop : expr riscv_lang).
-  Proof using Hpay Hpark Hpayfree Hpsok_free.
+  Proof using Hpay Hpayfree Hpsok_free.
     intros Hne Hkt.
     iIntros "#(Hwr & Hwl15 & Hwl17) #Hblaw #Hdlaw #Hcode #Hxs #Hro #Hargv Hsz Hstd Hcwd Hch Htk Hrun".
     destruct init_syms_pins
@@ -2116,7 +2105,7 @@ Section UkInitMain.
        the application no more than the credential this round already
        carries -- give the lend, get it back and the child's kill arm
        ([UkInit.init_kill_law], whose header is the whole story).  It
-       REPLACES [⊢ □ riscv_kill_cred -∗ T], which was echo's identity
+       REPLACES [⊢ app_taint -∗ T], which was echo's identity
        and false at an application whose kill credential is generic. *)
     (⊢ init_kill_law T stc (cc_wp Cr) (cc_wbn Cr)) ->
     init_deps T -∗
@@ -2139,7 +2128,7 @@ Section UkInitMain.
        (lane IO-LEAF, M1): affine, so every other round is unaffected. *)
     urun N h m (mword_of_int 0x74) (12 + (12 + (4 + n))) -∗
     WP (Loop : expr riscv_lang).
-  Proof using Hpay Hpark Hpayfree Hpsok_free.
+  Proof using Hpay Hpayfree Hpsok_free.
     intros Hne Hkt.
     rewrite /uki_open2.
     iIntros "#(Hwr & Hwl15 & Hwl17) #Hblaw #Hdlaw #Hcode #Hxs #Hro #Hargv Hsz Hop2 Hin Hcwd Hch Htk Hrun".
@@ -2256,7 +2245,7 @@ Section UkInitMain.
        the application no more than the credential this round already
        carries -- give the lend, get it back and the child's kill arm
        ([UkInit.init_kill_law], whose header is the whole story).  It
-       REPLACES [⊢ □ riscv_kill_cred -∗ T], which was echo's identity
+       REPLACES [⊢ app_taint -∗ T], which was echo's identity
        and false at an application whose kill credential is generic. *)
     (⊢ init_kill_law T stc (cc_wp Cr) (cc_wbn Cr)) ->
     init_deps T -∗
@@ -2288,7 +2277,7 @@ Section UkInitMain.
        (lane IO-LEAF, M1): affine, so every other round is unaffected. *)
     urun N h m (mword_of_int 0x64) (12 + (12 + (4 + n))) -∗
     WP (Loop : expr riscv_lang).
-  Proof using Hpay Hpark Hpayfree Hpsok_free.
+  Proof using Hpay Hpayfree Hpsok_free.
     intros Hne Hkt.
     iIntros "#(Hwr & Hwl15 & Hwl17) #Hblaw #Hdlaw #Hcode #Hxs Hmkl #Hro #Hargv Hsz Hin Hcwd Hch Htk Hrun".
     destruct init_syms_pins
@@ -2434,7 +2423,7 @@ Section UkInitMain.
        the application no more than the credential this round already
        carries -- give the lend, get it back and the child's kill arm
        ([UkInit.init_kill_law], whose header is the whole story).  It
-       REPLACES [⊢ □ riscv_kill_cred -∗ T], which was echo's identity
+       REPLACES [⊢ app_taint -∗ T], which was echo's identity
        and false at an application whose kill credential is generic. *)
     (⊢ init_kill_law T stc (cc_wp Cr) (cc_wbn Cr)) ->
     init_deps T -∗
@@ -2473,7 +2462,7 @@ Section UkInitMain.
     urun N h m (mword_of_int InitSyms.main)
       (4 + (12 + (12 + (4 + n)))) -∗
     WP (Loop : expr riscv_lang).
-  Proof using Hpay Hpark Hpayfree Hpsok_free.
+  Proof using Hpay Hpayfree Hpsok_free.
     intros Hne Hkt.
     iIntros "#(Hwr & Hwl15 & Hwl17) #Hblaw #Hdlaw #Hcode #Hxs Hdance #Hro #Hargv Hsz Hstd Hcwd Hch Htk Hrun".
     iDestruct (uki_open1_of_dance N T Cns stc
@@ -2788,7 +2777,7 @@ Section UkInitMain.
        the application no more than the credential this round already
        carries -- give the lend, get it back and the child's kill arm
        ([UkInit.init_kill_law], whose header is the whole story).  It
-       REPLACES [⊢ □ riscv_kill_cred -∗ T], which was echo's identity
+       REPLACES [⊢ app_taint -∗ T], which was echo's identity
        and false at an application whose kill credential is generic. *)
     (⊢ init_kill_law T stc (cc_wp Cr) (cc_wbn Cr)) ->
     init_deps T -∗
@@ -2834,7 +2823,7 @@ Section UkInitMain.
     urun N h m (mword_of_int InitSyms.start)
       (2 + (4 + (12 + (12 + (4 + n))))) -∗
     WP (Loop : expr riscv_lang).
-  Proof using Hpay Hpark Hpayfree Hpsok_free.
+  Proof using Hpay Hpayfree Hpsok_free.
     intros Hne Hkt.
     iIntros "#(Hwr & Hwl15 & Hwl17) #Hblaw #Hdlaw #Hcode #Hxs Hcl #Hro #Hargv Hsz Hstd Hcwd Hch Htk Hrun".
     (* the payment travels to the restart head, where ROUND 0 spends it

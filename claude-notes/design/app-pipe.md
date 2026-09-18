@@ -224,6 +224,38 @@ fragment's holder can make, and the taint is not held under the
 discipline.  State it as `pipe_reg_not_free` in the scratch and keep it as
 a comment.
 
+**AS LANDED (lane PIPE-REG, 2026-09-18).**  `PipeReg.pipe_reg γp := □ (∀ w,
+pipe_cpay (pn_queue γp) w emp)` and `pipe_row_reg` as designed;
+`fileclose_cpays_of_regs` pays kexit's whole `[∗ list]` row from the
+registrations (closes `pipe-queue.md`'s second open item).  THREE
+CORRECTIONS: (1) **the registry cannot be named in `UkRun.v`** — `pipe_row_reg`
+names `pipeG` and `UkRun` binds no ghost bundle by design (a new binder =
+a `Context` line in ~70 files; putting `pipeG` on `ufdG` = two instance
+paths in ~95 files, which wedges) — so the row enters through **`uexecSG`**,
+the U tier's one instance record: three new fields `srow_reg : fdstate ->
+iProp`, `srow_reg_persistent`, `srow_reg_nopipe`, answered by `pipe_row_reg`
+in `uexecSG_xv6`; `urun_nopipe fdv := ([∗ list] st ∈ fdv, srow_reg st) ∨ □
+riscv_kill_cred`.  (2) **The taint arm stays** in the definition (the class
+has no `riscvGS` parameter and the generic supply holds the credential with
+no pipe names); a registered program never touches it.  (3) **The run
+cannot be handed back OWED**: `UkRun.urun_close_upd` takes the rows as an
+INPUT and produces the run the continuation receives — a debt paid by that
+continuation is circular — and `γp` is bound inside the post's existential.
+The FALLBACK landed: at the class-generic leaf (`UkRunSys.wp_uk_ecall_pipe`)
+the `□ riscv_kill_cred` premise is simply gone and the registrar takes the
+POST; at the instance (`UkReadPipe.wp_uk_pipe_read_end`) the premise is
+fragment-shaped, `∀ γp, pipe_qfrag (pn_queue γp) pst0 ={⊤}=∗ pipe_reg γp ∗
+Rp γp`, and `Rp γp` replaces the fragment in the post (registering CONSUMES
+the fragment: one fragment buys one `□` payment, `pipe_cpay_of_frag`).
+`pipe_reg` is NOT timeless (a fupd wand under `□`); nothing strips a `▷`
+off `urun_nopipe`.  Vacuity mechanised: `pipe_reg_not_free` refutes a
+conjured close link against `pipe_queue_agree`.  Beyond the brief:
+`xv6_sbundle_close_of_reg` (CLOSE(21) from the registry, at the point
+family's payload `True` only).  PIPE-PROTO's `pipe_proto_alloc` must
+therefore produce the registration BESIDE the handle — `pipe_qfrag … pst0
+={⊤}=∗ ∃ pn, pipe_inv pn γp L ∗ wtok γw ∗ pipe_reg γp` — which is literally
+the registrar premise at `Rp γp := ∃ pn, pipe_inv pn γp L ∗ wtok γw`.
+
 ## 3. The protocol: one invariant per pipe, three processes
 
 `iris/PipeProto.v`.  The runcmd child (sh) allocates it right after
@@ -268,6 +300,36 @@ every link runs at `⊤`, the payload held, no invariant open — `pipe.md`):
 | cat, observation node (`Qe acc s`) | `pipe_olink` | fires where the ring runs dry.  If `pst_eof s` (empty AND `ps_wo s = false`): cat SETS `γeof := Some (ps_ws s)` — (P3)'s premise becomes true at exactly the state it describes — and takes the persistent `γeof ↦ Some w` out.  If merely empty with `ps_wo s = true`: `piperead` did not return 0 (it sleeps), the node hands the count back and cat's loop turns again; the node records nothing. |
 | cat, EOF | — | cat's exit payload carries `γeof ↦ Some w` and `⌜w = the bytes cat printed⌝` (its console cursor at exit is `length w`). |
 | sh, after both waits | none (a plain `inv` access) | §4.2. |
+
+**AS LANDED (lane PIPE-PROTO, 2026-09-18; `iris/PipeProto.v`, all seven
+headline results Closed under the global context).**  Four corrections
+to the table above: (1) **a cursor's exactness is an EXCLUSIVE RESOURCE,
+not arithmetic** — a `mono_list` lower bound of length `j` plus (P1) gives
+only `take j L ⊑ ws ⊑ L`, not `ws = take j L`; what pins it is that echo is
+the ONLY writer, said as a permit: `wcur pn j` / `rcur pn c` are halves of
+a `ghost_var nat` whose other half sits in the body at `length (ps_ws s)`
+/ `ps_rp s`.  They also make the chains compose across echo's several
+`write`s and cat's several reads.  (2) `wtok pn` IS `wcur pn 0`, so (P2)
+is one agreement (`pipe_body_P2`) and `wtok_spent` is gone.  (3) (P3)
+cannot be a wand (the body must be `Timeless`: every link's fupd runs at
+`⊤` with no WP step to strip a later) — it is the one-shot's two owned
+arms, `eof_pending ∨ ∃ w, eof_shot w ∗ ⌜w = ps_ws s ∧ ps_wo s = false⌝`.
+(4) the reader's EOF observation is ONE node (`pipe_olink` is a `∀ s`):
+`pipe_rQe … acc s := pipe_rQ … acc ∗ (⌜pst_eof s⌝ -∗ eof_shot pn (take (c +
+length acc) L))`, vacuous off EOF.  ALSO: the reader needs a start permit
+too — `pipe_proto_alloc : pipe_qfrag … pst0 ={⊤}=∗ ∃ pn, pipe_inv pn γp L ∗
+wtok pn ∗ rtok pn ∗ side_L pn ∗ side_R pn ∗ pipe_reg γp` (five conjuncts
+beside the registration; `Rp γp` of the registrar is that quintuple).
+`pipe_wpay_of_inv` takes `wcur pn c`, `pws_lb pn (take c L)` and the
+M-premise (`M !! (ua+k) = Some (L !!! (c+k))`) — echo reads its own source
+run off the heap the call runs at, one line around
+`pipe_wpay_of_inv_fupd` in ECHO-PIPE, deliberately outside `PipeProto`.
+`pipe_rpay_of_inv` needs only `rcur pn c`; `pipe_rQ pn L c acc := rcur pn
+(c + length acc) ∗ ⌜acc = take (length acc) (drop c L)⌝` is what funds
+cat's console write at cursor `c`.  sh's round: `pipe_round_reading`, the
+symmetric payload `pipe_Qc` with `pipe_Qc_two`.  §3.1's "(P3) does not
+need a `ps_ro` premise" is CONFIRMED.  `L` has no landed name (`PipeDisc`
+spells it inline as `wl_line (drop 1 (pline_ws l))`).
 
 ### 3.1 One premise on the write link: `ps_wo s = true` (lane PQ-FLAG)
 
@@ -544,6 +606,33 @@ inum 3 — `FsCatPin`).  `iris/UPipeBootAdequacy.v`:
 `PipeAssumptions.v` and `make audit-pipe{,-only}` beside the echo, tree and
 file audits (bar: ≤ echo's fourteen, plus `pipe_both_law` until PIPE-2W
 lands, reported as such).
+
+### 5.6 RULED (2026-09-18, after PIPE-STAGE's finding): the claim pins /cat
+
+`AppEcho.echo_pred γ r av := echo_taint γ ∨ (⌜echo_fs_pure av⌝ ∗ cons_state
+r av)` and `echo_fs_pure` pins /init, /sh and /echo only — so a record at
+`app_pred := echo_pred` typechecks but cannot resolve `/cat` from the
+claim, and SH-PIPE-ROUND's exec of cat would have nothing to stand on.
+RULED, route (a): the pipe claim is echo's SHAPE with the stronger pure
+conjunct,
+
+    pipe_pred γ r av := echo_taint γ ∨ (⌜file_fs_pure av⌝ ∗ cons_state r av)
+    -- FileFsPure.file_fs_pure av = echo_fs_pure av /\ era0_cat_pins av, upstream's landed predicate, imported
+
+`app_fixed`/`app_names`/`app_boot`/`cons_state` stay echo's.  What it
+costs (lane PIPE-CLAIM = PIPE-STAGE part 2): the record's laws re-derived
+at `pipe_pred` (mould: `AppEcho`'s proofs; the pure conjunct crosses the
+transport as a Prop, `Happ_init` computes `era0_cat_pins` off the image
+through `FsCatPin.era0_boot_cat_pins` exactly as `AppFileRec` does), and
+the PROGRAM-TIER LAWS at `pipe_pred` — /init's console dance
+(`init_cons_laws_at` at a non-echo claim: upstream's INIT-FILE rounds are
+the mould, minus the f-state; the one real move, the console `mknod`,
+must preserve `era0_cat_pins` — `FileDeltas`' pin-preservation lemmas
+cover the legs) and whatever sh's round reads of the claim.  Route (b),
+confining the pipeline round to era 0 where `era0_boot_cat_pins` is
+free, is rejected: the theorem is about every era.  The design's §0
+sentence "the file system unmodified, echo's invariant verbatim" is
+corrected to "echo's invariant plus /cat's pin, same shape".
 
 ## 6. Lanes
 

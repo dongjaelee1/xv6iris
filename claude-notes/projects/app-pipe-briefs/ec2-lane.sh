@@ -7,6 +7,8 @@
 #   ec2-lane.sh <lane> build [make targets] sync, then make -j6 targets in iris/ (default: the whole iris tree);
 #                                           prints errors with context and "RC=<n>" LAST -- trust ONLY that line
 #   ec2-lane.sh <lane> run '<shell>'        run a command in the remote clone's iris/ with the opam env set
+#   ec2-lane.sh <lane> pull <path> [...]    copy files FROM the remote clone into this worktree (paths relative to the
+#                                           tree root, e.g. iris/UCodeShP.v) -- for generated tracked files (make gen-ucode)
 #
 # <lane> names the local worktree /shared/xv6iris-pipe-<lane> and the remote clone of the same name.
 # The remote clone is FULLY BUILT at the base SHA, so dependencies never need building -- never run
@@ -22,15 +24,16 @@ HOST="${EC2_HOST:-ec2-44-202-245-129.compute-1.amazonaws.com}"
 KEY="${EC2_KEY:-/shared/xv6iris/aws/ags-fk.pem}"
 LOCAL="/shared/xv6iris-pipe-$LANE"; REMOTE="/shared/xv6iris-pipe-$LANE"
 SSH=(ssh -i "$KEY" -o BatchMode=yes -o ServerAliveInterval=30 "ubuntu@$HOST")
-ENV='eval $(opam env --switch=/shared/xv6rocq --set-switch) && export OCAMLRUNPARAM="l=4000000000"'
+# no global OCAMLRUNPARAM: l=4e9 segfaults UShRound.v's heaviest Qed (2026-09-18); UserMemCert alone needs it (gate handles)
+ENV='eval $(opam env --switch=/shared/xv6rocq --set-switch) && ulimit -s unlimited'
 [ -e "$LOCAL/.git" ] || { echo "no worktree $LOCAL" >&2; exit 2; }
 
 sync() {
   local out
   out="$(rsync -rlpgoD --checksum --delete --out-format='%n' \
-      --include='*/' --include='*.v' --include='_CoqProject' --exclude='*' \
+      --include='*/' --include='*.v' --include='_CoqProject' --include='*.py' --include='*.txt' --include='*.json' --exclude='*' \
       -e "ssh -i $KEY -o BatchMode=yes" \
-      "$LOCAL/iris" "$LOCAL/kernel-rocq" "$LOCAL/user-rocq" "$LOCAL/model-xv6iris" \
+      "$LOCAL/iris" "$LOCAL/kernel-rocq" "$LOCAL/user-rocq" "$LOCAL/model-xv6iris" "$LOCAL/tools" \
       "ubuntu@$HOST:$REMOTE/" | grep -v '/$' || true)"
   if [ -n "$out" ]; then echo "synced:" >&2; printf '  %s\n' $out >&2; fi
 }
@@ -50,5 +53,6 @@ case "$CMD" in
   build) sync
          remote "make -f CoqMakefile -j6 $*" ;;
   run)   remote "$*" ;;
+  pull)  for f in "$@"; do scp -q -i "$KEY" "ubuntu@$HOST:$REMOTE/$f" "$LOCAL/$f" && echo "pulled $f"; done ;;
   *) echo "unknown command $CMD" >&2; exit 2 ;;
 esac

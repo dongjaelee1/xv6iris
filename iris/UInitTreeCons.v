@@ -228,7 +228,7 @@ Section UInitTreeCons.
       (sts : list fdstate) (rv : mword 64) (fdv' : list fdstate) :
     pin_resolves_abs Pin cw pl hops ino (ADev ma mi) ->
     arg_path_of M pv pl ->
-    open_receipt_plain (fs_gamma_L γfs) γfs cw M pv vom
+    open_receipt_plain OffParked (fs_gamma_L γfs) γfs cw M pv vom
       (pobs_P T hops) (pobs_Pmiss T) (pobs_Fo Pin T) Ft sts rv fdv' -∗
       ((⌜rv = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜fdv' = sts⌝)
        ∨ ⌜open_fd_rcpt (om_readable vom) (om_writable vom) (FdDevice ma)
@@ -392,7 +392,7 @@ Section UInitTreeCons.
         { rewrite <- Hlen. exact (lookup_lt_Some _ _ _ Hcl0). }
         exact (init_cons_moi_nat_m1 fd0 Hlt0 (eq_trans (eq_sym Hr0) Hrm)). }
       iDestruct "Hal" as (fd rd wr ty) "[%Hb Hal]".
-      destruct Hb as (Hr1 & Hlt1 & Hfdv1).
+      destruct Hb as (Hr1 & Hlt1 & Hfdv1 & _).
       (* the two spellings of the resume view agree at the slot the call
          wrote, so the receipt's TYPE is the ledger's ([UkTreeRead.
          tree_open_fd_tie] at the device row) *)

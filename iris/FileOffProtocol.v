@@ -117,7 +117,7 @@ Section FileOffProtocol.
     iSplitL "H".
     { rewrite /wordw_pointsto TsoCtx.ctx_word4_pointsto_unfold.
       change (Z.to_nat 4) with 4%nat. iExact "H". }
-    iSplitR; [iPureIntro; exact off_wf_zero | iExact "Hk"].
+    iSplitR; [iPureIntro; exact off_wf_zero | by iApply off_link_of].
   Qed.
 
   (* ---- the publish: birth on the re-minted cell, share at mass 1, the L2

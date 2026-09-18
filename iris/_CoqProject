@@ -1321,6 +1321,7 @@ SpecSysFstat.v
 SpecSysRead.v
 SpecSysWrite.v
 FsAbsCreateFire.v
+FsAbsCreateNm.v
 SpecCreate.v
 CreateBudget.v
 ProofCreateParts.v
@@ -1469,6 +1470,8 @@ ExecBundle.v
 PinnedObs.v
 PinnedExec.v
 PinnedOpen.v
+PipeReg.v
+PipeProto.v
 UexecExecInst.v
 ExecRun.v
 UexecExecMint.v
@@ -1500,6 +1503,8 @@ EchoLinksPro.v
 EchoLinksLine.v
 EchoLinksBan.v
 LinkRec.v
+StageRec.v
+ReadRec.v
 EchoFsPure.v
 FileFsPure.v
 AppEcho.v
@@ -1512,6 +1517,8 @@ PipeOut.v
 PipeLinks.v
 AppPipe.v
 FileLinks.v
+FileLinksLine.v
+FileLinkInst.v
 AppFileRec.v
 AppTree.v
 
@@ -1537,6 +1544,7 @@ UkSh.v
 UkShRun.v
 UkShDiag.v
 UkShRedir.v
+UkShPipe.v
 
 UCodeShP.v
 UkShParse.v
@@ -1573,8 +1581,15 @@ UShLexRedir.v
 UkShPipeLex.v
 UkShPipeTok.v
 UkShPipeParse.v
+UkShPipeCmd.v
 UkShPipeSeam.v
 UkShPipeEx.v
+UkShPipeRight.v
+UkShPipePr.v
+UkShPipeEx2.v
+UkShPipePex.v
+UkShPipeCm.v
+UkShRedirBody.v
 UInitCons.v
 UConsOpen.v
 UInitConsK.v
@@ -1582,6 +1597,7 @@ UShConsK.v
 
 UShEcho.v
 UShLine.v
+FileReadInst.v
 
 UImgWordDefs.v
 UInitSh.v
@@ -1624,11 +1640,22 @@ UInitTreeBoot.v
 UInitTreeExec.v
 # TreeAssumptions.v
 
+UShLineHold.v
+UShLineAtHold.v
+UShPanicHold.v
+FileLinksAt.v
+FileLinksAtBan.v
+FileLinksAtLine.v
+FileLinksAtInp.v
+FileLinksAtPro.v
+AppFileCons.v
+UInitConsFile.v
 UFileBootAdequacy.v
 # FileAssumptions.v
 
-# lane SKELETON: the verified PROGRAM TIER's statements (proofs Admitted).
-# Nothing imports these, so neither audit cone reaches them.
+UInitFileCons.v
+
 UEchoFile.v
+UShRedirPay.v
 UShRound.v
 UInitFile.v

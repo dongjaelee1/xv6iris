@@ -78,7 +78,7 @@ Definition wp_sys_kill_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslot
      the deposit at syscall number 6 ([UexecExecInst.xv6_sbundle]'s row 6).
      No verified program issues 6; the generic slot pays it out of the
      application's supply. *)
-  □ riscv_kill_cred -∗
+  app_taint -∗
   sie_cap_gpr KT1 m av b p -∗
   cpu_own n eb p b lks -∗
   kernel_text -∗ kernel_data -∗ pc_is pcE -∗

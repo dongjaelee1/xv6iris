@@ -242,7 +242,7 @@ Section UtSysBlock.
                p_pid (proc_addr (un_j N)) ↦₄{DfracOwn (1/4)} pidr ∗
                SchedCtx.kill_paid pidr klr ∗
                ((⌜klr = (mword_of_int 0 : mword 32)⌝
-                 ∨ (ChildTok.kill_shot (pv_gen (us_V U)) ∗ □ riscv_kill_cred)) ∗
+                 ∨ (ChildTok.kill_shot (pv_gen (us_V U)) ∗ app_taint)) ∗
                 p_pid (un_pj N) ↦₄{DfracOwn (1/4)} pid ∗
                 pid_reg pid (DfracOwn qeighth) (pv_gen (us_V U)) ∗
                 ChildTok.taken_at (pv_gen (us_V U))))%I
@@ -256,7 +256,7 @@ Section UtSysBlock.
               M1 nx 0%nat false (un_pj N) false lks
               (fun (klv : mword 32) =>
                  ((⌜klv = (mword_of_int 0 : mword 32)⌝
-                   ∨ (ChildTok.kill_shot (pv_gen (us_V U)) ∗ □ riscv_kill_cred)) ∗
+                   ∨ (ChildTok.kill_shot (pv_gen (us_V U)) ∗ app_taint)) ∗
                   p_pid (un_pj N) ↦₄{DfracOwn (1/4)} pid ∗
                   pid_reg pid (DfracOwn qeighth) (pv_gen (us_V U)) ∗
                   ChildTok.taken_at (pv_gen (us_V U)))%I)
@@ -367,7 +367,7 @@ Section UtSysBlock.
          on). *)
       assert (Hknz : kl <> (mword_of_int 0 : mword 32)).
       { intro Hz0. rewrite Hz0 in Hnz. vm_compute in Hnz. discriminate Hnz. }
-      iAssert (ChildTok.kill_shot (pv_gen (us_V U)) ∗ □ riscv_kill_cred)%I
+      iAssert (ChildTok.kill_shot (pv_gen (us_V U)) ∗ app_taint)%I
         with "[]" as "#[Hshot Hcred]".
       { iDestruct "Hkw" as "[%Hz0 | $]". exfalso; exact (Hknz Hz0). }
       (* THE MARKER, BACK OUT OF THE BLOCK: kexit runs on the marker-less

@@ -240,9 +240,9 @@ Section UInitKernel.
        is the ROUND's and not the application's: the lend is in hand at
        that site, so [UkInit.init_kill_law] buys the row off the
        credential the round already carries and hands the lend back.  It
-       REPLACES [⊢ □ riscv_kill_cred -∗ T] -- "a kill is free for the
+       REPLACES [⊢ app_taint -∗ T] -- "a kill is free for the
        application" -- which is echo's identity ([UInitBoot]'s
-       [riscv_kill_cred = echo_taint]) and is FALSE at an application
+       [app_taint = echo_taint]) and is FALSE at an application
        whose kill credential is the generic one. *)
     (⊢ UkInit.init_kill_law T stc (cc_wp Cr) (cc_wbn Cr)) ->
     tf_resume_pc (uvis_tf W) = (mword_of_int InitSyms.start : mword 64) ->
@@ -405,16 +405,12 @@ Section UInitKernel.
     iAssert (UkRun.urun_nopipe (uvis_fd W)) as "#Hnpw";
       [ iApply (UkRun.urun_nopipe_intro _ Hnpk) | ].
     iApply (uslot_of_urun_all W (2 + (4 + (12 + (12 + (4 + n0))))) (fun _ => True)%I
-              ∅ Hal8 Hroom Hstk Hfdlen Hstop Hlzf with "Hdep Hnpw Hmp").
+              Hal8 Hroom Hstk Hfdlen Hstop Hlzf with "Hdep Hnpw Hmp").
     (* init's own half of its children set travels with its cwd: nothing
        on init's walk READS it, but fork MOVES it, so the fragment goes
        down the chain index-free ([UserChildren.uch_any]). *)
-    iIntros (N h) "%Hpayeq %Hheldeq %Hsz Hszf #Ht Hstd Hcwf Hchf _ Dlo _ Hrun".
+    iIntros (N h) "%Hpayeq %Hsz Hszf #Ht Hstd Hcwf Hchf _ Dlo _ Hrun".
     pose proof (ukn_const_of_triv N (Hpayeq : UkRun.ukn_triv N)) as Hti.
-    (* ...AND THE RECORD HOLDS NO OFFSET HALF (lane OFF-HAND-4, S1): the
-       carve minted it at the empty held set, which is exactly the class
-       /init's dup leaves are stated at ([UkRun.ukn_parked]). *)
-    pose proof (Hheldeq : UkRun.ukn_parked N) as Hpk0.
     (* ---- the argument vector, out of the data below the frame ---- *)
     assert (Hsub16 :
               init_argv_map
@@ -479,9 +475,9 @@ Section UInitKernel.
        is the ROUND's and not the application's: the lend is in hand at
        that site, so [UkInit.init_kill_law] buys the row off the
        credential the round already carries and hands the lend back.  It
-       REPLACES [⊢ □ riscv_kill_cred -∗ T] -- "a kill is free for the
+       REPLACES [⊢ app_taint -∗ T] -- "a kill is free for the
        application" -- which is echo's identity ([UInitBoot]'s
-       [riscv_kill_cred = echo_taint]) and is FALSE at an application
+       [app_taint = echo_taint]) and is FALSE at an application
        whose kill credential is the generic one. *)
     (⊢ UkInit.init_kill_law T stc (cc_wp Cr) (cc_wbn Cr)) ->
     kexec_image_ok ElfUser.init_elf na alen afun sts W' ->
@@ -707,9 +703,9 @@ Section UInitKernel.
        is the ROUND's and not the application's: the lend is in hand at
        that site, so [UkInit.init_kill_law] buys the row off the
        credential the round already carries and hands the lend back.  It
-       REPLACES [⊢ □ riscv_kill_cred -∗ T] -- "a kill is free for the
+       REPLACES [⊢ app_taint -∗ T] -- "a kill is free for the
        application" -- which is echo's identity ([UInitBoot]'s
-       [riscv_kill_cred = echo_taint]) and is FALSE at an application
+       [app_taint = echo_taint]) and is FALSE at an application
        whose kill credential is the generic one. *)
     (⊢ UkInit.init_kill_law T stc (cc_wp Cr) (cc_wbn Cr)) ->
     kexec_sz ElfUser.init_elf - PGSIZE

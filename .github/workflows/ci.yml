@@ -323,6 +323,19 @@ jobs:
             if ./tools/tcb/tcb-report.sh "xv6iris.$thm" > "$log" 2>&1; then
               python3 tools/tcb/tcb_report.py "$log" --md --target "$thm" \
                 >> "$GITHUB_STEP_SUMMARY"
+              # AND THE SAME TABLE TO STDOUT, in the plain (non-Markdown) form.
+              # The step summary above is rendered on the run page but is served
+              # by NO API -- not the jobs endpoint, not the Checks API, not as an
+              # artifact -- so nothing outside a browser can read these numbers.
+              # The run LOG is fetchable (`gh run view --log`), so printing here
+              # is what lets the paper's tr/scripts/gen-tcb.py take the trusted
+              # base off a green run instead of rebuilding the tree to re-derive
+              # it.  The `=== TCB <thm> ===` line delimits the four tables in
+              # the log.  Same invocation as the summary above, without --md.
+              # Best-effort: a hiccup here must not turn an otherwise-green
+              # build red.
+              echo "=== TCB $thm ==="
+              python3 tools/tcb/tcb_report.py "$log" --target "$thm" || true
             else
               rc=$?
               {

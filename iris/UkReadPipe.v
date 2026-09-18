@@ -73,6 +73,7 @@ Require Import FileInvDefs.
 Require Import PipeInvDefs.         (* [pipe_rw_ret] -- what read answers here *)
 Require Import PipeNames.           (* [pipe_names] / [pipe_st] / [pst0] *)
 Require Import PipeQueue.           (* [pipe_rpay] / [pipe_rpost_img] / [pipe_qfrag] *)
+Require Import PipeReg.             (* [pipe_reg]: THE REGISTRY the caller hands back *)
 Require Import ChildTok.            (* [kill_shot] -- the -1-by-kill arm *)
 Require Import UexecExecInst.       (* THE INSTANCE: [spost_at_pipe_elim], [xfam] *)
 Require Import UserPtTree.          (* [uptd] -- the page-table view the post is at *)
@@ -136,6 +137,7 @@ Section UkReadPipe.
        of_Fex    := of_Fex f0;
        of_Fo     := of_Fo f0;
        of_Ft     := of_Ft f0;
+       of_om    := OffParked;
        wf_Q      := wf_Q f0;
        nf_P      := nf_P f0;
        nf_Pmiss  := nf_Pmiss f0;
@@ -402,33 +404,35 @@ Section UkReadPipe.
   Qed.
 
   Lemma wp_uk_pipe_read_end (N : uk_names Σ) (h : CpuId) (m : regfile)
-      (pc : mword 64) (l : list fdstate) (f : nat -> bv 8) (avail : nat) :
+      (pc : mword 64) (l : list fdstate) (f : nat -> bv 8) (avail : nat)
+      (Rp : pipe_names -> iProp Σ) :
     usysno m = USYS_pipe ->
     is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
     fd_lowest_closed l = None ->
     uinstr_is (ukn_t N) pc false (ECALL tt) -∗
     urun N h m pc avail -∗
     udepw N m pc USYS_pipe -∗
-    (* THE TAINT, straight through to [UkRunSys.wp_uk_ecall_pipe]: pipe(2)
-       is the one number that puts a pipe row in the table, so it is the
-       one number after which the run's [UkRun.urun_nopipe] can only be
-       the credential arm -- and the credential is what every pipe payment
-       is payable from ([PipeQueue.pipe_cpay]).  As the leaf stands, a
-       program that opens a pipe pays its own tear-down's closes out of
-       it, which is why nothing verified has held a pipe.
+    (* THE REGISTRAR, WHERE THE TAINT USED TO BE (design/app-pipe.md SS2,
+       lane PIPE-REG).  This is [UkRunSys.wp_uk_ecall_pipe]'s registrar read
+       at the INSTANCE, which is the only place the pipe's exact fragment
+       can be named: the caller takes the new pipe's byte-queue fragment at
+       the birth state and hands back the pipe's REGISTRATION -- the [□]
+       -guarded close payment at either end, which is what the run's
+       [UkRun.urun_nopipe] carries for each of the two new rows and what
+       the dying process's exit spends.  It keeps whatever it made of the
+       fragment, as [Rp γp], and that is what the post below hands over in
+       the fragment's place: lane PIPE-PROTO's [pipe_proto_alloc] is the
+       instance of record ([Rp γp := ∃ pn, pipe_inv pn γp L ∗ wtok]).
 
-       THAT IS THE WALL, AND IT IS RULED ON: design/app-pipe.md SS2 puts
-       the pipe's exact fragment in a PER-PIPE INVARIANT and makes the
-       run's reading the invariant's persistent HANDLE, one per pipe row
-       ([urun_nopipe] redefined as a list of registrations, the taint kept
-       as one of its two intro lemmas).  A link built from an invariant
-       handle is buildable any number of times, which is what pays the two
-       rows sh holds on one pipe and every dup/fork copy of a row -- none
-       of which one exclusive fragment can pay.  Lane PIPE-REG lands that
-       and drops this premise; until it does, this leaf is the honest
-       statement of what the tree supports and a pipe holder must be
-       tainted. *)
-    □ riscv_kill_cred -∗
+       REGISTERING CONSUMES THE FRAGMENT, necessarily: a registration is a
+       [□] and one fragment buys exactly one payment
+       ([PipeReg.pipe_cpay_of_frag]), so the fragment cannot both found the
+       registry and come back out.  A caller that wants the OLD behaviour
+       takes [Rp γp := pipe_qfrag (pn_queue γp) pst0] and answers from the
+       credential ([PipeReg.pipe_reg_of_taint]), and nothing about it has
+       changed. *)
+    (∀ γp : pipe_names,
+       pipe_qfrag (pn_queue γp) pst0 ={⊤}=∗ pipe_reg γp ∗ Rp γp) -∗
     ustd (ukn_fd N) l -∗
     ubytes (ukn_d N) (uint (m !!! Regidx a0_idx)) 8 f -∗
     (∀ (h' : CpuId) (r : mword 64) (g : nat -> bv 8),
@@ -448,34 +452,88 @@ Section UkReadPipe.
            UserFd.ufd (ukn_fd N) a (FdOpen true false (FdPipe γp)) ∗
            UserFd.ufd (ukn_fd N) b (FdOpen false true (FdPipe γp)) ∗
            ustd (ukn_fd N) l ∗
-           (* ...AND THE BYTE QUEUE'S EXACT FRAGMENT AT THE BIRTH STATE
-              (design/pipe.md, "The byte queue"), which is what the two
-              members' payments are built out of. *)
-           pipe_qfrag (pn_queue γp) pst0)
-        ∨ (⌜ uint r <> 0 ⌝ ∗ ustd (ukn_fd N) l)) -∗
+           (* ...AND WHAT THE REGISTRAR MADE OF THE BYTE QUEUE'S EXACT
+              FRAGMENT AT THE BIRTH STATE (design/pipe.md, "The byte
+              queue"; design/app-pipe.md SS2).  The fragment itself went
+              into the registration the run now carries for the two new
+              rows -- it had to, a registration being a [□] -- and this is
+              the caller's own successor of it, at the [γp] the two handles
+              are ends of. *)
+           Rp γp)
+        (* ...OR THE CALL FAILED, AT -1 (lane PIPE-NEG1): the leaf's own
+           failure arm, which the row now pins, relayed unchanged.  sh's
+           PIPE arm is what needs the sign -- [bltz a0] -- and this is the
+           end of the chain that carries it. *)
+        ∨ (⌜ r = (mword_of_int (-1) : mword 64) ⌝ ∗ ustd (ukn_fd N) l)) -∗
        urun N h' (<[Regidx a0_idx := r]> m) (add_vec_int pc 4) avail -∗
        ubytes (ukn_d N) (uint (m !!! Regidx a0_idx)) 8 g -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hal Hnone.
-    iIntros "#Hi Hrun Hsb #Hkt Hstd Hbuf Hcont".
-    iApply (wp_uk_ecall_pipe N h m pc l f avail Hn Hal
-              with "Hi Hrun Hsb Hkt Hstd Hbuf").
-    iIntros (h' r g W fdep M' fdv' cw' cs') "Harm Hsp Hrun Hbuf".
-    iApply ("Hcont" $! h' r g with "[Harm Hsp] Hrun Hbuf").
+    iIntros "#Hi Hrun Hsb Hreg Hstd Hbuf Hcont".
+    (* THE CLASS-LEVEL REGISTRAR, BUILT HERE.  The leaf below is stated
+       over the deposit class and cannot open row 4's post, so what it
+       takes is a fupd from that post to the two new rows' registration;
+       this is that fupd at the instance, and [Rp'] is the shape the post
+       leaves behind -- [spost_at_pipe_elim]'s own, with the fragment
+       replaced by the caller's successor.  On a FAILED call the post
+       promises nothing, the table did not move (the leaf's pure premise
+       says so), and the run's own reading answers for free. *)
+    iApply (wp_uk_ecall_pipe N h m pc l f avail
+              (fun (fdep : sfam) (W : uvis) (r : mword 64) (M' : gmap Z (bv 8))
+                   (fdv' : list fdstate) (cw' : Z) (cs' : gset gname) =>
+                 (⌜uint r = 0⌝ -∗
+                  ∃ (a b : nat) (γp : pipe_names),
+                    ⌜a <> b /\ fd_least_closed (uvis_fd W) a
+                     /\ fd_least_closed
+                          (<[a := FdOpen true false (FdPipe γp)]> (uvis_fd W)) b
+                     /\ fdv' = <[b := FdOpen false true (FdPipe γp)]>
+                                 (<[a := FdOpen true false (FdPipe γp)]>
+                                    (uvis_fd W))⌝ ∗ Rp γp)%I)
+              Hn Hal with "Hi Hrun Hsb [Hreg] Hstd Hbuf").
+    { iIntros (fdep W r M' fdv' cw' cs') "%Hfail #Hnpw Hsp".
+      destruct (decide (uint r = 0)) as [Hr0 | Hr0].
+      - iDestruct (spost_at_pipe_elim uslot fdep W r M' fdv' cw' cs' with "Hsp")
+          as "Hsp".
+        iSpecialize ("Hsp" with "[%]"); [ exact Hr0 | ].
+        iDestruct "Hsp" as (a2 b2 γp2) "[%Hp2 Hfrag]".
+        destruct Hp2 as (Hne2 & Hca2 & Hcb2 & Hfdv2).
+        iMod ("Hreg" $! γp2 with "Hfrag") as "[#Hpr HRp]".
+        iModIntro. iSplitR "HRp".
+        + (* the two rows go in REGISTERED, read end first, and the run's
+             reading survives pipe(2) -- which is the wall coming down *)
+          rewrite Hfdv2.
+          iAssert (urun_nopipe
+                     (<[a2 := FdOpen true false (FdPipe γp2)]> (uvis_fd W)))
+            as "#Hnp1";
+            [ iApply (urun_nopipe_insert_reg (uvis_fd W) a2
+                        (FdOpen true false (FdPipe γp2)) with "[] Hnpw");
+              iApply (srow_reg_of_pipe_reg true false γp2 with "Hpr") | ].
+          iApply (urun_nopipe_insert_reg _ b2
+                    (FdOpen false true (FdPipe γp2)) with "[] Hnp1").
+          iApply (srow_reg_of_pipe_reg false true γp2 with "Hpr").
+        + (* ...and the residue the caller kept, at the post's own two
+             slots and its own [γp] *)
+          iIntros "_". iExists a2, b2, γp2. iSplitR; [ | iExact "HRp" ].
+          iPureIntro. split_and!;
+            [ exact Hne2 | exact Hca2 | exact Hcb2 | exact Hfdv2 ].
+      - (* THE CALL FAILED: no pipe, no new row, and the fd row's
+           else-branch says the table did not move -- so the run's own
+           reading answers and the registrar is free *)
+        iModIntro. rewrite (Hfail Hr0). iSplitL; [ iExact "Hnpw" | ].
+        iIntros "%Hc". exfalso. exact (Hr0 Hc). }
+    iIntros (h' r g W fdep M' fdv' cw' cs') "Harm HRp' Hrun Hbuf".
+    iApply ("Hcont" $! h' r g with "[Harm HRp'] Hrun Hbuf").
     iDestruct "Harm" as "[Hok | Hbad]"; [ | iRight; iExact "Hbad" ].
     iDestruct "Hok" as (a b γp) "(%Hpure & Hra & Hrb & Hstd)".
     destruct Hpure as (Hr0 & Hne & Halt & Hblt & Hbytes & Hca & Hcb & Hfdv').
-    (* THE ROW-4 POST, READ HERE: the leaf is stated over the CLASS and
-       cannot open it, so it hands it on and this is where the pipe's
-       fragment comes out.  The post's two slots are a SECOND least-closed
-       scan of the same table, so [UkRunSys.upipe_names_agree] identifies
-       the pipe it is about with the one the two handles are ends of. *)
-    iDestruct (spost_at_pipe_elim uslot fdep W r M' fdv' cw' cs' with "Hsp")
-      as "Hsp".
-    iSpecialize ("Hsp" with "[%]"); [ exact Hr0 | ].
-    iDestruct "Hsp" as (a2 b2 γp2) "[%Hp2 Hfrag]".
+    (* THE REGISTRAR'S RESIDUE, READ HERE.  The post's two slots are a
+       SECOND least-closed scan of the same table, so
+       [UkRunSys.upipe_names_agree] identifies the pipe it is about with
+       the one the two handles are ends of. *)
+    iSpecialize ("HRp'" with "[%]"); [ exact Hr0 | ].
+    iDestruct "HRp'" as (a2 b2 γp2) "[%Hp2 HRp]".
     destruct Hp2 as (Hne2 & Hca2 & Hcb2 & Hfdv2).
     pose proof (upipe_names_agree (uvis_fd W) fdv' a b a2 b2 γp γp2
                   Hca Hcb Hfdv' Hca2 Hcb2 Hfdv2) as Hgamma.
@@ -487,7 +545,7 @@ Section UkReadPipe.
     rewrite (ustd_after_none l (FdOpen true false (FdPipe γp)) Hnone).
     rewrite (ustd_after_none l (FdOpen false true (FdPipe γp)) Hnone).
     iLeft. iExists a, b, γp. iSplitR; [ by iPureIntro | ].
-    iFrame "Hha Hhb Hstd Hfrag".
+    iFrame "Hha Hhb Hstd HRp".
   Qed.
 
 

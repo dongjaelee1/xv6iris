@@ -354,7 +354,7 @@ Section UexecCond.
        kill.  The two gated arms are verified programs and pay nothing --
        their interrupt cause is one of the two delegated ones and their
        page-fault arms are refuted at [uvis_lazy W = false]. *)
-    udep (PS := PF) -∗ □ ssupply -∗ □ riscv_kill_cred -∗ □ uexec_wp -∗
+    udep (PS := PF) -∗ □ ssupply -∗ app_taint -∗ □ uexec_wp -∗
     my_pay (uvis_gen W) (fun _ => True)%I -∗ uslot W.
   Proof using ghost_varG1.
     intros Hpsok_free. iIntros "#Hwr #Hdep #Hsup #Hkc #Hgen #Hpay".
@@ -384,12 +384,12 @@ Section UexecCond.
      [ssupply] alone ([UexecRet.uexec_wp_uslot]). *)
   (* ...AND THE PAYLOAD IS THE PERSISTENT CARRIER (lane SELF-KILL, P6b):
      the resource arrives as the process's own published payment wand
-     [□ (riscv_kill_cred -∗ R)], because both legs of the slot's every
+     [□ (app_taint -∗ R)], because both legs of the slot's every
      return need it and nothing travels the trap route to hand it back.
      Free here -- this branch already holds the taint. *)
   Lemma cond_entry_slot_pay (R : iProp Σ) (W : uvis) :
-    □ ssupply -∗ □ riscv_kill_cred -∗ □ uexec_wp -∗
-    my_pay (uvis_gen W) (fun _ => R)%I -∗ □ (riscv_kill_cred -∗ R) -∗ uslot W.
+    □ ssupply -∗ app_taint -∗ □ uexec_wp -∗
+    my_pay (uvis_gen W) (fun _ => R)%I -∗ □ (app_taint -∗ R) -∗ uslot W.
   Proof using .
     iIntros "#Hsup #Hkc #Hgen #Hpay #HR".
     iApply (uexec_wp_uslot R W with "Hsup Hkc Hgen Hpay HR").

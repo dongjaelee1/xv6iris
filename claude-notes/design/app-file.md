@@ -429,6 +429,26 @@ Lanes: WRITE-RELAY (relays 3 and 4, `SysWriteDefs`/`SpecWritei`/
 `ProofWritei`/`FsAbsWriteFire`/`FileWrite`), then OFF-LINK (the rest of
 this block, on the off-hand worktree after OFF-HAND-7 stopped).
 
+AS LANDED (OFF-LINK-1..5, 2026-09-17): the half is the program's; `FdPark`
+is gone; the box is `off_resident γo k := ∃ v, cell ∗ ⌜wf⌝ ∗ off_link γo
+v` with `off_link γo z := off_gv γo (1/2) z ∨ app_taint`; the nodes are
+LENT `off_link` and answer `off_ret` (either value, or the taint); the
+supplier's output is `off_link` (payers: the parked invariant, the taint;
+NO held supplier); `filewrite_in`/`fileread_in`'s inode arms are keyed on
+the row's mode with the held arm `(∃ off0, uoff γo off0 ∗ ∀ P, chain) ∨
+(chain ∗ app_taint)`, the generic tier paying the right arm from the
+taint it holds; the write fire's loop and the read fire's site are ONE
+walk at both modes.  OFF-LINK-5's correction: the ANCHORED node
+(OFF-LINK-4) is unnecessary — the client's node holds `uoff γo off0` in
+its closure, reads `off = off0` by `uoff_agree_k` against the very
+`off_link` it is lent, advances both halves itself and hands the box's
+arm back already advanced; so RELAY 2 needs no relay and a held
+descriptor costs the kernel nothing.  REMAINING (OFF-LINK-6): L2+L4 as
+ONE change — `fdstate_ok` reading `fp_om pn` (145 sites) and the publish
+minting the mode at hand/park — then the hand-mode leaves and the held
+deposit suppliers, which discharge CAT-GEOM-4's two hypotheses and
+`UEchoFile`'s `ef_node`/`ef_chain`.
+
 ### 3.5 THE OWNER'S PRINCIPLE (2026-09-17): `link ∨ taint`, the pipe pattern
 
 The owner: "one thing you might be struggling with is how to deal with
@@ -471,6 +491,26 @@ the taint everywhere, and a verified program must never be able to
 taint itself at an arm it dislikes (the vacuity trap) — it closes an
 unreachable arm by arm exclusivity in the kernel contract.
 
+SUP-ONE landed (2026-09-17): `riscv_kill_cred` is `app_taint`, written
+bare (its `Persistent` instance carries what the `□` said; `pipe_taint_
+cred` is deleted); the console licence is a LAW OF THE INTERFACE
+(`ai_lic`, so `cons_licence` follows from `app_taint` at every altitude
+with no record equation); the generic supply is the PAIR `app_sup ∗
+app_taint` — R1's "the supply IS the taint" is REFUTED twice (`app_sup`
+and `app_taint` live at independent ambient records tied only by the
+boot's equations, and at the tree application the kill credential is
+`True` while the claim is not, so `al_sup_of_kill` is false there);
+`al_sup_of_kill` is STOPPED with a four-step recipe that gives the tree
+application a real interface — a new fact about that application, the
+owner's call.  R4 landed: the open leaves export `fdst_nopipe`, and cat's
+close needs no free law.  OFF-LINK's vacuity checks REFUTED the survey's
+"push the disconnect into `off_supply`" (a supplier MOVES the ghost, and a
+move needs the half the taint lacks): the arm belongs in the BOX
+(`UserOff.off_link γo z := off_gv γo (1/2) z ∨ app_taint`), the supplier's
+output is `off_link` (`off_settle`, payers `off_settle_parked` and
+`off_settle_taint`), and the nodes' phase-1 LEND must be `off_link` too so
+a fire at a disconnected object can still run its node (OFF-LINK-2).
+
 ### 3.6 PROCESS RULES (review §D4–D5, 2026-09-17)
 
 - A ruling is checked at the STATEMENT before it is issued: the mask it
@@ -496,6 +536,177 @@ unreachable arm by arm exclusivity in the kernel contract.
   INSIDE sh's credential family (`Wcf I p := Wcl I p ∗ sh_hold I`, no
   `ushf_wq` twin), and echo's exec crossing costs one `Pay` (`Wq ∗ fown
   ∗ uoff γo 0`) and one PURE row about the exec'ing table.
+
+### 3.7 PROCESS RULES v2 (review 2, `claude-notes/reviews/app-file-review-2.md`, 2026-09-17 evening)
+
+Review 2 measured seven hours after review 1: 22 lanes, 147 commits (31%
+merges, 27% notes), 13 of 22 skeleton obligations with a discharging lemma
+— and the three skeleton files at the SAME 15 `Hypothesis` + 12 `Admitted`
+as when SKELETON left them, nine of the fifteen dischargeable today by a
+lemma no lane applied.  The causes, ranked: echo literals in the shell's
+STATEMENTS found one per lane (eighteen since review 1); lanes stopping at
+"a full deliverable" and naming residues; parallelism net negative on the
+sh tier; rulings refuted at the statement (~5 lane-equivalents); one
+unowned critical item (WRITE-RELAY-3's `TB` guard).  RULES, replacing
+§3.6's lane sizing:
+
+- THE METRIC is `grep -c "Hypothesis\|Admitted" iris/UEchoFile.v
+  iris/UShRound.v iris/UInitFile.v` (15 + 12 today).  A lane that does not
+  lower it did not finish.  Readings: 31 at review 2 (9/19/3); 23 at
+  checkpoint 34 (9/11/3, PROGRAM-STREAM's first stretch, 4689ae3e1); 21 at
+  INIT-FILE's first lane (9/11/1, fabe6c805); checkpoint 35 = both merged
+  plus the file stage instance (e3b70b6d3), audits 27/14/13 unchanged; 19
+  at checkpoint 36 (7/11/1: KERNEL STREAM's L2+L4, `Hdep1`/`Hwrite1`
+  discharged, 6d645865c); `cat_open_hand` discharged and `redir_K`
+  restated with its taint arm at 023d1fff8 (no metric change); 16 at
+  e455487d8 (7/8/1: PROGRAM STREAM's `Hcat_body`, era step, H' applied,
+  `sh_tag_law_file`/`Hexecfail`/`Hpanic`); 14 at 0edba843f (7/6/1:
+  `Hchild_echo` and `sh_child_law_file`); 13 at `Hopen_hand` proved
+  (7/5/1); checkpoint 37 = that plus INIT-FILE round 6 (1e044707c),
+  audits 27/14/13 unchanged.
+- RULING LINE-OK (2026-09-18, PROGRAM-STREAM stretch 4): the fork's slot
+  (`UkSh.ush_posw`) told the child only `last_ws I = ws`, and a body with a
+  trailing blank has the same words as one without, so the era's line
+  constructor was undecidable at the child.  One conjunct in the slot,
+  `FileDisc.fbody_ok (ush_lastbody I)` ("the input's last body parses"),
+  free at the producer; `sh_exec_sup_echo_wq`'s `line_ok` guard is a
+  parameter, the file's the stage's `ck_lineok`.  The diagnostic carrier
+  came with the same guard, so `pdiag` is not on the program stream's
+  critical path.
+- RULING CAT-DEED (2026-09-18, PROGRAM-STREAM stretch 5): cat's exit
+  payload returns the WHOLE deed on every arm — `catq_cat := (catq_filed
+  RCRan ∨ catq_filed RCNoOpen) ∗ fown r (Some (i, bs))` — because the lend
+  gives cat both fractions, cat's reads never move the deed's state, and
+  `cat_hold_at`'s fraction survives a tainted read.  sh's next hold takes
+  it whole with the tie by `cat_tie`'s step.  Also: `ush_open_call2` said
+  nothing about the bytes at the address it handed the open, nor the cwd —
+  it now carries the name as the image the ecall reads, the root cwd and
+  the lowest closed fd (fixed at 6104b5930); and `UkFileOpen` must take
+  `uprogSG` as a section parameter (its corollaries were at the ambient
+  `uprogSG_gen`, unusable by sh's child at `uprogSG_free`).
+- RULING RECEIPT-IN-CR (2026-09-18, PROGRAM-STREAM stretch 7): the open's
+  receipt `K ty` (the deed at `f`, the offset half) is LINEAR and the
+  child's exec supply is a `□` box, so `K ty -∗ sh_exec_sup_echo_at …` is
+  unfillable.  The receipt rides in the box's own `Cr`, handed in per
+  call: `∀ ty, sh_exec_sup_echo_at (ushs_fd1f ty) ws Q (Wc I 3 ∗ K ty)` —
+  the deed went into the open out of the lend and comes back in the
+  receipt, so the exec carries what is left of the lend beside it.  The
+  inode identity (`i` not an image inode) is the claim's:
+  `FileDeltas.f_inum_not_pinned` by row LENGTH, read through
+  `file_deed_inum_acc` / `redir_K_inum`.
+- RULING READ-HELD (2026-09-18, KERNEL-STREAM §3a): the read's hand mode
+  is the WRITE side's landed shape mirrored — `file_read_piece_adv` as
+  `awrite_full_adv`'s twin (the half in the closure, agree/advance/return
+  `off_link` inside the node), the receipt family carrying `uoff γo
+  (off+d) ∨ app_taint` where the write's client cursor rides, the refund
+  returning the half unfired; `fileread_in`'s held arm is
+  `filewrite_in_held`'s twin.  The deed opens take the row's mode as a
+  PARAMETER (no second walk; every landed caller passes `OffParked`).
+  Landed at 72606e656 (`cat_held_read` discharged) with two rulings the
+  write side did not need: (i) THE RECEIPT IS ONE DISJUNCTION — fired
+  (offset reported, half advanced) or disconnected, which is the same
+  event as the claim coming back tainted, the half unmoved (`pipe_wpost`
+  exactly; a node that advanced under a tainted claim came back at a
+  position bounded by nothing); (ii) the piece takes the application's
+  taint equation (`app_taint` ↔ `file_taint c`) as two persistent
+  premises — the kernel invents neither.
+- RULING WR-TB (2026-09-18, KERNEL-STREAM §4): a FREE `TB : uptd -> Prop`
+  on `filewrite_in` is refuted at the statement — the program chooses it,
+  the kernel meets `P`, and the only meeting point (row 16 of
+  `xv6_sbundle`) is a function of a `uvis`, which carries no `uptd` by
+  construction.  The guard is the one the key's rows already determine:
+  `wr_tb pmv sz lz P := perm_of (ud_um P) sz = pmv /\ proc_pt_wf P /\
+  (lz = false -> lazy_free P)` at `uvis_perm/uvis_sz/uvis_lazy W`,
+  discharged by the kernel from the three facts it holds about its own
+  `pv_upt`; three key values threaded, no new field.
+- RULING EFQ (2026-09-18, KERNEL-STREAM §4): `UEchoFile.efq` conjoined the
+  half at the content-derived offset whichever arm `file_wq` took, so the
+  disconnected arm was unpayable.  READ-HELD's (i) at the write: the
+  cursor is `fired (file_wq exact ∗ uoff γo (content offset)) ∨ (file_taint
+  c ∗ ∃ p, uoff γo p)` — the half unmoved, its position existential, on
+  the taint arm; `efcur`/`ef_exit` and the four lemmas naming them follow.
+  RELAY 1 is not owed: `f_ok`'s `Some` arm pins the inum, so
+  `file_claim_read` yields it inside the node.
+- INIT-FILE round 4 (97d8cc41b): all nine conjuncts of
+  `init_cons_laws_at` discharged at `file_pred`; `Nm`/`Nd` threaded to
+  `mknod_au_at` through `SpecCreate.cre_commits` (name held at the GUARDED
+  reading on both sides of `mknod_acre_inst`; a directory create owes `Nd`
+  everywhere; the node separates the deed's row from the arm's, only the
+  credential separates the console's); the prologue diagnostic family is
+  based on `fwc_pban_at`, not `fwc_pro_at` (the file loses echo's `j` at
+  `fwc_ban_done_pro_at`); `file_Wbf_at_of_boot` = /init's first credential
+  out of `file_boot` alone.  `sh_hold_at` exists twice (UShRound's and
+  UInitFileCons's, syntactically the same); the round's wins at the
+  assembly.  Round 5 (989ca2114): the `pdiag` field set (eleven fields,
+  `lk_pban` the base) at all three instances, the unindexed one by lifting
+  through the existential closure; `UInitDiag` generalised over the
+  record with `UInitBoot.v` unmoved.  Two seams left before
+  `file_Hinit_boot`: the prompt law's Hold form (measure: the record's
+  prompt step decides the block-first alternative from `s0/cs0/I0`, so it
+  should be a frame), and `init_exec_sup_of_sh_slot`'s hard-coded echo
+  discipline (a parameterisation).  `UInitFile.v` may import `UShRound`:
+  the file audit does not see the program tier.  Round 6 (4feb38ec0):
+  the prompt law IS a frame (same `I` on both sides; the step never opens
+  the credential's arms; `UShPanicHold.v`); the seam takes the discipline
+  (`sh_pay_at Dl` needed too, the tail obligation being at the same `Dl`;
+  `Typeclasses Opaque ush_rest_l_at` or the `Persistent` search never
+  returns); and R4.6 CORRECTED — conjunct (g) was still the wide leg,
+  refuted at the claim by `file_cons_create_other_refuted`, repaired with
+  `⌜d <> ROOTINO \/ nmn <> fname_f⌝` as §3.4 first named it.  /init's
+  console dance at the file claim is `UInitConsFile.v`.  Left: the
+  assembly, and the round's conclusion at `ush_rest_l_at … ush_line_file`
+  (the program stream's move).
+- RULING H' (2026-09-18, INIT-FILE findings 3.1/3.2): the round's hold is
+  tied to the era's boot state BY A SHARED INDEX, not by `f0_lb` (which
+  only exists after the era's first console byte, so `Wbf []` was
+  uninhabitable at /init's first instruction).  The boot state is an ERA
+  CONSTANT: `file_link_inst_at (s0 : fst) : LinkRec` at the `fwc_*_at s0`
+  families (`file_link_inst` its `∃ s0` packing), the round's section takes
+  `s0` beside `gen_id`, `Wcf I p := lk_lcred FI (S gen_id) I p ∗
+  sh_hold_at s0 I` with no `f0_lb` in the hold; /init instantiates at
+  `s0 := dst_content s_deed`.  Refused on the way: an era-head arm on
+  `sh_hold` (names nothing), `∃ s0` outside the credential (breaks the
+  dischargers' `lcred ∗ Hold` form).  Landed by INIT-FILE round 2
+  (`FileLinksAt.v`, `FileLinksAtBan.v`, `FileLinksAtLine.v`,
+  `FileLinkInst.file_link_inst_at`, `file_Wbl_at_of_boot`; the taint arm
+  names no state, so /init takes `s0 := None` under it).
+- RULING NM (2026-09-18, INIT-FILE findings 3.4): the generic create
+  commit `FsAbsCreateFire.acre_commit_at_gen` quantified the created name
+  freely, so /init's mknod asked its caller's claim to absorb a device
+  called `f` in the root, which the file claim cannot.  A name predicate
+  `Nm : fname -> Prop` on the commit, `True` at every site but
+  `SpecSysMknod.mknod_au_at`, where it is the walked path's last element
+  under the cursor's guard, discharged by `ProofSysMknod` from the walk.
+  Refused: an `Other` parameter on `init_cons_laws_at` (the consumer
+  cannot supply it — the name is the kernel's to pin).  Bottom layer
+  landed by INIT-FILE round 3 (`FsAbsCreateNm.v`); the thread up through
+  `SpecCreate`'s shared bundle is round 4's.
+- RULING ND (2026-09-18, INIT-FILE round 3): the UNARM conjunct's receipt
+  repair is refuted (`f_ok_unarm_fresh` needs the deed's CURRENT state at
+  the arm's view, a temporal fact no receipt about one view carries).
+  NM's twin instead: `aunarm_commit_at` gains `Nd : absnode -> Prop`,
+  instantiated at the node the arm placed, so the file's unarm leg is
+  `f_ok_unarm` with the two rows' nodes distinct.
+- TWO SERIAL STREAMS, at most two lanes on `iris/` at once: the KERNEL
+  stream (OFF-LINK-6 + L5 + the `TB` guard, exit criterion: `Hopen_hand`,
+  cat's lend and `UEchoFile.ef_chain` compile as `Definition`s; then
+  ECHO-FILE's assembly) and the PROGRAM stream (SH-CHILD-2, then
+  SH-ROUND's assembly, then INIT-FILE's).  INIT-FILE runs beside them only
+  because its files are disjoint.
+- AN ASSEMBLY LANE OWNS EVERY STATEMENT IT NEEDS.  Residues are fixed
+  INLINE, including statement changes in any file; "what remains" lists
+  are replaced by updating the obligation table.  The first hour of
+  SH-ROUND is the file-instance sweep: instantiate the whole sh/init tier
+  at the file record (`grep -n "EchoDisc\.\|alt_execfail\|cmd_echo\|
+  line_alts_of\|disc_input\b\|ush_fd1p\|body_ok\|OffParked"` over it)
+  and fix every literal in one pass before assembling.
+- MERGE AT LANE END ONLY; no tree-wide rename or deletion until
+  `file_Hinit_boot` closes; findings go to a PER-LANE file
+  `claude-notes/projects/app-file-findings/<LANE>.md` (the single
+  worklist file cost 22 merge conflicts).
+- Every new `∨ app_taint` arm gets a vacuity `Example`; every new entry
+  or round premise an inhabited witness; a post's witness is bound in the
+  statement, never left existential to a caller that named it.
 
 ## 4. The console side: the stage carries the era's boot state, the ledger the line list
 
@@ -540,6 +751,19 @@ record `StageRec` with `lk_stg`, `lk_cur`, `lk_stage`, `lk_cur_step`,
 `lk_rd_res`, `lk_rr_disc`) with the sweep of those three files — which
 delivers `Hchild_echo` and `Hwbr`; and in `UShRound` the one-line change
 to `Hcltaint` (it takes the two era pins).
+LINK-GEN-2 LANDED (2026-09-17): `lk_pan`/`lk_exf` are functions of the
+input and `lk_exfb` carries the exec-failed diagnostic (echo's instance
+still definitional); `UkShDiag.ush_execfail_law_at dg n` puts the
+diagnostic on the LAW only; `FileLinksLine.v` + `FileLinkInst.v` give
+`file_link_inst` (the era's head arm as a third arm of four families;
+`lk_turn` carrying the deed's typed witness), and `file_Hwbl`,
+`file_Hwbwc`, `file_Hcltaint`, `file_Hwc`, `file_Hwbr` are what SH-ROUND
+applies at `file_Wcl g`/`file_Wbl g`, with `Hpanic`/`Hexecfail` from
+`UShPanic`'s framed laws at `sh_hold`.  `UShRound.v` owes two hypothesis
+reshapes: `Hcltaint` takes the echo-side era pin, and `Hexecfail` is
+stated at `ush_execfail_law_at (lk_exfb …) …` (a cat line prints
+`alt_execcat`), with `UkShEcho.ush_execfail_law_wq` gaining the same two
+parameters.  Open: `Hchild_echo` (LINK-GEN-3's stage).
 
 ### 4.1 What the stage adds: ONE value per era
 

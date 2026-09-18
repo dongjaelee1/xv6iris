@@ -1656,6 +1656,8 @@ UInitConsFile.v
 UInitConsPipe.v
 UFileBootAdequacy.v
 # FileAssumptions.v
+UPipeBootAdequacy.v
+# PipeAssumptions.v
 
 UInitFileCons.v
 

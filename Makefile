@@ -24,6 +24,8 @@
 #                   era-0 obligation -- a cone neither of the other two walks
 #   make audit-file / audit-file-only  the same, for the FILE APPLICATION's
 #                   top-level theorem -- a fourth cone again
+#   make audit-pipe / audit-pipe-only  the same, for the PIPELINE
+#                   APPLICATION's top-level theorem -- a fifth cone again
 #   make audit-all / audit-all-only    BOTH audits, run concurrently
 #   make model      compile the Sail-generated Coq model (model-xv6iris/)
 #   make kernel     build the xv6 kernel ELF (xv6-riscv/kernel/kernel)
@@ -145,7 +147,7 @@ USER_DUMPS ?= sync:Sync echo:Echo sh:Sh init:Init cat:Cat
 .PHONY: all proofs model kernel user dump dump-force kernel-rocq user-rocq \
         xv6-rev-check sail-rev-check gen-code check-decode update-decode \
         gen-ucode check-ucode \
-        audit audit-only audit-echo audit-echo-only audit-tree audit-tree-only audit-file audit-file-only audit-all audit-all-only vtest vtest-check vtest-check-ci vtest-gen vtest-deps \
+        audit audit-only audit-echo audit-echo-only audit-tree audit-tree-only audit-file audit-file-only audit-pipe audit-pipe-only audit-all audit-all-only vtest vtest-check vtest-check-ci vtest-gen vtest-deps \
         hwtest hwtest-gen hwtest-gen-all hwtest-probe \
         vtest-runs vtest-passes vtest-table \
         clean clean-proofs distclean model-gen
@@ -397,6 +399,22 @@ audit-file: proofs
 
 audit-file-only:
 	cd $(IRIS) && $(RUN) coqc $(AUDIT_FLAGS) -noglob FileAssumptions.v
+
+# The SAME audit for the PIPELINE APPLICATION (iris/PipeAssumptions.v): `Print
+# Assumptions` on UPipeBootAdequacy.pipe_adequacy_pipeSigma, the whole-system
+# theorem at AppPipe.app_pipe -- the `echo ... | cat' application.  A FIFTH
+# target for the reason there is a fourth: no two of the five cones contain
+# each other -- this one walks PipeDisc/PipeDiscDec/PipeOutPure/PipeOut/
+# PipeLinks/AppPipeClaim/AppPipe, which none of the other four do.  That
+# file's header says what it audits, and in particular that the theorem's one
+# open premise (Hprog, al_programs at app_pipe -- sh's round at the pipeline
+# line) is a PREMISE and so is invisible to Print Assumptions by construction.
+# Same reasons for -noglob and for staying out of iris/_CoqProject.
+audit-pipe: proofs
+	$(MAKE) audit-pipe-only
+
+audit-pipe-only:
+	cd $(IRIS) && $(RUN) coqc $(AUDIT_FLAGS) -noglob PipeAssumptions.v
 
 # BOTH audits, and the reason this target exists rather than a habit of typing
 # `make audit-only audit-echo-only`: that line SERIALISES them.  Make runs the

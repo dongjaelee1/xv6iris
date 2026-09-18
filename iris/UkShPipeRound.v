@@ -685,6 +685,10 @@ Section UkShPipeRound.
 
 End UkShPipeRound.
 
-(* the lane's two headline results, audited *)
-Print Assumptions wp_kshm_child_pipe.
-Print Assumptions wp_kshm_child_pipe_line.
+(* AUDITED, 2026-09-18 (the two [Print Assumptions] are NOT left in the
+   build: they re-cook the whole parser cone on every build, which is why
+   [FileAssumptions.v] and its siblings are out of [iris/_CoqProject]).
+   [wp_kshm_child_pipe] and [wp_kshm_child_pipe_line] print EXACTLY the
+   three the landed redirect parser theorem prints and nothing else:
+   [xv6iris_extras.resv_matches], [xv6iris_extras.resv_is_valid] and
+   [FunctionalExtensionality.functional_extensionality_dep]. *)

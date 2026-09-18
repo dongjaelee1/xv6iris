@@ -138,7 +138,8 @@ arm is the theorem's one named premise (`pipe_both_law`).
 - [ ] **CAT-PIPE** (design §5.3; after PIPE-PROTO + PIPE-STD).
   `iris/UCatPipe.v`: cat's round and `image_entry` at fd 0 = a pipe read
   end, at the pipe stage's cursor.
-- [ ] **PIPE-DEC** (pure; after PIPE-MODEL-2).  `iris/PipeDiscDec.v` ending
+- [x] **PIPE-DEC** (pure; after PIPE-MODEL-2) — LANDED 2026-09-18, see
+  Findings.  `iris/PipeDiscDec.v` ending
   in `Global Instance disc_p_dec h : Decision (PipeDisc.disc_p h)` — the
   twin of `FileDiscDec` (STAGE's BLOCKER 1: the ledger's counter sits at
   `decide (disc h)`); the `PBoth` candidates enumerated as a THEOREM, never
@@ -926,3 +927,128 @@ better code but a different carrier — `cs : list palt`, or `cs : list N`
 **NOTHING ELSE MOVED.** No landed `.v` file edited; `iris/_CoqProject`
 carries the one new row; nothing imports `PipeDisc`, so the three audits'
 cones are untouched.
+
+### PIPE-DEC (2026-09-18) — `disc_p` IS DECIDABLE, and the pipe model needs NO canonicalisation of a state
+
+Branch `app-pipe/pipe-dec`, commit `aa4491300`.  Whole tree GREEN on the
+lane's mirror (`ec2-lane.sh dec build`, **RC=0**, zero `Error`); every one
+of the 1598 `_CoqProject` rows has its `.vo`.  `PipeDisc.v` **unedited**;
+no landed statement anywhere moved; nothing is `Admitted`; every proof
+carries a minimal `Proof using`.  `Print Assumptions` on all eight
+deliverables — `elem_of_choose`, `elem_of_palt_cands`,
+`palt_cands_both_LR`, `alts_cands_p_alts_ok`, `alts_ok_p_cs_canon`,
+`sessp_pro_len`, `disc_seg_p'_dec`, `disc_p_dec` — prints exactly *Closed
+under the global context*.  The three audits cannot move: nothing imports
+`PipeDiscDec`, and `AUDIT_FLAGS` reads only the `-R`/`-arg` lines of
+`iris/_CoqProject`, not its file rows.
+
+**WHAT LANDED.**  One new file, `iris/PipeDiscDec.v` (435 lines), in
+`iris/_CoqProject` right after `PipeDisc.v`, ending in `Global Instance
+disc_p_dec h : Decision (disc_p h)`.  **BLOCKER 1's pipe twin is closed**:
+lane PIPE-STAGE can delete its `Context {Hdp : forall h, Decision
+(disc_p h)}` and put the ledger's counter at `decide (disc_p h)`.
+
+- §1 `choose n k` (every selector of length `n` with exactly `k` `true`s,
+  by recursion on the first entry) and `elem_of_choose : sel ∈ choose n k
+  <-> length sel = n /\ count_true sel = k`.
+- §2 `palt_fix_cands` / `palt_cands` (the CANONICAL codes one line shape
+  admits) with `palt_cands_alt : palt_ok l a -> palt_code a ∈ palt_cands
+  l`, the brief's two-way `elem_of_palt_cands : c ∈ palt_cands l <->
+  palt_ok l (palt_of c) /\ c = palt_code (palt_of c)`, `palt_cands_canon`,
+  and the anti-vacuity witness `palt_cands_both_LR`.
+- §3 `alts_cands_p` / `elem_of_alts_cands_p` / `alts_cands_p_alts_ok`
+  (`alts_ok_p` is a `Forall2` over `plines_of`, so the enumerator is
+  per-line and the length falls out).
+- §4 `pcode_canon` / `cs_canon_p` and the canon chain: `cs_canon_p_at`,
+  `pro_idx_p_canon`, `alt_cont_p_canon`, `alt_seq_p_canon`, `sessp_canon`,
+  `alts_ok_p_cs_canon`, `disc_pt_all_p_canon`.
+- §5 `alt_seq_p_pro_len`, `sessp_pro_len` — the prologue length bound at
+  `pro_idx_p`.
+- §6 `disc_seg_p'_dec` (`Defined`), then `disc_p_dec` (`Qed`).
+
+**WHAT THE BRIEF/DESIGN GOT WRONG — and it is a SIMPLIFICATION, not a
+cost.**
+
+- **There is no boot-state canonicalisation to do, so `FileDiscDec`'s
+  §§6–7 do NOT port and `disc_seg_p'_ex_dec` is not a statement.**  The
+  brief asked for "the split/infix laws (`alt_seq_p_split`,
+  `sessp_infix_blk`, …) and the canonicalisation `disc_seg_p'_canon`,
+  then `disc_seg_p'_ex_dec`, then `disc_p_dec`".  `FileDisc.disc_f` needs
+  all of that only because it is `exists s, fst_ok s /\ disc_seg_f' s
+  seg` — the f-state is threaded across rounds and cycles, so the witness
+  has to be pulled back onto the wire (`infixed`/`substrings`/`scands`).
+  **A pipe dies with its era** (design §0, limit 3), so `sessp` threads
+  NO state, `disc_seg_p'` quantifies over `ps` and `cs` alone, and the
+  decision is of `disc_seg_p'` ITSELF.  `infixed`, `substrings`, `scands`,
+  `alt_seq_p_split`, `sessp_infix_blk`, `disc_seg_f'_canon`'s twin and
+  `fcont_ok`/`fst_ok`'s decidability (FileDiscDec §§0–1, 6–7) are all
+  UNNEEDED: the lane's chain is `elem_of_choose` → `palt_cands` →
+  `alts_cands_p` → `cs_canon_p` → `sessp_pro_len` → `disc_seg_p'_dec` →
+  `disc_p_dec`, and the file is 435 lines against FileDiscDec's 643.
+- **`PipeDisc`'s parenthetical at `disc_seg_p'` is superseded** ("`[disc_seg_p']`
+  is NOT claimed decidable: the search over the resolutions `EchoDisc` can
+  run needs a bound on `sel`, and no consumer asks for it").  The bound on
+  `sel` is `palt_ok`'s own two conditions — `length sel = |dg_execL| +
+  |dg_execR|` and `count_true sel = |dg_execL|` — and `choose` is the
+  enumerator for it.  The note is worth AMENDING in `PipeDisc.v` when
+  some later lane edits that file (this lane did not, per its bar); the
+  new file's header carries the correction.
+- **FILE-DEC's two portability findings repeat exactly.**
+  `EchoDisc.bounded_lists` does not port (codes are not an initial
+  segment of ℕ: `palt_code (PBoth sel) = 11 + 16 * bnum sel`), and
+  `pro_cands`/`pro_canon` port VERBATIM — `pro_canon` never mentions
+  `cs`, so only `EchoDisc.alt_seq_pro_len`'s LENGTH bound had to be
+  restated, and PIPE-MODEL-2's ruling makes that ONE panic case rather
+  than FileDisc's three: `palt_panic a = true -> a = PEcho 3` at BOTH
+  line shapes (`palt_ok_pipe_panic`, `palt_panic_3`), so
+  `alt_seq_p_pro_len` is `EchoDisc`'s proof with `pro_idx_p_Sp/_Sn` in
+  place of `cs !!! q = 3`.
+- **`palt_ok l (palt_of c) -> c = palt_code (palt_of c)` is REFUTED as a
+  route, for the same reason as FileDisc's.**  `palt_of` accepts any `n`
+  with `n mod 16 = 11` as a `PBoth`, while `palt_code (PBoth sel) = 11 +
+  16 * bnum sel` and `bnum` is not onto (its image is
+  `[2^|sel|, 2^(|sel|+1))` only), so nothing forces a code admitted by
+  `alts_ok_p` to be its own alternative's code.  Taken instead:
+  `cs_canon_p cs := (palt_code ∘ palt_of) <$> cs`, sound because EVERY
+  consumer of `cs` reads it only through `palt_at = palt_of ∘ (!!!)` —
+  checked one by one (`pro_idx_p`, `alt_cont_p`, `alt_seq_p`, `sessp`,
+  `pro_ok_p`, `disc_pt_p`, `alts_ok_p`).  The out-of-range `!!!` reading
+  is `0` and `palt_code (palt_of 0) = 0`, so the canonical map fixes it
+  too (`pcode_canon_0`, `pdd_lookup_total_fmap`).
+- **NO closure law of `PipeDisc` was missing.**  Unlike FILE-DEC (which
+  had to land `disc_f`'s five closure laws in `FileOutPure`), everything
+  this lane needed was already in `PipeDisc.v`: `pro_idx_p_S/_Sp/_Sn/
+  _mono`, `alt_seq_p_S`, `alt_blk_p_length`, `sessp_length`,
+  `sessp_ps_ext`, `disc_seg_p'_intro`, `disc_pt_all_p_dec`,
+  `palt_of_code`, `palt_of_lt4`, `palt_code_echo_lt4`, `sel_LR_ok`.
+  **PIPE-STAGE owes nothing to this file beyond importing it.**
+
+**ANTI-VACUITY, at the branch that cannot be computed.**  A `Decision`
+instance cannot be vacuous, but its ENUMERATOR can be empty and the
+procedure would then answer "no" at a disciplined history — which is
+caught not by a compile error but by `palt_cands_alt`'s completeness
+half, and, concretely, by `palt_cands_both_LR : palt_code (PBoth sel_LR)
+∈ palt_cands (LPipe ws)`, proved through `sel_LR_ok` and never by
+evaluating `choose` or a `PBoth` code (`palt_code_both_big` says neither
+can be evaluated).  **PIPE-MODEL-2's warning stands and is now sharp:**
+`disc_seg_p'_dec` is a THEOREM and not a program — at any segment holding
+one complete `LPipe` line its `cs` search ranges over `C(33,17) > 10^9`
+selectors, so no `vm_compute`, `bool_decide` witness or `Defined`
+evaluation may be put on the path of a `PBoth` round.  That is why
+`disc_p_dec` is **`Qed`** (FILE-DEC's finding: a transparent instance
+lets ssreflect's `rewrite /…_led` iota-reduce `if decide (disc_p h) then
+0 else 1` at a literal history, and the ledger's `rewrite decide_True`
+then stops matching) and why the PBoth demos in `PipeDisc` §8 are
+rewriting proofs.
+
+**ONE SOURCE-LEVEL TRAP, worth a durable note.**  A quotation in a Rocq
+comment must not span a `*)`: `iris/_CoqProject` turns
+`comment-terminator-in-string` into an ERROR, and a two-line comment
+reading `… exactly "Closed under the    *)` / `(*  global context" …`
+fails to compile with "Not interpreting `*)` as the end of current
+non-terminated comment".  `tools/comment_quote_check.py` finds it without
+a build — run it on any new file whose header quotes something.
+
+**NOTHING ELSE MOVED.**  No landed `.v` file edited; `iris/_CoqProject`
+carries the one new row; nothing imports `PipeDiscDec`, so the three
+audits' cones are untouched.

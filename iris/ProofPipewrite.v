@@ -702,10 +702,11 @@ Section PwConts.
   Proof using . rewrite /pipe_olink. iIntros "H". iApply "H". Qed.
 
   Lemma pw_wlink_apply (γ : gname) (b : bv 8) (Φ : iProp Σ) (s : pipe_st) :
-    ps_wo s = true ->
+    ps_wo s = true -> ps_ro s = true ->
     pipe_wlink γ b Φ -∗ pipe_qauth γ s ={⊤}=∗ pipe_qauth γ (pst_write b s) ∗ Φ.
   Proof using .
-    intro Hwo. rewrite /pipe_wlink. iIntros "H". iApply ("H" $! s). iPureIntro. exact Hwo.
+    intros Hwo Hro. rewrite /pipe_wlink. iIntros "H".
+    iApply ("H" $! s with "[%] [%]"); [exact Hwo | exact Hro].
   Qed.
 
   (* NODE [k] OF THE CHAIN, at the count the cursor form carries.  The three
@@ -830,13 +831,20 @@ Section PwConts.
        [pipe_endstate γp true wo] against the caller's [pipe_ref γp true q]
        once per round, at the top of the loop body. *)
     pflag_open wo ->
+    (* THE READ END IS OPEN (lane PQ-FLAG-2, design 3.1b): the other half of
+       what the caller's [pipe_wlink] demands, through the same coupled arm
+       ([ps_ro = pflag_bool ro]).  Unlike the write flag this one is the
+       CODE'S: pipewrite has just tested [pi->readopen == 0] and taken the
+       nonzero branch, under the lock hold this store is in, so the caller's
+       [ro] at the push IS the word the test read. *)
+    pflag_open ro ->
     pw_pay γp M ua Q Qe k nn -∗
     pipe_qres γp nr nw ro wo bs
     ={⊤}=∗ pipe_qres γp nr (add_vec nw (mword_of_int 1 : mword 32)) ro wo
              (<[Z.to_nat (bv_unsigned nw mod 512) := b]> bs)
            ∗ pw_pay γp M ua Q Qe (S k) nn.
   Proof using .
-    intros Hk Hb Hlen Hne Hwo. rewrite /pw_pay. iIntros "[Hch | #Ht] Hq".
+    intros Hk Hb Hlen Hne Hwo Hro. rewrite /pw_pay. iIntros "[Hch | #Ht] Hq".
     2:{ iModIntro. iSplitR; [by iApply pipe_qres_taint |]. by iRight. }
     iDestruct "Hq" as "[Hc | #Ht]".
     2:{ iModIntro. iSplitR; [by iApply pipe_qres_taint |]. by iRight. }
@@ -844,6 +852,7 @@ Section PwConts.
     iDestruct (pw_chain_wlink _ _ _ _ _ k nn b Hk Hb with "Hch") as "Hwl".
     iMod (pw_wlink_apply _ _ _ (MkPipeSt ws rp (pflag_bool ro) (pflag_bool wo))
             ltac:(cbn [ps_wo]; unfold pflag_bool; apply bool_decide_eq_true_2; exact Hwo)
+            ltac:(cbn [ps_ro]; unfold pflag_bool; apply bool_decide_eq_true_2; exact Hro)
             with "Hwl Ha") as "[Ha Hch]".
     iModIntro. iSplitL "Ha"; [| by iLeft].
     rewrite /pipe_qres (pipe_queue_widx ws rp nr nw bs Hok).
@@ -2466,6 +2475,18 @@ Section ProofPipewrite.
           + iApply (pw_res_intro_rest γp pi nr nw ro wo vname bs Hcnt Hbslen
                       with "Hrest Hnr Hnw Hro Hdat Hqr").
         - (* ==== readopen /= 0 : ask killed() ==== *)
+          (* THE READ END IS OPEN, ON THIS BRANCH (lane PQ-FLAG-2, design
+             3.1b).  This is the branch fact of the [c.beqz] the loop just
+             fell through, and it is the CODE'S own -- the flag WORD [ro]
+             was loaded at +0x8c out of the payload this round holds, and
+             the payload is not released between here and the byte's store
+             (the full-ring arm SLEEPS, which gives the payload up and sends
+             the loop back to +0x8c for a fresh [ro] and a fresh test).  So
+             the [ro] the caller's [pipe_wlink] is fired against IS the word
+             this test read; carrying the fact down to [pw_qres_push] costs
+             one [assert]. *)
+          assert (Hroo : pflag_open ro).
+          { unfold pflag_open, neq_vec. rewrite Hroz. reflexivity. }
           iApply (wp_cbeqz_fall_s_sconf (mword_of_int (KernelSyms.pipewrite + 0x90)) (mword_of_int 219 : mword 8)
                     (Cregidx (mword_of_int 7)) Ra5 L1 (trap_res true + (av - 14))%nat false
                     ltac:(vm_compute; reflexivity) ltac:(nz)
@@ -3378,7 +3399,7 @@ Section ProofPipewrite.
                     tainted and the whole payment becomes the taint. *)
                  iApply fupd_wp.
                  iMod (pw_qres_push γp (us_M U) addr Q Qe (Z.to_nat i) (Z.to_nat n)
-                         nr nw ro wo bs (dst_new 0%nat) Hkc Hbyte Hbslen Hne Hwoopen
+                         nr nw ro wo bs (dst_new 0%nat) Hkc Hbyte Hbslen Hne Hwoopen Hroo
                          with "HW Hqr") as "[Hqr HW]".
                  iModIntro.
                  (* +0xce andi a5,a5,511 -- the %PIPESIZE index *)

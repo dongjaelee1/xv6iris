@@ -161,7 +161,8 @@ arm is the theorem's one named premise (`pipe_both_law`).
   (`init_cons_laws_at`, INIT-FILE's mould minus the f-state).  Also: merge
   main (upstream's `StageRec.v`/`FileLinkInst.v`, `app_taint`) into the
   branch first and re-read the mould.
-- [ ] **PQ-FLAG-2** (kernel/spec, design §3.1b).  `PipeQueue.pipe_wlink`
+- [x] **PQ-FLAG-2** (kernel/spec, design §3.1b) — LANDED; the fact was
+  already in hand at the store (see Findings).  `PipeQueue.pipe_wlink`
   gains `⌜ps_ro s = true⌝` beside `⌜ps_wo s = true⌝`; `ProofPipewrite`
   supplies it at the store from the loop's own `readopen` test (same lock
   hold) through the coupled arm; every `_of_frag`/chain lemma ignores it.
@@ -204,6 +205,90 @@ arm is the theorem's one named premise (`pipe_both_law`).
   modulo `pipe_both_law` only.
 
 ## Findings (append as lanes report)
+
+### PQ-FLAG-2 (2026-09-18) — the write link's second premise, paid by the CODE
+
+Branch `app-pipe/pq-flag-2`, ONE commit `d9877e2c3`, three files.
+`ec2-lane.sh pq2 build` (whole tree) **RC=0**, tree quiescent afterwards
+(`make -n` remaining = 0).  **`make audit-echo-only` re-run on the
+quiescent tree: the standing FOURTEEN, textually unmoved.**  No
+`Admitted`, no `Axiom`; every new result carries `Proof using .`.
+
+**WHAT LANDED**
+
+- `PipeQueue.pipe_wlink γ b Φ` is now
+
+        ∀ s, ⌜ps_wo s = true⌝ -∗ ⌜ps_ro s = true⌝ -∗
+             pipe_qauth γ s ={⊤}=∗ pipe_qauth γ (pst_write b s) ∗ Φ
+
+  TWO STACKED PREMISES, not one conjunction: it is the file's own idiom
+  (`pipe_rlink` stacks its two) and it keeps every holder site a literal
+  one-liner (`"_ _ Ha"` / `"%Hwo %Hro Ha"`) with no `destruct` in the way.
+- `pipe_wlink_of_frag`, `pipe_wlink_mono`: statements byte-identical.
+  Every `pipe_wchain`/`pipe_rchain` lemma and every payment/post lemma
+  (`pipe_wpay*`, `pipe_wpost*`, `pipe_rpost*`, `pipe_cpost*`) is unchanged
+  in statement **and in proof** — none of them looks inside a link.
+- TWO sanity lemmas, the lane's anti-vacuity pair, both directions of "an
+  older link is still a link": `pipe_wlink_of_uncond` (the pre-3.1
+  unconditional stepper, statement unchanged from PQ-FLAG) and the new
+  **`pipe_wlink_of_wo_only`** (a PQ-FLAG-era one-premise builder), so a
+  holder written against either earlier shape needs no rework.  The
+  converse is false for both and deliberately not stated.
+- `ProofPipewrite`: `pw_wlink_apply` and `pw_qres_push` carry the premise
+  (`ps_ro s = true` / `pflag_open ro`), bridged by the coupled arm's
+  `ps_ro = pflag_bool ro` exactly as PQ-FLAG did for the write flag.
+- `PipeProto.pipe_wchain_of_inv`: ONE line — `iIntros (s) "%Hwo %Hro Ha"`,
+  introducing and ignoring it.  The good-path chain discharges (P1) from
+  the write flag alone; `%Hro` is what PIPE-PROTO-2 spends.
+- `UEchoPipe.v` needed NOTHING: it names `pipe_wlink` only in comments,
+  and `ep_derail` is an assumption it holds, not a link it builds.
+
+**THE FIRE SITE: the fact was ALREADY IN HAND — no threading, no contract
+change.**  The brief's fallback ("if the test's branch fact may have been
+dropped, thread it and report") did not trigger.  `pipewrite` loads
+`readopen` at +0x8c and branches with `c.beqz` at +0x90; the proof already
+case-splits on exactly that word
+(`destruct (eq_vec (sign_extend' 64 ro) zero_reg) eqn:Hroz`), and the
+store at +0xca sits inside the FALL-THROUGH bullet, so `Hroz : … = false`
+is in scope there.  Cost: one `assert (Hroo : pflag_open ro)` at the top
+of that bullet (two tactics, off `pflag_open`'s `neq_vec` unfolding) and
+one extra argument at the `pw_qres_push` call.
+
+**WHY THE SAME `ro` IS STILL SOUND AT THE STORE**, which is the only thing
+worth checking here: the payload is NOT released between the test and the
+byte's store.  The full-ring arm SLEEPS, and sleep gives the payload up and
+sends the loop back to +0x8c — a fresh round with a fresh `ro` and a fresh
+test.  So the `ro` the link is fired against IS the word the test read, and
+Rocq checks it: `Hroo` and the payload `Hqr : pipe_qres γp nr nw ro wo bs`
+name the same binder, both introduced by this round's `iDestruct "Hres"`.
+
+**WHAT WAS REFUTED:** nothing this lane attempted.  Worth recording that
+the two premises are JOINTLY SATISFIABLE and the contract is not vacuous —
+and the evidence is not a scratch lemma but the fire site itself: pipewrite
+PROVES both at a real state on the path that pushes bytes, so a fired
+write link exists.  (Had they been jointly unsatisfiable, `pipewrite`'s own
+post would have gone vacuous, which is the failure mode durable-notes'
+"adding a premise is not a safe operation" warns about.)
+
+**WHAT THE DESIGN GOT WRONG:** nothing in §3.1b — the ruling is accurate,
+including its claim that the fire site gets the fact "for free".  One
+refinement for the record: §3.1b says the two premises are symmetric
+("exactly as the write-open premise").  They are NOT, in provenance, and
+the difference is the useful part: `ps_wo` is the CALLER'S CREDENTIAL (a
+share of the write end, since pipewrite never loads `writeopen`), while
+`ps_ro` is the CODE'S (a loaded flag word on a branch).  That is why this
+lane cost three files and PQ-FLAG cost a contract premise on
+`SpecPipewrite` plus a call-site argument in `ProofFilewrite`.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST** (PIPE-PROTO-2): the premise is
+there and unspent — `pipe_wchain_of_inv` introduces `%Hro` and drops it.
+(P4)'s refutation is the mirror of (P3)'s, which is already in that proof
+five lines above: (P3)'s snapshot arm is killed by `Hwo` against
+`ps_wo s = false`, so kill (P4)'s arm by `Hro` against `ro_shot`'s
+`⌜ps_ro s = false⌝` at the same spot.  Note `pipe_wQ` pins `ps_ws s` to
+`take (c+j) L` through `wcur_agree`, so the DERAILED builder
+(`pipe_wpay_of_inv_after_short`) must not carry `wcur` — `ro_shot` alone,
+which is what makes it mintable at any cursor and any bytes.
 
 ### PIPE-STD (2026-09-17)
 

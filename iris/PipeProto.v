@@ -517,7 +517,11 @@ Section PipeProto.
     { (* the observation: nothing recorded, the cursor comes back *)
       rewrite /pipe_olink. iIntros (s) "Ha". iModIntro. iFrame "Ha".
       rewrite /pipe_wQe. iExact "HQ". }
-    iIntros (b) "%Hb". rewrite /pipe_wlink. iIntros (s) "%Hwo Ha".
+    (* [%Hro] is INTRODUCED AND IGNORED here (lane PQ-FLAG-2): this builder
+       is the good-path chain, whose (P1) obligation the write-open premise
+       alone discharges.  The read-open premise is what lane PIPE-PROTO-2
+       spends, in the DERAILED builder past a short write. *)
+    iIntros (b) "%Hb". rewrite /pipe_wlink. iIntros (s) "%Hwo %Hro Ha".
     iDestruct "HQ" as "[Hw #Hlb]".
     iInv "Hinv" as (s0) ">(Hf & Hh & Hbw & Hbr & %Hpre & Heof)" "Hclose".
     iDestruct (pipe_queue_agree with "Ha Hf") as %<-.

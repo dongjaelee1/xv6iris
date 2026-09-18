@@ -62,7 +62,7 @@ From Stdlib Require Import ZArith Lia List String.
 From stdpp Require Import list bitvector.definitions.
 Require Import RiscvLang.        (* [mobs] *)
 Require Import ObsTrace.         (* [obs_wire Uart0], [cycles_of], [trace_shape] *)
-Require Import RiscvPtsto.       (* [string_bytes] *)
+Require Import StringBytes.      (* [string_bytes] *)
 Require Import LineWords.        (* the line as a list of WORDS *)
 (* ssreflect's [rewrite] (the [/def] fold, the multi-rule form) is what this
    file's proofs are written in; a pure file does not get it from the

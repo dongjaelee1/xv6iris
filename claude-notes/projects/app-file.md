@@ -147,9 +147,9 @@ The blocker for the whole program tier WAS the deed's hold: RULING HOLD-POS
   VERBATIM (the designer's; a lane that finds a definition wrong reports
   it, it does not fix it): `uline`, `line_bytes`, `parse_line` and its
   inverse laws, `disc_input_f` (prefix-closed, decidable, the snoc laws
-  `EchoDisc` has), `echo_chunks`, `subseq`, `sel_ok`, `fst`, `fcontent`,
+  `EchoDisc` has), `echo_chunks`, `subseq`, `sel_ok`, `fstate`, `fcontent`,
   `ralt` with its `nat` encoding and `ralt_ok`, `fsm`, `cont`, `sessf`,
-  `fst_after`, `fadm_boot`, `good_out_f`, `disc_f`, `file_phi`; the
+  `fstate_after`, `fadm_boot`, `good_out_f`, `disc_f`, `file_phi`; the
   determinacy `sessf_prefix_det` (the twin of
   `EchoOutPure.sess_prefix_det`, which is what the stage spends); five
   `vm_compute` demos including the echo/power-off/cat transcript and a
@@ -1100,20 +1100,20 @@ directly after it.
   `line_body_parse`, `parse_line_body`, `uline_of`, `lines_of`.
 - D3: `fbody_byte`, `fbody_ok`, `fbody_ok_bytes`, `fbody_ok_short`,
   `disc_input_f` with `_dec`, `_nil`, `_snoc`, `_prefix`, `_body`, `_at`.
-- contents: `fcont_ok`, `fst_ok`, `fcont_ok_nodollar`, `fcont_ok_nl`,
+- contents: `fcont_ok`, `fstate_ok`, `fcont_ok_nodollar`, `fcont_ok_nl`,
   `echo_args_chunks_shape`, `subseq_shape`, `fcont_ok_subseq`.
 - alternatives: `dg_open`, `dg_exec_cat` (with `dg_open_line`,
   `dg_exec_cat_line`), `dg_catopen`, `alt_openfail`, `alt_execcat`,
   `alt_catopen` (each with its `_string` byte reading), `ralt`,
   `ralt_enc`/`ralt_dec`/`ralt_dec_enc`/`ralt_dec_lt4`, `ralt_panic`,
-  `ralt_ok`(+dec), `fsm`, `cont`, `fst_ok_fsm`, `cont_panic`,
+  `ralt_ok`(+dec), `fsm`, `cont`, `fstate_ok_fsm`, `cont_panic`,
   `cont_shape`.
 - session: `ralt_at`, `pro_idx_f` (+ `_S`, `_Sp`, `_Sn`, `_mono`, `_le`,
-  `_ext`, `_add`), `fst_upto` (+ `_ext`, `_drop`), `alt_cont_f`,
+  `_ext`, `_add`), `fstate_upto` (+ `_ext`, `_drop`), `alt_cont_f`,
   `alt_blk_f`, `alt_seq_f` (+ `_S`, `_ext`, `_bs_ext`, `_bs_app`,
   `_cs_ext`, `_ps_ext`, `_cons`, `_cons_assoc`, `_drop`), `sessf` (+
   `_nil`, `_snoc_other`, `_snoc_nl`, `_step`, `_mono`, `_take`,
-  `_ps_ext`), `fst_after`, `pro_ok_f`(+dec, `_mono`), `pro_pin_f`,
+  `_ps_ext`), `fstate_after`, `pro_ok_f`(+dec, `_mono`), `pro_pin_f`,
   `pro_pin_f_of_ok`.
 - discipline and claim: `disc_seg_f`, `disc_pt_f`, `alts_ok` (+ `_length`,
   `_at`), `disc_seg_f'` (+ `_intro`, `_nil`), `disc_f`, `good_out_f`,
@@ -1182,7 +1182,7 @@ ever added.
    this alternative is `RFOpenU`.
 6. **Two dead parameters dropped:** `good_out_f` takes no `Ls` (the
    admissible-boot condition is `file_phi`'s own conjunct and the
-   per-cycle claim never reads it), and `fst_after` takes no `ps` (the
+   per-cycle claim never reads it), and `fstate_after` takes no `ps` (the
    state is a function of `cs`, the bodies and the boot state only).
 7. `FileState.echo_args_chunks [] = []` is the honest reading at a
    one-word line — xv6's echo loop starts at `argc = 1` and writes
@@ -1214,9 +1214,9 @@ byte: at the `cat` round the continuation's first byte is `'$'`, `'c'`,
   be grown ON TOP of `FileDisc` without a cycle.
 
 **WHAT THE STAGE LANE NEEDS FIRST.**  `o_fh`'s entry `i` is
-`fst_upto cs s0 (bodies_of I) i` and its step law is `fst_upto`'s own
-definition (`fst_upto cs s bs (S q) = fsm (fst_upto cs s bs q)
-(uline_of (bs !!! q)) (ralt_at cs q)`), with `fst_after cs s0 I` the value
+`fstate_upto cs s0 (bodies_of I) i` and its step law is `fstate_upto`'s own
+definition (`fstate_upto cs s bs (S q) = fsm (fstate_upto cs s bs q)
+(uline_of (bs !!! q)) (ralt_at cs q)`), with `fstate_after cs s0 I` the value
 a prompt link records; the round index the stage keeps equal to
 `length o_fh - 1` is `nlines I`, the same index `alt_seq_f` uses, and
 `sessf_take`/`alt_seq_f_cs_ext` are what let a stage read a resolution it
@@ -1226,7 +1226,7 @@ condition that was `Forall (fun c => c < 4) cs` is now `alts_ok I cs`, a
 (`alts_ok_length`, `alts_ok_at`); and the prologue counter is `pro_idx_f`,
 which counts `RFFork` and `RCFork` beside `REcho 3` (`pro_ok_f`,
 `pro_pin_f`, `pro_pin_f_of_ok`).  `sessf_prefix_det` is the twin of
-`EchoOutPure.sess_prefix_det` at those hypotheses plus `fst_ok s` and ONE
+`EchoOutPure.sess_prefix_det` at those hypotheses plus `fstate_ok s` and ONE
 boot state shared by both witnesses; `disc_f_disc` and `sessf_sess` say
 nothing about the echo application's own claim changes at an echo-only
 history.
@@ -1430,7 +1430,7 @@ of `iris/_CoqProject`.
 
 `iris/FileOutPure.v` (2,140) — `EchoOutPure.v`'s twin at `FileDisc.sessf`.
 `pending_at_f`/`pending_f`/`D_from_f`/`D_f` with the era's boot state
-carried as an `option fst` (`f0_st` reads it); F1 `D_f_pending_sessf` /
+carried as an `option fstate` (`f0_st` reads it); F1 `D_f_pending_sessf` /
 `D_f_stage_prefix`; F2 `D2_next_input_f` (with `sessf_length_lt`, which
 `FileDisc` does not state); F3 is `EchoOutPure.read_window_prefix`
 verbatim, reached through `disc_byte_ok_f`/`disc_seg_f_no_erase`/
@@ -1509,7 +1509,7 @@ is `∃ ps cs, …`, and `EchoDisc`'s `pro_cands`/`bounded_lists` machinery
 ports (the extra work is a `sel` enumerator: `sel_ok (echo_chunks ws) sel`
 bounds `sel` to the strictly-increasing sublists of
 `seq 0 (length (echo_chunks ws))`).  What does not port is `disc_f`'s own
-`∃ s : fst, fst_ok s ∧ …`, which ranges over ALL byte lists.  THE FIX,
+`∃ s : fstate, fstate_ok s ∧ …`, which ranges over ALL byte lists.  THE FIX,
 priced: the witness set is finite once one observes that D1/D2 put the
 WHOLE transcript for the input typed so far on the wire, so every
 completed `RCRan` round's content appears on the wire in full and a
@@ -1612,7 +1612,7 @@ byte, verbatim (`FileLinks.file_write_link`) — echo's argument list with
 
 ```coq
 Lemma file_write_link (k : nat) (v : era_pins) (vf : file_era) (P : nat)
-    (b : bv 8) (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8))
+    (b : bv 8) (ps0 cs0 : list nat) (s0 : fstate) (I0 : list (bv 8))
     (Φ : iProp Σ) :
   (nlines I0 <= length cs0)%nat ->
   pro_pin_f ps0 cs0 I0 ->
@@ -1629,14 +1629,14 @@ for `a < 4` and `line_alts_of (last_ws I0) !!! a !! 0 = Some b`:
 
 ```coq
   ralt_ok (uline_of (bodies_of I0 !!! (nlines I0 - 1)%nat)) (ralt_dec a) ->
-  cont (fst_upto cs0 s0 (bodies_of I0) (nlines I0 - 1)%nat)
+  cont (fstate_upto cs0 s0 (bodies_of I0) (nlines I0 - 1)%nat)
        (uline_of (bodies_of I0 !!! (nlines I0 - 1)%nat)) (ralt_dec a)
     !! 0%nat = Some b ->
 ```
 
 i.e. the program names the ALTERNATIVE its round is taking, proves the
 LINE ADMITS it, and proves its byte is the first of that alternative's
-output AT THE STATE `fst_upto` says the file is in.  `fst_upto` is the
+output AT THE STATE `fstate_upto` says the file is in.  `fstate_upto` is the
 whole of what the file adds to a writer's obligation, and a program
 computes it from `s0` (which `f0_lb` pins), the bodies of `I0` (which
 `inp_lb` pins) and the choices (which `cs_lb` pins) — no history, no
@@ -1809,7 +1809,7 @@ against the instance; the diff to them is those three `Context` lines
 and their header comments, nothing else.  `AppFileRec`'s remaining
 section hypothesis is `al_programs` alone.
 
-- D1 `fcont_ok_iff` / `fcont_ok_dec` / `fst_ok_dec` — the `∃ v, bs = v ++
+- D1 `fcont_ok_iff` / `fcont_ok_dec` / `fstate_ok_dec` — the `∃ v, bs = v ++
   [wl_nl]` arm IS `last bs = Some wl_nl ∧ Forall wl_body_byte (removelast
   bs)`, as the ruling said.
 - D2 `sel_cands n` (the strictly increasing lists over `seq 0 n`, built by
@@ -1820,7 +1820,7 @@ section hypothesis is `al_programs` alone.
   `alts_cands`/`elem_of_alts_cands`/`alts_cands_alts_ok`.
 - D3 `alt_seq_f_pro_len`, `sessf_pro_len` — the length bound at
   `pro_idx_f`'s three panic alternatives.
-- D4 `fst_upto_vs_nil`, `cont_state_ne`, `alt_cont_f_cat`,
+- D4 `fstate_upto_vs_nil`, `cont_state_ne`, `alt_cont_f_cat`,
   `alt_blk_f_infix`, `alt_seq_f_split`, `sessf_infix_blk`,
   `obs_wire_prefix`, `infixed`/`substrings`/`elem_of_substrings`,
   `scands`, and the design's lemma `disc_seg_f'_canon`.
@@ -1849,20 +1849,20 @@ section hypothesis is `al_programs` alone.
   instead: `cs_canon cs := (ralt_enc ∘ ralt_dec) <$> cs`, sound because
   EVERY consumer of `cs` reads it only through `ralt_at = ralt_dec ∘
   (!!!)` — checked one by one and used as `cs_canon_at`,
-  `pro_idx_f_canon`, `fst_upto_canon`, `alt_cont_f_canon`,
+  `pro_idx_f_canon`, `fstate_upto_canon`, `alt_cont_f_canon`,
   `alt_seq_f_canon`, `sessf_canon`, `alts_ok_cs_canon`,
   `disc_pt_all_f_canon`.  The one wrinkle: `!!!` out of range reads `0`,
   and `ralt_enc (ralt_dec 0) = 0`, so the canonical map fixes the
   out-of-range reading too (`fdd_lookup_total_fmap`).
-- **`fst_upto_derived` AS WRITTEN IN THE BRIEF IS FALSE; the pointwise
+- **`fstate_upto_derived` AS WRITTEN IN THE BRIEF IS FALSE; the pointwise
   PAIR is what is true.**  "the state before a round is either `s` itself
   or independent of `s`" fails at `RFOpenM`, the only `fsm` arm that
   READS the state: `fsm None _ RFOpenM = Some []` while `fsm (Some bs) _
   RFOpenM = Some bs`, so the value is `s` at a present `s` and `Some []`
   at an absent one — neither `= s` for all `s` nor `s`-independent.  What
   holds, and what the induction needs, is the two chains TOGETHER
-  (`fst_upto_vs_nil`): for every `i`, either `fst_upto cs s bs i = s` AND
-  `fst_upto cs (Some []) bs i = Some []`, or the two are equal.  The
+  (`fstate_upto_vs_nil`): for every `i`, either `fstate_upto cs s bs i = s` AND
+  `fstate_upto cs (Some []) bs i = Some []`, or the two are equal.  The
   second conjunct of the left arm is exactly what carries `RFOpenM`: at
   `s = None` the two chains MERGE there, at `s = Some bs` they do not,
   and either way the disjunction is restored.
@@ -3999,7 +3999,7 @@ such a restatement will consume); C2 and C3 stop.**
 
 - **The stage**: `cat_stage` (`UEchoOut.echo_stage` with the round's line
   named BY ITS SHAPE — `uline_of (bodies_of I0 !!! (nlines I0 - 1)) =
-  LCat` — instead of by its words), `cat_st` (= `fst_upto cs0 s0
+  LCat` — instead of by its words), `cat_st` (= `fstate_upto cs0 s0
   (bodies_of I0) (nlines I0 - 1)`, the state cat's round starts at), and
   the pure tie `cat_tie cs0 s0 I0 s := dst_content s = cat_st cs0 s0 I0`
   — "the value my deed fraction agrees on IS the model's state at my
@@ -6128,7 +6128,7 @@ ruling this lane makes, and the round's conclusion:
 
 ```coq
   Definition sh_hold (I : list (bv 8)) : iProp Σ :=
-    ((∃ (cs0 : list nat) (s0 : fst) (s : dst) (v : era_pins)
+    ((∃ (cs0 : list nat) (s0 : fstate) (s : dst) (v : era_pins)
         (vf : file_era),
         fown r s
         ∗ ⌜UCatOut.cat_tie cs0 s0 I s⌝
@@ -6164,7 +6164,7 @@ the deed and the cat lend:
     (fown r s ∨ ∃ i : Z, fown r (Some (i, [])))%I.
 
   Lemma sh_prompt_alt_of_deed (k : nat) (v : era_pins) (vf : file_era)
-      (P a : nat) (b : bv 8) (ps0 cs0 : list nat) (s0 : fst)
+      (P a : nat) (b : bv 8) (ps0 cs0 : list nat) (s0 : fstate)
       (I0 : list (bv 8)) (s : dst) (Φ : iProp Σ) :
     I0 <> [] -> rest_of I0 = [] ->
     (nlines I0 <= S (length cs0))%nat -> pro_pin_f ps0 cs0 I0 ->
@@ -6637,7 +6637,7 @@ pure model leaks to a consumer.**
   instruction: `EchoOut.eturn` / `FileOut.fturn`).
 - **THE LINE MODEL** — `lk_ab I a` (alternative `a`'s output at input `I`:
   echo's `line_alts_of (last_ws I) !!! a`, the file's `FileDisc.cont` at
-  `fst_upto` and `ralt_dec a`), `lk_apr I a` ("it ends with the prompt";
+  `fstate_upto` and `ralt_dec a`), `lk_apr I a` ("it ends with the prompt";
   echo's `a < 3`), and the three named alternatives `lk_pan` / `lk_exf` /
   `lk_noc` (echo's 3 / 1 / 2).
   **A file alternative whose output depends on the era's FILE STATE
@@ -6770,7 +6770,7 @@ are `Definition`s with no proof text.
   `ewc_blk_0_lend` and passing `wr_blk_t_stage` on.  A record whose
   families hide the stage cannot serve them.  What they need is a second
   abstraction the record does not have: a stage TYPE `lk_stg` (echo's
-  `list nat * list nat * list (bv 8) * nat`, the file's with `fst` added),
+  `list nat * list nat * list (bv 8) * nat`, the file's with `fstate` added),
   a cursor `lk_cur k v st p`, a stage predicate `lk_stage st I ws`, the
   step `lk_cur_step` at `lk_ab`, and `lk_lend_stage : lk_lend k v I -∗
   (∃ st, ⌜lk_stage st I (last_ws I)⌝ ∗ lk_cur k v st 0) ∨ lk_T`.  That is
@@ -6849,7 +6849,7 @@ file_links` — landed here; `AppFile.file_taint`; `EchoOut.era_pin` with
 `ralt_dec`/`ralt_enc`; `FileLinks.fread_ret`).  What is MISSING is the file
 twin of `EchoLinks.v`'s and `EchoLinksLine.v`'s PURE ALGEBRA — the eleven
 credential families and the ~25 pure lemmas under them — at
-`pro_pin_f`/`proc_before_f`/`proc_stream_f`/`pro_idx_f`/`fst_upto`:
+`pro_pin_f`/`proc_before_f`/`proc_stream_f`/`pro_idx_f`/`fstate_upto`:
 
 - `wr_pro` / `wr_blk` / `wr_open` / `wr_sp` / `wr_owed` / `wr_ban` /
   `wr_tail` / `wr_blk_t` / `wr_sp_t` / `wr_open_t` / `blkcs` at the file
@@ -6861,7 +6861,7 @@ credential families and the ~25 pure lemmas under them — at
 - the steps: `wr_blk_open`, `wr_blk_sp`, `wr_blk_ban`, `wr_pro_tail`,
   `wr_pro_dollar`, `wr_sp_open`, `wr_open_read`, `wr_ban_pro`,
   `wr_ban_byte`, `wr_ban_done`, `wr_owed_read_refute` — all at the file
-  model.  `wr_ban_round0` needs `fst_ok`-free arithmetic only, because the
+  model.  `wr_ban_round0` needs `fstate_ok`-free arithmetic only, because the
   era's FIRST byte is a prologue-choice write (`file_write_link_first`).
 - `lk_ab`'s file value: `fun I a => if decide (ralt_ok (uline_of (bodies_of
   I !!! (nlines I - 1))) (ralt_dec a) /\ ralt_dec a <> RCRan) then cont
@@ -8412,7 +8412,7 @@ when the redirect child's parse is walked, exactly as
 Branch `app-file/link-gen`, merged with `main` (`93fb91316`).  New file
 `iris/FileLinksLine.v`: `FileLinks`' credential families — the eleven pure
 shapes at `pro_pin_f` / `proc_before_f` / `proc_stream_f` / `pro_idx_f` /
-`FileDisc.fst_upto`, their ~30 lemmas, and the resource families with
+`FileDisc.fstate_upto`, their ~30 lemmas, and the resource families with
 their laws.  No echo file is edited, no `Admitted` is added.
 
 **THE LANE'S VERDICT IN ONE LINE.**  The file model's algebra ports
@@ -8473,12 +8473,12 @@ shapes only.
 #### 2. WHAT LANDED — `iris/FileLinksLine.v`
 
 **S0, the line model.**  `fline I` (the last complete body's parse),
-`fst_free` (the alternatives whose output does NOT read the file's state
+`fstate_free` (the alternatives whose output does NOT read the file's state
 — every `ralt` but `RCRan`), `cont_state_free` (one `destruct`), and the
 record's `lk_ab` at the file:
 
     Definition fab (I : list (bv 8)) (a : nat) : list (bv 8) :=
-      if decide (ralt_ok (fline I) (ralt_dec a) /\ fst_free (ralt_dec a) = true)
+      if decide (ralt_ok (fline I) (ralt_dec a) /\ fstate_free (ralt_dec a) = true)
       then cont None (fline I) (ralt_dec a) else [].
 
 with `fab_ok` (a byte lookup implies BOTH guards, so the block-byte step
@@ -8634,12 +8634,12 @@ are convertible.
 #### 3. WHAT `iris/FileLinksLine.v` CONTAINS
 
 - **the line model**: `fline I` (the last complete body's parse),
-  `fst_free` (every `ralt` but `RCRan` — the alternatives whose output
+  `fstate_free` (every `ralt` but `RCRan` — the alternatives whose output
   does not read the file's state), `cont_state_free`, and
 
       Definition fab (I : list (bv 8)) (a : nat) : list (bv 8) :=
         if decide (ralt_ok (fline I) (ralt_dec a)
-                   /\ fst_free (ralt_dec a) = true)
+                   /\ fstate_free (ralt_dec a) = true)
         then cont None (fline I) (ralt_dec a) else [].
 
   GUARDED, so that a byte lookup alone says the alternative is admissible
@@ -8978,14 +8978,14 @@ Written against LINK-GEN-2's `iris/FileLinksLine.v` and
 
 | field | what the file must give, at LINK-GEN-2's names |
 | --- | --- |
-| `ck_stg` | `Record file_stg := { fs_ps; fs_cs; fs_s0 : fst; fs_I; fs_P }` — exactly `FileLinksLine.fcur`'s five arguments besides `v` and `k` |
+| `ck_stg` | `Record file_stg := { fs_ps; fs_cs; fs_s0 : fstate; fs_I; fs_P }` — exactly `FileLinksLine.fcur`'s five arguments besides `v` and `k` |
 | `ck_ok st ws` | `wr_blk_t_f (fs_ps st) (fs_cs st) (fs_s0 st) (fs_I st) (fs_P st) /\ last_ws (fs_I st) = ws` (`wr_blk_t_f` is `FileLinksLine.v:423`; its `wr_tail_f` half is what the LEND carries and what the post law needs) |
 | `ck_alt ws` | `line_alts_of ws !!! 0%nat` — **the same list as echo's** (see the obligation below) |
 | `ck_cur k v st p` | `(turn v (fs_P st + p) ∗ ps_lb v (fs_ps st) ∗ cs_lb v (blkcs_f (fs_cs st) 0%nat p) ∗ inp_lb v (fs_I st) ∗ f0w k (fs_s0 st)) ∨ FT` — i.e. `FileLinksLine.fwc_blk g k v I 0%nat p` with the stage NAMED instead of existential.  `blkcs_f` is already `echcs`'s twin (`:432`) |
 | `ck_cur_tl` | `apply _` (`fcur_timeless`, `f0w_timeless` are there) |
 | `ck_step` | `FileLinks.file_write_link_blk` at `i = 0` (files the alternative) and `file_write_link_w` after, taint arm from `file_write_link_taint`.  Its pure inputs are `FileLinksLine`'s `wr_blk_pin_snoc_f` / `wr_blk_byte_f` family (the `fab I a !! j = Some b -> proc_stream_f … !! (P + j) = Some b` lemma at `:533`), which is `UCatOut` section 1's shape at a general alternative |
 | `sk_lend_stage` | `lk_lend file_link_inst = FileLinksLine.fwc_lend g`, whose untainted arm IS `∃ ps cs s0 P, ⌜wr_blk_t_f …⌝ ∗ fcur v ps cs s0 I P k` — the stage falls straight out.  The `□` half is the file twin of `EchoLinksLine.ewc_post_of_ech`: from the cursor at `length (wl_line (drop 1 (last_ws I)))` to `fwc_blk g k v I 0 (length (fab I 0) - 2)`, i.e. `lk_post file_link_inst k v I 0` |
-| `sk_apr0` | `lk_apr file_link_inst = FileLinksLine.fapr`, so it is `ralt_ok (fline I) (ralt_dec 0) /\ fst_free (ralt_dec 0) = true /\ ralt_panic (ralt_dec 0) = false` — three `cbn`s at an echo line |
+| `sk_apr0` | `lk_apr file_link_inst = FileLinksLine.fapr`, so it is `ralt_ok (fline I) (ralt_dec 0) /\ fstate_free (ralt_dec 0) = true /\ ralt_panic (ralt_dec 0) = false` — three `cbn`s at an echo line |
 
 **THE ONE NON-OBVIOUS OBLIGATION, now exact.**  `sk_lend_stage`'s second
 conjunct is
@@ -9597,7 +9597,7 @@ premise is quantified over the image the KERNEL will read — and
 path, which echo's entry drops).
 
     Lemma cat_pay_absent (W : uvis) (v : era_pins) (vf : file_era)
-        (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (P : nat)
+        (ps0 cs0 : list nat) (s0 : fstate) (I0 : list (bv 8)) (P : nat)
         (c : file_fixed) (r : file_names) (q : Qp) (rb : bool)
         (Q : Z -> iProp Σ) (s : dst) :
       file_app = MkAppcfg file_names (file_pred c) r ->
@@ -9627,7 +9627,7 @@ only because item (2) gave the ledger back.
 **(4) THE PRESENT ARM.**
 
     Lemma cat_pay_present (W : uvis) (v : era_pins) (vf : file_era)
-        (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (P : nat)
+        (ps0 cs0 : list nat) (s0 : fstate) (I0 : list (bv 8)) (P : nat)
         (c : file_fixed) (r : file_names) (q1 q2 : Qp) (i : Z)
         (bs : list (bv 8)) (om : offmode) (rb : bool) (Q : Z -> iProp Σ) :
       c = fgn_cl g ->
@@ -10221,7 +10221,7 @@ corollary hands `ualloc … (FdInode i γo OffParked)` and no `uoff`.
 DISJUNCTION, and that is the model's own shape and not a hedge:
 
     Definition catq_cat (v : era_pins) (vf : file_era)
-        (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (P : nat)
+        (ps0 cs0 : list nat) (s0 : fstate) (I0 : list (bv 8)) (P : nat)
       : Z -> iProp Σ :=
       fun _ =>
         (UCatOut.catq_filed g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P (-1)
@@ -10450,7 +10450,7 @@ OFF-LINK-4 rows travel there:
     Definition cat_lend (c : file_fixed) (r : file_names) (q1 q2 : Qp)
         (i : Z) (bs : list (bv 8)) (om : offmode)
         (sts : list fdstate) (cw : Z) (v : era_pins) (vf : file_era)
-        (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (P : nat)
+        (ps0 cs0 : list nat) (s0 : fstate) (I0 : list (bv 8)) (P : nat)
       : iProp Σ :=
       ((∀ N' : uk_names Σ,
           cat_open_hand N' c r q1 q2 i bs (take NSTD sts) cw om)

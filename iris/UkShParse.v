@@ -854,27 +854,32 @@ Section UkShParse.
 
   (* ---- the symbol pins this file uses, one name each ------------------ *)
   Lemma shpp_strchr : ShSyms.strchr = 0xa82.
-  Proof using . destruct shp_syms_pins as (_&_&_&_&_&_&_&_&_&_&_&H). exact H. Qed.
+  Proof using . destruct shp_syms_pins as (_&_&_&_&_&_&_&_&_&_&_&_&H). exact H. Qed.
   Lemma shpp_strlen : ShSyms.strlen = 0xa30.
-  Proof using . destruct shp_syms_pins as (_&_&_&_&_&_&_&_&_&_&H&_). exact H. Qed.
+  Proof using . destruct shp_syms_pins as (_&_&_&_&_&_&_&_&_&_&_&H&_). exact H. Qed.
   Lemma shpp_execcmd : ShSyms.execcmd = 0x1d2.
-  Proof using . destruct shp_syms_pins as (_&_&_&_&_&_&_&_&H&_&_). exact H. Qed.
+  Proof using . destruct shp_syms_pins as (_&_&_&_&_&_&_&_&H&_&_&_&_). exact H. Qed.
   Lemma shpp_gettoken : ShSyms.gettoken = 0x310.
-  Proof using . destruct shp_syms_pins as (_&_&_&_&_&_&_&H&_&_&_). exact H. Qed.
+  Proof using . destruct shp_syms_pins as (_&_&_&_&_&_&_&H&_&_&_&_&_). exact H. Qed.
   Lemma shpp_peek : ShSyms.peek = 0x448.
-  Proof using . destruct shp_syms_pins as (_&_&_&_&_&_&H&_&_&_&_). exact H. Qed.
+  Proof using . destruct shp_syms_pins as (_&_&_&_&_&_&H&_&_&_&_&_&_). exact H. Qed.
   Lemma shpp_nulterminate : ShSyms.nulterminate = 0x7ee.
-  Proof using . destruct shp_syms_pins as (_&_&_&_&_&H&_&_&_&_&_). exact H. Qed.
+  Proof using . destruct shp_syms_pins as (_&_&_&_&_&H&_&_&_&_&_&_&_). exact H. Qed.
   Lemma shpp_parseredirs : ShSyms.parseredirs = 0x4ac.
-  Proof using . destruct shp_syms_pins as (_&_&_&_&H&_&_&_&_&_&_). exact H. Qed.
+  Proof using . destruct shp_syms_pins as (_&_&_&_&H&_&_&_&_&_&_&_&_). exact H. Qed.
   Lemma shpp_parseexec : ShSyms.parseexec = 0x590.
-  Proof using . destruct shp_syms_pins as (_&_&_&H&_&_&_&_&_&_&_). exact H. Qed.
+  Proof using . destruct shp_syms_pins as (_&_&_&H&_&_&_&_&_&_&_&_&_). exact H. Qed.
   Lemma shpp_parsepipe : ShSyms.parsepipe = 0x682.
-  Proof using . destruct shp_syms_pins as (_&_&H&_&_&_&_&_&_&_&_). exact H. Qed.
+  Proof using . destruct shp_syms_pins as (_&_&H&_&_&_&_&_&_&_&_&_&_). exact H. Qed.
   Lemma shpp_parseline : ShSyms.parseline = 0x6e2.
-  Proof using . destruct shp_syms_pins as (_&H&_&_&_&_&_&_&_&_&_). exact H. Qed.
+  Proof using . destruct shp_syms_pins as (_&H&_&_&_&_&_&_&_&_&_&_&_). exact H. Qed.
+  (* [pipecmd] joined the catalog with lane SH-PARSE-PIPE (tools/ucode_shp.txt:
+     `func pipecmd`), so the pins tuple has a thirteenth conjunct and every
+     pattern above gained one `_`. *)
+  Lemma shpp_pipecmd : ShSyms.pipecmd = 0x260.
+  Proof using . destruct shp_syms_pins as (_&_&_&_&_&_&_&_&_&_&H&_&_). exact H. Qed.
   Lemma shpp_parsecmd : ShSyms.parsecmd = 0x86e.
-  Proof using . destruct shp_syms_pins as (H&_&_&_&_&_&_&_&_&_&_). exact H. Qed.
+  Proof using . destruct shp_syms_pins as (H&_&_&_&_&_&_&_&_&_&_&_&_). exact H. Qed.
 
   (* ===================================================================== *)
   (* §2 THE BYTE / REGISTER ALGEBRA THIS FILE NEEDS.                        *)

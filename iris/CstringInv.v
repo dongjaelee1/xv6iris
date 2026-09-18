@@ -1,4 +1,4 @@
-(* CstringInv.v -- the INVERSE of [RiscvPtsto.cstring_bytes].
+(* CstringInv.v -- the INVERSE of [StringBytes.cstring_bytes].
 
    [cstring_bytes] goes string -> bytes.  The tree had no way back, so every
    reader of a NUL-terminated byte buffer had to ASSUME the split existed:
@@ -7,13 +7,13 @@
    assumed -- a buffer with a NUL in it DETERMINES the string, and that is
    what this file proves.
 
-   It is its own file because it belongs to neither side: [string_bytes] and
-   [cstring_bytes] live in RiscvPtsto.v, which knows nothing of printk, and
-   [nonul] lives in PrintkFmt.v, which is stdlib-only and knows nothing of
-   bytes.  This is the one place that needs both. *)
+   It is its own file, rather than a third section of StringBytes.v, because
+   the recovered string's own shape is [PrintkFmt.nonul] -- and StringBytes.v
+   is re-exported by RiscvPtsto.v, so printk's format model is exactly what
+   must not be required there.  This is the one place that needs both. *)
 From Stdlib Require Import ZArith List Bool Ascii String Lia.
 From stdpp Require Import list bitvector.definitions.
-Require Import RiscvPtsto.
+Require Import StringBytes.
 Require Import PrintkFmt.
 Import ListNotations.
 Local Open Scope Z_scope.
@@ -61,14 +61,6 @@ Proof.
   case_bool_decide as Hb; [reflexivity |].
   cbn. rewrite (byte_ascii_nonul b Hb). exact IH.
 Qed.
-
-(* [cstring_bytes] on a cons: the NUL rides at the END, so prefixing a
-   character prefixes its byte.  Definitional, and it is what keeps the
-   induction below from having to reassociate anything. *)
-Lemma cstring_bytes_cons (c : ascii) (s : string) :
-  cstring_bytes (String c s)
-  = Z_to_bv 8 (Z.of_N (Ascii.N_of_ascii c)) :: cstring_bytes s.
-Proof. reflexivity. Qed.
 
 (* THE SPLIT.  A buffer with a NUL anywhere in it IS a C string followed by
    whatever the compiler left behind. *)

@@ -153,15 +153,15 @@ Import Defs.
 (*          console output is the bare prompt), the deed has moved to its *)
 (*          effect, and the console has not filed it yet.                *)
 (* ===================================================================== *)
-Definition pre_tie (cs : list nat) (sb : fst) (I : list (bv 8)) (c : fst)
+Definition pre_tie (cs : list nat) (sb : fstate) (I : list (bv 8)) (c : fstate)
   : Prop :=
   length cs = (nlines I - 1)%nat /\ c = UCatOut.cat_st cs sb I.
 
-Definition done_tie (cs : list nat) (sb : fst) (I : list (bv 8)) (c : fst)
+Definition done_tie (cs : list nat) (sb : fstate) (I : list (bv 8)) (c : fstate)
   : Prop :=
-  length cs = nlines I /\ c = fst_after cs sb I.
+  length cs = nlines I /\ c = fstate_after cs sb I.
 
-Definition pend_tie_at (cs : list nat) (sb : fst) (I : list (bv 8)) (c : fst)
+Definition pend_tie_at (cs : list nat) (sb : fstate) (I : list (bv 8)) (c : fstate)
     (a : nat) : Prop :=
   length cs = (nlines I - 1)%nat
   /\ (0 < nlines I)%nat
@@ -169,19 +169,19 @@ Definition pend_tie_at (cs : list nat) (sb : fst) (I : list (bv 8)) (c : fst)
   /\ cont (UCatOut.cat_st cs sb I) (fline I) (ralt_dec a) = u_prompt
   /\ c = fsm (UCatOut.cat_st cs sb I) (fline I) (ralt_dec a).
 
-Definition pend_tie (cs : list nat) (sb : fst) (I : list (bv 8)) (c : fst)
+Definition pend_tie (cs : list nat) (sb : fstate) (I : list (bv 8)) (c : fstate)
   : Prop := exists a : nat, pend_tie_at cs sb I c a.
 
 (* ---- the f-effects that are the identity ---- *)
-Lemma fsm_echo (s : fst) (ws : list (list (bv 8))) (a : ralt) :
+Lemma fsm_echo (s : fstate) (ws : list (list (bv 8))) (a : ralt) :
   fsm s (LEcho ws) a = s.
 Proof using . reflexivity. Qed.
 
-Lemma fsm_cat (s : fst) (a : ralt) : fsm s LCat a = s.
+Lemma fsm_cat (s : fstate) (a : ralt) : fsm s LCat a = s.
 Proof using . reflexivity. Qed.
 
 (* a panic alternative moves no file, at any line *)
-Lemma fsm_panic (s : fst) (l : uline) (a : ralt) :
+Lemma fsm_panic (s : fstate) (l : uline) (a : ralt) :
   ralt_panic a = true -> fsm s l a = s.
 Proof using .
   intro H. destruct l as [ws | ws |]; [ reflexivity | | reflexivity ].
@@ -190,14 +190,14 @@ Qed.
 
 (* the line's silent alternative moves no file -- at a redirect line this
    IS the model fix of RULING HOLD-POS ([RFSilent]'s effect is identity) *)
-Lemma fsm_fnoc (s : fst) (l : uline) : fsm s l (ralt_dec (fnoc_of l)) = s.
+Lemma fsm_fnoc (s : fstate) (l : uline) : fsm s l (ralt_dec (fnoc_of l)) = s.
 Proof using .
   destruct l as [ws | ws |]; cbn [fnoc_of];
     [ reflexivity | by rewrite (ralt_dec_enc RFSilent) | reflexivity ].
 Qed.
 
 (* an alternative whose output is the bare prompt is not a panic *)
-Lemma cont_prompt_nopanic (s : fst) (l : uline) (a : ralt) :
+Lemma cont_prompt_nopanic (s : fstate) (l : uline) (a : ralt) :
   cont s l a = u_prompt -> ralt_panic a = false.
 Proof using .
   intro H. destruct a as [k | sel | | | | | | | | | |]; cbn [ralt_panic];
@@ -216,33 +216,33 @@ Proof using .
 Qed.
 
 (* ---- filing one alternative moves the state by one [fsm] step ---- *)
-Lemma fst_after_snoc (cs : list nat) (a : nat) (sb : fst) (I : list (bv 8)) :
+Lemma fstate_after_snoc (cs : list nat) (a : nat) (sb : fstate) (I : list (bv 8)) :
   length cs = (nlines I - 1)%nat -> (0 < nlines I)%nat ->
-  fst_after (cs ++ [a]) sb I
+  fstate_after (cs ++ [a]) sb I
   = fsm (UCatOut.cat_st cs sb I) (fline I) (ralt_dec a).
 Proof using .
-  intros Hlen Hpos. rewrite /fst_after /UCatOut.cat_st /fline.
+  intros Hlen Hpos. rewrite /fstate_after /UCatOut.cat_st /fline.
   destruct (nlines I) as [| n] eqn:Hn; [ lia | ].
   try rewrite Hn in Hlen. replace (S n - 1)%nat with n in Hlen |- * by lia.
-  cbn [fst_upto]. f_equal.
-  - apply fst_upto_ext; [ | intros j _; reflexivity ].
+  cbn [fstate_upto]. f_equal.
+  - apply fstate_upto_ext; [ | intros j _; reflexivity ].
     intros j Hj. rewrite list_lookup_total_alt lookup_app_l;
       [ by rewrite -list_lookup_total_alt | lia ].
   - rewrite /ralt_at -Hlen fd_snoc_lookup_total. reflexivity.
 Qed.
 
-Lemma done_tie_snoc (cs : list nat) (a : nat) (sb : fst) (I : list (bv 8))
-    (c : fst) :
+Lemma done_tie_snoc (cs : list nat) (a : nat) (sb : fstate) (I : list (bv 8))
+    (c : fstate) :
   length cs = (nlines I - 1)%nat -> (0 < nlines I)%nat ->
   c = fsm (UCatOut.cat_st cs sb I) (fline I) (ralt_dec a) ->
   done_tie (cs ++ [a]) sb I c.
 Proof using .
   intros Hl Hp Hc. split; [ rewrite length_app; cbn [length]; lia | ].
-  rewrite (fst_after_snoc cs a sb I Hl Hp). exact Hc.
+  rewrite (fstate_after_snoc cs a sb I Hl Hp). exact Hc.
 Qed.
 
 (* (ii) DONE-of-PEND: the console files the alternative the deed decided *)
-Lemma done_tie_of_pend (cs : list nat) (sb : fst) (I : list (bv 8)) (c : fst)
+Lemma done_tie_of_pend (cs : list nat) (sb : fstate) (I : list (bv 8)) (c : fstate)
     (a : nat) :
   pend_tie_at cs sb I c a -> done_tie (cs ++ [a]) sb I c.
 Proof using .
@@ -250,8 +250,8 @@ Proof using .
 Qed.
 
 (* (iv) DONE-of-PRE at an alternative whose f-effect is the identity *)
-Lemma done_tie_of_pre_id (cs : list nat) (a : nat) (sb : fst)
-    (I : list (bv 8)) (c : fst) :
+Lemma done_tie_of_pre_id (cs : list nat) (a : nat) (sb : fstate)
+    (I : list (bv 8)) (c : fstate) :
   (0 < nlines I)%nat -> pre_tie cs sb I c ->
   fsm (UCatOut.cat_st cs sb I) (fline I) (ralt_dec a) = UCatOut.cat_st cs sb I ->
   done_tie (cs ++ [a]) sb I c.
@@ -261,7 +261,7 @@ Proof using .
 Qed.
 
 (* (iii) PEND-of-PRE at the line's silent identity alternative *)
-Lemma pend_tie_of_pre (cs : list nat) (sb : fst) (I : list (bv 8)) (c : fst) :
+Lemma pend_tie_of_pre (cs : list nat) (sb : fstate) (I : list (bv 8)) (c : fstate) :
   (0 < nlines I)%nat -> pre_tie cs sb I c ->
   pend_tie_at cs sb I c (fnoc_of (fline I)).
 Proof using .
@@ -273,8 +273,8 @@ Qed.
 (* (iv'), at a FILED list: the holder of PRE meets a console whose list is
    one longer and extends its own, and the filed alternative's effect is
    the identity -- or nothing is filed at all ([nlines I = 0]) *)
-Lemma done_tie_of_pre_prefix (cs cs' : list nat) (sb : fst) (I : list (bv 8))
-    (c : fst) :
+Lemma done_tie_of_pre_prefix (cs cs' : list nat) (sb : fstate) (I : list (bv 8))
+    (c : fstate) :
   pre_tie cs' sb I c -> length cs = nlines I -> cs' `prefix_of` cs ->
   ((0 < nlines I)%nat ->
    fsm (UCatOut.cat_st cs' sb I) (fline I) (ralt_at cs (nlines I - 1)%nat)
@@ -286,7 +286,7 @@ Proof using .
   - (* no complete line: both lists are empty, both states the boot state *)
     try rewrite Hn in Hl. apply nil_length_inv in Hl. subst cs.
     split; [ by rewrite Hn | ].
-    rewrite Hc /UCatOut.cat_st /fst_after Hn. reflexivity.
+    rewrite Hc /UCatOut.cat_st /fstate_after Hn. reflexivity.
   - try rewrite Hn in Hl. try rewrite Hn in Hl'. try rewrite Hn in Hid.
     replace (S n - 1)%nat with n in * by lia.
     destruct Hpre as [rest ->].
@@ -299,8 +299,8 @@ Qed.
 
 (* ...and the banner-owed reading of it: the last filed alternative is a
    panic ([wr_ban_f]'s clause), whose f-effect is the identity *)
-Lemma done_tie_of_pre_ban (cs cs' : list nat) (sb : fst) (I : list (bv 8))
-    (c : fst) :
+Lemma done_tie_of_pre_ban (cs cs' : list nat) (sb : fstate) (I : list (bv 8))
+    (c : fstate) :
   pre_tie cs' sb I c -> length cs = nlines I -> cs' `prefix_of` cs ->
   (I = [] \/ ralt_panic (ralt_at cs (nlines I - 1)%nat) = true) ->
   done_tie cs sb I c.
@@ -313,7 +313,7 @@ Qed.
 
 (* (i) PRE-of-DONE: a new complete line makes the settled state the state
    BEFORE the new round *)
-Lemma pre_tie_of_done (cs : list nat) (sb : fst) (I l : list (bv 8)) (c : fst) :
+Lemma pre_tie_of_done (cs : list nat) (sb : fstate) (I l : list (bv 8)) (c : fstate) :
   rest_of I = [] -> wl_nl ∉ l ->
   done_tie cs sb I c -> pre_tie cs sb (I ++ l ++ [wl_nl]) c.
 Proof using .
@@ -324,9 +324,9 @@ Proof using .
     by (rewrite Hassoc nlines_snoc_nl (EchoLinks.nlines_app_nonl I l Hl);
         reflexivity).
   split; [ rewrite Hn; lia | ].
-  rewrite Hc /fst_after /UCatOut.cat_st Hn.
+  rewrite Hc /fstate_after /UCatOut.cat_st Hn.
   replace (S (nlines I) - 1)%nat with (nlines I) by lia.
-  apply fst_upto_ext; [ intros j _; reflexivity | ].
+  apply fstate_upto_ext; [ intros j _; reflexivity | ].
   intros j Hj.
   pose proof (bodies_of_app I (l ++ [wl_nl])) as Hpre.
   destruct (lookup_lt_is_Some_2 (bodies_of I) j Hj) as [x Hx].
@@ -338,7 +338,7 @@ Qed.
         [wr_blk_dollar_f], with the state read instead of [fab]: the
         alternative need not be state-free -- [RCRan] at an empty `f`
         prints the bare prompt too) ---- *)
-Lemma wr_blk_pending_at_f (ps cs : list nat) (s0 : fst) (I : list (bv 8))
+Lemma wr_blk_pending_at_f (ps cs : list nat) (s0 : fstate) (I : list (bv 8))
     (P a : nat) :
   wr_blk_f ps cs s0 I P -> ralt_panic (ralt_dec a) = false ->
   pending_at_f ps (cs ++ [a]) (Some s0) I
@@ -350,9 +350,9 @@ Proof using .
   assert (Hlast : (nlines I - 1)%nat = length cs) by lia.
   assert (Hat : ralt_at (cs ++ [a]) (nlines I - 1)%nat = ralt_dec a)
     by (rewrite /ralt_at Hlast fd_snoc_lookup_total; reflexivity).
-  assert (Hup : fst_upto (cs ++ [a]) s0 (bodies_of I) (nlines I - 1)%nat
-                = fst_upto cs s0 (bodies_of I) (nlines I - 1)%nat).
-  { apply (fst_upto_ext (cs ++ [a]) cs s0 (bodies_of I) (bodies_of I));
+  assert (Hup : fstate_upto (cs ++ [a]) s0 (bodies_of I) (nlines I - 1)%nat
+                = fstate_upto cs s0 (bodies_of I) (nlines I - 1)%nat).
+  { apply (fstate_upto_ext (cs ++ [a]) cs s0 (bodies_of I) (bodies_of I));
       [ | intros j _; reflexivity ].
     intros j Hj. rewrite list_lookup_total_alt lookup_app_l; [ | lia ].
     by rewrite -list_lookup_total_alt. }
@@ -361,7 +361,7 @@ Proof using .
   rewrite /alt_cont_f f0_st_some Hat Hup Hnp app_nil_r. reflexivity.
 Qed.
 
-Lemma wr_blk_dollar_at_f (ps cs : list nat) (s0 : fst) (I : list (bv 8))
+Lemma wr_blk_dollar_at_f (ps cs : list nat) (s0 : fstate) (I : list (bv 8))
     (P a : nat) :
   wr_blk_f ps cs s0 I P ->
   ralt_panic (ralt_dec a) = false ->
@@ -454,7 +454,7 @@ Section UShRound.
      variable beside [gen_id]; /init instantiates it at the deed's own
      content ([AppFile.dst_content s_deed]), which is what makes
      [UCatOut.cat_tie [] s0 [] s] hold by [eq_refl] at the head. *)
-  Context (s0 : fst).
+  Context (s0 : fstate).
 
   (* the record equations the top theorem hands over
      ([UInitBoot.echo_Hinit_boot]'s [Hcons] / [Htag] one application on) *)
@@ -506,8 +506,8 @@ Section UShRound.
      at positions 0-2 the round of [I]'s last line has run and been filed
      and the same input needs one more [fsm] step than at the lend. *)
   Definition sh_deed_at
-      (tie : list nat -> fst -> list (bv 8) -> fst -> Prop)
-      (sb : fst) (I : list (bv 8)) : iProp Σ :=
+      (tie : list nat -> fstate -> list (bv 8) -> fstate -> Prop)
+      (sb : fstate) (I : list (bv 8)) : iProp Σ :=
     ((∃ (cs : list nat) (s : dst) (v : era_pins),
         fown r s
         ∗ ⌜tie cs sb I (dst_content s)⌝
@@ -530,10 +530,10 @@ Section UShRound.
   Global Instance line_wit_timeless I : Timeless (line_wit I).
   Proof using . rewrite /line_wit /T /file_taint /echo_taint. apply _. Qed.
 
-  Definition sh_pre_at (sb : fst) (I : list (bv 8)) : iProp Σ :=
+  Definition sh_pre_at (sb : fstate) (I : list (bv 8)) : iProp Σ :=
     (sh_deed_at pre_tie sb I ∗ line_wit I)%I.
-  Definition sh_done_at : fst -> list (bv 8) -> iProp Σ := sh_deed_at done_tie.
-  Definition sh_pend_at : fst -> list (bv 8) -> iProp Σ := sh_deed_at pend_tie.
+  Definition sh_done_at : fstate -> list (bv 8) -> iProp Σ := sh_deed_at done_tie.
+  Definition sh_pend_at : fstate -> list (bv 8) -> iProp Σ := sh_deed_at pend_tie.
 
   Local Notation PRE := (sh_pre_at s0).
   Local Notation DONE := (sh_done_at s0).
@@ -593,7 +593,7 @@ Section UShRound.
 
   (* ...AND IT IS INHABITED AT THE ERA'S HEAD (RULING H' at HOLD-POS): at
      [I = []] nothing is filed, so the head is DONE at [cs = []] with the
-     deed at its own boot value ([fst_after [] s0 [] = s0]), and /init owes
+     deed at its own boot value ([fstate_after [] s0 [] = s0]), and /init owes
      no lower bound but [cs_lb v []] -- which its turn carries
      ([UInitFileCons.file_Wbf_at_of_boot]). *)
   Lemma sh_done_head (s : dst) (v : era_pins) :
@@ -604,7 +604,7 @@ Section UShRound.
     iIntros "#Hpin #Hcs Hd #Hty". rewrite /sh_done_at /sh_deed_at. iLeft.
     iExists [], s, v. iFrame "Hd Hpin Hcs Hty". iPureIntro.
     split; [ by rewrite nlines_nil | ].
-    rewrite /fst_after nlines_nil. reflexivity.
+    rewrite /fstate_after nlines_nil. reflexivity.
   Qed.
 
   (* =================================================================== *)
@@ -770,7 +770,7 @@ Section UShRound.
      prompt (the alternative filed -- DONE by identity), or a block whose
      prompt IS its first byte (still owed -- PEND at the silent one). *)
   Lemma Wcf0_of_pre_line_id (I : list (bv 8)) :
-    (forall (s : fst) (a : ralt), fsm s (fline I) a = s) ->
+    (forall (s : fstate) (a : ralt), fsm s (fline I) a = s) ->
     Wcl I 0%nat -∗ PRE I -∗ Wcf I 0%nat.
   Proof using .
     intros Hid. iIntros "Hc Hp". rewrite Wcf_0.
@@ -980,7 +980,7 @@ Section UShRound.
     pose proof (wr_blk_nonnil_f ps0 cs0 s0 I0 P Hw) as Hne.
     destruct Hw as (Hpin & Hr & Hn & HP).
     assert (Hhead :
-      cont (fst_upto cs0 s0 (bodies_of I0) (nlines I0 - 1)%nat)
+      cont (fstate_upto cs0 s0 (bodies_of I0) (nlines I0 - 1)%nat)
            (uline_of (bodies_of I0 !!! (nlines I0 - 1)%nat)) (ralt_dec a)
         !! 0%nat = Some (u_prompt !!! 0%nat)).
     { rewrite /fline /UCatOut.cat_st in Hcont. rewrite Hcont.

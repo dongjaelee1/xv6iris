@@ -702,8 +702,11 @@ Section PwConts.
   Proof using . rewrite /pipe_olink. iIntros "H". iApply "H". Qed.
 
   Lemma pw_wlink_apply (γ : gname) (b : bv 8) (Φ : iProp Σ) (s : pipe_st) :
+    ps_wo s = true ->
     pipe_wlink γ b Φ -∗ pipe_qauth γ s ={⊤}=∗ pipe_qauth γ (pst_write b s) ∗ Φ.
-  Proof using . rewrite /pipe_wlink. iIntros "H". iApply "H". Qed.
+  Proof using .
+    intro Hwo. rewrite /pipe_wlink. iIntros "H". iApply ("H" $! s). iPureIntro. exact Hwo.
+  Qed.
 
   (* NODE [k] OF THE CHAIN, at the count the cursor form carries.  The three
      components are an ADDITIVE conjunction: taking the observation SPENDS
@@ -797,6 +800,17 @@ Section PwConts.
       iExact "HQe".
   Qed.
 
+  (* THE WRITE END IS OPEN, from the caller's own credential (lane PQ-FLAG):
+     [pipewrite]'s contract pins the end it is entered with to the WRITE one
+     ([SpecPipewrite]'s [w = true]), and a share of an end refutes that end's
+     shut arm ([PipeInvDefs.pipe_endstate_holder]).  Stated at the generic [w]
+     so the loop body -- which names [w] in every argument list -- can read it
+     without substituting. *)
+  Lemma pw_wo_open (γp : pipe_names) (w : bool) (wo : mword 32) (q : Qp) :
+    w = true ->
+    pipe_endstate γp true wo -∗ pipe_ref γp w q -∗ ⌜pflag_open wo⌝.
+  Proof using . intros ->. apply pipe_endstate_holder. Qed.
+
   (* THE BYTE LANDS: the failed full test licenses [pipe_queue_push], the
      ring takes the byte at the index the [andi ..,511] computed
      ([pipe_queue_widx]), and the caller's link fires with the byte
@@ -810,19 +824,26 @@ Section PwConts.
     M !! uint (add_vec_int ua (Z.of_nat k)) = Some b ->
     length bs = PIPESIZE ->
     nw <> add_vec nr (mword_of_int 512 : mword 32) ->
+    (* THE WRITE END IS OPEN (lane PQ-FLAG): what the caller's [pipe_wlink]
+       demands of the state the byte lands in, through [pipe_qres]'s coupled
+       arm ([ps_wo = pflag_bool wo]).  Read off the payload's own
+       [pipe_endstate γp true wo] against the caller's [pipe_ref γp true q]
+       once per round, at the top of the loop body. *)
+    pflag_open wo ->
     pw_pay γp M ua Q Qe k nn -∗
     pipe_qres γp nr nw ro wo bs
     ={⊤}=∗ pipe_qres γp nr (add_vec nw (mword_of_int 1 : mword 32)) ro wo
              (<[Z.to_nat (bv_unsigned nw mod 512) := b]> bs)
            ∗ pw_pay γp M ua Q Qe (S k) nn.
   Proof using .
-    intros Hk Hb Hlen Hne. rewrite /pw_pay. iIntros "[Hch | #Ht] Hq".
+    intros Hk Hb Hlen Hne Hwo. rewrite /pw_pay. iIntros "[Hch | #Ht] Hq".
     2:{ iModIntro. iSplitR; [by iApply pipe_qres_taint |]. by iRight. }
     iDestruct "Hq" as "[Hc | #Ht]".
     2:{ iModIntro. iSplitR; [by iApply pipe_qres_taint |]. by iRight. }
     iDestruct "Hc" as (ws rp) "[%Hok Ha]".
     iDestruct (pw_chain_wlink _ _ _ _ _ k nn b Hk Hb with "Hch") as "Hwl".
     iMod (pw_wlink_apply _ _ _ (MkPipeSt ws rp (pflag_bool ro) (pflag_bool wo))
+            ltac:(cbn [ps_wo]; unfold pflag_bool; apply bool_decide_eq_true_2; exact Hwo)
             with "Hwl Ha") as "[Ha Hch]".
     iModIntro. iSplitL "Ha"; [| by iLeft].
     rewrite /pipe_qres (pipe_queue_widx ws rp nr nw bs Hok).
@@ -1309,7 +1330,11 @@ Section ProofPipewrite.
     : wp_pipewrite_sconf_body γa γf γs j γlp γl γp w q m av eb pid U n b lks Q Qe.
   Proof using .
     cbv beta delta [wp_pipewrite_sconf_body].
-    intros pcE pj pi addr ret_tgt Hj Hjlp Hlen Ha2 Hnrange Hav Heb Hbelow. subst eb.
+    intros pcE pj pi addr ret_tgt Hj Hjlp Hlen Ha2 Hnrange Hav Heb Hwend Hbelow.
+    subst eb.
+    (* [w] is NOT substituted: the script names it in a dozen argument lists
+       ([pw_epi], [pw_loop], [pw_exits]).  [Hwend] is read once, in the loop
+       body, through [pw_wo_open]. *)
     (* every callee that wants "proc" (wakeup / killed / sleep_prepare /
        sleep) is reached with the held set still at [lks] (the entry set --
        see claude-notes/completed/lock-set.md's note on this function's
@@ -2375,6 +2400,12 @@ Section ProofPipewrite.
         assert (Hi1 : (i + 1 < 2 ^ 31)%Z) by (rewrite H31; lia).
         iDestruct "Hres" as (nr nw ro wo vname bs)
           "(Hnm & Hnr & Hnw & Hro & Hwo & Hst0 & Hst1 & %Hcnt & %Hbslen & Hdat & Hslack & Hqr)".
+        (* THE WRITE END IS OPEN, this round (lane PQ-FLAG): the caller holds
+           a share of it ([Href]), so the payload's [pipe_endstate] for the
+           write end cannot be on its shut arm.  The conclusion is pure, so
+           both inputs survive; it is what [pw_qres_push] needs to fire the
+           caller's [pipe_wlink]. *)
+        iDestruct (pw_wo_open γp w wo q Hwend with "Hst1 Href") as %Hwoopen.
         (* [Hnm]/[Hwo]/the two [pipe_endstate]s/[Hslack] are read nowhere in
            the loop body between here and whichever [pw_res_intro_rest] call
            reassembles them; bundling them now keeps them out of every
@@ -3347,7 +3378,7 @@ Section ProofPipewrite.
                     tainted and the whole payment becomes the taint. *)
                  iApply fupd_wp.
                  iMod (pw_qres_push γp (us_M U) addr Q Qe (Z.to_nat i) (Z.to_nat n)
-                         nr nw ro wo bs (dst_new 0%nat) Hkc Hbyte Hbslen Hne
+                         nr nw ro wo bs (dst_new 0%nat) Hkc Hbyte Hbslen Hne Hwoopen
                          with "HW Hqr") as "[Hqr HW]".
                  iModIntro.
                  (* +0xce andi a5,a5,511 -- the %PIPESIZE index *)

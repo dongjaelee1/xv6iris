@@ -225,7 +225,7 @@ Section FileApp.
     iAssert (|==> (if i is Uart0 then fecl c (S gen_id) ho H else emp)
                   ∗ (file_taint (fgn_cl c)
                      ∨ (match i with
-                        | Uart0 => ∃ (s0 : fst) (vf : file_era),
+                        | Uart0 => ∃ (s0 : fstate) (vf : file_era),
                                      ⌜good_out_f s0
                                         (open_seg h ++ [ObsUartOut Uart0 b])⌝
                                      ∗ f0_typed c s0

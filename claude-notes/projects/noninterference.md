@@ -1,9 +1,12 @@
 # noninterference — the campaign
 
 STATUS: PAUSED 2026-09-15, the day it opened (owner: spec cleanup
-first — see `spec-cleanup.md`; its RD-1/RD-2 owned-offset and
-functional file rows are this campaign's §4 determinism prerequisites
-arriving early, so the pause costs nothing).  Below: CAMPAIGN OPENED
+first — see `completed/spec-cleanup.md`, CLOSED 2026-09-17; its
+RD-1/RD-2 owned-offset and functional file rows were this campaign's §4
+determinism prerequisites arriving early.  The parked offset form landed
+there; the OWNED form is now upstream's OFF-LINK, so §4 should be re-read
+against `design/app-file.md` §3 before a lane is briefed).  Resumes on the
+owner's word only.  Below: CAMPAIGN OPENED
 2026-09-15 (owner's word, the day after the echo adequacy theorem
 closed).  §§0–7 below are the design discussion as
 checkpointed 2026-09-04 (Fable, with the owner) and remain the design of

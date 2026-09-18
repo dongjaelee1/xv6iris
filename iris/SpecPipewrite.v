@@ -15,10 +15,13 @@
    public tier:
 
    - the PIPE, at the reference tier (PipeInv.v): [is_pipe] is persistent
-     and [pipe_ref γp w q] -- ANY end, ANY positive fraction -- is the whole
-     credential story.  It is what licenses acquire (and release, and the
-     re-acquire inside sleep) on the pipe's cancellable lock, and it comes
-     back untouched.  Everything pipewrite does to the pipe's fields happens
+     and [pipe_ref γp w q] -- at ANY positive fraction, and at the WRITE end
+     ([w = true]) -- is the whole credential story.  It is what licenses
+     acquire (and release, and the re-acquire inside sleep) on the pipe's
+     cancellable lock, and it comes back untouched.  THE END IS PINNED (lane
+     PQ-FLAG; it used to be either end): the byte queue's write link fires
+     only at [ps_wo s = true], and a share of the WRITE end is the only thing
+     that proves it -- see the premise below.  Everything pipewrite does to the pipe's fields happens
      under [pi->lock] and is invisible to the caller: the counters move, the
      queue coupling [pipe_count_ok] is preserved, and no contract weaker
      than a contents-indexed pipe could say more (see design/pipe.md).
@@ -111,6 +114,15 @@ Definition wp_pipewrite_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslo
      trap CSRs across the crossing -- at level 0 with an enabled base the
      pushing acquire produces exactly that set.  See SpecSched.v. *)
   eb = true ->
+  (* THE END IS THE WRITE END (lane PQ-FLAG, design/app-pipe.md 3.1).
+     pipewrite pushes a byte through the caller's own [PipeQueue.pipe_wlink],
+     which fires only at [ps_wo s = true]; the fact is the caller's to give,
+     and the only thing that gives it is a share of the WRITE end -- with
+     which [PipeInvDefs.pipe_endstate_holder] reads [writeopen <> 0] off the
+     lock's payload at every round.  Not a restriction on the code: filewrite
+     reaches this call only on [f->writable <> 0], which IS this boolean
+     ([FileInvDefs.fc_wbool], [ProofFilewrite.fw_wbool_of_fall]). *)
+  w = true ->
   (* pipewrite acquires "pipe" (7) DIRECTLY, and while holding it reaches
      "proc" (11) via wakeup / sleep_prepare / killed -- its own re-acquire
      after sleep is at the entry [lks] again.  ONE premise at the LOWEST rank

@@ -89,7 +89,7 @@ Local Open Scope Z_scope.
 (*  ([UCatOut.cat_out_of_tie]), so the prompt is never reached: the count *)
 (*  stops at [length bs].                                                *)
 (* ===================================================================== *)
-Lemma cat_round_line (cs0 : list nat) (s0 : fst) (I0 : list (bv 8))
+Lemma cat_round_line (cs0 : list nat) (s0 : fstate) (I0 : list (bv 8))
     (s : dst) (i : Z) (bs : list (bv 8))
     (p nb : nat) (gb : nat -> bv 8) :
   cat_tie cs0 s0 I0 s -> s = Some (i, bs) ->
@@ -177,7 +177,7 @@ Section UCatKernel.
   (* =================================================================== *)
   Definition cat_round_inv (Hold : nat -> iProp Σ) (l : list fdstate)
       (bs : list (bv 8)) (v : era_pins) (vf : file_era)
-      (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (P : nat) : iProp Σ :=
+      (ps0 cs0 : list nat) (s0 : fstate) (I0 : list (bv 8)) (P : nat) : iProp Σ :=
     (UserFd.ustd γfd l
      ∗ ∃ p : nat, ⌜(p <= length bs)%nat⌝ ∗ Hold p
                   ∗ UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P p)%I.
@@ -315,7 +315,7 @@ Section UCatKernel.
   Lemma cat_round_at (c : file_fixed) (i : Z) (bs : list (bv 8)) (fd : nat)
       (Hold : nat -> iProp Σ) (l : list fdstate)
       (v : era_pins) (vf : file_era)
-      (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (P : nat)
+      (ps0 cs0 : list nat) (s0 : fstate) (I0 : list (bv 8)) (P : nat)
       (Cend : iProp Σ) :
     c = fgn_cl g ->
     cat_tie cs0 s0 I0 (Some (i, bs)) ->
@@ -575,7 +575,7 @@ Section UCatKernel.
   (*  with the HELD leaf's obligation and not here.                       *)
   (* =================================================================== *)
   Lemma cat_w_of_link (c : file_fixed) (v : era_pins) (vf : file_era)
-      (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (P : nat)
+      (ps0 cs0 : list nat) (s0 : fstate) (I0 : list (bv 8)) (P : nat)
       (l : list fdstate) (rb : bool)
       (p nb : nat) (rv : mword 64) (fbb : nat -> bv 8) :
     c = fgn_cl g ->
@@ -763,7 +763,7 @@ Section UCatKernel.
   (*  HERE TOO: a short write would leave the era's cursor where it was   *)
   (*  while the chain had already advanced.                              *)
   Lemma kcat_wb_of_link (v : era_pins) (vf : file_era)
-      (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (a P : nat)
+      (ps0 cs0 : list nat) (s0 : fstate) (I0 : list (bv 8)) (a P : nat)
       (l : list fdstate) (rb : bool) (p : nat) (b : bv 8) :
     UCatOut.cat_stage ps0 cs0 s0 I0 P ->
     ralt_ok LCat (ralt_dec a) ->
@@ -882,7 +882,7 @@ Section UCatKernel.
 
   (* ---- (b) A RUN OF BYTES, BY INDUCTION OVER THE CHAIN --------------- *)
   Lemma kcat_pay_seq_of_link (v : era_pins) (vf : file_era)
-      (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (a P : nat)
+      (ps0 cs0 : list nat) (s0 : fstate) (I0 : list (bv 8)) (a P : nat)
       (l : list fdstate) (rb : bool) (fb : nat -> bv 8) :
     UCatOut.cat_stage ps0 cs0 s0 I0 P ->
     ralt_ok LCat (ralt_dec a) ->
@@ -984,7 +984,7 @@ Section UCatKernel.
   (*  way), so the ledger and the cursor are FRAMED IN at the head        *)
   (*  ([UkCat.kcat_pay_seq_frame]).                                       *)
   Lemma cat_dg_open_of_link (v : era_pins) (vf : file_era)
-      (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (a P p : nat)
+      (ps0 cs0 : list nat) (s0 : fstate) (I0 : list (bv 8)) (a P p : nat)
       (l : list fdstate) (rb : bool) (ga : uarg) :
     UCatOut.cat_stage ps0 cs0 s0 I0 P ->
     ralt_ok LCat (ralt_dec a) ->
@@ -1075,7 +1075,7 @@ Section UCatKernel.
      [RCRan] and not [RCNoOpen].  cat's run is the first NINETEEN of its
      twenty-one bytes; the last two are the SHELL's prompt. *)
   Lemma cat_dg_open_absent (v : era_pins) (vf : file_era)
-      (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (P : nat)
+      (ps0 cs0 : list nat) (s0 : fstate) (I0 : list (bv 8)) (P : nat)
       (l : list fdstate) (rb : bool) (ga : uarg) (s : dst) :
     UCatOut.cat_stage ps0 cs0 s0 I0 P ->
     cat_tie cs0 s0 I0 s -> s = None ->
@@ -1121,7 +1121,7 @@ Section UCatKernel.
      BOTH arms, [cat_round_at] hands it to [Hw] on both, and [Hw] is
      [cat_w_of_link] outright. *)
   Lemma cat_hw_of_link (c : file_fixed) (v : era_pins) (vf : file_era)
-      (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (P : nat)
+      (ps0 cs0 : list nat) (s0 : fstate) (I0 : list (bv 8)) (P : nat)
       (l : list fdstate) (rb : bool) :
     c = fgn_cl g ->
     UCatOut.cat_stage ps0 cs0 s0 I0 P ->
@@ -1165,7 +1165,7 @@ Section UCatKernel.
      holding the cursor at ZERO may re-index it to whichever the deed
      turns out to name. *)
   Lemma cat_dg_open_noopen (v : era_pins) (vf : file_era)
-      (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (P : nat)
+      (ps0 cs0 : list nat) (s0 : fstate) (I0 : list (bv 8)) (P : nat)
       (l : list fdstate) (rb : bool) (ga : uarg) :
     UCatOut.cat_stage ps0 cs0 s0 I0 P ->
     l !! 2%nat = Some (FdOpen rb true (FdDevice CONSOLE)) ->
@@ -1630,7 +1630,7 @@ Section UCatEntry.
      cat's whole turn is the `cat: cannot open f` run, at the cursor its
      round opens ([UCatOut.cch … 0]) and leaving it at NINETEEN. ---- *)
   Lemma cat_pay_absent (W : uvis) (v : era_pins) (vf : file_era)
-      (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (P : nat)
+      (ps0 cs0 : list nat) (s0 : fstate) (I0 : list (bv 8)) (P : nat)
       (c : file_fixed) (r : file_names) (q : Qp) (rb : bool)
       (Q : Z -> iProp Σ) (s : dst) :
     file_app = MkAppcfg file_names (file_pred c) r ->
@@ -1856,7 +1856,7 @@ Section UCatEntry.
   Qed.
 
   Lemma cat_pay_present (W : uvis) (v : era_pins) (vf : file_era)
-      (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (P : nat)
+      (ps0 cs0 : list nat) (s0 : fstate) (I0 : list (bv 8)) (P : nat)
       (c : file_fixed) (r : file_names) (q1 q2 : Qp) (i : Z)
       (bs : list (bv 8)) (om : offmode) (rb : bool) (Q : Z -> iProp Σ) :
     c = fgn_cl g ->
@@ -2035,20 +2035,20 @@ Section UCatEntry.
      ([UCatOut.cat_out_len]: [length bs] at [RCRan] with a present deed,
      NINETEEN at [RCRan] with an absent one and at [RCNoOpen] always). *)
   Definition catq_cat (v : era_pins) (vf : file_era)
-      (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (P : nat)
+      (ps0 cs0 : list nat) (s0 : fstate) (I0 : list (bv 8)) (P : nat)
     : Z -> iProp Σ :=
     fun _ =>
       (UCatOut.catq_filed g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P (-1)
        ∨ UCatOut.catq_filed g v vf ps0 cs0 s0 I0 (ralt_enc RCNoOpen) P (-1))%I.
 
   Lemma catq_cat_const (v : era_pins) (vf : file_era)
-      (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (P : nat)
+      (ps0 cs0 : list nat) (s0 : fstate) (I0 : list (bv 8)) (P : nat)
       (x y : Z) :
     catq_cat v vf ps0 cs0 s0 I0 P x = catq_cat v vf ps0 cs0 s0 I0 P y.
   Proof using . reflexivity. Qed.
 
   Lemma cat_pay_filed_some (W : uvis) (v : era_pins) (vf : file_era)
-      (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (P : nat)
+      (ps0 cs0 : list nat) (s0 : fstate) (I0 : list (bv 8)) (P : nat)
       (c : file_fixed) (r : file_names) (q1 q2 : Qp) (i : Z)
       (bs : list (bv 8)) (om : offmode) (rb : bool) :
     c = fgn_cl g ->
@@ -2094,7 +2094,7 @@ Section UCatEntry.
   Qed.
 
   Lemma cat_pay_filed_none (W : uvis) (v : era_pins) (vf : file_era)
-      (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (P : nat)
+      (ps0 cs0 : list nat) (s0 : fstate) (I0 : list (bv 8)) (P : nat)
       (c : file_fixed) (r : file_names) (q : Qp) (rb : bool) :
     file_app = MkAppcfg file_names (file_pred c) r ->
     c = fgn_cl g ->
@@ -2137,7 +2137,7 @@ Section UCatEntry.
   Definition cat_lend (c : file_fixed) (r : file_names) (q1 q2 : Qp)
       (i : Z) (bs : list (bv 8)) (om : offmode)
       (sts : list fdstate) (cw : Z) (v : era_pins) (vf : file_era)
-      (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (P : nat)
+      (ps0 cs0 : list nat) (s0 : fstate) (I0 : list (bv 8)) (P : nat)
     : iProp Σ :=
     ((∀ N' : uk_names Σ,
         cat_open_hand N' c r q1 q2 i bs (take NSTD sts) cw om)
@@ -2164,7 +2164,7 @@ Section UCatEntry.
   Lemma cat_child_of_entry (ws : list (list (bv 8))) (Mn : gmap Z (bv 8))
       (sv t : Z) (gn : nat -> bv 8)
       (sts : list fdstate) (cw : Z) (cs : gset gname) (pidv : mword 32)
-      (v : era_pins) (vf : file_era) (ps0 cs0 : list nat) (s0 : fst)
+      (v : era_pins) (vf : file_era) (ps0 cs0 : list nat) (s0 : fstate)
       (I0 : list (bv 8)) (P : nat)
       (c : file_fixed) (r : file_names) (q1 q2 : Qp) (i : Z)
       (bs : list (bv 8)) (om : offmode) (rb : bool) :

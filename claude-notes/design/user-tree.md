@@ -2708,3 +2708,33 @@ its own image pinned for the walk that starts it) and linearly (to move
 that namespace afterwards). The two owner-level shapes that would answer
 it are a deed with a persistent READ half beside a linear MOVE half, and
 an era-0 image premise on `App.al_programs`. Neither is TL-9's to take.
+
+### 9.9 RULED (2026-09-17, owner: "close") — the campaign closes with the deed question recorded
+
+The spec-cleanup campaign (now `completed/spec-cleanup.md`) closes here.
+The second application's theorem stands in its AT-BOOT form
+(`UTreeAdequacy.tree_adequacy_treeΣ`, 13 assumptions): a closed
+whole-system theorem at the tree claim with the era's first process taken
+as unverified and the claim recorded at boot.  Beside it,
+`UInitTreeExec.tree_init_boot_uslot` is the receipt that /init's whole
+walk is paid at the tree claim — the setup against the live deed (§9.6),
+the banner minting at its first byte (§9.5), the exec of /sh on the
+generic slot bought with the taint the round's own credential mints
+(§9.7–9.8) — with no echo-indexed premise and no open licence question.
+
+WHAT SEPARATES THE TWO is exactly §9.8(5): the kernel's own
+`kexec("/init")` is a pinned walk reading a `□` pin law once per hop, the
+tree's only producer of such a law is the FROZEN deed, freezing is
+one-way, and the console dance needs the same deed LIVE.  Fable's
+recommendation, if this is reopened: a **monotone persistent read half**
+beside the linear move half — a lower-bound witness ("these entries are
+present with these targets; these file rows hold this content") that the
+additive moves /init makes (mknod, mkdir, create) preserve and that
+unlink/rename would have to consume — plus the case split §9.3(4) already
+prescribes on whether the deed's tree resolves `/init` (mint the taint
+where it does not).  It is a redesign of `AppTree.tree_own` with the
+thirteen tree files as its cone, i.e. a campaign of its own, and it was
+deferred rather than started because upstream's FILE application is
+being built on the same layer at the same time.  The alternative shape
+(an era-0 image premise on `App.al_programs`) answers only the second
+refutation and not the first, so it is not sufficient on its own.

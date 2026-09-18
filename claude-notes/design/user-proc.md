@@ -1,6 +1,6 @@
 # Design: the generic process specs — fork / exit / wait / kill at the U tier
 
-Status: DESIGN OF RECORD for `projects/spec-cleanup.md` lanes RD-7 (wait)
+Status: DESIGN OF RECORD for `completed/spec-cleanup.md` (campaign CLOSED 2026-09-17) lanes RD-7 (wait)
 and RD-8 (kill).  The process half of the generic per-syscall specs, the
 way [`user-read.md`](user-read.md) / [`user-write.md`](user-write.md) /
 [`user-exec.md`](user-exec.md) are the file-system half.

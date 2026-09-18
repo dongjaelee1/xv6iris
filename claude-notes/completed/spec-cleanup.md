@@ -1,9 +1,43 @@
 # spec-cleanup — generic syscall specs, read first
 
-STATUS: COMPLETE 2026-09-17, modulo the PARKED R-a (owner: "park and
-relay") and the relay queue below.  Every lane RD-0..RD-6, RD-TR and
-RA-1/RA-3 landed; RA-2 stopped at three engine walls, recorded in
-`design/user-read.md` §8.4; RA-4 never launched (nothing to consume).
+STATUS: **CLOSED 2026-09-17 (owner: "close")**.  Archived from
+`projects/` to `completed/`; the design pages (`design/user-read.md`,
+`user-write.md`, `user-exec.md`, `user-proc.md`, `user-tree.md`) remain
+the designs of record for what landed.
+
+WHAT THE CAMPAIGN DELIVERED, in one paragraph.  Every syscall spec the
+echo theorem ran on is now ONE general, application-independent
+statement with echo's leaves as instances: read and write (one walk each,
+three members each: file, console, pipe), exec (the kernel side was
+already general; the U-tier assembly is now (W)/(L)/(E) with no pin),
+wait and kill.  The offset is the program's resource in its parked form;
+the OWNED form (R-a) was designed here, walled at the engine, relayed,
+and is now UPSTREAM'S (lane OFF-LINK deleted `FdPark.v` on 2026-09-17
+and moved the held half to the program).  A SECOND APPLICATION exists as
+a closed whole-system theorem: the tree claim
+(`UTreeAdequacy.tree_adequacy_treeΣ`, 13 assumptions, `make
+audit-tree-only`), with a program-level end-to-end test
+(`UkTreeCreate.wp_uk_tree_app_core`).  On top of it, TL-5..TL-9 proved
+that /init's whole walk holds at the tree claim with an EMPTY premise
+list (`UInitTreeExec.tree_init_boot_uslot` is the receipt): the console
+setup on the live deed, the taint minted at the banner's first byte, the
+exec of /sh on the generic slot bought with the taint.  Echo's theorem
+stayed byte-identical throughout (audit 14).
+
+WHAT IS RECORDED, NOT DONE.  The BEHAVIOURAL form of the second
+application's theorem (`tree_Hinit_boot` through /init's setup) is
+blocked on one sharply stated question about the algebra of the boot
+deed — the era's first process needs its namespace deed persistently (to
+pin its own image for the kernel's boot walk, `PinnedExec.pinned_exec_bundle_boot`)
+and linearly (to move that namespace at the mknod) — see
+`design/user-tree.md` §9.8(5) and the closing ruling in §9.9.  The owner
+ruled the campaign closed with it recorded; the shape Fable recommends
+if it is ever reopened is a MONOTONE persistent read half (entries
+present, file content) beside the linear move half, which additive
+moves preserve.
+
+The sections below are the campaign's history as it was written, lane by
+lane; the STATUS lines inside them are as of their own dates.
 
 ## EXEC (opened 2026-09-18, owner: "exec is something we could tackle")
 
@@ -1018,13 +1052,13 @@ audit 13, both unmoved.
 
 ## RELAY QUEUE (for upstream, via the owner's push)
 
-1. **The R-a walls + the `uheld` proposal** (`design/user-read.md`
-   §8.4): offset ownership needs one of — a per-process held-set
-   resource `uheld γ H` beside `ucwd`/`uch` (in/out on fork/exec), a
-   deposit-capable fork (out of `free_num`), or a tier index on
-   `sysc_fd_ok`'s parked conjunct.  All engine-design calls.  Every
-   supporting lemma is landed and closed (`FdPark.v`, `UserOff.v`);
-   the resume worklist is the 13 grep-able markers.
+1. ~~**The R-a walls + the `uheld` proposal**~~ — **RETIRED 2026-09-17:
+   upstream took the route in-house** (lanes OFF-HAND-1..7 and OFF-LINK;
+   `design/app-file.md` §3 "the offset").  OFF-HAND-3 refuted every
+   resource-shaped carrier (the `uheld` ghost included) and put a static
+   bit on the run record; OFF-LINK deleted `FdPark.v` and moved the held
+   half back to the program.  The design history stays in
+   `design/user-read.md` §8.
 2. **The pipe queue ghost** (`design/user-read.md` §3 RD-5 block +
    `design/pipe.md`'s own hooks): contents-indexed pipe refinement
    would make read's/write's pipe arms content-carrying; plus the

@@ -64,6 +64,7 @@ WpNext.v
 PtreeType.v
 Ktier.v
 UartNames.v
+StringBytes.v
 RiscvPtsto.v
 CtxIdDefs.v
 TsoCtx.v
@@ -1471,6 +1472,8 @@ ExecBundle.v
 PinnedObs.v
 PinnedExec.v
 PinnedOpen.v
+PipeReg.v
+PipeProto.v
 UexecExecInst.v
 ExecRun.v
 UexecExecMint.v
@@ -1489,10 +1492,13 @@ FileState.v
 EchoDisc.v
 FileDisc.v
 FileDiscDec.v
+PipeDisc.v
+PipeDiscDec.v
 LogEntryDefs.v
 ConsLog.v
 EchoOutPure.v
 FileOutPure.v
+PipeOutPure.v
 EchoOut.v
 EchoLinks.v
 EchoLinksPro.v
@@ -1511,6 +1517,11 @@ FileDeltas.v
 FileWrite.v
 FileWritePart.v
 FileOut.v
+PipeOut.v
+PipeLinks.v
+AppPipeClaim.v
+AppPipeCons.v
+AppPipe.v
 FileLinks.v
 FileLinksLine.v
 FileLinkInst.v
@@ -1539,6 +1550,7 @@ UkSh.v
 UkShRun.v
 UkShDiag.v
 UkShRedir.v
+UkShPipe.v
 
 UCodeShP.v
 UkShParse.v
@@ -1572,6 +1584,17 @@ UConsLine.v
 UkShWords.v
 UkShEcho.v
 UShLexRedir.v
+UkShPipeLex.v
+UkShPipeTok.v
+UkShPipeParse.v
+UkShPipeCmd.v
+UkShPipeSeam.v
+UkShPipeEx.v
+UkShPipeRight.v
+UkShPipePr.v
+UkShPipeEx2.v
+UkShPipePex.v
+UkShPipeCm.v
 UkShRedirBody.v
 UInitCons.v
 UConsOpen.v
@@ -1592,6 +1615,7 @@ UkWriteLeaf.v
 UkWriteCons.v
 UkWriteFile.v
 UkWritePipe.v
+UkPipeMoves.v
 UkWriteClosed.v
 UInitBanner.v
 UInitDiag.v
@@ -1634,6 +1658,7 @@ FileLinksAtInp.v
 FileLinksAtPro.v
 AppFileCons.v
 UInitConsFile.v
+UInitConsPipe.v
 UFileBootAdequacy.v
 # FileAssumptions.v
 

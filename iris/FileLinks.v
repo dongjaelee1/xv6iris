@@ -83,8 +83,8 @@ Section file_links.
      <init> beside [fturn].  What comes back is that state's persistent
      witness [f0_lb], which every later write carries. *)
   Lemma file_write_link_first (k : nat) (v : era_pins) (vf : file_era)
-      (a : nat) (b : bv 8) (s0 : fst) (Φ : iProp Σ) :
-    fst_ok s0 ->
+      (a : nat) (b : bv 8) (s0 : fstate) (Φ : iProp Σ) :
+    fstate_ok s0 ->
     (a < length pro_alts)%nat ->
     pro_alts !!! a !! 0%nat = Some b ->
     era_pin (fgn_echo g) k v -∗ file_era_pin g k vf -∗
@@ -108,7 +108,7 @@ Section file_links.
      the era's boot state beside the three bounds, and the byte read off
      [FileOutPure.proc_stream_f] at that state. *)
   Lemma file_write_link (k : nat) (v : era_pins) (vf : file_era) (P : nat)
-      (b : bv 8) (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8))
+      (b : bv 8) (ps0 cs0 : list nat) (s0 : fstate) (I0 : list (bv 8))
       (Φ : iProp Σ) :
     (nlines I0 <= length cs0)%nat ->
     pro_pin_f ps0 cs0 I0 ->
@@ -135,7 +135,7 @@ Section file_links.
      answers, which is what "whatever you type is echoed back" becomes once
      three line shapes and twelve alternatives are in play. *)
   Lemma file_write_link_blk (k : nat) (v : era_pins) (vf : file_era)
-      (P a : nat) (b : bv 8) (ps0 cs0 : list nat) (s0 : fst)
+      (P a : nat) (b : bv 8) (ps0 cs0 : list nat) (s0 : fstate)
       (I0 : list (bv 8)) (Φ : iProp Σ) :
     I0 <> [] ->
     rest_of I0 = [] ->
@@ -143,7 +143,7 @@ Section file_links.
     pro_pin_f ps0 cs0 I0 ->
     P = length (proc_before_f ps0 cs0 (Some s0) I0) ->
     ralt_ok (uline_of (bodies_of I0 !!! (nlines I0 - 1)%nat)) (ralt_dec a) ->
-    cont (fst_upto cs0 s0 (bodies_of I0) (nlines I0 - 1)%nat)
+    cont (fstate_upto cs0 s0 (bodies_of I0) (nlines I0 - 1)%nat)
          (uline_of (bodies_of I0 !!! (nlines I0 - 1)%nat)) (ralt_dec a)
       !! 0%nat = Some b ->
     era_pin (fgn_echo g) k v -∗ file_era_pin g k vf -∗ turn v P -∗
@@ -168,7 +168,7 @@ Section file_links.
      [FileDisc.ralt_panic] of the last line's alternative, so the two new
      line shapes' fork alternatives open a round too. *)
   Lemma file_write_link_pro (k : nat) (v : era_pins) (vf : file_era)
-      (P a : nat) (b : bv 8) (ps0 cs0 : list nat) (s0 : fst)
+      (P a : nat) (b : bv 8) (ps0 cs0 : list nat) (s0 : fstate)
       (I0 : list (bv 8)) (Φ : iProp Σ) :
     rest_of I0 = [] ->
     (I0 = [] \/ ralt_panic (ralt_at cs0 (nlines I0 - 1)%nat) = true) ->
@@ -212,7 +212,7 @@ Section file_links.
            ∗ inp_lb v (snd <$> (dl ++ ws))
            ∗ ⌜disc_input_f (snd <$> (dl ++ ws))⌝
            ∗ (⌜ws = []⌝
-              ∨ ∃ (cs0 ps0 : list nat) (vf : file_era) (s0 : fst),
+              ∨ ∃ (cs0 ps0 : list nat) (vf : file_era) (s0 : fstate),
                   cs_lb v cs0 ∗ ps_lb v ps0
                   ∗ file_era_pin g k vf ∗ f0_lb vf s0
                   ∗ ⌜(nlines (snd <$> (dl ++ ws)) <= S (length cs0))%nat⌝
@@ -287,7 +287,7 @@ Section file_links.
   (* ==================================================================== *)
   Definition file_link_w : iProp Σ :=
     (□ ∀ (k : nat) (v : era_pins) (vf : file_era) (P : nat) (b : bv 8)
-         (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (Φ : iProp Σ),
+         (ps0 cs0 : list nat) (s0 : fstate) (I0 : list (bv 8)) (Φ : iProp Σ),
         ⌜(nlines I0 <= length cs0)%nat⌝ -∗
         ⌜pro_pin_f ps0 cs0 I0⌝ -∗
         ⌜proc_stream_f ps0 cs0 (Some s0) I0 !! P = Some b⌝ -∗
@@ -299,7 +299,7 @@ Section file_links.
 
   Definition file_link_blk : iProp Σ :=
     (□ ∀ (k : nat) (v : era_pins) (vf : file_era) (P a : nat) (b : bv 8)
-         (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (Φ : iProp Σ),
+         (ps0 cs0 : list nat) (s0 : fstate) (I0 : list (bv 8)) (Φ : iProp Σ),
         ⌜I0 <> []⌝ -∗
         ⌜rest_of I0 = []⌝ -∗
         ⌜(nlines I0 <= S (length cs0))%nat⌝ -∗
@@ -307,7 +307,7 @@ Section file_links.
         ⌜P = length (proc_before_f ps0 cs0 (Some s0) I0)⌝ -∗
         ⌜ralt_ok (uline_of (bodies_of I0 !!! (nlines I0 - 1)%nat))
                  (ralt_dec a)⌝ -∗
-        ⌜cont (fst_upto cs0 s0 (bodies_of I0) (nlines I0 - 1)%nat)
+        ⌜cont (fstate_upto cs0 s0 (bodies_of I0) (nlines I0 - 1)%nat)
               (uline_of (bodies_of I0 !!! (nlines I0 - 1)%nat)) (ralt_dec a)
            !! 0%nat = Some b⌝ -∗
         era_pin (fgn_echo g) k v -∗ file_era_pin g k vf -∗ turn v P -∗
@@ -318,7 +318,7 @@ Section file_links.
 
   Definition file_link_pro : iProp Σ :=
     (□ ∀ (k : nat) (v : era_pins) (vf : file_era) (P a : nat) (b : bv 8)
-         (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (Φ : iProp Σ),
+         (ps0 cs0 : list nat) (s0 : fstate) (I0 : list (bv 8)) (Φ : iProp Σ),
         ⌜rest_of I0 = []⌝ -∗
         ⌜I0 = [] \/ ralt_panic (ralt_at cs0 (nlines I0 - 1)%nat) = true⌝ -∗
         ⌜(nlines I0 <= length cs0)%nat⌝ -∗
@@ -336,8 +336,8 @@ Section file_links.
   (* (W-first) the era's FIRST process byte, which files the boot state *)
   Definition file_link_first : iProp Σ :=
     (□ ∀ (k : nat) (v : era_pins) (vf : file_era) (a : nat) (b : bv 8)
-         (s0 : fst) (Φ : iProp Σ),
-        ⌜fst_ok s0⌝ -∗
+         (s0 : fstate) (Φ : iProp Σ),
+        ⌜fstate_ok s0⌝ -∗
         ⌜(a < length pro_alts)%nat⌝ -∗
         ⌜pro_alts !!! a !! 0%nat = Some b⌝ -∗
         era_pin (fgn_echo g) k v -∗ file_era_pin g k vf -∗

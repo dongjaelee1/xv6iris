@@ -78,8 +78,8 @@ Local Open Scope list_scope.
    [LCat] line the shell parsed, the era's input has no partial line, and
    every line below this one is resolved.  The boot state [s0] is the one
    [FileOut.f0_lb] pins and the state at cat's own round is a FUNCTION of
-   it ([FileDisc.fst_upto]), so the stage names no history. *)
-Definition cat_stage (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8))
+   it ([FileDisc.fstate_upto]), so the stage names no history. *)
+Definition cat_stage (ps0 cs0 : list nat) (s0 : fstate) (I0 : list (bv 8))
     (P : nat) : Prop :=
   rest_of I0 = []
   /\ nlines I0 = S (length cs0)
@@ -89,14 +89,14 @@ Definition cat_stage (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8))
 
 (* THE STATE cat's ROUND STARTS AT -- the whole of what the file adds to a
    writer's obligation. *)
-Definition cat_st (cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) : fst :=
-  fst_upto cs0 s0 (bodies_of I0) (nlines I0 - 1)%nat.
+Definition cat_st (cs0 : list nat) (s0 : fstate) (I0 : list (bv 8)) : fstate :=
+  fstate_upto cs0 s0 (bodies_of I0) (nlines I0 - 1)%nat.
 
 (* THE PURE TIE cat RECEIVES FROM SH AND CARRIES: the value its deed
    FRACTION agrees on IS the model's state at its own round.  It is what
    turns [FileOpen.fdq_agree] into a fact about [FileDisc.cont], and it is
    all the stage ever needs of the claim. *)
-Definition cat_tie (cs0 : list nat) (s0 : fst) (I0 : list (bv 8))
+Definition cat_tie (cs0 : list nat) (s0 : fstate) (I0 : list (bv 8))
     (s : dst) : Prop :=
   dst_content s = cat_st cs0 s0 I0.
 
@@ -161,10 +161,10 @@ Proof using.
   { rewrite /ralt_at Hlast list_lookup_total_alt lookup_app_r;
       [| lia].
     by rewrite Nat.sub_diag. }
-  assert (Hup : fst_upto (cs0 ++ [a]) s0 (bodies_of I0) (nlines I0 - 1)%nat
+  assert (Hup : fstate_upto (cs0 ++ [a]) s0 (bodies_of I0) (nlines I0 - 1)%nat
                 = cat_st cs0 s0 I0).
   { rewrite /cat_st.
-    apply (fst_upto_ext (cs0 ++ [a]) cs0 s0 (bodies_of I0) (bodies_of I0));
+    apply (fstate_upto_ext (cs0 ++ [a]) cs0 s0 (bodies_of I0) (bodies_of I0));
       [| intros j _; reflexivity ].
     intros j Hj. rewrite list_lookup_total_alt lookup_app_l; [| lia].
     by rewrite -list_lookup_total_alt. }
@@ -208,7 +208,7 @@ Proof using. by rewrite ralt_dec_enc. Qed.
 
 (* the CONTENT arm: what cat reads is what it prints, and the prompt is
    the shell's *)
-Lemma cat_cont_ran_some (s : fst) (bs : list (bv 8)) :
+Lemma cat_cont_ran_some (s : fstate) (bs : list (bv 8)) :
   s = Some bs -> cont s LCat RCRan = bs ++ u_prompt.
 Proof using. intros ->. reflexivity. Qed.
 
@@ -223,7 +223,7 @@ Lemma cat_cont_ran_none : cont None LCat RCRan = alt_catopen.
 Proof using. reflexivity. Qed.
 
 (* ...and the PRESENT-but-unopenable one prints the same bytes *)
-Lemma cat_cont_noopen (s : fst) : cont s LCat RCNoOpen = alt_catopen.
+Lemma cat_cont_noopen (s : fstate) : cont s LCat RCNoOpen = alt_catopen.
 Proof using. reflexivity. Qed.
 
 (* the two are byte-identical at an absent file, which is why the
@@ -234,7 +234,7 @@ Proof using. reflexivity. Qed.
 
 (* WHAT THE DEED BUYS: the fraction agrees on [s], the tie says [s] is the
    model's state, and the two together name cat's own output. *)
-Lemma cat_out_of_tie (cs0 : list nat) (s0 : fst) (I0 : list (bv 8))
+Lemma cat_out_of_tie (cs0 : list nat) (s0 : fstate) (I0 : list (bv 8))
     (s : dst) (i : Z) (bs : list (bv 8)) :
   cat_tie cs0 s0 I0 s -> s = Some (i, bs) ->
   cont (cat_st cs0 s0 I0) LCat RCRan = bs ++ u_prompt.
@@ -243,7 +243,7 @@ Proof using.
   by rewrite -Htie.
 Qed.
 
-Lemma cat_out_of_tie_none (cs0 : list nat) (s0 : fst) (I0 : list (bv 8))
+Lemma cat_out_of_tie_none (cs0 : list nat) (s0 : fstate) (I0 : list (bv 8))
     (s : dst) :
   cat_tie cs0 s0 I0 s -> s = None ->
   cont (cat_st cs0 s0 I0) LCat RCRan = alt_catopen.
@@ -264,14 +264,14 @@ Qed.
 (*  PROGRAM's own output length -- and [catq_filed] below is restated at  *)
 (*  this.                                                                *)
 (* ===================================================================== *)
-Definition cat_out_len (cs0 : list nat) (s0 : fst) (I0 : list (bv 8))
+Definition cat_out_len (cs0 : list nat) (s0 : fstate) (I0 : list (bv 8))
     (a : nat) : nat :=
   (length (cont (cat_st cs0 s0 I0) LCat (ralt_dec a)) - length u_prompt)%nat.
 
 Lemma cat_prompt_len : length u_prompt = 2%nat.
 Proof using. vm_compute. reflexivity. Qed.
 
-Lemma cat_out_len_ran_some (cs0 : list nat) (s0 : fst) (I0 : list (bv 8))
+Lemma cat_out_len_ran_some (cs0 : list nat) (s0 : fstate) (I0 : list (bv 8))
     (s : dst) (i : Z) (bs : list (bv 8)) :
   cat_tie cs0 s0 I0 s -> s = Some (i, bs) ->
   cat_out_len cs0 s0 I0 (ralt_enc RCRan) = length bs.
@@ -281,7 +281,7 @@ Proof using.
   rewrite length_app cat_prompt_len. lia.
 Qed.
 
-Lemma cat_out_len_ran_none (cs0 : list nat) (s0 : fst) (I0 : list (bv 8))
+Lemma cat_out_len_ran_none (cs0 : list nat) (s0 : fstate) (I0 : list (bv 8))
     (s : dst) :
   cat_tie cs0 s0 I0 s -> s = None ->
   cat_out_len cs0 s0 I0 (ralt_enc RCRan) = 19%nat.
@@ -294,7 +294,7 @@ Qed.
 (* ...and at [RCNoOpen] it is NINETEEN at EVERY state: the alternative's
    continuation is the diagnostic whatever the file holds
    ([cat_cont_noopen]). *)
-Lemma cat_out_len_noopen (cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) :
+Lemma cat_out_len_noopen (cs0 : list nat) (s0 : fstate) (I0 : list (bv 8)) :
   cat_out_len cs0 s0 I0 (ralt_enc RCNoOpen) = 19%nat.
 Proof using.
   rewrite /cat_out_len ralt_dec_enc.
@@ -329,7 +329,7 @@ Section UCatOut.
   Proof using . intro Hp. destruct p as [| p']; [lia | reflexivity]. Qed.
 
   Definition cch (v : era_pins) (vf : file_era) (ps0 cs0 : list nat)
-      (s0 : fst) (I0 : list (bv 8)) (a P p : nat) : iProp Σ :=
+      (s0 : fstate) (I0 : list (bv 8)) (a P p : nat) : iProp Σ :=
     ((turn v (P + p)%nat ∗ ps_lb v ps0 ∗ cs_lb v (catcs cs0 a p)
       ∗ inp_lb v I0 ∗ f0_lb vf s0) ∨ file_taint (fgn_cl g))%I.
 
@@ -342,7 +342,7 @@ Section UCatOut.
      lent, at the choice list it was lent it at, and the shell's own
      prompt byte opens the block. *)
   Lemma cch_0_alt (v : era_pins) (vf : file_era) (ps0 cs0 : list nat)
-      (s0 : fst) (I0 : list (bv 8)) (a a' P : nat) :
+      (s0 : fstate) (I0 : list (bv 8)) (a a' P : nat) :
     cch v vf ps0 cs0 s0 I0 a P 0%nat ⊣⊢ cch v vf ps0 cs0 s0 I0 a' P 0%nat.
   Proof using . rewrite /cch /catcs. reflexivity. Qed.
 
@@ -350,7 +350,7 @@ Section UCatOut.
      ([FileLinks.file_write_link_blk]); every byte after it goes through
      the ordinary link at the choice list the first one extended. *)
   Lemma cch_step (k : nat) (v : era_pins) (vf : file_era)
-      (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8))
+      (ps0 cs0 : list nat) (s0 : fstate) (I0 : list (bv 8))
       (a P p : nat) (b : bv 8) (Φ : iProp Σ) :
     cat_stage ps0 cs0 s0 I0 P ->
     ralt_ok LCat (ralt_dec a) ->
@@ -398,7 +398,7 @@ Section UCatOut.
      step for the byte the image holds there -- so one copy of the era's
      bundle answers both. *)
   Lemma cch_chain (k : nat) (v : era_pins) (vf : file_era)
-      (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8))
+      (ps0 cs0 : list nat) (s0 : fstate) (I0 : list (bv 8))
       (a P p : nat) (M : gmap Z (bv 8)) (ua : mword 64)
       (fb : nat -> bv 8) :
     cat_stage ps0 cs0 s0 I0 P ->
@@ -441,7 +441,7 @@ Section UCatOut.
      is what lets cat's round be built at a turn whose justification is
      the taint. *)
   Lemma cch_chain_taint (k : nat) (v : era_pins) (vf : file_era)
-      (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8))
+      (ps0 cs0 : list nat) (s0 : fstate) (I0 : list (bv 8))
       (a P p : nat) (M : gmap Z (bv 8)) (ua : mword 64) :
     forall (c i : nat),
     file_taint (fgn_cl g) -∗
@@ -476,24 +476,24 @@ Section UCatOut.
      EMPTY-CONTENT case, where cat wrote nothing and the prompt's first
      byte IS the block's ([cch_empty_unfiled], CAT-ENTRY's ruling (b)). *)
   Definition catq_filed (v : era_pins) (vf : file_era)
-      (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (a P : nat)
+      (ps0 cs0 : list nat) (s0 : fstate) (I0 : list (bv 8)) (a P : nat)
     : Z -> iProp Σ :=
     fun _ => cch v vf ps0 cs0 s0 I0 a P (cat_out_len cs0 s0 I0 a).
 
   Definition catq_unfiled (v : era_pins) (vf : file_era)
-      (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (P : nat)
+      (ps0 cs0 : list nat) (s0 : fstate) (I0 : list (bv 8)) (P : nat)
     : Z -> iProp Σ :=
     fun _ => cch v vf ps0 cs0 s0 I0 0%nat P 0%nat.
 
   Lemma catq_filed_const (v : era_pins) (vf : file_era)
-      (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (a P : nat)
+      (ps0 cs0 : list nat) (s0 : fstate) (I0 : list (bv 8)) (a P : nat)
       (x y : Z) :
     catq_filed v vf ps0 cs0 s0 I0 a P x
     = catq_filed v vf ps0 cs0 s0 I0 a P y.
   Proof using . reflexivity. Qed.
 
   Lemma catq_unfiled_const (v : era_pins) (vf : file_era)
-      (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (P : nat)
+      (ps0 cs0 : list nat) (s0 : fstate) (I0 : list (bv 8)) (P : nat)
       (x y : Z) :
     catq_unfiled v vf ps0 cs0 s0 I0 P x
     = catq_unfiled v vf ps0 cs0 s0 I0 P y.
@@ -503,7 +503,7 @@ Section UCatOut.
      the cursor its round opens and gives it back unchanged, because the
      round's whole continuation is the shell's prompt. *)
   Lemma cch_empty_unfiled (v : era_pins) (vf : file_era)
-      (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (a P : nat) :
+      (ps0 cs0 : list nat) (s0 : fstate) (I0 : list (bv 8)) (a P : nat) :
     cat_st cs0 s0 I0 = Some [] ->
     cch v vf ps0 cs0 s0 I0 a P 0%nat -∗
     catq_unfiled v vf ps0 cs0 s0 I0 P (-1).

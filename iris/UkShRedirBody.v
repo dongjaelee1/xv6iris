@@ -294,7 +294,12 @@ Section UkShRedirBody.
 
   Global Instance sh_redir_child_law_persistent :
     Persistent sh_redir_child_law.
-  Proof using . rewrite /sh_redir_child_law. apply _. Qed.
+  Proof using .
+    (* NAME the modality, do not search for it: the body is one [□] and
+       [apply _] descends through the whole 30-premise wand tower under
+       it (40s measured). *)
+    rewrite /sh_redir_child_law. apply bi.intuitionistically_persistent.
+  Qed.
 
   (* the two shapes, one step apart: the walk takes the file name out of
      the line fact, the law binds it. *)

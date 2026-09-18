@@ -126,11 +126,35 @@ Section PipeQueue.
   Definition pipe_olink (γ : gname) (Φ : pipe_st -> iProp Σ) : iProp Σ :=
     (∀ s : pipe_st, pipe_qauth γ s ={⊤}=∗ pipe_qauth γ s ∗ Φ s)%I.
 
+  (* THE WRITE LINK CARRIES ONE PURE PREMISE: the write end is OPEN at the
+     state the byte lands in ([ps_wo s = true]).  It is free of the machine
+     -- a [pipewrite] runs on behalf of a process holding a WRITABLE file on
+     this pipe, so [writeopen <> 0] there, and the kernel already has that
+     as a resource ([PipeInvDefs.pipe_endstate_holder] against the caller's
+     own [pipe_ref γp true q], with [pipe_qres]'s coupled arm reading
+     [ps_wo s = pflag_bool wo]) -- and it is what lets a holder's protocol
+     FREEZE a pipe's contents at end-of-file: no write link can fire after
+     the write end shut, so a snapshot taken at [ps_wo s = false] is final
+     (design/app-pipe.md 3.1).  A premise WEAKENS what a holder has to
+     supply, so no holder loses anything ([pipe_wlink_of_uncond] below). *)
   Definition pipe_wlink (γ : gname) (b : bv 8) (Φ : iProp Σ) : iProp Σ :=
-    (∀ s : pipe_st, pipe_qauth γ s ={⊤}=∗ pipe_qauth γ (pst_write b s) ∗ Φ)%I.
+    (∀ s : pipe_st,
+       ⌜ps_wo s = true⌝ -∗ pipe_qauth γ s
+       ={⊤}=∗ pipe_qauth γ (pst_write b s) ∗ Φ)%I.
 
   (* a read's link is told WHICH byte it dequeues; the kernel proves the
-     pure premise from the ring coupling *)
+     pure premise from the ring coupling.
+
+     IT CARRIES NO [ps_ro s = true] (lane PQ-FLAG, refuting the symmetric
+     half of design/app-pipe.md 3.1, which called it "free"): piperead never
+     reads [pi->readopen], so the only route to the fact is the caller's own
+     [pipe_ref γp false q] -- and the FILE layer picks a pipe's end off
+     [FileInvDefs.fc_wbool C] ([file_core_noff]), while fileread's pipe arm
+     learns only [f->readable <> 0].  "A readable pipe file is the read end"
+     is true of pipealloc and is nowhere in the file invariant, so the
+     premise would be unsupplyable at the fire site.  Nothing in the pipeline
+     protocol needs it (the reader's side freezes on the WRITE flag), so the
+     read link stays unconditional. *)
   Definition pipe_rlink (γ : gname) (Φ : bv 8 -> iProp Σ) : iProp Σ :=
     (∀ (s : pipe_st) (b : bv 8),
        ⌜pst_next s = Some b⌝ -∗ pipe_qauth γ s
@@ -160,7 +184,7 @@ Section PipeQueue.
     (pipe_qfrag γ (pst_write b s0) ={⊤}=∗ Φ) -∗
     pipe_wlink γ b Φ.
   Proof using .
-    iIntros "Hf Hk" (s) "Ha".
+    iIntros "Hf Hk" (s) "_ Ha".
     iDestruct (pipe_queue_agree with "Ha Hf") as %<-.
     iMod (pipe_queue_update _ _ _ (pst_write b s0) with "Ha Hf") as "[Ha Hf]".
     iMod ("Hk" with "Hf") as "HΦ". iModIntro. iFrame "Ha HΦ".
@@ -198,9 +222,22 @@ Section PipeQueue.
   Lemma pipe_wlink_mono γ b (Φ Φ' : iProp Σ) :
     (Φ -∗ Φ') -∗ pipe_wlink γ b Φ -∗ pipe_wlink γ b Φ'.
   Proof using .
-    iIntros "Hw Hl" (s) "Ha". iMod ("Hl" with "Ha") as "[$ HΦ]".
+    iIntros "Hw Hl" (s) "%Hwo Ha".
+    iMod ("Hl" with "[%] Ha") as "[$ HΦ]"; [exact Hwo |].
     iModIntro. by iApply "Hw".
   Qed.
+
+  (* SANITY, and the only direction that is true (lane PQ-FLAG): the premise
+     WEAKENS the link.  An UNCONDITIONAL stepper -- the link as it was before
+     3.1 -- is still a [pipe_wlink], so every holder-side constructor and
+     every chain node keeps working and nothing a holder could build before
+     is lost.  The CONVERSE is false and deliberately not stated: a link that
+     may assume the end is open cannot step a shut one, which is exactly the
+     freeze the protocol buys. *)
+  Lemma pipe_wlink_of_uncond γ b (Φ : iProp Σ) :
+    (∀ s : pipe_st, pipe_qauth γ s ={⊤}=∗ pipe_qauth γ (pst_write b s) ∗ Φ) -∗
+    pipe_wlink γ b Φ.
+  Proof using . iIntros "Hl" (s) "_ Ha". iApply ("Hl" $! s with "Ha"). Qed.
 
   Lemma pipe_rlink_mono γ (Φ Φ' : bv 8 -> iProp Σ) :
     (∀ b : bv 8, Φ b -∗ Φ' b) -∗ pipe_rlink γ Φ -∗ pipe_rlink γ Φ'.

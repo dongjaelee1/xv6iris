@@ -408,7 +408,7 @@ Section UInitFileCons.
   Lemma file_ban_f0w (k : nat) (v : era_pins) (I : list (bv 8)) (i : nat) :
     FileLinksLine.fwc_ban g k v I (S i) -∗
     FileLinksLine.fwc_ban g k v I (S i)
-    ∗ ((∃ s0 : fst, FileLinksLine.f0w g k s0) ∨ FT).
+    ∗ ((∃ s0 : fstate, FileLinksLine.f0w g k s0) ∨ FT).
   Proof using .
     iIntros "Hc". iEval (rewrite /FileLinksLine.fwc_ban) in "Hc".
     iDestruct "Hc" as "[Hl | [[%Hq _] | #HT]]".
@@ -463,7 +463,7 @@ Section UInitFileCons.
 
   (* THE TURN, AT THE NAMED STATE.  [FileLinksAtBan.fturn_pre_at] is
      [lk_turn (file_link_inst_at g s0)]. *)
-  Lemma file_turn_pre_at_of_boot (s0 : fst) :
+  Lemma file_turn_pre_at_of_boot (s0 : fstate) :
     FileOut.fturn g (S gen_id) -∗ f0pre_at g s0 -∗
     lk_turn (file_link_inst_at g s0) (S gen_id).
   Proof using .
@@ -479,7 +479,7 @@ Section UInitFileCons.
      /init holds from its entry and the deed it holds beside it are at ONE
      state, so [UShRound]'s hold can be stated without [f0_lb] and the
      round's first prompt has its tie. *)
-  Lemma file_Wbl_at_of_boot (s0 : fst) :
+  Lemma file_Wbl_at_of_boot (s0 : fstate) :
     FileOut.fturn g (S gen_id) -∗ f0pre_at g s0 -∗
     (∃ v : era_pins, era_pin (fgn_echo g) (S gen_id) v
        ∗ dl_cnt v (1/2) 0%nat ∗ inp_lb v [])
@@ -497,7 +497,7 @@ Section UInitFileCons.
      own index, so what is left carries [f0w] AT THE CALLER'S [s0].  The
      first-drain pinning is untouched -- it reads [f0w] exactly as it
      always did. *)
-  Lemma file_ban_f0w_at (s0 : fst) (k : nat) (v : era_pins)
+  Lemma file_ban_f0w_at (s0 : fstate) (k : nat) (v : era_pins)
       (I : list (bv 8)) (i : nat) :
     fwc_ban_at g s0 k v I (S i) -∗
     fwc_ban_at g s0 k v I (S i)
@@ -513,7 +513,7 @@ Section UInitFileCons.
   (*  the deed's content is the model's state at THAT index.  RULING      *)
   (*  HOLD-POS made WHICH state depend on the round's position, and at    *)
   (*  the era's head the answer is DONE at the empty choice list: nothing  *)
-  (*  is filed and [fst_after [] s0 [] = s0].  The twin [sh_hold_at] this  *)
+  (*  is filed and [fstate_after [] s0 [] = s0].  The twin [sh_hold_at] this  *)
   (*  file carried is RETIRED: the family is [UShRound.Wbf] itself (the    *)
   (*  file audit does not see the program tier, so the import is free).   *)
   (* =================================================================== *)

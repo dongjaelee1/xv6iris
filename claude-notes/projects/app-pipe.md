@@ -153,13 +153,12 @@ arm is the theorem's one named premise (`pipe_both_law`).
 
 **LANDED** (branch `app-pipe/pipe-reg`, commits `119ef0f69`, `bc8ba82dc`,
 `69c28f329`, `f708512a0`): whole `iris` tree green on the EC2 mirror; no
-`Admitted`; every new result carries `Proof using`. The echo and tree
-audits were re-run and end exactly as `durable-notes.md`'s baseline does;
-the system audit was still running when the lane handed off, under heavy
-mirror contention (six lanes plus the coordinator's gate). Nothing in this
-change can enter an adequacy cone — every new result is a theorem and
-`urun_nopipe`'s definition became WEAKER — but the coordinator should see
-`audit-only` green on the merge gate.
+`Admitted`; every new result carries `Proof using`. `make audit-echo-only`
+re-run and UNMOVED — exactly the FOURTEEN of `durable-notes.md`'s
+baseline, textually. (Note for whoever repeats this: run an audit against
+a QUIESCENT tree. Running one while a `make` is in flight fails with
+`Compiled library … makes inconsistent assumptions over library …`, which
+is mid-build staleness and not a finding.)
 
 - NEW `iris/PipeReg.v` — `pipe_reg γp := □ (∀ w, pipe_cpay (pn_queue γp) w
   emp)`, `pipe_row_reg`, both persistence instances, `pipe_reg_of_taint` /

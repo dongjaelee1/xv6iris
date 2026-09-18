@@ -24,7 +24,8 @@ HOST="${EC2_HOST:-ec2-44-202-245-129.compute-1.amazonaws.com}"
 KEY="${EC2_KEY:-/shared/xv6iris/aws/ags-fk.pem}"
 LOCAL="/shared/xv6iris-pipe-$LANE"; REMOTE="/shared/xv6iris-pipe-$LANE"
 SSH=(ssh -i "$KEY" -o BatchMode=yes -o ServerAliveInterval=30 "ubuntu@$HOST")
-ENV='eval $(opam env --switch=/shared/xv6rocq --set-switch) && export OCAMLRUNPARAM="l=4000000000" && ulimit -s unlimited'
+# no global OCAMLRUNPARAM: l=4e9 segfaults UShRound.v's heaviest Qed (2026-09-18); UserMemCert alone needs it (gate handles)
+ENV='eval $(opam env --switch=/shared/xv6rocq --set-switch) && ulimit -s unlimited'
 [ -e "$LOCAL/.git" ] || { echo "no worktree $LOCAL" >&2; exit 2; }
 
 sync() {

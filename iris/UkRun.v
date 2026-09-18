@@ -877,7 +877,7 @@ Section UkRun.
         [ iApply (urun_nopipe_copy fdv (Z.to_nat (usys_argfd tf)) fd1 with "Hr")
         | iExact "Hr" ]. }
     destruct (decide (n = USYS_open)) as [_ | _].
-    { destruct Hok as [(fd & rd & wr & t & _ & _ & He & _ & Hop) | [_ ->]];
+    { destruct Hok as [(fd & rd & wr & t & _ & _ & He & Hop) | [_ ->]];
         [ | iExact "Hr" ].
       rewrite He.
       iApply (urun_nopipe_insert fdv fd (FdOpen rd wr t) Hop with "Hr"). }

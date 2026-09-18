@@ -730,13 +730,22 @@ Section UShRound.
       minutes with no output, with [iApply] and with [iPoseProof] alike,
       and [Local Opaque] on the record literal does not help.  It is the
       fifth silent-hang shape at a size that is not localised yet; what it
-      is NOT is a missing fact.  Left [Admitted] rather than committed red,
-      and it is the next thing this stream does. *)
+      is NOT is a missing fact.  Left as this file's third open proof
+      rather than committed red, and it is the next thing this stream
+      does. *)
   Lemma sh_child_law_file :
     ⊢ FileLinks.file_links g -∗ udep (PS := uprogSG_free) -∗
-      UShEcho.sh_echo_slot T -∗ UkShFork.ushf_child_law Wcf.
+      UShEcho.sh_echo_slot T -∗
+      UkShFork.ushf_child_law (PS := uprogSG_free) (SG := uexecSG_xv6) Wcf.
   Proof using Hkill.
-  Admitted.
+    iIntros "#Hlk #Hdep #Hslot".
+    iPoseProof (Hexecfail with "Hlk") as "#Hxl".
+    iPoseProof (Hchild_echo with "Hlk Hdep Hslot") as "#Hsup".
+    iApply (UkShEcho.ushf_child_law_holds_at (PS := uprogSG_free)
+              (SG := uexecSG_xv6) (fun k H => H) file_D (lk_exfb FI)
+              (fun I : list (bv 8) => (length (lk_exfb FI I) - 2)%nat) Wcf
+              file_D_of_line file_D_exfb with "Hxl Hsup").
+  Qed.
 
   (* ...and a KILLED child pays the payload with the taint (the taint
      inhabits the credential AND the deed's arm).  PROVED (the program

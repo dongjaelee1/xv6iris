@@ -963,7 +963,7 @@ Section IputTail.
               (fun ξ => itable_res2_llb ξ fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst icfg_nib icfg_dev)
               (fun ξ => itable_res2 ξ fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst icfg_nib icfg_dev) D5
               0%nat eb pj (K - 6)%nat ({["itable"]} ∪ lks)
-              ltac:(rewrite HD5a0; reflexivity) ltac:(lia)
+              (release_lka_of_eq _ _ HD5a0) ltac:(lia)
               with "Hcg Htext Hpc [Hlock] Htok HRres [] Hcnt Hpay").
     { iApply (is_itable2_lock with "Hlock"). }
     { iApply itable_ctx_hook. }
@@ -2984,7 +2984,7 @@ Section IputFreePath.
               (fun ξ => itable_res2_llb ξ fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst icfg_nib icfg_dev)
               (fun ξ => itable_res2 ξ fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst icfg_nib icfg_dev) H3
               0%nat eb pj (K - 6)%nat ({["itable"]} ∪ lks)
-              ltac:(rewrite HH3a0; reflexivity) ltac:(lia)
+              (release_lka_of_eq _ _ HH3a0) ltac:(lia)
               with "Hcg Htext Hpc [Hitlk] Htok HRres [] Hcnt Hpay").
     { iApply (is_itable2_lock with "Hitlk"). }
     { iApply itable_ctx_hook. }
@@ -3773,7 +3773,7 @@ Section IputFreePath.
               (fun ξ => itable_res2_llb ξ fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst icfg_nib icfg_dev)
               (fun ξ => itable_res2 ξ fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst icfg_nib icfg_dev) G3
               0%nat eb pj (K - 6)%nat ({["itable"]} ∪ lks)
-              ltac:(rewrite HG3a0; reflexivity) ltac:(lia)
+              (release_lka_of_eq _ _ HG3a0) ltac:(lia)
               with "Hcg Htext Hpc [Hitlk] Htok HRres3 [] Hcnt Hpay").
     { iApply (is_itable2_lock with "Hitlk"). }
     { iApply itable_ctx_hook. }

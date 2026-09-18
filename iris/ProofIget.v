@@ -1750,7 +1750,7 @@ Section ProofIget.
                       (fun ξ => itable_res2_llb ξ fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst icfg_nib icfg_dev)
                       (fun ξ => itable_res2 ξ fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst icfg_nib icfg_dev) V4
                       n eb p (K - 6)%nat ({["itable"]} ∪ lks)
-                      ltac:(rewrite HV4a0; reflexivity) ltac:(lia)
+                      (release_lka_of_eq _ _ HV4a0) ltac:(lia)
                       with "Hcg Htext Hpc [Hlock] Htok HRres [] Hcnt Hpay").
             { iExact "Hlock". }
             { (* A6.144: the hook re-floors every live row at the lock's
@@ -2393,7 +2393,7 @@ Section ProofIget.
                   (fun ξ => itable_res2_llb ξ fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst icfg_nib icfg_dev)
                   (fun ξ => itable_res2 ξ fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst icfg_nib icfg_dev) L7
                   n eb p (K - 6)%nat ({["itable"]} ∪ lks)
-                  ltac:(rewrite HL7a0; reflexivity) ltac:(lia)
+                  (release_lka_of_eq _ _ HL7a0) ltac:(lia)
                   with "Hcg Htext Hpc [Hlock] Htok HRres [] Hcnt Hpay").
         { iExact "Hlock". }
         { iApply itable_ctx_hook. }

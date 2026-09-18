@@ -321,6 +321,22 @@ Module Type RELEASE_GEN.
       wp_release_gen_sconf_body kt γl lka s R Dc Out m n eb p av lks.
 End RELEASE_GEN.
 
+(* THE LOCK-ADDRESS PREMISE, PROVED AT VARIABLES.  Every caller of the two
+   hooks below discharges [add_vec lk0 (sign_extend' 64 0) = lka] out of an
+   equation [lk0 = lka] it already has, and spelling that inline as
+   [ltac:(rewrite H; reflexivity)] in the [iApply]'s argument column costs
+   2.3s of a 2.4s sentence: the [rewrite] is 1.1s (the a0 cell sits under a
+   [set] register-map tower, so keyed matching walks it) and the
+   [reflexivity] another 1.1s of bitvector conversion -- measured at
+   [ProofIdup]'s site.  Here there is no tower and nothing to convert, so
+   each of the six sites becomes one application.  (optimization.md: a side
+   condition that is the same at every call site belongs in a lemma proved
+   where the context is empty.) *)
+Lemma release_lka_of_eq (a b : SailStdpp.Values.mword 64) :
+  a = b ->
+  add_vec a (sign_extend' 64 (mword_of_int 0 : mword 12)) = b.
+Proof. intros ->. apply bv_add_0_r. vm_compute. reflexivity. Qed.
+
 Module Type RELEASE.
   Parameter wp_release_sconf :
     forall `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx} (kt : ktier) (γl : gname) (lka : mword 64) (s : string) (R : CtxId → iProp Σ) `{!CtxMorph R} (m : regfile) (n : nat) (eb : bool) (p : mword 64) (av : nat) (lks : gset string),

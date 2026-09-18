@@ -373,7 +373,7 @@ Section ProofBrelse.
               (fun ξ => llb loglen_name tl' ∗ bcache_scan2 bn V M' ord' devs' bnos' tl' ξ)%I
               (fun ξ => bcache_res2 bn V ξ) T3
               0%nat eb p (K - 4)%nat ({["bcache"]} ∪ lks)
-              ltac:(rewrite HT3a0; apply bv_eq; vm_compute; reflexivity)
+              (release_lka_of_eq _ _ HT3a0)
               ltac:(lia)
               with "Hcg Htext Hpc [Hlock] Htok [Hscan'] [Hllbtl'] Hcnt Hpay").
     { iExact "Hlock". }

@@ -1539,6 +1539,7 @@ UkSh.v
 UkShRun.v
 UkShDiag.v
 UkShRedir.v
+UkShPipe.v
 
 UCodeShP.v
 UkShParse.v

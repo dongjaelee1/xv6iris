@@ -824,7 +824,6 @@ For anyone who wants the arm CLOSED at today's kernel: R-1, the `-1` in
 hand back the two `ush_cldep`s (or whatever `pipe_reg` becomes), because
 that is what the six closes are paid with and the taint is the only
 source today.
-
 ### PIPE-MODEL-2 (2026-09-18) — the coordinator's two rulings, landed
 
 Commit `27e95d086` on `app-pipe/pipe-model` (after `fd925474d`).  Whole
@@ -1344,3 +1343,4 @@ the same substitutions) plus part 1's `wp_kshp_nulterminate_pipe` and
 `ush_cmd_of_ushp_pipe`, which are landed.  The line-disjunct's FOURTH arm
 stays where SH-LEX-REDIR §4 put it: coupled with the pipe child walk, so
 it belongs to SH-PIPE-ROUND and not here.
+

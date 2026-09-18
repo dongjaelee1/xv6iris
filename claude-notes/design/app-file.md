@@ -558,7 +558,9 @@ unowned critical item (WRITE-RELAY-3's `TB` guard).  RULES, replacing
   plus the file stage instance (e3b70b6d3), audits 27/14/13 unchanged; 19
   at checkpoint 36 (7/11/1: KERNEL STREAM's L2+L4, `Hdep1`/`Hwrite1`
   discharged, 6d645865c); `cat_open_hand` discharged and `redir_K`
-  restated with its taint arm at 023d1fff8 (no metric change).
+  restated with its taint arm at 023d1fff8 (no metric change); 16 at
+  e455487d8 (7/8/1: PROGRAM STREAM's `Hcat_body`, era step, H' applied,
+  `sh_tag_law_file`/`Hexecfail`/`Hpanic`).
 - RULING READ-HELD (2026-09-18, KERNEL-STREAM §3a): the read's hand mode
   is the WRITE side's landed shape mirrored — `file_read_piece_adv` as
   `awrite_full_adv`'s twin (the half in the closure, agree/advance/return

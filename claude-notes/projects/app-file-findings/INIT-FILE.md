@@ -387,3 +387,165 @@ this lane (`make audit-file-only`, `make audit-all-only`) are unchanged,
 because nothing imports `AppFileCons.v` or `UInitFileCons.v` and
 `FileAssumptions.v` still requires only `UFileBootAdequacy`.  No
 `Admitted` of this lane's, no new `Axiom`, `Proof using` everywhere.
+
+---
+
+# ROUND 2 (2026-09-18) — RULING H/H' LANDS WHOLE: THE ERA'S BOOT STATE IS A SHARED INDEX AND `file_link_inst_at` IS A RECORD; THE §3.3 PAIR IS A FRAME AND NOT A DESIGN CHANGE; §3.4 **STOPS ON THE KERNEL'S mknod CONTRACT**
+
+Merged from `main` at `393d7fa97` (clean; `iris/_CoqProject`'s two lane
+comments removed per the owner's rule, and the three new entries are bare
+lines).  `grep -c "Hypothesis\|Admitted" iris/UInitFile.v` is still **1** and
+this round does not move it: ruling H's layer is what the round needs and
+the round is the program stream's.
+
+## R2.1 What landed — ruling H and H'
+
+**`iris/FileLinksAt.v`** — the families at a NAMED boot state.
+`f0pre_at s0`, `fhead_at s0`, and `fwc_pro_at` / `fwc_owed_at` /
+`fwc_sp_at` / `fwc_open_at` / `fwc_sp_t_at` / `fwc_open_t_at` /
+`fwc_lend_at` / `fwc_blk_at` / `fwc_ban_at` / `fwc_line_at` / `fwc_pr_at` /
+`fwc_lpr_at` / `fwc_rres_at`, each with `s0` hoisted out of the family's own
+existential, the taint arm at EVERY `s0`, timelessness, and the old form as
+the existential closure — packing lemmas both ways, family by family
+(`fwc_*_at_pack` / `fwc_*_unpack`).
+
+**`iris/FileLinksAtBan.v`** — the banner and the structural conversions at
+the index: `fwc_pro_owed_at`, `fwc_blk_owed_at`, `fwc_sp_t_sp_at`,
+`fwc_open_t_open_at`, `fwc_blk_0_at`, `fwc_line_of_blk0_at`,
+`fwc_line_of_post_at`, `fwc_line_of_pro_at`, `fwc_lend_of_blk0_at`,
+`fwc_blk_sp_at`, `fwc_ban_pro_at`, `fwc_ban_owed_at`,
+`fwc_ban_done_pro_at`, `fwc_ban_done_at`, `fwc_ban_done_line_at`,
+`fwc_ban_inp_at`, `fban_read_taint_at`, `fturn_pre_at` / `fturn0_at`, and
+the two the ruling turns on:
+
+- **`fban_step_at`** — the head branch fires `FileLinks.file_write_link_first`
+  at the LEMMA's `s0` instead of one destructed out of `f0pre`, so the
+  `f0_lb vf s0` the link returns is at that named state and the rebuilt
+  `fwc_ban_at s0 … 1` carries it.  This is the one thing `fban_step` lost.
+- **`fban_at_f0w`** — the export: at `S i` the head arm is refuted by its own
+  index, so what is left carries `FileLinksLine.f0w g k s0` (persistent) or
+  the taint.
+
+**`iris/FileLinksAtLine.v`** — the block step, the prompt bytes and the
+reads at the index: `fblk_step_at`, `fhead_dollar_at`, `fprompt_dollar_at`,
+`fprompt_space_at`, `fprompt_dollar_ban_at`, `fprompt_dollar_post_at`,
+`fprompt_space_t_at`, `fprompt_dollar_line_at`, `fwc_read_at`,
+`fwc_read_t_at`, `fwc_panic_done_at`, `fowed_read_taint_at`.
+
+**`iris/FileLinkInst.v`** (additive append) — **`file_link_inst_at (s0 : fst)
+: LinkRec Σ`**, every field at the `_at s0` families and every law at the
+ported one, plus `file_Wcl_at` / `file_Wbl_at` (the two families the round
+instantiates), `file_Wcl_at_pack` / `file_Wbl_at_pack` and the converses
+`file_Wcl_unpack` / `file_Wbl_unpack` — which is what makes
+`file_link_inst` and `file_link_inst_at` two readings of ONE record rather
+than two records.
+
+**`iris/UInitFileCons.v`** — the ruling's consequences, checked at the
+statement: `file_f0pre_at_of_typed` (the deed's content, NAMED),
+`file_f0pre_at_taint`, `file_turn_pre_at_of_boot`, **`file_Wbl_at_of_boot`**
+(consequence (a)) and `file_ban_f0w_at` (consequence (b)).
+
+**Why new files and not the bottom of `FileLinksLine.v`.**  The program
+stream is live in `UShRound.v` and in everything that reads `fhead` / `fab` /
+`fwc_*`; appending there would rebuild that cone under them for statements
+they do not use.  `FileLinkInst.v` is the one existing file this round
+touches, and only by appending.
+
+## R2.2 The ruling's three consequences, verified
+
+**(a) `Wbl_at s0 []` IS inhabited at /init's first instruction**, at
+`s0 := dst_content s_deed`.  `UInitFileCons.file_Wbl_at_of_boot`:
+`FileOut.fturn g (S gen_id)` and `f0pre_at g s0` give
+`lk_turn (file_link_inst_at g s0) (S gen_id)`, and `LinkRec.lk_turn0` splits
+it into the reader's half and `file_Wbl_at g s0 []`.  The `f0pre_at` comes
+from `AppFile.file_boot`'s second conjunct by
+`file_f0pre_at_of_typed` — **the typed arm only**: the taint says nothing
+about the deed's content and therefore cannot name a state, so under it
+/init takes `s0 := None` (`file_f0pre_at_taint`), which every `_at` family's
+taint arm accepts.  That asymmetry is the one thing the ruling's text did
+not say and it costs nothing.
+
+**(b) After the banner the same name comes back.**  `fban_at_f0w` /
+`UInitFileCons.file_ban_f0w_at`.  The first-drain pinning is untouched: it
+reads `f0w` exactly as it always did, and `f0w` is the same resource.
+
+**(c) No new ghost and no stage change in `FileOut`.**  By construction —
+`f0pre_at` is `f0pre`'s own body with the witness named, `fwc_X_at` is
+`fwc_X`'s own body with `s0` hoisted, and nothing here mints anything.
+
+## R2.3 §3.3's load-bearing pair — MEASURED, and it is a FRAME
+
+`iris/UShLineHold.v` (a leaf file, for the same reason as above).
+`UShLine.ush_wc_inp` and `ush_wb_inp` are READ-BACKS — the credential goes in
+and the SAME credential comes back beside a persistent fact — so a conjunct
+that is not looked at rides through untouched.  Four lemmas are the whole
+cost:
+
+- `ush_wc_inp_hold` / `ush_wb_inp_hold` — the plain shape `Wc I p ∗ Hold I`.
+- `ush_wc_inp_ex` / `ush_wb_inp_ex` — the shape ruling H' fixes,
+  `∃ s0, Wc s0 I p ∗ Hold s0 I`, from a per-`s0` reading.
+
+**So it is not a design change, and the rest of §3.3's nine may be
+generalised.**  What the file era still owes for conjunct 9 is the per-`s0`
+reading itself — `ush_wc_inp γ T (file_Wcl_at g s0)` and
+`ush_wb_inp γ T (file_Wbl_at g s0)` — which is `UShLine.ush_wc_inp_lcred`'s
+argument at the indexed families (a destructuring of `fwc_lpr_at`'s arms,
+about forty lines) and does NOT need a new shape.
+
+## R2.4 §3.4 **STOPS**, and the repair is not the `Other` parameter
+
+The ruling accepted `Other : Z -> fname -> Prop` beside `Pure`/`Made`/`Pv`,
+with "the consumer `init_cons_sup_mknod` supplies it from the literal path".
+**The consumer cannot**, and the reason is one line of the kernel's own
+contract.
+
+`UInitCons.init_cons_laws_at`'s create-at-another-name conjunct is spent at
+`iris/UInitCons.v:610-625`, inside `init_cons_mknod_bundle`, against
+`FsAbsCreateFire.acre_commit_at_gen` (`iris/FsAbsCreateFire.v:333`).  That
+commit quantifies the created NAME:
+
+```coq
+    (∀ (I : gmap Z fs_node) (d i : Z) (nm : fname) (ents : gmap fname Z)
+       (nl : nat),
+       ⌜cre_pre (abs_view I) d nm ents nl i (cf d i)⌝ -∗
+       ⌜nm <> DOT /\ nm <> DOTDOT⌝ -∗ …)
+```
+
+and that is ALL it says about `nm`.  `SpecSysMknod.mknod_au_at`
+(`iris/SpecSysMknod.v:297`) pins the PARENT cursor (`npar_cur M pv P`, and
+`init_mk_P` then forces `d = ROOTINO` for this walk) and nothing about the
+name; `FsAbsDelta.cre_pre` (`iris/FsAbsDelta.v:140`) is three freshness
+clauses and says nothing either.  So /init's mknod AU asks its caller's
+claim to absorb a create of `ADev CONSOLE 0` under ANY name at the root —
+`f` included.  The echo claim absorbs it (it tracks only `console`); the
+FILE claim cannot: `AppFile.f_ok av None` is `f_absent av`, i.e.
+`astep av ROOTINO fname_f = None`, and after the create it is `Some i`.
+
+An `Other` parameter does not help, because the `Other d nm` that conjunct
+(g) would be given at the spend site is exactly the thing the contract does
+not provide.
+
+**THE REPAIR, named, and it makes `Other` unnecessary.**  Pin the name in
+the contract: `acre_commit_at_gen` (or `mknod_au_at`, beside `npar_cur`)
+carries `⌜nm = last element of the walked path⌝`, discharged by
+`ProofSysMknod` from `argstr`'s own reading — the kernel already knows it,
+since `create` looks the name up in the parent it walked to.  Once it is
+there the file era's conjunct (g) is provable OUTRIGHT at `nm =
+fname_console`, by `FileDeltas.f_ok_create_other` with
+`or_intror FileDeltas.fname_console_ne_f` — exactly as
+`AppFileCons.file_cons_mknod` already does for conjunct (f).  KERNEL TIER;
+this lane cannot reach it.
+
+Until then, seven of `init_cons_laws_at`'s nine are discharged at the file
+claim (`iris/AppFileCons.v`) and two are not: this one and the UNARM
+(§3.3's last paragraph, whose receipt fix is accepted and is the next item).
+
+## R2.5 Build
+
+Whole tree green on the lane's remote tree; the four audits unchanged
+(system thirteen, echo fourteen, tree thirteen, file fourteen).  No
+`Admitted` of this lane's, no new `Axiom`, `Proof using` everywhere.  The
+three untouched-statement rules held: nothing in `FileLinksLine.v`,
+`UShLine.v`, `UShPanic.v`, `LinkRec.v`, `StageRec.v` or `UShRound.v` moved,
+and `FileLinkInst.v` only gained an appended section.
+

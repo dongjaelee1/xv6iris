@@ -1038,3 +1038,105 @@ consumes and re-tying it at exit.  Item 4 (`UInitFileCC.v`, program-tier
 worktree) substitutes `Hold := UShRound.sh_done_at g r s0` in its three
 `_hold` applications, `Hsh_bd` as in H above, and conjunct 5 :=
 `UShRound.Hwc_f g s0 γp`.
+
+
+---
+
+## PROGRAM STREAM, stretch 9 (2026-09-18) — REDIR-CHILD measured before it is walked: FOUR things the brief did not price
+
+The lane that was to do item 2 died (session limit) with NOTHING committed;
+`app-file/sh-redir` is at `main` (`d725fd085`).  This block is what reading
+the walk end to end found.  Item 2 is four sub-items, in this order:
+
+### 2a. LINE-WIT — the typed-line witness has NO ROUTE to the child (design §4.3 names one; neither end is built)
+
+K1's `ef_pay` is `Wq ∗ efq i γo ws []`, and `efq`'s fired arm is
+`FileWrite.file_wq`, which holds `fl_lb c ls ∗ ⌜ws ∈ ls⌝`; `Hopen_hand`
+takes the same pair (`ws ∈ ls`, `fl_lb (fgn_cl g) ls`).  NOTHING the child
+is lent carries it: the lend is `Wcl I 3 ∗ PRE I`, `fcur` holds `inp_lb`
+and `f0w` only, and `fread_ret` exports no `fl_lb`.
+
+* `fl_auth` lives in the LEDGER (`FileOut.file_led`, fired by the rx/tx
+  wands), NOT in `fecl` — so no console LINK can export `fl_lb`; the only
+  carrier is the TAG (`FileOut.ftag h ∋ fl_lb (efl_of h)`), as design §4.3
+  says.  But `UkSh.ush_tag_law` is only the ^D refutation, and nothing
+  reads the lower bound off a tag.
+* THE ROUTE THAT NEEDS NO GENERIC SHELL CHANGE: the tags are in scope in
+  `UShLine.ush_read_recv_era_at` (`#Htags`, over `hs`, beside
+  `cons_window sl (length I) dd g hs`) exactly where `ReadRec.rk_arms`
+  builds the instance-chosen residue `lk_rres L v (I ++ J)`; that residue
+  rides in `Pm = ush_mid_at (lk_rres FI) …`, and the generic read law
+  `ush_wc_read` (the file's is `UShRound.Hwc_f`) is HANDED `Pm (I ++ l ++
+  [nl])`.  So: (i) `rk_arms` takes the tags (echo's instance ignores
+  them); (ii) `FileLinksAt.fwc_rres_at` gains
+  `⌜echof_lines_in I = []⌝ ∨ ∃ ls, fl_lb c ls ∗ ⌜echof_lines_in I ⊆ ls⌝`;
+  (iii) `Hwc_f` copies it into `PRE`'s left arm.
+* THE PURE LEMMA (i) NEEDS: for the delivered byte's history `h`,
+  `echof_lines_in (snd <$> take (S j) E) ⊆ echof_lines_of h`.  It follows
+  from `EchoOutPure.E_index` (entry `j`'s history has `S j` inputs and ends
+  in its byte) plus `cons_chain` (the histories are prefix-ordered), so
+  `ins (seg h_j) = snd <$> take (S j) E`, and `echof_lines_of h ⊇
+  echof_cyc (last cycle)`.  Not written.
+* `cons_made (fn_cons r) jc` (the other `Hopen_hand` premise) is mintable
+  from the claim (`AppFileCons.file_cons_shoot`, needs `cons_present_at`);
+  its route to the round is not measured yet.
+
+### 2b. OPEN-PAY — the failed open's "created" arm forgets `s = None`, and the model needs it
+
+`FileOpen.file_open_pay c r s := fown r s ∨ (∃ i, fown r (Some (i, []))) ∨
+taint`.  The model's alternatives at a failed open are `RFOpenU` (f
+unchanged) and `RFOpenM`, whose f-effect is GUARDED (`None ↦ Some []`,
+`Some _ ↦ unchanged`: xv6 truncates only after `filealloc` succeeded).  At
+`s = Some (j, bs)`, `bs ≠ []`, the middle arm fits NEITHER — the child
+could not re-tie DONE.  The arm has ONE producer
+(`FileOpen.file_permit_pay`, from `file_cre_recv`'s second arm) and it
+DROPS `⌜s = None⌝` it has in hand (`[[_ Hown] | …]`).  Fix: the middle arm
+is `⌜s = None⌝ ∗ ∃ i, fown r (Some (i, []))` in `file_esc_pay` /
+`file_open_pay` / `UShRound.redir_Kf`.
+
+### 2c. CALL2 — the walk is on the OLD call, and its open-failed exit needs the taint
+
+* `UkShRedirBody.wp_kshm_child_file_redir` (and the seam and the arm under
+  it) take `UkShRedir.ush_open_call` — v1, no `Kf`, no path premises.
+  `Hopen_hand` proves `UkShRedirAns.ush_open_call2`.  Nothing connects
+  them.  The parked reshape (the deed handed AT the call, `Dd a -∗`,
+  `ush_open_call2-deed-at-call.patch`) is right and is where to start.
+* The path premises of call2 (`Img`, `pl`, `arg_path_of`, `np_elems`,
+  `um_start_of`, `last = fname_f`, the bytes `DfracDiscarded`) come from
+  the REDIR node's file string — `ush_cmd_of_ushs_redir` has already made
+  the tree persistent when the arm runs.
+* THE OPEN-FAILED EXIT PRINTS THROUGH `UkSh.sh_deps` (`udepw_law 16`),
+  which sh's tier only has UNDER THE TAINT (`□ (T -∗ sh_deps)`).  The echo
+  child shed it (M4b(2): `wp_kshd_execfail_paid` on `ush_execfail_law_at`);
+  the redirect arm's 0x10e site still calls the generic
+  `ush_diag_leaf_holds`.  It needs the paid twin: same `wp_kshd_die_chain`,
+  literals `0x110 0x114 0x118 0x11a 0x11e 0x120`, format at `0x12b8`
+  (15, `%s` at 5), the argument the REDIR node's file.  The LAW is already
+  general (`ush_execfail_law_at dg n Cr Cd`); the record side is
+  `lk_lcred_blk_open` at ANY alternative + `ksh_w1_of_link_blk_at`.
+* The lend splits at the call: generic shape `Pex` (pays the parser's
+  exits, whole) and a split law `Pex -∗ ∃ a, Dd a ∗ Pr a`; success hands
+  `K ty ∗ Pr a` on, failure runs the diagnostic at
+  `ush_execfail_law_at dg n (Kf a ∗ Pr a) Cd`.
+
+### 2d. THE ROUND'S CHILD — what `Hchild_redir` is once 2a–2c land
+
+* `PRE`'s TAINT ARM HAS NO DEED TO HAND: under `T` the child does not walk;
+  it hands the run to the generic slot (`UShEcho.sh_echo_slot`'s third
+  conjunct at `R := ushf_wq Wcf I`, the kill law from the lend's own pin).
+  So `Hchild_redir` takes `file_links`, `udep` and the slot like
+  `sh_child_law_file` does.  The same exit serves `K ty`'s and `Kf`'s taint
+  arms.
+* open failed: `RFOpenU` at `fown r s`, `RFOpenM` at `s = None` (2b);
+  exec failed: `RFExec`, deed `Some (i, [])` from the receipt; echo ran:
+  K1's exit `ef_exit` → `RFRan sel`, the PEND arm (`cont = u_prompt` by
+  `reflexivity`).  The printing exits fold with ONE new lemma, the
+  non-identity twin of `Wcf0_of_pre_line_id`: `lk_blk FI _ v I a (len-2)`
+  beside a deed at `fsm (cat_st cs …) (fline I) (ralt_dec a)` is
+  `Wcl I 0 ∗ DONE I` (`cs_lb_agree_len` + `done_tie_snoc`).
+* `UShRound.sh_redir_child_law` is a stale twin of
+  `UkShRedirBody.sh_redir_child_law Wcf` (60 vs 68, no `fbody_ok`); state
+  the lemma at the latter.
+* K1's other premises: `i ∉ pinned` is `redir_K_inum` (a fupd — do it in
+  the walk right after the open, as stretch 7 §3 said); `Hstr` (the
+  offset row) is unmeasured.

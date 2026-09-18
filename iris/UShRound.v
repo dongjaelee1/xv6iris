@@ -515,7 +515,23 @@ Section UShRound.
         ∗ era_pin (fgn_echo g) (S gen_id) v ∗ cs_lb v cs)
      ∨ T)%I.
 
-  Definition sh_pre_at : fst -> list (bv 8) -> iProp Σ := sh_deed_at pre_tie.
+  (* PRE ALSO HOLDS THE LINE'S WITNESS (the PROGRAM STREAM, stretch 9): the
+     child that runs [echo ... > f] owes the claim "this line is one the
+     ledger has" ([FileWrite.file_wq]'s [ws ∈ ls]; [Hopen_hand]'s too), and
+     the only place the shell ever learns it is the read that completed
+     the line -- off the consumed bytes' tags, through the reader's residue
+     ([FileLinksLine.flw], [FileReadInst.fri_arms]).  So it rides with the
+     deed from the read law ([Hwc_f]) to the fork's lend. *)
+  Definition line_wit (I : list (bv 8)) : iProp Σ :=
+    (FileLinksLine.flw g I ∨ T)%I.
+
+  Global Instance line_wit_persistent I : Persistent (line_wit I).
+  Proof using . rewrite /line_wit /T /file_taint /echo_taint. apply _. Qed.
+  Global Instance line_wit_timeless I : Timeless (line_wit I).
+  Proof using . rewrite /line_wit /T /file_taint /echo_taint. apply _. Qed.
+
+  Definition sh_pre_at (sb : fst) (I : list (bv 8)) : iProp Σ :=
+    (sh_deed_at pre_tie sb I ∗ line_wit I)%I.
   Definition sh_done_at : fst -> list (bv 8) -> iProp Σ := sh_deed_at done_tie.
   Definition sh_pend_at : fst -> list (bv 8) -> iProp Σ := sh_deed_at pend_tie.
 
@@ -529,6 +545,15 @@ Section UShRound.
   (* the taint inhabits every tie -- the [∨ T] arm *)
   Lemma sh_deed_taint tie sb I : T -∗ sh_deed_at tie sb I.
   Proof using . iIntros "#HT". rewrite /sh_deed_at. by iRight. Qed.
+
+  Global Instance sh_pre_at_timeless sb I : Timeless (sh_pre_at sb I).
+  Proof using . rewrite /sh_pre_at. apply _. Qed.
+
+  Lemma sh_pre_taint sb I : T -∗ sh_pre_at sb I.
+  Proof using .
+    iIntros "#HT". rewrite /sh_pre_at /line_wit.
+    iSplitL; [ iApply (sh_deed_taint with "HT") | by iRight ].
+  Qed.
 
   (* THE FAMILY THE LOOP CARRIES ([EchoLinksLine.ewc_lpr]'s shape, so that
      [p >= 3] is the lend):
@@ -667,7 +692,7 @@ Section UShRound.
         | iApply (sh_deed_taint with "HT") ].
     - rewrite Wcf_S3. iSplitL "";
         [ iApply (Hcltaint I 3%nat v with "Hpin HT")
-        | iApply (sh_deed_taint with "HT") ].
+        | iApply (sh_pre_taint with "HT") ].
   Qed.
 
   (* (v) THE COUPLING: two lower bounds of one choice list line up, and at
@@ -726,10 +751,12 @@ Section UShRound.
 
   (* (i) at the deed: the read that completed a line *)
   Lemma sh_pre_of_done (I l : list (bv 8)) :
-    rest_of I = [] -> wl_nl ∉ l -> DONE I -∗ PRE (I ++ l ++ [wl_nl]).
+    rest_of I = [] -> wl_nl ∉ l ->
+    line_wit (I ++ l ++ [wl_nl]) -∗ DONE I -∗ PRE (I ++ l ++ [wl_nl]).
   Proof using .
     intros Hr Hl. rewrite /sh_pre_at /sh_done_at /sh_deed_at.
-    iIntros "[Hd | #HT]"; last by iRight.
+    iIntros "#Hlw Hd". iSplitL; [ | iExact "Hlw" ].
+    iDestruct "Hd" as "[Hd | #HT]"; last by iRight.
     iDestruct "Hd" as (cs s v) "(Hd & %Htie & #Hty & #Hpin & #Hcs)".
     iLeft. iExists cs, s, v. iFrame "Hd Hty Hpin Hcs". iPureIntro.
     exact (pre_tie_of_done cs s0 I l _ Hr Hl Htie).
@@ -747,7 +774,8 @@ Section UShRound.
     Wcl I 0%nat -∗ PRE I -∗ Wcf I 0%nat.
   Proof using .
     intros Hid. iIntros "Hc Hp". rewrite Wcf_0.
-    rewrite {1}/sh_pre_at /sh_deed_at. iDestruct "Hp" as "[Hp | #HT]"; last first.
+    rewrite {1}/sh_pre_at /sh_deed_at. iDestruct "Hp" as "[Hp _]".
+    iDestruct "Hp" as "[Hp | #HT]"; last first.
     { iLeft. iFrame "Hc". iApply (sh_deed_taint with "HT"). }
     iDestruct "Hp" as (cs' s v') "(Hd & %Htie & #Hty & #Hpin' & #Hcs')".
     pose proof Htie as [Hlen _].
@@ -825,7 +853,8 @@ Section UShRound.
   Lemma Hwbl_f (I : list (bv 8)) : ⊢ Wcf I 3%nat -∗ Wcf I 0%nat.
   Proof using .
     rewrite Wcf_S3 Wcf_0. iIntros "[Hc Hp]".
-    rewrite {1}/sh_pre_at /sh_deed_at. iDestruct "Hp" as "[Hp | #HT]"; last first.
+    rewrite {1}/sh_pre_at /sh_deed_at. iDestruct "Hp" as "[Hp _]".
+    iDestruct "Hp" as "[Hp | #HT]"; last first.
     { iLeft. iSplitL "Hc";
         [ iApply (Hwbl I with "Hc") | iApply (sh_deed_taint with "HT") ]. }
     rewrite /FileLinkInst.file_Wcl_at.
@@ -853,6 +882,24 @@ Section UShRound.
     iApply (Hwbwc I with "Hb").
   Qed.
 
+  (* the reader's pieces carry the typed lines' witness in their residue
+     ([FileLinksAt.fwc_rresw_at]); it is persistent, so it is read and the
+     pieces go back whole *)
+  Lemma mid_flw (I : list (bv 8)) :
+    UShLine.ush_mid_at (lk_rres FI) (fgn_echo g) γp I -∗
+    UShLine.ush_mid_at (lk_rres FI) (fgn_echo g) γp I
+    ∗ FileLinksLine.flw g I.
+  Proof using .
+    rewrite /UShLine.ush_mid_at. iIntros "(Hu & Hua & Hrd & Hv)".
+    iDestruct "Hv" as (v) "(#Hpin & Hdl & #HE & #Hres)".
+    iAssert (FileLinksLine.flw g I) as "#Hw".
+    { cbn [lk_rres FileLinkInst.file_link_inst_at].
+      rewrite /FileLinksAt.fwc_rresw_at. iDestruct "Hres" as "[_ $]". }
+    iSplitL; [ | iExact "Hw" ]. iFrame "Hu Hua Hrd". iExists v.
+    iSplitR; [ iExact "Hpin" | ]. iSplitL "Hdl"; [ iExact "Hdl" | ].
+    iSplitR; [ iExact "HE" | iExact "Hres" ].
+  Qed.
+
   (* [UkSh]'s [Hwc] at the family -- INIT-FILE's conjunct 5: the read that
      completed a line moves the credential from 2 at the old input to the
      lend at the new one, and the deed from DONE to PRE ((i) of the ruling) *)
@@ -864,10 +911,11 @@ Section UShRound.
       ∗ Wcf (I ++ l ++ [wl_nl]) 3%nat.
   Proof using .
     intros I l Hl. rewrite Wcf_2 Wcf_S3. iIntros "Hmid [Hc Hd]".
+    iDestruct (mid_flw (I ++ l ++ [wl_nl]) with "Hmid") as "[Hmid #Hw]".
     iDestruct (Wcl2_rest I with "Hc") as "[Hc Hr]".
     iDestruct (Hwc I l Hl with "Hmid Hc") as "[$ $]".
-    iDestruct "Hr" as "[%Hr | #HT]"; last (iApply (sh_deed_taint with "HT")).
-    iApply (sh_pre_of_done I l Hr Hl with "Hd").
+    iDestruct "Hr" as "[%Hr | #HT]"; last (iApply (sh_pre_taint with "HT")).
+    iApply (sh_pre_of_done I l Hr Hl with "[] Hd"). iLeft. iExact "Hw".
   Qed.
 
   (* the seam's two read-backs at the family ([UShLineAtHold.
@@ -1549,7 +1597,7 @@ Section UShRound.
   Proof using Hkill.
     exact (UShEchoPay.sh_exec_sup_echo_wq_holds_at_D
              (FileLinkInst.file_stage_inst_at g s0) file_D Wcf PRE
-             (fun I0 => sh_deed_at_timeless pre_tie s0 I0)
+             (fun I0 => sh_pre_at_timeless s0 I0)
              fwc3 fwc3b fwc0 fwct Hktaint
              (fun I0 H => proj1 H) (fun I0 H => proj2 H)).
   Qed.
@@ -1601,6 +1649,7 @@ Section UShRound.
     Wbl I -∗ PRE I -∗ Wbl I ∗ DONE I.
   Proof using .
     iIntros "Hb Hp". rewrite /sh_pre_at /sh_done_at /sh_deed_at.
+    iDestruct "Hp" as "[Hp _]".
     iDestruct "Hp" as "[Hp | #HT]"; last (iFrame "Hb"; by iRight).
     iDestruct "Hp" as (cs' s v') "(Hd & %Htie & #Hty & #Hpin' & #Hcs')".
     pose proof Htie as [Hlen _].

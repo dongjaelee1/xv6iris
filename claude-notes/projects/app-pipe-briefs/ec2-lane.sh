@@ -30,7 +30,7 @@ ENV='eval $(opam env --switch=/shared/xv6rocq --set-switch) && export OCAMLRUNPA
 sync() {
   local out
   out="$(rsync -rlpgoD --checksum --delete --out-format='%n' \
-      --include='*/' --include='*.v' --include='_CoqProject' --exclude='*' \
+      --include='*/' --include='*.v' --include='_CoqProject' --include='*.py' --include='*.txt' --include='*.json' --exclude='*' \
       -e "ssh -i $KEY -o BatchMode=yes" \
       "$LOCAL/iris" "$LOCAL/kernel-rocq" "$LOCAL/user-rocq" "$LOCAL/model-xv6iris" "$LOCAL/tools" \
       "ubuntu@$HOST:$REMOTE/" | grep -v '/$' || true)"

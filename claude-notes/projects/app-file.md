@@ -9829,3 +9829,136 @@ read reports `off = p` and hands `uoff γo (p + count)` back.
   linear resource fewer in echo's chain.
 - cat's read obligation is unchanged in shape and gains the two conjuncts
   above on the fired arm.
+
+### OFF-LINK-4 (kernel tier, 2026-09-17) — THE ANCHORED NODE AND BOTH HELD ARMS LAND; THE READ SIDE NEEDS NO ANCHOR, AND THE WRITE SIDE'S LOOP IS THE ONE THING LEFT
+
+**The lane's verdict in one line: (a)'s and (b)'s STATEMENTS are landed and
+green — `FsAbsWriteFire.awrite_full_anch` / `awrite_part_anch` /
+`awrite_chain_anch` (the one extra arrow, `⌜off = off0⌝ ∨ app_taint`),
+`SpecFilewrite.filewrite_in`'s inode arm keyed on the row's mode with
+`filewrite_in_held := (∃ off0, uoff γo off0 ∗ ∀ P, awrite_chain_anch … off0) ∨
+(awrite_chain … ∗ app_taint)`, `SpecFileread.fileread_in`'s twin (with NO
+anchor, because the read commit reports the offset), the generic tier paying
+both held arms for nothing, and echo's held ledger deposit
+`UkWriteFile.udepwf_std_write_file_held`; what is NOT landed is the WRITE
+FIRE's loop — `ProofFilewrite`'s invariant carrying `uoff γo (current offset)`
+and the anchored chain across iterations — and with it the two fire sites,
+L2, L4 and L5's remaining leaves.**
+
+**WHAT LANDED** (whole tree green on the lane's remote tree, `EXIT=0`, zero
+`Error`; `make audit-all-only` / `audit-tree-only` / `audit-file-only`
+UNCHANGED — system THIRTEEN, echo FOURTEEN, tree THIRTEEN, file FOURTEEN;
+`tools/lemma_diff.py` against the merge base reports CLEAN — nothing dropped,
+nothing admitted, no new assumption; `Proof using` everywhere.)
+
+*`d68506285` — the merge of main (CAT-GEOM-2, OFF-LINK-3), green with no
+fix-forward needed.*
+
+*`8e4ffb667` — (a)'s statements: the anchored node and the held write arm*
+
+    awrite_full_anch Γ E i γo M ua n k off0 REST :=
+      ∀ I off bs bs0 nl,
+        ⌜wri_pre (abs_view I) i off bs bs0 nl⌝ -∗
+        ⌜ubytes_at M (add_vec_int ua (FW_MAX * k)) bs⌝ -∗
+        ⌜Z.of_nat (length bs) = wchunk_at n k⌝ -∗
+        (⌜off = off0⌝ ∨ app_taint) -∗                       (* THE ONE ARROW *)
+        ghost_map_auth (γtop Γ) (1/2) I -∗ off_link γo (Z.of_nat off) ={E}=∗
+        ghost_map_auth (γtop Γ) (1/2) I ∗
+          app_step i I (delta_write i off bs (abs_view I)) ∗
+          (∀ I', ⌜abs_view I' = delta_write i off bs (abs_view I)⌝ -∗
+             ghost_map_auth (γtop Γ) (1/2) I' ={E}=∗
+             ghost_map_auth (γtop Γ) (1/2) I' ∗
+             off_ret γo off (length bs) ∗ REST)
+
+`awrite_part_anch` is the partial arm at the same arrow; `awrite_chain_anch`
+is the chain at those two, the anchor advancing by `wchunk_at n k` — the very
+ladder the kernel's own `f->off` walks.  `awrite_chain_anch_0` / `_S` /
+`_cursor` are its kit; `awrite_full_anch_of_full`, `awrite_part_anch_of_part`
+and `awrite_chain_anch_of_at` are the reading that makes the anchored node
+STRICTLY WEAKER than the plain one — which is what lets the generic tier's own
+chain pay a held row without knowing anything about offsets.
+
+    filewrite_in's inode arm, the match OUTSIDE the chains' [∀ P]:
+      FdOpen _ true (FdInode i γo OffParked) => awrite_chain …      (today)
+      FdOpen _ true (FdInode i γo OffHeld)   => filewrite_in_held i γo n M ua Q
+    filewrite_in_held := (∃ off0 : nat,
+                            uoff γo off0
+                            ∗ ∀ P, awrite_chain_anch … P n Q 0 (wchunks n) off0)
+                         ∨ (awrite_chain … n Q 0 (wchunks n) ∗ app_taint)
+
+with `filewrite_in_inode_held` / `filewrite_in_of_inode_held` its readings,
+`write_arms_at_neg_held` the negative-count exit, and `write_held_post γo off0
+d := (⌜…⌝ ∗ uoff γo (off0 + d)) ∨ (uoff γo off0 ∗ app_taint)` the post's shape
+at a held row (`PipeQueue.pipe_wpost`'s).  THE GENERIC TIER PAYS IT FOR
+NOTHING: `FsAbsInvFire.fsabs_filewrite_in` and `UexecExecMint`'s twin take the
+RIGHT arm — the same chain they always built, beside the taint they already
+hold.  And `UkWriteFile.udepwf_std_write_file_held` is echo's fd-1 deposit at
+the LINK (the parked twin is now stated at `OffParked` rather than at a free
+mode).
+
+*`237b50d21` — (b)'s statements: the held read arm, and why it is cheaper*
+
+    fileread_in's inode arm:
+      FdOpen true _ (FdInode i γo OffParked) => P ∗ pf_at (aread_commit_at …) F
+      FdOpen true _ (FdInode i γo OffHeld)   =>
+        P ∗ ((∃ off0 : nat, uoff γo off0 ∗ pf_at (aread_commit_at …) F)
+             ∨ (pf_at (aread_commit_at …) F ∗ app_taint))
+
+THE READ SIDE NEEDS NO ANCHOR, and this is the fact worth keeping:
+`aread_commit_at` REPORTS the offset to the client's receipt (`F.(pf_recv) av
+off a d`), so a reader learns `off` from the POST and nothing has to be
+relayed INTO the commit.  The kernel agrees against the box's half, reports
+`off = off0` and hands the half back advanced; the generic tier takes the
+taint arm; the sign guard hands the piece back whole on both.
+
+**WHAT REMAINS, and the shape it must take.**
+
+- **THE WRITE FIRE'S LOOP — the one piece of surgery left in this campaign.**
+  `ProofFilewriteChain.fw_au_raw` is the carrier the loop threads (`∃ bss, …
+  ∗ awrite_chain_at Γ appE i γo M ua P n Q (p + x) (wchunks n - p - x)`), and
+  the held walk's carrier is that with two conjuncts added, both indexed by
+  the count `t` the loop ALREADY carries:
+
+      fw_au_anch Γ i γo P n M ua Q (off0 : nat) (t : Z) (p x : nat) :=
+        ∃ bss, … the same four pure rows … ∗
+          uoff γo (off0 + Z.to_nat t) ∗
+          awrite_chain_anch Γ appE i γo M ua P n Q (p + x)
+            (wchunks n - p - x) (off0 + Z.to_nat t)
+
+  Its five moves are the landed ones' twins (`_init`, `_take`, `_spend_part`,
+  `_ok`, `_fail`), and the fire site's addition is three steps: agree
+  (`uoff_agree_k` against the box's half, giving `off = off0 + t`), feed the
+  anchor's LEFT arm, and put the advanced half back from `off_supply_held`'s
+  post.  At a DISCONNECTED box the site feeds the anchor's RIGHT arm with the
+  box's own `app_taint` and settles with `off_supply_taint`; that is the only
+  place in the walk that has to know the box has two arms.
+- **L2** (`fpnames.fp_om`) lands with the loop, not before: the recipe is lane
+  OFF-LINK's REFUTED 3 and it was re-walked in OFF-LINK-2 — the blocker is
+  `ProofFilewrite.v`'s `foff_row_inode_of` at a mode that is no longer pinned,
+  which is exactly what the loop's held branch answers.
+- **L4** (the mint) is unblocked on the kernel side and is four edits:
+  `ProofSysOpenPub` at `off_pub_hand_0` with the receipt carrying `uoff g 0`
+  and `fp_om` set to match; `usys_fd_ok`'s open arm's `fdst_parked` relaxed to
+  the caller's family's mode (nothing reads the pin since OFF-LINK-2 deleted
+  `usys_fd_ok_parked`); `UkRunSys.wp_uk_ecall_open_recv_img_hand` beside the
+  parked leaf and its `_dimg_hand` twin; `UkFileOpen`'s two `_hand` deed
+  corollaries by the one swap.
+- **L5** — the write half of the deposits is landed
+  (`udepwf_std_write_file_held`); what is left is
+  `udepwf_st_{read,write}_file_held` (the landed parked bodies at `FdOpen _ _
+  (FdInode i γo OffHeld)`, carrying `uoff γo off0` into the held arm),
+  `UkFileOpen.wp_uk_read_deed_learns_held` (the landed `_mapped` corollary
+  with `⌜off = p⌝` and `uoff γo (p + count)` read off the post), and
+  `FileWrite.file_awrite_node` re-instantiated at `awrite_full_anch` so
+  `UEchoFile.v`'s `ef_node` / `ef_chain` discharge by `iExact`.
+
+**WHAT ECHO-FILE / CAT-GEOM-2 / SH-ROUND APPLY.**
+- echo's write obligation is now a STATEMENT it can be written against:
+  `ef_node` is `awrite_full_anch`'s shape, and its `⌜off = off0⌝` arrives as a
+  premise from the kernel — so `efq`'s cursor need not carry `uoff` at all,
+  and echo's fd-1 deposit (`udepwf_std_write_file_held`) is landed.
+- cat's read obligation is `fileread_in`'s held arm with the pin arriving in
+  the post; no anchor, no new node, and the deed corollary is the landed
+  `_mapped` one plus two conjuncts.
+- Neither program's arm costs the generic tier anything: both are paid by the
+  taint it already holds.

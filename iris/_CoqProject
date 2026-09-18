@@ -1566,6 +1566,7 @@ UkShEcho.v
 UShLexRedir.v
 UkShPipeLex.v
 UkShPipeTok.v
+UkShPipeParse.v
 UInitCons.v
 UConsOpen.v
 UInitConsK.v

@@ -1449,6 +1449,7 @@ ProofSysOpenEntryC.v
 ProofSysOpenFull.v
 LinkSysOpen.v
 FsAbsWriteFire.v
+FsAbsWritePart.v
 SpecConsolewrite.v
 ProofConsolewrite.v
 LinkConsolewrite.v
@@ -1508,6 +1509,7 @@ AppFile.v
 FileOpen.v
 FileDeltas.v
 FileWrite.v
+FileWritePart.v
 FileOut.v
 FileLinks.v
 FileLinksLine.v

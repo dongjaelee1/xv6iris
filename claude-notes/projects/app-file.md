@@ -30,14 +30,39 @@ The blocker for the whole program tier is the deed's hold: RULING HOLD-POS
    law, the echo child (`sh_child_law_file`) at the folded position 0,
    `UInitFileCons`'s twin `sh_hold_at` retired in favour of UShRound's.
    Bar: `UShRound.v`'s `Admitted` count does not rise; whole tree green.
-2. **REDIR-CHILD** — item (3): the open-call reshape already in the
-   worktree (`ush_open_call2` hands the deed at the call), the receipt's
-   inode reading, the exit at the folded position 0 on every arm;
-   `Hchild_redir` becomes a lemma.
+2. **REDIR-CHILD** — measured in stretch 9 to be FOUR sub-items, three
+   landed (PROGRAM-STREAM.md stretch 9 has every name):
+   - [x] **2a LINE-WIT**: the typed line's witness (`fl_lb ∋ ws`) reaches
+     the child — off the consumed bytes' TAGS, through the reader's residue
+     (`ReadRec.rk_arms` takes the tags; `FileLinksLine.flw`, `fwc_rresw{,_at}`;
+     `FileLineWit.v`), into `PRE` (`UShRound.line_wit`, `Hwc_f`).
+     `FileReadInst.file_read_inst g Htag` takes the tag equation now.
+   - [x] **2b OPEN-PAY**: the failed open's created arm keeps `s = None`;
+     `ush_open_call2` takes the deed AT the call.
+   - [x] **2c CALL2**: the redirect arm/seam generic in the call and the
+     failed-open exit (`wp_kshr_redir_arm_g`, `wp_kshm_child_redir_g`,
+     `_alloc_redir_g`), the PAID open-failed diagnostic and the call's adapter
+     (`UkShRedirPaid.v`), the child's whole walk with no `sh_deps`
+     (`UkShRedirChild.wp_kshm_child_file_redir`).
+   - [ ] **2d** the round's lemma (`Hchild_redir`) — **BLOCKED ON K1**:
+     `UEchoFile.efile_image_entry`'s `Hstr` is a pure ∀ over every abstract
+     view and is FALSE as stated (it can only be known at the fire, from the
+     offset half's agreement).  See item 2½.
+2½. **HSTR** (kernel/U tier, NEW): `FsAbsWriteFire.awrite_part_at_mapped_single`
+   takes the single-block fact as a pure ∀; give it a CLOSURE form (the node
+   is handed `ghost_map_auth … I` and `off_link γo off` at the fire, so a
+   closure holding the cursor agrees `off` to the content's length —
+   `OffGv.off_gv_agree` — and bounds it by `FileDeltas.f_bytes_typed_short`;
+   the cursor's TAINT arm pays the arm instead of refuting it), then drop
+   `Hstr`/`Hsb`/`Hsbw` from `UEchoFile.ef_relay4`, both `ef_w_of_deed`s,
+   `ef_pay_from` and `efile_image_entry`.  Bar: K1's entry takes no pure
+   premise about views; echo audit unchanged.
 3. **CAT-CHILD** — item (4), RULING CAT-DEED: `catq_cat` returns the whole
    deed, `Hchild_cat` becomes a lemma; item (5): `sh_round_holds_file`.
 4. **INIT-FILE assembly** — `UInitFileCC.v` (in the program-tier worktree,
-   uncommitted): conjunct 5 is HOLD-POS's read law; conjunct 10 needs the
+   uncommitted; its `fri_arms_u`/`fri_arms_at` must follow 2a: `rk_arms`'s
+   three tag premises, `fwc_rresw_at`, `file_read_inst g Htag`, the era's
+   first residue at `flw`'s left arm): conjunct 5 is HOLD-POS's read law; conjunct 10 needs the
    wider `cc_wp` (the round-open credential WITH the hold); then
    `file_Hinit_boot`.
 5. **ADEQUACY close** — `FileAssumptions.v`, `make audit-file-only`.

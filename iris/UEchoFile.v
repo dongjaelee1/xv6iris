@@ -99,6 +99,7 @@ Require Import CtxIdDefs.
 Require User.EchoSyms.
 Require Import BioDefs.                  (* [BSIZE] -- the block the chunk sits in *)
 Require Import SpecWritei.               (* [wi_blocks]: the single-block shape *)
+Require Import FileWritePart.            (* [file_awrite_part_adv]: the partial arm, from the cursor *)
 Require Import FileWrite.                (* [file_wq], [file_awrite_node] *)
 Require Import UkWriteFile.              (* the two ledger-slot write leaves *)
 Require Import FsAbs.                    (* [γtop] -- FsAbs's own rule *)
@@ -342,47 +343,11 @@ Section UEchoFile.
     iApply ("Hn" $! I off bs bs0 nl with "[//] [//] [//] [//]").
   Qed.
 
-  (* ---- HYPOTHESIS 3 (lane WRITE-RELAY, RELAY 4) ---------------------- *)
-  (* READ-RELAY's shape one syscall over ([FsAbsReadFire.read_arms_mapped],
-     [SysReadDefs.rd_fail_why_refute]): the PARTIAL arm is reachable for
-     exactly one reason -- writei's copyin faulted -- so once the partial
-     node carries that reason, a caller whose whole SOURCE run is mapped
-     refutes its premise and the node is vacuously suppliable at ANY
-     [REST].  Without it [AppFile.f_typed] cannot be re-established on
-     that arm at all ([FileWrite.v]'s header (3)), and the arm is one of
-     the two the kernel may pick at EVERY node. *)
-  (* ---- WAS HYPOTHESIS 3 (RELAY 4); NOW A LEMMA ----------------------- *)
-  (* Lane WRITE-RELAY-2 put BOTH of the arm's reasons on the node: the
-     disturbed tail's ([SysWriteDefs.wr_fail_why], out of
-     [SpecEitherCopyin]) and the single-block all-or-nothing
-     ([SpecWritei.wi16_atomic]).  At a source run every byte of which is
-     readable-mapped -- which is [UkRunSys.usrc_ok]'s SECOND conjunct, the
-     write leaf's own row -- and a chunk that cannot straddle a block
-     boundary, the arm is vacuous ([FsAbsWriteFire.awrite_part_at_mapped_single]).
-     The straddle premise is the DEED's: it knows [off] is the content's
-     length and the content is a line's worth
-     ([FileDeltas.f_bytes_typed_short], [EchoDisc.line_max] = 100 < BSIZE). *)
-  Lemma ef_relay4 (γfs : fs_names) (i : Z) (γo : gname) (M : gmap Z (bv 8))
-      (pmv : gmap (mword 27) uperm) (sz : Z) (P : uptd)
-      (ua : mword 64) (nb : nat) (f : nat -> bv 8)
-      (n : Z) (k : nat) (REST : iProp Σ) :
-    usrc_ok M pmv sz ua nb f ->
-    ProcPtOwn.proc_pt_wf P ->
-    perm_of (ud_um P) sz = pmv ->
-    lazy_free (ud_um P) sz ->
-    (Z.to_nat n <= nb)%nat ->
-    (forall (I : gmap Z fs_node) (off : nat) (bs bs0 : list (bv 8)) (nl : nat),
-       wri_pre (abs_view I) i off bs bs0 nl ->
-       wi_blocks off (Z.to_nat (wchunk_at n k)) = 1%nat) ->
-    ⊢ awrite_part_at (fs_gamma_L γfs) appE i γo M ua P n k REST.
-  Proof using .
-    intros Hsrc Hwf Hpm Hlf Hnb Hsb.
-    assert (Hmap : forall j : nat, (j < Z.to_nat n)%nat ->
-              uva_rmapped P (uint (add_vec_int ua (Z.of_nat j)))).
-    { intros j Hj. exact (proj2 Hsrc P j Hwf Hpm Hlf ltac:(lia)). }
-    iApply (awrite_part_at_mapped_single (fs_gamma_L γfs) appE i γo M ua P n k
-              REST Hmap Hsb).
-  Qed.
+  (* [ef_relay4] -- the partial arm made vacuous from a PURE single-block
+     row over every abstract view -- is GONE (the PROGRAM STREAM, stretch
+     9): that row is false as stated, so the lemma could only be applied
+     vacuously.  The arm is [FileWritePart.file_awrite_part_adv], built
+     from the cursor at [ef_chain]'s one node. *)
 
   (* =================================================================== *)
   (*  S3  THE TWO LEDGER-SLOT PIECES THE ENGINE OWES (review SSC1.4, D7)   *)
@@ -517,12 +482,12 @@ Section UEchoFile.
     lazy_free (ud_um P) sz ->
     n = Z.of_nat nb ->
     (0 < nb)%nat -> (Z.of_nat nb <= FW_MAX)%Z ->
-    (* the single-block row, the DEED's ([FileDeltas.f_bytes_typed_short]
-       and [EchoDisc.line_max] = 100 < BSIZE).  AT THE ONE NODE THIS CHAIN
-       HAS: [wchunks n] is 1, so [kk] is 0 and the chunk is the count. *)
-    (forall (I : gmap Z fs_node) (off : nat) (bs bs0 : list (bv 8))
-            (nl : nat),
-       wri_pre (abs_view I) i off bs bs0 nl -> wi_blocks off nb = 1%nat) ->
+    (* THE CHUNK IS AT MOST A LINE.  It used to be a pure "single block"
+       row quantified over every abstract view, which nobody can supply
+       (a long file at [i] refutes it); the partial arm is built from the
+       CURSOR instead ([FileWritePart.file_awrite_part_adv]), which agrees
+       the fire's offset to the content's length and needs only this. *)
+    (nb <= EchoDisc.line_max)%nat ->
     (jx < length (echo_chunks ws))%nat ->
     Forall (fun q => (q < jx)%nat) sel ->
     (* the writer's own two rows about its buffer, at the ONE node *)
@@ -553,17 +518,22 @@ Section UEchoFile.
                     = wchunk_at n 0%nat)
       by (rewrite Hw0 Hlenb; lia).
     iIntros "#Hbr #Hinv Hq". rewrite Hone.
-    iApply (awrite_chain_adv_mapped_single (fs_gamma_L fsc_fs) appE i γo M ua
-              P n (efcur i γo ws sel jx) 0%nat 1%nat Hmap).
-    { intros I off bs bs0 nl kk Hkk Hpre.
-      assert (Hk0 : kk = 0%nat) by lia. subst kk.
-      rewrite Hw0. rewrite Hn Nat2Z.id. exact (Hsb I off bs bs0 nl Hpre). }
-    cbn [awrite_fchain_adv efcur]. iSplit.
+    cbn [awrite_chain_adv efcur]. iSplit.
     - (* THE CURSOR AT NODE 0: the chain's own entry, at [sel] *)
       iExact "Hq".
-    - (* THE ONE NODE, and what it leaves IS the chain's cursor at node 1 *)
-      iApply (ef_node i γo ws sel jx M ua n 0%nat Hjx Hlt Hi1 Hi2 Hi3 Hi4
-                Hby0 Hlen0 with "Hbr Hinv Hq").
+    - iSplit.
+      + (* THE ONE NODE, and what it leaves IS the chain's cursor at node 1 *)
+        iApply (ef_node i γo ws sel jx M ua n 0%nat Hjx Hlt Hi1 Hi2 Hi3 Hi4
+                  Hby0 Hlen0 with "Hbr Hinv Hq").
+      + (* THE PARTIAL ARM, FROM THE SAME CURSOR: refuted where the cursor
+           is fired (the offset is the content's length, a line's worth),
+           paid where it is tainted *)
+        rewrite /efq.
+        iApply (file_awrite_part_adv fsc_fs c r i ws sel (sel ++ [jx]) γo M ua
+                  P n 0%nat Heq Hmap
+                  ltac:(rewrite Hw0 Hn Nat2Z.id; exact Hnb0)
+                  ltac:(rewrite Hw0 Hn Nat2Z.id; exact Hsb)
+                  with "Hbr Hq").
   Qed.
 
   (* =================================================================== *)
@@ -590,10 +560,12 @@ Section UEchoFile.
     (jx < length (echo_chunks ws))%nat ->
     (b <= jx)%nat ->
     echo_chunks ws !!! jx = (fun j => fb j) <$> seq 0 nb ->
-    (* the DEED's single-block row, [ef_chain]'s (see there) *)
-    (forall (I : gmap Z fs_node) (off : nat) (bs bs0 : list (bv 8))
-            (nl : nat),
-       wri_pre (abs_view I) i off bs bs0 nl -> wi_blocks off nb = 1%nat) ->
+    (* THE CHUNK IS AT MOST A LINE.  It used to be a pure "single block"
+       row quantified over every abstract view, which nobody can supply
+       (a long file at [i] refutes it); the partial arm is built from the
+       CURSOR instead ([FileWritePart.file_awrite_part_adv]), which agrees
+       the fire's offset to the content's length and needs only this. *)
+    (nb <= EchoDisc.line_max)%nat ->
     i <> INIT_INO -> i <> SH_INO -> i <> ECHO_INO -> i <> CAT_INO ->
     □ (app_taint -∗ file_taint c) -∗
     app_inv fsc_fs -∗
@@ -738,9 +710,6 @@ Section UEchoFile.
     (b <= jx)%nat ->
     echo_chunks ws !!! jx = [bt] ->
     0 <= ua < 2 ^ 38 ->
-    (forall (I : gmap Z fs_node) (off : nat) (bs bs0 : list (bv 8))
-            (nl : nat),
-       wri_pre (abs_view I) i off bs bs0 nl -> wi_blocks off 1%nat = 1%nat) ->
     i <> INIT_INO -> i <> SH_INO -> i <> ECHO_INO -> i <> CAT_INO ->
     □ (app_taint -∗ file_taint c) -∗
     app_inv fsc_fs -∗
@@ -749,7 +718,7 @@ Section UEchoFile.
       (UserFd.ustd (ukn_fd N) l ∗ efany i γo ws b)
       (UserFd.ustd (ukn_fd N) l ∗ efany i γo ws (S jx)).
   Proof using Heq.
-    intros Hl1 Hjx Hb Hchunk Hrange Hsb Hi1 Hi2 Hi3 Hi4.
+    intros Hl1 Hjx Hb Hchunk Hrange Hi1 Hi2 Hi3 Hi4.
     change (2 ^ 38) with 274877906944 in Hrange.
     iIntros "#Hbr #Hinv #Hbt" (h m avail)
       "%Ha0 %Ha1 %Ha2 #Hcode [Hstd Hq] Hrun Hcont".
@@ -854,7 +823,7 @@ Section UEchoFile.
       iApply (ef_chain i γo ws sel jx M pm sz P (m !!! Regidx a1_idx) 1%nat
                 (fun _ => bt) (Z.of_nat 1%nat) Hsrc Hwf Hpm (Hlf eq_refl)
                 eq_refl ltac:(lia) ltac:(cbn; unfold FW_MAX; lia)
-                Hsb Hjx Hlt Hby Hlenb
+                ltac:(unfold EchoDisc.line_max; lia) Hjx Hlt Hby Hlenb
                 Hi1 Hi2 Hi3 Hi4 with "Hbr Hinv Hq"). }
   Qed.
 
@@ -957,21 +926,6 @@ Section UEchoFile.
   (*  index advances with it, so argument [q] is chunk [2*(q-1)] and the    *)
   (*  separator after it chunk [2*(q-1)+1] ([FileState.echo_args_chunks]). *)
   (* =================================================================== *)
-  (* THE SINGLE-BLOCK ARITHMETIC: a run that starts inside a block and
-     ends inside it touches that one block.  [BSIZE] is 1024 and
-     [EchoDisc.line_max] is 100, so every chunk echo writes qualifies as
-     soon as the deed's own offset does. *)
-  Local Lemma ef_single_block (off n : nat) :
-    (0 < n)%nat -> (off `mod` BSIZE + n < BSIZE)%nat ->
-    wi_blocks off n = 1%nat.
-  Proof using .
-    intros Hn Hfit. rewrite /wi_blocks. unfold BSIZE in *.
-    replace (off `mod` 1024 + n + 1024 - 1)%nat
-      with (1 * 1024 + (off `mod` 1024 + n - 1))%nat by lia.
-    rewrite Nat.div_add_l; [| lia].
-    rewrite (Nat.div_small (off `mod` 1024 + n - 1)%nat 1024 ltac:(lia)). lia.
-  Qed.
-
   (* THE CHAIN, BY INDUCTION OVER THE ARGUMENTS ([UEchoOut]'s
      [kecho_pay_of_link_from_at] one file over).  echo writes [argv[ix]],
      then a separator or the closing newline depending on whether another
@@ -985,15 +939,6 @@ Section UEchoFile.
     EchoDisc.line_ok ws ->
     UEchoOut.echo_out_argv ws args ->
     l !! 1%nat = Some (FdOpen rb true (FdInode i γo OffHeld)) ->
-    (* THE DEED'S OFFSET ROW: every fire on [f] happens where a whole
-       line still fits in the block it starts in.  [f]'s content is a
-       line's worth ([FileDeltas.f_bytes_typed_short]) and
-       [EchoDisc.line_max] = 100 < [BSIZE] = 1024, so this is the deed's
-       to supply; it is a premise here because the node takes it as one. *)
-    (forall (I : gmap Z fs_node) (off : nat) (bs bs0 : list (bv 8))
-            (nl : nat),
-       wri_pre (abs_view I) i off bs bs0 nl ->
-       (off `mod` BSIZE + EchoDisc.line_max < BSIZE)%nat) ->
     i <> INIT_INO -> i <> SH_INO -> i <> ECHO_INO -> i <> CAT_INO ->
     forall k ix : nat,
       (1 <= ix)%nat -> (ix + k)%nat = (length ws - 1)%nat ->
@@ -1007,7 +952,7 @@ Section UEchoFile.
         (UserFd.ustd (ukn_fd N) l ∗ efany i γo ws (2 * (ix - 1))%nat)
         (ukn_pay N (-1)).
   Proof using Heq.
-    intros Hline Hargv Hl1 Hstr Hi1 Hi2 Hi3 Hi4.
+    intros Hline Hargv Hl1 Hi1 Hi2 Hi3 Hi4.
     pose proof Hargv as (Hlen & Hargs).
     pose proof (EchoDisc.line_ok_wf ws Hline) as Hwf.
     pose proof (EchoDisc.line_ok_len ws Hline) as Hlmax.
@@ -1041,25 +986,8 @@ Section UEchoFile.
          by (rewrite Hclen; lia));
       (assert (Hjb : (2 * (ix - 1) + 1 < length (echo_chunks ws))%nat)
          by (rewrite Hclen; lia));
-      (* the deed's single-block row, at the two counts this step uses *)
-      (assert (Hsbw : forall (I : gmap Z fs_node) (off : nat)
-                             (bs bs0 : list (bv 8)) (nl : nat),
-                 wri_pre (abs_view I) i off bs bs0 nl ->
-                 wi_blocks off (ua_len g) = 1%nat)
-         by (intros I off bs bs0 nl Hpre;
-             apply ef_single_block;
-             [ lia
-             | pose proof (Hstr I off bs bs0 nl Hpre);
-               unfold EchoDisc.line_max in *; lia ]));
-      (assert (Hsbb : forall (I : gmap Z fs_node) (off : nat)
-                             (bs bs0 : list (bv 8)) (nl : nat),
-                 wri_pre (abs_view I) i off bs bs0 nl ->
-                 wi_blocks off 1%nat = 1%nat)
-         by (intros I off bs bs0 nl Hpre;
-             apply ef_single_block;
-             [ lia
-             | pose proof (Hstr I off bs bs0 nl Hpre);
-               unfold EchoDisc.line_max in *; lia ]));
+      (assert (Hgshort : (ua_len g <= EchoDisc.line_max)%nat)
+         by (rewrite Hglw; lia));
       iDestruct (uargv_acc (ukn_d N) av args ix g Hg with "Hargv")
         as "[[_ (_ & _ & #Hbs & _)] _]".
     - (* THE LAST ARGUMENT: its bytes, then the newline, which ends the
@@ -1078,7 +1006,7 @@ Section UEchoFile.
                         change (2 ^ 31)%Z with 2147483648%Z; lia)
                   Hjw ltac:(lia)
                   ltac:(rewrite Hcw Hbytes; reflexivity)
-                  Hsbw Hi1 Hi2 Hi3 Hi4 with "Hbr Hinv Hbs"). }
+                  Hgshort Hi1 Hi2 Hi3 Hi4 with "Hbr Hinv Hbs"). }
       iApply (kecho_w_mono (SG := uexecSG_xv6) (PS := uprogSG_free) N (mword_of_int UkEcho.echo_nl_ptr) 1%nat
                 (UserFd.ustd (ukn_fd N) l
                  ∗ efany i γo ws (S (2 * (ix - 1)))%nat)
@@ -1093,7 +1021,7 @@ Section UEchoFile.
                 ltac:(exact (ef_chunk_nl ws ix Hix Hlast))
                 ltac:(unfold UkEcho.echo_nl_ptr;
                       change (2 ^ 38)%Z with 274877906944%Z; lia)
-                Hsbb Hi1 Hi2 Hi3 Hi4 with "Hbr Hinv [Hro]").
+                Hi1 Hi2 Hi3 Hi4 with "Hbr Hinv [Hro]").
       iApply (UEchoOut.echo_rodata_byte (ukn_t N) UkEcho.echo_nl_ptr wl_nl
                 UEchoOut.echo_nl_ro with "Hro").
     - (* ...AND ANOTHER FOLLOWS: its bytes, then the separator, and the
@@ -1112,7 +1040,7 @@ Section UEchoFile.
                         change (2 ^ 31)%Z with 2147483648%Z; lia)
                   Hjw ltac:(lia)
                   ltac:(rewrite Hcw Hbytes; reflexivity)
-                  Hsbw Hi1 Hi2 Hi3 Hi4 with "Hbr Hinv Hbs"). }
+                  Hgshort Hi1 Hi2 Hi3 Hi4 with "Hbr Hinv Hbs"). }
       iSplitR "HWq".
       { iApply (kecho_w_mono (SG := uexecSG_xv6) (PS := uprogSG_free) N (mword_of_int UkEcho.echo_sep_ptr) 1%nat
                   (UserFd.ustd (ukn_fd N) l
@@ -1130,7 +1058,7 @@ Section UEchoFile.
                   ltac:(exact (ef_chunk_sep ws ix Hix Hnext))
                   ltac:(unfold UkEcho.echo_sep_ptr;
                         change (2 ^ 38)%Z with 274877906944%Z; lia)
-                  Hsbb Hi1 Hi2 Hi3 Hi4 with "Hbr Hinv [Hro]").
+                  Hi1 Hi2 Hi3 Hi4 with "Hbr Hinv [Hro]").
         iApply (UEchoOut.echo_rodata_byte (ukn_t N) UkEcho.echo_sep_ptr wl_sp
                   UEchoOut.echo_sep_ro with "Hro"). }
       iApply (IH (S ix) ltac:(lia) ltac:(lia)
@@ -1143,10 +1071,6 @@ Section UEchoFile.
     EchoDisc.line_ok ws ->
     UEchoOut.echo_out_argv ws args ->
     l !! 1%nat = Some (FdOpen rb true (FdInode i γo OffHeld)) ->
-    (forall (I : gmap Z fs_node) (off : nat) (bs bs0 : list (bv 8))
-            (nl : nat),
-       wri_pre (abs_view I) i off bs bs0 nl ->
-       (off `mod` BSIZE + EchoDisc.line_max < BSIZE)%nat) ->
     i <> INIT_INO -> i <> SH_INO -> i <> ECHO_INO -> i <> CAT_INO ->
     □ (ef_exit i γo ws -∗ ukn_pay N (-1)) -∗
     □ (app_taint -∗ file_taint c) -∗
@@ -1158,7 +1082,7 @@ Section UEchoFile.
       (UserFd.ustd (ukn_fd N) l ∗ efany i γo ws 0%nat)
       (ukn_pay N (-1)).
   Proof using Heq.
-    intros Hline Hargv Hl1 Hstr Hi1 Hi2 Hi3 Hi4.
+    intros Hline Hargv Hl1 Hi1 Hi2 Hi3 Hi4.
     pose proof Hargv as (Hlen & _).
     pose proof (EchoDisc.line_ok_ge2 ws Hline) as Hws2.
     iIntros "#Hq #Hbr HWq #Hinv #Hro #Hargv".
@@ -1169,7 +1093,7 @@ Section UEchoFile.
       iFrame "HWq". iDestruct "Hc" as (sel) "[_ Hc]". by iExists sel.
     - iIntros "_".
       (* the recursion starts at argument 1, whose word is chunk 0 *)
-      pose proof (ef_pay_from N i γo l rb ws av args Hline Hargv Hl1 Hstr
+      pose proof (ef_pay_from N i γo l rb ws av args Hline Hargv Hl1
                     Hi1 Hi2 Hi3 Hi4 (length args - 2)%nat 1%nat
                     ltac:(lia) ltac:(lia)) as Hfrom.
       assert (Hz : (2 * (1 - 1))%nat = 0%nat) by lia.
@@ -1197,11 +1121,6 @@ Section UEchoFile.
        [FdOpen rb true (FdDevice CONSOLE)]. *)
     take NSTD (uvis_fd W) !! 1%nat
       = Some (FdOpen rb true (FdInode i γo OffHeld)) ->
-    (* THE DEED'S OFFSET ROW ([ef_pay_from]'s; see there) *)
-    (forall (I : gmap Z fs_node) (off : nat) (bs bs0 : list (bv 8))
-            (nl : nat),
-       wri_pre (abs_view I) i off bs bs0 nl ->
-       (off `mod` BSIZE + EchoDisc.line_max < BSIZE)%nat) ->
     tf_resume_pc (uvis_tf W) = (mword_of_int EchoSyms.start : mword 64) ->
     echo_text_sub (uvis_M W) ->
     echo_data_sub (uvis_M W) ->
@@ -1240,7 +1159,7 @@ Section UEchoFile.
     efq i γo ws [] -∗
     uslot W.
   Proof using Heq ghost_varG0 ghost_varG1 ufdG0.
-    intros HQc Hline Hargv1 Hl1 Hstr Hpc Hsub Hsub2 Hx Hroom Hal8 Hstk Hargs
+    intros HQc Hline Hargv1 Hl1 Hpc Hsub Hsub2 Hx Hroom Hal8 Hstk Hargs
            Havd Havs Hfdlen Hstop Hlzf Hi1 Hi2 Hi3 Hi4.
     iIntros "#Hq #Hbr #Hinv #Hnpw #Hdep Hpay HWq Hc".
     assert (Hsp0 : 0 <= uint (uvis_sp W)) by lia.
@@ -1265,7 +1184,7 @@ Section UEchoFile.
               with "[HWq] [] [] [Hstd Hc] Hrun").
     { iApply (ef_pay_all N i γo (take NSTD (uvis_fd W)) rb ws (uvis_av W)
                 (echo_args (uvis_M W) (uvis_av W) (Z.to_nat (uvis_argc W)))
-                Hline Hargv1 Hl1 Hstr Hi1 Hi2 Hi3 Hi4
+                Hline Hargv1 Hl1 Hi1 Hi2 Hi3 Hi4
                 with "[] Hbr HWq Hinv [] []").
       { rewrite Hpayeq. iExact "Hq". }
       - iApply (echo_rodata_of_text (ukn_t N) (uvis_M W) (uvis_perm W)
@@ -1323,11 +1242,6 @@ Section UEchoFile.
        own table, which is the child's after [close(1); open(f, 0x601)] --
        and the row is HELD since lane KERNEL-STREAM's L4. *)
     take NSTD sts !! 1%nat = Some (FdOpen rb true (FdInode i γo OffHeld)) ->
-    (* THE DEED'S OFFSET ROW ([ef_pay_from]'s; see there) *)
-    (forall (I : gmap Z fs_node) (off : nat) (bs bs0 : list (bv 8))
-            (nl : nat),
-       wri_pre (abs_view I) i off bs bs0 nl ->
-       (off `mod` BSIZE + EchoDisc.line_max < BSIZE)%nat) ->
     i <> INIT_INO -> i <> SH_INO -> i <> ECHO_INO -> i <> CAT_INO ->
     □ (ef_exit i γo ws -∗ Q (-1)) -∗
     □ (app_taint -∗ file_taint c) -∗
@@ -1337,7 +1251,7 @@ Section UEchoFile.
     image_entry ElfUser.echo_elf M (mword_of_int (t + 8) : mword 64) sts
       cw cs pidv Q (ef_pay i γo ws) uslot.
   Proof using Heq ghost_varG0 ghost_varG1 ufdG0.
-    intros HQc Hline Himg Hbytes Hfdl Hl1 Hstr Hi1 Hi2 Hi3 Hi4.
+    intros HQc Hline Himg Hbytes Hfdl Hl1 Hi1 Hi2 Hi3 Hi4.
     iIntros "#Hq #Hbr #Hinv #Hnpw #Hdep".
     iApply image_entry_of_at. iIntros "!>" (na alen afun) "%Hargs".
     destruct (UShEcho.echo_args_det_holds ws Hline M s0 t g na alen afun
@@ -1362,7 +1276,7 @@ Section UEchoFile.
       [ rewrite Hfd; iExact "Hnpw" | ].
     iDestruct "HPay" as "[HWq Hc]".
     iApply (efile_uexec_slot_at W' i γo rb ws Q HQc Hline Hargv
-              ltac:(rewrite Hfd; exact Hl1) Hstr Hpc Hsub Hsub2 Hx
+              ltac:(rewrite Hfd; exact Hl1) Hpc Hsub Hsub2 Hx
               Hroom96 Hal8 Hstkrow Hargsrow Havd Havs Hfdlen Hstop Hlzf
               Hi1 Hi2 Hi3 Hi4
               with "Hq Hbr Hinv Hnpw' Hdep Hmp HWq Hc").

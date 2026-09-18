@@ -1248,3 +1248,34 @@ the exits' fold (`lk_blk FI _ v I a (len-2)` beside the deed at
 `AppFileCons.file_cons_shoot`), the taint's generic run
 (`UkRun.urun_gen` at `sh_echo_slot`'s third conjunct), and the statement at
 `UkShRedirBody.sh_redir_child_law Wcf` (UShRound's local twin is stale).
+
+### A THIRD STATEMENT DEFECT, MEASURED: the fork slot's `last_ws I = ws` is FALSE at every redirect line, so `sh_redir_child_law` is VACUOUS as stated
+
+Computed on the VM (`vm_compute`, `ws0 := wl_words "echo a"`):
+`length (wl_words (line_body (LEchoF ws0))) = 4` while
+`uline_ws (uline_of (line_body (LEchoF ws0))) = ws0`, length 2 — the body's
+words include `>` and `f`, the typed line's do not.  Therefore:
+
+* `FileReadInst.file_disc_line`'s hypothesis
+  `Hws : ∀ J, fbody_ok J → uline_ws (uline_of J) = wl_words J` is FALSE at
+  `LEchoF` (its header says it holds there; it holds at `LEcho` and `LCat`
+  only — `uline_ws LCat = wl_words cmd_cat_f`).
+* `UkSh.ush_posw l ws` says `last_ws I = ws`, and the loop produces it at
+  `ws := uline_ws lu` (`ush_gets_done_line_at`'s premise
+  `uline_ws lu = wl_words J`) — unprovable at a redirect line, so the file
+  era's loop can only reach the fork TAINTED there.
+* `UkShRedirBody.sh_redir_child_law` takes BOTH
+  `ushs_line_is ws file fb 0 len` (which needs `line_ok ws`, no `>`) AND
+  `ws = last_ws I` (four words, one of them `>`): contradictory premises.
+  `UkShRedirLine.ushs_line_is_nosym` is the lemma that says so.
+
+THE FIX (a ruling is needed; it moves a GENERIC sh statement): the slot's
+index is the TYPED line's words — `FileDisc.uline_ws (FileDisc.uline_of
+(ush_lastbody I)) = ws` — not the body's.  At an `LEcho` line the two agree
+(`FileDisc.fbody_ok_echo`), so echo's consumers bridge with one lemma;
+`ush_gets_done_line_at`'s premise becomes `lu = uline_of J` (which
+`FileDisc.fbody_ok_line` gives at all three constructors, and `Hws` dies);
+`UkShFork.ushf_child_law_at`'s `⌜ws = last_ws I⌝` moves with it, and the
+redirect child then knows `fline I = LEchoF ws` outright (which 2d's PEND /
+DONE exits need, and which today it could not learn).  Until then neither
+`Hchild_redir` nor item 5's dispatch says anything at a redirect line.

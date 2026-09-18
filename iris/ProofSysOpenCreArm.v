@@ -88,6 +88,7 @@ Require Import SysMknodDefs.
 Require Import ArgPath.         (* [arg_path_of]: the reading of trapframe
                                    argument 0, which the walk is at *)
 Require Import SysOpenDefs.
+Require Import UserOff.     (* [foff_pub]: what the publish hands the caller *)
 Require Import SpecSysOpen.   (* the arms this block builds *)
 Require Import FsAbsCreateFire.   (* [acre_commit_at], [dlookup_commit_at]   *)
 Require Import AppInv.          (* [appN]/[appE]: the application's namespace, the commit mask (app-instances.md round A) *)
@@ -458,12 +459,13 @@ Section ProofSysOpenCreArm.
      pure observation receipt is what identifies the bytes it is at with
      the [bs] the create arm named. *)
   Lemma socr_ok_fresh_arm `{GEN : GenId}
+      (omo : offmode)
       (R : iProp Σ) (i0 : Z) (bs : list (bv 8)) (nl0 : nat)
       (Phit : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ))
       (gf : gname) (pj : mword 64) (pidv : mword 32)
       (Mim : gmap Z (bv 8)) (pvv vom : mword 64)
       (U : ustate) (sts : list fdstate) (r : mword 64) :
-    open_post_ok_plain (fs_gamma_L fsc_fs) gf pj pidv Mim pvv vom
+    open_post_ok_plain omo (fs_gamma_L fsc_fs) gf pj pidv Mim pvv vom
       (socr_P R i0) (socr_Phio_pure i0 (MkAnode (AFile bs) nl0))
       Phit sts U r
     ⊢ R
@@ -474,7 +476,7 @@ Section ProofSysOpenCreArm.
          else emp)
       ∗ ∃ γo : gname,
             open_fd_ok gf pj pidv U (om_readable vom) (om_writable vom)
-              (FdInode i0 γo OffParked) sts r.
+              (FdInode i0 γo omo) sts r ∗ foff_pub omo γo.
   Proof using .
     rewrite /open_post_ok_plain /socr_P /socr_Phio_pure.
     cbn [pf_recv pf_refund].
@@ -499,6 +501,7 @@ Section ProofSysOpenCreArm.
      an [ADir]; the other two arms ARE [open_post_ok_create]'s EXISTS
      sub-arms, verbatim. *)
   Lemma socr_ok_exists_arm `{GEN : GenId}
+      (omo : offmode)
       (R : iProp Σ) (i0 : Z) (a0 : anode)
       (Phio : pfam Σ (aview -> Z -> anode -> iProp Σ))
       (Phit : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ))
@@ -506,7 +509,7 @@ Section ProofSysOpenCreArm.
       (Mim : gmap Z (bv 8)) (pvv vom : mword 64)
       (U : ustate) (sts : list fdstate) (r : mword 64) :
     (forall (ents : gmap fname Z) (nl : nat), a0 <> MkAnode (ADir ents) nl) ->
-    open_post_ok_plain (fs_gamma_L fsc_fs) gf pj pidv Mim pvv vom
+    open_post_ok_plain omo (fs_gamma_L fsc_fs) gf pj pidv Mim pvv vom
       (socr_P R i0) (socr_Phio_tag i0 a0 Phio) Phit sts U r
     ⊢ R ∗ ∃ (av : aview) (nl : nat),
         ((∃ bs0 : list (bv 8),
@@ -519,7 +522,7 @@ Section ProofSysOpenCreArm.
              else emp) ∗
             ∃ γo : gname,
               open_fd_ok gf pj pidv U (om_readable vom) (om_writable vom)
-                (FdInode i0 γo OffParked) sts r)
+                (FdInode i0 γo omo) sts r ∗ foff_pub omo γo)
          ∨ (∃ ma mi : Z,
               ⌜arow_at av i0 (MkAnode (ADev ma mi) nl)⌝ ∗
               ⌜0 <= ma <= NDEV_max⌝ ∗
@@ -550,6 +553,7 @@ Section ProofSysOpenCreArm.
   (* ================================================================== *)
 
   Lemma socr_arms_fresh `{GEN : GenId}
+      (omo : offmode)
       (gf : gname) (pj : mword 64) (pidv : mword 32)
       (Mim : gmap Z (bv 8)) (pvv vom : mword 64)
       (P Pmiss : nat -> Z -> iProp Σ)
@@ -560,13 +564,13 @@ Section ProofSysOpenCreArm.
       (U : ustate) (sts : list fdstate) (r : mword 64) (pl : list (bv 8)) (i0 : Z)
       (nl0 : nat) :
     arg_path_of Mim pvv pl ->
-    open_arms_plain (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) gf pj pidv
+    open_arms_plain omo (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) gf pj pidv
       Mim pvv vom
       (socr_P (socr_fresh vom P Phiarm Phiun Phiok Phiex Phio pl i0) i0)
       (socr_Pm (socr_fresh vom P Phiarm Phiun Phiok Phiex Phio pl i0))
       (socr_Phio_pure i0 (MkAnode (AFile []) nl0))
       (socr_ft pl P Phiarm Phiok Phiex i0 Phit) sts U r
-    ={⊤}=∗ open_arms_create (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) gf pj pidv
+    ={⊤}=∗ open_arms_create omo (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) gf pj pidv
              Mim pvv vom
              P Pmiss Phiarm Phiun Phiok Phiex Phio Phit sts U r.
   Proof using .
@@ -605,6 +609,7 @@ Section ProofSysOpenCreArm.
   Qed.
 
   Lemma socr_arms_exists `{GEN : GenId}
+      (omo : offmode)
       (gf : gname) (pj : mword 64) (pidv : mword 32)
       (Mim : gmap Z (bv 8)) (pvv vom : mword 64)
       (P Pmiss : nat -> Z -> iProp Σ)
@@ -615,13 +620,13 @@ Section ProofSysOpenCreArm.
       (U : ustate) (sts : list fdstate) (r : mword 64) (pl : list (bv 8)) (i0 : Z) (a0 : anode) :
     arg_path_of Mim pvv pl ->
     (forall (ents : gmap fname Z) (nl : nat), a0 <> MkAnode (ADir ents) nl) ->
-    open_arms_plain (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) gf pj pidv
+    open_arms_plain omo (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) gf pj pidv
       Mim pvv vom
       (socr_P (socr_exists vom P Phiarm Phiun Phiok Phiex pl i0) i0)
       (socr_Pm (socr_exists vom P Phiarm Phiun Phiok Phiex pl i0))
       (socr_Phio_tag i0 a0 Phio)
       (socr_ft_ex pl P Phiarm Phiex i0 Phit) sts U r
-    ={⊤}=∗ open_arms_create (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) gf pj pidv
+    ={⊤}=∗ open_arms_create omo (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) gf pj pidv
              Mim pvv vom
              P Pmiss Phiarm Phiun Phiok Phiex Phio Phit sts U r.
   Proof using .
@@ -661,7 +666,7 @@ Section ProofSysOpenCreArm.
         iDestruct "Hfired" as (ix avx ax) "(%Hax & [%Heq HP2])".
         destruct Heq as [Hix _]. subst ix.
         iExists avx, ax. iSplitR; [by iPureIntro |]. iExact "HP2".
-    - iDestruct (socr_ok_exists_arm (socr_exists vom P Phiarm Phiun Phiok Phiex pl i0)
+    - iDestruct (socr_ok_exists_arm omo (socr_exists vom P Phiarm Phiun Phiok Phiex pl i0)
                    i0 a0 Phio (socr_ft_ex pl P Phiarm Phiex i0 Phit)
                    gf pj pidv Mim pvv vom U sts r Hnd with "Hok")
         as "[HR Hrest]".

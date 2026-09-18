@@ -1279,6 +1279,76 @@ Proof.
     by rewrite app_nil_r.
 Qed.
 
+(* ...AND THE BYTES A WELL-FORMED WORD LIST CAME FROM (the PROGRAM
+   STREAM).  [wl_words_body] inverts [wl_body] on a well-formed word list;
+   this is the fact ABOUT THE INPUT that does not need the round trip: if
+   every word the parser found is alphanumeric then every byte it read was
+   alphanumeric or a blank, because a byte is either a blank or inside the
+   word it opened.  It is what refutes a REDIRECT body at an echo line --
+   the '>' is neither -- without knowing that the body rebuilds itself. *)
+Lemma wl_words_nil_inv (l : list (bv 8)) : wl_words l = [] -> l = [].
+Proof.
+  destruct l as [| b l']; [reflexivity |].
+  destruct (decide (b = wl_sp)) as [-> | Hb].
+  - rewrite wl_words_cons_sp. discriminate.
+  - destruct (wl_words l') as [| w r] eqn:Hws.
+    + rewrite (wl_words_cons_other_nil b l' Hb Hws). discriminate.
+    + rewrite (wl_words_cons_other_cons b l' w r Hb Hws). discriminate.
+Qed.
+
+Lemma wl_words_alnum_body (l : list (bv 8)) :
+  Forall (Forall wl_alnum) (wl_words l) -> Forall wl_body_byte l.
+Proof.
+  induction l as [| b l' IH]; intro H; [constructor |].
+  destruct (decide (b = wl_sp)) as [-> | Hb].
+  - rewrite wl_words_cons_sp in H.
+    destruct (Forall_cons_1 _ _ _ H) as [_ H'].
+    constructor; [ by right | exact (IH H') ].
+  - destruct (wl_words l') as [| w r] eqn:Hws.
+    + rewrite (wl_words_cons_other_nil b l' Hb Hws) in H.
+      destruct (Forall_cons_1 _ _ _ H) as [Hbw _].
+      destruct (Forall_cons_1 _ _ _ Hbw) as [Hba _].
+      rewrite (wl_words_nil_inv l' Hws).
+      constructor; [ by left | constructor ].
+    + rewrite (wl_words_cons_other_cons b l' w r Hb Hws) in H.
+      destruct (Forall_cons_1 _ _ _ H) as [Hbw Hr].
+      destruct (Forall_cons_1 _ _ _ Hbw) as [Hba Hw].
+      constructor; [ by left | apply IH; rewrite ?Hws; by constructor ].
+Qed.
+
+Lemma wl_wf_alnum (ws : list (list (bv 8))) :
+  wl_wf ws -> Forall (Forall wl_alnum) ws.
+Proof.
+  rewrite /wl_wf. intro H.
+  induction H as [| w r Hw _ IH]; constructor;
+    [ exact (proj2 Hw) | exact IH ].
+Qed.
+
+(* THE INPUT'S LAST BODY, at the index [FileLinksLine.fline] reads it at
+   (the PROGRAM STREAM).  [last_ws] says [default [] (last ...)]; an era
+   that types its own lines indexes the same body positionally, and these
+   are the same body. *)
+Lemma last_default_lookup_total (bs : list (list (bv 8))) :
+  default [] (last bs) = bs !!! (length bs - 1)%nat.
+Proof.
+  induction bs as [| b bs' IH] using rev_ind; [reflexivity |].
+  rewrite last_snoc length_app /=.
+  replace (length bs' + 1 - 1)%nat with (length bs') by lia.
+  rewrite lookup_total_app_r; [| lia].
+  by rewrite Nat.sub_diag.
+Qed.
+
+Lemma last_ws_lastbody (I : list (bv 8)) :
+  last_ws I = wl_words (bodies_of I !!! (nlines I - 1)%nat).
+Proof. by rewrite /last_ws /nlines last_default_lookup_total. Qed.
+
+Lemma lastbody_snoc_nl (I : list (bv 8)) :
+  bodies_of (I ++ [wl_nl]) !!! (nlines (I ++ [wl_nl]) - 1)%nat = rest_of I.
+Proof.
+  rewrite /nlines. rewrite <- last_default_lookup_total.
+  rewrite bodies_of_snoc_nl. rewrite last_snoc. reflexivity.
+Qed.
+
 (* the words the round that just closed typed *)
 Lemma last_ws_snoc_nl (I : list (bv 8)) :
   last_ws (I ++ [wl_nl]) = wl_words (rest_of I).

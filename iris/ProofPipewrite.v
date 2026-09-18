@@ -682,7 +682,7 @@ Section PwConts.
      cursor 0 this IS [pipe_wpay]. *)
   Definition pw_pay (γp : pipe_names) (M : gmap Z (bv 8)) (ua : mword 64)
       (Q : nat -> iProp Σ) (Qe : nat -> pipe_st -> iProp Σ) (k n : nat) : iProp Σ :=
-    (pipe_wchain (pn_queue γp) M ua Q Qe k (n - k) ∨ pipe_taint_cred)%I.
+    (pipe_wchain (pn_queue γp) M ua Q Qe k (n - k) ∨ app_taint)%I.
 
   Lemma pw_pay_0 (γp : pipe_names) M ua Q Qe n :
     pipe_wpay (pn_queue γp) M ua Q Qe n -∗ pw_pay γp M ua Q Qe 0 n.

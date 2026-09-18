@@ -401,11 +401,11 @@ Definition wp_kfork_sconf_body
      payload at -1, and the party that calls kill holds none of the
      target's resources -- so the child's killed row
      ([SchedCtx.kill_paid]'s live arm) publishes this wand and a TAINTED
-     killer cashes it with [RiscvPtsto.riscv_kill_cred].  allocproc founds
+     killer cashes it with [RiscvPtsto.app_taint].  allocproc founds
      the row, so the FORKING process is the party that must supply the
      wand: a verified parent proves it on its payload's taint arm, and the
      generic slot's [Q] is [fun _ => True]. *)
-  □ (riscv_kill_cred -∗ Q (-1)) -∗
+  □ (app_taint -∗ Q (-1)) -∗
   (* THE STEADY ARM OF [FirstTok.first_tok], and the ONE thing fork cannot
      take out of the parent's block: the parent's token may be the EXCLUSIVE
      boot arm, and the child needs a token of its own.  [first_done] is

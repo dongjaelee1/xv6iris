@@ -80,32 +80,6 @@ Section OffGv.
     iMod (ghost_var_update_halves z' with "H1 H2") as "[$ $]". done.
   Qed.
 
-  (* WHAT THE COMMIT HANDS BACK (lane WRITE-RELAY, for lane SKELETON's
-     [Hoff_link]).  [FsAbsWriteFire]'s two write nodes and
-     [FsAbsReadFire]'s read node used to return the kernel's half UNMOVED,
-     which is the only thing a node with no user half can do.  A node whose
-     CLOSURE holds the program's half ([uoff] -- design/app-file.md section
-     3, "THE OFFSET") holds BOTH inside the commit and must leave the cursor
-     at [off + d].  So the commit's contract now says WHICH of the two
-     values came back, and the fire closes on either; the GENERIC node is
-     unchanged, because [off_ret_keep] is exactly what it was already
-     proving.  There is no third value: a node that moved the half anywhere
-     else moved a ghost the client does not own at a key it cannot name. *)
-  Definition off_ret (γo : gname) (off d : nat) : iProp Σ :=
-    (∃ v : Z, off_gv γo (1/2) v
-       ∗ ⌜v = Z.of_nat off \/ v = Z.of_nat (off + d)⌝)%I.
-
-  (* the generic node's answer: the borrow, unmoved *)
-  Lemma off_ret_keep γo (off d : nat) :
-    off_gv γo (1/2) (Z.of_nat off) -∗ off_ret γo off d.
-  Proof using . iIntros "H". iExists (Z.of_nat off). iFrame "H". by iLeft. Qed.
-
-  (* ...and the LINKED node's: the cursor, advanced by what the fire moved *)
-  Lemma off_ret_adv γo (off d : nat) :
-    off_gv γo (1/2) (Z.of_nat (off + d)) -∗ off_ret γo off d.
-  Proof using .
-    iIntros "H". iExists (Z.of_nat (off + d)). iFrame "H". by iRight.
-  Qed.
 End OffGv.
 
 (* ==================================================================== *)
@@ -162,5 +136,101 @@ Section OffUser.
   Proof using .
     rewrite /off_permit. iIntros "#Hinv !>" (z z') "Hk".
     iApply (off_user_inv_move ⊤ γo z z' with "Hinv Hk"). solve_ndisj.
+  Qed.
+  (* ================================================================== *)
+  (*  THE COUPLING, OR THE TAINT (lane OFF-LINK's L3)                    *)
+  (* ================================================================== *)
+
+  (* design/pipe.md, "The coupling, or the taint"; design/app-file.md SS3
+     "THE OFFSET" and SS3.5.  This is what the file's off box holds
+     ([FileOffCell.off_resident]), what the nodes are LENT and what they
+     hand back ([off_ret] below), and what the fire's settle produces
+     ([UserOff.off_settle]): the kernel's half at the value the cell
+     holds, or -- once a fire has run at a HELD row with no link -- the
+     application's taint and NO GHOST AT ALL, permanently (a [ghost_var]
+     half cannot be re-minted at an existing name, the pipe's "no fresh
+     authority at an existing name").
+
+     IT LIVES HERE, below [UserOff], because [off_ret] is stated at it and
+     the three commit pieces take it as their LEND: a node at a
+     disconnected object has no half to be lent, and the generic node --
+     which frames the lend straight back -- cannot tell the difference.
+     That is the whole of why the box's arm is payable: lane OFF-LINK's
+     [vacuity_lend_not_taint] is the statement of what goes wrong without
+     it. *)
+  Definition off_link (γo : gname) (z : Z) : iProp Σ :=
+    (off_gv γo (1/2) z ∨ app_taint)%I.
+
+  Global Instance off_link_timeless γo z : Timeless (off_link γo z).
+  Proof using . rewrite /off_link. apply _. Qed.
+
+  (* the coupled arm, which is what a fire that MOVED the ghost hands back *)
+  Lemma off_link_of γo (z : Z) : off_gv γo (1/2) z -∗ off_link γo z.
+  Proof using . iIntros "H". by iLeft. Qed.
+
+  (* ...and the disconnect, which the GENERIC tier pays with the taint it
+     already holds ([UexecExecInst.xv6_ssupply]; the survey's Fact A). *)
+  Lemma off_link_taint γo (z : Z) : app_taint -∗ off_link γo z.
+  Proof using . iIntros "#H". by iRight. Qed.
+
+  (* WHAT THE COMMIT HANDS BACK (lane WRITE-RELAY, for lane SKELETON's
+     [Hoff_link]).  [FsAbsWriteFire]'s two write nodes and
+     [FsAbsReadFire]'s read node used to return the kernel's half UNMOVED,
+     which is the only thing a node with no user half can do.  A node whose
+     CLOSURE holds the program's half ([uoff] -- design/app-file.md section
+     3, "THE OFFSET") holds BOTH inside the commit and must leave the cursor
+     at [off + d].  So the commit's contract now says WHICH of the two
+     values came back, and the fire closes on either; the GENERIC node is
+     unchanged, because [off_ret_keep] is exactly what it was already
+     proving.  There is no third value: a node that moved the half anywhere
+     else moved a ghost the client does not own at a key it cannot name. *)
+  Definition off_ret (γo : gname) (off d : nat) : iProp Σ :=
+    (∃ v : Z, off_link γo v
+       ∗ ⌜v = Z.of_nat off \/ v = Z.of_nat (off + d)⌝)%I.
+
+  (* the generic node's answer: the borrow, unmoved *)
+  Lemma off_ret_keep γo (off d : nat) :
+    off_gv γo (1/2) (Z.of_nat off) -∗ off_ret γo off d.
+  Proof using .
+    iIntros "H". iExists (Z.of_nat off).
+    iSplitL; [ by iApply off_link_of | by iLeft ].
+  Qed.
+
+  (* THE GENERIC NODE'S ANSWER, AT THE LEND ITSELF (lane OFF-LINK-2's L3):
+     a node that frames its borrow straight back proves this and nothing
+     else, whichever arm it was lent.  Every generic node in the tree is
+     this one line. *)
+  Lemma off_ret_of_link γo (off d : nat) :
+    off_link γo (Z.of_nat off) -∗ off_ret γo off d.
+  Proof using . iIntros "H". iExists (Z.of_nat off). iFrame "H". by iLeft. Qed.
+
+  (* ...and the DISCONNECTED node's, which is what a generic node that was
+     lent the taint hands back -- the lend IS the answer there. *)
+  Lemma off_ret_taint γo (off d : nat) : app_taint -∗ off_ret γo off d.
+  Proof using .
+    iIntros "#H". iExists (Z.of_nat off).
+    iSplitR; [ by iApply off_link_taint | by iLeft ].
+  Qed.
+
+  (* ...and the LINKED node's: the cursor, advanced by what the fire moved *)
+  Lemma off_ret_adv γo (off d : nat) :
+    off_gv γo (1/2) (Z.of_nat (off + d)) -∗ off_ret γo off d.
+  Proof using .
+    iIntros "H". iExists (Z.of_nat (off + d)).
+    iSplitL; [ by iApply off_link_of | by iRight ].
+  Qed.
+
+  (* THE FIRE'S CASE SPLIT: the node hands the half back UNMOVED -- and
+     then the fire's settle carries it to the box's arm -- or ADVANCED BY
+     THE CHUNK, which IS the box's arm and costs nothing; or the object is
+     already disconnected and the arm is the taint. *)
+  Lemma off_ret_case γo (off d : nat) :
+    off_ret γo off d -∗
+    off_gv γo (1/2) (Z.of_nat off) ∨ off_link γo (Z.of_nat (off + d)).
+  Proof using .
+    iIntros "H". iDestruct "H" as (v) "[Hk %Hv]".
+    destruct Hv as [-> | ->]; [| by iRight ].
+    iDestruct "Hk" as "[Hk | #Ht]"; [ by iLeft | ].
+    iRight. by iApply off_link_taint.
   Qed.
 End OffUser.

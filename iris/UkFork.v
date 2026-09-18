@@ -811,10 +811,8 @@ Section UkFork.
          opens [f] on slot 1 at a held offset (design/app-file.md SS3) --
          has no other place to say so.  A parent that means nothing by it
          passes [ukn_held N]. *)
-      (hs : gset nat)
       (P : gname -> gname -> gname -> iProp Σ) `{FP : !Forkable P} :
     usysno m = USYS_fork ->
-    ukn_held N ⊆ hs ->
     is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
     uinstr_is (ukn_t N) pc false (ECALL tt) -∗
     (* ...AND THE CHILD'S PAYLOAD ITSELF, at the kill status.  The parent
@@ -843,11 +841,11 @@ Section UkFork.
     UserChildren.uch (ukn_ch N) Sc -∗
     (* ...AND HOW A KILLER PAYS FOR THE CHILD (lane SELF-KILL, §4b'): the
        child's killed row publishes a wand from the application's TAINT
-       ([RiscvPtsto.riscv_kill_cred]) to the child's exit payload at -1 and
+       ([RiscvPtsto.app_taint]) to the child's exit payload at -1 and
        allocproc founds it, so the FORKING PROGRAM supplies it here.  At
        [Q := fun _ => True] -- what a program that wants nothing back
        passes -- it is free. *)
-    □ (riscv_kill_cred -∗ Q (-1)) -∗
+    □ (app_taint -∗ Q (-1)) -∗
     urun N h m pc avail -∗
     ((∀ (h' : CpuId) (r : mword 64),
         ⌜r <> (mword_of_int 0 : mword 64)⌝ -∗
@@ -896,7 +894,6 @@ Section UkFork.
      (∀ (N' : uk_names Σ) (h' : CpuId) (γ' : gname),
         (* THE CHILD'S HELD SET IS THE ONE THE PARENT CHOSE (lane
            OFF-HAND-4, S1), exactly as its payload is. *)
-        ⌜ ukn_held N' = hs ⌝ -∗
         (* THE CHILD LEARNS ITS OWN PAYLOAD: what its exit owes its parent,
            persistent, out of the generation the kernel minted for it
            ([ChildTok.my_pay]).  A child that pays nothing ignores it.
@@ -939,17 +936,15 @@ Section UkFork.
         WP (Loop : expr riscv_lang))) -∗
     WP (Loop : expr riscv_lang).
   Proof using .
-    intros Hn Hhsub Hal4. iIntros "#Hi HRc HP Hsz Hstd HD Hcwd Hchf #Hkw Hrun [Hpar Hchild]".
+    intros Hn Hal4. iIntros "#Hi HRc HP Hsz Hstd HD Hcwd Hchf #Hkw Hrun [Hpar Hchild]".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     (* THE CHILD'S ROW, AT THE PARENT'S TABLE: the pipe half is the
        parent's verbatim, and there is no offset half any more (lane
        OFF-HAND-6, H3). *)
     iAssert (urun_rows (MkUkNames (ukn_t N) (ukn_d N) (ukn_s N) (ukn_fd N)
-                          (ukn_cwd N) (ukn_ch N) (ukn_pay N) (ukn_pid N) hs) fdv)
+                          (ukn_cwd N) (ukn_ch N) (ukn_pay N) (ukn_pid N)) fdv)
       as "#Hnpc";
-      [ rewrite /urun_rows; iSplitR;
-        [ iApply (urun_rows_nopipe N fdv with "Hnpx")
-        | by iPureIntro ] | ].
+      [ rewrite /urun_rows; iApply (urun_rows_nopipe N fdv with "Hnpx") | ].
     (* the caller's half pins the key's working directory *)
     iDestruct (ucwd_agree with "Hcwda Hcwd") as %->.
     (* ...and its other half pins the key's children set, which is why the
@@ -1115,10 +1110,10 @@ Section UkFork.
          exit leaf able to pay what its parent will redeem. *)
       iApply ukcq_ukc.
       iDestruct (urun_ids_intro
-                   (MkUkNames γt' γd' γs' γfd' γc' γch' Q γpid' hs)
+                   (MkUkNames γt' γd' γs' γfd' γc' γch' Q γpid')
                    ∅ pidc with "Hcha' Hpida'") as "Hcha'".
       iApply (urun_close_upd
-                (MkUkNames γt' γd' γs' γfd' γc' γch' Q γpid' hs)
+                (MkUkNames γt' γd' γs' γfd' γc' γch' Q γpid')
                 M pm m
                 (mword_of_int 10)
                 (mword_of_int 0) sz fdv c g' ∅ pidc (add_vec_int pc 4) avail
@@ -1126,9 +1121,8 @@ Section UkFork.
                 with "Hheap' Hstk' Hufd' Hcwa' Hcha' Hmp Hdep Hnpc").
       iIntros (h') "Hrun".
       iApply ("Hchild" $!
-                (MkUkNames γt' γd' γs' γfd' γc' γch' Q γpid' hs) h' g'
-                with "[%] [%] Hmp HRc HP' Hsz' Hstd' Hfrag' Hcwf' Hchf' [Hpidf'] Hrun").
-      { reflexivity. }
+                (MkUkNames γt' γd' γs' γfd' γc' γch' Q γpid') h' g'
+                with "[%] Hmp HRc HP' Hsz' Hstd' Hfrag' Hcwf' Hchf' [Hpidf'] Hrun").
       { reflexivity. }
       iExists (bv_unsigned pidc). iSplitR; [| iExact "Hpidf'"].
       (* THE CHILD IS NOT <INIT>, unsigned: the kernel's fork answer says
@@ -1174,11 +1168,8 @@ Section UkFork.
       (pc : mword 64) (avail : nat) (szv : Z)
       (M0 : gmap Z (bv 8)) (pm0 : gmap (mword 27) uperm)
       (av : Z) (args : list uarg) (l : list fdstate) (D : gmap nat fdstate)
-      (c : Z) (Sc : gset gname) (Q : Z -> iProp Σ) (Rc : iProp Σ)
-      (* the child's held set, relayed -- see [wp_uk_ecall_fork] *)
-      (hs : gset nat) :
+      (c : Z) (Sc : gset gname) (Q : Z -> iProp Σ) (Rc : iProp Σ) :
     usysno m = USYS_fork ->
-    ukn_held N ⊆ hs ->
     is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
     uinstr_is (ukn_t N) pc false (ECALL tt) -∗
     (* the child's payload, relayed -- see [wp_uk_ecall_fork] *)
@@ -1197,11 +1188,11 @@ Section UkFork.
     UserChildren.uch (ukn_ch N) Sc -∗
     (* ...AND HOW A KILLER PAYS FOR THE CHILD (lane SELF-KILL, §4b'): the
        child's killed row publishes a wand from the application's TAINT
-       ([RiscvPtsto.riscv_kill_cred]) to the child's exit payload at -1 and
+       ([RiscvPtsto.app_taint]) to the child's exit payload at -1 and
        allocproc founds it, so the FORKING PROGRAM supplies it here.  At
        [Q := fun _ => True] -- what a program that wants nothing back
        passes -- it is free. *)
-    □ (riscv_kill_cred -∗ Q (-1)) -∗
+    □ (app_taint -∗ Q (-1)) -∗
     urun N h m pc avail -∗
     ((∀ (h' : CpuId) (r : mword 64),
         ⌜r <> (mword_of_int 0 : mword 64)⌝ -∗
@@ -1228,7 +1219,6 @@ Section UkFork.
         make this arm unprovable.) *)
      (∀ (N' : uk_names Σ) (h' : CpuId) (γ' : gname),
         (* the child's held set, relayed -- see [wp_uk_ecall_fork] *)
-        ⌜ ukn_held N' = hs ⌝ -∗
         ⌜ ukn_pay N' = Q ⌝ -∗
         my_pay γ' Q -∗
         Rc -∗
@@ -1255,19 +1245,18 @@ Section UkFork.
         WP (Loop : expr riscv_lang))) -∗
     WP (Loop : expr riscv_lang).
   Proof using .
-    intros Hn Hsub Hal4.
+    intros Hn Hal4.
     iIntros "#Hi HRc #Htext #Hargv Hsz Hstd HD Hcwd Hchf #Hkw Hrun [Hpar Hchild]".
-    iApply (wp_uk_ecall_fork N h m pc avail szv l D c Sc Q Rc hs
+    iApply (wp_uk_ecall_fork N h m pc avail szv l D c Sc Q Rc
               (fun γt0 γd0 γs0 => (utext_all γt0 M0 pm0 ∗ uargv γd0 av args)%I)
-              Hn Hsub Hal4 with "Hi HRc [] Hsz Hstd HD Hcwd Hchf Hkw Hrun [Hpar Hchild]").
+              Hn Hal4 with "Hi HRc [] Hsz Hstd HD Hcwd Hchf Hkw Hrun [Hpar Hchild]").
     { iSplitR; [ iExact "Htext" | iExact "Hargv" ]. }
     iSplitL "Hpar".
     - iIntros (h' r) "%Hr Harm _ Hsz Hstd HD Hcwd Hrun".
       iApply ("Hpar" $! h' r with "[%] Harm Hsz Hstd HD Hcwd Hrun"). exact Hr.
-    - iIntros (N' h' γ') "%Hheq %Hpeq Hmp HRc' [Ht' Ha'] Hsz' Hstd' Hfrag' Hcwd' Hch' Hpid' Hrun".
+    - iIntros (N' h' γ') "%Hpeq Hmp HRc' [Ht' Ha'] Hsz' Hstd' Hfrag' Hcwd' Hch' Hpid' Hrun".
       iApply ("Hchild" $! N' h' γ'
-                with "[%] [%] Hmp HRc' Ht' Ha' Hsz' Hstd' Hfrag' Hcwd' Hch' Hpid' Hrun").
-      { exact Hheq. }
+                with "[%] Hmp HRc' Ht' Ha' Hsz' Hstd' Hfrag' Hcwd' Hch' Hpid' Hrun").
       exact Hpeq.
   Qed.
 

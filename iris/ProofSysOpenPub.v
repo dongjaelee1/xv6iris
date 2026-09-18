@@ -132,6 +132,7 @@ Section ProofSysOpenPub.
   Notation Ra0 := (mword_of_int 10 : mword 5).
 
   Lemma so_tail_pub_au `{GEN : GenId} `{CID0 : CpuId} `{XI : CurCtx}
+      (omo : offmode)
       (gf : gname)
       (gs : list gname) (jx : nat) (gl : gname)
       (pd pav pu : mword 64)
@@ -182,10 +183,16 @@ Section ProofSysOpenPub.
        read off the same test. *)
     (fc_type C = FD_INODE -> bv_unsigned (di_type dn) <> FsImg.T_DEVICE_z) ->
     (fc_type C = FD_INODE -> off_wf voff) ->
+    (* ...AND THE WORD IS ZERO (lane OFF-LINK-6's L4): sys_open stores a
+       zero [f->off], so mode HAND's half is handed at ZERO, which is what
+       [UserOff.off_pub_hand_0] and every consumer of the receipt ask for.
+       [ProofSysOpenAlloc] instantiates [voff] at [mword_of_int 0] and
+       discharges this by computation. *)
+    bv_unsigned voff = 0 ->
     (* ---- the AU side: the omode word IS the caller's argument, and the
        descriptor's type is the one the published content names ---- *)
     om = arg_int32 vom ->
-    (fc_type C = FD_INODE /\ t = FdInode (bv_unsigned inum) g OffParked)
+    (fc_type C = FD_INODE /\ t = FdInode (bv_unsigned inum) g omo)
     \/ (fc_type C = FD_DEVICE /\ t = FdDevice (bv_unsigned (fc_major C))) ->
     sp0 = (m !!! Regidx csp_rs1 : mword 64) ->
     so_sp sp0 M -> so_thr m M ->
@@ -279,15 +286,21 @@ Section ProofSysOpenPub.
     (∀ r : mword 64,
        open_fd_ok gf (proc_addr jx) pidv U
          (om_readable vom) (om_writable vom) t sts r -∗
-       open_post_ok_plain (fs_gamma_L fsc_fs) gf (proc_addr jx) pidv Mim pvv vom
+       (* ...AND THE HALF THIS BLOCK'S PUBLISH HANDED OUT (lane OFF-LINK-6's
+          L4), which the arm carries out to the caller.  GUARDED BY THE
+          TYPE, exactly as the deposit above is: a DEVICE row has no offset
+          shadow to hand, so there is nothing to carry and the arm's own
+          device case takes [True]. *)
+       foff_pub_t omo t -∗
+       open_post_ok_plain omo (fs_gamma_L fsc_fs) gf (proc_addr jx) pidv Mim pvv vom
          P Fo Ft sts U r) -∗
     wp_next true (proc_addr jx)
-      (so_cont_au gf nsj
+      (so_cont_au omo gf nsj
                dqb dqs (proc_addr jx) pidv Mim pvv vom U sts P Pmiss Fo Ft m K eb b lks) -∗
     WP (Loop : expr riscv_lang).
   Proof using .
     intros Hqs HKiu HKeo HK24 Kpop Hkk Hinb Hipos Hgeom Hj Hgl Hlkempty Hkf Hfdlt
-           Hlen Hfrees Hip Htyor Hwrb Hrdw Hdir Hdvw Hwf Hom Htyt Hsp0 HMsp HMthr
+           Hlen Hfrees Hip Htyor Hwrb Hrdw Hdir Hdvw Hwf Hzoff Hom Htyt Hsp0 HMsp HMthr
            HMs1 HMs3 Hal.
     iIntros "Hcg Hown Htce Hcce #Htext #Hkd Hpc #Hpenv #Hbio #Hlog Hseam Hgen
               #Hitinv #Hesck #Hslkk Hslkd %Hley #Hfly #Hclaimsy Hdep Hoffr Hidev Hiinum Hivalid
@@ -307,33 +320,53 @@ Section ProofSysOpenPub.
     (* ...ONE HALF INTO THE BOX, THE OTHER TO THE PROCESS (the landed twin's
        block verbatim, OffGv.v's header): the user half goes into the
        existential invariant the descriptor's row carries. *)
+    (* THE PUBLISH'S MODE IS THE CALLER'S FAMILY'S (lane OFF-LINK-6's L4),
+       and this is the ONE place the kernel chooses.  At mode PARK the
+       whole shadow splits into the kernel's half, which the deposit puts
+       in the file's off box, and the user's, which becomes the row
+       invariant the descriptor bundle carries ([UserOff.off_pub_park]) --
+       what every landed caller gets.  At mode HAND the second half goes to
+       the CALLER instead ([UserOff.off_pub_hand_0]), the descriptor's row
+       ([FdSlots.foff_row] at [OffHeld]) claims nothing, and the half
+       travels out on the success arm as [UserOff.foff_pub].  The two are
+       one lemma apart because there is exactly one user half. *)
     iAssert (|={⊤}=> own_context cur_ctx ∗ off_rows off_cfg kk cur_ctx ∗
                ∃ γb : box_names,
                  (if bool_decide (fc_type C = FD_INODE)
                   then off_fd kf 1 γb g C else off_free kf 1) ∗
                  (if bool_decide (fc_type C = FD_INODE)
-                  then off_user_inv g else True))%I
-      with "[Hrun Hrows Hfoff]" as ">(Hrun & Hrows & %γb & Hcoff & #Huinv)".
+                  then foff_row (FdOpen true true (FdInode 0 g omo)) else True) ∗
+                 foff_pub_t omo t)%I
+      with "[Hrun Hrows Hfoff]" as ">(Hrun & Hrows & %γb & Hcoff & #Huinv & Hpub)".
     { destruct (bool_decide (fc_type C = FD_INODE)) eqn:Hbd.
       - apply bool_decide_eq_true_1 in Hbd.
         iDestruct "Hfoff" as "[Hfoff Hgv]".
-        (* THE PUBLISH'S MODE IS [park] (RD-1, design/user-read.md section
-           2): the whole shadow splits into the kernel's half, which the
-           deposit puts in the file's off box, and the user's, which
-           becomes the row invariant the descriptor bundle carries.
-           [UserOff.off_pub_hand] is the other mode -- the half HANDED to
-           the caller as [uoff g 0] -- and what stands between it and this
-           call site is recorded at the bottom of [UserOff.v]: the row
-           family [FdSlots.foff_row] has no room for a per-row choice yet.
-           The generic user-mode safety WP keeps [park] whatever happens
-           to the enriched row. *)
-        iMod (off_pub_park ⊤ g _ with "Hgv") as "[Hgk #Huinv]".
-        iMod (so_deposit ⊤ kk kf g C ltac:(solve_ndisj) Hkk Hip Hbd
-                with "Hrun [Hfoff Hgk] Hrows") as "(Hrun & Hrows & %γb & Hfd)".
-        { iExists voff. iFrame "Hfoff Hgk". iPureIntro. exact (Hwf Hbd). }
-        iModIntro. iFrame "Hrun Hrows". iExists γb. iFrame "Huinv". iExact "Hfd".
+        rewrite Hzoff.
+        destruct omo.
+        + iMod (off_pub_park ⊤ g 0 with "Hgv") as "[Hgk #Huinv]".
+          iMod (so_deposit ⊤ kk kf g C ltac:(solve_ndisj) Hkk Hip Hbd
+                  with "Hrun [Hfoff Hgk] Hrows") as "(Hrun & Hrows & %γb & Hfd)".
+          { iExists voff. rewrite Hzoff. iFrame "Hfoff Hgk". iPureIntro.
+            exact (Hwf Hbd). }
+          iModIntro. iFrame "Hrun Hrows". iExists γb. iFrame "Hfd".
+          iSplitR; [iExact "Huinv" |].
+          destruct Htyt as [[_ ->] | [Hct _]];
+            [done | exfalso; rewrite Hct in Hbd; by vm_compute in Hbd].
+        + iDestruct (off_pub_hand_0 g with "Hgv") as "[Hgk Hu]".
+          iMod (so_deposit ⊤ kk kf g C ltac:(solve_ndisj) Hkk Hip Hbd
+                  with "Hrun [Hfoff Hgk] Hrows") as "(Hrun & Hrows & %γb & Hfd)".
+          { iExists voff. rewrite Hzoff. iFrame "Hfoff Hgk". iPureIntro.
+            exact (Hwf Hbd). }
+          iModIntro. iFrame "Hrun Hrows". iExists γb. iFrame "Hfd".
+          iSplitR; [done |].
+          destruct Htyt as [[_ ->] | [Hct _]];
+            [| exfalso; rewrite Hct in Hbd; by vm_compute in Hbd].
+          iApply (foff_pub_t_inode with "[Hu]"). iApply (foff_pub_held with "Hu").
       - iModIntro. iFrame "Hrun Hrows". iExists inhabitant.
-        iSplitL; [iExact "Hfoff" | by iPureIntro]. }
+        iSplitL; [iExact "Hfoff" |]. iSplitR; [done |].
+        destruct Htyt as [[Hct _] | [_ ->]];
+          [ exfalso; rewrite (bool_decide_eq_true_2 _ Hct) in Hbd; discriminate
+          | iApply foff_pub_t_dev ]. }
     iDestruct ("Hcgb" with "Hrun") as "Hcg".
     iRename "Hrows" into "Hoffr".
     iModIntro.
@@ -349,7 +382,7 @@ Section ProofSysOpenPub.
                     Hf4
                     Hf5 Hf6 HbP H23 H24
                     [Hkeep Hru Hfref Hflive Hflds Hfpn Hcoff Hiru Hcback Howe
-                     Hsbb Hsbi Hbsl Hisl Hfds Hfrag Hauth Harm Hcont]").
+                     Hsbb Hsbi Hbsl Hisl Hfds Hfrag Hauth Hpub Harm Hcont]").
     iEval (rewrite /wp_next).
     iIntros (CIDy) "%Hqy". iIntros (mf) "%Hcsf %Ha0f Hcg Hown Htce Hcce Hpc
                                          Hpbare Hshr".
@@ -363,7 +396,7 @@ Section ProofSysOpenPub.
     iApply fupd_wp.
     (* A6.146: the retained parent arrives GENLO with its credential. *)
     iDestruct "Hkeep" as (loK tlK) "(%HleK & #HflK & Hkeep)".
-    iMod (so_publish ⊤ gf kf kk qi s gy inum (di_type dn) C pn γb g om rb wb
+    iMod (so_publish omo ⊤ gf kf kk qi s gy inum (di_type dn) C pn γb g om rb wb
             loK tlK
             Hqs ltac:(solve_ndisj) Hkk Hinb Hipos Hip Htyor Hwrb
             ltac:(rewrite Hrdw; exact Hrdb) ltac:(rewrite Hwrb; exact Hwdb)
@@ -392,15 +425,15 @@ Section ProofSysOpenPub.
     iDestruct (fd_st_agree (pv_fdg (us_V U)) fd FdClosed stq with "Hauth Hfr")
       as "%Hstqcl".
     iMod (proc_priv_settle gf (proc_addr jx) pidv U fd kf 1 stpub FdClosed stq
-                 Hfdlt Hlen Hkf (fdstate_ok_open _ _ _ C stpub Hokpub (or_intror Htyor))
+                 Hfdlt Hlen Hkf (fdstate_ok_open _ _ _ _ C stpub Hokpub (or_intror Htyor))
                  with "Hcore Howe Href Hauth Hfr") as "[Hpriv Hfr]".
     iDestruct ("Hfrback" $! stpub with "Hfr [Huinv]") as "Hfrags".
-    { iApply (foff_row_of_ok _ _ _ _ _ Hokpub with "Huinv"). }
+    { iApply (foff_row_of_ok _ _ _ _ _ _ Hokpub with "Huinv"). }
     iModIntro.
     (* [stpub] IS the typed state the contract names: the two mode cells
        hold the caller's own omode bits ([ProofSysOpenBits]) and the type
        is [Htyt]'s, so [fdstate_ok_inj] pins it. *)
-    assert (Hstok : fdstate_ok inum g (fp_pipe pn) C
+    assert (Hstok : fdstate_ok inum g omo (fp_pipe pn) C
                       (FdOpen (om_readable vom) (om_writable vom) t)).
     { assert (Hrd : fc_readable C
                     = ((if om_readable vom
@@ -412,25 +445,28 @@ Section ProofSysOpenPub.
         by (rewrite Hwrb Hom; apply soau_wr_byte).
       destruct Htyt as [[Hct ->] | [Hct ->]]; cbn; by repeat split. }
     assert (Hpub : stpub = FdOpen (om_readable vom) (om_writable vom) t)
-      by exact (fdstate_ok_inj inum g (fp_pipe pn) C stpub _ Hokpub Hstok).
+      by exact (fdstate_ok_inj inum g omo (fp_pipe pn) C stpub _ Hokpub Hstok).
     iSpecialize ("Hcont" $! CIDy with "[%]"); [wp_next_chain |].
     iDestruct (iref_slots_combine nsj 1 with "Hisl Hiru") as "Hisl".
     replace (nsj + 1)%nat with (S nsj) by lia.
     iApply ("Hcont" $! mf (S nsj) with "[%] [%] Hcg Hown Htce Hcce Hpc
-              Hsbb Hsbi Hbsl Hisl [Hpriv Hfds Hfrags Harm]").
+              Hsbb Hsbi Hbsl Hisl [Hpriv Hfds Hfrags Hpub Harm]").
     { exact Hcsf. }
     { reflexivity. }
     (* THE ARM: the success side of [open_arms_plain], at the caller's own
        wand and the descriptor this walk installed. *)
     rewrite /open_arms_plain. iFrame "Hfds". iRight.
-    iApply "Harm". rewrite /open_fd_ok.
-    iExists fd, l, kf.
-    iSplitR.
-    { iPureIntro. split_and!.
-      - rewrite Ha0f; reflexivity.
-      - exact Hfrees.
-      - rewrite <- Hstqcl in Hstq. exact Hstq. }
-    rewrite -Hpub. iFrame "Hpriv Hfrags".
+    iApply ("Harm" with "[Hpriv Hfrags] [Hpub]").
+    { rewrite /open_fd_ok.
+      iExists fd, l, kf.
+      iSplitR.
+      { iPureIntro. split_and!.
+        - rewrite Ha0f; reflexivity.
+        - exact Hfrees.
+        - rewrite <- Hstqcl in Hstq. exact Hstq. }
+      rewrite -Hpub. iFrame "Hpriv Hfrags". }
+    (* the handed half, at the guard the deposit used *)
+    iExact "Hpub".
   Qed.
 
   (* ---- the two field reads the walk makes into the LOCKED record, as

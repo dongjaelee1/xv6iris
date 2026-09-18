@@ -495,7 +495,7 @@ Section FileWrite.
           [FdPark.off_supply_of_st_at_eq]'s tie. *)
        ⌜off = off0⌝ -∗
        ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I -∗
-       off_gv γo (1/2) (Z.of_nat off) ={appE}=∗
+       off_link γo (Z.of_nat off) ={appE}=∗
        ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I ∗
        app_step i I (delta_write i off bs (abs_view I)) ∗
        (∀ I' : gmap Z fs_node,
@@ -552,7 +552,7 @@ Section FileWrite.
     (* the node returns the borrow UNMOVED: this cursor holds no user half
        yet (that is design/app-file.md section 3's link arm, lane
        OFF-LINK), so [off_ret_keep] is the arm it can prove. *)
-    iSplitL "Hg"; [iApply (off_ret_keep with "Hg") |].
+    iSplitL "Hg"; [iApply (off_ret_of_link with "Hg") |].
     rewrite Hbs. iExact "Hq'".
   Qed.
 

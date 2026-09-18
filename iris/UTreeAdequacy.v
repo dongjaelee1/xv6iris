@@ -124,8 +124,8 @@ Section TreeAdequacy.
     assert (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HR) = cons_res_triv).
     { rewrite /riscv_cons_res Hiface.
       by cbn [app_tree app_ifc app_iface_triv ai_cons]. }
-    assert (Hkill : @riscv_kill_cred Σ (@riscv_fixedGS Σ HR) = kill_cred_triv).
-    { rewrite /riscv_kill_cred Hiface.
+    assert (Hkill : @app_taint Σ (@riscv_fixedGS Σ HR) = kill_cred_triv).
+    { rewrite /app_taint Hiface.
       by cbn [app_tree app_ifc app_iface_triv ai_kill]. }
     iIntros "_ _ Hturn".
     (* THE LICENCE IS SPENT HERE, and this is the only place the tree
@@ -134,15 +134,13 @@ Section TreeAdequacy.
     iMod (tree_sup_of_bump c r with "Hturn") as "#Hsup".
     iModIntro.
     iApply (init_boot_of_sup (bv_unsigned InodeInv.ROOTINO) fdt0).
-    - (* the output licence, free at the trivial console claim *)
-      iIntros "_". by iApply (cons_licence_triv Hcons).
     - (* the supply, at the era's record equation *)
       rewrite /AppInv.app_sup Heq.
       cbn [AppCfg.app_pred AppCfg.app_run AppCfg.app_names
            app_tree app_pred app_names].
       iExact "Hsup".
     - (* the kill credential, free at the trivial interface *)
-      rewrite Hkill /kill_cred_triv. iModIntro. done.
+      rewrite Hkill /kill_cred_triv. done.
   Qed.
 
   (* =================================================================== *)

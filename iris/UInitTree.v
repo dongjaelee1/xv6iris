@@ -91,7 +91,7 @@ Local Open Scope Z_scope.
 (*  1.  THE RECORD, AND THE RULED PREMISE AT IT                          *)
 (*                                                                       *)
 (*  A LIGHT SECTION: everything here is the registry's own vocabulary     *)
-(*  plus [RiscvPtsto.riscv_kill_cred], and [UkInit.init_kill_law] needs   *)
+(*  plus [RiscvPtsto.app_taint], and [UkInit.init_kill_law] needs   *)
 (*  no more than that (it is stated over [UkInit.init_lend_cred], which   *)
 (*  names two fixed descriptor lists and nothing else).                   *)
 (* ===================================================================== *)
@@ -307,7 +307,7 @@ Section TreeInitWrite.
   Lemma tree_init_deps (c : tree_fixed) (r : tree_names) :
     @file_app Σ _ = MkAppcfg tree_names (tree_pred c) r ->
     riscv_cons_res = cons_res_triv ->
-    riscv_kill_cred = kill_cred_triv ->
+    app_taint = kill_cred_triv ->
     ⊢ □ UkInit.init_deps (PS := uprogSG_free) (tree_taint c).
   Proof using .
     intros Heq Hcons Hkill.
@@ -318,13 +318,13 @@ Section TreeInitWrite.
       iApply (tree_sup_of_taint c r with "Ht"). }
     rewrite /UkInit.init_deps /UkInit.kinit_wlaw.
     iModIntro. iSplit; [ iSplit | iSplit ].
-    - (* 16, the write: the supply, the output licence and the kill
-         credential -- the last two free at this interface *)
+    - (* 16, the write: the supply and the kill credential, the latter
+         free at this interface.  NO OUTPUT LICENCE (lane SUP-ONE): the
+         taint buys it ([WpUart.cons_licence_of_taint]). *)
       iIntros "!> #Ht".
-      iApply (udepw_law_of_sup_write (PSx := uprogSG_free) with "[] [] []").
+      iApply (udepw_law_of_sup_write (PSx := uprogSG_free) with "[] []").
       + iApply ("Hsup" with "Ht").
-      + iApply (WpUart.cons_licence_triv Hcons).
-      + rewrite Hkill /kill_cred_triv. by iModIntro.
+      + rewrite Hkill /kill_cred_triv. done.
     - (* ...and the closed-fd leaf, which needs no claim at all *)
       rewrite /UkInit.kinit_wcl. iIntros "!>" (N0 b).
       iApply (UkWriteClosed.kinit_w1_of_closed_l0 (PS := uprogSG_free) N0 b).

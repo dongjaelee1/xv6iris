@@ -489,13 +489,13 @@ Class uexecSG (Σ : gFunctors) {sg_ctok : ctokG Σ} := {
      the successor's slot; the deposit at the exit ecall spends it), nor
      both of exec's [∗]-separated slot wands.  The generic family is
      reachable ONLY tainted ([UexecExecMint.uslot_mint_pay] takes
-     [RiscvPtsto.riscv_kill_cred], which is Persistent), so what it runs on
+     [RiscvPtsto.app_taint], which is Persistent), so what it runs on
      is the payload PERSISTENTLY, and every leg helps itself.
      THE ANTECEDENT IS DROPPED HERE AND NOWHERE ELSE: the callers state the
-     carrier as [□ (riscv_kill_cred -∗ R)], but this class carries only
+     carrier as [□ (app_taint -∗ R)], but this class carries only
      [ctokG] and cannot name the taint, so the field takes the cashed form
      [□ R] and its one caller ([UexecRet.uexec_dep_F_of_supply]) cashes the
-     wand against the [□ riscv_kill_cred] it already holds. *)
+     wand against the [app_taint] it already holds. *)
   sbundle_of_supply : forall (X : uvis -d> iPropO Σ) (n : Z) (W : uvis)
       (R : iProp Σ),
     ⊢ my_pay (uvis_gen W) (fun _ => R)%I -∗ □ ssupply -∗ □ R -∗

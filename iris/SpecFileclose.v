@@ -372,7 +372,7 @@ Section SpecFileclose.
   Proof using . done. Qed.
 
   (* the generic closer pays every row out of the taint *)
-  Lemma fileclose_cpay_taint st Φc : pipe_taint_cred -∗ fileclose_cpay st Φc.
+  Lemma fileclose_cpay_taint st Φc : app_taint -∗ fileclose_cpay st Φc.
   Proof using .
     iIntros "#Ht". rewrite /fileclose_cpay.
     destruct st as [| ? w [? ? ?| γp |?]]; try done.
@@ -422,13 +422,13 @@ Section SpecFileclose.
 
   (* ...and the arms that are not a pipe at all: both payment and post are
      [emp] there, but only the file's type says so. *)
-  Lemma fileclose_cpost_nonpipe (inum : mword 32) (γo : gname) (γp : pipe_names)
+  Lemma fileclose_cpost_nonpipe (inum : mword 32) (γo : gname) (om : offmode) (γp : pipe_names)
       (C : fcontent) (st : fdstate) (q : Qp) (Φc : iProp Σ) :
-    fdstate_ok inum γo γp C st -> fc_type C <> FD_PIPE ->
+    fdstate_ok inum γo om γp C st -> fc_type C <> FD_PIPE ->
     fileclose_cpay st Φc -∗ fileclose_cpost q st Φc.
   Proof using .
     intros Hok Hne. rewrite /fileclose_cpay /fileclose_cpost.
-    destruct st as [| rb wb [i g om | g | mj]]; try (by iIntros "_").
+    destruct st as [| rb wb [i g om' | g | mj]]; try (by iIntros "_").
     exfalso. apply Hne. by destruct Hok as (_ & _ & Ht & _).
   Qed.
 
@@ -453,7 +453,7 @@ Section SpecFileclose.
       apply elem_of_list_further. exact Hin.
   Qed.
 
-  Lemma fileclose_cpays_taint sts : pipe_taint_cred -∗ fileclose_cpays sts.
+  Lemma fileclose_cpays_taint sts : app_taint -∗ fileclose_cpays sts.
   Proof using .
     iIntros "#Ht". rewrite /fileclose_cpays. iApply big_sepL_intro.
     iIntros "!>" (k st _). by iApply fileclose_cpay_taint.

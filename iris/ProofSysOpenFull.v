@@ -163,6 +163,7 @@ Section ProofSysOpenFullBody.
   Notation Rz  := (mword_of_int 0 : mword 5).
 
   Lemma wp_sys_open_create `{GEN : GenId} `{CID0 : CpuId} `{XI : CurCtx}
+      (omo : offmode)
       (gfl gf : gname)
       (gs : list gname) (j : nat) (gl : gname)
       (pd pav pu : mword 64)
@@ -177,7 +178,7 @@ Section ProofSysOpenFullBody.
       (Fok Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
       (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ))
       (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ)) :
-    wp_sys_open_create_body gfl gf gs j gl pd pav pu
+    wp_sys_open_create_body omo gfl gf gs j gl pd pav pu
 
  ns dqb dqs dqbs dqn v vom
                            pid U sts m K eb b lks P Pmiss Farm Fun Fok Fex Fo Ft.
@@ -824,7 +825,7 @@ Section ProofSysOpenFullBody.
        process state.  [P'] is argstr's report and [upd_upt] is where it
        lands; everything below the split speaks [so_cont0_au_create]. ---- *)
     iAssert (wp_next (CID0 := CID21) true (proc_addr j)
-               (so_cont0_au_create gf
+               (so_cont0_au_create omo gf
  ns dqb dqs dqbs dqn (proc_addr j) pid (us_M U) v vom
                          (us_upt U P') sts P Pmiss Farm Fun Fok Fex Fo Ft m K eb b lks))
       with "[Hcont]" as "Hcont0".
@@ -878,7 +879,7 @@ Section ProofSysOpenFullBody.
        beside the same guarded pure fact (lane F-OPEN-3) *)
     iDestruct (open_trunc_piece_arg_to_at _ vom (us_M U) v (bview pk bf)
                  P Farm Fok Fex Ft Hpof with "Htc") as "Htc".
-    iApply (EntryC.so_entry_c_au (CID0 := CID22) gfl gf gs j gl pd pav
+    iApply (EntryC.so_entry_c_au (CID0 := CID22) omo gfl gf gs j gl pd pav
               pu
  pk bf (arg_int32 vom) (word_lo u23) ns Sb0
               pid dqb dqs dqbs dqn (us_upt U P') sts m S2 sp0 K eb b lks
@@ -907,6 +908,7 @@ Section ProofSysOpenFullBody.
      statements above, so the seal is the destruct and nothing else.  The
      plain arm is [Plain]'s theorem, not a second proof. *)
   Lemma wp_sys_open `{GEN : GenId} `{CID0 : CpuId} `{XI : CurCtx}
+      (omo : offmode)
       (gfl gf : gname)
       (gs : list gname) (j : nat) (gl : gname)
       (pd pav pu : mword 64)
@@ -921,14 +923,14 @@ Section ProofSysOpenFullBody.
       (Fok Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
       (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ))
       (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ)) :
-    wp_sys_open_body gfl gf gs j gl pd pav pu ns dqb dqs dqbs dqn v vom
+    wp_sys_open_body omo gfl gf gs j gl pd pav pu ns dqb dqs dqbs dqn v vom
                      pid U sts m K eb b lks P Pmiss Farm Fun Fok Fex Fo Ft.
   Proof using .
     rewrite /wp_sys_open_body /open_in /open_arms.
     destruct (om_create vom) eqn:Hcr.
-    - exact (wp_sys_open_create gfl gf gs j gl pd pav pu ns dqb dqs dqbs dqn
+    - exact (wp_sys_open_create omo gfl gf gs j gl pd pav pu ns dqb dqs dqbs dqn
                v vom pid U sts m K eb b lks P Pmiss Farm Fun Fok Fex Fo Ft Hcr).
-    - exact (Plain.wp_sys_open_plain gfl gf gs j gl pd pav pu ns dqb dqs dqbs
+    - exact (Plain.wp_sys_open_plain omo gfl gf gs j gl pd pav pu ns dqb dqs dqbs
                dqn v vom pid U sts m K eb b lks P Pmiss Fo Ft Hcr).
   Qed.
 

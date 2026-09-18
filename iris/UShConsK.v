@@ -353,7 +353,7 @@ Section UShConsK.
       { exfalso. destruct Hb as [Hrm _].
         exact (init_cons_moi_nat_m1 fd0 Hlt0 (eq_trans (eq_sym Hr0) Hrm)). }
       iDestruct "Hal" as (fd rd wr t) "[%Hb Hal]".
-      destruct Hb as (Hr1 & Hlt1 & Hfdv1).
+      destruct Hb as (Hr1 & Hlt1 & Hfdv1 & _).
       assert (Hfdeq : fd = fd0)
         by exact (init_cons_moi_nat_inj fd fd0 Hlt1 Hlt0
                     (eq_trans (eq_sym Hr1) Hr0)).

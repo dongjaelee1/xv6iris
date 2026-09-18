@@ -248,82 +248,26 @@ Definition fdst_parked (st : fdstate) : Prop :=
 Global Instance fdst_parked_dec (st : fdstate) : Decision (fdst_parked st).
 Proof. destruct st as [|? ? [? ? [|]|?|?]]; cbn; apply _. Defined.
 
-Definition fdv_all_parked (l : list fdstate) : Prop := Forall fdst_parked l.
+(* [fdv_all_parked] AND ITS WHOLE KIT ARE DELETED (lane OFF-LINK-2, L6):
+   [_dec], [_lookup], [_lookup_total], [_insert], [_replicate], [_closed],
+   [_app], [_take], [_drop] and [fdv_all_parked_fdt0].  The predicate said
+   "no descriptor in this table has had its offset half handed out", which
+   is the generic tier's PARKED DISCIPLINE -- the precondition
+   design/app-file.md SS3.5's principle retires, and whose last consumers
+   ([UsysMemOk.usys_fd_ok_parked], [SpecKexec.kexec_image_ok_parked],
+   [ProofKforkB3.kfk_at_parked], [UkRun.ukn_held]) this lane deleted.
 
-Global Instance fdv_all_parked_dec (l : list fdstate) : Decision (fdv_all_parked l).
-Proof. unfold fdv_all_parked. apply _. Defined.
-
-(* ---- the little kit: every generic-tier table operation preserves it.
-   close and kfork's closed rows insert [FdClosed]; the parked open
-   inserts an [FdInode _ _ OffParked] (or a device, or a pipe); dup copies
-   a row the table already had -- and out of range the TOTAL lookup is
-   [FdClosed], so the copy is parked either way; sys_pipe inserts the two
-   ends.  [UsysMemOk.usys_fd_ok_parked] is those four rows read off the
-   syscall table, and OPEN -- whose type the syscall table binds
-   existentially -- is the fifth, since RA-3 put [fdst_parked] on that
-   row (the arms always installed a parked constructor; the row merely
-   did not say so). ---- *)
-Lemma fdst_parked_closed : fdst_parked FdClosed.
-Proof. exact I. Qed.
-Lemma fdst_parked_pipe (r w : bool) (γp : pipe_names) : fdst_parked (FdOpen r w (FdPipe γp)).
-Proof. exact I. Qed.
+   [fdst_parked] ITSELF STAYS, and so do its three constructor readings:
+   [UsysMemOk.usys_fd_ok]'s OPEN row still carries [fdst_parked (FdOpen rd
+   wr t)] as the fact that an open installs an inode or a device at the
+   caller's own offset mode, and [SpecSysOpen]'s three arms pay it.  Lane
+   OFF-LINK's L4 is what relaxes that conjunct to the caller's mode. *)
 Lemma fdst_parked_dev (r w : bool) (mj : Z) : fdst_parked (FdOpen r w (FdDevice mj)).
 Proof. exact I. Qed.
+
 Lemma fdst_parked_inode (r w : bool) (i : Z) (γo : gname) :
   fdst_parked (FdOpen r w (FdInode i γo OffParked)).
 Proof. exact I. Qed.
-
-Lemma fdv_all_parked_lookup (l : list fdstate) (k : nat) (st : fdstate) :
-  fdv_all_parked l -> l !! k = Some st -> fdst_parked st.
-Proof. intros Hl Hk. exact (Forall_lookup_1 _ _ _ _ Hl Hk). Qed.
-
-(* the TOTAL lookup, which is what dup's row hands over: out of range the
-   default is [FdClosed], which is parked. *)
-Lemma fdv_all_parked_lookup_total (l : list fdstate) (k : nat) :
-  fdv_all_parked l -> fdst_parked (l !!! k).
-Proof.
-  intros Hl. destruct (l !! k) as [st |] eqn:Hk.
-  - rewrite (list_lookup_total_correct _ _ _ Hk).
-    exact (fdv_all_parked_lookup l k st Hl Hk).
-  - rewrite list_lookup_total_alt Hk. exact I.
-Qed.
-
-Lemma fdv_all_parked_insert (l : list fdstate) (k : nat) (st : fdstate) :
-  fdv_all_parked l -> fdst_parked st -> fdv_all_parked (<[k := st]> l).
-Proof.
-  intros Hl Hst. unfold fdv_all_parked in *.
-  apply Forall_lookup. intros j y Hy.
-  apply list_lookup_insert_Some in Hy as [(_ & <- & _) | (_ & Hy)];
-    [exact Hst | exact (Forall_lookup_1 _ _ _ _ Hl Hy)].
-Qed.
-
-Lemma fdv_all_parked_replicate (n : nat) (st : fdstate) :
-  fdst_parked st -> fdv_all_parked (replicate n st).
-Proof.
-  intros Hst. unfold fdv_all_parked. apply Forall_lookup.
-  intros j y Hy. apply lookup_replicate in Hy as [-> _]. exact Hst.
-Qed.
-
-Lemma fdv_all_parked_closed (n : nat) : fdv_all_parked (replicate n FdClosed).
-Proof. apply fdv_all_parked_replicate, fdst_parked_closed. Qed.
-
-(* ---- the discipline's list kit, in the two shapes a CROSSING wants:
-   fork's child table is built by splicing the parent's prefix onto a
-   fresh all-closed tail ([ProofKforkB3.kfk_at]), and exec's is the
-   caller's own, handed over whole.  (These three lived in [FdPark.v]
-   until lane OFF-LINK deleted that file: they are PURE facts about the
-   discipline and have nothing to do with a park.) ---- *)
-Lemma fdv_all_parked_app (l1 l2 : list fdstate) :
-  fdv_all_parked l1 -> fdv_all_parked l2 -> fdv_all_parked (l1 ++ l2).
-Proof. intros H1 H2. unfold fdv_all_parked. by apply Forall_app. Qed.
-
-Lemma fdv_all_parked_take (l : list fdstate) (i : nat) :
-  fdv_all_parked l -> fdv_all_parked (take i l).
-Proof. intros H. unfold fdv_all_parked. by apply Forall_take. Qed.
-
-Lemma fdv_all_parked_drop (l : list fdstate) (i : nat) :
-  fdv_all_parked l -> fdv_all_parked (drop i l).
-Proof. intros H. unfold fdv_all_parked. by apply Forall_drop. Qed.
 
 (* ---- AND THE SAME KIT FOR "NOT A PIPE" (design/pipe.md, "The exit
    path").  A pipe row's last close steps the pipe's exact ghost state, so
@@ -1008,18 +952,6 @@ Section FdSlots.
 
   Lemma fdt0_length : length fdt0 = NOFILE.
   Proof using . apply length_replicate. Qed.
-
-  (* ...AND IT IS THE ROOT OF THE ALL-PARKED DISCIPLINE (design/user-read.md
-     SS8.1).  Every table in the system descends from this one -- a process
-     is born here ([fd_st_alloc]'s mint), the first process's exec bundle
-     is stated at it ([InitBoot.init_boot_bundle] through
-     [App.xv6_app]'s [Hinit_boot]), and every row that moves a table
-     preserves parkedness ([UsysMemOk.usys_fd_ok_parked]) -- so this is
-     where "no descriptor has its offset half handed out" is TRUE rather
-     than assumed, and it is the fact the generic tier's narrowed slot
-     mints will be discharged from.  (* RA-2: held case here *) *)
-  Lemma fdv_all_parked_fdt0 : fdv_all_parked fdt0.
-  Proof using . apply fdv_all_parked_closed. Qed.
 
   (* ...and the scan on it answers 0: a fresh process's first open lands on
      descriptor 0, which is how init gets the console there.  Stated here

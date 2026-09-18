@@ -136,22 +136,21 @@ Section UInitTreeExec.
   Lemma tree_gen_slot (c : tree_fixed) (r : tree_names) :
     file_app = MkAppcfg tree_names (tree_pred c) r ->
     riscv_cons_res = cons_res_triv ->
-    riscv_kill_cred = kill_cred_triv ->
+    app_taint = kill_cred_triv ->
     tree_taint c -∗
     □ (∀ (R : iProp Σ) (W : uvis),
          my_pay (uvis_gen W) (fun _ => R)%I -∗
-         □ (riscv_kill_cred -∗ R) -∗ uslot W).
+         □ (app_taint -∗ R) -∗ uslot W).
   Proof using .
     intros Heq Hcons Hkill. iIntros "#Ht".
     iAssert (AppInv.app_sup) as "#Hsup".
     { rewrite /AppInv.app_sup Heq.
       cbn [AppCfg.app_pred AppCfg.app_run AppCfg.app_names].
       iApply (tree_sup_of_taint c r with "Ht"). }
-    iAssert (□ riscv_kill_cred)%I as "#Hkc";
-      [ rewrite Hkill /kill_cred_triv; by iModIntro | ].
-    iPoseProof (WpUart.cons_licence_triv Hcons) as "#Hlic".
+    iAssert (app_taint)%I as "#Hkc";
+      [ rewrite Hkill /kill_cred_triv; done | ].
     iPoseProof LinkUserinit.UG.uexec_wp_gen as "#Hwp".
-    iApply (uslot_mint_all with "Hsup Hkc Hlic Hwp").
+    iApply (uslot_mint_all with "Hsup Hkc Hwp").
   Qed.
 
   (* ...AND THE TAINT ARM OF AN ENTRY, which is that mint at the payload
@@ -165,7 +164,7 @@ Section UInitTreeExec.
       (cn : cons_names) (γ : gname) (Rd : nat -> iProp Σ) :
     file_app = MkAppcfg tree_names (tree_pred c) r ->
     riscv_cons_res = cons_res_triv ->
-    riscv_kill_cred = kill_cred_triv ->
+    app_taint = kill_cred_triv ->
     ⊢ image_entry_taint (tree_taint c)
         (ucons_pay cn γ (tree_taint c) Rd) uslot.
   Proof using .
@@ -203,14 +202,14 @@ Section UInitTreeExec.
       (cn : cons_names) (stc : fdstate) (γ : gname) (np : nat) :
     file_app = MkAppcfg tree_names (tree_pred c) r ->
     riscv_cons_res = cons_res_triv ->
-    riscv_kill_cred = kill_cred_triv ->
+    app_taint = kill_cred_triv ->
     tree_taint c -∗
     UkInit.init_exec_sup_pos cn (tree_taint c) stc (tree_cc c) γ np.
   Proof using .
     intros Heq Hcons Hkill. iIntros "#HT".
     rewrite /UkInit.init_exec_sup_pos.
     iIntros (N m pc l)
-      "%Hpeq %Hhd %Ha0 %Ha1 #Hro #Hargv Hstd Hrow Hcred Hpos Hlease Hchf Hpidf".
+      "%Hpeq %Ha0 %Ha1 #Hro #Hargv Hstd Hrow Hcred Hpos Hlease Hchf Hpidf".
     (* THE DOOR IS FREE HERE: the taint is a premise of this lemma, so
        nothing is spent to open the update. *)
     iModIntro.
@@ -257,7 +256,7 @@ Section UInitTreeExec.
       (cn : cons_names) (stc : fdstate) :
     file_app = MkAppcfg tree_names (tree_pred c) r ->
     riscv_cons_res = cons_res_triv ->
-    riscv_kill_cred = kill_cred_triv ->
+    app_taint = kill_cred_triv ->
     tree_taint c -∗
     UkInit.init_exec_sup_lend cn (tree_taint c) stc (tree_cc c).
   Proof using .
@@ -290,19 +289,19 @@ Section UInitTreeExec.
       (cn : cons_names) (stc : fdstate) :
     file_app = MkAppcfg tree_names (tree_pred c) r ->
     riscv_cons_res = cons_res_triv ->
-    riscv_kill_cred = kill_cred_triv ->
+    app_taint = kill_cred_triv ->
     ⊢ UkInit.init_exec_sup_lend cn (tree_taint c) stc (tree_cc c).
   Proof using .
     intros Heq Hcons Hkill.
     rewrite /UkInit.init_exec_sup_lend. iIntros "!>" (γ np).
     rewrite /UkInit.init_exec_sup_pos.
     iIntros (N m pc l)
-      "%Hpeq %Hhd %Ha0 %Ha1 #Hro #Hargv Hstd Hrow Hcred Hpos Hlease Hchf Hpidf".
+      "%Hpeq %Ha0 %Ha1 #Hro #Hargv Hstd Hrow Hcred Hpos Hlease Hchf Hpidf".
     iMod (tree_lend_taint c stc l np with "Hcred") as "[Hcred #HT]".
     iDestruct (tree_init_exec_sup_pos c r cn stc γ np Heq Hcons Hkill
                  with "HT") as "Hnode".
     rewrite /UkInit.init_exec_sup_pos.
-    iApply ("Hnode" $! N m pc l with "[//] [//] [//] [//] Hro Hargv Hstd Hrow
+    iApply ("Hnode" $! N m pc l with "[//] [//] [//] Hro Hargv Hstd Hrow
                                       Hcred Hpos Hlease Hchf Hpidf").
   Qed.
 
@@ -325,7 +324,7 @@ Section UInitTreeExec.
       (cn : cons_names) (stc : fdstate) :
     file_app = MkAppcfg tree_names (tree_pred c) r ->
     riscv_cons_res = cons_res_triv ->
-    riscv_kill_cred = kill_cred_triv ->
+    app_taint = kill_cred_triv ->
     ⊢ UkInit.init_cons_sup cn (tree_taint c) True stc (tree_cc c).
   Proof using .
     intros Heq Hcons Hkill. rewrite /UkInit.init_cons_sup. iSplit.
@@ -352,7 +351,7 @@ Section UInitTreeExec.
   Lemma tree_init_boot_con (c : tree_fixed) (r : tree_names) :
     file_app = MkAppcfg tree_names (tree_pred c) r ->
     riscv_cons_res = cons_res_triv ->
-    riscv_kill_cred = kill_cred_triv ->
+    app_taint = kill_cred_triv ->
     ⊢ □ (∀ W' : uvis,
            ⌜kexec_image_ok ElfUser.init_elf 1%nat (fun _ => 5%nat)
               (fun _ => init_boot_bytes) fdt0 W'⌝ -∗
@@ -400,7 +399,7 @@ Section UInitTreeExec.
       (cn : cons_names) (stc : fdstate) :
     file_app = MkAppcfg tree_names (tree_pred c) r ->
     riscv_cons_res = cons_res_triv ->
-    riscv_kill_cred = kill_cred_triv ->
+    app_taint = kill_cred_triv ->
     UInitKernel.init_cons_dance_all (PS := uprogSG_free) (tree_taint c)
       True%I stc -∗
     ucons_reader cn 0%nat -∗
@@ -464,7 +463,7 @@ Section UInitTreeExec.
       (t : ttree) (e : gmap fname Z) (W' : uvis) :
     file_app = MkAppcfg tree_names (tree_pred c) r ->
     riscv_cons_res = cons_res_triv ->
-    riscv_kill_cred = kill_cred_triv ->
+    app_taint = kill_cred_triv ->
     (* THE ONE IMAGE FACT /INIT'S SETUP NEEDS, and it is about the deed's
        own tree: the root is a directory and it has no [console] entry
        yet, which is the arm TL-7's dance is landed on. *)

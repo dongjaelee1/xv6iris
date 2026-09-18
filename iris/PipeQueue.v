@@ -20,7 +20,7 @@
    COUPLED to the ring only until somebody moves the ring without the
    fragment, and then DISCONNECTS them for good ([PipeInvDefs.pipe_qres]:
    the coupled arm, or the taint).  The price of a disconnect is the
-   application's TAINT ([pipe_taint_cred], the machine's kill credential:
+   application's TAINT ([app_taint], the machine's kill credential:
    bought by the generic supply, never held by a verified program under an
    untainted discipline), so a fragment holder's claim is "exact, or the
    application is tainted" -- the console's [cons_dirty_cred] shape, and
@@ -41,7 +41,7 @@ From iris.base_logic.lib Require Import own invariants.
 Require Import SailStdpp.ConcurrencyInterface SailStdpp.ConcurrencyInterfaceBuiltins SailStdpp.ConcurrencyInterfaceTypes SailStdpp.Operators_mwords.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
 Require Import RiscvModelBytes.
-Require Import RiscvPtsto.       (* [riscvGS], [riscv_kill_cred] *)
+Require Import RiscvPtsto.       (* [riscvGS], [app_taint] *)
 Require Import UserPtTree.       (* [uptd], [uva_rmapped], [umem_wr] *)
 Require Export PipeNames.
 Require Export Xv6Cameras.
@@ -103,17 +103,12 @@ Section PipeQueue.
     iApply (own_update_2 with "Ha Hf"). apply excl_auth_update.
   Qed.
 
-  (* THE PRICE OF A DISCONNECT (design/pipe.md): the application's taint, in
-     the shape the machine already fixes for a kill -- persistent, timeless,
-     bought by the generic supply ([UexecExecInst.xv6_ssupply]) and by no
-     verified program under an untainted discipline.  An alias, so that
-     giving pipes a credential of their own is a one-line change here. *)
-  Definition pipe_taint_cred : iProp Σ := (□ riscv_kill_cred)%I.
-
-  Global Instance pipe_taint_cred_persistent : Persistent pipe_taint_cred.
-  Proof using . rewrite /pipe_taint_cred. apply _. Qed.
-  Global Instance pipe_taint_cred_timeless : Timeless pipe_taint_cred.
-  Proof using . rewrite /pipe_taint_cred. apply _. Qed.
+  (* THE PRICE OF A DISCONNECT (design/pipe.md) IS THE APPLICATION'S TAINT
+     ([RiscvPtsto.app_taint], the credential the machine already fixes for a
+     kill): persistent, timeless, bought by the generic supply
+     ([UexecExecInst.xv6_ssupply]) and by no verified program under an
+     untainted discipline.  There is no pipe-local alias for it -- one
+     resource, one name -- so every payment below names [app_taint]. *)
 
   (* ================================================================== *)
   (*  2.  THE LINKS: one fupd per step, supplied by the fragment's holder  *)
@@ -327,20 +322,20 @@ Section PipeQueue.
      tainted pipe its payment back UNTOUCHED beside the credential. *)
   Definition pipe_wpay (γ : gname) (M : gmap Z (bv 8)) (ua : mword 64)
       (Q : nat -> iProp Σ) (Qe : nat -> pipe_st -> iProp Σ) (n : nat) : iProp Σ :=
-    (pipe_wchain γ M ua Q Qe 0 n ∨ pipe_taint_cred)%I.
+    (pipe_wchain γ M ua Q Qe 0 n ∨ app_taint)%I.
 
   Definition pipe_rpay (γ : gname) (Q : list (bv 8) -> iProp Σ)
       (Qe : list (bv 8) -> pipe_st -> iProp Σ) (n : nat) : iProp Σ :=
-    (pipe_rchain γ Q Qe [] n ∨ pipe_taint_cred)%I.
+    (pipe_rchain γ Q Qe [] n ∨ app_taint)%I.
 
   Definition pipe_cpay (γ : gname) (w : bool) (Φ : iProp Σ) : iProp Σ :=
-    (pipe_clink γ w Φ ∨ pipe_taint_cred)%I.
+    (pipe_clink γ w Φ ∨ app_taint)%I.
 
-  Lemma pipe_wpay_taint γ M ua Q Qe n : pipe_taint_cred -∗ pipe_wpay γ M ua Q Qe n.
+  Lemma pipe_wpay_taint γ M ua Q Qe n : app_taint -∗ pipe_wpay γ M ua Q Qe n.
   Proof using . iIntros "#H". rewrite /pipe_wpay. by iRight. Qed.
-  Lemma pipe_rpay_taint γ Q Qe n : pipe_taint_cred -∗ pipe_rpay γ Q Qe n.
+  Lemma pipe_rpay_taint γ Q Qe n : app_taint -∗ pipe_rpay γ Q Qe n.
   Proof using . iIntros "#H". rewrite /pipe_rpay. by iRight. Qed.
-  Lemma pipe_cpay_taint γ w Φ : pipe_taint_cred -∗ pipe_cpay γ w Φ.
+  Lemma pipe_cpay_taint γ w Φ : app_taint -∗ pipe_cpay γ w Φ.
   Proof using . iIntros "#H". rewrite /pipe_cpay. by iRight. Qed.
 
   (* A CLOSE'S POST.  The link FIRES exactly at the LAST fileclose of the
@@ -352,13 +347,13 @@ Section PipeQueue.
      was not.  Tainted: the payment back beside the credential. *)
   Definition pipe_cpost (γ : gname) (w : bool) (Φ : iProp Σ) (last : bool) : iProp Σ :=
     (Φ
-     ∨ (pipe_taint_cred ∗ pipe_cpay γ w Φ)
+     ∨ (app_taint ∗ pipe_cpay γ w Φ)
      ∨ (⌜last = false⌝ ∗ pipe_cpay γ w Φ))%I.
 
   Lemma pipe_cpost_fired γ w Φ last : Φ -∗ pipe_cpost γ w Φ last.
   Proof using . iIntros "H". rewrite /pipe_cpost. by iLeft. Qed.
   Lemma pipe_cpost_taint γ w Φ last :
-    pipe_taint_cred -∗ pipe_cpay γ w Φ -∗ pipe_cpost γ w Φ last.
+    app_taint -∗ pipe_cpay γ w Φ -∗ pipe_cpost γ w Φ last.
   Proof using . iIntros "#Ht Hp". rewrite /pipe_cpost. iRight. iLeft. iFrame "Ht Hp". Qed.
   Lemma pipe_cpost_unfired γ w Φ :
     pipe_cpay γ w Φ -∗ pipe_cpost γ w Φ false.
@@ -394,7 +389,7 @@ Section PipeQueue.
             pipe_wchain γ M ua Q Qe k (n - k))
          ∨ (⌜r = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜(k < n)%nat⌝ ∗
             ∃ s : pipe_st, ⌜ps_ro s = false⌝ ∗ Qe k s)))
-     ∨ (pipe_taint_cred ∗ pipe_wpay γ M ua Q Qe n))%I.
+     ∨ (app_taint ∗ pipe_wpay γ M ua Q Qe n))%I.
 
   (* the sign guard's exit, from the payment alone *)
   Lemma pipe_wpost_neg P γ M ua Q Qe Rk r :
@@ -420,7 +415,7 @@ Section PipeQueue.
         ∨ (⌜r = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜(k < n)%nat⌝ ∗ Rk ∗ Q k)
         ∨ (⌜r = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜(k < n)%nat⌝ ∗
            ∃ s : pipe_st, ⌜ps_ro s = false⌝ ∗ Qe k s)))
-    ∨ (pipe_taint_cred ∗ pipe_wpay γ M ua Q Qe n).
+    ∨ (app_taint ∗ pipe_wpay γ M ua Q Qe n).
   Proof using .
     iIntros "[H | H]"; [| iRight; iExact "H"].
     iDestruct "H" as (k) "(%Hk & [(%Hr & %Hs & Hch) | [(%Hr & %Hs & Hk & Hch) | Hobs]])";
@@ -475,7 +470,7 @@ Section PipeQueue.
           ∃ s : pipe_st, ⌜pst_empty s /\ (d = 0%nat -> ps_wo s = false)⌝ ∗ Qe acc s)
          ∨ (⌜length acc = d⌝ ∗ pipe_rstop_noobs P addr Rk n d r ∗
             pipe_rchain γ Q Qe acc (n - length acc))))
-     ∨ (pipe_taint_cred ∗ pipe_rpay γ Q Qe n))%I.
+     ∨ (app_taint ∗ pipe_rpay γ Q Qe n))%I.
 
   (* the sign guard's exit, from the payment alone *)
   Lemma pipe_rpost_neg P γ addr Q Qe Rk (bs : nat -> bv 8) r :
@@ -499,7 +494,7 @@ Section PipeQueue.
        ⌜(length acc <= n)%nat⌝ ∗
        ⌜forall j : nat, (j < d)%nat -> bs j = acc !!! j⌝ ∗
        pipe_rstop P addr Qe Rk n acc d r)
-    ∨ (pipe_taint_cred ∗ pipe_rpay γ Q Qe n).
+    ∨ (app_taint ∗ pipe_rpay γ Q Qe n).
   Proof using .
     iIntros "[H | H]"; [| iRight; iExact "H"].
     iDestruct "H" as (acc) "(%H1 & %H2 & [(%H3 & Hobs) | (%H3 & Hno & _)])";
@@ -527,7 +522,7 @@ Section PipeQueue.
           ∃ s : pipe_st, ⌜pst_empty s /\ (d = 0%nat -> ps_wo s = false)⌝ ∗ Qe acc s)
          ∨ (⌜length acc = d⌝ ∗ pipe_rstop_noobs P addr Rk n d r ∗
             pipe_rchain γ Q Qe acc (n - length acc))))
-     ∨ (pipe_taint_cred ∗ pipe_rpay γ Q Qe n))%I.
+     ∨ (app_taint ∗ pipe_rpay γ Q Qe n))%I.
 
   (* the one step between them: piperead's window IS the image's run *)
   Lemma pipe_rpost_img_of P γ addr Q Qe Rk n d bs r (M : gmap Z (bv 8)) :
@@ -569,7 +564,7 @@ Section PipeQueue.
           /\ r = (mword_of_int (Z.of_nat d) : mword 64)⌝ ∗
          ∃ s : pipe_st, ⌜pst_empty s /\ (d = 0%nat -> ps_wo s = false)⌝ ∗ Qe acc s)
         ∨ (⌜length acc = d⌝ ∗ pipe_rstop_noobs P addr Rk n d r ∗ Q acc)))
-    ∨ (pipe_taint_cred ∗ pipe_rpay γ Q Qe n).
+    ∨ (app_taint ∗ pipe_rpay γ Q Qe n).
   Proof using .
     iIntros "[H | H]"; [| iRight; iExact "H"].
     iDestruct "H" as (acc d) "(%H1 & %H2 & [Hobs | (%H3 & Hno & Hch)])"; iLeft; iExists acc, d;

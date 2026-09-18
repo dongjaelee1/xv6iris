@@ -153,6 +153,7 @@ Section ProofSysOpenJoin.
   (*  and the single [bltu] decides both halves of the C's disjunction.  *)
   (* ================================================================== *)
   Lemma so_join_au `{GEN : GenId} `{CID0 : CpuId} `{XI : CurCtx}
+      (omo : offmode)
       (gfl gf : gname)
       (gs : list gname) (jx : nat) (gl : gname)
       (pd pav pu : mword 64)
@@ -275,7 +276,7 @@ Section ProofSysOpenJoin.
     so_obs Fo (bv_unsigned inum) (era_node dn bm data) -∗
     open_trunc_at (fs_gamma_L fsc_fs) vom (bv_unsigned inum) Ft -∗
     wp_next true (proc_addr jx)
-      (so_cont_au gf nsj
+      (so_cont_au omo gf nsj
                dqb dqs (proc_addr jx) pidv Mim pvv vom U sts P Pmiss Fo Ft m K eb b lks) -∗
     WP (Loop : expr riscv_lang).
   Proof using .
@@ -372,7 +373,7 @@ Section ProofSysOpenJoin.
                    ltac:(rewrite Hb; wp_next_chain) with "Hcce") as "Hcce".
       iDestruct (wp_next_shift (b := true) (CIDa := CID0) (CIDb := CID3)
                    ltac:(wp_next_chain) with "Hcont") as "Hcont".
-      iApply (Alloc.so_alloc_au (CID0 := CID3) gfl gf gs jx gl pd pav pu
+      iApply (Alloc.so_alloc_au (CID0 := CID3) omo gfl gf gs jx gl pd pav pu
                 gil gisl
  kk qi s gy loy tly inum dn bm om lo nsj u
                 pidv dqb dqs U sts m M2 sp0 K eb b lks w4 w5 w6 w24 bp
@@ -512,7 +513,7 @@ Section ProofSysOpenJoin.
                 Hpc Hsbb Hsbi Hbsl Hisl [Hpriv Hfds Hfrag HP Hobs Htc]").
       { exact Hcsf. }
       { reflexivity. }
-      { iApply (so_arm_fail gf (proc_addr jx) pidv Mim pvv vom P Pmiss Fo Ft U sts _ pl
+      { iApply (so_arm_fail omo gf (proc_addr jx) pidv Mim pvv vom P Pmiss Fo Ft U sts _ pl
                   (bv_unsigned inum) (era_node dn bm data) Hpof Ha0f
                   with "Hpriv Hfrag Hfds HP Hobs Htc"). } }
     (* ---- the major is a legal device index ---- *)
@@ -547,7 +548,7 @@ Section ProofSysOpenJoin.
                  ltac:(wp_next_chain) with "Hcont") as "Hcont".
     (* ITEM (6), PAID: the [bltu] fell through, so the zero-extended
        halfword is at most 9 -- which IS [0 <= ma <= NDEV_max]. *)
-    iApply (Alloc.so_alloc_au (CID0 := CID6) gfl gf gs jx gl pd pav pu
+    iApply (Alloc.so_alloc_au (CID0 := CID6) omo gfl gf gs jx gl pd pav pu
               gil gisl
  kk qi s gy loy tly inum dn bm om lo nsj u
                pidv dqb dqs U sts m M4 sp0 K eb b lks w4 w5 w6 w24 bp

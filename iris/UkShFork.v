@@ -39,7 +39,7 @@
 (* AND IT JOINS [UkSh.ush_rest] (SS5).  The re-cut landed: the loop head    *)
 (* carries an opaque [R] and hands its walk [16 + (UkSh.ush_Dbody + n)],   *)
 (* which at [R := UkShLoop.ushl_R] is exactly the tables, the allocator's  *)
-(* first-call state, [usz] and the [16 + (80 + n)] this arm needs.  So     *)
+(* first-call state, [usz] and the [16 + (ush_Dbody + n)] it needs.  So    *)
 (* [ushf_rest_of_body] discharges [ush_rest] -- from ONE premise, and it   *)
 (* is not about fork at all: the child's walk needs the line to be one the *)
 (* LEXER ACCEPTS ([ushp_no_symbols], fewer than MAXARGS tokens), and the   *)
@@ -68,6 +68,7 @@ Require Import UserHeap UkRun UkRunLeaf.
 Require Import UkFork.
 Require Import FdSlots UserFd.
 Require Import UCodeShK UCodeShP.
+Require Import FileDisc.  (* [uline] -- the line the loop read, typed *)
 Require Import UkSh.
 Require Import UkShParse.
 Require Import UkShRun.
@@ -288,7 +289,7 @@ Section UkShFork.
   Proof. rewrite /ushf_wq. apply _. Qed.
 
   Definition ushf_kill_law : iProp Σ :=
-    (□ (∀ I : list (bv 8), riscv_kill_cred -∗ Wc I 0%nat))%I.
+    (□ (∀ I : list (bv 8), app_taint -∗ Wc I 0%nat))%I.
 
   Global Instance ushf_kill_law_persistent : Persistent ushf_kill_law.
   Proof using . rewrite /ushf_kill_law. apply _. Qed.
@@ -308,7 +309,22 @@ Section UkShFork.
      [Wc I 3] says which block of the transcript the child's output must
      fill, and only the line that closed [I] fills it.  The fork arm
      supplies it out of [UkSh.ush_posw]. *)
-  Definition ushf_child_law : iProp Σ :=
+  (* THE LINE SHAPE IS A PARAMETER (lane SH-CHILD).  The law was stated at
+     [UkSh.ush_line_is] -- echo's line -- and the file application's sh
+     forks a child on a REDIRECT line too, which
+     [UkShRedirLine.ushs_line_is_nosym] proves no [ush_line_is] line can
+     be.  Everything else about the law is indifferent to which line it
+     is, so the line fact is [Lp] and [ushf_child_law] is this at
+     [Lp := UkSh.ush_line_is]. *)
+  (* ...AND THE ROOM IT ASKS FOR IS A PARAMETER TOO (lane SH-CHILD-2):
+     the redirect line's parse is eight words deeper than the symbol-free
+     one, and the fork hands whatever [UkSh.ush_Dbody] leaves -- [68 + (8 +
+     (ush_Dg + n))] -- so a law at [Dc <= 68] is that run at a bigger [n].
+     echo's is [Dc := 60], the landed number. *)
+  Definition ushf_child_law_at
+      (Lp : list (list (bv 8)) -> (nat -> bv 8) -> nat -> nat -> Prop)
+      (Dc : nat)
+      : iProp Σ :=
     (□ (∀ (N' : uk_names Σ) (h : CpuId) (m : regfile) (dw dv : dfrac)
           (s0 : Z) (len : nat) (ws : list (list (bv 8))) (g : nat -> bv 8)
           (sz : Z) (ld : list fdstate) (n : nat) (I : list (bv 8)),
@@ -320,10 +336,17 @@ Section UkShFork.
              The fork arm supplies it: the child's held set is the one sh
              chose ([UkFork.wp_uk_ecall_fork]'s [hs]), and sh's own is
              empty ([UkSh.ush_gen_slot]'s row). *)
-          ⌜ ukn_held N' = ∅ ⌝ -∗
           ⌜ m !!! Regidx s1_idx = (mword_of_int s0 : mword 64) ⌝ -∗
-          ⌜ UkSh.ush_line_is ws g 0%nat len ⌝ -∗
+          ⌜ Lp ws g 0%nat len ⌝ -∗
           ⌜ ws = last_ws I ⌝ -∗
+          (* ...AND THE ERA'S OWN LINE AT THAT INPUT (the PROGRAM STREAM):
+             the input's last body PARSES.  [ws = last_ws I] gives the
+             child its words; it does not say which CONSTRUCTOR the era
+             filed, and an era with more than one line shape needs that to
+             open its lend ([FileDisc.fbody_ok_echo] turns this plus
+             [EchoDisc.line_ok ws] into it).  The slot the loop left
+             carries it ([UkSh.ush_posw]); the echo era ignores it. *)
+          ⌜ FileDisc.fbody_ok (UkSh.ush_lastbody I) ⌝ -∗
           ⌜ 0 < s0 ⌝ -∗ ⌜ s0 + Z.of_nat len + 1 < Z64 ⌝ -∗
           ⌜ s0 + Z.of_nat len < 2 ^ 38 ⌝ -∗
           ⌜ 8344 <= sz ⌝ -∗ ⌜ UserPtTree.pgroundup sz = sz ⌝ -∗
@@ -342,9 +365,19 @@ Section UkShFork.
           UkShMalloc.ushm_fresh N' sz -∗
           Wc I 3%nat -∗
           urun N' h m (mword_of_int 0x9c0)
-            (60 + (8 + (UkShDiag.ush_Dg + n))) -∗
+            (Dc + (8 + (UkShDiag.ush_Dg + n))) -∗
           WP (Loop : expr riscv_lang)))%I.
 
+  Definition ushf_child_law : iProp Σ :=
+    ushf_child_law_at UkSh.ush_line_is 60.
+
+  (* NOT [apply _]: the line predicate is a VARIABLE, so the search walks
+     the whole body (durable-notes, the fourth silent hang). *)
+  Global Instance ushf_child_law_at_persistent Lp Dc :
+    Persistent (ushf_child_law_at Lp Dc).
+  Proof using .
+    rewrite /ushf_child_law_at. apply bi.intuitionistically_persistent.
+  Qed.
   Global Instance ushf_child_law_persistent : Persistent ushf_child_law.
   Proof using . rewrite /ushf_child_law. apply _. Qed.
 
@@ -429,7 +462,7 @@ Section UkShFork.
     (* what the parent lends, how a killer pays for it, and what fork1's
        panic spends -- borrowed, and back on the returning arm *)
     Rc -∗
-    □ (riscv_kill_cred -∗ Q (-1)) -∗
+    □ (app_taint -∗ Q (-1)) -∗
     Pex -∗
     (* THE PANIC: fork failed, and sh is at [panic]'s entry with "fork" in
        a0, its ledger, fork's answer and what it borrowed -- see
@@ -448,7 +481,7 @@ Section UkShFork.
        UserFd.ustd γfd l -∗
        Pex -∗
        urun N h' m' (mword_of_int ShSyms.panic)
-         (UkShDiag.ush_Dg + (66 + n)) -∗
+         (UkShDiag.ush_Dg + (74 + n)) -∗
        WP (Loop : expr riscv_lang)) -∗
     (* THE CHILD, at 0x9c0 *)
     (∀ (N' : uk_names Σ) (hB : CpuId) (mA : regfile) (γ' : gname),
@@ -458,7 +491,6 @@ Section UkShFork.
           [ushf_child_law]'s [empty] is sh's own slot
           ([UkSh.ush_gen_slot_held]), which this core lemma does not
           hold and its callers do. *)
-       ⌜ ukn_held N' = ukn_held N ⌝ -∗
        ⌜ mA !!! Regidx s1_idx
          = (mword_of_int (sh_buf + Z.of_nat k) : mword 64) ⌝ -∗
        my_pay γ' Q -∗ Rc -∗
@@ -472,7 +504,7 @@ Section UkShFork.
        UserChildren.uch (ukn_ch N') ∅ -∗
        UkShMalloc.ushm_fresh N' sz -∗
        urun N' hB mA (mword_of_int 0x9c0)
-         (60 + (8 + (UkShDiag.ush_Dg + n))) -∗
+         (68 + (8 + (UkShDiag.ush_Dg + n))) -∗
        WP (Loop : expr riscv_lang)) -∗
     (* THE PARENT'S RE-ENTRY: the head's slot out of what the fork and the
        wait left, and what fork1 borrowed back.  The fork went out at the
@@ -488,7 +520,7 @@ Section UkShFork.
        ◇ UkSh.ush_posb N γp T Wc Wb Pm l 0%nat) -∗
     ushl_dat -∗ usz γs sz -∗
     ubytes γd sh_buf sh_nbuf f -∗
-    urun N h m (mword_of_int 0x92c) (16 + (80 + n)) -∗
+    urun N h m (mword_of_int 0x92c) (16 + (UkSh.ush_Dbody + n)) -∗
     WP (Loop : expr riscv_lang).
   Proof using Hpay Hpsok_free.
     intros HQc Hregs Hs1 Hnn Hnul Hkl.
@@ -501,7 +533,7 @@ Section UkShFork.
     iApply (wp_uk_jal N h m (mword_of_int 0x92c)
               (mword_of_int 2094908 : mword 21) ra_idx
               (mword_of_int ShSyms.fork1) (mword_of_int 0x930)
-              (16 + (80 + n))
+              (16 + (UkSh.ush_Dbody + n))
               ltac:(unfold unot_sp; vm_compute; discriminate)
               ltac:(vm_compute; discriminate)
               ltac:(apply bv_eq; vm_compute; reflexivity)
@@ -518,14 +550,15 @@ Section UkShFork.
                     m1 !!! Regidx q = m !!! Regidx q)
       by (intros q Hq; exact (upd_ne m (Regidx ra_idx) (Regidx q) _ Hq)).
     (* ---- fork1() ---- *)
-    replace (16 + (80 + n))%nat with (2 + (UkShDiag.ush_Dg + (66 + n)))%nat
-      by (unfold UkShDiag.ush_Dg; lia).
+    replace (16 + (UkSh.ush_Dbody + n))%nat
+      with (2 + (UkShDiag.ush_Dg + (74 + n)))%nat
+      by (unfold UkShDiag.ush_Dg, UkSh.ush_Dbody; lia).
     (* THE CHILDREN SET IS OPENED FOR THE FORK-WAIT WINDOW (lane IO-LEAF,
        M3a) and closed again at the loop head: the fork MINTS the token at
        the generation that joined it, and the wait REPORTS what the reap
        left.  THE PAYLOAD AND THE LEND ARE THE CALLER'S (step 4). *)
     iApply (UkShDiag.wp_kshr_fork1_final N (ushf_pay f)
-              sz l ∅ h1 m1 (66 + n) FsImg.ROOTINO ∅ Q Rc Pex HQc
+              sz l ∅ h1 m1 (74 + n) FsImg.ROOTINO ∅ Q Rc Pex HQc
               with "Hcode Hro [Hdat Hbuf] Hsz Hustd Hcwd Hch [] HRc Hkw
                     Hlease Hrun").
     { rewrite /ushf_pay.
@@ -563,7 +596,7 @@ Section UkShFork.
       iApply (wp_uk_cbeqz N hA mA (mword_of_int 0x930)
                 (mword_of_int 72 : mword 8) (mword_of_int 2 : mword 3) a0_idx
                 false (mword_of_int 0x9c0)
-                (2 + (UkShDiag.ush_Dg + (66 + n)))
+                (2 + (UkShDiag.ush_Dg + (74 + n)))
                 ltac:(vm_compute; reflexivity)
                 ltac:(rewrite Ha0A; symmetry; exact (ushf_eqv_false rA HrA))
                 ltac:(apply bv_eq; vm_compute; reflexivity)
@@ -577,7 +610,7 @@ Section UkShFork.
       (* ---- 0x932  c.li a0,0 ---- *)
       iApply (wp_uk_cli N hB mA (mword_of_int 0x932)
                 (mword_of_int 0 : mword 6) a0_idx
-                (2 + (UkShDiag.ush_Dg + (66 + n)))
+                (2 + (UkShDiag.ush_Dg + (74 + n)))
                 ltac:(unfold unot_sp; vm_compute; discriminate)
                 ltac:(vm_compute; discriminate) with "[] Hrun").
       { iApply (uis_shk_932 with "Hcode"). }
@@ -597,7 +630,7 @@ Section UkShFork.
       iApply (wp_uk_jal N hC mB (mword_of_int 0x934)
                 (mword_of_int 858 : mword 21) ra_idx
                 (mword_of_int ShSyms.wait) (mword_of_int 0x938)
-                (2 + (UkShDiag.ush_Dg + (66 + n)))
+                (2 + (UkShDiag.ush_Dg + (74 + n)))
                 ltac:(unfold unot_sp; vm_compute; discriminate)
                 ltac:(vm_compute; discriminate)
                 ltac:(apply bv_eq; vm_compute; reflexivity)
@@ -618,7 +651,7 @@ Section UkShFork.
       (* ---- wait((int * )0), AT sh's OWN PID (step 4) ---- *)
       iDestruct "Hpid" as (pid) "[%Hpid1 Hpid]".
       iApply (UkShRun.wp_kshr_wait_pid Hpsok_free N hD mC
-                (2 + (UkShDiag.ush_Dg + (66 + n))) Sw pid Ha0_C
+                (2 + (UkShDiag.ush_Dg + (74 + n))) Sw pid Ha0_C
                 with "Hcode Hrun Hch Hpid").
       iIntros (hE ret Sw' pidv) "%Hpv Hpid %Hneg1 Hans Hrun Hch".
       (* THE SET IS EMPTY AGAIN (lane EXEC-SEAM): the wait reaped the one
@@ -666,8 +699,9 @@ Section UkShFork.
         - rewrite (HkeepD s4_idx ltac:(vm_compute; reflexivity)). exact Hs4.
         - rewrite (HkeepD s5_idx ltac:(vm_compute; reflexivity)). exact Hs5.
         - rewrite (HkeepD s6_idx ltac:(vm_compute; reflexivity)). exact Hs6. }
-      replace (2 + (UkShDiag.ush_Dg + (66 + n)))%nat
-        with (16 + (80 + n))%nat by (unfold UkShDiag.ush_Dg; lia).
+      replace (2 + (UkShDiag.ush_Dg + (74 + n)))%nat
+        with (16 + (UkSh.ush_Dbody + n))%nat
+        by (unfold UkShDiag.ush_Dg, UkSh.ush_Dbody; lia).
       (* THE RE-ENTRY: the head's slot out of what the fork and the wait
          left (the caller's law), and the head *)
       iMod ("Hre" $! Sw Sw' ret pidv with "[%] [%] Hfans Hans Hlease") as "Hpos";
@@ -678,14 +712,14 @@ Section UkShFork.
       + exact Hfd0.
       + rewrite /UkSh.ush_pstate /UkSh.ush_std. iFrame "Hustd Hcwd Hch Hpid Hpos".
     - (* ================= THE CHILD: parse, run, exec =================== *)
-      iIntros (N' hA mA γ') "%Hpeq' %Hheq' %HcsA %Ha0A Hmy HRc #Hcode' Hpay Hsz Hustd Hcwd
+      iIntros (N' hA mA γ') "%Hpeq' %HcsA %Ha0A Hmy HRc #Hcode' Hpay Hsz Hustd Hcwd
                              Hch _ Hrun".
       iDestruct "Hpay" as "(_ & #Hro' & #Hjt' & Hdat & Hbuf)".
       (* ---- 0x930  c.beqz a0,0x9c0 -- TAKEN: this is the child ---- *)
       iApply (wp_uk_cbeqz N' hA mA (mword_of_int 0x930)
                 (mword_of_int 72 : mword 8) (mword_of_int 2 : mword 3) a0_idx
                 true (mword_of_int 0x9c0)
-                (2 + (UkShDiag.ush_Dg + (66 + n)))
+                (2 + (UkShDiag.ush_Dg + (74 + n)))
                 ltac:(vm_compute; reflexivity)
                 ltac:(rewrite Ha0A; symmetry;
                       rewrite (moi_eq_zero 0 ltac:(unfold Z64; lia));
@@ -707,12 +741,12 @@ Section UkShFork.
                       = (mword_of_int (sh_buf + Z.of_nat k) : mword 64)).
       { rewrite (HcsA s1_idx ltac:(vm_compute; reflexivity)).
         rewrite (Hm1 s1_idx ltac:(vm_compute; discriminate)). exact Hs1. }
-      replace (2 + (UkShDiag.ush_Dg + (66 + n)))%nat
-        with (60 + (8 + (UkShDiag.ush_Dg + n)))%nat
+      replace (2 + (UkShDiag.ush_Dg + (74 + n)))%nat
+        with (68 + (8 + (UkShDiag.ush_Dg + n)))%nat
         by (unfold UkShDiag.ush_Dg; lia).
-      iApply ("Hchild" $! N' hB mA γ' with "[%] [%] [%] Hmy HRc Hcode' Hro' Hjt'
+      iApply ("Hchild" $! N' hB mA γ' with "[%] [%] Hmy HRc Hcode' Hro' Hjt'
                 Hline Hws Hsy Hustd Hcwd Hch Hfresh Hrun");
-        [ exact Hpeq' | exact Hheq' | exact Hs1_A ].
+        [ exact Hpeq' | exact Hs1_A ].
   Qed.
 
   (* ===================================================================== *)
@@ -732,22 +766,28 @@ Section UkShFork.
   (* On the AFFINE arm and under the TAINT the child runs the generic walk  *)
   (* at the trivial payload, as before.                                     *)
   (* ===================================================================== *)
-  Lemma wp_kshf_fork
+  (* THE LEXER PREMISES ARE GONE (lane SH-CHILD).  [ushp_no_symbols],
+     [ushp_tokens] and the token count were premises of this lemma and of
+     [wp_kshm_body], and NEITHER PROOF READ THEM: the parse happens in the
+     CHILD, whose law re-derives it from the line fact
+     ([UkShEcho.ush_line_toks_holds] inside [wp_kshm_child_echo_holds]).
+     They could not survive the redirect line anyway -- it HAS a symbol
+     byte -- so what is left is the line fact, abstract. *)
+  Lemma wp_kshf_fork_at
+      (Lp : list (list (bv 8)) -> (nat -> bv 8) -> nat -> nat -> Prop)
+      (Dc : nat)
       (h : CpuId) (m : regfile) (f : nat -> bv 8) (k len : nat)
       (ws : list (list (bv 8)))
-      (toks : list (nat * nat)) (sz : Z) (l : list fdstate) (n : nat) :
+      (sz : Z) (l : list fdstate) (n : nat) :
+    (Dc <= 68)%nat ->
     UkSh.ush_regs m ->
     m !!! Regidx s1_idx = mword_of_int (sh_buf + Z.of_nat k) ->
-    (* the line at [k] is one the LEXER accepts -- see the header *)
-    ushp_no_symbols len (fun j : nat => f (k + j)%nat) ->
-    ushp_tokens len (fun j : nat => f (k + j)%nat) 0 toks ->
-    (length toks < 10)%nat ->
     (forall j : nat, (j < len)%nat -> f (k + j)%nat <> ubyte0) ->
     f (k + len)%nat = ubyte0 ->
     (k + len < sh_nbuf)%nat ->
     (* ...and it is a line the discipline admits (step 4): what the paid
        child law is stated at, at the word list the loop found *)
-    UkSh.ush_line_is ws (fun j : nat => f (k + j)%nat) 0%nat len ->
+    Lp ws (fun j : nat => f (k + j)%nat) 0%nat len ->
     (* the break, as [exec] leaves it *)
     8344 <= sz ->
     UserPtTree.pgroundup sz = sz ->
@@ -774,7 +814,7 @@ Section UkShFork.
     shk_rodata γt -∗ ush_jtab γt -∗
     (* the two laws of the paid child (step 4) *)
     ushf_kill_law -∗
-    ushf_child_law -∗
+    ushf_child_law_at Lp Dc -∗
     (* ...and the law of sh's own panic (M4b(2)) *)
     UkShDiag.ush_panic_law Wc Wb -∗
     (* the row the console preamble established (lane SH-OPEN): the PARENT
@@ -784,23 +824,20 @@ Section UkShFork.
     ush_bstate l ws -∗
     ushl_dat -∗ usz γs sz -∗
     ubytes γd sh_buf sh_nbuf f -∗
-    urun N h m (mword_of_int 0x92c) (16 + (80 + n)) -∗
+    urun N h m (mword_of_int 0x92c) (16 + (UkSh.ush_Dbody + n)) -∗
     WP (Loop : expr riscv_lang).
   Proof using HT HWct Hpay Hpsok_free.
-    intros Hregs Hs1 Hns Htoks Htlen Hnn Hnul Hkl Hline Hszlo Hszal Hszok
+    intros HDc Hregs Hs1 Hnn Hnul Hkl Hline Hszlo Hszal Hszok
            Hpm1 Hpmwb Hwbl.
     iIntros "#Hgen Hhead #Hcode #Hro #Hjt #Hkl #Hchl #Hplaw %Hfd0 Hstd
              Hdat Hsz Hbuf Hrun".
-    (* SH'S OWN HELD SET, off its generic slot (lane OFF-HAND-4, S2): the
-       child inherits it, and [ushf_child_law] asks the child's to be
-       empty because /echo's entry is minted there. *)
-    iDestruct (UkSh.ush_gen_slot_held with "Hgen") as %Hshheld.
     iDestruct "Hstd" as "(Hustd & Hcwd & Hch & Hpid & Hpos)".
     (* THE CONSOLE ARM APART FROM THE REST.  The boundary the slot names
        comes out with the EQUATION that the line the loop read is its last
        ([UkSh.ush_posw]) -- which is what the child's law is applied at. *)
     iAssert ((∃ I : list (bv 8),
-                ⌜rest_of I = [] /\ last_ws I = ws⌝ ∗ Pm I
+                ⌜rest_of I = [] /\ last_ws I = ws
+                 /\ FileDisc.fbody_ok (UkSh.ush_lastbody I)⌝ ∗ Pm I
                 ∗ ⌜UkSh.ush_fd0c l /\ UkSh.ush_fd1p l /\ UkSh.ush_fd2p l⌝
                 ∗ Wc I 3%nat)
              ∨ (T ∗ UkSh.ush_pos N γp))%I
@@ -814,12 +851,12 @@ Section UkShFork.
       - (* the closed arm never reaches the body ([p < 3] at [p = 3]) *)
         exfalso. destruct Hcl as [_ Hlt]. lia. }
     - (* ================= THE CONSOLE ARM: lend, and redeem ============= *)
-      iDestruct "Hcon" as (np) "([%Hbnd %Hlast] & Hpm & %Hrow & Hc)".
+      iDestruct "Hcon" as (np) "([%Hbnd [%Hlast %Hfbk]] & Hpm & %Hrow & Hc)".
       (* WHAT FORK1 BORROWS IS THE LEASE'S PIECES (M4b(2)): a failed fork
          pays "fork\n" from the lend and its exit from the pieces and the
          banner-owed credential the message leaves; a fork that returned
          hands the pieces back to the re-entry. *)
-      iAssert (□ (riscv_kill_cred -∗ ushf_wq np))%I as "#Hkw".
+      iAssert (□ (app_taint -∗ ushf_wq np))%I as "#Hkw".
       { iIntros "!> Hk". rewrite /ushf_wq. iRight. iApply ("Hkl" $! np with "Hk"). }
       iApply (wp_kshf_fork_core h m f k len sz l n (fun _ : Z => ushf_wq np)
                 (Wc np 3%nat) (Pm np) ltac:(intros x y; reflexivity)
@@ -833,7 +870,7 @@ Section UkShFork.
            banner-owed credential they leave ([ush_at_of_pm_wb]). *)
         iIntros (Sc h' m' r) "%Hmsg %Hr1 Hans Hustd' Hpm' Hrun'".
         iDestruct "Hans" as "[(_ & _ & HRc) | Hpid']".
-        * iApply (UkShDiag.wp_kshd_panic_paid N Wc Wb l h' m' (66 + n) np
+        * iApply (UkShDiag.wp_kshd_panic_paid N Wc Wb l h' m' (74 + n) np
                     (proj2 (proj2 Hrow)) Hmsg
                     with "Hplaw Hcode Hro Hustd' HRc [Hpm'] Hrun'").
           iIntros "_ Hwb".
@@ -848,18 +885,27 @@ Section UkShFork.
           exfalso.
           exact (ushf_pid_sext_ne_m1 pidv Hrng (eq_trans (eq_sym Hpv) Hr1)).
       + (* the child, on the paid entry *)
-        iIntros (N' hB mA γ') "%Hpeq' %Hheq' %Hs1A Hmy HRc #Hcode' #Hro' #Hjt'
+        iIntros (N' hB mA γ') "%Hpeq' %Hs1A Hmy HRc #Hcode' #Hro' #Hjt'
                                Hline' Hws Hsy Hustd' Hcwd' Hch' Hfresh Hrun'".
+        (* THE CHILD'S ROOM, AS ITS OWN LAW ASKS FOR IT (lane SH-CHILD-2):
+           the core hands [68 + (8 + (ush_Dg + n))] -- the body's
+           [ush_Dbody] less its own frames -- and a law that spends [Dc] of
+           it is that same run at [68 - Dc + n]. *)
+        iRevert "Hrun'".
+        replace (68 + (8 + (UkShDiag.ush_Dg + n)))%nat
+          with (Dc + (8 + (UkShDiag.ush_Dg + (68 - Dc + n))))%nat by lia.
+        iIntros "Hrun'".
         iApply ("Hchl" $! N' hB mA DfracDiscarded DfracDiscarded
                   (sh_buf + Z.of_nat k) len ws (fun j : nat => f (k + j)%nat)
-                  sz l n np
-                  with "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] Hcode' [] []
+                  sz l (68 - Dc + n)%nat np
+                  with "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%]
+                        Hcode' [] []
                         Hjt' Hline' Hws Hsy Hustd' Hcwd' [Hch'] Hfresh HRc Hrun'").
         * exact Hpeq'.
-        * rewrite Hheq'. exact Hshheld.
         * exact Hs1A.
         * exact Hline.
         * symmetry. exact Hlast.
+        * exact Hfbk.
         * unfold sh_buf. lia.
         * unfold sh_buf, sh_nbuf, Z64 in *. lia.
         * unfold sh_buf, sh_nbuf in *. lia.
@@ -917,8 +963,8 @@ Section UkShFork.
       assert (Halo : is_aligned_vaddr
                        (Virtaddr (mword_of_int 0x92c : mword 64)) 2 = true)
         by (vm_compute; reflexivity).
-      iApply (UkSh.ush_gen_run N T h m (mword_of_int 0x92c) (16 + (80 + n))
-                Halo with "Hgen HT Hrun").
+      iApply (UkSh.ush_gen_run N T h m (mword_of_int 0x92c)
+                (16 + (UkSh.ush_Dbody + n)) Halo with "Hgen HT Hrun").
   Qed.
 
   (* ===================================================================== *)
@@ -930,10 +976,21 @@ Section UkShFork.
   (* arm -- all three tests falling through -- is REFUTED here (step 4,     *)
   (* M4b(2)'s "cannot cd"), and [UkShCd.wp_kshc_cd] is gone with it.        *)
   (* ===================================================================== *)
-  Lemma wp_kshm_body
+  (* AT ANY LINE SHAPE WHOSE FIRST BYTE IS 'e' (lane SH-CHILD).  The walk
+     reads the line ONCE, at 0x97a, and only to see that it is not a [cd]:
+     everything else it does with the line is to hand it to the child's
+     law.  So the shape is [Lp] and the one reading is [Hlp0] -- which
+     holds of echo's line and of the redirect line alike, both carrying
+     [EchoDisc.line_ok] and hence [line_ok_head_byte0]. *)
+  Lemma wp_kshm_body_at
+      (Lp : list (list (bv 8)) -> (nat -> bv 8) -> nat -> nat -> Prop)
+      (Dc : nat)
       (h : CpuId) (m : regfile) (f : nat -> bv 8) (k len : nat)
       (ws : list (list (bv 8)))
-      (toks : list (nat * nat)) (sz : Z) (l : list fdstate) (n : nat) :
+      (sz : Z) (l : list fdstate) (n : nat) :
+    (Dc <= 68)%nat ->
+    (forall (ws' : list (list (bv 8))) (g : nat -> bv 8) (k' len' : nat),
+       Lp ws' g k' len' -> bv_unsigned (g k') = 101%Z) ->
     UkSh.ush_regs m ->
     m !!! Regidx s1_idx = mword_of_int (sh_buf + Z.of_nat k) ->
     m !!! Regidx a5_idx = mword_of_int (bv_unsigned (f k)) ->
@@ -941,12 +998,8 @@ Section UkShFork.
     (forall j : nat, (j < len)%nat -> f (k + j)%nat <> ubyte0) ->
     f (k + len)%nat = ubyte0 ->
     (k + len < sh_nbuf)%nat ->
-    (* ...and it is one the LEXER accepts, which is the scope stage 5 left *)
-    ushp_no_symbols len (fun j : nat => f (k + j)%nat) ->
-    ushp_tokens len (fun j : nat => f (k + j)%nat) 0 toks ->
-    (length toks < 10)%nat ->
     (* ...and it is a line the discipline admits (step 4) *)
-    UkSh.ush_line_is ws (fun j : nat => f (k + j)%nat) 0%nat len ->
+    Lp ws (fun j : nat => f (k + j)%nat) 0%nat len ->
     (* the break, as [exec] leaves it *)
     8344 <= sz ->
     UserPtTree.pgroundup sz = sz ->
@@ -966,16 +1019,16 @@ Section UkShFork.
     shk_code γt -∗
     shk_rodata γt -∗ shp_code γt -∗ ush_jtab γt -∗
     ushf_kill_law -∗
-    ushf_child_law -∗
+    ushf_child_law_at Lp Dc -∗
     UkShDiag.ush_panic_law Wc Wb -∗
     ⌜ UkSh.ush_fd0p l ⌝ -∗
     ush_bstate l ws -∗
     ushl_dat -∗ usz γs sz -∗
     ubytes γd sh_buf sh_nbuf f -∗
-    urun N h m (mword_of_int 0x97a) (16 + (80 + n)) -∗
+    urun N h m (mword_of_int 0x97a) (16 + (UkSh.ush_Dbody + n)) -∗
     WP (Loop : expr riscv_lang).
   Proof using HT HWct Hpay Hpsok_free.
-    intros Hregs Hs1 Ha5 Hnn Hnul Hkl Hns Htoks Htlen Hline Hszlo Hszal Hszok
+    intros HDc Hlp0 Hregs Hs1 Ha5 Hnn Hnul Hkl Hline Hszlo Hszal Hszok
            Hpm1 Hpmwb Hwbl.
     iIntros "#Hgen Hhead #Hcode #Hro #Hpcode #Hjt #Hkl #Hchl #Hplaw %Hfd0
              Hstd Hdat Hsz Hbuf Hrun".
@@ -987,11 +1040,8 @@ Section UkShFork.
        admissible line, because the command it runs IS /echo
        ([EchoDisc.line_ok_head_byte0]) *)
     assert (Hnck : bv_unsigned (f k) <> 99).
-    { destruct Hline as [Hok [Hlen Hby]].
-      pose proof (wl_line_pos ws) as HL.
-      pose proof (Hby 0%nat ltac:(lia)) as H0. cbn beta in H0.
-      rewrite !Nat.add_0_r in H0. rewrite H0 (line_ok_head_byte0 ws Hok).
-      lia. }
+    { pose proof (Hlp0 ws (fun j : nat => f (k + j)%nat) 0%nat len Hline)
+        as H0. cbn beta in H0. rewrite Nat.add_0_r in H0. lia. }
     pose proof Hregs as Hregs'.
     destruct Hregs' as (Hs2 & Hs3 & Hs4 & Hs5 & Hs6).
     (* ---- 0x97a  bne a5,s5 -- TAKEN ---- *)
@@ -1003,15 +1053,15 @@ Section UkShFork.
       symmetry. apply negb_true_iff. apply Z.eqb_neq. exact Hnck. }
     iApply (wp_uk_btype N h m (mword_of_int 0x97a)
               (mword_of_int 8114 : mword 13) s5_idx a5_idx BNE true
-              (mword_of_int 0x92c) (16 + (80 + n))
+              (mword_of_int 0x92c) (16 + (UkSh.ush_Dbody + n))
               Htk7a
               ltac:(apply bv_eq; vm_compute; reflexivity)
               ltac:(intros _; vm_compute; reflexivity)
               with "[] Hrun").
     { iApply (uis_shk_97a with "Hcode"). }
     iIntros (h1) "Hrun".
-    iApply (wp_kshf_fork h1 m f k len ws toks sz l n
-              Hregs Hs1 Hns Htoks Htlen Hnn Hnul Hkl Hline
+    iApply (wp_kshf_fork_at Lp Dc h1 m f k len ws sz l n
+              HDc Hregs Hs1 Hnn Hnul Hkl Hline
               Hszlo Hszal Hszok Hpm1 Hpmwb Hwbl
               with "Hgen Hhead Hcode Hro Hjt Hkl Hchl Hplaw [%] Hstd Hdat
                     Hsz Hbuf Hrun").
@@ -1093,12 +1143,94 @@ Section UkShFork.
      byte.  Under the taint the walk does not continue in sh's code at all
      ([UkSh.ush_gen_run]). *)
 
-  Lemma ushf_rest_of_body
-      (sz : Z) :
-    (* EVERY LINE THE DISCIPLINE ADMITS LEXES.  E4's
-       [UkShEcho.ush_line_toks_holds] is the stronger form that discharges
-       it, one file above this one. *)
-    UkShLoop.ush_line_lexable ->
+  (* ===================================================================== *)
+  (* THE BODY, AS A LAW OVER THE LINES AN ERA ADMITS (lane SH-CHILD).       *)
+  (*                                                                        *)
+  (* [wp_kshm_body_at] is one line shape; an ERA reads several              *)
+  (* ([FileDisc.uline] has three constructors and the file application's sh *)
+  (* sees all three), and they do NOT share a walk: [echo ... ] and         *)
+  (* [echo ... > f] do -- both begin with 'e', so both take the [bne] at    *)
+  (* 0x97a -- while [cat f] begins with 'c' and falls into the three-byte   *)
+  (* [cd] test instead.  So what [ushf_rest_of_body_at] takes is the walk   *)
+  (* PER ADMITTED CONSTRUCTOR, as one law, and each era assembles it out of *)
+  (* the walks its lines need.                                              *)
+  (* ===================================================================== *)
+  Definition ushf_body_law (D : FileDisc.uline -> Prop) (sz : Z) : iProp Σ :=
+    (□ (∀ (lu : FileDisc.uline) (h : CpuId) (m : regfile) (f : nat -> bv 8)
+          (k len : nat) (l : list fdstate) (n : nat),
+          ⌜ D lu ⌝ -∗
+          ⌜ UkSh.ush_line_at lu f k len ⌝ -∗
+          ⌜ UkSh.ush_regs m ⌝ -∗
+          ⌜ m !!! Regidx s1_idx = mword_of_int (sh_buf + Z.of_nat k) ⌝ -∗
+          ⌜ m !!! Regidx a5_idx = mword_of_int (bv_unsigned (f k)) ⌝ -∗
+          ⌜ forall j : nat, (j < len)%nat -> f (k + j)%nat <> ubyte0 ⌝ -∗
+          ⌜ f (k + len)%nat = ubyte0 ⌝ -∗
+          ⌜ (k + len < sh_nbuf)%nat ⌝ -∗
+          ⌜ forall n' : nat,
+              ⊢ UkSh.ush_at N γp n' -∗
+                ∃ I : list (bv 8),
+                  ⌜length I = n'⌝ ∗ UkSh.ush_lease N γp T Pm I ⌝ -∗
+          ⌜ forall I : list (bv 8),
+              ⊢ Pm I -∗ Wb I -∗ UkSh.ush_at N γp (length I) ⌝ -∗
+          ⌜ UkSh.ush_fd0p l ⌝ -∗
+          UkSh.ush_gen_slot N T -∗
+          shk_code γt -∗
+          ush_jtab γt -∗
+          ushl_head l sz -∗
+          ush_bstate l (FileDisc.uline_ws lu) -∗
+          ushl_dat -∗ usz γs sz -∗
+          ubytes γd sh_buf sh_nbuf f -∗
+          urun N h m (mword_of_int 0x97a) (16 + (UkSh.ush_Dbody + n)) -∗
+          WP (Loop : expr riscv_lang)))%I.
+
+  Global Instance ushf_body_law_persistent D sz :
+    Persistent (ushf_body_law D sz).
+  Proof using .
+    rewrite /ushf_body_law. apply bi.intuitionistically_persistent.
+  Qed.
+
+  (* the reading of the line every body walk makes, at echo's shape *)
+  Lemma ushf_lp0_echo (ws : list (list (bv 8))) (g : nat -> bv 8)
+      (k len : nat) :
+    UkSh.ush_line_is ws g k len -> bv_unsigned (g k) = 101%Z.
+  Proof using .
+    intros (Hok & Hlen & Hby).
+    pose proof (wl_line_pos ws) as HL.
+    pose proof (Hby 0%nat ltac:(lia)) as H0.
+    rewrite Nat.add_0_r in H0. rewrite H0.
+    exact (line_ok_head_byte0 ws Hok).
+  Qed.
+
+  (* ...AND THE ECHO ERA'S LAW: one constructor, one walk.  This is what
+     [UShRest] hands the discharger, and it is where [ushf_child_law] --
+     the ECHO child -- is spent. *)
+  Lemma ushf_body_law_echo (sz : Z) :
+    8344 <= sz ->
+    UserPtTree.pgroundup sz = sz ->
+    usz_ok (sz + 65536) ->
+    (forall I : list (bv 8), ⊢ Wc I 3%nat -∗ Wc I 0%nat) ->
+    ushf_kill_law -∗
+    ushf_child_law -∗
+    UkShDiag.ush_panic_law Wc Wb -∗
+    ushf_body_law UkSh.ush_line_echo sz.
+  Proof using HT HWct Hpay Hpsok_free.
+    intros Hszlo Hszal Hszok Hwbl.
+    iIntros "#Hkl #Hchl #Hplaw !>" (lu h m f k len l n)
+      "%Hd %Hlat %Hregs %Hs1 %Ha5 %Hnn %Hnul %Hkl2 %Hpm1 %Hpmwb %Hfd0
+       #Hgen #Hcode #Hjt Hhead Hstd Hdat Hsz Hbuf Hrun".
+    destruct Hd as [ ws -> ].
+    iDestruct (ush_jtab_ro γt with "Hjt") as "#Hro".
+    iApply (wp_kshm_body_at UkSh.ush_line_is 60 h m f k len ws sz l n
+              ltac:(lia) ushf_lp0_echo Hregs Hs1 Ha5 Hnn Hnul Hkl2 Hlat
+              Hszlo Hszal Hszok Hpm1 Hpmwb Hwbl
+              with "Hgen Hhead Hcode Hro [] Hjt Hkl Hchl Hplaw [%] Hstd
+                    Hdat Hsz Hbuf Hrun").
+    - iApply (ushf_code_shp with "Hcode").
+    - exact Hfd0.
+  Qed.
+
+  Lemma ushf_rest_of_body_at
+      (D : FileDisc.uline -> Prop) (sz : Z) :
     (* the break, as [exec] leaves it *)
     8344 <= sz ->
     UserPtTree.pgroundup sz = sz ->
@@ -1112,16 +1244,15 @@ Section UkShFork.
        of the obligation's own box below, exactly as sh's text, its jump
        table and the constancy of its payload do.  THE FREE WRITE LAW AND
        THE EXEC SUPPLY ARE GONE with the fork's taint arm. *)
-    (* ...the two laws of the PAID child (step 4), discharged at the top *)
-    ushf_kill_law -∗
-    ushf_child_law -∗
-    (* ...and the law of sh's own panic (M4b(2)), [UShPanic.
-       ush_panic_law_holds] *)
-    UkShDiag.ush_panic_law Wc Wb -∗
-    UkSh.ush_rest_l N γp T Wc Wb Pm (UkShLoop.ushl_R N sz).
+    (* ...AND THE BODY, PER LINE THE ERA ADMITS (lane SH-CHILD).  The two
+       child laws and sh's panic are inside it now -- which is what lets
+       one era spend [ushf_child_law] and another spend that AND the
+       redirect child's AND cat's. *)
+    ushf_body_law D sz -∗
+    UkSh.ush_rest_l_at N γp T Wc Wb Pm D (UkShLoop.ushl_R N sz).
   Proof using HT HWct Hpay Hpsok_free.
-    intros Hlex Hszlo Hszal Hszok Hwbl.
-    iIntros "#Hkl #Hchl #Hplaw".
+    intros Hszlo Hszal Hszok Hwbl.
+    iIntros "#Hbody".
     (* THE RECORD'S OWN THREE COME OUT OF THE OBLIGATION now (lane SH-LINE
        2b, (b)): sh's text, its jump table and the constancy of its exit
        payload are facts about the record the KERNEL minted, so the entry
@@ -1135,7 +1266,7 @@ Section UkShFork.
     destruct Hi2 as [[Hki2 Hi2n] Hnul2].
     destruct (ushf_first_nul f k i2 Hki2 Hnul2) as (len & Hle & Hnn & Hnul).
     (* THE LINE, OR THE TAINT *)
-    iEval (rewrite /UkSh.ush_rest_line) in "Hline".
+    iEval (rewrite /UkSh.ush_rest_line_at) in "Hline".
     iDestruct "Hline" as "[Hl | HT]"; last first.
     { assert (Halo : is_aligned_vaddr
                        (Virtaddr (mword_of_int 0x97a : mword 64)) 2 = true)
@@ -1144,15 +1275,37 @@ Section UkShFork.
                 (16 + (UkSh.ush_Dbody + n)) Halo with "Hgen HT Hrun"). }
     iDestruct ("Hl" $! len with "[%] [%]") as %Hline;
       [ exact Hnn | exact Hnul | ].
-    destruct (Hlex ws f k len Hline) as (Hns & toks & Htoks & Htlen).
-    iApply (wp_kshm_body h m f k len ws toks sz l n
-              Hregs Hs1 Ha5 Hnn Hnul ltac:(lia) Hns Htoks Htlen Hline
-              Hszlo Hszal Hszok Hpm1 Hpmwb Hwbl
-              with "Hgen [Hhead] Hcode Hro [] Hjt Hkl Hchl Hplaw [%] Hstd
-                    Hdat Hsz Hbuf Hrun").
-    - iApply (UkShLoop.ushl_head_of_R N γp with "Hhead").
-    - iApply (ushf_code_shp with "Hcode").
-    - exact Hfd0.
+    destruct Hline as (lu & Hd & Hws & Hlat). subst ws.
+    iApply ("Hbody" $! lu h m f k len l n with
+              "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] Hgen Hcode Hjt
+               [Hhead] Hstd Hdat Hsz Hbuf Hrun");
+      [ exact Hd | exact Hlat | exact Hregs | exact Hs1 | exact Ha5
+      | exact Hnn | exact Hnul | lia | exact Hpm1 | exact Hpmwb
+      | exact Hfd0 | ].
+    iApply (UkShLoop.ushl_head_of_R N γp with "Hhead").
+  Qed.
+
+  (* ...AND THE LANDED DISCHARGER: the echo era's, at its one constructor.
+     [UkShLoop.ush_line_lexable] is NOT a premise any more -- see
+     [wp_kshf_fork_at]'s header: nothing on this walk ever read it. *)
+  Lemma ushf_rest_of_body
+      (sz : Z) :
+    8344 <= sz ->
+    UserPtTree.pgroundup sz = sz ->
+    usz_ok (sz + 65536) ->
+    (forall I : list (bv 8), ⊢ Wc I 3%nat -∗ Wc I 0%nat) ->
+    ushf_kill_law -∗
+    ushf_child_law -∗
+    UkShDiag.ush_panic_law Wc Wb -∗
+    UkSh.ush_rest_l N γp T Wc Wb Pm (UkShLoop.ushl_R N sz).
+  Proof using HT HWct Hpay Hpsok_free.
+    intros Hszlo Hszal Hszok Hwbl.
+    iIntros "#Hkl #Hchl #Hplaw".
+    rewrite /UkSh.ush_rest_l.
+    iApply (ushf_rest_of_body_at UkSh.ush_line_echo sz
+              Hszlo Hszal Hszok Hwbl).
+    iApply (ushf_body_law_echo sz Hszlo Hszal Hszok Hwbl
+              with "Hkl Hchl Hplaw").
   Qed.
 
 End UkShFork.

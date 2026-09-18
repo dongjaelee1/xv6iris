@@ -181,6 +181,7 @@ Require Import FsBytesGamma.     (* [fs_gamma_L]: the live Γ                 *)
 Require Import SpecCopyin.       (* [ubytes_at]: the content seam (RULING A) *)
 Require Import SysWriteDefs.   (* [FW_MAX], [wri_pre], [wchunks]           *)
 Require Import FsAbsWriteFire.   (* [awrite_chain]: the cursor chain         *)
+Require Import UserOff.          (* [uoff]: the HELD row's link (lane OFF-LINK-4) *)
 Require Import SpecConsolewrite. (* [cons_out_chain]: the callee's premise  *)
 Require Import SpecUartPutc.     (* [uart_base_word]: relayed to consolewrite *)
 Require Import TsoCtx.
@@ -605,13 +606,18 @@ Section SpecFilewrite.
      inside the phase 2 that builds the next node, and
      [awrite_chain … Q (length bss) _] IS [Q (length bss)] at the stop
      ([FsAbsWriteFire.awrite_chain_cursor]). *)
-  Definition write_post_ok_at Γ (i : Z) (γo : gname) (n : Z)
+  (* [P] IS THE WRITER'S OWN TABLE (lane WRITE-RELAY-2), the one
+     [filewrite_extra] already carries for the console arm's short return:
+     the chain the caller gets BACK names it, because its partial arms carry
+     the reason a copy gave up ([FsAbsWriteFire.awrite_part_at]).  Nothing
+     above [filewrite_extra] moved -- exactly the read side's finding. *)
+  Definition write_post_ok_at Γ (i : Z) (γo : gname) (P : uptd) (n : Z)
       (M : gmap Z (bv 8)) (ua : mword 64) (Q : nat -> iProp Σ) : iProp Σ :=
     (∃ bss : list (list (bv 8)),
        ⌜Z.of_nat (length (concat bss)) = n⌝ ∗
        ⌜(length bss <= wchunks n)%nat⌝ ∗
        ⌜ubytes_at M ua (concat bss)⌝ ∗
-       awrite_chain Γ appE i γo M ua n Q (length bss)
+       awrite_chain_at Γ appE i γo M ua P n Q (length bss)
          (wchunks n - length bss)%nat)%I.
 
   (* ret -1: filewrite's honest partial arm.  A PREFIX of chunks fired --
@@ -625,14 +631,14 @@ Section SpecFilewrite.
      the never-entered loop nothing moved ([x = 0]).  The cursor's position
      is the whole of what says which of the two happened -- there is no
      separate short-chunk receipt. *)
-  Definition write_post_fail_at Γ (i : Z) (γo : gname) (n : Z)
+  Definition write_post_fail_at Γ (i : Z) (γo : gname) (P : uptd) (n : Z)
       (M : gmap Z (bv 8)) (ua : mword 64) (Q : nat -> iProp Σ) : iProp Σ :=
     (∃ (bss : list (list (bv 8))) (x : nat),
        ⌜Z.of_nat (length (concat bss)) < n \/ (n < 0 /\ bss = [])⌝ ∗
        ⌜(length bss + x <= wchunks n)%nat⌝ ∗
        ⌜(x <= 1)%nat⌝ ∗
        ⌜ubytes_at M ua (concat bss)⌝ ∗
-       awrite_chain Γ appE i γo M ua n Q (length bss + x)
+       awrite_chain_at Γ appE i γo M ua P n Q (length bss + x)
          (wchunks n - length bss - x)%nat)%I.
 
   (* THERE IS NO THIRD ARM ("the row does not read as a FILE"):
@@ -640,19 +646,63 @@ Section SpecFilewrite.
      conjunct, and [SpecWritei]'s success arm reports [off <= di_size] of the
      pre-write record, so no chunk the loop completes has to be skipped and
      the two arms are keyed on the return value alone. *)
-  Definition write_arms_at Γ (i : Z) (γo : gname) (n : Z)
+  Definition write_arms_at Γ (i : Z) (γo : gname) (P : uptd) (n : Z)
       (M : gmap Z (bv 8)) (ua : mword 64) (Q : nat -> iProp Σ)
       (r : mword 64) : iProp Σ :=
     ((⌜r = (mword_of_int n : mword 64) /\ 0 <= n⌝
-      ∗ write_post_ok_at Γ i γo n M ua Q)
+      ∗ write_post_ok_at Γ i γo P n M ua Q)
      ∨ (⌜r = (mword_of_int (-1) : mword 64)⌝
-        ∗ write_post_fail_at Γ i γo n M ua Q))%I.
+        ∗ write_post_fail_at Γ i γo P n M ua Q))%I.
+
+  (* =================================================================== *)
+  (*  THE HELD ROW'S ARMS (lanes OFF-LINK-4/5; design/app-file.md SS3,      *)
+  (*  SS3.5)                                                               *)
+  (* =================================================================== *)
+  (* WHAT A HELD DESCRIPTOR'S WRITE PAYS, and it is the owner's principle
+     spelled at this coupling.  The LINK arm: the caller's chain is the
+     CLIENT-ADVANCED one ([FsAbsWriteFire.awrite_chain_adv]), whose nodes
+     hand the box's arm back ADVANCED BY THE CHUNK.  Its half is in the
+     NODE'S OWN CLOSURE, not in the kernel's hands -- so the node reads the
+     offset it is fired at off that half ([UserOff.uoff_agree_k] against the
+     arm it was lent), INSIDE its own [forall off], and nothing has to be
+     relayed in from outside.  (Lane OFF-LINK-4 relayed it, at the anchored
+     chain; lane OFF-LINK-5 found the half belongs in the closure, and with
+     it the anchor, the kernel's carried [uoff] and the fire's whole
+     supplier step all go away -- FsAbsWriteFire's section 2b.)  The TAINT
+     arm: today's plain chain beside [app_taint], which is what the generic
+     tier pays with (the survey's Fact A) and what a disconnected object
+     leaves.
+
+     AND THERE IS NO SECOND POST.  What the caller gets back that a parked
+     one does not -- its own half at the position the file reached -- rides
+     in ITS OWN CURSOR [Q], which is where its nodes put it, so
+     [filewrite_extra] is the landed [write_arms_at] at BOTH modes and no
+     consumer above the fire learns which row it was.
+
+     THE MATCH IS OUTSIDE THE [∀ P] on both arms, so WRITE-RELAY-3's guard
+     ([∀ P, ⌜TB P⌝ -∗]) goes in front of each chain without restating
+     this. *)
+  Definition filewrite_in_held (i : Z) (γo : gname) (n : Z)
+      (M : gmap Z (bv 8)) (ua : mword 64) (Q : nat -> iProp Σ) : iProp Σ :=
+    ((∀ P : uptd, awrite_chain_adv (fs_gamma_L fsc_fs) appE i γo M ua P n
+                    Q 0%nat (wchunks n))
+     ∨ (awrite_chain (fs_gamma_L fsc_fs) appE i γo M ua n Q 0%nat (wchunks n)
+        ∗ app_taint))%I.
+
+  (* [write_held_post] IS GONE (lane OFF-LINK-5), with its two constructors.
+     It said "the caller's half comes back at [off0 + d], or the taint says
+     why", and it was unstatable at the shape it was landed in: its [off0]
+     was the payment's EXISTENTIAL, and a caller that has handed the half in
+     cannot line the post's witness up with the one it named.  At the
+     client-advanced chain the question does not arise -- the half never
+     leaves the client's closure, so what comes back is whatever the
+     client's own nodes put in [Q], at the position they moved it to. *)
 
   (* the arms refine the landed blanket: each pins [r] *)
-  Lemma write_arms_at_ret Γ (i : Z) (γo : gname) (n : Z)
+  Lemma write_arms_at_ret Γ (i : Z) (γo : gname) (P : uptd) (n : Z)
       (M : gmap Z (bv 8)) (ua : mword 64) (Q : nat -> iProp Σ)
       (r : mword 64) :
-    write_arms_at Γ i γo n M ua Q r -∗ ⌜filewrite_ret n r⌝.
+    write_arms_at Γ i γo P n M ua Q r -∗ ⌜filewrite_ret n r⌝.
   Proof using .
     rewrite /write_arms_at. iIntros "[[%Hok _] | [%Hm1 _]]"; iPureIntro.
     - destruct Hok as [Hr Hn]. rewrite Hr. exact (filewrite_ret_all n Hn).
@@ -794,8 +844,14 @@ Section SpecFilewrite.
          state.  Unread by the other two arms. *)
       (Qe : nat -> pipe_st -> iProp Σ) : iProp Σ :=
     match st with
-    | FdOpen _ true (FdInode i γo _) =>
+    (* KEYED ON THE ROW'S OFFSET MODE (lane OFF-LINK-4): a PARKED row pays
+       what it always paid, and a HELD one pays [link ∨ taint]
+       ([filewrite_in_held] above).  The match is outside the chains' own
+       [∀ P]. *)
+    | FdOpen _ true (FdInode i γo OffParked) =>
         awrite_chain (fs_gamma_L fsc_fs) appE i γo M ua n Q 0%nat (wchunks n)
+    | FdOpen _ true (FdInode i γo OffHeld) =>
+        filewrite_in_held i γo n M ua Q
     | FdOpen _ true (FdDevice _) =>
         cons_out_chain (S gen_id) M ua Q 0%nat (Z.to_nat n)
     (* the pipe: the caller's links over the byte queue at its cursor, one
@@ -824,7 +880,7 @@ Section SpecFilewrite.
       (r : mword 64) : iProp Σ :=
     match st with
     | FdOpen _ true (FdInode i γo _) =>
-        write_arms_at (fs_gamma_L fsc_fs) i γo n M ua Q r
+        write_arms_at (fs_gamma_L fsc_fs) i γo P n M ua Q r
     | FdOpen _ true (FdDevice ma) =>
         if decide (ma = ConsoleInv.CONSOLE)
         then write_cons_arms P ua Q n r
@@ -854,9 +910,38 @@ Section SpecFilewrite.
      Eight one-liners, so that no walk ever has to unfold the two matches
      and every arm names the fact it is standing on. *)
 
+  (* ...AND THE READING KEYED ON THE MODE (lane OFF-LINK-6), which is what
+     a walk that gets its row's mode off [FileInvDefs.fdstate_ok] holds: at
+     PARK the landed chain, at HAND [filewrite_in_held]'s two arms.  One
+     name, so [ProofFilewrite]'s entry does not have to match on [st]. *)
+  Definition filewrite_in_inode_om (om : offmode) (i : Z) (γo : gname) (n : Z)
+      (M : gmap Z (bv 8)) (ua : mword 64) (Q : nat -> iProp Σ) : iProp Σ :=
+    match om with
+    | OffParked =>
+        awrite_chain (fs_gamma_L fsc_fs) appE i γo M ua n Q 0%nat (wchunks n)
+    | OffHeld => filewrite_in_held i γo n M ua Q
+    end.
+
+  Lemma filewrite_in_inode_any rb om i γo n M ua Q Qe :
+    filewrite_in (FdOpen rb true (FdInode i γo om)) n M ua Q Qe -∗
+    filewrite_in_inode_om om i γo n M ua Q.
+  Proof using . destruct om; by iIntros "$". Qed.
+
   Lemma filewrite_in_inode rb i γo n M ua Q Qe :
     filewrite_in (FdOpen rb true (FdInode i γo OffParked)) n M ua Q Qe -∗
     awrite_chain (fs_gamma_L fsc_fs) appE i γo M ua n Q 0%nat (wchunks n).
+  Proof using . by iIntros "$". Qed.
+
+  (* ...and the HELD row's reading, the one a held leaf hands in and the one
+     the fire site reads back (lane OFF-LINK-4). *)
+  Lemma filewrite_in_inode_held rb i γo n M ua Q Qe :
+    filewrite_in (FdOpen rb true (FdInode i γo OffHeld)) n M ua Q Qe -∗
+    filewrite_in_held i γo n M ua Q.
+  Proof using . by iIntros "$". Qed.
+
+  Lemma filewrite_in_of_inode_held rb i γo n M ua Q Qe :
+    filewrite_in_held i γo n M ua Q -∗
+    filewrite_in (FdOpen rb true (FdInode i γo OffHeld)) n M ua Q Qe.
   Proof using . by iIntros "$". Qed.
 
   (* the device arm's input is now the OUTPUT CHAIN (lane OUT-FUPD), the
@@ -867,9 +952,9 @@ Section SpecFilewrite.
     cons_out_chain (S gen_id) M ua Q 0%nat (Z.to_nat n).
   Proof using . by iIntros "$". Qed.
 
-  Lemma filewrite_extra_inode gn P rb i γo n M ua Q Qe r :
-    write_arms_at (fs_gamma_L fsc_fs) i γo n M ua Q r -∗
-    filewrite_extra gn P (FdOpen rb true (FdInode i γo OffParked)) n M ua Q Qe r.
+  Lemma filewrite_extra_inode gn P rb om i γo n M ua Q Qe r :
+    write_arms_at (fs_gamma_L fsc_fs) i γo P n M ua Q r -∗
+    filewrite_extra gn P (FdOpen rb true (FdInode i γo om)) n M ua Q Qe r.
   Proof using . by iIntros "$". Qed.
 
   Lemma filewrite_extra_cons gn P rb (mj : Z) n M ua Q Qe r :
@@ -910,8 +995,8 @@ Section SpecFilewrite.
   (* the [f->writable == 0] early return: no arm of the match is armed
      there, because every armed one is a WRITABLE descriptor *)
   Lemma filewrite_extra_unwritable (gn : gname) (P : uptd) (inum : mword 32) (γo : gname)
-      (γp : pipe_names) (C : fcontent) (st : fdstate) n M ua Q Qe r :
-    fdstate_ok inum γo γp C st ->
+      (om : offmode) (γp : pipe_names) (C : fcontent) (st : fdstate) n M ua Q Qe r :
+    fdstate_ok inum γo om γp C st ->
     (* the WORD the code tested, not a re-reading of it: the walk arrives
        with [beq a5,x0]'s own boolean *)
     eq_vec (zero_extend' 64 (fc_writable C : mword 8) : mword 64)
@@ -931,12 +1016,36 @@ Section SpecFilewrite.
      input IS the cursor at the empty prefix and the fail arm's refund is
      that same cursor; the console arm's NEG disjunct is pure; every other
      arm is [emp]. *)
-  Lemma write_arms_at_neg Γ i γo n M ua Q :
+  (* ...and the HELD row's, at the same count: [wchunks n] is 0 there, so the
+     client-advanced chain IS the cursor -- a negative request moves no
+     offset (lanes OFF-LINK-4/5). *)
+  Lemma write_arms_at_neg_held Γ i γo (P : uptd) n M ua Q :
+    (n < 0)%Z ->
+    awrite_chain_adv Γ appE i γo M ua P n Q 0%nat (wchunks n) -∗
+    write_arms_at Γ i γo P n M ua Q (mword_of_int (-1) : mword 64).
+  Proof using .
+    intros Hn. iIntros "Hc".
+    iDestruct (awrite_chain_adv_cursor with "Hc") as "Hc".
+    rewrite /write_arms_at. iRight.
+    iSplitR; [done |]. rewrite /write_post_fail_at.
+    rewrite (wchunks_nonpos n ltac:(lia)).
+    iExists [], 0%nat.
+    iSplitR; [iPureIntro; right; split; [exact Hn | reflexivity] |].
+    iSplitR; [iPureIntro; simpl; lia |].
+    iSplitR; [iPureIntro; lia |].
+    iSplitR; [iPureIntro; apply ubytes_at_nil |].
+    simpl. iExact "Hc".
+  Qed.
+
+  Lemma write_arms_at_neg Γ i γo (P : uptd) n M ua Q :
     (n < 0)%Z ->
     awrite_chain Γ appE i γo M ua n Q 0%nat (wchunks n) -∗
-    write_arms_at Γ i γo n M ua Q (mword_of_int (-1) : mword 64).
+    write_arms_at Γ i γo P n M ua Q (mword_of_int (-1) : mword 64).
   Proof using .
-    intros Hn. iIntros "Hc". rewrite /write_arms_at. iRight.
+    intros Hn. iIntros "Hc".
+    iDestruct (awrite_chain_at_of Γ appE i γo M ua n Q 0%nat (wchunks n) P
+                 with "Hc") as "Hc".
+    rewrite /write_arms_at. iRight.
     iSplitR; [done |]. rewrite /write_post_fail_at.
     rewrite (wchunks_nonpos n ltac:(lia)).
     iExists [], 0%nat.
@@ -955,7 +1064,15 @@ Section SpecFilewrite.
     intros Hn. destruct st as [| rb wb ty]; [by iIntros |].
     destruct wb; [| by iIntros].
     destruct ty as [i γo om | γp | mj]; rewrite /filewrite_in /filewrite_extra.
-    - iIntros "Hc". by iApply (write_arms_at_neg with "Hc").
+    - destruct om as [|].
+      + iIntros "Hc". by iApply (write_arms_at_neg with "Hc").
+      + (* the HELD row's two arms: the link's own cursor, or the plain
+           chain beside the taint (lanes OFF-LINK-4/5) *)
+        rewrite /filewrite_in_held.
+        iIntros "[Hc | [Hc _]]".
+        * iApply (write_arms_at_neg_held (fs_gamma_L fsc_fs) i γo P n M ua Q Hn).
+          iApply ("Hc" $! P).
+        * by iApply (write_arms_at_neg with "Hc").
     - (* a negative request never reaches the pipe: the payment comes back
          at the empty count *)
       assert (Hn0 : Z.to_nat n = 0%nat) by (destruct n; [lia | lia | reflexivity]).

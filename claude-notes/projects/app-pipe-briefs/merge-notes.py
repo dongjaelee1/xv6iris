@@ -6,6 +6,10 @@ ours = index stage 2 if conflicted, else ORIG_HEAD (the pre-merge main); theirs 
 import subprocess,re,sys
 lane=sys.argv[1]; branch=sys.argv[2]; tick=sys.argv[3] if len(sys.argv)>3 else None
 p='claude-notes/projects/app-pipe.md'
+import os
+inmerge=os.path.exists('.git/MERGE_HEAD') or os.path.exists(subprocess.run(['git','rev-parse','--git-dir'],capture_output=True,text=True).stdout.strip()+'/MERGE_HEAD')
+parents=subprocess.run(['git','rev-list','--parents','-n','1','HEAD'],capture_output=True,text=True).stdout.split()
+assert inmerge or len(parents)==3 or subprocess.run(['git','merge-base','--is-ancestor',branch,'HEAD']).returncode==0, "refusing: no merge in progress and "+branch+" is not merged into HEAD -- did the git merge actually run?"
 r=subprocess.run(['git','show',':2:'+p],capture_output=True,text=True)
 ours=r.stdout if r.returncode==0 and r.stdout.strip() else subprocess.run(['git','show','ORIG_HEAD:'+p],capture_output=True,text=True).stdout
 theirs=subprocess.run(['git','show',branch+':'+p],capture_output=True,text=True).stdout

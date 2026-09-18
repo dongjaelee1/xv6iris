@@ -458,7 +458,7 @@ Section SyscExec.
   Definition sysc_fork_in (f : sfam) (U : ustate) (sts : list fdstate)
       : iProp Σ :=
     (⌜sysc_num (us_V U) = UsysMemOk.USYS_fork⌝ -∗
-       □ (riscv_kill_cred -∗ sfork_pay f (-1)) ∗
+       □ (app_taint -∗ sfork_pay f (-1)) ∗
        (* ...AND WHAT THE PARENT LENDS ITS CHILD (lane FORK-REFUND), beside
           the continuation rather than inside it: the dispatcher's fork arm
           hands this copy to [SpecSysFork], which hands it to kfork, which

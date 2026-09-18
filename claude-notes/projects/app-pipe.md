@@ -1512,28 +1512,52 @@ the same thing.
   **`UkShPipe.vo`** and **`UkPipeMoves.vo`** all compiled for real against
   `d860835b2`+this branch, `errs=0` throughout.  So deliverables 1–4 and
   both `ukn_held` ports are machine-checked, not merely `check`ed.
-- **The post-merge whole-tree build (`make -k`, so every failure is
-  attributable) ended at RC=2 with EXACTLY ONE failed target:
-  `UShRound.vo`, and the failure is `Segmentation fault (core dumped)` →
-  `Error 139`, not a type or proof error.**  `UShRound.v` is an UPSTREAM
-  app-file file this lane never touched (it is the file main's
-  PROGRAM-STREAM commits keep growing, and the largest in the tree).  Three
-  things to weigh, stated rather than spun:
-  (a) it is a segfault, and the only other segfault this clone produced was
-      `WpGprCsrwC.vo`, a model/CSR file nowhere near this lane, cured by
-      raising `ulimit -s` — so the mirror has a resource wall at big files;
-  (b) it DID produce a `.vo` earlier in this same clone (timestamped 10:55,
-      before this lane's last two syncs), so it is not unconditionally
-      unbuildable here;
-  (c) it IS in this lane's transitive cone (everything is, below
-      `UsysMemOk`), so the lane is not exonerated by construction — only by
-      the kind of failure, a segfault being resource exhaustion rather than
-      a proof going wrong.
-  The solo retry (`make UShRound.vo` with `ulimit -s unlimited`) segfaulted
-  again, but NOT on a quiet box: the UPSTREAM-FIX lane's clone was running
-  ~17 `rocqworker`s at the time.  **The coordinator should re-run the gate
-  on a quiet mirror with the stack raised, and read `UShRound.vo` as
-  upstream's until it builds clean there.**
+- **THE POST-MERGE WHOLE-TREE BUILD ENDS AT RC=2 WITH ONE FAILED TARGET,
+  `UShRound.vo`, AND IT IS THIS LANE'S FAULT — NOT UPSTREAM'S.**  The
+  failure is `Segmentation fault (core dumped)` → `Error 139`, so it is
+  resource exhaustion in the checker, not a type or proof error, and it is
+  NOT the stack limit (it reproduces alone under `ulimit -s unlimited`).
+  My first reading was "upstream's file, upstream's problem".  **That is
+  wrong, and the discriminator is clean:**
+
+      md5 UShRound.v  = 6d182af64e007c1283eb5516e4726bc7   -- IDENTICAL in
+        /shared/xv6iris-pipe-neg1  and  /shared/xv6iris-pipe-merge
+      UShRound.vo     = 153908 bytes, 11:38, in the MERGE clone (built)
+                      =  37627 bytes, 10:55, in THIS clone (STALE, pre-sync)
+
+  The UPSTREAM-FIX lane's clone, on the same mirror, at the same hour, with
+  the same `UShRound.v` and WITHOUT this lane's seven files, compiles it.
+  This clone does not.  The only source difference in its cone is this
+  lane's diff (`UsysMemOk.v` md5 differs; the other six too), so **the −1
+  conjunct, or something else in this lane's seven files, makes
+  `UShRound.v` blow the checker's stack.**
+
+  **THE SUSPECT LIST IS TWO FILES, not seven** — `.CoqMakefile.d` says
+  `UShRound.vo` depends DIRECTLY on exactly one of this lane's files,
+  `UkRunSys.vo`, hence on `UsysMemOk.vo` only through it.  So the vector is
+  either the row itself or `wp_uk_ecall_pipe`'s new post shape, and the row
+  is the likelier of the two: `UShRound.v` proves sh's round at the FILE
+  claim and never calls pipe(2), but its leaves run
+  `UkRun.urun_nopipe_step` / `urun_rows_step`, which CASE-SPLIT the whole
+  `usys_fd_ok` chain — and that chain's pipe branch is exactly what grew a
+  conjunction.
+
+  **WHAT THE NEXT LANE SHOULD DO ABOUT IT, concretely.**  Bisect those two
+  against `UShRound.vo` alone: `git checkout main -- iris/<F>.v` and
+  `make UShRound.vo`.  `UsysMemOk.v` is the prime suspect and
+  the mechanism is almost certainly TERM SIZE, not logic — the row's
+  else-branch went from an equation to a CONJUNCTION, so anything that
+  normalises or case-splits the whole `usys_fd_ok` chain (a `vm_compute`, a
+  `cbn` on the row, an `intuition`/`done` over it) now carries one more
+  binary node per pipe branch, and `UShRound.v` is the largest file in the
+  tree.  **If that is it, the fix is cheap and keeps the conjunct**: state
+  the failure arm as a NAMED definition (e.g. `usys_pipe_failed r sts sts'`)
+  so the row's body stays one head symbol wide, or split the sign out into
+  `usys_fd_ok_pipe_neg1`'s shape and leave the row's else-branch the
+  equation it was — the sign is only ever read through that lemma anyway,
+  which is exactly why the lemma exists.  **Do not conclude the lane's
+  logic is wrong: every file the lane touches builds, and the row, the
+  leaf, the relay and sh's arm are all machine-checked (below).**
 - The echo audit had not returned either, so **this lane reports no audit
   count**.
 - **ONE REAL PROOF BREAK WAS FOUND BY THE BUILD AND FIXED** (`c7fcab036`):

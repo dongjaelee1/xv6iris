@@ -52,6 +52,17 @@ Require Import ProcAvail.
 Require Import FsStateDefs.
 Require Import Xv6G.
 Require Import SysWriteDefs.     (* [FW_MAX], [wchunks], [wri_pre]        *)
+Require Import SpecWritei.         (* [wi_blocks]                           *)
+Require Import FsBytesGamma.       (* [fs_gamma_L]                          *)
+Require Import InodeInv.           (* [MAXFILE]                             *)
+Require Import InodeDefs.
+Require Import BioDefs.            (* [BSIZE]                               *)
+Require Import FsNode.             (* [fs_node]                             *)
+Require Import FsAbsDefs.          (* [abs_row], [anode]                    *)
+Require Import FsState.            (* [top_frag]                            *)
+Require Import FsBlocks.           (* [fs_names], [blk_splice]              *)
+Require Import FsStateEra.         (* [era_node]: the fire's rows           *)
+Require Import InodeRegion.        (* [ftop_inv], [top_frag]                *)
 Require Import FsAbsWriteFire.     (* [awrite_chain] and its two arms       *)
 Require Import UserOff.            (* [uoff]: the held walk's carrier       *)
 Require Import UserPtTree.         (* [uptd]: the partial arm's table       *)
@@ -342,7 +353,233 @@ Section FilewriteChain.
     rewrite Hlen. iExact "Hcm".
   Qed.
 
+  (* ===================================================================== *)
+  (*  THE LOOP'S CARRIER, KEYED ON THE ROW'S OFFSET MODE (lane OFF-LINK-5)  *)
+  (* ===================================================================== *)
+  (* ONE SUPPLIER NOTION FOR THE TWO WAYS THE KERNEL MAY MOVE THE SHADOW
+     ITSELF: the descriptor row's existential invariant (mode park) or the
+     taint (an object already disconnected, which is what the generic tier
+     leaves and what a held row's OTHER arm carries).  Both are PERSISTENT,
+     so the loop carries this beside the chain at no cost and no exit has
+     to give it back. *)
+  Definition fw_supply (γo : gname) : iProp Σ :=
+    (off_user_inv γo ∨ app_taint)%I.
+
+  Global Instance fw_supply_persistent γo : Persistent (fw_supply γo).
+  Proof using . rewrite /fw_supply. apply _. Qed.
+
+  Lemma fw_supply_off (E : coPset) (γo : gname) (off d : nat) :
+    ↑foffN ⊆ E -> fw_supply γo -∗ off_supply γo E off d True.
+  Proof using .
+    intros HE. iIntros "[#Hinv | #Ht]".
+    - iApply (off_supply_parked E γo off d HE with "Hinv").
+    - iApply (off_supply_taint E γo off d with "Ht").
+  Qed.
+
+  (* AND THE CARRIER ITSELF.  A PARKED row walks the landed carrier beside
+     that supplier.  A HELD one walks the CLIENT-ADVANCED carrier -- whose
+     nodes move the shadow themselves, so no supplier appears -- or, if the
+     object was disconnected before the call, the landed carrier beside the
+     taint, which is the other arm of [SpecFilewrite.filewrite_in_held].
+     The disjunction does not move during the loop: each arm's fire
+     reproduces its own arm. *)
+  Definition fw_au_st (om : offmode) Γ (i : Z) (γo : gname) (P : uptd) (n : Z)
+      (M : gmap Z (bv 8)) (ua : mword 64) (Q : nat -> iProp Σ)
+      (t : Z) (p x : nat) : iProp Σ :=
+    match om with
+    | OffParked => (fw_supply γo ∗ fw_au_raw Γ i γo P n M ua Q t p x)%I
+    | OffHeld => (fw_au_adv Γ i γo P n M ua Q t p x
+                  ∨ (fw_supply γo ∗ fw_au_raw Γ i γo P n M ua Q t p x))%I
+    end.
+
+  (* THE ENTRY, at each mode's own input ([SpecFilewrite.filewrite_in]). *)
+  Lemma fw_au_st_init_parked Γ (i : Z) γo (P : uptd) (n : Z) M ua Q :
+    off_user_inv γo -∗
+    awrite_chain Γ appE i γo M ua n Q 0%nat (wchunks n) -∗
+    fw_au_st OffParked Γ i γo P n M ua Q 0 0%nat 0%nat.
+  Proof using .
+    iIntros "#Hinv Hcm". rewrite /fw_au_st. iSplitR.
+    { rewrite /fw_supply. by iLeft. }
+    iApply (fw_au_raw_init with "Hcm").
+  Qed.
+
+  Lemma fw_au_st_init_held Γ (i : Z) γo (P : uptd) (n : Z) M ua Q :
+    awrite_chain_adv Γ appE i γo M ua P n Q 0%nat (wchunks n) -∗
+    fw_au_st OffHeld Γ i γo P n M ua Q 0 0%nat 0%nat.
+  Proof using .
+    iIntros "Hcm". rewrite /fw_au_st. iLeft.
+    iApply (fw_au_adv_init with "Hcm").
+  Qed.
+
+  Lemma fw_au_st_init_taint Γ (i : Z) γo (P : uptd) (n : Z) M ua Q :
+    app_taint -∗
+    awrite_chain Γ appE i γo M ua n Q 0%nat (wchunks n) -∗
+    fw_au_st OffHeld Γ i γo P n M ua Q 0 0%nat 0%nat.
+  Proof using .
+    iIntros "#Ht Hcm". rewrite /fw_au_st. iRight. iSplitR.
+    { rewrite /fw_supply. by iRight. }
+    iApply (fw_au_raw_init with "Hcm").
+  Qed.
+
+  (* THE TWO EXITS, AT THE LANDED POST -- which is the whole point of the
+     client-advanced shape: nothing above the fire learns the row's mode. *)
+  Lemma fw_au_st_ok om Γ (i : Z) γo (P : uptd) (n : Z) M ua Q (p : nat) :
+    fw_au_st om Γ i γo P n M ua Q n p 0%nat -∗
+    write_post_ok_at Γ i γo P n M ua Q.
+  Proof using .
+    destruct om; rewrite /fw_au_st.
+    - iIntros "[_ H]". iApply (fw_au_raw_ok with "H").
+    - iIntros "[H | [_ H]]";
+        [ iApply (fw_au_adv_ok with "H") | iApply (fw_au_raw_ok with "H") ].
+  Qed.
+
+  Lemma fw_au_st_fail om Γ (i : Z) γo (P : uptd) (n : Z) M ua Q (t : Z) (p x : nat) :
+    (t < n)%Z \/ (n < 0)%Z /\ p = 0%nat ->
+    fw_au_st om Γ i γo P n M ua Q t p x -∗
+    write_post_fail_at Γ i γo P n M ua Q.
+  Proof using .
+    intros Hex. destruct om; rewrite /fw_au_st.
+    - iIntros "[_ H]". iApply (fw_au_raw_fail _ _ _ _ _ _ _ _ _ _ _ Hex with "H").
+    - iIntros "[H | [_ H]]";
+        [ iApply (fw_au_adv_fail _ _ _ _ _ _ _ _ _ _ _ Hex with "H")
+        | iApply (fw_au_raw_fail _ _ _ _ _ _ _ _ _ _ _ Hex with "H") ].
+  Qed.
+
+  (* ONE CHUNK'S FIRE, PACKAGED: the peel, the fire and the closer in one
+     step, so [ProofFilewrite]'s loop body branches on the mode HERE and
+     not in the middle of its own 300-hypothesis context.  The two arms
+     differ in exactly one line -- which fire lemma runs -- because the
+     client-advanced node needs no supplier and the landed one does. *)
+  Lemma fw_st_fire_full (om : offmode) (γfs : fs_names) (E : coPset)
+      (i : Z) (γo : gname) (M : gmap Z (bv 8)) (ua : mword 64) (P : uptd)
+      (n : Z) (Q : nat -> iProp Σ) (t : Z) (p : nat)
+      (off : nat) (bs bs0 : list (bv 8)) (nl : nat) (nd nd' : fs_node) :
+    ↑ftopN ∪ ↑appN ⊆ E ->
+    inode_local i nd' ->
+    (0 < length bs)%nat ->
+    (off <= length bs0)%nat ->
+    (off + length bs <= MAXFILE * BSIZE)%nat ->
+    fn_type nd <> 0 ->
+    abs_row nd = MkAnode (AFile bs0) nl ->
+    fn_type nd' <> 0 ->
+    abs_row nd' = MkAnode (AFile (blk_splice off bs bs0)) nl ->
+    ubytes_at M (add_vec_int ua t) bs ->
+    Z.of_nat (length bs) = wchunk_at n p ->
+    (0 <= t)%Z -> (t < n)%Z -> t = FW_MAX * Z.of_nat p ->
+    ftop_inv γfs -∗ app_inv γfs -∗
+    fw_au_st om (fs_gamma_L γfs) i γo P n M ua Q t p 0%nat -∗
+    top_frag (fs_gamma_L γfs) i nd -∗
+    off_link γo (Z.of_nat off) ={E}=∗
+      top_frag (fs_gamma_L γfs) i nd'
+      ∗ off_link γo (Z.of_nat (off + length bs))
+      ∗ fw_au_st om (fs_gamma_L γfs) i γo P n M ua Q
+          (t + Z.of_nat (length bs)) (S p) 0%nat.
+  Proof using .
+    intros HE Hloc Hpos Hoff Hcap Hnz Habs Hnz' Habs' Hby Hlen Ht Htn Htie.
+    assert (Hfoff : ↑foffN ⊆ E).
+    { etrans; [| exact HE]. rewrite /foffN /appN. solve_ndisj. }
+    assert (Hbyk : ubytes_at M (add_vec_int ua (FW_MAX * Z.of_nat p)) bs)
+      by (rewrite -Htie; exact Hby).
+    iIntros "#Hi #Hai Hst Hf Hg".
+    rewrite /fw_au_st.
+    destruct om.
+    - iDestruct "Hst" as "[#Hsup Hau]".
+      iDestruct (fw_au_raw_take (fs_gamma_L γfs) i γo P n M ua Q t p Ht Htn Htie with "Hau")
+        as "[Hcm Hback]".
+      iMod (wrf_awrite_fire_gen γfs E i γo M ua n p _ True off bs bs0 nl nd nd'
+              HE Hloc Hpos Hoff Hcap Hnz Habs Hnz' Habs' Hbyk Hlen
+              with "Hi Hai [] Hcm Hf Hg") as "(Hf & Hg & _ & Htail)".
+      { iApply (fw_supply_off E γo off (length bs) Hfoff with "Hsup"). }
+      iModIntro. iFrame "Hf Hg". iSplitR; [iExact "Hsup" |].
+      iApply ("Hback" $! bs with "[//] Htail").
+    - iDestruct "Hst" as "[Hau | [#Hsup Hau]]".
+      + iDestruct (fw_au_adv_take (fs_gamma_L γfs) i γo P n M ua Q t p Ht Htn Htie with "Hau")
+          as "[Hcm Hback]".
+        iMod (wrf_awrite_fire_adv γfs E i γo M ua n p _ off bs bs0 nl nd nd'
+                HE Hloc Hpos Hoff Hcap Hnz Habs Hnz' Habs' Hbyk Hlen
+                with "Hi Hai Hcm Hf Hg") as "(Hf & Hg & Htail)".
+        iModIntro. iFrame "Hf Hg". iLeft.
+        iApply ("Hback" $! bs with "[//] Htail").
+      + iDestruct (fw_au_raw_take (fs_gamma_L γfs) i γo P n M ua Q t p Ht Htn Htie with "Hau")
+          as "[Hcm Hback]".
+        iMod (wrf_awrite_fire_gen γfs E i γo M ua n p _ True off bs bs0 nl nd nd'
+                HE Hloc Hpos Hoff Hcap Hnz Habs Hnz' Habs' Hbyk Hlen
+                with "Hi Hai [] Hcm Hf Hg") as "(Hf & Hg & _ & Htail)".
+        { iApply (fw_supply_off E γo off (length bs) Hfoff with "Hsup"). }
+        iModIntro. iFrame "Hf Hg". iRight. iSplitR; [iExact "Hsup" |].
+        iApply ("Hback" $! bs with "[//] Htail").
+  Qed.
+
+  (* ...and the short chunk's, at the same packaging.  The offset advances
+     by the COUNT [r] and the carrier moves to [x = 1]: the loop's last
+     step. *)
+  Lemma fw_st_fire_part (om : offmode) (γfs : fs_names) (E : coPset)
+      (i : Z) (γo : gname) (M : gmap Z (bv 8)) (ua : mword 64) (P : uptd)
+      (n : Z) (Q : nat -> iProp Σ) (t : Z) (p : nat)
+      (off r : nat) (bs bs0 : list (bv 8)) (nl : nat) (nd nd' : fs_node) :
+    ↑ftopN ∪ ↑appN ⊆ E ->
+    inode_local i nd' ->
+    (0 < length bs)%nat ->
+    (off <= length bs0)%nat ->
+    (off + length bs <= MAXFILE * BSIZE)%nat ->
+    (r <= length bs)%nat ->
+    (length bs <= r + BSIZE)%nat ->
+    fn_type nd <> 0 ->
+    abs_row nd = MkAnode (AFile bs0) nl ->
+    fn_type nd' <> 0 ->
+    abs_row nd' = MkAnode (AFile (blk_splice off bs bs0)) nl ->
+    ubytes_at M (add_vec_int ua (FW_MAX * Z.of_nat p)) (take r bs) ->
+    Z.of_nat r < wchunk_at n p ->
+    ((r < length bs)%nat -> wr_fail_why P ua (Z.to_nat n)) ->
+    (wi_blocks off (Z.to_nat (wchunk_at n p)) = 1%nat -> r = 0%nat) ->
+    (0 <= t)%Z -> (t < n)%Z -> t = FW_MAX * Z.of_nat p ->
+    ftop_inv γfs -∗ app_inv γfs -∗
+    fw_au_st om (fs_gamma_L γfs) i γo P n M ua Q t p 0%nat -∗
+    top_frag (fs_gamma_L γfs) i nd -∗
+    off_link γo (Z.of_nat off) ={E}=∗
+      top_frag (fs_gamma_L γfs) i nd'
+      ∗ off_link γo (Z.of_nat (off + r))
+      ∗ fw_au_st om (fs_gamma_L γfs) i γo P n M ua Q t p 1%nat.
+  Proof using .
+    intros HE Hloc Hpos Hoff Hcap Hr Hgap Hnz Habs Hnz' Habs' Hby Hshort Hwhy
+           Hsb1 Ht Htn Htie.
+    assert (Hfoff : ↑foffN ⊆ E).
+    { etrans; [| exact HE]. rewrite /foffN /appN. solve_ndisj. }
+    iIntros "#Hi #Hai Hst Hf Hg".
+    rewrite /fw_au_st.
+    destruct om.
+    - iDestruct "Hst" as "[#Hsup Hau]".
+      iDestruct (fw_au_raw_spend_part (fs_gamma_L γfs) i γo P n M ua Q t p Ht Htn Htie
+                   with "Hau") as "[Hcm Hback]".
+      iMod (wrf_apart_fire_gen γfs E i γo M ua P n p _ True off r bs bs0 nl nd nd'
+              HE Hloc Hpos Hoff Hcap Hr Hgap Hnz Habs Hnz' Habs' Hby Hshort
+              Hwhy Hsb1
+              with "Hi Hai [] Hcm Hf Hg") as "(Hf & Hg & _ & Htail)".
+      { iApply (fw_supply_off E γo off r Hfoff with "Hsup"). }
+      iModIntro. iFrame "Hf Hg". iSplitR; [iExact "Hsup" |].
+      iApply ("Hback" with "Htail").
+    - iDestruct "Hst" as "[Hau | [#Hsup Hau]]".
+      + iDestruct (fw_au_adv_spend_part (fs_gamma_L γfs) i γo P n M ua Q t p Ht Htn Htie
+                     with "Hau") as "[Hcm Hback]".
+        iMod (wrf_apart_fire_adv γfs E i γo M ua P n p _ off r bs bs0 nl nd nd'
+                HE Hloc Hpos Hoff Hcap Hr Hgap Hnz Habs Hnz' Habs' Hby Hshort
+                Hwhy Hsb1
+                with "Hi Hai Hcm Hf Hg") as "(Hf & Hg & Htail)".
+        iModIntro. iFrame "Hf Hg". iLeft.
+        iApply ("Hback" with "Htail").
+      + iDestruct (fw_au_raw_spend_part (fs_gamma_L γfs) i γo P n M ua Q t p Ht Htn Htie
+                     with "Hau") as "[Hcm Hback]".
+        iMod (wrf_apart_fire_gen γfs E i γo M ua P n p _ True off r bs bs0 nl nd nd'
+                HE Hloc Hpos Hoff Hcap Hr Hgap Hnz Habs Hnz' Habs' Hby Hshort
+                Hwhy Hsb1
+                with "Hi Hai [] Hcm Hf Hg") as "(Hf & Hg & _ & Htail)".
+        { iApply (fw_supply_off E γo off r Hfoff with "Hsup"). }
+        iModIntro. iFrame "Hf Hg". iRight. iSplitR; [iExact "Hsup" |].
+        iApply ("Hback" with "Htail").
+  Qed.
+
 End FilewriteChain.
 
 Global Typeclasses Opaque fw_au_raw.
 Global Typeclasses Opaque fw_au_adv.
+Global Typeclasses Opaque fw_supply.

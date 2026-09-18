@@ -1872,6 +1872,10 @@ Section ProofFilewrite.
   Local Lemma fw_loop `{CID0 : CpuId}
       (gf : gname) (gs : list gname) (jx : nat) (glp : gname)
       (kx : nat) (qx : Qp) (stx : fdstate) (rx : bool) (nx : Z) (γx : gname)
+      (* THE ROW'S OFFSET MODE (lane OFF-LINK-5), a PARAMETER: the walk
+         never matches on it -- [ProofFilewriteChain.fw_au_st] does, once,
+         inside the packaged fire -- so the loop is one walk at both. *)
+      (omx : offmode)
       (fn : fwrite_names)
       (pidv : mword 32) (U : ustate)
       (m : regfile) (K : nat) (eb : bool) (n : Z) (b : bool)
@@ -1895,7 +1899,7 @@ Section ProofFilewrite.
        premises about an [fcontent] the caller had to open and hand down;
        both are facts about the STATE now, and the loop re-derives the field
        equations it works with from [fdstate_ok] each iteration. *)
-    stx = FdOpen rx true (FdInode nx γx OffParked) ->
+    stx = FdOpen rx true (FdInode nx γx omx) ->
     m !!! Regidx csp_rs1 = sp0 ->
     pj = proc_addr jx ->
     (* ---- [filewrite_fs_env]'s ten PURE fields.  Pure, hence free: they
@@ -1968,12 +1972,11 @@ Section ProofFilewrite.
     file_ref gf kx qx stx -∗
     proc_priv_core pj pidv (us_upt U PI) -∗
     KvmSpec.kalloc_env fsc_kalloc None -∗
-    (* THE DESCRIPTOR'S OFFSET ROW.  The chain's nodes take the shadow's
-       kernel half back UNMOVED (the piece-shape rule), so the ADVANCE at
-       each chunk's fire comes out of this persistent invariant; the
-       contract takes it as [FdSlots.foff_row stx] and the walk reads it at
-       [Hstx]. *)
-    off_user_inv γx -∗
+    (* THE DESCRIPTOR'S OFFSET ROW IS NOT A HYPOTHESIS ANY MORE (lane
+       OFF-LINK-5): at mode park it rides inside the carrier as
+       [ProofFilewriteChain.fw_supply] (persistent, so it costs the
+       induction nothing), and at mode hand there is none -- the client's
+       own nodes move the shadow. *)
     (* ---- the PERSISTENT half of [filewrite_fs_env] ---- *)
     bio_ctx (fsc_bio)
       (fs_view fsc_fs (fsc_disk) icfg_dev fsc_cov) -∗
@@ -2004,7 +2007,7 @@ Section ProofFilewrite.
     (* ---- AU EDIT (difference 2): the carried commit state, at the
        descriptor's own offset shadow; [x = 0] on every entry (a short
        chunk exits) ---- *)
-    fw_au_raw (fs_gamma_L fsc_fs) nx γx (pv_upt (us_V U)) n (us_M U) (m !!! Regidx Ra1) Q t p 0%nat -∗
+    fw_au_st omx (fs_gamma_L fsc_fs) nx γx (pv_upt (us_V U)) n (us_M U) (m !!! Regidx Ra1) Q t p 0%nat -∗
     (* ---- and the contract's own continuation ---- *)
     (* [true], verbatim from [SpecFilewrite]: this IS the contract's crossing,
        forwarded, so the two must be spelled the same or [iExact] fails. *)
@@ -2044,7 +2047,7 @@ Section ProofFilewrite.
       exfalso. lia. }
     iIntros "Hcg Hcnt #Htext Hpc #Hprocs
              Hb1 Hb2 Hb3 Hb4 Hb5 Hb6 Hb7 Hb8 Hb9 Hb10 Hb11 Hb12
-             Href Hpriv #Hkenv #Hoinv
+             Href Hpriv #Hkenv
              #Hbio #Hlog #Hcrash #Hgc #Hkd #Hpk #Hit #Hclaimsfw #Hescs #Hireg
              #Hslks #Hdev #Hgeo #Hdlk #Hbm Hout Hau Hcont".
     (* ---- THE REFERENCE, OPENED, AND THE TWO FIELD FACTS OFF THE STATE ----
@@ -2853,7 +2856,7 @@ Section ProofFilewrite.
                  ⌜(tf = t /\ pf = p /\ xf = 0%nat /\ (rz < c)%Z)
                   \/ (tf = t /\ pf = p /\ xf = 1%nat /\ (rz < c)%Z)
                   \/ (tf = (t + c)%Z /\ pf = S p /\ xf = 0%nat /\ rz = c)⌝
-                 ∗ fw_au_raw (fs_gamma_L fsc_fs) nx γx (pv_upt (us_V U)) n (us_M U) (m !!! Regidx Ra1) Q tf pf xf)%I
+                 ∗ fw_au_st omx (fs_gamma_L fsc_fs) nx γx (pv_upt (us_V U)) n (us_M U) (m !!! Regidx Ra1) Q tf pf xf)%I
       with "[Htop Hau Hgv]" as ">(Htop & Hgv & Hst)".
     { rewrite Hnum.
       (* RELAY 3 (lane WRITE-RELAY): THE COUNT THIS NODE WAS CALLED WITH.
@@ -2959,36 +2962,31 @@ Section ProofFilewrite.
            (optimization.md, "Inline [ltac:] in argument position"). *)
         assert (Htge0 : (0 <= t)%Z) by (zlia Htiz Hiz).
         assert (Htltn : (t < n)%Z) by (zlia Htiz Hiz).
-        iDestruct (fw_au_raw_take (fs_gamma_L fsc_fs) (bv_unsigned inum) γx (pv_upt (us_V U)) n (us_M U)
-                     (m !!! Regidx Ra1) Q
-                     t p Htge0 Htltn Hmul with "Hau")
-          as "[Hcm Hback]".
-        (* the kernel's half goes in at the offset the chunk was written at
-           and comes out advanced by the chunk -- the ADVANCE is the fire's,
-           off [Hoinv], since the client returns the borrow unmoved *)
+        (* THE PEEL, THE FIRE AND THE CLOSER IN ONE STEP (lane OFF-LINK-5),
+           and the ONE place the row's offset mode is read: at mode park the
+           advance comes out of the row's own invariant, at mode hand out of
+           the client's own node, and [ProofFilewriteChain.fw_st_fire_full]
+           is where that split lives so this 300-hypothesis context never
+           sees it. *)
         (* THE PER-CHUNK BUFFER TIE IS PHASE 1'S, and the chunk's source
            offset is [FW_MAX * p] because every chunk
            that reaches node [p] was FULL -- which is exactly the loop's own
            tie [Hmul]. *)
-        assert (Hchunkp : ubytes_at (us_M U)
-                  (add_vec_int (m !!! Regidx Ra1) (FW_MAX * Z.of_nat p))
-                  (wrf_run wrote tot))
-          by (rewrite -Hmul; exact Hchunkb).
         (* ...AND THE CHUNK'S LENGTH, RELAYED (RELAY 3).  What landed is
            exactly what writei was asked for -- the arm's own [tot = c] --
            and [Hcw] says which node's count that is. *)
         assert (Hlenw : (Z.of_nat (length (wrf_run wrote tot))
                          = wchunk_at n p)%Z)
           by (rewrite wrf_run_length -Hcw; zlia Htotc Hcz).
-        iMod (wrf_awrite_fire fsc_fs ⊤ (bv_unsigned inum) γx (us_M U)
-                (m !!! Regidx Ra1) n p _
+        iMod (fw_st_fire_full omx fsc_fs ⊤ (bv_unsigned inum) γx (us_M U)
+                (m !!! Regidx Ra1) (pv_upt (us_V U)) n Q t p
                 (Z.to_nat (bv_unsigned v)) (wrf_run wrote tot)
                 (fn_file_bytes (era_node dnl bml datal))
                 (fn_nlink (era_node dnl bml datal))
                 (era_node dnl bml datal) (era_node dn' bm' data')
                 ltac:(solve_ndisj) Hlocw Hposbs Hoffbs Hcapbs Hnzl Hrow Hnz' Hrow'
-                Hchunkp Hlenw
-                with "[] [] Hoinv Hcm Htop [Hgv]") as "(Htop & Hgv & Htail)";
+                Hchunkb Hlenw Htge0 Htltn Hmul
+                with "[] [] Hau Htop [Hgv]") as "(Htop & Hgv & Htail)";
           [iApply (ireg_inv_ftop with "Hireg") | iApply (ireg_inv_app with "Hireg") | rewrite Hgxo Hoffz; iExact "Hgv" |].
         iModIntro. iFrame "Htop".
         iSplitL "Hgv".
@@ -3002,9 +3000,7 @@ Section ProofFilewrite.
         iExists (t + c)%Z, (S p), 0%nat.
         iSplitR; [iPureIntro; right; right; split_and!;
                   [reflexivity | reflexivity | reflexivity | exact Hfc] |].
-        iSpecialize ("Hback" $! (wrf_run wrote tot) with "[]");
-          [iPureIntro; exact Hchunkb |].
-        rewrite -Hlenc. iApply ("Hback" with "Htail").
+        rewrite -Hlenc. iExact "Htail".
       - (* ---- THE CHUNK DOES NOT FIRE IN FULL ---------------------------
            ROUND E2, LANE E2-W (ruling Q-i): AND THE ROW STILL MOVED.  This
            arm used to take the blanket retag and pay only the offset,
@@ -3087,10 +3083,6 @@ Section ProofFilewrite.
                               (Z.to_nat (bv_unsigned (di_size dnl)))
                               (Z.to_nat (bv_unsigned v)) tot dist) <= Z.to_nat rz + BSIZE)%nat)
               by (rewrite Hbslen; zlia Hrztot Hdist).
-            iDestruct (fw_au_raw_spend_part (fs_gamma_L fsc_fs)
-                         (bv_unsigned inum) γx (pv_upt (us_V U)) n
-                         (us_M U) (m !!! Regidx Ra1) Q t p Htge0 Htltn Hmul
-                         with "Hau") as "[Hpart Hback]".
             (* THE COUNTED PREFIX IS THE CALLER'S, AND ONLY IT.  What
                landed is [wrf_run wrote tot] followed by writei's disturbed
                tail; the kernel COUNTED [rz = tot] of it, and
@@ -3162,8 +3154,8 @@ Section ProofFilewrite.
               destruct (Hwi16at Hone) as [Ht0 | Htc].
               - zlia Ht0 Hrztot.
               - exfalso. zlia Htc Hrztot Hcz Hnokey. }
-            iMod (wrf_apart_fire fsc_fs ⊤ (bv_unsigned inum) γx (us_M U)
-                    (m !!! Regidx Ra1) (pv_upt (us_V U)) n p _
+            iMod (fw_st_fire_part omx fsc_fs ⊤ (bv_unsigned inum) γx (us_M U)
+                    (m !!! Regidx Ra1) (pv_upt (us_V U)) n Q t p
                     (Z.to_nat (bv_unsigned v)) (Z.to_nat rz)
                     (wrf_landed wrote dstb
                               (Z.to_nat (bv_unsigned (di_size dnl)))
@@ -3173,7 +3165,8 @@ Section ProofFilewrite.
                     (era_node dnl bml datal) (era_node dn' bm' data')
                     ltac:(solve_ndisj) Hlocw Hbspos Hoffbs Hcapbs Hrle Hgap
                     Hnzl Hrowl Hnz' Hrow' Htakep Hshort Hwhyn Hsb1n
-                    with "[] [] Hoinv Hpart Htop [Hgv]")
+                    Htge0 Htltn Hmul
+                    with "[] [] Hau Htop [Hgv]")
               as "(Htop & Hgv & Htail)";
               [iApply (ireg_inv_ftop with "Hireg")
               | iApply (ireg_inv_app with "Hireg")
@@ -3202,7 +3195,7 @@ Section ProofFilewrite.
             iSplitR; [iPureIntro; right; left; split_and!;
                       [reflexivity | reflexivity | reflexivity
                       | zlia Hrzr Hnokey] |].
-            iApply ("Hback" with "Htail").
+            iExact "Htail".
           * (* ---- NOTHING LANDED: the view does not move ---- *)
             assert (Hlen0 : length (wrf_landed wrote dstb
                               (Z.to_nat (bv_unsigned (di_size dnl)))
@@ -3581,7 +3574,7 @@ Section ProofFilewrite.
           destruct Htfn as [Htfn Hxf0].
           rewrite /write_arms_at. subst tf xf. iLeft.
           iSplitR; [iPureIntro; split; [exact Hrvn | zlia Hn] |].
-          iApply (fw_au_raw_ok (fs_gamma_L fsc_fs) nx γx (pv_upt (us_V U)) n (us_M U) (m !!! Regidx Ra1) Q pf with "Hau"). }
+          iApply (fw_au_st_ok omx (fs_gamma_L fsc_fs) nx γx (pv_upt (us_V U)) n (us_M U) (m !!! Regidx Ra1) Q pf with "Hau"). }
       + (* ---- NOT EXHAUSTED: the FALL is the back edge to +0xcc ---- *)
         assert (Hlt : (iz + c < n)%Z).
         { destruct (Z.le_gt_cases n (iz + c)) as [Hle | Hgt]; [| exact Hgt].
@@ -3661,7 +3654,7 @@ Section ProofFilewrite.
                   Hbelow
                   with "Hcg Hcnt Htext Hpc Hprocs
                         Hb1 Hb2 Hb3 Hb4 Hb5 Hb6 Hb7 Hb8 Hb9 Hb10 Hb11 Hb12
-                        Href Hpriv Hkenv Hoinv
+                        Href Hpriv Hkenv
                         Hbio Hlog Hcrash Hgc Hkd Hpk Hit Hclaimsfw Hescs Hireg
                         Hslks Hdev Hgeo Hdlk Hbm Hout Hau Hcont").
     - (* ====== THE SHORT WRITE (and writei's -1): straight to +0xe2 ======
@@ -3718,7 +3711,7 @@ Section ProofFilewrite.
         iSplitR; [iPureIntro; exact Hrvm1 |].
         assert (Hfailex : (tf < n)%Z \/ (n < 0)%Z /\ pf = 0%nat)
           by (fwclear Htft Htiz Hiz; left; lia).
-        iApply (fw_au_raw_fail (fs_gamma_L fsc_fs) nx γx (pv_upt (us_V U)) n (us_M U) (m !!! Regidx Ra1) Q tf pf xf
+        iApply (fw_au_st_fail omx (fs_gamma_L fsc_fs) nx γx (pv_upt (us_V U)) n (us_M U) (m !!! Regidx Ra1) Q tf pf xf
                   Hfailex with "Hau"). }
   Qed.
   Lemma wp_filewrite_sconf
@@ -5527,7 +5520,7 @@ Section ProofFilewrite.
                     loop, so the reference crosses packed.  It also takes the
                     caller's CHAIN, at the entry state of [fw_au_raw]. *)
                  iApply (fw_loop (CID0 := CID28) γf γs j γlp k q st rx
-                           (bv_unsigned inumx) γox fn pidv U
+                           (bv_unsigned inumx) γox OffParked fn pidv U
                            m K eb n b sp0 w12 pj lks Q
                            HK Hk Hj Hgs Hlens Hfnj Hfnps Hn01 Heb Hstx Hspm
                            ltac:(reflexivity)
@@ -5545,7 +5538,7 @@ Section ProofFilewrite.
                            with "Hcg Hcnt Htext Hpc Hprocs
                                  Hb1 Hb2 Hb3 Hb4 Hb5 Hb6 Hb7 Hb8 Hb9 Hb10 Hb11 Hb12
                                  [Hrtok Hcty Hcrd Hcwr Hcpp Hcip Hcmaj Hrpay Hrlv]
-                                 [Hpriv] Hkenv Hoinvw
+                                 [Hpriv] Hkenv
                                  E8 E9 E10 E11 E12 E13 E14 E26 E15 E16 E17
                                  E22 E23 E24 E21 [E18 E19 E20 E25] [Hfin]").
                  { rewrite /file_ref /file_fields. iExists Cf.
@@ -5553,8 +5546,11 @@ Section ProofFilewrite.
                  { rewrite HVid. iExact "Hpriv". }
                  { rewrite /filewrite_fs_out.
                    iFrame "E18 E19 E20 E25". }
-                 { (* the chain, at the loop's entry state *)
-                   iApply fw_au_raw_init.
+                 { (* the chain, at the loop's entry state, beside the row's
+                      own supplier: mode PARKED is what [fdstate_ok] pins
+                      every live inode row at today, so this is the entry
+                      [ProofFilewriteChain.fw_au_st_init_parked] names. *)
+                   iApply (fw_au_st_init_parked with "Hoinvw").
                    iApply (filewrite_in_inode rx (bv_unsigned inumx) γox n
                              (us_M U) uaddr Q Qe with "[Hfin]").
                    rewrite Hstx. iExact "Hfin". }

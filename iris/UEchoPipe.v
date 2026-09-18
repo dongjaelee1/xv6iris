@@ -325,7 +325,7 @@ Section UEchoPipe.
     kecho_w N (mword_of_int ua) nb
       (UserFd.ustd (ukn_fd N) l ∗ ep_car pn L c)
       (UserFd.ustd (ukn_fd N) l ∗ ep_car pn L (c + nb)).
-  Proof.
+  Proof using .
     intros Hl1 Hle Hbytes.
     iIntros "#Hinv #Hder #Hstr" (h m avail)
       "%Ha0 %Ha1 %Ha2 #Hcode [Hstd [Hfr Hok]] Hrun Hcont".
@@ -471,7 +471,7 @@ Section UEchoPipe.
     kecho_w N (mword_of_int ua) 1%nat
       (UserFd.ustd (ukn_fd N) l ∗ ep_car pn L c)
       (UserFd.ustd (ukn_fd N) l ∗ ep_car pn L (c + 1)).
-  Proof.
+  Proof using .
     intros Hl1 Hle Hbyte Hrange.
     change (2 ^ 38) with 274877906944 in Hrange.
     iIntros "#Hinv #Hder #Hb" (h m avail)
@@ -644,7 +644,7 @@ Section UEchoPipe.
         (UserFd.ustd (ukn_fd N) l
          ∗ ep_car pn (wl_line (drop 1 ws)) (out_cur ws i))
         (ukn_pay N (-1)).
-  Proof.
+  Proof using .
     intros Hargv Hl1 k.
     pose proof Hargv as [Hlen Hargs].
     induction k as [| k IH]; intros i Hi1 Hik;
@@ -753,7 +753,7 @@ Section UEchoPipe.
     kecho_pay_all N args
       (UserFd.ustd (ukn_fd N) l ∗ ep_car pn (wl_line (drop 1 ws)) 0%nat)
       (ukn_pay N (-1)).
-  Proof.
+  Proof using .
     intros Hws2 Hargv Hl1.
     pose proof Hargv as [Hlen _].
     iIntros "#Hq #Hinv #Hder #Hro #Hargv".
@@ -822,7 +822,7 @@ Section UEchoPipe.
             ZERO, which is [ep_pay]'s content ---- *)
     ep_car pn (wl_line (drop 1 ws)) 0%nat -∗
     uslot W.
-  Proof.
+  Proof using ghost_varG0 ghost_varG1 ufdG0.
     intros HQc Hws2 Hargv1 Hl1 Hpc Hsub Hsub2 Hx Hroom Hal8 Hstk Hargs
            Havd Havs Hfdlen Hstop Hlzf.
     iIntros "#Hq #Hinv #Hder #Hnpw #Hdep Hpay Hc".
@@ -887,7 +887,7 @@ Section UEchoPipe.
     udep -∗
     image_entry ElfUser.echo_elf M (mword_of_int (t + 8) : mword 64) sts
       cw cs pidv Q (ep_pay pn γp (wl_line (drop 1 ws))) uslot.
-  Proof.
+  Proof using ghost_varG0 ghost_varG1 ufdG0.
     intros HQc Hok Himg Hbytes Hfdl Hl1.
     iIntros "#Hq #Hnpw #Hdep".
     iApply image_entry_of_at. iIntros "!>" (na alen afun) "%Hargs".
@@ -999,7 +999,7 @@ Section UEchoPipe.
          ∗ (pws_lb pn (wl_line (drop 1 ep_hi_ws))
             ∨ ep_halt pn (wl_line (drop 1 ep_hi_ws))))%I
       (ep_pay pn γp (wl_line (drop 1 ep_hi_ws))) uslot.
-  Proof.
+  Proof using ghost_varG0 ghost_varG1 ufdG0.
     intros Himg Hbytes Hfdl Hl1. iIntros "#Hnpw #Hdep".
     iApply (ep_image_entry ep_hi_ws M s0 t g sts cw cs pidv pn γp rb
               (fun _ : Z =>

@@ -1155,9 +1155,10 @@ Section UShLine.
            over. *)
         iDestruct (Hep v with "Hpin") as "#Hpl".
         iDestruct (lk_pin_epin L (S gen_id) v with "Hpl") as "#Hepl".
-        iDestruct (rk_arms L R v I ws sl sl2 hs dd dc g
+        iDestruct (rk_arms L R fsc_cons v I ws sl sl2 hs dd dc g
                      Hddc Hlws Hwinf Hpre2 Hwsj
-                     with "Hepl HE0 Hres0 Hret") as "[Hwin | #HT]"; last first.
+                     with "Hepl HE0 Hres0 Hret Htags Hsw Hlb2")
+          as "[Hwin | #HT]"; last first.
         { iRight. iFrame "HT". rewrite /UkSh.ush_pos /UkSh.ush_at.
           iExists (n + dc)%nat. iFrame "Hp". rewrite Hpay.
           iApply (ucons_pay_taint with "HT"). }

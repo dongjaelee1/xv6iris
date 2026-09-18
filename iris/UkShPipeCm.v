@@ -78,6 +78,7 @@ Require Import UkShPipeTok.
 Require Import UkShPipeParse.
 Require Import UkShPipeEx.
 Require Import UkShPipeCmd.
+Require Import UkShPipePex.
 Require Import UkShPipeRight.
 
 Section UkShPipeCm.
@@ -1203,4 +1204,101 @@ Section UkShPipeCm.
           cbn in Hi; try discriminate Hi;
           injection Hi as Hr Hu0; subst; vm_compute in He; discriminate.
   Qed.
+
+  (* ===================================================================== *)
+  (* §3 BOTH PREMISES DISCHARGED: THE TURN, CLOSED                          *)
+  (*                                                                        *)
+  (* Premise (i) is [UkShPipePex.wp_kshp_parseexec_bar] (the LEFT command's  *)
+  (* parse, the re-statement this lane finished) and premise (ii) is         *)
+  (* [UkShPipeCmd.wp_kshp_pipecmd] (the constructor, walkable now that its   *)
+  (* catalog row exists).  So [parsepipe] at the pipe shape is a closed      *)
+  (* walk: the only things it still takes are the LINE, the two allocator    *)
+  (* links, and the exit payload every parser walk takes.                    *)
+  (* ===================================================================== *)
+
+  Lemma ushq_pex_left_holds {Pex : iProp Σ} (dq dw dv : dfrac)
+      (ps s0 : Z) (len gp ge : nat) (f : nat -> bv 8)
+      (args : list (nat * nat)) (nn : nat) :
+    ushp_malloc_ty UM0 UM1 ->
+    ushq_pipe len f gp ge ->
+    ushs_toks len f gp 0%nat args ->
+    (0 < length args)%nat ->
+    (length args < 10)%nat ->
+    0 <= s0 -> s0 + Z.of_nat len < Z64 ->
+    0 < ps -> ps mod 8 = 0 -> ps + 8 < Z64 ->
+    ⊢ ushq_pex_left dq dw dv ps s0 len gp f args Pex
+        (16 + (24 + (8 + nn))).
+  Proof using .
+    intros Hm01 Hpq Htoks Hpos Hlen Hs0 Hs64 Hps0 Hps8 Hpssz.
+    iIntros (h m rpc)
+      "%Ha0 %Ha1 %Erpc #Hcode #Hro Hcur Hstr Hws Hsy HM0 #Hpx Hpay Hrun Hcont".
+    rewrite <- Erpc.
+    iApply (UkShPipePex.wp_kshp_parseexec_bar N UM0 UM1 Hm01 h m dq dw dv
+              ps s0 len 0%nat f (mword_of_int s0) args gp ge nn
+              Ha0 Ha1 ltac:(lia) ltac:(f_equal; lia)
+              Hpq Htoks Hpos Hlen Hs0 Hs64 Hps0 Hps8 Hpssz
+              with "Hcode Hro Hcur Hstr Hws Hsy HM0 Hpx Hpay Hrun").
+    iIntros (pl) "%Hplsz Hnodel Hcur Hstr Hws Hsy".
+    iIntros (h' m') "%Hcs %Ha0' HM1 Hpay Hrun".
+    iApply ("Hcont" $! pl with "[] Hnodel Hcur Hstr Hws Hsy [] [] HM1 Hpay Hrun").
+    - iPureIntro. exact Hplsz.
+    - iPureIntro. exact Hcs.
+    - iPureIntro. exact Ha0'.
+  Qed.
+
+  (* THE TURN, with nothing left to instantiate. *)
+  Corollary wp_kshp_parsepipe_bar_closed {Pex : iProp Σ} (h : CpuId)
+      (m : regfile) (dq dw dv : dfrac) (ps s0 : Z) (len gp ge : nat)
+      (f : nat -> bv 8) (args : list (nat * nat)) (nn : nat) :
+    ushp_malloc_ty UM0 UM1 ->
+    ushp_malloc_ty UM2 UM3 ->
+    m !!! Regidx a0_idx = mword_of_int ps ->
+    m !!! Regidx a1_idx = mword_of_int (s0 + Z.of_nat len) ->
+    ushq_pipe len f gp ge ->
+    ushs_toks len f gp 0%nat args ->
+    (0 < length args)%nat ->
+    (length args < 10)%nat ->
+    0 <= s0 -> s0 + Z.of_nat len < Z64 ->
+    0 < ps -> ps mod 8 = 0 -> ps + 8 < Z64 ->
+    shp_code γt -∗
+    shp_rodata γt -∗
+    uword γd ps (mword_of_int s0) -∗
+    ustr γd dq s0 len f -∗
+    ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
+    ustr γd dv ushp_symbols 7 ushp_sym_f -∗
+    UM0 -∗
+    □ (Pex -∗ ukn_pay N (-1)) -∗
+    Pex -∗
+    urun N h m (mword_of_int ShSyms.parsepipe)
+      (6 + (16 + (24 + (8 + nn)))) -∗
+    (∀ t pl pr : Z,
+       ⌜ pl + 168 < Z64 ⌝ -∗
+       ⌜ pr + 168 < Z64 ⌝ -∗
+       ushp_pipe_node t pl pr -∗
+       ushp_exec_at s0 pl args -∗
+       ushp_exec_at s0 pr [(S (S gp), ge)] -∗
+       uword γd ps (mword_of_int (s0 + Z.of_nat len)) -∗
+       ustr γd dq s0 len f -∗
+       ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
+       ustr γd dv ushp_symbols 7 ushp_sym_f -∗
+         ∀ (h' : CpuId) (m' : regfile),
+           ⌜ ucallee_saved m m' ⌝ -∗
+           ⌜ m' !!! Regidx a0_idx = mword_of_int t ⌝ -∗
+           UM3 -∗
+           Pex -∗
+           urun N h' m' (ret_pc (m !!! Regidx ra_idx))
+             (6 + (16 + (24 + (8 + nn)))) -∗
+           WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+  Proof using ushp_malloc_ok12.
+    intros Hm01 Hm23 Ha0 Ha1 Hpq Htoks Hpos Hlen Hs0 Hs64 Hps0 Hps8 Hpssz.
+    iIntros "#Hcode #Hro Hcur Hstr Hws Hsy HM0 #Hpx Hpay Hrun Hcont".
+    iApply (wp_kshp_parsepipe_bar h m dq dw dv ps s0 len gp ge f args nn
+              Ha0 Ha1 Hpq Hs0 Hs64 Hps0 Hps8 Hpssz
+              with "Hcode Hro Hcur Hstr Hws Hsy HM0 Hpx Hpay [] [] Hrun Hcont").
+    - iApply (ushq_pex_left_holds dq dw dv ps s0 len gp ge f args nn
+                Hm01 Hpq Htoks Hpos Hlen Hs0 Hs64 Hps0 Hps8 Hpssz).
+    - iApply (ushq_pipecmd_call_holds nn Hm23).
+  Qed.
+
 End UkShPipeCm.

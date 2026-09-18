@@ -1573,6 +1573,7 @@ UkShPipeEx.v
 UkShPipeRight.v
 UkShPipePr.v
 UkShPipeEx2.v
+UkShPipePex.v
 UkShPipeCm.v
 UInitCons.v
 UConsOpen.v

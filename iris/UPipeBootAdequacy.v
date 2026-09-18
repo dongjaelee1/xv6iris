@@ -127,7 +127,8 @@ Section PipeAdequacy.
         κs (t2, g2) ->
       (forall e2, e2 ∈ t2 -> language.reducible (Λ := riscv_lang) e2 g2)
       /\ app_phi app_pipe g2 κs.
-  Proof using All.
+  Proof using Hprog bioslotGpreS0 echoOutG0 fdslotGpreS0 fileGpreS0 inG0
+              irefslotGpreS0 pavGpreS0 riscvGpreS0 ufdG0 wchGpreS0 xv6G0.
     intros n κs t2 g2 Hn.
     (* EVERY OBLIGATION GOES IN AS A HOLE ([UInitBootAdequacy]'s measured
        rule), for its measured reason. *)

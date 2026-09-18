@@ -84,7 +84,7 @@ the single word `cat`), which is what the sh walk (§5.1) is stated at.
 continuation is decided by ONE alternative:
 
     Inductive palt :=
-      | PEcho (a : nat)          -- the echo application's four, unchanged (LEcho lines only)
+      | PEcho (a : nat)          -- the echo application's four, unchanged (LEcho lines; PEcho 3 -- the MAIN-LOOP fork panic, prologue re-entered -- at LPipe lines too, RULED 2026-09-18 after PIPE-MODEL's finding)
       | PRan                     -- wl_line (drop 1 ws) ++ "$ "        : the line, then the prompt
       | PExecL                   -- "exec echo failed\n$ "             : left exec failed; cat printed nothing (EOF at an empty pipe)
       | PExecR                   -- "exec cat failed\n$ "              : right exec failed; echo's bytes went into the pipe and stayed there
@@ -107,14 +107,18 @@ Two things to notice, because they are what makes the claim cheap:
   application's `alt_panic` is the MAIN loop's `fork1` failing, which does
   kill the shell and re-enter the prologue; that arm is unchanged and
   `LPipe` lines reach it exactly as `LEcho` lines do (it is decided before
-  the line is parsed).  `PFork` covers BOTH forks: if the second fails the
+  the line is parsed) -- so `palt_ok (LPipe _) (PEcho 3)` HOLDS (the first cut
+  of `palt_ok` forgot it; PIPE-MODEL found the theorem would have been FALSE).  `PFork` covers BOTH forks: if the second fails the
   first child is already running echo into a pipe whose read end the
   panicking parent closes on exit; nothing reaches the console.
 
 **The session.**  `EchoDisc.sess` with `alt_blk` reading `pcont` through
 the parse: `sessp (ps cs : list nat) (I : list (bv 8))`, where `cs !!! i`
 indexes `palt` through an injective `nat` encoding (so the stage's
-`cs_auth`/`cs_lb` machinery is reused verbatim, as `FileDisc` did) and
+`cs_auth`/`cs_lb` machinery is reused verbatim, as `FileDisc` did; RULED
+2026-09-18: the encoding is POSITIONAL/binary -- `sel` read as a binary
+numeral with a leading 1 -- because a unary `encode_nat` made a `PBoth`
+code ~4^33 and uncomputable) and
 `palt_ok` is the decidable range condition where `c < 4` was.  `PBoth`'s
 `sel` is PART OF THE ENCODING: one alternative per interleaving, so the
 transcript is a function of `(ps, cs, I)` and the determinacy proof

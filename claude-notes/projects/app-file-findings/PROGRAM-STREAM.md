@@ -7,6 +7,11 @@ tier.  Its exit criterion is measurable:
 grep -c "Hypothesis\|Admitted" iris/UShRound.v
 ```
 
+(design §3.7's metric is the three skeleton files together —
+`iris/UEchoFile.v iris/UShRound.v iris/UInitFile.v`; at the end of this
+stretch it stands at **9 + 11 + 3 = 23**, the round's eleven being this
+stream's.)
+
 | when | count | what moved |
 |---|---|---|
 | at the stream's start (after SH-CHILD-2, `890ebb21a`) | **19** | — |

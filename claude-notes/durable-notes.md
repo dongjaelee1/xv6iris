@@ -1601,3 +1601,17 @@ fails to parse with a message that points nowhere near the cause.  Found
 by lane PIPE-DEC; `tools/comment_quote_check.py` finds the offending line
 without a build.  Write `*` `)` separated, or move the quotation out of
 the comment.
+
+## A row of a big `if/decide` table is one head symbol per branch (2026-09-18)
+
+`UsysMemOk.usys_fd_ok`'s branches sit on the CONVERSION PATH of every `Qed`
+that takes the row as a premise (e.g. `UShRound.Hopen_hand`, the heaviest
+`Qed` in the tree).  Lane PIPE-NEG1 turned the pipe branch's `sts' = sts`
+into an inline conjunction `r = -1 /\ sts' = sts` — one extra binary node —
+and that `Qed` segfaulted at the default stack and HUNG at `ulimit -s
+unlimited` (the existing rule: a `Qed` overflow that becomes a hang is a
+conversion, not a big proof).  The fix: name the branch (`usys_pipe_fail r
+sts sts'`) and read it through one lemma (`usys_fd_ok_pipe_neg1`); the
+inline conjunctions of the open/dup rows survive only because nothing that
+heavy converts them.  Rule: a new conjunct in such a row goes behind a
+`Definition`, and the change is gated on the heaviest consumer's `.vo`.

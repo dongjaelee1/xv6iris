@@ -135,8 +135,20 @@ Global Instance uline_eq_dec : EqDecision uline.
 Proof using. solve_decision. Defined.
 Global Instance uline_inhabited : Inhabited uline := populate (LEcho []).
 
+(* [LCat]'s WORDS ARE ITS OWN (lane SH-CHILD-2's ruling).  The arm used to
+   be [[]], which is the word list of NO line -- and the command loop's
+   line fact says the buffer holds the bytes of a line whose words are the
+   ones the process state is indexed by, so an empty list there makes the
+   cat arm say the wrong thing about the buffer.  [wl_words cmd_cat_f] is
+   what the line lexes to (lane SH-LEX-REDIR: the cat line is symbol-free
+   and two words), and at it [file_gets_holds] holds at all three
+   constructors. *)
 Definition uline_ws (l : uline) : list (list (bv 8)) :=
-  match l with LEcho ws => ws | LEchoF ws => ws | LCat => [] end.
+  match l with
+  | LEcho ws => ws
+  | LEchoF ws => ws
+  | LCat => wl_words cmd_cat_f
+  end.
 
 (* THE BODY the console cut keeps, and the LINE the user typed: the body
    and the newline [gets] stops at.  [line_bytes (LEcho ws)] is

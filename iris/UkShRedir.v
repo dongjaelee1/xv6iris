@@ -455,13 +455,21 @@ Section UkShRedir.
   (* [wp_kshr_runcmd_top] below is the instance that calls the LANDED walk  *)
   (* and drops it.                                                         *)
   (* ===================================================================== *)
-  Lemma wp_kshr_redir_arm (N : uk_names Σ) `{!ukn_const N}
+  (* THE EXIT IS PAID FROM A LEND (lane SH-CHILD-2).  This walk exits on
+     ONE arm -- the open failed, so it prints and [exit(1)]s -- and the
+     landed premise for that was [⊢ ukn_pay N (-1)]: the payload is free.
+     A child forked at a payload of its OWN ([UkShFork.ushf_wq], the
+     block credential) cannot supply that, and what it has instead is the
+     LEND and a law turning the lend into its exit payload -- exactly the
+     shape [UkShParse]'s walks already take ([Pex] there).  So the arm
+     takes the pair, and hands the lend BACK on the success arm, where
+     nothing was spent. *)
+  Lemma wp_kshr_redir_arm_at (N : uk_names Σ) `{!ukn_const N}
       (c1 : ushcmd) (file : uarg) (mode : Z)
       (h : CpuId) (m : regfile) (t cwdv : Z)
       (ld : list fdstate) (st1 : fdstate) (av : nat)
-      (K : fdtype -> iProp Σ) :
+      (K : fdtype -> iProp Σ) (Pex : iProp Σ) :
     0 <= mode < Z31 ->
-    (⊢ ukn_pay N (-1)) ->
     m !!! Regidx a0_idx = (mword_of_int t : mword 64) ->
     ld !! 1%nat = Some st1 ->
     st1 <> FdClosed ->
@@ -474,6 +482,8 @@ Section UkShRedir.
     UserFd.ustd (ukn_fd N) ld -∗
     UserCwd.ucwd (ukn_cwd N) cwdv -∗
     ush_open_call N cwdv (ua_ptr file) mode (<[1%nat := FdClosed]> ld) K -∗
+    □ (Pex -∗ ukn_pay N (-1)) -∗
+    Pex -∗
     urun N h m (mword_of_int ShSyms.runcmd) (6 + (UkShDiag.ush_Dg + av)) -∗
     (∀ (h' : CpuId) (m' : regfile) (q : Z) (ty : fdtype),
        ⌜ m' !!! Regidx a0_idx = (mword_of_int q : mword 64) ⌝ -∗
@@ -482,12 +492,13 @@ Section UkShRedir.
          (<[1%nat := FdOpen false true ty]> (<[1%nat := FdClosed]> ld)) -∗
        UserCwd.ucwd (ukn_cwd N) cwdv -∗
        K ty -∗
+       Pex -∗
        urun N h' m' (mword_of_int ShSyms.runcmd) (UkShDiag.ush_Dg + av) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof using .
-    intros Hmode Hpx Ha0 Hst1 Hne Hnp.
-    iIntros "#Hdp #Hcode #Hjt #Htree Hstd Hcwd Hopen Hrun Hcont".
+    intros Hmode Ha0 Hst1 Hne Hnp.
+    iIntros "#Hdp #Hcode #Hjt #Htree Hstd Hcwd Hopen #Hpxw Hpex Hrun Hcont".
     iDestruct (ush_jtab_ro with "Hjt") as "#Hro".
     iDestruct (ush_cmd_addr with "Htree") as %[Htr Ht8].
     assert (Ht4 : t mod 4 = 0)
@@ -710,7 +721,7 @@ Section UkShRedir.
                 with "[] Hrun").
       { iApply (uis_shk_10a with "Hcode"). }
       iIntros (hA) "Hrun".
-      iApply ("Hcont" $! hA _ q ty with "[%] Hqc Hstd Hcwd HK Hrun").
+      iApply ("Hcont" $! hA _ q ty with "[%] Hqc Hstd Hcwd HK Hpex Hrun").
       rewrite (upd_ne m8 (Regidx ra_idx) (Regidx a0_idx) _
                  ltac:(vm_compute; discriminate)).
       exact (upd_eq m7 (Regidx a0_idx) (mword_of_int q : mword 64)).
@@ -727,7 +738,7 @@ Section UkShRedir.
       { iApply (uis_shk_104 with "Hcode"). }
       iIntros (h8) "Hrun".
       (* ---- 0x10e: the diagnostic cut, [UkShDiag]'s third site ---- *)
-      iDestruct Hpx as "Hpay".
+      iDestruct ("Hpxw" with "Hpex") as "Hpay".
       iApply (UkShDiag.ush_diag_leaf_holds N h8 m7 0x10e av
                 ltac:(right; right; split;
                       [ reflexivity | rewrite Hs1u; exact Ht8 ])
@@ -738,6 +749,50 @@ Section UkShRedir.
       destruct (decide ((0x10e : Z) = 0x10e)) as [_ | Hc];
         [ | exfalso; exact (Hc eq_refl) ].
       iExists file. rewrite Hs1u. iSplitR; [ iExact "Hfp" | iExact "Hfs" ].
+  Qed.
+
+  (* ...and the landed shape: a walk whose exit payload IS free is the
+     instance at [Pex := ukn_pay N (-1)], with the law the identity. *)
+  Lemma wp_kshr_redir_arm (N : uk_names Σ) `{!ukn_const N}
+      (c1 : ushcmd) (file : uarg) (mode : Z)
+      (h : CpuId) (m : regfile) (t cwdv : Z)
+      (ld : list fdstate) (st1 : fdstate) (av : nat)
+      (K : fdtype -> iProp Σ) :
+    0 <= mode < Z31 ->
+    (⊢ ukn_pay N (-1)) ->
+    m !!! Regidx a0_idx = (mword_of_int t : mword 64) ->
+    ld !! 1%nat = Some st1 ->
+    st1 <> FdClosed ->
+    (forall (rb wb : bool) (gp : PipeNames.pipe_names),
+       st1 <> FdOpen rb wb (FdPipe gp)) ->
+    UkSh.sh_deps -∗
+    shk_code (ukn_t N) -∗
+    ush_jtab (ukn_t N) -∗
+    ush_cmd (ukn_d N) t (URedir c1 file mode 1) -∗
+    UserFd.ustd (ukn_fd N) ld -∗
+    UserCwd.ucwd (ukn_cwd N) cwdv -∗
+    ush_open_call N cwdv (ua_ptr file) mode (<[1%nat := FdClosed]> ld) K -∗
+    urun N h m (mword_of_int ShSyms.runcmd) (6 + (UkShDiag.ush_Dg + av)) -∗
+    (∀ (h' : CpuId) (m' : regfile) (q : Z) (ty : fdtype),
+       ⌜ m' !!! Regidx a0_idx = (mword_of_int q : mword 64) ⌝ -∗
+       ush_cmd (ukn_d N) q c1 -∗
+       UserFd.ustd (ukn_fd N)
+         (<[1%nat := FdOpen false true ty]> (<[1%nat := FdClosed]> ld)) -∗
+       UserCwd.ucwd (ukn_cwd N) cwdv -∗
+       K ty -∗
+       urun N h' m' (mword_of_int ShSyms.runcmd) (UkShDiag.ush_Dg + av) -∗
+       WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+  Proof using .
+    intros Hmode Hpx Ha0 Hst1 Hne Hnp.
+    iIntros "#Hdp #Hcode #Hjt #Htree Hstd Hcwd Hopen Hrun Hcont".
+    iApply (wp_kshr_redir_arm_at N c1 file mode h m t cwdv ld st1 av K
+              (ukn_pay N (-1)) Hmode Ha0 Hst1 Hne Hnp
+              with "Hdp Hcode Hjt Htree Hstd Hcwd Hopen [] [] Hrun [Hcont]").
+    - iIntros "!> $".
+    - iApply Hpx.
+    - iIntros (h' m' q ty) "%Ha0' Hqc Hstd Hcwd HK _ Hrun".
+      iApply ("Hcont" $! h' m' q ty with "[%//] Hqc Hstd Hcwd HK Hrun").
   Qed.
 
   (* ===================================================================== *)

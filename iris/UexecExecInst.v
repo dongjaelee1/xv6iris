@@ -235,6 +235,13 @@ Section UexecExecInst.
     of_Fex   : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ);
     of_Fo    : pfam Σ (aview -> Z -> anode -> iProp Σ);
     of_Ft    : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ);
+    (* ...AND THE OFFSET MODE THE CALLER'S OPEN INSTALLS (lane OFF-LINK-6's
+       L4).  A field of the FAMILY, not of the syscall's arguments: which
+       mode a program's opens run at is a property of the PROGRAM, and the
+       kernel reads it here and publishes at it.  Every landed family sets
+       it to [OffParked], which is what keeps the tree application's open
+       path byte-for-byte what it was. *)
+    of_om    : offmode;
     (* ---- write (16): the chain's PREFIX CURSOR.  ONE FIELD FOR BOTH
        ARMS since lane OUT-FUPD: the console arm is now a chain over the
        same cursor family (one node per BYTE, [SpecConsolewrite.
@@ -343,6 +350,7 @@ Section UexecExecInst.
        of_P     := of_P f; of_Pmiss := of_Pmiss f;
        of_Farm  := of_Farm f; of_Fun := of_Fun f; of_Fok := of_Fok f;
        of_Fex   := of_Fex f; of_Fo := of_Fo f; of_Ft := of_Ft f;
+       of_om    := of_om f;
        wf_Q     := wf_Q f;
        nf_P     := nf_P f; nf_Pmiss := nf_Pmiss f;
        nf_Farm  := nf_Farm f; nf_Fun := nf_Fun f; nf_Fok := nf_Fok f;
@@ -385,6 +393,7 @@ Section UexecExecInst.
        of_Fex   := pfam_triv (fun _ _ _ _ => True%I);
        of_Fo    := pfam_triv (fun _ _ _ => True%I);
        of_Ft    := pfam_triv (fun _ _ _ => True%I);
+       of_om    := OffParked;
        wf_Q     := fun _ => True%I;
        nf_P     := fun _ _ => True%I;
        nf_Pmiss := fun _ _ => True%I;
@@ -754,7 +763,7 @@ Section UexecExecInst.
        chdir_receipt (fs_gamma_L fsc_fs) fsc_fs (uvis_cwd W)
          (cf_P f) (cf_Pmiss f) (cf_Fo f) r cw'
      else if decide (n = 15) then
-       open_receipt (fs_gamma_L fsc_fs) fsc_fs (uvis_cwd W)
+       open_receipt (of_om f) (fs_gamma_L fsc_fs) fsc_fs (uvis_cwd W)
          (uvis_M W) (xk_a W 0) (xk_a W 1)
          (of_P f) (of_Pmiss f) (of_Farm f) (of_Fun f) (of_Fok f) (of_Fex f)
          (of_Fo f) (of_Ft f) (uvis_fd W) r fdv'
@@ -1665,7 +1674,7 @@ Section UexecExecInst.
      ([SpecSysOpen.open_arms_split]) *)
   Lemma spost_at_open_intro (X : uvis -d> iPropO Σ) (f : xfam) (W : uvis)
       (r : mword 64) (M' : gmap Z (bv 8)) (fdv' : list fdstate) (cw' : Z) (cs' : gset gname) :
-    open_receipt (fs_gamma_L fsc_fs) fsc_fs (uvis_cwd W)
+    open_receipt (of_om f) (fs_gamma_L fsc_fs) fsc_fs (uvis_cwd W)
       (uvis_M W) (tf_w (uvis_tf W) (tf_arg_idx 0))
       (tf_w (uvis_tf W) (tf_arg_idx 1))
       (of_P f) (of_Pmiss f) (of_Farm f) (of_Fun f) (of_Fok f) (of_Fex f)

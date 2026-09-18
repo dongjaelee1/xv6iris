@@ -216,6 +216,7 @@ Section UkTreeCreate.
        of_Fex   := pfam_triv (fun _ _ _ _ => True%I);
        of_Fo    := pfam_triv (fun _ _ _ => True%I);
        of_Ft    := pfam_triv (fun _ _ _ => True%I);
+       of_om    := OffParked;
        wf_Q     := fun _ => True%I;
        (* row 17 *)
        nf_P     := P;
@@ -974,7 +975,7 @@ Section UkTreeCreate.
           exact (cre_pre_ne av FsImg.ROOTINO nm ents nl FsImg.ROOTINO
                    (AFile []) Hcre (fun e He => ltac:(discriminate He))
                    eq_refl). }
-        iDestruct "Hrc" as (γo) "%Hrcpt".
+        iDestruct "Hrc" as (γo) "[%Hrcpt _]".
         cbn [tree_acre_fam pf_recv].
         iDestruct "Hok" as "[Hown | #HT]"; last first.
         { iApply ("Hcont" $! h' rv with "[Hfd] Hcwd Hrun").

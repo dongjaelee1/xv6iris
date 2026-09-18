@@ -59,6 +59,7 @@ Require Import FsAbsEra.         (* [ep_start], [np_elems], [um_start_of] *)
 Require Import SysMknodDefs.     (* [npar_cur], [npar_elems] *)
 Require Import ArgPath.          (* [arg_path_of], [arg_path_of_uniq] *)
 Require Import SysOpenDefs.      (* [open_au_create_at], [open_trunc_piece] *)
+Require Import UserOff.     (* [foff_pub]: what the publish hands the caller *)
 Require Import SpecSysOpen.      (* [open_receipt_plain] *)
 Require Import PinnedObs.        (* the pinned walk and the linear cursor *)
 Require Import PinnedOpen.       (* [pinned_open_bundle_dead_lin] (lane F-OPEN-2) *)
@@ -1423,10 +1424,14 @@ Section FileOpen.
      refute a device, and nothing below this line can either.
      [UkFileOpen.redir_K] is this, and it is the name lane SH-ROUND
      instantiates. *)
-  Definition file_open_fd_K (c : file_fixed) (r : file_names)
+  Definition file_open_fd_K (omo : offmode) (c : file_fixed) (r : file_names)
       (ty : fdtype) : iProp Σ :=
     ((∃ (i : Z) (γo : gname),
-        ⌜ty = FdInode i γo OffParked⌝ ∗ fown r (Some (i, [])))
+        ⌜ty = FdInode i γo omo⌝ ∗ fown r (Some (i, []))
+        (* ...AND THE HALF THE PUBLISH HANDED OUT (lane OFF-LINK-6's L4):
+           nothing at mode PARK, [UserOff.uoff γo 0] at mode HAND, which is
+           what [UShRound]'s [redir_K] and K1's entry ask for. *)
+        ∗ foff_pub omo γo)
      ∨ file_taint c)%I.
 
   (* ---- THE WHOLE RECEIPT, at the redirect child's own mode.  TWO
@@ -1443,6 +1448,7 @@ Section FileOpen.
      [file_open_fd_K]'s right disjunct like every other arm's.  See
      section 6. *)
   Lemma file_open_create_recv (γfs : fs_names) (c : file_fixed)
+      (omo : offmode)
       (r : file_names) (jc : Z) (n : nat) (s : dst) (g : gname) (cw : Z)
       (M : gmap Z (bv 8)) (pv vom : mword 64) (pl : list (bv 8))
       (sts : list fdstate) (rv : mword 64) (fdv' : list fdstate)
@@ -1453,7 +1459,7 @@ Section FileOpen.
     list_basics.last (path_elems pl) = Some fname_f ->
     file_app = MkAppcfg file_names (file_pred c) r ->
     app_inv γfs -∗ esc_key c r n s g -∗
-    open_receipt_create (fs_gamma_L γfs) γfs cw M pv vom
+    open_receipt_create omo (fs_gamma_L γfs) γfs cw M pv vom
       (fun (_ : nat) (d : Z) => ⌜d = ROOTINO⌝%I)
       (fun _ _ => True%I)
       (file_arm_fam c r jc s g) (file_unarm_fam c r s g)
@@ -1464,7 +1470,7 @@ Section FileOpen.
         ∗ file_open_pay c r s)
        ∨ (∃ ty : fdtype,
             ⌜open_fd_rcpt (om_readable vom) (om_writable vom) ty sts rv fdv'⌝
-            ∗ file_open_fd_K c r ty)).
+            ∗ file_open_fd_K omo c r ty)).
   Proof using .
     intros HE Htr Hpath Hlast Heq. rewrite /open_receipt_create.
     iIntros "#Hinv #Hwit [(%Hr & %Hfdv & Hf) | Hok]".
@@ -1481,11 +1487,11 @@ Section FileOpen.
       iEval (rewrite Htr) in "Htrc".
       iDestruct "Htrc" as (av' nl') "[_ Hrec]".
       rewrite /file_trunc_fam /file_trunc_recv. cbn [pf_recv].
-      iDestruct "Hfd" as (γo) "%Hrcpt".
-      iModIntro. iRight. iExists (FdInode i γo OffParked).
+      iDestruct "Hfd" as (γo) "[%Hrcpt Hpub]".
+      iModIntro. iRight. iExists (FdInode i γo omo).
       iSplitR; [ by iPureIntro |]. rewrite /file_open_fd_K.
       iDestruct "Hrec" as "[Hown | #HT]"; [| by iRight ].
-      iLeft. iExists i, γo. iSplitR; [ by iPureIntro |]. iExact "Hown".
+      iLeft. iExists i, γo. iSplitR; [ by iPureIntro |]. iFrame "Hown Hpub".
     - (* THE NAME WAS THERE *)
       rewrite (arg_path_of_uniq M pv pl0 pl Hpath0 Hpath).
       iDestruct "Hex" as (avx entsx nlx) "(_ & _ & _ & _ & _ & Hrest)".
@@ -1495,11 +1501,11 @@ Section FileOpen.
         iEval (rewrite Htr) in "Htrc".
         iDestruct "Htrc" as (av') "[_ Hrec]".
         rewrite /file_trunc_fam /file_trunc_recv. cbn [pf_recv].
-        iDestruct "Hfd" as (γo) "%Hrcpt".
-        iModIntro. iRight. iExists (FdInode i γo OffParked).
+        iDestruct "Hfd" as (γo) "[%Hrcpt Hpub]".
+        iModIntro. iRight. iExists (FdInode i γo omo).
         iSplitR; [ by iPureIntro |]. rewrite /file_open_fd_K.
         iDestruct "Hrec" as "[Hown | #HT]"; [| by iRight ].
-        iLeft. iExists i, γo. iSplitR; [ by iPureIntro |]. iExact "Hown".
+        iLeft. iExists i, γo. iSplitR; [ by iPureIntro |]. iFrame "Hown Hpub".
       + (* ...or on a DEVICE, WHICH THE CLAIM REFUTES: the permit is the
              EXISTS branch and the arm says so, so all that is left is the
              taint *)
@@ -1854,6 +1860,7 @@ Section FileOpen.
      identification, and the file arm's descriptor is on THE DEED'S OWN
      INUM.  BOTH fractions come home. *)
   Lemma file_open_recv_file (γfs : fs_names) (c : file_fixed) (r : file_names)
+      (omo : offmode)
       (q1 q2 : Qp) (i : Z) (bs : list (bv 8))
       (cw : Z) (M : gmap Z (bv 8)) (pv vom : mword 64) (pl : list (bv 8))
       (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ))
@@ -1861,14 +1868,18 @@ Section FileOpen.
     arg_path_of M pv pl ->
     path_elems pl = [fname_f] ->
     um_start_of cw pl = ROOTINO ->
-    open_receipt_plain (fs_gamma_L γfs) γfs cw M pv vom
+    open_receipt_plain omo (fs_gamma_L γfs) γfs cw M pv vom
       (pobs_P_lin (file_taint c) [ROOTINO; i] (fdq r q1 (Some (i, bs))))
       (pobs_Pmiss (file_taint c))
       (file_open_recv c r q2 (Some (i, bs))) Ft sts rv fdv' -∗
       ((⌜rv = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜fdv' = sts⌝)
        ∨ (∃ γo : gname,
             ⌜open_fd_rcpt (om_readable vom) (om_writable vom)
-               (FdInode i γo OffParked) sts rv fdv'⌝
+               (FdInode i γo omo) sts rv fdv'⌝
+            (* ...AND THE HALF THE PUBLISH HANDED OUT (lane OFF-LINK-6's
+               L4): nothing at mode PARK, [UserOff.uoff γo 0] at mode
+               HAND. *)
+            ∗ foff_pub omo γo
             ∗ fdq r q1 (Some (i, bs)) ∗ fdq r q2 (Some (i, bs)))
        ∨ file_taint c).
   Proof using .
@@ -1895,12 +1906,12 @@ Section FileOpen.
       exfalso. destruct Hf as (_ & Hav).
       pose proof (arow_at_pinned _ _ _ _ Hra Hav) as Hab. discriminate Hab.
     - (* FILE: the descriptor is on the deed's own inum *)
-      iDestruct "Hfile" as (bs0 nl) "(%Hrow & Hrecv & _ & %Hfdr)".
+      iDestruct "Hfile" as (bs0 nl) "(%Hrow & Hrecv & _ & Hfdr)".
       rewrite /file_open_recv. cbn [pf_recv].
       iDestruct "Hrecv" as "(%Hra & Hd2 & [%Hf | #HT])"; last first.
       { iRight. iRight. iExact "HT". }
-      destruct Hfdr as (γo & Hfdr).
-      iRight. iLeft. iExists γo. iFrame "Hd1 Hd2". by iPureIntro.
+      iDestruct "Hfdr" as (γo) "[%Hfdr Hpub]".
+      iRight. iLeft. iExists γo. iFrame "Hpub Hd1 Hd2". by iPureIntro.
     - (* DIRECTORY: refuted the same way *)
       iDestruct "Hdir" as (ents nl) "(%Hrow & _ & Hrecv & _ & _)".
       rewrite /file_open_recv. cbn [pf_recv].
@@ -2133,6 +2144,7 @@ Section FileOpenMiss.
      third arm -- cat's `cannot open` branch is a THEOREM at an absent
      deed, not an arm it has to carry. *)
   Lemma file_open_miss_recv (γfs : fs_names) (c : file_fixed) (r : file_names)
+      (omo : offmode)
       (q : Qp) (cw : Z) (M : gmap Z (bv 8)) (pv vom : mword 64)
       (pl : list (bv 8))
       (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ))
@@ -2140,7 +2152,7 @@ Section FileOpenMiss.
       (sts : list fdstate) (rv : mword 64) (fdv' : list fdstate) :
     arg_path_of M pv pl ->
     path_elems pl = [fname_f] ->
-    open_receipt_plain (fs_gamma_L γfs) γfs cw M pv vom
+    open_receipt_plain omo (fs_gamma_L γfs) γfs cw M pv vom
       (pobs_P_dead_lin (file_taint c) (fdq r q None) ROOTINO)
       (pobs_Pmiss_ref (file_taint c) (fdq r q None)) Fo Ft sts rv fdv'
     ={⊤}=∗ ((⌜rv = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜fdv' = sts⌝
@@ -2148,7 +2160,7 @@ Section FileOpenMiss.
             ∨ file_taint c).
   Proof using .
     intros Hpath Hel. iIntros "Hrc".
-    iApply (pinned_open_dead_lin γfs (file_taint c) (fdq r q None)
+    iApply (pinned_open_dead_lin γfs (file_taint c) (fdq r q None) omo
               cw pl ROOTINO M pv vom Fo Ft sts rv fdv' Hpath
               ltac:(rewrite Hel; discriminate) with "Hrc").
   Qed.

@@ -163,6 +163,7 @@ Section ProofSysOpenEntryCCont.
   (* [ProofSysOpenShared.so_cont0_au] with [open_arms_plain] replaced by
      [open_arms_create] -- and that is the ONLY difference. *)
   Definition so_cont0_au_create `{GEN : GenId}
+      (omo : offmode)
       (gf : gname)
       (ns : nat) (dqb dqs dqbs dqn : dfrac)
       (pj : mword 64) (pidv : mword 32)
@@ -190,7 +191,7 @@ Section ProofSysOpenEntryCCont.
          sb_bmapstart ↦₄{dqb} (mword_of_int fsc_bmapstart : mword 32) -∗
          bslots 3 -∗
          iref_slots ns' -∗
-         open_arms_create (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) gf pj pidv
+         open_arms_create omo (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) gf pj pidv
            Mim pvv vom
            P Pmiss Phiarm Phiun Phiok Phiex Phio Phit sts U
            (mf !!! Regidx Ra0 : mword 64) -∗
@@ -228,6 +229,7 @@ Section ProofSysOpenEntryC.
   Proof using . rewrite FsAbsCreateFire.T_FILE_value. lia. Qed.
 
   Lemma so_entry_c_au `{GEN : GenId} `{CID0 : CpuId} `{XI : CurCtx}
+      (omo : offmode)
       (gfl gf : gname)
       (gs : list gname) (jx : nat) (gl : gname)
       (pd pav pu : mword 64)
@@ -337,7 +339,7 @@ Section ProofSysOpenEntryC.
     (* ...and create's CHILD legs (round E2, lane E2-C) *)
     cre_child_unfired (fs_gamma_L fsc_fs) (AFile []) Phiarm Phiun -∗
     wp_next true (proc_addr jx)
-      (so_cont0_au_create gf ns
+      (so_cont0_au_create omo gf ns
                 dqb dqs dqbs dqn (proc_addr jx) pidv Mim pvv vom U sts
                 P Pmiss Phiarm Phiun Phiok Phiex Phio Phit m K eb b lks) -∗
     WP (Loop : expr riscv_lang).
@@ -708,7 +710,7 @@ Section ProofSysOpenEntryC.
                       (bv_unsigned inum) (era_node dn bm data)) as "Hobs".
       { rewrite -Harow. iApply socr_obs_pure. }
       iAssert (wp_next true (proc_addr jx)
-                 (so_cont_au gf ns1 dqb dqs (proc_addr jx) pidv Mim pvv vom U sts
+                 (so_cont_au omo gf ns1 dqb dqs (proc_addr jx) pidv Mim pvv vom U sts
                     (socr_P (socr_fresh vom P Phiarm Phiun Phiok Phiex Phio
                                (bview plen bp) (bv_unsigned inum))
                             (bv_unsigned inum))
@@ -724,7 +726,7 @@ Section ProofSysOpenEntryC.
         iIntros "Hcg Hown Htce Hcce Hpc Hsbb Hsbi Hbsl Hisl Hpost".
         iSpecialize ("Hcont" $! CIDz with "[%]"); [wp_next_chain |].
         iApply fupd_wp.
-        iMod (socr_arms_fresh gf (proc_addr jx) pidv Mim pvv vom P Pmiss
+        iMod (socr_arms_fresh omo gf (proc_addr jx) pidv Mim pvv vom P Pmiss
                 Phiarm Phiun Phiok Phiex Phio Phit U sts _ (bview plen bp) (bv_unsigned inum)
                 (fn_nlink (era_node dn bm data)) Hpof with "Hpost") as "Hpost".
         iModIntro.
@@ -732,7 +734,7 @@ Section ProofSysOpenEntryC.
                   Hsbn Hsbi Hsbs Hsbb Hbsl Hisl Hpost").
         { exact Hcsf. }
         { cbn in Hns1. unfold sys_open_slots, create_slots in *. lia. } }
-      iApply (Join.so_join_au (CID0 := CID8) gfl gf gs jx gl pd pav pu
+      iApply (Join.so_join_au (CID0 := CID8) omo gfl gf gs jx gl pd pav pu
                 gil gisl kk qi ss gy loy tly inum dn bm om lo ns1 u1 pidv dqb dqs
                 U sts m P1 sp0 K eb b lks w4 w5 w6 w24 bp1
                 data Mim pvv vom (bview plen bp)
@@ -803,7 +805,7 @@ Section ProofSysOpenEntryC.
                   (bview plen bp) (bv_unsigned inum) d nm av ents nl
                   Hl Hrow Hent with "HP HPhi Hac Hcl Htc"). }
       iAssert (wp_next true (proc_addr jx)
-                 (so_cont_au gf ns1 dqb dqs (proc_addr jx) pidv Mim pvv vom U sts
+                 (so_cont_au omo gf ns1 dqb dqs (proc_addr jx) pidv Mim pvv vom U sts
                     (socr_P (socr_exists vom P Phiarm Phiun Phiok Phiex (bview plen bp)
                                (bv_unsigned inum)) (bv_unsigned inum))
                     (socr_Pm (socr_exists vom P Phiarm Phiun Phiok Phiex (bview plen bp)
@@ -817,7 +819,7 @@ Section ProofSysOpenEntryC.
         iIntros "Hcg Hown Htce Hcce Hpc Hsbb Hsbi Hbsl Hisl Hpost".
         iSpecialize ("Hcont" $! CIDz with "[%]"); [wp_next_chain |].
         iApply fupd_wp.
-        iMod (socr_arms_exists gf (proc_addr jx) pidv Mim pvv vom P Pmiss
+        iMod (socr_arms_exists omo gf (proc_addr jx) pidv Mim pvv vom P Pmiss
                 Phiarm Phiun Phiok Phiex Phio Phit U sts _ (bview plen bp) (bv_unsigned inum)
                 (abs_row (era_node dn bm data)) Hpof Hnd with "Hpost") as "Hpost".
         iModIntro.
@@ -825,7 +827,7 @@ Section ProofSysOpenEntryC.
                   Hsbn Hsbi Hsbs Hsbb Hbsl Hisl Hpost").
         { exact Hcsf. }
         { cbn in Hns1. unfold sys_open_slots, create_slots in *. lia. } }
-      iApply (Join.so_join_au (CID0 := CID8) gfl gf gs jx gl pd pav pu
+      iApply (Join.so_join_au (CID0 := CID8) omo gfl gf gs jx gl pd pav pu
                 gil gisl kk qi ss gy loy tly inum dn bm om lo ns1 u1 pidv dqb dqs
                 U sts m P1 sp0 K eb b lks w4 w5 w6 w24 bp1
                 data Mim pvv vom (bview plen bp)

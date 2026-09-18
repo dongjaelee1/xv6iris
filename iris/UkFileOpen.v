@@ -163,7 +163,7 @@ Section UkFileOpen.
 
   Definition file_open_fam (c : file_fixed) (r : file_names) (q1 q2 : Qp)
       (i : Z) (bs : list (bv 8)) (Q : Z -> iProp Σ) : sfam :=
-    xfam_open
+    xfam_open OffParked
       (pobs_P_lin (file_taint c) [ROOTINO; i] (fdq r q1 (Some (i, bs))))
       (pobs_Pmiss (file_taint c))
       (file_open_recv c r q2 (Some (i, bs))) Q.
@@ -267,7 +267,7 @@ Section UkFileOpen.
     iEval (rewrite /open_receipt Hcr) in "Hrc".
     iEval (cbn [file_open_fam xfam_open of_P of_Pmiss of_Farm of_Fun
                 of_Fok of_Fex of_Fo of_Ft]) in "Hrc".
-    iDestruct (file_open_recv_file fsc_fs c r q1 q2 i bs cw (uvis_M W) pv
+    iDestruct (file_open_recv_file fsc_fs c r OffParked q1 q2 i bs cw (uvis_M W) pv
                  (m !!! Regidx a1_idx) pl _ (uvis_fd W) rv fdv'
                  (Hpath (uvis_M W) Himg) Hel Hst with "Hrc") as "Hans".
     iApply ("Hcont" $! h' rv with "[Hfd Hans] Hcwd Hrun").
@@ -276,7 +276,7 @@ Section UkFileOpen.
       iApply (uk_open_taint_fd_of_arm (ukn_fd N) l (uvis_fd W) fdv' rv
                 with "[Hfd]").
       rewrite /uk_open_fd_arm. iExact "Hfd". }
-    - iDestruct "Hok" as (γo) "(%Hrcpt & Hd1 & Hd2)".
+    - iDestruct "Hok" as (γo) "(%Hrcpt & _ & Hd1 & Hd2)".
       iDestruct "Hfd" as "[Hal | [%Hb _]]"; last first.
       { exfalso. destruct Hb as [Hrm _].
         destruct Hrcpt as (fd0 & Hr0 & Hcl0 & _).
@@ -308,7 +308,7 @@ Section UkFileOpen.
 
   Definition file_miss_fam (c : file_fixed) (r : file_names) (q : Qp)
       (Q : Z -> iProp Σ) : sfam :=
-    xfam_open
+    xfam_open OffParked
       (pobs_P_dead_lin (file_taint c) (fdq r q None) ROOTINO)
       (pobs_Pmiss_ref (file_taint c) (fdq r q None))
       (pfam_triv (fun (_ : aview) (_ : Z) (_ : anode) => True%I)) Q.
@@ -393,7 +393,7 @@ Section UkFileOpen.
     iEval (cbn [file_miss_fam xfam_open of_P of_Pmiss of_Farm of_Fun
                 of_Fok of_Fex of_Fo of_Ft]) in "Hrc".
     iApply fupd_wp.
-    iMod (file_open_miss_recv fsc_fs c r q cw (uvis_M W) pv
+    iMod (file_open_miss_recv fsc_fs c r OffParked q cw (uvis_M W) pv
             (m !!! Regidx a1_idx) pl _ _ (uvis_fd W) rv fdv'
             (Hpath (uvis_M W) Himg) Hel with "Hrc") as "Hans".
     iModIntro.
@@ -618,6 +618,7 @@ Section UkFileOpen.
        of_Fex   := Fex;
        of_Fo    := Fo;
        of_Ft    := Ft;
+       of_om    := OffParked;
        wf_Q     := fun _ => True%I;
        nf_P     := fun _ _ => True%I;
        nf_Pmiss := fun _ _ => True%I;
@@ -697,8 +698,8 @@ Section UkFileOpen.
      permit's named EXISTS branch); the taint sits OUTSIDE the type
      equation because a tainted claim promises nothing about the file
      system and cannot refute the kernel's [FdDevice] arm. *)
-  Definition redir_K (c : file_fixed) (r : file_names) (ty : fdtype)
-      : iProp Σ := file_open_fd_K c r ty.
+  Definition redir_K (omo : offmode) (c : file_fixed) (r : file_names)
+      (ty : fdtype) : iProp Σ := file_open_fd_K omo c r ty.
 
   (* THE DEPOSIT: the 0x601 bundle, from one deed. *)
   Lemma file_create_sup (N : uk_names Σ) (c : file_fixed) (r : file_names)
@@ -801,7 +802,7 @@ Section UkFileOpen.
              ualloc (ukn_fd N) l fd
                (FdOpen (om_readable (m !!! Regidx a1_idx))
                        (om_writable (m !!! Regidx a1_idx)) ty) ∗
-             redir_K c r ty)) -∗
+             redir_K OffParked c r ty)) -∗
        UserCwd.ucwd (ukn_cwd N) cw -∗
        urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
@@ -836,7 +837,7 @@ Section UkFileOpen.
     iEval (cbn [file_create_fam xfam_fcreate of_P of_Pmiss of_Farm of_Fun
                 of_Fok of_Fex of_Fo of_Ft]) in "Hrc".
     iApply fupd_wp.
-    iMod (file_open_create_recv fsc_fs c r jc n s g cw (uvis_M W) pv
+    iMod (file_open_create_recv fsc_fs c OffParked r jc n s g cw (uvis_M W) pv
                  (m !!! Regidx a1_idx) pl (uvis_fd W) rv fdv' ⊤
                  ltac:(set_solver) Htr
                  ltac:(exact (Hpath (uvis_M W) Himg))
@@ -1056,7 +1057,7 @@ Section UkFileOpen.
     iEval (rewrite /open_receipt Hcr) in "Hrc".
     iEval (cbn [file_open_fam xfam_open of_P of_Pmiss of_Farm of_Fun
                 of_Fok of_Fex of_Fo of_Ft]) in "Hrc".
-    iDestruct (file_open_recv_file fsc_fs c r q1 q2 i bs cw (uvis_M W) pv
+    iDestruct (file_open_recv_file fsc_fs c r OffParked q1 q2 i bs cw (uvis_M W) pv
                  (m !!! Regidx a1_idx) pl _ (uvis_fd W) rv fdv'
                  (Hpath (uvis_M W) Himg) Hel Hst with "Hrc") as "Hans".
     iApply ("Hcont" $! h' rv with "[Hfd Hans] Hcwd Hrun").
@@ -1065,7 +1066,7 @@ Section UkFileOpen.
       iApply (uk_open_taint_fd_of_arm (ukn_fd N) l (uvis_fd W) fdv' rv
                 with "[Hfd]").
       rewrite /uk_open_fd_arm. iExact "Hfd". }
-    - iDestruct "Hok" as (γo) "(%Hrcpt & Hd1 & Hd2)".
+    - iDestruct "Hok" as (γo) "(%Hrcpt & _ & Hd1 & Hd2)".
       iDestruct "Hfd" as "[Hal | [%Hb _]]"; last first.
       { exfalso. destruct Hb as [Hrm _].
         destruct Hrcpt as (fd0 & Hr0 & Hcl0 & _).
@@ -1135,7 +1136,7 @@ Section UkFileOpen.
     iEval (cbn [file_miss_fam xfam_open of_P of_Pmiss of_Farm of_Fun
                 of_Fok of_Fex of_Fo of_Ft]) in "Hrc".
     iApply fupd_wp.
-    iMod (file_open_miss_recv fsc_fs c r q cw (uvis_M W) pv
+    iMod (file_open_miss_recv fsc_fs c r OffParked q cw (uvis_M W) pv
             (m !!! Regidx a1_idx) pl _ _ (uvis_fd W) rv fdv'
             (Hpath (uvis_M W) Himg) Hel with "Hrc") as "Hans".
     iModIntro.
@@ -1194,7 +1195,7 @@ Section UkFileOpen.
              ualloc (ukn_fd N) l fd
                (FdOpen (om_readable (m !!! Regidx a1_idx))
                        (om_writable (m !!! Regidx a1_idx)) ty) ∗
-             redir_K c r ty)) -∗
+             redir_K OffParked c r ty)) -∗
        UserCwd.ucwd (ukn_cwd N) cw -∗
        urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
@@ -1229,7 +1230,7 @@ Section UkFileOpen.
     iEval (cbn [file_create_fam xfam_fcreate of_P of_Pmiss of_Farm of_Fun
                 of_Fok of_Fex of_Fo of_Ft]) in "Hrc".
     iApply fupd_wp.
-    iMod (file_open_create_recv fsc_fs c r jc n s g cw (uvis_M W) pv
+    iMod (file_open_create_recv fsc_fs c OffParked r jc n s g cw (uvis_M W) pv
                  (m !!! Regidx a1_idx) pl (uvis_fd W) rv fdv' ⊤
                  ltac:(set_solver) Htr
                  ltac:(exact (Hpath (uvis_M W) Himg))
@@ -1391,7 +1392,7 @@ Section UkFileOpen.
              ualloc (ukn_fd N) l fd
                (FdOpen (om_readable (m !!! Regidx a1_idx))
                        (om_writable (m !!! Regidx a1_idx)) ty) ∗
-             redir_K c r ty)) -∗
+             redir_K OffParked c r ty)) -∗
        UserCwd.ucwd (ukn_cwd N) cw -∗
        urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗

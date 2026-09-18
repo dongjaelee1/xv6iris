@@ -188,6 +188,7 @@ Section ProofSysOpenBody.
   (*  spent here.                                                       *)
   (* ================================================================== *)
   Lemma wp_sys_open_plain `{GEN : GenId} `{CID0 : CpuId} `{XI : CurCtx}
+      (omo : offmode)
       (gfl gf : gname)
       (gs : list gname) (j : nat) (gl : gname)
       (pd pav pu : mword 64)
@@ -200,7 +201,7 @@ Section ProofSysOpenBody.
       (P Pmiss : nat -> Z -> iProp Σ)
       (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ))
       (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ)) :
-    wp_sys_open_plain_body gfl gf gs j gl pd pav pu
+    wp_sys_open_plain_body omo gfl gf gs j gl pd pav pu
 
  ns dqb dqs dqbs dqn v vom
                            pid U sts m K eb b lks P Pmiss Fo Ft.
@@ -692,7 +693,7 @@ Section ProofSysOpenBody.
         assert (Ha0m1 : (mf !!! Regidx Ra0 : mword 64)
                         = (mword_of_int (-1) : mword 64))
           by (rewrite Ha0f; exact HR2a0).
-        iApply (so_arm_unspent gf (proc_addr j) pid (us_M U) v vom
+        iApply (so_arm_unspent omo gf (proc_addr j) pid (us_M U) v vom
                   P Pmiss Fo Ft _ sts
                   (mf !!! Regidx Ra0 : mword 64) Ha0m1
                   with "Hpriv Hfrag Hfds [Hwp Hoc Htc]").
@@ -845,7 +846,7 @@ Section ProofSysOpenBody.
        process state.  [P'] is argstr's report and [upd_upt] is where it
        lands; everything below the split speaks [so_cont0]. ---- *)
     iAssert (wp_next (CID0 := CID21) true (proc_addr j)
-               (so_cont0_au gf
+               (so_cont0_au omo gf
  ns dqb dqs dqbs dqn (proc_addr j) pid (us_M U) v vom
                          (us_upt U P') sts P Pmiss Fo Ft m K eb b lks))
       with "[Hcont]" as "Hcont0".
@@ -882,7 +883,7 @@ Section ProofSysOpenBody.
                    ltac:(wp_next_chain) with "Hown") as "Hown".
       iDestruct (wp_next_shift (b := true) (CIDa := CID21) (CIDb := CID22)
                    ltac:(wp_next_chain) with "Hcont0") as "Hcont0".
-      iApply (Walk.so_entry_n_au (CID0 := CID22) gfl gf gs j gl pd pav
+      iApply (Walk.so_entry_n_au (CID0 := CID22) omo gfl gf gs j gl pd pav
                 pu
  pk bf (arg_int32 vom) (word_lo u23) ns Sb0
                 pid dqb dqs dqbs dqn (us_upt U P') sts m S2 sp0 K eb b lks

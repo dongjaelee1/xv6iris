@@ -205,6 +205,18 @@ sites listed in the worklist) compiles unchanged.  What moves:
   γp) pst0 ={⊤}=∗ pipe_reg γp` on the leaf, at the same mask the leaf's
   post runs — report which shape landed.
 
+**AMENDED (SH-PIPE, 2026-09-18): the registration is HANDED OUT, not
+owed.**  The pipe leaf's post carries `pipe_reg γp` (or whatever the
+program-facing registration is) as an ANSWER conjunct beside the fragment
+and the two handles — the caller's `ush_pipe_call` premise is stated at
+that shape, so both today's leaf (at the taint) and PIPE-REG's leaf
+instantiate it.  "Owed" would force a registrar over a `γp` the caller
+does not know yet.  PIPE-REG's as-landed block says which shape it
+built; if the leaf hands out a registration the PROGRAM must still fund
+(the fragment goes into an invariant the program allocates), the leaf's
+own answer is the fragment + `pipe_reg_of_taint`-free form the program
+converts.
+
 **VACUITY CHECK, written first** (durable-notes "Vacuity"): `pipe_reg γp`
 must NOT be provable from nothing.  It is not — `pipe_cpay` is `pipe_clink
 ∨ pipe_taint_cred`, a `pipe_clink` needs a `pipe_qauth` step that only the
@@ -347,6 +359,25 @@ still in hand, or the taint-free `PExecR` marker) and cat's payload
 - `PPipe`, `PFork`: no protocol was allocated (or one child never
   existed); the diagnostic is sh's own, through `UkShDiag`'s printer.
 
+**AMENDED (SH-PIPE's finding R-2, 2026-09-18): `wait(0)` cannot tell the
+two children apart** — `wp_kshr_fork1` requires the payload to be the same
+at every return value, and `uwait_ans`'s reaping arm binds its generation
+only up to `γ' ∈ cs ∨ pidv = 1`; the pid-refuting form needs
+`UserChildren.upid`, which the fork leaf hands out and `wp_kshr_fork1`
+drops.  So the two children's exit payloads are ONE symmetric `Qc`, and
+the two sides are told apart by EXCLUSIVE SIDE TOKENS: the runcmd child
+mints `side_L` and `side_R` (two `Excl ()` ghosts, or one `ghost_map`
+with two keys) after `pipe(2)`, lends `side_L` to the left child and
+`side_R` to the right through `RcL`/`RcR`, and `Qc _ := (side_L ∗ left
+payload) ∨ (side_R ∗ right payload)` where the left payload is echo's
+(`mono_list_lb γws L`, or `wtok γw` back at `PExecL`/`PSilent`, or the
+`PExecR` marker) and the right payload is cat's (`γeof ↦ Some w` with the
+console cursor at `length w`, or its diagnostic's marker).  Two answers
+both taking the left arm would put `side_L` twice in sh's hands — refuted
+by exclusivity — so sh holds exactly one of each and §4.2's reading goes
+through unchanged.  (If a lane wants the pid route instead, `wp_kshr_fork1`
+must be re-cut to keep `upid`; not taken.)
+
 The prompt credential the runcmd child hands back through ITS exit (to
 the main-loop sh) is the echo application's `Wq I` shape — one round, one
 block, the alternative filed at the prompt byte exactly as `EchoOut` files
@@ -411,6 +442,50 @@ walked at the `>` shape (`UkShRedirCm.wp_kshp_parsepipe_gt`) and must turn
 ONCE for ` | cat`; `pipecmd` into the node catalogue; `nulterminate`'s
 PIPE row; the parser theorem at the pipe shape; `ushf_lexable` grows the
 shape.  Upstream's SH-PARSE/SH-PARSE-2 are the mould, file for file.
+
+**AS LANDED (lanes SH-PIPE and SH-PARSE-PIPE part 1, 2026-09-18).**
+`ush_simple` is NOT widened (a structural `Fixpoint`; "at the top" is not
+expressible and widening silently strengthens `wp_kshr_runcmd`) — the
+scope is the layered `UkShPipe.ush_ptop` (one PIPE level over
+`ush_simple`), exactly as SH-REDIR did for `URedir`.  The arm
+`UkShPipe.wp_kshr_pipe_arm` walks 0x13c–0x1c2 plus the `panic("pipe")`
+tail in THREE processes at these premises: `ush_pipe_call` (the `pipe`
+stub's answer `ush_pipe_ans`: the two handles at ABSTRACT slots `a ≠ b`,
+`NSTD ≤ a, b < NOFILE` — `p = {3,4}` is NOT derivable, the row scans the
+whole table and a ledger pins only the low `NSTD`; the eight bytes; the
+ledger unmoved; and the REGISTRATION HANDED OUT as an answer conjunct
+`R γp` — not owed: owed would force a registrar over a `γp` not yet known;
+`pipe_qfrag` itself cannot be named in a `Uk*` file, it lives in
+`spost_at`'s row, so it goes inside `R γp`), the two `fork1`s through
+`wp_kshr_fork1` (NOT `_any`, which fixes `Rc := emp`) at lends `RcL RcR`
+and ONE payload `Qc` for both children (see §4.2 as amended), the six
+closes with the two pipe rows' deposits riding the answer as two
+persistent `ush_cldep st := □ ∀ N m pc, udepw_cl N m pc st` (the registry
+read literally; the children close at records fork chooses, so per-close
+parameters were the wrong shape), pipe-row closes through the generic
+`wp_uk_ecall_close` (PIPE-STD: the `wp_ksh_close*` wrappers spend a
+load-bearing nopipe premise), sh's `dup` stub (`wp_kshpi_dup`, never
+walked before; `ukn_held N = ∅` a premise), the two `wait(0)`s through
+`wp_kshpi_wait0` at a NAMED children set relaying `uwait_ans`.  `int p[2]`
+costs no stack (`wp_kshr_entry` already hands out `sp0-40`).  Consumer
+test `wp_kshr_runcmd_pipe` closes the arm at today's kernel modulo ONE
+premise: **the kernel's pipe row does not pin a failing `pipe(2)` to −1**
+(`UsysMemOk`'s row says `uint r ≠ 0`; sh's next instruction is `bltz a0`,
+so the not-taken-and-nonzero path runs the pipeline on two garbage
+descriptors) — `ush_pipe_call_weak_of_leaf` proves the gap is exactly that
+conjunct; lane **PIPE-NEG1** adds `r = -1` to the row and its
+`ProofSysPipe` discharge (`open`/`dup` rows already say it).  The parser
+(SH-PARSE-PIPE part 1): the pipe line LEXES (`ush_line_toks_holds_pipe`,
+closed), gettoken's `|` arm, nulterminate's PIPE row, the node
+`UkShPipeSeam.ush_cmd_of_ushp_pipe` = `ush_cmd γd p (UPipe (UExec (ush_args
+s0 g toksl)) (UExec (ush_args s0 g toksr)))`, the argument loop's exit at
+`|`; part 2 owes `parseexec` at the pipe line's two sides (re-statements),
+`pipecmd`'s catalog row (`make gen-ucode`) and `parsepipe`'s 13-instruction
+turn.  The pipe line makes THREE allocations (two `execcmd`, one
+`pipecmd`), within the landed malloc chain.  `ushf_lexable` no longer
+exists (deleted upstream, SH-LINE 2b); the line predicate is a third
+theorem beside the echo and redirect ones, and the line disjunct in
+`UkSh.ush_rest_line` needs a FOURTH arm (SH-PIPE-ROUND).
 
 ### 5.2 echo at a pipe (lane ECHO-PIPE)
 

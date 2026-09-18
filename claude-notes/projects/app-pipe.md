@@ -113,6 +113,15 @@ arm is the theorem's one named premise (`pipe_both_law`).
 
 ## Wave 2 — on the protocol
 
+- [ ] **PIPE-NEG1** (kernel/U-tier spec, SH-PIPE's R-1; after PIPE-REG lands
+  so the two edits to `wp_uk_ecall_pipe`'s post do not collide).
+  `UsysMemOk.usys_fd_ok`'s pipe row pins the failing return to
+  `r = mword_of_int (-1)` (as the open and dup rows do); `ProofSysPipe`'s
+  discharge (sys_pipe returns −1 on every failure arm); `wp_uk_ecall_pipe`'s
+  failure arm reads `r = -1`; `UkShPipe.ush_pipe_call_weak_of_leaf`
+  upgraded to the full `ush_pipe_call`, closing `wp_kshr_runcmd_pipe` at
+  today's kernel.  Bar: whole tree green, audits unmoved (the row's cone
+  is the whole U tier — one conjunct, no statement but the row moves).
 - [ ] **PIPE-PROTO** (design §3; after PQ-FLAG + PIPE-REG).  `iris/PipeProto.v`:
   `pipeProtoG`, `pnames`, `pipe_body`/`pipe_inv` at (P1)–(P3),
   `pipe_reg_of_inv`, the writer's chain builder (`pipe_wpay` from the

@@ -566,7 +566,19 @@ unowned critical item (WRITE-RELAY-3's `TB` guard).  RULES, replacing
   sh_hold_at s0 I` with no `f0_lb` in the hold; /init instantiates at
   `s0 := dst_content s_deed`.  Refused on the way: an era-head arm on
   `sh_hold` (names nothing), `∃ s0` outside the credential (breaks the
-  dischargers' `lcred ∗ Hold` form).
+  dischargers' `lcred ∗ Hold` form).  Landed by INIT-FILE round 2
+  (`FileLinksAt.v`, `FileLinksAtBan.v`, `FileLinksAtLine.v`,
+  `FileLinkInst.file_link_inst_at`, `file_Wbl_at_of_boot`; the taint arm
+  names no state, so /init takes `s0 := None` under it).
+- RULING NM (2026-09-18, INIT-FILE findings 3.4): the generic create
+  commit `FsAbsCreateFire.acre_commit_at_gen` quantified the created name
+  freely, so /init's mknod asked its caller's claim to absorb a device
+  called `f` in the root, which the file claim cannot.  A name predicate
+  `Nm : fname -> Prop` on the commit, `True` at every site but
+  `SpecSysMknod.mknod_au_at`, where it is the walked path's last element
+  under the cursor's guard, discharged by `ProofSysMknod` from the walk.
+  Refused: an `Other` parameter on `init_cons_laws_at` (the consumer
+  cannot supply it — the name is the kernel's to pin).
 - TWO SERIAL STREAMS, at most two lanes on `iris/` at once: the KERNEL
   stream (OFF-LINK-6 + L5 + the `TB` guard, exit criterion: `Hopen_hand`,
   cat's lend and `UEchoFile.ef_chain` compile as `Definition`s; then

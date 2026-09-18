@@ -25,6 +25,8 @@ stream's.)
 | after the slot's third conjunct and the guard (`2c8bd957a`) | **8** | (the machinery `Hchild_echo` was missing) |
 | after `Hchild_echo` (`f104e2646`) | **7** | `Hchild_echo` |
 | after `sh_child_law_file` (`108aa435c`) | **6** | `sh_child_law_file`'s `Admitted` |
+| after `Hopen_hand`'s statement fix (`d8f638d89`) | **6** | (the hypothesis is now TRUE; the walk is blocked on one instance) |
+
 
 
 
@@ -678,3 +680,90 @@ and the step from an entry to a child law is cat's own walk from 0x9c0.
 Its conclusion also has to move from `ush_rest_l` (echo's `D`) to
 `ush_rest_l_at ... ush_line_file`, which is the STRONGER statement the
 file body law proves.
+
+
+---
+
+## PROGRAM STREAM, stretch 5 (2026-09-18) — item (2), and the instance that stops it
+
+Branch `app-file/sh-redir`, merged from `main` at `3409ad5a0`.  Whole tree
+green (`--proofs -k`, `EXIT=0`); four audits, all four primitive-only and
+unchanged (System 13, Echo 14, Tree 13, File 14 — zero app-level axioms in
+any cone); `make gen-ucode` seven catalogs unchanged.  Metric **6**
+(three-file 7 + 6 + 1 = **14**).
+
+### 1. `Hopen_hand` was not provable AS STATED, and that half is fixed
+
+`UkShRedirAns.ush_open_call2` handed the open `a0 = file` — an ADDRESS —
+and said nothing about the bytes there or about the cwd, while the kernel
+resolves a PATH.  So the round assumed something nobody could prove.  The
+definition now takes, inside its own ∀:
+
+* the name as the image the ecall reads — `arg_path_of M (mword_of_int
+  file) pl` for every `M` the image is a sub-map of, with the bytes as
+  `ubyteq (ukn_d N) DfracDiscarded`;
+* `np_elems pl = []`, `um_start_of cwdv pl = ROOTINO`,
+  `last (path_elems pl) = Some fname_f`;
+* `fd_lowest_closed l = Some 1` — the fd arm names fd ONE, and which slot
+  the ledger picks is the CALLER's fact (`UserFd.ualloc_std`), true of the
+  redirect child's table because it closed fd 1 before calling.
+
+`redir_Kf` also gains the taint arm: the kernel's own `-1` payload is
+`FileOpen.file_open_pay`, whose third arm is the era's taint.
+
+Every one of these is a fact sh has — its cwd is the root for the whole
+era, and the line's bytes are in its own buffer at the lexed offset — so
+the hypothesis is now true and dischargeable, and what remains is the
+walk.
+
+### 2. THE WALK IS WRITTEN AND CANNOT TYPE, AND THE REASON IS ONE LINE OF THE KERNEL'S FILE
+
+sh's stub is three instructions (`c.li a7,15` at 0xcc6, `ecall` at 0xcc8,
+`c.jr ra` at 0xccc — `UShConsK.sh_open_console_leaf_holds`'s mould) with
+`UkFileOpen.wp_uk_ecall_open_create_deed_d` as the leaf.  That corollary is
+stated at the **ambient** deposit instance, and there are two:
+
+| instance | kind | `Dsup` | `psok` |
+|---|---|---|---|
+| `UexecExecInst.uprogSG_gen` | `Global Instance` (what resolution finds) | `xv6_ssupply` | `fun _ => True` |
+| `UexecExecInst.uprogSG_free` | plain `Definition` (named explicitly) | `True` | `xv6_free` |
+
+`UkFileOpen`'s section declares no `uprogSG`, so every `urun` in that file
+is at the FIRST; sh's redirect child runs at the SECOND (its walks, its
+supply and `UEchoFile`'s entry all name `uprogSG_free`).  The two records
+share neither field, so the corollary cannot be applied by the walk that
+needs it — `iApply` fails with `iSpecialize: cannot instantiate (urun N h1
+m1 …)` against a hypothesis that prints identically.
+
+**What the kernel stream must do:** take `uprogSG` as a section parameter
+in `UkFileOpen` (or state the corollary at `(PS := …)`), exactly as
+`UkRunSys.wp_uk_ecall_open_recv_img` already does — which is why sh's
+CONSOLE open goes through and its FILE open does not.  With that one
+change the walk above applies as written; nothing else in item (2) is
+open.
+
+This is the instance-pinning rule biting from the other side: an
+unannotated statement does not only HANG, it can also make a lemma
+unusable by the tier that needs it.
+
+### 3. Items (3), (4), (5): where they stand
+
+* **(3)** sits on (2) exactly as before: the `K ty → sh_file_entry ty` step
+  reads the deed and the offset half off the open's receipt, and
+  `UShRedirPay.sh_file_entry` is stated at K1's premises already.
+* **(4)** the round's own piece is
+  `□ (∀ cs0, catq_cat g v vf ps0 cs0 s0 I P (-1) -∗ UkShFork.ushf_wq Wcf I)`.
+  Measured: `catq_cat … (-1)` is `UCatOut.cch` at the block's END
+  (`turn v (P + cat_out_len …)`, `cs` extended by `RCRan`/`RCNoOpen`) or
+  the taint, and `ushf_wq Wcf I`'s right arm is `lk_lcred FI … I 0 ∗
+  sh_hold I`.  The CURSOR half is a links step (`cch`'s five conjuncts are
+  `fwc_blk_at`'s modulo `f0_lb` vs `f0w`, and the round holds the
+  `file_era_pin` that closes that gap).  **The DEED half is not**: cat's
+  exit payload carries no `fown`, the lend gave it a FRACTION
+  (`cat_pay`'s `q1 q2`), and `sh_hold I` at the next round wants a whole
+  deed — so the conversion is about how the fraction recombines, which is
+  CAT-ENTRY's design question and not a lemma this stream can write alone.
+* **(5)** `sh_round_holds_file` is still assembly-only and still missing
+  exactly one input: cat's child law at `ushs_lp_cat`.  Everything else it
+  needs is now proved (kill law, ECHO child law, panic law, the file body
+  law), and its conclusion moves to `ush_rest_l_at … ush_line_file`.

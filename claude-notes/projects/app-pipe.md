@@ -155,10 +155,23 @@ arm is the theorem's one named premise (`pipe_both_law`).
 `69c28f329`, `f708512a0`): whole `iris` tree green on the EC2 mirror; no
 `Admitted`; every new result carries `Proof using`. `make audit-echo-only`
 re-run and UNMOVED — exactly the FOURTEEN of `durable-notes.md`'s
-baseline, textually. (Note for whoever repeats this: run an audit against
-a QUIESCENT tree. Running one while a `make` is in flight fails with
-`Compiled library … makes inconsistent assumptions over library …`, which
-is mid-build staleness and not a finding.)
+baseline, textually — and that is the audit that matters here: its cone is
+the one that walks the `Uk*`/`USh*`/`UInit*`/`UEcho*` program tier, where
+every file this lane touched lives. `audit-tree-only` and `audit-only`
+were started against the quiescent tree and had not returned when the lane
+handed off, with the mirror saturated (six lanes plus the coordinator's
+gate; `Print Assumptions` is the heaviest thing on the box). They cannot
+move: every new result is a theorem, no `Axiom`/`Admitted` was added, and
+`urun_nopipe`'s definition became strictly WEAKER. **The coordinator
+should still see both green on the merge gate.**
+
+TWO TRAPS THIS COST, for whoever runs an audit next:
+- **Run it against a QUIESCENT tree.** An audit with a `make` in flight
+  fails `Compiled library … makes inconsistent assumptions over library …`
+  — mid-build staleness, not a finding.
+- **Never run two audits of the same target in one clone.** The second
+  one's `coqc` raced the first and the pair died with `System error: "No
+  space left on device"` on a filesystem with 23 GB free.
 
 - NEW `iris/PipeReg.v` — `pipe_reg γp := □ (∀ w, pipe_cpay (pn_queue γp) w
   emp)`, `pipe_row_reg`, both persistence instances, `pipe_reg_of_taint` /

@@ -1538,7 +1538,47 @@ the same thing.
   conjunct, or something else in this lane's seven files, makes
   `UShRound.v` blow the checker's stack.**
 
-  **THE SUSPECT LIST IS TWO FILES, not seven** — `.CoqMakefile.d` says
+  **THE CAUSE, FOUND — AND THE FIX (commit `222496294`).**  `rocq compile
+  -time` puts the segfault on ONE command: the **`Qed.` of
+  `UShRound.Hopen_hand`** (line 653; the last command to finish is
+  `iExact "HK"`, chars 35526-35538).  With the stack raised that `Qed`
+  does not crash, it **hangs** — which durable-notes.md's own rule says to
+  read as a **CONVERSION**, not as a proof term that is merely large.
+  `Hopen_hand` takes the nopipe row as a premise (`%Hnp` in its
+  `iIntros`), so `usys_fd_ok`'s BODY is on its conversion path — and this
+  lane had turned that body's pipe branch from the equation `sts' = sts`
+  into a CONJUNCTION.  One extra binary node, in the heaviest `Qed` of the
+  biggest file in the tree.
+
+  The repair keeps the −1 and puts the arm behind a NAME:
+
+      Definition usys_pipe_fail (r : mword 64) (sts sts' : list fdstate) : Prop :=
+        r = (mword_of_int (-1) : mword 64) /\ sts' = sts.
+
+  with the row reading `else usys_pipe_fail r sts sts'`.  The body is one
+  head symbol per branch again — in fact SMALLER than before the −1
+  landed, since the old branch was itself an application of `eq`.  Nothing
+  about the row's MEANING moves: `usys_fd_ok_pipe_neg1` still hands every
+  consumer `r = -1 /\ sts' = sts`, and it is the only reading anybody
+  uses.  The consumers go through with an explicit `unfold usys_pipe_fail`
+  rather than relying on delta at a `destruct`/`exact`:
+  `usys_fd_ok_length`, `usys_fd_ok_pipe_neg1`, `UkRunSys.ufd_auth_move`,
+  `ProofSyscall`'s arm 4.  `usys_fd_ok_nopipe` and
+  `UkRun.urun_nopipe_step` never destruct the pipe branch (both carry
+  `n <> USYS_pipe`) and did not move.  **VERIFICATION STATE at hand-off:
+  `build UShRound.vo` had rebuilt 164 cone files with ZERO errors and had
+  not yet reached `UShRound.v`, the mirror being saturated by another lane
+  (~40 foreign workers).  The coordinator should let that finish and then
+  gate the whole tree.**
+
+  **THE LESSON, for the design notes**: a row in one of these big
+  `if/decide` tables is on the CONVERSION path of every `Qed` that takes
+  the row as a premise, so **its branches should each be one head symbol**
+  — a named `Definition`, never two conjuncts spelled inline.  The open
+  and dup rows get away with inline conjunctions only because nothing as
+  heavy as `Hopen_hand` converts them.
+
+  **(SUPERSEDED) THE SUSPECT LIST WAS TWO FILES, not seven** — `.CoqMakefile.d` says
   `UShRound.vo` depends DIRECTLY on exactly one of this lane's files,
   `UkRunSys.vo`, hence on `UsysMemOk.vo` only through it.  So the vector is
   either the row itself or `wp_uk_ecall_pipe`'s new post shape, and the row

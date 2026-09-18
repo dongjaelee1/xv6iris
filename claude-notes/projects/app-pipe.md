@@ -133,8 +133,11 @@ arm is the theorem's one named premise (`pipe_both_law`).
   and sh's end-of-round reading (§4.2's four cases as lemmas).  Consumer
   test: a straight-line `pipe → fork → (child writes L) / (child reads to
   EOF) → waits → the reading says the reader saw L`, at the leaves.
-- [ ] **ECHO-PIPE** (design §5.2; after PIPE-PROTO + PIPE-STD).
+- [x] **ECHO-PIPE** (design §5.2; after PIPE-PROTO + PIPE-STD).
   `iris/UEchoPipe.v`: echo's `image_entry` at fd 1 = a pipe write end.
+  LANDED whole modulo ONE named premise in its own `Pay` (`ep_derail`, the
+  protocol's missing continuation for a writer whose write stopped short);
+  see the Findings block.
 - [ ] **CAT-PIPE** (design §5.3; after PIPE-PROTO + PIPE-STD).
   `iris/UCatPipe.v`: cat's round and `image_entry` at fd 0 = a pipe read
   end, at the pipe stage's cursor.
@@ -1969,3 +1972,234 @@ the protocol's registrar, exactly as `ush_pipe_call_of_leaf` does with the
 trivial one.  For the COORDINATOR: `main` cannot have been built since
 `c41f80960`; re-run the gate, and note that `iris/UkShPipe.v` in this
 branch is the ported file.
+
+### ECHO-PIPE (2026-09-18) — echo's entry at a pipe LANDS WHOLE, and the one wall is that a SHORT write DERAILS a writer the protocol has no continuation for
+
+Branch `app-pipe/echo-pipe`, commits `f70af80df`, `bab7961aa`, `d42972d40`,
+`4b7073b70`.  ONE new file (`iris/UEchoPipe.v`, ~1000 lines) plus one line
+of `iris/_CoqProject`; **no landed statement moved** — `UkEcho`,
+`UkWritePipe`, `PipeProto`, `PipeReg`, `UEchoOut`, `UShEcho` were not
+touched at all, and NOTHING in the tree `Require`s the new file, so no
+audit cone reaches this lane.  Whole-tree `ec2-lane.sh echo build` RC=0; no
+`Admitted`, no `Axiom`; a MINIMAL `Proof using` on all nineteen results
+(Rocq's own `Set Suggest Proof Using`: `Proof using .` on the four
+write/chain results, `Proof using ghost_varG0 ghost_varG1 ufdG0` — the
+console entry's set verbatim — on the three entry-level ones).
+`Print Assumptions ep_image_entry` and `… ep_test_hi`: exactly the tree's
+standing fourteen (`PrimInt63.*`, `PrimString.*`, `resv_matches`,
+`resv_is_valid`, `functional_extensionality_dep`), i.e. **≤ echo's own
+console entry's list**; `Print Assumptions ep_urun_nopipe`: *Closed under
+the global context*.
+
+**WHAT LANDED** (`iris/UEchoPipe.v`)
+
+- **The cursor and the halt.**  `ep_cur pn L c := wcur pn c ∗ pws_lb pn
+  (take c L)` (definitionally `PipeProto.pipe_wQ pn L c` at an absolute
+  cursor, which is what makes the four writes compose), `ep_stuck`,
+  `ep_halt := ep_stuck ∨ app_taint`, `ep_ok pn L c := ep_cur pn L c ∨
+  ep_halt pn L`, the frame `ep_frame pn := side_L pn ∗ Wq` (the side token
+  and the era's console credential, both crossing UNTOUCHED — echo prints
+  nothing on the console at a pipe, `UEchoFile`'s finding verbatim, so this
+  file takes NO link and NO stage), `ep_car`, `ep_exit`, `ep_pay`.
+- **What a write's post leaves.**  `ep_post_ok`: every arm of
+  `PipeQueue.pipe_wpost` leaves `ep_ok pn L (c + n)` — and the COPY-IN
+  FAULT is refuted here by the caller's own mapped source run
+  (`UkRunSys.usrc_ok`'s second conjunct, which the write stub hands back),
+  so the counting arm answers the WHOLE count.  `ep_post_halt`,
+  `ep_pay_halt`.
+- **THE FOUR `kecho_w` OBLIGATIONS**, at LEDGER SLOT 1 whose row is
+  `FdOpen rb true (FdPipe γp)`: `ep_w_data` (argv's strings, the DATA half)
+  and `ep_w_txt` (the separator and the newline, .rodata, the TEXT half),
+  both through `UkEcho.wp_kecho_write_chain{,_txt}` over
+  `UkWritePipe.udepwf_std_write_pipe` (lane PIPE-STD) with the payment
+  `PipeProto.pipe_wpay_of_inv` at the running cursor and the M-premise off
+  `UkRunSys.uheap_ubytes_wat` / `UserHeap.uheap_text`; the post eliminated
+  through `UkWriteLeaf.spost_at_write_elim_at` +
+  `UkWritePipe.uwrite_pipe_extra` + `UkReadRows.std_fd_st_of_key`.
+- **The payment**: `ep_pay_from` / `ep_pay_all` — `UkEcho.kecho_pay_all` by
+  the same recursion on the argument count the console member uses, at
+  `L := wl_line (drop 1 ws)`; `ep_alt_L` turns `EchoDisc.out_sep` /
+  `out_last` / `out_argv_at`'s rows about `line_alts_of ws !!! 0` into rows
+  about `L` (`EchoDisc.alt0_out`), and the closing newline lands the cursor
+  at `length L` EXACTLY (`out_last`).
+- **The entry**: `ep_uexec_slot_at` (`UEchoOut.echo_uexec_slot_at_at`'s
+  twin — every premise about the key verbatim, the ledger row at the pipe,
+  the lend `ep_car pn L 0`) and **`ep_image_entry`**, verbatim:
+
+        Lemma ep_image_entry (ws : list (list (bv 8))) (M : gmap Z (bv 8))
+            (s0 t : Z) (g : nat -> bv 8) (sts : list fdstate)
+            (cw : Z) (cs : gset gname) (pidv : mword 32)
+            (pn : pnames) (γp : pipe_names) (rb : bool) (Q : Z -> iProp Σ) :
+          (forall x y : Z, Q x = Q y) ->
+          EchoDisc.line_ok ws ->
+          UShEcho.echo_node_img ws M s0 t g ->
+          UkShEcho.echo_argv_bytes ws g ->
+          length sts = NOFILE ->
+          take NSTD sts !! 1%nat = Some (FdOpen rb true (FdPipe γp)) ->
+          □ (ep_exit pn (wl_line (drop 1 ws)) -∗ Q (-1)) -∗
+          UkRun.urun_nopipe sts -∗
+          udep -∗
+          image_entry ElfUser.echo_elf M (mword_of_int (t + 8) : mword 64) sts
+            cw cs pidv Q (ep_pay pn γp (wl_line (drop 1 ws))) uslot.
+
+  with
+
+        Definition ep_pay pn γp L :=
+          (pipe_inv pn γp L ∗ ep_derail pn γp L ∗ ep_frame pn
+           ∗ wcur pn 0%nat ∗ pws_lb pn [])%I
+        Definition ep_exit pn L := ep_car pn L (length L)
+                                 (* = ep_frame pn ∗ (ep_cur pn L (length L) ∨ ep_halt pn L) *)
+
+  `cw`, `cs`, `pidv` are FREE (echo reads no identity row), as at the
+  console.
+- **The exit row, off the REGISTRY**: `ep_urun_nopipe` — echo's table
+  `[c; W; c]` registers itself from the protocol's handle
+  (`PipeProto.pipe_reg_of_inv` + `UexecExecInst.srow_reg_of_pipe_reg` +
+  `UkRun.urun_nopipe_regs_insert`), so `exit`'s bundle row
+  (`xv6_sbundle_exit_regs`) is paid with **NO TAINT**.  Closed under the
+  global context.
+- **The consumer test**, resource-level (the campaign's usual alternative):
+  `ep_hi_ws := ["echo"; "hi"]`, `ep_hi_line_ok` (computed through
+  `EchoDisc.line_ok_dec`), `ep_exit_line`, and `ep_test_hi` — the entry at
+  that concrete line, its exit payload spelled out as
+  `side_L pn ∗ Wq ∗ (pws_lb pn (wl_line ["hi"]) ∨ ep_halt pn …)`.
+
+**WHAT WAS REFUTED, at the STATEMENT**
+
+1. **(THE WALL, and it is the lane's headline.)  echo's four writes DO NOT
+   COMPOSE past a write that stopped short, and the protocol as landed has
+   no continuation from there.**  The brief's item 2 says "echo ignores the
+   return and continues"; it cannot, in the logic.  Evidence, all at the
+   statement:
+   - what a write leaves is `∃ k ≤ n, pipe_wQ pn L c k` — PIPE-PROTO's own
+     `pipe_wpost_cursor_line` — i.e. the cursor at `c + k`, NOT at `c + n`;
+   - write `j+1` must pay `pipe_wpay = pipe_wchain ∨ app_taint`, and echo
+     holds no `app_taint` (that is the whole point of the registry, §2);
+   - a chain node is `∀ b, ⌜M !! (ua + j') = Some b⌝ -∗ pipe_wlink γ b …`,
+     so `b` is the PROGRAM's actual source byte, which at the next chunk is
+     `L !!! (c + n + j')`;
+   - a `pipe_wlink` built from `pipe_inv` must re-establish (P1)
+     `ps_ws s `prefix_of` L`, and the writer's permit pins
+     `ps_ws s = take (c + k) L` exactly (that is what `wcur` is FOR,
+     PIPE-PROTO's finding 1) — so it must show
+     `take (c+k) L ++ [L !!! (c+n+j')] `prefix_of` L`, which holds iff
+     `k = n`.
+   The wall is therefore in the PAYMENT's statement, not in the WP walk.
+   **Two reachable causes of `k < n`** (the copy-in fault is not one — this
+   lane refutes it): the writer's KILL SHOT, and the READ END SHUT
+   (`ps_ro s = false`), which is design §4.2's `PExecR` world and is a real
+   machine behaviour — `pipewrite` tests `readopen` at the TOP of each byte
+   iteration, so a stop at ANY `0 ≤ k < n` is reachable.
+   **What this lane did about it:** named the missing capability, at the
+   smallest shape that closes the walk, and put it IN THE ENTRY'S OWN `Pay`
+   so the gap is visible at the statement:
+
+        Definition ep_derail pn γp L : iProp Σ :=
+          (□ ∀ (M : gmap Z (bv 8)) (ua : mword 64) (n : nat),
+              ep_stuck pn L -∗
+              pipe_wpay (pn_queue γp) M ua
+                (fun _ => ep_halt pn L) (fun _ _ => ep_halt pn L) n)%I
+
+   It is NOT derivable from `pipe_inv` as landed, and it is not
+   contradictory either.  **The routes, priced:**
+   - **(a) a DERAIL arm on (P1)** — `pipe_body`'s `⌜ps_ws s ⊑ L⌝` becomes
+     `⌜ps_ws s ⊑ L⌝ ∨ derail_shot pn`, with `derail_shot` a persistent
+     one-shot the writer shoots inside the observation node where it sees
+     `ps_ro s = false`.  Then a derailed write link is FREE ((P1) is
+     already on the derail arm) and `ep_derail` is one lemma.  `PRan`'s
+     reading survives WITHOUT (P1), because echo's good payload hands back
+     the EXACT cursor `wcur pn (length L)`, which against the body's half
+     gives `length (ps_ws s) = length L`, and with `pws_lb pn L` gives
+     `ps_ws s = L`.  **CAVEAT the ruling must settle:** cat's
+     `PipeProto.pipe_rQ`'s pure conjunct (`acc = take (length acc) (drop c
+     L)`) IS (P1) read at the dequeued byte, so a derail arm is visible to
+     the READER's chain; and PQ-FLAG already refuted the obvious guard
+     (`⌜ps_ro s = true⌝` on the read link is unsupplyable — `piperead`
+     never loads `readopen`).  In the machine the two never meet (a derail
+     needs `readopen = 0`, i.e. every read end closed), but the logic does
+     not know it.
+   - **(b) a read-end LIVENESS observation in the body** (`ro_shot` coupled
+     to `ps_ro s`, plus a `⌜ps_ro s = true⌝` reading echo could hold):
+     **REFUTED** — nobody can hold it.  cat holds the read end and closes
+     it at exit, before sh's second `wait(0)`, so any `□`-shaped "the read
+     end is open" is eventually FALSE; a vacuous premise, not a fix.
+   - **(c) halve the problem first:** the KILL cause can be folded into the
+     taint.  The kernel already travels `ChildTok.kill_shot gn ∗ app_taint`
+     together at the trap tail (`ProofUsertrapTail.v:1599/1627/1724`,
+     `ProofUsertrapSys.v:245`), while `pipe_wpost`'s kill arm hands only
+     `Rk = kill_shot gn`.  If that arm carried the taint too, the kill
+     derail would be payable by `pipe_wpay_taint` and only the
+     shut-read-end derail — where cat is provably gone — would remain.
+2. **`PipeProto.pipe_payL` has arms only for the two ENDS of the cursor
+   range.**  `pipe_payL pn L := pws_lb pn L ∨ wtok pn` is "cursor at
+   `length L`" or "cursor at 0"; a write that stopped in the MIDDLE leaves
+   `wcur pn c ∗ pws_lb pn (take c L)` with `0 < c < length L`, which is
+   neither.  Landed as `ep_exit_payL` (three arms) and `ep_exit_line`.  The
+   brief anticipated this ("report if it lacks an arm for *reader
+   vanished*"): it does.
+3. **The design's "`Q`/the exit payload = `pipe_payL`'s success arm" is not
+   attainable at ANY entry.**  `ExecEntry.image_entry`'s `Q` is
+   status-INDEPENDENT (`ukn_const`) and ONE payload must cover every arm of
+   every write, and the `PExecR` world is one of them.  §5.2's sentence
+   should read "the success arm OR the halt".
+4. **`pipe_wpost`'s taint arm can SWALLOW the caller's exclusive payment.**
+   The arm is `app_taint ∗ pipe_wpay γ M ua Q Qe n` and `pipe_wpay` is a
+   DISJUNCTION, so a caller that paid the CHAIN (carrying its exclusive
+   `wcur`) may get the RIGHT disjunct back — the taint and nothing else.
+   `PipeQueue.v`'s header says "the payment comes back untouched"; the
+   statement does not say so.  Hence `ep_halt`'s `app_taint` arm.  Not
+   fatal (the taint is the application's kill price and the claim has a
+   taint arm), but the comment overstates the statement.
+
+**WHAT THE DESIGN GOT WRONG (beyond the above)**
+
+- **PIPE-PROTO's hand-off names the wrong builder.**  Its "the payment to
+  use is `pipe_wpay_of_inv_fupd`" does not fit: the ledger-slot deposit
+  (`UkWritePipe.udepwf_std_write_pipe`) takes its chain as a PLAIN wand
+  over the heap (`∀ M pm sz, uheap -∗ uheap ∗ pipe_wpay …`) with **no
+  fupd**, so the `_fupd` form cannot be used there at all.  What fits is
+  the NON-fupd `pipe_wpay_of_inv`, and it fits because echo's cursor
+  carries `pws_lb pn (take c L)` from the entry onward and never has to
+  recover it (`pws_lb_of_inv` is unused here).
+- **§5.2's `Pay` is right but incomplete**: `pipe_inv ∗ wcur pn 0 ∗
+  pws_lb pn [] ∗ side_L pn` — plus `ep_derail`, plus the era's console
+  credential `Wq` (which §5.2 mentions only as "crossing UNCHANGED"; it has
+  to be IN the payload, since `image_entry`'s `Pay` is the only door).
+- **PIPE-STD's `_std` leaves serve the DATA half only — and that turned out
+  NOT to matter.**  `wp_uk_ecall_write_pipe_std` takes its source as
+  `UserHeap.ubytesq` (the data gname), while echo's separator and newline
+  are .rodata (the text gname; no `ubytesq` of them exists,
+  `UEchoOut`'s finding).  No text twin was needed, because echo's writes go
+  through `UkEcho.wp_kecho_write_chain_txt`, which takes the DEPOSIT
+  (`UkRun.udepwf_std`) rather than the leaf, and
+  `udepwf_std_write_pipe` is deposit-level.  A caller that is NOT a
+  program with its own stub and wants to write .rodata into a pipe would
+  still need `wp_uk_ecall_write_pipe_std`'s text twin (`usrc_ok_utext` in
+  place of `usrc_ok_ubytesq`, ~20 lines).  Recorded, not built.
+- **No STOP rule fired.**  `UkEcho.kecho_w` pins `a0 = 1` and NOTHING about
+  the console (the brief's first stop rule is not reached: the obligation
+  is "slot 1, any row"), and the exit row IS payable from the registry at
+  an exec'd image's key (`ep_urun_nopipe`, closed).
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST**
+
+For **SH-PIPE-ROUND**: `ep_image_entry` is ready to be plugged into
+`UkShPipe.wp_kshr_pipe_arm`'s left child as the (E) obligation, and
+`ep_pay pn γp L` is exactly what sh must lend it — four things, of which
+**`ep_derail` is the one sh cannot mint today**.  So the campaign owes ONE
+RULING before the round can close: route (a) (a derail arm on (P1),
+reconciled with cat's reader chain) or route (c) (the kill arm carries the
+taint, leaving only the shut-read-end derail).  Until then, read echo's
+exit payload as `ep_exit_line` states it — `side_L pn ∗ Wq ∗ (pws_lb pn L ∨
+ep_halt pn L)` — and note that the cursor-shaped payload (`wcur pn c`) is
+STRICTLY better than `pipe_payL` for sh: `wcur pn c` against the body's
+half determines `ps_ws s = take c L` exactly, with no appeal to (P1).
+
+For **CAT-PIPE**: the wall is WRITER-ONLY.  A reader's two cursors move
+together — `pipe_rpost_img` advances `rcur` by exactly what was delivered
+and cat's console cursor by the same count — whereas a writer's source
+offset is fixed by the PROGRAM and the pipe's cursor by the KERNEL, which
+is why only the writer can derail.  Also: `ep_frame` is the shape to copy
+for the "crosses the entry untouched" part of cat's `Pay` (cat's is
+`side_R pn ∗` its console lease), and `ep_urun_nopipe` is the constructor
+for cat's `urun_nopipe` at fd 0.

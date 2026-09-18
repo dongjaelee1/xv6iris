@@ -122,7 +122,12 @@ Section UkFileOpen.
     : iProp Σ :=
     ((∃ (fd : nat) (rd wr : bool) (t : fdtype),
         ⌜r = (mword_of_int (Z.of_nat fd) : mword 64)
-         /\ (fd < NOFILE)%nat⌝ ∗ ualloc gf l fd (FdOpen rd wr t))
+         /\ (fd < NOFILE)%nat
+         (* ...AND IT IS NOT A PIPE (SUP-ONE's U2, kept on this arm by
+            lane CAT-GEOM-4): the leaf exports it, and a payer that means
+            to CLOSE the handle a tainted open returned needs exactly
+            this ([UkCat.kcat_cldep_nopipe]). *)
+         /\ fdst_nopipe (FdOpen rd wr t)⌝ ∗ ualloc gf l fd (FdOpen rd wr t))
      ∨ (⌜r = (mword_of_int (-1) : mword 64)⌝ ∗ ustd gf l))%I.
 
   Lemma uk_open_taint_fd_of_arm (gf : gname) (l sts fdv' : list fdstate)
@@ -133,7 +138,7 @@ Section UkFileOpen.
     iIntros "[Hal | [%Hb Hstd]]".
     - iDestruct "Hal" as (fd rd wr t) "[%Hb' Hal]".
       iLeft. iExists fd, rd, wr, t. iFrame "Hal". iPureIntro.
-      exact (conj (proj1 Hb') (proj1 (proj2 Hb'))).
+      destruct Hb' as (H1 & H2 & _ & H4). exact (conj H1 (conj H2 H4)).
     - iRight. iFrame "Hstd". iPureIntro. exact (proj1 Hb).
   Qed.
 

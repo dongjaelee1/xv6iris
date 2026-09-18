@@ -17,6 +17,13 @@ Map `Chars A-B` to a line with `head -c B <f>.v | wc -l`.
   min of N, `uptime` first. The box is shared and load *inverts* an A/B, not
   merely widens it. Per-file times from two different parallel builds are not a
   comparison.
+- **A `-j96` profile's per-sentence seconds are inflated, and NOT uniformly** —
+  so the ranking it gives is a shortlist, not an ordering. Memory-hungry
+  proofmode sentences inflate ~2× against an isolated `coqc` (a `Release`
+  `iApply` read 5.2 s in the profile and 2.4 s alone) while a cache-resident
+  instance search reads the same either way (`FileLinksLine` 110 s vs 111 s).
+  **Re-measure the candidate file alone before opening it**, or the second tier
+  of a cleanup is chasing contention.
 - **`rm -f .lia.cache .nia.cache` before each arm.** micromega persists every
   certificate per directory; warm readings are off by a large factor, and the
   first compile after an edit re-derives what the edit moved, so an improvement

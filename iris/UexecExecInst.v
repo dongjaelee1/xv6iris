@@ -160,6 +160,9 @@ Require Import SpecFileread.   (* [fileread_in] / [fileread_extra]    *)
 Require Import SpecFilewrite.  (* [filewrite_in] / [filewrite_extra]  *)
 Require Import SpecSysRead.    (* [sys_rw_count]                      *)
 Require Import SpecFileclose.  (* [fileclose_cpay] / [fileclose_cpost_any]: close's pipe row *)
+Require Import PipeReg.        (* [pipe_row_reg]: THE REGISTRY -- what a run
+                                  carries per table row so that its exit can
+                                  pay (design/app-pipe.md SS2) *)
 Require Import PipeQueue.      (* [pipe_qfrag] / [pst0]: pipe's post *)
 Require Import SpecSysChdir.   (* [chdir_au_pre]                      *)
 Require Import SpecSysOpen.    (* [open_in]                           *)
@@ -1134,7 +1137,16 @@ Section UexecExecInst.
        (* lane KILL-PAY, K4(a), ruling R-A: a failed exec refunds *)
        sexec_refund := xf_Rs;
        spost_at_exec := xv6_spost_exec;
-       sexec_refund_at := fun Q f => eq_refl |}.
+       sexec_refund_at := fun Q f => eq_refl;
+       (* lane PIPE-REG: a descriptor row's REGISTRATION, the resource
+          [UkRun.urun_nopipe] carries per row so that a pipe-holding
+          program's exit can pay its own tear-down.  The field exists
+          because [UkRun] binds no pipe ghost class and must not start
+          (design/app-pipe.md SS2 and this lane's finding); the value is
+          the registry itself. *)
+       srow_reg := pipe_row_reg;
+       srow_reg_persistent := pipe_row_reg_persistent;
+       srow_reg_nopipe := pipe_row_reg_nopipe |}.
 
   (* ...AND THE GENERIC PROGRAM'S OWN DEPOSIT DATA ([UexecSG.uprogSG]): the
      supply itself, and every number admitted -- which is what makes the
@@ -1255,14 +1267,25 @@ Section UexecExecInst.
      every row's payment is [emp] and the deposit is minted from nothing.
      The guard is on the KEY's own table, which an exit leaf holding the
      descriptor view can discharge. *)
-  Lemma xv6_sbundle_exit_nopipe (X : uvis -d> iPropO Σ) (W : uvis)
+  (* ...AND THE SAME ROW OFF THE TABLE'S REGISTRATIONS (design/app-pipe.md
+     SS2, lane PIPE-REG), WHICH IS THE GENERAL ONE.  exit's row is
+     [SpecFileclose.fileclose_cpays] of the key's table -- a [∗ list] of
+     INDEPENDENT payments -- and at a pipe row that payment is one instance
+     of the row's registry ([PipeReg.fileclose_cpays_of_regs]).  So a
+     program that HOLDS a pipe mints its own tear-down here, out of a
+     persistent handle and not out of the taint: the wall
+     completed/pipe-queue.md recorded under "Open, recorded" comes down at
+     this line.  [_nopipe] below is this lemma read at a table of
+     self-registering rows, and [_taint] is still its own arm because the
+     credential pays every row of every table. *)
+  Lemma xv6_sbundle_exit_regs (X : uvis -d> iPropO Σ) (W : uvis)
       (Q : Z -> iProp Σ) :
-    (forall st : fdstate, st ∈ uvis_fd W ->
-       forall (rb wb : bool) (gp : pipe_names), st <> FdOpen rb wb (FdPipe gp)) ->
-    ⊢ |==> ∃ f : xfam, ⌜kf_xpay f = Q⌝ ∗ xv6_sbundle X USYS_exit f W.
+    ([∗ list] st ∈ uvis_fd W, pipe_row_reg st) -∗
+    |==> ∃ f : xfam, ⌜kf_xpay f = Q⌝ ∗ xv6_sbundle X USYS_exit f W.
   Proof using .
-    intros Hnp.
-    iAssert (|==> xv6_sbundle X USYS_exit (xfam_at Q xfam_pt) W)%I with "[]" as "Hb";
+    iIntros "Hregs".
+    iAssert (|==> xv6_sbundle X USYS_exit (xfam_at Q xfam_pt) W)%I
+      with "[Hregs]" as "Hb";
       [ | iMod "Hb" as "Hb"; iModIntro; iExists (xfam_at Q xfam_pt);
           iSplitR; [ done | iExact "Hb" ] ].
     rewrite /xv6_sbundle /xfam_at /xfam_pt /xfam_exec /=.
@@ -1279,7 +1302,23 @@ Section UexecExecInst.
     destruct (decide (USYS_exit = 21)) as [He | _]; [ exfalso; discriminate He | ].
     destruct (decide (USYS_exit = USYS_exit)) as [_ | Hc];
       [ | exfalso; exact (Hc eq_refl) ].
-    iModIntro. iApply (fileclose_cpays_nopipe _ Hnp).
+    iModIntro. iApply (fileclose_cpays_of_regs (uvis_fd W) with "Hregs").
+  Qed.
+
+  Lemma xv6_sbundle_exit_nopipe (X : uvis -d> iPropO Σ) (W : uvis)
+      (Q : Z -> iProp Σ) :
+    (forall st : fdstate, st ∈ uvis_fd W ->
+       forall (rb wb : bool) (gp : pipe_names), st <> FdOpen rb wb (FdPipe gp)) ->
+    ⊢ |==> ∃ f : xfam, ⌜kf_xpay f = Q⌝ ∗ xv6_sbundle X USYS_exit f W.
+  Proof using .
+    intros Hnp. iApply (xv6_sbundle_exit_regs X W Q).
+    iApply big_sepL_intro. iIntros "!>" (k st Hk).
+    assert (Hst : fdst_nopipe st).
+    { destruct st as [| rb wb [i g om | gp | mj]];
+        [ exact I | exact I | | exact I ].
+      exfalso.
+      exact (Hnp _ (elem_of_list_lookup_2 _ _ _ Hk) rb wb gp eq_refl). }
+    iApply (pipe_row_reg_nopipe st Hst).
   Qed.
 
   (* ...AND THE SAME ROW OUT OF THE TAINT, AT ANY TABLE AT ALL

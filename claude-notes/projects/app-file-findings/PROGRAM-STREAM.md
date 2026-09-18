@@ -1279,3 +1279,37 @@ index is the TYPED line's words — `FileDisc.uline_ws (FileDisc.uline_of
 redirect child then knows `fline I = LEchoF ws` outright (which 2d's PEND /
 DONE exits need, and which today it could not learn).  Until then neither
 `Hchild_redir` nor item 5's dispatch says anything at a redirect line.
+
+### HSTR LANDED, and the stretch's CLOSE
+
+* `iris/FsAbsWritePart.v`: `awrite_part_at_mapped_straddle` /
+  `awrite_part_adv_mapped_straddle` — at a mapped source the partial arm may
+  ASSUME `wi_blocks off n ≠ 1` (nothing unnamed landed, so a single-block
+  write counted nothing, against `wri_pre`'s `0 < length bs`); the landed
+  pure-premise lemma is its instance (`awrite_part_at_mapped_single'`).
+* `iris/FileWritePart.v`: `file_awrite_part_adv` — the file application's
+  partial node from `file_cur`: fired ⇒ `uoff_agree_k` pins `off` to the
+  content's length, `FileDeltas.f_bytes_typed_short` bounds it, a chunk of at
+  most a line cannot straddle — refuted; tainted or disconnected ⇒ paid as
+  the full node pays.
+* `UEchoFile.v`: `ef_chain` builds both arms from the one cursor (the pair
+  is `∧`); `Hstr`/`Hsb`/`Hsbw`/`Hsbb` are gone from every statement
+  (`ef_chain` and the data `ef_w_of_deed` take `nb ≤ EchoDisc.line_max`);
+  `ef_relay4` and `ef_single_block` deleted.  (`SpecFilewrite.v`'s header
+  still names `ef_relay4` in a COMMENT — left, a comment edit there rebuilds
+  the kernel cone.)
+
+Whole tree green twice (`--proofs -k`, `EXIT=0`, zero `Error`), the four
+audits primitive-only and unchanged (System 13, Echo 14, Tree 13, File 14),
+`comment_quote_check`: 0.  Declarations that vanished against `main`:
+`UEchoFile.ef_relay4`, `UEchoFile.ef_single_block`,
+`UkShRedirBody.wp_kshm_child_file_redir` (restated in `UkShRedirChild.v`) —
+nothing else.  Metric unchanged at **4** in `UShRound.v` (three-file
+1 + 4 + 1 = **6**): the stretch removed two upstream vacuities and built
+everything under `Hchild_redir`, and stopped at SLOT-WS.
+
+VM HYGIENE: five hung compiles from dead lanes (four `UShRound.v`, one
+`UkFileOpen.v`, 5–7 h at 100% CPU) were running IN THIS LANE'S remote tree
+and would have written stale `.vo`s; killed by PID.  Check
+`ps -eo pid,etime,args | grep "make -f CoqMakefile"` with each PID's
+`/proc/<pid>/cwd` before trusting a remote tree a dead lane used.

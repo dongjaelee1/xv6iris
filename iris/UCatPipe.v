@@ -529,15 +529,9 @@ Section UCatPipe.
   (* ------------------------------------------------------------------- *)
   (*  3b.  THE ROUND'S READING OF THE READ POST                            *)
   (*                                                                      *)
-  (*  [PipeProto.pipe_rpost_img_line] is the landed reading and it is TOO  *)
-  (*  LOSSY for a program (finding 3): its proof drops the post's IMAGE    *)
-  (*  ROW -- the one fact that turns the ghost list [acc] into the         *)
-  (*  caller's buffer function -- and drops [length acc = d] on the        *)
-  (*  non-observation arms, so a reader cannot say how many of its buffer  *)
-  (*  bytes the call filled.  This is the same reading with both kept, and *)
-  (*  with the four [pipe_rstop_noobs] arms SORTED BY WHAT cat's loop      *)
-  (*  BRANCHES ON: the answer is a count, or it is -1 and then one of      *)
-  (*  three things happened.                                              *)
+  (*  Lane PIPE-PROTO-2 FOLDED THIS BACK INTO [PipeProto] (this lane's     *)
+  (*  finding 3 was that it is entirely general), so what is left here is  *)
+  (*  the name the round is written against.                              *)
   (* ------------------------------------------------------------------- *)
   Lemma pcat_rpost (Pt : uptd) (pn : pnames) (γp : pipe_names)
       (L : list (bv 8)) (c : nat) (Rk : iProp Σ) (n : nat) (r : mword 64)
@@ -561,42 +555,7 @@ Section UCatPipe.
     ∨ (app_taint
        ∗ pipe_rpay (pn_queue γp) (pipe_rQ pn L c) (pipe_rQe pn L c) n).
   Proof using .
-    iIntros "H". iDestruct (pipe_rpost_img_cursor with "H") as "[H | H]";
-      [ | iRight; iExact "H" ]. iLeft.
-    iDestruct "H" as (acc d) "(%H1 & %H2 & [Hobs | (%H3 & Hno & HQ)])".
-    - (* THE OBSERVATION: the ring ran dry at node [acc] *)
-      iDestruct "Hobs" as "[%Hpure Hobs]".
-      iDestruct "Hobs" as (s) "[%Hs Hqe]".
-      iDestruct "Hqe" as "[HQ Hwand]".
-      iExists acc, d. iSplitR; [ iPureIntro; split; [ exact H1 | apply Hpure ] | ].
-      iSplitR; [ by iPureIntro | ]. iFrame "HQ".
-      iLeft. iSplitR; [ iPureIntro; apply Hpure | ].
-      iIntros "%Hd0 _".
-      assert (Hacc : length acc = d) by apply Hpure.
-      rewrite -Hacc.
-      iApply "Hwand". iPureIntro. rewrite /pst_eof. split; [ apply Hs | ].
-      apply (proj2 Hs). exact Hd0.
-    - (* THE FOUR NON-OBSERVING STOPS.  [pipe_rstop_noobs] is NOT pure --
-         its kill arm carries [Rk] -- so it is destructed in the logic. *)
-      iExists acc, d. iSplitR; [ by iPureIntro | ].
-      iSplitR; [ by iPureIntro | ]. iFrame "HQ".
-      rewrite /pipe_rstop_noobs.
-      iDestruct "Hno" as "[%Hmet | [%Hflt | [[%Hkp Hk] | %Hsg]]]".
-      + (* the request was met *)
-        iLeft. iSplitR; [ iPureIntro; apply Hmet | ].
-        iIntros "%Hz %Hpos". exfalso.
-        destruct Hmet as [Hdn _]. lia.
-      + (* a copy-out fault; above the first byte the count is what got in *)
-        destruct Hflt as (Hdn & Hnm & [(Hd0 & Hr) | (Hd0 & Hr)]).
-        * iLeft. iSplitR; [ by iPureIntro | ].
-          iIntros "%Hz _". exfalso. lia.
-        * iRight. iSplitR; [ by iPureIntro | ]. iLeft. by iPureIntro.
-      + (* the reader was killed while it waited *)
-        iRight. iSplitR; [ iPureIntro; split; [ apply Hkp | apply Hkp ] | ].
-        iRight. by iLeft.
-      + (* the file layer's own sign guard, at the empty count *)
-        iRight. iSplitR; [ iPureIntro; split; [ apply Hsg | apply Hsg ] | ].
-        iRight. iRight. iPureIntro. apply Hsg.
+    iIntros "H". iApply (PipeProto.pipe_rpost_line with "H").
   Qed.
 
   (* ------------------------------------------------------------------- *)

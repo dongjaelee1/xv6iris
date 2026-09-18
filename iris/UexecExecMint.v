@@ -232,6 +232,42 @@ Section UexecExecMint.
     iIntros "!>" (N m pc). iApply (udepw_of_sup N m pc n Hn with "Hsup").
   Qed.
 
+  (* ...AND READ'S (lane CAT-GEOM-3).  The twin of [udepw_law_of_sup_write]
+     at row 5, and it is not a new idea: [xv6_sbundle_of_supply_ne] has
+     always paid row 5 with [FsAbsInvFire.fsabs_fileread_in] out of
+     exactly this pair, and [fsabs_fileread_in] is stated at ANY [P] --
+     the inode arm is [fsabs_aread], the pipe arm the taint, the console
+     arm the DIRTY credential a tokenless reader pays.  Row 5 was never
+     "excluded"; it simply had no consumer, because [udepw_of_sup]'s
+     [n = 15 \/ n = 17] made its own [decide (n = 5)] branch unreachable
+     and nothing else asked.  THE FREE READ WRITES THE CALLER'S BUFFER,
+     which is what makes it honest here: at a TAINTED era that is exactly
+     what the generic tier does for every process, and the caller gets
+     its own [P] back at the one position the read landed on. *)
+  Lemma udepw_of_sup_read `{PSx : uprogSG Σ} (N : uk_names Σ) (m : regfile)
+      (pc : mword 64) :
+    app_sup -∗ app_taint -∗ udepw (PS := PSx) N m pc 5.
+  Proof using .
+    iIntros "#Hsup #Hkc".
+    rewrite /udepw. iIntros (M pm sz fdv cw gn cs pidv) "#Hmp Hheap Hufd".
+    iFrame "Hheap Hufd". iRight.
+    rewrite /sbundle_pay. iExists (xfam_at (ukn_pay N) xfam_pt).
+    iSplitR; [ done | ].
+    rewrite /sbundle_at /= /xv6_sbundle /xfam_at /xfam_pt /xfam_exec /=.
+    destruct (decide ((5 : Z) = UsysMemOk.USYS_exec)) as [He | _];
+      [ exfalso; discriminate He | ].
+    destruct (decide ((5 : Z) = 5)) as [_ | Hc];
+      [ | exfalso; exact (Hc eq_refl) ].
+    iApply (fsabs_fileread_in with "Hsup Hkc").
+  Qed.
+
+  Lemma udepw_law_of_sup_read `{PSx : uprogSG Σ} :
+    app_sup -∗ app_taint -∗ udepw_law (PS := PSx) 5.
+  Proof using .
+    iIntros "#Hsup #Hkc". rewrite /udepw_law.
+    iIntros "!>" (N m pc). iApply (udepw_of_sup_read N m pc with "Hsup Hkc").
+  Qed.
+
   (* ...AND WRITE'S, WITH NO UPDATE MODALITY (lane EXEC-SEAM, (D)).
      [FsAbsInvFire.fsabs_filewrite_in] is stated under [|==>], but every arm
      of its proof is [iModIntro]: the inode arm is the supply's own chain,

@@ -372,12 +372,24 @@ Section UShRound.
     fun p => (UserFd.ufd (ukn_fd N) fd (FdOpen true wb (FdInode i γo om))
               ∗ uoff γo p ∗ fdq r q (Some (i, bs)))%I.
 
-  (* the fraction sh LENDS: [FileOpen.fdq] at [q], so sh keeps a reader
-     and cat cannot move the value; the pure tie travels with it. *)
-  Definition cat_pay (I : list (bv 8)) (q : Qp) : iProp Σ :=
+  (* WHAT SH LENDS THE cat CHILD (lane CAT-GEOM-4).  It used to be the
+     credential and a deed FRACTION; it is now
+     [UCatKernel.cat_lend] beside the credential -- the fraction, the
+     era's cursor at the round's own start, AND THE TWO ROWS LANE
+     OFF-LINK-4 OWES.  They travel HERE and not as premises of the entry
+     for the reason echo's credential does: [ExecEntry.image_entry] is
+     [□]-quantified over the key, so its payment premise cannot HOLD a
+     linear resource, and [Pay] is what the entry hands over per
+     invocation.  [om] is a PARAMETER throughout -- never [OffParked],
+     never [OffHeld] literally. *)
+  Definition cat_pay (I : list (bv 8)) (q1 q2 : Qp) (om : offmode)
+      (sts : list fdstate) (v : era_pins) (vf : file_era)
+      (ps0 : list nat) (P : nat) : iProp Σ :=
     (Wcl I 3%nat
-     ∗ (∃ (cs0 : list nat) (s0 : fst) (s : dst),
-          fdq r q s ∗ ⌜UCatOut.cat_tie cs0 s0 I s⌝))%I.
+     ∗ (∃ (cs0 : list nat) (s0 : fst) (i : Z) (bs : list (bv 8)),
+          ⌜UCatOut.cat_tie cs0 s0 I (Some (i, bs))⌝
+          ∗ UCatKernel.cat_lend g (fgn_cl g) r q1 q2 i bs om sts
+              FsImg.ROOTINO v vf ps0 cs0 s0 I P))%I.
 
   (* THE ENTRY, AT THE NODE SH BUILT (lane CAT-GEOM-2).  This used to
      quantify [M] and [av] FREE, and that was WRONG: cat's diagnostic
@@ -388,10 +400,13 @@ Section UShRound.
      [t]) and it parsed the line -- so [Hchild_cat] is ONE application of
      that lemma. *)
   Hypothesis Hchild_cat :
-    forall (I : list (bv 8)) (q : Qp) (ws : list (list (bv 8)))
+    forall (I : list (bv 8)) (q1 q2 : Qp) (om : offmode)
+           (ws : list (list (bv 8)))
            (M : gmap Z (bv 8)) (sv t : Z) (gn : nat -> bv 8)
            (sts : list fdstate) (cw : Z) (cs : gset gname)
-           (pidv : mword 32),
+           (pidv : mword 32)
+           (v : era_pins) (vf : file_era) (ps0 : list nat) (P : nat)
+           (rb : bool),
       length sts = NOFILE ->
       cw = FsImg.ROOTINO ->
       (* ...and the line is `cat f`, read off sh's own node *)
@@ -403,9 +418,24 @@ Section UShRound.
       (forall j : nat, (j < 1)%nat ->
          LineWords.wl_line ws !!! (UkShEcho.echo_off ws 1%nat + j)%nat
          = FsImgCheck.fname_f !!! j) ->
-      ⊢ image_entry ElfUser.cat_elf M (mword_of_int (t + 8) : mword 64) sts
+      (* ...and the child's standard streams, which are sh's own *)
+      take NSTD sts !! 1%nat = Some (FdOpen rb true (FdDevice ConsoleInv.CONSOLE)) ->
+      take NSTD sts !! 2%nat = Some (FdOpen rb true (FdDevice ConsoleInv.CONSOLE)) ->
+      fd_lowest_closed (take NSTD sts) = None ->
+      (* THE PAYLOAD CONVERSION, and it is SH's: what cat's exit files is
+         one of its OWN two alternatives ([UCatKernel.catq_cat], at cat's
+         own end cursor); what the fork chose is [ushf_wq Wcf I].  The
+         wand between them is a fact about the era's links, so it belongs
+         to the round and not to cat's entry -- which is why
+         [UCatKernel.cat_child_of_entry] takes [Q] as a parameter. *)
+      ⊢ □ (∀ (cs0 : list nat) (s0 : fst),
+             UCatKernel.catq_cat g v vf ps0 cs0 s0 I P (-1)
+             -∗ UkShFork.ushf_wq Wcf I) -∗
+        app_taint -∗
+        image_entry ElfUser.cat_elf M (mword_of_int (t + 8) : mword 64) sts
           cw cs pidv
-          (fun _ : Z => UkShFork.ushf_wq Wcf I) (cat_pay I q) uslot.
+          (fun _ : Z => UkShFork.ushf_wq Wcf I)
+          (cat_pay I q1 q2 om sts v vf ps0 P) uslot.
 
   (* ---- HYPOTHESIS: the redirect child's own walk, from 0x9c0 to its
           exit, at the payload sh's fork chose.  [UkShFork.ushf_child_law]

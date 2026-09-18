@@ -188,6 +188,7 @@ Require Import FsBytesGamma.     (* [fs_gamma_L]: the live Γ                 *)
 Require Import AppInv.           (* [appN]/[appE]: the commit's mask         *)
 Require Import FsAbsReadFire.    (* [aread_commit_at], [read_arms]: the one
                                     piece and its arms                       *)
+Require Import UserOff.          (* [uoff]: the HELD row's link (lane OFF-LINK-4) *)
 From Kernel Require KernelSyms.
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import ProcAvail.
@@ -933,8 +934,20 @@ Section SpecFileread.
       (Rp : list (bv 8) -> iProp Σ) (Rpe : list (bv 8) -> pipe_st -> iProp Σ) (P : iProp Σ) : iProp Σ :=
     (P -∗
      match st with
-     | FdOpen true _ (FdInode i γo _) =>
-         P ∗ pf_at (aread_commit_at (fs_gamma_L fsc_fs) appE i γo) F
+     (* KEYED ON THE ROW'S OFFSET MODE (lane OFF-LINK-4; design/app-file.md
+        SS3, SS3.5; lane OFF-LINK-5's shape).  A PARKED row pays what it
+        always paid.  A HELD one pays [link ∨ taint]: the LINK is the
+        CLIENT-ADVANCED commit ([FsAbsReadFire.aread_commit_adv]), which
+        keeps the program's own half of the offset shadow in its OWN
+        CLOSURE and hands the box's arm back advanced by the count -- so
+        the kernel carries no [UserOff.uoff] across the call and its fire
+        answers no supplier ([FsAbsReadFire.arf_read_fire_adv]) -- and the
+        TAINT is what the generic tier pays (Fact A) and what a
+        disconnected object leaves.  Cat's cursor comes back inside its own
+        receipt [F.(pf_recv)], which is where [UCatKernel.cat_hold_at] puts
+        it. *)
+     | FdOpen true _ (FdInode i γo om) =>
+         P ∗ aread_in_om om (fs_gamma_L fsc_fs) appE i γo F
      | FdOpen true _ (FdDevice mj) =>
          if decide (mj = CONSOLE)
          then cons_acc fsc_cons app_sup (fun cur dc => P ∗ Rd cur dc)
@@ -1393,33 +1406,33 @@ Section SpecFileread.
      One-liners, so that no walk ever has to unfold the two matches and
      every arm names the fact it is standing on. *)
 
-  Lemma fileread_in_inode wb i γo n F Rd Rin Rp Rpe P :
-    fileread_in (FdOpen true wb (FdInode i γo OffParked)) n F Rd Rin Rp Rpe P -∗ P -∗
-    P ∗ pf_at (aread_commit_at (fs_gamma_L fsc_fs) appE i γo) F.
+  Lemma fileread_in_inode om wb i γo n F Rd Rin Rp Rpe P :
+    fileread_in (FdOpen true wb (FdInode i γo om)) n F Rd Rin Rp Rpe P -∗ P -∗
+    P ∗ aread_in_om om (fs_gamma_L fsc_fs) appE i γo F.
   Proof using . rewrite /fileread_in. iIntros "H HP". iApply ("H" with "HP"). Qed.
 
   (* [P] FIRST, before the arm's own payout: a caller [iApply]s these with
      the payload in hand and BUILDS the payout in the goal that is left,
      which is the shape the landed walks are written in. *)
-  Lemma fileread_extra_inode (gn : gname) (pt : uptd) wb i γo n F Rd Rin Rp Rpe P r M' addr :
+  Lemma fileread_extra_inode (gn : gname) (pt : uptd) om wb i γo n F Rd Rin Rp Rpe P r M' addr :
     P -∗ read_arms (fs_gamma_L fsc_fs) i γo pt n F r M' addr -∗
-    fileread_extra gn pt (FdOpen true wb (FdInode i γo OffParked)) n F Rd Rin Rp Rpe P r M' addr.
+    fileread_extra gn pt (FdOpen true wb (FdInode i γo om)) n F Rd Rin Rp Rpe P r M' addr.
   Proof using . iIntros "HP H". rewrite /fileread_extra. iFrame "HP". iExact "H". Qed.
 
   (* ...and the two at a state the walk holds only through an EQUATION: a
      descriptor's shape is derived from its content, not matched on. *)
-  Lemma fileread_in_inode_of (st : fdstate) (wb : bool) (i : Z) (γo : gname)
+  Lemma fileread_in_inode_of (st : fdstate) (om : offmode) (wb : bool) (i : Z) (γo : gname)
       n F Rd Rin Rp Rpe P :
-    st = FdOpen true wb (FdInode i γo OffParked) ->
+    st = FdOpen true wb (FdInode i γo om) ->
     fileread_in st n F Rd Rin Rp Rpe P -∗ P -∗
-    P ∗ pf_at (aread_commit_at (fs_gamma_L fsc_fs) appE i γo) F.
+    P ∗ aread_in_om om (fs_gamma_L fsc_fs) appE i γo F.
   Proof using .
     intros ->. rewrite /fileread_in. iIntros "H HP". iApply ("H" with "HP").
   Qed.
 
-  Lemma fileread_extra_inode_of (gn : gname) (pt : uptd) (st : fdstate) (wb : bool) (i : Z) (γo : gname)
+  Lemma fileread_extra_inode_of (gn : gname) (pt : uptd) (st : fdstate) (om : offmode) (wb : bool) (i : Z) (γo : gname)
       n F Rd Rin Rp Rpe P r M' addr :
-    st = FdOpen true wb (FdInode i γo OffParked) ->
+    st = FdOpen true wb (FdInode i γo om) ->
     P -∗ read_arms (fs_gamma_L fsc_fs) i γo pt n F r M' addr -∗
     fileread_extra gn pt st n F Rd Rin Rp Rpe P r M' addr.
   Proof using .
@@ -1691,8 +1704,19 @@ Section SpecFileread.
       [ | iIntros "H HP"; iDestruct ("H" with "HP") as "H"; iModIntro;
           iFrame "H"; by iPureIntro ].
     destruct ty as [i γo om | γp | mj].
-    - iIntros "H HP". iDestruct ("H" with "HP") as "[HP Hc]".
-      iModIntro. iFrame "HP". by iApply (read_arms_neg with "Hc").
+    - destruct om as [|].
+      + iIntros "H HP". iDestruct ("H" with "HP") as "[HP Hc]".
+        iModIntro. iFrame "HP". by iApply (read_arms_neg with "Hc").
+      + (* the HELD row's two arms (lanes OFF-LINK-4/5): the sign guard
+           fires before anything is read, so the piece comes back whole on
+           both -- the client-advanced one converting down at
+           [FsAbsReadFire.pf_at_aread_commit_at_of_adv], since nothing above
+           the fire reads which arm was taken. *)
+        iIntros "H HP".
+        iDestruct ("H" with "HP") as "[HP [Hc | [Hc _]]]"; iModIntro;
+          iFrame "HP";
+          [ iDestruct (pf_at_aread_commit_at_of_adv with "Hc") as "Hc" | ];
+          by iApply (read_arms_neg with "Hc").
     - (* a negative request never reaches the pipe: the payment comes back
          at the empty count *)
       iIntros "H HP". iDestruct ("H" with "HP") as "[HP Hpay]". iModIntro.

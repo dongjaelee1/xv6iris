@@ -733,6 +733,18 @@ trap one class in: a second `ghost_varG`/`ctokG` beside `!xv6G Σ` (which
 already carries both). The hoist is still worth doing first — it is what
 turns the hang into a readable failure. (CAT-WALK-2, 2026-09-17)
 
+### A fourth silent hang: a transparent obligation under a variable predicate
+
+Once a definition's argument becomes a section VARIABLE (a line predicate
+`Dl`, a discipline `Dsc`), typeclass resolution for a `Persistent` /
+`FromModal` obligation on the definition delta-unfolds it, and an opening
+`iIntros` on a 6000-line file wedges for 30+ minutes with no error. A
+named `Persistent` instance does not protect a TRANSPARENT obligation.
+Fix: `#[local] Typeclasses Opaque X.` in the file that opens it — `local`
+because the seal is one-way (`FromModal` cannot see a `□` through it
+either, so a global seal breaks the consumers that intro the modality).
+(LINK-GEN-6, 2026-09-17)
+
 ### Two more silent hangs: a `Prop`-valued restatement, and a budget that does not line up
 
 - **Growing a row on an arm that has `exact`-proved restatements is a HANG,

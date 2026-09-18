@@ -502,9 +502,16 @@ Section UkShEcho.
           udepw_at_refR N' m pc FsImg.ROOTINO
             (UserFd.ustd (ukn_fd N') ld ∗ Cr)))%I.
 
+  (* NOT [apply _] (durable-notes, the fourth silent hang; [UkSh.
+     ush_rest_l_persistent] is the same remedy): with the body transparent
+     AND its fd-1 row a VARIABLE, the [Persistent] search walks the whole
+     obligation -- [udepw_at_refR] and everything under it -- and does not
+     return.  Name the instance the box deserves. *)
   Global Instance sh_exec_sup_echo_at_persistent Fd1 ws Q Cr :
     Persistent (sh_exec_sup_echo_at Fd1 ws Q Cr).
-  Proof using . rewrite /sh_exec_sup_echo_at. apply _. Qed.
+  Proof using .
+    rewrite /sh_exec_sup_echo_at. apply bi.intuitionistically_persistent.
+  Qed.
 
   (* BOTH UNFOLDED FIRST (durable-notes, the dev loop): at [Fd1 :=
      UkSh.ush_fd1p] the two bodies are the same text, so the match is
@@ -628,6 +635,15 @@ Section UkShEcho.
         urun N h m (mword_of_int ShSyms.runcmd)
           (6 + (2 + (UkShDiag.ush_Dg + n))) -∗
         WP (Loop : expr riscv_lang).
+
+  (* BOTH SEALED FOR TYPECLASS RESOLUTION (lane SH-CHILD-2; LINK-GEN-6's
+     fourth hang shape).  A [Global Instance] whose head is one of these
+     applied to a VARIABLE sends every later [Persistent]/[FromModal]
+     search down their bodies -- [udepw_at_refR]-sized -- and the opening
+     [iIntros] of the walk below wedges.  [local], so the seal does not
+     follow the names out of this file. *)
+  #[local] Typeclasses Opaque sh_exec_sup_echo_at.
+  #[local] Typeclasses Opaque wp_kshr_exec_echo_at.
 
   Lemma wp_kshr_exec_at_cwd_holds (R : iProp Σ) : wp_kshr_exec_at_cwd R.
   Proof using .
@@ -1148,23 +1164,11 @@ Section UkShEcho.
     iIntros "!>" (I). rewrite <- (Hdg I), <- (Hnn I). iApply ("Hx" $! I).
   Qed.
 
-  (* THE DIAGNOSTIC'S CARRIER COMES OFF THE LINE SHAPE (lane SH-CHILD-2,
-     LINK-GEN-4's residue).  The law used to name the CONSTANT exec-failed
-     bytes, and a second application's carrier is a function of its input
-     ([lk_exfb FI I]) which is NOT that constant at an [LCat] line.  What
-     is true is narrower and is exactly what [UkShFork.ushf_child_law_at]'s
-     own [Lp] gives: at the lines THIS law is about -- [UkSh.ush_line_is],
-     hence [EchoDisc.line_ok (last_ws I)] -- the carrier IS the constant.
-     So the premise is guarded by the line, and the guard is discharged
-     inside the walk from the line fact the law already carries. *)
-  Lemma ushf_child_law_holds_at (dg : list (bv 8) -> list (bv 8))
-      (nn : list (bv 8) -> nat) (Wc : list (bv 8) -> nat -> iProp Σ) :
-    (forall I : list (bv 8),
-       line_ok (last_ws I) -> dg I = alt_execfail /\ nn I = 17%nat) ->
-    ush_execfail_law_wq_at dg nn Wc -∗
+  Lemma ushf_child_law_holds (Wc : list (bv 8) -> nat -> iProp Σ) :
+    ush_execfail_law_wq Wc -∗
     sh_exec_sup_echo_wq Wc -∗ UkShFork.ushf_child_law Wc.
   Proof.
-    intros Hdg. iIntros "#Hxl #Hsup".
+    iIntros "#Hxl #Hsup".
     rewrite /UkShFork.ushf_child_law /UkShFork.ushf_child_law_at.
     iIntros "!>" (N' h m dw dv s0 len ws g sz ld n I)
       "%Hpeq %Hs1 %Hline %Hlws %Hs0 %Hs64 %Hs38 %Hszlo %Hszal %Hszok %Hrows
@@ -1182,26 +1186,9 @@ Section UkShEcho.
     - (* a child that died at the null store exits on the block it was
          lent *)
       iIntros "!> Hc". rewrite /UkShFork.ushf_wq. iLeft. iExact "Hc".
-    - (* THE CARRIER, AT THIS LINE: the law is at [dg I] / [nn I] and the
-         line the child runs is admissible, so both are the constants the
-         walk prints. *)
-      destruct (Hdg I ltac:(subst; exact (proj1 Hline))) as [ Hd1 Hd2 ].
-      rewrite /UkShDiag.ush_execfail_law.
-      rewrite <- Hd1. rewrite <- Hd2.
-      iApply ("Hxl" $! I).
+    - iApply ("Hxl" $! I).
     - (* a failed exec's child exits on the block written up to its prompt *)
       iIntros "!> Hc". rewrite /UkShFork.ushf_wq. iRight. iExact "Hc".
-  Qed.
-
-  (* ...and echo's instance, at the constants. *)
-  Lemma ushf_child_law_holds (Wc : list (bv 8) -> nat -> iProp Σ) :
-    ush_execfail_law_wq Wc -∗
-    sh_exec_sup_echo_wq Wc -∗ UkShFork.ushf_child_law Wc.
-  Proof using .
-    iIntros "#Hxl #Hsup".
-    iApply (ushf_child_law_holds_at (fun _ => alt_execfail) (fun _ => 17%nat)
-              Wc ltac:(intros I _; split; reflexivity) with "[Hxl] Hsup").
-    rewrite /ush_execfail_law_wq. iExact "Hxl".
   Qed.
 
   (* =================================================================== *)

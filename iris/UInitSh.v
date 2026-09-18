@@ -1137,7 +1137,14 @@ Section UInitSh.
                   Rsh γp cn T K
                   (ucons_pay cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wbn Cr)))
                   (ucons_pay cn γp T (cc_rd Cr))
-                  ((cc_mid Cr) γp) (cc_wc Cr) (cc_wb Cr) Hrl Hpm1 Hpm3
+                  ((cc_mid Cr) γp) (cc_wc Cr) (cc_wb Cr)
+                  (* the ECHO discipline and its three readings (lane
+                     LINK-GEN-5): [ush_read_recv_leaf] IS the parameterized
+                     leaf at [disc_input], so [Hrl] needs no change. *)
+                  EchoDisc.disc_input UkSh.ush_disc_snoc_ncr
+                  EchoDisc.disc_input_rest_short
+                  UkSh.ush_line_echo UkSh.ush_disc_line_echo
+                  Hrl Hpm1 Hpm3
                   Hpmwb Hwc Hwbwc Hwbl Hwbr
                   1%nat alen afun fdv W' n0 np
                   Hbd

@@ -291,6 +291,17 @@ Proof using.
   vm_compute. reflexivity.
 Qed.
 
+(* ...and at [RCNoOpen] it is NINETEEN at EVERY state: the alternative's
+   continuation is the diagnostic whatever the file holds
+   ([cat_cont_noopen]). *)
+Lemma cat_out_len_noopen (cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) :
+  cat_out_len cs0 s0 I0 (ralt_enc RCNoOpen) = 19%nat.
+Proof using.
+  rewrite /cat_out_len ralt_dec_enc.
+  rewrite (cat_cont_noopen (cat_st cs0 s0 I0)).
+  vm_compute. reflexivity.
+Qed.
+
 
 (* ===================================================================== *)
 (*  3.  THE CURSOR FAMILY, AND ONE BYTE THROUGH THE ERA'S WRITE LINK      *)

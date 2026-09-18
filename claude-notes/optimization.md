@@ -44,6 +44,23 @@ Map `Chars A-B` to a line with `head -c B <f>.v | wc -l`.
   idtac H ":" T; fail end.` before it; it prints on a plain `coqc` run.
 - **A slow tactic looks like a hanging `Qed` and hides compile errors** — the log
   stays empty while a real error further down sits in unflushed stderr.
+- **PRINT THE GOAL BEFORE BELIEVING A SPLICED CLOSER IS INTRINSIC.** Splice
+  `match goal with |- ?G => idtac "G:" G end` in front of it. `ProofSysUnlinkW5F`'s
+  `uf_uent_fire` column spent 4.0 s of a 4.5 s sentence in one `lia` — and the
+  goal was `n = n - 0`. In argument position the goal is an evar whose context
+  cannot be cleared, so `FastLia`'s filter has nothing to bite on; said as
+  `exact (eq_sym (Nat.sub_0_r _))` it is free.
+- **An Ltac profile of ONE sentence** is `Reset Ltac Profile.` before it and
+  `Show Ltac Profile.` after, with `Set Ltac Profiling` at the top of the file
+  (both are legal inside a proof). That is what separates a closer from the
+  `iApply` around it: `ProofIdup`'s release site was 2.3 s of closer and 0.08 s
+  of `iApply`, and `ProofCopyinstr`'s neighbouring `iApply` is the opposite —
+  97.8 % `iSpecializeCore`, i.e. the seventeen-`[%]` pattern, which is a floor.
+- **To find WHICH leaf a dispatch tactic is losing in**, put `time "leaf"` on
+  its `apply _` fallback and `idtac` the goal beside it. Two of this tree's
+  walks turned out to be one leaf each: `CtxMorph (λ ξ, disk_geom …)` (2.6 s of
+  `EnvMorph`'s 4.5 s) and `CtxMorph (λ ξ, proc_fields …)` (1.4 s × 6 in
+  `ProcInv`), with every other leaf in the same walk under a millisecond.
 
 ## RULE ONE: the cost is `|Δ|`, the Iris context
 
@@ -276,6 +293,15 @@ cost is linear in the context rather than quadratic. Read that file's header.
 - **`proc_priv_core` is the worst instance in the tree** and every
   syscall-altitude proof reaches it: its last conjunct is a 4096-element big-op.
   Intro the tail as ONE hypothesis and close with `iExact`.
+- **A `$` in an `iIntros` pattern is an `iFrame`**, so it is priced by the
+  whole goal, not by the hypothesis: two `SpecSysOpen` weakening lemmas paid
+  1.7 s each for one `$` over a post whose success arm carries `proc_priv`.
+  Introduce the row by name and place it with `iSplitR`/`iExact` first.
+- **Price a named `iFrame` by its `Frame` SEARCH, not by the goal walk.** An
+  Ltac profile of `VirtioProto`'s 15-name frame puts 95.9 % in `tc_solve`
+  inside `iFrameHyp` — one instance search per name over the unfolded body, ~
+  0.13 s each. Building the bundle uses no `Frame` instance at all, which is
+  why the constructor lemma pays; reordering the names does not.
 
 ## A `⊣⊢` lemma costs BOTH directions at every site
 
@@ -394,6 +420,19 @@ for it.
 - **Mark big concrete literals `Global Typeclasses Opaque`** (`kernel_bytes`,
   `kernel_data`, `kernel_symbols`, `mem_pointsto`) — never plain `Opaque`, since
   a tactic may need to `unfold`.
+- **A SEAL ADDED AFTER ITS OWN INSTANCE CAN MAKE THAT INSTANCE UNREACHABLE.**
+  A hint's net key is computed when the hint is declared, so an instance whose
+  conclusion head was still TRANSPARENT is filed under the BODY's head, and a
+  goal carrying the now-rigid name never reaches it. Sealing `MemClaim`'s
+  `mem_claim`/`wordw_claim` — which would fix `ProofBread`'s claim-reading
+  `iDestruct`, 99.4 % of whose 2.8 s is `tc_solve` on `Persistent (wordw_claim …)`
+  — makes every leaf that `iIntros "#"` a claim fail with *"not
+  intuitionistic"*. **Re-declaring the instance after the seal with
+  `Existing Instance` does NOT recover it** (measured), and neither does
+  sealing inside the `Section` (that seal does not survive it). So a seal is
+  safe where the class's goals are not head-discriminated — `CtxMorph`'s are
+  all `λ`s, which is why `disk_geom`'s seal worked — and otherwise needs the
+  definition and its instances arranged so the seal comes first.
 
 ## Modalities and rewriting
 

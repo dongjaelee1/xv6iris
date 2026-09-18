@@ -138,6 +138,11 @@ Section UShRound.
      ([UInitBoot.echo_Hinit_boot]'s [Hcons] / [Htag] one application on) *)
   Context (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ _) = fecl g).
   Context (Htag : @riscv_rx_tag Σ (@riscv_fixedGS Σ _) = ftag g).
+  (* ...AND THE THIRD PROJECTION, beside the two (the program stream).
+     [UInitBoot] derives all three from ONE interface equation
+     ([Hiface]); the round took two of them as equations and the third as
+     a hypothesis, which is the same fact twice. *)
+  Context (Hkill : @app_taint Σ (@riscv_fixedGS Σ _) = file_taint (fgn_cl g)).
 
   Local Notation T := (file_taint (fgn_cl g)).
   (* the era's LINK RECORD (lane LINK-GEN-2): every family this file's
@@ -248,9 +253,10 @@ Section UShRound.
     - iFrame "Hp Hpa Hrd". iExists v. iFrame "Hpin Hdl Hinp Hres".
     - iApply (FileLinkInst.file_Hwbr g I l v Hl with "Hpin Hres Hb").
   Qed.
-  (* the era's kill credential IS the file taint ([AppFileRec]'s interface
-     equation, projected) *)
-  Hypothesis Hktaint : ⊢ app_taint -∗ T.
+  (* the era's kill credential IS the file taint -- the equation above,
+     read as an entailment *)
+  Lemma Hktaint : ⊢ app_taint -∗ T.
+  Proof using Hkill. rewrite Hkill. iIntros "$". Qed.
 
   (* =================================================================== *)
   (*  S3  THE PROMPT LINK, AT THE DEED (design SS4.2; CAT-ENTRY ruling (b)) *)
@@ -531,7 +537,7 @@ Section UShRound.
      ([sh_round_holds_file]'s third argument). *)
   Lemma sh_kill_law_file (v : era_pins) :
     era_pin (fgn_echo g) (S gen_id) v -∗ UkShFork.ushf_kill_law Wcf.
-  Proof using Hktaint.
+  Proof using Hkill.
     iIntros "#Hpin". rewrite /UkShFork.ushf_kill_law.
     iIntros "!>" (I) "#Hk".
     iAssert T as "#HT"; [ iApply Hktaint; iExact "Hk" | ].
@@ -556,7 +562,7 @@ Section UShRound.
         (UShLine.ush_mid_at (lk_rres FI) (fgn_echo g) γp)
         (UInitSh.sh_Rsh (ukn_t N) (ukn_d N) (ukn_s N)).
   Proof using Hchild_cat Hchild_echo Hchild_redir Hcons Hexecfail
-              Hktaint Hopen_hand Hpanic Htag.
+              Hkill Hopen_hand Hpanic Htag.
   Admitted.
 
 End UShRound.

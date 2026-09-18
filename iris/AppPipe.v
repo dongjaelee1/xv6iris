@@ -332,6 +332,22 @@ Section PipeApp.
     exact (pipe_init_img c _ XV6_DISK_BYTES sb nib cov Himg Hdk Hsb Hcov).
   Qed.
 
+  (* ---- ANTI-VACUITY: the CLAIM EQUATION the program tier takes as a
+         parameter ([UInitConsPipe]'s [file_app = MkAppcfg echo_names
+         (pipe_pred γ) r]) IS the one [al_programs] hands over at this
+         record, by conversion and not by a bridge.  Three [reflexivity]s,
+         and if one of them ever needs a tactic a field has moved. ---- *)
+  Lemma pipe_app_pred_eq (c : app_fixed app_pipe) :
+    app_pred app_pipe c = pipe_pred c.
+  Proof using . reflexivity. Qed.
+
+  Lemma pipe_app_names_eq : app_names app_pipe = echo_names.
+  Proof using . reflexivity. Qed.
+
+  Lemma pipe_app_boot_eq (c : app_fixed app_pipe) (k : nat) :
+    app_boot app_pipe c k = pipe_boot c k.
+  Proof using . reflexivity. Qed.
+
   (* ---- the conclusion's one ingredient ---- *)
   Lemma pipe_Hphi_R (c : app_fixed app_pipe) (gst : gstate) (h : list mobs) :
     app_R app_pipe c h ⊢ ⌜app_phi app_pipe gst h⌝.

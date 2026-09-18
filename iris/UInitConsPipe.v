@@ -25,12 +25,11 @@
 (*     no ledger and no second name record: [r] is an [AppEcho.           *)
 (*     echo_names] and the fixed part is [AppEcho.echo_fixed].            *)
 (*                                                                       *)
-(*  The four bundles below are exactly [UInitConsFile]'s 4a-4c.  What is  *)
-(*  NOT here is [UInitConsFile]'s 4d/4e -- the LEAVES ([UkInit.           *)
-(*  init_cons_leaves]) -- and the reason is reported in the lane's        *)
-(*  findings: they need [init_cons_seal_out], whose pipe instance wants a *)
-(*  console-seal step at the pipeline record's own interface equation,    *)
-(*  which is PIPE-ADEQUACY's literal and not this lane's.                 *)
+(*  Sections 1-3 are [UInitConsFile]'s 4a-4c (the four bundles), section  *)
+(*  4 is its section 2 (the seal and the credential the shell is handed)  *)
+(*  and section 5 its 4d/4e/4f (the two LEAF pairs and sh's console arm). *)
+(*  All of it goes through: nothing here needs the pipeline record's      *)
+(*  interface equation, only the CLAIM equation, which is a parameter.    *)
 (* ===================================================================== *)
 From Stdlib Require Import ZArith Bool Lia List.
 From stdpp Require Import gmap list bitvector.definitions.
@@ -68,7 +67,25 @@ Require Import EchoOut.
 Require Import AppEcho.
 Require Import AppPipeClaim.
 Require Import AppPipeCons.
+Require Import UserHeap.
+Require Import UserPerm.
+Require Import UmodeAbi.
+Require Import ProcGeom.
+Require Import UInitFd.
+Require Import PieceFam.
+Require Import ArgPath.
+Require Import UexecSlot UexecRet UsysMemOk UexecSG.
+Require Import UkRun UkRunLeaf UkRunSys.
+Require Import UCodeInit UkInit.
+Require Import UexecExecInst.      (* THE INSTANCE: [uexecSG_xv6] *)
+Require Import SpecSysOpen.
+Require Import SysMknodDefs SpecSysMknod.
+Require Import UConsOpen.
+Require Import UkSh.
+Require Import CtxIdDefs.
 Require Import UInitCons.
+Require Import UInitConsK.
+Require Import UShConsK.
 Local Open Scope Z_scope.
 
 Section UInitConsPipe.
@@ -211,6 +228,167 @@ Section UInitConsPipe.
     - iIntros "!>" (av i) "%Hpr Hp".
       iApply (pipe_cons_shoot γ r av i Hpr with "Hp").
     - iIntros "!>" (i) "#Hm2". iApply (pipe_cons_law γ r i with "Hm2").
+  Qed.
+
+  (* =================================================================== *)
+  (*  4.  THE SEAL, AND THE CREDENTIAL THE SHELL IS HANDED                *)
+  (*                                                                     *)
+  (*  [UInitConsFile]'s section 2 at the pipe claim.  None of the three   *)
+  (*  reads the nine laws: the first two are [AppPipeCons]'s own seal     *)
+  (*  lemmas at the era's record and the third is built from them through *)
+  (*  [AppInv.app_claim_update] and                                       *)
+  (*  [UInitConsK.init_open_absent_leaf_holds].                           *)
+  (* =================================================================== *)
+
+  Lemma init_cons_never_abs_law_pipe :
+    file_app = MkAppcfg echo_names (pipe_pred γ) r ->
+    ⊢ init_cons_abs_law (echo_taint γ) (cons_never r).
+  Proof using .
+    intros Heq. rewrite /init_cons_abs_law /init_cons_pin_law.
+    rewrite Heq. cbn [app_pred app_run app_names].
+    iIntros "!>" (v) "#Hn Hp".
+    iDestruct (pipe_cons_never_law γ r) as "#Hl".
+    iDestruct ("Hl" with "Hn") as "#Hl'".
+    iDestruct ("Hl'" $! v with "Hp") as "[Hp Hc]". iFrame "Hp Hn Hc".
+  Qed.
+
+  Lemma init_cons_seal_law_pipe :
+    file_app = MkAppcfg echo_names (pipe_pred γ) r ->
+    ⊢ □ (∀ av : aview, cons_key r -∗ ▷ app_pred app_run av
+           ={⊤ ∖ ↑appN}=∗
+           ▷ app_pred app_run av ∗ (cons_never r ∨ echo_taint γ)).
+  Proof using .
+    intros Heq. rewrite Heq. cbn [app_pred app_run app_names].
+    iIntros "!>" (av) "HK >Hp".
+    iMod (pipe_cons_seal_step γ r av with "HK Hp") as "[Hp Hn]".
+    iModIntro. iFrame "Hp Hn".
+  Qed.
+
+  (* WHAT A FAILED MKNOD LEAVES AT THE KEY ARM. *)
+  Lemma init_cons_seal_out_pipe (N : uk_names Σ) :
+    file_app = MkAppcfg echo_names (pipe_pred γ) r ->
+    app_inv fsc_fs -∗
+    □ (cons_key r ={⊤}=∗
+         UkInit.uki_mknod_out (PS := uprogSG_free) N (echo_taint γ)
+           (init_cons_cred (echo_taint γ) r) init_cons_fd).
+  Proof using .
+    intros Heq. iIntros "#Hinv !> HK".
+    iDestruct (init_cons_never_abs_law_pipe Heq) as "#Habs".
+    iMod (app_claim_update ⊤ fsc_fs (cons_key r)
+            (cons_never r ∨ echo_taint γ)%I
+            ltac:(set_solver) with "Hinv [] HK") as "Hn".
+    { iApply (init_cons_seal_law_pipe Heq). }
+    iModIntro. rewrite /UkInit.uki_mknod_out.
+    iDestruct "Hn" as "[#Hn | #HT]"; last first.
+    { iRight. iRight. iExact "HT". }
+    iRight. iLeft. iExists (cons_never r).
+    iDestruct (init_open_absent_leaf_holds N (echo_taint γ) (cons_never r)
+                 ltac:(apply _) ltac:(apply _) ltac:(apply _)
+                 with "Habs Hinv") as "#Hlf".
+    iSplitR; [iExact "Hlf" |]. iSplitR; [iExact "Hn" |].
+    iApply (init_cons_cred_of_never (echo_taint γ) r with "Hn").
+  Qed.
+
+  Lemma init_cons_cred_made_pipe (i0 : Z) :
+    cons_made r i0 -∗ init_cons_cred (echo_taint γ) r.
+  Proof using .
+    iApply (init_cons_cred_of_made (echo_taint γ) r i0).
+  Qed.
+
+  (* =================================================================== *)
+  (*  5.  THE TWO LEAF PAIRS, AND WHAT SH IS HANDED                       *)
+  (*  ([UInitConsFile]'s 4d / 4e / 4f at the pipe claim.)                 *)
+  (* =================================================================== *)
+
+  Lemma init_cons_leaves_pipe :
+    file_app = MkAppcfg echo_names (pipe_pred γ) r ->
+    app_inv fsc_fs -∗
+    □ (∀ N : uk_names Σ,
+         UkInit.init_cons_leaves (PS := uprogSG_free) N
+           (echo_taint γ) (cons_key r)
+           (init_cons_cred (echo_taint γ) r) init_cons_fd).
+  Proof using .
+    intros Heq.
+    assert (HTL : forall v : aview, Timeless (app_pred app_run v)).
+    { rewrite Heq. cbn [app_pred app_run]. intro v. apply _. }
+    iIntros "#Hinv".
+    iDestruct (init_cons_laws_efp_pipe Heq) as "#Hlaws".
+    iModIntro. iIntros (N). rewrite /UkInit.init_cons_leaves. iSplit.
+    - iApply (init_open_absent_leaf_holds N (echo_taint γ) (cons_key r)
+                ltac:(apply _) ltac:(apply _) ltac:(apply _) with "[] Hinv").
+      rewrite /init_cons_laws /init_cons_laws_at.
+      iDestruct "Hlaws" as "(_ & _ & #Hc & _)". iExact "Hc".
+    - iApply (init_mknod_leaf_holds N cons_absent (echo_taint γ)
+                (cons_key r) r
+                ltac:(apply _) ltac:(apply _) ltac:(apply _) HTL
+                with "Hlaws [] Hinv").
+      iApply (init_cons_seal_out_pipe N Heq with "Hinv").
+  Qed.
+
+  Lemma init_cons_hit_pipe (i0 : Z) :
+    file_app = MkAppcfg echo_names (pipe_pred γ) r ->
+    cons_made r i0 -∗ app_inv fsc_fs -∗
+    □ (∀ N : uk_names Σ,
+         □ UkInit.uki_open_console_leaf (PS := uprogSG_free) N
+             (echo_taint γ) init_cons_fd
+         ∗ □ UkInit.uki_mknod_hit_leaf (PS := uprogSG_free) N
+               (echo_taint γ) (init_cons_cred (echo_taint γ) r)
+               init_cons_fd).
+  Proof using .
+    intros Heq.
+    assert (HTL : forall v : aview, Timeless (app_pred app_run v)).
+    { rewrite Heq. cbn [app_pred app_run]. intro v. apply _. }
+    iIntros "#Hm #Hinv".
+    iDestruct (init_cons_laws_made_efp_pipe i0 Heq with "Hm") as "#Hlaws".
+    iAssert (init_cons_cred (echo_taint γ) r) as "#Hcred".
+    { iApply (init_cons_cred_made_pipe i0 with "Hm"). }
+    iModIntro. iIntros (N). iSplit.
+    - iApply (init_open_console_leaf_holds N (cons_present_at i0)
+                (echo_taint γ) (cons_made r i0) r i0
+                ltac:(apply _) ltac:(apply _) with "Hlaws Hm Hinv").
+    - iModIntro.
+      iApply (UkInit.uki_mknod_hit_of_leaf (PS := uprogSG_free) N
+                (echo_taint γ) (cons_made r i0)
+                (init_cons_cred (echo_taint γ) r) init_cons_fd with "[] Hm").
+      iApply (init_mknod_leaf_holds N (cons_present_at i0) (echo_taint γ)
+                (cons_made r i0) r
+                ltac:(apply _) ltac:(apply _) ltac:(apply _) HTL
+                with "Hlaws [] Hinv").
+      iIntros "!> #Hm'". iModIntro. rewrite /UkInit.uki_mknod_out. iLeft.
+      iSplitR; [| iExact "Hcred"].
+      iApply (init_open_console_leaf_holds N (cons_present_at i0)
+                (echo_taint γ) (cons_made r i0) r i0
+                ltac:(apply _) ltac:(apply _) with "Hlaws Hm Hinv").
+  Qed.
+
+  (* ---- SH'S ABSENT ARM: generic in the credential ---- *)
+  Lemma sh_cons_absent_pipe (K : iProp Σ) :
+    Persistent K -> Timeless K ->
+    file_app = MkAppcfg echo_names (pipe_pred γ) r ->
+    UShConsK.sh_cons_never_law (echo_taint γ) K -∗
+    app_inv fsc_fs -∗
+    □ (∀ N : uk_names Σ,
+         UkSh.ush_open_absent_leaf (PS := uprogSG_free) N (echo_taint γ) K).
+  Proof using .
+    intros HPK HTK Heq. iIntros "#Hlaw #Hinv". iIntros "!>" (N).
+    iDestruct (UShConsK.sh_open_absent_leaf_holds N (echo_taint γ) K _ _
+                 HPK HTK with "Hlaw Hinv") as "#H".
+    iApply "H".
+  Qed.
+
+  (* ---- WHAT SH'S CONSOLE ARM IS HANDED ---- *)
+  Lemma sh_cons_console_pipe (i : Z) :
+    file_app = MkAppcfg echo_names (pipe_pred γ) r ->
+    cons_made r i -∗ app_inv fsc_fs -∗
+    □ (∀ N : uk_names Σ,
+         UkSh.ush_open_console_leaf (PS := uprogSG_free) N (echo_taint γ)).
+  Proof using .
+    intros Heq. iIntros "#Hmade #Hinv".
+    iDestruct (init_cons_laws_efp_pipe Heq) as "#Hlaws".
+    iIntros "!>" (N).
+    iDestruct (UShConsK.sh_open_console_leaf_holds N (echo_taint γ)
+                 (cons_key r) r i _ _ with "Hlaws Hmade Hinv") as "#H".
+    iApply "H".
   Qed.
 
 End UInitConsPipe.

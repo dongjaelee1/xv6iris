@@ -534,10 +534,45 @@ Class uexecSG (Σ : gFunctors) {sg_ctok : ctokG Σ} := {
      field but the payload itself ([sfam_at]) *)
   sexec_refund_at : forall (Q : Z -> iProp Σ) (f : sfam),
     sexec_refund (sfam_at Q f) = sexec_refund f;
+
+  (* ===================================================================
+     A DESCRIPTOR ROW'S REGISTRATION -- what a run carries per table row
+     so that its exit can pay (design/app-pipe.md SS2, lane PIPE-REG).
+
+     kexit closes every descriptor the dying process holds, so exit(2)'s
+     bundle row is [SpecFileclose.fileclose_cpays] of the KEY'S WHOLE
+     TABLE: a [∗ list] of independent payments, [emp] at every row but a
+     pipe end and [PipeQueue.pipe_cpay] there.  The fact that decides it
+     is a fact about the TABLE, so it rides in [UkRun.urun] and is
+     re-established at every trap ([UkRun.urun_nopipe]).
+
+     WHY IT IS A FIELD OF THIS CLASS AND NOT A DEFINITION IN [UkRun]
+     (this lane's finding).  The row IS [PipeReg.pipe_row_reg], which
+     names the pipe's queue camera -- and [UkRun] binds no pipe ghost
+     class, by design ("this file binds no whole-system bundle").  Giving
+     it one adds an implicit [pipeG] argument to [urun] itself and hence
+     a [Context] line to each of the seventy-odd U-tier files that state
+     a run.  Every one of those files already binds THIS class, so
+     routing the row through it costs no site anything: [urun_nopipe] is
+     stated at [srow_reg] and the one instance ([UexecExecInst.
+     uexecSG_xv6]) answers it with [PipeReg.pipe_row_reg].
+
+     THE TWO LAWS ARE WHAT THE ENGINE'S STEPS RUN ON, and nothing else is
+     assumed of the row: it is persistent (so a dup'd row, a forked
+     child's copy of the table and two rows on one pipe all cost
+     nothing), and a row that is not a pipe registers itself (so a
+     program that never calls pipe(2) pays nothing whatever).  The
+     pipe-specific intros -- the taint's and lane PIPE-PROTO's invariant
+     handle -- are NOT laws here: they name pipe ghosts, so they live at
+     the instance, where a file that needs them already has them. *)
+  srow_reg : fdstate -> iProp Σ;
+  srow_reg_persistent : forall st : fdstate, Persistent (srow_reg st);
+  srow_reg_nopipe : forall st : fdstate, fdst_nopipe st -> ⊢ srow_reg st;
 }.
 
 Global Existing Instance sbundle_at_ne.
 Global Existing Instance spost_at_ne.
+Global Existing Instance srow_reg_persistent.
 
 (* stdpp's [f_equiv] enumerates the application arities it can peel and stops
    at FIVE; [spost_at] takes NINE, so a [solve_contractive] over it fails with

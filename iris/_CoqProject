@@ -1469,6 +1469,7 @@ ExecBundle.v
 PinnedObs.v
 PinnedExec.v
 PinnedOpen.v
+PipeReg.v
 UexecExecInst.v
 ExecRun.v
 UexecExecMint.v

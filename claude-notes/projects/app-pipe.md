@@ -47,7 +47,7 @@ arm is the theorem's one named premise (`pipe_both_law`).
   fact from `SpecFilewrite`'s `f->writable` arm and report.  Bar: whole
   tree green, no statement outside `PipeQueue`/`Spec*Pipe*`/`Proof*Pipe*`
   moves, audits unmoved.
-- [ ] **PIPE-REG** (U tier, design §2).  New `iris/PipeReg.v`: `pipe_reg γp
+- [x] **PIPE-REG** (U tier, design §2).  New `iris/PipeReg.v`: `pipe_reg γp
   := □ (∀ w, pipe_cpay (pn_queue γp) w emp)`, `pipe_row_reg`,
   `pipe_reg_of_taint`, persistence/timelessness; the VACUITY scratch
   `pipe_reg_not_free` first.  `UkRun.urun_nopipe` REDEFINED as `[∗ list] st
@@ -1051,3 +1051,175 @@ a build — run it on any new file whose header quotes something.
 **NOTHING ELSE MOVED.**  No landed `.v` file edited; `iris/_CoqProject`
 carries the one new row; nothing imports `PipeDiscDec`, so the three
 audits' cones are untouched.
+
+### PIPE-REG (2026-09-18)
+
+**LANDED** (branch `app-pipe/pipe-reg`, commits `119ef0f69`, `bc8ba82dc`,
+`69c28f329`, `f708512a0`): whole `iris` tree green on the EC2 mirror; no
+`Admitted`; every new result carries `Proof using`. `make audit-echo-only`
+re-run and UNMOVED — exactly the FOURTEEN of `durable-notes.md`'s
+baseline, textually — and that is the audit that matters here: its cone is
+the one that walks the `Uk*`/`USh*`/`UInit*`/`UEcho*` program tier, where
+every file this lane touched lives. `audit-tree-only` and `audit-only`
+were started against the quiescent tree and had not returned when the lane
+handed off, with the mirror saturated (six lanes plus the coordinator's
+gate; `Print Assumptions` is the heaviest thing on the box). They cannot
+move: every new result is a theorem, no `Axiom`/`Admitted` was added, and
+`urun_nopipe`'s definition became strictly WEAKER. **The coordinator
+should still see both green on the merge gate.**
+
+TWO TRAPS THIS COST, for whoever runs an audit next:
+- **Run it against a QUIESCENT tree.** An audit with a `make` in flight
+  fails `Compiled library … makes inconsistent assumptions over library …`
+  — mid-build staleness, not a finding.
+- **Never run two audits of the same target in one clone.** The second
+  one's `coqc` raced the first and the pair died with `System error: "No
+  space left on device"` on a filesystem with 23 GB free.
+
+- NEW `iris/PipeReg.v` — `pipe_reg γp := □ (∀ w, pipe_cpay (pn_queue γp) w
+  emp)`, `pipe_row_reg`, both persistence instances, `pipe_reg_of_taint` /
+  `pipe_row_reg_of_taint` / `pipe_row_reg_nopipe`, `fileclose_cpay_of_reg`
+  and `fileclose_cpays_of_regs` (kexit's whole `[∗ list]` row, one instance
+  of each row's `□` — the second "Open, recorded" item of
+  `completed/pipe-queue.md` closed), plus the two big-op moves
+  (`fd_rows_insert`, `fd_rows_lookup`) at an arbitrary row predicate.
+- `UexecSG.v` — THREE NEW CLASS FIELDS `srow_reg : fdstate -> iProp Σ`,
+  `srow_reg_persistent`, `srow_reg_nopipe` (see "what the design got
+  wrong", below).
+- `UkRun.v` — `urun_nopipe fdv := ([∗ list] st ∈ fdv, srow_reg st) ∨ □
+  riscv_kill_cred`; `urun_nopipe_intro/_closed/_taint/_quiet/_insert/_dup/
+  _copy/_step` at byte-identical statements, `_step` running
+  `UsysMemOk.usys_fd_ok_nopipe`'s own case split with a resource instead of
+  a Prop; NEW `urun_nopipe_regs`, `urun_nopipe_insert_reg`,
+  `urun_nopipe_regs_insert/_lookup/_lookup_total`, `srow_regs_nopipe`.
+  `urun_rows_*` and `udep_exit_run` unchanged statements. `udep`'s exit law
+  now takes the RESOURCE (`udep_exit_regs`); `udep_exit_dep` and
+  `udep_exit_taint` did not move, the first a corollary.
+- `UexecExecInst.v` — NEW `xv6_sbundle_exit_regs`;
+  `xv6_sbundle_exit_nopipe` kept as its corollary at a byte-identical
+  statement; `uexecSG_xv6` answers the three fields with `pipe_row_reg`;
+  NEW `srow_reg_of_pipe_reg`, `srow_reg_of_taint` (the row's readings at
+  the one altitude where `srow_reg` is not abstract).
+  `UexecExecMint.v` — `udep_gen` / `udep_free` re-proved.
+- `UkRunSys.wp_uk_ecall_pipe` — the `□ riscv_kill_cred` premise is GONE.
+- `UkReadPipe.wp_uk_pipe_read_end` — the same, at the instance; the
+  header comment rewritten.
+- BEYOND THE BRIEF, because SH-PIPE cannot round without it:
+  `PipeReg.pipe_cpay_of_reg_true` / `fileclose_cpay_of_reg_true` and
+  `UexecExecInst.xv6_sbundle_close_of_reg` — CLOSE(21)'s row off the
+  registry at the POINT family's payload (`True`), since the close link's
+  fupd places `emp` and so places anything `emp` entails. No arm of
+  `UkRun.udepw_cl` moves: its right arm is `udepw … 21`, which takes an
+  explicit bundle, so this is what a pipe-holding program supplies there.
+- BAR MET: every one of the ~25 `urun_nopipe` sites the brief lists
+  (UkFork, UInitSh, UShEchoPay, UexecCond, UShEcho, UShKernel,
+  UEchoKernel, UCatKernel, UShCat, UEchoFile, UInitBoot, UInitTreeExec,
+  UEchoOut, USyncKernel, UInitKernel) compiles TEXTUALLY UNCHANGED.
+
+**REFUTED, at the statement.**
+
+1. **The run cannot be handed back OWED** (design §2's primary shape,
+   `pipe_qfrag ∗ (pipe_reg γp -∗ urun …)`), and the reason is not the one
+   the STOP RULE guessed. `UkRun.urun_close_upd` takes `urun_rows N fdv'`
+   *as an input* and produces the `ukcq` whose continuation *hands the
+   caller the `urun`* — so a debt discharged by the caller's continuation
+   is circular: the row is needed strictly before the run the payer
+   receives exists. (The secondary obstacle the STOP RULE did name is also
+   real: `γp` is bound inside the post's existential and is not in scope at
+   the post's `urun` position.) The FALLBACK landed.
+2. **The registrar cannot be fragment-shaped at `UkRunSys`'s altitude, and
+   cannot give the post back at any altitude.** `wp_uk_ecall_pipe` is
+   stated over the deposit class and cannot open row 4's post, so it cannot
+   reach `pipe_qfrag`; and a registrar that returned `spost_at` unchanged is
+   unsatisfiable, because registering CONSUMES the fragment — a
+   registration is a `□` and one fragment buys exactly one payment
+   (`PipeReg.pipe_cpay_of_frag`, landed as the positive half of the vacuity
+   exhibit). So the registrar takes the post and the leaf hands on the
+   caller's own residue: a new parameter `Rp` in place of `spost_at` in the
+   post. At `UkReadPipe` the same premise is fragment-shaped
+   (`∀ γp, pipe_qfrag (pn_queue γp) pst0 ={⊤}=∗ pipe_reg γp ∗ Rp γp`) and
+   `Rp γp` replaces the fragment in that post — lane PIPE-PROTO's
+   `pipe_proto_alloc` is the instance of record.
+3. **`pipe_reg` is NOT `Timeless`**, as the brief suspected: `pipe_cpay`'s
+   left arm is a fupd-producing wand and no `□` makes that timeless. No
+   instance was declared and none is needed — no consumer of `urun_nopipe`
+   strips a `▷` off it (every site in the tree was checked; the only
+   destructors live in `UkRun.v` itself).
+4. **The vacuity check is mechanisable after all**, one step in from where
+   the design put it: `PipeReg.pipe_reg_not_free` shows a close link at the
+   trivial payload cannot come from nothing, because firing it moves the
+   pipe's AUTHORITY, so a conjured link beside the matching fragment
+   refutes `pipe_queue_agree` (`pst_close true pst0 <> pst0`). What is
+   *not* expressible is "`⊢ pipe_reg γp` is not derivable" itself — a
+   meta-level claim — so the refutation is stated at the one step such a
+   derivation would have to take.
+
+**WHAT THE DESIGN GOT WRONG.**
+
+*The registry cannot be named in `UkRun.v`, and this is the finding the
+next waves have to build on.* Design §2 writes `urun_nopipe fdv := [∗
+list] st ∈ fdv, pipe_row_reg st` in `UkRun.v`. `pipe_row_reg` names the
+pipe's queue camera (`pipeG`), and `UkRun.v` binds no whole-system ghost
+bundle **by design** ("this file binds no whole-system bundle" — its own
+header). Giving it `pipeG` adds an implicit instance argument to `urun`
+itself, hence a `Context` line to EACH OF THE ~70 U-tier files that state a
+run (they bind `riscvGS`/`ufdG`/`ctokG`/`SG`/`PS` and no bundle) — and
+adding it to `ufdG` or `ctokG` instead creates two instance paths for
+`pipeG` in the ~95 files that also bind `xv6G`, which wedges rather than
+fails (`durable-notes.md`, 2026-09-12). Both were measured and rejected.
+
+The registry therefore enters through `uexecSG` — the U tier's ONE instance
+record, which every such file already binds and of which there is exactly
+one instance (`UexecExecInst.uexecSG_xv6`) — as the field `srow_reg` with
+the two laws the engine's steps actually use (persistence; a non-pipe row
+registers itself). Cost: three lines in `UexecSG.v`, three in the instance,
+zero at any site.
+
+*The taint arm had to stay* (`urun_nopipe := regs ∨ taint`, not `regs`).
+`urun_nopipe_taint`'s and `urun_rows_taint`'s statements name
+`riscv_kill_cred`, and the class the left arm is stated at has no `riscvGS`
+parameter, so no class law can produce a row from the credential; and the
+generic tier's supply (`UexecExecMint.udep_gen`, `UexecCond.
+cond_entry_slot`) holds the credential and has no pipe names to build a
+registry from. Adding `{sg_riscv : riscvGS Σ}` to `uexecSG` would remove the
+arm at the price of a second class-arity change across 75 `Context` lines;
+it is a cleanup lane's call, not this one's. **A registered program never
+touches the arm**, so nothing about §2's claim is weakened: the registry is
+what a pipe-holding verified program carries.
+
+*Two smaller corrections.* (a) `urun_nopipe_taint` and `urun_nopipe_step`
+already existed on `main` — the brief lists them as NEW. (b) The one site
+that DESTRUCTS `urun_nopipe` and is not in the brief's list is
+`UkRun.udep_exit_run` (`UkRun.v`), which is local and was restated.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**
+
+PIPE-PROTO: `pipe_reg_of_inv` is now exactly `pipe_inv pn γp L -∗ □ (∀ w,
+pipe_cpay (pn_queue γp) w emp)` — one close link per end, built inside the
+invariant at `⊤` with `pipe_clink_of_frag`, `pst_close` touching only a
+flag so (P1)/(P2)/(P3) all survive. Its consumer is
+`UkReadPipe.wp_uk_pipe_read_end`'s registrar premise
+`∀ γp, pipe_qfrag (pn_queue γp) pst0 ={⊤}=∗ pipe_reg γp ∗ Rp γp`, so
+`pipe_proto_alloc` should be stated to produce `pipe_reg γp` BESIDE the
+invariant handle and the write token — i.e. `pipe_qfrag (pn_queue γp) pst0
+={⊤}=∗ ∃ pn, pipe_inv pn γp L ∗ wtok γw ∗ pipe_reg γp` — and sh's PIPE arm
+then instantiates `Rp γp := ∃ pn, pipe_inv pn γp L ∗ wtok γw`.
+
+*Owed, and NOT this lane's* (reported for SH-PIPE / PIPE-STD, and the
+campaign WILL hit it): CLOSE(21)'s row is still `UkRun.udepw_cl`, whose
+left arm is the PURE `ukey_nonpipe` and whose right arm is a full `udepw …
+21`. A program closing a pipe descriptor — sh does it six times per
+round, two of them pipe ends — therefore still owes an explicit deposit at
+21, which at the free instance is payable only from the taint. The
+registry CAN pay it, but **only at the trivial payload**: row 21 is
+`fileclose_cpay st (cl_P f)` and `pipe_reg γp` is `□ (∀ w, pipe_cpay …
+w emp)`, so the twin of `xv6_sbundle_close_nonpipe` exists exactly for a
+family whose `cl_P` is `emp` — which is a choice made at the DEPOSIT, not
+at `udepw_cl_mint`, and that is why a third arm on `udepw_cl` is not a
+mechanical addition. The honest shapes are either a `cl_P = emp`-guarded
+arm on `udepw_cl`, or `pipe_reg` generalised to `□ (∀ w Φ, Φ -∗ pipe_cpay
+… w Φ)` (which is NOT derivable from the invariant: the close link's fupd
+would have to place a caller-chosen `Φ`, and the invariant only knows how
+to place `emp`). SH-PIPE should take the close deposits as parameters, as
+its brief already says, and the ruling belongs with whoever states sh's
+round.

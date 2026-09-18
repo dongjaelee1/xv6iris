@@ -102,10 +102,13 @@ Section UexecExecMint.
          admitted, so it is the same law read at 21 (design/pipe.md) *)
       intros W Q _.
       exact (sbundle_of_supply_ne uslot 21 W Q ltac:(vm_compute; discriminate)).
-    - (* ...and exit's, for the same reason *)
-      intros W Q _.
-      exact (sbundle_of_supply_ne uslot USYS_exit W Q
-               ltac:(vm_compute; discriminate)).
+    - (* ...and exit's, for the same reason -- and the row's own
+         REGISTRATIONS (lane PIPE-REG) are not even looked at: at the
+         generic instance every number's bundle comes off the supply *)
+      intros W Q. iIntros "#Hs _".
+      iApply (sbundle_of_supply_ne uslot USYS_exit W Q
+                ltac:(vm_compute; discriminate)).
+      iExact "Hs".
     - (* ...and exit's out of the TAINT, which the generic instance does
          not even need to look at (design/pipe.md, "The exit path") *)
       intros W Q. iIntros "#Hs _".
@@ -143,12 +146,16 @@ Section UexecExecMint.
       rewrite /sbundle_pay /sbundle_at /sexit_pay /=.
       iApply (xv6_sbundle_close_nonpipe uslot W Q Hnp).
     - (* ...AND EXIT'S, which left it for the same reason one table over
-         (design/pipe.md, "The exit path"): at a table with no pipe row
-         every one of kexit's closes is [emp]. *)
-      intros W Q Hnp.
-      iIntros "_".
+         (design/pipe.md, "The exit path") -- AND OFF THE ROW'S OWN
+         REGISTRATIONS now (design/app-pipe.md SS2, lane PIPE-REG), which
+         is what lets a VERIFIED program hold a pipe: at a pipe row the
+         registration is one instance of the row's [□]-guarded close
+         payment, and at every other row it is [emp], so the pipe-free
+         reading this arm used to take is the same law read at a table of
+         self-registering rows. *)
+      intros W Q. iIntros "_ Hregs".
       rewrite /sbundle_pay /sbundle_at /sexit_pay /=.
-      iApply (xv6_sbundle_exit_nopipe uslot W Q (fdv_nopipe_elem (uvis_fd W) Hnp)).
+      iApply (xv6_sbundle_exit_regs uslot W Q with "Hregs").
     - (* ...AND THE SAME ROW OUT OF THE TAINT, at any table at all: a pipe
          row's close payment is a link OR the credential
          ([PipeQueue.pipe_cpay]), and this is the arm a program that

@@ -148,6 +148,13 @@ arm is the theorem's one named premise (`pipe_both_law`).
   record's laws; `pipe_fs_pure`.  Mould: upstream's STAGE / STAGE-2 /
   FILE-DEC findings and `AppFileRec.v`.
 
+- [ ] **PIPE-CLAIM** (= PIPE-STAGE part 2, design §5.6; after the upstream
+  merge is green).  `pipe_pred` at `file_fs_pure`; `AppPipe.app_pipe` at
+  `app_pred := pipe_pred`; the record's laws re-derived; `pipe_Happ_init`
+  with `era0_cat_pins` off the image; the program-tier laws at `pipe_pred`
+  (`init_cons_laws_at`, INIT-FILE's mould minus the f-state).  Also: merge
+  main (upstream's `StageRec.v`/`FileLinkInst.v`, `app_taint`) into the
+  branch first and re-read the mould.
 ## Wave 3 — the round and the theorem
 
 - [ ] **SH-PIPE-ROUND** (design §4.2): sh's round at the claim — the

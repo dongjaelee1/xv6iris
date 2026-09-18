@@ -462,14 +462,14 @@ Section UEchoKernel.
     assert (Hsp0 : 0 <= uint (uvis_sp W)) by lia.
     assert (Hargc0 : 0 <= uvis_argc W)
       by exact (proj1 (uka_argc _ _ _ _ _ _ Hargs)).
-    iApply (uslot_of_urun_ro W 12 (fun _ => True)%I ∅
+    iApply (uslot_of_urun_ro W 12 (fun _ => True)%I
               Hal8
               ltac:(unfold uvis_sp in Hroom; lia) Hstk Hfdlen Hstop Hlzf
               with "Hdep Hnpw Hpay").
     (* echo makes no descriptor call, so its ledger is dropped here *)
     (* echo makes no descriptor call, no chdir and no fork, so its ledger,
        its working directory and its children set are all dropped here *)
-    iIntros (N h) "%Hpayeq %Hparkeq %Hsz Hszf #Ht _ _ _ _ #HA Hrun".
+    iIntros (N h) "%Hpayeq %Hsz Hszf #Ht _ _ _ _ #HA Hrun".
     pose proof (Hpayeq : UkRun.ukn_triv N) as Hti.
     (* the walk is stated at a STATUS-INDEPENDENT payload now (lane
        IO-LEAF, M2); the trivial one is one ([UkRun.ukn_const_of_triv]) *)

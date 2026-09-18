@@ -1497,6 +1497,8 @@ EchoLinksPro.v
 EchoLinksLine.v
 EchoLinksBan.v
 LinkRec.v
+StageRec.v
+ReadRec.v
 EchoFsPure.v
 FileFsPure.v
 AppEcho.v
@@ -1506,6 +1508,8 @@ FileDeltas.v
 FileWrite.v
 FileOut.v
 FileLinks.v
+FileLinksLine.v
+FileLinkInst.v
 AppFileRec.v
 AppTree.v
 

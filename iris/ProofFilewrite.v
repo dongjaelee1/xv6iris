@@ -2848,7 +2848,7 @@ Section ProofFilewrite.
       by apply fw_maxfile_bsize.
     iAssert (|={⊤}=> top_frag (fs_gamma_L fsc_fs) (bv_unsigned inum)
                        (era_node dn' bm' data')
-             ∗ off_gv γo0 (1/2) (bv_unsigned v2)
+             ∗ off_link γo0 (bv_unsigned v2)
              ∗ ∃ (tf : Z) (pf xf : nat),
                  ⌜(tf = t /\ pf = p /\ xf = 0%nat /\ (rz < c)%Z)
                   \/ (tf = t /\ pf = p /\ xf = 1%nat /\ (rz < c)%Z)

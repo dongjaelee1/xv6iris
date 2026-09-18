@@ -560,6 +560,19 @@ record `StageRec` with `lk_stg`, `lk_cur`, `lk_stage`, `lk_cur_step`,
 `lk_rd_res`, `lk_rr_disc`) with the sweep of those three files — which
 delivers `Hchild_echo` and `Hwbr`; and in `UShRound` the one-line change
 to `Hcltaint` (it takes the two era pins).
+LINK-GEN-2 LANDED (2026-09-17): `lk_pan`/`lk_exf` are functions of the
+input and `lk_exfb` carries the exec-failed diagnostic (echo's instance
+still definitional); `UkShDiag.ush_execfail_law_at dg n` puts the
+diagnostic on the LAW only; `FileLinksLine.v` + `FileLinkInst.v` give
+`file_link_inst` (the era's head arm as a third arm of four families;
+`lk_turn` carrying the deed's typed witness), and `file_Hwbl`,
+`file_Hwbwc`, `file_Hcltaint`, `file_Hwc`, `file_Hwbr` are what SH-ROUND
+applies at `file_Wcl g`/`file_Wbl g`, with `Hpanic`/`Hexecfail` from
+`UShPanic`'s framed laws at `sh_hold`.  `UShRound.v` owes two hypothesis
+reshapes: `Hcltaint` takes the echo-side era pin, and `Hexecfail` is
+stated at `ush_execfail_law_at (lk_exfb …) …` (a cat line prints
+`alt_execcat`), with `UkShEcho.ush_execfail_law_wq` gaining the same two
+parameters.  Open: `Hchild_echo` (LINK-GEN-3's stage).
 
 ### 4.1 What the stage adds: ONE value per era
 

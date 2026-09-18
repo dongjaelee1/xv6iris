@@ -1261,7 +1261,7 @@ Section UInitSh.
        needs is [length fdv = NOFILE], which comes off the LENT authority
        ([UserFd.ufd_auth_len]) rather than off the ledger. *)
     iModIntro. iIntros (γp np N m pc l)
-      "%Hpeq %Hheq %Ha0 %Ha1 #Hro #Hargv Hstd Hrow Hcred Hpos Hlease Hchf Hpidf".
+      "%Hpeq %Ha0 %Ha1 #Hro #Hargv Hstd Hrow Hcred Hpos Hlease Hchf Hpidf".
     (* ...and the taint arm at the SAME payload: a tainted process runs on
        the generic family, which exists at any constant payload and HOLDS
        the resource it names ([UexecExecMint.uslot_mint_pay]).  The payload

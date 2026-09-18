@@ -709,17 +709,14 @@ Proof. intros (_ & _ & _ & _ & _ & _ & _ & Hfd & _). exact Hfd. Qed.
 (*  these two lemmas.  Exec from the generic tier therefore needs nothing *)
 (*  beyond them, which is what SS8.3 says.  (* RA-2: held case here *)    *)
 (* ===================================================================== *)
-Lemma kexec_image_ok_parked (f : elf_bytes) (na : nat) (alen : nat -> nat)
-    (afun : nat -> nat -> bv 8) (sts : list fdstate) (W' : uvis) :
-  kexec_image_ok f na alen afun sts W' ->
-  fdv_all_parked sts -> fdv_all_parked (uvis_fd W').
-Proof. intros Hok Hpk. rewrite (kexec_image_ok_fd f na alen afun sts W' Hok). exact Hpk. Qed.
-
-Lemma exec_key_ok_parked (na : nat) (alen : nat -> nat) (sts : list fdstate)
-    (W' : uvis) :
-  exec_key_ok na alen sts W' ->
-  fdv_all_parked sts -> fdv_all_parked (uvis_fd W').
-Proof. intros Hok Hpk. rewrite (exec_key_ok_fd na alen sts W' Hok). exact Hpk. Qed.
+(* [kexec_image_ok_parked] AND [exec_key_ok_parked] ARE DELETED (lane
+   OFF-LINK-2, L6): they carried [FdSlots.fdv_all_parked] from the exec'ing
+   process's table to the new image's key, for a generic tier that is no
+   longer told anything about offsets (design/app-file.md SS3.5).  Their
+   consumers went with lane OFF-HAND-6's H3 (the exec crossing's all-parked
+   row) and every hit left is a comment.  [kexec_image_ok_fd] /
+   [exec_key_ok_fd] -- "the new image's table IS the exec'ing process's" --
+   stand, and are what any future row of this shape reads. *)
 
 (* THE MAP-STOP READER: the row a slot constructor takes straight over as
    [UkRun.uslot_of_urun]'s premise. *)

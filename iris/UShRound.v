@@ -101,6 +101,8 @@ Require Import UkShRedirSeam.
 Require Import UkShEcho.
 Require Import UkShFork.
 Require Import UkFileOpen.
+Require Import LinkRec.                  (* the era's link record *)
+Require Import FileLinkInst.             (* [file_link_inst] -- lane LINK-GEN-2 *)
 Require Import UShLine.
 Require Import UShEcho.
 Require Import UShKernel.
@@ -136,6 +138,9 @@ Section UShRound.
   Context (Htag : @riscv_rx_tag Σ (@riscv_fixedGS Σ _) = ftag g).
 
   Local Notation T := (file_taint (fgn_cl g)).
+  (* the era's LINK RECORD (lane LINK-GEN-2): every family this file's
+     hypotheses are stated at is one of its fields. *)
+  Local Notation FI := (FileLinkInst.file_link_inst g).
 
   (* =================================================================== *)
   (*  S1  THE FAMILIES                                                    *)
@@ -145,7 +150,7 @@ Section UShRound.
   (*  (review SSD3).  They are PARAMETERS here, with exactly the five      *)
   (*  conversions the loop spends stated as hypotheses below -- which is  *)
   (*  where LINK-GEN's instance plugs in.  [Pm] is NOT a parameter:       *)
-  (*  [UShLine.ush_mid] mentions only [EchoOut]'s era pins and the        *)
+  (*  [UShLine.ush_mid_at] mentions only [EchoOut]'s era pins and the        *)
   (*  console lease, so the file era takes it verbatim at [fgn_echo g].   *)
   (* =================================================================== *)
   (* sh's own half of the console position pair ([UkSh]'s [γp]) *)
@@ -190,18 +195,29 @@ Section UShRound.
   Hypothesis Hwbl : forall I : list (bv 8), ⊢ Wcl I 3%nat -∗ Wcl I 0%nat.
   (* [UInitBoot]'s [Hsh_wbwc]: the banner-owed credential is a boundary one *)
   Hypothesis Hwbwc : forall I : list (bv 8), ⊢ Wbl I -∗ Wcl I 0%nat.
-  (* [EchoLinksLine.ewc_lcred_taint]: the taint inhabits every credential *)
-  Hypothesis Hcltaint : forall (I : list (bv 8)) (p : nat), ⊢ T -∗ Wcl I p.
+  (* [LinkRec.lk_lcred_taint]: the taint inhabits every credential -- AT A
+     PIN (lane LINK-GEN's section 6, sharpened by LINK-GEN-2).  [Wcl I p]
+     carries the era's pin under an existential and the pin is a linear
+     [ghost_map] element persisted, which the taint does not produce; the
+     ECHO-SIDE pin is the one the record's [lk_pin FI] IS
+     ([FileLinkInst]: [lk_pin := era_pin (fgn_echo g)]), so ONE pin is
+     enough and every spender ([sh_kill_law_file]) holds it. *)
+  Hypothesis Hcltaint : forall (I : list (bv 8)) (p : nat) (v : era_pins),
+    ⊢ era_pin (fgn_echo g) (S gen_id) v -∗ T -∗ Wcl I p.
   (* [UkSh]'s [Hwc]: the read that completed a line moves the credential
      from "2" at the old input to "3" at the new one *)
   Hypothesis Hwc : forall I l : list (bv 8), wl_nl ∉ l ->
-    ⊢ UShLine.ush_mid (fgn_echo g) γp (I ++ l ++ [wl_nl]) -∗ Wcl I 2%nat -∗
-      UShLine.ush_mid (fgn_echo g) γp (I ++ l ++ [wl_nl])
+    ⊢ UShLine.ush_mid_at (lk_rres FI) (fgn_echo g) γp
+        (I ++ l ++ [wl_nl]) -∗ Wcl I 2%nat -∗
+      UShLine.ush_mid_at (lk_rres FI) (fgn_echo g) γp
+        (I ++ l ++ [wl_nl])
       ∗ Wcl (I ++ l ++ [wl_nl]) 3%nat.
   (* [UShLine.ush_wb_read_holds]: a read at a banner-owed credential taints *)
   Hypothesis Hwbr : forall I l : list (bv 8), wl_nl ∉ l ->
-    ⊢ UShLine.ush_mid (fgn_echo g) γp (I ++ l ++ [wl_nl]) -∗ Wbl I -∗
-      UShLine.ush_mid (fgn_echo g) γp (I ++ l ++ [wl_nl]) ∗ T.
+    ⊢ UShLine.ush_mid_at (lk_rres FI) (fgn_echo g) γp
+        (I ++ l ++ [wl_nl]) -∗ Wbl I -∗
+      UShLine.ush_mid_at (lk_rres FI) (fgn_echo g) γp
+        (I ++ l ++ [wl_nl]) ∗ T.
   (* the era's kill credential IS the file taint ([AppFileRec]'s interface
      equation, projected) *)
   Hypothesis Hktaint : ⊢ app_taint -∗ T.
@@ -328,8 +344,17 @@ Section UShRound.
   Hypothesis Hchild_echo : ⊢ UkShEcho.sh_exec_sup_echo_wq Wcf.
 
   (* ---- HYPOTHESIS: the exec-failed diagnostic's law at the file
-          families ([UShPanic.ush_execfail_law_holds]'s twin) ---- *)
-  Hypothesis Hexecfail : ⊢ UkShEcho.ush_execfail_law_wq Wcf.
+          families, AT THE PARAMETERIZED CARRIER (lane LINK-GEN-4).  The
+          landed [ush_execfail_law_wq] names [alt_execfail] at EVERY input
+          and the file's diagnostic is [FileLinksLine.fexfb], which is
+          [alt_execcat] at an [LCat] line -- so the constant form is FALSE
+          here.  At [ush_execfail_law_wq_at (lk_exfb FI) ...]
+          the hypothesis is DISCHARGEABLE TODAY:
+          [UShEchoPay.ush_execfail_law_wq_at_hold file_stage_inst]. ---- *)
+  Hypothesis Hexecfail :
+    ⊢ UkShEcho.ush_execfail_law_wq_at (lk_exfb FI)
+        (fun I : list (bv 8) => (length (lk_exfb FI I) - 2)%nat)
+        Wcf.
 
   (* ---- HYPOTHESIS: sh's own fork panic at the file families
           ([UShPanic.ush_panic_law_holds]'s twin) ---- *)
@@ -354,18 +379,32 @@ Section UShRound.
      ∗ (∃ (cs0 : list nat) (s0 : fst) (s : dst),
           fdq r q s ∗ ⌜UCatOut.cat_tie cs0 s0 I s⌝))%I.
 
-  (* WHAT THIS SKELETON CANNOT NAME, and that is the finding: [UCatKernel]
-     has a ROUND ([cat_round_at]) and NO ENTRY, so the image/argv premises
-     cat's entry will carry ([UShEcho.echo_node_img]'s twin) do not exist
-     to be written down.  What CAN be written down is the channel and the
-     payload, which is what CAT-ENTRY-2 has to deliver. *)
+  (* THE ENTRY, AT THE NODE SH BUILT (lane CAT-GEOM-2).  This used to
+     quantify [M] and [av] FREE, and that was WRONG: cat's diagnostic
+     names `f` ([FileDisc.alt_catopen]), so an entry owed at EVERY
+     argument vector is a claim cat cannot make.  The five premises below
+     are the ones [UCatKernel.cat_image_entry] takes, and every one of
+     them is a fact SH HAS -- it built the node ([UkShEcho.echo_cmd] at
+     [t]) and it parsed the line -- so [Hchild_cat] is ONE application of
+     that lemma. *)
   Hypothesis Hchild_cat :
-    forall (I : list (bv 8)) (q : Qp) (M : gmap Z (bv 8)) (av : mword 64)
+    forall (I : list (bv 8)) (q : Qp) (ws : list (list (bv 8)))
+           (M : gmap Z (bv 8)) (sv t : Z) (gn : nat -> bv 8)
            (sts : list fdstate) (cw : Z) (cs : gset gname)
            (pidv : mword 32),
       length sts = NOFILE ->
       cw = FsImg.ROOTINO ->
-      ⊢ image_entry ElfUser.cat_elf M av sts cw cs pidv
+      (* ...and the line is `cat f`, read off sh's own node *)
+      EchoDisc.line_ok ws ->
+      UShEcho.echo_node_img ws M sv t gn ->
+      UkShEcho.echo_argv_bytes ws gn ->
+      length ws = 2%nat ->
+      UkShEcho.echo_alen ws 1%nat = 1%nat ->
+      (forall j : nat, (j < 1)%nat ->
+         LineWords.wl_line ws !!! (UkShEcho.echo_off ws 1%nat + j)%nat
+         = FsImgCheck.fname_f !!! j) ->
+      ⊢ image_entry ElfUser.cat_elf M (mword_of_int (t + 8) : mword 64) sts
+          cw cs pidv
           (fun _ : Z => UkShFork.ushf_wq Wcf I) (cat_pay I q) uslot.
 
   (* ---- HYPOTHESIS: the redirect child's own walk, from 0x9c0 to its
@@ -381,7 +420,6 @@ Section UShRound.
           (fb : nat -> bv 8) (sz : Z) (ld : list fdstate) (n : nat)
           (I : list (bv 8)),
           ⌜ ukn_pay N' = (fun _ : Z => UkShFork.ushf_wq Wcf I) ⌝ -∗
-          ⌜ ukn_held N' = ∅ ⌝ -∗
           ⌜ m !!! Regidx (mword_of_int 9 : mword 5)
               = (mword_of_int s0 : mword 64) ⌝ -∗
           (* THE LINE IS THE REDIRECT SHAPE, which is where this law and
@@ -440,7 +478,7 @@ Section UShRound.
       (∃ v : era_pins, era_pin (fgn_echo g) (S gen_id) v) -∗
       (∃ vf : file_era, file_era_pin g (S gen_id) vf) -∗
       UkSh.ush_rest_l (PS := uprogSG_free) N γp T Wcf Wbf
-        (UShLine.ush_mid (fgn_echo g) γp)
+        (UShLine.ush_mid_at (lk_rres FI) (fgn_echo g) γp)
         (UInitSh.sh_Rsh (ukn_t N) (ukn_d N) (ukn_s N)).
   Proof using Hchild_cat Hchild_echo Hchild_redir Hcltaint Hcons Hexecfail
               Hktaint Hlexr Hopen_hand Hpanic Htag Hwbl Hwbr Hwbwc Hwc.

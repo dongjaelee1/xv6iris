@@ -336,7 +336,6 @@ Section UkShFork.
              The fork arm supplies it: the child's held set is the one sh
              chose ([UkFork.wp_uk_ecall_fork]'s [hs]), and sh's own is
              empty ([UkSh.ush_gen_slot]'s row). *)
-          ⌜ ukn_held N' = ∅ ⌝ -∗
           ⌜ m !!! Regidx s1_idx = (mword_of_int s0 : mword 64) ⌝ -∗
           ⌜ Lp ws g 0%nat len ⌝ -∗
           ⌜ ws = last_ws I ⌝ -∗
@@ -480,7 +479,6 @@ Section UkShFork.
           [ushf_child_law]'s [empty] is sh's own slot
           ([UkSh.ush_gen_slot_held]), which this core lemma does not
           hold and its callers do. *)
-       ⌜ ukn_held N' = ukn_held N ⌝ -∗
        ⌜ mA !!! Regidx s1_idx
          = (mword_of_int (sh_buf + Z.of_nat k) : mword 64) ⌝ -∗
        my_pay γ' Q -∗ Rc -∗
@@ -702,7 +700,7 @@ Section UkShFork.
       + exact Hfd0.
       + rewrite /UkSh.ush_pstate /UkSh.ush_std. iFrame "Hustd Hcwd Hch Hpid Hpos".
     - (* ================= THE CHILD: parse, run, exec =================== *)
-      iIntros (N' hA mA γ') "%Hpeq' %Hheq' %HcsA %Ha0A Hmy HRc #Hcode' Hpay Hsz Hustd Hcwd
+      iIntros (N' hA mA γ') "%Hpeq' %HcsA %Ha0A Hmy HRc #Hcode' Hpay Hsz Hustd Hcwd
                              Hch _ Hrun".
       iDestruct "Hpay" as "(_ & #Hro' & #Hjt' & Hdat & Hbuf)".
       (* ---- 0x930  c.beqz a0,0x9c0 -- TAKEN: this is the child ---- *)
@@ -734,9 +732,9 @@ Section UkShFork.
       replace (2 + (UkShDiag.ush_Dg + (74 + n)))%nat
         with (68 + (8 + (UkShDiag.ush_Dg + n)))%nat
         by (unfold UkShDiag.ush_Dg; lia).
-      iApply ("Hchild" $! N' hB mA γ' with "[%] [%] [%] Hmy HRc Hcode' Hro' Hjt'
+      iApply ("Hchild" $! N' hB mA γ' with "[%] [%] Hmy HRc Hcode' Hro' Hjt'
                 Hline Hws Hsy Hustd Hcwd Hch Hfresh Hrun");
-        [ exact Hpeq' | exact Hheq' | exact Hs1_A ].
+        [ exact Hpeq' | exact Hs1_A ].
   Qed.
 
   (* ===================================================================== *)
@@ -821,10 +819,6 @@ Section UkShFork.
            Hpm1 Hpmwb Hwbl.
     iIntros "#Hgen Hhead #Hcode #Hro #Hjt #Hkl #Hchl #Hplaw %Hfd0 Hstd
              Hdat Hsz Hbuf Hrun".
-    (* SH'S OWN HELD SET, off its generic slot (lane OFF-HAND-4, S2): the
-       child inherits it, and [ushf_child_law] asks the child's to be
-       empty because /echo's entry is minted there. *)
-    iDestruct (UkSh.ush_gen_slot_held with "Hgen") as %Hshheld.
     iDestruct "Hstd" as "(Hustd & Hcwd & Hch & Hpid & Hpos)".
     (* THE CONSOLE ARM APART FROM THE REST.  The boundary the slot names
        comes out with the EQUATION that the line the loop read is its last
@@ -878,7 +872,7 @@ Section UkShFork.
           exfalso.
           exact (ushf_pid_sext_ne_m1 pidv Hrng (eq_trans (eq_sym Hpv) Hr1)).
       + (* the child, on the paid entry *)
-        iIntros (N' hB mA γ') "%Hpeq' %Hheq' %Hs1A Hmy HRc #Hcode' #Hro' #Hjt'
+        iIntros (N' hB mA γ') "%Hpeq' %Hs1A Hmy HRc #Hcode' #Hro' #Hjt'
                                Hline' Hws Hsy Hustd' Hcwd' Hch' Hfresh Hrun'".
         (* THE CHILD'S ROOM, AS ITS OWN LAW ASKS FOR IT (lane SH-CHILD-2):
            the core hands [68 + (8 + (ush_Dg + n))] -- the body's
@@ -891,10 +885,9 @@ Section UkShFork.
         iApply ("Hchl" $! N' hB mA DfracDiscarded DfracDiscarded
                   (sh_buf + Z.of_nat k) len ws (fun j : nat => f (k + j)%nat)
                   sz l (68 - Dc + n)%nat np
-                  with "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] Hcode' [] []
+                  with "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] Hcode' [] []
                         Hjt' Hline' Hws Hsy Hustd' Hcwd' [Hch'] Hfresh HRc Hrun'").
         * exact Hpeq'.
-        * rewrite Hheq'. exact Hshheld.
         * exact Hs1A.
         * exact Hline.
         * symmetry. exact Hlast.

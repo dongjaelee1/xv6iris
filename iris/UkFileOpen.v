@@ -104,6 +104,55 @@ Section UkFileOpen.
   Local Notation a2_idx := (mword_of_int 12 : mword 5).
 
   (* =================================================================== *)
+  (*  0.  THE LEDGER A TAINTED OPEN HANDS BACK (lane CAT-GEOM-2).         *)
+  (*                                                                     *)
+  (*  The taint disjunct of every deed corollary below used to be         *)
+  (*  [UserFd.ustd_any] -- "SOME ledger" -- and that is strictly weaker   *)
+  (*  than what the leaf has in hand: [UConsOpen.uk_open_fd_arm] says     *)
+  (*  either the call FAILED and the ledger is UNTOUCHED, or it ALLOCATED *)
+  (*  and the ledger is untouched beside the new handle whenever the      *)
+  (*  caller's own standard streams are all open                          *)
+  (*  ([UserFd.ualloc_hi]).  A program that writes a DIAGNOSTIC after a   *)
+  (*  tainted open needs exactly that and [ustd_any] does not give it:    *)
+  (*  it does not say the program's fd 2 is still the console.  So the    *)
+  (*  arm keeps the disjunction, minus the two kernel-side lists the      *)
+  (*  caller cannot name.                                                *)
+  (* =================================================================== *)
+  Definition uk_open_taint_fd (gf : gname) (l : list fdstate) (r : mword 64)
+    : iProp Σ :=
+    ((∃ (fd : nat) (rd wr : bool) (t : fdtype),
+        ⌜r = (mword_of_int (Z.of_nat fd) : mword 64)
+         /\ (fd < NOFILE)%nat⌝ ∗ ualloc gf l fd (FdOpen rd wr t))
+     ∨ (⌜r = (mword_of_int (-1) : mword 64)⌝ ∗ ustd gf l))%I.
+
+  Lemma uk_open_taint_fd_of_arm (gf : gname) (l sts fdv' : list fdstate)
+      (r : mword 64) :
+    uk_open_fd_arm gf l sts fdv' r -∗ uk_open_taint_fd gf l r.
+  Proof using .
+    rewrite /uk_open_fd_arm /uk_open_taint_fd.
+    iIntros "[Hal | [%Hb Hstd]]".
+    - iDestruct "Hal" as (fd rd wr t) "[%Hb' Hal]".
+      iLeft. iExists fd, rd, wr, t. iFrame "Hal". iPureIntro.
+      exact (conj (proj1 Hb') (proj1 (proj2 Hb'))).
+    - iRight. iFrame "Hstd". iPureIntro. exact (proj1 Hb).
+  Qed.
+
+  (* ...AND THE READING A PROGRAM WHOSE STANDARD STREAMS ARE ALL OPEN
+     MAKES OF IT: the ledger comes home on BOTH sub-arms, because
+     [fdalloc] could not have landed on one of them
+     ([UserFd.ualloc_hi]).  The new handle is dropped. *)
+  Lemma uk_open_taint_fd_std (gf : gname) (l : list fdstate) (r : mword 64) :
+    fd_lowest_closed l = None ->
+    uk_open_taint_fd gf l r -∗ ustd gf l.
+  Proof using .
+    intros Hnone. rewrite /uk_open_taint_fd.
+    iIntros "[Hal | [_ $]]".
+    iDestruct "Hal" as (fd rd wr t) "[_ Hal]".
+    iDestruct (ualloc_hi gf l fd (FdOpen rd wr t) Hnone with "Hal")
+      as "(_ & $ & _)".
+  Qed.
+
+  (* =================================================================== *)
   (*  1.  open(`f`, O_RDONLY) AT A PRESENT DEED                           *)
   (* =================================================================== *)
 
@@ -185,8 +234,10 @@ Section UkFileOpen.
                        (om_writable (m !!! Regidx a1_idx))
                        (FdInode i γo OffParked)) ∗
              fdq r q1 (Some (i, bs)) ∗ fdq r q2 (Some (i, bs)))
-        (* ...or the application is tainted, and SOME ledger comes back *)
-        ∨ (ustd_any (ukn_fd N) ∗ file_taint c)) -∗
+        (* ...or the application is tainted, and the LEDGER comes back
+           (lane CAT-GEOM-2): either untouched, or beside a handle
+           [UserFd.ualloc_hi] takes off it *)
+        ∨ (uk_open_taint_fd (ukn_fd N) l rv ∗ file_taint c)) -∗
        UserCwd.ucwd (ukn_cwd N) cw -∗
        urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
@@ -217,7 +268,8 @@ Section UkFileOpen.
     iApply ("Hcont" $! h' rv with "[Hfd Hans] Hcwd Hrun").
     iDestruct "Hans" as "[[%Hr %Hfdv] | [Hok | #HT]]"; last first.
     { iRight. iRight. iFrame "HT".
-      iApply (init_cons_any_std (ukn_fd N) l (uvis_fd W) fdv' rv with "[Hfd]").
+      iApply (uk_open_taint_fd_of_arm (ukn_fd N) l (uvis_fd W) fdv' rv
+                with "[Hfd]").
       rewrite /uk_open_fd_arm. iExact "Hfd". }
     - iDestruct "Hok" as (γo) "(%Hrcpt & Hd1 & Hd2)".
       iDestruct "Hfd" as "[Hal | [%Hb _]]"; last first.
@@ -310,7 +362,7 @@ Section UkFileOpen.
     (∀ (h' : CpuId) (rv : mword 64),
        ((⌜rv = (mword_of_int (-1) : mword 64)⌝ ∗ ustd (ukn_fd N) l
          ∗ fdq r q None)
-        ∨ (ustd_any (ukn_fd N) ∗ file_taint c)) -∗
+        ∨ (uk_open_taint_fd (ukn_fd N) l rv ∗ file_taint c)) -∗
        UserCwd.ucwd (ukn_cwd N) cw -∗
        urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
@@ -347,7 +399,8 @@ Section UkFileOpen.
                 with "[Hfd]").
       rewrite /uk_open_fd_arm. iExact "Hfd".
     - iRight. iFrame "HT".
-      iApply (init_cons_any_std (ukn_fd N) l (uvis_fd W) fdv' rv with "[Hfd]").
+      iApply (uk_open_taint_fd_of_arm (ukn_fd N) l (uvis_fd W) fdv' rv
+                with "[Hfd]").
       rewrite /uk_open_fd_arm. iExact "Hfd".
   Qed.
 
@@ -970,8 +1023,10 @@ Section UkFileOpen.
                        (om_writable (m !!! Regidx a1_idx))
                        (FdInode i γo OffParked)) ∗
              fdq r q1 (Some (i, bs)) ∗ fdq r q2 (Some (i, bs)))
-        (* ...or the application is tainted, and SOME ledger comes back *)
-        ∨ (ustd_any (ukn_fd N) ∗ file_taint c)) -∗
+        (* ...or the application is tainted, and the LEDGER comes back
+           (lane CAT-GEOM-2): either untouched, or beside a handle
+           [UserFd.ualloc_hi] takes off it *)
+        ∨ (uk_open_taint_fd (ukn_fd N) l rv ∗ file_taint c)) -∗
        UserCwd.ucwd (ukn_cwd N) cw -∗
        urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
@@ -1002,7 +1057,8 @@ Section UkFileOpen.
     iApply ("Hcont" $! h' rv with "[Hfd Hans] Hcwd Hrun").
     iDestruct "Hans" as "[[%Hr %Hfdv] | [Hok | #HT]]"; last first.
     { iRight. iRight. iFrame "HT".
-      iApply (init_cons_any_std (ukn_fd N) l (uvis_fd W) fdv' rv with "[Hfd]").
+      iApply (uk_open_taint_fd_of_arm (ukn_fd N) l (uvis_fd W) fdv' rv
+                with "[Hfd]").
       rewrite /uk_open_fd_arm. iExact "Hfd". }
     - iDestruct "Hok" as (γo) "(%Hrcpt & Hd1 & Hd2)".
       iDestruct "Hfd" as "[Hal | [%Hb _]]"; last first.
@@ -1048,7 +1104,7 @@ Section UkFileOpen.
     (∀ (h' : CpuId) (rv : mword 64),
        ((⌜rv = (mword_of_int (-1) : mword 64)⌝ ∗ ustd (ukn_fd N) l
          ∗ fdq r q None)
-        ∨ (ustd_any (ukn_fd N) ∗ file_taint c)) -∗
+        ∨ (uk_open_taint_fd (ukn_fd N) l rv ∗ file_taint c)) -∗
        UserCwd.ucwd (ukn_cwd N) cw -∗
        urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
@@ -1085,7 +1141,8 @@ Section UkFileOpen.
                 with "[Hfd]").
       rewrite /uk_open_fd_arm. iExact "Hfd".
     - iRight. iFrame "HT".
-      iApply (init_cons_any_std (ukn_fd N) l (uvis_fd W) fdv' rv with "[Hfd]").
+      iApply (uk_open_taint_fd_of_arm (ukn_fd N) l (uvis_fd W) fdv' rv
+                with "[Hfd]").
       rewrite /uk_open_fd_arm. iExact "Hfd".
   Qed.
 
@@ -1234,8 +1291,10 @@ Section UkFileOpen.
                        (om_writable (m !!! Regidx a1_idx))
                        (FdInode i γo OffParked)) ∗
              fdq r q1 (Some (i, bs)) ∗ fdq r q2 (Some (i, bs)))
-        (* ...or the application is tainted, and SOME ledger comes back *)
-        ∨ (ustd_any (ukn_fd N) ∗ file_taint c)) -∗
+        (* ...or the application is tainted, and the LEDGER comes back
+           (lane CAT-GEOM-2): either untouched, or beside a handle
+           [UserFd.ualloc_hi] takes off it *)
+        ∨ (uk_open_taint_fd (ukn_fd N) l rv ∗ file_taint c)) -∗
        UserCwd.ucwd (ukn_cwd N) cw -∗
        urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
@@ -1272,7 +1331,7 @@ Section UkFileOpen.
     (∀ (h' : CpuId) (rv : mword 64),
        ((⌜rv = (mword_of_int (-1) : mword 64)⌝ ∗ ustd (ukn_fd N) l
          ∗ fdq r q None)
-        ∨ (ustd_any (ukn_fd N) ∗ file_taint c)) -∗
+        ∨ (uk_open_taint_fd (ukn_fd N) l rv ∗ file_taint c)) -∗
        UserCwd.ucwd (ukn_cwd N) cw -∗
        urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗

@@ -1112,7 +1112,6 @@ Section UkShRun.
            fork leaf mints the child at the set the parent chose, and this
            arm passes sh's along.  The child's exec of /echo relays it to
            echo's entry ([UkShFork.ushf_child_law]). *)
-        ⌜ ukn_held N' = ukn_held N ⌝ -∗
         my_pay γ' Q -∗
         Rc -∗
         shk_code (ukn_t N') -∗ P (ukn_t N') (ukn_d N') (ukn_s N') -∗ usz (ukn_s N') szv -∗
@@ -1145,19 +1144,14 @@ Section UkShRun.
       by (apply bv_eq; vm_compute; reflexivity).
     rewrite E0 Em. iIntros (h1) "Hrun".
     set (m1 := <[Regidx a7_idx := (mword_of_int 1 : mword 64)]> m).
-    (* THE CHILD'S HELD SET IS SH'S OWN (lane OFF-HAND-4, S1): sh holds no
-       offset half, and its runner's child does not yet either -- the
-       REDIR child that does is design/app-file.md SS3's, and giving sh's
-       fork lemma its own [hs] binder is that lane's. *)
     iApply (wp_uk_ecall_fork N h1 m1 (mword_of_int 0xc80) avail szv l D cw
-              Sc Q Rc (ukn_held N)
+              Sc Q Rc
               (fun gt gd gs => (shk_code gt ∗ P gt gd gs)%I)
               (FP := forkable_sep (fun gt _ _ => shk_code gt) P
                        forkable_shk_code FP)
               ltac:(rewrite /m1 /usysno
                       (upd_eq m (Regidx a7_idx) (mword_of_int 1 : mword 64));
                     vm_compute; reflexivity)
-              ltac:(reflexivity)
               ltac:(vm_compute; reflexivity)
               with "[] HRc [HP] Hsz Hstd HD Hcwd Hch Hkw Hrun").
     { iApply (uis_shk_c80 with "Hcode"). }
@@ -1188,7 +1182,7 @@ Section UkShRun.
       iIntros (hp2) "Hrun".
       iApply ("Hpar" $! hp2 r with "[%] Hans HP Hsz Hstd Hcwd HD Hrun").
       exact Hr.
-    - iIntros (N' hc γ') "%Hheq %Hpeq Hmy HRc [#Hck HP] Hsz Hstd HD Hcwd Hch _ Hrun".
+    - iIntros (N' hc γ') "%Hpeq Hmy HRc [#Hck HP] Hsz Hstd HD Hcwd Hch _ Hrun".
       (* the weaker class the rest of sh's walk is stated at: the record
          the arm minted is keyed at [Q], and [Q] does not read the status *)
       pose proof (ukn_const_of_eq N' Q Hpeq HQc) as Hcst'.
@@ -1202,9 +1196,8 @@ Section UkShRun.
       { iApply (uis_shk_c84 with "Hck"). }
       iIntros (hc2) "Hrun".
       iApply ("Hchi" $! N' hc2 γ'
-                with "[%] [%] Hmy HRc Hck HP Hsz Hstd Hcwd Hch HD Hrun").
-      { exact Hpeq. }
-      exact Hheq.
+                with "[%] Hmy HRc Hck HP Hsz Hstd Hcwd Hch HD Hrun").
+      exact Hpeq.
   Qed.
 
   (* THE INDEX-FREE COROLLARY [wp_kshr_fork_any] IS GONE (lane IO-LEAF,
@@ -1672,7 +1665,6 @@ Section UkShRun.
         ⌜ ukn_pay N' = Q ⌝ -∗
         (* ...AND ITS HELD SET IS SH'S OWN (lane OFF-HAND-4, S1/S2):
            [wp_kshr_fork]'s row, relayed. *)
-        ⌜ ukn_held N' = ukn_held N ⌝ -∗
         ⌜ ucallee_saved m m' ⌝ -∗
         ⌜ m' !!! Regidx a0_idx = (mword_of_int 0 : mword 64) ⌝ -∗
         my_pay γ' Q -∗
@@ -1930,7 +1922,7 @@ Section UkShRun.
         exact (upd_eq _ (Regidx a0_idx) r).
       + iExact "Hrun".
     - (* ---- THE CHILD, under fresh names ---- *)
-      iIntros (N' hc γ') "%Hpeq %Hheq Hmy HRc #Hck (#Hcro & HP & Hw8 & Hw0) Hsz Hstd
+      iIntros (N' hc γ') "%Hpeq Hmy HRc #Hck (#Hcro & HP & Hw8 & Hw0) Hsz Hstd
                           Hcwd Hch HD Hrun".
       pose proof (ukn_const_of_eq N' Q Hpeq HQc) as Hcst'.
       (* THE CHILD NEVER PANICS: its a0 is 0 on the nose, which is what
@@ -1949,9 +1941,8 @@ Section UkShRun.
         discriminate Hneg. }
       iIntros (hc2 m') "%Hq %Hra %Hs0 %Hsps _ Hrun".
       iApply ("Hchi" $! N' hc2 m' γ'
-                with "[%] [%] [%] [%] Hmy HRc Hck HP Hsz Hstd Hcwd Hch HD [Hrun]").
+                with "[%] [%] [%] Hmy HRc Hck HP Hsz Hstd Hcwd Hch HD [Hrun]").
       + exact Hpeq.
-      + exact Hheq.
       + exact (fun q => Hback (mword_of_int 0 : mword 64) m' q Hq Hra Hs0 Hsps).
       + rewrite (Hq a0_idx ltac:(vm_compute; lia) ltac:(vm_compute; lia)
                    ltac:(vm_compute; lia) ltac:(vm_compute; lia)).
@@ -2015,7 +2006,6 @@ Section UkShRun.
         ⌜ ukn_pay N' = ukn_pay N ⌝ -∗
         (* ...AND ITS HELD SET IS SH'S OWN (lane OFF-HAND-4, S1/S2):
            [wp_kshr_fork]'s row, relayed. *)
-        ⌜ ukn_held N' = ukn_held N ⌝ -∗
         ⌜ ucallee_saved m m' ⌝ -∗
         ⌜ m' !!! Regidx a0_idx = (mword_of_int 0 : mword 64) ⌝ -∗
         shk_code (ukn_t N') -∗ P (ukn_t N') (ukn_d N') (ukn_s N') -∗ usz (ukn_s N') szv -∗
@@ -2057,11 +2047,11 @@ Section UkShRun.
                 with "[%] [%] [%] HP Hsz Hstd [Hcwd] Hch HD Hpayv Hrun");
         [ exact Hr | exact Hcs | exact Ha0
         | iApply (ucwd_any_of with "Hcwd") ].
-    - iIntros (N' h' m' γ') "%Hpeq %Hheq %Hcs %Ha0 _ _ #Hck HP Hsz Hstd Hcwd Hch HD
+    - iIntros (N' h' m' γ') "%Hpeq %Hcs %Ha0 _ _ #Hck HP Hsz Hstd Hcwd Hch HD
                              Hrun".
       iApply ("Hchi" $! N' h' m'
-                with "[%] [%] [%] [%] Hck HP Hsz Hstd [Hcwd] [Hch] HD Hrun");
-        [ exact Hpeq | exact Hheq | exact Hcs | exact Ha0
+                with "[%] [%] [%] Hck HP Hsz Hstd [Hcwd] [Hch] HD Hrun");
+        [ exact Hpeq | exact Hcs | exact Ha0
         | iApply (ucwd_any_of with "Hcwd")
         | iApply (uch_any_of with "Hch") ].
   Qed.
@@ -3406,7 +3396,7 @@ Section UkShRun.
            hands on is the EQUATION, and every use the class had --
            [UkRun.ukn_const], the free exit row, the exec supply --
            transfers through it. *)
-        iIntros (N' hA mA) "%Hti' %Hheq' %HcsA %Ha0A #Hck (#Hjt2 & #Ht2) Hsz Hstd Hcwd Hch _ Hrun".
+        iIntros (N' hA mA) "%Hti' %HcsA %Ha0A #Hck (#Hjt2 & #Ht2) Hsz Hstd Hcwd Hch _ Hrun".
         pose proof (ukn_const_of_eq N' (ukn_pay N) Hti'
                       (ukn_const_eq (N := N))) as Hcst'.
         assert (Hpx' : ⊢ ukn_pay N' (-1)) by (rewrite Hti'; exact Hpx).
@@ -3542,7 +3532,7 @@ Section UkShRun.
         { iApply (uis_shk_ec with "Hcode"). }
       + (* ---- the CHILD: runcmd(bcmd->cmd), in the background ---- *)
         (* at the caller's own payload -- see the LIST arm *)
-        iIntros (N' hA mA) "%Hti' %Hheq' %HcsA %Ha0A #Hck (#Hjt2 & #Ht2) Hsz Hstd Hcwd Hch _ Hrun".
+        iIntros (N' hA mA) "%Hti' %HcsA %Ha0A #Hck (#Hjt2 & #Ht2) Hsz Hstd Hcwd Hch _ Hrun".
         pose proof (ukn_const_of_eq N' (ukn_pay N) Hti'
                       (ukn_const_eq (N := N))) as Hcst'.
         assert (Hpx' : ⊢ ukn_pay N' (-1)) by (rewrite Hti'; exact Hpx).

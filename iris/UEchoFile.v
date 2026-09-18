@@ -188,7 +188,7 @@ Section UEchoFile.
           what [ef_full_adv_of] below discharges off [ubytes_at_inj]. *)
        ⌜bs = bsk⌝ -∗
        ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I -∗
-       off_gv γo (1/2) (Z.of_nat off) ={appE}=∗
+       off_link γo (Z.of_nat off) ={appE}=∗
        ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I ∗
        app_step i I (delta_write i off bs (abs_view I)) ∗
        (∀ I' : gmap Z fs_node,
@@ -196,8 +196,11 @@ Section UEchoFile.
           ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I' ={appE}=∗
           ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I' ∗
           (* THE ADVANCE (lane OFF-LINK): [UserOff.uoff_advance] is exactly
-             this step, holder-side. *)
-          off_gv γo (1/2) (Z.of_nat (off + length bs)) ∗ REST))%I.
+             this step, holder-side -- and at a DISCONNECTED object there is
+             no other half to move, so what comes back is the lend itself.
+             [OffGv.off_ret] is the pair, [off_ret_adv] the arm a node that
+             holds the program's half proves. *)
+          off_ret γo off (length bs) ∗ REST))%I.
 
   (* ...the same without RELAY 3's arrow: what OFF-LINK alone leaves. *)
   Definition ef_full_adv_raw (γfs : fs_names) (i : Z) (γo : gname)
@@ -208,14 +211,14 @@ Section UEchoFile.
        ⌜ubytes_at M (add_vec_int ua (FW_MAX * Z.of_nat k)) bs⌝ -∗
        ⌜Z.of_nat (length bs) = wchunk_at n k⌝ -∗
        ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I -∗
-       off_gv γo (1/2) (Z.of_nat off) ={appE}=∗
+       off_link γo (Z.of_nat off) ={appE}=∗
        ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I ∗
        app_step i I (delta_write i off bs (abs_view I)) ∗
        (∀ I' : gmap Z fs_node,
           ⌜abs_view I' = delta_write i off bs (abs_view I)⌝ -∗
           ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I' ={appE}=∗
           ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I' ∗
-          off_gv γo (1/2) (Z.of_nat (off + length bs)) ∗ REST))%I.
+          off_ret γo off (length bs) ∗ REST))%I.
 
   (* ---- WAS HYPOTHESIS 1 ([Hoff_link]); NOW A LEMMA -------------------- *)
   (* Lane WRITE-RELAY-2 made the node's answer a CHOICE: phase 2 returns
@@ -234,7 +237,7 @@ Section UEchoFile.
       as "(Hka & Hstep & Hph2)".
     iModIntro. iFrame "Hka Hstep". iIntros (I') "%Hav Hka'".
     iMod ("Hph2" $! I' with "[//] Hka'") as "(Hka' & Hg & Hrest)".
-    iModIntro. iFrame "Hka' Hrest". iApply (off_ret_adv with "Hg").
+    iModIntro. iFrame "Hka' Hrest". iExact "Hg".
   Qed.
 
   (* ---- WAS HYPOTHESIS 2 (RELAY 3); NOW A LEMMA ----------------------- *)

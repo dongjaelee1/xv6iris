@@ -1988,7 +1988,16 @@ Section UkSh.
        keep such a reader out ([ConsoleInv]'s "CONS-CURSOR RULING (7)").
        What it leaves is the dirty credential, which for a constraining
        application IS [T], and sh's continuation goes generic. *)
-  Definition ush_read_ans (cnm : cons_names) (l : list fdstate) (r : mword 64)
+  (* THE INPUT'S DISCIPLINE IS A PARAMETER (lane LINK-GEN-4), on
+     [ush_tag_law_at]'s and [ush_rest_line_at]'s pattern.  The shell knows
+     nothing about WHICH discipline its era enforces -- it spends exactly
+     three readings of it, all in [wp_kshg_loop] (the byte's value, the
+     line a newline closes, the remainder's length) -- and the ECHO
+     discipline is [EchoDisc.disc_input] while the file's is
+     [FileDisc.disc_input_f].  Every landed name below is this at
+     [disc_input], by definition, so no consumer moves. *)
+  Definition ush_read_ans_at (Dsc : list (bv 8) -> Prop)
+      (cnm : cons_names) (l : list fdstate) (r : mword 64)
       (cap : nat) (I : list (bv 8)) (g : nat -> bv 8) : iProp Σ :=
     ((∃ (dd dc : nat) (hs : list (list mobs))
         (sl : list (list mobs * bv 8)) (J : list (bv 8)),
@@ -2009,7 +2018,7 @@ Section UkSh.
            comes off [EchoDisc.disc_input_byte_val] and the line it closes
            off [EchoDisc.disc_input_snoc_nl]. *)
         ⌜ length J = dc ⌝ ∗
-        ⌜ disc_input (I ++ J) ⌝ ∗
+        ⌜ Dsc (I ++ J) ⌝ ∗
         ⌜ (0 < dd)%nat -> g 0%nat = J !!! 0%nat ⌝ ∗
         (* ...AND WHICH ARM OF [ush_fd0p] ANSWERED: a window is the
            CONSOLE's.  What it buys is the other arm's refutation below. *)
@@ -2043,18 +2052,23 @@ Section UkSh.
         Pm I)
      ∨ (T ∗ ush_pos))%I.
 
+  Definition ush_read_ans (cnm : cons_names) (l : list fdstate) (r : mword 64)
+      (cap : nat) (I : list (bv 8)) (g : nat -> bv 8) : iProp Σ :=
+    ush_read_ans_at disc_input cnm l r cap I g.
+
   (* ...and the answer, weakened to the ONE thing the walk cannot do
      without: the position comes back.  This is what stands between R1'
      (the leaf sh runs on) and R2 (the line fact the loop accumulates). *)
   (* IN PIECES NOW (lane IO-LEAF, M5(3)): the walk between a line's first
      byte and its '\n' holds no payload, so what a receipt hands back is
      [Pm] at SOME input, or the taint. *)
-  Lemma ush_read_ans_pm (cnm : cons_names) (l : list fdstate) (r : mword 64)
+  Lemma ush_read_ans_pm_at (Dsc : list (bv 8) -> Prop)
+      (cnm : cons_names) (l : list fdstate) (r : mword 64)
       (cap : nat) (I : list (bv 8)) (g : nat -> bv 8) :
-    ush_read_ans cnm l r cap I g -∗
+    ush_read_ans_at Dsc cnm l r cap I g -∗
     (∃ I' : list (bv 8), Pm I') ∨ (T ∗ ush_pos).
   Proof using HT.
-    rewrite /ush_read_ans.
+    rewrite /ush_read_ans_at.
     iIntros "[Hw | [(_ & _ & Hp) | [#HT Hp]]]".
     - iDestruct "Hw" as (dd dc hs sl J)
         "(_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hp)".
@@ -2062,6 +2076,12 @@ Section UkSh.
     - iLeft. iExists I. iExact "Hp".
     - iRight. iFrame "HT Hp".
   Qed.
+
+  Definition ush_read_ans_pm (cnm : cons_names) (l : list fdstate)
+      (r : mword 64) (cap : nat) (I : list (bv 8)) (g : nat -> bv 8) :
+    ush_read_ans cnm l r cap I g -∗
+    (∃ I' : list (bv 8), Pm I') ∨ (T ∗ ush_pos)
+    := ush_read_ans_pm_at disc_input cnm l r cap I g.
 
   (* =================================================================== *)
   (*  THE [r = 0] ROUND'S REFUTATION, IN ONE STEP (lane SH-LINE 2b, L2).   *)
@@ -2158,44 +2178,60 @@ Section UkSh.
      nothing (the boundary's own discipline is not in the loop's hand), and
      every byte after the first arrives with [disc_input] of the input it
      extends. *)
-  Definition ush_gline_p (l : list fdstate) (I0 J : list (bv 8))
+  Definition ush_gline_p_at (Dsc : list (bv 8) -> Prop)
+      (l : list fdstate) (I0 J : list (bv 8))
       (f : nat -> bv 8) : Prop :=
     rest_of I0 = []
     /\ wl_nl ∉ J
     /\ (S (length J) < line_max)%nat
     /\ ((0 < length J)%nat -> ush_fd0c l)
     /\ (forall j : nat, (j < length J)%nat -> f j = J !!! j)
-    /\ (J <> [] -> disc_input (I0 ++ J)).
+    /\ (J <> [] -> Dsc (I0 ++ J)).
+
+  Definition ush_gline_p (l : list fdstate) (I0 J : list (bv 8))
+      (f : nat -> bv 8) : Prop := ush_gline_p_at disc_input l I0 J f.
+
+  Definition ush_gets_line_at (Dsc : list (bv 8) -> Prop)
+      (l : list fdstate) (I0 J : list (bv 8))
+      (f : nat -> bv 8) : iProp Σ :=
+    ((⌜ush_gline_p_at Dsc l I0 J f⌝ ∗ Pm (I0 ++ J)) ∨ (T ∗ ush_pos))%I.
 
   Definition ush_gets_line (l : list fdstate) (I0 J : list (bv 8))
-      (f : nat -> bv 8) : iProp Σ :=
-    ((⌜ush_gline_p l I0 J f⌝ ∗ Pm (I0 ++ J)) ∨ (T ∗ ush_pos))%I.
+      (f : nat -> bv 8) : iProp Σ := ush_gets_line_at disc_input l I0 J f.
 
   (* THE ROWS ARE PURE, SO THEY COME OFF THE DISJUNCTION: what the walk
      carries past the read is the lease (linear) and "the rows, or the
      taint" (persistent, because both sides are).  That is what keeps the
      walk between the read and the '\n' test UNDUPLICATED. *)
-  Lemma ush_gets_line_split (l : list fdstate) (I0 J : list (bv 8))
+  Lemma ush_gets_line_split_at (Dsc : list (bv 8) -> Prop)
+      (l : list fdstate) (I0 J : list (bv 8))
       (f : nat -> bv 8) :
-    ush_gets_line l I0 J f -∗
-    ush_lease (I0 ++ J) ∗ (⌜ush_gline_p l I0 J f⌝ ∨ T).
+    ush_gets_line_at Dsc l I0 J f -∗
+    ush_lease (I0 ++ J) ∗ (⌜ush_gline_p_at Dsc l I0 J f⌝ ∨ T).
   Proof.
-    rewrite /ush_gets_line /ush_lease.
+    rewrite /ush_gets_line_at /ush_lease.
     iIntros "[[%Hp H] | [#HT H]]".
     - iSplitL "H"; [ by iLeft | iLeft; by iPureIntro ].
     - iSplitL "H"; [ iRight; iFrame "HT H" | iRight; iExact "HT" ].
   Qed.
 
+  Definition ush_gets_line_split (l : list fdstate) (I0 J : list (bv 8))
+      (f : nat -> bv 8) :
+    ush_gets_line l I0 J f -∗
+    ush_lease (I0 ++ J) ∗ (⌜ush_gline_p l I0 J f⌝ ∨ T)
+    := ush_gets_line_split_at disc_input l I0 J f.
+
   (* the loop ENTERS at the empty line, which costs nothing but the
      boundary the command loop was already standing on *)
-  Lemma ush_gets_line_0 (l : list fdstate) (I0 : list (bv 8))
+  Lemma ush_gets_line_0_at (Dsc : list (bv 8) -> Prop)
+      (l : list fdstate) (I0 : list (bv 8))
       (f : nat -> bv 8) :
     rest_of I0 = [] ->
-    Pm I0 -∗ ush_gets_line l I0 [] f.
+    Pm I0 -∗ ush_gets_line_at Dsc l I0 [] f.
   Proof using .
-    intro Hr0. iIntros "Hp". rewrite /ush_gets_line. iLeft.
+    intro Hr0. iIntros "Hp". rewrite /ush_gets_line_at. iLeft.
     iSplitR.
-    { iPureIntro. rewrite /ush_gline_p. split_and!.
+    { iPureIntro. rewrite /ush_gline_p_at. split_and!.
       - exact Hr0.
       - apply not_elem_of_nil.
       - cbn [length]. unfold line_max. lia.
@@ -2205,6 +2241,11 @@ Section UkSh.
     rewrite app_nil_r. iExact "Hp".
   Qed.
 
+  Definition ush_gets_line_0 (l : list fdstate) (I0 : list (bv 8))
+      (f : nat -> bv 8) :
+    rest_of I0 = [] -> Pm I0 -∗ ush_gets_line l I0 [] f
+    := ush_gets_line_0_at disc_input l I0 f.
+
   (* ...and the entry from a command-loop turn, which is where the
      boundary comes from *)
   (* ...ENTERED AT THE PROMPT'S END (lane IO-LEAF, M6a(3)): the credential
@@ -2212,19 +2253,26 @@ Section UkSh.
      spends it ([ush_gets_done_line]). *)
   (* ...or the taint, at no slot at all: a tainted turn holds no credential
      and [gets]'s exits do not read one *)
-  Lemma ush_gets_line_of_posb (l : list fdstate) (f : nat -> bv 8) :
+  Lemma ush_gets_line_of_posb_at (Dsc : list (bv 8) -> Prop)
+      (l : list fdstate) (f : nat -> bv 8) :
     ush_posb l 2%nat -∗
     ∃ I0 : list (bv 8),
-      ush_gets_line l I0 [] f ∗ (ush_wcp l I0 2%nat ∨ T).
+      ush_gets_line_at Dsc l I0 [] f ∗ (ush_wcp l I0 2%nat ∨ T).
   Proof.
     iIntros "H". rewrite /ush_posb.
     iDestruct "H" as "[H | [#HT H]]"; last first.
-    { iExists []. rewrite /ush_gets_line.
+    { iExists []. rewrite /ush_gets_line_at.
       iSplitL; [ iRight; iFrame "HT H" | iRight; iExact "HT" ]. }
     iDestruct "H" as (I) "(%Hn & H & Hc)".
-    iExists I. iSplitL "H"; [ iApply (ush_gets_line_0 l I f Hn with "H") | ].
+    iExists I. iSplitL "H"; [ iApply (ush_gets_line_0_at Dsc l I f Hn with "H") | ].
     iLeft. iExact "Hc".
   Qed.
+
+  Definition ush_gets_line_of_posb (l : list fdstate) (f : nat -> bv 8) :
+    ush_posb l 2%nat -∗
+    ∃ I0 : list (bv 8),
+      ush_gets_line l I0 [] f ∗ (ush_wcp l I0 2%nat ∨ T)
+    := ush_gets_line_of_posb_at disc_input l f.
 
   (* ...AND WHAT THE LOOP LEAVES: nothing read at all, or exactly one
      line -- WHICH one being what the word list says.  There is no third
@@ -2271,9 +2319,16 @@ Section UkSh.
      loop stored.  The boundary after it is [I0 ++ J ++ "\n"], whose last
      line IS [ws] ([LineWords.last_ws_snoc_nl]), which is the equation the
      child's law is applied at. *)
-  Lemma ush_gets_done_line (l : list fdstate) (I0 J : list (bv 8))
+  (* THE INPUT'S DISCIPLINE IS A PARAMETER HERE AND THE BODY'S IS NOT
+     (lane LINK-GEN-4).  [body_ok J] is spent on BOTH its conjuncts -- the
+     join's round trip and [line_ok (wl_words J)], the latter through
+     [ush_line_is] inside [ush_gets_done] -- so the LINE predicate is a
+     second axis, and it is the one [UkSh.ush_rest_line_at]'s [D] and
+     [UkShFork.ushf_child_law_at]'s [Lp] already own (lane SH-CHILD). *)
+  Lemma ush_gets_done_line_at (Dsc : list (bv 8) -> Prop)
+      (l : list fdstate) (I0 J : list (bv 8))
       (ws : list (list (bv 8))) (f : nat -> bv 8) :
-    ush_gline_p l I0 J f ->
+    ush_gline_p_at Dsc l I0 J f ->
     body_ok J ->
     ws = wl_words J ->
     f (length J) = wl_nl ->
@@ -2321,6 +2376,17 @@ Section UkSh.
       iApply (ush_pos_of_pm (I0 ++ J ++ [wl_nl]) with "HT H").
   Qed.
 
+  Definition ush_gets_done_line (l : list fdstate) (I0 J : list (bv 8))
+      (ws : list (list (bv 8))) (f : nat -> bv 8) :
+    ush_gline_p l I0 J f ->
+    body_ok J ->
+    ws = wl_words J ->
+    f (length J) = wl_nl ->
+    ush_wcp l I0 2%nat -∗
+    Pm (I0 ++ J ++ [wl_nl]) -∗
+    ush_gets_done l (length (wl_line ws)) f
+    := ush_gets_done_line_at disc_input l I0 J ws f.
+
   (* ...and the same exit on a tainted turn, at no slot *)
   Lemma ush_gets_done_line_t (l : list fdstate) (I : list (bv 8)) (i : nat)
       (f : nat -> bv 8) :
@@ -2364,12 +2430,13 @@ Section UkSh.
   (*  the tag's reading turns it into the taint.  So the answer to a      *)
   (*  one-byte read is: the next byte, a shut fd 0, or the taint.         *)
   (* =================================================================== *)
-  Lemma ush_read_ans_1 (cnm : cons_names) (l : list fdstate) (r : mword 64)
+  Lemma ush_read_ans_1_at (Dsc : list (bv 8) -> Prop)
+      (cnm : cons_names) (l : list fdstate) (r : mword 64)
       (I : list (bv 8)) (g : nat -> bv 8) :
     ush_tag_law -∗
-    ush_read_ans cnm l r 1%nat I g -∗
+    ush_read_ans_at Dsc cnm l r 1%nat I g -∗
     ((⌜ (0 < bv_signed r)%Z ⌝
-      ∗ ⌜ disc_input (I ++ [g 0%nat]) ⌝
+      ∗ ⌜ Dsc (I ++ [g 0%nat]) ⌝
       ∗ ⌜ ush_fd0c l ⌝ ∗ Pm (I ++ [g 0%nat]))
      ∨ (⌜ (bv_signed r <= 0)%Z ⌝ ∗ ⌜ l !! 0%nat = Some FdClosed ⌝ ∗ Pm I)
      ∨ (T ∗ ush_pos)).
@@ -2418,8 +2485,20 @@ Section UkSh.
       iSplitR; [ by iPureIntro | ]. iExact "Hp".
   Qed.
 
+  Definition ush_read_ans_1 (cnm : cons_names) (l : list fdstate)
+      (r : mword 64) (I : list (bv 8)) (g : nat -> bv 8) :
+    ush_tag_law -∗
+    ush_read_ans cnm l r 1%nat I g -∗
+    ((⌜ (0 < bv_signed r)%Z ⌝
+      ∗ ⌜ disc_input (I ++ [g 0%nat]) ⌝
+      ∗ ⌜ ush_fd0c l ⌝ ∗ Pm (I ++ [g 0%nat]))
+     ∨ (⌜ (bv_signed r <= 0)%Z ⌝ ∗ ⌜ l !! 0%nat = Some FdClosed ⌝ ∗ Pm I)
+     ∨ (T ∗ ush_pos))
+    := ush_read_ans_1_at disc_input cnm l r I g.
 
-  Definition ush_read_recv_leaf (cnm : cons_names) (l : list fdstate)
+
+  Definition ush_read_recv_leaf_at (Dsc : list (bv 8) -> Prop)
+      (cnm : cons_names) (l : list fdstate)
       : iProp Σ :=
     (∀ (h : CpuId) (m : regfile) (pc : mword 64) (a : Z) (k cap : nat)
        (I : list (bv 8)) (f : nat -> bv 8) (avail : nat),
@@ -2448,12 +2527,15 @@ Section UkSh.
           ⌜ (d <= cap)%nat ⌝ -∗
           ⌜ forall j : nat, (d <= j < k)%nat -> g j = f j ⌝ -∗
           ustd γfd l -∗
-          ush_read_ans cnm l r cap I g -∗
+          ush_read_ans_at Dsc cnm l r cap I g -∗
           ubytes γd a k g -∗
           urun N h' (<[Regidx a0_idx := r]> m)
             (add_vec_int pc 4) avail -∗
           WP (Loop : expr riscv_lang)) -∗
        WP (Loop : expr riscv_lang))%I.
+
+  Definition ush_read_recv_leaf (cnm : cons_names) (l : list fdstate)
+      : iProp Σ := ush_read_recv_leaf_at disc_input cnm l.
 
   (* THE RING'S NAMES, as a section variable: the program tier names no
      application and no era, and the ONE discharge of the Hypothesis below
@@ -6554,25 +6636,21 @@ Section UkSh.
      producer ([UShKernel.sh_uexec_slot]) holds the equation the entry
      constructor handed over. *)
   Definition ush_gen_slot : iProp Σ :=
-    (⌜ukn_held N = ∅⌝ ∗
-     □ (∀ W : uvis,
+    (□ (∀ W : uvis,
           T -∗ my_pay (uvis_gen W) (ukn_pay N) -∗ uslot W))%I.
 
   Global Instance ush_gen_slot_persistent : Persistent ush_gen_slot.
   Proof using . rewrite /ush_gen_slot. apply _. Qed.
 
-  (* ...and the row on its own (lane OFF-HAND-4, S2).  sh's record holds no
-     offset half, and the slot is where that travels; a child sh forks
-     inherits the set ([UkFork.wp_uk_ecall_fork]'s [hs]), so this is what
-     says the forked child may run /echo's verified entry. *)
-  Lemma ush_gen_slot_held : ush_gen_slot -∗ ⌜ukn_held N = ∅⌝.
-  Proof using . iIntros "[$ _]". Qed.
+  (* [ush_gen_slot_held] IS DELETED with [UkRun.ukn_held] (lane OFF-LINK-2,
+     L6): the slot carried "sh's record holds no offset half", which is the
+     fact design/app-file.md SS3.5's principle retires. *)
 
   Lemma ush_gen_run (h : CpuId) (m : regfile) (pc : mword 64) (avail : nat) :
     is_aligned_vaddr (Virtaddr pc) 2 = true ->
     ush_gen_slot -∗ T -∗ urun N h m pc avail -∗ WP (Loop : expr riscv_lang).
   Proof using .
-    intro Hal. rewrite /ush_gen_slot. iIntros "[_ #Hg] HT Hrun".
+    intro Hal. rewrite /ush_gen_slot. iIntros "#Hg HT Hrun".
     iApply (urun_gen N T h m pc avail Hal with "Hg HT Hrun").
   Qed.
 

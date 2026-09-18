@@ -1277,6 +1277,46 @@ Section UexecExecInst.
     exfalso. exact (Hnp rb wb gp eq_refl).
   Qed.
 
+  (* ...AND THE SAME ROW AT A DESCRIPTOR THAT IS A REGISTERED PIPE END
+     (design/app-pipe.md SS2, lane PIPE-REG).  The guard is again the KEY's
+     own reading of argument 0, which a close leaf holding the descriptor's
+     handle discharges ([UkRun.udepw_cl]'s right arm is where this goes:
+     [UkRun.udepw] takes an explicit bundle, so no arm of [udepw_cl] has to
+     move).  AT THE POINT FAMILY'S PAYLOAD, which is [True] -- a registered
+     row pays its own close for a caller that reads nothing back, and
+     cannot pay one that wants a resource out of it
+     ([PipeReg.pipe_cpay_of_reg_true] says why).  This is what lets a
+     pipe-holding program close its own two ends; sh does it twice a
+     round. *)
+  Lemma xv6_sbundle_close_of_reg (X : uvis -d> iPropO Σ) (W : uvis)
+      (Q : Z -> iProp Σ) (rb wb : bool) (γp : pipe_names) :
+    fd_st_of_key (xk_a W 0) (uvis_fd W) = FdOpen rb wb (FdPipe γp) ->
+    pipe_reg γp -∗
+    |==> ∃ f : xfam, ⌜kf_xpay f = Q⌝ ∗ xv6_sbundle X 21 f W.
+  Proof using .
+    intros Hst. iIntros "#Hr".
+    iAssert (|==> xv6_sbundle X 21 (xfam_at Q xfam_pt) W)%I with "[]" as "Hb";
+      [ | iMod "Hb" as "Hb"; iModIntro; iExists (xfam_at Q xfam_pt);
+          iSplitR; [ done | iExact "Hb" ] ].
+    rewrite /xv6_sbundle /xfam_at /xfam_pt /xfam_exec /=.
+    destruct (decide ((21 : Z) = USYS_exec)) as [He | _];
+      [ exfalso; discriminate He | ].
+    destruct (decide ((21 : Z) = 5)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide ((21 : Z) = 9)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide ((21 : Z) = 15)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide ((21 : Z) = 16)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide ((21 : Z) = 17)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide ((21 : Z) = 18)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide ((21 : Z) = 19)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide ((21 : Z) = 20)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide ((21 : Z) = 6)) as [He | _]; [ exfalso; discriminate He | ].
+    destruct (decide ((21 : Z) = 21)) as [_ | Hc];
+      [ | exfalso; exact (Hc eq_refl) ].
+    iModIntro. rewrite Hst.
+    iApply (fileclose_cpay_of_reg_true (FdOpen rb wb (FdPipe γp))).
+    iExact "Hr".
+  Qed.
+
   (* ...AND EXIT'S ROW AT A TABLE THAT HOLDS NO PIPE (design/pipe.md, "The
      exit path").  2 left [xv6_free] because at a table with a pipe row its
      row is a step of the pipe's exact ghost state; at a pipe-free table

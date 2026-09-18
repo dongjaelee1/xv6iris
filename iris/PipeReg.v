@@ -190,6 +190,34 @@ Section PipeReg.
     iIntros "#Hr". iApply "Hr".
   Qed.
 
+  (* ...AND THE SAME ROW AT A PAYLOAD THE REGISTRY CAN REACH.  close(21)'s
+     bundle row is [fileclose_cpay st (cl_P f)] at the family the caller
+     deposited at, and the POINT family's [cl_P] is [True]
+     ([UexecExecInst.xfam_pt]) -- so a registered row pays its own close
+     too, for a caller that reads nothing back from it.  What the registry
+     CANNOT pay is a payload carrying a resource: the close link's fupd
+     places [emp] and can therefore place only what [emp] entails.  This is
+     what lets a pipe-holding program close its own ends
+     ([UexecExecInst.xv6_sbundle_close_of_reg]); a caller that wants close's
+     post has to hold something else. *)
+  Lemma pipe_cpay_of_reg_true (γp : pipe_names) (w : bool) :
+    pipe_reg γp -∗ pipe_cpay (pn_queue γp) w True.
+  Proof using .
+    iIntros "#Hr". rewrite /pipe_reg.
+    iDestruct ("Hr" $! w) as "[Hl | #Ht]"; rewrite /pipe_cpay;
+      [ iLeft | by iRight ].
+    iApply (pipe_clink_mono (pn_queue γp) w emp True%I with "[] Hl").
+    iIntros "_". done.
+  Qed.
+
+  Lemma fileclose_cpay_of_reg_true (st : fdstate) :
+    pipe_row_reg st -∗ fileclose_cpay st True.
+  Proof using .
+    rewrite /pipe_row_reg /fileclose_cpay.
+    destruct st as [| ? w [| γp |]]; try (by iIntros "_").
+    iIntros "#Hr". iApply (pipe_cpay_of_reg_true γp w with "Hr").
+  Qed.
+
   Lemma fileclose_cpays_of_regs (sts : list fdstate) :
     ([∗ list] st ∈ sts, pipe_row_reg st) -∗ fileclose_cpays sts.
   Proof using .

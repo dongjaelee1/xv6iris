@@ -1243,7 +1243,15 @@ Section UkFileOpen.
       rewrite /uk_open_fd_arm. iExact "Hfd".
   Qed.
 
-  Lemma wp_uk_ecall_open_create_deed_v (N : uk_names Σ) (omo : offmode) (h : CpuId)
+  (* THE DEPOSIT INSTANCE IS THIS LEMMA'S OWN (the PROGRAM STREAM), and it
+     is a PER-LEMMA binder and not a section variable -- [UEchoFile]'s
+     header says why: a section variable of a class type is a LOCAL
+     INSTANCE and the elaboration of this file explodes.  Left ambient, the
+     [urun]s below are at [UexecExecInst.uprogSG_gen] and sh's redirect
+     child, which runs at [uprogSG_free], cannot apply them; a landed
+     caller that resolves ambiently gets [uprogSG_gen] exactly as before. *)
+  Lemma wp_uk_ecall_open_create_deed_v `{PSx : uprogSG Σ}
+      (N : uk_names Σ) (omo : offmode) (h : CpuId)
       (m : regfile) (pc : mword 64) (l : list fdstate) (avail : nat)
       (c : file_fixed) (r : file_names) (jc : Z) (s : dst)
       (ls : list wordline) (ws : wordline) (cw : Z)
@@ -1305,7 +1313,7 @@ Section UkFileOpen.
     iDestruct (file_create_sup_v N omo c r jc n s g ls ws cw Img pv m pc pl Heq Hpath
                  Ha0 Hcr Hnp Hstart Hlast Hin Hokw
                  with "Hinv Hro Hm Hlb Hkey Hres") as "Hsb".
-    iApply (wp_uk_ecall_open_recv_gimg N h m pc l avail
+    iApply (wp_uk_ecall_open_recv_gimg (PS := PSx) N h m pc l avail
               (file_create_fam omo c r jc n s g (ukn_pay N)) cw Img Hn Hal4
               with "Hi Hro Hrun Hcwd Hsb Hstd").
     iIntros (h' rv W M' fdv' cw' cs')
@@ -1445,7 +1453,8 @@ Section UkFileOpen.
     iApply (uimg_view_data N Img with "Hdi").
   Qed.
 
-  Lemma wp_uk_ecall_open_create_deed_d (N : uk_names Σ) (omo : offmode) (h : CpuId)
+  Lemma wp_uk_ecall_open_create_deed_d `{PSx : uprogSG Σ}
+      (N : uk_names Σ) (omo : offmode) (h : CpuId)
       (m : regfile) (pc : mword 64) (l : list fdstate) (avail : nat)
       (c : file_fixed) (r : file_names) (jc : Z) (s : dst)
       (ls : list wordline) (ws : wordline) (cw : Z)
@@ -1494,7 +1503,8 @@ Section UkFileOpen.
   Proof using .
     intros Heq Hn Hal4 Hpath Ha0 Hcr Htr Hnp Hstart Hlast Hin Hokw.
     iIntros "#Hi #Hdi Hrun Hcwd Hstd #Hinv #Hm #Hlb Hown Hcont".
-    iApply (wp_uk_ecall_open_create_deed_v N omo h m pc l avail c r jc s ls ws cw Img pv pl
+    iApply (wp_uk_ecall_open_create_deed_v (PSx := PSx)
+              N omo h m pc l avail c r jc s ls ws cw Img pv pl
               Heq Hn Hal4 Hpath Ha0 Hcr Htr Hnp Hstart Hlast Hin Hokw
               with "Hi [] Hrun Hcwd Hstd Hinv Hm Hlb Hown Hcont").
     iApply (uimg_view_data N Img with "Hdi").

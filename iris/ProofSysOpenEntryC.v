@@ -126,6 +126,7 @@ Require Import ArgPath.         (* [arg_path_of]: the reading of trapframe
 Require Import SysMknodDefs.     (* [npar_elems]: the PARENT prefix (TL-3K) *)
 Require Import SysOpenDefs.
 Require Import FsAbsCreateFire.
+Require Import FsAbsCreateNm.     (* [acre_commit_at_nm]: the create commit at a name predicate *)
 Require Import FsAbsEra.          (* [ep_start]: the walk one-shot AT ONE PATH *)
 Require Import FsAbsOpenFire.
 Require Import ProofSysOpenShared.
@@ -499,7 +500,26 @@ Section ProofSysOpenEntryC.
        leg is guarded on exactly that test ([SpecCreate.cre_dots_leg]), so
        the builder produces it out of the type inequality and nothing has to
        be manufactured here. *)
+    (* THE NAME PREDICATE IS TRIVIAL AT THIS ENTRY (lane INIT-FILE,
+       section 3.4): sys_open's create tracks no name of its own, so its
+       parent leg goes down through the bridge at [fun _ => True]. *)
+    iAssert (pf_at (acre_commit_at_nm (fs_gamma_L fsc_fs) appE (AFile [])
+                      (fun _ : fname => True%type)
+                      (P (length (npar_elems (bview plen bp)))) Phiarm) Phiok)
+      with "[Hac]" as "Hac".
+    { iApply (pf_at_mono with "[] Hac"). iIntros "H".
+      iApply (acre_commit_at_nm_of (fs_gamma_L fsc_fs) appE (AFile [])
+                (fun _ : fname => True%type)
+                (P (length (npar_elems (bview plen bp)))) Phiarm
+                Phiok.(pf_recv) with "H"). }
+    (* ...AND SO IS THE NODE PREDICATE (lane INIT-FILE, the UNARM ruling):
+       this entry's caller answers the unarm at every node, so the pair
+       goes down through the bridge at [fun _ => True] too. *)
+    iDestruct (cre_child_unfired_ndp_of (fs_gamma_L fsc_fs) (AFile [])
+                 (fun _ : absnode => True%type) Phiarm Phiun
+                 with "Hclegs") as "Hclegs".
     iDestruct (cre_commits_of_file (fs_gamma_L fsc_fs) 0 0
+                 (fun _ : fname => True%type) (fun _ : absnode => True%type)
                  (P (length (npar_elems (bview plen bp))))
                  Phiarm Phiun Phiok with "Hac Hclegs") as "Hcre".
     iApply (Create.wp_create_sconf (CID := CID5) gs jx gl pd pav pu
@@ -507,8 +527,10 @@ Section ProofSysOpenEntryC.
               FsAbsCreateFire.T_FILE (mword_of_int 0) (mword_of_int 0)
               (upd_usM U _) MAXOPBLOCKS Sb ns pidv dqb dqs dqbs dqn
               N5 (K - 24)%nat eb b lks
+              (fun _ : fname => True%type) (fun _ : absnode => True%type)
               P Pmiss Phiarm (pfam_triv (fun _ _ _ _ => True%I)) Phiun
               Phiok Phiex
+              (fun _ _ => I) (fun _ => I) (fun _ _ => I)
               HKcr HdevR Hnib0 Hgeom Hsize Hbm0 Hbmcov
               Hbmlog Hist0 Hcovb Hbmgeo Hiregb Hpcstr
               ltac:(assert (E31 : (2 ^ 31 = 2147483648)%Z)
@@ -700,6 +722,14 @@ Section ProofSysOpenEntryC.
         with "[Hcauf Hoc Htc]" as "[HR Htc]".
       { iDestruct (cre_ok_file_fresh with "Hcauf") as (d nm av ents nl)
           "(%Hl & %Hpre & HP & HPhi & Hdl & Hun)".
+        (* the unarm leg comes back at the trivial node predicate and this
+           entry's post is at the plain one -- the bridge's other
+           direction ([FsAbsCreateNm.aunarm_of_arm_of_nd]) *)
+        iAssert (pf_at (aunarm_of_arm (fs_gamma_L fsc_fs) appE Phiarm) Phiun)
+          with "[Hun]" as "Hun".
+        { iApply (pf_at_mono with "[] Hun").
+          iApply (aunarm_of_arm_of_nd (fs_gamma_L fsc_fs) appE
+                    (fun _ : absnode => True%type) Phiarm _ (fun _ => I)). }
         iApply (socr_fresh_key vom P Phiarm Phiun Phiok Phiex Phio Phit
                   (bview plen bp) (bv_unsigned inum) d nm av ents nl
                   Hl Hpre Hibnd
@@ -801,6 +831,10 @@ Section ProofSysOpenEntryC.
         with "[Hcauf Htc]" as "[HR Htc]".
       { iDestruct (cre_ok_file_exists with "Hcauf") as (d nm av ents nl)
           "(%Hl & %Hrow & %Hent & HP & HPhi & Hac & Hcl)".
+        iDestruct (open_acre_file_of_triv with "Hac") as "Hac".
+        iDestruct (cre_child_unfired_of_ndp (fs_gamma_L fsc_fs) (AFile [])
+                     (fun _ : absnode => True%type) Phiarm Phiun
+                     (fun _ => I) with "Hcl") as "Hcl".
         iApply (socr_exists_key vom P Phiarm Phiun Phiok Phiex Phit
                   (bview plen bp) (bv_unsigned inum) d nm av ents nl
                   Hl Hrow Hent with "HP HPhi Hac Hcl Htc"). }

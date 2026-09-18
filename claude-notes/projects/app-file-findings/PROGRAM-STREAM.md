@@ -22,6 +22,16 @@ stream's.)
 | after the cat body and the era step (`b43f94b41`, `39491cac0`) | **11** | (both are plumbing UNDER the round: `Hcat_body` and `Hchild_redir`'s supply) |
 | after RULING H' and the three discharges (`75b13f284`) | **8** | `sh_tag_law_file` `Hexecfail` `Hpanic` |
 | after the merge and the indexed record (`9a187bafb`) | **8** | (H' completed: `FI := file_link_inst_at g s0`) |
+| after the slot's third conjunct and the guard (`2c8bd957a`) | **8** | (the machinery `Hchild_echo` was missing) |
+| after `Hchild_echo` (`f104e2646`) | **7** | `Hchild_echo` |
+| after `sh_child_law_file` (`108aa435c`) | **6** | `sh_child_law_file`'s `Admitted` |
+| after `Hopen_hand`'s statement fix (`d8f638d89`) | **6** | (the hypothesis is now TRUE; the walk is blocked on one instance) |
+| after `Hopen_hand` (`3a7041e43`) | **5** | `Hopen_hand` |
+| after item (3)'s first premise and the receipt threading (`afbc83f9d`) | **5** | (premises of `Hchild_redir`, not the round's own list) |
+
+
+
+
 
 
 Append one block per stretch, newest last, each with the metric after it.
@@ -550,3 +560,356 @@ one annotation in the STATEMENT, `(PS := uprogSG_free)`, after which both
 proofs close in milliseconds.  Localised by admitting one of the two and
 re-running `--check-proof`; note that `--check` (vos) passes either way,
 because it skips the proof — a statement-only check cannot see this.
+
+
+---
+
+## PROGRAM STREAM, stretch 4 (2026-09-18) — item (1): the guard, and what the loop's slot was not saying
+
+Branch `app-file/sh-redir`, merged from `main` at `334f57e78`.  Whole tree
+green (`--proofs -k`, `EXIT=0`); **four** audits run and all four are the
+primitive lists only (System 13, Echo 14, Tree 13, File 14 — no app-level
+axiom in any cone); `make gen-ucode` prints all seven catalogs unchanged.
+**The metric moved 8 → 6** (three-file metric 7 + 6 + 1 = **14**).
+
+### 1. `Hchild_echo` was blocked on a FACT THE LOOP THREW AWAY, not on an assembly
+
+`UkShEcho.sh_exec_sup_echo_wq` quantified its box over every input with
+`EchoDisc.line_ok (last_ws I)`.  At the file era that guard is wrong in
+BOTH directions, and the second one is what cost the lane:
+
+* it is too WIDE — at an `LEchoF` input the child writes to the FILE and
+  the console block is the prompt, so the lend does not open into echo's
+  stage at all and the supply cannot hold there;
+* and `line_ok (last_ws I)` does not imply the era's own reading of that
+  input.  **A body with a trailing blank has the same words as the body
+  without it, and only one of the two parses** (`wl_words "echo a "` is
+  `["echo"; "a"]`, whose `wl_body` is `"echo a"`).  So
+  `last_ws I = ws` — the only thing `UkSh.ush_posw` said about the input —
+  cannot decide which constructor `FileLinksLine.fline` filed, which is
+  exactly `FileLinkInst.file_lineok`, which is exactly what the file
+  stage's `ck_lineok` asks for.
+
+**THE REPAIR is one conjunct in the slot.**  `ush_posw`'s payload now
+carries `FileDisc.fbody_ok (ush_lastbody I)` — the input's last body
+parses — and the producer proves it for free: the buffer holds `J` and it
+holds `line_bytes lu`, so `J` IS `lu`'s body, and a constructor's own body
+parses back to it (`FileDisc.parse_line_body`).  The echo era never reads
+the conjunct; `UkShFork.ushf_child_law_at`'s box relays it; and the two
+pure lemmas turn it into the era's line:
+
+* `LineWords.wl_words_alnum_body` — if every word the parser found is
+  alphanumeric then every byte it read was alphanumeric or a blank (a byte
+  is either a blank or inside the word it opened).  This is the half of
+  the round trip that does NOT need `wl_body (wl_words b) = b`.
+* `FileDisc.fbody_ok_echo` — a body that parses, whose words are an echo
+  line, parses to `LEcho`: `LCat`'s words are `"cat f"` (`cat_not_echo`),
+  and `LEchoF`'s body ends in `" > f"`, whose `>` the lemma above refutes.
+
+With that, `UkShEcho.sh_exec_sup_echo_wq_at D` (guard a parameter, echo's
+instance the landed one) and `ushf_child_law_holds_at D dg nn` (the
+consumer proves `D I` from its own box) close the item.
+
+### 2. ...AND THE DIAGNOSTIC CARRIER CAME WITH IT — no `pdiag` hypothesis needed
+
+LINK-GEN-4's open item (`ushf_child_law_holds` asks for
+`ush_execfail_law_wq` at the CONSTANT `alt_execfail`, and the file's
+`fexfb LCat` is `alt_execcat`) is answered by the SAME guard:
+`ushf_child_law_holds_at` takes the carrier as a parameter with the
+premise `∀ I, D I → dg I = alt_execfail ∧ nn I = 17`, and at an `LEcho`
+input `FileLinksLine.fexfb` IS `alt_execfail` (`UShRound.file_D_exfb`).
+So the round needed **no** hypothesis at INIT-FILE's prologue-diagnostic
+shape, and `FileLinksAtPro.v`'s `pdiag` field is not on this stream's
+critical path.
+
+### 3. What landed, and the two discharges
+
+| landed | where |
+|---|---|
+| the slot's third conjunct + its producer | `UkSh.ush_posw` / `ush_gets_done_line_at` |
+| the child law's relay of it | `UkShFork.ushf_child_law_at` |
+| the guard and the carrier as parameters | `UkShEcho.sh_exec_sup_echo_wq_at` / `ushf_child_law_holds_at` |
+| the producer at a guard | `UShEchoPay.sh_exec_sup_echo_wq_holds_at_D` (landed name its instance) |
+| the file stage at the INDEXED record | `FileLinkInst.file_stage_inst_at` |
+| `Hchild_echo` | `UShRound.Hchild_echo`, at `file_D I := line_ok (last_ws I) ∧ file_lineok I` |
+| `sh_child_law_file` | one application of `ushf_child_law_holds_at` at the two proved laws |
+
+### 4. THE FIFTH HANG SHAPE, TWICE, AND THE RULE IT LEAVES
+
+`sh_child_law_file` cost two hours of nothing: `iApply` (and `iPoseProof`,
+and `exact`, and `Local Opaque` on the record literal) sat for twenty
+minutes with no output.  The cause was the same as last stretch's, one
+instance further out: `UkShFork.ushf_child_law` and
+`UkShEcho.ushf_child_law_holds_at` each take `uexecSG` IMPLICITLY, the
+goal and the lemma resolve it ambiently, and the elaborator then has to
+convert two copies of that instance.
+
+**THE RULE, for this tier: every statement that mentions a deposit or an
+exec instance pins it** — `(PS := uprogSG_free)`, `(SG := uexecSG_xv6)`.
+Leaving one implicit does not fail, it HANGS, and `--check` (vos) cannot
+see it because it skips the proof.
+
+### 5. Items (2), (3) and (4): measured, not started
+
+* **(2) `Hopen_hand`.**  The kernel's half is landed
+  (`UkFileOpen.wp_uk_ecall_open_create_deed_d` at `OffHeld`, with
+  `UkFileOpen.redir_K`), and what remains is sh's walk through the `open`
+  STUB into that ecall.  **The hypothesis as stated cannot be proved, and
+  the gap is in its own statement**: `UkShRedirAns.ush_open_call2` is
+  handed `a0 = file` (an ADDRESS) and nothing about the bytes there, and
+  nothing about the cwd — while the kernel's corollary needs
+  `arg_path_of M pv pl`, `um_start_of cw pl = ROOTINO` and
+  `last (path_elems pl) = Some fname_f`.  So the round's `Hopen_hand` owes
+  two more premises: the name's bytes at `file` (as the discarded image
+  the ecall reads, which is what the seam's own `ustr` must become) and
+  `cwdv = ROOTINO`.  That is the first thing to fix before the walk.
+* **(3) `Hchild_redir`'s `K ty → sh_file_entry ty` step** sits on (2): the
+  open's receipt is where the deed at `f` and the offset half come from,
+  and `UShRedirPay.sh_file_entry` is stated at exactly K1's premises.
+* **(4) `Hchild_cat`.**  `UCatKernel.cat_child_of_entry` gives the ENTRY at
+  cat's own payload `catq_cat`; the round's side is the conversion
+  `□ (∀ cs0, catq_cat g v vf ps0 cs0 s0 I P (-1) -∗ UkShFork.ushf_wq Wcf I)`,
+  which is a fact about the era's links (cat's filed alternative IS the
+  block the round's next prompt is owed at) and not a repackaging.  It is
+  the one piece of (4) that does not wait for `cat_held_read`.
+
+### 6. The round's last `Admitted`, sized
+
+`sh_round_holds_file` is now assembly only: `UkShRedirBody.
+ushf_rest_of_body_file` takes the kill law (proved), the ECHO child law
+(proved this stretch), the redirect child law (`Hchild_redir`), the panic
+law (proved) and **the cat child law at `ushs_lp_cat`** — which is the one
+input nothing in the tree supplies yet, because `Hchild_cat` is an ENTRY
+and the step from an entry to a child law is cat's own walk from 0x9c0.
+Its conclusion also has to move from `ush_rest_l` (echo's `D`) to
+`ush_rest_l_at ... ush_line_file`, which is the STRONGER statement the
+file body law proves.
+
+
+---
+
+## PROGRAM STREAM, stretch 5 (2026-09-18) — item (2), and the instance that stops it
+
+Branch `app-file/sh-redir`, merged from `main` at `3409ad5a0`.  Whole tree
+green (`--proofs -k`, `EXIT=0`); four audits, all four primitive-only and
+unchanged (System 13, Echo 14, Tree 13, File 14 — zero app-level axioms in
+any cone); `make gen-ucode` seven catalogs unchanged.  Metric **6**
+(three-file 7 + 6 + 1 = **14**).
+
+### 1. `Hopen_hand` was not provable AS STATED, and that half is fixed
+
+`UkShRedirAns.ush_open_call2` handed the open `a0 = file` — an ADDRESS —
+and said nothing about the bytes there or about the cwd, while the kernel
+resolves a PATH.  So the round assumed something nobody could prove.  The
+definition now takes, inside its own ∀:
+
+* the name as the image the ecall reads — `arg_path_of M (mword_of_int
+  file) pl` for every `M` the image is a sub-map of, with the bytes as
+  `ubyteq (ukn_d N) DfracDiscarded`;
+* `np_elems pl = []`, `um_start_of cwdv pl = ROOTINO`,
+  `last (path_elems pl) = Some fname_f`;
+* `fd_lowest_closed l = Some 1` — the fd arm names fd ONE, and which slot
+  the ledger picks is the CALLER's fact (`UserFd.ualloc_std`), true of the
+  redirect child's table because it closed fd 1 before calling.
+
+`redir_Kf` also gains the taint arm: the kernel's own `-1` payload is
+`FileOpen.file_open_pay`, whose third arm is the era's taint.
+
+Every one of these is a fact sh has — its cwd is the root for the whole
+era, and the line's bytes are in its own buffer at the lexed offset — so
+the hypothesis is now true and dischargeable, and what remains is the
+walk.
+
+### 2. THE WALK IS WRITTEN AND CANNOT TYPE, AND THE REASON IS ONE LINE OF THE KERNEL'S FILE
+
+sh's stub is three instructions (`c.li a7,15` at 0xcc6, `ecall` at 0xcc8,
+`c.jr ra` at 0xccc — `UShConsK.sh_open_console_leaf_holds`'s mould) with
+`UkFileOpen.wp_uk_ecall_open_create_deed_d` as the leaf.  That corollary is
+stated at the **ambient** deposit instance, and there are two:
+
+| instance | kind | `Dsup` | `psok` |
+|---|---|---|---|
+| `UexecExecInst.uprogSG_gen` | `Global Instance` (what resolution finds) | `xv6_ssupply` | `fun _ => True` |
+| `UexecExecInst.uprogSG_free` | plain `Definition` (named explicitly) | `True` | `xv6_free` |
+
+`UkFileOpen`'s section declares no `uprogSG`, so every `urun` in that file
+is at the FIRST; sh's redirect child runs at the SECOND (its walks, its
+supply and `UEchoFile`'s entry all name `uprogSG_free`).  The two records
+share neither field, so the corollary cannot be applied by the walk that
+needs it — `iApply` fails with `iSpecialize: cannot instantiate (urun N h1
+m1 …)` against a hypothesis that prints identically.
+
+**What the kernel stream must do:** take `uprogSG` as a section parameter
+in `UkFileOpen` (or state the corollary at `(PS := …)`), exactly as
+`UkRunSys.wp_uk_ecall_open_recv_img` already does — which is why sh's
+CONSOLE open goes through and its FILE open does not.  With that one
+change the walk above applies as written; nothing else in item (2) is
+open.
+
+This is the instance-pinning rule biting from the other side: an
+unannotated statement does not only HANG, it can also make a lemma
+unusable by the tier that needs it.
+
+### 3. Items (3), (4), (5): where they stand
+
+* **(3)** sits on (2) exactly as before: the `K ty → sh_file_entry ty` step
+  reads the deed and the offset half off the open's receipt, and
+  `UShRedirPay.sh_file_entry` is stated at K1's premises already.
+* **(4)** the round's own piece is
+  `□ (∀ cs0, catq_cat g v vf ps0 cs0 s0 I P (-1) -∗ UkShFork.ushf_wq Wcf I)`.
+  Measured: `catq_cat … (-1)` is `UCatOut.cch` at the block's END
+  (`turn v (P + cat_out_len …)`, `cs` extended by `RCRan`/`RCNoOpen`) or
+  the taint, and `ushf_wq Wcf I`'s right arm is `lk_lcred FI … I 0 ∗
+  sh_hold I`.  The CURSOR half is a links step (`cch`'s five conjuncts are
+  `fwc_blk_at`'s modulo `f0_lb` vs `f0w`, and the round holds the
+  `file_era_pin` that closes that gap).  **The DEED half is not**: cat's
+  exit payload carries no `fown`, the lend gave it a FRACTION
+  (`cat_pay`'s `q1 q2`), and `sh_hold I` at the next round wants a whole
+  deed — so the conversion is about how the fraction recombines, which is
+  CAT-ENTRY's design question and not a lemma this stream can write alone.
+* **(5)** `sh_round_holds_file` is still assembly-only and still missing
+  exactly one input: cat's child law at `ushs_lp_cat`.  Everything else it
+  needs is now proved (kill law, ECHO child law, panic law, the file body
+  law), and its conclusion moves to `ush_rest_l_at … ush_line_file`.
+
+
+---
+
+## PROGRAM STREAM, stretch 6 (2026-09-18) — item (2) closed, and the THIRD instance that has to be pinned
+
+Branch `app-file/sh-redir`, merged from `main` at `88eb32560`.  Whole tree
+green (`--proofs -k`, `EXIT=0`); four audits, all primitive-only and
+unchanged (13 / 14 / 14 / 13 — zero app-level axioms in any cone);
+`make gen-ucode` seven catalogs unchanged.  Metric **5** (three-file
+7 + 5 + 1 = **13**).
+
+### 1. `Hopen_hand` is proved, and three separate things had to be right
+
+* **the premises** (stretch 5): the name as the image the ecall reads, the
+  three path facts, `fd_lowest_closed l = Some 1`.
+* **the deposit instance, PER LEMMA and not as a section variable.**
+  `UkFileOpen.wp_uk_ecall_open_create_deed_v` and `_d` now take
+  `` `{PSx : uprogSG Σ} `` and pass it to `wp_uk_ecall_open_recv_gimg`.
+  Every landed caller resolves it ambiently to `uprogSG_gen` exactly as
+  before; sh's redirect child names `uprogSG_free`.
+  **A section `Context` was tried first and is NOT the way**: the
+  elaboration of that 1500-line file ran 35 minutes without finishing —
+  which is exactly what `UEchoFile`'s own header predicts ("a section
+  variable of a class type is a LOCAL INSTANCE... the instances must be
+  the ambient ones and the deposit instance is named PER LEMMA where it
+  matters").  The per-lemma binder compiles in the usual time.
+* **the cwd's CAMERA, one class further out than the deposit.**
+  `UserCwd.ucwd` takes a `ghost_varG Σ Z`; `UkShRedirAns` and `UkRunLeaf`
+  have their own section variable and the kernel's files read the
+  whole-system record's (`Xv6Cameras.offbox_offG` off `Xv6G.xv6_offbox`).
+  Both are in scope in the round, resolution picks the section variable,
+  and **the two print identically** — so the open leaf's `ucwd` and the
+  call's were not the same proposition.  `(ghost_varG0 := offbox_offG)` on
+  the call, on `wp_uk_cli` and on `wp_uk_cjr`, and the walk goes through.
+
+**THE RULE GROWS: pin the deposit instance, the exec instance AND the
+camera.**  All three were statements that type-checked, printed right, and
+could not be applied; two of the three failed silently (a hang), the third
+with `iSpecialize: cannot instantiate` between two terms that print the
+same.  `Local Set Printing Implicit` plus turning the failing premise into
+its own goal (`[Hrun]` + `iExact`) is how each was localised — worth doing
+FIRST next time, not last.
+
+### 2. The walk
+
+usys.S's three instructions (`c.li a7,15` at 0xcc6, `ecall` at 0xcc8,
+`c.jr ra` at 0xccc), `UShConsK.sh_open_console_leaf_holds`'s mould with
+`wp_uk_ecall_open_create_deed_d` at `OffHeld` in the middle, and the answer
+mapped onto `ush_open_ans2`'s two arms — `UserFd.ualloc_std` turns the
+kernel's `ualloc` into fd ONE, and `om_readable`/`om_writable` of 1537
+compute to `false`/`true`.
+
+### 3. Items (3), (4), (5) after this
+
+* **(3)** is now unblocked and is the next thing: `K ty → sh_file_entry ty`
+  where `K ty = UkFileOpen.file_open_fd_K OffHeld (fgn_cl g) r ty`.  Two
+  premises of K1's entry are NOT in that receipt and have to come from
+  somewhere named: the inode's identity (`i ∉ {INIT,SH,ECHO,CAT}`) and the
+  `Pay` conversion `□ (ustd ∗ Cr -∗ UEchoFile.ef_pay i γo ws)`, which is
+  the round's (at the file era the deed rides inside the lend).
+* **(4)** RULING CAT-DEED is recorded and not started: `catq_cat` gains
+  `∗ fown r (Some (i, bs))` on every arm, carried out by
+  `cat_pay_at`/`cat_child_of_entry`; then cat's child law at `ushs_lp_cat`
+  is entry → child law by cat's walk from 0x9c0.
+* **(5)** unchanged: `sh_round_holds_file` is assembly-only once (4) lands,
+  with its conclusion at `ush_rest_l_at … ush_line_file`.
+
+
+---
+
+## PROGRAM STREAM, stretch 7 (2026-09-18) — item (3): the inode reading, and where the receipt has to ride
+
+Branch `app-file/sh-redir`, merged from `main` at `194c18720`.  Whole tree
+green (`--proofs -k`, `EXIT=0`); four audits primitive-only and unchanged
+(13 / 14 / 13 / 14); `gen-ucode` seven catalogs unchanged.  Metric **5**
+(three-file 7 + 5 + 1 = **13**).
+
+### 1. The inode identity was already half-built
+
+K1's entry takes `i ∉ {INIT, SH, ECHO, CAT}` and the ruling is right that
+it is the CLAIM's fact — but the pure half **already exists**:
+`FileDeltas.f_inum_not_pinned` (with the `row_flen` projection that avoids
+normalising a 35,976-byte literal, which is its own durable-note).  What
+was missing was the two readings, and both landed:
+
+* `AppFileCons.file_deed_inum_acc` — a holder of the deed reads the four
+  inequalities in one destructuring (`file_fs_pure_acc` for the pins,
+  `AppFile.file_deed_law` for `f_ok av (Some (i, bs))`, then the length
+  separation), or the taint.
+* `UShRound.redir_K_inum` — the ONE invariant opening that turns
+  `redir_K ty` into `ty = FdInode i γo OffHeld` plus those four, or the
+  taint.  `file_escrow_park`'s mould; the receipt comes back whole.
+
+### 2. The receipt cannot be a wand INTO the supply, and that is a shape bug the ruling implies
+
+`wp_kshm_child_file_redir`'s supply premise was
+`K ty -∗ sh_exec_sup_echo_at … (Wc I 3)`.  **Nothing can fill that**: the
+supply is a `□` box and `K ty` is LINEAR (the deed at `f`, the offset
+half), so spending the receipt to learn a persistent fact is exactly what
+the logic forbids.  The receipt belongs in the box's own `Cr`, handed in
+per call — which is also where K1's `ef_pay` wants it: **the deed went
+INTO the open out of the lend** (`sh_hold`'s `fown`, this file's own
+ruling) **and comes back in the receipt**, so what the exec carries is
+what is left of the lend beside it:
+
+```coq
+(∀ ty, sh_exec_sup_echo_at (ushs_fd1f ty) ws Q (Wc I 3 ∗ K ty))
+```
+
+The diagnostic's law moves with it (a law at a bigger `Cr` is the law at
+the smaller one with the extra dropped — the direction the round weakens
+in).  Landed and green.
+
+### 3. What is left of (3), sized
+
+The round must now build that supply from `UShRedirPay.
+sh_exec_sup_file_at_holds`, whose two premises are:
+
+* `sh_file_entry ty ws Q Pay` at `Pay := UEchoFile.ef_pay i γo ws` — i.e.
+  K1's `efile_image_entry` at the inode the receipt names.  **Its pure
+  premises (`i ∉ …`) are a fupd away and the supply's body has no fupd**,
+  so the WALK has to take `redir_K_inum` as a premise and do the opening
+  right after the open returns, handing the pure facts to the supply:
+
+  ```coq
+  (∀ ty, K ty ={⊤}=∗ K ty ∗ (⌜ty = FdInode i γo OffHeld ∧ i ∉ …⌝ ∨ T))
+  ```
+
+  That is one more statement change to `wp_kshm_child_file_redir` and is
+  the next thing.
+* the Pay conversion `□ (ustd ∗ (Wcl I 3 ∗ K ty) -∗ ef_pay i γo ws)`:
+  `Wq := Wcl I 3` (K1 keeps the era's console credential opaque for
+  exactly this), `efq` from the receipt's deed and `foff_pub OffHeld γo`.
+
+### 4. (4) and (5) not started
+
+RULING CAT-DEED is recorded verbatim in stretch 5's §3 and unchanged:
+`catq_cat` gains `∗ fown r (Some (i, bs))` on every arm, carried out by
+`cat_pay_at`/`cat_child_of_entry`, then cat's child law at `ushs_lp_cat`
+by cat's walk from 0x9c0.  (5) is assembly once (4) lands.  Both are
+multi-hour items behind (3)'s remaining shape.

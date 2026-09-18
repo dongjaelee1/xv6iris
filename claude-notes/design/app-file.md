@@ -560,7 +560,40 @@ unowned critical item (WRITE-RELAY-3's `TB` guard).  RULES, replacing
   discharged, 6d645865c); `cat_open_hand` discharged and `redir_K`
   restated with its taint arm at 023d1fff8 (no metric change); 16 at
   e455487d8 (7/8/1: PROGRAM STREAM's `Hcat_body`, era step, H' applied,
-  `sh_tag_law_file`/`Hexecfail`/`Hpanic`).
+  `sh_tag_law_file`/`Hexecfail`/`Hpanic`); 14 at 0edba843f (7/6/1:
+  `Hchild_echo` and `sh_child_law_file`); 13 at `Hopen_hand` proved
+  (7/5/1); checkpoint 37 = that plus INIT-FILE round 6 (1e044707c),
+  audits 27/14/13 unchanged.
+- RULING LINE-OK (2026-09-18, PROGRAM-STREAM stretch 4): the fork's slot
+  (`UkSh.ush_posw`) told the child only `last_ws I = ws`, and a body with a
+  trailing blank has the same words as one without, so the era's line
+  constructor was undecidable at the child.  One conjunct in the slot,
+  `FileDisc.fbody_ok (ush_lastbody I)` ("the input's last body parses"),
+  free at the producer; `sh_exec_sup_echo_wq`'s `line_ok` guard is a
+  parameter, the file's the stage's `ck_lineok`.  The diagnostic carrier
+  came with the same guard, so `pdiag` is not on the program stream's
+  critical path.
+- RULING CAT-DEED (2026-09-18, PROGRAM-STREAM stretch 5): cat's exit
+  payload returns the WHOLE deed on every arm — `catq_cat := (catq_filed
+  RCRan ∨ catq_filed RCNoOpen) ∗ fown r (Some (i, bs))` — because the lend
+  gives cat both fractions, cat's reads never move the deed's state, and
+  `cat_hold_at`'s fraction survives a tainted read.  sh's next hold takes
+  it whole with the tie by `cat_tie`'s step.  Also: `ush_open_call2` said
+  nothing about the bytes at the address it handed the open, nor the cwd —
+  it now carries the name as the image the ecall reads, the root cwd and
+  the lowest closed fd (fixed at 6104b5930); and `UkFileOpen` must take
+  `uprogSG` as a section parameter (its corollaries were at the ambient
+  `uprogSG_gen`, unusable by sh's child at `uprogSG_free`).
+- RULING RECEIPT-IN-CR (2026-09-18, PROGRAM-STREAM stretch 7): the open's
+  receipt `K ty` (the deed at `f`, the offset half) is LINEAR and the
+  child's exec supply is a `□` box, so `K ty -∗ sh_exec_sup_echo_at …` is
+  unfillable.  The receipt rides in the box's own `Cr`, handed in per
+  call: `∀ ty, sh_exec_sup_echo_at (ushs_fd1f ty) ws Q (Wc I 3 ∗ K ty)` —
+  the deed went into the open out of the lend and comes back in the
+  receipt, so the exec carries what is left of the lend beside it.  The
+  inode identity (`i` not an image inode) is the claim's:
+  `FileDeltas.f_inum_not_pinned` by row LENGTH, read through
+  `file_deed_inum_acc` / `redir_K_inum`.
 - RULING READ-HELD (2026-09-18, KERNEL-STREAM §3a): the read's hand mode
   is the WRITE side's landed shape mirrored — `file_read_piece_adv` as
   `awrite_full_adv`'s twin (the half in the closure, agree/advance/return
@@ -577,6 +610,52 @@ unowned critical item (WRITE-RELAY-3's `TB` guard).  RULES, replacing
   position bounded by nothing); (ii) the piece takes the application's
   taint equation (`app_taint` ↔ `file_taint c`) as two persistent
   premises — the kernel invents neither.
+- RULING WR-TB (2026-09-18, KERNEL-STREAM §4): a FREE `TB : uptd -> Prop`
+  on `filewrite_in` is refuted at the statement — the program chooses it,
+  the kernel meets `P`, and the only meeting point (row 16 of
+  `xv6_sbundle`) is a function of a `uvis`, which carries no `uptd` by
+  construction.  The guard is the one the key's rows already determine:
+  `wr_tb pmv sz lz P := perm_of (ud_um P) sz = pmv /\ proc_pt_wf P /\
+  (lz = false -> lazy_free P)` at `uvis_perm/uvis_sz/uvis_lazy W`,
+  discharged by the kernel from the three facts it holds about its own
+  `pv_upt`; three key values threaded, no new field.
+- RULING EFQ (2026-09-18, KERNEL-STREAM §4): `UEchoFile.efq` conjoined the
+  half at the content-derived offset whichever arm `file_wq` took, so the
+  disconnected arm was unpayable.  READ-HELD's (i) at the write: the
+  cursor is `fired (file_wq exact ∗ uoff γo (content offset)) ∨ (file_taint
+  c ∗ ∃ p, uoff γo p)` — the half unmoved, its position existential, on
+  the taint arm; `efcur`/`ef_exit` and the four lemmas naming them follow.
+  RELAY 1 is not owed: `f_ok`'s `Some` arm pins the inum, so
+  `file_claim_read` yields it inside the node.
+- INIT-FILE round 4 (97d8cc41b): all nine conjuncts of
+  `init_cons_laws_at` discharged at `file_pred`; `Nm`/`Nd` threaded to
+  `mknod_au_at` through `SpecCreate.cre_commits` (name held at the GUARDED
+  reading on both sides of `mknod_acre_inst`; a directory create owes `Nd`
+  everywhere; the node separates the deed's row from the arm's, only the
+  credential separates the console's); the prologue diagnostic family is
+  based on `fwc_pban_at`, not `fwc_pro_at` (the file loses echo's `j` at
+  `fwc_ban_done_pro_at`); `file_Wbf_at_of_boot` = /init's first credential
+  out of `file_boot` alone.  `sh_hold_at` exists twice (UShRound's and
+  UInitFileCons's, syntactically the same); the round's wins at the
+  assembly.  Round 5 (989ca2114): the `pdiag` field set (eleven fields,
+  `lk_pban` the base) at all three instances, the unindexed one by lifting
+  through the existential closure; `UInitDiag` generalised over the
+  record with `UInitBoot.v` unmoved.  Two seams left before
+  `file_Hinit_boot`: the prompt law's Hold form (measure: the record's
+  prompt step decides the block-first alternative from `s0/cs0/I0`, so it
+  should be a frame), and `init_exec_sup_of_sh_slot`'s hard-coded echo
+  discipline (a parameterisation).  `UInitFile.v` may import `UShRound`:
+  the file audit does not see the program tier.  Round 6 (4feb38ec0):
+  the prompt law IS a frame (same `I` on both sides; the step never opens
+  the credential's arms; `UShPanicHold.v`); the seam takes the discipline
+  (`sh_pay_at Dl` needed too, the tail obligation being at the same `Dl`;
+  `Typeclasses Opaque ush_rest_l_at` or the `Persistent` search never
+  returns); and R4.6 CORRECTED — conjunct (g) was still the wide leg,
+  refuted at the claim by `file_cons_create_other_refuted`, repaired with
+  `⌜d <> ROOTINO \/ nmn <> fname_f⌝` as §3.4 first named it.  /init's
+  console dance at the file claim is `UInitConsFile.v`.  Left: the
+  assembly, and the round's conclusion at `ush_rest_l_at … ush_line_file`
+  (the program stream's move).
 - RULING H' (2026-09-18, INIT-FILE findings 3.1/3.2): the round's hold is
   tied to the era's boot state BY A SHARED INDEX, not by `f0_lb` (which
   only exists after the era's first console byte, so `Wbf []` was

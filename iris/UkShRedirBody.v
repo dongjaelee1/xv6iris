@@ -265,6 +265,9 @@ Section UkShRedirBody.
           ⌜ m !!! Regidx s1_idx = (mword_of_int s0 : mword 64) ⌝ -∗
           ⌜ UkShRedirLine.ushs_line_is ws file fb 0%nat len ⌝ -∗
           ⌜ ws = last_ws I ⌝ -∗
+          (* the era's own line at that input (the PROGRAM STREAM): the
+             slot the loop left says the input's last body PARSES *)
+          ⌜ FileDisc.fbody_ok (UkSh.ush_lastbody I) ⌝ -∗
           ⌜ 0 < s0 ⌝ -∗ ⌜ s0 + Z.of_nat len + 1 < Z64 ⌝ -∗
           ⌜ s0 + Z.of_nat len < 2 ^ 38 ⌝ -∗
           ⌜ 8344 <= sz ⌝ -∗ ⌜ UserPtTree.pgroundup sz = sz ⌝ -∗
@@ -300,14 +303,14 @@ Section UkShRedirBody.
   Proof using .
     iIntros "#Hl". rewrite /UkShFork.ushf_child_law_at.
     iIntros "!>" (N' h m dw dv s0 len ws g sz ld n I)
-      "%Hpeq %Hs1 %Hline %Hlws %Hs0 %Hs64 %Hs38 %Hszlo %Hszal %Hszok
+      "%Hpeq %Hs1 %Hline %Hlws %Hfbk %Hs0 %Hs64 %Hs38 %Hszlo %Hszal %Hszok
        %Hrows #Hcode #Hpcode #Hpro #Hjt Hstr Hws Hsy Hstd Hcwd Hch HM Hcr Hrun".
     destruct Hline as [ file Hline ].
     iApply ("Hl" $! N' h m dw dv s0 len ws file g sz ld n I
-              with "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%]
+              with "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%]
                     Hcode Hpcode Hpro Hjt Hstr Hws Hsy Hstd Hcwd Hch HM
                     Hcr Hrun");
-      [ exact Hpeq | exact Hs1 | exact Hline | exact Hlws
+      [ exact Hpeq | exact Hs1 | exact Hline | exact Hlws | exact Hfbk
       | exact Hs0 | exact Hs64 | exact Hs38 | exact Hszlo | exact Hszal
       | exact Hszok | exact Hrows ].
   Qed.
@@ -319,13 +322,13 @@ Section UkShRedirBody.
   Proof using .
     iIntros "#Hl". rewrite /sh_redir_child_law.
     iIntros "!>" (N' h m dw dv s0 len ws file g sz ld n I)
-      "%Hpeq %Hs1 %Hline %Hlws %Hs0 %Hs64 %Hs38 %Hszlo %Hszal %Hszok
+      "%Hpeq %Hs1 %Hline %Hlws %Hfbk %Hs0 %Hs64 %Hs38 %Hszlo %Hszal %Hszok
        %Hrows #Hcode #Hpcode #Hpro #Hjt Hstr Hws Hsy Hstd Hcwd Hch HM Hcr Hrun".
     iApply ("Hl" $! N' h m dw dv s0 len ws g sz ld n I
-              with "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%]
+              with "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%]
                     Hcode Hpcode Hpro Hjt Hstr Hws Hsy Hstd Hcwd Hch HM
                     Hcr Hrun");
-      [ exact Hpeq | exact Hs1 | by exists file | exact Hlws
+      [ exact Hpeq | exact Hs1 | by exists file | exact Hlws | exact Hfbk
       | exact Hs0 | exact Hs64 | exact Hs38 | exact Hszlo | exact Hszal
       | exact Hszok | exact Hrows ].
   Qed.
@@ -388,13 +391,25 @@ Section UkShRedirBody.
     UkShRedir.ush_open_call N' FsImg.ROOTINO
       (s0 + Z.of_nat (S (S (length (wl_body ws) + 1)))) 1537
       (<[1%nat := FdClosed]> ld) K -∗
-    (* ...and the child's exec supply AT THE FILE the open returned *)
+    (* ...and the child's exec supply AT THE FILE the open returned, WITH
+       THE RECEIPT IN THE LEND (the PROGRAM STREAM).  It used to be
+       [K ty -∗ sh_exec_sup_echo_at … (Wc I 3)] and that shape cannot be
+       filled: the supply is a [□] box and [K ty] is LINEAR (it carries the
+       deed at `f` and the offset half), so nothing can hand the receipt
+       over to build it.  The receipt belongs where the entry's [Pay] is
+       made instead -- inside the box's own [Cr], which the walk hands in
+       per call -- and that is exactly where K1's [ef_pay] wants it: the
+       deed went INTO the open out of the lend and comes back in the
+       receipt, so [Cr] is what is left of the lend beside it. *)
     (∀ ty : fdtype,
-       K ty -∗
        UkShEcho.sh_exec_sup_echo_at (ushs_fd1f ty) ws
-         (fun _ : Z => UkShFork.ushf_wq Wc I) (Wc I 3%nat)) -∗
-    (* ...the diagnostic's law at the two ends of the credential *)
-    UkShDiag.ush_execfail_law (Wc I 3%nat) (Wc I 0%nat) -∗
+         (fun _ : Z => UkShFork.ushf_wq Wc I) (Wc I 3%nat ∗ K ty)) -∗
+    (* ...the diagnostic's law at the two ends of the credential, AT THE
+       LEND THE EXEC CARRIES (so, with the receipt beside it): a law at a
+       bigger [Cr] is the law at the smaller one with the extra dropped,
+       which is the direction the round weakens in. *)
+    (∀ ty : fdtype,
+       UkShDiag.ush_execfail_law (Wc I 3%nat ∗ K ty) (Wc I 0%nat)) -∗
     Wc I 3%nat -∗
     urun N' h m (mword_of_int 0x9c0)
       (68 + (8 + (UkShDiag.ush_Dg + n))) -∗
@@ -447,18 +462,21 @@ Section UkShRedirBody.
       with (6 + (2 + (UkShDiag.ush_Dg + (62 + n))))%nat by lia.
     iApply (UkShEcho.wp_kshr_exec_echo_at_holds (ushs_fd1f ty) ws
               (fun _ : Z => UkShFork.ushf_wq Wc I)
-              (Wc I 3%nat) (Wc I 0%nat) N' Hc hf mf q (sz + 65536) s0
+              (Wc I 3%nat ∗ K ty)%I (Wc I 0%nat) N' Hc hf mf q (sz + 65536) s0
               (UkShRedirPc.ushs_nulcut (wl_toks ws) len
                  (fun j : nat => fb (0 + j)%nat)
                  (length (wl_body ws) + 3 + length file)%nat)
               (<[1%nat := FdOpen false true ty]> (<[1%nat := FdClosed]> ld))
               (62 + n)%nat
               Hok Hpeq Ha0f Hbytes Hfd1' Hfd2'
-              with "Hcode [HK Hsup] Hxl [] Hjt Hsub Hsz Hstd Hcwd Hch Hcr
+              with "Hcode [Hsup] [Hxl] [] Hjt Hsub Hsz Hstd Hcwd Hch [Hcr HK]
                     Hrun").
-    - iApply ("Hsup" $! ty with "HK").
+    - iApply ("Hsup" $! ty).
+    - iApply ("Hxl" $! ty).
     - (* a failed exec's child exits on the block written up to its prompt *)
       iIntros "!> Hc". rewrite Hpeq /UkShFork.ushf_wq. iRight. iExact "Hc".
+    - (* THE LEND THE EXEC CARRIES: what is left of it, and the receipt *)
+      iFrame "Hcr HK".
   Qed.
 
   (* =================================================================== *)

@@ -2039,6 +2039,48 @@ Qed.
 Lemma uline_of_echo b : body_ok b -> uline_of b = LEcho (wl_words b).
 Proof using. intro H. by rewrite /uline_of (parse_line_echo b H). Qed.
 
+(* ===================================================================== *)
+(*  THE LINE AN ADMISSIBLE BODY IS, WHEN ITS WORDS ARE AN ECHO LINE        *)
+(*  (the PROGRAM STREAM).                                                  *)
+(*                                                                        *)
+(*  [fbody_ok b] says the body parses, and the parse is one of THREE       *)
+(*  constructors; [EchoDisc.line_ok (wl_words b)] picks the first, and it  *)
+(*  picks it WITHOUT the round trip [wl_body (wl_words b) = b]:            *)
+(*                                                                        *)
+(*    [LCat]    -- its words are "cat f", whose head is not "echo"         *)
+(*                 ([cat_not_echo]);                                       *)
+(*    [LEchoF]  -- its body ends in " > f", so the '>' is one of its       *)
+(*                 bytes, and [LineWords.wl_words_alnum_body] says every   *)
+(*                 byte of a body whose words are alphanumeric is          *)
+(*                 alphanumeric or a blank ([wl_gt_not_body]).             *)
+(*                                                                        *)
+(*  This is what lets a consumer that knows only the LINE it read (sh's    *)
+(*  child law: [UkSh.ush_line_is], hence [line_ok]) conclude what the ERA  *)
+(*  filed, which is the premise the file era's stage record asks for       *)
+(*  ([FileLinkInst.file_lineok]).                                          *)
+(* ===================================================================== *)
+Lemma fbody_ok_echo (b : list (bv 8)) :
+  fbody_ok b -> line_ok (wl_words b) -> uline_of b = LEcho (wl_words b).
+Proof using.
+  intros Hfb Hok.
+  pose proof (fbody_ok_line b Hfb) as [Hlok Hbody].
+  destruct (uline_of b) as [ws | ws |] eqn:Hu.
+  - (* LEcho: the body IS [wl_body ws], so the words are [ws] *)
+    rewrite /uline_ok in Hlok. rewrite /line_body in Hbody.
+    rewrite Hbody (wl_words_body ws (line_ok_wf _ Hlok)). reflexivity.
+  - (* LEchoF: the '>' is a byte of the body *)
+    exfalso.
+    pose proof (wl_words_alnum_body b (wl_wf_alnum _ (line_ok_wf _ Hok)))
+      as Hbb.
+    rewrite /line_body in Hbody. rewrite Hbody in Hbb.
+    apply Forall_app in Hbb as [_ Hsuf].
+    exact (wl_gt_not_body
+             (proj1 (Forall_forall _ _) Hsuf wl_gt suf_gtf_gt)).
+  - (* LCat: the words are "cat f" *)
+    exfalso. rewrite /line_body in Hbody. rewrite Hbody in Hok.
+    exact (cat_not_echo (line_ok_head _ Hok)).
+Qed.
+
 Lemma ralt_ok_echo_lt4 ws c : ralt_ok (LEcho ws) (ralt_dec c) -> (c < 4)%nat.
 Proof using.
   rewrite /ralt_dec. case_decide as H4; [by intros _ |].

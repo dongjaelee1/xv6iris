@@ -129,6 +129,7 @@ Require Export FsAbsCreateFire.  (* the commits ([acre_commit_at], [dlookup_comm
 Require Import AppInv.          (* [appN]/[appE]: the application's namespace, the commit mask (app-instances.md round A) *)
 Require Import PieceFam.        (* [pfam]: a one-shot piece's receipt beside its refund *)
 Require Import FsAbs.            (* LAST (FsAbs's own rule)                 *)
+Require Export FsAbsCreateNm.    (* [acre_commit_at_gen_nm]: the create commit at a NAME PREDICATE, and its two bridges *)
 
 Local Open Scope Z_scope.
 
@@ -677,12 +678,19 @@ Section CreateFire.
      child's fragment is only READ (its row is what the armed-child
      observation [cre_pre]'s third conjunct asks for: nlink 1, not yet in
      the parent) and comes back untouched. *)
-  Lemma caf_acre_fire (γfs : fs_names) (E : coPset) (cf : Z -> Z -> absnode)
+  (* THE NAME PREDICATE RIDES ALONG (lane INIT-FILE, section 3.4): the
+     commit is [FsAbsCreateNm.acre_commit_at_gen_nm] and the fire owes
+     [Nm nm] beside the dot-name credential.  [caf_acre_fire] below is
+     this lemma at [Nm := fun _ => True], through the bridge, and is what
+     every landed fire site still reads as. *)
+  Lemma caf_acre_fire_nm (γfs : fs_names) (E : coPset) (cf : Z -> Z -> absnode)
+      (Nm : fname -> Prop)
       (Pd : Z -> iProp Σ)
       (Farm : pfam Σ (aview -> Z -> iProp Σ))
       (Fok : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
       (d i : Z) (nm : fname) (dqc : dfrac) (np np' nc : fs_node) :
     ↑ftopN ∪ ↑appN ⊆ E ->
+    Nm nm ->
     inode_local d np' ->
     fn_is_dir np = true ->
     fn_nlink np <> 0%nat ->
@@ -697,7 +705,7 @@ Section CreateFire.
                                (fn_nlink np + acre_bump (cf d i))%nat) ->
     abs_of nc = Some (MkAnode (cf d i) 1%nat) ->
     ftop_inv γfs -∗ app_inv γfs -∗
-    pf_at (acre_commit_at_gen (fs_gamma_L γfs) appE cf Pd Farm) Fok -∗
+    pf_at (acre_commit_at_gen_nm (fs_gamma_L γfs) appE cf Nm Pd Farm) Fok -∗
     (* THE ARM'S PERMIT, SPENT HERE: the create's child IS the inode
        [ialloc] armed, and the leg that ends the inode is the one that
        spends the permit ([FsAbsCreateFire.acre_commit_at_gen]'s note). *)
@@ -715,7 +723,7 @@ Section CreateFire.
           ⌜cre_pre av d nm (dir_entries np) (fn_nlink np) i (cf d i)⌝
           ∗ Fok.(pf_recv) av d nm i.
   Proof.
-    intros HE Hloc Hdir Hnl Hnone Hpnm Habsp' Habsc.
+    intros HE HNm Hloc Hdir Hnl Hnone Hpnm Habsp' Habsc.
     iIntros "#Hi #Hai Hcm Harm HPd Hfp Hfc".
     iDestruct (pf_at_au with "Hcm") as "Hcm".
     (* the re-spelling is needed because
@@ -746,7 +754,7 @@ Section CreateFire.
                     (fn_nlink np) i (cf d i) Hpre Hne). }
     iMod (fupd_mask_subseteq appE) as "Hcl2"; [rewrite /appE; solve_ndisj |].
     iMod ("Hcm" $! I d i nm (dir_entries np) (fn_nlink np)
-            with "[//] [//] Harm HPd Hta") as "(Hta & HPd & Hstep & Hph2)".
+            with "[//] [//] [//] Harm HPd Hta") as "(Hta & HPd & Hstep & Hph2)".
     (* THE MOVE, at the whole authority: the application's half comes out
        of [appN] beside its claim, which the caller's step re-establishes
        under the later ([AppInv.app_top_update]) *)
@@ -764,6 +772,46 @@ Section CreateFire.
         exact (Hcl jj mm Hj Hun). }
     iModIntro. iFrame "Hfp Hfc HPd". iExists (abs_view I).
     iSplitR; [by iPureIntro |]. iExact "HΦ".
+  Qed.
+
+  (* ...and the landed reading, at the predicate every landed site is at:
+     a provider that answers at EVERY name answers at this one
+     ([FsAbsCreateNm.acre_commit_at_gen_nm_of]). *)
+  Lemma caf_acre_fire (γfs : fs_names) (E : coPset) (cf : Z -> Z -> absnode)
+      (Pd : Z -> iProp Σ)
+      (Farm : pfam Σ (aview -> Z -> iProp Σ))
+      (Fok : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
+      (d i : Z) (nm : fname) (dqc : dfrac) (np np' nc : fs_node) :
+    ↑ftopN ∪ ↑appN ⊆ E ->
+    inode_local d np' ->
+    fn_is_dir np = true ->
+    fn_nlink np <> 0%nat ->
+    dir_entries np !! nm = None ->
+    nm <> DOT /\ nm <> DOTDOT ->
+    abs_of np' = Some (MkAnode (ADir (<[nm := i]> (dir_entries np)))
+                               (fn_nlink np + acre_bump (cf d i))%nat) ->
+    abs_of nc = Some (MkAnode (cf d i) 1%nat) ->
+    ftop_inv γfs -∗ app_inv γfs -∗
+    pf_at (acre_commit_at_gen (fs_gamma_L γfs) appE cf Pd Farm) Fok -∗
+    cre_arm_fired Farm i -∗
+    Pd d -∗
+    top_frag (fs_gamma_L γfs) d np -∗
+    top_frag_q (fs_gamma_L γfs) dqc i nc ={E}=∗
+      top_frag (fs_gamma_L γfs) d np'
+      ∗ top_frag_q (fs_gamma_L γfs) dqc i nc
+      ∗ Pd d
+      ∗ ∃ av : aview,
+          ⌜cre_pre av d nm (dir_entries np) (fn_nlink np) i (cf d i)⌝
+          ∗ Fok.(pf_recv) av d nm i.
+  Proof.
+    intros HE Hloc Hdir Hnl Hnone Hpnm Habsp' Habsc.
+    iIntros "Hi Hai Hcm Harm HPd Hfp Hfc".
+    iApply (caf_acre_fire_nm γfs E cf (fun _ => True) Pd Farm Fok d i nm dqc
+              np np' nc HE I Hloc Hdir Hnl Hnone Hpnm Habsp' Habsc
+              with "Hi Hai [Hcm] Harm HPd Hfp Hfc").
+    iApply (pf_at_mono with "[] Hcm"). iIntros "Hcm".
+    iApply (acre_commit_at_gen_nm_of (fs_gamma_L γfs) appE cf
+              (fun _ => True) Pd Farm Fok.(pf_recv) with "Hcm").
   Qed.
 
   (* the [AFile []] instance, which is the one the T_FILE create-AU fires:

@@ -239,7 +239,15 @@ Section UShEchoPayGen.
   (*  THIS IS WHAT [UShRound.Hchild_echo] IS ONE APPLICATION OF, at        *)
   (*  [Wc := Wcf] and [Hold := sh_hold].                                   *)
   (* =================================================================== *)
-  Lemma sh_exec_sup_echo_wq_holds_at
+  (* ...AT THE ERA'S OWN GUARD (the PROGRAM STREAM).  [line_ok] is ECHO's
+     reading of "this input is one my supply is about", and it is the whole
+     reading only because that era has ONE line shape; an era with three
+     says which of its inputs the ECHO child runs at, and the guard is then
+     the conjunction it can prove from the child law's own box.  The two
+     premises below are what the body actually spends [line_ok] on: the
+     argument vector's readings, and the stage the lend opens into. *)
+  Lemma sh_exec_sup_echo_wq_holds_at_D
+      (D : list (bv 8) -> Prop)
       (Wc : list (bv 8) -> nat -> iProp Σ)
       (Hold : list (bv 8) -> iProp Σ) :
     (forall I0 : list (bv 8), Timeless (Hold I0)) ->
@@ -257,16 +265,18 @@ Section UShEchoPayGen.
     (forall (I0 : list (bv 8)) (v0 : era_pins),
        ⊢ lk_pin L (S gen_id) v0 -∗ lk_T L -∗ Wc I0 0%nat) ->
     (⊢ app_taint -∗ lk_T L) ->
+    (* the guard's two readings: the line the child runs is admissible... *)
+    (forall I0 : list (bv 8), D I0 -> line_ok (last_ws I0)) ->
     (* ...and the era's own reading of its admissible lines: at echo's
        instance [ck_lineok] is [True] and this is [fun _ _ => I]. *)
-    (forall I0 : list (bv 8),
-       line_ok (last_ws I0) -> ck_lineok (sk_cur St) I0) ->
+    (forall I0 : list (bv 8), D I0 -> ck_lineok (sk_cur St) I0) ->
     ⊢ lk_links L -∗ udep (PS := uprogSG_free) -∗ sh_echo_slot (lk_T L) -∗
-      UkShEcho.sh_exec_sup_echo_wq Wc.
+      UkShEcho.sh_exec_sup_echo_wq_at D Wc.
   Proof using St ghost_varG0 ghost_varG1 ufdG0.
-    intros HTl Hwc3 Hwc3b Hwc0 Hwct Hkt Hlok.
+    intros HTl Hwc3 Hwc3b Hwc0 Hwct Hkt Hdok Hlok.
     iIntros "#Hlk #Hdep (#Hinv & #Hcl & #Hgen)".
-    rewrite /UkShEcho.sh_exec_sup_echo_wq. iIntros "!>" (I) "%Hokws".
+    rewrite /UkShEcho.sh_exec_sup_echo_wq_at. iIntros "!>" (I) "%HDI".
+    pose proof (Hdok I HDI) as Hokws.
     rewrite /UkShEcho.sh_exec_sup_echo.
     iIntros "!>" (N' m pc s0 t g ld)
       "%Hpeq %Ha0 %Ha1 %Hbytes %Hfd1 Hstd #Hcmd Hcr".
@@ -318,9 +328,39 @@ Section UShEchoPayGen.
       iApply (echo_slot_of_kexec_at_at Wc Hold na alen afun fdv W' I v
                 HTl Hwc0 Hwct Hokws Hok
                 (echo_room_of_det (last_ws I) na alen Hokws Hna Halen)
-                Hlen Hlzf Hna Halen Hafun Hfd1' Hkt (Hlok I Hokws)
+                Hlen Hlzf Hna Halen Hafun Hfd1' Hkt (Hlok I HDI)
                 with "Hpin Hlk Hnp0 Hdep Hgen Hmp Hc HR"). }
     iFrame "Hstd Hcr HR".
+  Qed.
+
+  (* the landed name: echo's guard IS [line_ok] *)
+  Lemma sh_exec_sup_echo_wq_holds_at
+      (Wc : list (bv 8) -> nat -> iProp Σ)
+      (Hold : list (bv 8) -> iProp Σ) :
+    (forall I0 : list (bv 8), Timeless (Hold I0)) ->
+    (forall I0 : list (bv 8),
+       ⊢ Wc I0 3%nat -∗ ∃ v : era_pins,
+           lk_pin L (S gen_id) v ∗ lk_lpr L (S gen_id) v I0 3%nat
+           ∗ Hold I0) ->
+    (forall (I0 : list (bv 8)) (v0 : era_pins),
+       ⊢ lk_pin L (S gen_id) v0 -∗ lk_lpr L (S gen_id) v0 I0 3%nat -∗
+         Hold I0 -∗ Wc I0 3%nat) ->
+    (forall (I0 : list (bv 8)) (v0 : era_pins),
+       ck_lineok (sk_cur St) I0 ->
+       ⊢ lk_pin L (S gen_id) v0 -∗ lk_post L (S gen_id) v0 I0 0%nat -∗
+         Hold I0 -∗ Wc I0 0%nat) ->
+    (forall (I0 : list (bv 8)) (v0 : era_pins),
+       ⊢ lk_pin L (S gen_id) v0 -∗ lk_T L -∗ Wc I0 0%nat) ->
+    (⊢ app_taint -∗ lk_T L) ->
+    (forall I0 : list (bv 8),
+       line_ok (last_ws I0) -> ck_lineok (sk_cur St) I0) ->
+    ⊢ lk_links L -∗ udep (PS := uprogSG_free) -∗ sh_echo_slot (lk_T L) -∗
+      UkShEcho.sh_exec_sup_echo_wq Wc.
+  Proof using St ghost_varG0 ghost_varG1 ufdG0.
+    intros HTl Hwc3 Hwc3b Hwc0 Hwct Hkt Hlok.
+    exact (sh_exec_sup_echo_wq_holds_at_D (fun I => line_ok (last_ws I))
+             Wc Hold HTl Hwc3 Hwc3b Hwc0 Hwct Hkt
+             (fun I0 H => H) Hlok).
   Qed.
 
   (* =================================================================== *)

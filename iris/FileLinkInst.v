@@ -43,6 +43,7 @@ Require Import StageRec.   (* the cursor / stage record *)
 Require Import FileLinksAt.
 Require Import FileLinksAtBan.
 Require Import FileLinksAtLine.
+Require Import FileLinksAtPro.
 Require Import RiscvPtsto.
 Require Import WpUart.
 Require Import CtxIdDefs.
@@ -55,6 +56,83 @@ Section file_link_inst.
   Context (g : file_gn).
   Context `{HRg : !riscvGS Σ}.
   Context `{GEN : GenId}.
+
+  (* ---- THE PROLOGUE DIAGNOSTICS AT THE EXISTENTIAL CLOSURE
+          (lane INIT-FILE).  Every one of the family's laws PRESERVES the
+          era's boot state, so each lifts from [FileLinksAtPro]'s indexed
+          form by unpack-apply-repack.  That is what lets the UNINDEXED
+          record carry the field too, and therefore what keeps the program
+          stream off [file_link_inst_at] if it wants to be. ---- *)
+  Definition fwc_pban_ex (k : nat) (v : era_pins) (I : list (bv 8))
+    : iProp Σ := (∃ s0 : fst, fwc_pban_at g s0 k v I)%I.
+
+  Definition fwc_pdiag_ex (k : nat) (v : era_pins) (I : list (bv 8))
+      (a i : nat) : iProp Σ := (∃ s0 : fst, fwc_pdiag_at g s0 k v I a i)%I.
+
+  Global Instance fwc_pban_ex_timeless k v I : Timeless (fwc_pban_ex k v I).
+  Proof using . rewrite /fwc_pban_ex. apply _. Qed.
+  Global Instance fwc_pdiag_ex_timeless k v I a i :
+    Timeless (fwc_pdiag_ex k v I a i).
+  Proof using . rewrite /fwc_pdiag_ex. apply _. Qed.
+
+  Lemma fwc_pban_ex_taint k v I : file_taint (fgn_cl g) -∗ fwc_pban_ex k v I.
+  Proof using .
+    iIntros "#HT". rewrite /fwc_pban_ex. iExists None.
+    iApply (fwc_pban_at_taint with "HT").
+  Qed.
+
+  Lemma fwc_pdiag_ex_taint k v I a i :
+    file_taint (fgn_cl g) -∗ fwc_pdiag_ex k v I a i.
+  Proof using .
+    iIntros "#HT". rewrite /fwc_pdiag_ex. iExists None.
+    iApply (fwc_pdiag_at_taint with "HT").
+  Qed.
+
+  Lemma fwc_pdiag_ex_0 k v I a :
+    fwc_pban_ex k v I -∗ fwc_pdiag_ex k v I a 0%nat.
+  Proof using .
+    rewrite /fwc_pban_ex /fwc_pdiag_ex.
+    iIntros "H". iDestruct "H" as (s0) "H". iExists s0.
+    iApply (fwc_pdiag_at_0 with "H").
+  Qed.
+
+  Lemma fwc_pban_ex_of_ban_done k v I :
+    fwc_ban g k v I (length u_banner) -∗ fwc_pban_ex k v I.
+  Proof using .
+    iIntros "H". iDestruct (fwc_ban_unpack with "H") as (s0) "H".
+    rewrite /fwc_pban_ex. iExists s0.
+    iApply (fwc_pban_of_ban_done_at with "H").
+  Qed.
+
+  Lemma fwc_pro_of_pban_ex k v I :
+    fwc_pban_ex k v I -∗ fwc_pro g k v I.
+  Proof using .
+    rewrite /fwc_pban_ex. iIntros "H". iDestruct "H" as (s0) "H".
+    iApply fwc_pro_at_pack. iApply (fwc_pro_of_pban_at with "H").
+  Qed.
+
+  Lemma fpdiag_step_ex (k : nat) (v : era_pins) (I : list (bv 8))
+      (a i : nat) (b : bv 8) (Φ : iProp Σ) :
+    pro_alts !!! a !! i = Some b ->
+    era_pin (fgn_echo g) k v -∗ FileLinks.file_links g -∗
+    fwc_pdiag_ex k v I a i -∗
+    (fwc_pdiag_ex k v I a (S i) -∗ Φ) -∗ out_link Uart0 k b Φ.
+  Proof using .
+    intros Hb. iIntros "#Hpin #Hlk H HΦ".
+    rewrite {1}/fwc_pdiag_ex. iDestruct "H" as (s0) "H".
+    iApply (fpdiag_step_at g s0 k v I a i b Φ Hb with "Hpin Hlk H").
+    iIntros "H". iApply "HΦ". rewrite /fwc_pdiag_ex. by iExists s0.
+  Qed.
+
+  Lemma fwc_pdiag_ex_done_1 (k : nat) (v : era_pins) (I : list (bv 8))
+      (i : nat) :
+    i = length (pro_alts !!! 1%nat) ->
+    fwc_pdiag_ex k v I 1%nat i -∗ fwc_ban g k v I 0%nat.
+  Proof using .
+    intros Hi. rewrite /fwc_pdiag_ex. iIntros "H".
+    iDestruct "H" as (s0) "H". iApply fwc_ban_at_pack.
+    iApply (fwc_pdiag_at_done_1 g s0 k v I i Hi with "H").
+  Qed.
 
   Definition file_link_inst : LinkRec Σ :=
     {| lk_T := file_taint (fgn_cl g);
@@ -165,7 +243,18 @@ Section file_link_inst.
        lk_ban_read_taint := fban_read_taint g;
        lk_turn0 := fturn0 g;
        lk_panic_done := fwc_panic_done g;
-    |}.
+           lk_pban := fwc_pban_ex;
+       lk_pdiag := fwc_pdiag_ex;
+       lk_pban_tl := fwc_pban_ex_timeless;
+       lk_pdiag_tl := fwc_pdiag_ex_timeless;
+       lk_pban_taint := fwc_pban_ex_taint;
+       lk_pdiag_taint := fwc_pdiag_ex_taint;
+       lk_pdiag_0 := fwc_pdiag_ex_0;
+       lk_pban_of_ban_done := fwc_pban_ex_of_ban_done;
+       lk_pro_of_pban := fwc_pro_of_pban_ex;
+       lk_pdiag_step := fpdiag_step_ex;
+       lk_pdiag_done_1 := fwc_pdiag_ex_done_1;
+|}.
 
 End file_link_inst.
 
@@ -505,7 +594,18 @@ Section file_link_inst_at.
        lk_ban_read_taint := fi_ban_read_taint_at;
        lk_turn0 := fturn0_at g s0;
        lk_panic_done := fwc_panic_done_at g s0;
-    |}.
+           lk_pban := fwc_pban_at g s0;
+       lk_pdiag := fwc_pdiag_at g s0;
+       lk_pban_tl := fwc_pban_at_timeless g s0;
+       lk_pdiag_tl := fwc_pdiag_at_timeless g s0;
+       lk_pban_taint := fwc_pban_at_taint g s0;
+       lk_pdiag_taint := fwc_pdiag_at_taint g s0;
+       lk_pdiag_0 := fwc_pdiag_at_0 g s0;
+       lk_pban_of_ban_done := fwc_pban_of_ban_done_at g s0;
+       lk_pro_of_pban := fwc_pro_of_pban_at g s0;
+       lk_pdiag_step := fpdiag_step_at g s0;
+       lk_pdiag_done_1 := fwc_pdiag_at_done_1 g s0;
+|}.
 
   (* ---- THE TWO FAMILIES THE ROUND INSTANTIATES, at the index ----
      [file_Wcl] / [file_Wbl] are what [UShRound] takes its [Wcl] / [Wbl]
@@ -542,6 +642,84 @@ Section file_link_inst_at.
     cbn [lk_pin lk_ban file_link_inst file_link_inst_at] in *.
     iFrame "Hpin". iApply (fwc_ban_at_pack with "Hc").
   Qed.
+
+  (* =================================================================== *)
+  (*  THE STAGE, AT THE INDEXED RECORD (the PROGRAM STREAM)               *)
+  (*                                                                     *)
+  (*  [file_stage_inst] above, at [file_link_inst_at]: the same two       *)
+  (*  halves ([fwc_blk_at] IS the cursor, [fblk_step_at] IS its step) and *)
+  (*  the same reading of which lines the cursor's block is the LINE's    *)
+  (*  own alternative at ([file_lineok], which is about [fline] and the   *)
+  (*  input alone and so does not move with the index).                    *)
+  (* =================================================================== *)
+  Local Lemma fi_cur_tl_at (k : nat) (v : era_pins) (st : file_stg)
+      (p : nat) :
+    Timeless (fwc_blk_at g s0 k v (fs_I st) 0%nat p).
+  Proof using . apply fwc_blk_at_timeless. Qed.
+
+  Local Lemma fi_step_at (k : nat) (v : era_pins) (st : file_stg)
+      (ws : list (list (bv 8))) (i : nat) (b : bv 8) (Φ : iProp Σ) :
+    (fline (fs_I st) = LEcho ws /\ last_ws (fs_I st) = ws) ->
+    line_alts_of ws !!! 0%nat !! i = Some b ->
+    ⊢ lk_pin file_link_inst_at k v -∗ lk_links file_link_inst_at -∗
+      fwc_blk_at g s0 k v (fs_I st) 0%nat i -∗
+      (fwc_blk_at g s0 k v (fs_I st) 0%nat (S i) -∗ Φ) -∗
+      out_link Uart0 k b Φ.
+  Proof using .
+    intros [ Hln Hlast ] Hb. iIntros "#Hpin #Hlk Hc HΦ".
+    iApply (fblk_step_at g s0 k v (fs_I st) 0%nat i b Φ
+              with "Hpin Hlk Hc HΦ").
+    rewrite (file_fab0 (fs_I st)
+               ltac:(rewrite /file_lineok Hlast; exact Hln)).
+    rewrite Hlast. exact Hb.
+  Qed.
+
+  Definition file_cur_inst_at : CurRec file_link_inst_at :=
+    MkCurRec file_link_inst_at file_stg
+      (fun st ws => fline (fs_I st) = LEcho ws /\ last_ws (fs_I st) = ws)
+      (fun ws => line_alts_of ws !!! 0%nat)
+      file_lineok
+      (fun k v st p => fwc_blk_at g s0 k v (fs_I st) 0%nat p)
+      fi_cur_tl_at fi_step_at.
+
+  Local Lemma fi_lend_stage_at (k : nat) (v : era_pins) (I : list (bv 8)) :
+    file_lineok I ->
+    ⊢ fwc_lend_at g s0 k v I -∗
+      (∃ st : file_stg,
+         ⌜fline (fs_I st) = LEcho (last_ws I)
+          /\ last_ws (fs_I st) = last_ws I⌝
+         ∗ ⌜line_alts_of (last_ws I) !!! 0%nat
+            = line_alts_of (last_ws I) !!! 0%nat⌝
+         ∗ fwc_blk_at g s0 k v (fs_I st) 0%nat 0%nat
+         ∗ □ (fwc_blk_at g s0 k v (fs_I st) 0%nat
+                (length (wl_line (drop 1 (last_ws I)))) -∗
+              lk_post file_link_inst_at k v I 0%nat))
+      ∨ lk_T file_link_inst_at.
+  Proof using .
+    intro Hlok. rewrite /fwc_lend_at. iIntros "[Hl | #HT]"; last by iRight.
+    iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE & #Hf)".
+    iLeft. iExists (MkFileStg I). cbn [fs_I].
+    iSplitR; [ iPureIntro; split; [ exact Hlok | reflexivity ] | ].
+    iSplitR; [ by iPureIntro | ].
+    iSplitL "Htn".
+    - rewrite /fwc_blk_at. iLeft. iExists ps, cs, P.
+      cbn [blkcs_f]. rewrite Nat.add_0_r.
+      iFrame "Htn Hps Hcs HE Hf". by iPureIntro.
+    - iIntros "!> Hc". rewrite /lk_post.
+      cbn [lk_blk lk_ab file_link_inst_at].
+      rewrite (file_fab0_len I Hlok). iExact "Hc".
+  Qed.
+
+  Local Lemma fi_apr0_at (I : list (bv 8)) :
+    file_lineok I -> lk_apr file_link_inst_at I 0%nat.
+  Proof using .
+    intro Hl. cbn [lk_apr file_link_inst_at]. rewrite /fapr.
+    split_and!;
+      [ exact (file_ralt0_ok I Hl) | exact file_ralt0_free | reflexivity ].
+  Qed.
+
+  Definition file_stage_inst_at : StageRec file_link_inst_at :=
+    MkStageRec file_link_inst_at file_cur_inst_at fi_lend_stage_at fi_apr0_at.
 
 End file_link_inst_at.
 

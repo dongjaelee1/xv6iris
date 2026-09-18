@@ -66,6 +66,7 @@ Require Import WpUart.
 Require Import EchoOut.
 Require Import EchoLinks.
 Require Import EchoLinksLine.
+Require Import EchoLinksPro.   (* /init's prologue diagnostics *)
 (* as in EchoDisc / EchoOut / EchoLinks: the Sail imports leave
    string_scope on top and [++] would elaborate as String.append. *)
 Local Open Scope list_scope.
@@ -283,6 +284,38 @@ Section linkrec.
     lk_panic_done : forall k v I,
       ⊢ lk_blk k v I (lk_pan I) (length (lk_ab I (lk_pan I))) -∗
         lk_ban k v I 0%nat;
+
+    (* ---- /init's PROLOGUE DIAGNOSTICS (lane INIT-FILE).                 *)
+    (*                                                                     *)
+    (*  [UInitDiag] prints "init: exec sh failed" and "init: fork failed"   *)
+    (*  through a family indexed by the round's CHOICE [a] and the bytes    *)
+    (*  out.  The BASE is a field of its own and NOT [lk_pro], and that is  *)
+    (*  a real difference between the two eras rather than a convenience:   *)
+    (*  echo's base [EchoLinksPro.ewc_pro] is [wr_pban] -- [wr_pro] plus    *)
+    (*  [pro_from ... = pro_fail j ++ [3]] -- and that [j] is exactly what  *)
+    (*  [lk_pdiag_done_1] needs to land back in the banner-owed shape,      *)
+    (*  while the FILE era's [fwc_pro_at] is [wr_pro_f], which says only    *)
+    (*  that the prologue is not done and loses [j] at its banner's end.    *)
+    (*  So the family enters at [lk_pban], which is what the last banner    *)
+    (*  byte leaves ([lk_pban_of_ban_done]), and [lk_pro_of_pban] is the    *)
+    (*  sound projection back.                                             *)
+    lk_pban : nat -> era_pins -> list (bv 8) -> iProp Σ;
+    lk_pdiag : nat -> era_pins -> list (bv 8) -> nat -> nat -> iProp Σ;
+    lk_pban_tl : forall k v I, Timeless (lk_pban k v I);
+    lk_pdiag_tl : forall k v I a i, Timeless (lk_pdiag k v I a i);
+    lk_pban_taint : forall k v I, ⊢ lk_T -∗ lk_pban k v I;
+    lk_pdiag_taint : forall k v I a i, ⊢ lk_T -∗ lk_pdiag k v I a i;
+    lk_pdiag_0 : forall k v I a, ⊢ lk_pban k v I -∗ lk_pdiag k v I a 0%nat;
+    lk_pban_of_ban_done : forall k v I,
+      ⊢ lk_ban k v I (length u_banner) -∗ lk_pban k v I;
+    lk_pro_of_pban : forall k v I, ⊢ lk_pban k v I -∗ lk_pro k v I;
+    lk_pdiag_step : forall k v I a i b Φ,
+      pro_alts !!! a !! i = Some b ->
+      ⊢ lk_pin k v -∗ lk_links -∗ lk_pdiag k v I a i -∗
+      (lk_pdiag k v I a (S i) -∗ Φ) -∗ out_link Uart0 k b Φ;
+    lk_pdiag_done_1 : forall k v I i,
+      i = length (pro_alts !!! 1%nat) ->
+      ⊢ lk_pdiag k v I 1%nat i -∗ lk_ban k v I 0%nat;
   }.
 
 End linkrec.
@@ -312,6 +345,8 @@ Global Existing Instance lk_lpr_tl.
 Global Existing Instance lk_lend_tl.
 Global Existing Instance lk_rres_pers.
 Global Existing Instance lk_rres_tl.
+Global Existing Instance lk_pban_tl.
+Global Existing Instance lk_pdiag_tl.
 
 (* ===================================================================== *)
 (*  THE DERIVED FAMILIES AND LAWS -- everything a console program uses    *)
@@ -625,6 +660,30 @@ Section echo_inst.
     iPureIntro. exact EchoLinks.wr_ban_round0.
   Qed.
 
+  (* ---- THE PROLOGUE DIAGNOSTICS' two conversions (lane INIT-FILE) ----
+     The first is the six lines [UInitBoot]'s [Hpw] used to do inline; the
+     second is [EchoLinksPro.ewc_pdiag_done_1] with the index taken as a
+     premise, which is the shape the record's field is at (the FILE era's
+     twin cannot state it at the literal length). *)
+  Local Lemma ei_pro_of_pban (k : nat) (v : era_pins) (I : list (bv 8)) :
+    ⊢ EchoLinksPro.ewc_pro T v I -∗ EchoLinksLine.ewc_pro T v I.
+  Proof using HPT.
+    rewrite /EchoLinksPro.ewc_pro /EchoLinksLine.ewc_pro.
+    iIntros "[Hl | #HT]"; last by iRight.
+    iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
+    iLeft. iExists ps, cs, P. iFrame "Htn Hps Hcs HE".
+    iPureIntro. exact (proj1 Hw).
+  Qed.
+
+  Local Lemma ei_pdiag_done_1 (k : nat) (v : era_pins) (I : list (bv 8))
+      (i : nat) :
+    i = length (pro_alts !!! 1%nat) ->
+    ⊢ EchoLinksPro.ewc_pdiag T v I 1%nat i -∗ EchoLinks.ewc_ban T v I 0%nat.
+  Proof using HPT.
+    intros Hi. rewrite Hi.
+    iApply (EchoLinksPro.ewc_pdiag_done_1 T v I).
+  Qed.
+
   Definition echo_link_inst : LinkRec Σ :=
     {| lk_T := T;
        lk_pin := era_pin γ;
@@ -736,7 +795,19 @@ Section echo_inst.
        lk_turn0 := ei_turn0;
        lk_ban_read_taint := ei_ban_read_taint;
        lk_panic_done := fun _ v I => EchoLinksLine.ewc_panic_done T v I;
-    |}.
+           lk_pban := fun _ v I => EchoLinksPro.ewc_pro T v I;
+       lk_pdiag := fun _ v I a i => EchoLinksPro.ewc_pdiag T v I a i;
+       lk_pban_tl := fun _ v I => EchoLinksPro.ewc_pro_timeless T v I;
+       lk_pdiag_tl := fun _ v I a i => EchoLinksPro.ewc_pdiag_timeless T v I a i;
+       lk_pban_taint := fun _ v I => EchoLinksPro.ewc_pro_taint T v I;
+       lk_pdiag_taint := fun _ v I a i => EchoLinksPro.ewc_pdiag_taint T v I a i;
+       lk_pdiag_0 := fun _ v I a => EchoLinksPro.ewc_pdiag_0 T v I a;
+       lk_pban_of_ban_done := fun _ v I => EchoLinksPro.ewc_ban_done_pro T v I;
+       lk_pro_of_pban := ei_pro_of_pban;
+       lk_pdiag_step := fun k v I a i b Φ Hb =>
+         EchoLinksPro.echo_pdiag_step T γ k v I a i b Φ Hb;
+       lk_pdiag_done_1 := ei_pdiag_done_1;
+|}.
 
 
   (* =================================================================== *)

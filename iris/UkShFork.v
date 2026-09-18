@@ -339,6 +339,14 @@ Section UkShFork.
           ⌜ m !!! Regidx s1_idx = (mword_of_int s0 : mword 64) ⌝ -∗
           ⌜ Lp ws g 0%nat len ⌝ -∗
           ⌜ ws = last_ws I ⌝ -∗
+          (* ...AND THE ERA'S OWN LINE AT THAT INPUT (the PROGRAM STREAM):
+             the input's last body PARSES.  [ws = last_ws I] gives the
+             child its words; it does not say which CONSTRUCTOR the era
+             filed, and an era with more than one line shape needs that to
+             open its lend ([FileDisc.fbody_ok_echo] turns this plus
+             [EchoDisc.line_ok ws] into it).  The slot the loop left
+             carries it ([UkSh.ush_posw]); the echo era ignores it. *)
+          ⌜ FileDisc.fbody_ok (UkSh.ush_lastbody I) ⌝ -∗
           ⌜ 0 < s0 ⌝ -∗ ⌜ s0 + Z.of_nat len + 1 < Z64 ⌝ -∗
           ⌜ s0 + Z.of_nat len < 2 ^ 38 ⌝ -∗
           ⌜ 8344 <= sz ⌝ -∗ ⌜ UserPtTree.pgroundup sz = sz ⌝ -∗
@@ -828,7 +836,8 @@ Section UkShFork.
        comes out with the EQUATION that the line the loop read is its last
        ([UkSh.ush_posw]) -- which is what the child's law is applied at. *)
     iAssert ((∃ I : list (bv 8),
-                ⌜rest_of I = [] /\ last_ws I = ws⌝ ∗ Pm I
+                ⌜rest_of I = [] /\ last_ws I = ws
+                 /\ FileDisc.fbody_ok (UkSh.ush_lastbody I)⌝ ∗ Pm I
                 ∗ ⌜UkSh.ush_fd0c l /\ UkSh.ush_fd1p l /\ UkSh.ush_fd2p l⌝
                 ∗ Wc I 3%nat)
              ∨ (T ∗ UkSh.ush_pos N γp))%I
@@ -842,7 +851,7 @@ Section UkShFork.
       - (* the closed arm never reaches the body ([p < 3] at [p = 3]) *)
         exfalso. destruct Hcl as [_ Hlt]. lia. }
     - (* ================= THE CONSOLE ARM: lend, and redeem ============= *)
-      iDestruct "Hcon" as (np) "([%Hbnd %Hlast] & Hpm & %Hrow & Hc)".
+      iDestruct "Hcon" as (np) "([%Hbnd [%Hlast %Hfbk]] & Hpm & %Hrow & Hc)".
       (* WHAT FORK1 BORROWS IS THE LEASE'S PIECES (M4b(2)): a failed fork
          pays "fork\n" from the lend and its exit from the pieces and the
          banner-owed credential the message leaves; a fork that returned
@@ -889,12 +898,14 @@ Section UkShFork.
         iApply ("Hchl" $! N' hB mA DfracDiscarded DfracDiscarded
                   (sh_buf + Z.of_nat k) len ws (fun j : nat => f (k + j)%nat)
                   sz l (68 - Dc + n)%nat np
-                  with "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] Hcode' [] []
+                  with "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%]
+                        Hcode' [] []
                         Hjt' Hline' Hws Hsy Hustd' Hcwd' [Hch'] Hfresh HRc Hrun'").
         * exact Hpeq'.
         * exact Hs1A.
         * exact Hline.
         * symmetry. exact Hlast.
+        * exact Hfbk.
         * unfold sh_buf. lia.
         * unfold sh_buf, sh_nbuf, Z64 in *. lia.
         * unfold sh_buf, sh_nbuf in *. lia.

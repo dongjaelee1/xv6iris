@@ -77,6 +77,7 @@ Require Import FileOut.
 Require Import FileLinks.
 Require Import FileLinksLine.
 Require Import LinkRec.
+Require Import UCatOut.            (* [cat_tie] -- the deed's pure tie *)
 Require Import FileLinksAt.        (* the families at a NAMED boot state *)
 Require Import FileLinksAtBan.
 Require Import FileLinkInst.       (* [file_link_inst] / [file_link_inst_at] *)
@@ -500,5 +501,73 @@ Section UInitFileCons.
     fwc_ban_at g s0 k v I (S i)
     ∗ (FileLinksLine.f0w g k s0 ∨ FT).
   Proof using . iApply (FileLinksAtBan.fban_at_f0w g s0 k v I i). Qed.
+
+  (* =================================================================== *)
+  (*  10.  THE ROUND'S FAMILIES AT H', AND /init's FIRST CREDENTIAL        *)
+  (*                                                                     *)
+  (*  Ruling H' spells sh's hold WITHOUT [FileOut.f0_lb]: the era's boot  *)
+  (*  state is the SHARED INDEX now, so the credential carries it         *)
+  (*  ([FileLinksAt]'s [_at] families) and the hold only has to say that  *)
+  (*  the deed's content is the model's state at THAT index.  This is     *)
+  (*  that spelling, and the one thing /init has to produce out of        *)
+  (*  [AppFile.file_boot]: the round's first credential, at the deed's    *)
+  (*  own content, at <init>'s first instruction.                        *)
+  (*                                                                     *)
+  (*  IF THE PROGRAM STREAM'S [sh_hold_at] DIFFERS FROM THIS ONE, the     *)
+  (*  difference is a finding and not a second statement -- the round is  *)
+  (*  theirs and [file_Hinit_boot] takes its conclusion as ONE hypothesis. *)
+  (* =================================================================== *)
+  Definition sh_hold_at (s0 : fst) (I : list (bv 8)) : iProp Σ :=
+    ((∃ (cs0 : list nat) (s : dst) (v : era_pins),
+        fown r s
+        ∗ ⌜UCatOut.cat_tie cs0 s0 I s⌝
+        ∗ f_typed (fgn_cl g) s
+        ∗ era_pin (fgn_echo g) (S gen_id) v ∗ cs_lb v cs0)
+     ∨ FT)%I.
+
+  Lemma sh_hold_at_taint (s0 : fst) (I : list (bv 8)) :
+    FT -∗ sh_hold_at s0 I.
+  Proof using . iIntros "#HT". rewrite /sh_hold_at. by iRight. Qed.
+
+  (* AT THE ERA'S HEAD the tie is [reflexivity]: [cat_st cs0 s0 []] is
+     [fst_upto cs0 s0 [] 0], which is [s0]. *)
+  Lemma sh_hold_at_of_boot (s : dst) (v : era_pins) :
+    era_pin (fgn_echo g) (S gen_id) v -∗ cs_lb v [] -∗
+    fown r s -∗ f_typed (fgn_cl g) s -∗
+    sh_hold_at (dst_content s) [].
+  Proof using .
+    iIntros "#Hpin #Hcs Hd #Hty". rewrite /sh_hold_at. iLeft.
+    iExists [], s, v. iFrame "Hd Hpin Hcs Hty". iPureIntro.
+    rewrite /UCatOut.cat_tie /UCatOut.cat_st nlines_nil. reflexivity.
+  Qed.
+
+  (* the round's two families, at the index *)
+  Definition file_Wcf_at (s0 : fst) (I : list (bv 8)) (p : nat) : iProp Σ :=
+    (lk_lcred (file_link_inst_at g s0) (S gen_id) I p ∗ sh_hold_at s0 I)%I.
+
+  Definition file_Wbf_at (s0 : fst) (I : list (bv 8)) : iProp Σ :=
+    (file_Wbl_at g s0 I ∗ sh_hold_at s0 I)%I.
+
+  (* ---- /init's FIRST CREDENTIAL, out of [AppFile.file_boot] and nothing
+          else.  This is what [UInitKernel.init_boot_pay] asks for at the
+          file era ([cc_wbn Cr 0]), and round 2's findings recorded that
+          the LANDED [UShRound.sh_hold] cannot supply it. ---- *)
+  Lemma file_Wbf_at_of_boot (s : dst) :
+    FileOut.fturn g (S gen_id) -∗ fown r s -∗ f_typed (fgn_cl g) s -∗
+    (∃ v : era_pins, era_pin (fgn_echo g) (S gen_id) v
+       ∗ dl_cnt v (1/2) 0%nat ∗ inp_lb v [])
+    ∗ file_Wbf_at (dst_content s) [].
+  Proof using .
+    iIntros "Ht Hd #Hty".
+    iDestruct "Ht" as (v vf)
+      "(#Hpin & #Hvf & Htn & Hdl & #Hcs & #Hps & #HE)".
+    iDestruct (file_Wbl_at_of_boot (dst_content s)
+                 with "[Htn Hdl] [Hty]") as "[Hrd Hwb]".
+    { rewrite /FileOut.fturn. iExists v, vf.
+      iFrame "Hpin Hvf Htn Hdl Hcs Hps HE". }
+    { iApply (file_f0pre_at_of_typed s with "Hty"). }
+    iFrame "Hrd". rewrite /file_Wbf_at. iFrame "Hwb".
+    iApply (sh_hold_at_of_boot s v with "Hpin Hcs Hd Hty").
+  Qed.
 
 End UInitFileCons.

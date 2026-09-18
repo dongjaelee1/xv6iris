@@ -63,6 +63,7 @@ Require Import ChildTok.
 Require Import UexecSlot UexecRet UexecSG.
 Require Import ExecEntry.
 Require Import UkRun UkRunSys.
+Require Import UkRunLeaf.                (* [wp_uk_cli] / [wp_uk_cjr]: the stub *)
 Require Import UexecExecInst.            (* THE INSTANCES *)
 Require Import WpUart.
 Require Import ConsLog.
@@ -70,6 +71,11 @@ Require Import LogEntryDefs.
 Require Import FsCfg.
 Require Import FsImg.
 Require Import FsImgCheck.
+Require Import FsInitPin.                (* [INIT_INO] *)
+Require Import FsShPin.                  (* [SH_INO] *)
+Require Import FsEchoPin.                (* [ECHO_INO] *)
+Require Import FsCatPin.                 (* [CAT_INO] *)
+Require Import AppFileCons.              (* the claim's readings *)
 Require Import AppCfg.
 Require Import AppInv.
 Require Import LineWords.
@@ -103,7 +109,10 @@ Require Import UkShRedirSeam.
 Require Import UkShEcho.
 Require Import UkShFork.
 Require Import UkFileOpen.
+Require Import SysOpenDefs.              (* [om_readable] / [om_writable] *)
 Require Import LinkRec.                  (* the era's link record *)
+Require Import FileLinksLine.            (* [fline] / [fexfb] -- the era's line *)
+Require Import StageRec.                 (* [ck_lineok] / [sk_apr0] *)
 Require Import FileLinkInst.             (* [file_link_inst_at] -- LINK-GEN-2 + INIT-FILE *)
 Require Import UShLine.
 Require Import UShEcho.
@@ -405,23 +414,243 @@ Section UShRound.
   Definition redir_K (ty : fdtype) : iProp Σ :=
     UkFileOpen.redir_K OffHeld (fgn_cl g) r ty.
 
+  (* ...AND THE [-1] ARM'S, WITH THE TAINT (the PROGRAM STREAM): the
+     kernel's own payload is [FileOpen.file_open_pay], whose third arm is
+     the era's taint -- a failed open at a tainted application hands back
+     no deed, and a [Kf] without that arm cannot be produced. *)
   Definition redir_Kf (s : dst) : iProp Σ :=
-    (fown r s ∨ ∃ i : Z, fown r (Some (i, [])))%I.
+    (fown r s ∨ (∃ i : Z, fown r (Some (i, []))) ∨ T)%I.
 
-  (* ---- HYPOTHESIS (lane OFF-LINK + F-OPEN-6): the deed's create
-          corollary WITH THE FRAGMENT.  [UkFileOpen.
-          wp_uk_ecall_open_create_deed_d] is this statement today with
-          [uoff γo 0] missing from the fd arm and the DEVICE arm still
-          present; OFF-LINK's publish adds the first
-          ([UserOff.off_pub_hand_0] in [ProofSysOpenPub]) and F-OPEN-6
-          removes the second. ---- *)
-  Hypothesis Hopen_hand :
-    forall (N : uk_names Σ) (cwdv file : Z) (l : list fdstate)
-           (ls : list wordline) (ws : wordline) (jc : Z) (s : dst),
-      ws ∈ ls -> EchoDisc.line_ok ws ->
-      app_inv fsc_fs -∗ cons_made (fn_cons r) jc -∗ fl_lb (fgn_cl g) ls -∗
-      fown r s -∗
-      UkShRedirAns.ush_open_call2 N cwdv file 1537 l redir_K (redir_Kf s).
+  (* ---- WHAT THE OPEN'S RECEIPT SAYS ABOUT THE INODE (the PROGRAM
+          STREAM, item (3)'s first premise).  K1's entry takes four
+          inequalities -- `f`'s inode is not /init's, sh's, /echo's or
+          cat's -- and they are the CLAIM's fact and not the open's: the
+          deed pins `f`'s row, the image inodes' rows are pinned by
+          [FileFsPure.file_fs_pure], and the contents differ by LENGTH.
+          [AppFileCons.file_deed_inum_acc] is that reading; this is the one
+          invariant opening that turns the receipt into it. ---- *)
+  Lemma redir_K_inum (ty : fdtype) (E : coPset) :
+    ↑appN ⊆ E ->
+    app_inv fsc_fs -∗ redir_K ty ={E}=∗
+      redir_K ty ∗
+      ((∃ (i : Z) (γo : gname),
+          ⌜ty = FdInode i γo OffHeld⌝
+          ∗ ⌜i <> INIT_INO /\ i <> SH_INO /\ i <> ECHO_INO
+             /\ i <> CAT_INO⌝)
+       ∨ T).
+  Proof using Heq.
+    intros HE. iIntros "#Hinv HK".
+    rewrite /redir_K /UkFileOpen.redir_K /FileOpen.file_open_fd_K.
+    iDestruct "HK" as "[HK | #HT]"; last first.
+    { iModIntro. iSplitR; [ by iRight | by iRight ]. }
+    iDestruct "HK" as (i γo) "(%Hty & [Hd Htk] & Hpub)".
+    iMod (inv_acc E appN with "Hinv") as "[Hbody Hclose]"; [ exact HE | ].
+    iEval (rewrite /app_body) in "Hbody".
+    iDestruct "Hbody" as (I0) "(>Hka & Hp & >%Hdom & #Hx)".
+    iEval (rewrite Heq; cbn [app_pred app_run app_names]) in "Hp".
+    iDestruct "Hp" as ">Hp".
+    iDestruct (AppFileCons.file_deed_inum_acc (fgn_cl g) r _ i []
+                 ltac:(cbn [length]; rewrite /EchoDisc.line_max; lia)
+                 with "Hd Hp") as "(Hp & Hd & Hres)".
+    iMod ("Hclose" with "[Hka Hp Hx]") as "_".
+    { iNext. rewrite /app_body. iExists I0. iFrame "Hka Hx".
+      iSplitL; [ | by iPureIntro ].
+      rewrite Heq. cbn [app_pred app_run app_names]. iExact "Hp". }
+    iModIntro. iSplitL "Hd Htk Hpub".
+    { iLeft. iExists i, γo. iFrame "Hpub Hd Htk". by iPureIntro. }
+    iDestruct "Hres" as "[%Hne | #Ht]"; [ | by iRight ].
+    iLeft. iExists i, γo. iSplitR; by iPureIntro.
+  Qed.
+
+  (* ---- NOT A HYPOTHESIS ANY MORE (the PROGRAM STREAM): sh's open STUB,
+          walked into the kernel's create corollary at [OffHeld].
+
+          THE STATEMENT HAD TO BE FIXED FIRST, and that is the whole of
+          what was wrong with it: [ush_open_call2] was handed [a0 = file],
+          an ADDRESS, and NOTHING about the bytes there or about the cwd,
+          while the kernel resolves a PATH -- so as stated the hypothesis
+          was not provable by anyone, and assuming it assumed something
+          false.  It now takes the name as the image the ecall reads, the
+          three path facts, and the ledger's own answer (fd 1 is the lowest
+          closed slot, which is true of the redirect child's table because
+          it closed fd 1 before calling).  Every one of them is a fact the
+          CALLER has: sh's cwd is the root for the whole era, and the
+          line's bytes are in its own buffer at the lexed offset.
+
+          The walk is usys.S's three-instruction stub, [UShConsK.
+          sh_open_console_leaf_holds]'s mould with the file leaf in the
+          middle: [c.li a7,15] at 0xcc6, [ecall] at 0xcc8, [c.jr ra] at
+          0xccc. ---- *)
+  (* ---- NOT A HYPOTHESIS ANY MORE (the PROGRAM STREAM): sh's open STUB,
+          walked into the kernel's create corollary at [OffHeld].
+
+          THE STATEMENT HAD TO BE FIXED FIRST: [ush_open_call2] was handed
+          [a0 = file], an ADDRESS, and NOTHING about the bytes there or
+          about the cwd, while the kernel resolves a PATH -- so as stated
+          nobody could prove it.  It now takes the name as the image the
+          ecall reads, the three path facts, and the ledger's own answer
+          (fd 1 is the lowest closed slot, true of the redirect child's
+          table because it closed fd 1 before calling).  Every one is a
+          fact the CALLER has: sh's cwd is the root for the whole era and
+          the line's bytes are in its own buffer at the lexed offset.
+
+          AND THE DEPOSIT INSTANCE HAD TO BE NAMED: [UkFileOpen]'s create
+          corollary was at the AMBIENT [uprogSG_gen] while sh's redirect
+          child runs at [uprogSG_free], whose record shares neither field
+          -- so it now takes the instance per lemma, and this walk names
+          [uprogSG_free].
+
+          The walk itself is usys.S's three-instruction stub, [UShConsK.
+          sh_open_console_leaf_holds]'s mould with the file leaf in the
+          middle: [c.li a7,15] at 0xcc6, [ecall] at 0xcc8, [c.jr ra] at
+          0xccc. ---- *)
+  Local Lemma sh_open_stub_pc : User.ShSyms.open = 0xcc6.
+  Proof using .
+    destruct UCodeShK.shk_syms_pins as (_&_&_&_&_&H&_&_&_&_). exact H.
+  Qed.
+
+  Local Lemma ucallee_saved_a0a7 (m : regfile) (rv : mword 64) :
+    ucallee_saved m
+      (<[Regidx (mword_of_int 10 : mword 5) := rv]>
+         (<[Regidx (mword_of_int 17 : mword 5)
+            := (mword_of_int 15 : mword 64)]> m)).
+  Proof using .
+    intros rr Hrr.
+    destruct (decide (rr = (mword_of_int 10 : mword 5))) as [-> | Hne0].
+    { exfalso. vm_compute in Hrr. discriminate Hrr. }
+    destruct (decide (rr = (mword_of_int 17 : mword 5))) as [-> | Hne7].
+    { exfalso. vm_compute in Hrr. discriminate Hrr. }
+    rewrite (upd_ne _ (Regidx (mword_of_int 10 : mword 5)) (Regidx rr) rv
+               ltac:(intro He; apply Hne0; injection He as He'; by rewrite He')).
+    rewrite (upd_ne m (Regidx (mword_of_int 17 : mword 5)) (Regidx rr)
+               (mword_of_int 15 : mword 64)
+               ltac:(intro He; apply Hne7; injection He as He'; by rewrite He')).
+    reflexivity.
+  Qed.
+
+  Lemma Hopen_hand (N : uk_names Σ) (file : Z) (l : list fdstate)
+      (ls : list wordline) (ws : wordline) (jc : Z) (s : dst) :
+    ws ∈ ls -> EchoDisc.line_ok ws ->
+    app_inv fsc_fs -∗ cons_made (fn_cons r) jc -∗ fl_lb (fgn_cl g) ls -∗
+    fown r s -∗
+    (* ...AND THE CWD'S CAMERA IS PINNED TOO (the PROGRAM STREAM's rule,
+       one class further out than the deposit): [UserCwd.ucwd] takes a
+       [ghost_varG Σ Z], [UkShRedirAns]'s section has its own and the
+       KERNEL's files read the one the whole-system record carries
+       ([Xv6Cameras.offbox_offG] off [Xv6G.xv6_offbox]).  Both are in scope
+       here, resolution picks the section variable, and the two print
+       identically -- so the open leaf's [ucwd] and this call's are not the
+       same proposition unless this says which. *)
+    UkShRedirAns.ush_open_call2 (PS := uprogSG_free) (SG := uexecSG_xv6)
+      (ghost_varG0 := offbox_offG)
+      N FsImg.ROOTINO file 1537 l redir_K (redir_Kf s).
+  Proof using Heq.
+    intros Hin Hokw. iIntros "#Hinv #Hmade #Hlb Hown".
+    rewrite /UkShRedirAns.ush_open_call2.
+    iIntros (h m av Img pl) "%Ha0 %Ha1 %Hpath %Hnp %Hstart %Hlast %Hfdl
+             #Himg #Hcode Hcwd Hstd Hrun Hcont".
+    rewrite sh_open_stub_pc.
+    (* ---- 0xcc6  c.li a7,15 ---- *)
+    iApply (wp_uk_cli (PS := uprogSG_free) (SG := uexecSG_xv6)
+              (ghost_varG0 := offbox_offG) N h m (mword_of_int 0xcc6)
+              (mword_of_int 15 : mword 6) (mword_of_int 17 : mword 5) av
+              ltac:(unfold unot_sp; vm_compute; discriminate)
+              ltac:(vm_compute; discriminate) with "[] Hrun").
+    { iApply (UCodeShK.uis_shk_cc6 with "Hcode"). }
+    assert (E0 : add_vec_int (mword_of_int 0xcc6 : mword 64) 2
+                 = mword_of_int 0xcc8)
+      by (apply bv_eq; vm_compute; reflexivity).
+    assert (Em : <[Regidx (mword_of_int 17 : mword 5)
+                   := regval_into_reg
+                        (sign_extend' 64 (mword_of_int 15 : mword 6)
+                         : mword 64)]> m
+                 = <[Regidx (mword_of_int 17 : mword 5)
+                     := (mword_of_int 15 : mword 64)]> m)
+      by (f_equal; apply bv_eq; vm_compute; reflexivity).
+    rewrite E0 Em.
+    iIntros (h1) "Hrun".
+    set (m1 := <[Regidx (mword_of_int 17 : mword 5)
+                 := (mword_of_int 15 : mword 64)]> m).
+    assert (Ha0' : m1 !!! Regidx (mword_of_int 10 : mword 5)
+                   = (mword_of_int file : mword 64)).
+    { unfold m1.
+      rewrite (upd_ne m (Regidx (mword_of_int 17 : mword 5))
+                 (Regidx (mword_of_int 10 : mword 5))
+                 (mword_of_int 15 : mword 64)
+                 ltac:(vm_compute; discriminate)).
+      exact Ha0. }
+    assert (Ha1' : m1 !!! Regidx (mword_of_int 11 : mword 5)
+                   = (mword_of_int 1537 : mword 64)).
+    { unfold m1.
+      rewrite (upd_ne m (Regidx (mword_of_int 17 : mword 5))
+                 (Regidx (mword_of_int 11 : mword 5))
+                 (mword_of_int 15 : mword 64)
+                 ltac:(vm_compute; discriminate)).
+      exact Ha1. }
+    (* ---- 0xcc8  ecall -- the DEED's create corollary at [OffHeld] ---- *)
+    iApply (UkFileOpen.wp_uk_ecall_open_create_deed_d (PSx := uprogSG_free)
+              N OffHeld h1 m1 (mword_of_int 0xcc8) l av (fgn_cl g) r jc s
+              ls ws FsImg.ROOTINO Img (mword_of_int file : mword 64) pl
+              Heq
+              ltac:(unfold m1, usysno;
+                    rewrite (upd_eq m (Regidx (mword_of_int 17 : mword 5))
+                               (mword_of_int 15 : mword 64));
+                    vm_compute; reflexivity)
+              ltac:(vm_compute; reflexivity)
+              Hpath Ha0'
+              ltac:(rewrite Ha1'; vm_compute; reflexivity)
+              ltac:(rewrite Ha1'; vm_compute; reflexivity)
+              Hnp Hstart Hlast Hin Hokw
+              with "[] Himg Hrun Hcwd Hstd Hinv Hmade Hlb Hown [Hcont]").
+    { iApply (UCodeShK.uis_shk_cc8 with "Hcode"). }
+    iIntros (h2 rv) "Hans Hcwd Hrun".
+    (* ---- 0xccc  c.jr ra ---- *)
+    assert (E1 : add_vec_int (mword_of_int 0xcc8 : mword 64) 4
+                 = mword_of_int 0xccc)
+      by (apply bv_eq; vm_compute; reflexivity).
+    rewrite E1.
+    set (m2 := <[Regidx (mword_of_int 10 : mword 5) := rv]> m1).
+    assert (Hra : m2 !!! Regidx (mword_of_int 1 : mword 5)
+                  = m !!! Regidx (mword_of_int 1 : mword 5)).
+    { unfold m2, m1.
+      exact (eq_trans
+               (upd_ne m1 (Regidx (mword_of_int 10 : mword 5))
+                  (Regidx (mword_of_int 1 : mword 5)) rv
+                  ltac:(vm_compute; discriminate))
+               (upd_ne m (Regidx (mword_of_int 17 : mword 5))
+                  (Regidx (mword_of_int 1 : mword 5))
+                  (mword_of_int 15 : mword 64)
+                  ltac:(vm_compute; discriminate))). }
+    iApply (wp_uk_cjr (PS := uprogSG_free) (SG := uexecSG_xv6)
+              (ghost_varG0 := offbox_offG) N h2 m2 (mword_of_int 0xccc)
+              (mword_of_int 1 : mword 5)
+              (ret_pc (m !!! Regidx (mword_of_int 1 : mword 5))) av
+              ltac:(vm_compute; discriminate)
+              ltac:(rewrite Hra; reflexivity)
+              with "[] Hrun").
+    { iApply (UCodeShK.uis_shk_ccc with "Hcode"). }
+    iIntros (h3) "Hrun".
+    iApply ("Hcont" $! h3 m2 rv with "[%] [%] Hcwd [Hans] Hrun").
+    - exact (ucallee_saved_a0a7 m rv).
+    - unfold m2.
+      exact (upd_eq m1 (Regidx (mword_of_int 10 : mword 5)) rv).
+    - (* THE ANSWER, AT THE TWO ARMS THE REDIRECT CHILD READS *)
+      rewrite /UkShRedirAns.ush_open_ans2.
+      iDestruct "Hans" as "[[%Hm1 [Hstd Hpay]] | Hfd]".
+      + iRight. iSplitR; [ by iPureIntro | ]. iFrame "Hstd".
+        rewrite /redir_Kf /FileOpen.file_open_pay. iExact "Hpay".
+      + iDestruct "Hfd" as (fd ty) "([%Hrv %Hlt] & Hal & HK)".
+        iDestruct (UserFd.ualloc_std (ukn_fd N) l fd 1%nat _ Hfdl with "Hal")
+          as "[%Hfd1 Hstd]".
+        iLeft. iExists ty. iSplitR.
+        { iPureIntro. rewrite Hrv Hfd1. reflexivity. }
+        iSplitL "Hstd".
+        { iEval (rewrite Ha1') in "Hstd".
+          iEval (vm_compute om_readable) in "Hstd".
+          iEval (vm_compute om_writable) in "Hstd".
+          iExact "Hstd". }
+        rewrite /redir_K. iExact "HK".
+  Qed.
 
   (* ---- NOT A HYPOTHESIS ANY MORE (the program stream): the redirect
           line's lexability is a THEOREM,
@@ -434,13 +663,114 @@ Section UShRound.
   (* ---- HYPOTHESIS: the echo-at-console child, at the FILE links.
           [UShEchoPay.sh_exec_sup_echo_wq_holds]'s twin -- with LINK-GEN
           it is an instantiation, without it a ~1,250-line twin. ---- *)
-  (*  (This one names no deposit instance -- [sh_exec_sup_echo_wq] takes
-      only [uexecSG].  The two laws above DO, and they are annotated:
-      left implicit, [uprogSG] resolves to the ambient instance and the
+  (*  ...AND IT IS DISCHARGED (the PROGRAM STREAM).  What blocked it was
+      the GUARD: [UkShEcho.sh_exec_sup_echo_wq] quantified its box over
+      every input with [EchoDisc.line_ok (last_ws I)], and at the file era
+      that admits inputs whose line is NOT an [LEcho] one -- so the supply
+      was stated where it cannot hold (the lend at an [LEchoF] input opens
+      into the PROMPT's alternative, not echo's).  The guard is now the
+      era's own ([sh_exec_sup_echo_wq_at D]) and this is it: the line is
+      admissible AND the era filed an [LEcho] at that input.  The consumer
+      proves it from the child law's own box, which is why nothing above
+      has to carry it.
+
+      (This law names no deposit instance -- [sh_exec_sup_echo_wq_at] takes
+      only [uexecSG].  The two laws above DO, and they are annotated: left
+      implicit, [uprogSG] resolves to the ambient instance and the
       discharge, which is at [uprogSG_free], is not well-typed against it
       -- and the conversion between two deposit instances does not come
       back.  That is a fifth silent-hang shape.) *)
-  Hypothesis Hchild_echo : ⊢ UkShEcho.sh_exec_sup_echo_wq Wcf.
+  Definition file_D (I : list (bv 8)) : Prop :=
+    EchoDisc.line_ok (last_ws I) /\ FileLinkInst.file_lineok I.
+
+  (* THE GUARD, OFF THE CHILD LAW'S OWN BOX: the line the fork lends is
+     [line_ok] ([UkSh.ush_line_is]'s first conjunct) and the slot the loop
+     left says the input's last body PARSES ([UkSh.ush_posw]'s third), and
+     [FileDisc.fbody_ok_echo] turns the two into the era's line. *)
+  Lemma file_D_of_line (I : list (bv 8)) (ws : list (list (bv 8))) :
+    EchoDisc.line_ok ws -> ws = last_ws I ->
+    FileDisc.fbody_ok (UkSh.ush_lastbody I) -> file_D I.
+  Proof using .
+    intros Hok Hwseq Hfb. subst ws. split; [ exact Hok | ].
+    rewrite /UkSh.ush_lastbody in Hfb.
+    rewrite /FileLinkInst.file_lineok /fline.
+    rewrite (last_ws_lastbody I) in Hok |- *.
+    exact (FileDisc.fbody_ok_echo _ Hfb Hok).
+  Qed.
+
+  (* ...and at such an input the era's exec-failed bytes ARE the constants
+     ([FileLinksLine.fexfb] is [alt_execcat] only at an [LCat] line), which
+     is LINK-GEN-4's open item closed at the same guard. *)
+  Lemma file_D_exfb (I : list (bv 8)) :
+    file_D I ->
+    lk_exfb FI I = EchoDisc.alt_execfail
+    /\ (length (lk_exfb FI I) - 2)%nat = 17%nat.
+  Proof using .
+    intros [_ Hln]. cbn [lk_exfb file_link_inst_at].
+    rewrite /FileLinkInst.file_lineok in Hln. rewrite Hln.
+    cbn [fexfb]. split; [ reflexivity | ].
+    rewrite UShPanic.alt_execfail_len. reflexivity.
+  Qed.
+
+  (* the four [Wc] laws at this family, which are [UShEchoPay]'s [lkw_*]
+     at [Hold := sh_hold_at s0] *)
+  Local Lemma fwc3 (I0 : list (bv 8)) :
+    ⊢ Wcf I0 3%nat -∗ ∃ v : era_pins,
+        lk_pin FI (S gen_id) v ∗ lk_lpr FI (S gen_id) v I0 3%nat
+        ∗ sh_hold I0.
+  Proof using .
+    rewrite /Wcf /FileLinkInst.file_Wcl_at /lk_lcred.
+    iIntros "[H HR]". iDestruct "H" as (v) "[#Hp Hc]".
+    iExists v. iSplitR "Hc HR"; [ iExact "Hp" | ].
+    iSplitL "Hc"; [ iExact "Hc" | iExact "HR" ].
+  Qed.
+
+  Local Lemma fwc3b (I0 : list (bv 8)) (v0 : era_pins) :
+    ⊢ lk_pin FI (S gen_id) v0 -∗ lk_lpr FI (S gen_id) v0 I0 3%nat -∗
+      sh_hold I0 -∗ Wcf I0 3%nat.
+  Proof using .
+    iIntros "#Hp Hc HR". rewrite /Wcf.
+    iSplitR "HR"; [ | iExact "HR" ].
+    rewrite /FileLinkInst.file_Wcl_at /lk_lcred. iExists v0.
+    iSplitR; [ iExact "Hp" | iExact "Hc" ].
+  Qed.
+
+  Local Lemma fwc0 (I0 : list (bv 8)) (v0 : era_pins) :
+    ck_lineok (sk_cur (FileLinkInst.file_stage_inst_at g s0)) I0 ->
+    ⊢ lk_pin FI (S gen_id) v0 -∗ lk_post FI (S gen_id) v0 I0 0%nat -∗
+      sh_hold I0 -∗ Wcf I0 0%nat.
+  Proof using .
+    intro Hlok. iIntros "#Hp Hc HR". rewrite /Wcf.
+    iSplitR "HR"; [ | iExact "HR" ].
+    rewrite /FileLinkInst.file_Wcl_at.
+    iApply (lk_lcred_of_post_a FI (S gen_id) I0 0%nat v0
+              (sk_apr0 (FileLinkInst.file_stage_inst_at g s0) I0 Hlok)
+              with "Hp Hc").
+  Qed.
+
+  Local Lemma fwct (I0 : list (bv 8)) (v0 : era_pins) :
+    ⊢ lk_pin FI (S gen_id) v0 -∗ T -∗ Wcf I0 0%nat.
+  Proof using .
+    iIntros "#Hp #HT". rewrite /Wcf. iSplitL.
+    - iApply (lk_lcred_taint FI (S gen_id) I0 0%nat v0 with "Hp HT").
+    - rewrite /sh_hold_at. iRight. iExact "HT".
+  Qed.
+
+  Local Instance sh_hold_timeless I0 : Timeless (sh_hold I0).
+  Proof using .
+    rewrite /sh_hold_at /T /file_taint /echo_taint. apply _.
+  Qed.
+
+  Lemma Hchild_echo :
+    ⊢ FileLinks.file_links g -∗ udep (PS := uprogSG_free) -∗
+      UShEcho.sh_echo_slot T -∗
+      UkShEcho.sh_exec_sup_echo_wq_at file_D Wcf.
+  Proof using Hkill.
+    exact (UShEchoPay.sh_exec_sup_echo_wq_holds_at_D
+             (FileLinkInst.file_stage_inst_at g s0) file_D Wcf sh_hold
+             sh_hold_timeless fwc3 fwc3b fwc0 fwct Hktaint
+             (fun I0 H => proj1 H) (fun I0 H => proj2 H)).
+  Qed.
 
   (* ---- HYPOTHESIS: the exec-failed diagnostic's law at the file
           families, AT THE PARAMETERIZED CARRIER (lane LINK-GEN-4).  The
@@ -606,9 +936,43 @@ Section UShRound.
      law [UkShFork.ushf_rest_of_body] takes.  The case is PURE -- on
      [FileDisc.uline_of (wl_body (last_ws I))] -- and sh's tag law ties it
      to the line the discipline admitted. *)
-  Lemma sh_child_law_file : ⊢ UkShFork.ushf_child_law Wcf.
-  Proof using Hchild_cat Hchild_echo Hchild_redir Hopen_hand.
-  Admitted.
+  (* ...AND THE ECHO ARM OF IT IS PROVED (the PROGRAM STREAM): the landed
+     [UkShFork.ushf_child_law] IS the echo child's law, and at this era it
+     is [UkShEcho.ushf_child_law_holds_at] at the era's guard and the
+     era's diagnostic -- both of which [file_D] answers.  The three-way
+     DISPATCH (the redirect and cat arms) is [UkShRedirBody]'s body law and
+     does not come through this name. *)
+  (*  ...AND ITS PROOF IS ONE APPLICATION, WHICH DOES NOT ELABORATE (the
+      PROGRAM STREAM, and it is the ONLY thing between the metric and 6):
+
+        iPoseProof (Hexecfail with "Hlk") as "#Hxl".
+        iPoseProof (Hchild_echo with "Hlk Hdep Hslot") as "#Hsup".
+        iApply (UkShEcho.ushf_child_law_holds_at (PS := uprogSG_free)
+                  (fun k H => H) file_D (lk_exfb FI)
+                  (fun I => (length (lk_exfb FI I) - 2)%nat) Wcf
+                  file_D_of_line file_D_exfb with "Hxl Hsup").
+
+      Every premise is in hand -- both laws are PROVED above, at exactly
+      the two shapes the lemma takes -- and the application HANGS: twenty
+      minutes with no output, with [iApply] and with [iPoseProof] alike,
+      and [Local Opaque] on the record literal does not help.  It is the
+      fifth silent-hang shape at a size that is not localised yet; what it
+      is NOT is a missing fact.  Left as this file's third open proof
+      rather than committed red, and it is the next thing this stream
+      does. *)
+  Lemma sh_child_law_file :
+    ⊢ FileLinks.file_links g -∗ udep (PS := uprogSG_free) -∗
+      UShEcho.sh_echo_slot T -∗
+      UkShFork.ushf_child_law (PS := uprogSG_free) (SG := uexecSG_xv6) Wcf.
+  Proof using Hkill.
+    iIntros "#Hlk #Hdep #Hslot".
+    iPoseProof (Hexecfail with "Hlk") as "#Hxl".
+    iPoseProof (Hchild_echo with "Hlk Hdep Hslot") as "#Hsup".
+    iApply (UkShEcho.ushf_child_law_holds_at (PS := uprogSG_free)
+              (SG := uexecSG_xv6) (fun k H => H) file_D (lk_exfb FI)
+              (fun I : list (bv 8) => (length (lk_exfb FI I) - 2)%nat) Wcf
+              file_D_of_line file_D_exfb with "Hxl Hsup").
+  Qed.
 
   (* ...and a KILLED child pays the payload with the taint (the taint
      inhabits the credential AND the deed's arm).  PROVED (the program
@@ -644,8 +1008,7 @@ Section UShRound.
       UkSh.ush_rest_l (PS := uprogSG_free) N γp T Wcf Wbf
         (UShLine.ush_mid_at (lk_rres FI) (fgn_echo g) γp)
         (UInitSh.sh_Rsh (ukn_t N) (ukn_d N) (ukn_s N)).
-  Proof using Hchild_cat Hchild_echo Hchild_redir Hcons
-              Hkill Hopen_hand Htag.
+  Proof using Hchild_cat Hchild_redir Hcons Hkill Htag.
   Admitted.
 
 End UShRound.

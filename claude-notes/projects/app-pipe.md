@@ -2372,9 +2372,13 @@ Branch `app-pipe/cat-pipe`, FIVE commits (`fcbfefc97`, `962342757`,
 **no landed statement moved, and no landed file was edited at all**.
 Whole `iris` tree `ec2-lane.sh cat build` **RC=0** (twice, the second with
 nothing left to compile).  No `Admitted`; every result carries
-`Proof using`.  `make audit-echo-only` UNMOVED at **fourteen** (the same
-`PrimInt63`/`PrimString`/`resv_*`/`funext` set).  Nothing in the tree
-`Require`s `UCatPipe.v`, so no audit cone reaches this lane.
+`Proof using`.  ALL THREE AUDITS UNMOVED, re-run on the lane's clone: `make
+audit-echo-only` at **fourteen** (the same
+`PrimInt63`/`PrimString`/`resv_*`/`funext` set), `make audit-only` at
+**thirteen**, `make audit-tree-only` at **thirteen**.  They could not have
+moved: nothing in the tree `Require`s `UCatPipe.v` (`grep -l UCatPipe
+iris/*.v` names only itself), and the only edit outside the new file is
+one line of `iris/_CoqProject`, which no audit target reads.
 
 **`Print Assumptions`.**  `pcat_urun_nopipe` and `pcat_round_test`:
 *Closed under the global context*.  `pcat_round_at` and `pcat_ecall_read`:

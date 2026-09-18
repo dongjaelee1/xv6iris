@@ -36,9 +36,9 @@ sync() {
 }
 
 remote() {  # run in remote iris/; the log is filtered; RC printed LAST and taken from the command itself
-  "${SSH[@]}" "cd $REMOTE/iris && $ENV && ( $1 ) > /tmp/lane-$LANE.log 2>&1; rc=\$?; \
-     grep -Ev '^(COQC|ROCQC|COQDEP|ROCQDEP|make\[|Warning: (No common logical root|In this case|Otherwise|in orphan))' /tmp/lane-$LANE.log | tail -40; \
-     if grep -Eq 'Error|Segmentation fault|Anomaly' /tmp/lane-$LANE.log; then echo '---- errors, with context:'; grep -E 'Error|Segmentation fault|Anomaly' -B3 -A8 /tmp/lane-$LANE.log | tail -120; rc=\${rc:-1}; [ \$rc -eq 0 ] && rc=1; fi; \
+  "${SSH[@]}" "cd $REMOTE/iris && $ENV && ( $1 ) > /tmp/lane-$LANE-$$.log 2>&1; rc=\$?; \
+     grep -Ev '^(COQC|ROCQC|COQDEP|ROCQDEP|make\[|Warning: (No common logical root|In this case|Otherwise|in orphan))' /tmp/lane-$LANE-$$.log | tail -40; \
+     if grep -Eq 'Error|Segmentation fault|Anomaly' /tmp/lane-$LANE-$$.log; then echo '---- errors, with context:'; grep -E 'Error|Segmentation fault|Anomaly' -B3 -A8 /tmp/lane-$LANE-$$.log | tail -120; rc=\${rc:-1}; [ \$rc -eq 0 ] && rc=1; fi; \
      echo RC=\$rc"
 }
 

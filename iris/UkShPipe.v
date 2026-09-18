@@ -621,7 +621,7 @@ Section UkShPipe.
   (* STUB ENTRY (so the supplier owns all three instructions, which is what  *)
   (* keeps the walk claim-free), with FOUR differences and each is priced:   *)
   (*                                                                        *)
-  (*  - NO TAINT PREMISE.  The leaf's [□ riscv_kill_cred] is what design §2  *)
+  (*  - NO TAINT PREMISE.  The leaf's [app_taint] is what design §2  *)
   (*    replaces with the registry, so the arm must not name it; the         *)
   (*    supplier does whatever its leaf asks.                                *)
   (*  - THE BUFFER ADDRESS IS QUANTIFIED INSIDE, because it is the frame's   *)
@@ -752,7 +752,7 @@ Section UkShPipe.
     UserFd.ustd (ukn_fd N) ld -∗
     UserCwd.ucwd (ukn_cwd N) cwdv -∗
     UserChildren.uch (ukn_ch N) Sc -∗
-    □ (riscv_kill_cred -∗ Qc (-1)) -∗
+    □ (app_taint -∗ Qc (-1)) -∗
     (∀ γp : pipe_names, R γp -∗ RcL γp ∗ (RcR γp ∗ Rk γp)) -∗
     ush_pipe_call N ld R -∗
     urun N h m (mword_of_int ShSyms.runcmd)
@@ -1892,7 +1892,7 @@ Section UkShPipe.
       UkSh.sh_deps -∗
       shk_code (ukn_t N) -∗
       uxsup_at (ukn_pay N) -∗
-      □ (riscv_kill_cred -∗ ukn_pay N (-1)) -∗
+      □ (app_taint -∗ ukn_pay N (-1)) -∗
       ush_jtab (ukn_t N) -∗
       ush_cmd (ukn_d N) t (UPipe cl cr) -∗
       usz (ukn_s N) szv -∗
@@ -1927,7 +1927,7 @@ Section UkShPipe.
       pose proof (ukn_const_of_eq N' (ukn_pay N) Hpeq
                     (ukn_const_eq (N := N))) as Hcst'.
       assert (Hpx' : ⊢ ukn_pay N' (-1)) by (rewrite Hpeq; exact Hpx).
-      iAssert (□ (riscv_kill_cred -∗ ukn_pay N' (-1)))%I as "#Hkw'".
+      iAssert (□ (app_taint -∗ ukn_pay N' (-1)))%I as "#Hkw'".
       { rewrite Hpeq. iExact "Hkw". }
       iAssert (uxsup_at (ukn_pay N')) as "#Hexs'".
       { rewrite Hpeq. iExact "Hexs". }
@@ -1950,7 +1950,7 @@ Section UkShPipe.
       pose proof (ukn_const_of_eq N' (ukn_pay N) Hpeq
                     (ukn_const_eq (N := N))) as Hcst'.
       assert (Hpx' : ⊢ ukn_pay N' (-1)) by (rewrite Hpeq; exact Hpx).
-      iAssert (□ (riscv_kill_cred -∗ ukn_pay N' (-1)))%I as "#Hkw'".
+      iAssert (□ (app_taint -∗ ukn_pay N' (-1)))%I as "#Hkw'".
       { rewrite Hpeq. iExact "Hkw". }
       iAssert (uxsup_at (ukn_pay N')) as "#Hexs'".
       { rewrite Hpeq. iExact "Hexs". }
@@ -2004,7 +2004,7 @@ Section UkShPipe.
       UkSh.sh_deps -∗
       shk_code (ukn_t N) -∗
       uxsup_at (ukn_pay N) -∗
-      □ (riscv_kill_cred -∗ ukn_pay N (-1)) -∗
+      □ (app_taint -∗ ukn_pay N (-1)) -∗
       ush_jtab (ukn_t N) -∗
       ush_cmd (ukn_d N) t c -∗
       usz (ukn_s N) szv -∗
@@ -2115,7 +2115,7 @@ Section UkShPipe.
        both of the leaf's allocations land ABOVE the standard streams and
        the ledger does not move *)
     fd_lowest_closed l = None ->
-    □ riscv_kill_cred -∗ udepw_law 21 -∗
+    app_taint -∗ udepw_law 21 -∗
     ush_pipe_call_weak N l (fun _ => emp)%I.
   Proof using Hpsok_free.
     intros Hnone. iIntros "#Hkc #Hcl".

@@ -1179,7 +1179,7 @@ Section UexecExecInst.
   Proof using . iIntros "H". iExact "H". Qed.
 
   Lemma srow_reg_of_taint (st : fdstate) :
-    □ riscv_kill_cred -∗ srow_reg st.
+    app_taint -∗ srow_reg st.
   Proof using .
     iIntros "#Ht". iApply (pipe_row_reg_of_taint st with "Ht").
   Qed.

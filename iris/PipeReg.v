@@ -13,7 +13,7 @@
    pipe's exclusive queue fragment) or the TAINT.  Until now the only
    PERSISTENT way to answer was the taint, so a program that called pipe(2)
    gave up being verified-and-untainted ([UkRunSys.wp_uk_ecall_pipe] took
-   [riscv_kill_cred] as a premise).  Two things made the fragment itself
+   [app_taint] as a premise).  Two things made the fragment itself
    unusable there: it is exclusive, while the exit row is a [∗ list] of
    INDEPENDENT payments (sh holds BOTH ends right after pipe(2), so two
    rows name one pipe), and it cannot cross exec.
@@ -56,7 +56,7 @@ From iris.proofmode Require Import proofmode.
 From iris.base_logic.lib Require Import own invariants.
 Require Import SailStdpp.ConcurrencyInterface SailStdpp.ConcurrencyInterfaceBuiltins SailStdpp.ConcurrencyInterfaceTypes SailStdpp.Operators_mwords.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
-Require Import RiscvPtsto.       (* [riscvGS], [riscv_kill_cred] *)
+Require Import RiscvPtsto.       (* [riscvGS], [app_taint] *)
 Require Import Xv6Cameras.
 Require Import Xv6G.             (* the ONE ghost bundle: [xv6_pipe] is how
                                     [pipeG] is reached here, so that this
@@ -147,14 +147,14 @@ Section PipeReg.
      an unverified program, or the generic-safety supply -- redeems with
      this and nothing changes for it ([PipeQueue.pipe_cpay_taint]). *)
   Lemma pipe_reg_of_taint (γp : pipe_names) :
-    □ riscv_kill_cred -∗ pipe_reg γp.
+    app_taint -∗ pipe_reg γp.
   Proof using .
     iIntros "#Ht". rewrite /pipe_reg. iIntros "!>" (w).
     iApply (pipe_cpay_taint (pn_queue γp) w emp). iExact "Ht".
   Qed.
 
   Lemma pipe_row_reg_of_taint (st : fdstate) :
-    □ riscv_kill_cred -∗ pipe_row_reg st.
+    app_taint -∗ pipe_row_reg st.
   Proof using .
     iIntros "#Ht". rewrite /pipe_row_reg.
     destruct st as [| ? ? [| γp |]]; try done.

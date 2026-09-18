@@ -11,9 +11,11 @@ Its exit criterion is measurable, so the metric leads.
 |---|---|---|
 | at the start (main `d8ffd312c`) | **9** | 2 `Hypothesis` + 6 `Admitted` + the file's own header line |
 | after `75a610017` | **7** | `Hdep1` and `Hwrite1` are `Lemma`s closed by `exact` |
+| after `48f7343d9` (EFQ) | **4** | `ef_node`, `ef_chain`, `ef_w_of_deed` at the pipe cursor |
+| after `aae081f4c` | **1** | `ef_pay_all`, `efile_uexec_slot_at`, `efile_image_entry`; the header line is all that is left |
 
-The six `Admitted`s are SKELETON's and untouched; `tools/lemma_diff.py`
-reports them only as line-number drift.
+No `Admitted` remains in `UEchoFile.v`; `tools/lemma_diff.py --ref main`
+reads CLEAN.
 
 ## THE COMMITS
 
@@ -22,6 +24,9 @@ reports them only as line-number drift.
 | `94a649b1a` | **L2** — `FileInvDefs.fdstate_ok` reads `fp_om pn` |
 | `abe94870d` | **L4** — the open publishes at its caller's mode; the handed half rides out |
 | `75a610017` | `UEchoFile`'s `Hdep1`/`Hwrite1` discharged |
+| `0478e04bc` | **WR-TB** — `SpecFilewrite.wr_tb` at `filewrite_in`'s held link arm (item 3's replacement, landed) |
+| `48f7343d9` | **EFQ** — `efq` is the pipe `FileWrite.file_cur`; `file_awrite_node_adv`; `ef_node`/`ef_chain`/`ef_w_of_deed` |
+| `aae081f4c` | `ef_pay_all`, `efile_uexec_slot_at`, `efile_image_entry` discharged (item 4 closed) |
 
 Whole tree green at each (`EXIT=0`, zero `Error`); all four audits
 byte-identical throughout — **system THIRTEEN, echo FOURTEEN, tree
@@ -282,20 +287,36 @@ Nothing was committed for item 4: the first `Admitted` cannot be closed
 before `efq` is restated, and restating `efq` is a bigger edit than the
 remaining budget allowed. The metric is unchanged at **7**.
 
+## 3e. ITEM 4 — the six are discharged (2026-09-18)
+
+`48f7343d9` restated `efq` as the pipe `FileWrite.file_cur` (§3d(b)'s
+repair) and closed `ef_node`, `ef_chain`, `ef_w_of_deed`; `aae081f4c`
+closes the other three — `ef_pay_all`, `efile_uexec_slot_at`,
+`efile_image_entry` — so `grep -c "Hypothesis\|Admitted" iris/UEchoFile.v`
+reads **1**, the header comment.  Two helpers went below the file:
+`FileState.echo_args_chunks_{length,word,sep,nl}`, the dictionary between
+echo's ARGUMENT recursion and the deed's CHUNK cursor (argument `q` is
+chunk `2q`, its separator or newline chunk `2q+1`, `2·|args|` in all); and
+`FsAbsWriteFire.awrite_chain_adv_mapped_single`'s single-block premise
+now ranges over `k <= kk < k + cnt` only — quantified freely it is FALSE
+past the last node, and a false premise is a vacuous chain lemma.  Whole
+tree green at the merge with `main` (`687a425fd`); the four audits
+byte-identical (system 13, echo 14, tree 13, file 14); `lemma_diff` CLEAN;
+`comment_quote_check` 0 sites.
+
 ## 4. WHAT IS LEFT, AND WHO OWES IT
 
 1. ~~The `_hand` deed corollaries~~ — **DONE** (§3a).
 2. ~~the read side's twin~~ — **DONE** (§3b).
-3. **WRITE-RELAY-3's `TB` guard** — **REFUTED as briefed** (§3c). What
-   replaces it is `wr_tb` at row 16's own three values; that is a ruling for
-   the owner, not a lane's choice, so item 3 is skipped here.
-4. **`UEchoFile.v`'s six `Admitted`s** — attempted, **blocked at `efq`'s
-   taint arm** (§3d(b)); RELAY 1 is not owed (§3d(a)).  Restate `efq`,
-   `efcur` and `ef_exit` at the pipe shape first, then
-   `file_awrite_node_adv` is `file_awrite_node` with RELAY 1 derived by
-   `file_claim_read` and RELAY 2 by `uoff_agree_k`.
-5. ECHO-FILE's remaining assembly — `efile_uexec_slot_at`,
-   `efile_image_entry`.
+3. **WRITE-RELAY-3's `TB` guard** — the ruling came back as `wr_tb`
+   (§3c's proposal) and is **LANDED** (`0478e04bc`).
+4. ~~`UEchoFile.v`'s six `Admitted`s~~ — **DONE** (§3e).
+5. ~~ECHO-FILE's remaining assembly~~ — **DONE**: `efile_uexec_slot_at`
+   and `efile_image_entry` are two of the six (§3e).  What is left at
+   this seam is the PROGRAM stream's, not this lane's: `UShRedirPay`
+   takes the entry as its premise `sh_file_entry` and `UShRound`'s
+   `Hchild_redir` is still a `Hypothesis`; applying `efile_image_entry`
+   there is the era step PROGRAM-STREAM already describes.
 
 ## 5. TWO PROCESS FINDINGS, BOTH EXPENSIVE
 

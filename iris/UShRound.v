@@ -522,10 +522,23 @@ Section UShRound.
   Admitted.
 
   (* ...and a KILLED child pays the payload with the taint (the taint
-     inhabits the credential AND the deed's arm) *)
-  Lemma sh_kill_law_file : ⊢ UkShFork.ushf_kill_law Wcf.
+     inhabits the credential AND the deed's arm).  PROVED (the program
+     stream): the taint is the era's ([Hktaint]), it inhabits the link
+     record's credential at the era's pin ([Hcltaint], which is
+     [FileLinkInst.file_Hcltaint] now) and it is [sh_hold]'s own right
+     arm.  The PIN is a premise because the credential's is linear under
+     an existential and the killed child holds none -- the round has it
+     ([sh_round_holds_file]'s third argument). *)
+  Lemma sh_kill_law_file (v : era_pins) :
+    era_pin (fgn_echo g) (S gen_id) v -∗ UkShFork.ushf_kill_law Wcf.
   Proof using Hktaint.
-  Admitted.
+    iIntros "#Hpin". rewrite /UkShFork.ushf_kill_law.
+    iIntros "!>" (I) "#Hk".
+    iAssert T as "#HT"; [ iApply Hktaint; iExact "Hk" | ].
+    rewrite /Wcf. iSplitR.
+    - iApply (Hcltaint I 0%nat v with "Hpin HT").
+    - rewrite /sh_hold. iRight. iExact "HT".
+  Qed.
 
   (* =================================================================== *)
   (*  S6  THE ROUND -- [UShRest.sh_rest_holds]'s TWIN                     *)

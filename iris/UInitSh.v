@@ -1142,7 +1142,8 @@ Section UInitSh.
                      LINK-GEN-5): [ush_read_recv_leaf] IS the parameterized
                      leaf at [disc_input], so [Hrl] needs no change. *)
                   EchoDisc.disc_input UkSh.ush_disc_snoc_ncr
-                  EchoDisc.disc_input_snoc_nl EchoDisc.disc_input_rest_short
+                  EchoDisc.disc_input_rest_short
+                  UkSh.ush_line_echo UkSh.ush_disc_line_echo
                   Hrl Hpm1 Hpm3
                   Hpmwb Hwc Hwbwc Hwbl Hwbr
                   1%nat alen afun fdv W' n0 np

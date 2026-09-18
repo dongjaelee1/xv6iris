@@ -62,6 +62,7 @@ Require Import AppInv.
 Require Import FsCfg.
 Require Import UserConsole.
 Require Import UkSh.
+Require Import UkShRedirBody.
 Require Import UShLine.
 Require Import CtxIdDefs.
 Local Open Scope list_scope.
@@ -155,6 +156,87 @@ Qed.
 Lemma disc_input_f_rest_short (I : list (bv 8)) :
   disc_input_f I -> (S (length (rest_of I)) < line_max)%nat.
 Proof using. by intros (_ & _ & H). Qed.
+
+(* ...AND THE LINE THE NEWLINE CLOSED ([EchoDisc.disc_input_snoc_nl]'s
+   twin): the body it completed parses, at any of the three
+   constructors. *)
+Lemma disc_input_f_snoc_nl (I : list (bv 8)) :
+  disc_input_f (I ++ [wl_nl]) -> fbody_ok (rest_of I).
+Proof using.
+  intros (Hb & _ & _). rewrite bodies_of_snoc_nl in Hb.
+  apply Forall_app in Hb as [_ Hb2]. by rewrite Forall_singleton in Hb2.
+Qed.
+
+(* ===================================================================== *)
+(*  1b. THE FILE ERA'S [Hdsc_line] -- sh's loop leaf at the FILE          *)
+(*      discipline, ending in a typed line the era admits.                *)
+(*                                                                       *)
+(*  [Hws] IS THE ONE MODEL FACT IT TAKES, and it is the lane's open item: *)
+(*  [UkSh.ush_posw]'s index is [LineWords.last_ws] of the input, so the   *)
+(*  loop's line has to answer [FileDisc.uline_ws lu = wl_words J].  That  *)
+(*  holds at [LEcho] and [LEchoF] (whose [uline_ws] IS the parse) and NOT *)
+(*  at [LCat], whose [uline_ws] is [[]] while a [cat f] line's words are  *)
+(*  [wl_words cmd_cat_f].  See this lane's findings.                      *)
+(* ===================================================================== *)
+Lemma file_disc_line
+    (Hws : forall J : list (bv 8),
+       fbody_ok J -> uline_ws (uline_of J) = wl_words J)
+    (I : list (bv 8)) (f : nat -> bv 8) :
+  disc_input_f (I ++ [wl_nl]) ->
+  (forall j : nat, (j < length (rest_of I))%nat -> f j = rest_of I !!! j) ->
+  f (length (rest_of I)) = wl_nl ->
+  exists lu : uline,
+    UkShRedirBody.ush_line_file lu
+    /\ uline_ws lu = wl_words (rest_of I)
+    /\ length (line_bytes lu) = S (length (rest_of I))
+    /\ UkSh.ush_line_at lu f 0%nat (S (length (rest_of I))).
+Proof using.
+  intros Hd Hby Hfnl.
+  set (J := rest_of I) in *.
+  pose proof (disc_input_f_snoc_nl I Hd) as Hok.
+  destruct (fbody_ok_line J Hok) as [Huok Hbody].
+  assert (Hlb : line_bytes (uline_of J) = J ++ [wl_nl])
+    by (rewrite line_bytes_body -Hbody; reflexivity).
+  exists (uline_of J).
+  split; [ exact Logic.I | ].
+  split; [ exact (Hws J Hok) | ].
+  split; [ rewrite Hlb length_app; cbn [length]; lia | ].
+  rewrite /UkSh.ush_line_at Hlb. split_and!.
+  - exact Huok.
+  - rewrite length_app. cbn [length]. lia.
+  - intros j Hj. rewrite Nat.add_0_l.
+    assert (Hnlat : (J ++ [wl_nl]) !!! length J = wl_nl).
+    { pose proof (wl_lta_app_r J [wl_nl] 0%nat) as Hr.
+      rewrite Nat.add_0_r in Hr. exact Hr. }
+    destruct (Nat.eq_dec j (length J)) as [-> | Hne].
+    + rewrite Hfnl Hnlat. reflexivity.
+    + rewrite (Hby j ltac:(lia)).
+      symmetry. exact (wl_lta_app_l J [wl_nl] j ltac:(lia)).
+Qed.
+
+(* ...AND THE THREE, BUNDLED: exactly what [UShKernel.sh_image_entry_at]
+   takes of an era's line read, in its own order. *)
+Lemma file_gets_holds
+    (Hws : forall J : list (bv 8),
+       fbody_ok J -> uline_ws (uline_of J) = wl_words J) :
+  (forall (I : list (bv 8)) (b : bv 8),
+     disc_input_f (I ++ [b]) -> bv_unsigned b <> 13%Z)
+  /\ (forall I : list (bv 8),
+        disc_input_f I -> (S (length (rest_of I)) < line_max)%nat)
+  /\ (forall (I : list (bv 8)) (f : nat -> bv 8),
+        disc_input_f (I ++ [wl_nl]) ->
+        (forall j : nat, (j < length (rest_of I))%nat ->
+           f j = rest_of I !!! j) ->
+        f (length (rest_of I)) = wl_nl ->
+        exists lu : uline,
+          UkShRedirBody.ush_line_file lu
+          /\ uline_ws lu = wl_words (rest_of I)
+          /\ length (line_bytes lu) = S (length (rest_of I))
+          /\ UkSh.ush_line_at lu f 0%nat (S (length (rest_of I)))).
+Proof using.
+  split; [ exact disc_input_f_snoc_ncr | ].
+  split; [ exact disc_input_f_rest_short | exact (file_disc_line Hws) ].
+Qed.
 
 (* ===================================================================== *)
 (*  2.  THE RECORD                                                        *)

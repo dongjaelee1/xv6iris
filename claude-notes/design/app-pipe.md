@@ -698,6 +698,58 @@ hypothesis left — SH-PIPE-ROUND's.  Lesson: a claim that adds a
 persistent instance-free conjunct to another application's costs the split
 lemma and nothing else.
 
+### 5.8 RULED (2026-09-18, after SH-PIPE-ROUND's two STOPs): the line type, and the link record
+
+SH-PIPE-ROUND landed the child walk at the pipe shape
+(`UkShPipeRound.wp_kshm_child_pipe_line`, three platform assumptions) and
+the whole-system theorem `UPipeBootAdequacy.pipe_adequacy_pipeΣ` at the
+literal image — CLOSED MODULO ONE PREMISE, `pipe_prog_law` (= `al_programs`
+at `app_pipe`, the record's only open field), audit `make audit-pipe-only`
+= FOURTEEN, echo's list exactly; `pipeΣ` = echo's functor list.  Two STOPs:
+
+**STOP A — there is no "fourth arm"; there is a missing CONSTRUCTOR.**
+Upstream generalised sh's line disjunct over THEIR line type:
+`UkSh.ush_rest_line_at (D : FileDisc.uline -> Prop)`, `Hdsc_line : uline_ws
+lu = wl_words (rest_of I)`.  `FileDisc.uline = LEcho | LEchoF | LCat` and
+`FileDisc.v` is a model file (`parse_line`, `lines_of`, `ralt_ok`, `fsm`,
+`cont`), read by `FileOutPure` 25 times.  RULED: **add the constructor
+`LPipe (ws)` to `FileDisc.uline`, ADDITIVELY** — `parse_line` UNTOUCHED (so
+`lines_of`'s range, `alts_ok`, determinacy and `AppFile`'s conclusion keep
+their meaning at every input the FILE theorem quantifies over), `uline_ws
+(LPipe ws) := ws ++ [bar; cat]` (the WHOLE body's words, which is what
+`Hdsc_line` demands — `PipeDisc.pline_ws` gives the echo words alone and
+cannot be reused), every `match`/`destruct` on `uline` in the four landed
+FILE files (`FileDisc` 6, `FileDiscDec` 3, `FileOutPure` 4, `FileLinksLine`
+13; 5 definitions + 26 proof sites) gains the arm that the FILE model
+never reaches (its `parse_line` never produces it: the arms are
+`ralt_ok := False`-style dead arms or the obvious constant).  This is the
+one place the campaign edits upstream's files; it is purely additive and
+the owner is told.  The alternative — generalising `UkSh.ush_line_at` to
+its three projections — moves every landed statement naming it.  Then the
+pipe line's `D` is `PipeDisc`'s reading of `LPipe` and `ush_rest_line`'s
+instance at it is SH-PIPE-ROUND-2's.
+
+**STOP B — the round is stated at the LinkRec INSTANCE.**  `UShRound.v` is
+end to end at `FI := FileLinkInst.file_link_inst_at g s0` (`Wcl`/`Wbl`,
+the five credential conversions, `lk_exfb`, `lk_rres`, the stage record);
+`PipeLinks.v` is the BUNDLE, not the record.  Lane **PIPE-LINK-INST**: the
+port of `FileLinksLine.v` (2,081) + `FileLinkInst.v` (760) to the pipe
+stage — `pipe_link_inst_at`, with `lk_ab I a := PipeDisc.pcont (the line's
+parse) (palt_of a)` needing NO guard (pcont reads no state), `lk_apr` =
+`pcont_shape`, the three named alternatives literally `3`/`1`/`2` (echo's,
+`reflexivity`), `lk_exfb`/`lk_lcred` at the merged diagnostic.
+`pipe_both_law` is NOT a premise of the theorem (it lives inside `Hprog`)
+and is stated at the record, so it waits for this lane too.  `al_programs`
+at `app_pipe` itself needs no record (STOP C did not fire).
+
+Also from the lane: `wp_kshr_pipe_arm` takes the exit payload FREE
+(`⊢ ukn_pay N (-1)`) where the redirect arm takes `□ (Cr -∗ …) ∗ Cr`; the
+round runs at the lent credential, so SH-PIPE-ROUND-2 re-cuts the arm at
+the pair (a caller-brought linear resource travels through the spatial
+split premise already).  `wp_kshp_parsecmd_bar`, not `wp_kshp_parser_pipe`,
+is the walk's parser (the seam wants the nodes unclosed).  `S (S gp)` and
+`gp + 3` are not convertible — replace at the whole index.
+
 ## 6. Lanes
 
 Wave 1, independent, in parallel (each in its own clone with its own

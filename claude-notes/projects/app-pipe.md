@@ -185,6 +185,24 @@ arm is the theorem's one named premise (`pipe_both_law`).
 - [ ] **PIPE-2W** (design §4.3): the merge lease; `pipe_both_law` discharged;
   the premise removed.
 
+- [ ] **ULINE-LPIPE** (design §5.8 STOP A; the ONE edit of upstream's files):
+  `FileDisc.uline` gains `LPipe (ws)` additively; `parse_line` untouched;
+  `uline_ws (LPipe ws) := ws ++ [bar; cat]`; the 5 definitions + 26 proof
+  sites in `FileDisc`/`FileDiscDec`/`FileOutPure`/`FileLinksLine` gain their
+  dead/constant arm; `FileDisc.line_bytes (LPipe ws)` = `PipeDisc`'s.  Bar:
+  every landed FILE statement unchanged in meaning (the file audit at its
+  current count); whole tree green.
+- [ ] **PIPE-LINK-INST** (design §5.8 STOP B): `PipeLinksLine.v` +
+  `PipeLinkInst.v`, the port of `FileLinksLine`/`FileLinkInst` to the pipe
+  stage (`pipe_link_inst_at`; `lk_ab` at `pcont` unguarded; the named
+  alternatives echo's by reflexivity); the `pipe_link_inst_*` reflexivity
+  checks as LINK-GEN's `echo_inst_*`.
+- [ ] **SH-PIPE-ROUND-2** (after both): the round at `pipe_link_inst_at` —
+  `wp_kshr_pipe_arm` re-cut at the lent pair, `sh_round_holds_pipe`,
+  `pipe_both_law` stated at the record (the one named premise inside
+  `Hprog`), `pipe_prog_law` discharged → `pipe_adequacy_pipeΣ` closed
+  modulo `pipe_both_law` only.
+
 ## Findings (append as lanes report)
 
 ### PIPE-STD (2026-09-17)

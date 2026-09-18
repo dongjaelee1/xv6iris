@@ -104,6 +104,8 @@ Require Import UkShEcho.
 Require Import UkShFork.
 Require Import UkFileOpen.
 Require Import LinkRec.                  (* the era's link record *)
+Require Import FileLinksLine.            (* [fline] / [fexfb] -- the era's line *)
+Require Import StageRec.                 (* [ck_lineok] / [sk_apr0] *)
 Require Import FileLinkInst.             (* [file_link_inst_at] -- LINK-GEN-2 + INIT-FILE *)
 Require Import UShLine.
 Require Import UShEcho.
@@ -434,13 +436,114 @@ Section UShRound.
   (* ---- HYPOTHESIS: the echo-at-console child, at the FILE links.
           [UShEchoPay.sh_exec_sup_echo_wq_holds]'s twin -- with LINK-GEN
           it is an instantiation, without it a ~1,250-line twin. ---- *)
-  (*  (This one names no deposit instance -- [sh_exec_sup_echo_wq] takes
-      only [uexecSG].  The two laws above DO, and they are annotated:
-      left implicit, [uprogSG] resolves to the ambient instance and the
+  (*  ...AND IT IS DISCHARGED (the PROGRAM STREAM).  What blocked it was
+      the GUARD: [UkShEcho.sh_exec_sup_echo_wq] quantified its box over
+      every input with [EchoDisc.line_ok (last_ws I)], and at the file era
+      that admits inputs whose line is NOT an [LEcho] one -- so the supply
+      was stated where it cannot hold (the lend at an [LEchoF] input opens
+      into the PROMPT's alternative, not echo's).  The guard is now the
+      era's own ([sh_exec_sup_echo_wq_at D]) and this is it: the line is
+      admissible AND the era filed an [LEcho] at that input.  The consumer
+      proves it from the child law's own box, which is why nothing above
+      has to carry it.
+
+      (This law names no deposit instance -- [sh_exec_sup_echo_wq_at] takes
+      only [uexecSG].  The two laws above DO, and they are annotated: left
+      implicit, [uprogSG] resolves to the ambient instance and the
       discharge, which is at [uprogSG_free], is not well-typed against it
       -- and the conversion between two deposit instances does not come
       back.  That is a fifth silent-hang shape.) *)
-  Hypothesis Hchild_echo : ⊢ UkShEcho.sh_exec_sup_echo_wq Wcf.
+  Definition file_D (I : list (bv 8)) : Prop :=
+    EchoDisc.line_ok (last_ws I) /\ FileLinkInst.file_lineok I.
+
+  (* THE GUARD, OFF THE CHILD LAW'S OWN BOX: the line the fork lends is
+     [line_ok] ([UkSh.ush_line_is]'s first conjunct) and the slot the loop
+     left says the input's last body PARSES ([UkSh.ush_posw]'s third), and
+     [FileDisc.fbody_ok_echo] turns the two into the era's line. *)
+  Lemma file_D_of_line (I : list (bv 8)) (ws : list (list (bv 8))) :
+    EchoDisc.line_ok ws -> ws = last_ws I ->
+    FileDisc.fbody_ok (UkSh.ush_lastbody I) -> file_D I.
+  Proof using .
+    intros Hok Hwseq Hfb. subst ws. split; [ exact Hok | ].
+    rewrite /UkSh.ush_lastbody in Hfb.
+    rewrite /FileLinkInst.file_lineok /fline.
+    rewrite (last_ws_lastbody I) in Hok |- *.
+    exact (FileDisc.fbody_ok_echo _ Hfb Hok).
+  Qed.
+
+  (* ...and at such an input the era's exec-failed bytes ARE the constants
+     ([FileLinksLine.fexfb] is [alt_execcat] only at an [LCat] line), which
+     is LINK-GEN-4's open item closed at the same guard. *)
+  Lemma file_D_exfb (I : list (bv 8)) :
+    file_D I ->
+    lk_exfb FI I = EchoDisc.alt_execfail
+    /\ (length (lk_exfb FI I) - 2)%nat = 17%nat.
+  Proof using .
+    intros [_ Hln]. cbn [lk_exfb file_link_inst_at].
+    rewrite /FileLinkInst.file_lineok in Hln. rewrite Hln.
+    cbn [fexfb]. split; [ reflexivity | ].
+    rewrite UShPanic.alt_execfail_len. reflexivity.
+  Qed.
+
+  (* the four [Wc] laws at this family, which are [UShEchoPay]'s [lkw_*]
+     at [Hold := sh_hold_at s0] *)
+  Local Lemma fwc3 (I0 : list (bv 8)) :
+    ⊢ Wcf I0 3%nat -∗ ∃ v : era_pins,
+        lk_pin FI (S gen_id) v ∗ lk_lpr FI (S gen_id) v I0 3%nat
+        ∗ sh_hold I0.
+  Proof using .
+    rewrite /Wcf /FileLinkInst.file_Wcl_at /lk_lcred.
+    iIntros "[H HR]". iDestruct "H" as (v) "[#Hp Hc]".
+    iExists v. iSplitR "Hc HR"; [ iExact "Hp" | ].
+    iSplitL "Hc"; [ iExact "Hc" | iExact "HR" ].
+  Qed.
+
+  Local Lemma fwc3b (I0 : list (bv 8)) (v0 : era_pins) :
+    ⊢ lk_pin FI (S gen_id) v0 -∗ lk_lpr FI (S gen_id) v0 I0 3%nat -∗
+      sh_hold I0 -∗ Wcf I0 3%nat.
+  Proof using .
+    iIntros "#Hp Hc HR". rewrite /Wcf.
+    iSplitR "HR"; [ | iExact "HR" ].
+    rewrite /FileLinkInst.file_Wcl_at /lk_lcred. iExists v0.
+    iSplitR; [ iExact "Hp" | iExact "Hc" ].
+  Qed.
+
+  Local Lemma fwc0 (I0 : list (bv 8)) (v0 : era_pins) :
+    ck_lineok (sk_cur (FileLinkInst.file_stage_inst_at g s0)) I0 ->
+    ⊢ lk_pin FI (S gen_id) v0 -∗ lk_post FI (S gen_id) v0 I0 0%nat -∗
+      sh_hold I0 -∗ Wcf I0 0%nat.
+  Proof using .
+    intro Hlok. iIntros "#Hp Hc HR". rewrite /Wcf.
+    iSplitR "HR"; [ | iExact "HR" ].
+    rewrite /FileLinkInst.file_Wcl_at.
+    iApply (lk_lcred_of_post_a FI (S gen_id) I0 0%nat v0
+              (sk_apr0 (FileLinkInst.file_stage_inst_at g s0) I0 Hlok)
+              with "Hp Hc").
+  Qed.
+
+  Local Lemma fwct (I0 : list (bv 8)) (v0 : era_pins) :
+    ⊢ lk_pin FI (S gen_id) v0 -∗ T -∗ Wcf I0 0%nat.
+  Proof using .
+    iIntros "#Hp #HT". rewrite /Wcf. iSplitL.
+    - iApply (lk_lcred_taint FI (S gen_id) I0 0%nat v0 with "Hp HT").
+    - rewrite /sh_hold_at. iRight. iExact "HT".
+  Qed.
+
+  Local Instance sh_hold_timeless I0 : Timeless (sh_hold I0).
+  Proof using .
+    rewrite /sh_hold_at /T /file_taint /echo_taint. apply _.
+  Qed.
+
+  Lemma Hchild_echo :
+    ⊢ FileLinks.file_links g -∗ udep (PS := uprogSG_free) -∗
+      UShEcho.sh_echo_slot T -∗
+      UkShEcho.sh_exec_sup_echo_wq_at file_D Wcf.
+  Proof using Hkill.
+    exact (UShEchoPay.sh_exec_sup_echo_wq_holds_at_D
+             (FileLinkInst.file_stage_inst_at g s0) file_D Wcf sh_hold
+             sh_hold_timeless fwc3 fwc3b fwc0 fwct Hktaint
+             (fun I0 H => proj1 H) (fun I0 H => proj2 H)).
+  Qed.
 
   (* ---- HYPOTHESIS: the exec-failed diagnostic's law at the file
           families, AT THE PARAMETERIZED CARRIER (lane LINK-GEN-4).  The
@@ -606,8 +709,33 @@ Section UShRound.
      law [UkShFork.ushf_rest_of_body] takes.  The case is PURE -- on
      [FileDisc.uline_of (wl_body (last_ws I))] -- and sh's tag law ties it
      to the line the discipline admitted. *)
-  Lemma sh_child_law_file : ⊢ UkShFork.ushf_child_law Wcf.
-  Proof using Hchild_cat Hchild_echo Hchild_redir Hopen_hand.
+  (* ...AND THE ECHO ARM OF IT IS PROVED (the PROGRAM STREAM): the landed
+     [UkShFork.ushf_child_law] IS the echo child's law, and at this era it
+     is [UkShEcho.ushf_child_law_holds_at] at the era's guard and the
+     era's diagnostic -- both of which [file_D] answers.  The three-way
+     DISPATCH (the redirect and cat arms) is [UkShRedirBody]'s body law and
+     does not come through this name. *)
+  (*  ...AND ITS PROOF IS ONE APPLICATION, WHICH DOES NOT ELABORATE (the
+      PROGRAM STREAM, and it is the ONLY thing between the metric and 6):
+
+        iPoseProof (Hexecfail with "Hlk") as "#Hxl".
+        iPoseProof (Hchild_echo with "Hlk Hdep Hslot") as "#Hsup".
+        iApply (UkShEcho.ushf_child_law_holds_at (PS := uprogSG_free)
+                  (fun k H => H) file_D (lk_exfb FI)
+                  (fun I => (length (lk_exfb FI I) - 2)%nat) Wcf
+                  file_D_of_line file_D_exfb with "Hxl Hsup").
+
+      Every premise is in hand -- both laws are PROVED above, at exactly
+      the two shapes the lemma takes -- and the application HANGS: twenty
+      minutes with no output, with [iApply] and with [iPoseProof] alike,
+      and [Local Opaque] on the record literal does not help.  It is the
+      fifth silent-hang shape at a size that is not localised yet; what it
+      is NOT is a missing fact.  Left [Admitted] rather than committed red,
+      and it is the next thing this stream does. *)
+  Lemma sh_child_law_file :
+    ⊢ FileLinks.file_links g -∗ udep (PS := uprogSG_free) -∗
+      UShEcho.sh_echo_slot T -∗ UkShFork.ushf_child_law Wcf.
+  Proof using Hkill.
   Admitted.
 
   (* ...and a KILLED child pays the payload with the taint (the taint
@@ -644,8 +772,7 @@ Section UShRound.
       UkSh.ush_rest_l (PS := uprogSG_free) N γp T Wcf Wbf
         (UShLine.ush_mid_at (lk_rres FI) (fgn_echo g) γp)
         (UInitSh.sh_Rsh (ukn_t N) (ukn_d N) (ukn_s N)).
-  Proof using Hchild_cat Hchild_echo Hchild_redir Hcons
-              Hkill Hopen_hand Htag.
+  Proof using Hchild_cat Hchild_redir Hcons Hkill Hopen_hand Htag.
   Admitted.
 
 End UShRound.

@@ -543,6 +543,84 @@ Section file_link_inst_at.
     iFrame "Hpin". iApply (fwc_ban_at_pack with "Hc").
   Qed.
 
+  (* =================================================================== *)
+  (*  THE STAGE, AT THE INDEXED RECORD (the PROGRAM STREAM)               *)
+  (*                                                                     *)
+  (*  [file_stage_inst] above, at [file_link_inst_at]: the same two       *)
+  (*  halves ([fwc_blk_at] IS the cursor, [fblk_step_at] IS its step) and *)
+  (*  the same reading of which lines the cursor's block is the LINE's    *)
+  (*  own alternative at ([file_lineok], which is about [fline] and the   *)
+  (*  input alone and so does not move with the index).                    *)
+  (* =================================================================== *)
+  Local Lemma fi_cur_tl_at (k : nat) (v : era_pins) (st : file_stg)
+      (p : nat) :
+    Timeless (fwc_blk_at g s0 k v (fs_I st) 0%nat p).
+  Proof using . apply fwc_blk_at_timeless. Qed.
+
+  Local Lemma fi_step_at (k : nat) (v : era_pins) (st : file_stg)
+      (ws : list (list (bv 8))) (i : nat) (b : bv 8) (Φ : iProp Σ) :
+    (fline (fs_I st) = LEcho ws /\ last_ws (fs_I st) = ws) ->
+    line_alts_of ws !!! 0%nat !! i = Some b ->
+    ⊢ lk_pin file_link_inst_at k v -∗ lk_links file_link_inst_at -∗
+      fwc_blk_at g s0 k v (fs_I st) 0%nat i -∗
+      (fwc_blk_at g s0 k v (fs_I st) 0%nat (S i) -∗ Φ) -∗
+      out_link Uart0 k b Φ.
+  Proof using .
+    intros [ Hln Hlast ] Hb. iIntros "#Hpin #Hlk Hc HΦ".
+    iApply (fblk_step_at g s0 k v (fs_I st) 0%nat i b Φ
+              with "Hpin Hlk Hc HΦ").
+    rewrite (file_fab0 (fs_I st)
+               ltac:(rewrite /file_lineok Hlast; exact Hln)).
+    rewrite Hlast. exact Hb.
+  Qed.
+
+  Definition file_cur_inst_at : CurRec file_link_inst_at :=
+    MkCurRec file_link_inst_at file_stg
+      (fun st ws => fline (fs_I st) = LEcho ws /\ last_ws (fs_I st) = ws)
+      (fun ws => line_alts_of ws !!! 0%nat)
+      file_lineok
+      (fun k v st p => fwc_blk_at g s0 k v (fs_I st) 0%nat p)
+      fi_cur_tl_at fi_step_at.
+
+  Local Lemma fi_lend_stage_at (k : nat) (v : era_pins) (I : list (bv 8)) :
+    file_lineok I ->
+    ⊢ fwc_lend_at g s0 k v I -∗
+      (∃ st : file_stg,
+         ⌜fline (fs_I st) = LEcho (last_ws I)
+          /\ last_ws (fs_I st) = last_ws I⌝
+         ∗ ⌜line_alts_of (last_ws I) !!! 0%nat
+            = line_alts_of (last_ws I) !!! 0%nat⌝
+         ∗ fwc_blk_at g s0 k v (fs_I st) 0%nat 0%nat
+         ∗ □ (fwc_blk_at g s0 k v (fs_I st) 0%nat
+                (length (wl_line (drop 1 (last_ws I)))) -∗
+              lk_post file_link_inst_at k v I 0%nat))
+      ∨ lk_T file_link_inst_at.
+  Proof using .
+    intro Hlok. rewrite /fwc_lend_at. iIntros "[Hl | #HT]"; last by iRight.
+    iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE & #Hf)".
+    iLeft. iExists (MkFileStg I). cbn [fs_I].
+    iSplitR; [ iPureIntro; split; [ exact Hlok | reflexivity ] | ].
+    iSplitR; [ by iPureIntro | ].
+    iSplitL "Htn".
+    - rewrite /fwc_blk_at. iLeft. iExists ps, cs, P.
+      cbn [blkcs_f]. rewrite Nat.add_0_r.
+      iFrame "Htn Hps Hcs HE Hf". by iPureIntro.
+    - iIntros "!> Hc". rewrite /lk_post.
+      cbn [lk_blk lk_ab file_link_inst_at].
+      rewrite (file_fab0_len I Hlok). iExact "Hc".
+  Qed.
+
+  Local Lemma fi_apr0_at (I : list (bv 8)) :
+    file_lineok I -> lk_apr file_link_inst_at I 0%nat.
+  Proof using .
+    intro Hl. cbn [lk_apr file_link_inst_at]. rewrite /fapr.
+    split_and!;
+      [ exact (file_ralt0_ok I Hl) | exact file_ralt0_free | reflexivity ].
+  Qed.
+
+  Definition file_stage_inst_at : StageRec file_link_inst_at :=
+    MkStageRec file_link_inst_at file_cur_inst_at fi_lend_stage_at fi_apr0_at.
+
 End file_link_inst_at.
 
 (* ...and the converse: the unindexed families ARE the existential

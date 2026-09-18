@@ -187,26 +187,113 @@ invents neither**, which is the owner's principle at this seam.
 per new `∨ app_taint` arm: a client that could mint the taint out of the
 half it holds would hold a whole `off_gv` beside a half of it.
 
+## 3c. ITEM 3 — **REFUTED AT THE STATEMENT**, and the guard that does work
+
+`TB : uptd -> Prop` as a **free parameter** of `filewrite_in`, with the link
+arm `∀ P, ⌜TB P⌝ -∗ awrite_chain_adv …`, is **not dischargeable anywhere in
+the tree**. Nothing about the fire or the chain is wrong; the obstruction is
+one field, and it is deliberate:
+
+* the only party that knows `TB` is the PROGRAM, which chooses it when it
+  builds its deposit;
+* the only party that knows `P` is the KERNEL, which meets it at the AU;
+* the one place they meet is `UexecExecInst.xv6_sbundle`'s **row 16**, and
+  that row is a function of a `uvis` — whose fields are
+  `uvis_tf`, `uvis_M`, `uvis_perm`, `uvis_sz`, `uvis_fd`, `uvis_cwd`,
+  `uvis_gen`, `uvis_ch`, `uvis_lazy`, `uvis_pid`. **There is no `uptd` in
+  it, by construction**: the page table is not user-visible state, which is
+  precisely `UexecSlot`'s own rule for what a key may carry ("Future
+  user-visible state becomes a FIELD").
+
+So the row cannot state `⌜TB P⌝` for the program's `TB`, the kernel cannot
+prove it for an abstract `TB`, and no premise of the write contract can
+carry it without first putting a `uptd` in the key — which would make the
+process's page table user-visible and is a much larger ruling than this
+guard.
+
+**WHAT DOES WORK, and it is what `ef_relay4` actually needs** ("a table tied
+to the caller's own"): the guard must not be free but the concrete predicate
+the key's rows ALREADY determine —
+
+```coq
+Definition wr_tb (pmv : gmap (mword 27) uperm) (sz : Z) (lz : bool)
+    (P : uptd) : Prop :=
+  perm_of (ud_um P) sz = pmv /\ proc_pt_wf P /\ (lz = false -> lazy_free P).
+```
+
+with the link arm `∀ P, ⌜wr_tb (uvis_perm W) (uvis_sz W) (uvis_lazy W) P⌝ -∗
+awrite_chain_adv …` at row 16. Then the KERNEL discharges it from the three
+facts it already holds about its own `pv_upt (us_V U)` — the same three
+`wp_uk_ecall_write_*` relays into every write post today — and the PROGRAM
+uses it in `ef_relay4` without having chosen anything. It is three key
+values threaded, not an abstract predicate, and it needs no new field.
+
+Item 3 is therefore **skipped**, at the statement, pending that ruling.
+
+## 3d. ITEM 4 — `file_awrite_node_adv` is blocked by `efq`, not by the node
+
+Item 4 was attempted and is **not closed**; what it ran into is a statement,
+so it is recorded here rather than left as a search. Two things came out of
+reading it, and the second is the block.
+
+**(a) RELAY 1 IS NOT OWED — `FileWrite`'s own comment is stale.** That
+comment says `AppFile.f_ok`'s `Some` arm "quantifies [the inum]
+existentially, so a deed holder cannot say that the row its descriptor is
+on is `f`'s". It does not:
+
+```coq
+| Some (i, bs) => astep av FsImg.ROOTINO fname_f = Some i /\ av !! i = …
+```
+
+names it. And `file_wq`'s cursor holds `fown r (Some (i, …))`, which is
+`fdeed ∗ ftkt` — so `FileWrite.file_claim_read` turns it into
+`⌜f_ok (abs_view I) _⌝ ∨ file_taint c` **inside the node**, and RELAY 1
+falls out of the left arm. `file_awrite_node`'s RELAY-1 arrow can therefore
+be DERIVED rather than relayed, exactly as §3b derives RELAY 2 from the
+half. The adv node has no arrows, so this is what `file_awrite_node_adv`
+must do.
+
+**(b) THE BLOCK IS `UEchoFile.efq`'s TAINT ARM.** The node's `REST` is
+`efq i γo ws (sel ++ [jx])`, and
+
+```coq
+efq i γo ws sel := file_wq c r i ws sel (length (subseq (echo_chunks ws) sel))
+                   ∗ uoff γo (length (subseq (echo_chunks ws) sel)).
+```
+
+`file_wq`'s own right arm is `file_taint c` — no offset at all — but `efq`
+conjoins the half **at the content-derived offset regardless of which arm
+`file_wq` took**. On the disconnected arm the node cannot move the shadow
+(there is no other half), so `uoff γo (off + |chunk|)` is unpayable and the
+node is unprovable as stated. This is §3b's ruling (i) at the write: the
+cursor must be `fired ∨ (taint ∗ the half unmoved)`, i.e.
+
+```coq
+efq i γo ws sel :=
+  (file_wq_live c r i ws sel off ∗ uoff γo off) ∨ (file_taint c ∗ uoff γo off0)
+```
+
+with the half's position existential on the taint arm — which is a change to
+`UEchoFile`'s own statement (this stream's to make) and to `ef_exit`,
+`efcur` and the four lemmas that name them. It is the same repair the read
+side needed and is why item 2's receipt is one disjunction and not two.
+
+Nothing was committed for item 4: the first `Admitted` cannot be closed
+before `efq` is restated, and restating `efq` is a bigger edit than the
+remaining budget allowed. The metric is unchanged at **7**.
+
 ## 4. WHAT IS LEFT, AND WHO OWES IT
 
 1. ~~The `_hand` deed corollaries~~ — **DONE** (§3a).
 2. ~~the read side's twin~~ — **DONE** (§3b).
-3. **WRITE-RELAY-3's `TB` guard** (review 2 §0(6)) — NOT STARTED, and the
-   shape it has to take is now visible from items 1 and 2, which both went
-   through the same kind of thread. `filewrite_in_held`'s link arm is
-   `∀ P : uptd, awrite_chain_adv … P …`, so echo must pay the partial node
-   at EVERY page table and `ef_relay4` refutes it only at a table tied to
-   the caller's own. The guard is a PARAMETER of `filewrite_in` (the mode
-   was, in L4, and the arity change is the same size), the link arm becomes
-   `∀ P, ⌜TB P⌝ -∗ awrite_chain_adv …`, and the kernel discharges `⌜TB P⌝`
-   where it instantiates `P` — which is `ProofFilewriteChain.fw_au_st_init`,
-   one site, from the slot's row 16 (`uvis_perm`/`uvis_sz`/`uvis_lazy`)
-   carried down through the write deposit. Six U-tier suppliers then take
-   `iIntros (P) "%Htb"`.
-4. **`UEchoFile.v`'s six `Admitted`s** — NOT STARTED. `file_awrite_node_adv`
-   is first and is `FileWrite.file_awrite_node` at the client-advanced node;
-   the three moves inside it are §3b's three moves at the write, which now
-   have a worked twin to copy.
+3. **WRITE-RELAY-3's `TB` guard** — **REFUTED as briefed** (§3c). What
+   replaces it is `wr_tb` at row 16's own three values; that is a ruling for
+   the owner, not a lane's choice, so item 3 is skipped here.
+4. **`UEchoFile.v`'s six `Admitted`s** — attempted, **blocked at `efq`'s
+   taint arm** (§3d(b)); RELAY 1 is not owed (§3d(a)).  Restate `efq`,
+   `efcur` and `ef_exit` at the pipe shape first, then
+   `file_awrite_node_adv` is `file_awrite_node` with RELAY 1 derived by
+   `file_claim_read` and RELAY 2 by `uoff_agree_k`.
 5. ECHO-FILE's remaining assembly — `efile_uexec_slot_at`,
    `efile_image_entry`.
 

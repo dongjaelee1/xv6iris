@@ -1571,6 +1571,7 @@ UkShPipeSeam.v
 UkShPipeEx.v
 UkShPipeRight.v
 UkShPipePr.v
+UkShPipeCm.v
 UInitCons.v
 UConsOpen.v
 UInitConsK.v

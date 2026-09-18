@@ -46,6 +46,8 @@ Require Import UkShParse.
 Require Import UkShParseCmd.
 Require Import UkShRun.
 Require Import UkShMain.
+Require Import UkShMalloc.
+Require Import UkShPipeLex.
 Require Import UkShPipeParse.
 Require Import UexecSG.
 Local Open Scope Z_scope.
@@ -131,6 +133,92 @@ Section UkShPipeSeam.
     iSplitL.
     - iExists pl. rewrite /ush_ptr. iFrame "Hleft Hcl".
     - iExists pr. rewrite /ush_ptr. iFrame "Hright Hcr".
+  Qed.
+
+  (* ===================================================================== *)
+  (* §2 THE THIRD ALLOCATION IS FREE, AND THE STOP RULE IS ANSWERED         *)
+  (*                                                                        *)
+  (* A pipe line makes THREE constructor calls, not two: [parseexec] runs   *)
+  (* TWICE (once per side of the '|') and each run calls [execcmd], and     *)
+  (* [parsepipe]'s turn calls [pipecmd] -- 168, 168 and 24 bytes, all       *)
+  (* under the bound 168 the thirteen parser files carry                    *)
+  (* ([UkShParse.ushp_malloc_ty_le N 168], SH-MALLOC-3).  The brief's STOP  *)
+  (* rule asks whether that exceeds what [UkShMalloc.ushm_fresh]'s landed   *)
+  (* chain funds.  IT DOES NOT, and no chain has to be extended:            *)
+  (* [UkShMalloc.ushm_malloc_le_one] is already GENERAL in the free list's  *)
+  (* remaining count [R], so every call after the first is an INSTANCE of   *)
+  (* one landed theorem.  SH-MALLOC-3 bounds the REQUEST -- the parser's    *)
+  (* capability is at 168 bytes -- and not the number of calls.             *)
+  (* ===================================================================== *)
+
+  (* the THIRD link, charged at the bound the parser carries: 4072 - 12.
+     With [UkShMalloc.ushm_malloc_le_exec] (fresh -> 4084) and
+     [ushm_malloc_le_next] (4084 -> 4072) this is the pipe line's whole
+     parse -- THIRTY-SIX of the chunk's 4096 units. *)
+  Corollary ushq_malloc_le_third (sz : Z) :
+    UkShParse.ushp_malloc_ty_le N 168
+      (UkShMalloc.ushm_one_ge N sz 4072)
+      (UkShMalloc.ushm_one_ge N sz 4060).
+  Proof using .
+    assert (E : (4072 - ((168 + 15) / 16 + 1))%Z = 4060%Z)
+      by (vm_compute; reflexivity).
+    rewrite <- E.
+    exact (UkShMalloc.ushm_malloc_le_one N 168 sz 4072 ltac:(lia) ltac:(lia)
+             ltac:(vm_compute; reflexivity)).
+  Qed.
+
+
+  (* ===================================================================== *)
+  (* §3 THE SEAM IS NOT VACUOUS                                             *)
+  (*                                                                        *)
+  (* [ushq_cut_ok] is a PREMISE of the conversion twice over, so a lane     *)
+  (* that never instantiates it cannot tell a threaded premise from an      *)
+  (* unsatisfiable one (durable-notes, Vacuity).  Here it is at the         *)
+  (* application's own line and at the cut                                  *)
+  (* [UkShPipeParse.wp_kshp_nulterminate_pipe] leaves behind -- the right   *)
+  (* command's fold OVER the left command's, on one buffer.                 *)
+  (* ===================================================================== *)
+
+  Definition ushq_demo_toksl : list (nat * nat) :=
+    [(0, 4)%nat; (5, 10)%nat; (11, 16)%nat].
+  Definition ushq_demo_toksr : list (nat * nat) := [(19, 22)%nat].
+
+  Definition ushq_demo_cut : nat -> bv 8 :=
+    UkShParseCmd.ushp_nulfold ushq_demo_toksr
+      (UkShParseCmd.ushp_nulfold ushq_demo_toksl
+         (UkShParseCmd.ushp_ext 23
+            (fun j : nat => UkShPipeLex.ushq_demo_f (0 + j)%nat))).
+
+  Lemma ushq_demo_cut_ok_l : ushq_cut_ok 23 ushq_demo_cut ushq_demo_toksl.
+  Proof using .
+    rewrite /ushq_cut_ok /ushq_demo_toksl. split_and!;
+      intros i tk Hi;
+      destruct i as [| [| [| i ]]]; cbn in Hi; try discriminate Hi;
+      injection Hi as <-; cbn [fst snd].
+    - lia.
+    - lia.
+    - lia.
+    - vm_compute; reflexivity.
+    - vm_compute; reflexivity.
+    - vm_compute; reflexivity.
+    - intros j Hj; destruct j as [| [| [| [| j ]]]];
+        [ | | | | lia ]; vm_compute; discriminate.
+    - intros j Hj; destruct j as [| [| [| [| [| j ]]]]];
+        [ | | | | | lia ]; vm_compute; discriminate.
+    - intros j Hj; destruct j as [| [| [| [| [| j ]]]]];
+        [ | | | | | lia ]; vm_compute; discriminate.
+  Qed.
+
+  Lemma ushq_demo_cut_ok_r : ushq_cut_ok 23 ushq_demo_cut ushq_demo_toksr.
+  Proof using .
+    rewrite /ushq_cut_ok /ushq_demo_toksr. split_and!;
+      intros i tk Hi;
+      destruct i as [| i ]; cbn in Hi; try discriminate Hi;
+      injection Hi as <-; cbn [fst snd].
+    - lia.
+    - vm_compute; reflexivity.
+    - intros j Hj; destruct j as [| [| [| j ]]];
+        [ | | | lia ]; vm_compute; discriminate.
   Qed.
 
 End UkShPipeSeam.

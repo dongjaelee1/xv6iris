@@ -157,6 +157,11 @@ Section UShEchoPayGen.
            !!! (UkShEcho.echo_off (last_ws I) i + j)%nat) ->
     UkSh.ush_fd1p (take NSTD sts) ->
     (⊢ app_taint -∗ lk_T L) ->
+    (* THE INPUTS THE ERA'S CURSOR IS ABOUT (the program stream): the
+       stage the lend opens into is the one whose block is the LINE's own
+       alternative, and an era with more than one line shape says which
+       inputs those are ([StageRec.ck_lineok]). *)
+    ck_lineok (sk_cur St) I ->
     ⊢ lk_pin L (S gen_id) v -∗
       lk_links L -∗
       UkRun.urun_nopipe sts -∗
@@ -170,7 +175,7 @@ Section UShEchoPayGen.
       uslot W'.
   Proof using St ghost_varG0 ghost_varG1 ufdG0.
     intros HTl Hwc0 Hwct Hokws Hok Hroom Hfdl Hlzf Hna Halen Hafun
-           Hfd1 Hkt.
+           Hfd1 Hkt Hlok.
     iIntros "#Hpin #Hlk #Hnpw #Hdep #Hgen Hmp Hc HR".
     destruct (echo_kexec_pages na alen afun sts W' Hok)
       as (Hpc & Hsub & Hx & Hwr & Hrp).
@@ -191,7 +196,7 @@ Section UShEchoPayGen.
     (* THE LEND: the stage and the cursor at offset zero, or the taint *)
     rewrite (lk_lpr_S3 L (S gen_id) v I 0%nat).
     iDestruct (lk_lend_of_blk0 L (S gen_id) v I 0%nat with "Hc") as "Hlend".
-    iDestruct (sk_lend_stage St (S gen_id) v I with "Hlend")
+    iDestruct (sk_lend_stage St (S gen_id) v I Hlok with "Hlend")
       as "[Hstg | #HT]"; last first.
     { (* a tainted lend: the generic slot, and the kill wand from the taint *)
       iApply ("Hgen" $! (UkShFork.ushf_wq Wc I) W' with "HT Hmp []").
@@ -250,10 +255,14 @@ Section UShEchoPayGen.
     (forall (I0 : list (bv 8)) (v0 : era_pins),
        ⊢ lk_pin L (S gen_id) v0 -∗ lk_T L -∗ Wc I0 0%nat) ->
     (⊢ app_taint -∗ lk_T L) ->
+    (* ...and the era's own reading of its admissible lines: at echo's
+       instance [ck_lineok] is [True] and this is [fun _ _ => I]. *)
+    (forall I0 : list (bv 8),
+       line_ok (last_ws I0) -> ck_lineok (sk_cur St) I0) ->
     ⊢ lk_links L -∗ udep (PS := uprogSG_free) -∗ sh_echo_slot (lk_T L) -∗
       UkShEcho.sh_exec_sup_echo_wq Wc.
   Proof using St ghost_varG0 ghost_varG1 ufdG0.
-    intros HTl Hwc3 Hwc3b Hwc0 Hwct Hkt.
+    intros HTl Hwc3 Hwc3b Hwc0 Hwct Hkt Hlok.
     iIntros "#Hlk #Hdep (#Hinv & #Hcl & #Hgen)".
     rewrite /UkShEcho.sh_exec_sup_echo_wq. iIntros "!>" (I) "%Hokws".
     rewrite /UkShEcho.sh_exec_sup_echo.
@@ -307,7 +316,7 @@ Section UShEchoPayGen.
       iApply (echo_slot_of_kexec_at_at Wc Hold na alen afun fdv W' I v
                 HTl Hwc0 Hwct Hokws Hok
                 (echo_room_of_det (last_ws I) na alen Hokws Hna Halen)
-                Hlen Hlzf Hna Halen Hafun Hfd1' Hkt
+                Hlen Hlzf Hna Halen Hafun Hfd1' Hkt (Hlok I Hokws)
                 with "Hpin Hlk Hnp0 Hdep Hgen Hmp Hc HR"). }
     iFrame "Hstd Hcr HR".
   Qed.
@@ -376,17 +385,21 @@ Section UShEchoPayGen.
     (forall I0 : list (bv 8), Timeless (Hold I0)) ->
     (forall I0 : list (bv 8), ⊢ lk_T L -∗ Hold I0) ->
     (⊢ app_taint -∗ lk_T L) ->
+    (* the era's own reading of its admissible lines ([StageRec.ck_lineok]) *)
+    (forall I0 : list (bv 8),
+       line_ok (last_ws I0) -> ck_lineok (sk_cur St) I0) ->
     ⊢ lk_links L -∗ udep (PS := uprogSG_free) -∗ sh_echo_slot (lk_T L) -∗
       UkShEcho.ush_execfail_law_wq (PS := uprogSG_free)
         (fun I p => lk_lcred L (S gen_id) I p ∗ Hold I)%I -∗
       UkShFork.ushf_child_law (PS := uprogSG_free)
         (fun I p => lk_lcred L (S gen_id) I p ∗ Hold I)%I.
   Proof using St ghost_varG0 ghost_varG1 ufdG0.
-    intros HTl Hht Hkt. iIntros "#Hlk #Hdep #Hslot #Hxlw".
+    intros HTl Hht Hkt Hlok. iIntros "#Hlk #Hdep #Hslot #Hxlw".
     iPoseProof (sh_exec_sup_echo_wq_holds_at
                   (fun I p => lk_lcred L (S gen_id) I p ∗ Hold I)%I Hold
                   HTl (lkw_wc3 Hold) (lkw_wc3b Hold) (lkw_wc0 Hold)
-                  (lkw_wct Hold Hht) Hkt with "Hlk Hdep Hslot") as "Hsup".
+                  (lkw_wct Hold Hht) Hkt Hlok
+                  with "Hlk Hdep Hslot") as "Hsup".
     iApply (UkShEcho.ushf_child_law_holds (PS := uprogSG_free) (fun k H => H)
               (fun I p => lk_lcred L (S gen_id) I p ∗ Hold I)%I
               with "Hxlw Hsup").
@@ -505,6 +518,8 @@ Section UShEchoPayEcho.
            !!! (UkShEcho.echo_off (last_ws I) i + j)%nat) ->
     UkSh.ush_fd1p (take NSTD sts) ->
     (⊢ app_taint -∗ T) ->
+    (* the line guard, [True] at echo's cursor *)
+    True ->
     ⊢ era_pin γ (S gen_id) v -∗
       EchoLinks.echo_links T γ -∗
       UkRun.urun_nopipe sts -∗
@@ -523,8 +538,11 @@ Section UShEchoPayEcho.
     (⊢ app_taint -∗ T) ->
     ⊢ EchoLinks.echo_links T γ -∗ udep (PS := uprogSG_free) -∗
       sh_echo_slot T -∗ UkShEcho.sh_exec_sup_echo_wq Wc
-    := sh_exec_sup_echo_wq_holds_at SE Wc (fun _ => emp)%I
-         ei_hold_tl ei_wc3 ei_wc3b ei_wc0 ei_wct.
+    := fun Hkt =>
+         sh_exec_sup_echo_wq_holds_at SE Wc (fun _ => emp)%I
+           ei_hold_tl ei_wc3 ei_wc3b ei_wc0 ei_wct Hkt (fun _ _ => I).
+  (* ...and the line guard is [True] at echo's cursor, so the instance
+     above needs nothing: [ck_lineok echo_cur_inst = fun _ => True]. *)
 
   (* =================================================================== *)
   (*  THE BODY'S TWO LAWS AT THE TIGHT FAMILY -- the witnesses             *)

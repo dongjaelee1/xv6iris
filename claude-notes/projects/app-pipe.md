@@ -277,12 +277,21 @@ invariant handle and the write token — i.e. `pipe_qfrag (pn_queue γp) pst0
 ={⊤}=∗ ∃ pn, pipe_inv pn γp L ∗ wtok γw ∗ pipe_reg γp` — and sh's PIPE arm
 then instantiates `Rp γp := ∃ pn, pipe_inv pn γp L ∗ wtok γw`.
 
-*Owed, and NOT this lane's* (reported for SH-PIPE / PIPE-STD): CLOSE(21)'s
-row is still `UkRun.udepw_cl`, whose left arm is the PURE `ukey_nonpipe`
-and whose right arm is a full `udepw … 21`. A program closing a pipe
-descriptor — sh does it six times per round — therefore still owes an
-explicit deposit at 21, which `pipe_reg γp` could pay in one instance
-(`xv6_sbundle_close_nonpipe`'s twin, `pipe_reg γp -∗ ⌜fd_st_of_key (xk_a W
-0) (uvis_fd W) = FdOpen r w (FdPipe γp)⌝ -> …`). It is a five-line addition
-to `UexecExecInst.v` plus an arm on `udepw_cl`; it was left out because
-`udepw_cl` is outside this lane's brief.
+*Owed, and NOT this lane's* (reported for SH-PIPE / PIPE-STD, and the
+campaign WILL hit it): CLOSE(21)'s row is still `UkRun.udepw_cl`, whose
+left arm is the PURE `ukey_nonpipe` and whose right arm is a full `udepw …
+21`. A program closing a pipe descriptor — sh does it six times per
+round, two of them pipe ends — therefore still owes an explicit deposit at
+21, which at the free instance is payable only from the taint. The
+registry CAN pay it, but **only at the trivial payload**: row 21 is
+`fileclose_cpay st (cl_P f)` and `pipe_reg γp` is `□ (∀ w, pipe_cpay …
+w emp)`, so the twin of `xv6_sbundle_close_nonpipe` exists exactly for a
+family whose `cl_P` is `emp` — which is a choice made at the DEPOSIT, not
+at `udepw_cl_mint`, and that is why a third arm on `udepw_cl` is not a
+mechanical addition. The honest shapes are either a `cl_P = emp`-guarded
+arm on `udepw_cl`, or `pipe_reg` generalised to `□ (∀ w Φ, Φ -∗ pipe_cpay
+… w Φ)` (which is NOT derivable from the invariant: the close link's fupd
+would have to place a caller-chosen `Φ`, and the invariant only knows how
+to place `emp`). SH-PIPE should take the close deposits as parameters, as
+its brief already says, and the ruling belongs with whoever states sh's
+round.

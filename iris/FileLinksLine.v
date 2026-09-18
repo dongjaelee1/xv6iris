@@ -1984,7 +1984,7 @@ Section file_links_line.
     rewrite /fread_ret.
     iDestruct "Hr" as "[[#HT _] | [Hdlr Hfacts]]"; [iExact "HT" |].
     iDestruct "Hfacts" as (pops dl)
-      "(%Hrok & %Hdl & %Hpref & %Hidx & %Hdsc & #Hinp & %Hdi & Hrest)".
+      "(%Hrok & %Hdl & %Hpref & %Hidx & %Hdsc & %Hboots & #Hinp & %Hdi & Hrest)".
     iDestruct "Hrest" as "[%Hws0 | Hbb]".
     { exfalso. rewrite Hws0 in Hws. cbn in Hws. lia. }
     iDestruct "Hbb" as (cs0 ps0 vf s0)

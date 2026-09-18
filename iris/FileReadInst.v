@@ -302,7 +302,7 @@ Section file_read_inst.
     rewrite /FileLinks.fread_ret.
     iDestruct "Hret" as "[[#HT _] | [Hdlr Hfacts]]"; [ by iRight | ].
     iDestruct "Hfacts" as (pops dl)
-      "(%Hrok & %Hdl & %Hpref & %Hidx & %Hdsce & #HEin & %Hdinp & Hrest)".
+      "(%Hrok & %Hdl & %Hpref & %Hidx & %Hdsce & %Hboots & #HEin & %Hdinp & Hrest)".
     iEval (rewrite Hlws) in "Hdlr".
     iDestruct (inp_lb_cmp v I (snd <$> (dl ++ ws)) with "HE0 HEin") as %Hcmp.
     assert (Hlen' : length (snd <$> (dl ++ ws)) = (length I + dc)%nat).

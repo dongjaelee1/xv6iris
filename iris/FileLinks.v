@@ -208,6 +208,7 @@ Section file_links.
            ∗ ⌜(dl ++ ws) `prefix_of` echoed pops⌝
            ∗ ⌜E_index (seg_of (echoed pops))⌝
            ∗ ⌜E_disc_f (seg_of (echoed pops))⌝
+           ∗ ⌜forall x : list mobs * bv 8, x ∈ dl ++ ws -> obs_boots x.1 = k⌝
            ∗ inp_lb v (snd <$> (dl ++ ws))
            ∗ ⌜disc_input_f (snd <$> (dl ++ ws))⌝
            ∗ (⌜ws = []⌝
@@ -232,12 +233,12 @@ Section file_links.
     iModIntro. iExists o. rewrite fchist_at0. iFrame "Hlb Hres".
     iApply "HΦ". rewrite /fread_ret.
     iDestruct "Hret" as "[Ht | (Hdlr & %Hdl & %Hpref & %Hidx & %Hbyte
-                               & Hilb & %Hdi & Hrest)]"; [by iLeft |].
+                               & %Hboots & Hilb & %Hdi & Hrest)]"; [by iLeft |].
     iRight. iFrame "Hdlr".
     iExists (LogEntryDefs.ch_log H), (LogEntryDefs.ch_dl H).
     iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
     iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
-    iSplitR; [by iPureIntro |].
+    iSplitR; [by iPureIntro |]. iSplitR; [iPureIntro; exact Hboots |].
     iSplitL "Hilb"; [iExact "Hilb" |].
     iSplitR; [by iPureIntro |]. iExact "Hrest".
   Qed.

@@ -1413,6 +1413,14 @@ Section file_out.
               `prefix_of` echoed (LogEntryDefs.ch_log CH)⌝
            ∗ ⌜E_index (seg_of (echoed (LogEntryDefs.ch_log CH)))⌝
            ∗ ⌜E_disc_f (seg_of (echoed (LogEntryDefs.ch_log CH)))⌝
+           (* ...AND THE CONSUMED ENTRIES ARE ALL OF THIS BOOT (the PROGRAM
+              STREAM, stretch 9): [fein_pure]'s third conjunct, read at the
+              window.  It is what lets a reader compare two entries' CYCLE
+              histories ([EchoOutPure.open_seg_prefix_boots]) and so read the
+              consumed input back off its last byte's history
+              ([FileLineWit.consumed_ins_last]). *)
+           ∗ ⌜forall x : list mobs * bv 8,
+                x ∈ LogEntryDefs.ch_dl CH ++ ws -> obs_boots x.1 = k⌝
            ∗ inp_lb v (snd <$> (LogEntryDefs.ch_dl CH ++ ws))
            ∗ ⌜disc_input_f (snd <$> (LogEntryDefs.ch_dl CH ++ ws))⌝
            ∗ (⌜ws = []⌝
@@ -1436,9 +1444,15 @@ Section file_out.
     pose proof Hall as Hall0.
     destruct Hall as (Hpure & Hcsl & Hpsl & Hin & Hera & HEtie).
     pose proof Hin as Hin2.
-    destruct Hin2 as (_ & _ & _ & _ & Hidx & Hbyte & Hbnd0).
+    destruct Hin2 as (_ & _ & Hbt & _ & Hidx & Hbyte & Hbnd0).
     destruct (fein_read_pure k (LogEntryDefs.ch_log CH) (LogEntryDefs.ch_dl CH)
                 ws (fo_cs so) Hread Hin) as (Hpref & Hp' & Hbnd').
+    assert (Hboots : forall x : list mobs * bv 8,
+              x ∈ LogEntryDefs.ch_dl CH ++ ws -> obs_boots x.1 = k).
+    { intros x Hx.
+      destruct (echoed_elem_inv (LogEntryDefs.ch_log CH) x
+                  (elem_of_prefix _ _ _ Hx Hpref)) as (e & He & _ & <-).
+      exact (Hbt e He). }
     assert (HEpre : (snd <$> (LogEntryDefs.ch_dl CH ++ ws))
                     `prefix_of` (snd <$> fo_E so)).
     { rewrite (fecl_pure_E k ho so CH Hall0) /ch_E.
@@ -1538,6 +1552,7 @@ Section file_out.
     iRight. iFrame "Hdlr".
     iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
     iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
+    iSplitR; [iPureIntro; exact Hboots |].
     iSplitR.
     { iApply (inp_lb_of_lb v (fo_E so) _ HEpre). iExact "HElb". }
     iSplitR; [by iPureIntro |].

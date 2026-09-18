@@ -1198,7 +1198,7 @@ Section UkShEcho.
       (Wc : list (bv 8) -> nat -> iProp Σ) :
     (forall (I : list (bv 8)) (ws : list (list (bv 8))),
        line_ok ws -> ws = last_ws I ->
-       FileDisc.fbody_ok (UkSh.ush_lastbody I) -> D I) ->
+       FileDisc.fline_ok (UkSh.ush_lastbody I) -> D I) ->
     (forall I : list (bv 8),
        D I -> dg I = alt_execfail /\ nn I = 17%nat) ->
     ush_execfail_law_wq_at dg nn Wc -∗

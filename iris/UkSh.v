@@ -2071,19 +2071,26 @@ Section UkSh.
   Definition ush_lastbody (I : list (bv 8)) : list (bv 8) :=
     bodies_of I !!! (nlines I - 1)%nat.
 
-  (* ...AND THE THIRD CONJUNCT (the PROGRAM STREAM): that body PARSES.
-     [last_ws I = ws] says the slot's words are the input's last line's,
-     and that is NOT enough to say which LINE the era filed -- a body with
-     a trailing blank has the same words as the body without it, and only
-     one of the two parses.  An era with more than one line shape has to
-     know which constructor its own input carries ([FileDisc.fline]), and
-     [FileDisc.fbody_ok_echo] turns this conjunct plus [EchoDisc.line_ok]
-     of the words into exactly that.  The echo era never reads it. *)
+  (* ...AND THE THIRD CONJUNCT (the PROGRAM STREAM): that body IS SOME
+     ADMISSIBLE LINE'S BODY.  [last_ws I = ws] says the slot's words are
+     the input's last line's, and that is NOT enough to say which LINE the
+     era filed -- a body with a trailing blank has the same words as the
+     body without it, and only one of the two is a line's body.  An era
+     with more than one line shape has to know which constructor its own
+     input carries, and [FileDisc.fline_ok_echo] turns this conjunct plus
+     [EchoDisc.line_ok] of the words into exactly that.  The echo era never
+     reads it.
+     THIS IS [fline_ok] AND NOT [fbody_ok] (lane ULINE-LPIPE): "in
+     [FileDisc.parse_line]'s range" is the FILE era's reading of the same
+     conjunct and is unsatisfiable for an era whose lines the file parser
+     refuses -- the pipeline application's, whose body carries a bar.  Every
+     consumer only ever spent it through [fbody_ok_echo], which holds at
+     the weaker reading. *)
   Definition ush_posw (l : list fdstate) (ws : list (list (bv 8)))
       : iProp Σ :=
     ((∃ I : list (bv 8),
         ⌜rest_of I = [] /\ last_ws I = ws
-         /\ FileDisc.fbody_ok (ush_lastbody I)⌝
+         /\ FileDisc.fline_ok (ush_lastbody I)⌝
         ∗ Pm I ∗ ush_wcp l I 3%nat)
      ∨ (T ∗ ush_pos))%I.
 
@@ -2577,9 +2584,9 @@ Section UkSh.
         rewrite <- Hbl. rewrite <- Hfi. exact Hji.
       - rewrite (lookup_ge_None_2 (FileDisc.line_body lu) i ltac:(lia)).
         rewrite (lookup_ge_None_2 J i ltac:(lia)). reflexivity. }
-    assert (Hfbk : FileDisc.fbody_ok (ush_lastbody (I0 ++ J ++ [wl_nl]))).
+    assert (Hfbk : FileDisc.fline_ok (ush_lastbody (I0 ++ J ++ [wl_nl]))).
     { rewrite Hlb. rewrite <- Hbody.
-      exact (FileDisc.fbody_ok_of lu (proj1 Hli)). }
+      exact (FileDisc.fline_ok_of lu (proj1 Hli)). }
     rewrite /ush_gets_done_at.
     iIntros "Hwc H".
     iDestruct "Hwc" as "[[%Hrow Hc] | [%Hcl Hb]]".

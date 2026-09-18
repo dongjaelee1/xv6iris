@@ -286,6 +286,19 @@ Qed.
 Lemma suf_gtf_gt : wl_gt ∈ suf_gtf.
 Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
 
+(* ...and the bar's mirrors, which is how a pipe body is refuted where a
+   redirect body is refuted by the '>' *)
+Lemma fd_bar_not_body : ~ wl_body_byte fd_bar.
+Proof using.
+  rewrite /wl_body_byte /wl_alnum /fd_bar. intros [H | H].
+  - assert (Hv : bv_unsigned (Z_to_bv 8 124%Z) = 124%Z) by (by vm_compute). lia.
+  - apply (f_equal bv_unsigned) in H. rewrite wl_sp_val in H.
+    assert (Hv : bv_unsigned (Z_to_bv 8 124%Z) = 124%Z) by (by vm_compute). lia.
+Qed.
+
+Lemma suf_barcat_bar : fd_bar ∈ suf_barcat.
+Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
 (* ---- THE PARSER ------------------------------------------------------ *)
 
 Definition strip_gtf (b : list (bv 8)) : option (list (bv 8)) :=
@@ -484,6 +497,27 @@ Qed.
 
 Lemma fbody_ok_of l : uline_nopipe l -> uline_ok l -> fbody_ok (line_body l).
 Proof using. intros Hnp H. exists l. exact (parse_line_body l Hnp H). Qed.
+
+(* ---- ...AND THE READING THAT SURVIVES THE FOURTH CONSTRUCTOR ---------- *)
+(* [fbody_ok b] is "[b] is in [parse_line]'s range".  Its ONE consumer
+   above the pure model is [UkSh.ush_posw]'s third conjunct -- the slot the
+   sh loop leaves, which says the input's last body is the body of the LINE
+   the era filed, so that a child law can tell WHICH constructor it was
+   ([fbody_ok_echo]).  Read that way the conjunct never needed the parser:
+   what it needs is that the body IS some admissible line's body, and that
+   is [fline_ok], which every era can supply -- including one whose lines
+   are outside [parse_line]'s range.  [fline_ok_echo] is [fbody_ok_echo] at
+   it, so nothing downstream loses anything. *)
+Definition fline_ok (b : list (bv 8)) : Prop :=
+  exists l : uline, uline_ok l /\ b = line_body l.
+
+Lemma fline_ok_of l : uline_ok l -> fline_ok (line_body l).
+Proof using. intro H. by exists l. Qed.
+
+Lemma fline_ok_of_body b : fbody_ok b -> fline_ok b.
+Proof using.
+  intro Hb. destruct (fbody_ok_line b Hb) as [Hok Heq]. by exists (uline_of b).
+Qed.
 
 (* an admissible body is made of body bytes and fits [getcmd]'s buffer --
    the two facts the snoc law needs when a newline closes a line *)
@@ -2253,6 +2287,33 @@ Proof using.
   - (* LCat: the words are "cat f" *)
     exfalso. rewrite /line_body in Hbody. rewrite Hbody in Hok.
     exact (cat_not_echo (line_ok_head _ Hok)).
+Qed.
+
+(* ...AND THE SAME READING AT [fline_ok] (lane ULINE-LPIPE).  Note which
+   constructor each [exfalso] kills: the redirect body by its '>', the cat
+   line by its head word, and the PIPE body by its bar -- the same
+   argument as the redirect's, one byte over. *)
+Lemma fline_ok_echo (b : list (bv 8)) :
+  fline_ok b -> line_ok (wl_words b) -> uline_of b = LEcho (wl_words b).
+Proof using.
+  intros [l [Hlok ->]] Hok.
+  destruct l as [ws | ws | | ws].
+  - rewrite /line_body in Hok |- *.
+    rewrite (wl_words_body ws (line_ok_wf _ Hlok)).
+    exact (uline_of_body (LEcho ws) (uline_nopipe_echo ws) Hlok).
+  - exfalso.
+    pose proof (wl_words_alnum_body _ (wl_wf_alnum _ (line_ok_wf _ Hok)))
+      as Hbb.
+    rewrite /line_body in Hbb. apply Forall_app in Hbb as [_ Hsuf].
+    exact (wl_gt_not_body
+             (proj1 (Forall_forall _ _) Hsuf wl_gt suf_gtf_gt)).
+  - exfalso. rewrite /line_body in Hok. exact (cat_not_echo (line_ok_head _ Hok)).
+  - exfalso.
+    pose proof (wl_words_alnum_body _ (wl_wf_alnum _ (line_ok_wf _ Hok)))
+      as Hbb.
+    rewrite /line_body in Hbb. apply Forall_app in Hbb as [_ Hsuf].
+    exact (fd_bar_not_body
+             (proj1 (Forall_forall _ _) Hsuf fd_bar suf_barcat_bar)).
 Qed.
 
 Lemma ralt_ok_echo_lt4 ws c : ralt_ok (LEcho ws) (ralt_dec c) -> (c < 4)%nat.

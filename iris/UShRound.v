@@ -689,13 +689,13 @@ Section UShRound.
      [FileDisc.fbody_ok_echo] turns the two into the era's line. *)
   Lemma file_D_of_line (I : list (bv 8)) (ws : list (list (bv 8))) :
     EchoDisc.line_ok ws -> ws = last_ws I ->
-    FileDisc.fbody_ok (UkSh.ush_lastbody I) -> file_D I.
+    FileDisc.fline_ok (UkSh.ush_lastbody I) -> file_D I.
   Proof using .
     intros Hok Hwseq Hfb. subst ws. split; [ exact Hok | ].
     rewrite /UkSh.ush_lastbody in Hfb.
     rewrite /FileLinkInst.file_lineok /fline.
     rewrite (last_ws_lastbody I) in Hok |- *.
-    exact (FileDisc.fbody_ok_echo _ Hfb Hok).
+    exact (FileDisc.fline_ok_echo _ Hfb Hok).
   Qed.
 
   (* ...and at such an input the era's exec-failed bytes ARE the constants

@@ -267,7 +267,7 @@ Section UkShRedirBody.
           ⌜ ws = last_ws I ⌝ -∗
           (* the era's own line at that input (the PROGRAM STREAM): the
              slot the loop left says the input's last body PARSES *)
-          ⌜ FileDisc.fbody_ok (UkSh.ush_lastbody I) ⌝ -∗
+          ⌜ FileDisc.fline_ok (UkSh.ush_lastbody I) ⌝ -∗
           ⌜ 0 < s0 ⌝ -∗ ⌜ s0 + Z.of_nat len + 1 < Z64 ⌝ -∗
           ⌜ s0 + Z.of_nat len < 2 ^ 38 ⌝ -∗
           ⌜ 8344 <= sz ⌝ -∗ ⌜ UserPtTree.pgroundup sz = sz ⌝ -∗

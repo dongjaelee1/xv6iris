@@ -118,3 +118,43 @@ Lemma ush_line_pipe_not_file (l : FileDisc.uline) :
 Proof using.
   intros [[ws | ws] ->] Hnp; [ by exists ws | by destruct (Hnp ws eq_refl) ].
 Qed.
+
+(* ===================================================================== *)
+(*  THE VACUITY CHECK (durable-notes, "Vacuity")                          *)
+(* ===================================================================== *)
+
+(* A new arm of an admissibility predicate is worth nothing if nothing
+   satisfies it, and nothing in the build would say so.  Here is one line
+   that does, computed end to end: [echo hello | cat] is [FileDisc]-
+   admissible, its [uline_ws] IS its body's parse, and that parse is the
+   FIVE words -- which is the shape [UkSh]'s [Hdsc_line] asks for and the
+   one [PipeDisc.pline_ws]'s two would have got wrong. *)
+Definition demo_ws : list (list (bv 8)) := [sb "echo"%string; sb "hello"%string].
+
+Lemma demo_pline_ok : PipeDisc.pline_ok (PipeDisc.LPipe demo_ws).
+Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+Lemma demo_uline_ok :
+  FileDisc.uline_ok (uline_of_pline (PipeDisc.LPipe demo_ws)).
+Proof using. exact (uline_ok_of_pline _ demo_pline_ok). Qed.
+
+Lemma demo_uline_ws :
+  FileDisc.uline_ws (uline_of_pline (PipeDisc.LPipe demo_ws))
+  = [sb "echo"%string; sb "hello"%string; sb "|"%string; sb "cat"%string].
+Proof using. reflexivity. Qed.
+
+Lemma demo_uline_ws_is_the_parse :
+  FileDisc.uline_ws (uline_of_pline (PipeDisc.LPipe demo_ws))
+  = wl_words (PipeDisc.line_body (PipeDisc.LPipe demo_ws)).
+Proof using. exact (uline_ws_of_pline _ demo_pline_ok). Qed.
+
+Lemma demo_line_bytes :
+  FileDisc.line_bytes (uline_of_pline (PipeDisc.LPipe demo_ws))
+  = sb "echo hello | cat"%string ++ [wl_nl].
+Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+(* ...and the FILE era still refuses it, which is what keeps every FILE
+   statement meaning what it meant *)
+Lemma demo_not_file : FileDisc.parse_line (FileDisc.line_body
+                        (uline_of_pline (PipeDisc.LPipe demo_ws))) = None.
+Proof using. by vm_compute. Qed.

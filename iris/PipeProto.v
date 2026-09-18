@@ -88,16 +88,23 @@ Local Open Scope Z_scope.
 Definition pipe_eofR : cmra :=
   csumR (exclR unitO) (agreeR (leibnizO (list (bv 8)))).
 
+(* THE WRITER'S "THE READ END WAS SEEN SHUT" ONE-SHOT (design SS3.1b, lane
+   PIPE-PROTO-2).  Same shape, no payload: what it records is a fact about
+   [ps_ro], which is MONOTONE -- only [pst_close false] moves it, and only
+   one way -- so the shot needs to carry nothing but itself. *)
+Definition pipe_roR : cmra := csumR (exclR unitO) (agreeR unitO).
+
 Class pipeProtoG (Σ : gFunctors) := PipeProtoG {
   ppg_hist :: inG Σ (mono_listR (leibnizO (bv 8)));  (* [ps_ws]'s history *)
   ppg_eof  :: inG Σ pipe_eofR;                       (* the EOF snapshot *)
+  ppg_ro   :: inG Σ pipe_roR;                        (* the read-end shot *)
   ppg_cur  :: ghost_varG Σ nat;                      (* the two cursors *)
   ppg_side :: inG Σ (exclR unitO);                   (* the two side tokens *)
 }.
 
 Definition pipeProtoΣ : gFunctors :=
   #[ GFunctor (mono_listR (leibnizO (bv 8))); GFunctor pipe_eofR;
-     ghost_varΣ nat; GFunctor (exclR unitO) ].
+     GFunctor pipe_roR; ghost_varΣ nat; GFunctor (exclR unitO) ].
 
 Global Instance subG_pipeProtoΣ {Σ} : subG pipeProtoΣ Σ -> pipeProtoG Σ.
 Proof. solve_inG. Qed.
@@ -108,6 +115,7 @@ Proof. solve_inG. Qed.
 Record pnames := MkPNames {
   pn_hist  : gname;   (* the [mono_list] of bytes written *)
   pn_eof   : gname;   (* the reader's one-shot snapshot *)
+  pn_ro    : gname;   (* the writer's "the read end was seen shut" shot *)
   pn_wcur  : gname;   (* the write permit, a [ghost_var nat] in halves *)
   pn_rcur  : gname;   (* the read permit, likewise *)
   pn_sideL : gname;   (* sh's left-child token *)
@@ -117,7 +125,8 @@ Record pnames := MkPNames {
 Global Instance pnames_eq_dec : EqDecision pnames.
 Proof. solve_decision. Defined.
 Global Instance pnames_inhabited : Inhabited pnames :=
-  populate (MkPNames 1%positive 1%positive 1%positive 1%positive 1%positive 1%positive).
+  populate (MkPNames 1%positive 1%positive 1%positive 1%positive 1%positive
+              1%positive 1%positive).
 
 (* THE NAMESPACE, at top level and free of any context, as [KptGhost.kptN]
    is: a caller that has to state a mask premise must be able to name it. *)
@@ -154,6 +163,17 @@ Section PipeProto.
   Definition eof_shot (pn : pnames) (w : list (bv 8)) : iProp Σ :=
     own (pn_eof pn) (Cinr (to_agree (w : leibnizO (list (bv 8)))) : pipe_eofR).
 
+  (* THE READ-END SHOT'S TWO STATES (P4).  [ro_shot] is what a writer takes
+     out of its OWN observation node when the node fires at a shut read end,
+     and it is what makes a write payable after a SHORT write: a write link
+     carries [⌜ps_ro s = true⌝] (lane PQ-FLAG-2) and (P4) says the shot
+     forces [ps_ro s = false], so every link of a derailed chain is
+     VACUOUS -- the exact mirror of (P3)'s refutation by [⌜ps_wo s = true⌝]. *)
+  Definition ro_pending (pn : pnames) : iProp Σ :=
+    own (pn_ro pn) (Cinl (Excl ()) : pipe_roR).
+  Definition ro_shot (pn : pnames) : iProp Σ :=
+    own (pn_ro pn) (Cinr (to_agree ()) : pipe_roR).
+
   (* THE TWO PERMITS.  Half of each [ghost_var] sits in the body at the
      state's own cursor, the other half is the process's exclusive right to
      move it -- and its exact knowledge of where it is. *)
@@ -188,6 +208,14 @@ Section PipeProto.
   Global Instance eof_shot_persistent pn w : Persistent (eof_shot pn w).
   Proof using .
     rewrite /eof_shot. apply own_core_persistent, Cinr_core_id, _.
+  Qed.
+  Global Instance ro_pending_timeless pn : Timeless (ro_pending pn).
+  Proof using . rewrite /ro_pending. apply _. Qed.
+  Global Instance ro_shot_timeless pn : Timeless (ro_shot pn).
+  Proof using . rewrite /ro_shot. apply _. Qed.
+  Global Instance ro_shot_persistent pn : Persistent (ro_shot pn).
+  Proof using .
+    rewrite /ro_shot. apply own_core_persistent, Cinr_core_id, _.
   Qed.
   Global Instance wcur_timeless pn c : Timeless (wcur pn c).
   Proof using . rewrite /wcur. apply _. Qed.
@@ -246,6 +274,18 @@ Section PipeProto.
     eof_pending pn ==∗ eof_shot pn w.
   Proof using .
     rewrite /eof_pending /eof_shot. iIntros "H".
+    iApply (own_update with "H"). by apply cmra_update_exclusive.
+  Qed.
+
+  Lemma ro_pending_shot (pn : pnames) : ro_pending pn -∗ ro_shot pn -∗ False.
+  Proof using .
+    rewrite /ro_pending /ro_shot. iIntros "H1 H2".
+    by iDestruct (own_valid_2 with "H1 H2") as %Hv.
+  Qed.
+
+  Lemma ro_shoot (pn : pnames) : ro_pending pn ==∗ ro_shot pn.
+  Proof using .
+    rewrite /ro_pending /ro_shot. iIntros "H".
     iApply (own_update with "H"). by apply cmra_update_exclusive.
   Qed.
 
@@ -321,7 +361,10 @@ Section PipeProto.
        (* (P3) after end-of-file the contents are frozen *)
        ∗ (eof_pending pn
           ∨ ∃ w : list (bv 8),
-              eof_shot pn w ∗ ⌜w = ps_ws s /\ ps_wo s = false⌝))%I.
+              eof_shot pn w ∗ ⌜w = ps_ws s /\ ps_wo s = false⌝)
+       (* (P4) the read end, once seen shut, STAYS shut ([ps_ro] is
+          monotone: only [pst_close false] moves it) *)
+       ∗ (ro_pending pn ∨ (ro_shot pn ∗ ⌜ps_ro s = false⌝)))%I.
 
   (* TIMELESS, and it is load-bearing: every link's fupd runs at ⊤ with no
      WP step to strip a later off an opened invariant, so the body has to be
@@ -346,7 +389,7 @@ Section PipeProto.
     pipe_body pn γp L -∗ pipe_qauth (pn_queue γp) s -∗
     ⌜ps_ws s `prefix_of` L⌝.
   Proof using .
-    iIntros "Hb Ha". iDestruct "Hb" as (s0) "(Hf & _ & _ & _ & %Hpre & _)".
+    iIntros "Hb Ha". iDestruct "Hb" as (s0) "(Hf & _ & _ & _ & %Hpre & _ & _)".
     iDestruct (pipe_queue_agree with "Ha Hf") as %<-. by iPureIntro.
   Qed.
 
@@ -357,7 +400,7 @@ Section PipeProto.
     pipe_body pn γp L -∗ wtok pn -∗ pipe_qauth (pn_queue γp) s -∗
     ⌜ps_ws s = []⌝.
   Proof using .
-    iIntros "Hb Ht Ha". iDestruct "Hb" as (s0) "(Hf & _ & Hw & _ & _ & _)".
+    iIntros "Hb Ht Ha". iDestruct "Hb" as (s0) "(Hf & _ & Hw & _ & _ & _ & _)".
     iDestruct (pipe_queue_agree with "Ha Hf") as %<-.
     rewrite /wtok. iDestruct (wcur_agree with "Hw Ht") as %Hlen.
     iPureIntro. by apply nil_length_inv.
@@ -369,11 +412,25 @@ Section PipeProto.
     ⌜w = ps_ws s /\ ps_wo s = false⌝.
   Proof using .
     iIntros "Hb #Hs Ha".
-    iDestruct "Hb" as (s0) "(Hf & _ & _ & _ & _ & [Hp | Heof])".
+    iDestruct "Hb" as (s0) "(Hf & _ & _ & _ & _ & [Hp | Heof] & _)".
     - iDestruct (eof_pending_shot with "Hp Hs") as %[].
     - iDestruct (pipe_queue_agree with "Ha Hf") as %<-.
       iDestruct "Heof" as (w') "[#Hs' %Hw]".
       iDestruct (eof_shot_agree with "Hs Hs'") as %<-. by iPureIntro.
+  Qed.
+
+  (* (P4), the mirror of (P3) on the OTHER flag, and the one law lane
+     PIPE-PROTO-2 exists for: the read end, once a writer's observation node
+     has seen it shut, is shut in every later state. *)
+  Lemma pipe_body_P4 (pn : pnames) (γp : pipe_names) (L : list (bv 8))
+      (s : pipe_st) :
+    pipe_body pn γp L -∗ ro_shot pn -∗ pipe_qauth (pn_queue γp) s -∗
+    ⌜ps_ro s = false⌝.
+  Proof using .
+    iIntros "Hb #Hs Ha".
+    iDestruct "Hb" as (s0) "(Hf & _ & _ & _ & _ & _ & [Hp | [_ %Hro]])".
+    - iDestruct (ro_pending_shot with "Hp Hs") as %[].
+    - iDestruct (pipe_queue_agree with "Ha Hf") as %<-. by iPureIntro.
   Qed.
 
   (* ------------------------------------------------------------------- *)
@@ -392,16 +449,20 @@ Section PipeProto.
     pipe_inv pn γp L -∗ pipe_clink (pn_queue γp) w emp.
   Proof using .
     intros HE. rewrite /pipe_inv /pipe_clink. iIntros "#Hinv" (s) "Ha".
-    iInv "Hinv" as (s0) ">(Hf & Hh & Hw & Hr & %Hpre & Heof)" "Hclose".
+    iInv "Hinv" as (s0) ">(Hf & Hh & Hw & Hr & %Hpre & Heof & Hro)" "Hclose".
     iDestruct (pipe_queue_agree with "Ha Hf") as %<-.
     iMod (pipe_queue_update _ _ _ (pst_close w s0) with "Ha Hf") as "[Ha Hf]".
-    iMod ("Hclose" with "[Hf Hh Hw Hr Heof]") as "_".
+    iMod ("Hclose" with "[Hf Hh Hw Hr Heof Hro]") as "_".
     { iNext. iExists (pst_close w s0). rewrite pst_close_ws pst_close_rp.
-      iFrame "Hf Hh Hw Hr". iSplitR; [by iPureIntro |].
-      iDestruct "Heof" as "[Hp | Heof]"; [by iLeft |].
-      iRight. iDestruct "Heof" as (w0) "[Hs %Hw0]". iExists w0. iFrame "Hs".
-      iPureIntro. destruct Hw0 as [Hw1 Hw2]. split; [exact Hw1 |].
-      destruct w; [ reflexivity | exact Hw2 ]. }
+      iFrame "Hf Hh Hw Hr". iSplitR; [by iPureIntro |]. iSplitL "Heof".
+      - iDestruct "Heof" as "[Hp | Heof]"; [by iLeft |].
+        iRight. iDestruct "Heof" as (w0) "[Hs %Hw0]". iExists w0. iFrame "Hs".
+        iPureIntro. destruct Hw0 as [Hw1 Hw2]. split; [exact Hw1 |].
+        destruct w; [ reflexivity | exact Hw2 ].
+      - (* (P4): [ps_ro] is MONOTONE, so a shot survives either close *)
+        iDestruct "Hro" as "[Hp | [Hs %Hro]]"; [by iLeft |].
+        iRight. iFrame "Hs". iPureIntro.
+        destruct w; [ exact Hro | reflexivity ]. }
     iModIntro. by iFrame "Ha".
   Qed.
 
@@ -446,22 +507,24 @@ Section PipeProto.
     iMod (own_alloc (●ML ([] : list (leibnizO (bv 8))))) as (gh) "Hh";
       [ apply mono_list_auth_valid |].
     iMod (own_alloc (Cinl (Excl ()) : pipe_eofR)) as (ge) "He"; [ done |].
+    iMod (own_alloc (Cinl (Excl ()) : pipe_roR)) as (go) "Ho"; [ done |].
     iMod (ghost_var_alloc (0%nat)) as (gw) "Hw".
     iMod (ghost_var_alloc (0%nat)) as (gr) "Hr".
     iMod (own_alloc (Excl ())) as (gl) "Hsl"; [ done |].
     iMod (own_alloc (Excl ())) as (gs) "Hsr"; [ done |].
-    iDestruct (ghost_var_split (pn_wcur (MkPNames gh ge gw gr gl gs))
+    iDestruct (ghost_var_split (pn_wcur (MkPNames gh ge go gw gr gl gs))
                  0%nat (1/2) (1/2) with "[Hw]") as "[Hw1 Hw2]";
       [ by rewrite Qp.half_half | ].
-    iDestruct (ghost_var_split (pn_rcur (MkPNames gh ge gw gr gl gs))
+    iDestruct (ghost_var_split (pn_rcur (MkPNames gh ge go gw gr gl gs))
                  0%nat (1/2) (1/2) with "[Hr]") as "[Hr1 Hr2]";
       [ by rewrite Qp.half_half | ].
     iMod (inv_alloc pipeN ⊤
-            (pipe_body (MkPNames gh ge gw gr gl gs) γp L)
-            with "[Hfrag Hh Hw1 Hr1 He]") as "#Hinv".
+            (pipe_body (MkPNames gh ge go gw gr gl gs) γp L)
+            with "[Hfrag Hh Hw1 Hr1 He Ho]") as "#Hinv".
     { iNext. iExists pst0. rewrite /pst0 /=. iFrame "Hfrag Hh Hw1 Hr1".
-      iSplitR; [ iPureIntro; apply prefix_nil | ]. by iLeft. }
-    iModIntro. iExists (MkPNames gh ge gw gr gl gs).
+      iSplitR; [ iPureIntro; apply prefix_nil | ].
+      iSplitL "He"; [ by iLeft | by iLeft ]. }
+    iModIntro. iExists (MkPNames gh ge go gw gr gl gs).
     iDestruct (pipe_reg_of_inv _ γp L with "Hinv") as "#Hreg".
     rewrite /wtok /rtok /side_L /side_R /=.
     iFrame "Hinv Hw2 Hr2 Hsl Hsr Hreg".
@@ -480,14 +543,32 @@ Section PipeProto.
      space, ..., newline, four [kecho_w]s): call number two starts at the
      cursor call number one handed back.
 
-     [Qe] IS [Q]: an observation SPENDS its node (design/pipe.md), so the
-     only thing it can do for a caller is hand the cursor back -- which is
-     exactly what design SS3's echo row asks of it ("records nothing"). *)
+     [Qe] hands the CURSOR back (an observation SPENDS its node --
+     design/pipe.md -- so that is the only thing it can do for the caller)
+     AND, since 3.1b, the READ-END SHOT: the arm of [pipe_wpost] that fires
+     this node is exactly the one whose state has [ps_ro s = false], and
+     that is the world echo has to be able to keep writing in.  The shot
+     rides a WAND from that pure fact for the same reason [pipe_rQe]'s does:
+     [pipe_olink] is a [forall s], ONE node that must be producible at every
+     state, so "records nothing when the read end is still open" is not a
+     second node but this wand being vacuous there. *)
   Definition pipe_wQ (pn : pnames) (L : list (bv 8)) (c j : nat) : iProp Σ :=
     (wcur pn (c + j) ∗ pws_lb pn (take (c + j) L))%I.
 
   Definition pipe_wQe (pn : pnames) (L : list (bv 8)) (c j : nat)
-      (_ : pipe_st) : iProp Σ := pipe_wQ pn L c j.
+      (s : pipe_st) : iProp Σ :=
+    (pipe_wQ pn L c j ∗ (⌜ps_ro s = false⌝ -∗ ro_shot pn))%I.
+
+  (* the writer's twin of [pipe_rQe_eof]: at the state the observation arm
+     of [pipe_wpost] names, the node yields the cursor AND the shot *)
+  Lemma pipe_wQe_ro_shot (pn : pnames) (L : list (bv 8)) (c j : nat)
+      (s : pipe_st) :
+    ps_ro s = false ->
+    pipe_wQe pn L c j s -∗ pipe_wQ pn L c j ∗ ro_shot pn.
+  Proof using .
+    intros Hro. rewrite /pipe_wQe. iIntros "[HQ Hw]". iFrame "HQ".
+    by iApply "Hw".
+  Qed.
 
   (* "THE LINE IS IN": a node whose cursor has reached the end of the line
      hands out the lower bound that rides echo's exit payload to sh. *)
@@ -514,16 +595,35 @@ Section PipeProto.
     { iIntros "#Hinv HQ". iExact "HQ". }
     iIntros "#Hinv HQ". cbn [pipe_wchain].
     iSplit; [ iExact "HQ" | ]. iSplit.
-    { (* the observation: nothing recorded, the cursor comes back *)
-      rewrite /pipe_olink. iIntros (s) "Ha". iModIntro. iFrame "Ha".
-      rewrite /pipe_wQe. iExact "HQ". }
+    { (* THE OBSERVATION: the cursor comes back, and where it fires at a
+         SHUT READ END it shoots (P4)'s one-shot inside the invariant. *)
+      rewrite /pipe_olink. iIntros (s) "Ha".
+      destruct (decide (ps_ro s = false)) as [Hro | Hro].
+      - iInv "Hinv" as (s0) ">(Hf & Hh & Hbw & Hbr & %Hpre & Heof & Hro')"
+          "Hclose".
+        iDestruct (pipe_queue_agree with "Ha Hf") as %<-.
+        iAssert (|==> ro_shot pn
+                      ∗ (ro_pending pn ∨ (ro_shot pn ∗ ⌜ps_ro s0 = false⌝)))%I
+          with "[Hro']" as ">[#Hsh Hro']".
+        { iDestruct "Hro'" as "[Hp | [#Hsh %Hr]]".
+          - iMod (ro_shoot pn with "Hp") as "#Hsh". iModIntro.
+            iSplitR; [ iExact "Hsh" | ]. iRight. iFrame "Hsh". by iPureIntro.
+          - iModIntro. iSplitR; [ iExact "Hsh" | ].
+            iRight. iFrame "Hsh". by iPureIntro. }
+        iMod ("Hclose" with "[Hf Hh Hbw Hbr Heof Hro']") as "_".
+        { iNext. iExists s0. iFrame "Hf Hh Hbw Hbr Heof Hro'". by iPureIntro. }
+        iModIntro. iFrame "Ha". rewrite /pipe_wQe. iFrame "HQ".
+        iIntros "_". iExact "Hsh".
+      - iModIntro. iFrame "Ha". rewrite /pipe_wQe. iFrame "HQ".
+        iIntros "%He". by destruct (Hro He). }
     (* [%Hro] is INTRODUCED AND IGNORED here (lane PQ-FLAG-2): this builder
        is the good-path chain, whose (P1) obligation the write-open premise
        alone discharges.  The read-open premise is what lane PIPE-PROTO-2
        spends, in the DERAILED builder past a short write. *)
     iIntros (b) "%Hb". rewrite /pipe_wlink. iIntros (s) "%Hwo %Hro Ha".
     iDestruct "HQ" as "[Hw #Hlb]".
-    iInv "Hinv" as (s0) ">(Hf & Hh & Hbw & Hbr & %Hpre & Heof)" "Hclose".
+    iInv "Hinv" as (s0) ">(Hf & Hh & Hbw & Hbr & %Hpre & Heof & Hro')"
+      "Hclose".
     iDestruct (pipe_queue_agree with "Ha Hf") as %<-.
     iDestruct (wcur_agree with "Hbw Hw") as %Hlen.
     (* (P3)'S SNAPSHOT ARM IS REFUTED BY THE WRITE LINK'S OWN PREMISE.  This
@@ -549,10 +649,14 @@ Section PipeProto.
     iMod (pipe_queue_update _ _ _ (pst_write b s0) with "Ha Hf") as "[Ha Hf]".
     iMod (pws_auth_grow pn (ps_ws s0) b with "Hh") as "[Hh #Hlb']".
     iMod (wcur_move pn _ _ (c + S j)%nat with "Hbw Hw") as "[Hbw Hw]".
-    iMod ("Hclose" with "[Hf Hh Hbw Hbr Hp]") as "_".
+    iMod ("Hclose" with "[Hf Hh Hbw Hbr Hp Hro']") as "_".
     { iNext. iExists (pst_write b s0).
       rewrite !pst_write_ws !pst_write_rp Hlen'. iFrame "Hf Hh Hbw Hbr".
-      iSplitR; [ iPureIntro; rewrite Hws'; apply prefix_take | by iLeft ]. }
+      iSplitR; [ iPureIntro; rewrite Hws'; apply prefix_take | ].
+      iSplitL "Hp"; [ by iLeft | ].
+      (* (P4) rides across a write: [pst_write] does not touch [ps_ro] *)
+      iDestruct "Hro'" as "[Hp | [#Hsh %Hr]]"; [ by iLeft | ].
+      iRight. iFrame "Hsh". iPureIntro. exact Hr. }
     iModIntro. iFrame "Ha".
     assert (Hle2 : (c + S j + cnt <= length L)%nat) by lia.
     assert (HM2 : forall k : nat, (S j <= k < S j + cnt)%nat ->
@@ -590,13 +694,13 @@ Section PipeProto.
     pipe_inv pn γp L -∗ wcur pn c ={⊤}=∗ wcur pn c ∗ pws_lb pn (take c L).
   Proof using .
     iIntros "#Hinv Hw".
-    iInv "Hinv" as (s0) ">(Hf & Hh & Hbw & Hbr & %Hpre & Heof)" "Hclose".
+    iInv "Hinv" as (s0) ">(Hf & Hh & Hbw & Hbr & %Hpre & Heof & Hro)" "Hclose".
     iDestruct (wcur_agree with "Hbw Hw") as %Hlen.
     assert (Hws : ps_ws s0 = take c L).
     { destruct Hpre as [t Ht]. rewrite -Hlen Ht take_app_length. reflexivity. }
     iDestruct (pws_auth_lb with "Hh") as "[Hh #Hlb]".
-    iMod ("Hclose" with "[Hf Hh Hbw Hbr Heof]") as "_".
-    { iNext. iExists s0. iFrame "Hf Hh Hbw Hbr Heof". by iPureIntro. }
+    iMod ("Hclose" with "[Hf Hh Hbw Hbr Heof Hro]") as "_".
+    { iNext. iExists s0. iFrame "Hf Hh Hbw Hbr Heof Hro". by iPureIntro. }
     iModIntro. iFrame "Hw". rewrite -Hws. iExact "Hlb".
   Qed.
 
@@ -611,6 +715,57 @@ Section PipeProto.
     intros Hle HM. iIntros "#Hinv Hw".
     iMod (pws_lb_of_inv pn γp L c with "Hinv Hw") as "[Hw #Hlb]".
     iModIntro. iApply (pipe_wpay_of_inv pn γp L M ua c n Hle HM with "Hinv Hw Hlb").
+  Qed.
+
+  (* ------------------------------------------------------------------- *)
+  (*  4b.  THE DERAILED CHAIN: what a writer pays AFTER a short write      *)
+  (* ------------------------------------------------------------------- *)
+
+  (* THE WALL ECHO-PIPE FOUND: echo's four writes do not compose past a
+     write that stopped SHORT, because the next chain's nodes would have to
+     re-establish (P1) with bytes that no longer continue the pipe's
+     contents.  Design SS3.1b's ruling closes it from the OTHER side: once
+     (P4)'s shot is out, every write link is VACUOUS -- it is handed
+     [⌜ps_ro s = true⌝] (lane PQ-FLAG-2) and the shot says [ps_ro s = false].
+     So a chain past a short write needs NO cursor, NO lower bound, NO bound
+     on the count and NO knowledge of the caller's bytes: the nodes' [Q]/[Qe]
+     can be ANY single resource [R] the caller is willing to carry through,
+     because the additive conjunction hands the same [R] to the node's value
+     and to its observation and the link branch is never taken.
+
+     This is the exact mirror of (P3)'s refutation by [⌜ps_wo s = true⌝] in
+     [pipe_wchain_of_inv] -- and it is why the derailed builder must NOT
+     carry [wcur]: [pipe_wQ] pins [ps_ws s] through [wcur_agree], which is
+     precisely the knowledge a derailed writer has lost. *)
+  Lemma pipe_wchain_of_ro_shot (pn : pnames) (γp : pipe_names)
+      (L : list (bv 8)) (M : gmap Z (bv 8)) (ua : mword 64)
+      (R : iProp Σ) (j cnt : nat) :
+    pipe_inv pn γp L -∗ ro_shot pn -∗ R -∗
+    pipe_wchain (pn_queue γp) M ua (fun _ : nat => R)
+      (fun (_ : nat) (_ : pipe_st) => R) j cnt.
+  Proof using .
+    revert j. induction cnt as [| cnt IH]; intros j.
+    { iIntros "#Hinv #Hsh HR". iExact "HR". }
+    iIntros "#Hinv #Hsh HR". cbn [pipe_wchain].
+    iSplit; [ iExact "HR" | ]. iSplit.
+    { rewrite /pipe_olink. iIntros (s) "Ha". iModIntro. iFrame "Ha".
+      iExact "HR". }
+    iIntros (b) "_". rewrite /pipe_wlink. iIntros (s) "_ %Hro Ha".
+    (* THE LINK IS VACUOUS: (P4) against the read-open premise *)
+    iInv "Hinv" as ">Hb" "Hclose".
+    iDestruct (pipe_body_P4 with "Hb Hsh Ha") as %Hro'.
+    rewrite Hro' in Hro. discriminate.
+  Qed.
+
+  Lemma pipe_wpay_of_inv_after_short (pn : pnames) (γp : pipe_names)
+      (L : list (bv 8)) (M : gmap Z (bv 8)) (ua : mword 64)
+      (R : iProp Σ) (n : nat) :
+    pipe_inv pn γp L -∗ ro_shot pn -∗ R -∗
+    pipe_wpay (pn_queue γp) M ua (fun _ : nat => R)
+      (fun (_ : nat) (_ : pipe_st) => R) n.
+  Proof using .
+    iIntros "#Hinv #Hsh HR". rewrite /pipe_wpay. iLeft.
+    iApply (pipe_wchain_of_ro_shot pn γp L M ua R 0 n with "Hinv Hsh HR").
   Qed.
 
   (* ------------------------------------------------------------------- *)
@@ -665,7 +820,7 @@ Section PipeProto.
       iDestruct "HQ" as "[Hr %Hacc]".
       destruct (decide (pst_eof s)) as [Heof | Hne].
       - (* an end-of-file: SHOOT the snapshot at the frozen contents *)
-        iInv "Hinv" as (s0) ">(Hf & Hh & Hbw & Hbr & %Hpre & Hoe)" "Hclose".
+        iInv "Hinv" as (s0) ">(Hf & Hh & Hbw & Hbr & %Hpre & Hoe & Hro)" "Hclose".
         iDestruct (pipe_queue_agree with "Ha Hf") as %<-.
         iDestruct (rcur_agree with "Hbr Hr") as %Hrp.
         assert (Hws : ps_ws s0 = take (c + length acc)%nat L).
@@ -687,8 +842,8 @@ Section PipeProto.
             iSplitR; [ rewrite -Hw1; iExact "Hs0" | ].
             iRight. iExists w0. iSplitR; [ iExact "Hs0" | ].
             iPureIntro. split; [ exact Hw1 | exact Hw2 ]. }
-        iMod ("Hclose" with "[Hf Hh Hbw Hbr Hoe]") as "_".
-        { iNext. iExists s0. iFrame "Hf Hh Hbw Hbr Hoe". by iPureIntro. }
+        iMod ("Hclose" with "[Hf Hh Hbw Hbr Hoe Hro]") as "_".
+        { iNext. iExists s0. iFrame "Hf Hh Hbw Hbr Hoe Hro". by iPureIntro. }
         iModIntro. iFrame "Ha". rewrite /pipe_rQe.
         iSplitL "Hr"; [ rewrite /pipe_rQ; iFrame "Hr"; by iPureIntro | ].
         iIntros "_". rewrite -Hws. iExact "Hs".
@@ -699,7 +854,7 @@ Section PipeProto.
     (* THE READ LINK *)
     rewrite /pipe_rlink. iIntros (s b) "%Hnext Ha".
     iDestruct "HQ" as "[Hr %Hacc]".
-    iInv "Hinv" as (s0) ">(Hf & Hh & Hbw & Hbr & %Hpre & Hoe)" "Hclose".
+    iInv "Hinv" as (s0) ">(Hf & Hh & Hbw & Hbr & %Hpre & Hoe & Hro)" "Hclose".
     iDestruct (pipe_queue_agree with "Ha Hf") as %<-.
     iDestruct (rcur_agree with "Hbr Hr") as %Hrp.
     (* THE DEQUEUED BYTE IS THE LINE'S, at the reader's own cursor: (P1) at
@@ -715,13 +870,15 @@ Section PipeProto.
         [ by rewrite -Hacc | rewrite lookup_drop; exact HLb ]. }
     iMod (pipe_queue_update _ _ _ (pst_read s0) with "Ha Hf") as "[Ha Hf]".
     iMod (rcur_move pn _ _ (S (ps_rp s0)) with "Hbr Hr") as "[Hbr Hr]".
-    iMod ("Hclose" with "[Hf Hh Hbw Hbr Hoe]") as "_".
+    iMod ("Hclose" with "[Hf Hh Hbw Hbr Hoe Hro]") as "_".
     { iNext. iExists (pst_read s0). iFrame "Hf".
       rewrite !pst_read_ws !pst_read_rp. iFrame "Hh Hbw Hbr".
-      iSplitR; [ by iPureIntro | ].
-      iDestruct "Hoe" as "[Hp | Hoe]"; [ by iLeft | ].
-      iDestruct "Hoe" as (w0) "[#Hs %Hw0]". iRight. iExists w0. iFrame "Hs".
-      iPureIntro. exact Hw0. }
+      iSplitR; [ by iPureIntro | ]. iSplitL "Hoe".
+      - iDestruct "Hoe" as "[Hp | Hoe]"; [ by iLeft | ].
+        iDestruct "Hoe" as (w0) "[#Hs %Hw0]". iRight. iExists w0. iFrame "Hs".
+        iPureIntro. exact Hw0.
+      - iDestruct "Hro" as "[Hp | [#Hs %Hro]]"; [ by iLeft | ].
+        iRight. iFrame "Hs". iPureIntro. exact Hro. }
     iModIntro. iFrame "Ha".
     iApply (IH (acc ++ [b]) with "Hinv [Hr]").
     rewrite /pipe_rQ Hlenb.
@@ -751,7 +908,7 @@ Section PipeProto.
     pipe_body pn γp L -∗ pws_lb pn L -∗ eof_shot pn w -∗ ⌜w = L⌝.
   Proof using .
     iIntros "Hb #Hlb #Hs".
-    iDestruct "Hb" as (s) "(Hf & Hh & _ & _ & %Hpre & Hoe)".
+    iDestruct "Hb" as (s) "(Hf & Hh & _ & _ & %Hpre & Hoe & _)".
     iDestruct (pws_lb_prefix with "Hh Hlb") as %HL.
     assert (Hws : ps_ws s = L).
     { apply (prefix_length_eq _ _ Hpre). by apply prefix_length. }
@@ -768,7 +925,7 @@ Section PipeProto.
     pipe_body pn γp L -∗ wtok pn -∗ eof_shot pn w -∗ ⌜w = []⌝.
   Proof using .
     iIntros "Hb Ht #Hs".
-    iDestruct "Hb" as (s) "(Hf & _ & Hbw & _ & _ & Hoe)".
+    iDestruct "Hb" as (s) "(Hf & _ & Hbw & _ & _ & Hoe & _)".
     rewrite /wtok. iDestruct (wcur_agree with "Hbw Ht") as %Hlen.
     assert (Hws : ps_ws s = []) by (by apply nil_length_inv).
     iDestruct "Hoe" as "[Hp | Hoe]".
@@ -796,6 +953,39 @@ Section PipeProto.
     iModIntro. iFrame "Ht". by iPureIntro.
   Qed.
 
+  (* PExecR (design SS4.2, and the arm lane PIPE-PROTO-2 adds): the left
+     child came back MID-LINE -- it holds its permit at some cursor [c] and
+     (P4)'s shot, because its own write stopped on a shut read end.  Then the
+     pipe's frozen contents are the line's first [c] bytes, no more and no
+     less.  [pipe_body_execL] is this at [c = 0] and needs no shot; the shot
+     is what lets sh KNOW the left child stopped rather than never started. *)
+  Lemma pipe_body_short (pn : pnames) (γp : pipe_names) (L w : list (bv 8))
+      (c : nat) :
+    pipe_body pn γp L -∗ wcur pn c -∗ eof_shot pn w -∗ ⌜w = take c L⌝.
+  Proof using .
+    iIntros "Hb Hc #Hs".
+    iDestruct "Hb" as (s) "(Hf & _ & Hbw & _ & %Hpre & Hoe & _)".
+    iDestruct (wcur_agree with "Hbw Hc") as %Hlen.
+    assert (Hws : ps_ws s = take c L).
+    { destruct Hpre as [t Ht]. rewrite -Hlen Ht take_app_length. reflexivity. }
+    iDestruct "Hoe" as "[Hp | Hoe]".
+    - iDestruct (eof_pending_shot with "Hp Hs") as %[].
+    - iDestruct "Hoe" as (w') "[#Hs' %Hw']".
+      iDestruct (eof_shot_agree with "Hs Hs'") as %<-.
+      iPureIntro. destruct Hw' as [Hw1 _]. by rewrite Hw1.
+  Qed.
+
+  Lemma pipe_round_short (pn : pnames) (γp : pipe_names) (L w : list (bv 8))
+      (c : nat) :
+    pipe_inv pn γp L -∗ wcur pn c -∗ eof_shot pn w ={⊤}=∗
+    wcur pn c ∗ ⌜w = take c L⌝.
+  Proof using .
+    iIntros "#Hinv Hc #Hs". iInv "Hinv" as ">Hb" "Hclose".
+    iDestruct (pipe_body_short with "Hb Hc Hs") as %Heq.
+    iMod ("Hclose" with "[Hb]") as "_"; [ iNext; iExact "Hb" | ].
+    iModIntro. iFrame "Hc". by iPureIntro.
+  Qed.
+
   (* THE SYMMETRIC PAYLOAD.  A [wait(0)] cannot tell sh's two children apart
      (SH-PIPE's R-2: [wp_kshr_fork1] needs one payload at every return value
      and the pid-refuting form is dropped), so BOTH children exit with the
@@ -818,8 +1008,14 @@ Section PipeProto.
 
   (* the campaign's two payloads: echo's ("the line is in", or the start
      token back because its exec failed) and cat's (the frozen snapshot) *)
+  (* THREE arms, not two (lane ECHO-PIPE's finding 2, closed here): the
+     cursor at the line's END ("the line is in"), the cursor at ZERO (the
+     left exec failed and the start token came straight back), or MID-LINE
+     with (P4)'s shot -- which is the only other place echo can stop, since
+     the copy-in fault is refuted by its own mapped source run and the kill
+     is the taint.  The mid-line arm is what a DERAILED round hands back. *)
   Definition pipe_payL (pn : pnames) (L : list (bv 8)) : iProp Σ :=
-    (pws_lb pn L ∨ wtok pn)%I.
+    (pws_lb pn L ∨ wtok pn ∨ (∃ c : nat, wcur pn c ∗ ro_shot pn))%I.
   Definition pipe_payR (pn : pnames) : iProp Σ :=
     (∃ w : list (bv 8), eof_shot pn w)%I.
 
@@ -831,16 +1027,23 @@ Section PipeProto.
     pipe_Qc pn (pipe_payL pn L) (pipe_payR pn)
     ={⊤}=∗ ∃ w : list (bv 8),
       eof_shot pn w
-      ∗ ((pws_lb pn L ∗ ⌜w = L⌝) ∨ (wtok pn ∗ ⌜w = []⌝)).
+      ∗ ((pws_lb pn L ∗ ⌜w = L⌝)                                  (* PRan *)
+         ∨ (wtok pn ∗ ⌜w = []⌝)                        (* PExecL / PSilent *)
+         ∨ (∃ c : nat, wcur pn c ∗ ro_shot pn ∗ ⌜w = take c L⌝)). (* PExecR *)
   Proof using .
     iIntros "#Hinv H1 H2".
     iDestruct (pipe_Qc_two with "H1 H2") as "[[_ HL] [_ HR]]".
     iDestruct "HR" as (w) "#Hs". rewrite /pipe_payL.
-    iDestruct "HL" as "[#Hlb | Ht]".
+    iDestruct "HL" as "[#Hlb | [Ht | Hsh]]".
     - iMod (pipe_round_ran pn γp L w with "Hinv Hlb Hs") as %->.
       iModIntro. iExists L. iFrame "Hs". iLeft. iFrame "Hlb". by iPureIntro.
     - iMod (pipe_round_execL pn γp L w with "Hinv Ht Hs") as "[Ht %Hw]".
-      iModIntro. iExists w. iFrame "Hs". iRight. iFrame "Ht". by iPureIntro.
+      iModIntro. iExists w. iFrame "Hs". iRight. iLeft. iFrame "Ht".
+      by iPureIntro.
+    - iDestruct "Hsh" as (c) "[Hc #Hsh]".
+      iMod (pipe_round_short pn γp L w c with "Hinv Hc Hs") as "[Hc %Hw]".
+      iModIntro. iExists w. iFrame "Hs". iRight. iRight. iExists c.
+      iFrame "Hc Hsh". by iPureIntro.
   Qed.
 
   (* ------------------------------------------------------------------- *)
@@ -864,7 +1067,39 @@ Section PipeProto.
     iDestruct "H" as "[(_ & _ & HQ) | [(_ & _ & _ & HQ) | (_ & _ & Hobs)]]".
     - iExact "HQ".
     - iExact "HQ".
-    - iDestruct "Hobs" as (s) "[_ HQ]". rewrite /pipe_wQe. iExact "HQ".
+    - iDestruct "Hobs" as (s) "[_ HQ]". rewrite /pipe_wQe.
+      iDestruct "HQ" as "[$ _]".
+  Qed.
+
+  (* THE SAME READING, WITH THE REASON -- which is what a WRITER needs, and
+     what lane ECHO-PIPE-2 spends.  Every arm hands the cursor back and says
+     why the call stopped there: the whole run went in (or copyin could not
+     read byte [k] of the caller's source, which a mapped run refutes), the
+     writer was KILLED, or THE READ END IS SHUT -- and that last arm hands
+     out (P4)'s shot, which is what makes every later write payable
+     ([pipe_wpay_of_inv_after_short]).  [pipe_wpost_cursor_line] above is
+     this without the reason. *)
+  Lemma pipe_wpost_line_reason (Pt : uptd) (pn : pnames) (γp : pipe_names)
+      (L : list (bv 8)) (M : gmap Z (bv 8)) (ua : mword 64) (c : nat)
+      (Rk : iProp Σ) (n : nat) (r : mword 64) :
+    pipe_wpost Pt (pn_queue γp) M ua (pipe_wQ pn L c) (pipe_wQe pn L c)
+      Rk n r -∗
+    (∃ k : nat, ⌜(k <= n)%nat⌝ ∗ pipe_wQ pn L c k
+       ∗ (⌜k = n \/ ~ UserPtTree.uva_rmapped Pt
+                        (uint (add_vec_int ua (Z.of_nat k)))⌝
+          ∨ Rk ∨ ro_shot pn))
+    ∨ (app_taint
+       ∗ pipe_wpay (pn_queue γp) M ua (pipe_wQ pn L c) (pipe_wQe pn L c) n).
+  Proof using .
+    iIntros "H". iDestruct (pipe_wpost_cursor with "H") as "[H | H]";
+      [ | iRight; iExact "H" ]. iLeft.
+    iDestruct "H" as (k) "[%Hk H]". iExists k. iSplitR; [ by iPureIntro | ].
+    iDestruct "H" as "[(_ & %Hs & HQ) | [(_ & _ & Hk & HQ) | (_ & _ & Hobs)]]".
+    - iFrame "HQ". iLeft. by iPureIntro.
+    - iFrame "HQ". iRight. by iLeft.
+    - iDestruct "Hobs" as (s) "[%Hro HQ]".
+      iDestruct (pipe_wQe_ro_shot pn L c k s Hro with "HQ") as "[$ #Hsh]".
+      iRight. iRight. iExact "Hsh".
   Qed.
 
   (* ...AND EVERY ARM of the read post hands cat its cursor back, with the
@@ -896,6 +1131,73 @@ Section PipeProto.
       by apply (proj2 Hs).
     - iExists acc, d. iSplitR; [ by iPureIntro | ]. iFrame "HQ".
       iRight. iExact "Hno".
+  Qed.
+
+  (* ...AND THE SAME READING A PROGRAM CAN WALK ON (lane CAT-PIPE's finding
+     3, folded back here because it is entirely general).
+     [pipe_rpost_img_line] above is the right reading for
+     [pipe_proto_test]'s question and the WRONG one for a walk: its proof
+     drops the post's IMAGE ROW -- the one fact that turns the ghost [acc]
+     into the caller's buffer function -- and drops [length acc = d] on the
+     non-observation arms, so a reader cannot say how many of its buffer
+     bytes the call filled.  This is the same reading with both kept, and
+     with the four [pipe_rstop_noobs] arms SORTED BY WHAT A READER'S LOOP
+     BRANCHES ON: the answer is a count [d], or it is -1 and then [d = 0]
+     and one of three things happened.  ([pipe_rstop_noobs] is NOT pure --
+     its kill arm carries [Rk] -- so it is destructed in the logic.) *)
+  Lemma pipe_rpost_line (Pt : uptd) (pn : pnames) (γp : pipe_names)
+      (L : list (bv 8)) (c : nat) (Rk : iProp Σ) (n : nat) (r : mword 64)
+      (M' : gmap Z (bv 8)) (addr : mword 64) :
+    pipe_rpost_img Pt (pn_queue γp) (pipe_rQ pn L c) (pipe_rQe pn L c)
+      Rk n r M' addr -∗
+    (∃ (acc : list (bv 8)) (d : nat),
+       ⌜(length acc <= n)%nat /\ length acc = d⌝
+       ∗ ⌜(forall i : nat, (i < d)%nat ->
+             uint (add_vec_int addr (Z.of_nat i))
+             = (uint addr + Z.of_nat i)%Z) ->
+          forall j : nat, (j < d)%nat ->
+            M' !! uint (add_vec_int addr (Z.of_nat j)) = Some (acc !!! j)⌝
+       ∗ pipe_rQ pn L c acc
+       ∗ ((⌜r = (mword_of_int (Z.of_nat d) : mword 64)⌝
+           ∗ (⌜d = 0%nat⌝ -∗ ⌜(0 < n)%nat⌝ -∗
+                eof_shot pn (take (c + d)%nat L)))
+          ∨ (⌜r = (mword_of_int (-1) : mword 64) /\ d = 0%nat⌝
+             ∗ (⌜~ UserPtTree.uva_wmapped Pt
+                     (uint (add_vec_int addr (Z.of_nat d)))⌝
+                ∨ Rk ∨ ⌜n = 0%nat⌝))))
+    ∨ (app_taint
+       ∗ pipe_rpay (pn_queue γp) (pipe_rQ pn L c) (pipe_rQe pn L c) n).
+  Proof using .
+    iIntros "H". iDestruct (pipe_rpost_img_cursor with "H") as "[H | H]";
+      [ | iRight; iExact "H" ]. iLeft.
+    iDestruct "H" as (acc d) "(%H1 & %H2 & [Hobs | (%H3 & Hno & HQ)])".
+    - (* THE OBSERVATION: the ring ran dry at node [acc] *)
+      iDestruct "Hobs" as "[%Hpure Hobs]".
+      iDestruct "Hobs" as (s) "[%Hs Hqe]".
+      iDestruct "Hqe" as "[HQ Hwand]".
+      iExists acc, d. iSplitR; [ iPureIntro; split; [ exact H1 | apply Hpure ] | ].
+      iSplitR; [ by iPureIntro | ]. iFrame "HQ".
+      iLeft. iSplitR; [ iPureIntro; apply Hpure | ].
+      iIntros "%Hd0 _".
+      assert (Hacc : length acc = d) by apply Hpure.
+      rewrite -Hacc.
+      iApply "Hwand". iPureIntro. rewrite /pst_eof. split; [ apply Hs | ].
+      apply (proj2 Hs). exact Hd0.
+    - (* THE FOUR NON-OBSERVING STOPS *)
+      iExists acc, d. iSplitR; [ by iPureIntro | ].
+      iSplitR; [ by iPureIntro | ]. iFrame "HQ".
+      rewrite /pipe_rstop_noobs.
+      iDestruct "Hno" as "[%Hmet | [%Hflt | [[%Hkp Hk] | %Hsg]]]".
+      + iLeft. iSplitR; [ iPureIntro; apply Hmet | ].
+        iIntros "%Hz %Hpos". exfalso. destruct Hmet as [Hdn _]. lia.
+      + destruct Hflt as (Hdn & Hnm & [(Hd0 & Hr) | (Hd0 & Hr)]).
+        * iLeft. iSplitR; [ by iPureIntro | ].
+          iIntros "%Hz _". exfalso. lia.
+        * iRight. iSplitR; [ by iPureIntro | ]. iLeft. by iPureIntro.
+      + iRight. iSplitR; [ iPureIntro; split; [ apply Hkp | apply Hkp ] | ].
+        iRight. by iLeft.
+      + iRight. iSplitR; [ iPureIntro; split; [ apply Hsg | apply Hsg ] | ].
+        iRight. iRight. iPureIntro. apply Hsg.
   Qed.
 
   (* THE READING THAT CLOSES THE ROUND: the bytes the reader took out of
@@ -968,6 +1270,62 @@ Section PipeProto.
     iMod (pipe_reader_saw_line pn γp L acc with "Hinv Hlb HQ Hs")
       as "[_ %Hacc]".
     iModIntro. by iPureIntro.
+  Qed.
+
+  (* ------------------------------------------------------------------- *)
+  (*  7b.  THE DERAILED RUN (lane PIPE-PROTO-2's headline)                 *)
+  (* ------------------------------------------------------------------- *)
+
+  (* ONE ROUND, DERAILED, end to end at the resource level: a write stops
+     SHORT because the read end is shut (design SS4.2's [PExecR] world), and
+     the very next write -- at ANOTHER buffer, ANOTHER count and with NO
+     cursor -- is payable anyway.
+
+     The three arms out are exactly the three reachable stops, and the
+     mapped-source premise is what removes the fourth (copyin cannot be the
+     reason for a caller that owns its run; ECHO-PIPE proves that premise
+     from [UkRunSys.usrc_ok]):
+
+       - the whole run went in: the cursor is at [c + n] and echo's chain
+         composes exactly as before;
+       - the writer was KILLED: [Rk] in hand, the cursor wherever it got to
+         (the taint is the campaign's price for a kill -- ECHO-PIPE's route
+         (c), still owed by the kernel's write post);
+       - THE READ END WAS SHUT, or the pipe was tainted: the second write is
+         paid, and this is the arm 3.1b opened.
+
+     This is what retires [UEchoPipe.ep_derail]: its body is
+     [pipe_wpay_of_inv_after_short] at [R := ep_halt pn L]. *)
+  Lemma pipe_proto_derail_test (Pt : uptd) (pn : pnames) (γp : pipe_names)
+      (L : list (bv 8)) (M : gmap Z (bv 8)) (ua : mword 64) (c n : nat)
+      (Rk : iProp Σ) (r : mword 64)
+      (M2 : gmap Z (bv 8)) (ua2 : mword 64) (n2 : nat) (R : iProp Σ) :
+    (forall j : nat, (j < n)%nat ->
+       UserPtTree.uva_rmapped Pt (uint (add_vec_int ua (Z.of_nat j)))) ->
+    pipe_inv pn γp L -∗ R -∗
+    pipe_wpost Pt (pn_queue γp) M ua (pipe_wQ pn L c) (pipe_wQe pn L c)
+      Rk n r -∗
+    pipe_wQ pn L c n
+    ∨ (Rk ∗ ∃ k : nat, pipe_wQ pn L c k)
+    ∨ pipe_wpay (pn_queue γp) M2 ua2 (fun _ : nat => R)
+        (fun (_ : nat) (_ : pipe_st) => R) n2.
+  Proof using .
+    intros Hmap. iIntros "#Hinv HR H".
+    iDestruct (pipe_wpost_line_reason with "H") as "[H | [#Ht _]]"; last first.
+    { (* the pipe was tainted: the payment is the credential's *)
+      iRight. iRight. iApply (pipe_wpay_taint with "Ht"). }
+    iDestruct "H" as (k) "(%Hk & HQ & [%Hs | [Hkl | #Hsh]])".
+    - (* the whole run went in -- the copy-in reason is refuted *)
+      assert (Hkn : k = n).
+      { destruct Hs as [Hkn | Hnm]; [ exact Hkn | ].
+        destruct (decide (k = n)) as [Hkn | Hne]; [ exact Hkn | ].
+        exfalso. apply Hnm. apply Hmap. lia. }
+      subst k. iLeft. iExact "HQ".
+    - iRight. iLeft. iFrame "Hkl". iExists k. iExact "HQ".
+    - (* THE DERAIL: the shot pays the next write outright *)
+      iRight. iRight.
+      iApply (pipe_wpay_of_inv_after_short pn γp L M2 ua2 R n2
+                with "Hinv Hsh HR").
   Qed.
 
 End PipeProto.

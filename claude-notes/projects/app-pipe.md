@@ -477,3 +477,107 @@ the same substitutions) plus part 1's `wp_kshp_nulterminate_pipe` and
 `ush_cmd_of_ushp_pipe`, which are landed.  The line-disjunct's FOURTH arm
 stays where SH-LEX-REDIR §4 put it: coupled with the pipe child walk, so
 it belongs to SH-PIPE-ROUND and not here.
+
+### SH-PARSE-PIPE-3 (2026-09-18) — the catalog row, the constructor, and THE PARSER THEOREM at the pipe shape
+
+Branch `app-pipe/sh-parse-pipe`, four more commits (`35e838ad5`,
+`d5512683e`, `65e5d9591`, `28d30e086`) on top of part 2.  Whole tree green
+(`build`, RC=0); no `Admitted`; every result carries `Proof using`; ELEVEN
+new files, 10,857 lines, and the only landed files touched are the two the
+coverage change forces (`iris/UCodeShP.v`, regenerated, and
+`iris/UkShParse.v`, proof text only).
+
+**`echo w1 … wn | cat` IS NOW PARSED**, from `parsecmd`'s entry to the
+runner's tree, with nothing left to instantiate but the line, the two
+allocator links and the exit payload every parser walk takes:
+
+```coq
+  UkShPipeCm.wp_kshp_parser_pipe :
+    … ushq_pipe len f gp ge -> ushs_toks len f gp 0 args -> … -∗
+    (∀ t, ushp_tree s0 t
+            (UshpPipe (UshpExec args) (UshpExec [(S (S gp), ge)])) -∗
+          ubytes γd s0 (S len)
+            (ushp_nulfold [(S (S gp), ge)]
+               (ushp_nulfold args (ushp_ext len f))) -∗ …)
+```
+`Print Assumptions` on it lists exactly the three platform assumptions the
+landed redirect theorem has (`resv_matches`, `resv_is_valid`, funext).
+
+**WHAT LANDED, in the order it had to.**
+
+- **the catalog row** (`35e838ad5`): `tools/ucode_shp.txt`'s
+  `skipfunc pipecmd` → `func pipecmd`, `iris/UCodeShP.v` REGENERATED
+  (603 → 630 instruction facts, 12 → 13 functions, 372 → 377 decode
+  lemmas; `pipecmd` is 0x260..0x29c, TWENTY-SEVEN instructions), and the
+  consequence: `shp_syms_pins` gains a thirteenth conjunct, so the ELEVEN
+  `destruct shp_syms_pins as (…)` patterns in `iris/UkShParse.v:857-877`
+  each gained one `_` and `UkShParse.shpp_pipecmd` is new beside them.
+- **`iris/UkShPipeCmd.v`** — `wp_kshp_pipecmd`: the constructor.
+  `UkShRedirCmd.wp_kshp_redircmd_n`'s walk one size smaller (a SIX-word
+  frame with five spills, `malloc(24)`, THREE field stores) with
+  redircmd's NULL arm in shape, since `pipecmd` does not test malloc's
+  answer either.
+- **`iris/UkShPipePex.v`** — `wp_kshp_parseexec_bar`, the LEFT command's
+  parse, at part 2's four substitutions.  They behaved exactly as
+  predicted; the only one that was more than a name is the ANSWER (the
+  redirect walk answers the REDIR node its last `parseredirs` built, and
+  here no `parseredirs` turns, so `ret` still holds `execcmd`'s node).
+- **`iris/UkShPipeCm.v`** grew `ushq_pipecmd_call_holds`,
+  `ushq_pex_left_holds`, **`wp_kshp_parsepipe_bar_closed`** (the turn with
+  BOTH premises discharged), `wp_kshp_parseline_bar`,
+  `wp_kshp_parsecmd_bar` and **`wp_kshp_parser_pipe`**.
+- `iris/UkShPipeParse.v` gained `ushp_pipe_node_addr` beside
+  `ushp_pipe_close`.
+
+**THE FINDINGS OF THIS PART.**
+
+1. **`make gen-ucode` is a GENERATOR, not a dump rule, and the ruling was
+   right**: `tools/gen_ucode.py` reads the TRACKED dump
+   (`user-rocq/*{Instrs,Data,Syms}.v`) plus `tools/ucode_shp.txt` and
+   never opens `xv6-riscv/`; `tools/dump_elf.py` is what reads the ELF and
+   `make dump`/`dump-force` are the rules that call it.  The mirror's stale
+   clone is irrelevant to it.  **What IS load-bearing is the other half of
+   its header: it shells out to `coqc` and needs a BUILT `iris/`** — which
+   is why it can only run where the build lives.
+2. **THE FALSE GREEN, and it is a trap for every later coverage change:
+   the lane helper's rsync syncs only `*.v` and `_CoqProject`, so a
+   `tools/` edit does NOT reach the remote clone.**  The first
+   `make gen-ucode` therefore read the OLD spec and printed
+   `iris/UCodeShP.v: unchanged (603 instr …)` — a green run that had done
+   nothing, exactly the failure the file's own header warns about ("a diff
+   on an unchanged image means somebody hand edited a generated file").
+   The fix is one `scp` of the spec before the run; the tell is the
+   instruction COUNT in gen-ucode's own output.  Either the helper should
+   sync `tools/`, or the brief should say to copy the spec over.
+3. **`Local Notation`s do not travel, and three of them cost three build
+   cycles.**  A copied walk silently loses `N` where the source file had
+   `Local Notation wp_kshp_strlen := (UkShParse.wp_kshp_strlen N)`, and
+   the error names a type mismatch (`"h6" has type "CpuId" while it is
+   expected to have type "uk_names ?Σ"`) rather than a missing notation.
+   Cheap check before building a copy: diff the two files' notation lists
+   and grep the copied text for the difference.
+4. **Three comment traps in one C quotation**, all in durable-notes and
+   all worth re-reading before writing C into a Rocq comment: a
+   `(struct cmd *)cmd` cast CLOSES the comment, `sizeof(*cmd)` OPENS a
+   nested one (Rocq comments nest), and a `"` pair makes the rest a
+   string.  Written as `(struct cmd * )` and `sizeof( *cmd )`.
+5. **The name-clash rule for a transformed copy**: a premise you ADD to a
+   copied walk must not collide with a register-file fact the copy
+   already has.  `Hq`, `Hmiss`, `Hm23`, `Hr2`, `Hpos` were all taken; the
+   errors are "X is already used" or a wrong-type application hundreds of
+   lines away.  Name added premises `Hpq`/`Hmal01`/`Hmal23` and the like.
+
+**WHAT IS LEFT OF THE PIPE PARSER: NOTHING.**  The chain from a typed line
+to the runner's tree is now `UShLexRedir`-style lexability
+(part 1: `ush_line_toks_holds_pipe`) → `wp_kshp_parser_pipe` → the seam
+`ush_cmd_of_ushp_pipe` (part 1) → `ush_cmd γd t (UPipe (UExec …)
+(UExec …))`, which is what lane SH-PIPE's `runcmd` arm consumes.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  The child WALK at the pipe
+shape: `UkShMain.wp_kshm_child`'s twin (`wp_kshm_child_pipe`, the mould is
+`UkShRedirSeam.wp_kshm_child_redir`), which is what turns this theorem into
+a statement about the line sh READ.  It needs, and only needs: this
+theorem, the seam, and the FOURTH arm of the line disjunct inside
+`UkSh.ush_rest_line` — which SH-LEX-REDIR §4 shows is ONE coupled change
+with that walk, so it belongs to SH-PIPE-ROUND and not here.  Nothing in
+the parser blocks it any more.

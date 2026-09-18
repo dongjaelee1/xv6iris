@@ -429,6 +429,26 @@ Lanes: WRITE-RELAY (relays 3 and 4, `SysWriteDefs`/`SpecWritei`/
 `ProofWritei`/`FsAbsWriteFire`/`FileWrite`), then OFF-LINK (the rest of
 this block, on the off-hand worktree after OFF-HAND-7 stopped).
 
+AS LANDED (OFF-LINK-1..5, 2026-09-17): the half is the program's; `FdPark`
+is gone; the box is `off_resident γo k := ∃ v, cell ∗ ⌜wf⌝ ∗ off_link γo
+v` with `off_link γo z := off_gv γo (1/2) z ∨ app_taint`; the nodes are
+LENT `off_link` and answer `off_ret` (either value, or the taint); the
+supplier's output is `off_link` (payers: the parked invariant, the taint;
+NO held supplier); `filewrite_in`/`fileread_in`'s inode arms are keyed on
+the row's mode with the held arm `(∃ off0, uoff γo off0 ∗ ∀ P, chain) ∨
+(chain ∗ app_taint)`, the generic tier paying the right arm from the
+taint it holds; the write fire's loop and the read fire's site are ONE
+walk at both modes.  OFF-LINK-5's correction: the ANCHORED node
+(OFF-LINK-4) is unnecessary — the client's node holds `uoff γo off0` in
+its closure, reads `off = off0` by `uoff_agree_k` against the very
+`off_link` it is lent, advances both halves itself and hands the box's
+arm back already advanced; so RELAY 2 needs no relay and a held
+descriptor costs the kernel nothing.  REMAINING (OFF-LINK-6): L2+L4 as
+ONE change — `fdstate_ok` reading `fp_om pn` (145 sites) and the publish
+minting the mode at hand/park — then the hand-mode leaves and the held
+deposit suppliers, which discharge CAT-GEOM-4's two hypotheses and
+`UEchoFile`'s `ef_node`/`ef_chain`.
+
 ### 3.5 THE OWNER'S PRINCIPLE (2026-09-17): `link ∨ taint`, the pipe pattern
 
 The owner: "one thing you might be struggling with is how to deal with

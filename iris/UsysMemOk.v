@@ -567,7 +567,25 @@ Definition usys_fd_ok (n : Z) (tf : list (mword 64)) (r : mword 64)
              fd_least_closed (<[a := FdOpen true false (FdPipe γp)]> sts) b /\
              sts' = <[b := FdOpen false true (FdPipe γp)]>
                       (<[a := FdOpen true false (FdPipe γp)]> sts))
-     else sts' = sts)
+     (* ...OR THE CALL FAILED, AND IT REPORTS THAT AT -1, exactly as the
+        open and dup rows above do (lane PIPE-NEG1; lane SH-PIPE's finding
+        R-1).  An unguarded [sts' = sts] here said only "nonzero", and
+        "nonzero" DOES NOT DECIDE A SIGN: sh's instruction after [pipe(p)]
+        is [bltz a0] ([user/sh.c]'s PIPE arm, `if(pipe(p) < 0) panic'), so
+        at [r = 1] the branch is not taken and the pipeline would run on
+        two garbage descriptors -- an arm no walk can enter and no caller
+        can refute.  It cannot be repaired at a caller either: a premise
+        [forall r, uint r <> 0 -> r = -1] is FALSE, and one stated over
+        the old row is false too (take [r = 1], [sts' = sts]), so anything
+        built on either would be VACUOUS (durable-notes.md, "Vacuity").
+
+        AND THE KERNEL REALLY DOES SAY -1, on every failure arm: sys_pipe
+        is [pipealloc; fdalloc; fdalloc] and each of the three exits is a
+        bare `return -1' ([kernel/sysfile.c]), which is what
+        [SpecSysPipe.sys_pipe_post]'s failure arm already carried
+        ([r = mword_of_int (-1)]) and what [ProofSyscall]'s arm 4 now
+        threads out instead of dropping. *)
+     else (r = (mword_of_int (-1) : mword 64) /\ sts' = sts))
   else
     (* EVERY OTHER ENTRY LEAVES THE TABLE ALONE -- but read that carefully
        for the three entries where it is easy to claim too much.
@@ -765,7 +783,7 @@ Proof.
   { destruct (decide (uint r = 0)) as [_ | _].
     - destruct H as (a & b & γp & _ & _ & _ & ->).
       rewrite length_insert. apply length_insert.
-    - subst. reflexivity. }
+    - destruct H as [_ ->]. reflexivity. }
   subst. reflexivity.
 Qed.
 
@@ -815,7 +833,7 @@ Proof.
         [ apply fdv_all_parked_insert;
           [ exact Hpk | exact (fdst_parked_pipe true false γp) ]
         | exact (fdst_parked_pipe false true γp) ].
-    - subst. exact Hpk. }
+    - destruct H as [_ ->]. exact Hpk. }
   subst. exact Hpk.
 Qed.
 
@@ -923,7 +941,7 @@ Proof.
         [ apply fdv_held_in_insert;
           [ exact Hpk | left; exact (fdst_parked_pipe true false γp) ]
         | left; exact (fdst_parked_pipe false true γp) ].
-    - subst. exact Hpk. }
+    - destruct H0 as [_ ->]. exact Hpk. }
   subst. exact Hpk.
 Qed.
 
@@ -955,6 +973,30 @@ Proof.
     rewrite He. apply fdv_nopipe_insert; [ exact Hpk | exact Hop ]. }
   destruct (decide (n = USYS_pipe)) as [He | _]; [ exfalso; exact (Hnp He) | ].
   subst. exact Hpk.
+Qed.
+
+(* PIPE'S FAILURE ARM, IN THE DIRECTION A LEAF HAS IT (lane PIPE-NEG1).
+   A leaf spending the row case-splits on the guard the dispatch's [beqz]
+   leaves behind ([uint r = 0]) and, on the other side of that split, needs
+   the SIGN -- because that is what the caller's next instruction reads
+   ([bltz a0]).  This is the pipe row's else-branch read at exactly that
+   split, so no consumer has to unfold the row to get at it.  The twin
+   readings for open and dup are their rows' own failure disjuncts and need
+   no lemma: those are disjunctions, and this one is a guard. *)
+Lemma usys_fd_ok_pipe_neg1 (tf : list (mword 64)) (r : mword 64)
+    (sts sts' : list fdstate) :
+  usys_fd_ok USYS_pipe tf r sts sts' ->
+  uint r <> 0 ->
+  r = (mword_of_int (-1) : mword 64) /\ sts' = sts.
+Proof.
+  unfold usys_fd_ok. intros H Hnz.
+  destruct (decide (USYS_pipe = USYS_close)) as [Hc | _]; [ discriminate Hc | ].
+  destruct (decide (USYS_pipe = USYS_dup)) as [Hc | _]; [ discriminate Hc | ].
+  destruct (decide (USYS_pipe = USYS_open)) as [Hc | _]; [ discriminate Hc | ].
+  destruct (decide (USYS_pipe = USYS_pipe)) as [_ | Hc];
+    [ | exfalso; exact (Hc eq_refl) ].
+  destruct (decide (uint r = 0)) as [Hc | _]; [ exfalso; exact (Hnz Hc) | ].
+  exact H.
 Qed.
 
 (* [usys_fd_ok_parked_ne_open] IS GONE, and its disappearance is the point:

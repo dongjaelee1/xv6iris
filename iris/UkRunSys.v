@@ -484,7 +484,7 @@ Section UkRunSys.
       by iModIntro. }
     destruct (decide (n = USYS_pipe)) as [_ | _].
     { destruct (decide (uint r = 0)) as [_ | _];
-        [| subst fdv'; iModIntro; iFrame "Hufd"; by iExists l ].
+        [| destruct Hrow as [_ ->]; iModIntro; iFrame "Hufd"; by iExists l ].
       destruct Hrow as (a & b & γp & Hne & Hca & Hcb & ->).
       (* THE TWO ALLOCATIONS RUN IN THE ROW'S OWN ORDER: read end first,
          write end against the table the first left.  That is the order
@@ -2977,7 +2977,17 @@ Section UkRunSys.
              (FdOpen false true (FdPipe γp)) ∗
            ustd (ukn_fd N) (ustd_after (ustd_after l (FdOpen true false (FdPipe γp)))
                        (FdOpen false true (FdPipe γp))))
-        ∨ (⌜ uint r <> 0 ⌝ ∗ ustd (ukn_fd N) l)) -∗
+        (* ...OR IT FAILED, AT -1 (lane PIPE-NEG1; lane SH-PIPE's R-1).
+           This arm used to read [uint r <> 0], which is what the pipe row
+           said and not what a caller can act on: sh's next instruction
+           after [pipe(p)] is [bltz a0], and `nonzero' does not decide a
+           sign -- so the not-taken-and-nonzero path ran the pipeline on
+           two garbage descriptors and no walk could enter it.  The row now
+           pins the value, exactly as the open and dup rows (and their
+           leaves' failure arms) do, and this is that conjunct read at the
+           guard ([UsysMemOk.usys_fd_ok_pipe_neg1]).  [uint r <> 0] is a
+           consequence and is not restated. *)
+        ∨ (⌜ r = (mword_of_int (-1) : mword 64) ⌝ ∗ ustd (ukn_fd N) l)) -∗
        (* WHAT THE CALLER KEPT OF THE KEY'S POST (design/app-pipe.md SS2).
           Row 4 carries the new pipe's EXACT byte-queue fragment at the
           birth state, and only the class's INSTANCE can read that row --
@@ -3123,7 +3133,10 @@ Section UkRunSys.
                              else nth_byte
                                     (trunc32 (mword_of_int (Z.of_nat b) : mword 64))
                                     (i - 4)%nat)) /\
-              (uint r <> 0 -> fdv' = fdv)).
+              (* ...AND THE FAILING CALL'S OWN VALUE, which the row now
+                 pins (lane PIPE-NEG1): the table did not move AND the
+                 return is -1. *)
+              (uint r <> 0 -> r = (mword_of_int (-1) : mword 64) /\ fdv' = fdv)).
     { destruct (decide (uint r = 0)) as [Hr0 | Hr0].
       - (* SUCCESS: the joined row pins the image on the nose -- all eight
            bytes, from the naming function -- so it, not the window row, is
@@ -3151,17 +3164,10 @@ Section UkRunSys.
           intros i Hi. case_decide as Hc; [ reflexivity | exfalso; lia ].
         + intros j Hj. case_decide as Hc; [ exfalso; lia | reflexivity ].
         + intros Hc; exfalso; exact (Hr0 Hc).
-        + intros _. unfold usys_fd_ok in Hfdok.
-          destruct (decide (USYS_pipe = USYS_close)) as [Hc | _];
-            [ discriminate Hc | ].
-          destruct (decide (USYS_pipe = USYS_dup)) as [Hc | _];
-            [ discriminate Hc | ].
-          destruct (decide (USYS_pipe = USYS_open)) as [Hc | _];
-            [ discriminate Hc | ].
-          destruct (decide (USYS_pipe = USYS_pipe)) as [_ | Hc];
-            [ | exfalso; exact (Hc eq_refl) ].
-          destruct (decide (uint r = 0)) as [Hc | _];
-            [ exfalso; exact (Hr0 Hc) | exact Hfdok ]. }
+        + (* the row's else-branch, read at the guard this branch is under
+             -- BOTH of its conjuncts now, the -1 and the unmoved table *)
+          intros _.
+          exact (usys_fd_ok_pipe_neg1 _ r fdv fdv' Hfdok Hr0). }
     destruct Hjoin as (dd & gg & Hdd8 & HMj & Hgf & Hsucc & Hfail).
     rewrite (umem_wr_write M dst dd gg
                ltac:(intros i Hi; apply Hlin; lia)) in HMj.
@@ -3235,8 +3241,9 @@ Section UkRunSys.
           | rewrite <- Hfdlen; rewrite <- (length_insert fdv a
               (FdOpen true false (FdPipe γp))); exact (fd_least_closed_lt _ _ Hcb)
           | exact Hbytes | exact Hca | exact Hcb | exact Hfdv' ].
-      - rewrite (Hfail Hr0). iModIntro. iFrame "Hufd".
-        iRight. iFrame "Hstd". iPureIntro. exact Hr0. }
+      - rewrite (proj2 (Hfail Hr0)). iModIntro. iFrame "Hufd".
+        (* the arm names the VALUE now, not merely its nonzeroness *)
+        iRight. iFrame "Hstd". iPureIntro. exact (proj1 (Hfail Hr0)). }
     (* ---- THE REGISTRAR RUNS HERE, at the one point where the post and
            the run's own reading are both in hand and the goal is the WP
            the call resumes into (durable-notes.md, "Iris": a [={E}=∗]
@@ -3249,7 +3256,8 @@ Section UkRunSys.
     iApply fupd_wp.
     iMod ("Hreg" $! fdep (uvis_of_run m pc M pm sz fdv cw gn cs pidv false) r
             (umem_write M (uint dst) dd gg) fdv' cw' cs
-            with "[%] Hnp Hsp") as "[#Hnpr HRp]"; [ exact Hfail | ].
+            with "[%] Hnp Hsp") as "[#Hnpr HRp]";
+      [ exact (fun Hc => proj2 (Hfail Hc)) | ].
     iModIntro.
     iAssert (urun_rows N fdv') as "#Hnpo";
       [ rewrite /urun_rows; iSplitR; [ iExact "Hnpr" | by iPureIntro ] | ].

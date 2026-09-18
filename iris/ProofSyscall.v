@@ -6949,7 +6949,14 @@ Section SyscallArms.
         { iIntros (Hz). exfalso. rewrite Hr in Hz. vm_compute in Hz. discriminate. }
         iFrame "Hpv Hb". iPureIntro.
         split_and!; [exact Htfpe | reflexivity | reflexivity | reflexivity | reflexivity | reflexivity | exact Huptz | reflexivity | reflexivity | |].
-        { rewrite decide_False; [reflexivity |].
+        (* ...AND THE ROW'S FAILURE ARM NAMES THAT -1 (lane PIPE-NEG1): the
+           post's own [Hr] is exactly the new conjunct, so the row is
+           discharged where it was already being refuted.  Every failure
+           exit of sys_pipe is a bare `return -1' ([kernel/sysfile.c]:
+           pipealloc failing, and each of the two fdalloc scans), which is
+           why [SpecSysPipe.sys_pipe_post] has ONE failure arm and it
+           carries the value. *)
+        { rewrite decide_False; [ exact (conj Hr eq_refl) |].
           rewrite Hr. vm_compute. discriminate. }
         (* a failed pipe returned -1, so the joined row's [uint r = 0]
            premise is refuted and it owes nothing *)

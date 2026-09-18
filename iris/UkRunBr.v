@@ -52,6 +52,27 @@ Require Import UserFd.   (* [ufd_auth] -- the PROGRAM's own view of
                             which rides inside [urun] *)
 Require Import UexecSG.   (* [uexecSG] / [uprogSG]: the ARM deposit class *)
 
+(* ===================================================================== *)
+(* WHY A FAILING SYSCALL'S ROW HAS TO NAME ITS VALUE, AT THE STATEMENT     *)
+(* (lane PIPE-NEG1; lane SH-PIPE's finding R-1).                           *)
+(*                                                                        *)
+(* sh's PIPE arm reads pipe(2)'s answer with [bltz a0] -- the SIGN, not    *)
+(* the nonzeroness -- and these two lines are why [UsysMemOk.usys_fd_ok]'s *)
+(* pipe row could not stop at [uint r <> 0]: [r = 1] is nonzero and does   *)
+(* NOT take the branch, so the old row admitted a state in which the       *)
+(* pipeline ran on two garbage descriptors, and no premise could exclude   *)
+(* it without being false (durable-notes.md, "Vacuity": a premise          *)
+(* [forall r, uint r <> 0 -> r = -1] is refuted by the second line).  With *)
+(* the row pinning -1 the first line decides the branch outright.          *)
+(* ===================================================================== *)
+Lemma uv_btaken_bltz_neg1 :
+  uv_btaken BLT (mword_of_int (-1) : mword 64) zero_reg = true.
+Proof. vm_compute. reflexivity. Qed.
+
+Lemma uv_btaken_bltz_one :
+  uv_btaken BLT (mword_of_int 1 : mword 64) zero_reg = false.
+Proof. vm_compute. reflexivity. Qed.
+
 Section UkRunBr.
   Context `{!riscvGS Σ}.
   Context `{!ufdG Σ}.

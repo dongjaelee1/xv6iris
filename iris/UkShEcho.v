@@ -1109,12 +1109,33 @@ Section UkShEcho.
      ADMISSIBLE line.  The guard costs the fork nothing: the line it
      lends the child came out of [gets], which delivers [line_ok]
      ([UkSh.ush_line_is]'s first conjunct). *)
-  Definition sh_exec_sup_echo_wq (Wc : list (bv 8) -> nat -> iProp Σ)
-      : iProp Σ :=
+  (* ...AND THE GUARD IS A PARAMETER (the PROGRAM STREAM).  [line_ok] is
+     ECHO's reading of "this input's line is one I supply for", and it is
+     the whole reading only because that era has ONE line shape.  The file
+     era has three, and its supply is about the [LEcho] ones alone -- at an
+     [LEchoF] input the child writes to the FILE and the console block is
+     the prompt, so the lend does not open into echo's stage at all.  So
+     the era says which inputs its supply is about, and echo's instance is
+     the landed one.  What the CONSUMER must then prove is [D I] at the
+     input it applies the law at, and [UkShFork.ushf_child_law_at]'s box
+     carries exactly the two facts that need ([line_ok ws] out of the line
+     and [FileDisc.fbody_ok] out of the slot). *)
+  Definition sh_exec_sup_echo_wq_at (D : list (bv 8) -> Prop)
+      (Wc : list (bv 8) -> nat -> iProp Σ) : iProp Σ :=
     (□ (∀ I : list (bv 8),
-          ⌜line_ok (last_ws I)⌝ -∗
+          ⌜D I⌝ -∗
           sh_exec_sup_echo (last_ws I) (fun _ : Z => UkShFork.ushf_wq Wc I)
             (Wc I 3%nat)))%I.
+
+  Definition sh_exec_sup_echo_wq (Wc : list (bv 8) -> nat -> iProp Σ)
+      : iProp Σ :=
+    sh_exec_sup_echo_wq_at (fun I => line_ok (last_ws I)) Wc.
+
+  Global Instance sh_exec_sup_echo_wq_at_persistent D Wc :
+    Persistent (sh_exec_sup_echo_wq_at D Wc).
+  Proof using .
+    rewrite /sh_exec_sup_echo_wq_at. apply bi.intuitionistically_persistent.
+  Qed.
 
   Global Instance sh_exec_sup_echo_wq_persistent Wc :
     Persistent (sh_exec_sup_echo_wq Wc).
@@ -1164,15 +1185,32 @@ Section UkShEcho.
     iIntros "!>" (I). rewrite <- (Hdg I), <- (Hnn I). iApply ("Hx" $! I).
   Qed.
 
-  Lemma ushf_child_law_holds (Wc : list (bv 8) -> nat -> iProp Σ) :
-    ush_execfail_law_wq Wc -∗
-    sh_exec_sup_echo_wq Wc -∗ UkShFork.ushf_child_law Wc.
+  (* ...AT THE ERA'S OWN GUARD AND ITS OWN DIAGNOSTIC (the PROGRAM
+     STREAM).  Both parameters are answered by ONE fact about the input --
+     [D I] -- and the two facts that prove it are in the law's own box: the
+     line the fork lends is [line_ok] ([ush_line_is]'s first conjunct) and
+     the slot the loop left says the input's last body PARSES
+     ([UkSh.ush_posw]'s third conjunct).  At the file era that is
+     [FileDisc.fbody_ok_echo], i.e. "the era filed an [LEcho] line here",
+     from which both the stage and [FileLinksLine.fexfb]'s value follow. *)
+  Lemma ushf_child_law_holds_at (D : list (bv 8) -> Prop)
+      (dg : list (bv 8) -> list (bv 8)) (nn : list (bv 8) -> nat)
+      (Wc : list (bv 8) -> nat -> iProp Σ) :
+    (forall (I : list (bv 8)) (ws : list (list (bv 8))),
+       line_ok ws -> ws = last_ws I ->
+       FileDisc.fbody_ok (UkSh.ush_lastbody I) -> D I) ->
+    (forall I : list (bv 8),
+       D I -> dg I = alt_execfail /\ nn I = 17%nat) ->
+    ush_execfail_law_wq_at dg nn Wc -∗
+    sh_exec_sup_echo_wq_at D Wc -∗ UkShFork.ushf_child_law Wc.
   Proof.
-    iIntros "#Hxl #Hsup".
+    intros HD Hdg. iIntros "#Hxl #Hsup".
     rewrite /UkShFork.ushf_child_law /UkShFork.ushf_child_law_at.
     iIntros "!>" (N' h m dw dv s0 len ws g sz ld n I)
-      "%Hpeq %Hs1 %Hline %Hlws %Hs0 %Hs64 %Hs38 %Hszlo %Hszal %Hszok %Hrows
+      "%Hpeq %Hs1 %Hline %Hlws %Hfbk %Hs0 %Hs64 %Hs38 %Hszlo %Hszal %Hszok %Hrows
        #Hcode #Hpcode #Hpro #Hjt Hline Hws Hsy Hstd Hcwd Hch HM Hcr Hrun".
+    pose proof (HD I ws (proj1 Hline) Hlws Hfbk) as HDI.
+    destruct (Hdg I HDI) as [Hdg1 Hdg2].
     subst ws.
     pose proof (ukn_const_of_eq N' _ Hpeq (fun x y => eq_refl)) as Hc.
     iApply (wp_kshm_child_echo_holds (last_ws I)
@@ -1182,13 +1220,30 @@ Section UkShEcho.
               (proj1 (proj2 Hrows)) (proj2 (proj2 Hrows))
               with "Hcode [] [] [] [] Hpcode Hpro Hjt Hline Hws Hsy Hstd Hcwd Hch
                     HM Hcr Hrun").
-    - iApply ("Hsup" $! I). iPureIntro. exact (proj1 Hline).
+    - iApply ("Hsup" $! I). iPureIntro. exact HDI.
     - (* a child that died at the null store exits on the block it was
          lent *)
       iIntros "!> Hc". rewrite /UkShFork.ushf_wq. iLeft. iExact "Hc".
-    - iApply ("Hxl" $! I).
+    - (* THE DIAGNOSTIC, AT THE ERA'S CARRIER READ AT THIS INPUT *)
+      rewrite /UkShDiag.ush_execfail_law.
+      rewrite <- Hdg1. rewrite <- Hdg2.
+      iApply ("Hxl" $! I).
     - (* a failed exec's child exits on the block written up to its prompt *)
       iIntros "!> Hc". rewrite /UkShFork.ushf_wq. iRight. iExact "Hc".
+  Qed.
+
+  (* the landed name: the echo era's guard is [line_ok] and its diagnostic
+     is the constant one *)
+  Lemma ushf_child_law_holds (Wc : list (bv 8) -> nat -> iProp Σ) :
+    ush_execfail_law_wq Wc -∗
+    sh_exec_sup_echo_wq Wc -∗ UkShFork.ushf_child_law Wc.
+  Proof.
+    iIntros "#Hxl #Hsup".
+    iApply (ushf_child_law_holds_at (fun I => line_ok (last_ws I))
+              (fun _ => alt_execfail) (fun _ => 17%nat) Wc
+              ltac:(intros I ws Hok Heq _; subst ws; exact Hok)
+              ltac:(intros I _; split; reflexivity)
+              with "Hxl Hsup").
   Qed.
 
   (* =================================================================== *)

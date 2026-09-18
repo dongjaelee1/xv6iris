@@ -629,7 +629,12 @@ per-file TIMED `real`, never from per-file time sums.
   `Link*` import. No whole-image `vm_compute` belongs in a tail file.
 - **Where ΣCPU goes tree-wide:** `Require`/`From` ~17 %, `iApply` ~16 %, `Qed`
   ~15 %, `iIntros` ~8 %, `iDestruct` ~4 %. The import line is a floor.
-- **Negative results — do not redo these.** `_CoqProject` order does not matter.
+- **Negative results — do not redo these.** `WpGprCsrwA`'s `goodb` chain is
+  CLOSED: its header already records the `erewrite`→`apply` pass, and closing
+  the remaining `goodb` side conditions by `vm_cast_no_check` instead of
+  `vm_compute; reflexivity` moves the sentence 8.8 s → 7.4 s and its `Qed`
+  11.4 s → 10.2 s, i.e. what is left is the `eapply` chain and its proof term,
+  not the VM. `_CoqProject` order does not matter.
   Oversubscribing `-j` costs exactly what it buys. `Proof using` is a fraction of
   a percent OF THE `.vo` BUILD — but that was the wrong metric to judge it by: it
   is what lets `-vos` skip a proof at all, which is the whole edit-check loop

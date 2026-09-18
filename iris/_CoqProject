@@ -1570,6 +1570,7 @@ UkShPipeParse.v
 UkShPipeSeam.v
 UkShPipeEx.v
 UkShPipeRight.v
+UkShPipePr.v
 UInitCons.v
 UConsOpen.v
 UInitConsK.v

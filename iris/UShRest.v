@@ -38,6 +38,8 @@ Require Import SpecKexec.   (* [kexec_sz] *)
 Require Import UShKernel.         (* [sh_kexec_sz] *)
 Require Import UserPtTree.        (* [pgroundup] *)
 Require Import UexecExecInst.
+Require Import LineWords.  (* [last_ws] *)
+Require Import EchoDisc.  (* [line_ok] -- the era's line guard *)
 Require Import UkSh.
 Require Import UkShLoop.          (* [ush_line_lexable] / [ushl_R] *)
 Require Import UkShFork. (* [ushf_rest_of_body] *)
@@ -201,6 +203,10 @@ Section UShRestGen.
     (forall I0 : list (bv 8), Timeless (Hold I0)) ->
     (forall I0 : list (bv 8), ⊢ lk_T L -∗ Hold I0) ->
     (⊢ app_taint -∗ lk_T L) ->
+    (* the era's own reading of its admissible lines ([StageRec.ck_lineok]:
+       which inputs the cursor's block is the LINE's alternative at) *)
+    (forall I0 : list (bv 8),
+       line_ok (last_ws I0) -> ck_lineok (sk_cur St) I0) ->
     ⊢ lk_links L -∗
       udep (PS := uprogSG_free) -∗
       UShEcho.sh_echo_slot (lk_T L) -∗
@@ -220,7 +226,7 @@ Section UShRestGen.
         (UShLine.ush_mid_at (lk_rres L) γ γp)
         (UInitSh.sh_Rsh (ukn_t N) (ukn_d N) (ukn_s N)).
   Proof using St.
-    intros HTl Hht Hkt.
+    intros HTl Hht Hkt Hlok.
     assert (Hwbl : forall I : list (bv 8),
               ⊢ (lk_lcred L (S gen_id) I 3%nat ∗ Hold I) -∗
                 (lk_lcred L (S gen_id) I 0%nat ∗ Hold I)).
@@ -228,7 +234,7 @@ Section UShRestGen.
       iApply (lk_lcred_blk_line L (S gen_id) I with "Hc"). }
     iIntros "#Hlk #Hdep #Hslot #Hxlw #Hpin".
     iDestruct "Hpin" as (v) "#Hp".
-    iPoseProof (UShEchoPay.ushf_child_law_hold_at St Hold HTl Hht Hkt
+    iPoseProof (UShEchoPay.ushf_child_law_hold_at St Hold HTl Hht Hkt Hlok
                   with "Hlk Hdep Hslot Hxlw") as "#Hchl".
     iAssert (UkShFork.ushf_kill_law
                (fun I p => lk_lcred L (S gen_id) I p ∗ Hold I)%I) as "#Hkl".

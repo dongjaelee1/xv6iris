@@ -1598,20 +1598,26 @@ Section WriteFire.
       (Q : nat -> iProp Σ) (k cnt : nat) :
     (forall j : nat, (j < Z.to_nat n)%nat ->
        uva_rmapped P (uint (add_vec_int ua (Z.of_nat j)))) ->
+    (* ...AT THE NODES THIS CHAIN ACTUALLY HAS.  Quantifying [kk] freely
+       would make the premise FALSE past the last node ([wchunk_at] is
+       non-positive there and [wi_blocks off 0] is 0 at a block boundary),
+       and a false premise is a vacuous lemma. *)
     (forall (I : gmap Z fs_node) (off : nat) (bs bs0 : list (bv 8))
             (nl kk : nat),
+       (k <= kk < k + cnt)%nat ->
        wri_pre (abs_view I) i off bs bs0 nl ->
        wi_blocks off (Z.to_nat (wchunk_at n kk)) = 1%nat) ->
     awrite_fchain_adv Γ E i γo M ua n Q k cnt -∗
     awrite_chain_adv Γ E i γo M ua P n Q k cnt.
   Proof using .
-    intros Hmap Hsb. revert k. induction cnt as [| cnt IH]; intros k.
+    intros Hmap. revert k. induction cnt as [| cnt IH]; intros k Hsb.
     { rewrite awrite_chain_adv_0 /=. iIntros "$". }
     rewrite awrite_chain_adv_S /=. iIntros "Hf". iSplit.
     - iDestruct "Hf" as "[$ _]".
     - iSplit; last first.
       + iApply (awrite_part_adv_mapped_single Γ E i γo M ua P n k _ Hmap).
-        intros I off bs bs0 nl Hpre. exact (Hsb I off bs bs0 nl k Hpre).
+        intros I off bs bs0 nl Hpre.
+        exact (Hsb I off bs bs0 nl k ltac:(lia) Hpre).
       + iDestruct "Hf" as "[_ Hfull]".
         rewrite {1}/awrite_full_adv /awrite_full_adv.
         iIntros (I off bs bs0 nl) "%Hpre %Hby %Hlen Ha Hg".
@@ -1619,7 +1625,10 @@ Section WriteFire.
           as "(Ha & Hstep & Hph2)".
         iModIntro. iFrame "Ha Hstep". iIntros (I') "%Hav Ha'".
         iMod ("Hph2" $! I' with "[//] Ha'") as "(Ha' & Hg & Hrest)".
-        iModIntro. iFrame "Ha' Hg". iApply (IH with "Hrest").
+        iModIntro. iFrame "Ha' Hg".
+        iApply (IH (S k) ltac:(intros I2 off2 bs2 bs2' nl2 kk2 Hk2 Hp2;
+                               exact (Hsb I2 off2 bs2 bs2' nl2 kk2
+                                        ltac:(lia) Hp2)) with "Hrest").
   Qed.
 
 End WriteFire.

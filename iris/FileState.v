@@ -143,6 +143,66 @@ Proof. by rewrite /subseq /sel_all fmap_lookup_total_seq. Qed.
 
 (* every chunk landed IS the echo application's good alternative: the line
    minus its command name *)
+(* ====================================================================== *)
+(*  2b.  WHICH CHUNK IS WHICH (lane KERNEL-STREAM, item 4)                 *)
+(*                                                                        *)
+(*  echo's payment recursion walks ARGUMENTS; the deed's cursor walks      *)
+(*  CHUNKS.  These four lemmas are the dictionary: argument [q] of the     *)
+(*  tail is chunk [2q], the separator or newline after it is chunk         *)
+(*  [2q + 1], and there are exactly [2 * |args|] of them.                  *)
+(* ====================================================================== *)
+
+Lemma echo_args_chunks_length (args : list (list (bv 8))) :
+  args <> [] -> length (echo_args_chunks args) = (2 * length args)%nat.
+Proof.
+  induction args as [| a args IH]; [ done | ]. intros _.
+  destruct args as [| a' args']; [ reflexivity | ].
+  cbn [echo_args_chunks length]. cbn [length] in IH.
+  rewrite (IH ltac:(discriminate)). cbn [length]. lia.
+Qed.
+
+Lemma echo_args_chunks_word (args : list (list (bv 8))) (q : nat) :
+  (q < length args)%nat ->
+  echo_args_chunks args !! (2 * q)%nat = args !! q.
+Proof.
+  revert q. induction args as [| a args IH]; intros q Hq;
+    [ cbn in Hq; lia | ].
+  destruct q as [| q'].
+  - destruct args as [| a' args']; reflexivity.
+  - destruct args as [| a' args']; [ cbn in Hq; lia | ].
+    replace (2 * S q')%nat with (S (S (2 * q'))) by lia.
+    cbn [echo_args_chunks lookup list_lookup].
+    cbn [length] in Hq. apply IH. cbn [length]. lia.
+Qed.
+
+Lemma echo_args_chunks_sep (args : list (list (bv 8))) (q : nat) :
+  (S q < length args)%nat ->
+  echo_args_chunks args !! (2 * q + 1)%nat = Some [wl_sp].
+Proof.
+  revert q. induction args as [| a args IH]; intros q Hq;
+    [ cbn in Hq; lia | ].
+  destruct q as [| q'].
+  - destruct args as [| a' args']; [ cbn in Hq; lia | reflexivity ].
+  - destruct args as [| a' args']; [ cbn in Hq; lia | ].
+    replace (2 * S q' + 1)%nat with (S (S (2 * q' + 1))) by lia.
+    cbn [echo_args_chunks lookup list_lookup].
+    cbn [length] in Hq. apply IH. cbn [length]. lia.
+Qed.
+
+Lemma echo_args_chunks_nl (args : list (list (bv 8))) (q : nat) :
+  S q = length args ->
+  echo_args_chunks args !! (2 * q + 1)%nat = Some [wl_nl].
+Proof.
+  revert q. induction args as [| a args IH]; intros q Hq;
+    [ cbn in Hq; lia | ].
+  destruct q as [| q'].
+  - destruct args as [| a' args']; [ reflexivity | cbn in Hq; lia ].
+  - destruct args as [| a' args']; [ cbn in Hq; lia | ].
+    replace (2 * S q' + 1)%nat with (S (S (2 * q' + 1))) by lia.
+    cbn [echo_args_chunks lookup list_lookup].
+    cbn [length] in Hq. apply IH. cbn [length]. lia.
+Qed.
+
 Lemma echo_args_chunks_concat (args : list (list (bv 8))) :
   args <> [] -> concat (echo_args_chunks args) = wl_line args.
 Proof.

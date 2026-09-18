@@ -1190,3 +1190,61 @@ is `⌜s = None⌝ ∗ ∃ i, fown r (Some (i, []))` in `file_esc_pay` /
   `⌜echof_lines_in I = []⌝ ∨ ∃ ls, fl_lb c ls ∗ ⌜echof_lines_in I ⊆ ls⌝`;
   `PRE I` gains the same (as `∨ T`), copied in by `Hwc_f` from the `Pm` it is
   handed.
+
+### 2a LANDED (`.vok`-checked; commits `FileLineWit` … `UShRound -- PRE holds the line's witness`)
+
+* `iris/FileLineWit.v` (pure): `hist_chain_prefix`, `consumed_ins_last`
+  (`ins (open_seg h) = snd <$> E` for the LAST consumed entry `(h, b)`),
+  `echof_lines_of_consumed`.
+* `FileLinks.fread_ret` / `FileOut.fecl_step_read` export
+  `∀ x ∈ dl ++ ws, obs_boots x.1 = k`.
+* `ReadRec.rk_arms` takes `cn`, `[∗ list] hh ∈ hs, riscv_rx_tag hh`,
+  `ucons_swallow cn False sl dd dc`, `ucons_stored_lb cn sl'` (echo's instance
+  ignores them; `UShLine.ush_read_recv_era_at` passes `Htags Hsw Hlb2`).
+* `FileLinksLine.flw g I`, `fwc_rresw` / `FileLinksAt.fwc_rresw_at` (= the old
+  residue `∗ flw`; the old names and their consumers are untouched) are the
+  records' `lk_rres`; `FileReadInst.fri_last_tag` finds the last consumed
+  entry's tag in the window or the swallow row; `fri_arms` builds `flw` with
+  `FileLineWit`.  **`FileReadInst.file_read_inst g Htag` now takes the tag
+  equation** (`riscv_rx_tag = FileOut.ftag g`).
+  ITEM 4 MUST FOLLOW: `UInitFileCC.v` (program-tier worktree, uncommitted)
+  wraps `rk_arms` at the indexed record -- its `fri_arms_u`/`fri_arms_at`
+  need the three new premises, `fwc_rresw_at` and `fwc_rresw_at_pack` /
+  `fwc_rresw_unpack`, and the era's first residue takes `flw`'s LEFT arm
+  (`echof_lines_in [] = []`).
+* `UShRound`: `line_wit I := flw g I ∨ T`; `sh_pre_at sb I := sh_deed_at
+  pre_tie sb I ∗ line_wit I`; `mid_flw` reads it off `Pm`; `Hwc_f` copies it
+  in; `sh_pre_taint`, `sh_pre_at_timeless`.
+
+### 2d IS BLOCKED ON K1: `UEchoFile.efile_image_entry`'s `Hstr` IS UNPROVABLE AS STATED
+
+```coq
+(forall (I : gmap Z fs_node) (off : nat) (bs bs0 : list (bv 8)) (nl : nat),
+   wri_pre (abs_view I) i off bs bs0 nl ->
+   (off `mod` BSIZE + EchoDisc.line_max < BSIZE)%nat)
+```
+
+is a PURE fact quantified over EVERY abstract view: a view whose inode `i`
+is a long file and an `off` with `off mod 1024 ≥ 924` satisfies `wri_pre` and
+refutes the conclusion.  The comment says "this is the deed's to supply", and
+the deed cannot supply a pure ∀ -- it knows `off` only AT THE FIRE (the
+offset half agrees it to the content's length, and the content is a line's
+worth, `FileDeltas.f_bytes_typed_short`).  It is durable-notes' "premise too
+strong to prove".  It is spent in ONE place: `UEchoFile.ef_relay4` hands it
+to `FsAbsWriteFire.awrite_part_at_mapped_single` to make the PARTIAL arm
+vacuous (`wi_blocks off n = 1` + a mapped source).  THE FIX IS THE KERNEL
+STREAM's: `awrite_part_at_mapped_single` must take the single-block fact from
+a CLOSURE that is handed the fire's own rows (the view's half and
+`off_link γo off`, as `ef_full_adv` already is), where the deed and
+`uoff γo` agree `off` and bound it; `Hstr`/`Hsb`/`Hsbw` then leave
+`ef_relay4`, `ef_w_of_deed` (both), `ef_pay_from` and the entry.  Until then
+K1's entry is inhabited only vacuously and `Hchild_redir` must not apply it.
+
+What 2d still owes BESIDE that, in the round (none of it started):
+the exits' fold (`lk_blk FI _ v I a (len-2)` beside the deed at
+`fsm … a` ⇒ `Wcl I 0 ∗ DONE I`), the open-failed law at the file families
+(`RFOpenU`/`RFOpenM` by `redir_Kf`'s arm), the PEND exit from K1's
+`ef_exit`, `cons_made`'s route (mintable from the claim:
+`AppFileCons.file_cons_shoot`), the taint's generic run
+(`UkRun.urun_gen` at `sh_echo_slot`'s third conjunct), and the statement at
+`UkShRedirBody.sh_redir_child_law Wcf` (UShRound's local twin is stale).

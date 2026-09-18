@@ -9829,3 +9829,172 @@ read reports `off = p` and hands `uoff γo (p + count)` back.
   linear resource fewer in echo's chain.
 - cat's read obligation is unchanged in shape and gains the two conjuncts
   above on the fired arm.
+
+### CAT-GEOM-3 (2026-09-17) — THE EXIT CURSOR IS PINNED, READ(5) GETS ITS FREE LAW, AND CAT'S PAYLOAD IS `catq_filed` AT CAT'S OWN END
+
+Branch `app-file/cat-entry`, merged with `main` at `d68506285`
+(CAT-GEOM-2, OFF-LINK-3's merge, LINK-GEN-4; clean).
+
+**(1) THE EXIT CURSOR.**  `UCatKernel.cat_round_at`'s `Cend` wand took
+the console cursor `p` and the handle's position `p'` as two unrelated
+numbers below `length bs`, so a payload owed AT `length bs` — which is
+what `UCatOut.catq_filed` is, restated at `cat_out_len` in CAT-GEOM-2 —
+was not instantiable.  It is pinned now, **by the loop's own exit
+condition and nothing else**: cat stops when `read` returns ZERO, the
+count is `SysReadDefs.ard_count 512 p (length bs)`, and `ard_count` is
+`Nat.min 512 (length bs - p)`, which is zero exactly at `p = length bs`.
+The wand gained one row,
+
+    (⌜p = length bs /\ p' = length bs⌝ ∨ file_taint c) -∗
+
+— the disjunct is the TAINT, where the model says nothing and the
+cursor's own right arm funds the payload anyway.  `cat_signed_small` is
+what turns the walk's `⌜bv_signed ret = 0⌝` into `bv_unsigned ret = 0`
+(lane OFF-LINK's count bound caps it at 512, so the two readings agree).
+
+**(2) READ(5)'s FREE LAW, AND A CORRECTION TO CAT-GEOM-2.**
+`UexecExecMint.udepw_of_sup_read` / `udepw_law_of_sup_read`, the twin of
+`_write`:
+
+    Lemma udepw_law_of_sup_read `{PSx : uprogSG Σ} :
+      app_sup -∗ app_taint -∗ udepw_law (PS := PSx) 5.
+
+**CAT-GEOM-2's "read(5) is excluded by construction" WAS WRONG, and the
+way it was wrong is worth recording.**  What that lane read was the
+`destruct (decide ((15 : Z) = 5)) as [He | _]; [exfalso; discriminate He | ]`
+chain inside `udepw_of_sup` — and those are not an exclusion at all, they
+are the UNREACHABLE branches of a lemma stated at `n = 15 \/ n = 17`,
+which must walk past 5 to reach its own row.  Row 5 has ALWAYS been
+payable out of `app_sup ∗ app_taint`: `xv6_sbundle_of_supply_ne` pays it
+with `FsAbsInvFire.fsabs_fileread_in` (`iModIntro`, no update), and
+`fsabs_fileread_in` is stated at ANY `P` — the inode arm is
+`fsabs_aread`, the pipe arm the taint, the console arm the DIRTY
+credential a tokenless reader pays.  It simply had no consumer.  **Read a
+`decide` chain as the lemma's own path to its row, not as a statement
+about the rows it walks past.**
+
+**IS THE TWIN HONEST?  YES.**  The free read WRITES THE CALLER'S BUFFER,
+and that is precisely what the generic tier does for every tainted
+process: `fsabs_fileread_in` hands the caller's own `P` back at the ONE
+position the read landed on (`∀ cur dc, |==> P ∗ True`, and a `∀` over a
+constant is that constant), so nothing is duplicated and no claim is
+made about the bytes.  A tainted era has already lost the discipline;
+what the law adds is the ability to keep WALKING, not the ability to
+say anything.
+
+**WHAT THE TWIN DOES NOT CLOSE, and why `cat_taint_open` stays.**  With
+row 5 in hand a tainted cat can fund its read, its write (row 16) and
+its close (`UkCat.kcat_cldep_nopipe`, free since SUP-ONE) — but NOT its
+ROUND, because `UkCatCat.kcat_round_of_law` and
+`UkCat.kcat_pay_seq_of_law` take the exit payload as a COQ ENTAILMENT
+`(⊢ ukn_pay N (-1))`, which is satisfiable only at the TRIVIAL payload.
+At `catq_cat` the payload is a `cch`, whose taint disjunct is
+`file_taint (fgn_cl g)` — PERSISTENT, but a hypothesis, not `⊢`-derivable.
+**So the remaining obstacle is not a missing law but two `⊢`-premises
+that want to be `□`-premises**: `kcat_pay_seq_of_law` and
+`kcat_round_of_law` generalised from `(⊢ Cend)` to `□ Cend`.  Those are
+`UkCat.v` / `UkCatCat.v`, which this lane does not own; with them,
+`cat_taint_open` is discharged outright from `file_taint c` (which gives
+`app_sup` by `AppFile.file_sup_of_taint`) plus `app_taint`.  **The
+generic-slot route is NOT available here**: the taint arrives MID-WALK,
+after the open, where the process already holds a `UkRun.urun` and there
+is no `uslot` to hand back.
+
+**(3) THE TWO HYPOTHESES OFF-LINK-4 MUST DISCHARGE, VERBATIM.**
+
+    Definition cat_hold_at (N' : uk_names Σ) (r : file_names) (q : Qp)
+        (i : Z) (bs : list (bv 8)) (om : offmode)
+        (fd : nat) (gamo : gname) (p : nat) : iProp Σ :=
+      (UserFd.ufd (ukn_fd N') fd (FdOpen true false (FdInode i gamo om))
+       ∗ UserOff.uoff gamo p ∗ fdq r q (Some (i, bs)))%I.
+
+**(a) THE HELD READ** — `UCatKernel.cat_held_read N' (cat_hold_at N' r q1
+i bs om fd gamo) c fd bs`, i.e. `cat_held_read` at that `Hold`: at a
+cursor `p ≤ length bs` the descriptor HELD AT `p` reads the deed at `p`
+(the count is `ard_count 512 p (length bs)`, byte `j` is
+`bs !!! (p + j)`, and it is AT MOST 512 on both arms — OFF-LINK's bound,
+which this lane threaded through `UkCatDeed.kcat_r_of_deed`) and comes
+back HELD AT `p + count`; or the era is tainted and the handle comes back
+at some position.  **`om` IS A PARAMETER** — never `OffParked`, never
+`OffHeld` literally.
+
+**(b) THE HAND-MODE OPEN** — `UCatKernel.cat_open_hand`, now
+KEY-INDEPENDENT so that OFF-LINK-4's `wp_uk_ecall_open_read_deed_hand`
+matches it directly (it takes the path row and the cwd row the way
+`UkCatDeed.kcat_o_of_deed` does, and nothing about the calling key):
+
+    Definition cat_open_hand (N' : uk_names Σ) (c : file_fixed)
+        (r : file_names) (q1 q2 : Qp) (i : Z) (bs : list (bv 8))
+        (l : list fdstate) (cwv : Z) (om : offmode) : iProp Σ :=
+      (∀ (Img : gmap Z (bv 8)) (pv : mword 64),
+         ⌜forall M : gmap Z (bv 8), uimg_sub Img M ->
+            arg_path_of M pv FsImgCheck.fname_f⌝ -∗
+         ⌜um_start_of cwv FsImgCheck.fname_f = FsImg.ROOTINO⌝ -∗
+         ([∗ map] a ↦ b ∈ Img, ubyteq (ukn_d N') DfracDiscarded a b) -∗
+         UkCat.kcat_o N' pv
+           (UserFd.ustd (ukn_fd N') l
+            ∗ fdq r q1 (Some (i, bs)) ∗ fdq r q2 (Some (i, bs)))
+           (fun ret : mword 64 =>
+              ((⌜ret = (mword_of_int (-1) : mword 64)⌝
+                ∗ UserFd.ustd (ukn_fd N') l)
+               ∨ (∃ (fd : nat) (gamo : gname),
+                    ⌜ret = (mword_of_int (Z.of_nat fd) : mword 64)
+                     /\ (fd < NOFILE)%nat⌝
+                    ∗ UserFd.ustd (ukn_fd N') l
+                    ∗ cat_hold_at N' r q1 i bs om fd gamo 0%nat
+                    ∗ fdq r q2 (Some (i, bs)))
+               ∨ (UkFileOpen.uk_open_taint_fd (ukn_fd N') l ret
+                  ∗ file_taint c))%I))%I.
+
+It is `UkCatDeed.kcat_o_of_deed`'s post VERBATIM with one change: the fd
+arm hands `cat_hold_at … 0` — the held row AND the program's own half of
+the offset AT ZERO (`UserOff.off_pub_hand_0`) — where the landed
+corollary hands `ualloc … (FdInode i γo OffParked)` and no `uoff`.
+
+**WHAT SH-ROUND APPLIES FOR THE cat CHILD.**  The payload is a
+DISJUNCTION, and that is the model's own shape and not a hedge:
+
+    Definition catq_cat (v : era_pins) (vf : file_era)
+        (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (P : nat)
+      : Z -> iProp Σ :=
+      fun _ =>
+        (UCatOut.catq_filed g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P (-1)
+         ∨ UCatOut.catq_filed g v vf ps0 cs0 s0 I0 (ralt_enc RCNoOpen) P (-1))%I.
+
+An ABSENT deed and a CONTENT round file `RCRan`; a PRESENT file whose
+open returned `-1` files `RCNoOpen`; **WHICH ONE is decided by the open's
+own return, which the entry cannot know** — so what crosses the exit is
+"one of the two", and `catq_cat_const` is still `reflexivity`.  Both
+disjuncts are `catq_filed` at CAT'S OWN END CURSOR: `cat_out_len` is
+`length bs` at `RCRan` with a present deed
+(`cat_out_len_ran_some`), NINETEEN at `RCRan` with an absent one
+(`cat_out_len_ran_none`) and NINETEEN at `RCNoOpen` always
+(`cat_out_len_noopen`, new).
+
+`UCatKernel.cat_pay_filed_some` and `cat_pay_filed_none` are cat's
+payment at that payload, with all three payload wands DISCHARGED; feeding
+either to `cat_image_entry` — whose payment premise now also receives
+`⌜uvis_fd W' = sts⌝` and `⌜uvis_cwd W' = cw⌝`, which is what lets a payer
+state its fd rows and its `fd_lowest_closed` about `sts` — is the
+`image_entry` `UShRound.Hchild_cat` applies.
+
+**ONE STRUCTURAL RESIDUE, NAMED.**  `image_entry` is `□`-quantified over
+the key, so a payment premise of the form `□ (∀ W', … cat_pay_at W' Q
+Pay)` cannot HOLD linear resources: the two rows above and the deed
+fractions must travel in `Pay`, as echo's credential does.  Making
+`cat_open_hand` key-independent (this lane) was the first half of that;
+the second is for sh's lend (`UShRound.cat_pay`) to carry the two rows.
+Until it does, `cat_pay_filed_*` is applied at a fixed key and the
+composition into `image_entry` is one `iApply` away.
+
+**THE BAR.**  Whole tree green (`--proofs -k`: `EXIT=0`, ZERO `Error`).
+No `Admitted` outside `UShRound.v`'s skeleton; `Proof using` everywhere;
+`tools/comment_quote_check.py iris` 0 sites.  `make audit-all-only` /
+`audit-tree-only` / `audit-file-only`: `AUDIT_EXIT=0` /
+`AUDITTREE_EXIT=0` / `AUDITFILE_EXIT=0`, the four axiom lists UNCHANGED
+(SYSTEM 13, ECHO 14, TREE 13, FILE 14).  `make gen-ucode` *unchanged* for
+all seven catalogs.  `Print Assumptions`: `cat_image_entry` and
+`cat_pay_filed_none` are `UShEcho.echo_image_entry`'s FOURTEEN exactly;
+`cat_pay_filed_some` is the three non-primitive ones; and
+`UexecExecMint.udepw_law_of_sup_read` is TWO (`resv_matches`,
+`resv_is_valid`) and nothing else.

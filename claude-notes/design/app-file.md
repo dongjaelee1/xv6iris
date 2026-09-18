@@ -569,6 +569,14 @@ unowned critical item (WRITE-RELAY-3's `TB` guard).  RULES, replacing
   returning the half unfired; `fileread_in`'s held arm is
   `filewrite_in_held`'s twin.  The deed opens take the row's mode as a
   PARAMETER (no second walk; every landed caller passes `OffParked`).
+  Landed at 72606e656 (`cat_held_read` discharged) with two rulings the
+  write side did not need: (i) THE RECEIPT IS ONE DISJUNCTION — fired
+  (offset reported, half advanced) or disconnected, which is the same
+  event as the claim coming back tainted, the half unmoved (`pipe_wpost`
+  exactly; a node that advanced under a tainted claim came back at a
+  position bounded by nothing); (ii) the piece takes the application's
+  taint equation (`app_taint` ↔ `file_taint c`) as two persistent
+  premises — the kernel invents neither.
 - RULING H' (2026-09-18, INIT-FILE findings 3.1/3.2): the round's hold is
   tied to the era's boot state BY A SHARED INDEX, not by `f0_lb` (which
   only exists after the era's first console byte, so `Wbf []` was

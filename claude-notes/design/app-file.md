@@ -429,6 +429,26 @@ Lanes: WRITE-RELAY (relays 3 and 4, `SysWriteDefs`/`SpecWritei`/
 `ProofWritei`/`FsAbsWriteFire`/`FileWrite`), then OFF-LINK (the rest of
 this block, on the off-hand worktree after OFF-HAND-7 stopped).
 
+AS LANDED (OFF-LINK-1..5, 2026-09-17): the half is the program's; `FdPark`
+is gone; the box is `off_resident γo k := ∃ v, cell ∗ ⌜wf⌝ ∗ off_link γo
+v` with `off_link γo z := off_gv γo (1/2) z ∨ app_taint`; the nodes are
+LENT `off_link` and answer `off_ret` (either value, or the taint); the
+supplier's output is `off_link` (payers: the parked invariant, the taint;
+NO held supplier); `filewrite_in`/`fileread_in`'s inode arms are keyed on
+the row's mode with the held arm `(∃ off0, uoff γo off0 ∗ ∀ P, chain) ∨
+(chain ∗ app_taint)`, the generic tier paying the right arm from the
+taint it holds; the write fire's loop and the read fire's site are ONE
+walk at both modes.  OFF-LINK-5's correction: the ANCHORED node
+(OFF-LINK-4) is unnecessary — the client's node holds `uoff γo off0` in
+its closure, reads `off = off0` by `uoff_agree_k` against the very
+`off_link` it is lent, advances both halves itself and hands the box's
+arm back already advanced; so RELAY 2 needs no relay and a held
+descriptor costs the kernel nothing.  REMAINING (OFF-LINK-6): L2+L4 as
+ONE change — `fdstate_ok` reading `fp_om pn` (145 sites) and the publish
+minting the mode at hand/park — then the hand-mode leaves and the held
+deposit suppliers, which discharge CAT-GEOM-4's two hypotheses and
+`UEchoFile`'s `ef_node`/`ef_chain`.
+
 ### 3.5 THE OWNER'S PRINCIPLE (2026-09-17): `link ∨ taint`, the pipe pattern
 
 The owner: "one thing you might be struggling with is how to deal with
@@ -516,6 +536,43 @@ a fire at a disconnected object can still run its node (OFF-LINK-2).
   INSIDE sh's credential family (`Wcf I p := Wcl I p ∗ sh_hold I`, no
   `ushf_wq` twin), and echo's exec crossing costs one `Pay` (`Wq ∗ fown
   ∗ uoff γo 0`) and one PURE row about the exec'ing table.
+
+### 3.7 PROCESS RULES v2 (review 2, `claude-notes/reviews/app-file-review-2.md`, 2026-09-17 evening)
+
+Review 2 measured seven hours after review 1: 22 lanes, 147 commits (31%
+merges, 27% notes), 13 of 22 skeleton obligations with a discharging lemma
+— and the three skeleton files at the SAME 15 `Hypothesis` + 12 `Admitted`
+as when SKELETON left them, nine of the fifteen dischargeable today by a
+lemma no lane applied.  The causes, ranked: echo literals in the shell's
+STATEMENTS found one per lane (eighteen since review 1); lanes stopping at
+"a full deliverable" and naming residues; parallelism net negative on the
+sh tier; rulings refuted at the statement (~5 lane-equivalents); one
+unowned critical item (WRITE-RELAY-3's `TB` guard).  RULES, replacing
+§3.6's lane sizing:
+
+- THE METRIC is `grep -c "Hypothesis\|Admitted" iris/UEchoFile.v
+  iris/UShRound.v iris/UInitFile.v` (15 + 12 today).  A lane that does not
+  lower it did not finish.
+- TWO SERIAL STREAMS, at most two lanes on `iris/` at once: the KERNEL
+  stream (OFF-LINK-6 + L5 + the `TB` guard, exit criterion: `Hopen_hand`,
+  cat's lend and `UEchoFile.ef_chain` compile as `Definition`s; then
+  ECHO-FILE's assembly) and the PROGRAM stream (SH-CHILD-2, then
+  SH-ROUND's assembly, then INIT-FILE's).  INIT-FILE runs beside them only
+  because its files are disjoint.
+- AN ASSEMBLY LANE OWNS EVERY STATEMENT IT NEEDS.  Residues are fixed
+  INLINE, including statement changes in any file; "what remains" lists
+  are replaced by updating the obligation table.  The first hour of
+  SH-ROUND is the file-instance sweep: instantiate the whole sh/init tier
+  at the file record (`grep -n "EchoDisc\.\|alt_execfail\|cmd_echo\|
+  line_alts_of\|disc_input\b\|ush_fd1p\|body_ok\|OffParked"` over it)
+  and fix every literal in one pass before assembling.
+- MERGE AT LANE END ONLY; no tree-wide rename or deletion until
+  `file_Hinit_boot` closes; findings go to a PER-LANE file
+  `claude-notes/projects/app-file-findings/<LANE>.md` (the single
+  worklist file cost 22 merge conflicts).
+- Every new `∨ app_taint` arm gets a vacuity `Example`; every new entry
+  or round premise an inhabited witness; a post's witness is bound in the
+  statement, never left existential to a caller that named it.
 
 ## 4. The console side: the stage carries the era's boot state, the ledger the line list
 

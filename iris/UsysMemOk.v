@@ -510,33 +510,21 @@ Definition usys_fd_ok (n : Z) (tf : list (mword 64)) (r : mword 64)
            closed precisely because the scan starts at 0. *)
         fd_least_closed sts fd /\
         sts' = <[fd := FdOpen rd wr t]> sts /\
-        (* ...AND THE DESCRIPTOR IT INSTALLS IS PARKED (design/user-read.md
-           SS8.1, SS8.3).  The type stays existential -- this table still
-           cannot see which file the path named -- but its OFFSET MODE does
-           not have to: every arm of [SpecSysOpen.sys_open_post]
-           instantiates [SysOpenDefs.open_fd_rcpt]'s [t] at a PARKED
-           constructor ([FdDevice], or [FdInode _ _ OffParked]), so the
-           fact was true and merely unstated, and [SpecSysOpen.
-           open_arms_split] now carries it out to [ProofSyscall]'s arm 15.
-
-           WHY IT BELONGS HERE rather than on the receipt.  Without it this
-           row -- and it alone -- LICENSES A GENERIC OPEN TO INSTALL A HELD
-           DESCRIPTOR, which is what stopped the guarded generic WP from
-           closing its own Loeb step (RA-1's finding 3): the successor
-           key's table comes through THIS predicate, so the maintenance
-           lemma below has to read all-parkedness off it.  Stated on
-           [open_fd_rcpt] instead, the fact would be true of every open the
-           kernel actually performs and still absent from the one
-           proposition the tier threads.  With it here,
-           [usys_fd_ok_parked] is a THEOREM rather than a lemma with an
-           owed premise. *)
-        fdst_parked (FdOpen rd wr t)
+        (* THE DESCRIPTOR'S OFFSET MODE IS NOT PINNED HERE ANY MORE (lane
+           OFF-LINK-6's L4).  This row used to carry [FdSlots.fdst_parked
+           (FdOpen rd wr t)], because the guarded generic WP read
+           all-parkedness off the successor key's table; that discipline
+           and its whole kit ([usys_fd_ok_parked], [usys_fd_ok_parked_ne_
+           open], [fdv_all_parked]) are gone, and an open now installs the
+           descriptor at the mode its CALLER'S FAMILY asked for
+           ([UConsOpen.xfam]'s [of_om], read by [SpecSysOpen]'s arms).
+           Nothing in the tier reads the mode off this predicate. *)
         (* ...AND NOT A PIPE (design/pipe.md, "The exit path"): open
            installs an inode or a device, never a pipe end, and this is
            what lets a program that never calls pipe(2) say its table
            holds none -- which is what makes exit's close payments free
            for it ([FdSlots.fdv_nopipe]). *)
-        /\ fdst_nopipe (FdOpen rd wr t))
+        fdst_nopipe (FdOpen rd wr t))
      (* ...or the call failed, which it reports as -1 -- see dup's row for
         why the failure arm is guarded rather than bare. *)
      \/ (r = (mword_of_int (-1) : mword 64) /\ sts' = sts))
@@ -810,7 +798,7 @@ Proof.
         [ exact Hpk | apply fdv_nopipe_lookup_total; exact Hpk ]
       | exact Hpk ]. }
   destruct (decide (n = USYS_open)) as [_ | _].
-  { destruct H as [(fd & rd & wr & t & _ & _ & He & _ & Hop) | [_ ->]]; [| exact Hpk].
+  { destruct H as [(fd & rd & wr & t & _ & _ & He & Hop) | [_ ->]]; [| exact Hpk].
     rewrite He. apply fdv_nopipe_insert; [ exact Hpk | exact Hop ]. }
   destruct (decide (n = USYS_pipe)) as [He | _]; [ exfalso; exact (Hnp He) | ].
   subst. exact Hpk.

@@ -927,7 +927,7 @@ Section ProofSysOpenPublish.
     iSplitR; [iPureIntro; apply CtxBox.qsum_singleton|]. iExact "Href".
   Qed.
 
-  Lemma so_publish `{XI : CurCtx} (E : coPset) (gf : gname) (kf kk : nat) (qi s : Qp)
+  Lemma so_publish `{XI : CurCtx} (omo : offmode) (E : coPset) (gf : gname) (kf kk : nat) (qi s : Qp)
       (gy : gname) (inum : mword 32) (ty : bv 16) (C : fcontent)
       (pn : fpnames) (γb : box_names) (γo : gname) (om : mword 32) (rb wb : bool)
       (lo tl : nat) :
@@ -989,7 +989,7 @@ Section ProofSysOpenPublish.
        by [C], [inum] and [γo] ([fdstate_ok_inj]); it is a parameter rather
        than a projection because [fdstate_ok] is a relation -- see its note. *)
     |={E}=> ∃ st : fdstate,
-      ⌜fdstate_ok inum γo OffParked (fp_pipe pn) C st⌝ ∗ file_ref gf kf 1 st.
+      ⌜fdstate_ok inum γo omo (fp_pipe pn) C st⌝ ∗ file_ref gf kf 1 st.
   Proof using .
     intros Hqs HEi Hkk Hinb Hipos Hip Hty Hwrb Hrdb Hwdb Hdir Hdvw Hle. subst qi.
     iIntros "#Hfl Hkeep Hru Hshr #Hshot Href Hlive Hflds Hnames Hcoff".
@@ -1013,10 +1013,11 @@ Section ProofSysOpenPublish.
     (* ...AND THE ROW'S OFFSET MODE IS MINTED HERE TOO (lane OFF-LINK-6):
        [fp_om] is a field of the names this publish writes, so the choice
        between mode PARK and mode HAND is made at exactly one place in the
-       kernel.  It is [OffParked] today -- relaxing THAT is L4, and it is a
-       one-token change at this line plus the receipt that reports it. *)
+       kernel: [omo] is the mode the CALLER'S FAMILY asked for
+       ([UConsOpen.xfam]'s [of_om], threaded down through [SpecSysOpen]'s
+       arms), and the row this publish writes records it. *)
     iMod (fpay_tok_update gf kf pn
-            (MkFPNames (fp_lock pn) (fp_pipe pn) gx s gy inum γb γo OffParked)
+            (MkFPNames (fp_lock pn) (fp_pipe pn) gx s gy inum γb γo omo)
             with "Hnames")
       as "Hnames".
     iModIntro.
@@ -1029,9 +1030,9 @@ Section ProofSysOpenPublish.
       - rewrite bool_decide_true; [reflexivity | reflexivity].
       - rewrite orb_true_r. reflexivity. }
     set (stpub := if bool_decide (fc_type C = FD_INODE)
-                  then FdOpen rb wb (FdInode (bv_unsigned inum) γo OffParked)
+                  then FdOpen rb wb (FdInode (bv_unsigned inum) γo omo)
                   else FdOpen rb wb (FdDevice (bv_unsigned (fc_major C)))).
-    assert (Hokpub : fdstate_ok inum γo OffParked (fp_pipe pn) C stpub).
+    assert (Hokpub : fdstate_ok inum γo omo (fp_pipe pn) C stpub).
     { rewrite /stpub. destruct Hty as [Ht | Ht].
       - rewrite (bool_decide_true _ Ht). cbn. by repeat split.
       - rewrite bool_decide_false.
@@ -1041,7 +1042,7 @@ Section ProofSysOpenPublish.
     iExists stpub. iSplitR; [iPureIntro; exact Hokpub|].
     rewrite /file_ref /file_pay_st /file_core /file_core_noff /file_core_off.
     iExists C. iFrame "Href Hflds Hlive".
-    iExists (MkFPNames (fp_lock pn) (fp_pipe pn) gx s gy inum γb γo OffParked).
+    iExists (MkFPNames (fp_lock pn) (fp_pipe pn) gx s gy inum γb γo omo).
     cbn [fp_inum fp_ooff fp_om fp_pipe]. iSplitR; [iPureIntro; exact Hokpub|].
     iFrame "Hnames". rewrite Hnp Hor.
     cbn [fp_icv fp_iq fp_ig fp_obox fp_ooff fp_om].

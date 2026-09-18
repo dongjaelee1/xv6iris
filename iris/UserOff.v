@@ -62,6 +62,7 @@ From iris.base_logic.lib Require Import own ghost_var invariants.
 Require Import RiscvPtsto.    (* [riscvGS] -- the [invGS] the invariant lives at *)
 Require Import Xv6Cameras.    (* [offboxG] -- the shadow's pinned class          *)
 Require Import OffGv.         (* [off_gv], [off_user_inv], [foffN]               *)
+Require Import FdSlots.      (* [offmode]: the row the publish chose            *)
 
 Section UserOff.
   Context `{!riscvGS Σ, !offboxG Σ}.
@@ -242,6 +243,44 @@ Section UserOff.
   Lemma off_pub_hand_0 γo :
     off_gv γo 1 0 -∗ off_gv γo (1/2) 0 ∗ uoff γo 0.
   Proof using . exact (off_pub_hand γo 0). Qed.
+
+  (* ...AND WHAT THE PUBLISH HANDS THE CALLER, KEYED ON THE MODE IT CHOSE
+     (lane OFF-LINK-6's L4).  This is the ONE conjunct sys_open's success
+     arm grows: at mode PARK nothing (the half went into the row's
+     invariant, which is where every landed caller expects it), at mode
+     HAND the program's own half at zero.  A caller that asked for park is
+     therefore not charged a byte, which is what keeps the tree
+     application's whole open path untouched. *)
+  Definition foff_pub (om : offmode) (γo : gname) : iProp Σ :=
+    match om with
+    | OffParked => emp
+    | OffHeld => uoff γo 0%nat
+    end%I.
+
+  Lemma foff_pub_parked γo : ⊢ foff_pub OffParked γo.
+  Proof using . done. Qed.
+
+  Lemma foff_pub_held γo : uoff γo 0%nat -∗ foff_pub OffHeld γo.
+  Proof using . by iIntros "$". Qed.
+
+  Lemma foff_pub_of_held γo : foff_pub OffHeld γo -∗ uoff γo 0%nat.
+  Proof using . by iIntros "$". Qed.
+
+  (* ...and the same keyed on the DESCRIPTOR TYPE the publish installed,
+     which is the shape the open walk's arm threads: a device row has no
+     offset shadow, so there is nothing to hand and nothing to carry. *)
+  Definition foff_pub_t (om : offmode) (t : fdtype) : iProp Σ :=
+    match t with
+    | FdInode _ γo _ => foff_pub om γo
+    | _ => emp
+    end%I.
+
+  Lemma foff_pub_t_dev om (mj : Z) : ⊢ foff_pub_t om (FdDevice mj).
+  Proof using . done. Qed.
+
+  Lemma foff_pub_t_inode om (i : Z) (γo : gname) (m : offmode) :
+    foff_pub om γo -∗ foff_pub_t om (FdInode i γo m).
+  Proof using . by iIntros "$". Qed.
 
 
   (* ================================================================== *)

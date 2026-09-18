@@ -201,6 +201,7 @@ Section ProofSysOpenWalk.
   (*  is what says a WRITABLE fd never names a directory.                 *)
   (* ================================================================== *)
   Lemma so_entry_n_au `{GEN : GenId} `{CID0 : CpuId} `{XI : CurCtx}
+      (omo : offmode)
       (gfl gf : gname)
       (gs : list gname) (jx : nat) (gl : gname)
       (pd pav pu : mword 64)
@@ -308,7 +309,7 @@ Section ProofSysOpenWalk.
        ([SysOpenDefs.open_trunc_at_of_triv]) *)
     open_trunc_piece (fs_gamma_L fsc_fs) vom trunc_permit_triv Ft -∗
     wp_next true (proc_addr jx)
-      (so_cont0_au gf ns
+      (so_cont0_au omo gf ns
                 dqb dqs dqbs dqn (proc_addr jx) pidv Mim pvv vom U sts
                 P Pmiss Fo Ft m K eb b lks) -∗
     WP (Loop : expr riscv_lang).
@@ -535,7 +536,7 @@ Section ProofSysOpenWalk.
       { unfold sys_open_slots, create_slots in *. lia. }
       { (* ARM B-FAIL: the walk died at some hop, so NOTHING was observed
            and both commits come home beside the era refund. *)
-        iApply (so_arm_dead gf (proc_addr jx) pidv Mim pvv vom P Pmiss Fo Ft U sts _
+        iApply (so_arm_dead omo gf (proc_addr jx) pidv Mim pvv vom P Pmiss Fo Ft U sts _
                   (bview plen bp) Hpof Ha0f
                   with "Hpriv Hfrag Hfds Hdead Hoc Htc"). } }
     (* ---- namei RESOLVED: the reference, shed and generation-named, and
@@ -781,7 +782,7 @@ Section ProofSysOpenWalk.
          the join's [nsj <= ns' <= S nsj] to the syscall's, namei having
          spent one of the three. *)
       iAssert (wp_next true (proc_addr jx)
-                 (so_cont_au gf
+                 (so_cont_au omo gf
                           (ns - 1)%nat dqb dqs (proc_addr jx) pidv Mim pvv vom U sts
                           P Pmiss Fo Ft m K eb b lks))
         with "[Hcont Hsbn Hsbs]" as "Hcontj".
@@ -797,7 +798,7 @@ Section ProofSysOpenWalk.
          keyed at the inode namei reached for nothing. *)
       iDestruct (open_trunc_at_of_triv (fs_gamma_L fsc_fs) vom
                    (bv_unsigned inum) Ft with "Htc") as "Htc".
-      iApply (Join.so_join_au (CID0 := CID10) gfl gf gs jx gl pd pav pu
+      iApply (Join.so_join_au (CID0 := CID10) omo gfl gf gs jx gl pd pav pu
                 gil gisl
  kk (qq/2)%Qp (qq/2)%Qp gy loy tly inum dn bm om lo
                 (ns - 1)%nat n1 pidv dqb dqs U sts m Q2 sp0 K eb b lks w4 w5 w6 w24
@@ -875,7 +876,7 @@ Section ProofSysOpenWalk.
       iDestruct (cpu_own_transport CID7 CID12 0 eb (proc_addr jx) b
                    ltac:(wp_next_chain) with "Hown") as "Hown".
       iAssert (wp_next true (proc_addr jx)
-                 (so_cont_au gf
+                 (so_cont_au omo gf
                           (ns - 1)%nat dqb dqs (proc_addr jx) pidv Mim pvv vom U sts
                           P Pmiss Fo Ft m K eb b lks))
         with "[Hcont Hsbn Hsbs]" as "Hcontj".
@@ -893,7 +894,7 @@ Section ProofSysOpenWalk.
          keyed at the inode namei reached for nothing. *)
       iDestruct (open_trunc_at_of_triv (fs_gamma_L fsc_fs) vom
                    (bv_unsigned inum) Ft with "Htc") as "Htc".
-      iApply (Alloc.so_alloc_au (CID0 := CID12) gfl gf gs jx gl pd pav pu
+      iApply (Alloc.so_alloc_au (CID0 := CID12) omo gfl gf gs jx gl pd pav pu
                 gil gisl
  kk (qq/2)%Qp (qq/2)%Qp gy loy tly inum dn bm om lo
                 (ns - 1)%nat n1 pidv dqb dqs U sts m Q3 sp0 K eb b lks w4 w5 w6 w24
@@ -969,7 +970,7 @@ Section ProofSysOpenWalk.
          fired -- this refusal is inside the child's lock window. *)
       iDestruct (open_trunc_at_of_triv (fs_gamma_L fsc_fs) vom
                    (bv_unsigned inum) Ft with "Htc") as "Htc".
-      iApply (so_arm_fail gf (proc_addr jx) pidv Mim pvv vom P Pmiss Fo Ft U sts _
+      iApply (so_arm_fail omo gf (proc_addr jx) pidv Mim pvv vom P Pmiss Fo Ft U sts _
                 (bview plen bp) (bv_unsigned inum) (era_node dn bm data) Hpof Ha0f
                 with "Hpriv Hfrag Hfds HP Hobs Htc"). }
   Qed.

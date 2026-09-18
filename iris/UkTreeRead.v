@@ -154,7 +154,7 @@ Section UkTreeRead.
       (sts : list fdstate) (r : mword 64) (fdv' : list fdstate) :
     pin_resolves_abs Pin cw pl hops ino (AFile bs) ->
     arg_path_of M pv pl ->
-    open_receipt_plain (fs_gamma_L γfs) γfs cw M pv vom
+    open_receipt_plain OffParked (fs_gamma_L γfs) γfs cw M pv vom
       (pobs_P T hops) (pobs_Pmiss T) (pobs_Fo Pin T) Ft sts r fdv' -∗
       (* the walk missed, or the call failed after it: nothing moved *)
       ((⌜r = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜fdv' = sts⌝)
@@ -180,13 +180,14 @@ Section UkTreeRead.
       destruct Hid as [_ Hnode]. cbn [an_node] in Hnode. discriminate Hnode.
     - (* FILE: the identification names the INUM, which is the whole
          corollary -- the descriptor is on the node the tree records *)
-      iDestruct "Hfile" as (bs0 nl) "(%Hrow & Hrecv & _ & %Hfdr)".
+      iDestruct "Hfile" as (bs0 nl) "(%Hrow & Hrecv & _ & Hfdr)".
       iDestruct (pobs_node_abs Pin T cw pl hops ino (AFile bs)
                    av i (MkAnode (AFile bs0) nl) Hres with "HP Hrecv")
         as "[%Hid | #HT]"; last first.
       { iRight. iRight. iExact "HT". }
       destruct Hid as [Hi _]. subst i.
-      iRight. iLeft. iPureIntro. exact Hfdr.
+      iDestruct "Hfdr" as (γo) "[%Hfdr _]".
+      iRight. iLeft. iExists γo. iPureIntro. exact Hfdr.
     - (* DIRECTORY: refuted the same way *)
       iDestruct "Hdir" as (ents nl) "(%Hrow & _ & Hrecv & _ & _)".
       iDestruct (pobs_node_abs Pin T cw pl hops ino (AFile bs)
@@ -206,7 +207,7 @@ Section UkTreeRead.
      from the caller's persistent view of its own rodata. *)
   Definition tree_open_fam (T : iProp Σ) (Pin : aview -> Prop)
       (hops : list Z) (Q : Z -> iProp Σ) : sfam :=
-    xfam_open (pobs_P T hops) (pobs_Pmiss T) (pobs_Fo Pin T) Q.
+    xfam_open OffParked (pobs_P T hops) (pobs_Pmiss T) (pobs_Fo Pin T) Q.
 
   Lemma tree_open_sup (N : uk_names Σ) (c : tree_fixed) (r : tree_names)
       (g : gname) (root d i : Z) (t : ttree) (bs : list (bv 8))

@@ -138,8 +138,7 @@ arm is the theorem's one named premise (`pipe_both_law`).
 - [ ] **CAT-PIPE** (design §5.3; after PIPE-PROTO + PIPE-STD).
   `iris/UCatPipe.v`: cat's round and `image_entry` at fd 0 = a pipe read
   end, at the pipe stage's cursor.
-- [x] **PIPE-DEC** (pure; after PIPE-MODEL-2) — LANDED 2026-09-18, see
-  Findings.  `iris/PipeDiscDec.v` ending
+- [x] **PIPE-DEC** (pure; after PIPE-MODEL-2).  `iris/PipeDiscDec.v` ending
   in `Global Instance disc_p_dec h : Decision (PipeDisc.disc_p h)` — the
   twin of `FileDiscDec` (STAGE's BLOCKER 1: the ledger's counter sits at
   `decide (disc h)`); the `PBoth` candidates enumerated as a THEOREM, never

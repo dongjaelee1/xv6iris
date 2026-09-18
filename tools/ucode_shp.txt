@@ -62,8 +62,15 @@ func gettoken
 # when [peek(ps,es,"<>")] is true, which [ushp_no_symbols] refutes.  The
 # line model widened ([UkShParseSym.ushs_redir] admits ONE '>'), the switch
 # runs once, and the constructor's 48 instructions are fetched.
+#
+# [pipecmd] is the PIPE line's, and it is here for the same reason one line
+# later: it is reached only from [parsepipe]'s [peek(ps,es,"|")] arm, which
+# [ushp_no_symbols] refutes and [UkShPipeLex.ushq_pipe] admits (one '|').
+# Lane SH-PARSE-PIPE walks [parsepipe]'s turn (iris/UkShPipeCm.v), the turn
+# calls it at 0x6da, and its own walk is iris/UkShPipeCmd.v.
 func execcmd
 func redircmd
+func pipecmd
 
 # ---- the C library the above calls (memset is UCodeShK.v's) ----------
 func strlen
@@ -71,7 +78,6 @@ func strchr
 
 # ---- and what is deliberately absent ---------------------------------
 skipfunc parseblock reached only through [peek(ps,es,"(")] in parseexec, and a '(' is a symbol byte -- excluded by the walk's [ushp_no_symbols] premise on the line, so no instruction of it is ever fetched
-skipfunc pipecmd reached only from parsepipe's [peek(ps,es,"|")] arm -- excluded by [ushp_no_symbols]
 skipfunc listcmd reached only from parseline's [peek(ps,es,";")] arm -- excluded by [ushp_no_symbols]
 skipfunc backcmd reached only from parseline's [peek(ps,es,"&")] loop -- excluded by [ushp_no_symbols]
 skipfunc malloc stage 3's; stage 4 states its contract as the named local Hypothesis [ushp_malloc_ok], which crosses the call without fetching a single instruction of the allocator

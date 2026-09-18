@@ -27,6 +27,8 @@ stream's.)
 | after `sh_child_law_file` (`108aa435c`) | **6** | `sh_child_law_file`'s `Admitted` |
 | after `Hopen_hand`'s statement fix (`d8f638d89`) | **6** | (the hypothesis is now TRUE; the walk is blocked on one instance) |
 | after `Hopen_hand` (`3a7041e43`) | **5** | `Hopen_hand` |
+| after item (3)'s first premise and the receipt threading (`afbc83f9d`) | **5** | (premises of `Hchild_redir`, not the round's own list) |
+
 
 
 
@@ -836,3 +838,78 @@ compute to `false`/`true`.
   is entry → child law by cat's walk from 0x9c0.
 * **(5)** unchanged: `sh_round_holds_file` is assembly-only once (4) lands,
   with its conclusion at `ush_rest_l_at … ush_line_file`.
+
+
+---
+
+## PROGRAM STREAM, stretch 7 (2026-09-18) — item (3): the inode reading, and where the receipt has to ride
+
+Branch `app-file/sh-redir`, merged from `main` at `194c18720`.  Whole tree
+green (`--proofs -k`, `EXIT=0`); four audits primitive-only and unchanged
+(13 / 14 / 13 / 14); `gen-ucode` seven catalogs unchanged.  Metric **5**
+(three-file 7 + 5 + 1 = **13**).
+
+### 1. The inode identity was already half-built
+
+K1's entry takes `i ∉ {INIT, SH, ECHO, CAT}` and the ruling is right that
+it is the CLAIM's fact — but the pure half **already exists**:
+`FileDeltas.f_inum_not_pinned` (with the `row_flen` projection that avoids
+normalising a 35,976-byte literal, which is its own durable-note).  What
+was missing was the two readings, and both landed:
+
+* `AppFileCons.file_deed_inum_acc` — a holder of the deed reads the four
+  inequalities in one destructuring (`file_fs_pure_acc` for the pins,
+  `AppFile.file_deed_law` for `f_ok av (Some (i, bs))`, then the length
+  separation), or the taint.
+* `UShRound.redir_K_inum` — the ONE invariant opening that turns
+  `redir_K ty` into `ty = FdInode i γo OffHeld` plus those four, or the
+  taint.  `file_escrow_park`'s mould; the receipt comes back whole.
+
+### 2. The receipt cannot be a wand INTO the supply, and that is a shape bug the ruling implies
+
+`wp_kshm_child_file_redir`'s supply premise was
+`K ty -∗ sh_exec_sup_echo_at … (Wc I 3)`.  **Nothing can fill that**: the
+supply is a `□` box and `K ty` is LINEAR (the deed at `f`, the offset
+half), so spending the receipt to learn a persistent fact is exactly what
+the logic forbids.  The receipt belongs in the box's own `Cr`, handed in
+per call — which is also where K1's `ef_pay` wants it: **the deed went
+INTO the open out of the lend** (`sh_hold`'s `fown`, this file's own
+ruling) **and comes back in the receipt**, so what the exec carries is
+what is left of the lend beside it:
+
+```coq
+(∀ ty, sh_exec_sup_echo_at (ushs_fd1f ty) ws Q (Wc I 3 ∗ K ty))
+```
+
+The diagnostic's law moves with it (a law at a bigger `Cr` is the law at
+the smaller one with the extra dropped — the direction the round weakens
+in).  Landed and green.
+
+### 3. What is left of (3), sized
+
+The round must now build that supply from `UShRedirPay.
+sh_exec_sup_file_at_holds`, whose two premises are:
+
+* `sh_file_entry ty ws Q Pay` at `Pay := UEchoFile.ef_pay i γo ws` — i.e.
+  K1's `efile_image_entry` at the inode the receipt names.  **Its pure
+  premises (`i ∉ …`) are a fupd away and the supply's body has no fupd**,
+  so the WALK has to take `redir_K_inum` as a premise and do the opening
+  right after the open returns, handing the pure facts to the supply:
+
+  ```coq
+  (∀ ty, K ty ={⊤}=∗ K ty ∗ (⌜ty = FdInode i γo OffHeld ∧ i ∉ …⌝ ∨ T))
+  ```
+
+  That is one more statement change to `wp_kshm_child_file_redir` and is
+  the next thing.
+* the Pay conversion `□ (ustd ∗ (Wcl I 3 ∗ K ty) -∗ ef_pay i γo ws)`:
+  `Wq := Wcl I 3` (K1 keeps the era's console credential opaque for
+  exactly this), `efq` from the receipt's deed and `foff_pub OffHeld γo`.
+
+### 4. (4) and (5) not started
+
+RULING CAT-DEED is recorded verbatim in stretch 5's §3 and unchanged:
+`catq_cat` gains `∗ fown r (Some (i, bs))` on every arm, carried out by
+`cat_pay_at`/`cat_child_of_entry`, then cat's child law at `ushs_lp_cat`
+by cat's walk from 0x9c0.  (5) is assembly once (4) lands.  Both are
+multi-hour items behind (3)'s remaining shape.

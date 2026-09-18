@@ -1499,6 +1499,24 @@ consumer tests with the call SPENT.
    SUPPLIED in exactly two places — `ProofSyscall`'s arm 4, and
    `usys_fd_ok_refl_at`, which excludes pipe.
 
+**THE MIRROR'S STACK LIMIT IS 8 MB, AND IT SEGFAULTS THE BUILD — `ec2-lane.sh`
+should raise it.**  Bringing the clone up to the merged sources, the build died
+twice, reproducibly and at the same place: `Segmentation fault (core dumped)`
+→ `make[1]: *** [CoqMakefile:818: WpGprCsrwC.vo] Error 139`, in an UPSTREAM
+model file this lane never touched.  It is not memory (20 GB of 246 in use)
+and not parallelism (it happened at `-j18` and again at `-j10`): `ulimit -s`
+on the mirror is **8192 KB**, and the helper's `ENV` sets only
+`OCAMLRUNPARAM="l=…"`, which does not move the OS stack (durable-notes.md's
+own advice under the fuel-constant note is "re-run with `ulimit -s
+unlimited`"; the hard limit on the box IS unlimited).  Running
+`ec2-lane.sh neg1 run 'ulimit -s unlimited; make -f CoqMakefile -j10'` builds
+`WpGprCsrwC.vo` on the first try.  **`ec2-lane.sh`'s `ENV` should gain
+`ulimit -s unlimited`** — every lane that has to rebuild the model/WP tier
+will hit this, and the failure names a file that has nothing to do with the
+lane, so it reads like someone else's breakage.  (Also useful: the worker
+binary is `rocqworker`, not `rocqc`, so `pgrep -c rocqc` reports 0 during a
+perfectly healthy build and makes it look wedged.)
+
 **MAIN KEPT MOVING AFTER THIS LANE'S MERGE, and it does not matter.**  By
 the end of the lane `main` had also gained PIPE-PROTO (`d3940f9b3`),
 SH-PARSE-PIPE part 3 (`5006b8aeb`) and a brief **UPSTREAM-FIX** ("make main

@@ -1499,6 +1499,27 @@ consumer tests with the call SPENT.
    SUPPLIED in exactly two places — `ProofSyscall`'s arm 4, and
    `usys_fd_ok_refl_at`, which excludes pipe.
 
+**BUILD STATUS AT HAND-OFF, exactly.**  TWO builds matter and they are not
+the same thing.
+- **The row change IS whole-tree green**: at the lane's original base
+  (`372b70c46`, PIPE-REG merged) `ec2-lane.sh neg1 build` returned **RC=0**
+  over the whole `iris` tree with the first three commits in place — the
+  row, `usys_fd_ok_pipe_neg1`, `ProofSyscall` arm 4, both of
+  `wp_uk_ecall_pipe`'s copies of the failure arm, `UkReadPipe`'s relay and
+  the two `uv_btaken` lines.  That is the deliverable 1–3 bar, met.
+- **The post-merge build was still running when the lane handed off.**
+  Bringing the clone up to `d860835b2` is a near-full rebuild (the upstream
+  merge moved foundational files); at hand-off it was **500 files in with
+  `errs=0`** and had already passed `WpGprCsrwC.vo` (the stack-limit
+  segfault, below).  `check` (`-vos`) is **RC=0 on every file the lane
+  touches**, so no STATEMENT is broken; what is not yet machine-checked is
+  the PROOF text of `15e907ae4` (deliverable 4) and the two `ukn_held`
+  ports (`1a763f267`, `6766961ec`) — all of it deletion or the same walk at
+  a stronger hypothesis, but say so rather than claim green.  **The
+  coordinator must see RC=0 and the echo audit at the merge gate**; the
+  audit was not reachable before the build finished, so its count is NOT
+  reported by this lane.
+
 **THE MIRROR'S STACK LIMIT IS 8 MB, AND IT SEGFAULTS THE BUILD — `ec2-lane.sh`
 should raise it.**  Bringing the clone up to the merged sources, the build died
 twice, reproducibly and at the same place: `Segmentation fault (core dumped)`

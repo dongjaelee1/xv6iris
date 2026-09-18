@@ -879,17 +879,27 @@ Section UkCat.
     end.
 
   (* the free chain: every write paid from the flagged deposit, nothing
-     carried.  [UEchoKernel.echo_uexec_slot]'s one instance at cat. *)
+     carried.  [UEchoKernel.echo_uexec_slot]'s one instance at cat.
+
+     THE EXIT PAYLOAD IS A PERSISTENT RESOURCE AND NOT A COQ ENTAILMENT
+     (lane CAT-GEOM-4).  It used to be [(⊢ Cend)], which is satisfiable
+     only at the TRIVIAL payload -- and that is what made this chain
+     unusable to a payer whose payload is a CLAIM: at a tainted era cat's
+     own [UCatOut.cch] is persistent (its right disjunct IS
+     [AppFile.file_taint]) but it is a HYPOTHESIS, not derivable from
+     nothing.  [□ Cend] is strictly weaker as a premise -- [⊢ P] gives
+     [⊢ □ P] in an affine BI, because [□ emp ⊣⊢ emp] -- so every caller
+     that had the old one still has this one, by [iModIntro]. *)
   Lemma kcat_pay_seq_of_law (fdw : mword 64) (fb : nat -> bv 8)
       (k : nat) (Cend : iProp Σ) :
-    (⊢ Cend) ->
-    forall i : nat, udepw_law 16 -∗ kcat_pay_seq fdw fb i k emp%I Cend.
+    forall i : nat,
+      □ Cend -∗ udepw_law 16 -∗ kcat_pay_seq fdw fb i k emp%I Cend.
   Proof using .
-    intros HC. induction k as [| k IH]; intros i; iIntros "#Hwr".
-    - iIntros "_". iApply HC.
+    induction k as [| k IH]; intros i; iIntros "#HC #Hwr".
+    - iIntros "_". iExact "HC".
     - iExists emp%I. iSplitR.
       + iApply (kcat_wb_of_law _ _ _ _ ltac:(reflexivity) with "Hwr").
-      + iApply (IH (S i) with "Hwr").
+      + iApply (IH (S i) with "HC Hwr").
   Qed.
 
   (* the output side is MONOTONE, as one write's is *)

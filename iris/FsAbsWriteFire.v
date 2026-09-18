@@ -758,6 +758,163 @@ Section WriteFire.
     - rewrite awrite_chain_at_S. iIntros "[$ _]".
   Qed.
 
+  (* =================================================================== *)
+  (*  2b.  THE ANCHORED CHAIN (lane OFF-LINK-4, design/app-file.md SS3)    *)
+  (* =================================================================== *)
+  (* THE ONE ARROW A HELD ROW'S CHAIN ADDS, and the whole of what
+     design/app-file.md SS3's RELAY 2 needs.  A node's own [off] is bound by
+     its [∀], so a client that means to APPEND -- echo, at [off = |bs0|] --
+     cannot say so inside the node: the fact is the KERNEL'S, learned at the
+     fire by [UserOff.uoff_agree_k] against the box's half, and RELAYED in
+     here.  That is the premise slot review SSA1 said did not exist; it exists
+     the moment the arm is stated at this node instead of the plain one.
+
+     ...OR THE TAINT, for the object whose box is already disconnected
+     ([OffGv.off_link]'s right arm): there is no half to agree against there,
+     so the kernel feeds the box's own [app_taint] and the client's node goes
+     to its claim's taint arm.  That is the owner's principle inside the node
+     rather than beside it, and it is why a held row needs no second chain.
+
+     EVERYTHING ELSE IS [awrite_full_at] VERBATIM -- delete the one arrow and
+     the two definitions are the same term, which is what
+     [awrite_full_anch_of_full] says. *)
+  Definition awrite_full_anch Γ (E : coPset) (i : Z) (γo : gname)
+      (M : gmap Z (bv 8)) (ua : mword 64) (n : Z) (k : nat) (off0 : nat)
+      (REST : iProp Σ) : iProp Σ :=
+    (∀ (I : gmap Z fs_node) (off : nat) (bs bs0 : list (bv 8)) (nl : nat),
+       ⌜wri_pre (abs_view I) i off bs bs0 nl⌝ -∗
+       ⌜ubytes_at M (add_vec_int ua (FW_MAX * Z.of_nat k)) bs⌝ -∗
+       ⌜Z.of_nat (length bs) = wchunk_at n k⌝ -∗
+       (⌜off = off0⌝ ∨ app_taint) -∗
+       ghost_map_auth (γtop Γ) (1/2) I -∗ off_link γo (Z.of_nat off) ={E}=∗
+       ghost_map_auth (γtop Γ) (1/2) I ∗
+         app_step i I (delta_write i off bs (abs_view I)) ∗
+         (∀ I' : gmap Z fs_node,
+            ⌜abs_view I' = delta_write i off bs (abs_view I)⌝ -∗
+            ghost_map_auth (γtop Γ) (1/2) I' ={E}=∗
+            ghost_map_auth (γtop Γ) (1/2) I' ∗
+            off_ret γo off (length bs) ∗
+            REST))%I.
+
+  (* ...and the partial arm's twin, at the same arrow *)
+  Definition awrite_part_anch Γ (E : coPset) (i : Z) (γo : gname)
+      (M : gmap Z (bv 8)) (ua : mword 64) (P : uptd) (n : Z) (k : nat)
+      (off0 : nat) (REST : iProp Σ) : iProp Σ :=
+    (∀ (I : gmap Z fs_node) (off r : nat) (bs bs0 : list (bv 8)) (nl : nat),
+       ⌜wri_pre (abs_view I) i off bs bs0 nl⌝ -∗
+       ⌜(r <= length bs)%nat⌝ -∗
+       ⌜(length bs <= r + BSIZE)%nat⌝ -∗
+       ⌜Z.of_nat r < wchunk_at n k⌝ -∗
+       ⌜(r < length bs)%nat -> wr_fail_why P ua (Z.to_nat n)⌝ -∗
+       ⌜wi_blocks off (Z.to_nat (wchunk_at n k)) = 1%nat -> r = 0%nat⌝ -∗
+       ⌜ubytes_at M (add_vec_int ua (FW_MAX * Z.of_nat k)) (take r bs)⌝ -∗
+       (⌜off = off0⌝ ∨ app_taint) -∗
+       ghost_map_auth (γtop Γ) (1/2) I -∗ off_link γo (Z.of_nat off) ={E}=∗
+       ghost_map_auth (γtop Γ) (1/2) I ∗
+         app_step i I (delta_write i off bs (abs_view I)) ∗
+         (∀ I' : gmap Z fs_node,
+            ⌜abs_view I' = delta_write i off bs (abs_view I)⌝ -∗
+            ghost_map_auth (γtop Γ) (1/2) I' ={E}=∗
+            ghost_map_auth (γtop Γ) (1/2) I' ∗
+            off_ret γo off r ∗
+            REST))%I.
+
+  (* THE ANCHOR ADVANCES BY THE CHUNK, which is the value the fixpoint
+     already names: node [k] is fired at [off0], node [S k] at
+     [off0 + wchunk_at n k], and the kernel's own [f->off] walks the same
+     ladder.  The PARTIAL arm ends the loop, so its [REST] is anchored at
+     the same place and nothing reads it. *)
+  Fixpoint awrite_chain_anch Γ (E : coPset) (i : Z) (γo : gname)
+      (M : gmap Z (bv 8)) (ua : mword 64) (P : uptd) (n : Z)
+      (Q : nat -> iProp Σ) (k cnt : nat) (off0 : nat) : iProp Σ :=
+    match cnt with
+    | O => Q k
+    | S cnt' =>
+        (Q k
+         ∧ (awrite_full_anch Γ E i γo M ua n k off0
+              (awrite_chain_anch Γ E i γo M ua P n Q (S k) cnt'
+                 (off0 + Z.to_nat (wchunk_at n k))%nat)
+            ∧ awrite_part_anch Γ E i γo M ua P n k off0
+                (awrite_chain_anch Γ E i γo M ua P n Q (S k) cnt'
+                   (off0 + Z.to_nat (wchunk_at n k))%nat)))%I
+    end.
+
+  Lemma awrite_chain_anch_0 Γ E i γo M ua P n Q k off0 :
+    awrite_chain_anch Γ E i γo M ua P n Q k 0 off0 ⊣⊢ Q k.
+  Proof using . reflexivity. Qed.
+
+  Lemma awrite_chain_anch_S Γ E i γo M ua P n Q k cnt off0 :
+    awrite_chain_anch Γ E i γo M ua P n Q k (S cnt) off0 ⊣⊢
+      Q k
+      ∧ (awrite_full_anch Γ E i γo M ua n k off0
+           (awrite_chain_anch Γ E i γo M ua P n Q (S k) cnt
+              (off0 + Z.to_nat (wchunk_at n k))%nat)
+         ∧ awrite_part_anch Γ E i γo M ua P n k off0
+             (awrite_chain_anch Γ E i γo M ua P n Q (S k) cnt
+                (off0 + Z.to_nat (wchunk_at n k))%nat)).
+  Proof using . reflexivity. Qed.
+
+  (* the caller's elimination, at any stop position: the node IS the cursor,
+     exactly as the plain chain's *)
+  Lemma awrite_chain_anch_cursor Γ E i γo M ua P n Q k cnt off0 :
+    awrite_chain_anch Γ E i γo M ua P n Q k cnt off0 -∗ Q k.
+  Proof using .
+    destruct cnt as [| cnt'].
+    - rewrite awrite_chain_anch_0. iIntros "$".
+    - rewrite awrite_chain_anch_S. iIntros "[$ _]".
+  Qed.
+
+  (* THE ANCHORED NODE IS WEAKER, which is what makes the generic tier's
+     payment good for a held row too: a client that can prove the PLAIN node
+     -- the trivial cursor out of the supply, [awrite_chain_unit] -- proves
+     this one by dropping the arrow. *)
+  Lemma awrite_full_anch_of_full Γ E i γo M ua n k off0 REST :
+    awrite_full_at Γ E i γo M ua n k REST -∗
+    awrite_full_anch Γ E i γo M ua n k off0 REST.
+  Proof using .
+    rewrite /awrite_full_at /awrite_full_anch.
+    iIntros "H" (I off bs bs0 nl) "%Hpre %Hby %Hlen _".
+    iApply ("H" $! I off bs bs0 nl with "[//] [//] [//]").
+  Qed.
+
+  Lemma awrite_part_anch_of_part Γ E i γo M ua P n k off0 REST :
+    awrite_part_at Γ E i γo M ua P n k REST -∗
+    awrite_part_anch Γ E i γo M ua P n k off0 REST.
+  Proof using .
+    rewrite /awrite_part_at /awrite_part_anch.
+    iIntros "H" (I off r bs bs0 nl) "%Hpre %Hr %Hgap %Hshort %Hwhy %Hsb1 %Hby _".
+    iApply ("H" $! I off r bs bs0 nl with "[//] [//] [//] [//] [//] [//] [//]").
+  Qed.
+
+  Lemma awrite_chain_anch_of_at Γ E i γo M ua P n Q k cnt off0 :
+    awrite_chain_at Γ E i γo M ua P n Q k cnt -∗
+    awrite_chain_anch Γ E i γo M ua P n Q k cnt off0.
+  Proof using .
+    revert k off0. induction cnt as [| cnt IH]; intros k off0.
+    { rewrite awrite_chain_at_0 awrite_chain_anch_0. iIntros "$". }
+    rewrite awrite_chain_at_S awrite_chain_anch_S. iIntros "H".
+    iSplit; [ iDestruct "H" as "[$ _]" |].
+    iSplit.
+    - iDestruct "H" as "[_ [H _]]".
+      rewrite /awrite_full_anch /awrite_full_at.
+      iIntros (I off bs bs0 nl) "%Hpre %Hby %Hlen _ Hka Hg".
+      iMod ("H" $! I off bs bs0 nl with "[//] [//] [//] Hka Hg")
+        as "(Hka & Hstep & Hph2)".
+      iModIntro. iFrame "Hka Hstep". iIntros (I') "%Hav Hka'".
+      iMod ("Hph2" $! I' with "[//] Hka'") as "(Hka' & Hret & Hrest)".
+      iModIntro. iFrame "Hka' Hret". iApply (IH with "Hrest").
+    - iDestruct "H" as "[_ [_ H]]".
+      rewrite /awrite_part_anch /awrite_part_at.
+      iIntros (I off r bs bs0 nl) "%Hpre %Hr %Hgap %Hsh %Hwhy %Hsb1 %Hby _ Hka Hg".
+      iMod ("H" $! I off r bs bs0 nl
+              with "[//] [//] [//] [//] [//] [//] [//] Hka Hg")
+        as "(Hka & Hstep & Hph2)".
+      iModIntro. iFrame "Hka Hstep". iIntros (I') "%Hav Hka'".
+      iMod ("Hph2" $! I' with "[//] Hka'") as "(Hka' & Hret & Hrest)".
+      iModIntro. iFrame "Hka' Hret". iApply (IH with "Hrest").
+  Qed.
+
+
   Lemma awrite_chain_cursor Γ E i γo M ua n Q k cnt :
     awrite_chain Γ E i γo M ua n Q k cnt -∗ Q k.
   Proof using .

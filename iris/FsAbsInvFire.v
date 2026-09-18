@@ -323,7 +323,13 @@ Section FsAbsInvFire.
     destruct st as [| rb wb ty]; [iExact "HP" |].
     destruct rb; [| iExact "HP"].
     destruct ty as [i γo om | γp | ma].
-    - iFrame "HP". iApply (fsabs_aread (fs_gamma_L fsc_fs) i γo).
+    - (* the inode arm at the row's mode (lane OFF-LINK-4): at a HELD row
+         the generic tier has no [UserOff.uoff] to lend and takes the RIGHT
+         arm -- the same commit beside the taint it already holds *)
+      destruct om as [|].
+      + iFrame "HP". iApply (fsabs_aread (fs_gamma_L fsc_fs) i γo).
+      + iFrame "HP". iRight. iSplitL; [| iExact "Htaint"].
+        iApply (fsabs_aread (fs_gamma_L fsc_fs) i γo).
     - iFrame "HP". by iApply pipe_rpay_taint.
     - case_decide; [| iExact "HP"].
       iSplitL "HP".
@@ -374,9 +380,19 @@ Section FsAbsInvFire.
     destruct st as [| rb wb ty]; [by iModIntro |].
     destruct wb; [| by iModIntro].
     destruct ty as [i γo om | γp | ma].
-    - iModIntro.
-      iApply (fsabs_awrite_chain fsc_fs i γo M ua n 0%nat (wchunks n)
-                with "Hsup").
+    - (* THE INODE ARM, keyed on the row's offset mode (lane OFF-LINK-4).
+         At a PARKED row the supply builds the chain as it always did; at a
+         HELD one the generic tier has no [UserOff.uoff] to lend and takes
+         the RIGHT arm -- the same chain beside the taint it already holds
+         (the survey's Fact A).  That is the owner's principle at this
+         coupling, and it is why a held descriptor costs the generic proof
+         nothing. *)
+      destruct om as [|]; iModIntro.
+      + iApply (fsabs_awrite_chain fsc_fs i γo M ua n 0%nat (wchunks n)
+                  with "Hsup").
+      + rewrite /filewrite_in_held. iRight. iSplitR; [| iExact "Htaint"].
+        iApply (fsabs_awrite_chain fsc_fs i γo M ua n 0%nat (wchunks n)
+                  with "Hsup").
     - (* the pipe arm: the taint *)
       iModIntro. by iApply pipe_wpay_taint.
     - iModIntro. iApply (cons_out_chain_of_licence with "Hlic").

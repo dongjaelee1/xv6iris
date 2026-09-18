@@ -491,11 +491,15 @@ Section UkCatCat.
      back; it is also the VACUITY GUARD for the restatement -- the
      obligations above are satisfiable, so [wp_kcat_cat_loop] is not
      vacuously true. *)
+  (* ...AND THE PAYLOAD IS A PERSISTENT RESOURCE (lane CAT-GEOM-4; see
+     [UkCat.kcat_pay_seq_of_law]'s note).  What this buys is the TAINT:
+     a payer whose payload is a claim-bearing [UCatOut.cch] holds it
+     persistently at a tainted era and could not hand it in as [(⊢ _)]. *)
   Lemma kcat_round_of_law (fdv : mword 64) :
-    (⊢ ukn_pay N (-1)) ->
+    □ (ukn_pay N (-1)) -∗
     udepw_law 5 -∗ udepw_law 16 -∗ kcat_round fdv emp%I emp%I.
   Proof using .
-    intros Hfree. iIntros "#Hrd #Hwr". rewrite /kcat_round. iModIntro.
+    iIntros "#HC #Hrd #Hwr". rewrite /kcat_round. iModIntro.
     iIntros (h m avail f) "_ %Ha1 %Ha2 #Hcode _ Hbuf Hrun Hcont".
     iApply (UkCat.wp_kcat_read N CatSyms.buf 512 f h m avail Ha1 Ha2
               with "Hrd Hcode Hbuf Hrun").
@@ -504,7 +508,7 @@ Section UkCatCat.
     iSplit; [| iSplit ].
     - iIntros "_". rewrite /kcat_dg_cr.
       iApply (UkCat.kcat_pay_seq_of_law N (mword_of_int 2) (cat_lit 0x9c8)
-                16%nat (ukn_pay N (-1)) Hfree 0%nat with "Hwr").
+                16%nat (ukn_pay N (-1)) 0%nat with "HC Hwr").
     - by iIntros "_".
     - iIntros (nb) "_ _".
       (* THE FREE PAYER PICKS THE DIAGNOSTIC ARM: the free write law has a
@@ -529,7 +533,7 @@ Section UkCatCat.
       + iIntros "Hb". iSplitR "Hb"; [ | iExact "Hb" ].
         iSplit; [ done | ]. rewrite /kcat_dg_cw.
         iApply (UkCat.kcat_pay_seq_of_law N (mword_of_int 2) (cat_lit 0x9b0)
-                  17%nat (ukn_pay N (-1)) Hfree 0%nat with "Hwr").
+                  17%nat (ukn_pay N (-1)) 0%nat with "HC Hwr").
       + iApply (UkCat.kcat_w_of_law N (mword_of_int 1)
                   (mword_of_int CatSyms.buf) nb
                   (ubytes γd CatSyms.buf 512 g)

@@ -122,7 +122,7 @@ arm is the theorem's one named premise (`pipe_both_law`).
   upgraded to the full `ush_pipe_call`, closing `wp_kshr_runcmd_pipe` at
   today's kernel.  Bar: whole tree green, audits unmoved (the row's cone
   is the whole U tier — one conjunct, no statement but the row moves).
-- [ ] **PIPE-PROTO** (design §3; after PQ-FLAG + PIPE-REG).  `iris/PipeProto.v`:
+- [x] **PIPE-PROTO** (design §3; after PQ-FLAG + PIPE-REG).  `iris/PipeProto.v`:
   `pipeProtoG`, `pnames`, `pipe_body`/`pipe_inv` at (P1)–(P3),
   `pipe_reg_of_inv`, the writer's chain builder (`pipe_wpay` from the
   invariant at cursor `j` with `Q j` = the length-`j` lower bound, the
@@ -1223,3 +1223,217 @@ would have to place a caller-chosen `Φ`, and the invariant only knows how
 to place `emp`). SH-PIPE should take the close deposits as parameters, as
 its brief already says, and the ruling belongs with whoever states sh's
 round.
+
+### PIPE-PROTO (2026-09-18) — the protocol lands whole, and a cursor's exactness turns out to be an EXCLUSIVE RESOURCE (which retires (P2))
+
+Branch `app-pipe/pipe-proto`, commits `3e52c3f23`, `72db8342f`.  ONE new
+file (`iris/PipeProto.v`, 964 lines) plus one line of `iris/_CoqProject`.
+**No landed statement moved** — `PipeQueue`/`UkReadPipe`/`UkWritePipe` were
+not touched at all.  Whole-tree `ec2-lane.sh proto build` RC=0 (twice, the
+second after the last edit); no `Admitted`; `Proof using` on every result
+inside the section (the three top-level ones — `subG_pipeProtoΣ`,
+`pnames_eq_dec`, `pst_eof_dec` — carry plain `Proof.`, the tree's own
+convention for exactly those forms, cf. `subG_echoOutΣ`/`pipe_names_eq_dec`).
+`Print Assumptions` on `pipe_proto_alloc`, `pipe_reg_of_inv`,
+`pipe_wpay_of_inv`, `pipe_rpay_of_inv`, `pipe_round_ran`,
+`pipe_round_reading` and `pipe_proto_test`: **"Closed under the global
+context", all seven** — not even the tree's standing primitives.  The
+audits cannot move: NOTHING in the tree `Require`s `PipeProto.v`.
+
+**WHAT LANDED** (`iris/PipeProto.v`, right after `PipeReg.v`)
+
+- `pipeProtoG`/`pipeProtoΣ`/`subG_pipeProtoΣ` — four cameras: the history's
+  `mono_listR (leibnizO (bv 8))`, the EOF one-shot
+  `csumR (exclR unitO) (agreeR (leibnizO (list (bv 8))))` (`KptGhost.kptR`'s
+  shape), `ghost_varG Σ nat` for the two cursors, `exclR unitO` for the two
+  side tokens.  `pnames` (six gnames), `pipeN`, `pst_eof_dec`.
+- The pieces: `pws_auth`/`pws_lb` (+ `pws_auth_lb`, `pws_lb_prefix`,
+  `pws_auth_grow`), `eof_pending`/`eof_shot` (+ `eof_pending_shot`,
+  `eof_shot_agree`, `eof_shoot`), `wcur`/`rcur` (+ `_agree`, `_move`) with
+  `wtok pn := wcur pn 0` and `rtok pn := rcur pn 0`, `side_L`/`side_R`
+  (+ `_excl`), and every persistence/timelessness instance.
+- **`pipe_body`, verbatim:**
+
+        Definition pipe_body (pn : pnames) (γp : pipe_names) (L : list (bv 8))
+            : iProp Σ :=
+          (∃ s : pipe_st,
+             pipe_qfrag (pn_queue γp) s
+             ∗ pws_auth pn (ps_ws s)
+             ∗ wcur pn (length (ps_ws s))
+             ∗ rcur pn (ps_rp s)
+             (* (P1) only the line ever goes in *)
+             ∗ ⌜ps_ws s `prefix_of` L⌝
+             (* (P3) after end-of-file the contents are frozen *)
+             ∗ (eof_pending pn
+                ∨ ∃ w : list (bv 8),
+                    eof_shot pn w ∗ ⌜w = ps_ws s /\ ps_wo s = false⌝))%I.
+
+  `pipe_inv pn γp L := inv pipeN (pipe_body pn γp L)`, with
+  `pipe_body_timeless` and `pipe_inv_persistent`; the three properties as
+  readings against the KERNEL's authority (the shape a link reads them at):
+  `pipe_body_P1`, `pipe_body_P2` (derived, see below), `pipe_body_P3`.
+- `pipe_clink_of_inv` (at any mask containing `↑pipeN`) and
+  **`pipe_reg_of_inv : pipe_inv pn γp L -∗ pipe_reg γp`** — PIPE-REG's
+  hand-off item, closed exactly as it predicted (`pst_close` touches only a
+  flag, so (P1), both cursors and (P3) all survive; (P3) because the flag it
+  clears can only make `ps_wo` falser).
+- `pipe_inv_frag_excl : pipe_inv pn γp L -∗ pipe_qfrag (pn_queue γp) s ={⊤}=∗ False`
+  — the exhibit that makes PIPE-REG's "registering CONSUMES the fragment"
+  honest: once the protocol owns it, nobody else can hold it.
+- **`pipe_proto_alloc`, verbatim:**
+
+        Lemma pipe_proto_alloc (γp : pipe_names) (L : list (bv 8)) :
+          pipe_qfrag (pn_queue γp) pst0 ={⊤}=∗
+          ∃ pn : pnames,
+            pipe_inv pn γp L ∗ wtok pn ∗ rtok pn ∗ side_L pn ∗ side_R pn
+            ∗ pipe_reg γp.
+
+  i.e. `UkReadPipe.wp_uk_pipe_read_end`'s registrar premise at
+  `Rp γp := ∃ pn, pipe_inv pn γp L ∗ wtok pn ∗ rtok pn ∗ side_L pn ∗ side_R pn`.
+- **THE WRITER'S BUILDER.**  `pipe_wQ pn L c j := wcur pn (c + j) ∗ pws_lb pn (take (c + j) L)`
+  and `pipe_wQe pn L c j _ := pipe_wQ pn L c j` (an observation SPENDS its
+  node, so handing the cursor back is the only thing it can do — which is
+  design §3's "records nothing").  `pipe_wchain_of_inv` (the chain at cursor
+  `c`, node `j`, count `cnt`, by induction on `cnt`), `pipe_wQ_line` ("the
+  line is in" at `c + n = length L`: `wcur pn (length L) ∗ pws_lb pn L`),
+  and **verbatim:**
+
+        Lemma pipe_wpay_of_inv (pn : pnames) (γp : pipe_names) (L : list (bv 8))
+            (M : gmap Z (bv 8)) (ua : mword 64) (c n : nat) :
+          (c + n <= length L)%nat ->
+          (forall k : nat, (k < n)%nat ->
+             M !! uint (add_vec_int ua (Z.of_nat k)) = Some (L !!! (c + k)%nat)) ->
+          pipe_inv pn γp L -∗ wcur pn c -∗ pws_lb pn (take c L) -∗
+          pipe_wpay (pn_queue γp) M ua (pipe_wQ pn L c) (pipe_wQe pn L c) n.
+
+  plus `pws_lb_of_inv : pipe_inv pn γp L -∗ wcur pn c ={⊤}=∗ wcur pn c ∗ pws_lb pn (take c L)`
+  and `pipe_wpay_of_inv_fupd` (the same payment for a caller that crossed
+  `exec` with nothing but the handle and its permit — which is echo).
+- **THE READER'S BUILDER.**  `pipe_rQ pn L c acc := rcur pn (c + length acc) ∗ ⌜acc = take (length acc) (drop c L)⌝`,
+  `pipe_rQe pn L c acc s := pipe_rQ pn L c acc ∗ (⌜pst_eof s⌝ -∗ eof_shot pn (take (c + length acc) L))`,
+  `pipe_rQe_eof`, `pipe_rchain_of_inv`, and **verbatim:**
+
+        Lemma pipe_rpay_of_inv (pn : pnames) (γp : pipe_names) (L : list (bv 8))
+            (c cap : nat) :
+          pipe_inv pn γp L -∗ rcur pn c -∗
+          pipe_rpay (pn_queue γp) (pipe_rQ pn L c) (pipe_rQe pn L c) cap.
+
+  (no bound premise: a read takes what is there.)
+- **SH'S ROUND.**  `pipe_body_ran`/`pipe_body_execL` and their
+  invariant-level `pipe_round_ran`/`pipe_round_execL`; the symmetric payload
+  `pipe_Qc pn PL PR := (side_L pn ∗ PL) ∨ (side_R pn ∗ PR)` with
+  `pipe_Qc_two : pipe_Qc pn PL PR -∗ pipe_Qc pn PL PR -∗ (side_L pn ∗ PL) ∗ (side_R pn ∗ PR)`;
+  `pipe_payL pn L := pws_lb pn L ∨ wtok pn`, `pipe_payR pn := ∃ w, eof_shot pn w`,
+  and `pipe_round_reading`, which closes the round in ONE invariant access
+  and answers `∃ w, eof_shot pn w ∗ ((pws_lb pn L ∗ ⌜w = L⌝) ∨ (wtok pn ∗ ⌜w = []⌝))`.
+- **CONSUMER TEST, at the RESOURCE level** (the brief's stated alternative;
+  a WP test would have to supply three programs' instruction streams,
+  registers and heaps, and the two leaves it goes through are already landed
+  and stated by PIPE-STD).  `pipe_wpost_cursor_line` and
+  `pipe_rpost_img_line` show EVERY arm of the two posts hands the cursor
+  back (and the read post's observation arm the EOF snapshot at `d = 0`);
+  `pipe_reader_saw_line` derives `acc = L`; `pipe_proto_test` runs
+  `pipe(2) → register → echo's whole-line payment + cat's read payment → the
+  reading`, and its non-trivial conclusion is this lane's anti-vacuity
+  exhibit.
+
+**WHAT WAS REFUTED, at the statement (three, and the first is the one the
+next waves have to build on)**
+
+1. **A CURSOR'S EXACTNESS IS AN EXCLUSIVE RESOURCE, not an arithmetic
+   consequence of a lower bound.**  Design §3's echo rows say the chain's
+   `Q j` pins `ps_ws s = take j L` from "a `mono_list` lower bound of length
+   `j` plus (P1)".  It does not: `mono_list_lb γws (take j L)` against the
+   body's authority gives `take j L ⊑ ps_ws s`, (P1) gives `ps_ws s ⊑ L`, and
+   together those give `ps_ws s = take k L` for SOME `k ≥ j` — and the node
+   has to know WHICH byte of `L` it is appending, i.e. `k = j`.  Carrying
+   `⌜length (ps_ws s) = j⌝` in `Q j` does not help either: it is a claim
+   about a state the caller does not own, so nothing re-establishes it at the
+   next node.  What actually pins it is that **echo is the only writer**, and
+   the only way to say that in the logic is an exclusive permit that CARRIES
+   the cursor.  So the protocol has a write cursor `wcur pn c` (half a
+   `ghost_var nat`; the body holds the other half at `length (ps_ws s)`) and,
+   for the same reason on the read side, `rcur pn c` at `ps_rp s`.  The
+   permits are ALSO what make the chains compose across echo's four
+   `kecho_w`s and cat's several `read`s, which is what the brief asked the
+   builders for.
+2. **(P2) AND `wtok_spent` ARE UNNECESSARY — not wrong, redundant.**  (P2)
+   exists so sh can conclude "echo never wrote" from the start token; with
+   the write cursor, `wtok pn` IS `wcur pn 0` and (P2) is one `ghost_var`
+   agreement against the body's half (`pipe_body_P2`, landed at the design's
+   exact statement).  So the body has one conjunct fewer and the protocol one
+   camera fewer (no second one-shot for "the token went in"), and sh's
+   `PExecL` reading is unchanged.
+3. **(P3) CANNOT BE STATED AS A WAND, because the body must be TIMELESS.**
+   Design §3 writes (P3) as `∀ w, ⌜γeof ↦ Some w⌝ -∗ ⌜w = ps_ws s ∧ ps_wo s = false⌝`.
+   Every link's fupd runs at `⊤` with **no WP step** to strip a later off the
+   opened invariant, so the body has to come out of `iInv .. as ">"` — and a
+   wand is not `Timeless`.  (P3) is therefore the one-shot's two OWNED arms
+   (`eof_pending pn ∨ ∃ w, eof_shot pn w ∗ ⌜…⌝`), which is timeless, and the
+   design's wand is the derived `pipe_body_P3`.
+4. **The reader's EOF observation cannot SET the snapshot unconditionally.**
+   Design §3's cat row has two different observation nodes ("if `pst_eof s`
+   … if merely empty with `ps_wo s = true` …"), but `pipe_olink` is a
+   `∀ s` — ONE node that must be producible at EVERY state, including a
+   non-empty one.  So `pipe_rQe acc s` carries the snapshot as a WAND from
+   `⌜pst_eof s⌝`: where the state IS an end-of-file the node shoots the
+   one-shot inside the invariant and the wand is trivial; elsewhere the wand
+   is vacuous, which is the design's "records nothing" read correctly.
+   `pipe_rpost_img`'s observation arm hands cat `ps_wo s = false` exactly
+   when it delivered nothing (`d = 0`), which is the turn of cat's loop where
+   `piperead` answered 0 — so the wand fires exactly there
+   (`pipe_rpost_img_line`).
+
+**WHAT THE DESIGN GOT WRONG, beyond the above**
+
+- **§3 omits the READER's start permit.**  It lists only `wtok` among what
+  the allocation hands out.  Without a read permit cat's chain cannot pin
+  `ps_rp s` either, so `pipe_proto_alloc` hands out `rtok pn` as well, and
+  `Rp γp` in `wp_uk_pipe_read_end`'s registrar premise is
+  `∃ pn, pipe_inv pn γp L ∗ wtok pn ∗ rtok pn ∗ side_L pn ∗ side_R pn`.
+- **There is no landed NAME for `L`.**  The brief says "`L := wl_line (drop 1 ws)`
+  is `EchoDisc`'s good continuation minus the prompt — find the landed name".
+  There isn't one: `PipeDisc.pcont`'s `PRan` row spells it inline as
+  `wl_line (drop 1 (pline_ws l)) ++ u_prompt` (`PipeDisc.v:1106`), and
+  `EchoDisc.line_alts_of` likewise (`EchoDisc.v:994`).  The protocol takes
+  `L` as a parameter and PIPE-STAGE / SH-PIPE-ROUND instantiate it; if the
+  campaign wants a name, it belongs in `PipeDisc.v`, not here.
+- **§3's "(P3) does not need a `ps_ro` premise: check" — CONFIRMED.**  PQ-FLAG
+  refuted the read link's `⌜ps_ro s = true⌝` and (P3) does not want it:
+  (P3) freezes `ps_ws`, only a write moves `ps_ws`, and the write link's
+  `⌜ps_wo s = true⌝` is what refutes (P3)'s snapshot arm at a write
+  (`pipe_wchain_of_inv`, the one place PQ-FLAG's premise is spent).  Both
+  read-side steps (`pipe_rlink`, the observation) preserve (P3) with nothing
+  to supply.  NO STOP RULE FIRED.
+- **`pipe_reg` is reached ONLY through the taint-free left arm here.**
+  `pipe_reg_of_inv` builds `pipe_cpay`'s LEFT arm (a real close link) at
+  every `w`, so a registered pipeline program never touches the taint arm
+  PIPE-REG had to keep — which is the claim §2 makes, now mechanised.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST**
+
+For **ECHO-PIPE**: `pipe_wpay_of_inv_fupd` is the payment to use, and its
+only real obligation is the `M`-premise
+`∀ k < n, M !! uint (add_vec_int ua (Z.of_nat k)) = Some (L !!! (c + k))` —
+i.e. echo must read its own source run off the heap the call runs at, which
+is the `∀ M pm sz, uheap -∗ uheap ∗ …` wrapper
+`wp_uk_ecall_write_pipe_std` takes and which ECHO-PIPE owns (that wrapper is
+one line around `pipe_wpay_of_inv_fupd`; it was deliberately NOT put here,
+so that `PipeProto.v` stays below the `Uk*` tier and nothing in the U tier
+has to import the protocol).  Echo's entry `Pay` is
+`pipe_inv pn γp L ∗ wcur pn c` (NOT a `mono_list` lower bound: the permit is
+what it needs), and its exit payload is `pws_lb pn L` at `c + n = length L`
+via `pipe_wQ_line`, or `wtok pn` back if its exec failed.
+
+For **CAT-PIPE**: `pipe_rpay_of_inv` needs only `rcur pn c`; cat's entry
+`Pay` is `pipe_inv pn γp L ∗ rtok pn` and its exit payload is
+`∃ w, eof_shot pn w` — the snapshot comes out of `pipe_rpost_img_line`'s
+observation arm at `d = 0` (which is where the read answered 0), and
+`pipe_rQ`'s pure conjunct is what funds cat's console write at cursor `c`
+(design §4.1).
+
+For **SH-PIPE-ROUND**: `pipe_round_reading` is the round, `pipe_Qc` is the
+one symmetric payload both `wp_kshr_fork1` lends and both children exit
+with, and `pipe_proto_alloc` is the registrar premise's instance — note it
+hands out FIVE things, so `ush_pipe_call`'s answer conjunct `R γp` should be
+instantiated at the whole quintuple.

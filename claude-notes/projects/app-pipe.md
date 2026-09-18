@@ -1512,14 +1512,30 @@ the same thing.
   **`UkShPipe.vo`** and **`UkPipeMoves.vo`** all compiled for real against
   `d860835b2`+this branch, `errs=0` throughout.  So deliverables 1–4 and
   both `ukn_held` ports are machine-checked, not merely `check`ed.
-- **The post-merge whole-tree build had TWO files and the audit still
-  running at hand-off** (`FileLinksAt.v`, an upstream app-file file, and
-  `EchoAssumptions.v`), with zero errors anywhere.  Bringing the clone up
-  to `d860835b2` is a near-full rebuild, and this round ran under `make -k`
-  precisely so that a failure anywhere would be attributable.  **The
-  coordinator must still see the final RC=0 and the echo-audit count at the
-  merge gate** — this lane does not report the audit count, because the
-  audit had not returned.
+- **The post-merge whole-tree build (`make -k`, so every failure is
+  attributable) ended at RC=2 with EXACTLY ONE failed target:
+  `UShRound.vo`, and the failure is `Segmentation fault (core dumped)` →
+  `Error 139`, not a type or proof error.**  `UShRound.v` is an UPSTREAM
+  app-file file this lane never touched (it is the file main's
+  PROGRAM-STREAM commits keep growing, and the largest in the tree).  Three
+  things to weigh, stated rather than spun:
+  (a) it is a segfault, and the only other segfault this clone produced was
+      `WpGprCsrwC.vo`, a model/CSR file nowhere near this lane, cured by
+      raising `ulimit -s` — so the mirror has a resource wall at big files;
+  (b) it DID produce a `.vo` earlier in this same clone (timestamped 10:55,
+      before this lane's last two syncs), so it is not unconditionally
+      unbuildable here;
+  (c) it IS in this lane's transitive cone (everything is, below
+      `UsysMemOk`), so the lane is not exonerated by construction — only by
+      the kind of failure, a segfault being resource exhaustion rather than
+      a proof going wrong.
+  The solo retry (`make UShRound.vo` with `ulimit -s unlimited`) segfaulted
+  again, but NOT on a quiet box: the UPSTREAM-FIX lane's clone was running
+  ~17 `rocqworker`s at the time.  **The coordinator should re-run the gate
+  on a quiet mirror with the stack raised, and read `UShRound.vo` as
+  upstream's until it builds clean there.**
+- The echo audit had not returned either, so **this lane reports no audit
+  count**.
 - **ONE REAL PROOF BREAK WAS FOUND BY THE BUILD AND FIXED** (`c7fcab036`):
   `wp_kshr_pipe_arm`'s two child continuations introduced
   `UkShRun.wp_kshr_fork1`'s child arm with a `%Hheq` for

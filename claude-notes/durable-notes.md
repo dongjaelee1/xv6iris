@@ -1552,3 +1552,13 @@ dependents before its `.vo` exists, and under VM contention this cascades into
 dozens of `Cannot find library xv6iris.Xv6Cameras` failures in files the lane never
 touched (no `Error 137`).  Re-run once for a clean signal and trust the
 filesystem's missing-`.vo` list over the log.
+
+## A quoted `*)` inside a comment ends the comment (2026-09-18)
+
+`_CoqProject` makes `comment-terminator-in-string` an ERROR, so a comment
+that quotes a piece of Rocq source containing `*)` (or a string literal
+whose text spans one) terminates the comment mid-sentence and the file
+fails to parse with a message that points nowhere near the cause.  Found
+by lane PIPE-DEC; `tools/comment_quote_check.py` finds the offending line
+without a build.  Write `*` `)` separated, or move the quotation out of
+the comment.

@@ -1493,6 +1493,16 @@ consumer tests with the call SPENT.
    SUPPLIED in exactly two places — `ProofSyscall`'s arm 4, and
    `usys_fd_ok_refl_at`, which excludes pipe.
 
+**MAIN KEPT MOVING AFTER THIS LANE'S MERGE, and it does not matter.**  By
+the end of the lane `main` had also gained PIPE-PROTO (`d3940f9b3`),
+SH-PARSE-PIPE part 3 (`5006b8aeb`) and a brief **UPSTREAM-FIX** ("make main
+build after the upstream merge; campaign files only", `6204044e4`) — so the
+red tree above is known, and this lane's `1a763f267` OVERLAPS that lane's
+job at `iris/UkShPipe.v`; take whichever is better and drop the other.
+This branch's base is `d860835b2`, and `main` has touched NONE of the six
+files this lane edits since then (`git diff d860835b2..main --` on them is
+empty), so the merge is clean apart from this notes file.
+
 **THE ONE THING THE NEXT LANE NEEDS FIRST.**  For SH-PIPE-ROUND and
 PIPE-PROTO: nothing is owed about pipe(2) any more — take
 `wp_kshr_runcmd_pipe` (not the `_closed` corollary, which fixes

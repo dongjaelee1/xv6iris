@@ -188,6 +188,7 @@ Require Import FsBytesGamma.     (* [fs_gamma_L]: the live Γ                 *)
 Require Import AppInv.           (* [appN]/[appE]: the commit's mask         *)
 Require Import FsAbsReadFire.    (* [aread_commit_at], [read_arms]: the one
                                     piece and its arms                       *)
+Require Import UserOff.          (* [uoff]: the HELD row's link (lane OFF-LINK-4) *)
 From Kernel Require KernelSyms.
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import ProcAvail.
@@ -933,8 +934,22 @@ Section SpecFileread.
       (Rp : list (bv 8) -> iProp Σ) (Rpe : list (bv 8) -> pipe_st -> iProp Σ) (P : iProp Σ) : iProp Σ :=
     (P -∗
      match st with
-     | FdOpen true _ (FdInode i γo _) =>
+     (* KEYED ON THE ROW'S OFFSET MODE (lane OFF-LINK-4; design/app-file.md
+        SS3, SS3.5).  A PARKED row pays what it always paid.  A HELD one pays
+        [link ∨ taint]: the LINK is the caller's own half of the offset
+        shadow lent to the kernel, which is all a READ needs -- unlike the
+        write chain the commit REPORTS the offset to the receipt
+        ([F.(pf_recv) av off a d]), so no anchor has to be relayed into it
+        -- and the TAINT is what the generic tier pays (Fact A) and what a
+        disconnected object leaves. *)
+     | FdOpen true _ (FdInode i γo OffParked) =>
          P ∗ pf_at (aread_commit_at (fs_gamma_L fsc_fs) appE i γo) F
+     | FdOpen true _ (FdInode i γo OffHeld) =>
+         P ∗ ((∃ off0 : nat,
+                 uoff γo off0
+                 ∗ pf_at (aread_commit_at (fs_gamma_L fsc_fs) appE i γo) F)
+              ∨ (pf_at (aread_commit_at (fs_gamma_L fsc_fs) appE i γo) F
+                 ∗ app_taint))
      | FdOpen true _ (FdDevice mj) =>
          if decide (mj = CONSOLE)
          then cons_acc fsc_cons app_sup (fun cur dc => P ∗ Rd cur dc)
@@ -1691,8 +1706,15 @@ Section SpecFileread.
       [ | iIntros "H HP"; iDestruct ("H" with "HP") as "H"; iModIntro;
           iFrame "H"; by iPureIntro ].
     destruct ty as [i γo om | γp | mj].
-    - iIntros "H HP". iDestruct ("H" with "HP") as "[HP Hc]".
-      iModIntro. iFrame "HP". by iApply (read_arms_neg with "Hc").
+    - destruct om as [|].
+      + iIntros "H HP". iDestruct ("H" with "HP") as "[HP Hc]".
+        iModIntro. iFrame "HP". by iApply (read_arms_neg with "Hc").
+      + (* the HELD row's two arms (lane OFF-LINK-4): the sign guard fires
+           before anything is read, so the piece comes back whole on both
+           and the caller's half is untouched. *)
+        iIntros "H HP".
+        iDestruct ("H" with "HP") as "[HP [(%off0 & _ & Hc) | [Hc _]]]";
+          iModIntro; iFrame "HP"; by iApply (read_arms_neg with "Hc").
     - (* a negative request never reaches the pipe: the payment comes back
          at the empty count *)
       iIntros "H HP". iDestruct ("H" with "HP") as "[HP Hpay]". iModIntro.

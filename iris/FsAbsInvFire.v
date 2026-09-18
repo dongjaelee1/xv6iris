@@ -323,7 +323,13 @@ Section FsAbsInvFire.
     destruct st as [| rb wb ty]; [iExact "HP" |].
     destruct rb; [| iExact "HP"].
     destruct ty as [i γo om | γp | ma].
-    - iFrame "HP". iApply (fsabs_aread (fs_gamma_L fsc_fs) i γo).
+    - (* the inode arm at the row's mode (lane OFF-LINK-4): at a HELD row
+         the generic tier has no [UserOff.uoff] to lend and takes the RIGHT
+         arm -- the same commit beside the taint it already holds *)
+      destruct om as [|].
+      + iFrame "HP". iApply (fsabs_aread (fs_gamma_L fsc_fs) i γo).
+      + iFrame "HP". iRight. iSplitL; [| iExact "Htaint"].
+        iApply (fsabs_aread (fs_gamma_L fsc_fs) i γo).
     - iFrame "HP". by iApply pipe_rpay_taint.
     - case_decide; [| iExact "HP"].
       iSplitL "HP".

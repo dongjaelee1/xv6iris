@@ -611,6 +611,33 @@ payload = `γeof ↦ Some w` beside the lease at cursor `length w`.  cat's
 `cannot open` arm is unreachable (no argument); its `read error`/`write
 error` tails are the kill arms (the taint) as in upstream's round.
 
+**AS LANDED (lane CAT-PIPE, 2026-09-18) and one RULING.**  `UCatPipe.v`:
+cat's round `pcat_round_at` (`kcat_round` funded at fd 0 = the pipe:
+the READ POINTER IS THE CONSOLE CURSOR, one permit `rcur`; no offset, no
+`Hpin`), the entry `pcat_image_entry` at argv `["cat"]` — CHEAPER than
+the file's (no name, no path implication, no cwd; the `cannot open` arm
+REFUTED by the node's word count), exit row from the registry, audits
+unmoved.  The pipe stage's write link takes cat's byte at cursor `c` from
+`⌜acc = take d (drop c L)⌝` alone (no `cs`/`I` lend — STOP 2 did not fire).
+Two PipeProto/UkReadPipe shapes were too lossy for a WALK and were
+re-proved locally (a reader needs `length acc = d` and the post's image
+row; `wp_uk_ecall_read_pipe_std`'s count premise is the whole word where
+`kcat_r` pins the low 32 bits — one-line relays owed at the leaf).  **THE
+WALL, RULED:** a pipe read's `-1` has three arms; two are refuted (copy-out
+fault at the first byte; the sign guard at `cap = 512`); the third, THE
+READER'S OWN KILL SHOT, is not — the only row killing a read's `-1`
+(`UexecRet.uexec_live_ok`) is stated for `FdDevice 1` alone — and cat
+branches on it (`cat: read error`, not in the model).  RULED: it closes
+by the NAMED PREMISE `Hktaint : □ (∀ gn, ChildTok.kill_shot gn -∗
+app_taint)` ("a kill taints the application", what `applications.md`
+already says the kill credential is), stated inside `Hprog` beside
+`pipe_both_law`, audited as such; the honest discharge is a kernel lane
+**READ-KILL-TAINT** (the pipe twin of `uexec_live_ok`'s read clause =
+usertrap's second `killed()` check handing the credential out), queued
+after PIPE-2W.  Also: a standalone `ctokG` section variable makes
+`ChildTok.kill_shot` a different term from the one the post carries
+(resolve through `xv6G`) — durable-notes' two-instance wedge again.
+
 ### 5.4 The pipe leaves at the standard slots (lane PIPE-STD)
 
 `UkReadPipe.wp_uk_ecall_read_pipe` and `UkWritePipe.wp_uk_ecall_write_pipe`

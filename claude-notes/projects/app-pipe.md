@@ -204,7 +204,11 @@ arm is the theorem's one named premise (`pipe_both_law`).
   `Hprog`), `pipe_prog_law` discharged → `pipe_adequacy_pipeΣ` closed
   modulo `pipe_both_law` only.
 
-## Findings (append as lanes report)
+- [ ] **READ-KILL-TAINT** (kernel/U tier, after PIPE-2W; CAT-PIPE's wall):
+  `UexecRet.uexec_live_ok`'s read clause generalised from `FdDevice 1` to a
+  pipe row (usertrap's second `killed()` check hands the kill credential
+  to the `-1`), so `Hktaint` is discharged and leaves `Hprog`.
+## Findings (append as lanes report)## Findings (append as lanes report)
 
 ### PQ-FLAG-2 (2026-09-18) — the write link's second premise, paid by the CODE
 

@@ -10182,3 +10182,147 @@ all seven catalogs.  `Print Assumptions`: `cat_image_entry` and
 `cat_pay_filed_some` is the three non-primitive ones; and
 `UexecExecMint.udepw_law_of_sup_read` is TWO (`resv_matches`,
 `resv_is_valid`) and nothing else.
+
+### CAT-GEOM-4 (2026-09-17) — THE WALK'S EXIT PAYLOAD IS A RESOURCE, THE TAINT'S ARM IS DISCHARGED, AND SH LENDS CAT ITS TWO ROWS
+
+Branch `app-file/cat-entry`, fast-forward merge of `main` at `6ec7e5337`
+(LINK-GEN-5 and CAT-GEOM-3).
+
+**(1) `(⊢ Cend)` BECOMES `□ Cend`, AND THAT IS THE WHOLE OF THE TAINT
+GAP.**  Five statements move, all in cat's own walk:
+`UkCat.kcat_pay_seq_of_law`, `UkCatCat.kcat_round_of_law`,
+`UkCatMain.kcat_file_of_law` / `kcat_pay_of_law` / `kcat_pay_all_of_law`.
+Each took its exit payload as a COQ ENTAILMENT and now takes it as a
+PERSISTENT RESOURCE.
+
+**Why the old form was the obstacle and the new one is free.**
+`(⊢ ukn_pay N (-1))` is satisfiable only at the TRIVIAL payload; at a
+CLAIM the payload is a `UCatOut.cch`, whose taint disjunct
+(`AppFile.file_taint`) is persistent but is a HYPOTHESIS, not derivable
+from nothing.  **`□ Cend` is strictly WEAKER as a premise** — in an
+affine BI `⊢ P` gives `⊢ □ P`, because `□ emp ⊣⊢ emp` and `□` is
+monotone — so every caller that could supply the old one can supply the
+new one by `iModIntro`, and the free chain's corollaries at the trivial
+payload are unchanged but for that one line.
+
+**AND WITH IT `cat_taint_open` IS DISCHARGED OUTRIGHT** —
+`UCatKernel.cat_taint_open_of_law` and `cat_taint_open_of_taint`.  At a
+tainted era the open may still return a handle; what cat does next is
+now fully paid:
+
+- the ROUND is the free one (`kcat_round_of_law` at `□ (ukn_pay N' (-1))`,
+  which the taint itself gives through `cch`'s right disjunct);
+- the CLOSE is free at the `FdSlots.fdst_nopipe` **the open's own leaf
+  exports** — SUP-ONE's U2 put it on `UConsOpen.uk_open_fd_arm` and
+  CAT-GEOM-2's `UkFileOpen.uk_open_taint_fd` had dropped it; it is kept
+  now, and it is exactly what `UkCat.kcat_cldep_nopipe` wants;
+- rows 5 and 16 come from `AppInv.app_sup ∗ app_taint` through
+  `UexecExecMint.udepw_law_of_sup_read` (CAT-GEOM-3) and `_write`, and
+  `UCatKernel.cat_app_sup_of_taint` is the one-line bridge:
+  `AppFile.file_sup_of_taint` at the era's record
+  (`file_app = MkAppcfg file_names (file_pred c) r`, `cbn` on the
+  projections).
+
+So the sequence CAT-GEOM-2 opened closes here: *the gap was never a
+missing law* — it was two premises stated in the wrong logic.
+
+**(2)/(3) THE LEND, AND THE ONE NAME SH-ROUND APPLIES.**
+`ExecEntry.image_entry` is `□`-quantified over the key, so its payment
+premise CANNOT HOLD a linear resource; `Pay` is what the entry hands over
+per invocation, which is how echo's credential travels.  So cat's two
+OFF-LINK-4 rows travel there:
+
+    Definition cat_lend (c : file_fixed) (r : file_names) (q1 q2 : Qp)
+        (i : Z) (bs : list (bv 8)) (om : offmode)
+        (sts : list fdstate) (cw : Z) (v : era_pins) (vf : file_era)
+        (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (P : nat)
+      : iProp Σ :=
+      ((∀ N' : uk_names Σ,
+          cat_open_hand N' c r q1 q2 i bs (take NSTD sts) cw om)
+       ∗ ((∀ (N' : uk_names Σ) (fd : nat) (gamo : gname),
+             ⌜(fd < NOFILE)%nat⌝ -∗
+             cat_held_read N' (cat_hold_at N' r q1 i bs om fd gamo) c fd bs)
+          ∗ (fdq r q1 (Some (i, bs)) ∗ fdq r q2 (Some (i, bs))
+             ∗ UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P 0%nat)))%I.
+
+`cat_pay_at_lend` is the framing law (`(R -∗ cat_pay_at W Q Pay) -∗
+cat_pay_at W Q (R ∗ Pay)`), and **`UCatKernel.cat_child_of_entry`** is
+the one name: given the node premises, `cw = ROOTINO`, the child's fd 1
+and fd 2 rows and `fd_lowest_closed` on `sts`, plus `app_taint`, the two
+era pins, `urun_nopipe` and `udep`, it yields
+
+    image_entry ElfUser.cat_elf Mn (mword_of_int (t + 8) : mword 64) sts
+      cw cs pidv (catq_cat v vf ps0 cs0 s0 I0 P)
+      (cat_lend c r q1 q2 i bs om sts cw v vf ps0 cs0 s0 I0 P) uslot
+
+with NO remaining Iris premise — the taint arm included.
+`UShRound.cat_pay` and `Hchild_cat` are restated to match; the payload
+conversion (`catq_cat … (-1) -∗ UkShFork.ushf_wq Wcf I`) stays SH's,
+because it is a fact about the era's links and not about cat, which is
+why `cat_image_entry` takes `Q` as a parameter.
+
+**THE TWO HYPOTHESES OFF-LINK-4 MUST DISCHARGE, VERBATIM** (unchanged
+from CAT-GEOM-3 except that the open is now key-independent, so
+`wp_uk_ecall_open_read_deed_hand` matches it directly):
+
+    Definition cat_hold_at (N' : uk_names Σ) (r : file_names) (q : Qp)
+        (i : Z) (bs : list (bv 8)) (om : offmode)
+        (fd : nat) (gamo : gname) (p : nat) : iProp Σ :=
+      (UserFd.ufd (ukn_fd N') fd (FdOpen true false (FdInode i gamo om))
+       ∗ UserOff.uoff gamo p ∗ fdq r q (Some (i, bs)))%I.
+
+**(a)** `UCatKernel.cat_held_read N' (cat_hold_at N' r q1 i bs om fd gamo)
+c fd bs` — at a cursor `p ≤ length bs` the descriptor HELD AT `p` reads
+the deed at `p` (count `ard_count 512 p (length bs)`, byte `j` is
+`bs !!! (p + j)`, and AT MOST 512 on both arms) and comes back HELD AT
+`p + count`; or the era is tainted and the handle comes back at some
+position.
+
+**(b)**
+
+    Definition cat_open_hand (N' : uk_names Σ) (c : file_fixed)
+        (r : file_names) (q1 q2 : Qp) (i : Z) (bs : list (bv 8))
+        (l : list fdstate) (cwv : Z) (om : offmode) : iProp Σ :=
+      (∀ (Img : gmap Z (bv 8)) (pv : mword 64),
+         ⌜forall M : gmap Z (bv 8), uimg_sub Img M ->
+            arg_path_of M pv FsImgCheck.fname_f⌝ -∗
+         ⌜um_start_of cwv FsImgCheck.fname_f = FsImg.ROOTINO⌝ -∗
+         ([∗ map] a ↦ b ∈ Img, ubyteq (ukn_d N') DfracDiscarded a b) -∗
+         UkCat.kcat_o N' pv
+           (UserFd.ustd (ukn_fd N') l
+            ∗ fdq r q1 (Some (i, bs)) ∗ fdq r q2 (Some (i, bs)))
+           (fun ret : mword 64 =>
+              ((⌜ret = (mword_of_int (-1) : mword 64)⌝
+                ∗ UserFd.ustd (ukn_fd N') l)
+               ∨ (∃ (fd : nat) (gamo : gname),
+                    ⌜ret = (mword_of_int (Z.of_nat fd) : mword 64)
+                     /\ (fd < NOFILE)%nat⌝
+                    ∗ UserFd.ustd (ukn_fd N') l
+                    ∗ cat_hold_at N' r q1 i bs om fd gamo 0%nat
+                    ∗ fdq r q2 (Some (i, bs)))
+               ∨ (UkFileOpen.uk_open_taint_fd (ukn_fd N') l ret
+                  ∗ file_taint c))%I))%I.
+
+It is `UkCatDeed.kcat_o_of_deed`'s post VERBATIM with ONE change: the fd
+arm hands `cat_hold_at … 0` — the held row AND the program's own half of
+the offset at ZERO (`UserOff.off_pub_hand_0`) — where the landed
+corollary hands `ualloc … (FdInode i γo OffParked)` and no `uoff`.
+**`om` is a PARAMETER everywhere**: never `OffParked`, never `OffHeld`
+literally.
+
+**EVERY STATEMENT THAT MOVED.**  The five `_of_law`s (item 1);
+`UkFileOpen.uk_open_taint_fd` (the `fdst_nopipe` conjunct kept);
+`UCatKernel.cat_open_hand` (key-independent), `cat_pay_present` /
+`cat_pay_absent` / `cat_pay_filed_*` (the taint premise now takes the
+payload equation, and `cat_pay_present` takes the cwd row);
+`UShRound.cat_pay` and `Hchild_cat`.  Everything else is additive.
+
+**THE BAR.**  Whole tree green (`--proofs -k`: `EXIT=0`, ZERO `Error`;
+a re-run is *Nothing to be done*).  No `Admitted` outside `UShRound.v`'s
+skeleton; `Proof using` everywhere; `tools/comment_quote_check.py iris` 0
+sites.  `make audit-all-only` / `audit-tree-only` / `audit-file-only`:
+all `EXIT=0`, the four axiom lists UNCHANGED (SYSTEM 13, ECHO 14, TREE
+13, FILE 14).  `make gen-ucode` *unchanged* for all seven catalogs.
+`Print Assumptions`: `cat_child_of_entry` and `cat_taint_open_of_taint`
+are `UShEcho.echo_image_entry`'s FOURTEEN exactly;
+`UkCatCat.kcat_round_of_law` is the three non-primitive ones.

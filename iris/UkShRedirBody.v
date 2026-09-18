@@ -165,18 +165,19 @@ Section UkShRedirBody.
     UCodeShK.shk_rodata γt -∗ UCodeShP.shp_code γt -∗ UkSh.ush_jtab γt -∗
     UkShFork.ushf_kill_law Wc -∗
     (* THE REDIRECT CHILD'S LAW, which is [sh_redir_child_law] below *)
-    UkShFork.ushf_child_law_at Wc ushs_lp -∗
+    UkShFork.ushf_child_law_at Wc ushs_lp 68 -∗
     UkShDiag.ush_panic_law Wc Wb -∗
     ⌜ UkSh.ush_fd0p l ⌝ -∗
     UkSh.ush_bstate N γp T Wc Wb Pm l ws -∗
     ushl_dat -∗ usz γs sz -∗
     ubytes γd sh_buf sh_nbuf f -∗
-    urun N h m (mword_of_int 0x97a) (16 + (80 + n)) -∗
+    urun N h m (mword_of_int 0x97a) (16 + (UkSh.ush_Dbody + n)) -∗
     WP (Loop : expr riscv_lang).
   Proof using HT HWct Hpay Hpsok_free.
     intros Hregs Hs1 Ha5 Hnn Hnul Hkl Hline Hszlo Hszal Hszok Hpm1 Hpmwb Hwbl.
-    exact (UkShFork.wp_kshm_body_at N γp T Wc Wb Pm Hpsok_free ushs_lp
-             h m f k len ws sz l n ushs_lp0 Hregs Hs1 Ha5 Hnn Hnul Hkl
+    exact (UkShFork.wp_kshm_body_at N γp T Wc Wb Pm Hpsok_free ushs_lp 68
+             h m f k len ws sz l n ltac:(lia) ushs_lp0
+             Hregs Hs1 Ha5 Hnn Hnul Hkl
              (ex_intro _ file Hline) Hszlo Hszal Hszok Hpm1 Hpmwb Hwbl).
   Qed.
 
@@ -274,8 +275,11 @@ Section UkShRedirBody.
           UserChildren.uch_any (ukn_ch N') -∗
           UkShMalloc.ushm_fresh N' sz -∗
           Wc I 3%nat -∗
+          (* EIGHT MORE THAN ECHO'S: the redirect parse is that much
+             deeper, and [UkSh.ush_Dbody] carries it (the program stream's
+             "one number") *)
           urun N' h m (mword_of_int 0x9c0)
-            (60 + (8 + (UkShDiag.ush_Dg + n))) -∗
+            (68 + (8 + (UkShDiag.ush_Dg + n))) -∗
           WP (Loop : expr riscv_lang)))%I.
 
   Global Instance sh_redir_child_law_persistent :
@@ -285,7 +289,7 @@ Section UkShRedirBody.
   (* the two shapes, one step apart: the walk takes the file name out of
      the line fact, the law binds it. *)
   Lemma ushf_child_law_at_of_redir :
-    sh_redir_child_law -∗ UkShFork.ushf_child_law_at Wc ushs_lp.
+    sh_redir_child_law -∗ UkShFork.ushf_child_law_at Wc ushs_lp 68.
   Proof using .
     iIntros "#Hl". rewrite /UkShFork.ushf_child_law_at.
     iIntros "!>" (N' h m dw dv s0 len ws g sz ld n I)
@@ -304,7 +308,7 @@ Section UkShRedirBody.
   (* ...and the other way, so the two shapes are interderivable and a
      supplier may prove whichever is convenient. *)
   Lemma sh_redir_child_law_of_at :
-    UkShFork.ushf_child_law_at Wc ushs_lp -∗ sh_redir_child_law.
+    UkShFork.ushf_child_law_at Wc ushs_lp 68 -∗ sh_redir_child_law.
   Proof using .
     iIntros "#Hl". rewrite /sh_redir_child_law.
     iIntros "!>" (N' h m dw dv s0 len ws file g sz ld n I)
@@ -505,8 +509,9 @@ Section UkShRedirBody.
         | exact Hfd0 ].
     - (* [echo a b > f] -- the SAME walk at the redirect child's law *)
       iDestruct (UkSh.ush_jtab_ro γt with "Hjt") as "#Hro".
-      iApply (UkShFork.wp_kshm_body_at N γp T Wc Wb Pm Hpsok_free ushs_lp
-                h m f k len ws sz l n ushs_lp0 Hregs Hs1 Ha5 Hnn Hnul Hkl2
+      iApply (UkShFork.wp_kshm_body_at N γp T Wc Wb Pm Hpsok_free ushs_lp 68
+                h m f k len ws sz l n ltac:(lia) ushs_lp0
+                Hregs Hs1 Ha5 Hnn Hnul Hkl2
                 (ushs_lp_of_at ws f k len Hlat)
                 Hszlo Hszal Hszok Hpm1 Hpmwb Hwbl
                 with "Hgen Hhead Hcode Hro [] Hjt Hkl Hchr Hplaw [%] Hstd

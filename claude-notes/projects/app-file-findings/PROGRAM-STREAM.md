@@ -18,6 +18,7 @@ stream's.)
 | after the link record's five and the lexability (`606b3efae`) | **13** | `Hwbl` `Hwbwc` `Hcltaint` `Hwc` `Hwbr` `Hlexr` |
 | after sh's killed child (`fbc4048eb`) | **12** | `sh_kill_law_file`'s `Admitted` |
 | after the kill equation (`85d72e261`) | **11** | `Hktaint` |
+| after `file_stage_inst` (`c62244638`) | **11** | (the gate for `Hexecfail`/`Hchild_echo`; the two discharges wait on RULING H) |
 
 Append one block per stretch, newest last, each with the metric after it.
 
@@ -291,3 +292,50 @@ exactly the shape `UShRound` states) and `Hchild_echo` (by
 three files the program stream owns** (`StageRec.v`, `UkShEcho.v`,
 `UShEchoPay.v`) plus the two instances — not a proof that can be written
 against the record as it stands.
+
+
+## (c) LANDED — `file_stage_inst`, and the two record fields it cost
+
+`iris/FileLinkInst.v` now carries `file_stage_inst : StageRec FI`, and it is
+SHORTER than echo's because `FileLinksLine` already had both halves: the
+cursor IS `fwc_blk g k v I 0`, the step IS `fblk_step`, the lend and
+`fwc_blk _ _ _ 0 0` are the same proposition (`blkcs_f cs 0 0 = cs`,
+`P + 0 = P`), and the block's end is `lk_post` at
+`length (fab I 0) - 2 = length (wl_line (drop 1 (last_ws I)))`
+(`EchoDisc.line_alts_of_0_length`).  The model fact underneath is three
+reductions:
+
+```coq
+  ralt_dec 0 = REcho 0,  fst_free (REcho 0) = true,
+  ralt_ok (LEcho ws) (REcho 0) = (0 < 4)%nat,
+  cont s l (REcho k) = line_alts_of (uline_ws l) !!! k
+```
+
+so `fab I 0 = line_alts_of (last_ws I) !!! 0` **at an echo line**.
+
+**THE TWO FIELDS THE RECORD GAINED** (`StageRec.v`, and the guard threaded
+through `UShEchoPay` and `UShRest`):
+
+| field | was | now |
+|---|---|---|
+| `ck_lineok` | — | `list (bv 8) -> Prop`: the inputs this cursor is about |
+| `sk_lend_stage` | at EVERY input | takes `ck_lineok L sk_cur I` |
+| `sk_apr0` | at EVERY input | takes the same |
+
+Both were ECHO-SPECIFIC as stated: the file era's lend exists at all three
+lines its discipline admits, and at an `LEchoF` line the child writes to
+the FILE (the console block is the prompt) while at an `LCat` line it
+writes cat's own bytes — so a record without the guard says the redirect
+child prints echo's line on the console.  echo's instance is
+`ck_lineok := fun _ => True` and its two fields open with `intros _`; the
+consumers (`UShEchoPay.echo_slot_of_kexec_at_at`, `ushf_child_law_hold_at`,
+`sh_exec_sup_echo_wq_holds_at`, `UShRest.sh_rest_holds_at`) thread the
+era's own reading of its admissible lines, and echo's callers pass `I`.
+
+**WHY `Hexecfail` AND `Hchild_echo` DID NOT FOLLOW IMMEDIATELY.**  Both
+dischargers are stated at `Wc := fun I p => lk_lcred L (S gen_id) I p ∗ Hold I`
+— and RULING H reshapes the round's families to
+`Wcf I p := ∃ s0, Wcl_at s0 I p ∗ sh_hold_at s0 I`, which is not of that
+form (the index is existential OUTSIDE the credential).  So the two
+applications wait on INIT-FILE's `_at` layer, and this stream did not prove
+them against a shape that is about to move.

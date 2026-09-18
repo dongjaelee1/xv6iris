@@ -913,3 +913,128 @@ RULING CAT-DEED is recorded verbatim in stretch 5's §3 and unchanged:
 `cat_pay_at`/`cat_child_of_entry`, then cat's child law at `ushs_lp_cat`
 by cat's walk from 0x9c0.  (5) is assembly once (4) lands.  Both are
 multi-hour items behind (3)'s remaining shape.
+
+
+---
+
+## PROGRAM STREAM, stretch 8 (2026-09-18) — HOLD-POS
+
+Branch `app-file/sh-redir`, merged from `main` at `eb13d4c3a`.  Whole tree
+green (`--proofs -k`, `EXIT=0`, zero `Error`); four audits primitive-only
+and unchanged (System 13, Echo 14, Tree 13, File 14).
+Metric **4** in `UShRound.v` (three-file 1 + 4 + 1 = **6**; S3 proved).
+`tools/lemma_diff.py --ref main`: ten items, all the retired twin, the
+replaced `Hexecfail` and item 3's `Admitted`.  `comment_quote_check`: 0.
+
+### 1. What landed, file:lemma
+
+* **A, the model** — `FileDisc.fsm`'s `RFSilent` arm is `s` (identity);
+  `fd_fsm_shape` takes the `None` arm there.  Nothing else moved:
+  `fst_ok_fsm`, `FileDiscDec.fst_upto_vs_nil`, `FileLinksLine`'s `fnoc_of`
+  lemmas re-check unchanged.  Nothing else in the model looked wrong.
+* **B, the ties and the family** (`iris/UShRound.v`, S0 above the section,
+  S1 inside): `pre_tie` / `done_tie` / `pend_tie_at` / `pend_tie` (the
+  ruling's three, PEND with its alternative exposed as `pend_tie_at … a`
+  and packed as `∃ a`); `sh_deed_at tie sb I` (the one `iProp` shape,
+  `∨ T`), `sh_pre_at` / `sh_done_at` / `sh_pend_at`; `Wcf I p` by position
+  exactly as ruled (`ewc_lpr`'s shape, `p ≥ 3` the lend), `Wbf := Wbl ∗
+  DONE`, `Wcf_0/1/2/S3` as `eq_refl` unfolding lemmas, `Wcf_timeless`,
+  `Wbf_timeless`, `sh_done_head` (the head is DONE at `cs = []`).  Pure
+  steps: (i) `pre_tie_of_done` (needs `rest_of I = []` and `wl_nl ∉ l`),
+  (ii) `done_tie_of_pend`, (iii) `pend_tie_of_pre` at `fnoc_of (fline I)`,
+  (iv) `done_tie_of_pre_id`, plus `done_tie_of_pre_prefix` (a FILED list
+  extending the deed's, the filed alternative's effect the identity) and
+  its banner reading `done_tie_of_pre_ban` (`wr_ban_f`'s panic clause,
+  `fsm_panic`); `fsm_echo` / `fsm_cat` / `fsm_fnoc` / `cont_prompt_nopanic`;
+  (v) `cs_lb_prefix_len` / `cs_lb_agree_len` off `EchoOut.cs_lb_cmp`.
+  Five vacuity `Example`s: the three ties at the empty input and the
+  pending tie at each silent shape (`RCSilent`, `REcho 2`, `RFSilent` at a
+  PRESENT `f` — the model fix is what makes the last one true).
+* **C, the loop laws**: `Hwbl_f` (`Wcf I 3 -∗ Wcf I 0`, the PEND arm at
+  the silent alternative, `0 < nlines I` read off the lend's stage),
+  `Hwbwc_f`, `sh_kill_law_file` (through `Wcf_taint`), `Hcltaint` /
+  `Hktaint` unchanged; `Hwc_f` is INIT-FILE's **conjunct 5** (the read law
+  at the family, `Wcl2_rest` for `rest_of I = []`).  `Wcf_inp` / `Wbf_inp`
+  are the seam's read-backs (H below).
+* **D, the prompt law**: `sh_prompt_alt_of_deed` RESTATED at `wr_blk_f ∧
+  pend_tie_at` and PROVED (it is `FileLinks.file_write_link_blk` with the
+  block's first byte read off `cont … = u_prompt`); `sh_prompt_law_file :
+  file_links g -∗ UShKernel.sh_prompt_law (PS := uprogSG_free) Wcf`.  The
+  DONE arm is `UShPanicHold.sh_prompt_law_hold Wcl DONE` on the record's
+  `UShPanic.sh_prompt_law_holds_line_at FI`; the PEND arm is
+  `ksh_w_prompt_pend`: `pfam` (position 0 the cursor beside the deed,
+  positions 1–2 the record's shapes beside DONE) with `pfam_step` — the
+  '$' by `sh_prompt_alt_of_deed` landing at `wr_sp_t_f ps (cs ++ [a]) s0 I
+  (S P)` (new pure `wr_blk_dollar_at_f` / `wr_blk_pending_at_f`, the
+  stage's dollar lemmas with the STATE read instead of `fab`, because the
+  deed's alternative need not be state-free: `RCRan` at an empty `f`
+  prints the bare prompt) and the deed at DONE by `done_tie_of_pend`; the
+  ' ' by `lk_lpr_step`.  The two arms are joined by `ksh_w_or`; a tainted
+  deed or console goes through the record's own law (`ksh_w_prompt_taint`).
+* **E, the panic law**: `Hpanic` = `UShPanic.ush_panic_law_hold_at FI PRE`
+  plus `sh_done_of_pre_ban` (PRE → DONE at `Wbl I`: the filed list's last
+  alternative is a panic, or the era's head).
+* **F, the echo child**: `Hchild_echo` at `Hold := PRE` through the landed
+  `UShEchoPay.sh_exec_sup_echo_wq_holds_at_D` (the join was already a
+  parameter, `fwc0`; no generic-tier change there).  `fwc0` and the
+  exec-failed exit both go through **`Wcf0_of_pre_line_id`**: `Wcl I 0 ∗
+  PRE I -∗ Wcf I 0` whenever every alternative of the line leaves `f`
+  alone — the line credential hides its alternative, so the fold reads
+  all three arms (prologue: panic or head → DONE; a block with a byte
+  before its prompt → DONE by identity; a block whose prompt IS its first
+  byte → back to the lend, PEND at the silent alternative).
+  `sh_child_law_file` is re-proved through `UkShEcho.ushf_child_law_holds_at_D`.
+* **G**: `UInitFileCons`'s twin (`sh_hold_at`, `file_Wcf_at`, `file_Wbf_at`,
+  `sh_hold_at_of_boot`) is RETIRED; `file_Wbf_at_of_boot` produces
+  `UShRound.Wbf g r (dst_content s) []` via `UShRound.sh_done_head`.
+  `UInitFileCons` imports `UShRound` (no cycle; nothing in the tree
+  imported the twin).
+* **H**: `Hsh_pm1` / `Hsh_pm3` / `Hsh_pmwb` need NO new lemma: `Wbf` unfolds
+  to `fun J => Wbl J ∗ DONE J`, so `UShLineAtHold`'s `_hold` lemmas apply
+  at `Wb := Wbl, Hold := UShRound.sh_done_at g r s0`.  `Hsh_bd` is
+  `UShLineAtHold.ush_posb_of_lend_L FI (fgn_echo g) N gp Wcf Wbf l i Hpeq
+  (UShRound.Wcf_inp …) (UShRound.Wbf_inp …)` — the `_L` lemma already takes
+  `Wc`/`Wb` abstract with the two read-backs as premises.
+
+### 2. What was REFUTED, at the statement
+
+* **`UkShEcho.ush_execfail_law_wq_at dg nn Wcf` (the unguarded carrier)
+  is unprovable at the position-keyed family.**  It quantifies over EVERY
+  input; at an `echo … > f` input the exec-failed alternative is `RFExec`,
+  `fsm s (LEchoF ws) RFExec = Some []`, while the lend's deed is at the
+  round's PRE-state (`cat_st cs s0 I`, in general not `Some []`) — so
+  `Wcf I 0`'s DONE arm wants a content the deed does not have, and its
+  PEND arm wants `cont … = u_prompt` where the output is `alt_execfail`.
+  The ruling's (vi) ("a printing child at the DONE arm, knowing the
+  alternative it filed") is right for the child that HOLDS the deed it
+  moved; this law was about the echo-console child and was only ever spent
+  at an `LEcho` input.  Repair (additive, `UkShEcho.v`):
+  `ush_execfail_law_wq_at_D D dg nn Wc` (the carrier under the child law's
+  own guard `D`), `ushf_child_law_holds_at_D`, and the landed
+  `ushf_child_law_holds_at` re-proved through them VERBATIM
+  (`ush_execfail_law_wq_at_D_of`); echo's instance is untouched.
+* **`sh_prompt_alt_of_deed` as stated (the deed at `cat_tie`, the
+  PRE-state) does not fit the PEND arm**, whose deed has already MOVED to
+  `fsm (cat_st …) (fline I) (ralt_dec a)`; it was restated at
+  `pend_tie_at` (the only consumer is the prompt law's PEND arm).  Not a
+  refutation of the ruling — the ruling's (iv) says exactly this — but the
+  S3 statement predated it.
+* Nothing else in RULING HOLD-POS was found wrong.  `0 < nlines I` in PEND
+  is redundant at every use (it is read off the lend's `wr_blk_f`) but
+  harmless; kept as ruled.
+
+### 3. Item 2 (REDIR-CHILD)'s entry point
+
+`Hchild_redir`'s exit is `UkShFork.ushf_wq Wcf I` and the ruling's (vi)
+says it is always `Wcf I 0`: state the child's exit at
+`UShRound.Wcf_0` — either `Wcl I 0 ∗ DONE I` (a printing child: build DONE
+with `done_tie_snoc cs a s0 I c` from the lend's PRE `cs` and the
+alternative `a` it filed at the record's POST form) or `Wcl I 3 ∗ PEND I`
+(the silent `RFRan sel` child: `pend_tie_at cs s0 I (Some (subseq …)) a`
+with `cont … RFRan = u_prompt` by `reflexivity`).  The first thing to do
+is `UkShRedirSeam.wp_kshm_child_file_redir`'s supply at `Wcf I 3 = Wcl I 3
+∗ PRE I` (`UShRound.Wcf_S3`), taking `PRE I` apart for the deed the open
+consumes and re-tying it at exit.  Item 4 (`UInitFileCC.v`, program-tier
+worktree) substitutes `Hold := UShRound.sh_done_at g r s0` in its three
+`_hold` applications, `Hsh_bd` as in H above, and conjunct 5 :=
+`UShRound.Hwc_f g s0 γp`.

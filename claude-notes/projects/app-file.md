@@ -18,7 +18,12 @@ at `main` = the merge of `app-file/off-hand` (KERNEL-STREAM item 4).  Audits
 The blocker for the whole program tier is the deed's hold: RULING HOLD-POS
 (design §3.7).  Serial plan, each item one lane on `app-file/sh-redir`:
 
-1. **HOLD-POS** — the model fix (`RFSilent` identity), the position-keyed
+1. [x] **HOLD-POS** — LANDED (stretch 8, `1cfe4854b`): metric 4 in
+   `UShRound.v`; S3 proved; `sh_prompt_law_file`, `Hpanic`, `Hwbl_f`,
+   `Hwc_f` (conjunct 5) at the folded family; the exec-failed carrier is
+   D-guarded (`UkShEcho.ush_execfail_law_wq_at_D`, a statement refutation
+   of the unguarded one).  Findings: PROGRAM-STREAM.md stretch 8.
+   The item as briefed: the model fix (`RFSilent` identity), the position-keyed
    `Wcf`/`Wbf` in `UShRound.v` with PRE/DONE/PEND and their pure step
    lemmas, `Hwbl`/`Hwbwc`/`sh_kill_law_file`/`Hcltaint` re-proved, the
    file era's prompt law (S3 `sh_prompt_alt_of_deed` PROVED), the panic

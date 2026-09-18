@@ -929,6 +929,12 @@ Five ways to be silently miscounted, all of them green builds:
   but it instantiates nothing, and the report counts only instantiations — so
   the function reads *assumed*. `LinkPrputc.v` was that shape; the fix is the
   ordinary one, a functor in `Proof<F>.v` and a one-line link.
+- **Tree-wide sweeps: pick the sentinel with `grep -c` on the tree first.**
+  A sed/python sweep that used `§` as a placeholder rewrote 3,327 comment
+  lines in 442 files into nonsense because the tree already contains `§`
+  (it still compiled; only `grep` caught it).  Check the sentinel is absent
+  from `iris/` before expanding it, and diff the sweep's file count against
+  the intended site count before committing.
 - **`iris/_CoqProject` is a file list, not a log.** No lane names, deliverable
   numbers or explanations as `#` comments beside the entries (owner's rule);
   the `.v` file's own header is where a file explains itself.

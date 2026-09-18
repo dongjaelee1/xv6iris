@@ -555,7 +555,9 @@ unowned critical item (WRITE-RELAY-3's `TB` guard).  RULES, replacing
   lower it did not finish.  Readings: 31 at review 2 (9/19/3); 23 at
   checkpoint 34 (9/11/3, PROGRAM-STREAM's first stretch, 4689ae3e1); 21 at
   INIT-FILE's first lane (9/11/1, fabe6c805); checkpoint 35 = both merged
-  plus the file stage instance (e3b70b6d3), audits 27/14/13 unchanged.
+  plus the file stage instance (e3b70b6d3), audits 27/14/13 unchanged; 19
+  at checkpoint 36 (7/11/1: KERNEL STREAM's L2+L4, `Hdep1`/`Hwrite1`
+  discharged, 6d645865c).
 - RULING H' (2026-09-18, INIT-FILE findings 3.1/3.2): the round's hold is
   tied to the era's boot state BY A SHARED INDEX, not by `f0_lb` (which
   only exists after the era's first console byte, so `Wbf []` was

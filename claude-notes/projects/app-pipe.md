@@ -78,7 +78,7 @@ arm is the theorem's one named premise (`pipe_both_law`).
   non-panic continuation is `$`-free then the prompt); the `vm_compute`
   demos §1 lists including the NEGATIVE one.  Bar: `Closed under the
   global context`.
-- [ ] **SH-PARSE-PIPE** (U tier, sh's parser, design §5.1).  Mould:
+- [~] **SH-PARSE-PIPE** (U tier, sh's parser, design §5.1).  Mould:
   upstream's SH-PARSE / SH-PARSE-2 findings in `projects/app-file.md`.
   `parsepipe` turns ONCE for ` | cat` (today `wp_kshp_parsepipe_gt` is the
   `>`-shape walk); `pipecmd` into the node catalogue (`ush_cmd` at `UPipe
@@ -379,3 +379,209 @@ computable form (finding 2).  Decide that before instantiating the stage's
 PIPE-2W's merge lease.  And the owner owes a ruling on finding 1 before
 `AppPipe`'s theorem is stated, because it is the difference between a true
 theorem and a false one.
+
+### SH-PARSE-PIPE (2026-09-18) — the pipe line's LEXER lands whole and its LEXABILITY is a theorem; what is left of the parser is TWO RE-STATEMENTS, and the one instruction nobody had walked is landed
+
+Branch `app-pipe/sh-parse-pipe`, NINE commits (`d17064949`, `16cc644da`,
+`6ed408fc8`, `0a2de5b53`, `9ba83f6a1`, `cb0a796c3`, `9c78e50fa`, this one
+and `b5bd56a9f`).  Whole
+tree green on the lane's remote tree (`build`, RC=0); FIVE NEW FILES plus
+five `iris/_CoqProject` lines and NOT ONE LANDED STATEMENT TOUCHED (the
+simple-line and redirect-line theorems are byte-identical, `UkShRun.v` is
+unread-only, `make gen-ucode` unrun); no `Admitted`, every result carries
+`Proof using`.
+
+**WHAT LANDED.**
+
+- `iris/UkShPipeLex.v` (pure, a leaf) — the line model.  `ushq_bar` and its
+  byte facts; `ushq_one` / `ushq_pipe` (the canonical shape: one blank each
+  side of the `|`, the right command the run `[S (S p), e)`, blanks to the
+  end) with the five scan readings and `ushq_pipe_not_nosym`;
+  **`ushq_sym_ok`** (ONE premise for `gettoken` covering BOTH symbol bytes,
+  which `UkShParseSym.ushs_gt_ok` implies — `ushq_sym_ok_gt`);
+  `ushq_nosym_from len f c` with `ushq_nosym_from_0` (it IS
+  `ushp_no_symbols` at `c = 0`, both ways) and the pipe line's two
+  instances; `ushq_line_is` (positional, `UkShRedirLine.ushs_line_is`'s
+  twin) with `ushq_line_is_pipe`; both token lists; **the lexability
+  theorem `ush_line_toks_pipe` / `ush_line_toks_holds_pipe`** and its
+  existential form `ush_line_lexable_pipe(_holds)`; the demo at
+  `echo hello world | cat` and the NEGATIVE witness.
+- `iris/UkShPipeTok.v` — `wp_kshp_gtk_disp_bar` (gettoken's `|` arm, TEN
+  instructions), `wp_kshp_gtk_disp_sym` (the two symbol arms under ONE
+  statement), `wp_kshp_gettoken_syms` (gettoken end to end at
+  `ushq_sym_ok`).
+- `iris/UkShPipeParse.v` — `ushp_pipe_node` / `ushp_pipe_close` (the node
+  with BOTH children named), `ushp_jrow_pipe`, and
+  **`wp_kshp_nulterminate_pipe`** (nulterminate's PIPE row, `user/sh.c:481`).
+- `iris/UkShPipeSeam.v` — **`ush_cmd_of_ushp_pipe`** (the node catalogue
+  `ush_cmd γd p (UPipe (UExec …) (UExec …))`), `ushq_malloc_le_third`, and
+  the seam's vacuity instances `ushq_demo_cut_ok_l` / `_r`.
+- `iris/UkShPipeEx.v` — `ushp_T_arg_bar` / `ushp_T_pipe_bar` /
+  `ushp_peek_arg_hit` / **`ushp_peek_pipe_hit`** (the fact parsepipe's guard
+  turns on), `ushp_peek_res_miss` / `ushp_peek_redir_miss_bar` /
+  `ushq_peek_redir_miss_pipe` (the miss the left command's LAST
+  `parseredirs` needs), and **`wp_kshp_pex_bar`**, the argument loop's exit
+  at the `|`.
+
+**THE TOKEN LIST AND THE NODE, VERBATIM (what SH-PIPE consumes).**  With
+`p0 := length (wl_body ws)`, `p := p0 + 1` (the `|`),
+`e := p0 + 3 + length right`, `len = e + 1`:
+
+```coq
+  (* LEFT: echo's OWN list, terminated at the '|' *)
+  ushs_toks len f (p0 + 1) 0 (wl_toks ws)          (* 0 < length < 10 *)
+  (* the '|' itself: gettoken answers 124 and leaves the cursor at p0 + 3 *)
+  ushs_gettok_res len f p = 124   ushs_gettok_end len f p = S p
+  ushs_gettok_fin len f p = S (S p)
+  (* RIGHT: one token, terminated at the line's end *)
+  ushs_toks len f len (p0 + 3) [(p0 + 3, p0 + 3 + length right)]
+  (* the node, out of ONE line and the two EXEC nodes *)
+  ush_cmd γd p (UPipe (UExec (ush_args s0 g toksl))
+                      (UExec (ush_args s0 g toksr)))
+    where g = ushp_nulfold toksr (ushp_nulfold toksl (ushp_ext len f))
+```
+At `echo hello world | cat`: `len = 23`, `'|'` at 17, left
+`[(0,4); (5,10); (11,16)]`, right `[(19,22)]` (all four `vm_compute`d in
+the file's §9).
+
+**THE FIVE FINDINGS.**
+
+1. **NOTHING under the shape had to be generalised again.**  The token
+   model (`ushs_toks`), the two scan measures and the whole tokenization
+   induction (`UShLexRedir.ushs_toks_tail` / `ushs_toks_line`) never
+   mention WHICH symbol byte stopped them, so both of the pipe line's
+   token lists come off them unchanged: the left command's arguments are
+   ECHO'S OWN `LineWords.wl_toks ws` terminated at the `|`
+   (SH-LEX-REDIR's ruling 1, verbatim) and the right command's one token
+   is the same induction at the line's own newline.  The pipe line's
+   lexability therefore costs NO new induction and NO new premise —
+   `EchoDisc.line_ok ws` and `wl_word right` are the whole bill, and
+   `ush_line_toks_holds_pipe` is `Closed under the global context`.
+2. **ONE premise serves gettoken at both symbols, and the landed walk is
+   its instance.**  `ushq_sym_ok` ("every symbol byte is a `|`, or a `>`
+   with the `>>` lookahead refuted") is implied by `ushs_gt_ok`, so
+   `wp_kshp_gettoken_syms` SUBSUMES `UkShRedirGtk.wp_kshp_gettoken_sym`
+   rather than sitting beside it (the landed statement was left alone —
+   the bar forbids moving it — so a later lane can retire one).  What
+   made that cheap is `wp_kshp_gtk_disp_sym`: both symbol arms land on
+   0x388 with the cursor advanced by one and s5 holding THE BYTE ITSELF,
+   so one statement covers them and the whole-function walk is the landed
+   proof with ONE call changed.
+3. **The `|` arm is CHEAPER than the `>` arm, and 0x386 is a six-way
+   join.**  sh's `gettoken` has a `>>` case and no `||` case, so the `|`
+   arm needs neither the byte after the `|` nor `S k < len`; it is
+   0x356/0x35a/0x35e/0x362 → 0x3ca/0x3ce → 0x3e4/0x3e8 → **0x386**
+   (`c.addi s1,s1,1`, the arm `|`, `(`, `)`, `;`, `&`, `<` all share),
+   falling into 0x388 where the `>` arm and the NUL arm land.
+4. **THE MALLOC STOP RULE IS ANSWERED, AND THE ANSWER IS NO EXTENSION.**
+   A pipe line makes exactly **THREE** constructor calls — `parseexec`
+   runs once per side of the `|` and each run calls `execcmd` (168 bytes),
+   and `parsepipe`'s turn calls `pipecmd` (24) — and `parseredirs` turns
+   zero times, so `redircmd` is NOT on the path and neither are
+   `parseblock`/`listcmd`/`backcmd`.  Three does NOT exceed what
+   `ushm_fresh`'s landed chain funds: `UkShMalloc.ushm_malloc_le_one` is
+   already GENERAL in the free list's remaining count `R`, so the third
+   link is three lines (`ushq_malloc_le_third`, in this lane's own file —
+   nothing in `UkShMalloc` moved).  `fresh → 4084 → 4072 → 4060`:
+   THIRTY-SIX of the chunk's 4096 units.  SH-MALLOC-3's "the parser's
+   capability is BOUNDED" bounds the REQUEST (168 bytes), not the number
+   of calls.
+5. **The argument loop's exit at the `|` is ONE instruction of new code.**
+   `while (!peek(ps, es, "|)&;"))` is refuted at every round on a
+   symbol-free line, so no landed walk ever takes the TAKEN arm of 0x62c
+   — and that arm goes to **0x662**, which is exactly where the loop's
+   exhausted-line exit goes (`UkShRedirEx.wp_kshp_pex_end`).  So
+   `parseexec`'s argv terminator stores and its whole epilogue are
+   already walked, unchanged, and `wp_kshp_pex_bar` is the entire
+   difference.
+
+**WHAT THE BRIEF / THE DESIGN GOT WRONG.**
+
+- **Deliverable 3 ("`UkShFork.ushf_lexable` grows the pipe shape") is not
+  implementable as stated, and the design page repeats a phrasing upstream
+  already refuted.**  `ushf_lexable` IS GONE (deleted by lane SH-LINE 2b,
+  `iris/UkShFork.v:1064`: "it said every line the user could type lexes,
+  and it is FALSE"), and SH-PARSE proved that widening its replacement
+  `UkShLoop.ush_line_lexable` to a DISJUNCTION is refuted
+  (`UkShRedirLine.ushs_line_is_nosym`: a line `ush_line_is` describes
+  carries no symbol byte at all, so the right disjunct would be vacuous).
+  What replaces it is a THIRD line predicate plus a theorem, which is what
+  this lane landed (`ushq_line_is`, `ush_line_lexable_pipe_holds`).  It is
+  deliberately NOT defined in `UkShLoop` beside `ush_line_lexable` /
+  `_redir`: SH-LEX-REDIR §4 shows the disjunct inside `UkSh.ush_rest_line`
+  and the three-way case in `UkShFork.ushf_rest_of_body` are ONE coupled
+  change with the child WALK, the pipe child walk does not exist, and a
+  premise nobody can discharge is gunk.  Note for whoever lands it: that
+  disjunct now has to admit a **FOURTH** arm — echo, redirect, cat
+  (SH-LEX-REDIR's own last paragraph) and pipe.
+- **Design §5.1's "`UkShRun.ush_simple` admits `UPipe (UExec l) (UExec r)`
+  at the top" is the same sentence SH-REDIR refuted for `URedir`.**
+  `ush_simple` is a structural `Fixpoint`, so "at the top and nowhere
+  deeper" is not expressible in it, and widening it in place silently
+  strengthens `UkShRun.wp_kshr_runcmd`, whose proof has no ledger to spend
+  on the arm.  The landed answer is the LAYERED `UkShRedir.ush_top`
+  (`ush_top (URedir c1 _ _ _) := ush_simple c1`), so lane SH-PIPE wants a
+  `ush_top`-shaped extension (`ush_top (UPipe l r) := ush_simple l /\
+  ush_simple r`), not an edit to `ush_simple`.  This lane did not touch
+  `UkShRun.v` (its bar forbids it) and reports it instead.
+- The brief's "check `UkShRedirTok`/`UkShLexRedir` for the `>` arm and add
+  the `|` arm the same way" is right, and cheaper than it sounds (finding
+  3).  Its "count them from the C and report" for malloc is answered by
+  finding 4.  `UkShRun.ush_cmd`'s `UPipe` row and `ush_cmd_pipe` already
+  existed, as did `UkShParse.ushp_tree`'s and `ushp_cmd`'s PIPE arms —
+  only the CONSTRUCTOR-side node (`ushp_pipe_node`, both pointers named,
+  SH-PARSE-2's shape fact at two pointers) had to be added.
+
+**THE STOP, WITH THE INSTRUCTION RANGE.**  `parsepipe`'s turning arm is
+**0x6c2..0x6e0, THIRTEEN instructions**, and it rejoins the landed walk
+(`UkShRedirCm.wp_kshp_parsepipe_gt`) at its own 0x6b0, so the epilogue is
+free:
+
+```
+  0x6c2 c.li a3,0 ; 0x6c4 c.li a2,0 ; 0x6c6 c.mv a1,s1 ; 0x6c8 c.mv a0,s4
+  0x6ca jal 310 <gettoken>      -- consumes the '|'  (wp_kshp_gettoken_syms)
+  0x6ce c.mv a1,s1 ; 0x6d0 c.mv a0,s4
+  0x6d2 jal 682 <parsepipe>     -- THE RECURSION, on the right command
+  0x6d6 c.mv a1,a0 ; 0x6d8 c.mv a0,s3
+  0x6da jal 260 <pipecmd>       -- NOT IN ANY CATALOG (skipfunc)
+  0x6de c.mv s3,a0 ; 0x6e0 c.j 6b0
+```
+It needs three things this lane could not do, in this order:
+
+1. **`parseexec` at the pipe line, LEFT** — a RE-STATEMENT, not a new
+   walk: `UkShParseExec.wp_kshp_parseexec` / `wp_kshp_pex_loop` (or
+   SH-PARSE-2's `UkShRedirEx`/`UkShRedirPex` copies) at
+   `ushs_toks len f p 0 args` and `ushq_pipe_nosym_below`, with
+   `wp_kshp_pex_bar` closing the last round.  No instruction of it is
+   undiscovered (finding 5).  ONE MORE "one line of N": the loop calls
+   `parseredirs` after EVERY argument, so its last call sits ON the `|`,
+   and `UkShRedirPr.wp_kshp_parseredirs_ns` cannot serve it — that walk's
+   premise is "the byte at the cursor is not a symbol", which the `|`
+   falsifies, and it spends it in one line through
+   `ushs_peek_res_nsym`.  The weakest fact is landed here instead
+   (`ushp_peek_res_miss`, the mirror of `UkShRedirLex.ushp_peek_res_hit`
+   and strictly more general than `ushs_peek_res_nsym`, with
+   `ushq_peek_redir_miss_pipe` its instance), so the re-statement of
+   `parseredirs`' zero-turn walk carries no new obligation either.
+2. **`parseexec`/`parsepipe` at the pipe line, RIGHT** — the same walks at
+   `ushq_nosym_from len f (S (S p))` (`ushq_pipe_nosym_from`), which is
+   the "one line of 460" shape SH-PARSE named: every use those walks make
+   of `ushp_no_symbols` is at or above their own cursor.
+3. **`pipecmd`'s catalog row** — `tools/ucode_shp.txt` carries
+   `skipfunc pipecmd`; it becomes `func pipecmd`, `make gen-ucode` is
+   re-run and `iris/UCodeShP.v` COMMITTED (`make check-ucode`'s second
+   half is `git diff --exit-code`).  Two knock-ons, both measured on
+   SH-PARSE's `redircmd` precedent: `shp_syms_pins` gains a conjunct, so
+   the ELEVEN `destruct shp_syms_pins as (…)` patterns in
+   `iris/UkShParse.v:857-877` each gain one `_` (proof text only, no
+   statement moves), and the whole parser cone recompiles.  The
+   constructor itself is `UkShRedirCmd.wp_kshp_redircmd`'s walk with five
+   field stores instead of seven.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  Item 1 above — the LEFT
+`parseexec` — because it is pure re-statement and it is what makes the
+turn's first call site exist.  Everything the re-statement needs is
+landed: the line model and both token lists (`UkShPipeLex`), gettoken at
+the `|` (`wp_kshp_gettoken_syms`), the loop's exit (`wp_kshp_pex_bar`),
+the two table hits, the PIPE node, `nulterminate`'s PIPE row, the node
+catalogue and the third malloc link.

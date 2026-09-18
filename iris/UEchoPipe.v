@@ -99,6 +99,7 @@ Require Import ElfUser.                 (* [echo_elf] *)
 Require Import UkShEcho.                (* [echo_argv_bytes] *)
 Require Import UShEcho.                 (* [echo_node_img], the room bound *)
 Require Import UShEchoOut.              (* [echo_out_argv_of_image] *)
+Require UShEchoPay.                     (* [echo_data_of_elf_image] *)
 Require Import CtxIdDefs.
 Require User.EchoSyms.
 Local Open Scope Z_scope.
@@ -596,6 +597,328 @@ Section UEchoPipe.
                    (ChildTok.kill_shot (uvis_gen W)) ret with "Hwp") as "Hh".
       iApply ("Hcont" $! h' ret with "[Hstd Hfr Hh] Hrun").
       iFrame "Hstd Hfr". rewrite /ep_ok. iRight. iExact "Hh".
+  Qed.
+
+  (* =================================================================== *)
+  (*  S4  THE WHOLE WALK'S PAYMENT                                        *)
+  (*                                                                     *)
+  (*  [UEchoOut.kecho_pay_of_link_from_at]'s twin: the SAME recursion     *)
+  (*  ([UkEcho.kecho_pay] on the argument count), with the protocol's     *)
+  (*  cursor where the era's stage cursor was.  echo's output IS the      *)
+  (*  line's join ([EchoDisc.out_cur] / [out_sep] / [out_last]), and the   *)
+  (*  line is [L := wl_line (drop 1 ws)] -- the good alternative minus    *)
+  (*  the prompt, which is the [L] the pipe's protocol is stated at.      *)
+  (* =================================================================== *)
+
+  Lemma ep_rodata_byte (g : gname) (a : Z) (b : bv 8) :
+    echo_ro !! a = Some b -> echo_rodata g -∗ utext g a b.
+  Proof using .
+    intros Ha. rewrite /echo_rodata /utext_img. iIntros "#H".
+    iApply (big_sepM_lookup _ _ a b with "H"). exact Ha.
+  Qed.
+
+  (* the alternative's byte at a position INSIDE the output is the line's *)
+  Lemma ep_alt_L (ws : list (list (bv 8))) (p : nat) (b : bv 8) :
+    (p < length (wl_line (drop 1 ws)))%nat ->
+    line_alts_of ws !!! 0%nat !! p = Some b ->
+    wl_line (drop 1 ws) !!! p = b.
+  Proof using .
+    intros Hp Halt. rewrite (alt0_out ws p Hp) in Halt.
+    by rewrite list_lookup_total_alt Halt.
+  Qed.
+
+  Lemma ep_pay_from (N : uk_names Σ) (pn : pnames) (γp : pipe_names)
+      (ws : list (list (bv 8))) (av : Z) (args : list uarg)
+      (l : list fdstate) (rb : bool) :
+    out_argv_at (line_alts_of ws !!! 0%nat) ws args ->
+    l !! 1%nat = Some (FdOpen rb true (FdPipe γp)) ->
+    forall k i : nat,
+      (1 <= i)%nat -> (i + k)%nat = (length ws - 1)%nat ->
+      □ (ep_car pn (wl_line (drop 1 ws))
+           (length (wl_line (drop 1 ws))) -∗ ukn_pay N (-1)) -∗
+      pipe_inv pn γp (wl_line (drop 1 ws)) -∗
+      ep_derail pn γp (wl_line (drop 1 ws)) -∗
+      echo_rodata (ukn_t N) -∗
+      uargv (ukn_d N) av args -∗
+      kecho_pay N args k i
+        (UserFd.ustd (ukn_fd N) l
+         ∗ ep_car pn (wl_line (drop 1 ws)) (out_cur ws i))
+        (ukn_pay N (-1)).
+  Proof.
+    intros Hargv Hl1 k.
+    pose proof Hargv as [Hlen Hargs].
+    induction k as [| k IH]; intros i Hi1 Hik;
+      iIntros "#Hq #Hinv #Hder #Hro #Hargv"; cbn [kecho_pay];
+      iIntros (g) "%Hg";
+      [ pose proof (Hargs i g Hi1 Hg) as [Hgl Hgb]
+      | pose proof (Hargs i g Hi1 Hg) as [Hgl Hgb] ];
+      (assert (Hiw : (i < length ws)%nat)
+         by (apply lookup_lt_Some in Hg; lia));
+      (pose proof (ws_at ws i Hiw) as Hw);
+      (assert (Hbnd : (out_cur ws i + ua_len g
+                       <= length (wl_line (drop 1 ws)))%nat)
+         by (rewrite Hgl;
+             pose proof (out_cur_lt ws i (ws !!! i) (length (ws !!! i))
+                           Hi1 Hw ltac:(lia)); lia));
+      (assert (Hbytes : forall j : nat, (j < ua_len g)%nat ->
+                 wl_line (drop 1 ws) !!! (out_cur ws i + j)%nat = ua_bytes g j)
+         by (intros j Hj;
+             apply (ep_alt_L ws (out_cur ws i + j)%nat (ua_bytes g j));
+             [ rewrite Hgl in Hj;
+               exact (out_cur_lt ws i (ws !!! i) j Hi1 Hw ltac:(lia))
+             | exact (Hgb j Hj) ]));
+      iDestruct (uargv_acc (ukn_d N) av args i g Hg with "Hargv")
+        as "[[_ #Hs] _]".
+    - (* THE LAST ARGUMENT: its bytes, then the newline, which ends the
+         output and pays the exit *)
+      destruct (out_last ws i (ws !!! i) Hi1 Hw ltac:(lia)) as [Hend Hnl].
+      assert (Hnlb : wl_line (drop 1 ws)
+                       !!! (out_cur ws i + length (ws !!! i))%nat = wl_nl)
+        by (apply (ep_alt_L ws _ wl_nl); [ lia | exact Hnl ]).
+      iExists (UserFd.ustd (ukn_fd N) l
+               ∗ ep_car pn (wl_line (drop 1 ws))
+                   (out_cur ws i + ua_len g))%I.
+      iSplitR.
+      + iApply (ep_w_data N pn γp (wl_line (drop 1 ws)) l rb
+                  (out_cur ws i) (ua_ptr g) (ua_len g) (ua_bytes g)
+                  Hl1 Hbnd Hbytes with "Hinv Hder Hs").
+      + rewrite Hgl.
+        iApply (kecho_w_mono N (mword_of_int echo_nl_ptr) 1%nat
+                  (UserFd.ustd (ukn_fd N) l
+                   ∗ ep_car pn (wl_line (drop 1 ws))
+                       (out_cur ws i + length (ws !!! i))%nat)
+                  (UserFd.ustd (ukn_fd N) l
+                   ∗ ep_car pn (wl_line (drop 1 ws))
+                       (out_cur ws i + length (ws !!! i) + 1)%nat)
+                  (ukn_pay N (-1)) with "[] []").
+        { iIntros "[_ Hc]".
+          replace (out_cur ws i + length (ws !!! i) + 1)%nat
+            with (length (wl_line (drop 1 ws))) by lia.
+          iApply ("Hq" with "Hc"). }
+        iApply (ep_w_txt N pn γp (wl_line (drop 1 ws)) l rb
+                  (out_cur ws i + length (ws !!! i))%nat echo_nl_ptr wl_nl
+                  Hl1 ltac:(lia) Hnlb
+                  ltac:(unfold echo_nl_ptr;
+                        change (2 ^ 38) with 274877906944; lia)
+                  with "Hinv Hder [Hro]").
+        iApply (ep_rodata_byte (ukn_t N) echo_nl_ptr wl_nl
+                  echo_nl_ro with "Hro").
+    - (* ...AND ANOTHER FOLLOWS: its bytes, then the separator *)
+      pose proof (out_sep ws i (ws !!! i) Hi1 Hw ltac:(lia)) as Hsep.
+      pose proof (out_cur_S ws i (ws !!! i) Hi1 Hw) as HS.
+      assert (Hlt : (out_cur ws i + length (ws !!! i)
+                     < length (wl_line (drop 1 ws)))%nat)
+        by exact (out_cur_lt ws i (ws !!! i) (length (ws !!! i))
+                    Hi1 Hw ltac:(lia)).
+      assert (Hspb : wl_line (drop 1 ws)
+                       !!! (out_cur ws i + length (ws !!! i))%nat = wl_sp)
+        by (apply (ep_alt_L ws _ wl_sp); [ lia | exact Hsep ]).
+      iExists (UserFd.ustd (ukn_fd N) l
+               ∗ ep_car pn (wl_line (drop 1 ws))
+                   (out_cur ws i + ua_len g))%I.
+      iExists (UserFd.ustd (ukn_fd N) l
+               ∗ ep_car pn (wl_line (drop 1 ws)) (out_cur ws (S i)))%I.
+      iSplitR; [| iSplitR ].
+      + iApply (ep_w_data N pn γp (wl_line (drop 1 ws)) l rb
+                  (out_cur ws i) (ua_ptr g) (ua_len g) (ua_bytes g)
+                  Hl1 Hbnd Hbytes with "Hinv Hder Hs").
+      + rewrite Hgl HS.
+        replace (S (out_cur ws i + length (ws !!! i)))%nat
+          with (out_cur ws i + length (ws !!! i) + 1)%nat by lia.
+        iApply (ep_w_txt N pn γp (wl_line (drop 1 ws)) l rb
+                  (out_cur ws i + length (ws !!! i))%nat echo_sep_ptr wl_sp
+                  Hl1 ltac:(lia) Hspb
+                  ltac:(unfold echo_sep_ptr;
+                        change (2 ^ 38) with 274877906944; lia)
+                  with "Hinv Hder [Hro]").
+        iApply (ep_rodata_byte (ukn_t N) echo_sep_ptr wl_sp
+                  echo_sep_ro with "Hro").
+      + iApply (IH (S i) ltac:(lia) ltac:(lia)
+                  with "Hq Hinv Hder Hro Hargv").
+  Qed.
+
+  (* ...AND THE WHOLE CHAIN, at main's own entry. *)
+  Lemma ep_pay_all (N : uk_names Σ) (pn : pnames) (γp : pipe_names)
+      (ws : list (list (bv 8))) (av : Z) (args : list uarg)
+      (l : list fdstate) (rb : bool) :
+    (2 <= length ws)%nat ->
+    out_argv_at (line_alts_of ws !!! 0%nat) ws args ->
+    l !! 1%nat = Some (FdOpen rb true (FdPipe γp)) ->
+    □ (ep_car pn (wl_line (drop 1 ws))
+         (length (wl_line (drop 1 ws))) -∗ ukn_pay N (-1)) -∗
+    pipe_inv pn γp (wl_line (drop 1 ws)) -∗
+    ep_derail pn γp (wl_line (drop 1 ws)) -∗
+    echo_rodata (ukn_t N) -∗
+    uargv (ukn_d N) av args -∗
+    kecho_pay_all N args
+      (UserFd.ustd (ukn_fd N) l ∗ ep_car pn (wl_line (drop 1 ws)) 0%nat)
+      (ukn_pay N (-1)).
+  Proof.
+    intros Hws2 Hargv Hl1.
+    pose proof Hargv as [Hlen _].
+    iIntros "#Hq #Hinv #Hder #Hro #Hargv".
+    rewrite /kecho_pay_all. iSplit.
+    - iIntros "%Hsmall". exfalso. lia.
+    - iIntros "_".
+      assert (H0 : out_cur ws 1%nat = 0%nat)
+        by (rewrite /out_cur; exact (wl_off_0 0%nat (drop 1 ws))).
+      pose proof (ep_pay_from N pn γp ws av args l rb Hargv Hl1
+                    (length args - 2)%nat 1%nat ltac:(lia) ltac:(lia))
+        as Hfrom.
+      rewrite H0 in Hfrom.
+      iApply (Hfrom with "Hq Hinv Hder Hro Hargv").
+  Qed.
+
+  (* =================================================================== *)
+  (*  S5  THE PAID ENTRY AT THE KEY                                       *)
+  (*                                                                     *)
+  (*  [UEchoOut.echo_uexec_slot_at_at]'s twin.  Every premise ABOUT THE   *)
+  (*  KEY is echo's own and is copied verbatim from the console twin; the *)
+  (*  two that are new are the LEDGER ROW (fd 1 is this pipe's write end, *)
+  (*  not the console device) and the LEND, which is the protocol's       *)
+  (*  handle, the missing arm and the cursor at zero instead of the era's *)
+  (*  stage cursor.  NO console link is taken anywhere: echo prints       *)
+  (*  nothing at a pipe, so the era's credential rides [ep_frame].        *)
+  (* =================================================================== *)
+  Lemma ep_uexec_slot_at (W : uvis) (pn : pnames) (γp : pipe_names)
+      (ws : list (list (bv 8))) (rb : bool) (Q : Z -> iProp Σ) :
+    (forall x y : Z, Q x = Q y) ->
+    (2 <= length ws)%nat ->
+    out_argv_at (line_alts_of ws !!! 0%nat) ws
+      (echo_args (uvis_M W) (uvis_av W) (Z.to_nat (uvis_argc W))) ->
+    (* THE LEDGER ROW: fd 1 is the pipe's WRITE end *)
+    take NSTD (uvis_fd W) !! 1%nat = Some (FdOpen rb true (FdPipe γp)) ->
+    tf_resume_pc (uvis_tf W) = (mword_of_int EchoSyms.start : mword 64) ->
+    echo_text_sub (uvis_M W) ->
+    echo_data_sub (uvis_M W) ->
+    (forall a : Z, 0 <= a < 4096 ->
+       ux_addr (uvis_perm W) a /\ ~ uw_addr (uvis_perm W) a) ->
+    96 <= uint (uvis_sp W) ->
+    uint (uvis_sp W) mod 8 = 0 ->
+    (forall j : nat, (j < 8 * 12)%nat ->
+       is_Some (udata_lo (uvis_M W) (uvis_perm W) (uvis_sz W)
+                 !! (uint (uvis_sp W) - 8 * Z.of_nat 12 + Z.of_nat j)%Z)) ->
+    uk_args_c (uvis_perm W) (uvis_M W) (uvis_av W) (uvis_argc W)
+      (uint (uvis_sp W)) ->
+    (forall j : nat, (j < 8 * Z.to_nat (uvis_argc W))%nat ->
+       is_Some (udata_lo (uvis_M W) (uvis_perm W) (uvis_sz W)
+                 !! (uvis_av W + Z.of_nat j)%Z)) ->
+    (forall i j : nat, (i < Z.to_nat (uvis_argc W))%nat ->
+       (j <= Z.to_nat (uk_slens (uvis_M W) (uvis_av W) (Z.of_nat i)))%nat ->
+       is_Some (udata_lo (uvis_M W) (uvis_perm W) (uvis_sz W)
+                 !! (uk_argv_p (uvis_M W) (uvis_av W) (Z.of_nat i)
+                     + Z.of_nat j)%Z)) ->
+    length (uvis_fd W) = NOFILE ->
+    (forall (p : mword 27) (q : uperm), uvis_perm W !! p = Some q ->
+       bv_unsigned p * 4096 < UserPtTree.pgroundup (uvis_sz W)) ->
+    uvis_lazy W = false ->
+    □ (ep_exit pn (wl_line (drop 1 ws)) -∗ Q (-1)) -∗
+    pipe_inv pn γp (wl_line (drop 1 ws)) -∗
+    ep_derail pn γp (wl_line (drop 1 ws)) -∗
+    UkRun.urun_nopipe (uvis_fd W) -∗
+    udep -∗
+    my_pay (uvis_gen W) Q -∗
+    (* ---- THE LEND: the frame the fork chose and the write permit at
+            ZERO, which is [ep_pay]'s content ---- *)
+    ep_car pn (wl_line (drop 1 ws)) 0%nat -∗
+    uslot W.
+  Proof.
+    intros HQc Hws2 Hargv1 Hl1 Hpc Hsub Hsub2 Hx Hroom Hal8 Hstk Hargs
+           Havd Havs Hfdlen Hstop Hlzf.
+    iIntros "#Hq #Hinv #Hder #Hnpw #Hdep Hpay Hc".
+    assert (Hsp0 : 0 <= uint (uvis_sp W)) by lia.
+    assert (Hargc0 : 0 <= uvis_argc W)
+      by exact (proj1 (uka_argc _ _ _ _ _ _ Hargs)).
+    iApply (uslot_of_urun_ro W 12 Q
+              Hal8
+              ltac:(unfold uvis_sp in Hroom; lia) Hstk Hfdlen Hstop Hlzf
+              with "Hdep Hnpw Hpay").
+    iIntros (N h) "%Hpayeq %Hsz Hszf #Ht Hstd _ _ _ #HA Hrun".
+    pose proof (ukn_const_of_eq N _ Hpayeq HQc) as Htc.
+    rewrite Hpc.
+    iApply (wp_kecho_start N h (tf_resume_gpr0 (uvis_tf W))
+              (uvis_av W)
+              (echo_args (uvis_M W) (uvis_av W) (Z.to_nat (uvis_argc W))) 0
+              (UserFd.ustd (ukn_fd N) (take NSTD (uvis_fd W))
+               ∗ ep_car pn (wl_line (drop 1 ws)) 0%nat)%I
+              ltac:(rewrite echo_args_length;
+                    rewrite (Z2Nat.id (uvis_argc W) Hargc0);
+                    unfold uvis_argc; symmetry; apply moi_of_uint)
+              ltac:(unfold uvis_av; symmetry; apply moi_of_uint)
+              with "[] [] [] [Hstd Hc] Hrun").
+    { iApply (ep_pay_all N pn γp ws (uvis_av W)
+                (echo_args (uvis_M W) (uvis_av W) (Z.to_nat (uvis_argc W)))
+                (take NSTD (uvis_fd W)) rb Hws2 Hargv1 Hl1
+                with "[] Hinv Hder [] []").
+      { rewrite Hpayeq. iExact "Hq". }
+      - iApply (echo_rodata_of_text (ukn_t N) (uvis_M W) (uvis_perm W)
+                  Hsub2 Hx with "Ht").
+      - iApply (echo_uargv_of_area (ukn_d N) (uvis_M W) (uvis_perm W)
+                  (uvis_sz W) (uvis_av W) (uint (uvis_sp W)) (uvis_argc W)
+                  Hsp0 Hargs Havd Havs with "HA"). }
+    { iApply (echo_code_of_text (ukn_t N) (uvis_M W) (uvis_perm W) Hsub Hx
+                with "Ht"). }
+    { iApply (echo_uargv_of_area (ukn_d N) (uvis_M W) (uvis_perm W)
+                (uvis_sz W) (uvis_av W) (uint (uvis_sp W)) (uvis_argc W)
+                Hsp0 Hargs Havd Havs with "HA"). }
+    { iFrame "Hstd Hc". }
+  Qed.
+
+  (* =================================================================== *)
+  (*  S6  THE ENTRY AT THE EXEC CHANNEL                                   *)
+  (*                                                                     *)
+  (*  [UShEcho.echo_image_entry]'s shape at the PAID constructor and the   *)
+  (*  pipe lend.  [cw], [cs] and [pidv] are FREE (echo reads no identity   *)
+  (*  row); the fd-1 row is a PURE fact about [sts], the table the exec    *)
+  (*  channel carries verbatim ([SpecKexec.kexec_image_ok_fd]).            *)
+  (* =================================================================== *)
+  Lemma ep_image_entry (ws : list (list (bv 8))) (M : gmap Z (bv 8))
+      (s0 t : Z) (g : nat -> bv 8) (sts : list fdstate)
+      (cw : Z) (cs : gset gname) (pidv : mword 32)
+      (pn : pnames) (γp : pipe_names) (rb : bool) (Q : Z -> iProp Σ) :
+    (forall x y : Z, Q x = Q y) ->
+    EchoDisc.line_ok ws ->
+    UShEcho.echo_node_img ws M s0 t g ->
+    UkShEcho.echo_argv_bytes ws g ->
+    length sts = NOFILE ->
+    take NSTD sts !! 1%nat = Some (FdOpen rb true (FdPipe γp)) ->
+    □ (ep_exit pn (wl_line (drop 1 ws)) -∗ Q (-1)) -∗
+    UkRun.urun_nopipe sts -∗
+    udep -∗
+    image_entry ElfUser.echo_elf M (mword_of_int (t + 8) : mword 64) sts
+      cw cs pidv Q (ep_pay pn γp (wl_line (drop 1 ws))) uslot.
+  Proof.
+    intros HQc Hok Himg Hbytes Hfdl Hl1.
+    iIntros "#Hq #Hnpw #Hdep".
+    iApply image_entry_of_at. iIntros "!>" (na alen afun) "%Hargs".
+    destruct (UShEcho.echo_args_det_holds ws Hok M s0 t g na alen afun
+                Himg Hbytes Hargs) as (Hna & Halen & Hafun).
+    rewrite /image_entry_at. iIntros "!>" (W') "%Hokk _ %Hlzf _ _ Hmp Hpay".
+    destruct (echo_kexec_pages na alen afun sts W' Hokk)
+      as (Hpc & Hsub & Hx & Hwr & Hrp).
+    destruct (echo_kexec_entry_rows na alen afun sts W' Hokk
+                (UShEcho.echo_room_of_det ws na alen Hok Hna Halen) Hfdl
+                Hwr Hrp)
+      as (Hroom96 & Hal8 & Hstkrow & Hargsrow & Havd & Havs
+          & Hfdlen & Hstop).
+    pose proof (echo_out_argv_of_image ws na alen afun sts W' Hok Hokk
+                  Hna Halen Hafun) as Hargv.
+    assert (Hfd : uvis_fd W' = sts)
+      by exact (kexec_image_ok_fd _ na alen afun sts W' Hokk).
+    assert (Hsub2 : echo_data_sub (uvis_M W')).
+    { destruct Hokk as (_ & _ & _ & _ & _ & Himg' & _).
+      exact (UShEchoPay.echo_data_of_elf_image _ Himg'). }
+    iAssert (UkRun.urun_nopipe (uvis_fd W')) as "#Hnpw'";
+      [ rewrite Hfd; iExact "Hnpw" | ].
+    iDestruct (ep_car_of_pay pn γp (wl_line (drop 1 ws)) with "Hpay")
+      as "(#Hinv & #Hder & Hc)".
+    rewrite /echo_out_argv in Hargv.
+    iApply (ep_uexec_slot_at W' pn γp ws rb Q HQc
+              (EchoDisc.line_ok_ge2 ws Hok) Hargv
+              ltac:(rewrite Hfd; exact Hl1)
+              Hpc Hsub Hsub2 Hx Hroom96 Hal8 Hstkrow Hargsrow Havd Havs
+              Hfdlen Hstop Hlzf
+              with "Hq Hinv Hder Hnpw' Hdep Hmp Hc").
   Qed.
 
 End UEchoPipe.

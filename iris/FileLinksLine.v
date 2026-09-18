@@ -1233,6 +1233,48 @@ Section file_links_line.
   Global Instance fhead_timeless k v I : Timeless (fhead k v I).
   Proof using . rewrite /fhead. apply _. Qed.
 
+  (* THE DISPATCH FOR THE ELEVEN FAMILIES BELOW, NOT [apply _].  The tree
+     carries 455 [Timeless] instances and most of the definitions under
+     them are transparent, so the hint net cannot discriminate and a
+     search tries nearly all of them: ~1.3s per GOAL at this altitude,
+     which made the instance block 98s of this 111s file.  Descend through
+     the CONNECTIVES and name the leaf instance, so no search runs at all.
+     The dispatch must be SYNTACTIC: a [first [...]] spelling unifies up
+     to delta and peels straight through a name that has its own
+     instance. *)
+  Local Ltac tl_leaf :=
+    lazymatch goal with
+    | |- Timeless (bi_exist _) => apply bi.exist_timeless; intro; tl_leaf
+    | |- Timeless (bi_sep _ _) => apply bi.sep_timeless; [tl_leaf | tl_leaf]
+    | |- Timeless (bi_or _ _) => apply bi.or_timeless; [tl_leaf | tl_leaf]
+    | |- Timeless (bi_pure _) => apply bi.pure_timeless
+    | |- Timeless (fcur _ _ _ _ _ _ _) => apply fcur_timeless
+    | |- Timeless (fhead _ _ _) => apply fhead_timeless
+    | |- Timeless f0pre => apply f0pre_timeless
+    | |- Timeless (f0w _ _) => apply f0w_timeless
+    | |- Timeless (f0_typed _ _) => apply f0_typed_timeless
+    | |- Timeless (file_taint _) => apply file_taint_timeless
+    | |- Timeless (turn _ _) => apply turn_timeless
+    | |- Timeless (turn_lb _ _) => apply turn_lb_timeless
+    | |- Timeless (ps_lb _ _) => apply ps_lb_timeless
+    | |- Timeless (cs_lb _ _) => apply cs_lb_timeless
+    | |- Timeless (inp_lb _ _) => apply inp_lb_timeless
+    | |- Timeless (file_era_pin _ _ _) => apply file_era_pin_timeless
+    | |- Persistent (bi_exist _) => apply bi.exist_persistent; intro; tl_leaf
+    | |- Persistent (bi_sep _ _) => apply bi.sep_persistent; [tl_leaf | tl_leaf]
+    | |- Persistent (bi_or _ _) => apply bi.or_persistent; [tl_leaf | tl_leaf]
+    | |- Persistent (bi_pure _) => apply bi.pure_persistent
+    | |- Persistent (turn_lb _ _) => apply turn_lb_persistent
+    | |- Persistent (ps_lb _ _) => apply ps_lb_persistent
+    | |- Persistent (cs_lb _ _) => apply cs_lb_persistent
+    | |- Persistent (inp_lb _ _) => apply inp_lb_persistent
+    | |- Persistent (f0w _ _) => apply f0w_persistent
+    | |- Persistent (f0_typed _ _) => apply f0_typed_persistent
+    | |- Persistent (file_taint _) => apply file_taint_persistent
+    | |- Persistent (file_era_pin _ _ _) => apply file_era_pin_persistent
+    | |- _ => apply _
+    end.
+
   (* ---- the eleven families ---- *)
   Definition fwc_pro (k : nat) (v : era_pins) (I : list (bv 8)) : iProp Σ :=
     ((∃ (ps cs : list nat) (s0 : fst) (P : nat),
@@ -1311,34 +1353,47 @@ Section file_links_line.
        ∗ ps_lb v ps0 ∗ cs_lb v cs0 ∗ f0w (S gen_id) s0)%I.
 
   Global Instance fwc_rres_persistent v I : Persistent (fwc_rres v I).
-  Proof using . rewrite /fwc_rres. apply _. Qed.
+  Proof using . rewrite /fwc_rres. tl_leaf. Qed.
   Global Instance fwc_rres_timeless v I : Timeless (fwc_rres v I).
-  Proof using . rewrite /fwc_rres. apply _. Qed.
+  Proof using . rewrite /fwc_rres. tl_leaf. Qed.
 
   Global Instance fwc_pro_timeless k v I : Timeless (fwc_pro k v I).
-  Proof using . rewrite /fwc_pro. apply _. Qed.
+  Proof using . rewrite /fwc_pro. tl_leaf. Qed.
   Global Instance fwc_blk_timeless k v I a i : Timeless (fwc_blk k v I a i).
-  Proof using . rewrite /fwc_blk. apply _. Qed.
+  Proof using . rewrite /fwc_blk. tl_leaf. Qed.
   Global Instance fwc_owed_timeless k v I : Timeless (fwc_owed k v I).
-  Proof using . rewrite /fwc_owed. apply _. Qed.
+  Proof using . rewrite /fwc_owed. tl_leaf. Qed.
   Global Instance fwc_sp_timeless k v I : Timeless (fwc_sp k v I).
-  Proof using . rewrite /fwc_sp. apply _. Qed.
+  Proof using . rewrite /fwc_sp. tl_leaf. Qed.
   Global Instance fwc_open_timeless k v I : Timeless (fwc_open k v I).
-  Proof using . rewrite /fwc_open. apply _. Qed.
+  Proof using . rewrite /fwc_open. tl_leaf. Qed.
   Global Instance fwc_sp_t_timeless k v I : Timeless (fwc_sp_t k v I).
-  Proof using . rewrite /fwc_sp_t. apply _. Qed.
+  Proof using . rewrite /fwc_sp_t. tl_leaf. Qed.
   Global Instance fwc_open_t_timeless k v I : Timeless (fwc_open_t k v I).
-  Proof using . rewrite /fwc_open_t. apply _. Qed.
+  Proof using . rewrite /fwc_open_t. tl_leaf. Qed.
   Global Instance fwc_ban_timeless k v I i : Timeless (fwc_ban k v I i).
-  Proof using . rewrite /fwc_ban. apply _. Qed.
+  Proof using . rewrite /fwc_ban. tl_leaf. Qed.
   Global Instance fwc_line_timeless k v I : Timeless (fwc_line k v I).
-  Proof using . rewrite /fwc_line. apply _. Qed.
+  Proof using .
+    rewrite /fwc_line.
+    apply bi.or_timeless; [apply fwc_pro_timeless |].
+    apply bi.exist_timeless; intro.
+    apply bi.sep_timeless; [apply bi.pure_timeless | apply fwc_blk_timeless].
+  Qed.
   Global Instance fwc_lend_timeless k v I : Timeless (fwc_lend k v I).
-  Proof using . rewrite /fwc_lend. apply _. Qed.
+  Proof using . rewrite /fwc_lend. tl_leaf. Qed.
   Global Instance fwc_pr_timeless k v I p : Timeless (fwc_pr k v I p).
-  Proof using . rewrite /fwc_pr. destruct p as [| [| p]]; apply _. Qed.
+  Proof using .
+    rewrite /fwc_pr. destruct p as [| [| p]];
+      [apply fwc_owed_timeless | apply fwc_sp_timeless
+      | apply fwc_open_timeless].
+  Qed.
   Global Instance fwc_lpr_timeless k v I p : Timeless (fwc_lpr k v I p).
-  Proof using . rewrite /fwc_lpr. destruct p as [| [| [| p]]]; apply _. Qed.
+  Proof using .
+    rewrite /fwc_lpr. destruct p as [| [| [| p]]];
+      [apply fwc_line_timeless | apply fwc_sp_t_timeless
+      | apply fwc_open_t_timeless | apply fwc_blk_timeless].
+  Qed.
 
   (* ---- the taint inhabits every shape ---- *)
   Lemma fwc_pro_taint k v I : FT -∗ fwc_pro k v I.

@@ -242,9 +242,25 @@ Section file_links_at_pro.
     ((∃ (ps cs : list nat) (P : nat),
         ⌜wr_pban_f ps cs s0 I P⌝ ∗ fcur g v ps cs s0 I P k) ∨ FT)%I.
 
+  (* THE DISPATCH, NOT [apply _]: the tree's 455 [Timeless] instances sit
+     under mostly transparent definitions, so the hint net cannot
+     discriminate and one search tries nearly all of them (13s for the
+     first instance below).  Descend through the CONNECTIVES and name the
+     leaf, syntactically -- see the same dispatch in [FileLinksAt]. *)
+  Local Ltac tl_leaf :=
+    lazymatch goal with
+    | |- Timeless (bi_exist _) => apply bi.exist_timeless; intro; tl_leaf
+    | |- Timeless (bi_sep _ _) => apply bi.sep_timeless; [tl_leaf | tl_leaf]
+    | |- Timeless (bi_or _ _) => apply bi.or_timeless; [tl_leaf | tl_leaf]
+    | |- Timeless (bi_pure _) => apply bi.pure_timeless
+    | |- Timeless (fcur _ _ _ _ _ _ _ _) => apply fcur_timeless
+    | |- Timeless (file_taint _) => apply file_taint_timeless
+    | |- _ => apply _
+    end.
+
   Global Instance fwc_pban_at_timeless s0 k v I :
     Timeless (fwc_pban_at s0 k v I).
-  Proof using . rewrite /fwc_pban_at. apply _. Qed.
+  Proof using . rewrite /fwc_pban_at. tl_leaf. Qed.
 
   Lemma fwc_pban_at_taint s0 k v I : FT -∗ fwc_pban_at s0 k v I.
   Proof using . iIntros "H". rewrite /fwc_pban_at. by iRight. Qed.
@@ -299,10 +315,13 @@ Section file_links_at_pro.
 
   Global Instance fwc_pdg_at_timeless s0 k v I a i :
     Timeless (fwc_pdg_at s0 k v I a i).
-  Proof using . rewrite /fwc_pdg_at. apply _. Qed.
+  Proof using . rewrite /fwc_pdg_at. tl_leaf. Qed.
   Global Instance fwc_pdiag_at_timeless s0 k v I a i :
     Timeless (fwc_pdiag_at s0 k v I a i).
-  Proof using . rewrite /fwc_pdiag_at. destruct i; apply _. Qed.
+  Proof using .
+    rewrite /fwc_pdiag_at. destruct i;
+      [apply fwc_pban_at_timeless | apply fwc_pdg_at_timeless].
+  Qed.
 
   (* the taint is at EVERY state, and at every byte count *)
   Lemma fwc_pdg_at_taint s0 k v I a i : FT -∗ fwc_pdg_at s0 k v I a i.

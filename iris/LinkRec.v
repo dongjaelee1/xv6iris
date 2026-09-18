@@ -377,14 +377,25 @@ Section linkgen.
   Definition lk_lcred (k : nat) (I : list (bv 8)) (p : nat) : iProp Σ :=
     (∃ v : era_pins, lk_pin L k v ∗ lk_lpr L k v I p)%I.
 
+  (* NAME THE RECORD'S OWN FIELD, do not search.  The tree carries 455
+     [Timeless] instances under mostly transparent definitions, so the
+     hint net cannot discriminate and one [apply _] here tries nearly all
+     of them (~1.2s a site).  The field instances are exactly the leaves
+     these four bottom out in. *)
   Global Instance lk_post_timeless k v I a : Timeless (lk_post k v I a).
-  Proof using . rewrite /lk_post. apply _. Qed.
+  Proof using . rewrite /lk_post. apply lk_blk_tl. Qed.
   Global Instance lk_panic_timeless k v I i : Timeless (lk_panic k v I i).
-  Proof using . rewrite /lk_panic. apply _. Qed.
+  Proof using . rewrite /lk_panic. apply lk_blk_tl. Qed.
   Global Instance lk_cred_timeless k I p : Timeless (lk_cred k I p).
-  Proof using . rewrite /lk_cred. apply _. Qed.
+  Proof using .
+    rewrite /lk_cred. apply bi.exist_timeless; intro.
+    apply bi.sep_timeless; [apply lk_pin_tl | apply lk_pr_tl].
+  Qed.
   Global Instance lk_lcred_timeless k I p : Timeless (lk_lcred k I p).
-  Proof using . rewrite /lk_lcred. apply _. Qed.
+  Proof using .
+    rewrite /lk_lcred. apply bi.exist_timeless; intro.
+    apply bi.sep_timeless; [apply lk_pin_tl | apply lk_lpr_tl].
+  Qed.
 
   (* ---- the taint inhabits the derived shapes too ---- *)
   Lemma lk_lpr_taint k v I p : lk_T L -∗ lk_lpr L k v I p.
@@ -564,7 +575,16 @@ Section echo_inst.
         ∗ ps_lb v ps ∗ cs_lb v cs ∗ inp_lb v I) ∨ T)%I.
 
   Global Instance echo_lend_timeless v I : Timeless (echo_lend v I).
-  Proof using HTT. rewrite /echo_lend. apply _. Qed.
+  Proof using HTT.
+    rewrite /echo_lend.
+    apply bi.or_timeless; [| assumption].
+    apply bi.exist_timeless; intro. apply bi.exist_timeless; intro.
+    apply bi.exist_timeless; intro.
+    apply bi.sep_timeless; [apply bi.pure_timeless |].
+    apply bi.sep_timeless; [apply turn_timeless |].
+    apply bi.sep_timeless; [apply ps_lb_timeless |].
+    apply bi.sep_timeless; [apply cs_lb_timeless | apply inp_lb_timeless].
+  Qed.
 
   Local Lemma ei_lend_taint (k : nat) (v : era_pins) (I : list (bv 8)) :
     T -∗ echo_lend v I.
@@ -604,9 +624,21 @@ Section echo_inst.
        ∗ ps_lb v ps0 ∗ cs_lb v cs0)%I.
 
   Global Instance echo_rres_persistent v I : Persistent (echo_rres v I).
-  Proof using . rewrite /echo_rres. apply _. Qed.
+  Proof using .
+    rewrite /echo_rres.
+    apply bi.exist_persistent; intro. apply bi.exist_persistent; intro.
+    apply bi.sep_persistent; [apply bi.pure_persistent |].
+    apply bi.sep_persistent; [apply turn_lb_persistent |].
+    apply bi.sep_persistent; [apply ps_lb_persistent | apply cs_lb_persistent].
+  Qed.
   Global Instance echo_rres_timeless v I : Timeless (echo_rres v I).
-  Proof using . rewrite /echo_rres. apply _. Qed.
+  Proof using .
+    rewrite /echo_rres.
+    apply bi.exist_timeless; intro. apply bi.exist_timeless; intro.
+    apply bi.sep_timeless; [apply bi.pure_timeless |].
+    apply bi.sep_timeless; [apply turn_lb_timeless |].
+    apply bi.sep_timeless; [apply ps_lb_timeless | apply cs_lb_timeless].
+  Qed.
 
   (* [UShLine.ush_wb_read_holds]'s content: a credential that still owes
      the round's banner at a boundary the reader is strictly past is the

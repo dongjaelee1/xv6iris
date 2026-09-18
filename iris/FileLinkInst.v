@@ -69,11 +69,21 @@ Section file_link_inst.
   Definition fwc_pdiag_ex (k : nat) (v : era_pins) (I : list (bv 8))
       (a i : nat) : iProp Σ := (∃ s0 : fst, fwc_pdiag_at g s0 k v I a i)%I.
 
+  (* NAME THE LEAF, do not search: with 455 [Timeless] instances in the
+     tree under mostly transparent definitions the hint net cannot
+     discriminate, and one [apply _] at this altitude tries nearly all of
+     them (~2s a site). *)
   Global Instance fwc_pban_ex_timeless k v I : Timeless (fwc_pban_ex k v I).
-  Proof using . rewrite /fwc_pban_ex. apply _. Qed.
+  Proof using .
+    rewrite /fwc_pban_ex. apply bi.exist_timeless; intro.
+    apply fwc_pban_at_timeless.
+  Qed.
   Global Instance fwc_pdiag_ex_timeless k v I a i :
     Timeless (fwc_pdiag_ex k v I a i).
-  Proof using . rewrite /fwc_pdiag_ex. apply _. Qed.
+  Proof using .
+    rewrite /fwc_pdiag_ex. apply bi.exist_timeless; intro.
+    apply fwc_pdiag_at_timeless.
+  Qed.
 
   Lemma fwc_pban_ex_taint k v I : file_taint (fgn_cl g) -∗ fwc_pban_ex k v I.
   Proof using .
@@ -286,7 +296,7 @@ Section sh_round_facing.
        lk_pin FI (S gen_id) v ∗ lk_ban FI (S gen_id) v I 0%nat)%I.
 
   Global Instance file_Wcl_timeless I p : Timeless (file_Wcl I p).
-  Proof using . rewrite /file_Wcl. apply _. Qed.
+  Proof using . rewrite /file_Wcl. apply lk_lcred_timeless. Qed.
 
   (* ---- [UShRound]'s [Hwbl] ---- *)
   Lemma file_Hwbl (I : list (bv 8)) : ⊢ file_Wcl I 3%nat -∗ file_Wcl I 0%nat.
@@ -621,9 +631,12 @@ Section file_link_inst_at.
        ∗ lk_ban file_link_inst_at (S gen_id) v I 0%nat)%I.
 
   Global Instance file_Wcl_at_timeless I p : Timeless (file_Wcl_at I p).
-  Proof using . rewrite /file_Wcl_at. apply _. Qed.
+  Proof using . rewrite /file_Wcl_at. apply lk_lcred_timeless. Qed.
   Global Instance file_Wbl_at_timeless I : Timeless (file_Wbl_at I).
-  Proof using . rewrite /file_Wbl_at. apply _. Qed.
+  Proof using .
+    rewrite /file_Wbl_at. apply bi.exist_timeless; intro.
+    apply bi.sep_timeless; [apply lk_pin_tl | apply lk_ban_tl].
+  Qed.
 
   Lemma file_Wcl_at_pack (I : list (bv 8)) (p : nat) :
     file_Wcl_at I p -∗ file_Wcl g I p.

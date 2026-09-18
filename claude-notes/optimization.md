@@ -360,6 +360,30 @@ for it.
   abstraction that already has its own instance. Descend through connectives,
   never through a name. Peel small bodies too: the predictor is the LEAF. And
   **name the leaf instances** where the peel bottoms out.
+
+  **And the leaf really must be NAMED, because the hint net cannot
+  discriminate in this tree.** `Timeless`/`Persistent` patterns are keyed
+  modulo delta, so the tree's 455 `Timeless` instances — nearly all of them
+  over TRANSPARENT definitions — sit in one undiscriminated bucket and *every*
+  search tries almost all of them: `Set Typeclasses Debug Verbosity 2` on one
+  obligation printed 3253 `simple apply` attempts over 7 goals, ~1.3 s per
+  goal, most of them `uart_*`/`virtio_*`/`word_pointsto` instances that have
+  nothing to do with the goal. Two consequences:
+  - **A block of sibling instances gets progressively slower down the file**
+    (measured in `FileLinksLine`: 0.4 s at the first, 17 s at the eleventh,
+    98 s for the block), which reads like a size effect and is not one.
+  - **`Typeclasses Opaque` on the families fixes it too** — same file, 111 s →
+    16 s — but only inside the defining `Section` (a seal there does not
+    survive it, see `FirstTok.v`), and it breaks every consumer that reads
+    through the name. The named-leaf dispatch is the portable fix: measured
+    `FileLinksLine` 111 s → 12 s, `FileLinksAt` 86 s → 5 s, `FileLinksAtPro`
+    25 s → 5 s, all three on the critical path.
+  - **A `□`-bodied law is one line**: `rewrite /X. apply
+    bi.intuitionistically_persistent.` `apply _` there descends the whole
+    premise tower under the modality (`UkShRedirBody.sh_redir_child_law`,
+    40 s in one sentence).
+  - **A record-parametric family bottoms out in the record's own field
+    instance** — `apply lk_blk_tl`, never `apply _` (`LinkRec`).
 - **Mark big concrete literals `Global Typeclasses Opaque`** (`kernel_bytes`,
   `kernel_data`, `kernel_symbols`, `mem_pointsto`) — never plain `Opaque`, since
   a tactic may need to `unfold`.

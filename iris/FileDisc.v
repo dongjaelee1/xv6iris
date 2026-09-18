@@ -2282,13 +2282,20 @@ Qed.
 
 Lemma demo_f1_file :
   fst_after fd_cs1 None (ins fd_seg1) = Some (sb "hello world"%string ++ nlb).
-Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+(* [vm_cast_no_check], not [vm_compute]: the decision runs the round's whole
+   output segment through the model, and a [vm_compute] closing the goal is
+   RE-CHECKED by the kernel's lazy conversion at [Qed] -- so the bill is paid
+   twice (4.2s + 4.1s here, 13.3s + 14.8s at [demo_f1_disc]).  The cast asks
+   the kernel to use the VM once and skips the tactic-time run.  The price is
+   that a disagreement now surfaces at [Qed] with no goal in view, which is
+   why this is done at the heavy segments only and not swept. *)
+Proof using. apply (bool_decide_unpack _). vm_cast_no_check I. Qed.
 
 (* ...and the user typed it under the rate discipline, byte by byte *)
 Lemma demo_f1_disc : disc_seg_f' None fd_seg1.
 Proof using.
   eapply (disc_seg_f'_intro None fd_seg1 [3%nat; 0%nat] fd_cs1);
-    apply (bool_decide_unpack _); vm_compute; exact I.
+    apply (bool_decide_unpack _); vm_cast_no_check I.
 Qed.
 
 (* (2) THE SAME ACROSS A POWER CYCLE: the era boots at the file the

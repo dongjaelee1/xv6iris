@@ -32,7 +32,7 @@ sync() {
   out="$(rsync -rlpgoD --checksum --delete --out-format='%n' \
       --include='*/' --include='*.v' --include='_CoqProject' --exclude='*' \
       -e "ssh -i $KEY -o BatchMode=yes" \
-      "$LOCAL/iris" "$LOCAL/kernel-rocq" "$LOCAL/user-rocq" "$LOCAL/model-xv6iris" \
+      "$LOCAL/iris" "$LOCAL/kernel-rocq" "$LOCAL/user-rocq" "$LOCAL/model-xv6iris" "$LOCAL/tools" \
       "ubuntu@$HOST:$REMOTE/" | grep -v '/$' || true)"
   if [ -n "$out" ]; then echo "synced:" >&2; printf '  %s\n' $out >&2; fi
 }

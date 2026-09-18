@@ -301,6 +301,36 @@ every link runs at `⊤`, the payload held, no invariant open — `pipe.md`):
 | cat, EOF | — | cat's exit payload carries `γeof ↦ Some w` and `⌜w = the bytes cat printed⌝` (its console cursor at exit is `length w`). |
 | sh, after both waits | none (a plain `inv` access) | §4.2. |
 
+**AS LANDED (lane PIPE-PROTO, 2026-09-18; `iris/PipeProto.v`, all seven
+headline results Closed under the global context).**  Four corrections
+to the table above: (1) **a cursor's exactness is an EXCLUSIVE RESOURCE,
+not arithmetic** — a `mono_list` lower bound of length `j` plus (P1) gives
+only `take j L ⊑ ws ⊑ L`, not `ws = take j L`; what pins it is that echo is
+the ONLY writer, said as a permit: `wcur pn j` / `rcur pn c` are halves of
+a `ghost_var nat` whose other half sits in the body at `length (ps_ws s)`
+/ `ps_rp s`.  They also make the chains compose across echo's several
+`write`s and cat's several reads.  (2) `wtok pn` IS `wcur pn 0`, so (P2)
+is one agreement (`pipe_body_P2`) and `wtok_spent` is gone.  (3) (P3)
+cannot be a wand (the body must be `Timeless`: every link's fupd runs at
+`⊤` with no WP step to strip a later) — it is the one-shot's two owned
+arms, `eof_pending ∨ ∃ w, eof_shot w ∗ ⌜w = ps_ws s ∧ ps_wo s = false⌝`.
+(4) the reader's EOF observation is ONE node (`pipe_olink` is a `∀ s`):
+`pipe_rQe … acc s := pipe_rQ … acc ∗ (⌜pst_eof s⌝ -∗ eof_shot pn (take (c +
+length acc) L))`, vacuous off EOF.  ALSO: the reader needs a start permit
+too — `pipe_proto_alloc : pipe_qfrag … pst0 ={⊤}=∗ ∃ pn, pipe_inv pn γp L ∗
+wtok pn ∗ rtok pn ∗ side_L pn ∗ side_R pn ∗ pipe_reg γp` (five conjuncts
+beside the registration; `Rp γp` of the registrar is that quintuple).
+`pipe_wpay_of_inv` takes `wcur pn c`, `pws_lb pn (take c L)` and the
+M-premise (`M !! (ua+k) = Some (L !!! (c+k))`) — echo reads its own source
+run off the heap the call runs at, one line around
+`pipe_wpay_of_inv_fupd` in ECHO-PIPE, deliberately outside `PipeProto`.
+`pipe_rpay_of_inv` needs only `rcur pn c`; `pipe_rQ pn L c acc := rcur pn
+(c + length acc) ∗ ⌜acc = take (length acc) (drop c L)⌝` is what funds
+cat's console write at cursor `c`.  sh's round: `pipe_round_reading`, the
+symmetric payload `pipe_Qc` with `pipe_Qc_two`.  §3.1's "(P3) does not
+need a `ps_ro` premise" is CONFIRMED.  `L` has no landed name (`PipeDisc`
+spells it inline as `wl_line (drop 1 (pline_ws l))`).
+
 ### 3.1 One premise on the write link: `ps_wo s = true` (lane PQ-FLAG)
 
 (P3) is preserved by a write link only if no write link fires after EOF —

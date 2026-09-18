@@ -970,6 +970,22 @@ Section SpecFileread.
      | _ => P
      end)%I.
 
+  (* ---- THE VACUITY CHECK FOR THE HELD ARM'S [∨ app_taint] (the bar's
+     rule, one Example per new taint arm).  The arm is what the GENERIC
+     tier pays and what a disconnected object leaves; what must NOT be true
+     is that a program can take it while still holding its own half, which
+     would make the LINK arm free.  The refutation is the shadow's own
+     arithmetic: a client that could mint the taint out of the half it holds
+     would hold a whole [off_gv] beside a half of it. ---- *)
+  Example vacuity_read_held_not_taint (γo : gname) (p : nat) (z : Z) :
+    (⊢ app_taint -∗ UserOff.uoff γo p) ->
+    app_taint ∗ off_gv γo 1 z ⊢ False.
+  Proof using .
+    intros Hbad. iIntros "[#Ht Hw]".
+    iDestruct (Hbad with "Ht") as "Hu". rewrite /UserOff.uoff.
+    iApply (off_gv_whole_half γo (1/2) z (Z.of_nat p) with "Hw Hu").
+  Qed.
+
   (* WHAT THE ARM PAYS BEYOND THE LANDED BLANKET, at the same key.  Split
      out from [fileread_arms] so [SpecSysRead] can reuse it under its own
      blanket ([sys_read_ret]) without restating the match.

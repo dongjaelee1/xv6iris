@@ -574,6 +574,88 @@ Section UkFileOpen.
     exact Hbnd.
   Qed.
 
+  Lemma wp_uk_read_deed_learns_held (N : uk_names Σ) (h : CpuId) (m : regfile)
+      (pc : mword 64) (cnt : Z) (k : nat) (f : nat -> bv 8) (avail : nat)
+      (fd : nat) (wb : bool) (i : Z) (γo : gname)
+      (c : file_fixed) (r : file_names) (q : Qp) (jc : Z)
+      (bs : list (bv 8)) (p : nat) :
+    file_app = MkAppcfg file_names (file_pred c) r ->
+    usysno m = USYS_read ->
+    bv_signed (subrange_vec_dec (m !!! Regidx a2_idx) 31 0 : mword 32) = cnt ->
+    (0 <= cnt)%Z ->
+    (Z.to_nat cnt <= k)%nat ->
+    bv_signed (trunc32 (m !!! Regidx a0_idx)) = Z.of_nat fd ->
+    (fd < NOFILE)%nat ->
+    is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
+    □ (app_taint -∗ file_taint c) -∗ □ (file_taint c -∗ app_taint) -∗
+    uinstr_is (ukn_t N) pc false (ECALL tt) -∗
+    urun N h m pc avail -∗
+    UserFd.ufd (ukn_fd N) fd (FdOpen true wb (FdInode i γo OffHeld)) -∗
+    cons_made (fn_cons r) jc -∗
+    app_inv fsc_fs -∗
+    fdq r q (Some (i, bs)) -∗
+    (* the program's own half, at the position it believes the file is at *)
+    UserOff.uoff γo p -∗
+    ubytes (ukn_d N) (uint (m !!! Regidx a1_idx)) k f -∗
+    (∀ (h' : CpuId) (rv : mword 64) (gb : nat -> bv 8),
+       UserFd.ufd (ukn_fd N) fd (FdOpen true wb (FdInode i γo OffHeld)) -∗
+       (* THE COUNT'S BOUND, ON BOTH ARMS (lane OFF-LINK, for CAT-ENTRY-2):
+          a read of [cnt] bytes returns at most [cnt] whether the deed's
+          receipt came back as content or as the taint, which is what
+          [UCatKernel.cat_w_of_link] refutes its short write with. *)
+       ⌜(Z.to_nat (bv_unsigned rv) <= Z.to_nat cnt)%nat⌝ -∗
+       ((⌜Z.to_nat (bv_unsigned rv)
+          = ard_count (Z.to_nat cnt) p (length bs)⌝ ∗
+         ⌜forall j : nat, (j < Z.to_nat (bv_unsigned rv))%nat ->
+            gb j = bs !!! (p + j)%nat⌝ ∗
+         UserOff.uoff γo (p + Z.to_nat (bv_unsigned rv))%nat ∗
+         fdq r q (Some (i, bs)))
+        ∨ (UserOff.uoff γo p ∗ fdq r q (Some (i, bs)) ∗ file_taint c)) -∗
+       urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
+       ubytes (ukn_d N) (uint (m !!! Regidx a1_idx)) k gb -∗
+       WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+  Proof using .
+    intros Heq Hn Hcnt Hcnt0 Hcapk Hfdv Hfdlt Hal4.
+    iIntros "#Hbr #Hrb #Hi Hrun Hufdh #Hm #Hinv Hd Hu Hbuf Hcont".
+    iDestruct (file_read_piece_adv fsc_fs c r q jc (Some (i, bs)) i γo p Heq
+                 with "Hbr Hrb Hinv Hm Hd Hu") as "Hau".
+    iDestruct (udepwf_st_read_file_held N m pc wb i γo
+                 (file_read_recv_hand c r q jc (Some (i, bs)) γo p)
+                 with "Hau") as "Hsb".
+    iApply (wp_uk_ecall_read_file N h m pc cnt k f avail
+              (read_file_fam (ukn_pay N)
+                 (file_read_recv_hand c r q jc (Some (i, bs)) γo p)) fd
+              (FdOpen true wb (FdInode i γo OffHeld))
+              Hn Hcnt Hcapk Hfdv Hfdlt Hal4 with "Hi Hrun Hsb Hufdh Hbuf").
+    iIntros (h' rv dd gb W M' fdv' cw' cs')
+      "%Hdd %Hgf %Hlin %Himg %Hnf %H0 %H1 %H2 %Hkey %Hlz %Hlive Hufdh Hpost Hrun Hbuf".
+    iDestruct (spost_at_read_elim uslot
+                 (xfam_rdf (ukn_pay N)
+                    (file_read_recv_hand c r q jc (Some (i, bs)) γo p)) W
+                 (m !!! Regidx a0_idx) (m !!! Regidx a1_idx)
+                 (m !!! Regidx a2_idx) (uvis_fd W)
+                 rv M' fdv' cw' cs' H0 H1 H2 eq_refl with "Hpost")
+      as "[%Hret Hcore]".
+    iDestruct "Hcore" as (P) "(%Hperm & %Hwf & %Hlazy & Hcore)".
+    (* THE MAPPED ROW, straight out of the leaf's own hand *)
+    assert (Hmap : forall j : nat, (j < k)%nat ->
+              uva_wmapped P
+                (uint (add_vec_int (m !!! Regidx a1_idx) (Z.of_nat j))))
+      by (intros j Hj; exact (Hnf P j Hwf Hperm (Hlazy Hlz) Hj)).
+    rewrite Hkey.
+    rewrite /fileread_extra_core /=.
+    assert (Hc2 : sys_rw_count (m !!! Regidx a2_idx) = cnt)
+      by (rewrite /sys_rw_count /trunc32; exact Hcnt).
+    rewrite Hc2.
+    iDestruct (file_read_arms_learn_mapped_hand c r q jc i bs γo p P cnt rv M'
+                 (m !!! Regidx a1_idx) k gb Hlin Himg Hcnt0 ltac:(lia) Hmap
+                 with "Hcore") as "[%Hbnd Hlearn]".
+    iApply ("Hcont" $! h' rv gb with "Hufdh [%] Hlearn Hrun Hbuf").
+    exact Hbnd.
+  Qed.
+
+
   (* =================================================================== *)
   (*  4.  open(`f`, O_WRONLY|O_CREATE|O_TRUNC) AT THE DEED                *)
   (*                                                                      *)

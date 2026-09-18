@@ -1280,6 +1280,23 @@ redirect child then knows `fline I = LEchoF ws` outright (which 2d's PEND /
 DONE exits need, and which today it could not learn).  Until then neither
 `Hchild_redir` nor item 5's dispatch says anything at a redirect line.
 
+### SLOT-WS, OPTION B (file tier only; it moves a MODEL definition, so it is the owner's call)
+
+Instead of moving the generic slot, make the slot's equation TRUE at a
+redirect line: `FileDisc.uline_ws (LEchoF ws) := ws ++ [[ushs_gt]; fname_f]`
+— the body's actual words.  Then `Hws` is a LEMMA at all three constructors
+(`LEcho`: `wl_words (wl_body ws) = ws`, landed; `LCat`: closed; `LEchoF`:
+one `wl_words`-of-append lemma), `ush_posw` and `ushf_child_law_at` do not
+move, and only the file tier follows: `UkShRedirBody.ushs_lp ws4 g k len :=
+∃ ws file, ws4 = ws ++ [[ushs_gt]; file] ∧ ushs_line_is ws file g k len`,
+`wp_kshm_body_redir`'s `ush_bstate` at the four-word list, and
+`sh_redir_child_law`'s `⌜ws4 = last_ws I⌝`.  `uline_ws` is otherwise read
+only by `FileDisc.cont`'s `REcho` arm, which `ralt_ok` admits at `LEcho`
+lines alone, so no admissible alternative's bytes move.  Cheaper than
+option A (no generic sh statement, no echo-tier rebuild); its cost is that
+design §1's definition changes, which the MODEL lane's rule reserves to the
+designer.
+
 ### HSTR LANDED, and the stretch's CLOSE
 
 * `iris/FsAbsWritePart.v`: `awrite_part_at_mapped_straddle` /

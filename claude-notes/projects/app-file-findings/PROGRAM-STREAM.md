@@ -12,6 +12,7 @@ grep -c "Hypothesis\|Admitted" iris/UShRound.v
 | at the stream's start (after SH-CHILD-2, `890ebb21a`) | **19** | — |
 | after the link record's five and the lexability (`606b3efae`) | **13** | `Hwbl` `Hwbwc` `Hcltaint` `Hwc` `Hwbr` `Hlexr` |
 | after sh's killed child (`fbc4048eb`) | **12** | `sh_kill_law_file`'s `Admitted` |
+| after the kill equation (`85d72e261`) | **11** | `Hktaint` |
 
 Append one block per stretch, newest last, each with the metric after it.
 
@@ -211,6 +212,12 @@ none; the round has one.
 | `Hopen_hand` | — | the kernel stream's (OFF-LINK-6) |
 | `Hktaint` | the record's interface equation | free, once someone writes the projection |
 | `sh_prompt_alt_of_deed`, `sh_tag_law_file`, `sh_child_law_file`, `sh_round_holds_file` | the round's own mathematics | `sh_hold`'s re-establishment across a child against `cat_tie`/`fst_after` |
+
+**`Hktaint` is gone the way `Hcons` and `Htag` always were**: the round
+takes the kill projection as a record EQUATION
+(`app_taint = file_taint (fgn_cl g)`), which is what `UInitBoot` derives
+beside the other two from one interface equation, and the hypothesis is
+that equation read as an entailment.
 
 **`file_stage_inst` is the single gate on two of them**, and it is a
 `StageRec FI`: a `CurRec` at `FileLinksLine`'s cursor plus `sk_lend_stage`

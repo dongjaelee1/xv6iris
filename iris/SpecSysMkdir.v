@@ -252,6 +252,7 @@ Definition mkdir_au_pre
        (bv_unsigned (SpecDirlookup.T_DIR : mword 16))
        (bv_unsigned (mword_of_int 0 : mword 16))
        (bv_unsigned (mword_of_int 0 : mword 16))
+       (fun _ : fname => True%type)
        (P (length (npar_elems pl)))
        Farm Fdots Fun Fok)%I.
 
@@ -271,6 +272,7 @@ Definition mkdir_au_at
        (bv_unsigned (SpecDirlookup.T_DIR : mword 16))
        (bv_unsigned (mword_of_int 0 : mword 16))
        (bv_unsigned (mword_of_int 0 : mword 16))
+       (fun _ : fname => True%type)
        (npar_cur M pv P)
        Farm Fdots Fun Fok)%I.
 
@@ -292,15 +294,17 @@ Lemma mkdir_cre_inst
     (bv_unsigned (SpecDirlookup.T_DIR : mword 16))
     (bv_unsigned (mword_of_int 0 : mword 16))
     (bv_unsigned (mword_of_int 0 : mword 16))
+    (fun _ : fname => True%type)
     (npar_cur M pv P) Farm Fdots Fun Fok -∗
   cre_commits Γ
     (bv_unsigned (SpecDirlookup.T_DIR : mword 16))
     (bv_unsigned (mword_of_int 0 : mword 16))
     (bv_unsigned (mword_of_int 0 : mword 16))
+    (fun _ : fname => True%type)
     (P (length (npar_elems pl))) Farm Fdots Fun Fok.
 Proof.
   intros Hpl. iIntros "Hcre".
-  iApply (cre_commits_mono Γ _ _ _ (npar_cur M pv P)
+  iApply (cre_commits_mono Γ _ _ _ _ (npar_cur M pv P)
             (P (length (npar_elems pl))) Farm Fdots Fun Fok with "[] [] Hcre").
   - iApply (npar_cur_out M pv pl P Hpl).
   - iApply (npar_cur_in M pv pl P Hpl).
@@ -346,6 +350,7 @@ Lemma mkdir_au_at_of_all
     (bv_unsigned (SpecDirlookup.T_DIR : mword 16))
     (bv_unsigned (mword_of_int 0 : mword 16))
     (bv_unsigned (mword_of_int 0 : mword 16))
+    (fun _ : fname => True%type)
     (npar_cur M pv P) Farm Fdots Fun Fok -∗
   mkdir_au_at Γ γfs cw M pv P Pmiss Farm Fdots Fun Fok Fex.
 Proof.
@@ -392,6 +397,7 @@ Definition mkdir_arms
           (bv_unsigned (SpecDirlookup.T_DIR : mword 16))
           (bv_unsigned (mword_of_int 0 : mword 16))
           (bv_unsigned (mword_of_int 0 : mword 16))
+          (fun _ : fname => True%type)
           P Farm Fdots Fun Fok Fex pl true i)
    ∨ (⌜r = (mword_of_int (-1) : mword 64)⌝ ∗
         (* argstr failed and create never ran, so the WHOLE bundle comes
@@ -402,6 +408,7 @@ Definition mkdir_arms
                (bv_unsigned (SpecDirlookup.T_DIR : mword 16))
                (bv_unsigned (mword_of_int 0 : mword 16))
                (bv_unsigned (mword_of_int 0 : mword 16))
+               (fun _ : fname => True%type)
                P Pmiss Farm Fdots Fun Fok Fex pl)))%I.
 
 Global Typeclasses Opaque mkdir_au_pre mkdir_au_at mkdir_arms.

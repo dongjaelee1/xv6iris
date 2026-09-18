@@ -208,6 +208,7 @@ Section ProofCreateFail.
       (dn : dinode) (bm : blkmap) (data : nat -> list (bv 8))
       (nf nsl : nat -> bv 8) (t : nat)
       (* ---- THE APPLICATION'S SIDE ---- *)
+      (Nm : fname -> Prop)
       (P Pmiss : nat -> Z -> iProp Σ)
       (Farm : pfam Σ (aview -> Z -> iProp Σ))
       (Fdots : pfam Σ (aview -> Z -> Z -> bool -> iProp Σ))
@@ -250,7 +251,7 @@ Section ProofCreateFail.
                    plen pfun pv ty major minor U u Sb ns pidv
                    dqb dqs dqbs dqn m sp0 ret_tgt K eb b lks
                    kd qd gd γil γisl dind dn bm data nf nsl t CIDf
-                   P Pmiss Farm Fdots Fun Fok Fex).
+                   Nm P Pmiss Farm Fdots Fun Fok Fex).
   Proof using .
     intros HK Hnib16 Hlg Hsize Hbms0 Hbmsc Hbmsl Hist0 Hcovb
            Hiregb Hns Hj Hgs Hspm Hrt Hal10 Hal9 Heb.
@@ -887,7 +888,7 @@ Section ProofCreateFail.
        +0xc4 and DISAPPEARED at +0x146.  No dot ever landed on a
        non-directory child, so the dots commit goes home unfired. *)
     iDestruct (cr_fail_of_pair fsc_fs (bv_unsigned ty) (bv_unsigned major)
-                 (bv_unsigned minor) P Pmiss Farm Fdots Fun Fok Fex
+                 (bv_unsigned minor) Nm P Pmiss Farm Fdots Fun Fok Fex
                  (bview plen pfun) (bv_unsigned dind) (bv_unsigned cinum)
                  with "HPpar Hdlkc Hacre [Hdots] Hunr") as "Hcf".
     { iRight. iExact "Hdots". }

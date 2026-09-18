@@ -133,6 +133,7 @@ Require Import SpecCreate.
 Require Import CodeSysMknod.
 Require Import ArgPath.         (* [arg_path_of]: the reading of trapframe
                                    argument 0, which the walk is at *)
+Require Import PathElems.        (* [path_elems]: the name tie's list *)
 Require Import SpecSysMknod.     (* the contract this file seals        *)
 Require Import DirentEnc.        (* [bview]                             *)
 Require Import FsTree.
@@ -1729,14 +1730,19 @@ Section ProofSysMknodBody.
            iDestruct (cre_commits_of_dev (fs_gamma_L fsc_fs)
                         (bv_unsigned (hw_lo (arg_int32 v1)))
                         (bv_unsigned (hw_lo (arg_int32 v2)))
-                        _ Farm Fun Fok with "Hacre Hchild") as "Hcre".
+                        _ _ Farm Fun Fok with "Hacre Hchild") as "Hcre".
            iApply (Create.wp_create_sconf (CID := CID25) gs j gl pd pav pu
       gf
       pk bf
                      FsAbsCreateFire.T_DEVICE (hw_lo (arg_int32 v1)) (hw_lo (arg_int32 v2))
                      (upd_usM (us_upt U P') _) MAXOPBLOCKS Sb0 ns pid dqb dqs dqbs dqn
                      N4 (K - 20)%nat eb b lks
+                     (npar_nm (us_M U) v0)
                      P Pmiss Farm (pfam_triv (fun _ _ _ _ => True%I)) Fun Fok Fex
+                     (fun (nm : fname)
+                          (H : list_basics.last (path_elems (bview pk bf))
+                               = Some nm) =>
+                        npar_nm_intro (us_M U) v0 (bview pk bf) nm Hpof H)
                      ltac:(lia) HdevR Hnib0 Hgeom Hsize
                      Hbm0 Hbmcov Hbmlog Hist0 Hcovb Hbmgeo Hiregb Hpcstr
                      (mn_plen_lt pk Hpk) Hni1 Hni2 Hni3 Hush
@@ -2202,17 +2208,19 @@ Section MknodStable.
   (* =================================================================== *)
 
   Lemma mkr_acre_compose Γ (E : coPset) (c : absnode) (avc : aview)
+      (Nm : fname -> Prop)
       (root : Z) (ps : list fname) (ds : list Z) (Pd : Z -> iProp Σ)
       (Farm : pfam Σ (aview -> Z -> iProp Σ))
       (Φ : aview -> Z -> fname -> Z -> iProp Σ) :
     arun avc root ps ds ->
-    mkr_chain Γ avc ds ps -∗ acre_commit_at Γ E c Pd Farm Φ -∗
-      acre_commit_at Γ E c Pd Farm (mkr_recv root ps ds Φ).
+    mkr_chain Γ avc ds ps -∗ acre_commit_at_nm Γ E c Nm Pd Farm Φ -∗
+      acre_commit_at_nm Γ E c Nm Pd Farm (mkr_recv root ps ds Φ).
   Proof.
-    intros Hr. iIntros "#Hc Hcm". rewrite /acre_commit_at /acre_commit_at_gen.
-    iIntros (I d i nm ents nl) "%Hpre %Hnm Harm HPd Ha".
+    intros Hr. iIntros "#Hc Hcm".
+    rewrite /acre_commit_at_nm /acre_commit_at_gen_nm.
+    iIntros (I d i nm ents nl) "%Hpre %Hnm %HNm Harm HPd Ha".
     iDestruct (mkr_chain_run Γ I avc root ps ds Hr with "Ha Hc") as %Hrun.
-    iMod ("Hcm" $! I d i nm ents nl with "[//] [//] Harm HPd Ha")
+    iMod ("Hcm" $! I d i nm ents nl with "[//] [//] [//] Harm HPd Ha")
       as "(Ha & HPd & Hstep & Hph2)".
     iModIntro. iFrame "Ha HPd Hstep". iIntros (I') "%Heq Ha'".
     iMod ("Hph2" $! I' with "[//] Ha'") as "[Ha' HΦ]".
@@ -2245,16 +2253,17 @@ Section MknodStable.
     rewrite /mkr_recv. iDestruct "HΦ" as "[_ HΦ]". iModIntro. by iFrame.
   Qed.
 
-  Lemma mkr_acre_forget Γ (E : coPset) (c : absnode) (root : Z)
+  Lemma mkr_acre_forget Γ (E : coPset) (c : absnode) (Nm : fname -> Prop)
+      (root : Z)
       (ps : list fname) (ds : list Z) (Pd : Z -> iProp Σ)
       (Farm : pfam Σ (aview -> Z -> iProp Σ))
       (Φ : aview -> Z -> fname -> Z -> iProp Σ) :
-    acre_commit_at Γ E c Pd Farm (mkr_recv root ps ds Φ) -∗
-    acre_commit_at Γ E c Pd Farm Φ.
+    acre_commit_at_nm Γ E c Nm Pd Farm (mkr_recv root ps ds Φ) -∗
+    acre_commit_at_nm Γ E c Nm Pd Farm Φ.
   Proof.
-    iIntros "Hcm". rewrite /acre_commit_at /acre_commit_at_gen.
-    iIntros (I d i nm ents nl) "%Hpre %Hnm Harm HPd Ha".
-    iMod ("Hcm" $! I d i nm ents nl with "[//] [//] Harm HPd Ha")
+    iIntros "Hcm". rewrite /acre_commit_at_nm /acre_commit_at_gen_nm.
+    iIntros (I d i nm ents nl) "%Hpre %Hnm %HNm Harm HPd Ha".
+    iMod ("Hcm" $! I d i nm ents nl with "[//] [//] [//] Harm HPd Ha")
       as "(Ha & HPd & Hstep & Hph2)".
     iModIntro. iFrame "Ha HPd Hstep". iIntros (I') "%Heq Ha'".
     iMod ("Hph2" $! I' with "[//] Ha'") as "[Ha' HΦ]".
@@ -2266,19 +2275,20 @@ Section MknodStable.
      equation is [eq_refl]: a client that never gets its fire takes back
      exactly what it invested, enriched or not. *)
   Lemma mkr_acre_compose_at Γ (E : coPset) (c : absnode) (avc : aview)
+      (Nm : fname -> Prop)
       (root : Z) (ps : list fname) (ds : list Z) (Pd : Z -> iProp Σ)
       (Farm : pfam Σ (aview -> Z -> iProp Σ))
       (F : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ)) :
     arun avc root ps ds ->
-    mkr_chain Γ avc ds ps -∗ pf_at (acre_commit_at Γ E c Pd Farm) F -∗
-      pf_at (acre_commit_at Γ E c Pd Farm) (mkr_fam root ps ds F).
+    mkr_chain Γ avc ds ps -∗ pf_at (acre_commit_at_nm Γ E c Nm Pd Farm) F -∗
+      pf_at (acre_commit_at_nm Γ E c Nm Pd Farm) (mkr_fam root ps ds F).
   Proof.
     intros Hr. iIntros "#Hc Hcm".
-    iApply (pf_at_mono_pair (acre_commit_at Γ E c Pd Farm)
-              (acre_commit_at Γ E c Pd Farm)
+    iApply (pf_at_mono_pair (acre_commit_at_nm Γ E c Nm Pd Farm)
+              (acre_commit_at_nm Γ E c Nm Pd Farm)
               F (mkr_fam root ps ds F) eq_refl with "[] Hcm").
     iIntros "Hcm".
-    iApply (mkr_acre_compose Γ E c avc root ps ds Pd Farm F.(pf_recv) Hr
+    iApply (mkr_acre_compose Γ E c avc Nm root ps ds Pd Farm F.(pf_recv) Hr
               with "Hc Hcm").
   Qed.
 
@@ -2309,19 +2319,20 @@ Section MknodStable.
     iApply (mkr_dlookup_forget Γ E root ps ds F.(pf_recv) with "Hcm").
   Qed.
 
-  Lemma mkr_acre_forget_at Γ (E : coPset) (c : absnode) (root : Z)
+  Lemma mkr_acre_forget_at Γ (E : coPset) (c : absnode) (Nm : fname -> Prop)
+      (root : Z)
       (ps : list fname) (ds : list Z) (Pd : Z -> iProp Σ)
       (Farm : pfam Σ (aview -> Z -> iProp Σ))
       (F : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ)) :
-    pf_at (acre_commit_at Γ E c Pd Farm) (mkr_fam root ps ds F) -∗
-    pf_at (acre_commit_at Γ E c Pd Farm) F.
+    pf_at (acre_commit_at_nm Γ E c Nm Pd Farm) (mkr_fam root ps ds F) -∗
+    pf_at (acre_commit_at_nm Γ E c Nm Pd Farm) F.
   Proof.
     iIntros "Hcm".
-    iApply (pf_at_mono_pair (acre_commit_at Γ E c Pd Farm)
-              (acre_commit_at Γ E c Pd Farm)
+    iApply (pf_at_mono_pair (acre_commit_at_nm Γ E c Nm Pd Farm)
+              (acre_commit_at_nm Γ E c Nm Pd Farm)
               (mkr_fam root ps ds F) F eq_refl with "[] Hcm").
     iIntros "Hcm".
-    iApply (mkr_acre_forget Γ E c root ps ds Pd Farm F.(pf_recv) with "Hcm").
+    iApply (mkr_acre_forget Γ E c Nm root ps ds Pd Farm F.(pf_recv) with "Hcm").
   Qed.
 
   (* =================================================================== *)
@@ -2388,14 +2399,14 @@ Section MknodStable.
       (Fok Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ)) :
     mknod_post_fail Γ γfs cw M pv ma mi (fun _ _ => True%I) (fun _ _ => True%I)
       Farm Fun (mkr_fam root ps ds Fok) (mkr_fam root ps ds Fex)
-    ⊢ mknod_stable_fail Γ ma mi root ps ds Farm Fun Fok Fex.
+    ⊢ mknod_stable_fail Γ ma mi (npar_nm M pv) root ps ds Farm Fun Fok Fex.
   Proof using .
     rewrite /mknod_post_fail /mknod_stable_fail /mknod_au_at.
     iIntros "[(_ & Hacre & Hdl & Hchild) | H]".
     { iLeft. iSplitL "Hacre".
       - (* the bundle's commit is at the GUARDED cursor and the stable
            reading is at the trivial one (lane TL-3K) *)
-        iApply (mknod_acre_triv_in Γ M pv ma mi Farm Fok).
+        iApply (mknod_acre_triv_in Γ M pv ma mi (npar_nm M pv) Farm Fok).
         iApply (mkr_acre_forget_at with "Hacre").
       - iSplitL "Hdl"; [iApply (mkr_dlookup_forget_at with "Hdl") |].
         iLeft. iExact "Hchild". }
@@ -2429,7 +2440,7 @@ Section MknodStable.
       (Fok Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ)) (r : mword 64) :
     mknod_arms Γ γfs cw M pv ma mi (fun _ _ => True%I) (fun _ _ => True%I)
       Farm Fun (mkr_fam root ps ds Fok) (mkr_fam root ps ds Fex) r
-    ⊢ mknod_stable_arms Γ ma mi root ps ds Farm Fun Fok Fex r.
+    ⊢ mknod_stable_arms Γ ma mi (npar_nm M pv) root ps ds Farm Fun Fok Fex r.
   Proof using .
     rewrite /mknod_arms /mknod_stable_arms.
     iIntros "[[%Hr Hok] | [%Hr Hfail]]".
@@ -2488,9 +2499,9 @@ Section MknodStableWp.
                           (fun _ _ => True%I) (fun _ _ => True%I) pl);
                 iApply mkr_walk_triv |].
       iSplitL "Hacre".
-      - iApply (mkr_acre_compose_at _ _ _ avc root ps ds _ _ _ Hrun
+      - iApply (mkr_acre_compose_at _ _ _ avc _ root ps ds _ _ _ Hrun
                   with "Hchain [Hacre]").
-        iApply (mknod_acre_triv_out _ (us_M U) v0 _ _ Farm Fok with "Hacre").
+        iApply (mknod_acre_triv_out _ (us_M U) v0 _ _ _ Farm Fok with "Hacre").
       - iSplitL "Hdl".
         + iApply (mkr_dlookup_compose_at _ _ avc root ps ds _ Hrun
                     with "Hchain Hdl").

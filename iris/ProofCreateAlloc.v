@@ -139,6 +139,7 @@ Require Import SpecIlock SpecIunlockput.
 Require Import SpecDirlookup SpecDirlink.
 Require Import SpecCreate.
 Require Import FsAbsDelta.       (* [acre_bump], [dots_ents]: the deltas the legs' rows are stated at (round E2, lane E2-C) *)
+Require Import PathElems.        (* [path_elems]: the name tie's list      *)
 Require Import SysMknodDefs.     (* [npar_elems]: the PARENT prefix (TL-3K) *)
 Require Import FsAbsMknodFire.   (* the parent-leg fire [caf_acre_fire], [caf_made_row], [mkf_parent_row] (round E2, lane E2-C) *)
 Require Import PieceFam.       (* [pfam]/[pf_at]: the one-shot piece's pair *)
@@ -211,12 +212,18 @@ Section ProofCreateAlloc.
       (m : regfile) (sp0 ret_tgt : mword 64) (K : nat) (eb : bool)
       (b : bool) (lks : gset string)
       (* ---- THE APPLICATION'S SIDE ---- *)
+      (Nm : fname -> Prop)
       (P Pmiss : nat -> Z -> iProp Σ)
       (Farm : pfam Σ (aview -> Z -> iProp Σ))
       (Fdots : pfam Σ (aview -> Z -> Z -> bool -> iProp Σ))
       (Fun : pfam Σ (aview -> Z -> iProp Σ))
       (Fok : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
       (Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ)) :
+    (* THE NAME PREDICATE'S PURE PREMISE (lane INIT-FILE, section 3.4):
+       this half FIRES the parent leg, at the last element of its own path
+       buffer, so it owes [Nm] at that name and nothing else. *)
+    (forall nm : fname,
+       list_basics.last (path_elems (bview plen pfun)) = Some nm -> Nm nm) ->
     (K_create <= K)%nat ->
     icfg_dev = ROOTDEV ->
     log_geom_ok fsc_cov fsc_logst ->
@@ -275,7 +282,7 @@ Section ProofCreateAlloc.
                        plen pfun pv ty major minor U u Sb ns pidv
                        dqb dqs dqbs dqn m sp0 ret_tgt K eb b lks
                        kd qd gd γil γisl dind dn bm data nf nsl t CIDm
-                       P Pmiss Farm Fdots Fun Fok Fex)) -∗
+                       Nm P Pmiss Farm Fdots Fun Fok Fex)) -∗
     (* ---- ARM FAIL's NON-DIRECTORY ENTRY, PARKED ---- *)
     (∀ (kd : nat) (qd : Qp) (gd γil γisl : gname) (dind : mword 32)
        (dn : dinode) (bm : blkmap) (data : nat -> list (bv 8))
@@ -286,7 +293,7 @@ Section ProofCreateAlloc.
                       plen pfun pv ty major minor U u Sb ns pidv
                       dqb dqs dqbs dqn m sp0 ret_tgt K eb b lks
                       kd qd gd γil γisl dind dn bm data nf nsl t CIDf
-                      P Pmiss Farm Fdots Fun Fok Fex)) -∗
+                      Nm P Pmiss Farm Fdots Fun Fok Fex)) -∗
     (* THE CONCLUSION IS [wp_next]-WRAPPED, and it has to be.  The two parked
        bodies and [cr_alloc_body]'s own [Hcont] are all anchored at the
        SECTION hart, while the allocate half's resources arrive at whatever
@@ -300,9 +307,9 @@ Section ProofCreateAlloc.
 
                     plen pfun pv ty major minor U u Sb ns pidv dqb dqs dqbs dqn
                     m sp0 ret_tgt K eb b lks CIDa
-                    P Pmiss Farm Fdots Fun Fok Fex).
+                    Nm P Pmiss Farm Fdots Fun Fok Fex).
   Proof using .
-    intros HK Hroot Hlg Hsize Hbms0 Hbmsc Hbmsl Hist0
+    intros HNmL HK Hroot Hlg Hsize Hbms0 Hbmsc Hbmsl Hist0
            Hcovb Hbmgeo Hiregb Hni1 Hni2 Hni3 Hnib16 Htynz Htyk Hu Hns Hj Hgs
            Hspm Hrt Hal10 Hal9 Heb.
     destruct (cr_kb K HK)
@@ -1341,14 +1348,16 @@ Section ProofCreateAlloc.
                by apply dir_view_lookup_None. }
              iApply fupd_wp.
              iEval (rewrite top_frag_1) in "Hctop".
-             iMod (caf_acre_fire fsc_fs ⊤
+             iMod (caf_acre_fire_nm fsc_fs ⊤
                      (cre_child (bv_unsigned ty) (bv_unsigned major) (bv_unsigned minor))
+                     Nm
                      (P (length (npar_elems (bview plen pfun))))
                      Farm Fok (bv_unsigned dind) (bv_unsigned cinum) (bname 14 nf) (DfracOwn 1)
                      (era_node dn bm data) (era_node dn' bm' data')
                      (era_node (cr_setf dnc major minor
                                   (mword_of_int 1 : mword 16)) bmc datc)
                      ltac:(solve_ndisj)
+                     (HNmL (bname 14 nf) (cr_last_of_npar _ nf Hnpname))
                      (inode_local_of_ok_rec (bv_unsigned dind) fsc_cov fsc_logst
                         dn' bm' data' Hiok' Hrl' Hduq' Hddix')
                      (mkf_era_is_dir dn bm data Hdz)
@@ -1605,7 +1614,7 @@ Section ProofCreateAlloc.
                   no dots on a non-directory, the unarm and the exists
                   observation come home, and the cursor is at the parent. *)
                iApply (cr_ok_of_made (bv_unsigned ty) (bv_unsigned major)
-                         (bv_unsigned minor) P Farm Fdots Fun Fok Fex
+                         (bv_unsigned minor) Nm P Farm Fdots Fun Fok Fex
                          (bview plen pfun) (bv_unsigned dind) (bname 14 nf)
                          (bv_unsigned cinum)
                          (cr_last_of_npar _ nf Hnpname)
@@ -1975,13 +1984,13 @@ Section ProofCreateAlloc.
          lookup missed and ialloc never got as far as a delta, so the
          cursor comes home with all four commits. *)
       iAssert (cre_commits (fs_gamma_L fsc_fs) (bv_unsigned ty)
-                 (bv_unsigned major) (bv_unsigned minor)
+                 (bv_unsigned major) (bv_unsigned minor) Nm
                  (P (length (npar_elems (bview plen pfun))))
                  Farm Fdots Fun Fok)
         with "[Harm Hdots Hun Hacre]" as "Hcre".
       { rewrite /cre_commits. iFrame "Harm Hdots Hun Hacre". }
       iDestruct (cr_fail_of_cursor fsc_fs (bv_unsigned ty) (bv_unsigned major)
-                   (bv_unsigned minor) P Pmiss Farm Fdots Fun Fok Fex
+                   (bv_unsigned minor) Nm P Pmiss Farm Fdots Fun Fok Fex
                    (bview plen pfun) (bv_unsigned dind)
                    with "HPpar Hdlkc Hcre") as "Hcf".
       iSpecialize ("Hcont" $! CIDf with "[%]"); [wp_next_chain |].

@@ -93,6 +93,7 @@ Require Import SpecSysOpen.
 Require Import SysMknodDefs.       (* [npar_elems] *)
 Require Import FsAbsCreateFire.    (* [acre_commit_at], [cre_arm_fired],
                                       [aunarm_of_arm], [cre_child_unfired] *)
+Require Import FsAbsCreateNm.      (* [acre_commit_at_nm], [npar_nm]: the create commit at a NAME PREDICATE *)
 Require Import SpecSysMknod.       (* [mknod_au_at], [mknod_post_ok] *)
 Require Import ConsoleInv.         (* [CONSOLE] *)
 Require Import FsConsPin.          (* the console's two states, and its pin *)
@@ -545,10 +546,19 @@ Section UInitCons.
          K -∗ app_pred app_run av -∗
          app_pred app_run (delta_create FsImg.ROOTINO fname_console i
                              (ADev CONSOLE 0) av)) -∗
+    (* (g) ANY OTHER CREATE THE CALL COULD HAVE REACHED, and with the NAME
+       PREDICATE threaded (lane INIT-FILE, section 3.4) that is far less
+       than it used to be: the syscall files the LAST element of argument
+       0's reading, which at this path is `console`, so the only create at
+       another (d, nm) this bundle can meet is a create of `console` in a
+       directory that is NOT the root.  A claim that tracks a second name
+       in the root -- the file application's -- has an arm for exactly
+       this and had none for the old premise. *)
     □ (∀ (av : aview) (d : Z) (nmn : fname) (ents : gmap fname Z)
          (nl : nat) (i : Z),
          ⌜cre_pre av d nmn ents nl i (ADev CONSOLE 0)⌝ -∗
-         ⌜d <> FsImg.ROOTINO \/ nmn <> fname_console⌝ -∗
+         ⌜nmn = fname_console⌝ -∗
+         ⌜d <> FsImg.ROOTINO⌝ -∗
          app_pred app_run av -∗
          app_pred app_run (delta_create d nmn i (ADev CONSOLE 0) av)) -∗
     □ (∀ (av : aview) (i : Z), ⌜cons_present_at i av⌝ -∗
@@ -577,8 +587,15 @@ Section UInitCons.
     iSplitR.
     { iApply pf_at_intro. iSplit; last first.
       { rewrite /init_mk_Fok /=. done. }
-      rewrite /acre_commit_at /acre_commit_at_gen.
-      iIntros (I d i nm ents nl) "%Hpre %Hpnm Hperm HPd Hka".
+      rewrite /acre_commit_at_nm /acre_commit_at_gen_nm.
+      iIntros (I d i nm ents nl) "%Hpre %Hpnm %HNm Hperm HPd Hka".
+      (* THE NAME IS `console`, off the predicate: the walk's path is
+         [init_cons_pl] and its last element is [fname_console]
+         ([FsAbsCreateNm.npar_nm_elim], [init_cons_last]). *)
+      assert (Hnmc : nm = fname_console).
+      { pose proof (npar_nm_elim M pv init_cons_pl nm Hpath HNm) as Hl.
+        rewrite /nlast_elem init_cons_last in Hl.
+        injection Hl as Hl. exact (eq_sym Hl). }
       rewrite /init_mk_Farm /cre_arm_fired /=.
       iDestruct "Hperm" as (av0) "[%Hfree Hpay]".
       destruct (decide (d = FsImg.ROOTINO /\ nm = fname_console))
@@ -612,17 +629,17 @@ Section UInitCons.
           iIntros (I') "%Heq' Hka". iModIntro. iFrame "Hka".
           rewrite /init_cons_fok. iRight. iRight. iExact "HT".
       - (* ANY OTHER (d, nm): the claim survives and the key comes back *)
-        assert (Hne : d <> FsImg.ROOTINO \/ nm <> fname_console).
-        { destruct (decide (d = FsImg.ROOTINO)) as [-> | Hd]; [| by left].
-          right. intros ->. exact (Hother (conj eq_refl eq_refl)). }
+        assert (Hne : d <> FsImg.ROOTINO).
+        { intros ->. exact (Hother (conj eq_refl Hnmc)). }
         iDestruct "Hpay" as "[[%Hp0 [%Hpv0 HK0]] | #HT]".
         + iModIntro. iFrame "Hka HPd". iSplitR.
           { rewrite /app_step. iIntros (n') "%Heq Hp". rewrite Heq.
             iModIntro. iNext.
-            iApply ("Hoth" $! (abs_view I) d nm ents nl i with "[%] [%] Hp");
-              [ exact Hpre | exact Hne ]. }
+            iApply ("Hoth" $! (abs_view I) d nm ents nl i
+                      with "[%] [%] [%] Hp");
+              [ exact Hpre | exact Hnmc | exact Hne ]. }
           iIntros (I') "%Heq' Hka". iModIntro. iFrame "Hka".
-          rewrite /init_cons_fok. iLeft. iFrame "HK0". by iPureIntro.
+          rewrite /init_cons_fok. iLeft. iFrame "HK0". iPureIntro. by left.
         + iDestruct ("Hsup" with "HT") as "#Hs".
           iModIntro. iFrame "Hka HPd". iSplitR.
           { iApply (app_step_acc d I _ with "Hs"). }
@@ -1122,7 +1139,13 @@ Section UInitCons.
     intros Hpath. rewrite /init_cons_laws_at.
     iIntros "(#Ha & #Hb & #Hc & #Hd & #He & #Hf & #Hg & #Hh & _) #Hinv HK".
     iApply (init_cons_mknod_bundle γfs Pure Made Pv T K M pv Hpath
-              with "Ha Hb Hc Hd He Hf Hg Hh Hinv HK").
+              with "Ha Hb Hc Hd He Hf [] Hh Hinv HK").
+    (* (g) WEAKENS: the bundle asks for the create-at-another-name step
+       only at the names the syscall can reach, and the laws supply it at
+       every name. *)
+    iIntros "!>" (av d nmn ents nl i) "%Hpre %Hnmc %Hd Hp".
+    iApply ("Hg" $! av d nmn ents nl i with "[%] [%] Hp");
+      [ exact Hpre | by left ].
   Qed.
 
   Lemma init_cons_laws_open_absent (γfs : fs_names)

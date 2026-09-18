@@ -1574,6 +1574,22 @@ Section SysOpenArms.
   (* ------------------------------------------------------------------ *)
   (*  create's FAILURE FOLD, READ INTO THIS FILE'S OWN ARMS               *)
   (*                                                                      *)
+  (* THE NAME PREDICATE IS TRIVIAL HERE (lane INIT-FILE, section 3.4):
+     sys_open's create entry tracks no name of its own, so its parent leg
+     is the commit at every name and the bridge is one line. *)
+  Lemma open_acre_file_of_triv Γ (Pd : Z -> iProp Σ)
+      (Farm : pfam Σ (aview -> Z -> iProp Σ))
+      (Fok : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ)) :
+    pf_at (acre_commit_at_nm Γ appE (AFile [])
+             (fun _ : fname => True%type) Pd Farm) Fok -∗
+    pf_at (acre_commit_at Γ appE (AFile []) Pd Farm) Fok.
+  Proof using .
+    iIntros "H". iApply (pf_at_mono with "[] H"). iIntros "H".
+    iApply (acre_commit_at_of_nm Γ appE (AFile [])
+              (fun _ : fname => True%type) Pd Farm Fok.(pf_recv)
+              (fun _ => I) with "H").
+  Qed.
+
   (*  [SpecCreate.cre_fail_arms] at [T_FILE] IS [open_post_fail_create]'s  *)
   (*  inner three, arm for arm, and the only thing the fold adds is        *)
   (*  sys_open's own two commits, which on every one of create's failure   *)
@@ -1603,7 +1619,8 @@ Section SysOpenArms.
       (pl : list (bv 8)) :
     (* the walk this fold is the payout of ran on the caller's argument 0 *)
     arg_path_of M pv pl ->
-    cre_fail_arms Γ γfs (bv_unsigned T_FILE) ma mi P Pmiss
+    cre_fail_arms Γ γfs (bv_unsigned T_FILE) ma mi
+      (fun _ : fname => True%type) P Pmiss
       Farm Fdots Fun Fok Fex pl -∗
     pf_at (aopen_commit_at Γ appE) Fo -∗
     (* the piece at the ONE-PATH permit, which is how the create entry
@@ -1616,8 +1633,12 @@ Section SysOpenArms.
     rewrite /open_post_fail_create.
     iRight. iExists pl. iSplitR; [ iPureIntro; exact Hpl | ].
     iDestruct "Hcf" as "[(Hd & Hac & Hdl & Hcl) | Hr]".
-    - iLeft. iFrame "Hd Hac Hdl Ho Ht Hcl".
+    - (* the parent leg comes home at the NAME PREDICATE this entry is at
+         ([FsAbsCreateNm.acre_commit_at_of_nm] at [fun _ => True]) *)
+      iDestruct (open_acre_file_of_triv with "Hac") as "Hac".
+      iLeft. iFrame "Hd Hac Hdl Ho Ht Hcl".
     - iRight. iDestruct "Hr" as (d) "(HP & Hac & Hrest & Hcl)".
+      iDestruct (open_acre_file_of_triv with "Hac") as "Hac".
       iExists d.
       iDestruct "Hrest" as "[Hfired | Hdl]".
       + (* (b): the name was there and the observation fired.  The

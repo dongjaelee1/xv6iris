@@ -140,9 +140,18 @@ Section AppFileCons.
   (*  and the file half rides across on [AppFile.file_pred_split] /       *)
   (*  [file_pred_join].                                                   *)
   (*                                                                     *)
-  (*  THE OTHER TWO -- (e) the UNARM and (g) the create at ANOTHER name   *)
-  (*  -- do NOT go through at this claim as [init_cons_laws_at] states    *)
-  (*  them.  The lane's findings say exactly why and what each costs.     *)
+  (*  (g) THE CREATE AT ANOTHER NAME GOES THROUGH TOO, now that the      *)
+  (*  NAME PREDICATE is threaded (lane INIT-FILE, section 3.4): the       *)
+  (*  bundle asks for it only at the names sys_mknod can reach, which on  *)
+  (*  /init's path is [fname_console] alone -- so the parent is NOT the   *)
+  (*  root and [FileDeltas.f_ok_create_other]'s disjunction is paid by    *)
+  (*  its LEFT arm.  At the old premise -- a create of a device under ANY *)
+  (*  name at ANY parent -- this was REFUTABLE ([f_ok] at an absent deed  *)
+  (*  is [f_absent], and a create called `f` in the root makes it         *)
+  (*  present).                                                          *)
+  (*                                                                     *)
+  (*  THE ONE THAT STILL DOES NOT GO THROUGH is (e), the UNARM, and not   *)
+  (*  for want of a name: see the lane's findings.                        *)
   (* =================================================================== *)
   Local Notation cdev := (ADev CONSOLE 0).
 
@@ -189,6 +198,37 @@ Section AppFileCons.
                    ents nl i cdev av s Hpre file_cons_arm_nd
                    (or_intror FileDeltas.fname_console_ne_f) Hok)
               with "Hf").
+  Qed.
+
+  (* ---- (g) A CREATE AT ANOTHER (d, nm), AT THE NAMES THE SYSCALL CAN
+     REACH.  The name is the last element of the path sys_mknod walked,
+     which at /init's [mknod("console", …)] is [fname_console], so the
+     only other create this claim is ever asked to absorb is a console
+     made in a directory that is not the root.  Neither pin moves: the
+     console's is guarded by [d <> ROOTINO] and the deed's by the same,
+     through [FileDeltas.f_ok_create_other]'s LEFT disjunct.  No key and
+     no accessor -- the view moves, so this is [AppFile.file_step_free]
+     at four landed [FileDeltas] legs, exactly as (d) is. ---- *)
+  Lemma file_cons_create_other (av : aview) (d : Z) (nmn : fname)
+      (ents : gmap fname Z) (nl : nat) (i : Z) :
+    cre_pre av d nmn ents nl i cdev ->
+    nmn = fname_console ->
+    d <> FsImg.ROOTINO ->
+    file_pred c r av -∗
+    file_pred c r (delta_create d nmn i cdev av).
+  Proof using .
+    intros Hpre Hnm Hd.
+    iApply (file_step_free c r av (delta_create d nmn i cdev av)
+              (fun Hp => FileDeltas.file_fs_pure_create d nmn ents nl i cdev
+                           av Hpre file_cons_arm_nd Hp)
+              (fun Hab => FileDeltas.cons_absent_create_nd d nmn ents nl i
+                            cdev av Hpre file_cons_arm_nd
+                            (or_introl Hd) Hab)
+              (fun j Hpr => FileDeltas.cons_present_create_nd j d nmn ents nl
+                              i cdev av Hpre file_cons_arm_nd Hpr)
+              (fun s Hok => FileDeltas.f_ok_create_other d nmn ents nl i cdev
+                              av s Hpre file_cons_arm_nd
+                              (or_introl Hd) Hok)).
   Qed.
 
 End AppFileCons.

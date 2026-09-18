@@ -161,6 +161,17 @@ arm is the theorem's one named premise (`pipe_both_law`).
   (`init_cons_laws_at`, INIT-FILE's mould minus the f-state).  Also: merge
   main (upstream's `StageRec.v`/`FileLinkInst.v`, `app_taint`) into the
   branch first and re-read the mould.
+- [ ] **PQ-FLAG-2** (kernel/spec, design §3.1b).  `PipeQueue.pipe_wlink`
+  gains `⌜ps_ro s = true⌝` beside `⌜ps_wo s = true⌝`; `ProofPipewrite`
+  supplies it at the store from the loop's own `readopen` test (same lock
+  hold) through the coupled arm; every `_of_frag`/chain lemma ignores it.
+- [ ] **PIPE-PROTO-2** (design §3.1b; after PQ-FLAG-2).  (P4) `ro_shot`
+  one-shot + law `ro_shot -∗ ⌜ps_ro s = false⌝`; the writer's observation
+  node sets it at `ps_ro s = false`; `pipe_wpay_of_inv_after_short` (a
+  chain from `ro_shot ∨ app_taint` at any cursor/bytes); `pipe_payL` gains
+  the mid-line arm (`wcur pn c ∗ ro_shot`); sh's reading at `PExecR`.
+- [ ] **ECHO-PIPE-2** (after PIPE-PROTO-2): `ep_derail` deleted; the four
+  writes compose through `ro_shot ∨ app_taint` past a short write.
 ## Wave 3 — the round and the theorem
 
 - [ ] **SH-PIPE-ROUND** (design §4.2): sh's round at the claim — the

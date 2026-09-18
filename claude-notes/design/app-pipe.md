@@ -376,6 +376,42 @@ lets sh combine echo's "the line is in" with cat's "I printed exactly the
 frozen contents" AFTER the fact (§4.2), without anyone reasoning about
 who closed last.
 
+### 3.1b RULED (2026-09-18, after ECHO-PIPE's wall): the write link also fires only with the READ end open
+
+ECHO-PIPE found that echo's four writes do not compose past a SHORT write:
+a write's post leaves `∃ k ≤ n, wcur pn (c+k)`, and the next write's chain
+builder needs its bytes to be `L`'s at the cursor `c+k+j` while echo's
+next buffer holds `L`'s at `c+n+j` — so with `k < n` no chain can be
+stated, and `pipe_wpay = chain ∨ app_taint` leaves echo (untainted) with
+nothing to pay.  The two reachable causes of `k < n`: the kill shot (the
+taint, already paired with `kill_shot` by the trap tail — route (c)), and
+the reader gone (`readopen == 0`, the `PExecR` world).  RULED, route (d),
+which needs nothing lent: **`pipe_wlink` gains `⌜ps_ro s = true⌝`** beside
+PQ-FLAG's `⌜ps_wo s = true⌝` — `pipewrite` tests `pi->readopen == 0` under
+the SAME lock hold immediately before each byte's store (`kernel/pipe.c`:
+the test, the full-ring sleep that loops back to the test, or the store),
+so the fire site has the fact for free from the coupled arm (`ps_ro =
+pflag_bool ro`), exactly as the write-open premise.  (PQ-FLAG refuted a
+`ps_ro` premise on the READ link — piperead never loads `readopen`; this
+is the WRITE link, whose code does.)  With it the protocol gains (P4): a
+persistent one-shot `ro_shot` ("the read end was seen shut") that the
+writer's OBSERVATION node sets when it fires at `ps_ro s = false`, and the
+body's law `ro_shot -∗ ⌜ps_ro s = false⌝` (`ps_ro` is monotone: only
+`pst_close false` moves it, one way).  A write link fired AFTER the shot
+has `⌜ps_ro s = true⌝` against (P4)'s `false` — vacuous — so a chain
+builder past a short write is buildable from `ro_shot` alone: echo's
+"derail" is `ro_shot ∨ app_taint`, both of which echo can hold (the shot
+from its own short write's observation; the taint from the kill).  Nothing
+crosses `fork`/`exec` for it; `ep_derail` is deleted from echo's `Pay`.
+Lanes: PQ-FLAG-2 (kernel: the premise, the `_of_frag`/chain lemmas ignore
+it), PIPE-PROTO-2 ((P4), `ro_shot`, the observation setting it, the
+builder past a short write, `pipe_payL`'s mid-line arm = the shot), then
+ECHO-PIPE-2 (drop `ep_derail`).  Also from ECHO-PIPE: the chain builder
+used is the non-fupd `pipe_wpay_of_inv` (the ledger-slot deposit takes a
+plain wand); echo's `Pay` carries the console credential `Wq` (the only
+door) beside `side_L`; `pipe_wpost`'s taint arm can swallow a caller's
+exclusive payment (a disjunction) — PipeQueue's header overstates.
+
 ### 3.2 What the protocol does NOT do
 
 It does not track reference counts, does not know which close is last,

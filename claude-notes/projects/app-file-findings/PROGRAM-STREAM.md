@@ -1362,3 +1362,13 @@ arm returns `fdq r q1 s ∗ fdq r q2 s` (or the taint); (ii) the three
 statements above it follow; (iii) `catq_cat` gains
 `∗ ((fdq r q1 s ∗ fdq r q2 s) ∨ file_taint c)` and `cat_pay_present`'s three
 payload wands take it; (iv) `Hchild_cat`.
+
+(i) IS NOT A KERNEL CHANGE: `SpecSysOpen.open_receipt_plain`'s failure arm
+already carries `open_post_fail_plain …` ("the whole bundle is back") and
+`FileOpen.file_open_recv_file` DROPS it (`"[(%Hr & %Hfd & _) | Hok]"`).  The
+three sub-arms are the unfired AU, the dead walk (`namei_walk_dead_era` holds
+the `pobs_P_lin` cursor — `fdq r q1` — at the hop it died at, beside the
+unfired `pf_at … (file_open_recv c r q2 s)`, whose refund is `fdq r q2 s`)
+and the reached inode (`P` at the end, `Fo`'s receipt).  The absent-deed twin
+already does this refund (`UkFileOpen.file_open_miss_recv`, lane F-OPEN-2's
+seam 2, a fupd) and is the mould.

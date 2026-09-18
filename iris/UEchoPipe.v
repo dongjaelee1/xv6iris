@@ -921,4 +921,95 @@ Section UEchoPipe.
               with "Hq Hinv Hder Hnpw' Hdep Hmp Hc").
   Qed.
 
+  (* =================================================================== *)
+  (*  S7  THE EXIT ROW, OFF THE REGISTRY                                  *)
+  (*                                                                     *)
+  (*  echo has no [close]: its fd-1 row is torn down by [exit], whose     *)
+  (*  bundle row is minted off [UkRun.urun_nopipe]                        *)
+  (*  ([UexecExecInst.xv6_sbundle_exit_regs], lane PIPE-REG).  The entry   *)
+  (*  above TAKES that resource, exactly as the console entry does; this   *)
+  (*  is how a caller holding the protocol BUILDS it for echo's table      *)
+  (*  [c; W; c] -- the registration is read off the invariant             *)
+  (*  ([PipeProto.pipe_reg_of_inv]) and every other row is pipe-free.      *)
+  (*  NO TAINT is touched.                                                *)
+  (* =================================================================== *)
+  Lemma ep_urun_nopipe (pn : pnames) (γp : pipe_names) (L : list (bv 8))
+      (sts : list fdstate) (k : nat) (rb wb : bool) :
+    sts !! k = Some (FdOpen rb wb (FdPipe γp)) ->
+    fdv_nopipe (<[k := FdClosed]> sts) ->
+    pipe_inv pn γp L -∗ UkRun.urun_nopipe sts.
+  Proof using .
+    intros Hk Hnp. iIntros "#Hinv".
+    iAssert (srow_reg (FdOpen rb wb (FdPipe γp)))%I with "[]" as "Hrow".
+    { iApply srow_reg_of_pipe_reg.
+      iApply (pipe_reg_of_inv pn γp L with "Hinv"). }
+    iAssert ([∗ list] st ∈ <[k := FdClosed]> sts, srow_reg st)%I
+      with "[]" as "Hrows".
+    { iApply (UkRun.srow_regs_nopipe _ Hnp). }
+    iApply UkRun.urun_nopipe_regs.
+    iDestruct (UkRun.urun_nopipe_regs_insert (<[k := FdClosed]> sts) k
+                 (FdOpen rb wb (FdPipe γp)) with "Hrow Hrows") as "H".
+    rewrite list_insert_insert (list_insert_id sts k _ Hk). iExact "H".
+  Qed.
+
+  (* =================================================================== *)
+  (*  S8  THE CONSUMER TEST, at [echo hi]                                 *)
+  (*                                                                     *)
+  (*  RESOURCE-LEVEL (the campaign's usual alternative): the entry at a    *)
+  (*  CONCRETE line, with the exit payload spelled out.  What comes out    *)
+  (*  is [side_L pn] and the era's credential beside "the line is in"      *)
+  (*  ([pws_lb pn (wl_line [hi])]) -- OR the halt, which is the honest     *)
+  (*  price of [pipe_wpost]'s two short arms (see the header).            *)
+  (* =================================================================== *)
+  Definition ep_hi_ws : list (list (bv 8)) := [EchoDisc.cmd_echo; sb "hi"].
+
+  Lemma ep_hi_line_ok : EchoDisc.line_ok ep_hi_ws.
+  Proof using .
+    apply (@bool_decide_unpack (EchoDisc.line_ok ep_hi_ws)
+             (EchoDisc.line_ok_dec ep_hi_ws)).
+    by vm_compute.
+  Qed.
+
+  Lemma ep_hi_L : wl_line (drop 1 ep_hi_ws) = wl_line [sb "hi"].
+  Proof using . reflexivity. Qed.
+
+  (* what the exit payload says, read off [ep_exit] *)
+  Lemma ep_exit_line (pn : pnames) (L : list (bv 8)) :
+    ep_exit pn L -∗ side_L pn ∗ Wq ∗ (pws_lb pn L ∨ ep_halt pn L).
+  Proof using .
+    rewrite /ep_exit /ep_car /ep_frame /ep_ok /ep_cur.
+    iIntros "[[$ $] [[_ Hlb] | H]]".
+    - rewrite take_ge; [ | lia ]. by iLeft.
+    - by iRight.
+  Qed.
+
+  Lemma ep_test_hi (M : gmap Z (bv 8)) (s0 t : Z) (g : nat -> bv 8)
+      (sts : list fdstate) (cw : Z) (cs : gset gname) (pidv : mword 32)
+      (pn : pnames) (γp : pipe_names) (rb : bool) :
+    UShEcho.echo_node_img ep_hi_ws M s0 t g ->
+    UkShEcho.echo_argv_bytes ep_hi_ws g ->
+    length sts = NOFILE ->
+    take NSTD sts !! 1%nat = Some (FdOpen rb true (FdPipe γp)) ->
+    UkRun.urun_nopipe sts -∗
+    udep -∗
+    image_entry ElfUser.echo_elf M (mword_of_int (t + 8) : mword 64) sts
+      cw cs pidv
+      (fun _ : Z =>
+         side_L pn ∗ Wq
+         ∗ (pws_lb pn (wl_line (drop 1 ep_hi_ws))
+            ∨ ep_halt pn (wl_line (drop 1 ep_hi_ws))))%I
+      (ep_pay pn γp (wl_line (drop 1 ep_hi_ws))) uslot.
+  Proof.
+    intros Himg Hbytes Hfdl Hl1. iIntros "#Hnpw #Hdep".
+    iApply (ep_image_entry ep_hi_ws M s0 t g sts cw cs pidv pn γp rb
+              (fun _ : Z =>
+                 side_L pn ∗ Wq
+                 ∗ (pws_lb pn (wl_line (drop 1 ep_hi_ws))
+                    ∨ ep_halt pn (wl_line (drop 1 ep_hi_ws))))%I
+              ltac:(intros x y; reflexivity) ep_hi_line_ok Himg Hbytes
+              Hfdl Hl1 with "[] Hnpw Hdep").
+    iIntros "!> Hex".
+    iApply (ep_exit_line pn (wl_line (drop 1 ep_hi_ws)) with "Hex").
+  Qed.
+
 End UEchoPipe.

@@ -1227,7 +1227,7 @@ round.
 ### PIPE-PROTO (2026-09-18) — the protocol lands whole, and a cursor's exactness turns out to be an EXCLUSIVE RESOURCE (which retires (P2))
 
 Branch `app-pipe/pipe-proto`, commits `3e52c3f23`, `72db8342f`.  ONE new
-file (`iris/PipeProto.v`, 964 lines) plus one line of `iris/_CoqProject`.
+file (`iris/PipeProto.v`) plus one line of `iris/_CoqProject`.
 **No landed statement moved** — `PipeQueue`/`UkReadPipe`/`UkWritePipe` were
 not touched at all.  Whole-tree `ec2-lane.sh proto build` RC=0 (twice, the
 second after the last edit); no `Admitted`; `Proof using` on every result

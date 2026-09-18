@@ -634,6 +634,34 @@ free, is rejected: the theorem is about every era.  The design's §0
 sentence "the file system unmodified, echo's invariant verbatim" is
 corrected to "echo's invariant plus /cat's pin, same shape".
 
+### 5.7 AS LANDED (lanes PIPE-STAGE and PIPE-CLAIM, 2026-09-18)
+
+The stage is `FileOut`'s twin with nothing threaded: `PipeOutPure.v`,
+`PipeOut.v`, `PipeLinks.v` compiled UNCHANGED across upstream's 190-commit
+merge (one new interface field, `ai_lic` → `pipe_cons_lic`).
+`postage = EchoOut.ostage` verbatim, `pturn = eturn` verbatim, the fixed
+part is echo's; `sessp_prefix_det2` is `sessp_prefix_det` by `exact` (no
+state to disagree about); `rd_stage_le` has no twin — the read exports
+the choice list truncated to the window's line count, FileOut's route.
+The tag is STAGE's corrected shape (`disc_p` does not imply `disc`).
+`pipe_link_inst : LinkRec` is NOT landed — it is a ~2,800-line port
+(upstream's `FileLinksLine`/`FileLinkInst` now exist as the mould) and is
+SH-PIPE-ROUND's if the round needs the record rather than `pipe_links`.
+THE CLAIM (§5.6): `pipe_pred γ r av := echo_taint γ ∨ (⌜file_fs_pure av⌝ ∗
+cons_state r av)`, and the whole point of §5.6's costing was wrong in the
+cheap direction — `pipe_pred γ r av ⊣⊢ echo_pred γ r av ∗ (echo_taint γ ∨
+⌜era0_cat_pins av⌝)`, a persistent instance-free factor that crosses the
+transport at the same view for free, so the record's laws are ECHO'S
+APPLIED (`AppPipeClaim.pipe_pred_split`), zero new assumptions; the
+moving-view legs are one lemma (`pipe_step_of_echo`); /init's whole
+console dance holds at `pipe_pred` (`AppPipeCons`: the nine
+`init_cons_laws_at` conjuncts incl. `pipe_cat_pins_acc`, the /cat reading;
+`UInitConsPipe`: four bundles, the seal, both leaf pairs, sh's two console
+arms).  `Hprog = al_programs` at `app_pipe` is the only `Context`
+hypothesis left — SH-PIPE-ROUND's.  Lesson: a claim that adds a
+persistent instance-free conjunct to another application's costs the split
+lemma and nothing else.
+
 ## 6. Lanes
 
 Wave 1, independent, in parallel (each in its own clone with its own

@@ -195,6 +195,18 @@ work.
 
 ### The dev loop
 
+- **Iterate with `.vos`/`.vok`, land with `.vo`.** In a tree's remote `iris/`,
+  `make -f CoqMakefile -jN -k Edited.vok Top.vos` rebuilds exactly the stale
+  `.vos` cone and runs only the named files' proofs — minutes, where the `.vo`
+  cone of a mid-tree file is tens of minutes. One whole-tree `--proofs -k` and
+  the audits before a merge. Never alongside a `--proofs` run in the same remote
+  tree.
+- **A dead agent's compiles outlive it.** A hung `rocqworker` keeps its `make`
+  alive for hours and, when it does finish, writes a STALE `.vo` into the tree
+  you are now building in. Before trusting a remote tree another agent used:
+  `ps -eo pid,etime,args | grep 'make -f CoqMakefile'`, read each PID's
+  `/proc/<pid>/cwd`, and kill the ones in YOUR tree by PID.
+
 - **Know the rebuild cone before you edit.** `ProcInv` ~316 dependents,
   `InodeRegion` ~203, `WpUart` ~306, `IcacheRef` ~348, `LogInv` ~369,
   `DiskPtsto` ~481, `KallocInv` ~554, `WpLock` ~657, `SmodeCore` ~781. `Spec*`
@@ -366,6 +378,19 @@ the others typecheck; and, at a site that omits the argument, the leftover goal
 is the certificate, so the next tactic fails as an unrelated `rewrite`.
 
 ## Contracts and resources
+
+- **Two continuations of which exactly one fires are an ADDITIVE pair (`∧`), not
+  two wands.** A walk that ends either in its success continuation or in its
+  failure exit must let the caller spend the SAME resources (its lend) on
+  whichever fires; stated as two `-∗` premises the caller has to split the lend
+  between them up front, which no caller can. `iSplit` at the caller, `iDestruct
+  "Hk" as "[Hk _]"` / `"[_ Hk]"` at the branch.
+- **A pure `∀` over every abstract view is almost never a client's to supply.**
+  What a client knows about an offset or a row it knows AT THE FIRE, from the
+  half it holds agreeing with the kernel's. If a node lemma wants such a fact
+  to make an arm vacuous, give the lemma the form "the arm may ASSUME the
+  negation" and let the client refute it (or pay the arm) with the fire's own
+  rows in hand.
 
 - **A byte run a function only READS takes a caller-supplied `dfrac`; one it
   WRITES stays at `DfracOwn 1`.** State every contract that way from the start —

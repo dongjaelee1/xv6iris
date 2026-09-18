@@ -78,8 +78,8 @@ Section pipe_link_inst.
        lk_rres := pwc_rres γ;
        lk_turn := pturn_pre γ;
 
-       lk_T_pers := _;
-       lk_T_tl := _;
+       lk_T_pers := echo_taint_persistent γ;
+       lk_T_tl := echo_taint_timeless γ;
        lk_links_pers := PipeLinks.pipe_links_persistent γ;
        lk_pin_pers := era_pin_persistent γ;
        lk_pin_tl := era_pin_timeless γ;
@@ -273,10 +273,14 @@ Section sh_round_facing.
     (∃ v : era_pins,
        lk_pin PI (S gen_id) v ∗ lk_ban PI (S gen_id) v I 0%nat)%I.
 
+  (* NAME THE LEAF, do not search (upstream's leaf-instance pass). *)
   Global Instance pipe_Wcl_at_timeless I p : Timeless (pipe_Wcl_at I p).
-  Proof using . rewrite /pipe_Wcl_at. apply _. Qed.
+  Proof using . rewrite /pipe_Wcl_at. apply lk_lcred_timeless. Qed.
   Global Instance pipe_Wbl_at_timeless I : Timeless (pipe_Wbl_at I).
-  Proof using . rewrite /pipe_Wbl_at. apply _. Qed.
+  Proof using .
+    rewrite /pipe_Wbl_at. apply bi.exist_timeless; intro.
+    apply bi.sep_timeless; [apply lk_pin_tl | apply lk_ban_tl].
+  Qed.
 
   (* ---- [UShRound]'s [Hwbl] ---- *)
   Lemma pipe_Hwbl (I : list (bv 8)) : ⊢ pipe_Wcl_at I 3%nat -∗ pipe_Wcl_at I 0%nat.

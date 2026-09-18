@@ -1164,37 +1164,86 @@ Section pipe_links_line.
   (* THE ERA'S TURN: [PipeOut.pturn], which is [EchoOut.eturn] verbatim *)
   Definition pturn_pre (k : nat) : iProp Σ := PipeOut.pturn γ k.
 
-  (* ---- structure ---- *)
+  (* ---- structure ----
+
+     THE DISPATCH, NOT [apply _] (upstream's leaf-instance pass, 2026-09-18:
+     the tree carries 455 [Timeless] instances under mostly transparent
+     definitions, so the hint net cannot discriminate and one search at
+     this altitude tries nearly all of them).  Descend through the
+     CONNECTIVES and name the leaf, SYNTACTICALLY -- a [first [...]]
+     spelling unifies up to delta and peels through a name that has its
+     own instance. *)
+  Local Ltac tl_leaf :=
+    lazymatch goal with
+    | |- Timeless (bi_exist _) => apply bi.exist_timeless; intro; tl_leaf
+    | |- Timeless (bi_sep _ _) => apply bi.sep_timeless; [tl_leaf | tl_leaf]
+    | |- Timeless (bi_or _ _) => apply bi.or_timeless; [tl_leaf | tl_leaf]
+    | |- Timeless (bi_pure _) => apply bi.pure_timeless
+    | |- Timeless (echo_taint _) => apply echo_taint_timeless
+    | |- Timeless (turn _ _) => apply turn_timeless
+    | |- Timeless (turn_lb _ _) => apply turn_lb_timeless
+    | |- Timeless (ps_lb _ _) => apply ps_lb_timeless
+    | |- Timeless (cs_lb _ _) => apply cs_lb_timeless
+    | |- Timeless (inp_lb _ _) => apply inp_lb_timeless
+    | |- Timeless (era_pin _ _ _) => apply era_pin_timeless
+    | |- _ => apply _
+    end.
+
+  Local Ltac ps_leaf :=
+    lazymatch goal with
+    | |- Persistent (bi_exist _) => apply bi.exist_persistent; intro; ps_leaf
+    | |- Persistent (bi_sep _ _) =>
+        apply bi.sep_persistent; [ps_leaf | ps_leaf]
+    | |- Persistent (bi_pure _) => apply bi.pure_persistent
+    | |- Persistent (turn_lb _ _) => apply turn_lb_persistent
+    | |- Persistent (ps_lb _ _) => apply ps_lb_persistent
+    | |- Persistent (cs_lb _ _) => apply cs_lb_persistent
+    | |- _ => apply _
+    end.
+
   Global Instance pwc_pro_timeless k v I : Timeless (pwc_pro k v I).
-  Proof using . rewrite /pwc_pro. apply _. Qed.
+  Proof using . rewrite /pwc_pro. tl_leaf. Qed.
   Global Instance pwc_blk_timeless k v I a i : Timeless (pwc_blk k v I a i).
-  Proof using . rewrite /pwc_blk. apply _. Qed.
+  Proof using . rewrite /pwc_blk. tl_leaf. Qed.
   Global Instance pwc_owed_timeless k v I : Timeless (pwc_owed k v I).
-  Proof using . rewrite /pwc_owed. apply _. Qed.
+  Proof using . rewrite /pwc_owed. tl_leaf. Qed.
   Global Instance pwc_sp_timeless k v I : Timeless (pwc_sp k v I).
-  Proof using . rewrite /pwc_sp. apply _. Qed.
+  Proof using . rewrite /pwc_sp. tl_leaf. Qed.
   Global Instance pwc_open_timeless k v I : Timeless (pwc_open k v I).
-  Proof using . rewrite /pwc_open. apply _. Qed.
+  Proof using . rewrite /pwc_open. tl_leaf. Qed.
   Global Instance pwc_sp_t_timeless k v I : Timeless (pwc_sp_t k v I).
-  Proof using . rewrite /pwc_sp_t. apply _. Qed.
+  Proof using . rewrite /pwc_sp_t. tl_leaf. Qed.
   Global Instance pwc_open_t_timeless k v I : Timeless (pwc_open_t k v I).
-  Proof using . rewrite /pwc_open_t. apply _. Qed.
+  Proof using . rewrite /pwc_open_t. tl_leaf. Qed.
   Global Instance pwc_ban_timeless k v I i : Timeless (pwc_ban k v I i).
-  Proof using . rewrite /pwc_ban. apply _. Qed.
+  Proof using . rewrite /pwc_ban. tl_leaf. Qed.
   Global Instance pwc_post_timeless k v I a : Timeless (pwc_post k v I a).
-  Proof using . rewrite /pwc_post. apply _. Qed.
+  Proof using . rewrite /pwc_post. apply pwc_blk_timeless. Qed.
   Global Instance pwc_line_timeless k v I : Timeless (pwc_line k v I).
-  Proof using . rewrite /pwc_line. apply _. Qed.
+  Proof using .
+    rewrite /pwc_line.
+    apply bi.or_timeless; [apply pwc_pro_timeless |].
+    apply bi.exist_timeless; intro.
+    apply bi.sep_timeless; [apply bi.pure_timeless | apply pwc_post_timeless].
+  Qed.
   Global Instance pwc_lend_timeless k v I : Timeless (pwc_lend k v I).
-  Proof using . rewrite /pwc_lend. apply _. Qed.
+  Proof using . rewrite /pwc_lend. tl_leaf. Qed.
   Global Instance pwc_pr_timeless k v I p : Timeless (pwc_pr k v I p).
-  Proof using . rewrite /pwc_pr. destruct p as [| [| p]]; apply _. Qed.
+  Proof using .
+    rewrite /pwc_pr. destruct p as [| [| p]];
+      [apply pwc_owed_timeless | apply pwc_sp_timeless
+      | apply pwc_open_timeless].
+  Qed.
   Global Instance pwc_lpr_timeless k v I p : Timeless (pwc_lpr k v I p).
-  Proof using . rewrite /pwc_lpr. destruct p as [| [| [| p]]]; apply _. Qed.
+  Proof using .
+    rewrite /pwc_lpr. destruct p as [| [| [| p]]];
+      [apply pwc_line_timeless | apply pwc_sp_t_timeless
+      | apply pwc_open_t_timeless | apply pwc_blk_timeless].
+  Qed.
   Global Instance pwc_rres_persistent v I : Persistent (pwc_rres v I).
-  Proof using . rewrite /pwc_rres. apply _. Qed.
+  Proof using . rewrite /pwc_rres. ps_leaf. Qed.
   Global Instance pwc_rres_timeless v I : Timeless (pwc_rres v I).
-  Proof using . rewrite /pwc_rres. apply _. Qed.
+  Proof using . rewrite /pwc_rres. tl_leaf. Qed.
 
   (* ---- the taint inhabits every shape ---- *)
   Lemma pwc_pro_taint k v I : PT -∗ pwc_pro k v I.
@@ -1764,12 +1813,15 @@ Section pipe_links_line.
     end.
 
   Global Instance pwc_pban_timeless k v I : Timeless (pwc_pban k v I).
-  Proof using . rewrite /pwc_pban. apply _. Qed.
+  Proof using . rewrite /pwc_pban. tl_leaf. Qed.
   Global Instance pwc_pdg_timeless k v I a i : Timeless (pwc_pdg k v I a i).
-  Proof using . rewrite /pwc_pdg. apply _. Qed.
+  Proof using . rewrite /pwc_pdg. tl_leaf. Qed.
   Global Instance pwc_pdiag_timeless k v I a i :
     Timeless (pwc_pdiag k v I a i).
-  Proof using . rewrite /pwc_pdiag. destruct i; apply _. Qed.
+  Proof using .
+    rewrite /pwc_pdiag. destruct i;
+      [apply pwc_pban_timeless | apply pwc_pdg_timeless].
+  Qed.
 
   Lemma pwc_pban_taint k v I : PT -∗ pwc_pban k v I.
   Proof using . iIntros "HT". rewrite /pwc_pban. by iRight. Qed.

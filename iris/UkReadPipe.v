@@ -218,7 +218,7 @@ Section UkReadPipe.
     st = FdOpen true wb (FdPipe γp) ->
     fileread_extra_core gn pt st n (rf_F fm) (rf_ret fm) (rf_in fm)
       Rp Rpe r M' addr -∗
-    pipe_rpost_img pt (pn_queue γp) Rp Rpe (ChildTok.kill_shot gn)
+    pipe_rpost_img pt (pn_queue γp) Rp Rpe (ChildTok.kill_shot gn ∗ app_taint)%I
       (Z.to_nat n) r M' addr.
   Proof using . intros ->. by iIntros "$". Qed.
 
@@ -349,7 +349,7 @@ Section UkReadPipe.
     rewrite Hcnt in Hret.
     rewrite Hcnt Nat2Z.id.
     rewrite Nat2Z.id in Hd.
-    iApply ("Hcont" $! h' r d g M' P (ChildTok.kill_shot (uvis_gen W))
+    iApply ("Hcont" $! h' r d g M' P ((ChildTok.kill_shot (uvis_gen W) ∗ app_taint)%I)
               with "[%] [%] [%] [%] [%] Hrp Hufdh Hrun Hbuf");
       [ exact Hd | exact Hgf | exact (uread_pipe_ans_of_ret cap r Hret)
       | exact Hlin | exact Himg ].
@@ -684,7 +684,7 @@ Section UkReadPipe.
     rewrite Hcnt in Hret.
     rewrite Hcnt Nat2Z.id.
     rewrite Nat2Z.id in Hd.
-    iApply ("Hcont" $! h' r d g M' P (ChildTok.kill_shot (uvis_gen W))
+    iApply ("Hcont" $! h' r d g M' P ((ChildTok.kill_shot (uvis_gen W) ∗ app_taint)%I)
               with "[%] [%] [%] [%] [%] Hrp Hstd Hrun Hbuf");
       [ exact Hd | exact Hgf | exact (uread_pipe_ans_of_ret cap r Hret)
       | exact Hlin | exact Himg ].

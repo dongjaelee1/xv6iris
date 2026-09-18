@@ -71,6 +71,11 @@ Require Import LogEntryDefs.
 Require Import FsCfg.
 Require Import FsImg.
 Require Import FsImgCheck.
+Require Import FsInitPin.                (* [INIT_INO] *)
+Require Import FsShPin.                  (* [SH_INO] *)
+Require Import FsEchoPin.                (* [ECHO_INO] *)
+Require Import FsCatPin.                 (* [CAT_INO] *)
+Require Import AppFileCons.              (* the claim's readings *)
 Require Import AppCfg.
 Require Import AppInv.
 Require Import LineWords.
@@ -415,6 +420,47 @@ Section UShRound.
      no deed, and a [Kf] without that arm cannot be produced. *)
   Definition redir_Kf (s : dst) : iProp Σ :=
     (fown r s ∨ (∃ i : Z, fown r (Some (i, []))) ∨ T)%I.
+
+  (* ---- WHAT THE OPEN'S RECEIPT SAYS ABOUT THE INODE (the PROGRAM
+          STREAM, item (3)'s first premise).  K1's entry takes four
+          inequalities -- `f`'s inode is not /init's, sh's, /echo's or
+          cat's -- and they are the CLAIM's fact and not the open's: the
+          deed pins `f`'s row, the image inodes' rows are pinned by
+          [FileFsPure.file_fs_pure], and the contents differ by LENGTH.
+          [AppFileCons.file_deed_inum_acc] is that reading; this is the one
+          invariant opening that turns the receipt into it. ---- *)
+  Lemma redir_K_inum (ty : fdtype) (E : coPset) :
+    ↑appN ⊆ E ->
+    app_inv fsc_fs -∗ redir_K ty ={E}=∗
+      redir_K ty ∗
+      ((∃ (i : Z) (γo : gname),
+          ⌜ty = FdInode i γo OffHeld⌝
+          ∗ ⌜i <> INIT_INO /\ i <> SH_INO /\ i <> ECHO_INO
+             /\ i <> CAT_INO⌝)
+       ∨ T).
+  Proof using Heq.
+    intros HE. iIntros "#Hinv HK".
+    rewrite /redir_K /UkFileOpen.redir_K /FileOpen.file_open_fd_K.
+    iDestruct "HK" as "[HK | #HT]"; last first.
+    { iModIntro. iSplitR; [ by iRight | by iRight ]. }
+    iDestruct "HK" as (i γo) "(%Hty & [Hd Htk] & Hpub)".
+    iMod (inv_acc E appN with "Hinv") as "[Hbody Hclose]"; [ exact HE | ].
+    iEval (rewrite /app_body) in "Hbody".
+    iDestruct "Hbody" as (I0) "(>Hka & Hp & >%Hdom & #Hx)".
+    iEval (rewrite Heq; cbn [app_pred app_run app_names]) in "Hp".
+    iDestruct "Hp" as ">Hp".
+    iDestruct (AppFileCons.file_deed_inum_acc (fgn_cl g) r _ i []
+                 ltac:(cbn [length]; rewrite /EchoDisc.line_max; lia)
+                 with "Hd Hp") as "(Hp & Hd & Hres)".
+    iMod ("Hclose" with "[Hka Hp Hx]") as "_".
+    { iNext. rewrite /app_body. iExists I0. iFrame "Hka Hx".
+      iSplitL; [ | by iPureIntro ].
+      rewrite Heq. cbn [app_pred app_run app_names]. iExact "Hp". }
+    iModIntro. iSplitL "Hd Htk Hpub".
+    { iLeft. iExists i, γo. iFrame "Hpub Hd Htk". by iPureIntro. }
+    iDestruct "Hres" as "[%Hne | #Ht]"; [ | by iRight ].
+    iLeft. iExists i, γo. iSplitR; by iPureIntro.
+  Qed.
 
   (* ---- NOT A HYPOTHESIS ANY MORE (the PROGRAM STREAM): sh's open STUB,
           walked into the kernel's create corollary at [OffHeld].

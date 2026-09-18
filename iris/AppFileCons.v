@@ -40,6 +40,10 @@ Require Import FsTree.            (* [fname] *)
 Require Import FsAbsDelta.        (* [cre_pre] / [delta_arm] / [delta_create] *)
 Require Import FsImg.             (* [ROOTINO] *)
 Require Import FileDeltas.        (* the pure legs *)
+Require Import FsInitPin.         (* [INIT_INO] *)
+Require Import FsShPin.           (* [SH_INO] *)
+Require Import FsEchoPin.         (* [ECHO_INO] *)
+Require Import FsCatPin.          (* [CAT_INO] *)
 Require Import ConsoleInv.        (* [CONSOLE] *)
 Local Open Scope Z_scope.
 
@@ -73,6 +77,33 @@ Section AppFileCons.
     iIntros "Hp". iDestruct (file_fs_pure_acc av with "Hp") as "[Hp Hr]".
     iFrame "Hp". iDestruct "Hr" as "[%Hf | HT]"; [ | by iRight ].
     iLeft. iPureIntro. exact (file_fs_pure_echo av Hf).
+  Qed.
+
+  (* ---- THE DEED'S INUM IS NOT ONE OF THE IMAGE'S (the PROGRAM STREAM) --
+     K1's entry ([UEchoFile.efile_image_entry]) takes four inequalities --
+     `f`'s inode is not /init's, sh's, /echo's or cat's -- and they are the
+     CLAIM's fact, not the open's: [AppFile.f_ok]'s [Some] arm pins the row
+     at [i], the four image inodes' rows are pinned by [FileFsPure.
+     file_fs_pure], and the contents differ by LENGTH
+     ([FileDeltas.f_inum_not_pinned]).  A holder of the deed reads it in
+     one destructuring, with no accessor: this is [file_fs_pure_acc] and
+     [AppFile.file_deed_law] together. ---- *)
+  Lemma file_deed_inum_acc (av : aview) (i : Z) (bs : list (bv 8)) :
+    (length bs < EchoDisc.line_max)%nat ->
+    fdeed r (Some (i, bs)) -∗ file_pred c r av -∗
+    file_pred c r av ∗ fdeed r (Some (i, bs)) ∗
+    (⌜i <> INIT_INO /\ i <> SH_INO /\ i <> ECHO_INO /\ i <> CAT_INO⌝
+     ∨ file_taint c).
+  Proof using .
+    intros Hlen. iIntros "Hd Hp".
+    iPoseProof (file_deed_law c r) as "#Hlaw".
+    iDestruct (file_fs_pure_acc av with "Hp") as "[Hp Hpure]".
+    iDestruct ("Hlaw" $! av (Some (i, bs)) with "Hd Hp") as "(Hp & Hd & Hres)".
+    iFrame "Hp Hd".
+    iDestruct "Hres" as "[[%Hok _] | #Ht]"; [ | by iRight ].
+    iDestruct "Hpure" as "[%Hpure | #Ht]"; [ | by iRight ].
+    iLeft. iPureIntro.
+    exact (f_inum_not_pinned av i bs Hpure (proj2 Hok) Hlen).
   Qed.
 
   (* ---- the key's ABSENCE law ([AppEcho.echo_cons_abs_law]) ---- *)

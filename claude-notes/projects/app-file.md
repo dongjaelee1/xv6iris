@@ -9,6 +9,34 @@ literal image (`UFileBootAdequacy.file_adequacy_fileΣ`), with
 `make audit-file-only` beside the echo and tree audits, and the
 conclusion `FileDisc.file_phi`.
 
+## RESUME HERE (2026-09-18, after the kernel stream closed)
+
+Metric 7 = `UEchoFile.v` 1 (header only) + `UShRound.v` 5 + `UInitFile.v` 1,
+at `main` = the merge of `app-file/off-hand` (KERNEL-STREAM item 4).  Audits
+13 / 14 / 13 / 14.  ONE LANE AT A TIME from here (session credit).
+
+The blocker for the whole program tier is the deed's hold: RULING HOLD-POS
+(design §3.7).  Serial plan, each item one lane on `app-file/sh-redir`:
+
+1. **HOLD-POS** — the model fix (`RFSilent` identity), the position-keyed
+   `Wcf`/`Wbf` in `UShRound.v` with PRE/DONE/PEND and their pure step
+   lemmas, `Hwbl`/`Hwbwc`/`sh_kill_law_file`/`Hcltaint` re-proved, the
+   file era's prompt law (S3 `sh_prompt_alt_of_deed` PROVED), the panic
+   law, the echo child (`sh_child_law_file`) at the folded position 0,
+   `UInitFileCons`'s twin `sh_hold_at` retired in favour of UShRound's.
+   Bar: `UShRound.v`'s `Admitted` count does not rise; whole tree green.
+2. **REDIR-CHILD** — item (3): the open-call reshape already in the
+   worktree (`ush_open_call2` hands the deed at the call), the receipt's
+   inode reading, the exit at the folded position 0 on every arm;
+   `Hchild_redir` becomes a lemma.
+3. **CAT-CHILD** — item (4), RULING CAT-DEED: `catq_cat` returns the whole
+   deed, `Hchild_cat` becomes a lemma; item (5): `sh_round_holds_file`.
+4. **INIT-FILE assembly** — `UInitFileCC.v` (in the program-tier worktree,
+   uncommitted): conjunct 5 is HOLD-POS's read law; conjunct 10 needs the
+   wider `cc_wp` (the round-open credential WITH the hold); then
+   `file_Hinit_boot`.
+5. **ADEQUACY close** — `FileAssumptions.v`, `make audit-file-only`.
+
 ## Rules for every lane
 
 - Build on the VM (`./gcp-rocq/run-on-gcp --check <file>` while

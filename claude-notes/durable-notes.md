@@ -929,6 +929,12 @@ Five ways to be silently miscounted, all of them green builds:
   but it instantiates nothing, and the report counts only instantiations — so
   the function reads *assumed*. `LinkPrputc.v` was that shape; the fix is the
   ordinary one, a functor in `Proof<F>.v` and a one-line link.
+- **A statement that leaves `uprogSG` implicit can hang its consumer.**
+  Discharging it by a lemma stated at `uprogSG_free` makes the conversion
+  between two deposit instances never come back (`iApply` and `exact`
+  alike, 10+ minutes, no output).  Annotate `(PS := uprogSG_free)` in the
+  STATEMENT and both proofs close in milliseconds.  `--check` (vos) passes
+  either way, so a statement-only check cannot see it.
 - **Tree-wide sweeps: pick the sentinel with `grep -c` on the tree first.**
   A sed/python sweep that used `§` as a placeholder rewrote 3,327 comment
   lines in 442 files into nonsense because the tree already contains `§`

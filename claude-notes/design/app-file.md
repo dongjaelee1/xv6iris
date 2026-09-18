@@ -558,7 +558,9 @@ unowned critical item (WRITE-RELAY-3's `TB` guard).  RULES, replacing
   plus the file stage instance (e3b70b6d3), audits 27/14/13 unchanged; 19
   at checkpoint 36 (7/11/1: KERNEL STREAM's L2+L4, `Hdep1`/`Hwrite1`
   discharged, 6d645865c); `cat_open_hand` discharged and `redir_K`
-  restated with its taint arm at 023d1fff8 (no metric change).
+  restated with its taint arm at 023d1fff8 (no metric change); 16 at
+  e455487d8 (7/8/1: PROGRAM STREAM's `Hcat_body`, era step, H' applied,
+  `sh_tag_law_file`/`Hexecfail`/`Hpanic`).
 - RULING READ-HELD (2026-09-18, KERNEL-STREAM §3a): the read's hand mode
   is the WRITE side's landed shape mirrored — `file_read_piece_adv` as
   `awrite_full_adv`'s twin (the half in the closure, agree/advance/return
@@ -567,6 +569,50 @@ unowned critical item (WRITE-RELAY-3's `TB` guard).  RULES, replacing
   returning the half unfired; `fileread_in`'s held arm is
   `filewrite_in_held`'s twin.  The deed opens take the row's mode as a
   PARAMETER (no second walk; every landed caller passes `OffParked`).
+  Landed at 72606e656 (`cat_held_read` discharged) with two rulings the
+  write side did not need: (i) THE RECEIPT IS ONE DISJUNCTION — fired
+  (offset reported, half advanced) or disconnected, which is the same
+  event as the claim coming back tainted, the half unmoved (`pipe_wpost`
+  exactly; a node that advanced under a tainted claim came back at a
+  position bounded by nothing); (ii) the piece takes the application's
+  taint equation (`app_taint` ↔ `file_taint c`) as two persistent
+  premises — the kernel invents neither.
+- RULING WR-TB (2026-09-18, KERNEL-STREAM §4): a FREE `TB : uptd -> Prop`
+  on `filewrite_in` is refuted at the statement — the program chooses it,
+  the kernel meets `P`, and the only meeting point (row 16 of
+  `xv6_sbundle`) is a function of a `uvis`, which carries no `uptd` by
+  construction.  The guard is the one the key's rows already determine:
+  `wr_tb pmv sz lz P := perm_of (ud_um P) sz = pmv /\ proc_pt_wf P /\
+  (lz = false -> lazy_free P)` at `uvis_perm/uvis_sz/uvis_lazy W`,
+  discharged by the kernel from the three facts it holds about its own
+  `pv_upt`; three key values threaded, no new field.
+- RULING EFQ (2026-09-18, KERNEL-STREAM §4): `UEchoFile.efq` conjoined the
+  half at the content-derived offset whichever arm `file_wq` took, so the
+  disconnected arm was unpayable.  READ-HELD's (i) at the write: the
+  cursor is `fired (file_wq exact ∗ uoff γo (content offset)) ∨ (file_taint
+  c ∗ ∃ p, uoff γo p)` — the half unmoved, its position existential, on
+  the taint arm; `efcur`/`ef_exit` and the four lemmas naming them follow.
+  RELAY 1 is not owed: `f_ok`'s `Some` arm pins the inum, so
+  `file_claim_read` yields it inside the node.
+- INIT-FILE round 4 (97d8cc41b): all nine conjuncts of
+  `init_cons_laws_at` discharged at `file_pred`; `Nm`/`Nd` threaded to
+  `mknod_au_at` through `SpecCreate.cre_commits` (name held at the GUARDED
+  reading on both sides of `mknod_acre_inst`; a directory create owes `Nd`
+  everywhere; the node separates the deed's row from the arm's, only the
+  credential separates the console's); the prologue diagnostic family is
+  based on `fwc_pban_at`, not `fwc_pro_at` (the file loses echo's `j` at
+  `fwc_ban_done_pro_at`); `file_Wbf_at_of_boot` = /init's first credential
+  out of `file_boot` alone.  `sh_hold_at` exists twice (UShRound's and
+  UInitFileCons's, syntactically the same); the round's wins at the
+  assembly.  Round 5 (989ca2114): the `pdiag` field set (eleven fields,
+  `lk_pban` the base) at all three instances, the unindexed one by lifting
+  through the existential closure; `UInitDiag` generalised over the
+  record with `UInitBoot.v` unmoved.  Two seams left before
+  `file_Hinit_boot`: the prompt law's Hold form (measure: the record's
+  prompt step decides the block-first alternative from `s0/cs0/I0`, so it
+  should be a frame), and `init_exec_sup_of_sh_slot`'s hard-coded echo
+  discipline (a parameterisation).  `UInitFile.v` may import `UShRound`:
+  the file audit does not see the program tier.
 - RULING H' (2026-09-18, INIT-FILE findings 3.1/3.2): the round's hold is
   tied to the era's boot state BY A SHARED INDEX, not by `f0_lb` (which
   only exists after the era's first console byte, so `Wbf []` was

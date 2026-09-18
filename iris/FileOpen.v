@@ -1556,6 +1556,106 @@ Section FileOpen.
     - iRight. iFrame "Hd". iExact "HT".
   Qed.
 
+  (* =================================================================== *)
+  (*  THE HELD READ'S PIECE (kernel stream, item 2)                       *)
+  (* =================================================================== *)
+  (* [file_read_piece]'s twin at a HELD row, and it is
+     [FsAbsWriteFire.awrite_full_adv]'s shape at the read: the program's
+     own half of the offset shadow sits in the PIECE'S CLOSURE, the node
+     reads the offset it is fired at off it ([UserOff.uoff_agree_k] against
+     the arm it was lent) INSIDE its own [forall off], moves both halves
+     ([UserOff.uoff_advance]) and hands the box's arm back ADVANCED -- so
+     the kernel's fire answers no supplier ([FsAbsReadFire.arf_read_fire_adv]).
+
+     THREE THINGS CHANGE AND NO MORE, which is why this is a twin and not a
+     second design:
+       * the RECEIPT carries the advanced half, [uoff γo (off + d)], beside
+         the claim's own facts.  That is where the write side puts its
+         client cursor too: a receipt is indexed by [off] and [d], so the
+         position is nameable exactly there and nowhere else;
+       * the REFUND carries the half back UNFIRED.  A piece that took
+         [uoff γo p] in must return it if it is never spent, and [pf_at]'s
+         [∧] is what makes the two halves of that statement one resource;
+       * the TAINT arm of the lent link is the one case with no half to
+         agree against, and it hands the taint straight back
+         ([OffGv.off_link_taint] is good at any value). *)
+  Definition file_read_recv_hand (c : file_fixed) (r : file_names) (q : Qp)
+      (jc : Z) (s : dst) (γo : gname) (p : nat)
+      : pfam Σ (aview -> nat -> anode -> nat -> iProp Σ) :=
+    (* [PipeQueue.pipe_wpost]'s shape at this coupling, and ONE disjunction
+       rather than two: FIRED, with the offset the read ran at reported and
+       the half advanced by what it read; or the object was disconnected
+       under the caller -- which is the SAME EVENT as the claim coming back
+       tainted, because the node declines to move a shadow it can no longer
+       say anything about -- and the half comes back UNMOVED beside the
+       taint that says why. *)
+    MkPfam (fun (av : aview) (off : nat) (_ : anode) (d : nat) =>
+              ((⌜off = p⌝ ∗ ⌜fclaim_facts jc s av⌝ ∗ fdq r q s
+                ∗ uoff γo (p + d)%nat)
+               ∨ (fdq r q s ∗ uoff γo p ∗ file_taint c))%I)
+           (fdq r q s ∗ uoff γo p).
+
+  Lemma file_read_piece_adv (γfs : fs_names) (c : file_fixed) (r : file_names)
+      (q : Qp) (jc : Z) (s : dst) (i : Z) (γo : gname) (p : nat) :
+    file_app = MkAppcfg file_names (file_pred c) r ->
+    (* THE ONE BRIDGE THIS PIECE NEEDS, and it is the application's own
+       equation rather than a fact about the file: the box's disconnect is
+       [app_taint] and the claim's is [file_taint c], and only the program
+       that owns the claim knows they are the same credential
+       ([UShRound]'s [Hkill]).  The caller supplies it; the kernel does not
+       invent it. *)
+    (* THE ONE BRIDGE THIS PIECE NEEDS, and it is the application's own
+       equation rather than a fact about the file: the box's disconnect is
+       [app_taint] and the claim's is [file_taint c], and only the program
+       that owns the claim knows they are the same credential
+       ([UShRound]'s [Hkill] is that equation).  BOTH DIRECTIONS are used
+       -- the link's taint becomes the claim's on the receipt, and the
+       claim's becomes the link's when the node declines to move a shadow
+       it can no longer say anything about. *)
+    □ (app_taint -∗ file_taint c) -∗ □ (file_taint c -∗ app_taint) -∗
+    app_inv γfs -∗ cons_made (fn_cons r) jc -∗ fdq r q s -∗ uoff γo p -∗
+    pf_at (aread_commit_adv (fs_gamma_L γfs) appE i γo)
+      (file_read_recv_hand c r q jc s γo p).
+  Proof using .
+    intros Heq. iIntros "#Hbr #Hrb #Hinv #Hm Hd Hu".
+    rewrite /pf_at. cbn [pf_recv pf_refund].
+    iSplit; [| iFrame "Hd Hu" ].
+    rewrite /aread_commit_adv /file_read_recv_hand. cbn [pf_recv].
+    iIntros (I off a d) "%Hpre Hka Hoff".
+    iDestruct "Hoff" as "[Hk | #HT]"; last first.
+    { (* the object was disconnected under the caller: the taint is the
+         advanced arm, the node moves nothing, and the receipt takes its
+         own right disjunct *)
+      iMod (file_claim_read γfs c r jc s q I Heq with "Hinv Hm Hd Hka")
+        as "(Hka & Hd & _)".
+      iModIntro. iFrame "Hka".
+      iSplitR; [ iApply (off_link_taint with "HT") | ].
+      iRight. iFrame "Hd Hu". iApply ("Hbr" with "HT"). }
+    (* THE THREE MOVES.  Agree first: the half the piece holds PINS the
+       offset the kernel is firing at. *)
+    iDestruct (uoff_agree_k γo p (Z.of_nat off) with "Hu Hk") as %Hzp.
+    assert (Hoffp : off = p) by lia. subst off.
+    iMod (file_claim_read γfs c r jc s q I Heq with "Hinv Hm Hd Hka")
+      as "(Hka & Hd & Hc)".
+    iDestruct "Hc" as "[%Hf | #HT2]"; last first.
+    { (* THE CLAIM CAME BACK TAINTED, so the node DECLINES TO MOVE: it can
+         no longer say which row the count was against, and a half advanced
+         past the claim's own content is a position nothing bounds.  The
+         arm goes back as the taint -- the claim's credential IS the box's
+         ([Hrb]) -- and the half comes back UNMOVED, which is
+         [PipeQueue.pipe_wpost]'s right arm exactly. *)
+      iModIntro. iFrame "Hka".
+      iDestruct ("Hrb" with "HT2") as "#HTa".
+      iSplitR; [ iApply (off_link_taint with "HTa") | ].
+      iRight. iFrame "Hd Hu". iExact "HT2". }
+    (* ...then the advance, both halves inside the one update... *)
+    iMod (uoff_advance γo p d with "Hu Hk") as "[Hk Hu]".
+    (* ...and the arm goes back at the advanced value. *)
+    iModIntro. iFrame "Hka".
+    iSplitL "Hk"; [ by iApply off_link_of | ].
+    iLeft. iFrame "Hd Hu". iSplitR; by iPureIntro.
+  Qed.
+
   (* ...AND THE ARMS, READ: [UkTreeRead.read_arms_tree_learn] with the
      frozen pin replaced by the deed's own reading -- the observed row is
      `f`'s because the CLAIM says so at the very view the kernel read it
@@ -1645,6 +1745,85 @@ Section FileOpen.
     rewrite HM in HG. by injection HG.
   Qed.
 
+  (* ...AND THE SAME AT THE HELD PIECE (kernel stream, item 2).  Two things
+     the parked reading cannot say come out here, and both come off the
+     receipt's second conjunct rather than off any new fact about the file:
+     the offset the read RAN AT is the one the caller lent
+     ([⌜off = p⌝], the node's own agreement, reported), and the half comes
+     back ADVANCED BY WHAT WAS READ.  On the taint arm the half comes back
+     SOMEWHERE -- the object was disconnected under the caller, so the only
+     honest statement is the existential, which is exactly what
+     [UCatKernel.cat_held_read]'s taint arm asks for. *)
+  Lemma file_read_post_ok_learn_hand (c : file_fixed) (r : file_names) (q : Qp)
+      (jc : Z) (i : Z) (bs : list (bv 8)) (n : Z) (γo : gname) (p : nat)
+      (rv : mword 64) (M' : gmap Z (bv 8)) (addr : mword 64)
+      (k : nat) (g : nat -> bv 8) :
+    (forall j : nat, (j < k)%nat ->
+       uint (add_vec_int addr (Z.of_nat j)) = (uint addr + Z.of_nat j)%Z) ->
+    (forall j : nat, (j < k)%nat ->
+       M' !! uint (add_vec_int addr (Z.of_nat j)) = Some (g j)) ->
+    (Z.to_nat n <= k)%nat ->
+    read_post_ok (fs_gamma_L fsc_fs) i n
+      (file_read_recv_hand c r q jc (Some (i, bs)) γo p) rv M' addr -∗
+    (⌜(Z.to_nat (bv_unsigned rv) <= Z.to_nat n)%nat⌝ ∗
+     ((⌜Z.to_nat (bv_unsigned rv)
+        = ard_count (Z.to_nat n) p (length bs)⌝ ∗
+       ⌜forall j : nat, (j < Z.to_nat (bv_unsigned rv))%nat ->
+          g j = bs !!! (p + j)%nat⌝ ∗
+       uoff γo (p + Z.to_nat (bv_unsigned rv))%nat ∗
+       fdq r q (Some (i, bs)))
+      ∨ (uoff γo p ∗ fdq r q (Some (i, bs)) ∗ file_taint c))).
+  Proof using .
+    intros Hlin Himg Hnk.
+    rewrite /read_post_ok.
+    iIntros "Hok".
+    iDestruct "Hok" as (av off a d) "(%Hpre & %Hn & %Htie & %Hdr & %Hbytes & Hc)".
+    assert (Hbnd : (Z.to_nat (bv_unsigned rv) <= Z.to_nat n)%nat).
+    { rewrite /ard_ret_tie in Htie.
+      destruct (an_node a) as [bs' | ents | ma mi] eqn:Han;
+        try rewrite Han in Htie; try cbn in Htie.
+      - rewrite Htie.
+        pose proof (moi_le (Z.of_nat (ard_count (Z.to_nat n) off (length bs')))
+                      ltac:(lia)) as Hle.
+        pose proof (ard_count_le (Z.to_nat n) off (length bs')) as Hcl. lia.
+      - destruct Htie as (rv' & Hrv & Hlo & Hhi). rewrite Hrv.
+        pose proof (moi_le rv' Hlo) as Hle. lia.
+      - destruct Htie as (rv' & Hrv & Hlo & Hhi). rewrite Hrv.
+        pose proof (moi_le rv' Hlo) as Hle. lia. }
+    iSplitR; [ by iPureIntro | ].
+    rewrite /file_read_recv_hand. cbn [pf_recv].
+    iDestruct "Hc" as "[(%Hop & %Hf & Hd & Hu) | (Hd & Hu & #HT)]"; last first.
+    { iRight. iFrame "Hu Hd". iExact "HT". }
+    subst off.
+    destruct Hf as (Hok & _ & _). destruct Hok as (_ & Hav).
+    destruct Hpre as (Hrow & _ & Hsz).
+    assert (Hab : a = MkAnode (AFile bs) 1%nat)
+      by exact (arow_at_pinned _ _ _ _ Hrow Hav).
+    subst a. cbn [an_node] in Htie, Hbytes.
+    cbn [anode_size_ok an_node] in Hsz.
+    apply Nat2Z.inj_le in Hsz. rewrite Nat2Z.inj_mul in Hsz.
+    change (Z.of_nat InodeInv.MAXFILE) with 268 in Hsz.
+    change (Z.of_nat BioDefs.BSIZE) with 1024 in Hsz.
+    assert (Hdc : d = ard_count (Z.to_nat n) p (length bs)).
+    { assert (Hbu : bv_unsigned rv
+                    = Z.of_nat (ard_count (Z.to_nat n) p (length bs))).
+      { rewrite Htie. apply moi_small.
+        pose proof (ard_count_sub (Z.to_nat n) p (length bs)) as Hle.
+        unfold Z64. lia. }
+      lia. }
+    assert (Hrvd : Z.to_nat (bv_unsigned rv) = d)
+      by (rewrite -Hdr Nat2Z.id; reflexivity).
+    iLeft. iFrame "Hd". rewrite Hrvd. iFrame "Hu".
+    iPureIntro. split; [ exact Hdc | ].
+    intros j Hj.
+    assert (Hjd : (j < d)%nat) by lia.
+    assert (Hdk : (d <= k)%nat).
+    { pose proof (ard_count_le (Z.to_nat n) p (length bs)) as Hle. lia. }
+    pose proof (Hbytes ltac:(intros i0 Hi0; apply Hlin; lia) j Hjd) as HM.
+    pose proof (Himg j ltac:(lia)) as HG.
+    rewrite HM in HG. by injection HG.
+  Qed.
+
   Lemma file_read_arms_learn (c : file_fixed) (r : file_names) (q : Qp)
       (jc : Z) (i : Z) (bs : list (bv 8)) (γo : gname) (P : uptd) (n : Z)
       (rv : mword 64) (M' : gmap Z (bv 8)) (addr : mword 64)
@@ -1721,6 +1900,41 @@ Section FileOpen.
               Hlin Himg Hnk).
     iApply (read_arms_mapped (fs_gamma_L fsc_fs) i γo P n
               (file_read_recv c r q jc (Some (i, bs))) rv M' addr k
+              Hn Hnk Hmap with "H").
+  Qed.
+
+  (* ...AND THE HELD PIECE'S MAPPED READING, which is what cat applies: at
+     a destination buffer the caller owns there is no [-1] arm at all, so
+     the two arms are the content and the taint and both carry the half. *)
+  Lemma file_read_arms_learn_mapped_hand (c : file_fixed) (r : file_names)
+      (q : Qp) (jc : Z) (i : Z) (bs : list (bv 8)) (γo : gname) (p : nat)
+      (P : uptd) (n : Z)
+      (rv : mword 64) (M' : gmap Z (bv 8)) (addr : mword 64)
+      (k : nat) (g : nat -> bv 8) :
+    (forall j : nat, (j < k)%nat ->
+       uint (add_vec_int addr (Z.of_nat j)) = (uint addr + Z.of_nat j)%Z) ->
+    (forall j : nat, (j < k)%nat ->
+       M' !! uint (add_vec_int addr (Z.of_nat j)) = Some (g j)) ->
+    (0 <= n)%Z ->
+    (Z.to_nat n <= k)%nat ->
+    (forall j : nat, (j < k)%nat ->
+       uva_wmapped P (uint (add_vec_int addr (Z.of_nat j)))) ->
+    read_arms (fs_gamma_L fsc_fs) i γo P n
+      (file_read_recv_hand c r q jc (Some (i, bs)) γo p) rv M' addr -∗
+    (⌜(Z.to_nat (bv_unsigned rv) <= Z.to_nat n)%nat⌝ ∗
+     ((⌜Z.to_nat (bv_unsigned rv)
+        = ard_count (Z.to_nat n) p (length bs)⌝ ∗
+       ⌜forall j : nat, (j < Z.to_nat (bv_unsigned rv))%nat ->
+          g j = bs !!! (p + j)%nat⌝ ∗
+       uoff γo (p + Z.to_nat (bv_unsigned rv))%nat ∗
+       fdq r q (Some (i, bs)))
+      ∨ (uoff γo p ∗ fdq r q (Some (i, bs)) ∗ file_taint c))).
+  Proof using .
+    intros Hlin Himg Hn Hnk Hmap. iIntros "H".
+    iApply (file_read_post_ok_learn_hand c r q jc i bs n γo p rv M' addr k g
+              Hlin Himg Hnk).
+    iApply (read_arms_mapped (fs_gamma_L fsc_fs) i γo P n
+              (file_read_recv_hand c r q jc (Some (i, bs)) γo p) rv M' addr k
               Hn Hnk Hmap with "H").
   Qed.
 

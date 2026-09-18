@@ -1226,7 +1226,9 @@ Section ProofSysMkdirBody.
                 SpecDirlookup.T_DIR (mword_of_int 0) (mword_of_int 0)
                 (upd_usM (us_upt U P') _) MAXOPBLOCKS Sb0 ns pid dqb dqs dqbs dqn
                 N4 (K - 18)%nat eb b lks
+                (fun _ : fname => True%type) (fun _ : absnode => True%type)
                 P Pmiss Farm Fdots Fun Fok Fex
+                (fun _ _ => I) (fun _ => I) (fun _ _ => I)
                 ltac:(lia) HdevR Hnib0 Hgeom Hsize
                 Hbm0 Hbmcov Hbmlog Hist0 Hcovb Hbmgeo Hiregb Hpcstr
                 (md_plen_lt pk Hpk) Hni1 Hni2 Hni3 Hush md_tdir_nz SpecCreate.T_DIR_ty_ok

@@ -43,6 +43,7 @@ Require Import StageRec.   (* the cursor / stage record *)
 Require Import FileLinksAt.
 Require Import FileLinksAtBan.
 Require Import FileLinksAtLine.
+Require Import FileLinksAtPro.
 Require Import RiscvPtsto.
 Require Import WpUart.
 Require Import CtxIdDefs.
@@ -55,6 +56,83 @@ Section file_link_inst.
   Context (g : file_gn).
   Context `{HRg : !riscvGS Σ}.
   Context `{GEN : GenId}.
+
+  (* ---- THE PROLOGUE DIAGNOSTICS AT THE EXISTENTIAL CLOSURE
+          (lane INIT-FILE).  Every one of the family's laws PRESERVES the
+          era's boot state, so each lifts from [FileLinksAtPro]'s indexed
+          form by unpack-apply-repack.  That is what lets the UNINDEXED
+          record carry the field too, and therefore what keeps the program
+          stream off [file_link_inst_at] if it wants to be. ---- *)
+  Definition fwc_pban_ex (k : nat) (v : era_pins) (I : list (bv 8))
+    : iProp Σ := (∃ s0 : fst, fwc_pban_at g s0 k v I)%I.
+
+  Definition fwc_pdiag_ex (k : nat) (v : era_pins) (I : list (bv 8))
+      (a i : nat) : iProp Σ := (∃ s0 : fst, fwc_pdiag_at g s0 k v I a i)%I.
+
+  Global Instance fwc_pban_ex_timeless k v I : Timeless (fwc_pban_ex k v I).
+  Proof using . rewrite /fwc_pban_ex. apply _. Qed.
+  Global Instance fwc_pdiag_ex_timeless k v I a i :
+    Timeless (fwc_pdiag_ex k v I a i).
+  Proof using . rewrite /fwc_pdiag_ex. apply _. Qed.
+
+  Lemma fwc_pban_ex_taint k v I : file_taint (fgn_cl g) -∗ fwc_pban_ex k v I.
+  Proof using .
+    iIntros "#HT". rewrite /fwc_pban_ex. iExists None.
+    iApply (fwc_pban_at_taint with "HT").
+  Qed.
+
+  Lemma fwc_pdiag_ex_taint k v I a i :
+    file_taint (fgn_cl g) -∗ fwc_pdiag_ex k v I a i.
+  Proof using .
+    iIntros "#HT". rewrite /fwc_pdiag_ex. iExists None.
+    iApply (fwc_pdiag_at_taint with "HT").
+  Qed.
+
+  Lemma fwc_pdiag_ex_0 k v I a :
+    fwc_pban_ex k v I -∗ fwc_pdiag_ex k v I a 0%nat.
+  Proof using .
+    rewrite /fwc_pban_ex /fwc_pdiag_ex.
+    iIntros "H". iDestruct "H" as (s0) "H". iExists s0.
+    iApply (fwc_pdiag_at_0 with "H").
+  Qed.
+
+  Lemma fwc_pban_ex_of_ban_done k v I :
+    fwc_ban g k v I (length u_banner) -∗ fwc_pban_ex k v I.
+  Proof using .
+    iIntros "H". iDestruct (fwc_ban_unpack with "H") as (s0) "H".
+    rewrite /fwc_pban_ex. iExists s0.
+    iApply (fwc_pban_of_ban_done_at with "H").
+  Qed.
+
+  Lemma fwc_pro_of_pban_ex k v I :
+    fwc_pban_ex k v I -∗ fwc_pro g k v I.
+  Proof using .
+    rewrite /fwc_pban_ex. iIntros "H". iDestruct "H" as (s0) "H".
+    iApply fwc_pro_at_pack. iApply (fwc_pro_of_pban_at with "H").
+  Qed.
+
+  Lemma fpdiag_step_ex (k : nat) (v : era_pins) (I : list (bv 8))
+      (a i : nat) (b : bv 8) (Φ : iProp Σ) :
+    pro_alts !!! a !! i = Some b ->
+    era_pin (fgn_echo g) k v -∗ FileLinks.file_links g -∗
+    fwc_pdiag_ex k v I a i -∗
+    (fwc_pdiag_ex k v I a (S i) -∗ Φ) -∗ out_link Uart0 k b Φ.
+  Proof using .
+    intros Hb. iIntros "#Hpin #Hlk H HΦ".
+    rewrite {1}/fwc_pdiag_ex. iDestruct "H" as (s0) "H".
+    iApply (fpdiag_step_at g s0 k v I a i b Φ Hb with "Hpin Hlk H").
+    iIntros "H". iApply "HΦ". rewrite /fwc_pdiag_ex. by iExists s0.
+  Qed.
+
+  Lemma fwc_pdiag_ex_done_1 (k : nat) (v : era_pins) (I : list (bv 8))
+      (i : nat) :
+    i = length (pro_alts !!! 1%nat) ->
+    fwc_pdiag_ex k v I 1%nat i -∗ fwc_ban g k v I 0%nat.
+  Proof using .
+    intros Hi. rewrite /fwc_pdiag_ex. iIntros "H".
+    iDestruct "H" as (s0) "H". iApply fwc_ban_at_pack.
+    iApply (fwc_pdiag_at_done_1 g s0 k v I i Hi with "H").
+  Qed.
 
   Definition file_link_inst : LinkRec Σ :=
     {| lk_T := file_taint (fgn_cl g);
@@ -165,7 +243,18 @@ Section file_link_inst.
        lk_ban_read_taint := fban_read_taint g;
        lk_turn0 := fturn0 g;
        lk_panic_done := fwc_panic_done g;
-    |}.
+           lk_pban := fwc_pban_ex;
+       lk_pdiag := fwc_pdiag_ex;
+       lk_pban_tl := fwc_pban_ex_timeless;
+       lk_pdiag_tl := fwc_pdiag_ex_timeless;
+       lk_pban_taint := fwc_pban_ex_taint;
+       lk_pdiag_taint := fwc_pdiag_ex_taint;
+       lk_pdiag_0 := fwc_pdiag_ex_0;
+       lk_pban_of_ban_done := fwc_pban_ex_of_ban_done;
+       lk_pro_of_pban := fwc_pro_of_pban_ex;
+       lk_pdiag_step := fpdiag_step_ex;
+       lk_pdiag_done_1 := fwc_pdiag_ex_done_1;
+|}.
 
 End file_link_inst.
 
@@ -505,7 +594,18 @@ Section file_link_inst_at.
        lk_ban_read_taint := fi_ban_read_taint_at;
        lk_turn0 := fturn0_at g s0;
        lk_panic_done := fwc_panic_done_at g s0;
-    |}.
+           lk_pban := fwc_pban_at g s0;
+       lk_pdiag := fwc_pdiag_at g s0;
+       lk_pban_tl := fwc_pban_at_timeless g s0;
+       lk_pdiag_tl := fwc_pdiag_at_timeless g s0;
+       lk_pban_taint := fwc_pban_at_taint g s0;
+       lk_pdiag_taint := fwc_pdiag_at_taint g s0;
+       lk_pdiag_0 := fwc_pdiag_at_0 g s0;
+       lk_pban_of_ban_done := fwc_pban_of_ban_done_at g s0;
+       lk_pro_of_pban := fwc_pro_of_pban_at g s0;
+       lk_pdiag_step := fpdiag_step_at g s0;
+       lk_pdiag_done_1 := fwc_pdiag_at_done_1 g s0;
+|}.
 
   (* ---- THE TWO FAMILIES THE ROUND INSTANTIATES, at the index ----
      [file_Wcl] / [file_Wbl] are what [UShRound] takes its [Wcl] / [Wbl]

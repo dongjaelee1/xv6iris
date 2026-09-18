@@ -1821,6 +1821,40 @@ Section UCatEntry.
     - iRight. iRight. iExact "Ht".
   Qed.
 
+  (* ---- DISCHARGED (kernel stream, item 2): the held read IS
+     [UkCatDeed.kcat_r_of_deed_held] at [cat_hold_at]'s own three conjuncts,
+     which are [kcat_deed_hold_held]'s letter for letter at [wb := false].
+     Everything the leaf needs is persistent, so the [□] costs nothing. ---- *)
+  Lemma cat_held_read_of_deed (N' : uk_names Σ) (c : file_fixed)
+      (r : file_names) (q1 : Qp) (i : Z) (bs : list (bv 8))
+      (fd : nat) (gamo : gname) (jc : Z) :
+    file_app = MkAppcfg file_names (file_pred c) r ->
+    (fd < NOFILE)%nat ->
+    □ (app_taint -∗ file_taint c) -∗ □ (file_taint c -∗ app_taint) -∗
+    UCodeCat.cat_code (ukn_t N') -∗
+    cons_made (fn_cons r) jc -∗
+    app_inv fsc_fs -∗
+    cat_held_read N' (cat_hold_at N' r q1 i bs OffHeld fd gamo) c fd bs.
+  Proof using .
+    intros Heq Hfdlt. iIntros "#Hbr #Hrb #Hcode #Hm #Hinv".
+    rewrite /cat_held_read. iModIntro. iIntros (p) "%Hple".
+    iApply (UkCat.kcat_r_mono_out with "[] [-]"); last first.
+    { iApply (UkCatDeed.kcat_r_of_deed_held N' CatSyms.buf 512%nat fd false i
+                gamo c r q1 jc bs p Heq
+                ltac:(vm_compute; discriminate) ltac:(vm_compute; reflexivity)
+                Hfdlt with "Hbr Hrb Hcode Hm Hinv"). }
+    iIntros (ret gb) "[%Hbnd [(%Hc & %Hby & Hh) | [Hh #HT]]]".
+    - iSplitR; [ by iPureIntro | ]. iLeft.
+      iSplitR; [ by iPureIntro | ]. iSplitR; [ by iPureIntro | ].
+      rewrite /UkCatDeed.kcat_deed_hold_held /cat_hold_at.
+      iDestruct "Hh" as "(H1 & H2 & H3)". iFrame "H1 H2 H3".
+    - iSplitR; [ by iPureIntro | ]. iRight.
+      iSplitL "Hh"; [| iExact "HT" ]. iExists p.
+      iSplitR; [ by iPureIntro | ].
+      rewrite /UkCatDeed.kcat_deed_hold_held /cat_hold_at.
+      iDestruct "Hh" as "(H1 & H2 & H3)". iFrame "H1 H2 H3".
+  Qed.
+
   Lemma cat_pay_present (W : uvis) (v : era_pins) (vf : file_era)
       (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (P : nat)
       (c : file_fixed) (r : file_names) (q1 q2 : Qp) (i : Z)

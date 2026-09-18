@@ -721,3 +721,314 @@ landed statement moved: `UShLine.v`, `UShPanic.v`, `LinkRec.v`,
 untouched, and every new file is a leaf.
 `grep -c "Hypothesis\|Admitted" iris/UInitFile.v` is still 1.
 
+---
+
+# ROUND 4 (2026-09-18) — THE NAME PREDICATE REACHES THE mknod AU AND THE FILE CLAIM'S (g) IS A THEOREM; THE FILE ERA GETS A PROLOGUE DIAGNOSTIC FAMILY (WITH ONE REFUTATION ABOUT ITS BASE); THE ROUND'S FIRST CREDENTIAL COMES OUT OF `file_boot` ALONE
+
+## R4.1 The UNARM's node predicate — the bottom layer
+
+`iris/FsAbsCreateNm.v` gains, beside the `_nm` layer and by the same
+recipe: `aunarm_commit_at_nd` / `aunarm_of_arm_nd` (the unarm at
+`Nd : absnode -> Prop`), the three bridges each way
+(`_nd_of` — a provider that answers at EVERY node answers a fortiori at
+fewer, which is what keeps every landed discharger one line — `_of_nd`
+at `(forall c, Nd c)`, and `_nd_mono`), and `cre_child_unfired_nd` /
+`cre_child_unfired_nd_of`: the child's two legs with the unarm pinned at
+`fun c' => c' = c`, the node `FsAbsCreateFire.cre_child_unfired` already
+names.  `FsAbsCreateFire.v` does not move.
+
+## R4.2 The NAME predicate, threaded to the mknod AU — LANDED WHOLE
+
+Commit `96f841c7d`.  `SpecSysMknod.mknod_au_at` now PINS the created name
+at `FsAbsCreateNm.npar_nm M pv`, so /init's mknod AU no longer asks its
+caller's claim to absorb a create of a device under ANY name at the root —
+the one thing that made `init_cons_laws_at`'s create-at-another-name
+conjunct FALSE at the file claim.  The chain, bottom to top:
+`FsAbsMknodFire` (the success fire is `caf_acre_fire_nm`; the landed
+`caf_acre_fire` survives as a one-line corollary of it), `SpecCreate`
+(`cre_commits` gains `Nm`; `wp_create_sconf_body` takes ONE pure premise,
+`forall nm, last (path_elems pl) = Some nm -> Nm nm`, and that is where
+`Nm nm` is paid for), the six `ProofCreate*` files (the two fire sites
+discharge it from `cr_last_of_npar`), `SpecSysMknod`/`ProofSysMknod`, and
+`Nm := fun _ => True` through the bridge everywhere else.
+
+**Two things worth keeping.**
+
+- **The name is held at the GUARDED reading on both sides of
+  `mknod_acre_inst`**, not moved to the path-fixed one the way the cursor
+  is.  A narrowed path-fixed predicate cannot be widened back, so the
+  refunded leg in `mknod_post_fail` / `mknod_stable_fail` would be
+  unstateable.  `npar_nm_intro` is used one level up (in `ProofSysMknod`,
+  to pay create's pure premise) and `npar_nm_elim` inside
+  `init_cons_mknod_bundle`.
+- **`init_cons_laws_at` did not gain a parameter** (the ruling forbade
+  one, and none was needed).  What changed is that
+  `init_cons_mknod_bundle` demands LESS — its create-at-another-name leg
+  is asked for only at `nmn = fname_console` and `d <> ROOTINO`, which its
+  own proof derives from `npar_nm_elim` and `init_cons_last` — and echo's
+  dischargers supply the weaker premise from their own (g) by `left`.
+
+And the point, `iris/AppFileCons.v`:
+
+```coq
+  Lemma file_cons_create_other (av : aview) (d : Z) (nmn : fname)
+      (ents : gmap fname Z) (nl : nat) (i : Z) :
+    cre_pre av d nmn ents nl i cdev ->
+    nmn = fname_console -> d <> FsImg.ROOTINO ->
+    file_pred c r av -∗ file_pred c r (delta_create d nmn i cdev av).
+```
+
+So **EIGHT of `init_cons_laws_at`'s NINE conjuncts are discharged at the
+file claim**; the UNARM is the ninth and is R4.4's.
+
+## R4.3 The file era's prologue diagnostic family — LANDED, with a refutation about its BASE
+
+`iris/FileLinksAtPro.v`.  The pure half reuses echo's prologue arithmetic
+(`pro_alts_1_length`, `pro_alts_lt_of_lookup`, `pro_of_fail_snoc`) and
+restates only the CURSOR conditions at the file model (`wr_pban_f`,
+`wr_pdiag_f` with `wr_pdiag_byte_f`, `wr_pdiag_1_of_pban_f`,
+`wr_pdiag_S_f`, `wr_pdiag_done_1_f`), by the recipe `FileLinksLine` used
+for `wr_banp_f`.  The credential half is `fwc_pban_at`, `fwc_pdg_at`,
+`fwc_pdiag_at` (the same `match i` shape), `fpdiag_step_at` (byte 0
+through `FileLinks.file_write_link_pro`, the rest through the plain write
+link — `fban_step_at`'s shape) and `fwc_pdiag_at_done_1` into
+`fwc_ban_at`.
+
+**THE REFUTATION, and it is a real difference between the two eras.**  The
+family's base CANNOT be `FileLinksAt.fwc_pro_at`.  Echo's base
+`EchoLinksPro.ewc_pro` is `wr_pban` — `wr_pro` PLUS
+`pro_from … = pro_fail j ++ [3]` — and that `j` is exactly what
+`ewc_pdiag_done_1` needs to land in `wr_ban`.  The file's `fwc_pro_at` is
+`wr_pro_f`, which says only that the prologue is not done, and the file
+era LOSES `j` at `fwc_ban_done_pro_at` (`wr_ban_done_f` drops it) where
+echo keeps it (`ewc_ban_done_pro`).  So the base is the file twin of
+`ewc_pro`, `fwc_pban_at`, with `fwc_pban_of_ban_done_at` (the entry point
+/init's banner actually produces) and the sound projection
+`fwc_pro_of_pban_at`.
+
+## R4.4 The round's families at H', and /init's FIRST credential
+
+`iris/UInitFileCons.v`: `sh_hold_at s0 I` (ruling H's `sh_hold` with the
+`f0_lb` conjunct GONE — the era's boot state is the shared index now, so
+the credential carries it and the hold only says the deed's content is the
+model's state at that index), `sh_hold_at_taint`, `sh_hold_at_of_boot`
+(at the era's head the tie is `reflexivity`: `cat_st cs0 s0 []` is
+`fst_upto cs0 s0 [] 0`, which is `s0`), the two families `file_Wcf_at` /
+`file_Wbf_at`, and
+
+```coq
+  Lemma file_Wbf_at_of_boot (s : dst) :
+    FileOut.fturn g (S gen_id) -∗ fown r s -∗ f_typed (fgn_cl g) s -∗
+    (∃ v : era_pins, era_pin (fgn_echo g) (S gen_id) v
+       ∗ dl_cnt v (1/2) 0%nat ∗ inp_lb v [])
+    ∗ file_Wbf_at (dst_content s) [].
+```
+
+which is exactly what `UInitKernel.init_boot_pay` asks /init for at the
+file era (`cc_wbn Cr 0`) and what round 2's findings recorded the LANDED
+`UShRound.sh_hold` cannot supply.  **If the program stream's own
+`sh_hold_at` differs from this spelling, the difference is a finding and
+not a second statement**: the round is theirs and `file_Hinit_boot` takes
+its conclusion as ONE hypothesis.
+
+## R4.5 The `pdiag` field — SIZED, and one thing about it that was not obvious
+
+The field set is nine, not six, because the file era needs the BASE as a
+field of its own (R4.3): `lk_pdiag`, `lk_pban`, their timelessness and
+taint, `lk_pdiag_0` (at `lk_pban`, not at `lk_pro`),
+`lk_pban_of_ban_done`, `lk_pro_of_pban`, `lk_pdiag_step`,
+`lk_pdiag_done_1`.  Echo's values are `EchoLinksPro`'s with two small
+wrappers (`ewc_pdiag_done_1` is stated without the `i = length …` premise,
+and `EchoLinksPro.ewc_pro -∗ EchoLinksLine.ewc_pro` is the six-line
+conversion `UInitBoot`'s `Hpw` does inline).
+
+**And `file_link_inst` — the UNINDEXED instance — can have them too**,
+which was not obvious: every one of the nine laws PRESERVES `s0`, so each
+lifts to the existential closure (`∃ s0, fwc_pdiag_at g s0 …`) by
+unpack-apply-repack.  So adding the field does not force the program
+stream onto `file_link_inst_at`.
+
+## R4.6 The UNARM's node predicate, threaded — LANDED, and `init_cons_laws_at` now holds at the file claim IN FULL
+
+`SpecCreate.cre_commits` gains `Nd` and puts its third leg at
+`FsAbsCreateNm.aunarm_of_arm_nd`; `SpecSysMknod.mknod_au_at` pins
+`Nd := fun c => c = ADev ma mi`; everyone else is at `fun _ => True`
+through the bridge, one line each.  `UInitCons.init_cons_laws_at`'s UNARM
+conjunct (e) gains the row and the node:
+
+```coq
+     ∗ □ (∀ (av0 av : aview) (i : Z) (c : absnode),
+            ⌜av0 !! i = None⌝ -∗ ⌜Pure av0⌝ -∗ ⌜Pv av0⌝ -∗ ⌜Pv av⌝ -∗
+            ⌜av !! i = Some (MkAnode c 1%nat)⌝ -∗
+            ⌜c = ADev CONSOLE 0⌝ -∗
+            app_pred app_run av -∗ app_pred app_run (delta_unarm i av))
+```
+
+and echo's two dischargers take two extra `_`s each, nothing more.
+
+**Three things this turned up that the ruling did not say.**
+
+1. **Create's pure premise is TWO, not one.**  `wp_create_sconf_body` takes
+   `(ty <> T_DIR -> Nd (cre_c0 tyz ma mi))` AND
+   `(ty = T_DIR -> forall c, Nd c)`.  At the non-directory fail arm the row
+   at count 1 is the one the arm flushed and its node IS `cre_c0`; at
+   mkdir's `fail:` tail it is NOT — the row is a directory that may already
+   carry whichever dot the entry wrote, and the proof has only
+   `abs_node (era_node dc bmc datc)`.  **A directory create owes `Nd`
+   everywhere.**
+2. **The child's pair needs a GENERAL node predicate, not just the pinned
+   one.**  `SpecCreate.cre_child_unfired_ndp Γ c Nd Farm Fun` with three
+   bridges, because mknod wants the pair pinned at `= ADev ma mi` while
+   sys_open and mkdir want `fun _ => True` and refund the wide leg.
+3. **THE NODE SEPARATES THE DEED'S ROW FROM THE ARM'S; IT DOES NOT
+   SEPARATE THE CONSOLE'S.**  `FsConsPin.cons_dev` IS
+   `MkAnode (ADev CONSOLE 0) 1%nat`, and `cons_present_at j av` pins
+   `av !! j = Some cons_dev` — so at `i = j` the row the unarm deletes is
+   exactly the console's and `FsConsPin.cons_present_unarm` is FALSE there.
+   Only the CREDENTIAL separates them, which is why (e) still carries
+   `Pv av0` and `Pv av`.  So `AppFileCons` has the general leg
+   `file_cons_unarm` with a fifth premise
+   `(forall j, cons_present_at j av -> i <> j)`, and the two instances
+   /init actually holds — `file_cons_unarm_absent` (the KEY arm, where the
+   present leg is vacuous) and `file_cons_unarm_present` (the FLAG arm,
+   where `av0 !! i = None` separates `i` from `i0` and `astep`'s
+   determinism makes every `j` equal `i0`).  Those two are what
+   `UInitFileCons` should use.
+
+```coq
+  Lemma file_cons_unarm (av0 av : aview) (i : Z) (cn : absnode) :
+    av0 !! i = None -> file_fs_pure av0 ->
+    av !! i = Some (MkAnode cn 1%nat) -> cn = ADev CONSOLE 0 ->
+    (forall j : Z, cons_present_at j av -> i <> j) ->
+    file_pred c r av -∗ file_pred c r (delta_unarm i av).
+```
+
+`i <> ROOTINO` comes out of `file_fs_pure_pins` + `node_pin_root` against
+`av0 !! i = None`; the deed's row by `injection` on a FILE node against a
+DEVICE node; `file_fs_pure av` is not a premise — `file_step_free` hands it
+to the pure leg.
+
+**So all NINE conjuncts of `UInitCons.init_cons_laws_at` are discharged at
+`AppFile.file_pred`** (`iris/AppFileCons.v`), which is what rounds 2 and 3
+recorded as two separate refutations.  The file era's console dance has no
+claim-side hole left.
+
+## R4.7 What is left of round 4's list
+
+The `pdiag` FIELD on `LinkRec` (scoped in R4.5: nine fields, echo's values
+with two small wrappers, and the non-obvious fact that the UNINDEXED
+`file_link_inst` can have them too, because every one of the nine laws
+preserves `s0` and lifts to the existential closure), and `UInitDiag`'s
+generic twin over it.  Not started; the round's other four items filled it.
+
+## R4.8 Build
+
+Whole tree green on the lane's remote tree (`EXIT=0`, zero `Error`); the
+four audits unchanged (system thirteen, echo fourteen, tree thirteen, file
+fourteen).  No `Admitted`, no `Axiom`, none added anywhere in the diff.
+`grep -c "Hypothesis\|Admitted" iris/UInitFile.v` is still 1 — the round
+is the program stream's and `file_Hinit_boot` waits on it.
+
+---
+
+# ROUND 5 (2026-09-18) — THE `pdiag` FIELD SET AND `UInitDiag`'S TWIN LAND; `file_Hinit_boot` IS **STOPPED ON TWO NAMED THINGS**, AND ONE OF THEM MAY NOT BE A FRAME
+
+## R5.1 The `pdiag` field set on `LinkRec` — LANDED at all three instances
+
+Eleven fields, in the order R4.5 scoped them: `lk_pban`, `lk_pdiag`, their
+timelessness (both `Global Existing Instance`) and taint, `lk_pdiag_0`,
+`lk_pban_of_ban_done`, `lk_pro_of_pban`, `lk_pdiag_step`,
+`lk_pdiag_done_1`.  **The BASE is a field of its own and not `lk_pro`** —
+the record now says so in its own comment, because that is the real
+difference between the eras (R4.3).
+
+Values:
+
+- `echo_link_inst` — `EchoLinksPro`'s, definitional, with the two wrappers
+  R4.5 predicted: `ei_pro_of_pban` (the six lines `UInitBoot`'s `Hpw` did
+  inline) and `ei_pdiag_done_1` (`ewc_pdiag_done_1` with the index taken as
+  a premise, which is the shape the file era's twin can state).
+- `file_link_inst_at s0` — `FileLinksAtPro`'s, directly.
+- `file_link_inst` (UNINDEXED) — by lifting through the existential
+  closure, `fwc_pban_ex` / `fwc_pdiag_ex` and their nine laws in
+  `FileLinkInst.v`.  **Every law preserves `s0`, so each is
+  unpack-apply-repack**, exactly as R4.5 said; adding the field therefore
+  does NOT force the program stream onto `file_link_inst_at`.
+
+## R5.2 `UInitDiag`'s generic twin — LANDED, and `UInitBoot.v` did not move
+
+`iris/UInitDiag.v` is now `UInitBanner.v`'s shape: `Section UInitDiagPure`
+(the era-free byte lemmas), `Section UInitDiagGen` over `Context (L :
+LinkRec Σ)` with `pdg_at`, `kinit_w1_of_link_pdiag_at`, `kinit_pro_at`,
+`kinit_pro_timeless_at`, `kinit_own_of_pro_at`,
+`kinit_banner_law_pro_holds_at`, `kinit_execfail_law_holds_at`,
+`kinit_forkfail_law_holds_at`, and `Section UInitDiagEcho` re-exporting
+every landed name with NO proof text.
+
+`UInitBoot.v` compiles UNCHANGED — which was the real risk, since it does
+`rewrite /UInitDiag.kinit_pro` and then destructs the existential and
+unfolds `EchoLinksPro.ewc_pro`.  The `:= kinit_pro_at EI n` re-export is
+convertible to what it expects, so no fallback was needed.
+
+**So `cons_cred_holds`'s TENTH conjunct and the `kinit_ban ↔ cc_wbn` round
+trip are at the record**, and therefore available at
+`file_link_inst_at s0`.
+
+## R5.3 `file_Hinit_boot` — **STOPPED**, on exactly two things
+
+Not for want of the claim or the credential algebra: after rounds 2–5 the
+file era has all nine conjuncts of `init_cons_laws_at`
+(`iris/AppFileCons.v`), the credential families at a shared index
+(`FileLinksAt*`, `file_link_inst_at`), the seam's four lemmas with a linear
+frame (`UShLineAtHold`), conjunct 9's two input readings
+(`FileLinksAtInp`), the prologue diagnostics (`FileLinksAtPro`, `pdiag` at
+the record), and /init's first credential out of `file_boot` alone
+(`UInitFileCons.file_Wbf_at_of_boot`).  What is missing is two seams in
+`UInitSh.v` / `UShPanic.v`:
+
+**(A) `UShKernel.sh_prompt_law` has no `Hold` form, AND IT MAY NOT BE A
+FRAME.**  `UShPanic.sh_prompt_law_holds_line_at` (`iris/UShPanic.v:638`)
+concludes `UShKernel.sh_prompt_law (lk_lcred L (S gen_id))`, and
+`UInitSh.init_exec_sup_of_sh_slot` takes it at `cc_wc Cr`, which at the
+file era is the credential WITH THE DEED.  `UShPanic` has the `Hold`
+pattern everywhere else (`ush_panic_law_hold_at` `:741`,
+`ush_execfail_law_hold_at` `:802`, built on `ksh_w1_hold` `:718`), and this
+one law was left without it.  **But it is not obviously a frame**:
+`UShRound.sh_prompt_alt_of_deed` (`:240`) says sh's prompt byte is the
+round's BLOCK-FIRST byte whenever the child printed nothing, and then the
+alternative it files is DECIDED by the deed's value — so the twin may have
+to READ the hold rather than carry it.  Whoever takes it should measure
+that first, the way round 3 measured the `ush_wc_inp` / `ush_wb_inp` pair
+(there the answer was a frame; here it may not be).
+
+**(B) `UInitSh.init_exec_sup_of_sh_slot` hard-codes the ECHO discipline.**
+At `iris/UInitSh.v:1143-1145` it passes `EchoDisc.disc_input` together with
+`UkSh.ush_disc_snoc_ncr`, `EchoDisc.disc_input_rest_short`,
+`UkSh.ush_line_echo` and `UkSh.ush_disc_line_echo` to the read leaf.  The
+file era's leaf is `FileReadInst.file_read_leaf_holds`, at
+`rk_disc FI file_read_inst = FileDisc.disc_input_f`.  `UShKernel`'s own
+consumers are ALREADY `Dsc`-parameterised (`UShKernel.v:487`, `:789`,
+`:1059`); it is `init_exec_sup_of_sh_slot` and `cons_cred_holds`'s FIRST
+conjunct that are not.  This one is a parameterisation, not a design
+question — four readings travel beside the discipline.
+
+Until both land, `cons_cred_holds` cannot be assembled at the file record,
+so `UInitSh.sh_pay_of_parts` cannot be applied and
+`UInitKernel.init_boot_con` has nothing to take.
+`grep -c "Hypothesis\|Admitted" iris/UInitFile.v` therefore stays **1**.
+
+**The import question the ruling asked about, answered.**  `UInitFile.v`
+CAN import `UShRound` without touching any audit: `iris/FileAssumptions.v`
+requires only `UFileBootAdequacy`, which imports none of the program tier,
+and `make audit-file-only` is measured unchanged with the program tier in
+the build.  So when (A) and (B) land, `file_Hinit_boot` takes
+`UShRound.sh_round_holds_file` at its own statement and
+`Print Assumptions` shows it beside the fourteen primitives — no
+`Definition`-at-the-conclusion fallback is needed.
+
+## R5.4 Build
+
+Whole tree green on the lane's remote tree; the four audits unchanged
+(system thirteen, echo fourteen, tree thirteen, file fourteen).  No
+`Admitted`, no `Axiom`, none added anywhere in the diff.
+

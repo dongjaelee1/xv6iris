@@ -1507,18 +1507,27 @@ the same thing.
   row, `usys_fd_ok_pipe_neg1`, `ProofSyscall` arm 4, both of
   `wp_uk_ecall_pipe`'s copies of the failure arm, `UkReadPipe`'s relay and
   the two `uv_btaken` lines.  That is the deliverable 1–3 bar, met.
-- **The post-merge build was still running when the lane handed off.**
-  Bringing the clone up to `d860835b2` is a near-full rebuild (the upstream
-  merge moved foundational files); at hand-off it was **500 files in with
-  `errs=0`** and had already passed `WpGprCsrwC.vo` (the stack-limit
-  segfault, below).  `check` (`-vos`) is **RC=0 on every file the lane
-  touches**, so no STATEMENT is broken; what is not yet machine-checked is
-  the PROOF text of `15e907ae4` (deliverable 4) and the two `ukn_held`
-  ports (`1a763f267`, `6766961ec`) — all of it deletion or the same walk at
-  a stronger hypothesis, but say so rather than claim green.  **The
-  coordinator must see RC=0 and the echo audit at the merge gate**; the
-  audit was not reachable before the build finished, so its count is NOT
-  reported by this lane.
+- **EVERY FILE THIS LANE TOUCHES IS BUILT, post-merge, with `.vo`s**:
+  `UsysMemOk`, `ProofSyscall`, `UkRunBr`, `UkRunSys`, `UkReadPipe`,
+  **`UkShPipe.vo`** and **`UkPipeMoves.vo`** all compiled for real against
+  `d860835b2`+this branch, `errs=0` throughout.  So deliverables 1–4 and
+  both `ukn_held` ports are machine-checked, not merely `check`ed.
+- **The post-merge whole-tree build had TWO files and the audit still
+  running at hand-off** (`FileLinksAt.v`, an upstream app-file file, and
+  `EchoAssumptions.v`), with zero errors anywhere.  Bringing the clone up
+  to `d860835b2` is a near-full rebuild, and this round ran under `make -k`
+  precisely so that a failure anywhere would be attributable.  **The
+  coordinator must still see the final RC=0 and the echo-audit count at the
+  merge gate** — this lane does not report the audit count, because the
+  audit had not returned.
+- **ONE REAL PROOF BREAK WAS FOUND BY THE BUILD AND FIXED** (`c7fcab036`):
+  `wp_kshr_pipe_arm`'s two child continuations introduced
+  `UkShRun.wp_kshr_fork1`'s child arm with a `%Hheq` for
+  `⌜ukn_held N' = ukn_held N⌝`, which L6 deleted with the field, and
+  `iIntros` failed with `iIntro: cannot turn (…) into a universal
+  quantifier`.  **A `-vos` check cannot see this** — the statement
+  elaborates, only the proof runs out of premises — which is the second
+  time this lane was bitten by trusting `check` (see finding 2).
 
 **THE MIRROR'S STACK LIMIT IS 8 MB, AND IT SEGFAULTS THE BUILD — `ec2-lane.sh`
 should raise it.**  Bringing the clone up to the merged sources, the build died

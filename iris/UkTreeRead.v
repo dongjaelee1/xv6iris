@@ -261,14 +261,15 @@ Section UkTreeRead.
      keeps is at the pinned node.  [UInitConsK]'s console block is this at
      [FdDevice CONSOLE]; the arithmetic lemmas are [UConsOpen]'s. *)
   Lemma tree_open_fd_tie (l sts fdv' : list fdstate) (rv : mword 64)
-      (rb wb : bool) (i : Z) (γo : gname) (fd : nat) (rd wr : bool)
+      (rb wb : bool) (i : Z) (γo : gname) (omo : offmode)
+      (fd : nat) (rd wr : bool)
       (ty : fdtype) :
     length sts = NOFILE ->
     rv = (mword_of_int (Z.of_nat fd) : mword 64) ->
     (fd < NOFILE)%nat ->
     fdv' = <[fd := FdOpen rd wr ty]> sts ->
-    open_fd_rcpt rb wb (FdInode i γo OffParked) sts rv fdv' ->
-    FdOpen rd wr ty = FdOpen rb wb (FdInode i γo OffParked).
+    open_fd_rcpt rb wb (FdInode i γo omo) sts rv fdv' ->
+    FdOpen rd wr ty = FdOpen rb wb (FdInode i γo omo).
   Proof using .
     intros Hlen Hrv Hlt Hfdv (fd0 & Hr0 & Hcl0 & Hfdv0).
     assert (Hlt0 : (fd0 < NOFILE)%nat).
@@ -279,11 +280,11 @@ Section UkTreeRead.
     subst fd0.
     assert (Hfdlt : (fd < length sts)%nat) by (rewrite Hlen; exact Hlt).
     assert (Hins : <[fd := FdOpen rd wr ty]> sts
-                   = <[fd := FdOpen rb wb (FdInode i γo OffParked)]> sts)
+                   = <[fd := FdOpen rb wb (FdInode i γo omo)]> sts)
       by exact (eq_trans (eq_sym Hfdv) Hfdv0).
     pose proof (list_lookup_insert sts fd (FdOpen rd wr ty) Hfdlt) as Hl1.
     pose proof (list_lookup_insert sts fd
-                  (FdOpen rb wb (FdInode i γo OffParked)) Hfdlt) as Hl2.
+                  (FdOpen rb wb (FdInode i γo omo)) Hfdlt) as Hl2.
     rewrite Hins in Hl1. rewrite Hl2 in Hl1. congruence.
   Qed.
 
@@ -378,7 +379,7 @@ Section UkTreeRead.
       destruct Hb as (Hr1 & Hlt1 & Hfdv1 & _).
       rewrite (tree_open_fd_tie l (uvis_fd W) fdv' rv
                  (om_readable (m !!! Regidx a1_idx))
-                 (om_writable (m !!! Regidx a1_idx)) i γo fd rd wr ty
+                 (om_writable (m !!! Regidx a1_idx)) i γo OffParked fd rd wr ty
                  Hlen Hr1 Hlt1 Hfdv1 Hrcpt).
       iRight. iLeft. iExists fd, γo. iFrame "Hal". iPureIntro.
       exact (conj Hr1 Hlt1).

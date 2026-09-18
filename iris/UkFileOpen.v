@@ -60,6 +60,7 @@ Require Import UserPtTree.         (* [uva_wmapped]: the read's -1 reason, and
                                       the mapped row that refutes it *)
 Require Import UkReadFile.
 Require Import UmodeAbi.           (* [uimg_sub] *)
+Require Import UserOff.             (* [foff_pub]: the publish's handed half *)
 Require Import UConsOpen.          (* [xfam_open] and the ledger arms *)
 Require Import UkTreeRead.         (* [tree_open_fd_tie]: the ledger/receipt tie *)
 Require Import SpecFileread.
@@ -161,14 +162,15 @@ Section UkFileOpen.
   (*  1.  open(`f`, O_RDONLY) AT A PRESENT DEED                           *)
   (* =================================================================== *)
 
-  Definition file_open_fam (c : file_fixed) (r : file_names) (q1 q2 : Qp)
+  Definition file_open_fam (omo : offmode) (c : file_fixed) (r : file_names)
+      (q1 q2 : Qp)
       (i : Z) (bs : list (bv 8)) (Q : Z -> iProp Σ) : sfam :=
-    xfam_open OffParked
+    xfam_open omo
       (pobs_P_lin (file_taint c) [ROOTINO; i] (fdq r q1 (Some (i, bs))))
       (pobs_Pmiss (file_taint c))
       (file_open_recv c r q2 (Some (i, bs))) Q.
 
-  Lemma file_open_sup (N : uk_names Σ) (c : file_fixed) (r : file_names)
+  Lemma file_open_sup (N : uk_names Σ) (omo : offmode) (c : file_fixed) (r : file_names)
       (q1 q2 : Qp) (i : Z) (bs : list (bv 8))
       (Img : gmap Z (bv 8)) (pv : mword 64) (m : regfile) (pc : mword 64)
       (pl : list (bv 8)) (cw : Z) :
@@ -181,7 +183,7 @@ Section UkFileOpen.
     um_start_of cw pl = ROOTINO ->
     app_inv fsc_fs -∗ utext_img (ukn_t N) Img -∗
     fdq r q1 (Some (i, bs)) -∗ fdq r q2 (Some (i, bs)) -∗
-    udepwf_at N m pc USYS_open (file_open_fam c r q1 q2 i bs (ukn_pay N)) cw.
+    udepwf_at N m pc USYS_open (file_open_fam omo c r q1 q2 i bs (ukn_pay N)) cw.
   Proof using .
     intros Heq Hpath Ha0 Hcr Htr Hel Hst.
     iIntros "#Hinv #Hro Hd1 Hd2".
@@ -190,7 +192,7 @@ Section UkFileOpen.
     iDestruct (cons_ro_sub N Img M pm sz with "Hheap Hro") as %Hsro.
     iFrame "Hheap Hufd".
     iApply (sbundle_at_open_intro_at uslot
-              (file_open_fam c r q1 q2 i bs (ukn_pay N))
+              (file_open_fam omo c r q1 q2 i bs (ukn_pay N))
               (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
               cw M pv (m !!! Regidx a1_idx) eq_refl eq_refl
               (eq_trans (tf_of_arg0 m pc) Ha0)
@@ -205,7 +207,7 @@ Section UkFileOpen.
 
   (* ---- THE COROLLARY: "open `f` and the handle is on the inum MY DEED
      names, with both fractions back".  Three arms and no fourth. *)
-  Lemma wp_uk_ecall_open_read_deed (N : uk_names Σ) (h : CpuId) (m : regfile)
+  Lemma wp_uk_ecall_open_read_deed (N : uk_names Σ) (omo : offmode) (h : CpuId) (m : regfile)
       (pc : mword 64) (l : list fdstate) (avail : nat)
       (c : file_fixed) (r : file_names) (q1 q2 : Qp)
       (i : Z) (bs : list (bv 8)) (cw : Z)
@@ -237,7 +239,10 @@ Section UkFileOpen.
              ualloc (ukn_fd N) l fd
                (FdOpen (om_readable (m !!! Regidx a1_idx))
                        (om_writable (m !!! Regidx a1_idx))
-                       (FdInode i γo OffParked)) ∗
+                       (FdInode i γo omo)) ∗
+             (* ...AND THE HALF THE PUBLISH HANDED OUT (kernel stream, L4):
+                nothing at mode PARK, [UserOff.uoff γo 0] at mode HAND. *)
+             foff_pub omo γo ∗
              fdq r q1 (Some (i, bs)) ∗ fdq r q2 (Some (i, bs)))
         (* ...or the application is tainted, and the LEDGER comes back
            (lane CAT-GEOM-2): either untouched, or beside a handle
@@ -250,15 +255,15 @@ Section UkFileOpen.
   Proof using .
     intros Heq Hn Hal4 Hpath Ha0 Hcr Htr Hel Hst.
     iIntros "#Hi #Hro Hrun Hcwd Hstd #Hinv Hd1 Hd2 Hcont".
-    iDestruct (file_open_sup N c r q1 q2 i bs Img pv m pc pl cw Heq Hpath
+    iDestruct (file_open_sup N omo c r q1 q2 i bs Img pv m pc pl cw Heq Hpath
                  Ha0 Hcr Htr Hel Hst with "Hinv Hro Hd1 Hd2") as "Hsb".
     iApply (wp_uk_ecall_open_recv_img N h m pc l avail
-              (file_open_fam c r q1 q2 i bs (ukn_pay N))
+              (file_open_fam omo c r q1 q2 i bs (ukn_pay N))
               cw Img Hn Hal4 with "Hi Hro Hrun Hcwd Hsb Hstd").
     iIntros (h' rv W M' fdv' cw' cs')
       "%Himg %Hlen %Hk0 %Hk1 %Hcw %Htk Hfd Hpost Hcwd Hrun".
     iDestruct (spost_at_open_elim_at uslot
-                 (file_open_fam c r q1 q2 i bs (ukn_pay N)) W
+                 (file_open_fam omo c r q1 q2 i bs (ukn_pay N)) W
                  cw (uvis_M W) pv (m !!! Regidx a1_idx) rv M' fdv' cw' cs'
                  Hcw eq_refl
                  ltac:(rewrite Hk0; exact Ha0)
@@ -267,7 +272,7 @@ Section UkFileOpen.
     iEval (rewrite /open_receipt Hcr) in "Hrc".
     iEval (cbn [file_open_fam xfam_open of_P of_Pmiss of_Farm of_Fun
                 of_Fok of_Fex of_Fo of_Ft]) in "Hrc".
-    iDestruct (file_open_recv_file fsc_fs c r OffParked q1 q2 i bs cw (uvis_M W) pv
+    iDestruct (file_open_recv_file fsc_fs c r omo q1 q2 i bs cw (uvis_M W) pv
                  (m !!! Regidx a1_idx) pl _ (uvis_fd W) rv fdv'
                  (Hpath (uvis_M W) Himg) Hel Hst with "Hrc") as "Hans".
     iApply ("Hcont" $! h' rv with "[Hfd Hans] Hcwd Hrun").
@@ -276,7 +281,7 @@ Section UkFileOpen.
       iApply (uk_open_taint_fd_of_arm (ukn_fd N) l (uvis_fd W) fdv' rv
                 with "[Hfd]").
       rewrite /uk_open_fd_arm. iExact "Hfd". }
-    - iDestruct "Hok" as (γo) "(%Hrcpt & _ & Hd1 & Hd2)".
+    - iDestruct "Hok" as (γo) "(%Hrcpt & Hpub & Hd1 & Hd2)".
       iDestruct "Hfd" as "[Hal | [%Hb _]]"; last first.
       { exfalso. destruct Hb as [Hrm _].
         destruct Hrcpt as (fd0 & Hr0 & Hcl0 & _).
@@ -287,9 +292,9 @@ Section UkFileOpen.
       destruct Hb as (Hr1 & Hlt1 & Hfdv1 & _).
       rewrite (tree_open_fd_tie l (uvis_fd W) fdv' rv
                  (om_readable (m !!! Regidx a1_idx))
-                 (om_writable (m !!! Regidx a1_idx)) i γo fd rd wr ty
+                 (om_writable (m !!! Regidx a1_idx)) i γo omo fd rd wr ty
                  Hlen Hr1 Hlt1 Hfdv1 Hrcpt).
-      iRight. iLeft. iExists fd, γo. iFrame "Hal Hd1 Hd2". iPureIntro.
+      iRight. iLeft. iExists fd, γo. iFrame "Hal Hpub Hd1 Hd2". iPureIntro.
       exact (conj Hr1 Hlt1).
     - iLeft. iSplitR; [ by iPureIntro | ].
       iApply (init_cons_fail_std (ukn_fd N) l (uvis_fd W) fdv' rv Hr
@@ -594,7 +599,7 @@ Section UkFileOpen.
      legs, but NEITHER reaches [of_Fex] or [of_Ft] -- the file claim is the
      first application that answers at the exists observation and at the
      truncate, so it needs its own filling.  Every other row stays inert. *)
-  Definition xfam_fcreate (P : nat -> Z -> iProp Σ)
+  Definition xfam_fcreate (omo : offmode) (P : nat -> Z -> iProp Σ)
       (Farm Fun : pfam Σ (aview -> Z -> iProp Σ))
       (Fok Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
       (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ))
@@ -618,7 +623,7 @@ Section UkFileOpen.
        of_Fex   := Fex;
        of_Fo    := Fo;
        of_Ft    := Ft;
-       of_om    := OffParked;
+       of_om    := omo;
        wf_Q     := fun _ => True%I;
        nf_P     := fun _ _ => True%I;
        nf_Pmiss := fun _ _ => True%I;
@@ -652,9 +657,10 @@ Section UkFileOpen.
        wf_Qe    := fun _ _ => True%I;
        cl_P     := True%I |}.
 
-  Definition file_create_fam (c : file_fixed) (r : file_names) (jc : Z)
+  Definition file_create_fam (omo : offmode) (c : file_fixed) (r : file_names)
+      (jc : Z)
       (n : nat) (s : dst) (g : gname) (Q : Z -> iProp Σ) : sfam :=
-    xfam_fcreate (fun (_ : nat) (d : Z) => ⌜d = FsImg.ROOTINO⌝%I)
+    xfam_fcreate omo (fun (_ : nat) (d : Z) => ⌜d = FsImg.ROOTINO⌝%I)
       (file_arm_fam c r jc s g) (file_unarm_fam c r s g)
       (file_cre_fam c r jc s g) (file_dlk_fam c r n s g)
       (file_odlk_fam c r n s g)
@@ -702,7 +708,7 @@ Section UkFileOpen.
       (ty : fdtype) : iProp Σ := file_open_fd_K omo c r ty.
 
   (* THE DEPOSIT: the 0x601 bundle, from one deed. *)
-  Lemma file_create_sup (N : uk_names Σ) (c : file_fixed) (r : file_names)
+  Lemma file_create_sup (N : uk_names Σ) (omo : offmode) (c : file_fixed) (r : file_names)
       (jc : Z) (n : nat) (s : dst) (g : gname)
       (ls : list wordline) (ws : wordline) (cw : Z)
       (Img : gmap Z (bv 8)) (pv : mword 64) (m : regfile) (pc : mword 64)
@@ -718,7 +724,7 @@ Section UkFileOpen.
     app_inv fsc_fs -∗ utext_img (ukn_t N) Img -∗
     cons_made (fn_cons r) jc -∗ fl_lb c ls -∗
     esc_key c r n s g -∗ fesc_res r s g -∗
-    udepwf_at N m pc USYS_open (file_create_fam c r jc n s g (ukn_pay N)) cw.
+    udepwf_at N m pc USYS_open (file_create_fam omo c r jc n s g (ukn_pay N)) cw.
   Proof using .
     intros Heq Hpath Ha0 Hcr Hnp Hstart Hlast Hin Hokw.
     iIntros "#Hinv #Hro #Hm #Hlb #Hwit Hres".
@@ -727,7 +733,7 @@ Section UkFileOpen.
     iDestruct (cons_ro_sub N Img M pm sz with "Hheap Hro") as %Hsro.
     iFrame "Hheap Hufd".
     iApply (sbundle_at_open_intro_at uslot
-              (file_create_fam c r jc n s g (ukn_pay N))
+              (file_create_fam omo c r jc n s g (ukn_pay N))
               (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
               cw M pv (m !!! Regidx a1_idx) eq_refl eq_refl
               (eq_trans (tf_of_arg0 m pc) Ha0)
@@ -759,7 +765,7 @@ Section UkFileOpen.
      wrapper opens the escrow before the call ([AppFile.file_escrow_park])
      and closes it after (inside [FileOpen.file_open_create_recv]), so
      nothing of the escrow protocol is visible above this line. *)
-  Lemma wp_uk_ecall_open_create_deed (N : uk_names Σ) (h : CpuId)
+  Lemma wp_uk_ecall_open_create_deed (N : uk_names Σ) (omo : offmode) (h : CpuId)
       (m : regfile) (pc : mword 64) (l : list fdstate) (avail : nat)
       (c : file_fixed) (r : file_names) (jc : Z) (s : dst)
       (ls : list wordline) (ws : wordline) (cw : Z)
@@ -802,7 +808,7 @@ Section UkFileOpen.
              ualloc (ukn_fd N) l fd
                (FdOpen (om_readable (m !!! Regidx a1_idx))
                        (om_writable (m !!! Regidx a1_idx)) ty) ∗
-             redir_K OffParked c r ty)) -∗
+             redir_K omo c r ty)) -∗
        UserCwd.ucwd (ukn_cwd N) cw -∗
        urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
@@ -818,16 +824,16 @@ Section UkFileOpen.
     iModIntro.
     iAssert (fesc_res r s g) with "[Htk Htok]" as "Hres".
     { rewrite /fesc_res. iFrame "Htk Htok". }
-    iDestruct (file_create_sup N c r jc n s g ls ws cw Img pv m pc pl Heq Hpath
+    iDestruct (file_create_sup N omo c r jc n s g ls ws cw Img pv m pc pl Heq Hpath
                  Ha0 Hcr Hnp Hstart Hlast Hin Hokw
                  with "Hinv Hro Hm Hlb Hkey Hres") as "Hsb".
     iApply (wp_uk_ecall_open_recv_img N h m pc l avail
-              (file_create_fam c r jc n s g (ukn_pay N)) cw Img Hn Hal4
+              (file_create_fam omo c r jc n s g (ukn_pay N)) cw Img Hn Hal4
               with "Hi Hro Hrun Hcwd Hsb Hstd").
     iIntros (h' rv W M' fdv' cw' cs')
       "%Himg %Hlen %Hk0 %Hk1 %Hcw %Htk Hfd Hpost Hcwd Hrun".
     iDestruct (spost_at_open_elim_at uslot
-                 (file_create_fam c r jc n s g (ukn_pay N)) W
+                 (file_create_fam omo c r jc n s g (ukn_pay N)) W
                  cw (uvis_M W) pv (m !!! Regidx a1_idx) rv M' fdv' cw' cs'
                  Hcw eq_refl
                  ltac:(rewrite Hk0; exact Ha0)
@@ -837,7 +843,7 @@ Section UkFileOpen.
     iEval (cbn [file_create_fam xfam_fcreate of_P of_Pmiss of_Farm of_Fun
                 of_Fok of_Fex of_Fo of_Ft]) in "Hrc".
     iApply fupd_wp.
-    iMod (file_open_create_recv fsc_fs c OffParked r jc n s g cw (uvis_M W) pv
+    iMod (file_open_create_recv fsc_fs c omo r jc n s g cw (uvis_M W) pv
                  (m !!! Regidx a1_idx) pl (uvis_fd W) rv fdv' ⊤
                  ltac:(set_solver) Htr
                  ltac:(exact (Hpath (uvis_M W) Himg))
@@ -891,7 +897,7 @@ Section UkFileOpen.
   (*  text members stay where they are: sections 1/2/4 are untouched.     *)
   (* =================================================================== *)
 
-  Lemma file_open_sup_v (N : uk_names Σ) (c : file_fixed) (r : file_names)
+  Lemma file_open_sup_v (N : uk_names Σ) (omo : offmode) (c : file_fixed) (r : file_names)
       (q1 q2 : Qp) (i : Z) (bs : list (bv 8))
       (Img : gmap Z (bv 8)) (pv : mword 64) (m : regfile) (pc : mword 64)
       (pl : list (bv 8)) (cw : Z) :
@@ -904,7 +910,7 @@ Section UkFileOpen.
     um_start_of cw pl = ROOTINO ->
     app_inv fsc_fs -∗ uimg_view N Img -∗
     fdq r q1 (Some (i, bs)) -∗ fdq r q2 (Some (i, bs)) -∗
-    udepwf_at N m pc USYS_open (file_open_fam c r q1 q2 i bs (ukn_pay N)) cw.
+    udepwf_at N m pc USYS_open (file_open_fam omo c r q1 q2 i bs (ukn_pay N)) cw.
   Proof using .
     intros Heq Hpath Ha0 Hcr Htr Hel Hst.
     iIntros "#Hinv #Hro Hd1 Hd2".
@@ -913,7 +919,7 @@ Section UkFileOpen.
     iDestruct (uimg_view_sub N Img M pm sz with "Hheap Hro") as %Hsro.
     iFrame "Hheap Hufd".
     iApply (sbundle_at_open_intro_at uslot
-              (file_open_fam c r q1 q2 i bs (ukn_pay N))
+              (file_open_fam omo c r q1 q2 i bs (ukn_pay N))
               (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
               cw M pv (m !!! Regidx a1_idx) eq_refl eq_refl
               (eq_trans (tf_of_arg0 m pc) Ha0)
@@ -957,7 +963,7 @@ Section UkFileOpen.
               _ _ _ _ _ Heq (Hpath M Hsro) Hel Hst Hcr Htr with "Hinv Hd").
   Qed.
 
-  Lemma file_create_sup_v (N : uk_names Σ) (c : file_fixed) (r : file_names)
+  Lemma file_create_sup_v (N : uk_names Σ) (omo : offmode) (c : file_fixed) (r : file_names)
       (jc : Z) (n : nat) (s : dst) (g : gname)
       (ls : list wordline) (ws : wordline) (cw : Z)
       (Img : gmap Z (bv 8)) (pv : mword 64) (m : regfile) (pc : mword 64)
@@ -973,7 +979,7 @@ Section UkFileOpen.
     app_inv fsc_fs -∗ uimg_view N Img -∗
     cons_made (fn_cons r) jc -∗ fl_lb c ls -∗
     esc_key c r n s g -∗ fesc_res r s g -∗
-    udepwf_at N m pc USYS_open (file_create_fam c r jc n s g (ukn_pay N)) cw.
+    udepwf_at N m pc USYS_open (file_create_fam omo c r jc n s g (ukn_pay N)) cw.
   Proof using .
     intros Heq Hpath Ha0 Hcr Hnp Hstart Hlast Hin Hokw.
     iIntros "#Hinv #Hro #Hm #Hlb #Hwit Hres".
@@ -982,7 +988,7 @@ Section UkFileOpen.
     iDestruct (uimg_view_sub N Img M pm sz with "Hheap Hro") as %Hsro.
     iFrame "Hheap Hufd".
     iApply (sbundle_at_open_intro_at uslot
-              (file_create_fam c r jc n s g (ukn_pay N))
+              (file_create_fam omo c r jc n s g (ukn_pay N))
               (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
               cw M pv (m !!! Regidx a1_idx) eq_refl eq_refl
               (eq_trans (tf_of_arg0 m pc) Ha0)
@@ -995,7 +1001,7 @@ Section UkFileOpen.
               Hin Hokw with "Hinv Hm Hlb Hwit Hres").
   Qed.
 
-  Lemma wp_uk_ecall_open_read_deed_v (N : uk_names Σ) (h : CpuId) (m : regfile)
+  Lemma wp_uk_ecall_open_read_deed_v (N : uk_names Σ) (omo : offmode) (h : CpuId) (m : regfile)
       (pc : mword 64) (l : list fdstate) (avail : nat)
       (c : file_fixed) (r : file_names) (q1 q2 : Qp)
       (i : Z) (bs : list (bv 8)) (cw : Z)
@@ -1027,7 +1033,10 @@ Section UkFileOpen.
              ualloc (ukn_fd N) l fd
                (FdOpen (om_readable (m !!! Regidx a1_idx))
                        (om_writable (m !!! Regidx a1_idx))
-                       (FdInode i γo OffParked)) ∗
+                       (FdInode i γo omo)) ∗
+             (* ...AND THE HALF THE PUBLISH HANDED OUT (kernel stream, L4):
+                nothing at mode PARK, [UserOff.uoff γo 0] at mode HAND. *)
+             foff_pub omo γo ∗
              fdq r q1 (Some (i, bs)) ∗ fdq r q2 (Some (i, bs)))
         (* ...or the application is tainted, and the LEDGER comes back
            (lane CAT-GEOM-2): either untouched, or beside a handle
@@ -1040,15 +1049,15 @@ Section UkFileOpen.
   Proof using .
     intros Heq Hn Hal4 Hpath Ha0 Hcr Htr Hel Hst.
     iIntros "#Hi #Hro Hrun Hcwd Hstd #Hinv Hd1 Hd2 Hcont".
-    iDestruct (file_open_sup_v N c r q1 q2 i bs Img pv m pc pl cw Heq Hpath
+    iDestruct (file_open_sup_v N omo c r q1 q2 i bs Img pv m pc pl cw Heq Hpath
                  Ha0 Hcr Htr Hel Hst with "Hinv Hro Hd1 Hd2") as "Hsb".
     iApply (wp_uk_ecall_open_recv_gimg N h m pc l avail
-              (file_open_fam c r q1 q2 i bs (ukn_pay N))
+              (file_open_fam omo c r q1 q2 i bs (ukn_pay N))
               cw Img Hn Hal4 with "Hi Hro Hrun Hcwd Hsb Hstd").
     iIntros (h' rv W M' fdv' cw' cs')
       "%Himg %Hlen %Hk0 %Hk1 %Hcw %Htk Hfd Hpost Hcwd Hrun".
     iDestruct (spost_at_open_elim_at uslot
-                 (file_open_fam c r q1 q2 i bs (ukn_pay N)) W
+                 (file_open_fam omo c r q1 q2 i bs (ukn_pay N)) W
                  cw (uvis_M W) pv (m !!! Regidx a1_idx) rv M' fdv' cw' cs'
                  Hcw eq_refl
                  ltac:(rewrite Hk0; exact Ha0)
@@ -1057,7 +1066,7 @@ Section UkFileOpen.
     iEval (rewrite /open_receipt Hcr) in "Hrc".
     iEval (cbn [file_open_fam xfam_open of_P of_Pmiss of_Farm of_Fun
                 of_Fok of_Fex of_Fo of_Ft]) in "Hrc".
-    iDestruct (file_open_recv_file fsc_fs c r OffParked q1 q2 i bs cw (uvis_M W) pv
+    iDestruct (file_open_recv_file fsc_fs c r omo q1 q2 i bs cw (uvis_M W) pv
                  (m !!! Regidx a1_idx) pl _ (uvis_fd W) rv fdv'
                  (Hpath (uvis_M W) Himg) Hel Hst with "Hrc") as "Hans".
     iApply ("Hcont" $! h' rv with "[Hfd Hans] Hcwd Hrun").
@@ -1066,7 +1075,7 @@ Section UkFileOpen.
       iApply (uk_open_taint_fd_of_arm (ukn_fd N) l (uvis_fd W) fdv' rv
                 with "[Hfd]").
       rewrite /uk_open_fd_arm. iExact "Hfd". }
-    - iDestruct "Hok" as (γo) "(%Hrcpt & _ & Hd1 & Hd2)".
+    - iDestruct "Hok" as (γo) "(%Hrcpt & Hpub & Hd1 & Hd2)".
       iDestruct "Hfd" as "[Hal | [%Hb _]]"; last first.
       { exfalso. destruct Hb as [Hrm _].
         destruct Hrcpt as (fd0 & Hr0 & Hcl0 & _).
@@ -1077,9 +1086,9 @@ Section UkFileOpen.
       destruct Hb as (Hr1 & Hlt1 & Hfdv1 & _).
       rewrite (tree_open_fd_tie l (uvis_fd W) fdv' rv
                  (om_readable (m !!! Regidx a1_idx))
-                 (om_writable (m !!! Regidx a1_idx)) i γo fd rd wr ty
+                 (om_writable (m !!! Regidx a1_idx)) i γo omo fd rd wr ty
                  Hlen Hr1 Hlt1 Hfdv1 Hrcpt).
-      iRight. iLeft. iExists fd, γo. iFrame "Hal Hd1 Hd2". iPureIntro.
+      iRight. iLeft. iExists fd, γo. iFrame "Hal Hpub Hd1 Hd2". iPureIntro.
       exact (conj Hr1 Hlt1).
     - iLeft. iSplitR; [ by iPureIntro | ].
       iApply (init_cons_fail_std (ukn_fd N) l (uvis_fd W) fdv' rv Hr
@@ -1152,7 +1161,7 @@ Section UkFileOpen.
       rewrite /uk_open_fd_arm. iExact "Hfd".
   Qed.
 
-  Lemma wp_uk_ecall_open_create_deed_v (N : uk_names Σ) (h : CpuId)
+  Lemma wp_uk_ecall_open_create_deed_v (N : uk_names Σ) (omo : offmode) (h : CpuId)
       (m : regfile) (pc : mword 64) (l : list fdstate) (avail : nat)
       (c : file_fixed) (r : file_names) (jc : Z) (s : dst)
       (ls : list wordline) (ws : wordline) (cw : Z)
@@ -1195,7 +1204,7 @@ Section UkFileOpen.
              ualloc (ukn_fd N) l fd
                (FdOpen (om_readable (m !!! Regidx a1_idx))
                        (om_writable (m !!! Regidx a1_idx)) ty) ∗
-             redir_K OffParked c r ty)) -∗
+             redir_K omo c r ty)) -∗
        UserCwd.ucwd (ukn_cwd N) cw -∗
        urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
@@ -1211,16 +1220,16 @@ Section UkFileOpen.
     iModIntro.
     iAssert (fesc_res r s g) with "[Htk Htok]" as "Hres".
     { rewrite /fesc_res. iFrame "Htk Htok". }
-    iDestruct (file_create_sup_v N c r jc n s g ls ws cw Img pv m pc pl Heq Hpath
+    iDestruct (file_create_sup_v N omo c r jc n s g ls ws cw Img pv m pc pl Heq Hpath
                  Ha0 Hcr Hnp Hstart Hlast Hin Hokw
                  with "Hinv Hro Hm Hlb Hkey Hres") as "Hsb".
     iApply (wp_uk_ecall_open_recv_gimg N h m pc l avail
-              (file_create_fam c r jc n s g (ukn_pay N)) cw Img Hn Hal4
+              (file_create_fam omo c r jc n s g (ukn_pay N)) cw Img Hn Hal4
               with "Hi Hro Hrun Hcwd Hsb Hstd").
     iIntros (h' rv W M' fdv' cw' cs')
       "%Himg %Hlen %Hk0 %Hk1 %Hcw %Htk Hfd Hpost Hcwd Hrun".
     iDestruct (spost_at_open_elim_at uslot
-                 (file_create_fam c r jc n s g (ukn_pay N)) W
+                 (file_create_fam omo c r jc n s g (ukn_pay N)) W
                  cw (uvis_M W) pv (m !!! Regidx a1_idx) rv M' fdv' cw' cs'
                  Hcw eq_refl
                  ltac:(rewrite Hk0; exact Ha0)
@@ -1230,7 +1239,7 @@ Section UkFileOpen.
     iEval (cbn [file_create_fam xfam_fcreate of_P of_Pmiss of_Farm of_Fun
                 of_Fok of_Fex of_Fo of_Ft]) in "Hrc".
     iApply fupd_wp.
-    iMod (file_open_create_recv fsc_fs c OffParked r jc n s g cw (uvis_M W) pv
+    iMod (file_open_create_recv fsc_fs c omo r jc n s g cw (uvis_M W) pv
                  (m !!! Regidx a1_idx) pl (uvis_fd W) rv fdv' ⊤
                  ltac:(set_solver) Htr
                  ltac:(exact (Hpath (uvis_M W) Himg))
@@ -1263,7 +1272,7 @@ Section UkFileOpen.
       iFrame "Hpay". iPureIntro. exact (conj Hr1 Hlt1).
   Qed.
 
-  Lemma wp_uk_ecall_open_read_deed_d (N : uk_names Σ) (h : CpuId) (m : regfile)
+  Lemma wp_uk_ecall_open_read_deed_d (N : uk_names Σ) (omo : offmode) (h : CpuId) (m : regfile)
       (pc : mword 64) (l : list fdstate) (avail : nat)
       (c : file_fixed) (r : file_names) (q1 q2 : Qp)
       (i : Z) (bs : list (bv 8)) (cw : Z)
@@ -1295,7 +1304,10 @@ Section UkFileOpen.
              ualloc (ukn_fd N) l fd
                (FdOpen (om_readable (m !!! Regidx a1_idx))
                        (om_writable (m !!! Regidx a1_idx))
-                       (FdInode i γo OffParked)) ∗
+                       (FdInode i γo omo)) ∗
+             (* ...AND THE HALF THE PUBLISH HANDED OUT (kernel stream, L4):
+                nothing at mode PARK, [UserOff.uoff γo 0] at mode HAND. *)
+             foff_pub omo γo ∗
              fdq r q1 (Some (i, bs)) ∗ fdq r q2 (Some (i, bs)))
         (* ...or the application is tainted, and the LEDGER comes back
            (lane CAT-GEOM-2): either untouched, or beside a handle
@@ -1308,7 +1320,7 @@ Section UkFileOpen.
   Proof using .
     intros Heq Hn Hal4 Hpath Ha0 Hcr Htr Hel Hst.
     iIntros "#Hi #Hdi Hrun Hcwd Hstd #Hinv Hd1 Hd2 Hcont".
-    iApply (wp_uk_ecall_open_read_deed_v N h m pc l avail c r q1 q2 i bs cw Img pv pl
+    iApply (wp_uk_ecall_open_read_deed_v N omo h m pc l avail c r q1 q2 i bs cw Img pv pl
               Heq Hn Hal4 Hpath Ha0 Hcr Htr Hel Hst
               with "Hi [] Hrun Hcwd Hstd Hinv Hd1 Hd2 Hcont").
     iApply (uimg_view_data N Img with "Hdi").
@@ -1351,7 +1363,7 @@ Section UkFileOpen.
     iApply (uimg_view_data N Img with "Hdi").
   Qed.
 
-  Lemma wp_uk_ecall_open_create_deed_d (N : uk_names Σ) (h : CpuId)
+  Lemma wp_uk_ecall_open_create_deed_d (N : uk_names Σ) (omo : offmode) (h : CpuId)
       (m : regfile) (pc : mword 64) (l : list fdstate) (avail : nat)
       (c : file_fixed) (r : file_names) (jc : Z) (s : dst)
       (ls : list wordline) (ws : wordline) (cw : Z)
@@ -1392,7 +1404,7 @@ Section UkFileOpen.
              ualloc (ukn_fd N) l fd
                (FdOpen (om_readable (m !!! Regidx a1_idx))
                        (om_writable (m !!! Regidx a1_idx)) ty) ∗
-             redir_K OffParked c r ty)) -∗
+             redir_K omo c r ty)) -∗
        UserCwd.ucwd (ukn_cwd N) cw -∗
        urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
        WP (Loop : expr riscv_lang)) -∗
@@ -1400,7 +1412,7 @@ Section UkFileOpen.
   Proof using .
     intros Heq Hn Hal4 Hpath Ha0 Hcr Htr Hnp Hstart Hlast Hin Hokw.
     iIntros "#Hi #Hdi Hrun Hcwd Hstd #Hinv #Hm #Hlb Hown Hcont".
-    iApply (wp_uk_ecall_open_create_deed_v N h m pc l avail c r jc s ls ws cw Img pv pl
+    iApply (wp_uk_ecall_open_create_deed_v N omo h m pc l avail c r jc s ls ws cw Img pv pl
               Heq Hn Hal4 Hpath Ha0 Hcr Htr Hnp Hstart Hlast Hin Hokw
               with "Hi [] Hrun Hcwd Hstd Hinv Hm Hlb Hown Hcont").
     iApply (uimg_view_data N Img with "Hdi").

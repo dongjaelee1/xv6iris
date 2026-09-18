@@ -993,7 +993,7 @@ Section UkTreeCreate.
         destruct Hb as (Hr1 & Hlt1 & Hfdv1 & _).
         rewrite (tree_open_fd_tie l (uvis_fd W) fdv' rv
                    (om_readable (m !!! Regidx a1_idx))
-                   (om_writable (m !!! Regidx a1_idx)) i γo fd rd wr ty
+                   (om_writable (m !!! Regidx a1_idx)) i γo OffParked fd rd wr ty
                    Hlen Hr1 Hlt1 Hfdv1 Hrcpt).
         iApply ("Hcont" $! h' rv with "[Hal Hown] Hcwd Hrun").
         iLeft. iExists fd, γo, i. iFrame "Hal Hown". iSplitR.

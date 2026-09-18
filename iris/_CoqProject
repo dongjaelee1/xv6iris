@@ -1669,3 +1669,4 @@ UInitFile.v
 UEchoPipe.v
 UCatPipe.v
 PipeLinksLine.v
+PipeLinkInst.v

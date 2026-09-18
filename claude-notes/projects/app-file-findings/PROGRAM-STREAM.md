@@ -1140,3 +1140,53 @@ is `⌜s = None⌝ ∗ ∃ i, fown r (Some (i, []))` in `file_esc_pay` /
 * K1's other premises: `i ∉ pinned` is `redir_K_inum` (a fupd — do it in
   the walk right after the open, as stretch 7 §3 said); `Hstr` (the
   offset row) is unmeasured.
+
+### LANDED so far in stretch 9 (branch `app-file/sh-redir`, each step `.vok`-checked, NOT yet a whole-tree `.vo` build)
+
+* **2b** `4a50f106a`: `file_open_pay` / `file_esc_pay` / `redir_Kf`'s created arm is
+  `⌜s = None⌝ ∗ ∃ i, fown r (Some (i, []))`; `ush_open_call2` takes the deed AT
+  the call (`Dd a -∗`, `Kf : A -> iProp`), `Hopen_hand` re-proved from
+  persistent premises alone.  `run-on-gcp --proofs Foo.vo` now sends a file
+  target to the main sub-tree only (it used to fail in `model-xv6iris`).
+* **2c** `f7a2c88a1` and the two before it:
+  `UkShRedir.wp_kshr_redir_arm_g` (the arm generic in the call --
+  `ush_open_call_g`, the node's file string and an abstract hand `H` in, a
+  payload on BOTH answer arms -- and STOPPING at the diagnostic cut 0x10e; the
+  two continuations are an ADDITIVE pair `∧`, so the caller's lend is
+  available to both); `UkShRedirSeam.wp_kshm_child_redir_g` /
+  `_alloc_redir_g` (the lend splits at the call, `Cr -∗ H ∗ Cr'`); the three
+  landed lemmas re-proved VERBATIM as instances.  New
+  `iris/UkShRedirPaid.v`: `wp_kshd_openfail_paid` (on
+  `ush_execfail_law_at alt_openfail 14`), `ushr_fname_img` (the node's
+  one-byte string as the open's path image), `ush_open_call_g_of_call2`.  New
+  `iris/UkShRedirChild.v`: `wp_kshm_child_file_redir`, the whole walk
+  0x9c0 → exits, family-free, NO `sh_deps`; the unfillable v1 statement is
+  gone from `UkShRedirBody.v`.
+  (Importing `UkShRedirAns`/`UkShRedirPaid` INTO `UkShRedirBody.v` made an
+  untouched `Proof using .` lemma there fail with "section variables Σ Wc Wb
+  Pm used but not declared" -- not understood; the new file sidesteps it.)
+* ITERATION: `make -f CoqMakefile -jN -k Foo.vos` / `Foo.vok` in the lane's
+  remote `iris/` rebuilds exactly the stale cone in `.vos` mode and checks
+  only the named files' proofs (`/shared/xv6iris-3-lanes/.logs/vb.sh`,
+  ~2.5 min per round trip).  `WP Loop` has no `ElimModal` for a fupd:
+  `iApply fupd_wp` first.
+
+### 2a's DESIGN, settled (not built)
+
+* PURE CORE: for the consumed entries `E = dl ++ ws`, `E_index (seg_of E)` +
+  `ConsLog.hist_chain E` (already in `read_ok`) + same boot + the LAST entry's
+  `trace_shape h true` (its tag) give `ins (open_seg h) = snd <$> E`
+  (`EchoOutPure.E_bytes_of_hist` at `Sg := open_seg h`,
+  `open_seg_prefix_boots` for the prefix premise); `ObsTrace.cycles_of_io`
+  puts `open_seg h` LAST in `cycles_of h`, so
+  `echof_lines_in (snd <$> E) ⊆ echof_lines_of h`.
+* `fread_ret` must export same-boot (`∀ x ∈ dl ++ ws, obs_boots x.1 = k`; it
+  is `fein_pure`'s third conjunct).
+* `ReadRec.rk_arms` takes `[∗ list] x ∈ ws, riscv_rx_tag x.1` -- EVERY
+  consumed entry, because a SWALLOWED byte (`dd = 0, dc = 1`) extends the
+  input too and its tag is inside `UserConsole.ucons_swallow`, not in the
+  window's `hs`.  `UShLine.ush_read_recv_era_at` builds it.
+* `fwc_rres` / `fwc_rres_at` gain
+  `⌜echof_lines_in I = []⌝ ∨ ∃ ls, fl_lb c ls ∗ ⌜echof_lines_in I ⊆ ls⌝`;
+  `PRE I` gains the same (as `∨ T`), copied in by `Hwc_f` from the `Pm` it is
+  handed.

@@ -604,7 +604,15 @@ unowned critical item (WRITE-RELAY-3's `TB` guard).  RULES, replacing
   `fwc_ban_done_pro_at`); `file_Wbf_at_of_boot` = /init's first credential
   out of `file_boot` alone.  `sh_hold_at` exists twice (UShRound's and
   UInitFileCons's, syntactically the same); the round's wins at the
-  assembly.
+  assembly.  Round 5 (989ca2114): the `pdiag` field set (eleven fields,
+  `lk_pban` the base) at all three instances, the unindexed one by lifting
+  through the existential closure; `UInitDiag` generalised over the
+  record with `UInitBoot.v` unmoved.  Two seams left before
+  `file_Hinit_boot`: the prompt law's Hold form (measure: the record's
+  prompt step decides the block-first alternative from `s0/cs0/I0`, so it
+  should be a frame), and `init_exec_sup_of_sh_slot`'s hard-coded echo
+  discipline (a parameterisation).  `UInitFile.v` may import `UShRound`:
+  the file audit does not see the program tier.
 - RULING H' (2026-09-18, INIT-FILE findings 3.1/3.2): the round's hold is
   tied to the era's boot state BY A SHARED INDEX, not by `f0_lb` (which
   only exists after the era's first console byte, so `Wbf []` was

@@ -1527,7 +1527,13 @@ the same thing.
 
   The UPSTREAM-FIX lane's clone, on the same mirror, at the same hour, with
   the same `UShRound.v` and WITHOUT this lane's seven files, compiles it.
-  This clone does not.  The only source difference in its cone is this
+  This clone does not.  **And it is not contention**, though the box was
+  busy (load 19, ~14 foreign `rocqworker`s): load makes a compile slow, not
+  SIGSEGV, and there were 180 GB of the mirror's 246 free throughout.  One
+  caveat to carry into the bisect: `ulimit -s unlimited` lifts the limit
+  for the MAIN thread, and glibc still gives pthreads an 8 MB default, so a
+  blow-up on a worker thread would survive the raise — which is consistent
+  with `WpGprCsrwC.vo` being cured by it and `UShRound.vo` not being.  The only source difference in its cone is this
   lane's diff (`UsysMemOk.v` md5 differs; the other six too), so **the −1
   conjunct, or something else in this lane's seven files, makes
   `UShRound.v` blow the checker's stack.**

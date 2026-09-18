@@ -275,6 +275,21 @@ fire site does not have the ref in hand at the store (it is the FILE
 layer's, `SpecFilewrite`'s pipe arm), the lane threads the one pure fact
 down from `filewrite`'s `f->writable` test — report which.
 
+**AS LANDED (lane PQ-FLAG, 2026-09-18).**  The WRITE premise landed as
+designed: `SpecPipewrite` gained `w = true` (filewrite's own `f->writable`
+test is that boolean, `fw_wbool_of_fall`), and `ProofPipewrite` derives
+`ps_wo s = true` at the store from the caller's `pipe_ref` through
+`pipe_endstate_holder` and the coupled arm.  `pipe_wlink_of_uncond` is the
+sanity lemma (the old unconditional stepper is still a link).  The READ
+premise `⌜ps_ro s = true⌝` was REFUTED as "free": `piperead` never loads
+`readopen`, so the only route is `w = false` on `SpecPiperead`, and the
+file layer cannot supply it — `fileread` learns nothing about `wb` at a
+pipe row, because nobody publishes "a pipe file's two ends are
+complementary" (true of `pipealloc`, dropped at the store; expressible in
+`fdstate_ok`/`file_core_noff`'s pipe arm, no publisher).  Not landed, not
+needed: (P3) freezes `ps_ws`, which only a write moves.  A future
+reader-side protocol wanting "the read end is open" buys that fact first.
+
 Without 3.1 the protocol has no way to freeze the contents at EOF: the
 generic close link (§2) fires at the LAST write-end close, which may be
 sh's or the cat child's rather than echo's, and none of them can prove

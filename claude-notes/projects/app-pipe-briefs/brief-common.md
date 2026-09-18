@@ -42,6 +42,10 @@ names, and to REPORT — precisely — anything the design got wrong.
   line (a quiet log with RC=2 is a failure; `Segmentation fault` is a
   failure).  If you add a file, add it to `iris/_CoqProject` in your
   worktree; the helper regenerates the remote CoqMakefile.
+- `check` compiles `-vos`; after `build` has produced real `.vo`s for a
+  file, a later `check` of a DEPENDENT can report bogus "inconsistent
+  assumptions" (stale non-empty `.vos` -- durable-notes' `--check` poison).
+  Then use `build File.vo` instead; do not truncate other lanes' files.
 - If the helper cannot reach the mirror (ssh timeout), STOP and report
   that as your first line; do not build any other way.
 

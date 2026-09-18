@@ -549,3 +549,175 @@ three untouched-statement rules held: nothing in `FileLinksLine.v`,
 `UShLine.v`, `UShPanic.v`, `LinkRec.v`, `StageRec.v` or `UShRound.v` moved,
 and `FileLinkInst.v` only gained an appended section.
 
+---
+
+# ROUND 3 (2026-09-18) — THE SEAM'S FOUR LEMMAS AND THE TWO INPUT READINGS LAND AT THE RECORD AND AT THE INDEX (ALL FRAMES); §3.4's BOTTOM LAYER LANDS AND ITS THREAD IS **SIZED, NOT 164 SITES**; THE UNARM CONJUNCT IS **REFUTED AT THE STATEMENT**
+
+The ordered list was: §3.4's kernel-tier restatement, the UNARM receipt,
+conjunct 9's per-`s0` reading, §3.3's remaining generalisations, the
+`pdiag` field.  Items 3 and 4 landed; item 1's bottom layer landed and the
+rest is sized; **item 2 is a refutation at the statement**, which is where
+this round stops.
+
+## R3.1 §3.3's remaining generalisations — LANDED, and every one is a FRAME
+
+`iris/UShLineAtHold.v` (a leaf; `UShLine.v` does not move).  The four
+lemmas the findings named as having no generic form now have one, at
+`LinkRec`:
+
+| landed | from |
+|---|---|
+| `ush_mid_of_at_L` | `UShLine.ush_mid_of_at` (`:562`) |
+| `ush_at_of_mid_taint_L` | `UShLine.ush_at_of_mid_taint` (`:592`) |
+| `ush_at_of_mid_wb_L` | `UShLine.ush_at_of_mid_wb` (`:603`) |
+| `ush_posb_of_lend_L` | `UShLine.ush_posb_of_lend` (`:751`) |
+
+each with `rd_res → lk_rres L`, `T → lk_T L`, `ush_rd_pin γ →
+ush_rd_pin_at (lk_rres L) γ`, `ush_rd_x γ → ush_rd_x_at (lk_rres L) γ`,
+`ush_mid γ → ush_mid_at (lk_rres L) γ`.
+
+**AND ALL FOUR TAKE A LINEAR FRAME.**  `ush_mid_of_at_L_hold`,
+`ush_at_of_mid_taint_L_hold`, `ush_at_of_mid_wb_L_hold`,
+`ush_posb_of_lend_L_hold`, plus the `_ex` forms ruling H' calls for
+(`… _hold_ex`, at `∃ s0, Wc s0 I p ∗ Hold s0 I`).  **Every one is a single
+application** — no proof looks inside the credential — so the frame is a
+frame in the strict sense and R2.3's measurement generalises to the whole
+group.
+
+**One thing measured that the findings had wrong.**  None of the four needs
+the pin-bridging premise `(∀ v, era_pin γ (S gen_id) v -∗ lk_epin L k v)`
+that `ush_mid_wc_read_t_at` and `ush_wb_read_holds_at` carry: their pin
+identities stay entirely on the echo-side `era_pin`, and the only record
+law they use is `lk_rres_pers`.
+
+## R3.2 Conjunct 9's per-`s0` reading — LANDED
+
+`iris/FileLinksAtInp.v`:
+
+```coq
+  Lemma file_wc_inp_at (s0 : fst) :
+    UShLine.ush_wc_inp (fgn_echo g) (file_taint (fgn_cl g))
+      (FileLinkInst.file_Wcl_at g s0).
+
+  Lemma file_wb_inp_at (s0 : fst) :
+    UShLine.ush_wb_inp (fgn_echo g) (file_taint (fgn_cl g))
+      (FileLinkInst.file_Wbl_at g s0).
+```
+
+`file_wc_inp_at` is `UShLine.ush_wc_inp_lcred`'s argument transposed to the
+indexed families (one `destruct p as [| [| [| p']]]`; `fcur`'s fourth
+conjunct is the bound on every cursor arm, and `fhead_at`'s `⌜I = []⌝` plus
+`inp_lb v []` closes the head).  `file_wb_inp_at` needed no destructuring at
+all: `FileLinksAtBan.fwc_ban_inp_at` already IS that read-back, including
+`⌜rest_of I = []⌝`.
+
+**So conjunct 9 of `UInitSh.cons_cred_holds` is fully supplied at the file
+era**: `ush_posb_of_lend_L_hold_ex` at these two readings.
+
+## R3.3 §3.4's bottom layer — LANDED; the thread above it is SIZED
+
+`iris/FsAbsCreateNm.v` (a leaf; `FsAbsCreateFire.v` does not move):
+
+- `acre_commit_at_gen_nm` / `acre_commit_at_nm` — the commit with the ruling's
+  `Nm : fname -> Prop` and its `⌜Nm nm⌝` premise beside the dot-name
+  credential.
+- `acre_commit_at_gen_nm_of` / `acre_commit_at_nm_of` — **the bridge that
+  keeps every landed discharger one line**: a provider that answers at EVERY
+  name answers a fortiori at the ones `Nm` admits, so nothing that supplies
+  `acre_commit_at` moves.
+- `acre_commit_at_gen_of_nm` / `acre_commit_at_of_nm` — the converse at
+  `(∀ nm, Nm nm)`, which is the `_unit` reading.
+- `acre_commit_at_gen_nm_mono` — the predicate narrows freely.
+- `nlast_elem` / `npar_nm` / `npar_nm_intro` / `npar_nm_elim` — the
+  syscall-tier reading the ruling names, as `SysMknodDefs.npar_cur` is for
+  the cursor: the created name at WHATEVER path argument 0 reads, PURE (so
+  the failure fold keeps its shape) and interchangeable with the read form by
+  `ArgPath.arg_path_of_uniq`.
+
+**WHAT IS LEFT, AND IT IS NOT THE SWEEP THE ROUND-2 FINDINGS FEARED.**
+The 164 mentions of `acre_commit_at` do NOT have to move: the bridge above
+means every existing site keeps its statement and its proof.  What has to
+move is the THREAD from the commit up to `SpecSysMknod.mknod_au_at`, and it
+runs through **`SpecCreate`'s SHARED create bundle** — `SpecCreate.v:601`
+carries `pf_at (acre_commit_at_gen Γ appE (cre_child tyz ma mi) Pd Farm) Fok`
+and mkdir and open(O_CREATE) take the same bundle.  So the files are:
+
+| file | what |
+|---|---|
+| `iris/SpecCreate.v` | the bundle at `acre_commit_at_gen_nm … Nm`; the create's own `⌜list_basics.last (path_elems pl) = Some nm⌝` (already there, at `:690`, `:724`, `:890`, `:928`, `:968`, `:1014`, `:1040`) is what discharges `Nm nm` at the fire |
+| `iris/ProofCreateShared.v` | four sites, where the commit's wand is applied |
+| `iris/SysMknodDefs.v` / `iris/SpecSysMknod.v` | `mknod_au_at` at `Nm := npar_nm M pv`, and `mknod_acre_inst`'s guarded/read interchange for the NAME beside the one it already does for the cursor |
+| `iris/ProofSysMknod.v` | passes the piece through (`:1051` destructs `Hau` into `(Hwp & Hacre & Hdlkc & Hchild)`); no fire of its own |
+| `iris/SysOpenDefs.v`, `iris/SpecSysOpen.v`, `iris/SpecSysMkdir.v`, `iris/SpecSysUnlink.v`, `iris/TreeMove.v`, `iris/FileOpen.v` | `Nm := fun _ => True` through the bridge, one line each |
+| `iris/UInitCons.v` / `iris/UInitConsK.v` | `init_cons_mknod_bundle`'s create-other arm at the pinned name; echo's discharge does not move |
+| `iris/AppFileCons.v` | the file's conjunct (g) at `nm = fname_console`, by `FileDeltas.f_ok_create_other` with `or_intror FileDeltas.fname_console_ne_f` — the same line `file_cons_mknod` already uses for (f) |
+
+It is ONE lane, not a sweep.  It was not taken this round because it
+rebuilds the kernel cone and the round's own list had three more items.
+
+## R3.4 The UNARM conjunct — **REFUTED AT THE STATEMENT**, and the repair is (g)'s twin
+
+The accepted fix was "carry the receipt (`FileOpen.fclaim_facts` from `av0`,
+the way `file_unarm_commit` does)".  **It does not reach.**
+
+`UInitCons.init_cons_laws_at`'s (e) is spent at `iris/UInitCons.v:700-706`,
+against `FsAbsCreateFire.aunarm_commit_at` (`iris/FsAbsCreateFire.v:475`):
+
+```coq
+    (∀ (I : gmap Z fs_node) (c : absnode),
+       ⌜abs_view I !! i = Some (MkAnode c 1%nat)⌝ -∗ … )
+```
+
+— the unarmed row's NODE is quantified inside, deliberately ("the failure
+arms reach it with an empty file, a device, or a directory holding no, one
+or two dots").  What the file claim needs is
+`FileDeltas.f_ok_unarm` (`:541`), whose two side conditions are
+`i <> ROOTINO` and `∀ j bs, s = Some (j,bs) -> i <> j`.
+
+- `i <> ROOTINO` IS available: `av0 !! i = None` with `Pure := file_fs_pure`
+  (the root is one of the pinned rows).
+- `i <> j` is NOT, and no pure receipt about `av0` can give it.  The other
+  route, `FileDeltas.f_ok_unarm_fresh` (`:564`), wants `f_ok av0 s` **at the
+  deed's CURRENT `s`** — and `s` is `fcontent_of av`, not `fcontent_of av0`;
+  the two are equal only because nothing touched `f` between the arm and the
+  unarm, which is a TEMPORAL fact the conjunct cannot see.  `fclaim_facts`
+  is a fact about ONE view, so carrying it from `av0` does not close the gap.
+
+The true reason `i <> j` holds is that the arm put a DEVICE at `i` and a
+later create of `f` must pick a free row.  So:
+
+**THE REPAIR, named, and it is §3.4's twin.**  `aunarm_commit_at` gains a
+node predicate `Nd : absnode -> Prop` with `⌜Nd c⌝` beside the row premise,
+exactly as `acre_commit_at_gen` gains `Nm`; `aunarm_of_arm`
+(`iris/FsAbsCreateFire.v:531`) instantiates it at the node the arm placed,
+which is already in hand — `cre_child_unfired Γ c Farm Fun` (`:541`) names
+that very `c`.  Every landed site instantiates `Nd := fun _ => True` through
+the same kind of bridge `FsAbsCreateNm` gives for `Nm`.  Then the file's (e)
+is `f_ok_unarm` with `i <> j` off the two rows' nodes (a device row and a
+file row are different rows), and echo's discharge does not move.
+
+Recorded rather than forced: it is the same lane as R3.3's thread and wants
+the same rebuild.
+
+## R3.5 What is NOT started
+
+The `pdiag` field on `LinkRec` and `UInitDiag`'s generic twin.  Sized:
+`EchoLinksPro`'s family is SIX things (`ewc_pdg`, `ewc_pdiag`,
+`ewc_pdiag_taint`, `ewc_pdiag_0`, `echo_pdiag_step`, `ewc_pdiag_done_1`), so
+the record field set is small — but **there is no FILE side to instantiate
+it at**: `FileLinksLine.v` has no `fwc_pdiag` and no diagnostic step, and
+writing them is `fban_step`-shaped work (the prologue itself is shared with
+echo, so the pure half is free; the credential family and its link
+application are not).  That, and the `LinkRec` field's rebuild, is the next
+block.
+
+## R3.6 Build
+
+Whole tree green on the lane's remote tree; the four audits unchanged
+(system thirteen, echo fourteen, tree thirteen, file fourteen).  No
+`Admitted` of this lane's, no new `Axiom`, `Proof using` everywhere.  No
+landed statement moved: `UShLine.v`, `UShPanic.v`, `LinkRec.v`,
+`StageRec.v`, `UShRound.v`, `FileLinksLine.v` and `FsAbsCreateFire.v` are
+untouched, and every new file is a leaf.
+`grep -c "Hypothesis\|Admitted" iris/UInitFile.v` is still 1.
+

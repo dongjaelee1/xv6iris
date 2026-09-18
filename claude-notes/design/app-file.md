@@ -555,7 +555,9 @@ unowned critical item (WRITE-RELAY-3's `TB` guard).  RULES, replacing
   lower it did not finish.  Readings: 31 at review 2 (9/19/3); 23 at
   checkpoint 34 (9/11/3, PROGRAM-STREAM's first stretch, 4689ae3e1); 21 at
   INIT-FILE's first lane (9/11/1, fabe6c805); checkpoint 35 = both merged
-  plus the file stage instance (e3b70b6d3), audits 27/14/13 unchanged.
+  plus the file stage instance (e3b70b6d3), audits 27/14/13 unchanged; 19
+  at checkpoint 36 (7/11/1: KERNEL STREAM's L2+L4, `Hdep1`/`Hwrite1`
+  discharged, 6d645865c).
 - RULING H' (2026-09-18, INIT-FILE findings 3.1/3.2): the round's hold is
   tied to the era's boot state BY A SHARED INDEX, not by `f0_lb` (which
   only exists after the era's first console byte, so `Wbf []` was
@@ -578,7 +580,15 @@ unowned critical item (WRITE-RELAY-3's `TB` guard).  RULES, replacing
   `SpecSysMknod.mknod_au_at`, where it is the walked path's last element
   under the cursor's guard, discharged by `ProofSysMknod` from the walk.
   Refused: an `Other` parameter on `init_cons_laws_at` (the consumer
-  cannot supply it — the name is the kernel's to pin).
+  cannot supply it — the name is the kernel's to pin).  Bottom layer
+  landed by INIT-FILE round 3 (`FsAbsCreateNm.v`); the thread up through
+  `SpecCreate`'s shared bundle is round 4's.
+- RULING ND (2026-09-18, INIT-FILE round 3): the UNARM conjunct's receipt
+  repair is refuted (`f_ok_unarm_fresh` needs the deed's CURRENT state at
+  the arm's view, a temporal fact no receipt about one view carries).
+  NM's twin instead: `aunarm_commit_at` gains `Nd : absnode -> Prop`,
+  instantiated at the node the arm placed, so the file's unarm leg is
+  `f_ok_unarm` with the two rows' nodes distinct.
 - TWO SERIAL STREAMS, at most two lanes on `iris/` at once: the KERNEL
   stream (OFF-LINK-6 + L5 + the `TB` guard, exit criterion: `Hopen_hand`,
   cat's lend and `UEchoFile.ef_chain` compile as `Definition`s; then

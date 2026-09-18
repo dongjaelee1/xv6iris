@@ -1321,6 +1321,7 @@ SpecSysFstat.v
 SpecSysRead.v
 SpecSysWrite.v
 FsAbsCreateFire.v
+FsAbsCreateNm.v
 SpecCreate.v
 CreateBudget.v
 ProofCreateParts.v
@@ -1619,9 +1620,11 @@ UInitTreeExec.v
 # TreeAssumptions.v
 
 UShLineHold.v
+UShLineAtHold.v
 FileLinksAt.v
 FileLinksAtBan.v
 FileLinksAtLine.v
+FileLinksAtInp.v
 AppFileCons.v
 UFileBootAdequacy.v
 # FileAssumptions.v

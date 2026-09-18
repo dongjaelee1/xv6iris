@@ -19,6 +19,9 @@ stream's.)
 | after sh's killed child (`fbc4048eb`) | **12** | `sh_kill_law_file`'s `Admitted` |
 | after the kill equation (`85d72e261`) | **11** | `Hktaint` |
 | after `file_stage_inst` (`c62244638`) | **11** | (the gate for `Hexecfail`/`Hchild_echo`; the two discharges wait on RULING H) |
+| after the cat body and the era step (`b43f94b41`, `39491cac0`) | **11** | (both are plumbing UNDER the round: `Hcat_body` and `Hchild_redir`'s supply) |
+| after RULING H' and the three discharges (`75b13f284`) | **8** | `sh_tag_law_file` `Hexecfail` `Hpanic` |
+
 
 Append one block per stretch, newest last, each with the metric after it.
 
@@ -384,3 +387,153 @@ and the wrapper between them is `sh_exec_sup_echo_wq_holds_at`'s body with
 `(∀ ty, K ty -∗ sh_exec_sup_echo_at (ushs_fd1f ty) ws Q Cr)` as its
 premise, so the wrapper plugs straight in, and its home is a file above
 `iris/UEchoFile.v` (1626) — `UkShRedirBody` is at 1571 and cannot name K1.
+
+
+---
+
+## PROGRAM STREAM, stretch 3 (2026-09-18) — the cat arm is three instructions, the era step, RULING H', and a fifth hang shape
+
+Branch `app-file/sh-redir`, merged from `main` at `2e02980dc` (took main's
+`_CoqProject` and added the one new file as a bare line).  Whole tree green
+on the lane's remote tree (`--proofs -k`, `EXIT=0`, zero `Error`); every
+new result carries `Proof using`; no `Admitted` outside the two skeletons.
+**The metric moved 11 → 8.**
+
+### 1. `Hcat_body` is PROVED, and it was mispriced by two orders of magnitude
+
+The obligation table priced the `[cat f]` arm at 150–300 lines against
+`UkShCd.v`'s mould, on the theory that the arm needs the `cd` walk this
+tree deleted.  It does not.  `cat` begins with `c`, so 0x97a's
+`bne a5,s5` is NOT taken and control enters the `cd` test — and that test
+is three instructions, out of which `cat f` falls at the second:
+
+```
+0x97a  bne a5,s5,92c   -- NOT taken ('c' IS s5)
+0x97e  lbu a5,1(s1)    -- the line's second byte, 'a'
+0x982  bne a5,s3,92c   -- TAKEN ('a' is not 'd')
+```
+
+and 0x92c is the FORK, where the echo and redirect arms already are.  So
+`UkShRedirBody.wp_kshm_body_cat` is the landed body walk with two
+instructions in front of it, and `ushf_body_law_cat` packages it at
+`ushf_body_law ... (fun l => l = LCat)`.  `Hypothesis Hcat_body` is gone
+from the file; what is left over is cat's CHILD, which is the round's own
+`Hchild_cat`, taken as a premise exactly as the redirect arm takes
+`sh_redir_child_law`.  **`UkShCd.wp_kshc_cd` stays deleted.**
+
+The one side condition that cost anything: the second byte's load needs
+`(k + 1 < sh_nbuf)%nat`, and `lia` cannot see it until the line's length
+is a numeral — `assert (Hlen6 : len = 6%nat)` off `Hline`'s second
+conjunct, by `vm_compute`.
+
+### 2. `Hchild_redir`'s ERA STEP, landed as `iris/UShRedirPay.v`
+
+`sh_exec_sup_echo_wq_holds_at` is sh's exec supply when the child's fd 1
+is the CONSOLE: the U-tier rule (`ExecRun.udepw_at_refR_of_sup`) at three
+components.  At the redirect child TWO OF THE THREE ARE UNCHANGED — the
+child still execs /echo, so (P) is `UShEcho.echo_pl` and (W) is the same
+pin resolution — and the third, the image's entry, is echo's AT A FILE,
+i.e. K1's `UEchoFile.efile_image_entry`.
+
+`sh_file_entry` states that entry at exactly K1's premises and takes it as
+a PREMISE rather than importing `UEchoFile`: the round holds the file
+claim and the era's opaque console credential, so it applies K1's lemma in
+one step, and the new file stays out of `UEchoFile`'s cone (the audit
+cones are untouched).  `sh_exec_sup_file_at_holds` is the assembly; it
+compiled green on the first attempt.
+
+Two things had to become parameters for that premise to be fillable, and
+both are named in §3 of the previous stretch:
+
+1. **`UEchoFile.efile_image_entry` now takes the payload.**  It concluded
+   at `fun _ => ef_exit i γo ws` with a vestigial `□ (ef_exit -∗ ef_exit)`
+   premise, which is unusable: `ChildTok.my_pay_agree` makes
+   `ExecEntry.image_entry`'s `Q` slot rigid at what the FORK chose, so no
+   conversion moves an entry from one `Q` to another.  It is now
+   `□ (ef_exit -∗ Q (-1))` and `Q` — the shape `efile_uexec_slot_at` one
+   section up already has.  K1's `Admitted` count is unchanged.
+2. **The entry's `Pay` is the one the U-tier rule LENDS** (`ustd ∗ Cr`),
+   not K1's `ef_pay`.  The wand between them is a premise and it is the
+   ROUND's, because at the file era the deed rides inside the lend.
+
+What is still owed for `Hchild_redir` after this: `Hopen_hand` (the
+kernel's), `Hexecfail` (now discharged), and the one step from the open's
+receipt `K ty` to `sh_file_entry ty` — which is the round's, and it is
+where CAT-ENTRY's deed fraction meets K1's entry.
+
+### 3. RULING H', applied
+
+The round's section now takes `s0 : fst` beside `gen_id`, and
+`sh_hold_at s0 I` carries the deed, the tie (`UCatOut.cat_tie cs0 s0 I s`)
+and the era's pin with NO `f0_lb`.  That is what makes it inhabited at
+`I = []`: `cat_tie [] s0 [] s` is `dst_content s = s0`, so /init
+instantiates at its own deed's content and owes no lower bound.
+`cat_pay` and `sh_prompt_alt_of_deed` are at the same index; the redirect
+child law's string address is renamed `sa`.
+
+`file_link_inst_at s0` at `fwc_*_at s0` is NOT in the tree and is
+LINK-GEN's (FileLinksLine is 2,081 lines and the record has ~60 fields).
+Until it lands the round uses the packed record, which is sound: `f0w` is
+persistent and `FileLinksLine.f0w_agree` identifies any two of them, so
+the index the hold names and the index the credential carries can always
+be identified — one agreement step rather than none.
+
+### 4. Three hypotheses discharged, and why the other five stay
+
+| gone | how |
+|---|---|
+| `sh_tag_law_file` | the era's tag IS `FileOut.ftag`; its second conjunct is the disjunction the law asks for |
+| `Hexecfail` | `UShEchoPay.ush_execfail_law_wq_at_hold` at `FI` and `sh_hold` — the carrier is the record's own, so there is no equation to prove at any era |
+| `Hpanic` | `UShPanic.ush_panic_law_hold_at` at the same two |
+
+Both of the last two take `FileLinks.file_links g` as a PREMISE — a
+resource the round is handed, not a hypothesis.
+
+The five that stay, and what each is blocked on:
+
+- **`Hopen_hand`** — the kernel stream's (`UkFileOpen` + OFF-LINK's publish
+  + F-OPEN-6's device arm).  Unchanged.
+- **`Hchild_cat`** — cat's entry.  CAT-ENTRY-2's.
+- **`Hchild_redir`** — needs `Hopen_hand` and the `K ty → sh_file_entry ty`
+  step; the supply itself is now proved (§2).
+- **`Hchild_echo`** — BLOCKED ON A STATEMENT, and the statement is this
+  stream's: `UkShEcho.sh_exec_sup_echo_wq Wc` quantifies its box over every
+  `I` with `EchoDisc.line_ok (last_ws I)`, and at the file era that admits
+  the REDIRECT lines too (`echo a > f` is `line_ok`: word 0 is `echo` and
+  the `>` and the name are just more words).  The discharger
+  (`UShEchoPay.sh_exec_sup_echo_wq_holds_at`) asks for
+  `∀ I, line_ok (last_ws I) → ck_lineok (sk_cur St) I`, and at the file
+  instance `ck_lineok` is `fline I = LEcho (last_ws I)` — FALSE at a
+  redirect line.  **The guard must become a parameter**
+  (`sh_exec_sup_echo_wq_at D`), and then the consumer
+  (`UkShEcho.ushf_child_law_holds`) has to prove `D I` from its own line
+  premise, i.e. `ush_line_is (last_ws I) g 0 len → fline I = LEcho (last_ws I)`
+  — which is `UkShRedirLine.ushs_line_is_nosym` plus `parse_line`'s
+  `strip_gtf` branch.  Priced: one additive `_at` in `UkShEcho`, one pure
+  lemma in `FileDisc`/`UkShRedirLine`, and the same `_at` on
+  `ushf_child_law_holds` for the diagnostic (see below).
+- **`sh_child_law_file` / `sh_round_holds_file`** — the two `Admitted`s.
+  `sh_round_holds_file` is now ONE application away in shape:
+  `UShRest.sh_rest_holds_at` is the whole round at a generic era, but its
+  body law is echo's, so the file era needs the same assembly at
+  `UkShRedirBody.ushf_rest_of_body_file` — and its conclusion is at
+  `ush_rest_l_at ... ush_line_file`, which is STRONGER than the landed
+  `ush_rest_l` the statement names today.  That statement should move.
+  `sh_child_law_file` additionally needs `ushf_child_law_holds` to take
+  the diagnostic's carrier as a parameter (LINK-GEN-4's open item), since
+  it asks for `ush_execfail_law_wq` at the CONSTANT `alt_execfail` and the
+  file has `fexfb LCat = alt_execcat`.
+
+### 5. A FIFTH SILENT-HANG SHAPE (durable-notes material)
+
+**A statement that leaves `uprogSG` implicit, discharged by a lemma at
+`uprogSG_free`, hangs.**  `Hypothesis Hexecfail : ⊢ ush_execfail_law_wq_at
+… Wcf` resolved `PS` to the ambient instance; the discharge is at
+`uprogSG_free` (what `UShEchoPay`'s supply and `sh_round_holds_file`'s own
+conclusion are at), so the two are not the same statement — and the
+conversion between two deposit instances DOES NOT COME BACK.  `iApply` and
+`exact` hang alike, 10+ minutes with no output and no error.  The remedy is
+one annotation in the STATEMENT, `(PS := uprogSG_free)`, after which both
+proofs close in milliseconds.  Localised by admitting one of the two and
+re-running `--check-proof`; note that `--check` (vos) passes either way,
+because it skips the proof — a statement-only check cannot see this.

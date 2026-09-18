@@ -162,6 +162,14 @@ Section stagerec.
     ck_ok : ck_stg -> list (list (bv 8)) -> Prop;
     (* ...and the bytes the program's own alternative writes *)
     ck_alt : list (list (bv 8)) -> list (bv 8);
+    (* THE INPUTS THIS CURSOR IS ABOUT (the program stream).  [ck_alt] is
+       a function of the LINE alone, and at an era with more than one line
+       shape that is only true of SOME inputs: the file application's
+       redirect child writes nothing to the console and its [cat] child
+       writes cat's own bytes, so [line_alts_of ws !!! 0] is the block
+       only at an [LEcho] line.  echo's era has one shape and takes
+       [fun _ => True]. *)
+    ck_lineok : list (bv 8) -> Prop;
     (* THE CURSOR: [p] of those bytes are out, and the era's bundle says
        so -- or the era is tainted (the disjunction is inside). *)
     ck_cur : nat -> era_pins -> ck_stg -> nat -> iProp Σ;
@@ -182,6 +190,7 @@ Section stagerec.
        cursor at offset zero, and -- persistently, so that it survives the
        exit wand's box -- what the block's END pays. *)
     sk_lend_stage : forall (k : nat) (v : era_pins) (I : list (bv 8)),
+      ck_lineok L sk_cur I ->
       ⊢ lk_lend L k v I -∗
         (∃ st : ck_stg L sk_cur,
            ⌜ck_ok L sk_cur st (last_ws I)⌝
@@ -200,7 +209,10 @@ Section stagerec.
     (* ...AND THAT ALTERNATIVE ENDS WITH THE SHELL'S PROMPT, which is what
        makes the block a BOUNDARY credential when the child exits
        ([LinkRec.lk_lcred_of_post_a]).  echo's is [0 < 3]. *)
-    sk_apr0 : forall I : list (bv 8), lk_apr L I 0%nat;
+    (* ...AND IT IS THE SAME GUARD (the program stream): at an era with
+       more than one line shape, alternative 0 is admissible only at the
+       lines the cursor is about. *)
+    sk_apr0 : forall I : list (bv 8), ck_lineok L sk_cur I -> lk_apr L I 0%nat;
   }.
 
 End stagerec.
@@ -210,11 +222,12 @@ Global Arguments StageRec {_ _ _} _.
 Global Arguments ck_stg {_ _ _ _} _.
 Global Arguments ck_ok {_ _ _ _} _ _ _.
 Global Arguments ck_alt {_ _ _ _} _ _.
+Global Arguments ck_lineok {_ _ _ _} _ _.
 Global Arguments ck_cur {_ _ _ _} _ _ _ _ _.
 Global Arguments ck_cur_tl {_ _ _ _} _ _ _ _ _.
 Global Arguments ck_step {_ _ _ _} _ _ _ _ _ _ _ _.
 Global Arguments sk_cur {_ _ _ _} _.
-Global Arguments sk_lend_stage {_ _ _ _} _ _ _ _.
+Global Arguments sk_lend_stage {_ _ _ _} _ _ _ _ _.
 Global Arguments sk_apr0 {_ _ _ _} _ _.
 Global Arguments MkCurRec {_ _ _} _.
 Global Arguments MkStageRec {_ _ _} _.
@@ -253,7 +266,7 @@ Section cur_hold.
   Qed.
 
   Definition cur_hold : CurRec L :=
-    MkCurRec L (ck_stg C) (ck_ok C) (ck_alt C)
+    MkCurRec L (ck_stg C) (ck_ok C) (ck_alt C) (ck_lineok C)
       (fun k v st p => (ck_cur C k v st p ∗ R)%I)
       ch_cur_tl ch_step.
 
@@ -337,6 +350,7 @@ Section echo_stage_inst.
     MkCurRec LE echo_stg
       (fun st ws => echo_stage (es_ps st) (es_cs st) (es_I st) ws (es_P st))
       (fun ws => line_alts_of ws !!! 0%nat)
+      (fun _ => True)
       echo_cur ei_cur_tl ei_step.
 
   (* THE LEND, OPENED.  [EchoLinksLine.ewc_blk_0_lend] gives the turn
@@ -344,6 +358,7 @@ Section echo_stage_inst.
      [ewc_post_of_ech] is what the block's end pays, and it needs nothing
      linear, so it goes under the box. *)
   Local Lemma ei_lend_stage (k : nat) (v : era_pins) (I : list (bv 8)) :
+    True ->
     ⊢ echo_lend T v I -∗
       (∃ st : echo_stg,
          ⌜echo_stage (es_ps st) (es_cs st) (es_I st) (last_ws I) (es_P st)⌝
@@ -354,6 +369,7 @@ Section echo_stage_inst.
               EchoLinksLine.ewc_post T v I 0%nat))
       ∨ T.
   Proof using HPT.
+    intros _.
     rewrite /echo_lend. iIntros "[Hl | #HT]"; last by iRight.
     iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
     destruct (EchoLinksLine.wr_blk_t_stage ps cs I P Hw)
@@ -375,8 +391,8 @@ Section echo_stage_inst.
       iExact "Hc".
   Qed.
 
-  Local Lemma ei_apr0 (I : list (bv 8)) : (0 < 3)%nat.
-  Proof using . lia. Qed.
+  Local Lemma ei_apr0 (I : list (bv 8)) : True -> (0 < 3)%nat.
+  Proof using . intros _. lia. Qed.
 
   Definition echo_stage_inst : StageRec LE :=
     MkStageRec LE echo_cur_inst ei_lend_stage ei_apr0.

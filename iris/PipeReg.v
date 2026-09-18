@@ -63,7 +63,7 @@ Require Import Xv6G.             (* the ONE ghost bundle: [xv6_pipe] is how
                                     file's terms elaborate at the same
                                     instance path as [SpecFileclose]'s *)
 Require Import PipeNames.        (* [pipe_names] / [pn_queue] / [pipe_st] *)
-Require Import PipeQueue.        (* [pipe_cpay] / [pipe_clink] / [pipe_taint_cred] *)
+Require Import PipeQueue.        (* [pipe_cpay] / [pipe_clink]; the taint is [app_taint] *)
 Require Import FdSlots.          (* [fdstate] / [fdst_nopipe] *)
 Require Import SpecFileclose.    (* [fileclose_cpay] / [fileclose_cpays] *)
 

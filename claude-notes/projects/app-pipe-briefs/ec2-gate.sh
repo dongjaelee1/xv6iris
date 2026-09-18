@@ -55,7 +55,7 @@ rm -f /tmp/gate-build-full.log
 echo "BUILD at $(git rev-parse --short HEAD)"
 rc=0
 for d in model-xv6iris kernel-rocq user-rocq iris; do
-  ( cd $d && rocq makefile -f _CoqProject -o CoqMakefile >/dev/null 2>&1 && make -f CoqMakefile -j30 ) >> /tmp/gate-build-full.log 2>&1 \
+  ( cd $d && rocq makefile -f _CoqProject -o CoqMakefile >/dev/null 2>&1 && make -f CoqMakefile -j30 -k ) >> /tmp/gate-build-full.log 2>&1 \
     || { rc=$?; echo "build FAILED in $d rc=$rc"; break; }
   echo "built $d"
 done

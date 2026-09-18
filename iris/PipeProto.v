@@ -851,7 +851,7 @@ Section PipeProto.
     pipe_wpost Pt (pn_queue γp) M ua (pipe_wQ pn L c) (pipe_wQe pn L c)
       Rk n r -∗
     (∃ k : nat, ⌜(k <= n)%nat⌝ ∗ pipe_wQ pn L c k)
-    ∨ (pipe_taint_cred
+    ∨ (app_taint
        ∗ pipe_wpay (pn_queue γp) M ua (pipe_wQ pn L c) (pipe_wQe pn L c) n).
   Proof using .
     iIntros "H". iDestruct (pipe_wpost_cursor with "H") as "[H | H]";
@@ -877,7 +877,7 @@ Section PipeProto.
             /\ r = (mword_of_int (Z.of_nat d) : mword 64)⌝
            ∗ (⌜d = 0%nat⌝ -∗ eof_shot pn (take (c + length acc)%nat L)))
           ∨ pipe_rstop_noobs Pt addr Rk n d r))
-    ∨ (pipe_taint_cred
+    ∨ (app_taint
        ∗ pipe_rpay (pn_queue γp) (pipe_rQ pn L c) (pipe_rQe pn L c) n).
   Proof using .
     iIntros "H". iDestruct (pipe_rpost_img_cursor with "H") as "[H | H]";

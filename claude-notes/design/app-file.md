@@ -584,6 +584,16 @@ unowned critical item (WRITE-RELAY-3's `TB` guard).  RULES, replacing
   the lowest closed fd (fixed at 6104b5930); and `UkFileOpen` must take
   `uprogSG` as a section parameter (its corollaries were at the ambient
   `uprogSG_gen`, unusable by sh's child at `uprogSG_free`).
+- RULING RECEIPT-IN-CR (2026-09-18, PROGRAM-STREAM stretch 7): the open's
+  receipt `K ty` (the deed at `f`, the offset half) is LINEAR and the
+  child's exec supply is a `□` box, so `K ty -∗ sh_exec_sup_echo_at …` is
+  unfillable.  The receipt rides in the box's own `Cr`, handed in per
+  call: `∀ ty, sh_exec_sup_echo_at (ushs_fd1f ty) ws Q (Wc I 3 ∗ K ty)` —
+  the deed went into the open out of the lend and comes back in the
+  receipt, so the exec carries what is left of the lend beside it.  The
+  inode identity (`i` not an image inode) is the claim's:
+  `FileDeltas.f_inum_not_pinned` by row LENGTH, read through
+  `file_deed_inum_acc` / `redir_K_inum`.
 - RULING READ-HELD (2026-09-18, KERNEL-STREAM §3a): the read's hand mode
   is the WRITE side's landed shape mirrored — `file_read_piece_adv` as
   `awrite_full_adv`'s twin (the half in the closure, agree/advance/return

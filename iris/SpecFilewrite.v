@@ -655,50 +655,48 @@ Section SpecFilewrite.
         ∗ write_post_fail_at Γ i γo P n M ua Q))%I.
 
   (* =================================================================== *)
-  (*  THE HELD ROW'S ARMS (lane OFF-LINK-4; design/app-file.md SS3, SS3.5)  *)
+  (*  THE HELD ROW'S ARMS (lanes OFF-LINK-4/5; design/app-file.md SS3,      *)
+  (*  SS3.5)                                                               *)
   (* =================================================================== *)
   (* WHAT A HELD DESCRIPTOR'S WRITE PAYS, and it is the owner's principle
-     spelled at this coupling.  The LINK arm: the caller lends the kernel
-     its own half of the offset shadow ([UserOff.uoff]) at the position it
-     believes the file is at, and its chain is the ANCHORED one
-     ([FsAbsWriteFire.awrite_chain_anch]) -- the kernel learns [off = off0]
-     by [UserOff.uoff_agree_k] against the box's half and RELAYS it into
-     each node, which is design SS3's RELAY 2 and the whole reason the half
-     is in the kernel's hands rather than the node's closure.  The TAINT
+     spelled at this coupling.  The LINK arm: the caller's chain is the
+     CLIENT-ADVANCED one ([FsAbsWriteFire.awrite_chain_adv]), whose nodes
+     hand the box's arm back ADVANCED BY THE CHUNK.  Its half is in the
+     NODE'S OWN CLOSURE, not in the kernel's hands -- so the node reads the
+     offset it is fired at off that half ([UserOff.uoff_agree_k] against the
+     arm it was lent), INSIDE its own [forall off], and nothing has to be
+     relayed in from outside.  (Lane OFF-LINK-4 relayed it, at the anchored
+     chain; lane OFF-LINK-5 found the half belongs in the closure, and with
+     it the anchor, the kernel's carried [uoff] and the fire's whole
+     supplier step all go away -- FsAbsWriteFire's section 2b.)  The TAINT
      arm: today's plain chain beside [app_taint], which is what the generic
      tier pays with (the survey's Fact A) and what a disconnected object
      leaves.
+
+     AND THERE IS NO SECOND POST.  What the caller gets back that a parked
+     one does not -- its own half at the position the file reached -- rides
+     in ITS OWN CURSOR [Q], which is where its nodes put it, so
+     [filewrite_extra] is the landed [write_arms_at] at BOTH modes and no
+     consumer above the fire learns which row it was.
 
      THE MATCH IS OUTSIDE THE [∀ P] on both arms, so WRITE-RELAY-3's guard
      ([∀ P, ⌜TB P⌝ -∗]) goes in front of each chain without restating
      this. *)
   Definition filewrite_in_held (i : Z) (γo : gname) (n : Z)
       (M : gmap Z (bv 8)) (ua : mword 64) (Q : nat -> iProp Σ) : iProp Σ :=
-    ((∃ off0 : nat,
-        uoff γo off0
-        ∗ ∀ P : uptd, awrite_chain_anch (fs_gamma_L fsc_fs) appE i γo M ua P n
-                        Q 0%nat (wchunks n) off0)
+    ((∀ P : uptd, awrite_chain_adv (fs_gamma_L fsc_fs) appE i γo M ua P n
+                    Q 0%nat (wchunks n))
      ∨ (awrite_chain (fs_gamma_L fsc_fs) appE i γo M ua n Q 0%nat (wchunks n)
         ∗ app_taint))%I.
 
-  (* ...AND WHAT IT GETS BACK: [PipeQueue.pipe_wpost]'s shape at this
-     coupling.  On the FIRED arm the caller's cursor comes back with the
-     offset it was anchored at CONFIRMED ([⌜off0 = off0⌝ is the kernel's own
-     agreement, reported) and its half ADVANCED by what landed; on the other
-     the object was disconnected under it, the half comes back UNMOVED and
-     the taint says why.  [off0] is the same existential the payment named,
-     which is what lets a caller line the two up. *)
-  Definition write_held_post (γo : gname) (off0 : nat) (d : nat) : iProp Σ :=
-    ((⌜(off0 + d)%nat = (off0 + d)%nat⌝ ∗ uoff γo (off0 + d))
-     ∨ (uoff γo off0 ∗ app_taint))%I.
-
-  Lemma write_held_post_fired γo (off0 d : nat) :
-    uoff γo (off0 + d) -∗ write_held_post γo off0 d.
-  Proof using . iIntros "H". iLeft. iSplitR; [done |]. iExact "H". Qed.
-
-  Lemma write_held_post_taint γo (off0 d : nat) :
-    uoff γo off0 -∗ app_taint -∗ write_held_post γo off0 d.
-  Proof using . iIntros "H #T". iRight. iFrame "H". iExact "T". Qed.
+  (* [write_held_post] IS GONE (lane OFF-LINK-5), with its two constructors.
+     It said "the caller's half comes back at [off0 + d], or the taint says
+     why", and it was unstatable at the shape it was landed in: its [off0]
+     was the payment's EXISTENTIAL, and a caller that has handed the half in
+     cannot line the post's witness up with the one it named.  At the
+     client-advanced chain the question does not arise -- the half never
+     leaves the client's closure, so what comes back is whatever the
+     client's own nodes put in [Q], at the position they moved it to. *)
 
   (* the arms refine the landed blanket: each pins [r] *)
   Lemma write_arms_at_ret Γ (i : Z) (γo : gname) (P : uptd) (n : Z)
@@ -1002,15 +1000,15 @@ Section SpecFilewrite.
      that same cursor; the console arm's NEG disjunct is pure; every other
      arm is [emp]. *)
   (* ...and the HELD row's, at the same count: [wchunks n] is 0 there, so the
-     anchored chain IS the cursor and the caller's half is simply dropped --
-     a negative request moves no offset (lane OFF-LINK-4). *)
-  Lemma write_arms_at_neg_held Γ i γo (P : uptd) n M ua Q (off0 : nat) :
+     client-advanced chain IS the cursor -- a negative request moves no
+     offset (lanes OFF-LINK-4/5). *)
+  Lemma write_arms_at_neg_held Γ i γo (P : uptd) n M ua Q :
     (n < 0)%Z ->
-    awrite_chain_anch Γ appE i γo M ua P n Q 0%nat (wchunks n) off0 -∗
+    awrite_chain_adv Γ appE i γo M ua P n Q 0%nat (wchunks n) -∗
     write_arms_at Γ i γo P n M ua Q (mword_of_int (-1) : mword 64).
   Proof using .
     intros Hn. iIntros "Hc".
-    iDestruct (awrite_chain_anch_cursor with "Hc") as "Hc".
+    iDestruct (awrite_chain_adv_cursor with "Hc") as "Hc".
     rewrite /write_arms_at. iRight.
     iSplitR; [done |]. rewrite /write_post_fail_at.
     rewrite (wchunks_nonpos n ltac:(lia)).
@@ -1051,12 +1049,11 @@ Section SpecFilewrite.
     destruct ty as [i γo om | γp | mj]; rewrite /filewrite_in /filewrite_extra.
     - destruct om as [|].
       + iIntros "Hc". by iApply (write_arms_at_neg with "Hc").
-      + (* the HELD row's two arms: the link's anchored cursor, or the
-           plain chain beside the taint (lane OFF-LINK-4) *)
+      + (* the HELD row's two arms: the link's own cursor, or the plain
+           chain beside the taint (lanes OFF-LINK-4/5) *)
         rewrite /filewrite_in_held.
-        iIntros "[(%off0 & _ & Hc) | [Hc _]]".
-        * iApply (write_arms_at_neg_held (fs_gamma_L fsc_fs) i γo P n M ua Q
-                    off0 Hn).
+        iIntros "[Hc | [Hc _]]".
+        * iApply (write_arms_at_neg_held (fs_gamma_L fsc_fs) i γo P n M ua Q Hn).
           iApply ("Hc" $! P).
         * by iApply (write_arms_at_neg with "Hc").
     - (* a negative request never reaches the pipe: the payment comes back

@@ -2255,13 +2255,14 @@ Section ProofFileread.
              (* THE CALLER'S ONE PIECE, still paired with its refund: the
                 fire below takes the pair and spends the AU side, since the
                 refund's one arm (the sign guard) is behind us. *)
-             iDestruct (fileread_in_inode_of st wbx (bv_unsigned inm) γo0 n Fr Rd
+             iDestruct (fileread_in_inode_of st OffParked wbx (bv_unsigned inm) γo0 n Fr Rd
                           _ _ _ _ Hstm with "Hau HP") as "[HP Hau]".
-             (* ...and the descriptor's offset row, which is what the FIRE
-                advances [f->off] out of (the piece-shape rule: the client
-                hands the shadow back unmoved). *)
-             iDestruct (foff_row_inode_of st true wbx (bv_unsigned inm) γo0
-                          Hstm with "Hfoff") as "#Hoinv".
+             (* ...AND THE DESCRIPTOR'S OFFSET ROW ITSELF (lane OFF-LINK-5),
+                which is what the mode-keyed fire reads: at a PARKED row it
+                IS [OffGv.off_user_inv], which the fire opens to advance
+                [f->off]; at a HELD one it is [emp] and the client's own
+                node does the moving. *)
+             iDestruct "Hfoff" as "#Hfrow0".
              assert (Hibcov : IBLOCK inm icfg_ist ∈ fsc_cov)
                by (apply Hgeo; exact Hinlt).
              iDestruct (ic_escrows_acc2
@@ -2847,14 +2848,15 @@ Section ProofFileread.
                 iEval (rewrite Htgt54) in "Hpc".
                 iApply fupd_wp.
                 (* THE FIRE, at advance 0: the offset did not move *)
-                iMod (arf_read_fire fsc_fs ⊤ (DfracOwn (1/4)) Fr
+                iMod (arf_read_fire_om OffParked fsc_fs ⊤ (DfracOwn (1/4)) Fr
                         (bv_unsigned inm) γo0 (Z.to_nat (bv_unsigned v)) 0%nat
-                        (era_node dnl bml data)
+                        true wbx (era_node dnl bml data)
                         ltac:(solve_ndisj) Hoffcap
                         (arf_size_ok_era dnl bml data Hszn)
                         (arf_era_typed dnl bml data Hdty)
-                        with "[] Hoinv [Hau] [Htop] [Hgv]") as "(Htop & Hgv & Hfired)";
-                  [iApply (ireg_inv_ftop with "Hireg") | iExact "Hau"
+                        with "[] [Hfrow0] [Hau] [Htop] [Hgv]") as "(Htop & Hgv & Hfired)";
+                  [iApply (ireg_inv_ftop with "Hireg")
+                  | rewrite -Hstm; iExact "Hfrow0" | iExact "Hau"
                   | iExact "Htop" | rewrite Hoffz; iExact "Hgv" |].
                 iDestruct "Hfired" as (avf) "[%Hrowf HΦf]".
                 assert (Hpref : ard_pre avf (bv_unsigned inm)
@@ -3055,7 +3057,7 @@ Section ProofFileread.
                    copy died -- and readi's zero-count return is an ordinary
                    ok arm at the exact count. *)
                 { iSplitR; [iPureIntro; exact Hretok |].
-                  iApply (fileread_extra_inode_of _ _ st wbx (bv_unsigned inm) γo0
+                  iApply (fileread_extra_inode_of _ _ st OffParked wbx (bv_unsigned inm) γo0
                             n Fr Rd _ _ _ _ _ _ _ Hstm with "HP").
                   destruct Hskip as [[H1 Hwhy1] | [H1 Ht0]].
                   { rewrite /read_arms /read_post_fail. iRight.
@@ -3199,14 +3201,15 @@ Section ProofFileread.
                 iApply fupd_wp.
                 (* THE FIRE, at advance [tot]: the bytes and the offset move
                    in the one fupd *)
-                iMod (arf_read_fire fsc_fs ⊤ (DfracOwn (1/4)) Fr
+                iMod (arf_read_fire_om OffParked fsc_fs ⊤ (DfracOwn (1/4)) Fr
                         (bv_unsigned inm) γo0 (Z.to_nat (bv_unsigned v)) tot
-                        (era_node dnl bml data)
+                        true wbx (era_node dnl bml data)
                         ltac:(solve_ndisj) Hoffcap
                         (arf_size_ok_era dnl bml data Hszn)
                         (arf_era_typed dnl bml data Hdty)
-                        with "[] Hoinv [Hau] [Htop] [Hgv]") as "(Htop & Hgv & Hfired)";
-                  [iApply (ireg_inv_ftop with "Hireg") | iExact "Hau"
+                        with "[] [Hfrow0] [Hau] [Htop] [Hgv]") as "(Htop & Hgv & Hfired)";
+                  [iApply (ireg_inv_ftop with "Hireg")
+                  | rewrite -Hstm; iExact "Hfrow0" | iExact "Hau"
                   | iExact "Htop" | rewrite Hoffz; iExact "Hgv" |].
                 iDestruct "Hfired" as (avf) "[%Hrowf HΦf]".
                 assert (Hpref : ard_pre avf (bv_unsigned inm)
@@ -3408,7 +3411,7 @@ Section ProofFileread.
                 (* THE SUCCESS ARM, at the exact count: [Htoteq] is readi's
                    own equation, carried down by [Hcase]. *)
                 { iSplitR; [iPureIntro; exact Hretok2 |].
-                  iApply (fileread_extra_inode_of _ _ st wbx (bv_unsigned inm) γo0
+                  iApply (fileread_extra_inode_of _ _ st OffParked wbx (bv_unsigned inm) γo0
                             n Fr Rd _ _ _ _ _ _ _ Hstm with "HP").
                   rewrite /read_arms /read_post_ok. iLeft.
                   iExists avf, (Z.to_nat (bv_unsigned v)),

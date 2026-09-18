@@ -262,6 +262,61 @@ Section ReadFire.
        off_ret γo off d ∗
        Φ (abs_view I) off a d)%I.
 
+  (* =================================================================== *)
+  (*  THE CLIENT-ADVANCED COMMIT (lane OFF-LINK-5)                        *)
+  (* =================================================================== *)
+  (* THE HELD ROW'S COMMIT, AND WHY IT NEEDS NO SUPPLIER AT ALL.  A held
+     descriptor's user half is NOT in the kernel's hands and NOT in the
+     row's invariant ([FdSlots.foff_row] at [OffHeld] is [emp]): it is in
+     the CLIENT'S OWN CLOSURE, which is where cat keeps it between turns
+     ([UCatKernel.cat_hold_at]'s [UserOff.uoff]).  So the client is the only
+     party that can move the shadow, and this commit says it does: the half
+     goes in at [off] and comes back ADVANCED BY THE COUNT.
+
+     THAT IS NOT A WEAKENING OF THE PIECE-SHAPE RULE
+     (design/fs-syscall-specs.md section 4) BUT ITS OTHER MODE.  The rule
+     forbids asking an ARBITRARY client to return a kernel-owned ghost
+     moved; this piece is paid only by a client that HOLDS the other half,
+     and a client that does not takes the taint arm of the held input
+     ([SpecFileread.fileread_in]) instead.  Inside the node the client
+     reads [off] off the lent half ([UserOff.uoff_agree_k]) -- which is the
+     equation lane OFF-LINK-4 relayed in from outside at the anchored write
+     node, now derived where it belongs, because the half is an ARGUMENT of
+     the node rather than a resource of the kernel's and therefore sits
+     INSIDE the node's own [forall off].
+
+     AND IT IS STRICTLY STRONGER than [aread_commit_at]: [OffGv.off_ret]'s
+     advanced arm is one of the two the plain commit may answer with, so
+     [aread_commit_at_of_adv] below converts one into the other and no
+     consumer of the landed shape has to change. *)
+  Definition aread_commit_adv Γ (E : coPset) (i : Z) (γo : gname)
+      (Φ : aview -> nat -> anode -> nat -> iProp Σ) : iProp Σ :=
+    (∀ (I : gmap Z fs_node) (off : nat) (a : anode) (d : nat),
+       ⌜ard_pre (abs_view I) i off a⌝ -∗
+       ghost_map_auth (γtop Γ) (1/2) I -∗ off_link γo (Z.of_nat off) ={E}=∗
+       ghost_map_auth (γtop Γ) (1/2) I ∗
+       off_link γo (Z.of_nat (off + d)) ∗
+       Φ (abs_view I) off a d)%I.
+
+  Lemma aread_commit_at_of_adv Γ E i γo Φ :
+    aread_commit_adv Γ E i γo Φ -∗ aread_commit_at Γ E i γo Φ.
+  Proof using .
+    rewrite /aread_commit_adv /aread_commit_at.
+    iIntros "Hcm" (I off a d) "%Hpre Ha Hk".
+    iMod ("Hcm" $! I off a d with "[//] Ha Hk") as "(Ha & Hk & HΦ)".
+    iModIntro. iFrame "Ha HΦ". rewrite /off_ret.
+    iExists (Z.of_nat (off + d)). iFrame "Hk". by iRight.
+  Qed.
+
+  (* ...and the same at the PIECE, which is where every consumer of read's
+     input reads it ([SpecFileread.fileread_in]'s held arm). *)
+  Lemma pf_at_aread_commit_at_of_adv Γ E i γo
+      (F : pfam Σ (aview -> nat -> anode -> nat -> iProp Σ)) :
+    pf_at (aread_commit_adv Γ E i γo) F -∗ pf_at (aread_commit_at Γ E i γo) F.
+  Proof using .
+    iApply pf_at_mono. iIntros "H". iApply (aread_commit_at_of_adv with "H").
+  Qed.
+
   (* satisfiability, FROM NOTHING: the borrow comes back exactly as it was
      lent, so the trivial-receipt commit costs its client not one resource
      -- which is what makes read's bundle payable at every key. *)
@@ -578,6 +633,52 @@ Section ReadFire.
     iSplitR; [by iPureIntro |]. iExact "HΦ".
   Qed.
 
+  (* THE FIRE WITH NO SUPPLIER AT ALL (lane OFF-LINK-5), which is what a
+     HELD row's read is.  There is no third supplier here: the client's
+     commit ([aread_commit_adv]) hands the box's arm back ALREADY
+     ADVANCED, so the step [arf_read_fire_gen] spends its [off_supply] on
+     has nothing left to do and the lemma has no user-side premise.  That
+     is the whole difference between mode park and mode hand at this
+     coupling -- the kernel moves the shadow out of the row's invariant in
+     one, the client moves it inside its own node in the other -- and it is
+     why a held descriptor needs neither [FdSlots.foff_row] to say anything
+     nor the kernel to carry a [UserOff.uoff] across the call. *)
+  Lemma arf_read_fire_adv (γfs : fs_names) (E : coPset) (dq : dfrac)
+      (F : pfam Σ (aview -> nat -> anode -> nat -> iProp Σ)) (i : Z) (γo : gname)
+      (off d : nat) (n : fs_node) :
+    ↑ftopN ∪ ↑appN ⊆ E ->
+    (off <= MAXFILE * BSIZE)%nat ->
+    anode_size_ok (abs_row n) ->
+    fn_type n <> 0 ->
+    ftop_inv γfs -∗
+    pf_at (aread_commit_adv (fs_gamma_L γfs) appE i γo) F -∗
+    top_frag_q (fs_gamma_L γfs) dq i n -∗
+    off_link γo (Z.of_nat off) ={E}=∗
+      top_frag_q (fs_gamma_L γfs) dq i n
+      ∗ off_link γo (Z.of_nat (off + d))
+      ∗ ∃ av : aview,
+          ⌜arow_at av i (abs_row n)⌝ ∗ F.(pf_recv) av off (abs_row n) d.
+  Proof using .
+    intros HE Hoff Hsz Hnz. iIntros "#Hi Hcm Hf Hg".
+    iDestruct (pf_at_au with "Hcm") as "Hcm".
+    rewrite /top_frag_q /fs_gamma_L /=.
+    iMod (inv_acc E ftopN with "Hi") as "[Hbody Hclose]"; [solve_ndisj |].
+    iDestruct "Hbody" as ">Hb".
+    iDestruct "Hb" as (I A) "(Hta & Hla & Hpark & %Hcl)".
+    iDestruct (ghost_map_lookup with "Hta Hf") as %Hlk.
+    assert (Hrow : arow_at (abs_view I) i (abs_row n))
+      by exact (abs_view_arow I i n Hlk Hnz).
+    assert (Hpre : ard_pre (abs_view I) i off (abs_row n))
+      by (split; [exact Hrow | split; [exact Hoff | exact Hsz]]).
+    iMod (fupd_mask_subseteq appE) as "Hcl2"; [rewrite /appE; solve_ndisj |].
+    iMod ("Hcm" $! I off (abs_row n) d with "[//] Hta Hg") as "(Hta & Hg & HΦ)".
+    iMod "Hcl2".
+    iMod ("Hclose" with "[Hta Hla Hpark]") as "_".
+    { iNext. rewrite /ftop_body. iExists I, A. by iFrame. }
+    iModIntro. iFrame "Hf Hg". iExists (abs_view I).
+    iSplitR; [by iPureIntro |]. iExact "HΦ".
+  Qed.
+
   (* SUPPLIER 1 -- THE PARKED PATH, verbatim the statement this lemma had
      before RD-1: the generic user-mode WP's process holds only the row's
      invariant, and the fire opens it.  [ProofFileread]'s two call sites
@@ -634,6 +735,64 @@ Section ReadFire.
     iApply (arf_read_fire_gen γfs E dq (uoff γo (off + d) ∨ (uoff γo off ∗ app_taint))%I F i γo off d n
               HE Hoff Hsz Hnz with "Hi [Hu] Hcm Hf Hg").
     iApply (off_supply_held E γo off d with "Hu").
+  Qed.
+
+  (* =================================================================== *)
+  (*  THE READ'S INPUT AND ITS FIRE, KEYED ON THE ROW'S MODE               *)
+  (*  (lane OFF-LINK-5)                                                    *)
+  (* =================================================================== *)
+  (* WHAT A DESCRIPTOR'S READ HANDS IN, AT ITS ROW'S OFFSET MODE.  A PARKED
+     row pays what it always paid.  A HELD one pays [link ∨ taint]: the LINK
+     is the client-advanced commit, whose closure holds the program's own
+     half and whose phase 2 hands the box's arm back ADVANCED; the TAINT is
+     the landed commit beside [app_taint], which is what the generic tier
+     pays (the survey's Fact A) and what a disconnected object leaves. *)
+  Definition aread_in_om (om : offmode) Γ (E : coPset) (i : Z) (γo : gname)
+      (F : pfam Σ (aview -> nat -> anode -> nat -> iProp Σ)) : iProp Σ :=
+    match om with
+    | OffParked => pf_at (aread_commit_at Γ E i γo) F
+    | OffHeld => (pf_at (aread_commit_adv Γ E i γo) F
+                  ∨ (pf_at (aread_commit_at Γ E i γo) F ∗ app_taint))%I
+    end.
+
+  (* ...AND THE ONE FIRE THE WALK CALLS, which is where the mode is read and
+     the only place it is.  The supplier comes off the row itself
+     ([FdSlots.foff_row], which IS [OffGv.off_user_inv] at a parked inode row
+     and [emp] at a held one), off the taint on the disconnected arm, or --
+     on the LINK arm -- not at all, because the client's own node moved the
+     shadow.  Its post is [arf_read_fire]'s letter for letter, so
+     [ProofFileread]'s two call sites do not change shape. *)
+  Lemma arf_read_fire_om (om : offmode) (γfs : fs_names) (E : coPset) (dq : dfrac)
+      (F : pfam Σ (aview -> nat -> anode -> nat -> iProp Σ)) (i : Z) (γo : gname)
+      (off d : nat) (rw ww : bool) (n : fs_node) :
+    ↑ftopN ∪ ↑appN ⊆ E ->
+    (off <= MAXFILE * BSIZE)%nat ->
+    anode_size_ok (abs_row n) ->
+    fn_type n <> 0 ->
+    ftop_inv γfs -∗ foff_row (FdOpen rw ww (FdInode i γo om)) -∗
+    aread_in_om om (fs_gamma_L γfs) appE i γo F -∗
+    top_frag_q (fs_gamma_L γfs) dq i n -∗
+    off_link γo (Z.of_nat off) ={E}=∗
+      top_frag_q (fs_gamma_L γfs) dq i n
+      ∗ off_link γo (Z.of_nat (off + d))
+      ∗ ∃ av : aview,
+          ⌜arow_at av i (abs_row n)⌝ ∗ F.(pf_recv) av off (abs_row n) d.
+  Proof using .
+    intros HE Hoff Hsz Hnz.
+    assert (Hfoff : ↑foffN ⊆ E).
+    { etrans; [| exact HE]. rewrite /foffN /appN. solve_ndisj. }
+    destruct om; rewrite /aread_in_om.
+    - iIntros "#Hi #Hrow Hcm Hf Hg".
+      iApply (arf_read_fire γfs E dq F i γo off d n HE Hoff Hsz Hnz
+                with "Hi [Hrow] Hcm Hf Hg").
+      iApply (foff_row_inode_of _ rw ww i γo eq_refl with "Hrow").
+    - iIntros "#Hi _ [Hcm | [Hcm #Ht]] Hf Hg".
+      + iApply (arf_read_fire_adv γfs E dq F i γo off d n HE Hoff Hsz Hnz
+                  with "Hi Hcm Hf Hg").
+      + iMod (arf_read_fire_gen γfs E dq True F i γo off d n HE Hoff Hsz Hnz
+                with "Hi [] Hcm Hf Hg") as "(Hf & Hg & _ & Hav)".
+        { iApply (off_supply_taint E γo off d with "Ht"). }
+        iModIntro. iFrame "Hf Hg Hav".
   Qed.
 
   (* the [DfracOwn 1] reading, which is the spelling fileread holds

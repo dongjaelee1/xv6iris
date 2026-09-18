@@ -10460,7 +10460,6 @@ all `EXIT=0`, the four axiom lists UNCHANGED (SYSTEM 13, ECHO 14, TREE
 are `UShEcho.echo_image_entry`'s FOURTEEN exactly;
 `UkCatCat.kcat_round_of_law` is the three non-primitive ones.
 
-
 ### LINK-GEN-6 (2026-09-17) — THE LOOP LEAF SPEAKS `uline`; THE LINE AXIS CLOSES, AND WHAT IS LEFT OF sh's ROUND IS THE THREE CHILDREN, THE DEED, AND ONE MODEL FACT
 
 Branch `app-file/link-stage`, on top of LINK-GEN-5 and main (which already
@@ -10738,3 +10737,75 @@ named `ush_rest_line_at ush_line_echo ws g kk` against
 `ush_rest_line_at Dl ws g kk` -- i.e. the walk's own statement had not
 been widened yet.  Reading the two sides of that message is the fastest
 way to find the next statement to move.
+
+### OFF-LINK-5 (kernel tier, 2026-09-17) — THE ANCHOR IS **UNNECESSARY**: THE HALF BELONGS IN THE *CLIENT'S NODE*, AND THE HELD FIRE LOSES ITS SUPPLIER; BOTH LOOPS ARE ONE WALK AT BOTH MODES
+
+**Commits** (branch `app-file/off-hand`): `53860d4ab` (the anchored fire + carrier, since superseded), `fc69d2631` (the client-advanced node), `b1227c959` (the write fire's loop), `4f9be67fd` (the read fire's site). Whole tree green at each (`EXIT=0`, zero `Error`); all four audits byte-identical throughout — system THIRTEEN, echo FOURTEEN, tree THIRTEEN, file FOURTEEN; `tools/lemma_diff.py` clean on the last two.
+
+#### 1. THE ONE FINDING, AND IT REPLACES LANE OFF-LINK-4's SHAPE
+
+OFF-LINK-4 ruled (and the coordinator accepted) that the program's half must be in the **kernel's** hands at the fire, so that `UserOff.off_supply_held` can pay it, and that the equation `off = off0` must therefore be **RELAYED** into an **ANCHORED** node as a pure premise — because a node's own `off` is bound by its `∀` and a client that means to append cannot name it.
+
+The first half of that is true of a node **that does not hold the half**. It is false of a node that does. Put the half in the **client's own closure** — where cat already keeps it (`UCatKernel.cat_hold_at`'s `UserOff.uoff`) — and:
+
+* the node reads `off = off0` off the half **at the instant**, by `UserOff.uoff_agree_k` against the very `off_link` it was lent, **INSIDE its own `∀ off`**. No anchor, no relay, no premise slot.
+* the node can then **move both halves itself** (`UserOff.uoff_advance`) and hand the box's arm back **already advanced**. Lane WRITE-RELAY widened phase 2 to `OffGv.off_ret` precisely to allow this; the advanced disjunct is what a held node always takes.
+* and then **the fire needs no `UserOff.off_supply` at all**. The step the parked path spends on the row's invariant has nothing left to do.
+
+So a held descriptor costs the kernel **nothing**: no carried `uoff`, no supplier, no second post, no second chain shape above the fire. That is the whole of mode *hand* at this coupling.
+
+**REFUTED (my own OFF-LINK-4 statement), and this is the third statement-level refutation of the campaign.** `SpecFilewrite.write_held_post γo off0 d := uoff γo (off0 + d) ∨ (uoff γo off0 ∗ app_taint)` is **unstatable as landed**, independently of the anchor: its `off0` was the payment's **EXISTENTIAL** (`filewrite_in_held`'s `∃ off0, uoff γo off0 ∗ …`), and a caller that has handed the half in **cannot line the post's witness up with the one it named**. There is no fix inside the match — `filewrite_in`/`filewrite_extra` are keyed on `st` alone and `FdInode` is payload-free by ruling — so the only two repairs were (a) give both contracts an `off0 : nat` parameter, widening the arity for **every** client and the whole generic tier, or (b) never let the half leave the client. (b) is this lane's answer and it is free.
+
+#### 2. WHAT LANDED
+
+`FsAbsWriteFire.v` — section 2b is now the **client-advanced chain**:
+
+* `awrite_full_adv` / `awrite_part_adv` — `awrite_full_at` / `awrite_part_at` **verbatim** with `off_ret γo off d` replaced by `off_link γo (off + d)` in phase 2. The partial arm advances by the **COUNT** `r`, the run the kernel moved `f->off` by.
+* `awrite_chain_adv` (+ `_0`/`_S`/`_cursor`) — `awrite_chain_at`'s letter for letter; **no anchor index**, because the position each node fires at is the client's own business.
+* `awrite_full_at_of_adv` / `awrite_part_at_of_adv` / `awrite_chain_at_of_adv` — the adv node is **STRICTLY STRONGER**, and that is the direction that matters: the kernel's exits report the **LANDED** post at the plain chain, so a held call's residue converts down and **no consumer above the fire changes**. There is no converse and there must not be — `UserOff.vacuity_lend_not_taint` is the refutation.
+* `wrf_awrite_fire_adv` / `wrf_apart_fire_adv` — the `_gen` bodies with their **last two lines deleted** (the supplier step). They cannot be wrappers over the plain fires, which *consume* a supplier nothing can conjure.
+
+`FsAbsReadFire.v` — `aread_commit_adv`, `aread_commit_at_of_adv`, `pf_at_aread_commit_at_of_adv`, `arf_read_fire_adv`; plus the mode-keyed pair the walk calls:
+
+* `aread_in_om om Γ E i γo F` — `OffParked`: the landed `pf_at (aread_commit_at …) F`. `OffHeld`: the adv commit **∨** (the landed commit ∗ `app_taint`).
+* `arf_read_fire_om` — **the one fire, and the only place the mode is read.** Its supplier comes off the **ROW** (`FdSlots.foff_row`, which *is* `off_user_inv` at a parked inode row and `emp` at a held one), off the taint on the disconnected arm, or — on the link arm — **not at all**. Post identical to `arf_read_fire`'s.
+
+`ProofFilewriteChain.v` — `fw_au_adv` and its **five** moves (`_init`/`_take`/`_spend_part`/`_ok`/`_fail`); and the mode-keyed tier:
+
+* `fw_supply γo := off_user_inv γo ∨ app_taint` (persistent; `fw_supply_off` answers `off_supply` at either).
+* `fw_au_st om` — `OffParked`: `fw_supply` beside the landed `fw_au_raw`. `OffHeld`: `fw_au_adv`, **or** `fw_au_raw` beside the supply, which is `filewrite_in_held`'s taint arm.
+* `fw_au_st_init_parked` / `_held` / `_taint`, `fw_au_st_ok`, `fw_au_st_fail` (both exits at the **landed** `write_post_ok_at` / `write_post_fail_at`).
+* `fw_st_fire_full` / `fw_st_fire_part` — **the peel, the fire and the closer in ONE step**. The three branches differ in exactly one line: which fire lemma runs.
+
+`SpecFilewrite.v` — `filewrite_in_held`'s LINK arm is `∀ P, awrite_chain_adv … 0 (wchunks n)`; `write_arms_at_neg_held` loses its `off0`. `filewrite_extra` is `write_arms_at` at **both** modes, untouched.
+
+`SpecFileread.v` — `fileread_in`'s two inode arms **collapse into one**: `| FdOpen true _ (FdInode i γo om) => P ∗ aread_in_om om … F`. `fileread_in_inode`/`_of` and `fileread_extra_inode`/`_of` take the mode as a parameter instead of pinning `OffParked`.
+
+`ProofFilewrite.v` — **the loop is one walk at both modes.** `fw_loop` gains `(omx : offmode)`, its descriptor premise is `stx = FdOpen rx true (FdInode nx γx omx)`, its carrier is `fw_au_st omx …`, **its `off_user_inv γx` hypothesis is GONE** (at park the supplier rides inside the carrier, persistent, so the induction pays nothing; at hand there is none), its two fire sites are one `iMod (fw_st_fire_* omx …)` each, and its two exits are `fw_au_st_ok`/`_fail`. Its one caller passes `OffParked` and pays `fw_au_st_init_parked`.
+
+`ProofFileread.v` — the `off_user_inv` derivation is gone; the walk carries the **row** and hands it to `arf_read_fire_om` at both fire sites (advance 0 and advance `tot`).
+
+`UkWriteFile.v` — `udepwf_std_write_file_held` **loses its `uoff` premise**: the half is inside the chain the caller builds.
+
+**DELETED** (each with `lemma_diff`'s line, in `fc69d2631`): `awrite_full_anch`, `awrite_part_anch`, `awrite_chain_anch`, `awrite_chain_anch_0`/`_S`/`_cursor`, `awrite_full_anch_of_full`, `awrite_part_anch_of_part`, `awrite_chain_anch_of_at`, `wrf_awrite_fire_anch`, `wrf_apart_fire_anch` (FsAbsWriteFire.v — the anchor and its two fires); `fw_au_anch`, `fw_au_anch_init`/`_take`/`_ok` (ProofFilewriteChain.v — the anchored carrier had no partial and no fail move, because the half it carried had no name at `off0 + t + r`; the carrier that carries no half has both); `write_held_post`, `write_held_post_fired`, `write_held_post_taint` (SpecFilewrite.v — §1's refutation).
+
+#### 3. WHAT THE CLIENT NOW OWES, AND WHAT IT GETS
+
+A held caller proves one extra thing per node and gets its cursor back through its **own** `Q`:
+
+> inside `awrite_full_adv`'s `∀ I off bs bs0 nl`, holding `uoff γo off0` in the closure and given `off_link γo off`: take the LEFT arm of the lent link, agree (`uoff_agree_k`) to get `off = off0`, run the commit at that offset, `uoff_advance` both halves to `off + |bs|`, return `off_link γo (off + |bs|)` and put `uoff γo (off + |bs|)` in `REST`. On the RIGHT (taint) arm there is no half to agree against: hand `app_taint` back as the advanced link (`OffGv.off_link_taint`, good at any value) and take the client's own taint arm.
+
+That is the same three moves the coordinator briefed for the **fire site**, moved one level in — which is why they are now free of the kernel.
+
+#### 4. WHAT IS LEFT, AND THE DEPENDENCY IS EXACT
+
+**`FileInvDefs.fdstate_ok` still pins `m = OffParked` on every live inode row.** That single conjunct is now the *only* thing between a verified program and a held descriptor: both kernel walks are mode-generic and both held arms are proved, but nothing can *mint* a held row. So:
+
+* **(2) L2 — `fpnames.fp_om`.** Add the field, give `fdstate_ok` a mode parameter and pin `m = om` at it, and relax `fdstate_ok_inode`'s conclusion. **COST MEASURED: 145 occurrences of `fdstate_ok*` across 15 files** — mechanical, but it also flips `file_pay_st_ok`'s existential from `∃ inum γo γp` to `∃ inum γo om γp`, which every consumer destructures.
+* **L2 AND L4 ARE ONE CHANGE, and that is a finding.** The open path writes `OffParked` **literally** in `FileOpen.v`, `ProofSysOpenParts/Shared/Stores/CreArm/Alloc/Pub.v`; once `fdstate_ok` reads `fp_om pn`, the publish must produce `FdInode … (fp_om pn)` — and `pn` is **minted at the publish**, so choosing `fp_om` there *is* the choice between `UserOff.off_pub_park` and `off_pub_hand_0`. L2 cannot land green without L4's mint, and L4 cannot be stated without L2's field.
+* **(3) L4 and (4) L5 are therefore blocked behind that one coupled landing**, and with them CAT-GEOM-4's two premises. `UCatKernel.cat_open_hand` and `cat_held_read` are both stated at a **parameter** `om`, so I checked whether `om := OffParked` could discharge them and it cannot: `cat_hold_at` hands `UserOff.uoff gamo p` **beside** the row, and at a parked row that half is inside `off_user_inv` — there is exactly one, and `off_pub_park` already spent it. `om := OffHeld` is **forced**, hence L2/L4 are forced. (Everything else those two premises need is in place: the read leaf's count bound landed in OFF-LINK-2, and `arf_read_fire_om`'s held arm is what `cat_held_read`'s `Hold (p + rv)` is paid from — cat's cursor comes back inside `F.(pf_recv)`, which is where `cat_hold_at` puts it.)
+
+#### 5. TWO SMALLER THINGS WORTH RECORDING
+
+* **`--check-proof` is unusable after touching a low file**: the runner *drops stale artifacts* for every changed `.v`, so a `vok` check of anything downstream fails with `Cannot find library … in loadpath`, and **reverting the edit does not restore the artifacts**. Touch a low file only immediately before a whole-tree `--proofs -k`.
+* **A packaged fire is worth its statement.** `ProofFilewrite.fw_loop`'s body carries ~300 hypotheses; branching on the mode *there* would have duplicated ~200 lines twice. Moving peel+fire+close into `fw_st_fire_full`/`_part` made the loop's diff three lines per site and put the `destruct om` in a file where the context is five hypotheses long.

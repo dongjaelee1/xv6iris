@@ -934,7 +934,11 @@ Five ways to be silently miscounted, all of them green builds:
   between two deposit instances never come back (`iApply` and `exact`
   alike, 10+ minutes, no output).  Annotate `(PS := uprogSG_free)` in the
   STATEMENT and both proofs close in milliseconds.  `--check` (vos) passes
-  either way, so a statement-only check cannot see it.
+  either way, so a statement-only check cannot see it.  RULE for the
+  program tier: every statement mentioning a deposit or exec instance pins
+  it — `(PS := uprogSG_free)`, `(SG := uexecSG_xv6)` — on both the lemma
+  and its consumer's goal; implicit does not fail, it hangs (seen twice,
+  two hours lost on `sh_child_law_file`).
 - **Tree-wide sweeps: pick the sentinel with `grep -c` on the tree first.**
   A sed/python sweep that used `§` as a placeholder rewrote 3,327 comment
   lines in 442 files into nonsense because the tree already contains `§`

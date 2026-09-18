@@ -560,7 +560,17 @@ unowned critical item (WRITE-RELAY-3's `TB` guard).  RULES, replacing
   discharged, 6d645865c); `cat_open_hand` discharged and `redir_K`
   restated with its taint arm at 023d1fff8 (no metric change); 16 at
   e455487d8 (7/8/1: PROGRAM STREAM's `Hcat_body`, era step, H' applied,
-  `sh_tag_law_file`/`Hexecfail`/`Hpanic`).
+  `sh_tag_law_file`/`Hexecfail`/`Hpanic`); 14 at 0edba843f (7/6/1:
+  `Hchild_echo` and `sh_child_law_file`).
+- RULING LINE-OK (2026-09-18, PROGRAM-STREAM stretch 4): the fork's slot
+  (`UkSh.ush_posw`) told the child only `last_ws I = ws`, and a body with a
+  trailing blank has the same words as one without, so the era's line
+  constructor was undecidable at the child.  One conjunct in the slot,
+  `FileDisc.fbody_ok (ush_lastbody I)` ("the input's last body parses"),
+  free at the producer; `sh_exec_sup_echo_wq`'s `line_ok` guard is a
+  parameter, the file's the stage's `ck_lineok`.  The diagnostic carrier
+  came with the same guard, so `pdiag` is not on the program stream's
+  critical path.
 - RULING READ-HELD (2026-09-18, KERNEL-STREAM §3a): the read's hand mode
   is the WRITE side's landed shape mirrored — `file_read_piece_adv` as
   `awrite_full_adv`'s twin (the half in the closure, agree/advance/return

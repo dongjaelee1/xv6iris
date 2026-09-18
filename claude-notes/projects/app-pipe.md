@@ -1387,7 +1387,13 @@ predate this lane and both had to be fixed to get a green tree.**
    relayed to each child continuation, and the two `assert (Hhd' : …)` that
    built them), `wp_kshr_runcmd_pipe` and `wp_kshr_runcmd_ptop`.  The set
    was dead data at its end — this file's only use of it was to feed
-   `UkRunSys.wp_uk_ecall_dup`, which no longer takes it.
+   `UkRunSys.wp_uk_ecall_dup`, which no longer takes it.  `6766961ec` does
+   the same to the campaign's OTHER site, `UkPipeMoves.
+   wp_uk_close1_dup_pipe_std` (UPSTREAM-FIX's line 153); after the two, no
+   file in the tree mentions `ukn_held`, `urun_parked_row`,
+   `fdv_all_parked`, `fdv_held_in`, `urun_rows_parked`,
+   `usys_fd_ok_parked`, `usys_fd_ok_held` or `riscv_kill_cred` outside a
+   comment.
 2. **The taint was still being passed into the registrar slot.** SH-PIPE
    also predates PIPE-REG, and its `ush_pipe_call_weak_of_leaf` applied the
    leaf as `with "[] Hrun [] Hkc Hstd [Hbuf]"` with `Hkc : app_taint` where

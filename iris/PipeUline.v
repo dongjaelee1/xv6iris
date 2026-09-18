@@ -127,7 +127,7 @@ Qed.
    satisfies it, and nothing in the build would say so.  Here is one line
    that does, computed end to end: [echo hello | cat] is [FileDisc]-
    admissible, its [uline_ws] IS its body's parse, and that parse is the
-   FIVE words -- which is the shape [UkSh]'s [Hdsc_line] asks for and the
+   FOUR words -- which is the shape [UkSh]'s [Hdsc_line] asks for and the
    one [PipeDisc.pline_ws]'s two would have got wrong. *)
 Definition demo_ws : list (list (bv 8)) := [sb "echo"%string; sb "hello"%string].
 

@@ -137,36 +137,78 @@ own note at `file_open_fd_K`. It is now
 payload, and what remains for it is sh's own walk through
 `UkShRedirAns.ush_open_call2` — the program stream's file.
 
+## 3b. ITEM 2 — the held read, and the two things the write side did not have
+
+`4fb0c9e3d`. The three statements the ruling named are what it took, and
+they are the write side's landed shape mirrored:
+
+| | |
+|---|---|
+| `FileOpen.file_read_recv_hand` / `file_read_piece_adv` | `file_read_piece` with the half in the PIECE'S CLOSURE; the node reads the offset off it (`uoff_agree_k`) inside its own `∀ off`, moves both halves (`uoff_advance`) and hands the arm back ADVANCED |
+| `file_read_post_ok_learn_hand` / `file_read_arms_learn_mapped_hand` | the receipt read back |
+| `UkReadFile.udepwf_st_read_file_held` | the deposit at the client-advanced commit |
+| `UkFileOpen.wp_uk_read_deed_learns_held` | the leaf |
+| `UkCatDeed.kcat_deed_hold_held` / `wp_kcat_read_deed_held` / `kcat_r_of_deed_held` | cat's walk |
+| `UCatKernel.cat_held_read_of_deed` | **discharges `cat_held_read`** |
+
+`cat_hold_at`'s three conjuncts ARE `kcat_deed_hold_held`'s at
+`wb := false`; everything the leaf needs is persistent, so the `□` costs
+nothing.
+
+### (i) THE NODE MUST DECLINE TO MOVE UNDER A TAINTED CLAIM
+
+The first draft let the half advance whatever the claim came back as, and
+then **the position it came back at was bounded by nothing** — the claim is
+exactly what would have tied the row the kernel counted against to `bs`, so
+`p + d ≤ length bs` is not derivable on that arm. `cat_held_read`'s taint
+arm carries `⌜p' ≤ length bs⌝` and cat's round reads it (`cat_round_at`'s
+`Hend`), so dropping it was not available either.
+
+The fix is a statement, not a proof: **the receipt is ONE disjunction, not
+two.** Fired — the offset the read ran at is reported and the half is
+advanced by what it read — or the object was disconnected under the caller,
+**which is the SAME EVENT as the claim coming back tainted**, and the half
+comes back UNMOVED. The node simply does not move a shadow it can no longer
+say anything about. That is `PipeQueue.pipe_wpost` exactly, and it is what
+keeps the bound provable: on every taint arm the half is back at `p`, and
+`p ≤ length bs` is the read's own input premise.
+
+### (ii) THE PIECE NEEDS THE APPLICATION'S TAINT EQUATION, BOTH WAYS
+
+The box's disconnect is `app_taint`; the claim's is `file_taint c`. Only
+the program that owns the claim knows they are one credential — that is
+`UShRound`'s `Hkill`, an equation, not a kernel fact. The piece takes both
+directions as persistent premises (`□ (app_taint -∗ file_taint c)` and its
+converse): the link's taint becomes the claim's on the receipt, and the
+claim's becomes the link's when the node declines to move. **The kernel
+invents neither**, which is the owner's principle at this seam.
+
+`SpecFileread.vacuity_read_held_not_taint` is the Example the bar asks for
+per new `∨ app_taint` arm: a client that could mint the taint out of the
+half it holds would hold a whole `off_gv` beside a half of it.
+
 ## 4. WHAT IS LEFT, AND WHO OWES IT
 
 1. ~~The `_hand` deed corollaries~~ — **DONE** (§3a).
-2. **`udepwf_st_read_file_held` / `wp_uk_read_deed_learns_held`** — the
-   read side's twin, and it is NOT the same shape as the open's, which is
-   worth recording before it is attempted. The open's hand mode only had to
-   *carry* a resource out; the read's has to BUILD a client-advanced commit
-   (`FsAbsReadFire.aread_commit_adv`) out of the deed's claim plus the
-   program's own `uoff γo p`, which means three statements, not one:
-   * `FileOpen.file_read_piece_adv` — `file_read_piece` with the half in the
-     closure and the three moves inside the node (agree by
-     `UserOff.uoff_agree_k` against the lent arm, `uoff_advance` both
-     halves, return `off_link γo (off + d)`);
-   * an enriched receipt, because cat needs `Hold (p + rv)` back: the
-     receipt family is `aview -> nat -> anode -> nat -> iProp`, so
-     `uoff γo (off + d) ∨ app_taint` is statable there and that is where the
-     advanced half belongs (the same "it rides in the client's own cursor"
-     that the write side uses);
-   * a **refund** that carries the half back UNFIRED — `pf_at`'s refund side
-     is `fdq r q s` today, and a piece that took `uoff γo p` in must return
-     it if it is never spent.
-   Only then do `wp_uk_read_deed_learns_held`, `kcat_r_of_deed` at the held
-   row and `cat_held_read` follow.
-3. **WRITE-RELAY-3's `TB` guard** (review 2 §0(6)), still unowned by a
-   landed statement: `filewrite_in_held`'s link arm is
+2. ~~the read side's twin~~ — **DONE** (§3b).
+3. **WRITE-RELAY-3's `TB` guard** (review 2 §0(6)) — NOT STARTED, and the
+   shape it has to take is now visible from items 1 and 2, which both went
+   through the same kind of thread. `filewrite_in_held`'s link arm is
    `∀ P : uptd, awrite_chain_adv … P …`, so echo must pay the partial node
    at EVERY page table and `ef_relay4` refutes it only at a table tied to
-   the caller's own.
-4. **ECHO-FILE's assembly** — the six `Admitted`s, `file_awrite_node_adv`,
-   `efile_uexec_slot_at`, `efile_image_entry`.
+   the caller's own. The guard is a PARAMETER of `filewrite_in` (the mode
+   was, in L4, and the arity change is the same size), the link arm becomes
+   `∀ P, ⌜TB P⌝ -∗ awrite_chain_adv …`, and the kernel discharges `⌜TB P⌝`
+   where it instantiates `P` — which is `ProofFilewriteChain.fw_au_st_init`,
+   one site, from the slot's row 16 (`uvis_perm`/`uvis_sz`/`uvis_lazy`)
+   carried down through the write deposit. Six U-tier suppliers then take
+   `iIntros (P) "%Htb"`.
+4. **`UEchoFile.v`'s six `Admitted`s** — NOT STARTED. `file_awrite_node_adv`
+   is first and is `FileWrite.file_awrite_node` at the client-advanced node;
+   the three moves inside it are §3b's three moves at the write, which now
+   have a worked twin to copy.
+5. ECHO-FILE's remaining assembly — `efile_uexec_slot_at`,
+   `efile_image_entry`.
 
 ## 5. TWO PROCESS FINDINGS, BOTH EXPENSIVE
 

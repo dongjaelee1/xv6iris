@@ -269,6 +269,15 @@ unredeemed and one payload `Qc` serves both children.
    name (`UkShRun.wp_kshr_wait0`, `UkShRedir.wp_kshx_rcall`), so
    UkShRedir's "three leaves copied, not shared" was avoidable.
 
+**AGREES WITH SH-PARSE-PIPE, independently.**  That lane reached the same
+refutation of "widen `ush_simple`" and asked for a layered top-level
+predicate; `ush_ptop` is it.  And the arm is stated at an ARBITRARY
+`ush_cmd (ukn_d N) t (UPipe cl cr)` with `ush_simple cl` / `ush_simple cr`
+beside it, so the node
+`UPipe (UExec (ush_args s0 g toksl)) (UExec (ush_args s0 g toksr))` that
+`UkShPipeSeam.ush_cmd_of_ushp_pipe` produces is an instance of it with
+nothing to restate (`ush_simple (UExec _)` is `True`).
+
 **THE ONE THING THE NEXT LANE NEEDS FIRST.**  For SH-PIPE-ROUND: nothing
 from this lane is missing — instantiate `ush_pipe_call` and use
 `wp_kshr_pipe_arm` (not `wp_kshr_runcmd_pipe`, which drops everything).

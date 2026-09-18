@@ -1602,16 +1602,17 @@ by lane PIPE-DEC; `tools/comment_quote_check.py` finds the offending line
 without a build.  Write `*` `)` separated, or move the quotation out of
 the comment.
 
-## A row of a big `if/decide` table is one head symbol per branch (2026-09-18)
+## `OCAMLRUNPARAM=l=…` is a per-file knob, never a global one -- measured again (2026-09-18)
 
-`UsysMemOk.usys_fd_ok`'s branches sit on the CONVERSION PATH of every `Qed`
-that takes the row as a premise (e.g. `UShRound.Hopen_hand`, the heaviest
-`Qed` in the tree).  Lane PIPE-NEG1 turned the pipe branch's `sts' = sts`
-into an inline conjunction `r = -1 /\ sts' = sts` — one extra binary node —
-and that `Qed` segfaulted at the default stack and HUNG at `ulimit -s
-unlimited` (the existing rule: a `Qed` overflow that becomes a hang is a
-conversion, not a big proof).  The fix: name the branch (`usys_pipe_fail r
-sts sts'`) and read it through one lemma (`usys_fd_ok_pipe_neg1`); the
-inline conjunctions of the open/dup rows survive only because nothing that
-heavy converts them.  Rule: a new conjunct in such a row goes behind a
-`Definition`, and the change is gated on the heaviest consumer's `.vo`.
+The EC2 gate note already said it; it cost a day again.  `UShRound.v`'s
+heaviest `Qed` (`Hopen_hand`, ~10 s) SEGFAULTS when the whole build runs
+under `OCAMLRUNPARAM=l=4000000000` at the default 8 MB stack, and builds in
+18 s without the knob (measured on the mirror, same tree: knob+8 MB =
+SIGSEGV in 9 s; no knob = green; `ulimit -s unlimited` alone is not the
+cure and not the cause).  A lane first blamed a one-conjunct growth of
+`UsysMemOk.usys_fd_ok`'s pipe row and named the branch
+(`usys_pipe_fail`); harmless, kept, but NOT the cause -- the row is not on
+that `Qed`'s conversion path in any way that mattered.  Rule: build at the
+default runtime; give `l=4e9` only to the one file that needs it
+(`UserMemCert.v`) in a targeted pass; a `Segmentation fault` at a `Qed`
+under a global `l=…` is the knob until proved otherwise.

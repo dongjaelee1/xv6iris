@@ -1225,3 +1225,122 @@ to place `emp`). SH-PIPE should take the close deposits as parameters, as
 its brief already says, and the ruling belongs with whoever states sh's
 round.
 
+### SH-PARSE-PIPE-2 (2026-09-18) — the RIGHT command needs NO walk (a suffix of a `ustr` IS a `ustr`), `parsepipe` TURNS, and the left loop is uniform
+
+Branch `app-pipe/sh-parse-pipe`, FOUR more files and five commits
+(`ef4c32dd4`, `a639803e3`, `61b8673df`, `8da3cc91c`, and this note) on top
+of part 1.  Whole tree green (`build`, RC=0); still not one landed
+statement touched; no `Admitted`; every result carries `Proof using`; all
+NINE of the lane's files are LEAVES (`grep -l UkShPipe iris/*.v` returns
+only themselves), so no audited cone contains any of them.  **The audits
+were run and are as expected: `audit-echo-only` FOURTEEN, `audit-only`
+THIRTEEN.  `audit-tree-only` is THIRTEEN, not the ten this worklist's
+rules claim** — upstream's tree-claim second app moved it (spec-cleanup's
+"audit 13") and this lane's files are not in its cone; the rules line
+should be corrected.
+
+**WHAT LANDED.**
+
+- `iris/UkShPipeRight.v` — **`wp_kshp_parsepipe_right`: the pipe line's
+  RIGHT command needs NO new walk at all.**  `ustr_split` (with
+  `ubytesq_app`, which is `UserHeap.ubytes_app` at an arbitrary `dfrac`),
+  `ushq_nosym_shift`, `ushq_toks_right`, `ushq_shift` /
+  `ushp_exec_at_rebase`.
+- `iris/UkShPipePr.v` — `wp_kshp_parseredirs_miss`: the zero-turn walk at
+  the WEAKEST premise (the peek MISS), because the landed one's premise is
+  "the byte is not a symbol" and the `|` falsifies it.
+- `iris/UkShPipeEx2.v` — **`wp_kshp_pex_loop_bar`**: the argument loop,
+  UNIFORM (no tail split), two premises and one allocator capability
+  lighter than the redirect loop.
+- `iris/UkShPipeCm.v` — **`wp_kshp_parsepipe_bar`: the TURN**, the
+  thirteen instructions 0x6c2..0x6e0 nobody had walked, with `gettoken`
+  and THE RECURSION discharged and two call premises (`ushq_pex_left`,
+  `ushq_pipecmd_call`) in SH-REDIR's `ush_open_call` style;
+  `ushq_pex_left_nosym` witnesses that the first premise's SHAPE is
+  inhabited.
+
+**THE FINDING OF THE PART, and it replaced a 1,600-line copy with forty
+lines: A SUFFIX OF A `ustr` IS A `ustr`.**  `parsepipe`'s recursive call
+runs entirely above the `|`, and a `ustr`'s suffix is a `ustr` — its bytes
+are non-NUL because the whole string's are, and the terminator it needs is
+the whole string's own.  So the recursion is handed the line's own suffix
+at base `s0 + (p + 2)`, where the line IS symbol-free
+(`ushq_pipe_nosym_from`), and it is `UkShParseCmd.wp_kshp_parsepipe` — the
+LANDED symbol-free walk — applied ONCE.  Three small things make it fit,
+and each is a finding in its own right:
+
+1. `ustr_split` takes the length equation as a premise (`len = k + n`) so
+   `intros ->` puts the goal in the split form: NO length is ever
+   rewritten under an iProp.  The prefix comes out as bare bytes (it has
+   no terminator), the suffix as a string, and the closing wand carries
+   the two pure facts the pieces cannot reconstruct.
+2. `ushp_slot` stores an ABSOLUTE address, so the node the recursive call
+   builds at the shifted base IS the node of the SHIFTED token list at the
+   line's base (`ushp_exec_at_rebase`).  The resource does not move, only
+   its reading — which is what lets `UkShPipeSeam.ush_cmd_of_ushp_pipe`
+   take both sides at one `s0`, with the right list coming out as
+   `[(S (S gp), ge)]`.
+3. The right command is ONE token of the suffix, measured by the same two
+   scans and assembled with `UkShParseSym`'s own `ushs_toks` constructors,
+   so `ushp_tokens` comes out of `ushs_toks_tokens` and not a second
+   induction.
+
+**THE TURN, AND WHAT IS STILL A PREMISE.**  Of its three calls, 0x6ca
+`gettoken` is discharged by part 1's `wp_kshp_gettoken_syms` (it answers
+124 and leaves the cursor at `S (S gp)`) and 0x6d2 `parsepipe` by
+`wp_kshp_parsepipe_right`; the guard itself turns on part 1's
+`ushq_peek_pipe_hit_pipe`.  The two premises are the LEFT `parseexec` and
+`pipecmd`.  Both premises take the RETURN PC as a parameter with the
+caller supplying `ret_pc (m ra) = rpc` — the trick that keeps a pc out of
+a rewrite under an iProp, and worth copying.
+
+**A THIRD "ONE LINE OF N", and the rule it suggests.**  `parseexec`'s loop
+calls `parseredirs` after EVERY argument, so its last call sits ON the
+`|`; `UkShRedirPr.wp_kshp_parseredirs_ns` cannot serve it because its
+premise is "no symbol at the cursor", spent in ONE line of its 584.  Three
+landed walks have now been re-stated by this campaign for exactly this
+reason (`gettoken`'s dispatch, `parseredirs`' zero turn, `parseexec`'s
+loop).  **The rule: a walk's premise should be the WEAKEST fact its proof
+spends, and for a peek that fact is `ushp_peek_res … = 0/1`, never a
+property of the whole line.**  `ushp_peek_res_miss` and
+`UkShRedirLex.ushp_peek_res_hit` are the pair to state everything at.
+
+**WHAT IS LEFT OF THE LEFT SIDE — one mechanical copy, no unknowns.**
+`ushq_pex_left` is instantiated by `wp_kshp_parseexec_bar`, which is
+`UkShRedirPex.wp_kshp_parseexec_gt` (1,403 lines) with: `ushs_redir` →
+`ushq_pipe`; its two `parseredirs` calls → `wp_kshp_parseredirs_miss`; its
+loop → `wp_kshp_pex_loop_bar` (landed); and its post's answer the EXEC
+node `p` rather than the REDIR node `t` (the only part that is more than a
+name change, because the landed walk relays a node the pipe line does not
+build).  Everything it calls is landed.
+
+**ITEM (3), pipecmd's catalog row: STOPPED, and here is exactly what it
+needs.**  `make gen-ucode` is NOT a dump rule — `tools/gen_ucode.py` reads
+`user-rocq/<Module>{Instrs,Data,Syms}.v` (the TRACKED dump) plus
+`tools/ucode_shp.txt`, and never opens `xv6-riscv/`; `tools/dump_elf.py`
+is the tool that reads the ELF, and `make dump`/`dump-force` are the rules
+that call it.  So the mirror's old `xv6-riscv` clone is IRRELEVANT to it.
+What blocks it is the other half of its own header: **it shells out to
+`coqc` and that `coqc` needs a BUILT `iris/`** (the probe imports
+`WpDecodeBridge`), and this lane's local worktree has no `.vo` at all
+(`ls iris/*.vo` = 0) — the build lives on the mirror.  So the row can only
+be regenerated where a built tree is, i.e. on the mirror, which the lane's
+instructions forbid.  To land it, someone needs: (a) `skipfunc pipecmd` →
+`func pipecmd` in `tools/ucode_shp.txt`; (b) `make gen-ucode` in a tree
+with a built `iris/`; (c) the regenerated `iris/UCodeShP.v` COMMITTED
+(`make check-ucode`'s second half is `git diff --exit-code`); (d) the
+ELEVEN `destruct shp_syms_pins as (…)` patterns in
+`iris/UkShParse.v:857-877` each gaining one `_` (proof text only, no
+statement moves), because the pins tuple gains a conjunct; (e) a rebuild
+of the whole parser cone.  Then `pipecmd`'s 48 instructions are
+`UkShRedirCmd.wp_kshp_redircmd`'s walk with five field stores instead of
+seven, and `ushq_pipecmd_call` is its conclusion.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  `wp_kshp_parseexec_bar` (the
+copy above) — it discharges `ushq_pex_left` and leaves `pipecmd` as the
+turn's only premise.  After that the parser theorem at the pipe shape is
+`parseline`/`parsecmd` at the same shape (the landed `_gt` versions with
+the same substitutions) plus part 1's `wp_kshp_nulterminate_pipe` and
+`ush_cmd_of_ushp_pipe`, which are landed.  The line-disjunct's FOURTH arm
+stays where SH-LEX-REDIR §4 put it: coupled with the pipe child walk, so
+it belongs to SH-PIPE-ROUND and not here.

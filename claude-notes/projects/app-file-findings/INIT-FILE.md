@@ -1032,3 +1032,141 @@ Whole tree green on the lane's remote tree; the four audits unchanged
 (system thirteen, echo fourteen, tree thirteen, file fourteen).  No
 `Admitted`, no `Axiom`, none added anywhere in the diff.
 
+---
+
+# ROUND 6 (2026-09-18) — THE PROMPT LAW **IS** A FRAME; THE SEAM TAKES THE DISCIPLINE; CONJUNCT (g) WAS **NOT** DISCHARGED AND NOW IS — R4.6 CORRECTED BY A MACHINE-CHECKED REFUTATION
+
+## R6.1 (A) The prompt law's `Hold` form — MEASURED, and it IS a frame
+
+`iris/UShPanicHold.v` (a leaf; `UShPanic.v` does not move).  Two
+observations settle it:
+
+1. `UShKernel.sh_prompt_law Wc` is two arms — the open-fd one,
+   `ksh_w … (ustd ∗ Wc I 0) (ustd ∗ Wc I 2)`, and the closed one, which
+   does not mention `Wc` at all.  **The input `I` is the SAME on both
+   sides** of the open arm: the prompt resolves a round, it does not read
+   a line.  So a conjunct indexed by `I` and not looked at rides through.
+2. The step never reaches the deed: `sh_prompt_law_holds_line_at` goes
+   through `prompt_step_lpr_at`, i.e. through the RECORD's own
+   `lk_lpr_step`, and nothing on that path opens the credential's arms.
+
+**What `UShRound.sh_prompt_alt_of_deed` is about is a DIFFERENT byte** —
+the round's BLOCK-FIRST byte, whose alternative the deed decides.  That
+lives in the round's own S3 and is not what this law pays for.
+
+Landed: `ksh_w_mono` / `ksh_w_hold` / `ksh_w_ex` (the write tower's three
+structural moves, `kinit_w1_frame`'s shape at sh's `ksh_w`),
+`sh_prompt_law_hold`, and `sh_prompt_law_ex` at the shape ruling H' puts
+the round's families in (`∃ s0, Wc s0 I p ∗ Hold s0 I`, where the RECORD
+itself is indexed — `lk_links` does not depend on that index at the file
+instance, so one resource serves every index; the closed arm takes an
+explicit witness).
+
+## R6.2 (B) The seam takes the discipline — and `sh_pay` needed a twin too
+
+`iris/UInitSh.v`, additively, with `UInitBoot.v` unchanged to the
+character.  The five extra binders are `UShKernel.sh_slot_of_kexec`'s own
+(`Dsc`, `Hdncr`, `Hdshort`, `Dl`, `Hdline`):
+
+- `cons_cred_holds_at cn T Dsc Hdncr Hdshort Dl Hdline Cr` — the ten
+  conjuncts with the first at `ush_read_recv_leaf_at … Dsc …`; the landed
+  `cons_cred_holds` is its instance at echo's five, so its type and
+  meaning do not move.
+- `sh_pay_at Dl T Cr Rsh n0` and `sh_pay_of_parts_at` — **not
+  anticipated**: `sh_slot_of_kexec` takes sh's tail obligation at
+  `ush_rest_l_at … Dl …`, the SAME `Dl`, and that obligation is `sh_pay`'s
+  second conjunct, which was hard-wired to echo's.
+- `init_sh_image_entry_at`, `init_exec_sup_of_sh_slot_at`, each with the
+  landed lemma as its echo instance.
+- `#[local] Typeclasses Opaque UkSh.ush_rest_l_at.`  With `Dl` a variable
+  the `Persistent` search walks the obligation's whole body and does not
+  return (measured at 48 minutes of CPU before it was killed).
+  `UShKernel.v:101` carries the same local seal for the same reason.
+
+**The four readings are exactly what the file supplies, in the same
+order**: `FileReadInst.file_gets_holds` IS the triple
+`(Hdncr, Hdshort, Hdline)` at `Dsc := FileDisc.disc_input_f`, and
+`file_read_leaf_holds` produces the first conjunct at
+`rk_disc FI (file_read_inst g)`, which is `disc_input_f` definitionally.
+
+**AND ONE SEAM FOR THE PROGRAM STREAM.**  `sh_pay_at`'s `Dl` must be the
+SAME `Dl` as `Hdline`'s, so a file instantiation needs the tail obligation
+at `UkShRedirBody.ush_line_file` — `UkShRedirBody.v:762` already produces
+`ush_rest_l_at … ush_line_file …`, but `UShRound.sh_round_holds_file`
+(`UShRound.v:639`) still concludes at `UkSh.ush_rest_l`, i.e. at echo's
+`Dl`, and will not feed `sh_pay_of_parts_at … ush_line_file`.  **That is a
+statement change on the round, and it is the program stream's.**
+
+## R6.3 (C) Conjunct (g) — R4.6 WAS WRONG, and the refutation is machine-checked
+
+Round 4's findings said all nine conjuncts of `init_cons_laws_at` were
+discharged at `AppFile.file_pred`.  **They were not.**
+`AppFileCons.file_cons_create_other` carries `nmn = fname_console`, which
+is an INSTANCE of (g)'s side condition, not (g); round 4 narrowed only
+`init_cons_mknod_bundle`'s DEMAND, while `init_cons_laws_at` itself kept
+the wide leg.  That leg is FALSE at this claim, and
+`iris/UInitConsFile.v` now checks it:
+
+```coq
+  Lemma file_cons_create_other_refuted (av : aview) (ents : gmap fname Z)
+      (nl : nat) (i : Z) (s : dst) :
+    cre_pre av FsImg.ROOTINO fname_f ents nl i cdev ->
+    f_ok av s -> f_ok (delta_create FsImg.ROOTINO fname_f i cdev av) s -> False.
+```
+
+(at a PRESENT deed `cre_pre`'s own `ents !! nmn = None` refutes `f_ok av s`;
+at an ABSENT one the create makes `f` resolve.  The taint is not available
+to a step wand, so no reading of the claim repairs it.)
+
+**THE REPAIR, R3.4's, now landed.**  `UInitCons.init_cons_laws_at`'s (g)
+gains a second pure premise `⌜d <> FsImg.ROOTINO \/ nmn <> fname_f⌝`.
+Echo's two dischargers ignore it (one `_` each); the ONE consumer,
+`init_cons_laws_mknod_bundle`, has `d <> ROOTINO` in hand and pays it by
+`left`.  `UInitConsFile.file_cons_create_other_deed` proves the leg at
+that strength UNCONDITIONALLY, and `file_cons_create_leg_holds` is the
+theorem the file's dance lemmas take.  **So conjunct (g) is now genuinely
+discharged at `file_pred`, and so are all nine.**
+
+## R6.4 /init's console dance at the FILE claim — LANDED
+
+`iris/UInitConsFile.v`: `init_cons_laws_file_of_leg`,
+`init_cons_laws_efp_file_of_leg`, `init_cons_laws_made_file_of_leg`,
+`init_cons_laws_made_efp_file_of_leg`, `init_cons_leaves_file_of_leg`,
+`init_cons_hit_file_of_leg`, `sh_cons_console_file_of_leg`, and
+unconditionally `init_cons_never_abs_law_file`, `init_cons_seal_law_file`,
+`init_cons_seal_out_file`, `init_cons_cred_made_file`,
+`sh_cons_absent_file`, plus `file_cons_mknod_present` (the FLAG arm's
+create leg, which `AppFileCons` was missing) and the unarm leg re-proved
+at the weaker pure parameter (`file_cons_unarm_efp{,_absent,_present}`).
+
+**A second finding worth keeping**: the file era needs the laws bundle at
+BOTH readings of the pure half.  `UInitConsK.init_mknod_leaf_holds`,
+`init_open_console_leaf_holds` and `UShConsK.sh_open_console_leaf_holds`
+fix conjunct (b) at `EchoFsPure.echo_fs_pure`, not at a parameter — but
+conjunct (e) at that reading cannot use `file_cons_unarm`
+(`file_fs_pure_unarm_fresh` wants all four pins in the ARM's view).  The
+file proves the unarm leg again off the unarmed ROW instead: the arm's
+view is needed only to separate `i` from the root, and every other
+separation comes off the row's node being a DEVICE where each pinned row
+and the deed's row is a FILE.
+
+## R6.5 `file_Hinit_boot` — still open, and what is left is now SHORT
+
+Every ingredient below the assembly is in place: the claim's nine laws
+(`AppFileCons`), the dance (`UInitConsFile`), the discipline-parameterised
+seam (`cons_cred_holds_at`, `sh_pay_at`, `init_exec_sup_of_sh_slot_at`),
+the prompt law with a frame (`UShPanicHold`), the credential families at a
+shared index with their whole law set (`FileLinksAt*`,
+`file_link_inst_at`), the seam's four lemmas with a frame
+(`UShLineAtHold`), conjunct 9's readings (`FileLinksAtInp`), the prologue
+diagnostics at the record (`FileLinksAtPro`, `pdiag`, `UInitDiag`'s twin),
+and /init's first credential out of `file_boot` alone
+(`UInitFileCons.file_Wbf_at_of_boot`).
+
+What is left is the ASSEMBLY itself — `cons_cred_holds_at` at
+`file_link_inst_at s0` (ten conjuncts, each now one application),
+`sh_pay_of_parts_at`, and `echo_Hinit_boot`'s body one application over —
+plus the ONE statement change R6.2 names on the round
+(`sh_round_holds_file` at `Dl := ush_line_file`).  `grep -c
+"Hypothesis\|Admitted" iris/UInitFile.v` therefore stays **1** this round.
+

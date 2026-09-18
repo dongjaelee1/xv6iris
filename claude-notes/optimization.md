@@ -410,7 +410,11 @@ for it.
     survive it, see `FirstTok.v`), and it breaks every consumer that reads
     through the name. The named-leaf dispatch is the portable fix: measured
     `FileLinksLine` 111 s → 12 s, `FileLinksAt` 86 s → 5 s, `FileLinksAtPro`
-    25 s → 5 s, all three on the critical path.
+    25 s → 5 s, all three on the critical path. **And the arms of a `destruct`
+    count as separate goals**: `UShRound`'s four-position `Wcf` instance was
+    ONE sentence at 108 s (isolated; 108 s of the file's 128 s, and the
+    critical path's last file) and is 0.001 s dispatched — the largest single
+    sentence in the tree's profile, from four `apply _`s.
   - **A `□`-bodied law is one line**: `rewrite /X. apply
     bi.intuitionistically_persistent.` `apply _` there descends the whole
     premise tower under the modality (`UkShRedirBody.sh_redir_child_law`,

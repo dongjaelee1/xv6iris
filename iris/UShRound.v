@@ -590,15 +590,38 @@ Section UShRound.
   Lemma Wcf_S3 I p : Wcf I (S (S (S p))) = (Wcl I 3%nat ∗ PRE I)%I.
   Proof using . reflexivity. Qed.
 
+  (* NAME THE LEAF, do not search (optimization.md, "Prove a big [Timeless]
+     instance structurally").  [Timeless] patterns are keyed modulo delta and
+     nearly every one of the tree's instances sits under a transparent
+     definition, so ONE [apply _] at this altitude tries almost all of them:
+     the four goals below measured 107s in a single sentence, which was this
+     file's whole cost and the tail of the build's critical path.  Descend
+     through the CONNECTIVES and name the leaf, SYNTACTICALLY -- a [first
+     [...]] spelling would peel straight through a name that has its own
+     instance. *)
+  Local Ltac tl_leaf :=
+    lazymatch goal with
+    | |- Timeless (bi_sep _ _) => apply bi.sep_timeless; [tl_leaf | tl_leaf]
+    | |- Timeless (bi_or _ _) => apply bi.or_timeless; [tl_leaf | tl_leaf]
+    | |- Timeless (FileLinkInst.file_Wcl_at _ _ _ _) =>
+           apply FileLinkInst.file_Wcl_at_timeless
+    | |- Timeless (FileLinkInst.file_Wbl_at _ _ _) =>
+           apply FileLinkInst.file_Wbl_at_timeless
+    | |- Timeless (sh_pre_at _ _) => apply sh_pre_at_timeless
+    | |- Timeless (sh_done_at _ _) => apply sh_deed_at_timeless
+    | |- Timeless (sh_pend_at _ _) => apply sh_deed_at_timeless
+    | |- _ => apply _
+    end.
+
   Global Instance Wcf_timeless I p : Timeless (Wcf I p).
   Proof using .
     destruct p as [| [| [| p]]];
       [ rewrite Wcf_0 | rewrite Wcf_1 | rewrite Wcf_2 | rewrite Wcf_S3 ];
-      apply _.
+      tl_leaf.
   Qed.
 
   Global Instance Wbf_timeless I : Timeless (Wbf I).
-  Proof using . rewrite /Wbf. apply _. Qed.
+  Proof using . rewrite /Wbf. tl_leaf. Qed.
 
   (* ...AND IT IS INHABITED AT THE ERA'S HEAD (RULING H' at HOLD-POS): at
      [I = []] nothing is filed, so the head is DONE at [cs = []] with the

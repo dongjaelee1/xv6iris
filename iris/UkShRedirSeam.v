@@ -276,6 +276,29 @@ Section UkShRedirSeam.
     apply Hnn. lia.
   Qed.
 
+  (* ...and WHICH bytes they are: the line's own, untouched by either cut *)
+  Lemma ushs_nulcut_filebyte (len : nat) (f : nat -> bv 8) (gp fe : nat)
+      (args : list (nat * nat)) :
+    ushs_redir len f gp fe ->
+    ushs_toks len f gp 0%nat args ->
+    forall j : nat, (j < fe - S (S gp))%nat ->
+      ushs_nulcut args len f fe (S (S gp) + j)%nat = f (S (S gp) + j)%nat.
+  Proof using .
+    intros Hred Htoks j Hj.
+    pose proof Hred as HR.
+    destruct HR as (Hone & Hgp0 & Hb1 & Hb2 & Hlo2 & Hhi2 & Hfw & Htail).
+    rewrite /ushs_nulcut /UkShParseCmd.ushp_setb.
+    rewrite (proj2 (Nat.eqb_neq (S (S gp) + j)%nat fe) ltac:(lia)).
+    rewrite (UkShMain.ushp_nulfold_miss args (UkShParseCmd.ushp_ext len f)
+               (S (S gp) + j)%nat
+               ltac:(intros q t Hq;
+                     destruct (ushs_arg_below len f gp fe args Hred Htoks
+                                 q t Hq) as [ _ Hhi ]; lia)).
+    rewrite /UkShParseCmd.ushp_ext
+      (bool_decide_eq_true_2 ((S (S gp) + j) < len)%nat ltac:(lia)).
+    reflexivity.
+  Qed.
+
   (* the REDIR row, INTRODUCED rather than unfolded: [c1] is a variable
      here, so [cbn] reduces the outer node and cannot touch the sub-tree *)
   Lemma ush_cmd_redir_intro (g : gname) (t q : Z) (c1 : ushcmd)

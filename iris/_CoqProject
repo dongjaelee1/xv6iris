@@ -1591,6 +1591,7 @@ UkShPipePr.v
 UkShPipeEx2.v
 UkShPipePex.v
 UkShPipeCm.v
+UkShPipeRound.v
 UkShRedirBody.v
 UInitCons.v
 UConsOpen.v
@@ -1655,6 +1656,8 @@ UInitConsFile.v
 UInitConsPipe.v
 UFileBootAdequacy.v
 # FileAssumptions.v
+UPipeBootAdequacy.v
+# PipeAssumptions.v
 
 UInitFileCons.v
 

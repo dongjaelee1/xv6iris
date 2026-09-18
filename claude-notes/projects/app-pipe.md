@@ -174,7 +174,7 @@ arm is the theorem's one named premise (`pipe_both_law`).
   writes compose through `ro_shot ∨ app_taint` past a short write.
 ## Wave 3 — the round and the theorem
 
-- [ ] **SH-PIPE-ROUND** (design §4.2): sh's round at the claim — the
+- [~] **SH-PIPE-ROUND** (design §4.2): sh's round at the claim — the
   main loop's dispatch on the line's shape (LEcho → the echo round
   unchanged; LPipe → `UkShPipe`'s arm instantiated at PIPE-PROTO's lends
   and payloads, ECHO-PIPE's and CAT-PIPE's entries as the two exec
@@ -2617,3 +2617,220 @@ is why only the writer can derail.  Also: `ep_frame` is the shape to copy
 for the "crosses the entry untouched" part of cat's `Pay` (cat's is
 `side_R pn ∗` its console lease), and `ep_urun_nopipe` is the constructor
 for cat's `urun_nopipe` at fd 0.
+
+### SH-PIPE-ROUND (2026-09-18) — the child walk lands at the pipe shape AND at the line, the whole-system theorem at `app_pipe` lands at echo's FOURTEEN, and the ROUND stops twice: at `FileDisc.uline`'s constructor list and at the missing `LinkRec` instance
+
+Branch `app-pipe/sh-pipe-round`, three code commits (`e7d781099`,
+`9ccd040da`, `29e969185`) plus this one.  TWO new `iris/` files (`UkShPipeRound.v`,
+`UPipeBootAdequacy.v`) plus one out-of-build audit file
+(`PipeAssumptions.v`), three lines of `iris/_CoqProject` and one target
+pair in the root `Makefile`.  **No landed statement moved.**  Whole-tree
+`ec2-lane.sh round build` **RC=0** (twice, the second after the last
+commit); no `Admitted`; `Proof using` on every result.
+**`audit-echo-only` UNMOVED (fourteen); `audit-pipe-only` is the SAME
+fourteen** — both run back to back on the mirror at the end of the lane.
+
+**WHAT LANDED — A (the child walk).**  `iris/UkShPipeRound.v`:
+
+- `ushq_cut` / `ushq_cut_eq` / `ushq_cut_off` — the argv cut
+  `nulterminate`'s PIPE row leaves.  **It IS the redirect cut**: a
+  `ushp_nulfold` over a ONE-element list is `ushp_setb`, so
+  `ushp_nulfold [(S (S gp), ge)] (ushp_nulfold args (ushp_ext len f))`
+  is *convertible* to `UkShRedirPc.ushs_nulcut args len f ge` and
+  `UkShRedirSeam`'s four cut lemmas are the mould literally.
+- `ushq_args_below` / `ushq_args_gap` — the LEFT command's tokens read on
+  the line TRUNCATED at the `|`.  `UkShRedirSeam.ushs_toks_below` and
+  `UkShMain.ushp_tokens_gap` are REUSED, at
+  `UkShPipeLex.ushq_pipe_nosym_below`; nothing was re-proved.
+- `ushq_cut_ok_left` / `ushq_cut_ok_right` — the seam's two premises.
+- **`wp_kshm_child_pipe`** — the walk, statement verbatim in the lane
+  report.  0x9c0 `c.mv a0,s1`; 0x9c2 `jal parsecmd` →
+  `UkShPipeCm.wp_kshp_parsecmd_bar`; the seam
+  `UkShPipeSeam.ush_cmd_of_ushp_pipe`; 0x9c6 `jal runcmd` →
+  `UkShPipe.wp_kshr_pipe_arm`.  Three continuations out: the two children
+  at `runcmd`'s own entry pc with fd 1 / fd 0 the pipe's two ends and both
+  `ush_cldep`s in hand, the parent at 0xea with the two `ush_fork_ans`,
+  the two `uwait_ans` and `Rk γp`.
+- `ushq_line_at` / `ushq_bytes_lo` / `ushq_bytes_hi` /
+  **`ushq_line_is_of_at`** — `UkSh.ush_line_at`'s three projections read at
+  `PipeDisc.LPipe`, and the bridge from them to `UkShPipeLex.ushq_line_is`
+  at `right := ushq_cat`.  This is the load-bearing half of the brief's
+  "fourth arm"; see STOP A.
+- **`wp_kshm_child_pipe_line`** — the walk AT THE LINE, through
+  `UkShPipeLex.ush_line_toks_holds_pipe`: `args := wl_toks ws`,
+  `gp := |wl_body ws| + 1`, `ge := gp + 5`.  **This is the statement the
+  round instantiates.**
+
+`Print Assumptions` on `wp_kshm_child_pipe` and `wp_kshm_child_pipe_line`:
+EXACTLY `resv_matches`, `resv_is_valid`, `functional_extensionality_dep` —
+the three the landed redirect parser theorem prints, and nothing else.
+(The two calls are recorded as a comment, not left in the build: they
+re-cook the whole parser cone.)
+
+**WHAT LANDED — C (the theorem), i.e. lane PIPE-ADEQUACY folded in.**
+`iris/UPipeBootAdequacy.v`: `pipe_prog_law` (`App.al_programs` at
+`app_pipe`, verbatim from the class and from `AppPipe`'s own `Context`),
+`pipe_laws_at`, `pipe_adequacy_at_img`, `pipeLineΣ`/`pipeΣ` and the CLOSED
+corollary `pipe_adequacy_pipeΣ` at the literal mkfs image — reducibility
+of every thread plus `PipeDisc.pipe_phi κs`, a conclusion that names no
+Iris.  `iris/PipeAssumptions.v` and `make audit-pipe{,-only}` beside the
+four siblings.  **The assumption list is EXACTLY the echo theorem's
+fourteen** (1 funext + the 2 reservation `Parameter`s + 11
+PrimString/PrimInt63) — no `Spec*`/`Link*` module `Parameter`, nothing of
+this project's own.
+
+**STOP RULE C DID NOT FIRE, and the answer is split.**  `al_programs` at
+`app_pipe` does **not** need `pipe_link_inst`: the theorem goes through
+`AppPipe.pipe_laws`, whose `al_echo` field is `PipeLinks.pipe_happ_echo`
+and spends `pipe_links`, the bundle PIPE-STAGE landed.  Measured: the file
+compiles.  **But the ROUND does need it** — see the second STOP below.
+
+**STOP A — FIRED, and the design's framing is wrong in BOTH directions.**
+
+1. **There is no "fourth arm of the disjunct" to add: the disjunct is
+   already era-parametric.**  `UkSh.ush_rest_line_at` takes
+   `(D : FileDisc.uline -> Prop)`, `ush_rest_l_at` takes the same `D`,
+   `ush_gets_done_at` takes `Dl`, and `UkSh`'s own section carries
+   `Context (Dl : FileDisc.uline -> Prop)` with
+   `Hypothesis Hdsc_line` tying it to the era's discipline.
+   `ush_rest_line := ush_rest_line_at ush_line_echo` is ONE INSTANCE.
+   Nothing in `UkSh.v` has to gain an arm.
+2. **What is missing is a CONSTRUCTOR, and it is in the FILE
+   application's model.**  `D`'s domain is
+   `Inductive FileDisc.uline := LEcho | LEchoF | LCat`, and
+   `UkSh.ush_line_at (l : FileDisc.uline)` reads exactly three projections
+   of it (`FileDisc.uline_ok`, `FileDisc.line_bytes`, and through
+   `ush_rest_line_at` `FileDisc.uline_ws`).  A pipe line is none of the
+   three.  `FileDisc.v` is **not** a syntax module: the same file carries
+   `parse_line`, `lines_of`, `ralt`, `ralt_ok`, `ralt_panic`, `fsm`,
+   `cont` and `line_alts_of` — the FILE application's discipline — and
+   `FileOutPure.v` reads `lines_of` **25** times, `FileOut.v` 6.
+   Measured statically, adding `LPipe` costs: **5 `match l with`
+   definitions** (`uline_ws`, `line_body`, `uline_ok`, `ralt_ok`, `fsm`)
+   plus `ralt_ok_dec`'s `destruct l, a`, and **26 `destruct l`/`destruct
+   lu` proof sites** across four LANDED files of the active upstream file
+   campaign (`FileDisc.v` 6, `FileDiscDec.v` 3, `FileOutPure.v` 4,
+   `FileLinksLine.v` 13).  That is wider than SH-LEX-REDIR §4's "one
+   coupled change with the child walk", and it is not this lane's to make.
+3. **`FileDisc.parse_line` MUST NOT change** (the sharp half).  If it
+   learns to recognise a pipe body, `lines_of`'s RANGE grows and
+   `FileOutPure.alts_ok` / the determinacy theorem / `AppFile`'s
+   conclusion change MEANING at inputs the FILE theorem quantifies over —
+   `make audit-file-only`'s theorem moves.  Left alone, `lines_of` never
+   yields `LPipe`, every FILE statement means what it meant, and the pipe
+   era supplies its own `lu` through `UkSh`'s own `Hdsc_line`, off
+   `PipeDisc.parse_pline`.  So the constructor is ADDITIVE and the
+   26 sites are the whole bill.
+4. **`PipeDisc.pline_ws` CANNOT be reused for `uline_ws (LPipe ws)`, and
+   the design does not say so.**  `Hdsc_line`'s conclusion is
+   `FileDisc.uline_ws lu = wl_words (rest_of I)` — the WHOLE body's word
+   list, five words for `echo a b | cat` — while
+   `PipeDisc.pline_ws (LPipe ws) = ws` is the LEFT command's three.  A
+   lane that copies `pline_ws` into the new arm gets an `Hdsc_line` no
+   era can satisfy, and nothing in the build sees it (durable-notes,
+   Vacuity).  The arm must be
+   `uline_ws (LPipe ws) := wl_words (line_body (LPipe ws))`; the LEFT
+   words come back out through `ushq_line_is_of_at` + the lexability
+   theorem, which is why that bridge is landed here.
+5. **The alternative that touches no `FileDisc` statement is to
+   generalise `UkSh.ush_line_at` from the inductive to its three
+   projections** (a record, or three section parameters).  That moves
+   `ush_line_at`'s and `ush_rest_line_at`'s TYPES and therefore the
+   statement of every landed lemma that names them (`UkShFork`,
+   `UkShRedirBody`, `UInitSh`, `UShRound`, `UkSh` itself).  Either way a
+   landed type moves: it is an OWNER call which, and both prices are
+   above.
+
+**STOP B — A SECOND ONE, NOT IN THE BRIEF: the round needs the `LinkRec`
+INSTANCE, which does not exist for this application.**  `UShRound.v` —
+the mould — is stated end to end at
+`FI := FileLinkInst.file_link_inst_at g s0`: `Wcl`/`Wbl` ARE
+`file_Wcl_at`/`file_Wbl_at`, and all five credential conversions
+(`Hwbl`, `Hwbwc`, `Hcltaint`, `Hwc`, `Hwbr`), the diagnostic carrier
+(`lk_exfb FI`), the read residue (`lk_rres FI`) and the stage record
+(`file_stage_inst_at`) are `LinkRec` generic lemmas at that record.
+`PipeLinks.v` (390 lines) is `FileLinks.v`'s content — the six links, the
+taint routes, the bundle, `App.al_echo` — and **not** the record.
+PIPE-STAGE's finding 8 said the port is a lane; PIPE-CLAIM's finding 5
+said it is now a well-defined port of `FileLinksLine.v` (2,081) +
+`FileLinkInst.v` (760).  It is **on the round's critical path** and it is
+not on the round's brief.  New lane **PIPE-LINK-INST**, ticked into the
+worklist above.
+
+**WHAT ELSE THE DESIGN / THE BRIEF GOT WRONG.**
+
+1. **`wp_kshp_parser_pipe` is NOT the theorem the child walk uses.**  It
+   closes the three nodes into one `ushp_tree` with
+   `UkShPipeParse.ushp_pipe_close`, and the seam
+   `UkShPipeSeam.ush_cmd_of_ushp_pipe` wants them SEPARATE (it reads the
+   node's own three fields and converts each subtree with
+   `UkShMain.ush_cmd_of_ushp_gen`).  The walk goes one theorem lower,
+   `wp_kshp_parsecmd_bar` — exactly as `UkShRedirSeam` goes through
+   `UkShRedirPc.wp_kshp_parsecmd_gt` and not through
+   `wp_kshp_parser_redir`.
+2. **`ush_line_lexable_pipe` and its `Hlexp` are ALREADY LANDED**
+   (`UkShPipeLex.ush_line_lexable_pipe_holds`, SH-PARSE-PIPE part 1).
+   The brief lists them as this lane's; nothing was owed.
+3. **`wp_kshr_pipe_arm` takes the exit payload FREE**
+   (`(⊢ ukn_pay N (-1))`, a Prop) where `UkShRedir.wp_kshr_redir_arm_at`
+   takes the pair `□ (Cr -∗ ukn_pay N (-1))` / `Cr`.  sh's runcmd child in
+   a real round is at the LENT credential (`UkShFork.ushf_wq Wcf I`), so
+   **the round must re-cut the arm at the pair** — it is the first thing
+   part B hits after the line type.  A caller-brought resource can still
+   travel: the arm's SPLIT premise
+   `(∀ γp, R γp -∗ RcL γp ∗ (RcR γp ∗ Rk γp))` is spatial, so a caller may
+   hold a linear `Cr` inside it and route it into exactly one of the three
+   (which is what this walk's `Cr` does).  What cannot be dodged is the
+   free payload itself.
+4. **`S (S gp)` and `gp + 3` are equal and NOT convertible.**  The arm's
+   right-hand token is `[(S (S gp), ge)]` and the lexability theorem's is
+   `[(|wl_body ws| + 3, …)]`; one `lia`-proved `replace` joins them, and
+   the replace must be done at the WHOLE index (`ge` contains `gp + 3` as
+   a subterm).  Cheap, but it costs a build cycle to find.
+5. **`ushq_malloc_ok12` is a section hypothesis of `UkShPipeCm` and
+   therefore of everything above it.**  The pipe line's parse takes THREE
+   allocator links (`UM0→UM1→UM2→UM3`) and the middle one sits inside the
+   recursion, so it cannot be a lemma premise.  `wp_kshm_child_pipe`
+   inherits it; a `wp_kshm_child_alloc_pipe` (the twin of
+   `wp_kshm_child_alloc_redir`, spending the chain out of
+   `UkShMalloc.ushm_fresh` through `UkShPipeSeam.ushq_malloc_le_third`) is
+   NOT landed and is the next small step.
+
+**TWO TRAPS, for durable-notes.**
+
+- **A `"` inside a Rocq comment opens a STRING and eats the closing `*)`**
+  — SH-PARSE-PIPE-3's finding 4 has the `(struct cmd *)` and `sizeof(*x)`
+  shapes; this is the third, and the error names a line ~25 lines earlier
+  than the quote.
+- **`set (p0 := length (wl_body ws)) in *` does NOT fold the index terms
+  that LATER rewrites introduce.**  Every subsequent
+  `replace (p0 + 1 - p0)%nat with 1%nat by lia` then matches nothing
+  (silently), and the proof dies at a `vm_compute` twenty lines further
+  on with "No applicable tactic".  Write the index out, or `set` after
+  every rewrite.
+
+**WHAT WAS NOT REACHED, and what its statements would be.**
+
+`sh_round_holds_pipe` (`UShRound.sh_round_holds_file`'s twin) and
+`pipe_both_law` are **not stated**, and stating them would have been
+dishonest: both are stated *at* the link record (`Wcf I p := Wcl I p ∗
+sh_hold I` is `lk_lcred FI` framed, and `pipe_both_law`'s carrier is the
+record's `lk_exfb`/`lk_lcred` pair at the merged diagnostic), and the
+record does not exist for this application (STOP B).  What IS fixed about
+`pipe_both_law` and should go into PIPE-2W's brief: it is **not** a
+premise of `UPipeBootAdequacy.pipe_adequacy_pipeΣ` and must not become
+one — the record's only open field is `al_programs`, so the two-writer law
+lives INSIDE `Hprog`, where the round names it, and PIPE-2W discharges it
+there.  `PipeAssumptions.v`'s header says so.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  An OWNER RULING on STOP A —
+`LPipe` added to `FileDisc.uline` (additive, `parse_line` untouched, 5
+definitions + 26 proof sites in four landed FILE-campaign files) versus
+`UkSh.ush_line_at` generalised to its three projections (every landed
+statement that names it) — and then lane **PIPE-LINK-INST**, because the
+round cannot be stated before the record exists.  Everything else the
+round needs is in hand: `wp_kshm_child_pipe_line` is the walk,
+`PipeProto.pipe_proto_alloc` the registrar, `pipe_Qc`/`pipe_round_reading`
+the reading, `AppPipeCons.pipe_cat_pins_acc` the /cat pin, and
+`UPipeBootAdequacy.pipe_prog_law` is the exact statement the round has to
+produce.

@@ -6957,7 +6957,8 @@ Section SyscallArms.
            `return -1's ([kernel/sysfile.c]), which is why
            [SpecSysPipe.sys_pipe_post] has ONE failure arm and it carries
            the value. *)
-        { rewrite decide_False; [ exact (conj Hr eq_refl) |].
+        { rewrite decide_False;
+            [ unfold UsysMemOk.usys_pipe_fail; exact (conj Hr eq_refl) |].
           rewrite Hr. vm_compute. discriminate. }
         (* a failed pipe returned -1, so the joined row's [uint r = 0]
            premise is refuted and it owes nothing *)

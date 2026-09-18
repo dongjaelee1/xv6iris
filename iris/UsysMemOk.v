@@ -387,6 +387,24 @@ Definition usys_argfd (tf : list (mword 64)) : Z :=
 Definition usys_ret_is (r : mword 64) (fd : nat) : Prop :=
   r = (mword_of_int (Z.of_nat fd) : mword 64).
 
+(* PIPE'S FAILURE ARM, AS A NAME (lane PIPE-NEG1, second pass).  The
+   content is the same conjunction the open and dup rows spell inline --
+   the call answered -1 and the table did not move -- and it is a
+   [Definition] rather than two conjuncts in the row's body for a reason
+   that cost a whole build to find: [usys_fd_ok]'s BODY is on the
+   conversion path of a [Qed] in the largest file in the tree
+   ([UShRound.Hopen_hand], which takes the nopipe row as a premise), and
+   that [Qed] sat close enough to the kernel's stack that turning the pipe
+   branch's [sts' = sts] into [_ /\ _] tipped it over -- `Segmentation
+   fault' at [Qed], and, with the stack raised, the divergence
+   durable-notes.md says to read as a CONVERSION rather than a big proof.
+   Behind a constant the row's body is one head symbol per branch again
+   (smaller, in fact, than before the -1 landed), and every consumer reads
+   the arm through [usys_fd_ok_pipe_neg1] below rather than by unfolding
+   this. *)
+Definition usys_pipe_fail (r : mword 64) (sts sts' : list fdstate) : Prop :=
+  r = (mword_of_int (-1) : mword 64) /\ sts' = sts.
+
 Definition usys_fd_ok (n : Z) (tf : list (mword 64)) (r : mword 64)
     (sts sts' : list fdstate) : Prop :=
   if decide (n = USYS_close) then
@@ -574,8 +592,12 @@ Definition usys_fd_ok (n : Z) (tf : list (mword 64)) (r : mword 64)
         always had ONE failure arm and it always read
         [r = mword_of_int (-1)] -- [ProofSysPipe] lands all five paths on
         it -- so nothing about the kernel had to be proved for this row;
-        [ProofSyscall]'s arm 4 merely stopped DROPPING the fact. *)
-     else (r = (mword_of_int (-1) : mword 64) /\ sts' = sts))
+        [ProofSyscall]'s arm 4 merely stopped DROPPING the fact.
+
+        BEHIND A NAME, and the note on [usys_pipe_fail] says why -- the
+        two conjuncts written out here cost a [Qed] in [UShRound.v] its
+        stack. *)
+     else usys_pipe_fail r sts sts')
   else
     (* EVERY OTHER ENTRY LEAVES THE TABLE ALONE -- but read that carefully
        for the three entries where it is easy to claim too much.
@@ -773,7 +795,7 @@ Proof.
   { destruct (decide (uint r = 0)) as [_ | _].
     - destruct H as (a & b & γp & _ & _ & _ & ->).
       rewrite length_insert. apply length_insert.
-    - destruct H as [_ ->]. reflexivity. }
+    - unfold usys_pipe_fail in H. destruct H as [_ ->]. reflexivity. }
   subst. reflexivity.
 Qed.
 
@@ -845,7 +867,7 @@ Proof.
   destruct (decide (USYS_pipe = USYS_pipe)) as [_ | Hc];
     [ | exfalso; exact (Hc eq_refl) ].
   destruct (decide (uint r = 0)) as [Hc | _]; [ exfalso; exact (Hnz Hc) | ].
-  exact H.
+  unfold usys_pipe_fail in H. exact H.
 Qed.
 
 (* [usys_fd_ok_parked_ne_open] IS GONE, and its disappearance is the point:

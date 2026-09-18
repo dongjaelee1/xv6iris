@@ -2546,6 +2546,25 @@ Qed.
 Lemma demo_p_both_distinct : dg_execL ++ dg_execR <> dg_execR ++ dg_execL.
 Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
 
+(* ---- THE EXTENSION IS REAL, AT THE BAR ------------------------------- *)
+
+(* [pbody_byte] is not decoration: the user typing [echo hello world | cat]
+   is MID-LINE at [echo hello world |], whose last byte [EchoDisc]'s
+   [wl_body_byte] refutes -- so the echo model's D3 rejects both the
+   partial line and the complete one, and this model accepts both. *)
+Lemma demo_p_partial : disc_input_p (sb "echo hello world |"%string).
+Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+Lemma demo_p_partial_not_echo :
+  ~ disc_input (sb "echo hello world |"%string).
+Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+Lemma demo_p_full : disc_input_p (line_bytes pd_l).
+Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+Lemma demo_p_full_not_echo : ~ disc_input (line_bytes pd_l).
+Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
 (* ---- (6) THE NEGATIVE WITNESS ---------------------------------------- *)
 
 (* the head byte of a concatenation is the head byte of its first part *)

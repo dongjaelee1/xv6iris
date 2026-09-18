@@ -208,13 +208,19 @@ Section ProofCreateFail.
       (dn : dinode) (bm : blkmap) (data : nat -> list (bv 8))
       (nf nsl : nat -> bv 8) (t : nat)
       (* ---- THE APPLICATION'S SIDE ---- *)
-      (Nm : fname -> Prop)
+      (Nm : fname -> Prop) (Nd : absnode -> Prop)
       (P Pmiss : nat -> Z -> iProp Σ)
       (Farm : pfam Σ (aview -> Z -> iProp Σ))
       (Fdots : pfam Σ (aview -> Z -> Z -> bool -> iProp Σ))
       (Fun : pfam Σ (aview -> Z -> iProp Σ))
       (Fok : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
       (Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ)) :
+    (* THE NODE PREDICATE'S PURE PREMISE (lane INIT-FILE, the UNARM
+       ruling): this arm FIRES THE UNARM, on the row its own arm placed --
+       a NON-DIRECTORY child, whose record has not moved since -- so it
+       owes [Nd] at [cre_c0] and nowhere else. *)
+    (ty <> SpecDirlookup.T_DIR ->
+     Nd (cre_c0 (bv_unsigned ty) (bv_unsigned major) (bv_unsigned minor))) ->
     (K_create <= K)%nat ->
     16 * Z.of_nat icfg_nib <= 2 ^ 16 ->
     log_geom_ok fsc_cov fsc_logst ->
@@ -251,9 +257,9 @@ Section ProofCreateFail.
                    plen pfun pv ty major minor U u Sb ns pidv
                    dqb dqs dqbs dqn m sp0 ret_tgt K eb b lks
                    kd qd gd γil γisl dind dn bm data nf nsl t CIDf
-                   Nm P Pmiss Farm Fdots Fun Fok Fex).
+                   Nm Nd P Pmiss Farm Fdots Fun Fok Fex).
   Proof using .
-    intros HK Hnib16 Hlg Hsize Hbms0 Hbmsc Hbmsl Hist0 Hcovb
+    intros HNdF HK Hnib16 Hlg Hsize Hbms0 Hbmsc Hbmsl Hist0 Hcovb
            Hiregb Hns Hj Hgs Hspm Hrt Hal10 Hal9 Heb.
     destruct (cr_kb K HK)
       as (HK10 & HKnp & HKil & HKdlu & HKiup & HKia & HKiu & HKdlk & HKsum).
@@ -505,14 +511,28 @@ Section ProofCreateFail.
     (* THE UNARM IS THE UNDO OF THIS ARM: the tied piece is opened at the
        inum the arm's receipt names ([FsAbsCreateFire.aunarm_of_arm]), which
        hands the receipt straight back. *)
-    iDestruct (aunarm_of_arm_open (fs_gamma_L fsc_fs) _ Farm Fun
+    (* THE NODE THE ROW STILL HOLDS: the record at count 1 is the one the
+       ARM flushed and nothing has touched it since (the [sh zero,74(s3)]
+       below is the unarm's own store), so its abstract value is create's
+       own [cre_c0] -- [ProofCreateAlloc]'s [Hrowc], re-read here.  That is
+       what pays [Nd] at the fire (lane INIT-FILE, the UNARM ruling). *)
+    assert (Htynz : bv_unsigned ty <> 0) by (rewrite -Htyc; exact Htyz).
+    assert (Hrowc1 : abs_of (era_node (cr_setf dnc major minor
+                               (mword_of_int 1 : mword 16)) bmc datc)
+            = Some (MkAnode (cre_c0 (bv_unsigned ty) (bv_unsigned major)
+                                    (bv_unsigned minor)) 1%nat)).
+    { rewrite (cr_setf_fresh_made dnc ty major minor Hfresh Htyc).
+      exact (FsAbsMknodFire.caf_made_row ty major minor bmc datc Htynz). }
+    iDestruct (aunarm_of_arm_nd_open (fs_gamma_L fsc_fs) _ Nd Farm Fun
                  (bv_unsigned cinum) with "Harmr Hun") as "Hun".
-    iMod (caf_unarm_fire fsc_fs ⊤ (bv_unsigned cinum) _ Fun
+    iMod (caf_unarm_fire_nd fsc_fs ⊤ (bv_unsigned cinum)
+            (cre_c0 (bv_unsigned ty) (bv_unsigned major) (bv_unsigned minor))
+            Nd Fun
             (era_node (cr_setf dnc major minor (mword_of_int 1 : mword 16))
                       bmc datc)
             (era_node (cr_setf dnc major minor (mword_of_int 0 : mword 16))
                       bmc datc)
-            ltac:(solve_ndisj) Hlocz Hrow1 Hnone0
+            ltac:(solve_ndisj) Hlocz Hrowc1 Hnone0 (HNdF Htdir)
             with "[] [] Hun Hctop") as "(Hctop & Hunr)";
       [iApply (ireg_inv_ftop with "Hiregi") | iApply (ireg_inv_app with "Hiregi") |].
     iModIntro.
@@ -888,7 +908,7 @@ Section ProofCreateFail.
        +0xc4 and DISAPPEARED at +0x146.  No dot ever landed on a
        non-directory child, so the dots commit goes home unfired. *)
     iDestruct (cr_fail_of_pair fsc_fs (bv_unsigned ty) (bv_unsigned major)
-                 (bv_unsigned minor) Nm P Pmiss Farm Fdots Fun Fok Fex
+                 (bv_unsigned minor) Nm Nd P Pmiss Farm Fdots Fun Fok Fex
                  (bview plen pfun) (bv_unsigned dind) (bv_unsigned cinum)
                  with "HPpar Hdlkc Hacre [Hdots] Hunr") as "Hcf".
     { iRight. iExact "Hdots". }

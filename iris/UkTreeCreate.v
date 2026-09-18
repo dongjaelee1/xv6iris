@@ -626,7 +626,7 @@ Section UkTreeCreate.
       (bv_unsigned (SpecDirlookup.T_DIR : mword 16))
       (bv_unsigned (mword_of_int 0 : mword 16))
       (bv_unsigned (mword_of_int 0 : mword 16))
-      (fun _ : fname => True%type)
+      (fun _ : fname => True%type) (fun _ : absnode => True%type)
       tree_root_cur (tree_arm_fam c r g t)
       (pfam_triv (fun _ _ _ _ => True%I)) (tree_unarm_fam c r g t)
       (tree_acre_fam c r g t
@@ -667,7 +667,7 @@ Section UkTreeCreate.
            (bv_unsigned (SpecDirlookup.T_DIR : mword 16))
            (bv_unsigned (mword_of_int 0 : mword 16))
            (bv_unsigned (mword_of_int 0 : mword 16))
-           (fun _ : fname => True%type)
+           (fun _ : fname => True%type) (fun _ : absnode => True%type)
            tree_root_cur (fun _ _ => True%I) (tree_arm_fam c r g t)
            (pfam_triv (fun _ _ _ _ => True%I)) (tree_unarm_fam c r g t)
            (tree_acre_fam c r g t

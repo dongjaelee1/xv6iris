@@ -1727,10 +1727,18 @@ Section ProofSysMknodBody.
            iDestruct (mknod_acre_inst (fs_gamma_L fsc_fs) (us_M U) v0
                         (bview pk bf) _ _ P Farm Fok Hpof with "Hacre")
              as "Hacre".
+           (* ...and the child's pair at the NODE PREDICATE this syscall
+              PINS (lane INIT-FILE, the UNARM ruling): mknod's caller owes
+              the unarm only at the node mknod's own create arms, which is
+              exactly [FsAbsCreateNm.cre_child_unfired_nd]'s pin. *)
+           iDestruct (cre_child_unfired_ndp_pin (fs_gamma_L fsc_fs)
+                        (ADev (bv_unsigned (hw_lo (arg_int32 v1)))
+                              (bv_unsigned (hw_lo (arg_int32 v2)))) Farm Fun
+                        with "Hchild") as "Hchild".
            iDestruct (cre_commits_of_dev (fs_gamma_L fsc_fs)
                         (bv_unsigned (hw_lo (arg_int32 v1)))
                         (bv_unsigned (hw_lo (arg_int32 v2)))
-                        _ _ Farm Fun Fok with "Hacre Hchild") as "Hcre".
+                        _ _ _ Farm Fun Fok with "Hacre Hchild") as "Hcre".
            iApply (Create.wp_create_sconf (CID := CID25) gs j gl pd pav pu
       gf
       pk bf
@@ -1738,11 +1746,26 @@ Section ProofSysMknodBody.
                      (upd_usM (us_upt U P') _) MAXOPBLOCKS Sb0 ns pid dqb dqs dqbs dqn
                      N4 (K - 20)%nat eb b lks
                      (npar_nm (us_M U) v0)
+                     (fun c : absnode =>
+                        c = ADev (bv_unsigned (hw_lo (arg_int32 v1)))
+                                 (bv_unsigned (hw_lo (arg_int32 v2))))
                      P Pmiss Farm (pfam_triv (fun _ _ _ _ => True%I)) Fun Fok Fex
                      (fun (nm : fname)
                           (H : list_basics.last (path_elems (bview pk bf))
                                = Some nm) =>
                         npar_nm_intro (us_M U) v0 (bview pk bf) nm Hpof H)
+                     (* THE NODE PREDICATE'S TWO PREMISES: at [T_DEVICE] the
+                        node the arm places IS [ADev ma mi] ([cre_c0_dev]),
+                        and the directory premise is vacuous. *)
+                     (fun _ => cre_c0_dev (bv_unsigned (hw_lo (arg_int32 v1)))
+                                          (bv_unsigned (hw_lo (arg_int32 v2))))
+                     ltac:(intros Hc; exfalso;
+                           assert (Hx : bv_unsigned
+                                          (FsAbsCreateFire.T_DEVICE : mword 16)
+                                        = bv_unsigned
+                                            (SpecDirlookup.T_DIR : mword 16))
+                             by (rewrite Hc; reflexivity);
+                           vm_compute in Hx; discriminate)
                      ltac:(lia) HdevR Hnib0 Hgeom Hsize
                      Hbm0 Hbmcov Hbmlog Hist0 Hcovb Hbmgeo Hiregb Hpcstr
                      (mn_plen_lt pk Hpk) Hni1 Hni2 Hni3 Hush

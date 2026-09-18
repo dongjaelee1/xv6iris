@@ -186,7 +186,7 @@ Section ProofCreateMain.
       (m : regfile) (K : nat) (eb : bool)
       (b : bool) (lks : gset string)
       (* ---- THE APPLICATION'S SIDE ---- *)
-      (Nm : fname -> Prop)
+      (Nm : fname -> Prop) (Nd : absnode -> Prop)
       (P Pmiss : nat -> Z -> iProp Σ)
       (Farm : pfam Σ (aview -> Z -> iProp Σ))
       (Fdots : pfam Σ (aview -> Z -> Z -> bool -> iProp Σ))
@@ -197,10 +197,10 @@ Section ProofCreateMain.
  γf
  plen pfun ty major minor
                          U u Sb ns pidv dqb dqs dqbs dqn m K eb b lks
-                         Nm P Pmiss Farm Fdots Fun Fok Fex.
+                         Nm Nd P Pmiss Farm Fdots Fun Fok Fex.
   Proof using .
     rewrite /wp_create_sconf_body.
-    intros HNmL HK Hroot Hnib0 Hlg Hsize Hbms0 Hbmsc Hbmsl
+    intros HNmL HNdF HNdD HK Hroot Hnib0 Hlg Hsize Hbms0 Hbmsc Hbmsl
            Hist0 Hcovb Hbmgeo Hiregb Hcstr Hplen31 Hni1 Hni2 Hni3 Hnib16
            Htynz Htyw Hu Hns Hj Hgs Ha1 Ha2 Ha3 Heb.
     (* (L5) at the fresh record is (L5) at the type word (2b-inode-3). *)
@@ -218,7 +218,7 @@ Section ProofCreateMain.
  γf
  plen pfun ty major minor U u Sb ns pidv
               dqb dqs dqbs dqn m K eb b lks
-              Nm P Pmiss Farm Fdots Fun Fok Fex
+              Nm Nd P Pmiss Farm Fdots Fun Fok Fex
               HK Hroot Hnib0 Hlg Hsize Hbms0 Hbmsc
               Hbmsl Hist0 Hcovb Hbmgeo Hiregb Hcstr Hplen31 Hni1 Hni2 Hni3
               Htynz Htyk Hu Hns Hj Hgs Ha1 Ha2 Ha3 Heb
@@ -232,7 +232,7 @@ Section ProofCreateMain.
               ty major minor U u Sb ns pidv dqb dqs dqbs dqn m
               (m !!! Regidx csp_rs1 : mword 64)
               (ret_pc (m !!! Regidx Rra : mword 64)) K eb b lks
-              Nm P Pmiss Farm Fdots Fun Fok Fex
+              Nm Nd P Pmiss Farm Fdots Fun Fok Fex
               HNmL HK Hroot Hlg Hsize Hbms0 Hbmsc Hbmsl
               Hist0 Hcovb Hbmgeo Hiregb Hni1 Hni2 Hni3 Hnib16 Htynz Htyk
               Hu Hns Hj Hgs eq_refl eq_refl Hal10 Hal9 Heb
@@ -246,8 +246,8 @@ Section ProofCreateMain.
                 (m !!! Regidx csp_rs1 : mword 64)
                 (ret_pc (m !!! Regidx Rra : mword 64)) K eb b lks
                 kd qd gd γil γisl dind dn bm data nf nsl t
-                Nm P Pmiss Farm Fdots Fun Fok Fex
-                HNmL HK Hroot Hlg Hsize Hbms0 Hbmsc Hbmsl
+                Nm Nd P Pmiss Farm Fdots Fun Fok Fex
+                HNmL HNdD HK Hroot Hlg Hsize Hbms0 Hbmsc Hbmsl
                 Hist0 Hcovb Hbmgeo Hiregb Hni1 Hni2 Hni3 Hnib16
                 Hu Hns Hj Hgs eq_refl eq_refl Hal10 Hal9 Heb
                 with "Htext Hkd Hpk Hbio Hlogc Hkenv Hitb2 Hitbl
@@ -260,8 +260,8 @@ Section ProofCreateMain.
                 (m !!! Regidx csp_rs1 : mword 64)
                 (ret_pc (m !!! Regidx Rra : mword 64)) K eb b lks
                 kd qd gd γil γisl dind dn bm data nf nsl t
-                Nm P Pmiss Farm Fdots Fun Fok Fex
-                HK Hnib16 Hlg Hsize Hbms0 Hbmsc Hbmsl
+                Nm Nd P Pmiss Farm Fdots Fun Fok Fex
+                HNdF HK Hnib16 Hlg Hsize Hbms0 Hbmsc Hbmsl
                 Hist0 Hcovb Hiregb Hns Hj Hgs eq_refl eq_refl Hal10 Hal9 Heb
                 with "Htext Hkd Hpenv Hbio Hlogc Hitb2 Hitbl Hesc Hiregi Hiopen
                       Hprocs Hdevi Hgeom Hdlk").

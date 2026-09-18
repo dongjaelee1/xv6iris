@@ -212,7 +212,7 @@ Section ProofCreateAlloc.
       (m : regfile) (sp0 ret_tgt : mword 64) (K : nat) (eb : bool)
       (b : bool) (lks : gset string)
       (* ---- THE APPLICATION'S SIDE ---- *)
-      (Nm : fname -> Prop)
+      (Nm : fname -> Prop) (Nd : absnode -> Prop)
       (P Pmiss : nat -> Z -> iProp Σ)
       (Farm : pfam Σ (aview -> Z -> iProp Σ))
       (Fdots : pfam Σ (aview -> Z -> Z -> bool -> iProp Σ))
@@ -282,7 +282,7 @@ Section ProofCreateAlloc.
                        plen pfun pv ty major minor U u Sb ns pidv
                        dqb dqs dqbs dqn m sp0 ret_tgt K eb b lks
                        kd qd gd γil γisl dind dn bm data nf nsl t CIDm
-                       Nm P Pmiss Farm Fdots Fun Fok Fex)) -∗
+                       Nm Nd P Pmiss Farm Fdots Fun Fok Fex)) -∗
     (* ---- ARM FAIL's NON-DIRECTORY ENTRY, PARKED ---- *)
     (∀ (kd : nat) (qd : Qp) (gd γil γisl : gname) (dind : mword 32)
        (dn : dinode) (bm : blkmap) (data : nat -> list (bv 8))
@@ -293,7 +293,7 @@ Section ProofCreateAlloc.
                       plen pfun pv ty major minor U u Sb ns pidv
                       dqb dqs dqbs dqn m sp0 ret_tgt K eb b lks
                       kd qd gd γil γisl dind dn bm data nf nsl t CIDf
-                      Nm P Pmiss Farm Fdots Fun Fok Fex)) -∗
+                      Nm Nd P Pmiss Farm Fdots Fun Fok Fex)) -∗
     (* THE CONCLUSION IS [wp_next]-WRAPPED, and it has to be.  The two parked
        bodies and [cr_alloc_body]'s own [Hcont] are all anchored at the
        SECTION hart, while the allocate half's resources arrive at whatever
@@ -307,7 +307,7 @@ Section ProofCreateAlloc.
 
                     plen pfun pv ty major minor U u Sb ns pidv dqb dqs dqbs dqn
                     m sp0 ret_tgt K eb b lks CIDa
-                    Nm P Pmiss Farm Fdots Fun Fok Fex).
+                    Nm Nd P Pmiss Farm Fdots Fun Fok Fex).
   Proof using .
     intros HNmL HK Hroot Hlg Hsize Hbms0 Hbmsc Hbmsl Hist0
            Hcovb Hbmgeo Hiregb Hni1 Hni2 Hni3 Hnib16 Htynz Htyk Hu Hns Hj Hgs
@@ -1614,7 +1614,7 @@ Section ProofCreateAlloc.
                   no dots on a non-directory, the unarm and the exists
                   observation come home, and the cursor is at the parent. *)
                iApply (cr_ok_of_made (bv_unsigned ty) (bv_unsigned major)
-                         (bv_unsigned minor) Nm P Farm Fdots Fun Fok Fex
+                         (bv_unsigned minor) Nm Nd P Farm Fdots Fun Fok Fex
                          (bview plen pfun) (bv_unsigned dind) (bname 14 nf)
                          (bv_unsigned cinum)
                          (cr_last_of_npar _ nf Hnpname)
@@ -1984,13 +1984,13 @@ Section ProofCreateAlloc.
          lookup missed and ialloc never got as far as a delta, so the
          cursor comes home with all four commits. *)
       iAssert (cre_commits (fs_gamma_L fsc_fs) (bv_unsigned ty)
-                 (bv_unsigned major) (bv_unsigned minor) Nm
+                 (bv_unsigned major) (bv_unsigned minor) Nm Nd
                  (P (length (npar_elems (bview plen pfun))))
                  Farm Fdots Fun Fok)
         with "[Harm Hdots Hun Hacre]" as "Hcre".
       { rewrite /cre_commits. iFrame "Harm Hdots Hun Hacre". }
       iDestruct (cr_fail_of_cursor fsc_fs (bv_unsigned ty) (bv_unsigned major)
-                   (bv_unsigned minor) Nm P Pmiss Farm Fdots Fun Fok Fex
+                   (bv_unsigned minor) Nm Nd P Pmiss Farm Fdots Fun Fok Fex
                    (bview plen pfun) (bv_unsigned dind)
                    with "HPpar Hdlkc Hcre") as "Hcf".
       iSpecialize ("Hcont" $! CIDf with "[%]"); [wp_next_chain |].

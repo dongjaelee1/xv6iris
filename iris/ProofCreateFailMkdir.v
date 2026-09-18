@@ -206,13 +206,20 @@ Section ProofCreateFailMkdir.
       (kd : nat) (qd : Qp) (gd γil γisl : gname) (dind : mword 32)
       (nf nsl : nat -> bv 8) (t : nat)
       (* ---- THE APPLICATION'S SIDE ---- *)
-      (Nm : fname -> Prop)
+      (Nm : fname -> Prop) (Nd : absnode -> Prop)
       (P Pmiss : nat -> Z -> iProp Σ)
       (Farm : pfam Σ (aview -> Z -> iProp Σ))
       (Fdots : pfam Σ (aview -> Z -> Z -> bool -> iProp Σ))
       (Fun : pfam Σ (aview -> Z -> iProp Σ))
       (Fok : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
       (Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ)) :
+    (* THE NODE PREDICATE'S PURE PREMISE (lane INIT-FILE, the UNARM
+       ruling): this is mkdir's [fail:] tail, and the row it unarms is a
+       DIRECTORY that may already carry whichever dot the entry wrote -- a
+       node create's own [cre_c0] does not name.  So a DIRECTORY create
+       owes [Nd] everywhere, and every landed caller of one is at
+       [Nd := fun _ => True]. *)
+    (ty = SpecDirlookup.T_DIR -> forall c : absnode, Nd c) ->
     (K_create <= K)%nat ->
     16 * Z.of_nat icfg_nib <= 2 ^ 16 ->
     log_geom_ok fsc_cov fsc_logst ->
@@ -249,9 +256,9 @@ Section ProofCreateFailMkdir.
                    plen pfun pv ty major minor U u Sb ns pidv
                    dqb dqs dqbs dqn m sp0 ret_tgt K eb b lks
                    kd qd gd γil γisl dind nf nsl t CIDf
-                   Nm P Pmiss Farm Fdots Fun Fok Fex).
+                   Nm Nd P Pmiss Farm Fdots Fun Fok Fex).
   Proof using .
-    intros HK Hnib16 Hlg Hsize Hbms0 Hbmsc Hbmsl Hist0 Hcovb
+    intros HNdD HK Hnib16 Hlg Hsize Hbms0 Hbmsc Hbmsl Hist0 Hcovb
            Hiregb Hns Hj Hgs Hspm Hrt Hal10 Hal9 Heb.
     destruct (cr_kb K HK)
       as (HK10 & HKnp & HKil & HKdlu & HKiup & HKia & HKiu & HKdlk & HKsum).
@@ -516,13 +523,15 @@ Section ProofCreateFailMkdir.
       by exact (caf_era_none_nl0 _ bmc datc Hznl).
     iApply fupd_wp.
     (* THE UNARM IS THE UNDO OF THIS ARM (see [ProofCreateFail]'s note). *)
-    iDestruct (aunarm_of_arm_open (fs_gamma_L fsc_fs) _ Farm Fun
+    iDestruct (aunarm_of_arm_nd_open (fs_gamma_L fsc_fs) _ Nd Farm Fun
                  (bv_unsigned cinum) with "Harmr Hun") as "Hun".
-    iMod (cr_dirty_clear_unarm ⊤ t (bv_unsigned cinum) _ Fun
+    iMod (cr_dirty_clear_unarm_nd ⊤ t (bv_unsigned cinum)
+            (abs_node (era_node dc bmc datc)) Nd Fun
             (era_node dc bmc datc)
             (era_node (cr_setf dc major minor (mword_of_int 0 : mword 16))
                       bmc datc)
             ltac:(solve_ndisj) Hlocorph Hrow1 Hnone0
+            (HNdD Htdir (abs_node (era_node dc bmc datc)))
             with "[] [] Hdirty Hun Hctop")
       as "(Htx & Hctop & Hunr)";
       [iApply (ireg_inv_ftop with "Hiregi") | iApply (ireg_inv_app with "Hiregi") |].
@@ -790,7 +799,7 @@ Section ProofCreateFailMkdir.
        dots receipt the entry brought -- both dots, the first alone, or none
        at all -- carried through unchanged. *)
     iDestruct (cr_fail_of_pair fsc_fs (bv_unsigned ty) (bv_unsigned major)
-                 (bv_unsigned minor) Nm P Pmiss Farm Fdots Fun Fok Fex
+                 (bv_unsigned minor) Nm Nd P Pmiss Farm Fdots Fun Fok Fex
                  (bview plen pfun) (bv_unsigned dind) (bv_unsigned cinum)
                  with "HPpar Hdlkc Hacre Hdotsx Hunr") as "Hcf".
     iSpecialize ("Hcont" $! CIDfin with "[%]"); [wp_next_chain |].

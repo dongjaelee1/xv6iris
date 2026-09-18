@@ -219,7 +219,7 @@ Section ProofCreateFound.
       (m : regfile) (K : nat) (eb : bool)
       (b : bool) (lks : gset string)
       (* ---- THE APPLICATION'S SIDE ---- *)
-      (Nm : fname -> Prop)
+      (Nm : fname -> Prop) (Nd : absnode -> Prop)
       (P Pmiss : nat -> Z -> iProp Σ)
       (Farm : pfam Σ (aview -> Z -> iProp Σ))
       (Fdots : pfam Σ (aview -> Z -> Z -> bool -> iProp Σ))
@@ -293,7 +293,7 @@ Section ProofCreateFound.
     ep_start fsc_fs (pv_cwi (us_V U)) P Pmiss (bview plen pfun) -∗
     pf_at (dlookup_commit_at (fs_gamma_L fsc_fs) appE) Fex -∗
     cre_commits (fs_gamma_L fsc_fs) (bv_unsigned ty) (bv_unsigned major)
-      (bv_unsigned minor) Nm (P (length (npar_elems (bview plen pfun))))
+      (bv_unsigned minor) Nm Nd (P (length (npar_elems (bview plen pfun))))
       Farm Fdots Fun Fok -∗
     (* ---- THE PARKED ALLOCATE HALF, as a HYPOTHESIS ---- *)
     wp_next true (proc_addr j) (fun CIDa : CpuId =>
@@ -303,14 +303,14 @@ Section ProofCreateFound.
                     ty major minor U u Sb ns pidv dqb dqs dqbs dqn m
                     (m !!! Regidx csp_rs1 : mword 64)
                     (ret_pc (m !!! Regidx Rra : mword 64)) K eb b lks CIDa
-                    Nm P Pmiss Farm Fdots Fun Fok Fex) -∗
+                    Nm Nd P Pmiss Farm Fdots Fun Fok Fex) -∗
     (* ---- the contract's own continuation ---- *)
     wp_next true (proc_addr j) (fun CIDc : CpuId =>
       cr_cont_body γf
  plen pfun (m !!! Regidx Ra0 : mword 64)
                    ty major minor U u Sb ns pidv dqb dqs dqbs dqn m K eb b lks j
                    (ret_pc (m !!! Regidx Rra : mword 64)) CIDc
-                   Nm P Pmiss Farm Fdots Fun Fok Fex) -∗
+                   Nm Nd P Pmiss Farm Fdots Fun Fok Fex) -∗
     WP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hroot Hnib0 Hlg Hsize Hbms0 Hbmsc Hbmsl
@@ -994,7 +994,7 @@ Section ProofCreateFound.
         (* ARM G reports NO abstract observation: the walk reached the
            parent (so the cursor comes home) and nothing else happened. *)
         iDestruct (cr_fail_of_cursor fsc_fs (bv_unsigned ty) (bv_unsigned major)
-                     (bv_unsigned minor) Nm P Pmiss Farm Fdots Fun Fok Fex
+                     (bv_unsigned minor) Nm Nd P Pmiss Farm Fdots Fun Fok Fex
                      (bview plen pfun) (bv_unsigned dind)
                      with "HPpar Hdlkc Hcre") as "Hcf".
         iSpecialize ("Hcont" $! CIDf with "[%]"); [wp_next_chain |].
@@ -1579,7 +1579,7 @@ Section ProofCreateFound.
                           observation fired at the exists-lookup, which is
                           above this block and shared by its two entries *)
                        cre_fail_arms (fs_gamma_L fsc_fs) fsc_fs (bv_unsigned ty)
-                         (bv_unsigned major) (bv_unsigned minor) Nm P Pmiss
+                         (bv_unsigned major) (bv_unsigned minor) Nm Nd P Pmiss
                          Farm Fdots Fun Fok Fex (bview plen pfun) -∗
                        wp_next (CID0 := CID) true (proc_addr j)
                          (fun CIDc : CpuId =>
@@ -1587,7 +1587,7 @@ Section ProofCreateFound.
  plen pfun
                               (m !!! Regidx Ra0 : mword 64) ty major minor U u Sb
                               ns pidv dqb dqs dqbs dqn m K eb b lks j ret_tgt
-                              CIDc Nm P Pmiss Farm Fdots Fun Fok Fex) -∗
+                              CIDc Nm Nd P Pmiss Farm Fdots Fun Fok Fex) -∗
                        WP (Loop : expr riscv_lang)))%I
             with "[]" as "#Hfbad".
           { iModIntro.
@@ -1962,7 +1962,7 @@ Section ProofCreateFound.
                 (* THE PAYOUT ON ARM F-BAD: the exists observation FIRED
                    at the lookup and every commit goes home unfired. *)
                 iDestruct (cr_fail_of_seen fsc_fs (bv_unsigned ty)
-                             (bv_unsigned major) (bv_unsigned minor) Nm P Pmiss
+                             (bv_unsigned major) (bv_unsigned minor) Nm Nd P Pmiss
                              Farm Fdots Fun Fok Fex (bview plen pfun)
                              (bv_unsigned dind) (bname 14 nfp)
                              (bv_unsigned cinum)
@@ -2033,7 +2033,7 @@ Section ProofCreateFound.
                    already there, so all four commits come home and the
                    payout is the observation the lookup took. *)
                 iApply (cr_ok_of_found (bv_unsigned ty) (bv_unsigned major)
-                          (bv_unsigned minor) Nm P Farm Fdots Fun Fok Fex
+                          (bv_unsigned minor) Nm Nd P Farm Fdots Fun Fok Fex
                           (bview plen pfun) (bv_unsigned dind) (bname 14 nfp)
                           (bv_unsigned cinum)
                           (cr_last_of_npar _ nfp Hnpname)
@@ -2056,7 +2056,7 @@ Section ProofCreateFound.
              (* the same payout as F-BAD's second entry: the observation
                 fired at the lookup, above both type tests. *)
              iDestruct (cr_fail_of_seen fsc_fs (bv_unsigned ty)
-                          (bv_unsigned major) (bv_unsigned minor) Nm P Pmiss
+                          (bv_unsigned major) (bv_unsigned minor) Nm Nd P Pmiss
                           Farm Fdots Fun Fok Fex (bview plen pfun)
                           (bv_unsigned dind) (bname 14 nfp) (bv_unsigned cinum)
                           (cr_last_of_npar _ nfp Hnpname)
@@ -2308,7 +2308,7 @@ Section ProofCreateFound.
         (* ARM G2, like ARM G: the walk reached the parent, so the cursor
            comes home and no observation was taken. *)
         iDestruct (cr_fail_of_cursor fsc_fs (bv_unsigned ty) (bv_unsigned major)
-                     (bv_unsigned minor) Nm P Pmiss Farm Fdots Fun Fok Fex
+                     (bv_unsigned minor) Nm Nd P Pmiss Farm Fdots Fun Fok Fex
                      (bview plen pfun) (bv_unsigned dind)
                      with "HPpar Hdlkc Hcre") as "Hcf".
         iSpecialize ("Hcont" $! CIDf with "[%]"); [wp_next_chain |].
@@ -2497,7 +2497,7 @@ Section ProofCreateFound.
          "nameiparent of /" is the same shape at k = 0) hands the cursor
          back instead.  Nothing else on this path fired. *)
       iDestruct (cr_fail_of_dead fsc_fs (bv_unsigned ty) (bv_unsigned major)
-                   (bv_unsigned minor) Nm P Pmiss Farm Fdots Fun Fok Fex
+                   (bv_unsigned minor) Nm Nd P Pmiss Farm Fdots Fun Fok Fex
                    (bview plen pfun) with "Hdead Hdlkc Hcre") as "Hcf".
       iApply (wp_beqz_x0_taken_s_sconf (mword_of_int (CK + 0x22))
                 (mword_of_int 318 : mword 13) Ra0 Q1 (K - 10)%nat b

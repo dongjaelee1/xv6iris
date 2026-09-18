@@ -218,7 +218,7 @@ Section ProofCreateMkdir.
       (dn : dinode) (bm : blkmap) (data : nat -> list (bv 8))
       (nf nsl : nat -> bv 8) (t : nat)
       (* ---- THE APPLICATION'S SIDE ---- *)
-      (Nm : fname -> Prop)
+      (Nm : fname -> Prop) (Nd : absnode -> Prop)
       (P Pmiss : nat -> Z -> iProp Σ)
       (Farm : pfam Σ (aview -> Z -> iProp Σ))
       (Fdots : pfam Σ (aview -> Z -> Z -> bool -> iProp Σ))
@@ -230,6 +230,13 @@ Section ProofCreateMkdir.
        buffer, so it owes [Nm] at that name and nothing else. *)
     (forall nm : fname,
        list_basics.last (path_elems (bview plen pfun)) = Some nm -> Nm nm) ->
+    (* THE NODE PREDICATE'S PURE PREMISE (lane INIT-FILE, the UNARM
+       ruling): this half is the T_DIR sub-branch, and its three [fail:]
+       entries unarm a DIRECTORY row that may already carry a dot -- a
+       node create's own [cre_c0] does not name.  The premise is passed
+       straight to [ProofCreateFailMkdir.cr_fail_mkdir_half], which is
+       where it is spent. *)
+    (ty = SpecDirlookup.T_DIR -> forall c : absnode, Nd c) ->
     (K_create <= K)%nat ->
     icfg_dev = ROOTDEV ->
     log_geom_ok fsc_cov fsc_logst ->
@@ -275,9 +282,9 @@ Section ProofCreateMkdir.
                     plen pfun pv ty major minor U u Sb ns pidv
                     dqb dqs dqbs dqn m sp0 ret_tgt K eb b lks
                     kd qd gd γil γisl dind dn bm data nf nsl t CIDm
-                    Nm P Pmiss Farm Fdots Fun Fok Fex).
+                    Nm Nd P Pmiss Farm Fdots Fun Fok Fex).
   Proof using .
-    intros HNmL HK Hroot Hlg Hsize Hbms0 Hbmsc Hbmsl Hist0
+    intros HNmL HNdD HK Hroot Hlg Hsize Hbms0 Hbmsc Hbmsl Hist0
            Hcovb Hbmgeo Hiregb Hni1 Hni2 Hni3 Hnib16 Hu Hns Hj Hgs
            Hspm Hrt Hal10 Hal9 Heb.
     destruct (cr_kb K HK)
@@ -2565,7 +2572,7 @@ Section ProofCreateMkdir.
                parent leg fired; the unarm and the exists observation come
                home and the cursor is at the parent. *)
             iApply (cr_ok_of_made (bv_unsigned ty) (bv_unsigned major)
-                      (bv_unsigned minor) Nm P Farm Fdots Fun Fok Fex
+                      (bv_unsigned minor) Nm Nd P Farm Fdots Fun Fok Fex
                       (bview plen pfun) (bv_unsigned dind) (bname 14 nf)
                       (bv_unsigned cinum)
                       (cr_last_of_npar _ nf Hnpname)
@@ -2730,8 +2737,8 @@ Section ProofCreateMkdir.
  plen pfun pv ty major minor U u
                         Sb ns pidv dqb dqs dqbs dqn m sp0 ret_tgt K eb b lks
                         kd qd gd γil γisl dind nf nsl t
-                        Nm P Pmiss Farm Fdots Fun Fok Fex
-                        HK Hnib16 Hlg Hsize Hbms0 Hbmsc Hbmsl
+                        Nm Nd P Pmiss Farm Fdots Fun Fok Fex
+                        HNdD HK Hnib16 Hlg Hsize Hbms0 Hbmsc Hbmsl
                         Hist0 Hcovb Hiregb Hns Hj Hgs Hspm Hrt Hal10 Hal9 Heb
                         with "Htext Hkd Hpenv Hbio Hlogc Hitb2 Hitbl Hesc Hiregi Hiopen
                               Hprocs Hdevi Hgeom Hdlk") as "Hfl".
@@ -2900,8 +2907,8 @@ Section ProofCreateMkdir.
  plen pfun pv ty major minor U u Sb ns pidv
                       dqb dqs dqbs dqn m sp0 ret_tgt K eb b lks
                       kd qd gd γil γisl dind nf nsl t
-                      Nm P Pmiss Farm Fdots Fun Fok Fex
-                      HK Hnib16 Hlg Hsize Hbms0 Hbmsc Hbmsl
+                      Nm Nd P Pmiss Farm Fdots Fun Fok Fex
+                      HNdD HK Hnib16 Hlg Hsize Hbms0 Hbmsc Hbmsl
                       Hist0 Hcovb Hiregb Hns Hj Hgs Hspm Hrt Hal10 Hal9 Heb
                       with "Htext Hkd Hpenv Hbio Hlogc Hitb2 Hitbl Hesc Hiregi Hiopen
                             Hprocs Hdevi Hgeom Hdlk") as "Hfl".
@@ -3029,8 +3036,8 @@ Section ProofCreateMkdir.
  plen pfun pv ty major minor U u Sb ns pidv
                     dqb dqs dqbs dqn m sp0 ret_tgt K eb b lks
                     kd qd gd γil γisl dind nf nsl t
-                    Nm P Pmiss Farm Fdots Fun Fok Fex
-                    HK Hnib16 Hlg Hsize Hbms0 Hbmsc Hbmsl
+                    Nm Nd P Pmiss Farm Fdots Fun Fok Fex
+                    HNdD HK Hnib16 Hlg Hsize Hbms0 Hbmsc Hbmsl
                     Hist0 Hcovb Hiregb Hns Hj Hgs Hspm Hrt Hal10 Hal9 Heb
                     with "Htext Hkd Hpenv Hbio Hlogc Hitb2 Hitbl Hesc Hiregi Hiopen
                           Hprocs Hdevi Hgeom Hdlk") as "Hfl".

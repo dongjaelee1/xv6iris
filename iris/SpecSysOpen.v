@@ -1620,7 +1620,7 @@ Section SysOpenArms.
     (* the walk this fold is the payout of ran on the caller's argument 0 *)
     arg_path_of M pv pl ->
     cre_fail_arms Γ γfs (bv_unsigned T_FILE) ma mi
-      (fun _ : fname => True%type) P Pmiss
+      (fun _ : fname => True%type) (fun _ : absnode => True%type) P Pmiss
       Farm Fdots Fun Fok Fex pl -∗
     pf_at (aopen_commit_at Γ appE) Fo -∗
     (* the piece at the ONE-PATH permit, which is how the create entry
@@ -1636,9 +1636,22 @@ Section SysOpenArms.
     - (* the parent leg comes home at the NAME PREDICATE this entry is at
          ([FsAbsCreateNm.acre_commit_at_of_nm] at [fun _ => True]) *)
       iDestruct (open_acre_file_of_triv with "Hac") as "Hac".
+      (* ...and so is the NODE PREDICATE (lane INIT-FILE, the UNARM
+         ruling): the child's two legs come home at the unarm for every
+         node, which is the one line this entry owes. *)
+      iDestruct (cre_child_unfired_of_ndp Γ (AFile [])
+                   (fun _ : absnode => True%type) Farm Fun (fun _ => I)
+                   with "Hcl") as "Hcl".
       iLeft. iFrame "Hd Hac Hdl Ho Ht Hcl".
     - iRight. iDestruct "Hr" as (d) "(HP & Hac & Hrest & Hcl)".
       iDestruct (open_acre_file_of_triv with "Hac") as "Hac".
+      iAssert (cre_child_unfired Γ (AFile []) Farm Fun
+               ∨ ∃ ic : Z, cre_child_pair Farm Fun ic)%I
+        with "[Hcl]" as "Hcl".
+      { iDestruct "Hcl" as "[Hu | Hp]"; [| by iRight].
+        iLeft. iApply (cre_child_unfired_of_ndp Γ (AFile [])
+                         (fun _ : absnode => True%type) Farm Fun (fun _ => I)
+                         with "Hu"). }
       iExists d.
       iDestruct "Hrest" as "[Hfired | Hdl]".
       + (* (b): the name was there and the observation fired.  The

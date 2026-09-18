@@ -952,6 +952,39 @@ Proof using.
   - right. apply palt_at_ge. lia.
 Qed.
 
+(* ...AND THE FORM A WRITER ACTUALLY HOLDS.  A writer names a lower bound
+   [I0] of the era's input and the range condition it carries is the
+   CLAIM's, at the era's WHOLE input -- and [alts_pre_p] is monotone the
+   other way, so the condition at [I0] does not follow.  What does follow is
+   the only reading [pending_at_p] takes: the entry at the last completed
+   line, whose BODY is the same body in the longer input. *)
+Lemma alts_pre_p_at_prefix (I I' : list (bv 8)) (cs : list nat) (i : nat) :
+  I `prefix_of` I' -> alts_pre_p I' cs ->
+  (i < length cs)%nat -> (i < nlines I)%nat ->
+  palt_ok (pline_of (bodies_of I !!! i)) (palt_at cs i).
+Proof using.
+  intros Hp H Hi Hn.
+  pose proof (alts_pre_p_at I' cs i H Hi) as Hok.
+  destruct (bodies_of_prefix I I' Hp) as [z Hz].
+  rewrite Hz !list_lookup_total_alt lookup_app_l in Hok;
+    [| rewrite /nlines in Hn; lia].
+  by rewrite -!list_lookup_total_alt in Hok.
+Qed.
+
+Lemma pending_at_p_nonnil_pre (ps cs : list nat) (I I' : list (bv 8)) :
+  I `prefix_of` I' -> alts_pre_p I' cs -> I <> [] -> rest_of I = [] ->
+  pending_at_p ps cs I <> [].
+Proof using.
+  intros Hp Hao Hne Hr. rewrite /pending_at_p.
+  rewrite decide_False; [| exact Hne]. rewrite decide_True; [| exact Hr].
+  rewrite /alt_cont_p. intros Hc. apply app_eq_nil in Hc as [Hc _].
+  pose proof (nlines_pos_of_rest_nil I Hne Hr) as Hpos.
+  revert Hc. apply pcont_nonnil.
+  destruct (decide (nlines I - 1 < length cs)%nat) as [Hlt | Hge].
+  - left. exact (alts_pre_p_at_prefix I I' cs _ Hp Hao Hlt ltac:(lia)).
+  - right. apply palt_at_ge. lia.
+Qed.
+
 Lemma pending_p_nonnil (ps cs : list nat) (E : list (list mobs * bv 8)) :
   alts_pre_p (snd <$> E) cs -> (snd <$> E) <> [] ->
   rest_of (snd <$> E) = [] -> pending_p ps cs E <> [].

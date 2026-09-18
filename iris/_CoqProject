@@ -1508,6 +1508,9 @@ FileOpen.v
 FileDeltas.v
 FileWrite.v
 FileOut.v
+PipeOut.v
+PipeLinks.v
+AppPipe.v
 FileLinks.v
 AppFileRec.v
 AppTree.v

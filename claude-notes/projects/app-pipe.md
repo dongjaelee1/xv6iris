@@ -2379,8 +2379,8 @@ holds of, or the taint.
 
 ### SH-PIPE-ROUND (2026-09-18) — the child walk lands at the pipe shape AND at the line, the whole-system theorem at `app_pipe` lands at echo's FOURTEEN, and the ROUND stops twice: at `FileDisc.uline`'s constructor list and at the missing `LinkRec` instance
 
-Branch `app-pipe/sh-pipe-round`, three commits (`e7d781099`, `9ccd040da`,
-`fc0…` — see `git log`).  TWO new `iris/` files (`UkShPipeRound.v`,
+Branch `app-pipe/sh-pipe-round`, three code commits (`e7d781099`,
+`9ccd040da`, `29e969185`) plus this one.  TWO new `iris/` files (`UkShPipeRound.v`,
 `UPipeBootAdequacy.v`) plus one out-of-build audit file
 (`PipeAssumptions.v`), three lines of `iris/_CoqProject` and one target
 pair in the root `Makefile`.  **No landed statement moved.**  Whole-tree

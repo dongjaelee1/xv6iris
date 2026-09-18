@@ -910,6 +910,23 @@ Section SpecFilewrite.
      Eight one-liners, so that no walk ever has to unfold the two matches
      and every arm names the fact it is standing on. *)
 
+  (* ...AND THE READING KEYED ON THE MODE (lane OFF-LINK-6), which is what
+     a walk that gets its row's mode off [FileInvDefs.fdstate_ok] holds: at
+     PARK the landed chain, at HAND [filewrite_in_held]'s two arms.  One
+     name, so [ProofFilewrite]'s entry does not have to match on [st]. *)
+  Definition filewrite_in_inode_om (om : offmode) (i : Z) (γo : gname) (n : Z)
+      (M : gmap Z (bv 8)) (ua : mword 64) (Q : nat -> iProp Σ) : iProp Σ :=
+    match om with
+    | OffParked =>
+        awrite_chain (fs_gamma_L fsc_fs) appE i γo M ua n Q 0%nat (wchunks n)
+    | OffHeld => filewrite_in_held i γo n M ua Q
+    end.
+
+  Lemma filewrite_in_inode_any rb om i γo n M ua Q Qe :
+    filewrite_in (FdOpen rb true (FdInode i γo om)) n M ua Q Qe -∗
+    filewrite_in_inode_om om i γo n M ua Q.
+  Proof using . destruct om; by iIntros "$". Qed.
+
   Lemma filewrite_in_inode rb i γo n M ua Q Qe :
     filewrite_in (FdOpen rb true (FdInode i γo OffParked)) n M ua Q Qe -∗
     awrite_chain (fs_gamma_L fsc_fs) appE i γo M ua n Q 0%nat (wchunks n).
@@ -935,9 +952,9 @@ Section SpecFilewrite.
     cons_out_chain (S gen_id) M ua Q 0%nat (Z.to_nat n).
   Proof using . by iIntros "$". Qed.
 
-  Lemma filewrite_extra_inode gn P rb i γo n M ua Q Qe r :
+  Lemma filewrite_extra_inode gn P rb om i γo n M ua Q Qe r :
     write_arms_at (fs_gamma_L fsc_fs) i γo P n M ua Q r -∗
-    filewrite_extra gn P (FdOpen rb true (FdInode i γo OffParked)) n M ua Q Qe r.
+    filewrite_extra gn P (FdOpen rb true (FdInode i γo om)) n M ua Q Qe r.
   Proof using . by iIntros "$". Qed.
 
   Lemma filewrite_extra_cons gn P rb (mj : Z) n M ua Q Qe r :
@@ -978,8 +995,8 @@ Section SpecFilewrite.
   (* the [f->writable == 0] early return: no arm of the match is armed
      there, because every armed one is a WRITABLE descriptor *)
   Lemma filewrite_extra_unwritable (gn : gname) (P : uptd) (inum : mword 32) (γo : gname)
-      (γp : pipe_names) (C : fcontent) (st : fdstate) n M ua Q Qe r :
-    fdstate_ok inum γo γp C st ->
+      (om : offmode) (γp : pipe_names) (C : fcontent) (st : fdstate) n M ua Q Qe r :
+    fdstate_ok inum γo om γp C st ->
     (* the WORD the code tested, not a re-reading of it: the walk arrives
        with [beq a5,x0]'s own boolean *)
     eq_vec (zero_extend' 64 (fc_writable C : mword 8) : mword 64)

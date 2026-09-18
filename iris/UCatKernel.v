@@ -1771,6 +1771,56 @@ Section UCatEntry.
           ∨ (UkFileOpen.uk_open_taint_fd (ukn_fd N') l ret
              ∗ file_taint c))%I))%I.
 
+  (* ---- DISCHARGED (kernel stream, item 1): the open's hand-mode deed
+     corollary IS [cat_open_hand], at [UkCatDeed.kcat_o_of_deed]'s own
+     statement with [omo := OffHeld].  Two things bridge, and both are
+     arithmetic rather than content:
+
+       * [UserFd.ualloc] at a ledger with NO free slot is
+         [ustd l ∗ ⌜NSTD <= fd⌝ ∗ ufd fd st] ([ualloc_hi]), which is
+         [cat_hold_at]'s first conjunct beside the ledger the arm hands
+         back;
+       * the publish's handed half at mode HAND is [UserOff.uoff γo 0]
+         ([UserOff.foff_pub_of_held]), which is [cat_hold_at]'s second.
+
+     The working directory is the ONE resource [cat_open_hand] does not
+     name and the deed leaf does: it goes in here and is not reported,
+     because cat never reads it again. ---- *)
+  Lemma cat_open_hand_of_deed (N' : uk_names Σ) (c : file_fixed)
+      (r : file_names) (q1 q2 : Qp) (i : Z) (bs : list (bv 8))
+      (l : list fdstate) (cwv : Z) :
+    file_app = MkAppcfg file_names (file_pred c) r ->
+    path_elems FsImgCheck.fname_f = [FsImgCheck.fname_f] ->
+    fd_lowest_closed l = None ->
+    UCodeCat.cat_code (ukn_t N') -∗
+    app_inv fsc_fs -∗
+    UserCwd.ucwd (ukn_cwd N') cwv -∗
+    cat_open_hand N' c r q1 q2 i bs l cwv OffHeld.
+  Proof using .
+    intros Heq Hel Hno. iIntros "#Hcode #Hinv Hcwd".
+    rewrite /cat_open_hand. iIntros (Img pv) "%Hpath %Hst #Hdi".
+    iPoseProof (UkCatDeed.kcat_o_of_deed N' OffHeld l c r q1 q2 i bs cwv Img pv
+                  FsImgCheck.fname_f Heq Hpath Hel Hst
+                  with "Hcode Hdi Hinv") as "Hleaf".
+    rewrite /UkCat.kcat_o.
+    iIntros (h m avail) "%Ha0 %Ha1 #Hcode2 (Hstd & Hq1 & Hq2) Hrun Hcont".
+    iApply ("Hleaf" $! h m avail with "[%] [%] Hcode2 [Hstd Hcwd Hq1 Hq2] Hrun");
+      [ exact Ha0 | exact Ha1 | | ].
+    { rewrite /UkCatDeed.kcat_open_hold. iFrame "Hstd Hcwd Hq1 Hq2". }
+    iIntros (h' ret) "Hans Hrun".
+    iApply ("Hcont" $! h' ret with "[Hans] Hrun").
+    iDestruct "Hans" as "[_ [Hm1 | [Hfd | Ht]]]".
+    - iLeft. iExact "Hm1".
+    - iRight. iLeft.
+      iDestruct "Hfd" as (fd γo) "(%Hb & Hal & Hpub & Hqa & Hqb)".
+      iExists fd, γo. iSplitR; [by iPureIntro |].
+      iDestruct (UserFd.ualloc_hi (ukn_fd N') l fd _ Hno with "Hal")
+        as "(_ & Hstd & Hufd)".
+      iFrame "Hstd Hqb". rewrite /cat_hold_at. iFrame "Hufd Hqa".
+      iApply (UserOff.foff_pub_of_held with "Hpub").
+    - iRight. iRight. iExact "Ht".
+  Qed.
+
   Lemma cat_pay_present (W : uvis) (v : era_pins) (vf : file_era)
       (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (P : nat)
       (c : file_fixed) (r : file_names) (q1 q2 : Qp) (i : Z)

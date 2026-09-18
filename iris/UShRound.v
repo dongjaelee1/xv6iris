@@ -386,9 +386,16 @@ Section UShRound.
      lane OFF-LINK's publish hands out and what K1's entry asks for.  [Kf]
      is the [-1] arm's and is NOT [emp]: the create may have fired before
      [filealloc] failed. *)
+  (* RESTATED BY THE KERNEL STREAM at the kernel's own payload.  It was
+     [∃ i γo om, ⌜ty = FdInode i γo om⌝ ∗ fown r (Some (i, [])) ∗ uoff γo 0]:
+     the mode existential is right, but the TAINT ARM was missing, and the
+     open leaf cannot drop it -- a tainted claim promises nothing about the
+     file system and cannot refute the kernel's [FdDevice] arm
+     ([FileOpen]'s note at [file_open_fd_K]).  [UkFileOpen.redir_K OffHeld]
+     IS that statement, and it is what
+     [UkFileOpen.wp_uk_ecall_open_create_deed_d] at [OffHeld] hands back. *)
   Definition redir_K (ty : fdtype) : iProp Σ :=
-    (∃ (i : Z) (γo : gname) (om : offmode),
-       ⌜ty = FdInode i γo om⌝ ∗ fown r (Some (i, [])) ∗ uoff γo 0%nat)%I.
+    UkFileOpen.redir_K OffHeld (fgn_cl g) r ty.
 
   Definition redir_Kf (s : dst) : iProp Σ :=
     (fown r s ∨ ∃ i : Z, fown r (Some (i, [])))%I.

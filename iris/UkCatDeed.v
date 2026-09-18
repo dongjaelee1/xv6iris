@@ -45,6 +45,7 @@ Require Import FdSlots PipeNames ProcGeom UserFd UserCwd.
 Require Import UexecSG UexecSlot UexecRet UsysMemOk.
 Require Import UexecExecInst.  (* THE INSTANCES: [uexecSG_xv6], [uprogSG_gen] *)
 Require Import UkCat.
+Require Import UserOff.            (* [foff_pub] *)
 Require Import UkFileOpen.
 Require Import AppCfg AppInv AppFile FileOpen FsCfg FsImgCheck.
 Require Import ArgPath.          (* [arg_path_of] -- the open's path row *)
@@ -412,7 +413,8 @@ Section UkCatDeed.
   (* wants the descriptor's TYPE (an inode on the deed's own inum, hence  *)
   (* not a pipe, hence [UkCat.kcat_cldep_nopipe]) needs.                *)
   (* =================================================================== *)
-  Lemma wp_kcat_open_read_deed (h : CpuId) (m : regfile) (l : list fdstate)
+  Lemma wp_kcat_open_read_deed (omo : offmode) (h : CpuId) (m : regfile)
+      (l : list fdstate)
       (avail : nat) (c : file_fixed) (r : file_names) (q1 q2 : Qp)
       (i : Z) (bs : list (bv 8)) (cw : Z)
       (Img : gmap Z (bv 8)) (pv : mword 64) (pl : list (bv 8)) :
@@ -435,7 +437,10 @@ Section UkCatDeed.
         ∨ (∃ (fd : nat) (γo : gname),
              ⌜ret = (mword_of_int (Z.of_nat fd) : mword 64)
               /\ (fd < NOFILE)%nat⌝ ∗
-             ualloc γfd l fd (FdOpen true false (FdInode i γo OffParked)) ∗
+             ualloc γfd l fd (FdOpen true false (FdInode i γo omo)) ∗
+             (* the publish's handed half (kernel stream, L4): [emp] at
+                mode PARK, [UserOff.uoff γo 0] at mode HAND *)
+             foff_pub omo γo ∗
              fdq r q1 (Some (i, bs)) ∗ fdq r q2 (Some (i, bs)))
         ∨ (UkFileOpen.uk_open_taint_fd γfd l ret ∗ file_taint c)) -∗
        urun N h'
@@ -498,7 +503,7 @@ Section UkCatDeed.
     (* ---- 0x3ee  ecall -- THE DEED'S OWN LEAF, AT THE DATA IMAGE ---- *)
     iDestruct (uis_cat_3ee with "Hcode") as "#Hi3ee".
     (* the hoist again: the Coq application first, the spec list after *)
-    iPoseProof (wp_uk_ecall_open_read_deed_d N h1 m1 (mword_of_int 0x3ee) l
+    iPoseProof (wp_uk_ecall_open_read_deed_d N omo h1 m1 (mword_of_int 0x3ee) l
                   avail c r q1 q2 i bs cw Img pv pl Heq Hnum Hal4 Hpath
                   Ha0r Hcr Htr Hel Hst)
       as "Hleaf".
@@ -647,7 +652,8 @@ Section UkCatDeed.
   Definition kcat_open_hold (l : list fdstate) (cw : Z) : iProp Σ :=
     (ustd γfd l ∗ UserCwd.ucwd (ukn_cwd N) cw)%I.
 
-  Lemma kcat_o_of_deed (l : list fdstate) (c : file_fixed) (r : file_names)
+  Lemma kcat_o_of_deed (omo : offmode) (l : list fdstate) (c : file_fixed)
+      (r : file_names)
       (q1 q2 : Qp) (i : Z) (bs : list (bv 8)) (cw : Z)
       (Img : gmap Z (bv 8)) (pv : mword 64) (pl : list (bv 8)) :
     file_app = MkAppcfg file_names (file_pred c) r ->
@@ -667,14 +673,15 @@ Section UkCatDeed.
                   ⌜ret = (mword_of_int (Z.of_nat fd) : mword 64)
                    /\ (fd < NOFILE)%nat⌝ ∗
                   ualloc γfd l fd
-                    (FdOpen true false (FdInode i γo OffParked)) ∗
+                    (FdOpen true false (FdInode i γo omo)) ∗
+                  foff_pub omo γo ∗
                   fdq r q1 (Some (i, bs)) ∗ fdq r q2 (Some (i, bs)))
              ∨ (UkFileOpen.uk_open_taint_fd γfd l ret ∗ file_taint c)))%I).
   Proof using .
     intros Heq Hpath Hel Hst.
     iIntros "#Hcode #Hdi #Hinv" (h m avail) "%Ha0 %Ha1 _ Hhold Hrun Hcont".
     iDestruct "Hhold" as "[[Hstd Hcwd] [Hd1 Hd2]]".
-    iApply (wp_kcat_open_read_deed h m l avail c r q1 q2 i bs cw Img pv pl
+    iApply (wp_kcat_open_read_deed omo h m l avail c r q1 q2 i bs cw Img pv pl
               Heq Hpath Ha0 Ha1 Hel Hst
               with "Hcode Hdi Hinv Hrun Hcwd Hstd Hd1 Hd2").
     iIntros (h' ret) "Hcwd Hans Hrun".

@@ -110,6 +110,7 @@ Section UkWriteLeaf.
        of_Fex   := pfam_triv (fun _ _ _ _ => True%I);
        of_Fo    := pfam_triv (fun _ _ _ => True%I);
        of_Ft    := pfam_triv (fun _ _ _ => True%I);
+       of_om    := OffParked;
        wf_Q     := Q;
        nf_P     := fun _ _ => True%I;
        nf_Pmiss := fun _ _ => True%I;

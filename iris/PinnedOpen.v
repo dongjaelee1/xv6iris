@@ -176,6 +176,7 @@ Section PinnedOpen.
      TRUNCATION piece, unfired -- the omode has no O_TRUNC and a device is
      not truncated, so the arm hands the whole piece back. *)
   Lemma pinned_open_dev (γfs : fs_names)
+      (omo : offmode)
       (Pin : aview -> Prop) (T : iProp Σ) `{!Persistent T} `{!Timeless T}
       (cw : Z) (pl : list (bv 8)) (hops : list Z) (ino : Z)
       (ma mi : Z) (nl : nat)
@@ -184,7 +185,7 @@ Section PinnedOpen.
       (sts : list fdstate) (r : mword 64) (fdv' : list fdstate) :
     pin_resolves_at Pin cw pl hops ino (MkAnode (ADev ma mi) nl) ->
     arg_path_of M pv pl ->
-    open_receipt_plain (fs_gamma_L γfs) γfs cw M pv vom
+    open_receipt_plain omo (fs_gamma_L γfs) γfs cw M pv vom
       (pobs_P T hops) (pobs_Pmiss T) (pobs_Fo Pin T) Ft sts r fdv' -∗
       (* THE WALK MISSED, or the call failed after it: nothing moved *)
       ((⌜r = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜fdv' = sts⌝)
@@ -282,6 +283,7 @@ Section PinnedOpen.
      point, and is what kills the `fd 0 is open at SOME type` arm /init's
      head carried while its first open went through the generic leaf. *)
   Lemma pinned_open_dead (γfs : fs_names) (T : iProp Σ)
+      (omo : offmode)
       (Pmiss : nat -> Z -> iProp Σ)
       (cw : Z) (pl : list (bv 8)) (d0 : Z)
       (M : gmap Z (bv 8)) (pv vom : mword 64)
@@ -290,7 +292,7 @@ Section PinnedOpen.
       (sts : list fdstate) (r : mword 64) (fdv' : list fdstate) :
     arg_path_of M pv pl ->
     path_elems pl <> [] ->
-    open_receipt_plain (fs_gamma_L γfs) γfs cw M pv vom
+    open_receipt_plain omo (fs_gamma_L γfs) γfs cw M pv vom
       (pobs_P_dead T d0) Pmiss Fo Ft sts r fdv' -∗
       ((⌜r = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜fdv' = sts⌝) ∨ T).
   Proof using .
@@ -353,6 +355,7 @@ Section PinnedOpen.
      answered, so what comes back there is the walk one-shot itself and
      the cursor is behind its fupd ([PinnedObs.pobs_dead_start_refund]). *)
   Lemma pinned_open_dead_lin (γfs : fs_names) (T K : iProp Σ)
+      (omo : offmode)
       (cw : Z) (pl : list (bv 8)) (d0 : Z)
       (M : gmap Z (bv 8)) (pv vom : mword 64)
       (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ))
@@ -360,7 +363,7 @@ Section PinnedOpen.
       (sts : list fdstate) (r : mword 64) (fdv' : list fdstate) :
     arg_path_of M pv pl ->
     path_elems pl <> [] ->
-    open_receipt_plain (fs_gamma_L γfs) γfs cw M pv vom
+    open_receipt_plain omo (fs_gamma_L γfs) γfs cw M pv vom
       (pobs_P_dead_lin T K d0) (pobs_Pmiss_ref T K) Fo Ft sts r fdv'
     ={⊤}=∗ ((⌜r = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜fdv' = sts⌝ ∗ K) ∨ T).
   Proof using .

@@ -936,7 +936,7 @@ Section UkRunSys.
     cbn [uvis_M uvis_perm uvis_fd uvis_of_run] in Hfdok |- *.
     iDestruct (ufd_auth_len with "Hufd") as %Hfdlen.
     iApply uslot_bupd.
-    destruct Hfdok as [(fd & rd & wr & t & Hr & Hcl & -> & Hpko & Hnpo) | [Hrm ->]].
+    destruct Hfdok as [(fd & rd & wr & t & Hr & Hcl & -> & Hnpo) | [Hrm ->]].
     - (* A DESCRIPTOR CAME BACK, at the LOWEST free slot -- which is the
          promise [sys_open_post] makes and the row carries, and which the
          caller's ledger turns into a NUMBER. *)
@@ -3961,7 +3961,7 @@ Section UkRunSys.
     cbn [uvis_M uvis_perm uvis_fd uvis_of_run] in Hfdok |- *.
     iDestruct (ufd_auth_len with "Hufd") as %Hfdlen.
     iApply uslot_bupd.
-    destruct Hfdok as [(fd & rd & wr & t & Hr & Hcl & -> & Hpko & Hnpo) | [Hrm ->]].
+    destruct Hfdok as [(fd & rd & wr & t & Hr & Hcl & -> & Hnpo) | [Hrm ->]].
     - (* A DESCRIPTOR CAME BACK, at the LOWEST free slot, and the RECEIPT
          says at which type *)
       iMod (ufd_alloc_least (ukn_fd N) fdv l fd (FdOpen rd wr t) Hcl
@@ -4836,7 +4836,7 @@ Section UkRunSys.
     cbn [uvis_M uvis_perm uvis_fd uvis_of_run] in Hfdok |- *.
     iDestruct (ufd_auth_len with "Hufd") as %Hfdlen.
     iApply uslot_bupd.
-    destruct Hfdok as [(fd & rd & wr & t & Hr & Hcl & -> & Hpko & Hnpo) | [Hrm ->]].
+    destruct Hfdok as [(fd & rd & wr & t & Hr & Hcl & -> & Hnpo) | [Hrm ->]].
     - (* A DESCRIPTOR CAME BACK, at the LOWEST free slot, and the RECEIPT
          says at which type *)
       iMod (ufd_alloc_least (ukn_fd N) fdv l fd (FdOpen rd wr t) Hcl
@@ -5084,7 +5084,7 @@ Section UkRunSys.
     cbn [uvis_M uvis_perm uvis_fd uvis_of_run] in Hfdok |- *.
     iDestruct (ufd_auth_len with "Hufd") as %Hfdlen.
     iApply uslot_bupd.
-    destruct Hfdok as [(fd & rd & wr & t & Hr & Hcl & -> & Hpko & Hnpo) | [Hrm ->]].
+    destruct Hfdok as [(fd & rd & wr & t & Hr & Hcl & -> & Hnpo) | [Hrm ->]].
     - (* A DESCRIPTOR CAME BACK, at the LOWEST free slot, and the RECEIPT
          says at which type *)
       iMod (ufd_alloc_least (ukn_fd N) fdv l fd (FdOpen rd wr t) Hcl

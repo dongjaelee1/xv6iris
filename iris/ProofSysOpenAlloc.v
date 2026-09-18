@@ -156,6 +156,7 @@ Section ProofSysOpenAlloc.
   (*  broken into cells until the descriptor is installed.                *)
   (* ================================================================== *)
   Lemma so_alloc_au `{GEN : GenId} `{CID0 : CpuId} `{XI : CurCtx}
+      (omo : offmode)
       (gfl gf : gname)
       (gs : list gname) (jx : nat) (gl : gname)
       (pd pav pu : mword 64)
@@ -286,7 +287,7 @@ Section ProofSysOpenAlloc.
     so_obs Fo (bv_unsigned inum) (era_node dn bm data) -∗
     open_trunc_at (fs_gamma_L fsc_fs) vom (bv_unsigned inum) Ft -∗
     wp_next true (proc_addr jx)
-      (so_cont_au gf nsj
+      (so_cont_au omo gf nsj
                dqb dqs (proc_addr jx) pidv Mim pvv vom U sts P Pmiss Fo Ft m K eb b lks) -∗
     WP (Loop : expr riscv_lang).
   Proof using .
@@ -466,7 +467,7 @@ Section ProofSysOpenAlloc.
                 Hpc Hsbb Hsbi Hbsl Hisl [Hpriv Hfds Hfrag HP Hobs Htc]").
       { exact Hcsf. }
       { reflexivity. }
-      { iApply (so_arm_fail gf (proc_addr jx) pidv Mim pvv vom P Pmiss Fo Ft U sts _ pl
+      { iApply (so_arm_fail omo gf (proc_addr jx) pidv Mim pvv vom P Pmiss Fo Ft U sts _ pl
                   (bv_unsigned inum) (era_node dn bm data) Hpof Ha0f
                   with "Hpriv Hfrag Hfds HP Hobs Htc"). } }
     (* ---- filealloc succeeded ---- *)
@@ -651,7 +652,7 @@ Section ProofSysOpenAlloc.
                 Hpc Hsbb Hsbi Hbsl Hisl [Hpriv Hfds Hfrag HP Hobs Htc]").
       { exact Hcsf. }
       { reflexivity. }
-      { iApply (so_arm_fail gf (proc_addr jx) pidv Mim pvv vom P Pmiss Fo Ft U sts _ pl
+      { iApply (so_arm_fail omo gf (proc_addr jx) pidv Mim pvv vom P Pmiss Fo Ft U sts _ pl
                   (bv_unsigned inum) (era_node dn bm data) Hpof Ha0f
                   with "Hpriv Hfrag Hfds HP Hobs Htc"). } }
     (* ---- fdalloc installed the descriptor ---- *)
@@ -849,7 +850,7 @@ Section ProofSysOpenAlloc.
          wrote ARE the record's, and the join's bound applies *)
       assert (Hdvz : bv_unsigned (di_type dn) = FsImg.T_DEVICE_z)
         by (rewrite Hdev3; vm_compute; reflexivity).
-      iApply (Stores.so_stores_au (CID0 := CID17) gf gs jx gl pd pav pu
+      iApply (Stores.so_stores_au (CID0 := CID17) omo gf gs jx gl pd pav pu
                 gil gisl
  kk qi s gy loy tly inum dn bm kf fd ll pn FD_DEVICE
                 (fc_readable Cf) (fc_writable Cf) (fc_pipe Cf) (fc_ip Cf)
@@ -861,6 +862,7 @@ Section ProofSysOpenAlloc.
                 Hbm0 Hbmcov Hbmlog Hist0 Hiblk Hiblog Hcovb Hu2 Hj Hgl
                 Hlkempty Hkf Hfdlt Hlen Hfrees (or_intror eq_refl) Hdir
                 (so_wf_dev (mword_of_int 0 : mword 32))
+                ltac:(vm_compute; reflexivity)
                 Hpof Hom
                 ltac:(intros _;
                       exact (conj eq_refl
@@ -977,17 +979,18 @@ Section ProofSysOpenAlloc.
     iApply fupd_wp.
     iMod (off_gv_alloc (bv_unsigned (mword_of_int 0 : mword 32))) as (γo) "Hgv".
     iModIntro.
-    iApply (Stores.so_stores_au (CID0 := CID16) gf gs jx gl pd pav pu
+    iApply (Stores.so_stores_au (CID0 := CID16) omo gf gs jx gl pd pav pu
               gil gisl
  kk qi s gy loy tly inum dn bm kf fd ll pn FD_INODE
               (fc_readable Cf) (fc_writable Cf) (fc_pipe Cf) (fc_ip Cf)
               (fc_major Cf) om (mword_of_int 0 : mword 32) lo nsj u pidv dqb
               dqs U sts m M8 sp0 K eb b lks w6 w24 bp
-              data Mim pvv vom pl P Pmiss Fo Ft (FdInode (bv_unsigned inum) γo OffParked) γo
+              data Mim pvv vom pl P Pmiss Fo Ft (FdInode (bv_unsigned inum) γo omo) γo
               Hqs HKiu HKeo HKit HK24 Kpop Hkk Hinb Hipos Hgeom Hsize
               Hbm0 Hbmcov Hbmlog Hist0 Hiblk Hiblog Hcovb Hu2 Hj Hgl Hlkempty
               Hkf Hfdlt Hlen Hfrees (or_introl eq_refl) Hdir
               (fun _ => off_wf_zero)
+              ltac:(vm_compute; reflexivity)
               Hpof Hom
               ltac:(intros Hq; exfalso; exact (Hndz Hq))
               ltac:(intros _; split; reflexivity)

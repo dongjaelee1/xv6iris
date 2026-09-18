@@ -52,6 +52,7 @@ Require Import ProcAvail.
 Require Import FsStateDefs.
 Require Import Xv6G.
 Require Import SysWriteDefs.     (* [FW_MAX], [wchunks], [wri_pre]        *)
+Require Import FsCfg.              (* [fsc_fs]: the fs configuration         *)
 Require Import SpecWritei.         (* [wi_blocks]                           *)
 Require Import FsBytesGamma.       (* [fs_gamma_L]                          *)
 Require Import InodeInv.           (* [MAXFILE]                             *)
@@ -419,6 +420,24 @@ Section FilewriteChain.
     iIntros "#Ht Hcm". rewrite /fw_au_st. iRight. iSplitR.
     { rewrite /fw_supply. by iRight. }
     iApply (fw_au_raw_init with "Hcm").
+  Qed.
+
+  (* ...AND THE ENTRY A WALK ACTUALLY HAS: the row (whose mode it is keyed
+     on) and the contract's input at that mode.  At PARK the row IS the
+     supplier; at HAND it is [emp] and the two arms of
+     [SpecFilewrite.filewrite_in_held] pick which carrier the loop starts
+     in. *)
+  Lemma fw_au_st_init (om : offmode) (rb wb : bool) (i : Z) (γo : gname)
+      (P : uptd) (n : Z) M ua Q :
+    foff_row (FdOpen rb wb (FdInode i γo om)) -∗
+    filewrite_in_inode_om om i γo n M ua Q -∗
+    fw_au_st om (fs_gamma_L fsc_fs) i γo P n M ua Q 0 0%nat 0%nat.
+  Proof using .
+    destruct om; rewrite /filewrite_in_inode_om.
+    - iIntros "#Hrow Hcm". iApply (fw_au_st_init_parked with "Hrow Hcm").
+    - iIntros "_ [Hcm | [Hcm #Ht]]".
+      + iApply (fw_au_st_init_held with "[Hcm]"). iApply ("Hcm" $! P).
+      + iApply (fw_au_st_init_taint with "Ht Hcm").
   Qed.
 
   (* THE TWO EXITS, AT THE LANDED POST -- which is the whole point of the

@@ -216,6 +216,7 @@ Section UkTreeCreate.
        of_Fex   := pfam_triv (fun _ _ _ _ => True%I);
        of_Fo    := pfam_triv (fun _ _ _ => True%I);
        of_Ft    := pfam_triv (fun _ _ _ => True%I);
+       of_om    := OffParked;
        wf_Q     := fun _ => True%I;
        (* row 17 *)
        nf_P     := P;
@@ -974,7 +975,7 @@ Section UkTreeCreate.
           exact (cre_pre_ne av FsImg.ROOTINO nm ents nl FsImg.ROOTINO
                    (AFile []) Hcre (fun e He => ltac:(discriminate He))
                    eq_refl). }
-        iDestruct "Hrc" as (γo) "%Hrcpt".
+        iDestruct "Hrc" as (γo) "[%Hrcpt _]".
         cbn [tree_acre_fam pf_recv].
         iDestruct "Hok" as "[Hown | #HT]"; last first.
         { iApply ("Hcont" $! h' rv with "[Hfd] Hcwd Hrun").
@@ -992,7 +993,7 @@ Section UkTreeCreate.
         destruct Hb as (Hr1 & Hlt1 & Hfdv1 & _).
         rewrite (tree_open_fd_tie l (uvis_fd W) fdv' rv
                    (om_readable (m !!! Regidx a1_idx))
-                   (om_writable (m !!! Regidx a1_idx)) i γo fd rd wr ty
+                   (om_writable (m !!! Regidx a1_idx)) i γo OffParked fd rd wr ty
                    Hlen Hr1 Hlt1 Hfdv1 Hrcpt).
         iApply ("Hcont" $! h' rv with "[Hal Hown] Hcwd Hrun").
         iLeft. iExists fd, γo, i. iFrame "Hal Hown". iSplitR.

@@ -340,6 +340,22 @@ Section PCatOut.
 
 End PCatOut.
 
+(* THE SIGNED READING OF A SMALL COUNT ([UCatKernel.cat_signed_small],
+   restated here rather than imported: that file's cone is the FILE
+   application's).  A word whose unsigned value is at most 512 has the
+   same signed value -- which is what refutes cat's `read error` branch
+   wherever the count is a real one. *)
+Lemma pcat_signed_small (x : mword 64) :
+  (bv_unsigned x <= 512)%Z -> bv_signed x = bv_unsigned x.
+Proof using.
+  intro H. pose proof (bv_unsigned_in_range _ x) as [Hl _].
+  unfold bv_signed. apply bv_swrap_small.
+  assert (Hhm : bv_half_modulus 64 = 9223372036854775808%Z)
+    by (vm_compute; reflexivity).
+  rewrite Hhm. split; [ lia | ].
+  apply (Z.le_lt_trans _ 512); [ exact H | reflexivity ].
+Qed.
+
 (* ===================================================================== *)
 (*  3.  THE READ ROW: cat's read(0, buf, 512) AT A PIPE READ END          *)
 (* ===================================================================== *)
@@ -350,7 +366,12 @@ Section UCatPipe.
   Context `{GEN : GenId} `{XI : CurCtx}.
   Context `{!ghost_varG Σ Z}.
   Context `{!ghost_varG Σ (gset gname)}.
-  Context `{!ctokG Σ}.
+  (* NO [ctokG] SECTION VARIABLE, and it is the same trap as the two
+     supply classes: [ChildTok.kill_shot] -- which the read post's kill arm
+     carries -- resolves its [ctokG] THROUGH the [xv6G] bundle inside
+     [UkReadPipe], and a standalone [ctokG] here would make the same
+     proposition a different term.  [UCatKernel] omits it for the same
+     reason. *)
   Context `{!echoOutG Σ, !pipeProtoG Σ}.
   (* NO [uexecSG] AND NO [uprogSG] SECTION VARIABLE, for [UCatKernel]'s
      reason (lane CAT-WALK-2, K2): a variable of either class here would be
@@ -427,7 +448,7 @@ Section UCatPipe.
     pipe_rpay (pn_queue γp) Rp Rpe cap -∗
     ubytes γd (uint (ua)) k f -∗
     (∀ (h' : CpuId) (r : mword 64) (d : nat) (g : nat -> bv 8)
-       (M' : gmap Z (bv 8)) (Pt : uptd) (Rk : iProp Σ),
+       (M' : gmap Z (bv 8)) (Pt : uptd) (gn : gname),
        ⌜ (d <= cap)%nat ⌝ -∗
        ⌜ forall j : nat, (d <= j < k)%nat -> g j = f j ⌝ -∗
        ⌜ UkReadPipe.uread_pipe_ans cap r ⌝ -∗
@@ -441,8 +462,8 @@ Section UCatPipe.
        ⌜ forall j : nat, (j < k)%nat ->
            uva_wmapped Pt
              (uint (add_vec_int (ua) (Z.of_nat j))) ⌝ -∗
-       pipe_rpost_img Pt (pn_queue γp) Rp Rpe Rk cap r M'
-         (ua) -∗
+       pipe_rpost_img Pt (pn_queue γp) Rp Rpe (ChildTok.kill_shot gn)
+         cap r M' (ua) -∗
        UserFd.ustd γfd l -∗
        urun N h' (<[Regidx a0_idx := r]> m) (add_vec_int pc 4) avail -∗
        ubytes γd (uint (ua)) k g -∗
@@ -486,12 +507,15 @@ Section UCatPipe.
     rewrite Hcnt in Hret.
     rewrite Hcnt Nat2Z.id.
     rewrite Nat2Z.id in Hd.
-    iApply ("Hcont" $! h' r d g M' P (ChildTok.kill_shot (uvis_gen W))
+    assert (Hnfp : forall j : nat, (j < k)%nat ->
+              uva_wmapped P
+                (uint (add_vec_int (m !!! Regidx a1_idx) (Z.of_nat j))))
+      by (intros j Hj; exact (Hnf P j Hwfp Hpmp (Hlzp Hlz) Hj)).
+    iApply ("Hcont" $! h' r d g M' P (uvis_gen W)
               with "[%] [%] [%] [%] [%] [%] Hrp Hstd Hrun Hbuf");
       [ exact Hd | exact Hgf
       | exact (UkReadPipe.uread_pipe_ans_of_ret cap r Hret)
-      | exact Hlin | exact Himg | ].
-    intros j Hj. exact (Hnf P j Hwfp Hpmp (Hlzp Hlz) Hj).
+      | exact Hlin | exact Himg | exact Hnfp ].
   Qed.
 
   (* ------------------------------------------------------------------- *)
@@ -590,7 +614,7 @@ Section UCatPipe.
     ubytes γd a cnt f -∗
     urun N h m (mword_of_int CatSyms.read) avail -∗
     (∀ (h' : CpuId) (rv : mword 64) (gb : nat -> bv 8)
-       (M' : gmap Z (bv 8)) (Pt : uptd) (Rk : iProp Σ),
+       (M' : gmap Z (bv 8)) (Pt : uptd) (gn : gname),
        ⌜ UkReadPipe.uread_pipe_ans cnt rv ⌝ -∗
        ⌜ forall i : nat, (i < cnt)%nat ->
            uint (add_vec_int (mword_of_int a : mword 64) (Z.of_nat i))
@@ -601,8 +625,8 @@ Section UCatPipe.
        ⌜ forall j : nat, (j < cnt)%nat ->
            uva_wmapped Pt
              (uint (add_vec_int (mword_of_int a : mword 64) (Z.of_nat j))) ⌝ -∗
-       pipe_rpost_img Pt (pn_queue γp) Rp Rpe Rk cnt rv M'
-         (mword_of_int a : mword 64) -∗
+       pipe_rpost_img Pt (pn_queue γp) Rp Rpe (ChildTok.kill_shot gn)
+         cnt rv M' (mword_of_int a : mword 64) -∗
        UserFd.ustd γfd l -∗
        ubytes γd a cnt gb -∗
        urun N h'
@@ -672,7 +696,7 @@ Section UCatPipe.
                   = mword_of_int 0x3ca)
       by (apply bv_eq; vm_compute; reflexivity).
     rewrite E1r.
-    iIntros (h2 rv d gb M' Pt Rk) "%Hd %Hgf %Hans %Hlin %Himg %Hnf
+    iIntros (h2 rv d gb M' Pt gn) "%Hd %Hgf %Hans %Hlin %Himg %Hnf
                                    Hrp Hstd Hrun Hbs".
     rewrite Ha1r in Hlin. rewrite Hua' in Hlin.
     rewrite Ha1r in Himg. rewrite Ha1r in Hnf.
@@ -695,9 +719,232 @@ Section UCatPipe.
               with "[] Hrun").
     { iApply (uis_cat_3ca with "Hcode"). }
     iIntros (h3) "Hrun".
-    iApply ("Hcont" $! h3 rv gb M' Pt Rk
+    iApply ("Hcont" $! h3 rv gb M' Pt gn
               with "[%] [%] [%] [%] Hrp Hstd Hbs Hrun");
       [ exact Hans | exact Hlin | exact Himg | exact Hnf ].
+  Qed.
+
+
+  (* =================================================================== *)
+  (*  4.  THE ROUND                                                       *)
+  (*                                                                     *)
+  (*  [UCatKernel.cat_round_at]'s twin, and the difference is visible in  *)
+  (*  the invariant: ONE existential cursor [c], and at it BOTH the       *)
+  (*  protocol's read permit and the era's console credential.  At the    *)
+  (*  file claim those are two different numbers held together by an      *)
+  (*  [Hpin] premise; at a pipe the read pointer IS the console cursor,   *)
+  (*  because the only thing that moves it is the dequeue that produced   *)
+  (*  the bytes being printed.                                           *)
+  (* =================================================================== *)
+
+  (* what one turn carries: the ledger, and the read permit AT THE CURSOR
+     -- or the taint, where the protocol says nothing and the permit may
+     have gone into the payment that was never returned. *)
+  Definition pcat_hold (pn : pnames) (l : list fdstate) (c : nat) : iProp Σ :=
+    (UserFd.ustd γfd l ∗ (rcur pn c ∨ T))%I.
+
+  Definition pcat_round_inv (pn : pnames) (l : list fdstate) (v : era_pins)
+      (ps0 cs0 : list nat) (I0 : list (bv 8)) (P : nat) : iProp Σ :=
+    (∃ c : nat, pcat_hold pn l c ∗ pcch γ v ps0 cs0 I0 pcat_alt P c)%I.
+
+  Lemma pcat_round_at (pn : pnames) (γp : pipe_names) (L : list (bv 8))
+      (l : list fdstate) (wb : bool) (v : era_pins)
+      (ps0 cs0 : list nat) (I0 : list (bv 8)) (P : nat) (Cend : iProp Σ) :
+    pcat_stage ps0 cs0 I0 P ->
+    pcat_out I0 = L ->
+    (* fd 0 IS this pipe's read end, in the child's own ledger *)
+    l !! 0%nat = Some (FdOpen true wb (FdPipe γp)) ->
+    (* THE PROTOCOL -- the whole of what cat knows about the pipe *)
+    pipe_inv pn γp L -∗
+    (* [Hktaint]: THE ONE ROW THE KERNEL OWES (this lane's finding, SS3).
+       A pipe read answers -1 when the reader was KILLED while it waited,
+       and nothing at a pipe descriptor refutes that: [UexecRet.
+       uexec_live_ok] states the row for [FdDevice 1] alone.  What is
+       assumed here is the WEAKEST thing that closes the arm and the one
+       the design already says of a kill -- a kill TAINTS the application
+       (design/applications.md: the taint is the application's kill
+       price; [AppPipe.pipe_kill] is the echo taint).  It is NOT -- nobody
+       is ever killed --: the round stays true at a tainted era, where cat
+       prints its diagnostic and the model says nothing. *)
+    □ (∀ gn : gname, ChildTok.kill_shot gn -∗ T) -∗
+    (* [Hdg]: cat's `read error` tail, payable at a TAINTED era out of the
+       free write law ([UkCatCat.kcat_round_of_law]'s route) *)
+    □ (T -∗ UkCatCat.kcat_dg_cr N) -∗
+    (* [Hw]: the turn's write, at the cursor and back at the cursor plus
+       the count -- COUNT-EXACT, so cat's `write error` tail is refuted
+       inside the walk and this round never funds [kcat_dg_cw].  Its
+       taint disjunct carries NO count bound (unlike the file round's):
+       at a tainted era the cursor is the credential's right arm at every
+       index, so a cursor that moves by a nonsense count is still a
+       cursor. *)
+    □ (∀ (c nb : nat) (rv : mword 64) (fbb : nat -> bv 8),
+         ⌜rv = (mword_of_int (Z.of_nat nb) : mword 64)⌝ -∗
+         (⌜(Z.to_nat (bv_unsigned rv) <= 512)%nat
+           /\ forall j : nat, (j < Z.to_nat (bv_unsigned rv))%nat ->
+                pcont (pcat_line I0) (palt_of pcat_alt) !! (c + j)%nat
+                = Some (fbb j)⌝
+          ∨ T) -∗
+         UserFd.ustd γfd l -∗
+         pcch γ v ps0 cs0 I0 pcat_alt P c -∗
+         UkCat.kcat_wr N (mword_of_int 1) (mword_of_int CatSyms.buf) nb
+           (ubytes γd CatSyms.buf 512 fbb)
+           (fun wret : mword 64 =>
+              (⌜wret = (mword_of_int (Z.of_nat nb) : mword 64)⌝
+               ∗ UserFd.ustd γfd l
+               ∗ pcch γ v ps0 cs0 I0 pcat_alt P
+                   (c + Z.to_nat (bv_unsigned rv))%nat
+               ∗ ubytes γd CatSyms.buf 512 fbb))) -∗
+    (* [Hend]: the loop's NORMAL exit, which is END OF FILE -- the read
+       answered zero, and the protocol's one-shot says the pipe's whole
+       contents are the bytes cat has printed. *)
+    □ (∀ c : nat,
+         (eof_shot pn (take c L) ∨ T) -∗
+         pcat_hold pn l c -∗
+         pcch γ v ps0 cs0 I0 pcat_alt P c -∗ Cend) -∗
+    cat_code γt -∗
+    UkCatCat.kcat_round N (mword_of_int 0)
+      (pcat_round_inv pn l v ps0 cs0 I0 P) Cend.
+  Proof using Hcons Hkill.
+    intros Hst HL Hl0.
+    iIntros "#Hinv #Hktaint #Hdg #Hw #Hend #Hcode".
+    assert (Hm1s : bv_signed (mword_of_int (-1) : mword 64) = -1)
+      by (vm_compute; reflexivity).
+    rewrite /UkCatCat.kcat_round. iModIntro.
+    iIntros (h m avail f) "%Ha0 %Ha1 %Ha2 _ HI Hbuf Hrun Hcont".
+    iDestruct "HI" as (c) "[[Hstd Hcur] Hc]".
+    (* THE PAYMENT: the protocol at the cursor, or the taint *)
+    iAssert (pipe_rpay (pn_queue γp) (pipe_rQ pn L c) (pipe_rQe pn L c) 512)
+      with "[Hcur]" as "Hpay".
+    { iDestruct "Hcur" as "[Hr | #HT]".
+      - iApply (pipe_rpay_of_inv pn γp L c 512 with "Hinv Hr").
+      - iApply pipe_rpay_taint. rewrite Hkill. iExact "HT". }
+    assert (Hfd0 : bv_signed (trunc32 (m !!! Regidx a0_idx))
+                   = Z.of_nat 0%nat)
+      by (rewrite Ha0; vm_compute; reflexivity).
+    iApply (pcat_read_walk CatSyms.buf 512%nat f h m avail l 0%nat wb γp
+              (pipe_rQ pn L c) (pipe_rQe pn L c)
+              ltac:(vm_compute; discriminate)
+              ltac:(vm_compute; reflexivity)
+              Ha1 Ha2 Hfd0 ltac:(vm_compute; lia) Hl0
+              with "Hcode Hstd Hpay Hbuf Hrun").
+    iIntros (h' rv gb M' Pt gn) "%Hans %Hlin %Himg %Hnf Hrp Hstd Hbuf Hrun".
+    iApply ("Hcont" $! h' rv gb with "[Hrp Hstd Hc] Hbuf Hrun").
+    iDestruct (pcat_rpost with "Hrp") as "[Hgood | [#HTa _]]"; last first.
+    { (* THE TAINT ARM of the post: everything from the taint *)
+      iAssert T as "#HT"; [ rewrite -Hkill; iExact "HTa" | ].
+      iSplit; [| iSplit ].
+      - iIntros "_". iApply ("Hdg" with "HT").
+      - iIntros "_".
+        iApply ("Hend" $! c with "[] [Hstd] Hc"); [ by iRight | ].
+        rewrite /pcat_hold. iFrame "Hstd". by iRight.
+      - iIntros (nb) "%Hret _".
+        iApply (UkCat.kcat_wr_mono N (mword_of_int 1)
+                  (mword_of_int CatSyms.buf) nb
+                  (ubytes γd CatSyms.buf 512 gb)
+                  (fun wret : mword 64 =>
+                     (⌜wret = (mword_of_int (Z.of_nat nb) : mword 64)⌝
+                      ∗ UserFd.ustd γfd l
+                      ∗ pcch γ v ps0 cs0 I0 pcat_alt P
+                          (c + Z.to_nat (bv_unsigned rv))%nat
+                      ∗ ubytes γd CatSyms.buf 512 gb)%I)
+                  _ with "[] [Hstd Hc]").
+        { iIntros (wret) "(%Hws & Hstd & Hc' & Hb)".
+          iSplitR "Hb"; [ | iExact "Hb" ].
+          iLeft. iSplitR; [ by iPureIntro | ].
+          rewrite /pcat_round_inv.
+          iExists (c + Z.to_nat (bv_unsigned rv))%nat.
+          iSplitR "Hc'"; [ | iExact "Hc'" ].
+          rewrite /pcat_hold. iFrame "Hstd". by iRight. }
+        iApply ("Hw" $! c nb rv gb with "[%] [] Hstd Hc");
+          [ exact Hret | by iRight ]. }
+    (* THE CONTENT ARM *)
+    iDestruct "Hgood" as (acc d) "([%Hlen %Hd] & %Himg2 & HQ & Harm)".
+    iDestruct "HQ" as "[Hr %Hacc]".
+    assert (Hd512 : (d <= 512)%nat) by lia.
+    (* the bytes the call delivered ARE the line's, at the cursor *)
+    assert (Hbytes : forall j : nat, (j < d)%nat ->
+              L !! (c + j)%nat = Some (gb j)).
+    { intros j Hj.
+      assert (Hj' : (j < length acc)%nat) by lia.
+      rewrite (pcat_acc_line L acc c Hacc j Hj').
+      f_equal. symmetry.
+      assert (Hm : M' !! uint (add_vec_int (mword_of_int CatSyms.buf : mword 64)
+                                 (Z.of_nat j)) = Some (acc !!! j))
+        by (apply (Himg2 ltac:(intros i Hi; apply Hlin; lia)); lia).
+      rewrite (Himg j ltac:(lia)) in Hm. by injection Hm as <-. }
+    iDestruct "Harm" as "[[%Hrv Heof] | [[%Hrv %Hd0] Hwhy]]"; last first.
+    { (* THE -1 ARMS: two are refuted, the third is the KILL *)
+      iAssert T as "#HT".
+      { iDestruct "Hwhy" as "[%Hnm | [Hk | %Hn0]]".
+        - exfalso. apply Hnm. rewrite Hd0. apply Hnf. lia.
+        - iApply ("Hktaint" $! gn with "Hk").
+        - exfalso. lia. }
+      iSplit; [| iSplit ].
+      - iIntros "_". iApply ("Hdg" with "HT").
+      - iIntros "%Hz". exfalso. rewrite Hrv Hm1s in Hz. lia.
+      - iIntros (nb) "%Hret _".
+        iApply (UkCat.kcat_wr_mono N (mword_of_int 1)
+                  (mword_of_int CatSyms.buf) nb
+                  (ubytes γd CatSyms.buf 512 gb)
+                  (fun wret : mword 64 =>
+                     (⌜wret = (mword_of_int (Z.of_nat nb) : mword 64)⌝
+                      ∗ UserFd.ustd γfd l
+                      ∗ pcch γ v ps0 cs0 I0 pcat_alt P
+                          (c + Z.to_nat (bv_unsigned rv))%nat
+                      ∗ ubytes γd CatSyms.buf 512 gb)%I)
+                  _ with "[] [Hstd Hc]").
+        { iIntros (wret) "(%Hws & Hstd & Hc' & Hb)".
+          iSplitR "Hb"; [ | iExact "Hb" ].
+          iLeft. iSplitR; [ by iPureIntro | ].
+          rewrite /pcat_round_inv.
+          iExists (c + Z.to_nat (bv_unsigned rv))%nat.
+          iSplitR "Hc'"; [ | iExact "Hc'" ].
+          rewrite /pcat_hold. iFrame "Hstd". by iRight. }
+        iApply ("Hw" $! c nb rv gb with "[%] [] Hstd Hc");
+          [ exact Hret | by iRight ]. }
+    (* THE COUNT ARM: the answer is [d], and [d] is at most 512 *)
+    assert (Hbu : bv_unsigned rv = Z.of_nat d).
+    { rewrite Hrv -uint_unsigned. apply uint_moi. unfold Z64. lia. }
+    assert (Hto : Z.to_nat (bv_unsigned rv) = d)
+      by (rewrite Hbu Nat2Z.id; reflexivity).
+    assert (Hsg : bv_signed rv = Z.of_nat d).
+    { rewrite (pcat_signed_small rv ltac:(rewrite Hbu; lia)). exact Hbu. }
+    iSplit; [| iSplit ].
+    - (* cat's `read error` is REFUTED at a real count *)
+      iIntros "%Hneg". exfalso. rewrite Hsg in Hneg. lia.
+    - (* END OF FILE: the read answered zero *)
+      iIntros "%Hz". rewrite Hsg in Hz.
+      assert (Hd00 : d = 0%nat) by lia.
+      iDestruct ("Heof" with "[%] [%]") as "#Hs";
+        [ exact Hd00 | lia | ].
+      rewrite Hd00 in Hd.
+      rewrite Hd00. rewrite Hd. rewrite Nat.add_0_r.
+      iApply ("Hend" $! c with "[] [Hstd Hr] Hc"); [ by iLeft | ].
+      rewrite /pcat_hold. iFrame "Hstd". iLeft. iExact "Hr".
+    - (* THE TURN'S WRITE, at the cursor *)
+      iIntros (nb) "%Hret %Hnb0".
+      iApply (UkCat.kcat_wr_mono N (mword_of_int 1)
+                (mword_of_int CatSyms.buf) nb
+                (ubytes γd CatSyms.buf 512 gb)
+                (fun wret : mword 64 =>
+                   (⌜wret = (mword_of_int (Z.of_nat nb) : mword 64)⌝
+                    ∗ UserFd.ustd γfd l
+                    ∗ pcch γ v ps0 cs0 I0 pcat_alt P
+                        (c + Z.to_nat (bv_unsigned rv))%nat
+                    ∗ ubytes γd CatSyms.buf 512 gb)%I)
+                _ with "[Hr] [Hstd Hc]").
+      { iIntros (wret) "(%Hws & Hstd & Hc' & Hb)".
+        iSplitR "Hb"; [ | iExact "Hb" ].
+        iLeft. iSplitR; [ by iPureIntro | ].
+        rewrite /pcat_round_inv.
+        iExists (c + Z.to_nat (bv_unsigned rv))%nat.
+        iSplitR "Hc'"; [ | iExact "Hc'" ].
+        rewrite /pcat_hold. iFrame "Hstd". iLeft.
+        rewrite Hto -Hd. iExact "Hr". }
+      iApply ("Hw" $! c nb rv gb with "[%] [] Hstd Hc"); [ exact Hret | ].
+      iLeft. iPureIntro. rewrite Hto. split; [ exact Hd512 | ].
+      intros j Hj.
+      exact (pcat_round_line I0 L c d gb HL Hbytes j Hj).
   Qed.
 
 

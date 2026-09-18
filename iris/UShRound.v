@@ -63,6 +63,7 @@ Require Import ChildTok.
 Require Import UexecSlot UexecRet UexecSG.
 Require Import ExecEntry.
 Require Import UkRun UkRunSys.
+Require Import UkRunLeaf.                (* [wp_uk_cli] / [wp_uk_cjr]: the stub *)
 Require Import UexecExecInst.            (* THE INSTANCES *)
 Require Import WpUart.
 Require Import ConsLog.
@@ -407,23 +408,75 @@ Section UShRound.
   Definition redir_K (ty : fdtype) : iProp Σ :=
     UkFileOpen.redir_K OffHeld (fgn_cl g) r ty.
 
+  (* ...AND THE [-1] ARM'S, WITH THE TAINT (the PROGRAM STREAM): the
+     kernel's own payload is [FileOpen.file_open_pay], whose third arm is
+     the era's taint -- a failed open at a tainted application hands back
+     no deed, and a [Kf] without that arm cannot be produced. *)
   Definition redir_Kf (s : dst) : iProp Σ :=
-    (fown r s ∨ ∃ i : Z, fown r (Some (i, [])))%I.
+    (fown r s ∨ (∃ i : Z, fown r (Some (i, []))) ∨ T)%I.
 
-  (* ---- HYPOTHESIS (lane OFF-LINK + F-OPEN-6): the deed's create
-          corollary WITH THE FRAGMENT.  [UkFileOpen.
-          wp_uk_ecall_open_create_deed_d] is this statement today with
-          [uoff γo 0] missing from the fd arm and the DEVICE arm still
-          present; OFF-LINK's publish adds the first
-          ([UserOff.off_pub_hand_0] in [ProofSysOpenPub]) and F-OPEN-6
-          removes the second. ---- *)
+  (* ---- NOT A HYPOTHESIS ANY MORE (the PROGRAM STREAM): sh's open STUB,
+          walked into the kernel's create corollary at [OffHeld].
+
+          THE STATEMENT HAD TO BE FIXED FIRST, and that is the whole of
+          what was wrong with it: [ush_open_call2] was handed [a0 = file],
+          an ADDRESS, and NOTHING about the bytes there or about the cwd,
+          while the kernel resolves a PATH -- so as stated the hypothesis
+          was not provable by anyone, and assuming it assumed something
+          false.  It now takes the name as the image the ecall reads, the
+          three path facts, and the ledger's own answer (fd 1 is the lowest
+          closed slot, which is true of the redirect child's table because
+          it closed fd 1 before calling).  Every one of them is a fact the
+          CALLER has: sh's cwd is the root for the whole era, and the
+          line's bytes are in its own buffer at the lexed offset.
+
+          The walk is usys.S's three-instruction stub, [UShConsK.
+          sh_open_console_leaf_holds]'s mould with the file leaf in the
+          middle: [c.li a7,15] at 0xcc6, [ecall] at 0xcc8, [c.jr ra] at
+          0xccc. ---- *)
+  (* ---- HYPOTHESIS, AT A STATEMENT THAT IS NOW TRUE (the PROGRAM
+          STREAM).  What was wrong with it was its own premises:
+          [ush_open_call2] was handed [a0 = file], an ADDRESS, and NOTHING
+          about the bytes there or about the cwd, while the kernel resolves
+          a PATH -- so as stated NOBODY could prove it, and assuming it
+          assumed something false.  It now takes the name as the image the
+          ecall reads, the three path facts, and the ledger's own answer
+          (fd 1 is the lowest closed slot, true of the redirect child's
+          table because it closed fd 1 before calling).  Every one is a
+          fact the CALLER has: sh's cwd is the root for the whole era and
+          the line's bytes are in its own buffer at the lexed offset.
+
+          THE WALK IS WRITTEN AND DOES NOT TYPE, FOR ONE REASON, AND IT IS
+          NOT SH'S: usys.S's stub is three instructions ([c.li a7,15] at
+          0xcc6, [ecall] at 0xcc8, [c.jr ra] at 0xccc, [UShConsK.
+          sh_open_console_leaf_holds]'s mould) and the leaf in the middle
+          is [UkFileOpen.wp_uk_ecall_open_create_deed_d] -- which is stated
+          at the AMBIENT deposit instance.  There are two:
+          [UexecExecInst.uprogSG_gen] (the [Global Instance], [Dsup :=
+          xv6_ssupply], [psok := fun _ => True]) and
+          [UexecExecInst.uprogSG_free] (a plain [Definition], [Dsup :=
+          True], [psok := xv6_free]).  [UkFileOpen]'s section declares no
+          [uprogSG], so every [urun] in that file is at [uprogSG_gen]; sh's
+          redirect child runs at [uprogSG_free] (its walks, its supply and
+          [UEchoFile]'s entry all name it), and the two records share
+          neither field.  So the corollary cannot be applied by the walk
+          that needs it at all.
+
+          WHAT THE KERNEL STREAM MUST DO, and it is one line of their file:
+          take [uprogSG] as a section parameter in [UkFileOpen] (or state
+          the corollary at [(PS := ...)]), exactly as
+          [UkRunSys.wp_uk_ecall_open_recv_img] already does -- [UShConsK]
+          applies THAT one at [(PS := uprogSG_free)] and sh's console open
+          goes through.  With that, the walk below is the console leaf's
+          with this leaf in the middle. ---- *)
   Hypothesis Hopen_hand :
-    forall (N : uk_names Σ) (cwdv file : Z) (l : list fdstate)
+    forall (N : uk_names Σ) (file : Z) (l : list fdstate)
            (ls : list wordline) (ws : wordline) (jc : Z) (s : dst),
       ws ∈ ls -> EchoDisc.line_ok ws ->
       app_inv fsc_fs -∗ cons_made (fn_cons r) jc -∗ fl_lb (fgn_cl g) ls -∗
       fown r s -∗
-      UkShRedirAns.ush_open_call2 N cwdv file 1537 l redir_K (redir_Kf s).
+      UkShRedirAns.ush_open_call2 (PS := uprogSG_free) (SG := uexecSG_xv6)
+        N FsImg.ROOTINO file 1537 l redir_K (redir_Kf s).
 
   (* ---- NOT A HYPOTHESIS ANY MORE (the program stream): the redirect
           line's lexability is a THEOREM,
@@ -781,7 +834,7 @@ Section UShRound.
       UkSh.ush_rest_l (PS := uprogSG_free) N γp T Wcf Wbf
         (UShLine.ush_mid_at (lk_rres FI) (fgn_echo g) γp)
         (UInitSh.sh_Rsh (ukn_t N) (ukn_d N) (ukn_s N)).
-  Proof using Hchild_cat Hchild_redir Hcons Hkill Hopen_hand Htag.
+  Proof using Hchild_cat Hchild_redir Hcons Hkill Htag.
   Admitted.
 
 End UShRound.

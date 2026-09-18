@@ -590,7 +590,8 @@ Section UexecExecInst.
          (of_P f) (of_Pmiss f) (of_Farm f) (of_Fun f) (of_Fok f) (of_Fex f)
          (of_Fo f) (of_Ft f)
      else if decide (n = 16) then
-       filewrite_in (fd_st_of_key (xk_a W 0) (uvis_fd W))
+       filewrite_in (uvis_perm W) (uvis_sz W) (uvis_lazy W)
+         (fd_st_of_key (xk_a W 0) (uvis_fd W))
          (sys_rw_count (xk_a W 2)) (uvis_M W) (xk_a W 1) (wf_Q f) (wf_Qe f)
      else if decide (n = 17) then
        (* ...and mknod's, at ITS path argument beside the two device
@@ -857,11 +858,14 @@ Section UexecExecInst.
     skey_eq W W' -> xv6_sbundle X n f W ⊣⊢ xv6_sbundle X n f W'.
   Proof using .
     intros Hk.
-    pose proof Hk as (HM & Ha0 & Ha1 & Ha2 & Hfd & Hcw & Hgn & Hch & Hpi & _ & _).
+    pose proof Hk as (HM & Ha0 & Ha1 & Ha2 & Hfd & Hcw & Hgn & Hch & Hpi
+                      & Hpm & Hsz & Hlz).
     rewrite /xv6_sbundle.
     destruct (decide (n = USYS_exec)) as [_ | _];
       [ exact (exec_sbundle_cong X f W W' HM Ha0 Ha1 Hfd Hcw Hgn Hch Hpi) | ].
-    rewrite /xk_a /tf_w HM Ha0 Ha1 Ha2 Hfd Hcw.
+    (* RULING WR-TB: row 16 now reads the key's permission map, break and
+       lazy bit too, and [UexecSG.skey_eq] already fixes all three. *)
+    rewrite /xk_a /tf_w HM Ha0 Ha1 Ha2 Hfd Hcw Hpm Hsz Hlz.
     reflexivity.
   Qed.
 
@@ -1511,7 +1515,8 @@ Section UexecExecInst.
 
   Lemma sbundle_at_write_elim (X : uvis -d> iPropO Σ) (f : xfam) (W : uvis) :
     sbundle_at X 16 f W -∗
-    filewrite_in (fd_st_of_key (tf_w (uvis_tf W) (tf_arg_idx 0)) (uvis_fd W))
+    filewrite_in (uvis_perm W) (uvis_sz W) (uvis_lazy W)
+      (fd_st_of_key (tf_w (uvis_tf W) (tf_arg_idx 0)) (uvis_fd W))
       (sys_rw_count (tf_w (uvis_tf W) (tf_arg_idx 2))) (uvis_M W)
       (tf_w (uvis_tf W) (tf_arg_idx 1)) (wf_Q f) (wf_Qe f).
   Proof using .

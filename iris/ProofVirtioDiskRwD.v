@@ -852,7 +852,7 @@ Section VdrwdLeaves.
     iDestruct (sie_cap_gpr_kmap_claims with "Hcg") as "[#Hkm Hcg]".
     iDestruct (disk_geom_static with "Hgeom") as %(_ & Hsta & _).
     iDestruct (disk_geom_canonical with "Hgeom") as %(_ & Hcana & _).
-    iDestruct "Hgeom" as "(_ & _ & _ & %Hal0 & _ & _ & _ & _)".
+    iDestruct (disk_geom_aligned with "Hgeom") as %Hal0.
     destruct Hal0 as (_ & Hala & _).
     assert (Halign : is_aligned_paddr (Physaddr (pa_add pav 2%nat)) 2 = true).
     { apply (vdrwd_aligned_off pav 2%nat 2 Hala);
@@ -926,7 +926,8 @@ Section VdrwdLeaves.
     iDestruct (sie_cap_gpr_kmap_claims with "Hcg") as "[#Hkm Hcg]".
     iDestruct (disk_geom_static with "Hgeom") as %(_ & Hsta & _).
     iDestruct (disk_geom_canonical with "Hgeom") as %(_ & Hcana & _).
-    iDestruct "Hgeom" as "(_ & _ & _ & %Hal0 & #Hcfg0 & _ & _ & _)".
+    iDestruct (disk_geom_aligned with "Hgeom") as %Hal0.
+    iDestruct (disk_geom_cfg with "Hgeom") as "#Hcfg0".
     destruct Hal0 as (_ & Hala & _).
     assert (Hq8 : ((np `mod` 8) < 8)%nat) by (apply Nat.mod_upper_bound; lia).
     assert (Halign : is_aligned_paddr (Physaddr (d_ring pav (np `mod` 8))) 2 = true).
@@ -1046,7 +1047,8 @@ Section VdrwdLeaves.
     iDestruct (sie_cap_gpr_kmap_claims with "Hcg") as "[#Hkm Hcg]".
     iDestruct (disk_geom_static with "Hgeom") as %(_ & Hsta & _).
     iDestruct (disk_geom_canonical with "Hgeom") as %(_ & Hcana & _).
-    iDestruct "Hgeom" as "(_ & _ & _ & %Hal0 & #Hcfg0 & _ & _ & _)".
+    iDestruct (disk_geom_aligned with "Hgeom") as %Hal0.
+    iDestruct (disk_geom_cfg with "Hgeom") as "#Hcfg0".
     destruct Hal0 as (_ & Hala & _).
     assert (Halign : is_aligned_paddr (Physaddr (pa_add pav 2%nat)) 2 = true).
     { apply (vdrwd_aligned_off pav 2%nat 2 Hala);
@@ -1831,8 +1833,7 @@ Section VdrwdP4.
     iIntros "Hcg #Htext Hpc #Hdinv #Hgeom Hbody Hchain Hfrag Hbuf Hdisk Hpend Hcont".
     iDestruct (sie_cap_gpr_kmap_claims with "Hcg") as "[#Hkm Hcg]".
     iDestruct (disk_geom_static with "Hgeom") as %(Hspd & Hspav & _).
-    iPoseProof "Hgeom" as "Hgeom2".
-    iDestruct "Hgeom2" as "(_ & #Hap & _ & _ & _ & _ & _ & _)".
+    iDestruct (disk_geom_avail_ptr with "Hgeom") as "#Hap".
     (* the buffer's identity mapping *)
     assert (Hsbuf : forall j, (j < 1024)%nat ->
               kmap_static (svpn_of (pa_add (b_data b) j)) KP_rw)

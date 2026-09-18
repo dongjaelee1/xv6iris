@@ -580,4 +580,31 @@ Section file_links_at.
     iExists s0, ps0, cs0. iFrame "Ht Hps Hcs Hf". by iPureIntro.
   Qed.
 
+  (* ...and the record's residue WITH THE TYPED LINES' WITNESS
+     ([FileLinksLine.fwc_rresw]), at the index *)
+  Definition fwc_rresw_at (s0 : fstate) (v : era_pins) (I : list (bv 8))
+    : iProp Σ := (fwc_rres_at s0 v I ∗ FileLinksLine.flw g I)%I.
+
+  Global Instance fwc_rresw_at_persistent s0 v I :
+    Persistent (fwc_rresw_at s0 v I).
+  Proof using . rewrite /fwc_rresw_at. apply _. Qed.
+  Global Instance fwc_rresw_at_timeless s0 v I :
+    Timeless (fwc_rresw_at s0 v I).
+  Proof using . rewrite /fwc_rresw_at. apply _. Qed.
+
+  Lemma fwc_rresw_at_pack s0 v I :
+    fwc_rresw_at s0 v I -∗ FileLinksLine.fwc_rresw g v I.
+  Proof using .
+    rewrite /fwc_rresw_at /FileLinksLine.fwc_rresw. iIntros "[H $]".
+    iApply (fwc_rres_at_pack with "H").
+  Qed.
+
+  Lemma fwc_rresw_unpack v I :
+    FileLinksLine.fwc_rresw g v I -∗ ∃ s0 : fstate, fwc_rresw_at s0 v I.
+  Proof using .
+    rewrite /fwc_rresw_at /FileLinksLine.fwc_rresw. iIntros "[H #Hw]".
+    iDestruct (fwc_rres_unpack with "H") as (s0) "H".
+    iExists s0. iFrame "H Hw".
+  Qed.
+
 End file_links_at.

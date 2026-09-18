@@ -233,8 +233,16 @@ Section UsertrapRes.
     ut_trap_parked pj ksp av lks -∗ tlb_res_pt kroot -∗ ut_trap pj ksp av lks.
   Proof using .
     iIntros "(Hstk & Harm & Hctx & Hb1 & #Hb2 & Hgh & Hcpu & Hclm) Hkres".
-    rewrite /ut_trap. iFrame "Hstk Harm Hctx Hb2 Hgh Hcpu Hclm".
-    iApply (strans_inv_intro kroot with "Hb1 Hkres").
+    (* BUILT, not framed: [ut_trap]'s rows include the process residue, so a
+       named [iFrame] walks that goal once per name. *)
+    rewrite /ut_trap.
+    iSplitL "Hstk"; [iExact "Hstk" |].
+    iSplitL "Hb1 Hkres"; [iApply (strans_inv_intro kroot with "Hb1 Hkres") |].
+    iSplitL "Harm"; [iExact "Harm" |].
+    iSplitL "Hctx"; [iExact "Hctx" |].
+    iSplitR; [iExact "Hb2" |].
+    iSplitL "Hgh"; [iExact "Hgh" |].
+    iSplitL "Hcpu"; [iExact "Hcpu" | iExact "Hclm"].
   Qed.
 
   Lemma ut_trap_tlb_open (pj ksp : mword 64) (av : nat)
@@ -2231,7 +2239,18 @@ Proof.
   iDestruct "Hdev" as "(_ & #Hcc & _)".
   iDestruct (park_world_open with "Hpw") as (γtl0 pd0 pav0 pu0) "(_ & _ & _ & _ & #Hipx)".
   iDestruct "Hipx" as (ipw) "[#Hipc _]".
-  rewrite /park_globals. iFrame "Hprocs Hpe Hwl Hft Hcc Hcr Htl Hnp".
+  (* built in [park_globals]' own order: every row is persistent and in
+     hand, and a named [iFrame] over this bundle is a goal-side [Frame]
+     search per name (1.3s measured) *)
+  rewrite /park_globals.
+  iSplitR; [iExact "Hprocs" |].
+  iSplitR; [iExact "Hpe" |].
+  iSplitR; [iExact "Hwl" |].
+  iSplitR; [iExact "Hft" |].
+  iSplitR; [iExact "Hcc" |].
+  iSplitR; [iExact "Hcr" |].
+  iSplitR; [iExact "Htl" |].
+  iSplitR; [iExact "Hnp" |].
   iExists ipw. iExact "Hipc".
 Qed.
 

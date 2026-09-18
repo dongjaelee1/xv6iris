@@ -70,9 +70,12 @@ echo line (the round in flight at the cut).  `f` never contains junk.
    era the model is EXACT.  The commit receipt at `write` is priced in
    §6 and is milestone 2.
 3. **`echo`'s alternative 2** ("the child died before printing", `$ `)
-   is kept for the new round shapes with the f-effect "truncated" — it is
-   sh's `argv[0] == 0` exit and unreachable under the discipline, as in
-   the echo application.
+   is kept for the new round shapes — it is sh's `argv[0] == 0` exit and
+   unreachable under the discipline, as in the echo application.  Its
+   f-effect is IDENTITY (`RFSilent`: f unchanged), not "truncated":
+   every line shape then has one silent alternative that leaves `f`
+   alone (`REcho 2`, `RFSilent`, `RCSilent`), which is what the round's
+   credential needs at the fork's relayed failure row (RULING HOLD-POS).
 
 ## 1. The pure model (`iris/FileDisc.v`)
 
@@ -122,7 +125,7 @@ continuation and its f-effect are decided by ONE alternative:
       | RFExec                         -- "exec echo failed\n$ ";  f := Some []
       | RFOpenU                        -- "open f failed\n$ ";     f unchanged (create/filealloc failed, f present or absent)
       | RFOpenM                        -- "open f failed\n$ ";     f := Some []   (created, then filealloc failed; only from None)
-      | RFSilent                       -- "$ ";                    f := Some []   (limit 3)
+      | RFSilent                       -- "$ ";                    f unchanged    (limit 3; RULING HOLD-POS)
       | RFFork                         -- "fork\n";                f unchanged
       | RCRan                          -- fcontent, or "cat: cannot open f\n"; then "$ "
       | RCNoOpen                       -- "cat: cannot open f\n$ " (f present: filealloc/fdalloc failed)
@@ -687,6 +690,51 @@ unowned critical item (WRITE-RELAY-3's `TB` guard).  RULES, replacing
   NM's twin instead: `aunarm_commit_at` gains `Nd : absnode -> Prop`,
   instantiated at the node the arm placed, so the file's unarm leg is
   `f_ok_unarm` with the two rows' nodes distinct.
+- RULING HOLD-POS (2026-09-18, the coordinator, replacing the p-independent
+  `UShRound.sh_hold_at`): THE DEED'S TIE DEPENDS ON THE ROUND'S POSITION.
+  `sh_hold_at s0 I` tied the deed to `cat_st cs0 s0 I` (the state BEFORE
+  the round of `I`'s last line) at every `p`, but at `p = 0,1,2` that line
+  has already run and been filed, so the same input needs one more `fsm`
+  step — INIT-FILE's conjunct 5 found it, and `Hchild_redir`'s exit would
+  have found it next (it cannot re-establish the pre-state after writing).
+  Three pure ties, all over `∃ cs s v, fown r s ∗ f_typed s ∗ era_pin v ∗
+  cs_lb v cs ∗ ⌜…⌝`, each `∨ T`:
+    PRE  I := length cs = nlines I - 1 ∧ dst_content s = cat_st cs s0 I
+    DONE I := length cs = nlines I     ∧ dst_content s = fstate_after cs s0 I
+    PEND I := length cs = nlines I - 1 ∧ 0 < nlines I ∧ ∃ a, ralt_ok (fline I) (ralt_dec a)
+              ∧ cont (cat_st cs s0 I) (fline I) (ralt_dec a) = u_prompt
+              ∧ dst_content s = fsm (cat_st cs s0 I) (fline I) (ralt_dec a)
+  ("the round's alternative is decided, silent, and not yet filed").  The
+  family the loop carries:
+    Wcf I 3 := Wcl I 3 ∗ PRE I                       (what the fork lends; the child's entry)
+    Wcf I 0 := (Wcl I 0 ∗ DONE I) ∨ (Wcl I 3 ∗ PEND I)   (FOLDED: the pending arm keeps the
+                                                       console at block-owed, so no law ever
+                                                       meets "deed says a, console filed a'")
+    Wcf I p := Wcl I p ∗ DONE I   (p = 1, 2);   Wbf I := Wbl I ∗ DONE I.
+  Consequences, each one lemma: (i) the read law is PRE-of-DONE (a prefix
+  fact on `bodies_of`, `rest_of I = []` read off `Wcl I 2`); (ii) `Hwbl`
+  (`Wcf I 3 -∗ Wcf I 0`) takes the folded arm at the line's silent identity
+  alternative — `REcho 2` / `RFSilent` / `RCSilent` — which is why RFSilent's
+  f-effect is identity (§1); (iii) `Hwbwc` is the DONE arm; (iv) the prompt
+  law is NOT a frame: on the DONE arm it is the record's law framed
+  (`UShPanicHold.sh_prompt_law_hold` at `Hold := DONE`), on the PEND arm it
+  is `UShRound.sh_prompt_alt_of_deed` (S3) filing the pending `a` at the
+  block-first '$' and landing at DONE (`fst_upto_snoc`), then the record's
+  space byte; (v) the panic law is the framed one plus PRE→DONE at `Wbl I`
+  (`wr_ban_f` pins the last filed alternative as a panic, whose f-effect is
+  identity); (vi) every child EXITS AT `Wcf I 0` (never the left disjunct of
+  `ushf_wq`): a printing child at the DONE arm, knowing the alternative it
+  filed (the redirect child states its diagnostics at the record's POST form
+  `lk_blk FI _ _ I a _`, not the packed `lk_line`), a silent child at the
+  PEND arm; the echo child's `Wcl I 0 ∗ PRE I` (UShEchoPay frames PRE) folds
+  by `fline I <> LEchoF` (every alternative of an `LEcho`/`LCat` line has
+  identity f-effect; the pro arm's last alternative is a panic); (vii) two
+  lower bounds of one `cs` of EQUAL LENGTH agree, so DONE beside a filed
+  console is never inconsistent — that agreement lemma is the coupling.
+  REFUSED on the way: a p-independent hold (any statement has a vacuous
+  unprovable pair at the prompt), the deed inside the link families (the
+  record's `i = 0` phantom alternative cannot commit), a new `RFNone`
+  alternative (weakens the theorem where RFSilent's effect is free).
 - TWO SERIAL STREAMS, at most two lanes on `iris/` at once: the KERNEL
   stream (OFF-LINK-6 + L5 + the `TB` guard, exit criterion: `Hopen_hand`,
   cat's lend and `UEchoFile.ef_chain` compile as `Definition`s; then

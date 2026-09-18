@@ -16,13 +16,22 @@
 (*  THE DEED RIDES INSIDE THE CREDENTIAL FAMILY, and therefore            *)
 (*  [UkShFork.ushf_wq]'s TWIN needs no new definition in [UkShFork.v].    *)
 (*  [UkSh]'s [Wc : list (bv 8) -> nat -> iProp] is ABSTRACT, so the file  *)
-(*  era instantiates it at [Wcf I p := Wcl I p ∗ sh_hold I] -- the        *)
+(*  era instantiates it at [Wcf I p := Wcl I p ∗ <the deed at p>] -- the *)
 (*  console credential of lane LINK-GEN paired with the deed at the       *)
 (*  model's state for the round whose input is [I].  Then                 *)
 (*  [UkShFork.ushf_wq Wcf I] IS the block owed or the block written       *)
 (*  together with the deed back, which is what the design asks for, and   *)
 (*  [ushf_child_law], [ush_panic_law], [ush_rest_l] and                   *)
 (*  [UkShEcho.sh_exec_sup_echo_wq] all typecheck at it unchanged.         *)
+(*                                                                       *)
+(*  RULING HOLD-POS (2026-09-18): THE DEED'S TIE DEPENDS ON THE ROUND'S   *)
+(*  POSITION.  The lend ([Wcf I 3]) carries the deed at the state BEFORE  *)
+(*  the round of [I]'s last line (PRE); the settled positions 1 and 2 and *)
+(*  the banner-owed family carry it at the state AFTER that line (DONE);  *)
+(*  position 0 is FOLDED -- either the line is filed and the deed is DONE, *)
+(*  or the block is still owed and the deed says which silent alternative *)
+(*  the prompt byte will file (PEND).  The pure ties and their step       *)
+(*  lemmas are above the section; [Wcf]/[Wbf] and the laws are S1/S2/S3. *)
 (*                                                                       *)
 (*  WHY THE DEED MUST BE IN [Wc] AND NOT BESIDE IT: sh READS ITS DEED     *)
 (*  BEFORE IT PRINTS (design SS5.3 ruling (b), CAT-ENTRY).  The prompt     *)
@@ -114,6 +123,10 @@ Require Import LinkRec.                  (* the era's link record *)
 Require Import FileLinksLine.            (* [fline] / [fexfb] -- the era's line *)
 Require Import StageRec.                 (* [ck_lineok] / [sk_apr0] *)
 Require Import FileLinkInst.             (* [file_link_inst_at] -- LINK-GEN-2 + INIT-FILE *)
+Require Import FileLinksAt.              (* the families at the round's boot state *)
+Require Import FileLinksAtInp.           (* their input readings, for the seam *)
+Require Import UShLineHold.              (* [ush_wb_inp_hold] *)
+Require Import UShPanicHold.             (* the prompt law with a frame; [ksh_w_mono] *)
 Require Import UShLine.
 Require Import UShEcho.
 Require Import UShPanic.          (* the panic and exec-failed laws at a record *)
@@ -127,6 +140,291 @@ Require Import CtxIdDefs.
 Require Import FsAbs.
 Local Open Scope Z_scope.
 Import Defs.
+
+(* ===================================================================== *)
+(*  S0  RULING HOLD-POS, PURELY: THE THREE TIES AND THEIR STEPS           *)
+(*                                                                       *)
+(*  [c] is the deed's content ([AppFile.dst_content]); [cs] the choice    *)
+(*  list the holder has a lower bound of; [sb] the era's boot state.      *)
+(*    PRE   the round of [I]'s last line has not run: [cs] resolves every *)
+(*          line but the last, [c] is the state before it.               *)
+(*    DONE  every line of [I] is resolved and [c] is the state after.     *)
+(*    PEND  the last round's alternative [a] is decided and SILENT (its   *)
+(*          console output is the bare prompt), the deed has moved to its *)
+(*          effect, and the console has not filed it yet.                *)
+(* ===================================================================== *)
+Definition pre_tie (cs : list nat) (sb : fstate) (I : list (bv 8)) (c : fstate)
+  : Prop :=
+  length cs = (nlines I - 1)%nat /\ c = UCatOut.cat_st cs sb I.
+
+Definition done_tie (cs : list nat) (sb : fstate) (I : list (bv 8)) (c : fstate)
+  : Prop :=
+  length cs = nlines I /\ c = fstate_after cs sb I.
+
+Definition pend_tie_at (cs : list nat) (sb : fstate) (I : list (bv 8)) (c : fstate)
+    (a : nat) : Prop :=
+  length cs = (nlines I - 1)%nat
+  /\ (0 < nlines I)%nat
+  /\ ralt_ok (fline I) (ralt_dec a)
+  /\ cont (UCatOut.cat_st cs sb I) (fline I) (ralt_dec a) = u_prompt
+  /\ c = fsm (UCatOut.cat_st cs sb I) (fline I) (ralt_dec a).
+
+Definition pend_tie (cs : list nat) (sb : fstate) (I : list (bv 8)) (c : fstate)
+  : Prop := exists a : nat, pend_tie_at cs sb I c a.
+
+(* ---- the f-effects that are the identity ---- *)
+Lemma fsm_echo (s : fstate) (ws : list (list (bv 8))) (a : ralt) :
+  fsm s (LEcho ws) a = s.
+Proof using . reflexivity. Qed.
+
+Lemma fsm_cat (s : fstate) (a : ralt) : fsm s LCat a = s.
+Proof using . reflexivity. Qed.
+
+(* a panic alternative moves no file, at any line *)
+Lemma fsm_panic (s : fstate) (l : uline) (a : ralt) :
+  ralt_panic a = true -> fsm s l a = s.
+Proof using .
+  intro H. destruct l as [ws | ws |]; [ reflexivity | | reflexivity ].
+  destruct a; try reflexivity; cbn [ralt_panic] in H; discriminate H.
+Qed.
+
+(* the line's silent alternative moves no file -- at a redirect line this
+   IS the model fix of RULING HOLD-POS ([RFSilent]'s effect is identity) *)
+Lemma fsm_fnoc (s : fstate) (l : uline) : fsm s l (ralt_dec (fnoc_of l)) = s.
+Proof using .
+  destruct l as [ws | ws |]; cbn [fnoc_of];
+    [ reflexivity | by rewrite (ralt_dec_enc RFSilent) | reflexivity ].
+Qed.
+
+(* an alternative whose output is the bare prompt is not a panic *)
+Lemma cont_prompt_nopanic (s : fstate) (l : uline) (a : ralt) :
+  cont s l a = u_prompt -> ralt_panic a = false.
+Proof using .
+  intro H. destruct a as [k | sel | | | | | | | | | |]; cbn [ralt_panic];
+    try reflexivity.
+  - case_bool_decide as Hk; [ | reflexivity ]. exfalso. subst k.
+    cbn [cont] in H. rewrite line_alts_of_3 in H.
+    apply (f_equal length) in H.
+    rewrite FileLinksLine.alt_panic_len5 EchoLinks.wr_prompt_len in H.
+    discriminate H.
+  - exfalso. cbn [cont] in H. apply (f_equal length) in H.
+    rewrite FileLinksLine.alt_panic_len5 EchoLinks.wr_prompt_len in H.
+    discriminate H.
+  - exfalso. cbn [cont] in H. apply (f_equal length) in H.
+    rewrite FileLinksLine.alt_panic_len5 EchoLinks.wr_prompt_len in H.
+    discriminate H.
+Qed.
+
+(* ---- filing one alternative moves the state by one [fsm] step ---- *)
+Lemma fstate_after_snoc (cs : list nat) (a : nat) (sb : fstate) (I : list (bv 8)) :
+  length cs = (nlines I - 1)%nat -> (0 < nlines I)%nat ->
+  fstate_after (cs ++ [a]) sb I
+  = fsm (UCatOut.cat_st cs sb I) (fline I) (ralt_dec a).
+Proof using .
+  intros Hlen Hpos. rewrite /fstate_after /UCatOut.cat_st /fline.
+  destruct (nlines I) as [| n] eqn:Hn; [ lia | ].
+  try rewrite Hn in Hlen. replace (S n - 1)%nat with n in Hlen |- * by lia.
+  cbn [fstate_upto]. f_equal.
+  - apply fstate_upto_ext; [ | intros j _; reflexivity ].
+    intros j Hj. rewrite list_lookup_total_alt lookup_app_l;
+      [ by rewrite -list_lookup_total_alt | lia ].
+  - rewrite /ralt_at -Hlen fd_snoc_lookup_total. reflexivity.
+Qed.
+
+Lemma done_tie_snoc (cs : list nat) (a : nat) (sb : fstate) (I : list (bv 8))
+    (c : fstate) :
+  length cs = (nlines I - 1)%nat -> (0 < nlines I)%nat ->
+  c = fsm (UCatOut.cat_st cs sb I) (fline I) (ralt_dec a) ->
+  done_tie (cs ++ [a]) sb I c.
+Proof using .
+  intros Hl Hp Hc. split; [ rewrite length_app; cbn [length]; lia | ].
+  rewrite (fstate_after_snoc cs a sb I Hl Hp). exact Hc.
+Qed.
+
+(* (ii) DONE-of-PEND: the console files the alternative the deed decided *)
+Lemma done_tie_of_pend (cs : list nat) (sb : fstate) (I : list (bv 8)) (c : fstate)
+    (a : nat) :
+  pend_tie_at cs sb I c a -> done_tie (cs ++ [a]) sb I c.
+Proof using .
+  intros (Hl & Hp & _ & _ & Hc). exact (done_tie_snoc cs a sb I c Hl Hp Hc).
+Qed.
+
+(* (iv) DONE-of-PRE at an alternative whose f-effect is the identity *)
+Lemma done_tie_of_pre_id (cs : list nat) (a : nat) (sb : fstate)
+    (I : list (bv 8)) (c : fstate) :
+  (0 < nlines I)%nat -> pre_tie cs sb I c ->
+  fsm (UCatOut.cat_st cs sb I) (fline I) (ralt_dec a) = UCatOut.cat_st cs sb I ->
+  done_tie (cs ++ [a]) sb I c.
+Proof using .
+  intros Hp [Hl Hc] Hid. apply (done_tie_snoc cs a sb I c Hl Hp).
+  rewrite Hid. exact Hc.
+Qed.
+
+(* (iii) PEND-of-PRE at the line's silent identity alternative *)
+Lemma pend_tie_of_pre (cs : list nat) (sb : fstate) (I : list (bv 8)) (c : fstate) :
+  (0 < nlines I)%nat -> pre_tie cs sb I c ->
+  pend_tie_at cs sb I c (fnoc_of (fline I)).
+Proof using .
+  intros Hp [Hl Hc]. split_and!;
+    [ exact Hl | exact Hp | exact (fnoc_of_ok (fline I))
+    | exact (cont_fnoc _ (fline I)) | rewrite fsm_fnoc; exact Hc ].
+Qed.
+
+(* (iv'), at a FILED list: the holder of PRE meets a console whose list is
+   one longer and extends its own, and the filed alternative's effect is
+   the identity -- or nothing is filed at all ([nlines I = 0]) *)
+Lemma done_tie_of_pre_prefix (cs cs' : list nat) (sb : fstate) (I : list (bv 8))
+    (c : fstate) :
+  pre_tie cs' sb I c -> length cs = nlines I -> cs' `prefix_of` cs ->
+  ((0 < nlines I)%nat ->
+   fsm (UCatOut.cat_st cs' sb I) (fline I) (ralt_at cs (nlines I - 1)%nat)
+   = UCatOut.cat_st cs' sb I) ->
+  done_tie cs sb I c.
+Proof using .
+  intros [Hl' Hc] Hl Hpre Hid.
+  destruct (nlines I) as [| n] eqn:Hn.
+  - (* no complete line: both lists are empty, both states the boot state *)
+    try rewrite Hn in Hl. apply nil_length_inv in Hl. subst cs.
+    split; [ by rewrite Hn | ].
+    rewrite Hc /UCatOut.cat_st /fstate_after Hn. reflexivity.
+  - try rewrite Hn in Hl. try rewrite Hn in Hl'. try rewrite Hn in Hid.
+    replace (S n - 1)%nat with n in * by lia.
+    destruct Hpre as [rest ->].
+    assert (Hr : length rest = 1%nat) by (rewrite length_app in Hl; lia).
+    destruct rest as [| a [| a' rest']]; cbn [length] in Hr; [ lia | | lia ].
+    apply (done_tie_snoc cs' a sb I c); [ rewrite Hn; lia | rewrite Hn; lia | ].
+    rewrite /ralt_at -Hl' fd_snoc_lookup_total in Hid.
+    rewrite (Hid ltac:(lia)). exact Hc.
+Qed.
+
+(* ...and the banner-owed reading of it: the last filed alternative is a
+   panic ([wr_ban_f]'s clause), whose f-effect is the identity *)
+Lemma done_tie_of_pre_ban (cs cs' : list nat) (sb : fstate) (I : list (bv 8))
+    (c : fstate) :
+  pre_tie cs' sb I c -> length cs = nlines I -> cs' `prefix_of` cs ->
+  (I = [] \/ ralt_panic (ralt_at cs (nlines I - 1)%nat) = true) ->
+  done_tie cs sb I c.
+Proof using .
+  intros Hpre Hl Hp Hban.
+  apply (done_tie_of_pre_prefix cs cs' sb I c Hpre Hl Hp).
+  intro Hpos. destruct Hban as [-> | Hpan];
+    [ rewrite nlines_nil in Hpos; lia | exact (fsm_panic _ _ _ Hpan) ].
+Qed.
+
+(* (i) PRE-of-DONE: a new complete line makes the settled state the state
+   BEFORE the new round *)
+Lemma pre_tie_of_done (cs : list nat) (sb : fstate) (I l : list (bv 8)) (c : fstate) :
+  rest_of I = [] -> wl_nl ∉ l ->
+  done_tie cs sb I c -> pre_tie cs sb (I ++ l ++ [wl_nl]) c.
+Proof using .
+  intros Hr Hl [Hlen Hc].
+  assert (Hassoc : I ++ l ++ [wl_nl] = (I ++ l) ++ [wl_nl])
+    by (by rewrite app_assoc).
+  assert (Hn : nlines (I ++ l ++ [wl_nl]) = S (nlines I))
+    by (rewrite Hassoc nlines_snoc_nl (EchoLinks.nlines_app_nonl I l Hl);
+        reflexivity).
+  split; [ rewrite Hn; lia | ].
+  rewrite Hc /fstate_after /UCatOut.cat_st Hn.
+  replace (S (nlines I) - 1)%nat with (nlines I) by lia.
+  apply fstate_upto_ext; [ intros j _; reflexivity | ].
+  intros j Hj.
+  pose proof (bodies_of_app I (l ++ [wl_nl])) as Hpre.
+  destruct (lookup_lt_is_Some_2 (bodies_of I) j Hj) as [x Hx].
+  rewrite !list_lookup_total_alt Hx (prefix_lookup_Some _ _ _ _ Hx Hpre).
+  reflexivity.
+Qed.
+
+(* ---- the block-first '$' at the DEED's alternative (the stage's own
+        [wr_blk_dollar_f], with the state read instead of [fab]: the
+        alternative need not be state-free -- [RCRan] at an empty `f`
+        prints the bare prompt too) ---- *)
+Lemma wr_blk_pending_at_f (ps cs : list nat) (s0 : fstate) (I : list (bv 8))
+    (P a : nat) :
+  wr_blk_f ps cs s0 I P -> ralt_panic (ralt_dec a) = false ->
+  pending_at_f ps (cs ++ [a]) (Some s0) I
+  = cont (UCatOut.cat_st cs s0 I) (fline I) (ralt_dec a).
+Proof using .
+  intros Hw Hnp.
+  pose proof (wr_blk_nonnil_f ps cs s0 I P Hw) as Hne.
+  pose proof Hw as (_ & Hr & Hn & _).
+  assert (Hlast : (nlines I - 1)%nat = length cs) by lia.
+  assert (Hat : ralt_at (cs ++ [a]) (nlines I - 1)%nat = ralt_dec a)
+    by (rewrite /ralt_at Hlast fd_snoc_lookup_total; reflexivity).
+  assert (Hup : fstate_upto (cs ++ [a]) s0 (bodies_of I) (nlines I - 1)%nat
+                = fstate_upto cs s0 (bodies_of I) (nlines I - 1)%nat).
+  { apply (fstate_upto_ext (cs ++ [a]) cs s0 (bodies_of I) (bodies_of I));
+      [ | intros j _; reflexivity ].
+    intros j Hj. rewrite list_lookup_total_alt lookup_app_l; [ | lia ].
+    by rewrite -list_lookup_total_alt. }
+  rewrite /pending_at_f decide_False; [ | exact Hne ].
+  rewrite decide_True; [ | exact Hr ].
+  rewrite /alt_cont_f f0_st_some Hat Hup Hnp app_nil_r. reflexivity.
+Qed.
+
+Lemma wr_blk_dollar_at_f (ps cs : list nat) (s0 : fstate) (I : list (bv 8))
+    (P a : nat) :
+  wr_blk_f ps cs s0 I P ->
+  ralt_panic (ralt_dec a) = false ->
+  cont (UCatOut.cat_st cs s0 I) (fline I) (ralt_dec a) = u_prompt ->
+  wr_sp_f ps (cs ++ [a]) s0 I (S P).
+Proof using .
+  intros Hw Hnp Hcont. pose proof (wr_blk_started_f ps cs s0 I P Hw) as Hst.
+  pose proof Hw as (Hpin & Hm & Hdv & HP).
+  assert (Hpend : pending_at_f ps (cs ++ [a]) (Some s0) I = u_prompt)
+    by (rewrite (wr_blk_pending_at_f ps cs s0 I P a Hw Hnp); exact Hcont).
+  assert (Hlow : proc_before_f ps (cs ++ [a]) (Some s0) I
+                 = proc_before_f ps cs (Some s0) I)
+    by exact (wr_blk_low_f ps cs s0 I P a Hw).
+  assert (Hup : proc_stream_f ps (cs ++ [a]) (Some s0) I
+                = proc_before_f ps cs (Some s0) I ++ u_prompt)
+    by (rewrite /proc_stream_f Hlow Hpend; reflexivity).
+  assert (Hlen : length (proc_stream_f ps (cs ++ [a]) (Some s0) I) = S (S P)).
+  { rewrite Hup (length_app (proc_before_f ps cs (Some s0) I) u_prompt)
+            EchoLinks.wr_prompt_len. lia. }
+  split.
+  - rewrite /wr_open_f. split_and!.
+    + exact (wr_blk_pin_snoc_f ps cs s0 I P a Hw).
+    + exact Hm.
+    + rewrite length_app Hdv. cbn [length]. lia.
+    + rewrite Hdv (pro_idx_f_snoc_ne cs a Hnp).
+      pose proof (Hpin (length cs) ltac:(rewrite Hst; lia)). lia.
+    + by rewrite Hlen.
+  - rewrite Hup lookup_app_r; [ | lia ].
+    replace (S P - length (proc_before_f ps cs (Some s0) I))%nat
+      with 1%nat by lia.
+    exact EchoLinks.wr_prompt_tail.
+Qed.
+
+(* ---- VACUITY (design SS3.7's rule): every tie has an inhabitant ---- *)
+Example pre_tie_inhabited : pre_tie [] None [] None.
+Proof using . split; vm_compute; reflexivity. Qed.
+
+Example done_tie_inhabited : done_tie [] None [] None.
+Proof using . split; vm_compute; reflexivity. Qed.
+
+(* the three silent alternatives, one per line shape; the redirect one at a
+   PRESENT `f` is exactly what RULING HOLD-POS's model fix buys *)
+Example pend_tie_cat_inhabited :
+  pend_tie_at [] None (line_bytes LCat) None (ralt_enc RCSilent).
+Proof using .
+  rewrite /pend_tie_at ralt_dec_enc. vm_compute.
+  split_and!; [ reflexivity | lia | exact I | reflexivity | reflexivity ].
+Qed.
+
+Example pend_tie_echo_inhabited :
+  pend_tie_at [] None (line_bytes (LEcho fd_ws)) None 2%nat.
+Proof using .
+  rewrite /pend_tie_at. vm_compute.
+  split_and!; [ reflexivity | lia | lia | reflexivity | reflexivity ].
+Qed.
+
+Example pend_tie_echof_inhabited :
+  pend_tie_at [] (Some fd_content) (line_bytes (LEchoF fd_ws)) (Some fd_content)
+    (ralt_enc RFSilent).
+Proof using .
+  rewrite /pend_tie_at ralt_dec_enc. vm_compute.
+  split_and!; [ reflexivity | lia | exact I | reflexivity | reflexivity ].
+Qed.
 
 Section UShRound.
   (* [UShRest.v]'s binder list VERBATIM (durable-notes: a shorter list
@@ -201,48 +499,113 @@ Section UShRound.
   Local Notation Wbl := (FileLinkInst.file_Wbl_at g s0).
 
   (* THE DEED, AT SH'S ROUND -- design SS4.2, "the deed meets the stage in
-     sh's proof, PURELY".  The pure tie is [UCatOut.cat_tie]'s: the deed's
-     content IS the model's state before the round whose input is [I]
-     ([fstate_upto cs0 s0 (bodies_of I) (nlines I - 1)]), with [cs0] and [s0]
-     pinned by the era's own lower bounds so that the tie is about THIS
-     era and not some other. *)
-  (*  AT RULING H' THE INDEX IS THE SECTION'S and the era's filed boot
-      state is NOT named here.  What used to stand in this arm --
-      [file_era_pin g (S gen_id) vf ∗ f0_lb vf s0] -- said "the state the
-      tie is about is the one the era filed", and it said it with a
-      resource that does not exist before the era's first console byte.
-      The index does the same work for free: the CREDENTIAL's own families
-      ([FileLinksLine.fcur]'s [f0w]) carry the filed state under an
-      existential, [FileLinksLine.f0w_agree] identifies any two of them,
-      and the round's [s0] is what both are read at -- STRUCTURALLY, since
-      lane INIT-FILE landed [FileLinkInst.file_link_inst_at] and this file
-      now reads the record there ([file_link_inst] is its [∃ s0] packing,
-      and [file_Wcl_unpack] / [file_Wcl_at_pack] are the two directions).
-      No [f0w_agree] step is left in the round. *)
-  Definition sh_hold_at (sb : fstate) (I : list (bv 8)) : iProp Σ :=
-    ((∃ (cs0 : list nat) (s : dst) (v : era_pins),
+     sh's proof, PURELY", AT RULING HOLD-POS.  The deed's content is tied
+     to the model's state by a PURE tie over the choice list the holder
+     has a lower bound of and the era's boot state [s0] (the section's
+     index, RULING H'); WHICH tie depends on the round's position, because
+     at positions 0-2 the round of [I]'s last line has run and been filed
+     and the same input needs one more [fsm] step than at the lend. *)
+  Definition sh_deed_at
+      (tie : list nat -> fstate -> list (bv 8) -> fstate -> Prop)
+      (sb : fstate) (I : list (bv 8)) : iProp Σ :=
+    ((∃ (cs : list nat) (s : dst) (v : era_pins),
         fown r s
-        ∗ ⌜UCatOut.cat_tie cs0 sb I s⌝
+        ∗ ⌜tie cs sb I (dst_content s)⌝
         ∗ f_typed (fgn_cl g) s
-        ∗ era_pin (fgn_echo g) (S gen_id) v ∗ cs_lb v cs0)
+        ∗ era_pin (fgn_echo g) (S gen_id) v ∗ cs_lb v cs)
      ∨ T)%I.
 
-  Local Notation sh_hold := (sh_hold_at s0).
+  (* PRE ALSO HOLDS THE LINE'S WITNESS (the PROGRAM STREAM, stretch 9): the
+     child that runs [echo ... > f] owes the claim "this line is one the
+     ledger has" ([FileWrite.file_wq]'s [ws ∈ ls]; [Hopen_hand]'s too), and
+     the only place the shell ever learns it is the read that completed
+     the line -- off the consumed bytes' tags, through the reader's residue
+     ([FileLinksLine.flw], [FileReadInst.fri_arms]).  So it rides with the
+     deed from the read law ([Hwc_f]) to the fork's lend. *)
+  Definition line_wit (I : list (bv 8)) : iProp Σ :=
+    (FileLinksLine.flw g I ∨ T)%I.
 
+  Global Instance line_wit_persistent I : Persistent (line_wit I).
+  Proof using . rewrite /line_wit /T /file_taint /echo_taint. apply _. Qed.
+  Global Instance line_wit_timeless I : Timeless (line_wit I).
+  Proof using . rewrite /line_wit /T /file_taint /echo_taint. apply _. Qed.
+
+  Definition sh_pre_at (sb : fstate) (I : list (bv 8)) : iProp Σ :=
+    (sh_deed_at pre_tie sb I ∗ line_wit I)%I.
+  Definition sh_done_at : fstate -> list (bv 8) -> iProp Σ := sh_deed_at done_tie.
+  Definition sh_pend_at : fstate -> list (bv 8) -> iProp Σ := sh_deed_at pend_tie.
+
+  Local Notation PRE := (sh_pre_at s0).
+  Local Notation DONE := (sh_done_at s0).
+  Local Notation PEND := (sh_pend_at s0).
+
+  Global Instance sh_deed_at_timeless tie sb I : Timeless (sh_deed_at tie sb I).
+  Proof using . rewrite /sh_deed_at /T /file_taint /echo_taint. apply _. Qed.
+
+  (* the taint inhabits every tie -- the [∨ T] arm *)
+  Lemma sh_deed_taint tie sb I : T -∗ sh_deed_at tie sb I.
+  Proof using . iIntros "#HT". rewrite /sh_deed_at. by iRight. Qed.
+
+  Global Instance sh_pre_at_timeless sb I : Timeless (sh_pre_at sb I).
+  Proof using . rewrite /sh_pre_at. apply _. Qed.
+
+  Lemma sh_pre_taint sb I : T -∗ sh_pre_at sb I.
+  Proof using .
+    iIntros "#HT". rewrite /sh_pre_at /line_wit.
+    iSplitL; [ iApply (sh_deed_taint with "HT") | by iRight ].
+  Qed.
+
+  (* THE FAMILY THE LOOP CARRIES ([EchoLinksLine.ewc_lpr]'s shape, so that
+     [p >= 3] is the lend):
+       3   the lend: block owed, deed at PRE          (the child's entry)
+       0   FOLDED: filed and DONE, or still owed with the deed PEND -- so
+           no law ever meets "the deed says a, the console filed a'"
+       1,2 the prompt's two settled positions, deed DONE. *)
   Definition Wcf (I : list (bv 8)) (p : nat) : iProp Σ :=
-    (Wcl I p ∗ sh_hold I)%I.
+    match p with
+    | O => ((Wcl I 0%nat ∗ DONE I) ∨ (Wcl I 3%nat ∗ PEND I))%I
+    | S O => (Wcl I 1%nat ∗ DONE I)%I
+    | S (S O) => (Wcl I 2%nat ∗ DONE I)%I
+    | _ => (Wcl I 3%nat ∗ PRE I)%I
+    end.
   Definition Wbf (I : list (bv 8)) : iProp Σ :=
-    (Wbl I ∗ sh_hold I)%I.
+    (Wbl I ∗ DONE I)%I.
+
+  Lemma Wcf_0 I :
+    Wcf I 0%nat = ((Wcl I 0%nat ∗ DONE I) ∨ (Wcl I 3%nat ∗ PEND I))%I.
+  Proof using . reflexivity. Qed.
+  Lemma Wcf_1 I : Wcf I 1%nat = (Wcl I 1%nat ∗ DONE I)%I.
+  Proof using . reflexivity. Qed.
+  Lemma Wcf_2 I : Wcf I 2%nat = (Wcl I 2%nat ∗ DONE I)%I.
+  Proof using . reflexivity. Qed.
+  Lemma Wcf_S3 I p : Wcf I (S (S (S p))) = (Wcl I 3%nat ∗ PRE I)%I.
+  Proof using . reflexivity. Qed.
 
   Global Instance Wcf_timeless I p : Timeless (Wcf I p).
-  Proof using . rewrite /Wcf /sh_hold_at /T /file_taint /echo_taint. apply _. Qed.
+  Proof using .
+    destruct p as [| [| [| p]]];
+      [ rewrite Wcf_0 | rewrite Wcf_1 | rewrite Wcf_2 | rewrite Wcf_S3 ];
+      apply _.
+  Qed.
 
-  (* ...AND IT IS INHABITED AT THE ERA'S HEAD, which is the whole of
-     RULING H': at [I = []] the tie is [dst_content s = s0] (because
-     [UCatOut.cat_st cs0 s0 [] = s0]), so /init hands over its own deed at
-     its own boot value and owes no lower bound.  [UInitFileCons.
-     file_hold_head] is this arm's content minus the era pin, which /init
-     holds at that instant ([UInitFileCons.file_turn_pre_of_boot]). *)
+  Global Instance Wbf_timeless I : Timeless (Wbf I).
+  Proof using . rewrite /Wbf. apply _. Qed.
+
+  (* ...AND IT IS INHABITED AT THE ERA'S HEAD (RULING H' at HOLD-POS): at
+     [I = []] nothing is filed, so the head is DONE at [cs = []] with the
+     deed at its own boot value ([fstate_after [] s0 [] = s0]), and /init owes
+     no lower bound but [cs_lb v []] -- which its turn carries
+     ([UInitFileCons.file_Wbf_at_of_boot]). *)
+  Lemma sh_done_head (s : dst) (v : era_pins) :
+    era_pin (fgn_echo g) (S gen_id) v -∗ cs_lb v [] -∗
+    fown r s -∗ f_typed (fgn_cl g) s -∗
+    sh_done_at (dst_content s) [].
+  Proof using .
+    iIntros "#Hpin #Hcs Hd #Hty". rewrite /sh_done_at /sh_deed_at. iLeft.
+    iExists [], s, v. iFrame "Hd Hpin Hcs Hty". iPureIntro.
+    split; [ by rewrite nlines_nil | ].
+    rewrite /fstate_after nlines_nil. reflexivity.
+  Qed.
 
   (* =================================================================== *)
   (*  S2  LANE LINK-GEN'S OBLIGATIONS, at the ECHO shapes                 *)
@@ -311,6 +674,277 @@ Section UShRound.
   Lemma Hktaint : ⊢ app_taint -∗ T.
   Proof using Hkill. rewrite Hkill. iIntros "$". Qed.
 
+  (* ---- THE SAME FIVE AT THE POSITION-KEYED FAMILY (RULING HOLD-POS) ---- *)
+
+  (* the taint inhabits every position *)
+  Lemma Wcf_taint (I : list (bv 8)) (p : nat) (v : era_pins) :
+    era_pin (fgn_echo g) (S gen_id) v -∗ T -∗ Wcf I p.
+  Proof using .
+    iIntros "#Hpin #HT". destruct p as [| [| [| p]]].
+    - rewrite Wcf_0. iLeft. iSplitL "";
+        [ iApply (Hcltaint I 0%nat v with "Hpin HT")
+        | iApply (sh_deed_taint with "HT") ].
+    - rewrite Wcf_1. iSplitL "";
+        [ iApply (Hcltaint I 1%nat v with "Hpin HT")
+        | iApply (sh_deed_taint with "HT") ].
+    - rewrite Wcf_2. iSplitL "";
+        [ iApply (Hcltaint I 2%nat v with "Hpin HT")
+        | iApply (sh_deed_taint with "HT") ].
+    - rewrite Wcf_S3. iSplitL "";
+        [ iApply (Hcltaint I 3%nat v with "Hpin HT")
+        | iApply (sh_pre_taint with "HT") ].
+  Qed.
+
+  (* (v) THE COUPLING: two lower bounds of one choice list line up, and at
+     equal length they AGREE -- which is why DONE beside a filed console is
+     never inconsistent. *)
+  Lemma cs_lb_prefix_len (v : era_pins) (cs cs' : list nat) :
+    (length cs' <= length cs)%nat ->
+    cs_lb v cs -∗ cs_lb v cs' -∗ ⌜cs' `prefix_of` cs⌝.
+  Proof using .
+    intros Hl. iIntros "#H1 #H2".
+    iDestruct (cs_lb_cmp v cs cs' with "H1 H2") as %[Hp | Hp];
+      iPureIntro; [ | exact Hp ].
+    rewrite (prefix_length_eq cs cs' Hp Hl). done.
+  Qed.
+
+  Lemma cs_lb_agree_len (v : era_pins) (cs cs' : list nat) :
+    length cs = length cs' ->
+    cs_lb v cs -∗ cs_lb v cs' -∗ ⌜cs = cs'⌝.
+  Proof using .
+    intros Hl. iIntros "#H1 #H2".
+    iDestruct (cs_lb_prefix_len v cs cs' ltac:(lia) with "H1 H2") as %Hp.
+    iPureIntro. symmetry. apply (prefix_length_eq cs' cs Hp). lia.
+  Qed.
+
+  (* ---- the record's block-owed credential, opened and closed at the
+          round's stage ---- *)
+  Local Lemma Wcl3_close (I : list (bv 8)) (v : era_pins) (ps cs : list nat)
+      (P : nat) :
+    wr_blk_t_f ps cs s0 I P ->
+    era_pin (fgn_echo g) (S gen_id) v -∗
+    FileLinksLine.fcur g v ps cs s0 I P (S gen_id) -∗ Wcl I 3%nat.
+  Proof using .
+    intro Hw. iIntros "#Hpin Hc".
+    rewrite /FileLinkInst.file_Wcl_at /lk_lcred.
+    cbn [lk_pin lk_lpr FileLinkInst.file_link_inst_at fwc_lpr_at].
+    iExists v. iFrame "Hpin". rewrite /fwc_blk_at. iLeft. iExists ps, cs, P.
+    cbn [blkcs_f]. rewrite Nat.add_0_r /FileLinksLine.fcur.
+    iDestruct "Hc" as "(Htn & #Hps & #Hcs & #HE & #Hf)".
+    iFrame "Htn Hps Hcs HE Hf". by iPureIntro.
+  Qed.
+
+  (* the open credential says the input has no partial line *)
+  Local Lemma Wcl2_rest (I : list (bv 8)) :
+    Wcl I 2%nat -∗ Wcl I 2%nat ∗ (⌜rest_of I = []⌝ ∨ T).
+  Proof using .
+    rewrite /FileLinkInst.file_Wcl_at /lk_lcred. iIntros "Hc".
+    iDestruct "Hc" as (v) "[#Hpin Hc]".
+    cbn [lk_pin lk_lpr FileLinkInst.file_link_inst_at fwc_lpr_at].
+    rewrite /fwc_open_t_at. iDestruct "Hc" as "[Hc | #HT]".
+    - iDestruct "Hc" as (ps cs P) "(%Hw & Hcur)". iSplitL "Hcur".
+      + iExists v. iFrame "Hpin". iLeft. iExists ps, cs, P. iFrame "Hcur".
+        by iPureIntro.
+      + iLeft. iPureIntro. destruct Hw as [(_ & Hr & _) _]. exact Hr.
+    - iSplitL ""; [ iExists v; iFrame "Hpin"; by iRight | by iRight ].
+  Qed.
+
+  (* (i) at the deed: the read that completed a line *)
+  Lemma sh_pre_of_done (I l : list (bv 8)) :
+    rest_of I = [] -> wl_nl ∉ l ->
+    line_wit (I ++ l ++ [wl_nl]) -∗ DONE I -∗ PRE (I ++ l ++ [wl_nl]).
+  Proof using .
+    intros Hr Hl. rewrite /sh_pre_at /sh_done_at /sh_deed_at.
+    iIntros "#Hlw Hd". iSplitL; [ | iExact "Hlw" ].
+    iDestruct "Hd" as "[Hd | #HT]"; last by iRight.
+    iDestruct "Hd" as (cs s v) "(Hd & %Htie & #Hty & #Hpin & #Hcs)".
+    iLeft. iExists cs, s, v. iFrame "Hd Hty Hpin Hcs". iPureIntro.
+    exact (pre_tie_of_done cs s0 I l _ Hr Hl Htie).
+  Qed.
+
+  (* THE FOLD AT POSITION 0 (RULING HOLD-POS (vi)): a line credential
+     beside a deed at PRE is a position-0 credential whenever every
+     alternative of the line leaves `f` alone.  The line credential hides
+     which alternative it filed, so the fold reads all three of its arms:
+     the prologue (a panic, or the era's head), a block written up to its
+     prompt (the alternative filed -- DONE by identity), or a block whose
+     prompt IS its first byte (still owed -- PEND at the silent one). *)
+  Lemma Wcf0_of_pre_line_id (I : list (bv 8)) :
+    (forall (s : fstate) (a : ralt), fsm s (fline I) a = s) ->
+    Wcl I 0%nat -∗ PRE I -∗ Wcf I 0%nat.
+  Proof using .
+    intros Hid. iIntros "Hc Hp". rewrite Wcf_0.
+    rewrite {1}/sh_pre_at /sh_deed_at. iDestruct "Hp" as "[Hp _]".
+    iDestruct "Hp" as "[Hp | #HT]"; last first.
+    { iLeft. iFrame "Hc". iApply (sh_deed_taint with "HT"). }
+    iDestruct "Hp" as (cs' s v') "(Hd & %Htie & #Hty & #Hpin' & #Hcs')".
+    pose proof Htie as [Hlen _].
+    rewrite /FileLinkInst.file_Wcl_at /lk_lcred.
+    iDestruct "Hc" as (v) "[#Hpin Hc]".
+    cbn [lk_pin lk_lpr FileLinkInst.file_link_inst_at fwc_lpr_at].
+    iDestruct (era_pin_agree (fgn_echo g) (S gen_id) v v' with "Hpin Hpin'")
+      as %<-.
+    (* the DONE arm, from any filed list that extends the deed's *)
+    iAssert (∀ cs : list nat, ⌜length cs = nlines I⌝ -∗ ⌜cs' `prefix_of` cs⌝ -∗
+               cs_lb v cs -∗ fown r s -∗ DONE I)%I as "Hdone".
+    { iIntros (cs) "%Hl %Hpre #Hcs Hd". rewrite /sh_done_at /sh_deed_at. iLeft.
+      iExists cs, s, v. iFrame "Hd Hty Hpin Hcs". iPureIntro.
+      apply (done_tie_of_pre_prefix cs cs' s0 I _ Htie Hl Hpre).
+      intros _. apply Hid. }
+    rewrite /fwc_line_at. iDestruct "Hc" as "[Hpro | Hblk]".
+    - (* the prologue: the last filed alternative is a panic, or the head *)
+      rewrite /fwc_pro_at. iDestruct "Hpro" as "[Hpro | [Hhd | #HT]]".
+      + iDestruct "Hpro" as (ps cs P) "(%Hw & Hcur)".
+        rewrite /FileLinksLine.fcur.
+        iDestruct "Hcur" as "(Htn & #Hps & #Hcs & #HE & #Hf)".
+        pose proof Hw as (_ & _ & Hn & _).
+        iDestruct (cs_lb_prefix_len v cs cs' ltac:(lia) with "Hcs Hcs'") as %Hpre.
+        iLeft. iSplitL "Htn".
+        * iExists v. iFrame "Hpin". iLeft. iLeft. iExists ps, cs, P.
+          iFrame "Htn Hps Hcs HE Hf". by iPureIntro.
+        * iApply ("Hdone" $! cs with "[%] [%] Hcs Hd"); [ lia | exact Hpre ].
+      + rewrite /fhead_at.
+        iDestruct "Hhd" as "(%HI & %Hk & Htn & #Hps & #Hcs & #HE & #Hvf & Hpre)".
+        iLeft. iSplitL "Htn Hpre".
+        * iExists v. iFrame "Hpin". iLeft. iRight. iLeft.
+          iFrame "Htn Hps Hcs HE Hvf Hpre". by iSplit; iPureIntro.
+        * iApply ("Hdone" $! [] with "[%] [%] Hcs Hd").
+          { subst I. by rewrite nlines_nil. }
+          { subst I. rewrite nlines_nil in Hlen. cbn in Hlen.
+            apply nil_length_inv in Hlen. subst cs'. done. }
+      + iLeft. iSplitL "";
+          [ iApply (Hcltaint I 0%nat v with "Hpin HT")
+          | iApply (sh_deed_taint with "HT") ].
+    - (* a block written up to its prompt, at some alternative *)
+      iDestruct "Hblk" as (a) "[%Hapr Hblk]". rewrite /fwc_blk_at.
+      iDestruct "Hblk" as "[Hblk | #HT]"; last first.
+      { iLeft. iSplitL "";
+          [ iApply (Hcltaint I 0%nat v with "Hpin HT")
+          | iApply (sh_deed_taint with "HT") ]. }
+      iDestruct "Hblk" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE & #Hf)".
+      pose proof Hw as [(_ & _ & Hn & _) _].
+      destruct (length (fab I a) - 2)%nat as [| i] eqn:Hi.
+      + (* the prompt is the block's first byte: still owed, deed PEND *)
+        cbn [blkcs_f]. rewrite Nat.add_0_r.
+        iDestruct (cs_lb_agree_len v cs cs' ltac:(lia) with "Hcs Hcs'") as %<-.
+        iRight. iSplitL "Htn".
+        * iApply (Wcl3_close I v ps cs P Hw with "Hpin [Htn]").
+          rewrite /FileLinksLine.fcur. iFrame "Htn Hps Hcs HE Hf".
+        * rewrite /sh_pend_at /sh_deed_at. iLeft. iExists cs, s, v.
+          iFrame "Hd Hty Hpin Hcs". iPureIntro. exists (fnoc_of (fline I)).
+          apply (pend_tie_of_pre cs s0 I _ ltac:(lia) Htie).
+      + (* a byte before the prompt: the alternative is filed, deed DONE *)
+        cbn [blkcs_f].
+        iDestruct (cs_lb_prefix_len v (cs ++ [a]) cs'
+                     ltac:(rewrite length_app; cbn [length]; lia)
+                     with "Hcs Hcs'") as %Hpre.
+        iLeft. iSplitL "Htn".
+        * iExists v. iFrame "Hpin". iRight. iExists a.
+          iSplitR; [ by iPureIntro | ]. iLeft. iExists ps, cs, P.
+          rewrite Hi. cbn [blkcs_f]. iFrame "Htn Hps Hcs HE Hf". by iPureIntro.
+        * iApply ("Hdone" $! (cs ++ [a]) with "[%] [%] Hcs Hd");
+            [ rewrite length_app; cbn [length]; lia | exact Hpre ].
+  Qed.
+
+  (* ---- THE LOOP'S LAWS AT [Wcf] / [Wbf] ---- *)
+
+  (* [UkShFork]'s [Hwbl]: a fork that failed re-enters at the boundary --
+     the deed pending at the line's silent alternative ((ii) of the ruling) *)
+  Lemma Hwbl_f (I : list (bv 8)) : ⊢ Wcf I 3%nat -∗ Wcf I 0%nat.
+  Proof using .
+    rewrite Wcf_S3 Wcf_0. iIntros "[Hc Hp]".
+    rewrite {1}/sh_pre_at /sh_deed_at. iDestruct "Hp" as "[Hp _]".
+    iDestruct "Hp" as "[Hp | #HT]"; last first.
+    { iLeft. iSplitL "Hc";
+        [ iApply (Hwbl I with "Hc") | iApply (sh_deed_taint with "HT") ]. }
+    rewrite /FileLinkInst.file_Wcl_at.
+    iDestruct (lk_lcred_blk_lend FI (S gen_id) I with "Hc") as (v) "[#Hpin Hl]".
+    cbn [lk_pin lk_lend FileLinkInst.file_link_inst_at]. rewrite /fwc_lend_at.
+    iDestruct "Hl" as "[Hl | #HT]"; last first.
+    { iLeft. iSplitL "";
+        [ iApply (Hcltaint I 0%nat v with "Hpin HT")
+        | iApply (sh_deed_taint with "HT") ]. }
+    iDestruct "Hl" as (ps cs P) "(%Hw & Hcur)".
+    iRight. iSplitL "Hcur"; [ iApply (Wcl3_close I v ps cs P Hw with "Hpin Hcur") | ].
+    rewrite /sh_pend_at /sh_deed_at. iLeft.
+    iDestruct "Hp" as (cs' s v') "(Hd & %Htie & #Hty & #Hpin' & #Hcs')".
+    iExists cs', s, v'. iFrame "Hd Hty Hpin' Hcs'". iPureIntro.
+    destruct Hw as [(_ & _ & Hn & _) _].
+    exists (fnoc_of (fline I)).
+    exact (pend_tie_of_pre cs' s0 I _ ltac:(lia) Htie).
+  Qed.
+
+  (* [UInitBoot]'s [Hsh_wbwc]: the banner-owed credential is a boundary
+     one, at the DONE arm *)
+  Lemma Hwbwc_f (I : list (bv 8)) : ⊢ Wbf I -∗ Wcf I 0%nat.
+  Proof using .
+    rewrite /Wbf Wcf_0. iIntros "[Hb Hd]". iLeft. iFrame "Hd".
+    iApply (Hwbwc I with "Hb").
+  Qed.
+
+  (* the reader's pieces carry the typed lines' witness in their residue
+     ([FileLinksAt.fwc_rresw_at]); it is persistent, so it is read and the
+     pieces go back whole *)
+  Lemma mid_flw (I : list (bv 8)) :
+    UShLine.ush_mid_at (lk_rres FI) (fgn_echo g) γp I -∗
+    UShLine.ush_mid_at (lk_rres FI) (fgn_echo g) γp I
+    ∗ FileLinksLine.flw g I.
+  Proof using .
+    rewrite /UShLine.ush_mid_at. iIntros "(Hu & Hua & Hrd & Hv)".
+    iDestruct "Hv" as (v) "(#Hpin & Hdl & #HE & #Hres)".
+    iAssert (FileLinksLine.flw g I) as "#Hw".
+    { cbn [lk_rres FileLinkInst.file_link_inst_at].
+      rewrite /FileLinksAt.fwc_rresw_at. iDestruct "Hres" as "[_ $]". }
+    iSplitL; [ | iExact "Hw" ]. iFrame "Hu Hua Hrd". iExists v.
+    iSplitR; [ iExact "Hpin" | ]. iSplitL "Hdl"; [ iExact "Hdl" | ].
+    iSplitR; [ iExact "HE" | iExact "Hres" ].
+  Qed.
+
+  (* [UkSh]'s [Hwc] at the family -- INIT-FILE's conjunct 5: the read that
+     completed a line moves the credential from 2 at the old input to the
+     lend at the new one, and the deed from DONE to PRE ((i) of the ruling) *)
+  Lemma Hwc_f : forall I l : list (bv 8), wl_nl ∉ l ->
+    ⊢ UShLine.ush_mid_at (lk_rres FI) (fgn_echo g) γp
+        (I ++ l ++ [wl_nl]) -∗ Wcf I 2%nat -∗
+      UShLine.ush_mid_at (lk_rres FI) (fgn_echo g) γp
+        (I ++ l ++ [wl_nl])
+      ∗ Wcf (I ++ l ++ [wl_nl]) 3%nat.
+  Proof using .
+    intros I l Hl. rewrite Wcf_2 Wcf_S3. iIntros "Hmid [Hc Hd]".
+    iDestruct (mid_flw (I ++ l ++ [wl_nl]) with "Hmid") as "[Hmid #Hw]".
+    iDestruct (Wcl2_rest I with "Hc") as "[Hc Hr]".
+    iDestruct (Hwc I l Hl with "Hmid Hc") as "[$ $]".
+    iDestruct "Hr" as "[%Hr | #HT]"; last (iApply (sh_pre_taint with "HT")).
+    iApply (sh_pre_of_done I l Hr Hl with "[] Hd"). iLeft. iExact "Hw".
+  Qed.
+
+  (* the seam's two read-backs at the family ([UShLineAtHold.
+     ush_posb_of_lend_L] takes [Wc]/[Wb] abstract at exactly these) *)
+  Lemma Wcf_inp : UShLine.ush_wc_inp (fgn_echo g) T Wcf.
+  Proof using .
+    intros I p. iIntros "Hc". destruct p as [| [| [| p]]].
+    - rewrite Wcf_0. iDestruct "Hc" as "[[Hc Hd] | [Hc Hd]]".
+      + iDestruct (FileLinksAtInp.file_wc_inp_at g s0 I 0%nat with "Hc")
+          as "[Hc $]". iLeft. iFrame "Hc Hd".
+      + iDestruct (FileLinksAtInp.file_wc_inp_at g s0 I 3%nat with "Hc")
+          as "[Hc $]". iRight. iFrame "Hc Hd".
+    - rewrite Wcf_1. iDestruct "Hc" as "[Hc Hd]".
+      iDestruct (FileLinksAtInp.file_wc_inp_at g s0 I 1%nat with "Hc")
+        as "[Hc $]". iFrame "Hc Hd".
+    - rewrite Wcf_2. iDestruct "Hc" as "[Hc Hd]".
+      iDestruct (FileLinksAtInp.file_wc_inp_at g s0 I 2%nat with "Hc")
+        as "[Hc $]". iFrame "Hc Hd".
+    - rewrite Wcf_S3. iDestruct "Hc" as "[Hc Hd]".
+      iDestruct (FileLinksAtInp.file_wc_inp_at g s0 I 3%nat with "Hc")
+        as "[Hc $]". iFrame "Hc Hd".
+  Qed.
+
+  Lemma Wbf_inp : UShLine.ush_wb_inp (fgn_echo g) T Wbf.
+  Proof using .
+    exact (UShLineHold.ush_wb_inp_hold (fgn_echo g) T Wbl DONE
+             (FileLinksAtInp.file_wb_inp_at g s0)).
+  Qed.
+
   (* =================================================================== *)
   (*  S3  THE PROMPT LINK, AT THE DEED (design SS4.2; CAT-ENTRY ruling (b)) *)
   (*                                                                     *)
@@ -326,29 +960,221 @@ Section UShRound.
   (*  It is stated here because it is the ONE place where the claim and    *)
   (*  the stage meet, and they meet PURELY.                                *)
   (* =================================================================== *)
+  (* THE STATEMENT AT RULING HOLD-POS: the deed is at the PEND tie -- its
+     alternative [a] decided and silent -- and the stage is the block's
+     ([wr_blk_f]); the byte is the prompt's '$' and the console files [a].
+     PROVED: it is [FileLinks.file_write_link_blk] verbatim, with the
+     block's first byte read off the tie's [cont … = u_prompt]. *)
   Lemma sh_prompt_alt_of_deed (k : nat) (v : era_pins) (vf : file_era)
-      (P a : nat) (b : bv 8) (ps0 cs0 : list nat)
-      (I0 : list (bv 8)) (s : dst) (Φ : iProp Σ) :
-    I0 <> [] ->
-    rest_of I0 = [] ->
-    (nlines I0 <= S (length cs0))%nat ->
-    pro_pin_f ps0 cs0 I0 ->
-    P = length (proc_before_f ps0 cs0 (Some s0) I0) ->
-    (* THE DEED DECIDES THE ALTERNATIVE: the round's state is the deed's
-       own content, so [ralt_ok] and the block's first byte are facts
-       about [s] and the line, and about nothing else. *)
-    UCatOut.cat_tie cs0 s0 I0 s ->
-    ralt_ok (uline_of (bodies_of I0 !!! (nlines I0 - 1)%nat)) (ralt_dec a) ->
-    cont (dst_content s)
-         (uline_of (bodies_of I0 !!! (nlines I0 - 1)%nat)) (ralt_dec a)
-      !! 0%nat = Some b ->
+      (P a : nat) (ps0 cs0 : list nat) (I0 : list (bv 8)) (s : dst)
+      (Φ : iProp Σ) :
+    wr_blk_f ps0 cs0 s0 I0 P ->
+    pend_tie_at cs0 s0 I0 (dst_content s) a ->
     era_pin (fgn_echo g) k v -∗ file_era_pin g k vf -∗ turn v P -∗
     ps_lb v ps0 -∗ cs_lb v cs0 -∗ inp_lb v I0 -∗ f0_lb vf s0 -∗
     (((turn v (S P) ∗ ps_lb v ps0 ∗ cs_lb v (cs0 ++ [a]) ∗ inp_lb v I0
        ∗ f0_lb vf s0) ∨ T) -∗ Φ) -∗
-    out_link Uart0 k b Φ.
+    out_link Uart0 k (u_prompt !!! 0%nat) Φ.
   Proof using Hcons.
-  Admitted.
+    intros Hw (Hlen & Hpos & Hok & Hcont & _).
+    pose proof (wr_blk_nonnil_f ps0 cs0 s0 I0 P Hw) as Hne.
+    destruct Hw as (Hpin & Hr & Hn & HP).
+    assert (Hhead :
+      cont (fstate_upto cs0 s0 (bodies_of I0) (nlines I0 - 1)%nat)
+           (uline_of (bodies_of I0 !!! (nlines I0 - 1)%nat)) (ralt_dec a)
+        !! 0%nat = Some (u_prompt !!! 0%nat)).
+    { rewrite /fline /UCatOut.cat_st in Hcont. rewrite Hcont.
+      exact EchoLinks.wr_prompt_head. }
+    iIntros "#Hpin #Hfp Ht #Hps #Hcs #HE #Hf HΦ".
+    iApply (FileLinks.file_write_link_blk g Hcons k v vf P a
+              (u_prompt !!! 0%nat) ps0 cs0 s0 I0 Φ Hne Hr ltac:(lia) Hpin HP
+              Hok Hhead with "Hpin Hfp Ht Hps Hcs HE Hf HΦ").
+  Qed.
+
+  (* =================================================================== *)
+  (*  S3'  THE PROMPT LAW AT THE FAMILY (RULING HOLD-POS (iv))            *)
+  (*                                                                     *)
+  (*  NOT A FRAME.  On the DONE arm it is the record's own law with the    *)
+  (*  deed framed ([UShPanicHold.sh_prompt_law_hold]).  On the PEND arm    *)
+  (*  the '$' is the round's block-first byte and FILES the deed's         *)
+  (*  alternative ([sh_prompt_alt_of_deed]), landing the deed at DONE and  *)
+  (*  the console at the space owed; the ' ' is the record's step.  The    *)
+  (*  two-byte write's mould is [UShPanic.ksh_w_of_link_prompt_fam].      *)
+  (* =================================================================== *)
+
+  (* the write call at a disjunctive precondition: each arm its own walk *)
+  Local Lemma ksh_w_or (N : uk_names Σ) (fdw ua : mword 64) (nb : nat)
+      (St A B Co : iProp Σ) :
+    UkSh.ksh_w (PS := uprogSG_free) N fdw ua nb (St ∗ A) Co -∗
+    UkSh.ksh_w (PS := uprogSG_free) N fdw ua nb (St ∗ B) Co -∗
+    UkSh.ksh_w (PS := uprogSG_free) N fdw ua nb (St ∗ (A ∨ B)) Co.
+  Proof using .
+    iIntros "HA HB" (h m avail) "%Ha0 %Ha1 %Ha2 #Hcode [Hs [HA' | HB']] Hrun Hcont".
+    - iApply ("HA" $! h m avail with "[%] [%] [%] Hcode [$Hs $HA'] Hrun Hcont");
+        assumption.
+    - iApply ("HB" $! h m avail with "[%] [%] [%] Hcode [$Hs $HB'] Hrun Hcont");
+        assumption.
+  Qed.
+
+  (* a tainted round writes its prompt on the record's own law, DONE := T *)
+  Local Lemma ksh_w_prompt_taint (N : uk_names Σ) (I : list (bv 8))
+      (l : list fdstate) (rb : bool) :
+    l !! 2%nat = Some (FdOpen rb true (FdDevice ConsoleInv.CONSOLE)) ->
+    T -∗ FileLinks.file_links g -∗ UCodeShK.shk_rodata (ukn_t N) -∗
+    UkSh.ksh_w (PS := uprogSG_free) N (mword_of_int 2 : mword 64)
+      (mword_of_int UkSh.sh_prompt_pv) 2%nat
+      (UserFd.ustd (ukn_fd N) l ∗ Wcl I 0%nat)
+      (UserFd.ustd (ukn_fd N) l ∗ (Wcl I 2%nat ∗ DONE I)).
+  Proof using .
+    intros Hl2. iIntros "#HT #Hlk #Hro".
+    iApply (UShPanicHold.ksh_w_mono (PS := uprogSG_free) N _ _ _
+              (UserFd.ustd (ukn_fd N) l ∗ lk_lcred FI (S gen_id) I 0%nat)%I _
+              (UserFd.ustd (ukn_fd N) l ∗ lk_lcred FI (S gen_id) I 2%nat)%I
+              with "[] []").
+    { iIntros "[Hs Hc]". iFrame "Hs". rewrite /FileLinkInst.file_Wcl_at.
+      iExact "Hc". }
+    { iIntros "[Hs Hc]". iFrame "Hs". iSplitL "Hc";
+        [ rewrite /FileLinkInst.file_Wcl_at; iExact "Hc"
+        | iApply (sh_deed_taint with "HT") ]. }
+    iApply (UShPanic.ksh_w_of_link_lcred_at (PS := uprogSG_free) FI N I l rb
+              Hl2 with "[] Hro").
+    cbn [lk_links FileLinkInst.file_link_inst_at]. iExact "Hlk".
+  Qed.
+
+  (* THE PEND ARM'S STEP FAMILY: position 0 is the round's cursor with the
+     deed beside it; positions 1 and 2 are the record's settled shapes with
+     the deed DONE. *)
+  Local Definition pfam (v : era_pins) (P : nat) (I : list (bv 8)) (s : dst)
+      (p : nat) : iProp Σ :=
+    match p with
+    | O => (turn v P ∗ fown r s)%I
+    | S p' => (lk_lpr FI (S gen_id) v I (S p') ∗ DONE I)%I
+    end.
+
+  Local Lemma pfam_step (v : era_pins) (vf : file_era) (ps cs : list nat)
+      (P a : nat) (I : list (bv 8)) (s : dst) :
+    wr_blk_t_f ps cs s0 I P ->
+    pend_tie_at cs s0 I (dst_content s) a ->
+    FileLinks.file_links g -∗
+    era_pin (fgn_echo g) (S gen_id) v -∗ file_era_pin g (S gen_id) vf -∗
+    ps_lb v ps -∗ cs_lb v cs -∗ inp_lb v I -∗ f0_lb vf s0 -∗
+    f_typed (fgn_cl g) s -∗
+    UShPanic.prompt_step (pfam v P I s).
+  Proof using Hcons.
+    intros Hw Htie. pose proof Htie as (Hlen & Hpos & Hok & Hcont & Hc).
+    pose proof (cont_prompt_nopanic _ _ _ Hcont) as Hnp.
+    pose proof Hw as [Hwb Ht].
+    iIntros "#Hlk #Hpin #Hvf #Hps #Hcs #HE #Hf0 #Hty".
+    rewrite /UShPanic.prompt_step. iIntros "!>" (p b Φ) "%Hb %Hp Hc HΦ".
+    destruct p as [| [| p]]; [ | | exfalso; lia ].
+    - (* '$': the block-first byte files the deed's alternative *)
+      assert (Hb0 : b = u_prompt !!! 0%nat)
+        by (rewrite EchoLinks.wr_prompt_head in Hb; by injection Hb).
+      subst b. cbn [pfam]. iDestruct "Hc" as "[Htn Hd]".
+      iApply (sh_prompt_alt_of_deed (S gen_id) v vf P a ps cs I s Φ Hwb Htie
+                with "Hpin Hvf Htn Hps Hcs HE Hf0 [HΦ Hd]").
+      iIntros "Hres". iApply "HΦ". cbn [pfam].
+      iDestruct "Hres" as "[(Htn' & _ & #Hcs' & _ & _) | #HT]"; last first.
+      { iSplitL "";
+          [ iApply (lk_lpr_taint FI (S gen_id) v I 1%nat with "HT")
+          | iApply (sh_deed_taint with "HT") ]. }
+      iSplitL "Htn'".
+      + (* the space owed, at the stage the '$' left *)
+        rewrite (lk_lpr_1 FI). cbn [lk_sp_t FileLinkInst.file_link_inst_at].
+        rewrite /fwc_sp_t_at. iLeft. iExists ps, (cs ++ [a]), (S P).
+        iSplitR.
+        { iPureIntro. split;
+            [ exact (wr_blk_dollar_at_f ps cs s0 I P a Hwb Hnp Hcont)
+            | exact (wr_tail_snoc_f ps cs a Hnp Ht) ]. }
+        rewrite /FileLinksLine.fcur. iFrame "Htn' Hps Hcs' HE".
+        rewrite /FileLinksLine.f0w. iSplitR; [ by iPureIntro | ].
+        iExists vf. iFrame "Hvf Hf0".
+      + (* the deed, DONE: the filed alternative is the deed's own *)
+        rewrite /sh_done_at /sh_deed_at. iLeft. iExists (cs ++ [a]), s, v.
+        iFrame "Hd Hty Hpin Hcs'". iPureIntro.
+        exact (done_tie_of_pend cs s0 I _ a Htie).
+    - (* ' ': the record's own step, the deed framed *)
+      cbn [pfam]. iDestruct "Hc" as "[Hc Hd]".
+      iApply (lk_lpr_step FI (S gen_id) v I 1%nat b Φ Hb Hp
+                with "Hpin Hlk Hc [HΦ Hd]").
+      iIntros "Hc". iApply "HΦ". cbn [pfam]. iFrame "Hc Hd".
+  Qed.
+
+  (* the PEND arm of the prompt call *)
+  Local Lemma ksh_w_prompt_pend (N : uk_names Σ) (I : list (bv 8))
+      (l : list fdstate) (rb : bool) :
+    l !! 2%nat = Some (FdOpen rb true (FdDevice ConsoleInv.CONSOLE)) ->
+    FileLinks.file_links g -∗ UCodeShK.shk_rodata (ukn_t N) -∗
+    UkSh.ksh_w (PS := uprogSG_free) N (mword_of_int 2 : mword 64)
+      (mword_of_int UkSh.sh_prompt_pv) 2%nat
+      (UserFd.ustd (ukn_fd N) l ∗ (Wcl I 3%nat ∗ PEND I))
+      (UserFd.ustd (ukn_fd N) l ∗ (Wcl I 2%nat ∗ DONE I)).
+  Proof using Hcons.
+    intros Hl2. iIntros "#Hlk #Hro" (h m avail)
+      "%Ha0 %Ha1 %Ha2 #Hcode [Hstd [Hc Hp]] Hrun Hcont".
+    (* a tainted deed: the record's law, DONE := T *)
+    rewrite {1}/sh_pend_at /sh_deed_at.
+    iDestruct "Hp" as "[Hp | #HT]"; last first.
+    { iDestruct (Hwbl I with "Hc") as "Hc".
+      iApply (ksh_w_prompt_taint N I l rb Hl2
+                with "HT Hlk Hro [%] [%] [%] Hcode [$Hstd $Hc] Hrun Hcont");
+        assumption. }
+    iDestruct "Hp" as (cs' s v') "(Hd & %Htie & #Hty & #Hpin' & #Hcs')".
+    destruct Htie as (a & Htie). pose proof Htie as (Hlen & Hpos & Hok & Hcont & Hc).
+    (* the console: the block owed at the round's stage, or the taint *)
+    rewrite /FileLinkInst.file_Wcl_at.
+    iDestruct (lk_lcred_blk_lend FI (S gen_id) I with "Hc") as (v) "[#Hpin Hl]".
+    cbn [lk_pin lk_lend FileLinkInst.file_link_inst_at]. rewrite /fwc_lend_at.
+    iDestruct "Hl" as "[Hl | #HT]"; last first.
+    { iDestruct (Hcltaint I 0%nat v with "Hpin HT") as "Hc0".
+      iApply (ksh_w_prompt_taint N I l rb Hl2
+                with "HT Hlk Hro [%] [%] [%] Hcode [$Hstd $Hc0] Hrun Hcont");
+        assumption. }
+    iDestruct "Hl" as (ps cs P) "(%Hw & Hcur)". rewrite /FileLinksLine.fcur.
+    iDestruct "Hcur" as "(Htn & #Hps & #Hcs & #HE & #Hf0)".
+    iDestruct (era_pin_agree (fgn_echo g) (S gen_id) v v' with "Hpin Hpin'")
+      as %<-.
+    pose proof Hw as [(_ & _ & Hn & _) _].
+    iDestruct (cs_lb_agree_len v cs cs' ltac:(lia) with "Hcs Hcs'") as %<-.
+    rewrite /FileLinksLine.f0w. iDestruct "Hf0" as "[%Hk Hf0]".
+    iDestruct "Hf0" as (vf) "[#Hvf #Hf0lb]".
+    (* the two bytes as one step family, then the call *)
+    iPoseProof (pfam_step v vf ps cs P a I s Hw Htie
+                  with "Hlk Hpin Hvf Hps Hcs HE Hf0lb Hty") as "#Hst".
+    iApply (UShPanic.ksh_w_of_link_prompt_fam (PS := uprogSG_free) N
+              (pfam v P I s) l rb Hl2
+              with "Hst Hro [%] [%] [%] Hcode [$Hstd Htn Hd] Hrun [Hcont]");
+      [ exact Ha0 | exact Ha1 | exact Ha2 | cbn [pfam]; iFrame "Htn Hd" | ].
+    iIntros (h' ret) "[Hstd Hc] Hrun".
+    iApply ("Hcont" $! h' ret with "[$Hstd Hc] Hrun").
+    cbn [pfam]. iDestruct "Hc" as "[Hc Hd]". iFrame "Hd".
+    rewrite /FileLinkInst.file_Wcl_at /lk_lcred. iExists v.
+    cbn [lk_pin FileLinkInst.file_link_inst_at]. iFrame "Hpin Hc".
+  Qed.
+
+  (* THE PROMPT LAW, at the family *)
+  Lemma sh_prompt_law_file :
+    ⊢ FileLinks.file_links g -∗
+      UShKernel.sh_prompt_law (PS := uprogSG_free) Wcf.
+  Proof using Hcons.
+    iIntros "#Hlk".
+    iPoseProof (UShPanic.sh_prompt_law_holds_line_at (PS := uprogSG_free) FI
+                  with "[]") as "#Hpl".
+    { cbn [lk_links FileLinkInst.file_link_inst_at]. iExact "Hlk". }
+    iPoseProof (UShPanicHold.sh_prompt_law_hold (PS := uprogSG_free) Wcl DONE
+                  with "Hpl") as "#Hpld".
+    rewrite /UShKernel.sh_prompt_law. iIntros "!>" (N) "#Hro".
+    iDestruct ("Hpld" $! N with "Hro") as "#Hd". rewrite /UkSh.ush_prompt_law.
+    iDestruct "Hd" as "#[Hdopen Hdclosed]". iModIntro. iSplitL "".
+    - iIntros (I l) "%Hfd". pose proof Hfd as [rb Hl2].
+      rewrite Wcf_0 Wcf_2.
+      iApply (ksh_w_or N _ _ _ (UserFd.ustd (ukn_fd N) l)
+                (Wcl I 0%nat ∗ DONE I)%I (Wcl I 3%nat ∗ PEND I)%I
+                with "[] []").
+      + iApply ("Hdopen" $! I l). by iPureIntro.
+      + iApply (ksh_w_prompt_pend N I l rb Hl2 with "Hlk Hro").
+    - iIntros (l) "%Hcl". iApply ("Hdclosed" $! l). by iPureIntro.
+  Qed.
 
   (* =================================================================== *)
   (*  S4  THE LINE READ, AT [FileOut.ftag]                                *)
@@ -419,7 +1245,7 @@ Section UShRound.
      the era's taint -- a failed open at a tainted application hands back
      no deed, and a [Kf] without that arm cannot be produced. *)
   Definition redir_Kf (s : dst) : iProp Σ :=
-    (fown r s ∨ (∃ i : Z, fown r (Some (i, []))) ∨ T)%I.
+    (fown r s ∨ (⌜s = None⌝ ∗ ∃ i : Z, fown r (Some (i, []))) ∨ T)%I.
 
   (* ---- WHAT THE OPEN'S RECEIPT SAYS ABOUT THE INODE (the PROGRAM
           STREAM, item (3)'s first premise).  K1's entry takes four
@@ -528,11 +1354,14 @@ Section UShRound.
     reflexivity.
   Qed.
 
+  (* ...AND THE DEED IS HANDED AT THE CALL (stretch 9): the call resource
+     is built from PERSISTENT facts alone, so the child can hold it across
+     the parse with its lend whole, and the deed flows lend -> call ->
+     receipt ([UkShRedirAns.ush_open_call2]'s [Dd]). *)
   Lemma Hopen_hand (N : uk_names Σ) (file : Z) (l : list fdstate)
-      (ls : list wordline) (ws : wordline) (jc : Z) (s : dst) :
+      (ls : list wordline) (ws : wordline) (jc : Z) :
     ws ∈ ls -> EchoDisc.line_ok ws ->
     app_inv fsc_fs -∗ cons_made (fn_cons r) jc -∗ fl_lb (fgn_cl g) ls -∗
-    fown r s -∗
     (* ...AND THE CWD'S CAMERA IS PINNED TOO (the PROGRAM STREAM's rule,
        one class further out than the deposit): [UserCwd.ucwd] takes a
        [ghost_varG Σ Z], [UkShRedirAns]'s section has its own and the
@@ -543,12 +1372,12 @@ Section UShRound.
        same proposition unless this says which. *)
     UkShRedirAns.ush_open_call2 (PS := uprogSG_free) (SG := uexecSG_xv6)
       (ghost_varG0 := offbox_offG)
-      N FsImg.ROOTINO file 1537 l redir_K (redir_Kf s).
+      N FsImg.ROOTINO file 1537 l redir_K (fun s : dst => fown r s) redir_Kf.
   Proof using Heq.
-    intros Hin Hokw. iIntros "#Hinv #Hmade #Hlb Hown".
+    intros Hin Hokw. iIntros "#Hinv #Hmade #Hlb".
     rewrite /UkShRedirAns.ush_open_call2.
-    iIntros (h m av Img pl) "%Ha0 %Ha1 %Hpath %Hnp %Hstart %Hlast %Hfdl
-             #Himg #Hcode Hcwd Hstd Hrun Hcont".
+    iIntros (h m av Img pl s) "%Ha0 %Ha1 %Hpath %Hnp %Hstart %Hlast %Hfdl
+             #Himg Hown #Hcode Hcwd Hstd Hrun Hcont".
     rewrite sh_open_stub_pc.
     (* ---- 0xcc6  c.li a7,15 ---- *)
     iApply (wp_uk_cli (PS := uprogSG_free) (SG := uexecSG_xv6)
@@ -713,13 +1542,16 @@ Section UShRound.
   Qed.
 
   (* the four [Wc] laws at this family, which are [UShEchoPay]'s [lkw_*]
-     at [Hold := sh_hold_at s0] *)
+     at [Hold := PRE] (RULING HOLD-POS: the lend carries the deed at the
+     round's PRE-state; the child's exit at position 0 folds by the line's
+     identity f-effect -- every alternative of an [LEcho] line leaves `f`
+     alone, [Wcf0_of_pre_line_id]) *)
   Local Lemma fwc3 (I0 : list (bv 8)) :
     ⊢ Wcf I0 3%nat -∗ ∃ v : era_pins,
         lk_pin FI (S gen_id) v ∗ lk_lpr FI (S gen_id) v I0 3%nat
-        ∗ sh_hold I0.
+        ∗ PRE I0.
   Proof using .
-    rewrite /Wcf /FileLinkInst.file_Wcl_at /lk_lcred.
+    rewrite Wcf_S3 /FileLinkInst.file_Wcl_at /lk_lcred.
     iIntros "[H HR]". iDestruct "H" as (v) "[#Hp Hc]".
     iExists v. iSplitR "Hc HR"; [ iExact "Hp" | ].
     iSplitL "Hc"; [ iExact "Hc" | iExact "HR" ].
@@ -727,9 +1559,9 @@ Section UShRound.
 
   Local Lemma fwc3b (I0 : list (bv 8)) (v0 : era_pins) :
     ⊢ lk_pin FI (S gen_id) v0 -∗ lk_lpr FI (S gen_id) v0 I0 3%nat -∗
-      sh_hold I0 -∗ Wcf I0 3%nat.
+      PRE I0 -∗ Wcf I0 3%nat.
   Proof using .
-    iIntros "#Hp Hc HR". rewrite /Wcf.
+    iIntros "#Hp Hc HR". rewrite Wcf_S3.
     iSplitR "HR"; [ | iExact "HR" ].
     rewrite /FileLinkInst.file_Wcl_at /lk_lcred. iExists v0.
     iSplitR; [ iExact "Hp" | iExact "Hc" ].
@@ -738,10 +1570,13 @@ Section UShRound.
   Local Lemma fwc0 (I0 : list (bv 8)) (v0 : era_pins) :
     ck_lineok (sk_cur (FileLinkInst.file_stage_inst_at g s0)) I0 ->
     ⊢ lk_pin FI (S gen_id) v0 -∗ lk_post FI (S gen_id) v0 I0 0%nat -∗
-      sh_hold I0 -∗ Wcf I0 0%nat.
+      PRE I0 -∗ Wcf I0 0%nat.
   Proof using .
-    intro Hlok. iIntros "#Hp Hc HR". rewrite /Wcf.
-    iSplitR "HR"; [ | iExact "HR" ].
+    intro Hlok. iIntros "#Hp Hc HR".
+    assert (Hl : FileLinkInst.file_lineok I0) by exact Hlok.
+    rewrite /FileLinkInst.file_lineok in Hl.
+    iApply (Wcf0_of_pre_line_id I0 ltac:(intros s a; rewrite Hl; reflexivity)
+              with "[Hc] HR").
     rewrite /FileLinkInst.file_Wcl_at.
     iApply (lk_lcred_of_post_a FI (S gen_id) I0 0%nat v0
               (sk_apr0 (FileLinkInst.file_stage_inst_at g s0) I0 Hlok)
@@ -751,14 +1586,8 @@ Section UShRound.
   Local Lemma fwct (I0 : list (bv 8)) (v0 : era_pins) :
     ⊢ lk_pin FI (S gen_id) v0 -∗ T -∗ Wcf I0 0%nat.
   Proof using .
-    iIntros "#Hp #HT". rewrite /Wcf. iSplitL.
-    - iApply (lk_lcred_taint FI (S gen_id) I0 0%nat v0 with "Hp HT").
-    - rewrite /sh_hold_at. iRight. iExact "HT".
-  Qed.
-
-  Local Instance sh_hold_timeless I0 : Timeless (sh_hold I0).
-  Proof using .
-    rewrite /sh_hold_at /T /file_taint /echo_taint. apply _.
+    iIntros "#Hp #HT". cbn [lk_pin FileLinkInst.file_link_inst_at].
+    iApply (Wcf_taint I0 0%nat v0 with "Hp HT").
   Qed.
 
   Lemma Hchild_echo :
@@ -767,48 +1596,106 @@ Section UShRound.
       UkShEcho.sh_exec_sup_echo_wq_at file_D Wcf.
   Proof using Hkill.
     exact (UShEchoPay.sh_exec_sup_echo_wq_holds_at_D
-             (FileLinkInst.file_stage_inst_at g s0) file_D Wcf sh_hold
-             sh_hold_timeless fwc3 fwc3b fwc0 fwct Hktaint
+             (FileLinkInst.file_stage_inst_at g s0) file_D Wcf PRE
+             (fun I0 => sh_pre_at_timeless s0 I0)
+             fwc3 fwc3b fwc0 fwct Hktaint
              (fun I0 H => proj1 H) (fun I0 H => proj2 H)).
   Qed.
 
-  (* ---- HYPOTHESIS: the exec-failed diagnostic's law at the file
-          families, AT THE PARAMETERIZED CARRIER (lane LINK-GEN-4).  The
-          landed [ush_execfail_law_wq] names [alt_execfail] at EVERY input
-          and the file's diagnostic is [FileLinksLine.fexfb], which is
-          [alt_execcat] at an [LCat] line -- so the constant form is FALSE
-          here.  At [ush_execfail_law_wq_at (lk_exfb FI) ...]
-          the hypothesis is DISCHARGEABLE TODAY:
-          [UShEchoPay.ush_execfail_law_wq_at_hold file_stage_inst]. ---- *)
-  (*  ...AND IT IS DISCHARGED (the program stream), exactly as the comment
-      above said it would be: the carrier is the record's own, the era's
-      links are the only input, and [file_stage_inst] is not even needed.
-      The links are a PREMISE and not a hypothesis because they are a
-      resource the round is handed ([sh_round_holds_file]'s first). *)
-  Lemma Hexecfail :
+  (* ---- THE EXEC-FAILED DIAGNOSTIC'S LAW at the file families, AT THE
+          PARAMETERIZED CARRIER (lane LINK-GEN-4) AND UNDER THE ERA'S GUARD
+          (lane HOLD-POS).  [UkShEcho.ush_execfail_law_wq_at] was stated at
+          EVERY input, and at the position-keyed family that is REFUTED at
+          an [echo ... > f] input: the exec-failed alternative there is
+          [RFExec], which truncates `f`, while the lend's deed is at the
+          round's PRE-state -- so [Wcf I 0]'s DONE arm wants a content the
+          deed does not have and its PEND arm wants an output that is not
+          the bare prompt.  The law was only ever SPENT at an input the echo
+          child law admits ([file_D]: an [LEcho] line), where every
+          alternative leaves `f` alone, so the guarded carrier
+          [ush_execfail_law_wq_at_D] is the honest statement and this is
+          its discharge: the record's framed law at [Hold := PRE], folded
+          at the exit by [Wcf0_of_pre_line_id]. ---- *)
+  Lemma Hexecfail_D :
     ⊢ FileLinks.file_links g -∗
-      UkShEcho.ush_execfail_law_wq_at (PS := uprogSG_free) (lk_exfb FI)
+      UkShEcho.ush_execfail_law_wq_at_D (PS := uprogSG_free) file_D
+        (lk_exfb FI)
         (fun I : list (bv 8) => (length (lk_exfb FI I) - 2)%nat)
         Wcf.
-  (* NOT [iApply] (durable-notes, the silent hang): the proofmode would
-     unify the [Wc] SLOT -- a function -- against [Wcf]'s body, and that
-     search does not come back.  Both sides are the same term after delta,
-     so [exact] closes it by conversion. *)
   Proof using .
-    exact (UShEchoPay.ush_execfail_law_wq_at_hold (L := FI) sh_hold).
+    iIntros "#Hlk". rewrite /UkShEcho.ush_execfail_law_wq_at_D.
+    iIntros "!>" (I) "%HD".
+    iPoseProof (UShPanic.ush_execfail_law_hold_at (PS := uprogSG_free) FI PRE I
+                  with "[]") as "#Hx".
+    { cbn [lk_links FileLinkInst.file_link_inst_at]. iExact "Hlk". }
+    rewrite Wcf_S3 /UkShDiag.ush_execfail_law_at.
+    iIntros "!>" (N l) "%Hfd Hc".
+    iDestruct ("Hx" $! N l with "[%] [Hc]") as (Pf) "(H0 & #Hstep & #Hend)";
+      [ exact Hfd | rewrite /FileLinkInst.file_Wcl_at; iExact "Hc" | ].
+    iExists Pf. iFrame "H0 Hstep". iIntros "!> Hp".
+    iDestruct ("Hend" with "Hp") as "[Hc Hh]".
+    destruct HD as [_ Hl]. rewrite /FileLinkInst.file_lineok in Hl.
+    iApply (Wcf0_of_pre_line_id I ltac:(intros s a; rewrite Hl; reflexivity)
+              with "[Hc] Hh").
+    rewrite /FileLinkInst.file_Wcl_at. iExact "Hc".
   Qed.
 
-  (* ---- NOT A HYPOTHESIS ANY MORE (the program stream): sh's own fork
-          panic at the file families is [UShPanic.ush_panic_law_hold_at] at
-          this record and [sh_hold], and the two families are the record's
-          own ([FileLinkInst.file_Wcl_at] / [file_Wbl_at]) with that one linear
-          conjunct -- which is the shape that lemma takes.  The era's links
-          are its only input. ---- *)
+  (* ---- sh's own fork panic at the file families (RULING HOLD-POS (v)):
+          the record's framed law at [Hold := PRE], plus PRE -> DONE at the
+          banner-owed credential -- [wr_ban_f] pins the last filed
+          alternative as a PANIC, whose f-effect is the identity
+          ([done_tie_of_pre_ban]); the era's head is DONE at [cs = []]. ---- *)
+  Lemma sh_done_of_pre_ban (I : list (bv 8)) :
+    Wbl I -∗ PRE I -∗ Wbl I ∗ DONE I.
+  Proof using .
+    iIntros "Hb Hp". rewrite /sh_pre_at /sh_done_at /sh_deed_at.
+    iDestruct "Hp" as "[Hp _]".
+    iDestruct "Hp" as "[Hp | #HT]"; last (iFrame "Hb"; by iRight).
+    iDestruct "Hp" as (cs' s v') "(Hd & %Htie & #Hty & #Hpin' & #Hcs')".
+    pose proof Htie as [Hlen _].
+    rewrite /FileLinkInst.file_Wbl_at. iDestruct "Hb" as (v) "[#Hpin Hb]".
+    cbn [lk_pin lk_ban FileLinkInst.file_link_inst_at].
+    iDestruct (era_pin_agree (fgn_echo g) (S gen_id) v v' with "Hpin Hpin'")
+      as %<-.
+    rewrite /fwc_ban_at. iDestruct "Hb" as "[Hb | [Hb | #HT]]".
+    - iDestruct "Hb" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE & #Hf)".
+      pose proof Hw as (_ & _ & Hn & Hpan & _).
+      iDestruct (cs_lb_prefix_len v cs cs' ltac:(lia) with "Hcs Hcs'") as %Hpre.
+      iSplitL "Htn".
+      + iExists v. iFrame "Hpin". iLeft. iExists ps, cs, P.
+        iFrame "Htn Hps Hcs HE Hf". by iPureIntro.
+      + iLeft. iExists cs, s, v. iFrame "Hd Hty Hpin Hcs". iPureIntro.
+        exact (done_tie_of_pre_ban cs cs' s0 I _ Htie ltac:(lia) Hpre Hpan).
+    - iDestruct "Hb" as "[%Hi Hhd]". rewrite /fhead_at.
+      iDestruct "Hhd" as "(%HI & %Hk & Htn & #Hps & #Hcs & #HE & #Hvf & Hpre)".
+      iSplitL "Htn Hpre".
+      + iExists v. iFrame "Hpin". iRight. iLeft. iSplitR; [ by iPureIntro | ].
+        iFrame "Htn Hps Hcs HE Hvf Hpre". by iSplit; iPureIntro.
+      + iLeft. iExists [], s, v. iFrame "Hd Hty Hpin Hcs". iPureIntro.
+        apply (done_tie_of_pre_ban [] cs' s0 I _ Htie).
+        * subst I. by rewrite nlines_nil.
+        * subst I. rewrite nlines_nil in Hlen. cbn in Hlen.
+          apply nil_length_inv in Hlen. subst cs'. done.
+        * by left.
+    - iSplitL ""; [ iExists v; iFrame "Hpin"; by iRight; iRight | by iRight ].
+  Qed.
+
   Lemma Hpanic :
     ⊢ FileLinks.file_links g -∗
       UkShDiag.ush_panic_law (PS := uprogSG_free) Wcf Wbf.
   Proof using .
-    exact (UShPanic.ush_panic_law_hold_at (PS := uprogSG_free) FI sh_hold).
+    iIntros "#Hlk".
+    iPoseProof (UShPanic.ush_panic_law_hold_at (PS := uprogSG_free) FI PRE
+                  with "[]") as "#Hp".
+    { cbn [lk_links FileLinkInst.file_link_inst_at]. iExact "Hlk". }
+    rewrite /UkShDiag.ush_panic_law. iIntros "!>" (N I l) "%Hfd Hc".
+    rewrite Wcf_S3.
+    iDestruct ("Hp" $! N I l with "[%] [Hc]") as (Pf) "(H0 & #Hstep & #Hend)";
+      [ exact Hfd | rewrite /FileLinkInst.file_Wcl_at; iExact "Hc" | ].
+    iExists Pf. iFrame "H0 Hstep". iIntros "!> Hp5".
+    iDestruct ("Hend" with "Hp5") as "[Hb Hpre]".
+    rewrite /Wbf. iApply (sh_done_of_pre_ban I with "[Hb] Hpre").
+    rewrite /FileLinkInst.file_Wbl_at. iExact "Hb".
   Qed.
 
   (* ---- HYPOTHESIS (lane CAT-ENTRY-2): cat's entry at the exec channel,
@@ -966,9 +1853,9 @@ Section UShRound.
       UkShFork.ushf_child_law (PS := uprogSG_free) (SG := uexecSG_xv6) Wcf.
   Proof using Hkill.
     iIntros "#Hlk #Hdep #Hslot".
-    iPoseProof (Hexecfail with "Hlk") as "#Hxl".
+    iPoseProof (Hexecfail_D with "Hlk") as "#Hxl".
     iPoseProof (Hchild_echo with "Hlk Hdep Hslot") as "#Hsup".
-    iApply (UkShEcho.ushf_child_law_holds_at (PS := uprogSG_free)
+    iApply (UkShEcho.ushf_child_law_holds_at_D (PS := uprogSG_free)
               (SG := uexecSG_xv6) (fun k H => H) file_D (lk_exfb FI)
               (fun I : list (bv 8) => (length (lk_exfb FI I) - 2)%nat) Wcf
               file_D_of_line file_D_exfb with "Hxl Hsup").
@@ -978,8 +1865,8 @@ Section UShRound.
      inhabits the credential AND the deed's arm).  PROVED (the program
      stream): the taint is the era's ([Hktaint]), it inhabits the link
      record's credential at the era's pin ([Hcltaint], which is
-     [FileLinkInst.file_Hcltaint] now) and it is [sh_hold]'s own right
-     arm.  The PIN is a premise because the credential's is linear under
+     [FileLinkInst.file_Hcltaint] now) and it is every tie's own right
+     arm ([Wcf_taint]).  The PIN is a premise because the credential's is linear under
      an existential and the killed child holds none -- the round has it
      ([sh_round_holds_file]'s third argument). *)
   Lemma sh_kill_law_file (v : era_pins) :
@@ -988,9 +1875,7 @@ Section UShRound.
     iIntros "#Hpin". rewrite /UkShFork.ushf_kill_law.
     iIntros "!>" (I) "#Hk".
     iAssert T as "#HT"; [ iApply Hktaint; iExact "Hk" | ].
-    rewrite /Wcf. iSplitR.
-    - iApply (Hcltaint I 0%nat v with "Hpin HT").
-    - rewrite /sh_hold_at. iRight. iExact "HT".
+    iApply (Wcf_taint I 0%nat v with "Hpin HT").
   Qed.
 
   (* =================================================================== *)

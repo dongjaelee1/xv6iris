@@ -276,6 +276,29 @@ Section UkShRedirSeam.
     apply Hnn. lia.
   Qed.
 
+  (* ...and WHICH bytes they are: the line's own, untouched by either cut *)
+  Lemma ushs_nulcut_filebyte (len : nat) (f : nat -> bv 8) (gp fe : nat)
+      (args : list (nat * nat)) :
+    ushs_redir len f gp fe ->
+    ushs_toks len f gp 0%nat args ->
+    forall j : nat, (j < fe - S (S gp))%nat ->
+      ushs_nulcut args len f fe (S (S gp) + j)%nat = f (S (S gp) + j)%nat.
+  Proof using .
+    intros Hred Htoks j Hj.
+    pose proof Hred as HR.
+    destruct HR as (Hone & Hgp0 & Hb1 & Hb2 & Hlo2 & Hhi2 & Hfw & Htail).
+    rewrite /ushs_nulcut /UkShParseCmd.ushp_setb.
+    rewrite (proj2 (Nat.eqb_neq (S (S gp) + j)%nat fe) ltac:(lia)).
+    rewrite (UkShMain.ushp_nulfold_miss args (UkShParseCmd.ushp_ext len f)
+               (S (S gp) + j)%nat
+               ltac:(intros q t Hq;
+                     destruct (ushs_arg_below len f gp fe args Hred Htoks
+                                 q t Hq) as [ _ Hhi ]; lia)).
+    rewrite /UkShParseCmd.ushp_ext
+      (bool_decide_eq_true_2 ((S (S gp) + j) < len)%nat ltac:(lia)).
+    reflexivity.
+  Qed.
+
   (* the REDIR row, INTRODUCED rather than unfolded: [c1] is a variable
      here, so [cbn] reduces the outer node and cannot touch the sub-tree *)
   Lemma ush_cmd_redir_intro (g : gname) (t q : Z) (c1 : ushcmd)
@@ -406,14 +429,15 @@ Section UkShRedirSeam.
   (* [wp_kshr_runcmd_final], which would drop [K ty].  That continuation is *)
   (* what the application lane fills with its own EXEC walk.                *)
   (* ===================================================================== *)
-  Lemma wp_kshm_child_redir (UM0 UM1 UM2 : iProp Σ)
+  Lemma wp_kshm_child_redir_g (UM0 UM1 UM2 : iProp Σ)
       (Hm0 : UkShParse.ushp_malloc_ty_le N 168 UM0 UM1)
       (Hm1 : UkShParse.ushp_malloc_ty_le N 168 UM1 UM2)
       (h : CpuId) (m : regfile) (dw dv : dfrac)
       (s0 cwdv : Z) (len : nat) (f : nat -> bv 8)
       (args : list (nat * nat)) (gp fe : nat)
       (ld : list fdstate) (st1 : fdstate) (n : nat)
-      (K : fdtype -> iProp Σ) (Cr : iProp Σ) :
+      (H : iProp Σ) (K : fdtype -> iProp Σ) (Kf : iProp Σ)
+      (Cr Cr' : iProp Σ) :
     m !!! Regidx s1_idx = (mword_of_int s0 : mword 64) ->
     ushs_redir len f gp fe ->
     ushs_toks len f gp 0%nat args ->
@@ -429,7 +453,6 @@ Section UkShRedirSeam.
        credential it was lent ([UkShFork.ushf_wq]).  Both places that can
        exit -- the parser's NULL store and the open's failure -- take the
        pair, and the lend comes back on the arm where neither fired. *)
-    UkSh.sh_deps -∗
     shk_code γt -∗
     ush_jtab γt -∗
     shp_code γt -∗ shp_rodata γt -∗
@@ -439,13 +462,16 @@ Section UkShRedirSeam.
     UserFd.ustd γfd ld -∗
     UserCwd.ucwd γcwd cwdv -∗
     UM0 -∗
-    UkShRedir.ush_open_call N cwdv (s0 + Z.of_nat (S (S gp))) 1537
-      (<[1%nat := FdClosed]> ld) K -∗
+    UkShRedir.ush_open_call_g N cwdv (ushs_file s0 len f args gp fe) 1537
+      (<[1%nat := FdClosed]> ld) H K Kf -∗
     □ (Cr -∗ ukn_pay N (-1)) -∗
+    (* THE LEND SPLITS AT THE CALL: whole across the parse (it pays the
+       parser's exits), and then what the open is handed and the rest *)
+    (Cr -∗ H ∗ Cr') -∗
     Cr -∗
     urun N h m (mword_of_int 0x9c0)
       (68 + (8 + (UkShDiag.ush_Dg + n))) -∗
-    (∀ (h' : CpuId) (m' : regfile) (q : Z) (ty : fdtype),
+    ((∀ (h' : CpuId) (m' : regfile) (q : Z) (ty : fdtype),
        ⌜ m' !!! Regidx a0_idx = (mword_of_int q : mword 64) ⌝ -∗
        ush_cmd γd q
          (UExec (ush_args s0 (ushs_nulcut args len f fe) args)) -∗
@@ -454,15 +480,29 @@ Section UkShRedirSeam.
        UserCwd.ucwd γcwd cwdv -∗
        K ty -∗
        UM2 -∗
-       Cr -∗
+       Cr' -∗
        urun N h' m' (mword_of_int ShSyms.runcmd)
          (UkShDiag.ush_Dg + (70 + n)) -∗
-       WP (Loop : expr riscv_lang)) -∗
+       WP (Loop : expr riscv_lang))
+     (* ...OR THE OPEN FAILED, at the diagnostic cut ([UkShRedir.
+        wp_kshr_redir_arm_g]'s additive pair, relayed) *)
+     ∧
+     (∀ (h' : CpuId) (m' : regfile),
+        ⌜ UkShRun.ush_diag_at 0x10e m' ⌝ -∗
+        UkShRun.ush_ptr γd (uint (m' !!! Regidx s1_idx) + 16)
+          (ua_ptr (ushs_file s0 len f args gp fe)) -∗
+        UkShRun.ush_str γd (ushs_file s0 len f args gp fe) -∗
+        UserFd.ustd γfd (<[1%nat := FdClosed]> ld) -∗
+        UserCwd.ucwd γcwd cwdv -∗
+        Kf -∗
+        Cr' -∗
+        urun N h' m' (mword_of_int 0x10e) (UkShDiag.ush_Dg + (70 + n)) -∗
+        WP (Loop : expr riscv_lang))) -∗
     WP (Loop : expr riscv_lang).
   Proof using Hpay.
     intros Hs1 Hred Htoks Hpos Htlen Hs0 Hs64 Hs38 Hst1 Hne Hnp.
-    iIntros "#Hdp #Hcode #Hjt #Hpcode #Hpro Hline Hws Hsy Hstd Hcwd HM Hopen
-             #Hpxw Hcr Hrun Hcont".
+    iIntros "#Hcode #Hjt #Hpcode #Hpro Hline Hws Hsy Hstd Hcwd HM Hopen
+             #Hpxw Hsplit Hcr Hrun Hk".
     iDestruct (ustr_nonul with "Hline") as %Hnn0.
     iDestruct (ustr_len with "Hline") as %Hlen31.
     (* ---- 0x9c0  c.mv a0,s1 ---- *)
@@ -546,15 +586,105 @@ Section UkShRedirSeam.
     (* ---- runcmd's REDIR arm: close(1), open(file), then the sub-tree ---- *)
     replace (68 + (8 + (UkShDiag.ush_Dg + n)))%nat
       with (6 + (UkShDiag.ush_Dg + (70 + n)))%nat by lia.
-    iApply (UkShRedir.wp_kshr_redir_arm_at N
+    iDestruct ("Hsplit" with "Hcr") as "[HH Hcr]".
+    iApply (UkShRedir.wp_kshr_redir_arm_g N
               (UExec (ush_args s0 (ushs_nulcut args len f fe) args))
               (ushs_file s0 len f args gp fe) 1537
-              h4 m4 p cwdv ld st1 (70 + n) K Cr
+              h4 m4 p cwdv ld st1 (70 + n) H K Kf
               ltac:(unfold Z31; lia) Ha0_4 Hst1 Hne Hnp
-              with "Hdp Hcode Hjt Htree Hstd Hcwd Hopen Hpxw Hcr Hrun").
-    iIntros (hf mf q ty) "%Ha0f Hsub Hstd Hcwd HK Hcr Hrun".
-    iApply ("Hcont" $! hf mf q ty
-              with "[%//] Hsub Hstd Hcwd HK HM2 Hcr Hrun").
+              with "Hcode Hjt Htree Hstd Hcwd Hopen HH Hrun").
+    iSplit.
+    - iDestruct "Hk" as "[Hcont _]".
+      iIntros (hf mf q ty) "%Ha0f Hsub Hstd Hcwd HK Hrun".
+      iApply ("Hcont" $! hf mf q ty
+                with "[%//] Hsub Hstd Hcwd HK HM2 Hcr Hrun").
+    - iDestruct "Hk" as "[_ Hfail]".
+      iIntros (hf mf) "%Hat Hfp Hfs Hstd Hcwd HKf Hrun".
+      iApply ("Hfail" $! hf mf with "[%//] Hfp Hfs Hstd Hcwd HKf Hcr Hrun").
+  Qed.
+
+  (* ...and the landed seam, VERBATIM, as its instance: the landed call,
+     the whole lend kept, the failed open printed on the free write law. *)
+  Lemma wp_kshm_child_redir (UM0 UM1 UM2 : iProp Σ)
+      (Hm0 : UkShParse.ushp_malloc_ty_le N 168 UM0 UM1)
+      (Hm1 : UkShParse.ushp_malloc_ty_le N 168 UM1 UM2)
+      (h : CpuId) (m : regfile) (dw dv : dfrac)
+      (s0 cwdv : Z) (len : nat) (f : nat -> bv 8)
+      (args : list (nat * nat)) (gp fe : nat)
+      (ld : list fdstate) (st1 : fdstate) (n : nat)
+      (K : fdtype -> iProp Σ) (Cr : iProp Σ) :
+    m !!! Regidx s1_idx = (mword_of_int s0 : mword 64) ->
+    ushs_redir len f gp fe ->
+    ushs_toks len f gp 0%nat args ->
+    (0 < length args)%nat ->
+    (length args < 10)%nat ->
+    0 < s0 -> s0 + Z.of_nat len + 1 < Z64 -> s0 + Z.of_nat len < 2 ^ 38 ->
+    ld !! 1%nat = Some st1 ->
+    st1 <> FdClosed ->
+    (forall (rb wb : bool) (gn : PipeNames.pipe_names),
+       st1 <> FdOpen rb wb (FdPipe gn)) ->
+    (* THE EXIT IS PAID FROM THE LEND (lane SH-CHILD-2), not from a free
+       payload: this walk is the PAID child's, whose [ukn_pay] is the block
+       credential it was lent ([UkShFork.ushf_wq]).  Both places that can
+       exit -- the parser's NULL store and the open's failure -- take the
+       pair, and the lend comes back on the arm where neither fired. *)
+    UkSh.sh_deps -∗
+    shk_code γt -∗
+    ush_jtab γt -∗
+    shp_code γt -∗ shp_rodata γt -∗
+    ustr γd (DfracOwn 1) s0 len f -∗
+    ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
+    ustr γd dv ushp_symbols 7 ushp_sym_f -∗
+    UserFd.ustd γfd ld -∗
+    UserCwd.ucwd γcwd cwdv -∗
+    UM0 -∗
+    UkShRedir.ush_open_call N cwdv (s0 + Z.of_nat (S (S gp))) 1537
+      (<[1%nat := FdClosed]> ld) K -∗
+    □ (Cr -∗ ukn_pay N (-1)) -∗
+    Cr -∗
+    urun N h m (mword_of_int 0x9c0)
+      (68 + (8 + (UkShDiag.ush_Dg + n))) -∗
+    (∀ (h' : CpuId) (m' : regfile) (q : Z) (ty : fdtype),
+       ⌜ m' !!! Regidx a0_idx = (mword_of_int q : mword 64) ⌝ -∗
+       ush_cmd γd q
+         (UExec (ush_args s0 (ushs_nulcut args len f fe) args)) -∗
+       UserFd.ustd γfd
+         (<[1%nat := FdOpen false true ty]> (<[1%nat := FdClosed]> ld)) -∗
+       UserCwd.ucwd γcwd cwdv -∗
+       K ty -∗
+       UM2 -∗
+       Cr -∗
+       urun N h' m' (mword_of_int ShSyms.runcmd)
+         (UkShDiag.ush_Dg + (70 + n)) -∗
+       WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+  Proof using Hpay.
+    intros Hs1 Hred Htoks Hpos Htlen Hs0 Hs64 Hs38 Hst1 Hne Hnp.
+    iIntros "#Hdp #Hcode #Hjt #Hpcode #Hpro Hline Hws Hsy Hstd Hcwd HM Hopen
+             #Hpxw Hcr Hrun Hcont".
+    iDestruct (ush_jtab_ro with "Hjt") as "#Hro".
+    iApply (wp_kshm_child_redir_g UM0 UM1 UM2 Hm0 Hm1 h m dw dv s0 cwdv len f
+              args gp fe ld st1 n emp%I K emp%I Cr Cr
+              Hs1 Hred Htoks Hpos Htlen Hs0 Hs64 Hs38 Hst1 Hne Hnp
+              with "Hcode Hjt Hpcode Hpro Hline Hws Hsy Hstd Hcwd HM [Hopen]
+                    Hpxw [] Hcr Hrun [Hcont]").
+    - iApply (UkShRedir.ush_open_call_g_of N cwdv
+                (ushs_file s0 len f args gp fe) 1537
+                (<[1%nat := FdClosed]> ld) K with "Hopen").
+    - iIntros "$".
+    - iSplit.
+      + iExact "Hcont".
+      + iIntros (h' m') "%Hat #Hfp #Hfs _ _ _ Hcr Hrun".
+        iDestruct ("Hpxw" with "Hcr") as "Hpay".
+        iApply (UkShDiag.ush_diag_leaf_holds N h' m' 0x10e (70 + n) Hat
+                  with "Hdp Hcode Hro [] Hpay Hrun").
+        rewrite /UkShRun.ush_diag_res.
+        destruct (decide ((0x10e : Z) = 0xda)) as [Hc | _];
+          [ exfalso; discriminate Hc | ].
+        destruct (decide ((0x10e : Z) = 0x10e)) as [_ | Hc];
+          [ | exfalso; exact (Hc eq_refl) ].
+        iExists (ushs_file s0 len f args gp fe).
+        iSplitR; [ iExact "Hfp" | iExact "Hfs" ].
   Qed.
 
   (* ===================================================================== *)
@@ -586,6 +716,90 @@ Section UkShRedirSeam.
   (* for sixteen pages on the way through, exactly as in                    *)
   (* [UkShMain.wp_kshm_child_alloc].                                        *)
   (* ===================================================================== *)
+  Lemma wp_kshm_child_alloc_redir_g
+      (h : CpuId) (m : regfile) (dw dv : dfrac)
+      (s0 cwdv : Z) (len : nat) (f : nat -> bv 8)
+      (args : list (nat * nat)) (gp fe : nat)
+      (sz : Z) (ld : list fdstate) (st1 : fdstate) (n : nat)
+      (H : iProp Σ) (K : fdtype -> iProp Σ) (Kf : iProp Σ)
+      (Cr Cr' : iProp Σ) :
+    m !!! Regidx s1_idx = (mword_of_int s0 : mword 64) ->
+    ushs_redir len f gp fe ->
+    ushs_toks len f gp 0%nat args ->
+    (0 < length args)%nat ->
+    (length args < 10)%nat ->
+    0 < s0 -> s0 + Z.of_nat len + 1 < Z64 -> s0 + Z.of_nat len < 2 ^ 38 ->
+    ld !! 1%nat = Some st1 ->
+    st1 <> FdClosed ->
+    (forall (rb wb : bool) (gn : PipeNames.pipe_names),
+       st1 <> FdOpen rb wb (FdPipe gn)) ->
+    (* the break is above [base] (0x2088, the last sixteen bytes of the
+       image) and page-aligned, which [exec] leaves it -- the same three
+       premises [UkShMain.wp_kshm_child_alloc] carries *)
+    8344 <= sz ->
+    UserPtTree.pgroundup sz = sz ->
+    usz_ok (sz + 65536) ->
+    shk_code γt -∗
+    ush_jtab γt -∗
+    shp_code γt -∗ shp_rodata γt -∗
+    ustr γd (DfracOwn 1) s0 len f -∗
+    ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
+    ustr γd dv ushp_symbols 7 ushp_sym_f -∗
+    UserFd.ustd γfd ld -∗
+    UserCwd.ucwd γcwd cwdv -∗
+    UkShMalloc.ushm_fresh N sz -∗
+    UkShRedir.ush_open_call_g N cwdv (ushs_file s0 len f args gp fe) 1537
+      (<[1%nat := FdClosed]> ld) H K Kf -∗
+    □ (Cr -∗ ukn_pay N (-1)) -∗
+    (Cr -∗ H ∗ Cr') -∗
+    Cr -∗
+    urun N h m (mword_of_int 0x9c0)
+      (68 + (8 + (UkShDiag.ush_Dg + n))) -∗
+    ((∀ (h' : CpuId) (m' : regfile) (q : Z) (ty : fdtype),
+       ⌜ m' !!! Regidx a0_idx = (mword_of_int q : mword 64) ⌝ -∗
+       ush_cmd γd q
+         (UExec (ush_args s0 (ushs_nulcut args len f fe) args)) -∗
+       UserFd.ustd γfd
+         (<[1%nat := FdOpen false true ty]> (<[1%nat := FdClosed]> ld)) -∗
+       UserCwd.ucwd γcwd cwdv -∗
+       K ty -∗
+       UkShMalloc.ushm_one_ge N (sz + 65536) 4072 -∗
+       Cr' -∗
+       urun N h' m' (mword_of_int ShSyms.runcmd)
+         (UkShDiag.ush_Dg + (70 + n)) -∗
+       WP (Loop : expr riscv_lang))
+     ∧
+     (∀ (h' : CpuId) (m' : regfile),
+        ⌜ UkShRun.ush_diag_at 0x10e m' ⌝ -∗
+        UkShRun.ush_ptr γd (uint (m' !!! Regidx s1_idx) + 16)
+          (ua_ptr (ushs_file s0 len f args gp fe)) -∗
+        UkShRun.ush_str γd (ushs_file s0 len f args gp fe) -∗
+        UserFd.ustd γfd (<[1%nat := FdClosed]> ld) -∗
+        UserCwd.ucwd γcwd cwdv -∗
+        Kf -∗
+        Cr' -∗
+        urun N h' m' (mword_of_int 0x10e) (UkShDiag.ush_Dg + (70 + n)) -∗
+        WP (Loop : expr riscv_lang))) -∗
+    WP (Loop : expr riscv_lang).
+  Proof using Hpay Hpsok_free.
+    intros Hs1 Hred Htoks Hpos Htlen Hs0 Hs64 Hs38 Hst1 Hne Hnp
+           Hszlo Hszal Hszok.
+    iIntros "#Hcode #Hjt #Hpcode #Hpro Hline Hws Hsy Hstd Hcwd HM Hopen
+             #Hpxw Hsplit Hcr Hrun Hk".
+    iApply (wp_kshm_child_redir_g
+              (UkShMalloc.ushm_fresh N sz)
+              (UkShMalloc.ushm_one_ge N (sz + 65536) 4084)
+              (UkShMalloc.ushm_one_ge N (sz + 65536) 4072)
+              (UkShMalloc.ushm_malloc_le_exec N Hpsok_free sz
+                 Hszlo Hszal Hszok)
+              (UkShMalloc.ushm_malloc_le_next N (sz + 65536))
+              h m dw dv s0 cwdv len f args gp fe ld st1 n H K Kf Cr Cr'
+              Hs1 Hred Htoks Hpos Htlen Hs0 Hs64 Hs38 Hst1 Hne Hnp
+              with "Hcode Hjt Hpcode Hpro Hline Hws Hsy Hstd Hcwd HM
+                    Hopen Hpxw Hsplit Hcr Hrun Hk").
+  Qed.
+
+  (* the landed statement, unchanged *)
   Lemma wp_kshm_child_alloc_redir
       (h : CpuId) (m : regfile) (dw dv : dfrac)
       (s0 cwdv : Z) (len : nat) (f : nat -> bv 8)

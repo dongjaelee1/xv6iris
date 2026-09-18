@@ -9,6 +9,88 @@ literal image (`UFileBootAdequacy.file_adequacy_fileΣ`), with
 `make audit-file-only` beside the echo and tree audits, and the
 conclusion `FileDisc.file_phi`.
 
+## RESUME HERE (2026-09-18, after the kernel stream closed)
+
+Metric 7 = `UEchoFile.v` 1 (header only) + `UShRound.v` 5 + `UInitFile.v` 1,
+at `main` = the merge of `app-file/off-hand` (KERNEL-STREAM item 4).  Audits
+13 / 14 / 13 / 14.  ONE LANE AT A TIME from here (session credit).
+
+STATE after PROGRAM-STREAM stretch 9 (2026-09-18): metric still 6 — the
+stretch measured item 2 to be four sub-items plus TWO statement defects
+upstream of it, landed 2a/2b/2c and the K1 repair (2½), and STOPPED at the
+second defect (2¾, the fork slot's words), which moves a generic sh
+statement and wants the owner's ruling.  NEXT: rule on 2¾, apply it, then 2d.
+Work is SERIAL, in the main session, on `app-file/sh-redir`
+(`/shared/xv6iris-3-lanes/sh-redir`), iterating with `.vos`/`.vok`
+(`/shared/xv6iris-3-lanes/.logs/vb.sh`).
+
+The blocker for the whole program tier WAS the deed's hold: RULING HOLD-POS
+(design §3.7).  Serial plan:
+
+1. [x] **HOLD-POS** — LANDED (stretch 8, `1cfe4854b`): metric 4 in
+   `UShRound.v`; S3 proved; `sh_prompt_law_file`, `Hpanic`, `Hwbl_f`,
+   `Hwc_f` (conjunct 5) at the folded family; the exec-failed carrier is
+   D-guarded (`UkShEcho.ush_execfail_law_wq_at_D`, a statement refutation
+   of the unguarded one).  Findings: PROGRAM-STREAM.md stretch 8.
+   The item as briefed: the model fix (`RFSilent` identity), the position-keyed
+   `Wcf`/`Wbf` in `UShRound.v` with PRE/DONE/PEND and their pure step
+   lemmas, `Hwbl`/`Hwbwc`/`sh_kill_law_file`/`Hcltaint` re-proved, the
+   file era's prompt law (S3 `sh_prompt_alt_of_deed` PROVED), the panic
+   law, the echo child (`sh_child_law_file`) at the folded position 0,
+   `UInitFileCons`'s twin `sh_hold_at` retired in favour of UShRound's.
+   Bar: `UShRound.v`'s `Admitted` count does not rise; whole tree green.
+2. **REDIR-CHILD** — measured in stretch 9 to be FOUR sub-items, three
+   landed (PROGRAM-STREAM.md stretch 9 has every name):
+   - [x] **2a LINE-WIT**: the typed line's witness (`fl_lb ∋ ws`) reaches
+     the child — off the consumed bytes' TAGS, through the reader's residue
+     (`ReadRec.rk_arms` takes the tags; `FileLinksLine.flw`, `fwc_rresw{,_at}`;
+     `FileLineWit.v`), into `PRE` (`UShRound.line_wit`, `Hwc_f`).
+     `FileReadInst.file_read_inst g Htag` takes the tag equation now.
+   - [x] **2b OPEN-PAY**: the failed open's created arm keeps `s = None`;
+     `ush_open_call2` takes the deed AT the call.
+   - [x] **2c CALL2**: the redirect arm/seam generic in the call and the
+     failed-open exit (`wp_kshr_redir_arm_g`, `wp_kshm_child_redir_g`,
+     `_alloc_redir_g`), the PAID open-failed diagnostic and the call's adapter
+     (`UkShRedirPaid.v`), the child's whole walk with no `sh_deps`
+     (`UkShRedirChild.wp_kshm_child_file_redir`).
+   - [ ] **2d** the round's lemma (`Hchild_redir`) — **BLOCKED ON THE SLOT**
+     (item 2¾); K1 no longer blocks it (item 2½ landed).
+2½. [x] **HSTR** — LANDED: K1's `Hstr` (a pure ∀ over every abstract view,
+   false as stated) is gone from `UEchoFile` (`ef_chain`, both
+   `ef_w_of_deed`s, `ef_pay_from`, `efile_uexec_slot_at`,
+   `efile_image_entry`; `ef_relay4` deleted).  The partial arm is built from
+   the CURSOR: `FsAbsWritePart.awrite_part_adv_mapped_straddle` (at a mapped
+   source the arm may ASSUME the chunk straddles a block) and
+   `FileWritePart.file_awrite_part_adv` (a fired cursor agrees the offset to
+   the content's length, a line's worth — refuted; a tainted one pays).  What
+   the chain takes instead is `nb ≤ EchoDisc.line_max`.
+2¾. **SLOT-WS** (generic sh tier, NEW, needs the owner's ruling): the fork
+   slot says `last_ws I = ws` and at `echo a > f` the body has FOUR words
+   while the typed line has TWO (`vm_compute`d).  So
+   `FileReadInst.file_disc_line`'s `Hws` is false at `LEchoF`, the loop
+   reaches the fork only tainted at a redirect line, and
+   `UkShRedirBody.sh_redir_child_law`'s premises (`ushs_line_is ws …` and
+   `ws = last_ws I`) are contradictory — the law is vacuous.  Proposed: the
+   slot's index is `uline_ws (uline_of (ush_lastbody I))`;
+   `ush_gets_done_line_at` takes `lu = uline_of J`;
+   `ushf_child_law_at`'s `⌜ws = last_ws I⌝` moves with it; echo's consumers
+   bridge by `FileDisc.fbody_ok_echo`.  PROGRAM-STREAM.md stretch 9 has the
+   measurement.
+3. **CAT-CHILD** — measured at its first step (stretch 9): it starts in the
+   kernel stream — the read-open's `-1` arm
+   (`FileOpen.file_open_recv_file` → `UkFileOpen` → `UkCatDeed` →
+   `cat_open_hand`) returns NO deed fractions, so cat's `RCNoOpen` exit
+   cannot return the deed; and the payload's deed conjunct needs a taint
+   arm the ruling's text omits.  Then: item (4), RULING CAT-DEED: `catq_cat` returns the whole
+   deed, `Hchild_cat` becomes a lemma; item (5): `sh_round_holds_file`.
+4. **INIT-FILE assembly** — `UInitFileCC.v` (in the program-tier worktree,
+   uncommitted; its `fri_arms_u`/`fri_arms_at` must follow 2a: `rk_arms`'s
+   three tag premises, `fwc_rresw_at`, `file_read_inst g Htag`, the era's
+   first residue at `flw`'s left arm): conjunct 5 is HOLD-POS's read law; conjunct 10 needs the
+   wider `cc_wp` (the round-open credential WITH the hold); then
+   `file_Hinit_boot`.
+5. **ADEQUACY close** — `FileAssumptions.v`, `make audit-file-only`.
+
 ## Rules for every lane
 
 - Build on the VM (`./gcp-rocq/run-on-gcp --check <file>` while

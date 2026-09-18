@@ -85,6 +85,7 @@ Require Import FsCfg.              (* [fscfg]: the fs configuration is AMBIENT *
 Require Import SpecConsolewrite.   (* [cons_out_chain_of_licence]: the
                                       generic write's console arm, paid out
                                       of the supply's OUTPUT LICENCE *)
+Require Import UserPerm.   (* [uperm], [perm_of] -- RULING WR-TB *)
 Require Import SpecFilewrite.      (* [filewrite_in]: the one keyed input *)
 Require Import SpecFileread.       (* [fileread_in]: read's keyed input *)
 Require Import PipeQueue.          (* [pipe_rpay_taint] / [pipe_wpay_taint]: the pipe arms' price, paid by [RiscvPtsto.app_taint] *)
@@ -370,9 +371,10 @@ Section FsAbsInvFire.
      lemma already takes for the pipe arm buys the licence too
      ([WpUart.cons_licence_of_taint]). *)
   Lemma fsabs_filewrite_in (st : fdstate) (n : Z)
+      (pmv : gmap (mword 27) uperm) (sz : Z) (lz : bool)
       (M : gmap Z (bv 8)) (ua : mword 64) :
     app_sup -∗ app_taint -∗
-    |==> filewrite_in st n M ua (fun _ => True%I) (fun _ _ => True%I).
+    |==> filewrite_in pmv sz lz st n M ua (fun _ => True%I) (fun _ _ => True%I).
   Proof using .
     iIntros "#Hsup #Htaint".
     iDestruct (cons_licence_of_taint with "Htaint") as "#Hlic".

@@ -1086,7 +1086,12 @@ Section ProofSysUnlinkW5F.
             (su_au_nondir_dec (era_node dni bmi dati) Hipnd)
             (su_au_parent_row_era dnd dnW bmd bm' datd data'
                (dir_bname datd kk) 0%nat Htydz Hty'v
-               ltac:(rewrite /fn_nlink !era_node_rec Hnl'v; lia)
+               ltac:(rewrite /fn_nlink !era_node_rec Hnl'v;
+                       (* [n = n - 0]: say it, do not call [lia] -- in an
+                          argument-position goal the context cannot be
+                          cleared, and this one closer was 4.0s of the
+                          sentence's 4.5s *)
+                       exact (eq_sym (Nat.sub_0_r _)))
                ltac:(rewrite Nat.sub_0_r; exact (mkf_era_live dnd bmd datd Hdplive))
                Hentsd)
             Htynz0

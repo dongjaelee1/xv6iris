@@ -464,41 +464,117 @@ Section UkShRedir.
      shape [UkShParse]'s walks already take ([Pex] there).  So the arm
      takes the pair, and hands the lend BACK on the success arm, where
      nothing was spent. *)
-  Lemma wp_kshr_redir_arm_at (N : uk_names Σ) `{!ukn_const N}
+  (* THE ARM, GENERIC IN THE CALL AND IN THE FAILURE EXIT (the PROGRAM
+     STREAM, stretch 9).  Two things vary between the arm's consumers and
+     neither is the walk's business:
+       - WHAT THE OPEN IS HANDED.  The landed call takes nothing; the file
+         application's takes the DEED and the name's bytes as the image the
+         ecall reads ([UkShRedirAns.ush_open_call2]).  So the call takes
+         the node's own file string and an abstract hand [H], and answers
+         with a payload on BOTH arms ([Kf]: a create may have fired before
+         [filealloc] failed).
+       - HOW THE FAILED OPEN'S DIAGNOSTIC IS PAID.  The generic runner
+         prints on the free write law ([UkSh.sh_deps], which a verified
+         shell holds only under the taint); sh's paid child prints on the
+         era's credential.  So the arm STOPS at the diagnostic cut 0x10e
+         and hands its caller the run, the site's facts, the closed ledger
+         and [Kf].
+     The lend a paid caller holds is not a parameter at all: it rides in
+     the two continuations' closures. *)
+  Definition ush_open_ans_g (N : uk_names Σ) (l : list fdstate)
+      (K : fdtype -> iProp Σ) (Kf : iProp Σ) (r : mword 64) : iProp Σ :=
+    ((∃ ty : fdtype,
+        ⌜ r = (mword_of_int 1 : mword 64) ⌝ ∗
+        UserFd.ustd (ukn_fd N) (<[1%nat := FdOpen false true ty]> l) ∗ K ty)
+     ∨ (⌜ r = (mword_of_int (-1) : mword 64) ⌝ ∗
+        UserFd.ustd (ukn_fd N) l ∗ Kf))%I.
+
+  Definition ush_open_call_g (N : uk_names Σ) (cwdv : Z) (file : uarg)
+      (mode : Z) (l : list fdstate) (H : iProp Σ)
+      (K : fdtype -> iProp Σ) (Kf : iProp Σ) : iProp Σ :=
+    (∀ (h : CpuId) (m : regfile) (av : nat),
+       ⌜ m !!! Regidx a0_idx = (mword_of_int (ua_ptr file) : mword 64) ⌝ -∗
+       ⌜ m !!! Regidx a1_idx = (mword_of_int mode : mword 64) ⌝ -∗
+       UkShRun.ush_str (ukn_d N) file -∗
+       H -∗
+       shk_code (ukn_t N) -∗
+       UserCwd.ucwd (ukn_cwd N) cwdv -∗
+       UserFd.ustd (ukn_fd N) l -∗
+       urun N h m (mword_of_int ShSyms.open) av -∗
+       (∀ (h' : CpuId) (m' : regfile) (r : mword 64),
+          ⌜ ucallee_saved m m' ⌝ -∗
+          ⌜ m' !!! Regidx a0_idx = r ⌝ -∗
+          UserCwd.ucwd (ukn_cwd N) cwdv -∗
+          ush_open_ans_g N l K Kf r -∗
+          urun N h' m' (ret_pc (m !!! Regidx ra_idx)) av -∗
+          WP (Loop : expr riscv_lang)) -∗
+       WP (Loop : expr riscv_lang))%I.
+
+  (* the landed call is the generic one at an empty hand and no [-1] payload *)
+  Lemma ush_open_call_g_of (N : uk_names Σ) (cwdv : Z) (file : uarg)
+      (mode : Z) (l : list fdstate) (K : fdtype -> iProp Σ) :
+    ush_open_call N cwdv (ua_ptr file) mode l K -∗
+    ush_open_call_g N cwdv file mode l emp K emp.
+  Proof using .
+    iIntros "Hc". rewrite /ush_open_call /ush_open_call_g.
+    iIntros (h m av) "%Ha0 %Ha1 _ _ Hcode Hcwd Hstd Hrun Hcont".
+    iApply ("Hc" $! h m av with "[%//] [%//] Hcode Hcwd Hstd Hrun").
+    iIntros (h' m' r) "%Hcs %Hr Hcwd Hans Hrun".
+    iApply ("Hcont" $! h' m' r with "[%//] [%//] Hcwd [Hans] Hrun").
+    rewrite /ush_open_ans /ush_open_ans_g.
+    iDestruct "Hans" as "[Hfd | [%Hm1 Hstd]]"; [ iLeft; iExact "Hfd" | ].
+    iRight. iSplitR; [ by iPureIntro | ]. iFrame "Hstd".
+  Qed.
+
+  Lemma wp_kshr_redir_arm_g (N : uk_names Σ) `{!ukn_const N}
       (c1 : ushcmd) (file : uarg) (mode : Z)
       (h : CpuId) (m : regfile) (t cwdv : Z)
       (ld : list fdstate) (st1 : fdstate) (av : nat)
-      (K : fdtype -> iProp Σ) (Pex : iProp Σ) :
+      (H : iProp Σ) (K : fdtype -> iProp Σ) (Kf : iProp Σ) :
     0 <= mode < Z31 ->
     m !!! Regidx a0_idx = (mword_of_int t : mword 64) ->
     ld !! 1%nat = Some st1 ->
     st1 <> FdClosed ->
     (forall (rb wb : bool) (gp : PipeNames.pipe_names),
        st1 <> FdOpen rb wb (FdPipe gp)) ->
-    UkSh.sh_deps -∗
     shk_code (ukn_t N) -∗
     ush_jtab (ukn_t N) -∗
     ush_cmd (ukn_d N) t (URedir c1 file mode 1) -∗
     UserFd.ustd (ukn_fd N) ld -∗
     UserCwd.ucwd (ukn_cwd N) cwdv -∗
-    ush_open_call N cwdv (ua_ptr file) mode (<[1%nat := FdClosed]> ld) K -∗
-    □ (Pex -∗ ukn_pay N (-1)) -∗
-    Pex -∗
+    ush_open_call_g N cwdv file mode (<[1%nat := FdClosed]> ld) H K Kf -∗
+    H -∗
     urun N h m (mword_of_int ShSyms.runcmd) (6 + (UkShDiag.ush_Dg + av)) -∗
-    (∀ (h' : CpuId) (m' : regfile) (q : Z) (ty : fdtype),
+    ((∀ (h' : CpuId) (m' : regfile) (q : Z) (ty : fdtype),
        ⌜ m' !!! Regidx a0_idx = (mword_of_int q : mword 64) ⌝ -∗
        ush_cmd (ukn_d N) q c1 -∗
        UserFd.ustd (ukn_fd N)
          (<[1%nat := FdOpen false true ty]> (<[1%nat := FdClosed]> ld)) -∗
        UserCwd.ucwd (ukn_cwd N) cwdv -∗
        K ty -∗
-       Pex -∗
        urun N h' m' (mword_of_int ShSyms.runcmd) (UkShDiag.ush_Dg + av) -∗
-       WP (Loop : expr riscv_lang)) -∗
+       WP (Loop : expr riscv_lang))
+     (* THE FAILED OPEN, AT THE DIAGNOSTIC CUT: "open %s failed", exit(1).
+        ONE of the two fires, so they are an ADDITIVE pair: whatever the
+        caller holds (its lend) is available to both. *)
+     ∧
+     (∀ (h' : CpuId) (m' : regfile),
+       ⌜ UkShRun.ush_diag_at 0x10e m' ⌝ -∗
+       (* the site's argument, NAMED: [UkShRun.ush_diag_res] at 0x10e hides
+          which string [rcmd->file] is, and a PAID diagnostic has to know
+          its bytes (they are the era's alternative) *)
+       UkShRun.ush_ptr (ukn_d N) (uint (m' !!! Regidx s1_idx) + 16)
+         (ua_ptr file) -∗
+       UkShRun.ush_str (ukn_d N) file -∗
+       UserFd.ustd (ukn_fd N) (<[1%nat := FdClosed]> ld) -∗
+       UserCwd.ucwd (ukn_cwd N) cwdv -∗
+       Kf -∗
+       urun N h' m' (mword_of_int 0x10e) (UkShDiag.ush_Dg + av) -∗
+       WP (Loop : expr riscv_lang))) -∗
     WP (Loop : expr riscv_lang).
   Proof using .
     intros Hmode Ha0 Hst1 Hne Hnp.
-    iIntros "#Hdp #Hcode #Hjt #Htree Hstd Hcwd Hopen #Hpxw Hpex Hrun Hcont".
+    iIntros "#Hcode #Hjt #Htree Hstd Hcwd Hopen HH Hrun Hk".
     iDestruct (ush_jtab_ro with "Hjt") as "#Hro".
     iDestruct (ush_cmd_addr with "Htree") as %[Htr Ht8].
     assert (Ht4 : t mod 4 = 0)
@@ -659,7 +735,7 @@ Section UkShRedir.
                          (mword_of_int 0x104 : mword 64));
           apply bv_eq; vm_compute; reflexivity).
     iApply ("Hopen" $! h6 m6 ((UkShDiag.ush_Dg + av)%nat)
-              with "[%] [%] Hcode Hcwd Hstd Hrun").
+              with "[%] [%] Hfs HH Hcode Hcwd Hstd Hrun").
     { rewrite (Hm6 a0_idx ltac:(vm_compute; discriminate)). exact Ha0_5. }
     { rewrite (Hm6 a1_idx ltac:(vm_compute; discriminate))
               (Hm5 a1_idx ltac:(vm_compute; discriminate)). exact Ha1_4. }
@@ -672,7 +748,7 @@ Section UkShRedir.
       exact Hs1_4. }
     assert (Hs1u : uint (m7 !!! Regidx s1_idx) = t)
       by (rewrite Hs1_7; apply uint_moi; unfold Z64; lia).
-    iDestruct "Hans" as "[ (%ty & %Hr7 & Hstd & HK) | [%Hr7 Hstd] ]".
+    iDestruct "Hans" as "[ (%ty & %Hr7 & Hstd & HK) | (%Hr7 & Hstd & HKf) ]".
     - (* =============== the open SUCCEEDED: fd 1 is the file =============== *)
       (* ---- 0x104  bltz a0,0x10e -- NOT taken ---- *)
       iApply (wp_uk_btype0 N h7 m7 (mword_of_int 0x104)
@@ -721,7 +797,8 @@ Section UkShRedir.
                 with "[] Hrun").
       { iApply (uis_shk_10a with "Hcode"). }
       iIntros (hA) "Hrun".
-      iApply ("Hcont" $! hA _ q ty with "[%] Hqc Hstd Hcwd HK Hpex Hrun").
+      iDestruct "Hk" as "[Hcont _]".
+      iApply ("Hcont" $! hA _ q ty with "[%] Hqc Hstd Hcwd HK Hrun").
       rewrite (upd_ne m8 (Regidx ra_idx) (Regidx a0_idx) _
                  ltac:(vm_compute; discriminate)).
       exact (upd_eq m7 (Regidx a0_idx) (mword_of_int q : mword 64)).
@@ -737,18 +814,70 @@ Section UkShRedir.
                 with "[] Hrun").
       { iApply (uis_shk_104 with "Hcode"). }
       iIntros (h8) "Hrun".
-      (* ---- 0x10e: the diagnostic cut, [UkShDiag]'s third site ---- *)
-      iDestruct ("Hpxw" with "Hpex") as "Hpay".
-      iApply (UkShDiag.ush_diag_leaf_holds N h8 m7 0x10e av
-                ltac:(right; right; split;
-                      [ reflexivity | rewrite Hs1u; exact Ht8 ])
-                with "Hdp Hcode Hro [] Hpay Hrun").
-      rewrite /UkShRun.ush_diag_res.
-      destruct (decide ((0x10e : Z) = 0xda)) as [Hc | _];
-        [ exfalso; discriminate Hc | ].
-      destruct (decide ((0x10e : Z) = 0x10e)) as [_ | Hc];
-        [ | exfalso; exact (Hc eq_refl) ].
-      iExists file. rewrite Hs1u. iSplitR; [ iExact "Hfp" | iExact "Hfs" ].
+      (* ---- 0x10e: the diagnostic cut, which is the CALLER's ---- *)
+      iDestruct "Hk" as "[_ Hfail]".
+      iApply ("Hfail" $! h8 m7 with "[%] [] Hfs Hstd Hcwd HKf Hrun").
+      { right; right; split; [ reflexivity | rewrite Hs1u; exact Ht8 ]. }
+      rewrite Hs1u. iExact "Hfp".
+  Qed.
+
+  (* ...AND THE LANDED ARM, VERBATIM, as the generic one's instance: the
+     landed call at an empty hand, the failure exit on the free write law
+     ([UkShDiag.ush_diag_leaf_holds]) paid from the lend. *)
+  Lemma wp_kshr_redir_arm_at (N : uk_names Σ) `{!ukn_const N}
+      (c1 : ushcmd) (file : uarg) (mode : Z)
+      (h : CpuId) (m : regfile) (t cwdv : Z)
+      (ld : list fdstate) (st1 : fdstate) (av : nat)
+      (K : fdtype -> iProp Σ) (Pex : iProp Σ) :
+    0 <= mode < Z31 ->
+    m !!! Regidx a0_idx = (mword_of_int t : mword 64) ->
+    ld !! 1%nat = Some st1 ->
+    st1 <> FdClosed ->
+    (forall (rb wb : bool) (gp : PipeNames.pipe_names),
+       st1 <> FdOpen rb wb (FdPipe gp)) ->
+    UkSh.sh_deps -∗
+    shk_code (ukn_t N) -∗
+    ush_jtab (ukn_t N) -∗
+    ush_cmd (ukn_d N) t (URedir c1 file mode 1) -∗
+    UserFd.ustd (ukn_fd N) ld -∗
+    UserCwd.ucwd (ukn_cwd N) cwdv -∗
+    ush_open_call N cwdv (ua_ptr file) mode (<[1%nat := FdClosed]> ld) K -∗
+    □ (Pex -∗ ukn_pay N (-1)) -∗
+    Pex -∗
+    urun N h m (mword_of_int ShSyms.runcmd) (6 + (UkShDiag.ush_Dg + av)) -∗
+    (∀ (h' : CpuId) (m' : regfile) (q : Z) (ty : fdtype),
+       ⌜ m' !!! Regidx a0_idx = (mword_of_int q : mword 64) ⌝ -∗
+       ush_cmd (ukn_d N) q c1 -∗
+       UserFd.ustd (ukn_fd N)
+         (<[1%nat := FdOpen false true ty]> (<[1%nat := FdClosed]> ld)) -∗
+       UserCwd.ucwd (ukn_cwd N) cwdv -∗
+       K ty -∗
+       Pex -∗
+       urun N h' m' (mword_of_int ShSyms.runcmd) (UkShDiag.ush_Dg + av) -∗
+       WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+  Proof using .
+    intros Hmode Ha0 Hst1 Hne Hnp.
+    iIntros "#Hdp #Hcode #Hjt #Htree Hstd Hcwd Hopen #Hpxw Hpex Hrun Hcont".
+    iDestruct (ush_jtab_ro with "Hjt") as "#Hro".
+    iApply (wp_kshr_redir_arm_g N c1 file mode h m t cwdv ld st1 av
+              emp%I K emp%I Hmode Ha0 Hst1 Hne Hnp
+              with "Hcode Hjt Htree Hstd Hcwd [Hopen] [] Hrun [Hcont Hpex]").
+    - iApply (ush_open_call_g_of with "Hopen").
+    - done.
+    - iSplit.
+      + iIntros (h' m' q ty) "%Ha0' Hqc Hstd Hcwd HK Hrun".
+        iApply ("Hcont" $! h' m' q ty with "[%//] Hqc Hstd Hcwd HK Hpex Hrun").
+      + iIntros (h' m') "%Hat #Hfp #Hfs _ _ _ Hrun".
+        iDestruct ("Hpxw" with "Hpex") as "Hpay".
+        iApply (UkShDiag.ush_diag_leaf_holds N h' m' 0x10e av Hat
+                  with "Hdp Hcode Hro [] Hpay Hrun").
+        rewrite /UkShRun.ush_diag_res.
+        destruct (decide ((0x10e : Z) = 0xda)) as [Hc | _];
+          [ exfalso; discriminate Hc | ].
+        destruct (decide ((0x10e : Z) = 0x10e)) as [_ | Hc];
+          [ | exfalso; exact (Hc eq_refl) ].
+        iExists file. iSplitR; [ iExact "Hfp" | iExact "Hfs" ].
   Qed.
 
   (* ...and the landed shape: a walk whose exit payload IS free is the

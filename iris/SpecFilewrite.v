@@ -153,6 +153,7 @@ Require Import InodeRegion.
 Require Import IrefSlots.
 Require Import IcacheInv.
 Require Import IcacheEscrow.
+Require Import UserPerm.   (* [perm_of], [lazy_free], [uperm] -- RULING WR-TB *)
 Require Import UserPtTree.
 Require Import KvmSpec.
 Require Import ProcPtOwn.
@@ -655,6 +656,40 @@ Section SpecFilewrite.
         ∗ write_post_fail_at Γ i γo P n M ua Q))%I.
 
   (* =================================================================== *)
+  (*  THE WRITER'S TABLE GUARD (RULING WR-TB)                              *)
+  (* =================================================================== *)
+  (* WHAT A HELD CHAIN'S NODES MAY ASSUME ABOUT THE PAGE TABLE THEY ARE
+     FIRED AT, and it is not a predicate the program chooses.  Lane
+     WRITE-RELAY-3 asked for a free [TB : uptd -> Prop] on the [∀ P]; that
+     is not dischargeable, because the one place the program's choice and
+     the kernel's [P] meet -- [UexecExecInst.xv6_sbundle]'s row 16 -- is a
+     function of a [UexecSlot.uvis], which by construction has NO [uptd]
+     field (the page table is not user-visible state).  The guard that IS
+     dischargeable is the one the key's own three rows already determine,
+     and it is exactly what [UEchoFile.ef_relay4] needs to refute the
+     partial arm: the table is well formed, its permission map at the
+     break IS the key's, and -- when the key says the break is not lazy --
+     its free tail is free.  The kernel proves all three off [ProcInv]'s
+     own readings of [proc_priv]; the program assumes them. *)
+  Definition wr_tb (pmv : gmap (mword 27) uperm) (sz : Z) (lz : bool)
+      (P : uptd) : Prop :=
+    ProcPtOwn.proc_pt_wf P
+    /\ perm_of (ud_um P) sz = pmv
+    /\ (lz = false -> lazy_free (ud_um P) sz).
+
+  (* THE VACUITY CHECK (the bar's rule for a new guard): the guard is not
+     free -- a client cannot instantiate it at [False] and walk away with a
+     chain it never has to pay, because the KERNEL is what discharges it,
+     and at the key's own three values it always can. *)
+  Example vacuity_wr_tb_not_empty (P : uptd) (sz : Z) :
+    ProcPtOwn.proc_pt_wf P ->
+    wr_tb (perm_of (ud_um P) sz) sz true P.
+  Proof using .
+    intro Hwf. rewrite /wr_tb.
+    split; [ exact Hwf | split; [ reflexivity | intro Hc; discriminate Hc ] ].
+  Qed.
+
+  (* =================================================================== *)
   (*  THE HELD ROW'S ARMS (lanes OFF-LINK-4/5; design/app-file.md SS3,      *)
   (*  SS3.5)                                                               *)
   (* =================================================================== *)
@@ -682,10 +717,23 @@ Section SpecFilewrite.
      THE MATCH IS OUTSIDE THE [∀ P] on both arms, so WRITE-RELAY-3's guard
      ([∀ P, ⌜TB P⌝ -∗]) goes in front of each chain without restating
      this. *)
-  Definition filewrite_in_held (i : Z) (γo : gname) (n : Z)
+  Definition filewrite_in_held (pmv : gmap (mword 27) uperm) (sz : Z)
+      (lz : bool) (i : Z) (γo : gname) (n : Z)
       (M : gmap Z (bv 8)) (ua : mword 64) (Q : nat -> iProp Σ) : iProp Σ :=
-    ((∀ P : uptd, awrite_chain_adv (fs_gamma_L fsc_fs) appE i γo M ua P n
-                    Q 0%nat (wchunks n))
+    ((* THE CHAIN, UNDER THE WRITE GUARD (RULING WR-TB).  The guard is the
+        three facts about the page table the fire will run on, stated at
+        the three USER-VISIBLE values the key already fixes; the KERNEL is
+        what discharges it, at [ProofFilewriteChain.fw_au_st_init].
+        NOTHING SITS BESIDE THE CHAIN.  An earlier draft put an unguarded
+        [Q 0%nat] here so that the [-1] exits could hand the cursor back
+        without naming a table; that made the client pay its cursor TWICE
+        (once as [Q 0], once inside the chain), which no client holding a
+        single cursor can do.  The [-1] exits instantiate the guard
+        instead -- they are the kernel, so they have the table
+        ([filewrite_extra_neg]). *)
+      (∀ P : uptd, ⌜wr_tb pmv sz lz P⌝ -∗
+                   awrite_chain_adv (fs_gamma_L fsc_fs) appE i γo M ua P n
+                     Q 0%nat (wchunks n))
      ∨ (awrite_chain (fs_gamma_L fsc_fs) appE i γo M ua n Q 0%nat (wchunks n)
         ∗ app_taint))%I.
 
@@ -836,7 +884,8 @@ Section SpecFilewrite.
      the match keeps its [decide]: what is REPORTED is the console's arm
      alone, because only there does the caller know the callee was
      consolewrite.) *)
-  Definition filewrite_in (st : fdstate) (n : Z)
+  Definition filewrite_in (pmv : gmap (mword 27) uperm) (sz : Z) (lz : bool)
+      (st : fdstate) (n : Z)
       (M : gmap Z (bv 8)) (ua : mword 64) (Q : nat -> iProp Σ)
       (* THE PIPE ARM'S OBSERVATION FAMILY (design/pipe.md, "The byte
          queue"): what the caller asks to be told if its write stops at
@@ -851,7 +900,7 @@ Section SpecFilewrite.
     | FdOpen _ true (FdInode i γo OffParked) =>
         awrite_chain (fs_gamma_L fsc_fs) appE i γo M ua n Q 0%nat (wchunks n)
     | FdOpen _ true (FdInode i γo OffHeld) =>
-        filewrite_in_held i γo n M ua Q
+        filewrite_in_held pmv sz lz i γo n M ua Q
     | FdOpen _ true (FdDevice _) =>
         cons_out_chain (S gen_id) M ua Q 0%nat (Z.to_nat n)
     (* the pipe: the caller's links over the byte queue at its cursor, one
@@ -914,41 +963,42 @@ Section SpecFilewrite.
      a walk that gets its row's mode off [FileInvDefs.fdstate_ok] holds: at
      PARK the landed chain, at HAND [filewrite_in_held]'s two arms.  One
      name, so [ProofFilewrite]'s entry does not have to match on [st]. *)
-  Definition filewrite_in_inode_om (om : offmode) (i : Z) (γo : gname) (n : Z)
+  Definition filewrite_in_inode_om (pmv : gmap (mword 27) uperm) (sz : Z)
+      (lz : bool) (om : offmode) (i : Z) (γo : gname) (n : Z)
       (M : gmap Z (bv 8)) (ua : mword 64) (Q : nat -> iProp Σ) : iProp Σ :=
     match om with
     | OffParked =>
         awrite_chain (fs_gamma_L fsc_fs) appE i γo M ua n Q 0%nat (wchunks n)
-    | OffHeld => filewrite_in_held i γo n M ua Q
+    | OffHeld => filewrite_in_held pmv sz lz i γo n M ua Q
     end.
 
-  Lemma filewrite_in_inode_any rb om i γo n M ua Q Qe :
-    filewrite_in (FdOpen rb true (FdInode i γo om)) n M ua Q Qe -∗
-    filewrite_in_inode_om om i γo n M ua Q.
+  Lemma filewrite_in_inode_any rb om i γo n M ua Q Qe (pmv : gmap (mword 27) uperm) (sz : Z) (lz : bool) :
+    filewrite_in pmv sz lz (FdOpen rb true (FdInode i γo om)) n M ua Q Qe -∗
+    filewrite_in_inode_om pmv sz lz om i γo n M ua Q.
   Proof using . destruct om; by iIntros "$". Qed.
 
-  Lemma filewrite_in_inode rb i γo n M ua Q Qe :
-    filewrite_in (FdOpen rb true (FdInode i γo OffParked)) n M ua Q Qe -∗
+  Lemma filewrite_in_inode rb i γo n M ua Q Qe (pmv : gmap (mword 27) uperm) (sz : Z) (lz : bool) :
+    filewrite_in pmv sz lz (FdOpen rb true (FdInode i γo OffParked)) n M ua Q Qe -∗
     awrite_chain (fs_gamma_L fsc_fs) appE i γo M ua n Q 0%nat (wchunks n).
   Proof using . by iIntros "$". Qed.
 
   (* ...and the HELD row's reading, the one a held leaf hands in and the one
      the fire site reads back (lane OFF-LINK-4). *)
-  Lemma filewrite_in_inode_held rb i γo n M ua Q Qe :
-    filewrite_in (FdOpen rb true (FdInode i γo OffHeld)) n M ua Q Qe -∗
-    filewrite_in_held i γo n M ua Q.
+  Lemma filewrite_in_inode_held rb i γo n M ua Q Qe (pmv : gmap (mword 27) uperm) (sz : Z) (lz : bool) :
+    filewrite_in pmv sz lz (FdOpen rb true (FdInode i γo OffHeld)) n M ua Q Qe -∗
+    filewrite_in_held pmv sz lz i γo n M ua Q.
   Proof using . by iIntros "$". Qed.
 
-  Lemma filewrite_in_of_inode_held rb i γo n M ua Q Qe :
-    filewrite_in_held i γo n M ua Q -∗
-    filewrite_in (FdOpen rb true (FdInode i γo OffHeld)) n M ua Q Qe.
+  Lemma filewrite_in_of_inode_held rb i γo n M ua Q Qe (pmv : gmap (mword 27) uperm) (sz : Z) (lz : bool) :
+    filewrite_in_held pmv sz lz i γo n M ua Q -∗
+    filewrite_in pmv sz lz (FdOpen rb true (FdInode i γo OffHeld)) n M ua Q Qe.
   Proof using . by iIntros "$". Qed.
 
   (* the device arm's input is now the OUTPUT CHAIN (lane OUT-FUPD), the
      inode arm's twin: one node per byte instead of a trace seed, and at
      EVERY major because the cell is null-or-consolewrite at every major *)
-  Lemma filewrite_in_cons rb (mj : Z) n M ua Q Qe :
-    filewrite_in (FdOpen rb true (FdDevice mj)) n M ua Q Qe -∗
+  Lemma filewrite_in_cons rb (mj : Z) n M ua Q Qe (pmv : gmap (mword 27) uperm) (sz : Z) (lz : bool) :
+    filewrite_in pmv sz lz (FdOpen rb true (FdDevice mj)) n M ua Q Qe -∗
     cons_out_chain (S gen_id) M ua Q 0%nat (Z.to_nat n).
   Proof using . by iIntros "$". Qed.
 
@@ -978,8 +1028,8 @@ Section SpecFilewrite.
 
   (* the pipe arm: the chain's stop node comes back on the WRITABLE end
      ([PipeQueue.pipe_wpost]); an unwritable pipe descriptor pays nothing *)
-  Lemma filewrite_in_pipe rb (γp : pipe_names) n M ua Q Qe :
-    filewrite_in (FdOpen rb true (FdPipe γp)) n M ua Q Qe -∗
+  Lemma filewrite_in_pipe rb (γp : pipe_names) n M ua Q Qe (pmv : gmap (mword 27) uperm) (sz : Z) (lz : bool) :
+    filewrite_in pmv sz lz (FdOpen rb true (FdPipe γp)) n M ua Q Qe -∗
     pipe_wpay (pn_queue γp) M ua Q Qe (Z.to_nat n).
   Proof using . by iIntros "$". Qed.
 
@@ -1021,11 +1071,10 @@ Section SpecFilewrite.
      offset (lanes OFF-LINK-4/5). *)
   Lemma write_arms_at_neg_held Γ i γo (P : uptd) n M ua Q :
     (n < 0)%Z ->
-    awrite_chain_adv Γ appE i γo M ua P n Q 0%nat (wchunks n) -∗
+    Q 0%nat -∗
     write_arms_at Γ i γo P n M ua Q (mword_of_int (-1) : mword 64).
   Proof using .
     intros Hn. iIntros "Hc".
-    iDestruct (awrite_chain_adv_cursor with "Hc") as "Hc".
     rewrite /write_arms_at. iRight.
     iSplitR; [done |]. rewrite /write_post_fail_at.
     rewrite (wchunks_nonpos n ltac:(lia)).
@@ -1056,22 +1105,30 @@ Section SpecFilewrite.
     simpl. iExact "Hc".
   Qed.
 
-  Lemma filewrite_extra_neg gn P st n M ua Q Qe :
+  (* THE SIGN GUARD'S EXIT TAKES THE WRITE GUARD (RULING WR-TB).  At a held
+     row the caller's input is the chain UNDER the guard, and this exit has
+     to hand the cursor back; it is the kernel, so it pays the guard at the
+     table it is running on, and [wchunks n] is 0 at a negative count, so
+     what comes out of the chain IS the cursor. *)
+  Lemma filewrite_extra_neg gn P st n M ua Q Qe (pmv : gmap (mword 27) uperm) (sz : Z) (lz : bool) :
     (n < 0)%Z ->
-    filewrite_in st n M ua Q Qe -∗
+    wr_tb pmv sz lz P ->
+    filewrite_in pmv sz lz st n M ua Q Qe -∗
     filewrite_extra gn P st n M ua Q Qe (mword_of_int (-1) : mword 64).
   Proof using .
-    intros Hn. destruct st as [| rb wb ty]; [by iIntros |].
+    intros Hn Htb. destruct st as [| rb wb ty]; [by iIntros |].
     destruct wb; [| by iIntros].
     destruct ty as [i γo om | γp | mj]; rewrite /filewrite_in /filewrite_extra.
     - destruct om as [|].
       + iIntros "Hc". by iApply (write_arms_at_neg with "Hc").
-      + (* the HELD row's two arms: the link's own cursor, or the plain
+      + (* the HELD row's two arms: the guarded chain, or the plain
            chain beside the taint (lanes OFF-LINK-4/5) *)
         rewrite /filewrite_in_held.
         iIntros "[Hc | [Hc _]]".
-        * iApply (write_arms_at_neg_held (fs_gamma_L fsc_fs) i γo P n M ua Q Hn).
-          iApply ("Hc" $! P).
+        * iDestruct ("Hc" $! P with "[//]") as "Hc".
+          iEval (rewrite (wchunks_nonpos n ltac:(lia))) in "Hc".
+          by iApply (write_arms_at_neg_held (fs_gamma_L fsc_fs) i γo P n M ua Q Hn
+                       with "Hc").
         * by iApply (write_arms_at_neg with "Hc").
     - (* a negative request never reaches the pipe: the payment comes back
          at the empty count *)
@@ -1084,9 +1141,9 @@ Section SpecFilewrite.
   (* ...and at a NON-console major nothing is armed, so the chain is simply
      dropped: what the caller justified was pushed (or not) by a callee this
      layer cannot name, and there is nothing true left to say about it. *)
-  Lemma filewrite_extra_dev_drop gn P rb (mj : Z) n M ua Q Qe r :
+  Lemma filewrite_extra_dev_drop gn P rb (mj : Z) n M ua Q Qe r (pmv : gmap (mword 27) uperm) (sz : Z) (lz : bool) :
     mj <> ConsoleInv.CONSOLE ->
-    filewrite_in (FdOpen rb true (FdDevice mj)) n M ua Q Qe -∗
+    filewrite_in pmv sz lz (FdOpen rb true (FdDevice mj)) n M ua Q Qe -∗
     filewrite_extra gn P (FdOpen rb true (FdDevice mj)) n M ua Q Qe r.
   Proof using .
     intros Hne. rewrite /filewrite_extra.
@@ -1096,6 +1153,7 @@ Section SpecFilewrite.
 End SpecFilewrite.
 
 Definition wp_filewrite_sconf_body
+    (pmv : gmap (mword 27) uperm) (sz : Z) (lz : bool)
     `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
  (γf : gname)                    (* kalloc, the file table  *)
     (γs : list gname) (j : nat) (γlp : gname)    (* the running process     *)
@@ -1121,6 +1179,12 @@ Definition wp_filewrite_sconf_body
      so a1 is the base the whole run is pinned at; a [let], not a premise,
      so no caller moves. *)
   let uaddr : mword 64 := m !!! Regidx (mword_of_int 11 : mword 5) in
+  (* RULING WR-TB: the table guard, at the three key values the row is
+     stated at and the table the walk will fire the chain on.  The caller
+     proves it off [ProcInv.proc_priv_pt_wf] and [proc_priv_lazy] and the
+     permission map's own definition; the kernel spends it at exactly one
+     place, [ProofFilewriteChain.fw_au_st_init]. *)
+  wr_tb pmv sz lz (pv_upt (us_V U)) ->
   (filewrite_stack <= K)%nat ->
   (k < NFILE)%nat ->
   (j < NPROC)%nat ->
@@ -1193,7 +1257,7 @@ Definition wp_filewrite_sconf_body
      retag pays the application's claim out of the chain's own node
      ([FsAbsWriteFire.awrite_full_at]'s [app_step]), so this contract asks
      for no blanket license of its own. *)
-  filewrite_in st n (us_M U) uaddr Q Qe -∗
+  filewrite_in pmv sz lz st n (us_M U) uaddr Q Qe -∗
   (* THE CROSSING IS [true], NOT [b].  Every arm of this function parks, and
      the porting guide's rule is that a PARKING function's [wp_next] index is
      [true] unconditionally -- a swtch moves the hart whatever SIE was doing.
@@ -1238,6 +1302,8 @@ Module Type FILEWRITE.
       (fn : fwrite_names)
       (pidv : mword 32) (U : ustate)
       (m : regfile) (K : nat) (eb : bool) (n : Z) (b : bool) (lks : gset string)
-      (Q : nat -> iProp Σ) (Qe : nat -> pipe_st -> iProp Σ),
-      wp_filewrite_sconf_body γf γs j γlp k q st fn pidv U m K eb n b lks Q Qe.
+      (Q : nat -> iProp Σ) (Qe : nat -> pipe_st -> iProp Σ)
+      (pmv : gmap (mword 27) uperm) (szv : Z) (lzv : bool),
+      wp_filewrite_sconf_body pmv szv lzv γf γs j γlp k q st fn pidv U m K eb n b
+        lks Q Qe.
 End FILEWRITE.

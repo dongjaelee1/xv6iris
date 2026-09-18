@@ -1,6 +1,6 @@
 (* ===================================================================== *)
 (*  UEchoPipe.v -- ECHO'S ENTRY AT fd 1 = A PIPE WRITE END               *)
-(*  (design/app-pipe.md SS5.2, lane ECHO-PIPE.)                           *)
+(*  (design/app-pipe.md SS5.2; lanes ECHO-PIPE and ECHO-PIPE-2.)          *)
 (*                                                                       *)
 (*  [UEchoOut.v] is echo's entry at fd 1 = the CONSOLE and [UEchoFile.v]  *)
 (*  its (skeleton) twin at fd 1 = a file; this is the twin at fd 1 = the  *)
@@ -18,41 +18,37 @@
 (*  this file takes no link and no stage.                                *)
 (*                                                                       *)
 (*  ------------------------------------------------------------------- *)
-(*  THE ONE WALL, and it is this lane's finding (see [ep_derail] below).  *)
+(*  THE SHORT WRITE, and why this file no longer names a premise for it.  *)
 (*                                                                       *)
-(*  [pipe_wpost] lets a write STOP SHORT for two reasons a mapped source  *)
-(*  cannot refute: the writer was killed, and the READ END IS SHUT        *)
-(*  ([ps_ro s = false], the [PExecR] world).  Both hand the cursor back   *)
-(*  at [c + k] with [k < n] -- and from there echo's NEXT write is        *)
-(*  UNPAYABLE.  echo ignores write's return and goes on to the next       *)
-(*  chunk, whose bytes are the line's at offset [c + n]; a [pipe_wlink]   *)
-(*  built from [PipeProto.pipe_inv] must re-establish (P1)                *)
-(*  [ps_ws s `prefix_of` L], and appending [L !!! (c+n+j)] to             *)
-(*  [take (c+k) L] is not a prefix of [L] unless [k = n].  The payment    *)
-(*  [pipe_wpay] is [chain \/ app_taint] and echo holds neither.           *)
+(*  [pipe_wpost] lets a write STOP SHORT for three reasons.  The copy-in  *)
+(*  fault is REFUTED here, by the caller's own mapped source run          *)
+(*  ([UkRunSys.usrc_ok]'s second conjunct, which the write stub hands     *)
+(*  back).  The READ END SHUT ([ps_ro s = false], design SS4.2's [PExecR]  *)
+(*  world) leaves echo's cursor BEHIND its line offset, and from there no *)
+(*  cursor-carrying chain can be rebuilt -- lane ECHO-PIPE's wall.  Since *)
+(*  SS3.1b it does not have to be: the writer's own observation node SETS   *)
+(*  (P4)'s one-shot ([PipeProto.pipe_wQe], [pipe_wQe_ro_shot]), and from  *)
+(*  [ro_shot] every later write is payable with NO cursor, NO bytes and   *)
+(*  NO bound ([pipe_wpay_of_inv_after_short], every link vacuous against  *)
+(*  the read-open premise PQ-FLAG-2 put on [pipe_wlink]).  So [ep_halt]   *)
+(*  CARRIES THE SHOT and pays for itself; [ep_derail] is gone.            *)
 (*                                                                       *)
-(*  So the protocol AS LANDED has no continuation for a derailed writer,  *)
-(*  and this file names exactly the missing capability -- [ep_derail],    *)
-(*  [once the line and the pipe have diverged, a further write is still   *)
-(*  payable and leaves you diverged] -- as a premise of the entry, IN     *)
-(*  THE ENTRY'S OWN [Pay] so that the gap is visible at the statement.    *)
-(*  It is not derivable from [pipe_inv], and not refutable either (a      *)
-(*  holder cannot fire its own link: [pipe_wlink] wants the KERNEL's      *)
-(*  [pipe_qauth]).  [ep_pay_of_alloc] below is the anti-vacuity exhibit:  *)
-(*  every OTHER conjunct of the lend is minted at [pipe(2)] itself.  The  *)
-(*  routes out are priced in the lane's Findings block: a DERAIL arm on   *)
-(*  (P1) is the one that works; a read-end liveness observation is        *)
-(*  REFUTED (cat closes the read end before sh reaps, so any box-shaped   *)
-(*  [the read end is open] is eventually false); and the KILL half of the *)
-(*  problem folds into the taint, which the kernel's trap tail already    *)
-(*  pairs with [ChildTok.kill_shot].  Everything else here is proved.     *)
+(*  THE ONE ARM THIS FILE STILL CANNOT PAY is the KILL: [pipe_wpost]'s    *)
+(*  kill arm hands only [Rk = ChildTok.kill_shot gn], and a writer can    *)
+(*  build nothing from that.  It enters as ONE NAMED PREMISE, in the same *)
+(*  shape [UCatPipe]'s round takes on the read side --                    *)
+(*  [box (forall gn, ChildTok.kill_shot gn -* app_taint)] -- because a    *)
+(*  kill TAINTS the application (design/applications.md: the taint is the *)
+(*  application's kill price).  Lane KILL-TAINT retires it on both sides  *)
+(*  at once.  It is a premise of the ENTRY and NOT of [ep_pay]: it is a   *)
+(*  fact about the kernel and the claim, not a resource sh lends.         *)
 (*                                                                       *)
-(*  WHAT THE EXIT PAYLOAD SAYS, in consequence: [ep_ok pn L (length L)] --*)
-(*  either the cursor at the line's end (which IS [the line is in],       *)
-(*  [pws_lb pn L], design SS4.2's [PRan] arm) or the HALT: some cursor     *)
-(*  [c <= length L], or the taint.  [PipeProto.pipe_payL] has arms only   *)
-(*  for the two ENDS of that range ([pws_lb pn L] and [wtok pn]); see     *)
-(*  [ep_exit_payL] below and the Findings block.                          *)
+(*  WHAT THE EXIT PAYLOAD SAYS: [ep_ok pn L (length L)] -- the cursor at  *)
+(*  the line's end (which IS [the line is in], [pws_lb pn L], design      *)
+(*  SS4.2's [PRan] arm) or the HALT: a mid-line cursor WITH the shot,      *)
+(*  which is exactly [PipeProto.pipe_payL]'s third arm, or the taint.     *)
+(*  [ep_exit_payL] is that reading, and sh closes the round on it with    *)
+(*  the three-armed [pipe_round_reading].                                 *)
 (* ===================================================================== *)
 From Stdlib Require Import ZArith Bool Lia List.
 From stdpp Require Import gmap list bitvector.definitions.
@@ -151,8 +147,14 @@ Section UEchoPipe.
      application is tainted.  Nothing about the pipe's contents is claimed
      -- which is exactly design SS4.2's [PExecR] world, where the console
      shows the right child's diagnostic and the pipe is irrelevant. *)
+  (* ...AND IT CARRIES (P4)'S SHOT (lane PIPE-PROTO-2): the only way a
+     write stops short without the taint is the READ END SHUT, and the
+     writer's own observation node records that as [ro_shot pn].  The shot
+     is what makes the halt SELF-FUNDING -- every later write is paid from
+     it by [PipeProto.pipe_wpay_of_inv_after_short] -- and it is what makes
+     the halt READABLE by sh, since it is [pipe_payL]'s third arm. *)
   Definition ep_stuck (pn : pnames) (L : list (bv 8)) : iProp Σ :=
-    (∃ c : nat, ⌜(c <= length L)%nat⌝ ∗ ep_cur pn L c)%I.
+    (∃ c : nat, ⌜(c <= length L)%nat⌝ ∗ ep_cur pn L c ∗ ro_shot pn)%I.
 
   Definition ep_halt (pn : pnames) (L : list (bv 8)) : iProp Σ :=
     (ep_stuck pn L ∨ app_taint)%I.
@@ -160,31 +162,6 @@ Section UEchoPipe.
   (* WHAT HOLDS BETWEEN TWO OF ECHO'S WRITES. *)
   Definition ep_ok (pn : pnames) (L : list (bv 8)) (c : nat) : iProp Σ :=
     (ep_cur pn L c ∨ ep_halt pn L)%I.
-
-  (* ------------------------------------------------------------------- *)
-  (*  THE PROTOCOL'S MISSING ARM (this lane's finding; see the header).    *)
-  (*                                                                     *)
-  (*  A derailed writer can pay NOTHING: [pipe_wpay] is [chain \/ taint], *)
-  (*  the chain's links must re-establish (P1) and the bytes no longer    *)
-  (*  continue the pipe's contents.  This is the one capability that      *)
-  (*  closes echo's walk, stated at the smallest shape that does it: from *)
-  (*  a halted cursor, any write of any run is payable and leaves you     *)
-  (*  halted.  It is PERSISTENT (a [box]) because echo needs it at every  *)
-  (*  one of its four calls.                                             *)
-  (*                                                                     *)
-  (*  IT IS NOT DERIVABLE FROM [pipe_inv] AS LANDED, and it is not        *)
-  (*  vacuous either: a (P1) with a DERAIL arm supplies it in one step.   *)
-  (* ------------------------------------------------------------------- *)
-  Definition ep_derail (pn : pnames) (γp : pipe_names) (L : list (bv 8))
-      : iProp Σ :=
-    (□ ∀ (M : gmap Z (bv 8)) (ua : mword 64) (n : nat),
-        ep_stuck pn L -∗
-        pipe_wpay (pn_queue γp) M ua
-          (fun _ : nat => ep_halt pn L)
-          (fun (_ : nat) (_ : pipe_st) => ep_halt pn L) n)%I.
-
-  Global Instance ep_derail_persistent pn γp L : Persistent (ep_derail pn γp L).
-  Proof using . rewrite /ep_derail. apply _. Qed.
 
   (* WHAT CROSSES THE ENTRY UNTOUCHED: the side token the runcmd child lent
      its LEFT child (design SS4.2, as amended) and the era's console
@@ -200,34 +177,32 @@ Section UEchoPipe.
     ep_car pn L (length L).
 
   (* THE LEND [ExecEntry.image_entry]'s [Pay] slot carries: the protocol's
-     handle, the missing arm, the frame, and the write permit at ZERO with
-     the empty lower bound (design SS5.2's [Pay], with [ep_derail] added). *)
+     handle, the frame, and the write permit at ZERO with
+     the empty lower bound -- design SS5.2's [Pay] exactly. *)
   Definition ep_pay (pn : pnames) (γp : pipe_names) (L : list (bv 8))
       : iProp Σ :=
-    (pipe_inv pn γp L ∗ ep_derail pn γp L ∗ ep_frame pn
-     ∗ wcur pn 0%nat ∗ pws_lb pn [])%I.
+    (pipe_inv pn γp L ∗ ep_frame pn ∗ wcur pn 0%nat ∗ pws_lb pn [])%I.
 
   Lemma ep_car_of_pay (pn : pnames) (γp : pipe_names) (L : list (bv 8)) :
-    ep_pay pn γp L -∗
-    pipe_inv pn γp L ∗ ep_derail pn γp L ∗ ep_car pn L 0%nat.
+    ep_pay pn γp L -∗ pipe_inv pn γp L ∗ ep_car pn L 0%nat.
   Proof using .
     rewrite /ep_pay /ep_car /ep_ok /ep_cur.
-    iIntros "(#Hinv & #Hd & Hfr & Hw & Hlb)".
-    iFrame "Hinv Hd Hfr". iLeft. rewrite take_0. iFrame "Hw Hlb".
+    iIntros "(#Hinv & Hfr & Hw & Hlb)".
+    iFrame "Hinv Hfr". iLeft. rewrite take_0. iFrame "Hw Hlb".
   Qed.
 
-  (* ...AND THE ANTI-VACUITY EXHIBIT: EVERYTHING in echo's lend EXCEPT the
-     missing arm is minted at [pipe(2)] itself ([PipeProto.pipe_proto_alloc],
-     which is [UkReadPipe.wp_uk_pipe_read_end]'s registrar premise), with
-     the rest of the quintuple -- the registration, the reader's permit and
-     the right side token -- left over for the registry, cat and sh.  So
-     echo's entry is ONE premise away from being instantiable, and that one
-     premise is [ep_derail]. *)
+  (* ...AND THE ANTI-VACUITY EXHIBIT: echo's WHOLE lend is minted at
+     [pipe(2)] itself ([PipeProto.pipe_proto_alloc], which is
+     [UkReadPipe.wp_uk_pipe_read_end]'s registrar premise), with nothing
+     owed and nothing left dangling -- the rest of the quintuple (the
+     registration, the reader's permit and the right side token) goes to
+     the registry, cat and sh.  Since lane PIPE-PROTO-2 this is an
+     UNCONDITIONAL fupd: ECHO-PIPE's version concluded at
+     [ep_derail -* ep_pay], and that wand is gone. *)
   Lemma ep_pay_of_alloc (γp : pipe_names) (L : list (bv 8)) :
     pipe_qfrag (pn_queue γp) pst0 -∗ Wq ={⊤}=∗
     ∃ pn : pnames,
-      pipe_reg γp ∗ rtok pn ∗ side_R pn
-      ∗ (ep_derail pn γp L -∗ ep_pay pn γp L).
+      pipe_reg γp ∗ rtok pn ∗ side_R pn ∗ ep_pay pn γp L.
   Proof using .
     iIntros "Hfrag HWq".
     iMod (pipe_proto_alloc γp L with "Hfrag")
@@ -235,8 +210,8 @@ Section UEchoPipe.
     rewrite /wtok.
     iMod (pws_lb_of_inv pn γp L 0%nat with "Hinv Hw") as "[Hw #Hlb]".
     iModIntro. iExists pn. iFrame "Hreg Hr HR".
-    iIntros "Hd". rewrite /ep_pay /ep_frame.
-    iFrame "Hinv Hd HL HWq Hw". rewrite take_0. iExact "Hlb".
+    rewrite /ep_pay /ep_frame.
+    iFrame "Hinv HL HWq Hw". rewrite take_0. iExact "Hlb".
   Qed.
 
   (* ...AND WHAT SH CAN READ OFF THE EXIT.  The good arm is
@@ -245,17 +220,15 @@ Section UEchoPipe.
      [pws_lb pn L \/ wtok pn], the two ENDS of the range, and a write that
      stopped in the middle is neither.  That is the lane's second finding. *)
   Lemma ep_exit_payL (pn : pnames) (L : list (bv 8)) :
-    ep_exit pn L -∗
-    side_L pn ∗ Wq
-    ∗ (pws_lb pn L
-       ∨ (∃ c : nat, ⌜(c <= length L)%nat⌝ ∗ wcur pn c ∗ pws_lb pn (take c L))
-       ∨ app_taint).
+    ep_exit pn L -∗ side_L pn ∗ Wq ∗ (pipe_payL pn L ∨ app_taint).
   Proof using .
-    rewrite /ep_exit /ep_car /ep_frame /ep_ok /ep_cur /ep_halt /ep_stuck.
-    iIntros "[[$ $] [[_ Hlb] | [H | #Ht]]]".
-    - rewrite take_ge; [ | lia ]. by iLeft.
-    - iRight. by iLeft.
-    - iRight. by iRight.
+    rewrite /ep_exit /ep_car /ep_frame /ep_ok /ep_cur /ep_halt /ep_stuck
+            /pipe_payL.
+    iIntros "[[$ $] [[Hw Hlb] | [H | #Ht]]]".
+    - rewrite take_ge; [ | lia ]. iLeft. by iLeft.
+    - iDestruct "H" as (c) "(_ & [Hw _] & #Hsh)".
+      iLeft. iRight. iRight. iExists c. iFrame "Hw Hsh".
+    - iRight. iExact "Ht".
   Qed.
 
   (* =================================================================== *)
@@ -274,30 +247,34 @@ Section UEchoPipe.
     (c + n <= length L)%nat ->
     (forall j : nat, (j < n)%nat ->
        UserPtTree.uva_rmapped Pt (uint (add_vec_int ua (Z.of_nat j)))) ->
+    (* [Hktaint] AT THIS CALL -- see the header.  The kill is the one
+       reason a write stops short that the writer cannot pay from, and a
+       kill is the application's taint. *)
+    (Rk -∗ app_taint) -∗
     pipe_wpost Pt (pn_queue γp) M ua (pipe_wQ pn L c) (pipe_wQe pn L c)
       Rk n r -∗
     ep_ok pn L (c + n).
   Proof using .
-    intros Hle Hmap. iIntros "H".
-    iDestruct (pipe_wpost_cursor with "H") as "[H | [#Ht _]]"; last first.
+    intros Hle Hmap. iIntros "Hkt H".
+    iDestruct (pipe_wpost_line_reason with "H") as "[H | [#Ht _]]";
+      last first.
     { rewrite /ep_ok /ep_halt. iRight. by iRight. }
-    iDestruct "H" as (k) "[%Hk H]".
-    (* [/pipe_wQe] BEFORE [/pipe_wQ]: since lane PIPE-PROTO-2 the observation
-       node is [pipe_wQ ∗ (⌜ps_ro s = false⌝ -∗ ro_shot pn)], so the inner
-       [pipe_wQ] has to be unfolded after the outer one. *)
-    rewrite /ep_ok /ep_halt /ep_stuck /ep_cur /pipe_wQe /pipe_wQ.
-    iDestruct "H" as "[(_ & %Hs & HQ) | [(_ & %Hlt & _ & HQ) | Hobs]]".
-    - assert (Hkn : k = n).
+    iDestruct "H" as (k) "(%Hk & HQ & Hwhy)".
+    rewrite /ep_ok /ep_halt /ep_stuck /ep_cur /pipe_wQ.
+    iDestruct "Hwhy" as "[%Hs | [Hkill | #Hsh]]".
+    - (* the whole run went in: the copy-in reason is refuted by the
+         caller's own mapped source *)
+      assert (Hkn : k = n).
       { destruct Hs as [Hkn | Hnm]; [ exact Hkn | ].
         destruct (decide (k = n)) as [Hkn | Hne]; [ exact Hkn | ].
         exfalso. apply Hnm. apply Hmap. lia. }
       subst k. iLeft. iExact "HQ".
-    - iRight. iLeft. iExists (c + k)%nat.
-      iSplitR; [ iPureIntro; lia | ]. iExact "HQ".
-    - iDestruct "Hobs" as "(_ & %Hlt & Hobs)".
-      iDestruct "Hobs" as (s) "[_ [HQ _]]".
+    - (* KILLED: the one arm this file cannot pay, and a kill taints *)
+      iRight. iRight. iApply ("Hkt" with "Hkill").
+    - (* THE READ END IS SHUT: the node handed out (P4)'s shot, and the
+         halt carries it *)
       iRight. iLeft. iExists (c + k)%nat.
-      iSplitR; [ iPureIntro; lia | ]. iExact "HQ".
+      iSplitR; [ iPureIntro; lia | ]. iFrame "HQ". iExact "Hsh".
   Qed.
 
   (* ...AND A WRITE PAID FROM THE HALT LEAVES THE HALT. *)
@@ -318,17 +295,24 @@ Section UEchoPipe.
     iDestruct "Hobs" as (s) "[_ $]".
   Qed.
 
-  (* the payment a HALTED echo makes -- the missing arm at the taint arm's
-     side too, where it is free *)
+  (* THE PAYMENT A HALTED ECHO MAKES, and since lane PIPE-PROTO-2 it is
+     DERIVABLE -- ECHO-PIPE's [ep_derail] premise is this lemma.  The shot
+     the halt carries makes every link of the chain VACUOUS against
+     PQ-FLAG-2's read-open premise, so no cursor, no bytes and no bound are
+     needed; the taint arm pays the same way it always did. *)
   Lemma ep_pay_halt (pn : pnames) (γp : pipe_names) (L : list (bv 8))
       (M : gmap Z (bv 8)) (ua : mword 64) (n : nat) :
-    ep_derail pn γp L -∗ ep_halt pn L -∗
+    pipe_inv pn γp L -∗ ep_halt pn L -∗
     pipe_wpay (pn_queue γp) M ua
       (fun _ : nat => ep_halt pn L)
       (fun (_ : nat) (_ : pipe_st) => ep_halt pn L) n.
   Proof using .
-    iIntros "#Hd [Hst | #Ht]".
-    - iApply ("Hd" $! M ua n with "Hst").
+    iIntros "#Hinv [Hst | #Ht]".
+    - iDestruct "Hst" as (c) "(%Hc & Hcur & #Hsh)".
+      iApply (pipe_wpay_of_inv_after_short pn γp L M ua (ep_halt pn L) n
+                with "Hinv Hsh [Hcur]").
+      rewrite /ep_halt /ep_stuck. iLeft. iExists c.
+      iSplitR; [ by iPureIntro | ]. iFrame "Hcur Hsh".
     - iApply (pipe_wpay_taint with "Ht").
   Qed.
 
@@ -353,14 +337,20 @@ Section UEchoPipe.
     (c + nb <= length L)%nat ->
     (forall j : nat, (j < nb)%nat -> L !!! (c + j)%nat = fb j) ->
     pipe_inv pn γp L -∗
-    ep_derail pn γp L -∗
+    (* [Hktaint]: THE ONE ROW STILL OWED (see the header; the same premise
+       [UCatPipe]'s round takes on the read side).  A write answers -1 when
+       the writer was KILLED, and nothing at a pipe descriptor refutes
+       that; what is assumed is the weakest thing that closes the arm and
+       the one the design already says of a kill -- a kill TAINTS the
+       application.  Lane KILL-TAINT retires it. *)
+    □ (∀ gn : gname, ChildTok.kill_shot gn -∗ app_taint) -∗
     ustr (ukn_d N) DfracDiscarded ua nb fb -∗
     kecho_w N (mword_of_int ua) nb
       (UserFd.ustd (ukn_fd N) l ∗ ep_car pn L c)
       (UserFd.ustd (ukn_fd N) l ∗ ep_car pn L (c + nb)).
   Proof using .
     intros Hl1 Hle Hbytes.
-    iIntros "#Hinv #Hder #Hstr" (h m avail)
+    iIntros "#Hinv #Hkt #Hstr" (h m avail)
       "%Ha0 %Ha1 %Ha2 #Hcode [Hstd [Hfr Hok]] Hrun Hcont".
     iDestruct (urun_ustr_bnd N h m _ avail DfracDiscarded ua nb fb
                  with "Hrun Hstr") as %[Hlo Hhi].
@@ -440,10 +430,12 @@ Section UEchoPipe.
                       ltac:(unfold NSTD; lia) Htk Hl1)
                    with "Hextra") as "Hwp".
       rewrite Htn.
+      iAssert (ChildTok.kill_shot (uvis_gen W) -∗ app_taint)%I
+        with "[]" as "Hkw"; [ iApply ("Hkt" $! (uvis_gen W)) | ].
       iDestruct (ep_post_ok Pt pn γp L (uvis_M W) (m !!! Regidx a1_idx) c nb
                    (ChildTok.kill_shot (uvis_gen W)) ret Hle
                    ltac:(intros j Hj; exact (Hnf Pt j Hwfp Hpmp (Hlzp Hlz) Hj))
-                   with "Hwp") as "Hok".
+                   with "Hkw Hwp") as "Hok".
       iApply ("Hcont" $! h' ret with "[Hstd Hfr Hok] Hrun").
       iFrame "Hstd Hfr". iExact "Hok".
     - (* ---- HALTED: the missing arm pays, and the halt survives ---- *)
@@ -459,7 +451,7 @@ Section UEchoPipe.
                   Hi0 ltac:(unfold NSTD; lia) Hl1 Hcnt).
         iIntros (M pm sz) "Hheap". iFrame "Hheap". rewrite Ham1.
         iApply (ep_pay_halt pn γp L M (m !!! Regidx a1_idx) nb
-                  with "Hder Hhalt"). }
+                  with "Hinv Hhalt"). }
       iIntros (h' ret W cw' cs')
         "%Hka0 %Hka1 %Hka2 %Htk %Hlz %Hnf Hstd Hbs' Hpost Hrun".
       iDestruct (spost_at_write_elim_at uslot
@@ -499,7 +491,13 @@ Section UEchoPipe.
     L !!! c = b ->
     0 <= ua < 2 ^ 38 ->
     pipe_inv pn γp L -∗
-    ep_derail pn γp L -∗
+    (* [Hktaint]: THE ONE ROW STILL OWED (see the header; the same premise
+       [UCatPipe]'s round takes on the read side).  A write answers -1 when
+       the writer was KILLED, and nothing at a pipe descriptor refutes
+       that; what is assumed is the weakest thing that closes the arm and
+       the one the design already says of a kill -- a kill TAINTS the
+       application.  Lane KILL-TAINT retires it. *)
+    □ (∀ gn : gname, ChildTok.kill_shot gn -∗ app_taint) -∗
     utext (ukn_t N) ua b -∗
     kecho_w N (mword_of_int ua) 1%nat
       (UserFd.ustd (ukn_fd N) l ∗ ep_car pn L c)
@@ -507,7 +505,7 @@ Section UEchoPipe.
   Proof using .
     intros Hl1 Hle Hbyte Hrange.
     change (2 ^ 38) with 274877906944 in Hrange.
-    iIntros "#Hinv #Hder #Hb" (h m avail)
+    iIntros "#Hinv #Hkt #Hb" (h m avail)
       "%Ha0 %Ha1 %Ha2 #Hcode [Hstd [Hfr Hok]] Hrun Hcont".
     assert (Hua : uint (m !!! Regidx a1_idx) = ua)
       by (rewrite Ha1; apply uint_moi; unfold Z64; lia).
@@ -585,10 +583,12 @@ Section UEchoPipe.
                       ltac:(unfold NSTD; lia) Htk Hl1)
                    with "Hextra") as "Hwp".
       rewrite Htn.
+      iAssert (ChildTok.kill_shot (uvis_gen W) -∗ app_taint)%I
+        with "[]" as "Hkw"; [ iApply ("Hkt" $! (uvis_gen W)) | ].
       iDestruct (ep_post_ok Pt pn γp L (uvis_M W) (m !!! Regidx a1_idx) c 1%nat
                    (ChildTok.kill_shot (uvis_gen W)) ret Hle
                    ltac:(intros j Hj; exact (Hnf Pt j Hwfp Hpmp (Hlzp Hlz) Hj))
-                   with "Hwp") as "Hok".
+                   with "Hkw Hwp") as "Hok".
       iApply ("Hcont" $! h' ret with "[Hstd Hfr Hok] Hrun").
       iFrame "Hstd Hfr". iExact "Hok".
     - (* ---- HALTED ---- *)
@@ -604,7 +604,7 @@ Section UEchoPipe.
                   Hi0 ltac:(unfold NSTD; lia) Hl1 Hcnt).
         iIntros (M pm sz) "Hheap". iFrame "Hheap". rewrite Ham1.
         iApply (ep_pay_halt pn γp L M (m !!! Regidx a1_idx) 1%nat
-                  with "Hder Hhalt"). }
+                  with "Hinv Hhalt"). }
       iIntros (h' ret W cw' cs')
         "%Hka0 %Hka1 %Hka2 %Htk %Hlz %Hnf Hstd Hpost Hrun".
       iDestruct (spost_at_write_elim_at uslot
@@ -670,7 +670,7 @@ Section UEchoPipe.
       □ (ep_car pn (wl_line (drop 1 ws))
            (length (wl_line (drop 1 ws))) -∗ ukn_pay N (-1)) -∗
       pipe_inv pn γp (wl_line (drop 1 ws)) -∗
-      ep_derail pn γp (wl_line (drop 1 ws)) -∗
+      □ (∀ gn : gname, ChildTok.kill_shot gn -∗ app_taint) -∗
       echo_rodata (ukn_t N) -∗
       uargv (ukn_d N) av args -∗
       kecho_pay N args k i
@@ -681,7 +681,7 @@ Section UEchoPipe.
     intros Hargv Hl1 k.
     pose proof Hargv as [Hlen Hargs].
     induction k as [| k IH]; intros i Hi1 Hik;
-      iIntros "#Hq #Hinv #Hder #Hro #Hargv"; cbn [kecho_pay];
+      iIntros "#Hq #Hinv #Hkt #Hro #Hargv"; cbn [kecho_pay];
       iIntros (g) "%Hg";
       [ pose proof (Hargs i g Hi1 Hg) as [Hgl Hgb]
       | pose proof (Hargs i g Hi1 Hg) as [Hgl Hgb] ];
@@ -714,7 +714,7 @@ Section UEchoPipe.
       iSplitR.
       + iApply (ep_w_data N pn γp (wl_line (drop 1 ws)) l rb
                   (out_cur ws i) (ua_ptr g) (ua_len g) (ua_bytes g)
-                  Hl1 Hbnd Hbytes with "Hinv Hder Hs").
+                  Hl1 Hbnd Hbytes with "Hinv Hkt Hs").
       + rewrite Hgl.
         iApply (kecho_w_mono N (mword_of_int echo_nl_ptr) 1%nat
                   (UserFd.ustd (ukn_fd N) l
@@ -733,7 +733,7 @@ Section UEchoPipe.
                   Hl1 ltac:(lia) Hnlb
                   ltac:(unfold echo_nl_ptr;
                         change (2 ^ 38) with 274877906944; lia)
-                  with "Hinv Hder [Hro]").
+                  with "Hinv Hkt [Hro]").
         iApply (ep_rodata_byte (ukn_t N) echo_nl_ptr wl_nl
                   echo_nl_ro with "Hro").
     - (* ...AND ANOTHER FOLLOWS: its bytes, then the separator *)
@@ -754,7 +754,7 @@ Section UEchoPipe.
       iSplitR; [| iSplitR ].
       + iApply (ep_w_data N pn γp (wl_line (drop 1 ws)) l rb
                   (out_cur ws i) (ua_ptr g) (ua_len g) (ua_bytes g)
-                  Hl1 Hbnd Hbytes with "Hinv Hder Hs").
+                  Hl1 Hbnd Hbytes with "Hinv Hkt Hs").
       + rewrite Hgl HS.
         replace (S (out_cur ws i + length (ws !!! i)))%nat
           with (out_cur ws i + length (ws !!! i) + 1)%nat by lia.
@@ -763,11 +763,11 @@ Section UEchoPipe.
                   Hl1 ltac:(lia) Hspb
                   ltac:(unfold echo_sep_ptr;
                         change (2 ^ 38) with 274877906944; lia)
-                  with "Hinv Hder [Hro]").
+                  with "Hinv Hkt [Hro]").
         iApply (ep_rodata_byte (ukn_t N) echo_sep_ptr wl_sp
                   echo_sep_ro with "Hro").
       + iApply (IH (S i) ltac:(lia) ltac:(lia)
-                  with "Hq Hinv Hder Hro Hargv").
+                  with "Hq Hinv Hkt Hro Hargv").
   Qed.
 
   (* ...AND THE WHOLE CHAIN, at main's own entry. *)
@@ -780,7 +780,7 @@ Section UEchoPipe.
     □ (ep_car pn (wl_line (drop 1 ws))
          (length (wl_line (drop 1 ws))) -∗ ukn_pay N (-1)) -∗
     pipe_inv pn γp (wl_line (drop 1 ws)) -∗
-    ep_derail pn γp (wl_line (drop 1 ws)) -∗
+    □ (∀ gn : gname, ChildTok.kill_shot gn -∗ app_taint) -∗
     echo_rodata (ukn_t N) -∗
     uargv (ukn_d N) av args -∗
     kecho_pay_all N args
@@ -789,7 +789,7 @@ Section UEchoPipe.
   Proof using .
     intros Hws2 Hargv Hl1.
     pose proof Hargv as [Hlen _].
-    iIntros "#Hq #Hinv #Hder #Hro #Hargv".
+    iIntros "#Hq #Hinv #Hkt #Hro #Hargv".
     rewrite /kecho_pay_all. iSplit.
     - iIntros "%Hsmall". exfalso. lia.
     - iIntros "_".
@@ -799,7 +799,7 @@ Section UEchoPipe.
                     (length args - 2)%nat 1%nat ltac:(lia) ltac:(lia))
         as Hfrom.
       rewrite H0 in Hfrom.
-      iApply (Hfrom with "Hq Hinv Hder Hro Hargv").
+      iApply (Hfrom with "Hq Hinv Hkt Hro Hargv").
   Qed.
 
   (* =================================================================== *)
@@ -847,7 +847,7 @@ Section UEchoPipe.
     uvis_lazy W = false ->
     □ (ep_exit pn (wl_line (drop 1 ws)) -∗ Q (-1)) -∗
     pipe_inv pn γp (wl_line (drop 1 ws)) -∗
-    ep_derail pn γp (wl_line (drop 1 ws)) -∗
+    □ (∀ gn : gname, ChildTok.kill_shot gn -∗ app_taint) -∗
     UkRun.urun_nopipe (uvis_fd W) -∗
     udep -∗
     my_pay (uvis_gen W) Q -∗
@@ -858,7 +858,7 @@ Section UEchoPipe.
   Proof using ghost_varG0 ghost_varG1 ufdG0.
     intros HQc Hws2 Hargv1 Hl1 Hpc Hsub Hsub2 Hx Hroom Hal8 Hstk Hargs
            Havd Havs Hfdlen Hstop Hlzf.
-    iIntros "#Hq #Hinv #Hder #Hnpw #Hdep Hpay Hc".
+    iIntros "#Hq #Hinv #Hkt #Hnpw #Hdep Hpay Hc".
     assert (Hsp0 : 0 <= uint (uvis_sp W)) by lia.
     assert (Hargc0 : 0 <= uvis_argc W)
       by exact (proj1 (uka_argc _ _ _ _ _ _ Hargs)).
@@ -882,7 +882,7 @@ Section UEchoPipe.
     { iApply (ep_pay_all N pn γp ws (uvis_av W)
                 (echo_args (uvis_M W) (uvis_av W) (Z.to_nat (uvis_argc W)))
                 (take NSTD (uvis_fd W)) rb Hws2 Hargv1 Hl1
-                with "[] Hinv Hder [] []").
+                with "[] Hinv Hkt [] []").
       { rewrite Hpayeq. iExact "Hq". }
       - iApply (echo_rodata_of_text (ukn_t N) (uvis_M W) (uvis_perm W)
                   Hsub2 Hx with "Ht").
@@ -916,13 +916,15 @@ Section UEchoPipe.
     length sts = NOFILE ->
     take NSTD sts !! 1%nat = Some (FdOpen rb true (FdPipe γp)) ->
     □ (ep_exit pn (wl_line (drop 1 ws)) -∗ Q (-1)) -∗
+    (* [Hktaint], the one row still owed (see the header) *)
+    □ (∀ gn : gname, ChildTok.kill_shot gn -∗ app_taint) -∗
     UkRun.urun_nopipe sts -∗
     udep -∗
     image_entry ElfUser.echo_elf M (mword_of_int (t + 8) : mword 64) sts
       cw cs pidv Q (ep_pay pn γp (wl_line (drop 1 ws))) uslot.
   Proof using ghost_varG0 ghost_varG1 ufdG0.
     intros HQc Hok Himg Hbytes Hfdl Hl1.
-    iIntros "#Hq #Hnpw #Hdep".
+    iIntros "#Hq #Hkt #Hnpw #Hdep".
     iApply image_entry_of_at. iIntros "!>" (na alen afun) "%Hargs".
     destruct (UShEcho.echo_args_det_holds ws Hok M s0 t g na alen afun
                 Himg Hbytes Hargs) as (Hna & Halen & Hafun).
@@ -944,14 +946,14 @@ Section UEchoPipe.
     iAssert (UkRun.urun_nopipe (uvis_fd W')) as "#Hnpw'";
       [ rewrite Hfd; iExact "Hnpw" | ].
     iDestruct (ep_car_of_pay pn γp (wl_line (drop 1 ws)) with "Hpay")
-      as "(#Hinv & #Hder & Hc)".
+      as "(#Hinv & Hc)".
     rewrite /echo_out_argv in Hargv.
     iApply (ep_uexec_slot_at W' pn γp ws rb Q HQc
               (EchoDisc.line_ok_ge2 ws Hok) Hargv
               ltac:(rewrite Hfd; exact Hl1)
               Hpc Hsub Hsub2 Hx Hroom96 Hal8 Hstkrow Hargsrow Havd Havs
               Hfdlen Hstop Hlzf
-              with "Hq Hinv Hder Hnpw' Hdep Hmp Hc").
+              with "Hq Hinv Hkt Hnpw' Hdep Hmp Hc").
   Qed.
 
   (* =================================================================== *)
@@ -992,7 +994,9 @@ Section UEchoPipe.
   (*  CONCRETE line, with the exit payload spelled out.  What comes out    *)
   (*  is [side_L pn] and the era's credential beside "the line is in"      *)
   (*  ([pws_lb pn (wl_line [hi])]) -- OR the halt, which is the honest     *)
-  (*  price of [pipe_wpost]'s two short arms (see the header).            *)
+  (*  price of [pipe_wpost]'s two short arms (the kill and the shut read   *)
+  (*  end; see the header).  [ep_test_hi_payL] is the same at the shape    *)
+  (*  SH-PIPE-ROUND actually consumes.                                     *)
   (* =================================================================== *)
   Definition ep_hi_ws : list (list (bv 8)) := [EchoDisc.cmd_echo; sb "hi"].
 
@@ -1023,6 +1027,7 @@ Section UEchoPipe.
     UkShEcho.echo_argv_bytes ep_hi_ws g ->
     length sts = NOFILE ->
     take NSTD sts !! 1%nat = Some (FdOpen rb true (FdPipe γp)) ->
+    □ (∀ gn : gname, ChildTok.kill_shot gn -∗ app_taint) -∗
     UkRun.urun_nopipe sts -∗
     udep -∗
     image_entry ElfUser.echo_elf M (mword_of_int (t + 8) : mword 64) sts
@@ -1033,16 +1038,49 @@ Section UEchoPipe.
             ∨ ep_halt pn (wl_line (drop 1 ep_hi_ws))))%I
       (ep_pay pn γp (wl_line (drop 1 ep_hi_ws))) uslot.
   Proof using ghost_varG0 ghost_varG1 ufdG0.
-    intros Himg Hbytes Hfdl Hl1. iIntros "#Hnpw #Hdep".
+    intros Himg Hbytes Hfdl Hl1. iIntros "#Hkt #Hnpw #Hdep".
     iApply (ep_image_entry ep_hi_ws M s0 t g sts cw cs pidv pn γp rb
               (fun _ : Z =>
                  side_L pn ∗ Wq
                  ∗ (pws_lb pn (wl_line (drop 1 ep_hi_ws))
                     ∨ ep_halt pn (wl_line (drop 1 ep_hi_ws))))%I
               ltac:(intros x y; reflexivity) ep_hi_line_ok Himg Hbytes
-              Hfdl Hl1 with "[] Hnpw Hdep").
+              Hfdl Hl1 with "[] Hkt Hnpw Hdep").
     iIntros "!> Hex".
     iApply (ep_exit_line pn (wl_line (drop 1 ep_hi_ws)) with "Hex").
+  Qed.
+
+  (* ...AND THE SAME ENTRY AT THE SHAPE SH READS.  Since lane PIPE-PROTO-2
+     the halt's stuck arm IS [PipeProto.pipe_payL]'s third arm, so echo's
+     exit payload is the protocol's own left-child payload plus the taint
+     -- which is what [pipe_round_reading] wants, modulo the [app_taint]
+     disjunct this lane's finding 2 flags. *)
+  Lemma ep_test_hi_payL (M : gmap Z (bv 8)) (s0 t : Z) (g : nat -> bv 8)
+      (sts : list fdstate) (cw : Z) (cs : gset gname) (pidv : mword 32)
+      (pn : pnames) (γp : pipe_names) (rb : bool) :
+    UShEcho.echo_node_img ep_hi_ws M s0 t g ->
+    UkShEcho.echo_argv_bytes ep_hi_ws g ->
+    length sts = NOFILE ->
+    take NSTD sts !! 1%nat = Some (FdOpen rb true (FdPipe γp)) ->
+    □ (∀ gn : gname, ChildTok.kill_shot gn -∗ app_taint) -∗
+    UkRun.urun_nopipe sts -∗
+    udep -∗
+    image_entry ElfUser.echo_elf M (mword_of_int (t + 8) : mword 64) sts
+      cw cs pidv
+      (fun _ : Z =>
+         side_L pn ∗ Wq
+         ∗ (pipe_payL pn (wl_line (drop 1 ep_hi_ws)) ∨ app_taint))%I
+      (ep_pay pn γp (wl_line (drop 1 ep_hi_ws))) uslot.
+  Proof using ghost_varG0 ghost_varG1 ufdG0.
+    intros Himg Hbytes Hfdl Hl1. iIntros "#Hkt #Hnpw #Hdep".
+    iApply (ep_image_entry ep_hi_ws M s0 t g sts cw cs pidv pn γp rb
+              (fun _ : Z =>
+                 side_L pn ∗ Wq
+                 ∗ (pipe_payL pn (wl_line (drop 1 ep_hi_ws)) ∨ app_taint))%I
+              ltac:(intros x y; reflexivity) ep_hi_line_ok Himg Hbytes
+              Hfdl Hl1 with "[] Hkt Hnpw Hdep").
+    iIntros "!> Hex".
+    iApply (ep_exit_payL pn (wl_line (drop 1 ep_hi_ws)) with "Hex").
   Qed.
 
 End UEchoPipe.

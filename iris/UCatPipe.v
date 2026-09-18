@@ -66,6 +66,14 @@ Require Import UexecExecInst.      (* THE INSTANCES: [uexecSG_xv6], [uprogSG_gen
 Require Import UkCat.
 Require Import UkCatCat.
 Require Import UkCatMain.
+Require Import ExecEntry.          (* [image_entry] / [image_entry_of_at] *)
+Require Import SpecKexec.          (* [kexec_image_ok_fd] *)
+Require Import UkAbi.              (* [uk_args_c] / [uka_argc] *)
+Require Import ElfUser.            (* [cat_elf] *)
+Require Import UEchoKernel.        (* [echo_args] / the key's argument reading *)
+Require Import UShEcho.            (* [echo_node_img] *)
+Require Import UkShEcho.           (* [echo_argv_bytes] / [echo_off_lt] *)
+Require Import UShCat.             (* cat's exec/argv geometry and entry carve *)
 Require Import Xv6Cameras Xv6G IrefSlots ProcAvail FileInvDefs BioDefs.
 Require Import PipeQueue.          (* the payments and the posts *)
 Require Import PipeReg.            (* [pipe_reg] / [pipe_row_reg] *)
@@ -1032,3 +1040,167 @@ Section UCatPipe.
 
 
 End UCatPipe.
+
+(* ===================================================================== *)
+(*  7.  cat's ENTRY, AT argv ["cat"]                                      *)
+(*                                                                       *)
+(*  [UCatKernel.cat_image_entry]'s twin at the PIPELINE line's right      *)
+(*  command, and the difference is ONE number: the line is `cat` with no  *)
+(*  argument, so [argc = 1] and main takes its [argc <= 1] branch --      *)
+(*  [cat(0)], the standard input.  THE `cannot open` ARM IS THEREFORE     *)
+(*  UNREACHABLE, and the refutation is not a wish: [UkCatMain.            *)
+(*  kcat_pay_all] is an ADDITIVE conjunction whose second arm is guarded  *)
+(*  on [2 <= length args], [UShCat.cat_args] has [Z.to_nat (uvis_argc W)] *)
+(*  entries, and the key's own reading ([UShCat.cat_key_args_holds])      *)
+(*  makes that number the node's word count -- which sh built at ONE.     *)
+(*  So the payment below discharges the open arm by [lia] and never       *)
+(*  mentions [UkCatMain.kcat_dg_open], the file name, the cwd or the      *)
+(*  persisted argument area -- all four of which [UCatKernel.cat_pay_at]  *)
+(*  carries and all four of which exist only to resolve argv[1].          *)
+(*                                                                       *)
+(*  IT IS ITS OWN SECTION, for [UCatKernel]'s reason: an entry ALLOCATES  *)
+(*  the record its payment is owed at, and a section [uk_names] variable  *)
+(*  under that quantifier is durable-notes' non-terminating [iApply].     *)
+(* ===================================================================== *)
+Section UCatPipeEntry.
+  Context `{HRg : !riscvGS Σ}.
+  Context `{!xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ,
+            !irefslotG Σ, !pavG Σ, !wchG Σ, !ufdG Σ}.
+  Context `{GEN : GenId} `{XI : CurCtx}.
+  Context `{!ghost_varG Σ Z}.
+  Context `{!ghost_varG Σ (gset gname)}.
+
+  (* WHAT cat's ENTRY OWES ITS PAYER, at the key the entry is about to
+     allocate the record for.  [UCatKernel.cat_pay_at] minus everything
+     argv[1] needed. *)
+  Definition pcat_pay_at (W : uvis) (Q : Z -> iProp Σ) (Pay : iProp Σ)
+    : iProp Σ :=
+    (∀ N : uk_names Σ,
+       ⌜ ukn_pay N = Q ⌝ -∗
+       (* THE LINE IS `cat`, WITH NO ARGUMENT *)
+       ⌜ Z.to_nat (uvis_argc W) = 1%nat ⌝ -∗
+       UserFd.ustd (ukn_fd N) (take NSTD (uvis_fd W)) -∗
+       UCodeCat.cat_code (ukn_t N) -∗
+       UCodeCat.cat_rodata (ukn_t N) -∗
+       UserHeap.uargv (ukn_d N) (uvis_av W) (UShCat.cat_args W) -∗
+       Pay -∗
+       ∃ Ci : iProp Σ,
+         UkCatMain.kcat_pay_all N (UShCat.cat_args W) Ci (ukn_pay N (-1))
+         ∗ Ci)%I.
+
+  Lemma pcat_image_entry (ws : list (list (bv 8))) (Mn : gmap Z (bv 8))
+      (sv t : Z) (gn : nat -> bv 8)
+      (sts : list fdstate) (cw : Z) (cs : gset gname) (pidv : mword 32)
+      (Q : Z -> iProp Σ) (Pay : iProp Σ) :
+    (forall x y : Z, Q x = Q y) ->
+    line_ok ws ->
+    UShEcho.echo_node_img ws Mn sv t gn ->
+    UkShEcho.echo_argv_bytes ws gn ->
+    length sts = NOFILE ->
+    (* THE LINE IS `cat`: ONE word *)
+    length ws = 1%nat ->
+    □ (∀ W' : uvis, ⌜uvis_fd W' = sts⌝ -∗ pcat_pay_at W' Q Pay) -∗
+    UkRun.urun_nopipe sts -∗ udep -∗
+    image_entry ElfUser.cat_elf Mn (mword_of_int (t + 8) : mword 64) sts
+      cw cs pidv Q Pay uslot.
+  Proof using xv6G0 ufdG0.
+    intros HQc Hok Himg Hbytes Hfdl Hws1.
+    iIntros "#Hpay #Hnpw #Hdep".
+    iApply image_entry_of_at. iIntros "!>" (na alen afun) "%Hargs".
+    destruct (UShCat.cat_args_det_holds ws Hok Mn sv t gn na alen afun
+                Himg Hbytes Hargs) as (Hna & Halen & Hafun).
+    pose proof (UShCat.cat_room_of_det ws na alen Hok Hna Halen) as Hroom.
+    rewrite /image_entry_at.
+    iIntros "!>" (W') "%Hokk %Hcwv %Hlzf _ _ Hmp HPay".
+    destruct (UShCat.cat_kexec_pages na alen afun sts W' Hokk)
+      as (Hpc & Hsub & Hsub2 & Hx & Hdw & Hbufb & Hwr & Hrp).
+    destruct (UShCat.cat_kexec_entry_rows na alen afun sts W' Hokk Hroom
+                Hfdl Hwr Hrp)
+      as (Hroom336 & Hal8 & Hszv & Hstkrow & Hargsrow & Havd & Havs
+          & Hfdlen & Hstop).
+    pose proof (UShCat.cat_kexec_bufrow na alen afun sts W' Hokk Hroom
+                  Hdw Hbufb) as Hbuf.
+    pose proof (UShCat.cat_kexec_argnz na alen afun sts W' Hokk Hroom)
+      as Hnz.
+    pose proof (kexec_image_ok_fd _ na alen afun sts W' Hokk) as Hfd.
+    assert (Hargc0 : 0 <= uvis_argc W')
+      by exact (proj1 (uka_argc _ _ _ _ _ _ Hargsrow)).
+    assert (Hptr : forall (j : nat) (ga : uarg),
+              UShCat.cat_args W' !! j = Some ga -> UserHeap.ua_ptr ga <> 0).
+    { intros j ga Hj.
+      assert (Hlt : (j < Z.to_nat (uvis_argc W'))%nat).
+      { pose proof (lookup_lt_Some _ _ _ Hj) as Hl.
+        rewrite /UShCat.cat_args echo_args_length in Hl. exact Hl. }
+      rewrite /UShCat.cat_args (echo_args_lookup (uvis_M W') (uvis_av W')
+                                  (Z.to_nat (uvis_argc W')) j Hlt) in Hj.
+      injection Hj as <-. cbn [UserHeap.ua_ptr echo_arg].
+      exact (Hnz j Hlt). }
+    (* ---- THE KEY'S OWN WORD COUNT: the node sh built has ONE word ---- *)
+    assert (Hno : forall i j : nat, (i < na)%nat -> (j < alen i)%nat ->
+              afun i j <> ubyte0).
+    { intros i j Hi Hj.
+      rewrite (Hafun i j ltac:(lia)
+                 ltac:(rewrite <- (Halen i ltac:(lia)); exact Hj)).
+      apply (UShEcho.line_nonul ws _ Hok).
+      exact (UkShEcho.echo_off_lt ws i j Hok ltac:(lia)
+               ltac:(rewrite <- (Halen i ltac:(lia)); lia)). }
+    destruct (UShCat.cat_key_args_holds na alen afun sts W' Hokk Hno)
+      as [Hargcna _].
+    assert (Hargc1 : Z.to_nat (uvis_argc W') = 1%nat)
+      by (rewrite Hargcna Hna; exact Hws1).
+    iAssert (UkRun.urun_nopipe (uvis_fd W')) as "#Hnpw'";
+      [ rewrite Hfd; iExact "Hnpw" | ].
+    iApply (UShCat.cat_entry_run W' Q Hpc Hsub Hsub2 Hx Hroom336 Hal8
+              Hstkrow Hbuf Hargsrow Havd Havs Hfdlen Hstop Hlzf
+              with "Hdep Hnpw' Hmp").
+    iIntros (N' h) "%Hpayeq Hstd Hcwf #Hcode #Hro #Hargv #HA Hbuf' Hrun".
+    pose proof (ukn_const_of_eq N' Q Hpayeq HQc) as Htc.
+    iDestruct ("Hpay" $! W' with "[%]") as "Hpay'"; [ exact Hfd | ].
+    iDestruct ("Hpay'" $! N'
+                 with "[%] [%] Hstd Hcode Hro Hargv HPay")
+      as (Ci) "[Hp HCi]";
+      [ exact Hpayeq | exact Hargc1 | ].
+    iApply (wp_kcat_start N' h (tf_resume_gpr0 (uvis_tf W')) (uvis_av W')
+              (UShCat.cat_args W') (fun _ : nat => ubyte0) 0%nat Ci
+              Hptr
+              ltac:(rewrite /UShCat.cat_args echo_args_length;
+                    rewrite (Z2Nat.id (uvis_argc W') Hargc0);
+                    unfold uvis_argc; symmetry; apply moi_of_uint)
+              ltac:(unfold uvis_av; symmetry; apply moi_of_uint)
+              with "Hp Hcode Hro Hargv HCi Hbuf' Hrun").
+  Qed.
+
+  (* ...AND THE `cannot open` ARM IS UNREACHABLE, mechanised: at argc = 1
+     the payment's SECOND conjunct is vacuous, so a payer supplies the
+     round at fd 0 and NOTHING ELSE -- no open obligation, no [kcat_dg_open]
+     and no file name.  This is the brief's item 2, and it is what makes
+     cat-at-a-pipe cheaper than cat-at-a-file rather than merely different. *)
+  Lemma pcat_pay_at_of_round (W : uvis) (Q : Z -> iProp Σ) (Pay : iProp Σ)
+      (l : list fdstate) :
+    take NSTD (uvis_fd W) = l ->
+    (* the round at fd 0, and what its normal exit leaves *)
+    □ (∀ N : uk_names Σ, ⌜ukn_pay N = Q⌝ -∗
+         UserFd.ustd (ukn_fd N) l -∗ Pay -∗
+         ∃ I Cend : iProp Σ,
+           UkCatCat.kcat_round N (mword_of_int 0) I Cend ∗ I
+           ∗ (Cend -∗ ukn_pay N (-1))) -∗
+    pcat_pay_at W Q Pay.
+  Proof using .
+    intros Hl. iIntros "#Hround". rewrite /pcat_pay_at.
+    iIntros (N) "%Hpayeq %Hargc1 Hstd _ _ _ HPay".
+    rewrite Hl.
+    iDestruct ("Hround" $! N with "[%] Hstd HPay") as (I Cend) "(Hr & HI & He)";
+      [ exact Hpayeq | ].
+    iExists emp%I. iSplitR "".
+    - rewrite /UkCatMain.kcat_pay_all. iSplit.
+      + iIntros "_". iExists Cend. iSplitR "He".
+        * rewrite /UkCatMain.kcat_run0. iExists I, Cend. iFrame "Hr HI".
+          by iIntros "$".
+        * iIntros "[_ Hc]". iApply ("He" with "Hc").
+      + (* THE OPEN ARM IS UNREACHABLE: argc is ONE *)
+        iIntros "%Hge". exfalso.
+        rewrite /UShCat.cat_args echo_args_length Hargc1 in Hge. lia.
+    - done.
+  Qed.
+
+End UCatPipeEntry.

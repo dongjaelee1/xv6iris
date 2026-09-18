@@ -104,7 +104,7 @@ Require Import UkShEcho.
 Require Import UkShFork.
 Require Import UkFileOpen.
 Require Import LinkRec.                  (* the era's link record *)
-Require Import FileLinkInst.             (* [file_link_inst] -- lane LINK-GEN-2 *)
+Require Import FileLinkInst.             (* [file_link_inst_at] -- LINK-GEN-2 + INIT-FILE *)
 Require Import UShLine.
 Require Import UShEcho.
 Require Import UShPanic.          (* the panic and exec-failed laws at a record *)
@@ -160,9 +160,14 @@ Section UShRound.
   Context (Hkill : @app_taint Σ (@riscv_fixedGS Σ _) = file_taint (fgn_cl g)).
 
   Local Notation T := (file_taint (fgn_cl g)).
-  (* the era's LINK RECORD (lane LINK-GEN-2): every family this file's
-     hypotheses are stated at is one of its fields. *)
-  Local Notation FI := (FileLinkInst.file_link_inst g).
+  (* the era's LINK RECORD (lane LINK-GEN-2), AT THE BOOT STATE THE ROUND
+     NAMES (RULING H', landed by lane INIT-FILE as [file_link_inst_at]).
+     The unindexed record is this one's [∃ s0] packing
+     ([FileLinkInst.file_Wcl_unpack] / [file_Wcl_at_pack] are the two
+     directions), so nothing below is weaker for being read at the index --
+     and the hold, which names the same [s0], is now tied to the
+     credential STRUCTURALLY instead of through an agreement step. *)
+  Local Notation FI := (FileLinkInst.file_link_inst_at g s0).
 
   (* =================================================================== *)
   (*  S1  THE FAMILIES                                                    *)
@@ -178,11 +183,13 @@ Section UShRound.
   (* sh's own half of the console position pair ([UkSh]'s [γp]) *)
   Context (γp : gname).
   (* ...AND THEY ARE THE FILE INSTANCE NOW (the program stream), not
-     parameters: [FileLinkInst.file_Wcl] / [file_Wbl] are lane LINK-GEN-2's
-     record at this era, so the five conversions below are its five lemmas
-     and not hypotheses. *)
-  Local Notation Wcl := (FileLinkInst.file_Wcl g).
-  Local Notation Wbl := (FileLinkInst.file_Wbl g).
+     parameters: [FileLinkInst.file_Wcl_at] / [file_Wbl_at] are lane
+     LINK-GEN-2's record at this era AND AT THE ROUND'S OWN BOOT STATE, so
+     the five conversions below are five applications of [LinkRec]'s own
+     generic lemmas -- every one of them is about the record and not about
+     the era, which is why the index costs nothing here. *)
+  Local Notation Wcl := (FileLinkInst.file_Wcl_at g s0).
+  Local Notation Wbl := (FileLinkInst.file_Wbl_at g s0).
 
   (* THE DEED, AT SH'S ROUND -- design SS4.2, "the deed meets the stage in
      sh's proof, PURELY".  The pure tie is [UCatOut.cat_tie]'s: the deed's
@@ -198,12 +205,11 @@ Section UShRound.
       The index does the same work for free: the CREDENTIAL's own families
       ([FileLinksLine.fcur]'s [f0w]) carry the filed state under an
       existential, [FileLinksLine.f0w_agree] identifies any two of them,
-      and the round's [s0] is what both are read at.  The named layer that
-      makes the identification structural rather than an agreement step is
-      [file_link_inst_at s0] at [FileLinksLine]'s [fwc_*_at s0] families
-      ([file_link_inst] its [∃ s0] packing), and it is LINK-GEN's: until it
-      lands, [FI] below is the packed record and the tie is by
-      [f0w_agree]. *)
+      and the round's [s0] is what both are read at -- STRUCTURALLY, since
+      lane INIT-FILE landed [FileLinkInst.file_link_inst_at] and this file
+      now reads the record there ([file_link_inst] is its [∃ s0] packing,
+      and [file_Wcl_unpack] / [file_Wcl_at_pack] are the two directions).
+      No [f0w_agree] step is left in the round. *)
   Definition sh_hold_at (sb : fst) (I : list (bv 8)) : iProp Σ :=
     ((∃ (cs0 : list nat) (s : dst) (v : era_pins),
         fown r s
@@ -239,10 +245,10 @@ Section UShRound.
 
   (* [EchoLinksLine.ewc_lcred_blk_line], at the record *)
   Definition Hwbl : forall I : list (bv 8), ⊢ Wcl I 3%nat -∗ Wcl I 0%nat :=
-    FileLinkInst.file_Hwbl g.
+    fun I => lk_lcred_blk_line FI (S gen_id) I.
   (* [UInitBoot]'s [Hsh_wbwc]: the banner-owed credential is a boundary one *)
   Definition Hwbwc : forall I : list (bv 8), ⊢ Wbl I -∗ Wcl I 0%nat :=
-    FileLinkInst.file_Hwbwc g.
+    fun I => lk_lcred_of_ban FI (S gen_id) I.
   (* [LinkRec.lk_lcred_taint]: the taint inhabits every credential -- AT A
      PIN (lane LINK-GEN's section 6, sharpened by LINK-GEN-2).  [Wcl I p]
      carries the era's pin under an existential and the pin is a linear
@@ -252,7 +258,7 @@ Section UShRound.
      enough and every spender ([sh_kill_law_file]) holds it. *)
   Definition Hcltaint : forall (I : list (bv 8)) (p : nat) (v : era_pins),
       ⊢ era_pin (fgn_echo g) (S gen_id) v -∗ T -∗ Wcl I p :=
-    FileLinkInst.file_Hcltaint g.
+    fun I p v => lk_lcred_taint FI (S gen_id) I p v.
   (* [UkSh]'s [Hwc]: the read that completed a line moves the credential
      from "2" at the old input to "3" at the new one.  The record's own
      lemma is stated at the PIN and the input's lower bound, and the loop's
@@ -271,7 +277,7 @@ Section UShRound.
     iDestruct "Hv" as (v) "(#Hpin & Hdl & #Hinp & Hres)".
     iSplitR "Hc".
     - iFrame "Hp Hpa Hrd". iExists v. iFrame "Hpin Hdl Hinp Hres".
-    - iApply (FileLinkInst.file_Hwc g I l v Hl with "Hpin Hinp Hc").
+    - iApply (lk_lcred_read FI (S gen_id) I l v Hl with "Hpin Hinp Hc").
   Qed.
 
   (* [UShLine.ush_wb_read_holds]: a read at a banner-owed credential taints *)
@@ -287,7 +293,9 @@ Section UShRound.
     iDestruct "Hv" as (v) "(#Hpin & Hdl & #Hinp & #Hres)".
     iSplitR "Hb".
     - iFrame "Hp Hpa Hrd". iExists v. iFrame "Hpin Hdl Hinp Hres".
-    - iApply (FileLinkInst.file_Hwbr g I l v Hl with "Hpin Hres Hb").
+    - iDestruct "Hb" as (v') "[#Hpin' Hb]".
+      iDestruct (lk_pin_agr FI (S gen_id) v v' with "Hpin Hpin'") as %<-.
+      iApply (lk_ban_read_taint FI (S gen_id) v I l Hl with "Hb Hres").
   Qed.
   (* the era's kill credential IS the file taint -- the equation above,
      read as an entailment *)
@@ -463,7 +471,7 @@ Section UShRound.
   (* ---- NOT A HYPOTHESIS ANY MORE (the program stream): sh's own fork
           panic at the file families is [UShPanic.ush_panic_law_hold_at] at
           this record and [sh_hold], and the two families are the record's
-          own ([FileLinkInst.file_Wcl] / [file_Wbl]) with that one linear
+          own ([FileLinkInst.file_Wcl_at] / [file_Wbl_at]) with that one linear
           conjunct -- which is the shape that lemma takes.  The era's links
           are its only input. ---- *)
   Lemma Hpanic :

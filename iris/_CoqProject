@@ -1470,6 +1470,7 @@ PinnedObs.v
 PinnedExec.v
 PinnedOpen.v
 PipeReg.v
+PipeProto.v
 UexecExecInst.v
 ExecRun.v
 UexecExecMint.v

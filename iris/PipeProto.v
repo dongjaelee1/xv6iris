@@ -1,0 +1,449 @@
+(* PipeProto.v -- THE PER-PIPE PROTOCOL: one invariant that three processes
+   share, so that the bytes a pipe carries are the application's own ghost
+   state and the pipeline's round can be READ OFF the two children's exit
+   payloads.
+
+   Design of record: claude-notes/design/app-pipe.md SS3 ("The protocol: one
+   invariant per pipe, three processes") and SS4.2 ("The round closes at sh,
+   from the two exit payloads"), over claude-notes/design/pipe.md ("The byte
+   queue").  Lane PIPE-PROTO.
+
+   WHO HOLDS WHAT.  sh's runcmd child allocates the protocol right after
+   pipe(2) ([pipe_proto_alloc]), keeps the two SIDE TOKENS and hands the
+   WRITE PERMIT to the left child (echo) and the READ PERMIT to the right
+   child (cat) through the exec channel.  Nobody ever holds the pipe's queue
+   FRAGMENT again: it lives in the invariant, which is why a row on this
+   pipe can be closed by anybody at any time ([pipe_reg_of_inv], the
+   registration [PipeReg] asks for) and why a dup'd or forked copy of a row
+   costs nothing.
+
+   THE THREE PROPERTIES, at the body:
+
+     (P1)  ps_ws s `prefix_of` L         -- only the line ever goes in
+     (P2)  the write permit at 0 forces ps_ws s = []   (derived, see below)
+     (P3)  after end-of-file the contents are FROZEN: the reader's one-shot
+           snapshot [eof_shot pn w] says w = ps_ws s and ps_wo s = false
+
+   (P3) is preserved by a write link only because the link carries
+   [ps_wo s = true] (lane PQ-FLAG, design SS3.1): a write link cannot fire at
+   a state whose write end is shut, and a snapshot is only taken at such a
+   state.  That ONE premise is the whole of the freeze.
+
+   TWO CORRECTIONS TO THE DESIGN, both forced at the STATEMENT and both
+   recorded in claude-notes/projects/app-pipe.md:
+
+   1. THE EXACTNESS OF A CURSOR IS AN EXCLUSIVE RESOURCE, not an arithmetic
+      consequence of a lower bound.  Design SS3 hoped the chain's [Q j] could
+      pin [ps_ws s = take j L] from "a [mono_list] lower bound of length j
+      plus (P1)"; it cannot -- a lower bound and (P1) together give only
+      [take j L `prefix_of` ps_ws s `prefix_of` L], i.e. [ps_ws s = take k L]
+      for SOME k >= j, and the writer's node needs k = j to know which byte
+      of L it is appending.  What pins it is that the writer is the ONLY
+      writer, and the only way to say that in the logic is an exclusive
+      permit that CARRIES the cursor.  So the protocol has a write cursor
+      [wcur pn c] (half of a [ghost_var]; the body holds the other half at
+      [length (ps_ws s)]) and, symmetrically, a read cursor [rcur pn c] at
+      [ps_rp s].  They compose across echo's several [write]s and cat's
+      several [read]s, which is exactly what the design asked the builders
+      for.
+   2. (P2) AND [wtok_spent] ARE THEN UNNECESSARY.  The design's (P2)
+      (["ps_ws s = []"] or the persistent "the token went in") exists to let
+      sh conclude "echo never wrote" from the start token; with the cursor
+      that is [wcur pn 0] against the body's [wcur pn (length (ps_ws s))],
+      one [ghost_var] agreement ([pipe_body_P2] below).  So [wtok pn] IS the
+      write permit at 0, no one-shot is minted for it, and the body has one
+      conjunct fewer.
+
+   The reader's start permit ([rtok]) is the design's third omission: SS3
+   lists only [wtok] among what [pipe_proto_alloc] hands out, and without a
+   read permit cat's chain cannot pin [ps_rp s] either.
+
+   NOTHING IN THE TREE IMPORTS THIS FILE, so no audit cone reaches it. *)
+From Stdlib Require Import ZArith Lia List.
+From stdpp Require Import list gmap bitvector.definitions.
+From iris.algebra Require Import excl agree csum.
+From iris.algebra.lib Require Import mono_list.
+From iris.proofmode Require Import proofmode.
+From iris.base_logic.lib Require Import own invariants ghost_var.
+Require Import SailStdpp.ConcurrencyInterface SailStdpp.ConcurrencyInterfaceBuiltins SailStdpp.ConcurrencyInterfaceTypes SailStdpp.Operators_mwords.
+Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
+Require Import RiscvPtsto.       (* [riscvGS] *)
+Require Import Xv6Cameras.
+Require Import Xv6G.             (* the ONE bundle; [pipeG] is reached through it *)
+Require Import PipeNames.        (* [pipe_st] / [pst_*] / [pipe_names] / [pn_queue] *)
+Require Import PipeQueue.        (* the links, the chains, the payments, the posts *)
+Require Import PipeReg.          (* [pipe_reg] -- what a pipe row's close is paid with *)
+
+Local Open Scope Z_scope.
+
+(* ===================================================================== *)
+(*  0.  THE PROTOCOL'S CAMERAS AND NAMES                                  *)
+(* ===================================================================== *)
+
+(* THE READER'S END-OF-FILE SNAPSHOT: a one-shot, [KptGhost.kptR]'s shape.
+   [Cinl] is "no end-of-file has been observed" (exclusive, in the body);
+   [Cinr] is the frozen contents (PERSISTENT, and that is the whole point --
+   it rides cat's exit payload and is read by sh after both waits). *)
+Definition pipe_eofR : cmra :=
+  csumR (exclR unitO) (agreeR (leibnizO (list (bv 8)))).
+
+Class pipeProtoG (Σ : gFunctors) := PipeProtoG {
+  ppg_hist :: inG Σ (mono_listR (leibnizO (bv 8)));  (* [ps_ws]'s history *)
+  ppg_eof  :: inG Σ pipe_eofR;                       (* the EOF snapshot *)
+  ppg_cur  :: ghost_varG Σ nat;                      (* the two cursors *)
+  ppg_side :: inG Σ (exclR unitO);                   (* the two side tokens *)
+}.
+
+Definition pipeProtoΣ : gFunctors :=
+  #[ GFunctor (mono_listR (leibnizO (bv 8))); GFunctor pipe_eofR;
+     ghost_varΣ nat; GFunctor (exclR unitO) ].
+
+Global Instance subG_pipeProtoΣ {Σ} : subG pipeProtoΣ Σ -> pipeProtoG Σ.
+Proof. solve_inG. Qed.
+
+(* ONE RECORD OF NAMES per pipe, as design SS3 asks ([pnames]).  It is plain
+   data, so it crosses [exec] inside a program's entry payload the way
+   [pipe_names] does. *)
+Record pnames := MkPNames {
+  pn_hist  : gname;   (* the [mono_list] of bytes written *)
+  pn_eof   : gname;   (* the reader's one-shot snapshot *)
+  pn_wcur  : gname;   (* the write permit, a [ghost_var nat] in halves *)
+  pn_rcur  : gname;   (* the read permit, likewise *)
+  pn_sideL : gname;   (* sh's left-child token *)
+  pn_sideR : gname;   (* sh's right-child token *)
+}.
+
+Global Instance pnames_eq_dec : EqDecision pnames.
+Proof. solve_decision. Defined.
+Global Instance pnames_inhabited : Inhabited pnames :=
+  populate (MkPNames 1%positive 1%positive 1%positive 1%positive 1%positive 1%positive).
+
+(* THE NAMESPACE, at top level and free of any context, as [KptGhost.kptN]
+   is: a caller that has to state a mask premise must be able to name it. *)
+Definition pipeN : namespace := nroot .@ "pipeproto".
+
+Section PipeProto.
+  (* THE CONTEXT IS [xv6G]'S PLUS THIS FILE'S OWN CLASS and nothing else
+     ([PipeReg.v]'s header, [Xv6G.v]'s rule): a second [pipeG] beside the
+     bundle would make [pipe_qfrag] here a different proposition from
+     [PipeQueue]'s. *)
+  Context `{!riscvGS Σ, !xv6G Σ, !pipeProtoG Σ}.
+
+  (* ------------------------------------------------------------------- *)
+  (*  1.  THE PIECES                                                      *)
+  (* ------------------------------------------------------------------- *)
+
+  (* the history of everything written, and a PERSISTENT lower bound of it
+     -- "these bytes are in the pipe, and they are never coming out of the
+     history".  [pws_lb pn L] is echo's exit payload: "the line is in". *)
+  Definition pws_auth (pn : pnames) (l : list (bv 8)) : iProp Σ :=
+    own (pn_hist pn) (●ML (l : list (leibnizO (bv 8)))).
+  Definition pws_lb (pn : pnames) (l : list (bv 8)) : iProp Σ :=
+    own (pn_hist pn) (◯ML (l : list (leibnizO (bv 8)))).
+
+  (* the EOF snapshot's two states *)
+  Definition eof_pending (pn : pnames) : iProp Σ :=
+    own (pn_eof pn) (Cinl (Excl ()) : pipe_eofR).
+  Definition eof_shot (pn : pnames) (w : list (bv 8)) : iProp Σ :=
+    own (pn_eof pn) (Cinr (to_agree (w : leibnizO (list (bv 8)))) : pipe_eofR).
+
+  (* THE TWO PERMITS.  Half of each [ghost_var] sits in the body at the
+     state's own cursor, the other half is the process's exclusive right to
+     move it -- and its exact knowledge of where it is. *)
+  Definition wcur (pn : pnames) (c : nat) : iProp Σ :=
+    ghost_var (pn_wcur pn) (1/2) c.
+  Definition rcur (pn : pnames) (c : nat) : iProp Σ :=
+    ghost_var (pn_rcur pn) (1/2) c.
+
+  (* ...at the start.  [wtok] is design SS3's "writer's start token": it is
+     the write permit at cursor 0, which is what makes (P2) a [ghost_var]
+     agreement instead of a second one-shot. *)
+  Definition wtok (pn : pnames) : iProp Σ := wcur pn 0.
+  Definition rtok (pn : pnames) : iProp Σ := rcur pn 0.
+
+  (* THE TWO SIDE TOKENS (design SS4.2 as amended by SH-PIPE's R-2): a
+     [wait(0)] cannot tell sh's two children apart, so both children's exit
+     payloads are ONE symmetric disjunction and the side is told by which
+     exclusive token came back. *)
+  Definition side_L (pn : pnames) : iProp Σ := own (pn_sideL pn) (Excl ()).
+  Definition side_R (pn : pnames) : iProp Σ := own (pn_sideR pn) (Excl ()).
+
+  Global Instance pws_lb_persistent pn l : Persistent (pws_lb pn l).
+  Proof using . rewrite /pws_lb. apply _. Qed.
+  Global Instance pws_lb_timeless pn l : Timeless (pws_lb pn l).
+  Proof using . rewrite /pws_lb. apply _. Qed.
+  Global Instance pws_auth_timeless pn l : Timeless (pws_auth pn l).
+  Proof using . rewrite /pws_auth. apply _. Qed.
+  Global Instance eof_pending_timeless pn : Timeless (eof_pending pn).
+  Proof using . rewrite /eof_pending. apply _. Qed.
+  Global Instance eof_shot_timeless pn w : Timeless (eof_shot pn w).
+  Proof using . rewrite /eof_shot. apply _. Qed.
+  Global Instance eof_shot_persistent pn w : Persistent (eof_shot pn w).
+  Proof using .
+    rewrite /eof_shot. apply own_core_persistent, Cinr_core_id, _.
+  Qed.
+  Global Instance wcur_timeless pn c : Timeless (wcur pn c).
+  Proof using . rewrite /wcur. apply _. Qed.
+  Global Instance rcur_timeless pn c : Timeless (rcur pn c).
+  Proof using . rewrite /rcur. apply _. Qed.
+  Global Instance side_L_timeless pn : Timeless (side_L pn).
+  Proof using . rewrite /side_L. apply _. Qed.
+  Global Instance side_R_timeless pn : Timeless (side_R pn).
+  Proof using . rewrite /side_R. apply _. Qed.
+
+  (* ---- the history ---- *)
+
+  Lemma pws_auth_lb (pn : pnames) (l : list (bv 8)) :
+    pws_auth pn l -∗ pws_auth pn l ∗ pws_lb pn l.
+  Proof using .
+    rewrite /pws_auth /pws_lb -own_op -mono_list_auth_lb_op. iIntros "$".
+  Qed.
+
+  Lemma pws_lb_prefix (pn : pnames) (l l' : list (bv 8)) :
+    pws_auth pn l -∗ pws_lb pn l' -∗ ⌜l' `prefix_of` l⌝.
+  Proof using .
+    rewrite /pws_auth /pws_lb. iIntros "Ha Hb".
+    iDestruct (own_valid_2 with "Ha Hb") as %Hv%mono_list_both_valid_L.
+    by iPureIntro.
+  Qed.
+
+  Lemma pws_auth_grow (pn : pnames) (l : list (bv 8)) (b : bv 8) :
+    pws_auth pn l ==∗ pws_auth pn (l ++ [b]) ∗ pws_lb pn (l ++ [b]).
+  Proof using .
+    rewrite /pws_auth. iIntros "Ha".
+    iMod (own_update _ _ (●ML ((l ++ [b]) : list (leibnizO (bv 8))))
+            with "Ha") as "Ha".
+    { apply mono_list_update. by exists [b]. }
+    iModIntro. iApply (pws_auth_lb with "Ha").
+  Qed.
+
+  (* ---- the one-shot ---- *)
+
+  Lemma eof_pending_shot (pn : pnames) (w : list (bv 8)) :
+    eof_pending pn -∗ eof_shot pn w -∗ False.
+  Proof using .
+    rewrite /eof_pending /eof_shot. iIntros "H1 H2".
+    by iDestruct (own_valid_2 with "H1 H2") as %Hv.
+  Qed.
+
+  Lemma eof_shot_agree (pn : pnames) (w w' : list (bv 8)) :
+    eof_shot pn w -∗ eof_shot pn w' -∗ ⌜w = w'⌝.
+  Proof using .
+    rewrite /eof_shot. iIntros "H1 H2".
+    iDestruct (own_valid_2 with "H1 H2") as %Hv.
+    rewrite -Cinr_op Cinr_valid in Hv.
+    iPureIntro. exact (to_agree_op_inv_L _ _ Hv).
+  Qed.
+
+  Lemma eof_shoot (pn : pnames) (w : list (bv 8)) :
+    eof_pending pn ==∗ eof_shot pn w.
+  Proof using .
+    rewrite /eof_pending /eof_shot. iIntros "H".
+    iApply (own_update with "H"). by apply cmra_update_exclusive.
+  Qed.
+
+  (* ---- the permits ---- *)
+
+  Lemma wcur_agree (pn : pnames) (c c' : nat) :
+    wcur pn c -∗ wcur pn c' -∗ ⌜c = c'⌝.
+  Proof using .
+    rewrite /wcur. iIntros "H1 H2".
+    iDestruct (ghost_var_agree with "H1 H2") as %He. by iPureIntro.
+  Qed.
+
+  Lemma rcur_agree (pn : pnames) (c c' : nat) :
+    rcur pn c -∗ rcur pn c' -∗ ⌜c = c'⌝.
+  Proof using .
+    rewrite /rcur. iIntros "H1 H2".
+    iDestruct (ghost_var_agree with "H1 H2") as %He. by iPureIntro.
+  Qed.
+
+  Lemma wcur_move (pn : pnames) (c c' d : nat) :
+    wcur pn c -∗ wcur pn c' ==∗ wcur pn d ∗ wcur pn d.
+  Proof using .
+    rewrite /wcur. iIntros "H1 H2".
+    iApply (ghost_var_update_halves d with "H1 H2").
+  Qed.
+
+  Lemma rcur_move (pn : pnames) (c c' d : nat) :
+    rcur pn c -∗ rcur pn c' ==∗ rcur pn d ∗ rcur pn d.
+  Proof using .
+    rewrite /rcur. iIntros "H1 H2".
+    iApply (ghost_var_update_halves d with "H1 H2").
+  Qed.
+
+  (* ---- the side tokens: two answers cannot be the same side ---- *)
+
+  Lemma side_L_excl (pn : pnames) : side_L pn -∗ side_L pn -∗ False.
+  Proof using .
+    rewrite /side_L. iIntros "H1 H2".
+    iDestruct (own_valid_2 with "H1 H2") as %Hv. iPureIntro.
+    exact (exclusive_l _ _ Hv).
+  Qed.
+
+  Lemma side_R_excl (pn : pnames) : side_R pn -∗ side_R pn -∗ False.
+  Proof using .
+    rewrite /side_R. iIntros "H1 H2".
+    iDestruct (own_valid_2 with "H1 H2") as %Hv. iPureIntro.
+    exact (exclusive_l _ _ Hv).
+  Qed.
+
+  (* ------------------------------------------------------------------- *)
+  (*  2.  THE BODY AND THE INVARIANT                                      *)
+  (* ------------------------------------------------------------------- *)
+
+  (* THE BODY, at the line [L] (design SS3; [L] is the bytes echo writes --
+     [PipeDisc]'s good continuation minus the prompt, which is spelled
+     inline there as [wl_line (drop 1 (pline_ws l))], see [PipeDisc.pcont]'s
+     [PRan] row: there is no landed NAME for it, so the protocol takes it as
+     a parameter).
+
+     The pipe's exact queue FRAGMENT lives here and nowhere else.  Beside it:
+     the history's authority (so a writer can hand out persistent lower
+     bounds), and the BODY'S HALF of each of the two cursors, pinned to the
+     state -- which is what makes a permit holder's knowledge exact. *)
+  Definition pipe_body (pn : pnames) (γp : pipe_names) (L : list (bv 8))
+      : iProp Σ :=
+    (∃ s : pipe_st,
+       pipe_qfrag (pn_queue γp) s
+       ∗ pws_auth pn (ps_ws s)
+       ∗ wcur pn (length (ps_ws s))
+       ∗ rcur pn (ps_rp s)
+       (* (P1) only the line ever goes in *)
+       ∗ ⌜ps_ws s `prefix_of` L⌝
+       (* (P3) after end-of-file the contents are frozen *)
+       ∗ (eof_pending pn
+          ∨ ∃ w : list (bv 8),
+              eof_shot pn w ∗ ⌜w = ps_ws s /\ ps_wo s = false⌝))%I.
+
+  (* TIMELESS, and it is load-bearing: every link's fupd runs at ⊤ with no
+     WP step to strip a later off an opened invariant, so the body has to be
+     strippable under a plain [iInv .. as ">"].  This is why (P3) is stated
+     as the cell's two OWNED arms and not as the design's wand
+     [∀ w, γeof ↦ Some w -∗ ⌜..⌝]: a wand is not timeless. *)
+  Global Instance pipe_body_timeless pn γp L : Timeless (pipe_body pn γp L).
+  Proof using . rewrite /pipe_body. apply _. Qed.
+
+  Definition pipe_inv (pn : pnames) (γp : pipe_names) (L : list (bv 8))
+      : iProp Σ := inv pipeN (pipe_body pn γp L).
+
+  Global Instance pipe_inv_persistent pn γp L : Persistent (pipe_inv pn γp L).
+  Proof using . rewrite /pipe_inv. apply _. Qed.
+
+  (* ---- (P1)--(P3), each against the KERNEL'S authority (which is the
+     shape every link reads them at: the body holds the fragment, the
+     caller's link is handed the authority) ---- *)
+
+  Lemma pipe_body_P1 (pn : pnames) (γp : pipe_names) (L : list (bv 8))
+      (s : pipe_st) :
+    pipe_body pn γp L -∗ pipe_qauth (pn_queue γp) s -∗
+    ⌜ps_ws s `prefix_of` L⌝.
+  Proof using .
+    iIntros "Hb Ha". iDestruct "Hb" as (s0) "(Hf & _ & _ & _ & %Hpre & _)".
+    iDestruct (pipe_queue_agree with "Ha Hf") as %<-. by iPureIntro.
+  Qed.
+
+  (* (P2), DERIVED: the start token is the write permit at 0, and the body
+     holds the other half at [length (ps_ws s)]. *)
+  Lemma pipe_body_P2 (pn : pnames) (γp : pipe_names) (L : list (bv 8))
+      (s : pipe_st) :
+    pipe_body pn γp L -∗ wtok pn -∗ pipe_qauth (pn_queue γp) s -∗
+    ⌜ps_ws s = []⌝.
+  Proof using .
+    iIntros "Hb Ht Ha". iDestruct "Hb" as (s0) "(Hf & _ & Hw & _ & _ & _)".
+    iDestruct (pipe_queue_agree with "Ha Hf") as %<-.
+    rewrite /wtok. iDestruct (wcur_agree with "Hw Ht") as %Hlen.
+    iPureIntro. by apply nil_length_inv.
+  Qed.
+
+  Lemma pipe_body_P3 (pn : pnames) (γp : pipe_names) (L : list (bv 8))
+      (s : pipe_st) (w : list (bv 8)) :
+    pipe_body pn γp L -∗ eof_shot pn w -∗ pipe_qauth (pn_queue γp) s -∗
+    ⌜w = ps_ws s /\ ps_wo s = false⌝.
+  Proof using .
+    iIntros "Hb #Hs Ha".
+    iDestruct "Hb" as (s0) "(Hf & _ & _ & _ & _ & [Hp | Heof])".
+    - iDestruct (eof_pending_shot with "Hp Hs") as %[].
+    - iDestruct (pipe_queue_agree with "Ha Hf") as %<-.
+      iDestruct "Heof" as (w') "[#Hs' %Hw]".
+      iDestruct (eof_shot_agree with "Hs Hs'") as %<-. by iPureIntro.
+  Qed.
+
+  (* ------------------------------------------------------------------- *)
+  (*  3.  THE REGISTRATION, AND THE ALLOCATION                            *)
+  (* ------------------------------------------------------------------- *)
+
+  (* THE CLOSE LINK, AT EITHER END, ANY NUMBER OF TIMES -- which is what a
+     pipe-holding verified program's run carries per row
+     ([PipeReg.pipe_reg]) and what its exit spends.  It needs NO knowledge
+     at all: [pst_close] leaves [ps_ws] and [ps_rp] alone and only clears a
+     flag, so (P1), the two cursors and (P3) all survive -- (P3) because the
+     flag it clears can only make [ps_wo] FALSER. *)
+  Lemma pipe_clink_of_inv (E : coPset) (pn : pnames) (γp : pipe_names)
+      (L : list (bv 8)) (w : bool) :
+    ↑pipeN ⊆ E ->
+    pipe_inv pn γp L -∗ pipe_clink (pn_queue γp) w emp.
+  Proof using .
+    intros HE. rewrite /pipe_inv /pipe_clink. iIntros "#Hinv" (s) "Ha".
+    iInv "Hinv" as (s0) ">(Hf & Hh & Hw & Hr & %Hpre & Heof)" "Hclose".
+    iDestruct (pipe_queue_agree with "Ha Hf") as %<-.
+    iMod (pipe_queue_update _ _ _ (pst_close w s0) with "Ha Hf") as "[Ha Hf]".
+    iMod ("Hclose" with "[Hf Hh Hw Hr Heof]") as "_".
+    { iNext. iExists (pst_close w s0). rewrite pst_close_ws pst_close_rp.
+      iFrame "Hf Hh Hw Hr". iSplitR; [by iPureIntro |].
+      iDestruct "Heof" as "[Hp | Heof]"; [by iLeft |].
+      iRight. iDestruct "Heof" as (w0) "[Hs %Hw0]". iExists w0. iFrame "Hs".
+      iPureIntro. destruct Hw0 as [Hw1 Hw2]. split; [exact Hw1 |].
+      destruct w; [ reflexivity | exact Hw2 ]. }
+    iModIntro. by iFrame "Ha".
+  Qed.
+
+  (* ...and that IS the registration (design SS3's table, first row; lane
+     PIPE-REG's [pipe_reg]).  The handle is persistent, so the [□] costs
+     nothing. *)
+  Lemma pipe_reg_of_inv (pn : pnames) (γp : pipe_names) (L : list (bv 8)) :
+    pipe_inv pn γp L -∗ pipe_reg γp.
+  Proof using .
+    iIntros "#Hinv". rewrite /pipe_reg. iIntros "!>" (w).
+    rewrite /pipe_cpay. iLeft.
+    iApply (pipe_clink_of_inv ⊤ pn γp L w with "Hinv"). solve_ndisj.
+  Qed.
+
+  (* THE ALLOCATION, right after pipe(2) and before the first fork1.  This
+     is LITERALLY [UkReadPipe.wp_uk_pipe_read_end]'s registrar premise
+     [∀ γp, pipe_qfrag (pn_queue γp) pst0 ={⊤}=∗ pipe_reg γp ∗ Rp γp] at
+     [Rp γp := ∃ pn, pipe_inv pn γp L ∗ wtok pn ∗ rtok pn ∗ side_L pn ∗
+     side_R pn] -- registering CONSUMES the fragment, and this is where it
+     goes. *)
+  Lemma pipe_proto_alloc (γp : pipe_names) (L : list (bv 8)) :
+    pipe_qfrag (pn_queue γp) pst0 ={⊤}=∗
+    ∃ pn : pnames,
+      pipe_inv pn γp L ∗ wtok pn ∗ rtok pn ∗ side_L pn ∗ side_R pn
+      ∗ pipe_reg γp.
+  Proof using .
+    iIntros "Hfrag".
+    iMod (own_alloc (●ML ([] : list (leibnizO (bv 8))))) as (gh) "Hh";
+      [ apply mono_list_auth_valid |].
+    iMod (own_alloc (Cinl (Excl ()) : pipe_eofR)) as (ge) "He"; [ done |].
+    iMod (ghost_var_alloc (0%nat)) as (gw) "Hw".
+    iMod (ghost_var_alloc (0%nat)) as (gr) "Hr".
+    iMod (own_alloc (Excl ())) as (gl) "Hsl"; [ done |].
+    iMod (own_alloc (Excl ())) as (gs) "Hsr"; [ done |].
+    iDestruct (ghost_var_split (pn_wcur (MkPNames gh ge gw gr gl gs))
+                 0%nat (1/2) (1/2) with "[Hw]") as "[Hw1 Hw2]";
+      [ by rewrite Qp.half_half | ].
+    iDestruct (ghost_var_split (pn_rcur (MkPNames gh ge gw gr gl gs))
+                 0%nat (1/2) (1/2) with "[Hr]") as "[Hr1 Hr2]";
+      [ by rewrite Qp.half_half | ].
+    iMod (inv_alloc pipeN ⊤
+            (pipe_body (MkPNames gh ge gw gr gl gs) γp L)
+            with "[Hfrag Hh Hw1 Hr1 He]") as "#Hinv".
+    { iNext. iExists pst0. rewrite /pst0 /=. iFrame "Hfrag Hh Hw1 Hr1".
+      iSplitR; [ iPureIntro; apply prefix_nil | ]. by iLeft. }
+    iModIntro. iExists (MkPNames gh ge gw gr gl gs).
+    iDestruct (pipe_reg_of_inv _ γp L with "Hinv") as "#Hreg".
+    rewrite /wtok /rtok /side_L /side_R /=.
+    iFrame "Hinv Hw2 Hr2 Hsl Hsr Hreg".
+  Qed.
+
+End PipeProto.

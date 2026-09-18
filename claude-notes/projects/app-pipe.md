@@ -158,10 +158,11 @@ re-run and UNMOVED — exactly the FOURTEEN of `durable-notes.md`'s
 baseline, textually — and that is the audit that matters here: its cone is
 the one that walks the `Uk*`/`USh*`/`UInit*`/`UEcho*` program tier, where
 every file this lane touched lives. `audit-tree-only` and `audit-only`
-were started against the quiescent tree and had not returned when the lane
-handed off, with the mirror saturated (six lanes plus the coordinator's
-gate; `Print Assumptions` is the heaviest thing on the box). They cannot
-move: every new result is a theorem, no `Axiom`/`Admitted` was added, and
+were started against the quiescent tree and never returned: the lane's
+REMOTE CLONE was reclaimed underneath them (`/shared/xv6iris-pipe-reg` is
+gone from the mirror, along with most other lanes' clones — 13 GB
+freed), which happened AFTER the final whole-tree build came back `RC=0`,
+so the green result stands. They cannot move: every new result is a theorem, no `Axiom`/`Admitted` was added, and
 `urun_nopipe`'s definition became strictly WEAKER. **The coordinator
 should still see both green on the merge gate.**
 

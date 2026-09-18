@@ -346,7 +346,7 @@ Section UvmcopyDefs.
       pc_is (mword_of_int (KernelSyms.uvmcopy + 0x80) : mword 64) -∗
       proc_ptm Pold szold Mold -∗
       uc_pay Pold Pnew sznew Mold Mnew vpn0 n res -∗
-      WP (Loop : expr riscv_lang) )%I).
+      mWP (Loop : expr riscv_lang) )%I).
 
 End UvmcopyDefs.
 
@@ -511,7 +511,7 @@ Section ProofUvmcopy.
     proc_ptm Pj sznew Mj -∗
     kalloc_env γa None -∗
     uc_exit mm Pold Pnew szold sznew Mold Mnew vpn0 n K eb p spr ilvl b lks -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using bioslotG0.
     intros HK Hilvl Hvpn0 Hiv Hjb Hext Hout Hfr Hlvj Hmeq Hsp Hs1 Hs7 Hthr Hbelow.
     assert (HKuu : (22 <= K - 10)%nat) by (clear -HK; lia).
@@ -746,7 +746,7 @@ Section ProofUvmcopy.
       (umem_write Mnew 0%Z (4096 * j)%nat (fun a => Mold !!! Z.of_nat a)) -∗
     kalloc_env γa None -∗
     uc_exit mm Pold Pnew szold sznew Mold Mnew vpn0 n K eb p spr ilvl b lks -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using bioslotG0.
     intros HK Hilvl Hvpn0 Hsz Hszb Hnchar Hnb Hfresh Hlive HzOld HzNew.
     assert (HKka : (14 <= K - 10)%nat) by (clear -HK; lia).
@@ -874,7 +874,7 @@ Section ProofUvmcopy.
           (umem_write Mnew 0%Z (4096 * S j)%nat
              (fun a => Mold !!! Z.of_nat a)) -∗
         uc_exit mm Pold Pnew szold sznew Mold Mnew vpn0 n K eb p spr ilvl b lks -∗
-        WP (Loop : expr riscv_lang))%I with "[]" as "TAIL".
+        mWP (Loop : expr riscv_lang))%I with "[]" as "TAIL".
     { iIntros (CIDt mt Pk).
       iIntros "(%Htsp & %Hts1 & %Hts4 & %Hts5 & %Hts6 & %Hts7 & %Htthr
                 & %Htext2 & %Htout & %Htfacts) Hcg Hcnt Hpc Hpo Hpt Hexit".

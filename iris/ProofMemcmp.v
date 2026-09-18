@@ -191,8 +191,8 @@ Section ProofMemcmp.
         ⌜callee_saved mm mf /\ mf !!! Regidx Ra0 = rv⌝ -∗
         sie_cap_gpr KT1 mf K b p -∗
         pc_is (ret_pc ra0) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hsp0 Hra0 Hs00 Hmtsp Hmta0 Hthr.
     iIntros "Hcg #Htext Hpc Hb1 Hb2 Hcont".
@@ -346,8 +346,8 @@ Section ProofMemcmp.
         pc_is (mword_of_int (KernelSyms.memcmp + 0x2e) : mword 64) -∗
         ([∗ list] j ∈ seq 0 n, (pa_add s1 j) ↦ₘ{dq1} f j) -∗
         ([∗ list] j ∈ seq 0 n, (pa_add s2 j) ↦ₘ{dq2} g j) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn64 rem.
     induction rem as [| rem' IH]; intros t M CID0 Hchain Hsum Hrem Heq Hsp Ha0 Ha1 Ha3 Hthr;

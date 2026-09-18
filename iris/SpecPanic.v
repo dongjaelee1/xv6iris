@@ -7,7 +7,7 @@
      }
 
    NO POSTCONDITION.  panic never returns -- its last instruction is a
-   self-jump -- so the contract is a bare [WP Loop] with no continuation at
+   self-jump -- so the contract is a bare [mWP Loop] with no continuation at
    all, and a caller that reaches panic has thereby discharged its own goal.
    That is what makes a panic arm cheap to close, and it is the one thing
    [PanicStub.panic_wp] (the placeholder this replaces) already got right.
@@ -145,7 +145,7 @@ Section PanicEnv.
      trace premise gone (see the header), every name occurs EXACTLY
      ONCE in [wp_panic_sconf_body] -- inside this one conjunct (γpr here, the
      UART1 pair inside [prputc_env]) -- and none occurs in the conclusion,
-     which is the bare [WP Loop].  So [(∀ γ⃗, panic_env_at γ⃗ -∗ WP Loop)] and
+     which is the bare [mWP Loop].  So [(∀ γ⃗, panic_env_at γ⃗ -∗ WP Loop)] and
      [((∃ γ⃗, panic_env_at γ⃗) -∗ WP Loop)] are interderivable by
      ∃-elimination.  Contrast [SpecConsoleintr.console_caps], which binds its
      two LOCK names but keeps [γu] a parameter for precisely the missing
@@ -233,7 +233,7 @@ Definition wp_panic_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID : C
   pc_is (mword_of_int KernelSyms.panic) -∗
   panic_env -∗
   pk_desc_res msg dm -∗
-  WP (Loop : expr riscv_lang).
+  mWP (Loop : expr riscv_lang).
 
 Module Type PANIC.
   Parameter wp_panic_sconf :

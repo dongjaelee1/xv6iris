@@ -184,8 +184,8 @@ Definition wp_end_op_sconf_body
       pc_is ret_tgt -∗
       proc_priv_bare pj pidv Upr -∗
       (* nothing log-specific comes back: the token is retired *)
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type END_OP.
   Parameter wp_end_op_sconf :

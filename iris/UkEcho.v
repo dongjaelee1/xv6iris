@@ -141,8 +141,8 @@ Section UkEcho.
            Regidx r <> Regidx csp_rs1 -> Regidx r <> Regidx s0_idx ->
            Regidx r <> Regidx ra_idx -> m' !!! Regidx r = m !!! Regidx r ⌝ -∗
        urun N h' m' (ret_pc vra) (2 + n) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hsp Hal8 Hlo. iIntros "#Hcode Hwra Hws0 Hrun Hcont".
     assert (Hbsp1 : bv_unsigned (add_vec_int sp0 (- (8 * Z.of_nat 2)))
@@ -334,8 +334,8 @@ Section UkEcho.
             (<[Regidx a5_idx := mword_of_int (p + 1) : mword 64]>
              (<[Regidx a3_idx := mword_of_int p : mword 64]> mc)))
            tgt n -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hp0 Hp64 Hbz Ha5 Htgt. iIntros "#Hcode Hb Hrun Hcont".
     assert (Hbr : 0 <= bz < Z64).
@@ -454,8 +454,8 @@ Section UkEcho.
              Regidx r <> Regidx a3_idx -> Regidx r <> Regidx a4_idx ->
              Regidx r <> Regidx a5_idx -> mc' !!! Regidx r = mc !!! Regidx r ⌝ -∗
          urun N h' mc' (mword_of_int 0xf8) n -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros k. induction k as [| k IH ];
       intros j h mc n Hlen Ha0 Ha38 Ha5;
@@ -552,8 +552,8 @@ Section UkEcho.
          ⌜ ucallee_saved m m' ⌝ -∗
          ⌜ m' !!! Regidx a0_idx = mword_of_int (Z.of_nat len) ⌝ -∗
          urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (2 + n) -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0. iIntros "#Hcode Hs Hrun Hcont".
     destruct echo_syms_pins as (_ & _ & Hstrlen & _ & _). rewrite Hstrlen.
@@ -934,7 +934,7 @@ Section UkEcho.
     echo_code γt -∗
     ukn_pay N (-1) -∗
     urun N h m (mword_of_int EchoSyms.exit) avail -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using Hpay.
     iIntros "#Hcode Hpay Hrun".
     destruct echo_syms_pins as (_ & _ & _ & Hexit & _). rewrite Hexit.
@@ -986,8 +986,8 @@ Section UkEcho.
          (<[Regidx a0_idx := ret]>
             (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m))
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "#Hwr #Hcode Hrun Hcont".
     destruct echo_syms_pins as (_ & _ & _ & _ & Hwrite). rewrite Hwrite.
@@ -1108,8 +1108,8 @@ Section UkEcho.
          (<[Regidx a0_idx := ret]>
             (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m))
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "#Hcode Hrun Hsb Hstd Hbuf Hcont".
     destruct echo_syms_pins as (_ & _ & _ & _ & Hwrite). rewrite Hwrite.
@@ -1225,8 +1225,8 @@ Section UkEcho.
          (<[Regidx a0_idx := ret]>
             (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m))
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "#Hcode Hrun Hsb Hstd #Hbs Hcont".
     destruct echo_syms_pins as (_ & _ & _ & _ & Hwrite). rewrite Hwrite.
@@ -1341,8 +1341,8 @@ Section UkEcho.
             (<[Regidx a0_idx := ret]>
                (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m))
             (ret_pc (m !!! Regidx ra_idx)) avail -∗
-          WP (Loop : expr riscv_lang)) -∗
-       WP (Loop : expr riscv_lang))%I.
+          mWP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang))%I.
 
   (* ...AND THE TRIVIAL ONE: the flagged deposit pays row 16 and the post
      is thrown away, which is what echo did before lane IO-LEAF and what a
@@ -1452,7 +1452,7 @@ Section UkEcho.
     echo_code γt -∗
     ukn_pay N (-1) -∗
     urun N h mc (mword_of_int 0x76) n -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof.
     iIntros "#Hcode Hpay Hrun".
     destruct echo_syms_pins as (_ & _ & _ & Hexit & _).
@@ -1505,8 +1505,8 @@ Section UkEcho.
              Regidx r <> Regidx s2_idx -> mc' !!! Regidx r = mc !!! Regidx r ⌝ -∗
          Co -∗
          urun N h' mc' tgt (2 + n) -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hi Hav0 Hav38 Hs1 Hs3 Hs5 Htgt.
     iIntros "Hw #Hcode Hargv HCi Hrun Hcont".
@@ -1789,8 +1789,8 @@ Section UkEcho.
            Regidx r <> Regidx s1_idx -> mc' !!! Regidx r = mc !!! Regidx r ⌝ -∗
        Co -∗
        urun N h' mc' (mword_of_int 0x4e) (2 + n) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hav0 Hav38 Hi1 Hs1 Hs3 Hs4 Hs6.
     iIntros "Hw #Hcode HCi Hrun Hcont".
@@ -1991,7 +1991,7 @@ Section UkEcho.
     uargv γd av args -∗
     Ci -∗
     urun N h mc (mword_of_int 0x4e) (2 + n) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof.
     intros k. induction k as [| k IH ];
       intros i h mc n Ci Hlen Hav0 Hav38 Hs1 Hs3 Hs4 Hs5 Hs6;
@@ -2191,7 +2191,7 @@ Section UkEcho.
     uargv γd av args -∗
     Ci -∗
     urun N h m (mword_of_int EchoSyms.main) (8 + (2 + n)) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using Hpay.
     intros Ha0 Ha1. iIntros "Hpay #Hcode Hargv HCi Hrun".
     destruct echo_syms_pins as (Hmain & _ & _ & _ & _). rewrite Hmain.
@@ -2763,7 +2763,7 @@ Section UkEcho.
     uargv γd av args -∗
     Ci -∗
     urun N h m (mword_of_int EchoSyms.start) (2 + (8 + (2 + n))) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using Hpay.
     intros Ha0 Ha1. iIntros "Hpay #Hcode Hargv HCi Hrun".
     destruct echo_syms_pins as (Hmain & Hstart & _ & _ & _). rewrite Hstart.

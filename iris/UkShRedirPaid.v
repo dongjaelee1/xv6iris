@@ -119,7 +119,7 @@ Section UkShRedirPaid.
     Cr -∗
     (UserFd.ustd (ukn_fd N) l -∗ Cd -∗ ukn_pay N (-1)) -∗
     urun N h m (mword_of_int 0x10e) (ush_Dg + n) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hfd2 Hat Hxlen Hxb.
     assert (Hal : uint (m !!! Regidx s1_idx) mod 8 = 0).

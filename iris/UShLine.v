@@ -1070,8 +1070,8 @@ Section UShLine.
        ubytes (ukn_d N) a k g -∗
        urun (PS := uprogSG_free) N h'
          (<[Regidx a0_idx := r]> m) (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hpay Hst Hts Hep Hn Ha0 Ha1 Ha2 Hcapk Hcap31 Hfd0 Hal.
     iIntros "#Hlk #Hi Hbuf Hstd Hpos Hrun Hcont".
@@ -1300,8 +1300,8 @@ Section UShLine.
        ubytes (ukn_d N) a k g -∗
        urun (PS := uprogSG_free) N h'
          (<[Regidx a0_idx := r]> m) (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang)
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang)
     := fun Hpay Hst Hts =>
          ush_read_recv_era_at (echo_read_inst T γ) γ Wb N γp l h m pc a k cap
            I f avail Hpay Hst Hts (rr_ep_refl γ T).

@@ -116,8 +116,8 @@ Definition wp_uvmclear_mem_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{
     pc_is ret_tgt -∗
     ⌜callee_saved mm mr⌝ -∗
     proc_ptm (uptd_set P vpn (pte_clear_u w)) sz M -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type UVMCLEAR.
   Parameter wp_uvmclear_mem_sconf :

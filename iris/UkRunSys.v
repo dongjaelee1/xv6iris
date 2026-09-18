@@ -552,8 +552,8 @@ Section UkRunSys.
     udepw N m pc n -∗
     (∀ (h' : CpuId) (r : mword 64),
        urun N h' (<[Regidx (mword_of_int 10) := r]> m) (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hexit Hfork Hexec Hsbrk H3 H4 H5 H8 Hcl Hdp Hop Hcd Hal4.
     iIntros "#Hi Hrun Hsb Hcont".
@@ -689,8 +689,8 @@ Section UkRunSys.
        UserCwd.ucwd (ukn_cwd N) c' -∗
        urun N h' (<[Regidx (mword_of_int 10) := r]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hal4.
     iIntros "#Hi Hrun Hsb Hcwd Hcont".
@@ -793,8 +793,8 @@ Section UkRunSys.
        UserCwd.ucwd_any (ukn_cwd N) -∗
        urun N h' (<[Regidx (mword_of_int 10) := r]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hal4. iIntros "#Hi Hrun Hsb Hcwd Hcont".
     iDestruct "Hcwd" as (c) "Hcwd".
@@ -854,8 +854,8 @@ Section UkRunSys.
         ∨ (⌜r = (mword_of_int (-1) : mword 64)⌝ ∗ ustd (ukn_fd N) l)) -∗
        urun N h' (<[Regidx (mword_of_int 10) := r]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hal4.
     iIntros "#Hi Hrun Hsb Hstd Hcont".
@@ -1026,8 +1026,8 @@ Section UkRunSys.
            ustd (ukn_fd N) l ∗ ufd_own (ukn_fd N) l fd0 st)) -∗
        urun N h' (<[Regidx (mword_of_int 10) := r]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Harg Hstne Hal4.
     iIntros "#Hi Hrun Hsb Hstd Hh0 Hcont".
@@ -1194,8 +1194,8 @@ Section UkRunSys.
        ustd (ukn_fd N) l' -∗
        urun N h' (<[Regidx (mword_of_int 10) := r]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hal4.
     iIntros "#Hi Hrun Hsb Hstd Hcont".
@@ -1359,8 +1359,8 @@ Section UkRunSys.
        ustd (ukn_fd N) l -∗
        urun N h' (<[Regidx (mword_of_int 10) := r]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Harg Hlt Hrow Hal4.
     iIntros "#Hi Hrun Hsb Hstd Hcont".
@@ -1530,8 +1530,8 @@ Section UkRunSys.
        ⌜uint r = 0⌝ -∗
        urun N h' (<[Regidx (mword_of_int 10) := r]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Harg Hal4.
     iIntros "#Hi Hrun Hsb Hh Hcont".
@@ -1649,8 +1649,8 @@ Section UkRunSys.
        ustd (ukn_fd N) (<[fd := FdClosed]> l) -∗
        urun N h' (<[Regidx (mword_of_int 10) := r]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Harg Hs Hkl Hne Hal4.
     iIntros "#Hi Hrun Hsb Hstd Hcont".
@@ -1779,8 +1779,8 @@ Section UkRunSys.
        urun N h'
          (<[Regidx (mword_of_int 10) := (mword_of_int (-1) : mword 64)]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hal4.
     iIntros "#Hi Hrun Hsb Hcont".
@@ -1919,8 +1919,8 @@ Section UkRunSys.
        urun N h'
          (<[Regidx (mword_of_int 10) := (mword_of_int (-1) : mword 64)]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hal4.
     iIntros "#Hi Hrun Hcwd Hsb Hcont".
@@ -2063,8 +2063,8 @@ Section UkRunSys.
     udepw N m pc USYS_kill -∗
     (∀ (h' : CpuId) (r : mword 64),
        urun N h' (<[Regidx (mword_of_int 10) := r]> m) (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hal4. iIntros "#Hi Hrun Hsb Hcont".
     iApply (wp_uk_ecall_quiet N h m pc USYS_kill avail Hn
@@ -2142,8 +2142,8 @@ Section UkRunSys.
        urun N h' (<[Regidx (mword_of_int 10) := r]> m)
          (add_vec_int pc 4) avail -∗
        uch (ukn_ch N) Sc' -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hz Hal4.
     iIntros "#Hi Hrun Hsb Hch Hrd Hcont".
@@ -2286,8 +2286,8 @@ Section UkRunSys.
        urun N h' (<[Regidx (mword_of_int 10) := r]> m)
          (add_vec_int pc 4) avail -∗
        uch (ukn_ch N) Sc' -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hz Hal4. iIntros "#Hi Hrun Hsb Hch Hcont".
     iApply (wp_uk_ecall_wait_null_gen N h m pc avail Sc (fun _ => emp)%I
@@ -2324,8 +2324,8 @@ Section UkRunSys.
        urun N h' (<[Regidx (mword_of_int 10) := r]> m)
          (add_vec_int pc 4) avail -∗
        uch (ukn_ch N) Sc' -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hz Hal4. iIntros "#Hi Hrun Hsb Hch Hpid Hcont".
     iApply (wp_uk_ecall_wait_null_gen N h m pc avail Sc
@@ -2357,8 +2357,8 @@ Section UkRunSys.
        urun N h' (<[Regidx (mword_of_int 10) := r]> m)
          (add_vec_int pc 4) avail -∗
        uch (ukn_ch N) Sc' -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hz Hal4. iIntros "#Hi Hrun Hsb Hch Hcont".
     iApply (wp_uk_ecall_wait_null_live N h m pc avail Sc Hn Hz Hal4
@@ -2480,8 +2480,8 @@ Section UkRunSys.
          (add_vec_int pc 4) avail -∗
        uch (ukn_ch N) Sc' -∗
        ubytes (ukn_d N) (uint dst) k g -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hdst Hnz Hk4 Hal4.
     iIntros "#Hi Hrun Hsb Hch Hbuf Hpid Hcont".
@@ -2691,8 +2691,8 @@ Section UkRunSys.
        urun N h' (<[Regidx (mword_of_int 10) := r]> m)
          (add_vec_int pc 4) avail -∗
        ubytes (ukn_d N) (uint dst) k g -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hwin Hcapk Hcl Hdp Hop Hpp Hwt Hal4.
     iIntros "#Hi Hrun Hsb Hbuf Hcont".
@@ -3004,8 +3004,8 @@ Section UkRunSys.
        urun N h' (<[Regidx (mword_of_int 10) := r]> m)
          (add_vec_int pc 4) avail -∗
        ubytes (ukn_d N) (uint (m !!! Regidx (mword_of_int 10))) 8 g -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hal4.
     set (dst := m !!! Regidx (mword_of_int 10)).
@@ -3306,8 +3306,8 @@ Section UkRunSys.
        urun N h' (<[Regidx (mword_of_int 10) := r]> m)
          (add_vec_int pc 4) avail -∗
        ubytes (ukn_d N) (uint (m !!! Regidx (mword_of_int 11))) k g -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hcnt Hk Hal4. iIntros "#Hi Hrun Hsb Hbuf Hcont".
     assert (Hw : usyswin m USYS_read
@@ -3390,8 +3390,8 @@ Section UkRunSys.
        ubytes (ukn_d N) a cnt g -∗
        urun N h' (<[Regidx (mword_of_int 10) := r]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Ha1 Hcnt Hal4.
     iIntros "#Hi Hbs Hrun Hsb Hcont".
@@ -3606,8 +3606,8 @@ Section UkRunSys.
        urun N h' (<[Regidx (mword_of_int 10) := r]> m)
          (add_vec_int pc 4) avail -∗
        ubytes (ukn_d N) (uint (m !!! Regidx (mword_of_int 11))) k g -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hcnt Hcapk Hal4 Hag.
     iIntros "#Hi Hrun Hsb Hstd Hbuf Hcont".
@@ -3828,8 +3828,8 @@ Section UkRunSys.
        urun N h' (<[Regidx (mword_of_int 10) := r]> m)
          (add_vec_int pc 4) avail -∗
        ubytes (ukn_d N) (uint (m !!! Regidx (mword_of_int 11))) k g -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hcnt Hcapk Hal4.
     iIntros "#Hi Hrun Hsb Hstd Hbuf Hcont".
@@ -3945,8 +3945,8 @@ Section UkRunSys.
        UserCwd.ucwd (ukn_cwd N) c -∗
        urun N h' (<[Regidx (mword_of_int 10) := r]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hal4.
     iIntros "#Hi Hrun Hcwd Hsb Hstd Hcont".
@@ -4106,8 +4106,8 @@ Section UkRunSys.
        UserCwd.ucwd (ukn_cwd N) c -∗
        urun N h' (<[Regidx (mword_of_int 10) := r]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hexit Hfork Hexec Hsbrk H3 H4 H5 H8 Hcl Hdp Hop Hcd Hal4.
     iIntros "#Hi Hrun Hcwd Hsb Hcont".
@@ -4383,8 +4383,8 @@ Section UkRunSys.
        spost_at uslot 16 fdep W r (uvis_M W) (uvis_fd W) cw' cs' -∗
        urun N h' (<[Regidx (mword_of_int 10) := r]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hal4 Hag Hsrc.
     iIntros "#Hi Hrun Hsb Hstd Hbuf Hcont".
@@ -4580,8 +4580,8 @@ Section UkRunSys.
        spost_at uslot 16 fdep W r (uvis_M W) (uvis_fd W) cw' cs' -∗
        urun N h' (<[Regidx (mword_of_int 10) := r]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   (* ...AND IT IS NOW [wp_uk_ecall_write_at] AT THE LEDGER READING AND THE
      DATA HALF (lane RD-6), at its exact former statement: the walk it used
      to carry is the one walk, and what this leaf adds is the two answers
@@ -4635,8 +4635,8 @@ Section UkRunSys.
        spost_at uslot 16 fdep W r (uvis_M W) (uvis_fd W) cw' cs' -∗
        urun N h' (<[Regidx (mword_of_int 10) := r]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hal4. iIntros "#Hi Hrun Hsb Hstd Hcont".
     iApply (wp_uk_ecall_write_chain_buf N h m pc avail fdep l (DfracOwn 1)
@@ -4710,8 +4710,8 @@ Section UkRunSys.
        spost_at uslot 16 fdep W r (uvis_M W) (uvis_fd W) cw' cs' -∗
        urun N h' (<[Regidx (mword_of_int 10) := r]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   (* ...AND IT IS THE ONE WALK AT THE TEXT HALF (lane RD-6), at its exact
      former statement: the only thing that ever differed from the buffer
      leaf is which answer to [usrc_ok] the caller's run gives. *)
@@ -4811,8 +4811,8 @@ Section UkRunSys.
        UserCwd.ucwd (ukn_cwd N) c -∗
        urun N h' (<[Regidx (mword_of_int 10) := r]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hal4.
     iIntros "#Hi #Himg Hrun Hcwd Hsb Hstd Hcont".
@@ -5064,8 +5064,8 @@ Section UkRunSys.
        UserCwd.ucwd (ukn_cwd N) c -∗
        urun N h' (<[Regidx (mword_of_int 10) := r]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hal4.
     iIntros "#Hi #Himg Hrun Hcwd Hsb Hstd Hcont".
@@ -5225,8 +5225,8 @@ Section UkRunSys.
        UserCwd.ucwd (ukn_cwd N) c -∗
        urun N h' (<[Regidx (mword_of_int 10) := r]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hal4. iIntros "#Hi #Hd Hrun Hcwd Hsb Hstd Hcont".
     iApply (wp_uk_ecall_open_recv_gimg N h m pc l avail fdep c Img Hn Hal4
@@ -5263,8 +5263,8 @@ Section UkRunSys.
        UserCwd.ucwd (ukn_cwd N) c -∗
        urun N h' (<[Regidx (mword_of_int 10) := r]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hexit Hfork Hexec Hsbrk H3 H4 H5 H8 Hcl Hdp Hop Hcd Hal4.
     iIntros "#Hi #Himg Hrun Hcwd Hsb Hcont".
@@ -5424,8 +5424,8 @@ Section UkRunSys.
            ∃ g : nat -> bv 8, ubytes (ukn_d N) sz (Z.to_nat n) g)) -∗
        urun N h' (<[Regidx (mword_of_int 10) := r]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Harg Heag Hn0 Hsz0 Hszok' Hal Hal4.
     (* the new break is inside the user region, which is what every bound
@@ -5697,7 +5697,7 @@ Section UkRunSys.
        the leaf mints the row off its own run and there is no premise here
        at all. *)
     urun N h m pc avail -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn. iIntros "#Hi Hpay Hrun".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".

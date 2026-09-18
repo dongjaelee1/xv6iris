@@ -262,8 +262,8 @@ Section ProofSysUnlinkTails.
         ⌜(mf !!! Regidx Ra0 : mword 64) = (mword_of_int (-1) : mword 64)⌝ -∗
         sie_cap_gpr KT1 mf K b pj -∗
         pc_is (ret_pc (m !!! Regidx Rra : mword 64)) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK30 Kpop Hsp0 HMsp HMthr HMs1 HMs2 HMs3 Hal.
     iIntros "Hcg #Htext Hpc Hf1 Hf2 Hf3 Hf4 Hf5 Hf6 HbD HbN HbP H27 HbE H30
@@ -343,7 +343,7 @@ Section ProofSysUnlinkTails.
     cpu_own n eb pj b lks -∗
     kernel_text -∗ kernel_data -∗ panic_env -∗
     pc_is (mword_of_int (SU + 0xec)) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HKp Hn31 Hbelow.
     iIntros "Hcg Hown #Htext #Hkd #Hpenv Hpc".
@@ -407,7 +407,7 @@ Section ProofSysUnlinkTails.
     cpu_own n eb pj b lks -∗
     kernel_text -∗ kernel_data -∗ panic_env -∗
     pc_is (mword_of_int (SU + 0x12e)) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HKp Hn31 Hbelow.
     iIntros "Hcg Hown #Htext #Hkd #Hpenv Hpc".
@@ -471,7 +471,7 @@ Section ProofSysUnlinkTails.
     cpu_own n eb pj b lks -∗
     kernel_text -∗ kernel_data -∗ panic_env -∗
     pc_is (mword_of_int (SU + 0x13a)) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HKp Hn31 Hbelow.
     iIntros "Hcg Hown #Htext #Hkd #Hpenv Hpc".
@@ -589,8 +589,8 @@ Section ProofSysUnlinkTails.
         cpu_claim_ext eb (proc_addr jx) -∗
         pc_is (ret_pc (m !!! Regidx Rra : mword 64)) -∗
         proc_priv_bare (proc_addr jx) pidv Upr -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HKeo HK30 Kpop Hgeom Hj Hgl Hlkempty Hsp0 HMsp HMthr HMs2 HMs3 Hal.
     iIntros "Hcg Hown Htce Hcce #Htext #Hkd Hpc #Hpenv #Hbio #Hlog Hseam Hgen
@@ -863,8 +863,8 @@ Section ProofSysUnlinkTails.
         sb_inodestart ↦₄{dqs} (mword_of_int icfg_ist : mword 32) -∗
         bslots 3 -∗
         iref_slot -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HKup HKeo HK30 Kpop Hkk Hgeom Hsize Hbm0 Hbmcov Hbmlog Hist0 Hiblk
            Hiblog Hinb Hcovb Hiu Hj Hgl Hlkempty Hsp0 HMsp HMthr HMs1 HMs2
@@ -1200,8 +1200,8 @@ Section ProofSysUnlinkTails.
         sb_inodestart ↦₄{dqs} (mword_of_int icfg_ist : mword 32) -∗
         bslots 3 -∗
         iref_slot -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HKup HKeo HK30 Kpop Hkk Hgeom Hsize Hbm0 Hbmcov Hbmlog Hist0 Hiblk
            Hiblog Hinb Hcovb Hiu Hj Hgl Hlkempty Hsp0 HMsp HMthr HMs1 HMs3 Hal.
@@ -1410,8 +1410,8 @@ Section ProofSysUnlinkTails.
         sb_inodestart ↦₄{dqs} (mword_of_int icfg_ist : mword 32) -∗
         bslots 3 -∗
         iref_slots 2 -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HKup HKeo HK30 Kpop Hkk Hki Hgeom Hsize Hbm0 Hbmcov Hbmlog Hist0
            Hiblk Hiblog Hinb Hiblki Hiblogi Hinbi Hcovb Hiu Hj Hgl Hlkempty

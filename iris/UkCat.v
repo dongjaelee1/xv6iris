@@ -178,8 +178,8 @@ Section UkCat.
          (<[Regidx a0_idx := ret]>
             (<[Regidx a7_idx := (mword_of_int 15 : mword 64)]> m))
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hnone. iIntros "#Hdp #Hcode Hrun Hstd Hcont".
     destruct cat_syms_pins
@@ -299,8 +299,8 @@ Section UkCat.
          (<[Regidx a0_idx := ret]>
             (<[Regidx a7_idx := (mword_of_int 21 : mword 64)]> m))
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Harg. iIntros "#Hdp #Hcode Hrun Hfdh Hcont".
     destruct cat_syms_pins
@@ -381,8 +381,8 @@ Section UkCat.
          (<[Regidx a0_idx := ret]>
             (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m))
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "#Hdp #Hcode Hrun Hcont".
     destruct cat_syms_pins
@@ -505,8 +505,8 @@ Section UkCat.
          (<[Regidx a0_idx := ret]>
             (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m))
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "#Hcode Hrun Hsb Hstd Hbuf Hcont".
     destruct cat_syms_pins
@@ -617,8 +617,8 @@ Section UkCat.
             (<[Regidx a0_idx := ret]>
                (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m))
             (ret_pc (m !!! Regidx ra_idx)) avail -∗
-          WP (Loop : expr riscv_lang)) -∗
-       WP (Loop : expr riscv_lang))%I.
+          mWP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang))%I.
 
   (* ...AND THE FREE ONE: the flagged deposit pays row 16 and the post is
      thrown away, which is what every write of cat's did before this lane.
@@ -707,8 +707,8 @@ Section UkCat.
             (<[Regidx a0_idx := ret]>
                (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m))
             (ret_pc (m !!! Regidx ra_idx)) avail -∗
-          WP (Loop : expr riscv_lang)) -∗
-       WP (Loop : expr riscv_lang))%I.
+          mWP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang))%I.
 
   (* the ret-free obligation IS the constant instance of this one -- which
      is what lets the FREE chain keep funding cat's loop unchanged *)
@@ -1008,7 +1008,7 @@ Section UkCat.
     cat_code γt -∗
     ukn_pay N (-1) -∗
     urun N h m (mword_of_int CatSyms.exit) avail -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using Hpay.
     iIntros "#Hcode Hpayv Hrun".
     destruct cat_syms_pins
@@ -1066,8 +1066,8 @@ Section UkCat.
          (<[Regidx a0_idx := ret]>
             (<[Regidx a7_idx := (mword_of_int 5 : mword 64)]> m))
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha1 Hcnt. iIntros "#Hdp #Hcode Hbs Hrun Hcont".
     destruct cat_syms_pins
@@ -1169,8 +1169,8 @@ Section UkCat.
             (<[Regidx a0_idx := ret]>
                (<[Regidx a7_idx := (mword_of_int 5 : mword 64)]> m))
             (ret_pc (m !!! Regidx ra_idx)) avail -∗
-          WP (Loop : expr riscv_lang)) -∗
-       WP (Loop : expr riscv_lang))%I.
+          mWP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang))%I.
 
   (* ...and its output side is MONOTONE, which is what lets a caller
      REFINE what a read told it -- at a held descriptor row, "the bytes at
@@ -1231,8 +1231,8 @@ Section UkCat.
             (<[Regidx a0_idx := ret]>
                (<[Regidx a7_idx := (mword_of_int 15 : mword 64)]> m))
             (ret_pc (m !!! Regidx ra_idx)) avail -∗
-          WP (Loop : expr riscv_lang)) -∗
-       WP (Loop : expr riscv_lang))%I.
+          mWP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang))%I.
 
   (* THE FREE INSTANCE: the landed stub's own post, with the LEDGER coming
      in and going back out through the obligation's two halves.  A caller
@@ -1270,8 +1270,8 @@ Section UkCat.
             (<[Regidx a0_idx := ret]>
                (<[Regidx a7_idx := (mword_of_int 21 : mword 64)]> m))
             (ret_pc (m !!! Regidx ra_idx)) avail -∗
-          WP (Loop : expr riscv_lang)) -∗
-       WP (Loop : expr riscv_lang))%I.
+          mWP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang))%I.
 
   (* ...and the open's output side is MONOTONE.  The wand is an IRIS one
      and not a Coq entailment, because what a caller wants to attach to

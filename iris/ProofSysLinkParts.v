@@ -816,8 +816,8 @@ Section ProofSysLinkEpilogue.
         ⌜(mf !!! Regidx Ra0 : mword 64) = (M !!! Regidx Ra5 : mword 64)⌝ -∗
         sie_cap_gpr KT1 mf K b pj -∗
         pc_is (ret_pc (m !!! Regidx Rra : mword 64)) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK38 Kpop Hsp0 HMsp HMthr HMs1 HMs2 Hal.
     iIntros "Hcg #Htext Hpc Hf1 Hf2 Hf3 Hf4 HbN HbW HbO Hcont".

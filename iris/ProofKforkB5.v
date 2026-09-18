@@ -300,8 +300,8 @@ Section ProofKforkB5.
            the set now, which is what makes the resume key's
            [UexecSlot.uvis_ch] a reading of the map rather than a choice. *)
         WaitInv.ch_frag gpar pme (csPar ∪ {[ProcDefs.pv_gen (us_V Uc)]}) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using ufdG0.
     intros HK Hlvl Hj Hgl Hrest Hb Hm20 Hm21 Hm9 Hurun Hkfd Hkgn Hkch Hkpid Hfresh.
     iIntros "Hcg Hown Hpay #Htext Hpc #Hpinv #Hwl #Hft #Hpe #Hworld #Htoken #Hfdone Hheld Hhart Hpriv Hfrag Hcrow Hprow Hsg34 Hpr34 #Hgslot #Hgpid Hjslot #Hmk

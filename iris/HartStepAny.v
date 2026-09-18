@@ -370,8 +370,8 @@ Section stepany.
             reg_agree_on ((Drw ∪ Dro) ∖ tk_clock3) rs3
               (wrap_post rs2 mi)⌝ -∗
          hreg_frame rs3 Drw -∗ hreg_frame_ro Df rs3 Dro -∗ Psi -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hdisj HWcy HWti HWip HDpriv HDhart HDmc HDcfg HWmi HDmi HWms HDms
       HWpc HDpc HDnpc Hhart HQhart HQmi Hpre.
@@ -655,8 +655,8 @@ Section stepany.
          ⌜Q rs2 /\
           reg_agree_on ((Drw ∪ Dro) ∖ tk_clock3) rs3 (wrap_post rs2 mi)⌝ -∗
          hreg_frame rs3 Drw -∗ hreg_frame_ro Df rs3 Dro -∗ Psi rs2 -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hdisj HWcy HWti HWip HDpriv HDhart HDmc HDcfg HWmi HDmi HWms HDms
       HWpc HDpc HDnpc Hhart HQhart HQmi Hpre.

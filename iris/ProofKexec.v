@@ -232,7 +232,7 @@ Section KexecAUTail.
       KexecOkQ.kexec_closer Q QF gf fsc_kalloc (proc_addr jp) pidv U m (ret_pc ra0) K
            eb eb ∅ dqb dqs fsc_bmapstart na alen plen pv dqpv
            pfun av dqa avf aslen dqas afun) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HQe Hqfnm Hqfaf HK Hcstr Hnamax Hsz1ge Havf_nz Hal Hmsp Hmra Hms0 Hms1 Hms2
            Hmw5 Hmw6 Hmw7 Hmw8 Hmw9 Hmw10 Hmw11 Hmw12.
@@ -302,7 +302,7 @@ Section KexecAUTail.
       KexecOkQ.kexec_closer Q QF gf fsc_kalloc (proc_addr jp) pidv U m (ret_pc ra0) K
            eb eb ∅ dqb dqs fsc_bmapstart na alen plen pv dqpv
            pfun av dqa avf aslen dqas afun) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HQe Hqfnm Hqfaf HK Hcstr Hnamax Havf_nz Havf_na Halen_b Halen_c Halen_4
            Hmsp Hmra Hms0 Hms1 Hms2
@@ -417,7 +417,7 @@ Section KexecAUExit.
            [∗ list] j ∈ seq 0 (aslen i), pa_add (avf i) j ↦ₘ{dqas} afun i j) -∗
         bslots 3 -∗
         iref_slots 2 -∗
-        WP (Loop : expr riscv_lang))%I.
+        mWP (Loop : expr riscv_lang))%I.
 
   (* the linear twin of [ProofKexecACode.kxc_exit_open_r]: the receipt the
      conversion spends is not persistent, so the wand is not either. *)

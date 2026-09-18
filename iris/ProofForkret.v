@@ -288,7 +288,7 @@ Lemma fkr_tail
                  (pv_chg (us_V U)) (pv_cwi (us_V U))
                  sts gn cs (if steady then Some (uvis_of U [] gn cs pid) else None)
                  pid av -∗
-  WP (Loop : expr riscv_lang).
+  mWP (Loop : expr riscv_lang).
 Proof.
   intros p ksp Hjlt Hgn Hpr Havsum Hmtsp Hmts1.
   iIntros "#Htext #Hwire #Hclaimmap Hpc Hcg Hcpu Hext Hcx #Hks Hf16 Hpv #Hdone HW Hbslot #Hpg Hyield".
@@ -1014,7 +1014,7 @@ Lemma fkr_boot
                  W γs γw γft γf γtl p ksp (pv_fdg (us_V U))
                  (pv_chg (us_V U)) (pv_cwi (us_V U))
                  sts gn cs None pid av -∗
-  WP (Loop : expr riscv_lang).
+  mWP (Loop : expr riscv_lang).
 Proof.
   intros p ksp Hjlt Hgnb Hgl Hkx Havsum Hmrsp Hmrs0 Hmrs1.
   pose proof Hkx as Hkx'.

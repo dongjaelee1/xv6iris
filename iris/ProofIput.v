@@ -689,8 +689,8 @@ Section IputTail.
                P !!! Regidx c = D !!! Regidx c)⌝ -∗
         sie_cap_gpr (CID := CIDf) KT1 P K eb pj -∗
         pc_is (CID := CIDf) (ret_pc v1) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pj spd HK Hsp.
     iIntros "#Htext Hpc Hcg Hr24 Hr16 Hr8 Hg4 Hg5 Hg6 Hcont".
@@ -899,8 +899,8 @@ Section IputTail.
         iref_slot -∗
         (* RULING G: the regime, handed back (see the premise). *)
         ireg_regime rg -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pj ret_tgt spd HK Hanch Hsp0 Hregs Hlo Hhi Hssub Hwm Hwc Hfresh.
     
@@ -1128,8 +1128,8 @@ Section IputTail.
         iref_slot -∗
         (* RULING G: the regime, handed back (see the premise). *)
         ireg_regime rg -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pj ret_tgt spd HK Hk Hanch Hsp0 Hregs HMa5 Hwf Hciwf Hlo Hhi Hssub Hwm Hwc Hfresh.
     pose proof HK as HK'. 
@@ -1905,8 +1905,8 @@ Section IputFreePath.
         add_vec sp0 (zero_extend' 64 (concat_vec (mword_of_int 2 : mword 6) ('b"000"))) ↦₈[KT1] vs2 -∗
         add_vec sp0 (zero_extend' 64 (concat_vec (mword_of_int 1 : mword 6) ('b"000"))) ↦₈[KT1] vs3 -∗
         add_vec sp0 (zero_extend' 64 (concat_vec (mword_of_int 0 : mword 6) ('b"000"))) ↦₈[KT1] vs4 -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pj bno dn' HKbr HKlw HKbl Hgeom Hst Hcov Hlog Hnib Hdnwf Hnl0
            Hbare Hj Hgl Hsp0 Ha0 Ha1 Hs2v Hbelow.
@@ -2535,7 +2535,7 @@ Section IputFreePath.
         add_vec sp0 (zero_extend' 64 (concat_vec (mword_of_int 2 : mword 6) ('b"000"))) ↦₈[KT1] vs2 -∗
         add_vec sp0 (zero_extend' 64 (concat_vec (mword_of_int 1 : mword 6) ('b"000"))) ↦₈[KT1] vs3 -∗
         add_vec sp0 (zero_extend' 64 (concat_vec (mword_of_int 0 : mword 6) ('b"000"))) ↦₈[KT1] vs4 -∗
-        WP (Loop : expr riscv_lang))%I.
+        mWP (Loop : expr riscv_lang))%I.
 
 
   (* ==========================================================================
@@ -2810,7 +2810,7 @@ Section IputFreePath.
     add_vec sp0 (zero_extend' 64 (concat_vec (mword_of_int 0 : mword 6) ('b"000"))) ↦₈[KT1] vs4 -∗
     (* THE CALLER'S CONTINUATION at 0x30 (iput's real post; ip_tail's shape) *)
     wp_next (CID0 := CID0) true pj (fun CID : CpuId => ip_locked_exit1 u Sb crb cru crz tid qtx pidv dqb dqs sp0 vra vs0 vs1 vs2 vs3 vs4 m K eb b lks Upr rg pj CID) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros ip pj HK HKit Hk Hu2 Hcrb Hgeom Hsize Hbmpos Hbmcov Hbmlog Histpos Hicov Hilog
            Hnib Hdtnz Hnl0 Hdnwf Hbmwf Hbelow Hdlen Hadr HMwf Hciwf HMk1 Hj Hgl
@@ -4132,7 +4132,7 @@ Section IputFreePath.
        pa_stk sp0 4 ↦₈[KT1] (m !!! Regidx Rs2) -∗
        pa_stk sp0 5 ↦₈[KT1] (m !!! Regidx Rs3) -∗
        pa_stk sp0 6 ↦₈[KT1] (m !!! Regidx Rs4) -∗
-       WP (Loop : expr riscv_lang))%I.
+       mWP (Loop : expr riscv_lang))%I.
 
   (* exit continuation 1 of [ip_free_entry], named: inline it was
      1652 B carried in Delta at every step of that walk
@@ -4170,7 +4170,7 @@ Section IputFreePath.
        pa_stk sp0 4 ↦₈[KT1] vg4' -∗
        pa_stk sp0 5 ↦₈[KT1] vg5' -∗
        pa_stk sp0 6 ↦₈[KT1] vg6' -∗
-       WP (Loop : expr riscv_lang))%I.
+       mWP (Loop : expr riscv_lang))%I.
 
 
   (* ==========================================================================
@@ -4317,7 +4317,7 @@ Section IputFreePath.
     (∀ (M5 : regfile) (g1 g2 : gname) (dn : dinode) (bm : blkmap)
        (data : nat -> list (bv 8)) (td T0 Kw : nat),
        ip_entry_exit2 (CIDa := CID0) k q inum Mt ci u Sb cru e0 v tid qtx pidv dqb dqs m K eb lks Upr rg ip pj sp0 spd M5 g1 g2 dn bm data td T0 Kw)) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros ip pj sp0 spd HK HKit Hk Hu3 Hcrb Hgeom Hsize Hbmpos Hbmcov Hbmlog
            Histpos Hicov Hilog Hnib Hbelow HMwf Hciwf HMk1 Hj Hgl Hregs Ha5

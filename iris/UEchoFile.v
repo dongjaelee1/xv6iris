@@ -422,8 +422,8 @@ Section UEchoFile.
          S -∗
          spost_at uslot 16 fdep W rv (uvis_M W) (uvis_fd W) cw' cs' -∗
          urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
-         WP (Loop : expr riscv_lang)) -∗
-      WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+      mWP (Loop : expr riscv_lang).
   Proof using . exact wp_uk_ecall_write_std. Qed.
 
   (* =================================================================== *)

@@ -193,8 +193,8 @@ Section UkShRedirCmd.
        UMalloc' -∗
        Pex -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (8 + (10 + nn)) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using ushp_malloc_ok.
     intros Ha0 Ha1 Ha2 Ha3 Ha4 Hmode Hfd.
     iIntros "#Hcode HM #Hpx Hpay Hsub Hrun Hcont".
@@ -984,8 +984,8 @@ Section UkShRedirCmd.
        UMalloc' -∗
        Pex -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (8 + (10 + nn)) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using ushp_malloc_ok.
     intros Ha0 Ha1 Ha2 Ha3 Ha4 Hmode Hfd.
     iIntros "#Hcode HM #Hpx Hpay Hsub Hrun Hcont".

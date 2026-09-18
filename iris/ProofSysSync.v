@@ -337,7 +337,7 @@ Section SsProps.
       cpu_claim (proc_addr j) -∗
       sie_cap_gpr KT1 M (trap_res eb + (K - 4))%nat false (proc_addr j) -∗
       pc_is (mword_of_int (SS + 0x5e)) -∗
-      WP (Loop : expr riscv_lang)))%I.
+      mWP (Loop : expr riscv_lang)))%I.
 
   Definition ss_loop `{GEN : GenId} (CID0 : CPU)
       (j : nat)
@@ -360,7 +360,7 @@ Section SsProps.
       sie_cap_gpr KT1 M (trap_res eb + (K - 4))%nat false (proc_addr j) -∗
       pc_is (mword_of_int (SS + 0x3e)) -∗
       ss_exit CID0 j γ bn γfs cov logstart m K eb lks spd sp0 -∗
-      WP (Loop : expr riscv_lang)))%I.
+      mWP (Loop : expr riscv_lang)))%I.
 
 End SsProps.
 
@@ -417,8 +417,8 @@ Section SsBodies.
         trap_csrs_ext KT1 eb -∗
         cpu_claim_ext eb pj -∗
         pc_is (ret_pc (m !!! Regidx Rra)) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pj HK Hanch Hspd Hsp0 Hss Hbelow.
     destruct Hss as (Hsp & Hs1v & Hs2v & Hsv).
@@ -672,7 +672,7 @@ Section SsBodies.
     cpu_claim pj -∗
     sie_cap_gpr KT1 M (trap_res eb + (K - 4))%nat false pj -∗
     pc_is (mword_of_int (SS + 0x3e)) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pj HK Hj Hjl Hanch Hspd Hss Hbelow.
     assert (Hbelowproc : locks_below lks "proc")
@@ -1016,7 +1016,7 @@ Section SsBodies.
     cpu_claim pj -∗
     sie_cap_gpr KT1 M (trap_res eb + (K - 4))%nat false pj -∗
     pc_is (mword_of_int (SS + 0x2a)) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pj HK Hanch Hspd Hss.
     iIntros "#Htext Hloop Hexit Hr24 Hr16 Hr8 Hr0 Htok Hres Hown Htc Hclm Hcg Hpc".

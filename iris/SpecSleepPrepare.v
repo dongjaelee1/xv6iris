@@ -94,8 +94,8 @@ Definition wp_sleep_prepare_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !f
       sie_cap_gpr KT1 mf av b pj -∗
       cpu_own n eb pj b lks -∗
       pc_is ret_tgt -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type SLEEP_PREPARE.
   Parameter wp_sleep_prepare_sconf :

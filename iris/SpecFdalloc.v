@@ -301,8 +301,8 @@ Definition wp_fdalloc_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG
       pc_is ret_tgt -∗
       proc_priv_core p pid U -∗
       fdalloc_post γf p (us_V U) D k (mf !!! Regidx (mword_of_int 10 : mword 5)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type FDALLOC.
   Parameter wp_fdalloc_sconf :

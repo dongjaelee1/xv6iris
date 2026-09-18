@@ -310,8 +310,8 @@ Definition wp_ireclaim_sconf_body
       (* ...and nothing else.  ireclaim returns void, no log reservation
          crosses the boundary (begin_op mints and end_op retires inside),
          and no inode reference survives (iget's is spent by iput). *)
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type IRECLAIM.
   Parameter wp_ireclaim_sconf :

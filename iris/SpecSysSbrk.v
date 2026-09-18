@@ -183,8 +183,8 @@ Definition wp_sys_sbrk_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslot
       proc_priv γf p pid
         (upd_usM (upd_usV U
                     (upd_lazy (upd_sz (upd_upt (us_V U) P') szv') lz')) M') -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type SYSSBRK.
   Parameter wp_sys_sbrk_sconf :

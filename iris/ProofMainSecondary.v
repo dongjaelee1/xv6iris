@@ -155,8 +155,8 @@ Section ProofMainSecondary.
         pc_is (mword_of_int (KernelSyms.main + 0x16) : mword 64) -∗
         ⌜ add_vec (rget m1 (mword_of_int 14 : mword 5))
             (sign_extend' 64 (mword_of_int 0 : mword 12)) = started_addr ⌝ -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hcid HK.
     pose proof (ms_bounds K HK) as (Hc2 & Hn52 & Hn20).
@@ -328,8 +328,8 @@ Section ProofMainSecondary.
         (∃ pos : nat,
            P pos cur_ctx ∗
            TsoGhost.view_lb view_name loglen_name (hart_agent cpu_id) pos) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha4 Hcid.
     iIntros "Hcg #Htext Hpc #Hsinv Hcont".
@@ -494,8 +494,8 @@ Section ProofMainSecondary.
         pc_is (mword_of_int (KernelSyms.main + 0x32) : mword 64) -∗
         cpu_ctx_free -∗
         cpu_own 0 false p0 false ∅ -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn.
     iIntros "Hcg #Htext #Hkdata Hpc Hfree Hcpu #Hpenv Hcont".
@@ -652,7 +652,7 @@ Section ProofMainSecondary.
     (* A6.70: the canon pin's credentials, this hart's -- kvminithart needs
        them to seal the KPT arm.  See [SpecMainSecondary]'s own row. *)
     KptShare.kpt_creds -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hdc Hcidne Hp0.
     iIntros "Hcg #Htext Hpc Hfree Hcpu Hq Hsbit Htlb Htcsr #Hkinv #Hkptp #Hdev #Hpinv #Hccaps #Hu1 #Hdlock #Hgeom #Htimc #Hcreds".

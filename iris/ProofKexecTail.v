@@ -714,8 +714,8 @@ Section KexecA.
         sie_cap_gpr KT1 M (K - 68)%nat b p -∗
         pc_is (mword_of_int (KXA + 0x020) : mword 64) -∗
         kxc_frameA sp0 ra0 s00 s10 s20 pv av -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hsp Hra Hs0 Hs1 Hs2 Ha0 Ha1.
     iIntros "Hcg #Htext Hpc Hcont".
@@ -1183,7 +1183,7 @@ Section KexecExitQ.
              [∗ list] j ∈ seq 0 (aslen i), pa_add (avf i) j ↦ₘ{dqas} afun i j) -∗
           bslots 3 -∗
           iref_slots 2 -∗
-          WP (Loop : expr riscv_lang)) -∗
+          mWP (Loop : expr riscv_lang)) -∗
     wp_next (CID0 := CIDx) true pj (fun (CID : CpuId) =>
       KexecOkQ.kexec_closer Q QF gf fsc_kalloc pj pidv U m (ret_pc ra0) K b eb lks dqb
            dqs fsc_bmapstart na alen plen pv dqpv pfun av dqa avf
@@ -1338,7 +1338,7 @@ Section KexecAExit.
       KexecOkQ.kexec_closer Q QF gf fsc_kalloc pj pidv U m (ret_pc ra0) K b eb lks dqb
            dqs fsc_bmapstart na alen plen pv dqpv pfun av dqa avf
            aslen dqas afun) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hqf HK Hsp Hra Hs0 Hs1 Hs2 Hmtsp Hmta0 Hthr.
     iIntros "Hcg Hcnt Hextc Hclmc #Htext Hpc Hframe Hbm Hins #Hka Hpriv Hpath Hargv
@@ -1502,7 +1502,7 @@ Section KexecABad.
       KexecOkQ.kexec_closer Q QF gf fsc_kalloc (proc_addr jp) pidv U m (ret_pc ra0) K
            eb eb lks dqb dqs fsc_bmapstart na alen plen pv dqpv
            pfun av dqa avf aslen dqas afun) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hqf HK Hk Hlg Hsz Hbm0 Hbmc Hbml Hins0 Hibc Hibl Hib Hcovb Hn2
            Hjp Hgs Hsp Hra Hs0 Hs1 Hs2 Hmtsp Hmts4 Hthr.
@@ -1870,7 +1870,7 @@ Section KexecCBad.
       KexecOkQ.kexec_closer Q QF gf fsc_kalloc (proc_addr jp) pidv U m (ret_pc ra0) K
            eb eb lks dqb dqs fsc_bmapstart na alen plen pv dqpv
            pfun av dqa avf aslen dqas afun) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hqf HK Hsp Hra Hs0 Hs1 Hs2 Hmtsp Hmts3 Hmts6 Hmts11 Hbelow Hcov.
     

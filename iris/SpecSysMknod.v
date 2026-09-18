@@ -813,8 +813,8 @@ Definition wp_sys_mknod_frame
       proc_priv γf pj pid (us_upt U P') -∗
       (* the armed post on the returned a0 (implies [sys_mknod_ret]) *)
       ARMS (mf !!! Regidx (mword_of_int 10 : mword 5)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* THE CONTRACT'S BODY.  The abstract state is read at the LIVE Γ,
    [fs_gamma_L fsc_fs]; the device numbers are the syscall arguments' own

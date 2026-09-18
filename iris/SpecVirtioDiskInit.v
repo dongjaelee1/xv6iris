@@ -200,7 +200,7 @@ Definition vdi_post
     (* A6.126 §6 on the pop model (decision 4): the holder's half ctx cells
        of the eight ring cells; the lease holds the sealed halves *)
     ring_hcells cur_ctx pav -∗
-    WP (Loop : expr riscv_lang))%I.
+    mWP (Loop : expr riscv_lang))%I.
 Global Typeclasses Opaque vdi_post.
 
 (* BOOT-ONLY: virtio_disk_init runs strictly before interrupts are ever
@@ -257,7 +257,7 @@ Definition wp_virtio_disk_init_sconf_body
   disk_used ↦₈ pu0 -∗
   ([∗ list] j ∈ seq 0 8, (pa_add disk_free j) ↦ₘ free0 j) -∗
   vdi_post γv γa γk m K eb pp on ret_tgt c_cpu lks -∗
-  WP (Loop : expr riscv_lang).
+  mWP (Loop : expr riscv_lang).
 
 Module Type VIRTIODISKINIT.
   Parameter wp_virtio_disk_init_sconf :

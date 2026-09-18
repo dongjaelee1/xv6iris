@@ -174,8 +174,8 @@ Section ProofBrelse.
       sie_cap_gpr KT1 m0 av b pme -∗
       pc_is (add_vec_int pc 2) -∗
       Ψ -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intro HkptEm.
     (* the class, consumed at [rs2] -- see [IntrDefs.SrcOk].  This wrapper
@@ -299,8 +299,8 @@ Section ProofBrelse.
            tail, so it is handed back to the caller's continuation as-is. *)
         cpu_own 0%nat eb p eb lks -∗
         pc_is (ret_pc (m !!! Regidx Rra)) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK HMsp HMthr Hbelow0.
     pose proof (locks_below_not_elem _ _ Hbelow0) as Hfresh0.

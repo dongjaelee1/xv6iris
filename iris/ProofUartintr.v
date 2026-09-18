@@ -312,7 +312,7 @@ Section UiCont.
          pc_is (ret_pc (m0 !!! Regidx Rra)) -∗
          (∃ (k' : nat) (hl' : option (list mobs)),
             uart_rx_writer i γu k' hl') -∗
-         WP (Loop : expr riscv_lang)))%I.
+         mWP (Loop : expr riscv_lang)))%I.
 
   (* re-anchor it at a hart reached mid-block.  Through the named definition
      [wp_next_shift]'s direct idiom cannot infer [K], so unfold first. *)
@@ -358,7 +358,7 @@ Section ProofUartintr.
     ui_frame sp0 m0 -∗
     (∃ (k' : nat) (hl' : option (list mobs)), uart_rx_writer i γu k' hl') -∗
     ui_ret_cont i γu m0 av lvl eb pme b lks -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hregs Hsp0 Hav.
     destruct Hregs as (Hsp & H18 & H19 & H20 & H21 & H22 & H23 & H24 & H25 & H26 & H27).
@@ -516,7 +516,7 @@ Section ProofUartintr.
       ui_frame sp0 m0 -∗
       (∃ (k : nat) (hl : option (list mobs)), uart_rx_writer i γu k hl) -∗
       ui_ret_cont (CID0 := CIDe) i γu m0 av lvl eb pme b lks -∗
-      WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hsp0 Hlen Hlvl Hav Hbelow.
     iIntros (CIDe M) "%Hregs %Hs1 %Ha4 %Ha3 #Ht #Huinv #Hpinv #Hdlab #Hbw #Hrw #Hcaps".
@@ -544,7 +544,7 @@ Section ProofUartintr.
       ui_frame sp0 m0 -∗
       (∃ (k : nat) (hl : option (list mobs)), uart_rx_writer i γu k hl) -∗
       ui_ret_cont (CID0 := CIDk) i γu m0 av lvl eb pme b lks -∗
-      WP (Loop : expr riscv_lang))%I with "[]" as "Loop".
+      mWP (Loop : expr riscv_lang))%I with "[]" as "Loop".
     { iLöb as "IH".
       iIntros (CIDk M1) "%Hregs1 %Hls1 %Hla4 %Hla3 Hcg Hcnt Hpc Hfr Htok Hcont".
       iDestruct "Htok" as (k hl) "[Htok Hmk]".
@@ -864,7 +864,7 @@ Section ProofUartintr.
     ui_frame sp0 m0 -∗
     (∃ (k : nat) (hl : option (list mobs)), uart_rx_writer i γu k hl) -∗
     ui_ret_cont i γu m0 av lvl eb pme b lks -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hregs Hidx Hsp0 Hlen Hlvl Hav Hbelow.
     iIntros "#Ht #Huinv #Hpinv #Hdlab #Hbw #Hrw #Hcaps Hcg Hcnt Hpc Hfr Htok Hcont".

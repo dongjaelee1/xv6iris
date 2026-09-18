@@ -554,8 +554,8 @@ Definition wp_filestat_sconf_body
       proc_priv_core pj pidv
         (upd_usM (us_upt U P') (umem_wr (us_M U) addr d bs)) -∗
       filestat_env_out fn st -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type FILESTAT.
   Parameter wp_filestat_sconf :

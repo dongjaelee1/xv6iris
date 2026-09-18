@@ -419,8 +419,8 @@ Section VcGenSIris.
       vheap_own ρ st'.(vheap) -∗
       vheap4_own ρ st'.(vheap4) -∗
       TsoCtx.own_context XI -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HSIE HMPRV HSXL Hmm HMXR Hpmm HPBMTE Hmenvval0 Hwit.
     revert st. induction prog as [|op rest IH]; intros st Hblk.
@@ -849,8 +849,8 @@ Section VcGenSIris.
       vheap_own ρ st'.(vheap) -∗
       vheap4_own ρ st'.(vheap4) -∗
       TsoCtx.own_context XI -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
     Proof using .
     exact (fun H1 H2 H3 H4 H5 H6 H7 H8 =>
              wp_vc_block_s_den_r (kpt_share_regime root_ppn) prog st st' ρ mstatus0 mie_v mdv0 menvcfg0 (dq:=dq)
@@ -933,8 +933,8 @@ Section VcGenSIris.
       vheap_own ρ st'.(vheap) -∗
       vheap4_own ρ st'.(vheap4) -∗
       TsoCtx.own_context XI -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HSIE HMPRV HSXL Hmm HMXR Hpmm HPBMTE Hmenvval0 Hwit.
     revert st m. induction prog as [|op rest IH]; intros st m Hblk Hmatch Hao.
@@ -1342,8 +1342,8 @@ Section VcGenSIris.
       vheap_own ρ st'.(vheap) -∗
       vheap4_own ρ st'.(vheap4) -∗
       TsoCtx.own_context XI -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
     Proof using .
     exact (fun H1 H2 H3 H4 H5 H6 H7 H8 =>
              wp_vc_block_s_aux_r (kpt_share_regime root_ppn) prog st st' ρ m m0 mstatus0 mie_v mdv0 menvcfg0 (dq:=dq)
@@ -1383,8 +1383,8 @@ Section VcGenSIris.
       vheap_own ρ st'.(vheap) -∗
       vheap4_own ρ st'.(vheap4) -∗
       TsoCtx.own_context XI -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hwit Hblk Hmatch.
     iIntros "Hsm Htlbinv Hpc Hgpr Hbi Hheap Hheap4 Hctx Hcont".
@@ -1431,8 +1431,8 @@ Section VcGenSIris.
       vheap_own ρ st'.(vheap) -∗
       vheap4_own ρ st'.(vheap4) -∗
       TsoCtx.own_context XI -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
     Proof using .
     exact (wp_vc_block_s_r (kpt_share_regime root_ppn) prog st st' ρ m γ (dq:=dq)
              (sr_ktier_wit_kpt_share root_ppn KTR)).
@@ -1473,12 +1473,12 @@ Section VcGenSIris.
     ( ⌜neq_vec (m !!! Regidx rs1) (m !!! Regidx rs2) = true⌝ -∗
       smode_config γ dq -∗ sr_inv R -∗
       pc_is (add_vec pc (sign_extend' 64 imm)) -∗ gpr_file m -∗
-      WP (Loop : expr riscv_lang)) -∗
+      mWP (Loop : expr riscv_lang)) -∗
     ( ⌜neq_vec (m !!! Regidx rs1) (m !!! Regidx rs2) = false⌝ -∗
       smode_config γ dq -∗ sr_inv R -∗
       pc_is (add_vec_int pc 4) -∗ gpr_file m -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hrs1 Hrs2 Hal.
     iIntros "Hsm Htlbinv Hpc Hgpr Hinstr Htaken Hfall".
@@ -1508,12 +1508,12 @@ Section VcGenSIris.
     ( ⌜neq_vec (m !!! Regidx rs1) (m !!! Regidx rs2) = true⌝ -∗
       smode_config γ dq -∗ tlb_res_pt root_ppn -∗
       pc_is (add_vec pc (sign_extend' 64 imm)) -∗ gpr_file m -∗
-      WP (Loop : expr riscv_lang)) -∗
+      mWP (Loop : expr riscv_lang)) -∗
     ( ⌜neq_vec (m !!! Regidx rs1) (m !!! Regidx rs2) = false⌝ -∗
       smode_config γ dq -∗ tlb_res_pt root_ppn -∗
       pc_is (add_vec_int pc 4) -∗ gpr_file m -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
     Proof using .
     exact (wp_bne_split_s_r (kpt_share_regime root_ppn) pc imm rs2 rs1 m γ (dq:=dq)).
   Qed.
@@ -1531,12 +1531,12 @@ Section VcGenSIris.
     ( ⌜eq_vec (m !!! Regidx rs1) (m !!! Regidx rs2) = true⌝ -∗
       smode_config γ dq -∗ sr_inv R -∗
       pc_is (add_vec pc (sign_extend' 64 imm)) -∗ gpr_file m -∗
-      WP (Loop : expr riscv_lang)) -∗
+      mWP (Loop : expr riscv_lang)) -∗
     ( ⌜eq_vec (m !!! Regidx rs1) (m !!! Regidx rs2) = false⌝ -∗
       smode_config γ dq -∗ sr_inv R -∗
       pc_is (add_vec_int pc 4) -∗ gpr_file m -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hrs1 Hrs2 Hal.
     iIntros "Hsm Htlbinv Hpc Hgpr Hinstr Htaken Hfall".
@@ -1566,12 +1566,12 @@ Section VcGenSIris.
     ( ⌜eq_vec (m !!! Regidx rs1) (m !!! Regidx rs2) = true⌝ -∗
       smode_config γ dq -∗ tlb_res_pt root_ppn -∗
       pc_is (add_vec pc (sign_extend' 64 imm)) -∗ gpr_file m -∗
-      WP (Loop : expr riscv_lang)) -∗
+      mWP (Loop : expr riscv_lang)) -∗
     ( ⌜eq_vec (m !!! Regidx rs1) (m !!! Regidx rs2) = false⌝ -∗
       smode_config γ dq -∗ tlb_res_pt root_ppn -∗
       pc_is (add_vec_int pc 4) -∗ gpr_file m -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
     Proof using .
     exact (wp_beq_split_s_r (kpt_share_regime root_ppn) pc imm rs2 rs1 m γ (dq:=dq)).
   Qed.

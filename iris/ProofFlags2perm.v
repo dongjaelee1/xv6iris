@@ -426,7 +426,7 @@ Section ProofFlags2perm.
                        MM !!! Regidx c = mm !!! Regidx c) ⌝ -∗
                sie_cap_gpr KT1 MM (K - 2)%nat b p -∗
                pc_is (mword_of_int (KernelSyms.flags2perm + 0x18)) -∗
-               WP (Loop : expr riscv_lang)))%I
+               mWP (Loop : expr riscv_lang)))%I
       with "[Hcont Hras Hs0s]" as "TAIL".
     { iIntros (CIDt Hst) "%MM %Hpre Hcg Hpc".
       destruct Hpre as (HMMsp & HMMa0 & HMMthr).

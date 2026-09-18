@@ -1847,7 +1847,7 @@ Section UShRound.
           Wcf I 3%nat -∗
           urun N' h m (mword_of_int 0x9c0)
             (60 + (8 + (UkShDiag.ush_Dg + n))) -∗
-          WP (Loop : expr riscv_lang)))%I.
+          mWP (Loop : expr riscv_lang)))%I.
 
   Hypothesis Hchild_redir : ⊢ sh_redir_child_law.
 

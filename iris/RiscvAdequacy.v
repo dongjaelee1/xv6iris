@@ -25,7 +25,7 @@
        enforce, discharged down to the bare operational semantics.
 
    [LoopE c] is [Loop] with ambient hart [c]: a caller proves each hart's WP
-   in the usual single-CPU spelling ([Context `{GEN : GenId} `{CID : CpuId}.] ... [WP Loop])
+   in the usual single-CPU spelling ([Context `{GEN : GenId} `{CID : CpuId}.] ... [mWP Loop])
    and instantiates [cpu_id := c].
 
    Registers not in [D c] are simply never owned by anyone (their ghost cells
@@ -806,11 +806,11 @@ Section power.
            power_boot_res HE gen D nproc ndisk Mof (Rb gen) (Tn (S gen)) g'
            ={⊤}=∗
             ([∗ list] c ∈ enum CPU,
-               WP (LoopE gen c : expr riscv_lang) @ ⊤) ∗
-            ([∗ list] i ∈ enum uart_id, WP (UartLoopE gen i : expr riscv_lang) @ ⊤) ∗
-            WP (DiskLoopE gen : expr riscv_lang) @ ⊤ ∗
-            WP (PlicLoopE gen : expr riscv_lang) @ ⊤) :
-    crash_inv -∗ obs_inv -∗ WP (PowerLoopE : expr riscv_lang).
+               mWP (LoopE gen c : expr riscv_lang) @ ⊤) ∗
+            ([∗ list] i ∈ enum uart_id, mWP (UartLoopE gen i : expr riscv_lang) @ ⊤) ∗
+            mWP (DiskLoopE gen : expr riscv_lang) @ ⊤ ∗
+            mWP (PlicLoopE gen : expr riscv_lang) @ ⊤) :
+    crash_inv -∗ obs_inv -∗ mWP (PowerLoopE : expr riscv_lang).
   Proof using .
     iIntros "#Hcinv #Hoinv".
     iLöb as "IH".
@@ -1772,10 +1772,10 @@ Theorem riscv_power_adequacy Σ `{!xv6G Σ, !riscvGpreS Σ}
          power_boot_res HE gen D nproc ndisk Mof (Rb c gen) (Tn c (S gen)) g'
          ={⊤}=∗
           ([∗ list] c ∈ enum CPU,
-             WP (LoopE gen c : expr riscv_lang) @ ⊤) ∗
-          ([∗ list] i ∈ enum uart_id, WP (UartLoopE gen i : expr riscv_lang) @ ⊤) ∗
-          WP (DiskLoopE gen : expr riscv_lang) @ ⊤ ∗
-          WP (PlicLoopE gen : expr riscv_lang) @ ⊤) :
+             mWP (LoopE gen c : expr riscv_lang) @ ⊤) ∗
+          ([∗ list] i ∈ enum uart_id, mWP (UartLoopE gen i : expr riscv_lang) @ ⊤) ∗
+          mWP (DiskLoopE gen : expr riscv_lang) @ ⊤ ∗
+          mWP (PlicLoopE gen : expr riscv_lang) @ ⊤) :
   (* EVERY configuration the CSL-free semantics can reach, under any
      schedule of power cycles, hart steps and device steps, is reducible AND
      satisfies [phi].  The second conjunct is the trace invariant: [g2] is
@@ -1990,10 +1990,10 @@ Corollary riscv_trace_adequacy Σ `{!xv6G Σ, !riscvGpreS Σ}
        ⊢ obs_inv -∗
          power_boot_res HE gen D nproc ndisk Mof Rb emp%I g' ={⊤}=∗
           ([∗ list] c ∈ enum CPU,
-             WP (LoopE gen c : expr riscv_lang) @ ⊤) ∗
-          ([∗ list] i ∈ enum uart_id, WP (UartLoopE gen i : expr riscv_lang) @ ⊤) ∗
-          WP (DiskLoopE gen : expr riscv_lang) @ ⊤ ∗
-          WP (PlicLoopE gen : expr riscv_lang) @ ⊤) :
+             mWP (LoopE gen c : expr riscv_lang) @ ⊤) ∗
+          ([∗ list] i ∈ enum uart_id, mWP (UartLoopE gen i : expr riscv_lang) @ ⊤) ∗
+          mWP (DiskLoopE gen : expr riscv_lang) @ ⊤ ∗
+          mWP (PlicLoopE gen : expr riscv_lang) @ ⊤) :
   forall (n : nat) (κs : list mobs) t2 g2,
     nsteps n ([PowerLoopE : expr riscv_lang], g) κs (t2, g2) ->
     (forall e2, e2 ∈ t2 -> reducible (Λ := riscv_lang) e2 g2) /\ P κs.

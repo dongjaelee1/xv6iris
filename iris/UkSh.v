@@ -1094,8 +1094,8 @@ Section UkSh.
          (<[Regidx a0_idx := ret]>
             (<[Regidx a7_idx := (mword_of_int n : mword 64)]> m))
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Himm Hno He Hf Hx Hs Hw Hp Hr Hst Hcl Hdp Hop Hcd E01 E12 Hal2.
     iIntros "#Hdp #Ci0 #Ci1 #Ci2 Hrun Hcont".
@@ -1168,8 +1168,8 @@ Section UkSh.
          (<[Regidx a0_idx := ret]>
             (<[Regidx a7_idx := (mword_of_int USYS_close : mword 64)]> m))
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Harg Hnp Himm Hno E01 E12 Hal2.
     iIntros "#Ci0 #Ci1 #Ci2 Hrun Hfdh Hcont".
@@ -1233,8 +1233,8 @@ Section UkSh.
          (<[Regidx a0_idx := ret]>
             (<[Regidx a7_idx := (mword_of_int 21 : mword 64)]> m))
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Harg Hnp. iIntros "#Hcode Hrun Hfdh Hcont".
     rewrite shp_close.
@@ -1269,7 +1269,7 @@ Section UkSh.
     shk_code γt -∗
     ukn_pay N (-1) -∗
     urun N h m (mword_of_int ShSyms.exit) avail -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using Hpay.
     iIntros "#Hcode Hpay Hrun".
     rewrite shp_exit.
@@ -1314,8 +1314,8 @@ Section UkSh.
          (<[Regidx a0_idx := ret]>
             (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m))
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "#Hdp #Hcode Hrun Hcont".
     rewrite shp_write.
@@ -1374,8 +1374,8 @@ Section UkSh.
          (<[Regidx a0_idx := ret]>
             (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m))
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "#Hcode Hrun Hsb Hstd Hcont".
     rewrite shp_write.
@@ -1487,8 +1487,8 @@ Section UkSh.
          (<[Regidx a0_idx := ret]>
             (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m))
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "#Hcode Hrun Hsb Hstd #Hbs Hcont".
     rewrite shp_write.
@@ -1597,8 +1597,8 @@ Section UkSh.
             (<[Regidx a0_idx := ret]>
                (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m))
             (ret_pc (m !!! Regidx ra_idx)) avail -∗
-          WP (Loop : expr riscv_lang)) -∗
-       WP (Loop : expr riscv_lang))%I.
+          mWP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang))%I.
 
   (* ...AND THE TRIVIAL ONE: the flagged deposit pays row 16 and the post
      is thrown away, which is what every write of sh's does today.  This is
@@ -2820,8 +2820,8 @@ Section UkSh.
           ubytes γd a k g -∗
           urun N h' (<[Regidx a0_idx := r]> m)
             (add_vec_int pc 4) avail -∗
-          WP (Loop : expr riscv_lang)) -∗
-       WP (Loop : expr riscv_lang))%I.
+          mWP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang))%I.
 
   Definition ush_read_recv_leaf (cnm : cons_names) (l : list fdstate)
       : iProp Σ := ush_read_recv_leaf_at disc_input cnm l.
@@ -2902,8 +2902,8 @@ Section UkSh.
          (<[Regidx a0_idx := ret]>
             (<[Regidx a7_idx := (mword_of_int 5 : mword 64)]> m))
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using Hdsc_ncr Hdsc_line Hdsc_short ush_read_leaf.
     intros Ha0 Ha1 Ha2 Hck Hc31 Hfd0.
     iIntros "#Hcode Hbs Hstd Hpos Hrun Hcont".
@@ -3027,8 +3027,8 @@ Section UkSh.
          ⌜ forall r : mword 5, Regidx r <> Regidx a5_idx ->
              mc' !!! Regidx r = mc !!! Regidx r ⌝ -∗
          urun N h' mc' (mword_of_int 0xa7a) nn -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros k. induction k as [| k IH ];
       intros j h mc f nn HN Ha0 Ha64 Hc Hpre Ha5 Ha4;
@@ -3225,7 +3225,7 @@ Section UkSh.
        is one [iPoseProof] away from it. *)
     ukn_pay N (-1) -∗
     urun N h m (mword_of_int ShSyms.memset) (2 + nn) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Halo Hahi0 Ha0 Ha2 HN0 HN31. iIntros "#Hcode #Ht0 Hpay Hrun".
     rewrite shp_memset.
@@ -3485,8 +3485,8 @@ Section UkSh.
        ∀ (h' : CpuId) (m' : regfile),
          ⌜ ucallee_saved m m' ⌝ -∗
          urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (2 + nn) -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Ha2 HN0 HN31. iIntros "#Hcode Hbs Hrun Hcont".
     rewrite shp_memset.
@@ -3931,8 +3931,8 @@ Section UkSh.
        ustd γfd l -∗
        ush_gets_done_at Dl l i2 g -∗
        urun N h' mc' (mword_of_int 0xb00) nn -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using Hdsc_ncr Hdsc_line Hdsc_short HT ush_at_of_pm_taint ush_at_of_pm_wb ush_read_leaf ush_wb_read ush_wc_read.
     intros k. induction k as [| k IH ];
       intros i J h mc f bc nn HN Hi Hij HNb Ha0 Ha64 HN31 Hsz0 Hsz1
@@ -4835,8 +4835,8 @@ Section UkSh.
        ∀ (h' : CpuId) (m' : regfile),
          ⌜ ucallee_saved m m' ⌝ -∗
          urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (12 + nn) -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using Hdsc_ncr Hdsc_line Hdsc_short HT ush_at_of_pm_taint ush_at_of_pm_wb ush_read_leaf ush_wb_read ush_wc_read.
     intros Ha0 Ha1 HNle HN31 Hfd0.
     assert (HN0 : (0 < Nb)%nat)
@@ -5869,8 +5869,8 @@ Section UkSh.
        ustd γfd l -∗
        ush_gets_done_at Dl l i2 g -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (4 + (12 + nn)) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using Hdsc_ncr Hdsc_line Hdsc_short HT ush_at_of_pm_taint ush_at_of_pm_wb ush_read_leaf ush_wb_read ush_wc_read.
     intros Ha0 Ha1 HNle HN31 Hfd0.
     assert (HN0 : (0 < Nb)%nat) by (rewrite HNle; unfold sh_nbuf; lia).
@@ -6983,7 +6983,7 @@ Section UkSh.
 
   Lemma ush_gen_run (h : CpuId) (m : regfile) (pc : mword 64) (avail : nat) :
     is_aligned_vaddr (Virtaddr pc) 2 = true ->
-    ush_gen_slot -∗ T -∗ urun N h m pc avail -∗ WP (Loop : expr riscv_lang).
+    ush_gen_slot -∗ T -∗ urun N h m pc avail -∗ mWP (Loop : expr riscv_lang).
   Proof using .
     intro Hal. rewrite /ush_gen_slot. iIntros "#Hg HT Hrun".
     iApply (urun_gen N T h m pc avail Hal with "Hg HT Hrun").
@@ -7052,8 +7052,8 @@ Section UkSh.
             (<[Regidx a0_idx := ret]>
                (<[Regidx a7_idx := (mword_of_int 15 : mword 64)]> m))
             (ret_pc (m !!! Regidx ra_idx)) avail -∗
-          WP (Loop : expr riscv_lang)) -∗
-       WP (Loop : expr riscv_lang))%I.
+          mWP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang))%I.
 
   (* THE OPEN AT THE PIN THAT MISSES: TWO arms, and there is no third.  At
      a view the credential holds of, the walk dies at hop 0
@@ -7079,8 +7079,8 @@ Section UkSh.
             (<[Regidx a0_idx := ret]>
                (<[Regidx a7_idx := (mword_of_int 15 : mword 64)]> m))
             (ret_pc (m !!! Regidx ra_idx)) avail -∗
-          WP (Loop : expr riscv_lang)) -∗
-       WP (Loop : expr riscv_lang))%I.
+          mWP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang))%I.
 
   (* ...AND WHAT SH'S ENTRY IS TOLD ABOUT THE CONSOLE NODE, as ONE
      resource: the node is THERE (and then every open sh makes either
@@ -7134,8 +7134,8 @@ Section UkSh.
          (<[Regidx a0_idx := ret]>
             (<[Regidx a7_idx := (mword_of_int 15 : mword 64)]> m))
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using HT.
     intros Ha0 Ha1 Hal.
     iIntros "#Hcode #Hro #Hgen Hrun Hcwd Hstd Hin Hcont".
@@ -7313,7 +7313,7 @@ Section UkSh.
        R -∗
        ubytes γd sh_buf sh_nbuf f -∗
        urun N h m (mword_of_int 0x938) (16 + (ush_Dbody + n)) -∗
-       WP (Loop : expr riscv_lang))%I.
+       mWP (Loop : expr riscv_lang))%I.
 
   (* ===================================================================== *)
   (* WHAT REPLACES [UkShFork.ushf_lexable] (lane SH-LINE 2b, L3).            *)
@@ -7514,7 +7514,7 @@ Section UkSh.
           R -∗
           ubytes γd sh_buf sh_nbuf f -∗
           urun N h m (mword_of_int 0x97a) (16 + (ush_Dbody + n)) -∗
-          WP (Loop : expr riscv_lang)))%I.
+          mWP (Loop : expr riscv_lang)))%I.
 
   (* the ECHO era's obligation, and the landed name: every file that
      threads it ([UShKernel], [UInitSh], [UShRest]) is stated at this one
@@ -7555,8 +7555,8 @@ Section UkSh.
              = mword_of_int (sh_buf + Z.of_nat (k + 1)) ⌝ -∗
          ⌜ mc' !!! Regidx a5_idx = mword_of_int bz ⌝ -∗
          urun N h' mc' tgt (16 + n) -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hbz Hregs Hs1 Hrng Htgt. iIntros "#Hcode Hb Hrun Hcont".
     assert (Hbzr : 0 <= bz < 256).
@@ -7760,8 +7760,8 @@ Section UkSh.
        ⌜ mc' !!! Regidx a5_idx = mword_of_int (bv_unsigned (f k')) ⌝ -∗
        ubytes γd sh_buf sh_nbuf f -∗
        urun N h' mc' (mword_of_int 0x976) (16 + n) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     assert (Hbf : sh_buf = 8224) by (vm_compute; reflexivity).
     assert (Hnb : sh_nbuf = 100%nat) by (vm_compute; reflexivity).
@@ -7820,7 +7820,7 @@ Section UkSh.
        (lane KILL-PAY, K4(a)) *)
     ukn_pay N (-1) -∗
     urun N h mc (mword_of_int 0x9ca) n -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using Hpay.
     iIntros "#Hcode Hpay Hrun".
     iApply (wp_uk_cli N h mc (mword_of_int 0x9ca)
@@ -7868,10 +7868,10 @@ Section UkSh.
        ush_rest_line_at Dl ws g kk -∗
        ubytes γd sh_buf sh_nbuf g -∗
        urun N hh mm (mword_of_int 0x976) (16 + n) -∗
-       WP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang)) -∗
     ubytes γd sh_buf sh_nbuf g -∗
     urun N h mc (mword_of_int 0x95c) (16 + n) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof.
     intros Hregs Hi20 Hi2lt Hnul. iIntros "#Hcode #HTb Htail Hbs Hrun".
     iApply (wp_uk_auipc N h mc (mword_of_int 0x95c)
@@ -8192,7 +8192,7 @@ Section UkSh.
                   ush_rest_line_at Dl ws g kk -∗
                   ubytes γd sh_buf sh_nbuf g -∗
                   urun N hh mm (mword_of_int 0x976) (16 + n) -∗
-                  WP (Loop : expr riscv_lang))%I with "[Hstd HR]" as "Htail".
+                  mWP (Loop : expr riscv_lang))%I with "[Hstd HR]" as "Htail".
     { iIntros (hh mm kk) "%Hrm %Hkk %Hsm %Ham #Hrl Hbs Hrun".
       pose proof Hrm as (_ & _ & Hs4m & _ & _).
       remember (uv_btaken BEQ (mm !!! Regidx a5_idx) (mm !!! Regidx s4_idx))
@@ -8429,7 +8429,7 @@ Section UkSh.
     R -∗
     ubytes γd sh_buf sh_nbuf f -∗
     urun N h m (mword_of_int 0x914) (16 + (ush_Dbody + n0)) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using Hdsc_ncr Hdsc_line Hdsc_short HT Hpay ush_at_of_pm_taint ush_at_of_pm_wb ush_pm_of_at ush_read_leaf ush_wb_read ush_wc_blk_line ush_wc_read.
     iIntros "#Hdp #Hlaw #Hplaw #Hrest #Hcode #Hjt #Hgen %Hfd0 Hstd HR Hbs Hrun".
     set (n := (ush_Dbody + n0)%nat).
@@ -8654,7 +8654,7 @@ Section UkSh.
     R -∗
     ubytes γd sh_buf sh_nbuf f -∗
     urun N h m (mword_of_int 0x900) (16 + (ush_Dbody + n0)) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using Hdsc_ncr Hdsc_line Hdsc_short HT Hpay ush_at_of_pm_taint ush_at_of_pm_wb ush_pm_of_at ush_read_leaf ush_wb_read ush_wb_wc ush_wc_blk_line ush_wc_read.
     iIntros "#Hdp #Hlaw #Hplaw #Hrest #Hcode #Hjt #Hro #Hgen".
     set (n := (16 + (ush_Dbody + n0))%nat).
@@ -8938,7 +8938,7 @@ Section UkSh.
     ubytes γd sh_buf sh_nbuf f -∗
     urun N h m (mword_of_int ShSyms.main)
       (8 + (16 + (ush_Dbody + n0))) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using Hdsc_ncr Hdsc_line Hdsc_short HT Hpay ush_at_of_pm_taint ush_at_of_pm_wb ush_pm_of_at ush_read_leaf ush_wb_read ush_wb_wc ush_wc_blk_line ush_wc_read.
     iIntros "#Hdp #Hlaw #Hplaw #Hrest #Hcode #Hjt #Hro #Hgen %Hfd0 Hin Hstd Hcwd Hch Hpid Hpos
              HR Hbs Hrun".
@@ -9227,7 +9227,7 @@ Section UkSh.
     ubytes γd sh_buf sh_nbuf f -∗
     urun N h m (mword_of_int ShSyms.start)
       (2 + (8 + (16 + (ush_Dbody + n0)))) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using Hdsc_ncr Hdsc_line Hdsc_short HT Hpay ush_at_of_pm_taint ush_at_of_pm_wb ush_pm_of_at ush_read_leaf ush_wb_read ush_wb_wc ush_wc_blk_line ush_wc_read.
     iIntros "#Hdp #Hlaw #Hplaw #Hrest #Hcode #Hjt #Hro #Hgen #Hfd0 Hin Hstd Hcwd Hch Hpid Hpos
              HR Hbs Hrun".

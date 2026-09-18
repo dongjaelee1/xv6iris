@@ -167,8 +167,8 @@ Section UkPipeMoves.
     (∀ (h1 : CpuId) (r : mword 64),
        urun N h1 (<[Regidx a0_idx := r]> m) (add_vec_int pc 4) avail -∗
        (∀ h2 : CpuId,
-          urun N h2 m2 pc2 avail -∗ WP (Loop : expr riscv_lang)) -∗
-       WP (Loop : expr riscv_lang)) -∗
+          urun N h2 m2 pc2 avail -∗ mWP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang)) -∗
     (∀ (h3 : CpuId) (r2 : mword 64),
        (* dup answered 1: the slot was DETERMINED by the caller's own
           ledger, so the failure arm (“the table was full”) is refuted by
@@ -181,8 +181,8 @@ Section UkPipeMoves.
           source, and the slot the copy landed in was not the source's *)
        ufd (ukn_fd N) fdp (FdOpen rb true (FdPipe γp)) -∗
        urun N h3 (<[Regidx a0_idx := r2]> m2) (add_vec_int pc2 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn1 Ha01 Hal1 Hn2 Ha02 Hal2.
     iIntros "#Hi1 #Hi2 Hrun Hdep Hstd Hh Hload Hcont".

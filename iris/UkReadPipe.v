@@ -306,8 +306,8 @@ Section UkReadPipe.
        UserFd.ufd (ukn_fd N) fd (FdOpen true wb (FdPipe γp)) -∗
        urun N h' (<[Regidx a0_idx := r]> m) (add_vec_int pc 4) avail -∗
        ubytes (ukn_d N) (uint (m !!! Regidx a1_idx)) k g -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Ha0 Hfdlt Ha2 Hcapk Hcap31 Hal.
     iIntros "#Hi Hrun Hufdh Hpay Hbuf Hcont".
@@ -467,8 +467,8 @@ Section UkReadPipe.
         ∨ (⌜ r = (mword_of_int (-1) : mword 64) ⌝ ∗ ustd (ukn_fd N) l)) -∗
        urun N h' (<[Regidx a0_idx := r]> m) (add_vec_int pc 4) avail -∗
        ubytes (ukn_d N) (uint (m !!! Regidx a0_idx)) 8 g -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hal Hnone.
     iIntros "#Hi Hrun Hsb Hreg Hstd Hbuf Hcont".
@@ -639,8 +639,8 @@ Section UkReadPipe.
        UserFd.ustd (ukn_fd N) l -∗
        urun N h' (<[Regidx a0_idx := r]> m) (add_vec_int pc 4) avail -∗
        ubytes (ukn_d N) (uint (m !!! Regidx a1_idx)) k g -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Ha0 Hlt Hl Ha2 Hcapk Hcap31 Hal.
     iIntros "#Hi Hrun Hstd Hpay Hbuf Hcont".

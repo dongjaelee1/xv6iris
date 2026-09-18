@@ -203,8 +203,8 @@ Definition wp_namei_sconf_body
        else ⌜mf !!! Regidx (mword_of_int 10 : mword 5)
              = (mword_of_int 0 : mword 64)⌝ ∗
             iref_slots 2) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* ===================================================================== *)
 (*  THE SET-FORM CONTRACT (fs-sysfile GR-2b, retrofit 6).  A thin        *)
@@ -332,8 +332,8 @@ Definition wp_namei_gen_body
        else ⌜mf !!! Regidx (mword_of_int 10 : mword 5)
              = (mword_of_int 0 : mword 64)⌝ ∗
             iref_slots 2) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type NAMEI.
   Parameter wp_namei_sconf :
@@ -433,8 +433,8 @@ Definition wp_namei_root_body
       pa_add pv 1 ↦ₘ{dqp} NUL -∗
       (* at ROOTINO -- [SpecNamex.wp_namex_root_body]'s row, verbatim *)
       inode_held_at ipv (bv_unsigned ROOTINO) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type NAMEI_ROOT.
   Parameter wp_namei_root :

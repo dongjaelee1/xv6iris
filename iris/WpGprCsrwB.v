@@ -1105,8 +1105,8 @@ Section WpCsrwGprNewB.
       pc_is (add_vec_int pc 4) -∗
       gpr_file m -∗
       mideleg ↦ᵣ mideleg_legalized mideleg0 (m !!! Regidx rs1) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hpmp Hstat Hrs1) "Hmm Hpmpc Hpc Hf Hcsr Hinstr Hcont".
     assert (Hfresh : cw_fresh mideleg)
@@ -1187,8 +1187,8 @@ Section WpCsrwGprNewB.
       gpr_file m -∗
       mie ↦ᵣ sie_new_mie mie0 mideleg0 (m !!! Regidx rs1) -∗
       mideleg ↦ᵣ mideleg0 -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hpmp Hstat Hrs1) "Hmm Hpmpc Hpc Hf Hmie Hmdl Hinstr Hcont".
     assert (Hok : cw2_ok mie mideleg).
@@ -1456,8 +1456,8 @@ Section WpCsrwGprNewB.
       pc_is (add_vec_int pc 4) -∗
       gpr_file m -∗
       satp ↦ᵣ satp_legalized satp0 (m !!! Regidx rs1) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hpmp Hstat Hrs1) "Hmm Hpmpc Hpc Hf Hcsr Hinstr Hcont".
     assert (Hok : cw2_ok satp mstatus).
@@ -1544,8 +1544,8 @@ Section WpCsrwGprNewB.
       pc_is (add_vec_int pc 4) -∗
       gpr_file m -∗
       pmpaddr_n ↦ᵣ pmp0_newaddr pmpcfg0 pmpaddr0 (m !!! Regidx rs1) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hpmp Hstat Hrs1) "Hmm Hpmpc Hpc Hf Hcsr Hinstr Hcont".
     assert (Hok : cw2_ok pmpaddr_n pmpcfg_n).

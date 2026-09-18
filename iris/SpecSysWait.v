@@ -170,8 +170,8 @@ Definition wp_sys_wait_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslot
         (upd_usM (us_upt U P') (umem_wr (us_M U) v0 d (fun i => nth_byte xw i))) -∗
       (* the row, back at what the reap left it -- kwait's, verbatim *)
       ch_frag (pv_chg (us_V U)) pj cs' -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type SYSWAIT.
   Parameter wp_sys_wait_sconf :

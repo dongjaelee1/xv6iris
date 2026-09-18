@@ -874,7 +874,7 @@ Section UkFork.
         UserCwd.ucwd (ukn_cwd N) c -∗
         urun N h' (<[Regidx (mword_of_int 10) := r]> m)
           (add_vec_int pc 4) avail -∗
-        WP (Loop : expr riscv_lang)) ∗
+        mWP (Loop : expr riscv_lang)) ∗
      (* THE CHILD GETS A FRESH DESCRIPTOR NAME TOO.  It already got a fresh
         heap triple -- its ghost state is not the parent's -- and the fd
         authority is no different: parent and child each own a full map, and
@@ -933,8 +933,8 @@ Section UkFork.
         urun N' h'
           (<[Regidx (mword_of_int 10) := (mword_of_int 0 : mword 64)]> m)
           (add_vec_int pc 4) avail -∗
-        WP (Loop : expr riscv_lang))) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang))) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hal4. iIntros "#Hi HRc HP Hsz Hstd HD Hcwd Hchf #Hkw Hrun [Hpar Hchild]".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -1210,7 +1210,7 @@ Section UkFork.
         UserCwd.ucwd (ukn_cwd N) c -∗
         urun N h' (<[Regidx (mword_of_int 10) := r]> m)
           (add_vec_int pc 4) avail -∗
-        WP (Loop : expr riscv_lang)) ∗
+        mWP (Loop : expr riscv_lang)) ∗
      (* THE CHILD GETS A FRESH DESCRIPTOR NAME TOO.  It already got a fresh
         heap triple -- its ghost state is not the parent's -- and the fd
         authority is no different: parent and child each own a full map, and
@@ -1242,8 +1242,8 @@ Section UkFork.
         urun N' h'
           (<[Regidx (mword_of_int 10) := (mword_of_int 0 : mword 64)]> m)
           (add_vec_int pc 4) avail -∗
-        WP (Loop : expr riscv_lang))) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang))) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hal4.
     iIntros "#Hi HRc #Htext #Hargv Hsz Hstd HD Hcwd Hchf #Hkw Hrun [Hpar Hchild]".

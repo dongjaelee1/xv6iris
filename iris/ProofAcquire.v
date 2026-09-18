@@ -117,8 +117,8 @@ Section ProofAcquire.
          at its stamp -- what the absorb below consumes. *)
       (∃ K : nat, ⌜(Tl <= K)%nat⌝ ∗ TsoCtx.ctx_floor CtxIdDefs.cur_ctx K) -∗
       locked_pre γl cpu_id -∗ lock_pay_won R -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros a4one HM0a4 HM0s1 Href.
     assert (Ha4any : forall w : mword 64,

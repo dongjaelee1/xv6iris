@@ -170,8 +170,8 @@ Definition wp_log_write_gen_body
     bio_locked bn (fs_view γfs γd dev cov) k pidv dev bno bs bsd true -∗
     (* the slot unit comes back UNCONDITIONALLY -- see the header note *)
     bslot -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* THE ATOMIC-UPDATE FORM (claude-notes/design/fs-icache.md, §12): the
    caller's byte run arrives through a fupd fired at log_write's own ghost
@@ -321,8 +321,8 @@ Definition wp_log_write_au_body
     bio_locked bn (fs_view γfs γd dev cov) k pidv dev bno bs bsd true -∗
     (* the slot unit comes back UNCONDITIONALLY *)
     bslot -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* ===================================================================== *)
 (*  THE ATOMIC-UPDATE FORM AT BYTE-RANGE GRANULARITY (durable-disk 2b-0)  *)
@@ -421,8 +421,8 @@ Definition wp_log_write_au_range_body
     Φfsb -∗
     bio_locked bn (fs_view γfs γd dev cov) k pidv dev bno bs bsd true -∗
     bslot -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* THE WHOLE-BLOCK ADAPTER (durable-disk 2b-0).  [wp_log_write_au]'s fupd,
    read as the range form's at [off := 0], [len := BSIZE].  The surrender
@@ -618,8 +618,8 @@ Definition wp_log_write_gene_body
     bio_locked bn (fs_view γfs γd dev cov) k pidv dev bno bs bsd true -∗
     (* the slot unit comes back UNCONDITIONALLY *)
     bslot -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Definition wp_log_write_sconf_body
     `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
@@ -680,8 +680,8 @@ Definition wp_log_write_sconf_body
     bio_locked bn (fs_view γfs γd dev cov) k pidv dev bno bs bsd true -∗
     (* the slot unit comes back UNCONDITIONALLY -- see the header note *)
     bslot -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type LOG_WRITE.
   (* THE BYTE-RANGE ATOMIC-UPDATE FORM -- the one the whole-function proof

@@ -142,8 +142,8 @@ Definition wp_uvmalloc_mem_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ} `{G
              \/ ((uint oldsz <= uint newsz)%Z /\ rsz = newsz) ⌝ ∗
            ⌜mr !!! Regidx (mword_of_int 10) = rsz⌝ ∗
            proc_ptm P' (uint rsz) (umem_grow M (uint rsz))) ) -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type UVMALLOC.
   Parameter wp_uvmalloc_mem_sconf :

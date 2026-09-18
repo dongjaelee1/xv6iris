@@ -111,8 +111,8 @@ Section Au4Leaves.
         sie_cap_gpr kt (<[Regidx rd := regval_into_reg (sign_extend' 64 v)]> m) av b p -∗
         pc_is (add_vec_int pc (if cmp then 2 else 4)) -∗
         Ψ v -∗
-        WP (Loop : expr riscv_lang))) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang))) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hrd Hrdok HkptEm.
     (* the class, consumed at [rs1]: the address this leaf promises is the same
@@ -181,8 +181,8 @@ Section Au4Leaves.
         pc_is (add_vec_int pc (if cmp then 2 else 4)) -∗
         (∃ V0 : nat, hart_rview_lb_at (@cpu_id CID) V0 ∗ ⌜Q v V0⌝) -∗
         T -∗
-        WP (Loop : expr riscv_lang))) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang))) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hrd Hrdok HkptEm Hobl.
     assert (Hea_all : forall hh : CpuId,
@@ -262,8 +262,8 @@ Section Au4Leaves.
       sie_cap_gpr kt m av b p -∗
       pc_is (add_vec_int pc (if cmp then 2 else 4)) -∗
       Ψ -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HkptEm Hobl.
     assert (Hea_all : forall hh : CpuId,
@@ -311,8 +311,8 @@ Section Au4Leaves.
       sie_cap_gpr kt m av b p -∗
       pc_is (add_vec_int pc (if cmp then 2 else 4)) -∗
       Ψ -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intro HkptEm.
     (* the class, consumed at [rs1] (address) and [rs2] (stored value) -- two

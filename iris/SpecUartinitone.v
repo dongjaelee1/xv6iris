@@ -172,8 +172,8 @@ Definition wp_uartinitone_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{C
        [lock_name]: [uarts[]] is a static global that is never freed, so
        nothing needs the field back owned. *)
     lk_fresh (a_tx_lock_at i) nm -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type UARTINITONE.
   Parameter wp_uartinitone_sconf :

@@ -113,9 +113,9 @@ Section UserStepFull.
         hreg_frame rs3 u_Drw -∗
         hreg_frame_ro (u_Df (uc_dqc C)) rs3 u_Dro -∗
         resv_any cpu_id -∗
-        ((user_inv C pt Rut -∗ WP (Loop : expr riscv_lang)) ∧
-         (user_trap_frame C pt Rut -∗ WP (Loop : expr riscv_lang))) -∗
-        WP (Loop : expr riscv_lang)))%I.
+        ((user_inv C pt Rut -∗ mWP (Loop : expr riscv_lang)) ∧
+         (user_trap_frame C pt Rut -∗ mWP (Loop : expr riscv_lang))) -∗
+        mWP (Loop : expr riscv_lang)))%I.
 
   (* ------------------------------------------------------------------- *)
   (* §3a Everything the user machine owns BESIDE the register frame.       *)

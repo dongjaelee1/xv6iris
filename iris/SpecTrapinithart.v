@@ -57,8 +57,8 @@ Definition wp_trapinithart_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{
     pc_is ret_tgt -∗
     ⌜callee_saved mm mr⌝ -∗
     stvec ↦ᵣ (mword_of_int KernelSyms.kernelvec : mword 64) -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type TRAPINITHART.
   Parameter wp_trapinithart_sconf :

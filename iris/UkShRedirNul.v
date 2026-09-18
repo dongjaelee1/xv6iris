@@ -185,8 +185,8 @@ Section UkShRedirNul.
          ⌜ ucallee_saved m m' ⌝ -∗
          ⌜ m' !!! Regidx a0_idx = mword_of_int p ⌝ -∗
          urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (4 + (4 + nn)) -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Hs0 Hs64 Hp0 Hp8 Hpsz Hpc0 Hpc8 Hpcsz Hele Htlen Hsnd.
     iIntros "#Hcode #Hro Hn Hsub Hline Hrun Hcont".

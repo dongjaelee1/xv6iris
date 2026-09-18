@@ -728,8 +728,8 @@ Section SysExecEpilogue.
         ⌜(mf !!! Regidx Ra0 : mword 64) = (M !!! Regidx Ra0 : mword 64)⌝ -∗
         sie_cap_gpr KT1 mf K b pj -∗
         pc_is (ret_pc (m !!! Regidx Rra : mword 64)) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK60 Kpop Hsp0 HMsp HMthr HMs1 HMs2 HMs3 HMs4 HMs5 HMs6 HMs7 Halp Hala.
     iIntros "Hcg #Htext Hpc Hf1 Hf2 Hrest Hcont".
@@ -1009,8 +1009,8 @@ Section SysExecHead.
           bytes_own (KTR := KT1) (DfracOwn 1) (pa_stk (m !!! Regidx csp_rs1) 58) 256 ∗
           (pa_stk (m !!! Regidx csp_rs1) 59) ↦₈[KT1] v1 ∗
           (pa_stk (m !!! Regidx csp_rs1) 60) ↦₈[KT1] v60)) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Harg0 Harg1 Hlb.
     destruct (sx_kb K HK) as (Kkx & Kar & Kaa & Kfa & Kfs & K14 & K2 & K60 & Kpop).
@@ -1543,8 +1543,8 @@ Section SysExecSetup.
         (* argv, zeroed, as thirty-two WORDS *)
         ([∗ list] i ∈ seq 0 32,
            (pa_stk sp0 (58 - i)) ↦₈[KT1] (mword_of_int 0 : mword 64)) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hsp0 HMsp HMs0 HMthr Hala.
     destruct (sx_kb K HK) as (Kkx & Kar & Kaa & Kfa & Kfs & K14 & K2 & K60 & Kpop).
@@ -2239,8 +2239,8 @@ Section SysExecFree.
         sie_cap_gpr KT1 M' (K - 60)%nat b pj -∗
         cpu_own 0 eb pj b lks -∗
         sx_argv_free sp0 -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ht Hbeq Hbeqal HMs1 Hx0 Hx2.
     iIntros "#Htext Hpc Hcg Hcnt Harr Hout".
@@ -2352,8 +2352,8 @@ Section SysExecFree.
         sie_cap_gpr KT1 M' (K - 60)%nat b pj -∗
         cpu_own 0 eb pj b lks -∗
         sx_argv_free sp0 -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Ht Hpg Hlb Hret Hbeq Hbeqal Hkf Hbk Hbkal Hx0 Hx2 Hx4 Hx8 Hx10.
     destruct (sx_kb K HK) as (Kkx & Kar & Kaa & Kfa & Kfs & K14 & K2 & K60 & Kpop).
@@ -3138,8 +3138,8 @@ Section SysExecStep.
                     (mword_of_int (SX + 0xb6) : mword 64))
          ∨ sx_bad γf jp pid U K eb b lks sp0 m plen pfun rest uav
                   M' P' i' pg' afun') -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hlb.
     destruct (sx_kb K HK) as (Kkx & Kar & Kaa & Kfa & Kfs & K14 & K2 & K60 & Kpop).
@@ -3849,8 +3849,8 @@ Section SysExecStep.
                   (mword_of_int (SX + 0xb6) : mword 64))
          ∨ sx_bad γf jp pid U K eb b lks sp0 m plen pfun rest uav
                   M' P' i' pg' afun') -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hlb.
     intro W. revert CID0.
@@ -3988,8 +3988,8 @@ Section SysExecReload.
         pc_is (mword_of_int (SX + base + 14) : mword 64) -∗
         sie_cap_gpr KT1 M' (K - 60)%nat b pj -∗
         sx_spill sp0 m -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hsp Hthr Hx0 Hx2 Hx4 Hx6 Hx8 Hx10 Hx12.
     iIntros "#Htext Hpc Hcg Hsp Hout".
@@ -4308,8 +4308,8 @@ Section SysExecBadTail.
         cpu_own 0 eb (proc_addr jp) b lks -∗
         pc_is (ret_pc (m !!! Regidx Rra : mword 64)) -∗
         proc_priv γf (proc_addr jp) pid (us_upt U P) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hlb Hsp0 Hplen Halp.
     destruct (sx_kb K HK) as (Kkx & Kar & Kaa & Kfa & Kfs & K14 & K2 & K60 & Kpop).
@@ -4526,8 +4526,8 @@ Section SysExecSuccTail.
         cpu_own 0 eb (proc_addr jp) b lks -∗
         pc_is (ret_pc (m !!! Regidx Rra : mword 64)) -∗
         proc_priv γf (proc_addr jp) pid UW -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hlb Hsp0 Hplen Halp Ht32 Hpgok Hsp Hthr Hs0 Hs1 Hs4 Ha0.
     destruct (sx_kb K HK) as (Kkx & Kar & Kaa & Kfa & Kfs & K14 & K2 & K60 & Kpop).

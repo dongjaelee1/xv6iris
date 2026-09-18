@@ -662,8 +662,8 @@ Section WpMretGpr.
       pc_is (ret_pc mepc0) -∗
       gpr_file m -∗
       mepc ↦ᵣ mepc0 -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hpmp Hstat HmIE Hnp Hsup Hlpe0)
       "#Hhw #Hinv Hhs Hpriv Hms Hpmpc Hmenv Hpc Hfile Hmepc Hinstr Hcont".

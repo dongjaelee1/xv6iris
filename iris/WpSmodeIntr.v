@@ -124,7 +124,7 @@ Section WpSmodeIntr.
     instr pc is_rvc i -∗
     ▷ wp_next true p (fun (CID : CpuId) =>
         intr_cb_clock kt m n p pc is_rvc i b' R (CID := CID)) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using . exact (wp_exec_step_intr_clock pc m n p is_rvc i b' R). Qed.
 
 
@@ -162,7 +162,7 @@ Section WpSmodeIntr.
              gpr_file (tp_pin m') ∗ R CID npc ms' m' n'))
      ∗ (∀ (npc ms' : mword 64) (m' : regfile) (n' : nat),
           sie_cap_gpr_at kt ms' m' n' b' p -∗ pc_is npc -∗ R CID npc ms' m' n' -∗
-          WP (Loop : expr riscv_lang)))%I.
+          mWP (Loop : expr riscv_lang)))%I.
 
   Definition sconf_step_obl (m : regfile) (n : nat) (b b' : bool)
       (pc : mword 64) (is_rvc : bool) (i : instruction)
@@ -184,7 +184,7 @@ Section WpSmodeIntr.
              gpr_file (tp_pin m') ∗ R CID npc ms' m' n'))
      ∗ (∀ (npc ms' : mword 64) (m' : regfile) (n' : nat),
           sie_cap_gpr_at kt ms' m' n' b' p -∗ pc_is npc -∗ R CID npc ms' m' n' -∗
-          WP (Loop : expr riscv_lang)))%I.
+          mWP (Loop : expr riscv_lang)))%I.
 
   (* the landing family of the SIE=0 arm: the tower at whatever the
      instruction left in the cells it may write.  Every component the leaf
@@ -266,7 +266,7 @@ Section WpSmodeIntr.
     pc_is pc -∗
     instr pc is_rvc i -∗
     ▷ wp_next false p (sconf_step_obl_clock m n false b' pc is_rvc i R) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "Hcg Hpc #Hinstr Hbody".
     (* ---- the bundle, into the 25 cells ---- *)
@@ -342,7 +342,7 @@ Section WpSmodeIntr.
       iDestruct "Hresv" as (rr) "Hfrag".
       iApply (swp_loop rr with "Hcert Hfrag").
       iNext. iIntros (tick) "Hfrag".
-      iApply (swp_mono _ _ (fun _ => WP (Loop : expr riscv_lang))%I
+      iApply (swp_mono _ _ (fun _ => mWP (Loop : expr riscv_lang))%I
                 with "[] [-]").
       2:{ iApply (swp_tick_wrap_ex s_Drwb s_Dro (s_Df (DfracOwn 1))
                     (fun rsx => exists (rs2 : regstate) (mi : mword 64),
@@ -601,7 +601,7 @@ Section WpSmodeIntr.
       iDestruct "Hresv" as (rr) "Hfrag".
       iApply (swp_loop rr with "Hcert Hfrag").
       iNext. iIntros (tick) "Hfrag".
-      iApply (swp_mono _ _ (fun _ => WP (Loop : expr riscv_lang))%I
+      iApply (swp_mono _ _ (fun _ => mWP (Loop : expr riscv_lang))%I
                 with "[] [-]").
       2:{ iApply (swp_tick_wrap_ex s_Drw s_Dro (s_Df (DfracOwn 1))
                     (fun rsx => exists (rs2 : regstate) (mi : mword 64),
@@ -831,7 +831,7 @@ Section WpSmodeIntr.
     pc_is pc -∗
     instr pc is_rvc i -∗
     ▷ wp_next b p (sconf_step_obl_clock m n b b' pc is_rvc i R) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "Hcg Hpc Hinstr H".
     destruct b.
@@ -863,7 +863,7 @@ Section WpSmodeIntr.
     pc_is pc -∗
     instr pc is_rvc i -∗
     ▷ wp_next b p (sconf_step_obl m n b b' pc is_rvc i R) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "Hcg Hpc Hinstr H".
     iApply (wp_instr_s_sconf_clock m n b b' pc is_rvc i R
@@ -944,8 +944,8 @@ Section WpSmodeIntr.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 2) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hops) "Hex Hcg Hpc Hinstr Hcont".
     pose proof (ops_ok_rd _ _ _ _ Hops) as Hrdok.
@@ -1017,8 +1017,8 @@ Section WpSmodeIntr.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 2) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hrdok Hwval) "Hcg Hpc Hinstr Hcont".
     (* c.li reads x0 and nothing else, so the engine's source guard is

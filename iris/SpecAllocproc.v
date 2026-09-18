@@ -409,8 +409,8 @@ Definition wp_allocproc_sconf_body
       pc_is ret_tgt -∗
       allocproc_post γa γk γf γs lvl eb pme on op tk b lks mr K Q
         (mr !!! Regidx (mword_of_int 10 : mword 5)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* THE GENERAL CONTRACT.  Identical to the one below except that it drops the
    counted premise: everything allocproc actually does is here, and the third
@@ -457,8 +457,8 @@ Definition wp_allocproc_core_body
       pc_is ret_tgt -∗
       allocproc_post γa γk γf γs lvl eb pme on op tk b lks mr K Q
         (mr !!! Regidx (mword_of_int 10 : mword 5)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type ALLOCPROC_GEN.
   Parameter wp_allocproc_core :

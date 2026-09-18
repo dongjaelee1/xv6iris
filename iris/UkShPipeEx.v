@@ -226,8 +226,8 @@ Section UkShPipeEx.
          ⌜ forall r : mword 5, ucallee_saved_idx r = true ->
              mc' !!! Regidx r = mc !!! Regidx r ⌝ -∗
          urun N h' mc' (mword_of_int 0x662) (24 + nn) -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hcur Hklt Hbar Hs0 Hs64 Hps0 Hps8 Hpssz Hs4v Hs5v Hs6v.
     iIntros "#Hcode #Hro Hcur Hstr Hws Hrun Hcont".

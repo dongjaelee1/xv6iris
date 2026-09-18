@@ -18,7 +18,7 @@
    [wp_next b], whose rebound [CID] IS the resuming hart -- every resource
    it receives resolves at that hart automatically (no [(CID := h)]
    annotation, no separate ghost-name binder: the SIE ghost is canonical per
-   hart now), and its conclusion is the plain [WP (Loop)] at the rebound
+   hart now), and its conclusion is the plain [mWP (Loop)] at the rebound
    [CID].  sched always swtches (there is no non-parking path), so the proof
    establishes the fully hart-generic postcondition regardless of [b] and
    discharges the wrapper via [wp_next_intro] for whichever index a caller
@@ -166,9 +166,9 @@ Definition wp_sched_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG �
          own_ctx (p_context pj) -∗
          hart_full j cpu_id -∗
          ▷ sched_vc γs (a_cpu_ctx cid_word) pj -∗
-         WP (Loop : expr riscv_lang))
+         mWP (Loop : expr riscv_lang))
    else emp) -∗
-  WP (Loop : expr riscv_lang).
+  mWP (Loop : expr riscv_lang).
 
 (* ===================================================================== *)
 (*  THERE IS NO noff <> 1 CONTRACT, AND THAT IS THE POINT.                *)

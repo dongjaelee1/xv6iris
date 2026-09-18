@@ -1928,8 +1928,8 @@ Definition wp_fileread_sconf_body
          nothing anywhere else. *)
       fileread_arms (pv_gen (us_V U)) (pv_upt (us_V U)) st n F Rd Rin Rp Rpe P r
         (umem_wr (us_M U) addr d bs) addr -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* ONE MODULE TYPE: there is no parallel statement pinned to an inode, and
    no second walk against the code.  The arms are keyed on the descriptor's

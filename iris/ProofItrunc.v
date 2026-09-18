@@ -119,7 +119,7 @@ Section ItruncCont.
            is also what turns this determinate pair into the contract's
            existential. *)
         log_opS icfg_log u Sbf -∗
-        WP (Loop : expr riscv_lang))%I.
+        mWP (Loop : expr riscv_lang))%I.
 
 End ItruncCont.
 
@@ -249,7 +249,7 @@ Section ItruncTail.
  ip inum dn bm (if cru then S u else u)
             (Sb0 ∪ {[IBLOCK inum icfg_ist]})
             pidv dq dqd dqn dqb dqs j m K b eb lks Upr -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hgeom Hist Hicov Hilog Hnib Hdtnz Hstab Hnlk Hj Hgl Hsp Hthr Hs3 Hlkbelow.
     pose proof HK as HK'. 
@@ -689,7 +689,7 @@ Section ItruncDLoop.
         bslots 2 -∗
         it_dir_state fsc_fs ip bm data fsc_cov fsc_logst
                      crb Sb e0 w NDIRECT -∗
-        WP (Loop : expr riscv_lang))%I.
+        mWP (Loop : expr riscv_lang))%I.
 
   Local Lemma it_dloop `{GEN : GenId} `{CID0 : CpuId} `{XI : CurCtx} 
       (γs : list gname) (jx : nat) (γl : gname)
@@ -745,7 +745,7 @@ Section ItruncDLoop.
     it_dir_state fsc_fs ip bm data fsc_cov fsc_logst crb Sb e0 w k -∗
     it_dexit (CID0 := CID0)
              ip bm data pidv dq dqd dqb jx crb Sb e0 w m K b eb lks Upr -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hgeom Hsize Hbm0 Hbmcov Hbmlog Hwf Hrange Hblen Hj Hgl.
     (* REVERT CID0 BEFORE THE INDUCTION (the ProofWritei.wi_loop idiom).
@@ -1258,7 +1258,7 @@ Section ItruncELoop.
         buf_own (bpa kk) (bm_ind bm) dsk (ind_bytes (bm_ent bm)) -∗
         it_ent_state fsc_fs bm data fsc_cov fsc_logst
                      crb Sb e0 w NINDIRECT -∗
-        WP (Loop : expr riscv_lang))%I.
+        mWP (Loop : expr riscv_lang))%I.
 
   Local Lemma it_eloop `{GEN : GenId} `{CID0 : CpuId} `{XI : CurCtx} 
       (γs : list gname) (jx : nat) (γl : gname)
@@ -1316,7 +1316,7 @@ Section ItruncELoop.
     it_ent_state fsc_fs bm data fsc_cov fsc_logst crb Sb e0 w q -∗
     it_eexit (CID0 := CID0)
              ip bm data kk dsk pidv dq dqd dqb jx crb Sb e0 w m K b eb lks Upr -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hgeom Hsize Hbm0 Hbmcov Hbmlog Hwf Hrange Hblen Hkk Hj Hgl.
     revert CID0.
@@ -1787,7 +1787,7 @@ Section ItruncIArm.
         inode_blocks fsc_fs bm_empty (fun _ => replicate BSIZE (bv_0 8)) -∗
         bslots 3 -∗
         bm_paidS crb w Sb e0 -∗
-        WP (Loop : expr riscv_lang))%I.
+        mWP (Loop : expr riscv_lang))%I.
 
   Local Lemma it_iarm `{GEN : GenId} `{CID0 : CpuId} `{XI : CurCtx}       (γs : list gname) (jx : nat) (γl : gname)
       (pd pav pu : mword 64)
@@ -1845,7 +1845,7 @@ Section ItruncIArm.
     bm_paidS crb w Sb e0 -∗
     it_armexit (CID0 := CID0)
                ip bm pidv dq dqd dqb jx crb Sb e0 w m K b eb lks Upr -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hgeom Hsize Hbm0 Hbmcov Hbmlog Hwf Hrange Hblen Hindnz Hj Hgl
            Hsp Hthr Hs3 Ha1 Hlkbelow.

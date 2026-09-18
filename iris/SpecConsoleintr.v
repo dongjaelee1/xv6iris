@@ -426,8 +426,8 @@ Definition wp_consoleintr_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fds
       (* ...AND THE ARM'S HALF, BACK AT [None] (redesign R2): the close that
          ended this byte's log entry returned it. *)
       uart_arm γu (1/2) None -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type CONSOLEINTR.
   Parameter wp_consoleintr_sconf :

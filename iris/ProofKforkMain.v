@@ -336,8 +336,8 @@ Section KforkArms.
         pc_is (ret_pc ra0) -∗
         kfork_post γf lvl eb pme b pid_p Up stsP csP Q Rc K mr
           (mr !!! Regidx Ra0) lks -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hlvl Hbeq Hmsp Hmra Hms0 Hms1 Hms5 HMtsp HMts4 Hnpa HjN Hgamma
       Hofnull Hcwdnull HMtthr Hbelow.
@@ -438,8 +438,8 @@ Section KforkArms.
         pc_is (ret_pc ra0) -∗
         kfork_post γf lvl eb pme b pid_p Up stsP csP Q Rc K mr
           (mr !!! Regidx Ra0) lks -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK8 Hmsp Hmra Hms0 Hms1 Hms5 HMtsp HMtthr.
     iIntros "Hcg Hcpu #Htext Hpc Hframe Hpv Hpfrag Hprow Hkalloc HRc Hcont".
@@ -670,8 +670,8 @@ Section KforkArms.
         pc_is (ret_pc ra0) -∗
         kfork_post γf lvl eb pme b pid_p Up stsP csP Q Rc K mr
           (mr !!! Regidx Ra0) lks -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using ufdG0.
     intros HK Hlvl Hbeq Hmsp Hmra Hms0 Hms1 Hms5 HMtsp HMts4 HMts5
       HMta5 HMta4 HMta3 Htfsrc Htfdst HMtthr Hnpa HjN Hgamma
@@ -1054,7 +1054,7 @@ Section KforkMain.
                     pc_is (ret_pc (m !!! Regidx Rra)) -∗
                     kfork_post γf lvl eb pme b pid_p Up stsP csP Q Rc
                       K mr (mr !!! Regidx Ra0) lks -∗
-                    WP (Loop : expr riscv_lang))%I))%I lks Q
+                    mWP (Loop : expr riscv_lang))%I))%I lks Q
               HK Hlvl
               with "HKp Hcg Hcpu Htext Hpc Hprocs Hplock Hwlock Hftbl
                     Hitbl Hitinv Henv Hpav Hpv Hpfrag HR0 [] [] [Hjslot]").

@@ -124,8 +124,8 @@ Section ProofUvmcreate.
       pc_is (ret_pc (mm !!! Regidx (mword_of_int 1 : mword 5))) -∗
       ⌜ callee_saved mm mr ⌝ -∗
       uvmcreate_post γa γk on (mm !!! Regidx (mword_of_int 4)) (mr !!! Regidx (mword_of_int 10)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hc4 Htsp Hts1 Htrest Hmmsp.
     set (spr := add_vec sp0 (sign_extend' 64 (sign_extend' 12 (mword_of_int 32 : mword 6)))).

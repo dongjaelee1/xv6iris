@@ -384,8 +384,8 @@ Section KexitPro.
         sie_cap_gpr KT1 M (K - 6) b pme -∗
         pc_is (mword_of_int (KX + 0x12)) -∗
         kx_frame spF -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros sp0 spF HK6 Hdom.
     iIntros "Hcg #Htext Hpc Hcont".
@@ -632,7 +632,7 @@ Section KexitLoop.
         (∃ on', fileclose_pipe_env fn on' 0%nat) -∗
         fileclose_fs_env_nopid fn 0%nat eb pj -∗
         iref_slot -∗
-        WP (Loop : expr riscv_lang)) -∗
+        mWP (Loop : expr riscv_lang)) -∗
     ∀ (fd : nat) (M : regfile) (U : ustate),
       ⌜(fd < NOFILE)%nat⌝ -∗ ⌜kxl_regs M pj sv spF fd⌝ -∗ ⌜kx_nulled gch ggen tfv cwdv fd (us_V U)⌝ -∗
       sie_cap_gpr KT1 M av b pj -∗
@@ -648,7 +648,7 @@ Section KexitLoop.
       (∃ on', fileclose_pipe_env fn on' 0%nat) -∗
       fileclose_fs_env_nopid fn 0%nat eb pj -∗
        iref_slot -∗
-      WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang).
   Proof using .
     intros pj Hj Hfnj Hfndq Hfnpid Hav Hfresh.
     iIntros "#Htext #Hkd #Hft #Hpe Hqexit".
@@ -675,7 +675,7 @@ Section KexitLoop.
                        (∃ on', fileclose_pipe_env fn on' 0%nat) -∗
                        fileclose_fs_env_nopid fn 0%nat eb pj -∗
                         iref_slot -∗
-                       WP (Loop : expr riscv_lang)) -∗
+                       mWP (Loop : expr riscv_lang)) -∗
                    sie_cap_gpr KT1 M av b pj -∗
                    cpu_own 0 eb pj b lks -∗
                    trap_csrs_ext KT1 eb -∗
@@ -686,7 +686,7 @@ Section KexitLoop.
                    (∃ on', fileclose_pipe_env fn on' 0%nat) -∗
                    fileclose_fs_env_nopid fn 0%nat eb pj -∗
                     iref_slot -∗
-                   WP (Loop : expr riscv_lang)))%I with "[]" as "Hloop".
+                   mWP (Loop : expr riscv_lang)))%I with "[]" as "Hloop".
     { iIntros (fuel). iInduction fuel as [|fuel IHf] "IHf".
       { iIntros (CIDk Hsk fd M U) "%Hfuel %Hfd %Hregs %Hnul Hqx Hcg Hown Htce Hcce Hpc Hpriv Hfrag Hpenv Hfenv Hiru".
         exfalso. lia. }
@@ -712,7 +712,7 @@ Section KexitLoop.
                    (∃ on', fileclose_pipe_env fn on' 0%nat) -∗
                    fileclose_fs_env_nopid fn 0%nat eb pj -∗
                    iref_slot -∗
-                   WP (Loop : expr riscv_lang)))%I
+                   mWP (Loop : expr riscv_lang)))%I
         with "[Hqx]" as "Htail".
       { iIntros (CIDt Hst Mt Ut) "%Hmt %Hnt Hcg Hown Htce Hcce Hpc Hpriv Hfrag Hpenv Hfenv Hiru".
         destruct Hmt as (Ht9 & Ht18 & Ht19 & Ht20 & Htsp & Htdom).
@@ -1160,7 +1160,7 @@ Section KexitPark.
     (Q (xstate_of sv)
      ∨ (⌜xstate_of sv = -1⌝ ∗ ChildTok.kill_shot (pv_gen (us_V U))
         ∗ ChildTok.taken_at (pv_gen (us_V U)))) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pj Hj Hgl Hav Hregs Hof Hcwd Hfresh.
     destruct Hregs as (Hs3 & Hs4 & Hsp0 & Hdom).
@@ -1907,7 +1907,7 @@ Section KexitRest.
     (Q (xstate_of sv)
      ∨ (⌜xstate_of sv = -1⌝ ∗ ChildTok.kill_shot (pv_gen (us_V U))
         ∗ ChildTok.taken_at (pv_gen (us_V U)))) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pj Hj Hgl Hav Hgeom Hregs Hof
            Hsize Hbm0 Hbmcov Hbmlog Hist0 Hinumgeo Hcovb Hfresh.

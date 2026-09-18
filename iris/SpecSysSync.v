@@ -354,8 +354,8 @@ Definition wp_sys_sync_sconf_body
       (* THE RECEIPT *)
       flushed_sync γ e -∗
       pc_is ret_tgt -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type SYS_SYNC.
   Parameter wp_sys_sync_sconf :

@@ -150,7 +150,7 @@ Section ProofWakeup.
        cpu_own lvl eb pme b lks -∗
        kernel_text -∗ pc_is (mword_of_int (KernelSyms.wakeup + 0x54)) -∗
        wk_frame spF vra vs0 vs1 vs2 vs3 vs4 vs5 -∗
-       WP (Loop : expr riscv_lang))%I.
+       mWP (Loop : expr riscv_lang))%I.
 
   (* the fuel-indexed scan invariant at the loop head [wakeup+0x38]; the
      [∀ fuel]/[wp_next] wrapper stays at each [iAssert] site (RULE 3), only
@@ -170,7 +170,7 @@ Section ProofWakeup.
        cpu_own lvl eb pme b lks -∗
        kernel_text -∗ pc_is (mword_of_int (KernelSyms.wakeup + 0x38)) -∗
        wk_frame spF vra vs0 vs1 vs2 vs3 vs4 vs5 -∗
-       WP (Loop : expr riscv_lang))%I.
+       mWP (Loop : expr riscv_lang))%I.
 
   (* the shared release tail [Hrel] both arms of the state test (and the
      chan-mismatch exit) hand control to; the whole stretch back to the
@@ -198,7 +198,7 @@ Section ProofWakeup.
        sie_cap_gpr KT1 (CID := CID) Mr (trap_res b + av)%nat false pme -∗
        pc_is (CID := CID) (mword_of_int (KernelSyms.wakeup + 0x2a)) -∗
        locked γk CID -∗ proc_lock_res γs γk (proc_addr k) -∗
-       WP (LoopE gen_id CID : expr riscv_lang))%I.
+       mWP (LoopE gen_id CID : expr riscv_lang))%I.
 
   (* wakeup only RELAYS parked contexts (SLEEPING->RUNNABLE, untouched), never
      resumes them, so [proc_lock_res] (SchedCtx.v, whose context slot is the
@@ -230,7 +230,7 @@ Section ProofWakeup.
       cpu_own lvl eb pme b lks -∗
       kernel_text -∗ pc_is (mword_of_int (KernelSyms.wakeup + 0x38)) -∗
       wk_frame spF vra vs0 vs1 vs2 vs3 vs4 vs5 -∗
-      WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hlen Hlvl Hav Hfresh.
     iIntros "#Hpinv Hqexit".
@@ -260,7 +260,7 @@ Section ProofWakeup.
                    cpu_own lvl eb pme b lks -∗
                    pc_is (mword_of_int (KernelSyms.wakeup + 0x30)) -∗
                    wk_frame spF vra vs0 vs1 vs2 vs3 vs4 vs5 -∗
-                   WP (Loop : expr riscv_lang)))%I
+                   mWP (Loop : expr riscv_lang)))%I
         with "[Hqx]" as "Htail".
       { iIntros (CIDt Hst Mt) "%Hmt Hcg Hown Hpc Hframe".
         destruct Hmt as (Ht1 & Htsp & Ht18 & Ht19 & Ht20 & Ht21 & Ht22 & Ht23 & Ht24 & Ht25 & Ht26 & Ht27 & Htdom).

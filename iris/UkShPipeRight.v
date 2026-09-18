@@ -307,8 +307,8 @@ Section UkShPipeRight.
            Pex -∗
            urun N h' m' (ret_pc (m !!! Regidx ra_idx))
              (6 + (16 + (24 + nn))) -∗
-           WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+           mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using ushp_malloc_ok.
     intros Ha0 Ha1 Hq Hs0 Hs64 Hps0 Hps8 Hpssz.
     iIntros "#Hcode #Hro Hcur Hstr Hws Hsy HM #Hpx Hpay Hrun Hcont".

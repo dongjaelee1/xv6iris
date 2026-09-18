@@ -461,8 +461,8 @@ Definition wp_ilock_dep_sconf_body
          [ClaimK] the fill is FORCED and the record is the record the claim
          wrote. *)
       ⌜ilk_post o filled dn⌝ -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* ---- THE TRANSACTIONAL FORM (durable-fs-plan.md section 3, [ilock];
    durable-disk B''-tx) -------------------------------------------------
@@ -717,8 +717,8 @@ Definition wp_ilock_tx_sconf_body
          [ClaimK] the fill is FORCED and the record is the record the claim
          wrote. *)
       ⌜ilk_post o filled dn⌝ -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* THE [log_tx] READING OF THE ARM, which is where the id leaves and re-enters
    [LogInv.log_tx]'s existential -- a parked share must sit at a NAMED

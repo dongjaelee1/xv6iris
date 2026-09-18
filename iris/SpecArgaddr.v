@@ -87,8 +87,8 @@ Definition wp_argaddr_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG
       p_trapframe p ↦₈{dqt} page_base tfp -∗
       tf_page tfp ws -∗
       ip ↦₈[KT1] v -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type ARGADDR.
   Parameter wp_argaddr_sconf :

@@ -179,7 +179,7 @@ Section UkShRedirBody.
     ushl_dat -∗ usz γs sz -∗
     ubytes γd sh_buf sh_nbuf f -∗
     urun N h m (mword_of_int 0x97a) (16 + (UkSh.ush_Dbody + n)) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HT HWct Hpay Hpsok_free.
     intros Hregs Hs1 Ha5 Hnn Hnul Hkl Hline Hszlo Hszal Hszok Hpm1 Hpmwb Hwbl.
     exact (UkShFork.wp_kshm_body_at N γp T Wc Wb Pm Hpsok_free ushs_lp 68
@@ -290,7 +290,7 @@ Section UkShRedirBody.
              "one number") *)
           urun N' h m (mword_of_int 0x9c0)
             (68 + (8 + (UkShDiag.ush_Dg + n))) -∗
-          WP (Loop : expr riscv_lang)))%I.
+          mWP (Loop : expr riscv_lang)))%I.
 
   Global Instance sh_redir_child_law_persistent :
     Persistent sh_redir_child_law.
@@ -445,7 +445,7 @@ Section UkShRedirBody.
     ushl_dat -∗ usz γs sz -∗
     ubytes γd sh_buf sh_nbuf f -∗
     urun N h m (mword_of_int 0x97a) (16 + (UkSh.ush_Dbody + n)) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HT HWct Hpay Hpsok_free.
     intros HDc Hregs Hs1 Ha5 Hnn Hnul Hkl Hline Hszlo Hszal Hszok
            Hpm1 Hpmwb Hwbl.

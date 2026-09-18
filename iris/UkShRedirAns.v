@@ -151,8 +151,8 @@ Section UkShRedirAns.
           UserCwd.ucwd (ukn_cwd N) cwdv -∗
           ush_open_ans2 N l K (Kf a) r -∗
           urun N h' m' (ret_pc (m !!! Regidx ra_idx)) av -∗
-          WP (Loop : expr riscv_lang)) -∗
-       WP (Loop : expr riscv_lang))%I.
+          mWP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang))%I.
 
   (* ------------------------------------------------------------------ *)
   (*  2.  THE TWO MOVES A CONSUMER NEEDS                                  *)

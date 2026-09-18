@@ -94,8 +94,8 @@ Section ProofIinit.
       ∀ mr,
       sie_cap_gpr KT1 mr K b p -∗
       pc_is ret_tgt -∗ ⌜ callee_saved m mr ⌝ -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros sp0 spr ret_tgt HK6 HMesp HMecs.
     assert (Hspr6 : spr = pa_stk sp0 6).
@@ -313,8 +313,8 @@ Section ProofIinit.
     wp_next b p (fun (CID : CpuId) =>
       ∀ mr, sie_cap_gpr KT1 mr K b p -∗ pc_is ret_tgt -∗ ⌜ callee_saved m mr ⌝ -∗
         ([∗ list] i ∈ seq 0 NINODE, sl_fresh (inode_lock i) "inode"%string) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros sp0 spr ret_tgt name_inode.
     revert CID.
@@ -853,7 +853,7 @@ Section ProofIinit.
     iAssert (wp_next (CID0 := CID) b p (fun (CID' : CpuId) =>
               ∀ mr, sie_cap_gpr KT1 mr K b p -∗ pc_is ret_tgt -∗ ⌜ callee_saved m mr ⌝ -∗
               ([∗ list] i ∈ seq 0 NINODE, sl_fresh (inode_lock i) "inode"%string) -∗
-              WP (Loop : expr riscv_lang)))%I
+              mWP (Loop : expr riscv_lang)))%I
       with "[Hcont Hlock Hcpu]" as "Hpost".
     { iIntros (CID' Hs' mr) "Hcg Hpc %Hcs Hfresh".
       iSpecialize ("Hcont" $! CID' with "[%]"); [exact Hs'|].

@@ -1968,7 +1968,7 @@ Section IntrDefsBase.
   (* THE THREE HART-PARAMETRIC PIECES ARE DEFINED IN THIS SECTION AND      *)
   (* ANNOTATED AT THE USE SITE, NOT WRITTEN OUT AT AN EXPLICIT HART.       *)
   (* [ihs_entry_of] / [ihs_post_of] / [ihs_trap_of] are stated here in the *)
-  (* ORDINARY ambient-hart spelling -- every [r ↦ᵣ v], [pc_is], [WP Loop]  *)
+  (* ORDINARY ambient-hart spelling -- every [r ↦ᵣ v], [pc_is], [mWP Loop] *)
   (* and bundle inside them means "this hart" with no annotation -- and    *)
   (* the fixpoint below says [(CID := CIDb)] / [(CID := c')] ONCE per      *)
   (* occurrence.  That is deliberate: a per-hart term written out at an    *)
@@ -2112,7 +2112,7 @@ Section IntrDefsBase.
       (p pc0 : mword 64) : iProp Σ :=
     (sie_cap_gpr_of kt R m av true p -∗
      pc_is pc0 -∗
-     WP (Loop : expr riscv_lang))%I.
+     mWP (Loop : expr riscv_lang))%I.
 
   (* ONE TRAP'S OBLIGATION, at the ambient hart, with the continuation left
      as a parameter -- because the continuation is the one thing that is NOT
@@ -2130,7 +2130,7 @@ Section IntrDefsBase.
      □ E XI -∗
      ihs_entry_of kt R m av p pc0 sc tv handler -∗
      wp_next true p K -∗
-     WP (Loop : expr riscv_lang))%I.
+     mWP (Loop : expr riscv_lang))%I.
 
 End IntrDefsBase.
 
@@ -2327,7 +2327,7 @@ Section IntrDefs.
     wp_next true p
       (fun c' => ihs_post_of (CID := c') kt (ires_pack_of (ihs kt) XI)
                    m av p pc0) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hpc0 Hsc) "Hsp #HE Hentry Hnext".
     iEval (rewrite intr_handler_spec_unfold /ihs_body_of) in "Hsp".
@@ -2348,7 +2348,7 @@ Section IntrDefs.
          wp_next true p
            (fun c' => ihs_post_of (CID := c') (XI := XIc) kt
                         (ires_pack_of (ihs kt) XIc) m av p pc0) -∗
-         WP (Loop : expr riscv_lang)) -∗
+         mWP (Loop : expr riscv_lang)) -∗
     intr_handler_spec kt E handler.
   Proof using .
     iIntros "#H".

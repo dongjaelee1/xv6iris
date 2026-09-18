@@ -167,8 +167,8 @@ Definition wp_piperead_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslot
         (Z.to_nat n) d bs (mf !!! Regidx (mword_of_int 10 : mword 5)) -∗
       proc_priv_core pj pid
         (upd_usM (us_upt U P') (umem_wr (us_M U) addr d bs)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type PIPEREAD.
   Parameter wp_piperead_sconf :

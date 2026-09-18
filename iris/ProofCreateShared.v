@@ -2089,7 +2089,7 @@ Section ProofCreateMain.
           cre_fail_arms (fs_gamma_L fsc_fs) fsc_fs (bv_unsigned ty)
             (bv_unsigned major) (bv_unsigned minor) Nm Nd P Pmiss
             Farm Fdots Fun Fok Fex (bview plen pfun)) -∗
-       WP (Loop : expr riscv_lang))%I.
+       mWP (Loop : expr riscv_lang))%I.
 
   (* THE EPILOGUE FUNNEL at +0x70: [mv a0,s2], the seven [c.ldsp]s, the
      pop, [c.ret].  FOUR arms of this half reach it and three more will,
@@ -2118,8 +2118,8 @@ Section ProofCreateMain.
            ⌜mf !!! Regidx Ra0 = (Mt !!! Regidx Rs2 : mword 64)⌝ -∗
            sie_cap_gpr KT1 mf K b (proc_addr j) -∗
            pc_is ret_tgt -∗
-           WP (Loop : expr riscv_lang)) -∗
-       WP (Loop : expr riscv_lang))%I.
+           mWP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang))%I.
 
   (* ------------------------------------------------------------------- *)
   (*  ...AND THE FUNNEL ITSELF, HOISTED (D0-a pre-work A).                 *)
@@ -2541,7 +2541,7 @@ Section ProofCreateMain.
  plen pfun pv ty major minor
                          U u Sb ns pidv dqb dqs dqbs dqn m K eb b lks j
                          ret_tgt CIDc Nm Nd P Pmiss Farm Fdots Fun Fok Fex) -∗
-       WP (Loop : expr riscv_lang))%I.
+       mWP (Loop : expr riscv_lang))%I.
 
   (* ------------------------------------------------------------------- *)
   (*  THE TWO BODIES THE C-OK-FILE WALK PARKS (D0-a).                      *)
@@ -2767,7 +2767,7 @@ Section ProofCreateMain.
  plen pfun pv ty major minor
                          U u Sb ns pidv dqb dqs dqbs dqn m K eb b lks j
                          ret_tgt CIDc Nm Nd P Pmiss Farm Fdots Fun Fok Fex) -∗
-       WP (Loop : expr riscv_lang))%I.
+       mWP (Loop : expr riscv_lang))%I.
 
   Definition cr_fail_body
       (γs : list gname) (j : nat) (γl : gname)
@@ -2997,7 +2997,7 @@ Section ProofCreateMain.
  plen pfun pv ty major minor
                          U u Sb ns pidv dqb dqs dqbs dqn m K eb b lks j
                          ret_tgt CIDc Nm Nd P Pmiss Farm Fdots Fun Fok Fex) -∗
-       WP (Loop : expr riscv_lang))%I.
+       mWP (Loop : expr riscv_lang))%I.
 
 
   (* =================================================================== *)
@@ -3278,7 +3278,7 @@ Section ProofCreateMain.
  plen pfun pv ty major minor
                          U u Sb ns pidv dqb dqs dqbs dqn m K eb b lks j
                          ret_tgt CIDc Nm Nd P Pmiss Farm Fdots Fun Fok Fex) -∗
-       WP (Loop : expr riscv_lang))%I.
+       mWP (Loop : expr riscv_lang))%I.
 
   (* ---- (c) THE HALF -------------------------------------------------- *)
 

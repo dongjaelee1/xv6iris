@@ -370,8 +370,8 @@ Section ProofFilecloseParts.
         ⌜callee_saved m mf⌝ -∗
         sie_cap_gpr KT1 mf K b p -∗
         pc_is (ret_pc ra0) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hsp0 Hra0 Hs00 Hs10 Hmtsp Hthr.
     iIntros "Hcg #Htext Hpc Hb1 Hb2 Hb3 Hb4 Hb5 Hb6 Hb7 Hb8 Hcont".
@@ -552,8 +552,8 @@ Section ProofFilecloseParts.
         ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 5) (DfracOwn 1) v3 -∗
         ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 6) (DfracOwn 1) v4 -∗
         ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 7) (DfracOwn 1) v5 -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hmtsp Hab Hbc Hcd Hde Hjt.
     iIntros "Hcg Hpc Hia Hib Hic Hid Hie Hb4 Hb5 Hb6 Hb7 Hcont".

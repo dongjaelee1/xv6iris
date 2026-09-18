@@ -334,8 +334,8 @@ Section ProofCopyout.
         pc_is (if wr then (mword_of_int (KernelSyms.copyout + 0x88) : mword 64)
                     else (mword_of_int (KernelSyms.copyout + 0xc2) : mword 64)) -∗
         ptree_own 2 (DfracOwn 1) t -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hs1 Hs7 Hva0b Hrep Hsome.
     iIntros "Hcg #Htext Hpc Hptree Hcont".
@@ -599,8 +599,8 @@ Section ProofCopyout.
          pc_is (mword_of_int (KernelSyms.copyout + 0xa0) : mword 64) -∗
          proc_ptm P' (uint szv) Mu' -∗
          ([∗ list] j ∈ seq 0 len, (pa_add src j) ↦ₘ[ktb]{dqsrc} src_bytes j) -∗
-         WP (Loop : expr riscv_lang)) -∗
-     WP (Loop : expr riscv_lang))%I.
+         mWP (Loop : expr riscv_lang)) -∗
+     mWP (Loop : expr riscv_lang))%I.
 
   Definition co_copy_body
       (b : bool) (p : mword 64) (K lvl : nat) (eb : bool) (lks : gset string)
@@ -652,8 +652,8 @@ Section ProofCopyout.
          pc_is (mword_of_int (KernelSyms.copyout + 0xa0) : mword 64) -∗
          proc_ptm P' (uint szv) Mu' -∗
          ([∗ list] j ∈ seq 0 len, (pa_add src j) ↦ₘ[ktb]{dqsrc} src_bytes j) -∗
-         WP (Loop : expr riscv_lang)) -∗
-     WP (Loop : expr riscv_lang))%I.
+         mWP (Loop : expr riscv_lang)) -∗
+     mWP (Loop : expr riscv_lang))%I.
 
   (* ------------------------------------------------------------------ *)
   (* THE LOOP (+0x54 .. the back edge), by induction on [fuel].           *)
@@ -704,8 +704,8 @@ Section ProofCopyout.
         pc_is (mword_of_int (KernelSyms.copyout + 0xa0) : mword 64) -∗
         proc_ptm P' (uint szv) Mu' -∗
         ([∗ list] j ∈ seq 0 len, (pa_add src j) ↦ₘ[ktb]{dqsrc} src_bytes j) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using CID KtierLe0.
     intros HK Hlen64 Hszb Hlvl fuel.
     change (2 ^ 64)%Z with 18446744073709551616%Z in Hlen64.
@@ -2509,7 +2509,7 @@ Section ProofCopyout.
         pc_is (mword_of_int (KernelSyms.copyout + 0xa0) : mword 64) -∗
         proc_ptm P' (uint szv) Mu' -∗
         ([∗ list] j ∈ seq 0 len, (pa_add src j) ↦ₘ[ktb]{dqsrc} src_bytes j) -∗
-        WP (Loop : expr riscv_lang)))%I
+        mWP (Loop : expr riscv_lang)))%I
       with "[Hcont Hk1 Hk2 Hk3 Hk4 Hk5 Hk6 Hk7 Hk8 Hk9 Hk10 Hk11 Hk12 Hk13 Hk14]" as "Hepi".
     { iIntros (CIDe0 Hse0 mj res P' Mu')
         "(%Hjsp & %Hja0 & %Hjres & %Hjext) Hcg Hcnt Hpc Hpt Hsrc".

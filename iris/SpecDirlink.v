@@ -694,8 +694,8 @@ Definition wp_dirlink_sconf_body
                  = (mword_of_int 0 : mword 64) /\ tot = 16%nat)
               \/ (mf !!! Regidx (mword_of_int 10 : mword 5)
                     = (mword_of_int (-1) : mword 64) /\ (tot < 16)%nat))⌝ -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* ===================================================================== *)
 (*  ...AND THE CONTRACT COMES IN TWO FORMS (fs-icache.md section 18       *)
@@ -994,8 +994,8 @@ Definition wp_dirlink_gen_body
                  = (mword_of_int 0 : mword 64) /\ tot = 16%nat)
               \/ (mf !!! Regidx (mword_of_int 10 : mword 5)
                     = (mword_of_int (-1) : mword 64) /\ (tot < 16)%nat))⌝ -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type DIRLINK.
   Parameter wp_dirlink_sconf :

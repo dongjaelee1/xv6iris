@@ -130,8 +130,8 @@ Definition wp_vmfault_sconf_mem_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{C
            ⌜(uint va < uint szv)%Z⌝ ∗
            ⌜P.(ud_um) !! svpn_of va0 = None⌝ ∗
            proc_ptm (uptd_insert P (svpn_of va0) r) (uint szv) M) ) -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type VMFAULT.
   Parameter wp_vmfault_sconf_mem :

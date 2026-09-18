@@ -141,9 +141,9 @@ Definition wp_swtch_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ} `{GEN : Ge
              then ∃ XIo : CtxId, park_tok A' XIo ∗ ▷ valid_context P A' cret p XIo
              else own_ctx cret) ∗
             P h A' oldc cret (rget (CID := h) m (mword_of_int 4 : mword 5)) p back' cur_ctx) -∗
-         WP (LoopE gen_id h : expr riscv_lang) )
+         mWP (LoopE gen_id h : expr riscv_lang) )
    else emp) -∗
-  WP (Loop : expr riscv_lang).
+  mWP (Loop : expr riscv_lang).
 
 Module Type SWTCH.
   Parameter wp_swtch_sconf :

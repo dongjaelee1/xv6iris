@@ -143,8 +143,8 @@ Definition wp_uartinit_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID 
     (∃ (k' : nat) (hl' : option (list mobs)), uart_rx_tok γ1 k' hl') -∗
     uart_dlab_off γ1 -∗
     lk_fresh (a_tx_lock_at Uart1) (uart_name Uart1) -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type UARTINIT.
   Parameter wp_uartinit_sconf :

@@ -911,7 +911,7 @@ Section PwConts.
        (* the byte queue's post, at the count [s2] is about to become a0 *)
        pw_post γp U ua Q Qe n (M !!! Regidx Rs2) -∗
        proc_priv_core (proc_addr j) pid (us_upt U P') -∗
-       WP (Loop : expr riscv_lang)))%I.
+       mWP (Loop : expr riscv_lang)))%I.
 
   (* +0x108: wakeup(&pi->nread); release(&pi->lock); jump to the epilogue.  Three
      paths land here: the n <= 0 arm, the loop exit and the copyin failure. *)
@@ -939,7 +939,7 @@ Section PwConts.
        pipe_ref γp w q -∗
        pw_post γp U ua Q Qe n (M !!! Regidx Rs2) -∗
        proc_priv_core (proc_addr j) pid (us_upt U P') -∗
-       WP (Loop : expr riscv_lang)))%I.
+       mWP (Loop : expr riscv_lang)))%I.
 
   (* +0x46: release(&pi->lock); i := -1; reload s6..s10; fall into the
      epilogue.  Reached when readopen == 0 or the process was killed. *)
@@ -967,7 +967,7 @@ Section PwConts.
        (* this arm always answers -1 *)
        pw_post γp U ua Q Qe n (mword_of_int (-1) : mword 64) -∗
        proc_priv_core (proc_addr j) pid (us_upt U P') -∗
-       WP (Loop : expr riscv_lang)))%I.
+       mWP (Loop : expr riscv_lang)))%I.
 
   (* exactly ONE of the two is taken, so they are offered as a conjunction and
      SHARE the epilogue closure. *)
@@ -1008,7 +1008,7 @@ Section PwConts.
        (* the byte queue's payment AT THE ROUND'S CURSOR *)
        pw_pay γp (us_M U) addr Q Qe (Z.to_nat i) (Z.to_nat n) -∗
        pw_exits CID0 γf γs j γl γp w q m av eb lks pid U n sp0 pi addr Q Qe -∗
-       WP (Loop : expr riscv_lang)))%I.
+       mWP (Loop : expr riscv_lang)))%I.
 
   (* MEASURED AND REJECTED (2026-08-13): routing the +0xde back edge's [▷]
      strip through a two-hypothesis lemma [(P -∗ Q) -∗ ▷ P -∗ ▷ Q], to spare
@@ -1061,8 +1061,8 @@ Section PwRestore.
     wp_next b pme (fun (CID : CpuId) =>
       ∀ M' : regfile, ⌜ pw_restored m M M' ⌝ -∗
         sie_cap_gpr KT1 M' K b pme -∗ pc_is p5 -∗ pw_frame5 m sp0 -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hsp E1 E2 E3 E4 E5.
     iIntros "Hcg Hpc Hi0 Hi1 Hi2 Hi3 Hi4 (F8 & F9 & F10 & F11 & F12) Hcont".
@@ -1196,7 +1196,7 @@ Section PwGuard.
     pw_pay γp (us_M U) addr Q Qe (Z.to_nat i) (Z.to_nat n) -∗
     pw_exits CID0 γf γs j γl γp w q m av eb lks pid U n sp0 pi addr Q Qe -∗
     pw_loop CID0 γa γf γs j γl γp w q m av eb lks pid U n sp0 pi addr Q Qe -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn0 Hn31 Hi Hanch Hext Hregs.
     assert (H63 : (2 ^ 63 = 9223372036854775808)%Z) by (vm_compute; reflexivity).

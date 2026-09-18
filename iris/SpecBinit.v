@@ -80,8 +80,8 @@ Definition wp_binit_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID : C
     WpLock.lk_cpu_ready lk -∗
     ([∗ list] k ∈ seq 0 NBUF, sl_fresh (buf_lock (bnode k)) "buffer"%string) -∗
     bcache_lru bhead (blist 0 NBUF) -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type BINIT.
   Parameter wp_binit_sconf :

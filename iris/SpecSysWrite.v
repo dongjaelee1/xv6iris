@@ -364,8 +364,8 @@ Definition wp_sys_write_sconf_body
          ⌜sys_write_ret⌝, and beside it what the arm the descriptor selects
          proved. ---- *)
       sys_write_arms (us_V U) v sts (sys_rw_count v2) (us_M U) v1 Q Qe r -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* ONE MODULE TYPE: there is no parallel statement for the chain or for the
    console, and no second walk against the code.  A STABLE form, when one is

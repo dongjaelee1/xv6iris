@@ -73,8 +73,8 @@ Definition wp_holdingsleep_genl_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenI
       pc_is ret_tgt -∗
       sleeplocked_q γsl q slk pidv -∗
       proc_priv_bare p pidv Upr -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Definition wp_holdingsleep_gen_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
     (γl γsl : gname) (s : string) (R : iProp Σ) (H : Qp -> iProp Σ) (q : Qp)
@@ -106,8 +106,8 @@ Definition wp_holdingsleep_gen_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId
       pc_is ret_tgt -∗
       sleeplocked_q γsl q slk pidv -∗
       proc_priv_bare p pidv Upr -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* the UNTRACKED instance, and the fraction-free token with it: every
    existing caller (brelse, bwrite) says [sleeplocked] and knows no [q]. *)
@@ -135,8 +135,8 @@ Definition wp_holdingsleep_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{
       pc_is ret_tgt -∗
       sleeplocked γsl slk pidv -∗
       proc_priv_bare p pidv Upr -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type HOLDINGSLEEP.
   Parameter wp_holdingsleep_genl_sconf :

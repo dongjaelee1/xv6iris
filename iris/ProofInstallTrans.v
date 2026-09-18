@@ -674,7 +674,7 @@ Section InstallTransDefs.
             else (uint w) ↪[fs_dirty γfs]{#(1/2)} false)) -∗
         bslots (2 + (if recovering then 0%nat else length W)) -∗
         ▷ R -∗
-        WP (Loop : expr riscv_lang))%I.
+        mWP (Loop : expr riscv_lang))%I.
 
   Lemma it_cont_shift `{GEN : GenId} `{CIDa : CpuId} `{CIDb : CpuId}
 
@@ -1018,8 +1018,8 @@ Section InstallTransBlocks.
         cpu_own 0 eb (proc_addr j) eb lks -∗
         pc_is (mword_of_int (KernelSyms.install_trans + 0x70) : mword 64) -∗
         lh_block t ↦₄ w -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hbelow Hregs.
     pose proof Hregs as (Hsp & Hs3 & Hs4 & Hs5 & Hs6 & Hs7 & Hs8 & _ & _ & _).
@@ -1215,8 +1215,8 @@ Section InstallTransBlocks.
         cpu_own 0 eb (proc_addr j) eb lks -∗
         pc_is (mword_of_int (KernelSyms.install_trans + 0x54) : mword 64) -∗
         (if recovering then emp else bslot) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hbelow Hregs Hk2 Hs1v.
     pose proof Hregs as (Hsp & Hs3 & Hs4 & Hs5 & Hs6 & Hs7 & Hs8 & _ & _ & _).
@@ -1368,7 +1368,7 @@ Section InstallTransBlocks.
     it_out bn γfs logstart recovering n W Lw Xexc L D -∗
     ▷ R -∗
     it_cont (CID0 := CID0)  j bn γfs logstart recovering n W Lw Xexc L D pidv dq m K eb eb R lks Upr -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hsp Hs9 Hs10 Hs11.
     iIntros "Hcg #Htext Hpc Hframe Hcnt Hextc Hextm Hppid Hout HR Hcont".
@@ -1846,7 +1846,7 @@ Section InstallTransBlocks.
          disk_seq_permit gen_id (Some ((1024 * uint w)%Z, Lw i)) (R (S i))) -∗
     ▷ R t -∗
     it_cont (CID0 := CID0)  j bn γfs logstart recovering n W Lw Xexc L D pidv dq m K eb eb (R n) lks Upr -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hgeom Hj Hgl Hshape Hnd Hwok HLw HD Hexc.
     destruct Hshape as [HnW Hn30].

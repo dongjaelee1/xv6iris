@@ -196,7 +196,7 @@ Section ProofSysOpenEntryCCont.
            Mim pvv vom
            P Pmiss Phiarm Phiun Phiok Phiex Phio Phit sts U
            (mf !!! Regidx Ra0 : mword 64) -∗
-         WP (Loop : expr riscv_lang))%I.
+         mWP (Loop : expr riscv_lang))%I.
 
 End ProofSysOpenEntryCCont.
 
@@ -343,7 +343,7 @@ Section ProofSysOpenEntryC.
       (so_cont0_au_create omo gf ns
                 dqb dqs dqbs dqn (proc_addr jx) pidv Mim pvv vom U sts
                 P Pmiss Phiarm Phiun Phiok Phiex Phio Phit m K eb b lks) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK HdevR Hnib0 Hgeom Hsize Hbm0 Hbmcov
            Hbmlog Hist0 Hcovb Hbmgeo Hiregb Hpcstr Hplen Hni1 Hni2 Hni3 Hush

@@ -107,8 +107,8 @@ Section ProofPrputc.
         cpu_own n eb p b lks -∗
         pc_is (ret_pc (m0 !!! Regidx ra_idx)) -∗
         ⌜ callee_saved m0 mf /\ mf !!! Regidx ra_idx = m0 !!! Regidx ra_idx ⌝ -∗
-        WP (Loop : expr riscv_lang)) -∗
-      WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+      mWP (Loop : expr riscv_lang).
 
   Lemma wp_prputc_sconf_gen
       (m : regfile) (K : nat) (n : nat) (eb : bool) (b : bool) (p : mword 64)
@@ -379,8 +379,8 @@ Section PrputcSealed.
       cpu_own n eb p b lks -∗
       pc_is (ret_pc (m0 !!! Regidx ra_idx)) -∗
       ⌜ callee_saved m0 mf /\ mf !!! Regidx ra_idx = m0 !!! Regidx ra_idx ⌝ -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Ha0 Hn Hbelow.
     iIntros "Hcg Hcpu #Htext Hpc #Huinv #Hbase #Htxl Hcont".

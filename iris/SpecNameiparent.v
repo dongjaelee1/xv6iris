@@ -205,8 +205,8 @@ Definition wp_nameiparent_sconf_body
        else ⌜mf !!! Regidx (mword_of_int 10 : mword 5)
              = (mword_of_int 0 : mword 64)⌝ ∗
             iref_slots 2) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* ===================================================================== *)
 (*  THE SET-FORM CONTRACT (fs-sysfile GR-2b, retrofit 6).  A thin        *)
@@ -344,8 +344,8 @@ Definition wp_nameiparent_gen_body
        else ⌜mf !!! Regidx (mword_of_int 10 : mword 5)
              = (mword_of_int 0 : mword 64)⌝ ∗
             iref_slots 2) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type NAMEIPARENT.
   Parameter wp_nameiparent_sconf :

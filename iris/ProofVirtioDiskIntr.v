@@ -129,8 +129,8 @@ Section VtLeaves.
     ( ∀ w : bv 32, ⌜ P w ⌝ -∗
       sie_cap_gpr KT1 (<[Regidx rd := regval_into_reg (sign_extend' 64 (w : mword 32))]> m) n false p -∗
       pc_is (add_vec_int pc (if rvc then 2 else 4)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hea Hg Hoff Hrd Hrdok Hread. destruct Hg as (Hr & Hal & Hcan & Hdv).
     (* the class, consumed at [rs1] -- see [IntrDefs.SrcOk].  This wrapper
@@ -180,8 +180,8 @@ Section VtLeaves.
     dev_inv γu γd -∗
     ( sie_cap_gpr KT1 m n false p -∗
       pc_is (add_vec_int pc (if rvc then 2 else 4)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hea Hg Hoff Hsw Hwr. destruct Hg as (Hr & Hal & Hcan & Hdv).
     (* the class, consumed at [rs1 / rs2] -- see [IntrDefs.SrcOk].  This wrapper
@@ -229,8 +229,8 @@ Section VtLeaves.
             M' !!! Regidx r = M !!! Regidx r ⌝ -∗
         sie_cap_gpr KT1 M' n false p -∗
         pc_is (mword_of_int (KernelSyms.virtio_disk_intr + 0x30) : mword 64) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "Hcg #Htext Hpc #Hdinv Hcont".
     (* ---- +0x1e: lui a5,0x10001 ---- *)
@@ -407,8 +407,8 @@ Section VtPrologue.
         pa_stk sp0 2 ↦₈[KT1] (m !!! Regidx s0_idx) -∗
         pa_stk sp0 3 ↦₈[KT1] (m !!! Regidx s1_idx) -∗
         (∃ vg : mword 64, pa_stk sp0 4 ↦₈[KT1] vg) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hav Hfresh.
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).
@@ -679,8 +679,8 @@ Section VtEpilogue.
         sie_cap_gpr KT1 MF av b pme -∗
         cpu_own n eb pme b lks -∗
         pc_is (ret_pc (m !!! Regidx ra_idx)) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hsp0 HMBcsp HMBthr Hav Hbeq Hfresh.
     set (spd := add_vec sp0 (sign_extend' 64 (sign_extend' 12 (mword_of_int 32 : mword 6)))).
@@ -1344,8 +1344,8 @@ Section VtDevRam.
         disk_pub γd np -∗ disk_read_at γd nr -∗ disk_flr γd F -∗ disk_fl γd t0 t1 -∗
         sie_cap_gpr KT1 (<[Regidx rd := regval_into_reg (zero_extend' 64 (wrap16 k : SailStdpp.Values.mword 16))]> m) n false p -∗
         pc_is (add_vec_int pc 4) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hea Hrd Hrdok.
     assert (Hea_all : forall hh : CpuId,
@@ -1598,8 +1598,8 @@ Section VtDevRam.
                             : SailStdpp.Values.mword 32))]> m) n false pp -∗
       pc_is (add_vec_int pc 2) -∗
       disk_pub γd np -∗ disk_read_at γd u -∗ ghost_map_auth (dn_claim γd) 1 cm -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hea Hrd Hrdok.
     assert (Hea_all : forall hh : CpuId,
@@ -1760,7 +1760,7 @@ Section VtDevRam.
           pc_is (mword_of_int (KernelSyms.virtio_disk_intr + 0x8a) : mword 64) -∗
           disk_pub γd np -∗ d_used_idx ↦₂ wrap16 nr -∗
           disk_read_at γd nr -∗ disk_flr γd F -∗ disk_fl γd t0 t1 -∗
-          WP (Loop : expr riscv_lang))
+          mWP (Loop : expr riscv_lang))
       ∧ ( ∀ (M' : regfile) (nc V0 : nat),
           ⌜ forall r : mword 5, r <> mword_of_int 14 -> r <> mword_of_int 15 ->
               M' !!! Regidx r = M !!! Regidx r ⌝ -∗
@@ -1772,8 +1772,8 @@ Section VtDevRam.
           pc_is (mword_of_int (KernelSyms.virtio_disk_intr + 0x3e) : mword 64) -∗
           disk_pub γd np -∗ d_used_idx ↦₂ wrap16 nr -∗
           disk_read_at γd nr -∗ disk_flr γd F -∗ disk_fl γd t0 t1 -∗
-          WP (Loop : expr riscv_lang)) ) -∗
-    WP (Loop : expr riscv_lang).
+          mWP (Loop : expr riscv_lang)) ) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HMs1.
     iIntros "Hcg #Htext Hpc #Hdinv #Hgeom Hpub Hidx Hnr Hflr Hfl #Hf0 #Hf1 #HfF Hcont".
@@ -2248,8 +2248,8 @@ Section VtBody.
            bound raised to it *)
         TsoCtx.hart_view_lb V0 -∗
         TsoCtx.ctx_floor cur_ctx V0 -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HMs1 Hnrc.
     iIntros "Hcg #Htext Hpc #Hdinv #Hgeom Hpub #Hlbc Hrd Hauth Hidx #HR0 #Hq0 Hcont".
@@ -2471,8 +2471,8 @@ Section VtBody.
         sie_cap_gpr KT1 M' n false pp -∗
         pc_is (mword_of_int (KernelSyms.virtio_disk_intr + 0x60) : mword 64) -∗
         disk_pub γd np -∗ disk_read_at γd u -∗ ghost_map_auth (dn_claim γd) 1 cm -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HMs1 HMa5 Hh8 Hcm Hstatus.
     iIntros "Hcg #Htext Hpc #Hdinv Hpub #Hord Hrd Hauth #HV0 #Hq0 Hcont".
@@ -2697,8 +2697,8 @@ Section VtBody.
         disk_flr γd (Nat.max F V0) -∗
         d_info_b h ↦₈ (dc_buf dc : SailStdpp.Values.mword 64) -∗
         b_disk (dc_buf dc) ↦₄ (SailStdpp.Values.mword_of_int (len := 32) 0) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HMs1 HMa5 Hh8 Hcm Hhead.
     iIntros "Hcg #Htext Hpc #Hdinv Hpub #Hord Hrd Hauth Hflr #Hq0 Hib Hbd Hcont".
@@ -2879,8 +2879,8 @@ Section VtBody.
         pc_is (mword_of_int (KernelSyms.virtio_disk_intr + 0x86) : mword 64) -∗
         disk_pub γd np -∗ d_used_idx ↦₂ wrap16 (S nr) -∗
         disk_read_at γd (S nr) -∗ disk_flr γd F -∗ disk_fl γd t0 t1 -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HMs1.
     iIntros "Hcg #Htext Hpc #Hdinv #Hgeom Hpub Hidx Hnr Hflr Hfl #Hf0 #Hf1 #HfF Hcont".
@@ -3076,7 +3076,7 @@ Section VtLoopDefs.
        pc_is (mword_of_int (KernelSyms.virtio_disk_intr + 0x8a) : mword 64) -∗
        cpu_own (S lvl) eb pme false ({["virtio_disk"]} ∪ lks) -∗
        disk_res γd pd pav pu -∗
-       WP (Loop : expr riscv_lang))%I.
+       mWP (Loop : expr riscv_lang))%I.
 
   Definition vt_loop (γd : disk_names)
       (pd pav pu : mword 64) (m : regfile) (av lvl : nat) (eb : bool)
@@ -3088,7 +3088,7 @@ Section VtLoopDefs.
        cpu_own (S lvl) eb pme false ({["virtio_disk"]} ∪ lks) -∗
        vt_loop_state γd pd pav pu -∗
        vt_exit γd pd pav pu m av lvl eb pme sp0 lks -∗
-       WP (Loop : expr riscv_lang))%I.
+       mWP (Loop : expr riscv_lang))%I.
 
 End VtLoopDefs.
 

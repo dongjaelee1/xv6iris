@@ -140,8 +140,8 @@ Definition wp_sys_pause_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslo
       pc_is ret_tgt -∗
       p_trapframe pj ↦₈{dqt} page_base tfp -∗
       tf_page tfp ws -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type SYSPAUSE.
   Parameter wp_sys_pause_sconf :

@@ -483,7 +483,7 @@ Section UkShRedirSeam.
        Cr' -∗
        urun N h' m' (mword_of_int ShSyms.runcmd)
          (UkShDiag.ush_Dg + (70 + n)) -∗
-       WP (Loop : expr riscv_lang))
+       mWP (Loop : expr riscv_lang))
      (* ...OR THE OPEN FAILED, at the diagnostic cut ([UkShRedir.
         wp_kshr_redir_arm_g]'s additive pair, relayed) *)
      ∧
@@ -497,8 +497,8 @@ Section UkShRedirSeam.
         Kf -∗
         Cr' -∗
         urun N h' m' (mword_of_int 0x10e) (UkShDiag.ush_Dg + (70 + n)) -∗
-        WP (Loop : expr riscv_lang))) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang))) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using Hpay.
     intros Hs1 Hred Htoks Hpos Htlen Hs0 Hs64 Hs38 Hst1 Hne Hnp.
     iIntros "#Hcode #Hjt #Hpcode #Hpro Hline Hws Hsy Hstd Hcwd HM Hopen
@@ -656,8 +656,8 @@ Section UkShRedirSeam.
        Cr -∗
        urun N h' m' (mword_of_int ShSyms.runcmd)
          (UkShDiag.ush_Dg + (70 + n)) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using Hpay.
     intros Hs1 Hred Htoks Hpos Htlen Hs0 Hs64 Hs38 Hst1 Hne Hnp.
     iIntros "#Hdp #Hcode #Hjt #Hpcode #Hpro Hline Hws Hsy Hstd Hcwd HM Hopen
@@ -767,7 +767,7 @@ Section UkShRedirSeam.
        Cr' -∗
        urun N h' m' (mword_of_int ShSyms.runcmd)
          (UkShDiag.ush_Dg + (70 + n)) -∗
-       WP (Loop : expr riscv_lang))
+       mWP (Loop : expr riscv_lang))
      ∧
      (∀ (h' : CpuId) (m' : regfile),
         ⌜ UkShRun.ush_diag_at 0x10e m' ⌝ -∗
@@ -779,8 +779,8 @@ Section UkShRedirSeam.
         Kf -∗
         Cr' -∗
         urun N h' m' (mword_of_int 0x10e) (UkShDiag.ush_Dg + (70 + n)) -∗
-        WP (Loop : expr riscv_lang))) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang))) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using Hpay Hpsok_free.
     intros Hs1 Hred Htoks Hpos Htlen Hs0 Hs64 Hs38 Hst1 Hne Hnp
            Hszlo Hszal Hszok.
@@ -850,8 +850,8 @@ Section UkShRedirSeam.
        Cr -∗
        urun N h' m' (mword_of_int ShSyms.runcmd)
          (UkShDiag.ush_Dg + (70 + n)) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using Hpay Hpsok_free.
     intros Hs1 Hred Htoks Hpos Htlen Hs0 Hs64 Hs38 Hst1 Hne Hnp
            Hszlo Hszal Hszok.

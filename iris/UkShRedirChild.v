@@ -142,7 +142,7 @@ Section UkShRedirChild.
     Cr -∗
     urun N' h m (mword_of_int 0x9c0)
       (68 + (8 + (UkShDiag.ush_Dg + n))) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using Hpsok_free.
     intros Hpeq Hs1 Hline Hfl Hf0 Hs0 Hs64 Hs38 Hszlo Hszal Hszok
            Hst1 Hne Hnp Hfd2 Hfdl.

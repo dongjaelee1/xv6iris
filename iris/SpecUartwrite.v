@@ -219,8 +219,8 @@ Definition wp_uartwrite_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslo
       ([∗ list] kk ∈ seq 0 n, (pa_add buf kk) ↦ₘ[KT1]{dq} f kk) -∗
       p_pid pj ↦₄{dqp} pidv -∗
       Φ -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type UARTWRITE.
   Parameter wp_uartwrite_sconf :

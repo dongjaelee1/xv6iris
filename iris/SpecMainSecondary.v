@@ -240,7 +240,7 @@ Section SpecMainSecondaryBody.
        [view_lb_le] + [cv_boot_cred_view] + [kpt_creds_intro] mint the
        credentials inside the spin's continuation. *)
     main_hart_raw tlbvec0 -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
 
 End SpecMainSecondaryBody.
 

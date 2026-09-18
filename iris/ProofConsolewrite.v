@@ -323,7 +323,7 @@ Section CwBodies.
          proc_priv_core (proc_addr jp) pid (us_upt U P') -∗
          (* THE CALLER'S CURSOR AT THE RETURNED COUNT (diff item 2) *)
          Q (Z.to_nat r) -∗
-         WP (Loop : expr riscv_lang)))%I.
+         mWP (Loop : expr riscv_lang)))%I.
 
   (* the loop re-enters its own continuation at a MOVED descriptor; both the
      extension and the record compose, so the exit weakens along the loop. *)
@@ -379,7 +379,7 @@ Section CwBodies.
     cw_saved sp0 m0 -∗ cw_rest sp0 -∗
     Q (Z.to_nat r) -∗
     cw_ret (CID0 := CID0) jp m0 av eb pid U n lks Q Pe -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pj Hm0sp HMsp HMs1 HMcs Hr Hshort Hav Heb Hcr.
     iIntros "#Ht Hcg Hcnt Hpc Hpriv (Hk1 & Hk2 & Hk3) Hrest Hrcpt Hcont".
@@ -584,7 +584,7 @@ Section CwBodies.
     cw_saved sp0 m0 -∗ cw_spill sp0 m0 -∗ cw_buf sp0 -∗
     Q (Z.to_nat r) -∗
     cw_ret (CID0 := CID0) jp m0 av eb pid U n lks Q Pe -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pj Hm0sp HMsp HMs1 HMs11 Hr Hshort Hav Heb Hal Hcr.
     iIntros "#Ht Hcg Hcnt Hpc Hpriv Hsaved Hspill Hbuf Hrcpt Hcont".
@@ -816,7 +816,7 @@ Section CwBodies.
     cw_saved sp0 m0 -∗ cw_spill sp0 m0 -∗ cw_buf sp0 -∗
     Q (Z.to_nat r) -∗
     cw_ret (CID0 := CID0) jp m0 av eb pid U n lks Q Pe -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pj Hm0sp HMsp HMs1 HMs11 Hr Hshort Hav Heb Hal Hcr.
     iIntros "#Ht Hcg Hcnt Hpc Hpriv Hsaved Hspill Hbuf Hrcpt Hcont".
@@ -1078,7 +1078,7 @@ Section CwBodies.
          intuitionistic one. *)
       cons_out_chain (S gen_id) Mu src Q (Z.to_nat i) (Z.to_nat (n - i)) -∗
       cw_ret (CID0 := CID0) jp m0 av eb pid U n lks Q Pe -∗
-      WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hj Hjlp Hlens Hn31 Hav Heb Hm0sp Hsrc Hal.
     induction mrem as [| mrem IH]; intros CID M U i Hi Hrem HMu Hpext Hregs Hs11 Hcr Hbelow.
@@ -1110,7 +1110,7 @@ Section CwBodies.
                ⌜(true = false \/ pj = zero_reg -> (CIDb : CPU) = CID0)⌝ -∗
                sie_cap_gpr KT1 Mb (av - 16)%nat true pj -∗
                pc_is (mword_of_int (CW + 0x38)) -∗
-               WP (Loop : expr riscv_lang))%I
+               mWP (Loop : expr riscv_lang))%I
       with "[Hcnt Hpriv Hsaved Hspill Hbuf Hrcpt Hcont]" as "BODY".
     { iIntros (CIDb Mb) "%Hregb %Hs2 %Hs11b %Hcrb Hcg Hpc".
       pose proof Hregb as Hregb'.

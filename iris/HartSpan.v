@@ -445,8 +445,8 @@ Section span.
            ⌜hspan_node Drw (m, rsM) (m2, rs2)⌝ -∗
            hreg_frame rs2 Drw -∗
            hreg_frame_ro Df rs2 Dro -∗
-           WP (HartE gen_id cpu_id (C m2) : expr riscv_lang)) -∗
-      WP (HartE gen_id cpu_id (C m) : expr riscv_lang).
+           mWP (HartE gen_id cpu_id (C m2) : expr riscv_lang)) -∗
+      mWP (HartE gen_id cpu_id (C m) : expr riscv_lang).
   Proof using .
     iIntros (HC Hdisj Hns) "#Hcert Hrf Hro H".
     destruct m as [y|T oc k]; [discriminate Hns|].
@@ -578,8 +578,8 @@ Section span.
               hspan_stops Drw m' = true⌝ -∗
            hreg_frame rs' Drw -∗
            hreg_frame_ro Df rs' Dro -∗
-           WP (HartE gen_id cpu_id m' : expr riscv_lang)) -∗
-      WP (HartE gen_id cpu_id m : expr riscv_lang).
+           mWP (HartE gen_id cpu_id m' : expr riscv_lang)) -∗
+      mWP (HartE gen_id cpu_id m : expr riscv_lang).
   Proof using .
     intros Hdisj m HAcc. induction HAcc as [m _ IH]. intros rs Hns.
     iIntros "#Hcert Hrf Hro Hcont".
@@ -643,8 +643,8 @@ Section span.
             hspan_stops Drw m' = true⌝ -∗
          hreg_frame rs' Drw -∗
          hreg_frame_ro Df rs' Dro -∗
-         WP (HartE gen_id cpu_id m' : expr riscv_lang)) -∗
-    WP (HartE gen_id cpu_id m : expr riscv_lang).
+         mWP (HartE gen_id cpu_id m' : expr riscv_lang)) -∗
+    mWP (HartE gen_id cpu_id m : expr riscv_lang).
   Proof using .
     (* TODO(agent): by well-founded induction on [mchild_wf m] (e.g. [induction (macc m)]).
        Per step: [wp_hart_step]; the callback's σ gives the machine file;

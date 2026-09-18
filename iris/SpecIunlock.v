@@ -200,8 +200,8 @@ Definition wp_iunlock_dep_sconf_body
       (* ...AND WHAT THE ARM PARKED, back: the transaction share at [DepTx],
          nothing at the other two. *)
       ic_dep_side d -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* ---- THE TRANSACTIONAL FORM (durable-disk B''-tx) ---------------------
    The generic body at the write arm, with [LogInv.log_tx] handed back whole.
@@ -299,8 +299,8 @@ Definition wp_iunlock_tx_sconf_body
       IcacheRef.inode_shr_genlo k s dev inum g lo -∗
       (* the transaction's token, whole again *)
       log_tx icfg_log -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* THE PUBLISHED READING OF THE PARK (durable-disk B''-tx3/-tx4), a
    derivation of the one generic body above. *)

@@ -193,8 +193,8 @@ Definition wp_consoleinit_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{C
        which is why consoleinit produces the devsw half and not the whole
        bundle: the lock does not exist until [newlock] runs. *)
     ConsoleInv.devsw_table -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type CONSOLEINIT.
   Parameter wp_consoleinit_sconf :

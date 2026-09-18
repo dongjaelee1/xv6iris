@@ -310,8 +310,8 @@ Definition wp_consolewrite_sconf_body
          located receipt used to be: what the bytes MEAN is the caller's
          business now, established inside the shifts it supplied. *)
       Q (Z.to_nat r) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type CONSOLEWRITE.
   Parameter wp_consolewrite_sconf :

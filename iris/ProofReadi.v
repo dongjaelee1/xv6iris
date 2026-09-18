@@ -321,7 +321,7 @@ Section ReadiDefs.
                (m !!! Regidx Ra2 : mword 64) n
                (rd_delivered data dst_olds off tot) -∗
         bslot -∗
-        WP (Loop : expr riscv_lang))%I.
+        mWP (Loop : expr riscv_lang))%I.
 
 End ReadiDefs.
 
@@ -386,7 +386,7 @@ Section ReadiRet.
     bslot -∗
     rd_cont (ktb := ktb) (CID0 := CID0) γf ip bm data dn user off n dst_olds U
             pidv dq dqd j m K eb b lks -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hsp Hs2 Hs3 Hs8 Hs9 Hs10 Hs11 Hext Htotle Harm.
     pose proof HK as HK'. 
@@ -710,7 +710,7 @@ Section ReadiJoin.
     bslot -∗
     rd_cont (ktb := ktb) (CID0 := CID0) γf ip bm data dn user off n dst_olds U
             pidv dq dqd j m K eb b lks -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hsp Hs3v Hs2 Hs8 Hs9 Hs10 Hs11 Hext Htotle Harm.
     pose proof HK as HK'. 
@@ -882,7 +882,7 @@ Section ReadiExit.
     bslot -∗
     rd_cont (ktb := ktb) (CID0 := CID0) γf ip bm data dn user off n dst_olds U
             pidv dq dqd j m K eb b lks -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hsp Hs3v Hext Htotle Harm Hab Hbc Hcd Hde Hef Htgt Hal.
     pose proof HK as HK'. 
@@ -1107,7 +1107,7 @@ Section ReadiLoop.
      ⌜Mb !!! Regidx Rs8 = (mword_of_int (-1) : mword 64)⌝ -∗
      sie_cap_gpr KT1 Mb (K - 14)%nat b (proc_addr j) -∗
      pc_is (mword_of_int (RI + 0x4c) : mword 64) -∗
-     WP (Loop : expr riscv_lang))%I.
+     mWP (Loop : expr riscv_lang))%I.
 
   Local Lemma rd_loop `{CID0 : CpuId} `{XI : CurCtx}
       (γs : list gname) (j : nat) (γl : gname)
@@ -1173,7 +1173,7 @@ Section ReadiLoop.
     bslot -∗
     rd_cont (ktb := ktb) (CID0 := CID0) γf ip bm data dn user off n dst_olds U
             pidv dq dqd j m K eb b lks -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using KtierLe0.
     intros HK Hgeom Hwf Hcov Hszmax Hsum Hncn Hoffnc Hncdef Husv Hj Hgl Hbelow.
     pose proof HK as HK'. 
@@ -2557,7 +2557,7 @@ Section ReadiMain.
      ⌜Mt !!! Regidx Rs11 = (m !!! Regidx Rs11 : mword 64)⌝ -∗
      sie_cap_gpr KT1 Mt (K - 14)%nat b (proc_addr j) -∗
      pc_is (mword_of_int (RI + 0x34) : mword 64) -∗
-     WP (Loop : expr riscv_lang))%I.
+     mWP (Loop : expr riscv_lang))%I.
 
   Lemma wp_readi_sconf 
       (γs : list gname) (j : nat) (γl : gname)

@@ -145,8 +145,8 @@ Section UkCatDeed.
          (<[Regidx a0_idx := rv]>
             (<[Regidx a7_idx := (mword_of_int 5 : mword 64)]> m))
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Heq Ha0 Hahi Ha1 Hcnt Hfdv Hfdlt.
     iIntros "#Hcode Hufdh #Hm #Hinv Hd Hbs Hrun Hcont".
@@ -300,8 +300,8 @@ Section UkCatDeed.
          (<[Regidx a0_idx := rv]>
             (<[Regidx a7_idx := (mword_of_int 5 : mword 64)]> m))
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Heq Ha0 Hahi Ha1 Hcnt Hfdv Hfdlt.
     iIntros "#Hbr #Hrb #Hcode Hufdh #Hm #Hinv Hd Hu Hbs Hrun Hcont".
@@ -671,8 +671,8 @@ Section UkCatDeed.
          (<[Regidx a0_idx := ret]>
             (<[Regidx a7_idx := (mword_of_int 15 : mword 64)]> m))
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Heq Hpath Ha0 Ha1 Hel Hst.
     iIntros "#Hcode #Hdi #Hinv Hrun Hcwd Hstd Hd1 Hd2 Hcont".
@@ -785,8 +785,8 @@ Section UkCatDeed.
          (<[Regidx a0_idx := ret]>
             (<[Regidx a7_idx := (mword_of_int 15 : mword 64)]> m))
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Heq Hpath Ha0 Ha1 Hel Hst.
     iIntros "#Hcode #Hdi #Hinv Hrun Hcwd Hstd Hd Hcont".

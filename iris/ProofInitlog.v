@@ -719,8 +719,8 @@ Section InitlogBlocks.
         ([∗ list] jj ↦ x ∈ bs_hdr, pa_add (b_data (bnode kk)) jj ↦ₘ x) -∗
         ([∗ list] i ↦ w ∈ il_W bs_hdr nh, lh_block i ↦₄ w) -∗
         ([∗ list] i ∈ seq nh (LOGBLOCKS - nh), ∃ wj : SailStdpp.Values.mword 32, lh_block i ↦₄ wj) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hkk Hnh Hlen.
     induction fuel as [|fuel IH]; intros CID0 t M Ht Hfuel Ha5 Ha4 Ha2 Ha0.
@@ -941,8 +941,8 @@ Section InitlogBlocks.
         ([∗ list] jj ↦ x ∈ bs_hdr, pa_add (b_data (bnode kk)) jj ↦ₘ x) -∗
         ([∗ list] i ↦ w ∈ il_W bs_hdr nh, lh_block i ↦₄ w) -∗
         ([∗ list] i ∈ seq nh (LOGBLOCKS - nh), ∃ wj : SailStdpp.Values.mword 32, lh_block i ↦₄ wj) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hkk Hnh Hdec Hlen Ha2 Ha0.
     assert (Hhn : hdr_n bs_hdr = Z.of_nat nh)

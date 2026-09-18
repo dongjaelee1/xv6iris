@@ -3372,7 +3372,7 @@ Section DevLoops.
      sets a PENDING bit and no slot moves, at either port. *)
   Lemma wp_uart_loop (i : uart_id) (γ γp γp1 : uart_names) :
     gen_cert -∗ uart_inv i γ -∗ plic_inv γp γp1 -∗ uart_obs_permit i γ -∗
-    WP (UartLoop i : expr riscv_lang).
+    mWP (UartLoop i : expr riscv_lang).
   Proof using .
     iIntros "#Hcert #Huinv #Hpinv #Hperm".
     iLöb as "IH".
@@ -3556,7 +3556,7 @@ Section DevLoops.
        [plicN], so the two openings compose. *)
     gen_cert -∗ crash_inv -∗ perm_inv gen_id (dn_perm γd) -∗ disk_inv γd -∗
     plic_inv γu γu1 -∗
-    WP (DiskLoop : expr riscv_lang).
+    mWP (DiskLoop : expr riscv_lang).
   Proof using .
     intros Himg.
     iIntros "#Hcert #Hcinv #Hqinv #Hvinv #Hpinv".
@@ -4092,7 +4092,7 @@ Section DevLoops.
   (* ------------------------------------------------------------------ *)
   Lemma wp_plic_loop (γu γu1 : uart_names) :
     gen_cert -∗ plic_inv γu γu1 -∗ wire_inv -∗
-    WP (PlicLoop : expr riscv_lang).
+    mWP (PlicLoop : expr riscv_lang).
   Proof using .
     iIntros "#Hcert #Hpinv #Hwinv".
     iLöb as "IH".

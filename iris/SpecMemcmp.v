@@ -82,8 +82,8 @@ Definition wp_memcmp_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID : 
     ([∗ list] j ∈ seq 0 n, (pa_add s2 j) ↦ₘ{dq2} g j) -∗
     ⌜callee_saved mm mr⌝ -∗
     ⌜memcmp_res f g n (mr !!! Regidx (mword_of_int 10 : mword 5))⌝ -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type MEMCMP.
   Parameter wp_memcmp_sconf :

@@ -94,8 +94,8 @@ Section UkShRedirTok.
          ⌜ mc' !!! Regidx s5_idx = mword_of_int 62 ⌝ -∗
          ⌜ mc' !!! Regidx s1_idx = mword_of_int (s0 + Z.of_nat (S k)) ⌝ -∗
          urun N h' mc' (mword_of_int 0x388) (2 + nn) -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hk Hfk Hfk1 Hs0 Hs64 Hs1.
     iIntros "#Hcode Hstr Hrun Hcont".

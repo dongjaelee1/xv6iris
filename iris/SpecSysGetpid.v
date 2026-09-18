@@ -84,8 +84,8 @@ Definition wp_sys_getpid_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdsl
       cpu_own n eb p b lks -∗
       pc_is ret_tgt -∗
       proc_priv γf p pid U -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type SYSGETPID.
   Parameter wp_sys_getpid_sconf :

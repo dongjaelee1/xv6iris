@@ -80,8 +80,8 @@ Definition wp_releasesleep_gen_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ,
       pc_is ret_tgt -∗
       (* the deposit comes back, at the holder's own fraction *)
       H q -∗
-          WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+          mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* ENDGAME R1-pre: THE BOUND-INDEXED BASE TIER (see SpecAcquiresleep). *)
 Definition wp_releasesleep_genin_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
@@ -117,8 +117,8 @@ Definition wp_releasesleep_genin_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG �
       pc_is ret_tgt -∗
       (* the deposit comes back, at the holder's own fraction *)
       H q -∗
-          WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+          mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Definition wp_releasesleep_genl_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
     (γs : list gname)
@@ -149,8 +149,8 @@ Definition wp_releasesleep_genl_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ
       pc_is ret_tgt -∗
       (* the deposit comes back, at the holder's own fraction *)
       H q -∗
-          WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+          mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Definition wp_releasesleep_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
 
@@ -186,8 +186,8 @@ Definition wp_releasesleep_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fd
       sie_cap_gpr KT1 mf av b pme -∗
       cpu_own 0 eb pme b lks -∗
       pc_is ret_tgt -∗
-          WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+          mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type RELEASESLEEP.
   Parameter wp_releasesleep_gen_sconf :

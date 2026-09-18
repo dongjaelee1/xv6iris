@@ -122,8 +122,8 @@ Section UkInitPrintf.
        ⌜ ucallee_saved m m' ⌝ -∗
        Ch len -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (12 + (12 + (4 + n))) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Habnd Hlen Hpct Ha0r.
     iIntros "#Hw #Hcode #Hstr HCh Hrun Hcont".
@@ -670,8 +670,8 @@ Section UkInitPrintf.
     (∀ (h' : CpuId) (m' : regfile),
        ⌜ ucallee_saved m m' ⌝ -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (12 + (12 + (4 + n))) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Habnd Hlen Hpct Ha0r.
     iIntros "#Hwr #Hcode #Hstr Hrun Hcont".

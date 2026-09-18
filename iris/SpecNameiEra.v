@@ -228,8 +228,8 @@ Definition wp_namei_era_body
             (∃ (k : nat) (d : Z), ⌜(k < L)%nat⌝ ∗
                ((P k d ∗ ex_hops_from fsc_fs P Pmiss pl k) ∨
                 (Pmiss k d ∗ ex_hops_from fsc_fs P Pmiss pl (S k))))) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type NAMEI_ERA.
   Parameter wp_namei_era :

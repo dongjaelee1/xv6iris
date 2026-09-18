@@ -423,7 +423,7 @@ Section BoProps.
       cpu_claim (proc_addr j) -∗
       sie_cap_gpr KT1 M (trap_res eb + (K - 4))%nat false (proc_addr j) -∗
       pc_is (mword_of_int (KernelSyms.begin_op + 0x74)) -∗
-      WP (Loop : expr riscv_lang)))%I.
+      mWP (Loop : expr riscv_lang)))%I.
 
   Definition bo_loop `{GEN : GenId} (CID0 : CPU)
       (j : nat)
@@ -449,7 +449,7 @@ Section BoProps.
       sie_cap_gpr KT1 M (trap_res eb + (K - 4))%nat false (proc_addr j) -∗
       pc_is (mword_of_int (KernelSyms.begin_op + 0x3a)) -∗
       bo_exit CID0 j γ bn γfs cov logstart m pidv dq K eb spd sp0 lks Upr -∗
-      WP (Loop : expr riscv_lang)))%I.
+      mWP (Loop : expr riscv_lang)))%I.
 
 End BoProps.
 
@@ -508,8 +508,8 @@ Section BoBodies.
         pc_is (ret_pc (m !!! Regidx (mword_of_int 1 : mword 5))) -∗
         proc_priv_bare pj pidv Upr -∗
         log_op γ MAXOPBLOCKS -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pj HK Hanch Hspd Hsp0 Hbo Hbelow.
     pose proof (locks_below_not_elem _ _ Hbelow) as Hfresh.
@@ -787,7 +787,7 @@ Section BoBodies.
     cpu_claim pj -∗
     sie_cap_gpr KT1 M (trap_res eb + (K - 4))%nat false pj -∗
     pc_is (mword_of_int (KernelSyms.begin_op + 0x24)) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pj HK Hj Hjl Hanch Hbo Hbelow.
     pose proof (locks_below_not_elem _ _ Hbelow) as Hfresh.
@@ -1054,7 +1054,7 @@ Section BoBodies.
     cpu_claim pj -∗
     sie_cap_gpr KT1 M (trap_res eb + (K - 4))%nat false pj -∗
     pc_is (mword_of_int (KernelSyms.begin_op + 0x54)) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pj HK Hj Hjl Hanch Hbo Hbelow.
     pose proof (locks_below_not_elem _ _ Hbelow) as Hfresh.
@@ -1330,7 +1330,7 @@ Section BoBodies.
     cpu_claim pj -∗
     sie_cap_gpr KT1 M (trap_res eb + (K - 4))%nat false pj -∗
     pc_is (mword_of_int (KernelSyms.begin_op + 0x3a)) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pj HK Hj Hjl Hanch Hbo Hbelow.
     iIntros "#Htext #Hlog #Hpinv IH Hexit Hr24 Hr16 Hr8 Hr0 Htok Hres Hpid Hown Htc Hclm Hcg Hpc".

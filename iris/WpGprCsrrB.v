@@ -554,8 +554,8 @@ Section WpCsrrGprB.
       pmpcfg_n ↦ᵣ{DfracOwn q} pmpcfg0 -∗
       pc_is (add_vec_int pc 4) -∗
       gpr_file (<[Regidx rd := regval_into_reg tv]> m) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hpmp Hstat Hrd) "Hmm Hpmpc Hpc Hfmap Hinstr Hcont".
     iDestruct (mmode_config_split with "Hmm") as "[Hmm_wp Hmm_k]".
@@ -640,8 +640,8 @@ Section WpCsrrGprB.
       gpr_file (<[Regidx rd :=
         regval_into_reg (menvcfg_in)]> m) -∗
       menvcfg ↦ᵣ menvcfg_in -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hpmp Hstat Hrd) "Hmm Hpmpc Hpc Hfmap Hcsr Hinstr Hcont".
     assert (Hfresh : cw_fresh (R_bitvector_64 menvcfg))
@@ -744,8 +744,8 @@ Section WpCsrrGprB.
         regval_into_reg (lower_mie mie_in mideleg_in)]> m) -∗
       mie ↦ᵣ mie_in -∗
       mideleg ↦ᵣ mideleg_in -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hpmp Hstat Hrd) "Hmm Hpmpc Hpc Hfmap Hmie Hmdl Hinstr Hcont".
     assert (Hchk : exec (check_CSR_result csr_sie Machine CSRRead) dstateM

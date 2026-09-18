@@ -317,8 +317,8 @@ Section KforkB4Proof.
             pv_lazy Vc' = pv_lazy (us_V Uc)⌝ ∗
            proc_priv γf npa pid_c (MkUstate Vc' ((us_M Uc)))) -∗
         iref_slots IREFSPARE -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hlvl Hms5 Hms4 Hfresh.
     iIntros "Hcg Hown #Htext Hpc #Hitb #Hitinv #Hireg Hir Hparent #Hfdone

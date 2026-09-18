@@ -26,7 +26,7 @@
      payload's ▷ scheduler    -> [run_slot], inside [Rlk]
      [procs_inv]              -> the [is_lock] that [Rlk] is the resource of
 
-   and the conclusion of forkret's contract, [WP Loop] at the resuming hart,
+   and the conclusion of forkret's contract, [mWP Loop] at the resuming hart,
    is the fixpoint's obligation verbatim.
 
    TWO THINGS THIS FILE IS NOT.

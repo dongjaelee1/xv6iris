@@ -133,8 +133,8 @@ Section WpSconfSret.
     instr pc false (SRET tt) -∗
     ( sie_cap_gpr kt m n true p -∗
       pc_is (ret_pc sepc0) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "Hcg Hmir Htok Hsepc Hscausex Hstvalx Hhx Hkptr Hcells Hclm Hpc
              Hinstr Hcont".

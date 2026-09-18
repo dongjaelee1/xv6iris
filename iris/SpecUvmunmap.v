@@ -130,8 +130,8 @@ Definition wp_uvmunmap_mem_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ} `{G
     ⌜callee_saved mm mr⌝ -∗
     proc_ptm (uptd_del_run P vpn0 npages) szn
              (umem_del M (uint va) (4096 * npages)) -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* ...and the OTHER memory-indexed contract: the run STAYS LIVE.
    uvmcopy's [err] label unmaps the child's prefix without shrinking the
@@ -179,8 +179,8 @@ Definition wp_uvmunmap_live_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ} `{
     ⌜callee_saved mm mr⌝ -∗
     proc_ptm (uptd_del_run P vpn0 npages) sz
              (umem_write M (uint va) (4096 * npages) (fun _ => bv_0 8)) -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type UVMUNMAP.
   Parameter wp_uvmunmap_live_sconf :
@@ -247,8 +247,8 @@ Definition wp_uvmunmap_bare_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ} `{
     pc_is ret_tgt -∗
     ⌜callee_saved mm mr⌝ -∗
     bare_pt uroot (um_del_run um vpn0 npages) -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type UVMUNMAP_BARE.
   Parameter wp_uvmunmap_bare_sconf :
@@ -331,8 +331,8 @@ Definition wp_uvmunmap_fixed_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ} `
     pc_is ret_tgt -∗
     ⌜callee_saved mm mr⌝ -∗
     uptg (delete v fx) uroot um -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type UVMUNMAP_FIXED.
   Parameter wp_uvmunmap_fixed_sconf :

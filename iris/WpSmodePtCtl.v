@@ -182,8 +182,8 @@ Section WpSmodePtCtl.
       sr_inv R -∗
       pc_is (add_vec pc (sign_extend' 64 imm)) -∗
       gpr_file (<[Regidx rd := regval_into_reg (add_vec_int pc 4)]> m) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hal0) "Hsm Hinv Hpc Hfile Hinstr Hcont".
     iDestruct (smode_config_unbundle with "Hsm")
@@ -241,8 +241,8 @@ Section WpSmodePtCtl.
       tlb_res_pt root_ppn -∗
       pc_is (add_vec pc (sign_extend' 64 imm)) -∗
       gpr_file (<[Regidx rd := regval_into_reg (add_vec_int pc 4)]> m) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
     Proof using .
     exact (wp_jal_gpr_s_zca_r (kpt_share_regime root_ppn) γ pc rd imm m q).
   Qed.
@@ -285,8 +285,8 @@ Section WpSmodePtCtl.
       sr_inv R -∗
       pc_is tgt -∗
       gpr_file m -∗
-      WP (Loop : expr riscv_lang))) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang))) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros tgt HSIE HMPRV HSXL Hmm HPBMTE Hmenvval0 Hra Hlpe.
     subst tgt.
@@ -357,8 +357,8 @@ Section WpSmodePtCtl.
       sr_inv R -∗
       pc_is tgt -∗
       gpr_file m -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros tgt HSIE HMPRV HSXL Hmm HPBMTE Hmenvval0 Hra Hlpe.
     iIntros "Hhw Hinv Hhs Hpriv Hms Hmie Hmdl Hmenv Htlbinv Hpc Hfile Hinstr Hcont".
@@ -415,8 +415,8 @@ Section WpSmodePtCtl.
       sepc ↦ᵣ sepc0 -∗
       pc_is (ret_pc sepc0) -∗
       gpr_file m -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (HSIE HMPRV HSXL Hmm HPBMTE Hmenvval0 HTSR Hsup Hlpe0)
       "#Hhw #Hminv Hhs Hpriv Hms Hmie Hmdl Hmenv Hinv Hsepc Hpc Hfile Hinstr
@@ -502,8 +502,8 @@ Section WpSmodePtCtl.
       sepc ↦ᵣ sepc0 -∗
       pc_is (ret_pc sepc0) -∗
       gpr_file m -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
     Proof using .
     exact (wp_sret_gpr_r (kpt_share_regime root_ppn) pc mstatus0 mie_v mdv0 menvcfg0 sepc0 m).
   Qed.

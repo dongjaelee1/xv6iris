@@ -130,7 +130,7 @@ Section UkBranch.
     (taken = true -> eq_vec (access_vec_dec tgt 0) ('b"0") = true) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ▷ ukcq Qp π M sz fdv cw gn cs pidv m (if taken then tgt else add_vec_int pc (if is_rvc then 2 else 4)) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hred Hlpad Hg1 Hexp Htaken Htgt Halign.
     iIntros "Hb Hcont".
@@ -184,7 +184,7 @@ Section UkBranch.
     (taken = true -> eq_vec (access_vec_dec tgt 0) ('b"0") = true) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv m (if taken then tgt else add_vec_int pc (if is_rvc then 2 else 4)) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hred Hlpad Hg1 Hexp Htaken Htgt Halign.
     iIntros "Hb Hcont".
@@ -206,7 +206,7 @@ Section UkBranch.
     (taken = true -> eq_vec (access_vec_dec tgt 0) ('b"0") = true) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv m (if taken then tgt else add_vec_int pc 4) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Htaken Htgt Halign.
     exact (wp_uk_btype_gen M m pc fdv cw gn cs pidv false
@@ -229,7 +229,7 @@ Section UkBranch.
     (taken = true -> eq_vec (access_vec_dec tgt 0) ('b"0") = true) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ▷ ukcq Qp π M sz fdv cw gn cs pidv m (if taken then tgt else add_vec_int pc 4) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Htaken Htgt Halign.
     exact (wp_uk_btype_gen_later M m pc fdv cw gn cs pidv false
@@ -258,7 +258,7 @@ Section UkBranch.
     (taken = true -> eq_vec (access_vec_dec tgt 0) ('b"0") = true) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ▷ ukcq Qp π M sz fdv cw gn cs pidv m (if taken then tgt else add_vec_int pc 4) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Htaken Htgt Halign.
     iIntros "Hb Hcont".
@@ -278,7 +278,7 @@ Section UkBranch.
     (taken = true -> eq_vec (access_vec_dec tgt 0) ('b"0") = true) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv m (if taken then tgt else add_vec_int pc 4) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Htaken Htgt Halign.
     iIntros "Hb Hcont".
@@ -304,7 +304,7 @@ Section UkBranch.
     (taken = true -> eq_vec (access_vec_dec tgt 0) ('b"0") = true) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv m (if taken then tgt else add_vec_int pc 2) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hcr Htaken Htgt Halign.
     iIntros "Hb Hcont".
@@ -341,7 +341,7 @@ Section UkBranch.
     (taken = true -> eq_vec (access_vec_dec tgt 0) ('b"0") = true) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv m (if taken then tgt else add_vec_int pc 2) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hcr Htaken Htgt Halign.
     iIntros "Hb Hcont".

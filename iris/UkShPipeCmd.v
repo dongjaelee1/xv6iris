@@ -138,8 +138,8 @@ Section UkShPipeCmd.
        UMalloc' -∗
        Pex -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (6 + (10 + nn)) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using ushp_malloc_ok.
     intros Ha0 Ha1.
     iIntros "#Hcode HM #Hpx Hpay Hsub Hrun Hcont".

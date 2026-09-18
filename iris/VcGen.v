@@ -43,7 +43,7 @@
    No per-instruction Iris reasoning, no manual resource threading.
 
    Lifting into Iris / concurrency.  [wp_vc_block] is an ordinary lemma about
-   [WP Loop] in the same CSL as everything else: its pre/post are plain
+   [mWP Loop] in the same CSL as everything else: its pre/post are plain
    [↦ᵣ]/[↦₈] resources, so a client can take the footprint out of a lock
    invariant before the block and put the (symbolically updated) footprint
    back afterwards -- concurrent reasoning happens before/after exactly as

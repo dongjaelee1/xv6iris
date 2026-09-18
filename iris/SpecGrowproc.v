@@ -183,8 +183,8 @@ Definition wp_growproc_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslot
       cpu_own 0%nat eb p b lks -∗
       pc_is ret_tgt -∗
       proc_priv γf p pid (upd_usM (upd_usV U (upd_sz (upd_upt (us_V U) P') szv')) M') -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type GROWPROC.
   Parameter wp_growproc_sconf :

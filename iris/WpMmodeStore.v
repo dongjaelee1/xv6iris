@@ -442,8 +442,8 @@ Section WpStoreGpr.
       gpr_file m -∗
       ctx_phys_word_pointsto cur_ctx ea (DfracOwn 1) (m !!! Regidx rs2) -∗
       own_context cur_ctx -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros offset ea Hpmp Hstat.
     iIntros "Hmm Hpmpc Hpc Hfile Hinstr Hbw Hrun Hcont".
@@ -599,8 +599,8 @@ Section MmodeStoreTor.
       gpr_file m -∗
       ctx_phys_word_pointsto cur_ctx ea (DfracOwn 1) (m !!! Regidx rs2) -∗
       own_context cur_ctx -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros offset ea Hpmp Hstat Htor.
     iIntros "Hmm Hpmpc Hpaddr Hpc Hfile Hinstr Hbw Hrun Hcont".
@@ -755,8 +755,8 @@ Section MmodeStoreTor.
       gpr_file m -∗
       ctx_phys_word_pointsto cur_ctx ea (DfracOwn 1) (m !!! Regidx rs2) -∗
       own_context cur_ctx -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros imm ea Hpmp Hstat Htor.
     iIntros "Hmm Hpmpc Hpaddr Hpc Hfile Hinstr Hbytes Hrun Hcont".

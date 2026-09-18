@@ -393,8 +393,8 @@ Section UEchoOutGen.
              (<[Regidx a0_idx := ret]>
                 (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m))
              (ret_pc (m !!! Regidx ra_idx)) avail -∗
-           WP (Loop : expr riscv_lang)) -∗
-        WP (Loop : expr riscv_lang).
+           mWP (Loop : expr riscv_lang)) -∗
+        mWP (Loop : expr riscv_lang).
 
   (* ...AND IT IS DISCHARGED (lane TXT-ROW).  One [iApply]: echo's write
      stub over the engine's text leaf IS this statement. *)

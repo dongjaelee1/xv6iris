@@ -442,7 +442,7 @@ Module SyscallProof
     (SysOpen : SYSOPEN) (SysUnlink : SYSUNLINK)
     (Myproc : MYPROC) (Printk : PRINTK_GEN) : SYSCALL.
 
-(* ONE SECTION PER HART EPOCH.  Every piece below concludes in [WP Loop],
+(* ONE SECTION PER HART EPOCH.  Every piece below concludes in [mWP Loop],
    which names [cpu_id], so a lemma is RIGID at the hart of the section that
    proves it and can never be applied to a goal a [wp_next] crossing has
    carried elsewhere (claude-notes/durable-notes.md, "CpuId IS A CLASS, SO A
@@ -1844,7 +1844,7 @@ Section SyscallVocab.
         (* ...and WAIT'S: the set its children reading shrank to --
            see [SpecSyscall.sysc_wait_out] *)
         sysc_wait_out U (us_M U') (pv_tf (us_V U') !!! tf_arg_idx 0) cs cs' pid -∗
-        WP (Loop : expr riscv_lang))%I).
+        mWP (Loop : expr riscv_lang))%I).
 
   (* THE EXIT SLOT, as the dispatch sees it: the caller's return
      continuation AND, additively, a closer for the kernel stack.  See
@@ -1974,7 +1974,7 @@ Section SyscallVocab.
        parks it as the ZOMBIE escrow) and every other arm hands the RIGHT
        one back out *)
     sysc_pay_in fdep U -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
 
   (* ------------------------------------------------------------------- *)
   (* THE SHARED EPILOGUE TAIL: +0x58 (first reload) through +0x62
@@ -2115,7 +2115,7 @@ Section SyscallVocab.
        read at is the one its caller already stored into *)
     sysc_sys_out U sts gn cs pid f (pv_tf (us_V U') !!! tf_arg_idx 0)
       (us_M U') sts' (pv_cwi (us_V U')) cs' -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HEsp Hrest Hav4 Hmem Hfdrow Hpiperow Ha0 Hupte Hszv Hlzv Hud Hfg Hcwi Hsbr Hfk Hchrow Hne2 Hchg Hgeng Hpidrow.
     set (sp0 := m !!! Regidx csp_rs1).
@@ -2903,7 +2903,7 @@ Section SyscallRet.
        word and nothing else, so the cwd inum the row is read at is [U']'s. *)
     sysc_sys_out U sts gn cs pid f (E !!! Regidx Ra0) (us_M U') sts'
       (pv_cwi (us_V U')) cs' -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HEsp HEs2 Hrest Hav4 Hmem Hfdrow Hpiperow Ha0 Hupte Hszv Hlzv Hud Hfg Hcwi Hsbr Hfk Hchrow Hne2 Hchg Hgeng Hpidrow.
     iIntros "Hcg Hcpu #Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir HR Hpriv Hufrag Hrow Hpc Hcont Hfo Hwo Hxo Hso".
@@ -5486,7 +5486,7 @@ Section SyscallArms.
          states ([fcn_bio], [fcn_dq]) plus the one premise
          [wp_syscall_sconf_body] carries ([fcn_pid fn = pid]).
      (3) IT DIVERGES, AND THAT COSTS NOTHING.  [iProp] is affine, so the
-         bare [WP Loop] the contract concludes in discharges
+         bare [mWP Loop] the contract concludes in discharges
          [sysc_arm_goal]'s own conclusion with the continuation simply
          dropped.  The "bespoke branch" the header used to promise is one
          [iApply]. *)
@@ -7577,7 +7577,7 @@ Section SyscallArms.
                (of_P fdep) (of_Pmiss fdep) (of_Farm fdep) (of_Fun fdep)
                (of_Fok fdep) (of_Fex fdep) (of_Fo fdep) (of_Ft fdep) sts
                (mf !!! Regidx (mword_of_int 10 : mword 5)) sts') -∗
-        WP (Loop : expr riscv_lang)) -∗ WP (Loop : expr riscv_lang))%I
+        mWP (Loop : expr riscv_lang)) -∗ mWP (Loop : expr riscv_lang))%I
       with "[Hcg Hcpu Htcx Hccx Hpc Hbs Hir Hfd0 Hpriv Hufrag Hxin]" as "Hk".
     { iIntros "Hcont'".
       iApply (SysOpen.wp_sys_open (of_om fdep) γft γf γs j γl
@@ -7875,7 +7875,7 @@ Section SyscallArms.
     sysc_sys_in U sts gn cs pid fdep -∗
     sysc_fork_in fdep U sts -∗
     sysc_pay_in fdep U -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hj Hpj HMsp HMs1 HMother Hav Hrange.
     assert (Hav82 : (82 <= av)%nat)

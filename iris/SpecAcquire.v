@@ -172,8 +172,8 @@ Definition wp_acquire_gen_pre_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID
     (∃ K : nat, hart_view_lb K) -∗
     cpu_own (S n) eb p false ({[s]} ∪ lks) -∗
     arm_pay kt n eb p -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* A6.149: the llb-receipt tier.  Same contract; the caller additionally
    presents a log-length lower bound [llb Tl] (read off the box invariant it
@@ -253,8 +253,8 @@ Definition wp_acquire_gen_llb_pre_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `
     (∃ K : nat, hart_view_lb K) -∗
     cpu_own (S n) eb p false ({[s]} ∪ lks) -∗
     arm_pay kt n eb p -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 
 Definition wp_acquire_gen_llb_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx} (kt : ktier) (γl : gname) (s : string) (R : CtxId → iProp Σ) (Tc Dc : iProp Σ) (m : regfile) (n : nat) (eb : bool) (p : mword 64) (av : nat) (b : bool) (lks : gset string) (Tl : nat) :=
@@ -326,8 +326,8 @@ Definition wp_acquire_pre_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID : C
     (∃ K : nat, hart_view_lb K) -∗
     cpu_own (S n) eb p false ({[s]} ∪ lks) -∗
     arm_pay kt n eb p -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Definition wp_acquire_llb_pre_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx} (kt : ktier) (γl : gname) (s : string) (R : CtxId → iProp Σ) (m : regfile) (n : nat) (eb : bool) (p : mword 64) (av : nat) (b : bool) (lks : gset string) (Tl : nat) (pre : Prop) :=
   let pcE : mword 64 := mword_of_int KernelSyms.acquire in
@@ -357,8 +357,8 @@ Definition wp_acquire_llb_pre_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID
     (∃ K : nat, hart_view_lb K) -∗
     cpu_own (S n) eb p false ({[s]} ∪ lks) -∗
     arm_pay kt n eb p -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Definition wp_acquire_llb_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx} (kt : ktier) (γl : gname) (s : string) (R : CtxId → iProp Σ) (m : regfile) (n : nat) (eb : bool) (p : mword 64) (av : nat) (b : bool) (lks : gset string) (Tl : nat) :=
   wp_acquire_llb_pre_body kt γl s R m n eb p av b lks Tl (locks_below lks s).

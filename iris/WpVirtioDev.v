@@ -252,8 +252,8 @@ Lemma wp_lw_virtio_dinv_s_sconf (γd : disk_names) (pc : mword 64) (is_rvc is_un
     sie_cap_gpr kt (<[Regidx rd := regval_into_reg (ldval w)]> m) n false p -∗
     pc_is (add_vec_int pc (if is_rvc then 2 else 4)) -∗
     S w -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 Proof using .
   intros ea a8 ldval Hrange Halign Hcanon Hdevvpn Hrdnz Hrdok.
   (* the class, consumed at [rs1] -- the one line the funnel change needs,
@@ -538,8 +538,8 @@ Lemma wp_sw_virtio_dinv_s_sconf (γd : disk_names) (pc : mword 64) (is_rvc : boo
     sie_cap_gpr kt m n false p -∗
     pc_is (add_vec_int pc (if is_rvc then 2 else 4)) -∗
     S -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 Proof using .
   intros ea a8 storeword Hrange Halign Hcanon Hdevvpn.
   (* the class, consumed at [rs1 / rs2] -- the one line the funnel change needs,
@@ -812,8 +812,8 @@ Lemma wp_lw_virtio_dev_s_sconf (γu : uart_names) (γd : disk_names) (pc : mword
     ⌜ P w ⌝ -∗
     sie_cap_gpr kt (<[Regidx rd := regval_into_reg (ldval w)]> m) n false p -∗
     pc_is (add_vec_int pc (if is_rvc then 2 else 4)) -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 Proof using .
   intros ea a8 ldval Hrange Halign Hcanon Hdevvpn Hrdnz Hrdok Hread.
   (* the class, consumed at [rs1] -- the one line the funnel change needs,
@@ -880,8 +880,8 @@ Lemma wp_sw_virtio_dev_s_sconf (γu : uart_names) (γd : disk_names) (pc : mword
   wp_next false p (fun (CID : CpuId) =>
     sie_cap_gpr kt m n false p -∗
     pc_is (add_vec_int pc (if is_rvc then 2 else 4)) -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 Proof using .
   intros ea a8 storeword Hrange Halign Hcanon Hdevvpn Hwrite.
   (* the class, consumed at [rs1 / rs2] -- the one line the funnel change needs,

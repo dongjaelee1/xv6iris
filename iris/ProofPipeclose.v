@@ -353,7 +353,7 @@ Section ProofPipeclose.
                (* the close link fired at the flag store, or the pipe is
                   tainted and the payment comes back *)
                pipe_cpost (pn_queue γp) w Φ true -∗
-               WP (Loop : expr riscv_lang))%I
+               mWP (Loop : expr riscv_lang))%I
       with "[Hcont Hr24 Hr16 Hr8 Hr0]" as "EPI".
     { iIntros (CID0 M) "%Hch %Hcs Hcg Hpc Hown Hav Hcpost".
       assert (HcspM : M !!! Regidx csp_rs1 = spr).
@@ -518,7 +518,7 @@ Section ProofPipeclose.
                locked γl cpu_id -∗
                pipe_res γp pi -∗
                pipe_cpost (pn_queue γp) w Φ true -∗
-               WP (Loop : expr riscv_lang))%I
+               mWP (Loop : expr riscv_lang))%I
       with "[EPI Havail]" as "JOIN".
     { iIntros (M) "%Hcs Hcg Hpc Hown Hpay Hlocked Hres Hcpost".
       assert (Hs1M : M !!! Regidx (mword_of_int 9 : mword 5) = pi).
@@ -539,7 +539,7 @@ Section ProofPipeclose.
                  locked γl cpu_id -∗
                  pipe_res γp pi -∗
                  pipe_cpost (pn_queue γp) w Φ true -∗
-                 WP (Loop : expr riscv_lang))
+                 mWP (Loop : expr riscv_lang))
                ∧ (kalloc_avail γk on ∗
                   (∀ (CIDx : CpuId) (M' : regfile),
                      ⌜ b = false \/ pme = zero_reg -> (CIDx : CPU) = (CID : CPU) ⌝ -∗
@@ -549,7 +549,7 @@ Section ProofPipeclose.
                      cpu_own (CID := CIDx) n eb pme b lks -∗
                      kalloc_avail γk (avail_inc on) -∗
                      pipe_cpost (pn_queue γp) w Φ true -∗
-                     WP (LoopE gen_id CIDx : expr riscv_lang))))%I
+                     mWP (LoopE gen_id CIDx : expr riscv_lang))))%I
         with "[EPI Havail]" as "TAILS".
       { iSplit.
         2:{ iFrame "Havail". iIntros (CIDf M') "%Hch' %Hcs' Hcg Hpc Hown Hav Hcpost".

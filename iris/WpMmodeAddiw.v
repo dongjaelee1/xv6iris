@@ -34,8 +34,8 @@ Section WpAddiwGpr.
       gpr_file (<[Regidx rd :=
         regval_into_reg (sign_extend' 64
           (subrange_vec_dec (add_vec (m !!! Regidx rs1) (sign_extend' 64 immv)) 31 0))]> m) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hpmp Hstat Hrd) "Hmm Hpmpc Hpc Hf Hinstr Hcont".
     iDestruct (mmode_config_cert with "Hmm") as "[#Hcert Hmm]".

@@ -280,8 +280,8 @@ Definition wp_iput_sconf_body
          arm's is persistent, so the caller never gave it up (SIMP-1).  The
          reference is consumed; xv6's iput returns void and the caller's
          pointer is dead. *)
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* ===================================================================== *)
 (*  THE CREDITED SET-FORM CONTRACT (fs-sysfile GR-2b, retrofit 4b)        *)
@@ -471,8 +471,8 @@ Definition wp_iput_gen_body
       iref_slot -∗
       (* RULING G: the regime comes back, on every arm (see the premise). *)
       ireg_regime rg -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type IPUT.
   Parameter wp_iput_sconf :

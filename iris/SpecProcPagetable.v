@@ -125,8 +125,8 @@ Definition wp_proc_pagetable_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ} `
     ⌜(pt_nodes t <= K_proc_pagetable)%nat⌝ -∗
     kalloc_env_at γa γk (avail_sub on (pt_nodes t)) -∗
     ⌜callee_saved mm mr⌝ -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* THE GENERAL CONTRACT, from which the counted one below is derived.
    Everything proc_pagetable actually does is here; the only difference is
@@ -158,8 +158,8 @@ Definition wp_proc_pagetable_core_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ} `{
     p_trapframe pp ↦₈{dqtf} tf -∗
     ppt_post γa γk on tfp (mr !!! Regidx (mword_of_int 10)) -∗
     ⌜callee_saved mm mr⌝ -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type PROC_PAGETABLE_GEN.
   Parameter wp_proc_pagetable_core :

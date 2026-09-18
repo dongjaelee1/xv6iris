@@ -88,8 +88,8 @@ Section WpIntrOff.
          claim at [b = false] would be promising a second copy. *)
       cpu_claim_pay 0%nat b p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     destruct b.
     - (* ---- ENABLED: the real flip.  Everything comes out of the arm. ---- *)

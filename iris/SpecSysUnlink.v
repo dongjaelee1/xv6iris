@@ -402,7 +402,7 @@ Definition sys_unlink_closer
       (* the armed post on the returned a0 (implies [sys_unlink_ret],
          through [unlink_arms_ret]) *)
       ARMS (mf !!! Regidx (mword_of_int 10 : mword 5)) -∗
-      WP (Loop : expr riscv_lang))%I.
+      mWP (Loop : expr riscv_lang))%I.
 
 (* ===================================================================== *)
 (*  THE BUNDLE AND THE ARMS                                               *)
@@ -720,7 +720,7 @@ Definition wp_sys_unlink_frame
   wp_next true pj (fun (CID : CpuId) =>
     sys_unlink_closer (CID := CID) γf pj pid U m ret_tgt K eb b lks
                       dqb dqs dqbs ARMS) -∗
-  WP (Loop : expr riscv_lang).
+  mWP (Loop : expr riscv_lang).
 
 (* THE CONTRACT.  The abstract state is read at the LIVE Γ,
    [fs_gamma_L fsc_fs] -- the gname tie to [ftop_body]'s authority is

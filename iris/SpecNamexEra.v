@@ -192,7 +192,7 @@ Definition namex_era_post
             (∃ (k : nat) (d : Z), ⌜(k < length (path_elems pl))%nat⌝ ∗
                ((P k d ∗ ex_hops_from fsc_fs P Pmiss pl k) ∨
                 (Pmiss k d ∗ ex_hops_from fsc_fs P Pmiss pl (S k))))) -∗
-      WP (Loop : expr riscv_lang))%I.
+      mWP (Loop : expr riscv_lang))%I.
 
 (* ===================================================================== *)
 (*  2. THE CONTRACT: [SpecNamex.wp_namex_gen_body] + the trace           *)
@@ -289,7 +289,7 @@ Definition wp_namex_era_body
     namex_era_post (CID := CIDc) pj pv nb ret_tgt pl m K b eb lks
 
                   plen pfun n Sb P Pmiss pidv dq dqb dqs dqpv Upr) -∗
-  WP (Loop : expr riscv_lang).
+  mWP (Loop : expr riscv_lang).
 
 Module Type NAMEX_ERA.
   Parameter wp_namex_era :

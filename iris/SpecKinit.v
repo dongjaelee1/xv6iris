@@ -82,8 +82,8 @@ Definition wp_kinit_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ} `{GEN : Ge
     ⌜ callee_saved m mr ⌝ -∗
     is_kmem γl γk lk fl -∗
     kalloc_avail γk (Some (length ps)) -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type KINIT.
   Parameter wp_kinit_sconf :

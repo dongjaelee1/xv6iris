@@ -747,8 +747,8 @@ Section WpSconfEngine.
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n' b p -∗
       P -∗
       pc_is (add_vec_int pc (if c then 2 else 4)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hops Hwval) "Hex Hcg Hpc Hinstr Hrecap Hcont".
     pose proof (ops_ok_sp_rd _ _ _ _ Hops) as Hrdtp.
@@ -831,8 +831,8 @@ Section WpSconfEngine.
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n' b p -∗
       P -∗
       pc_is (add_vec_int pc (if c then 2 else 4)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hops Hwval) "Hex Hcg Hpc Hinstr Hrecap Hcont".
     iApply (wp_gpr_write_s_sconf_gen pc c rd rsa rsb base f wval m n n' P b
@@ -867,8 +867,8 @@ Section WpSconfEngine.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc (if c then 2 else 4)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hops Hwval) "Hex Hcg Hpc Hinstr Hcont".
     pose proof (rd_ok_sp _ (ops_ok_rd _ _ _ _ Hops)) as Hrdsp.
@@ -906,8 +906,8 @@ Section WpSconfEngine.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 2) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using . exact (wp_gpr_write_s_sconf_val_w pc true rd rsa rsb base f wval m n b). Qed.
 
   Lemma wp_gpr_write_s_sconf_val_base
@@ -930,8 +930,8 @@ Section WpSconfEngine.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using . exact (wp_gpr_write_s_sconf_val_w pc false rd rsa rsb base f wval m n b). Qed.
 
   (* the COMPRESSED cap engine -- the shape every sp-mover is built over *)
@@ -959,8 +959,8 @@ Section WpSconfEngine.
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n' b p -∗
       P -∗
       pc_is (add_vec_int pc 2) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     exact (wp_gpr_write_s_sconf_cap_val_w pc true rd rsa rsb base f wval m n n' P b).
   Qed.
@@ -990,8 +990,8 @@ Section WpSconfEngine.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hops Hwval) "Hex Hcg Hpc Hinstr Hcont".
     pose proof (rd_ok_sp _ (ops_ok_rd _ _ _ _ Hops)) as Hrdsp.
@@ -1037,8 +1037,8 @@ Section WpSconfEngine.
     ▷ wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is (add_vec_int pc (if c then 2 else 4)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hred) "Hcmp Hcg Hpc Hinstr Hcont".
     iApply (wp_instr_s_sconf m n b b pc c i
@@ -1084,8 +1084,8 @@ Section WpSconfEngine.
     ▷ wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is (add_vec pc (sign_extend' 64 imm)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hred Hal0) "Hcmp Hcg Hpc Hinstr Hcont".
     iApply (wp_instr_s_sconf m n b b pc c i
@@ -1141,8 +1141,8 @@ Section WpSconfEngine.
     instr pc c i -∗
     ▷ wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m' n' b p -∗ P -∗ pc_is npc -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "Hex Hrecap Hcg Hpc Hinstr Hcont".
     iApply (wp_instr_s_sconf m n b b pc c i

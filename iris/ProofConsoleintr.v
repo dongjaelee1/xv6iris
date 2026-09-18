@@ -949,7 +949,7 @@ Section CtBodies.
             at the open and repaid by the arm's own close, so it leaves
             with the mark. *)
          uart_arm γu (1/2) None -∗
-         WP (Loop : expr riscv_lang)))%I.
+         mWP (Loop : expr riscv_lang)))%I.
 
   (* =================================================================== *)
   (*  +0x110 .. +0x118 -- THE EPILOGUE.                                   *)
@@ -970,7 +970,7 @@ Section CtBodies.
     ct_saved sp0 m0 -∗ ct_rest sp0 -∗ ct_hi_out γu hb cb -∗
     uart_log_hi γu (1/2) (Some hb) -∗ uart_arm γu (1/2) None -∗
     ct_ret (CID0 := CID0) γu hb cb pme m0 K lvl eb b lks -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hm0sp HMsp HMcs HK Hcr.
     iIntros "#Ht Hcg Hcnt Hpc (K1 & K2 & K3) Hrest Hhiout Hlgh Hwin Hcont".
@@ -1429,7 +1429,7 @@ Section ProofConsoleintr.
             at the open and repaid by the arm's own close, so it leaves
             with the mark. *)
          uart_arm γu (1/2) None -∗
-         WP (Loop : expr riscv_lang)))%I.
+         mWP (Loop : expr riscv_lang)))%I.
 
   Lemma ct_mk_exit (γu : uart_names) (hb : list mobs) (cb : bv 8) (cn : cons_names)
       (γc : gname) (pme : mword 64) (m0 : regfile) (K lvl : nat)
@@ -1576,7 +1576,7 @@ Section ProofConsoleintr.
             with the mark. *)
          uart_arm γu (1/2) None -∗
          ct_exit_prop (CID0 := CID0) γu hb cb cn γc pme m0 K lvl eb b sp0 lks -∗
-         WP (Loop : expr riscv_lang)))%I.
+         mWP (Loop : expr riscv_lang)))%I.
 
   Lemma ct_mk_wake (γu : uart_names) (hb : list mobs) (cb : bv 8) (cn : cons_names)
       (γc : gname) (γs : list gname) (pme : mword 64) (m0 : regfile)
@@ -1753,7 +1753,7 @@ Section ProofConsoleintr.
     pa_stk sp0 5 ↦₈[KT1] (m0 !!! Regidx Rs3) -∗
     (∃ w : mword 64, pa_stk sp0 6 ↦₈[KT1] w) -∗
     ct_exit_prop (CID0 := CID) γu hb cb cn γc pme m0 K lvl eb b sp0 lks -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hsp Hthr Hq1 Hq2 Hjt Hal Hchain Hbelow.
     destruct Hthr as (T4 & T5 & T6 & T7 & T8 & T9 & T10 & T11).
@@ -1863,7 +1863,7 @@ Section ProofConsoleintr.
          pa_stk sp0 4 ↦₈[KT1] (m0 !!! Regidx Rs2) -∗
          pa_stk sp0 5 ↦₈[KT1] (m0 !!! Regidx Rs3) -∗
          (∃ w : mword 64, pa_stk sp0 6 ↦₈[KT1] w) -∗
-         WP (Loop : expr riscv_lang)))%I.
+         mWP (Loop : expr riscv_lang)))%I.
 
   Lemma ct_mk_kill (γu : uart_names) (hb : list mobs) (cb : bv 8) (cn : cons_names)
       (γtx γc : gname) (γv : disk_names)
@@ -2351,7 +2351,7 @@ Section ProofConsoleintr.
     ct_rest sp0 -∗
     ct_wake_prop (CID0 := CID) γu h c cn γc pme m0 K lvl eb b sp0 lks -∗
     ct_exit_prop (CID0 := CID) γu h c cn γc pme m0 K lvl eb b sp0 lks -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hcnu Hx Hsp Hcs HK Hlvl Hchain Hbelow Hlenb Hlent Hok Hrow Hroom
            Hends Hc13.
@@ -2670,7 +2670,7 @@ Section ProofConsoleintr.
        and at the one erase triple on the other. *)
     ct_mark γu hb -∗
     ct_exit_prop (CID0 := CID) γu hb cb cn γc pme m0 K lvl eb b sp0 lks -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hcnu Hends Hsp Hcs HK Hlvl Hchain Hbelow.
     iIntros "#Ht #Hdev #Hbw #Htxl #Hep Hcg Hpc Hcnt Hpay Hlocked Hres Hrest
@@ -2990,7 +2990,7 @@ Section ProofConsoleintr.
     ct_mark γu hb -∗
     ct_kill_prop (CID0 := CID) γu hb cb cn γc pme m0 K lvl eb b sp0 lks -∗
     ct_exit_prop (CID0 := CID) γu hb cb cn γc pme m0 K lvl eb b sp0 lks -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hcnu Hends Hsp Hcs Hchain Hbelow.
     pose proof (ct_cs_hi_top M m0 Hcs) as Htop.
@@ -3281,7 +3281,7 @@ Section ProofConsoleintr.
     ct_rest sp0 -∗
     ct_wake_prop (CID0 := CID) γu h c cn γc pme m0 K lvl eb b sp0 lks -∗
     ct_exit_prop (CID0 := CID) γu h c cn γc pme m0 K lvl eb b sp0 lks -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hcnu Hx Hsp Hs1 Hcs HK Hlvl Hchain Hbelow Hlenb Hlent Hok Hrow Hroom
            Hends Hcv Hc13.
@@ -3837,7 +3837,7 @@ Section ProofConsoleintr.
     ct_rest sp0 -∗
     ct_wake_prop (CID0 := CID) γu h c cn γc pme m0 K lvl eb b sp0 lks -∗
     ct_exit_prop (CID0 := CID) γu h c cn γc pme m0 K lvl eb b sp0 lks -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hcnu Hx Hsp Hs1 Hcs HK Hlvl Hchain Hbelow Hends Hcv.
     iIntros "#Ht #Hdev #Hbw #Htxl #Hp1 #Htg Hcg Hpc Hcnt Hpay Hlocked

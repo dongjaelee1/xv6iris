@@ -967,7 +967,7 @@ Section UShCat.
        ubytes (ukn_d N) CatSyms.buf 512 (fun _ : nat => ubyte0) -∗
        urun N h (tf_resume_gpr0 (uvis_tf W))
          (mword_of_int CatSyms.start) 42 -∗
-       WP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang)) -∗
     uslot W.
   Proof using ghost_varG1.
     intros Hpc Hsub Hsub2 Hx Hroom Hal8 Hstk Hbuf Hargs Havd Havs

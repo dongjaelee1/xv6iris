@@ -207,8 +207,8 @@ Section UkShRedirPc.
            Pex -∗
            urun N h' m' (ret_pc (m !!! Regidx ra_idx))
              (8 + (6 + (6 + (16 + (24 + (8 + nn)))))) -∗
-           WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+           mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using ushp_malloc_ok0 ushp_malloc_ok1.
     intros Ha0 Hred Htoks Hpos Htlen Hs0 Hs64.
     iIntros "#Hcode #Hro Hstr Hws Hsy HM #Hpx Hpay Hrun Hcont".
@@ -1083,8 +1083,8 @@ Section UkShRedirPc.
            UM2 -∗
            Pex -∗
            urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (68 + nn) -∗
-           WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+           mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using ushp_malloc_ok0 ushp_malloc_ok1.
     intros Ha0 Hred Htoks Hpos Htlen Hs0 Hs64.
     iIntros "#Hcode #Hro Hstr Hws Hsy HM #Hpx Hpay Hrun Hcont".

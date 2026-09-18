@@ -86,7 +86,7 @@
 
    The [c.jalr a5] at +0x7e enters userret at [TRAMPOLINE + 0x9c] with
    a0 = MAKE_SATP(p->pagetable), and userret sret's to user mode.  So the
-   contract concludes in [WP Loop] directly, via
+   contract concludes in [mWP Loop] directly, via
    [SpecUserretClosed.wp_userret_closed] -- the CLOSED trap loop, entered
    where the kernel first enters it.  Its two undischarged gaps (the
    mstatus one and the trapframe kernel-words one) are passed through
@@ -527,7 +527,7 @@ Definition wp_forkret_gen_body
   forkret_closer URes W γs γw γft γf γtl p ksp (pv_fdg (us_V U))
     (pv_chg (us_V U)) (pv_cwi (us_V U))
     sts gn cs (if steady then Some (uvis_of U [] gn cs pid) else None) pid av -∗
-  WP (Loop : expr riscv_lang).
+  mWP (Loop : expr riscv_lang).
 
 (* The residue is the module-type parameter it is everywhere else: forkret's
    tail runs [SpecUserretClosed]'s theorem, which is stated at

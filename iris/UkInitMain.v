@@ -243,7 +243,7 @@ Section UkInitMain.
     UserFd.ustd (ukn_fd N') l -∗
     init_lend_cred T stc Wp Wb l np -∗
     urun N' hdf mdf0 (mword_of_int 0x84) (12 + (12 + (4 + n))) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "Hpay #[Hwrl Hwcl] #[Hxlaw Hflaw] #Hcode #Hro Hstd Hcred Hrun".
     destruct init_syms_pins
@@ -399,7 +399,7 @@ Section UkInitMain.
     init_code (ukn_t N') -∗ init_rodata (ukn_t N') -∗
     init_lend_ref cn T stc Cr (ukn_fd N') l γ np -∗
     urun N' hde mde0 (mword_of_int 0xaa) (12 + (12 + (4 + n))) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hpeq.
     iIntros "#[Hwrl Hwcl] #[Hxlaw Hflaw] #Hcode #Hro (Hstd & Hpos & Hlease & Hcred) Hrun".
@@ -646,7 +646,7 @@ Section UkInitMain.
        holds them, which is what pays its own [exit(1)]. *)
     ucons_pay cn γ T (cc_rd Cr) (-1) -∗
     urun N' h m (mword_of_int 0x96) (12 + (12 + (4 + n))) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hpeq.
     (* the walk's own class, off the record's payload: [ucons_pay] does not
@@ -921,7 +921,7 @@ Section UkInitMain.
           (<[Regidx a0_idx := r]>
              (<[Regidx a7_idx := (mword_of_int 1 : mword 64)]> m))
           (ret_pc (m !!! Regidx ra_idx)) avail -∗
-        WP (Loop : expr riscv_lang)) ∗
+        mWP (Loop : expr riscv_lang)) ∗
      (∀ (N' : uk_names Σ) (h' : CpuId),
         (* THE CHILD'S RECORD IS KEYED AT THE PAYLOAD ITS PARENT CHOSE
            ([UkFork]'s child arm gives the equation). *)
@@ -949,8 +949,8 @@ Section UkInitMain.
           (<[Regidx a0_idx := (mword_of_int 0 : mword 64)]>
              (<[Regidx a7_idx := (mword_of_int 1 : mword 64)]> m))
           (ret_pc (m !!! Regidx ra_idx)) avail -∗
-        WP (Loop : expr riscv_lang))) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang))) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using.
     intros Hkt.
     iIntros "#Hcode #Hro #Hargv Hsz HQ Hpos Hcred Hstd #Hrow Hcwd Hch Hrun [Hpar Hchi]".
@@ -1197,8 +1197,8 @@ Section UkInitMain.
        ⌜ ucallee_saved m m' ⌝ -∗
        kinit_lent T stc cn Cr -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (12 + (12 + (4 + n))) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0.
     iIntros "#[Hwrl Hwcl] #Hblaw #Hcode #Hstr Htk Hstd Hrun Hcont".
@@ -1323,7 +1323,7 @@ Section UkInitMain.
            print through the flagged deposit until the turn comes back
            through the child's exit payload (M3-M6). *)
             urun N h m (mword_of_int 0x32) (12 + (12 + (4 + n))) -∗
-        WP (Loop : expr riscv_lang))
+        mWP (Loop : expr riscv_lang))
      ∧ (∀ (h : CpuId) (m : regfile) (cs : gset gname)
           (γ γsh : gname) (pidsh : mword 32),
           ⌜ m !!! Regidx s2_idx = mword_of_int LIT_START ⌝ -∗
@@ -1345,7 +1345,7 @@ Section UkInitMain.
              [UserConsole.uinit_redeem]). *)
           child_tok γsh pidsh (ucons_pay cn γ T (init_rd (cc_rd Cr) (cc_wbn Cr))) -∗
           urun N h m (mword_of_int 0x44) (12 + (12 + (4 + n))) -∗
-          WP (Loop : expr riscv_lang))).
+          mWP (Loop : expr riscv_lang))).
   Proof using Hpay Hpayfree Hpsok_free.
     intros Hkt.
     iIntros "#(Hwr & Hwl15 & Hwl17) #Hblaw #Hdlaw #Hcode #Hxs #Hro #Hargv".
@@ -1922,7 +1922,7 @@ Section UkInitMain.
     (* ...AND ROUND 0'S BANNER PAYMENT, on its way to the restart head
        (lane IO-LEAF, M1): affine, so every other round is unaffected. *)
     urun N h m (mword_of_int 0x1e) (12 + (12 + (4 + n))) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using Hpay Hpayfree Hpsok_free.
     intros Hne Hkt.
     iIntros "#(Hwr & Hwl15 & Hwl17) #Hblaw #Hdlaw #Hcode #Hxs #Hro #Hargv Hsz Hstd Hcwd Hch Htk Hrun".
@@ -2127,7 +2127,7 @@ Section UkInitMain.
     (* ...AND ROUND 0'S BANNER PAYMENT, on its way to the restart head
        (lane IO-LEAF, M1): affine, so every other round is unaffected. *)
     urun N h m (mword_of_int 0x74) (12 + (12 + (4 + n))) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using Hpay Hpayfree Hpsok_free.
     intros Hne Hkt.
     rewrite /uki_open2.
@@ -2276,7 +2276,7 @@ Section UkInitMain.
     (* ...AND ROUND 0'S BANNER PAYMENT, on its way to the restart head
        (lane IO-LEAF, M1): affine, so every other round is unaffected. *)
     urun N h m (mword_of_int 0x64) (12 + (12 + (4 + n))) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using Hpay Hpayfree Hpsok_free.
     intros Hne Hkt.
     iIntros "#(Hwr & Hwl15 & Hwl17) #Hblaw #Hdlaw #Hcode #Hxs Hmkl #Hro #Hargv Hsz Hin Hcwd Hch Htk Hrun".
@@ -2461,7 +2461,7 @@ Section UkInitMain.
        (lane IO-LEAF, M1): affine, so every other round is unaffected. *)
     urun N h m (mword_of_int InitSyms.main)
       (4 + (12 + (12 + (4 + n)))) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using Hpay Hpayfree Hpsok_free.
     intros Hne Hkt.
     iIntros "#(Hwr & Hwl15 & Hwl17) #Hblaw #Hdlaw #Hcode #Hxs Hdance #Hro #Hargv Hsz Hstd Hcwd Hch Htk Hrun".
@@ -2822,7 +2822,7 @@ Section UkInitMain.
        and the era's links in [UInitBanner], the [UShLine] mould. *)
     urun N h m (mword_of_int InitSyms.start)
       (2 + (4 + (12 + (12 + (4 + n))))) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using Hpay Hpayfree Hpsok_free.
     intros Hne Hkt.
     iIntros "#(Hwr & Hwl15 & Hwl17) #Hblaw #Hdlaw #Hcode #Hxs Hcl #Hro #Hargv Hsz Hstd Hcwd Hch Htk Hrun".

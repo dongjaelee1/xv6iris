@@ -190,8 +190,8 @@ Section WpSconfUartAccess.
       pc_is (add_vec_int pc 4) -∗
       uart_tx_own γd l -∗
       (⌜ lsr_thre_clear bt = false ⌝ -∗ uart_out_lb γd l) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hrdok Haddr) "Hcg Hpc Hinstr #Hdinv Hown Hcont".
     (* the class, consumed at [rs1] -- the one line the funnel change needs,
@@ -252,8 +252,8 @@ Section WpSconfUartAccess.
       pc_is (add_vec_int pc 4) -∗
       uart_tx_own γd l -∗
       (⌜ lsr_thre_clear bt = false ⌝ -∗ uart_out_lb γd l) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hrd Hrdok Haddr.
     exact (wp_uart_lsr_read_ea_s_sconf_at i γd pc rd rs1 (mword_of_int 0 : mword 12)
@@ -296,8 +296,8 @@ Section WpSconfUartAccess.
       ∀ bt : bv 8,
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg (lsr_ldval_of bt)]> m) n b p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hoff Hne0 Hrd Hrdok Haddr) "Hcg Hpc Hinstr #Hdinv Hcont".
     (* the class, consumed at [rs1] -- the one line the funnel change needs,
@@ -382,8 +382,8 @@ Section WpSconfUartAccess.
       uart_tx_own γd (l ++ [sb]) -∗
       uart_sent γd (l ++ [sb]) -∗
       Φ -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros sb.
     iIntros (Haddr) "Hcg Hpc Hinstr #Hdinv Hown #Hlb #Hoff HΨ Hcont".
@@ -469,8 +469,8 @@ Section WpSconfUartAccess.
       (* DR set means a byte is queued that this token's holder has not
          removed, and that is a MONOTONE fact: nobody else can un-queue it *)
       (⌜ rx_empty bt = false ⌝ -∗ uart_rx_pushed_lb γd (S k)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hrdok Haddr) "Hcg Hpc Hinstr #Hdinv Htok Hcont".
     assert (Haddr_all : forall hh : CpuId,
@@ -551,8 +551,8 @@ Section WpSconfUartAccess.
             the shift it pays for is the CURRENT era's. *)
          ⌜obs_boots h = S gen_id⌝ ∗
          uart_rx_tok γd (S k) (Some h)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hrdok Haddr) "Hcg Hpc Hinstr #Hdinv #Hdlab Htok #Hlb Hcont".
     assert (Haddr_all : forall hh : CpuId,
@@ -621,8 +621,8 @@ Section WpSconfUartAccess.
       pc_is (add_vec_int pc 4) -∗
       (∃ (k' : nat) (hl' : option (list mobs)), uart_rx_tok γd k' hl') -∗
       S -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros sb.
     iIntros (Haddr) "Hcg Hpc Hinstr #Hdinv Htok HR Hstep Hcont".
@@ -692,8 +692,8 @@ Section WpSconfUartAccess.
       pc_is (add_vec_int pc 4) -∗
       uart_tx_own γd l -∗
       (⌜ lsr_thre_clear bt = false ⌝ -∗ uart_out_lb γd l) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hrdok Haddr) "Hcg Hpc Hinstr #Hdinv Hown Hcont".
     iDestruct (dev_inv_uart with "Hdinv") as "#Huinv".
@@ -715,8 +715,8 @@ Section WpSconfUartAccess.
       pc_is (add_vec_int pc 4) -∗
       uart_tx_own γd l -∗
       (⌜ lsr_thre_clear bt = false ⌝ -∗ uart_out_lb γd l) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hrdok Haddr) "Hcg Hpc Hinstr #Hdinv Hown Hcont".
     iDestruct (dev_inv_uart with "Hdinv") as "#Huinv".
@@ -739,8 +739,8 @@ Section WpSconfUartAccess.
       ∀ bt : bv 8,
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg (lsr_ldval_of bt)]> m) n b p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hoff Hne0 Hrd Hrdok Haddr) "Hcg Hpc Hinstr #Hdinv Hcont".
     iDestruct (dev_inv_uart with "Hdinv") as "#Huinv".
@@ -766,8 +766,8 @@ Section WpSconfUartAccess.
       uart_tx_own γd (l ++ [sb]) -∗
       uart_sent γd (l ++ [sb]) -∗
       Φ -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros sb.
     iIntros (Haddr) "Hcg Hpc Hinstr #Hdinv Hown #Hlb #Hoff HΨ Hcont".
@@ -793,8 +793,8 @@ Section WpSconfUartAccess.
       pc_is (add_vec_int pc 4) -∗
       uart_rx_tok γd k hl -∗
       (⌜ rx_empty bt = false ⌝ -∗ uart_rx_pushed_lb γd (S k)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hrdok Haddr) "Hcg Hpc Hinstr #Hdinv Htok Hcont".
     iDestruct (dev_inv_uart with "Hdinv") as "#Huinv".
@@ -823,8 +823,8 @@ Section WpSconfUartAccess.
          uart_out_lb γd (obs_wire Uart0 (open_seg h)) ∗
          ⌜obs_boots h = S gen_id⌝ ∗
          uart_rx_tok γd (S k) (Some h)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hrdok Haddr) "Hcg Hpc Hinstr #Hdinv #Hdlab Htok #Hlb Hcont".
     iDestruct (dev_inv_uart with "Hdinv") as "#Huinv".
@@ -856,8 +856,8 @@ Section WpSconfUartAccess.
       pc_is (add_vec_int pc 4) -∗
       (∃ (k' : nat) (hl' : option (list mobs)), uart_rx_tok γd k' hl') -∗
       S -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros sb.
     iIntros (Haddr) "Hcg Hpc Hinstr #Hdinv Htok HR Hstep Hcont".

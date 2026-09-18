@@ -236,8 +236,8 @@ Section UkShParseLex.
              = mword_of_int
                  (s0 + Z.of_nat (j + ushp_skipws (len - j) j f)) ⌝ -∗
          urun N h' mc' (mword_of_int 0x482) (2 + nn) -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros r. induction r as [| r IH ];
       intros j h mc Hr Hj Hs0 Hs64 Hs1 Hs2 Hs3;
@@ -499,8 +499,8 @@ Section UkShParseLex.
              = mword_of_int
                  (s0 + Z.of_nat (j + ushp_skipws (len - j) j f)) ⌝ -∗
          urun N h' mc' (mword_of_int 0x482) (2 + nn) -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hjle Hs0 Hs64 Hs1 Hs2 Hs3 Ha1.
     iIntros "#Hcode Hstr Hws Hrun Hcont".
@@ -584,8 +584,8 @@ Section UkShParseLex.
                              (s4_idx, mword_of_int 2 : mword 6);
                              (s5_idx, mword_of_int 1 : mword 6)] vals me))
          (ret_pc (vals 0%nat)) (8 + (2 + nn)) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros h me Hal8 Hlo Hhi Hsplu Hsp.
     iIntros "#Hcode Hsl Hloc Hrun Hcont".
@@ -759,8 +759,8 @@ Section UkShParseLex.
                  (ushp_peek_res len f
                     (off + ushp_skipws (len - off) off f) tlen tf) ⌝ -∗
          urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (8 + (2 + nn)) -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Ha1 Ha2 Hoffle Hw0 Hs0 Hs64 Ht0 Ht64 Hps0 Hps8 Hpssz.
     iIntros "#Hcode Hcur Hstr Hws Htoks Hrun Hcont".
@@ -1733,8 +1733,8 @@ Section UkShParseLex.
        UMalloc' -∗
        Pex -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (4 + (10 + nn)) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using ushp_malloc_ok.
     iIntros "#Hcode HM #Hpx Hpay Hrun Hcont".
     iDestruct (ushp_code_shk γt with "Hcode") as "#Hkcode".

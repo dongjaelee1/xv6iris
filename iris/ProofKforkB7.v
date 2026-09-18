@@ -120,8 +120,8 @@ Section KforkB7.
         sie_cap_gpr KT1 Mx n false p -∗
         pc_is (mword_of_int (KF + 0x96) : mword 64) -∗
         proc_priv_nocwd γf npa pid_c (us_pt U (pv_upt (us_V U)) (<[(14%nat) := zero_reg]> (pv_tf (us_V U)))) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HM4 HM5.
     iIntros "Hcg #Htext Hpc Hpv Hcont".

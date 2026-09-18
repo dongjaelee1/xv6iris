@@ -1287,8 +1287,8 @@ Definition wp_filewrite_sconf_body
          stop position on an inode, the accepted-trace receipt on the
          console, nothing anywhere else. *)
       filewrite_arms (pv_gen (us_V U)) (pv_upt (us_V U)) st n (us_M U) uaddr Q Qe r -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* ONE MODULE TYPE: there is no parallel statement pinned to an inode or to
    the console, and no second walk against the code.  The arms are keyed on

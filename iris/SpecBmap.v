@@ -432,8 +432,8 @@ Definition wp_bmap_sconf_body
       (* at most five units gone, and none gained *)
       ⌜((n - 5)%nat <= n')%nat /\ (n' <= n)%nat⌝ -∗
       log_op γ n' -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* ===================================================================== *)
 (*  THE CREDITED / SET-FORM CONTRACT                                      *)
@@ -588,8 +588,8 @@ Definition wp_bmap_gen_body
               stage-3 W2 stop report, projects/fs-sysfile.md). *)
         /\ (bmap_ind fbn = false -> bm_ind bm' = bm_ind bm)⌝ -∗
       log_opS γ n' Sb' -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type BMAP.
   Parameter wp_bmap_sconf :
@@ -764,8 +764,8 @@ Definition wp_bmap_noalloc_sconf_body
       inode_map_q γfs dq ip bm -∗
       inode_blocks_q γfs dq bm data -∗
       bslot -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type BMAP_NOALLOC.
   Parameter wp_bmap_noalloc_sconf :

@@ -512,8 +512,8 @@ Section UkTreeCreate.
         ∨ tree_taint c) -∗
        UserCwd.ucwd (ukn_cwd N) cw -∗
        urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof.
     intros Heq Hn Hal4 Hpath Ha0 Ha1 Ha2 Hnp Hlast Hstart Hdd.
     iIntros "#Hi #Hro Hrun Hcwd Hown #Hinv Hcont".
@@ -721,8 +721,8 @@ Section UkTreeCreate.
         ∨ tree_taint c) -∗
        UserCwd.ucwd (ukn_cwd N) cw -∗
        urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof.
     intros Heq Hn Hal4 Hpath Ha0 Hnp Hstart Hdd.
     iIntros "#Hi #Hro Hrun Hcwd Hown #Hinv Hcont".
@@ -928,8 +928,8 @@ Section UkTreeCreate.
           ∨ tree_taint c))) -∗
        UserCwd.ucwd (ukn_cwd N) cw -∗
        urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof.
     intros Heq Hn Hal4 Hpath Ha0 Hcr Htr Hnp Hlast Hstart Hdd.
     iIntros "#Hi #Hro Hrun Hcwd Hstd Hown #Hinv Hcont".
@@ -1052,8 +1052,8 @@ Section UkTreeCreate.
     (□ ∀ (h : CpuId) (m : regfile) (rv : mword 64),
         urun N h (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
         (∀ (h' : CpuId) (m' : regfile), ⌜Ψ m rv m'⌝ -∗
-           urun N h' m' pc' avail -∗ WP (Loop : expr riscv_lang)) -∗
-        WP (Loop : expr riscv_lang))%I.
+           urun N h' m' pc' avail -∗ mWP (Loop : expr riscv_lang)) -∗
+        mWP (Loop : expr riscv_lang))%I.
 
   (* ...AND ITS BAIL-OUT PATH.  The chain below continues through a FAILED
      mkdir and through a failed write -- neither costs the program its
@@ -1062,7 +1062,7 @@ Section UkTreeCreate.
      it can: a program with an [exit] to jump to. *)
   Definition ubail (N : uk_names Σ) (avail : nat) : iProp Σ :=
     (□ ∀ (h : CpuId) (m : regfile) (pc : mword 64),
-        urun N h m pc avail -∗ WP (Loop : expr riscv_lang))%I.
+        urun N h m pc avail -∗ mWP (Loop : expr riscv_lang))%I.
 
   (* ---- 6a.  THE FIRST HALF: the file is made and opened --------------
      Split from the second half for readability only -- the two halves
@@ -1129,8 +1129,8 @@ Section UkTreeCreate.
        tree_own r g FsImg.ROOTINO t2 -∗
        UserCwd.ucwd (ukn_cwd N) cw -∗
        urun N h' m' pc3 avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof.
     intros Heq Hroot Hdd Hpathd Hpathf Hnpd Hnpf Hstd Hstf Hplf
       Hcr Htr Hrd Hwr Hlow Hn1 Ha01 Hal1 Hal2.
@@ -1255,8 +1255,8 @@ Section UkTreeCreate.
         ∨ tree_taint c) -∗
        urun N h' (<[Regidx a0_idx := rv]> m') (add_vec_int pc4 4) avail -∗
        ubytes (ukn_d N) (uint rbuf) k gb -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof.
     intros Heq Hn3 Hfd3 Hfdlt Ha13 Ha23 Hfile Hres Hdd2 Hprop Hstf Hck
       Hal3 Hal4.
@@ -1378,8 +1378,8 @@ Section UkTreeCreate.
         ∨ tree_taint c) -∗
        urun N h' (<[Regidx a0_idx := rv]> m') (add_vec_int pc4 4) avail -∗
        ubytes (ukn_d N) (uint rbuf) k gb -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof.
     intros Heq Hroot Hdd Hpathd Hpathf Hnpd Hnpf Hstd Hstf Hplf Hprop
       Hcr Htr Hrd Hwr Hlow Hn1 Ha01 Hck Hal1 Hal2 Hal3 Hal4.

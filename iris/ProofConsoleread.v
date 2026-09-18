@@ -1134,7 +1134,7 @@ Section CrBodies.
          cpu_own 0%nat eb (proc_addr jp) true lks -∗
          pc_is (ret_pc (m0 !!! Regidx Rra)) -∗
          proc_priv_core (proc_addr jp) pid (upd_usM (us_upt U P') Mo) -∗
-         WP (Loop : expr riscv_lang)))%I.
+         mWP (Loop : expr riscv_lang)))%I.
 
   (* =================================================================== *)
   (*  +0xce .. +0xe0 -- THE EPILOGUE.  All three exits reach it with the  *)
@@ -1170,7 +1170,7 @@ Section CrBodies.
     (⌜(r < 0)%Z⌝ -∗ ChildTok.kill_shot (pv_gen (us_V U))) -∗
     cr_saved sp0 m0 -∗ cr_rest sp0 -∗
     cr_ret (CID0 := CID0) cn Wd ord fault jp m0 av eb pid U Ment n lks -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pj Hm0sp HMsp HMa0 HMcs Hr Hav Heb Hcr.
     iIntros "#Ht Hcg Hcnt Hpc Hpriv #Htags Hwin Hshotq
@@ -1508,7 +1508,7 @@ Section CrBodies.
          cpu_own 0%nat true (proc_addr jp) true lks -∗
          proc_priv_core (proc_addr jp) pid (upd_usM (us_upt U P') Mo) -∗
          cr_rest sp0 -∗
-         WP (Loop : expr riscv_lang)))%I.
+         mWP (Loop : expr riscv_lang)))%I.
 
   (* The caller's exit, RE-BASED on a page table this call has already
      extended.  Every block below hands the process block back at some
@@ -1635,7 +1635,7 @@ Section ProofConsoleread.
          cons_res cn -∗
          proc_priv_core (proc_addr jp) pid (upd_usM (us_upt U P') Mo) -∗
          cr_rest sp0 -∗
-         WP (Loop : expr riscv_lang)))%I.
+         mWP (Loop : expr riscv_lang)))%I.
 
   Lemma cr_mk_retx (cn : cons_names) (Wd : iProp Σ) (ord : option nat)
       (γc : gname) (jp : nat) (sp0 : mword 64) (m0 : regfile)
@@ -1846,7 +1846,7 @@ Section ProofConsoleread.
          cons_res cn -∗
          proc_priv_core (proc_addr jp) pid (upd_usM (us_upt U P') Mo) -∗
          cr_rest sp0 -∗
-         WP (Loop : expr riscv_lang)))%I.
+         mWP (Loop : expr riscv_lang)))%I.
 
   (* =================================================================== *)
   (*  [HAVE] (+0x76): a byte is available.  Entered from BOTH the         *)
@@ -1901,7 +1901,7 @@ Section ProofConsoleread.
          (∃ w : mword 64, pa_stk sp0 10%nat ↦₈[KT1] w) -∗
          (∃ w : mword 64, pa_stk sp0 11%nat ↦₈[KT1] w) -∗
          (∃ w : mword 64, pa_stk sp0 12%nat ↦₈[KT1] w) -∗
-         WP (Loop : expr riscv_lang)))%I.
+         mWP (Loop : expr riscv_lang)))%I.
 
   (* ---- the address arithmetic the two stack objects need -------------- *)
 
@@ -2978,7 +2978,7 @@ Section ProofConsoleread.
          cons_res cn -∗
          proc_priv_core (proc_addr jp) pid (upd_usM (us_upt U P') Mo) -∗
          cr_rest sp0 -∗
-         WP (Loop : expr riscv_lang)))%I.
+         mWP (Loop : expr riscv_lang)))%I.
 
   Lemma cr_mk_wait (cn : cons_names) (Wd : iProp Σ) (ord : option nat)
       (γa γc γf : gname) (γs : list gname) (jp : nat) (γlp : gname)

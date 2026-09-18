@@ -441,8 +441,8 @@ Section KernelvecCore.
       (add_vec (m !!! Regidx csp_rs1) (mword_of_int 232)) ↦₈[KT1] (m !!! Regidx (mword_of_int 30 : mword 5)) -∗
       (add_vec (m !!! Regidx csp_rs1) (mword_of_int 240)) ↦₈[KT1] (m !!! Regidx (mword_of_int 31 : mword 5)) -∗
       TsoCtx.own_context XI -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros.
     iIntros "Hsm Htlbinv
@@ -612,8 +612,8 @@ Section KernelvecCore.
       (add_vec (m !!! Regidx csp_rs1) (mword_of_int 232)) ↦₈[KT1] w16 -∗
       (add_vec (m !!! Regidx csp_rs1) (mword_of_int 240)) ↦₈[KT1] w17 -∗
       TsoCtx.own_context XI -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros.
     iIntros "Hsm Htlbinv
@@ -864,8 +864,8 @@ Section KernelvecCore.
       (((add_vec (kv_sp1 m) (zero_extend' 64 (concat_vec (mword_of_int 29 : mword 6) ('b"000")))))) ↦₈[KT1] (m !!! Regidx (mword_of_int 30 : mword 5)) -∗
       (((add_vec (kv_sp1 m) (zero_extend' 64 (concat_vec (mword_of_int 30 : mword 6) ('b"000")))))) ↦₈[KT1] (m !!! Regidx (mword_of_int 31 : mword 5)) -∗
       TsoCtx.own_context XI -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros.
     iIntros "Hsm Htlbinv Hpc Hfile
@@ -1094,8 +1094,8 @@ Section KernelvecCore.
       (((add_vec spv (zero_extend' 64 (concat_vec (mword_of_int 29 : mword 6) ('b"000")))))) ↦₈[KT1] v16 -∗
       (((add_vec spv (zero_extend' 64 (concat_vec (mword_of_int 30 : mword 6) ('b"000")))))) ↦₈[KT1] v17 -∗
       TsoCtx.own_context XI -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HSIE HMPRV HSXL Hmm HPBMTE Hmenvval0 Hsp0.
     iIntros "#Hhw #Hinv Hsm Hhs2 Hpriv2 Hms2 Hmie2 Hmdl2 Hmenv2 Htlbinv Hpc Hfile

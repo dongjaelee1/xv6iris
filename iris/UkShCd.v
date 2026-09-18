@@ -335,8 +335,8 @@ Section UkShCd.
          (<[Regidx a0_idx := ret]>
             (<[Regidx a7_idx := (mword_of_int 9 : mword 64)]> m))
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using Hpsok_free.
     iIntros "#Hcode Hcwd Hrun Hcont".
     assert (Hpin : ShSyms.chdir = 0xcf6)

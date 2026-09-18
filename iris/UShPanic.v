@@ -205,8 +205,8 @@ Section UShPanicGen.
          (<[Regidx a0_idx := ret]>
             (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m))
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "#Hcode Hrun Hsb Hstd Hbuf Hcont".
     rewrite shp_write.

@@ -254,8 +254,8 @@ Section UkShPipe.
          (<[Regidx a0_idx := r]>
             (<[Regidx a7_idx := (mword_of_int 21 : mword 64)]> m))
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Harg. iIntros "#Hcode #Hdep Hh Hrun Hcont".
     rewrite shp_close.
@@ -346,8 +346,8 @@ Section UkShPipe.
          (<[Regidx a0_idx := r]>
             (<[Regidx a7_idx := (mword_of_int 10 : mword 64)]> m))
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using Hpsok_free.
     intros Harg Hne. iIntros "#Hcode Hstd Hown Hrun Hcont".
     rewrite shp_dup.
@@ -440,8 +440,8 @@ Section UkShPipe.
        uwait_ans rw Sc Sc' -∗
        urun N h' m' (mword_of_int ret) avail -∗
        UserChildren.uch (ukn_ch N) Sc' -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using Hpsok_free.
     intros E01 Hsym Hret Hal Hrp. iIntros "#Hcode #Hi0 #Hi1 Hrun Hch Hcont".
     iApply (wp_uk_cli N h m (mword_of_int pc0)
@@ -572,8 +572,8 @@ Section UkShPipe.
                  (<[Regidx ra_idx := (mword_of_int ret : mword 64)]> m)))
            (ret_pc ((<[Regidx ra_idx := (mword_of_int ret : mword 64)]> m)
                       !!! Regidx ra_idx)) av -∗
-         WP (Loop : expr riscv_lang)) -∗
-      WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+      mWP (Loop : expr riscv_lang).
   Proof using .
     intros Harg h0 av. iIntros "#Hc [#Hd Hh] Hrun Hcont".
     iApply (wp_kshpi_close_h N h0 _ fd st av Harg with "Hc Hd Hh Hrun").
@@ -607,8 +607,8 @@ Section UkShPipe.
                  (<[Regidx ra_idx := (mword_of_int ret : mword 64)]> m)))
            (ret_pc ((<[Regidx ra_idx := (mword_of_int ret : mword 64)]> m)
                       !!! Regidx ra_idx)) av -∗
-         WP (Loop : expr riscv_lang)) -∗
-      WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+      mWP (Loop : expr riscv_lang).
   Proof using Hpsok_free.
     intros Harg Hne h0 av. iIntros "#Hc [Hs Ho] Hrun Hcont".
     iApply (wp_kshpi_dup N h0 _ l fd0 st av Harg Hne
@@ -691,8 +691,8 @@ Section UkShPipe.
           ⌜ m' !!! Regidx a0_idx = r ⌝ -∗
           ush_pipe_ans N dst l R r -∗
           urun N h' m' (ret_pc (m !!! Regidx ra_idx)) av -∗
-          WP (Loop : expr riscv_lang)) -∗
-       WP (Loop : expr riscv_lang))%I.
+          mWP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang))%I.
 
   (* ===================================================================== *)
   (* §4a WHAT A fork1 ANSWERS, WITH THE CHILDREN READING TAKEN OUT.         *)
@@ -777,7 +777,7 @@ Section UkShPipe.
        RcL γp -∗
        urun N' h' m' (mword_of_int ShSyms.runcmd)
          (2 + (UkShDiag.ush_Dg + av)) -∗
-       WP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang)) -∗
     (* ---- THE RIGHT CHILD: fd 0 is the pipe's READ end ---- *)
     (∀ (N' : uk_names Σ) (h' : CpuId) (m' : regfile) (γ' : gname)
        (γp : pipe_names) (q : Z),
@@ -797,7 +797,7 @@ Section UkShPipe.
        RcR γp -∗
        urun N' h' m' (mword_of_int ShSyms.runcmd)
          (2 + (UkShDiag.ush_Dg + av)) -∗
-       WP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang)) -∗
     (* ---- THE PARENT, at 0xea -- the [break]'s target, which is the
        common [exit(0)] every runcmd arm ends at ---- *)
     (∀ (h' : CpuId) (m' : regfile) (γp : pipe_names)
@@ -813,8 +813,8 @@ Section UkShPipe.
        UserCwd.ucwd (ukn_cwd N) cwdv -∗
        Rk γp -∗
        urun N h' m' (mword_of_int 0xea) (2 + (UkShDiag.ush_Dg + av)) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using Hpsok_free.
     intros HQc Hpx Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1.
     iIntros "#Hdp #Hcode #Hjt #Htree Hsz Hstd Hcwd Hch #Hkw Hsplit Hpipe Hrun
@@ -1900,7 +1900,7 @@ Section UkShPipe.
       ush_pipe_call N ld (fun _ => emp)%I -∗
       urun N h m (mword_of_int ShSyms.runcmd)
         (6 * ush_ht (UPipe cl cr) + (2 + (UkShDiag.ush_Dg + n))) -∗
-      WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang).
   Proof using Hpsok_free.
     intros Hscl Hscr N Hcst h m t szv cwdv ld st0 st1 Sc n
            Hpx Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1.
@@ -2011,7 +2011,7 @@ Section UkShPipe.
       ush_pipe_call N ld (fun _ => emp)%I -∗
       urun N h m (mword_of_int ShSyms.runcmd)
         (6 * ush_ht c + (2 + (UkShDiag.ush_Dg + n))) -∗
-      WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang).
   Proof using Hpsok_free.
     intros Hp N Hcst h m t szv cwdv ld st0 st1 Sc n
            Hpx Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1.
@@ -2247,7 +2247,7 @@ Section UkShPipe.
       UserChildren.uch (ukn_ch N) Sc -∗
       urun N h m (mword_of_int ShSyms.runcmd)
         (6 * ush_ht (UPipe cl cr) + (2 + (UkShDiag.ush_Dg + n))) -∗
-      WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang).
   Proof using Hpsok_free.
     intros Hscl Hscr N Hcst h m t szv cwdv ld st0 st1 Sc n
            Hpx Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1 Hnone.
@@ -2287,7 +2287,7 @@ Section UkShPipe.
       UserChildren.uch (ukn_ch N) Sc -∗
       urun N h m (mword_of_int ShSyms.runcmd)
         (6 * ush_ht c + (2 + (UkShDiag.ush_Dg + n))) -∗
-      WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang).
   Proof using Hpsok_free.
     intros Hp N Hcst h m t szv cwdv ld st0 st1 Sc n
            Hpx Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1 Hnone.

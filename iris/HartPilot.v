@@ -445,8 +445,8 @@ Section pilot.
           (pa_add (Interface.WriteReq.pa reqw) j) ↦ₚ
             nth_byte (Interface.WriteReq.value reqw) j) -∗
        resv_frag cpu_id None -∗
-       WP (LoopE gen_id cpu_id : expr riscv_lang)) -∗
-    WP (HartE gen_id cpu_id x0.2 : expr riscv_lang).
+       mWP (LoopE gen_id cpu_id : expr riscv_lang)) -∗
+    mWP (HartE gen_id cpu_id x0.2 : expr riscv_lang).
   Proof using .
     iIntros (Hx1 Hx2 Hx3 Hreqf Hdevf Hexf Hreqw Hdevw Htag)
       "#Hcert Hfrag Hrf Hfetch #Hpr Hold Hwobl Hcont".
@@ -531,8 +531,8 @@ Section pilot.
     ▷ (hreg_frame hp_x3.1 hp_D -∗
        ([∗ list] j ∈ seq 0 4, (pa_add hp_flag j) ↦ₚ nth_byte hp_one j) -∗
        resv_frag cpu_id None -∗
-       WP (LoopE gen_id cpu_id : expr riscv_lang)) -∗
-    WP (HartE gen_id cpu_id (riscv_step false) : expr riscv_lang).
+       mWP (LoopE gen_id cpu_id : expr riscv_lang)) -∗
+    mWP (HartE gen_id cpu_id (riscv_step false) : expr riscv_lang).
   Proof using .
     have Hx1 : hp_x1 = hsil 400 hp_D hp_x0 by reflexivity.
     have Hx2 : hp_x2 = hsil 600 hp_D (hcur_read (bv_unsigned hp_wf) hp_x1)

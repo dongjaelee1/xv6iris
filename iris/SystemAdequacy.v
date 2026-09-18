@@ -657,10 +657,10 @@ Section SystemBoot.
          ▷ app_dur_at A gt r ∗ B (Datatypes.S gen_id) r)%I Tn g
     ={⊤}=∗
       ([∗ list] c ∈ enum CPU,
-         WP (LoopE gen_id c : expr riscv_lang) @ ⊤) ∗
-      ([∗ list] i ∈ enum uart_id, WP (UartLoopE gen_id i : expr riscv_lang) @ ⊤) ∗
-      WP (DiskLoopE gen_id : expr riscv_lang) @ ⊤ ∗
-      WP (PlicLoopE gen_id : expr riscv_lang) @ ⊤.
+         mWP (LoopE gen_id c : expr riscv_lang) @ ⊤) ∗
+      ([∗ list] i ∈ enum uart_id, mWP (UartLoopE gen_id i : expr riscv_lang) @ ⊤) ∗
+      mWP (DiskLoopE gen_id : expr riscv_lang) @ ⊤ ∗
+      mWP (PlicLoopE gen_id : expr riscv_lang) @ ⊤.
   Proof using bioslotGpreS0 fdslotGpreS0 fileGpreS0 irefslotGpreS0 pavGpreS0 ufdG0 wchGpreS0.
     intros Hbf Hpure Hcovin Hlogsub Hls2 Hcp Hperm.
     iIntros "#Hoinv Hres".
@@ -854,7 +854,7 @@ Section SystemBoot.
     iSplitL "Hthr0 Hprim Hh0 Hhrest Hlk Hgl Hmfirst Hmnext Hpark Hpst Hpavail Hchb Hfs Hmir Hirslot Hirauth Hboot Htx Htok Hhi Hlgh Harm Hdlab Htx1 Htok1 Hhi1 Hlgh1 Harm1 Hdlab1 Hcfg Hclaim Hcmauth Hkpt Hkptb Hkmap
              Hpages".
     { iApply (big_sepL_cpu_glue
-                (fun c => WP (LoopE gen_id c : expr riscv_lang) @ ⊤
+                (fun c => mWP (LoopE gen_id c : expr riscv_lang) @ ⊤
 )%I).
       iSplitL "Hthr0 Hprim Hh0 Hlk Hgl Hmfirst Hmnext Hpark Hpst Hpavail Hchb Hfs Hmir Hirslot Hirauth Hboot Htx Htok Hhi Hlgh Harm Hdlab Htx1 Htok1 Hhi1 Hlgh1 Harm1 Hdlab1 Hcfg Hclaim Hcmauth Hkpt Hkptb Hkmap
                Hpages".

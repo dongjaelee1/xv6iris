@@ -105,8 +105,8 @@ Definition wp_filedup_sconf_body `{!riscvGS Σ, !xv6G Σ, !fileG Σ, !fdslotG Σ
       /\ mr !!! Regidx (mword_of_int 10 : mword 5) = fnode k ⌝ -∗
     file_ref γf k (q/2)%Qp st -∗
     file_ref γf k (q/2)%Qp st -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type FILEDUP.
   Parameter wp_filedup_sconf :

@@ -1218,8 +1218,8 @@ Section ProofFilewrite.
               \/ (iz <> nz /\ rv = (mword_of_int (-1) : mword 64)))⌝ -∗
         sie_cap_gpr KT1 mf K b pp -∗
         InstrBytes.pc_is (ret_pc ra0) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hnz Hiz Hsp0 Hra0 Hs00 Hcs1 Hs20 Hcs3 Hs40 Hs50 Hs60 Hcs7 Hcs8 Hcs9
            Hmtsp Hmts5 Hmts4 Hthr.
@@ -1531,8 +1531,8 @@ Section ProofFilewrite.
                 P !!! Regidx r = M !!! Regidx r)⌝ -∗
         sie_cap_gpr KT1 P Kn b p -∗
         InstrBytes.pc_is (mword_of_int (FW + 0x8a) : mword 64) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hiz Hnz HMs4 HMs5 HMs7 HMs9.
     iIntros "Hcg #Htext Hpc Hcont".
@@ -1718,8 +1718,8 @@ Section ProofFilewrite.
         sie_cap_gpr KT1 P Kn b p -∗
         InstrBytes.pc_is (mword_of_int (FW + 0xbc) : mword 64) -∗
         a_foff kx ↦₄ v' -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Hs2 Hrz Hwf Hadv.
     iIntros "Hcg #Htext Hpc Hcell Hcont".
@@ -2030,8 +2030,8 @@ Section ProofFilewrite.
         filewrite_env_out fn stx -∗
         write_arms_at (fs_gamma_L fsc_fs) nx γx (pv_upt (us_V U)) n (us_M U)
           (m !!! Regidx Ra1) Q r -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hkf Hjp Hgsj Hlens Hfnj Hfnps Hn Heb Hstx Hspm Hpjeq.
     intros P1 P2 P3q P4q P6.

@@ -214,8 +214,8 @@ Section UkShPipeEx2.
              = mword_of_int (Z.of_nat (length done + length rest)) ⌝ -∗
          ⌜ mc' !!! Regidx s1_idx = mword_of_int p ⌝ -∗
          urun N h' mc' (mword_of_int 0x662) (24 + (8 + nn)) -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intro rest.
     induction rest as [| tk rest IH ];

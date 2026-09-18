@@ -6,6 +6,9 @@
 # a quotation in a comment must not swallow a `*)` (tools/comment_quote_check.py)
 -arg -w
 -arg +comment-terminator-in-string
+# two notations sharing a prefix at different levels leave one unparseable
+-arg -w
+-arg +notation-incompatible-prefix
 rv64d_types.v
 riscv_extras.v
 # xv6iris_extras.v is HAND-WRITTEN (everything else here is generated) and is

@@ -389,7 +389,7 @@ Section UkLoadPostFetch.
     (R -∗ (TsoCtx.own_context XI -∗ Rut pt) ∗ Rfd fdv ∗ ukb C pt Rfd Rut sz π fdv cw gn cs pidv false ∗
           (uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M (<[Regidx lrd := regval_into_reg wval]> m)
              (add_vec_int pc dpc) -∗
-           WP (Loop : expr riscv_lang))) -∗
+           mWP (Loop : expr riscv_lang))) -∗
     resv_any cpu_id -∗
     TsoCtx.own_context XI -∗
     uv_bytes pt Mp t' -∗
@@ -984,7 +984,7 @@ Section UkLoadObl.
     uv_fetch_bridge (uc_dqc C) pt Mp rsA t (F_Base w) -∗
     (R -∗ (TsoCtx.own_context XI -∗ Rut pt) ∗ Rfd fdv ∗ ukb C pt Rfd Rut sz π fdv cw gn cs pidv false ∗
           ((uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M (<[Regidx lrd := regval_into_reg wval]> m)
-              (add_vec_int pc 4) -∗ WP (Loop : expr riscv_lang))
+              (add_vec_int pc 4) -∗ mWP (Loop : expr riscv_lang))
            ∧ UkStep.uk_paycont Qp gn (uslot (uvis_of_run m pc M π sz fdv cw gn cs pidv false)))) -∗
     resv_any cpu_id -∗
     hreg_frame rsA u_Drw -∗ hreg_frame_ro (u_Df (uc_dqc C)) rsA u_Dro -∗
@@ -1141,7 +1141,7 @@ Section UkLoadObl.
     uv_fetch_bridge (uc_dqc C) pt Mp rsA t (F_RVC h) -∗
     (R -∗ (TsoCtx.own_context XI -∗ Rut pt) ∗ Rfd fdv ∗ ukb C pt Rfd Rut sz π fdv cw gn cs pidv false ∗
           ((uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M (<[Regidx lrd := regval_into_reg wval]> m)
-              (add_vec_int pc 2) -∗ WP (Loop : expr riscv_lang))
+              (add_vec_int pc 2) -∗ mWP (Loop : expr riscv_lang))
            ∧ UkStep.uk_paycont Qp gn (uslot (uvis_of_run m pc M π sz fdv cw gn cs pidv false)))) -∗
     resv_any cpu_id -∗
     hreg_frame rsA u_Drw -∗ hreg_frame_ro (u_Df (uc_dqc C)) rsA u_Dro -∗
@@ -1339,7 +1339,7 @@ Section UkLoad.
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ▷ ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m)
         (add_vec_int pc (if is_rvc then 2 else 4)) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hkw Hui Hred Hg1 Hlpad Hexp Hrd Hva Hkok Hcanon Hpg Hal HMb Hwval.
     pose proof (Hui pt sz (loop_ok_wf C pt Hlo) Hpm) as Hui0.
@@ -1429,7 +1429,7 @@ Section UkLoad.
              ((uvb (CID := CIDo) C' pt' Rfd' Rut' sz π fdv cw gn cs pidv false M
                  (<[Regidx rd := regval_into_reg wval]> m)
                  (add_vec_int pc (if is_rvc then 2 else 4)) -∗
-               WP (Loop : expr riscv_lang))
+               mWP (Loop : expr riscv_lang))
               ∧ UkStep.uk_paycont Qp gn (uslot (uvis_of_run m pc M π sz fdv cw gn cs pidv false))))%I with "[Hk]" as "Hk".
     { iIntros "HR". iDestruct ("Hk" with "HR") as "(Hrut & Hfdr & Hkb & Hkc)".
       iFrame "Hrut Hfdr Hkb". iSplit.
@@ -1486,7 +1486,7 @@ Section UkLoad.
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m)
         (add_vec_int pc (if is_rvc then 2 else 4)) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hkw Hui Hred Hg1 Hlpad Hexp Hrd Hva Hkok Hcanon Hpg Hal HMb Hwval.
     iIntros "Hb Hcont".
@@ -1516,7 +1516,7 @@ Section UkLoad.
     wval = uM_word M (uint va) 8 ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) (add_vec_int pc 4) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hrd Hva Hkok Hcanon Hpg Hal HMb Hwval.
     iIntros "Hb Hcont".
@@ -1550,7 +1550,7 @@ Section UkLoad.
     wval = uM_word M (uint va) 8 ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) (add_vec_int pc 2) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hrd Hva Hkok Hcanon Hpg Hal HMb Hwval.
     iIntros "Hb Hcont".
@@ -1586,7 +1586,7 @@ Section UkLoad.
     wval = zero_extend' 64 bb ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) (add_vec_int pc 4) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hrd Hva Hkok Hcanon Hbb Hwval.
     iIntros "Hb Hcont".
@@ -1623,7 +1623,7 @@ Section UkLoad.
     wval = sign_extend' 64 wv ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) (add_vec_int pc 4) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hrd Hva Hkok Hcanon Hpg Hal Hbw Hwval.
     iIntros "Hb Hcont".
@@ -1654,7 +1654,7 @@ Section UkLoad.
     wval = zero_extend' 64 wv ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) (add_vec_int pc 4) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hrd Hva Hkok Hcanon Hpg Hal Hbw Hwval.
     iIntros "Hb Hcont".
@@ -1689,7 +1689,7 @@ Section UkLoad.
     wval = sign_extend' 64 wv ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) (add_vec_int pc 2) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hcr1 Hcrd Hrd Hva Hkok Hcanon Hpg Hal Hbw Hwval.
     iIntros "Hb Hcont".
@@ -1731,7 +1731,7 @@ Section UkLoad.
     uM_bytes M (uint va) 8 wval ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) (add_vec_int pc 2) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hcr1 Hcrd Hrd Hva Hkok Hcanon Hpg Hal Hbw.
     iIntros "Hb Hcont".

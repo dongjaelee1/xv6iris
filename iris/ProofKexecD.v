@@ -244,7 +244,7 @@ Section KexecDName.
         sie_cap_gpr KT1 M' n b pj -∗
         ([∗ list] k ∈ seq 0 (S plen), pa_add pv k ↦ₘ[KT1]{dqpv} pfun k) -∗
         ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 66) (DfracOwn 1) (pa_add pv q') -∗
-        WP (Loop : expr riscv_lang))%I.
+        mWP (Loop : expr riscv_lang))%I.
 
   (* ------------------------------------------------------------------- *)
   (*  +0x2c0 .. +0x2c6 -- STEP, FETCH, NUL TEST.                          *)
@@ -270,7 +270,7 @@ Section KexecDName.
     ([∗ list] k ∈ seq 0 (S plen), pa_add pv k ↦ₘ[KT1]{dqpv} pfun k) -∗
     ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 66) (DfracOwn 1) (pa_add pv q) -∗
     kxd_scan_out pj b n plen pfun dqpv sp0 pv vsp v1 v2 v4 v5 v6 v10 v11 i -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros [Hnonul Hnul] Hiplen Hq Hsp Hs0 Hv1 Hv2 Hv4 Hv5 Hv6 Hv10 Hv11 Ha3 Ha5.
     iIntros "#Htext Hpc Hcg Hpath Hlast Hout".
@@ -437,7 +437,7 @@ Section KexecDName.
     ([∗ list] k ∈ seq 0 (S plen), pa_add pv k ↦ₘ[KT1]{dqpv} pfun k) -∗
     ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 66) (DfracOwn 1) (pa_add pv q) -∗
     kxd_scan_out pj b n plen pfun dqpv sp0 pv vsp v1 v2 v4 v5 v6 v10 v11 i -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hcstr Hiplen Hq Hsp Hs0 Hv1 Hv2 Hv4 Hv5 Hv6 Hv10 Hv11 Ha3 Ha4 Ha5.
     iIntros "#Htext Hpc Hcg Hpath Hlast Hout".
@@ -557,8 +557,8 @@ Section KexecDName.
         sie_cap_gpr KT1 M' n b pj -∗
         ([∗ list] k ∈ seq 0 (S plen), pa_add pv k ↦ₘ[KT1]{dqpv} pfun k) -∗
         ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 66) (DfracOwn 1) (pa_add pv q') -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hcstr W. revert CID0.
     induction W as [| W IH]; intros CID0 M i q Hfuel Hiplen Hq
@@ -989,7 +989,7 @@ Section KexecDCommit.
     KexecOkQ.kexec_closer Q QF gf fsc_kalloc (proc_addr jp) pidv U m (ret_pc ra0) K
          eb eb ∅ dqb dqs fsc_bmapstart na alen plen pv dqpv pfun
          av dqa avf aslen dqas afun) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HQe HK Hcstr Hq Hnamax Hsz1ge Hceq Hstk HPtfp Hbelow Hcov Hal
            Hmsp Hmra Hms0 Hms1 Hms2
@@ -2031,7 +2031,7 @@ Section KexecDMain.
     KexecOkQ.kexec_closer Q QF gf fsc_kalloc (proc_addr jp) pidv U m (ret_pc ra0) K
          eb eb ∅ dqb dqs fsc_bmapstart na alen plen pv dqpv pfun
          av dqa avf aslen dqas afun) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HQe HK Hcstr Hnamax Hsz1ge Havf_nz Hal Hmsp Hmra Hms0 Hms1 Hms2
            Hmw5 Hmw6 Hmw7 Hmw8 Hmw9 Hmw10 Hmw11 Hmw12.

@@ -349,8 +349,8 @@ Section UInitTreeCons.
        UserCwd.ucwd (ukn_cwd N) cw -∗
        urun (PS := uprogSG_free) N h' (<[Regidx a0_idx := rv]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Heq Hn Hal4 Hpath Ha0 Hcr Htr Hp Hstart Hd Hres.
     iIntros "#Hi #Hro Hrun Hcwd Hstd #Hpin #Hinv Hcont".

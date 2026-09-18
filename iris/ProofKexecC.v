@@ -353,8 +353,8 @@ Section KexecCSetup.
           KexecOkQ.kexec_closer Q QF gf fsc_kalloc (proc_addr jp) pidv U m (ret_pc ra0) K
                eb eb ∅ dqb dqs fsc_bmapstart na alen plen pv dqpv
                pfun av dqa avf aslen dqas afun) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hqfnm HK Hmsp Hmra Hms0 Hms1 Hms2
            Hmw5 Hmw6 Hmw7 Hmw8 Hmw9 Hmw10 Hmw11 Hmw12
@@ -2226,7 +2226,7 @@ Section KexecCExitM1.
     KexecOkQ.kexec_closer Q QF gf fsc_kalloc (proc_addr jp) pidv U m (ret_pc ra0) K
          eb eb ∅ dqb dqs fsc_bmapstart na alen plen pv dqpv pfun
          av dqa avf aslen dqas afun) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hqf HK Hc33 Hal Hmsp Hmra Hms0 Hms1 Hms2
            Hmw5 Hmw6 Hmw7 Hmw8 Hmw9 Hmw10 Hmw11 Hmw12
@@ -2516,8 +2516,8 @@ Section KexecCLoop.
           KexecOkQ.kexec_closer Q QF gf fsc_kalloc (proc_addr jp) pidv U m (ret_pc ra0) K
                eb eb ∅ dqb dqs fsc_bmapstart na alen plen pv dqpv
                pfun av dqa avf aslen dqas afun) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hqfnm Hqfaf HK Hcna Halenlt Hcstr Halen4096 Hsz1ge Hnamax Hal
            Hmsp Hmra Hms0 Hms1 Hms2 Hmw5 Hmw6 Hmw7 Hmw8 Hmw9 Hmw10 Hmw11 Hmw12.
@@ -4044,8 +4044,8 @@ Section KexecCArgvLoop.
           KexecOkQ.kexec_closer Q QF gf fsc_kalloc (proc_addr jp) pidv U m (ret_pc ra0) K
                eb eb ∅ dqb dqs fsc_bmapstart na alen plen pv dqpv
                pfun av dqa avf aslen dqas afun) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hqfnm Hqfaf HK Halen_bound Halen_cstr Halen_4096 Havf_na Hsz1ge Hnamax Hal
            Hmsp Hmra Hms0 Hms1 Hms2 Hmw5 Hmw6 Hmw7 Hmw8 Hmw9 Hmw10 Hmw11
@@ -4340,8 +4340,8 @@ Section KexecCClose.
           KexecOkQ.kexec_closer Q QF gf fsc_kalloc (proc_addr jp) pidv U m (ret_pc ra0) K
                eb eb ∅ dqb dqs fsc_bmapstart na alen plen pv dqpv
                pfun av dqa avf aslen dqas afun) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hqfnm Hqfaf HK Hsz1ge Hal Hmsp Hmra Hms0 Hms1 Hms2
            Hmw5 Hmw6 Hmw7 Hmw8 Hmw9 Hmw10 Hmw11 Hmw12.

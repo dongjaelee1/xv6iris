@@ -127,7 +127,7 @@ Section UkGen.
        ⌜uvis_lazy W' = false⌝ -∗
        trapped_machine C pt Rut sz sc stv W' ∗ Rfd (uvis_fd W') ∗
        RetF X sc W' -∗
-       WP (Loop : expr riscv_lang))%I.
+       mWP (Loop : expr riscv_lang))%I.
 
   (* UexecRet.[ukont_F] at [RetF] *)
   Definition ukont_F' `{CID : CpuId} `{XI : CtxIdDefs.CurCtx}
@@ -162,7 +162,7 @@ Section UkGen.
           at [lz = false], so it arrives without its antecedent *)
        ⌜lazy_free (ud_um pt) szv⌝ -∗
        uvb_F' (CID := h) (XI := xi) C pt Rfd Rut szv π fdv cw gn cs pidv M m pc -∗
-       WP (Loop : expr riscv_lang))%I.
+       mWP (Loop : expr riscv_lang))%I.
 
   (* UexecRet.[ukcq] at [X]: the continuation with the payment beside it *)
   Definition ukcq' (Qp : Z -> iProp Σ) (π : gmap (mword 27) uperm)
@@ -362,7 +362,7 @@ Section UkGenObl.
        □ uk_step_obl' π Kc Qp sz fdv cw gn cs pidv M m pc -∗
        (* the payment rides the step's own later -- see [UkStep.uk_ih] *)
        ▷ (my_pay gn Qp ∗ Kc) -∗
-       WP (Loop : expr riscv_lang))%I.
+       mWP (Loop : expr riscv_lang))%I.
 
   (* the payload the wrapper hands the closer at the cycle's tail *)
   Definition uk_payload' `{CID : CpuId} (sz : Z) (π : gmap (mword 27) uperm)
@@ -417,7 +417,7 @@ Section UkGenArms.
     uv_res pt Mp t usatp pcfg paddr -∗
     TsoCtx.own_context XI -∗
     (R -∗ (TsoCtx.own_context XI -∗ Rut pt) ∗ Rfd fdv ∗ ukb_F' C pt Rfd Rut sz π fdv cw gn cs pidv ∗
-          (uvb_F' C pt Rfd Rut sz π fdv cw gn cs pidv M m' npc -∗ WP (Loop : expr riscv_lang))) -∗
+          (uvb_F' C pt Rfd Rut sz π fdv cw gn cs pidv M m' npc -∗ mWP (Loop : expr riscv_lang))) -∗
     uv_psi C R rs2.
   Proof using .
     intros Lhs Lpriv Hmsok Lnpc Hgag Hx0 Lstvec Lmie Lmdl Lmedl Lmenv Lmste
@@ -845,7 +845,7 @@ Section UkGenFunnel.
   Lemma wp_uk_step' (Kc : iProp Σ) (Qp : Z -> iProp Σ) (M : gmap Z (bv 8)) (m : regfile) (pc : mword 64) (fdv : list fdstate) (cw : Z) (gn : gname) (cs : gset gname) (pidv : mword 32) :
     is_aligned_vaddr (Virtaddr pc) 2 = true ->
     uvb_F' C pt Rfd Rut sz π fdv cw gn cs pidv M m pc -∗ □ uk_step_obl' π Kc Qp sz fdv cw gn cs pidv M m pc -∗
-    ▷ (my_pay gn Qp ∗ Kc) -∗ WP (Loop : expr riscv_lang).
+    ▷ (my_pay gn Qp ∗ Kc) -∗ mWP (Loop : expr riscv_lang).
   Proof using HQ0 HRut Hlf0 Hlo Hpm Ret_transparent X_unfold.
     intros Hal2.
     iIntros "Hb #Hobl Hpay3".
@@ -1132,7 +1132,7 @@ Section UkGenEcall.
        [UkStep.wp_uk_ecall] *)
     my_pay gn Qp -∗
     RetF X uecall_scause (uvis_of_run m pc M π sz fdv cw gn cs pidv false) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HQ0 HRut Hlf0 Hlo Hpm Ret_transparent X_unfold.
     intros Hui Hg.
     pose proof (Hui pt sz (loop_ok_wf C pt Hlo) Hpm) as Hui0.
@@ -1315,7 +1315,7 @@ Section UkGenPostFetch.
     gen_cert -∗ uv_amb -∗
     (R -∗ (TsoCtx.own_context XI -∗ Rut pt) ∗ Rfd fdv ∗ ukb_F' C pt Rfd Rut sz π fdv cw gn cs pidv ∗
           (uvb_F' C pt Rfd Rut sz π fdv cw gn cs pidv M (uv_upd m wr) (uv_next jt (add_vec_int pc k)) -∗
-           WP (Loop : expr riscv_lang))) -∗
+           mWP (Loop : expr riscv_lang))) -∗
     resv_any cpu_id -∗
     TsoCtx.own_context XI -∗
     uv_bytes pt Mp t' -∗
@@ -1479,7 +1479,7 @@ Section UkGenObligation.
     uv_fetch_bridge (uc_dqc C) pt Mp rsA t (F_Base w) -∗
     (R -∗ (TsoCtx.own_context XI -∗ Rut pt) ∗ Rfd fdv ∗ ukb_F' C pt Rfd Rut sz π fdv cw gn cs pidv ∗
           (uvb_F' C pt Rfd Rut sz π fdv cw gn cs pidv M (uv_upd m wr) (uv_next jt (add_vec_int pc 4)) -∗
-           WP (Loop : expr riscv_lang))) -∗
+           mWP (Loop : expr riscv_lang))) -∗
     resv_any cpu_id -∗
     hreg_frame rsA u_Drw -∗ hreg_frame_ro (u_Df (uc_dqc C)) rsA u_Dro -∗
     TsoCtx.own_context XI -∗
@@ -1612,7 +1612,7 @@ Section UkGenObligation.
     uv_fetch_bridge (uc_dqc C) pt Mp rsA t (F_RVC h) -∗
     (R -∗ (TsoCtx.own_context XI -∗ Rut pt) ∗ Rfd fdv ∗ ukb_F' C pt Rfd Rut sz π fdv cw gn cs pidv ∗
           (uvb_F' C pt Rfd Rut sz π fdv cw gn cs pidv M (uv_upd m wr) (uv_next jt (add_vec_int pc 2)) -∗
-           WP (Loop : expr riscv_lang))) -∗
+           mWP (Loop : expr riscv_lang))) -∗
     resv_any cpu_id -∗
     hreg_frame rsA u_Drw -∗ hreg_frame_ro (u_Df (uc_dqc C)) rsA u_Dro -∗
     TsoCtx.own_context XI -∗
@@ -1772,7 +1772,7 @@ Section UkGenRetire.
          = Some (RETIRE_SUCCESS, uv_post s_pc jt wr)) ->
     uvb_F' C pt Rfd Rut sz π fdv cw gn cs pidv M m pc -∗
     ▷ ukcq' Qp π M sz fdv cw gn cs pidv (uv_upd m wr) (uv_next jt (add_vec_int pc (if is_rvc then 2 else 4))) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HQ0 HRut Hlf0 Hlo Hpm Ret_transparent X_unfold.
     intros Hui Hred Hlpad Hwrok Hg1 Hg2 Hexec.
     pose proof (Hui pt sz (loop_ok_wf C pt Hlo) Hpm) as Hui0.
@@ -1801,7 +1801,7 @@ Section UkGenRetire.
              ukb_F' C' pt' Rfd' Rut' sz π fdv cw gn cs pidv ∗
              (uvb_F' (CID := CIDo) C' pt' Rfd' Rut' sz π fdv cw gn cs pidv M (uv_upd m wr)
                 (uv_next jt (add_vec_int pc (if is_rvc then 2 else 4))) -∗
-              WP (Loop : expr riscv_lang)))%I with "[Hk]" as "Hk".
+              mWP (Loop : expr riscv_lang)))%I with "[Hk]" as "Hk".
     { iIntros "HR". iDestruct ("Hk" with "HR") as "(Hbak & Hfdr & Hkb & Hkc)".
       (* the step RETIRED: the continuation's OTHER side is the one to
          read, and nothing was deposited *)
@@ -1870,7 +1870,7 @@ Section UkGenRetire.
          = Some (RETIRE_SUCCESS, uv_post s_pc jt wr)) ->
     uvb_F' C pt Rfd Rut sz π fdv cw gn cs pidv M m pc -∗
     ukcq' Qp π M sz fdv cw gn cs pidv (uv_upd m wr) (uv_next jt (add_vec_int pc (if is_rvc then 2 else 4))) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HQ0 HRut Hlf0 Hlo Hpm Ret_transparent X_unfold.
     intros Hui Hred Hlpad Hwrok Hg1 Hg2 Hexec.
     iIntros "Hb Hcont".
@@ -1954,7 +1954,7 @@ Section UkGenPlain.
       uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
       my_pay gn Qp -∗
       uexec_ret uecall_scause (uvis_of_run m pc M π sz fdv cw gn cs pidv false) -∗
-      WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang).
 
   (* inhabitant 1: upstream's own constant *)
   Lemma uk_ecall_ty_upstream `{CID : CpuId} `{XI : CurCtx}

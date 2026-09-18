@@ -157,8 +157,8 @@ Section UkShRedir.
        ∀ h' : CpuId,
          urun N h' (<[Regidx rd := regval_into_reg w]> m)
            (add_vec_int pc 2) avail -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hns He1 He2 Ha Hal Hrd. iIntros "#Hi Hw Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -199,8 +199,8 @@ Section UkShRedir.
          urun N h'
            (<[Regidx rd := regval_into_reg (sign_extend' 64 wv)]> m)
            (add_vec_int pc 2) avail -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hns He1 He2 Ha Hal Hrd. iIntros "#Hi Hw Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -272,8 +272,8 @@ Section UkShRedir.
                     (<[Regidx ra_idx := (mword_of_int ret : mword 64)]> m)))
               (ret_pc ((<[Regidx ra_idx := (mword_of_int ret : mword 64)]> m)
                          !!! Regidx ra_idx)) av -∗
-            WP (Loop : expr riscv_lang)) -∗
-         WP (Loop : expr riscv_lang)) :
+            mWP (Loop : expr riscv_lang)) -∗
+         mWP (Loop : expr riscv_lang)) :
     (mword_of_int sym : mword 64)
       = add_vec (mword_of_int pc : mword 64) (sign_extend' 64 imm) ->
     (mword_of_int ret : mword 64) = add_vec_int (mword_of_int pc : mword 64) 4 ->
@@ -288,8 +288,8 @@ Section UkShRedir.
        ⌜ m' !!! Regidx a0_idx = r ⌝ -∗
        S r -∗
        urun N h' m' (mword_of_int ret) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hsym Hret Hal Hrp. iIntros "#Hcode #Hi HR Hrun Hcont".
     iApply (UkShRun.wp_kshr_jal N h m pc sym ret imm avail Hsym Hret Hal
@@ -339,8 +339,8 @@ Section UkShRedir.
          (<[Regidx a0_idx := r]>
             (<[Regidx a7_idx := (mword_of_int 21 : mword 64)]> m))
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Harg Hs Hkl Hne Hnp. iIntros "#Hcode Hstd Hrun Hcont".
     assert (Hcl : ShSyms.close = 0xcae)
@@ -440,8 +440,8 @@ Section UkShRedir.
           UserCwd.ucwd (ukn_cwd N) cwdv -∗
           ush_open_ans N l K r -∗
           urun N h' m' (ret_pc (m !!! Regidx ra_idx)) av -∗
-          WP (Loop : expr riscv_lang)) -∗
-       WP (Loop : expr riscv_lang))%I.
+          mWP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang))%I.
 
   (* ===================================================================== *)
   (* SS5 THE ARM ITSELF -- eight instructions, 0xf6..0x10c.                 *)
@@ -507,8 +507,8 @@ Section UkShRedir.
           UserCwd.ucwd (ukn_cwd N) cwdv -∗
           ush_open_ans_g N l K Kf r -∗
           urun N h' m' (ret_pc (m !!! Regidx ra_idx)) av -∗
-          WP (Loop : expr riscv_lang)) -∗
-       WP (Loop : expr riscv_lang))%I.
+          mWP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang))%I.
 
   (* the landed call is the generic one at an empty hand and no [-1] payload *)
   Lemma ush_open_call_g_of (N : uk_names Σ) (cwdv : Z) (file : uarg)
@@ -553,7 +553,7 @@ Section UkShRedir.
        UserCwd.ucwd (ukn_cwd N) cwdv -∗
        K ty -∗
        urun N h' m' (mword_of_int ShSyms.runcmd) (UkShDiag.ush_Dg + av) -∗
-       WP (Loop : expr riscv_lang))
+       mWP (Loop : expr riscv_lang))
      (* THE FAILED OPEN, AT THE DIAGNOSTIC CUT: "open %s failed", exit(1).
         ONE of the two fires, so they are an ADDITIVE pair: whatever the
         caller holds (its lend) is available to both. *)
@@ -570,8 +570,8 @@ Section UkShRedir.
        UserCwd.ucwd (ukn_cwd N) cwdv -∗
        Kf -∗
        urun N h' m' (mword_of_int 0x10e) (UkShDiag.ush_Dg + av) -∗
-       WP (Loop : expr riscv_lang))) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang))) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hmode Ha0 Hst1 Hne Hnp.
     iIntros "#Hcode #Hjt #Htree Hstd Hcwd Hopen HH Hrun Hk".
@@ -854,8 +854,8 @@ Section UkShRedir.
        K ty -∗
        Pex -∗
        urun N h' m' (mword_of_int ShSyms.runcmd) (UkShDiag.ush_Dg + av) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hmode Ha0 Hst1 Hne Hnp.
     iIntros "#Hdp #Hcode #Hjt #Htree Hstd Hcwd Hopen #Hpxw Hpex Hrun Hcont".
@@ -910,8 +910,8 @@ Section UkShRedir.
        UserCwd.ucwd (ukn_cwd N) cwdv -∗
        K ty -∗
        urun N h' m' (mword_of_int ShSyms.runcmd) (UkShDiag.ush_Dg + av) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hmode Hpx Ha0 Hst1 Hne Hnp.
     iIntros "#Hdp #Hcode #Hjt #Htree Hstd Hcwd Hopen Hrun Hcont".
@@ -972,7 +972,7 @@ Section UkShRedir.
       ush_open_call N cwdv (ua_ptr file) mode (<[1%nat := FdClosed]> ld) K -∗
       urun N h m (mword_of_int ShSyms.runcmd)
         (6 * ush_ht (URedir c1 file mode 1) + (2 + (UkShDiag.ush_Dg + n))) -∗
-      WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang).
   Proof using Hpsok_free.
     intros Hs Hmode N Hcst h m t szv cwdv ld st1 n K Hpx Ha0 Hst1 Hne Hnp.
     iIntros "#Hdp #Hcode #Hexs #Hkw #Hjt #Htree Hsz Hstd Hcwd Hch Hopen Hrun".

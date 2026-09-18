@@ -50,8 +50,8 @@ Section RvcRet.
       pmpcfg_n ↦ᵣ{DfracOwn q} pmpcfg0 -∗
       pc_is (ret_pc (m !!! Regidx ra)) -∗
       gpr_file m -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hpmp Hstat Hra) "Hmm Hpmpc Hpc Hf Hinstr Hcont".
     (* keep HALF the config bundle: the jump's [update_elp_state] and

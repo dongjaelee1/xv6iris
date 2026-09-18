@@ -118,8 +118,8 @@ Definition wp_kvminithart_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{C
     kpt_on cpu_id -∗
     (∃ v : mword 64, stvec ↦ᵣ v) -∗
     Qk -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type KVMINITHART.
   Parameter wp_kvminithart_sconf :

@@ -172,8 +172,8 @@ Section ProofArgfd.
       sie_cap_gpr KT1 Mt nav b p -∗
       pc_is (mword_of_int (KernelSyms.argfd + 0x40) : mword 64) -∗
       ofd_out pfd wfd -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hs2 Ha4.
     assert (Ha4' : forall CID' : CpuId,
@@ -261,8 +261,8 @@ Section ProofArgfd.
         ⌜callee_saved m mf /\ mf !!! Regidx (mword_of_int 10 : mword 5) = rv⌝ -∗
         sie_cap_gpr KT1 mf av b p -∗
         pc_is (ret_pc ra0) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hav Hsp0 Hra0 Hs00 Hs10 Hs20 Hmtsp Hmta0 Hthr.
     iIntros "Hcg #Htext Hpc Hb1 Hb2 Hb3 Hb4 Hb5 Hb6 Hcont".

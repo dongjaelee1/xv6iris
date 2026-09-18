@@ -447,7 +447,7 @@ Section UkCatMain.
     cat_rodata γt -∗
     uargv γd av args -∗
     urun N h m (mword_of_int 0xde) (10 + (12 + (4 + n))) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using Hpay.
     intros Hi Hnz Hs2.
     iIntros "Hdg #Hcode #Hro #Hargv Hrun".
@@ -690,8 +690,8 @@ Section UkCatMain.
        Co -∗
        ubytes γd CatSyms.buf 512 f' -∗
        urun N h' m' (mword_of_int 0xc2) (8 + (10 + (12 + (4 + n)))) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using Hpay.
     intros Hav0 Havhi Hptr Hg Hinv.
     assert (Hilt : (i < length args)%nat)
@@ -1058,7 +1058,7 @@ Section UkCatMain.
       Ci -∗
       ubytes γd CatSyms.buf 512 f -∗
       urun N h m (mword_of_int 0xa6) (8 + (10 + (12 + (4 + n)))) -∗
-      WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang).
   Proof using Hpay.
     intros Hav0 Havhi Hptr.
     induction k as [| k IH ];
@@ -1172,7 +1172,7 @@ Section UkCatMain.
     ubytes γd CatSyms.buf 512 f -∗
     urun N h m (mword_of_int CatSyms.main)
       (6 + (8 + (10 + (12 + (4 + n))))) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using Hpay.
     intros Hptr Ha0 Ha1.
     iIntros "Hpay #Hcode #Hro #Hargv HCi Hbuf Hrun".
@@ -1740,7 +1740,7 @@ Section UkCatMain.
     ubytes γd CatSyms.buf 512 f -∗
     urun N h m (mword_of_int CatSyms.start)
       (2 + (6 + (8 + (10 + (12 + (4 + n)))))) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using Hpay.
     intros Hptr Ha0 Ha1.
     iIntros "Hpay #Hcode #Hro #Hargv HCi Hbuf Hrun".

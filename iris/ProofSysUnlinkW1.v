@@ -277,7 +277,7 @@ Section ProofSysUnlinkW1.
            dqb dqs dqbs
            (unlink_arms (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) P Pmiss
                         Phient Phitgt Phiex Phimiss (us_M U) v0)) -∗
-       WP (Loop : expr riscv_lang))%I.
+       mWP (Loop : expr riscv_lang))%I.
 
   Lemma su_w1_au `{GEN : GenId} `{CID0 : CpuId} `{XI : CurCtx}
       (gf : gname)
@@ -351,7 +351,7 @@ Section ProofSysUnlinkW1.
         dqb dqs dqbs
         (unlink_arms (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) P Pmiss
                      Phient Phitgt Phiex Phimiss (us_M U) v0)) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK HdevR Hnib0 Hgeom Hsize Hbm0 Hbmcov
            Hbmlog Hist0 Hcovb Hiregb Hj Hgl Heb Harg0.

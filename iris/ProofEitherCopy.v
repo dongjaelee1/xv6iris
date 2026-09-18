@@ -198,8 +198,8 @@ Section EitherCopyEpilogue.
         ⌜callee_saved m mf /\ mf !!! Regidx Ra0 = rv⌝ -∗
         sie_cap_gpr KT1 mf av b p -∗
         pc_is (ret_pc ra0) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hav H2c H2e H30 H32 H34 H36 H38
            Hsp0 Hra0 Hs00 Hs10 Hs20 Hs30 Hs40 Hmtsp Hmta0 Hthr.

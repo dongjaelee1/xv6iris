@@ -137,7 +137,7 @@ Section ProofIunlockMain.
         proc_priv_bare p pidv Upr -∗
         IcacheRef.inode_shr_genlo k s dev inum g lo -∗
         ic_dep_side d -∗
-        WP (Loop : expr riscv_lang))%I.
+        mWP (Loop : expr riscv_lang))%I.
 
   Lemma wp_iunlock_dep_sconf
       (gs : list gname)

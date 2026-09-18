@@ -197,8 +197,8 @@ Section UkInit.
          (<[Regidx a0_idx := ret]>
             (<[Regidx a7_idx := (mword_of_int 15 : mword 64)]> m))
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "#Hwr #Hcode Hrun Hstd Hcont".
     iDestruct "Hstd" as (l) "Hstd".
@@ -334,8 +334,8 @@ Section UkInit.
             (<[Regidx a0_idx := ret]>
                (<[Regidx a7_idx := (mword_of_int 15 : mword 64)]> m))
             (ret_pc (m !!! Regidx ra_idx)) avail -∗
-          WP (Loop : expr riscv_lang)) -∗
-       WP (Loop : expr riscv_lang))%I.
+          mWP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang))%I.
 
   (* THE FIRST open, AT THE PIN THAT MISSES -- and the repair arm's second
      open when the mknod failed.  TWO arms: the call returned [-1] and
@@ -368,8 +368,8 @@ Section UkInit.
             (<[Regidx a0_idx := ret]>
                (<[Regidx a7_idx := (mword_of_int 15 : mword 64)]> m))
             (ret_pc (m !!! Regidx ra_idx)) avail -∗
-          WP (Loop : expr riscv_lang)) -∗
-       WP (Loop : expr riscv_lang))%I.
+          mWP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang))%I.
 
   (* THE MKNOD, which is where the console node comes into existence and the
      one place /init's own WRITE pays a step of the application's claim
@@ -417,8 +417,8 @@ Section UkInit.
             (<[Regidx a0_idx := ret]>
                (<[Regidx a7_idx := (mword_of_int 17 : mword 64)]> m))
             (ret_pc (m !!! Regidx ra_idx)) avail -∗
-          WP (Loop : expr riscv_lang)) -∗
-       WP (Loop : expr riscv_lang))%I.
+          mWP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang))%I.
 
   (* ...AND THE PAIR /init CARRIES FROM ITS ENTRY, persistently: the miss
      leaf is used TWICE (0x16 and, on the repair arm, 0x7e) and the mknod
@@ -471,8 +471,8 @@ Section UkInit.
             (<[Regidx a0_idx := ret]>
                (<[Regidx a7_idx := (mword_of_int 15 : mword 64)]> m))
             (ret_pc (m !!! Regidx ra_idx)) avail -∗
-          WP (Loop : expr riscv_lang)) -∗
-       WP (Loop : expr riscv_lang))%I.
+          mWP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang))%I.
 
   Global Instance init_cons_leaves_persistent T K Cns stc :
     Persistent (init_cons_leaves T K Cns stc).
@@ -520,8 +520,8 @@ Section UkInit.
             (<[Regidx a0_idx := ret]>
                (<[Regidx a7_idx := (mword_of_int 17 : mword 64)]> m))
             (ret_pc (m !!! Regidx ra_idx)) avail -∗
-          WP (Loop : expr riscv_lang)) -∗
-       WP (Loop : expr riscv_lang))%I.
+          mWP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang))%I.
 
   (* THE THREE WAYS TO GET ONE, and they are the three states /init's
      repair arm can be in: the MISS route spends its credential in the
@@ -606,8 +606,8 @@ Section UkInit.
          (<[Regidx a0_idx := ret]>
             (<[Regidx a7_idx := (mword_of_int 17 : mword 64)]> m))
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "#Hwr #Hcode Hrun Hcont".
     destruct init_syms_pins as (Hstart & Hmain & Hprintf & Hvprintf & Hputc & Hopen & Hmknod & Hdup & Hfork & Hwait & Hexec & Hwrite & Hexit). rewrite Hmknod.
@@ -722,8 +722,8 @@ Section UkInit.
             (<[Regidx a0_idx := ret]>
                (<[Regidx a7_idx := (mword_of_int 15 : mword 64)]> m))
             (ret_pc (m !!! Regidx ra_idx)) avail -∗
-          WP (Loop : expr riscv_lang)) -∗
-       WP (Loop : expr riscv_lang))%I.
+          mWP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang))%I.
 
   Lemma uki_open1_of_dance (T Cns : iProp Σ) `{!Persistent T}
       (stc : fdstate) :
@@ -768,8 +768,8 @@ Section UkInit.
          (<[Regidx a0_idx := ret]>
             (<[Regidx a7_idx := (mword_of_int 10 : mword 64)]> m))
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using Hpsok_free.
     iIntros "#Hcode Hrun Hstd Hcont".
     iDestruct "Hstd" as (l) "Hstd".
@@ -875,8 +875,8 @@ Section UkInit.
          (<[Regidx a0_idx := ret]>
             (<[Regidx a7_idx := (mword_of_int 10 : mword 64)]> m))
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof.
     intros Harg Hne Hlt Hrow.
     iIntros "#Hcode Hrun Hstd Hcont".
@@ -979,8 +979,8 @@ Section UkInit.
          (<[Regidx a0_idx := ret]>
             (<[Regidx a7_idx := (mword_of_int 10 : mword 64)]> m))
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof.
     intros Harg Hlt Hrow.
     iIntros "#Hcode Hrun Hstd Hcont".
@@ -1150,8 +1150,8 @@ Section UkInit.
          (<[Regidx a0_idx := ret]>
             (<[Regidx a7_idx := (mword_of_int 10 : mword 64)]> m))
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof.
     intros Hne Hrow Hk Harg.
     iIntros "#Hcode Hrun Hhd Hcont".
@@ -1195,8 +1195,8 @@ Section UkInit.
          (<[Regidx a0_idx := ret]>
             (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m))
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "#Hwr #Hcode Hrun Hcont".
     destruct init_syms_pins as (Hstart & Hmain & Hprintf & Hvprintf & Hputc & Hopen & Hmknod & Hdup & Hfork & Hwait & Hexec & Hwrite & Hexit). rewrite Hwrite.
@@ -1308,8 +1308,8 @@ Section UkInit.
             (<[Regidx a0_idx := ret]>
                (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m))
             (ret_pc (m !!! Regidx ra_idx)) avail -∗
-          WP (Loop : expr riscv_lang)) -∗
-       WP (Loop : expr riscv_lang))%I.
+          mWP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang))%I.
 
   (* ...AND THE TRIVIAL ONE: the flagged deposit pays row 16 and the post
      is thrown away, which is what every caller of the cone did before
@@ -1412,8 +1412,8 @@ Section UkInit.
          (<[Regidx a0_idx := ret]>
             (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m))
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "#Hcode Hrun Hsb Hstd Hbuf Hcont".
     destruct init_syms_pins as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hwrite & _). rewrite Hwrite.
@@ -1508,7 +1508,7 @@ Section UkInit.
        until its exec succeeds and pays that. *)
     ukn_pay N (-1) -∗
     urun N h m (mword_of_int InitSyms.exit) avail -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using Hpay.
     iIntros "#Hcode Hpay Hrun".
     destruct init_syms_pins as (Hstart & Hmain & Hprintf & Hvprintf & Hputc & Hopen & Hmknod & Hdup & Hfork & Hwait & Hexec & Hwrite & Hexit). rewrite Hexit.
@@ -1904,8 +1904,8 @@ Section UkInit.
          (<[Regidx a0_idx := (mword_of_int (-1) : mword 64)]>
             (<[Regidx a7_idx := (mword_of_int 7 : mword 64)]> m))
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "#Hcode Hrun Hcwd Hsbx Hcont".
     destruct init_syms_pins as (Hstart & Hmain & Hprintf & Hvprintf & Hputc & Hopen & Hmknod & Hdup & Hfork & Hwait & Hexec & Hwrite & Hexit). rewrite Hexec.
@@ -1995,8 +1995,8 @@ Section UkInit.
             (<[Regidx a7_idx := (mword_of_int 3 : mword 64)]> m))
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
        UserChildren.uch (ukn_ch N) cs' -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using Hpsok_free.
     intros Hz.
     iIntros "#Hcode Hrun Hch Hcont".

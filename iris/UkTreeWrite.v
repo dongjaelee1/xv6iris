@@ -165,8 +165,8 @@ Section UkTreeWrite.
        ((∃ t' : ttree, tree_own r g root t' ∗ ⌜twrote i t t'⌝)
         ∨ tree_taint c) -∗
        urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof.
     intros Heq Hn Hfdv Hfdlt Hcnt Hal4 Hti.
     iIntros "#Hi Hrun Hufdh Hbuf Hown #Hinv Hcont".

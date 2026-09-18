@@ -143,8 +143,8 @@ Section UkWriteCons.
        ubytesq (ukn_d N) dq (uint (m !!! Regidx a1_idx)) nb f -∗
        Q nb -∗
        urun N h' (<[Regidx a0_idx := r]> m) (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Ha0 Hilt Hli Hcnt Hal4.
     iIntros "#Hi Hrun Hstd Hbuf Hch Hcont".
@@ -202,8 +202,8 @@ Section UkWriteCons.
        ustd (ukn_fd N) l -∗
        ubytesq (ukn_d N) dq (uint (m !!! Regidx a1_idx)) nb f -∗
        urun N h' (<[Regidx a0_idx := r]> m) (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Ha0 Hilt Hli Hcnt Hal4.
     iIntros "#Hi Hrun Hstd Hbuf #Hlic Hcont".

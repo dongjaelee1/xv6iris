@@ -1489,8 +1489,8 @@ Definition wp_create_sconf_body
             fired or not and the legs whole or the do-then-undo pair
             (ruling Q-h) *)
          cre_fail_arms Γfs fsc_fs tyz ma mi Nm Nd P Pmiss Farm Fdots Fun Fok Fex pl) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type CREATE.
   Parameter wp_create_sconf :

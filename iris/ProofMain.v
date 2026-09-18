@@ -261,8 +261,8 @@ Section ProofMain.
     ( ∀ m1 : regfile,
         sie_cap_gpr KT0 m1 (K - 2)%nat false p0 -∗
         pc_is (mword_of_int (KernelSyms.main + 0x42) : mword 64) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hcid HK.
     pose proof (mn_bounds K HK) as (Hc2 & Hn50 & Hnsched).
@@ -533,8 +533,8 @@ Section ProofMain.
            over its own gname existentially, so the pairing has to happen
            HERE, while the name is still concrete. *)
         SpecFileread.console_ready_app -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hcnu Hconsq.
     iIntros "Hcg #Htext #Hkdata #Hdev Hpc Hfree Hcpu Hlcons Hltx0 Hltx1 Hlpr".
@@ -1102,8 +1102,8 @@ Section ProofMain.
           (zero_extend' 64 (concat_vec root (zeros' 12 : mword 12))) -∗
         kmap_at tramp_vpn tramp_ppn KP_rx -∗
         ([∗ list] i ∈ seq 0 64, kmap_at (kstack_vpn i) (pas i) KP_rw) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hphystop Hs1 Hprun Hlen H0cid.
     subst phystop s1entry.
@@ -1417,8 +1417,8 @@ Section ProofMain.
         is_tickslock γtl -∗
         stvec ↦ᵣ (mword_of_int KernelSyms.kernelvec : mword 64) -∗
         ghost_var sie_gname (1/4) ('b"0" : mword 1) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hcid.
     (* [cid_word] is a [Definition] over [cpu_id]; naming the delta-expanded
@@ -1455,7 +1455,7 @@ Section ProofMain.
            handler contract's [tick_keeper] conjunct wants from the TICK hart
            (hart 0); a secondary discharges it by its left arm instead. ---- *)
     iDestruct "Hticks" as (t0) "Hticks".
-    (* a fupd in front of a [WP (Loop)] goal: the tree's idiom is to peel it
+    (* a fupd in front of a [mWP (Loop)] goal: the tree's idiom is to peel it
        with [fupd_wp] first (ProofIupdate.v records the same). *)
     iApply fupd_wp.
     (* A6.69: the honest creator deposit (A6.66) wants the running token;
@@ -1746,8 +1746,8 @@ Section ProofMain.
            the resource the carve now hands over.  The two gnames are this
            group's own choice and nothing above it constrains them. *)
         (∃ γft γf : gname, is_ftable γft γf) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using ufdG0.
     intros Hn Hlen Hlive Hdevq Hnibq Hcov0 Hnibeq Hpures
            Huartq Hdiskq Hgeomok.
@@ -2243,7 +2243,7 @@ Section ProofMain.
       (zero_extend' 64 (concat_vec root (zeros' 12 : mword 12))) -∗
     kmap_at tramp_vpn tramp_ppn KP_rx -∗
     ([∗ list] i ∈ seq 0 64, kmap_at (kstack_vpn i) (pas i) KP_rw) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hp0 Hcid.
     iIntros "Hcg #Htext Hpc Hfree Hcpu Htcsr #Hsinv Hprim #Hwand #Hcreds".

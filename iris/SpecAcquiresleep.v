@@ -133,8 +133,8 @@ Definition wp_acquiresleep_gen_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ,
       sleeplocked_q γsl q slk pidv -∗
       R -∗
       proc_priv_bare pj pidv Upr -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* A6.149: the llb-receipt tier -- the caller presents [llb Tl] (read off
    the transit box before the call) and the post returns the drained-point
@@ -204,8 +204,8 @@ Definition wp_acquiresleep_gen_llb_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG
       sleeplocked_q γsl q slk pidv -∗
       R -∗
       proc_priv_bare pj pidv Upr -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 
 (* ENDGAME R1-pre: THE CONTEXT-λ BASE TIER.  The sleeplock's client payload
@@ -278,8 +278,8 @@ Definition wp_acquiresleep_genl_llb_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslot
          context, through the inner lock's standard payload morph *)
       R CtxIdDefs.cur_ctx -∗
       proc_priv_bare pj pidv Upr -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 
 Definition wp_acquiresleep_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
@@ -337,8 +337,8 @@ Definition wp_acquiresleep_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fd
       sleeplocked γsl slk pidv -∗
       R -∗
       proc_priv_bare pj pidv Upr -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* ===================================================================== *)
 (*  THE NESTED BLOCKING CONTRACT IS GONE, AND THAT IS THE POINT.          *)
@@ -425,8 +425,8 @@ Definition wp_acquiresleep_nb_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslo
       slh_auth γt (Some q) -∗
       R -∗
       proc_priv_bare pj pidv Upr -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* R3 / F22: THE NON-BLOCKING CONTRACT AT THE llb TIER over a λ payload --
    the NB core with the inner acquire at the llb tier: the caller's [llb Tl]
@@ -470,8 +470,8 @@ Definition wp_acquiresleep_nb_genl_llb_body `{!riscvGS Σ, !xv6G Σ, !bioslotG �
       (∃ K : nat, ⌜(Tl <= K)%nat⌝ ∗ TsoCtx.ctx_floor CtxIdDefs.cur_ctx K) -∗
       R CtxIdDefs.cur_ctx -∗
       proc_priv_bare pj pidv Upr -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type ACQUIRESLEEP.
   Parameter wp_acquiresleep_gen_sconf :

@@ -171,8 +171,8 @@ Section WpUldPt.
       pc_is (add_vec_int va (if is_rvc then 2 else 4)) -∗
       gpr_file (<[Regidx rd := regval_into_reg v]> m) -∗
       TsoCtx.ctx_phys_word_pointsto XI tfpa dqm v -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros va pa imm iva tfpa Hrd HSIE HMPRV HSXL Hmm HMXR Hpmm HPBMTE Hmenvval0 Ha0
       Hcanon Hvpn Hident Hcanon2 Hvpn2 Hident2 Hva2 Hpa4va4 Hpa2al Hpa2al2 Hpa4al
@@ -1222,8 +1222,8 @@ Section WpUaluUsretPt.
       TsoCtx.own_context XI -∗
       pc_is (add_vec_int va (if is_rvc then 2 else 4)) -∗
       gpr_file (<[Regidx (mword_of_int 10) := regval_into_reg vnew]> m) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros va pa HSIE HMPRV HSXL Hmm HPBMTE Hmenvval0
       Hcanon Hvpn Hident Hcanon2 Hvpn2 Hident2 Hva2 Hpa4va4.
@@ -1306,8 +1306,8 @@ Section WpUaluUsretPt.
       TsoCtx.own_context XI -∗
       pc_is (ret_pc sepc0) -∗
       gpr_file m -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros va pa HSIE HMPRV HSXL Hmm HPBMTE Hmenvval0 Hsenvval0 HTSR Hsup.
     subst menvcfg0.

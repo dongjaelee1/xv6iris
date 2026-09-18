@@ -785,8 +785,8 @@ Section WpSconfTimer.
       wp_next false p (fun (CID : CpuId) =>
         sie_cap_gpr kt (<[Regidx rd := regval_into_reg tv]> m) n false p -∗
         pc_is (add_vec_int pc 4) -∗
-        WP (Loop : expr riscv_lang))) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang))) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hrdok) "#Htcap Hcg Hpc Hinstr Hcont".
     pose proof (rd_ok_sp rd Hrdok) as Hrdsp.
@@ -914,8 +914,8 @@ Section WpSconfTimer.
     wp_next false p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n false p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrs1) "#Htcap Hcg Hpc Hinstr Hcont".
     iDestruct "Htcap" as "[Hen #Hstci]".

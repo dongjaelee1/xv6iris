@@ -29,7 +29,7 @@
      +0x20  6105        c.addi16sp sp,32
      +0x22  8082        c.ret
 
-   IT DIVERGES.  Like SpecKexit.v, the postcondition is [WP Loop], full
+   IT DIVERGES.  Like SpecKexit.v, the postcondition is [mWP Loop], full
    stop: nothing after the [jal kexit] is reachable, and the contract says
    so structurally (no continuation) rather than by convention.  The dead
    tail gcc emitted at +0x1a..+0x22 is decoded by nobody's proof -- kexit's
@@ -202,7 +202,7 @@ Definition wp_sys_exit_sconf_body
   my_pay (pv_gen (us_V U)) Q -∗
   Q (exit_xs (pv_tf (us_V U))) -∗
   (* NO continuation: sys_exit does not return.  See the header. *)
-  WP (Loop : expr riscv_lang).
+  mWP (Loop : expr riscv_lang).
 
 Module Type SYSEXIT.
   Parameter wp_sys_exit_sconf :

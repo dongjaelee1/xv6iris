@@ -263,8 +263,8 @@ Section UkShDiagStr.
          urun N h'
            (<[Regidx rd := regval_into_reg (zero_extend' 64 b0)]> m)
            (add_vec_int pc 4) avail -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hrd Ha Hne. iIntros "#Hi Hb Hrun Hcont".
     destruct tx.
@@ -587,8 +587,8 @@ Section UkShDiagPutc.
        ⌜ ucallee_saved m m' ⌝ -∗
        Co -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (4 + n) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hfd Hb.
     iIntros "Hw1 #Hcode HCi Hrun Hcont".
@@ -1004,8 +1004,8 @@ Section UkShDiagPutc.
     (∀ (h' : CpuId) (m' : regfile),
        ⌜ ucallee_saved m m' ⌝ -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (4 + n) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "#Hdp #Hcode Hrun Hcont".
     iApply (wp_kshd_putc_chain (m !!! Regidx a0_idx)
@@ -1120,8 +1120,8 @@ Section UkShDiagVprintf.
            Regidx r <> Regidx s1_idx -> Regidx r <> Regidx ra_idx ->
            m' !!! Regidx r = m !!! Regidx r ⌝ -∗
        urun N h' m' (ret_pc vra) (12 + n) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hsp Hal8 Hlo. iIntros "#Hcode Hwra Hws0 Hws1 Hw4 Hw5 Hw6 Hw7 Hw8 Hw9 Hw10 Hw11 Hw12 Hrun Hcont".
     assert (Hbsp : bv_unsigned (add_vec_int sp0 (- (8 * Z.of_nat 12)))
@@ -1313,8 +1313,8 @@ Section UkShDiagVprintf.
     (∀ (h' : CpuId) (m' : regfile),
        ⌜ ucallee_saved m0 m' ⌝ -∗
        urun N h' m' (ret_pc (m0 !!! Regidx ra_idx)) (12 + n) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hsp Hsp0 Hal8 Hlo Hfree.
     iIntros "#Hcode Hwra Hws0 Hws1 Hw2 Hw3 Hw4 Hw5 Hw6 Hw7 Hw8 Hw11 Hw12 Hrun Hcont".
@@ -1929,8 +1929,8 @@ Section UkShDiagVprintf.
        ⌜ m' !!! Regidx s1_idx = mword_of_int (bv_unsigned b1) ⌝ -∗
        Co -∗
        urun N h' m' (mword_of_int 0xe3c) (4 + n) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Habnd Hpct Hinv Hs1.
     destruct Hinv as (Hsp & Hs0 & Hs2 & Hs3 & Hs4 & Hs5 & Hs6 & Hfr).
@@ -2263,8 +2263,8 @@ Section UkShDiagVprintf.
        ⌜ vp_inv m0 m' sp0 a fd ap (S i) ⌝ -∗
        ⌜ m' !!! Regidx s1_idx = mword_of_int (bv_unsigned b1) ⌝ -∗
        urun N h' m' (mword_of_int 0xe3c) (4 + n) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Habnd Hpct Hinv Hs1.
     iIntros "#Hdp #Hcode #Hb1 Hrun Hcont".
@@ -2337,8 +2337,8 @@ Section UkShDiagVprintf.
          ⌜ ucallee_saved m0 m' ⌝ -∗
          Ch len -∗
          urun N h' m' (ret_pc (m0 !!! Regidx ra_idx)) (12 + (4 + n)) -∗
-         WP (Loop : expr riscv_lang)) -∗
-      WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+      mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Habnd Hpct Hsp0 Hal8 Hlo.
     induction k as [| k IH ];
@@ -2456,8 +2456,8 @@ Section UkShDiagVprintf.
       (∀ (h' : CpuId) (m' : regfile),
          ⌜ ucallee_saved m0 m' ⌝ -∗
          urun N h' m' (ret_pc (m0 !!! Regidx ra_idx)) (12 + (4 + n)) -∗
-         WP (Loop : expr riscv_lang)) -∗
-      WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+      mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Habnd Hpct Hsp0 Hal8 Hlo i h m n Hlo_i Hik Hinv Hs1.
     iIntros "#Hdp #Hcode #Hstr Hwra Hws0 Hws1 Hw2 Hw3 Hw4 Hw5 Hw6 Hw7 Hw8 Hw11 Hw12 Hrun Hcont".
@@ -2517,8 +2517,8 @@ Section UkShDiagVprintf.
        (∃ w : mword 64, uword γd (uint (m !!! Regidx csp_rs1) - 88) w) -∗
        (∃ w : mword 64, uword γd (uint (m !!! Regidx csp_rs1) - 96) w) -∗
        urun N h' m' (mword_of_int 0xe40) (4 + n) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Habnd Hlen Ha1.
     iIntros "#Hcode #Hstr Hrun Hcont".
@@ -3263,8 +3263,8 @@ Section UkShDiagVprintf.
        ⌜ ucallee_saved m m' ⌝ -∗
        Ch len -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (12 + (4 + n)) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Habnd Hlen Hpct Ha1 Ha0r.
     iIntros "#Hw #Hcode #Hstr HCh Hrun Hcont".
@@ -3299,8 +3299,8 @@ Section UkShDiagVprintf.
     (∀ (h' : CpuId) (m' : regfile),
        ⌜ ucallee_saved m m' ⌝ -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (12 + (4 + n)) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Habnd Hlen Hpct Ha1.
     iIntros "#Hdp #Hcode #Hstr Hrun Hcont".
@@ -3441,8 +3441,8 @@ Section UkShDiagVprintfS.
            = mword_of_int (bv_unsigned (f (i0 + k)%nat)) ⌝ -∗
          Ch (i0 + k)%nat -∗
          urun N h' m' (mword_of_int 0xe40) (4 + n) -∗
-         WP (Loop : expr riscv_lang)) -∗
-      WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+      mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Habnd.
     induction k as [| k IH ];
@@ -3514,8 +3514,8 @@ Section UkShDiagVprintfS.
          ⌜ m' !!! Regidx s1_idx
            = mword_of_int (bv_unsigned (f (i0 + k)%nat)) ⌝ -∗
          urun N h' m' (mword_of_int 0xe40) (4 + n) -∗
-         WP (Loop : expr riscv_lang)) -∗
-      WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+      mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Habnd i0 h m n Hlt Hpct Hinv Hs1.
     iIntros "#Hdp #Hcode #Hstr Hrun Hcont".
@@ -3738,8 +3738,8 @@ Section UkShDiagVprintfS.
        ⌜ m' !!! Regidx a1_idx = zero_extend' 64 b1 ⌝ -∗
        Co -∗
        urun N h' m' (mword_of_int 0xfe8) (4 + n) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hp0 Hp1 Hinv Hs1 Hb0.
     iIntros "Hw1 #Hcode Hb1 HCi Hrun Hcont".
@@ -3887,8 +3887,8 @@ Section UkShDiagVprintfS.
        ⌜ m' !!! Regidx s1_idx = mword_of_int (p + 1) ⌝ -∗
        ⌜ m' !!! Regidx a1_idx = zero_extend' 64 b1 ⌝ -∗
        urun N h' m' (mword_of_int 0xfe8) (4 + n) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hp0 Hp1 Hinv Hs1.
     iIntros "#Hdp #Hcode Hb1 Hrun Hcont".
@@ -4040,8 +4040,8 @@ Section UkShDiagVprintfS.
          shd_str γt γd tx dqs sa slen sf -∗
          Cs slen -∗
          urun N h' m' (mword_of_int 0xfea) (4 + n) -∗
-         WP (Loop : expr riscv_lang)) -∗
-      WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+      mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hsa0 Hsahi.
     induction k as [| k IH ];
@@ -4155,8 +4155,8 @@ Section UkShDiagVprintfS.
          ⌜ vp_inv3 m0 m' sp0 a fd ap v3 i ⌝ -∗
          shd_str γt γd tx dqs sa slen sf -∗
          urun N h' m' (mword_of_int 0xfea) (4 + n) -∗
-         WP (Loop : expr riscv_lang)) -∗
-      WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+      mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hsa0 Hsahi j h m n Hjk Hinv Hs1.
     iIntros "#Hdp #Hcode Hstr Hrun Hcont".
@@ -4195,8 +4195,8 @@ Section UkShDiagVprintfS.
        ⌜ m' !!! Regidx s1_idx = mword_of_int (bv_unsigned b1) ⌝ -∗
        ⌜ m' !!! Regidx a4_idx = mword_of_int (Z.of_nat (S i)) ⌝ -∗
        urun N h' m' (mword_of_int 0xe3c) (4 + n) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Habnd Hinv.
     pose proof Hinv as Hd.
@@ -4368,8 +4368,8 @@ Section UkShDiagVprintfS.
        ⌜ m' !!! Regidx s1_idx = mword_of_int (bv_unsigned b1) ⌝ -∗
        ⌜ m' !!! Regidx a4_idx = mword_of_int (Z.of_nat (S i)) ⌝ -∗
        urun N h' m' (mword_of_int 0xe3c) (4 + n) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Habnd Hinv0 Hs1.
     pose proof (vp_inv_to3 m0 m sp0 a fd ap i Hinv0) as Hinv.
@@ -4521,8 +4521,8 @@ Section UkShDiagVprintfS.
        ⌜ m' !!! Regidx s1_idx = mword_of_int (bv_unsigned c1) ⌝ -∗
        Cs slen -∗
        urun N h' m' (mword_of_int 0xe3c) (4 + n) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Habnd Hap0 Haphi Hapal Hsanz Hinv.
     pose proof Hinv as Hd.
@@ -4882,8 +4882,8 @@ Section UkShDiagVprintfS.
        ⌜ vp_inv m0 m' sp0 a fd (mword_of_int (apz + 8)) (S i) ⌝ -∗
        ⌜ m' !!! Regidx s1_idx = mword_of_int (bv_unsigned c1) ⌝ -∗
        urun N h' m' (mword_of_int 0xe3c) (4 + n) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Habnd Hap0 Haphi Hapal Hsanz Hinv.
     iIntros "#Hdp #Hcode #Hc1 Hw Hstr Hrun Hcont".
@@ -4934,8 +4934,8 @@ Section UkShDiagVprintfS.
        ⌜ m' !!! Regidx s1_idx = mword_of_int (bv_unsigned c1) ⌝ -∗
        Cs slen -∗
        urun N h' m' (mword_of_int 0xe3c) (4 + n) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Habnd Hap0 Haphi Hapal Hsanz Hr1 Hr2 Hc1u Hc1x Hc2u Hc2x
            Hinv Ha1 Ha2 Ha5.
@@ -5414,8 +5414,8 @@ Section UkShDiagVprintfS.
        ⌜ vp_inv m0 m' sp0 a fd (mword_of_int (apz + 8)) (S i) ⌝ -∗
        ⌜ m' !!! Regidx s1_idx = mword_of_int (bv_unsigned c1) ⌝ -∗
        urun N h' m' (mword_of_int 0xe3c) (4 + n) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Habnd Hap0 Haphi Hapal Hsanz Hr1 Hr2 Hc1u Hc1x Hc2u Hc2x
            Hinv Ha1 Ha2 Ha5.
@@ -5479,8 +5479,8 @@ Section UkShDiagVprintfS.
        ⌜ m' !!! Regidx s1_idx = mword_of_int (bv_unsigned c1) ⌝ -∗
        Cs slen -∗
        urun N h' m' (mword_of_int 0xe3c) (4 + n) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Habnd Hap0 Haphi Hapal Hsanz
            Hc1z Hc1d Hc1u Hc1x Hc2d Hc2u Hc2x Hinv Hs1 Ha4.
@@ -6056,8 +6056,8 @@ Section UkShDiagVprintfS.
        ⌜ vp_inv m0 m' sp0 a fd (mword_of_int (apz + 8)) (S i) ⌝ -∗
        ⌜ m' !!! Regidx s1_idx = mword_of_int (bv_unsigned c1) ⌝ -∗
        urun N h' m' (mword_of_int 0xe3c) (4 + n) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Habnd Hap0 Haphi Hapal Hsanz
            Hc1z Hc1d Hc1u Hc1x Hc2d Hc2u Hc2x Hinv Hs1 Ha4.
@@ -6133,8 +6133,8 @@ Section UkShDiagVprintfS.
        ⌜ ucallee_saved m m' ⌝ -∗
        C3 len -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (12 + (4 + n)) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Habnd Hq2 Hfq Hfsq Hpct Hc1d Hc1u Hc1x Hc2set Hapal Hsanz Ha1 Ha2
            Ha0r Heq1 Heq2.
@@ -6292,8 +6292,8 @@ Section UkShDiagVprintfS.
        shd_str γt γd tx dqs sa slen sf -∗
        ⌜ ucallee_saved m m' ⌝ -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (12 + (4 + n)) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Habnd Hq2 Hfq Hfsq Hpct Hc1d Hc1u Hc1x Hc2set Hapal Hsanz Ha1 Ha2.
     iIntros "#Hdp #Hcode #Hstr Hw Hsstr Hrun Hcont".
@@ -6422,8 +6422,8 @@ Section UkShDiagFprintf.
            Regidx r <> Regidx s1_idx -> Regidx r <> Regidx ra_idx ->
            m' !!! Regidx r = m !!! Regidx r ⌝ -∗
        urun N h' m' (ret_pc vra) (12 + n) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hsp Hal8 Hlo. iIntros "#Hcode Hwra Hws0 Hws1 Hw4 Hw5 Hw6 Hw7 Hw8 Hw9 Hw10 Hw11 Hw12 Hrun Hcont".
     assert (Hbsp : bv_unsigned (add_vec_int sp0 (- (8 * Z.of_nat 12)))
@@ -6615,8 +6615,8 @@ Section UkShDiagFprintf.
     (∀ (h' : CpuId) (m' : regfile),
        ⌜ ucallee_saved m0 m' ⌝ -∗
        urun N h' m' (ret_pc (m0 !!! Regidx ra_idx)) (12 + n) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hsp Hsp0 Hal8 Hlo Hfree.
     iIntros "#Hcode Hwra Hws0 Hws1 Hw2 Hw3 Hw4 Hw5 Hw6 Hw7 Hw8 Hw11 Hw12 Hrun Hcont".
@@ -7069,15 +7069,15 @@ Section UkShDiagFprintf.
           R -∗
           uword γd (uint (m !!! Regidx csp_rs1) - 48) (m !!! Regidx a2_idx) -∗
           urun N h'' m'' (mword_of_int 0x10cc) (12 + (4 + n)) -∗
-          WP (Loop : expr riscv_lang)) -∗
-       WP (Loop : expr riscv_lang)) -∗
+          mWP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang)) -∗
     urun N h m (mword_of_int ShSyms.fprintf) (10 + (12 + (4 + n))) -∗
     (∀ (h' : CpuId) (m' : regfile),
        R -∗
        ⌜ ucallee_saved m m' ⌝ -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (10 + (12 + (4 + n))) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha1r.
     iIntros "#Hcode Hvp Hrun Hcont".
@@ -7571,8 +7571,8 @@ Section UkShDiagFprintf.
        ⌜ ucallee_saved m m' ⌝ -∗
        Ch len -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (10 + (12 + (4 + n))) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Habnd Hlen Hpct Ha1 Ha0r.
     iIntros "#Hw #Hcode #Hstr HCh Hrun Hcont".
@@ -7607,8 +7607,8 @@ Section UkShDiagFprintf.
     (∀ (h' : CpuId) (m' : regfile),
        ⌜ ucallee_saved m m' ⌝ -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (10 + (12 + (4 + n))) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Habnd Hlen Hpct Ha1.
     iIntros "#Hdp #Hcode #Hstr Hrun Hcont".
@@ -7663,8 +7663,8 @@ Section UkShDiagFprintf.
        ⌜ ucallee_saved m m' ⌝ -∗
        C3 len -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (10 + (12 + (4 + n))) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Habnd Hq2 Hfq Hfsq Hpct Hc1d Hc1u Hc1x Hc2set Hsanz Ha1 Ha2
            Ha0r Heq1 Heq2.
@@ -7722,8 +7722,8 @@ Section UkShDiagFprintf.
        shd_str γt γd tx dqs sa slen sf -∗
        ⌜ ucallee_saved m m' ⌝ -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (10 + (12 + (4 + n))) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Habnd Hq2 Hfq Hfsq Hpct Hc1d Hc1u Hc1x Hc2set Hsanz Ha1 Ha2.
     iIntros "#Hdp #Hcode #Hstr Hsstr Hrun Hcont".
@@ -8016,7 +8016,7 @@ Section UkShDiagRun.
        K4(a)): this walk ends in [exit] *)
     (C3 flen -∗ ukn_pay N (-1)) -∗
     urun N h m (mword_of_int p0) (10 + (12 + (4 + n))) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof.
     intros (Hok & Hnp & Hfa0 & Hfahi & Hq2 & Hpq & Hps & Hc1d & Hc1u & Hc1x
             & Hc2set & E0 & E1 & E2 & E3 & E4 & Efa & Ejf & Eje & Eret)
@@ -8158,7 +8158,7 @@ Section UkShDiagRun.
        K4(a)): this walk ends in [exit] *)
     ukn_pay N (-1) -∗
     urun N h m (mword_of_int p0) (10 + (12 + (4 + n))) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using Hpay.
     intros Hlits Hsanz Ha2.
     iIntros "#Hdp #Hcode #Hro Hsstr #Ci0 #Ci1 #Ci2 #Ci3 #Ci4 #Ci5 Hpay Hrun".
@@ -8214,7 +8214,7 @@ Section UkShDiagRun.
     (C3 3%nat -∗ ukn_pay N (-1)) -∗
     urun N h m (mword_of_int ShSyms.panic)
       (2 + (10 + (12 + (4 + n)))) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof.
     intros Hsanz Ha0 Heq1 Heq2.
     iIntros "#Hb1 #Hb2 #Hb3 HC #Hcode #Hro Hsstr Hpay Hrun".
@@ -8362,7 +8362,7 @@ Section UkShDiagRun.
     ukn_pay N (-1) -∗
     urun N h m (mword_of_int ShSyms.panic)
       (2 + (10 + (12 + (4 + n)))) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using Hpay.
     intros Hsanz Ha0.
     iIntros "#Hdp #Hcode #Hro Hsstr Hpay Hrun".
@@ -8452,7 +8452,7 @@ Section UkShDiagLeaf.
       ush_diag_res (ukn_d N) pc m -∗
       ukn_pay N (-1) -∗
       urun N h m (mword_of_int pc) (ush_Dg + n) -∗
-      WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang).
   Proof using .
     intros N Hti h m pc n Hat.
     iIntros "#Hdp #Hcode #Hro Hres Hpay Hrun".
@@ -8638,7 +8638,7 @@ Section UkShDiagLeaf.
       UserChildren.uch_any (ukn_ch N) -∗
       urun N h m (mword_of_int ShSyms.runcmd)
         (6 * ush_ht c + (2 + (ush_Dg + n))) -∗
-      WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang).
   Proof. exact (wp_kshr_runcmd ush_Dg Hpsok_free ush_diag_leaf_holds c). Qed.
 
   (* CWD-INDEXED (lane E4): [UkShRun.wp_kshr_fork1]'s value-preserving
@@ -8714,7 +8714,7 @@ Section UkShDiagLeaf.
     Wc I 3%nat -∗
     (UserFd.ustd (ukn_fd N) l -∗ Wb I -∗ ukn_pay N (-1)) -∗
     urun N h m (mword_of_int ShSyms.panic) (ush_Dg + n) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hfd2 Hmsg. iIntros "#Hlaw #Hcode #Hro Hstd Hc Hpay Hrun".
     iDestruct ("Hlaw" $! N I l with "[%] Hc") as (Pf) "(HPf & #Hstep & #Hdone)";
@@ -8857,7 +8857,7 @@ Section UkShDiagLeaf.
     Cr -∗
     (UserFd.ustd (ukn_fd N) l -∗ Cd -∗ ukn_pay N (-1)) -∗
     urun N h m (mword_of_int 0xda) (ush_Dg + n) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hfd2 Hal Hxlen Hxb.
     iIntros "#Hlaw #Hcode #Hro #Hw [%Hxr #Hxs] Hstd Hc Hpay Hrun".
@@ -8981,7 +8981,7 @@ Section UkShDiagLeaf.
         UserFd.ustd (ukn_fd N) l -∗
         Pex -∗
         urun N h' m' (mword_of_int ShSyms.panic) (ush_Dg + n) -∗
-        WP (Loop : expr riscv_lang)) ∗
+        mWP (Loop : expr riscv_lang)) ∗
      (∀ (h' : CpuId) (m' : regfile) (r : mword 64),
         ⌜ r <> (mword_of_int 0 : mword 64) ⌝ -∗
         ⌜ ucallee_saved m m' ⌝ -∗
@@ -9002,7 +9002,7 @@ Section UkShDiagLeaf.
         urun N h' m'
           (ret_pc (m !!! Regidx (mword_of_int 1 : mword 5)))
           (2 + (ush_Dg + n)) -∗
-        WP (Loop : expr riscv_lang)) ∗
+        mWP (Loop : expr riscv_lang)) ∗
      (∀ (N' : uk_names Σ) (h' : CpuId) (m' : regfile) (γ' : gname),
         (* THE CHILD'S PAYLOAD IS THE ONE THE CALLER CHOSE; at
            [Q := fun _ => True] the equation is [UkRun.ukn_triv]. *)
@@ -9021,8 +9021,8 @@ Section UkShDiagLeaf.
         urun N' h' m'
           (ret_pc (m !!! Regidx (mword_of_int 1 : mword 5)))
           (2 + (ush_Dg + n)) -∗
-        WP (Loop : expr riscv_lang))) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang))) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     exact (wp_kshr_fork1 ush_Dg N P szv l D h m n cw Sc Q Rc Pex).
   Qed.

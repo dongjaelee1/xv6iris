@@ -475,8 +475,8 @@ Section UCatPipe.
        UserFd.ustd γfd l -∗
        urun N h' (<[Regidx a0_idx := r]> m) (add_vec_int pc 4) avail -∗
        ubytes γd (uint (ua)) k g -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Ha0 Hlt Hl Ha2 Hcapk Hal Hua1. subst ua.
     iIntros "#Hi Hrun Hstd Hpay Hbuf Hcont".
@@ -600,8 +600,8 @@ Section UCatPipe.
          (<[Regidx a0_idx := rv]>
             (<[Regidx a7_idx := (mword_of_int 5 : mword 64)]> m))
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Hahi Ha1 Hcnt Hfdv Hfdlt Hl.
     iIntros "#Hcode Hstd Hpay Hbs Hrun Hcont".

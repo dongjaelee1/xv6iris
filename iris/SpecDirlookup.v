@@ -438,8 +438,8 @@ Definition wp_dirlookup_sconf_body
                 = (mword_of_int 0 : mword 64)⌝ ∗
             iref_slot ∗
             (if hasp then pf ↦₄[KT1] pofv else emp)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type DIRLOOKUP.
   Parameter wp_dirlookup_sconf :

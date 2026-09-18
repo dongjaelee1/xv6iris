@@ -86,8 +86,8 @@ Definition wp_push_off_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID 
     arm_pay kt n eb p -∗
     pc_is caller_ret -∗
     ⌜ callee_saved m mfin ⌝ -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* pop_off is the mirror: [cpu_own]'s own structure (the [S _] arm of
    [intr_count]) already PINS entry at [false] -- level [S n ≥ 1] means SIE
@@ -158,8 +158,8 @@ Definition wp_pop_off_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID :
     cpu_own n eb p bexit lks -∗
     pc_is ret_tgt -∗
     ⌜ callee_saved m mf ⌝ -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type PUSHOFF.
   Parameter wp_push_off_sconf :

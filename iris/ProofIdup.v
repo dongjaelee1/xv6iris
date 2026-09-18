@@ -191,8 +191,8 @@ Section ProofIdup.
       (∃ qn : Qp, inode_ref k qn icfg_dev inum) -∗
       runit_any (bv_unsigned inum) -∗
       runit_any (bv_unsigned inum) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pcE ret_tgt HK HnZ Hk Ha0 Hfresh.
 

@@ -256,8 +256,8 @@ Section batch2.
     hreg_frame rs Drw -∗
     hreg_frame_ro Df rs Dro -∗
     ▷ (hreg_frame rs1 Drw -∗ hreg_frame_ro Df rs1 Dro -∗
-       WP (HartE gen_id cpu_id m1 : expr riscv_lang)) -∗
-    WP (HartE gen_id cpu_id m : expr riscv_lang).
+       mWP (HartE gen_id cpu_id m1 : expr riscv_lang)) -∗
+    mWP (HartE gen_id cpu_id m : expr riscv_lang).
   Proof using .
     iIntros (Hdisj Hnode) "#Hcert Hrf Hro H".
     iApply (wp_hart_step with "Hcert").
@@ -368,8 +368,8 @@ Section batch2.
     hreg_frame x.2 Drw -∗
     hreg_frame_ro Df x.2 Dro -∗
     (hreg_frame y.2 Drw -∗ hreg_frame_ro Df y.2 Dro -∗
-       WP (HartE gen_id cpu_id y.1 : expr riscv_lang)) -∗
-    WP (HartE gen_id cpu_id x.1 : expr riscv_lang).
+       mWP (HartE gen_id cpu_id y.1 : expr riscv_lang)) -∗
+    mWP (HartE gen_id cpu_id x.1 : expr riscv_lang).
   Proof using .
     intros Hdisj Hrtc. induction Hrtc as [x|x y0 z Hxy _ IH].
     - iIntros "#Hcert Hrf Hro H". by iApply ("H" with "Hrf Hro").
@@ -389,8 +389,8 @@ Section batch2.
     hreg_frame_ro Df x.1 Dro -∗
     (hreg_frame (hsil2 n Drw Dro x).1 Drw -∗
      hreg_frame_ro Df (hsil2 n Drw Dro x).1 Dro -∗
-       WP (HartE gen_id cpu_id (hsil2 n Drw Dro x).2 : expr riscv_lang)) -∗
-    WP (HartE gen_id cpu_id x.2 : expr riscv_lang).
+       mWP (HartE gen_id cpu_id (hsil2 n Drw Dro x).2 : expr riscv_lang)) -∗
+    mWP (HartE gen_id cpu_id x.2 : expr riscv_lang).
   Proof using .
     intros Hdisj.
     exact (wp_hsil2_rtc Drw Dro Df (x.2, x.1)

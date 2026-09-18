@@ -26,6 +26,8 @@ stream's.)
 | after `Hchild_echo` (`f104e2646`) | **7** | `Hchild_echo` |
 | after `sh_child_law_file` (`108aa435c`) | **6** | `sh_child_law_file`'s `Admitted` |
 | after `Hopen_hand`'s statement fix (`d8f638d89`) | **6** | (the hypothesis is now TRUE; the walk is blocked on one instance) |
+| after `Hopen_hand` (`3a7041e43`) | **5** | `Hopen_hand` |
+
 
 
 
@@ -767,3 +769,70 @@ unusable by the tier that needs it.
   exactly one input: cat's child law at `ushs_lp_cat`.  Everything else it
   needs is now proved (kill law, ECHO child law, panic law, the file body
   law), and its conclusion moves to `ush_rest_l_at … ush_line_file`.
+
+
+---
+
+## PROGRAM STREAM, stretch 6 (2026-09-18) — item (2) closed, and the THIRD instance that has to be pinned
+
+Branch `app-file/sh-redir`, merged from `main` at `88eb32560`.  Whole tree
+green (`--proofs -k`, `EXIT=0`); four audits, all primitive-only and
+unchanged (13 / 14 / 14 / 13 — zero app-level axioms in any cone);
+`make gen-ucode` seven catalogs unchanged.  Metric **5** (three-file
+7 + 5 + 1 = **13**).
+
+### 1. `Hopen_hand` is proved, and three separate things had to be right
+
+* **the premises** (stretch 5): the name as the image the ecall reads, the
+  three path facts, `fd_lowest_closed l = Some 1`.
+* **the deposit instance, PER LEMMA and not as a section variable.**
+  `UkFileOpen.wp_uk_ecall_open_create_deed_v` and `_d` now take
+  `` `{PSx : uprogSG Σ} `` and pass it to `wp_uk_ecall_open_recv_gimg`.
+  Every landed caller resolves it ambiently to `uprogSG_gen` exactly as
+  before; sh's redirect child names `uprogSG_free`.
+  **A section `Context` was tried first and is NOT the way**: the
+  elaboration of that 1500-line file ran 35 minutes without finishing —
+  which is exactly what `UEchoFile`'s own header predicts ("a section
+  variable of a class type is a LOCAL INSTANCE... the instances must be
+  the ambient ones and the deposit instance is named PER LEMMA where it
+  matters").  The per-lemma binder compiles in the usual time.
+* **the cwd's CAMERA, one class further out than the deposit.**
+  `UserCwd.ucwd` takes a `ghost_varG Σ Z`; `UkShRedirAns` and `UkRunLeaf`
+  have their own section variable and the kernel's files read the
+  whole-system record's (`Xv6Cameras.offbox_offG` off `Xv6G.xv6_offbox`).
+  Both are in scope in the round, resolution picks the section variable,
+  and **the two print identically** — so the open leaf's `ucwd` and the
+  call's were not the same proposition.  `(ghost_varG0 := offbox_offG)` on
+  the call, on `wp_uk_cli` and on `wp_uk_cjr`, and the walk goes through.
+
+**THE RULE GROWS: pin the deposit instance, the exec instance AND the
+camera.**  All three were statements that type-checked, printed right, and
+could not be applied; two of the three failed silently (a hang), the third
+with `iSpecialize: cannot instantiate` between two terms that print the
+same.  `Local Set Printing Implicit` plus turning the failing premise into
+its own goal (`[Hrun]` + `iExact`) is how each was localised — worth doing
+FIRST next time, not last.
+
+### 2. The walk
+
+usys.S's three instructions (`c.li a7,15` at 0xcc6, `ecall` at 0xcc8,
+`c.jr ra` at 0xccc), `UShConsK.sh_open_console_leaf_holds`'s mould with
+`wp_uk_ecall_open_create_deed_d` at `OffHeld` in the middle, and the answer
+mapped onto `ush_open_ans2`'s two arms — `UserFd.ualloc_std` turns the
+kernel's `ualloc` into fd ONE, and `om_readable`/`om_writable` of 1537
+compute to `false`/`true`.
+
+### 3. Items (3), (4), (5) after this
+
+* **(3)** is now unblocked and is the next thing: `K ty → sh_file_entry ty`
+  where `K ty = UkFileOpen.file_open_fd_K OffHeld (fgn_cl g) r ty`.  Two
+  premises of K1's entry are NOT in that receipt and have to come from
+  somewhere named: the inode's identity (`i ∉ {INIT,SH,ECHO,CAT}`) and the
+  `Pay` conversion `□ (ustd ∗ Cr -∗ UEchoFile.ef_pay i γo ws)`, which is
+  the round's (at the file era the deed rides inside the lend).
+* **(4)** RULING CAT-DEED is recorded and not started: `catq_cat` gains
+  `∗ fown r (Some (i, bs))` on every arm, carried out by
+  `cat_pay_at`/`cat_child_of_entry`; then cat's child law at `ushs_lp_cat`
+  is entry → child law by cat's walk from 0x9c0.
+* **(5)** unchanged: `sh_round_holds_file` is assembly-only once (4) lands,
+  with its conclusion at `ush_rest_l_at … ush_line_file`.

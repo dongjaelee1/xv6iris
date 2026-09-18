@@ -217,29 +217,41 @@ Proof using. by rewrite pcat_alt_of. Qed.
 (*  stage's write link wants NOTHING BEYOND THIS -- no reading of [cs] or *)
 (*  of which line is being echoed.  Answered here.)                      *)
 (* ===================================================================== *)
-Lemma pcat_round_line (I0 : list (bv 8)) (L acc : list (bv 8)) (c : nat) :
+Lemma pcat_round_line (I0 : list (bv 8)) (L : list (bv 8)) (c d : nat)
+    (gb : nat -> bv 8) :
   pcat_out I0 = L ->
-  (c + length acc <= length L)%nat ->
-  acc = take (length acc) (drop c L) ->
-  forall k : nat, (k < length acc)%nat ->
-    pcont (pcat_line I0) (palt_of pcat_alt) !! (c + k)%nat
-    = Some (acc !!! k).
+  (forall j : nat, (j < d)%nat -> L !! (c + j)%nat = Some (gb j)) ->
+  forall j : nat, (j < d)%nat ->
+    pcont (pcat_line I0) (palt_of pcat_alt) !! (c + j)%nat = Some (gb j).
 Proof using.
-  intros HL Hle Hacc k Hk.
+  intros HL Hgb j Hj.
   rewrite pcat_alt_of pcat_cont_ran HL.
-  assert (Hlt : (c + k < length L)%nat) by lia.
-  rewrite (lookup_app_l L u_prompt (c + k)%nat Hlt).
-  assert (Hget : L !! (c + k)%nat = acc !! k).
-  { rewrite Hacc lookup_take; [| lia]. rewrite lookup_drop. reflexivity. }
-  rewrite Hget.
-  exact (list_lookup_lookup_total_lt acc k Hk).
+  pose proof (Hgb j Hj) as Hb.
+  rewrite (lookup_app_l L u_prompt (c + j)%nat
+             (lookup_lt_Some L (c + j)%nat (gb j) Hb)).
+  exact Hb.
 Qed.
 
-(* ...and the cursor's own arithmetic: a turn that read [d] bytes at [c]
-   lands at [c + d], still inside the line. *)
-Lemma pcat_round_cursor (L : list (bv 8)) (c d : nat) :
-  (c + d <= length L)%nat -> (c + d <= length L)%nat.
-Proof using. exact (fun H => H). Qed.
+(* ...AND THE BYTES A READ DELIVERED ARE THE LINE'S, at the cursor: this is
+   [PipeProto.pipe_rQ]'s PURE CONJUNCT and nothing else.  (STOP RULE 2 of
+   the brief: the pipe stage's write link wants NOTHING BEYOND THIS -- no
+   reading of [cs], no knowledge of which line is being echoed.  Answered.)
+   NOTE THE SHAPE: what comes out is a LOOKUP and not an index bound, and
+   deliberately so -- at [acc = []] the cursor may sit anywhere at all
+   ([take 0 (drop c L) = []] for every [c]), so "the cursor is inside the
+   line" is FALSE as stated and is not what the round needs. *)
+Lemma pcat_acc_line (L acc : list (bv 8)) (c : nat) :
+  acc = take (length acc) (drop c L) ->
+  forall j : nat, (j < length acc)%nat ->
+    L !! (c + j)%nat = Some (acc !!! j).
+Proof using.
+  intros Hacc j Hj.
+  transitivity (acc !! j); [ | exact (list_lookup_lookup_total_lt acc j Hj) ].
+  symmetry.
+  transitivity (take (length acc) (drop c L) !! j);
+    [ by rewrite -Hacc | ].
+  rewrite lookup_take; [ by rewrite lookup_drop | lia ].
+Qed.
 
 (* ===================================================================== *)
 (*  2.  THE CURSOR FAMILY AT THE PIPELINE STAGE                           *)
@@ -397,6 +409,7 @@ Section UCatPipe.
   Lemma pcat_ecall_read (h : CpuId) (m : regfile) (pc : mword 64)
       (k cap : nat) (f : nat -> bv 8) (avail : nat)
       (l : list fdstate) (fd : nat) (wb : bool) (γp : pipe_names)
+      (ua : mword 64)
       (Rp : list (bv 8) -> iProp Σ)
       (Rpe : list (bv 8) -> pipe_st -> iProp Σ) :
     usysno m = USYS_read ->
@@ -407,35 +420,36 @@ Section UCatPipe.
       = Z.of_nat cap ->
     (cap <= k)%nat ->
     is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
+    m !!! Regidx a1_idx = ua ->
     uinstr_is γt pc false (ECALL tt) -∗
     urun N h m pc avail -∗
     UserFd.ustd γfd l -∗
     pipe_rpay (pn_queue γp) Rp Rpe cap -∗
-    ubytes γd (uint (m !!! Regidx a1_idx)) k f -∗
+    ubytes γd (uint (ua)) k f -∗
     (∀ (h' : CpuId) (r : mword 64) (d : nat) (g : nat -> bv 8)
        (M' : gmap Z (bv 8)) (Pt : uptd) (Rk : iProp Σ),
        ⌜ (d <= cap)%nat ⌝ -∗
        ⌜ forall j : nat, (d <= j < k)%nat -> g j = f j ⌝ -∗
        ⌜ UkReadPipe.uread_pipe_ans cap r ⌝ -∗
        ⌜ forall i : nat, (i < k)%nat ->
-           uint (add_vec_int (m !!! Regidx a1_idx) (Z.of_nat i))
-           = (uint (m !!! Regidx a1_idx) + Z.of_nat i)%Z ⌝ -∗
+           uint (add_vec_int (ua) (Z.of_nat i))
+           = (uint (ua) + Z.of_nat i)%Z ⌝ -∗
        ⌜ forall j : nat, (j < k)%nat ->
-           M' !! uint (add_vec_int (m !!! Regidx a1_idx) (Z.of_nat j))
+           M' !! uint (add_vec_int (ua) (Z.of_nat j))
            = Some (g j) ⌝ -∗
        (* THE RELAYED NO-FAULT ROW, at the post's OWN table *)
        ⌜ forall j : nat, (j < k)%nat ->
            uva_wmapped Pt
-             (uint (add_vec_int (m !!! Regidx a1_idx) (Z.of_nat j))) ⌝ -∗
+             (uint (add_vec_int (ua) (Z.of_nat j))) ⌝ -∗
        pipe_rpost_img Pt (pn_queue γp) Rp Rpe Rk cap r M'
-         (m !!! Regidx a1_idx) -∗
+         (ua) -∗
        UserFd.ustd γfd l -∗
        urun N h' (<[Regidx a0_idx := r]> m) (add_vec_int pc 4) avail -∗
-       ubytes γd (uint (m !!! Regidx a1_idx)) k g -∗
+       ubytes γd (uint (ua)) k g -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof using .
-    intros Hn Ha0 Hlt Hl Ha2 Hcapk Hal.
+    intros Hn Ha0 Hlt Hl Ha2 Hcapk Hal Hua1. subst ua.
     iIntros "#Hi Hrun Hstd Hpay Hbuf Hcont".
     assert (Hcnt : sys_rw_count (m !!! Regidx a2_idx) = Z.of_nat cap).
     { rewrite /sys_rw_count trunc32_subrange. exact Ha2. }
@@ -479,5 +493,212 @@ Section UCatPipe.
       | exact Hlin | exact Himg | ].
     intros j Hj. exact (Hnf P j Hwfp Hpmp (Hlzp Hlz) Hj).
   Qed.
+
+  (* ------------------------------------------------------------------- *)
+  (*  3b.  THE ROUND'S READING OF THE READ POST                            *)
+  (*                                                                      *)
+  (*  [PipeProto.pipe_rpost_img_line] is the landed reading and it is TOO  *)
+  (*  LOSSY for a program (finding 3): its proof drops the post's IMAGE    *)
+  (*  ROW -- the one fact that turns the ghost list [acc] into the         *)
+  (*  caller's buffer function -- and drops [length acc = d] on the        *)
+  (*  non-observation arms, so a reader cannot say how many of its buffer  *)
+  (*  bytes the call filled.  This is the same reading with both kept, and *)
+  (*  with the four [pipe_rstop_noobs] arms SORTED BY WHAT cat's loop      *)
+  (*  BRANCHES ON: the answer is a count, or it is -1 and then one of      *)
+  (*  three things happened.                                              *)
+  (* ------------------------------------------------------------------- *)
+  Lemma pcat_rpost (Pt : uptd) (pn : pnames) (γp : pipe_names)
+      (L : list (bv 8)) (c : nat) (Rk : iProp Σ) (n : nat) (r : mword 64)
+      (M' : gmap Z (bv 8)) (addr : mword 64) :
+    pipe_rpost_img Pt (pn_queue γp) (pipe_rQ pn L c) (pipe_rQe pn L c)
+      Rk n r M' addr -∗
+    (∃ (acc : list (bv 8)) (d : nat),
+       ⌜(length acc <= n)%nat /\ length acc = d⌝
+       ∗ ⌜(forall i : nat, (i < d)%nat ->
+             uint (add_vec_int addr (Z.of_nat i))
+             = (uint addr + Z.of_nat i)%Z) ->
+          forall j : nat, (j < d)%nat ->
+            M' !! uint (add_vec_int addr (Z.of_nat j)) = Some (acc !!! j)⌝
+       ∗ pipe_rQ pn L c acc
+       ∗ ((⌜r = (mword_of_int (Z.of_nat d) : mword 64)⌝
+           ∗ (⌜d = 0%nat⌝ -∗ ⌜(0 < n)%nat⌝ -∗
+                eof_shot pn (take (c + d)%nat L)))
+          ∨ (⌜r = (mword_of_int (-1) : mword 64) /\ d = 0%nat⌝
+             ∗ (⌜~ uva_wmapped Pt (uint (add_vec_int addr (Z.of_nat d)))⌝
+                ∨ Rk ∨ ⌜n = 0%nat⌝))))
+    ∨ (app_taint
+       ∗ pipe_rpay (pn_queue γp) (pipe_rQ pn L c) (pipe_rQe pn L c) n).
+  Proof using .
+    iIntros "H". iDestruct (pipe_rpost_img_cursor with "H") as "[H | H]";
+      [ | iRight; iExact "H" ]. iLeft.
+    iDestruct "H" as (acc d) "(%H1 & %H2 & [Hobs | (%H3 & Hno & HQ)])".
+    - (* THE OBSERVATION: the ring ran dry at node [acc] *)
+      iDestruct "Hobs" as "[%Hpure Hobs]".
+      iDestruct "Hobs" as (s) "[%Hs Hqe]".
+      iDestruct "Hqe" as "[HQ Hwand]".
+      iExists acc, d. iSplitR; [ iPureIntro; split; [ exact H1 | apply Hpure ] | ].
+      iSplitR; [ by iPureIntro | ]. iFrame "HQ".
+      iLeft. iSplitR; [ iPureIntro; apply Hpure | ].
+      iIntros "%Hd0 _".
+      assert (Hacc : length acc = d) by apply Hpure.
+      rewrite -Hacc.
+      iApply "Hwand". iPureIntro. rewrite /pst_eof. split; [ apply Hs | ].
+      apply (proj2 Hs). exact Hd0.
+    - (* THE FOUR NON-OBSERVING STOPS.  [pipe_rstop_noobs] is NOT pure --
+         its kill arm carries [Rk] -- so it is destructed in the logic. *)
+      iExists acc, d. iSplitR; [ by iPureIntro | ].
+      iSplitR; [ by iPureIntro | ]. iFrame "HQ".
+      rewrite /pipe_rstop_noobs.
+      iDestruct "Hno" as "[%Hmet | [%Hflt | [[%Hkp Hk] | %Hsg]]]".
+      + (* the request was met *)
+        iLeft. iSplitR; [ iPureIntro; apply Hmet | ].
+        iIntros "%Hz %Hpos". exfalso.
+        destruct Hmet as [Hdn _]. lia.
+      + (* a copy-out fault; above the first byte the count is what got in *)
+        destruct Hflt as (Hdn & Hnm & [(Hd0 & Hr) | (Hd0 & Hr)]).
+        * iLeft. iSplitR; [ by iPureIntro | ].
+          iIntros "%Hz _". exfalso. lia.
+        * iRight. iSplitR; [ by iPureIntro | ]. iLeft. by iPureIntro.
+      + (* the reader was killed while it waited *)
+        iRight. iSplitR; [ iPureIntro; split; [ apply Hkp | apply Hkp ] | ].
+        iRight. by iLeft.
+      + (* the file layer's own sign guard, at the empty count *)
+        iRight. iSplitR; [ iPureIntro; split; [ apply Hsg | apply Hsg ] | ].
+        iRight. iRight. iPureIntro. apply Hsg.
+  Qed.
+
+  (* ------------------------------------------------------------------- *)
+  (*  3c.  THE THREE INSTRUCTIONS OF ulib's read(), AT THE PIPE            *)
+  (*  ([UkCatDeed.wp_kcat_read_deed]'s twin: [c.li a7,5 ; ecall ; c.jr     *)
+  (*  ra], the ecall at 3a's leaf.)                                        *)
+  (* ------------------------------------------------------------------- *)
+  Lemma pcat_read_walk (a : Z) (cnt : nat) (f : nat -> bv 8)
+      (h : CpuId) (m : regfile) (avail : nat)
+      (l : list fdstate) (fd : nat) (wb : bool) (γp : pipe_names)
+      (Rp : list (bv 8) -> iProp Σ)
+      (Rpe : list (bv 8) -> pipe_st -> iProp Σ) :
+    0 <= a -> a < Z64 ->
+    m !!! Regidx a1_idx = (mword_of_int a : mword 64) ->
+    bv_signed (subrange_vec_dec (m !!! Regidx a2_idx) 31 0 : mword 32)
+      = Z.of_nat cnt ->
+    bv_signed (trunc32 (m !!! Regidx a0_idx)) = Z.of_nat fd ->
+    (fd < NSTD)%nat ->
+    l !! fd = Some (FdOpen true wb (FdPipe γp)) ->
+    cat_code γt -∗
+    UserFd.ustd γfd l -∗
+    pipe_rpay (pn_queue γp) Rp Rpe cnt -∗
+    ubytes γd a cnt f -∗
+    urun N h m (mword_of_int CatSyms.read) avail -∗
+    (∀ (h' : CpuId) (rv : mword 64) (gb : nat -> bv 8)
+       (M' : gmap Z (bv 8)) (Pt : uptd) (Rk : iProp Σ),
+       ⌜ UkReadPipe.uread_pipe_ans cnt rv ⌝ -∗
+       ⌜ forall i : nat, (i < cnt)%nat ->
+           uint (add_vec_int (mword_of_int a : mword 64) (Z.of_nat i))
+           = (a + Z.of_nat i)%Z ⌝ -∗
+       ⌜ forall j : nat, (j < cnt)%nat ->
+           M' !! uint (add_vec_int (mword_of_int a : mword 64) (Z.of_nat j))
+           = Some (gb j) ⌝ -∗
+       ⌜ forall j : nat, (j < cnt)%nat ->
+           uva_wmapped Pt
+             (uint (add_vec_int (mword_of_int a : mword 64) (Z.of_nat j))) ⌝ -∗
+       pipe_rpost_img Pt (pn_queue γp) Rp Rpe Rk cnt rv M'
+         (mword_of_int a : mword 64) -∗
+       UserFd.ustd γfd l -∗
+       ubytes γd a cnt gb -∗
+       urun N h'
+         (<[Regidx a0_idx := rv]>
+            (<[Regidx a7_idx := (mword_of_int 5 : mword 64)]> m))
+         (ret_pc (m !!! Regidx ra_idx)) avail -∗
+       WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+  Proof using .
+    intros Ha0 Hahi Ha1 Hcnt Hfdv Hfdlt Hl.
+    iIntros "#Hcode Hstd Hpay Hbs Hrun Hcont".
+    destruct cat_syms_pins
+      as (_ & _ & _ & _ & _ & _ & Hread & _ & _ & _ & _).
+    rewrite Hread.
+    (* ---- 0x3c4  c.li a7,5 ---- *)
+    iApply (wp_uk_cli N h m (mword_of_int 0x3c4)
+              (mword_of_int 5 : mword 6) a7_idx avail
+              ltac:(unfold unot_sp; vm_compute; discriminate)
+              ltac:(vm_compute; discriminate) with "[] Hrun").
+    { iApply (uis_cat_3c4 with "Hcode"). }
+    assert (E0r : add_vec_int (mword_of_int 0x3c4 : mword 64) 2
+                  = mword_of_int 0x3c6)
+      by (apply bv_eq; vm_compute; reflexivity).
+    assert (Emr : <[Regidx a7_idx
+                    := regval_into_reg
+                         (sign_extend' 64 (mword_of_int 5 : mword 6)
+                          : mword 64)]> m
+                  = <[Regidx a7_idx := (mword_of_int 5 : mword 64)]> m)
+      by (f_equal; apply bv_eq; vm_compute; reflexivity).
+    rewrite E0r Emr.
+    iIntros (h1) "Hrun".
+    set (m1 := <[Regidx a7_idx := (mword_of_int 5 : mword 64)]> m).
+    assert (Ha1r : m1 !!! Regidx a1_idx = (mword_of_int a : mword 64)).
+    { rewrite <- Ha1.
+      exact (upd_ne m (Regidx a7_idx) (Regidx a1_idx) _
+               ltac:(vm_compute; discriminate)). }
+    assert (Hcntr : bv_signed (subrange_vec_dec (m1 !!! Regidx a2_idx) 31 0
+                               : mword 32) = Z.of_nat cnt).
+    { rewrite (upd_ne m (Regidx a7_idx) (Regidx a2_idx) _
+                 ltac:(vm_compute; discriminate)).
+      exact Hcnt. }
+    assert (Ha0r : bv_signed (trunc32 (m1 !!! Regidx a0_idx)) = Z.of_nat fd).
+    { rewrite (upd_ne m (Regidx a7_idx) (Regidx a0_idx) _
+                 ltac:(vm_compute; discriminate)).
+      exact Hfdv. }
+    assert (Hua : uint (m1 !!! Regidx a1_idx) = a)
+      by (rewrite Ha1r; apply uint_moi; unfold Z64 in *; lia).
+    assert (Hua' : uint (mword_of_int a : mword 64) = a)
+      by (apply uint_moi; unfold Z64 in *; lia).
+    (* ---- 0x3c6  ecall -- THE PIPE'S OWN LEAF ---- *)
+    iEval (rewrite <- Hua) in "Hbs".
+    iDestruct (uis_cat_3c6 with "Hcode") as "#Hi3c6".
+    assert (Hnum : usysno m1 = USYS_read).
+    { unfold m1, usysno.
+      rewrite (upd_eq m (Regidx a7_idx) (mword_of_int 5 : mword 64)).
+      vm_compute; reflexivity. }
+    assert (Hal4 : is_aligned_vaddr
+                     (Virtaddr (add_vec_int (mword_of_int 0x3c6 : mword 64) 4))
+                     2 = true)
+      by (vm_compute; reflexivity).
+    iPoseProof (pcat_ecall_read h1 m1 (mword_of_int 0x3c6) cnt cnt f avail
+                  l fd wb γp (m1 !!! Regidx a1_idx) Rp Rpe
+                  Hnum Ha0r Hfdlt Hl Hcntr ltac:(lia) Hal4 eq_refl)
+      as "Hleaf".
+    iApply ("Hleaf" with "Hi3c6 Hrun Hstd Hpay Hbs").
+    assert (E1r : add_vec_int (mword_of_int 0x3c6 : mword 64) 4
+                  = mword_of_int 0x3ca)
+      by (apply bv_eq; vm_compute; reflexivity).
+    rewrite E1r.
+    iIntros (h2 rv d gb M' Pt Rk) "%Hd %Hgf %Hans %Hlin %Himg %Hnf
+                                   Hrp Hstd Hrun Hbs".
+    rewrite Ha1r in Hlin. rewrite Hua' in Hlin.
+    rewrite Ha1r in Himg. rewrite Ha1r in Hnf.
+    iEval (rewrite Ha1r) in "Hrp".
+    iEval (rewrite Hua) in "Hbs".
+    set (m2 := <[Regidx a0_idx := rv]> m1).
+    (* ---- 0x3ca  c.jr ra ---- *)
+    assert (Hrar : m2 !!! Regidx ra_idx = m !!! Regidx ra_idx).
+    { unfold m2, m1.
+      exact (eq_trans
+               (upd_ne m1 (Regidx a0_idx) (Regidx ra_idx) rv
+                  ltac:(vm_compute; discriminate))
+               (upd_ne m (Regidx a7_idx) (Regidx ra_idx)
+                  (mword_of_int 5 : mword 64)
+                  ltac:(vm_compute; discriminate))). }
+    iApply (wp_uk_cjr N h2 m2 (mword_of_int 0x3ca) ra_idx
+              (ret_pc (m !!! Regidx ra_idx)) avail
+              ltac:(vm_compute; discriminate)
+              ltac:(rewrite Hrar; reflexivity)
+              with "[] Hrun").
+    { iApply (uis_cat_3ca with "Hcode"). }
+    iIntros (h3) "Hrun".
+    iApply ("Hcont" $! h3 rv gb M' Pt Rk
+              with "[%] [%] [%] [%] Hrp Hstd Hbs Hrun");
+      [ exact Hans | exact Hlin | exact Himg | exact Hnf ].
+  Qed.
+
 
 End UCatPipe.

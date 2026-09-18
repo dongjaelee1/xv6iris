@@ -90,6 +90,8 @@ Require Import UserHeap.
 Require Import UkSh.
 Require Import UkShDiag.
 Require Import UkShLoop.
+Require Import UShLexRedir.  (* [ush_line_lexable_redir_holds] -- the
+                                redirect line's lexability, PROVED *)
 Require Import UkShMalloc.
 Require Import UkShParse.
 Require Import UCodeShP.
@@ -155,9 +157,12 @@ Section UShRound.
   (* =================================================================== *)
   (* sh's own half of the console position pair ([UkSh]'s [γp]) *)
   Context (γp : gname).
-  Context (Wcl : list (bv 8) -> nat -> iProp Σ).
-  Context (Wbl : list (bv 8) -> iProp Σ).
-  Context `{HWclT : forall (I : list (bv 8)) (p : nat), Timeless (Wcl I p)}.
+  (* ...AND THEY ARE THE FILE INSTANCE NOW (the program stream), not
+     parameters: [FileLinkInst.file_Wcl] / [file_Wbl] are lane LINK-GEN-2's
+     record at this era, so the five conversions below are its five lemmas
+     and not hypotheses. *)
+  Local Notation Wcl := (FileLinkInst.file_Wcl g).
+  Local Notation Wbl := (FileLinkInst.file_Wbl g).
 
   (* THE DEED, AT SH'S ROUND -- design SS4.2, "the deed meets the stage in
      sh's proof, PURELY".  The pure tie is [UCatOut.cat_tie]'s: the deed's
@@ -181,7 +186,7 @@ Section UShRound.
     (Wbl I ∗ sh_hold I)%I.
 
   Global Instance Wcf_timeless I p : Timeless (Wcf I p).
-  Proof using HWclT. rewrite /Wcf /sh_hold /T /file_taint /echo_taint. apply _. Qed.
+  Proof using . rewrite /Wcf /sh_hold /T /file_taint /echo_taint. apply _. Qed.
 
   (* =================================================================== *)
   (*  S2  LANE LINK-GEN'S OBLIGATIONS, at the ECHO shapes                 *)
@@ -191,10 +196,12 @@ Section UShRound.
   (*  [UShRest.sh_rest_holds] and [UShKernel.sh_image_entry_at] spend.    *)
   (* =================================================================== *)
 
-  (* [EchoLinksLine.ewc_lcred_blk_line] *)
-  Hypothesis Hwbl : forall I : list (bv 8), ⊢ Wcl I 3%nat -∗ Wcl I 0%nat.
+  (* [EchoLinksLine.ewc_lcred_blk_line], at the record *)
+  Definition Hwbl : forall I : list (bv 8), ⊢ Wcl I 3%nat -∗ Wcl I 0%nat :=
+    FileLinkInst.file_Hwbl g.
   (* [UInitBoot]'s [Hsh_wbwc]: the banner-owed credential is a boundary one *)
-  Hypothesis Hwbwc : forall I : list (bv 8), ⊢ Wbl I -∗ Wcl I 0%nat.
+  Definition Hwbwc : forall I : list (bv 8), ⊢ Wbl I -∗ Wcl I 0%nat :=
+    FileLinkInst.file_Hwbwc g.
   (* [LinkRec.lk_lcred_taint]: the taint inhabits every credential -- AT A
      PIN (lane LINK-GEN's section 6, sharpened by LINK-GEN-2).  [Wcl I p]
      carries the era's pin under an existential and the pin is a linear
@@ -202,22 +209,45 @@ Section UShRound.
      ECHO-SIDE pin is the one the record's [lk_pin FI] IS
      ([FileLinkInst]: [lk_pin := era_pin (fgn_echo g)]), so ONE pin is
      enough and every spender ([sh_kill_law_file]) holds it. *)
-  Hypothesis Hcltaint : forall (I : list (bv 8)) (p : nat) (v : era_pins),
-    ⊢ era_pin (fgn_echo g) (S gen_id) v -∗ T -∗ Wcl I p.
+  Definition Hcltaint : forall (I : list (bv 8)) (p : nat) (v : era_pins),
+      ⊢ era_pin (fgn_echo g) (S gen_id) v -∗ T -∗ Wcl I p :=
+    FileLinkInst.file_Hcltaint g.
   (* [UkSh]'s [Hwc]: the read that completed a line moves the credential
-     from "2" at the old input to "3" at the new one *)
-  Hypothesis Hwc : forall I l : list (bv 8), wl_nl ∉ l ->
+     from "2" at the old input to "3" at the new one.  The record's own
+     lemma is stated at the PIN and the input's lower bound, and the loop's
+     [ush_mid_at] carries both -- persistently -- so the bridge is one
+     destructuring and no resource moves. *)
+  Lemma Hwc : forall I l : list (bv 8), wl_nl ∉ l ->
     ⊢ UShLine.ush_mid_at (lk_rres FI) (fgn_echo g) γp
         (I ++ l ++ [wl_nl]) -∗ Wcl I 2%nat -∗
       UShLine.ush_mid_at (lk_rres FI) (fgn_echo g) γp
         (I ++ l ++ [wl_nl])
       ∗ Wcl (I ++ l ++ [wl_nl]) 3%nat.
+  Proof using .
+    intros I l Hl. iIntros "Hmid Hc".
+    rewrite /UShLine.ush_mid_at.
+    iDestruct "Hmid" as "(Hp & Hpa & Hrd & Hv)".
+    iDestruct "Hv" as (v) "(#Hpin & Hdl & #Hinp & Hres)".
+    iSplitR "Hc".
+    - iFrame "Hp Hpa Hrd". iExists v. iFrame "Hpin Hdl Hinp Hres".
+    - iApply (FileLinkInst.file_Hwc g I l v Hl with "Hpin Hinp Hc").
+  Qed.
+
   (* [UShLine.ush_wb_read_holds]: a read at a banner-owed credential taints *)
-  Hypothesis Hwbr : forall I l : list (bv 8), wl_nl ∉ l ->
+  Lemma Hwbr : forall I l : list (bv 8), wl_nl ∉ l ->
     ⊢ UShLine.ush_mid_at (lk_rres FI) (fgn_echo g) γp
         (I ++ l ++ [wl_nl]) -∗ Wbl I -∗
       UShLine.ush_mid_at (lk_rres FI) (fgn_echo g) γp
         (I ++ l ++ [wl_nl]) ∗ T.
+  Proof using .
+    intros I l Hl. iIntros "Hmid Hb".
+    rewrite /UShLine.ush_mid_at.
+    iDestruct "Hmid" as "(Hp & Hpa & Hrd & Hv)".
+    iDestruct "Hv" as (v) "(#Hpin & Hdl & #Hinp & #Hres)".
+    iSplitR "Hb".
+    - iFrame "Hp Hpa Hrd". iExists v. iFrame "Hpin Hdl Hinp Hres".
+    - iApply (FileLinkInst.file_Hwbr g I l v Hl with "Hpin Hres Hb").
+  Qed.
   (* the era's kill credential IS the file taint ([AppFileRec]'s interface
      equation, projected) *)
   Hypothesis Hktaint : ⊢ app_taint -∗ T.
@@ -332,11 +362,13 @@ Section UShRound.
       fown r s -∗
       UkShRedirAns.ush_open_call2 N cwdv file 1537 l redir_K (redir_Kf s).
 
-  (* ---- HYPOTHESIS (lane SH-MALLOC-3): the redirect line's lexability,
-          threaded.  [UkShLoop.ush_line_lexable_redir] is DEFINED and
-          nothing proves it and nothing threads it; [UkShFork.
-          ushf_rest_of_body] takes [ush_line_lexable] only. ---- *)
-  Hypothesis Hlexr : UkShLoop.ush_line_lexable_redir.
+  (* ---- NOT A HYPOTHESIS ANY MORE (the program stream): the redirect
+          line's lexability is a THEOREM,
+          [UShLexRedir.ush_line_lexable_redir_holds], and the threading is
+          [UkShRedirBody]'s three-way case.  Kept as a [Definition] so the
+          round's [Proof using] lines read as they did. ---- *)
+  Definition Hlexr : UkShLoop.ush_line_lexable_redir :=
+    UShLexRedir.ush_line_lexable_redir_holds.
 
   (* ---- HYPOTHESIS: the echo-at-console child, at the FILE links.
           [UShEchoPay.sh_exec_sup_echo_wq_holds]'s twin -- with LINK-GEN
@@ -486,13 +518,13 @@ Section UShRound.
      [FileDisc.uline_of (wl_body (last_ws I))] -- and sh's tag law ties it
      to the line the discipline admitted. *)
   Lemma sh_child_law_file : ⊢ UkShFork.ushf_child_law Wcf.
-  Proof using Hchild_cat Hchild_echo Hchild_redir Hexecfail Hlexr Hopen_hand.
+  Proof using Hchild_cat Hchild_echo Hchild_redir Hexecfail Hopen_hand.
   Admitted.
 
   (* ...and a KILLED child pays the payload with the taint (the taint
      inhabits the credential AND the deed's arm) *)
   Lemma sh_kill_law_file : ⊢ UkShFork.ushf_kill_law Wcf.
-  Proof using Hcltaint Hktaint.
+  Proof using Hktaint.
   Admitted.
 
   (* =================================================================== *)
@@ -510,8 +542,8 @@ Section UShRound.
       UkSh.ush_rest_l (PS := uprogSG_free) N γp T Wcf Wbf
         (UShLine.ush_mid_at (lk_rres FI) (fgn_echo g) γp)
         (UInitSh.sh_Rsh (ukn_t N) (ukn_d N) (ukn_s N)).
-  Proof using Hchild_cat Hchild_echo Hchild_redir Hcltaint Hcons Hexecfail
-              Hktaint Hlexr Hopen_hand Hpanic Htag Hwbl Hwbr Hwbwc Hwc.
+  Proof using Hchild_cat Hchild_echo Hchild_redir Hcons Hexecfail
+              Hktaint Hopen_hand Hpanic Htag.
   Admitted.
 
 End UShRound.

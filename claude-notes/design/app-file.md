@@ -552,7 +552,21 @@ unowned critical item (WRITE-RELAY-3's `TB` guard).  RULES, replacing
 
 - THE METRIC is `grep -c "Hypothesis\|Admitted" iris/UEchoFile.v
   iris/UShRound.v iris/UInitFile.v` (15 + 12 today).  A lane that does not
-  lower it did not finish.
+  lower it did not finish.  Readings: 31 at review 2 (9/19/3); 23 at
+  checkpoint 34 (9/11/3, PROGRAM-STREAM's first stretch, 4689ae3e1); 21 at
+  INIT-FILE's first lane (9/11/1, fabe6c805); checkpoint 35 = both merged
+  plus the file stage instance (e3b70b6d3), audits 27/14/13 unchanged.
+- RULING H' (2026-09-18, INIT-FILE findings 3.1/3.2): the round's hold is
+  tied to the era's boot state BY A SHARED INDEX, not by `f0_lb` (which
+  only exists after the era's first console byte, so `Wbf []` was
+  uninhabitable at /init's first instruction).  The boot state is an ERA
+  CONSTANT: `file_link_inst_at (s0 : fst) : LinkRec` at the `fwc_*_at s0`
+  families (`file_link_inst` its `∃ s0` packing), the round's section takes
+  `s0` beside `gen_id`, `Wcf I p := lk_lcred FI (S gen_id) I p ∗
+  sh_hold_at s0 I` with no `f0_lb` in the hold; /init instantiates at
+  `s0 := dst_content s_deed`.  Refused on the way: an era-head arm on
+  `sh_hold` (names nothing), `∃ s0` outside the credential (breaks the
+  dischargers' `lcred ∗ Hold` form).
 - TWO SERIAL STREAMS, at most two lanes on `iris/` at once: the KERNEL
   stream (OFF-LINK-6 + L5 + the `TB` guard, exit criterion: `Hopen_hand`,
   cat's lend and `UEchoFile.ef_chain` compile as `Definition`s; then

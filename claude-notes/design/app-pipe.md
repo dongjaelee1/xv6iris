@@ -412,6 +412,24 @@ plain wand); echo's `Pay` carries the console credential `Wq` (the only
 door) beside `side_L`; `pipe_wpost`'s taint arm can swallow a caller's
 exclusive payment (a disjunction) — PipeQueue's header overstates.
 
+**AS LANDED (PIPE-PROTO-2, 2026-09-18).**  (P4) is an owned two-arm
+one-shot (`ro_pending ∨ (ro_shot ∗ ⌜ps_ro s = false⌝)`, camera
+`csumR (exclR unitO) (agreeR unitO)`), the law `pipe_body_P4` against the
+authority; the writer's `pipe_wQe` shoots inside the invariant when the
+observation fires at `ps_ro s = false`.  The derailed builder is at ONE
+resource: `pipe_wpay_of_inv_after_short : pipe_inv -∗ ro_shot -∗ R -∗
+pipe_wpay … (fun _ => R) (fun _ _ => R) n` — a node is additive (`Q j ∧
+olink ∧ wlinks`), so its value and observation still have to be paid,
+and one `R` serves all; no cursor (carrying `wcur` would make it
+UNPROVABLE, not unsound — the derailed writer has lost that knowledge), no
+M-premise, no bound.  `pipe_payL`'s third arm `∃ c, wcur pn c ∗ ro_shot`;
+`pipe_round_reading` answers `w = L` / `w = []` / `w = take c L` (the
+contents from the CURSOR; the shot only separates `PExecR` from `PExecL`).
+`pipe_rpost_line` = CAT-PIPE's reader post, general.  STILL OWED (both
+sides, one ruling): the KILL cause — the write post's kill arm carries
+only `kill_shot`, the read's `-1`-by-kill has no row at a pipe; lane
+KILL-TAINT makes both carry `app_taint` beside the shot.
+
 ### 3.2 What the protocol does NOT do
 
 It does not track reference counts, does not know which close is last,

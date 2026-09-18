@@ -204,10 +204,13 @@ arm is the theorem's one named premise (`pipe_both_law`).
   `Hprog`), `pipe_prog_law` discharged → `pipe_adequacy_pipeΣ` closed
   modulo `pipe_both_law` only.
 
-- [ ] **READ-KILL-TAINT** (kernel/U tier, after PIPE-2W; CAT-PIPE's wall):
-  `UexecRet.uexec_live_ok`'s read clause generalised from `FdDevice 1` to a
-  pipe row (usertrap's second `killed()` check hands the kill credential
-  to the `-1`), so `Hktaint` is discharged and leaves `Hprog`.
+- [ ] **KILL-TAINT** (kernel/U tier, after PIPE-2W; CAT-PIPE's and PIPE-PROTO-2's
+  shared debt).  A pipe READ's `-1` by the reader's own kill shot
+  (`UexecRet.uexec_live_ok`'s read clause is stated for `FdDevice 1` alone)
+  and a pipe WRITE's kill arm (`pipe_wpost` hands only `Rk = kill_shot gn`)
+  both need the taint the kernel already travels with the shot at the trap
+  tail; make the two posts carry `app_taint` beside the shot, so `Hktaint`
+  leaves `Hprog` and the writer's kill-cause short write pays from it.
 ## Findings (append as lanes report)## Findings (append as lanes report)
 
 ### PQ-FLAG-2 (2026-09-18) — the write link's second premise, paid by the CODE

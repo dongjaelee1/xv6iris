@@ -63,6 +63,8 @@ Require Import UkShDiag.
 Require Import UkShMalloc.
 Require Import UkShRedirSeam.   (* [ushs_toks_below] -- the truncation *)
 Require Import UkShPipe.        (* the runcmd arm *)
+Require Import LineWords.
+Require Import PipeDisc.
 Require Import UkShPipeLex.
 Require Import UkShPipeParse.
 Require Import UkShPipeSeam.
@@ -463,4 +465,226 @@ Section UkShPipeRound.
     iIntros (γp) "HR". iApply ("Hsplit" $! γp with "HM3 Hcr HR").
   Qed.
 
+
+  (* ===================================================================== *)
+  (* §3 THE LINE, AND WHAT THE FOURTH ARM OF THE DISJUNCT WOULD CARRY.      *)
+  (*                                                                        *)
+  (* [UkSh.ush_line_at] reads exactly three projections of its line --      *)
+  (* [FileDisc.uline_ok], [FileDisc.line_bytes] and (through                *)
+  (* [ush_rest_line_at]) [FileDisc.uline_ws] -- so the pipe line's arm is   *)
+  (* that predicate at [PipeDisc]'s own [LPipe].  It is written out here    *)
+  (* because [FileDisc.uline] HAS NO SUCH CONSTRUCTOR and adding one is     *)
+  (* not this lane's to make (see the lane report, STOP A): what is landed  *)
+  (* is the load-bearing half -- the buffer holds the pipe line's bytes,   *)
+  (* hence the lexer's premise -- which is what the fourth arm delivers.    *)
+  (* ===================================================================== *)
+
+  Definition ushq_line_at (ws : list (list (bv 8))) (f : nat -> bv 8)
+      (k len : nat) : Prop :=
+    PipeDisc.pline_ok (PipeDisc.LPipe ws)
+    /\ len = length (PipeDisc.line_bytes (PipeDisc.LPipe ws))
+    /\ (forall j : nat, (j < len)%nat ->
+          f (k + j)%nat = PipeDisc.line_bytes (PipeDisc.LPipe ws) !!! j).
+
+  Local Lemma ushq_bytes_lo (ws : list (list (bv 8))) (j : nat) :
+    (j < length (wl_body ws))%nat ->
+    PipeDisc.line_bytes (PipeDisc.LPipe ws) !!! j = wl_body ws !!! j.
+  Proof using .
+    intro Hj.
+    rewrite /PipeDisc.line_bytes /PipeDisc.line_body -app_assoc.
+    rewrite lookup_total_app_l; [ reflexivity | exact Hj ].
+  Qed.
+
+  Local Lemma ushq_bytes_hi (ws : list (list (bv 8))) (j : nat) :
+    (length (wl_body ws) <= j)%nat ->
+    PipeDisc.line_bytes (PipeDisc.LPipe ws) !!! j
+    = (PipeDisc.suf_pipecat ++ [wl_nl]) !!! (j - length (wl_body ws))%nat.
+  Proof using .
+    intro Hj.
+    rewrite /PipeDisc.line_bytes /PipeDisc.line_body -app_assoc.
+    rewrite lookup_total_app_r; [ reflexivity | exact Hj ].
+  Qed.
+
+  (* THE BRIDGE: the loop's line fact at the pipe shape IS the lexer's
+     premise, at the canonical right-hand command [cat]. *)
+  Lemma ushq_line_is_of_at (ws : list (list (bv 8))) (f : nat -> bv 8)
+      (k len : nat) :
+    ushq_line_at ws f k len -> ushq_line_is ws UkShPipeLex.ushq_cat f k len.
+  Proof using .
+    intros (Hok & Hlen & Hb).
+    assert (Hl7 : len = (length (wl_body ws) + 7)%nat).
+    { rewrite Hlen /PipeDisc.line_bytes /PipeDisc.line_body !length_app
+        PipeDisc.suf_pipecat_len. cbn [length]. lia. }
+    rewrite /ushq_line_is. cbv zeta. split_and!.
+    - exact (proj1 Hok).
+    - exact UkShPipeLex.ushq_cat_word.
+    - rewrite UkShPipeLex.ushq_cat_len. lia.
+    - intros j Hj. rewrite (Hb j ltac:(lia)).
+      exact (ushq_bytes_lo ws j Hj).
+    - rewrite (Hb (length (wl_body ws)) ltac:(lia))
+        (ushq_bytes_hi ws (length (wl_body ws)) ltac:(lia)).
+      rewrite Nat.sub_diag. apply bv_eq. by vm_compute.
+    - replace (k + length (wl_body ws) + 1)%nat
+        with (k + (length (wl_body ws) + 1))%nat by lia.
+      rewrite (Hb (length (wl_body ws) + 1)%nat ltac:(lia))
+        (ushq_bytes_hi ws (length (wl_body ws) + 1)%nat ltac:(lia)).
+      replace (length (wl_body ws) + 1 - length (wl_body ws))%nat
+        with 1%nat by lia.
+      apply bv_eq. by vm_compute.
+    - replace (k + length (wl_body ws) + 2)%nat
+        with (k + (length (wl_body ws) + 2))%nat by lia.
+      rewrite (Hb (length (wl_body ws) + 2)%nat ltac:(lia))
+        (ushq_bytes_hi ws (length (wl_body ws) + 2)%nat ltac:(lia)).
+      replace (length (wl_body ws) + 2 - length (wl_body ws))%nat
+        with 2%nat by lia.
+      apply bv_eq. by vm_compute.
+    - intros j Hj. rewrite UkShPipeLex.ushq_cat_len in Hj.
+      replace (k + length (wl_body ws) + 3 + j)%nat
+        with (k + (length (wl_body ws) + 3 + j))%nat by lia.
+      rewrite (Hb (length (wl_body ws) + 3 + j)%nat ltac:(lia))
+        (ushq_bytes_hi ws (length (wl_body ws) + 3 + j)%nat ltac:(lia)).
+      replace (length (wl_body ws) + 3 + j - length (wl_body ws))%nat
+        with (3 + j)%nat by lia.
+      destruct j as [| [| [| j ]]];
+        [ apply bv_eq; by vm_compute | apply bv_eq; by vm_compute
+        | apply bv_eq; by vm_compute | lia ].
+    - rewrite UkShPipeLex.ushq_cat_len.
+      replace (k + length (wl_body ws) + 3 + 3)%nat
+        with (k + (length (wl_body ws) + 6))%nat by lia.
+      rewrite (Hb (length (wl_body ws) + 6)%nat ltac:(lia))
+        (ushq_bytes_hi ws (length (wl_body ws) + 6)%nat ltac:(lia)).
+      replace (length (wl_body ws) + 6 - length (wl_body ws))%nat
+        with 6%nat by lia.
+      apply bv_eq. by vm_compute.
+  Qed.
+
+  (* ...AND THE CHILD WALK AT THE LINE.  This is the statement the round
+     instantiates: the buffer at [s0] holds `echo w1 ... wn | cat\n', and
+     the two children come out at [runcmd]'s entry with the pipe's two
+     ends at fd 1 and fd 0. *)
+  Corollary wp_kshm_child_pipe_line
+      (h : CpuId) (m : regfile) (dw dv : dfrac)
+      (s0 szv cwdv : Z) (len : nat) (f : nat -> bv 8)
+      (ws : list (list (bv 8)))
+      (ld : list fdstate) (st0 st1 : fdstate) (Sc : gset gname) (n : nat)
+      (R RcL RcR Rk : pipe_names -> iProp Σ) (Qc : Z -> iProp Σ)
+      (Cr : iProp Σ) :
+    ushp_malloc_ty UM0 UM1 ->
+    ushp_malloc_ty UM2 UM3 ->
+    m !!! Regidx s1_idx = (mword_of_int s0 : mword 64) ->
+    ushq_line_at ws f 0%nat len ->
+    0 < s0 -> s0 + Z.of_nat len + 1 < Z64 -> s0 + Z.of_nat len < 2 ^ 38 ->
+    (forall x y : Z, Qc x = Qc y) ->
+    (⊢ ukn_pay N (-1)) ->
+    ld !! 0%nat = Some st0 -> ld !! 1%nat = Some st1 ->
+    st0 <> FdClosed -> st1 <> FdClosed ->
+    (forall (rb wb : bool) (gn : pipe_names),
+       st0 <> FdOpen rb wb (FdPipe gn)) ->
+    (forall (rb wb : bool) (gn : pipe_names),
+       st1 <> FdOpen rb wb (FdPipe gn)) ->
+    UkSh.sh_deps -∗
+    shk_code γt -∗
+    ush_jtab γt -∗
+    shp_code γt -∗ shp_rodata γt -∗
+    ustr γd (DfracOwn 1) s0 len f -∗
+    ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
+    ustr γd dv ushp_symbols 7 ushp_sym_f -∗
+    usz γs szv -∗
+    UserFd.ustd γfd ld -∗
+    UserCwd.ucwd γcwd cwdv -∗
+    UserChildren.uch γch Sc -∗
+    UM0 -∗
+    Cr -∗
+    □ (app_taint -∗ Qc (-1)) -∗
+    (* the arm's own split, with the walk's leftovers ([UM3], [Cr]) free to
+       ride into whichever of the three it likes *)
+    (∀ γp : pipe_names, UM3 -∗ Cr -∗ R γp -∗ RcL γp ∗ (RcR γp ∗ Rk γp)) -∗
+    UkShPipe.ush_pipe_call N ld R -∗
+    urun N h m (mword_of_int 0x9c0)
+      (68 + (8 + (UkShDiag.ush_Dg + n))) -∗
+    (* ---- THE LEFT CHILD: fd 1 is the pipe's WRITE end ---- *)
+    (∀ (N' : uk_names Σ) (h' : CpuId) (m' : regfile) (γ' : gname)
+       (γp : pipe_names) (q : Z),
+       ⌜ ukn_pay N' = Qc ⌝ -∗
+       ⌜ m' !!! Regidx a0_idx = (mword_of_int q : mword 64) ⌝ -∗
+       my_pay γ' Qc -∗
+       shk_code (ukn_t N') -∗
+       ush_jtab (ukn_t N') -∗
+       ush_cmd (ukn_d N') q
+         (UExec (ush_args s0 (ushq_cut (wl_toks ws) len f (length (wl_body ws) + 3 + 3)%nat) (wl_toks ws))) -∗
+       usz (ukn_s N') szv -∗
+       UserFd.ustd (ukn_fd N')
+         (<[1%nat := FdOpen false true (FdPipe γp)]> ld) -∗
+       UserCwd.ucwd (ukn_cwd N') cwdv -∗
+       UserChildren.uch (ukn_ch N') (∅ : gset gname) -∗
+       UkShPipe.ush_cldep (FdOpen true false (FdPipe γp)) -∗
+       UkShPipe.ush_cldep (FdOpen false true (FdPipe γp)) -∗
+       RcL γp -∗
+       urun N' h' m' (mword_of_int ShSyms.runcmd)
+         (2 + (UkShDiag.ush_Dg + (68 + n))) -∗
+       WP (Loop : expr riscv_lang)) -∗
+    (* ---- THE RIGHT CHILD: fd 0 is the pipe's READ end ---- *)
+    (∀ (N' : uk_names Σ) (h' : CpuId) (m' : regfile) (γ' : gname)
+       (γp : pipe_names) (q : Z),
+       ⌜ ukn_pay N' = Qc ⌝ -∗
+       ⌜ m' !!! Regidx a0_idx = (mword_of_int q : mword 64) ⌝ -∗
+       my_pay γ' Qc -∗
+       shk_code (ukn_t N') -∗
+       ush_jtab (ukn_t N') -∗
+       ush_cmd (ukn_d N') q
+         (UExec (ush_args s0 (ushq_cut (wl_toks ws) len f (length (wl_body ws) + 3 + 3)%nat) [((length (wl_body ws) + 3)%nat,
+            (length (wl_body ws) + 3 + 3)%nat)])) -∗
+       usz (ukn_s N') szv -∗
+       UserFd.ustd (ukn_fd N')
+         (<[0%nat := FdOpen true false (FdPipe γp)]> ld) -∗
+       UserCwd.ucwd (ukn_cwd N') cwdv -∗
+       UserChildren.uch (ukn_ch N') (∅ : gset gname) -∗
+       UkShPipe.ush_cldep (FdOpen true false (FdPipe γp)) -∗
+       UkShPipe.ush_cldep (FdOpen false true (FdPipe γp)) -∗
+       RcR γp -∗
+       urun N' h' m' (mword_of_int ShSyms.runcmd)
+         (2 + (UkShDiag.ush_Dg + (68 + n))) -∗
+       WP (Loop : expr riscv_lang)) -∗
+    (* ---- THE PARENT, at 0xea ---- *)
+    (∀ (h' : CpuId) (m' : regfile) (γp : pipe_names)
+       (r1 r2 rw1 rw2 : mword 64) (S1 S2 S3 S4 : gset gname),
+       UkShPipe.ush_fork_ans Sc S1 (RcL γp) Qc r1 -∗
+       UkShPipe.ush_fork_ans S1 S2 (RcR γp) Qc r2 -∗
+       uwait_ans rw1 S2 S3 -∗
+       uwait_ans rw2 S3 S4 -∗
+       UserChildren.uch γch S4 -∗
+       ush_jtab γt -∗
+       usz γs szv -∗
+       UserFd.ustd γfd ld -∗
+       UserCwd.ucwd γcwd cwdv -∗
+       Rk γp -∗
+       urun N h' m' (mword_of_int 0xea)
+         (2 + (UkShDiag.ush_Dg + (68 + n))) -∗
+       WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+  Proof using Hpay Hpsok_free ushq_malloc_ok12.
+    intros Hm01 Hm23 Hs1 Hline Hs0 Hs64 Hs38 HQc Hpx Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1.
+    pose proof (ushq_line_is_of_at ws f 0%nat len Hline) as Hli.
+    destruct (UkShPipeLex.ush_line_toks_holds_pipe ws UkShPipeLex.ushq_cat f
+                0%nat len Hli) as (Hq & Ht & Hpos & Htlen & _).
+    assert (Ef : (fun j : nat => f (0 + j)%nat) = f) by reflexivity.
+    rewrite Ef in Hq, Ht.
+    rewrite UkShPipeLex.ushq_cat_len in Hq.
+    (* the walk's right-hand token is [(S (S gp), ge)] at [gp := p0 + 1];
+       [S (S (p0 + 1))] and [p0 + 3] are equal and not convertible *)
+    assert (Ege : (length (wl_body ws) + 3)%nat
+                  = S (S (length (wl_body ws) + 1))) by lia.
+    rewrite Ege in Hq |- *.
+    exact (wp_kshm_child_pipe h m dw dv s0 szv cwdv len f (wl_toks ws)
+             (length (wl_body ws) + 1)%nat
+             (S (S (length (wl_body ws) + 1)) + 3)%nat
+             ld st0 st1 Sc n R RcL RcR Rk Qc Cr
+             Hm01 Hm23 Hs1 Hq Ht Hpos Htlen Hs0 Hs64 Hs38
+             HQc Hpx Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1).
+  Qed.
+
 End UkShPipeRound.
+
+(* the lane's two headline results, audited *)
+Print Assumptions wp_kshm_child_pipe.
+Print Assumptions wp_kshm_child_pipe_line.

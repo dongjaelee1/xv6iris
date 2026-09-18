@@ -3218,7 +3218,7 @@ Section UkRunSys.
                   ustd (ukn_fd N) (ustd_after
                               (ustd_after l (FdOpen true false (FdPipe γp)))
                               (FdOpen false true (FdPipe γp))))
-               ∨ (⌜ uint r <> 0 ⌝ ∗ ustd (ukn_fd N) l)))%I
+               ∨ (⌜ r = (mword_of_int (-1) : mword 64) ⌝ ∗ ustd (ukn_fd N) l)))%I
       with "[Hufd Hstd]" as ">[Hufd Hhs]".
     { destruct (decide (uint r = 0)) as [Hr0 | Hr0].
       - destruct (Hsucc Hr0) as (a & b & γp & Hne & Hca & Hcb & Hfdv' & Hbytes).

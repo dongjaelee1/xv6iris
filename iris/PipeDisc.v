@@ -28,12 +28,32 @@
    which is what the stage spends -- concludes an equality of BYTES and
    never of indices.  Its engine is one observation, not a table: every
    alternative's own output is a '$'-free run followed by the prompt,
-   except the echo line's alternative 3 (the MAIN loop's [fork1] panic),
-   which kills the shell and re-enters init's prologue.
+   except [PEcho 3] -- the MAIN loop's [fork1] panic, admitted at BOTH
+   line shapes -- which kills the shell and re-enters init's prologue.
 
    WHERE THIS FILE DEPARTS FROM design section 1, each departure reported
-   in claude-notes/projects/app-pipe.md under Findings:
+   in claude-notes/projects/app-pipe.md under Findings.  The first two were
+   RULED by the coordinator on 2026-09-18 and the ruling is what is landed;
+   the rest are the lane's and stand.
 
+   - [palt_ok] now admits [PEcho 3] -- and only [PEcho 3] among the
+     [PEcho]s -- at an [LPipe] line.  Design section 1's table said
+     "LEcho lines only" while its prose said "[LPipe] lines reach
+     [alt_panic] exactly as [LEcho] lines do"; the lane reported that the
+     table makes the theorem FALSE (the machine's MAIN-loop [fork1] can
+     fail on a pipeline round, putting [alt_panic] and a FRESH PROLOGUE on
+     the wire, which no other [LPipe] alternative prints) and the
+     coordinator ruled for the prose.  See [palt_ok_pipe_panic],
+     [palt_panic_3], and the transcript [demo_p_panic].
+   - [palt_code] is POSITIONAL/BINARY, not [encode_nat]'s pairing:
+     [PBoth sel] is [11 + 16 * bnum sel] where [bnum] reads [sel] as a
+     binary numeral with a leading 1 (so leading [false]s survive), and
+     [palt_of] divides.  The lane reported that [encode_nat] grows ~4x per
+     entry, so a code at [|sel| = 33] was ~[4^33]; the binary reading is
+     ~[2^34].  BUT [nat] IS UNARY, so even [2^34] is not computable --
+     section 8 records the measured curve and says why the two [PBoth]
+     demos are still proved by rewriting with [palt_of_code] rather than
+     by [vm_compute].
    - [parse_pline] inverts [line_body] (the body [LineWords.bodies_of]
      cuts), NOT [line_bytes] (which carries the closing newline the cut
      has already stripped).  The brief's
@@ -41,26 +61,22 @@
      well-typed; the law that holds is [parse_pline_body] below, and
      [line_bytes l = line_body l ++ [wl_nl]] is kept as its own equation.
      This is [FileDisc]'s first departure, verbatim.
-   - [palt_ok] admits NO prologue-re-entering alternative at an [LPipe]
-     line ([palt_ok_pipe_no_panic] below), while design section 1's own
-     prose says "[LPipe] lines reach [alt_panic] exactly as [LEcho] lines
-     do".  The model as written is therefore INCOMPLETE at a reachable
-     behaviour of the machine -- sh's MAIN-loop [fork1] failing on the
-     round whose line is a pipeline line.  Landed as designed and
-     reported; the one-line fix is [palt_ok (LPipe _) (PEcho 3) := True].
-   - [pcont_shape] gives only "a '$'-free run, then the prompt".
-     [FileDisc.cont_shape]'s stronger shape -- the run's ONLY newline, if
-     any, is its last byte -- is FALSE at [PBoth sel]
+   - [pcont_shape] gives only "a '$'-free run, then the prompt", and
+     [pcont_shape_nl] gives [FileDisc.cont_shape]'s stronger reading as a
+     DISJUNCTION: the run's only newline is its last byte, OR the run opens
+     on 'e'.  The newline half is FALSE at [PBoth sel]
      ([pcont_both_no_nl_shape] below): a merge of the two diagnostics
-     carries TWO newlines.  The stronger shape is landed for the [LEcho]
-     lines alone ([pcont_shape_nl]), which is exactly where the
-     determinacy proof needs it, because a panic alternative forces an
-     [LEcho] line ([palt_panic_LEcho]).
-   - [merge]'s inverse law wants a STOPPING merge, not a skipping one:
+     carries TWO newlines.  The second arm replaces it, and it is all the
+     determinacy proof wants, because the only comparison that spends the
+     lemma puts sh's panic line -- which opens on 'f' -- on the other side
+     ([pd_head_ne_panic]).
+   - [pmerge]'s inverse law wants a STOPPING merge, not a skipping one:
      with "a [true] at an exhausted [d1] consumes the selector and
-     produces nothing" the law [merge_take] is false (see the comment at
-     [merge]).  Landed stopping, which makes [merge_take] and hence
-     [merge_prefix] unconditional.
+     produces nothing" the law [pmerge_take] is false (see the comment at
+     [pmerge]).  Landed stopping, which makes [pmerge_take] and hence
+     [pmerge_prefix] unconditional.  (The name is [pmerge] and not [merge]
+     so as not to shadow stdpp's map [merge], which lane PIPE-2W will
+     import beside this file.)
    - [pipe_phi] takes the history alone, as [FileDisc.file_phi] does; the
      [gstate] argument [AppEcho.echo_phi] carries is the record's, and
      lane PIPE-STAGE adds it. *)
@@ -619,62 +635,62 @@ Proof using. induction n as [| n IH]; cbn [replicate count_true]; lia. Qed.
 
    IT STOPS AT AN EXHAUSTED SIDE and does not skip.  The skipping variant
    ("a [true] at an empty [d1] consumes the selector and produces
-   nothing") makes [merge_take] FALSE -- at [sel = [true; false]],
-   [d1 = []], [d2 = [x]] it gives [merge sel d1 d2 = [x]] while
-   [merge (take 1 sel) d1 d2 = []], so a prefix of a merge would not be a
-   merge of a prefix of the selector, and [merge_prefix] (which design
+   nothing") makes [pmerge_take] FALSE -- at [sel = [true; false]],
+   [d1 = []], [d2 = [x]] it gives [pmerge sel d1 d2 = [x]] while
+   [pmerge (take 1 sel) d1 d2 = []], so a prefix of a pmerge would not be a
+   pmerge of a prefix of the selector, and [pmerge_prefix] (which design
    section 4.3 spends) would need side conditions.  Stopping makes both
    laws UNCONDITIONAL, and at every [sel] the model admits ([palt_ok]'s
    length and count conditions) the two definitions agree. *)
-Fixpoint merge (sel : list bool) (d1 d2 : list (bv 8)) : list (bv 8) :=
+Fixpoint pmerge (sel : list bool) (d1 d2 : list (bv 8)) : list (bv 8) :=
   match sel with
   | [] => []
   | true :: s =>
-      match d1 with [] => [] | b :: d1' => b :: merge s d1' d2 end
+      match d1 with [] => [] | b :: d1' => b :: pmerge s d1' d2 end
   | false :: s =>
-      match d2 with [] => [] | b :: d2' => b :: merge s d1 d2' end
+      match d2 with [] => [] | b :: d2' => b :: pmerge s d1 d2' end
   end.
 
-Lemma merge_nil_sel d1 d2 : merge [] d1 d2 = [].
+Lemma pmerge_nil_sel d1 d2 : pmerge [] d1 d2 = [].
 Proof using. reflexivity. Qed.
 
-Lemma merge_true_cons s b d1 d2 :
-  merge (true :: s) (b :: d1) d2 = b :: merge s d1 d2.
+Lemma pmerge_true_cons s b d1 d2 :
+  pmerge (true :: s) (b :: d1) d2 = b :: pmerge s d1 d2.
 Proof using. reflexivity. Qed.
 
-Lemma merge_false_cons s d1 b d2 :
-  merge (false :: s) d1 (b :: d2) = b :: merge s d1 d2.
+Lemma pmerge_false_cons s d1 b d2 :
+  pmerge (false :: s) d1 (b :: d2) = b :: pmerge s d1 d2.
 Proof using. reflexivity. Qed.
 
-Lemma merge_true_nil s d2 : merge (true :: s) [] d2 = [].
+Lemma pmerge_true_nil s d2 : pmerge (true :: s) [] d2 = [].
 Proof using. reflexivity. Qed.
 
-Lemma merge_false_nil s d1 : merge (false :: s) d1 [] = [].
+Lemma pmerge_false_nil s d1 : pmerge (false :: s) d1 [] = [].
 Proof using. reflexivity. Qed.
 
-(* the merge is as long as the selector, once both sides have the bytes *)
-Lemma merge_length sel d1 d2 :
+(* the pmerge is as long as the selector, once both sides have the bytes *)
+Lemma pmerge_length sel d1 d2 :
   (count_true sel <= length d1)%nat ->
   (length sel - count_true sel <= length d2)%nat ->
-  length (merge sel d1 d2) = length sel.
+  length (pmerge sel d1 d2) = length sel.
 Proof using.
   revert d1 d2. induction sel as [| [|] s IH]; intros d1 d2 H1 H2; [done | |].
   - pose proof (count_true_le s) as Hcl.
     cbn [count_true length] in H1, H2.
     destruct d1 as [| b d1']; [cbn [length] in H1; lia |].
-    rewrite merge_true_cons. cbn [length]. rewrite IH; [lia | |];
+    rewrite pmerge_true_cons. cbn [length]. rewrite IH; [lia | |];
       cbn [length] in H1 |- *; lia.
   - pose proof (count_true_le s) as Hcl.
     cbn [count_true length] in H1, H2.
     destruct d2 as [| b d2']; [cbn [length] in H2; lia |].
-    rewrite merge_false_cons. cbn [length]. rewrite IH; [lia | |];
+    rewrite pmerge_false_cons. cbn [length]. rewrite IH; [lia | |];
       cbn [length] in H2 |- *; lia.
 Qed.
 
 (* A PREFIX OF A MERGE IS A MERGE OF A PREFIX OF THE SELECTOR.  This is
    the engine of the inverse law, and it is unconditional. *)
-Lemma merge_take sel d1 d2 k :
-  take k (merge sel d1 d2) = merge (take k sel) d1 d2.
+Lemma pmerge_take sel d1 d2 k :
+  take k (pmerge sel d1 d2) = pmerge (take k sel) d1 d2.
 Proof using.
   revert d1 d2 k. induction sel as [| [|] s IH]; intros d1 d2 k.
   - by rewrite !take_nil.
@@ -686,11 +702,11 @@ Proof using.
     cbn. by rewrite IH.
 Qed.
 
-(* ...and the merge reads only as much of each side as the selector asks
+(* ...and the pmerge reads only as much of each side as the selector asks
    for, which turns a prefix of the selector into a pair of cursors *)
-Lemma merge_take_lr sel d1 d2 c1 c2 :
+Lemma pmerge_take_lr sel d1 d2 c1 c2 :
   (count_true sel <= c1)%nat -> (length sel - count_true sel <= c2)%nat ->
-  merge sel (take c1 d1) (take c2 d2) = merge sel d1 d2.
+  pmerge sel (take c1 d1) (take c2 d2) = pmerge sel d1 d2.
 Proof using.
   revert d1 d2 c1 c2. induction sel as [| [|] s IH]; intros d1 d2 c1 c2 H1 H2;
     [done | |].
@@ -700,55 +716,55 @@ Proof using.
     destruct d1 as [| b d1']; [by rewrite take_nil |].
     rewrite (_ : take (S c1') (b :: d1') = b :: take c1' d1');
       [| reflexivity].
-    rewrite !merge_true_cons. f_equal. apply IH; lia.
+    rewrite !pmerge_true_cons. f_equal. apply IH; lia.
   - pose proof (count_true_le s) as Hcl.
     cbn [count_true length] in H1, H2.
     destruct c2 as [| c2']; [lia |].
     destruct d2 as [| b d2']; [by rewrite take_nil |].
     rewrite (_ : take (S c2') (b :: d2') = b :: take c2' d2');
       [| reflexivity].
-    rewrite !merge_false_cons. f_equal. apply IH; lia.
+    rewrite !pmerge_false_cons. f_equal. apply IH; lia.
 Qed.
 
-(* DESIGN SECTION 4.3'S LAW: a prefix of a merge is a merge of prefixes --
+(* DESIGN SECTION 4.3'S LAW: a prefix of a pmerge is a pmerge of prefixes --
    the two writers' cursors are [c1] and [c2] and the interleaving so far
    is [sel'], a prefix of the round's. *)
-Lemma merge_prefix_take (sel : list bool) (d1 d2 : list (bv 8)) (k : nat) :
-  take k (merge sel d1 d2)
-  = merge (take k sel) (take (count_true (take k sel)) d1)
+Lemma pmerge_prefix_take (sel : list bool) (d1 d2 : list (bv 8)) (k : nat) :
+  take k (pmerge sel d1 d2)
+  = pmerge (take k sel) (take (count_true (take k sel)) d1)
           (take (length (take k sel) - count_true (take k sel))%nat d2).
 Proof using.
-  rewrite merge_take. symmetry. apply merge_take_lr; lia.
+  rewrite pmerge_take. symmetry. apply pmerge_take_lr; lia.
 Qed.
 
-Lemma merge_prefix (sel : list bool) (d1 d2 p : list (bv 8)) :
-  p `prefix_of` merge sel d1 d2 ->
+Lemma pmerge_prefix (sel : list bool) (d1 d2 p : list (bv 8)) :
+  p `prefix_of` pmerge sel d1 d2 ->
   exists (sel' : list bool) (c1 c2 : nat),
-    p = merge sel' (take c1 d1) (take c2 d2) /\ sel' `prefix_of` sel.
+    p = pmerge sel' (take c1 d1) (take c2 d2) /\ sel' `prefix_of` sel.
 Proof using.
   intros [z Hz].
   exists (take (length p) sel), (count_true (take (length p) sel)),
          (length (take (length p) sel)
           - count_true (take (length p) sel))%nat.
   split; [| apply prefix_take].
-  rewrite -merge_prefix_take Hz. by rewrite take_app_length.
+  rewrite -pmerge_prefix_take Hz. by rewrite take_app_length.
 Qed.
 
 (* NEITHER DIAGNOSTIC CARRIES A '$', so no interleaving of them does --
    which is what puts every [PBoth] round under the same reading as every
    other non-panic round (section 4). *)
-Lemma merge_nodollar sel d1 d2 :
+Lemma pmerge_nodollar sel d1 d2 :
   Forall nodollar d1 -> Forall nodollar d2 ->
-  Forall nodollar (merge sel d1 d2).
+  Forall nodollar (pmerge sel d1 d2).
 Proof using.
   revert d1 d2. induction sel as [| [|] s IH]; intros d1 d2 H1 H2;
     [constructor | |].
   - destruct d1 as [| b d1']; [by constructor |].
     apply Forall_cons_1 in H1 as [Hb H1].
-    rewrite merge_true_cons. apply Forall_cons. split; [exact Hb | by apply IH].
+    rewrite pmerge_true_cons. apply Forall_cons. split; [exact Hb | by apply IH].
   - destruct d2 as [| b d2']; [by constructor |].
     apply Forall_cons_1 in H2 as [Hb H2].
-    rewrite merge_false_cons. apply Forall_cons. split; [exact Hb | by apply IH].
+    rewrite pmerge_false_cons. apply Forall_cons. split; [exact Hb | by apply IH].
 Qed.
 
 Lemma dg_execL_nodollar : Forall nodollar dg_execL.
@@ -757,22 +773,22 @@ Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
 Lemma dg_execR_nodollar : Forall nodollar dg_execR.
 Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
 
-Lemma merge_no_dollar sel : Forall nodollar (merge sel dg_execL dg_execR).
+Lemma pmerge_no_dollar sel : Forall nodollar (pmerge sel dg_execL dg_execR).
 Proof using.
-  apply merge_nodollar; [exact dg_execL_nodollar | exact dg_execR_nodollar].
+  apply pmerge_nodollar; [exact dg_execL_nodollar | exact dg_execR_nodollar].
 Qed.
 
-(* the first byte of a merge is the first byte of one of the two sides --
+(* the first byte of a pmerge is the first byte of one of the two sides --
    the one reading the negative witness (section 8) spends *)
-Lemma merge_head sel d1 d2 (b : bv 8) :
-  merge sel d1 d2 !! 0%nat = Some b ->
+Lemma pmerge_head sel d1 d2 (b : bv 8) :
+  pmerge sel d1 d2 !! 0%nat = Some b ->
   d1 !! 0%nat = Some b \/ d2 !! 0%nat = Some b.
 Proof using.
   destruct sel as [| [|] s]; [discriminate | |].
   - destruct d1 as [| c d1']; [discriminate |].
-    rewrite merge_true_cons. cbn. intros [= <-]. by left.
+    rewrite pmerge_true_cons. cbn. intros [= <-]. by left.
   - destruct d2 as [| c d2']; [discriminate |].
-    rewrite merge_false_cons. cbn. intros [= <-]. by right.
+    rewrite pmerge_false_cons. cbn. intros [= <-]. by right.
 Qed.
 
 (* ====================================================================== *)
@@ -791,7 +807,7 @@ Qed.
      PExecR      "exec cat failed\n$ "             right exec failed; echo's
                                                    bytes went into the pipe
                                                    and stayed there
-     PBoth sel   merge sel dg_execL dg_execR ++ "$ "
+     PBoth sel   pmerge sel dg_execL dg_execR ++ "$ "
                                                    both failed; [sel] is the
                                                    byte-wise interleaving
      PPipe       "pipe\n$ "                        pipe(2) failed; sh's panic
@@ -820,17 +836,109 @@ Global Instance palt_eq_dec : EqDecision palt.
 Proof using. solve_decision. Defined.
 Global Instance palt_inhabited : Inhabited palt := populate (PEcho 0%nat).
 
+(* ---- THE INTERLEAVING AS A BINARY NUMERAL ---------------------------- *)
+
+(* [sel] READ AS A BINARY NUMERAL WITH A LEADING 1, least significant bit
+   first, so that leading [false]s survive the round trip: [bnum []] is the
+   bare leading 1 and every entry doubles.  The leading 1 is what makes
+   [bnum] injective -- without it [ [false] ] and [ [false; false] ] would
+   both be 0.  Coordinator's ruling (2026-09-18): the code is POSITIONAL,
+   not [encode_nat]'s pairing, so that a code is 34 bits at [|sel| = 33]
+   instead of [encode_nat]'s ~66. *)
+Fixpoint bnum (sel : list bool) : nat :=
+  match sel with
+  | [] => 1%nat
+  | b :: s => ((if b then 1 else 0) + 2 * bnum s)%nat
+  end.
+
+Lemma bnum_pos sel : (0 < bnum sel)%nat.
+Proof using. induction sel as [| [|] s IH]; cbn [bnum]; lia. Qed.
+
+(* ...and the numeral is longer than the list, which is the fuel bound the
+   decoder below runs on *)
+Lemma bnum_gt_length sel : (length sel < bnum sel)%nat.
+Proof using.
+  induction sel as [| [|] s IH]; cbn [bnum length]; lia.
+Qed.
+
+(* THE DECODER, by structural recursion on a FUEL: strip bits off the
+   bottom until only the leading 1 is left. *)
+Fixpoint bdigits (f m : nat) : list bool :=
+  match f with
+  | 0%nat => []
+  | S f' => if decide (m <= 1)%nat then []
+            else bool_decide (Nat.modulo m 2 = 1%nat) :: bdigits f' (Nat.div m 2)
+  end.
+
+Definition bdec (m : nat) : list bool := bdigits m m.
+
+(* the two readings of one binary digit *)
+Lemma pd_mod2_add (d k : nat) : (d < 2)%nat -> Nat.modulo (d + 2 * k) 2 = d.
+Proof using.
+  intro Hd. replace (d + 2 * k)%nat with (d + k * 2)%nat by lia.
+  rewrite Nat.Div0.mod_add Nat.mod_small; [reflexivity | exact Hd].
+Qed.
+
+Lemma pd_div2_add (d k : nat) : (d < 2)%nat -> Nat.div (d + 2 * k) 2 = k.
+Proof using.
+  intro Hd. replace (d + 2 * k)%nat with (k * 2 + d)%nat by lia.
+  rewrite Nat.div_add_l; [| lia]. rewrite Nat.div_small; [lia | exact Hd].
+Qed.
+
+Lemma bdigits_bnum (f : nat) (sel : list bool) :
+  (length sel < f)%nat -> bdigits f (bnum sel) = sel.
+Proof using.
+  revert sel. induction f as [| f IH]; intros sel Hf;
+    [cbn [length] in Hf; lia |].
+  destruct sel as [| b s].
+  { cbn [bnum bdigits]. case_decide as H; [reflexivity | exfalso; lia]. }
+  pose proof (bnum_pos s) as Hp.
+  cbn [bnum bdigits length] in Hf |- *.
+  case_decide as H1; [exfalso; destruct b; lia |].
+  rewrite (pd_mod2_add (if b then 1%nat else 0%nat) (bnum s)
+             ltac:(destruct b; lia))
+          (pd_div2_add (if b then 1%nat else 0%nat) (bnum s)
+             ltac:(destruct b; lia)).
+  rewrite (IH s ltac:(lia)). f_equal.
+  destruct b;
+    [by rewrite bool_decide_eq_true_2 | by rewrite bool_decide_eq_false_2].
+Qed.
+
+Lemma bdec_bnum sel : bdec (bnum sel) = sel.
+Proof using.
+  rewrite /bdec. apply bdigits_bnum, bnum_gt_length.
+Qed.
+
+(* ...and the numeral is at least [2 ^ |sel|], which is the exact reason a
+   [PBoth] code cannot be COMPUTED however cleverly it is laid out: [nat]
+   is unary, and at the only [|sel|] the model admits ([palt_ok] forces
+   [|dg_execL| + |dg_execR| = 33]) the code is a unary numeral with more
+   than eight thousand million successors.  See [palt_code_both_big] and
+   the note in section 8. *)
+Lemma bnum_ge_pow2 sel : (2 ^ length sel <= bnum sel)%nat.
+Proof using.
+  induction sel as [| b s IH]; [cbn [length bnum Nat.pow]; lia |].
+  cbn [length bnum]. rewrite Nat.pow_succ_r; [| lia]. destruct b; lia.
+Qed.
+
+(* ---- THE CODE ------------------------------------------------------- *)
+
 (* THE ENCODING the stage's [cs_auth]/[cs_lb] machinery carries: an
    injective [nat] code, and the echo application's four are THEIR OWN
    INDEX, so an echo line's rounds are LITERALLY today's ([sessp_sess]).
    [PBoth sel] is encoded WITH [sel] -- one alternative per interleaving --
-   so the transcript stays a function of [(ps, cs, I)]. *)
+   so the transcript stays a function of [(ps, cs, I)].
+
+   TEN SMALL CODES, THEN TWO ARITHMETIC PROGRESSIONS mod 16: codes 0..9 are
+   the echo application's four and the six constant pipeline alternatives;
+   above them tag 10 carries [PEcho] at an index the echo model never uses,
+   and tag 11 carries [PBoth]'s numeral.  The decoder divides. *)
 Definition palt_code (a : palt) : nat :=
   match a with
-  | PEcho k => if decide (k < 4)%nat then k else (10 + 3 * (k - 4))%nat
+  | PEcho k => if decide (k < 4)%nat then k else (10 + 16 * (k - 4))%nat
   | PRan => 4%nat | PExecL => 5%nat | PExecR => 6%nat
   | PPipe => 7%nat | PFork => 8%nat | PSilent => 9%nat
-  | PBoth sel => (11 + 3 * encode_nat sel)%nat
+  | PBoth sel => (11 + 16 * bnum sel)%nat
   end.
 
 Definition palt_of (n : nat) : palt :=
@@ -841,20 +949,21 @@ Definition palt_of (n : nat) : palt :=
   else if decide (n = 7%nat) then PPipe
   else if decide (n = 8%nat) then PFork
   else if decide (n = 9%nat) then PSilent
-  else if decide (Nat.modulo n 3 = 2%nat)
-       then PBoth (default [] (decode_nat (Nat.div (n - 11) 3)))
-       else PEcho (4 + Nat.div (n - 10) 3)%nat.
+  else if decide (Nat.modulo n 16 = 11%nat)
+       then PBoth (bdec (Nat.div n 16))
+       else PEcho (4 + Nat.div n 16)%nat.
 
-Lemma pd_mod3_add (a m : nat) : Nat.modulo (a + 3 * m) 3 = Nat.modulo a 3.
+Lemma pd_mod16_add (a m : nat) : Nat.modulo (a + 16 * m) 16 = Nat.modulo a 16.
 Proof using.
-  replace (a + 3 * m)%nat with (a + m * 3)%nat by lia.
+  replace (a + 16 * m)%nat with (a + m * 16)%nat by lia.
   rewrite Nat.Div0.mod_add. reflexivity.
 Qed.
 
-Lemma pd_div3_mul (m : nat) : Nat.div (3 * m) 3 = m.
+Lemma pd_div16_add (a m : nat) :
+  (a < 16)%nat -> Nat.div (a + 16 * m) 16 = m.
 Proof using.
-  replace (3 * m)%nat with (m * 3)%nat by lia.
-  rewrite Nat.div_mul; [reflexivity | lia].
+  intro Ha. replace (a + 16 * m)%nat with (m * 16 + a)%nat by lia.
+  rewrite Nat.div_add_l; [| lia]. rewrite Nat.div_small; [lia | exact Ha].
 Qed.
 
 Lemma palt_of_code a : palt_of (palt_code a) = a.
@@ -864,22 +973,21 @@ Proof using.
        above it *)
     rewrite /palt_code. case_decide as Hk.
     + rewrite /palt_of decide_True; [reflexivity | exact Hk].
-    + assert (Hm : Nat.modulo (10 + 3 * (k - 4)) 3 = 1%nat)
-        by (rewrite pd_mod3_add; by vm_compute).
+    + assert (Hm : Nat.modulo (10 + 16 * (k - 4)) 16 = 10%nat)
+        by (rewrite pd_mod16_add; by vm_compute).
       rewrite /palt_of.
       do 7 (case_decide; [exfalso; lia |]).
       case_decide; [exfalso; congruence |].
-      replace (10 + 3 * (k - 4) - 10)%nat with (3 * (k - 4))%nat by lia.
-      rewrite pd_div3_mul. f_equal. lia.
-  - (* PBoth: the interleaving through the countable encoding *)
-    assert (Hm : Nat.modulo (11 + 3 * encode_nat sel) 3 = 2%nat)
-      by (rewrite pd_mod3_add; by vm_compute).
+      rewrite (pd_div16_add 10 (k - 4)%nat ltac:(lia)). f_equal. lia.
+  - (* PBoth: the interleaving through its binary numeral *)
+    pose proof (bnum_pos sel) as Hp.
+    assert (Hm : Nat.modulo (11 + 16 * bnum sel) 16 = 11%nat)
+      by (rewrite pd_mod16_add; by vm_compute).
     rewrite /palt_code /palt_of.
     do 7 (case_decide; [exfalso; lia |]).
     case_decide; [| exfalso; congruence].
-    replace (11 + 3 * encode_nat sel - 11)%nat with (3 * encode_nat sel)%nat
-      by lia.
-    rewrite pd_div3_mul decode_encode_nat. reflexivity.
+    rewrite (pd_div16_add 11 (bnum sel) ltac:(lia)).
+    by rewrite bdec_bnum.
 Qed.
 
 (* ...hence the code is INJECTIVE, which is all the stage asks of it *)
@@ -915,39 +1023,66 @@ Definition palt_ok (l : pline) (a : palt) : Prop :=
           length sel = (length dg_execL + length dg_execR)%nat
           /\ count_true sel = length dg_execL
       | PRan | PExecL | PExecR | PPipe | PFork | PSilent => True
-      | PEcho _ => False
+      | PEcho k => k = 3%nat
       end
   end.
 
 Global Instance palt_ok_dec l a : Decision (palt_ok l a).
 Proof using. destruct l, a; rewrite /palt_ok; apply _. Defined.
 
-(* ---- THE HOLE IN DESIGN SECTION 1, STATED ---------------------------- *)
+(* ---- DESIGN SECTION 1'S HOLE, AS RULED ------------------------------- *)
 
-(* NO ALTERNATIVE A PIPELINE LINE ADMITS RE-ENTERS THE PROLOGUE.  Design
-   section 1's prose says the echo application's [alt_panic] arm -- sh's
-   MAIN-loop [fork1] failing, which kills the shell -- "is unchanged and
-   [LPipe] lines reach it exactly as [LEcho] lines do (it is decided
-   before the line is parsed)".  Its [palt] table says otherwise: [PEcho]
-   is "LEcho lines only".  This lemma is the statement of the gap: the
-   machine can put [alt_panic] and then a FRESH PROLOGUE on the wire in a
-   round whose typed line is a pipeline line, and nothing this model
-   admits at such a line prints that -- [PFork]'s continuation is
-   [alt_panic ++ u_prompt], which differs from [alt_panic ++ pro_of _] at
-   byte 5 whenever the prologue re-entered is init's banner.  The one-line
-   repair is [palt_ok (LPipe _) (PEcho 3) := True]; it is NOT applied here,
-   because a lane does not change the designer's definitions. *)
-Lemma palt_ok_pipe_no_panic (ws : list (list (bv 8))) (a : palt) :
-  palt_ok (LPipe ws) a -> palt_panic a = false.
-Proof using. destruct a; by intros ?. Qed.
+(* THE MAIN LOOP'S OWN [fork1] PANIC IS AVAILABLE AT A PIPELINE LINE TOO.
+   Design section 1's table said [PEcho] was "LEcho lines only" while its
+   prose said the echo application's [alt_panic] arm -- sh's MAIN-loop
+   [fork1] failing, which kills the SHELL and re-enters init's prologue --
+   "is unchanged and [LPipe] lines reach it exactly as [LEcho] lines do (it
+   is decided before the line is parsed)".  The lane reported the
+   contradiction (the machine CAN put [alt_panic] and then a FRESH
+   PROLOGUE on the wire in a pipeline round, and no other [LPipe]
+   alternative prints that: [PFork] prints [alt_panic ++ u_prompt], which
+   parts from it at byte 5 whenever the re-entered prologue carries the
+   banner -- so the theorem at the old table would have been FALSE, not
+   vacuous), and the coordinator RULED for the prose (2026-09-18): exactly
+   [PEcho 3] joins the pipeline line's alternatives.  [pcont (LPipe ws)
+   (PEcho 3) = alt_panic] already, and [palt_panic] already fires, so
+   [alt_cont_p] appends the re-entered prologue at a pipeline line exactly
+   as at an echo line, with no other change to the session. *)
+Lemma palt_ok_pipe_echo (ws : list (list (bv 8))) (k : nat) :
+  palt_ok (LPipe ws) (PEcho k) <-> k = 3%nat.
+Proof using. done. Qed.
 
-(* ...and the converse reading the determinacy proof spends: a panic
-   alternative forces an ECHO line. *)
-Lemma palt_panic_LEcho (l : pline) (a : palt) :
-  palt_ok l a -> palt_panic a = true -> exists ws, l = LEcho ws.
+Lemma palt_ok_pipe_panic (ws : list (list (bv 8))) :
+  palt_ok (LPipe ws) (PEcho 3%nat).
+Proof using. reflexivity. Qed.
+
+(* THE ARITHMETIC OBSTACLE, PROVED RATHER THAN TIMED.  Every interleaving
+   the model admits has [|sel| = 33], so its code exceeds [2 ^ 33].  That
+   is a unary [nat] of more than 8.5 thousand million successors: no
+   [vm_compute], and no other layout of the code, can build it -- an
+   injective map out of the admitted interleavings alone already needs
+   values past [C(33,17) > 10 ^ 9].  The model is unaffected, because
+   nothing in the theorem computes a code and [palt_of_code] is proved
+   abstractly; what is affected is every WITNESS, which is why the two
+   [PBoth] demos of section 8 rewrite with [palt_of_code] instead. *)
+Lemma palt_code_both_big (ws : list (list (bv 8))) (sel : list bool) :
+  palt_ok (LPipe ws) (PBoth sel) -> (2 ^ 33 <= palt_code (PBoth sel))%nat.
 Proof using.
-  destruct l as [ws | ws]; intros Ha Hp; [by exists ws |].
-  by rewrite (palt_ok_pipe_no_panic ws a Ha) in Hp.
+  intros [Hlen _].
+  pose proof (bnum_ge_pow2 sel) as Hp. rewrite Hlen in Hp.
+  rewrite dg_execL_len dg_execR_len in Hp.
+  replace (17 + 16)%nat with 33%nat in Hp by lia.
+  rewrite /palt_code. lia.
+Qed.
+
+(* the panic alternative is the SAME one at both line shapes, so the
+   determinacy proof never has to know which shape it is looking at *)
+Lemma palt_panic_3 (l : pline) (a : palt) :
+  palt_ok l a -> palt_panic a = true -> a = PEcho 3%nat.
+Proof using.
+  destruct a as [k | | | | sel | | |]; intros Ha Hp; try discriminate.
+  rewrite /palt_panic in Hp. apply bool_decide_eq_true in Hp as ->.
+  reflexivity.
 Qed.
 
 Lemma palt_ok_echo_lt4 ws c : palt_ok (LEcho ws) (palt_of c) -> (c < 4)%nat.
@@ -971,7 +1106,7 @@ Definition pcont (l : pline) (a : palt) : list (bv 8) :=
   | PRan => wl_line (drop 1 (pline_ws l)) ++ u_prompt
   | PExecL => alt_execL
   | PExecR => alt_execR
-  | PBoth sel => merge sel dg_execL dg_execR ++ u_prompt
+  | PBoth sel => pmerge sel dg_execL dg_execR ++ u_prompt
   | PPipe => alt_pipe
   | PFork => alt_forkc
   | PSilent => u_prompt
@@ -995,6 +1130,31 @@ Qed.
    satisfies the shape: every one but [PEcho 3] does -- [PPipe] and
    [PFork] end in the prompt too -- and [PEcho 3] is the one the prologue
    follows.) *)
+(* AN ADMITTED INTERLEAVING IS NONEMPTY AND OPENS ON 'e'.  Both exec
+   diagnostics start with "exec", so whichever child got the wire first,
+   the round's first byte is 'e' -- and sh's panic line opens on 'f',
+   which is what settles the [PBoth]-against-panic comparison below. *)
+Lemma pcont_both_head_e (l : pline) (sel : list bool) :
+  palt_ok l (PBoth sel) ->
+  pmerge sel dg_execL dg_execR !! 0%nat = Some (Z_to_bv 8 101%Z).
+Proof using.
+  destruct l as [ws | ws]; [by intros [] |]. intros [Hlen Hcnt].
+  assert (HeL : dg_execL !! 0%nat = Some (Z_to_bv 8 101%Z))
+    by (apply (bool_decide_unpack _); vm_compute; exact I).
+  assert (HeR : dg_execR !! 0%nat = Some (Z_to_bv 8 101%Z))
+    by (apply (bool_decide_unpack _); vm_compute; exact I).
+  assert (Hml : length (pmerge sel dg_execL dg_execR) = length sel)
+    by (apply pmerge_length; lia).
+  destruct (pmerge sel dg_execL dg_execR) as [| x r] eqn:Hm.
+  { exfalso. rewrite Hlen dg_execL_len dg_execR_len in Hml.
+    cbn [length] in Hml. lia. }
+  assert (Hx : pmerge sel dg_execL dg_execR !! 0%nat = Some x)
+    by (rewrite Hm; reflexivity).
+  destruct (pmerge_head sel dg_execL dg_execR x Hx) as [H | H];
+    [rewrite HeL in H | rewrite HeR in H];
+    injection H as Hxe; rewrite -Hxe; reflexivity.
+Qed.
+
 Lemma pcont_shape (l : pline) (a : palt) :
   pline_ok l -> palt_ok l a -> palt_panic a = false ->
   exists u, pcont l a = u ++ u_prompt /\ Forall nodollar u.
@@ -1012,9 +1172,11 @@ Proof using.
                   /\ Forall nodollar u).
   { exists []. split; [reflexivity | constructor]. }
   destruct a; rewrite /pcont.
-  - (* PEcho: the echo application's four, minus the panic one *)
+  - (* PEcho: the echo application's four, minus the panic one.  At a
+       PIPELINE line the only [PEcho] admitted IS the panic one, so the
+       hypothesis refutes the case outright. *)
     rewrite /palt_panic in Hp. apply bool_decide_eq_false in Hp.
-    rewrite /palt_ok in Ha. destruct l as [ws | ws]; [| done].
+    rewrite /palt_ok in Ha. destruct l as [ws | ws]; [| by destruct (Hp Ha)].
     destruct a as [| [| [| [| a]]]]; [| | | done | exfalso; lia].
     + exists (wl_line (drop 1 ws)). rewrite line_alts_of_0.
       split; [reflexivity |].
@@ -1031,8 +1193,8 @@ Proof using.
     rewrite /dg_execL. apply (pd_wl_line_shape dg_exec Hex).
   - exists dg_execR. rewrite /alt_execR. split; [reflexivity |].
     rewrite /dg_execR. apply (pd_wl_line_shape dg_exec_cat Hec).
-  - exists (merge sel dg_execL dg_execR). split; [reflexivity |].
-    exact (merge_no_dollar sel).
+  - exists (pmerge sel dg_execL dg_execR). split; [reflexivity |].
+    exact (pmerge_no_dollar sel).
   - exists (wl_line dg_pipe). rewrite /alt_pipe. split; [reflexivity |].
     apply (pd_wl_line_shape dg_pipe Hpi).
   - exists (wl_line dg_fork). rewrite /alt_forkc. split; [reflexivity |].
@@ -1040,36 +1202,75 @@ Proof using.
   - exact Hpr.
 Qed.
 
-(* ...AND, AT AN ECHO LINE, THE STRONGER SHAPE: the run's only newline, if
-   any, is its LAST byte.  [FileDisc.cont_shape] gives that at every
-   alternative; HERE IT IS FALSE at [PBoth]
-   ([pcont_both_no_nl_shape] below), so it is stated where it is true --
-   which is exactly where the determinacy proof needs it, because the
-   comparison that spends it puts a panic alternative on one side, and a
-   panic alternative forces an echo line ([palt_panic_LEcho]). *)
-Lemma pcont_shape_nl (ws : list (list (bv 8))) (a : palt) :
-  pline_ok (LEcho ws) -> palt_ok (LEcho ws) a -> palt_panic a = false ->
-  exists u, pcont (LEcho ws) a = u ++ u_prompt
+(* ...AND THE STRONGER SHAPE THE PANIC COMPARISON NEEDS: the run's only
+   newline, if any, is its LAST byte -- OR the run opens on 'e', which sh's
+   panic line, opening on 'f', can never match.  [FileDisc.cont_shape]
+   gives the newline half at every alternative; HERE IT IS FALSE at
+   [PBoth] ([pcont_both_no_nl_shape] below), because a merge of the two
+   diagnostics carries TWO newlines.  The second arm is what replaces it,
+   and it is all [pcont_pair_det] wants: the only comparison that spends
+   this lemma puts sh's panic line on the other side. *)
+Lemma pcont_shape_nl (l : pline) (a : palt) :
+  pline_ok l -> palt_ok l a -> palt_panic a = false ->
+  exists u, pcont l a = u ++ u_prompt
             /\ Forall nodollar u
-            /\ (wl_nl ∉ u \/ exists v, wl_nl ∉ v /\ u = v ++ [wl_nl]).
+            /\ ((wl_nl ∉ u \/ exists v, wl_nl ∉ v /\ u = v ++ [wl_nl])
+                \/ u !! 0%nat = Some (Z_to_bv 8 101%Z)).
 Proof using.
   intros Hl Ha Hp.
   assert (Hex : wl_wf dg_exec)
     by (apply (bool_decide_unpack _); vm_compute; exact I).
-  rewrite /palt_panic in Hp.
-  rewrite /palt_ok in Ha. destruct a as [k | | | | | | |]; [| done..].
-  apply bool_decide_eq_false in Hp.
-  rewrite /pcont /pline_ws.
-  destruct k as [| [| [| [| k]]]]; [| | | done | exfalso; lia].
-  - exists (wl_line (drop 1 ws)). rewrite line_alts_of_0.
-    split; [reflexivity |].
-    apply (pd_wl_line_shape' (drop 1 ws)).
-    apply pd_Forall_drop, (line_ok_wf _ Hl).
-  - exists (wl_line dg_exec). rewrite line_alts_of_1 /alt_execfail.
-    split; [reflexivity |]. exact (pd_wl_line_shape' dg_exec Hex).
-  - exists []. rewrite line_alts_of_2 /alt_prompt.
-    split; [reflexivity |]. split; [constructor |].
-    left. apply not_elem_of_nil.
+  assert (Hec : wl_wf dg_exec_cat)
+    by (apply (bool_decide_unpack _); vm_compute; exact I).
+  assert (Hpi : wl_wf dg_pipe)
+    by (apply (bool_decide_unpack _); vm_compute; exact I).
+  assert (Hfk : wl_wf dg_fork)
+    by (apply (bool_decide_unpack _); vm_compute; exact I).
+  assert (Hpr : exists u : list (bv 8), u_prompt = u ++ u_prompt
+                  /\ Forall nodollar u
+                  /\ ((wl_nl ∉ u \/ exists v, wl_nl ∉ v /\ u = v ++ [wl_nl])
+                      \/ u !! 0%nat = Some (Z_to_bv 8 101%Z))).
+  { exists []. split; [reflexivity |]. split; [constructor |].
+    left. left. apply not_elem_of_nil. }
+  destruct a as [k | | | | sel | | |]; rewrite /pcont.
+  - (* PEcho: at a PIPELINE line the only one admitted panics *)
+    rewrite /palt_panic in Hp. apply bool_decide_eq_false in Hp.
+    rewrite /palt_ok in Ha. destruct l as [ws | ws]; [| by destruct (Hp Ha)].
+    destruct k as [| [| [| [| k]]]]; [| | | done | exfalso; lia].
+    + exists (wl_line (drop 1 ws)). rewrite line_alts_of_0.
+      split; [reflexivity |].
+      destruct (pd_wl_line_shape' (drop 1 ws)
+                  ltac:(apply pd_Forall_drop, (line_ok_wf _ Hl)))
+        as [H1 H2].
+      split; [exact H1 | by left].
+    + exists (wl_line dg_exec). rewrite line_alts_of_1 /alt_execfail.
+      split; [reflexivity |].
+      destruct (pd_wl_line_shape' dg_exec Hex) as [H1 H2].
+      split; [exact H1 | by left].
+    + rewrite line_alts_of_2 /alt_prompt. exact Hpr.
+  - (* PRan *)
+    exists (wl_line (drop 1 (pline_ws l))). split; [reflexivity |].
+    destruct (pd_wl_line_shape' (drop 1 (pline_ws l))
+                ltac:(apply pd_Forall_drop,
+                      (line_ok_wf _ (pline_ok_ws l Hl)))) as [H1 H2].
+    split; [exact H1 | by left].
+  - exists dg_execL. rewrite /alt_execL. split; [reflexivity |].
+    destruct (pd_wl_line_shape' dg_exec Hex) as [H1 H2].
+    split; [exact H1 | by left].
+  - exists dg_execR. rewrite /alt_execR. split; [reflexivity |].
+    destruct (pd_wl_line_shape' dg_exec_cat Hec) as [H1 H2].
+    split; [exact H1 | by left].
+  - (* PBoth: the newline half is FALSE here; the head byte is 'e' *)
+    exists (pmerge sel dg_execL dg_execR). split; [reflexivity |].
+    split; [exact (pmerge_no_dollar sel) |]. right.
+    exact (pcont_both_head_e l sel Ha).
+  - exists (wl_line dg_pipe). rewrite /alt_pipe. split; [reflexivity |].
+    destruct (pd_wl_line_shape' dg_pipe Hpi) as [H1 H2].
+    split; [exact H1 | by left].
+  - exists (wl_line dg_fork). rewrite /alt_forkc. split; [reflexivity |].
+    destruct (pd_wl_line_shape' dg_fork Hfk) as [H1 H2].
+    split; [exact H1 | by left].
+  - exact Hpr.
 Qed.
 
 (* ---- WHY THE STRONGER SHAPE IS FALSE AT [PBoth] ---------------------- *)
@@ -1086,7 +1287,7 @@ Proof using.
             count_true_replicate_false. lia.
 Qed.
 
-Lemma merge_sel_LR : merge sel_LR dg_execL dg_execR = dg_execL ++ dg_execR.
+Lemma pmerge_sel_LR : pmerge sel_LR dg_execL dg_execR = dg_execL ++ dg_execR.
 Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
 
 (* TWO NEWLINES, so the run is neither newline-free nor closed by its one
@@ -1897,6 +2098,27 @@ Proof using.
                     pd_fork_nonl Hv Hc2)).
 Qed.
 
+(* ...AND THE COLLISION THAT CANNOT HAPPEN AT ALL: a run opening on 'e'
+   below one wire with sh's panic line, which opens on 'f'.  This is what
+   replaces the newline reading at [PBoth], whose run has two newlines but
+   always starts with one of the two exec diagnostics' 'e'. *)
+Lemma pd_head_ne_panic (u Y Z : list (bv 8)) :
+  u !! 0%nat = Some (Z_to_bv 8 101%Z) ->
+  ((u ++ u_prompt ++ Y) `prefix_of` (alt_panic ++ Z)
+   \/ (alt_panic ++ Z) `prefix_of` (u ++ u_prompt ++ Y)) -> False.
+Proof using.
+  intros Hhd Hcmp.
+  assert (Hlu : (0 < length u)%nat)
+    by (apply lookup_lt_Some in Hhd; lia).
+  assert (H1 : (u ++ u_prompt ++ Y) !! 0%nat = Some (Z_to_bv 8 101%Z))
+    by (rewrite lookup_app_l; [exact Hhd | exact Hlu]).
+  assert (H2 : (alt_panic ++ Z) !! 0%nat = Some (Z_to_bv 8 102%Z))
+    by (rewrite lookup_app_l;
+        [exact alt_panic_head | rewrite pd_alt_panic_len; lia]).
+  pose proof (pd_cmp_at _ _ _ _ _ Hcmp H1 H2) as Heq.
+  apply (f_equal bv_unsigned) in Heq. vm_compute in Heq. lia.
+Qed.
+
 (* a settled prologue whose first byte is '$' IS the bare prompt *)
 Lemma pd_prompt_of_dollar (P : list nat) (X Y : list (bv 8)) :
   Forall (fun a => (a < length pro_alts)%nat) P -> pro_done P ->
@@ -2002,16 +2224,19 @@ Proof using.
     split; [intros _; by apply pro_from_done |].
     split; [by rewrite Heqp | exact Hp].
   - (* THE UNPRIMED SIDE RE-ENTERED; the primed side printed a prompt *)
-    destruct (palt_panic_LEcho l a Ha Hpa) as [ws ->].
     rewrite (pcont_all_panic ps _ a Hpa) (pcont_all_out ps' _ a' Hpa')
       in Hp |- *.
-    destruct (pcont_shape_nl ws a' Hl Ha' Hpa') as (u & Hu & Hnd & Hnl).
+    destruct (pcont_shape_nl l a' Hl Ha' Hpa') as (u & Hu & Hnd & Hnl).
     rewrite Hu in Hp |- *.
     rewrite -(app_assoc u u_prompt X')
             -(app_assoc alt_panic (pro_of (pro_from 1%nat ps)) X) in Hp.
     assert (Hueq : u = alt_panic).
-    { apply (pd_out_eq_panic u X' (pro_of (pro_from 1%nat ps) ++ X) Hnd Hnl).
-      by left. }
+    { destruct Hnl as [Hnl | Hhd].
+      - apply (pd_out_eq_panic u X' (pro_of (pro_from 1%nat ps) ++ X) Hnd Hnl).
+        by left.
+      - exfalso.
+        apply (pd_head_ne_panic u X' (pro_of (pro_from 1%nat ps) ++ X) Hhd).
+        by left. }
     rewrite Hueq in Hp |- *. apply wl_prefix_app_cancel in Hp.
     assert (HdA : pro_done (pro_from 1%nat ps)).
     { destruct (decide (X = [])) as [HX0 | HXne];
@@ -2034,16 +2259,19 @@ Proof using.
     split; [intros _; by apply pro_from_done |].
     split; [by rewrite Heqp | exact Hp].
   - (* THE PRIMED SIDE RE-ENTERED; the unprimed printed a prompt *)
-    destruct (palt_panic_LEcho l a' Ha' Hpa') as [ws ->].
     rewrite (pcont_all_out ps _ a Hpa) (pcont_all_panic ps' _ a' Hpa')
       in Hp |- *.
-    destruct (pcont_shape_nl ws a Hl Ha Hpa) as (u & Hu & Hnd & Hnl).
+    destruct (pcont_shape_nl l a Hl Ha Hpa) as (u & Hu & Hnd & Hnl).
     rewrite Hu in Hp |- *.
     rewrite -(app_assoc alt_panic (pro_of (pro_from 1%nat ps')) X')
             -(app_assoc u u_prompt X) in Hp.
     assert (Hueq : u = alt_panic).
-    { apply (pd_out_eq_panic u X (pro_of (pro_from 1%nat ps') ++ X') Hnd Hnl).
-      by right. }
+    { destruct Hnl as [Hnl | Hhd].
+      - apply (pd_out_eq_panic u X (pro_of (pro_from 1%nat ps') ++ X') Hnd Hnl).
+        by right.
+      - exfalso.
+        apply (pd_head_ne_panic u X (pro_of (pro_from 1%nat ps') ++ X') Hhd).
+        by right. }
     rewrite Hueq in Hp |- *. apply wl_prefix_app_cancel in Hp.
     assert (Hd' : pro_done (pro_from 1%nat ps'))
       by (apply pro_from_done, Hset', eq_refl).
@@ -2286,18 +2514,31 @@ Qed.
 (*  [echo hello | cat] round that prints [goodbye].                        *)
 (*                                                                        *)
 (*  THE [PBoth] DEMOS CANNOT GO THROUGH [vm_compute], and that is a        *)
-(*  finding about the DESIGN and not about the demos: design section 1's   *)
-(*  "[PBoth]'s [sel] is PART OF THE ENCODING" makes [palt_code] read       *)
-(*  [encode_nat sel] as a UNARY [nat], and [sel] has                       *)
-(*  [length dg_execL + length dg_execR = 33] entries, so the code is       *)
-(*  about [4^33] -- not representable, let alone computable.  (Measured:   *)
-(*  [encode_nat (replicate 4 true) = 425],                                 *)
-(*  [encode_nat (replicate 8 true) = 109225].)  The model is still sound   *)
-(*  -- nothing in the theorem computes a code, and [palt_of_code] is a     *)
-(*  rewrite -- so the two [PBoth] demos below are proved by REWRITING with *)
-(*  [palt_of_code] instead, which is exactly what the stage will have to   *)
-(*  do.  Lane PIPE-STAGE / PIPE-2W should take [cs : list palt], or a      *)
-(*  binary code, if anything downstream needs to DECIDE a resolution.      *)
+(*  fact about [nat] and not about the layout of the code.  The            *)
+(*  coordinator's ruling of 2026-09-18 replaced [encode_nat]'s pairing     *)
+(*  (~4x per selector entry) with the POSITIONAL/BINARY [bnum] (2x per     *)
+(*  entry), which is a factor of about [4 * 10 ^ 9] at the only [|sel|]    *)
+(*  the model admits -- and still not enough, because [nat] is UNARY:      *)
+(*  [palt_code_both_big] proves the code exceeds [2 ^ 33] at every         *)
+(*  admitted interleaving, i.e. a numeral of more than 8.5 thousand        *)
+(*  million successors.  No layout escapes it: an injective map out of     *)
+(*  the admitted interleavings alone needs values past                     *)
+(*  [C(33, 17) > 10 ^ 9].                                                  *)
+(*                                                                        *)
+(*  MEASURED on the lane's mirror, the round trip                          *)
+(*  [bdec (bnum (replicate n true)) = replicate n true] by [vm_compute]:   *)
+(*                                                                        *)
+(*      n =  8    0.002 s                                                  *)
+(*      n = 14    0.012 s                                                  *)
+(*      n = 18    0.272 s                                                  *)
+(*      n = 22   14.5   s                                                  *)
+(*      n = 33   killed at 4 min (extrapolates to hours, and the numeral   *)
+(*                itself wants ~275 GB of heap)                            *)
+(*                                                                        *)
+(*  So the two [PBoth] demos below are proved by REWRITING with            *)
+(*  [palt_of_code] ([demo_p_both], one lemma for every interleaving),      *)
+(*  which is what the ruling allows and what the stage will have to do     *)
+(*  anyway.  Every other demo's code is small (0..9) and computes.         *)
 (* ====================================================================== *)
 
 (* ---- the two schedule builders, and what they put on the wire -------- *)
@@ -2460,6 +2701,41 @@ Proof using.
   apply (bool_decide_unpack _). vm_compute. exact I.
 Qed.
 
+(* ---- (2b) THE MAIN LOOP'S OWN FORK PANIC, AT A PIPELINE LINE --------- *)
+
+(* The coordinator's ruling of 2026-09-18 in one transcript: the pipeline
+   line is typed and echoed, sh's MAIN-loop [fork1] then fails, [panic]
+   prints "fork\n" on the console and exits the SHELL, init reaps it and
+   its outer loop opens a FRESH PROLOGUE.  Under the design as first
+   written no [LPipe] alternative admitted this wire; [PEcho 3] now does,
+   and the block is [EchoDisc]'s alternative 3 verbatim. *)
+Definition pd_seg_panic : list mobs :=
+  demo_out u_prologue
+  ++ demo_typed (line_bytes pd_l)
+  ++ demo_out (alt_panic
+               ++ pro_of (pro_from 1%nat [3%nat; 0%nat; 3%nat; 0%nat])).
+
+Lemma demo_p_panic : good_out_p pd_seg_panic.
+Proof using.
+  exists [3%nat; 0%nat; 3%nat; 0%nat], [palt_code (PEcho 3%nat)].
+  apply (bool_decide_unpack _). vm_compute. exact I.
+Qed.
+
+Lemma demo_p_panic_disc : disc_seg_p' pd_seg_panic.
+Proof using.
+  eapply (disc_seg_p'_intro pd_seg_panic [3%nat; 0%nat; 3%nat; 0%nat]
+            [palt_code (PEcho 3%nat)]);
+    apply (bool_decide_unpack _); vm_compute; exact I.
+Qed.
+
+(* ...and the wire it puts up is NOT the runcmd child's panic, which ends
+   in the prompt: the two part at byte 5.  That is the whole content of
+   the hole the ruling closed. *)
+Lemma demo_p_panic_ne_forkc :
+  alt_panic ++ pro_of (pro_from 1%nat [3%nat; 0%nat; 3%nat; 0%nat])
+  <> alt_forkc.
+Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
 (* ---- (3) AN ECHO ROUND, THEN A PIPELINE ROUND ------------------------ *)
 
 Definition pd_seg_mix : list mobs :=
@@ -2496,7 +2772,7 @@ Proof using.
             count_true_replicate_true. lia.
 Qed.
 
-Lemma merge_sel_RL : merge sel_RL dg_execL dg_execR = dg_execR ++ dg_execL.
+Lemma pmerge_sel_RL : pmerge sel_RL dg_execL dg_execR = dg_execR ++ dg_execL.
 Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
 
 Definition pd_seg_both (c : list (bv 8)) : list mobs :=
@@ -2506,7 +2782,7 @@ Definition pd_seg_both (c : list (bv 8)) : list mobs :=
 
 (* ONE LEMMA FOR EVERY INTERLEAVING, with the code never computed *)
 Lemma demo_p_both (sel : list bool) (c : list (bv 8)) :
-  palt_ok pd_l (PBoth sel) -> merge sel dg_execL dg_execR = c ->
+  palt_ok pd_l (PBoth sel) -> pmerge sel dg_execL dg_execR = c ->
   good_out_p (pd_seg_both c).
 Proof using.
   intros Hok Hm.
@@ -2533,12 +2809,12 @@ Qed.
 
 Lemma demo_p_both_LR : good_out_p (pd_seg_both (dg_execL ++ dg_execR)).
 Proof using.
-  apply (demo_p_both sel_LR); [apply sel_LR_ok | exact merge_sel_LR].
+  apply (demo_p_both sel_LR); [apply sel_LR_ok | exact pmerge_sel_LR].
 Qed.
 
 Lemma demo_p_both_RL : good_out_p (pd_seg_both (dg_execR ++ dg_execL)).
 Proof using.
-  apply (demo_p_both sel_RL); [apply sel_RL_ok | exact merge_sel_RL].
+  apply (demo_p_both sel_RL); [apply sel_RL_ok | exact pmerge_sel_RL].
 Qed.
 
 (* the two wires really are different, so the model's [PBoth] arm is not
@@ -2613,21 +2889,24 @@ Proof using.
   assert (Hfk : alt_forkc !! 0%nat = Some (Z_to_bv 8 102%Z))
     by (apply (bool_decide_unpack _); vm_compute; exact I).
   destruct a as [k | | | | sel | | |]; rewrite /pcont in Hb.
-  - by destruct Ha.
+  - (* the MAIN loop's own fork panic, which a pipeline line now admits *)
+    assert (Hk : k = 3%nat) by (exact Ha).
+    rewrite Hk (line_alts_of_3 (pline_ws pd_l2)) in Hb.
+    rewrite (pd_head_app _ _ _ _ alt_panic_head Hb). by vm_compute.
   - rewrite (pd_head_app _ _ _ _ Hran Hb). by vm_compute.
   - rewrite (pd_head_app _ _ _ _ HxL Hb). by vm_compute.
   - rewrite (pd_head_app _ _ _ _ HxR Hb). by vm_compute.
   - (* both execs failed: the interleaving's first byte is one of the two
        diagnostics' first bytes, and they are both 'e' *)
-    destruct (merge sel dg_execL dg_execR) as [| x r] eqn:Hm.
+    destruct (pmerge sel dg_execL dg_execR) as [| x r] eqn:Hm.
     + rewrite app_nil_l in Hb.
       rewrite (pd_head_app _ _ _ _ u_prompt_head Hb). by vm_compute.
     + assert (Hc : ((x :: r) ++ u_prompt) !! 0%nat = Some x)
         by reflexivity.
       rewrite (pd_head_app _ _ _ _ Hc Hb).
-      assert (Hmx : merge sel dg_execL dg_execR !! 0%nat = Some x)
+      assert (Hmx : pmerge sel dg_execL dg_execR !! 0%nat = Some x)
         by (rewrite Hm; reflexivity).
-      destruct (merge_head sel dg_execL dg_execR x Hmx) as [H | H].
+      destruct (pmerge_head sel dg_execL dg_execR x Hmx) as [H | H].
       * rewrite HeL in H. injection H as Hx. rewrite -Hx. by vm_compute.
       * rewrite HeR in H. injection H as Hx. rewrite -Hx. by vm_compute.
   - rewrite (pd_head_app _ _ _ _ Hpi Hb). by vm_compute.
@@ -2703,9 +2982,8 @@ Proof using.
             (_ : [pd_b2] !!! 0%nat = pd_b2) in H; [| reflexivity].
     by rewrite (pline_of_body pd_l2 pd_l2_ok) in H. }
   rewrite /alt_cont_p (_ : [pd_b2] !!! 0%nat = pd_b2) in HC; [| reflexivity].
-  rewrite (pline_of_body pd_l2 pd_l2_ok)
-          (palt_ok_pipe_no_panic pd_ws2 _ Ha0) in HC.
-  pose proof (pd_bad_head (palt_at cs 0%nat) [] _ Ha0 HC) as Hne.
+  rewrite (pline_of_body pd_l2 pd_l2_ok) in HC.
+  pose proof (pd_bad_head (palt_at cs 0%nat) _ _ Ha0 HC) as Hne.
   apply Hne. by vm_compute.
 Qed.
 
@@ -2715,17 +2993,22 @@ Qed.
 (*  This file is Iris-free and axiom-free.  The tree's audit convention    *)
 (*  is a descoped [*Assumptions.v] beside the theorem it audits; a pure    *)
 (*  model has no theorem of its own to audit, so the check is recorded     *)
-(*  here and re-run by pasting these lines at the end of the file:         *)
+(*  here and re-run by pasting these lines at the end of the file.  All    *)
+(*  thirteen print exactly "Closed under the global context" (checked      *)
+(*  2026-09-18 on the lane's mirror, after the coordinator's two           *)
+(*  rulings):                                                              *)
 (*                                                                        *)
-(*    Print Assumptions palt_of_code.        Closed under the global ctx   *)
-(*    Print Assumptions merge_prefix.        Closed under the global ctx   *)
-(*    Print Assumptions pcont_shape.         Closed under the global ctx   *)
-(*    Print Assumptions sessp_prefix_det.    Closed under the global ctx   *)
-(*    Print Assumptions disc_p_disc.         Closed under the global ctx   *)
-(*    Print Assumptions demo_p_ran.          Closed under the global ctx   *)
-(*    Print Assumptions demo_p_both_LR.      Closed under the global ctx   *)
-(*    Print Assumptions demo_p_bad.          Closed under the global ctx   *)
-(*                                                                        *)
-(*  (Checked 2026-09-18 on the lane's mirror; all eight print exactly      *)
-(*  "Closed under the global context".)                                    *)
+(*    Print Assumptions bdec_bnum.                                         *)
+(*    Print Assumptions palt_of_code.                                      *)
+(*    Print Assumptions palt_code_inj.                                     *)
+(*    Print Assumptions palt_code_both_big.                                *)
+(*    Print Assumptions pmerge_prefix.                                     *)
+(*    Print Assumptions pcont_shape.                                       *)
+(*    Print Assumptions pcont_shape_nl.                                    *)
+(*    Print Assumptions sessp_prefix_det.                                  *)
+(*    Print Assumptions disc_p_disc.                                       *)
+(*    Print Assumptions demo_p_ran.                                        *)
+(*    Print Assumptions demo_p_panic.                                      *)
+(*    Print Assumptions demo_p_both_LR.                                    *)
+(*    Print Assumptions demo_p_bad.                                        *)
 (* ====================================================================== *)

@@ -810,3 +810,105 @@ For anyone who wants the arm CLOSED at today's kernel: R-1, the `-1` in
 hand back the two `ush_cldep`s (or whatever `pipe_reg` becomes), because
 that is what the six closes are paid with and the taint is the only
 source today.
+
+### PIPE-MODEL-2 (2026-09-18) — the coordinator's two rulings, landed
+
+Commit `27e95d086` on `app-pipe/pipe-model` (after `fd925474d`).  Whole
+`iris` tree `RC=0`; thirteen headline results **Closed under the global
+context** (`bdec_bnum`, `palt_of_code`, `palt_code_inj`,
+`palt_code_both_big`, `pmerge_prefix`, `pcont_shape`, `pcont_shape_nl`,
+`sessp_prefix_det`, `disc_p_disc`, `demo_p_ran`, `demo_p_panic`,
+`demo_p_both_LR`, `demo_p_bad`; list kept in the file's §9).
+`iris/PipeDisc.v` is now 3014 lines, 234 results, no `Admitted`, no
+landed `.v` file edited.
+
+**RULING 1 — the main-loop panic at an `LPipe` line: LANDED.**
+`palt_ok (LPipe _) (PEcho k) := k = 3` (so exactly `PEcho 3` joins, as
+ruled).  What moved, and nothing else:
+
+- **Retired**: `palt_ok_pipe_no_panic`, `palt_panic_LEcho`.
+  **New**: `palt_ok_pipe_echo` (the iff), `palt_ok_pipe_panic`, and
+  `palt_panic_3 : palt_ok l a -> palt_panic a = true -> a = PEcho 3` —
+  the panic alternative is now the *same* alternative at both line
+  shapes, so the determinacy proof never asks which shape it is looking
+  at.  That is a simplification, not a cost.
+- **`pcont_shape_nl` generalised** from `LEcho ws` to every `l`, with the
+  newline reading as a **disjunction**: the run's only newline is its
+  last byte, **or** the run opens on `'e'`.  The newline half is still
+  false at `PBoth` (`pcont_both_no_nl_shape`), and it had to be, so the
+  second arm is what carries `PBoth`: `pcont_both_head_e` (an admitted
+  interleaving is nonempty — `pmerge_length` at `|sel| = 33` — and its
+  first byte is one of the two diagnostics' `'e'`), spent by the new
+  `pd_head_ne_panic` (sh's panic line opens on `'f'`; `101 ≠ 102`).  That
+  is *cheaper* than the newline argument it replaces.
+- **`pcont_pair_det` re-proved**, its two panic-vs-prompt cases no longer
+  destructing the line shape.  `alt_seq_p_prefix_det`, `sessp_prefix_det`
+  and `disc_p_disc` are **unchanged in statement** and green —
+  `disc_p_disc` was never at risk, because it quantifies over `echo_only`
+  inputs where every line is an `LEcho` one.
+- **`pd_bad_head` grew its `PEcho 3` case** (head `'f'` = 102, still never
+  `'g'`), and `demo_p_bad` no longer needs "no `LPipe` alternative
+  panics": it passes the whole `if palt_panic … then pro_of … else []`
+  tail as the lemma's `Z`, so it is now agnostic.
+- **New transcript** `demo_p_panic` (+ `demo_p_panic_disc`): the pipeline
+  line typed and echoed, sh's main-loop `fork1` panics, init reaps the
+  shell and re-enters the prologue — `ps = [3;0;3;0]`, `cs = [3]`, the
+  exact wire the old table refused.  `demo_p_panic_ne_forkc` shows it is
+  **not** the runcmd child's panic (`alt_forkc`), which is the whole
+  content of the hole the ruling closed.
+
+**RULING 2 — the `PBoth` code: LANDED positional/binary, and the
+computability goal is UNREACHABLE (reported, with timings and a proof).**
+
+- `bnum : list bool -> nat` reads `sel` as a binary numeral with a
+  **leading 1** (lsb first, so leading `false`s survive); `bdigits`/`bdec`
+  decode by division on a fuel bounded by `bnum_gt_length`; `bdec_bnum`
+  is the round trip.  `palt_code` is ten small tags (0..9: the echo four
+  and the six constant pipeline alternatives) and then two progressions
+  mod 16 — `PEcho k≥4` at `10 + 16*(k-4)`, `PBoth sel` at
+  `11 + 16 * bnum sel`; `palt_of` divides.  `encode_nat`/`decode_nat` are
+  gone from the file, and `cs : list nat` is untouched, so PIPE-STAGE
+  reuses `EchoOut`'s `cs_auth`/`cs_lb` verbatim as ruled.
+- **`palt_of_code` is NOT `vm_compute`-checkable at `|sel| = 33`, and no
+  layout makes it so, because `nat` is unary.** Measured on the mirror,
+  `bdec (bnum (replicate n true)) = replicate n true` by `vm_compute`:
+
+  | `n` | 8 | 14 | 18 | 22 | 33 |
+  |---|---|---|---|---|---|
+  | time | 0.002 s | 0.012 s | 0.272 s | 14.5 s | killed at 4 min |
+
+  Each four bits costs about ×50, so 33 extrapolates to hours of CPU, and
+  the numeral alone wants ~275 GB of heap.  The obstacle is **proved**
+  rather than timed: `palt_code_both_big : palt_ok (LPipe ws) (PBoth sel)
+  -> 2 ^ 33 <= palt_code (PBoth sel)` (via `bnum_ge_pow2`).  It is not
+  an artefact of this layout — an injective map out of the admitted
+  interleavings *alone* needs values past `C(33,17) > 10^9`, which is
+  already ~19 GB of unary `nat`.  The binary reading is still a real win
+  over `encode_nat` (~`2^34` against ~`4^33`, a factor of `4×10^9`), and
+  it is what is landed.
+- So the two `PBoth` demos keep the **rewriting** proofs, as the ruling
+  allows: `demo_p_both` is one lemma for every interleaving, proved by
+  rewriting with `palt_of_code` and `sessp_one`, instantiated at
+  `sel_LR`/`sel_RL`.  Every other demo's code is in 0..9 and computes.
+  **This is what PIPE-STAGE and PIPE-2W will have to do too**: a `PBoth`
+  round can be *reasoned* about but never *computed*, so no decision
+  procedure, `Decision` instance or `bool_decide` witness may be put on
+  the path of a `PBoth` round (`alts_ok_p`'s instance still exists and is
+  still correct — it is simply unusable there).
+- `merge` → **`pmerge`** throughout (function and its ten lemmas:
+  `pmerge_length`, `pmerge_take`, `pmerge_take_lr`, `pmerge_prefix_take`,
+  `pmerge_prefix`, `pmerge_nodollar`, `pmerge_no_dollar`, `pmerge_head`,
+  `pmerge_sel_LR`, `pmerge_sel_RL`), so stdpp's map `merge` is no longer
+  shadowed and PIPE-2W can import both.  Design §4.3's law is now
+  `pmerge_prefix`.
+
+**REFUTED ON THE WAY (new).** The ruling's phrase "`palt_of_code` must be
+`vm_compute`-checkable at `|sel| = 33` (a 34-bit number)" reads a 34-bit
+*number* as cheap; in Rocq's `nat` a 34-bit number is 1.7×10^10
+constructors. If a computable resolution is ever wanted, the fix is not a
+better code but a different carrier — `cs : list palt`, or `cs : list N`
+— and that is a PIPE-STAGE decision, not a PIPE-MODEL one.
+
+**NOTHING ELSE MOVED.** No landed `.v` file edited; `iris/_CoqProject`
+carries the one new row; nothing imports `PipeDisc`, so the three audits'
+cones are untouched.

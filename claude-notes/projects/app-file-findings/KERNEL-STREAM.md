@@ -98,16 +98,68 @@ predicate today, so relaxing it cost three `destruct` patterns.
 * the kernel carries NOTHING: no `uoff` across a call, no supplier at a
   held fire, and both posts are the landed ones.
 
+## 3a. ITEM 1 — the deed opens take the mode, and `cat_open_hand` is a theorem
+
+`24be7ea30`. The three deed opens are now **parameterized by the mode their
+caller's family asks for**, so the hand-mode corollary IS the landed lemma
+at `OffHeld` and there is no second walk: `UkFileOpen`'s
+`file_open_fam`/`file_open_sup{,_v}`/`wp_uk_ecall_open_read_deed{,_v,_d}`,
+`xfam_fcreate`/`file_create_fam`/`file_create_sup{,_v}`/
+`wp_uk_ecall_open_create_deed{,_v,_d}`, `redir_K`; `UkCatDeed`'s
+`wp_kcat_open_read_deed`/`kcat_o_of_deed`; `UkTreeRead.tree_open_fd_tie`.
+Each fd arm carries `UserOff.foff_pub omo γo` beside the handle, so every
+landed caller passes `OffParked` and is unchanged.
+
+`UCatKernel.cat_open_hand_of_deed` **discharges CAT-GEOM-4's
+`cat_open_hand`** at `kcat_o_of_deed`'s own statement with
+`omo := OffHeld`. Two things bridge, and both are arithmetic rather than
+content:
+
+* `UserFd.ualloc_hi` — at a ledger with no free slot, `ualloc` IS
+  `ustd l ∗ ufd fd st`, which is `cat_hold_at`'s first conjunct beside the
+  ledger the arm hands back;
+* `UserOff.foff_pub_of_held` — the handed half IS `uoff γo 0`,
+  `cat_hold_at`'s second.
+
+The working directory is the ONE resource `cat_open_hand` does not name and
+the deed leaf does: it goes in here and is not reported, because cat never
+reads it again.
+
+**`UShRound.redir_K` IS RESTATED** (the coordinator's rule says to say so).
+It was `∃ i γo om, ⌜ty = FdInode i γo om⌝ ∗ fown r (Some (i, [])) ∗ uoff γo
+0`. The mode existential is right; the **TAINT ARM was missing**, and the
+open leaf cannot drop it — a tainted claim promises nothing about the file
+system and cannot refute the kernel's `FdDevice` arm, which is `FileOpen`'s
+own note at `file_open_fd_K`. It is now
+`UkFileOpen.redir_K OffHeld (fgn_cl g) r ty`, exactly what
+`wp_uk_ecall_open_create_deed_d` at `OffHeld` hands back. Nothing else in
+`UShRound.v` was touched; `Hopen_hand` itself is now stated at that
+payload, and what remains for it is sh's own walk through
+`UkShRedirAns.ush_open_call2` — the program stream's file.
+
 ## 4. WHAT IS LEFT, AND WHO OWES IT
 
-1. **The `_hand` deed corollaries.** `UkFileOpen`'s three deed opens are
-   instantiated at `OffParked`; the `_hand` twins are the same terms at
-   `OffHeld`, and they are what make `UCatKernel.cat_open_hand` and
-   `UShRound.Hopen_hand` compile as `Definition`s. Nothing new is needed:
-   the receipt already carries `foff_pub OffHeld γo = uoff γo 0`.
+1. ~~The `_hand` deed corollaries~~ — **DONE** (§3a).
 2. **`udepwf_st_read_file_held` / `wp_uk_read_deed_learns_held`** — the
-   read side's twins of what item 1 does for the open; they close
-   `cat_held_read`.
+   read side's twin, and it is NOT the same shape as the open's, which is
+   worth recording before it is attempted. The open's hand mode only had to
+   *carry* a resource out; the read's has to BUILD a client-advanced commit
+   (`FsAbsReadFire.aread_commit_adv`) out of the deed's claim plus the
+   program's own `uoff γo p`, which means three statements, not one:
+   * `FileOpen.file_read_piece_adv` — `file_read_piece` with the half in the
+     closure and the three moves inside the node (agree by
+     `UserOff.uoff_agree_k` against the lent arm, `uoff_advance` both
+     halves, return `off_link γo (off + d)`);
+   * an enriched receipt, because cat needs `Hold (p + rv)` back: the
+     receipt family is `aview -> nat -> anode -> nat -> iProp`, so
+     `uoff γo (off + d) ∨ app_taint` is statable there and that is where the
+     advanced half belongs (the same "it rides in the client's own cursor"
+     that the write side uses);
+   * a **refund** that carries the half back UNFIRED — `pf_at`'s refund side
+     is `fdq r q s` today, and a piece that took `uoff γo p` in must return
+     it if it is never spent.
+   Only then do `wp_uk_read_deed_learns_held`, `kcat_r_of_deed` at the held
+   row and `cat_held_read` follow.
 3. **WRITE-RELAY-3's `TB` guard** (review 2 §0(6)), still unowned by a
    landed statement: `filewrite_in_held`'s link arm is
    `∀ P : uptd, awrite_chain_adv … P …`, so echo must pay the partial node

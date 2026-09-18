@@ -228,7 +228,7 @@ Section UInitTreeCons.
       (sts : list fdstate) (rv : mword 64) (fdv' : list fdstate) :
     pin_resolves_abs Pin cw pl hops ino (ADev ma mi) ->
     arg_path_of M pv pl ->
-    open_receipt_plain (fs_gamma_L γfs) γfs cw M pv vom
+    open_receipt_plain OffParked (fs_gamma_L γfs) γfs cw M pv vom
       (pobs_P T hops) (pobs_Pmiss T) (pobs_Fo Pin T) Ft sts rv fdv' -∗
       ((⌜rv = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜fdv' = sts⌝)
        ∨ ⌜open_fd_rcpt (om_readable vom) (om_writable vom) (FdDevice ma)

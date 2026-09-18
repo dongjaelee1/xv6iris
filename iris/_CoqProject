@@ -1633,5 +1633,6 @@ UFileBootAdequacy.v
 UInitFileCons.v
 
 UEchoFile.v
+UShRedirPay.v
 UShRound.v
 UInitFile.v

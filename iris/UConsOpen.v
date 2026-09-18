@@ -167,7 +167,7 @@ Section UConsOpen.
   (*  PROGRAM'S OWN EXIT PAYLOAD, which is what [UkRun.udepwf_at]'s pure   *)
   (*  row demands.                                                        *)
   (* =================================================================== *)
-  Definition xfam_open (P Pmiss : nat -> Z -> iProp Σ)
+  Definition xfam_open (omo : offmode) (P Pmiss : nat -> Z -> iProp Σ)
       (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ))
       (Q : Z -> iProp Σ) : xfam :=
     {| xf_P     := fun _ _ => True%I;
@@ -186,6 +186,7 @@ Section UConsOpen.
        of_Fex   := pfam_triv (fun _ _ _ _ => True%I);
        of_Fo    := Fo;
        of_Ft    := pfam_triv (fun _ _ _ => True%I);
+       of_om    := omo;
        wf_Q     := fun _ => True%I;
        nf_P     := fun _ _ => True%I;
        nf_Pmiss := fun _ _ => True%I;
@@ -273,7 +274,7 @@ Section UConsOpen.
     tf_w (uvis_tf W) (tf_arg_idx 0) = pv ->
     tf_w (uvis_tf W) (tf_arg_idx 1) = vom ->
     spost_at X 15 f W r M' fdv' cw' cs' -∗
-    open_receipt (fs_gamma_L fsc_fs) fsc_fs cw M pv vom
+    open_receipt (of_om f) (fs_gamma_L fsc_fs) fsc_fs cw M pv vom
       (of_P f) (of_Pmiss f) (of_Farm f) (of_Fun f) (of_Fok f) (of_Fex f)
       (of_Fo f) (of_Ft f) (uvis_fd W) r fdv'.
   Proof using .
@@ -450,7 +451,7 @@ Section UConsOpen.
       (sts : list fdstate) (r : mword 64) (fdv' : list fdstate) :
     Persistent T ->
     arg_path_of M pv init_cons_pl ->
-    open_receipt_plain (fs_gamma_L γfs) γfs FsImg.ROOTINO M pv vom
+    open_receipt_plain OffParked (fs_gamma_L γfs) γfs FsImg.ROOTINO M pv vom
       (cons_P_dead T K FsImg.ROOTINO) (cons_Pmiss T K) Fo Ft sts r fdv' -∗
     |={⊤}=> ((⌜r = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜fdv' = sts⌝
               ∗ (K ∨ T)) ∨ T).
@@ -507,7 +508,7 @@ Section UConsOpen.
      [sfam], and an [xfam]-typed argument is checked before the instance
      evar is resolved and so does not convert. *)
   Definition init_cons_absent_fam (T K : iProp Σ) (Q : Z -> iProp Σ) : sfam :=
-    xfam_open (cons_P_dead T K FsImg.ROOTINO) (cons_Pmiss T K)
+    xfam_open OffParked (cons_P_dead T K FsImg.ROOTINO) (cons_Pmiss T K)
       (pfam_triv (fun (_ : aview) (_ : Z) (_ : anode) => True%I)) Q.
 
   (* THE SUPPLIER AT THE MISSING PIN, at the CALLER's own literal.  The
@@ -554,7 +555,7 @@ Section UConsOpen.
   (* ---- the SECOND open, at the pin that RESOLVES ---- *)
   Definition init_cons_console_fam (T : iProp Σ) (i : Z) (Q : Z -> iProp Σ)
       : sfam :=
-    xfam_open (pobs_P T [FsImg.ROOTINO; i]) (pobs_Pmiss T)
+    xfam_open OffParked (pobs_P T [FsImg.ROOTINO; i]) (pobs_Pmiss T)
       (pobs_Fo (cons_present_at i) T) Q.
 
   (* ...AND AT THE RESOLVING PIN.  The credential does NOT appear: the

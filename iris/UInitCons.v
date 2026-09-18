@@ -300,7 +300,7 @@ Section UInitCons.
       (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ))
       (sts : list fdstate) (r : mword 64) (fdv' : list fdstate) :
     arg_path_of M pv init_cons_pl ->
-    open_receipt_plain (fs_gamma_L γfs) γfs FsImg.ROOTINO M pv vom
+    open_receipt_plain OffParked (fs_gamma_L γfs) γfs FsImg.ROOTINO M pv vom
       (pobs_P T [FsImg.ROOTINO; i]) (pobs_Pmiss T)
       (pobs_Fo (cons_present_at i) T) Ft sts r fdv' -∗
       ((⌜r = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜fdv' = sts⌝)
@@ -310,7 +310,7 @@ Section UInitCons.
        ∨ T).
   Proof using .
     intros Hpath. iIntros "Hrc".
-    iApply (pinned_open_dev γfs (cons_present_at i) T FsImg.ROOTINO
+    iApply (pinned_open_dev γfs OffParked (cons_present_at i) T FsImg.ROOTINO
               init_cons_pl [FsImg.ROOTINO; i] i CONSOLE 0 1%nat M pv vom Ft
               sts r fdv' (cons_pin_resolves_at i) Hpath with "Hrc").
   Qed.
@@ -398,13 +398,13 @@ Section UInitCons.
       (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ))
       (sts : list fdstate) (r : mword 64) (fdv' : list fdstate) :
     arg_path_of M pv init_cons_pl ->
-    open_receipt_plain (fs_gamma_L γfs) γfs FsImg.ROOTINO M pv vom
+    open_receipt_plain OffParked (fs_gamma_L γfs) γfs FsImg.ROOTINO M pv vom
       (pobs_P_dead_lin T K FsImg.ROOTINO) (pobs_Pmiss_ref T K) Fo Ft
       sts r fdv'
     ={⊤}=∗ ((⌜r = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜fdv' = sts⌝ ∗ K) ∨ T).
   Proof using .
     intros Hpath. iIntros "Hrc".
-    iApply (pinned_open_dead_lin γfs T K FsImg.ROOTINO init_cons_pl
+    iApply (pinned_open_dead_lin γfs T K OffParked FsImg.ROOTINO init_cons_pl
               FsImg.ROOTINO M pv vom Fo Ft sts r fdv' Hpath
               init_cons_path_elems_ne with "Hrc").
   Qed.

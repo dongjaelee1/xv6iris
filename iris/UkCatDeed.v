@@ -45,6 +45,7 @@ Require Import FdSlots PipeNames ProcGeom UserFd UserCwd.
 Require Import UexecSG UexecSlot UexecRet UsysMemOk.
 Require Import UexecExecInst.  (* THE INSTANCES: [uexecSG_xv6], [uprogSG_gen] *)
 Require Import UkCat.
+Require Import UserOff.            (* [foff_pub] *)
 Require Import UkFileOpen.
 Require Import AppCfg AppInv AppFile FileOpen FsCfg FsImgCheck.
 Require Import ArgPath.          (* [arg_path_of] -- the open's path row *)
@@ -257,6 +258,161 @@ Section UkCatDeed.
     exact Hbnd.
   Qed.
 
+  (* ...AND THE SAME WALK AT A HELD ROW (kernel stream, item 2): the
+     descriptor records [OffHeld], the program's own half goes in, and the
+     answer names the offset it ran at and hands the half back advanced. *)
+  Lemma wp_kcat_read_deed_held (a : Z) (cnt : nat) (f : nat -> bv 8)
+      (h : CpuId) (m : regfile) (avail : nat)
+      (fd : nat) (wb : bool) (i : Z) (γo : gname)
+      (c : file_fixed) (r : file_names) (q : Qp) (jc : Z)
+      (bs : list (bv 8)) (p : nat) :
+    file_app = MkAppcfg file_names (file_pred c) r ->
+    0 <= a -> a < Z64 ->
+    m !!! Regidx a1_idx = (mword_of_int a : mword 64) ->
+    bv_signed (subrange_vec_dec (m !!! Regidx a2_idx) 31 0 : mword 32)
+      = Z.of_nat cnt ->
+    bv_signed (trunc32 (m !!! Regidx a0_idx)) = Z.of_nat fd ->
+    (fd < NOFILE)%nat ->
+    □ (app_taint -∗ file_taint c) -∗ □ (file_taint c -∗ app_taint) -∗
+    cat_code γt -∗
+    UserFd.ufd (ukn_fd N) fd (FdOpen true wb (FdInode i γo OffHeld)) -∗
+    cons_made (fn_cons r) jc -∗
+    app_inv fsc_fs -∗
+    fdq r q (Some (i, bs)) -∗
+    UserOff.uoff γo p -∗
+    ubytes γd a cnt f -∗
+    urun N h m (mword_of_int CatSyms.read) avail -∗
+    (∀ (h' : CpuId) (rv : mword 64) (gb : nat -> bv 8),
+       UserFd.ufd (ukn_fd N) fd (FdOpen true wb (FdInode i γo OffHeld)) -∗
+       (* the count's bound, ON BOTH ARMS (lane OFF-LINK, relayed from
+          [UkFileOpen.wp_uk_read_deed_learns_mapped]): what
+          [UCatKernel.cat_w_of_link] refutes its short write with, and the
+          taint arm below says nothing about [rv] without it *)
+       ⌜(Z.to_nat (bv_unsigned rv) <= cnt)%nat⌝ -∗
+       ((⌜Z.to_nat (bv_unsigned rv) = ard_count cnt p (length bs)⌝ ∗
+         ⌜forall j : nat, (j < Z.to_nat (bv_unsigned rv))%nat ->
+            gb j = bs !!! (p + j)%nat⌝ ∗
+         UserOff.uoff γo (p + Z.to_nat (bv_unsigned rv))%nat ∗
+         fdq r q (Some (i, bs)))
+        ∨ (UserOff.uoff γo p ∗ fdq r q (Some (i, bs)) ∗ file_taint c)) -∗
+       ubytes γd a cnt gb -∗
+       urun N h'
+         (<[Regidx a0_idx := rv]>
+            (<[Regidx a7_idx := (mword_of_int 5 : mword 64)]> m))
+         (ret_pc (m !!! Regidx ra_idx)) avail -∗
+       WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+  Proof using .
+    intros Heq Ha0 Hahi Ha1 Hcnt Hfdv Hfdlt.
+    iIntros "#Hbr #Hrb #Hcode Hufdh #Hm #Hinv Hd Hu Hbs Hrun Hcont".
+    destruct cat_syms_pins
+      as (_ & _ & _ & _ & _ & _ & Hread & _ & _ & _ & _).
+    rewrite Hread.
+    (* ---- 0x3c4  c.li a7,5 ---- *)
+    iApply (wp_uk_cli N h m (mword_of_int 0x3c4)
+              (mword_of_int 5 : mword 6) a7_idx avail
+              ltac:(unfold unot_sp; vm_compute; discriminate)
+              ltac:(vm_compute; discriminate) with "[] Hrun").
+    { iApply (uis_cat_3c4 with "Hcode"). }
+    assert (E0r : add_vec_int (mword_of_int 0x3c4 : mword 64) 2
+                  = mword_of_int 0x3c6)
+      by (apply bv_eq; vm_compute; reflexivity).
+    assert (Emr : <[Regidx a7_idx
+                    := regval_into_reg
+                         (sign_extend' 64 (mword_of_int 5 : mword 6)
+                          : mword 64)]> m
+                  = <[Regidx a7_idx := (mword_of_int 5 : mword 64)]> m)
+      by (f_equal; apply bv_eq; vm_compute; reflexivity).
+    rewrite E0r Emr.
+    iIntros (h1) "Hrun".
+    set (m1 := <[Regidx a7_idx := (mword_of_int 5 : mword 64)]> m).
+    assert (Ha1r : m1 !!! Regidx a1_idx = (mword_of_int a : mword 64)).
+    { rewrite <- Ha1.
+      exact (upd_ne m (Regidx a7_idx) (Regidx a1_idx) _
+               ltac:(vm_compute; discriminate)). }
+    assert (Hcntr : bv_signed (subrange_vec_dec (m1 !!! Regidx a2_idx) 31 0
+                               : mword 32) = Z.of_nat cnt).
+    { rewrite (upd_ne m (Regidx a7_idx) (Regidx a2_idx) _
+                 ltac:(vm_compute; discriminate)).
+      exact Hcnt. }
+    assert (Ha0r : bv_signed (trunc32 (m1 !!! Regidx a0_idx)) = Z.of_nat fd).
+    { rewrite (upd_ne m (Regidx a7_idx) (Regidx a0_idx) _
+                 ltac:(vm_compute; discriminate)).
+      exact Hfdv. }
+    assert (Hua : uint (m1 !!! Regidx a1_idx) = a)
+      by (rewrite Ha1r; apply uint_moi; unfold Z64 in *; lia).
+    (* ---- 0x3c6  ecall -- THE DEED'S OWN LEAF ---- *)
+    iEval (rewrite <- Hua) in "Hbs".
+    iDestruct (uis_cat_3c6 with "Hcode") as "#Hi3c6".
+    assert (Hnum : usysno m1 = USYS_read).
+    { unfold m1, usysno.
+      rewrite (upd_eq m (Regidx a7_idx) (mword_of_int 5 : mword 64)).
+      vm_compute; reflexivity. }
+    assert (Hcapk : (Z.to_nat (Z.of_nat cnt) <= cnt)%nat)
+      by (rewrite Nat2Z.id; lia).
+    assert (Hcnt0 : (0 <= Z.of_nat cnt)%Z) by lia.
+    (* HOISTED, not spliced as an inline [ltac:] in argument position.
+       optimization.md's "Inline [ltac:] in argument position" and
+       durable-notes' "Inline [ltac:] and evar-typed holes" are about the
+       COST and the divergence; this site adds a third symptom, which is
+       worth knowing: at a twenty-five-argument application the spliced
+       tactic can make the whole [iApply ( … with "…")] mis-elaborate, and
+       what comes out is [iSpecialize: cannot instantiate <the remaining
+       wands> with <the type of the first hypothesis>] -- a message that
+       points at the spec list and not at the argument that caused it. *)
+    assert (Hal4 : is_aligned_vaddr
+                     (Virtaddr (add_vec_int (mword_of_int 0x3c6 : mword 64) 4))
+                     2 = true)
+      by (vm_compute; reflexivity).
+    (* THE UNSHELVE HOIST (lane CAT-WALK-2, K2).  The application above --
+       twenty-five arguments elaborated together with a seven-hypothesis
+       spec list -- DID NOT TERMINATE: three compiles ran to tens of
+       minutes with no error and no [.vo] (lane CAT-WALK's W3).  Hoisting
+       the two inline [ltac:] closers into named [assert]s was not enough,
+       because the cost is not the closers: it is that [iApply] elaborates
+       the Coq arguments and unifies the whole spec list in ONE pass, so
+       every hypothesis is matched against a conclusion whose fifteen
+       parameters are still evars.
+       The remedy is to SEPARATE the two.  [iPoseProof] at the explicit
+       arguments is a pure Coq application: the fifteen parameters are
+       given, the eight premises are checked, and what lands in the
+       context is a closed chain of wands.  The [iApply] that follows
+       then has nothing left to solve but the seven hypotheses, each
+       against a wand whose type is already ground.  Cost: seconds. *)
+    iPoseProof (wp_uk_read_deed_learns_held N h1 m1 (mword_of_int 0x3c6)
+                  (Z.of_nat cnt) cnt f avail fd wb i γo c r q jc bs p Heq
+                  Hnum Hcntr Hcnt0 Hcapk Ha0r Hfdlt Hal4)
+      as "Hleaf".
+    iApply ("Hleaf" with "Hbr Hrb Hi3c6 Hrun Hufdh Hm Hinv Hd Hu Hbs").
+    assert (E1r : add_vec_int (mword_of_int 0x3c6 : mword 64) 4
+                  = mword_of_int 0x3ca)
+      by (apply bv_eq; vm_compute; reflexivity).
+    rewrite E1r.
+    iIntros (h2 rv gb) "Hufdh %Hbnd Hans Hrun Hbs".
+    rewrite Nat2Z.id in Hbnd.
+    iEval (rewrite Hua) in "Hbs".
+    iEval (rewrite Nat2Z.id) in "Hans".
+    set (m2 := <[Regidx a0_idx := rv]> m1).
+    (* ---- 0x3ca  c.jr ra ---- *)
+    assert (Hrar : m2 !!! Regidx ra_idx = m !!! Regidx ra_idx).
+    { unfold m2, m1.
+      exact (eq_trans
+               (upd_ne m1 (Regidx a0_idx) (Regidx ra_idx) rv
+                  ltac:(vm_compute; discriminate))
+               (upd_ne m (Regidx a7_idx) (Regidx ra_idx)
+                  (mword_of_int 5 : mword 64)
+                  ltac:(vm_compute; discriminate))). }
+    iApply (wp_uk_cjr N h2 m2 (mword_of_int 0x3ca) ra_idx
+              (ret_pc (m !!! Regidx ra_idx)) avail
+              ltac:(vm_compute; discriminate)
+              ltac:(rewrite Hrar; reflexivity)
+              with "[] Hrun").
+    { iApply (uis_cat_3ca with "Hcode"). }
+    iIntros (h3) "Hrun".
+    iApply ("Hcont" $! h3 rv gb with "Hufdh [%] Hans Hbs Hrun").
+    exact Hbnd.
+  Qed.
+
   (* =================================================================== *)
   (* ...AND THE OBLIGATION AT IT.                                        *)
   (*                                                                     *)
@@ -269,6 +425,15 @@ Section UkCatDeed.
   Definition kcat_deed_hold (fd : nat) (wb : bool) (i : Z) (γo : gname)
       (r : file_names) (q : Qp) (bs : list (bv 8)) : iProp Σ :=
     (UserFd.ufd (ukn_fd N) fd (FdOpen true wb (FdInode i γo OffParked))
+     ∗ fdq r q (Some (i, bs)))%I.
+
+  (* ...AND THE HELD ROW'S HOLD (kernel stream, item 2): the descriptor,
+     the program's OWN half at the cursor, and the deed's fraction.  It is
+     [UCatKernel.cat_hold_at]'s three conjuncts at this file's names. *)
+  Definition kcat_deed_hold_held (fd : nat) (wb : bool) (i : Z) (γo : gname)
+      (r : file_names) (q : Qp) (bs : list (bv 8)) (p : nat) : iProp Σ :=
+    (UserFd.ufd (ukn_fd N) fd (FdOpen true wb (FdInode i γo OffHeld))
+     ∗ UserOff.uoff γo p
      ∗ fdq r q (Some (i, bs)))%I.
 
   Lemma kcat_r_of_deed (a : Z) (cnt : nat)
@@ -326,6 +491,66 @@ Section UkCatDeed.
     iDestruct "Hans" as "[[Hok Hd] | [Hd HT]]".
     - iFrame "Hufdh Hd". by iLeft.
     - iFrame "Hufdh Hd". by iRight.
+  Qed.
+
+  Lemma kcat_r_of_deed_held (a : Z) (cnt : nat)
+      (fd : nat) (wb : bool) (i : Z) (γo : gname)
+      (c : file_fixed) (r : file_names) (q : Qp) (jc : Z)
+      (bs : list (bv 8)) (p : nat) :
+    file_app = MkAppcfg file_names (file_pred c) r ->
+    0 <= a -> a < Z64 ->
+    (fd < NOFILE)%nat ->
+    □ (app_taint -∗ file_taint c) -∗ □ (file_taint c -∗ app_taint) -∗
+    cat_code γt -∗
+    cons_made (fn_cons r) jc -∗
+    app_inv fsc_fs -∗
+    UkCat.kcat_r N (mword_of_int (Z.of_nat fd)) a cnt
+      (kcat_deed_hold_held fd wb i γo r q bs p)
+      (fun (rv : mword 64) (gb : nat -> bv 8) =>
+         (* THE COUNT'S BOUND, ON BOTH ARMS (lane OFF-LINK, relayed here
+            by lane CAT-GEOM-2): a read of [cnt] bytes reports at most
+            [cnt].  It is what [UCatKernel.cat_w_of_link] refutes its
+            short write with, and without it the TAINT arm says nothing
+            at all about [rv]. *)
+         (⌜(Z.to_nat (bv_unsigned rv) <= cnt)%nat⌝
+          ∗ ((⌜Z.to_nat (bv_unsigned rv)
+                = ard_count cnt p (length bs)⌝ ∗
+              ⌜forall j : nat, (j < Z.to_nat (bv_unsigned rv))%nat ->
+                 gb j = bs !!! (p + j)%nat⌝ ∗
+              kcat_deed_hold_held fd wb i γo r q bs
+                (p + Z.to_nat (bv_unsigned rv))%nat)
+             ∨ (kcat_deed_hold_held fd wb i γo r q bs p ∗ file_taint c)))%I).
+  Proof using .
+    intros Heq Ha0 Hahi Hfdlt.
+    iIntros "#Hbr #Hrb #Hcode #Hm #Hinv" (h m avail f) "%Ha0v %Ha1 %Ha2 _ Hhold Hbs Hrun Hcont".
+    iDestruct "Hhold" as "(Hufdh & Hu & Hd)".
+    assert (Hfdv : bv_signed (trunc32 (m !!! Regidx a0_idx)) = Z.of_nat fd).
+    { rewrite Ha0v trunc32_mword_of_int.
+      assert (Hr31 : (0 <= Z.of_nat fd < 2 ^ 31)%Z).
+      { unfold NOFILE in Hfdlt.
+        assert (E31 : (2 ^ 31 = 2147483648)%Z) by (vm_compute; reflexivity).
+        lia. }
+      assert (Hbw : bv_wrap 32 (Z.of_nat fd) = Z.of_nat fd)
+        by (apply bvw32_small; lia).
+      unfold bv_signed. rewrite moi32_unsigned Hbw.
+      apply bv_swrap_small.
+      assert (Hh32 : bv_half_modulus 32 = 2147483648%Z)
+        by (vm_compute; reflexivity).
+      rewrite Hh32. lia. }
+    iApply (wp_kcat_read_deed_held a cnt f h m avail fd wb i γo c r q jc bs p
+              Heq Ha0 Hahi Ha1 Ha2 Hfdv Hfdlt
+              with "Hbr Hrb Hcode Hufdh Hm Hinv Hd Hu Hbs Hrun").
+    (* the count's bound arrives here (lane OFF-LINK); putting it into
+       [UkCat.kcat_r]'s post family is CAT-ENTRY-2's one-line change, and
+       the fact is in hand for it *)
+    iIntros (h' rv gb) "Hufdh %Hbnd Hans Hbs Hrun".
+    iApply ("Hcont" $! h' rv gb with "[Hufdh Hans] Hbs Hrun").
+    iSplitR; [ by iPureIntro | ].
+    iDestruct "Hans" as "[(%Hc & %Hby & Hu & Hd) | (Hu & Hd & #HT)]".
+    - iLeft. iSplitR; [ by iPureIntro | ]. iSplitR; [ by iPureIntro | ].
+      rewrite /kcat_deed_hold_held. iFrame "Hufdh Hu Hd".
+    - iRight. iSplitL "Hufdh Hu Hd"; [| iExact "HT" ].
+      rewrite /kcat_deed_hold_held. iFrame "Hufdh Hu Hd".
   Qed.
 
   (* =================================================================== *)
@@ -412,7 +637,8 @@ Section UkCatDeed.
   (* wants the descriptor's TYPE (an inode on the deed's own inum, hence  *)
   (* not a pipe, hence [UkCat.kcat_cldep_nopipe]) needs.                *)
   (* =================================================================== *)
-  Lemma wp_kcat_open_read_deed (h : CpuId) (m : regfile) (l : list fdstate)
+  Lemma wp_kcat_open_read_deed (omo : offmode) (h : CpuId) (m : regfile)
+      (l : list fdstate)
       (avail : nat) (c : file_fixed) (r : file_names) (q1 q2 : Qp)
       (i : Z) (bs : list (bv 8)) (cw : Z)
       (Img : gmap Z (bv 8)) (pv : mword 64) (pl : list (bv 8)) :
@@ -435,7 +661,10 @@ Section UkCatDeed.
         ∨ (∃ (fd : nat) (γo : gname),
              ⌜ret = (mword_of_int (Z.of_nat fd) : mword 64)
               /\ (fd < NOFILE)%nat⌝ ∗
-             ualloc γfd l fd (FdOpen true false (FdInode i γo OffParked)) ∗
+             ualloc γfd l fd (FdOpen true false (FdInode i γo omo)) ∗
+             (* the publish's handed half (kernel stream, L4): [emp] at
+                mode PARK, [UserOff.uoff γo 0] at mode HAND *)
+             foff_pub omo γo ∗
              fdq r q1 (Some (i, bs)) ∗ fdq r q2 (Some (i, bs)))
         ∨ (UkFileOpen.uk_open_taint_fd γfd l ret ∗ file_taint c)) -∗
        urun N h'
@@ -498,7 +727,7 @@ Section UkCatDeed.
     (* ---- 0x3ee  ecall -- THE DEED'S OWN LEAF, AT THE DATA IMAGE ---- *)
     iDestruct (uis_cat_3ee with "Hcode") as "#Hi3ee".
     (* the hoist again: the Coq application first, the spec list after *)
-    iPoseProof (wp_uk_ecall_open_read_deed_d N h1 m1 (mword_of_int 0x3ee) l
+    iPoseProof (wp_uk_ecall_open_read_deed_d N omo h1 m1 (mword_of_int 0x3ee) l
                   avail c r q1 q2 i bs cw Img pv pl Heq Hnum Hal4 Hpath
                   Ha0r Hcr Htr Hel Hst)
       as "Hleaf".
@@ -647,7 +876,8 @@ Section UkCatDeed.
   Definition kcat_open_hold (l : list fdstate) (cw : Z) : iProp Σ :=
     (ustd γfd l ∗ UserCwd.ucwd (ukn_cwd N) cw)%I.
 
-  Lemma kcat_o_of_deed (l : list fdstate) (c : file_fixed) (r : file_names)
+  Lemma kcat_o_of_deed (omo : offmode) (l : list fdstate) (c : file_fixed)
+      (r : file_names)
       (q1 q2 : Qp) (i : Z) (bs : list (bv 8)) (cw : Z)
       (Img : gmap Z (bv 8)) (pv : mword 64) (pl : list (bv 8)) :
     file_app = MkAppcfg file_names (file_pred c) r ->
@@ -667,14 +897,15 @@ Section UkCatDeed.
                   ⌜ret = (mword_of_int (Z.of_nat fd) : mword 64)
                    /\ (fd < NOFILE)%nat⌝ ∗
                   ualloc γfd l fd
-                    (FdOpen true false (FdInode i γo OffParked)) ∗
+                    (FdOpen true false (FdInode i γo omo)) ∗
+                  foff_pub omo γo ∗
                   fdq r q1 (Some (i, bs)) ∗ fdq r q2 (Some (i, bs)))
              ∨ (UkFileOpen.uk_open_taint_fd γfd l ret ∗ file_taint c)))%I).
   Proof using .
     intros Heq Hpath Hel Hst.
     iIntros "#Hcode #Hdi #Hinv" (h m avail) "%Ha0 %Ha1 _ Hhold Hrun Hcont".
     iDestruct "Hhold" as "[[Hstd Hcwd] [Hd1 Hd2]]".
-    iApply (wp_kcat_open_read_deed h m l avail c r q1 q2 i bs cw Img pv pl
+    iApply (wp_kcat_open_read_deed omo h m l avail c r q1 q2 i bs cw Img pv pl
               Heq Hpath Ha0 Ha1 Hel Hst
               with "Hcode Hdi Hinv Hrun Hcwd Hstd Hd1 Hd2").
     iIntros (h' ret) "Hcwd Hans Hrun".

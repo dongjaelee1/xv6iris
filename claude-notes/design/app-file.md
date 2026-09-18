@@ -555,7 +555,45 @@ unowned critical item (WRITE-RELAY-3's `TB` guard).  RULES, replacing
   lower it did not finish.  Readings: 31 at review 2 (9/19/3); 23 at
   checkpoint 34 (9/11/3, PROGRAM-STREAM's first stretch, 4689ae3e1); 21 at
   INIT-FILE's first lane (9/11/1, fabe6c805); checkpoint 35 = both merged
-  plus the file stage instance (e3b70b6d3), audits 27/14/13 unchanged.
+  plus the file stage instance (e3b70b6d3), audits 27/14/13 unchanged; 19
+  at checkpoint 36 (7/11/1: KERNEL STREAM's L2+L4, `Hdep1`/`Hwrite1`
+  discharged, 6d645865c); `cat_open_hand` discharged and `redir_K`
+  restated with its taint arm at 023d1fff8 (no metric change); 16 at
+  e455487d8 (7/8/1: PROGRAM STREAM's `Hcat_body`, era step, H' applied,
+  `sh_tag_law_file`/`Hexecfail`/`Hpanic`).
+- RULING READ-HELD (2026-09-18, KERNEL-STREAM §3a): the read's hand mode
+  is the WRITE side's landed shape mirrored — `file_read_piece_adv` as
+  `awrite_full_adv`'s twin (the half in the closure, agree/advance/return
+  `off_link` inside the node), the receipt family carrying `uoff γo
+  (off+d) ∨ app_taint` where the write's client cursor rides, the refund
+  returning the half unfired; `fileread_in`'s held arm is
+  `filewrite_in_held`'s twin.  The deed opens take the row's mode as a
+  PARAMETER (no second walk; every landed caller passes `OffParked`).
+  Landed at 72606e656 (`cat_held_read` discharged) with two rulings the
+  write side did not need: (i) THE RECEIPT IS ONE DISJUNCTION — fired
+  (offset reported, half advanced) or disconnected, which is the same
+  event as the claim coming back tainted, the half unmoved (`pipe_wpost`
+  exactly; a node that advanced under a tainted claim came back at a
+  position bounded by nothing); (ii) the piece takes the application's
+  taint equation (`app_taint` ↔ `file_taint c`) as two persistent
+  premises — the kernel invents neither.
+- RULING WR-TB (2026-09-18, KERNEL-STREAM §4): a FREE `TB : uptd -> Prop`
+  on `filewrite_in` is refuted at the statement — the program chooses it,
+  the kernel meets `P`, and the only meeting point (row 16 of
+  `xv6_sbundle`) is a function of a `uvis`, which carries no `uptd` by
+  construction.  The guard is the one the key's rows already determine:
+  `wr_tb pmv sz lz P := perm_of (ud_um P) sz = pmv /\ proc_pt_wf P /\
+  (lz = false -> lazy_free P)` at `uvis_perm/uvis_sz/uvis_lazy W`,
+  discharged by the kernel from the three facts it holds about its own
+  `pv_upt`; three key values threaded, no new field.
+- RULING EFQ (2026-09-18, KERNEL-STREAM §4): `UEchoFile.efq` conjoined the
+  half at the content-derived offset whichever arm `file_wq` took, so the
+  disconnected arm was unpayable.  READ-HELD's (i) at the write: the
+  cursor is `fired (file_wq exact ∗ uoff γo (content offset)) ∨ (file_taint
+  c ∗ ∃ p, uoff γo p)` — the half unmoved, its position existential, on
+  the taint arm; `efcur`/`ef_exit` and the four lemmas naming them follow.
+  RELAY 1 is not owed: `f_ok`'s `Some` arm pins the inum, so
+  `file_claim_read` yields it inside the node.
 - RULING H' (2026-09-18, INIT-FILE findings 3.1/3.2): the round's hold is
   tied to the era's boot state BY A SHARED INDEX, not by `f0_lb` (which
   only exists after the era's first console byte, so `Wbf []` was
@@ -578,7 +616,15 @@ unowned critical item (WRITE-RELAY-3's `TB` guard).  RULES, replacing
   `SpecSysMknod.mknod_au_at`, where it is the walked path's last element
   under the cursor's guard, discharged by `ProofSysMknod` from the walk.
   Refused: an `Other` parameter on `init_cons_laws_at` (the consumer
-  cannot supply it — the name is the kernel's to pin).
+  cannot supply it — the name is the kernel's to pin).  Bottom layer
+  landed by INIT-FILE round 3 (`FsAbsCreateNm.v`); the thread up through
+  `SpecCreate`'s shared bundle is round 4's.
+- RULING ND (2026-09-18, INIT-FILE round 3): the UNARM conjunct's receipt
+  repair is refuted (`f_ok_unarm_fresh` needs the deed's CURRENT state at
+  the arm's view, a temporal fact no receipt about one view carries).
+  NM's twin instead: `aunarm_commit_at` gains `Nd : absnode -> Prop`,
+  instantiated at the node the arm placed, so the file's unarm leg is
+  `f_ok_unarm` with the two rows' nodes distinct.
 - TWO SERIAL STREAMS, at most two lanes on `iris/` at once: the KERNEL
   stream (OFF-LINK-6 + L5 + the `TB` guard, exit criterion: `Hopen_hand`,
   cat's lend and `UEchoFile.ef_chain` compile as `Definition`s; then

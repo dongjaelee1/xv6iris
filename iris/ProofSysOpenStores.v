@@ -169,6 +169,7 @@ Section ProofSysOpenStores.
   (*  whole.                                                             *)
   (* ================================================================== *)
   Lemma so_stores_au `{GEN : GenId} `{CID0 : CpuId} `{XI : CurCtx}
+      (omo : offmode)
       (gf : gname)
       (gs : list gname) (jx : nat) (gl : gname)
       (pd pav pu : mword 64)
@@ -220,6 +221,9 @@ Section ProofSysOpenStores.
     (tyw = FD_INODE \/ tyw = FD_DEVICE) ->
     (bv_unsigned (di_type dn) = T_DIR_z -> om = (mword_of_int 0 : mword 32)) ->
     (tyw = FD_INODE -> off_wf voff) ->
+    (* ...and the word is ZERO (lane OFF-LINK-6's L4): what the publish
+       hands at mode HAND is [UserOff.uoff g 0]. *)
+    bv_unsigned voff = 0 ->
     (* ---- the AU side: the omode word is the caller's argument, and the
        two type-dependent cells the block above wrote agree with the record
        (the DEVICE arm's major bound is the join's [bltu], relayed) ---- *)
@@ -231,7 +235,7 @@ Section ProofSysOpenStores.
        /\ 0 <= bv_unsigned (di_major dn) <= NDEV_max
        /\ t = FdDevice (bv_unsigned (di_major dn))) ->
     (bv_unsigned (di_type dn) <> FsImg.T_DEVICE_z ->
-       tyw = FD_INODE /\ t = FdInode (bv_unsigned inum) g OffParked) ->
+       tyw = FD_INODE /\ t = FdInode (bv_unsigned inum) g omo) ->
     is_aligned_paddr (Physaddr (pa_stk sp0 23)) 8 = true ->
     sp0 = (m !!! Regidx csp_rs1 : mword 64) ->
     so_sp sp0 N -> so_thr m N ->
@@ -328,13 +332,13 @@ Section ProofSysOpenStores.
     so_obs Fo (bv_unsigned inum) (era_node dn bm data) -∗
     open_trunc_at (fs_gamma_L fsc_fs) vom (bv_unsigned inum) Ft -∗
     wp_next true (proc_addr jx)
-      (so_cont_au gf nsj
+      (so_cont_au omo gf nsj
                dqb dqs (proc_addr jx) pidv Mim pvv vom U sts P Pmiss Fo Ft m K eb b lks) -∗
     WP (Loop : expr riscv_lang).
   Proof using .
     intros Hqs HKiu HKeo HKit HK24 Kpop Hkk Hinb Hipos Hgeom Hsize Hbm0
            Hbmcov Hbmlog Hist0 Hiblk Hiblog Hcovb Hu2 Hj Hgl Hlkempty Hkf
-           Hfdlt Hlen Hfrees Htyor Hdir Hwf Hpof Hom Htd Hti Hal23 Hsp0 HNsp HNthr
+           Hfdlt Hlen Hfrees Htyor Hdir Hwf Hzoff Hpof Hom Htd Hti Hal23 Hsp0 HNsp HNthr
            HNs0 HNs1 HNs2 HNs3 Hal.
 
     (* [2 <= u] as a SHAPE, not an inequality: itrunc's uncredited entry
@@ -363,7 +367,7 @@ Section ProofSysOpenStores.
                     /\ t = FdDevice (bv_unsigned (di_major dn)))
       by (intros Hq; destruct (Htd Hq) as (_ & _ & Ha & Hbq); exact (conj Ha Hbq)).
     assert (Hinob : bv_unsigned (di_type dn) <> FsImg.T_DEVICE_z ->
-                    t = FdInode (bv_unsigned inum) g OffParked)
+                    t = FdInode (bv_unsigned inum) g omo)
       by (intros Hq; exact (proj2 (Hti Hq))).
     (* THE OWNER'S RULING (2026-08-29), AND THIS LANE OWES IT NOTHING NEW:
        [Htd] already says a T_DEVICE inode was stored as FD_DEVICE, so the
@@ -525,7 +529,7 @@ Section ProofSysOpenStores.
               /foff_of.
       iFrame "Hfty Hfrd Hfwr Hfpip Hfip Hfmaj". }
     (* the published content's type, in the shape the publication asks for *)
-    assert (Hfdty : (fc_type C = FD_INODE /\ t = FdInode (bv_unsigned inum) g OffParked)
+    assert (Hfdty : (fc_type C = FD_INODE /\ t = FdInode (bv_unsigned inum) g omo)
                    \/ (fc_type C = FD_DEVICE
                        /\ t = FdDevice (bv_unsigned (fc_major C)))).
     { destruct (decide (bv_unsigned (di_type dn) = FsImg.T_DEVICE_z))
@@ -600,17 +604,17 @@ Section ProofSysOpenStores.
         apply eq_vec_true_iff in Htr. rewrite Htr.
         apply bv_eq; vm_compute; reflexivity. }
       iDestruct (so_flat_close with "Hflat") as "Hload".
-      iDestruct (so_arm_notr gf (proc_addr jx) pidv Mim pvv vom P Fo Ft U sts pl
+      iDestruct (so_arm_notr omo gf (proc_addr jx) pidv Mim pvv vom P Fo Ft U sts pl
                    (bv_unsigned inum) dn bm data t g
                    Hpof (or_introl Hntf) Hdirk Hdevb Hinob Htyen
                    with "HP Hobs Htc") as "Harm".
-      iApply (Pub.so_tail_pub_au (CID0 := CID10) gf gs jx gl pd pav pu
+      iApply (Pub.so_tail_pub_au (CID0 := CID10) omo gf gs jx gl pd pav pu
                 gil gisl
  kk qi s gy loy tly inum dn bm kf fd l C pn om voff nsj
                 (S (S u2)) pidv dqb dqs U sts m N6 sp0 K eb b lks w6
                 (word_of_words lo om) w24 bp Mim pvv vom P Pmiss Fo Ft t g
                 Hqs HKiu HKeo HK24 Kpop Hkk Hinb Hipos Hgeom Hj Hgl Hlkempty Hkf
-                Hfdlt Hlen Hfrees eq_refl Htyor eq_refl eq_refl Hdir Hdvw Hwf
+                Hfdlt Hlen Hfrees eq_refl Htyor eq_refl eq_refl Hdir Hdvw Hwf Hzoff
                 Hom Hfdty
                 Hsp0 HN6sp HN6thr HN6s1 HN6s3 Hal
                 with "Hcg Hown Htce Hcce Htext Hkd Hpc Hpenv Hbio Hlog Hseam Hgen
@@ -709,17 +713,17 @@ Section ProofSysOpenStores.
       { intros Hc. apply Hnf. apply bv_eq. rewrite Hc.
         vm_compute. reflexivity. }
       iDestruct (so_flat_close with "Hflat") as "Hload".
-      iDestruct (so_arm_notr gf (proc_addr jx) pidv Mim pvv vom P Fo Ft U sts pl
+      iDestruct (so_arm_notr omo gf (proc_addr jx) pidv Mim pvv vom P Fo Ft U sts pl
                    (bv_unsigned inum) dn bm data t g
                    Hpof (or_intror Hnf2) Hdirk Hdevb Hinob Htyen
                    with "HP Hobs Htc") as "Harm".
-      iApply (Pub.so_tail_pub_au (CID0 := CID13) gf gs jx gl pd pav pu
+      iApply (Pub.so_tail_pub_au (CID0 := CID13) omo gf gs jx gl pd pav pu
                 gil gisl
  kk qi s gy loy tly inum dn bm kf fd l C pn om voff nsj
                 (S (S u2)) pidv dqb dqs U sts m N8 sp0 K eb b lks w6
                 (word_of_words lo om) w24 bp Mim pvv vom P Pmiss Fo Ft t g
                 Hqs HKiu HKeo HK24 Kpop Hkk Hinb Hipos Hgeom Hj Hgl Hlkempty Hkf
-                Hfdlt Hlen Hfrees eq_refl Htyor eq_refl eq_refl Hdir Hdvw Hwf
+                Hfdlt Hlen Hfrees eq_refl Htyor eq_refl eq_refl Hdir Hdvw Hwf Hzoff
                 Hom Hfdty
                 Hsp0 HN8sp HN8thr HN8s1 HN8s3 Hal
                 with "Hcg Hown Htce Hcce Htext Hkd Hpc Hpenv Hbio Hlog Hseam Hgen
@@ -940,23 +944,23 @@ Section ProofSysOpenStores.
        function context. *)
     (* the O_TRUNC file arm: the ONE arm of this surface that spends the
        trunc commit, at the row the observation read *)
-    assert (Htis : t = FdInode (bv_unsigned inum) g OffParked).
+    assert (Htis : t = FdInode (bv_unsigned inum) g omo).
     { destruct (Hti ltac:(rewrite Htyfz; vm_compute; discriminate)) as [_ Hq].
       exact Hq. }
     iEval (rewrite /so_obs (opf_era_file_row dn bm data Htyfz)) in "Hobs".
-    iDestruct (so_arm_file_tr gf (proc_addr jx) pidv Mim pvv vom P Fo Ft U sts pl
+    iDestruct (so_arm_file_tr omo gf (proc_addr jx) pidv Mim pvv vom P Fo Ft U sts pl
                  (bv_unsigned inum) (fn_file_bytes (era_node dn bm data))
                  (fn_nlink (era_node dn bm data)) g Hpof Htrue
                  with "HP Hobs Htr2") as "Harm".
     iEval (rewrite -Htis) in "Harm".
-    iApply (Pub.so_tail_pub_au (CID0 := CID17) gf gs jx gl pd pav pu
+    iApply (Pub.so_tail_pub_au (CID0 := CID17) omo gf gs jx gl pd pav pu
               gil gisl
  kk qi s gy loy tly inum (di_trunc dn) bm_empty kf fd l C pn
               om voff nsj u3 pidv dqb dqs U sts m mit sp0 K
               eb b lks w6 (word_of_words lo om) w24 bp
               Mim pvv vom P Pmiss Fo Ft t g
               Hqs HKiu HKeo HK24 Kpop Hkk Hinb Hipos Hgeom Hj Hgl Hlkempty Hkf
-              Hfdlt Hlen Hfrees eq_refl Htyor eq_refl eq_refl Hdir Hdvw Hwf
+              Hfdlt Hlen Hfrees eq_refl Htyor eq_refl eq_refl Hdir Hdvw Hwf Hzoff
               Hom Hfdty
               Hsp0 Hitsp Hitthr Hits1 Hits3 Hal
               with "Hcg Hown Htce Hcce Htext Hkd Hpc Hpenv Hbio Hlog Hseam Hgen

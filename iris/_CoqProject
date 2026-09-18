@@ -1496,6 +1496,7 @@ LogEntryDefs.v
 ConsLog.v
 EchoOutPure.v
 FileOutPure.v
+PipeOutPure.v
 EchoOut.v
 EchoLinks.v
 EchoLinksPro.v
@@ -1512,6 +1513,11 @@ FileOpen.v
 FileDeltas.v
 FileWrite.v
 FileOut.v
+PipeOut.v
+PipeLinks.v
+AppPipeClaim.v
+AppPipeCons.v
+AppPipe.v
 FileLinks.v
 FileLinksLine.v
 FileLinkInst.v
@@ -1646,6 +1652,7 @@ FileLinksAtInp.v
 FileLinksAtPro.v
 AppFileCons.v
 UInitConsFile.v
+UInitConsPipe.v
 UFileBootAdequacy.v
 # FileAssumptions.v
 

@@ -524,6 +524,45 @@ in-progress reading of `sessp` has to be an existential over the merge's
 completion.  Either way the pure side is `merge_prefix`: a prefix of a
 merge of `(take c1 d1, take c2 d2)` is a merge of those prefixes.
 
+### 4.3b RULED (2026-09-18, read against `EchoOut`/`EchoLinksLine`): the `PBoth` block needs a SECOND LEDGER
+
+The stage pins a round's alternative AT ITS FIRST BYTE: the writer's
+block credential is `ewc_blk v I a i := ∃ ps cs P, ⌜wr_blk_t ps cs I P⌝ ∗
+turn v (P+i) ∗ ps_lb v ps ∗ cs_lb v (blkcs cs a i) ∗ inp_lb v I` with
+`blkcs cs a i := match i with O => cs | S _ => cs ++ [a] end`, and the
+pure `pending_at ps cs I` reads `cs !!! (nlines I − 1)` for the block in
+progress.  `cs_lb` is a `mono_list` lower bound, so an entry, once filed,
+never changes.  A `PBoth sel` alternative cannot be filed at byte 1 — `sel`
+is decided byte by byte by two concurrent writers — so §4.3's "(α) pin
+`sel` at round end if the stage allows an existential in-progress
+alternative" is REFUTED: the stage does not; the in-progress alternative
+is a filed code.  RULED, (β): the pipe stage gets a SECOND, per-round
+ledger for the merge pattern — `sel_auth v (l : list bool)` / `sel_lb`
+(a `mono_list` of bits; one per byte of the two diagnostics, `true` = a
+byte of the left one), reset per round (or indexed by the round) — and a
+fourth writer family `ewc_both v I sel c1 c2 := ∃ ps cs P, ⌜wr_both ps cs
+I P sel c1 c2⌝ ∗ turn v (P + c1 + c2) ∗ ps_lb v ps ∗ cs_lb v cs ∗ sel_lb v
+sel ∗ inp_lb v I` where `wr_both` says the block's bytes so far are
+`pmerge sel (take c1 dg_execL) (take c2 dg_execR)` with `length sel = c1 +
+c2`, and `cs` NOT yet extended.  Each child holds its own cursor half
+(`wcur_L c1` / `wcur_R c2`, exclusive) and the shared family; a write by
+the left child appends `true` to `sel` and `dg_execL !!! c1` to the wire
+(`ewc_both_step_L`), symmetric for the right; the two cursors' halves are
+what make the family's `sel` agree with the wire.  At the prompt (both
+children reaped, `c1 = |dg_execL|`, `c2 = |dg_execR|`), sh files `cs ++
+[palt_code (PBoth sel)]` — the ONE place a `PBoth` code is ever built —
+and `pcont (LPipe ws) (PBoth sel) = pmerge sel dg_execL dg_execR ++
+u_prompt` closes the block (`pmerge_length`, `pmerge_prefix`).  The pure
+side: `pending_at_p` gains the both-arm reading off `sel` when the round's
+`cs` entry is absent and `sel ≠ []` (the block has started; before its
+first byte the existing default reading stands), `D_p_pending_sessp` /
+`D2_next_input_p` / `good_out_p_of_stage` gain that case, and
+`sessp_prefix_det` is unaffected (it compares COMPLETED rounds' codes).
+Lane PIPE-2W lands the ledger, the family, the two step links (on the
+record: `lk_exfb`'s twin for two writers), the pure readings, and
+discharges `pipe_both_law` in the round; it needs `pipe_link_inst_at`
+(PIPE-LINK-INST) and the round (SH-PIPE-ROUND-2) first.
+
 ## 5. Programs
 
 ### 5.1 sh: the PIPE arm (lanes SH-PARSE-PIPE, SH-PIPE)

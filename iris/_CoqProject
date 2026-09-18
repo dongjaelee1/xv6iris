@@ -1618,8 +1618,12 @@ UInitTreeBoot.v
 UInitTreeExec.v
 # TreeAssumptions.v
 
+AppFileCons.v
 UFileBootAdequacy.v
 # FileAssumptions.v
+
+# lane INIT-FILE: /init's boot payment at the FILE record (deliverable I1).
+UInitFileCons.v
 
 # lane SKELETON: the verified PROGRAM TIER's statements (proofs Admitted).
 # Nothing imports these, so neither audit cone reaches them.

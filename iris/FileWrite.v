@@ -118,7 +118,7 @@ Require Import FileFsPure.         (* [file_fs_pure] *)
 Require Import FsFPin.             (* [f_absent] *)
 Require Import EchoDisc.           (* [line_ok] *)
 Require Import EchoOut.            (* [echoOutG] *)
-Require Import FileState.          (* [fst], [echo_chunks], [subseq], [sel_ok] *)
+Require Import FileState.          (* [fstate], [echo_chunks], [subseq], [sel_ok] *)
 Require Import AppEcho.
 Require Import AppFile.
 Require Import FsAbs.              (* [γtop] (FsAbs's own rule: LAST but one) *)

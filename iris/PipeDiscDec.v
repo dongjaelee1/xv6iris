@@ -35,7 +35,7 @@
    - WHAT DOES NOT ARISE: [FileDiscDec]'s sections 6 and 7 (the boot-state
      canonicalisation -- [infixed], [substrings], [scands],
      [disc_seg_f'_canon]) have NO counterpart.  [FileDisc.disc_f] is
-     [exists s, fst_ok s /\ disc_seg_f' s seg] because the file state is
+     [exists s, fstate_ok s /\ disc_seg_f' s seg] because the file state is
      threaded across rounds and cycles; a pipe dies with its era (design
      section 0, limit 3), so [PipeDisc.sessp] threads NO state,
      [disc_seg_p'] quantifies over [ps] and [cs] alone, and the decision
@@ -219,7 +219,7 @@ Fixpoint alts_cands_p (ls : list pline) : list (list nat) :=
   match ls with
   | [] => [[]]
   | l :: ls' =>
-      (fun p => Datatypes.fst p :: Datatypes.snd p)
+      (fun p => fst p :: snd p)
         <$> List.list_prod (palt_cands l) (alts_cands_p ls')
   end.
 
@@ -231,7 +231,7 @@ Proof using.
     + intros ->. constructor.
     + intro H. by apply Forall2_nil_inv_l in H.
   - rewrite elem_of_list_fmap. split.
-    + intros ([c cs'] & -> & Hp). cbn [Datatypes.fst Datatypes.snd].
+    + intros ([c cs'] & -> & Hp). cbn [fst snd].
       apply elem_of_list_In, in_prod_iff in Hp as [Hc Hcs].
       apply elem_of_list_In in Hc. apply elem_of_list_In, IH in Hcs.
       by constructor.

@@ -87,7 +87,7 @@ Local Open Scope list_scope.
 
 (* the round-opening block, spelt with [FileLinksLine.wr_pre_f] --
    [FileOutPure.pending_at_f_round_pre] with its constant named *)
-Lemma pending_at_f_round_wr_pre (ps cs : list nat) (s0 : fst)
+Lemma pending_at_f_round_wr_pre (ps cs : list nat) (s0 : fstate)
     (I : list (bv 8)) :
   rest_of I = [] ->
   (I = [] \/ ralt_panic (ralt_at cs (nlines I - 1)%nat) = true) ->
@@ -105,13 +105,13 @@ Qed.
 (*  enough to place the diagnostic's bytes nor to read the next banner    *)
 (*  off the end of alternative 1.                                        *)
 (* ===================================================================== *)
-Definition wr_pban_f (ps cs : list nat) (s0 : fst) (I : list (bv 8))
+Definition wr_pban_f (ps cs : list nat) (s0 : fstate) (I : list (bv 8))
     (P : nat) : Prop :=
   wr_pro_f ps cs s0 I P
   /\ (exists j : nat,
         pro_from (pro_idx_f cs (nlines I)) ps = pro_fail j ++ [3%nat]).
 
-Lemma wr_pban_of_ban_f (ps cs : list nat) (s0 : fst) (I : list (bv 8))
+Lemma wr_pban_of_ban_f (ps cs : list nat) (s0 : fstate) (I : list (bv 8))
     (P : nat) :
   wr_ban_f ps cs s0 I P ->
   wr_pban_f (ps ++ [3%nat]) cs s0 I (P + length u_banner)%nat.
@@ -120,7 +120,7 @@ Proof using.
   destruct (wr_ban_filed_f ps cs s0 I P Hw) as (j & Hj & _). by exists j.
 Qed.
 
-Lemma wr_pban_pro_f (ps cs : list nat) (s0 : fst) (I : list (bv 8))
+Lemma wr_pban_pro_f (ps cs : list nat) (s0 : fstate) (I : list (bv 8))
     (P : nat) : wr_pban_f ps cs s0 I P -> wr_pro_f ps cs s0 I P.
 Proof using. by intros [H _]. Qed.
 
@@ -128,7 +128,7 @@ Proof using. by intros [H _]. Qed.
 (*  THE SHAPE: alternative [a] filed at the round's open prologue, [i] of *)
 (*  its bytes out.  [EchoLinksPro.wr_pdiag] at the file's stage.          *)
 (* ===================================================================== *)
-Definition wr_pdiag_f (ps cs : list nat) (s0 : fst) (I : list (bv 8))
+Definition wr_pdiag_f (ps cs : list nat) (s0 : fstate) (I : list (bv 8))
     (P a i : nat) : Prop :=
   pro_pin_f ps cs I
   /\ rest_of I = []
@@ -140,7 +140,7 @@ Definition wr_pdiag_f (ps cs : list nat) (s0 : fst) (I : list (bv 8))
                 + pro_round * j + length u_banner + i)%nat).
 
 (* THE BYTE AT THE CURSOR is the alternative's [i]-th. *)
-Lemma wr_pdiag_byte_f (ps cs : list nat) (s0 : fst) (I : list (bv 8))
+Lemma wr_pdiag_byte_f (ps cs : list nat) (s0 : fstate) (I : list (bv 8))
     (P a i : nat) (b : bv 8) :
   wr_pdiag_f ps cs s0 I P a i -> pro_alts !!! a !! i = Some b ->
   proc_stream_f ps cs (Some s0) I !! P = Some b.
@@ -162,7 +162,7 @@ Qed.
 
 (* THE CHOICE BYTE: filing [a] at the round-open shape after a banner is
    this shape one byte in. *)
-Lemma wr_pdiag_1_of_pban_f (ps cs : list nat) (s0 : fst) (I : list (bv 8))
+Lemma wr_pdiag_1_of_pban_f (ps cs : list nat) (s0 : fstate) (I : list (bv 8))
     (P a : nat) :
   wr_pban_f ps cs s0 I P -> wr_pdiag_f (ps ++ [a]) cs s0 I (S P) a 1%nat.
 Proof using.
@@ -194,7 +194,7 @@ Proof using.
 Qed.
 
 (* EVERY LATER BYTE moves the cursor by one and nothing else. *)
-Lemma wr_pdiag_S_f (ps cs : list nat) (s0 : fst) (I : list (bv 8))
+Lemma wr_pdiag_S_f (ps cs : list nat) (s0 : fstate) (I : list (bv 8))
     (P a i : nat) :
   wr_pdiag_f ps cs s0 I P a i -> wr_pdiag_f ps cs s0 I (S P) a (S i).
 Proof using.
@@ -206,7 +206,7 @@ Qed.
    failed sub-round -- [wr_ban_f] with [S j] sub-rounds, at the same
    count.  [pro_round] is exactly the banner and this diagnostic, which is
    the whole arithmetic. *)
-Lemma wr_pdiag_done_1_f (ps cs : list nat) (s0 : fst) (I : list (bv 8))
+Lemma wr_pdiag_done_1_f (ps cs : list nat) (s0 : fstate) (I : list (bv 8))
     (P i : nat) :
   i = length (pro_alts !!! 1%nat) ->
   wr_pdiag_f ps cs s0 I P 1%nat i -> wr_ban_f ps cs s0 I P.
@@ -237,20 +237,36 @@ Section file_links_at_pro.
   (* =================================================================== *)
   (*  S2  THE ROUND-OPEN CREDENTIAL AFTER A BANNER, AT THE NAMED STATE    *)
   (* =================================================================== *)
-  Definition fwc_pban_at (s0 : fst) (k : nat) (v : era_pins)
+  Definition fwc_pban_at (s0 : fstate) (k : nat) (v : era_pins)
       (I : list (bv 8)) : iProp Σ :=
     ((∃ (ps cs : list nat) (P : nat),
         ⌜wr_pban_f ps cs s0 I P⌝ ∗ fcur g v ps cs s0 I P k) ∨ FT)%I.
 
+  (* THE DISPATCH, NOT [apply _]: the tree's 455 [Timeless] instances sit
+     under mostly transparent definitions, so the hint net cannot
+     discriminate and one search tries nearly all of them (13s for the
+     first instance below).  Descend through the CONNECTIVES and name the
+     leaf, syntactically -- see the same dispatch in [FileLinksAt]. *)
+  Local Ltac tl_leaf :=
+    lazymatch goal with
+    | |- Timeless (bi_exist _) => apply bi.exist_timeless; intro; tl_leaf
+    | |- Timeless (bi_sep _ _) => apply bi.sep_timeless; [tl_leaf | tl_leaf]
+    | |- Timeless (bi_or _ _) => apply bi.or_timeless; [tl_leaf | tl_leaf]
+    | |- Timeless (bi_pure _) => apply bi.pure_timeless
+    | |- Timeless (fcur _ _ _ _ _ _ _ _) => apply fcur_timeless
+    | |- Timeless (file_taint _) => apply file_taint_timeless
+    | |- _ => apply _
+    end.
+
   Global Instance fwc_pban_at_timeless s0 k v I :
     Timeless (fwc_pban_at s0 k v I).
-  Proof using . rewrite /fwc_pban_at. apply _. Qed.
+  Proof using . rewrite /fwc_pban_at. tl_leaf. Qed.
 
   Lemma fwc_pban_at_taint s0 k v I : FT -∗ fwc_pban_at s0 k v I.
   Proof using . iIntros "H". rewrite /fwc_pban_at. by iRight. Qed.
 
   (* ...it is one arm of what the round already owed... *)
-  Lemma fwc_pro_of_pban_at (s0 : fst) (k : nat) (v : era_pins)
+  Lemma fwc_pro_of_pban_at (s0 : fstate) (k : nat) (v : era_pins)
       (I : list (bv 8)) :
     fwc_pban_at s0 k v I -∗ fwc_pro_at g s0 k v I.
   Proof using .
@@ -262,7 +278,7 @@ Section file_links_at_pro.
   Qed.
 
   (* ...and it is EXACTLY what the last banner byte leaves. *)
-  Lemma fwc_pban_of_ban_done_at (s0 : fst) (k : nat) (v : era_pins)
+  Lemma fwc_pban_of_ban_done_at (s0 : fstate) (k : nat) (v : era_pins)
       (I : list (bv 8)) :
     fwc_ban_at g s0 k v I (length u_banner) -∗ fwc_pban_at s0 k v I.
   Proof using .
@@ -285,12 +301,12 @@ Section file_links_at_pro.
   (*  through [FileLinks.file_link_pro], which files [ps ++ [a]]; every   *)
   (*  later byte through [FileLinks.file_link_w].                         *)
   (* =================================================================== *)
-  Definition fwc_pdg_at (s0 : fst) (k : nat) (v : era_pins)
+  Definition fwc_pdg_at (s0 : fstate) (k : nat) (v : era_pins)
       (I : list (bv 8)) (a i : nat) : iProp Σ :=
     ((∃ (ps cs : list nat) (P : nat),
         ⌜wr_pdiag_f ps cs s0 I P a i⌝ ∗ fcur g v ps cs s0 I P k) ∨ FT)%I.
 
-  Definition fwc_pdiag_at (s0 : fst) (k : nat) (v : era_pins)
+  Definition fwc_pdiag_at (s0 : fstate) (k : nat) (v : era_pins)
       (I : list (bv 8)) (a i : nat) : iProp Σ :=
     match i with
     | O => fwc_pban_at s0 k v I
@@ -299,10 +315,13 @@ Section file_links_at_pro.
 
   Global Instance fwc_pdg_at_timeless s0 k v I a i :
     Timeless (fwc_pdg_at s0 k v I a i).
-  Proof using . rewrite /fwc_pdg_at. apply _. Qed.
+  Proof using . rewrite /fwc_pdg_at. tl_leaf. Qed.
   Global Instance fwc_pdiag_at_timeless s0 k v I a i :
     Timeless (fwc_pdiag_at s0 k v I a i).
-  Proof using . rewrite /fwc_pdiag_at. destruct i; apply _. Qed.
+  Proof using .
+    rewrite /fwc_pdiag_at. destruct i;
+      [apply fwc_pban_at_timeless | apply fwc_pdg_at_timeless].
+  Qed.
 
   (* the taint is at EVERY state, and at every byte count *)
   Lemma fwc_pdg_at_taint s0 k v I a i : FT -∗ fwc_pdg_at s0 k v I a i.
@@ -316,19 +335,19 @@ Section file_links_at_pro.
   Qed.
 
   (* the family's start IS the round-open credential (definitionally) *)
-  Lemma fwc_pdiag_at_0 (s0 : fst) (k : nat) (v : era_pins)
+  Lemma fwc_pdiag_at_0 (s0 : fstate) (k : nat) (v : era_pins)
       (I : list (bv 8)) (a : nat) :
     fwc_pban_at s0 k v I -∗ fwc_pdiag_at s0 k v I a 0%nat.
   Proof using . by iIntros "$". Qed.
 
   (* ...and it is at least the round's own owed credential *)
-  Lemma fwc_pdiag_at_pro (s0 : fst) (k : nat) (v : era_pins)
+  Lemma fwc_pdiag_at_pro (s0 : fstate) (k : nat) (v : era_pins)
       (I : list (bv 8)) (a : nat) :
     fwc_pdiag_at s0 k v I a 0%nat -∗ fwc_pro_at g s0 k v I.
   Proof using . iIntros "H". by iApply fwc_pro_of_pban_at. Qed.
 
   (* ONE BYTE, at either link. *)
-  Lemma fpdiag_step_at (s0 : fst) (k : nat) (v : era_pins)
+  Lemma fpdiag_step_at (s0 : fstate) (k : nat) (v : era_pins)
       (I : list (bv 8)) (a i : nat) (b : bv 8) (Φ : iProp Σ) :
     pro_alts !!! a !! i = Some b ->
     FPIN k v -∗ FileLinks.file_links g -∗
@@ -395,7 +414,7 @@ Section file_links_at_pro.
      at the SAME input, which is the credential /init's restart head pays
      its banner from.  Alternative 2 has no end shape: the round is
      terminal and the credential is dropped (affine). *)
-  Lemma fwc_pdiag_at_done_1 (s0 : fst) (k : nat) (v : era_pins)
+  Lemma fwc_pdiag_at_done_1 (s0 : fstate) (k : nat) (v : era_pins)
       (I : list (bv 8)) (i : nat) :
     i = length (pro_alts !!! 1%nat) ->
     fwc_pdiag_at s0 k v I 1%nat i -∗ fwc_ban_at g s0 k v I 0%nat.

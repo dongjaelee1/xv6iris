@@ -23,4 +23,7 @@ oblocks=[heads.pop(b.split('\n')[0]) if b.split('\n')[0] in heads else b for b i
 add=list(heads.values())
 out=''.join(b if b.endswith('\n') else b+'\n' for b in oblocks).rstrip('\n')+'\n\n'+''.join(b.rstrip('\n')+'\n' for b in add)
 if tick: out=re.sub(r'- \[[ x~]\] \*\*'+re.escape(lane)+r'\*\*','- ['+tick+'] **'+lane+'**',out,count=1)
-open(p,'w').write(out); print('replaced',len(mine)-len(add),'appended',len(add),'block(s); ours from', 'index' if r.returncode==0 and r.stdout.strip() else 'ORIG_HEAD')
+open(p,'w').write(out)
+others=[l for l in subprocess.run(['git','diff','--name-only','--diff-filter=U'],capture_output=True,text=True).stdout.split() if l!=p]
+if others: print('!! OTHER CONFLICTED FILES still unresolved -- resolve before committing:', others)
+print('replaced',len(mine)-len(add),'appended',len(add),'block(s); ours from', 'index' if r.returncode==0 and r.stdout.strip() else 'ORIG_HEAD')

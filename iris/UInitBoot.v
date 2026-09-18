@@ -554,7 +554,16 @@ Section EchoInitBoot.
         HPav : !pavG Σ, HWc : !wchG Σ, HF : !fileG Σ}
       (γ : echo_fixed) :
     forall I : list (bv 8), Timeless (echo_wb HR GEN γ I).
-  Proof using . rewrite /echo_wb. apply _. Qed.
+  (* NAME THE TWO LEAVES: [apply _] here is a search, and with the tree's
+     455 [Timeless] instances under mostly transparent definitions the
+     hint net cannot discriminate, so it tries nearly all of them (3.9s
+     measured for this one sentence). *)
+  Proof using .
+    intro I. rewrite /echo_wb. apply bi.exist_timeless; intro.
+    apply bi.sep_timeless;
+      [apply era_pin_timeless | apply EchoLinks.ewc_ban_timeless];
+      try apply _.
+  Qed.
 
   Definition echo_cc (HR : riscvGS Σ) (GEN : GenId)
       `{HBs : !bioslotG Σ, HFd : !fdslotG Σ, HIr : !irefslotG Σ,

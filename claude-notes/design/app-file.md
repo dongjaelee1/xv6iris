@@ -562,7 +562,8 @@ unowned critical item (WRITE-RELAY-3's `TB` guard).  RULES, replacing
   e455487d8 (7/8/1: PROGRAM STREAM's `Hcat_body`, era step, H' applied,
   `sh_tag_law_file`/`Hexecfail`/`Hpanic`); 14 at 0edba843f (7/6/1:
   `Hchild_echo` and `sh_child_law_file`); 13 at `Hopen_hand` proved
-  (7/5/1).
+  (7/5/1); checkpoint 37 = that plus INIT-FILE round 6 (1e044707c),
+  audits 27/14/13 unchanged.
 - RULING LINE-OK (2026-09-18, PROGRAM-STREAM stretch 4): the fork's slot
   (`UkSh.ush_posw`) told the child only `last_ws I = ws`, and a body with a
   trailing blank has the same words as one without, so the era's line

@@ -44,7 +44,7 @@ holder loses anything.  Do NOT try to prove the converse.
 
 `ec2-lane.sh <lane> build` (whole tree) green on your branch; no statement
 outside `PipeQueue.v`, the pipe `Spec*`/`Proof*` files and the
-holder-side one-liners moves; echo audit 14, tree 10, system 13 unmoved
+holder-side one-liners moves; echo audit 14, tree 13, system 13 unmoved
 (run `ec2-lane.sh <lane> build` (whole tree) then the three `make audit-*-only` through `ec2-lane.sh <lane> run`
 if time permits, else say you did not).
 

@@ -25,7 +25,7 @@ arm is the theorem's one named premise (`pipe_both_law`).
   `UEchoFile`/`UCat*`/`UShCat`/`UShRedir*` file of upstream's FILE campaign
   are READ, not edited.
 - Every new result carries `Proof using`; the echo audit stays at 14, the
-  tree audit at 10, the system audit at 13.
+  tree audit at 13 (the at-boot theorem; "10" was the era-0 obligation alone), the system audit at 13.
 - Report back: what landed (file, lemma), what was refuted and why (at
   the STATEMENT: mask, persistence, home across `fork`/`exec`), and the
   one thing the next lane needs first.  A refuted ruling is reported, not

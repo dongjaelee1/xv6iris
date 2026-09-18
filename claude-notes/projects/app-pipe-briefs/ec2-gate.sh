@@ -40,7 +40,7 @@ log=/tmp/gate-$(date +%s).log
   echo BUILD_RC=\$rc; exit \$rc" || { echo "GATE RED (build) at ${sha:0:10}"; exit 1; }
 
 # 3. audits, DETACHED (each takes ~7.5 min: Print Assumptions loads the whole cone); read them later with
-#    `ec2-gate.sh --audits` (prints the log; the three counts must be system 13, echo 14, tree 10)
+#    `ec2-gate.sh --audits` (prints the log; the three counts must be system 13, echo 14, tree 13)
 if [ $AUDIT = 1 ]; then
   "${SSH[@]}" "nohup bash -c 'cd $REMOTE && eval \$(opam env --switch=/shared/xv6rocq --set-switch) && echo AUDITS at \$(git rev-parse --short HEAD) && for t in audit-only audit-echo-only audit-tree-only; do echo == \$t; /usr/bin/time -f %es make -s \$t 2>&1 | grep -Ev \"^(Warning|make)\" | tail -30; done; echo AUDITS_DONE' > /tmp/gate-audit.log 2>&1 < /dev/null &" 
   echo "audits started detached on the mirror -> ec2-gate.sh --audits"

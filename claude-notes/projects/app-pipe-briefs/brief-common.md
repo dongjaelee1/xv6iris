@@ -57,7 +57,7 @@ names, and to REPORT — precisely — anything the design got wrong.
 - Prefer NEW files over editing crowded landed files; when you must edit a
   landed file, keep every existing lemma's statement byte-identical.
 - The audits must not move: `make audit-echo-only` 14, `make audit-tree-only`
-  10, `make audit-only` 13 (run on the mirror through `ec2-lane.sh <lane> run` if your
+  13, `make audit-only` 13 (run on the mirror through `ec2-lane.sh <lane> run` if your
   brief asks; otherwise just do not touch what they cover).
 - Refuted designs are the most valuable output.  Check a shape at the
   STATEMENT before proving: mask, persistence, timelessness, which side of

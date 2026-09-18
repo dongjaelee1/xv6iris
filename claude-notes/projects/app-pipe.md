@@ -3518,9 +3518,14 @@ this worklist.  Checked by hand after it: all 30 four-arm
 4, `FileOutPure` 3, `FileLinksLine` 15; zero three-arm ones left), the
 RENAMED `fstate_ok_fsm` / `fstate_upto_vs_nil` carry their `LPipe` case,
 and every u-tier edit is in place.  Whole-tree
-`ec2-lane.sh uline build` **RC=0**; no `Admitted`; `Proof using` on every
-new result.  `make audit-file-only` **FOURTEEN**, textually the expected list (1 funext + the 2 reservation `Parameter`s + 11 PrimString/PrimInt63); `make audit-echo-only`
-**FOURTEEN**, unmoved.
+`ec2-lane.sh uline build` **RC=0** on the MERGED tree (and RC=0 before the
+merge); no `Admitted`; `Proof using` on every new result.  All five audits
+re-run on the merged tree: **`audit-file-only` FOURTEEN**,
+**`audit-echo-only` FOURTEEN**, **`audit-pipe-only` FOURTEEN**,
+`audit-only` 13, `audit-tree-only` 13 — the file/echo/pipe three printing
+the same list, textually: 1 `functional_extensionality_dep` + the 2
+`xv6iris_extras` reservation `Parameter`s + 11 PrimString/PrimInt63, and
+NO `Spec*`/`Link*` module `Parameter`.
 
 **WHAT LANDED.**
 

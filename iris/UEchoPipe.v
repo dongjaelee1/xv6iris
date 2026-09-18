@@ -1,6 +1,6 @@
 (* ===================================================================== *)
 (*  UEchoPipe.v -- ECHO'S ENTRY AT fd 1 = A PIPE WRITE END               *)
-(*  (design/app-pipe.md SS5.2, lane ECHO-PIPE.)                           *)
+(*  (design/app-pipe.md SS5.2; lanes ECHO-PIPE and ECHO-PIPE-2.)          *)
 (*                                                                       *)
 (*  [UEchoOut.v] is echo's entry at fd 1 = the CONSOLE and [UEchoFile.v]  *)
 (*  its (skeleton) twin at fd 1 = a file; this is the twin at fd 1 = the  *)
@@ -994,7 +994,9 @@ Section UEchoPipe.
   (*  CONCRETE line, with the exit payload spelled out.  What comes out    *)
   (*  is [side_L pn] and the era's credential beside "the line is in"      *)
   (*  ([pws_lb pn (wl_line [hi])]) -- OR the halt, which is the honest     *)
-  (*  price of [pipe_wpost]'s two short arms (see the header).            *)
+  (*  price of [pipe_wpost]'s two short arms (the kill and the shut read   *)
+  (*  end; see the header).  [ep_test_hi_payL] is the same at the shape    *)
+  (*  SH-PIPE-ROUND actually consumes.                                     *)
   (* =================================================================== *)
   Definition ep_hi_ws : list (list (bv 8)) := [EchoDisc.cmd_echo; sb "hi"].
 
@@ -1046,6 +1048,39 @@ Section UEchoPipe.
               Hfdl Hl1 with "[] Hkt Hnpw Hdep").
     iIntros "!> Hex".
     iApply (ep_exit_line pn (wl_line (drop 1 ep_hi_ws)) with "Hex").
+  Qed.
+
+  (* ...AND THE SAME ENTRY AT THE SHAPE SH READS.  Since lane PIPE-PROTO-2
+     the halt's stuck arm IS [PipeProto.pipe_payL]'s third arm, so echo's
+     exit payload is the protocol's own left-child payload plus the taint
+     -- which is what [pipe_round_reading] wants, modulo the [app_taint]
+     disjunct this lane's finding 2 flags. *)
+  Lemma ep_test_hi_payL (M : gmap Z (bv 8)) (s0 t : Z) (g : nat -> bv 8)
+      (sts : list fdstate) (cw : Z) (cs : gset gname) (pidv : mword 32)
+      (pn : pnames) (γp : pipe_names) (rb : bool) :
+    UShEcho.echo_node_img ep_hi_ws M s0 t g ->
+    UkShEcho.echo_argv_bytes ep_hi_ws g ->
+    length sts = NOFILE ->
+    take NSTD sts !! 1%nat = Some (FdOpen rb true (FdPipe γp)) ->
+    □ (∀ gn : gname, ChildTok.kill_shot gn -∗ app_taint) -∗
+    UkRun.urun_nopipe sts -∗
+    udep -∗
+    image_entry ElfUser.echo_elf M (mword_of_int (t + 8) : mword 64) sts
+      cw cs pidv
+      (fun _ : Z =>
+         side_L pn ∗ Wq
+         ∗ (pipe_payL pn (wl_line (drop 1 ep_hi_ws)) ∨ app_taint))%I
+      (ep_pay pn γp (wl_line (drop 1 ep_hi_ws))) uslot.
+  Proof using ghost_varG0 ghost_varG1 ufdG0.
+    intros Himg Hbytes Hfdl Hl1. iIntros "#Hkt #Hnpw #Hdep".
+    iApply (ep_image_entry ep_hi_ws M s0 t g sts cw cs pidv pn γp rb
+              (fun _ : Z =>
+                 side_L pn ∗ Wq
+                 ∗ (pipe_payL pn (wl_line (drop 1 ep_hi_ws)) ∨ app_taint))%I
+              ltac:(intros x y; reflexivity) ep_hi_line_ok Himg Hbytes
+              Hfdl Hl1 with "[] Hkt Hnpw Hdep").
+    iIntros "!> Hex".
+    iApply (ep_exit_payL pn (wl_line (drop 1 ep_hi_ws)) with "Hex").
   Qed.
 
 End UEchoPipe.

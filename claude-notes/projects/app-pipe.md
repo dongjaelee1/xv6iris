@@ -3381,13 +3381,14 @@ Branch `app-pipe/echo-pipe-2` off `d435281aa`, ONE commit on `iris/UEchoPipe.v`
 (plus this notes file).  **No other file touched, and no statement outside
 `UEchoPipe.v` moved.**  Whole-tree `ec2-lane.sh echo2 build` **RC=0** (plus
 a confirming re-run with nothing left to compile); no `Admitted`, no
-`Axiom`; a MINIMAL `Proof using` on all nineteen results, **re-derived**
+`Axiom`; a MINIMAL `Proof using` on all twenty results, **re-derived**
 with Rocq's `Set Suggest Proof Using` after the port (unchanged: `Proof
 using .` on sixteen, `Proof using ghost_varG0 ghost_varG1 ufdG0` on the
 three entry-level ones).  `Print Assumptions ep_image_entry` and
 `… ep_test_hi`: the standing **fourteen**; `… ep_pay_of_alloc`: *Closed
-under the global context*.  `make audit-echo-only`: **fourteen, unmoved**
-(and it could not move — nothing in the tree `Require`s `UEchoPipe.v`).
+under the global context*.  `make audit-echo-only` **re-run on this lane's
+clone: the standing FOURTEEN, textually unmoved** (and it could not move —
+nothing in the tree `Require`s `UEchoPipe.v`).
 
 **WHAT CHANGED** (everything the coordinator's brief asked, and nothing else)
 
@@ -3427,6 +3428,10 @@ under the global context*.  `make audit-echo-only`: **fourteen, unmoved**
 
   — the halt's stuck arm IS `pipe_payL`'s new third arm, so sh closes the
   round with the three-armed `pipe_round_reading` and nothing in between.
+  **`ep_test_hi_payL`** is the consumer test at that shape (beside
+  `ep_test_hi`, which keeps the spelled-out payload): the entry at the
+  concrete line `echo hi`, exit payload
+  `side_L pn ∗ Wq ∗ (pipe_payL pn (wl_line ["hi"]) ∨ app_taint)`.
 - **`ep_image_entry`'s statement changes by exactly two lines**: the
   `ep_derail` conjunct leaves `Pay`, and the kill row enters as a premise.
 

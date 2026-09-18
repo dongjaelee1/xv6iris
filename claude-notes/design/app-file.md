@@ -577,6 +577,23 @@ unowned critical item (WRITE-RELAY-3's `TB` guard).  RULES, replacing
   position bounded by nothing); (ii) the piece takes the application's
   taint equation (`app_taint` ↔ `file_taint c`) as two persistent
   premises — the kernel invents neither.
+- RULING WR-TB (2026-09-18, KERNEL-STREAM §4): a FREE `TB : uptd -> Prop`
+  on `filewrite_in` is refuted at the statement — the program chooses it,
+  the kernel meets `P`, and the only meeting point (row 16 of
+  `xv6_sbundle`) is a function of a `uvis`, which carries no `uptd` by
+  construction.  The guard is the one the key's rows already determine:
+  `wr_tb pmv sz lz P := perm_of (ud_um P) sz = pmv /\ proc_pt_wf P /\
+  (lz = false -> lazy_free P)` at `uvis_perm/uvis_sz/uvis_lazy W`,
+  discharged by the kernel from the three facts it holds about its own
+  `pv_upt`; three key values threaded, no new field.
+- RULING EFQ (2026-09-18, KERNEL-STREAM §4): `UEchoFile.efq` conjoined the
+  half at the content-derived offset whichever arm `file_wq` took, so the
+  disconnected arm was unpayable.  READ-HELD's (i) at the write: the
+  cursor is `fired (file_wq exact ∗ uoff γo (content offset)) ∨ (file_taint
+  c ∗ ∃ p, uoff γo p)` — the half unmoved, its position existential, on
+  the taint arm; `efcur`/`ef_exit` and the four lemmas naming them follow.
+  RELAY 1 is not owed: `f_ok`'s `Some` arm pins the inum, so
+  `file_claim_read` yields it inside the node.
 - RULING H' (2026-09-18, INIT-FILE findings 3.1/3.2): the round's hold is
   tied to the era's boot state BY A SHARED INDEX, not by `f0_lb` (which
   only exists after the era's first console byte, so `Wbf []` was

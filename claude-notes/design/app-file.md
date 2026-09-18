@@ -105,7 +105,7 @@ side, at the end), which is what the sh walk (§5.1) is stated at.
                       -- ["hello"; " "; "world"; "\n"]
     subseq cs sel  := concat (map (cs !!!) sel)     -- sel strictly increasing, < length cs
 
-    Definition fst := option (list (bv 8)).      -- None: absent; Some bs: present with bytes bs
+    Definition fstate := option (list (bv 8)).      -- None: absent; Some bs: present with bytes bs
 
 THE STATE IS THE CONTENT, not a (words, subset) pair: the content is a
 FUNCTION OF THE VIEW (`fcontent_of av`), which is what lets the claim's
@@ -129,10 +129,10 @@ continuation and its f-effect are decided by ONE alternative:
       | RCExec | RCSilent | RCFork.    -- "exec cat failed\n$ ", "$ ", "fork\n"
 
     ralt_ok (l : uline) (a : ralt) : Prop      -- which alternatives a line shape admits, and sel's shape
-    fsm (s : fst) (l : uline) (a : ralt) : fst  -- the f-effect above; RFOpenM only at s = None
+    fsm (s : fstate) (l : uline) (a : ralt) : fstate  -- the f-effect above; RFOpenM only at s = None
                                                 --   (xv6 truncates only AFTER filealloc succeeds, so an open
                                                 --    that fails at a PRESENT f moved nothing: that is RFOpenU)
-    cont (s : fst) (l : uline) (a : ralt) : list (bv 8)   -- the continuation bytes (EchoDisc.line_alts_of at REcho)
+    cont (s : fstate) (l : uline) (a : ralt) : list (bv 8)   -- the continuation bytes (EchoDisc.line_alts_of at REcho)
 
 `RFOpenU`/`RFOpenM` print the same bytes and differ in f: the observer
 cannot tell and does not need to (the echo application's determinacy
@@ -142,28 +142,28 @@ bytes, different index" is already the shape it handles).
 **The session, per cycle, with the f-state threaded.**  `EchoDisc.sess`
 with `alt_blk` replaced by a fold that carries `s`:
 
-    sessf (ps cs : list nat) (s0 : fst) (I : list (bv 8)) : list (bv 8)
+    sessf (ps cs : list nat) (s0 : fstate) (I : list (bv 8)) : list (bv 8)
       := pro_of ps ++ blocks (the parsed lines of I, resolved by cs, starting at s0) ++ rest_of I
 
 where `cs !!! i` now indexes `ralt` (an injective `nat` encoding, so the
 stage's `cs_auth`/`cs_lb` machinery is reused verbatim; `ralt_ok` is the
-decidable range condition where `c < 4` was).  `fst_after ps cs s0 I` is
+decidable range condition where `c < 4` was).  `fstate_after ps cs s0 I` is
 the state after the last complete line.
 
 **The theorem's conclusion.**  `f` persists, so the statement is over
 the whole history, cycle by cycle, with the boot state of each cycle
 chosen existentially inside the admissible set:
 
-    fadm_boot (Ls : list (list (list (bv 8)))) : fst -> Prop :=
+    fadm_boot (Ls : list (list (list (bv 8)))) : fstate -> Prop :=
       fun s => s = None \/ exists ws sel, ws ∈ Ls /\ sel_ok (echo_chunks ws) sel /\ s = Some (subseq (echo_chunks ws) sel)
     -- Ls = the `echo … > f` word lists typed in ALL earlier cycles (limit 2)
 
-    good_out_f (s0 : fst) (seg : list mobs) : Prop :=
+    good_out_f (s0 : fstate) (seg : list mobs) : Prop :=
       exists ps cs, pro_ok_f ps cs _ /\ alts_ok (ins seg) cs      -- Forall2 ralt_ok against lines_of, pinning length cs
                     /\ obs_wire Uart0 seg `prefix_of` sessf ps cs s0 (ins seg)
 
     file_phi h := disc_f h ->
-      exists s0s : list fst, length s0s = length (cycles_of h)
+      exists s0s : list fstate, length s0s = length (cycles_of h)
         /\ (forall s, s0s !! 0 = Some s -> s = None)          -- the mkfs image has no `f` (guarded: the empty history has no cycle)
         /\ (forall k s, s0s !! S k = Some s -> fadm_boot (echof_lines_before h (S k)) s)
         /\ Forall2 (good_out_f …) s0s (cycles_of h).
@@ -184,12 +184,12 @@ so no table of alternatives is compared.
     file_fixed := EchoOut.echo_gn * gname                    -- echo's, plus γfl: THE LINE LIST (§4)
     file_names := echo_names * gname                         -- echo's console pair, plus γd: THE DEED
 
-    fdeed r (s : fst) := ghost_var (fdeed_gn r) (1/2) s      -- the PROCESS CHAIN's half (§3)
+    fdeed r (s : fstate) := ghost_var (fdeed_gn r) (1/2) s      -- the PROCESS CHAIN's half (§3)
 
     f_typed c None := emp
     f_typed c (Some bs) := ∃ ls, mono_list_lb (fl_gn c) ls
                            ∗ ⌜∃ ws sel, ws ∈ ls /\ sel_ok (echo_chunks ws) sel /\ bs = subseq (echo_chunks ws) sel⌝
-    f_state c r av := ∃ s : fst, ghost_var (fdeed_gn r) (1/2) s ∗ f_typed c s ∗ ⌜f_ok av s⌝
+    f_state c r av := ∃ s : fstate, ghost_var (fdeed_gn r) (1/2) s ∗ f_typed c s ∗ ⌜f_ok av s⌝
     f_ok av None := astep av ROOTINO fname_f = None
     f_ok av (Some bs) := ∃ i, astep av ROOTINO fname_f = Some i /\ av !! i = Some (MkAnode (AFile bs) 1)
 
@@ -660,7 +660,7 @@ unowned critical item (WRITE-RELAY-3's `TB` guard).  RULES, replacing
   tied to the era's boot state BY A SHARED INDEX, not by `f0_lb` (which
   only exists after the era's first console byte, so `Wbf []` was
   uninhabitable at /init's first instruction).  The boot state is an ERA
-  CONSTANT: `file_link_inst_at (s0 : fst) : LinkRec` at the `fwc_*_at s0`
+  CONSTANT: `file_link_inst_at (s0 : fstate) : LinkRec` at the `fwc_*_at s0`
   families (`file_link_inst` its `∃ s0` packing), the round's section takes
   `s0` beside `gen_id`, `Wcf I p := lk_lcred FI (S gen_id) I p ∗
   sh_hold_at s0 I` with no `f0_lb` in the hold; /init instantiates at
@@ -742,7 +742,7 @@ carrier (item 21).  `UInitConsK` is not a link consumer (the file takes
 it verbatim through `file_pred_cons`).  RESIDUE, three lanes: LINK-GEN-2
 the FILE INSTANCE `file_link_inst` — `FileLinksLine.v`, the eleven
 credential families and ~25 pure lemmas at `pro_pin_f`/`proc_before_f`/
-`proc_stream_f`/`pro_idx_f`/`fst_upto` (`UCatOut` section 1 already has
+`proc_stream_f`/`pro_idx_f`/`fstate_upto` (`UCatOut` section 1 already has
 five), `lk_ab`'s guarded file value (state-dependent `RCRan` sent to
 `[]`), `lk_turn0` from `fturn`, the ^D lemma at `disc_f`; LINK-GEN-3 the
 abstract STAGE (`UEchoOut`/`UShEchoPay` read an explicit stage: a second
@@ -773,7 +773,7 @@ ERA'S BOOT STATE `s0`.  Every round's state is DETERMINED by `s0`, the
 lines and the alternatives (`fsm`), so the stage carries no history of
 states — only `s0`:
 
-    Record fostage := MkFO { o_ps; o_cs; o_E; o_w; o_f0 : option fst }.
+    Record fostage := MkFO { o_ps; o_cs; o_E; o_w; o_f0 : option fstate }.
 
 `o_f0` is `None` until the era's FIRST process byte and `Some s0` from
 then on; `feout_pure` says `o_f0 = None -> o_E = [] /\ o_w = []` (under
@@ -885,7 +885,7 @@ STAGE named two blockers.  RULINGS:
 
 **Blocker 1 — `Decision (disc_f h)` is a section hypothesis of `FileOut`.**
 The ledger's counter must decide the file discipline at every rx.
-`disc_f`'s `∃ s : fst` ranges over all byte lists; the rest (`∃ ps cs`)
+`disc_f`'s `∃ s : fstate` ranges over all byte lists; the rest (`∃ ps cs`)
 ports from `EchoDisc.disc_seg'_dec` (`pro_cands`, `bounded_lists`, plus
 an enumerator of `sel`s).  THE FIX IS A CANONICALISATION LEMMA, not a
 change to the discipline: a boot state's content surfaces on the wire
@@ -898,7 +898,7 @@ transcript, hence a contiguous substring of that prefix's wire.  If no
 checked transcript (`p ∈ in_pres seg`) contains such a round, every
 checked transcript is IDENTICAL at `Some []` (the state chains agree
 pointwise except at `s0`-derived positions, and `cont` reads the state
-only at `RCRan`).  So `(∃ s, fst_ok s /\ disc_seg_f' s seg) <-> (∃ s ∈
+only at `RCRan`).  So `(∃ s, fstate_ok s /\ disc_seg_f' s seg) <-> (∃ s ∈
 scands seg, …)` with `scands seg := None :: Some [] :: (Some <$>
 substrings (obs_wire Uart0 seg))` — finite — and `fcont_ok` is decidable
 (`last bs = Some wl_nl` and `Forall wl_body_byte` of the rest).  Lane

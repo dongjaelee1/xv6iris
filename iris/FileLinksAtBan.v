@@ -67,7 +67,7 @@ Section file_links_at_ban.
   (* =================================================================== *)
   (*  1.  THE LOOSE SHAPES AND THE TIGHT ONES                             *)
   (* =================================================================== *)
-  Lemma fwc_pro_owed_at (s0 : fst) k v I :
+  Lemma fwc_pro_owed_at (s0 : fstate) k v I :
     fwc_pro_at g s0 k v I -∗ fwc_owed_at g s0 k v I.
   Proof using .
     rewrite /fwc_pro_at /fwc_owed_at.
@@ -76,7 +76,7 @@ Section file_links_at_ban.
     iLeft. iExists ps, cs, P. iFrame "Hc". iPureIntro. by left.
   Qed.
 
-  Lemma fwc_blk_owed_at (s0 : fst) k v I a :
+  Lemma fwc_blk_owed_at (s0 : fstate) k v I a :
     fwc_blk_at g s0 k v I a 0%nat -∗ fwc_owed_at g s0 k v I.
   Proof using .
     rewrite /fwc_blk_at /fwc_owed_at.
@@ -87,7 +87,7 @@ Section file_links_at_ban.
     iPureIntro. right. exact (proj1 Hw).
   Qed.
 
-  Lemma fwc_sp_t_sp_at (s0 : fst) k v I :
+  Lemma fwc_sp_t_sp_at (s0 : fstate) k v I :
     fwc_sp_t_at g s0 k v I -∗ fwc_sp_at g s0 k v I.
   Proof using .
     rewrite /fwc_sp_t_at /fwc_sp_at. iIntros "[H | H]"; [| by iRight].
@@ -95,7 +95,7 @@ Section file_links_at_ban.
     iLeft. iExists ps, cs, P. iFrame "Hc". iPureIntro. exact (proj1 Hw).
   Qed.
 
-  Lemma fwc_open_t_open_at (s0 : fst) k v I :
+  Lemma fwc_open_t_open_at (s0 : fstate) k v I :
     fwc_open_t_at g s0 k v I -∗ fwc_open_at g s0 k v I.
   Proof using .
     rewrite /fwc_open_t_at /fwc_open_at. iIntros "[H | H]"; [| by iRight].
@@ -103,13 +103,13 @@ Section file_links_at_ban.
     iLeft. iExists ps, cs, P. iFrame "Hc". iPureIntro. exact (proj1 Hw).
   Qed.
 
-  Lemma fwc_blk_0_at (s0 : fst) k v I a a' :
+  Lemma fwc_blk_0_at (s0 : fstate) k v I a a' :
     fwc_blk_at g s0 k v I a 0%nat -∗ fwc_blk_at g s0 k v I a' 0%nat.
   Proof using .
     rewrite /fwc_blk_at. cbn [blkcs_f]. iIntros "H". iExact "H".
   Qed.
 
-  Lemma fwc_line_of_blk0_at (s0 : fst) k v I a :
+  Lemma fwc_line_of_blk0_at (s0 : fstate) k v I a :
     fwc_blk_at g s0 k v I a 0%nat -∗ fwc_line_at g s0 k v I.
   Proof using .
     iIntros "Hc". rewrite /fwc_line_at. iRight.
@@ -118,7 +118,7 @@ Section file_links_at_ban.
     cbn [Nat.sub]. iApply (fwc_blk_0_at with "Hc").
   Qed.
 
-  Lemma fwc_line_of_post_at (s0 : fst) k v I a :
+  Lemma fwc_line_of_post_at (s0 : fstate) k v I a :
     fapr I a ->
     fwc_blk_at g s0 k v I a (length (fab I a) - 2)%nat -∗
     fwc_line_at g s0 k v I.
@@ -127,11 +127,11 @@ Section file_links_at_ban.
     iSplitR; [by iPureIntro |]. iExact "Hc".
   Qed.
 
-  Lemma fwc_line_of_pro_at (s0 : fst) k v I :
+  Lemma fwc_line_of_pro_at (s0 : fstate) k v I :
     fwc_pro_at g s0 k v I -∗ fwc_line_at g s0 k v I.
   Proof using . iIntros "Hc". rewrite /fwc_line_at. by iLeft. Qed.
 
-  Lemma fwc_lend_of_blk0_at (s0 : fst) k v I a :
+  Lemma fwc_lend_of_blk0_at (s0 : fstate) k v I a :
     fwc_blk_at g s0 k v I a 0%nat -∗ fwc_lend_at g s0 k v I.
   Proof using .
     rewrite /fwc_blk_at /fwc_lend_at. cbn [blkcs_f].
@@ -141,7 +141,7 @@ Section file_links_at_ban.
     rewrite /fcur. by iFrame "Htn Hps Hcs HE Hf".
   Qed.
 
-  Lemma fwc_blk_sp_at (s0 : fst) k v I a :
+  Lemma fwc_blk_sp_at (s0 : fstate) k v I a :
     fapr I a ->
     fwc_blk_at g s0 k v I a (length (fab I a) - 1)%nat -∗
     fwc_sp_t_at g s0 k v I.
@@ -162,7 +162,7 @@ Section file_links_at_ban.
   (* =================================================================== *)
   (*  2.  THE BANNER'S READINGS                                           *)
   (* =================================================================== *)
-  Lemma fwc_ban_pro_at (s0 : fst) k v I :
+  Lemma fwc_ban_pro_at (s0 : fstate) k v I :
     fwc_ban_at g s0 k v I 0%nat -∗ fwc_pro_at g s0 k v I.
   Proof using .
     rewrite /fwc_ban_at /fwc_pro_at.
@@ -174,13 +174,13 @@ Section file_links_at_ban.
     exact (wr_ban_pro_f ps cs s0 I P Hw).
   Qed.
 
-  Lemma fwc_ban_owed_at (s0 : fst) k v I :
+  Lemma fwc_ban_owed_at (s0 : fstate) k v I :
     fwc_ban_at g s0 k v I 0%nat -∗ fwc_owed_at g s0 k v I.
   Proof using .
     iIntros "Hc". iApply fwc_pro_owed_at. iApply (fwc_ban_pro_at with "Hc").
   Qed.
 
-  Lemma fwc_ban_done_pro_at (s0 : fst) k v I :
+  Lemma fwc_ban_done_pro_at (s0 : fstate) k v I :
     fwc_ban_at g s0 k v I (length u_banner) -∗ fwc_pro_at g s0 k v I.
   Proof using .
     rewrite /fwc_ban_at /fwc_pro_at.
@@ -194,21 +194,21 @@ Section file_links_at_ban.
     pose proof (wr_ban_done_f ps' cs s0 I P Hw) as H. by rewrite H18 in H.
   Qed.
 
-  Lemma fwc_ban_done_at (s0 : fst) k v I :
+  Lemma fwc_ban_done_at (s0 : fstate) k v I :
     fwc_ban_at g s0 k v I (length u_banner) -∗ fwc_owed_at g s0 k v I.
   Proof using .
     iIntros "Hc". iApply fwc_pro_owed_at.
     iApply (fwc_ban_done_pro_at with "Hc").
   Qed.
 
-  Lemma fwc_ban_done_line_at (s0 : fst) k v I :
+  Lemma fwc_ban_done_line_at (s0 : fstate) k v I :
     fwc_ban_at g s0 k v I (length u_banner) -∗ fwc_line_at g s0 k v I.
   Proof using .
     iIntros "Hc". iApply fwc_line_of_pro_at.
     iApply (fwc_ban_done_pro_at with "Hc").
   Qed.
 
-  Lemma fwc_ban_inp_at (s0 : fst) k v I :
+  Lemma fwc_ban_inp_at (s0 : fstate) k v I :
     fwc_ban_at g s0 k v I 0%nat -∗
     fwc_ban_at g s0 k v I 0%nat ∗ ((inp_lb v I ∗ ⌜rest_of I = []⌝) ∨ FT).
   Proof using .
@@ -230,7 +230,7 @@ Section file_links_at_ban.
   (* =================================================================== *)
   (*  3.  /init's BANNER STEP, AT THE NAMED STATE                         *)
   (* =================================================================== *)
-  Lemma fban_step_at (s0 : fst) (k : nat) (v : era_pins) (I : list (bv 8))
+  Lemma fban_step_at (s0 : fstate) (k : nat) (v : era_pins) (I : list (bv 8))
       (i : nat) (b : bv 8) (Φ : iProp Σ) :
     u_banner !! i = Some b ->
     FPIN k v -∗ file_links g -∗ fwc_ban_at g s0 k v I i -∗
@@ -316,7 +316,7 @@ Section file_links_at_ban.
   Qed.
 
   (* ---- and the name the banner leaves behind ---- *)
-  Lemma fban_at_f0w (s0 : fst) (k : nat) (v : era_pins) (I : list (bv 8))
+  Lemma fban_at_f0w (s0 : fstate) (k : nat) (v : era_pins) (I : list (bv 8))
       (i : nat) :
     fwc_ban_at g s0 k v I (S i) -∗
     fwc_ban_at g s0 k v I (S i) ∗ (FileLinksLine.f0w g k s0 ∨ FT).
@@ -335,10 +335,10 @@ Section file_links_at_ban.
   (* =================================================================== *)
   (*  4.  THE ERA'S TURN, AT THE NAMED STATE                              *)
   (* =================================================================== *)
-  Definition fturn_pre_at (s0 : fst) (k : nat) : iProp Σ :=
+  Definition fturn_pre_at (s0 : fstate) (k : nat) : iProp Σ :=
     (⌜k = S gen_id⌝ ∗ FileOut.fturn g k ∗ f0pre_at g s0)%I.
 
-  Lemma fturn0_at (s0 : fst) (k : nat) :
+  Lemma fturn0_at (s0 : fstate) (k : nat) :
     fturn_pre_at s0 k -∗
     (∃ v : era_pins, FPIN k v ∗ dl_cnt v (1/2) 0%nat ∗ inp_lb v [])
     ∗ (∃ v : era_pins, FPIN k v ∗ fwc_ban_at g s0 k v [] 0%nat).
@@ -357,7 +357,7 @@ Section file_links_at_ban.
   (* =================================================================== *)
   (*  5.  A READ PAST THE BANNER IS THE TAINT                             *)
   (* =================================================================== *)
-  Lemma fban_read_taint_at (s0 : fst) (k : nat) (v : era_pins)
+  Lemma fban_read_taint_at (s0 : fstate) (k : nat) (v : era_pins)
       (I l : list (bv 8)) :
     wl_nl ∉ l ->
     fwc_ban_at g s0 k v I 0%nat -∗ fwc_rres g v (I ++ l ++ [wl_nl]) -∗ FT.

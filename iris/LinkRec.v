@@ -26,7 +26,7 @@
 (*     [EchoOut.era_pin].                                                *)
 (*   - THE LINE MODEL: the alternatives a line admits and their          *)
 (*     continuations.  echo's is [EchoDisc.line_alts_of (last_ws I)] with *)
-(*     [a < 4]; the file's is [FileDisc.cont] at [fst_upto] with          *)
+(*     [a < 4]; the file's is [FileDisc.cont] at [fstate_upto] with          *)
 (*     [ralt_ok].  The record exposes [lk_ab I a] (alternative [a]'s      *)
 (*     output at input [I]) and [lk_apr I a] (it ends with the prompt).   *)
 (*     A file alternative whose output depends on the era's FILE STATE    *)

@@ -64,10 +64,10 @@ Section file_link_inst.
           record carry the field too, and therefore what keeps the program
           stream off [file_link_inst_at] if it wants to be. ---- *)
   Definition fwc_pban_ex (k : nat) (v : era_pins) (I : list (bv 8))
-    : iProp Σ := (∃ s0 : fst, fwc_pban_at g s0 k v I)%I.
+    : iProp Σ := (∃ s0 : fstate, fwc_pban_at g s0 k v I)%I.
 
   Definition fwc_pdiag_ex (k : nat) (v : era_pins) (I : list (bv 8))
-      (a i : nat) : iProp Σ := (∃ s0 : fst, fwc_pdiag_at g s0 k v I a i)%I.
+      (a i : nat) : iProp Σ := (∃ s0 : fstate, fwc_pdiag_at g s0 k v I a i)%I.
 
   (* NAME THE LEAF, do not search: with 455 [Timeless] instances in the
      tree under mostly transparent definitions the hint net cannot
@@ -368,7 +368,7 @@ Section sh_round_facing.
     intro Hl. rewrite Hl file_ralt0. cbn [ralt_ok]. lia.
   Qed.
 
-  Lemma file_ralt0_free : fst_free (ralt_dec 0%nat) = true.
+  Lemma file_ralt0_free : fstate_free (ralt_dec 0%nat) = true.
   Proof using . reflexivity. Qed.
 
   Lemma file_fab0 (I : list (bv 8)) :
@@ -479,7 +479,7 @@ Section file_link_inst_at.
   Context (g : file_gn).
   Context `{HRg : !riscvGS Σ}.
   Context `{GEN : GenId}.
-  Context (s0 : fst).
+  Context (s0 : fstate).
 
   (* [lk_ban_read_taint] is stated at the record's OWN [lk_rres], which
      here is the indexed residue; the ported lemma takes the unindexed one,
@@ -749,7 +749,7 @@ Section file_W_unpack.
   Context `{GEN : GenId}.
 
   Lemma file_Wcl_unpack (I : list (bv 8)) (p : nat) :
-    file_Wcl g I p -∗ ∃ s0 : fst, file_Wcl_at g s0 I p.
+    file_Wcl g I p -∗ ∃ s0 : fstate, file_Wcl_at g s0 I p.
   Proof using .
     rewrite /file_Wcl /lk_lcred.
     iIntros "H". iDestruct "H" as (v) "[#Hpin Hc]".
@@ -760,7 +760,7 @@ Section file_W_unpack.
   Qed.
 
   Lemma file_Wbl_unpack (I : list (bv 8)) :
-    file_Wbl g I -∗ ∃ s0 : fst, file_Wbl_at g s0 I.
+    file_Wbl g I -∗ ∃ s0 : fstate, file_Wbl_at g s0 I.
   Proof using .
     rewrite /file_Wbl.
     iIntros "H". iDestruct "H" as (v) "[#Hpin Hc]".

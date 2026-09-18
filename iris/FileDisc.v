@@ -5,7 +5,7 @@
    read -- and refuted -- without opening the logic.
 
    Design of record: claude-notes/design/app-file.md section 1; the state
-   vocabulary ([fst], [echo_chunks], [sel_ok], [subseq]) is [FileState.v],
+   vocabulary ([fstate], [echo_chunks], [sel_ok], [subseq]) is [FileState.v],
    which the claim reads too.
 
    WHAT THIS FILE IS.  [EchoDisc] models a session in which every round is
@@ -14,7 +14,7 @@
    SURVIVES the round, the era and the power cycle.  So the session
    function threads it: [sessf ps cs s0 I] is [EchoDisc.sess] with the
    per-round block computed at the state the previous rounds left
-   ([fst_upto]), and [file_phi] is the whole-history claim, one boot state
+   ([fstate_upto]), and [file_phi] is the whole-history claim, one boot state
    per cycle, each admissible for what earlier cycles typed.
 
    THE OBSERVER STILL CANNOT SEE THE FILE, and does not need to.  Two
@@ -60,12 +60,9 @@ Require Import RiscvLang.        (* [mobs] *)
 Require Import ObsTrace.         (* [obs_wire Uart0], [cycles_of] *)
 Require Import LineWords.        (* the word line and the parser *)
 Require Import EchoDisc.         (* the console discipline this one extends *)
-Require Export FileState.        (* [fst], [echo_chunks], [sel_ok], [subseq] *)
+Require Export FileState.        (* [fstate], [echo_chunks], [sel_ok], [subseq] *)
 From stdpp Require Import ssreflect.
 Local Open Scope nat_scope.
-
-(* NOTE ON [fst].  [FileState.fst] shadows the pair projection, so nothing
-   below writes [x.1]; [snd] is untouched and is written by name. *)
 
 (* ====================================================================== *)
 (*  0.  SMALL LIST AND PREFIX FACTS                                        *)
@@ -460,7 +457,7 @@ Definition fcont_ok (bs : list (bv 8)) : Prop :=
   Forall wl_body_byte bs
   \/ (exists v, Forall wl_body_byte v /\ bs = v ++ [wl_nl]).
 
-Definition fst_ok (s : fst) : Prop :=
+Definition fstate_ok (s : fstate) : Prop :=
   match s with None => True | Some bs => fcont_ok bs end.
 
 Lemma body_byte_nodollar b : wl_body_byte b -> nodollar b.
@@ -734,7 +731,7 @@ Proof using. destruct l, a; rewrite /ralt_ok; apply _. Defined.
    xv6's [sys_open] truncates only after [filealloc] has succeeded, so at a
    present f the failed open leaves the file alone and this alternative is
    [RFOpenU]. *)
-Definition fsm (s : fst) (l : uline) (a : ralt) : fst :=
+Definition fsm (s : fstate) (l : uline) (a : ralt) : fstate :=
   match l with
   | LEchoF ws =>
       match a with
@@ -749,7 +746,7 @@ Definition fsm (s : fst) (l : uline) (a : ralt) : fst :=
 
 (* THE CONSOLE CONTINUATION of a round, at the state the file is in when it
    starts.  At [REcho] it is [EchoDisc.line_alts_of] verbatim. *)
-Definition cont (s : fst) (l : uline) (a : ralt) : list (bv 8) :=
+Definition cont (s : fstate) (l : uline) (a : ralt) : list (bv 8) :=
   match a with
   | REcho k => line_alts_of (uline_ws l) !!! k
   | RFRan _ => u_prompt
@@ -765,7 +762,7 @@ Definition cont (s : fst) (l : uline) (a : ralt) : list (bv 8) :=
   | RCFork => alt_panic
   end.
 
-Lemma fst_ok_fsm s l a : fst_ok s -> uline_ok l -> ralt_ok l a -> fst_ok (fsm s l a).
+Lemma fstate_ok_fsm s l a : fstate_ok s -> uline_ok l -> ralt_ok l a -> fstate_ok (fsm s l a).
 Proof using.
   intros Hs Hl Ha. destruct l as [ws | ws |]; [exact Hs | | exact Hs].
   destruct a; try exact Hs; try (by left; constructor).
@@ -811,7 +808,7 @@ Proof using.
 Qed.
 
 Lemma cont_shape s l a :
-  uline_ok l -> fst_ok s -> ralt_ok l a -> ralt_panic a = false ->
+  uline_ok l -> fstate_ok s -> ralt_ok l a -> ralt_panic a = false ->
   exists u, cont s l a = u ++ u_prompt
             /\ Forall nodollar u
             /\ (wl_nl ∉ u \/ exists v, wl_nl ∉ v /\ u = v ++ [wl_nl]).
@@ -889,36 +886,36 @@ Fixpoint pro_idx_f (cs : list nat) (i : nat) : nat :=
 
 (* THE FILE STATE BEFORE ROUND [q]: the boot state, moved by every round
    before it.  This is the whole of what the file adds to the session. *)
-Fixpoint fst_upto (cs : list nat) (s : fst) (bs : list (list (bv 8)))
-    (q : nat) : fst :=
+Fixpoint fstate_upto (cs : list nat) (s : fstate) (bs : list (list (bv 8)))
+    (q : nat) : fstate :=
   match q with
   | 0%nat => s
-  | S q' => fsm (fst_upto cs s bs q') (uline_of (bs !!! q')) (ralt_at cs q')
+  | S q' => fsm (fstate_upto cs s bs q') (uline_of (bs !!! q')) (ralt_at cs q')
   end.
 
-Definition alt_cont_f (ps cs : list nat) (s : fst)
+Definition alt_cont_f (ps cs : list nat) (s : fstate)
     (bs : list (list (bv 8))) (i : nat) : list (bv 8) :=
-  cont (fst_upto cs s bs i) (uline_of (bs !!! i)) (ralt_at cs i)
+  cont (fstate_upto cs s bs i) (uline_of (bs !!! i)) (ralt_at cs i)
   ++ (if ralt_panic (ralt_at cs i)
       then pro_of (pro_from (S (pro_idx_f cs i)) ps) else []).
 
-Definition alt_blk_f (ps cs : list nat) (s : fst)
+Definition alt_blk_f (ps cs : list nat) (s : fstate)
     (bs : list (list (bv 8))) (i : nat) : list (bv 8) :=
   bs !!! i ++ wl_nl :: alt_cont_f ps cs s bs i.
 
-Definition alt_seq_f (ps cs : list nat) (s : fst)
+Definition alt_seq_f (ps cs : list nat) (s : fstate)
     (bs : list (list (bv 8))) (q : nat) : list (bv 8) :=
   concat (alt_blk_f ps cs s bs <$> List.seq 0 q).
 
 (* THE EXPECTED SESSION TRANSCRIPT for the era's input [I] at boot state
    [s]: [EchoDisc.sess] with the file threaded through the blocks. *)
-Definition sessf (ps cs : list nat) (s : fst) (I : list (bv 8))
+Definition sessf (ps cs : list nat) (s : fstate) (I : list (bv 8))
   : list (bv 8) :=
   pro_of ps ++ alt_seq_f ps cs s (bodies_of I) (nlines I) ++ rest_of I.
 
 (* the state after the last COMPLETE line of [I] *)
-Definition fst_after (cs : list nat) (s : fst) (I : list (bv 8)) : fst :=
-  fst_upto cs s (bodies_of I) (nlines I).
+Definition fstate_after (cs : list nat) (s : fstate) (I : list (bv 8)) : fstate :=
+  fstate_upto cs s (bodies_of I) (nlines I).
 
 (* ---- the round pointer ----------------------------------------------- *)
 
@@ -974,23 +971,23 @@ Qed.
 
 (* ---- the state, and the two ways to read it -------------------------- *)
 
-Lemma fst_upto_ext cs1 cs2 s bs1 bs2 q :
+Lemma fstate_upto_ext cs1 cs2 s bs1 bs2 q :
   (forall j, (j < q)%nat -> cs1 !!! j = cs2 !!! j) ->
   (forall j, (j < q)%nat -> bs1 !!! j = bs2 !!! j) ->
-  fst_upto cs1 s bs1 q = fst_upto cs2 s bs2 q.
+  fstate_upto cs1 s bs1 q = fstate_upto cs2 s bs2 q.
 Proof using.
   intros Hc Hb. induction q as [| q IH]; [reflexivity |].
-  cbn [fst_upto]. rewrite IH; [| intros j Hj; apply Hc; lia
+  cbn [fstate_upto]. rewrite IH; [| intros j Hj; apply Hc; lia
                               | intros j Hj; apply Hb; lia].
   by rewrite /ralt_at (Hc q ltac:(lia)) (Hb q ltac:(lia)).
 Qed.
 
-Lemma fst_upto_drop cs s bs n i :
-  fst_upto (drop n cs) (fst_upto cs s bs n) (drop n bs) i
-  = fst_upto cs s bs (n + i).
+Lemma fstate_upto_drop cs s bs n i :
+  fstate_upto (drop n cs) (fstate_upto cs s bs n) (drop n bs) i
+  = fstate_upto cs s bs (n + i).
 Proof using.
   induction i as [| i IH]; [by rewrite Nat.add_0_r |].
-  rewrite Nat.add_succ_r. cbn [fst_upto]. rewrite IH.
+  rewrite Nat.add_succ_r. cbn [fstate_upto]. rewrite IH.
   by rewrite /ralt_at !fd_lookup_total_drop.
 Qed.
 
@@ -1015,7 +1012,7 @@ Lemma alt_blk_f_ext ps1 ps2 cs1 cs2 s bs1 bs2 q :
 Proof using.
   intros Hc Hb Hr. rewrite /alt_blk_f /alt_cont_f.
   rewrite (Hb q ltac:(lia)) /ralt_at (Hc q ltac:(lia)).
-  rewrite (fst_upto_ext cs1 cs2 s bs1 bs2 q
+  rewrite (fstate_upto_ext cs1 cs2 s bs1 bs2 q
              ltac:(intros j Hj; apply Hc; lia)
              ltac:(intros j Hj; apply Hb; lia)).
   destruct (ralt_panic (ralt_dec (cs2 !!! q))) eqn:Hpa; [| reflexivity].
@@ -1080,18 +1077,18 @@ Qed.
 (* ---- dropping the first block, which is what the induction consumes -- *)
 
 Lemma alt_cont_f_drop ps cs s bs n i :
-  alt_cont_f (pro_from (pro_idx_f cs n) ps) (drop n cs) (fst_upto cs s bs n)
+  alt_cont_f (pro_from (pro_idx_f cs n) ps) (drop n cs) (fstate_upto cs s bs n)
     (drop n bs) i
   = alt_cont_f ps cs s bs (n + i).
 Proof using.
   rewrite /alt_cont_f !fd_lookup_total_drop /ralt_at !fd_lookup_total_drop.
-  rewrite fst_upto_drop. f_equal.
+  rewrite fstate_upto_drop. f_equal.
   destruct (ralt_panic (ralt_dec (cs !!! (n + i)))); [| reflexivity].
   rewrite pro_from_add pro_idx_f_add. f_equal. f_equal. lia.
 Qed.
 
 Lemma alt_blk_f_drop ps cs s bs n i :
-  alt_blk_f (pro_from (pro_idx_f cs n) ps) (drop n cs) (fst_upto cs s bs n)
+  alt_blk_f (pro_from (pro_idx_f cs n) ps) (drop n cs) (fstate_upto cs s bs n)
     (drop n bs) i
   = alt_blk_f ps cs s bs (n + i).
 Proof using.
@@ -1102,7 +1099,7 @@ Lemma alt_seq_f_cons ps cs s bs q :
   alt_seq_f ps cs s bs (S q)
   = alt_blk_f ps cs s bs 0%nat
     ++ alt_seq_f (pro_from (pro_idx_f cs 1%nat) ps) (drop 1 cs)
-         (fst_upto cs s bs 1%nat) (drop 1 bs) q.
+         (fstate_upto cs s bs 1%nat) (drop 1 bs) q.
 Proof using.
   rewrite /alt_seq_f.
   replace (List.seq 0 (S q)) with (0%nat :: List.seq 1 q) by reflexivity.
@@ -1117,7 +1114,7 @@ Lemma alt_seq_f_cons_assoc ps cs s bs q (t : list (bv 8)) :
   = bs !!! 0%nat
     ++ wl_nl :: (alt_cont_f ps cs s bs 0%nat
                  ++ (alt_seq_f (pro_from (pro_idx_f cs 1%nat) ps) (drop 1 cs)
-                       (fst_upto cs s bs 1%nat) (drop 1 bs) q ++ t)).
+                       (fstate_upto cs s bs 1%nat) (drop 1 bs) q ++ t)).
 Proof using. rewrite alt_seq_f_cons /alt_blk_f. apply fd_app4. Qed.
 
 (* ---- THE SESSION'S LAWS, at [EchoDisc.sess]'s statements ------------- *)
@@ -1243,7 +1240,7 @@ Qed.
 (* D1/D2 AT ONE INPUT POSITION, at [EchoDisc.disc_pt]'s statement with
    [sessf] in place of [sess]: the expected transcript for the input typed
    so far -- read at the era's boot state -- is already on the wire. *)
-Definition disc_pt_f (ps cs : list nat) (s : fst) (p : list mobs) : Prop :=
+Definition disc_pt_f (ps cs : list nat) (s : fstate) (p : list mobs) : Prop :=
   sessf ps cs s (ins p) `prefix_of` obs_wire Uart0 p.
 
 Global Instance disc_pt_f_dec ps cs s p : Decision (disc_pt_f ps cs s p).
@@ -1281,7 +1278,7 @@ Qed.
    era's BOOT STATE a parameter: what the user must do does not depend on
    the file, but what the wire shows does, so the state the era started in
    is what the transcript is read at. *)
-Definition disc_seg_f' (s : fst) (seg : list mobs) : Prop :=
+Definition disc_seg_f' (s : fstate) (seg : list mobs) : Prop :=
   disc_seg_f seg
   /\ exists ps cs : list nat,
        alts_ok (ins seg) cs
@@ -1292,14 +1289,14 @@ Definition disc_seg_f' (s : fst) (seg : list mobs) : Prop :=
    twin.  ([disc_seg_f'] is NOT claimed decidable: the search over the
    resolutions that [EchoDisc] can run needs a bound on [sel], and no
    consumer asks for it.) *)
-Definition disc_pt_all_f (ps cs : list nat) (s : fst) (seg : list mobs) : Prop :=
+Definition disc_pt_all_f (ps cs : list nat) (s : fstate) (seg : list mobs) : Prop :=
   Forall (fun p => pro_ok_f ps cs (nlines (ins p)) /\ disc_pt_f ps cs s p)
     (in_pres seg).
 
 Global Instance disc_pt_all_f_dec ps cs s seg : Decision (disc_pt_all_f ps cs s seg).
 Proof using. rewrite /disc_pt_all_f. apply _. Defined.
 
-Lemma disc_seg_f'_intro (s : fst) (seg : list mobs) (ps cs : list nat) :
+Lemma disc_seg_f'_intro (s : fstate) (seg : list mobs) (ps cs : list nat) :
   disc_seg_f seg -> alts_ok (ins seg) cs -> disc_pt_all_f ps cs s seg ->
   disc_seg_f' s seg.
 Proof using.
@@ -1319,7 +1316,7 @@ Qed.
    state: the theorem's conclusion ([file_phi]) is what ties those states
    to what earlier cycles typed. *)
 Definition disc_f (h : list mobs) : Prop :=
-  Forall (fun seg => exists s : fst, fst_ok s /\ disc_seg_f' s seg) (cycles_of h).
+  Forall (fun seg => exists s : fstate, fstate_ok s /\ disc_seg_f' s seg) (cycles_of h).
 
 Lemma disc_f_nil : disc_f [].
 Proof using. constructor. Qed.
@@ -1333,7 +1330,7 @@ Qed.
 (* THE OUTPUT CLAIM for one power cycle, at a boot state: everything on the
    console wire is a prefix of the transcript this cycle's input calls for,
    under some resolution.  [EchoDisc.good_out] with [sessf]. *)
-Definition good_out_f (s : fst) (seg : list mobs) : Prop :=
+Definition good_out_f (s : fstate) (seg : list mobs) : Prop :=
   exists ps cs : list nat,
     pro_ok_f ps cs (nlines (ins seg))
     /\ alts_ok (ins seg) cs
@@ -1418,7 +1415,7 @@ Proof using.
 Qed.
 
 (* every line the file may hold is an ADMISSIBLE echo line -- which is what
-   makes a boot state's content a content ([fst_ok]) *)
+   makes a boot state's content a content ([fstate_ok]) *)
 Lemma echof_lines_in_ok I :
   disc_input_f I -> Forall line_ok (echof_lines_in I).
 Proof using.
@@ -1435,13 +1432,13 @@ Qed.
 
 (* the boot state of an era: absent, or a chunk subsequence of a line
    typed in an EARLIER cycle (design section 1) *)
-Definition fadm_boot (Ls : list (list (list (bv 8)))) (s : fst) : Prop :=
+Definition fadm_boot (Ls : list (list (list (bv 8)))) (s : fstate) : Prop :=
   s = None
   \/ exists ws sel, ws ∈ Ls /\ sel_ok (echo_chunks ws) sel
                     /\ s = Some (subseq (echo_chunks ws) sel).
 
 Lemma fadm_boot_fst_ok Ls s :
-  Forall line_ok Ls -> fadm_boot Ls s -> fst_ok s.
+  Forall line_ok Ls -> fadm_boot Ls s -> fstate_ok s.
 Proof using.
   intros HF [-> | (ws & sel & Hws & Hsel & ->)]; [exact I |].
   exact (fcont_ok_subseq ws sel (proj1 (Forall_forall _ _) HF ws Hws) Hsel).
@@ -1458,7 +1455,7 @@ Qed.
    history that has a cycle. *)
 Definition file_phi (h : list mobs) : Prop :=
   disc_f h ->
-  exists s0s : list fst,
+  exists s0s : list fstate,
     length s0s = length (cycles_of h)
     /\ (forall s, s0s !! 0%nat = Some s -> s = None)
     /\ (forall k s, s0s !! S k = Some s ->
@@ -1649,7 +1646,7 @@ Qed.
 
 (* ---- ONE ROUND'S CONTINUATION, PROLOGUE INCLUDED --------------------- *)
 
-Definition cont_all (ps : list nat) (s : fst) (l : uline) (a : ralt)
+Definition cont_all (ps : list nat) (s : fstate) (l : uline) (a : ralt)
   : list (bv 8) :=
   cont s l a ++ (if ralt_panic a then pro_of (pro_from 1%nat ps) else []).
 
@@ -1671,11 +1668,11 @@ Proof using. reflexivity. Qed.
    and the unprimed round is settled.  Four cases, by which side panicked;
    three of them are one lemma each and the fourth is [EchoDisc]'s
    prologue prefix-freeness. *)
-Lemma cont_pair_det (ps ps' : list nat) (s s' : fst) (l : uline)
+Lemma cont_pair_det (ps ps' : list nat) (s s' : fstate) (l : uline)
     (a a' : ralt) (X X' : list (bv 8)) :
   Forall (fun x => (x < length pro_alts)%nat) ps ->
   Forall (fun x => (x < length pro_alts)%nat) ps' ->
-  uline_ok l -> fst_ok s -> fst_ok s' -> ralt_ok l a -> ralt_ok l a' ->
+  uline_ok l -> fstate_ok s -> fstate_ok s' -> ralt_ok l a -> ralt_ok l a' ->
   (ralt_panic a' = true -> (1 < pro_rounds ps')%nat) ->
   (ralt_panic a = true -> X <> [] -> (1 < pro_rounds ps)%nat) ->
   (cont_all ps' s' l a' ++ X') `prefix_of` (cont_all ps s l a ++ X) ->
@@ -1797,7 +1794,7 @@ Proof using. intro H. rewrite /alt_cont_f H. reflexivity. Qed.
    and go on differing for the rest of the era while the wire stays the
    same. *)
 Lemma alt_seq_f_prefix_det (q' : nat) :
-  forall (ps ps' cs cs' : list nat) (s s' : fst)
+  forall (ps ps' cs cs' : list nat) (s s' : fstate)
          (bs bs' : list (list (bv 8))) (q : nat) (t' t : list (bv 8)),
     Forall (fun a => (a < length pro_alts)%nat) ps ->
     Forall (fun a => (a < length pro_alts)%nat) ps' ->
@@ -1806,7 +1803,7 @@ Lemma alt_seq_f_prefix_det (q' : nat) :
     (forall i, (i < q)%nat -> (pro_idx_f cs i < pro_rounds ps)%nat) ->
     (t <> [] -> (pro_idx_f cs q < pro_rounds ps)%nat) ->
     (q' <= length bs')%nat -> (q <= length bs)%nat ->
-    fst_ok s -> fst_ok s' ->
+    fstate_ok s -> fstate_ok s' ->
     (forall i, (i < q)%nat -> uline_ok (uline_of (bs !!! i))) ->
     (forall i, (i < q)%nat -> ralt_ok (uline_of (bs !!! i)) (ralt_at cs i)) ->
     (forall i, (i < q')%nat -> ralt_ok (uline_of (bs' !!! i)) (ralt_at cs' i)) ->
@@ -1852,7 +1849,7 @@ Proof using.
     rewrite -(pro_idx_f_Sp cs' 0%nat H3). apply pro_idx_f_mono. lia. }
   assert (Hsetu : ralt_panic (ralt_at cs 0%nat) = true ->
             (alt_seq_f (pro_from (pro_idx_f cs 1%nat) ps) (drop 1 cs)
-               (fst_upto cs s bs 1%nat) (drop 1 bs) p ++ t) <> [] ->
+               (fstate_upto cs s bs 1%nat) (drop 1 bs) p ++ t) <> [] ->
             (1 < pro_rounds ps)%nat).
   { intros H3 Hne. destruct p as [| p0].
     - assert (Htne : t <> []).
@@ -1872,14 +1869,14 @@ Proof using.
       by apply Hround1.
     - rewrite (pro_idx_f_Sn cs 0%nat H3). cbn [pro_idx_f]. lia. }
   (* the states after the head block, which may already differ *)
-  assert (Hs1 : fst_ok (fst_upto cs s bs 1%nat))
-    by (cbn [fst_upto]; exact (fst_ok_fsm s _ _ Hs Hl0 Ha0)).
-  assert (Hs1' : fst_ok (fst_upto cs' s' bs' 1%nat)).
-  { cbn [fst_upto]. rewrite Hhd. exact (fst_ok_fsm s' _ _ Hs' Hl0 Ha0'). }
+  assert (Hs1 : fstate_ok (fstate_upto cs s bs 1%nat))
+    by (cbn [fstate_upto]; exact (fstate_ok_fsm s _ _ Hs Hl0 Ha0)).
+  assert (Hs1' : fstate_ok (fstate_upto cs' s' bs' 1%nat)).
+  { cbn [fstate_upto]. rewrite Hhd. exact (fstate_ok_fsm s' _ _ Hs' Hl0 Ha0'). }
   destruct (IH (pro_from (pro_idx_f cs 1%nat) ps)
               (pro_from (pro_idx_f cs' 1%nat) ps')
               (drop 1 cs) (drop 1 cs')
-              (fst_upto cs s bs 1%nat) (fst_upto cs' s' bs' 1%nat)
+              (fstate_upto cs s bs 1%nat) (fstate_upto cs' s' bs' 1%nat)
               (drop 1 bs) (drop 1 bs') p t' t
               (pro_from_Forall _ _ ps Hps) (pro_from_Forall _ _ ps' Hps'))
     as (Hle & Htk & Hrd & Heq & Hteq & Htlt).
@@ -1930,12 +1927,12 @@ Qed.
 (* ...AND THE SESSION TRANSCRIPTS THEMSELVES.  This is what the stage
    spends: two resolutions below one wire, at ONE boot state, are the same
    bytes, and the discipline's input is a prefix of the claim's. *)
-Lemma sessf_prefix_det (ps ps' cs cs' : list nat) (s : fst)
+Lemma sessf_prefix_det (ps ps' cs cs' : list nat) (s : fstate)
     (I' I : list (bv 8)) :
   Forall (fun a => (a < length pro_alts)%nat) ps ->
   pro_ok_f ps' cs' (nlines I') ->
   alts_ok I cs -> alts_ok I' cs' ->
-  pro_pin_f ps cs I -> disc_input_f I -> disc_input_f I' -> fst_ok s ->
+  pro_pin_f ps cs I -> disc_input_f I -> disc_input_f I' -> fstate_ok s ->
   sessf ps' cs' s I' `prefix_of` sessf ps cs s I ->
   I' `prefix_of` I /\ pro_ok_f ps cs (nlines I')
   /\ sessf ps' cs' s I' = sessf ps cs s I'.
@@ -2281,7 +2278,7 @@ Proof using.
 Qed.
 
 Lemma demo_f1_file :
-  fst_after fd_cs1 None (ins fd_seg1) = Some (sb "hello world"%string ++ nlb).
+  fstate_after fd_cs1 None (ins fd_seg1) = Some (sb "hello world"%string ++ nlb).
 (* [vm_cast_no_check], not [vm_compute]: the decision runs the round's whole
    output segment through the model, and a [vm_compute] closing the goal is
    RE-CHECKED by the kernel's lazy conversion at [Qed] -- so the bill is paid
@@ -2396,7 +2393,7 @@ Qed.
 (* WHAT A [cat f] ROUND CAN PUT ON THE WIRE FIRST, at a file that only
    [echo hello world > f] ever wrote: '$', 'c', 'e', 'f', or one of
    [hello world\n]'s own bytes.  Never 'g'. *)
-Lemma fd_cat_head (s : fst) (a : ralt) (Z : list (bv 8)) (b : bv 8) :
+Lemma fd_cat_head (s : fstate) (a : ralt) (Z : list (bv 8)) (b : bv 8) :
   ralt_ok LCat a ->
   (s = None \/ exists sel, sel_ok (echo_chunks fd_ws) sel
                            /\ s = Some (subseq (echo_chunks fd_ws) sel)) ->
@@ -2527,9 +2524,9 @@ Proof using.
     by (apply (bool_decide_unpack _); vm_compute; exact I).
   assert (Hu0 : uline_of ([fd_b0; cmd_cat_f] !!! 0%nat) = LEchoF fd_ws)
     by (apply (bool_decide_unpack _); vm_compute; exact I).
-  assert (Hs1 : fst_upto cs None [fd_b0; cmd_cat_f] 1%nat
+  assert (Hs1 : fstate_upto cs None [fd_b0; cmd_cat_f] 1%nat
                 = fsm None (LEchoF fd_ws) (ralt_at cs 0%nat))
-    by (cbn [fst_upto]; by rewrite Hu0).
+    by (cbn [fstate_upto]; by rewrite Hu0).
   rewrite /alt_cont_f Hu1 Hs1 in HC.
   (* both rounds' alternatives are ones their line shapes admit *)
   pose proof (alts_ok_at (ins fd_seg_bad) cs 0%nat Hcs ltac:(rewrite HnI; lia))

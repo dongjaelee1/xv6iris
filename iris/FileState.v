@@ -6,7 +6,7 @@
    not import the session model's cone and the model does not import the
    claim's.
 
-     [fst]          the file's STATE: absent, or present with these bytes.
+     [fstate]       the file's STATE: absent, or present with these bytes.
                     THE STATE IS THE CONTENT and not a (words, subset)
                     pair: the content is a function of the abstract view,
                     which is what lets the claim's transport allocate the
@@ -34,7 +34,7 @@ Local Open Scope list_scope.
 (*  1.  THE STATE                                                          *)
 (* ====================================================================== *)
 
-Definition fst : Type := option (list (bv 8)).
+Definition fstate : Type := option (list (bv 8)).
 
 (* ====================================================================== *)
 (*  2.  ECHO'S CHUNKS                                                      *)

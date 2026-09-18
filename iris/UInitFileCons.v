@@ -406,7 +406,7 @@ Section UInitFileCons.
   Lemma file_ban_f0w (k : nat) (v : era_pins) (I : list (bv 8)) (i : nat) :
     FileLinksLine.fwc_ban g k v I (S i) -∗
     FileLinksLine.fwc_ban g k v I (S i)
-    ∗ ((∃ s0 : fst, FileLinksLine.f0w g k s0) ∨ FT).
+    ∗ ((∃ s0 : fstate, FileLinksLine.f0w g k s0) ∨ FT).
   Proof using .
     iIntros "Hc". iEval (rewrite /FileLinksLine.fwc_ban) in "Hc".
     iDestruct "Hc" as "[Hl | [[%Hq _] | #HT]]".
@@ -461,7 +461,7 @@ Section UInitFileCons.
 
   (* THE TURN, AT THE NAMED STATE.  [FileLinksAtBan.fturn_pre_at] is
      [lk_turn (file_link_inst_at g s0)]. *)
-  Lemma file_turn_pre_at_of_boot (s0 : fst) :
+  Lemma file_turn_pre_at_of_boot (s0 : fstate) :
     FileOut.fturn g (S gen_id) -∗ f0pre_at g s0 -∗
     lk_turn (file_link_inst_at g s0) (S gen_id).
   Proof using .
@@ -477,7 +477,7 @@ Section UInitFileCons.
      /init holds from its entry and the deed it holds beside it are at ONE
      state, so [UShRound]'s hold can be stated without [f0_lb] and the
      round's first prompt has its tie. *)
-  Lemma file_Wbl_at_of_boot (s0 : fst) :
+  Lemma file_Wbl_at_of_boot (s0 : fstate) :
     FileOut.fturn g (S gen_id) -∗ f0pre_at g s0 -∗
     (∃ v : era_pins, era_pin (fgn_echo g) (S gen_id) v
        ∗ dl_cnt v (1/2) 0%nat ∗ inp_lb v [])
@@ -495,7 +495,7 @@ Section UInitFileCons.
      own index, so what is left carries [f0w] AT THE CALLER'S [s0].  The
      first-drain pinning is untouched -- it reads [f0w] exactly as it
      always did. *)
-  Lemma file_ban_f0w_at (s0 : fst) (k : nat) (v : era_pins)
+  Lemma file_ban_f0w_at (s0 : fstate) (k : nat) (v : era_pins)
       (I : list (bv 8)) (i : nat) :
     fwc_ban_at g s0 k v I (S i) -∗
     fwc_ban_at g s0 k v I (S i)
@@ -517,7 +517,7 @@ Section UInitFileCons.
   (*  difference is a finding and not a second statement -- the round is  *)
   (*  theirs and [file_Hinit_boot] takes its conclusion as ONE hypothesis. *)
   (* =================================================================== *)
-  Definition sh_hold_at (s0 : fst) (I : list (bv 8)) : iProp Σ :=
+  Definition sh_hold_at (s0 : fstate) (I : list (bv 8)) : iProp Σ :=
     ((∃ (cs0 : list nat) (s : dst) (v : era_pins),
         fown r s
         ∗ ⌜UCatOut.cat_tie cs0 s0 I s⌝
@@ -525,12 +525,12 @@ Section UInitFileCons.
         ∗ era_pin (fgn_echo g) (S gen_id) v ∗ cs_lb v cs0)
      ∨ FT)%I.
 
-  Lemma sh_hold_at_taint (s0 : fst) (I : list (bv 8)) :
+  Lemma sh_hold_at_taint (s0 : fstate) (I : list (bv 8)) :
     FT -∗ sh_hold_at s0 I.
   Proof using . iIntros "#HT". rewrite /sh_hold_at. by iRight. Qed.
 
   (* AT THE ERA'S HEAD the tie is [reflexivity]: [cat_st cs0 s0 []] is
-     [fst_upto cs0 s0 [] 0], which is [s0]. *)
+     [fstate_upto cs0 s0 [] 0], which is [s0]. *)
   Lemma sh_hold_at_of_boot (s : dst) (v : era_pins) :
     era_pin (fgn_echo g) (S gen_id) v -∗ cs_lb v [] -∗
     fown r s -∗ f_typed (fgn_cl g) s -∗
@@ -542,10 +542,10 @@ Section UInitFileCons.
   Qed.
 
   (* the round's two families, at the index *)
-  Definition file_Wcf_at (s0 : fst) (I : list (bv 8)) (p : nat) : iProp Σ :=
+  Definition file_Wcf_at (s0 : fstate) (I : list (bv 8)) (p : nat) : iProp Σ :=
     (lk_lcred (file_link_inst_at g s0) (S gen_id) I p ∗ sh_hold_at s0 I)%I.
 
-  Definition file_Wbf_at (s0 : fst) (I : list (bv 8)) : iProp Σ :=
+  Definition file_Wbf_at (s0 : fstate) (I : list (bv 8)) : iProp Σ :=
     (file_Wbl_at g s0 I ∗ sh_hold_at s0 I)%I.
 
   (* ---- /init's FIRST CREDENTIAL, out of [AppFile.file_boot] and nothing

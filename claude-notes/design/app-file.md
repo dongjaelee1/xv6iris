@@ -594,6 +594,17 @@ unowned critical item (WRITE-RELAY-3's `TB` guard).  RULES, replacing
   the taint arm; `efcur`/`ef_exit` and the four lemmas naming them follow.
   RELAY 1 is not owed: `f_ok`'s `Some` arm pins the inum, so
   `file_claim_read` yields it inside the node.
+- INIT-FILE round 4 (97d8cc41b): all nine conjuncts of
+  `init_cons_laws_at` discharged at `file_pred`; `Nm`/`Nd` threaded to
+  `mknod_au_at` through `SpecCreate.cre_commits` (name held at the GUARDED
+  reading on both sides of `mknod_acre_inst`; a directory create owes `Nd`
+  everywhere; the node separates the deed's row from the arm's, only the
+  credential separates the console's); the prologue diagnostic family is
+  based on `fwc_pban_at`, not `fwc_pro_at` (the file loses echo's `j` at
+  `fwc_ban_done_pro_at`); `file_Wbf_at_of_boot` = /init's first credential
+  out of `file_boot` alone.  `sh_hold_at` exists twice (UShRound's and
+  UInitFileCons's, syntactically the same); the round's wins at the
+  assembly.
 - RULING H' (2026-09-18, INIT-FILE findings 3.1/3.2): the round's hold is
   tied to the era's boot state BY A SHARED INDEX, not by `f0_lb` (which
   only exists after the era's first console byte, so `Wbf []` was

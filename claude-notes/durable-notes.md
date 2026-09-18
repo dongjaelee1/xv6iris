@@ -938,7 +938,15 @@ Five ways to be silently miscounted, all of them green builds:
   program tier: every statement mentioning a deposit or exec instance pins
   it — `(PS := uprogSG_free)`, `(SG := uexecSG_xv6)` — on both the lemma
   and its consumer's goal; implicit does not fail, it hangs (seen twice,
-  two hours lost on `sh_child_law_file`).
+  two hours lost on `sh_child_law_file`).  The rule covers the CAMERAS
+  too: `UserCwd.ucwd`'s `ghost_varG Σ Z` resolves to a section variable in
+  the U-tier files and to `Xv6Cameras.offbox_offG` in the kernel's, the
+  two print identically, and `iSpecialize: cannot instantiate` is the
+  symptom (`(ghost_varG0 := offbox_offG)` on the call).  Localise FIRST:
+  `Local Set Printing Implicit` and turn the failing premise into its own
+  goal.  A section `Context` for the deposit instance does NOT work in a
+  large file (35 minutes of elaboration, unfinished): bind it per lemma
+  (`` `{PSx : uprogSG Σ} ``), as `UEchoFile.v`'s header says.
 - **Tree-wide sweeps: pick the sentinel with `grep -c` on the tree first.**
   A sed/python sweep that used `§` as a placeholder rewrote 3,327 comment
   lines in 442 files into nonsense because the tree already contains `§`

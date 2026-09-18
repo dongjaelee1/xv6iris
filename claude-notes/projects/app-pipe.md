@@ -154,8 +154,9 @@ arm is the theorem's one named premise (`pipe_both_law`).
 
 ### SH-PARSE-PIPE (2026-09-18) — the pipe line's LEXER lands whole and its LEXABILITY is a theorem; what is left of the parser is TWO RE-STATEMENTS, and the one instruction nobody had walked is landed
 
-Branch `app-pipe/sh-parse-pipe`, SEVEN commits (`d17064949`, `16cc644da`,
-`6ed408fc8`, `0a2de5b53`, `9ba83f6a1`, `cb0a796c3`, `9c78e50fa`).  Whole
+Branch `app-pipe/sh-parse-pipe`, NINE commits (`d17064949`, `16cc644da`,
+`6ed408fc8`, `0a2de5b53`, `9ba83f6a1`, `cb0a796c3`, `9c78e50fa`, this one
+and `b5bd56a9f`).  Whole
 tree green on the lane's remote tree (`build`, RC=0); FIVE NEW FILES plus
 five `iris/_CoqProject` lines and NOT ONE LANDED STATEMENT TOUCHED (the
 simple-line and redirect-line theorems are byte-identical, `UkShRun.v` is
@@ -189,7 +190,10 @@ unread-only, `make gen-ucode` unrun); no `Admitted`, every result carries
   the seam's vacuity instances `ushq_demo_cut_ok_l` / `_r`.
 - `iris/UkShPipeEx.v` — `ushp_T_arg_bar` / `ushp_T_pipe_bar` /
   `ushp_peek_arg_hit` / **`ushp_peek_pipe_hit`** (the fact parsepipe's guard
-  turns on) and **`wp_kshp_pex_bar`**, the argument loop's exit at the `|`.
+  turns on), `ushp_peek_res_miss` / `ushp_peek_redir_miss_bar` /
+  `ushq_peek_redir_miss_pipe` (the miss the left command's LAST
+  `parseredirs` needs), and **`wp_kshp_pex_bar`**, the argument loop's exit
+  at the `|`.
 
 **THE TOKEN LIST AND THE NODE, VERBATIM (what SH-PIPE consumes).**  With
 `p0 := length (wl_body ws)`, `p := p0 + 1` (the `|`),
@@ -319,9 +323,18 @@ It needs three things this lane could not do, in this order:
 1. **`parseexec` at the pipe line, LEFT** — a RE-STATEMENT, not a new
    walk: `UkShParseExec.wp_kshp_parseexec` / `wp_kshp_pex_loop` (or
    SH-PARSE-2's `UkShRedirEx`/`UkShRedirPex` copies) at
-   `ushs_toks len f p 0 args` and `ushq_nosym_from len f 0`… with
+   `ushs_toks len f p 0 args` and `ushq_pipe_nosym_below`, with
    `wp_kshp_pex_bar` closing the last round.  No instruction of it is
-   undiscovered (finding 5).
+   undiscovered (finding 5).  ONE MORE "one line of N": the loop calls
+   `parseredirs` after EVERY argument, so its last call sits ON the `|`,
+   and `UkShRedirPr.wp_kshp_parseredirs_ns` cannot serve it — that walk's
+   premise is "the byte at the cursor is not a symbol", which the `|`
+   falsifies, and it spends it in one line through
+   `ushs_peek_res_nsym`.  The weakest fact is landed here instead
+   (`ushp_peek_res_miss`, the mirror of `UkShRedirLex.ushp_peek_res_hit`
+   and strictly more general than `ushs_peek_res_nsym`, with
+   `ushq_peek_redir_miss_pipe` its instance), so the re-statement of
+   `parseredirs`' zero-turn walk carries no new obligation either.
 2. **`parseexec`/`parsepipe` at the pipe line, RIGHT** — the same walks at
    `ushq_nosym_from len f (S (S p))` (`ushq_pipe_nosym_from`), which is
    the "one line of 460" shape SH-PARSE named: every use those walks make

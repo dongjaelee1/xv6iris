@@ -15,8 +15,17 @@ Metric 7 = `UEchoFile.v` 1 (header only) + `UShRound.v` 5 + `UInitFile.v` 1,
 at `main` = the merge of `app-file/off-hand` (KERNEL-STREAM item 4).  Audits
 13 / 14 / 13 / 14.  ONE LANE AT A TIME from here (session credit).
 
-The blocker for the whole program tier is the deed's hold: RULING HOLD-POS
-(design §3.7).  Serial plan, each item one lane on `app-file/sh-redir`:
+STATE after PROGRAM-STREAM stretch 9 (2026-09-18): metric still 6 — the
+stretch measured item 2 to be four sub-items plus TWO statement defects
+upstream of it, landed 2a/2b/2c and the K1 repair (2½), and STOPPED at the
+second defect (2¾, the fork slot's words), which moves a generic sh
+statement and wants the owner's ruling.  NEXT: rule on 2¾, apply it, then 2d.
+Work is SERIAL, in the main session, on `app-file/sh-redir`
+(`/shared/xv6iris-3-lanes/sh-redir`), iterating with `.vos`/`.vok`
+(`/shared/xv6iris-3-lanes/.logs/vb.sh`).
+
+The blocker for the whole program tier WAS the deed's hold: RULING HOLD-POS
+(design §3.7).  Serial plan:
 
 1. [x] **HOLD-POS** — LANDED (stretch 8, `1cfe4854b`): metric 4 in
    `UShRound.v`; S3 proved; `sh_prompt_law_file`, `Hpanic`, `Hwbl_f`,
@@ -44,19 +53,29 @@ The blocker for the whole program tier is the deed's hold: RULING HOLD-POS
      `_alloc_redir_g`), the PAID open-failed diagnostic and the call's adapter
      (`UkShRedirPaid.v`), the child's whole walk with no `sh_deps`
      (`UkShRedirChild.wp_kshm_child_file_redir`).
-   - [ ] **2d** the round's lemma (`Hchild_redir`) — **BLOCKED ON K1**:
-     `UEchoFile.efile_image_entry`'s `Hstr` is a pure ∀ over every abstract
-     view and is FALSE as stated (it can only be known at the fire, from the
-     offset half's agreement).  See item 2½.
-2½. **HSTR** (kernel/U tier, NEW): `FsAbsWriteFire.awrite_part_at_mapped_single`
-   takes the single-block fact as a pure ∀; give it a CLOSURE form (the node
-   is handed `ghost_map_auth … I` and `off_link γo off` at the fire, so a
-   closure holding the cursor agrees `off` to the content's length —
-   `OffGv.off_gv_agree` — and bounds it by `FileDeltas.f_bytes_typed_short`;
-   the cursor's TAINT arm pays the arm instead of refuting it), then drop
-   `Hstr`/`Hsb`/`Hsbw` from `UEchoFile.ef_relay4`, both `ef_w_of_deed`s,
-   `ef_pay_from` and `efile_image_entry`.  Bar: K1's entry takes no pure
-   premise about views; echo audit unchanged.
+   - [ ] **2d** the round's lemma (`Hchild_redir`) — **BLOCKED ON THE SLOT**
+     (item 2¾); K1 no longer blocks it (item 2½ landed).
+2½. [x] **HSTR** — LANDED: K1's `Hstr` (a pure ∀ over every abstract view,
+   false as stated) is gone from `UEchoFile` (`ef_chain`, both
+   `ef_w_of_deed`s, `ef_pay_from`, `efile_uexec_slot_at`,
+   `efile_image_entry`; `ef_relay4` deleted).  The partial arm is built from
+   the CURSOR: `FsAbsWritePart.awrite_part_adv_mapped_straddle` (at a mapped
+   source the arm may ASSUME the chunk straddles a block) and
+   `FileWritePart.file_awrite_part_adv` (a fired cursor agrees the offset to
+   the content's length, a line's worth — refuted; a tainted one pays).  What
+   the chain takes instead is `nb ≤ EchoDisc.line_max`.
+2¾. **SLOT-WS** (generic sh tier, NEW, needs the owner's ruling): the fork
+   slot says `last_ws I = ws` and at `echo a > f` the body has FOUR words
+   while the typed line has TWO (`vm_compute`d).  So
+   `FileReadInst.file_disc_line`'s `Hws` is false at `LEchoF`, the loop
+   reaches the fork only tainted at a redirect line, and
+   `UkShRedirBody.sh_redir_child_law`'s premises (`ushs_line_is ws …` and
+   `ws = last_ws I`) are contradictory — the law is vacuous.  Proposed: the
+   slot's index is `uline_ws (uline_of (ush_lastbody I))`;
+   `ush_gets_done_line_at` takes `lu = uline_of J`;
+   `ushf_child_law_at`'s `⌜ws = last_ws I⌝` moves with it; echo's consumers
+   bridge by `FileDisc.fbody_ok_echo`.  PROGRAM-STREAM.md stretch 9 has the
+   measurement.
 3. **CAT-CHILD** — item (4), RULING CAT-DEED: `catq_cat` returns the whole
    deed, `Hchild_cat` becomes a lemma; item (5): `sh_round_holds_file`.
 4. **INIT-FILE assembly** — `UInitFileCC.v` (in the program-tier worktree,

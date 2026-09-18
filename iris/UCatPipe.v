@@ -948,4 +948,87 @@ Section UCatPipe.
   Qed.
 
 
+  (* =================================================================== *)
+  (*  5.  THE EXIT ROW, OUT OF THE REGISTRY                               *)
+  (*                                                                     *)
+  (*  cat's table after sh's dance is [R; c; c] -- slot 0 the pipe's READ *)
+  (*  END, slots 1 and 2 the console -- above whatever exec left closed.  *)
+  (*  kexit's per-descriptor close payments ([UkRun.urun_nopipe], design  *)
+  (*  SS2's registry) are then ONE registration for slot 0 and [emp] for  *)
+  (*  every other row, and the registration comes out of the protocol's   *)
+  (*  own handle.  This is design SS2's claim, at cat: a VERIFIED PROGRAM *)
+  (*  THAT HOLDS A PIPE AND IS NOT TAINTED.                               *)
+  (* =================================================================== *)
+  Lemma pcat_urun_nopipe (pn : pnames) (γp : pipe_names) (L : list (bv 8))
+      (rb wb : bool) (rest : list fdstate) :
+    fdv_nopipe rest ->
+    pipe_inv pn γp L -∗
+    UkRun.urun_nopipe (FdOpen rb wb (FdPipe γp) :: rest).
+  Proof using .
+    intros Hrest. iIntros "#Hinv".
+    iApply UkRun.urun_nopipe_regs.
+    rewrite big_sepL_cons. iSplitR.
+    - iApply srow_reg_of_pipe_reg. iApply (pipe_reg_of_inv with "Hinv").
+    - iApply (UkRun.srow_regs_nopipe rest Hrest).
+  Qed.
+
+  (* =================================================================== *)
+  (*  6.  THE CONSUMER TEST, at the concrete line "hi\n"                  *)
+  (*                                                                     *)
+  (*  A RESOURCE-LEVEL test, as PIPE-PROTO's was and for the same reason: *)
+  (*  a WP test would have to supply cat's instruction stream, registers  *)
+  (*  and heap, and the walk they go through is SS4's round.  What is     *)
+  (*  tested is the three seams the round spends -- the first read's      *)
+  (*  payment at cursor 0, a turn that delivered the whole line printing  *)
+  (*  EXACTLY the round's first three block bytes, and the second read's  *)
+  (*  end-of-file handing over the payload at the frozen contents.        *)
+  (* =================================================================== *)
+  Definition pcat_hi : list (bv 8) := (sb "hi"%string ++ [wl_nl])%list.
+
+  Lemma pcat_hi_len : length pcat_hi = 3%nat.
+  Proof using . vm_compute. reflexivity. Qed.
+
+  Lemma pcat_round_test (pn : pnames) (γp : pipe_names) (I0 : list (bv 8)) :
+    pcat_out I0 = pcat_hi ->
+    pipe_inv pn γp pcat_hi -∗ rtok pn -∗
+    (* (a) THE FIRST READ IS PAID, at cursor 0 *)
+    pipe_rpay (pn_queue γp) (pipe_rQ pn pcat_hi 0)
+      (pipe_rQe pn pcat_hi 0) 512
+    (* (b) A TURN THAT DELIVERED THE WHOLE LINE prints exactly the round's
+           first three block bytes and leaves the cursor at 3 *)
+    ∗ □ (∀ acc : list (bv 8),
+           ⌜length acc = 3%nat⌝ -∗
+           pipe_rQ pn pcat_hi 0 acc -∗
+           ⌜forall j : nat, (j < 3)%nat ->
+              pcont (pcat_line I0) (palt_of pcat_alt) !! j
+              = Some (acc !!! j)⌝
+           ∗ rcur pn 3%nat)
+    (* (c) THE SECOND READ ANSWERS ZERO at end of file, and cat's exit
+           payload is the frozen contents -- the whole line *)
+    ∗ □ (∀ s : pipe_st, ⌜pst_eof s⌝ -∗ pipe_rQe pn pcat_hi 3%nat [] s -∗
+           rcur pn 3%nat ∗ eof_shot pn pcat_hi).
+  Proof using .
+    intros HL. iIntros "#Hinv Hr".
+    iSplitL "Hr".
+    { iApply (pipe_rpay_of_inv pn γp pcat_hi 0%nat 512%nat with "Hinv Hr"). }
+    iSplit.
+    - iIntros "!>" (acc) "%Hlen [Hr %Hacc]". rewrite Hlen.
+      iSplitR; [ | iExact "Hr" ]. iPureIntro.
+      intros j Hj.
+      assert (Hj' : (0 + j < 3)%nat) by lia.
+      exact (pcat_round_line I0 pcat_hi 0%nat 3%nat
+               (fun k => acc !!! k) HL
+               ltac:(intros k Hk;
+                     exact (pcat_acc_line pcat_hi acc 0%nat Hacc k
+                              ltac:(lia)))
+               j Hj).
+    - iIntros "!>" (s) "%Heof Hqe".
+      iDestruct (pipe_rQe_eof pn pcat_hi 3%nat [] s Heof with "Hqe")
+        as "[[Hr _] #Hs]".
+      assert (Ht : take (3 + length (@nil (bv 8)))%nat pcat_hi = pcat_hi)
+        by (vm_compute; reflexivity).
+      rewrite Ht. iFrame "Hr". iExact "Hs".
+  Qed.
+
+
 End UCatPipe.

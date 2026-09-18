@@ -7,9 +7,11 @@ tier.  Its exit criterion is measurable:
 grep -c "Hypothesis\|Admitted" iris/UShRound.v
 ```
 
-| when | count |
-|---|---|
-| at the stream's start (after SH-CHILD-2, commit `890ebb21a`) | **19** |
+| when | count | what moved |
+|---|---|---|
+| at the stream's start (after SH-CHILD-2, `890ebb21a`) | **19** | — |
+| after the link record's five and the lexability (`606b3efae`) | **13** | `Hwbl` `Hwbwc` `Hcltaint` `Hwc` `Hwbr` `Hlexr` |
+| after sh's killed child (`fbc4048eb`) | **12** | `sh_kill_law_file`'s `Admitted` |
 
 Append one block per stretch, newest last, each with the metric after it.
 
@@ -151,3 +153,66 @@ below.  They are FOUR kinds, and only the last is real work:
 | the fd-1 ROW (`ush_fd1p`) | `UkSh` (the predicate and its two lemmas), `UkShEcho` (the supply, the arm), `UkShFork` (the child law's three-row premise) | DONE for the arm and the supply (item 2); the child law's `ush_fd0c/fd1p/fd2p` triple is still the console's and is what the redirect child's own law replaces |
 | the DIAGNOSTIC (`alt_execfail`, `cmd_echo` inside it) | `UkShDiag` (the bytes, the law), `UkShEcho` (the child law) | LINK-GEN-4's `ush_execfail_law_wq_at dg nn`, and SH-CHILD-2's `ushf_child_law_holds_at`, which takes the carrier off the LINE SHAPE: the premise is `forall I, line_ok (last_ws I) -> dg I = alt_execfail /\ nn I = 17`, discharged inside the walk from the line fact the law already carries |
 | the ALTERNATIVES (`line_alts_of`, `disc_input`) | `UShEcho`, `UShPanic`, `UShRound` | the round's own: `FileLinksLine`'s `fwc_*`/`fhead`/`fab` against LINK-GEN-3 §5's fields, which is where the stream goes next |
+
+
+## THE ASSEMBLY, stretch 1 (2026-09-17) — the one number, the link record's five, the lexability and the killed child: 19 → 12
+
+Whole tree green at every commit (`--proofs -k`, `EXIT=0`, zero `Error`).
+
+### (a) THE ONE NUMBER — `UkSh.ush_Dbody` is 88 (`3f4a7c132`)
+
+The body's room has to cover the DEEPEST child sh forks, and the redirect
+line's parse is eight words deeper than the symbol-free one
+(`UkShRedirPc.wp_kshp_parsecmd_gt` asks `68 + nn`,
+`UkShParseCmd.wp_kshp_parser` asks `60 + nn`).  Restating the child's side
+instead is not possible: the fork hands the child exactly the room the
+parent had, so the eight have to be in `ush_Dbody`.  What carries it:
+
+- `UkShFork.ushf_child_law_at Lp Dc` — the room is a PARAMETER now.  The
+  fork hands `68 + (8 + (ush_Dg + n))` and a law at `Dc <= 68` is that same
+  run at `68 - Dc + n`, so **echo's instance is `Dc := 60`, the landed
+  number, and no landed walk moved**.
+- `wp_kshf_fork_core`'s own accounting: `2 + (ush_Dg + (66 + n))` becomes
+  `74`, and its statement is at `16 + (UkSh.ush_Dbody + n)` rather than at
+  the literal.
+- `UkShRedirBody`'s redirect law and body are at `Dc := 68`.
+
+The echo tier carries the eight unspent, which costs it nothing: a child
+law is `∀ n`, so more room is the same law at a bigger `n`.
+
+### (b) SIX HYPOTHESES GO (`606b3efae`)
+
+**`Wcl` / `Wbl` are not parameters any more.**  They are
+`FileLinkInst.file_Wcl` / `file_Wbl` — lane LINK-GEN-2's record at this era
+— so the five conversions the loop spends are that record's five lemmas:
+
+| hypothesis | now |
+|---|---|
+| `Hwbl`, `Hwbwc`, `Hcltaint` | `FileLinkInst.file_Hwbl` / `_Hwbwc` / `_Hcltaint`, verbatim |
+| `Hwc`, `Hwbr` | one destructuring each: the record states them at the PIN and the input's lower bound, and `UShLine.ush_mid_at` carries both PERSISTENTLY, so the bridge moves no resource |
+| `Hlexr` | deleted — `UShLexRedir.ush_line_lexable_redir_holds`, this stream's own theorem |
+
+### (c) THE KILLED CHILD, PROVED (`fbc4048eb`)
+
+`sh_kill_law_file` is three lines once `Hcltaint` is a definition: the
+taint is the era's, it inhabits the credential at the era's pin, and it is
+`sh_hold`'s own right arm.  It takes the PIN as a premise — the
+credential's pin is linear under an existential and a killed child holds
+none; the round has one.
+
+### WHAT IS LEFT, and what each is gated on
+
+| # | item | gate |
+|---|---|---|
+| `Hexecfail` | `UShEchoPay.ush_execfail_law_wq_at_hold` is EXACTLY the shape `UShRound` now states, at `Hold := sh_hold` and `L := FI` | needs `file_stage_inst : StageRec FI` (the section takes `(St : StageRec L)`) and `FileLinks.file_links g` as a premise of the round |
+| `Hchild_echo` | `UShEchoPay.sh_exec_sup_echo_wq_holds`'s file twin | the same `file_stage_inst`, plus the file application's pin and node image |
+| `Hchild_redir` | the WALK is proved (`UkShRedirBody.wp_kshm_child_file_redir`) and the budget now lines up | the era's step: `sh_exec_sup_echo_at (ushs_fd1f ty)` out of K1's `UEchoFile.efile_image_entry` — `udepw_at_refR_of_sup` plus the file era's pin resolution, ~60 lines of the same plumbing `UShEchoPay` has for echo |
+| `Hchild_cat` | `UCatKernel.cat_child_of_entry` | cat's lend, the kernel stream's |
+| `Hopen_hand` | — | the kernel stream's (OFF-LINK-6) |
+| `Hktaint` | the record's interface equation | free, once someone writes the projection |
+| `sh_prompt_alt_of_deed`, `sh_tag_law_file`, `sh_child_law_file`, `sh_round_holds_file` | the round's own mathematics | `sh_hold`'s re-establishment across a child against `cat_tie`/`fst_after` |
+
+**`file_stage_inst` is the single gate on two of them**, and it is a
+`StageRec FI`: a `CurRec` at `FileLinksLine`'s cursor plus `sk_lend_stage`
+(the era's lend opened as a stage, with `ck_alt = line_alts_of (last_ws I)
+!!! 0`) and `sk_apr0`.  That is the next stretch's first item.

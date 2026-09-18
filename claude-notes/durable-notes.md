@@ -1591,3 +1591,28 @@ dependents before its `.vo` exists, and under VM contention this cascades into
 dozens of `Cannot find library xv6iris.Xv6Cameras` failures in files the lane never
 touched (no `Error 137`).  Re-run once for a clean signal and trust the
 filesystem's missing-`.vo` list over the log.
+
+## A quoted `*)` inside a comment ends the comment (2026-09-18)
+
+`_CoqProject` makes `comment-terminator-in-string` an ERROR, so a comment
+that quotes a piece of Rocq source containing `*)` (or a string literal
+whose text spans one) terminates the comment mid-sentence and the file
+fails to parse with a message that points nowhere near the cause.  Found
+by lane PIPE-DEC; `tools/comment_quote_check.py` finds the offending line
+without a build.  Write `*` `)` separated, or move the quotation out of
+the comment.
+
+## `OCAMLRUNPARAM=l=…` is a per-file knob, never a global one -- measured again (2026-09-18)
+
+The EC2 gate note already said it; it cost a day again.  `UShRound.v`'s
+heaviest `Qed` (`Hopen_hand`, ~10 s) SEGFAULTS when the whole build runs
+under `OCAMLRUNPARAM=l=4000000000` at the default 8 MB stack, and builds in
+18 s without the knob (measured on the mirror, same tree: knob+8 MB =
+SIGSEGV in 9 s; no knob = green; `ulimit -s unlimited` alone is not the
+cure and not the cause).  A lane first blamed a one-conjunct growth of
+`UsysMemOk.usys_fd_ok`'s pipe row and named the branch
+(`usys_pipe_fail`); harmless, kept, but NOT the cause -- the row is not on
+that `Qed`'s conversion path in any way that mattered.  Rule: build at the
+default runtime; give `l=4e9` only to the one file that needs it
+(`UserMemCert.v`) in a targeted pass; a `Segmentation fault` at a `Qed`
+under a global `l=…` is the knob until proved otherwise.

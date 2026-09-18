@@ -73,6 +73,7 @@ Require Import FileInvDefs.
 Require Import PipeInvDefs.         (* [pipe_rw_ret] -- what read answers here *)
 Require Import PipeNames.           (* [pipe_names] / [pipe_st] / [pst0] *)
 Require Import PipeQueue.           (* [pipe_rpay] / [pipe_rpost_img] / [pipe_qfrag] *)
+Require Import PipeReg.             (* [pipe_reg]: THE REGISTRY the caller hands back *)
 Require Import ChildTok.            (* [kill_shot] -- the -1-by-kill arm *)
 Require Import UexecExecInst.       (* THE INSTANCE: [spost_at_pipe_elim], [xfam] *)
 Require Import UserPtTree.          (* [uptd] -- the page-table view the post is at *)
@@ -403,20 +404,35 @@ Section UkReadPipe.
   Qed.
 
   Lemma wp_uk_pipe_read_end (N : uk_names Σ) (h : CpuId) (m : regfile)
-      (pc : mword 64) (l : list fdstate) (f : nat -> bv 8) (avail : nat) :
+      (pc : mword 64) (l : list fdstate) (f : nat -> bv 8) (avail : nat)
+      (Rp : pipe_names -> iProp Σ) :
     usysno m = USYS_pipe ->
     is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
     fd_lowest_closed l = None ->
     uinstr_is (ukn_t N) pc false (ECALL tt) -∗
     urun N h m pc avail -∗
     udepw N m pc USYS_pipe -∗
-    (* THE TAINT, straight through to [UkRunSys.wp_uk_ecall_pipe]: pipe(2)
-       is the one number that puts a pipe row in the table, so it is the
-       one number after which the run's [UkRun.urun_nopipe] can only be
-       the credential arm -- and the credential is what every pipe payment
-       is payable from ([PipeQueue.pipe_cpay]).  A program that opens a
-       pipe pays its own tear-down's closes out of it. *)
-    app_taint -∗
+    (* THE REGISTRAR, WHERE THE TAINT USED TO BE (design/app-pipe.md SS2,
+       lane PIPE-REG).  This is [UkRunSys.wp_uk_ecall_pipe]'s registrar read
+       at the INSTANCE, which is the only place the pipe's exact fragment
+       can be named: the caller takes the new pipe's byte-queue fragment at
+       the birth state and hands back the pipe's REGISTRATION -- the [□]
+       -guarded close payment at either end, which is what the run's
+       [UkRun.urun_nopipe] carries for each of the two new rows and what
+       the dying process's exit spends.  It keeps whatever it made of the
+       fragment, as [Rp γp], and that is what the post below hands over in
+       the fragment's place: lane PIPE-PROTO's [pipe_proto_alloc] is the
+       instance of record ([Rp γp := ∃ pn, pipe_inv pn γp L ∗ wtok]).
+
+       REGISTERING CONSUMES THE FRAGMENT, necessarily: a registration is a
+       [□] and one fragment buys exactly one payment
+       ([PipeReg.pipe_cpay_of_frag]), so the fragment cannot both found the
+       registry and come back out.  A caller that wants the OLD behaviour
+       takes [Rp γp := pipe_qfrag (pn_queue γp) pst0] and answers from the
+       credential ([PipeReg.pipe_reg_of_taint]), and nothing about it has
+       changed. *)
+    (∀ γp : pipe_names,
+       pipe_qfrag (pn_queue γp) pst0 ={⊤}=∗ pipe_reg γp ∗ Rp γp) -∗
     ustd (ukn_fd N) l -∗
     ubytes (ukn_d N) (uint (m !!! Regidx a0_idx)) 8 f -∗
     (∀ (h' : CpuId) (r : mword 64) (g : nat -> bv 8),
@@ -436,34 +452,88 @@ Section UkReadPipe.
            UserFd.ufd (ukn_fd N) a (FdOpen true false (FdPipe γp)) ∗
            UserFd.ufd (ukn_fd N) b (FdOpen false true (FdPipe γp)) ∗
            ustd (ukn_fd N) l ∗
-           (* ...AND THE BYTE QUEUE'S EXACT FRAGMENT AT THE BIRTH STATE
-              (design/pipe.md, "The byte queue"), which is what the two
-              members' payments are built out of. *)
-           pipe_qfrag (pn_queue γp) pst0)
-        ∨ (⌜ uint r <> 0 ⌝ ∗ ustd (ukn_fd N) l)) -∗
+           (* ...AND WHAT THE REGISTRAR MADE OF THE BYTE QUEUE'S EXACT
+              FRAGMENT AT THE BIRTH STATE (design/pipe.md, "The byte
+              queue"; design/app-pipe.md SS2).  The fragment itself went
+              into the registration the run now carries for the two new
+              rows -- it had to, a registration being a [□] -- and this is
+              the caller's own successor of it, at the [γp] the two handles
+              are ends of. *)
+           Rp γp)
+        (* ...OR THE CALL FAILED, AT -1 (lane PIPE-NEG1): the leaf's own
+           failure arm, which the row now pins, relayed unchanged.  sh's
+           PIPE arm is what needs the sign -- [bltz a0] -- and this is the
+           end of the chain that carries it. *)
+        ∨ (⌜ r = (mword_of_int (-1) : mword 64) ⌝ ∗ ustd (ukn_fd N) l)) -∗
        urun N h' (<[Regidx a0_idx := r]> m) (add_vec_int pc 4) avail -∗
        ubytes (ukn_d N) (uint (m !!! Regidx a0_idx)) 8 g -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hal Hnone.
-    iIntros "#Hi Hrun Hsb #Hkt Hstd Hbuf Hcont".
-    iApply (wp_uk_ecall_pipe N h m pc l f avail Hn Hal
-              with "Hi Hrun Hsb Hkt Hstd Hbuf").
-    iIntros (h' r g W fdep M' fdv' cw' cs') "Harm Hsp Hrun Hbuf".
-    iApply ("Hcont" $! h' r g with "[Harm Hsp] Hrun Hbuf").
+    iIntros "#Hi Hrun Hsb Hreg Hstd Hbuf Hcont".
+    (* THE CLASS-LEVEL REGISTRAR, BUILT HERE.  The leaf below is stated
+       over the deposit class and cannot open row 4's post, so what it
+       takes is a fupd from that post to the two new rows' registration;
+       this is that fupd at the instance, and [Rp'] is the shape the post
+       leaves behind -- [spost_at_pipe_elim]'s own, with the fragment
+       replaced by the caller's successor.  On a FAILED call the post
+       promises nothing, the table did not move (the leaf's pure premise
+       says so), and the run's own reading answers for free. *)
+    iApply (wp_uk_ecall_pipe N h m pc l f avail
+              (fun (fdep : sfam) (W : uvis) (r : mword 64) (M' : gmap Z (bv 8))
+                   (fdv' : list fdstate) (cw' : Z) (cs' : gset gname) =>
+                 (⌜uint r = 0⌝ -∗
+                  ∃ (a b : nat) (γp : pipe_names),
+                    ⌜a <> b /\ fd_least_closed (uvis_fd W) a
+                     /\ fd_least_closed
+                          (<[a := FdOpen true false (FdPipe γp)]> (uvis_fd W)) b
+                     /\ fdv' = <[b := FdOpen false true (FdPipe γp)]>
+                                 (<[a := FdOpen true false (FdPipe γp)]>
+                                    (uvis_fd W))⌝ ∗ Rp γp)%I)
+              Hn Hal with "Hi Hrun Hsb [Hreg] Hstd Hbuf").
+    { iIntros (fdep W r M' fdv' cw' cs') "%Hfail #Hnpw Hsp".
+      destruct (decide (uint r = 0)) as [Hr0 | Hr0].
+      - iDestruct (spost_at_pipe_elim uslot fdep W r M' fdv' cw' cs' with "Hsp")
+          as "Hsp".
+        iSpecialize ("Hsp" with "[%]"); [ exact Hr0 | ].
+        iDestruct "Hsp" as (a2 b2 γp2) "[%Hp2 Hfrag]".
+        destruct Hp2 as (Hne2 & Hca2 & Hcb2 & Hfdv2).
+        iMod ("Hreg" $! γp2 with "Hfrag") as "[#Hpr HRp]".
+        iModIntro. iSplitR "HRp".
+        + (* the two rows go in REGISTERED, read end first, and the run's
+             reading survives pipe(2) -- which is the wall coming down *)
+          rewrite Hfdv2.
+          iAssert (urun_nopipe
+                     (<[a2 := FdOpen true false (FdPipe γp2)]> (uvis_fd W)))
+            as "#Hnp1";
+            [ iApply (urun_nopipe_insert_reg (uvis_fd W) a2
+                        (FdOpen true false (FdPipe γp2)) with "[] Hnpw");
+              iApply (srow_reg_of_pipe_reg true false γp2 with "Hpr") | ].
+          iApply (urun_nopipe_insert_reg _ b2
+                    (FdOpen false true (FdPipe γp2)) with "[] Hnp1").
+          iApply (srow_reg_of_pipe_reg false true γp2 with "Hpr").
+        + (* ...and the residue the caller kept, at the post's own two
+             slots and its own [γp] *)
+          iIntros "_". iExists a2, b2, γp2. iSplitR; [ | iExact "HRp" ].
+          iPureIntro. split_and!;
+            [ exact Hne2 | exact Hca2 | exact Hcb2 | exact Hfdv2 ].
+      - (* THE CALL FAILED: no pipe, no new row, and the fd row's
+           else-branch says the table did not move -- so the run's own
+           reading answers and the registrar is free *)
+        iModIntro. rewrite (Hfail Hr0). iSplitL; [ iExact "Hnpw" | ].
+        iIntros "%Hc". exfalso. exact (Hr0 Hc). }
+    iIntros (h' r g W fdep M' fdv' cw' cs') "Harm HRp' Hrun Hbuf".
+    iApply ("Hcont" $! h' r g with "[Harm HRp'] Hrun Hbuf").
     iDestruct "Harm" as "[Hok | Hbad]"; [ | iRight; iExact "Hbad" ].
     iDestruct "Hok" as (a b γp) "(%Hpure & Hra & Hrb & Hstd)".
     destruct Hpure as (Hr0 & Hne & Halt & Hblt & Hbytes & Hca & Hcb & Hfdv').
-    (* THE ROW-4 POST, READ HERE: the leaf is stated over the CLASS and
-       cannot open it, so it hands it on and this is where the pipe's
-       fragment comes out.  The post's two slots are a SECOND least-closed
-       scan of the same table, so [UkRunSys.upipe_names_agree] identifies
-       the pipe it is about with the one the two handles are ends of. *)
-    iDestruct (spost_at_pipe_elim uslot fdep W r M' fdv' cw' cs' with "Hsp")
-      as "Hsp".
-    iSpecialize ("Hsp" with "[%]"); [ exact Hr0 | ].
-    iDestruct "Hsp" as (a2 b2 γp2) "[%Hp2 Hfrag]".
+    (* THE REGISTRAR'S RESIDUE, READ HERE.  The post's two slots are a
+       SECOND least-closed scan of the same table, so
+       [UkRunSys.upipe_names_agree] identifies the pipe it is about with
+       the one the two handles are ends of. *)
+    iSpecialize ("HRp'" with "[%]"); [ exact Hr0 | ].
+    iDestruct "HRp'" as (a2 b2 γp2) "[%Hp2 HRp]".
     destruct Hp2 as (Hne2 & Hca2 & Hcb2 & Hfdv2).
     pose proof (upipe_names_agree (uvis_fd W) fdv' a b a2 b2 γp γp2
                   Hca Hcb Hfdv' Hca2 Hcb2 Hfdv2) as Hgamma.
@@ -475,7 +545,149 @@ Section UkReadPipe.
     rewrite (ustd_after_none l (FdOpen true false (FdPipe γp)) Hnone).
     rewrite (ustd_after_none l (FdOpen false true (FdPipe γp)) Hnone).
     iLeft. iExists a, b, γp. iSplitR; [ by iPureIntro | ].
-    iFrame "Hha Hhb Hstd Hfrag".
+    iFrame "Hha Hhb Hstd HRp".
+  Qed.
+
+
+  (* =================================================================== *)
+  (*  6.  THE LEDGER SLOT (design/app-pipe.md SS5.4; lane PIPE-STD)        *)
+  (*                                                                      *)
+  (*  cat reads fd 0, which is BELOW [NSTD]: its descriptor knowledge is    *)
+  (*  the whole LEDGER ([UserFd.ustd]) and its deposit is fixed at it       *)
+  (*  ([UkRun.udepwf_std]), while section 4's member is handle-fixed        *)
+  (*  ([UserFd.ufd] carries [NSTD <= fd]).  These two are that member's     *)
+  (*  ledger twins and nothing else: same walk, same family, same payment,  *)
+  (*  same post -- only the descriptor knowledge and the deposit's reading  *)
+  (*  change.  [UkWritePipe.v] section 4 is the write side of the same      *)
+  (*  move, and its header has the two notes that apply here too: the slot  *)
+  (*  is a PARAMETER (not pinned at 0) and the freedom a pipe row has where *)
+  (*  the file leaf had an offset mode is the WRITE flag [wb].               *)
+  (* =================================================================== *)
+
+  (* THE DEPOSIT AT A LEDGER SLOT, [udepwf_st_read_pipe]'s twin: the arm is
+     computed from the caller's own ledger rather than from a handle, and
+     the payment is taken exactly as it stands. *)
+  Lemma udepwf_std_read_pipe (N : uk_names Σ) (m : regfile) (pc : mword 64)
+      (l : list fdstate) (fd : nat) (wb : bool) (γp : pipe_names)
+      (Rp : list (bv 8) -> iProp Σ)
+      (Rpe : list (bv 8) -> pipe_st -> iProp Σ) :
+    bv_signed (trunc32 (m !!! Regidx a0_idx)) = Z.of_nat fd ->
+    (fd < NSTD)%nat ->
+    l !! fd = Some (FdOpen true wb (FdPipe γp)) ->
+    pipe_rpay (pn_queue γp) Rp Rpe
+      (Z.to_nat (sys_rw_count (m !!! Regidx a2_idx))) -∗
+    udepwf_std N m pc USYS_read (read_pipe_fam (ukn_pay N) Rp Rpe) l.
+  Proof using .
+    intros H0 Hlt Hl. iIntros "Hpay".
+    rewrite /udepwf_std. iSplit; [ iPureIntro; reflexivity | ].
+    iIntros (M pm sz fdv cw gn cs pidv) "%Htake _ Hheap Hufd".
+    iFrame "Hheap Hufd".
+    iApply (sbundle_at_read_intro uslot (read_pipe_fam (ukn_pay N) Rp Rpe)
+              (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
+              (m !!! Regidx a0_idx) (m !!! Regidx a2_idx) fdv
+              (tf_of_arg0 m pc) (tf_of_arg2 m pc)
+              (uvis_of_run_fd m pc M pm sz fdv cw gn cs pidv false)).
+    rewrite (std_fd_st_of_key (m !!! Regidx a0_idx) fdv l fd
+               (FdOpen true wb (FdPipe γp)) H0 Hlt Htake Hl).
+    rewrite /fileread_in /=. iIntros "$". iExact "Hpay".
+  Qed.
+
+  (* THE LEDGER-SLOT PIPE READ LEAF, [wp_uk_ecall_read_pipe]'s twin.  The
+     one read walk at [K fdv := take NSTD fdv = l] with [UserFd.ustd] for
+     [UserFd.ufd] and [UkRun.udepwf_std] for [udepwf_st]
+     ([UserFd.ustd_agree] is the reading); EVERYTHING ELSE IS THE HANDLE
+     LEAF'S -- the same [pipe_rpay] goes in, the same five pure rows and
+     the same [pipe_rpost_img] come back, the buffer's tail is pinned
+     above the same WINDOW LENGTH [d] and not above the returned count,
+     and the ledger comes home unmoved (read moves no descriptor). *)
+  Lemma wp_uk_ecall_read_pipe_std (N : uk_names Σ) (h : CpuId) (m : regfile)
+      (pc : mword 64) (k cap : nat) (f : nat -> bv 8) (avail : nat)
+      (l : list fdstate) (fd : nat) (wb : bool) (γp : pipe_names)
+      (Rp : list (bv 8) -> iProp Σ)
+      (Rpe : list (bv 8) -> pipe_st -> iProp Σ) :
+    usysno m = USYS_read ->
+    bv_signed (trunc32 (m !!! Regidx a0_idx)) = Z.of_nat fd ->
+    (* THE DESCRIPTOR IS A LEDGER SLOT, and the ledger says it is this
+       pipe's READ end *)
+    (fd < NSTD)%nat ->
+    l !! fd = Some (FdOpen true wb (FdPipe γp)) ->
+    uint (m !!! Regidx a2_idx) = Z.of_nat cap ->
+    (cap <= k)%nat ->
+    (Z.of_nat cap < 2 ^ 31)%Z ->
+    is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
+    uinstr_is (ukn_t N) pc false (ECALL tt) -∗
+    urun N h m pc avail -∗
+    (* THE LEDGER, in place of the handle-fixed leaf's [UserFd.ufd] *)
+    UserFd.ustd (ukn_fd N) l -∗
+    (* THE PAYMENT: the caller's own read chain over the byte queue, or the
+       taint (design/pipe.md, "The byte queue") *)
+    pipe_rpay (pn_queue γp) Rp Rpe cap -∗
+    ubytes (ukn_d N) (uint (m !!! Regidx a1_idx)) k f -∗
+    (∀ (h' : CpuId) (r : mword 64) (d : nat) (g : nat -> bv 8)
+       (M' : gmap Z (bv 8)) (Pt : uptd) (Rk : iProp Σ),
+       ⌜ (d <= cap)%nat ⌝ -∗
+       ⌜ forall j : nat, (d <= j < k)%nat -> g j = f j ⌝ -∗
+       ⌜ uread_pipe_ans cap r ⌝ -∗
+       ⌜ forall i : nat, (i < k)%nat ->
+           uint (add_vec_int (m !!! Regidx a1_idx) (Z.of_nat i))
+           = (uint (m !!! Regidx a1_idx) + Z.of_nat i)%Z ⌝ -∗
+       ⌜ forall j : nat, (j < k)%nat ->
+           M' !! uint (add_vec_int (m !!! Regidx a1_idx) (Z.of_nat j))
+           = Some (g j) ⌝ -∗
+       pipe_rpost_img Pt (pn_queue γp) Rp Rpe Rk cap r M'
+         (m !!! Regidx a1_idx) -∗
+       UserFd.ustd (ukn_fd N) l -∗
+       urun N h' (<[Regidx a0_idx := r]> m) (add_vec_int pc 4) avail -∗
+       ubytes (ukn_d N) (uint (m !!! Regidx a1_idx)) k g -∗
+       WP (Loop : expr riscv_lang)) -∗
+    WP (Loop : expr riscv_lang).
+  Proof using .
+    intros Hn Ha0 Hlt Hl Ha2 Hcapk Hcap31 Hal.
+    iIntros "#Hi Hrun Hstd Hpay Hbuf Hcont".
+    assert (Hcnt : sys_rw_count (m !!! Regidx a2_idx) = Z.of_nat cap)
+      by exact (uread_count_is_cap (m !!! Regidx a2_idx) cap Ha2 Hcap31).
+    assert (Hcw : bv_signed (subrange_vec_dec (m !!! Regidx a2_idx) 31 0
+                             : mword 32) = Z.of_nat cap).
+    { rewrite /sys_rw_count trunc32_subrange in Hcnt. exact Hcnt. }
+    iPoseProof (udepwf_std_read_pipe N m pc l fd wb γp Rp Rpe Ha0 Hlt Hl
+                  with "[Hpay]") as "Hsb";
+      [ rewrite Hcnt Nat2Z.id; iExact "Hpay" | ].
+    iApply (wp_uk_ecall_read_at N h m pc (Z.of_nat cap) k f avail
+              (read_pipe_fam (ukn_pay N) Rp Rpe)
+              (UserFd.ustd (ukn_fd N) l)
+              (fun fdv => take NSTD fdv = l)
+              Hn Hcw ltac:(rewrite Nat2Z.id; exact Hcapk) Hal
+              (fun fdv => ustd_agree (ukn_fd N) fdv l)
+              with "Hi Hrun [Hsb] Hstd Hbuf").
+    { iApply (udepwf_K_std N m pc USYS_read
+                (read_pipe_fam (ukn_pay N) Rp Rpe) l with "Hsb"). }
+    iIntros (h' r d g W M' fdv' cw' cs')
+      "%Hd %Hgf %Hlin %Himg %Hnf %H0 %H1 %H2 %Htake %Hlz %Hlive
+       Hstd Hpost Hrun Hbuf".
+    iDestruct (spost_at_read_elim uslot (read_pipe_fam (ukn_pay N) Rp Rpe) W
+                 (m !!! Regidx a0_idx) (m !!! Regidx a1_idx)
+                 (m !!! Regidx a2_idx) (uvis_fd W) r M' fdv' cw' cs'
+                 H0 H1 H2 eq_refl with "Hpost")
+      as "[%Hret Hcore]".
+    iDestruct "Hcore" as (P) "(%Hpmp & %Hwfp & %Hlzp & Hcore)".
+    (* THE ARM, OUT OF THE CALLER'S OWN LEDGER: the key's low [NSTD] slots
+       ARE the ledger ([Htake], the walk's row), so the row at [fd] is the
+       state the call ran on. *)
+    iDestruct (uread_pipe_core (uvis_gen W) P
+                 (fd_st_of_key (m !!! Regidx a0_idx) (uvis_fd W)) wb γp
+                 (sys_rw_count (m !!! Regidx a2_idx))
+                 (read_pipe_fam (ukn_pay N) Rp Rpe)
+                 Rp Rpe r M' (m !!! Regidx a1_idx)
+                 (std_fd_st_of_key (m !!! Regidx a0_idx) (uvis_fd W) l fd
+                    (FdOpen true wb (FdPipe γp)) Ha0 Hlt Htake Hl)
+                 with "Hcore") as "Hrp".
+    rewrite Hcnt in Hret.
+    rewrite Hcnt Nat2Z.id.
+    rewrite Nat2Z.id in Hd.
+    iApply ("Hcont" $! h' r d g M' P (ChildTok.kill_shot (uvis_gen W))
+              with "[%] [%] [%] [%] [%] Hrp Hstd Hrun Hbuf");
+      [ exact Hd | exact Hgf | exact (uread_pipe_ans_of_ret cap r Hret)
+      | exact Hlin | exact Himg ].
   Qed.
 
 End UkReadPipe.

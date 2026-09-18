@@ -387,6 +387,24 @@ Definition usys_argfd (tf : list (mword 64)) : Z :=
 Definition usys_ret_is (r : mword 64) (fd : nat) : Prop :=
   r = (mword_of_int (Z.of_nat fd) : mword 64).
 
+(* PIPE'S FAILURE ARM, AS A NAME (lane PIPE-NEG1, second pass).  The
+   content is the same conjunction the open and dup rows spell inline --
+   the call answered -1 and the table did not move -- and it is a
+   [Definition] rather than two conjuncts in the row's body for a reason
+   that cost a whole build to find: [usys_fd_ok]'s BODY is on the
+   conversion path of a [Qed] in the largest file in the tree
+   ([UShRound.Hopen_hand], which takes the nopipe row as a premise), and
+   that [Qed] sat close enough to the kernel's stack that turning the pipe
+   branch's [sts' = sts] into [_ /\ _] tipped it over -- `Segmentation
+   fault' at [Qed], and, with the stack raised, the divergence
+   durable-notes.md says to read as a CONVERSION rather than a big proof.
+   Behind a constant the row's body is one head symbol per branch again
+   (smaller, in fact, than before the -1 landed), and every consumer reads
+   the arm through [usys_fd_ok_pipe_neg1] below rather than by unfolding
+   this. *)
+Definition usys_pipe_fail (r : mword 64) (sts sts' : list fdstate) : Prop :=
+  r = (mword_of_int (-1) : mword 64) /\ sts' = sts.
+
 Definition usys_fd_ok (n : Z) (tf : list (mword 64)) (r : mword 64)
     (sts sts' : list fdstate) : Prop :=
   if decide (n = USYS_close) then
@@ -555,7 +573,31 @@ Definition usys_fd_ok (n : Z) (tf : list (mword 64)) (r : mword 64)
              fd_least_closed (<[a := FdOpen true false (FdPipe γp)]> sts) b /\
              sts' = <[b := FdOpen false true (FdPipe γp)]>
                       (<[a := FdOpen true false (FdPipe γp)]> sts))
-     else sts' = sts)
+     (* ...OR THE CALL FAILED, AND IT REPORTS THAT AT -1, exactly as the
+        open and dup rows above do (lane PIPE-NEG1; lane SH-PIPE's finding
+        R-1).  An unguarded [sts' = sts] here said only "nonzero", and
+        "nonzero" DOES NOT DECIDE A SIGN: sh's instruction after [pipe(p)]
+        is [bltz a0] ([user/sh.c]'s PIPE arm, `if(pipe(p) < 0) panic'), so
+        at [r = 1] the branch is not taken and the pipeline would run on
+        two garbage descriptors -- an arm no walk can enter and no caller
+        can refute.  It cannot be repaired at a caller either: a premise
+        [forall r, uint r <> 0 -> r = -1] is FALSE, and one stated over
+        the old row is false too (take [r = 1], [sts' = sts]), so anything
+        built on either would be VACUOUS (durable-notes.md, "Vacuity").
+
+        AND THE KERNEL REALLY DOES SAY -1, on every failure path: sys_pipe
+        is [pipealloc; fdalloc; fdalloc; copyout; copyout] and all five
+        failures leave through one of its three bare `return -1's
+        ([kernel/sysfile.c]).  [SpecSysPipe.sys_pipe_post] has therefore
+        always had ONE failure arm and it always read
+        [r = mword_of_int (-1)] -- [ProofSysPipe] lands all five paths on
+        it -- so nothing about the kernel had to be proved for this row;
+        [ProofSyscall]'s arm 4 merely stopped DROPPING the fact.
+
+        BEHIND A NAME, and the note on [usys_pipe_fail] says why -- the
+        two conjuncts written out here cost a [Qed] in [UShRound.v] its
+        stack. *)
+     else usys_pipe_fail r sts sts')
   else
     (* EVERY OTHER ENTRY LEAVES THE TABLE ALONE -- but read that carefully
        for the three entries where it is easy to claim too much.
@@ -753,7 +795,7 @@ Proof.
   { destruct (decide (uint r = 0)) as [_ | _].
     - destruct H as (a & b & γp & _ & _ & _ & ->).
       rewrite length_insert. apply length_insert.
-    - subst. reflexivity. }
+    - unfold usys_pipe_fail in H. destruct H as [_ ->]. reflexivity. }
   subst. reflexivity.
 Qed.
 
@@ -802,6 +844,30 @@ Proof.
     rewrite He. apply fdv_nopipe_insert; [ exact Hpk | exact Hop ]. }
   destruct (decide (n = USYS_pipe)) as [He | _]; [ exfalso; exact (Hnp He) | ].
   subst. exact Hpk.
+Qed.
+
+(* PIPE'S FAILURE ARM, IN THE DIRECTION A LEAF HAS IT (lane PIPE-NEG1).
+   A leaf spending the row case-splits on the guard the dispatch's [beqz]
+   leaves behind ([uint r = 0]) and, on the other side of that split, needs
+   the SIGN -- because that is what the caller's next instruction reads
+   ([bltz a0]).  This is the pipe row's else-branch read at exactly that
+   split, so no consumer has to unfold the row to get at it.  The twin
+   readings for open and dup are their rows' own failure disjuncts and need
+   no lemma: those are disjunctions, and this one is a guard. *)
+Lemma usys_fd_ok_pipe_neg1 (tf : list (mword 64)) (r : mword 64)
+    (sts sts' : list fdstate) :
+  usys_fd_ok USYS_pipe tf r sts sts' ->
+  uint r <> 0 ->
+  r = (mword_of_int (-1) : mword 64) /\ sts' = sts.
+Proof.
+  unfold usys_fd_ok. intros H Hnz.
+  destruct (decide (USYS_pipe = USYS_close)) as [Hc | _]; [ discriminate Hc | ].
+  destruct (decide (USYS_pipe = USYS_dup)) as [Hc | _]; [ discriminate Hc | ].
+  destruct (decide (USYS_pipe = USYS_open)) as [Hc | _]; [ discriminate Hc | ].
+  destruct (decide (USYS_pipe = USYS_pipe)) as [_ | Hc];
+    [ | exfalso; exact (Hc eq_refl) ].
+  destruct (decide (uint r = 0)) as [Hc | _]; [ exfalso; exact (Hnz Hc) | ].
+  unfold usys_pipe_fail in H. exact H.
 Qed.
 
 (* [usys_fd_ok_parked_ne_open] IS GONE, and its disappearance is the point:

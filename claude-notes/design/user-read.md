@@ -1,6 +1,6 @@
 # Design: the generic read spec (spec-cleanup RD-0)
 
-Status: DESIGN OF RECORD for `projects/spec-cleanup.md` lanes RD-1..RD-5
+Status: DESIGN OF RECORD for `completed/spec-cleanup.md` (campaign CLOSED 2026-09-17) lanes RD-1..RD-5
 (2026-09-15, Fable).  One owner ruling is open (§4, fork); everything
 else here is decided unless a lane's as-landed note contradicts it.
 Companion pages: `user-write.md` (the SAME PROGRAMME FOR WRITE — lane
